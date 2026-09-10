@@ -14,8 +14,11 @@ calls itself — it's infrastructure; handlers decide what work happens.
 """
 from __future__ import annotations
 
+import fcntl
 import json
 import logging
+import time
+from contextlib import contextmanager
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
@@ -33,7 +36,12 @@ _HANDLERS: dict[str, Callable[[dict[str, Any]], "JobResult | dict[str, Any]"]] =
 # 48 MB JSON genskrevet hvert tick). Færdige jobs læses kun via list_jobs(limit≤50),
 # aldrig poll-by-id, så vi beholder alle ikke-terminale (pending/kørende) + de seneste
 # N terminale (ok/error) og dropper resten. Bounder filen.
-_TERMINAL_STATUSES = ("ok", "error", "completed", "failed")
+# `cancelled` og `lost` er FAERDIGE jobs. Stod de udenfor, havnede de i
+# «ikke-terminal»-bunken og konkurrerede med AEGTE ventende jobs om de
+# 2000 pladser — et afbrudt job kunne altsaa skubbe et job der skulle
+# koere ud af koeen. `cancelled` manglede allerede foer `lost` kom til.
+_TERMINAL_STATUSES = ("ok", "error", "completed", "failed",
+                      "cancelled", "lost")
 _KEEP_TERMINAL = 2000
 # Runaway-guard (2026-07-07): pending/non-terminal jobs var UBUNDET. Governance
 # enqueuede personality_snapshot/provider_health_check/wakeup_dispatch/… hvert vindue
@@ -143,6 +151,92 @@ def _save(items: list[dict[str, Any]]) -> None:
         logger.warning("jobs_engine: save failed: %s", exc)
 
 
+@contextmanager
+def _med_laas(*, timeout_s: float = 5.0):
+    """Serialiser laes-aendr-skriv paa koe-filen — OGSAA paa tvaers af processer.
+
+    BEVIST 10/9-2026: `run_next_job` tog et oejebliksbillede af HELE koeen,
+    kaldte handleren (op til 47 s), og skrev sit forældede billede tilbage.
+    Alt hvad andre skrev i mellemtiden blev slettet. Maalt i en subproces:
+    et job lagt i koe af en anden proces mens et job koerte var VAEK bagefter.
+
+    Det bider fordi `jarvis-api` og `jarvis-runtime` koerer SAMME app: begge
+    draener jobs i heartbeat'et, og `periodic_jobs_scheduler` laegger i koe
+    fra begge. I ÉN proces skjules det af at `_load()` returnerer den delte
+    cache-liste, saa to kaldere muterer det samme objekt — derfor overlevede
+    det i en naiv proeve og faldt foerst da proeven blev aegte.
+
+    Laasen er en `flock` paa en sidevogns-fil. Den koster mikrosekunder;
+    hot-path-hensynet i `_save` gaelder JSON-serialisering, ikke dette.
+    Kan vi ikke faa laasen, koerer vi alligevel — en manglende laas maa ikke
+    stoppe jobs, den maa kun goere dem lige saa usikre som de var foer.
+    """
+    sti = _storage_path().with_suffix(".lock")
+    fh = None
+    try:
+        sti.parent.mkdir(parents=True, exist_ok=True)
+        fh = sti.open("a+")
+        frist = time.monotonic() + max(0.0, float(timeout_s))
+        while True:
+            try:
+                fcntl.flock(fh.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except OSError:
+                if time.monotonic() >= frist:
+                    logger.warning("jobs_engine: kunne ikke faa koe-laasen paa "
+                                   "%.1fs — fortsaetter ULAAST", timeout_s)
+                    break
+                time.sleep(0.01)
+    except Exception:
+        logger.warning("jobs_engine: laasen kunne ikke aabnes — fortsaetter "
+                       "ULAAST", exc_info=True)
+    try:
+        yield
+    finally:
+        if fh is not None:
+            try:
+                fcntl.flock(fh.fileno(), fcntl.LOCK_UN)
+            except Exception:
+                pass
+            try:
+                fh.close()
+            except Exception:
+                pass
+
+
+# Status der betyder «nogen har sagt stop» og derfor ALDRIG maa overskrives af
+# et job der naaede at blive faerdigt bagefter. Samme regel som for agenter.
+_TERMINALE = ("cancelled", "lost")
+
+
+def _opdater_job(job_id: str, **felter: Any) -> dict[str, Any] | None:
+    """Skriv felter paa ÉT job, med en frisk laesning under laas.
+
+    Erstatter `_save(items)` med et forældet oejebliksbillede. Er jobbet blevet
+    afbrudt undervejs, bevares afbrydelsen — arbejdet blev maaske faerdigt, men
+    nogen sagde stop, og det maa ikke forsvinde sporloest.
+    """
+    global _LOAD_CACHE_KEY
+    with _med_laas():
+        _LOAD_CACHE_KEY = None                  # tving en frisk laesning fra fil
+        items = _load()
+        for j in items:
+            if j.get("job_id") != job_id:
+                continue
+            if (str(j.get("status") or "") in _TERMINALE
+                    and str(felter.get("status") or "") not in _TERMINALE):
+                # Bevar afbrydelsen, men bogfoer hvad der naaede at ske.
+                for k, v in felter.items():
+                    if k != "status":
+                        j[k] = v
+                j["afbrudt_undervejs"] = True
+            else:
+                j.update(felter)
+            _save(items)
+            return j
+        return None
+
+
 def register_handler(
     job_type: str,
     handler: Callable[[dict[str, Any]], "JobResult | dict[str, Any]"],
@@ -165,6 +259,36 @@ def enqueue_job(
     priority: int = 5,  # 1 = urgent, 10 = low
 ) -> str:
     """Create a new pending job. Returns job_id."""
+    with _med_laas():
+        return _enqueue_ulaast(
+            job_type=job_type, payload=payload,
+            allowed_providers=allowed_providers,
+            prefer_free_first=prefer_free_first, max_requests=max_requests,
+            max_tokens=max_tokens, max_usd=max_usd, window_key=window_key,
+            scheduled_job_id=scheduled_job_id, priority=priority,
+        )
+
+
+def _enqueue_ulaast(
+    *,
+    job_type: str,
+    payload: dict[str, Any] | None = None,
+    allowed_providers: list[str] | None = None,
+    prefer_free_first: bool = False,
+    max_requests: int = 10,
+    max_tokens: int | None = None,
+    max_usd: float | None = None,
+    window_key: str | None = None,
+    scheduled_job_id: str | None = None,
+    priority: int = 5,
+) -> str:
+    """Selve indsaettelsen. Kaldes KUN med koe-laasen holdt.
+
+    Uden laasen kunne et job lagt i koe af den ene proces blive slettet af den
+    anden — bevist i en subproces 10/9-2026.
+    """
+    global _LOAD_CACHE_KEY
+    _LOAD_CACHE_KEY = None                      # frisk laesning under laasen
     items = _load()
     # Dedup (2026-07-07): undgå runaway-akkumulering af identiske pending jobs.
     # Governance enqueuede fx personality_snapshot UDEN window_key/scheduled_job_id hvert
@@ -244,7 +368,8 @@ def run_next_job() -> JobResult | None:
         job["status"] = "error"
         job["finished_at"] = datetime.now(UTC).isoformat()
         job["result"] = {"error": f"no-handler-registered:{job_type}"}
-        _save(items)
+        _opdater_job(str(job.get("job_id")), status="error",
+                     finished_at=job["finished_at"], result=job["result"])
         return JobResult(
             job_id=str(job.get("job_id")),
             job_type=job_type,
@@ -261,7 +386,10 @@ def run_next_job() -> JobResult | None:
     if not isinstance(job.get("result"), dict):
         job["result"] = {}
     job["result"]["selected_provider"] = provider
-    _save(items)
+    # Skriv gennem `_opdater_job`, ikke `_save(items)`: oejebliksbilledet her
+    # bliver forældet i det sekund handleren begynder at arbejde.
+    _opdater_job(str(job.get("job_id")), status="running",
+                 started_at=job["started_at"], result=job["result"])
 
     try:
         handler_result = handler({
@@ -273,7 +401,8 @@ def run_next_job() -> JobResult | None:
         job["status"] = "error"
         job["finished_at"] = datetime.now(UTC).isoformat()
         job["result"] = {"error": str(exc), "selected_provider": provider}
-        _save(items)
+        _opdater_job(str(job.get("job_id")), status="error",
+                     finished_at=job["finished_at"], result=job["result"])
         return JobResult(
             job_id=str(job.get("job_id")),
             job_type=job_type,
@@ -300,7 +429,15 @@ def run_next_job() -> JobResult | None:
         "error": result_dict.get("error"),
         "details": result_dict.get("details") or {},
     }
-    _save(items)
+    # Her laa den vaerste af de to fejl: `_save(items)` skrev HELE koeen fra et
+    # billede taget foer handleren begyndte. Det slettede baade en afbrydelse
+    # der kom undervejs OG alt hvad en anden proces havde lagt i koeen.
+    _gemt = _opdater_job(str(job.get("job_id")), status=status,
+                         finished_at=job["finished_at"], result=job["result"])
+    if _gemt is not None and str(_gemt.get("status") or "") in _TERMINALE:
+        # Nogen sagde stop mens vi arbejdede. Arbejdet er bogfoert, men
+        # udfaldet er afbrydelsen — ikke «completed».
+        status = str(_gemt.get("status"))
     return JobResult(
         job_id=str(job.get("job_id")),
         job_type=job_type,
@@ -317,18 +454,29 @@ def run_next_job() -> JobResult | None:
 
 
 def cancel_job(job_id: str) -> bool:
-    items = _load()
-    for item in items:
-        if item.get("job_id") == job_id and item.get("status") in ("pending", "running"):
-            item["status"] = "cancelled"
-            item["finished_at"] = datetime.now(UTC).isoformat()
-            _save(items)
-            return True
+    """Marker jobbet afbrudt. Returnerer om afbrydelsen blev REGISTRERET.
+
+    KVITTERING, IKKE OBSERVERET DOED (fase 7-kriterium). `True` betyder at
+    stoppet er skrevet ned — ikke at handleren er holdt op med at arbejde.
+    Koerer jobbet allerede, arbejder handleren faerdig; men afbrydelsen
+    overskrives ikke laengere af udfaldet, og jobbet baerer
+    `afbrudt_undervejs`. Se `_opdater_job`.
+    """
+    global _LOAD_CACHE_KEY
+    with _med_laas():
+        _LOAD_CACHE_KEY = None
+        items = _load()
+        for item in items:
+            if item.get("job_id") == job_id and item.get("status") in ("pending", "running"):
+                item["status"] = "cancelled"
+                item["finished_at"] = datetime.now(UTC).isoformat()
+                _save(items)
+                return True
     return False
 
 
 def sweep_zombie_jobs(stale_seconds: int = 600) -> dict[str, int]:
-    """Mark 'running' jobs older than stale_seconds as error.
+    """Marker 'running' jobs aeldre end stale_seconds som `lost`.
 
     Background: when jarvis-runtime restarts, jobs that were 'running' in
     the previous process are orphaned — their handler thread died with
@@ -343,6 +491,13 @@ def sweep_zombie_jobs(stale_seconds: int = 600) -> dict[str, int]:
 
     Returns: {"swept": N, "remaining_running": M}
     """
+    global _LOAD_CACHE_KEY
+    with _med_laas():
+        _LOAD_CACHE_KEY = None
+        return _fej_ulaast(stale_seconds)
+
+
+def _fej_ulaast(stale_seconds: int) -> dict[str, int]:
     items = _load()
     now = datetime.now(UTC)
     threshold = now.timestamp() - stale_seconds
@@ -357,11 +512,15 @@ def sweep_zombie_jobs(stale_seconds: int = 600) -> dict[str, int]:
         except Exception:
             started_ts = 0  # treat unparseable as ancient → sweep
         if started_ts < threshold:
-            j["status"] = "error"
+            # `lost`, IKKE `error` (fase 7-kriterium 1). En proces der doede
+            # er ikke det samme som en handler der fejlede, og fladen skal
+            # kunne se forskel: foer stod den ene slags blandt de 27 aegte
+            # fejl og lignede en fejl i koden.
+            j["status"] = "lost"
             j["completed_at"] = now.isoformat()
             j["error"] = (
-                f"zombie sweep — process died across restart "
-                f"(age {int(now.timestamp() - started_ts)}s)"
+                f"tabt ved genstart — processen doede mens jobbet koerte "
+                f"(alder {int(now.timestamp() - started_ts)}s)"
             )
             swept += 1
         else:

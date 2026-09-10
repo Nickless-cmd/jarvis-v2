@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7225/14212 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7229/14216 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 7225/14212 functions/methods documented (50%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 606 | 1113 | 54% |
-| `core.services` | 4797 | 9796 | 48% |
+| `core.services` | 4801 | 9800 | 48% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 108 | 184 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -40,7 +40,7 @@ Generated from source. 7225/14212 functions/methods documented (50%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2023)
+## Undocumented public functions (2022)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L201)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1100,9 +1100,8 @@ Generated from source. 7225/14212 functions/methods documented (50%). The list b
 - `core/services/jarvis_brain.py` :: `index_db_path` (L313)
 - `core/services/jarvis_brain_daemon.py` :: `is_theme_consolidation_paused` (L324)
 - `core/services/jarvisx_bridge.py` :: `BridgeRegistry.register` (L325)
-- `core/services/jobs_engine.py` :: `build_jobs_engine_surface` (L382)
-- `core/services/jobs_engine.py` :: `cancel_job` (L319)
-- `core/services/jobs_engine.py` :: `list_jobs` (L375)
+- `core/services/jobs_engine.py` :: `build_jobs_engine_surface` (L541)
+- `core/services/jobs_engine.py` :: `list_jobs` (L534)
 - `core/services/layer_tension_daemon.py` :: `build_layer_tension_surface` (L194)
 - `core/services/layer_tension_daemon.py` :: `get_active_tensions` (L190)
 - `core/services/learning_policy_engine.py` :: `build_learning_policy_prompt_section` (L130)

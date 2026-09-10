@@ -256,6 +256,9 @@ from core.runtime.state_store import load_json as _load_approvals_state, save_js
 _APPROVALS_STATE_KEY = "pending_approvals"
 
 
+import core.services.approval_runtime as _ar  # noqa: E402
+
+
 def _kald_digest(tool_name: str, arguments) -> str:
     """Digesten over kaldet — broens definition, ikke en ny.
 
@@ -2193,28 +2196,11 @@ async def _stream_visible_run(
                                 continue
                         approval_id = f"approval-{uuid4().hex[:12]}"
                         created_at = datetime.now(UTC).isoformat()
-                        _PENDING_APPROVALS[approval_id] = {
-                            "tool_name": sr["tool_name"],
-                            "arguments": sr["arguments"],
-                            "result": sr["result"],
-                            "run_id": run.run_id,
-                            "session_id": run.session_id,
-                            "created_at": created_at,
-                            # EJEREN (Fase 4): «cross-user answers cannot
-                            # authorize execution». Identiteten fandtes
-                            # allerede — auth-middleware'en saetter den — den
-                            # blev bare ikke gemt, saa `resolve` havde intet
-                            # at maale et svar imod.
-                            "owner_user_id": _godkendelses_ejer(run),
-                            # INTEGRITET (Fase 4): «invocation digest ...
-                            # changes invalidate approval». Kortet ligger som
-                            # ren JSON i `state/pending_approvals.json` og blev
-                            # udfoert ORDRET. Aendrede noget filen mellem at
-                            # kortet blev vist og besvaret, koerte noget andet
-                            # end det brugeren saa — uden at nogen kunne se det.
-                            "invocation_digest": _kald_digest(
-                                sr["tool_name"], sr["arguments"]),
-                        }
+                        _PENDING_APPROVALS[approval_id] = _ar.build_request(
+                            tool_name=sr["tool_name"],
+                            arguments=sr["arguments"],
+                            result=sr["result"],
+                            run=run, created_at=created_at)
                         # 2026-05-24 (Claude): tag the sr so the persistence
                         # loop can later check if resolve_pending_approval
                         # already wrote role=tool to chat (chat_persisted flag
@@ -2236,26 +2222,11 @@ async def _stream_visible_run(
                         _set_visible_approval_state(approval_id, {
                             "approval_id": approval_id,
                             "status": "pending",
-                            "tool_name": sr["tool_name"],
-                            "arguments": sr["arguments"],
-                            "result": sr["result"],
-                            "run_id": run.run_id,
-                            "session_id": run.session_id,
-                            "created_at": created_at,
-                            # EJEREN (Fase 4): «cross-user answers cannot
-                            # authorize execution». Identiteten fandtes
-                            # allerede — auth-middleware'en saetter den — den
-                            # blev bare ikke gemt, saa `resolve` havde intet
-                            # at maale et svar imod.
-                            "owner_user_id": _godkendelses_ejer(run),
-                            # INTEGRITET (Fase 4): «invocation digest ...
-                            # changes invalidate approval». Kortet ligger som
-                            # ren JSON i `state/pending_approvals.json` og blev
-                            # udfoert ORDRET. Aendrede noget filen mellem at
-                            # kortet blev vist og besvaret, koerte noget andet
-                            # end det brugeren saa — uden at nogen kunne se det.
-                            "invocation_digest": _kald_digest(
-                                sr["tool_name"], sr["arguments"]),
+                            **_ar.build_request(
+                                tool_name=sr["tool_name"],
+                                arguments=sr["arguments"],
+                                result=sr["result"],
+                                run=run, created_at=created_at),
                         })
                         _publicer_approval_requested(
                             approval_id=approval_id, tool=sr["tool_name"],
@@ -4479,17 +4450,11 @@ async def _stream_visible_run(
                                     continue
                             _a_apid = f"approval-{uuid4().hex[:12]}"
                             _a_created_at = datetime.now(UTC).isoformat()
-                            _PENDING_APPROVALS[_a_apid] = {
-                                "tool_name": _a_sr["tool_name"],
-                                "arguments": _a_sr["arguments"],
-                                "result": _a_sr["result"],
-                                "run_id": run.run_id,
-                                "session_id": run.session_id,
-                                "created_at": _a_created_at,
-                                "owner_user_id": _godkendelses_ejer(run),
-                                "invocation_digest": _kald_digest(
-                                    _a_sr["tool_name"], _a_sr["arguments"]),
-                            }
+                            _PENDING_APPROVALS[_a_apid] = _ar.build_request(
+                                tool_name=_a_sr["tool_name"],
+                                arguments=_a_sr["arguments"],
+                                result=_a_sr["result"],
+                                run=run, created_at=_a_created_at)
                             # Tag the sr so the second-pass agentic loop's
                             # persistence can later check chat_persisted flag.
                             _a_sr["approval_id"] = _a_apid
@@ -4509,15 +4474,11 @@ async def _stream_visible_run(
                             _set_visible_approval_state(_a_apid, {
                                 "approval_id": _a_apid,
                                 "status": "pending",
-                                "tool_name": _a_sr["tool_name"],
-                                "arguments": _a_sr["arguments"],
-                                "result": _a_sr["result"],
-                                "run_id": run.run_id,
-                                "session_id": run.session_id,
-                                "created_at": _a_created_at,
-                                "owner_user_id": _godkendelses_ejer(run),
-                                "invocation_digest": _kald_digest(
-                                    _a_sr["tool_name"], _a_sr["arguments"]),
+                                **_ar.build_request(
+                                    tool_name=_a_sr["tool_name"],
+                                    arguments=_a_sr["arguments"],
+                                    result=_a_sr["result"],
+                                    run=run, created_at=_a_created_at),
                             })
                             _publicer_approval_requested(
                                 approval_id=_a_apid, tool=_a_sr["tool_name"],

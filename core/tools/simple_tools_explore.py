@@ -1,11 +1,16 @@
 """Read-only research-agent tool with runtime/Desk execution routing."""
 from __future__ import annotations
 
+import logging
+
 import re
 
 from typing import Any
 
 _EXPLORE_MAKS_RUNDER = 3
+
+
+logger = logging.getLogger(__name__)
 
 
 def _facade():
@@ -204,9 +209,43 @@ def _exec_explore(args: dict[str, Any]) -> dict[str, Any]:
     brugt: set[tuple[str, str]] = set()
     sidste_fejl: list[str] = []
     svar, agent_id, kontrolleret = "", "", 0
+
+    # COPILOT-POOLEN FOERST (Bjoern 10/9-2026). De gratis modeller kostede en
+    # hel eftermiddag: fem af dem har 0 vaerktoejskald paa 167-172 koersler
+    # hver, og explore LAESER filer — en model der aldrig kalder et vaerktoej
+    # fabrikerer svaret.
+    #
+    # Abonnementet er betalt og alle dets chat-modeller kan kalde vaerktoejer
+    # (maalt paa API'et: 56 af 56). Rangeringen er GitHubs egen
+    # `model_picker_category`, og opgaven afgoer hvilken tier:
+    #
+    #     research -> versatile     (laese, soege, sammenfatte)
+    #     kode     -> powerful      (et forkert svar koster en runde mere)
+    #
+    # `copilot-premium` er verificeret kaldbar for disse modeller (probe
+    # 10/9: gpt-5.4-mini 1,2 s, kimi-k3 5,8 s). Kan kataloget ikke naas,
+    # falder vi tilbage til den gamle rotation frem for at stoppe.
+    _opgave = str(args.get("opgave") or args.get("task") or "research").strip()
+    _pool: list[tuple[str, str]] = []
+    try:
+        from core.services.copilot_catalogue import rangeret as _rangeret
+        _kat = _rangeret(_opgave, maks=4)
+        if _kat.get("fra_katalog"):
+            _pool = [("copilot-premium", str(m["model"]))
+                     for m in _kat.get("modeller") or []]
+    except Exception:
+        logger.warning("kunne ikke hente copilot-kataloget — bruger den gamle "
+                       "rotation", exc_info=True)
+
     for runde in range(_EXPLORE_MAKS_RUNDER):
         prov, mod = "", ""
-        if runde:
+        # Poolen bruges ogsaa paa RUNDE 0. Det var netop dér nemotron kom ind
+        # og fabrikerede tre gange i traek — runde 0 koerte default-modellen
+        # helt uden egnetheds-port.
+        _ubrugte = [pm for pm in _pool if pm not in brugt]
+        if _ubrugte:
+            prov, mod = _ubrugte[0]
+        elif runde:
             if egnede_modeller is None:
                 break
             # Explore LAESER filer — opgaven kraever vaerktoejer. En model

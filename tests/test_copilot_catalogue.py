@@ -72,3 +72,59 @@ def test_noedplanen_er_ikke_tom():
     for opgave in OPGAVE_TIER:
         assert c._NOEDPLAN, "noedplanen er tom"
         assert rangeret(opgave, maks=2)["modeller"], opgave
+
+
+# ── KOBLINGEN: kataloget skal faktisk BRUGES af explore ─────────────────
+#
+# Jarvis maalte den foerste udgave: to nye filer, nul sletninger, nul imports.
+# Modulet svarede korrekt fra API'et — og INGEN kaldte det. Jeg sagde «koblet
+# ind» om noget der ikke var det, i selve den commit der skulle koble det.
+#
+# «Virker det?» giver ja begge steder. Kun «hvem kalder det?» giver svaret.
+
+def test_explore_bruger_kataloget():
+    import inspect
+
+    from core.tools import simple_tools_explore as e
+
+    kilde = inspect.getsource(e._exec_explore)
+    assert "copilot_catalogue" in kilde, (
+        "explore kalder ikke kataloget — modulet har stadig nul forbrugere")
+    assert "rangeret" in kilde
+
+
+def test_poolen_bruges_ogsaa_paa_RUNDE_0():
+    """Runde 0 koerte default-modellen helt uden egnetheds-port — og det var
+    praecis dér nemotron kom ind og fabrikerede tre gange i traek."""
+    import inspect
+
+    from core.tools import simple_tools_explore as e
+
+    kilde = inspect.getsource(e._exec_explore)
+    i_pool = kilde.index("_ubrugte = ")
+    i_runde = kilde.index("elif runde:")
+    assert i_pool < i_runde, (
+        "poolen konsulteres foerst paa runde 1 — runde 0 er stadig udaekket")
+
+
+def test_opgaven_afgoer_hvilken_tier():
+    """`kode` skal have den staerke model, `research` den alsidige."""
+    import inspect
+
+    from core.tools import simple_tools_explore as e
+
+    kilde = inspect.getsource(e._exec_explore)
+    assert '"opgave"' in kilde and '"research"' in kilde
+
+
+def test_manglende_katalog_stopper_ikke_explore():
+    """Kan kataloget ikke naas, falder vi tilbage til den gamle rotation frem
+    for at stoppe. En kilde der er nede maa ikke tage vaerktoejet med sig."""
+    import inspect
+
+    from core.tools import simple_tools_explore as e
+
+    kilde = inspect.getsource(e._exec_explore)
+    i = kilde.index("copilot_catalogue")
+    assert "except Exception" in kilde[i:i + 500]
+    assert "elif runde:" in kilde, "den gamle rotation er fjernet i stedet for bevaret"

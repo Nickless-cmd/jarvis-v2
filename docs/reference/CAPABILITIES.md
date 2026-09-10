@@ -1,6 +1,6 @@
 # CAPABILITIES
 
-> Generated 2026-09-10 — 465 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
+> Generated 2026-09-10 — 466 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
 
 | Tool | Kind | Mutating |
 |---|---|---|
@@ -64,6 +64,7 @@
 | `context_size_check` | native | no |
 | `control_daemon` | native | no |
 | `convene_council` | native | no |
+| `council_status` | native | no |
 | `counterfactual_summary` | native | no |
 | `create_event` | native | no |
 | `cross_agent_recall` | native | no |

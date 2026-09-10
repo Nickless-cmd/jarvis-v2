@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 14198 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 14203 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -35,24 +35,24 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 14198 functions/
 - [`core.services.05`](core.services.05.md) — `central_inner_salience` … `central_router_explore`
 - [`core.services.06`](core.services.06.md) — `central_runtime_proxy` … `child_authority`
 - [`core.services.07`](core.services.07.md) — `child_failure_signal` … `consolidation_judge_daemon`
-- [`core.services.08`](core.services.08.md) — `consolidation_target_signal_tracking` … `daemon_memory_safeguard`
-- [`core.services.09`](core.services.09.md) — `daily_journal` … `dispatch_status`
-- [`core.services.10`](core.services.10.md) — `doc_repair_agent` … `encryption`
-- [`core.services.11`](core.services.11.md) — `end_of_run_memory_consolidation` … `gate_commit`
-- [`core.services.12`](core.services.12.md) — `gate_enforcement` … `heartbeat_runtime`
-- [`core.services.13`](core.services.13.md) — `heartbeat_runtime_helpers` … `invocation_record`
-- [`core.services.14`](core.services.14.md) — `irony_daemon` … `mcp_trust`
-- [`core.services.15`](core.services.15.md) — `meaning_significance_signal_tracking` … `mortality_awareness`
-- [`core.services.16`](core.services.16.md) — `multi_signal_retrieval` … `perceptual_event_engine`
-- [`core.services.17`](core.services.17.md) — `periodic_jobs_scheduler` … `prompt_cache_probe`
-- [`core.services.18`](core.services.18.md) — `prompt_contract` … `reflection_signal_tracking`
-- [`core.services.19`](core.services.19.md) — `reflection_to_plan` … `runtime_resource_signal`
-- [`core.services.20`](core.services.20.md) — `runtime_self_knowledge` … `self_review_unified`
-- [`core.services.21`](core.services.21.md) — `self_surprise_detection` … `signal_tracking_framework`
-- [`core.services.22`](core.services.22.md) — `silence_detector` … `temporal_context`
-- [`core.services.23`](core.services.23.md) — `temporal_depth` … `ui_panel_store`
-- [`core.services.24`](core.services.24.md) — `unconscious_modulation` … `visible_runs_error_messaging`
-- [`core.services.25`](core.services.25.md) — `visible_runs_learning_signals` … `world_model_signal_tracking`
+- [`core.services.08`](core.services.08.md) — `consolidation_target_signal_tracking` … `daemon_manager`
+- [`core.services.09`](core.services.09.md) — `daemon_memory_safeguard` … `dispatch_guards`
+- [`core.services.10`](core.services.10.md) — `dispatch_status` … `emotional_memory_engine`
+- [`core.services.11`](core.services.11.md) — `encryption` … `gate_auth`
+- [`core.services.12`](core.services.12.md) — `gate_commit` … `heartbeat_provider_fallback`
+- [`core.services.13`](core.services.13.md) — `heartbeat_runtime` … `interruption_notice`
+- [`core.services.14`](core.services.14.md) — `invocation_record` … `mcp_registry`
+- [`core.services.15`](core.services.15.md) — `mcp_trust` … `mood_regulator_subscriber`
+- [`core.services.16`](core.services.16.md) — `mortality_awareness` … `pdf_connector`
+- [`core.services.17`](core.services.17.md) — `perceptual_event_engine` … `promise_ledger`
+- [`core.services.18`](core.services.18.md) — `prompt_cache_probe` … `reflection_cycle_daemon`
+- [`core.services.19`](core.services.19.md) — `reflection_signal_tracking` … `runtime_operational_memory`
+- [`core.services.20`](core.services.20.md) — `runtime_resource_signal` … `self_review_signal_tracking`
+- [`core.services.21`](core.services.21.md) — `self_review_unified` … `signal_surface_router`
+- [`core.services.22`](core.services.22.md) — `signal_tracking_framework` … `temporal_body`
+- [`core.services.23`](core.services.23.md) — `temporal_context` … `turn_trace`
+- [`core.services.24`](core.services.24.md) — `ui_panel_store` … `visible_runs_cognitive`
+- [`core.services.25`](core.services.25.md) — `visible_runs_error_messaging` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

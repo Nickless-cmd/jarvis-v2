@@ -189,6 +189,16 @@ _Council Memory Service — persists council conclusions to COUNCIL_LOG.md._
 | function | `_extract_section` | `(block, heading)` | Extract text content between a heading and the next heading. | [src](../../../core/services/council_memory_service.py#L122) |
 | function | `build_council_memory_surface` | `()` | Mission Control surface — read-only meta-projection. | [src](../../../core/services/council_memory_service.py#L129) |
 
+## `core/services/council_receipt.py`
+_Et raad kvitteres nu med det samme — Fase 6._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_nulstil_for_tests` | `()` | — | [src](../../../core/services/council_receipt.py#L42) |
+| function | `start_round_in_background` | `(council_id)` | Start raadsrunden uden at vente paa den. Returnerer om den blev startet. | [src](../../../core/services/council_receipt.py#L46) |
+| function | `receipt` | `(council_id, *, topic, roles, started)` | Kvitteringen. Siger hvad der er ACCEPTERET — ikke hvad der blev svaret. | [src](../../../core/services/council_receipt.py#L83) |
+| function | `status` | `(council_id)` | Hvor er raadet naaet til? Den direkte afhentning. | [src](../../../core/services/council_receipt.py#L106) |
+
 ## `core/services/council_runtime.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -622,12 +632,4 @@ _Daemon Manager — registry, lifecycle control, and state persistence for all d
 | function | `get_all_daemon_states` | `()` | Return status for all registered daemons. | [src](../../../core/services/daemon_manager.py#L871) |
 | function | `control_daemon` | `(name, action, *, interval_minutes=…)` | Control a daemon. Actions: enable, disable, restart, set_interval. | [src](../../../core/services/daemon_manager.py#L894) |
 | function | `_restart_daemon` | `(name)` | Clear the module-level state variable so the daemon fires on next heartbeat tick. | [src](../../../core/services/daemon_manager.py#L925) |
-
-## `core/services/daemon_memory_safeguard.py`
-_Daemon memory safeguard — post-hoc check that Jarvis saved what mattered._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `build_memory_safeguard_surface` | `()` | Mission Control surface for the memory safeguard daemon. | [src](../../../core/services/daemon_memory_safeguard.py#L41) |
-| function | `run` | `(**kwargs)` | Check last assistant turn for missed saves. Called by heartbeat. | [src](../../../core/services/daemon_memory_safeguard.py#L101) |
 

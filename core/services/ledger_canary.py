@@ -168,3 +168,75 @@ def reseed(session_id: str) -> dict[str, Any]:
             "drift": {"enige": d["enige"], "ledger": d["ledger_beskeder"],
                       "tabel": d["tabel_beskeder"],
                       "uenigheder": d["uenigheder"][:5]}}
+
+
+# ── Armering: den NAESTE nye session baerer vinduet ─────────────────────────
+#
+# Bjoerns valg 10/9-2026. Alternativet var at indrullere hans igangvaerende
+# samtale (729 beskeder), men `advance_storage_mode` er ENVEJS med vilje, og en
+# ren start uden efterfyldning giver et vindue der loeber paa aegte trafik fra
+# foerste besked — uden en irreversibel aendring paa en samtale der er i gang.
+#
+# Grunden til at armeringen overhovedet skal bygges: kanariefuglen sad paa TO
+# sessioner der havde vaeret doede i 20 timer, mens dagens trafik loeb et andet
+# sted. Et observationsvindue der ikke foelger trafikken, er et lukket vindue.
+
+_ARM_FIL = "ledger_canary_armed"
+
+
+def _arm_sti():
+    from core.runtime.workspace_paths import shared_dir
+    return shared_dir() / "runtime" / f"{_ARM_FIL}.json"
+
+
+def arm_next_session(*, note: str = "") -> dict[str, Any]:
+    """Indrullér den NAESTE nye chat-session i skyggen. Én gang."""
+    import json
+    from datetime import UTC, datetime
+    sti = _arm_sti()
+    try:
+        sti.parent.mkdir(parents=True, exist_ok=True)
+        sti.write_text(json.dumps({
+            "armed": True, "armed_at": datetime.now(UTC).isoformat(),
+            "note": str(note or ""),
+        }), encoding="utf-8")
+        return {"ok": True, "sti": str(sti)}
+    except Exception as exc:
+        return {"ok": False, "grund": f"{type(exc).__name__}: {exc}"}
+
+
+def is_armed() -> bool:
+    import json
+    try:
+        return bool(json.loads(_arm_sti().read_text(encoding="utf-8")).get("armed"))
+    except Exception:
+        return False
+
+
+def disarm() -> None:
+    try:
+        _arm_sti().unlink()
+    except Exception:
+        pass
+
+
+def maybe_enroll_new_session(session_id: str) -> dict[str, Any] | None:
+    """Kaldes naar en ny session oprettes. Fejler ALDRIG opad.
+
+    En kanariefugl maa ikke kunne vaelte oprettelsen af en samtale. Gaar noget
+    galt, forbliver sessionen `legacy` — altsaa praecis som foer — og det staar
+    i loggen.
+    """
+    sid = str(session_id or "").strip()
+    if not sid or not is_armed():
+        return None
+    try:
+        ud = enable_shadow(sid)
+        disarm()                      # kun ÉN session, uanset udfald
+        logger.info("ledger-kanariefugl indrulleret: %s", ud)
+        return ud
+    except Exception:
+        logger.warning("kunne ikke indrullere %s i ledger-skyggen — "
+                       "sessionen forbliver legacy", sid, exc_info=True)
+        disarm()
+        return None

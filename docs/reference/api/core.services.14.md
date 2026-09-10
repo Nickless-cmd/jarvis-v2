@@ -318,6 +318,11 @@ _Efterfyld en session i ledgeren og slå skyggen til._
 | function | `backfill` | `(session_id)` | Skriv sessionens eksisterende beskeder ind i ledgeren. Idempotent. | [src](../../../core/services/ledger_canary.py#L49) |
 | function | `enable_shadow` | `(session_id)` | Efterfyld, slå skyggen til, og MÅL med det samme om det holdt. | [src](../../../core/services/ledger_canary.py#L110) |
 | function | `reseed` | `(session_id)` | Skriv sessionens ledger-hændelser HELT om, i tabellens rækkefølge. | [src](../../../core/services/ledger_canary.py#L138) |
+| function | `_arm_sti` | `()` | — | [src](../../../core/services/ledger_canary.py#L187) |
+| function | `arm_next_session` | `(*, note=…)` | Indrullér den NAESTE nye chat-session i skyggen. Én gang. | [src](../../../core/services/ledger_canary.py#L192) |
+| function | `is_armed` | `()` | — | [src](../../../core/services/ledger_canary.py#L208) |
+| function | `disarm` | `()` | — | [src](../../../core/services/ledger_canary.py#L216) |
+| function | `maybe_enroll_new_session` | `(session_id)` | Kaldes naar en ny session oprettes. Fejler ALDRIG opad. | [src](../../../core/services/ledger_canary.py#L223) |
 
 ## `core/services/ledger_recovery.py`
 _Afbrudte sessioner: se på dem uden at røre dem, og luk dem kun med skriveret._

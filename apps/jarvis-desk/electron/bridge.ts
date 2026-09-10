@@ -33,6 +33,7 @@ import {
   appendFileSync,
   existsSync,
 } from 'node:fs'
+import { promises as fsp } from 'node:fs'
 import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { spawnSync } from 'node:child_process'
@@ -250,6 +251,111 @@ function globToRegex(pattern: string): RegExp {
   return new RegExp('^' + re + '$')
 }
 
+/**
+ * Directories that are full copies of the tree, or regenerable. Walking them
+ * costs minutes and finds nothing the caller asked for.
+ *
+ * `.claude/worktrees` alone held 30 complete checkouts of this repo.
+ */
+const SKIP_DIRS = new Set([
+  'node_modules', '.git', '__pycache__',
+  '.worktrees', 'worktrees',
+  '.venv', 'venv', '.mypy_cache', '.pytest_cache', '.ruff_cache',
+  'dist', 'build', '.next', '.cache', '.parcel-cache',
+])
+
+/**
+ * Read at most this much of any one file, as text.
+ *
+ * The tree that froze the bridge held 1.4 GB of installers in
+ * apps/jarvisx/release and 311 files over 5 MB. A single 117 MB AppImage costs
+ * 1.25 s in split('\n') alone - 311 of them is the 340 s outage, and none of
+ * them can contain the text pattern anyone was searching for.
+ */
+const MAX_FILE_BYTES = 4 * 1024 * 1024
+
+/**
+ * Read the head of a file as text. `null` means binary or unreadable.
+ *
+ * A NUL byte inside the first 8 KB means binary; ripgrep uses the same rule.
+ * Returns `[text, truncated]` so a partial read is never reported as a whole
+ * file - a short result that looks complete is how a caller concludes
+ * "not found" about something that was simply never read.
+ */
+async function readTextHead(file: string): Promise<[string, boolean] | null> {
+  let fh: Awaited<ReturnType<typeof fsp.open>> | undefined
+  try {
+    fh = await fsp.open(file, 'r')
+    const size = Number((await fh.stat()).size)
+    if (size === 0) return ['', false]
+    const len = Math.min(size, MAX_FILE_BYTES)
+    const buf = Buffer.allocUnsafe(len)
+    await fh.read(buf, 0, len, 0)
+    if (buf.subarray(0, 8192).includes(0)) return null
+    return [buf.toString('utf8'), size > len]
+  } catch {
+    return null
+  } finally {
+    try { await fh?.close() } catch { /* ignore */ }
+  }
+}
+
+/**
+ * Wall-clock budget for one grep. The server allows 60s; we stop well before
+ * so a pathological search returns partial results instead of nothing.
+ */
+const GREP_BUDGET_MS = 20_000
+
+/**
+ * Async recursive walk. EVERY await yields to the event loop.
+ *
+ * This is not a style preference. On 2026-09-10 a single repo-wide
+ * `operator_grep` ran the synchronous version for 340 seconds:
+ *
+ *   15:20:47.028  operator_grep pattern="Co-Authored-By: Claude" path=<repo>
+ *   15:26:26.948    -> replied ok
+ *   15:26:26.949  no traffic in 340s - forcing reconnect
+ *
+ * Node could not answer the server's ping while it ran, so uvicorn closed the
+ * socket after 3 missed pings, and every other tool call on this bridge failed
+ * for the next five minutes. The traffic watchdog is a setInterval; it could
+ * not fire either, which is why it reported 340s instead of its own 75s.
+ *
+ * The file already warned about this (see asyncSpawn below): a blocking
+ * handler does not just fail its own call - it takes the transport down with
+ * it, for everyone. There is no isolation between a handler's runtime and the
+ * connection's life, so the handler must yield.
+ */
+async function* walkDirAsync(
+  root: string,
+  max: number,
+  deadline: number,
+): AsyncGenerator<string> {
+  let count = 0
+  const stack: string[] = [root]
+  while (stack.length && count < max) {
+    if (Date.now() > deadline) return
+    const dir = stack.pop()!
+    let entries
+    try {
+      // withFileTypes: one syscall per directory instead of one lstat per entry.
+      entries = await fsp.readdir(dir, { withFileTypes: true })
+    } catch {
+      continue
+    }
+    for (const e of entries) {
+      if (count >= max || Date.now() > deadline) return
+      if (SKIP_DIRS.has(e.name)) continue
+      const full = join(dir, e.name)
+      if (e.isDirectory()) stack.push(full)
+      else if (e.isFile()) {
+        yield full
+        count++
+      }
+    }
+  }
+}
+
 /** Recursive directory walk, capped at max files to avoid runaway. */
 function* walkDir(root: string, max: number): Generator<string> {
   let count = 0
@@ -433,7 +539,7 @@ const handlers: Record<string, ToolHandler> = {
     return out
   },
 
-  operator_grep: (args) => {
+  operator_grep: async (args) => {
     const pattern = String(args.pattern ?? '')
     if (!pattern) throw new Error('pattern is required')
     const searchPath = args.path
@@ -452,44 +558,70 @@ const handlers: Record<string, ToolHandler> = {
     const globRe = fileGlob ? globToRegex(fileGlob) : null
 
     const out: Array<{ file: string; line: number; text: string }> = []
+    const deadline = Date.now() + GREP_BUDGET_MS
     let st
-    try { st = lstatSync(searchPath) } catch { return out }
+    try { st = await fsp.lstat(searchPath) } catch { return out }
 
-    const files: Iterable<string> = st.isFile()
-      ? [searchPath]
-      : walkDir(searchPath, maxResults * 50)
-
-    for (const file of files) {
-      if (out.length >= maxResults) break
+    const scan = async (file: string) => {
       if (globRe) {
         const rel = file.startsWith(searchPath + '/') ? file.slice(searchPath.length + 1) : file
-        if (!globRe.test(rel)) continue
+        if (!globRe.test(rel)) return
       }
-      let content: string
-      try {
-        content = readFileSync(file, 'utf8')
-      } catch {
-        continue
-      }
+      // await, not readFileSync: this is the yield point that keeps the
+      // WebSocket alive while a large tree is searched. And capped, because
+      // yielding between files does not help if ONE file costs 1.25 s.
+      const head = await readTextHead(file)
+      if (head === null) return          // binary - cannot hold a text match
+      const [content, cut] = head
+      if (cut) partial++
       const lines = content.split('\n')
       for (let i = 0; i < lines.length; i++) {
         if (regex.test(lines[i])) {
           out.push({ file, line: i + 1, text: lines[i].slice(0, 240) })
-          if (out.length >= maxResults) break
+          if (out.length >= maxResults) return
         }
       }
+    }
+
+    let truncated = false
+    let partial = 0
+    if (st.isFile()) {
+      await scan(searchPath)
+    } else {
+      for await (const file of walkDirAsync(searchPath, maxResults * 50, deadline)) {
+        if (out.length >= maxResults) break
+        if (Date.now() > deadline) { truncated = true; break }
+        await scan(file)
+      }
+      if (!truncated && Date.now() > deadline) truncated = true
+    }
+
+    // NEVER truncate silently. A short result that looks complete is how a
+    // caller concludes "not found" about something that is simply unread.
+    if (truncated || partial) {
+      const why = [
+        truncated ? `search exceeded ${GREP_BUDGET_MS / 1000}s` : '',
+        partial ? `${partial} file(s) read only to ${MAX_FILE_BYTES / 1048576} MB` : '',
+      ].filter(Boolean).join('; ')
+      out.push({
+        file: searchPath,
+        line: 0,
+        text: `[PARTIAL RESULTS — ${why}. Narrow the path or glob.]`,
+      })
     }
     return out
   },
 
-  operator_list_dir: (args) => {
+  operator_list_dir: async (args) => {
     const path = resolveOperatorPath(args.path, args._workspace_root)
-    const entries = readdirSync(path)
-    return entries.map((name) => {
+    // Async for the same reason as operator_grep: a directory with many
+    // thousands of entries would block ping/pong and kill the connection.
+    const entries = await fsp.readdir(path)
+    return await Promise.all(entries.map(async (name) => {
       const full = join(path, name)
       let st
       try {
-        st = lstatSync(full)
+        st = await fsp.lstat(full)
       } catch {
         return { name, type: 'unknown', size: 0 }
       }
@@ -501,7 +633,7 @@ const handlers: Record<string, ToolHandler> = {
             ? 'file'
             : 'other'
       return { name, type, size: Number(st.size) || 0 }
-    })
+    }))
   },
 
   operator_webfetch: async (args) => {

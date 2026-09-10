@@ -486,9 +486,9 @@ _Tjek explore-agentens påstande mod virkeligheden._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_rod` | `()` | — | [src](../../../core/services/explore_claim_check.py#L111) |
-| function | `_findes` | `(sti, rod)` | — | [src](../../../core/services/explore_claim_check.py#L119) |
-| function | `tjek_paastande` | `(svar, *, rod=…, findes_fn=…, linje_fn=…)` | Slå svarets efterprøvelige påstande op. Kaster aldrig. | [src](../../../core/services/explore_claim_check.py#L126) |
+| function | `_rod` | `()` | — | [src](../../../core/services/explore_claim_check.py#L122) |
+| function | `_findes` | `(sti, rod)` | — | [src](../../../core/services/explore_claim_check.py#L130) |
+| function | `tjek_paastande` | `(svar, *, rod=…, findes_fn=…, linje_fn=…)` | Slå svarets efterprøvelige påstande op. Kaster aldrig. | [src](../../../core/services/explore_claim_check.py#L137) |
 
 ## `core/services/fabricated_tool_result_gate.py`
 _Fabrikerede tool-resultater — den ene løgn der ikke kan bortforklares._

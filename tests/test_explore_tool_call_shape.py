@@ -56,3 +56,32 @@ def test_en_TOM_liste_er_nul_ikke_et_crash():
     """Det var praecis derfor fejlen laa skjult: en tom liste opfoerte sig som
     nul, saa fejlen ventede paa den dag agenten begyndte at arbejde."""
     assert _tael({"tool_calls": []}) == 0
+
+
+# ── noten skal foelge DOMMEN, ikke taellingen ───────────────────────────
+#
+# Foer forgrenede `bevis_note` kun paa `kontrolleret == 0`, saa
+# `kun-eksistens` — hvor INTET indhold er bekraeftet — sagde «5 paastand(e)
+# slaaet op og BEKRAEFTET». Noten lovede praecis det dommen netop siger vi
+# ikke gjorde: to felter om samme sag, der kunne sige hver sit.
+
+def test_noten_modsiger_ikke_dommen():
+    from core.tools.simple_tools_explore import _bevis_note
+
+    kun = _bevis_note("kun-eksistens", 5, 0)
+    assert "bekraeftet" not in kun.lower() or "INTET" in kun, kun
+    assert "ikke verificeret" in kun.lower()
+
+    ver = _bevis_note("verificeret", 5, 3)
+    assert "3" in ver and "bekraeftet" in ver.lower()
+
+    assert "ikke bekraeftes" in _bevis_note("uenig", 5, 1).lower()
+    assert "Ingen efterproevelig" in _bevis_note("intet-bevis", 0, 0)
+
+
+def test_hver_dom_har_sin_EGEN_note():
+    from core.tools.simple_tools_explore import _bevis_note
+
+    noter = {_bevis_note(b, 5, 1) for b in
+             ("verificeret", "kun-eksistens", "uenig", "intet-bevis")}
+    assert len(noter) == 4, "to domme deler samme note — saa siger den intet"

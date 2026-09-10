@@ -43,8 +43,19 @@ logger = logging.getLogger(__name__)
 #
 # Det er den mest naturlige maade at citere paa, saa hullet var ikke en
 # sjaelden kant: det var normalvejen. (Jarvis, 10/9-2026, anden explore-test.)
+# `[`'"\s(]*` og et valgfrit `:` ELLER en parentes foer indholdet.
+#
+# Den aerlige model skriver `sti:8 ("**Etableret:** 2026-05-17")` — citatet i
+# en PARENTES, uden kolon. Foer blev indholdet ikke fanget, saa kun filens
+# eksistens blev efterproevet, og dommen blev `kun-eksistens` paa et svar der
+# faktisk var rigtigt hele vejen.
+#
+# Det er fjerde citatform paa én dag, og de har alle samme form: den model der
+# LAESER skriver anderledes end den der gaetter, og vaernet kendte gaetterens
+# format bedst.
 _STI_LINJE = re.compile(
-    r"(?:^|[\s`(\[])(/?[\w./-]+\.[A-Za-z0-9_]{1,6}):(\d{1,6})[`'\"\s]*(?::(.*))?")
+    r"(?:^|[\s`(\[])(/?[\w./-]+\.[A-Za-z0-9_]{1,6}):(\d{1,6})"
+    r"[`'\"\s]*(?::\s*(.*)|\(\s*[\"'`]?(.{0,120}))?")
 # Bare filstier med mappe i — et bart "config.py" er for tvetydigt til at dømme.
 # `/?` foran: ABSOLUTTE stier blev slet ikke matchet, saa en workstation-rapport
 # — der naturligt skriver `/home/bs/projekt/src/main.ts` — gav NUL kontrollerede
@@ -170,7 +181,9 @@ def tjek_paastande(svar: str, *, rod: Path | None = None,
         # Foer saa loekken kun `sti:linje:indhold`, og en prosa-formuleret
         # paastand fik derfor kun sin FIL efterproevet — aldrig sin vaerdi.
         _paastande: list[tuple[str, int, str]] = [
-            (m.group(1), int(m.group(2)), (m.group(3) or "").strip())
+            (m.group(1), int(m.group(2)),
+             # gruppe 3 = efter kolon, gruppe 4 = inde i parentesen
+             ((m.group(3) or m.group(4) or "").strip().rstrip(')"\'`')))
             for m in _STI_LINJE.finditer(t)
         ]
         _set: set[tuple[str, int]] = {(a, b) for a, b, _ in _paastande}

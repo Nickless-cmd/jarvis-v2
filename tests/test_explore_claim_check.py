@@ -308,7 +308,12 @@ def test_explore_baerer_dommen_UD_til_kalderen():
 
     kilde = inspect.getsource(e._exec_explore)
     assert '"bevis":' in kilde
-    assert "IKKE verificeret" in kilde
+    # Noten bygges nu af `_bevis_note`, som FOELGER dommen — foer stod
+    # teksten inline og forgrenede kun paa taellingen, saa `kun-eksistens`
+    # kunne sige «bekraeftet».
+    assert "_bevis_note(" in kilde
+    from core.tools.simple_tools_explore import _bevis_note
+    assert "IKKE verificeret" in _bevis_note("intet-bevis", 0, 0)
 
 
 # ── prosa-formen: et opdigtet tal paa en AEGTE fil ──────────────────────
@@ -472,3 +477,48 @@ def test_indholdet_FOERAN_citatet_bliver_efterproevet():
     assert set_kald[0][0] == 11
     assert "2026-05-17" in set_kald[0][1]
     assert d["bevis"] == "uenig"
+
+
+# ── fjerde citatform: citatet i en PARENTES ─────────────────────────────
+#
+# Den aerlige model skriver `sti:8 ("**Etableret:** 2026-05-17")` — uden
+# kolon foran indholdet. Foer blev det ikke fanget, saa kun filens eksistens
+# blev efterproevet, og dommen blev `kun-eksistens` paa et svar der faktisk
+# var rigtigt hele vejen.
+#
+# Fjerde form paa én dag, og de har alle samme figur: den model der LAESER
+# skriver anderledes end den der gaetter, og vaernet kendte gaetterens format
+# bedst.
+
+def test_citat_i_parentes_efterproeves(tmp_path, monkeypatch):
+    import core.services.explore_claim_check as c
+    monkeypatch.setattr(c, "_rod", lambda: tmp_path)
+    (tmp_path / "sub").mkdir()
+    (tmp_path / "sub" / "x.md").write_text("a\nb\nEtableret 2026-05-17\n")
+
+    d = tjek_paastande('sub/x.md:3 ("Etableret 2026-05-17")')
+    assert d["bevis"] == "verificeret", d
+    assert int(d["indhold_bekraeftet"]) == 1
+
+
+def test_forkert_citat_i_parentes_fanges(tmp_path, monkeypatch):
+    import core.services.explore_claim_check as c
+    monkeypatch.setattr(c, "_rod", lambda: tmp_path)
+    (tmp_path / "sub").mkdir()
+    (tmp_path / "sub" / "x.md").write_text("a\nb\nEtableret 2026-05-17\n")
+
+    d = tjek_paastande('sub/x.md:3 ("Etableret 2023-11-15")')
+    assert d["bevis"] == "uenig"
+
+
+def test_de_tre_aeldre_former_virker_STADIG(tmp_path, monkeypatch):
+    """En ny form maa ikke koste de gamle."""
+    import core.services.explore_claim_check as c
+    monkeypatch.setattr(c, "_rod", lambda: tmp_path)
+    (tmp_path / "sub").mkdir()
+    (tmp_path / "sub" / "x.md").write_text("a\nb\nEtableret 2026-05-17\n")
+
+    for tekst in ["sub/x.md:3: Etableret 2026-05-17",
+                  "`sub/x.md:3`: Etableret 2026-05-17",
+                  "sub/x.md line 3: Etableret 2026-05-17"]:
+        assert tjek_paastande(tekst)["bevis"] == "verificeret", tekst

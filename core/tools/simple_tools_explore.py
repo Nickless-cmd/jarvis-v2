@@ -159,6 +159,21 @@ def _bro_kontrol(args: dict):
 
     return findes, linje
 
+def _bevis_note(bevis: str, kontrolleret: int, substans: int) -> str:
+    """Én saetning der siger praecis hvad der blev efterproevet."""
+    if bevis == "verificeret":
+        return (f"{substans} citat(er) slaaet op i kilden og bekraeftet paa "
+                f"indholdet (af {kontrolleret} kontrollerede paastande).")
+    if bevis == "kun-eksistens":
+        return (f"{kontrolleret} filsti(er) findes, men INTET indhold er "
+                "efterproevet. Svaret er ikke verificeret — det er blot ikke "
+                "modsagt.")
+    if bevis == "uenig":
+        return "Mindst én paastand kunne ikke bekraeftes i kilden."
+    return ("Ingen efterproevelig paastand fundet — dette svar er IKKE "
+            "verificeret, det er blot ikke modsagt.")
+
+
 def _exec_explore(args: dict[str, Any]) -> dict[str, Any]:
     query = str(args.get("query") or args.get("goal") or "").strip()
     if not query:
@@ -323,11 +338,17 @@ def _exec_explore(args: dict[str, Any]) -> dict[str, Any]:
                     "agent_id": agent_id, "breadth": bredde, "target": target,
                     "paastande_kontrolleret": kontrolleret,
                     "bevis": str(dom.get("bevis") or "intet-bevis"),
-                    "bevis_note": (
-                        "Ingen efterproevelig paastand fundet — dette svar er "
-                        "IKKE verificeret, det er blot ikke modsagt."
-                        if kontrolleret == 0 else
-                        f"{kontrolleret} paastand(e) slaaet op og bekraeftet.")}
+                    # NOTEN SKAL FOELGE DOMMEN, ikke taellingen. Foer
+                    # forgrenede den kun paa `kontrolleret == 0`, saa
+                    # `kun-eksistens` — hvor INTET indhold er bekraeftet —
+                    # sagde «5 paastand(e) slaaet op og BEKRAEFTET». Noten lovede
+                    # praecis det dommen netop siger vi ikke gjorde.
+                    #
+                    # Det er dagens tvetydighed i min egen nyeste kode: to
+                    # felter om samme sag, der kan sige hver sit.
+                    "bevis_note": _bevis_note(
+                        str(dom.get("bevis") or "intet-bevis"), kontrolleret,
+                        int(dom.get("indhold_bekraeftet") or 0))}
         sidste_fejl = [str(x) for x in (dom.get("fejl") or [])]
         if _tomhaendet and not sidste_fejl:
             # Ingen paaviselig fejl — men heller intet belaeg. Rotér frem for

@@ -98,6 +98,19 @@ def _exec_explore(args: dict[str, Any]) -> dict[str, Any]:
     target, context, context_error = _execution_context(args)
     if context_error:
         return {"status": "error", "error": context_error}
+    # HERKOMST (Fase 5): «`explore` appears under its parent».
+    #
+    # Maalt 10/9-2026: de 96 explore-boern havde durabel identitet, korrekt
+    # raekkefoelge (registreret FOER deres run) og en foraelder — men foraeldren
+    # var konstanten «jarvis» for dem alle, og `context_json` indeholdt kun
+    # `{"spawn_depth": 0}`. Der var altsaa ingen forbindelse til den TUR der
+    # foedte barnet, saa intet kunne vise dem under den.
+    #
+    # Oplysningen laa i `args` hele tiden — runtime injicerer den i hvert kald.
+    herkomst = {k: v for k, v in (
+        ("parent_session_id", str(args.get("_runtime_session_id") or "").strip()),
+        ("parent_run_id", str(args.get("_runtime_turn_id") or "").strip()),
+    ) if v}
     bredde = str(args.get("breadth") or "medium").strip().lower()
     vejledning = {"quick": "Kig ét sted og svar kort.",
                   "medium": "Kig flere steder og sammenhold dem.",
@@ -127,7 +140,12 @@ def _exec_explore(args: dict[str, Any]) -> dict[str, Any]:
             spawn_args: dict[str, Any] = {"query": query, "vejledning": vejledning,
                                           "provider": prov, "model": mod}
             if target == "workstation":
-                spawn_args.update({"target": target, "context": context})
+                spawn_args.update({"target": target,
+                                   "context": {**context, **herkomst}})
+            elif herkomst:
+                # Ogsaa paa runtime-stien: herkomsten hoerer til barnet,
+                # ikke til hvor det tilfaeldigvis koerer.
+                spawn_args["context"] = {"execution_target": target, **herkomst}
             result = _facade()._explore_spawn(**spawn_args)
         except Exception as exc:
             return {"status": "error", "error": str(exc), "breadth": bredde,

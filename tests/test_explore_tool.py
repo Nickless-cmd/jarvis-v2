@@ -64,10 +64,15 @@ class TestExplore:
         assert set(f["allowed_tools"]) == {
             "operator_read_file", "operator_glob", "operator_grep", "operator_list_dir",
         }
-        assert f["context"] == {
-            "execution_target": "workstation", "workspace_root": "/home/bjorn/project",
+        # Delmaengde, ikke lighed: Fase 5 lagde HERKOMST i konteksten
+        # (`parent_session_id`/`parent_run_id`), saa barnet kan findes under den
+        # tur der foedte det. En eksakt sammenligning ville faa hver ny,
+        # korrekt tilfoejelse til at se ud som en fejl.
+        assert f["context"].items() >= {
+            "execution_target": "workstation",
+            "workspace_root": "/home/bjorn/project",
             "user_id": "bjorn", "session_id": "desk-session",
-        }
+        }.items()
 
     def test_workstation_target_kraever_desk_workspace(self, monkeypatch):
         import core.services.chat_sessions as sessions

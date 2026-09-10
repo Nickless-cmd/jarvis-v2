@@ -15,6 +15,15 @@ forældreloes bliver samlet op af TTL-udloebet (verificeret levende, senest
 5/9), mens en fejet LEVENDE agent mister sit arbejde uden spor. Af de to
 fejl er den sidste vaerst, saa tvivl falder ud til agentens fordel.
 
+MEN «TOMT MAERKE» ER IKKE TVIVL. Det betyder «raekke fra foer migreringen»,
+og den fejes som hidtil. Jarvis fandt at dokumentet her lovede det modsatte:
+under «tom» gemte der sig TO situationer — en gammel raekke, hvor fejning er
+rigtig, og en LEVENDE agent hvis proces ikke kunne danne et maerke, hvor
+fejning er praecis den skade vaernet er bygget mod. Derfor degraderer
+`denne_proces()` hellere til starttid `0` end til tomt: en levende proces maa
+aldrig komme til at ligne en gammel raekke. Fejningen har desuden et
+friskheds-vaern for tomme maerker.
+
 Maerket er `<host>:<pid>:<starttid>`. Starttiden goer det immunt over for
 pid-genbrug: en ny proces med samme pid har en anden starttid.
 """
@@ -40,13 +49,20 @@ def _starttid(pid: int) -> str:
 
 
 def denne_proces() -> str:
-    """Maerket for den proces der kalder. Tom streng hvis vi ikke kan danne et."""
+    """Maerket for den proces der kalder.
+
+    DEGRADERER, den fejler ikke til tomt. Kan starttiden ikke laeses, bruges
+    `0` — saa kan `lever()` stadig se om pid'en findes, bare uden vaernet mod
+    pid-genbrug. TOMT maerke betyder nemlig noget ANDET: en raekke fra foer
+    migreringen, som skal fejes. Faldt en levende proces tilbage til tomt,
+    ville dens agenter blive fejet af netop det vaern der er bygget for at
+    undgaa det. (Jarvis fandt tvetydigheden.)
+
+    Tom streng kun hvis selv vaertsnavn eller pid er utilgaengelige.
+    """
     try:
         pid = os.getpid()
-        st = _starttid(pid)
-        if not st:
-            return ""
-        return f"{socket.gethostname()}:{pid}:{st}"
+        return f"{socket.gethostname()}:{pid}:{_starttid(pid) or '0'}"
     except Exception:
         return ""
 
@@ -56,8 +72,13 @@ def lever(maerke: str) -> bool | None:
 
     `True`  — samme host, pid findes, starttid matcher.
     `False` — samme host, og processen er beviseligt vaek.
-    `None`  — kan ikke afgoeres (tomt maerke, anden host, ulaesbar form).
+    `None`  — kan ikke afgoeres: ANDEN host, eller ulaesbar form.
               Kalderen skal behandle `None` som «roer den ikke».
+
+    TOMT maerke giver ogsaa `None`, men betyder noget andet: raekken er fra
+    foer migreringen. Kalderen skelner — se `recover_crashed_agents`, hvor
+    tomme maerker fejes som hidtil, men med et friskheds-vaern saa en LEVENDE
+    agent uden maerke ikke rammes.
     """
     if not maerke:
         return None
@@ -76,4 +97,6 @@ def lever(maerke: str) -> bool | None:
     nu = _starttid(pid)
     if not nu:
         return None
-    return nu == start
+    # `0` = maerket blev dannet uden laesbar starttid. Pid'en findes, saa
+    # processen lever — bare uden vaernet mod pid-genbrug.
+    return True if start == "0" else nu == start

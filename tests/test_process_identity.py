@@ -78,23 +78,30 @@ def test_fejning_skaaner_agent_der_lever_i_en_anden_proces(isolated_runtime):
     from core.services.agent_runtime_spawn import recover_crashed_agents
 
     vaert = socket.gethostname()
+    gammel = "2020-01-01T00:00:00+00:00"
     tilfaelde = [
-        ("lever-her", denne_proces(), False, "koerer i EN LEVENDE proces"),
-        ("doed-proces", f"{vaert}:999999:123", True, "processen er vaek"),
-        ("uden-maerke", "", True, "raekke fra foer migreringen"),
-        ("anden-vaert", "en-anden-maskine:1:2", False, "kan ikke afgoeres"),
+        ("lever-her", denne_proces(), None, False, "koerer i EN LEVENDE proces"),
+        ("doed-proces", f"{vaert}:999999:123", None, True, "processen er vaek"),
+        # Jarvis' fund: under «tomt maerke» gemmer der sig TO situationer.
+        ("gammel-uden-maerke", "", gammel, True, "raekke fra foer migreringen"),
+        ("frisk-uden-maerke", "", None, False,
+         "en LEVENDE agent hvis proces ikke kunne stemple sig"),
+        ("anden-vaert", "en-anden-maskine:1:2", None, False, "kan ikke afgoeres"),
     ]
-    for aid, maerke, _, _ in tilfaelde:
+    for aid, maerke, roert, _, _ in tilfaelde:
         db.create_agent_registry_entry(agent_id=aid, role="r", goal="g")
         db.update_agent_registry_entry(aid, status="active")
         # Skriv maerket direkte: stemplingen satte DENNE proces paa dem alle.
         with db.connect() as conn:
             conn.execute("UPDATE agent_registry SET runtime_owner=? WHERE agent_id=?",
                          (maerke, aid))
+            if roert:
+                conn.execute("UPDATE agent_registry SET updated_at=? WHERE agent_id=?",
+                             (roert, aid))
 
     recover_crashed_agents()
 
-    for aid, _, skulle_fejes, hvorfor in tilfaelde:
+    for aid, _, _, skulle_fejes, hvorfor in tilfaelde:
         status = str(db.get_agent_registry_entry(aid)["status"])
         if skulle_fejes:
             assert status == "failed", f"{aid} blev IKKE fejet, men {hvorfor}"
@@ -120,3 +127,46 @@ def test_stemplet_saettes_ved_aktivering_og_ryddes_ved_afslutning(isolated_runti
 
     db.update_agent_registry_entry("a", status="completed")
     assert db.get_agent_registry_entry("a")["runtime_owner"] == ""
+
+
+def test_maerket_degraderer_i_stedet_for_at_blive_tomt():
+    """Jarvis' fund, praeciseret. Faldt `denne_proces()` tilbage til TOMT naar
+    starttiden ikke kunne laeses, ville en levende proces komme til at ligne en
+    raekke fra foer migreringen — og dens agenter blive fejet af netop det vaern
+    der er bygget mod det.
+
+    Derfor degraderer den til starttid `0`: pid'en kan stadig efterproeves,
+    bare uden vaernet mod pid-genbrug.
+    """
+    from core.services import process_identity as pi
+
+    original = pi._starttid
+    try:
+        pi._starttid = lambda _pid: ""     # /proc svarer ikke
+        m = pi.denne_proces()
+    finally:
+        pi._starttid = original
+
+    assert m, "maerket blev TOMT — en levende proces ligner nu en gammel raekke"
+    assert m.endswith(":0")
+    # Med et laesbart /proc igen: `0` betyder «starttid ukendt», og pid'ens
+    # blotte eksistens raekker. Er /proc STADIG ulaeseligt, svarer `lever()`
+    # None — og et ikke-tomt maerke med None faar fejningen til at springe
+    # over. Begge veje skaaner den levende agent, hvilket er hele pointen.
+    assert pi.lever(m) is True
+    assert pi.lever(m.rsplit(":", 2)[0] + ":999999:0") is False, (
+        "et degraderet maerke maa stadig kunne vise at processen er VAEK")
+
+
+def test_docstring_og_kode_er_enige_om_tomt_maerke():
+    """Fundet var en SAETNING der ikke var sand: dokumentet lovede at et
+    uafgoerligt maerke skaanede agenten, mens kaldstedet fejede det tomme.
+
+    Testen holder de to sammen om det der faktisk gaelder.
+    """
+    from core.services import process_identity as pi
+
+    assert lever("") is None                       # formen kan ikke afgoeres ...
+    tekst = (pi.__doc__ or "") + (pi.lever.__doc__ or "")
+    assert "foer migreringen" in tekst, (
+        "dokumentet forklarer ikke at TOMT betyder noget andet end uafgoerligt")

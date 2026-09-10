@@ -1408,6 +1408,26 @@ def promote_agent_result(agent_id: str, *, note: str = "") -> dict:
     return {"status": "filed", "proposal_id": proposal.get("proposal_id"), "agent_id": agent_id}
 
 
+_FRISK_MINUTTER = 30
+
+
+def _frisk(agent: dict, *, minutter: int = _FRISK_MINUTTER) -> bool:
+    """Er raekken roert for nylig? Bruges KUN til at afgoere om et tomt
+    ejerskabs-maerke stammer fra foer migreringen (stille, gammel) eller fra en
+    levende agent hvis proces ikke kunne stemple sig (roert lige nu)."""
+    from datetime import datetime, timedelta, timezone
+    raa = str(agent.get("updated_at") or "").strip()
+    if not raa:
+        return False
+    try:
+        t = datetime.fromisoformat(raa.replace("Z", "+00:00"))
+        if t.tzinfo is None:
+            t = t.replace(tzinfo=timezone.utc)
+    except Exception:
+        return False
+    return t > datetime.now(timezone.utc) - timedelta(minutes=minutter)
+
+
 def recover_crashed_agents() -> dict:
     """Called on API startup: reset agents that were mid-execution when the process died."""
     all_agents = list_agent_registry_entries(limit=500)
@@ -1430,8 +1450,17 @@ def recover_crashed_agents() -> dict:
             _liv = lever(str(_a.get("runtime_owner") or ""))
         except Exception:
             _liv = None
-        if _liv is None and str(_a.get("runtime_owner") or "").strip():
+        _maerke = str(_a.get("runtime_owner") or "").strip()
+        if _liv is None and _maerke:
             sprunget_over += 1          # maerket findes, men kan ikke afgoeres
+            continue
+        if not _maerke and _frisk(_a):
+            # TOMT maerke betyder normalt «raekke fra foer migreringen», og
+            # den fejes som hidtil. Men en LEVENDE agent kan ogsaa staa uden
+            # maerke hvis dens proces ikke kunne danne et — og saa ville
+            # vaernet volde praecis den skade det er bygget mod. En gammel
+            # raekke er stille; en levende bliver roert. Friskhed skiller dem.
+            sprunget_over += 1
             continue
         if _liv is True:
             sprunget_over += 1          # koerer lige nu i en levende proces

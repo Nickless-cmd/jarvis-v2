@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7207/14194 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7209/14196 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 7207/14194 functions/methods documented (50%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 606 | 1113 | 54% |
-| `core.services` | 4781 | 9780 | 48% |
+| `core.services` | 4783 | 9782 | 48% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 108 | 184 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -40,7 +40,7 @@ Generated from source. 7207/14194 functions/methods documented (50%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2024)
+## Undocumented public functions (2023)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L201)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -545,16 +545,15 @@ Generated from source. 7207/14194 functions/methods documented (50%). The list b
 - `core/services/agent_runtime_council.py` :: `create_council_session_runtime` (L149)
 - `core/services/agent_runtime_council.py` :: `create_swarm_session_runtime` (L199)
 - `core/services/agent_runtime_council.py` :: `post_council_message` (L249)
-- `core/services/agent_runtime_spawn.py` :: `cancel_agent` (L1185)
-- `core/services/agent_runtime_spawn.py` :: `execute_agent_task` (L439)
-- `core/services/agent_runtime_spawn.py` :: `expire_agent` (L1240)
-- `core/services/agent_runtime_spawn.py` :: `resume_agent` (L1221)
-- `core/services/agent_runtime_spawn.py` :: `run_due_agent_schedules` (L1057)
-- `core/services/agent_runtime_spawn.py` :: `schedule_agent_task` (L821)
-- `core/services/agent_runtime_spawn.py` :: `send_message_to_agent` (L761)
-- `core/services/agent_runtime_spawn.py` :: `send_peer_message` (L789)
+- `core/services/agent_runtime_spawn.py` :: `cancel_agent` (L1202)
+- `core/services/agent_runtime_spawn.py` :: `expire_agent` (L1257)
+- `core/services/agent_runtime_spawn.py` :: `resume_agent` (L1238)
+- `core/services/agent_runtime_spawn.py` :: `run_due_agent_schedules` (L1074)
+- `core/services/agent_runtime_spawn.py` :: `schedule_agent_task` (L838)
+- `core/services/agent_runtime_spawn.py` :: `send_message_to_agent` (L778)
+- `core/services/agent_runtime_spawn.py` :: `send_peer_message` (L806)
 - `core/services/agent_runtime_spawn.py` :: `spawn_agent_task` (L92)
-- `core/services/agent_runtime_spawn.py` :: `suspend_agent` (L1204)
+- `core/services/agent_runtime_spawn.py` :: `suspend_agent` (L1221)
 - `core/services/agent_runtime_surfaces.py` :: `build_agent_detail_surface` (L89)
 - `core/services/agent_runtime_surfaces.py` :: `build_agent_runtime_surface` (L30)
 - `core/services/agent_runtime_surfaces.py` :: `build_council_detail_surface` (L133)

@@ -16,6 +16,7 @@ from datetime import UTC, datetime
 from uuid import uuid4
 
 from core.eventbus.bus import event_bus
+from core.services.conversation_topics import record_conversation_topic
 from core.services.signal_noise_guard import (
     build_bounded_hypothesis_text,
     is_noisy_signal_text,
@@ -32,7 +33,6 @@ from core.runtime.db import (
     upsert_runtime_self_review_signal,
     upsert_runtime_witness_signal,
     upsert_runtime_development_focus,
-    upsert_runtime_world_model_signal,
     upsert_runtime_self_narrative_continuity_signal,
     upsert_runtime_metabolism_state_signal,
     upsert_runtime_release_marker_signal,
@@ -308,7 +308,7 @@ def produce_signals_from_run(
     except Exception as exc:
         logger.debug("development focus failed: %s", exc)
 
-    # 9. World model signal — derive from message context
+    # 9. Conversation topic — continuity context, never world truth
     #
     # 2026-09-05: canonical_key var `world-model:run:{run_id}` — UNIK pr. tur.
     # Merge-logikken i db_runtime_executive_signals slår op på canonical_key og
@@ -319,33 +319,21 @@ def produce_signals_from_run(
     # rækkerne kunne ikke nås af nogen kodesti overhovedet (alle læsninger
     # bruger limit 3-40 med ORDER BY id DESC).
     #
-    # Nu nøgles den på EMNE, som witness-signalet få linjer over. Så virker
-    # merge som designet: support_count/session_count/merge_count bliver ægte
-    # gentagelses-evidens, og «3 aktive antagelser» bliver et tal der bevæger sig.
-    # Gatet på emne: en triviel besked er ikke en antagelse om verden.
+    # Topics now live in their own store and merge on the bounded subject key.
+    # Keep the historical count key for callers, but never expose these rows as
+    # facts or assumptions about the world. Trivial messages remain excluded.
     try:
         if topic_slug:
-            upsert_runtime_world_model_signal(
-                signal_id=f"wm-{uuid4().hex[:10]}",
-                signal_type="conversational_context",
+            record_conversation_topic(
                 canonical_key=f"world-model:topic:{topic_slug}",
-                status="active",
                 # Emnet, ikke beskeden. Titlen blev serveret tilbage til ham som
                 # «dominerende verdenstråd» — altså hans samtalepartners sidste
                 # sætning præsenteret som en uafhængig observation.
                 title=meaningful_topic[:80],
                 summary=f"Tilbagevendende emne i samtalen: {meaningful_topic[:120]}",
-                rationale="Bounded situational context from visible turn",
                 source_kind="visible_run",
-                confidence="medium",
-                evidence_summary=user_message[:200],
-                support_summary=f"outcome={outcome_status}",
-                support_count=1,
-                session_count=1,
                 run_id=run_id,
                 session_id=str(session_id or ""),
-                created_at=_now(),
-                updated_at=_now(),
             )
             counts["world_model"] += 1
     except Exception as exc:

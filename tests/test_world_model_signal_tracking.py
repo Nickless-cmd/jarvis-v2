@@ -12,6 +12,8 @@ import pytest
 
 from core.services import central_timeseries
 from core.services import world_model_signal_tracking as wm
+from core.runtime import db_core
+from core.runtime.db_runtime_executive_signals import upsert_runtime_world_model_signal
 
 
 @pytest.fixture(autouse=True)
@@ -66,6 +68,41 @@ def test_binding_is_self_safe(monkeypatch):
     monkeypatch.setattr(cpo, "record_private", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("boom")))
     res = wm.record_runtime_world_model_prediction(subject="a", expectation="b")
     assert res["status"] == "ok"
+
+
+def test_legacy_conversation_topics_are_excluded_before_quarantine(monkeypatch, tmp_path):
+    db_core.close_pooled_connection()
+    monkeypatch.setattr(db_core, "DB_PATH", tmp_path / "world-signals.db")
+    now = "2026-09-10T10:00:00+00:00"
+
+    def add(signal_id: str, signal_type: str) -> None:
+        upsert_runtime_world_model_signal(
+            signal_id=signal_id,
+            signal_type=signal_type,
+            canonical_key=f"key:{signal_id}",
+            status="active",
+            title=signal_id,
+            summary=signal_id,
+            rationale="fixture",
+            source_kind="visible_run",
+            confidence="medium",
+            evidence_summary="fixture",
+            support_summary="fixture",
+            support_count=1,
+            session_count=1,
+            created_at=now,
+            updated_at=now,
+        )
+
+    add("real-world-signal", "workspace-scope-assumption")
+    add("legacy-topic-1", "conversational_context")
+    add("legacy-topic-2", "conversational_context")
+
+    surface = wm.build_runtime_world_model_signal_surface(limit=1)
+
+    assert [item["signal_id"] for item in surface["items"]] == ["real-world-signal"]
+    assert surface["summary"]["active_count"] == 1
+    db_core.close_pooled_connection()
 
 
 # ---------------------------------------------------------------------------

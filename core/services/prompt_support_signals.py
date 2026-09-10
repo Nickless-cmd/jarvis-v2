@@ -27,10 +27,13 @@ from core.runtime.db import (
     list_runtime_development_focuses,
     list_runtime_goal_signals,
     list_runtime_reflection_signals,
-    list_runtime_world_model_signals,
     recent_private_growth_notes,
     recent_private_inner_notes,
     recent_private_retained_memory_records,
+)
+from core.services.world_facts import (
+    build_world_fact_prompt_section,
+    list_world_facts,
 )
 
 
@@ -161,49 +164,8 @@ def _reflection_support_signal_instruction() -> str | None:
 
 
 def _world_model_support_signal_instruction() -> str | None:
-    relevant = [
-        item
-        for item in list_runtime_world_model_signals(limit=8)
-        if str(item.get("status") or "") in {"active", "uncertain", "corrected"}
-    ]
-    if not relevant:
-        return None
-
-    preferred_status_order = {"active": 0, "uncertain": 1, "corrected": 2}
-    confidence_order = {"high": 0, "medium": 1, "low": 2}
-    dominant = sorted(
-        relevant,
-        key=lambda item: (
-            preferred_status_order.get(str(item.get("status") or ""), 9),
-            confidence_order.get(str(item.get("confidence") or ""), 9),
-        ),
-    )[0]
-
-    dominant_world_thread = str(dominant.get("title") or "").strip()
-    world_state = str(dominant.get("status") or "").strip()
-    world_confidence = str(dominant.get("confidence") or "").strip()
-    if not dominant_world_thread or not world_state:
-        return None
-
-    world_direction = _world_model_direction_label(
-        str(dominant.get("signal_type") or "")
-    )
-    parts = [
-        f"dominant_world_thread={dominant_world_thread}",
-        f"world_state={world_state}",
-    ]
-    if world_direction:
-        parts.append(f"world_direction={world_direction}")
-    if world_confidence:
-        parts.append(f"world_confidence={world_confidence}")
-
-    return "\n".join(
-        [
-            "World-model support signal:",
-            f"- {' | '.join(parts)}",
-            "Use only as subordinate support. Runtime and visible truth outrank it.",
-        ]
-    )
+    facts = list_world_facts(limit=8)
+    return build_world_fact_prompt_section(limit=8, facts=facts)
 
 
 def _goal_support_signal_instruction() -> str | None:
@@ -418,5 +380,3 @@ def _development_focus_direction_label(focus_type: str, canonical_key: str) -> s
     if normalized_focus_type == "communication-calibration":
         return "communication-calibration"
     return normalized_focus_type
-
-

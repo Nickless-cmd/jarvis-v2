@@ -8,6 +8,30 @@ sees tests for prompt_contract.py changes.
 from __future__ import annotations
 
 
+def test_world_model_support_signal_uses_dedicated_world_facts(monkeypatch):
+    from core.services import prompt_support_signals
+
+    monkeypatch.setattr(
+        prompt_support_signals,
+        "list_world_facts",
+        lambda **_kwargs: [
+            {
+                "statement": "The DeepSeek Harness is published.",
+                "status": "verified",
+                "confidence": "high",
+                "source_kind": "primary_source",
+                "source_ref": "https://example.test/harness",
+            }
+        ],
+    )
+
+    section = prompt_support_signals._world_model_support_signal_instruction()
+
+    assert section is not None
+    assert "[verified] The DeepSeek Harness is published." in section
+    assert "dominant_world_thread" not in section
+
+
 class TestPhaseTimeout:
     """Kold/frossen-vindue-værn (2026-07-14): _phase_timeout capper cognitive_state-builden
     så et koldt injection-vindue aldrig koster ~8s pr. svar."""

@@ -5,10 +5,12 @@ from uuid import uuid4
 
 from core.eventbus.bus import event_bus
 from core.runtime.db import (
-    list_runtime_world_model_signals,
     supersede_runtime_world_model_signals,
     update_runtime_world_model_signal_status,
     upsert_runtime_world_model_signal,
+)
+from core.runtime.db_world_self_truth import (
+    list_legacy_world_model_signals_excluding_topics as list_runtime_world_model_signals,
 )
 from core.runtime.settings import load_settings
 from core.runtime.state_store import load_json, save_json

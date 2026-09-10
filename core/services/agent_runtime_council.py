@@ -417,8 +417,34 @@ def _run_collective_round(council_id: str, *, mode: str) -> dict[str, object]:
             update_agent_registry_entry(
                 agent_id, status="waiting",
                 tokens_burned_delta=int(result.get("input_tokens") or 0) + int(result.get("output_tokens") or 0),
+                # TUREN TAELLES (Fase 6). Raadet skabte sine runs DIREKTE og gik
+                # uden om `execute_agent_task`, hvor `turns_completed_delta=1`
+                # er det eneste sted i huset turen taelles. Resultatet: maalt
+                # 10/9-2026 har raadsmedlemmer 8,4 runs i snit — op til ti — og
+                # `turns_completed` staar paa hoejst 1 for dem alle.
+                #
+                # Derfor kunne HVERKEN `max_turns` ELLER budget-tjekket
+                # nogensinde udloese for netop de agenter der koerer flest
+                # gange. Sikkerhedsnettet fandtes ikke dér hvor det var
+                # nødvendigt.
+                turns_completed_delta=1,
                 completed_at=_now_iso(),
             )
+            # Og saa lad nettene virke. Budget-tjekket er et no-op for raadet
+            # (alle 93 har budget 0 = ubegraenset), saa der er ingen risiko for
+            # at kvaele en debat midt i — den fejl der kostede en dag i juli.
+            # Tur-loftet paa 20 er et aegte net; hoejeste maalte er ti runder.
+            try:
+                from core.services.agent_runtime_spawn import (
+                    _check_budget_and_expire, _check_max_turns_and_expire,
+                )
+                _brugt = (int(result.get("input_tokens") or 0)
+                          + int(result.get("output_tokens") or 0))
+                _check_budget_and_expire(agent_id, tokens_used=_brugt)
+                _check_max_turns_and_expire(agent_id)
+            except Exception:
+                logger.warning("raad: kunne ikke koere graense-tjek for %s",
+                               agent_id, exc_info=True)
             update_council_member(
                 council_id=council_id, agent_id=agent_id,
                 position_summary=_trim(text),

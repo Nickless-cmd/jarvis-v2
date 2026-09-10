@@ -457,6 +457,14 @@ def _execute_agent_task_impl(*, agent_id: str, thread_id: str = "",
     agent = get_agent_registry_entry(agent_id)
     if agent is None:
         raise RuntimeError(f"unknown agent: {agent_id}")
+    # EN TERMINAL STATUS ER ENDELIG (fase 6). `cancel_agent` satte foer blot en
+    # etiket: intet sted i udfoerelsen laeste status igen, saa en afbrudt agent
+    # i koe blev alligevel sat i gang. `completed` staar bevidst IKKE her —
+    # vedvarende agenter vaekkes fra terminale tilstande, og den sti er ikke
+    # maalt.
+    _slut = str(agent.get("status") or "")
+    if _slut in {"cancelled", "expired"}:
+        raise RuntimeError(f"agent already terminal: {_slut}")
     # maxTurns check: skip execution if agent has exhausted its turn budget
     max_turns = int(agent.get("max_turns") or 0)
     turns_completed = int(agent.get("turns_completed") or 0)
@@ -483,7 +491,11 @@ def _execute_agent_task_impl(*, agent_id: str, thread_id: str = "",
             pass
         return surface
     resolved_thread_id = thread_id or _agent_thread_id(agent_id)
-    messages = list_agent_messages(agent_id=agent_id, thread_id=resolved_thread_id, limit=40)
+    # `tail=True`: de NYESTE 40. Uden det fik en lang traad de 40 AELDSTE, og
+    # barnet svarede paa forgangen kontekst uden at nogen kunne se det.
+    # (Loftet bider ikke i dag — travleste aegte agent har 12 beskeder.)
+    messages = list_agent_messages(agent_id=agent_id, thread_id=resolved_thread_id,
+                                   limit=40, tail=True)
     prompt = _build_agent_prompt(
         agent=agent,
         messages=messages,
@@ -711,13 +723,40 @@ def _execute_agent_task_impl(*, agent_id: str, thread_id: str = "",
         # lane="agent" threaded through — NOT here at the dispatch seam. Logging
         # here as well double-counted every dispatch that fell back to the pool
         # (lane="agent" + lane="cheap" for the same tokens). Seam log removed.
-        update_agent_registry_entry(
-            agent_id,
-            status="scheduled" if bool(agent.get("persistent")) and str(agent.get("next_wake_at") or "") else "completed",
-            tokens_burned_delta=tokens_used,
-            turns_completed_delta=1,
-            completed_at=_now_iso(),
-        )
+        # Blev agenten afbrudt MENS den koerte? Udfoerelsen skrev foer
+        # `completed` ubetinget, saa afbrydelsen forsvandt sporloest: agenten
+        # meldte sig faerdig, og intet viste at nogen havde sagt stop.
+        # Arbejdet ER sket — `agent_run` ovenfor staar uroert — men den
+        # terminale status bevares, og barnet KVITTERER for afbrydelsen.
+        _nu = get_agent_registry_entry(agent_id) or {}
+        _afbrudt = str(_nu.get("status") or "") in {"cancelled", "expired"}
+        if _afbrudt:
+            update_agent_registry_entry(agent_id,
+                                        tokens_burned_delta=tokens_used,
+                                        turns_completed_delta=1)
+            try:
+                create_agent_message(
+                    message_id=f"agent-msg-{uuid4().hex}",
+                    thread_id=_agent_thread_id(agent_id),
+                    agent_id=agent_id,
+                    direction="agent->runtime",
+                    role="system",
+                    kind="lifecycle",
+                    content=("Afbrudt undervejs. Runden naaede at blive faerdig "
+                             f"({tokens_used} tokens brugt); status "
+                             f"'{_nu.get('status')}' bevares."),
+                )
+            except Exception:
+                logger.warning("kunne ikke kvittere for afbrydelse af %s",
+                               agent_id, exc_info=True)
+        else:
+            update_agent_registry_entry(
+                agent_id,
+                status="scheduled" if bool(agent.get("persistent")) and str(agent.get("next_wake_at") or "") else "completed",
+                tokens_burned_delta=tokens_used,
+                turns_completed_delta=1,
+                completed_at=_now_iso(),
+            )
         # Budget enforcement: expire if over token budget
         _check_budget_and_expire(agent_id, tokens_used=tokens_used)
         # maxTurns enforcement: expire if turn limit reached

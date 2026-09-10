@@ -605,8 +605,13 @@ def list_agent_messages(
     council_id: str = "",
     agent_id: str = "",
     limit: int = 200,
+    tail: bool = False,
 ) -> list[dict[str, object]]:
     """Return agent_messages rows as dicts, oldest-created first, capped at limit.
+
+    `tail=True` keeps the NEWEST `limit` rows instead of the oldest — still
+    returned oldest-first. Prompt building needs the tail; display callers
+    want the head, so the default is unchanged.
 
     Optionally filters by any combination of thread_id, run_id, council_id and
     agent_id (each applied only when non-empty). Returns [] when none match.
@@ -625,12 +630,17 @@ def list_agent_messages(
     if agent_id:
         query.append("AND agent_id = ?")
         params.append(agent_id)
-    query.append("ORDER BY created_at ASC LIMIT ?")
+    # `tail=True` vaelger de NYESTE `limit` beskeder — men leverer dem stadig
+    # aeldst-foerst, saa kalderen ser en samtale, ikke en baglaens liste.
+    # Uden det mistede en lang traad praecis det nyeste: prompt-byggeren bad om
+    # 40 og fik de 40 AELDSTE, saa barnet svarede paa forgangen kontekst.
+    query.append("ORDER BY created_at %s LIMIT ?" % ("DESC" if tail else "ASC"))
     params.append(int(limit))
     with connect() as conn:
         _ensure_agent_runtime_tables(conn)
         rows = conn.execute("\n".join(query), tuple(params)).fetchall()
-    return [_agent_message_row_to_dict(row) for row in rows]
+    ud = [_agent_message_row_to_dict(row) for row in rows]
+    return list(reversed(ud)) if tail else ud
 
 
 def create_agent_tool_call(

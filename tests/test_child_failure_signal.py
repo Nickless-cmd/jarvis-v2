@@ -70,6 +70,10 @@ def test_alvoren_skelner_MED_HUSETS_ord(fanget):
     assert incidents[1]["severity"] in _SEVERITIES
     assert incidents[0]["severity"] != incidents[1]["severity"], (
         "skelnen forsvinder i basen")
+    # Og de maa ikke kollapse: `dedup` samler paa (cluster, nerve) UDEN `kind`,
+    # saa en faelles nerve ville goere alvoren ligegyldig alligevel.
+    assert incidents[0]["nerve"] != incidents[1]["nerve"], (
+        "samme nerve → dedup kollapser dem til én staaende raekke")
 
 
 def test_ALLE_alvorsgrader_er_kendt_af_huset():

@@ -70,8 +70,13 @@ def note_child_ended(agent_id: str, *, status: str, role: str = "",
     try:
         from core.runtime.db_central_incidents import record_central_incident
         record_central_incident(
-            cluster="agents", nerve="child_ended",
-            kind=st, severity=_ALVOR.get(st, "warning"),
+            # Nerven baerer UDFALDET, ikke bare «et barn endte». `dedup` samler
+            # paa (cluster, nerve) — UDEN `kind` — saa en faelles nerve ville
+            # kollapse udloeb, annullering og fejl til ÉN staaende raekke, der
+            # beholder den FOERSTES art og alvor. Set paa produktionen: tre
+            # proever gav én raekke, stadig med den gamle alvorsgrad.
+            cluster="agents", nerve=f"child_{st}",
+            kind=st, severity=_ALVOR.get(st, "error"),
             message=(f"barn endte som {st}: role={role or '?'} "
                      f"provider={provider or '?'}/{model or '?'} "
                      f"{str(error or '')[:120]}"),

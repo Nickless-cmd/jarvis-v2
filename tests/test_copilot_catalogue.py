@@ -29,11 +29,18 @@ def test_opgaverne_har_hver_sin_praeference():
 
 def test_kun_modeller_der_kan_kalde_vaerktoejer():
     """Uden vaerktoejskald fabrikerer den. Det er hele grunden til at vi er her."""
+    # `supported_endpoints` hoerer nu MED til at vaere brugbar: en model der
+    # ikke kan naas via husets protokol er ikke et valg, uanset hvor god den
+    # er. Foerste udgave af denne test udelod feltet — den kodede altsaa den
+    # ufuldstaendige definition.
+    _ep = ["/chat/completions"]
     assert _brugbar({"capabilities": {"type": "chat",
                                       "supports": {"tool_calls": True}},
+                     "supported_endpoints": _ep,
                      "model_picker_enabled": True}) is True
     assert _brugbar({"capabilities": {"type": "chat",
                                       "supports": {"tool_calls": False}},
+                     "supported_endpoints": _ep,
                      "model_picker_enabled": True}) is False
 
 
@@ -43,6 +50,7 @@ def test_type_laeses_paa_CAPABILITIES_ikke_paa_topniveau():
     «API'et svarede ikke»."""
     assert _brugbar({"capabilities": {"type": "chat",
                                       "supports": {"tool_calls": True}},
+                     "supported_endpoints": ["/chat/completions"],
                      "model_picker_enabled": True, "type": None}) is True
 
 
@@ -128,3 +136,60 @@ def test_manglende_katalog_stopper_ikke_explore():
     i = kilde.index("copilot_catalogue")
     assert "except Exception" in kilde[i:i + 500]
     assert "elif runde:" in kilde, "den gamle rotation er fjernet i stedet for bevaret"
+
+
+# ── LISTET ER IKKE KALDBAR — for tredje gang i dette hus ────────────────
+#
+# Jarvis' femte koersel. Kataloget hentede `supported_endpoints` og LAESTE det
+# aldrig. MAALT 10/9-2026: 32 af 56 modeller kan ikke naas via
+# `/chat/completions`, som er den protokol huset taler.
+#
+# Konsekvensen saa ud som et modelproblem: `research`-poolen var
+# gpt-5.6-terra, grok-4.5, grok-4.6 (alle doede) og gemini-3.8-flash
+# (levende) — og `_EXPLORE_MAKS_RUNDER = 3`. Rotationen koerte de tre doede og
+# stoppede ÉT skridt foer den der virker. Hver fejl faldt tilbage til
+# `copilot-free/gpt-4.1`, hvor faldbacken er TEKST-ONLY med vilje: husets
+# bedste vaerktoejskalder fik «laes denne fil» uden vaerktoejer og gaettede.
+#
+# OG FELTET LOVER FOR MEGET. `gpt-5.4` staar med `/chat/completions` og svarer
+# HTTP 400. Derfor to lag: feltet er en PAASTAND, historikken er en MAALING.
+
+def test_modeller_uden_chat_completions_frasorteres():
+    grund = {"capabilities": {"type": "chat", "supports": {"tool_calls": True}},
+             "model_picker_enabled": True}
+    assert _brugbar({**grund, "supported_endpoints": ["/chat/completions"]}) is True
+    assert _brugbar({**grund, "supported_endpoints": ["/responses"]}) is False
+    assert _brugbar({**grund, "supported_endpoints": []}) is False
+
+
+def test_en_MAALT_uegnet_model_frasorteres_ogsaa():
+    """Feltet er en paastand; historikken er en maaling. `gpt-5.4` staar som
+    naabar og svarer 400 — saa historikken faar det sidste ord."""
+    m = {"id": "gpt-5.4", "capabilities": {"type": "chat",
+                                           "supports": {"tool_calls": True}},
+         "model_picker_enabled": True,
+         "supported_endpoints": ["/chat/completions"]}
+    assert _brugbar(m) is True
+    assert _brugbar(m, uegnet={"gpt-5.4"}) is False
+
+
+def test_faa_forsoeg_doemmer_IKKE(isolated_runtime):
+    """Samme disciplin som vaerktoejs-porten: to fejl er et spor, ikke en dom.
+    Taersklen er lav (3) fordi fejlen HER er deterministisk — HTTP 400, ikke
+    en timeout — men den er der."""
+    from core.services.copilot_catalogue import _MIN_FORSOEG, _maalt_uegnet
+
+    assert _MIN_FORSOEG >= 3
+    assert _maalt_uegnet() == set(), "en tom historik doemte nogen"
+
+
+def test_noedplanen_indeholder_kun_NAABARE_modeller():
+    """Foerste udgave listede gpt-5.6-terra, grok-4.6 og gpt-5.4-mini — alle
+    tre svarer kun paa /responses. Noedplanen ville have vaeret lige saa doed
+    som den liste den skulle redde os fra."""
+    import core.services.copilot_catalogue as c
+
+    doede = {"gpt-5.6-terra", "grok-4.6", "grok-4.5", "gpt-5.4-mini",
+             "gpt-5.6-luna", "gpt-5.3-codex", "gpt-5.5", "gpt-6-astra"}
+    for tier, navne in c._NOEDPLAN.items():
+        assert not (set(navne) & doede), f"{tier} indeholder doede modeller"

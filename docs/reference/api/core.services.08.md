@@ -181,10 +181,11 @@ _Hvad Copilot-abonnementet FAKTISK giver — spurgt, ikke antaget._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_api_token` | `()` | — | [src](../../../core/services/copilot_catalogue.py#L78) |
-| function | `hent_modeller` | `(*, tving=…)` | Live-listen fra API'et. Tom liste hvis den ikke kan hentes. | [src](../../../core/services/copilot_catalogue.py#L86) |
-| function | `_brugbar` | `(m)` | Kun modeller der kan KALDE VAERKTOEJER og er valgbare. | [src](../../../core/services/copilot_catalogue.py#L107) |
-| function | `rangeret` | `(opgave=…, *, maks=…)` | Modeller til denne opgave, bedste foerst. | [src](../../../core/services/copilot_catalogue.py#L123) |
+| function | `_api_token` | `()` | — | [src](../../../core/services/copilot_catalogue.py#L82) |
+| function | `hent_modeller` | `(*, tving=…)` | Live-listen fra API'et. Tom liste hvis den ikke kan hentes. | [src](../../../core/services/copilot_catalogue.py#L90) |
+| function | `_maalt_uegnet` | `()` | Modeller der ER proevet og ALDRIG svarede. | [src](../../../core/services/copilot_catalogue.py#L117) |
+| function | `_brugbar` | `(m, *, uegnet=…)` | Kun modeller der kan KALDE VAERKTOEJER og er valgbare. | [src](../../../core/services/copilot_catalogue.py#L142) |
+| function | `rangeret` | `(opgave=…, *, maks=…)` | Modeller til denne opgave, bedste foerst. | [src](../../../core/services/copilot_catalogue.py#L177) |
 
 ## `core/services/cost_optimization_daemon.py`
 _D5 — Cost optimization daemon._

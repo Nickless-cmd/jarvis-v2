@@ -55,10 +55,14 @@ _cache_tid: float = 0.0
 
 #: Noedplan hvis API'et ikke svarer. MAALT 10/9-2026 — og markeret som
 #: `fra_katalog=False` i svaret, saa ingen forveksler den med en maaling.
+# Kun modeller der er MAALT naabare via /chat/completions (10/9-2026).
+# Foerste udgave listede gpt-5.6-terra, grok-4.6 og gpt-5.4-mini — alle tre
+# svarer kun paa /responses, saa noedplanen ville have vaeret lige saa doed
+# som den liste den skulle redde os fra.
 _NOEDPLAN = {
-    "powerful": ["claude-opus-5", "gpt-6-astra", "gpt-5.3-codex", "kimi-k3"],
-    "versatile": ["claude-sonnet-5", "gpt-5.6-terra", "grok-4.6"],
-    "lightweight": ["gpt-5.4-mini", "claude-haiku-4.5", "gemini-3.5-flash"],
+    "powerful": ["claude-opus-5", "kimi-k3", "gpt-5.4"],
+    "versatile": ["claude-sonnet-5", "gemini-3.8-flash"],
+    "lightweight": ["claude-haiku-4.5", "gemini-3.5-flash", "gpt-5-mini"],
 }
 
 #: Hvilke kategorier en opgave skal have, bedste foerst. Rene navne frem for
@@ -104,7 +108,38 @@ def hent_modeller(*, tving: bool = False) -> list[dict[str, Any]]:
     return _cache
 
 
-def _brugbar(m: dict[str, Any]) -> bool:
+#: Foer vi doemmer en model uegnet paa historik. Lavt, fordi fejlen her er
+#: DETERMINISTISK (HTTP 400 «unsupported_api_for_model»), ikke flakkende —
+#: modsat en timeout, hvor tre uheld intet betyder.
+_MIN_FORSOEG = 3
+
+
+def _maalt_uegnet() -> set[str]:
+    """Modeller der ER proevet og ALDRIG svarede.
+
+    Endpoint-feltet lover for meget: `gpt-5.4` staar med `/chat/completions`
+    og svarer HTTP 400. Feltet er altsaa noedvendigt og ikke tilstraekkeligt,
+    saa historikken faar det sidste ord — den er MAALT, feltet er PAASTAAET.
+
+    Huset logger i forvejen hvert forsoeg i `cheap_provider_invocations`, saa
+    dette kraever ingen nye probes. Systemet laerer af det det alligevel goer.
+    """
+    try:
+        from core.runtime.db_core import connect
+        with connect() as conn:
+            raekker = conn.execute(
+                "SELECT model, COUNT(*) n, SUM(status = 'completed') ok "
+                "FROM cheap_provider_invocations WHERE provider LIKE 'copilot%' "
+                "GROUP BY model"
+            ).fetchall()
+    except Exception:
+        logger.warning("kunne ikke laese copilot-historikken", exc_info=True)
+        return set()
+    return {str(r["model"]) for r in raekker
+            if int(r["n"] or 0) >= _MIN_FORSOEG and not int(r["ok"] or 0)}
+
+
+def _brugbar(m: dict[str, Any], *, uegnet: set[str] | None = None) -> bool:
     """Kun modeller der kan KALDE VAERKTOEJER og er valgbare.
 
     Uden vaerktoejskald fabrikerer den — det er hele grunden til at vi er her.
@@ -115,8 +150,27 @@ def _brugbar(m: dict[str, Any]) -> bool:
     # svarede ikke». Feltet paa det forkerte niveau, og en etiket der ikke
     # kunne skelne. Begge dele er dagens moenster.
     cap = m.get("capabilities") or {}
+    # KAN DEN OVERHOVEDET NAAS? API'et siger det selv i `supported_endpoints`,
+    # og kataloget hentede feltet uden at laese det. MAALT 10/9-2026: 32 af 56
+    # modeller kan IKKE kaldes via `/chat/completions`, som er den protokol
+    # huset taler — de svarer kun paa `/responses`.
+    #
+    # Konsekvensen var praecis den slags der ser ud som et modelproblem:
+    # `research`-poolen var gpt-5.6-terra, grok-4.5, grok-4.6 (alle doede) og
+    # gemini-3.8-flash (levende) — og `_EXPLORE_MAKS_RUNDER = 3`. Rotationen
+    # koerte de tre doede og stoppede ÉT skridt foer den der virker. Hver
+    # fejl faldt tilbage til `copilot-free/gpt-4.1`, hvor faldbacken er
+    # TEKST-ONLY med vilje: den bedste vaerktoejskalder i huset fik opgaven
+    # «laes denne fil» uden vaerktoejer, og gaettede et troevaerdigt svar.
+    #
+    # 100 % korrelation maalt: hver model der fejler mangler feltet, hver der
+    # virker har det. (Jarvis' femte koersel.)
+    _ep = m.get("supported_endpoints") or []
+    if uegnet and str(m.get("id") or "") in uegnet:
+        return False                # proevet og aldrig svaret
     return (bool((cap.get("supports") or {}).get("tool_calls"))
             and bool(m.get("model_picker_enabled"))
+            and "/chat/completions" in _ep
             and str(cap.get("type") or m.get("type") or "") == "chat")
 
 
@@ -128,7 +182,8 @@ def rangeret(opgave: str = "research", *, maks: int = 4) -> dict[str, Any]:
     """
     tiers = OPGAVE_TIER.get(str(opgave or "research"), OPGAVE_TIER["research"])
     _raa = hent_modeller()
-    live = [m for m in _raa if _brugbar(m)]
+    _uegnet = _maalt_uegnet()
+    live = [m for m in _raa if _brugbar(m, uegnet=_uegnet)]
     if live:
         efter_tier: dict[str, list[dict[str, Any]]] = {}
         for m in live:

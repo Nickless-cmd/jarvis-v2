@@ -110,3 +110,79 @@ def test_stroemmen_opsamler_modelnavnet_foer_choices_tjekket():
     i_choices = kilde.index('choices = event.get("choices")')
     assert i_model < i_choices, (
         "modelnavnet laeses efter choices-tjekket — usage-only-chunks taber det")
+
+
+# ── epoken paa FALDBACK-SOEMMEN (10/9-2026) ─────────────────────────────
+#
+# `provider_model_epochs` blev bygget for at svare paa «svarede den model jeg
+# bad om?» — og var ikke koblet paa den ene soem hvor svaret oftest er nej.
+#
+# Da explore bad om `copilot-premium/grok-4.6` og fik `copilot-free/gpt-4.1`,
+# blev byttet aldrig registreret: `agent_runs` sagde det ene, cost-ledgeren
+# det andet, og INGEN tabel sagde at de var uenige. Jarvis fandt det ved at
+# holde de to tabeller op mod hinanden.
+#
+# Byttet er ikke en regnskabsdetalje. Faldbacken er TEKST-ONLY med vilje, saa
+# den fjerner ogsaa vaerktoejerne: en agent der skulle laese en fil faar en
+# model der kun kan gaette. Det er forskellen paa et svar og et gaet.
+
+def test_faldback_soemmen_bogfoerer_hvem_der_svarede():
+    import inspect
+
+    from core.services import non_visible_lane_execution as x
+
+    kilde = inspect.getsource(x.execute_with_role_or_fallback)
+    i_fb = kilde.index("execute_cheap_lane_via_pool(message=_prompt_for_estimate,\n"
+                       "                                          skip_providers=skip")
+    efter = kilde[i_fb:]
+    assert "record_model_observation(" in efter, (
+        "faldbacken bogfoerer stadig ikke hvem der svarede i stedet")
+    assert "requested_model=primary_model" in efter
+
+
+def test_ogsaa_den_GODE_vej_bogfoeres():
+    """Et instrument der kun registrerer fejl, kan ikke sige at noget er
+    raskt: «vi har aldrig set den svare» ville ikke kunne skelnes fra «den
+    svarer altid som sig selv»."""
+    import inspect
+
+    from core.services import non_visible_lane_execution as x
+
+    kilde = inspect.getsource(x.execute_with_role_or_fallback)
+    assert kilde.count("record_model_observation(") == 2, (
+        "kun én af de to grene bogfoerer")
+
+
+def test_bogfoeringen_kan_ikke_vaelte_kaldet():
+    import inspect
+
+    from core.services import non_visible_lane_execution as x
+
+    kilde = inspect.getsource(x.execute_with_role_or_fallback)
+    for i in [i for i in range(len(kilde))
+              if kilde.startswith("record_model_observation(", i)]:
+        assert "except Exception" in kilde[i:i + 700], (
+            "en observation kan vaelte det den observerer")
+
+
+def test_observeret_navn_roeber_udbyder_skiftet():
+    """Faldbacken skifter ofte OGSAA udbyder (copilot-premium ->
+    copilot-free), og epoke-tabellen har kun ét provider-felt. Uden dette
+    ville raekken sige «grok-4.6 -> gpt-4.1» uden at roebe at huset ogsaa
+    skiftede leverandoer — og saa ligner et LEVERANDOER-skifte et
+    model-skifte."""
+    from core.services.non_visible_lane_execution import _observeret_navn as f
+
+    assert f({"provider": "copilot-premium", "model": "kimi-k3"},
+             "copilot-premium") == "kimi-k3"
+    assert f({"provider": "copilot-free", "model": "gpt-4.1"},
+             "copilot-premium") == "copilot-free/gpt-4.1"
+    assert f({}, "copilot-premium") == "", (
+        "et tomt svar maa ikke blive til et modelnavn")
+
+
+def test_tomt_observeret_navn_giver_INGEN_epoke(isolated_runtime):
+    """Fravaer er ikke en observation — ogsaa naar faldbacken svarede uden at
+    sige hvem."""
+    assert record_model_observation(provider="p", requested_model="m",
+                                    observed_model="") is None

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+
 import json
 import shutil
 import subprocess
@@ -26,6 +28,9 @@ from core.services.cheap_provider_runtime import (
     execute_cheap_lane_via_pool,
     select_cheap_lane_target,
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 def cheap_lane_execution_truth() -> dict[str, object]:
@@ -92,6 +97,16 @@ def _prompt_fra_messages(messages: list[dict] | None) -> str:
         except Exception:
             continue
     return ""
+
+
+def _observeret_navn(svar: dict | None, bedt_om_provider: str) -> str:
+    """Hvem svarede — med udbyder foran hvis det ikke var den vi spurgte."""
+    d = svar or {}
+    m = str(d.get("model") or d.get("selected_model") or "").strip()
+    if not m:
+        return ""
+    pv = str(d.get("provider") or "").strip()
+    return f"{pv}/{m}" if pv and pv != str(bedt_om_provider or "").strip() else m
 
 
 def execute_with_role_or_fallback(
@@ -251,7 +266,35 @@ def execute_with_role_or_fallback(
         except Exception:
             pass
         skip = frozenset(_PROVIDERS_WITHOUT_TOOL_SUPPORT) if requires_tools else frozenset()
-        return execute_cheap_lane_via_pool(message=_prompt_for_estimate, skip_providers=skip, lane=lane)
+        _fb = execute_cheap_lane_via_pool(message=_prompt_for_estimate,
+                                          skip_providers=skip, lane=lane)
+        # HVEM SVAREDE SO I STEDET? (10/9-2026)
+        #
+        # Denne soem er praecis den `provider_model_epochs` blev bygget til, og
+        # den var ikke koblet paa den. Da explore bad om `copilot-premium/
+        # grok-4.6` og fik `copilot-free/gpt-4.1`, blev byttet aldrig
+        # registreret som et mismatch — `agent_runs` sagde det ene, cost-
+        # ledgeren det andet, og INGEN tabel sagde at de var uenige.
+        #
+        # Faldbacken er tekst-only med vilje, saa byttet fjerner ogsaa
+        # vaerktoejerne: en agent der skulle laese en fil faar en model der
+        # kun kan gaette. Det er ikke en detalje i regnskabet, det er
+        # forskellen paa et svar og et gaet.
+        try:
+            from core.services.provider_model_epochs import record_model_observation
+            record_model_observation(
+                provider=primary_provider,
+                requested_model=primary_model,
+                # Faldbacken skifter ofte OGSAA udbyder (copilot-premium ->
+                # copilot-free). Epoke-tabellen har kun ét provider-felt, saa
+                # det observerede navn baerer udbyderen med naar den er en
+                # anden — ellers ville raekken sige «grok-4.6 -> gpt-4.1» uden
+                # at roebe at huset ogsaa skiftede leverandoer.
+                observed_model=_observeret_navn(_fb, primary_provider),
+            )
+        except Exception:
+            logger.debug("kunne ikke bogfoere faldback-epoken", exc_info=True)
+        return _fb
 
     # Primary succeeded — clear any prior failure tracking.
     try:
@@ -259,6 +302,19 @@ def execute_with_role_or_fallback(
         _cb_success(primary_provider, primary_model)
     except Exception:
         pass
+    # Ogsaa den GODE vej bogfoeres. Uden den ville epoke-tabellen kun rumme
+    # afvigelser, og «vi har aldrig set den svare» ville ikke kunne skelnes
+    # fra «den svarer altid som sig selv». Et instrument der kun registrerer
+    # fejl, kan ikke sige at noget er raskt.
+    try:
+        from core.services.provider_model_epochs import record_model_observation
+        record_model_observation(
+            provider=primary_provider,
+            requested_model=primary_model,
+            observed_model=str(result.get("model") or primary_model),
+        )
+    except Exception:
+        logger.debug("kunne ikke bogfoere primaer-epoken", exc_info=True)
 
     output_tokens = int(result.get("output_tokens") or _estimate_tokens(result.get("text") or ""))
     input_tokens = int(result.get("input_tokens") or _estimate_tokens(_prompt_for_estimate))

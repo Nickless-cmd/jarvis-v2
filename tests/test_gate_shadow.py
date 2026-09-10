@@ -141,8 +141,8 @@ def test_enforced_gate_records_incident_on_nongreen():
 
 
 def test_enforce_severity_by_grade():
-    """Severitet efter GRAD: YELLOW blød-surface → info (normal governance, ingen unhealth);
-    RED hård blok → error; SECURITY-RED → severe; GREEN → intet incident."""
+    """Severitet efter KLASSE: al KOGNITIV håndhævelse (YELLOW blød OG RED hård blok) → info
+    (normal governance — degraderer ikke helbred); kun SECURITY-RED → severe; GREEN → intet."""
     from core.services.gate_kernel import Decision, GateClass, Verdict
     import core.services.gate_shadow as gs
     rec: list = []
@@ -157,8 +157,11 @@ def test_enforce_severity_by_grade():
         gs._enforce_verdict("x", "y", GateClass.COGNITIVE,
                             Verdict("x", Decision.GREEN, "ok"))
     by_nerve = {r["nerve"]: r["severity"] for r in rec}
+    # Kognitiv RED er governance-aktivitet — ikke nedbrud. Info, ikke error: ellers tæller
+    # degrading() gaten som nedbrud netop når den gør sit arbejde (selvforstærkende løkke).
     assert by_nerve["verification"] == "info"
-    assert by_nerve["decision_gate"] == "error"
+    assert by_nerve["decision_gate"] == "info"
+    # SECURITY-RED er undtagelsen: en ægte cross-user-lækage SKAL kunne farve helbredet.
     assert by_nerve["cross_user_share"] == "severe"
     assert "x" not in by_nerve
 

@@ -2,6 +2,20 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/producer_novelty.py`
+_core/services/producer_novelty.py_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `infer_caller` | `()` | Gæt den originerende service fra call-stacken når cadence-thread-local mangler (fx | [src](../../../core/services/producer_novelty.py#L34) |
+| function | `set_producer` | `(name)` | Sæt hvilken producer der kører NU (cadence-tråden). Self-safe. | [src](../../../core/services/producer_novelty.py#L58) |
+| function | `clear_producer` | `()` | — | [src](../../../core/services/producer_novelty.py#L66) |
+| function | `get_producer` | `()` | — | [src](../../../core/services/producer_novelty.py#L73) |
+| function | `_similarity` | `(a, b)` | — | [src](../../../core/services/producer_novelty.py#L77) |
+| function | `record_output` | `(producer, text)` | Registrér en producers LLM-output + mål nyhed = 1 - (max-lighed vs dens seneste N). | [src](../../../core/services/producer_novelty.py#L84) |
+| function | `snapshot` | `()` | Read-only overblik: pr. producer antal kald + gennemsnitlig nyhed. Lav avg = repetitiv | [src](../../../core/services/producer_novelty.py#L115) |
+| function | `_reset_for_tests` | `()` | — | [src](../../../core/services/producer_novelty.py#L127) |
+
 ## `core/services/projection_chat_messages.py`
 _Kompatibilitets-projektoren — ledger-hændelser → `chat_messages`-rækker._
 
@@ -29,7 +43,8 @@ _Drift-detektion — er ledgeren og `chat_messages` enige?_
 | function | `_fra_ledger` | `(session_id)` | Fold i HUKOMMELSEN. At kalde projektoren ville skrive de rækker vi | [src](../../../core/services/projection_drift.py#L73) |
 | function | `_fra_tabellen` | `(session_id)` | — | [src](../../../core/services/projection_drift.py#L89) |
 | function | `compare` | `(session_id)` | Sammenlign de to sider. `enige` er svaret på om sessionen må skifte. | [src](../../../core/services/projection_drift.py#L101) |
-| function | `may_cut_over` | `(session_id)` | Må denne session skifte til `ledger`? | [src](../../../core/services/projection_drift.py#L137) |
+| function | `_nyeste` | `(raekker)` | Tidsstemplet paa den nyeste raekke — saa en laeser kan se om «enige» | [src](../../../core/services/projection_drift.py#L151) |
+| function | `may_cut_over` | `(session_id)` | Må denne session skifte til `ledger`? | [src](../../../core/services/projection_drift.py#L162) |
 
 ## `core/services/projection_runtime.py`
 _Projektions-runtime — rene, versionerede folder over session-ledgeren._
@@ -87,53 +102,54 @@ _Prompt-cache-sonde — find hvad der bryder prefix-cachen MELLEM to rigtige tur
 | function | `_safe_build_self_state_block` | `()` | — | [src](../../../core/services/prompt_contract.py#L339) |
 | function | `_honesty_rules_section` | `(*, compact)` | Consolidated into VISIBLE_CHAT_RULES.md (2026-07-22, prompt audit #1). | [src](../../../core/services/prompt_contract.py#L348) |
 | function | `_compact_curated_index` | `(raw)` | Render the stored curated INDEX.md compactly for the prompt (audit #2, | [src](../../../core/services/prompt_contract.py#L365) |
-| function | `_curated_memory_index_section` | `(name=…)` | Kurateret memory-INDEX (spec 2026-07-10 Spec B): altid-loadet én-linjers for | [src](../../../core/services/prompt_contract.py#L387) |
-| function | `build_visible_stable_prefix` | `(*, provider=…, model=…, name=…, compact=…)` | Build ONLY the stable cacheable prefix of a visible chat prompt. | [src](../../../core/services/prompt_contract.py#L425) |
-| function | `_device_awareness_on` | `()` | — | [src](../../../core/services/prompt_contract.py#L523) |
-| function | `_device_presence_line` | `(user_id)` | Hvilken enhed Bjørn er ved (routing-awareness). Killswitch-gatet, best-effort. | [src](../../../core/services/prompt_contract.py#L531) |
-| function | `_latest_user_msg_id` | `(session_id)` | Cheap indexed lookup of the newest USER message id for the session. It's the SAME | [src](../../../core/services/prompt_contract.py#L572) |
-| function | `build_visible_chat_prompt_assembly` | `(*, provider, model, user_message, session_id=…, name=…, runtime_self_report_context=…)` | Turn-scoped cached wrapper — see _ASSEMBLY_TURN_CACHE. Reuses round 0's assembly for | [src](../../../core/services/prompt_contract.py#L593) |
-| function | `_build_visible_chat_prompt_assembly_impl` | `(*, provider, model, user_message, session_id=…, name=…, runtime_self_report_context=…)` | — | [src](../../../core/services/prompt_contract.py#L630) |
-| function | `build_heartbeat_prompt_assembly` | `(*, heartbeat_context=…, name=…)` | — | [src](../../../core/services/prompt_contract.py#L3261) |
-| function | `build_future_agent_task_prompt_assembly` | `(*, task_brief, agent_context=…, name=…)` | — | [src](../../../core/services/prompt_contract.py#L3413) |
-| function | `_relevance_cache_key` | `(text, mode, compact, name)` | Build a string cache key for shared_cache (cross-worker visibility). | [src](../../../core/services/prompt_contract.py#L3543) |
-| function | `build_prompt_relevance_decision` | `(text, *, mode, compact, name=…)` | — | [src](../../../core/services/prompt_contract.py#L3550) |
-| function | `_bounded_nl_relevance_backend` | `(*, text, mode, compact, name)` | — | [src](../../../core/services/prompt_contract.py#L3670) |
-| function | `_track_inner_visible_prompt_bridge` | `(decision)` | — | [src](../../../core/services/prompt_contract.py#L3685) |
-| function | `_build_inner_visible_prompt_bridge_decision` | `(*, user_message, mode, compact, relevance)` | — | [src](../../../core/services/prompt_contract.py#L3715) |
-| function | `_latest_active_inner_visible_support_signal` | `()` | — | [src](../../../core/services/prompt_contract.py#L3794) |
-| function | `_inner_visible_support_bridge_is_redundant` | `(signal)` | — | [src](../../../core/services/prompt_contract.py#L3802) |
-| function | `_inner_visible_support_prompt_line` | `(signal)` | — | [src](../../../core/services/prompt_contract.py#L3812) |
-| function | `_self_mutation_lineage_section` | `()` | Returns a compact section about recent self-changes, or None if none. | [src](../../../core/services/prompt_contract.py#L3873) |
-| function | `_channel_workspace_path` | `()` | — | [src](../../../core/services/prompt_contract.py#L3905) |
-| function | `_channel_context_section` | `(session_id)` | Returns current channel context for the prompt, or None. | [src](../../../core/services/prompt_contract.py#L3909) |
-| function | `_visible_chat_rules_instruction` | `(*, workspace_dir)` | — | [src](../../../core/services/prompt_contract.py#L3989) |
-| function | `_self_correction_nudges_section` | `(*, compact)` | Consolidated into VISIBLE_CHAT_RULES.md (2026-07-22, prompt audit #1). | [src](../../../core/services/prompt_contract.py#L4006) |
-| function | `_output_discipline_instruction` | `(*, strength)` | Tiered output discipline (harness Part 1). BOTH tiers get 'synthesize & stop' (safe for weak — | [src](../../../core/services/prompt_contract.py#L4017) |
-| function | `_central_notices_section` | `()` | Medium-niveau Central-notices til Jarvis (spec 2026-06-23 §2). IKKE severe (dem | [src](../../../core/services/prompt_contract.py#L4037) |
-| function | `_pending_promises_section` | `(session_id)` | Bjørn-gate (16. jun 2026): rejs Jarvis' åbne fremtids-løfter prominent, så | [src](../../../core/services/prompt_contract.py#L4068) |
-| function | `_connected_connectors_section` | `()` | Surface brugerens FORBUNDNE plugins/connectors så Jarvis ved han har adgang. | [src](../../../core/services/prompt_contract.py#L4097) |
-| function | `_open_questions_section` | `(*, limit=…)` | Surface curiosity_daemon._open_questions into the visible prompt. | [src](../../../core/services/prompt_contract.py#L4142) |
-| function | `_time_pin_section` | `()` | Prominent, unmissable time indicator — placed high in every system prompt. | [src](../../../core/services/prompt_contract.py#L4171) |
-| function | `_quick_facts_section` | `(*, workspace_dir, max_chars=…)` | Always-on facts block. Unlike MEMORY.md, this is NOT relevance-filtered — | [src](../../../core/services/prompt_contract.py#L4209) |
-| function | `_visible_capability_truth_instruction` | `(*, compact)` | — | [src](../../../core/services/prompt_contract.py#L4232) |
-| function | `_visible_capability_id_summary` | `()` | — | [src](../../../core/services/prompt_contract.py#L4254) |
-| function | `_local_model_behavior_instruction` | `(*, workspace_dir)` | — | [src](../../../core/services/prompt_contract.py#L4262) |
-| function | `_visible_finitude_context_section` | `()` | — | [src](../../../core/services/prompt_contract.py#L4314) |
-| function | `_visible_support_signal_sections` | `(*, compact, include, user_message=…, session_id=…)` | — | [src](../../../core/services/prompt_contract.py#L4324) |
-| function | `_proactive_outbound_section` | `()` | Recent proactive messages Jarvis sent (substrate for user-reply context). | [src](../../../core/services/prompt_contract.py#L4365) |
-| function | `_agreement_streak_section` | `()` | Surface last 3+ agreement-opener assistant replies as substrate. | [src](../../../core/services/prompt_contract.py#L4381) |
-| function | `_emotion_concept_tone_section` | `()` | Affect-relevant runtime substrate (replaces tone-hint injection). | [src](../../../core/services/prompt_contract.py#L4395) |
-| function | `_emotion_signal_section` | `()` | Aktive emotion concepts som data — giver Jarvis sit eget følelsespanel. | [src](../../../core/services/prompt_contract.py#L4443) |
-| function | `_experience_substrate_section` | `(*, user_message=…, session_id=…)` | Nylige lignende situationer (embedding-retrieval substrat). | [src](../../../core/services/prompt_contract.py#L4545) |
-| function | `_delegated_continuity_summary` | `(context)` | — | [src](../../../core/services/prompt_contract.py#L4656) |
-| function | `_should_include_memory` | `(text, *, mode)` | — | [src](../../../core/services/prompt_contract.py#L4684) |
-| function | `_should_include_guidance` | `(text)` | — | [src](../../../core/services/prompt_contract.py#L4718) |
-| function | `_should_include_transcript` | `(text)` | — | [src](../../../core/services/prompt_contract.py#L4736) |
-| function | `_should_include_continuity` | `(text)` | — | [src](../../../core/services/prompt_contract.py#L4755) |
-| function | `prompt_mode_loader_summary` | `()` | — | [src](../../../core/services/prompt_contract.py#L4768) |
-| function | `_gem_kontekst_resume` | `(*, session_id, included_files, derived_inputs, excluded_files, chars, parts)` | Kompakt resumé af sidste turs prompt. Self-safe: fejl → ingenting. | [src](../../../core/services/prompt_contract.py#L4779) |
-| function | `kontekst_resume` | `(session_id)` | Sidste turs prompt-sammensætning. Tom dict hvis der ingen tur var. | [src](../../../core/services/prompt_contract.py#L4804) |
+| function | `_budgetter_index` | `(idx)` | Klip indekset til budgettet paa en LINJEGRAENSE og sig hvor meget der gik. | [src](../../../core/services/prompt_contract.py#L395) |
+| function | `_curated_memory_index_section` | `(name=…)` | Kurateret memory-INDEX (spec 2026-07-10 Spec B): altid-loadet én-linjers for | [src](../../../core/services/prompt_contract.py#L416) |
+| function | `build_visible_stable_prefix` | `(*, provider=…, model=…, name=…, compact=…)` | Build ONLY the stable cacheable prefix of a visible chat prompt. | [src](../../../core/services/prompt_contract.py#L465) |
+| function | `_device_awareness_on` | `()` | — | [src](../../../core/services/prompt_contract.py#L563) |
+| function | `_device_presence_line` | `(user_id)` | Hvilken enhed Bjørn er ved (routing-awareness). Killswitch-gatet, best-effort. | [src](../../../core/services/prompt_contract.py#L571) |
+| function | `_latest_user_msg_id` | `(session_id)` | Cheap indexed lookup of the newest USER message id for the session. It's the SAME | [src](../../../core/services/prompt_contract.py#L612) |
+| function | `build_visible_chat_prompt_assembly` | `(*, provider, model, user_message, session_id=…, name=…, runtime_self_report_context=…)` | Turn-scoped cached wrapper — see _ASSEMBLY_TURN_CACHE. Reuses round 0's assembly for | [src](../../../core/services/prompt_contract.py#L633) |
+| function | `_build_visible_chat_prompt_assembly_impl` | `(*, provider, model, user_message, session_id=…, name=…, runtime_self_report_context=…)` | — | [src](../../../core/services/prompt_contract.py#L670) |
+| function | `build_heartbeat_prompt_assembly` | `(*, heartbeat_context=…, name=…)` | — | [src](../../../core/services/prompt_contract.py#L3301) |
+| function | `build_future_agent_task_prompt_assembly` | `(*, task_brief, agent_context=…, name=…)` | — | [src](../../../core/services/prompt_contract.py#L3453) |
+| function | `_relevance_cache_key` | `(text, mode, compact, name)` | Build a string cache key for shared_cache (cross-worker visibility). | [src](../../../core/services/prompt_contract.py#L3583) |
+| function | `build_prompt_relevance_decision` | `(text, *, mode, compact, name=…)` | — | [src](../../../core/services/prompt_contract.py#L3590) |
+| function | `_bounded_nl_relevance_backend` | `(*, text, mode, compact, name)` | — | [src](../../../core/services/prompt_contract.py#L3710) |
+| function | `_track_inner_visible_prompt_bridge` | `(decision)` | — | [src](../../../core/services/prompt_contract.py#L3725) |
+| function | `_build_inner_visible_prompt_bridge_decision` | `(*, user_message, mode, compact, relevance)` | — | [src](../../../core/services/prompt_contract.py#L3755) |
+| function | `_latest_active_inner_visible_support_signal` | `()` | — | [src](../../../core/services/prompt_contract.py#L3834) |
+| function | `_inner_visible_support_bridge_is_redundant` | `(signal)` | — | [src](../../../core/services/prompt_contract.py#L3842) |
+| function | `_inner_visible_support_prompt_line` | `(signal)` | — | [src](../../../core/services/prompt_contract.py#L3852) |
+| function | `_self_mutation_lineage_section` | `()` | Returns a compact section about recent self-changes, or None if none. | [src](../../../core/services/prompt_contract.py#L3913) |
+| function | `_channel_workspace_path` | `()` | — | [src](../../../core/services/prompt_contract.py#L3945) |
+| function | `_channel_context_section` | `(session_id)` | Returns current channel context for the prompt, or None. | [src](../../../core/services/prompt_contract.py#L3949) |
+| function | `_visible_chat_rules_instruction` | `(*, workspace_dir)` | — | [src](../../../core/services/prompt_contract.py#L4029) |
+| function | `_self_correction_nudges_section` | `(*, compact)` | Consolidated into VISIBLE_CHAT_RULES.md (2026-07-22, prompt audit #1). | [src](../../../core/services/prompt_contract.py#L4046) |
+| function | `_output_discipline_instruction` | `(*, strength)` | Tiered output discipline (harness Part 1). BOTH tiers get 'synthesize & stop' (safe for weak — | [src](../../../core/services/prompt_contract.py#L4057) |
+| function | `_central_notices_section` | `()` | Medium-niveau Central-notices til Jarvis (spec 2026-06-23 §2). IKKE severe (dem | [src](../../../core/services/prompt_contract.py#L4077) |
+| function | `_pending_promises_section` | `(session_id)` | Bjørn-gate (16. jun 2026): rejs Jarvis' åbne fremtids-løfter prominent, så | [src](../../../core/services/prompt_contract.py#L4108) |
+| function | `_connected_connectors_section` | `()` | Surface brugerens FORBUNDNE plugins/connectors så Jarvis ved han har adgang. | [src](../../../core/services/prompt_contract.py#L4137) |
+| function | `_open_questions_section` | `(*, limit=…)` | Surface curiosity_daemon._open_questions into the visible prompt. | [src](../../../core/services/prompt_contract.py#L4182) |
+| function | `_time_pin_section` | `()` | Prominent, unmissable time indicator — placed high in every system prompt. | [src](../../../core/services/prompt_contract.py#L4211) |
+| function | `_quick_facts_section` | `(*, workspace_dir, max_chars=…)` | Always-on facts block. Unlike MEMORY.md, this is NOT relevance-filtered — | [src](../../../core/services/prompt_contract.py#L4249) |
+| function | `_visible_capability_truth_instruction` | `(*, compact)` | — | [src](../../../core/services/prompt_contract.py#L4272) |
+| function | `_visible_capability_id_summary` | `()` | — | [src](../../../core/services/prompt_contract.py#L4294) |
+| function | `_local_model_behavior_instruction` | `(*, workspace_dir)` | — | [src](../../../core/services/prompt_contract.py#L4302) |
+| function | `_visible_finitude_context_section` | `()` | — | [src](../../../core/services/prompt_contract.py#L4354) |
+| function | `_visible_support_signal_sections` | `(*, compact, include, user_message=…, session_id=…)` | — | [src](../../../core/services/prompt_contract.py#L4364) |
+| function | `_proactive_outbound_section` | `()` | Recent proactive messages Jarvis sent (substrate for user-reply context). | [src](../../../core/services/prompt_contract.py#L4405) |
+| function | `_agreement_streak_section` | `()` | Surface last 3+ agreement-opener assistant replies as substrate. | [src](../../../core/services/prompt_contract.py#L4421) |
+| function | `_emotion_concept_tone_section` | `()` | Affect-relevant runtime substrate (replaces tone-hint injection). | [src](../../../core/services/prompt_contract.py#L4435) |
+| function | `_emotion_signal_section` | `()` | Aktive emotion concepts som data — giver Jarvis sit eget følelsespanel. | [src](../../../core/services/prompt_contract.py#L4483) |
+| function | `_experience_substrate_section` | `(*, user_message=…, session_id=…)` | Nylige lignende situationer (embedding-retrieval substrat). | [src](../../../core/services/prompt_contract.py#L4585) |
+| function | `_delegated_continuity_summary` | `(context)` | — | [src](../../../core/services/prompt_contract.py#L4696) |
+| function | `_should_include_memory` | `(text, *, mode)` | — | [src](../../../core/services/prompt_contract.py#L4724) |
+| function | `_should_include_guidance` | `(text)` | — | [src](../../../core/services/prompt_contract.py#L4758) |
+| function | `_should_include_transcript` | `(text)` | — | [src](../../../core/services/prompt_contract.py#L4776) |
+| function | `_should_include_continuity` | `(text)` | — | [src](../../../core/services/prompt_contract.py#L4795) |
+| function | `prompt_mode_loader_summary` | `()` | — | [src](../../../core/services/prompt_contract.py#L4808) |
+| function | `_gem_kontekst_resume` | `(*, session_id, included_files, derived_inputs, excluded_files, chars, parts)` | Kompakt resumé af sidste turs prompt. Self-safe: fejl → ingenting. | [src](../../../core/services/prompt_contract.py#L4819) |
+| function | `kontekst_resume` | `(session_id)` | Sidste turs prompt-sammensætning. Tom dict hvis der ingen tur var. | [src](../../../core/services/prompt_contract.py#L4844) |
 
 ## `core/services/prompt_evolution.py`
 _Prompt evolution — versioning + rollback safety net for workspace prompts._
@@ -657,14 +673,4 @@ _One recall path over every memory source (memory repair 2026-09-04, R5)._
 | function | `fuse` | `(query, candidates)` | Re-score candidates: 0.6 × native + 0.4 × BM25 (over the candidate texts), | [src](../../../core/services/recall.py#L237) |
 | function | `empty_message` | `(query)` | — | [src](../../../core/services/recall.py#L281) |
 | function | `recall` | `(query, *, limit=…, sources=…, session_id=…, min_score=…, per_source=…)` | Search every memory source with one fused ranking. | [src](../../../core/services/recall.py#L285) |
-
-## `core/services/recall_scheduler.py`
-_core/services/recall_scheduler.py_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `background_recall_enabled` | `()` | Er baggrunds-recall aktiv? Default True. Self-safe → True (den nye, hurtige sti). | [src](../../../core/services/recall_scheduler.py#L38) |
-| function | `_build_emotional_state` | `()` | Byg emotionel baseline til scoringen (samme kilde som cognitive_state_assembly). | [src](../../../core/services/recall_scheduler.py#L48) |
-| function | `_run_recall` | `(message_text, emotional_state)` | — | [src](../../../core/services/recall_scheduler.py#L61) |
-| function | `trigger_background_recall` | `(user_message, emotional_state=…)` | Kør ``recall_for_message`` i en baggrundstråd, kædet på den rigtige besked. | [src](../../../core/services/recall_scheduler.py#L73) |
 

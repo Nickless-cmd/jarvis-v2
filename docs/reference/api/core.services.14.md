@@ -2,6 +2,13 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/internal_cadence_maintenance.py`
+_Maintenance / health cadence producers (split from internal_cadence.py)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `register_maintenance_producers` | `(register_producer)` | Register the maintenance / health producers (unchanged order/timing). | [src](../../../core/services/internal_cadence_maintenance.py#L23) |
+
 ## `core/services/internal_cadence_matrix.py`
 _Matrix-themed cadence producers (split from internal_cadence.py)._
 
@@ -317,7 +324,12 @@ _Efterfyld en session i ledgeren og slå skyggen til._
 | function | `_kolonner` | `(conn)` | — | [src](../../../core/services/ledger_canary.py#L44) |
 | function | `backfill` | `(session_id)` | Skriv sessionens eksisterende beskeder ind i ledgeren. Idempotent. | [src](../../../core/services/ledger_canary.py#L49) |
 | function | `enable_shadow` | `(session_id)` | Efterfyld, slå skyggen til, og MÅL med det samme om det holdt. | [src](../../../core/services/ledger_canary.py#L110) |
-| function | `reseed` | `(session_id)` | Skriv sessionens ledger-hændelser HELT om, i tabellens rækkefølge. | [src](../../../core/services/ledger_canary.py#L138) |
+| function | `reseed` | `(session_id)` | Skriv sessionens ledger-hændelser HELT om, i tabellens rækkefølge. | [src](../../../core/services/ledger_canary.py#L145) |
+| function | `_arm_sti` | `()` | — | [src](../../../core/services/ledger_canary.py#L194) |
+| function | `arm_next_session` | `(*, note=…)` | Indrullér den NAESTE nye chat-session i skyggen. Én gang. | [src](../../../core/services/ledger_canary.py#L199) |
+| function | `is_armed` | `()` | — | [src](../../../core/services/ledger_canary.py#L215) |
+| function | `disarm` | `()` | — | [src](../../../core/services/ledger_canary.py#L223) |
+| function | `maybe_enroll_new_session` | `(session_id)` | Kaldes naar en ny session oprettes. Fejler ALDRIG opad. | [src](../../../core/services/ledger_canary.py#L230) |
 
 ## `core/services/ledger_recovery.py`
 _Afbrudte sessioner: se på dem uden at røre dem, og luk dem kun med skriveret._
@@ -611,18 +623,4 @@ _Rekonstruér markdown-blokstruktur fra inline-markører._
 | function | `_ensure_blank_before_lists` | `(text)` | Indsæt en blank linje før første bullet i en liste der følger prosa, så | [src](../../../core/services/markdown_structure.py#L136) |
 | function | `_normalize_segment` | `(text)` | — | [src](../../../core/services/markdown_structure.py#L150) |
 | function | `normalize_markdown_structure` | `(text)` | Genskab blokstruktur fra inline-markører. Beskytter kode-fences. | [src](../../../core/services/markdown_structure.py#L169) |
-
-## `core/services/mcp_auth.py`
-_OAuth/bearer til remote MCP-servere._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_expand_env` | `(value)` | `${MIN_NOEGLE}` slaas op i miljoeet, saa en config kan deles uden token. | [src](../../../core/services/mcp_auth.py#L33) |
-| function | `_load` | `()` | — | [src](../../../core/services/mcp_auth.py#L38) |
-| function | `_save` | `(data)` | — | [src](../../../core/services/mcp_auth.py#L45) |
-| function | `get_token` | `(name)` | — | [src](../../../core/services/mcp_auth.py#L54) |
-| function | `set_token` | `(name, *, access_token, refresh_token=…, expires_in=…, token_url=…, client_id=…, client_secret=…)` | — | [src](../../../core/services/mcp_auth.py#L59) |
-| function | `needs_refresh` | `(name)` | — | [src](../../../core/services/mcp_auth.py#L81) |
-| function | `refresh` | `(name)` | Kør refresh_token-grantet. False = intet at fornye, eller det fejlede. | [src](../../../core/services/mcp_auth.py#L91) |
-| function | `resolve_headers` | `(name, config)` | Headers til en request mod *name*. | [src](../../../core/services/mcp_auth.py#L117) |
 

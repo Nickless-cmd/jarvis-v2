@@ -72,6 +72,14 @@ def create_chat_session(
             (session_id, normalized_title, created_at, created_at,
              (workspace_kind or None), (workspace_root or None)),
         )
+    # Ledger-kanariefugl (fase 11): er den armet, baerer DENNE session
+    # observationsvinduet. Fail-safe — en kanariefugl maa aldrig kunne vaelte
+    # oprettelsen af en samtale.
+    try:
+        from core.services.ledger_canary import maybe_enroll_new_session
+        maybe_enroll_new_session(session_id)
+    except Exception:
+        pass
     return get_chat_session(session_id) or {
         "session_id": session_id,
         "title": normalized_title,

@@ -2,6 +2,21 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/monitor_streams.py`
+_Pinned monitors — Jarvis' equivalent of Claude Code's Monitor tool._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_load` | `()` | — | [src](../../../core/services/monitor_streams.py#L40) |
+| function | `_save` | `(monitors)` | — | [src](../../../core/services/monitor_streams.py#L47) |
+| function | `_session_monitors` | `(session_id)` | — | [src](../../../core/services/monitor_streams.py#L51) |
+| function | `open_monitor` | `(*, session_id, source, label=…, pattern=…)` | — | [src](../../../core/services/monitor_streams.py#L56) |
+| function | `close_monitor` | `(monitor_id)` | — | [src](../../../core/services/monitor_streams.py#L115) |
+| function | `list_monitors` | `(session_id)` | — | [src](../../../core/services/monitor_streams.py#L124) |
+| function | `_drain_eventbus` | `(rec)` | — | [src](../../../core/services/monitor_streams.py#L128) |
+| function | `_drain_file` | `(rec)` | — | [src](../../../core/services/monitor_streams.py#L166) |
+| function | `monitor_digest_section` | `(session_id)` | Format new matches across all this session's monitors. Side effect: | [src](../../../core/services/monitor_streams.py#L196) |
+
 ## `core/services/mood_dialer.py`
 _Mood Dialer — humør til gradueret initiativ-parametre._
 
@@ -628,12 +643,4 @@ _Parallel Selves — internal sub-selves._
 | function | `describe_self_plural` | `()` | — | [src](../../../core/services/parallel_selves.py#L23) |
 | function | `format_self_for_prompt` | `()` | — | [src](../../../core/services/parallel_selves.py#L26) |
 | function | `build_parallel_selves_surface` | `()` | — | [src](../../../core/services/parallel_selves.py#L29) |
-
-## `core/services/past_context_router.py`
-_Past-context cue router for visible prompts._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `needs_past_context` | `(user_message)` | Return True when a user turn likely depends on prior conversation. | [src](../../../core/services/past_context_router.py#L20) |
-| function | `build_past_context_section` | `(user_message, *, session_id=…, limit=…)` | Render a compact context block from summaries/chat when cues warrant it. | [src](../../../core/services/past_context_router.py#L28) |
 

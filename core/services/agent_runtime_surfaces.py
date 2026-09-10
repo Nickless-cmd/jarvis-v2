@@ -87,6 +87,12 @@ def enrich_agent_surface(agent: dict[str, object]) -> dict[str, object]:
         "latest_message": messages[-1] if messages else None,
         "latest_tool_call": tool_calls[0] if tool_calls else None,
         "progress_label": _progress_label(agent=agent, latest_run=latest_run),
+        # Fase 9: hvad GJALDT der for den seneste koersel. Uden dette kan
+        # ingen flade svare paa «saa den alle vaerktoejer?» eller «var bash i
+        # sandkasse?» — og et tavst tab af scope i en baggrundstraad kunne kun
+        # bevises med en subproces-test.
+        "effective_policy": (latest_run or {}).get("policy") or {},
+        "policy_hash": str((latest_run or {}).get("policy_hash") or ""),
     }
 
 

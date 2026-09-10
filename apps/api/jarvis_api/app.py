@@ -425,6 +425,18 @@ def create_app() -> FastAPI:
             except Exception as _exc:
                 logger.warning("user_temperature_runtime start failed: %s", _exc)
             try:
+                # Fase 11: udloebne intentioner der aldrig blev spurgt til igen.
+                # Udloebet er DOVENT — det sker kun ved et nyt opslag — saa en
+                # glemt intention staar `pending` for evigt.
+                from core.services.tool_intent_approval_runtime import (
+                    sweep_expired_intents,
+                )
+                _int = sweep_expired_intents()
+                if _int.get("lukket"):
+                    logger.info("udloebne intentioner lukket: %s", _int)
+            except Exception as _exc:
+                logger.warning("intentions-fejning fejlede: %s", _exc)
+            try:
                 # Fase 8: et raad hvis proces doede staar i «deliberating» for
                 # evigt — `run_council_round`s finally naar ikke at koere.
                 from core.services.council_settlement import (

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7234/14239 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7247/14260 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -23,8 +23,8 @@ Generated from source. 7234/14239 functions/methods documented (50%). The list b
 | `core.identity` | 66 | 159 | 41% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 608 | 1127 | 53% |
-| `core.services` | 4804 | 9809 | 48% |
+| `core.runtime` | 609 | 1129 | 53% |
+| `core.services` | 4816 | 9828 | 49% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 108 | 184 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -40,7 +40,7 @@ Generated from source. 7234/14239 functions/methods documented (50%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2031)
+## Undocumented public functions (2032)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L201)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -518,7 +518,6 @@ Generated from source. 7234/14239 functions/methods documented (50%). The list b
 - `core/runtime/settings.py` :: `update_visible_execution_settings` (L1100)
 - `core/services/absence_daemon.py` :: `build_absence_surface` (L155)
 - `core/services/absence_daemon.py` :: `get_latest_absence` (L151)
-- `core/services/account_data_controls.py` :: `export_json` (L341)
 - `core/services/action_router.py` :: `build_action_router_surface` (L617)
 - `core/services/action_router.py` :: `recent_actions` (L609)
 - `core/services/action_router.py` :: `recent_proactive` (L613)
@@ -558,12 +557,12 @@ Generated from source. 7234/14239 functions/methods documented (50%). The list b
 - `core/services/agent_runtime_spawn.py` :: `send_peer_message` (L888)
 - `core/services/agent_runtime_spawn.py` :: `spawn_agent_task` (L92)
 - `core/services/agent_runtime_spawn.py` :: `suspend_agent` (L1319)
-- `core/services/agent_runtime_surfaces.py` :: `build_agent_detail_surface` (L93)
+- `core/services/agent_runtime_surfaces.py` :: `build_agent_detail_surface` (L99)
 - `core/services/agent_runtime_surfaces.py` :: `build_agent_runtime_surface` (L30)
-- `core/services/agent_runtime_surfaces.py` :: `build_council_detail_surface` (L137)
-- `core/services/agent_runtime_surfaces.py` :: `build_council_surface` (L100)
+- `core/services/agent_runtime_surfaces.py` :: `build_council_detail_surface` (L143)
+- `core/services/agent_runtime_surfaces.py` :: `build_council_surface` (L106)
 - `core/services/agent_runtime_surfaces.py` :: `enrich_agent_surface` (L62)
-- `core/services/agent_runtime_surfaces.py` :: `enrich_council_surface` (L124)
+- `core/services/agent_runtime_surfaces.py` :: `enrich_council_surface` (L130)
 - `core/services/agent_self_evaluation.py` :: `stale_goals_section` (L305)
 - `core/services/agent_skill_distiller.py` :: `distill_all_known_roles` (L133)
 - `core/services/agent_skill_library.py` :: `list_skill_mutations` (L217)
@@ -720,7 +719,7 @@ Generated from source. 7234/14239 functions/methods documented (50%). The list b
 - `core/services/central_injection_units.py` :: `register_default_units` (L44)
 - `core/services/central_instrument.py` :: `Finding.signature` (L66)
 - `core/services/central_keymaker.py` :: `list_keys` (L256)
-- `core/services/central_learning.py` :: `learning_summary` (L231)
+- `core/services/central_learning.py` :: `learning_summary` (L239)
 - `core/services/central_lexicon.py` :: `active_terms` (L185)
 - `core/services/central_lexicon.py` :: `operators` (L189)
 - `core/services/central_machines.py` :: `build_machines_surface` (L73)
@@ -763,13 +762,13 @@ Generated from source. 7234/14239 functions/methods documented (50%). The list b
 - `core/services/central_trace.py` :: `sink` (L96)
 - `core/services/central_white_rabbit.py` :: `build_white_rabbit_surface` (L58)
 - `core/services/central_white_rabbit.py` :: `record_white_rabbit` (L62)
-- `core/services/chat_sessions.py` :: `append_chat_message` (L405)
+- `core/services/chat_sessions.py` :: `append_chat_message` (L413)
 - `core/services/chat_sessions.py` :: `create_chat_session` (L54)
-- `core/services/chat_sessions.py` :: `delete_chat_session` (L1078)
-- `core/services/chat_sessions.py` :: `get_chat_session` (L338)
-- `core/services/chat_sessions.py` :: `recent_chat_session_messages` (L758)
-- `core/services/chat_sessions.py` :: `recent_chat_tool_messages` (L1039)
-- `core/services/chat_sessions.py` :: `rename_chat_session` (L1064)
+- `core/services/chat_sessions.py` :: `delete_chat_session` (L1086)
+- `core/services/chat_sessions.py` :: `get_chat_session` (L346)
+- `core/services/chat_sessions.py` :: `recent_chat_session_messages` (L766)
+- `core/services/chat_sessions.py` :: `recent_chat_tool_messages` (L1047)
+- `core/services/chat_sessions.py` :: `rename_chat_session` (L1072)
 - `core/services/cheap_lane_balancer.py` :: `BalancerSlot.slot_id` (L33)
 - `core/services/cheap_provider_runtime_adapters.py` :: `list_provider_models` (L180)
 - `core/services/cheap_provider_runtime_adapters.py` :: `provider_auth_ready` (L135)
@@ -1111,6 +1110,8 @@ Generated from source. 7234/14239 functions/methods documented (50%). The list b
 - `core/services/layer_tension_daemon.py` :: `build_layer_tension_surface` (L194)
 - `core/services/layer_tension_daemon.py` :: `get_active_tensions` (L190)
 - `core/services/learning_policy_engine.py` :: `build_learning_policy_prompt_section` (L130)
+- `core/services/ledger_canary.py` :: `disarm` (L223)
+- `core/services/ledger_canary.py` :: `is_armed` (L215)
 - `core/services/life_milestones.py` :: `build_life_milestones_surface` (L88)
 - `core/services/life_projects.py` :: `abandon_life_project` (L50)
 - `core/services/life_projects.py` :: `build_life_projects_surface` (L36)
@@ -1349,13 +1350,13 @@ Generated from source. 7234/14239 functions/methods documented (50%). The list b
 - `core/services/projection_chat_messages.py` :: `register` (L171)
 - `core/services/projection_runtime.py` :: `registered` (L80)
 - `core/services/prompt_cache_probe.py` :: `ProbeVerdict.as_line` (L61)
-- `core/services/prompt_contract.py` :: `build_future_agent_task_prompt_assembly` (L3413)
-- `core/services/prompt_contract.py` :: `build_heartbeat_prompt_assembly` (L3261)
-- `core/services/prompt_contract.py` :: `build_prompt_relevance_decision` (L3550)
+- `core/services/prompt_contract.py` :: `build_future_agent_task_prompt_assembly` (L3453)
+- `core/services/prompt_contract.py` :: `build_heartbeat_prompt_assembly` (L3301)
+- `core/services/prompt_contract.py` :: `build_prompt_relevance_decision` (L3590)
 - `core/services/prompt_contract.py` :: `build_runtime_inner_visible_prompt_bridge_surface` (L151)
 - `core/services/prompt_contract.py` :: `build_runtime_memory_selection_surface` (L99)
 - `core/services/prompt_contract.py` :: `build_runtime_relevance_decision_surface` (L126)
-- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4768)
+- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4808)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_from_inputs` (L179)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_runtime_surface` (L424)
 - `core/services/prompt_mutation_loop.py` :: `build_prompt_mutation_loop_prompt_section` (L528)

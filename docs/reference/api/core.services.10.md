@@ -488,6 +488,21 @@ _Git-checkpoint pr. redigeringsrunde — en dårlig runde kan rulles tilbage sam
 | function | `rollback_last` | `(session_id)` | Gendan filerne fra seneste checkpoint. Popper stakken. | [src](../../../core/services/edit_checkpoint.py#L105) |
 | function | `clear` | `(session_id)` | — | [src](../../../core/services/edit_checkpoint.py#L127) |
 
+## `core/services/effective_policy.py`
+_Hvad GJALDT der faktisk for denne koersel — Fase 9._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_tool_scope` | `()` | — | [src](../../../core/services/effective_policy.py#L36) |
+| function | `_autonom` | `()` | — | [src](../../../core/services/effective_policy.py#L44) |
+| function | `_sandkasse` | `()` | (slaaet_til, kraevet_for_denne_koersel) — anmodet vs faktisk. | [src](../../../core/services/effective_policy.py#L52) |
+| function | `_tillid` | `()` | — | [src](../../../core/services/effective_policy.py#L70) |
+| function | `_ejer_godkendt` | `()` | — | [src](../../../core/services/effective_policy.py#L78) |
+| function | `snapshot` | `(**ekstra)` | Tag et oejebliksbillede af den politik der gaelder LIGE NU. | [src](../../../core/services/effective_policy.py#L86) |
+| function | `_maal` | `()` | — | [src](../../../core/services/effective_policy.py#L110) |
+| function | `_hash` | `(felter)` | sha256 over de politik-baerende felter — uden tidsstempler og id'er, | [src](../../../core/services/effective_policy.py#L129) |
+| function | `afviger` | `(a, b)` | Hvilke politik-felter er forskellige? Til at forklare et hash-skift. | [src](../../../core/services/effective_policy.py#L142) |
+
 ## `core/services/egress_guard.py`
 _SSRF-vaern for udgaaende hentninger — porteret fra jarvis-code._
 
@@ -678,15 +693,4 @@ _Emotion Repair Bridge Daemon — tovejskobling mellem emotion-signaler og selvr
 | function | `_tick_emotion_repair_bridge_inner` | `()` | Inner tick logic — wrapped by tick_emotion_repair_bridge for bærekraft. | [src](../../../core/services/emotion_repair_bridge_daemon.py#L201) |
 | function | `_bridge_repair_to_senses` | `(*, action_type, pattern_id, outcome, concept, error_summary=…)` | Write a sensory impression to Sansernes Arkiv when self-repair happens. | [src](../../../core/services/emotion_repair_bridge_daemon.py#L377) |
 | function | `_execute_repair_action` | `(action_type, pattern_id)` | Execute a repair action by type. Can be extended. | [src](../../../core/services/emotion_repair_bridge_daemon.py#L428) |
-
-## `core/services/emotion_tagging.py`
-_Emotion tagging — capture affective context at memory-creation time._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `current_emotion_tag` | `()` | Snapshot current affective state for tagging a new memory. | [src](../../../core/services/emotion_tagging.py#L25) |
-| function | `format_emotion_tag` | `(tag)` | Render a tag as a compact string for inclusion in memory text. | [src](../../../core/services/emotion_tagging.py#L53) |
-| function | `_exec_capture_emotion_tag` | `(args)` | — | [src](../../../core/services/emotion_tagging.py#L69) |
-| function | `build_emotion_tagging_surface` | `()` | — | [src](../../../core/services/emotion_tagging.py#L90) |
-| function | `_emit_tagging_event` | `(tag, intensity)` | — | [src](../../../core/services/emotion_tagging.py#L99) |
 

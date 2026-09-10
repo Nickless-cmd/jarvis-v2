@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/past_context_router.py`
+_Past-context cue router for visible prompts._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `needs_past_context` | `(user_message)` | Return True when a user turn likely depends on prior conversation. | [src](../../../core/services/past_context_router.py#L20) |
+| function | `build_past_context_section` | `(user_message, *, session_id=…, limit=…)` | Render a compact context block from summaries/chat when cues warrant it. | [src](../../../core/services/past_context_router.py#L28) |
+
 ## `core/services/paste_store.py`
 _Paste-store: eksternalisér store bruger-pastes med en kompakt reference._
 
@@ -667,18 +675,4 @@ _Process watcher — push-notification primitive for Jarvis._
 | function | `_watcher_loop` | `()` | — | [src](../../../core/services/process_watcher.py#L580) |
 | function | `start_watcher_daemon` | `()` | Start the daemon if not already running. Called once at jarvis-api boot. | [src](../../../core/services/process_watcher.py#L597) |
 | function | `stop_watcher_daemon` | `()` | Signal the daemon to exit. For tests / shutdown hooks. | [src](../../../core/services/process_watcher.py#L609) |
-
-## `core/services/producer_novelty.py`
-_core/services/producer_novelty.py_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `infer_caller` | `()` | Gæt den originerende service fra call-stacken når cadence-thread-local mangler (fx | [src](../../../core/services/producer_novelty.py#L34) |
-| function | `set_producer` | `(name)` | Sæt hvilken producer der kører NU (cadence-tråden). Self-safe. | [src](../../../core/services/producer_novelty.py#L58) |
-| function | `clear_producer` | `()` | — | [src](../../../core/services/producer_novelty.py#L66) |
-| function | `get_producer` | `()` | — | [src](../../../core/services/producer_novelty.py#L73) |
-| function | `_similarity` | `(a, b)` | — | [src](../../../core/services/producer_novelty.py#L77) |
-| function | `record_output` | `(producer, text)` | Registrér en producers LLM-output + mål nyhed = 1 - (max-lighed vs dens seneste N). | [src](../../../core/services/producer_novelty.py#L84) |
-| function | `snapshot` | `()` | Read-only overblik: pr. producer antal kald + gennemsnitlig nyhed. Lav avg = repetitiv | [src](../../../core/services/producer_novelty.py#L115) |
-| function | `_reset_for_tests` | `()` | — | [src](../../../core/services/producer_novelty.py#L127) |
 

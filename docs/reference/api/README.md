@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 14239 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 14260 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -37,22 +37,22 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 14239 functions/
 - [`core.services.07`](core.services.07.md) — `child_authority` … `consent_registry`
 - [`core.services.08`](core.services.08.md) — `consolidation_judge_daemon` … `current_pull`
 - [`core.services.09`](core.services.09.md) — `daemon_health` … `discord_config`
-- [`core.services.10`](core.services.10.md) — `discord_gateway` … `emotion_tagging`
-- [`core.services.11`](core.services.11.md) — `emotional_chords` … `forgetting_engine`
-- [`core.services.12`](core.services.12.md) — `forgetting_runtime` … `hardware_body`
-- [`core.services.13`](core.services.13.md) — `heartbeat_action_hints` … `internal_cadence_maintenance`
-- [`core.services.14`](core.services.14.md) — `internal_cadence_matrix` … `mcp_auth`
-- [`core.services.15`](core.services.15.md) — `mcp_client` … `monitor_streams`
-- [`core.services.16`](core.services.16.md) — `mood_dialer` … `past_context_router`
-- [`core.services.17`](core.services.17.md) — `paste_store` … `producer_novelty`
-- [`core.services.18`](core.services.18.md) — `projection_chat_messages` … `recall_scheduler`
-- [`core.services.19`](core.services.19.md) — `recurrence_loop_daemon` … `runtime_decision_engine`
-- [`core.services.20`](core.services.20.md) — `runtime_flows` … `self_repair_engine`
-- [`core.services.21`](core.services.21.md) — `self_review_cadence_signal_tracking` … `signal_delta_trigger`
-- [`core.services.22`](core.services.22.md) — `signal_network_visualizer` … `system_cartographer`
-- [`core.services.23`](core.services.23.md) — `task_worker` … `tool_usage_store`
-- [`core.services.24`](core.services.24.md) — `tool_world_change` … `visible_run_abandonment`
-- [`core.services.25`](core.services.25.md) — `visible_run_outcome_state` … `world_model_signal_tracking`
+- [`core.services.10`](core.services.10.md) — `discord_gateway` … `emotion_repair_bridge_daemon`
+- [`core.services.11`](core.services.11.md) — `emotion_tagging` … `forgetting_curve`
+- [`core.services.12`](core.services.12.md) — `forgetting_engine` … `hallucination_guard`
+- [`core.services.13`](core.services.13.md) — `hardware_body` … `internal_cadence_inner_life`
+- [`core.services.14`](core.services.14.md) — `internal_cadence_maintenance` … `markdown_structure`
+- [`core.services.15`](core.services.15.md) — `mcp_auth` … `modulator_witness`
+- [`core.services.16`](core.services.16.md) — `monitor_streams` … `parallel_selves`
+- [`core.services.17`](core.services.17.md) — `past_context_router` … `process_watcher`
+- [`core.services.18`](core.services.18.md) — `producer_novelty` … `recall`
+- [`core.services.19`](core.services.19.md) — `recall_scheduler` … `runtime_cognitive_conductor`
+- [`core.services.20`](core.services.20.md) — `runtime_decision_engine` … `self_narrative_self_model_review_bridge`
+- [`core.services.21`](core.services.21.md) — `self_repair_engine` … `signal_decay_daemon`
+- [`core.services.22`](core.services.22.md) — `signal_delta_trigger` … `sustained_attention`
+- [`core.services.23`](core.services.23.md) — `system_cartographer` … `tool_tagger`
+- [`core.services.24`](core.services.24.md) — `tool_usage_store` … `visible_model_types`
+- [`core.services.25`](core.services.25.md) — `visible_run_abandonment` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

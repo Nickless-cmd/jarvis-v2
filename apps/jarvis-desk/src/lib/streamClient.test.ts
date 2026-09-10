@@ -72,21 +72,94 @@ describe('startStream R1-R3', () => {
     }
   })
 
-  it('does NOT auto-reconnect (re-POST) on broken stream when autoReconnect=false', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(sseResponse([
-      'event: message_start\ndata: {"type":"message_start","message":{"id":"r","model":"m","provider":"p","lane":"l","session_id":"s","usage":{"input_tokens":0,"output_tokens":0}}}\n\n',
-      // stream lukker uden message_stop → interrupted
-    ]))
+  // FASE 10. Testen her haevdede foer at klienten GAV OP paa et brudt stream.
+  // Den beskyttede konklusionen, ikke praemissen. Praemissen — «aldrig en
+  // re-POST, for den ville duplikere brugerbeskeden og lave et nyt run» — er
+  // stadig sand og staar nu direkte i asserts. Men re-POST er ikke den eneste
+  // genforbindelse: serveren har en run-log, og `subscribe` er en REN
+  // LAESNING fra et vandmaerke. Mobil-klienten har brugt den hele tiden.
+  it('genoptager via GET subscribe i stedet for at give op — og re-POSTer ALDRIG', async () => {
+    const kald: Array<{ url: string; method: string }> = []
+    const fetchMock = vi.fn(async (url: string, init?: { method?: string }) => {
+      kald.push({ url: String(url), method: String(init?.method ?? 'GET') })
+      if (kald.length === 1) {
+        // Foerste forbindelse: run_id kommer, saa brister stroemmen.
+        return sseResponse([
+          'event: message_start\ndata: {"type":"message_start","message":{"id":"r1","model":"m","provider":"p","lane":"l","session_id":"s","usage":{"input_tokens":0,"output_tokens":0}}}\n\n',
+        ])
+      }
+      return sseResponse([
+        'event: message_stop\ndata: {"type":"message_stop"}\n\n',
+      ])
+    })
     vi.stubGlobal('fetch', fetchMock)
-    let interrupted = false
+
+    let genforbandt = 0
+    let afbrudt = false
     await new Promise<void>((resolve) => {
       startStream(
         { apiBaseUrl: 'http://t', authToken: null, sessionId: 's', message: 'hi' },
-        { onEvent: () => {}, onInterrupted: () => { interrupted = true; resolve() }, onError: () => resolve() },
+        {
+          onEvent: () => {},
+          onReconnecting: () => { genforbandt += 1 },
+          onInterrupted: () => { afbrudt = true; resolve() },
+          onComplete: () => resolve(),
+          onError: () => resolve(),
+        },
       )
     })
-    expect(interrupted).toBe(true)
-    expect(fetchMock).toHaveBeenCalledTimes(1) // ingen re-POST
+
+    expect(genforbandt).toBeGreaterThan(0)
+    expect(afbrudt).toBe(false)
+    expect(kald.length).toBeGreaterThan(1)
+    // PRAEMISSEN: praecis ÉN POST. Alt andet er laesninger.
+    expect(kald.filter((k) => k.method === 'POST')).toHaveLength(1)
+    const genoptagelse = kald[1]!
+    expect(genoptagelse.method).toBe('GET')
+    expect(genoptagelse.url).toContain('/chat/runs/r1/subscribe')
+    expect(genoptagelse.url).toContain('from_idx=1')     // én frame set
+  })
+
+  it('giver op naar run_id er ukendt — der er intet at genoptage', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(sseResponse([]))
+    vi.stubGlobal('fetch', fetchMock)
+    let afbrudt = false
+    await new Promise<void>((resolve) => {
+      startStream(
+        { apiBaseUrl: 'http://t', authToken: null, sessionId: 's', message: 'hi' },
+        { onEvent: () => {}, onInterrupted: () => { afbrudt = true; resolve() },
+          onError: () => resolve() },
+      )
+    })
+    expect(afbrudt).toBe(true)
+    expect(fetchMock).toHaveBeenCalledTimes(1)      // ingen re-POST
+  })
+
+  it('404 paa genoptagelse er FAERDIG, ikke fejl', async () => {
+    // Runnet blev faerdigt og ryddet server-side mens vi var vaek. Svaret
+    // ligger i sessionen; UI'et henter det ved naeste select.
+    let n = 0
+    vi.stubGlobal('fetch', vi.fn(async () => {
+      n += 1
+      if (n === 1) {
+        return sseResponse([
+          'event: message_start\ndata: {"type":"message_start","message":{"id":"r9","model":"m","provider":"p","lane":"l","session_id":"s","usage":{"input_tokens":0,"output_tokens":0}}}\n\n',
+        ])
+      }
+      return { ok: false, status: 404, body: null } as unknown as Response
+    }))
+    let faerdig = false
+    let fejl = false
+    await new Promise<void>((resolve) => {
+      startStream(
+        { apiBaseUrl: 'http://t', authToken: null, sessionId: 's', message: 'hi' },
+        { onEvent: () => {}, onComplete: () => { faerdig = true; resolve() },
+          onInterrupted: () => resolve(),
+          onError: () => { fejl = true; resolve() } },
+      )
+    })
+    expect(faerdig).toBe(true)
+    expect(fejl).toBe(false)
   })
 
   it('returns an abort handle with getRunId', async () => {

@@ -7289,12 +7289,35 @@ def _publish_agentic_round_start(*, run_id: str, round_num: int) -> int:
         "runtime.agentic_round_start",
         {"run_id": run_id, "round": round_num},
     )
+    # SPOERG EFTER SIN EGEN EVENT (fase 10). Foer stod her «nyeste af sin
+    # slags», og begge units koerer samme app — saa en samtidig runde i den
+    # ANDEN proces kunne blive kaedens foraelder. MAALT: 240 af 5.457
+    # runde-start-events (4,4 %) har en soeskende inden for ét sekund, saa det
+    # er ikke teoretisk. Telemetri maa registrere arbejde, ikke forveksle det.
     with connect() as conn:
-        row = conn.execute(
-            "SELECT id FROM events WHERE kind = ? "
-            "ORDER BY id DESC LIMIT 1",
-            ("runtime.agentic_round_start",),
-        ).fetchone()
+        row = None
+        try:
+            row = conn.execute(
+                "SELECT id FROM events WHERE kind = ? "
+                "AND json_valid(payload_json) "
+                "AND json_extract(payload_json, '$.run_id') = ? "
+                "AND json_extract(payload_json, '$.round') = ? "
+                "ORDER BY id DESC LIMIT 1",
+                ("runtime.agentic_round_start", run_id, round_num),
+            ).fetchone()
+        except Exception:
+            # `json_extract` KASTER paa ugyldig JSON — den giver ikke NULL. Uden
+            # `json_valid` foran ville én oedelagt raekke vaelte hele opslaget,
+            # og faldbacken nedenfor (som kun saa efter `None`) ville aldrig
+            # koere. Min egen test fandt det.
+            row = None
+        if row is None:
+            # Aeldre rakker uden brugbar payload, eller en sqlite uden JSON1:
+            # fald tilbage til den gamle adfaerd frem for at tabe kaeden helt.
+            row = conn.execute(
+                "SELECT id FROM events WHERE kind = ? ORDER BY id DESC LIMIT 1",
+                ("runtime.agentic_round_start",),
+            ).fetchone()
     return int(row["id"]) if row else 0
 
 

@@ -72,6 +72,52 @@ def test_record_dedup_false_preserves_distinct_rows(isolated_runtime):
     assert a is not None and b is not None and a != b  # default: distinkte rækker bevaret
 
 
+def test_expire_gate_enforce_incidents_closes_only_old_cognitive(isolated_runtime):
+    """Kognitive governance-hændelser (gate_enforce/info) er ØJEBLIKKE, ikke defekter: gamle
+    lukkes, ferske bevares — men en SECURITY-RED (severe) og ægte fejl røres ALDRIG."""
+    from datetime import UTC, datetime, timedelta
+
+    from core.runtime.db_central_incidents import (
+        expire_gate_enforce_incidents, list_central_incidents, record_central_incident,
+    )
+    from core.runtime.db_core import connect
+
+    old = record_central_incident(cluster="proactivity", nerve="verification",
+                                  kind="gate_enforce", severity="info", message="gammel")
+    # historisk række fra FØR severity-fixet 10. sep: severity='error', samme klasse → lukkes også
+    old_err = record_central_incident(cluster="proactivity", nerve="verification",
+                                      kind="gate_enforce", severity="error", message="gammel error")
+    fresh = record_central_incident(cluster="proactivity", nerve="verification",
+                                    kind="gate_enforce", severity="info", message="fersk")
+    # SECURITY-RED = ægte cross-user-lækage → må ALDRIG forsvinde af sig selv
+    sec = record_central_incident(cluster="privacy", nerve="cross_user_share",
+                                  kind="gate_enforce", severity="severe", message="lækage")
+    # ægte fejl (anden kind) → urørt
+    err = record_central_incident(cluster="stream", nerve="provider_error",
+                                  kind="error", severity="error", message="ægte fejl")
+
+    old_ts = (datetime.now(UTC) - timedelta(hours=5)).isoformat()
+    with connect() as conn:
+        conn.execute("UPDATE central_incidents SET ts = ? WHERE id IN (?, ?, ?, ?)",
+                     (old_ts, old, old_err, sec, err))
+
+    assert expire_gate_enforce_incidents(older_than_hours=2.0) == 2
+
+    unresolved = {r["id"] for r in list_central_incidents(unresolved_only=True, limit=100)}
+    assert old not in unresolved      # gammel kognitiv governance → lukket
+    assert old_err not in unresolved  # historisk error-gate_enforce → samme klasse, lukket
+    assert fresh in unresolved        # fersk → stadig synlig
+    assert sec in unresolved          # SECURITY-RED → ALDRIG auto-lukket
+    assert err in unresolved          # ægte fejl → urørt
+
+
+def test_expire_gate_enforce_incidents_is_self_safe(monkeypatch):
+    from core.runtime.db_central_incidents import expire_gate_enforce_incidents
+    monkeypatch.setattr("core.runtime.db_central_incidents.connect",
+                        lambda: (_ for _ in ()).throw(RuntimeError("db nede")))
+    assert expire_gate_enforce_incidents() == 0
+
+
 def test_has_unresolved_message_dedup(isolated_runtime):
     from core.runtime.db_central_incidents import (
         record_central_incident, has_unresolved_message, resolve_central_incidents,

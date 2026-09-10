@@ -171,3 +171,16 @@ def test_enforced_set_excludes_loop_control():
     assert gs._is_enforced("cross_user_share") is True
     assert gs._is_enforced("decision_gate") is True
     assert gs._is_enforced("loop_control") is False  # bevidst i shadow
+
+
+def test_shadow_never_records_heed_surfaces():
+    """SKYGGEN VISER INTET → maa ikke skrive heed-telemetri. 10. sep 2026 kom 56 af
+    133 surfaces i doegnet herfra; de kunne pr. konstruktion ikke heedes."""
+    fake_central = mock.MagicMock()
+    fake_central.decide.return_value = Verdict("x", Decision.GREEN, "ok")
+    with mock.patch.object(gs, "central", return_value=fake_central), \
+            mock.patch.object(gs, "_shadow_enabled", return_value=True):
+        gs.run_post_output_shadow(_ctx())
+    assert fake_central.decide.call_count == len(gs._GATES)
+    for call in fake_central.decide.call_args_list:
+        assert call.args[1].get("record_surface") is False

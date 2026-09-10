@@ -69,7 +69,12 @@ def verification_on_reasoning(reasoning_text: str, ctx: dict[str, Any]) -> Verdi
     reads its own R2 discipline via reasoning_tier, not the text). RED→YELLOW at the reasoning stage."""
     try:
         from core.services.gate_proactivity import proactivity_gate
-        v = proactivity_gate({"reasoning_tier": ctx.get("reasoning_tier") or "fast"})
+        # record_surface=False: dette er en RE-ANVENDELSE af gaten paa reasoning-
+        # teksten — verdict'et bruges som signal, teksten injiceres ikke i nogen
+        # prompt. Uden flaget skrev hvert reasoning-trin en phantom-surface der
+        # pr. konstruktion ikke kunne heedes (se verification_gate_section).
+        v = proactivity_gate({"reasoning_tier": ctx.get("reasoning_tier") or "fast",
+                              "record_surface": False})
         return _downgrade_cognitive(v, gate="verification")
     except Exception:
         return None

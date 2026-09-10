@@ -1791,8 +1791,13 @@ def _build_visible_chat_prompt_assembly_impl(
         from core.services.gate_proactivity import proactivity_gate as _prov_gate
         from core.services.gate_kernel import Decision as _PDec
         _tier = str(classify_reasoning_tier(user_message).get("tier") or "fast")
-        _pv = _central_prov().decide("verification", {"reasoning_tier": _tier},
-                                     _prov_gate, cluster="proactivity")
+        # record_surface=True: DETTE er det ene kaldested der faktisk injicerer
+        # teksten i prompten (slot 23/95) — derfor ogsaa det eneste der maa
+        # skrive heed-telemetri. Shadow + reasoning_detectors kasserer verdict'et.
+        _pv = _central_prov().decide(
+            "verification",
+            {"reasoning_tier": _tier, "record_surface": True},
+            _prov_gate, cluster="proactivity")
         _ptext = (_pv.evidence or {}).get("text")
         if _ptext and _pv.decision in (_PDec.RED, _PDec.YELLOW):
             _pprio = int((_pv.evidence or {}).get("priority")

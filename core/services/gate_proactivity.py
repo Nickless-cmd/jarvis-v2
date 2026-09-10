@@ -42,7 +42,10 @@ def proactivity_gate(ctx: dict[str, Any]) -> Verdict:
     # YELLOW — R2 blød surface.
     try:
         from core.services.verification_gate import verification_gate_section
-        surface = verification_gate_section()
+        # record_surface er opt-in (se verification_gate_section): kun det
+        # kaldested der injicerer teksten i prompten maa skrive heed-telemetri.
+        # Shadow (post_output) og reasoning_detectors kasserer verdict'et.
+        surface = verification_gate_section(record=bool(ctx.get("record_surface", False)))
     except Exception:
         surface = None
     if surface:

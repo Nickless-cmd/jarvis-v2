@@ -193,3 +193,26 @@ def test_noedplanen_indeholder_kun_NAABARE_modeller():
              "gpt-5.6-luna", "gpt-5.3-codex", "gpt-5.5", "gpt-6-astra"}
     for tier, navne in c._NOEDPLAN.items():
         assert not (set(navne) & doede), f"{tier} indeholder doede modeller"
+
+
+def test_maalt_doede_modeller_kommer_ikke_i_poolen():
+    """`claude-fable-5` og `-5.1` har `/chat/completions` i feltet og svarer
+    `model_not_supported`. Lag 1 slipper dem igennem, og lag 2 kan foerst
+    doemme efter tre loggede forsoeg — saa uden dette braendte hver
+    kode-rotation sit budget paa dem foerst. (Jarvis' fund, sjette koersel.)"""
+    import core.services.copilot_catalogue as c
+
+    for navn in c._MAALT_DOEDE:
+        assert _brugbar({"id": navn,
+                         "capabilities": {"type": "chat",
+                                          "supports": {"tool_calls": True}},
+                         "model_picker_enabled": True,
+                         "supported_endpoints": ["/chat/completions"]}) is False
+
+
+def test_listen_over_doede_holdes_KORT():
+    """Den maa ikke vokse til et skyggeregister ved siden af historikken. Er
+    der mange, hoerer de hjemme i den maalte historik, ikke i en konstant."""
+    import core.services.copilot_catalogue as c
+
+    assert len(c._MAALT_DOEDE) <= 5

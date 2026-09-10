@@ -113,6 +113,17 @@ def hent_modeller(*, tving: bool = False) -> list[dict[str, Any]]:
 #: modsat en timeout, hvor tre uheld intet betyder.
 _MIN_FORSOEG = 3
 
+#: MAALT DOEDE — direkte kald 10/9-2026, uden faldback-lag imellem. De har
+#: `/chat/completions` i `supported_endpoints` og svarer alligevel
+#: `model_not_supported`, uanset parametre. Lag 1 slipper dem igennem, og lag
+#: 2 kan foerst doemme efter tre loggede forsoeg — saa uden dette ville hver
+#: kode-rotation braende sit budget paa dem foerst.
+#:
+#: Det er et OEJEBLIKSBILLEDE, ikke en lov: bliver de understoettet igen, er
+#: det historikken der skal vise det. Derfor staar datoen, og derfor er listen
+#: kort — den maa ikke vokse til et skyggeregister.
+_MAALT_DOEDE = frozenset({"claude-fable-5", "claude-fable-5.1"})
+
 
 def _maalt_uegnet() -> set[str]:
     """Modeller der ER proevet og ALDRIG svarede.
@@ -166,7 +177,10 @@ def _brugbar(m: dict[str, Any], *, uegnet: set[str] | None = None) -> bool:
     # 100 % korrelation maalt: hver model der fejler mangler feltet, hver der
     # virker har det. (Jarvis' femte koersel.)
     _ep = m.get("supported_endpoints") or []
-    if uegnet and str(m.get("id") or "") in uegnet:
+    _id = str(m.get("id") or "")
+    if _id in _MAALT_DOEDE:
+        return False                # maalt direkte: model_not_supported
+    if uegnet and _id in uegnet:
         return False                # proevet og aldrig svaret
     return (bool((cap.get("supports") or {}).get("tool_calls"))
             and bool(m.get("model_picker_enabled"))

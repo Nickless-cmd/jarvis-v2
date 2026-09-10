@@ -199,6 +199,7 @@ async def run_tool_batch(
     _tool_task = asyncio.ensure_future(_await_tools())
     _start = exec_start if exec_start is not None else time.monotonic()
     _beats = 0
+    _tool_exc: BaseException | None = None
     while not _tool_task.done():
         try:
             await asyncio.wait_for(asyncio.shield(_tool_task), timeout=heartbeat_interval_s)
@@ -219,7 +220,15 @@ async def run_tool_batch(
             _hb["elapsed_s"] = int(time.monotonic() - _start)
             _hb["beat"] = _beats
             yield _sse("heartbeat", _hb)
-    _results = await _tool_task
+    # Fang kastet frem for at lade det springe PostToolUse over. Undtagelsen
+    # rejses igen til sidst, saa kalderen ser praecis det samme som foer —
+    # forskellen er KUN at hook-parringen holder.
+    try:
+        _results = await _tool_task
+    except BaseException as _exc:      # noqa: BLE001 — rejses igen nedenfor
+        _tool_exc = _exc
+        _results = [{"tool_name": "", "status": "error",
+                     "result_text": f"[udfoerelsen kastede] {_exc!r}"[:2000]}]
 
     # Flet de blokerede ind paa deres OPRINDELIGE plads. Raekkefoelgen betyder
     # noget: resultaterne laeses parvis med kaldene laengere oppe.
@@ -247,6 +256,15 @@ async def run_tool_batch(
     # Kun `inject` giver mening her: vaerktoejet HAR koert, saa der er intet at
     # blokere. Injektionen haeftes paa resultat-teksten, saa modellen ser den
     # sammen med det den bad om.
+    #
+    # PARRINGEN ER EN INVARIANT (fase 12). `PreToolUse` er allerede fyret naar
+    # vi naar hertil, saa `PostToolUse` SKAL fyre — ogsaa hvis vaerktoejs-
+    # opgaven kastede. `asyncio.wait_for` ovenfor fanger kun `TimeoutError`, saa
+    # enhver anden undtagelse ville springe denne blok over og efterlade en
+    # hook-forfatter med et aabent «pre» der aldrig lukkes.
+    #
+    # MAALT: det er ALDRIG sket i produktion (nul kast paa syv dage), saa det er
+    # en strukturel invariant, ikke en observeret fejl. Den koster tre linjer.
     try:
         from core.services import lifecycle_hooks as _lh2
         if "PostToolUse" in _lh2.WIRED_EVENTS and _lh2.hooks_for("PostToolUse"):
@@ -266,5 +284,8 @@ async def run_tool_batch(
     except Exception as _post_exc:
         logger.warning("PostToolUse-hook fejlede: %r", _post_exc)
 
+    if _tool_exc is not None:
+        # Parringen er holdt; nu maa fejlen fortsaette sin vej som foer.
+        raise _tool_exc
     out["results"] = _results
     out["step_counter"] = step_counter

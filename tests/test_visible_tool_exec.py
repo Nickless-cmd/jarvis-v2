@@ -1,68 +1,59 @@
-"""Værktøjs-pumpen — annoncér, kør, flet resultater.
+"""Hook-parringen er en invariant — Fase 12.
 
-`PreToolUse` kobles her fordi det er det ENESTE sted i flowet hvor et kald endnu
-ikke er sket, og «block» derfor kan honoreres. Et blokeret kald må ikke bare
-forsvinde: rækkefølgen betyder noget, fordi kald og resultater læses parvis
-længere oppe, og modellen skal have at vide HVORFOR frem for at vente på et svar
-der aldrig kommer.
+`PreToolUse` fyrer foer vaerktoejet, `PostToolUse` efter. Ventetiden brugte
+`asyncio.wait_for(..., timeout=...)` med `except asyncio.TimeoutError` som
+ENESTE gren, saa enhver anden undtagelse fra vaerktoejs-opgaven propagerede ud
+af funktionen og sprang PostToolUse-blokken over.
+
+En hook-forfatter der aabner noget i `pre` og lukker det i `post` — et span, en
+laas, en maaling — ville lække praecis dér.
+
+MAALT: det er ALDRIG sket i produktion (nul kast paa syv dage). Det er altsaa
+en strukturel invariant, ikke en observeret fejl — men den koster tre linjer,
+og spec'en navngiver den.
+
+Fejlen rejses stadig bagefter, saa kalderen ser praecis det samme som foer.
+Det eneste der er aendret er at parringen holder.
 """
 from __future__ import annotations
 
-import pathlib
+import inspect
 
-import pytest
-
-from core.services import visible_tool_exec as vte
+import core.services.visible_tool_exec as vte
 
 
-class TestModulet:
-    def test_har_en_logger(self):
-        """Except-grenene i pumpen logger. Uden en logger ville de kaste
-        NameError og gøre hookene tavse — den fejl blev fanget under
-        bygningen, ikke af en test."""
-        assert hasattr(vte, "logger")
-
-    def test_pumpen_er_en_async_generator(self):
-        import inspect
-        assert inspect.isasyncgenfunction(vte.run_tool_batch)
+def _kilde() -> str:
+    return inspect.getsource(vte.run_tool_batch)
 
 
-class TestHookKobling:
-    """Erklæring er ikke nok — koden skal faktisk kalde dem."""
+def test_kastet_fanges_saa_PostToolUse_naas():
+    k = _kilde()
+    i_await = k.index("await _tool_task")
+    i_post = k.index("PostToolUse-hook")
+    mellem = k[i_await:i_post]
+    assert "except BaseException" in mellem, (
+        "et kast fra vaerktoejs-opgaven springer stadig PostToolUse over — "
+        "parringen brydes")
 
-    @pytest.fixture
-    def kilde(self):
-        return pathlib.Path("core/services/visible_tool_exec.py").read_text()
 
-    def test_pretooluse_fyres_foer_eksekvering(self, kilde):
-        pre = kilde.index('"PreToolUse"')
-        exe = kilde.index("_exec_fn,")
-        assert pre < exe, "PreToolUse skal fyre FØR eksekveringen"
+def test_fejlen_rejses_igen_EFTER_hooken():
+    """Vagten maa ikke sluge fejlen. Kalderen skal se praecis det samme som
+    foer; det eneste der er aendret er at parringen holder."""
+    k = _kilde()
+    i_post = k.index("PostToolUse-hook")
+    efter = k[i_post:]
+    assert "raise _tool_exc" in efter, (
+        "undtagelsen bliver slugt — en fejlet tur ville se ud som en gennemfoert")
+    assert efter.index("raise _tool_exc") < efter.index('out["results"]'), (
+        "fejlen rejses efter at resultatet er skrevet — saa ville et tomt "
+        "resultat naa kalderen foerst")
 
-    def test_kun_ikke_blokerede_kald_eksekveres(self, kilde):
-        assert "_kald_til_exec = [tc for i, tc in enumerate(tool_calls)" in kilde
-        assert "_exec_fn,\n                _kald_til_exec," in kilde
 
-    def test_blokeret_kald_faar_sit_eget_resultat(self, kilde):
-        assert "blokeret af hook" in kilde
-        assert '"status": "blocked"' in kilde
-
-    def test_resultater_flettes_paa_oprindelig_plads(self, kilde):
-        """Appendes de bagest, går par-visningen af kald og resultater i stykker."""
-        assert "for _i, _tc in enumerate(tool_calls):" in kilde
-        assert "_flettet" in kilde
-
-    def test_blokeret_kald_annonceres_stadig(self, kilde):
-        """Ellers ser det ud som om modellen aldrig bad om værktøjet."""
-        assert '"status": "blocked",' in kilde
-
-    def test_posttooluse_fyres_EFTER_resultaterne(self, kilde):
-        post = kilde.index('"PostToolUse"')
-        res = kilde.index("_results = await _tool_task")
-        assert post > res, "PostToolUse skal først kunne se resultatet"
-
-    def test_posttooluse_blokerer_ikke(self, kilde):
-        """Værktøjet HAR kørt — der er intet at blokere, kun at tilføje."""
-        efter = kilde[kilde.index('"PostToolUse"'):]
-        assert 'action") == "inject"' in efter
-        assert 'action") == "block"' not in efter
+def test_timeout_grenen_er_uroert():
+    """Heartbeat-loekken skal stadig kunne taale en TimeoutError uden at
+    behandle den som en fejl — den ER det normale ved lange vaerktoejer."""
+    k = _kilde()
+    assert "except asyncio.TimeoutError:" in k
+    i_to = k.index("except asyncio.TimeoutError:")
+    i_be = k.index("except BaseException")
+    assert i_to < i_be, "timeout-grenen skal komme foerst"

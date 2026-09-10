@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7215/14203 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7216/14203 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 7215/14203 functions/methods documented (50%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 606 | 1113 | 54% |
-| `core.services` | 4788 | 9788 | 48% |
+| `core.services` | 4789 | 9788 | 48% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 108 | 184 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -542,9 +542,9 @@ Generated from source. 7215/14203 functions/methods documented (50%). The list b
 - `core/services/agency_map.py` :: `build_agency_map_surface` (L15)
 - `core/services/agent_observation_compressor.py` :: `get_agent_observation` (L168)
 - `core/services/agent_observation_compressor.py` :: `list_agent_observations` (L133)
-- `core/services/agent_runtime_council.py` :: `create_council_session_runtime` (L149)
-- `core/services/agent_runtime_council.py` :: `create_swarm_session_runtime` (L199)
-- `core/services/agent_runtime_council.py` :: `post_council_message` (L249)
+- `core/services/agent_runtime_council.py` :: `create_council_session_runtime` (L172)
+- `core/services/agent_runtime_council.py` :: `create_swarm_session_runtime` (L222)
+- `core/services/agent_runtime_council.py` :: `post_council_message` (L272)
 - `core/services/agent_runtime_spawn.py` :: `cancel_agent` (L1223)
 - `core/services/agent_runtime_spawn.py` :: `expire_agent` (L1278)
 - `core/services/agent_runtime_spawn.py` :: `resume_agent` (L1259)

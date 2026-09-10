@@ -139,3 +139,54 @@ def test_en_enkelt_worker_koerer_stadig_uden_traadpulje():
     kilde = inspect.getsource(C)
     i = kilde.index("if len(workers) > 1:")
     assert "else:" in kilde[i:i + 900]
+
+
+# ── forkortelsen skal kunne SES — 10/9-2026 ─────────────────────────────
+#
+# Maalt paa Bjoerns eget raad: de fire medlemmer svarede 1.454, 2.070, 2.494 og
+# 2.942 tegn. Hver position blev gemt som PRAECIS 400. Mellem 72% og 86% af
+# hver holdning blev smidt vaek, hårdt klippet midt i et ord.
+#
+# Jarvis laeste resultatet og skrev: «outputtet er afkortet — hver position
+# klippet midt i en saetning». Han troede det var et token-artefakt. Det var
+# `value[:limit]`.
+
+
+def test_kort_tekst_roeres_ikke():
+    assert C._trim("kun lidt tekst") == "kun lidt tekst"
+
+
+def test_lang_tekst_SIGER_at_der_mangler_noget():
+    """Samme princip som `complete` paa en vaerktoejs-handle: en forkortelse
+    der ikke kan ses, laeses som hele svaret."""
+    ud = C._trim("ord " * 300)
+    assert "tegn udeladt" in ud
+
+
+def test_den_klipper_ved_en_ORDGRAENSE():
+    tekst = "alfa bravo charlie delta echo foxtrot golf hotel india juliet"
+    ud = C._trim(tekst, limit=20)
+    hoved = ud.split(" […")[0]
+    assert tekst.startswith(hoved), "hovedet er ikke et praefiks af originalen"
+    assert not hoved.endswith(("c", "h")), "klippet midt i et ord"
+    assert " " not in hoved[-1:], "efterlod et haengende mellemrum"
+
+
+def test_antallet_af_udeladte_tegn_passer():
+    tekst = "ord " * 300
+    normaliseret = " ".join(tekst.split())
+    ud = C._trim(tekst, limit=100)
+    hoved = ud.split(" […")[0]
+    udeladt = int(ud.split("[…")[1].split(" ")[0])
+    assert len(hoved) + udeladt == len(normaliseret)
+
+
+def test_praecis_paa_graensen_forkortes_ikke():
+    tekst = "a" * 400
+    assert C._trim(tekst, limit=400) == tekst
+
+
+def test_et_enkelt_meget_langt_ord_klippes_alligevel():
+    """Uden fallback ville hovedet blive tomt og hele positionen forsvinde."""
+    ud = C._trim("x" * 900, limit=100)
+    assert ud.startswith("x") and "tegn udeladt" in ud

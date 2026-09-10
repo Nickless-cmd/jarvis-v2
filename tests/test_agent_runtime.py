@@ -9,8 +9,21 @@ from core.services import agent_runtime as ar
 
 
 def test_trim_collapses_whitespace_and_limits():
+    """Whitespace kollapses stadig — men afskaeringen SIGES nu.
+
+    Aendret 10/9-2026. Den gamle kontrakt var `len(...) == limit`, altsaa et
+    haardt tegn-klip. Maalt paa Bjoerns eget raad blev fire positioner paa
+    1.454-2.942 tegn alle gemt som praecis 400, klippet midt i et ord, uden en
+    stavelse om at der manglede noget. Jarvis laeste det og troede det var et
+    token-artefakt.
+
+    Resultatet er derfor LAENGERE end graensen nu: hovedet klippes ved en
+    ordgraense, og en note siger hvor meget der blev udeladt.
+    """
     assert ar._trim("  a   b\n c ", limit=5) == "a b c"
-    assert len(ar._trim("x" * 100, limit=10)) == 10
+    ud = ar._trim("x" * 100, limit=10)
+    assert ud.startswith("x") and "tegn udeladt" in ud
+    assert len(ud.split(" […")[0]) <= 10
 
 
 def test_parse_percent_confidence_buckets():

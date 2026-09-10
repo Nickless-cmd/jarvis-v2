@@ -62,7 +62,15 @@ _STI_LINJE = re.compile(
     # Citationstegnet er PAAKRAEVET her. Uden det ville «`sti:19` — se ovenfor»
     # blive slaaet op som linjens indhold, og et rigtigt svar doemt `uenig`.
     # Det er samme regel som for det loese anker: en henvisning er ikke et citat.
-    r"[`'\"\s]*(?:[—–-]\s*[\"'`«]\s*(.{0,160})|:\s*(.*)|\(\s*[\"'`]?(.{0,120}))?")
+    # BLOKCITAT UDEN KOLON (syvende form): «`sti:19`» og citatet paa linjen
+    # under som `> ...`. Den sjette form havde et kolon efter linjenummeret,
+    # og DET aabnede indholdet; her er `>` det eneste signal — men et staerkt
+    # et, for blokcitat BETYDER citat.
+    #
+    # Hoejst ÉT linjeskift: ellers ville et blokcitat et helt afsnit laengere
+    # nede blive laest som indholdet af linje 19.
+    r"[`'\"\s]*(?:[—–-]\s*[\"'`«]\s*(.{0,160})|:\s*(.*)|\(\s*[\"'`]?(.{0,120})"
+    r"|\n?[ \t]*>[ \t`'\"«]*(.{0,160}))?")
 # Bare filstier med mappe i — et bart "config.py" er for tvetydigt til at dømme.
 # `/?` foran: ABSOLUTTE stier blev slet ikke matchet, saa en workstation-rapport
 # — der naturligt skriver `/home/bs/projekt/src/main.ts` — gav NUL kontrollerede
@@ -322,7 +330,8 @@ def tjek_paastande(svar: str, *, rod: Path | None = None,
              # RAAT VIDERE: reduktionen sker ÉT sted, ved tjekket. Skete den
              # her, saa `_laesninger` aldrig den oprindelige tekst og kunne
              # ikke falde tilbage naar citat-valget var forkert.
-             (m.group(3) or m.group(4) or m.group(5) or "").strip())
+             # gr. 3 tankestreg, 4 kolon, 5 parentes, 6 blokcitat
+             (m.group(3) or m.group(4) or m.group(5) or m.group(6) or "").strip())
             for m in _STI_LINJE.finditer(t)
         ]
         _set: set[tuple[str, int]] = {(a, b) for a, b, _ in _paastande}

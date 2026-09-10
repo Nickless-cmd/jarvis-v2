@@ -732,3 +732,35 @@ def test_kommentar_mellem_to_citater_anklages_ikke(tmp_path):
         rod=tmp_path)
     assert d["fejl"] == [], d["fejl"]
     assert int(d.get("indhold_bekraeftet") or 0) >= 1, d
+
+
+def test_blokcitat_UDEN_kolon_efter_linjenummeret(tmp_path):
+    """Syvende form (live-koersel efter genstart, 10/9-2026):
+
+        - Kilde og linje: `x.md:3`
+          > `| Jarvis | ... |`
+
+    Den sjette form havde et KOLON efter linjenummeret, og det var kolonet der
+    aabnede indholdet. Her er blokcitat-markoeren det eneste signal — og den
+    er et staerkt et: `>` BETYDER citat.
+
+    Uden dette blev syv paastande til ren eksistens-kontrol: ingen falsk
+    anklage, men heller intet belaeg."""
+    from core.services.explore_claim_check import tjek_paastande
+    (tmp_path / "x.md").write_text(
+        "a\nb\n| Jarvis | `Jarvis <jarvis@srvlab.dk>` |\n", encoding="utf-8")
+    d = tjek_paastande(
+        "   - Kilde og linje: `x.md:3`\n"
+        "     > `| Jarvis | `Jarvis <jarvis@srvlab.dk>` |`\n", rod=tmp_path)
+    assert int(d.get("indhold_bekraeftet") or 0) >= 1, d
+    assert d["fejl"] == [], d["fejl"]
+
+
+def test_blokcitat_langt_nede_bindes_IKKE_til_stien(tmp_path):
+    """Separatoren maa hoejst krydse ÉT linjeskift. Ellers ville et blokcitat
+    et helt afsnit laengere nede blive laest som indholdet af linje 3."""
+    from core.services.explore_claim_check import tjek_paastande
+    (tmp_path / "x.md").write_text("a\nb\nc\n", encoding="utf-8")
+    d = tjek_paastande("se `x.md:3`\n\nHelt andet afsnit.\n> `noget som helst`\n",
+                       rod=tmp_path)
+    assert d["fejl"] == [], d["fejl"]

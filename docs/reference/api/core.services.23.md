@@ -441,6 +441,7 @@ _Tool description embedding cache._
 | function | `_now` | `()` | — | [src](../../../core/services/tool_intent_approval_runtime.py#L607) |
 | function | `_normalize` | `(value)` | — | [src](../../../core/services/tool_intent_approval_runtime.py#L611) |
 | function | `_parse_iso` | `(value)` | — | [src](../../../core/services/tool_intent_approval_runtime.py#L623) |
+| function | `sweep_expired_intents` | `()` | Luk udloebne intentioner der ALDRIG blev spurgt til igen — fase 11. | [src](../../../core/services/tool_intent_approval_runtime.py#L636) |
 
 ## `core/services/tool_intent_runtime.py`
 

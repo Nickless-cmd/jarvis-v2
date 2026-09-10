@@ -631,3 +631,59 @@ def _parse_iso(value: object) -> datetime | None:
     if parsed.tzinfo is None:
         parsed = parsed.replace(tzinfo=UTC)
     return parsed.astimezone(UTC)
+
+
+def sweep_expired_intents() -> dict[str, int]:
+    """Luk udloebne intentioner der ALDRIG blev spurgt til igen — fase 11.
+
+    Udloebet er DOVENT: det sker naar den samme intention slaas op paa ny. En
+    intention ingen spoerger til igen bliver derfor staaende `pending` for
+    evigt. MAALT 10/9-2026: fire raekker med udloeb 23, 50, 115 og 115 dage
+    tilbage i tiden, alle stadig `pending`.
+
+    Det er samme moenster som de 174 raadssessioner: en tilstandsmaskine med
+    en doven overgang og ingen fejer til halen. En flade der viser dem
+    rapporterer ventende godkendelser der ikke findes.
+
+    Kaster aldrig. En fejer maa ikke kunne vaelte en opstart.
+    """
+    from datetime import UTC, datetime
+
+    lukket = 0
+    try:
+        from core.runtime.db_governance import (
+            expire_tool_intent_approval_request,
+            recent_tool_intent_approval_requests,
+        )
+    except Exception:
+        logger.warning("kunne ikke laese intentions-godkendelser", exc_info=True)
+        return {"lukket": 0, "fejl": 1}
+
+    nu = datetime.now(UTC)
+    try:
+        raekker = recent_tool_intent_approval_requests(
+            limit=500, user_id=None, include_unassigned=True) or []
+    except Exception:
+        logger.warning("kunne ikke liste intentions-godkendelser", exc_info=True)
+        return {"lukket": 0, "fejl": 1}
+
+    for r in raekker:
+        if str(r.get("approval_state") or "") != "pending":
+            continue
+        udloeb = _parse_iso(r.get("expires_at"))
+        if udloeb is None or nu < udloeb:
+            continue                     # ingen frist, eller den er ikke naaet
+        try:
+            expire_tool_intent_approval_request(
+                str(r.get("intent_key") or ""),
+                expired_at=nu.isoformat(),
+                resolution_reason=("Godkendelsesvinduet udloeb, og ingen spurgte "
+                                   "til intentionen igen."),
+            )
+            lukket += 1
+        except Exception:
+            logger.warning("kunne ikke lukke intention %s", r.get("intent_key"),
+                           exc_info=True)
+    if lukket:
+        logger.info("tool_intent: %d udloebne intentioner lukket", lukket)
+    return {"lukket": lukket, "fejl": 0}

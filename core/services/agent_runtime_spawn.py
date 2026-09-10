@@ -436,7 +436,24 @@ def _build_agent_prompt(
     )
 
 
-def execute_agent_task(*, agent_id: str, thread_id: str = "", execution_mode: str = "solo-task") -> dict[str, object]:
+def execute_agent_task(*, agent_id: str, thread_id: str = "",
+                       execution_mode: str = "solo-task") -> dict[str, object]:
+    """Koer et barns arbejde.
+
+    Fase 5: barnet koerer INLINE i foraeldrens kontekst — ingen traad, ingen
+    `copy_context()` — og saa arver det foraeldrens ambiente ContextVars.
+    Ejer-godkendelsen ryddes derfor ved graensen: ET MENNESKE sagde ja til DEN
+    handling, ikke til alt hvad den maatte finde paa at starte. Se
+    `child_authority` for hvad der bevares og hvorfor.
+    """
+    from core.services.child_authority import uden_foraeldrens_godkendelse
+    with uden_foraeldrens_godkendelse():
+        return _execute_agent_task_impl(agent_id=agent_id, thread_id=thread_id,
+                                        execution_mode=execution_mode)
+
+
+def _execute_agent_task_impl(*, agent_id: str, thread_id: str = "",
+                             execution_mode: str = "solo-task") -> dict[str, object]:
     agent = get_agent_registry_entry(agent_id)
     if agent is None:
         raise RuntimeError(f"unknown agent: {agent_id}")

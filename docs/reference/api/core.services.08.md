@@ -244,8 +244,8 @@ _Et raad der blev afbrudt af en genstart skal AFREGNE — Fase 8._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `settle_interrupted_councils` | `()` | Afregn raad hvis proces beviseligt er vaek. Kaster aldrig. | [src](../../../core/services/council_settlement.py#L40) |
-| function | `_luk_medlemmer` | `(council_id)` | Medlemmer der stadig venter paa et doedt raad skal ikke taelle med. | [src](../../../core/services/council_settlement.py#L96) |
-| function | `_nu` | `()` | — | [src](../../../core/services/council_settlement.py#L126) |
+| function | `_luk_medlemmer` | `(council_id)` | Medlemmer der stadig venter paa et doedt raad skal ikke taelle med. | [src](../../../core/services/council_settlement.py#L99) |
+| function | `_nu` | `()` | — | [src](../../../core/services/council_settlement.py#L129) |
 
 ## `core/services/counterfactual_engine.py`
 _Counterfactual reflection orchestrator._

@@ -99,3 +99,34 @@ def test_maerket_ryddes_naar_raadet_lukkes(isolated_runtime):
     assert db.get_council_session(cid)["runtime_owner"] == denne_proces()
     db.update_council_session(cid, status="closed")
     assert db.get_council_session(cid)["runtime_owner"] == ""
+
+
+def test_loftet_skjuler_ikke_de_gamle_aabne_raad(isolated_runtime):
+    """Fejlen i foerste deploy: `list_council_sessions(limit=500)` giver de
+    NYESTE, og de aabne raad er de AELDSTE. Filtreringen skete i Python, saa
+    afregningen saa nul af de 154 aeldste og lukkede kun 20.
+
+    Loftet skjulte praecis det den ledte efter — samme form som hale-fejlen i
+    prompt-byggeren. Derfor filtreres der nu i SQL.
+    """
+    import core.runtime.db_agent_runtime as db
+    from core.services.council_settlement import settle_interrupted_councils
+
+    gammelt = _raad(db, "c-gammelt", "deliberating",
+                    maerke=f"{socket.gethostname()}:999999:1")
+    with db.connect() as conn:
+        conn.execute("UPDATE council_sessions SET updated_at='2020-01-01', "
+                     "created_at='2020-01-01' WHERE council_id=?", (gammelt,))
+    for i in range(60):
+        _raad(db, f"c-nyt-{i:02d}", "closed")
+
+    # Som afregningen spoerger: filtrér i SQL, ikke bagefter.
+    kun_aabne = db.list_council_sessions(limit=10, statuses=("forming", "deliberating"))
+    assert [s["council_id"] for s in kun_aabne] == [gammelt]
+    assert not [s for s in db.list_council_sessions(limit=10)
+                if s["status"] == "deliberating"], (
+        "forudsaetningen holder ikke: det gamle raad laa inden for de 10 nyeste")
+
+    ud = settle_interrupted_councils()
+    assert ud["afregnet"] == 1
+    assert db.get_council_session(gammelt)["status"] == "interrupted_by_restart"

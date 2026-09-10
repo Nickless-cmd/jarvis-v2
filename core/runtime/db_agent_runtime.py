@@ -960,8 +960,14 @@ def update_council_session(
     return get_council_session(council_id)
 
 
-def list_council_sessions(limit: int = 50) -> list[dict[str, object]]:
+def list_council_sessions(limit: int = 50, *,
+                          statuses: tuple[str, ...] | None = None) -> list[dict[str, object]]:
     """Return council_sessions rows as dicts, newest-updated first, capped at limit.
+
+    `statuses` filtrerer i SQL, ikke i Python. Det er ikke kosmetik: de aabne
+    raad er de AELDSTE, saa «hent 500 nyeste og filtrer» gav NUL — loftet
+    skjulte praecis det man ledte efter. (Maalt 10/9-2026: 174 aabne, alle
+    uden for de 500 nyeste.)
 
     Each session dict is augmented with a "members" list of its member rows.
     Returns [] when there are no sessions.
@@ -969,8 +975,11 @@ def list_council_sessions(limit: int = 50) -> list[dict[str, object]]:
     with connect() as conn:
         _ensure_agent_runtime_tables(conn)
         rows = conn.execute(
-            "SELECT * FROM council_sessions ORDER BY updated_at DESC, created_at DESC LIMIT ?",
-            (int(limit),),
+            "SELECT * FROM council_sessions "
+            + (("WHERE status IN (%s) " % ",".join("?" * len(statuses)))
+               if statuses else "")
+            + "ORDER BY updated_at DESC, created_at DESC LIMIT ?",
+            (tuple(statuses or ()) + (int(limit),)),
         ).fetchall()
     sessions = [_council_session_row_to_dict(row) for row in rows]
     for item in sessions:

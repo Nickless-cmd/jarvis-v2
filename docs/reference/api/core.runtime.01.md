@@ -101,18 +101,18 @@ _Persistence for Jarvis' agent + council runtime cluster._
 | function | `create_council_session` | `(*, council_id, owner_agent_id=…, topic=…, status=…, mode=…, summary=…)` | Insert a new row into council_sessions and return the stored session as a dict. | [src](../../../core/runtime/db_agent_runtime.py#L868) |
 | function | `get_council_session` | `(council_id)` | Return the council_sessions row for council_id as a dict, or None if not found. | [src](../../../core/runtime/db_agent_runtime.py#L900) |
 | function | `update_council_session` | `(council_id, *, status=…, summary=…, finished_at=…)` | Patch selected columns of one council_sessions row and return the updated dict. | [src](../../../core/runtime/db_agent_runtime.py#L919) |
-| function | `list_council_sessions` | `(limit=…)` | Return council_sessions rows as dicts, newest-updated first, capped at limit. | [src](../../../core/runtime/db_agent_runtime.py#L963) |
-| function | `add_council_member` | `(*, council_id, agent_id, role, position_summary=…, vote=…, confidence=…)` | Upsert a council member by (council_id, agent_id) and return the stored dict. | [src](../../../core/runtime/db_agent_runtime.py#L981) |
-| function | `update_council_member` | `(*, council_id, agent_id, position_summary=…, vote=…, confidence=…)` | Patch a council member's position/vote/confidence by (council_id, agent_id). | [src](../../../core/runtime/db_agent_runtime.py#L1017) |
-| function | `get_council_member` | `(*, council_id, agent_id)` | Return the council_members row for (council_id, agent_id) as a dict, or None. | [src](../../../core/runtime/db_agent_runtime.py#L1055) |
-| function | `list_council_members` | `(*, council_id)` | Return all council_members rows for council_id as dicts, oldest-created first. | [src](../../../core/runtime/db_agent_runtime.py#L1068) |
-| function | `_agent_registry_row_to_dict` | `(row)` | — | [src](../../../core/runtime/db_agent_runtime.py#L1082) |
-| function | `_agent_run_row_to_dict` | `(row)` | — | [src](../../../core/runtime/db_agent_runtime.py#L1121) |
-| function | `_agent_message_row_to_dict` | `(row)` | — | [src](../../../core/runtime/db_agent_runtime.py#L1145) |
-| function | `_agent_tool_call_row_to_dict` | `(row)` | — | [src](../../../core/runtime/db_agent_runtime.py#L1161) |
-| function | `_agent_schedule_row_to_dict` | `(row)` | — | [src](../../../core/runtime/db_agent_runtime.py#L1176) |
-| function | `_council_session_row_to_dict` | `(row)` | — | [src](../../../core/runtime/db_agent_runtime.py#L1191) |
-| function | `_council_member_row_to_dict` | `(row)` | — | [src](../../../core/runtime/db_agent_runtime.py#L1208) |
+| function | `list_council_sessions` | `(limit=…, *, statuses=…)` | Return council_sessions rows as dicts, newest-updated first, capped at limit. | [src](../../../core/runtime/db_agent_runtime.py#L963) |
+| function | `add_council_member` | `(*, council_id, agent_id, role, position_summary=…, vote=…, confidence=…)` | Upsert a council member by (council_id, agent_id) and return the stored dict. | [src](../../../core/runtime/db_agent_runtime.py#L990) |
+| function | `update_council_member` | `(*, council_id, agent_id, position_summary=…, vote=…, confidence=…)` | Patch a council member's position/vote/confidence by (council_id, agent_id). | [src](../../../core/runtime/db_agent_runtime.py#L1026) |
+| function | `get_council_member` | `(*, council_id, agent_id)` | Return the council_members row for (council_id, agent_id) as a dict, or None. | [src](../../../core/runtime/db_agent_runtime.py#L1064) |
+| function | `list_council_members` | `(*, council_id)` | Return all council_members rows for council_id as dicts, oldest-created first. | [src](../../../core/runtime/db_agent_runtime.py#L1077) |
+| function | `_agent_registry_row_to_dict` | `(row)` | — | [src](../../../core/runtime/db_agent_runtime.py#L1091) |
+| function | `_agent_run_row_to_dict` | `(row)` | — | [src](../../../core/runtime/db_agent_runtime.py#L1130) |
+| function | `_agent_message_row_to_dict` | `(row)` | — | [src](../../../core/runtime/db_agent_runtime.py#L1154) |
+| function | `_agent_tool_call_row_to_dict` | `(row)` | — | [src](../../../core/runtime/db_agent_runtime.py#L1170) |
+| function | `_agent_schedule_row_to_dict` | `(row)` | — | [src](../../../core/runtime/db_agent_runtime.py#L1185) |
+| function | `_council_session_row_to_dict` | `(row)` | — | [src](../../../core/runtime/db_agent_runtime.py#L1200) |
+| function | `_council_member_row_to_dict` | `(row)` | — | [src](../../../core/runtime/db_agent_runtime.py#L1217) |
 
 ## `core/runtime/db_anomalies.py`
 _Central-anomalier — persistent register over UDEFINEREDE fejl Centralen ikke selv har_

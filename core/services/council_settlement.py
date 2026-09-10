@@ -47,7 +47,10 @@ def settle_interrupted_councils() -> dict[str, Any]:
     afregnet: list[str] = []
     sprunget_over = 0
     try:
-        sessioner = list_council_sessions(limit=500)
+        # Filtrér i SQL. «Hent de 500 nyeste og filtrer i Python» gav NUL
+        # afregninger paa de 154 aeldste, fordi de aabne raad ER de
+        # aeldste — loftet skjulte praecis det vi ledte efter.
+        sessioner = list_council_sessions(limit=1000, statuses=AABNE)
     except Exception:
         logger.warning("kunne ikke laese raadssessioner", exc_info=True)
         return {"afregnet": 0, "afregnede_ider": [], "sprunget_over": 0}

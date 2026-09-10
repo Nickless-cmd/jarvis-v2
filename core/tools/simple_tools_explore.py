@@ -353,8 +353,15 @@ def _exec_explore(args: dict[str, Any]) -> dict[str, Any]:
                     # den returnerede gjorde ikke, saa to tal om samme koersel
                     # kunne kun forliges ved at gaette. Et linjenummer uden sin
                     # vaert er lige saa meningsloest som et hash uden sin remote.
-                    "kontrolleret_mod": ("workstation" if _bro_tjek
-                                         else "container")}
+                    # Den GEMTE raekke kunne sige «bro-svarede-ikke»; denne
+                    # kunne kun sige «workstation». Foerste aegte koersel efter
+                    # deployet ramte praecis dét: to poster om samme koersel,
+                    # og kun den ene kunne sige at den intet svar fik.
+                    "kontrolleret_mod": (
+                        "bro-svarede-ikke"
+                        if (_bro_tjek and int(dom.get("uafgjort") or 0) > 0
+                            and not kontrolleret)
+                        else ("workstation" if _bro_tjek else "container"))}
         sidste_fejl = [str(x) for x in (dom.get("fejl") or [])]
         if _tomhaendet and not sidste_fejl:
             # Ingen paaviselig fejl — men heller intet belaeg. Rotér frem for

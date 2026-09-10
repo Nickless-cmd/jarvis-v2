@@ -10,6 +10,7 @@ from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 from core.eventbus.bus import event_bus
+from core.services.cadence_claims import claim_producer, complete_producer
 from core.runtime.db import (
     list_runtime_self_authored_prompt_proposals,
     upsert_runtime_self_authored_prompt_proposal,
@@ -20,6 +21,10 @@ _PROMPT_EVOLUTION_VISIBLE_GRACE_MINUTES = 16
 _ADJACENT_PRODUCER_GRACE_MINUTES = 6
 _MIN_SOURCE_INPUTS = 3
 _SOURCE_KIND = "internal-runtime-prompt-evolution"
+
+# Leasen skal vaere laengere end et normalt pas, men kort nok til at en
+# doed proces ikke blokerer i timevis.
+_LEASE_SEKUNDER = 900
 
 _last_run_at: str = ""
 _last_result: dict[str, object] | None = None
@@ -36,6 +41,33 @@ def run_prompt_evolution_runtime(
     now = datetime.now(UTC)
     now_iso = now.isoformat()
 
+    # HOLDBART KRAV (opgave 3). `_last_run_at` nedenfor er en modul-global: den
+    # glemmes ved genstart, og `jarvis-api` og `jarvis-runtime` koerer SAMME
+    # app, saa de har hver sin kopi og kan begge koere producenten i samme
+    # minut. Kravet ligger derfor i databasen, med en lease saa en doed proces
+    # ikke laaser producenten for evigt.
+    #
+    # Den globale beholdes som en CACHE — den er hurtig og god nok til det
+    # almindelige tilfaelde — men den er ikke laengere autoriteten.
+    _krav = claim_producer(
+        "prompt_evolution",
+        cooldown_minutes=_PROMPT_EVOLUTION_COOLDOWN_MINUTES,
+        lease_seconds=_LEASE_SEKUNDER,
+        now=now,
+    )
+    if not _krav.claimed:
+        result = _blocked(
+            reason=("cooldown-active" if _krav.reason == "cooldown-active"
+                    else _krav.reason),
+            cadence_state=("cooling-down" if _krav.reason == "cooldown-active"
+                           else "claimed-elsewhere"),
+            trigger=trigger,
+            now=now,
+            reference=_parse_dt(_last_run_at) if _last_run_at else None,
+        )
+        _last_result = result
+        return result
+
     if _last_run_at:
         previous = _parse_dt(_last_run_at)
         if previous and (now - previous) < timedelta(minutes=_PROMPT_EVOLUTION_COOLDOWN_MINUTES):
@@ -47,6 +79,8 @@ def run_prompt_evolution_runtime(
                 reference=previous,
             )
             _last_result = result
+            complete_producer("prompt_evolution", _krav.lease_token,
+                              succeeded=False, now=now)
             return result
 
     if last_visible_at:
@@ -60,6 +94,8 @@ def run_prompt_evolution_runtime(
                 reference=visible,
             )
             _last_result = result
+            complete_producer("prompt_evolution", _krav.lease_token,
+                              succeeded=False, now=now)
             return result
 
     adjacent = _adjacent_producer_block(now=now, trigger=trigger)
@@ -111,6 +147,11 @@ def run_prompt_evolution_runtime(
                 "source_inputs": result["source_inputs"],
             },
         )
+        # Blokeret undervejs: ikke et gennemfoert pas, saa nedkoelings-maerket
+        # saettes IKKE. Ellers ville en producent der blokerer hurtigt blive
+        # holdt ude af sin egen blokering.
+        complete_producer("prompt_evolution", _krav.lease_token,
+                          succeeded=False, now=now)
         return result
 
     artifact = dict(plan["artifact"] or {})
@@ -173,6 +214,10 @@ def run_prompt_evolution_runtime(
             "source_inputs": result["source_inputs"],
         },
     )
+    # Gennemfoert pas — dette ER nedkoelings-maerket, og det overlever en
+    # genstart fordi det ligger i databasen og ikke i modulet.
+    complete_producer("prompt_evolution", _krav.lease_token,
+                      succeeded=True, now=now)
     return result
 
 

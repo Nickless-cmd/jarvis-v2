@@ -384,6 +384,35 @@ def _compact_curated_index(raw: str) -> str:
     return "\n".join(out)
 
 
+# Budget for kontekst mellem sessioner (fase 10). MAALT 10/9-2026: indekset
+# voksede 3.687 -> 4.790 tegn paa seks dage (+30 %) og havde INTET loft — det
+# er 9 % af en 51k-prompt og fordobles paa nogle uger. Loftet er sat rundhaandet
+# saa det ikke bider i dag; vaerdien ligger i at en fremtidig afkortning SIGER
+# det i stedet for at ske i stilhed.
+_MEMORY_INDEX_BUDGET = 8000
+
+
+def _budgetter_index(idx: str) -> tuple[str, int]:
+    """Klip indekset til budgettet paa en LINJEGRAENSE og sig hvor meget der gik.
+
+    Der klippes fra HALEN, saa de foerste linjer er byte-stabile: sektionen
+    deles af warmer-cron og live-run, og et skift midt i praefikset ville
+    braekke cachen. Klipning er kun forsvarlig fordi de udeladte emner stadig
+    kan naas med `search_memory`.
+    """
+    if len(idx) <= _MEMORY_INDEX_BUDGET:
+        return idx, 0
+    linjer = idx.splitlines()
+    beholdt: list[str] = []
+    brugt = 0
+    for ln in linjer:
+        if brugt + len(ln) + 1 > _MEMORY_INDEX_BUDGET:
+            break
+        beholdt.append(ln)
+        brugt += len(ln) + 1
+    return "\n".join(beholdt), len(linjer) - len(beholdt)
+
+
 def _curated_memory_index_section(name: str = "default") -> str:
     """Kurateret memory-INDEX (spec 2026-07-10 Spec B): altid-loadet én-linjers for
     den resolvede bruger. Kroppe læses on-demand via read_memory_topic. Rendered
@@ -413,10 +442,21 @@ def _curated_memory_index_section(name: str = "default") -> str:
         idx = _compact_curated_index(read_topic_index(name=name)).strip()
         if not idx:
             return ""
+        idx, udeladt = _budgetter_index(idx)
+        hale = ""
+        if udeladt:
+            # UDELADELSES-PROVENIENS (fase 10). En tavs afkortning ville vaere
+            # den vaerste udgave: han ville tro han saa hele indekset. Derfor
+            # staar tallet, og vejen tilbage staar ved siden af — de udeladte
+            # emner er stadig naabare med `search_memory`.
+            hale = (f"\n\n[{udeladt} emne(r) udeladt — indekset naaede sit "
+                    f"budget paa {_MEMORY_INDEX_BUDGET} tegn. De findes stadig: "
+                    "soeg med search_memory(...) eller aabn dem med "
+                    "read_memory_topic(slug).]")
         return (
             "## Curated memory index\n"
             "(One line per topic as 'title · slug'. Read a topic on demand with "
-            "read_memory_topic(slug).)\n\n" + idx
+            "read_memory_topic(slug).)\n\n" + idx + hale
         )
     except Exception:
         return ""  # index-load maa ALDRIG vaelte prompt-bygningen

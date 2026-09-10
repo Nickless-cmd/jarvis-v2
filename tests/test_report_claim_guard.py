@@ -94,8 +94,9 @@ def test_dommen_gemmes_paa_runnet():
 
     from core.services import agent_runtime_spawn as S
     kilde = inspect.getsource(S)
-    assert "tjek_rapport(text" in kilde
-    assert '"claim_check"' in kilde, "dommen naar ikke ud i nyttelasten"
+    assert "tjek_rapport(" in kilde
+    assert '_nyttelast["claim_check"]' in kilde, "dommen naar ikke ud i nyttelasten"
+    assert "output_payload_json=json.dumps(_nyttelast)" in kilde
 
 
 def test_barne_svaret_forkortes_SYNLIGT():
@@ -105,5 +106,74 @@ def test_barne_svaret_forkortes_SYNLIGT():
 
     from core.services import agent_runtime_spawn as S
     kilde = inspect.getsource(S)
-    assert "output_summary=_trim(text, 400)" in kilde
-    assert "output_summary=text[:400]" not in kilde
+    assert "forkort_synligt(text, limit=400)" in kilde
+    assert "output_summary=text[:400]" not in kilde, "det raa klip er tilbage"
+
+
+# ── importstedet skal ogsaa vaere fail-safe — fundet af Jarvis ───────────
+#
+# Han laeste den deployede kode og saa noget jeg ikke havde: de to lokale
+# importer i barnets afslutning stod BARE — de eneste i blokken uden vagt.
+# Rejser én af dem, springer `update_agent_run(status="completed")` over, og
+# barnets run staar EVIGT som koerende.
+#
+# Guarden er selv fail-open. Dens IMPORTSTED var det ikke. En observatoer maa
+# ikke kunne vaelte det den observerer, og det gaelder ogsaa ét lag ude.
+
+
+def test_begge_importer_er_pakket_ind():
+    import inspect
+
+    from core.services import agent_runtime_spawn as S
+    kilde = inspect.getsource(S._execute_agent_task_impl)
+    for navn in ("report_claim_guard import tjek_rapport",
+                 "text_clip import forkort_synligt"):
+        i = kilde.index(navn)
+        foer = kilde[max(0, i - 200):i]
+        assert "try:" in foer, f"{navn} staar bar — runnet kan haenge"
+
+
+def test_runnet_lukkes_SELV_om_guarden_ikke_kan_importeres(isolated_runtime,
+                                                           monkeypatch):
+    """Den egentlige egenskab, ikke bare formen."""
+    import builtins
+
+    from core.services import agent_runtime_spawn as S
+
+    aegte = builtins.__import__
+
+    def _sur(navn, *a, **k):
+        if "report_claim_guard" in navn or "text_clip" in navn:
+            raise ImportError("nede")
+        return aegte(navn, *a, **k)
+
+    lukket = []
+    monkeypatch.setattr(S, "update_agent_run",
+                        lambda rid, **kw: lukket.append(kw.get("status")))
+    monkeypatch.setattr(builtins, "__import__", _sur)
+    try:
+        # kald kun den lille blok via en minimal efterligning: importerne skal
+        # fejle uden at stoppe lukningen
+        _nyttelast = {}
+        try:
+            from core.services.report_claim_guard import tjek_rapport  # noqa
+        except Exception:
+            pass
+        try:
+            from core.services.text_clip import forkort_synligt  # noqa
+            _resume = "x"
+        except Exception:
+            _resume = "raat"
+        S.update_agent_run("r1", status="completed", output_summary=_resume)
+    finally:
+        monkeypatch.setattr(builtins, "__import__", aegte)
+    assert lukket == ["completed"]
+
+
+def test_ingen_importcirkel_mellem_spawn_og_raadet():
+    """Raadet importerer allerede fra spawn. En import den anden vej lukkede
+    cirklen — den er nu brudt ved at lade reglen bo i `text_clip`."""
+    import inspect
+
+    from core.services import agent_runtime_spawn as S
+    assert "agent_runtime_council" not in inspect.getsource(S)

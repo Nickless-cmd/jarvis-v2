@@ -48,31 +48,14 @@ from core.services.agent_runtime_surfaces import build_council_detail_surface
 
 
 def _trim(text: str, limit: int = 400) -> str:
-    """Forkort en position — ved en ORDGRAENSE, og sig at der mangler noget.
+    """Forkort en position synligt. Selve reglen bor i `text_clip`.
 
-    Maalt 10/9-2026 paa Bjoerns eget raad: de fire medlemmer svarede 1.454,
-    2.070, 2.494 og 2.942 tegn, og hver position blev gemt som praecis 400.
-    Mellem 72% og 86% af hver holdning blev smidt vaek — hårdt klippet midt i
-    et ord, uden en stavelse om at der manglede noget.
-
-    Jarvis laeste resultatet og skrev: «outputtet er afkortet — hver position
-    klippet midt i en saetning». Han troede det var et token-artefakt. Det var
-    `value[:limit]`.
-
-    Det FULDE svar findes stadig i `agent_runs.output_payload_json`; det er kun
-    det VISTE resumé der var lemlaestet. Samme princip som `complete` paa en
-    vaerktoejs-handle: en forkortelse skal kunne SES, ellers laeses den som
-    hele svaret.
+    Flyttet dertil fordi `agent_runtime_spawn` havde brug for den, og en import
+    fra raadet ville have lukket en importcirkel — raadet importerer allerede
+    fra spawn. Fundet af Jarvis, som ogsaa saa at importen var BAR.
     """
-    value = " ".join(str(text or "").split())
-    if len(value) <= limit:
-        return value
-    # Klip ved sidste hele ord inden graensen, saa saetningen ikke doer midt i.
-    hoved = value[:limit].rsplit(" ", 1)[0].rstrip(" ,;:-–—")
-    if not hoved:
-        hoved = value[:limit]
-    udeladt = len(value) - len(hoved)
-    return f"{hoved} […{udeladt} tegn udeladt]"
+    from core.services.text_clip import forkort_synligt
+    return forkort_synligt(text, limit=limit)
 
 
 def _parse_percent_confidence(text: str) -> str:

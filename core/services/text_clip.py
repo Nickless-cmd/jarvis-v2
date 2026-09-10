@@ -94,3 +94,27 @@ def clip_words(value: object, *, max_words: int) -> str:
         return " ".join(words[: max(int(max_words), 1)]) + " " + _ELLIPSIS
     except Exception:
         return ""
+
+
+def forkort_synligt(text: object, *, limit: int = 400) -> str:
+    """Forkort ved en ORDGRAENSE og sig hvor meget der blev udeladt.
+
+    Laa foer som `_trim` i `agent_runtime_council`. Flyttet hertil 10/9-2026 af
+    to grunde: `agent_runtime_spawn` havde brug for den, og en import DEN vej
+    ville have lukket en cirkel — raadet importerer allerede fra spawn.
+
+    Hvorfor den findes: `value[:limit]` klippede midt i et ord uden at sige
+    det. Maalt paa et raad samme morgen forsvandt 72-86% af hver holdning den
+    vej, og Jarvis laeste resultatet som et token-artefakt. En forkortelse der
+    ikke kan SES, bliver laest som hele svaret.
+    """
+    try:
+        value = " ".join(str(text or "").split())
+        if len(value) <= limit:
+            return value
+        hoved = value[:limit].rsplit(" ", 1)[0].rstrip(" ,;:-–—")
+        if not hoved:
+            hoved = value[:limit]
+        return f"{hoved} […{len(value) - len(hoved)} tegn udeladt]"
+    except Exception:
+        return str(text or "")[:limit]

@@ -448,23 +448,23 @@ _Agent runtime — council & swarm collective rounds._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_trim` | `(text, limit=…)` | Forkort en position — ved en ORDGRAENSE, og sig at der mangler noget. | [src](../../../core/services/agent_runtime_council.py#L50) |
-| function | `_parse_percent_confidence` | `(text)` | — | [src](../../../core/services/agent_runtime_council.py#L78) |
-| function | `_extract_confidence` | `(text)` | — | [src](../../../core/services/agent_runtime_council.py#L96) |
-| function | `_extract_vote` | `(text)` | — | [src](../../../core/services/agent_runtime_council.py#L113) |
-| function | `_format_peer_context` | `(messages, *, target_agent_id=…, limit=…)` | — | [src](../../../core/services/agent_runtime_council.py#L127) |
-| function | `_detect_swarm_conflicts` | `(outputs)` | Detect disagreements across swarm/council outputs. | [src](../../../core/services/agent_runtime_council.py#L138) |
-| function | `_load_council_model_config` | `()` | Read ~/.jarvis-v2/config/council_models.json, return role_models list. | [src](../../../core/services/agent_runtime_council.py#L159) |
-| function | `create_council_session_runtime` | `(*, topic, roles=…, owner_agent_id=…, member_models=…)` | — | [src](../../../core/services/agent_runtime_council.py#L172) |
-| function | `create_swarm_session_runtime` | `(*, topic, roles=…, owner_agent_id=…, member_models=…)` | — | [src](../../../core/services/agent_runtime_council.py#L222) |
-| function | `post_council_message` | `(*, council_id, content, kind=…, role=…)` | — | [src](../../../core/services/agent_runtime_council.py#L272) |
-| function | `_derive_initiative` | `(synthesis, *, topic=…)` | Distil a short, actionable initiative string from a synthesis. | [src](../../../core/services/agent_runtime_council.py#L295) |
-| function | `_augment_council_surface` | `(council_id, *, conclusion, initiative=…)` | Build the collective-round return dict with conclusion + initiative. | [src](../../../core/services/agent_runtime_council.py#L325) |
-| function | `_run_collective_round` | `(council_id, *, mode)` | Run one collective (council or swarm) round to a conclusion. | [src](../../../core/services/agent_runtime_council.py#L344) |
-| function | `_close_council_agents` | `(council_id)` | Mark all council member agents as completed to release spawn slots. | [src](../../../core/services/agent_runtime_council.py#L691) |
-| function | `_build_council_role_prefixed_summary` | `(members)` | — | [src](../../../core/services/agent_runtime_council.py#L714) |
-| function | `run_council_round` | `(council_id)` | Run one council round and ALWAYS close the session afterwards. | [src](../../../core/services/agent_runtime_council.py#L725) |
-| function | `run_swarm_round` | `(council_id)` | Run one swarm round and ALWAYS close the session afterwards. | [src](../../../core/services/agent_runtime_council.py#L742) |
+| function | `_trim` | `(text, limit=…)` | Forkort en position synligt. Selve reglen bor i `text_clip`. | [src](../../../core/services/agent_runtime_council.py#L50) |
+| function | `_parse_percent_confidence` | `(text)` | — | [src](../../../core/services/agent_runtime_council.py#L61) |
+| function | `_extract_confidence` | `(text)` | — | [src](../../../core/services/agent_runtime_council.py#L79) |
+| function | `_extract_vote` | `(text)` | — | [src](../../../core/services/agent_runtime_council.py#L96) |
+| function | `_format_peer_context` | `(messages, *, target_agent_id=…, limit=…)` | — | [src](../../../core/services/agent_runtime_council.py#L110) |
+| function | `_detect_swarm_conflicts` | `(outputs)` | Detect disagreements across swarm/council outputs. | [src](../../../core/services/agent_runtime_council.py#L121) |
+| function | `_load_council_model_config` | `()` | Read ~/.jarvis-v2/config/council_models.json, return role_models list. | [src](../../../core/services/agent_runtime_council.py#L142) |
+| function | `create_council_session_runtime` | `(*, topic, roles=…, owner_agent_id=…, member_models=…)` | — | [src](../../../core/services/agent_runtime_council.py#L155) |
+| function | `create_swarm_session_runtime` | `(*, topic, roles=…, owner_agent_id=…, member_models=…)` | — | [src](../../../core/services/agent_runtime_council.py#L205) |
+| function | `post_council_message` | `(*, council_id, content, kind=…, role=…)` | — | [src](../../../core/services/agent_runtime_council.py#L255) |
+| function | `_derive_initiative` | `(synthesis, *, topic=…)` | Distil a short, actionable initiative string from a synthesis. | [src](../../../core/services/agent_runtime_council.py#L278) |
+| function | `_augment_council_surface` | `(council_id, *, conclusion, initiative=…)` | Build the collective-round return dict with conclusion + initiative. | [src](../../../core/services/agent_runtime_council.py#L308) |
+| function | `_run_collective_round` | `(council_id, *, mode)` | Run one collective (council or swarm) round to a conclusion. | [src](../../../core/services/agent_runtime_council.py#L327) |
+| function | `_close_council_agents` | `(council_id)` | Mark all council member agents as completed to release spawn slots. | [src](../../../core/services/agent_runtime_council.py#L674) |
+| function | `_build_council_role_prefixed_summary` | `(members)` | — | [src](../../../core/services/agent_runtime_council.py#L697) |
+| function | `run_council_round` | `(council_id)` | Run one council round and ALWAYS close the session afterwards. | [src](../../../core/services/agent_runtime_council.py#L708) |
+| function | `run_swarm_round` | `(council_id)` | Run one swarm round and ALWAYS close the session afterwards. | [src](../../../core/services/agent_runtime_council.py#L725) |
 
 ## `core/services/agent_runtime_spawn.py`
 _Agent runtime — spawn, execution, messaging, scheduling & lifecycle._
@@ -481,22 +481,22 @@ _Agent runtime — spawn, execution, messaging, scheduling & lifecycle._
 | function | `_build_agent_prompt` | `(*, agent, messages, execution_mode, extra_instruction=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L415) |
 | function | `execute_agent_task` | `(*, agent_id, thread_id=…, execution_mode=…)` | Koer et barns arbejde. | [src](../../../core/services/agent_runtime_spawn.py#L439) |
 | function | `_execute_agent_task_impl` | `(*, agent_id, thread_id=…, execution_mode=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L455) |
-| function | `send_message_to_agent` | `(*, agent_id, content, role=…, kind=…, execution_mode=…, auto_execute=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L803) |
-| function | `send_peer_message` | `(*, from_agent_id, to_agent_id, content, kind=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L831) |
-| function | `_council_thread_id` | `(council_id)` | — | [src](../../../core/services/agent_runtime_spawn.py#L859) |
-| function | `schedule_agent_task` | `(*, agent_id, schedule_kind=…, delay_seconds=…, schedule_expr=…, activate=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L863) |
-| function | `cleanup_stale_agents` | `(*, waiting_timeout_minutes=…, failed_timeout_minutes=…, active_timeout_minutes=…, starting_timeout_minutes=…, blocked_timeout_minutes=…, max_per_run=…)` | Auto-cancel agents hanging in non-terminal states for too long. | [src](../../../core/services/agent_runtime_spawn.py#L901) |
-| function | `run_due_agent_schedules` | `(*, limit=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1106) |
-| function | `_check_spawn_limits` | `()` | — | [src](../../../core/services/agent_runtime_spawn.py#L1150) |
-| function | `_check_budget_and_expire` | `(agent_id, *, tokens_used)` | Expire agent if it has exceeded its token budget. Returns True if expired. | [src](../../../core/services/agent_runtime_spawn.py#L1159) |
-| function | `_check_max_turns_and_expire` | `(agent_id)` | Expire agent if it has reached its max_turns limit. Returns True if expired. | [src](../../../core/services/agent_runtime_spawn.py#L1198) |
-| function | `_schedule_retry_backoff` | `(agent_id, failure_count)` | Schedule a retry with exponential backoff. Returns delay seconds. | [src](../../../core/services/agent_runtime_spawn.py#L1228) |
-| function | `cancel_agent` | `(agent_id, *, note=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1243) |
-| function | `suspend_agent` | `(agent_id, *, note=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1262) |
-| function | `resume_agent` | `(agent_id)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1279) |
-| function | `expire_agent` | `(agent_id, *, reason=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1298) |
-| function | `promote_agent_result` | `(agent_id, *, note=…)` | File an autonomy proposal to promote the agent's latest result to Jarvis memory. | [src](../../../core/services/agent_runtime_spawn.py#L1320) |
-| function | `recover_crashed_agents` | `()` | Called on API startup: reset agents that were mid-execution when the process died. | [src](../../../core/services/agent_runtime_spawn.py#L1354) |
+| function | `send_message_to_agent` | `(*, agent_id, content, role=…, kind=…, execution_mode=…, auto_execute=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L821) |
+| function | `send_peer_message` | `(*, from_agent_id, to_agent_id, content, kind=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L849) |
+| function | `_council_thread_id` | `(council_id)` | — | [src](../../../core/services/agent_runtime_spawn.py#L877) |
+| function | `schedule_agent_task` | `(*, agent_id, schedule_kind=…, delay_seconds=…, schedule_expr=…, activate=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L881) |
+| function | `cleanup_stale_agents` | `(*, waiting_timeout_minutes=…, failed_timeout_minutes=…, active_timeout_minutes=…, starting_timeout_minutes=…, blocked_timeout_minutes=…, max_per_run=…)` | Auto-cancel agents hanging in non-terminal states for too long. | [src](../../../core/services/agent_runtime_spawn.py#L919) |
+| function | `run_due_agent_schedules` | `(*, limit=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1124) |
+| function | `_check_spawn_limits` | `()` | — | [src](../../../core/services/agent_runtime_spawn.py#L1168) |
+| function | `_check_budget_and_expire` | `(agent_id, *, tokens_used)` | Expire agent if it has exceeded its token budget. Returns True if expired. | [src](../../../core/services/agent_runtime_spawn.py#L1177) |
+| function | `_check_max_turns_and_expire` | `(agent_id)` | Expire agent if it has reached its max_turns limit. Returns True if expired. | [src](../../../core/services/agent_runtime_spawn.py#L1216) |
+| function | `_schedule_retry_backoff` | `(agent_id, failure_count)` | Schedule a retry with exponential backoff. Returns delay seconds. | [src](../../../core/services/agent_runtime_spawn.py#L1246) |
+| function | `cancel_agent` | `(agent_id, *, note=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1261) |
+| function | `suspend_agent` | `(agent_id, *, note=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1280) |
+| function | `resume_agent` | `(agent_id)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1297) |
+| function | `expire_agent` | `(agent_id, *, reason=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1316) |
+| function | `promote_agent_result` | `(agent_id, *, note=…)` | File an autonomy proposal to promote the agent's latest result to Jarvis memory. | [src](../../../core/services/agent_runtime_spawn.py#L1338) |
+| function | `recover_crashed_agents` | `()` | Called on API startup: reset agents that were mid-execution when the process died. | [src](../../../core/services/agent_runtime_spawn.py#L1372) |
 
 ## `core/services/agent_runtime_surfaces.py`
 _Agent runtime — read surfaces (agent + council/swarm projections)._

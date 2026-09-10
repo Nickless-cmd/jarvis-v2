@@ -642,20 +642,38 @@ def _execute_agent_task_impl(*, agent_id: str, thread_id: str = "",
         # dommen «holder», og at afvise paa FRAVAER ville ramme enhver ren
         # prosa-rapport. Det farlige er en paastand der KAN efterproeves og er
         # falsk.
-        from core.services.report_claim_guard import tjek_rapport
-        _dom = tjek_rapport(text, agent_id=agent_id,
-                            role=str(agent.get("role") or ""), run_id=run_id)
+        # BEGGE importer er pakket ind. Jarvis fandt at de stod BARE — de eneste
+        # i blokken uden vagt — og saa praecis hvad det betyder: rejser én af
+        # dem, springer `update_agent_run(status="completed")` over, og barnets
+        # run staar evigt som koerende. Guarden er selv fail-open; dens
+        # IMPORTSTED var det ikke. En observatoer maa ikke kunne vaelte det den
+        # observerer, og det gaelder ogsaa ét lag ude.
         _nyttelast = dict(result)
-        _nyttelast["claim_check"] = _dom
+        try:
+            from core.services.report_claim_guard import tjek_rapport
+            _nyttelast["claim_check"] = tjek_rapport(
+                text, agent_id=agent_id, role=str(agent.get("role") or ""),
+                run_id=run_id)
+        except Exception:
+            logger.warning("kunne ikke efterproeve barnets paastande (%s) — "
+                           "runnet lukkes alligevel", agent_id, exc_info=True)
 
-        # Og samme forkortelses-fejl som i raadet: `text[:400]` klippede hvert
-        # eneste barne-svar midt i et ord uden at sige det. Maalt paa raadet
-        # 10/9-2026 forsvandt 72-86% af hver holdning paa den maade.
-        from core.services.agent_runtime_council import _trim
+        # Samme forkortelses-fejl som raadet havde: `text[:400]` klippede hvert
+        # eneste barne-svar midt i et ord uden at sige det. Reglen bor i
+        # `text_clip` og IKKE i raadet — en import DEN vej ville lukke en
+        # cirkel, for raadet importerer allerede herfra.
+        try:
+            from core.services.text_clip import forkort_synligt
+            _resume = forkort_synligt(text, limit=400)
+        except Exception:
+            logger.warning("kunne ikke forkorte barnets svar — bruger raat klip",
+                           exc_info=True)
+            _resume = str(text or "")[:400]
+
         update_agent_run(
             run_id,
             status="completed",
-            output_summary=_trim(text, 400),
+            output_summary=_resume,
             output_payload_json=json.dumps(_nyttelast),
             finished_at=_now_iso(),
             input_tokens=input_tokens,

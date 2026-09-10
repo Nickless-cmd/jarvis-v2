@@ -121,6 +121,7 @@ _core/services/text_clip.py_
 | function | `clip_text` | `(value, *, limit, hard=…)` | Klip tekst til <= ~limit tegn UDEN at hugge midt i et ord. | [src](../../../core/services/text_clip.py#L16) |
 | function | `clip_head_tail` | `(value, *, limit, tail_frac=…)` | Bevar HOVED + HALE ved LINJE-grænser når tekst overskrider limit. Til tool-output (bash/read/ | [src](../../../core/services/text_clip.py#L53) |
 | function | `clip_words` | `(value, *, max_words)` | Klip til et antal ORD (ikke tegn) — når ord er den meningsfulde enhed. Self-safe. | [src](../../../core/services/text_clip.py#L88) |
+| function | `forkort_synligt` | `(text, *, limit=…)` | Forkort ved en ORDGRAENSE og sig hvor meget der blev udeladt. | [src](../../../core/services/text_clip.py#L99) |
 
 ## `core/services/text_resonance.py`
 _Text Resonance — I feel what I read, before I analyze it._

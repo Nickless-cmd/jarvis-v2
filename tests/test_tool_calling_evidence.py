@@ -98,3 +98,77 @@ def test_explore_kraever_vaerktoejer_af_sine_modeller():
     from core.tools import simple_tools_explore as e
 
     assert "kraever_vaerktoejer=True" in inspect.getsource(e._exec_explore)
+
+
+# ── porten kaldes ÉN GANG PR. KANDIDAT — scannet maa ikke gentages ──────
+#
+# Jarvis pegede paa loekken: `kan_kalde_vaerktoejer` kaldes inde i
+# `for post in poster`, og hvert kald re-laeste HELE `agent_runs` med
+# JSON-parse pr. raekke. MAALT: ét scan 15,9 ms ved 935 koersler, fire kald
+# 30 ms. Lidt i dag — men det vokser med historikken, og tabellen bliver kun
+# laengere.
+
+def test_gentagne_kald_scanner_ikke_igen(isolated_runtime):
+    import core.runtime.db_agent_runtime as db
+    import core.services.tool_calling_evidence as t
+
+    t._nulstil_cache_for_tests()
+    db.create_agent_registry_entry(agent_id="a", role="r", goal="g")
+    _koersel(db, "p", "m", kald=0, n=MIN_KOERSLER + 1)
+
+    scan = {"n": 0}
+    aegte = t.tool_calling_record
+
+    t._nulstil_cache_for_tests()
+    t.tool_calling_record()                       # varmer cachen
+    from core.runtime import db_core
+    aegte_connect = db_core.connect
+
+    def _taeller(*a, **kw):
+        scan["n"] += 1
+        return aegte_connect(*a, **kw)
+
+    db_core.connect = _taeller
+    try:
+        for _ in range(5):
+            t.kan_kalde_vaerktoejer("p", "m")
+    finally:
+        db_core.connect = aegte_connect
+    assert scan["n"] == 0, f"scannede {scan['n']} gange trods cache"
+    del aegte
+
+
+def test_en_FEJLET_laesning_caches_ikke(isolated_runtime, monkeypatch):
+    """Ellers ville ét daarligt oejeblik fastfryse et tomt svar i et minut —
+    og porten ville lade alt igennem imens, uden at nogen saa det."""
+    import core.services.tool_calling_evidence as t
+
+    t._nulstil_cache_for_tests()
+    monkeypatch.setattr("core.runtime.db_core.connect",
+                        lambda: (_ for _ in ()).throw(RuntimeError("db nede")))
+    assert t.tool_calling_record() == {}
+    assert t._cache is None, "en fejlet laesning blev cachet"
+
+
+def test_cachen_udloeber(isolated_runtime):
+    """En frisk observation skal naa frem ved naeste vindue — ikke aldrig."""
+    import core.services.tool_calling_evidence as t
+
+    assert t._CACHE_SEKUNDER <= 300, (
+        "cachen holder for laenge til at ny evidens naar frem i praksis")
+
+
+def test_cachen_noegles_paa_DATABASEN_ikke_kun_paa_tiden(isolated_runtime):
+    """Uden DB-noeglen ville en proces der skifter runtime-hjem — praecis hvad
+    testene goer — laese et svar fra et ANDET hus og tro det var sit eget.
+
+    Det er samme fejlklasse som de seks suite-fejl der viste sig at vaere
+    forurening: en delt tilstand der overlever en graense den ikke burde."""
+    import core.services.tool_calling_evidence as t
+
+    assert "_cache_db" in t.tool_calling_record.__globals__, (
+        "cachen har ingen database-noegle")
+    import inspect
+    kilde = inspect.getsource(t.tool_calling_record)
+    assert "_cache_db == _db" in kilde, (
+        "cachen sammenligner ikke databasen — svaret kan komme fra et andet hus")

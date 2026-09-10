@@ -48,12 +48,53 @@ MIN_KOERSLER = 25
 MIN_ANDEL = 0.02
 
 
+#: Kort proces-cache. MAALT 10/9: ét fuldt scan koster 15,9 ms ved 935
+#: koersler, og porten kaldes ÉN GANG PR. KANDIDAT i rotationen — fire kald
+#: blev til 30 ms. Det er lidt i dag, men det vokser med historikken, og
+#: `agent_runs` bliver kun laengere. (Jarvis pegede paa loekken.)
+#:
+#: 60 sekunder er rigeligt: en models evne til at kalde vaerktoejer aendrer sig
+#: ikke fra minut til minut, og en frisk observation naar frem ved naeste
+#: vindue frem for aldrig.
+_CACHE_SEKUNDER = 60.0
+_cache: dict[str, dict[str, Any]] | None = None
+_cache_tid: float = 0.0
+_cache_min: int = -1
+#: Cachen noegles ogsaa paa DATABASE-STIEN. Uden det ville en proces der
+#: skifter runtime-hjem — praecis hvad testene goer — laese et svar fra et
+#: ANDET hus og tro det var sit eget. Jeg har lige brugt dagen paa at vise at
+#: seks suite-fejl skyldtes forurening; en cache uden denne noegle ville vaere
+#: en ny kilde til samme slags.
+_cache_db: str = ""
+
+
+def _db_noegle() -> str:
+    try:
+        from core.runtime import db_core
+        return str(db_core.DB_PATH)
+    except Exception:
+        return ""
+
+
+def _nulstil_cache_for_tests() -> None:
+    global _cache, _cache_tid, _cache_min, _cache_db
+    _cache, _cache_tid, _cache_min, _cache_db = None, 0.0, -1, ""
+
+
 def tool_calling_record(*, min_koersler: int = MIN_KOERSLER) -> dict[str, dict[str, Any]]:
     """(provider, model) -> {koersler, med_kald, andel, dom}.
 
     `dom` er "kan" / "kan-ikke" / "umaalt". Den sidste er ikke en mistanke —
     den betyder at vi ikke har grundlag, og saa spaerrer vi ikke.
     """
+    global _cache, _cache_tid, _cache_min, _cache_db
+    import time as _t
+    _db = _db_noegle()
+    if (_cache is not None and _cache_min == int(min_koersler)
+            and _cache_db == _db
+            and (_t.monotonic() - _cache_tid) < _CACHE_SEKUNDER):
+        return _cache
+
     ud: dict[str, dict[str, Any]] = {}
     try:
         from core.runtime.db_core import connect
@@ -86,6 +127,11 @@ def tool_calling_record(*, min_koersler: int = MIN_KOERSLER) -> dict[str, dict[s
             p["dom"] = "kan-ikke"
         else:
             p["dom"] = "kan"
+    # Kun et VELLYKKET scan caches. En fejlet laesning maa ikke fastfryse et
+    # tomt svar i et minut — da er det bedre at proeve igen med det samme.
+    if raekker:
+        _cache, _cache_tid, _cache_min, _cache_db = (
+            ud, _t.monotonic(), int(min_koersler), _db)
     return ud
 
 

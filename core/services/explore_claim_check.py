@@ -67,7 +67,7 @@ def _findes(sti: str, rod: Path) -> bool:
 
 
 def tjek_paastande(svar: str, *, rod: Path | None = None,
-                   findes_fn=None) -> dict[str, object]:
+                   findes_fn=None, linje_fn=None) -> dict[str, object]:
     """Slå svarets efterprøvelige påstande op. Kaster aldrig.
 
     Returnerer {"kontrolleret": n, "fejl": [...], "holder": bool}. Uden
@@ -84,6 +84,13 @@ def tjek_paastande(svar: str, *, rod: Path | None = None,
     `None` fra `findes_fn` betyder «kunne ikke afgøres» og tæller hverken som
     fund eller fejl. Et værn der gætter er værre end intet: det ville anklage
     ægte filer for ikke at findes.
+
+    `linje_fn(sti, nr, fragment) -> bool | None` efterprøver et CITAT et andet
+    sted. Jarvis foreslog den: `operator_grep` giver fil, linjenummer og tekst
+    i ét kald. Målt 10/9-2026 koster et grep 0,08 s — det SAMME som
+    eksistens-tjekket, og med mere i svaret. Uden den ville et citat over broen
+    kun kunne bekræftes for at filen findes, ikke for at linjen siger det der
+    påstås.
     """
     ud: dict[str, object] = {"kontrolleret": 0, "fejl": [], "holder": True}
     try:
@@ -114,9 +121,21 @@ def tjek_paastande(svar: str, *, rod: Path | None = None,
             if not _findes_den:
                 fejl.append(f"{sti}: filen findes ikke")
                 continue
-            if not indhold or findes_fn is not None:
-                # Linje-indholdet kan kun efterproeves hvor vi kan LAESE filen.
-                # Over broen ville det kraeve en fuld filhentning pr. citat.
+            if not indhold:
+                continue
+            if findes_fn is not None:
+                # Over broen: ét grep giver baade linjenummer og tekst.
+                if linje_fn is None:
+                    continue
+                kerne = indhold.strip().strip("`").split("(")[0].strip()
+                if not kerne:
+                    continue
+                try:
+                    passer = linje_fn(sti, nr, kerne)
+                except Exception:
+                    passer = None
+                if passer is False:
+                    fejl.append(f"{sti}:{nr}: linjen indeholder ikke {kerne!r}")
                 continue
             try:
                 linjer = (r / sti if not Path(sti).is_absolute() else Path(sti)).read_text(

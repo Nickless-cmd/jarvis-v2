@@ -448,11 +448,11 @@ _Read-only research-agent tool with runtime/Desk execution routing._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_facade` | `()` | — | [src](../../../core/tools/simple_tools_explore.py#L9) |
-| function | `_execution_context` | `(args)` | — | [src](../../../core/tools/simple_tools_explore.py#L14) |
-| function | `_explore_spawn` | `(*, query, vejledning, provider=…, model=…, target=…, context=…)` | — | [src](../../../core/tools/simple_tools_explore.py#L46) |
-| function | `_explore_svar` | `(result)` | — | [src](../../../core/tools/simple_tools_explore.py#L81) |
-| function | `_exec_explore` | `(args)` | — | [src](../../../core/tools/simple_tools_explore.py#L94) |
+| function | `_facade` | `()` | — | [src](../../../core/tools/simple_tools_explore.py#L11) |
+| function | `_execution_context` | `(args)` | — | [src](../../../core/tools/simple_tools_explore.py#L16) |
+| function | `_explore_spawn` | `(*, query, vejledning, provider=…, model=…, target=…, context=…)` | — | [src](../../../core/tools/simple_tools_explore.py#L48) |
+| function | `_explore_svar` | `(result)` | — | [src](../../../core/tools/simple_tools_explore.py#L83) |
+| function | `_exec_explore` | `(args)` | — | [src](../../../core/tools/simple_tools_explore.py#L96) |
 
 ## `core/tools/simple_tools_native.py`
 _Native (non-operator, non-web) tool executors for Jarvis._

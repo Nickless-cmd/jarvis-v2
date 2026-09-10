@@ -111,3 +111,69 @@ def test_runtime_stien_bruger_stadig_containerens_repo():
     kode = _kode_uden_kommentarer(E._exec_explore)
     assert 'if target == "workstation":' in kode
     assert "else tjek_paastande(svar)" in kode
+
+
+# ── citater efterproeves ogsaa over broen — Jarvis' forslag ─────────────
+#
+# Han spurgte: «er det dyrere end det er vaerd, eller er det den naeste billige
+# sejr?» — og bad udtrykkeligt om at det blev maalt, ikke gaettet.
+#
+# MAALT 10/9-2026 mod hans egen maskine:
+#     _operator_file_exists   0,08 s   (kun eksistens)
+#     operator_grep           0,08 s   (fil + linjenummer + tekst)
+#
+# Samme pris, mere i svaret. Den billige sejr var der.
+
+
+def test_et_citat_der_PASSER_holder():
+    d = tjek_paastande("se /home/bs/p/main.ts:42:const foo",
+                       findes_fn=lambda s: True,
+                       linje_fn=lambda s, n, f: True)
+    assert d["holder"] is True and d["kontrolleret"] == 1
+
+
+def test_et_citat_paa_den_FORKERTE_linje_falder():
+    d = tjek_paastande("se /home/bs/p/main.ts:42:const foo",
+                       findes_fn=lambda s: True,
+                       linje_fn=lambda s, n, f: False)
+    assert d["holder"] is False
+    assert "indeholder ikke" in d["fejl"][0]
+
+
+def test_fragmentet_sendes_NOEGENT_videre():
+    """Modellen omskriver whitespace og klipper linjen. Vi soeger paa kernen,
+    ikke paa en eksakt streng — samme leniens som den lokale sti bruger."""
+    set_af = []
+    tjek_paastande("se /home/bs/p/main.ts:42:`const foo(bar)` ",
+                   findes_fn=lambda s: True,
+                   linje_fn=lambda s, n, f: set_af.append(f) or True)
+    assert set_af == ["const foo"]
+
+
+def test_UAFGJORT_citat_doemmes_ikke():
+    d = tjek_paastande("se /home/bs/p/main.ts:42:const foo",
+                       findes_fn=lambda s: True,
+                       linje_fn=lambda s, n, f: None)
+    assert d["holder"] is True
+
+
+def test_en_linje_tjekker_der_KASTER_doemmer_ikke():
+    d = tjek_paastande("se /home/bs/p/main.ts:42:const foo",
+                       findes_fn=lambda s: True,
+                       linje_fn=lambda s, n, f: (_ for _ in ()).throw(RuntimeError("bro nede")))
+    assert d["holder"] is True
+
+
+def test_uden_linje_tjekker_efterproeves_kun_eksistensen():
+    """Bagudkompatibelt: en kalder der kun giver `findes_fn` faar samme
+    opfoersel som foer."""
+    d = tjek_paastande("se /home/bs/p/main.ts:42:const foo",
+                       findes_fn=lambda s: True)
+    assert d["holder"] is True and d["kontrolleret"] == 1
+
+
+def test_workstation_stien_giver_BEGGE_tjekkere_med():
+    from core.tools import simple_tools_explore as E
+    kode = _kode_uden_kommentarer(E._exec_explore)
+    assert "linje_fn=_bro_linje" in kode
+    assert "_exec_operator_grep" in kode

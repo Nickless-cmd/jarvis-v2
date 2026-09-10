@@ -1,6 +1,8 @@
 """Read-only research-agent tool with runtime/Desk execution routing."""
 from __future__ import annotations
 
+import re
+
 from typing import Any
 
 _EXPLORE_MAKS_RUNDER = 3
@@ -145,6 +147,33 @@ def _exec_explore(args: dict[str, Any]) -> dict[str, Any]:
                 return _operator_file_exists(sti, _bruger)
             except Exception:
                 return None
+
+        def _bro_linje(sti: str, nr: int, fragment: str):
+            """Efterproev et CITAT over broen. Jarvis' forslag, og han havde ret
+            i prisen: ét `operator_grep` koster 0,08 s — det SAMME som
+            eksistens-tjekket — og giver fil, linjenummer og tekst i ét kald.
+
+            `None` naar broen ikke kan afgoere det. Findes fragmentet slet
+            ikke, er citatet opdigtet; findes det paa en ANDEN linje, er
+            linjenummeret forkert. Begge dele er en fejl vaerd at sige.
+            """
+            try:
+                from core.tools.simple_tools_operator import _exec_operator_grep
+                svar = _exec_operator_grep({
+                    "pattern": re.escape(fragment), "path": sti,
+                    "max_results": 20,
+                })
+            except Exception:
+                return None
+            if not isinstance(svar, dict) or svar.get("status") != "ok":
+                return None
+            traef = svar.get("result")
+            if not isinstance(traef, list):
+                return None
+            if not traef:
+                return False                    # fragmentet findes slet ikke
+            return any(int(t.get("line") or 0) == int(nr)
+                       for t in traef if isinstance(t, dict))
     brugt: set[tuple[str, str]] = set()
     sidste_fejl: list[str] = []
     svar, agent_id, kontrolleret = "", "", 0
@@ -180,8 +209,8 @@ def _exec_explore(args: dict[str, Any]) -> dict[str, Any]:
         svar = svar_n
         if tjek_paastande is None:
             break
-        dom = (tjek_paastande(svar, findes_fn=_bro_tjek) if _bro_tjek
-               else tjek_paastande(svar))
+        dom = (tjek_paastande(svar, findes_fn=_bro_tjek, linje_fn=_bro_linje)
+               if _bro_tjek else tjek_paastande(svar))
         kontrolleret = int(dom.get("kontrolleret") or 0)
         if dom.get("holder"):
             return {"status": "ok", "findings": svar[:12000] or None,

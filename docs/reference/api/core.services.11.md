@@ -402,7 +402,7 @@ _Tjek explore-agentens påstande mod virkeligheden._
 |---|---|---|---|---|
 | function | `_rod` | `()` | — | [src](../../../core/services/explore_claim_check.py#L54) |
 | function | `_findes` | `(sti, rod)` | — | [src](../../../core/services/explore_claim_check.py#L62) |
-| function | `tjek_paastande` | `(svar, *, rod=…, findes_fn=…)` | Slå svarets efterprøvelige påstande op. Kaster aldrig. | [src](../../../core/services/explore_claim_check.py#L69) |
+| function | `tjek_paastande` | `(svar, *, rod=…, findes_fn=…, linje_fn=…)` | Slå svarets efterprøvelige påstande op. Kaster aldrig. | [src](../../../core/services/explore_claim_check.py#L69) |
 
 ## `core/services/fabricated_tool_result_gate.py`
 _Fabrikerede tool-resultater — den ene løgn der ikke kan bortforklares._

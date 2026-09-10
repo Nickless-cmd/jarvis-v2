@@ -2,6 +2,13 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/internal_cadence_core.py`
+_Core-infra cadence producers (split from internal_cadence.py)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `register_core_producers` | `(register_producer)` | Register the core-infra producers (unchanged order/timing). | [src](../../../core/services/internal_cadence_core.py#L19) |
+
 ## `core/services/internal_cadence_inner_life.py`
 _Inner-life cadence producers (split from internal_cadence.py)._
 
@@ -605,16 +612,4 @@ _Mail checker daemon — checks jarvis@srvlab.dk inbox for new mail._
 | function | `get_latest_mail_info` | `()` | Return latest check info for other consumers. | [src](../../../core/services/mail_checker_daemon.py#L552) |
 | function | `mail_awareness_section` | `()` | Ny post som en KENDSGERNING i prompten. "" naar der intet er. | [src](../../../core/services/mail_checker_daemon.py#L567) |
 | function | `_mail_time_label` | `(timer)` | — | [src](../../../core/services/mail_checker_daemon.py#L610) |
-
-## `core/services/malware_scan.py`
-_Malware-scanning af uploads/vedhæftninger (spec §15.3.1)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `ScanReport` | `` | — | [src](../../../core/services/malware_scan.py#L21) |
-| method | `ScanReport.safe` | `(self)` | — | [src](../../../core/services/malware_scan.py#L27) |
-| method | `ScanReport.as_dict` | `(self)` | — | [src](../../../core/services/malware_scan.py#L30) |
-| function | `clamav_available` | `()` | — | [src](../../../core/services/malware_scan.py#L35) |
-| function | `scan_file` | `(path)` | Scan en fil med clamscan. Returnerer ScanReport. Blokerer aldrig på | [src](../../../core/services/malware_scan.py#L39) |
-| function | `is_upload_allowed` | `(path, *, block_on_unavailable=…)` | Politik-helper: må denne upload gemmes/behandles? (§15.3.1) | [src](../../../core/services/malware_scan.py#L68) |
 

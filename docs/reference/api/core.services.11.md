@@ -2,6 +2,17 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/emotion_concepts_positive_triggers.py`
+_Positive emotion concept bridges for living runtime signals._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `on_heartbeat_quality` | `(payload)` | Trigger joy when heartbeat quality is clearly good. | [src](../../../core/services/emotion_concepts_positive_triggers.py#L13) |
+| function | `on_goal_created` | `(payload)` | A new durable goal produces a small anticipation/excitement pulse. | [src](../../../core/services/emotion_concepts_positive_triggers.py#L29) |
+| function | `on_goal_updated` | `(payload)` | Trigger pride when a goal is nearly done, without refiring constantly. | [src](../../../core/services/emotion_concepts_positive_triggers.py#L42) |
+| function | `on_sensory_recorded` | `(record)` | Trigger wonder when a sensory memory explicitly looks novel/anomalous. | [src](../../../core/services/emotion_concepts_positive_triggers.py#L80) |
+| function | `_float` | `(value)` | — | [src](../../../core/services/emotion_concepts_positive_triggers.py#L103) |
+
 ## `core/services/emotion_repair_bridge_daemon.py`
 _Emotion Repair Bridge Daemon — tovejskobling mellem emotion-signaler og selvreparation._
 
@@ -475,9 +486,9 @@ _Tjek explore-agentens påstande mod virkeligheden._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_rod` | `()` | — | [src](../../../core/services/explore_claim_check.py#L99) |
-| function | `_findes` | `(sti, rod)` | — | [src](../../../core/services/explore_claim_check.py#L107) |
-| function | `tjek_paastande` | `(svar, *, rod=…, findes_fn=…, linje_fn=…)` | Slå svarets efterprøvelige påstande op. Kaster aldrig. | [src](../../../core/services/explore_claim_check.py#L114) |
+| function | `_rod` | `()` | — | [src](../../../core/services/explore_claim_check.py#L111) |
+| function | `_findes` | `(sti, rod)` | — | [src](../../../core/services/explore_claim_check.py#L119) |
+| function | `tjek_paastande` | `(svar, *, rod=…, findes_fn=…, linje_fn=…)` | Slå svarets efterprøvelige påstande op. Kaster aldrig. | [src](../../../core/services/explore_claim_check.py#L126) |
 
 ## `core/services/fabricated_tool_result_gate.py`
 _Fabrikerede tool-resultater — den ene løgn der ikke kan bortforklares._
@@ -636,11 +647,4 @@ _Output-token budget for agentic follow-up rounds + the "reasoning ate the_
 | function | `reasoning_exhausted` | `(*, finish_reason, text, tool_calls)` | True when the provider stopped for length and nothing usable came out: | [src](../../../core/services/followup_output_budget.py#L43) |
 | function | `supports_nonthinking_retry` | `(provider, model)` | Only DeepSeek thinking models can be re-run with thinking disabled. | [src](../../../core/services/followup_output_budget.py#L53) |
 | function | `nonthinking_retry_body` | `()` | Extra request fields that disable DeepSeek thinking for the retry round. | [src](../../../core/services/followup_output_budget.py#L61) |
-
-## `core/services/forced_tool_choice_probe.py`
-_Måling: honorerer providerne `tool_choice="required"`?_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `note_forced_round` | `(*, run_id, provider, model, round_index, finish_reason, tool_calls, text_chars, reasoning_chars, tools_advertised, thinking_disabled)` | Registrér udfaldet af én runde kørt med ``tool_choice="required"``. | [src](../../../core/services/forced_tool_choice_probe.py#L50) |
 

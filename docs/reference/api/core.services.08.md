@@ -176,6 +176,16 @@ _Conversation-continuity topics, deliberately separate from world truth._
 | function | `record_conversation_topic` | `(*, canonical_key, title, summary=…, source_kind=…, session_id=…, run_id=…)` | — | [src](../../../core/services/conversation_topics.py#L14) |
 | function | `list_conversation_topics` | `(*, limit=…)` | — | [src](../../../core/services/conversation_topics.py#L43) |
 
+## `core/services/copilot_catalogue.py`
+_Hvad Copilot-abonnementet FAKTISK giver — spurgt, ikke antaget._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_api_token` | `()` | — | [src](../../../core/services/copilot_catalogue.py#L78) |
+| function | `hent_modeller` | `(*, tving=…)` | Live-listen fra API'et. Tom liste hvis den ikke kan hentes. | [src](../../../core/services/copilot_catalogue.py#L86) |
+| function | `_brugbar` | `(m)` | Kun modeller der kan KALDE VAERKTOEJER og er valgbare. | [src](../../../core/services/copilot_catalogue.py#L107) |
+| function | `rangeret` | `(opgave=…, *, maks=…)` | Modeller til denne opgave, bedste foerst. | [src](../../../core/services/copilot_catalogue.py#L123) |
+
 ## `core/services/cost_optimization_daemon.py`
 _D5 — Cost optimization daemon._
 
@@ -602,16 +612,4 @@ _Curiosity daemon — detects gaps in Jarvis' thought stream and generates curio
 | function | `_store_curiosity` | `(signal)` | — | [src](../../../core/services/curiosity_daemon.py#L99) |
 | function | `get_latest_curiosity` | `()` | — | [src](../../../core/services/curiosity_daemon.py#L132) |
 | function | `build_curiosity_surface` | `()` | — | [src](../../../core/services/curiosity_daemon.py#L136) |
-
-## `core/services/curiosity_hypothesis_debt.py`
-_Active curiosity with hypothesis debt._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `register_hypothesis_debt` | `(*, hypothesis, why_it_matters, resolving_observation, source=…, priority=…)` | — | [src](../../../core/services/curiosity_hypothesis_debt.py#L16) |
-| function | `maybe_register_from_text` | `(*, text, source=…)` | Registrér en aaben hypotese hvis teksten rummer en. | [src](../../../core/services/curiosity_hypothesis_debt.py#L64) |
-| function | `build_curiosity_debt_surface` | `(*, limit=…)` | — | [src](../../../core/services/curiosity_hypothesis_debt.py#L100) |
-| function | `build_curiosity_debt_prompt_section` | `()` | — | [src](../../../core/services/curiosity_hypothesis_debt.py#L113) |
-| function | `_load` | `()` | — | [src](../../../core/services/curiosity_hypothesis_debt.py#L124) |
-| function | `_save` | `(state)` | — | [src](../../../core/services/curiosity_hypothesis_debt.py#L129) |
 

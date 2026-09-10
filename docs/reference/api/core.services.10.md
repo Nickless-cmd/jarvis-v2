@@ -2,6 +2,17 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/dictation.py`
+_Dictation-transskription til jarvis-desk's mic-knap._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_resolve_model_size` | `(explicit)` | — | [src](../../../core/services/dictation.py#L41) |
+| function | `_resolve_initial_prompt` | `(explicit)` | — | [src](../../../core/services/dictation.py#L54) |
+| function | `_get_model` | `(model_size, device=…, compute_type=…)` | — | [src](../../../core/services/dictation.py#L67) |
+| function | `_join_segments` | `(segments)` | Saml whisper-segmenter til én streng. Ren funktion (testbar). | [src](../../../core/services/dictation.py#L77) |
+| function | `transcribe_file` | `(path, *, model_size=…, language=…, initial_prompt=…)` | Transskribér en lydfil. Returnerer {status, text, language}. | [src](../../../core/services/dictation.py#L82) |
+
 ## `core/services/discord_config.py`
 _Discord config — load/save ~/.jarvis-v2/config/discord.json._
 
@@ -679,15 +690,4 @@ _Helper module for emotion concept triggers from channel messages._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `on_channel_message_appended` | `(payload)` | Fire emotion concept triggers based on user-message content. | [src](../../../core/services/emotion_concepts_channel_triggers.py#L22) |
-
-## `core/services/emotion_concepts_positive_triggers.py`
-_Positive emotion concept bridges for living runtime signals._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `on_heartbeat_quality` | `(payload)` | Trigger joy when heartbeat quality is clearly good. | [src](../../../core/services/emotion_concepts_positive_triggers.py#L13) |
-| function | `on_goal_created` | `(payload)` | A new durable goal produces a small anticipation/excitement pulse. | [src](../../../core/services/emotion_concepts_positive_triggers.py#L29) |
-| function | `on_goal_updated` | `(payload)` | Trigger pride when a goal is nearly done, without refiring constantly. | [src](../../../core/services/emotion_concepts_positive_triggers.py#L42) |
-| function | `on_sensory_recorded` | `(record)` | Trigger wonder when a sensory memory explicitly looks novel/anomalous. | [src](../../../core/services/emotion_concepts_positive_triggers.py#L80) |
-| function | `_float` | `(value)` | — | [src](../../../core/services/emotion_concepts_positive_triggers.py#L103) |
 

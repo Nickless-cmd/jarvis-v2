@@ -2,6 +2,13 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/forced_tool_choice_probe.py`
+_Måling: honorerer providerne `tool_choice="required"`?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `note_forced_round` | `(*, run_id, provider, model, round_index, finish_reason, tool_calls, text_chars, reasoning_chars, tools_advertised, thinking_disabled)` | Registrér udfaldet af én runde kørt med ``tool_choice="required"``. | [src](../../../core/services/forced_tool_choice_probe.py#L50) |
+
 ## `core/services/forgetting_curve.py`
 _Forgetting Curve — active forgetting as a feature._
 
@@ -496,23 +503,4 @@ _Habit Tracker — detects recurring patterns and friction points._
 | function | `track_habit_from_run` | `(*, run_id, task_signature, outcome_status, attempt_count=…)` | Track habit pattern and friction from a visible run. | [src](../../../core/services/habit_tracker.py#L24) |
 | function | `build_habit_surface` | `()` | — | [src](../../../core/services/habit_tracker.py#L69) |
 | function | `_normalize_signature` | `(text)` | Create a stable signature from task description. | [src](../../../core/services/habit_tracker.py#L83) |
-
-## `core/services/habits_pipeline.py`
-_Habits Pipeline — detect → track → suggest automation._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_now_iso` | `()` | — | [src](../../../core/services/habits_pipeline.py#L34) |
-| function | `_ensure_tables` | `()` | Tables exist from v2 db.py — this is idempotent no-op unless schema changes. | [src](../../../core/services/habits_pipeline.py#L38) |
-| function | `_normalize_signature` | `(message)` | — | [src](../../../core/services/habits_pipeline.py#L91) |
-| function | `_upsert_habit` | `(pattern_key, now)` | — | [src](../../../core/services/habits_pipeline.py#L105) |
-| function | `_upsert_friction` | `(task_signature, now)` | — | [src](../../../core/services/habits_pipeline.py#L136) |
-| function | `_maybe_create_suggestion` | `(*, source_type, source_id, suggestion_text, confidence, now)` | — | [src](../../../core/services/habits_pipeline.py#L167) |
-| function | `record_habit_signal` | `(*, message)` | Main entry: record a habit signal from a chat message. | [src](../../../core/services/habits_pipeline.py#L199) |
-| function | `list_habits` | `(*, limit=…)` | — | [src](../../../core/services/habits_pipeline.py#L286) |
-| function | `list_friction` | `(*, limit=…)` | — | [src](../../../core/services/habits_pipeline.py#L298) |
-| function | `list_suggestions` | `(*, status=…, limit=…)` | — | [src](../../../core/services/habits_pipeline.py#L310) |
-| function | `accept_suggestion` | `(*, suggestion_id)` | — | [src](../../../core/services/habits_pipeline.py#L323) |
-| function | `reject_suggestion` | `(*, suggestion_id)` | — | [src](../../../core/services/habits_pipeline.py#L350) |
-| function | `build_habits_pipeline_surface` | `()` | — | [src](../../../core/services/habits_pipeline.py#L369) |
 

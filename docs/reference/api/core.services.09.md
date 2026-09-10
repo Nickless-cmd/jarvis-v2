@@ -2,6 +2,18 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/curiosity_hypothesis_debt.py`
+_Active curiosity with hypothesis debt._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `register_hypothesis_debt` | `(*, hypothesis, why_it_matters, resolving_observation, source=…, priority=…)` | — | [src](../../../core/services/curiosity_hypothesis_debt.py#L16) |
+| function | `maybe_register_from_text` | `(*, text, source=…)` | Registrér en aaben hypotese hvis teksten rummer en. | [src](../../../core/services/curiosity_hypothesis_debt.py#L64) |
+| function | `build_curiosity_debt_surface` | `(*, limit=…)` | — | [src](../../../core/services/curiosity_hypothesis_debt.py#L100) |
+| function | `build_curiosity_debt_prompt_section` | `()` | — | [src](../../../core/services/curiosity_hypothesis_debt.py#L113) |
+| function | `_load` | `()` | — | [src](../../../core/services/curiosity_hypothesis_debt.py#L124) |
+| function | `_save` | `(state)` | — | [src](../../../core/services/curiosity_hypothesis_debt.py#L129) |
+
 ## `core/services/current_pull.py`
 _Current pull — Jarvis' weekly self-set desire field._
 
@@ -564,15 +576,4 @@ _Diagnosis-gate (spec 2026-06-14) — fanger uverificerede diagnostiske konklusi
 | function | `_with_surface_view` | `(item)` | — | [src](../../../core/services/diary_synthesis_signal_tracking.py#L413) |
 | function | `_merge_fragments` | `(*parts)` | — | [src](../../../core/services/diary_synthesis_signal_tracking.py#L437) |
 | function | `_diary_synthesis_surface_extra` | `(summary, latest)` | — | [src](../../../core/services/diary_synthesis_signal_tracking.py#L449) |
-
-## `core/services/dictation.py`
-_Dictation-transskription til jarvis-desk's mic-knap._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_resolve_model_size` | `(explicit)` | — | [src](../../../core/services/dictation.py#L41) |
-| function | `_resolve_initial_prompt` | `(explicit)` | — | [src](../../../core/services/dictation.py#L54) |
-| function | `_get_model` | `(model_size, device=…, compute_type=…)` | — | [src](../../../core/services/dictation.py#L67) |
-| function | `_join_segments` | `(segments)` | Saml whisper-segmenter til én streng. Ren funktion (testbar). | [src](../../../core/services/dictation.py#L77) |
-| function | `transcribe_file` | `(path, *, model_size=…, language=…, initial_prompt=…)` | Transskribér en lydfil. Returnerer {status, text, language}. | [src](../../../core/services/dictation.py#L82) |
 

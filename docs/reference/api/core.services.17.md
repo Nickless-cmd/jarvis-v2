@@ -2,6 +2,23 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/paradoxes_capture.py`
+_Paradoxes Capture — fanger modsætninger i egne handlinger._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_now_iso` | `()` | — | [src](../../../core/services/paradoxes_capture.py#L58) |
+| function | `_ensure_table` | `()` | — | [src](../../../core/services/paradoxes_capture.py#L62) |
+| function | `_event_text` | `(ev)` | — | [src](../../../core/services/paradoxes_capture.py#L85) |
+| function | `_axis_hits` | `(events, axis)` | — | [src](../../../core/services/paradoxes_capture.py#L100) |
+| function | `_signature` | `(title, evidence_refs)` | — | [src](../../../core/services/paradoxes_capture.py#L117) |
+| function | `detect_paradox_candidates` | `(*, lookback_days=…, min_hits=…)` | Scan recent events for paradox patterns. Returns candidates sorted by confidence. | [src](../../../core/services/paradoxes_capture.py#L123) |
+| function | `_latest_paradox_ts` | `()` | — | [src](../../../core/services/paradoxes_capture.py#L165) |
+| function | `_known_signatures` | `()` | — | [src](../../../core/services/paradoxes_capture.py#L180) |
+| function | `maybe_capture_weekly_paradox` | `(*, lookback_days=…)` | Max 1 paradox per 7 days, only if signature is new. | [src](../../../core/services/paradoxes_capture.py#L187) |
+| function | `list_paradoxes` | `(*, limit=…)` | — | [src](../../../core/services/paradoxes_capture.py#L246) |
+| function | `build_paradoxes_surface` | `()` | — | [src](../../../core/services/paradoxes_capture.py#L269) |
+
 ## `core/services/parallel_selves.py`
 _Parallel Selves — internal sub-selves._
 
@@ -645,23 +662,4 @@ _Hvem koerer denne agent — og lever den proces stadig?_
 | function | `_starttid` | `(pid)` | Procesens starttid i clock ticks (felt 22 i /proc/<pid>/stat). | [src](../../../core/services/process_identity.py#L36) |
 | function | `denne_proces` | `()` | Maerket for den proces der kalder. | [src](../../../core/services/process_identity.py#L51) |
 | function | `lever` | `(maerke)` | Lever processen bag maerket? | [src](../../../core/services/process_identity.py#L70) |
-
-## `core/services/process_supervisor.py`
-_Process supervisor — track long-running background processes Jarvis spawns._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_now_iso` | `()` | — | [src](../../../core/services/process_supervisor.py#L44) |
-| function | `_ensure_dirs` | `()` | — | [src](../../../core/services/process_supervisor.py#L48) |
-| function | `_safe_name` | `(name)` | Sanitize a process name for use in filenames. | [src](../../../core/services/process_supervisor.py#L52) |
-| function | `_load_registry` | `()` | — | [src](../../../core/services/process_supervisor.py#L58) |
-| function | `_save_registry` | `(reg)` | — | [src](../../../core/services/process_supervisor.py#L70) |
-| function | `_pid_alive` | `(pid)` | — | [src](../../../core/services/process_supervisor.py#L78) |
-| function | `_read_status` | `(entry)` | Snapshot of a registry entry's live status. | [src](../../../core/services/process_supervisor.py#L93) |
-| function | `spawn_process` | `(*, name, command, cwd=…, env=…, replace_if_running=…)` | Spawn a detached background process under supervision. | [src](../../../core/services/process_supervisor.py#L125) |
-| function | `list_processes` | `(*, include_stopped=…)` | — | [src](../../../core/services/process_supervisor.py#L219) |
-| function | `_stop_locked` | `(reg, name, grace)` | Caller must hold _LOCK. Stops the named process gracefully. | [src](../../../core/services/process_supervisor.py#L229) |
-| function | `stop_process` | `(name, *, grace=…)` | — | [src](../../../core/services/process_supervisor.py#L264) |
-| function | `tail_process_log` | `(name, *, lines=…)` | — | [src](../../../core/services/process_supervisor.py#L271) |
-| function | `remove_process` | `(name)` | Remove an entry from the registry. Refuses if still alive. | [src](../../../core/services/process_supervisor.py#L303) |
 

@@ -1,12 +1,6 @@
 {
-  "generated_at": "2026-08-21T09:17:45.197371+00:00",
-  "hard": [
-    {
-      "generator": "api_reference_gen",
-      "kind": "stale",
-      "path": "docs/reference/API_REFERENCE.md"
-    }
-  ],
+  "generated_at": "2026-09-10T12:26:34.489570+00:00",
+  "hard": [],
   "soft": [
     {
       "doc": "docs/COMMIT_HISTORY.md",
@@ -31,12 +25,42 @@
     {
       "doc": "docs/capability_matrix.md",
       "kind": "prose_path",
+      "target": "core/services/prospective_memory.py"
+    },
+    {
+      "doc": "docs/capability_matrix.md",
+      "kind": "prose_path",
       "target": "core/services/team_mentions.py"
     },
     {
       "doc": "docs/capability_matrix.md",
       "kind": "prose_path",
       "target": "core/services/teams.py"
+    },
+    {
+      "doc": "docs/capability_matrix.md",
+      "kind": "prose_path",
+      "target": "core/services/tiktok_content_daemon.py"
+    },
+    {
+      "doc": "docs/capability_matrix.md",
+      "kind": "prose_path",
+      "target": "core/services/tiktok_research_daemon.py"
+    },
+    {
+      "doc": "docs/capability_matrix.md",
+      "kind": "prose_path",
+      "target": "core/services/unified_recall.py"
+    },
+    {
+      "doc": "docs/llm_privacy_tier_audit.md",
+      "kind": "prose_path",
+      "target": "core/services/tiktok_content_daemon.py"
+    },
+    {
+      "doc": "docs/llm_privacy_tier_audit.md",
+      "kind": "prose_path",
+      "target": "core/services/tiktok_research_daemon.py"
     },
     {
       "doc": "docs/notes/2026-07-09-central-council-sweep.md",
@@ -47,6 +71,26 @@
       "doc": "docs/specs/2026-06-30-wire-eventbus-and-cache-to-central.md",
       "kind": "prose_path",
       "target": "core/config/runtime.json"
+    },
+    {
+      "doc": "docs/specs/2026-09-08-deepseek-harness-lessons-for-jarvis.md",
+      "kind": "prose_path",
+      "target": "core/agent-loop/README.md"
+    },
+    {
+      "doc": "docs/specs/2026-09-08-deepseek-harness-lessons-for-jarvis.md",
+      "kind": "prose_path",
+      "target": "core/session/README.md"
+    },
+    {
+      "doc": "docs/specs/2026-09-08-deepseek-harness-lessons-for-jarvis.md",
+      "kind": "prose_path",
+      "target": "core/system-prompt/README.md"
+    },
+    {
+      "doc": "docs/specs/2026-09-08-deepseek-harness-lessons-for-jarvis.md",
+      "kind": "prose_path",
+      "target": "core/tools/README.md"
     },
     {
       "doc": "docs/specs/compaction-ground-truth-grounding.md",
@@ -115,6 +159,10 @@
     },
     {
       "kind": "requirement_missing",
+      "module": "dotenv"
+    },
+    {
+      "kind": "requirement_missing",
       "module": "ds_store"
     },
     {
@@ -155,7 +203,7 @@
     },
     {
       "kind": "requirement_missing",
-      "module": "jarvis_full_pipeline"
+      "module": "jsonschema"
     },
     {
       "kind": "requirement_missing",
@@ -211,7 +259,7 @@
     }
   ],
   "counts": {
-    "hard": 1,
-    "soft": 48
+    "hard": 0,
+    "soft": 59
   }
 }

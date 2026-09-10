@@ -146,14 +146,28 @@ def test_et_citat_paa_den_FORKERTE_linje_falder():
     assert "indeholder ikke" in d["fejl"][0]
 
 
-def test_fragmentet_sendes_NOEGENT_videre():
-    """Modellen omskriver whitespace og klipper linjen. Vi soeger paa kernen,
-    ikke paa en eksakt streng — samme leniens som den lokale sti bruger."""
+def test_HELE_citatet_proeves_foerst():
+    """Foer blev ethvert citat afkortet ved foerste parentes, ALTID. Det gjorde
+    «Verified: (1) Document created 2026-05-17» til «Verified:» — en
+    bekraeftelse uden indhold, der laeste som staerk. Nu doemmes den stoerkeste
+    laesning foerst."""
     set_af = []
     tjek_paastande("se /home/bs/p/main.ts:42:`const foo(bar)` ",
                    findes_fn=lambda s: True,
                    linje_fn=lambda s, n, f: set_af.append(f) or True)
-    assert set_af == ["const foo"]
+    assert set_af == ["const foo(bar)"]
+
+
+def test_afkortet_citat_anklages_ikke():
+    """Modellen klipper: gemini afsluttede sit citat midt i «(72». Kraever vi
+    hele strengen, bliver et RIGTIGT svar anklaget for opdigt. Leniensen er
+    bevaret — men som FALDBACK, ikke som standard."""
+    set_af = []
+    d = tjek_paastande("se /home/bs/p/main.ts:42:`const foo(bar` ",
+                       findes_fn=lambda s: True,
+                       linje_fn=lambda s, n, f: set_af.append(f) or f == "const foo")
+    assert d["fejl"] == [], d["fejl"]
+    assert set_af == ["const foo(bar", "const foo"], set_af
 
 
 def test_UAFGJORT_citat_doemmes_ikke():
@@ -587,3 +601,134 @@ def test_et_FORKERT_citat_fanges_stadig(tmp_path, monkeypatch):
     _fil(tmp_path, monkeypatch, ["a", "b", "Jarvis <jarvis@srvlab.dk>"])
     d = tjek_paastande("se sub/x.md\n- Jarvis: linje 3: `Jarvis <jarvis@forkert.dk>`")
     assert d["bevis"] == "uenig"
+
+
+# ---------------------------------------------------------------------------
+# BRO-GRENEN HAVDE SIN EGEN UDTRAEKNING (Jarvis' ottende koersel, 10/9-2026)
+#
+# Tre af tre bro-koersler svarede RIGTIGT — hvert linjenummer efterproevet mod
+# filen — og vaernet doemte to af dem `uenig`. Aarsagen er ikke en ny citatform:
+# det er at `findes_fn`-grenen aldrig kaldte `_citat_i`. Den havde sin egen
+# `indhold.strip().strip("`").split("(")[0]`, som ingen af dagens lektier naaede.
+#
+# En falsk anklage er dyrere end et overset svar, og her rammer den praecis den
+# vej der gaar til Bjoerns maskine.
+# ---------------------------------------------------------------------------
+
+_BRO_LINJER = {
+    ("docs/git-attribution.md", 4):
+        'ground_truth: "Verified: (1) Document created 2026-05-17 (f84264c1 live); (2) Jarvis"',
+    ("docs/git-attribution.md", 19):
+        "| Jarvis (selv-committer via propose_git_commit eller bash) | `Jarvis <jarvis@srvlab.dk>` |",
+    ("docs/git-attribution.md", 34):
+        "| Jarvis (selv-committer via propose_git_commit eller bash) | `Jarvis <jarvis@srvlab.dk>` |",
+    ("docs/DOCS_MANIFEST.md", 79):
+        "| `docs/git-attribution.md` | faerdig | Verified: (1) Document created 2026-05-17 |",
+}
+
+
+def _bro_findes(sti):
+    return sti in {s for s, _ in _BRO_LINJER}
+
+
+def _bro_linje(sti, nr, kerne):
+    linje = _BRO_LINJER.get((sti, nr))
+    return None if linje is None else (kerne in linje)
+
+
+def _bro(svar):
+    from core.services.explore_claim_check import tjek_paastande
+    return tjek_paastande(svar, findes_fn=_bro_findes, linje_fn=_bro_linje)
+
+
+def test_blokcitat_paa_naeste_linje_er_ikke_en_falsk_anklage():
+    """`sti:4`: og citatet som blokcitat under — den mest normale rapportform."""
+    svar = (
+        "- `docs/git-attribution.md:4`:\n"
+        '    > `ground_truth: "Verified: (1) Document created 2026-05-17 '
+        '(f84264c1 live); (2) Jarvis"`\n'
+    )
+    ud = _bro(svar)
+    assert not [f for f in ud["fejl"] if "> `" in str(f)], ud["fejl"]
+    assert int(ud.get("indhold_bekraeftet") or 0) >= 1, ud
+
+
+def test_indlejrede_backticks_giver_ikke_et_indholdsloest_citat():
+    """En tabelraekke ER citatet; den foerste backtick-PAR er `| ` og betyder intet."""
+    from core.services.explore_claim_check import _citat_i
+    kerne = _citat_i('> `| `docs/git-attribution.md` | faerdig | Verified: (1) Document created 2026-05-17 |`')
+    assert len(kerne) > 4, f"citatet blev {kerne!r} — for kort til at vaere en paastand"
+
+
+def test_opregning_efter_linjenummer_er_ikke_et_citat():
+    """«(gentaget linje 34 og 39)» — «og 39)» er ikke indholdet af linje 34."""
+    svar = (
+        "- Jarvis: `docs/git-attribution.md:19` — "
+        '"| Jarvis (selv-committer via propose_git_commit eller bash) | `Jarvis <jarvis@srvlab.dk>` |"'
+        " (gentaget linje 34 og 39)\n"
+    )
+    ud = _bro(svar)
+    assert not [f for f in ud["fejl"] if "og 39" in str(f)], ud["fejl"]
+
+
+def test_fejlet_indhold_taeller_ikke_som_belaeg(tmp_path):
+    """Den lokale gren talte `indhold_bekraeftet` op FOER den sammenlignede, saa
+    en paastand der fejlede blev talt BAADE som belæg og som fejl.
+
+    Det er samme figur som resten af dagen: et tal der laeser som bekraeftelse
+    uden at vaere det."""
+    from core.services.explore_claim_check import tjek_paastande
+    (tmp_path / "x.py").write_text("alfa\nbeta\ngamma\n", encoding="utf-8")
+    d = tjek_paastande("se x.py:2:`noget helt andet`", rod=tmp_path)
+    assert d["bevis"] == "uenig", d
+    assert int(d.get("indhold_bekraeftet") or 0) == 0, d
+
+
+def test_tankestreg_foer_citatet_efterproeves(tmp_path):
+    """`sti:19` — "citat" er markdown-listens naturlige form, og den claude-sonnet-5
+    faktisk brugte over broen. Separator-klassen kendte kolon og parentes, men
+    ikke tankestregen, saa TRE citater blev til ren eksistens-kontrol.
+
+    Sjette form paa én dag — og igen skrevet af den model der LAESER, ikke den
+    der gaetter."""
+    from core.services.explore_claim_check import tjek_paastande
+    (tmp_path / "x.md").write_text(
+        "linje1\nlinje2\n| Jarvis | `Jarvis <jarvis@srvlab.dk>` |\n", encoding="utf-8")
+    d = tjek_paastande('- Jarvis: `x.md:3` — "| Jarvis | `Jarvis <jarvis@srvlab.dk>` |"',
+                       rod=tmp_path)
+    assert int(d.get("indhold_bekraeftet") or 0) >= 1, d
+    assert d["fejl"] == [], d["fejl"]
+
+
+def test_tankestreg_UDEN_citat_giver_ingen_anklage(tmp_path):
+    """«`x.md:3` — se ovenfor» er en henvisning, ikke et citat. Tog vi prosaen
+    som indhold, ville et rigtigt svar blive doemt `uenig`."""
+    from core.services.explore_claim_check import tjek_paastande
+    (tmp_path / "x.md").write_text("a\nb\nc\n", encoding="utf-8")
+    d = tjek_paastande("`x.md:3` — se ovenfor", rod=tmp_path)
+    assert d["fejl"] == [], d["fejl"]
+
+
+def test_kommentar_mellem_to_citater_anklages_ikke(tmp_path):
+    """Sonnets egen linje. Modellen skriver citatet, og FORTSAETTER med en
+    kommentar der selv indeholder et citat:
+
+        `x.md:8` — "**Etableret:** 2026-05-17 (efter "30 commits..."
+        Bekraeftet i frontmatter linje 4: "ground_truth: ..."
+
+    De indlejrede anfoerselstegn goer «laengste citat» tvetydigt, og vaernet
+    valgte KOMMENTAREN. Reglen er derfor: anklag foerst naar hver rimelig
+    laesning fejler."""
+    from core.services.explore_claim_check import tjek_paastande
+    (tmp_path / "x.md").write_text(
+        "a\nb\nc\n"
+        "ground_truth: \"Verified: (1) Document created 2026-05-17...\"\n"
+        "e\nf\ng\n**Etableret:** 2026-05-17 (efter \"30 commits\")\n",
+        encoding="utf-8")
+    d = tjek_paastande(
+        '1. **Dato:** `x.md:8` — "**Etableret:** 2026-05-17 (efter "30 commits, '
+        'alle som Nickless"-incident..." Bekraeftet i frontmatter linje 4: '
+        '"ground_truth: "Verified: (1) Document created 2026-05-17..."',
+        rod=tmp_path)
+    assert d["fejl"] == [], d["fejl"]
+    assert int(d.get("indhold_bekraeftet") or 0) >= 1, d

@@ -55,7 +55,14 @@ logger = logging.getLogger(__name__)
 # format bedst.
 _STI_LINJE = re.compile(
     r"(?:^|[\s`(\[])(/?[\w./-]+\.[A-Za-z0-9_]{1,6}):(\d{1,6})"
-    r"[`'\"\s]*(?::\s*(.*)|\(\s*[\"'`]?(.{0,120}))?")
+    # TANKESTREG (sjette form, 10/9-2026): «`sti:19` — "citat"». Markdown-listens
+    # naturlige form, og den claude-sonnet-5 brugte over broen. Separator-klassen
+    # kendte kolon og parentes, saa TRE citater blev til ren eksistens-kontrol.
+    #
+    # Citationstegnet er PAAKRAEVET her. Uden det ville «`sti:19` — se ovenfor»
+    # blive slaaet op som linjens indhold, og et rigtigt svar doemt `uenig`.
+    # Det er samme regel som for det loese anker: en henvisning er ikke et citat.
+    r"[`'\"\s]*(?:[—–-]\s*[\"'`«]\s*(.{0,160})|:\s*(.*)|\(\s*[\"'`]?(.{0,120}))?")
 # Bare filstier med mappe i — et bart "config.py" er for tvetydigt til at dømme.
 # `/?` foran: ABSOLUTTE stier blev slet ikke matchet, saa en workstation-rapport
 # — der naturligt skriver `/home/bs/projekt/src/main.ts` — gav NUL kontrollerede
@@ -130,7 +137,82 @@ _BAR_LINJE = re.compile(
 # og saa er «filen findes» alt vi kan sige. Det er ikke en svaekkelse: det er
 # forskellen paa at efterproeve en paastand og at efterproeve en formulering.
 # (Jarvis' syvende koersel — han afviste selv det loese anker som svar.)
+# BLOKCITAT PAA NAESTE LINJE (Jarvis' ottende koersel, 10/9-2026). Den mest
+# normale rapportform overhovedet:
+#
+#     - `docs/x.md:4`:
+#       > `ground_truth: "Verified: ..."`
+#
+# Separatoren mellem linjenummer og indhold spiste linjeskiftet, saa `> ` kom
+# med ind i det PAASTAAEDE citat — og dommen blev «linjen indeholder ikke
+# \'> `ground_truth:\'» paa et svar hvor hvert linjenummer var rigtigt.
+# Markoeren er formatering, ikke paastand.
+_LEDENDE = re.compile(r"^[\s>*+#|-]+")
+
+# «(gentaget linje 34 og 39)» er en OPREGNING af hvor det samme staar — ikke et
+# citat af linje 34. «og 39)» blev slaaet op som linjens indhold og gav en
+# falsk anklage. Den bare form («Linje 3: 2026-05-17») skal stadig doemmes, saa
+# vi afviser kun det der ABNER med et bindeord.
+_OPREGNING = re.compile(r"^(?:og|and|eller|or|samt|&|,|;)\b", re.IGNORECASE)
+
 _CITAT = re.compile(r"`([^`]{2,120})`|\"([^\"]{2,120})\"|«([^»]{2,120})»")
+
+
+def _rens_hale(tekst: str) -> str:
+    """Fjern citationstegn i halen — men aldrig en parentes der HOERER til.
+
+    `const foo(bar)` skal ikke ende som `const foo(bar`.
+    """
+    t = str(tekst or "").strip()
+    while t:
+        # SKIFTEVIS: parentes-formen `("Etableret ...")` efterlader BEGGE
+        # slags i halen. To loekker efter hinanden stopper efter den foerste
+        # slags og lader den anden staa.
+        if t[-1] in "\"'`":
+            t = t[:-1].rstrip()
+        elif t.endswith(")") and t.count("(") < t.count(")"):
+            t = t[:-1].rstrip()
+        else:
+            break
+    return t
+
+
+def _laesninger(indhold: str) -> list[str]:
+    """Hver rimelig laesning af en paastand, STAERKESTE foerst.
+
+    Vaernet har hele dagen valgt ÉN laesning og anklaget naar den fejlede. Men
+    en model der citerer rigtigt kan stadig skrive noget vi laeser forkert:
+    indlejrede anfoerselstegn goer «laengste citat» tvetydigt, og i sonnets
+    rapport valgte vi hans egen KOMMENTAR som citat og doemte et rigtigt svar
+    `uenig`.
+
+    Reglen er derfor ikke «find det rigtige citat» — den er: bekraeft paa den
+    staerkeste laesning der HOLDER, og anklag foerst naar ingen af dem goer.
+    """
+    raa = str(indhold or "").strip()
+    # `_citat_i` skal se den OPRINDELIGE tekst: renser vi halen foerst, fjerner
+    # vi det afsluttende citationstegn den parrer paa, og «det laengste citat»
+    # bliver til «hele teksten».
+    citat = _rens_hale(_citat_i(raa))
+    noegen = _rens_hale(_LEDENDE.sub("", raa).strip("`"))
+    ud: list[str] = []
+    for k in (citat, noegen, _kort(citat), _kort(noegen)):
+        k = (k or "").strip()
+        if len(k) >= 3 and k not in ud:
+            ud.append(k)
+    return ud
+
+
+def _kort(kerne: str) -> str:
+    """Den svageste rimelige laesning af et citat.
+
+    Modellen klipper: gemini afsluttede sit citat midt i «(72». Kraever vi hele
+    strengen, anklager vi et RIGTIGT svar for at have opdigtet den. Derfor
+    doemmes en paastand foerst paa hele citatet — og kun hvis DEN OGSAA fejler
+    paa dette forkortede, bliver det til en anklage.
+    """
+    k = str(kerne or "").split("(")[0].strip()
+    return k if len(k) >= 8 else str(kerne or "")[:24].strip()
 
 
 def _citat_i(tekst: str) -> str:
@@ -145,10 +227,15 @@ def _citat_i(tekst: str) -> str:
     paastanden og resten kommentar. Tages hele saetningen, doemmes et RIGTIGT
     svar `uenig` — en falsk anklage i stedet for et overset svar.
     """
-    t = str(tekst or "").strip()
-    m = _CITAT.search(t)
-    if m:
-        return next((g for g in m.groups() if g), "").strip()
+    t = _LEDENDE.sub("", str(tekst or "").strip())
+    # DET LAENGSTE citat, ikke det foerste. En tabelraekke citeres som
+    #   > `| `docs/x.md` | faerdig | Verified: ...`
+    # hvor det FOERSTE backtick-par er `| ` — to tegn uden indhold. Tog vi det,
+    # blev en meningsloes streng "bekraeftet" og talt som belaeg.
+    kandidater = [g.strip() for m in _CITAT.finditer(t)
+                  for g in m.groups() if g and len(g.strip()) >= 4]
+    if kandidater:
+        return max(kandidater, key=len)
     return t
 
 # Den omvendte ordstilling: «linje 8 i core/x.py».
@@ -228,7 +315,14 @@ def tjek_paastande(svar: str, *, rod: Path | None = None,
         _paastande: list[tuple[str, int, str]] = [
             (m.group(1), int(m.group(2)),
              # gruppe 3 = efter kolon, gruppe 4 = inde i parentesen
-             ((m.group(3) or m.group(4) or "").strip().rstrip(')"\'`')))
+             # RAA FOER: hver nyere gren adopterede `_citat_i`, den
+             # oprindelige aldrig. Samme fejl som bro-grenen nedenfor — «hvad
+             # er paastanden» var skrevet TRE steder og drev fra hinanden.
+             # gr. 3 = efter tankestreg, 4 = efter kolon, 5 = i parentes
+             # RAAT VIDERE: reduktionen sker ÉT sted, ved tjekket. Skete den
+             # her, saa `_laesninger` aldrig den oprindelige tekst og kunne
+             # ikke falde tilbage naar citat-valget var forkert.
+             (m.group(3) or m.group(4) or m.group(5) or "").strip())
             for m in _STI_LINJE.finditer(t)
         ]
         _set: set[tuple[str, int]] = {(a, b) for a, b, _ in _paastande}
@@ -237,7 +331,7 @@ def tjek_paastande(svar: str, *, rod: Path | None = None,
             if _n not in _set:
                 _set.add(_n)
                 _paastande.append((m.group(1), int(m.group(2)),
-                                   _citat_i(m.group(3) or "")))
+                                   (m.group(3) or "").strip()))
         for m in _LINJE_SO_STI.finditer(t):
             _n = (m.group(2), int(m.group(1)))
             if _n not in _set:
@@ -277,8 +371,10 @@ def tjek_paastande(svar: str, *, rod: Path | None = None,
             if _n not in _set:
                 _set.add(_n)
                 # KUN citatet — ikke resten af linjen. Se `_CITAT`.
-                _paastande.append((sti, int(m.group(1)),
-                                   _citat_i(m.group(2) or "")))
+                _kerne = (m.group(2) or "").strip()
+                if _OPREGNING.match(_kerne):
+                    _kerne = ""       # henvisning til andre linjer, ikke indhold
+                _paastande.append((sti, int(m.group(1)), _kerne))
 
         for sti, nr, indhold in _paastande:
             if sti.rsplit(".", 1)[-1].lower() not in _KENDTE:
@@ -297,13 +393,24 @@ def tjek_paastande(svar: str, *, rod: Path | None = None,
                 # Over broen: ét grep giver baade linjenummer og tekst.
                 if linje_fn is None:
                     continue
-                kerne = indhold.strip().strip("`").split("(")[0].strip()
-                if not kerne:
+                # FOER: `.strip("`").split("(")[0]` — en TREDJE udgave af
+                # «hvad er paastanden», som ingen af dagens lektier naaede.
+                # Den gav bl.a. \'> `ground_truth: "Verified:\' som anklage, og
+                # den afkortede ethvert citat ved foerste parentes.
+                _kand = _laesninger(indhold)
+                if not _kand:
                     continue
-                try:
-                    passer = linje_fn(sti, nr, kerne)
-                except Exception:
-                    passer = None
+                passer, kerne = None, _kand[0]
+                for k in _kand:
+                    try:
+                        svar_k = linje_fn(sti, nr, k)
+                    except Exception:
+                        svar_k = None
+                    if svar_k is True:
+                        passer, kerne = True, k
+                        break
+                    if svar_k is False and passer is None:
+                        passer, kerne = False, k
                 if passer is False:
                     fejl.append(f"{sti}:{nr}: linjen indeholder ikke {kerne!r}")
                 elif passer is True:
@@ -317,13 +424,21 @@ def tjek_paastande(svar: str, *, rod: Path | None = None,
             if nr < 1 or nr > len(linjer):
                 fejl.append(f"{sti}:{nr}: filen har kun {len(linjer)} linjer")
                 continue
-            ud["indhold_bekraeftet"] = int(ud.get("indhold_bekraeftet") or 0) + 1
-            # Sammenlign på et NØGENT fragment: modellen omskriver ofte
-            # whitespace og klipper linjen. Vi kræver at det den citerer,
-            # findes i linjen — ikke at strengene er identiske.
-            kerne = indhold.strip().strip("`").split("(")[0].strip()
-            if kerne and kerne not in linjer[nr - 1]:
-                fejl.append(f"{sti}:{nr}: linjen indeholder ikke {kerne!r}")
+            # FOER stod optaellingen HER — foer sammenligningen. En paastand
+            # der FEJLEDE blev derfor talt baade som belaeg og som fejl, og
+            # `indhold_bekraeftet` laeste som bekraeftelse uden at vaere det.
+            #
+            # Og udtraekningen var en FJERDE udgave af «hvad er paastanden».
+            # Fire steder, fire regler; kun de to nyeste kendte dagens lektier.
+            _kand = _laesninger(indhold)
+            if not _kand:
+                continue
+            _linje = linjer[nr - 1]
+            _holdt = next((k for k in _kand if k in _linje), None)
+            if _holdt is None:
+                fejl.append(f"{sti}:{nr}: linjen indeholder ikke {_kand[0]!r}")
+            else:
+                ud["indhold_bekraeftet"] = int(ud.get("indhold_bekraeftet") or 0) + 1
 
         for m in _STI.finditer(t):
             sti = m.group(1)

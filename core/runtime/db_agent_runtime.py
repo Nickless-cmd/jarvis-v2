@@ -38,6 +38,16 @@ def _ensure_agent_runtime_tables(conn: sqlite3.Connection) -> None:
     except sqlite3.OperationalError:
         pass
 
+    # Fase 9: hvad GJALDT der for koerslen. Foer havde agent_runs 19 kolonner
+    # og ikke ét politik-felt — ingen koersel kunne bagefter sige hvilke
+    # vaerktoejer den saa eller om bash var i sandkasse.
+    for _c, _t in [("policy_hash", "TEXT NOT NULL DEFAULT ''"),
+                   ("policy_json", "TEXT NOT NULL DEFAULT ''")]:
+        try:
+            conn.execute(f"ALTER TABLE agent_runs ADD COLUMN {_c} {_t}")
+        except sqlite3.OperationalError:
+            pass
+
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS agent_registry (
@@ -432,6 +442,18 @@ def create_agent_run(
     and re-reads it. Returns the row dict, or {} if the re-read fails.
     """
     now = _now_iso()
+    # Fase 9: tag politikken HER, hvor koerslen opstaar. Ét sted ejer den, saa
+    # ingen kalder kan glemme den — og oejebliksbilledet er af den ambiente
+    # tilstand, som er praecis det der gaelder naar koerslen begynder.
+    _pol: dict = {}
+    _pol_hash = ""
+    try:
+        from core.services.effective_policy import snapshot
+        _pol = snapshot()
+        _pol_hash = str(_pol.get("policy_hash") or "")
+    except Exception:
+        pass
+    import json as _json
     with connect() as conn:
         _ensure_agent_runtime_tables(conn)
         conn.execute(
@@ -440,9 +462,10 @@ def create_agent_run(
                 run_id, agent_id, status, execution_mode, provider, model,
                 input_summary, output_summary, input_payload_json, output_payload_json,
                 started_at, finished_at, input_tokens, output_tokens, cost_usd,
-                provider_status, failure_reason, created_at, updated_at
+                provider_status, failure_reason, created_at, updated_at,
+                policy_hash, policy_json
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 run_id,
@@ -464,6 +487,8 @@ def create_agent_run(
                 failure_reason,
                 now,
                 now,
+                _pol_hash,
+                _json.dumps(_pol, ensure_ascii=False) if _pol else "",
             ),
         )
         conn.commit()
@@ -1127,6 +1152,15 @@ def _agent_registry_row_to_dict(row: sqlite3.Row) -> dict[str, object]:
     }
 
 
+def _json_or_empty(raa: object) -> dict:
+    import json as _json
+    try:
+        v = _json.loads(str(raa or "") or "{}")
+        return v if isinstance(v, dict) else {}
+    except Exception:
+        return {}
+
+
 def _agent_run_row_to_dict(row: sqlite3.Row) -> dict[str, object]:
     return {
         "run_id": str(row["run_id"]),
@@ -1146,6 +1180,10 @@ def _agent_run_row_to_dict(row: sqlite3.Row) -> dict[str, object]:
         "cost_usd": float(row["cost_usd"]),
         "provider_status": str(row["provider_status"]),
         "failure_reason": str(row["failure_reason"]),
+        # Tredje gang i dag: en ALTER uden denne linje giver en kolonne INGEN
+        # kan laese. Se `kind` i godkendelses-broen og `runtime_owner`.
+        "policy_hash": str(row["policy_hash"] or ""),
+        "policy": _json_or_empty(row["policy_json"]),
         "created_at": str(row["created_at"]),
         "updated_at": str(row["updated_at"]),
     }

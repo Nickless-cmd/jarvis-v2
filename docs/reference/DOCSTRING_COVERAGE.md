@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7231/14219 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7234/14239 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -23,8 +23,8 @@ Generated from source. 7231/14219 functions/methods documented (50%). The list b
 | `core.identity` | 66 | 159 | 41% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 606 | 1113 | 54% |
-| `core.services` | 4803 | 9803 | 48% |
+| `core.runtime` | 608 | 1127 | 53% |
+| `core.services` | 4804 | 9809 | 48% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 108 | 184 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -40,7 +40,7 @@ Generated from source. 7231/14219 functions/methods documented (50%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2022)
+## Undocumented public functions (2031)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L201)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -487,6 +487,10 @@ Generated from source. 7231/14219 functions/methods documented (50%). The list b
 - `core/runtime/db_visible.py` :: `recent_visible_work_units` (L190)
 - `core/runtime/db_visible.py` :: `record_visible_work_note` (L230)
 - `core/runtime/db_visible.py` :: `visible_session_continuity` (L338)
+- `core/runtime/db_world_self_truth.py` :: `insert_world_fact` (L94)
+- `core/runtime/db_world_self_truth.py` :: `select_conversation_topics` (L77)
+- `core/runtime/db_world_self_truth.py` :: `select_world_facts` (L153)
+- `core/runtime/db_world_self_truth.py` :: `upsert_conversation_topic` (L14)
 - `core/runtime/heartbeat_triggers.py` :: `clear_triggers` (L77)
 - `core/runtime/heartbeat_triggers.py` :: `consume_trigger` (L68)
 - `core/runtime/heartbeat_triggers.py` :: `peek_trigger` (L63)
@@ -838,6 +842,8 @@ Generated from source. 7231/14219 functions/methods documented (50%). The list b
 - `core/services/consolidation_target_signal_tracking.py` :: `track_runtime_consolidation_target_signals_for_visible_turn` (L41)
 - `core/services/contract_evolution.py` :: `build_contract_evolution_surface` (L148)
 - `core/services/conversation_rhythm.py` :: `build_conversation_rhythm_surface` (L74)
+- `core/services/conversation_topics.py` :: `list_conversation_topics` (L43)
+- `core/services/conversation_topics.py` :: `record_conversation_topic` (L14)
 - `core/services/council_memory_daemon.py` :: `build_council_memory_surface` (L65)
 - `core/services/council_runtime.py` :: `build_council_runtime_from_sources` (L27)
 - `core/services/council_runtime.py` :: `build_council_runtime_prompt_section` (L107)
@@ -1871,10 +1877,13 @@ Generated from source. 7231/14219 functions/methods documented (50%). The list b
 - `core/services/workspace_trust.py` :: `clear_trust_context` (L84)
 - `core/services/workspace_trust.py` :: `current_trust_context` (L88)
 - `core/services/workspace_trust.py` :: `set_trust_context` (L80)
-- `core/services/world_model_signal_tracking.py` :: `build_runtime_world_model_prediction_surface` (L217)
-- `core/services/world_model_signal_tracking.py` :: `build_runtime_world_model_signal_surface` (L322)
-- `core/services/world_model_signal_tracking.py` :: `refresh_runtime_world_model_signal_statuses` (L293)
-- `core/services/world_model_signal_tracking.py` :: `track_runtime_world_model_signals_for_visible_turn` (L253)
+- `core/services/world_facts.py` :: `build_world_fact_prompt_section` (L77)
+- `core/services/world_facts.py` :: `list_world_facts` (L68)
+- `core/services/world_facts.py` :: `record_world_fact` (L22)
+- `core/services/world_model_signal_tracking.py` :: `build_runtime_world_model_prediction_surface` (L219)
+- `core/services/world_model_signal_tracking.py` :: `build_runtime_world_model_signal_surface` (L324)
+- `core/services/world_model_signal_tracking.py` :: `refresh_runtime_world_model_signal_statuses` (L295)
+- `core/services/world_model_signal_tracking.py` :: `track_runtime_world_model_signals_for_visible_turn` (L255)
 - `core/skills/voice/voice_daemon_worker.py` :: `ask_jarvis` (L41)
 - `core/skills/voice/voice_daemon_worker.py` :: `get_active_session_id` (L32)
 - `core/skills/voice/voice_daemon_worker.py` :: `main` (L142)

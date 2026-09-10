@@ -153,6 +153,14 @@ _Conversation Rhythm — tracks conversation signature patterns._
 | function | `track_conversation_rhythm` | `(*, run_id, session_id=…, turn_count=…, correction_count=…, avg_message_length=…, duration_minutes=…, outcome_status=…)` | Track and classify the conversation rhythm. | [src](../../../core/services/conversation_rhythm.py#L40) |
 | function | `build_conversation_rhythm_surface` | `()` | — | [src](../../../core/services/conversation_rhythm.py#L74) |
 
+## `core/services/conversation_topics.py`
+_Conversation-continuity topics, deliberately separate from world truth._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `record_conversation_topic` | `(*, canonical_key, title, summary=…, source_kind=…, session_id=…, run_id=…)` | — | [src](../../../core/services/conversation_topics.py#L14) |
+| function | `list_conversation_topics` | `(*, limit=…)` | — | [src](../../../core/services/conversation_topics.py#L43) |
+
 ## `core/services/cost_optimization_daemon.py`
 _D5 — Cost optimization daemon._
 
@@ -613,13 +621,4 @@ _Current pull — Jarvis' weekly self-set desire field._
 | function | `_expire_if_stale` | `()` | — | [src](../../../core/services/current_pull.py#L438) |
 | function | `_load_state` | `()` | — | [src](../../../core/services/current_pull.py#L459) |
 | function | `_enabled` | `()` | — | [src](../../../core/services/current_pull.py#L464) |
-
-## `core/services/daemon_health.py`
-_Daemon-helbred (Fase 1) — gør de standalone daemon-tråde + silent eventbus-listeners_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `note_error` | `(daemon, error, **data)` | En daemon/listener fejlede. → observe (cluster=system, nerve=daemon_health, ok=False). | [src](../../../core/services/daemon_health.py#L17) |
-| function | `note_tick` | `(daemon, *, ok=…, **data)` | En daemon kørte en cyklus. Valgfri helbreds-puls (brug sparsomt — fejl er hovedsignalet). | [src](../../../core/services/daemon_health.py#L30) |
-| function | `daemon_health_summary` | `(*, window=…)` | Read-only: hvilke daemons har fejlet i seneste trace (til MC/debug). Self-safe. | [src](../../../core/services/daemon_health.py#L42) |
 

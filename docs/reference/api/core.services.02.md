@@ -181,6 +181,17 @@ _Skygge for godkendelses-broen: ville den have sagt det samme?_
 | function | `_worker` | `()` | — | [src](../../../core/services/approval_outbox.py#L155) |
 | function | `start_approval_outbox_dispatcher` | `()` | — | [src](../../../core/services/approval_outbox.py#L164) |
 
+## `core/services/approval_runtime.py`
+_Én doer ind og ud af en godkendelse — Fase 4's sidste stykke._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `new_id` | `()` | — | [src](../../../core/services/approval_runtime.py#L41) |
+| function | `build_request` | `(*, tool_name, arguments, result, run, created_at=…)` | Byg et gyldigt godkendelses-kort. Det ENE sted formen bor. | [src](../../../core/services/approval_runtime.py#L45) |
+| function | `decide` | `(approval_id, *, approved, answered_by=…)` | Svar paa en godkendelse. Den ENE vej ind for enhver svarer. | [src](../../../core/services/approval_runtime.py#L68) |
+| function | `state` | `(approval_id)` | Hvad ved vi om dette kort? None hvis det ikke findes. | [src](../../../core/services/approval_runtime.py#L82) |
+| function | `sweep_expired` | `()` | Fjern udloebne kort. Returnerer hvad der blev fejet. | [src](../../../core/services/approval_runtime.py#L95) |
+
 ## `core/services/arc_rule_extractor.py`
 _Arc rule extractor — turns narrative arcs into actionable rules._
 
@@ -588,24 +599,4 @@ _Autonomous Work Daemon — Jarvis works on his own when Bjørn is away._
 | function | `build_autonomous_work_surface` | `()` | — | [src](../../../core/services/autonomous_work_daemon.py#L291) |
 | function | `_surface_summary` | `(pending, all_items)` | — | [src](../../../core/services/autonomous_work_daemon.py#L310) |
 | function | `build_autonomous_work_prompt_section` | `()` | — | [src](../../../core/services/autonomous_work_daemon.py#L318) |
-
-## `core/services/autonomy_budget.py`
-_Dagligt budget for selvvalgte handlinger + tælling af stilheden (blok E, 4/9)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_state_get` | `(key, default=…)` | — | [src](../../../core/services/autonomy_budget.py#L41) |
-| function | `_state_set` | `(key, value)` | — | [src](../../../core/services/autonomy_budget.py#L50) |
-| function | `daily_budget` | `()` | — | [src](../../../core/services/autonomy_budget.py#L58) |
-| function | `set_daily_budget` | `(value)` | — | [src](../../../core/services/autonomy_budget.py#L65) |
-| function | `_today` | `(now=…)` | — | [src](../../../core/services/autonomy_budget.py#L71) |
-| function | `_spent_today` | `(now=…)` | — | [src](../../../core/services/autonomy_budget.py#L75) |
-| function | `remaining` | `(now=…)` | — | [src](../../../core/services/autonomy_budget.py#L86) |
-| function | `may_act` | `(action=…, *, now=…)` | Er der plads i dagens budget? Fail-open: enhver fejl → ja. | [src](../../../core/services/autonomy_budget.py#L90) |
-| function | `note_action` | `(action, *, now=…)` | Registrér en selvvalgt handling. Synlig log, ikke en tavs bremse. | [src](../../../core/services/autonomy_budget.py#L102) |
-| function | `note_silence` | `(*, outcome, reason_code=…)` | Han valgte at tie. Tæl det — det er den eneste måde vægten kan vurderes. | [src](../../../core/services/autonomy_budget.py#L122) |
-| function | `silence_counts` | `()` | — | [src](../../../core/services/autonomy_budget.py#L135) |
-| function | `build_weekly_summary` | `()` | Ugens stilhed i én linje — "" når han ikke har tiet nævneværdigt. | [src](../../../core/services/autonomy_budget.py#L142) |
-| function | `run_weekly_review` | `(*, force=…, now=…)` | Ugentligt: læg stilheds-resuméet i den proaktive kø og nulstil tælleren. | [src](../../../core/services/autonomy_budget.py#L161) |
-| function | `build_autonomy_budget_surface` | `()` | — | [src](../../../core/services/autonomy_budget.py#L190) |
 

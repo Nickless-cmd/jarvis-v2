@@ -2,6 +2,26 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/autonomy_budget.py`
+_Dagligt budget for selvvalgte handlinger + tælling af stilheden (blok E, 4/9)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_state_get` | `(key, default=…)` | — | [src](../../../core/services/autonomy_budget.py#L41) |
+| function | `_state_set` | `(key, value)` | — | [src](../../../core/services/autonomy_budget.py#L50) |
+| function | `daily_budget` | `()` | — | [src](../../../core/services/autonomy_budget.py#L58) |
+| function | `set_daily_budget` | `(value)` | — | [src](../../../core/services/autonomy_budget.py#L65) |
+| function | `_today` | `(now=…)` | — | [src](../../../core/services/autonomy_budget.py#L71) |
+| function | `_spent_today` | `(now=…)` | — | [src](../../../core/services/autonomy_budget.py#L75) |
+| function | `remaining` | `(now=…)` | — | [src](../../../core/services/autonomy_budget.py#L86) |
+| function | `may_act` | `(action=…, *, now=…)` | Er der plads i dagens budget? Fail-open: enhver fejl → ja. | [src](../../../core/services/autonomy_budget.py#L90) |
+| function | `note_action` | `(action, *, now=…)` | Registrér en selvvalgt handling. Synlig log, ikke en tavs bremse. | [src](../../../core/services/autonomy_budget.py#L102) |
+| function | `note_silence` | `(*, outcome, reason_code=…)` | Han valgte at tie. Tæl det — det er den eneste måde vægten kan vurderes. | [src](../../../core/services/autonomy_budget.py#L122) |
+| function | `silence_counts` | `()` | — | [src](../../../core/services/autonomy_budget.py#L135) |
+| function | `build_weekly_summary` | `()` | Ugens stilhed i én linje — "" når han ikke har tiet nævneværdigt. | [src](../../../core/services/autonomy_budget.py#L142) |
+| function | `run_weekly_review` | `(*, force=…, now=…)` | Ugentligt: læg stilheds-resuméet i den proaktive kø og nulstil tælleren. | [src](../../../core/services/autonomy_budget.py#L161) |
+| function | `build_autonomy_budget_surface` | `()` | — | [src](../../../core/services/autonomy_budget.py#L190) |
+
 ## `core/services/autonomy_pressure_signal_tracking.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -607,19 +627,4 @@ _core/services/central_body_mood_feel.py_
 | function | `describe_body_mood_feel` | `()` | NED-syntese for describe_self: nøgterne selv-sætninger fra de holdte krop-/stemning-aflæsninger. | [src](../../../core/services/central_body_mood_feel.py#L310) |
 | function | `register_body_mood_feel_layers` | `()` | Registrér krop- og stemning-lagene som lag-kontrakter (OP + durabelt hold). Egress-frit | [src](../../../core/services/central_body_mood_feel.py#L371) |
 | function | `build_body_mood_feel_surface` | `()` | Mission Control (read-only): de holdte krop-/stemning-aflæsninger + hvad describe_self ville sige. | [src](../../../core/services/central_body_mood_feel.py#L398) |
-
-## `core/services/central_brain_link.py`
-_core/services/central_brain_link.py_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_owner_uid` | `()` | Resolvér owner-attribution. "" hvis ukendt → M2 skriver IKKE (scope-gate). Self-safe. | [src](../../../core/services/central_brain_link.py#L35) |
-| function | `recall_context` | `(query, *, limit=…)` | M1: scope-BUNDET selv-recall for en formodning — workspace + chronicle KUN. private_brain | [src](../../../core/services/central_brain_link.py#L44) |
-| function | `_hyp_tag` | `(hyp_id)` | — | [src](../../../core/services/central_brain_link.py#L70) |
-| function | `already_remembered` | `(hyp_id)` | Har Centralen allerede skrevet denne hypotese til hjernen? (idempotens via tag). Self-safe. | [src](../../../core/services/central_brain_link.py#L74) |
-| function | `remember_resolved_hypothesis` | `(hyp)` | M2: skriv Centralens LÆRING (en resolveret/død hypotese) til jarvis_brain (source=brain_memory). | [src](../../../core/services/central_brain_link.py#L90) |
-| function | `_recently_resolved` | `(limit=…)` | Resolverede/døde central-hypoteser (kandidater til at blive husket). Self-safe. | [src](../../../core/services/central_brain_link.py#L119) |
-| function | `run_brain_link_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence-producer: skriv nyligt resolverede central-læringer til hjernen (M2, owner-scopet). | [src](../../../core/services/central_brain_link.py#L133) |
-| function | `register_brain_link_producer` | `()` | Registrér Tråd 5 som cadence-producer (~hvert 60 min). | [src](../../../core/services/central_brain_link.py#L164) |
-| function | `build_brain_link_surface` | `()` | Mission Control surface — read-only: hvor mange central-læringer bor i hjernen. | [src](../../../core/services/central_brain_link.py#L176) |
 

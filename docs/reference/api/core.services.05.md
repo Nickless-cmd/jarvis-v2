@@ -2,6 +2,22 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/central_inner_salience.py`
+_core/services/central_inner_salience.py_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_kv_get` | `(key, default)` | — | [src](../../../core/services/central_inner_salience.py#L33) |
+| function | `_kv_set` | `(key, value)` | — | [src](../../../core/services/central_inner_salience.py#L42) |
+| function | `_mode` | `()` | — | [src](../../../core/services/central_inner_salience.py#L50) |
+| function | `_norm` | `(s)` | — | [src](../../../core/services/central_inner_salience.py#L55) |
+| function | `salience_key_for_voice` | `(inner_voice_payload)` | De MENINGSFULDE dimensioner af den indre stemme (langsomt-skiftende selv). Rå tekst der | [src](../../../core/services/central_inner_salience.py#L59) |
+| function | `_held` | `(kind)` | — | [src](../../../core/services/central_inner_salience.py#L66) |
+| function | `_trace` | `(kind, would_reuse, mode)` | — | [src](../../../core/services/central_inner_salience.py#L74) |
+| function | `decide_voice` | `(*, run_id, key)` | Centralen BESTEMMER: skal inner_voice genudledes via LLM, eller genbruges fra det holdte selv? | [src](../../../core/services/central_inner_salience.py#L83) |
+| function | `note_enriched_voice` | `(*, run_id, key, value)` | Fodr det friske selv TILBAGE i Centralen (NED-siden): gem holdt voice-linje + salience-nøgle, | [src](../../../core/services/central_inner_salience.py#L107) |
+| function | `build_inner_salience_surface` | `()` | Mission Control — read-only: gate-mode + sidst-holdte selv + hvornår. | [src](../../../core/services/central_inner_salience.py#L129) |
+
 ## `core/services/central_instrument.py`
 _central_instrument — selv-instrumenterende motor (system-cluster nerve, periodisk daemon)._
 
@@ -605,13 +621,4 @@ _core/services/central_router_explore.py_
 | function | `_candidates` | `(default_key)` | Konfigurerede, ikke-deep-tier modeller forskellige fra default — sorteret efter FÆRREST samples | [src](../../../core/services/central_router_explore.py#L49) |
 | function | `pick_exploration_model` | `(default_provider, default_model)` | Vælg en alternativ model at sample på DENNE autonome run — eller None (behold default/præference). | [src](../../../core/services/central_router_explore.py#L66) |
 | function | `build_router_explore_surface` | `()` | Mission Control — read-only: eksplorations-status + kandidater der ville blive samplet. | [src](../../../core/services/central_router_explore.py#L90) |
-
-## `core/services/central_runtime_proxy.py`
-_Central runtime proxy — read runtime-process-only surfaces from anywhere._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_runtime_services_enabled` | `()` | True when this process runs the runtime services (state is local here). | [src](../../../core/services/central_runtime_proxy.py#L36) |
-| function | `_http_get` | `(name)` | HTTP-GET a runtime surface from jarvis-runtime. Returns a parsed dict. | [src](../../../core/services/central_runtime_proxy.py#L42) |
-| function | `proxy_or_local` | `(builder_name, local_fn)` | Return a runtime surface, in-process or via HTTP-proxy to port 8011. | [src](../../../core/services/central_runtime_proxy.py#L54) |
 

@@ -2,6 +2,18 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/env_block.py`
+_Hvor står jeg, og hvordan ser træet ud? — miljø-blok pr. tur._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `is_enabled` | `()` | — | [src](../../../core/services/env_block.py#L47) |
+| function | `_git` | `(cwd, *args)` | Tidsbegrænset git-kald. None ved ENHVER fejl. | [src](../../../core/services/env_block.py#L55) |
+| function | `collect_env` | `(cwd=…)` | Saml miljøet. Alle felter er strenge; tomme når de ikke kunne læses. | [src](../../../core/services/env_block.py#L67) |
+| function | `_husk_vist_hash` | `(kort_hash)` | — | [src](../../../core/services/env_block.py#L98) |
+| function | `vist_hash` | `()` | Den commit-hash vi selv har vist ham i env-blokken. Tom hvis ingen. | [src](../../../core/services/env_block.py#L108) |
+| function | `render_env_block` | `(cwd=…)` | Én kort blok til halen. Tom streng når slukket eller intet kunne læses. | [src](../../../core/services/env_block.py#L117) |
+
 ## `core/services/epistemic_pragmatic.py`
 _Epistemic/Pragmatic Balance — action-mode modulation._
 
@@ -590,26 +602,4 @@ _Gate-eval & paritets-harness (unified-gate Task 0.2)._
 | function | `parity` | `(turns, old_fn, new_fn)` | Sammenlign to gate-implementeringer pr. turn. Grøn paritet = nul mismatches. | [src](../../../core/services/gate_eval.py#L38) |
 | function | `score` | `(turns, gate_fn, *, label_key=…)` | Mål en gates beslutning mod ground-truth-labels pr. turn. | [src](../../../core/services/gate_eval.py#L52) |
 | function | `load_fixtures` | `(path)` | Læs et jsonl-fixturset (én turn pr. linje). Tomme/kommenterede linjer ignoreres. | [src](../../../core/services/gate_eval.py#L73) |
-
-## `core/services/gate_execution.py`
-_Execution-cluster gate 🔒 — én graderet SECURITY-gate for ALLE tool-eksekverings-_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_red` | `(nerve, reason, classification)` | — | [src](../../../core/services/gate_execution.py#L46) |
-| function | `_yellow` | `(nerve, classification)` | — | [src](../../../core/services/gate_execution.py#L51) |
-| function | `_green` | `(nerve, classification)` | — | [src](../../../core/services/gate_execution.py#L56) |
-| function | `_rapporter_fail_open` | `(nerve, hvad, exc)` | En SECURITY-gate der fejler ÅBENT må aldrig gøre det tavst. | [src](../../../core/services/gate_execution.py#L62) |
-| function | `execution_gate` | `(ctx)` | Én SECURITY-gate, dispatch på ctx['action']. Returnér ét graderet Verdict. | [src](../../../core/services/gate_execution.py#L92) |
-| class | `ExecCheck` | `` | — | [src](../../../core/services/gate_execution.py#L193) |
-| function | `_to_check` | `(v)` | — | [src](../../../core/services/gate_execution.py#L200) |
-| function | `_decide` | `(nerve, ctx)` | Route gennem Den Intelligente Central (SECURITY). Defense-in-depth: hvis central- | [src](../../../core/services/gate_execution.py#L216) |
-| function | `check_command` | `(command, session_id=…, *, blocked_only=…)` | — | [src](../../../core/services/gate_execution.py#L245) |
-| function | `check_file` | `(path, session_id=…, *, kind=…, blocked_only=…)` | — | [src](../../../core/services/gate_execution.py#L252) |
-| function | `check_workspace_trust` | `(tool_name)` | — | [src](../../../core/services/gate_execution.py#L259) |
-| function | `check_operator` | `(path, session_id=…, *, file_exists=…)` | — | [src](../../../core/services/gate_execution.py#L264) |
-| function | `check_upload` | `(path, *, block_on_unavailable=…)` | Malware-scan en uploadet fil GENNEM Centralen (SECURITY). .allowed=False ⇔ infected/ | [src](../../../core/services/gate_execution.py#L271) |
-| function | `_gate_repeat_key` | `(gate, subject)` | — | [src](../../../core/services/gate_execution.py#L305) |
-| function | `gate_observation` | `(check, *, gate, subject, remedy=…, status=…)` | Byg et IN-LOOP tool-resultat ud af en gate-dom — brugbart nok til selvkorrektion. | [src](../../../core/services/gate_execution.py#L311) |
-| function | `reset_gate_repeat_counts` | `()` | Nulstil gentagelses-tællere (tests + sessionsskift). | [src](../../../core/services/gate_execution.py#L383) |
 

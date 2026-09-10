@@ -596,12 +596,38 @@ def _exec_bash(args: dict[str, Any]) -> dict[str, Any]:
     # de kaldere der vil have fail-closed.
     _argv = ["bash", "-c", command]
     _indespaerring: dict[str, object] = {}
+    # K9, anden halvdel (Bjoern 10/9-2026): en UOVERVAAGET koersel skal fejle
+    # lukket naar indespaerringen er oensket men ikke mulig. Der er ingen til at
+    # redde den, saa den skal hellere lade vaere. Bjoerns egen sti er
+    # fail-open med vilje — han er der selv til at se hvad der sker.
+    #
+    # OG kun naar sandkassen faktisk er TAENDT. `enforcement(require=True)`
+    # kaster ogsaa paa «ikke taendt» — saa uden dette led ville ALT autonomt
+    # bash-arbejde doe hver gang sandkassen var slukket, hvilket er dens
+    # normale tilstand. Fanget af en test foer det naaede maskinen.
+    # Er der ingen indespaerring oensket, er der intet at fejle lukket paa.
     try:
-        from core.services.bash_sandbox import enforcement
-        _e = enforcement(command, str(PROJECT_ROOT))
+        from core.services.bash_sandbox import is_enabled as _sbx_taendt
+        from core.services.run_autonomy_context import is_autonomous
+        _kraev = is_autonomous() and _sbx_taendt()
+    except Exception:
+        _kraev = False
+    try:
+        from core.services.bash_sandbox import ConfinementUnavailable, enforcement
+        _e = enforcement(command, str(PROJECT_ROOT), require=_kraev)
         _indespaerring = _e.as_dict()
         if _e.argv:
             _argv = _e.argv
+    except ConfinementUnavailable as _ci:
+        logger.warning("bash: AUTONOM koersel naegtet — indespaerring oensket "
+                       "men ikke mulig: %s", _ci)
+        return {
+            "status": "error",
+            "error": ("Indespaerring er paakraevet for autonome koersler, men "
+                      f"ikke mulig her: {_ci}"),
+            "confinement": {"requested": True, "actual": False, "honored": False,
+                            "reason": str(_ci)},
+        }
     except Exception as _sb_exc:
         # Selve afgørelsen fejlede. Kommandoen kører stadig (fail-open), men
         # det siges højt — en debug-linje er ikke en rapport.

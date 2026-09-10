@@ -1291,6 +1291,16 @@ async def _stream_visible_run(
 
     # Trusted-folder kontekst (code-scope): læs session-workspace + trust-tilstand
     # og sæt request-scopet ContextVar, så execute_tool kan gate skrive/exec.
+    # K9: markér om DENNE koersel er uovervaaget, saa `bash` kan kraeve
+    # indespaerring frem for at koere frit naar sandkassen mangler. Samme
+    # run-scopede moenster som workspace-trust nedenfor — og ikke et opslag paa
+    # `autonomous-`-praefikset, som er en konvention og ikke en sandhed.
+    try:
+        from core.services.run_autonomy_context import set_autonomous
+        set_autonomous(bool(getattr(run, "autonomous", False)))
+    except Exception:
+        pass
+
     # For alle andre scopes ryddes konteksten, så en tidligere code-runs trust
     # ikke lækker ind i et chat-run i samme worker-context.
     try:

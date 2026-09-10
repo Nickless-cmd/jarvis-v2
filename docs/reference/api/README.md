@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 14186 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 14189 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -46,13 +46,13 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 14186 functions/
 - [`core.services.16`](core.services.16.md) — `narrative_summary_daemon` … `permission_classifier`
 - [`core.services.17`](core.services.17.md) — `permission_engine` … `prompt_evolution_runtime`
 - [`core.services.18`](core.services.18.md) — `prompt_heartbeat_self_knowledge` … `regret_engine`
-- [`core.services.19`](core.services.19.md) — `regulation_homeostasis_signal_tracking` … `runtime_self_model_boundary`
-- [`core.services.20`](core.services.20.md) — `runtime_self_model_builder` … `self_wakeup`
-- [`core.services.21`](core.services.21.md) — `selfhood_proposal_tracking` … `simple_tool_executor`
-- [`core.services.22`](core.services.22.md) — `skill_autosurface` … `temporal_rhythm`
-- [`core.services.23`](core.services.23.md) — `temporal_self_continuity` … `untrusted_fencing`
-- [`core.services.24`](core.services.24.md) — `upload_sandbox` … `visible_runs_sse_v2`
-- [`core.services.25`](core.services.25.md) — `visible_runs_watchdog` … `world_model_signal_tracking`
+- [`core.services.19`](core.services.19.md) — `regulation_homeostasis_signal_tracking` … `runtime_self_model_affect`
+- [`core.services.20`](core.services.20.md) — `runtime_self_model_boundary` … `self_system_code_awareness`
+- [`core.services.21`](core.services.21.md) — `self_wakeup` … `silence_patterns`
+- [`core.services.22`](core.services.22.md) — `simple_tool_executor` … `temporal_recurrence_signal_tracking`
+- [`core.services.23`](core.services.23.md) — `temporal_rhythm` … `unfinished_intent`
+- [`core.services.24`](core.services.24.md) — `untrusted_fencing` … `visible_runs_outcomes`
+- [`core.services.25`](core.services.25.md) — `visible_runs_sse_v2` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

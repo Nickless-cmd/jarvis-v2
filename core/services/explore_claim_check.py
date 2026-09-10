@@ -68,6 +68,18 @@ _STI_LINJE_PROSA = re.compile(
     r"[\s`:*-]*(.{0,120})",                                # og hvad der paastaas
     re.IGNORECASE,
 )
+# STIEN EFTER TALLET: «(linje 11, fil core/x.py)».
+#
+# Det er den form MISTRAL brugte — altsaa den model der faktisk LAESTE filen.
+# Den aerlige models citatform var usynlig for vaernet, mens den fabrikerende
+# models form var daekket. Det er den vaerste vej rundt: vi efterproever den
+# der lyver og ikke den der laeser. (Jarvis' fjerde koersel.)
+_LINJE_SO_STI = re.compile(
+    r"(?:line|linje)[\s`]*(\d{1,6})[\s,;]*(?:i|in|fil|file|of|af)[\s:`]*"
+    r"(/?[\w./-]+\.[A-Za-z0-9_]{1,6})",
+    re.IGNORECASE,
+)
+
 # BAR LINJE-HENVISNING: «Linje 12: indhold» UDEN sti paa samme linje.
 #
 # Det er den naturlige form for en fil-laesnings-rapport: filen naevnes ÉN
@@ -168,6 +180,20 @@ def tjek_paastande(svar: str, *, rod: Path | None = None,
                 _set.add(_n)
                 _paastande.append((m.group(1), int(m.group(2)),
                                    (m.group(3) or "").strip()))
+        for m in _LINJE_SO_STI.finditer(t):
+            _n = (m.group(2), int(m.group(1)))
+            if _n not in _set:
+                _set.add(_n)
+                # I DENNE FORM STAAR INDHOLDET FOERAN:
+                #   «Etableret 2026-05-17 (linje 11, fil docs/x.md)»
+                # Uden det ville vi kun tjekke at filen findes — og praecis
+                # DET var mistrals fejl: indholdet var rigtigt, linjenummeret
+                # opdigtet (11 hvor der staar 8). Et vaern der kun ser filen,
+                # ser ikke den fejl.
+                _foran = t[max(0, m.start() - 90):m.start()]
+                _foran = _foran.rsplit("\n", 1)[-1].strip(" \t-*•`\"'(")
+                _paastande.append((m.group(2), int(m.group(1)), _foran[-80:]))
+
         for m in _LINJE_I_STI.finditer(t):
             _n = (m.group(2), int(m.group(1)))
             if _n not in _set:

@@ -435,3 +435,40 @@ def test_nul_vaerktoejskald_blaastemples_ikke():
     assert 'result.get("tool_calls")' in kilde
     assert "if dom.get(\"holder\") and not _tomhaendet:" in kilde, (
         "et tomhaendet svar returneres stadig uden rotation")
+
+
+# ── den AERLIGE models citatform var usynlig for vaernet ────────────────
+#
+# Jarvis' fjerde koersel. Rotationen virkede: nemotron fabrikerede paa runde 0,
+# og mistral tog over paa runde 1 — laeste filen med TRE aegte vaerktoejskald
+# og svarede fagligt korrekt.
+#
+# Men den TALTE linjenumrene selv (11/58/68/72 hvor sandheden er 8/39/46/49),
+# selvom systemprompten siger «LINJENUMRE: taeller du dem ALDRIG selv». Og dens
+# citatform — «(linje 11, fil <sti>)» — var ikke daekket, mens den
+# FABRIKERENDE models form var det.
+#
+# Det er den vaerste vej rundt: vi efterproevede den der loeg og ikke den der
+# laeste.
+
+def test_stien_efter_tallet_fanges():
+    d = tjek_paastande("se linje 58, fil docs/x.md", findes_fn=lambda s: True)
+    assert d["kontrolleret"] == 1
+
+
+def test_indholdet_FOERAN_citatet_bliver_efterproevet():
+    """«Etableret 2026-05-17 (linje 11, fil docs/x.md)» — indholdet staar
+    FOERAN. Uden det ville vi kun tjekke at filen findes, og praecis dét var
+    mistrals fejl: indhold rigtigt, linjenummer opdigtet."""
+    set_kald = []
+
+    def _lf(sti, nr, frag):
+        set_kald.append((nr, frag))
+        return False
+
+    d = tjek_paastande("Etableret 2026-05-17 (linje 11, fil docs/x.md)",
+                       findes_fn=lambda s: True, linje_fn=_lf)
+    assert set_kald, "linje-tjekket blev aldrig kaldt"
+    assert set_kald[0][0] == 11
+    assert "2026-05-17" in set_kald[0][1]
+    assert d["bevis"] == "uenig"

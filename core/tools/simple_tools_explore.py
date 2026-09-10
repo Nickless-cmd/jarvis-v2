@@ -252,7 +252,28 @@ def _exec_explore(args: dict[str, Any]) -> dict[str, Any]:
         #
         # `_run_agent_tool_loop` taeller kaldene og lagger dem i resultatet.
         # Vi kraever kun at der var MINDST ét — ikke at det var det rigtige.
-        _kald = int(result.get("tool_calls") or 0)
+        # `tool_calls` BETYDER TO TING, og det er derfor dette braekkede.
+        #
+        # I koerslens `output_payload_json` er det et TAL (loekkens taelling).
+        # I agent-fladen (`enrich_agent_surface`) er det en LISTE, og tallet
+        # hedder `tool_call_count`. Explore faar fladen, men laeste navnet med
+        # payloadens betydning: `int(<liste>)` kaster.
+        #
+        # Det havde ligget der hele tiden og aldrig fejlet, fordi `[] or 0`
+        # er 0 — saa laenge listen var TOM. Mine to fixes i dag gjorde den
+        # ikke-tom: bogfoeringen fyldte den, og rotationen soergede for at der
+        # var noget at bogfoere. Jo bedre agenten opfoerte sig, jo sikrere
+        # crashede det — agenten laeste filen KORREKT, og hele svaret blev
+        # kastet vaek af wrappen bagefter. (Jarvis' fjerde koersel.)
+        #
+        # Der laeses derfor efter FORM, ikke efter navn: et navn der er
+        # aerligt i to sammenhaenge og loegnagtigt i den tredje maa ikke
+        # afgoeres af hvilken vej svaret kom.
+        _raa = result.get("tool_call_count")
+        if _raa is None:
+            _raa = result.get("tool_calls")
+        _kald = (len(_raa) if isinstance(_raa, (list, tuple, set))
+                 else int(_raa or 0))
         _tomhaendet = _kald == 0 and _substans == 0
         if dom.get("holder") and not _tomhaendet:
             # `bevis` SKAL med ud. Uden det laeser en modtager

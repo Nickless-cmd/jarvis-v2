@@ -53,14 +53,31 @@ def test_et_VELLYKKET_barn_er_ikke_en_haendelse(fanget):
     assert nerver == [] and incidents == []
 
 
-def test_alvoren_skelner(fanget):
+def test_alvoren_skelner_MED_HUSETS_ord(fanget):
     """Et opbrugt budget er en graense der VIRKER; et barn der doer af en
-    genstart er noget andet."""
+    genstart er noget andet.
+
+    Foerste udgave brugte «warning» — som huset ikke kender. Vaerdien faldt
+    STILLE igennem til «error» i `record_central_incident`, saa skelnen
+    forsvandt paa vej i basen, og DENNE test saa det ikke: den maalte hvad der
+    blev SENDT, ikke hvad der blev GEMT. Derfor tjekkes nu mod husets liste.
+    """
+    from core.runtime.db_central_incidents import _SEVERITIES
     _, incidents = fanget
     CFS.note_child_ended("a1", status="expired")
     CFS.note_child_ended("a2", status="failed")
-    assert incidents[0]["severity"] == "warning"
-    assert incidents[1]["severity"] == "error"
+    assert incidents[0]["severity"] in _SEVERITIES
+    assert incidents[1]["severity"] in _SEVERITIES
+    assert incidents[0]["severity"] != incidents[1]["severity"], (
+        "skelnen forsvinder i basen")
+
+
+def test_ALLE_alvorsgrader_er_kendt_af_huset():
+    """Et ukendt ord falder stille igennem til «error». Den slags maa ikke
+    kunne snige sig ind igen."""
+    from core.runtime.db_central_incidents import _SEVERITIES
+    ukendte = sorted(set(CFS._ALVOR.values()) - set(_SEVERITIES))
+    assert ukendte == [], f"huset kender ikke: {ukendte}"
 
 
 def test_incidenten_er_DURABEL_og_dedupet(fanget):

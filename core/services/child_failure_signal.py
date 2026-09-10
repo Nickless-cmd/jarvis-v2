@@ -29,9 +29,15 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-# Hvor alvorligt er det? Et udloebet budget er en graense der virker; et
-# barn der doer af en genstart er noget andet.
-_ALVOR = {"expired": "warning", "cancelled": "warning", "failed": "error"}
+# Hvor alvorligt er det? Et opbrugt budget er en graense der VIRKER; et barn
+# der doer af en genstart er noget andet.
+#
+# Vaerdierne er husets egne — `db_central_incidents._SEVERITIES` kender kun
+# («info», «error», «severe»). Foerste udgave brugte «warning», som faldt
+# STILLE igennem til «error», saa skelnen forsvandt paa vej i basen. Testen
+# fangede det ikke, fordi den maalte hvad jeg SENDTE og ikke hvad der blev
+# GEMT. Verificeret paa produktionen bagefter.
+_ALVOR = {"expired": "info", "cancelled": "info", "failed": "error"}
 
 
 def note_child_ended(agent_id: str, *, status: str, role: str = "",

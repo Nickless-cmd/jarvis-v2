@@ -454,7 +454,8 @@ _Efterproev det et barn PAASTAAR — Fase 6._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `tjek_rapport` | `(text, *, agent_id=…, role=…, run_id=…)` | Efterproev en barne-rapports filstier og linjenumre. Kaster ALDRIG. | [src](../../../core/services/report_claim_guard.py#L39) |
+| function | `_opsloegere` | `(context)` | Vaelg den maskine paastanden skal efterproeves PAA. | [src](../../../core/services/report_claim_guard.py#L40) |
+| function | `tjek_rapport` | `(text, *, agent_id=…, role=…, run_id=…, context=…)` | Efterproev en barne-rapports filstier og linjenumre. Kaster ALDRIG. | [src](../../../core/services/report_claim_guard.py#L80) |
 
 ## `core/services/resonance_decay.py`
 _Resonance Decay — how emotional signals persist and fade over time._

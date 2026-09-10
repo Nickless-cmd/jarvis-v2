@@ -30,25 +30,73 @@ ikke paa en formodning om hvor tit det sker.
 """
 from __future__ import annotations
 
+import json
 import logging
 from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
+def _opsloegere(context: Any) -> tuple[Any, Any, str]:
+    """Vaelg den maskine paastanden skal efterproeves PAA.
+
+    Et barn med `execution_target=workstation` laeser filer paa Bjoerns
+    maskine over broen. Uden opslags-funktioner opløste vi mod CONTAINEREN og
+    fandt en fil der LIGNEDE den agenten laeste — begge maskiner har
+    `/media/projects/jarvis-v2`. Samme sti, forskellig maskine; i dag var de
+    identiske, saa det gik ved et tilfaelde.
+
+    Vi falder IKKE tilbage til containeren naar broen ikke svarer. Det er
+    netop den forkerte maskine, og et vaern der spoerger den forkerte maskine
+    er vaerre end et der siger «jeg kunne ikke afgoere det».
+    """
+    ctx: dict[str, Any] = {}
+    if isinstance(context, str) and context.strip():
+        try:
+            ctx = json.loads(context) or {}
+        except Exception:
+            ctx = {}
+    elif isinstance(context, dict):
+        ctx = dict(context)
+    if str(ctx.get("execution_target") or "").strip().lower() != "workstation":
+        return None, None, "container"
+    bruger = str(ctx.get("user_id") or "").strip()
+    if not bruger:
+        return None, None, "uden-bro"
+    try:
+        # ÉT sted ejer bro-ruten (se `_bro_kontrol`). En kopi her ville vaere
+        # den femte udgave af samme spoergsmaal.
+        from core.tools.simple_tools_explore import _bro_kontrol
+        findes, linje = _bro_kontrol({
+            "_runtime_user_id": bruger,
+            "_runtime_session_id": str(ctx.get("session_id") or ""),
+        })
+    except Exception:
+        logger.debug("kunne ikke bygge bro-opsloegere", exc_info=True)
+        return None, None, "uden-bro"
+    return findes, linje, "workstation"
+
+
 def tjek_rapport(text: str, *, agent_id: str = "", role: str = "",
-                 run_id: str = "") -> dict[str, Any]:
+                 run_id: str = "", context: Any = None) -> dict[str, Any]:
     """Efterproev en barne-rapports filstier og linjenumre. Kaster ALDRIG.
 
     Returnerer `{"kontrolleret": n, "holder": bool, "fejl": [...]}` — samme
     form som `tjek_paastande`, saa den kan gemmes raat paa runnet.
     """
-    tom = {"kontrolleret": 0, "holder": True, "fejl": []}
+    tom = {"kontrolleret": 0, "holder": True, "fejl": [],
+           "bevis": "intet-bevis", "kontrolleret_mod": "container"}
     try:
         if not str(text or "").strip():
             return tom
         from core.services.explore_claim_check import tjek_paastande
-        dom = tjek_paastande(str(text))
+        _findes, _linje, _mod = _opsloegere(context)
+        if _mod == "uden-bro":
+            # Barnet laeste paa Bjoerns maskine; vi kan ikke naa den. At slaa
+            # op i containeren ville give et tal om den FORKERTE maskine — og
+            # netop dét er fejlen. Saa vi doemmer ikke.
+            return {**tom, "kontrolleret_mod": "uden-bro"}
+        dom = tjek_paastande(str(text), findes_fn=_findes, linje_fn=_linje)
     except Exception:
         logger.debug("report_claim_guard: kunne ikke efterproeve %s",
                      agent_id, exc_info=True)
@@ -76,4 +124,14 @@ def tjek_rapport(text: str, *, agent_id: str = "", role: str = "",
         except Exception:
             pass
 
-    return {"kontrolleret": kontrolleret, "holder": holder, "fejl": fejl[:8]}
+    # `holder: True` med `kontrolleret: 0` laeser som «bestaaet». Uden `bevis`
+    # kan raekken ikke skelne «vi efterproevede alt» fra «vi doemte intet» —
+    # samme sammenblanding som vaerktoejet selv havde.
+    #
+    # Og `kontrolleret_mod` siger HVILKEN maskine der blev spurgt. To tal der
+    # svarer paa hvert sit spoergsmaal er til at leve med, hvis de siger hvad
+    # de er.
+    return {"kontrolleret": kontrolleret, "holder": holder, "fejl": fejl[:8],
+            "bevis": str(dom.get("bevis") or "intet-bevis"),
+            "indhold_bekraeftet": int(dom.get("indhold_bekraeftet") or 0),
+            "kontrolleret_mod": _mod}

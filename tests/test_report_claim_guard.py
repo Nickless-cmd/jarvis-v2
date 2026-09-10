@@ -37,7 +37,11 @@ def test_ren_PROSA_faar_ingen_dom():
 
 def test_tom_rapport_faar_ingen_dom():
     for t in ("", "   ", None):
-        assert tjek_rapport(t) == {"kontrolleret": 0, "holder": True, "fejl": []}
+        d = tjek_rapport(t)
+        assert (d["kontrolleret"], d["holder"], d["fejl"]) == (0, True, [])
+        # `holder: True` alene laeser som «bestaaet» — `bevis` siger at der
+        # ikke blev doemt noget.
+        assert d["bevis"] == "intet-bevis", d
 
 
 # ── det farlige: en paastand der KAN efterproeves og er falsk ────────────
@@ -83,8 +87,9 @@ def test_den_kaster_aldrig(monkeypatch):
     import core.services.explore_claim_check as CC
     monkeypatch.setattr(CC, "tjek_paastande",
                         lambda *a, **k: (_ for _ in ()).throw(RuntimeError("nede")))
-    assert tjek_rapport("core/x.py:1") == {"kontrolleret": 0, "holder": True,
-                                           "fejl": []}
+    d = tjek_rapport("core/x.py:1")
+    assert (d["kontrolleret"], d["holder"], d["fejl"]) == (0, True, [])
+    assert d["bevis"] == "intet-bevis", d
 
 
 # ── koblingen: dommen gemmes paa runnet ─────────────────────────────────
@@ -177,3 +182,98 @@ def test_ingen_importcirkel_mellem_spawn_og_raadet():
 
     from core.services import agent_runtime_spawn as S
     assert "agent_runtime_council" not in inspect.getsource(S)
+
+
+# ---------------------------------------------------------------------------
+# DEN GEMTE RAEKKE TJEKKEDE DEN FORKERTE MASKINE (Jarvis' fund, 10/9-2026)
+#
+# For en workstation-koersel laeser barnet filer paa BJOERNS maskine over
+# broen. `tjek_rapport` fik ingen opslags-funktioner, saa den opløste mod
+# CONTAINEREN — og fandt en fil der LIGNEDE den agenten laeste, fordi begge
+# maskiner har `/media/projects/jarvis-v2`.
+#
+# I dag var de identiske, saa det gik ved et tilfælde. Det er `main` vs
+# `origin/main` igen — men denne gang er «ref» en MASKINE.
+#
+# Konsekvensen er den ubehagelige: den gemte raekke sagde `holder: True,
+# kontrolleret: 6` og saa ud som en bestaaet kontrol, mens vaerktoejet selv
+# returnerede `intet-bevis`. To poster om samme koersel, uenige — og den der
+# senere laeses som bevis var den der spurgte den forkerte maskine.
+# ---------------------------------------------------------------------------
+
+_WS_CTX = {
+    "execution_target": "workstation",
+    "workspace_root": "/media/projects/jarvis-v2",
+    "user_id": "1246415163603816499",
+    "session_id": "chat-e58f16c561a64747b8da583302fbc604",
+}
+
+
+def test_workstation_koersel_slaar_op_OVER_BROEN(monkeypatch):
+    """Ikke i containeren. Ellers efterproever vi en anden maskines fil."""
+    import core.tools.simple_tools_explore as ex
+    set_af: list = []
+
+    def _falsk_bro(args):
+        set_af.append(args)
+        return (lambda sti: True), (lambda sti, nr, frag: True)
+
+    monkeypatch.setattr(ex, "_bro_kontrol", _falsk_bro)
+    from core.services.report_claim_guard import tjek_rapport
+    d = tjek_rapport("se core/x.py:3:`noget`", agent_id="a", context=_WS_CTX)
+    assert set_af, "broen blev aldrig spurgt — der blev slaaet op i containeren"
+    assert set_af[0].get("_runtime_user_id") == _WS_CTX["user_id"]
+    assert d.get("kontrolleret_mod") == "workstation", d
+
+
+def test_runtime_koersel_slaar_stadig_op_lokalt():
+    """Et barn der koerer i containeren skal netop IKKE gaa over broen."""
+    from core.services.report_claim_guard import tjek_rapport
+    d = tjek_rapport("se core/services/report_claim_guard.py:1:`\"\"\"`",
+                     agent_id="a", context={"execution_target": "runtime"})
+    assert d.get("kontrolleret_mod") == "container", d
+
+
+def test_den_gemte_raekke_baerer_bevis():
+    """`holder: True` med `kontrolleret: 0` laeser som «bestaaet». Uden `bevis`
+    kan raekken ikke skelne «vi efterproevede alt» fra «vi doemte intet»."""
+    from core.services.report_claim_guard import tjek_rapport
+    d = tjek_rapport("ren prosa uden efterproevelige paastande", agent_id="a")
+    assert d.get("bevis") == "intet-bevis", d
+    assert d.get("holder") is True, d
+
+
+def test_context_kan_vaere_json_streng():
+    """Registret gemmer `context_json` som TEKST — ikke som dict."""
+    import json
+    import core.tools.simple_tools_explore as ex
+    from core.services.report_claim_guard import tjek_rapport
+    d = tjek_rapport("se core/x.py:3:`noget`", agent_id="a",
+                     context=json.dumps(_WS_CTX))
+    assert d.get("kontrolleret_mod") == "workstation", d
+
+
+def test_workstation_UDEN_bro_doemmer_slet_ikke(monkeypatch):
+    """Kan broen ikke bygges, er containeren stadig den FORKERTE maskine.
+
+    Et tal om den forkerte maskine er praecis fejlen — saa vi doemmer ikke.
+    Fravaer er ikke en observation."""
+    import core.tools.simple_tools_explore as ex
+    monkeypatch.setattr(ex, "_bro_kontrol",
+                        lambda a: (_ for _ in ()).throw(RuntimeError("ingen bro")))
+    from core.services.report_claim_guard import tjek_rapport
+    d = tjek_rapport("se core/services/report_claim_guard.py:1:`\"\"\"`",
+                     agent_id="a", context=_WS_CTX)
+    assert d["kontrolleret"] == 0, d
+    assert d["kontrolleret_mod"] == "uden-bro", d
+    assert d["bevis"] == "intet-bevis", d
+
+
+def test_workstation_uden_bruger_id_doemmer_heller_ikke():
+    """Samme sag: uden bruger kan broen ikke ruttes, og containeren er forkert."""
+    from core.services.report_claim_guard import tjek_rapport
+    d = tjek_rapport("se core/services/report_claim_guard.py:1:`\"\"\"`",
+                     agent_id="a",
+                     context={"execution_target": "workstation", "user_id": ""})
+    assert d["kontrolleret"] == 0, d
+    assert d["kontrolleret_mod"] == "uden-bro", d

@@ -691,9 +691,14 @@ def _execute_agent_task_impl(*, agent_id: str, thread_id: str = "",
         _nyttelast = dict(result)
         try:
             from core.services.report_claim_guard import tjek_rapport
+            # KONTEKSTEN MED: uden den opløste guarden mod CONTAINEREN, ogsaa
+            # naar barnet havde laest filerne paa Bjoerns maskine over broen.
+            # Begge har `/media/projects/jarvis-v2`, saa den fandt en fil der
+            # LIGNEDE den rigtige og gemte `holder: True` som var det en
+            # bestaaet kontrol. (Jarvis' fund, 10/9-2026.)
             _nyttelast["claim_check"] = tjek_rapport(
                 text, agent_id=agent_id, role=str(agent.get("role") or ""),
-                run_id=run_id)
+                run_id=run_id, context=agent.get("context_json"))
         except Exception:
             logger.warning("kunne ikke efterproeve barnets paastande (%s) — "
                            "runnet lukkes alligevel", agent_id, exc_info=True)

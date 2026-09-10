@@ -2699,6 +2699,30 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": "council_status",
+            "description": (
+                "Hent et raad du satte i gang med convene_council. Indkaldelsen "
+                "svarer med det samme og venter IKKE paa deliberationen — brug "
+                "dette naar du er klar til at laese resultatet. Er raadet ikke "
+                "faerdigt endnu, faar du dets nuvaerende tilstand og medlemmer. "
+                "Glemmer du at hente, skriver raadet alligevel sin konklusion "
+                "til hukommelsen; recall_council_conclusions finder den."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "council_id": {
+                        "type": "string",
+                        "description": "Raads-id'et fra convene_council.",
+                    },
+                },
+                "required": ["council_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "quick_council_check",
             "description": (
                 "Run a single Devil's Advocate agent to stress-test a decision before acting. "

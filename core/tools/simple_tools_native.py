@@ -1679,30 +1679,29 @@ def _exec_convene_council(args: dict[str, Any]) -> dict[str, Any]:
         roles = ["planner", "critic", "researcher", "synthesizer"]
 
     try:
-        from core.services.agent_runtime import (
-            create_council_session_runtime,
-            run_council_round,
-        )
+        from core.services.agent_runtime import create_council_session_runtime
         session = create_council_session_runtime(topic=topic, roles=roles)
         council_id = str(session.get("council_id") or "")
         if not council_id:
             return {"status": "error", "error": "failed to create council session"}
-        result = run_council_round(council_id)
-        summary = str(result.get("summary") or "No summary produced.")
-        members = result.get("members") or []
-        positions = [
-            f"{m.get('role')}: {str(m.get('position_summary') or '')[:120]}"
-            for m in members
-        ]
-        return {
-            "status": "ok",
-            "council_id": council_id,
-            "summary": summary,
-            "positions": positions,
-            "member_count": len(members),
-        }
+        # KVITTERING (Fase 6): runden startes, og turen gaar videre. Maalt
+        # 10/9-2026 tog en runde ~17 sekunder selv efter parallelisering — og
+        # sytten sekunders frys er sytten sekunder hvor han ikke kan andet.
+        #
+        # Resultatet er ikke vaek: `council_status` henter det direkte, og
+        # runden skriver sin konklusion til raads-hukommelsen uanset, saa
+        # `recall_council_conclusions` finder den ogsaa hvis han glemmer det.
+        from core.services.council_receipt import receipt, start_round_in_background
+        startet = start_round_in_background(council_id)
+        return receipt(council_id, topic=topic, roles=roles, started=startet)
     except Exception as exc:
         return {"status": "error", "error": str(exc)}
+
+
+def _exec_council_status(args: dict[str, Any]) -> dict[str, Any]:
+    """Hent et raad der blev sat i gang med `convene_council`."""
+    from core.services.council_receipt import status
+    return status(str(args.get("council_id") or ""))
 
 
 def _exec_quick_council_check(args: dict[str, Any]) -> dict[str, Any]:

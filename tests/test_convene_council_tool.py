@@ -59,10 +59,19 @@ def test_convene_council_calls_runtime():
         ar.run_council_round = lambda cid: mock_result
         try:
             result = execute_tool("convene_council", {"topic": "Should I rewrite my soul file?"})
-            assert result["status"] == "ok"
+            # AENDRET KONTRAKT (Fase 6, 10/9-2026): indkaldelsen KVITTERER nu og
+            # venter ikke paa deliberationen. Maalt paa levende trafik samme
+            # morgen: fire medlemmer x ~38 sekunder froes Bjoerns tur i 38
+            # sekunder, selv efter at runden var parallelliseret.
+            #
+            # Testen haevder derfor ikke laengere et `summary` — der ER ikke et
+            # svar paa dette tidspunkt. Den haevder at kaldet blev ACCEPTERET,
+            # og at kvitteringen siger hvordan resultatet hentes.
+            assert result["status"] == "accepted"
             assert result["council_id"] == "council-test123"
-            assert "caution" in result["summary"]
-            assert result["member_count"] == 1
+            assert result["accepted"] is True
+            assert "council_status" in result["hent_resultat"]
+            assert "summary" not in result, "indkaldelsen venter stadig paa et svar"
         finally:
             ar.create_council_session_runtime = orig_create
             ar.run_council_round = orig_run

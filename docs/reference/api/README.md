@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 14196 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 14198 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -34,25 +34,25 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 14196 functions/
 - [`core.services.04`](core.services.04.md) — `central_brain_link` … `central_inner_life_digest`
 - [`core.services.05`](core.services.05.md) — `central_inner_salience` … `central_router_explore`
 - [`core.services.06`](core.services.06.md) — `central_runtime_proxy` … `child_authority`
-- [`core.services.07`](core.services.07.md) — `chronicle_consolidation_brief_tracking` … `consolidation_target_signal_tracking`
-- [`core.services.08`](core.services.08.md) — `content_blocks` … `daily_journal`
-- [`core.services.09`](core.services.09.md) — `data_erasure` … `doc_repair_agent`
-- [`core.services.10`](core.services.10.md) — `docs_drift_watchdog` … `end_of_run_memory_consolidation`
-- [`core.services.11`](core.services.11.md) — `endpoint_usage_store` … `gate_enforcement`
-- [`core.services.12`](core.services.12.md) — `gate_eval` … `heartbeat_runtime_helpers`
-- [`core.services.13`](core.services.13.md) — `heartbeat_runtime_influence` … `irony_daemon`
-- [`core.services.14`](core.services.14.md) — `jarvis_brain` … `meaning_significance_signal_tracking`
-- [`core.services.15`](core.services.15.md) — `memory_breathing` … `multi_signal_retrieval`
-- [`core.services.16`](core.services.16.md) — `my_projects` … `periodic_jobs_scheduler`
-- [`core.services.17`](core.services.17.md) — `permission_axes` … `prompt_contract`
-- [`core.services.18`](core.services.18.md) — `prompt_evolution` … `reflection_to_plan`
-- [`core.services.19`](core.services.19.md) — `reflective_critic_tracking` … `runtime_self_knowledge`
-- [`core.services.20`](core.services.20.md) — `runtime_self_model` … `self_surprise_detection`
-- [`core.services.21`](core.services.21.md) — `self_surprise_expectation` … `silence_detector`
-- [`core.services.22`](core.services.22.md) — `silence_listener` … `temporal_depth`
-- [`core.services.23`](core.services.23.md) — `temporal_narrative` … `unconscious_modulation`
-- [`core.services.24`](core.services.24.md) — `unconscious_temperature_field` … `visible_runs_learning_signals`
-- [`core.services.25`](core.services.25.md) — `visible_runs_memory` … `world_model_signal_tracking`
+- [`core.services.07`](core.services.07.md) — `child_failure_signal` … `consolidation_judge_daemon`
+- [`core.services.08`](core.services.08.md) — `consolidation_target_signal_tracking` … `daemon_memory_safeguard`
+- [`core.services.09`](core.services.09.md) — `daily_journal` … `dispatch_status`
+- [`core.services.10`](core.services.10.md) — `doc_repair_agent` … `encryption`
+- [`core.services.11`](core.services.11.md) — `end_of_run_memory_consolidation` … `gate_commit`
+- [`core.services.12`](core.services.12.md) — `gate_enforcement` … `heartbeat_runtime`
+- [`core.services.13`](core.services.13.md) — `heartbeat_runtime_helpers` … `invocation_record`
+- [`core.services.14`](core.services.14.md) — `irony_daemon` … `mcp_trust`
+- [`core.services.15`](core.services.15.md) — `meaning_significance_signal_tracking` … `mortality_awareness`
+- [`core.services.16`](core.services.16.md) — `multi_signal_retrieval` … `perceptual_event_engine`
+- [`core.services.17`](core.services.17.md) — `periodic_jobs_scheduler` … `prompt_cache_probe`
+- [`core.services.18`](core.services.18.md) — `prompt_contract` … `reflection_signal_tracking`
+- [`core.services.19`](core.services.19.md) — `reflection_to_plan` … `runtime_resource_signal`
+- [`core.services.20`](core.services.20.md) — `runtime_self_knowledge` … `self_review_unified`
+- [`core.services.21`](core.services.21.md) — `self_surprise_detection` … `signal_tracking_framework`
+- [`core.services.22`](core.services.22.md) — `silence_detector` … `temporal_context`
+- [`core.services.23`](core.services.23.md) — `temporal_depth` … `ui_panel_store`
+- [`core.services.24`](core.services.24.md) — `unconscious_modulation` … `visible_runs_error_messaging`
+- [`core.services.25`](core.services.25.md) — `visible_runs_learning_signals` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

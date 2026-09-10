@@ -277,3 +277,30 @@ def test_workstation_uden_bruger_id_doemmer_heller_ikke():
                      context={"execution_target": "workstation", "user_id": ""})
     assert d["kontrolleret"] == 0, d
     assert d["kontrolleret_mod"] == "uden-bro", d
+
+
+def test_uden_bro_siger_IKKE_at_svaret_holder(monkeypatch):
+    """«Vi kunne ikke doemme» og «vi doemte og det holdt» maa ikke dele boolean.
+
+    Huset har allerede ordet: `process_identity.lever()` giver True/False/None,
+    hvor None betyder «kan ikke afgoeres» og kalderen skal lade vaere. Samme
+    her — maerkatet hoerer I feltet, ikke ved siden af det.
+
+    (Jarvis' indvending, 10/9-2026: disambiguationen laa i `bevis`, saa en
+    laeser der kun saa `holder` fik groent lys paa et svar der aldrig blev
+    efterproevet.)"""
+    import core.tools.simple_tools_explore as ex
+    monkeypatch.setattr(ex, "_bro_kontrol",
+                        lambda a: (_ for _ in ()).throw(RuntimeError("ingen bro")))
+    from core.services.report_claim_guard import tjek_rapport
+    d = tjek_rapport("se core/services/report_claim_guard.py:1:`\"\"\"`",
+                     agent_id="a", context=_WS_CTX)
+    assert d["holder"] is None, d
+    assert d["kontrolleret_mod"] == "uden-bro", d
+
+
+def test_ingen_tekst_paastaar_ingen_maskine():
+    """Tom rapport: vi spurgte ingen maskine. At skrive «container» ville vaere
+    en lille loegn i en post der netop skal sige hvem der blev spurgt."""
+    from core.services.report_claim_guard import tjek_rapport
+    assert tjek_rapport("")["kontrolleret_mod"] == "ikke-spurgt"

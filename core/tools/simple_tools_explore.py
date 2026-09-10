@@ -348,7 +348,13 @@ def _exec_explore(args: dict[str, Any]) -> dict[str, Any]:
                     # felter om samme sag, der kan sige hver sit.
                     "bevis_note": _bevis_note(
                         str(dom.get("bevis") or "intet-bevis"), kontrolleret,
-                        int(dom.get("indhold_bekraeftet") or 0))}
+                        int(dom.get("indhold_bekraeftet") or 0)),
+                    # HVEM blev spurgt. Den gemte raekke sagde det allerede;
+                    # den returnerede gjorde ikke, saa to tal om samme koersel
+                    # kunne kun forliges ved at gaette. Et linjenummer uden sin
+                    # vaert er lige saa meningsloest som et hash uden sin remote.
+                    "kontrolleret_mod": ("workstation" if _bro_tjek
+                                         else "container")}
         sidste_fejl = [str(x) for x in (dom.get("fejl") or [])]
         if _tomhaendet and not sidste_fejl:
             # Ingen paaviselig fejl — men heller intet belaeg. Rotér frem for

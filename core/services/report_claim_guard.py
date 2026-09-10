@@ -84,8 +84,11 @@ def tjek_rapport(text: str, *, agent_id: str = "", role: str = "",
     Returnerer `{"kontrolleret": n, "holder": bool, "fejl": [...]}` — samme
     form som `tjek_paastande`, saa den kan gemmes raat paa runnet.
     """
+    # `ikke-spurgt`: uden tekst — eller hvis vaernet selv faldt — spurgte vi
+    # ingen maskine. At skrive «container» ville vaere en lille loegn i netop
+    # den post der skal sige hvem der blev spurgt.
     tom = {"kontrolleret": 0, "holder": True, "fejl": [],
-           "bevis": "intet-bevis", "kontrolleret_mod": "container"}
+           "bevis": "intet-bevis", "kontrolleret_mod": "ikke-spurgt"}
     try:
         if not str(text or "").strip():
             return tom
@@ -95,7 +98,14 @@ def tjek_rapport(text: str, *, agent_id: str = "", role: str = "",
             # Barnet laeste paa Bjoerns maskine; vi kan ikke naa den. At slaa
             # op i containeren ville give et tal om den FORKERTE maskine — og
             # netop dét er fejlen. Saa vi doemmer ikke.
-            return {**tom, "kontrolleret_mod": "uden-bro"}
+            #
+            # `holder: None`, ikke True. «Vi kunne ikke doemme» og «vi doemte
+            # og det holdt» maa ikke dele boolean — huset har allerede ordet
+            # fra `process_identity.lever()`, hvor None betyder at kalderen
+            # skal lade vaere. Uden efterproevelige paastande er `True` stadig
+            # rigtigt: dér blev der intet PAASTAAET. Her blev der paastaaet
+            # noget vi ikke kunne naa. (Jarvis' indvending.)
+            return {**tom, "kontrolleret_mod": "uden-bro", "holder": None}
         dom = tjek_paastande(str(text), findes_fn=_findes, linje_fn=_linje)
     except Exception:
         logger.debug("report_claim_guard: kunne ikke efterproeve %s",

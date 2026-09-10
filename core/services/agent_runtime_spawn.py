@@ -586,6 +586,11 @@ def _execute_agent_task_impl(*, agent_id: str, thread_id: str = "",
                              input_tokens=input_tokens, output_tokens=output_tokens)
             update_agent_registry_entry(agent_id, status="failed",
                                         last_error=_udbyder_fejl)
+            # Fase 5: gjort SYNLIG. Nerven nedenfor er specifik for
+            # udbyder-fejl og bor i en flygtig ring-buffer; denne er den
+            # generelle «barnet endte uden at levere» OG en durabel incident.
+            from core.services.child_failure_signal import note_child_ended
+            note_child_ended(agent_id, status="failed", error=_udbyder_fejl)
             try:
                 from core.services.central_core import central as _c_pe
                 _c_pe().observe({
@@ -956,6 +961,13 @@ def cleanup_stale_agents(
             continue
         age_minutes = int((now - updated).total_seconds() / 60)
         try:
+            # Fase 5: en oprydning er ogsaa et barn der aldrig leverede.
+            # Tre explore-boern blev ryddet op efter ~47 timer uden at nogen
+            # saa det.
+            from core.services.child_failure_signal import note_child_ended
+            note_child_ended(agent_id, status="cancelled",
+                             role=str(agent.get("role") or ""),
+                             error=f"stale efter {age_minutes} min")
             update_agent_registry_entry(
                 agent_id,
                 status="cancelled",
@@ -1140,6 +1152,15 @@ def _check_budget_and_expire(agent_id: str, *, tokens_used: int) -> bool:
             expired_at=_now_iso(),
             last_error=f"budget exhausted: {burned}/{budget} tokens",
         )
+        # Fase 5: et opbrugt budget var registreret men usynligt. Bemaerk at
+        # tjekket sker EFTER forbruget — maalt braender de groveste 10.749
+        # tokens mod et budget paa 4.000 — saa raten er vaerd at kunne se.
+        from core.services.child_failure_signal import note_child_ended
+        note_child_ended(agent_id, status="expired",
+                         role=str(agent.get("role") or ""),
+                         provider=str(agent.get("provider") or ""),
+                         model=str(agent.get("model") or ""),
+                         error=f"budget exhausted: {burned}/{budget} tokens")
         create_agent_message(
             message_id=f"agent-msg-{uuid4().hex}",
             thread_id=_agent_thread_id(agent_id),

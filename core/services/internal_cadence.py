@@ -139,7 +139,24 @@ def _evaluate_producer(
         _cooldown_min = effective_cooldown(spec.name, spec.cooldown_minutes, tempo)
     except Exception:
         _cooldown_min = spec.cooldown_minutes
+    # DEN HOLDBARE TILSTAND ER AUTORITETEN (opgave 3, invariant 8).
+    # `_last_run_at` er en hukommelses-ordbog for ALLE producenter: den
+    # glemmes ved genstart, og `jarvis-api` og `jarvis-runtime` koerer SAMME
+    # app, saa de har hver sin kopi og kan koere den samme producent i samme
+    # minut. Ordbogen beholdes som en hurtig cache — den er bare ikke laengere
+    # den der afgoer det.
+    #
+    # Jarvis fandt at vaernet kun daekkede ÉN producent. Det var rigtigt, og
+    # det var stoerre end det: rettelsen hoerer til HER, i sommen der styrer
+    # alle 41, ikke hos hver kalder.
     last_run_iso = _last_run_at.get(spec.name)
+    try:
+        from core.services.cadence_claims import last_success_at as _holdbar
+        _vedvarende = _holdbar(spec.name)
+        if _vedvarende and (not last_run_iso or _vedvarende > last_run_iso):
+            last_run_iso = _vedvarende
+    except Exception:
+        pass                        # kan vi ikke laese den, gaelder cachen
     if last_run_iso:
         try:
             last_run = datetime.fromisoformat(last_run_iso)
@@ -274,6 +291,15 @@ def run_cadence_tick(
                     logger.warning("cadence producer '%s' tog %.1fs", spec.name, _prod_dt)
                 ran_this_tick.add(spec.name)
                 _last_run_at[spec.name] = now_iso
+                # Samme maerke, holdbart. Uden dette overlever nedkoelingen
+                # ikke en genstart — og en producent der lige har koert, ville
+                # koere igen med det samme.
+                try:
+                    from core.services.cadence_claims import note_producer_ran
+                    note_producer_ran(spec.name, now=now)
+                except Exception:
+                    logger.warning("kunne ikke bogfoere kadence-koerslen '%s' "
+                                   "holdbart", spec.name, exc_info=True)
                 ran_names.append(spec.name)
                 results.append(ProducerTickResult(
                     name=spec.name,

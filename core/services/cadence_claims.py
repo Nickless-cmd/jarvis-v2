@@ -178,3 +178,64 @@ def claim_idempotency_key(scope: str, key: str, *,
     except Exception:
         logger.warning("kunne ikke tage idempotens-noeglen %s/%s", s, k, exc_info=True)
         return False
+
+
+def last_success_at(name: str) -> str:
+    """Hvornaar loeb producenten sidst IGENNEM? Tom streng hvis aldrig.
+
+    Bruges af `internal_cadence` som den HOLDBARE side af nedkoelingen.
+    Hukommelses-ordbogen dér er en cache; denne er autoriteten, fordi den
+    overlever en genstart og deles af begge processer.
+    """
+    n = str(name or "").strip()
+    if not n:
+        return ""
+    try:
+        with connect() as conn:
+            _ensure(conn)
+            r = conn.execute(
+                "SELECT last_success_at FROM cadence_producer_claims WHERE name = ?",
+                (n,),
+            ).fetchone()
+            return str((r["last_success_at"] if r else "") or "")
+    except Exception:
+        # Kan vi ikke laese den, falder kalderen tilbage til sin cache. Det er
+        # den rigtige vej her: en producent der IKKE koerer fordi databasen
+        # var utilgaengelig, ville stoppe det indre liv i stilhed.
+        logger.warning("kunne ikke laese sidste gennemfoerte pas for %s", n,
+                       exc_info=True)
+        return ""
+
+
+def note_producer_ran(name: str, *, now: datetime | None = None) -> bool:
+    """Bogfoer et gennemfoert pas — uden at gaa gennem lease-dansen.
+
+    `internal_cadence` serialiserer allerede sine producenter i ét tick, saa
+    den behoever ikke en lease for at undgaa sig selv. Det den mangler, er at
+    maerket OVERLEVER en genstart og ses af den anden proces.
+    """
+    n = str(name or "").strip()
+    if not n:
+        return False
+    nu = (now or datetime.now(UTC))
+    if nu.tzinfo is None:
+        nu = nu.replace(tzinfo=UTC)
+    try:
+        with connect() as conn:
+            _ensure(conn)
+            conn.execute(
+                """
+                INSERT INTO cadence_producer_claims (
+                    name, lease_token, leased_until, last_success_at, last_attempt_at
+                ) VALUES (?, '', '', ?, ?)
+                ON CONFLICT(name) DO UPDATE SET
+                    last_success_at = excluded.last_success_at,
+                    last_attempt_at = excluded.last_attempt_at
+                """,
+                (n, nu.isoformat(), nu.isoformat()),
+            )
+            conn.commit()
+            return True
+    except Exception:
+        logger.warning("kunne ikke bogfoere kadence-koerslen %s", n, exc_info=True)
+        return False

@@ -125,3 +125,53 @@ def test_alle_veje_ud_giver_kravet_fri():
         forud = " ".join(linjer[max(0, i - 20):i])
         assert ("complete_producer(" in forud) or ("_krav.claimed" in forud), (
             f"retur-punkt uden at give kravet fri: linje {i}")
+
+
+# ── invariant 8: nedkoelingen gaelder ALLE producenter ──────────────────
+#
+# Jarvis laeste design-spec'en og fandt at vaernet kun daekkede ÉN producent,
+# mens invariant 8 siger: «Producer cooldown survives service restart and is
+# shared across processes.» Han havde ret, og det var STOERRE end han sagde:
+# `internal_cadence._last_run_at` er en hukommelses-ordbog for ALLE 41
+# producenter. Rettelsen hoerer derfor til i SOMMEN, ikke hos hver kalder.
+
+def test_alle_producenter_gaar_gennem_den_holdbare_tilstand():
+    """Uden dette var vaernet koblet paa ét sted og blindt for de andre 40."""
+    import inspect
+
+    from core.services import internal_cadence as ic
+
+    laes = inspect.getsource(ic._evaluate_producer)
+    # Kaldet sker gennem et alias (`_holdbar`), saa der maa soeges paa
+    # importen OG brugen. Foerste udgave af denne test ledte efter
+    # «last_success_at(» og fandt intet — testen var forkert, ikke koden.
+    assert "last_success_at as _holdbar" in laes, (
+        "nedkoelingen laeses stadig KUN fra hukommelsen")
+    assert "_holdbar(spec.name)" in laes, (
+        "den holdbare tilstand importeres, men bruges ikke")
+    skriv = inspect.getsource(ic.run_cadence_tick)
+    assert "note_producer_ran(" in skriv, (
+        "et gennemfoert pas bogfoeres ikke holdbart — nedkoelingen "
+        "forsvinder ved genstart")
+
+
+def test_den_holdbare_tilstand_vinder_over_cachen(isolated_runtime):
+    from datetime import UTC, datetime
+
+    from core.services.cadence_claims import last_success_at, note_producer_ran
+
+    assert last_success_at("p-ny") == "", "ukendt producent gav ikke tom streng"
+    nu = datetime.now(UTC)
+    assert note_producer_ran("p-ny", now=nu) is True
+    assert last_success_at("p-ny").startswith(nu.isoformat()[:16])
+
+
+def test_en_ulaeselig_tilstand_STOPPER_ikke_kadencen(isolated_runtime, monkeypatch):
+    """Modsat `claim_producer`, hvor tvivl betyder «koer ikke». Her ville det
+    modsatte vaere galt: en producent der ikke koerer fordi databasen var
+    utilgaengelig, ville stoppe det indre liv i stilhed."""
+    import core.services.cadence_claims as cc
+
+    monkeypatch.setattr(cc, "connect",
+                        lambda: (_ for _ in ()).throw(RuntimeError("db nede")))
+    assert cc.last_success_at("p") == ""

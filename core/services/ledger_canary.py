@@ -118,7 +118,14 @@ def enable_shadow(session_id: str) -> dict[str, Any]:
         return {"session_id": sid, "ok": False, "grund": f"sessionen er allerede {nu!r}"}
 
     fyld = backfill(sid)
-    if fyld.get("grund") and fyld["skrevet"] == 0 and fyld["beskeder"] == 0:
+    # EN TOM SESSION ER DEN RENESTE SAG, IKKE EN FEJL (10/9-2026).
+    # `enable_shadow` var bygget til at efterfylde en EKSISTERENDE session, og
+    # afviste derfor en helt ny. Da armeringen blev koblet paa oprettelsen,
+    # fyrede den praecis dér hvor der var nul beskeder — mekanismen koerte og
+    # gjorde ingenting. Nul historik betyder at der intet er at tabe: der er
+    # ingen tidligere beskeder som ledgeren kan komme til at mangle.
+    _tom = fyld["skrevet"] == 0 and fyld["beskeder"] == 0
+    if fyld.get("grund") and _tom and "ingen beskeder" not in str(fyld.get("grund")):
         return {"session_id": sid, "ok": False, "grund": fyld["grund"], "backfill": fyld}
 
     if not advance_storage_mode(sid, to="shadow"):
@@ -233,7 +240,13 @@ def maybe_enroll_new_session(session_id: str) -> dict[str, Any] | None:
     try:
         ud = enable_shadow(sid)
         disarm()                      # kun ÉN session, uanset udfald
-        logger.info("ledger-kanariefugl indrulleret: %s", ud)
+        if ud.get("ok"):
+            logger.info("ledger-kanariefugl indrulleret: %s", sid)
+        else:
+            # Loggen sagde foer «indrulleret» ogsaa naar ok=False. En linje der
+            # melder succes og baerer sin egen fejl er vaerre end ingen linje.
+            logger.warning("ledger-kanariefugl kunne IKKE indrullere %s: %s",
+                           sid, ud.get("grund") or ud)
         return ud
     except Exception:
         logger.warning("kunne ikke indrullere %s i ledger-skyggen — "

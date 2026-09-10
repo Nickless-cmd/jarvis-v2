@@ -68,3 +68,24 @@ def test_oprettelsen_af_en_session_kalder_kanariefuglen(isolated_runtime, monkey
     ny = cs.create_chat_session(title="proeve")
     assert set_sid == [str(ny.get("session_id") or ny.get("id") or "")], (
         "oprettelsen af en session kalder ikke kanariefuglen")
+
+
+def test_en_TOM_session_kan_indrulleres(isolated_runtime):
+    """Fejlen fra foerste deploy. `enable_shadow` var bygget til at efterfylde
+    en EKSISTERENDE session og afviste en helt ny med «sessionen har ingen
+    beskeder». Armeringen fyrer ved OPRETTELSEN — altsaa praecis dér hvor der
+    er nul beskeder — saa mekanismen koerte og gjorde ingenting.
+
+    Nul historik er den RENESTE sag: der er ingen tidligere beskeder som
+    ledgeren kan komme til at mangle.
+    """
+    import core.services.chat_sessions as cs
+    from core.runtime.db_session_ledger import storage_mode
+    from core.services.ledger_canary import arm_next_session
+
+    arm_next_session()
+    ny = cs.create_chat_session(title="frisk")
+    sid = str(ny.get("session_id") or ny.get("id") or "")
+    assert storage_mode(sid) == "shadow", (
+        f"en frisk session blev ikke indrulleret (mode={storage_mode(sid)!r}) "
+        "— kanariefuglen koerte og gjorde ingenting")

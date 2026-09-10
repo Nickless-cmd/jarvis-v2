@@ -166,6 +166,9 @@ _OPREGNING = re.compile(r"^(?:og|and|eller|or|samt|&|,|;)\b", re.IGNORECASE)
 _CITAT = re.compile(r"`([^`]{2,120})`|\"([^\"]{2,120})\"|«([^»]{2,120})»")
 
 
+_AFFLUGT = re.compile(r"\\([`*_\[\]()#+.!\\-])")
+
+
 def _rens_hale(tekst: str) -> str:
     """Fjern citationstegn i halen — men aldrig en parentes der HOERER til.
 
@@ -205,9 +208,14 @@ def _laesninger(indhold: str) -> list[str]:
     noegen = _rens_hale(_LEDENDE.sub("", raa).strip("`"))
     ud: list[str] = []
     for k in (citat, noegen, _kort(citat), _kort(noegen)):
-        k = (k or "").strip()
-        if len(k) >= 3 and k not in ud:
-            ud.append(k)
+        for v in (k, _AFFLUGT.sub(r"\1", k or "")):
+            # MARKDOWN-FLUGT: citerer modellen en linje der selv indeholder en
+            # backtick, skriver den \` — som markdown kraever. Citatet er
+            # ordret rigtigt; kun en omvendt skraastreg skiller. To saadanne
+            # blev doemt opdigt i en live-koersel.
+            v = (v or "").strip()
+            if len(v) >= 3 and v not in ud:
+                ud.append(v)
     return ud
 
 
@@ -334,32 +342,42 @@ def tjek_paastande(svar: str, *, rod: Path | None = None,
              (m.group(3) or m.group(4) or m.group(5) or m.group(6) or "").strip())
             for m in _STI_LINJE.finditer(t)
         ]
-        _set: set[tuple[str, int]] = {(a, b) for a, b, _ in _paastande}
+        # DEDUP PAA (sti, linje) BEHOLDT DEN FOERSTE LAESNING — og `_STI_LINJE`
+        # koeres foerst, saa en bar kildehenvisning («Kilde: `x.md:19`») slog
+        # citatet ihjel («- Linje 19: `| Jarvis | ... |`»). I en live-koersel
+        # blev alle SEKS citater kasseret saadan: `kun-eksistens` paa et svar
+        # der citerede hver eneste linje.
+        #
+        # Samme figur som `_laesninger`: vaelg den RIGESTE laesning, ikke den
+        # foerste vi stoedte paa.
+        _paastande = [list(x) for x in _paastande]
+        _idx: dict[tuple[str, int], int] = {}
+        for _i, (_a, _b, _) in enumerate(_paastande):
+            _idx.setdefault((_a, int(_b)), _i)
+
+        def _tilfoej(sti_: str, nr_: int, indhold_: str = "") -> None:
+            _n = (sti_, int(nr_))
+            _i = _idx.get(_n)
+            if _i is None:
+                _idx[_n] = len(_paastande)
+                _paastande.append([sti_, int(nr_), indhold_])
+            elif len(indhold_ or "") > len(_paastande[_i][2] or ""):
+                _paastande[_i][2] = indhold_
         for m in _STI_LINJE_PROSA.finditer(t):
-            _n = (m.group(1), int(m.group(2)))
-            if _n not in _set:
-                _set.add(_n)
-                _paastande.append((m.group(1), int(m.group(2)),
-                                   (m.group(3) or "").strip()))
+            _tilfoej(m.group(1), int(m.group(2)), (m.group(3) or "").strip())
         for m in _LINJE_SO_STI.finditer(t):
-            _n = (m.group(2), int(m.group(1)))
-            if _n not in _set:
-                _set.add(_n)
-                # I DENNE FORM STAAR INDHOLDET FOERAN:
-                #   «Etableret 2026-05-17 (linje 11, fil docs/x.md)»
-                # Uden det ville vi kun tjekke at filen findes — og praecis
-                # DET var mistrals fejl: indholdet var rigtigt, linjenummeret
-                # opdigtet (11 hvor der staar 8). Et vaern der kun ser filen,
-                # ser ikke den fejl.
-                _foran = t[max(0, m.start() - 90):m.start()]
-                _foran = _foran.rsplit("\n", 1)[-1].strip(" \t-*•`\"'(")
-                _paastande.append((m.group(2), int(m.group(1)), _foran[-80:]))
+            # I DENNE FORM STAAR INDHOLDET FOERAN:
+            #   «Etableret 2026-05-17 (linje 11, fil docs/x.md)»
+            # Uden det ville vi kun tjekke at filen findes — og praecis
+            # DET var mistrals fejl: indholdet var rigtigt, linjenummeret
+            # opdigtet (11 hvor der staar 8). Et vaern der kun ser filen,
+            # ser ikke den fejl.
+            _foran = t[max(0, m.start() - 90):m.start()]
+            _foran = _foran.rsplit("\n", 1)[-1].strip(" \t-*•`\"'(")
+            _tilfoej(m.group(2), int(m.group(1)), _foran[-80:])
 
         for m in _LINJE_I_STI.finditer(t):
-            _n = (m.group(2), int(m.group(1)))
-            if _n not in _set:
-                _set.add(_n)
-                _paastande.append((m.group(2), int(m.group(1)), ""))
+            _tilfoej(m.group(2), int(m.group(1)), "")
 
         # Bare linje-henvisninger knyttes til den SENEST naevnte fil. En
         # rapport skriver filen én gang og lister saa linjerne; laeser man
@@ -376,14 +394,11 @@ def tjek_paastande(svar: str, *, rod: Path | None = None,
             if not _foran:
                 continue                  # ingen fil naevnt endnu — intet at slaa op i
             sti = _foran[-1]
-            _n = (sti, int(m.group(1)))
-            if _n not in _set:
-                _set.add(_n)
-                # KUN citatet — ikke resten af linjen. Se `_CITAT`.
-                _kerne = (m.group(2) or "").strip()
-                if _OPREGNING.match(_kerne):
-                    _kerne = ""       # henvisning til andre linjer, ikke indhold
-                _paastande.append((sti, int(m.group(1)), _kerne))
+            # KUN citatet — ikke resten af linjen. Se `_CITAT`.
+            _kerne = (m.group(2) or "").strip()
+            if _OPREGNING.match(_kerne):
+                _kerne = ""       # henvisning til andre linjer, ikke indhold
+            _tilfoej(sti, int(m.group(1)), _kerne)
 
         for sti, nr, indhold in _paastande:
             if sti.rsplit(".", 1)[-1].lower() not in _KENDTE:

@@ -764,3 +764,45 @@ def test_blokcitat_langt_nede_bindes_IKKE_til_stien(tmp_path):
     d = tjek_paastande("se `x.md:3`\n\nHelt andet afsnit.\n> `noget som helst`\n",
                        rod=tmp_path)
     assert d["fejl"] == [], d["fejl"]
+
+
+def test_dublet_UDEN_citat_slaar_ikke_citatet_ihjel(tmp_path):
+    """En rapport naevner samme linje TO gange: én gang med citatet, én gang
+    som bar kildehenvisning.
+
+        - Linje 19: `| Jarvis | ... |`
+        - Kilde: `x.md:19`
+
+    Dedup paa (sti, linje) beholdt den FOERSTE laesning — og `_STI_LINJE` koeres
+    foerst, saa den indholdsloese vandt hver gang. I en live-koersel blev alle
+    SEKS citater kasseret paa den maade: `kun-eksistens` paa et svar der
+    citerede hver eneste linje."""
+    from core.services.explore_claim_check import tjek_paastande
+    (tmp_path / "sub").mkdir()
+    (tmp_path / "sub" / "x.md").write_text(
+        "a\nb\n| Jarvis | `Jarvis <jarvis@srvlab.dk>` |\n", encoding="utf-8")
+    d = tjek_paastande(
+        "Dokumentet `sub/x.md` er gennemgaaet.\n"
+        "   - Linje 3: `| Jarvis | `Jarvis <jarvis@srvlab.dk>` |`\n"
+        "   - Kilde: `sub/x.md:3`\n", rod=tmp_path)
+    assert int(d.get("indhold_bekraeftet") or 0) >= 1, d
+    assert d["fejl"] == [], d["fejl"]
+
+
+def test_markdown_escapet_backtick_er_ikke_opdigt(tmp_path):
+    """Modellen citerer en linje der SELV indeholder en backtick, og escaper den
+    som \\` — som markdown kraever. Citatet er ordret rigtigt; kun en omvendt
+    skraastreg skiller det fra filen.
+
+    Uden dette blev to ordrette citater doemt opdigt."""
+    from core.services.explore_claim_check import tjek_paastande
+    (tmp_path / "sub").mkdir()
+    (tmp_path / "sub" / "x.md").write_text(
+        "a\nb\nPlus den eksisterende `Co-Authored-By: Claude Opus 4.7`\n",
+        encoding="utf-8")
+    d = tjek_paastande(
+        "Filen `sub/x.md` er laest.\n"
+        "   - Linje 3: `Plus den eksisterende \\`Co-Authored-By: Claude Opus 4.7`\n",
+        rod=tmp_path)
+    assert d["fejl"] == [], d["fejl"]
+    assert int(d.get("indhold_bekraeftet") or 0) >= 1, d

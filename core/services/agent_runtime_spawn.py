@@ -632,11 +632,31 @@ def _execute_agent_task_impl(*, agent_id: str, thread_id: str = "",
                          cost_usd=float(result.get("cost_usd") or 0.0))
         except Exception:
             pass
+        # EFTERPROEVNING (Fase 6). Raadet foreslog det selv: subagent-runtime'en
+        # kan kraeve at en rapport citerer hvad den bygger paa. Mekanismen
+        # fandtes — `explore_claim_check` slaar filstier og linjenumre op — men
+        # var kun koblet paa `explore`. Ethvert ANDET barn kunne levere
+        # opdigtede stier uden at nogen saa det.
+        #
+        # Den RAPPORTERER, den afviser ikke: uden efterproevelige paastande er
+        # dommen «holder», og at afvise paa FRAVAER ville ramme enhver ren
+        # prosa-rapport. Det farlige er en paastand der KAN efterproeves og er
+        # falsk.
+        from core.services.report_claim_guard import tjek_rapport
+        _dom = tjek_rapport(text, agent_id=agent_id,
+                            role=str(agent.get("role") or ""), run_id=run_id)
+        _nyttelast = dict(result)
+        _nyttelast["claim_check"] = _dom
+
+        # Og samme forkortelses-fejl som i raadet: `text[:400]` klippede hvert
+        # eneste barne-svar midt i et ord uden at sige det. Maalt paa raadet
+        # 10/9-2026 forsvandt 72-86% af hver holdning paa den maade.
+        from core.services.agent_runtime_council import _trim
         update_agent_run(
             run_id,
             status="completed",
-            output_summary=text[:400],
-            output_payload_json=json.dumps(result),
+            output_summary=_trim(text, 400),
+            output_payload_json=json.dumps(_nyttelast),
             finished_at=_now_iso(),
             input_tokens=input_tokens,
             output_tokens=output_tokens,

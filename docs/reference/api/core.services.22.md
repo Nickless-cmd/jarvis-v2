@@ -2,6 +2,18 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/signal_surface_router.py`
+_Signal Surface Router — maps surface names to build functions._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_build_router` | `()` | Build name → function mapping. Local imports stay lazy. | [src](../../../core/services/signal_surface_router.py#L11) |
+| function | `_get_router` | `()` | — | [src](../../../core/services/signal_surface_router.py#L265) |
+| function | `get_surface_names` | `()` | — | [src](../../../core/services/signal_surface_router.py#L272) |
+| function | `resolve_surface` | `(name)` | — | [src](../../../core/services/signal_surface_router.py#L276) |
+| function | `read_surface` | `(name)` | Read a named surface. Returns {"error": ..., "valid": [...]} for unknown names. | [src](../../../core/services/signal_surface_router.py#L280) |
+| function | `list_all_surfaces` | `()` | Call all registered surfaces. Per-surface exceptions caught and returned as errors. | [src](../../../core/services/signal_surface_router.py#L305) |
+
 ## `core/services/signal_tracking_framework.py`
 _Spec-driven framework for the ``*_signal_tracking`` family._
 
@@ -642,16 +654,4 @@ _Temperament-tendency signal tracking — migrated onto signal_tracking_framewor
 | function | `_grounding_mode_from_support_summary` | `(value)` | — | [src](../../../core/services/temperament_tendency_signal_tracking.py#L515) |
 | function | `_weight_from_support_summary` | `(value, *, canonical_key)` | — | [src](../../../core/services/temperament_tendency_signal_tracking.py#L523) |
 | function | `_balance_from_support_summary` | `(value)` | — | [src](../../../core/services/temperament_tendency_signal_tracking.py#L534) |
-
-## `core/services/temporal_body.py`
-_Temporal Body — sense of age._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `age_journey` | `(thoughts=…)` | — | [src](../../../core/services/temporal_body.py#L11) |
-| function | `get_temporal_body_age` | `()` | — | [src](../../../core/services/temporal_body.py#L16) |
-| function | `describe_temporal_body` | `()` | — | [src](../../../core/services/temporal_body.py#L26) |
-| function | `format_age_for_prompt` | `()` | — | [src](../../../core/services/temporal_body.py#L30) |
-| function | `reset_temporal_body` | `()` | — | [src](../../../core/services/temporal_body.py#L33) |
-| function | `build_temporal_body_surface` | `()` | — | [src](../../../core/services/temporal_body.py#L38) |
 

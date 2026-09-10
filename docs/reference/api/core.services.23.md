@@ -2,6 +2,18 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/temporal_body.py`
+_Temporal Body — sense of age._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `age_journey` | `(thoughts=…)` | — | [src](../../../core/services/temporal_body.py#L11) |
+| function | `get_temporal_body_age` | `()` | — | [src](../../../core/services/temporal_body.py#L16) |
+| function | `describe_temporal_body` | `()` | — | [src](../../../core/services/temporal_body.py#L26) |
+| function | `format_age_for_prompt` | `()` | — | [src](../../../core/services/temporal_body.py#L30) |
+| function | `reset_temporal_body` | `()` | — | [src](../../../core/services/temporal_body.py#L33) |
+| function | `build_temporal_body_surface` | `()` | — | [src](../../../core/services/temporal_body.py#L38) |
+
 ## `core/services/temporal_context.py`
 _Temporal Context — time-based situational awareness._
 
@@ -534,15 +546,4 @@ _End-of-turn changelog — auto-summarize what this turn changed._
 | function | `build_turn_changelog` | `(*, run_id=…, started_at=…, repo_root=…)` | — | [src](../../../core/services/turn_changelog.py#L67) |
 | function | `previous_turn_changelog_section` | `(session_id)` | Look at the most recent visible run for this session and surface the | [src](../../../core/services/turn_changelog.py#L80) |
 | function | `format_changelog` | `(changelog)` | Render a compact human-readable summary, or None if empty. | [src](../../../core/services/turn_changelog.py#L129) |
-
-## `core/services/turn_trace.py`
-_core/services/turn_trace.py_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_sentinel` | `()` | — | [src](../../../core/services/turn_trace.py#L29) |
-| function | `active` | `()` | — | [src](../../../core/services/turn_trace.py#L36) |
-| function | `start` | `(label=…)` | Nulstil tidslinjen ved request-in. No-op uden sentinel. | [src](../../../core/services/turn_trace.py#L40) |
-| function | `mark` | `(kind, label=…, dur_ms=…)` | Tilføj ét event + print en LIVE-linje til stderr (så ruten kan følges i | [src](../../../core/services/turn_trace.py#L58) |
-| function | `dump` | `(reason=…)` | Skriv hele tidslinjen til latest.json + kompakt stderr-resumé, og sluk. | [src](../../../core/services/turn_trace.py#L79) |
 

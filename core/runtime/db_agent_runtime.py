@@ -28,6 +28,16 @@ def _ensure_agent_runtime_tables(conn: sqlite3.Connection) -> None:
         except sqlite3.OperationalError:
             pass  # column already exists
 
+    # Raadssessioner skal ogsaa kunne sige HVEM der koerer runden. Uden det kan
+    # opstarts-afregningen ikke skelne et raad hvis proces doede fra ét den
+    # ANDEN proces deliberer paa lige nu. Alder duer ikke her: runder tager
+    # 5-17 minutter (maalt), modsat jobs der topper paa 47 s.
+    try:
+        conn.execute("ALTER TABLE council_sessions ADD COLUMN "
+                     "runtime_owner TEXT NOT NULL DEFAULT ''")
+    except sqlite3.OperationalError:
+        pass
+
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS agent_registry (
@@ -175,7 +185,8 @@ def _ensure_agent_runtime_tables(conn: sqlite3.Connection) -> None:
             summary TEXT NOT NULL DEFAULT '',
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL,
-            finished_at TEXT NOT NULL DEFAULT ''
+            finished_at TEXT NOT NULL DEFAULT '',
+            runtime_owner TEXT NOT NULL DEFAULT ''
         )
         """
     )
@@ -923,6 +934,15 @@ def update_council_session(
     if status is not None:
         fields.append("status = ?")
         values.append(status)
+        # Stempl hvilken PROCES der deliberer. Terminal status rydder maerket.
+        try:
+            from core.services.process_identity import denne_proces
+            fields.append("runtime_owner = ?")
+            values.append(denne_proces()
+                          if status in ("forming", "deliberating", "reporting")
+                          else "")
+        except Exception:
+            pass
     if summary is not None:
         fields.append("summary = ?")
         values.append(summary)
@@ -1176,6 +1196,9 @@ def _council_session_row_to_dict(row: sqlite3.Row) -> dict[str, object]:
         "status": str(row["status"]),
         "mode": str(row["mode"]),
         "summary": str(row["summary"]),
+        # Uden denne linje findes kolonnen og INGEN kan laese den. Samme fejl
+        # som `kind` i godkendelses-broen og `runtime_owner` paa agenter.
+        "runtime_owner": str(row["runtime_owner"] or ""),
         "created_at": str(row["created_at"]),
         "updated_at": str(row["updated_at"]),
         "finished_at": str(row["finished_at"]),

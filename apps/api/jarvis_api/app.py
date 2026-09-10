@@ -425,6 +425,17 @@ def create_app() -> FastAPI:
             except Exception as _exc:
                 logger.warning("user_temperature_runtime start failed: %s", _exc)
             try:
+                # Fase 8: et raad hvis proces doede staar i «deliberating» for
+                # evigt — `run_council_round`s finally naar ikke at koere.
+                from core.services.council_settlement import (
+                    settle_interrupted_councils,
+                )
+                _raad = settle_interrupted_councils()
+                if _raad["afregnet"]:
+                    logger.info("raad afregnet efter genstart: %s", _raad)
+            except Exception as _exc:
+                logger.warning("raads-afregning fejlede: %s", _exc)
+            try:
                 from core.services.agent_runtime import recover_crashed_agents
                 recovery = recover_crashed_agents()
                 if recovery["recovered"]:

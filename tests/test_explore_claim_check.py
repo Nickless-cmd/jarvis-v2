@@ -54,7 +54,11 @@ def test_UAFGJORT_taeller_hverken_som_fund_eller_fejl():
     """`_operator_file_exists` svarer `None` naar broen ikke kan afgoere det.
     Et vaern der gaetter er vaerre end intet — det ville anklage aegte filer."""
     d = tjek_paastande("se /home/bs/p/main.ts", findes_fn=lambda s: None)
-    assert d == {"kontrolleret": 0, "fejl": [], "holder": True}
+    # Haevder MENINGEN, ikke den noejagtige dict-form: et vaeltet tjek har
+    # ikke doemt noget — og siger det nu ogsaa i `bevis` frem for at lade
+    # `holder=True` staa alene og ligne en blaastempling.
+    assert d["kontrolleret"] == 0 and d["fejl"] == [] and d["holder"] is True
+    assert d["bevis"] == "intet-bevis"
 
 
 def test_en_tjekker_der_KASTER_doemmer_ikke():
@@ -253,3 +257,50 @@ def test_bro_kontrol_domsformer():
             assert linje("/a/b.py", 42, "x") is ventet, hvorfor
         finally:
             del sys.modules["core.tools.simple_tools_operator"]
+
+
+# ── «vi doemte intet» maa ikke laese som «vi verificerede alt» ──────────
+#
+# Jarvis' fund, 10/9. `holder = not fejl` er sandt naar der INGEN fejl er —
+# ogsaa naar der ingenting blev efterproevet. En explore-rapport uden en eneste
+# kontrolleret paastand kom derfor tilbage som et rent `status: ok`.
+#
+# Det er PRAECIS den sammenblanding jeg selv navngav og rettede i fase 11 for
+# ledgeren, seks timer foer han fandt den her. Samme ordforraad med vilje.
+
+def test_intet_efterproevet_er_ikke_verificeret():
+    d = tjek_paastande("en rapport uden en eneste sti eller linjehenvisning")
+    assert d["holder"] is True, "der ER ingen fejl — det er stadig sandt"
+    assert d["bevis"] == "intet-bevis", (
+        "nul kontrollerede paastande blev meldt som verificeret")
+
+
+def test_en_bekraeftet_paastand_er_verificeret(tmp_path, monkeypatch):
+    import core.services.explore_claim_check as c
+    monkeypatch.setattr(c, "_rod", lambda: tmp_path)
+    (tmp_path / "sub").mkdir()
+    (tmp_path / "sub" / "rigtig.py").write_text("x = 1\n")
+    # `_STI` kraever mindst ét «/» — et bart filnavn matcher aldrig.
+    d = tjek_paastande("se sub/rigtig.py for detaljerne")
+    assert d["kontrolleret"] >= 1
+    assert d["bevis"] == "verificeret"
+
+
+def test_en_falsk_paastand_er_uenig(tmp_path, monkeypatch):
+    import core.services.explore_claim_check as c
+    monkeypatch.setattr(c, "_rod", lambda: tmp_path)
+    d = tjek_paastande("se sub/findes_slet_ikke.py for detaljerne")
+    assert d["holder"] is False
+    assert d["bevis"] == "uenig"
+
+
+def test_explore_baerer_dommen_UD_til_kalderen():
+    """Uden dette staar dommen i en dict ingen laeser — og modtageren ser
+    `status: ok` og tror rapporten er gennemgaaet."""
+    import inspect
+
+    from core.tools import simple_tools_explore as e
+
+    kilde = inspect.getsource(e._exec_explore)
+    assert '"bevis":' in kilde
+    assert "IKKE verificeret" in kilde

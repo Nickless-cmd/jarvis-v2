@@ -166,7 +166,22 @@ def tjek_paastande(svar: str, *, rod: Path | None = None,
 
         ud["fejl"] = fejl
         ud["holder"] = not fejl
+        # BEVIS ER IKKE DET SAMME SOM ENIGHED (Jarvis' fund, 10/9-2026).
+        #
+        # `holder = not fejl` er sandt naar der INGEN fejl er — ogsaa naar der
+        # ingenting blev efterproevet. «Vi doemte intet» laeste derfor identisk
+        # med «vi verificerede alt», og en explore-rapport uden en eneste
+        # kontrolleret paastand kom tilbage som et rent `status: ok`.
+        #
+        # Det er PRAECIS den sammenblanding jeg selv navngav og rettede i fase
+        # 11 for ledgeren, seks timer foer han fandt den her. Samme ordforraad
+        # med vilje — huset maa ikke have to sprog for samme skelnen.
+        ud["bevis"] = ("uenig" if fejl
+                       else ("verificeret" if int(ud["kontrolleret"]) > 0
+                             else "intet-bevis"))
     except Exception:
         logger.debug("claim-check væltede — dømmer ikke", exc_info=True)
-        return {"kontrolleret": 0, "fejl": [], "holder": True}
+        # Et vaeltet tjek har heller ikke verificeret noget.
+        return {"kontrolleret": 0, "fejl": [], "holder": True,
+                "bevis": "intet-bevis"}
     return ud

@@ -235,9 +235,19 @@ def _exec_explore(args: dict[str, Any]) -> dict[str, Any]:
                if _bro_tjek else tjek_paastande(svar))
         kontrolleret = int(dom.get("kontrolleret") or 0)
         if dom.get("holder"):
+            # `bevis` SKAL med ud. Uden det laeser en modtager
+            # «paastande_kontrolleret: 0» som en detalje og `status: ok` som en
+            # blaastempling — og en rapport hvor INTET blev efterproevet ser
+            # identisk ud med en der er gennemgaaet. (Jarvis' fund.)
             return {"status": "ok", "findings": svar[:12000] or None,
                     "agent_id": agent_id, "breadth": bredde, "target": target,
-                    "paastande_kontrolleret": kontrolleret}
+                    "paastande_kontrolleret": kontrolleret,
+                    "bevis": str(dom.get("bevis") or "intet-bevis"),
+                    "bevis_note": (
+                        "Ingen efterproevelig paastand fundet — dette svar er "
+                        "IKKE verificeret, det er blot ikke modsagt."
+                        if kontrolleret == 0 else
+                        f"{kontrolleret} paastand(e) slaaet op og bekraeftet.")}
         sidste_fejl = [str(x) for x in (dom.get("fejl") or [])]
     if svar:
         payload: dict[str, Any] = {"status": "ok", "findings": svar[:12000],

@@ -85,3 +85,57 @@ def test_tur_loftet_ER_et_aegte_net(isolated_runtime):
                                 max_turns=3, council_id="c1")
     update_agent_registry_entry("raad-2", turns_completed_delta=3)
     assert _check_max_turns_and_expire("raad-2") is True
+
+
+# ── runden koerer nu parallelt, med bevaret raekkefoelge — Fase 6 ────────
+#
+# MAALT 10/9-2026: 763 raads-runs, 17,4 sekunder i snit, 3,7 medlemmer pr.
+# raad. `convene_council` koerer SYNKRONT, saa en runde froes Jarvis' tur i
+# omkring et minut.
+#
+# Den gamle kommentar sagde at raadet var sekventielt for at «preserve
+# deliberation order». Men der er ingen deliberation inden i en runde:
+# `messages` hentes ÉN gang FOER loekken, og hvert medlem faar samme snapshot.
+# Ingen ser hinandens indlaeg fra denne runde. Det sekventielle bevarede kun
+# raekkefoelgen af resultater.
+
+
+def test_transskriptet_hentes_EN_gang_foer_loekken():
+    """Grundlaget for at parallelisering er adfaerds-bevarende. Flyttes
+    hentningen ind i `_run_one_worker`, ville medlemmerne pludselig se
+    hinanden — og saa maa runden ikke koere parallelt laengere."""
+    kilde = inspect.getsource(C)
+    i_hent = kilde.index("messages = list_agent_messages(")
+    i_worker = kilde.index("def _run_one_worker(")
+    assert i_hent < i_worker, (
+        "transskriptet hentes nu inde i workeren — parallelisering aendrer "
+        "hvad medlemmerne ser")
+
+
+def test_raadet_koerer_PARALLELT():
+    kilde = inspect.getsource(C)
+    assert 'if mode == "swarm" and len(workers) > 1:' not in kilde
+    assert "if len(workers) > 1:" in kilde
+
+
+def test_raekkefoelgen_er_BEVARET():
+    """`as_completed` ville give resultatet i tilfaeldig orden. Rundens output
+    fodrer syntesen, saa ordenen skal vaere den samme hver gang.
+
+    Spoerger AST'en, ikke teksten: kommentarerne NAEVNER `as_completed` for at
+    forklare hvorfor det ikke bruges, og en tekst-soegning faldt derfor over
+    sin egen forklaring.
+    """
+    import ast
+    kilde = inspect.getsource(C)
+    assert "for fut in futures:" in kilde
+    brugt = any(isinstance(n, ast.Name) and n.id == "as_completed"
+                for n in ast.walk(ast.parse(kilde)))
+    assert not brugt, "as_completed bruges stadig — raekkefoelgen er tilfaeldig"
+
+
+def test_en_enkelt_worker_koerer_stadig_uden_traadpulje():
+    """Ingen grund til at starte en pulje for ét medlem."""
+    kilde = inspect.getsource(C)
+    i = kilde.index("if len(workers) > 1:")
+    assert "else:" in kilde[i:i + 900]

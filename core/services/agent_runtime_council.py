@@ -12,7 +12,7 @@ Re-exported via ``core.services.agent_runtime`` for backward compatibility.
 from __future__ import annotations
 
 import json
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor
 from uuid import uuid4
 
 from core.services.agent_runtime_base import (
@@ -466,17 +466,30 @@ def _run_collective_round(council_id: str, *, mode: str) -> dict[str, object]:
             update_council_member(council_id=council_id, agent_id=agent_id, position_summary=f"failed: {_trim(err)}", confidence="low")
             return None
 
-    # Swarm: parallel fanout; Council: sequential (preserves deliberation order)
-    if mode == "swarm" and len(workers) > 1:
+    # Begge tilstande koerer nu parallelt. Den gamle kommentar sagde at raadet
+    # var sekventielt for at «preserve deliberation order» — men der ER ingen
+    # deliberation inden i en runde: `messages` hentes ÉN gang paa linje 350,
+    # foer loekken, og hvert medlem faar samme snapshot i sin prompt. Ingen af
+    # dem ser hinandens indlaeg fra denne runde.
+    #
+    # Det sekventielle bevarede altsaa kun RAEKKEFOELGEN af resultater — og den
+    # er bevaret her ved at hoeste i afsendelses-orden i stedet for
+    # `as_completed`. Samme prompts, samme input, samme raekkefoelge; kun
+    # ventetiden falder.
+    #
+    # MAALT 10/9-2026: 763 raads-runs, 17,4 sekunder i snit, 3,7 medlemmer pr.
+    # raad. En runde frøs derfor Jarvis' tur i omkring et minut, fordi
+    # `convene_council` koerer synkront.
+    if len(workers) > 1:
         with ThreadPoolExecutor(max_workers=min(len(workers), MAX_SWARM_WORKERS)) as pool:
             futures = [pool.submit(_run_one_worker, m) for m in workers]
-            for fut in as_completed(futures):
+            for fut in futures:          # afsendelses-orden, ikke as_completed
                 try:
                     out = fut.result()
                     if out:
                         round_outputs.append(out)
                 except Exception as exc:
-                    logger.warning("swarm worker thread failed: %s", exc)
+                    logger.warning("%s worker thread failed: %s", mode, exc)
     else:
         for member in workers:
             out = _run_one_worker(member)

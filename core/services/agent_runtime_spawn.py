@@ -107,6 +107,7 @@ def spawn_agent_task(
     auto_execute: bool = True,
     council_id: str = "",
     provider: str = "",
+    respekter_model: bool = False,
     model: str = "",
 ) -> dict[str, object]:
     _check_spawn_limits()
@@ -206,15 +207,41 @@ def spawn_agent_task(
     # router (deepseek/70B/qwen3-32b/nemotron-120B). Reflection roles (filosof/etiker)
     # and already-capable configs are untouched. Se central_route._model_capability.
     _TOOL_ROLES = {"researcher", "critic", "planner", "executor", "watcher", "devils_advocate"}
-    if role in _TOOL_ROLES and provider and model:
+    # Denne blok fyrer KUN naar kalderen har valgt eksplicit — og den kasserer
+    # netop det valg. MAALT 10/9-2026: explores rotation valgte
+    # `mistral/ministral-3b-latest` (capability 0,28), vagten kasserede det, og
+    # routeren svarede `nemotron-3-ultra` — praecis den model der er MAALT til
+    # aldrig at kalde vaerktoejer (0 kald paa 87 koersler). Tre runder i traek,
+    # samme model. Rotationen var koblet paa og uden virkning.
+    #
+    # To vaern derfor:
+    #   * `respekter_model` — har kalderen ALLEREDE anvendt sin egen egnetheds-
+    #     port, er valget hans. En anden vagt ovenpaa er ikke ekstra sikkerhed,
+    #     den er en tilsidesaettelse.
+    #   * Og selv naar vi omruter: erstatningen skal kunne kalde vaerktoejer.
+    #     En vagt der bytter en svag model for en der FABRIKERER, goer det
+    #     vaerre.
+    if role in _TOOL_ROLES and provider and model and not respekter_model:
         try:
             from core.services.central_route import _model_capability
             if _model_capability(provider, model) < 0.6:
                 from core.services.agent_pool_router import route_agent_task
                 _rr = route_agent_task(kind=role, allow_paid=False)
                 _rp, _rm = str(_rr.get("provider") or ""), str(_rr.get("model") or "")
-                if _rp and _rm:
+                _duer = True
+                try:
+                    from core.services.tool_calling_evidence import (
+                        kan_kalde_vaerktoejer,
+                    )
+                    _duer = kan_kalde_vaerktoejer(_rp, _rm)
+                except Exception:
+                    pass
+                if _rp and _rm and _duer:
                     provider, model = _rp, _rm
+                elif _rp and not _duer:
+                    logger.info("beholder %s/%s — routerens %s/%s er maalt til "
+                                "aldrig at kalde vaerktoejer", provider, model,
+                                _rp, _rm)
         except Exception:
             pass
     if not provider or not model:

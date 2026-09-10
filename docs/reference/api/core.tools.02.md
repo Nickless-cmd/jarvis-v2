@@ -451,9 +451,9 @@ _Read-only research-agent tool with runtime/Desk execution routing._
 | function | `_facade` | `()` | — | [src](../../../core/tools/simple_tools_explore.py#L11) |
 | function | `_execution_context` | `(args)` | — | [src](../../../core/tools/simple_tools_explore.py#L16) |
 | function | `_explore_spawn` | `(*, query, vejledning, provider=…, model=…, target=…, context=…)` | — | [src](../../../core/tools/simple_tools_explore.py#L48) |
-| function | `_explore_svar` | `(result)` | — | [src](../../../core/tools/simple_tools_explore.py#L83) |
-| function | `_bro_kontrol` | `(args)` | Byg de to efterproevninger der slaar op OVER BROEN, paa Bjoerns maskine. | [src](../../../core/tools/simple_tools_explore.py#L97) |
-| function | `_exec_explore` | `(args)` | — | [src](../../../core/tools/simple_tools_explore.py#L152) |
+| function | `_explore_svar` | `(result)` | — | [src](../../../core/tools/simple_tools_explore.py#L88) |
+| function | `_bro_kontrol` | `(args)` | Byg de to efterproevninger der slaar op OVER BROEN, paa Bjoerns maskine. | [src](../../../core/tools/simple_tools_explore.py#L102) |
+| function | `_exec_explore` | `(args)` | — | [src](../../../core/tools/simple_tools_explore.py#L157) |
 
 ## `core/tools/simple_tools_native.py`
 _Native (non-operator, non-web) tool executors for Jarvis._

@@ -77,6 +77,11 @@ def _explore_spawn(*, query: str, vejledning: str, provider: str = "", model: st
         tool_policy=policy, allowed_tools=tools_for_policy(policy), budget_tokens=0,
         persistent=False, ttl_seconds=0, auto_execute=True, provider=provider,
         model=model, context=dict(context or {"execution_target": target}),
+        # Explores rotation har ALLEREDE filtreret paa egnethed OG paa om
+        # modellen kan kalde vaerktoejer. En capability-vagt ovenpaa er ikke
+        # ekstra sikkerhed — den kasserede valget og gav os nemotron tilbage
+        # tre runder i traek.
+        respekter_model=bool(provider and model),
     )
 
 

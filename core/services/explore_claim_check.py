@@ -68,6 +68,21 @@ _STI_LINJE_PROSA = re.compile(
     r"[\s`:*-]*(.{0,120})",                                # og hvad der paastaas
     re.IGNORECASE,
 )
+# BAR LINJE-HENVISNING: «Linje 12: indhold» UDEN sti paa samme linje.
+#
+# Det er den naturlige form for en fil-laesnings-rapport: filen naevnes ÉN
+# gang, og derefter listes linjerne. Alle de andre moenstre kraever en sti
+# lige ved siden af tallet, saa af otte citater blev ÉT efterproevet.
+#
+# Jarvis kaldte det «vaernet laeser kun engelsk». Det er ikke aarsagen —
+# `linje` er med, og regexen er case-insensitiv; `x.md, Linje 4: tekst`
+# doemmes korrekt. Aarsagen er den MANGLENDE STI. Symptomet var rigtigt, og
+# det er det der taeller: uden hans maaling havde jeg ikke set formen.
+_BAR_LINJE = re.compile(
+    r"(?:^|\n)[\s*\-#>]*(?:line|linje|l\.)[\s`]*(\d{1,6})[\s`:*-]+(.{0,120})",
+    re.IGNORECASE,
+)
+
 # Den omvendte ordstilling: «linje 8 i core/x.py».
 _LINJE_I_STI = re.compile(
     r"(?:line|linje|l\.)[\s`]*(\d{1,6})[\s`]*(?:i|in|of|af)[\s`]*"
@@ -158,6 +173,27 @@ def tjek_paastande(svar: str, *, rod: Path | None = None,
             if _n not in _set:
                 _set.add(_n)
                 _paastande.append((m.group(2), int(m.group(1)), ""))
+
+        # Bare linje-henvisninger knyttes til den SENEST naevnte fil. En
+        # rapport skriver filen én gang og lister saa linjerne; laeser man
+        # hver linje for sig, er der ingen sti at slaa op i.
+        #
+        # Kun BAGUD: en linje-henvisning hoerer til den fil der allerede er
+        # naevnt, aldrig til en der kommer senere. Ellers ville et citat blive
+        # tilskrevet en fil rapporten ikke havde aabnet endnu.
+        _stier_i_orden = [(m.start(), m.group(1)) for m in _STI.finditer(t)]
+        _stier_i_orden += [(m.start(), m.group(1)) for m in _STI_LINJE.finditer(t)]
+        _stier_i_orden.sort()
+        for m in _BAR_LINJE.finditer(t):
+            _foran = [sti for pos, sti in _stier_i_orden if pos < m.start()]
+            if not _foran:
+                continue                  # ingen fil naevnt endnu — intet at slaa op i
+            sti = _foran[-1]
+            _n = (sti, int(m.group(1)))
+            if _n not in _set:
+                _set.add(_n)
+                _paastande.append((sti, int(m.group(1)),
+                                   (m.group(2) or "").strip()))
 
         for sti, nr, indhold in _paastande:
             if sti.rsplit(".", 1)[-1].lower() not in _KENDTE:

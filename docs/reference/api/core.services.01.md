@@ -361,6 +361,14 @@ _Agent dispatch orchestrator for code mode (spec §19)._
 | function | `scan_skills_before_dispatch` | `(skill_contents)` | Kør skill_scanner på hver skill der vil eksekvere lokalt (§19.8). Blokerer | [src](../../../core/services/agent_dispatch.py#L74) |
 | function | `dispatch_code_mode_task` | `(task, *, inline=…, executor_count=…, skill_contents=…, user_id=…, dry_run=…)` | Orchestrér en code-mode-opgave (§19.4). | [src](../../../core/services/agent_dispatch.py#L87) |
 
+## `core/services/agent_message_receipt.py`
+_En besked til et barn maa ikke fryse foraelderens tur — Fase 6._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `send_med_kvittering` | `(*, agent_id, content, role=…, kind=…, execution_mode=…, taalmodighed_s=…)` | Send beskeden, vent kort, og giv enten svaret eller en kvittering. | [src](../../../core/services/agent_message_receipt.py#L46) |
+| function | `kvittering` | `(agent_id, *, taalmodighed_s=…)` | Hvad der er ACCEPTERET — ikke hvad der blev svaret. | [src](../../../core/services/agent_message_receipt.py#L111) |
+
 ## `core/services/agent_model_fitness.py`
 _Er denne model egnet til agent-arbejde? Svaret bygger på MÅLINGER._
 
@@ -496,8 +504,8 @@ _Agent runtime — spawn, execution, messaging, scheduling & lifecycle._
 | function | `resume_agent` | `(agent_id)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1336) |
 | function | `expire_agent` | `(agent_id, *, reason=…)` | — | [src](../../../core/services/agent_runtime_spawn.py#L1355) |
 | function | `promote_agent_result` | `(agent_id, *, note=…)` | File an autonomy proposal to promote the agent's latest result to Jarvis memory. | [src](../../../core/services/agent_runtime_spawn.py#L1377) |
-| function | `_frisk` | `(agent, *, minutter=…)` | Er raekken roert for nylig? Bruges KUN til at afgoere om et tomt | [src](../../../core/services/agent_runtime_spawn.py#L1414) |
-| function | `recover_crashed_agents` | `()` | Called on API startup: reset agents that were mid-execution when the process died. | [src](../../../core/services/agent_runtime_spawn.py#L1431) |
+| function | `_frisk` | `(agent, *, minutter=…)` | Er raekken roert for nylig? Bruges KUN til at afgoere om et tomt | [src](../../../core/services/agent_runtime_spawn.py#L1417) |
+| function | `recover_crashed_agents` | `()` | Called on API startup: reset agents that were mid-execution when the process died. | [src](../../../core/services/agent_runtime_spawn.py#L1434) |
 
 ## `core/services/agent_runtime_surfaces.py`
 _Agent runtime — read surfaces (agent + council/swarm projections)._
@@ -506,11 +514,11 @@ _Agent runtime — read surfaces (agent + council/swarm projections)._
 |---|---|---|---|---|
 | function | `build_agent_runtime_surface` | `(limit=…)` | — | [src](../../../core/services/agent_runtime_surfaces.py#L30) |
 | function | `enrich_agent_surface` | `(agent)` | — | [src](../../../core/services/agent_runtime_surfaces.py#L62) |
-| function | `build_agent_detail_surface` | `(agent_id)` | — | [src](../../../core/services/agent_runtime_surfaces.py#L89) |
-| function | `build_council_surface` | `(limit=…)` | — | [src](../../../core/services/agent_runtime_surfaces.py#L96) |
-| function | `enrich_council_surface` | `(session)` | — | [src](../../../core/services/agent_runtime_surfaces.py#L120) |
-| function | `build_council_detail_surface` | `(council_id)` | — | [src](../../../core/services/agent_runtime_surfaces.py#L133) |
-| function | `_progress_label` | `(*, agent, latest_run)` | — | [src](../../../core/services/agent_runtime_surfaces.py#L140) |
+| function | `build_agent_detail_surface` | `(agent_id)` | — | [src](../../../core/services/agent_runtime_surfaces.py#L93) |
+| function | `build_council_surface` | `(limit=…)` | — | [src](../../../core/services/agent_runtime_surfaces.py#L100) |
+| function | `enrich_council_surface` | `(session)` | — | [src](../../../core/services/agent_runtime_surfaces.py#L124) |
+| function | `build_council_detail_surface` | `(council_id)` | — | [src](../../../core/services/agent_runtime_surfaces.py#L137) |
+| function | `_progress_label` | `(*, agent, latest_run)` | — | [src](../../../core/services/agent_runtime_surfaces.py#L144) |
 
 ## `core/services/agent_self_evaluation.py`
 _Agent self-evaluation — track quality, adherence, goal progress (READ-ONLY)._
@@ -657,19 +665,4 @@ _Durable working conclusions for interrupted agentic runs._
 | function | `clear_run` | `(run_id)` | — | [src](../../../core/services/agentic_working_conclusions.py#L66) |
 | function | `working_conclusion_prompt_section` | `(session_id)` | — | [src](../../../core/services/agentic_working_conclusions.py#L73) |
 | function | `build_round_observation` | `(*, text, tool_names, result_texts)` | — | [src](../../../core/services/agentic_working_conclusions.py#L90) |
-
-## `core/services/agents.py`
-_Agents-cluster — gør multi-agent-systemerne synlige i Den Intelligente Central: agent-pool_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_observe` | `(nerve, data)` | — | [src](../../../core/services/agents.py#L15) |
-| function | `note_agent_spawn` | `(agent_id, role, *, parent=…, council_id=…, mode=…)` | En agent blev spawnet (pool/swarm). Metadata-only. | [src](../../../core/services/agents.py#L23) |
-| function | `note_agent_error` | `(agent_id, error, **data)` | En agent fejlede → observe (synlig). | [src](../../../core/services/agents.py#L33) |
-| function | `note_agent_result` | `(agent_id, status, *, tokens_in=…, tokens_out=…, cost_usd=…, duration_ms=…, tool_calls=…, role=…, provider=…, model=…, **data)` | En agent-dispatch afsluttede (succes ELLER fejl) → observe robusthedskonvolut | [src](../../../core/services/agents.py#L39) |
-| function | `note_agent_blocked` | `(agent_id, status=…, *, reason=…, role=…, **data)` | En agent blev BLOKERET / mangler kontekst (typet ikke-fejl) → distinkt observe. | [src](../../../core/services/agents.py#L78) |
-| function | `note_council` | `(topic, *, rounds=…, deadlocked=…, escalated=…, recruited=…)` | En council-deliberation kørte → observe udfald (rounds/deadlock/witness-escalation/ | [src](../../../core/services/agents.py#L91) |
-| function | `agents_summary` | `(*, window=…)` | Read-only: nylig agent/council-aktivitet (til MC). Self-safe. | [src](../../../core/services/agents.py#L102) |
-| function | `_build_roster` | `(*, window=…)` | Full agent roster: every unique (provider, model) from the cheap-lane pool as a | [src](../../../core/services/agents.py#L136) |
-| function | `_iso` | `(ts)` | Epoch seconds → ISO-8601 UTC string; "" for a missing/zero timestamp. | [src](../../../core/services/agents.py#L221) |
 

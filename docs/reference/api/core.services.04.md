@@ -2,6 +2,31 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/central_body_mood_feel.py`
+_core/services/central_body_mood_feel.py_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `raw_awareness_enabled` | `()` | Lag 4 kill-switch: rå kompakte awareness-brackets frem for genererede label-sætninger. | [src](../../../core/services/central_body_mood_feel.py#L51) |
+| function | `_hold_reading` | `(name, reading)` | Hold en kompakt aflæsning durabelt så describe_self kan læse den model-frit efter genstart. | [src](../../../core/services/central_body_mood_feel.py#L73) |
+| function | `_read_held` | `(name)` | Ren KV-læsning (ingen syntese på læse-tid → hot-path-sikker). Self-safe. | [src](../../../core/services/central_body_mood_feel.py#L83) |
+| function | `_read_held_fresh` | `(name, max_age_s)` | Som _read_held, men TIER en aflæsning ældre end max_age_s (en forældet KROP-tilstand skal ikke | [src](../../../core/services/central_body_mood_feel.py#L95) |
+| function | `_proprioception_signal` | `()` | proprioception_metrics: nuværende proces-krop (RSS/CPU/latens). None hvis intet snapshot/psutil. | [src](../../../core/services/central_body_mood_feel.py#L108) |
+| function | `_embodied_signal` | `()` | embodied_state: host/krop-tilstand (steady…degraded). None hvis intet meningsfuldt afledt. | [src](../../../core/services/central_body_mood_feel.py#L143) |
+| function | `_mood_signal` | `()` | mood_oscillator: nuværende stemning (euforisk…trist) + intensitet. None ved fejl. | [src](../../../core/services/central_body_mood_feel.py#L166) |
+| function | `_developmental_signal` | `()` | developmental_valence: uge-skala kompasnål (blomstring vs visnen). None hvis vektor mangler. | [src](../../../core/services/central_body_mood_feel.py#L189) |
+| function | `_affective_signal` | `()` | affective_meta_state: afledt affektiv/meta-tilstand (settled…burdened) + bearing. None ved fejl. | [src](../../../core/services/central_body_mood_feel.py#L212) |
+| function | `get_proprioception_reading` | `()` | — | [src](../../../core/services/central_body_mood_feel.py#L232) |
+| function | `get_embodied_reading` | `()` | — | [src](../../../core/services/central_body_mood_feel.py#L236) |
+| function | `get_mood_reading` | `()` | — | [src](../../../core/services/central_body_mood_feel.py#L240) |
+| function | `get_developmental_reading` | `()` | — | [src](../../../core/services/central_body_mood_feel.py#L244) |
+| function | `get_affective_reading` | `()` | — | [src](../../../core/services/central_body_mood_feel.py#L248) |
+| function | `_fmt_num` | `(v)` | Kompakt tal uden hale-nuller: 12.0 → '12', 11.2 → '11.2'. Self-safe. | [src](../../../core/services/central_body_mood_feel.py#L252) |
+| function | `describe_body_mood_feel_raw` | `()` | Lag 4 RÅ NED-syntese: kompakte bracket-linjer fra de holdte krop-/stemning-aflæsninger + | [src](../../../core/services/central_body_mood_feel.py#L261) |
+| function | `describe_body_mood_feel` | `()` | NED-syntese for describe_self: nøgterne selv-sætninger fra de holdte krop-/stemning-aflæsninger. | [src](../../../core/services/central_body_mood_feel.py#L310) |
+| function | `register_body_mood_feel_layers` | `()` | Registrér krop- og stemning-lagene som lag-kontrakter (OP + durabelt hold). Egress-frit | [src](../../../core/services/central_body_mood_feel.py#L371) |
+| function | `build_body_mood_feel_surface` | `()` | Mission Control (read-only): de holdte krop-/stemning-aflæsninger + hvad describe_self ville sige. | [src](../../../core/services/central_body_mood_feel.py#L398) |
+
 ## `core/services/central_brain_link.py`
 _core/services/central_brain_link.py_
 
@@ -544,14 +569,4 @@ _Inner-life-ablation-kontakt — måling #2 (Bjørn 4. jul)._
 | function | `is_ablated` | `()` | True hvis den heavy inder-liv-cadence skal springes over lige nu. Self-safe → | [src](../../../core/services/central_inner_life_ablation.py#L22) |
 | function | `set_ablated` | `(on)` | Tænd/sluk ablationen (måle-vindue). Self-safe. | [src](../../../core/services/central_inner_life_ablation.py#L32) |
 | function | `build_ablation_surface` | `()` | Mission Control — read-only status. | [src](../../../core/services/central_inner_life_ablation.py#L41) |
-
-## `core/services/central_inner_life_digest.py`
-_Inner-life digest — §24.4 reduceret ved kilden: KUN liveness+count pr. sektion._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_first_count` | `(surface)` | Find en repræsentativ magnitude UDEN at afsløre indhold: længden af den | [src](../../../core/services/central_inner_life_digest.py#L56) |
-| function | `_reduce` | `(surface)` | KUN liveness+count. Ingen tekst. Self-safe. | [src](../../../core/services/central_inner_life_digest.py#L72) |
-| function | `_build_group` | `(group)` | Byg én gruppe reduceret. Self-safe pr. sektion (import/kald i try/except | [src](../../../core/services/central_inner_life_digest.py#L81) |
-| function | `build_inner_life_digest` | `()` | Samlet reduceret living-mind + experiment/AGI-digest. Kaster ALDRIG. | [src](../../../core/services/central_inner_life_digest.py#L96) |
 

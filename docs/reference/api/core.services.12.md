@@ -2,6 +2,13 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/gate_auth.py`
+_Auth-cluster gate 🔒 — tool-access (rolle-håndhævelse), SECURITY fail-CLOSED._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `auth_gate` | `(ctx)` | ctx: {role, scope, name}. Returnér ét SECURITY-Verdict for tool-access. | [src](../../../core/services/gate_auth.py#L25) |
+
 ## `core/services/gate_commit.py`
 _Commit-cluster gate (beslutnings-disciplin)._
 
@@ -518,12 +525,4 @@ _Heartbeat phases — explicit Sense / Reflect / Act structure on top of existin
 | function | `tick_with_phases` | `(*, name=…, trigger=…)` | Run all 3 phases in sequence, return structured result. | [src](../../../core/services/heartbeat_phases.py#L664) |
 | function | `_exec_phased_tick` | `(args)` | — | [src](../../../core/services/heartbeat_phases.py#L709) |
 | function | `_exec_sense_only` | `(args)` | Read-only: gather current signals without running reflection or action. | [src](../../../core/services/heartbeat_phases.py#L716) |
-
-## `core/services/heartbeat_provider_fallback.py`
-_Heartbeat provider fallback — cheap cloud lane when primary (Groq) fails._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `execute_openai_compat_heartbeat_prompt` | `(*, prompt, target, max_tokens=…, temperature=…)` | Call an OpenAI-chat/completions-compatible provider for heartbeat. | [src](../../../core/services/heartbeat_provider_fallback.py#L53) |
-| function | `try_heartbeat_cheap_fallback` | `(prompt)` | Try cheap lane providers (skip groq + ollamafreeapi) as heartbeat fallback. | [src](../../../core/services/heartbeat_provider_fallback.py#L125) |
 

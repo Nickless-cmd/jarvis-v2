@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/interruption_notice.py`
+_Afbrydelses-noten — en besked til MENNESKET, ikke til modellen._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `is_interruption_notice` | `(text)` | Er dette runtimens afbrydelses-note frem for et aegte svar? Self-safe. | [src](../../../core/services/interruption_notice.py#L38) |
+| function | `strip_interruption_notices` | `(history)` | Fjern afbrydelses-noter fra den historik modellen faar. Self-safe. | [src](../../../core/services/interruption_notice.py#L49) |
+
 ## `core/services/invocation_record.py`
 _Durabel invokations-tilstand for kald ingen bliver spurgt om._
 
@@ -618,14 +626,4 @@ _MCP-manager — forbinder registerets servere og eksponerer deres værktøjer._
 | function | `status` | `()` | Hvilke servere kendes, hvilke er godkendt, hvilke er forbundet? | [src](../../../core/services/mcp_manager.py#L68) |
 | function | `list_tools` | `(navn)` | — | [src](../../../core/services/mcp_manager.py#L88) |
 | function | `call` | `(navn, vaerktoej, arguments=…)` | — | [src](../../../core/services/mcp_manager.py#L99) |
-
-## `core/services/mcp_registry.py`
-_MCP-server-registry (§4.6) — brugerens konfigurerede MCP-endpoints._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_load` | `()` | — | [src](../../../core/services/mcp_registry.py#L17) |
-| function | `list_mcp_servers` | `()` | — | [src](../../../core/services/mcp_registry.py#L24) |
-| function | `add_mcp_server` | `(name, url)` | — | [src](../../../core/services/mcp_registry.py#L28) |
-| function | `remove_mcp_server` | `(server_id)` | — | [src](../../../core/services/mcp_registry.py#L40) |
 

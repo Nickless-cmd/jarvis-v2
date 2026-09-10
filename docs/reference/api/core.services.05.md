@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/central_inner_life_digest.py`
+_Inner-life digest — §24.4 reduceret ved kilden: KUN liveness+count pr. sektion._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_first_count` | `(surface)` | Find en repræsentativ magnitude UDEN at afsløre indhold: længden af den | [src](../../../core/services/central_inner_life_digest.py#L56) |
+| function | `_reduce` | `(surface)` | KUN liveness+count. Ingen tekst. Self-safe. | [src](../../../core/services/central_inner_life_digest.py#L72) |
+| function | `_build_group` | `(group)` | Byg én gruppe reduceret. Self-safe pr. sektion (import/kald i try/except | [src](../../../core/services/central_inner_life_digest.py#L81) |
+| function | `build_inner_life_digest` | `()` | Samlet reduceret living-mind + experiment/AGI-digest. Kaster ALDRIG. | [src](../../../core/services/central_inner_life_digest.py#L96) |
+
 ## `core/services/central_inner_salience.py`
 _core/services/central_inner_salience.py_
 
@@ -609,16 +619,4 @@ _core/services/central_router_adapt.py_
 | function | `resolve_autonomous_model` | `(*, autonomous_provider=…, autonomous_model=…)` | (provider, model) for et AUTONOMT/baggrunds-run. | [src](../../../core/services/central_router_adapt.py#L333) |
 | function | `register_router_adapt_producer` | `()` | Registrér routing-præference-læreren som cadence-producer (~hvert 45 min). SHADOW medmindre flag. | [src](../../../core/services/central_router_adapt.py#L360) |
 | function | `build_router_adapt_surface` | `()` | Mission Control — read-only: foreslået (shadow) + live præference + status. | [src](../../../core/services/central_router_adapt.py#L372) |
-
-## `core/services/central_router_explore.py`
-_core/services/central_router_explore.py_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_kv_get` | `(key, default)` | — | [src](../../../core/services/central_router_explore.py#L28) |
-| function | `_kv_set` | `(key, value)` | — | [src](../../../core/services/central_router_explore.py#L37) |
-| function | `is_explore_live` | `()` | — | [src](../../../core/services/central_router_explore.py#L45) |
-| function | `_candidates` | `(default_key)` | Konfigurerede, ikke-deep-tier modeller forskellige fra default — sorteret efter FÆRREST samples | [src](../../../core/services/central_router_explore.py#L49) |
-| function | `pick_exploration_model` | `(default_provider, default_model)` | Vælg en alternativ model at sample på DENNE autonome run — eller None (behold default/præference). | [src](../../../core/services/central_router_explore.py#L66) |
-| function | `build_router_explore_surface` | `()` | Mission Control — read-only: eksplorations-status + kandidater der ville blive samplet. | [src](../../../core/services/central_router_explore.py#L90) |
 

@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/pdf_connector.py`
+_PDF-connector (lokal) — læs/ekstraher tekst fra PDF-filer._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_load_bytes` | `(source)` | → (bytes, None) ved succes, ellers (None, fejlkode). | [src](../../../core/services/pdf_connector.py#L34) |
+| function | `read_pdf` | `(source, *, max_pages=…)` | — | [src](../../../core/services/pdf_connector.py#L58) |
+
 ## `core/services/perceptual_event_engine.py`
 _Perceptual event engine — eventful perception for Jarvis._
 
@@ -671,20 +679,4 @@ _Drift-detektion — er ledgeren og `chat_messages` enige?_
 | function | `_fra_tabellen` | `(session_id)` | — | [src](../../../core/services/projection_drift.py#L89) |
 | function | `compare` | `(session_id)` | Sammenlign de to sider. `enige` er svaret på om sessionen må skifte. | [src](../../../core/services/projection_drift.py#L101) |
 | function | `may_cut_over` | `(session_id)` | Må denne session skifte til `ledger`? | [src](../../../core/services/projection_drift.py#L137) |
-
-## `core/services/projection_runtime.py`
-_Projektions-runtime — rene, versionerede folder over session-ledgeren._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `Projection` | `` | — | [src](../../../core/services/projection_runtime.py#L52) |
-| function | `register` | `(navn, *, version, fold, start=…)` | Registrér en projektion. Samme navn to gange er en fejl, ikke en erstatning. | [src](../../../core/services/projection_runtime.py#L64) |
-| function | `registered` | `()` | — | [src](../../../core/services/projection_runtime.py#L80) |
-| function | `_unregister_all_for_tests` | `()` | — | [src](../../../core/services/projection_runtime.py#L84) |
-| function | `_ensure_checkpoint_table` | `(conn)` | — | [src](../../../core/services/projection_runtime.py#L90) |
-| function | `checkpoint` | `(session_id, navn)` | Hvor langt er denne projektion foldet for denne session? | [src](../../../core/services/projection_runtime.py#L105) |
-| function | `_gem_checkpoint` | `(session_id, navn, version, as_of_seq)` | — | [src](../../../core/services/projection_runtime.py#L126) |
-| function | `project` | `(session_id, navn, *, force_refold=…)` | Fold sessionens hændelser gennem projektionen og ryk markøren frem. | [src](../../../core/services/projection_runtime.py#L148) |
-| function | `snapshot` | `(session_id, navne=…)` | Fold FLERE projektioner og giv dem ÉT fælles `as_of_seq`. | [src](../../../core/services/projection_runtime.py#L176) |
-| function | `run_for_session` | `(session_id, navne=…)` | Kør alle registrerede projektioner for én session. | [src](../../../core/services/projection_runtime.py#L196) |
 

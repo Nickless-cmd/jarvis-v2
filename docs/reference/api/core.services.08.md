@@ -2,6 +2,23 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/consolidation_judge_daemon.py`
+_Consolidation Judge Daemon — nightly reckoning, not observation._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `tick_consolidation_judge_daemon` | `()` | Run the nightly consolidation judge if cadence allows. | [src](../../../core/services/consolidation_judge_daemon.py#L29) |
+| function | `_gather_evidence` | `()` | Collect today's operational data for judgment. | [src](../../../core/services/consolidation_judge_daemon.py#L74) |
+| function | `_build_stillingtagen` | `(evidence)` | Construct 3-5 concrete stillingtagen (items requiring judgment). | [src](../../../core/services/consolidation_judge_daemon.py#L126) |
+| function | `_render_judgments` | `(items, evidence)` | Present each stillingtagen to the LLM and force a verdict. | [src](../../../core/services/consolidation_judge_daemon.py#L207) |
+| function | `_parse_judgment` | `(raw, item)` | Parse the LLM's judgment response. | [src](../../../core/services/consolidation_judge_daemon.py#L248) |
+| function | `_enforce_judgments` | `(judgments)` | Carry out the concrete actions from judgments. | [src](../../../core/services/consolidation_judge_daemon.py#L279) |
+| function | `_enforce_reject` | `(j)` | Handle rejected items — typically revoke or pause. | [src](../../../core/services/consolidation_judge_daemon.py#L289) |
+| function | `_enforce_accept` | `(j)` | Handle accepted items — typically recommit or flag. | [src](../../../core/services/consolidation_judge_daemon.py#L322) |
+| function | `_record_judgment_session` | `(judgments, evidence)` | Write the full judgment session as a private brain record. | [src](../../../core/services/consolidation_judge_daemon.py#L342) |
+| function | `build_consolidation_judge_surface` | `()` | Build surface data for prompt injection. | [src](../../../core/services/consolidation_judge_daemon.py#L377) |
+| function | `now_date_str` | `()` | — | [src](../../../core/services/consolidation_judge_daemon.py#L385) |
+
 ## `core/services/consolidation_target_signal_tracking.py`
 _Consolidation-target signal tracking — migrated onto signal_tracking_framework._
 
@@ -194,10 +211,10 @@ _Et raad kvitteres nu med det samme — Fase 6._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_nulstil_for_tests` | `()` | — | [src](../../../core/services/council_receipt.py#L42) |
-| function | `start_round_in_background` | `(council_id)` | Start raadsrunden uden at vente paa den. Returnerer om den blev startet. | [src](../../../core/services/council_receipt.py#L46) |
-| function | `receipt` | `(council_id, *, topic, roles, started)` | Kvitteringen. Siger hvad der er ACCEPTERET — ikke hvad der blev svaret. | [src](../../../core/services/council_receipt.py#L83) |
-| function | `status` | `(council_id)` | Hvor er raadet naaet til? Den direkte afhentning. | [src](../../../core/services/council_receipt.py#L106) |
+| function | `_nulstil_for_tests` | `()` | — | [src](../../../core/services/council_receipt.py#L43) |
+| function | `start_round_in_background` | `(council_id)` | Start raadsrunden uden at vente paa den. Returnerer om den blev startet. | [src](../../../core/services/council_receipt.py#L47) |
+| function | `receipt` | `(council_id, *, topic, roles, started)` | Kvitteringen. Siger hvad der er ACCEPTERET — ikke hvad der blev svaret. | [src](../../../core/services/council_receipt.py#L103) |
+| function | `status` | `(council_id)` | Hvor er raadet naaet til? Den direkte afhentning. | [src](../../../core/services/council_receipt.py#L126) |
 
 ## `core/services/council_runtime.py`
 
@@ -611,25 +628,4 @@ _Shared LLM call for daemons — cheap lane first, heartbeat model fallback._
 | function | `quality_daemon_llm_call` | `(prompt, *, max_len=…, fallback=…, daemon_name=…)` | Call path for QUALITY-CRITICAL daemons (self-review, decision-review, | [src](../../../core/services/daemon_llm.py#L162) |
 | function | `daemon_public_safe_llm_call` | `(prompt, *, max_len=…, fallback=…, daemon_name=…)` | Call path reserved for PUBLIC-SAFE prompts. | [src](../../../core/services/daemon_llm.py#L277) |
 | function | `_daemon_llm_call_impl` | `(prompt, *, max_len, fallback, daemon_name, public_safe)` | — | [src](../../../core/services/daemon_llm.py#L299) |
-
-## `core/services/daemon_manager.py`
-_Daemon Manager — registry, lifecycle control, and state persistence for all daemons._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_state_file` | `()` | — | [src](../../../core/services/daemon_manager.py#L20) |
-| function | `get_daemon_names` | `()` | — | [src](../../../core/services/daemon_manager.py#L789) |
-| function | `_load_state` | `()` | — | [src](../../../core/services/daemon_manager.py#L793) |
-| function | `_save_state` | `(state)` | — | [src](../../../core/services/daemon_manager.py#L803) |
-| function | `_get_daemon_state` | `(name)` | — | [src](../../../core/services/daemon_manager.py#L809) |
-| function | `_set_daemon_state` | `(name, updates)` | — | [src](../../../core/services/daemon_manager.py#L813) |
-| function | `_require_known` | `(name)` | — | [src](../../../core/services/daemon_manager.py#L821) |
-| function | `is_enabled` | `(name)` | Return True if the named daemon should run. Unknown daemons return True (safe default). | [src](../../../core/services/daemon_manager.py#L827) |
-| function | `set_daemon_enabled` | `(name, enabled)` | — | [src](../../../core/services/daemon_manager.py#L836) |
-| function | `get_effective_cadence` | `(name)` | Return interval in minutes: override if set, else default. | [src](../../../core/services/daemon_manager.py#L841) |
-| function | `record_daemon_tick` | `(name, result)` | Record last_run_at and a summary of the tick result. Called by heartbeat_runtime. | [src](../../../core/services/daemon_manager.py#L850) |
-| function | `_hours_since` | `(iso)` | — | [src](../../../core/services/daemon_manager.py#L859) |
-| function | `get_all_daemon_states` | `()` | Return status for all registered daemons. | [src](../../../core/services/daemon_manager.py#L871) |
-| function | `control_daemon` | `(name, action, *, interval_minutes=…)` | Control a daemon. Actions: enable, disable, restart, set_interval. | [src](../../../core/services/daemon_manager.py#L894) |
-| function | `_restart_daemon` | `(name)` | Clear the module-level state variable so the daemon fires on next heartbeat tick. | [src](../../../core/services/daemon_manager.py#L925) |
 

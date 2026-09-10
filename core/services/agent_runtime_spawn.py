@@ -1372,7 +1372,36 @@ def promote_agent_result(agent_id: str, *, note: str = "") -> dict:
 def recover_crashed_agents() -> dict:
     """Called on API startup: reset agents that were mid-execution when the process died."""
     all_agents = list_agent_registry_entries(limit=500)
-    crashed = [a for a in all_agents if str(a.get("status") or "") in {"starting", "active", "blocked"}]
+    kandidater = [a for a in all_agents
+                  if str(a.get("status") or "") in {"starting", "active", "blocked"}]
+
+    # BEGGE units koerer samme app (`uvicorn apps.api.jarvis_api.app:app`), saa
+    # denne hook eksekveres ogsaa naar den ANDEN proces genstarter. Uden et
+    # ejerskabs-maerke doemte den agenter der levede i naboprocessen.
+    #
+    # `lever()` svarer None naar den ikke kan afgoere det (tomt maerke fra foer
+    # migreringen, en anden maskine, ulaesbar form). Da lader vi agenten vaere:
+    # en aegte foraeldreloes bliver samlet op af TTL-udloebet, mens en fejet
+    # LEVENDE agent mister sit arbejde uden spor. Tvivl falder ud til agentens
+    # fordel.
+    crashed, sprunget_over = [], 0
+    for _a in kandidater:
+        try:
+            from core.services.process_identity import lever
+            _liv = lever(str(_a.get("runtime_owner") or ""))
+        except Exception:
+            _liv = None
+        if _liv is None and str(_a.get("runtime_owner") or "").strip():
+            sprunget_over += 1          # maerket findes, men kan ikke afgoeres
+            continue
+        if _liv is True:
+            sprunget_over += 1          # koerer lige nu i en levende proces
+            continue
+        crashed.append(_a)
+    if sprunget_over:
+        logger.info("recover_crashed_agents: %d agent(er) sprunget over "
+                    "(lever i en anden proces, eller kan ikke afgoeres)",
+                    sprunget_over)
     recovered_ids: list[str] = []
     requeued_ids: list[str] = []
     for agent in crashed:

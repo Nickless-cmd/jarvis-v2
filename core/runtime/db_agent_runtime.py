@@ -17,7 +17,12 @@ from core.runtime.db_core import connect, _now_iso
 def _ensure_agent_runtime_tables(conn: sqlite3.Connection) -> None:
     # Migrations for columns added after initial schema
     for col, col_type in [("max_turns", "INTEGER NOT NULL DEFAULT 0"),
-                          ("turns_completed", "INTEGER NOT NULL DEFAULT 0")]:
+                          ("turns_completed", "INTEGER NOT NULL DEFAULT 0"),
+                          # Hvilken PROCES koerer agenten. Uden dette kan
+                          # `recover_crashed_agents()` ikke skelne en
+                          # foraeldreloes fra en agent der lever i den anden
+                          # proces — og begge units koerer samme app.
+                          ("runtime_owner", "TEXT NOT NULL DEFAULT ''")]:
         try:
             conn.execute(f"ALTER TABLE agent_registry ADD COLUMN {col} {col_type}")
         except sqlite3.OperationalError:
@@ -53,6 +58,7 @@ def _ensure_agent_runtime_tables(conn: sqlite3.Connection) -> None:
             result_contract_json TEXT NOT NULL DEFAULT '{}',
             max_turns INTEGER NOT NULL DEFAULT 0,
             turns_completed INTEGER NOT NULL DEFAULT 0,
+            runtime_owner TEXT NOT NULL DEFAULT '',
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL,
             completed_at TEXT NOT NULL DEFAULT '',
@@ -313,6 +319,18 @@ def update_agent_registry_entry(
     if status is not None:
         fields.append("status = ?")
         values.append(status)
+        # Stempl HVILKEN PROCES der koerer agenten, saa opstarts-fejningen
+        # kan skelne en foraeldreloes fra en agent der lever i den ANDEN
+        # proces — begge units koerer samme app. Terminal status rydder
+        # maerket, saa en faerdig agent ikke slaeber en doed pid med sig.
+        try:
+            from core.services.process_identity import denne_proces
+            fields.append("runtime_owner = ?")
+            values.append(denne_proces()
+                          if status in ("starting", "active", "blocked")
+                          else "")
+        except Exception:
+            pass
     if next_wake_at is not None:
         fields.append("next_wake_at = ?")
         values.append(next_wake_at)
@@ -1056,6 +1074,9 @@ def _agent_registry_row_to_dict(row: sqlite3.Row) -> dict[str, object]:
         "tokens_burned": int(row["tokens_burned"]),
         "max_turns": int(row["max_turns"]),
         "turns_completed": int(row["turns_completed"]),
+        # Uden denne linje findes kolonnen, men INGEN kan laese den —
+        # samme fejl som `kind` i godkendelses-broen.
+        "runtime_owner": str(row["runtime_owner"] or ""),
         "failure_count": int(row["failure_count"]),
         "last_error": str(row["last_error"]),
         "context_json": str(row["context_json"]),

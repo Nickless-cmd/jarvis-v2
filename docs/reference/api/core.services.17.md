@@ -579,6 +579,15 @@ _Procedure Bank Pipeline — lærte rutiner der kan pin'es og matches._
 | function | `maybe_record_procedure_from_run` | `(*, session_id, tool_calls)` | LivingNeuron Fase B (surface-only): udled en NAVNGIVEN kandidat-procedure fra en kørsel der | [src](../../../core/services/procedure_bank_pipeline.py#L242) |
 | function | `build_procedure_bank_surface` | `()` | — | [src](../../../core/services/procedure_bank_pipeline.py#L275) |
 
+## `core/services/process_identity.py`
+_Hvem koerer denne agent — og lever den proces stadig?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_starttid` | `(pid)` | Procesens starttid i clock ticks (felt 22 i /proc/<pid>/stat). | [src](../../../core/services/process_identity.py#L27) |
+| function | `denne_proces` | `()` | Maerket for den proces der kalder. Tom streng hvis vi ikke kan danne et. | [src](../../../core/services/process_identity.py#L42) |
+| function | `lever` | `(maerke)` | Lever processen bag maerket? | [src](../../../core/services/process_identity.py#L54) |
+
 ## `core/services/process_supervisor.py`
 _Process supervisor — track long-running background processes Jarvis spawns._
 
@@ -678,13 +687,4 @@ _Projektions-runtime — rene, versionerede folder over session-ledgeren._
 | function | `project` | `(session_id, navn, *, force_refold=…)` | Fold sessionens hændelser gennem projektionen og ryk markøren frem. | [src](../../../core/services/projection_runtime.py#L148) |
 | function | `snapshot` | `(session_id, navne=…)` | Fold FLERE projektioner og giv dem ÉT fælles `as_of_seq`. | [src](../../../core/services/projection_runtime.py#L176) |
 | function | `run_for_session` | `(session_id, navne=…)` | Kør alle registrerede projektioner for én session. | [src](../../../core/services/projection_runtime.py#L196) |
-
-## `core/services/promise_ledger.py`
-_Promise-ledger (Bjørn-gate) — 16. jun 2026._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `record_promise` | `(session_id, text, *, now=…)` | Notér at Jarvis lovede en handling i `session_id`. Capper til de seneste N. | [src](../../../core/services/promise_ledger.py#L22) |
-| function | `pending_promises` | `(session_id, *, within_s=…, now=…)` | Ikke-forældede løfter for `session_id` (nyeste sidst). [] ved fejl/tomt. | [src](../../../core/services/promise_ledger.py#L41) |
-| function | `clear_promises` | `(session_id)` | Ryd løfterne for en session (fx når Bjørn bekræfter de er indfriet). | [src](../../../core/services/promise_ledger.py#L62) |
 

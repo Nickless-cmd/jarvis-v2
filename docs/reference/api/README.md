@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 14206 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 14209 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -44,15 +44,15 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 14206 functions/
 - [`core.services.14`](core.services.14.md) — `invocation_record` … `mcp_registry`
 - [`core.services.15`](core.services.15.md) — `mcp_trust` … `mood_regulator_subscriber`
 - [`core.services.16`](core.services.16.md) — `mortality_awareness` … `pdf_connector`
-- [`core.services.17`](core.services.17.md) — `perceptual_event_engine` … `promise_ledger`
-- [`core.services.18`](core.services.18.md) — `prompt_cache_probe` … `reflection_cycle_daemon`
-- [`core.services.19`](core.services.19.md) — `reflection_signal_tracking` … `runtime_learning_signals`
-- [`core.services.20`](core.services.20.md) — `runtime_operational_memory` … `self_review_run_tracking`
-- [`core.services.21`](core.services.21.md) — `self_review_signal_tracking` … `signal_surface_gc`
-- [`core.services.22`](core.services.22.md) — `signal_surface_router` … `temperament_tendency_signal_tracking`
-- [`core.services.23`](core.services.23.md) — `temporal_body` … `turn_changelog`
-- [`core.services.24`](core.services.24.md) — `turn_trace` … `visible_runs_capabilities`
-- [`core.services.25`](core.services.25.md) — `visible_runs_cognitive` … `world_model_signal_tracking`
+- [`core.services.17`](core.services.17.md) — `perceptual_event_engine` … `projection_runtime`
+- [`core.services.18`](core.services.18.md) — `promise_ledger` … `recursion_guard`
+- [`core.services.19`](core.services.19.md) — `reflection_cycle_daemon` … `runtime_hooks`
+- [`core.services.20`](core.services.20.md) — `runtime_learning_signals` … `self_review_record_tracking`
+- [`core.services.21`](core.services.21.md) — `self_review_run_tracking` … `signal_pressure_accumulator`
+- [`core.services.22`](core.services.22.md) — `signal_surface_gc` … `telegram_gateway`
+- [`core.services.23`](core.services.23.md) — `temperament_tendency_signal_tracking` … `truth_gate_v2`
+- [`core.services.24`](core.services.24.md) — `turn_changelog` … `visible_runs_approvals`
+- [`core.services.25`](core.services.25.md) — `visible_runs_capabilities` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

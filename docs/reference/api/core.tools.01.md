@@ -249,11 +249,13 @@ _Fil-tool executors (read_file / write_file / edit_file / read_tool_result /_
 | function | `_ws_write_text` | `(path, content)` | Skriv encryption-aware (member → .enc når ENCRYPT_ON_WRITE on). | [src](../../../core/tools/file_tools_exec.py#L28) |
 | function | `_ws_path_exists` | `(path)` | Eksistens encryption-aware: plaintext eller member .enc. | [src](../../../core/tools/file_tools_exec.py#L34) |
 | function | `_record_active_file` | `(path, op, args)` | Live-highlight: notér at Jarvis (i brugerens kontekst) rører `path`, så | [src](../../../core/tools/file_tools_exec.py#L42) |
-| function | `_exec_read_file` | `(args)` | — | [src](../../../core/tools/file_tools_exec.py#L53) |
-| function | `_exec_read_tool_result` | `(args)` | — | [src](../../../core/tools/file_tools_exec.py#L95) |
-| function | `_exec_read_self_docs` | `(args)` | — | [src](../../../core/tools/file_tools_exec.py#L118) |
-| function | `_exec_write_file` | `(args)` | — | [src](../../../core/tools/file_tools_exec.py#L134) |
-| function | `_exec_edit_file` | `(args)` | — | [src](../../../core/tools/file_tools_exec.py#L193) |
+| function | `_safe_readback` | `(path)` | Læs filen tilbage — selv-sikker. None = den kunne ikke læses. | [src](../../../core/tools/file_tools_exec.py#L73) |
+| function | `_disk_readback` | `(path, *, start_line, span=…, mark=…)` | Nummereret udsnit af filen som den står på disken EFTER skrivningen. | [src](../../../core/tools/file_tools_exec.py#L86) |
+| function | `_exec_read_file` | `(args)` | — | [src](../../../core/tools/file_tools_exec.py#L112) |
+| function | `_exec_read_tool_result` | `(args)` | — | [src](../../../core/tools/file_tools_exec.py#L154) |
+| function | `_exec_read_self_docs` | `(args)` | — | [src](../../../core/tools/file_tools_exec.py#L177) |
+| function | `_exec_write_file` | `(args)` | — | [src](../../../core/tools/file_tools_exec.py#L193) |
+| function | `_exec_edit_file` | `(args)` | — | [src](../../../core/tools/file_tools_exec.py#L273) |
 
 ## `core/tools/force_handlers.py`
 _Force-handlere — værktøjer der kører EFTER et menneske har godkendt._

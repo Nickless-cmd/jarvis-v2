@@ -50,6 +50,65 @@ def _record_active_file(path: str, op: str, args: dict[str, Any]) -> None:
         pass
 
 
+# ── Read-back: gør mutationen selv-bevisende (10. sep 2026) ────────────────
+#
+# Målt samme dag: R2 heed-rate 17–26%, median 27 minutter fra advarsel til
+# første kig. Hintet fandtes ALLEREDE ("kør verify_file_contains") og flyttede
+# intet — fordi et hint er en OPFORDRING. `edit_file` returnerede
+# `{"status": "ok", "replacements": 1}`: en PÅSTAND fra værktøjet, ikke fra
+# disken. Verifikation blev dermed en ekstra handling man skulle VÆLGE midt i
+# en arbejdsgang — og den blev valgt fra, fordi næste skridt lå lige for.
+#
+# Fixet fjerner valget: resultatet bærer nu filstumpen omkring ændringen, læst
+# tilbage fra disken EFTER skrivningen. Er diff'en ikke som ventet, ser man det
+# i samme sekund man ellers ville have bygget videre på den. Samme flytning som
+# `record_surface`-fixet: fjern løgnen ved kilden frem for at advare bagefter.
+#
+# BEMÆRK (bevidst): `text` er i bro_broker._LOCAL_ONLY_KEYS, så i code-mode
+# bliver read-back'en holdt på brugerens maskine — rå filindhold krydser ikke
+# (§17.3). Det er meningen; chat-lanen er der hvor heed-raten måles.
+_READBACK_MAX_CHARS = 1200
+
+
+def _safe_readback(path: Path) -> str | None:
+    """Læs filen tilbage — selv-sikker. None = den kunne ikke læses.
+
+    None er et SIGNAL, ikke en tavshed: en fil der ikke kan læses tilbage efter
+    en skrivning er det stærkeste tegn på at noget er galt. Derfor får den sit
+    eget svar i resultatet frem for bare at udelade read-back'en.
+    """
+    try:
+        return _ws_read_text(path)
+    except Exception:
+        return None
+
+
+def _disk_readback(
+    path: Path, *, start_line: int, span: int = 0, mark: bool = True,
+) -> str:
+    """Nummereret udsnit af filen som den står på disken EFTER skrivningen.
+
+    `start_line` (0-baseret) er hvor ændringen begynder, `span` hvor mange
+    linjer den fylder; der vises ±2 linjer omkring, og de ændrede linjer
+    markeres med » så diff'en kan læses direkte. Selv-sikker → "" hvis filen
+    ikke kan læses: en read-back må aldrig kunne vælte det kald den beviser.
+    """
+    fresh = _safe_readback(path)
+    if fresh is None:
+        return ""
+    lines = fresh.split("\n")
+    lo = max(0, start_line - 2)
+    hi = min(len(lines), start_line + span + 3)
+    out: list[str] = []
+    for i in range(lo, hi):
+        changed = mark and start_line <= i <= start_line + span
+        out.append(f"{'»' if changed else ' '}{i + 1:>5}| {lines[i]}")
+    block = "\n".join(out)
+    if len(block) > _READBACK_MAX_CHARS:
+        block = block[:_READBACK_MAX_CHARS] + "\n… (afkortet)"
+    return block
+
+
 def _exec_read_file(args: dict[str, Any]) -> dict[str, Any]:
     from core.tools.simple_tools import MAX_READ_CHARS
 
@@ -178,6 +237,27 @@ def _exec_write_file(args: dict[str, Any]) -> dict[str, Any]:
         target.parent.mkdir(parents=True, exist_ok=True)
         _ws_write_text(target, content)
     result = {"status": "ok", "path": str(target), "bytes_written": len(content.encode("utf-8"))}
+    # ── Read-back fra disken (se read-back-blokken i toppen af filen) ──────
+    # Før var `bytes_written` en PÅSTAND fra værktøjet. Nu bærer resultatet
+    # også filens faktiske begyndelse, læst tilbage EFTER skrivningen — og
+    # `readback` siger om disken indeholder PRÆCIS det vi skrev.
+    _fresh = _safe_readback(target)
+    result["readback"] = (_fresh == content)
+    if _fresh is None:
+        result["text"] = (
+            f"Wrote {target} ({result['bytes_written']} bytes)  "
+            "⚠ filen kunne IKKE læses tilbage fra disken — tjek den"
+        )
+    else:
+        result["line_count"] = _fresh.count("\n") + 1
+        _head = _disk_readback(target, start_line=0, span=0, mark=False)
+        _txt = (
+            f"Wrote {target} ({result['bytes_written']} bytes, "
+            f"{result['line_count']} lines)"
+        )
+        if not result["readback"]:
+            _txt += "  ⚠ readback afviger fra det skrevne — tjek filen"
+        result["text"] = f"{_txt}\n\nreadback fra disk (første linjer):\n{_head}"
     if redirected_from:
         result["redirected_from"] = redirected_from
         result["note"] = f"Path redirected to canonical workspace location: {target}"
@@ -250,6 +330,11 @@ def _exec_edit_file(args: dict[str, Any]) -> dict[str, Any]:
             }
 
     replacements = count if replace_all else 1
+    # Hvor i filen lander ændringen? Alt FØR matchet er uændret, så
+    # linjenummeret er det samme før og efter skrivningen — derfor kan
+    # read-back'en nedenfor ramme vinduet uden at søge i den nye tekst
+    # (og dermed også vise en SLETNING, hvor new_text er tom).
+    _start_line = content[: content.find(old_text)].count("\n")
     new_content = content.replace(old_text, new_text, -1 if replace_all else 1)
     # DURABEL TILSTAND (Fase 3, K3) — samme grund som i skrivningen ovenfor.
     # En edit er endda vaerre at miste: den er en DELVIS aendring, saa «skete
@@ -265,6 +350,34 @@ def _exec_edit_file(args: dict[str, Any]) -> dict[str, Any]:
     except Exception:
         pass
     result = {"status": "ok", "path": str(target), "replacements": replacements}
+    # ── Read-back fra disken (se read-back-blokken i toppen af filen) ──────
+    # En edit er en DELVIS ændring — «skete den?» kan ikke besvares ved at se
+    # om filen findes. Derfor: læs filen tilbage og vis udsnittet omkring
+    # ændringen, nummereret, så diff'en kan læses direkte i resultatet.
+    _fresh = _safe_readback(target)
+    if _fresh is None:
+        # Filen kunne ikke læses tilbage EFTER en edit — den fandtes før.
+        # Det er ikke tavshed, det er det stærkeste faresignal vi kan give.
+        result["readback"] = False
+        result["text"] = (
+            f"Edited {target} ({replacements} "
+            f"replacement{'s' if replacements != 1 else ''})  "
+            "⚠ filen kunne IKKE læses tilbage fra disken — tjek den"
+        )
+    else:
+        _ok = (new_text in _fresh) if new_text else (old_text not in _fresh)
+        result["readback"] = _ok
+        _block = _disk_readback(
+            target, start_line=_start_line, span=new_text.count("\n"),
+        )
+        if _block:
+            _txt = (
+                f"Edited {target} ({replacements} "
+                f"replacement{'s' if replacements != 1 else ''})"
+            )
+            if not _ok:
+                _txt += "  ⚠ ændringen står IKKE i readback'en — tjek filen"
+            result["text"] = f"{_txt}\n\nreadback fra disk:\n{_block}"
     if redirected_from:
         result["redirected_from"] = redirected_from
         result["note"] = f"Path redirected to canonical workspace location: {target}"

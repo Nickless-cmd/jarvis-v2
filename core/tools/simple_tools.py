@@ -1979,6 +1979,16 @@ def _verify_hint_for(tool: str, result: dict[str, Any]) -> str | None:
         return None
     path = str(result.get("path") or "")
     if tool in ("write_file", "edit_file", "publish_file", "stage_edit_file"):
+        # 10. sep 2026: write_file/edit_file bærer nu deres EGEN read-back fra
+        # disken (core/tools/file_tools_exec._disk_readback). Hintet må ikke
+        # længere sende Jarvis ud i et ekstra læs for at se noget han allerede
+        # har fået — det var samme «forbundet, men blind»-klasse: et hint der
+        # pegede væk fra beviset.
+        if result.get("readback"):
+            return (
+                "💡 Readback'en ovenfor er læst fra disken EFTER skrivningen — "
+                "er den ikke som du regnede med, så ret den nu."
+            )
         if path:
             return (
                 f"💡 Verify-hint: kør verify_file_contains(path='{path}', ...) "

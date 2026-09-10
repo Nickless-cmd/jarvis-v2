@@ -81,3 +81,36 @@ class TestOprindelse:
     ])
     def test_oprindelse_udledes(self, sid: str, ventet: str) -> None:
         assert vro._origin_of_session(sid) == ventet
+
+
+def test_persisted_outcome_passes_real_session_to_cognitive_updates(monkeypatch):
+    class _Connection:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def execute(self, *_args, **_kwargs):
+            return self
+
+        def commit(self):
+            return None
+
+    captured: dict[str, object] = {}
+    run = _Run(session_id="chat-session-real")
+    run.lane = "visible"
+    monkeypatch.setattr(vro, "connect", lambda: _Connection())
+    monkeypatch.setattr(vro, "write_private_terminal_layers", lambda **_kwargs: None)
+    monkeypatch.setattr(vro._vr, "get_visible_run_controller", lambda _run_id: None)
+    monkeypatch.setattr(vro._vr, "_get_visible_run_control", lambda _run_id: {})
+    monkeypatch.setattr(vro._vr, "_update_cognitive_systems_async", lambda **values: captured.update(values))
+
+    vro._persist_visible_run_outcome(
+        run,
+        status="completed",
+        finished_at="2026-09-10T10:00:00+00:00",
+        text_preview="Completed response",
+    )
+
+    assert captured["session_id"] == "chat-session-real"

@@ -87,3 +87,26 @@ def test_prompt_prioritizes_verified_and_labels_reported_facts(truth_db):
     assert section.index("[observed]") < section.index("[reported]")
     assert "[reported] A conversation claimed the harness is private." in section
 
+
+@pytest.mark.parametrize("status", ["observed", "verified"])
+def test_conversation_evidence_cannot_assert_observed_or_verified(truth_db, status):
+    with pytest.raises(ValueError, match="conversation-derived"):
+        record_world_fact(
+            canonical_key=f"conversation:forged:{status}",
+            statement="The conversation says this is established truth.",
+            status=status,
+            confidence="high",
+            source_kind="conversation_report",
+            source_ref="session:abc",
+        )
+
+
+def test_verified_fact_requires_concrete_source_provenance(truth_db):
+    with pytest.raises(ValueError, match="source_ref"):
+        record_world_fact(
+            canonical_key="fact:missing-provenance",
+            statement="The repository is public.",
+            status="verified",
+            confidence="high",
+            source_kind="primary_source",
+        )

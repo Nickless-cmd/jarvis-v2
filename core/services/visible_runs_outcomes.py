@@ -625,6 +625,8 @@ def _persist_visible_run_outcome(
     # --- Cognitive Architecture: fire-and-forget post-run updates ---
     _vr._update_cognitive_systems_async(
         run_id=run.run_id,
+        session_id=run.session_id,
+        model=run.model,
         user_message=user_message_preview or "",
         assistant_response=work_preview or "",
         outcome_status=status,

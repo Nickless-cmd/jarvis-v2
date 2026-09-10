@@ -26,18 +26,19 @@ def test_heartbeat_self_knowledge_renders_grounded_foreground_entry(monkeypatch)
     assert "source=runtime_self_model" in section
 
 
-def test_prompt_support_world_model_signal_is_subordinate(monkeypatch):
+def test_prompt_support_world_fact_is_evidence_labeled(monkeypatch):
     from core.services import prompt_support_signals as signals
 
     monkeypatch.setattr(
         signals,
-        "list_runtime_world_model_signals",
+        "list_world_facts",
         lambda limit=8: [
             {
-                "status": "active",
+                "status": "verified",
                 "confidence": "high",
-                "title": "Prediction calibration",
-                "signal_type": "workspace-scope-assumption",
+                "statement": "The public repository is reachable.",
+                "source_kind": "primary_source",
+                "source_ref": "https://example.test/repo",
             }
         ],
     )
@@ -45,9 +46,9 @@ def test_prompt_support_world_model_signal_is_subordinate(monkeypatch):
     section = signals._world_model_support_signal_instruction()
 
     assert section is not None
-    assert "World-model support signal:" in section
-    assert "dominant_world_thread=Prediction calibration" in section
-    assert "Use only as subordinate support" in section
+    assert "Verified/observed world facts:" in section
+    assert "[verified] The public repository is reachable." in section
+    assert "source=primary_source" in section
 
 
 def test_continuity_wake_block_reports_capsule_without_performing_identity():

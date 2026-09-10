@@ -86,3 +86,37 @@ def test_heartbeat_contract_writes_honours_the_same_kill_switch():
     # Selfhood-forslag (blok D) og auto-apply maa IKKE vaere slukket.
     guard_end = block.index("selfhood_proposals = ")
     assert "auto_apply_safe_user_md_candidates()" in block[guard_end:]
+
+
+def test_async_cognitive_update_preserves_session_for_cadence(monkeypatch):
+    import threading
+
+    from core.services import visible_runs
+
+    captured: dict[str, object] = {}
+
+    class _InlineThread:
+        def __init__(self, *, target, **_kwargs):
+            self._target = target
+
+        def start(self):
+            self._target()
+
+    monkeypatch.setattr(threading, "Thread", _InlineThread)
+    monkeypatch.setattr(
+        visible_runs,
+        "_run_visible_cadence_updates",
+        lambda **values: captured.update(values),
+        raising=False,
+    )
+
+    visible_runs._update_cognitive_systems_async(
+        run_id="run-1",
+        session_id="session-real",
+        model="visible-model",
+        user_message="Inspect the model runtime",
+        assistant_response="Inspected.",
+        outcome_status="completed",
+    )
+
+    assert captured["session_id"] == "session-real"

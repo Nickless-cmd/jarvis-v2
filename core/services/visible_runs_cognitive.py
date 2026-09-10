@@ -22,6 +22,39 @@ import core.services.visible_runs as _vr
 logger = logging.getLogger(__name__)
 
 
+def _run_visible_cadence_updates(
+    *,
+    run_id: str,
+    session_id: str | None,
+    user_message: str,
+    assistant_response: str,
+    outcome_status: str,
+    user_mood: str,
+) -> None:
+    """Run post-turn cadence producers without letting them block finalization."""
+    try:
+        from core.services.cadence_producers import (
+            detect_decision_in_message,
+            produce_signals_from_run,
+        )
+
+        produce_signals_from_run(
+            run_id=run_id,
+            session_id=session_id,
+            user_message=user_message,
+            assistant_response=assistant_response,
+            outcome_status=outcome_status,
+            user_mood=user_mood,
+        )
+        detect_decision_in_message(
+            user_message=user_message,
+            assistant_response=assistant_response,
+            run_id=run_id,
+        )
+    except Exception:
+        pass
+
+
 def _legacy_regex_detectors_enabled() -> bool:
     """Er de gamle ordmønster-detektorer stadig tændt? (default: nej)
 

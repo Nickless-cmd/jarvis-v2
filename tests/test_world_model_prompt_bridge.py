@@ -39,27 +39,17 @@ def _entity_name() -> str:
     return get_entity_name()
 
 
-def _insert_world_model_signal(db, *, status: str = "active") -> None:
-    now = datetime.now(UTC).isoformat()
-    db.upsert_runtime_world_model_signal(
-        signal_id=f"worldmodel-{uuid4().hex}",
-        signal_type="workspace-scope-assumption",
-        canonical_key="world-model:workspace-scope:jarvis-v2",
+def _insert_world_fact(db, *, status: str = "verified") -> None:
+    del db
+    from core.services.world_facts import record_world_fact
+
+    record_world_fact(
+        canonical_key="world-fact:workspace-scope:jarvis-v2",
+        statement="The active workspace scope is jarvis-v2.",
         status=status,
-        title="Current workspace scope: jarvis-v2",
-        summary="Jarvis is carrying a bounded assumption that the active workspace scope is jarvis-v2.",
-        rationale="Validation world-model support.",
-        source_kind="user-explicit",
         confidence="high",
-        evidence_summary="Validation evidence should stay out of the helper block.",
-        support_summary="Validation support should stay out of the helper block.",
-        support_count=1,
-        session_count=1,
-        created_at=now,
-        updated_at=now,
-        status_reason="Validation active world-model signal.",
-        run_id="validation-run",
-        session_id="validation-session",
+        source_kind="primary_source",
+        source_ref="workspace:/media/projects/jarvis-v2",
     )
 
 
@@ -150,42 +140,36 @@ def _insert_self_model(db) -> None:
     )
 
 
-def test_visible_input_omits_world_model_support_block_when_no_relevant_signals_exist(
+def test_visible_input_omits_world_fact_support_block_when_no_relevant_facts_exist(
     isolated_runtime,
 ) -> None:
     system_text = _system_text_from_visible_input(isolated_runtime.visible_model)
 
-    assert "World-model support signal:" not in system_text
+    assert "Verified/observed world facts:" not in system_text
 
 
-def test_visible_input_includes_small_subordinate_world_model_support_block(
+def test_visible_input_includes_evidence_labeled_world_fact_support_block(
     isolated_runtime,
 ) -> None:
-    _insert_world_model_signal(isolated_runtime.db)
+    _insert_world_fact(isolated_runtime.db)
 
     system_text = _system_text_from_visible_input(isolated_runtime.visible_model)
 
-    assert "World-model support signal:" in system_text
-    assert "dominant_world_thread=Current workspace scope: jarvis-v2" in system_text
-    assert "world_state=active" in system_text
-    assert "world_direction=workspace-scope" in system_text
-    assert "world_confidence=high" in system_text
-    assert (
-        "Use only as subordinate support. Runtime and visible truth outrank it."
-        in system_text
-    )
+    assert "Verified/observed world facts:" in system_text
+    assert "[verified] The active workspace scope is jarvis-v2." in system_text
+    assert "source=primary_source" in system_text
 
 
-def test_visible_input_world_model_support_block_stays_bounded(
+def test_visible_input_world_fact_support_block_stays_bounded(
     isolated_runtime,
 ) -> None:
-    _insert_world_model_signal(isolated_runtime.db)
+    _insert_world_fact(isolated_runtime.db)
 
     system_text = _system_text_from_visible_input(isolated_runtime.visible_model)
     world_block = next(
         part
         for part in system_text.split("\n\n")
-        if part.startswith("World-model support signal:")
+        if part.startswith("Verified/observed world facts:")
     )
 
     assert "evidence_summary" not in world_block
@@ -296,7 +280,7 @@ def test_visible_support_blocks_remain_small_subordinate_helper_sections(
 ) -> None:
     _insert_self_model(isolated_runtime.db)
     _insert_reflection_signal(isolated_runtime.db)
-    _insert_world_model_signal(isolated_runtime.db)
+    _insert_world_fact(isolated_runtime.db)
     _insert_goal_signal(isolated_runtime.db)
     _insert_runtime_awareness_signal(isolated_runtime.db)
 
@@ -318,7 +302,7 @@ def test_visible_support_blocks_remain_small_subordinate_helper_sections(
             (
                 "Self-model support signal:",
                 "Reflection support signal:",
-                "World-model support signal:",
+                "Verified/observed world facts:",
                 "Goal support signal:",
                 "Runtime-awareness support signal:",
             )
@@ -326,15 +310,18 @@ def test_visible_support_blocks_remain_small_subordinate_helper_sections(
     ]
 
     assert len(support_blocks) == 5
-    assert (
-        sum(
-            block.count(
-                "Use only as subordinate support. Runtime and visible truth outrank it."
-            )
-            for block in support_blocks
+    assert sum(
+        block.count(
+            "Use only as subordinate support. Runtime and visible truth outrank it."
         )
-        >= 5
+        for block in support_blocks
+    ) >= 4
+    world_fact_block = next(
+        block
+        for block in support_blocks
+        if block.startswith("Verified/observed world facts:")
     )
+    assert "[verified]" in world_fact_block
     for block in support_blocks:
         assert "recent_history" not in block
         assert "evidence_summary" not in block
@@ -713,7 +700,7 @@ def test_forbeholdet_overlever_budget_beskaeringen(isolated_runtime) -> None:
     """
     _insert_self_model(isolated_runtime.db)
     _insert_reflection_signal(isolated_runtime.db)
-    _insert_world_model_signal(isolated_runtime.db)
+    _insert_world_fact(isolated_runtime.db)
     _insert_goal_signal(isolated_runtime.db)
     _insert_runtime_awareness_signal(isolated_runtime.db)
 

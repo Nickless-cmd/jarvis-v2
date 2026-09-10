@@ -6938,6 +6938,8 @@ def set_last_visible_capability_use(
 def _update_cognitive_systems_async(
     *,
     run_id: str,
+    session_id: str | None,
+    model: str,
     user_message: str,
     assistant_response: str,
     outcome_status: str,
@@ -7094,7 +7096,7 @@ def _update_cognitive_systems_async(
         try:
             from core.services.self_surprise_detection import detect_self_surprise
             detect_self_surprise(
-                model=run.model,
+                model=model,
                 actual_outcome=outcome_status,
                 domain=user_message[:30],
                 run_id=run_id,
@@ -7139,26 +7141,14 @@ def _update_cognitive_systems_async(
             pass
 
         # --- HJERTESLAG: Cadence producers (vække døde signaler) ---
-        try:
-            from core.services.cadence_producers import (
-                produce_signals_from_run,
-                detect_decision_in_message,
-            )
-            produce_signals_from_run(
-                run_id=run_id,
-                session_id=None,  # session_id not in scope here
-                user_message=user_message,
-                assistant_response=assistant_response,
-                outcome_status=outcome_status,
-                user_mood=detected_mood,
-            )
-            detect_decision_in_message(
-                user_message=user_message,
-                assistant_response=assistant_response,
-                run_id=run_id,
-            )
-        except Exception:
-            pass
+        _run_visible_cadence_updates(
+            run_id=run_id,
+            session_id=session_id,
+            user_message=user_message,
+            assistant_response=assistant_response,
+            outcome_status=outcome_status,
+            user_mood=detected_mood,
+        )
 
         # --- Counterfactual auto-generation (bredere triggers) ---
         try:
@@ -7335,6 +7325,7 @@ from core.services.visible_runs_approvals import (  # noqa: E402
     resolve_pending_approval,
 )
 from core.services.visible_runs_cognitive import (  # noqa: E402
+    _run_visible_cadence_updates,
     _track_runtime_candidates,
     _track_step_failed,
 )

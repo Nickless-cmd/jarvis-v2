@@ -2,6 +2,17 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/cheap_provider_runtime_streaming.py`
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_facade` | `()` | — | [src](../../../core/services/cheap_provider_runtime_streaming.py#L24) |
+| function | `_iter_openai_compatible_chat_events` | `(*, provider, model, auth_profile, base_url, messages, tools=…, temperature=…, top_p=…, extra_body=…)` | Stream OpenAI-compatible /chat/completions deltas via SSE. | [src](../../../core/services/cheap_provider_runtime_streaming.py#L33) |
+| function | `_list_openai_codex_models` | `()` | Static model list for OpenAI Codex (ChatGPT Plus OAuth). | [src](../../../core/services/cheap_provider_runtime_streaming.py#L339) |
+| function | `_execute_openai_codex_chat` | `(*, model, auth_profile, base_url, message)` | Execute a chat call via OpenAI's Codex Responses API. | [src](../../../core/services/cheap_provider_runtime_streaming.py#L351) |
+| function | `_convert_tools_to_responses_format` | `(tools)` | Convert Chat-Completions tool defs to Responses API format. | [src](../../../core/services/cheap_provider_runtime_streaming.py#L504) |
+| function | `_iter_openai_codex_chat_events` | `(*, model, auth_profile, base_url, message, tools=…, input_items=…)` | Stream raw SSE events from the OpenAI Codex Responses API. | [src](../../../core/services/cheap_provider_runtime_streaming.py#L536) |
+
 ## `core/services/child_authority.py`
 _Et barn maa ikke laane foraeldrens autoritet — Fase 5._
 
@@ -711,19 +722,4 @@ _Connector-registret — hvad brugeren har forbundet, og hvad det laaser op._
 | function | `list_for_user` | `(user_id)` | Hele kataloget beriget med per-bruger `connected` + `enabled`. | [src](../../../core/services/connectors.py#L260) |
 | function | `_audit` | `(event, user_id, connector_id)` | — | [src](../../../core/services/connectors.py#L283) |
 | function | `delete_for_user` | `(user_id, connector_id)` | Afbryd & slet: revoke hos provider (best-effort) + lokal token-wipe + ryd flag. | [src](../../../core/services/connectors.py#L291) |
-
-## `core/services/consent_registry.py`
-_Consent Registry — user preferences and boundaries that persist across sessions._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_persist_file` | `()` | — | [src](../../../core/services/consent_registry.py#L26) |
-| function | `_ensure_loaded` | `()` | — | [src](../../../core/services/consent_registry.py#L33) |
-| function | `_load` | `()` | — | [src](../../../core/services/consent_registry.py#L44) |
-| function | `_save` | `()` | — | [src](../../../core/services/consent_registry.py#L55) |
-| function | `register_consent` | `(*, kind, statement, source_session_id=…, confidence=…)` | Register a user preference or boundary. | [src](../../../core/services/consent_registry.py#L67) |
-| function | `revoke_consent` | `(consent_id)` | Mark a consent entry as inactive. | [src](../../../core/services/consent_registry.py#L101) |
-| function | `get_active_consents` | `()` | — | [src](../../../core/services/consent_registry.py#L112) |
-| function | `build_consent_prompt_section` | `()` | Return a prompt section with active consent entries, or None if empty. | [src](../../../core/services/consent_registry.py#L117) |
-| function | `build_consent_registry_surface` | `()` | — | [src](../../../core/services/consent_registry.py#L143) |
 

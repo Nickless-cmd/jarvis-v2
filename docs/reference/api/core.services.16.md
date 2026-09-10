@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/modulator_witness.py`
+_Witness surface for hidden behavior modulators._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_item` | `(*, name, active, current_effect, evidence, confidence, allowed_effects, source)` | — | [src](../../../core/services/modulator_witness.py#L12) |
+| function | `_safe_call` | `(fn, default)` | — | [src](../../../core/services/modulator_witness.py#L33) |
+| function | `build_modulator_witness_surface` | `(*, workspace_id=…)` | Return active hidden modulators and the effects they are allowed to have. | [src](../../../core/services/modulator_witness.py#L40) |
+
 ## `core/services/monitor_streams.py`
 _Pinned monitors — Jarvis' equivalent of Claude Code's Monitor tool._
 
@@ -632,15 +641,4 @@ _Paradoxes Capture — fanger modsætninger i egne handlinger._
 | function | `maybe_capture_weekly_paradox` | `(*, lookback_days=…)` | Max 1 paradox per 7 days, only if signature is new. | [src](../../../core/services/paradoxes_capture.py#L187) |
 | function | `list_paradoxes` | `(*, limit=…)` | — | [src](../../../core/services/paradoxes_capture.py#L246) |
 | function | `build_paradoxes_surface` | `()` | — | [src](../../../core/services/paradoxes_capture.py#L269) |
-
-## `core/services/parallel_selves.py`
-_Parallel Selves — internal sub-selves._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `get_active_self` | `()` | — | [src](../../../core/services/parallel_selves.py#L15) |
-| function | `set_active_self` | `(self_type)` | — | [src](../../../core/services/parallel_selves.py#L18) |
-| function | `describe_self_plural` | `()` | — | [src](../../../core/services/parallel_selves.py#L23) |
-| function | `format_self_for_prompt` | `()` | — | [src](../../../core/services/parallel_selves.py#L26) |
-| function | `build_parallel_selves_surface` | `()` | — | [src](../../../core/services/parallel_selves.py#L29) |
 

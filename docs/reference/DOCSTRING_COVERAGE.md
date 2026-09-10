@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7250/14265 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7253/14270 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 7250/14265 functions/methods documented (50%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 610 | 1130 | 53% |
-| `core.services` | 4818 | 9832 | 49% |
+| `core.services` | 4821 | 9837 | 49% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 108 | 184 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1357,8 +1357,8 @@ Generated from source. 7250/14265 functions/methods documented (50%). The list b
 - `core/services/prompt_contract.py` :: `build_runtime_memory_selection_surface` (L99)
 - `core/services/prompt_contract.py` :: `build_runtime_relevance_decision_surface` (L126)
 - `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4808)
-- `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_from_inputs` (L179)
-- `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_runtime_surface` (L424)
+- `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_from_inputs` (L224)
+- `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_runtime_surface` (L469)
 - `core/services/prompt_mutation_loop.py` :: `build_prompt_mutation_loop_prompt_section` (L528)
 - `core/services/prompt_mutation_loop.py` :: `build_prompt_mutation_loop_surface` (L476)
 - `core/services/prompt_mutation_loop.py` :: `get_mutation` (L457)

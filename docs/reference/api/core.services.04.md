@@ -2,6 +2,19 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/central_body_map_pulse.py`
+_PULSE — kroppens eget kort som en SANS (LivingNeuron-council, 4. jul)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_kv_get` | `(key, default)` | — | [src](../../../core/services/central_body_map_pulse.py#L23) |
+| function | `_kv_set` | `(key, value)` | — | [src](../../../core/services/central_body_map_pulse.py#L32) |
+| function | `sense_body_map` | `()` | Læs strukturen → skalarer + delta mod sidste durable snapshot. Self-safe. | [src](../../../core/services/central_body_map_pulse.py#L40) |
+| function | `run_body_map_pulse_tick` | `(*, trigger=…, **_)` | Cadence: sans strukturen, emit egress-fri nerver, gem snapshot til næste delta. Self-safe. | [src](../../../core/services/central_body_map_pulse.py#L76) |
+| function | `describe_body_map` | `()` | Føl-linje til describe_self (NED): mærk strukturen NÅR den har flyttet sig. Additivt + | [src](../../../core/services/central_body_map_pulse.py#L99) |
+| function | `register_body_map_pulse_producer` | `()` | Cadence-producer ~hver 6. time — kroppens langsomme proprioception. Egress-frit. | [src](../../../core/services/central_body_map_pulse.py#L116) |
+| function | `build_body_map_surface` | `()` | Mission Control — read-only: kroppens sansede struktur. | [src](../../../core/services/central_body_map_pulse.py#L128) |
+
 ## `core/services/central_body_mood_feel.py`
 _core/services/central_body_mood_feel.py_
 
@@ -560,13 +573,4 @@ _Deklarative injektions-enheds-definitioner (adskilt fra mekanismen)._
 | function | `_compose_cognitive_state` | `()` | — | [src](../../../core/services/central_injection_units.py#L21) |
 | function | `_compose_tone_guidance` | `()` | Centralens sproglige stil-hint (rådets #5): én kort linje der kan injiceres | [src](../../../core/services/central_injection_units.py#L31) |
 | function | `register_default_units` | `()` | — | [src](../../../core/services/central_injection_units.py#L44) |
-
-## `core/services/central_inner_life_ablation.py`
-_Inner-life-ablation-kontakt — måling #2 (Bjørn 4. jul)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `is_ablated` | `()` | True hvis den heavy inder-liv-cadence skal springes over lige nu. Self-safe → | [src](../../../core/services/central_inner_life_ablation.py#L22) |
-| function | `set_ablated` | `(on)` | Tænd/sluk ablationen (måle-vindue). Self-safe. | [src](../../../core/services/central_inner_life_ablation.py#L32) |
-| function | `build_ablation_surface` | `()` | Mission Control — read-only status. | [src](../../../core/services/central_inner_life_ablation.py#L41) |
 

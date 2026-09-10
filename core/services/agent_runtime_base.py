@@ -294,6 +294,29 @@ def _run_agent_tool_loop(
                 _tc_id = str(tc.get("id") or "")
                 tool_out = _execute_agent_tool_call(tc, agent_id=_aid)
                 total_tool_calls += 1
+                # BOGFOER KALDET. `agent_tool_calls`-tabellen fandtes, men
+                # `create_agent_tool_call` havde NUL kaldere — nul raekker paa
+                # 935 agent-koersler. Konsekvensen var ikke bare manglende
+                # observabilitet: Jarvis diagnosticerede en MODEL-fejl ud fra
+                # tallet («den kan ikke kalde vaerktoejer»), og tallet var nul
+                # for enhver model, altid. Et tomt lager laeses som en maaling.
+                #
+                # Fail-safe: bogfoeringen maa aldrig kunne vaelte barnets tur.
+                try:
+                    from core.runtime.db import create_agent_tool_call
+                    _fn = (tc.get("function") or {}) if isinstance(tc, dict) else {}
+                    create_agent_tool_call(
+                        tool_call_id=_tc_id or f"tc-{uuid4().hex}",
+                        run_id=str(agent.get("_run_id") or ""),
+                        agent_id=_aid,
+                        tool_name=str(_fn.get("name") or tc.get("name") or ""),
+                        arguments_json=str(_fn.get("arguments") or "{}")[:4000],
+                        result_preview=str(tool_out)[:400],
+                        status="ok",
+                    )
+                except Exception:
+                    logger.debug("kunne ikke bogfoere agent-vaerktoejskald",
+                                 exc_info=True)
                 messages.append({
                     "role": "tool",
                     "tool_call_id": _tc_id,

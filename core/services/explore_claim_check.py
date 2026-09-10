@@ -45,6 +45,28 @@ _STI_LINJE = re.compile(r"(?:^|[\s`(\[])(/?[\w./-]+\.[A-Za-z0-9_]{1,6}):(\d{1,6}
 # anden skraastreg.
 _STI = re.compile(r"(?:^|[\s`(\[])(/?(?:[\w.-]+/)+[\w.-]+\.[A-Za-z0-9_]{1,6})")
 
+# PROSA-FORMEN (Jarvis' fund, 10/9-2026). `_STI_LINJE` kraever `sti:linje`, men
+# en model skriver lige saa gerne «simple_tools_explore.py line 8: _MAKS = 3»
+# eller «linje 8 i core/x.py». Da fangede kun den bare-sti-regex den, saa KUN
+# filens eksistens blev efterproevet — og et OPDIGTET tal paa en aegte fil
+# passerede som «holder».
+#
+# Det er den farligste form, fordi den ser mest overbevisende ud: en rigtig
+# sti, et praecist linjenummer, og en vaerdi ingen har slaaet op.
+_STI_LINJE_PROSA = re.compile(
+    r"(?:^|[\s`(\[])(/?[\w./-]+\.[A-Za-z0-9_]{1,6})"      # stien
+    r"[\s`]*(?:,|-|—)?[\s`]*"                              # valgfri adskiller
+    r"(?:line|linje|l\.)[\s`]*(\d{1,6})"                   # «line 8» / «linje 8»
+    r"[\s`:*-]*(.{0,120})",                                # og hvad der paastaas
+    re.IGNORECASE,
+)
+# Den omvendte ordstilling: «linje 8 i core/x.py».
+_LINJE_I_STI = re.compile(
+    r"(?:line|linje|l\.)[\s`]*(\d{1,6})[\s`]*(?:i|in|of|af)[\s`]*"
+    r"(/?[\w./-]+\.[A-Za-z0-9_]{1,6})",
+    re.IGNORECASE,
+)
+
 # Endelser vi kan udtale os om. En sti til noget der ikke er en kildefil
 # (fx en URL-agtig streng) skal ikke give falske anklager.
 _KENDTE = frozenset({"py", "ts", "tsx", "js", "json", "md", "toml", "yaml", "yml",
@@ -109,8 +131,27 @@ def tjek_paastande(svar: str, *, rod: Path | None = None,
             except Exception:
                 return None
 
-        for m in _STI_LINJE.finditer(t):
-            sti, nr, indhold = m.group(1), int(m.group(2)), (m.group(3) or "").strip()
+        # Saml paastandene fra ALLE tre former foerst, saa behandlingen er ens.
+        # Foer saa loekken kun `sti:linje:indhold`, og en prosa-formuleret
+        # paastand fik derfor kun sin FIL efterproevet — aldrig sin vaerdi.
+        _paastande: list[tuple[str, int, str]] = [
+            (m.group(1), int(m.group(2)), (m.group(3) or "").strip())
+            for m in _STI_LINJE.finditer(t)
+        ]
+        _set: set[tuple[str, int]] = {(a, b) for a, b, _ in _paastande}
+        for m in _STI_LINJE_PROSA.finditer(t):
+            _n = (m.group(1), int(m.group(2)))
+            if _n not in _set:
+                _set.add(_n)
+                _paastande.append((m.group(1), int(m.group(2)),
+                                   (m.group(3) or "").strip()))
+        for m in _LINJE_I_STI.finditer(t):
+            _n = (m.group(2), int(m.group(1)))
+            if _n not in _set:
+                _set.add(_n)
+                _paastande.append((m.group(2), int(m.group(1)), ""))
+
+        for sti, nr, indhold in _paastande:
             if sti.rsplit(".", 1)[-1].lower() not in _KENDTE:
                 continue
             set_stier.add(sti)

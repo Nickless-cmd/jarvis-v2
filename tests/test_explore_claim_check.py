@@ -304,3 +304,58 @@ def test_explore_baerer_dommen_UD_til_kalderen():
     kilde = inspect.getsource(e._exec_explore)
     assert '"bevis":' in kilde
     assert "IKKE verificeret" in kilde
+
+
+# ── prosa-formen: et opdigtet tal paa en AEGTE fil ──────────────────────
+#
+# Jarvis' fund. `_STI_LINJE` kraever `sti:linje`, men en model skriver lige saa
+# gerne «simple_tools_explore.py line 8: _MAKS = 3». Da fangede kun den
+# bare-sti-regex den, saa KUN filens eksistens blev efterproevet — og et
+# OPDIGTET tal paa en aegte fil passerede som «holder».
+#
+# Det er den farligste form, fordi den ser mest overbevisende ud: rigtig sti,
+# praecist linjenummer, og en vaerdi ingen har slaaet op. Det var praecis det
+# han fik: agenten sagde 7 hvor der staar 3.
+
+def _rod_med(tmp_path, monkeypatch, indhold: str):
+    import core.services.explore_claim_check as c
+    monkeypatch.setattr(c, "_rod", lambda: tmp_path)
+    (tmp_path / "sub").mkdir(exist_ok=True)
+    (tmp_path / "sub" / "x.py").write_text(indhold)
+    return tmp_path
+
+
+def test_prosa_paastand_bliver_EFTERPROEVET(tmp_path, monkeypatch):
+    _rod_med(tmp_path, monkeypatch, "a = 1\nb = 2\n_MAKS = 3\n")
+    d = tjek_paastande("jeg saa sub/x.py line 3: _MAKS = 3")
+    assert d["kontrolleret"] >= 1
+    assert d["bevis"] == "verificeret", d
+
+
+def test_et_OPDIGTET_tal_paa_en_aegte_fil_fanges(tmp_path, monkeypatch):
+    """Praecis Jarvis' tilfaelde: agenten sagde 7, der staar 3."""
+    _rod_med(tmp_path, monkeypatch, "a = 1\nb = 2\n_MAKS = 3\n")
+    d = tjek_paastande("jeg saa sub/x.py line 3: _MAKS = 7")
+    assert d["holder"] is False, "et opdigtet indhold passerede"
+    assert d["bevis"] == "uenig"
+
+
+def test_forkert_linjenummer_fanges(tmp_path, monkeypatch):
+    _rod_med(tmp_path, monkeypatch, "a = 1\nb = 2\n_MAKS = 3\n")
+    d = tjek_paastande("se sub/x.py linje 1 — _MAKS = 3")
+    assert d["holder"] is False
+
+
+def test_den_omvendte_ordstilling_fanges_ogsaa(tmp_path, monkeypatch):
+    """«linje 8 i core/x.py» — dansk ordstilling, samme paastand."""
+    _rod_med(tmp_path, monkeypatch, "a = 1\n")
+    d = tjek_paastande("det staar paa linje 1 i sub/x.py")
+    assert d["kontrolleret"] >= 1
+
+
+def test_samme_paastand_i_to_former_taelles_ÉN_gang(tmp_path, monkeypatch):
+    """Ellers ville en rapport der gentager sig selv se bedre efterproevet ud
+    end den er — samme fejl som emne-tællingen paa world-model-grenen."""
+    _rod_med(tmp_path, monkeypatch, "a = 1\n")
+    d = tjek_paastande("sub/x.py:1 og ogsaa sub/x.py line 1 — samme sted")
+    assert d["kontrolleret"] == 1, d

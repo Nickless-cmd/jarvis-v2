@@ -74,7 +74,10 @@ _STI = re.compile(r"(?:^|[\s`(\[])(/?(?:[\w.-]+/)+[\w.-]+\.[A-Za-z0-9_]{1,6})")
 # sti, et praecist linjenummer, og en vaerdi ingen har slaaet op.
 _STI_LINJE_PROSA = re.compile(
     r"(?:^|[\s`(\[])(/?[\w./-]+\.[A-Za-z0-9_]{1,6})"      # stien
-    r"[\s`]*(?:,|-|—)?[\s`]*"                              # valgfri adskiller
+    # `[^\S\n]` = mellemrum MEN IKKE linjeskift. Foer matchede `\s` hen over
+    # linjer, saa en sti i «Summary» blev parret med en henvisning laengere
+    # nede — og agentens prosa derfra blev laest som citatet.
+    r"[^\S\n]*(?:,|-|—)?[^\S\n]*"                          # valgfri adskiller
     r"(?:line|linje|l\.)[\s`]*(\d{1,6})"                   # «line 8» / «linje 8»
     r"[\s`:*-]*(.{0,120})",                                # og hvad der paastaas
     re.IGNORECASE,
@@ -101,10 +104,52 @@ _LINJE_SO_STI = re.compile(
 # `linje` er med, og regexen er case-insensitiv; `x.md, Linje 4: tekst`
 # doemmes korrekt. Aarsagen er den MANGLENDE STI. Symptomet var rigtigt, og
 # det er det der taeller: uden hans maaling havde jeg ikke set formen.
+# ANKERET ER LOEST — henvisningen behoever ikke starte linjen. Den femte form
+# er «- Jarvis: linje 19: ...» og «**Etableringsdato:** Linje 8: ...»: der
+# staar altid et LABEL foran, saa `(?:^|\n)` matchede 0 af 5. Det er den mest
+# naturlige form for en fil-laesnings-rapport, og igen var det den model der
+# LAESER som skrev anderledes end den der gaetter.
 _BAR_LINJE = re.compile(
-    r"(?:^|\n)[\s*\-#>]*(?:line|linje|l\.)[\s`]*(\d{1,6})[\s`:*-]+(.{0,120})",
+    # Separatoren maa IKKE spise backticken: den er selve markoeren for at
+    # det foelgende er et citat. Foerste udgave havde `` i klassen, saa
+    # `linje 19: `Jarvis <...>`` kom ud som tekst med kun en AFSLUTTENDE
+    # backtick — og citatet blev usynligt.
+    r"(?:^|[\s*\-#>(\[])(?:line|linje|l\.)[\s]*(\d{1,6})[\s:*-]+(.{0,160})",
     re.IGNORECASE,
 )
+
+# HVAD ER ET CITAT, OG HVAD ER PROSA?
+#
+# Et loest anker alene giver en FALSK ANKLAGE. Agenten skrev «linje 64
+# bekraefter moensteret: `Co-Authored-By: Claude` markerer Claude-arbejde» —
+# og tog vi «resten af linjen», ville vi slaa hele saetningen op som citat,
+# inklusive agentens egen kommentar, og doemme et RIGTIGT svar `uenig`.
+#
+# Derfor: vi efterproever kun det der praesenteres SOM et citat — backticks
+# eller anfoerselstegn. Er der ingen, er paastanden en henvisning uden citat,
+# og saa er «filen findes» alt vi kan sige. Det er ikke en svaekkelse: det er
+# forskellen paa at efterproeve en paastand og at efterproeve en formulering.
+# (Jarvis' syvende koersel — han afviste selv det loese anker som svar.)
+_CITAT = re.compile(r"`([^`]{2,120})`|\"([^\"]{2,120})\"|«([^»]{2,120})»")
+
+
+def _citat_i(tekst: str) -> str:
+    """Citatet hvis der ER et — ellers hele teksten.
+
+    Reglen er ikke «kun citater»; den er ER DER ET CITAT, GAELDER KUN DET.
+    Foerste udgave krævede citationstegn og mistede dermed de aeldre former,
+    hvor modellen skriver indholdet nogent: «sub/x.md line 3: Etableret
+    2026-05-17». Dér ER teksten paastanden.
+
+    Men skriver den «linje 64 bekraefter moensteret: `X` markerer Y», er `X`
+    paastanden og resten kommentar. Tages hele saetningen, doemmes et RIGTIGT
+    svar `uenig` — en falsk anklage i stedet for et overset svar.
+    """
+    t = str(tekst or "").strip()
+    m = _CITAT.search(t)
+    if m:
+        return next((g for g in m.groups() if g), "").strip()
+    return t
 
 # Den omvendte ordstilling: «linje 8 i core/x.py».
 _LINJE_I_STI = re.compile(
@@ -192,7 +237,7 @@ def tjek_paastande(svar: str, *, rod: Path | None = None,
             if _n not in _set:
                 _set.add(_n)
                 _paastande.append((m.group(1), int(m.group(2)),
-                                   (m.group(3) or "").strip()))
+                                   _citat_i(m.group(3) or "")))
         for m in _LINJE_SO_STI.finditer(t):
             _n = (m.group(2), int(m.group(1)))
             if _n not in _set:
@@ -231,8 +276,9 @@ def tjek_paastande(svar: str, *, rod: Path | None = None,
             _n = (sti, int(m.group(1)))
             if _n not in _set:
                 _set.add(_n)
+                # KUN citatet — ikke resten af linjen. Se `_CITAT`.
                 _paastande.append((sti, int(m.group(1)),
-                                   (m.group(2) or "").strip()))
+                                   _citat_i(m.group(2) or "")))
 
         for sti, nr, indhold in _paastande:
             if sti.rsplit(".", 1)[-1].lower() not in _KENDTE:

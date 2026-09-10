@@ -522,3 +522,68 @@ def test_de_tre_aeldre_former_virker_STADIG(tmp_path, monkeypatch):
                   "`sub/x.md:3`: Etableret 2026-05-17",
                   "sub/x.md line 3: Etableret 2026-05-17"]:
         assert tjek_paastande(tekst)["bevis"] == "verificeret", tekst
+
+
+# ── femte form: «label: Linje N: `citat`» ───────────────────────────────
+#
+# Jarvis' syvende koersel. Agenten (claude-sonnet-5, fra den maalte pool)
+# svarede RIGTIGT hele vejen — 8/18/19/20/49/64, alle efterproevet mod filen —
+# og vaernet saa ÉT af ni citater. Dommen blev `kun-eksistens` paa et korrekt
+# svar.
+#
+# `_BAR_LINJE` kraevede at henvisningen startede linjen. Agentens form er
+# «- Jarvis: linje 19: ...» — der staar altid et LABEL foran, saa 0 af 5
+# matchede. Det er den mest naturlige form for en fil-laesnings-rapport, og
+# igen var det den model der LAESER som skrev anderledes end den der gaetter.
+#
+# OG DET LOESE ANKER ALENE ER FORKERT. Han maalte det: da bliver «linje 64
+# bekraefter moensteret: `Co-Authored-By: Claude` markerer Claude-arbejde» til
+# et citat af HELE saetningen — agentens egen kommentar inkluderet — og et
+# rigtigt svar doemmes `uenig`. En falsk anklage i stedet for et overset svar.
+#
+# Derfor efterproeves kun det der praesenteres SOM et citat.
+
+def _fil(tmp_path, monkeypatch, linjer):
+    import core.services.explore_claim_check as c
+    monkeypatch.setattr(c, "_rod", lambda: tmp_path)
+    (tmp_path / "sub").mkdir(exist_ok=True)
+    (tmp_path / "sub" / "x.md").write_text("\n".join(linjer) + "\n")
+
+
+def test_label_foran_henvisningen_fanges(tmp_path, monkeypatch):
+    _fil(tmp_path, monkeypatch, ["a", "b", "Jarvis <jarvis@srvlab.dk>"])
+    d = tjek_paastande("se sub/x.md\n- Jarvis: linje 3: `Jarvis <jarvis@srvlab.dk>`")
+    assert d["kontrolleret"] >= 1
+    assert d["bevis"] == "verificeret", d
+
+
+def test_agentens_PROSA_giver_ikke_en_falsk_anklage(tmp_path, monkeypatch):
+    """«linje 3 bekraefter moensteret: `X` markerer noget» — kun `X` er
+    citatet. Tages hele saetningen, doemmes et rigtigt svar `uenig`."""
+    _fil(tmp_path, monkeypatch, ["a", "b", "her staar Co-Authored-By: Claude"])
+    d = tjek_paastande(
+        "se sub/x.md\n- linje 3 bekraefter moensteret: `Co-Authored-By: Claude` "
+        "markerer Claude-arbejde")
+    assert d["fejl"] == [], f"prosa blev anklaget: {d['fejl']}"
+    assert d["bevis"] == "verificeret"
+
+
+def test_noegen_tekst_ER_paastanden(tmp_path, monkeypatch):
+    """Reglen er ikke «kun citater» — den er ER DER ET CITAT, GAELDER KUN DET.
+
+    Foerste udgave af dette fix kraevede citationstegn og mistede dermed de
+    aeldre former, hvor modellen skriver indholdet noegent. Dér ER teksten
+    paastanden, og den skal efterproeves."""
+    _fil(tmp_path, monkeypatch, ["a", "b", "2026-05-17 blev det etableret"])
+    d = tjek_paastande("se sub/x.md\n1. **Dato:** Linje 3: 2026-05-17")
+    assert int(d.get("indhold_bekraeftet") or 0) == 1
+    assert d["bevis"] == "verificeret"
+
+    forkert = tjek_paastande("se sub/x.md\n1. **Dato:** Linje 3: 2023-11-15")
+    assert forkert["bevis"] == "uenig", "noegen tekst blev ikke efterproevet"
+
+
+def test_et_FORKERT_citat_fanges_stadig(tmp_path, monkeypatch):
+    _fil(tmp_path, monkeypatch, ["a", "b", "Jarvis <jarvis@srvlab.dk>"])
+    d = tjek_paastande("se sub/x.md\n- Jarvis: linje 3: `Jarvis <jarvis@forkert.dk>`")
+    assert d["bevis"] == "uenig"

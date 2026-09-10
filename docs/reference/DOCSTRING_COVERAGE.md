@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7231/14219 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7235/14229 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -23,8 +23,8 @@ Generated from source. 7231/14219 functions/methods documented (50%). The list b
 | `core.identity` | 66 | 159 | 41% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 606 | 1113 | 54% |
-| `core.services` | 4803 | 9803 | 48% |
+| `core.runtime` | 606 | 1114 | 54% |
+| `core.services` | 4807 | 9812 | 48% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 108 | 184 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -554,12 +554,12 @@ Generated from source. 7231/14219 functions/methods documented (50%). The list b
 - `core/services/agent_runtime_spawn.py` :: `send_peer_message` (L888)
 - `core/services/agent_runtime_spawn.py` :: `spawn_agent_task` (L92)
 - `core/services/agent_runtime_spawn.py` :: `suspend_agent` (L1319)
-- `core/services/agent_runtime_surfaces.py` :: `build_agent_detail_surface` (L93)
+- `core/services/agent_runtime_surfaces.py` :: `build_agent_detail_surface` (L99)
 - `core/services/agent_runtime_surfaces.py` :: `build_agent_runtime_surface` (L30)
-- `core/services/agent_runtime_surfaces.py` :: `build_council_detail_surface` (L137)
-- `core/services/agent_runtime_surfaces.py` :: `build_council_surface` (L100)
+- `core/services/agent_runtime_surfaces.py` :: `build_council_detail_surface` (L143)
+- `core/services/agent_runtime_surfaces.py` :: `build_council_surface` (L106)
 - `core/services/agent_runtime_surfaces.py` :: `enrich_agent_surface` (L62)
-- `core/services/agent_runtime_surfaces.py` :: `enrich_council_surface` (L124)
+- `core/services/agent_runtime_surfaces.py` :: `enrich_council_surface` (L130)
 - `core/services/agent_self_evaluation.py` :: `stale_goals_section` (L305)
 - `core/services/agent_skill_distiller.py` :: `distill_all_known_roles` (L133)
 - `core/services/agent_skill_library.py` :: `list_skill_mutations` (L217)

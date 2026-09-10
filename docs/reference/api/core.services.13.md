@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/heartbeat_action_hints.py`
+_Hvornår er en indre-livs-handling det rigtige valg? Vink til heartbeat-beslutningen._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_parse_iso` | `(value)` | — | [src](../../../core/services/heartbeat_action_hints.py#L34) |
+| function | `chronicle_days_stale` | `()` | Døgn siden seneste kronik-post. ``None`` hvis ukendt. Self-safe. | [src](../../../core/services/heartbeat_action_hints.py#L45) |
+| function | `chronicle_hint` | `()` | Vink om at skrive kronik — kun når handlingen FAKTISK ville skrive noget. | [src](../../../core/services/heartbeat_action_hints.py#L61) |
+| function | `inner_life_hints` | `()` | Alle aktive vink for indre-livs-handlinger. Tom liste når intet er forfaldent. | [src](../../../core/services/heartbeat_action_hints.py#L86) |
+
 ## `core/services/heartbeat_phases.py`
 _Heartbeat phases — explicit Sense / Reflect / Act structure on top of existing tick._
 
@@ -662,11 +672,4 @@ _Maintenance / health cadence producers (split from internal_cadence.py)._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `register_maintenance_producers` | `(register_producer)` | Register the maintenance / health producers (unchanged order/timing). | [src](../../../core/services/internal_cadence_maintenance.py#L23) |
-
-## `core/services/internal_cadence_matrix.py`
-_Matrix-themed cadence producers (split from internal_cadence.py)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `register_matrix_producers` | `(register_producer)` | Register the Matrix-themed producers (unchanged order/timing). | [src](../../../core/services/internal_cadence_matrix.py#L18) |
 

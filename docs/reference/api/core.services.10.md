@@ -457,6 +457,21 @@ _Git-checkpoint pr. redigeringsrunde — en dårlig runde kan rulles tilbage sam
 | function | `rollback_last` | `(session_id)` | Gendan filerne fra seneste checkpoint. Popper stakken. | [src](../../../core/services/edit_checkpoint.py#L105) |
 | function | `clear` | `(session_id)` | — | [src](../../../core/services/edit_checkpoint.py#L127) |
 
+## `core/services/effective_policy.py`
+_Hvad GJALDT der faktisk for denne koersel — Fase 9._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_tool_scope` | `()` | — | [src](../../../core/services/effective_policy.py#L36) |
+| function | `_autonom` | `()` | — | [src](../../../core/services/effective_policy.py#L44) |
+| function | `_sandkasse` | `()` | (slaaet_til, kraevet_for_denne_koersel) — anmodet vs faktisk. | [src](../../../core/services/effective_policy.py#L52) |
+| function | `_tillid` | `()` | — | [src](../../../core/services/effective_policy.py#L70) |
+| function | `_ejer_godkendt` | `()` | — | [src](../../../core/services/effective_policy.py#L78) |
+| function | `snapshot` | `(**ekstra)` | Tag et oejebliksbillede af den politik der gaelder LIGE NU. | [src](../../../core/services/effective_policy.py#L86) |
+| function | `_maal` | `()` | — | [src](../../../core/services/effective_policy.py#L110) |
+| function | `_hash` | `(felter)` | sha256 over de politik-baerende felter — uden tidsstempler og id'er, | [src](../../../core/services/effective_policy.py#L129) |
+| function | `afviger` | `(a, b)` | Hvilke politik-felter er forskellige? Til at forklare et hash-skift. | [src](../../../core/services/effective_policy.py#L142) |
+
 ## `core/services/egress_guard.py`
 _SSRF-vaern for udgaaende hentninger — porteret fra jarvis-code._
 
@@ -658,17 +673,4 @@ _Emotion tagging — capture affective context at memory-creation time._
 | function | `_exec_capture_emotion_tag` | `(args)` | — | [src](../../../core/services/emotion_tagging.py#L69) |
 | function | `build_emotion_tagging_surface` | `()` | — | [src](../../../core/services/emotion_tagging.py#L90) |
 | function | `_emit_tagging_event` | `(tag, intensity)` | — | [src](../../../core/services/emotion_tagging.py#L99) |
-
-## `core/services/emotional_chords.py`
-_Emotional Chords — emergent qualities from signal combinations._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `ChordDef` | `` | A chord definition — two signals that produce an emergent quality. | [src](../../../core/services/emotional_chords.py#L50) |
-| class | `ActiveChord` | `` | A currently active emotional chord. | [src](../../../core/services/emotional_chords.py#L151) |
-| function | `compute_active_chords` | `()` | Detect active emotional chords from current pressure state. | [src](../../../core/services/emotional_chords.py#L165) |
-| function | `format_chord_for_prompt` | `(chord)` | Format a single chord for prompt injection. | [src](../../../core/services/emotional_chords.py#L226) |
-| function | `get_chord_lines` | `()` | Convenience: compute all active chords and format for prompt. | [src](../../../core/services/emotional_chords.py#L236) |
-| function | `_autonomy_enabled` | `()` | Check the generative autonomy killswitch. | [src](../../../core/services/emotional_chords.py#L254) |
-| function | `_map_pressures_to_families` | `(dominant_pressures)` | Map active pressure vectors to their likely signal families. | [src](../../../core/services/emotional_chords.py#L265) |
 

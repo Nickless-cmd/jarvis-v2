@@ -514,11 +514,11 @@ _Agent runtime — read surfaces (agent + council/swarm projections)._
 |---|---|---|---|---|
 | function | `build_agent_runtime_surface` | `(limit=…)` | — | [src](../../../core/services/agent_runtime_surfaces.py#L30) |
 | function | `enrich_agent_surface` | `(agent)` | — | [src](../../../core/services/agent_runtime_surfaces.py#L62) |
-| function | `build_agent_detail_surface` | `(agent_id)` | — | [src](../../../core/services/agent_runtime_surfaces.py#L93) |
-| function | `build_council_surface` | `(limit=…)` | — | [src](../../../core/services/agent_runtime_surfaces.py#L100) |
-| function | `enrich_council_surface` | `(session)` | — | [src](../../../core/services/agent_runtime_surfaces.py#L124) |
-| function | `build_council_detail_surface` | `(council_id)` | — | [src](../../../core/services/agent_runtime_surfaces.py#L137) |
-| function | `_progress_label` | `(*, agent, latest_run)` | — | [src](../../../core/services/agent_runtime_surfaces.py#L144) |
+| function | `build_agent_detail_surface` | `(agent_id)` | — | [src](../../../core/services/agent_runtime_surfaces.py#L99) |
+| function | `build_council_surface` | `(limit=…)` | — | [src](../../../core/services/agent_runtime_surfaces.py#L106) |
+| function | `enrich_council_surface` | `(session)` | — | [src](../../../core/services/agent_runtime_surfaces.py#L130) |
+| function | `build_council_detail_surface` | `(council_id)` | — | [src](../../../core/services/agent_runtime_surfaces.py#L143) |
+| function | `_progress_label` | `(*, agent, latest_run)` | — | [src](../../../core/services/agent_runtime_surfaces.py#L150) |
 
 ## `core/services/agent_self_evaluation.py`
 _Agent self-evaluation — track quality, adherence, goal progress (READ-ONLY)._

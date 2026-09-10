@@ -159,3 +159,46 @@ def test_UDFOEREREN_giver_barnet_halen_ikke_hovedet(isolated_runtime, monkeypatc
     assert "besked-44" in p, (
         "barnet fik de AELDSTE 40 og svarede paa forgangen kontekst")
     assert "besked-00" not in p
+
+
+# ── samme fejl, tre kaldesteder til (Jarvis' fund) ──────────────────────
+#
+# `tail=True` lukkede prompt-byggeren, men tre kaldere laeste stadig HOVEDET og
+# tog `[-1]` som om det var det nyeste. Ingen af dem bider i dag — maalt: den
+# travleste aegte agent har 12 beskeder, nul over 20, nul over 40 — men alle
+# tre fejler TAVST naar loftet bider.
+#
+# `_agent_thread_id` er UNDTAGET med vilje: den tager `messages[0]` med
+# `limit=1` for at finde traad-id'et, og traaden ejes af den FOERSTE besked.
+
+def test_forfremmelse_tager_det_NYESTE_resultat(isolated_runtime, monkeypatch):
+    """`promote_agent_result` filer barnets fund som memory-proposal. Tog den
+    hovedet, ville en lang traad forfremme et forgangent resultat ind i
+    hukommelsen — den ene kalder hvor fejlen ville saette sig fast."""
+    import core.runtime.db_agent_runtime as db
+    import core.services.agent_runtime_spawn as sp
+
+    aid = "a-forfrem"
+    db.create_agent_registry_entry(agent_id=aid, role="r", goal="g")
+    from uuid import uuid4
+    for i in range(25):
+        db.create_agent_message(
+            message_id=f"m-{uuid4().hex}", thread_id=f"agent-thread-{aid}",
+            agent_id=aid, direction="agent->runtime", role="assistant",
+            kind="result", content=f"resultat-{i:02d}",
+        )
+
+    set_indhold: list[str] = []
+    monkeypatch.setattr(
+        "core.services.autonomy_proposal_queue.file_proposal",
+        lambda **kw: set_indhold.append(" ".join(str(v) for v in kw.values()))
+        or {"proposal_id": "p1"},
+    )
+    try:
+        sp.promote_agent_result(aid)
+    except Exception:
+        pass                                  # forslags-koeen er ikke det vi maaler
+
+    assert set_indhold, "der blev aldrig filet et forslag — testen maalte intet"
+    assert "resultat-24" in set_indhold[0], (
+        "forfremmede et FORGANGENT resultat ind i hukommelsen")

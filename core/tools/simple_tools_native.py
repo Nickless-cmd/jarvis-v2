@@ -1977,8 +1977,17 @@ def _exec_send_message_to_agent(args: dict[str, Any]) -> dict[str, Any]:
     if not content:
         return {"status": "error", "error": "content is required"}
     try:
-        from core.services.agent_runtime import send_message_to_agent
-        result = send_message_to_agent(agent_id=agent_id, content=content, auto_execute=True)
+        # VENT KORT, KVITTÉR DEREFTER (fase 6). Foer koerte barnet INLINE og
+        # frøs turen indtil det var faerdigt. Maalt over 929 koersler: median
+        # 6,0 s, men p90 36,8 s og 68 koersler over et minut, den laengste 7.
+        # Halen er hvor det goer ondt — og en kvittering paa HVER besked ville
+        # vaere daarligere for det almindelige tilfaelde. Svarer barnet inden
+        # for taalmodigheden, faas svaret som foer; ellers en kvittering, og
+        # barnet arbejder videre i stedet for at blive kasseret.
+        from core.services.agent_message_receipt import send_med_kvittering
+        result = send_med_kvittering(agent_id=agent_id, content=content)
+        if str(result.get("status") or "") == "accepted":
+            return dict(result)               # kvitteringen bærer sin egen form
         messages = result.get("messages") or []
         last_reply = ""
         for msg in reversed(messages):

@@ -30,6 +30,7 @@ uden det net.
 from __future__ import annotations
 
 import logging
+import contextvars
 import threading
 from typing import Any
 
@@ -69,7 +70,26 @@ def start_round_in_background(council_id: str) -> bool:
                 pass
 
     try:
-        t = threading.Thread(target=_koer, name=f"council-{cid[:12]}",
+        # BAER FORAELDERENS KONTEKST MED. En almindelig traad mister ALLE
+        # ContextVars — maalt: autonomi, workspace-tillid og vaerktoejs-scope
+        # bliver `None` — og to af dem peger i den FARLIGE retning: tomt scope
+        # betyder «unbound legacy», altsaa ser alt, og tabt autonomi fjerner
+        # sandkasse-kravet for bash. Fase 5 besluttede udtrykkeligt at bevare
+        # de tre og kun rydde ejer-godkendelsen; det skal ogsaa gaelde naar
+        # barnet koerer i baggrunden.
+        #
+        # (Raadets egne medlemmer har i dag «none» eller read-only og har
+        # aldrig kaldt et vaerktoej, saa tabet har ikke gjort skade — men det
+        # holder kun saa laenge ingen giver dem vaerktoejer.)
+        kontekst = contextvars.copy_context()
+
+        def _koer_i_kontekst() -> None:
+            from core.services.child_authority import uden_foraeldrens_godkendelse
+            with uden_foraeldrens_godkendelse():
+                _koer()
+
+        t = threading.Thread(target=lambda: kontekst.run(_koer_i_kontekst),
+                             name=f"council-{cid[:12]}",
                              daemon=True)
         t.start()
         _STARTEDE.append(cid)

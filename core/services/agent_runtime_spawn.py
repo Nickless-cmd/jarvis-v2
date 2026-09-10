@@ -1381,7 +1381,10 @@ def promote_agent_result(agent_id: str, *, note: str = "") -> dict:
     agent = get_agent_registry_entry(agent_id)
     if agent is None:
         raise RuntimeError(f"unknown agent: {agent_id}")
-    messages = list_agent_messages(agent_id=agent_id, limit=20)
+    # `tail=True`: nedenfor tages `results[-1]` som barnets NYESTE fund, og
+    # det bliver filet som memory-proposal. Uden halen ville en lang traad
+    # forfremme et forgangent resultat ind i hukommelsen.
+    messages = list_agent_messages(agent_id=agent_id, limit=20, tail=True)
     results = [m for m in messages if m.get("kind") in {"result", "swarm-synthesis", "council-synthesis"}]
     if not results:
         raise RuntimeError("no result message found for this agent")

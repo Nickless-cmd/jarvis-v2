@@ -62,7 +62,11 @@ def build_agent_runtime_surface(limit: int = 100) -> dict[str, object]:
 def enrich_agent_surface(agent: dict[str, object]) -> dict[str, object]:
     agent_id = str(agent.get("agent_id") or "")
     runs = list_agent_runs(agent_id=agent_id, limit=20)
-    messages = list_agent_messages(agent_id=agent_id, limit=40)
+    # `tail=True`: «latest_message» tager `messages[-1]`, saa vinduet skal
+    # vaere det NYESTE. Uden det viste fladen den 40. AELDSTE besked som
+    # «seneste» saa snart traaden voksede forbi loftet. (Jarvis fandt de
+    # tre kaldesteder der stod tilbage efter prompt-byggeren blev rettet.)
+    messages = list_agent_messages(agent_id=agent_id, limit=40, tail=True)
     tool_calls = list_agent_tool_calls(agent_id=agent_id, limit=20)
     schedules = list_agent_schedules(agent_id=agent_id, limit=20)
     latest_run = runs[0] if runs else None
@@ -119,7 +123,7 @@ def build_council_surface(limit: int = 40) -> dict[str, object]:
 
 def enrich_council_surface(session: dict[str, object]) -> dict[str, object]:
     council_id = str(session.get("council_id") or "")
-    messages = list_agent_messages(council_id=council_id, limit=120)
+    messages = list_agent_messages(council_id=council_id, limit=120, tail=True)
     members = list_council_members(council_id=council_id)
     return {
         **session,

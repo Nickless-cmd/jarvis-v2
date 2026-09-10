@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 14216 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 14219 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -35,24 +35,24 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 14216 functions/
 - [`core.services.05`](core.services.05.md) — `central_inner_life_digest` … `central_router_adapt`
 - [`core.services.06`](core.services.06.md) — `central_router_explore` … `cheap_provider_runtime_streaming`
 - [`core.services.07`](core.services.07.md) — `child_authority` … `consent_registry`
-- [`core.services.08`](core.services.08.md) — `consolidation_judge_daemon` … `daemon_llm`
-- [`core.services.09`](core.services.09.md) — `daemon_manager` … `dispatch_envelope`
-- [`core.services.10`](core.services.10.md) — `dispatch_guards` … `emotional_controls`
-- [`core.services.11`](core.services.11.md) — `emotional_memory_engine` … `gate_adapters`
-- [`core.services.12`](core.services.12.md) — `gate_auth` … `heartbeat_phases`
-- [`core.services.13`](core.services.13.md) — `heartbeat_provider_fallback` … `internal_opposition_signal_tracking`
-- [`core.services.14`](core.services.14.md) — `interruption_notice` … `mcp_manager`
-- [`core.services.15`](core.services.15.md) — `mcp_registry` … `mood_oscillator`
-- [`core.services.16`](core.services.16.md) — `mood_regulator_subscriber` … `pattern_counterfactual_daemon`
-- [`core.services.17`](core.services.17.md) — `pdf_connector` … `projection_drift`
-- [`core.services.18`](core.services.18.md) — `projection_runtime` … `recurring_tasks`
-- [`core.services.19`](core.services.19.md) — `recursion_guard` … `runtime_hook_runtime`
-- [`core.services.20`](core.services.20.md) — `runtime_hooks` … `self_review_outcome_tracking`
-- [`core.services.21`](core.services.21.md) — `self_review_record_tracking` … `signal_noise_guard`
-- [`core.services.22`](core.services.22.md) — `signal_pressure_accumulator` … `taste_profile`
-- [`core.services.23`](core.services.23.md) — `telegram_gateway` … `totp_verifier`
-- [`core.services.24`](core.services.24.md) — `truth_gate_v2` … `visible_runs`
-- [`core.services.25`](core.services.25.md) — `visible_runs_approvals` … `world_model_signal_tracking`
+- [`core.services.08`](core.services.08.md) — `consolidation_judge_daemon` … `daemon_health`
+- [`core.services.09`](core.services.09.md) — `daemon_llm` … `discord_gateway`
+- [`core.services.10`](core.services.10.md) — `dispatch_envelope` … `emotional_chords`
+- [`core.services.11`](core.services.11.md) — `emotional_controls` … `forgetting_runtime`
+- [`core.services.12`](core.services.12.md) — `gate_adapters` … `heartbeat_action_hints`
+- [`core.services.13`](core.services.13.md) — `heartbeat_phases` … `internal_cadence_matrix`
+- [`core.services.14`](core.services.14.md) — `internal_opposition_signal_tracking` … `mcp_client`
+- [`core.services.15`](core.services.15.md) — `mcp_manager` … `mood_dialer`
+- [`core.services.16`](core.services.16.md) — `mood_oscillator` … `paste_store`
+- [`core.services.17`](core.services.17.md) — `pattern_counterfactual_daemon` … `projection_chat_messages`
+- [`core.services.18`](core.services.18.md) — `projection_drift` … `recurrence_loop_daemon`
+- [`core.services.19`](core.services.19.md) — `recurring_tasks` … `runtime_flows`
+- [`core.services.20`](core.services.20.md) — `runtime_hook_runtime` … `self_review_cadence_signal_tracking`
+- [`core.services.21`](core.services.21.md) — `self_review_outcome_tracking` … `signal_network_visualizer`
+- [`core.services.22`](core.services.22.md) — `signal_noise_guard` … `task_worker`
+- [`core.services.23`](core.services.23.md) — `taste_profile` … `tool_world_change`
+- [`core.services.24`](core.services.24.md) — `totp_verifier` … `visible_run_outcome_state`
+- [`core.services.25`](core.services.25.md) — `visible_runs` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

@@ -36,7 +36,15 @@ logger = logging.getLogger(__name__)
 
 # `sti:linje:indhold` — den form `search` selv returnerer, og dermed den form
 # agenten citerer i.
-_STI_LINJE = re.compile(r"(?:^|[\s`(\[])(/?[\w./-]+\.[A-Za-z0-9_]{1,6}):(\d{1,6})(?::(.*))?")
+# `[`'"\s]*` mellem linjenummer og indhold: markdown-formen `sti:12`: indhold
+# har en BACKTICK efter tallet, saa indholdet blev aldrig fanget — og
+# linje-tjekket aldrig kaldt. Kun filens eksistens blev efterproevet, og en
+# ren fabrikation kom tilbage som «verificeret».
+#
+# Det er den mest naturlige maade at citere paa, saa hullet var ikke en
+# sjaelden kant: det var normalvejen. (Jarvis, 10/9-2026, anden explore-test.)
+_STI_LINJE = re.compile(
+    r"(?:^|[\s`(\[])(/?[\w./-]+\.[A-Za-z0-9_]{1,6}):(\d{1,6})[`'\"\s]*(?::(.*))?")
 # Bare filstier med mappe i — et bart "config.py" er for tvetydigt til at dømme.
 # `/?` foran: ABSOLUTTE stier blev slet ikke matchet, saa en workstation-rapport
 # — der naturligt skriver `/home/bs/projekt/src/main.ts` — gav NUL kontrollerede
@@ -177,6 +185,8 @@ def tjek_paastande(svar: str, *, rod: Path | None = None,
                     passer = None
                 if passer is False:
                     fejl.append(f"{sti}:{nr}: linjen indeholder ikke {kerne!r}")
+                elif passer is True:
+                    ud["indhold_bekraeftet"] = int(ud.get("indhold_bekraeftet") or 0) + 1
                 continue
             try:
                 linjer = (r / sti if not Path(sti).is_absolute() else Path(sti)).read_text(
@@ -186,6 +196,7 @@ def tjek_paastande(svar: str, *, rod: Path | None = None,
             if nr < 1 or nr > len(linjer):
                 fejl.append(f"{sti}:{nr}: filen har kun {len(linjer)} linjer")
                 continue
+            ud["indhold_bekraeftet"] = int(ud.get("indhold_bekraeftet") or 0) + 1
             # Sammenlign på et NØGENT fragment: modellen omskriver ofte
             # whitespace og klipper linjen. Vi kræver at det den citerer,
             # findes i linjen — ikke at strengene er identiske.
@@ -217,12 +228,25 @@ def tjek_paastande(svar: str, *, rod: Path | None = None,
         # Det er PRAECIS den sammenblanding jeg selv navngav og rettede i fase
         # 11 for ledgeren, seks timer foer han fandt den her. Samme ordforraad
         # med vilje — huset maa ikke have to sprog for samme skelnen.
+        # EKSISTENS ER IKKE VERIFIKATION (Jarvis, anden explore-test).
+        #
+        # Foer taalte «filen findes» som en bekraeftet paastand, saa fire
+        # fabrikerede citater paa en AEGTE fil kom tilbage som
+        # «4 paastand(e) slaaet op og bekraeftet». Det er en falsk positiv, og
+        # den er vaerre end den falske negativ jeg lukkede samme formiddag:
+        # dén sagde «vi doemte intet», denne siger «vi verificerede alt» om
+        # ren opdigt.
+        #
+        # `verificeret` kraever nu at MINDST ÉN paastand er bekraeftet paa sit
+        # INDHOLD. Er kun filer slaaet op, hedder det hvad det er.
+        _sub = int(ud.get("indhold_bekraeftet") or 0)
         ud["bevis"] = ("uenig" if fejl
-                       else ("verificeret" if int(ud["kontrolleret"]) > 0
-                             else "intet-bevis"))
+                       else ("verificeret" if _sub > 0
+                             else ("kun-eksistens" if int(ud["kontrolleret"]) > 0
+                                   else "intet-bevis")))
     except Exception:
         logger.debug("claim-check væltede — dømmer ikke", exc_info=True)
         # Et vaeltet tjek har heller ikke verificeret noget.
-        return {"kontrolleret": 0, "fejl": [], "holder": True,
-                "bevis": "intet-bevis"}
+        return {"kontrolleret": 0, "indhold_bekraeftet": 0, "fejl": [],
+                "holder": True, "bevis": "intet-bevis"}
     return ud

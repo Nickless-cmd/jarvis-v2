@@ -237,7 +237,19 @@ def _exec_explore(args: dict[str, Any]) -> dict[str, Any]:
         dom = (tjek_paastande(svar, findes_fn=_bro_tjek, linje_fn=_bro_linje)
                if _bro_tjek else tjek_paastande(svar))
         kontrolleret = int(dom.get("kontrolleret") or 0)
-        if dom.get("holder"):
+        _substans = int(dom.get("indhold_bekraeftet") or 0)
+        # NUL VAERKTOEJSKALD KAN IKKE HAVE FUNDET NOGET.
+        #
+        # Agenten skal LAESE noget for at kunne svare. Udfoerte den ingen kald,
+        # er svaret gaettet — uanset hvor praecist det lyder. Det var praecis
+        # hvad der skete: fire opdigtede citater med linjenumre, fra en model
+        # der aldrig kaldte et vaerktoej.
+        #
+        # `_run_agent_tool_loop` taeller kaldene og lagger dem i resultatet.
+        # Vi kraever kun at der var MINDST ét — ikke at det var det rigtige.
+        _kald = int(result.get("tool_calls") or 0)
+        _tomhaendet = _kald == 0 and _substans == 0
+        if dom.get("holder") and not _tomhaendet:
             # `bevis` SKAL med ud. Uden det laeser en modtager
             # «paastande_kontrolleret: 0» som en detalje og `status: ok` som en
             # blaastempling — og en rapport hvor INTET blev efterproevet ser
@@ -252,6 +264,16 @@ def _exec_explore(args: dict[str, Any]) -> dict[str, Any]:
                         if kontrolleret == 0 else
                         f"{kontrolleret} paastand(e) slaaet op og bekraeftet.")}
         sidste_fejl = [str(x) for x in (dom.get("fejl") or [])]
+        if _tomhaendet and not sidste_fejl:
+            # Ingen paaviselig fejl — men heller intet belaeg. Rotér frem for
+            # at blaastemple. Foer returnerede vi paa runde 0, saa den
+            # mekanisme der skulle skifte modellen ud koerte ALDRIG: gaten
+            # blev sat ud af spil af netop den fejl den var bygget til at
+            # fange.
+            sidste_fejl = [
+                f"agenten udfoerte {_kald} vaerktoejskald og fik intet indhold "
+                "bekraeftet — svaret kan ikke hvile paa noget den har laest"
+            ]
     if svar:
         payload: dict[str, Any] = {"status": "ok", "findings": svar[:12000],
                                    "agent_id": agent_id, "breadth": bredde,

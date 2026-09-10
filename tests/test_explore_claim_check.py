@@ -283,7 +283,12 @@ def test_en_bekraeftet_paastand_er_verificeret(tmp_path, monkeypatch):
     # `_STI` kraever mindst ét «/» — et bart filnavn matcher aldrig.
     d = tjek_paastande("se sub/rigtig.py for detaljerne")
     assert d["kontrolleret"] >= 1
-    assert d["bevis"] == "verificeret"
+    # EKSISTENS ER IKKE VERIFIKATION. Denne test haevdede foer «verificeret»
+    # for en ren sti-paastand — altsaa den betydning der lod fire fabrikerede
+    # citater passere som «4 paastand(e) slaaet op og bekraeftet». Testen
+    # kodede fejlen; nu koder den skelnen.
+    assert d["bevis"] == "kun-eksistens"
+    assert int(d.get("indhold_bekraeftet") or 0) == 0
 
 
 def test_en_falsk_paastand_er_uenig(tmp_path, monkeypatch):
@@ -359,3 +364,74 @@ def test_samme_paastand_i_to_former_taelles_ÉN_gang(tmp_path, monkeypatch):
     _rod_med(tmp_path, monkeypatch, "a = 1\n")
     d = tjek_paastande("sub/x.py:1 og ogsaa sub/x.py line 1 — samme sted")
     assert d["kontrolleret"] == 1, d
+
+
+# ── den FALSKE POSITIV: fire opdigtede citater meldt «verificeret» ──────
+#
+# Jarvis' anden explore-test mod Bjoerns maskine. Agenten fabrikerede fire
+# paastande med linjenumre om en AEGTE fil — dato, to author-vaerdier og en
+# traileer der ikke findes — og porten svarede:
+#
+#     paastande_kontrolleret: 4
+#     bevis: "verificeret"
+#     bevis_note: "4 paastand(e) slaaet op og bekraeftet."
+#
+# Det er vaerre end den falske negativ jeg lukkede samme formiddag. Dén sagde
+# «vi doemte intet»; denne siger «vi verificerede alt» om ren opdigt.
+#
+# TO AARSAGER, og begge er lukket her:
+#   1. Markdown-formen `sti:12`: indhold — backticken aad indholdet, saa
+#      linje-tjekket blev ALDRIG kaldt. Det er den mest naturlige maade at
+#      citere paa, saa hullet var normalvejen, ikke en kant.
+#   2. «Filen findes» taalte som en bekraeftet paastand.
+
+def test_markdown_formen_kalder_linje_tjekket():
+    kaldt = {"n": 0}
+
+    def _linje(sti, nr, frag):
+        kaldt["n"] += 1
+        return False
+
+    d = tjek_paastande("se `docs/x.md:12`: Etableret 2023-11-15",
+                       findes_fn=lambda s: True, linje_fn=_linje)
+    assert kaldt["n"] == 1, (
+        "backticken aad indholdet — linje-tjekket blev aldrig kaldt")
+    assert d["bevis"] == "uenig"
+
+
+def test_fire_fabrikerede_citater_meldes_UENIG():
+    """Praecis hans tilfaelde, i den form agenten skrev det."""
+    tekst = ("`docs/git-attribution.md:12`: Etableret 2023-11-15\n"
+             "`docs/git-attribution.md:24`: Jarvis Core Team\n"
+             "`docs/git-attribution.md:25`: Claude Team\n"
+             "`docs/git-attribution.md:38`: Signed-off-by")
+    d = tjek_paastande(tekst, findes_fn=lambda s: True,
+                       linje_fn=lambda *a: False)
+    assert d["bevis"] == "uenig", d
+    assert d["holder"] is False
+    assert len(d["fejl"]) == 4
+
+
+def test_kun_eksistens_er_sin_EGEN_dom():
+    """Hverken «verificeret» eller «intet-bevis». Vi HAR slaaet noget op — vi
+    har bare ikke efterproevet hvad der staar i det."""
+    d = tjek_paastande("se a/b.py og c/d.py", findes_fn=lambda s: True)
+    assert d["bevis"] == "kun-eksistens"
+    assert d["kontrolleret"] == 2
+    assert int(d.get("indhold_bekraeftet") or 0) == 0
+
+
+def test_nul_vaerktoejskald_blaastemples_ikke():
+    """Agenten skal LAESE noget for at kunne svare. Udfoerte den ingen kald, er
+    svaret gaettet — uanset hvor praecist det lyder. Og foer returnerede
+    explore paa runde 0, saa den mekanisme der skulle skifte modellen ud koerte
+    ALDRIG: gaten blev sat ud af spil af netop den fejl den skulle fange."""
+    import inspect
+
+    from core.tools import simple_tools_explore as e
+
+    kilde = inspect.getsource(e._exec_explore)
+    assert "_tomhaendet" in kilde
+    assert 'result.get("tool_calls")' in kilde
+    assert "if dom.get(\"holder\") and not _tomhaendet:" in kilde, (
+        "et tomhaendet svar returneres stadig uden rotation")

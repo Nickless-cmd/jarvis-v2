@@ -34,9 +34,13 @@ def test_bogfoeringen_kan_ikke_vaelte_barnets_tur():
     from core.services import agent_runtime_base as b
 
     kilde = inspect.getsource(b._run_agent_tool_loop)
-    efter = kilde[kilde.index("create_agent_tool_call("):]
-    assert "except Exception" in efter[:900], (
-        "bogfoeringen er ikke fail-safe")
+    # Kommentarer strippes FOERST. Foerste udgave saa i et 900-tegns vindue,
+    # og de kommentarer jeg selv tilfoejede skubbede `except` ud af det —
+    # testen faldt over sin egen forklaring. (Tredje gang det moenster bider.)
+    kode = "\n".join(ln for ln in kilde.splitlines()
+                     if not ln.strip().startswith("#"))
+    efter = kode[kode.index("create_agent_tool_call("):]
+    assert "except Exception" in efter[:600], "bogfoeringen er ikke fail-safe"
 
 
 def test_felterne_matcher_skemaet():
@@ -48,8 +52,62 @@ def test_felterne_matcher_skemaet():
     navne = set(inspect.signature(create_agent_tool_call).parameters)
     from core.services import agent_runtime_base as b
     kilde = inspect.getsource(b._run_agent_tool_loop)
-    blok = kilde[kilde.index("create_agent_tool_call("):]
+    kode = "\n".join(ln for ln in kilde.splitlines()
+                     if not ln.strip().startswith("#"))
+    blok = kode[kode.index("create_agent_tool_call("):]
     blok = blok[:blok.index(")\n")]
-    brugt = {ln.split("=")[0].strip() for ln in blok.splitlines()[1:] if "=" in ln}
+    brugt = {ln.split("=")[0].strip() for ln in blok.splitlines()[1:]
+             if "=" in ln and not ln.strip().startswith("#")}
     ukendte = {n for n in brugt if n and n not in navne}
     assert not ukendte, f"felter der ikke findes i skemaet: {ukendte}"
+
+
+# ── run_id skal have en VAERDI, ikke bare et feltnavn ───────────────────
+#
+# Jarvis fandt det inden for en time: bogfoeringen laeste `agent["_run_id"]`,
+# en noegle INGEN i kodebasen saetter — og `agent` er register-opslaget, som
+# ikke har den kolonne. Hver raekke ville faa run_id="" og ikke kunne join'es
+# til sin koersel. Tabellen fyldt, og stadig ubrugelig.
+#
+# Og min egen test fangede det ikke: den tjekkede at feltnavnene findes i
+# skemaet, ikke at vaerdierne er der. FORM verificeret, SUBSTANS ikke — samme
+# fejlklasse som `kontrolleret: 0 -> holder: True`, som jeg selv lukkede i dag.
+
+def test_run_id_traades_ind_som_ARGUMENT():
+    from core.services import agent_runtime_base as b
+
+    par = inspect.signature(b._run_agent_tool_loop).parameters
+    assert "run_id" in par, "loekken kan ikke modtage et run_id"
+    kilde = inspect.getsource(b._run_agent_tool_loop)
+    assert "run_id=str(run_id or" in kilde, (
+        "bogfoeringen bruger stadig kun en noegle ingen saetter")
+
+
+def test_kaldestedet_sender_det_rigtige_run_id():
+    """`run_id` ligger klar to linjer over kaldet — det skulle bare traades ind."""
+    from core.services import agent_runtime_spawn as sp
+
+    kilde = inspect.getsource(sp._execute_agent_task_impl)
+    i_kald = kilde.index("_run_agent_tool_loop(")
+    blok = kilde[i_kald:i_kald + 240]
+    assert "run_id=run_id" in blok, (
+        "kaldestedet sender ikke koerslens id videre — raekkerne kan ikke "
+        "join'es til den koersel de hoerer til")
+
+
+def test_bogfoert_raekke_faar_et_IKKE_TOMT_run_id(isolated_runtime):
+    """Adfaerd, ikke kildetekst: en bogfoert raekke skal kunne findes via sit
+    run_id."""
+    from core.runtime.db_agent_runtime import (
+        create_agent_registry_entry, create_agent_run, create_agent_tool_call,
+        list_agent_tool_calls,
+    )
+
+    create_agent_registry_entry(agent_id="a", role="r", goal="g")
+    create_agent_run(run_id="r-42", agent_id="a", status="completed")
+    create_agent_tool_call(tool_call_id="tc-1", run_id="r-42", agent_id="a",
+                           tool_name="read_file", status="ok")
+
+    raekker = list_agent_tool_calls(run_id="r-42")
+    assert raekker, "kaldet kunne ikke findes via sit run_id"
+    assert str(raekker[0]["run_id"]) == "r-42"

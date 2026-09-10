@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 14288 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 14290 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -50,9 +50,9 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 14288 functions/
 - [`core.services.20`](core.services.20.md) — `runtime_browser_body` … `self_model_signal_tracking`
 - [`core.services.21`](core.services.21.md) — `self_monitor` … `shell_confinement_report`
 - [`core.services.22`](core.services.22.md) — `shutdown_window_daemon` … `subagent_ecology`
-- [`core.services.23`](core.services.23.md) — `subjective_time` … `tool_result_aging`
-- [`core.services.24`](core.services.24.md) — `tool_result_store` … `visible_model_observe`
-- [`core.services.25`](core.services.25.md) — `visible_model_ollama` … `world_model_signal_tracking`
+- [`core.services.23`](core.services.23.md) — `subjective_time` … `tool_pattern_miner`
+- [`core.services.24`](core.services.24.md) — `tool_result_aging` … `visible_model_adapters`
+- [`core.services.25`](core.services.25.md) — `visible_model_observe` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

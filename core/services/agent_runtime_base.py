@@ -231,6 +231,7 @@ def _run_agent_tool_loop(
     agent: dict[str, object],
     prompt: str,
     requires_tools: bool,
+    run_id: str = "",
 ) -> dict[str, object]:
     """Run an agent turn WITH a real tools array + tool-execution loop.
 
@@ -307,7 +308,19 @@ def _run_agent_tool_loop(
                     _fn = (tc.get("function") or {}) if isinstance(tc, dict) else {}
                     create_agent_tool_call(
                         tool_call_id=_tc_id or f"tc-{uuid4().hex}",
-                        run_id=str(agent.get("_run_id") or ""),
+                        # `run_id` KOMMER IND SOM ARGUMENT. Foerste udgave
+                        # laeste `agent["_run_id"]` — en noegle INGEN i hele
+                        # kodebasen saetter, og `agent` er register-opslaget,
+                        # som ikke har den kolonne. Hver raekke ville faa
+                        # run_id="" og ikke kunne join'es til sin koersel:
+                        # tabellen fyldt, og stadig ubrugelig.
+                        #
+                        # Jarvis fandt det inden for en time. Og min egen test
+                        # fangede det ikke — den tjekkede at FELTNAVNENE
+                        # findes i skemaet, ikke at vaerdierne er der. Form
+                        # verificeret, substans ikke; samme fejlklasse som
+                        # `kontrolleret: 0 -> holder: True`.
+                        run_id=str(run_id or agent.get("_run_id") or ""),
                         agent_id=_aid,
                         tool_name=str(_fn.get("name") or tc.get("name") or ""),
                         arguments_json=str(_fn.get("arguments") or "{}")[:4000],

@@ -535,6 +535,7 @@ def _execute_agent_task_impl(*, agent_id: str, thread_id: str = "",
             try:
                 result = _run_agent_tool_loop(
                     agent=agent, prompt=prompt, requires_tools=_needs_tools,
+                    run_id=run_id,
                 )
             except Exception:
                 result = _facade().execute_with_role_or_fallback(

@@ -204,7 +204,10 @@ def _exec_explore(args: dict[str, Any]) -> dict[str, Any]:
         if runde:
             if egnede_modeller is None:
                 break
-            kandidater = egnede_modeller(undtagen=frozenset(brugt), maks=4)
+            # Explore LAESER filer — opgaven kraever vaerktoejer. En model
+            # der aldrig kalder dem, fabrikerer svaret i stedet.
+            kandidater = egnede_modeller(undtagen=frozenset(brugt), maks=4,
+                                         kraever_vaerktoejer=True)
             if not kandidater:
                 break
             prov, mod = kandidater[0]

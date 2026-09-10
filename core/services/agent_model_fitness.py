@@ -112,7 +112,9 @@ def bedste_egnede(*, undtagen: frozenset[str] = frozenset()) -> tuple[str, str]:
 
 
 def egnede_modeller(*, undtagen: frozenset[tuple[str, str]] = frozenset(),
-                    maks: int = 4) -> list[tuple[str, str]]:
+                    maks: int = 4,
+                    kraever_vaerktoejer: bool = False,
+                    ) -> list[tuple[str, str]]:
     """Målte, egnede modeller — bedste først. Til rotation.
 
     Bjørn 7/9-2026: «i stedet for at låse sig på kun én model, rotere». Vi kan
@@ -131,6 +133,21 @@ def egnede_modeller(*, undtagen: frozenset[tuple[str, str]] = frozenset(),
             continue
         if not (post.get("probe_detail") or {}).get("follows"):
             continue
+        # «FOELGER INSTRUKTIONER» ER IKKE «KAN KALDE VAERKTOEJER».
+        # En model kan adlyde praecist i prosa og stadig fabrikere svaret paa
+        # en opgave der KRAEVER at den laeser en fil. Maalt over 935 koersler:
+        # fem modeller har 0 kald paa 167-172 koersler hver. Det er ikke
+        # tilfaeldigt — det var den fejl der fik en explore-rapport til at
+        # paastaa «ingen dato, ingen tabel» om en fil der har begge dele.
+        if kraever_vaerktoejer:
+            try:
+                from core.services.tool_calling_evidence import (
+                    kan_kalde_vaerktoejer,
+                )
+                if not kan_kalde_vaerktoejer(p, m):
+                    continue
+            except Exception:
+                pass                # porten maa ikke tage rotationen med sig
         s = int(post.get("probe_score") or 0)
         if s >= MIN_SCORE:
             # RÆKKEFØLGEN kommer fra benchmarken når den findes, ikke fra

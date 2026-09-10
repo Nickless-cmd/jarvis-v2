@@ -237,7 +237,9 @@ def test_en_NETVAERKSFEJL_doemmer_ikke_modellen(monkeypatch):
     monkeypatch.setattr(c.urllib.request, "urlopen",
                         lambda *a, **k: (_ for _ in ()).throw(OSError("netvaerk")))
     assert c._naabar("en-model") is True
-    assert "en-model" not in c._naabar_cache
+    # Det uafgjorte CACHES nu kort (ikke som en dom), saa et tavst blackhole
+    # ikke koster 20 s pr. kandidat pr. opslag. Det maa bare aldrig i DB'en.
+    assert c._naabar_i_db("en-model") is None
 
 
 def test_et_HTTP_svar_ER_en_dom(monkeypatch):
@@ -272,3 +274,56 @@ def test_proeven_cacher(monkeypatch):
     for _ in range(5):
         c._naabar("m")
     assert kald["n"] == 1, f"proeven koerte {kald['n']} gange trods cache"
+
+
+# ── kadencen var et tal der ikke beskrev systemet ───────────────────────
+#
+# `_NAABAR_TTL = 86400` sagde ét doegn. Cachen var PROCES-LOKAL, og
+# `jarvis-api` blev genstartet 56 GANGE i dag — cirka hvert attende minut i de
+# travle timer. Den faktiske kadence var ~56 probninger, ikke én.
+#
+# Det er dagens moenster i en ny form: et tal der er rigtigt hvor det STAAR og
+# forkert hvor det BRUGES. Samme figur som `supported_endpoints`. (Jarvis.)
+
+def test_dommen_overlever_en_genstart(isolated_runtime):
+    import core.services.copilot_catalogue as c
+
+    c._naabar_cache.clear()
+    c._gem_naabar("en-model", False)
+    assert c._naabar_i_db("en-model") is False, (
+        "dommen overlevede ikke — 56 genstarter koster stadig 56 probninger")
+    c._gem_naabar("en-anden", True)
+    assert c._naabar_i_db("en-anden") is True
+
+
+def test_ukendt_model_har_ingen_holdbar_dom(isolated_runtime):
+    import core.services.copilot_catalogue as c
+
+    assert c._naabar_i_db("aldrig-proevet") is None, (
+        "en umaalt model fik en dom ud af ingenting")
+
+
+def test_uafgjort_caches_men_gemmes_IKKE(isolated_runtime, monkeypatch):
+    """En netvaerksfejl er ikke en maaling af modellen, saa den maa ikke i
+    DB'en. Men den skal caches kort — ellers koster et tavst blackhole 20 s
+    pr. kandidat pr. opslag, igen og igen."""
+    import core.services.copilot_catalogue as c
+
+    c._naabar_cache.clear()
+    monkeypatch.setattr(c, "_api_token", lambda: "x")
+    monkeypatch.setattr(c.urllib.request, "urlopen",
+                        lambda *a, **k: (_ for _ in ()).throw(OSError("blackhole")))
+    assert c._naabar("m") is True
+    assert "m" in c._naabar_cache, "det uafgjorte blev ikke cachet — blackhole koster igen"
+    assert c._naabar_i_db("m") is None, "en netvaerksfejl blev gemt som en dom"
+
+
+def test_vaerktoejsevnen_er_MAALT_ikke_paastaaet():
+    """Feltet `supports.tool_calls` er en paastand. `tool_calling_evidence`
+    er en maaling over 935 koersler — og kataloget brugte den ikke, saa
+    kaeden var «naabarhed maalt, vaerktoejsevne paastaaet»."""
+    import inspect
+
+    import core.services.copilot_catalogue as c
+
+    assert "kan_kalde_vaerktoejer" in inspect.getsource(c._brugbar)

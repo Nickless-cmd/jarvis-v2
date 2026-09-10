@@ -118,10 +118,75 @@ _MIN_FORSOEG = 3
 #: proeverne nede paa en haandfuld.
 _NAABAR_TTL = 86400.0
 
-#: MAALT NAABARHED — {model: (naabar, tidspunkt)}. Proces-lokal med vilje:
-#: den koster ét lille kald pr. model pr. doegn, og en delt tabel ville vaere
-#: mere maskineri end problemet.
+#: Hvor laenge en UAFGJORT proeve (netvaerksfejl) holder. Kort, fordi den
+#: ikke er en dom — men den SKAL caches: uden den re-probede hvert kald alle
+#: kandidater med 20 s timeout, saa et tavst blackhole kostede op mod to
+#: minutter pr. opslag. Dommen var forsigtig; prisen var ubegraenset.
+_UAFGJORT_TTL = 120.0
+
+#: Proces-lokal hurtig-cache. Den er IKKE kadencen — se `_naabar_i_db`.
 _naabar_cache: dict[str, tuple[bool, float]] = {}
+
+
+def _ensure_naabar(conn) -> None:
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS copilot_model_reachability (
+            model TEXT PRIMARY KEY,
+            naabar INTEGER NOT NULL,
+            maalt_at TEXT NOT NULL DEFAULT ''
+        )
+        """
+    )
+
+
+def _naabar_i_db(model: str) -> bool | None:
+    """Den holdbare dom, eller `None` hvis den mangler/er for gammel.
+
+    DEN PROCES-LOKALE CACHE VAR IKKE EN DOEGN-KADENCE. `_NAABAR_TTL` sagde
+    86.400 sekunder, men cachen doer med processen — og `jarvis-api` blev
+    genstartet 56 GANGE i dag, cirka hvert attende minut i de travle timer.
+    Den faktiske kadence var altsaa ~56 probninger, ikke én: otteogtyve gange
+    mere end tallet lovede.
+    """
+    from datetime import UTC, datetime, timedelta
+    try:
+        from core.runtime.db_core import connect
+        with connect() as conn:
+            _ensure_naabar(conn)
+            r = conn.execute(
+                "SELECT naabar, maalt_at FROM copilot_model_reachability "
+                "WHERE model = ?", (str(model),)).fetchone()
+    except Exception:
+        return None
+    if r is None:
+        return None
+    try:
+        t = datetime.fromisoformat(str(r["maalt_at"]).replace("Z", "+00:00"))
+        if t.tzinfo is None:
+            t = t.replace(tzinfo=UTC)
+    except Exception:
+        return None
+    if datetime.now(UTC) - t > timedelta(seconds=_NAABAR_TTL):
+        return None
+    return bool(r["naabar"])
+
+
+def _gem_naabar(model: str, naabar: bool) -> None:
+    from datetime import UTC, datetime
+    try:
+        from core.runtime.db_core import connect
+        with connect() as conn:
+            _ensure_naabar(conn)
+            conn.execute(
+                "INSERT INTO copilot_model_reachability (model, naabar, maalt_at) "
+                "VALUES (?, ?, ?) ON CONFLICT(model) DO UPDATE SET "
+                "naabar = excluded.naabar, maalt_at = excluded.maalt_at",
+                (str(model), int(bool(naabar)), datetime.now(UTC).isoformat()))
+            conn.commit()
+    except Exception:
+        logger.debug("kunne ikke gemme naabarheds-dommen for %s", model,
+                     exc_info=True)
 
 
 def _naabar(model: str, *, timeout_s: float = 20.0) -> bool:
@@ -149,6 +214,10 @@ def _naabar(model: str, *, timeout_s: float = 20.0) -> bool:
     naa = _naabar_cache.get(m)
     if naa is not None and (_t.monotonic() - naa[1]) < _NAABAR_TTL:
         return naa[0]
+    _db = _naabar_i_db(m)
+    if _db is not None:
+        _naabar_cache[m] = (_db, _t.monotonic())
+        return _db
     try:
         req = urllib.request.Request(
             "https://api.githubcopilot.com/chat/completions",
@@ -163,10 +232,15 @@ def _naabar(model: str, *, timeout_s: float = 20.0) -> bool:
         # tjenesten — en HTTPError — betyder «denne model kan ikke kaldes».
         if not isinstance(exc, urllib.error.HTTPError):
             logger.debug("naabarheds-proeven naaede ikke %s", m, exc_info=True)
+            # UAFGJORT caches KORT — ikke som en dom, men saa et tavst
+            # blackhole ikke koster 20 s pr. kandidat pr. opslag. Den skrives
+            # aldrig i DB'en: den er ikke en maaling af modellen.
+            _naabar_cache[m] = (True, _t.monotonic() - _NAABAR_TTL + _UAFGJORT_TTL)
             return True
         ud = False
         logger.info("copilot-model %s svarer ikke (%s) — udelades", m, exc.code)
     _naabar_cache[m] = (ud, _t.monotonic())
+    _gem_naabar(m, ud)          # holdbar: 56 genstarter koster nu nul probninger
     return ud
 
 
@@ -225,6 +299,20 @@ def _brugbar(m: dict[str, Any], *, uegnet: set[str] | None = None) -> bool:
     _id = str(m.get("id") or "")
     if uegnet and _id in uegnet:
         return False                # proevet og aldrig svaret
+    # VAERKTOEJSEVNEN VAR PAASTAAET, ikke maalt. Feltet
+    # `capabilities.supports.tool_calls` er praecis den slags paastand dagen
+    # har laert os ikke at stole paa — og instrumentet blev bygget i morges:
+    # `tool_calling_evidence` har 935 koerslers historik. Kataloget brugte det
+    # ikke, saa kaeden var «naabarhed MAALT, vaerktoejsevne PAASTAAET».
+    #
+    # Historikken doemmer kun med maengde bag sig og spaerrer aldrig en UMAALT
+    # model — den kan altsaa kun fjerne dem vi HAR set svigte. (Jarvis' fund.)
+    try:
+        from core.services.tool_calling_evidence import kan_kalde_vaerktoejer
+        if _id and not kan_kalde_vaerktoejer("copilot-premium", _id):
+            return False
+    except Exception:
+        pass
     return (bool((cap.get("supports") or {}).get("tool_calls"))
             and bool(m.get("model_picker_enabled"))
             and "/chat/completions" in _ep

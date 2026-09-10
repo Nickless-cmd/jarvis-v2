@@ -279,8 +279,15 @@ def delete_all(user_id: str) -> dict[str, Any]:
 
 # ── Eksport (GDPR: ret til dataportabilitet) ─────────────────────────────────
 
-def export_all(user_id: str) -> dict[str, Any]:
-    """Alt vi har om brugeren, som JSON.
+def _export_raa(user_id: str) -> dict[str, Any]:
+    """Alt vi har om brugeren, URØRT. PRIVAT med vilje.
+
+    Det offentlige navn er `export_all`, og det GÅR gennem redaktøren. Sådan
+    er redaktionen obligatorisk i praksis og ikke kun i beskrivelsen: en
+    kalder der vil uden om, skal række efter et understreget navn og forklare
+    hvorfor. Da jeg byggede laget, brugte den eneste eksisterende kalder
+    netop `export_all` direkte — havde det navn peget på den rå form, var
+    laget født forbikoblet.
 
     Eksporten er bevidst RÅ og fuldstændig frem for pæn: formålet er at kunne
     tage sine data med, ikke at læse dem i appen. Fejler ét lag, får det sin
@@ -338,5 +345,52 @@ def export_all(user_id: str) -> dict[str, Any]:
     return out
 
 
+def _redigér_træet(vaerdi: Any, taeller: list[int]) -> Any:
+    """Kør redaktøren over HVER streng i eksporten, uanset hvor dybt den ligger.
+
+    Rekursivt, fordi eksporten er nøstet: sessioner rummer beskeder, hjernen
+    rummer poster, identiteten rummer filtekst. En redaktion der kun ramte
+    topniveauet ville se ud til at virke og lade alt det vigtige passere.
+    """
+    from core.services.secret_redaction import redact
+
+    if isinstance(vaerdi, str):
+        ny = redact(vaerdi)
+        if ny != vaerdi:
+            taeller[0] += 1
+        return ny
+    if isinstance(vaerdi, dict):
+        return {k: _redigér_træet(v, taeller) for k, v in vaerdi.items()}
+    if isinstance(vaerdi, (list, tuple)):
+        return [_redigér_træet(v, taeller) for v in vaerdi]
+    return vaerdi
+
+
+def export_all(user_id: str) -> dict[str, Any]:
+    """Eksporten som den forlader huset — med hemmeligheder fjernet.
+
+    OBLIGATORISK, ikke valgfri (fase 10). En eksport forlader systemets
+    beskyttelse: den lander i en fil, bliver sendt videre, lagt op. MÅLT
+    10/9-2026 på Bjørns runtime: 50 af 40.000 chat-beskeder indeholder noget
+    redaktøren fjerner. Uden dette lag ville de gå ud i klartekst.
+
+    Tallet står i eksporten. En redaktion man ikke kan se, kan man heller ikke
+    kontrollere — og modtageren skal vide at hans egne nøgler stadig findes i
+    systemet, de er bare ikke i denne kopi.
+    """
+    taeller = [0]
+    ud = _redigér_træet(_export_raa(user_id), taeller)
+    ud["redaction"] = {
+        "applied": True,
+        "values_redacted": taeller[0],
+        "note": ("Hemmeligheder (nøgler, tokens, passwords) er fjernet fra "
+                 "DENNE KOPI. De findes stadig i systemet — eksporten er en "
+                 "kopi, ikke en flytning."),
+    }
+    return ud
+
+
 def export_json(user_id: str) -> str:
+    """JSON-eksporten. Går altid gennem redaktøren — det er den kopi der
+    forlader huset."""
     return json.dumps(export_all(user_id), ensure_ascii=False, indent=2)

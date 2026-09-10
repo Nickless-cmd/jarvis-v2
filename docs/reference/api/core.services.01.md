@@ -66,8 +66,10 @@ _Brugerens egne data — tælle, eksportere, slette. Lagvis._
 | function | `reset_identity` | `(user_id)` | Nulstil MEMORY.md og USER.md — hans billede af brugeren. | [src](../../../core/services/account_data_controls.py#L216) |
 | function | `delete_layer` | `(user_id, layer)` | Slet ét lag. Ukendt lag → fejl frem for tavshed. | [src](../../../core/services/account_data_controls.py#L255) |
 | function | `delete_all` | `(user_id)` | Alle fire lag. En sammensætning af de enkelte — ikke en femte vej. | [src](../../../core/services/account_data_controls.py#L263) |
-| function | `export_all` | `(user_id)` | Alt vi har om brugeren, som JSON. | [src](../../../core/services/account_data_controls.py#L282) |
-| function | `export_json` | `(user_id)` | — | [src](../../../core/services/account_data_controls.py#L341) |
+| function | `_export_raa` | `(user_id)` | Alt vi har om brugeren, URØRT. PRIVAT med vilje. | [src](../../../core/services/account_data_controls.py#L282) |
+| function | `_redigér_træet` | `(vaerdi, taeller)` | Kør redaktøren over HVER streng i eksporten, uanset hvor dybt den ligger. | [src](../../../core/services/account_data_controls.py#L348) |
+| function | `export_all` | `(user_id)` | Eksporten som den forlader huset — med hemmeligheder fjernet. | [src](../../../core/services/account_data_controls.py#L369) |
+| function | `export_json` | `(user_id)` | JSON-eksporten. Går altid gennem redaktøren — det er den kopi der | [src](../../../core/services/account_data_controls.py#L393) |
 
 ## `core/services/action_router.py`
 _Action Router — close the loop: signal → handling._

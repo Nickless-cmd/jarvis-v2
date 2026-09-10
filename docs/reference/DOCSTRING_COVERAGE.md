@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7236/14230 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7239/14232 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 7236/14230 functions/methods documented (50%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 606 | 1114 | 54% |
-| `core.services` | 4808 | 9813 | 48% |
+| `core.services` | 4811 | 9815 | 49% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 108 | 184 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -40,7 +40,7 @@ Generated from source. 7236/14230 functions/methods documented (50%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2022)
+## Undocumented public functions (2021)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L201)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -514,7 +514,6 @@ Generated from source. 7236/14230 functions/methods documented (50%). The list b
 - `core/runtime/settings.py` :: `update_visible_execution_settings` (L1100)
 - `core/services/absence_daemon.py` :: `build_absence_surface` (L155)
 - `core/services/absence_daemon.py` :: `get_latest_absence` (L151)
-- `core/services/account_data_controls.py` :: `export_json` (L341)
 - `core/services/action_router.py` :: `build_action_router_surface` (L617)
 - `core/services/action_router.py` :: `recent_actions` (L609)
 - `core/services/action_router.py` :: `recent_proactive` (L613)

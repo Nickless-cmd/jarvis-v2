@@ -112,6 +112,13 @@ def tjek_rapport(text: str, *, agent_id: str = "", role: str = "",
                      agent_id, exc_info=True)
         return tom
 
+    # BROEN TAV. `_bro_kontrol` bygger kun closures — den kan ikke kaste, saa
+    # `uden-bro` ovenfor naaes aldrig i produktion. Den aegte doede bro ser
+    # saadan her ud: opslagene svarer `None`, og foer taltes det som ingenting.
+    # En doed bro og en ren rapport gav dermed samme raekke. (Jarvis' fund.)
+    if int(dom.get("uafgjort") or 0) > 0 and not int(dom.get("kontrolleret") or 0):
+        return {**tom, "kontrolleret_mod": "bro-svarede-ikke", "holder": None}
+
     kontrolleret = int(dom.get("kontrolleret") or 0)
     fejl = [str(f) for f in (dom.get("fejl") or [])]
     holder = bool(dom.get("holder", True))

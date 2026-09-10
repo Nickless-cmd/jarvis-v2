@@ -490,9 +490,10 @@ _Tjek explore-agentens påstande mod virkeligheden._
 | function | `_laesninger` | `(indhold)` | Hver rimelig laesning af en paastand, STAERKESTE foerst. | [src](../../../core/services/explore_claim_check.py#L191) |
 | function | `_kort` | `(kerne)` | Den svageste rimelige laesning af et citat. | [src](../../../core/services/explore_claim_check.py#L222) |
 | function | `_citat_i` | `(tekst)` | Citatet hvis der ER et — ellers hele teksten. | [src](../../../core/services/explore_claim_check.py#L234) |
-| function | `_rod` | `()` | — | [src](../../../core/services/explore_claim_check.py#L270) |
-| function | `_findes` | `(sti, rod)` | — | [src](../../../core/services/explore_claim_check.py#L278) |
-| function | `tjek_paastande` | `(svar, *, rod=…, findes_fn=…, linje_fn=…)` | Slå svarets efterprøvelige påstande op. Kaster aldrig. | [src](../../../core/services/explore_claim_check.py#L285) |
+| function | `_bro_tavs` | `(ud)` | Har broen tiet saa mange gange i traek at det ikke nytter at spoerge? | [src](../../../core/services/explore_claim_check.py#L280) |
+| function | `_rod` | `()` | — | [src](../../../core/services/explore_claim_check.py#L286) |
+| function | `_findes` | `(sti, rod)` | — | [src](../../../core/services/explore_claim_check.py#L294) |
+| function | `tjek_paastande` | `(svar, *, rod=…, findes_fn=…, linje_fn=…)` | Slå svarets efterprøvelige påstande op. Kaster aldrig. | [src](../../../core/services/explore_claim_check.py#L301) |
 
 ## `core/services/fabricated_tool_result_gate.py`
 _Fabrikerede tool-resultater — den ene løgn der ikke kan bortforklares._

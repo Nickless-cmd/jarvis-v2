@@ -243,10 +243,16 @@ def test_den_gemte_raekke_baerer_bevis():
     assert d.get("holder") is True, d
 
 
-def test_context_kan_vaere_json_streng():
-    """Registret gemmer `context_json` som TEKST — ikke som dict."""
+def test_context_kan_vaere_json_streng(monkeypatch):
+    """Registret gemmer `context_json` som TEKST — ikke som dict.
+
+    Broen bygges her som LEVENDE. Foer brugte testen den aegte, som ikke findes
+    i en testsuite — den ramte produktions-infrastruktur og bestod paa et
+    tilfaeldigt udfald."""
     import json
     import core.tools.simple_tools_explore as ex
+    monkeypatch.setattr(ex, "_bro_kontrol",
+                        lambda a: ((lambda sti: True), (lambda s, n, f: True)))
     from core.services.report_claim_guard import tjek_rapport
     d = tjek_rapport("se core/x.py:3:`noget`", agent_id="a",
                      context=json.dumps(_WS_CTX))
@@ -304,3 +310,59 @@ def test_ingen_tekst_paastaar_ingen_maskine():
     en lille loegn i en post der netop skal sige hvem der blev spurgt."""
     from core.services.report_claim_guard import tjek_rapport
     assert tjek_rapport("")["kontrolleret_mod"] == "ikke-spurgt"
+
+
+# ---------------------------------------------------------------------------
+# `uden-bro` VAR UNAAELIG I NETOP DEN FEJL DEN BLEV BYGGET TIL (Jarvis, 10/9)
+#
+# `_bro_kontrol` KONTAKTER ikke broen — den bygger to closures af to `.get()`
+# og kan ikke kaste. Opslaget sker foerst ved KALD, og svarer `None` naar broen
+# er vaek. Saa `_opsloegere` sagde «workstation» ogsaa naar broen var doed, og
+# `explore_claim_check` smed hvert uafgjort svar vaek med et bart `continue`.
+#
+# Resultat: en DOED bro og en REN rapport gav byte-identiske raekker. Og det er
+# praecis fejltilstanden fra kl. 17:21 — presence=[], syv NO_BRIDGE.
+#
+# Mine to `uden-bro`-tests var groenne fordi de byggede tilstanden ved at lade
+# `_bro_kontrol` KASTE. Det goer den aegte aldrig. Testen byggede den tilstand
+# koden KAN naa — ikke den virkeligheden producerer. Samme figur som vaernet
+# der kendte gaetterens citatform bedst.
+# ---------------------------------------------------------------------------
+
+def _doed_bro(_args):
+    """Som virkeligheden: closures bygges fint, hvert OPSLAG svarer None."""
+    return (lambda sti: None), (lambda sti, nr, frag: None)
+
+
+def test_doed_bro_ligner_ikke_en_ren_rapport(monkeypatch):
+    import core.tools.simple_tools_explore as ex
+    monkeypatch.setattr(ex, "_bro_kontrol", _doed_bro)
+    from core.services.report_claim_guard import tjek_rapport
+    med = tjek_rapport("se core/x.py:3:`noget`", context=_WS_CTX)
+    uden = tjek_rapport("ren prosa uden efterproevelige paastande", context=_WS_CTX)
+    assert med != uden, "doed bro og ren rapport gav samme raekke"
+    assert med["holder"] is None, med
+    assert med["kontrolleret_mod"] == "bro-svarede-ikke", med
+    # Den rene rapport har intet at spoerge om — dér er `True` stadig rigtigt.
+    assert uden["holder"] is True, uden
+
+
+def test_doed_bro_spoerger_ikke_tolv_gange(monkeypatch):
+    """Opslagene ligger paa AFSLUTNINGS-stien, foer runnet lukkes, og hvert
+    har sin egen timeout (grep op til 65 s). Tolv paastande mod en blackhole
+    kunne holde barnets run i kvarterer. Svarer broen ikke, holder vi op."""
+    import core.tools.simple_tools_explore as ex
+    kald: list = []
+
+    def _taeller(_args):
+        def findes(sti):
+            kald.append(sti)
+            return None
+        return findes, (lambda s, n, f: None)
+
+    monkeypatch.setattr(ex, "_bro_kontrol", _taeller)
+    from core.services.report_claim_guard import tjek_rapport
+    tekst = "\n".join(f"se core/x{i}.py:{i}:`noget{i}`" for i in range(1, 13))
+    d = tjek_rapport(tekst, context=_WS_CTX)
+    assert len(kald) <= 3, f"spurgte {len(kald)} gange mod en doed bro"
+    assert d["kontrolleret_mod"] == "bro-svarede-ikke", d

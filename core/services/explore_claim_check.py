@@ -267,6 +267,22 @@ _KENDTE = frozenset({"py", "ts", "tsx", "js", "json", "md", "toml", "yaml", "yml
                      "sh", "kt", "sql", "cfg", "ini", "txt", "gradle"})
 
 
+# Opslagene ligger paa AFSLUTNINGS-stien — `tjek_rapport` koeres synkront foer
+# `update_agent_run(status="completed")` — og hvert bro-kald har sin egen
+# timeout (grep op til 65 s). Tolv paastande mod en blackhole-bro kunne holde
+# barnets run i kvarterer, paa netop det sted hvor kommentaren advarer mod at
+# lade runnet staa evigt som koerende.
+#
+# Svarer de foerste opslag ikke, svarer resten heller ikke. Saa holder vi op.
+_UAFGJORT_LOFT = 2
+
+
+def _bro_tavs(ud: dict[str, object]) -> bool:
+    """Har broen tiet saa mange gange i traek at det ikke nytter at spoerge?"""
+    return (int(ud.get("uafgjort") or 0) >= _UAFGJORT_LOFT
+            and int(ud.get("kontrolleret") or 0) == 0)
+
+
 def _rod() -> Path:
     try:
         from core.tools.simple_tools import PROJECT_ROOT
@@ -308,7 +324,12 @@ def tjek_paastande(svar: str, *, rod: Path | None = None,
     kun kunne bekræftes for at filen findes, ikke for at linjen siger det der
     påstås.
     """
-    ud: dict[str, object] = {"kontrolleret": 0, "fejl": [], "holder": True}
+    # `uafgjort`: broen svarede ikke. FOER blev det kastet vaek med et bart
+    # `continue`, saa en DOED bro og en REN rapport gav byte-identiske svar —
+    # begge `kontrolleret: 0`. Informationen fandtes paa fejlstedet og forsvandt
+    # foer nogen kunne se den. (Jarvis' fund, 10/9-2026.)
+    ud: dict[str, object] = {"kontrolleret": 0, "fejl": [], "holder": True,
+                             "uafgjort": 0}
     try:
         t = str(svar or "")
         if not t.strip():
@@ -404,9 +425,13 @@ def tjek_paastande(svar: str, *, rod: Path | None = None,
             if sti.rsplit(".", 1)[-1].lower() not in _KENDTE:
                 continue
             set_stier.add(sti)
+            if _bro_tavs(ud):
+                break          # broen svarer ikke — hold op med at spoerge
             _findes_den = _slaa_op(sti)
             if _findes_den is None:
-                continue                      # uafgjort — hverken fund eller fejl
+                # Uafgjort: hverken fund eller fejl — men IKKE ingenting.
+                ud["uafgjort"] = int(ud["uafgjort"]) + 1
+                continue
             ud["kontrolleret"] = int(ud["kontrolleret"]) + 1
             if not _findes_den:
                 fejl.append(f"{sti}: filen findes ikke")
@@ -469,8 +494,11 @@ def tjek_paastande(svar: str, *, rod: Path | None = None,
             if sti in set_stier or sti.rsplit(".", 1)[-1].lower() not in _KENDTE:
                 continue
             set_stier.add(sti)
+            if _bro_tavs(ud):
+                break
             _findes_den = _slaa_op(sti)
             if _findes_den is None:
+                ud["uafgjort"] = int(ud["uafgjort"]) + 1
                 continue
             ud["kontrolleret"] = int(ud["kontrolleret"]) + 1
             if not _findes_den:

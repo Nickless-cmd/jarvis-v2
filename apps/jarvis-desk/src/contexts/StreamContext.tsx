@@ -267,6 +267,10 @@ export function StreamProvider({
       },
       {
         onEvent: (e: StreamEvent) => {
+          // En frame er landet: er vi ved at genforbinde, er vi det ikke
+          // laengere. Uden dette ville «genforbinder» blive haengende paa
+          // skaermen resten af turen.
+          setOverride((n) => (n === 'reconnecting' ? null : n))
           // Fang approval_request (code/cowork, permission=ask) → vis ApprovalCard.
           // Serveren blokerer streamen indtil approve/deny; ryd ved næste tur-slut.
           if (e.type === 'system_event' && e.kind === 'approval_request') {
@@ -301,6 +305,10 @@ export function StreamProvider({
           dispatch(e)
         },
         onRunId: (id) => { runIdRef.current = id; deskRunBridge()?.setActiveRun?.(id) },
+        // Fase 10: klienten genforbinder nu til et koerende run fra sit
+        // vandmaerke. Uden denne linje ville genforbindelsen vaere USYNLIG —
+        // skaermen stod stille indtil 90s-vagten fyrede «haengt».
+        onReconnecting: () => setOverride('reconnecting'),
         onHung: () => setOverride('hung'),
         onInterrupted: () => { setOverride('interrupted'); deskRunBridge()?.setActiveRun?.(null) },
         onError: (err) => {

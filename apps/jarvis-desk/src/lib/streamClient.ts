@@ -168,6 +168,9 @@ export interface StreamHandlers {
   onHung?: () => void
   /** R1: stream brudt og autoReconnect=false — bevar partial, vis "genoptag". */
   onInterrupted?: () => void
+  /** Genforbinder til et koerende run fra vandmaerket (fase 10). Tallet er
+   *  forsoeg nr. N — UI kan vise «genforbinder» i stedet for «afbrudt». */
+  onReconnecting?: (attempt: number) => void
   /** Endelig fejl (efter alle retries opbrugt eller non-retryable). */
   onError?: (error: StreamError) => void
   /** Strømmen er endegyldigt færdig (message_stop set eller abort). */
@@ -188,6 +191,10 @@ export interface StreamControl {
  *
  * Returnerer et StreamControl-håndtag (abort + getRunId).
  */
+/** Genoptagelser UDEN fremgang foer vi giver op. Nulstilles af hver frame,
+ *  saa et langt run maa genoptage mange gange — bare ikke i tomgang. */
+const MAX_GENOPTAG = 5
+
 export function startStream(
   request: StreamRequest,
   handlers: StreamHandlers,
@@ -196,6 +203,13 @@ export function startStream(
   let activeRunId: string | null = null
   let reconnectAttempt = 0
   let lastEventId: string | null = null
+  /** Antal modtagne frames — vandmaerket vi genoptager fra. */
+  let framesSeen = 0
+  /** Saettes naar vi skal genforbinde til et koerende run i stedet for at
+   *  starte forfra. `null` = foerste forbindelse (POST). */
+  let resumeRunId: string | null = null
+  /** Genoptagelser uden fremgang. Nulstilles naar en frame lander. */
+  let genoptagForsoeg = 0
   let userAborted = false
   let pingWatchdogTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -280,6 +294,11 @@ export function startStream(
     // Reset ping watchdog ved ENHVER aktivitet, ikke kun ping.
     resetPingWatchdog()
 
+    // Vandmaerke: hver modtaget frame = ét skridt i serverens run-log. Det er
+    // tallet `/chat/runs/{id}/subscribe?from_idx=` genoptager fra.
+    framesSeen += 1
+    genoptagForsoeg = 0                 // fremgang: lange runs maa gerne genoptage mange gange
+
     // R3: fang aktivt run_id så caller kan server-cancel. Serveren sender det
     // tomt i message_start; det rigtige run_id kommer i system_event kind=run.
     if (payload.type === 'message_start') {
@@ -360,8 +379,25 @@ export function startStream(
   }
 
   const connectOnce = async (): Promise<void> => {
-    const url = new URL('/chat/stream/v2', request.apiBaseUrl).toString()
-    log('connecting', { url, attempt: reconnectAttempt + 1, lastEventId })
+    // GENOPTAGELSE (fase 10). Kender vi run_id'et, genforbinder vi med et GET
+    // paa serverens run-log fra vores vandmaerke — ikke en re-POST.
+    //
+    // Kommentaren dér hvor klienten foer gav op sagde det rigtige: «blind
+    // re-POST ville duplikere user-message + lave nyt run». Det er praecis
+    // fase 10's krav om at et gen-forsoeg ALDRIG maa gentage en mutation.
+    // Men den eneste genforbindelse desk kendte VAR re-POST, saa den stoppede
+    // i stedet for at bruge den vej mobil-klienten allerede har bevist.
+    // `subscribe` er en ren laesning: intet nyt run, ingen dubletter.
+    const genoptager = resumeRunId !== null
+    const url = genoptager
+      ? new URL(
+          `/chat/runs/${encodeURIComponent(resumeRunId as string)}/subscribe`
+          + `?from_idx=${framesSeen}`,
+          request.apiBaseUrl,
+        ).toString()
+      : new URL('/chat/stream/v2', request.apiBaseUrl).toString()
+    log('connecting', { url, attempt: reconnectAttempt + 1, genoptager,
+                        fromIdx: framesSeen })
 
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
@@ -377,7 +413,16 @@ export function startStream(
 
     let response: Response
     try {
-      response = await fetch(url, {
+      response = genoptager
+        ? await fetch(url, {
+            method: 'GET',
+            headers: { Accept: 'text/event-stream', 'Cache-Control': 'no-cache',
+                       ...(request.authToken
+                           ? { Authorization: `Bearer ${request.authToken}` }
+                           : {}) },
+            signal: abortController.signal,
+          })
+        : await fetch(url, {
         method: 'POST',
         headers,
         body: JSON.stringify({
@@ -413,6 +458,14 @@ export function startStream(
     }
 
     // HTTP status-klassificering.
+    // 404 paa en genoptagelse: runnet blev FAERDIGT og ryddet server-side mens
+    // vi var vaek. Det er ikke en fejl — svaret ligger i sessionen, og UI'et
+    // henter det ved naeste select. Mobil-klienten laerte det foerst.
+    if (genoptager && response.status === 404) {
+      userAborted = true
+      handlers.onComplete?.()
+      return
+    }
     if (response.status === 401 || response.status === 403) {
       throw new StreamError('auth', `HTTP ${response.status}`, {
         retryable: false,
@@ -485,9 +538,25 @@ export function startStream(
           return
         }
 
-        // R1: chat-lane (autoReconnect=false). Blind re-POST ville duplikere
-        // user-message + lave nyt run. Bevar partial lokalt og signalér
-        // 'interrupted' — brugeren beslutter (genoptag = ny tur).
+        // GENOPTAG I STEDET FOR AT GIVE OP (fase 10).
+        //
+        // Her stod foer: «blind re-POST ville duplikere user-message + lave
+        // nyt run» — og saa `onInterrupted`. Praemissen var rigtig og
+        // konklusionen for haard: re-POST er ikke den eneste genforbindelse.
+        // Serveren har en run-log, og `subscribe` er en REN LAESNING fra et
+        // vandmaerke. Intet nyt run, ingen dubletter. Mobil-klienten har brugt
+        // den vej hele tiden; desk kendte den bare ikke.
+        //
+        // Uden run_id er der intet at genoptage — da gaelder den gamle regel.
+        if (activeRunId && genoptagForsoeg < MAX_GENOPTAG) {
+          genoptagForsoeg += 1
+          resumeRunId = activeRunId
+          handlers.onReconnecting?.(genoptagForsoeg)
+          const ventMs = 500 * 2 ** (genoptagForsoeg - 1)
+          await new Promise((r) => setTimeout(r, ventMs))
+          continue
+        }
+
         if (!request.autoReconnect) {
           handlers.onInterrupted?.()
           return

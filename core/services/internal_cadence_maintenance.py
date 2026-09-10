@@ -223,6 +223,27 @@ def register_maintenance_producers(register_producer: Callable[[ProducerSpec], N
         priority=36,
     ))
 
+    def _run_central_incident_retention(
+        *, trigger: str, last_visible_at: str = ""
+    ) -> dict[str, object]:
+        """Hygiejne (10. sep 2026): luk governance-hændelser (kind='gate_enforce', severity !=
+        'severe') der er ældre end vinduet. De er ØJEBLIKKE, ikke defekter — men uden udløb
+        hobede de sig op (931 uløste 10. sep) og fyldte både panelet og root_causes med
+        governance-støj. Vinduet er 2 timer og ikke 1: kadencen kører hver time, og en hændelse
+        skal kunne ses i panelet i mere end én cyklus før den lukkes. Rører ALDRIG severe —
+        en SECURITY-RED (ægte cross-user-lækage) skal stå åben indtil nogen håndterer den."""
+        from core.runtime.db_central_incidents import expire_gate_enforce_incidents
+        expired = expire_gate_enforce_incidents(older_than_hours=2.0)
+        return {"status": "ok", "expired": expired}
+
+    register_producer(ProducerSpec(
+        name="central_incident_retention",
+        cooldown_minutes=60,  # hver time — hold incident-loggen fri for governance-støj
+        visible_grace_minutes=0,
+        run_fn=_run_central_incident_retention,
+        priority=38,
+    ))
+
     def _run_stream_stall_sweep(*, trigger: str, last_visible_at: str = "") -> dict[str, object]:
         """Stream-cluster (audit 2026-06-23): stream_stall sweepede FØR kun opportunistisk
         ved næste note_start → en zombie-stream i en HELT stille periode (ingen nye streams)

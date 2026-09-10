@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7243/14239 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7244/14240 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -23,7 +23,7 @@ Generated from source. 7243/14239 functions/methods documented (50%). The list b
 | `core.identity` | 66 | 159 | 41% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 606 | 1114 | 54% |
+| `core.runtime` | 607 | 1115 | 54% |
 | `core.services` | 4815 | 9822 | 49% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 108 | 184 | 58% |
@@ -715,7 +715,7 @@ Generated from source. 7243/14239 functions/methods documented (50%). The list b
 - `core/services/central_injection_units.py` :: `register_default_units` (L44)
 - `core/services/central_instrument.py` :: `Finding.signature` (L66)
 - `core/services/central_keymaker.py` :: `list_keys` (L256)
-- `core/services/central_learning.py` :: `learning_summary` (L231)
+- `core/services/central_learning.py` :: `learning_summary` (L239)
 - `core/services/central_lexicon.py` :: `active_terms` (L185)
 - `core/services/central_lexicon.py` :: `operators` (L189)
 - `core/services/central_machines.py` :: `build_machines_surface` (L73)

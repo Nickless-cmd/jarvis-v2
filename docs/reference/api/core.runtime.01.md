@@ -232,9 +232,10 @@ _Central-incidents — persistent log af det Den Intelligente Central GRIBER._
 | function | `list_central_incidents` | `(*, limit=…, unresolved_only=…, min_severity=…)` | Læs incidents (nyeste først). Claude poller denne. Selv-sikker → [] ved fejl. | [src](../../../core/runtime/db_central_incidents.py#L128) |
 | function | `resolve_central_incident` | `(incident_id)` | Markér en incident som håndteret. Selv-sikker. | [src](../../../core/runtime/db_central_incidents.py#L156) |
 | function | `resolve_central_incidents` | `(*, cluster, nerve)` | Auto-resolve ALLE uløste incidents for én (cluster, nerve). Returnerer antal lukkede. | [src](../../../core/runtime/db_central_incidents.py#L169) |
-| function | `has_unresolved_message` | `(*, cluster, nerve, message, within_seconds=…)` | True hvis en uløst incident med SAMME besked allerede findes inden for tidsvinduet. | [src](../../../core/runtime/db_central_incidents.py#L188) |
-| function | `count_unresolved` | `(*, min_severity=…, exclude_nerve=…)` | Antal uhåndterede incidents (til hurtig live-status). Selv-sikker → 0. | [src](../../../core/runtime/db_central_incidents.py#L214) |
-| function | `has_open_incident` | `(*, cluster, nerve)` | True hvis der allerede findes en uløst incident for (cluster, nerve). Selv-sikker. | [src](../../../core/runtime/db_central_incidents.py#L241) |
+| function | `expire_gate_enforce_incidents` | `(*, older_than_hours=…)` | Auto-luk ULØSTE governance-hændelser (kind='gate_enforce', severity != 'severe') ældre | [src](../../../core/runtime/db_central_incidents.py#L188) |
+| function | `has_unresolved_message` | `(*, cluster, nerve, message, within_seconds=…)` | True hvis en uløst incident med SAMME besked allerede findes inden for tidsvinduet. | [src](../../../core/runtime/db_central_incidents.py#L219) |
+| function | `count_unresolved` | `(*, min_severity=…, exclude_nerve=…)` | Antal uhåndterede incidents (til hurtig live-status). Selv-sikker → 0. | [src](../../../core/runtime/db_central_incidents.py#L245) |
+| function | `has_open_incident` | `(*, cluster, nerve)` | True hvis der allerede findes en uløst incident for (cluster, nerve). Selv-sikker. | [src](../../../core/runtime/db_central_incidents.py#L272) |
 
 ## `core/runtime/db_cheap_provider.py`
 _Persistence for the cheap-provider runtime-state + invocation cluster._

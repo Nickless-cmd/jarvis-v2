@@ -1,112 +1,113 @@
-"""Explore skal EFTERPRØVE sine påstande, ikke gætte på modellen.
+"""Vaernet slaar nu op DÉR HVOR FILERNE BOR — Fase 6.
 
-Bjørn 7/9-2026: «burde der ikke være et værn i explore der kan checke
-påstande, og rotere model hvis en påstand ikke holder?»
+Jarvis pegede paa `simple_tools_explore.py:126`: `if target == "workstation":
+tjek_paastande = None`. Vaernet var slaaet HELT fra netop paa den sti hvor han
+undersoeger Bjoerns egen maskine — dér hvor en fabrikeret rapport koster mest.
 
-Baggrunden: en hel dag med forsøg på at FORUDSIGE om en model ville lyve —
-syntetiske prøver, gentagne kørsler, opdigt-detektor. copilot-free/gpt-4.1
-bestod dem alle og gav på SAMME spørgsmål både det rigtige svar og tre
-opdigtede funktionsnavne med «Confidence: høj».
+MEN UNDTAGELSEN VAR RIGTIG som den stod. `_rod()` peger paa CONTAINERENS repo,
+saa et opslag dér ville have flaget hver eneste sti paa Bjoerns maskine som
+opdigtet. Det er den modsatte fejl: falske anklager i stedet for manglende
+vaern.
+
+To ting skulle derfor rettes foer vaernet kunne taendes:
+
+  1. Stierne skal slaas op OVER BROEN, ikke i containeren.
+  2. Regexen matchede slet ikke ABSOLUTTE stier. En workstation-rapport skriver
+     naturligt `/home/bs/projekt/src/main.ts`, saa vaernet ville have vaeret
+     koblet paa og alligevel BLINDT.
 """
-from unittest.mock import patch
+from __future__ import annotations
 
 from core.services.explore_claim_check import tjek_paastande
-from core.tools.simple_tools_native import _exec_explore
-
-FALSK_STI = "Se src/jarvis/providers/provider_router.py linje 20"
-FALSK_LINJE = "core/runtime/provider_router.py:12:def route_provider_request"
-SANDT = "core/runtime/provider_router.py:18:def load_provider_router_registry"
 
 
-# ── selve tjekket ───────────────────────────────────────────────────────────
+# ── 2: absolutte stier ───────────────────────────────────────────────────
 
-def test_en_opdigtet_filsti_fanges():
-    d = tjek_paastande(FALSK_STI)
-    assert d["holder"] is False and "findes ikke" in d["fejl"][0]
-
-
-def test_et_forkert_linjenummer_fanges():
-    d = tjek_paastande(FALSK_LINJE)
-    assert d["holder"] is False and "indeholder ikke" in d["fejl"][0]
+def test_absolutte_stier_efterproeves_nu():
+    set_af = []
+    tjek_paastande("se /home/bs/p/main.ts",
+                   findes_fn=lambda s: set_af.append(s) or True)
+    assert set_af == ["/home/bs/p/main.ts"]
 
 
-def test_en_sand_paastand_holder():
-    assert tjek_paastande(SANDT)["holder"] is True
+def test_absolut_sti_MED_linjenummer():
+    set_af = []
+    tjek_paastande("se /home/bs/p/main.ts:42",
+                   findes_fn=lambda s: set_af.append(s) or True)
+    assert set_af == ["/home/bs/p/main.ts"]
 
 
-def test_ren_prosa_doemmes_ikke():
-    """En påstand som «nøglerne læses dynamisk» kan ikke slås op. Et værn der
-    afviste den ville afvise gyldige svar."""
-    d = tjek_paastande("Nøglerne læses dynamisk via read_runtime_key.")
+def test_relative_stier_virker_stadig():
+    d = tjek_paastande("se src/app/main.ts", findes_fn=lambda s: False)
+    assert d["kontrolleret"] == 1 and d["holder"] is False
+
+
+def test_URLer_er_ikke_filstier():
+    """`https:` fejler paa kolon, `//host` paa den anden skraastreg."""
+    assert tjek_paastande("se https://example.com/a/b.js",
+                          findes_fn=lambda s: False)["kontrolleret"] == 0
+
+
+# ── 1: uafgjort er hverken fund eller fejl ───────────────────────────────
+
+def test_UAFGJORT_taeller_hverken_som_fund_eller_fejl():
+    """`_operator_file_exists` svarer `None` naar broen ikke kan afgoere det.
+    Et vaern der gaetter er vaerre end intet — det ville anklage aegte filer."""
+    d = tjek_paastande("se /home/bs/p/main.ts", findes_fn=lambda s: None)
+    assert d == {"kontrolleret": 0, "fejl": [], "holder": True}
+
+
+def test_en_tjekker_der_KASTER_doemmer_ikke():
+    d = tjek_paastande("se /home/bs/p/main.ts",
+                       findes_fn=lambda s: (_ for _ in ()).throw(RuntimeError("bro nede")))
     assert d["kontrolleret"] == 0 and d["holder"] is True
 
 
-def test_tomt_svar_doemmes_ikke():
-    assert tjek_paastande("")["holder"] is True
+def test_en_FALSK_sti_over_broen_falder():
+    d = tjek_paastande("se /home/bs/p/opdigtet.ts", findes_fn=lambda s: False)
+    assert d["holder"] is False
+    assert "findes ikke" in d["fejl"][0]
 
 
-def test_vaernet_vaelter_aldrig():
-    for x in (None, 12345, {"a": 1}):
-        assert tjek_paastande(x)["holder"] is True
+def test_linje_indhold_efterproeves_IKKE_over_broen():
+    """Det ville kraeve en fuld filhentning pr. citat. Eksistensen er det
+    billige og det vigtigste — «filen findes ikke» er den typiske fabrikation.
+    """
+    d = tjek_paastande("se /home/bs/p/main.ts:9999:noget der ikke staar der",
+                       findes_fn=lambda s: True)
+    assert d["holder"] is True
 
 
-# ── rotationen ──────────────────────────────────────────────────────────────
+# ── koblingen ────────────────────────────────────────────────────────────
 
-def _spawn(indhold, provider="p1", model="m1"):
-    return {"agent_id": "a1", "provider": provider, "model": model,
-            "messages": [{"direction": "agent->jarvis", "kind": "result",
-                          "content": indhold}]}
-
-
-def test_holder_paastanden_roteres_der_ikke():
-    with patch("core.tools.simple_tools_native._explore_spawn",
-               return_value=_spawn(SANDT)) as sp:
-        r = _exec_explore({"query": "q"})
-    assert r["status"] == "ok" and sp.call_count == 1
-    assert r["paastande_kontrolleret"] == 1
+def _kode_uden_kommentarer(fn) -> str:
+    """Kommentarerne CITERER den gamle kode for at forklare hvorfor den er
+    vaek. En ren tekst-soegning falder derfor over sin egen forklaring — samme
+    faelde som ramte `as_completed`-testen i raadet."""
+    import inspect
+    linjer = [ln for ln in inspect.getsource(fn).splitlines()
+              if not ln.lstrip().startswith("#")]
+    return "\n".join(linjer)
 
 
-def test_holder_den_ikke_proeves_en_anden_model():
-    svar = [_spawn(FALSK_LINJE, "p1", "m1"), _spawn(SANDT, "p2", "m2")]
-    with patch("core.tools.simple_tools_native._explore_spawn",
-               side_effect=svar) as sp, \
-         patch("core.services.agent_model_fitness.egnede_modeller",
-               return_value=[("p2", "m2")]):
-        r = _exec_explore({"query": "q"})
-    assert sp.call_count == 2, "roterede ikke da påstanden faldt"
-    assert r["status"] == "ok" and "advarsel" not in r
+def test_workstation_slaar_ikke_laengere_vaernet_FRA():
+    from core.tools import simple_tools_explore as E
+    kode = _kode_uden_kommentarer(E._exec_explore)
+    # Praecis den gamle to-linjers form. En bredere soegning ramte
+    # `egnede_modeller = tjek_paastande = None`, som er import-fejl-faldbacken
+    # og skal blive — den har intet med workstation at goere.
+    linjer = kode.splitlines()
+    for i, ln in enumerate(linjer[:-1]):
+        if 'if target == "workstation":' in ln:
+            assert "tjek_paastande = None" not in linjer[i + 1], (
+                "vaernet slaas stadig helt fra for workstation")
+    assert "_operator_file_exists" in kode
+    assert "findes_fn=_bro_tjek" in kode
 
 
-def test_den_fejlende_model_proeves_ikke_igen():
-    set_undtagne = {}
-
-    def falsk_egnede(*, undtagen=frozenset(), maks=4):
-        set_undtagne["v"] = set(undtagen)
-        return [("p2", "m2")]
-
-    with patch("core.tools.simple_tools_native._explore_spawn",
-               side_effect=[_spawn(FALSK_LINJE, "p1", "m1"), _spawn(SANDT, "p2", "m2")]), \
-         patch("core.services.agent_model_fitness.egnede_modeller", falsk_egnede):
-        _exec_explore({"query": "q"})
-    assert ("p1", "m1") in set_undtagne["v"]
-
-
-def test_holder_INGEN_af_forsoegene_afleveres_svaret_med_en_ADVARSEL():
-    """At skjule det ville være samme fejl som at tro på det."""
-    with patch("core.tools.simple_tools_native._explore_spawn",
-               return_value=_spawn(FALSK_STI)), \
-         patch("core.services.agent_model_fitness.egnede_modeller",
-               return_value=[("p2", "m2")]):
-        r = _exec_explore({"query": "q"})
-    assert r["status"] == "ok"
-    assert "advarsel" in r and "findes ikke" in r["advarsel"]
-    assert r["findings"]
-
-
-def test_ingen_andre_maalte_modeller_stopper_rotationen():
-    with patch("core.tools.simple_tools_native._explore_spawn",
-               return_value=_spawn(FALSK_STI)) as sp, \
-         patch("core.services.agent_model_fitness.egnede_modeller", return_value=[]):
-        r = _exec_explore({"query": "q"})
-    assert sp.call_count == 1
-    assert "advarsel" in r
+def test_runtime_stien_bruger_stadig_containerens_repo():
+    """Broen er KUN for workstation. Et runtime-explore skal slaa op lokalt."""
+    from core.tools import simple_tools_explore as E
+    kode = _kode_uden_kommentarer(E._exec_explore)
+    assert 'if target == "workstation":' in kode
+    assert "else tjek_paastande(svar)" in kode

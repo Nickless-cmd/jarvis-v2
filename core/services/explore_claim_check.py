@@ -36,9 +36,14 @@ logger = logging.getLogger(__name__)
 
 # `sti:linje:indhold` — den form `search` selv returnerer, og dermed den form
 # agenten citerer i.
-_STI_LINJE = re.compile(r"(?:^|[\s`(\[])(?:\./)?([\w./-]+\.[A-Za-z0-9_]{1,6}):(\d{1,6})(?::(.*))?")
+_STI_LINJE = re.compile(r"(?:^|[\s`(\[])(/?[\w./-]+\.[A-Za-z0-9_]{1,6}):(\d{1,6})(?::(.*))?")
 # Bare filstier med mappe i — et bart "config.py" er for tvetydigt til at dømme.
-_STI = re.compile(r"(?:^|[\s`(\[])(?:\./)?((?:[\w.-]+/)+[\w.-]+\.[A-Za-z0-9_]{1,6})")
+# `/?` foran: ABSOLUTTE stier blev slet ikke matchet, saa en workstation-rapport
+# — der naturligt skriver `/home/bs/projekt/src/main.ts` — gav NUL kontrollerede
+# paastande. Vaernet ville have vaeret koblet paa og alligevel blindt.
+# URL'er rammes ikke: `https:` fejler paa kolon, og `//host` fejler paa den
+# anden skraastreg.
+_STI = re.compile(r"(?:^|[\s`(\[])(/?(?:[\w.-]+/)+[\w.-]+\.[A-Za-z0-9_]{1,6})")
 
 # Endelser vi kan udtale os om. En sti til noget der ikke er en kildefil
 # (fx en URL-agtig streng) skal ikke give falske anklager.
@@ -61,12 +66,24 @@ def _findes(sti: str, rod: Path) -> bool:
     return (rod / sti).exists()
 
 
-def tjek_paastande(svar: str, *, rod: Path | None = None) -> dict[str, object]:
+def tjek_paastande(svar: str, *, rod: Path | None = None,
+                   findes_fn=None) -> dict[str, object]:
     """Slå svarets efterprøvelige påstande op. Kaster aldrig.
 
     Returnerer {"kontrolleret": n, "fejl": [...], "holder": bool}. Uden
     efterprøvelige påstande er `kontrolleret` 0 og `holder` True — vi dømmer
     ikke et svar vi ikke kan efterprøve.
+
+    `findes_fn(sti) -> bool | None` slår stier op ET ANDET STED end containerens
+    filsystem. Den findes fordi en workstation-explore undersøger BJØRNS
+    maskine: `_rod()` peger på containerens repo, så et opslag her ville flage
+    HVER eneste sti som opdigtet. Derfor var værnet slået helt fra for
+    workstation — og det var rigtigt, men det efterlod den sti hvor en
+    fabrikeret rapport koster mest, helt uden værn.
+
+    `None` fra `findes_fn` betyder «kunne ikke afgøres» og tæller hverken som
+    fund eller fejl. Et værn der gætter er værre end intet: det ville anklage
+    ægte filer for ikke at findes.
     """
     ud: dict[str, object] = {"kontrolleret": 0, "fejl": [], "holder": True}
     try:
@@ -77,16 +94,29 @@ def tjek_paastande(svar: str, *, rod: Path | None = None) -> dict[str, object]:
         fejl: list[str] = []
         set_stier: set[str] = set()
 
+        def _slaa_op(sti: str) -> bool | None:
+            if findes_fn is None:
+                return _findes(sti, r)
+            try:
+                return findes_fn(sti)
+            except Exception:
+                return None
+
         for m in _STI_LINJE.finditer(t):
             sti, nr, indhold = m.group(1), int(m.group(2)), (m.group(3) or "").strip()
             if sti.rsplit(".", 1)[-1].lower() not in _KENDTE:
                 continue
             set_stier.add(sti)
+            _findes_den = _slaa_op(sti)
+            if _findes_den is None:
+                continue                      # uafgjort — hverken fund eller fejl
             ud["kontrolleret"] = int(ud["kontrolleret"]) + 1
-            if not _findes(sti, r):
+            if not _findes_den:
                 fejl.append(f"{sti}: filen findes ikke")
                 continue
-            if not indhold:
+            if not indhold or findes_fn is not None:
+                # Linje-indholdet kan kun efterproeves hvor vi kan LAESE filen.
+                # Over broen ville det kraeve en fuld filhentning pr. citat.
                 continue
             try:
                 linjer = (r / sti if not Path(sti).is_absolute() else Path(sti)).read_text(
@@ -108,8 +138,11 @@ def tjek_paastande(svar: str, *, rod: Path | None = None) -> dict[str, object]:
             if sti in set_stier or sti.rsplit(".", 1)[-1].lower() not in _KENDTE:
                 continue
             set_stier.add(sti)
+            _findes_den = _slaa_op(sti)
+            if _findes_den is None:
+                continue
             ud["kontrolleret"] = int(ud["kontrolleret"]) + 1
-            if not _findes(sti, r):
+            if not _findes_den:
                 fejl.append(f"{sti}: filen findes ikke")
 
         ud["fejl"] = fejl

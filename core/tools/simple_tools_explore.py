@@ -122,8 +122,29 @@ def _exec_explore(args: dict[str, Any]) -> dict[str, Any]:
         from core.services.explore_claim_check import tjek_paastande
     except Exception:
         egnede_modeller = tjek_paastande = None
+    # WORKSTATION-VAERNET (10/9-2026). Foer stod her `tjek_paastande = None`:
+    # vaernet blev slaaet HELT fra naar Jarvis undersoegte Bjoerns egen maskine.
+    #
+    # Det var RIGTIGT som det stod. `explore_claim_check._rod()` peger paa
+    # CONTAINERENS repo, saa et opslag dér ville have flaget hver eneste sti paa
+    # Bjoerns maskine som opdigtet — falske anklager i stedet for manglende
+    # vaern. Men det efterlod netop den sti hvor en fabrikeret rapport koster
+    # mest, helt uden efterproevning.
+    #
+    # Nu slaas stierne op DÉR HVOR DE BOR, over broen. `_operator_file_exists`
+    # er billig og read-only (lister forael dre-mappen), og den svarer `None`
+    # naar den ikke kan afgoere det — hvilket hverken taeller som fund eller
+    # fejl. Et vaern der gaetter er vaerre end intet.
+    _bro_tjek = None
     if target == "workstation":
-        tjek_paastande = None
+        _bruger = str(args.get("_runtime_user_id") or "").strip()
+
+        def _bro_tjek(sti: str):                        # noqa: F811
+            try:
+                from core.tools.simple_tools_operator import _operator_file_exists
+                return _operator_file_exists(sti, _bruger)
+            except Exception:
+                return None
     brugt: set[tuple[str, str]] = set()
     sidste_fejl: list[str] = []
     svar, agent_id, kontrolleret = "", "", 0
@@ -159,7 +180,8 @@ def _exec_explore(args: dict[str, Any]) -> dict[str, Any]:
         svar = svar_n
         if tjek_paastande is None:
             break
-        dom = tjek_paastande(svar)
+        dom = (tjek_paastande(svar, findes_fn=_bro_tjek) if _bro_tjek
+               else tjek_paastande(svar))
         kontrolleret = int(dom.get("kontrolleret") or 0)
         if dom.get("holder"):
             return {"status": "ok", "findings": svar[:12000] or None,

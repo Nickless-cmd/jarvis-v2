@@ -50,7 +50,7 @@ _FLAG_NAME = "shadow"
 # shadow (dens gule = ægte "blød brems" der ville PAUSE runs = adfærdsændring, samler mere data).
 # ENFORCEMENT for POST-OUTPUT-gates (kører i _post_process EFTER streaming → kan ikke real-tids-
 # blokere/footnote det brugeren allerede så): gør ikke-grønne verdicts SYNLIGE som central-incident
-# (privacy-læk RED→severe, kognitiv→error) i stedet for tavs shadow-trace. NON-DESTRUKTIVT — beskeden
+# (privacy-læk RED→severe, kognitiv→info — governance, ikke nedbrud) i stedet for tavs shadow-trace. NON-DESTRUKTIVT — beskeden
 # røres aldrig; enforcement = synlighed+governance. Kill-switch pr. gate: flag gate_enforce.<nerve>.
 _ENFORCED: frozenset[str] = frozenset({
     "decision_gate", "self_review", "fact_gate", "verification", "cross_user_share",
@@ -75,15 +75,16 @@ def _enforce_verdict(nerve: str, cluster: str, klass: GateClass, verdict) -> Non
         from core.services.gate_kernel import Decision
         if verdict is None or verdict.decision in (Decision.GREEN, Decision.SKIP):
             return
-        # Severitet efter GRAD, ikke bare "ikke-grøn". En YELLOW er en blød fodnote-markering =
-        # NORMAL governance (gaten gør sit arbejde), ikke system-uhelbred — den må IKKE farve
-        # Centralen gul (ellers står den evigt gul for at fungere korrekt). Kun en RED hård blok
-        # er fejl-niveau; en SECURITY-RED er severe.
+        # Severitet efter KLASSE, ikke efter grad (10. sep 2026). Al KOGNITIV gate-håndhævelse er
+        # NORMAL governance — gaten gør sit arbejde — uanset om den graderer YELLOW (blød surface)
+        # eller RED (R2.5 hård blok). Den skal være SYNLIG i feed'et, men på info-niveau: ellers
+        # tæller `central_learning.degrading()` den som nedbrud (den ser kun error/severe), og
+        # gaten rapporterer sig SELV som nedbrud netop når compliance er lav — en selvforstærkende
+        # løkke. Samme værn som `system/learning` allerede har mod at tælle sig selv. Kun en
+        # SECURITY-RED (ægte cross-user-lækage) er severe og må farve Centralens helbred.
         if klass is GateClass.SECURITY and verdict.decision is Decision.RED:
             sev = "severe"
-        elif verdict.decision is Decision.RED:
-            sev = "error"
-        else:  # YELLOW — synlig i feed'et, men info-niveau (degraderer ikke helbred)
+        else:  # kognitiv RED + al YELLOW = governance-aktivitet: synlig, men info
             sev = "info"
         from core.runtime.db_central_incidents import record_central_incident
         record_central_incident(

@@ -162,6 +162,14 @@ def root_causes(*, hours: float = 48, min_count: int = _ROOTCAUSE_MIN,
     for r in inc:
         if not _within(r.get("ts"), hours, now):
             continue
+        # Governance-hændelse (kind='gate_enforce', severity != 'severe') er IKKE et
+        # fejl-symptom — gaten gjorde sit arbejde. Uden dette filter står "gate håndhævet:
+        # verification → yellow" som TOP-rod-årsag (×98 den 10. sep) med forslaget "fix ved
+        # kilden (gate_proactivity.py)" — men der er intet at fixe. Gælder også de historiske
+        # 'error'-rækker fra FØR severity-fixet 10. sep: samme klasse. Samme værn som
+        # degrading() har mod system/learning. En SECURITY-RED er severe og forbliver synlig.
+        if str(r.get("kind")) == "gate_enforce" and str(r.get("severity")) != "severe":
+            continue
         sig = _signature(str(r.get("message") or ""))
         key = (str(r.get("cluster") or ""), str(r.get("nerve") or ""), sig)
         g = groups.setdefault(key, {"cluster": key[0], "nerve": key[1], "signature": sig,

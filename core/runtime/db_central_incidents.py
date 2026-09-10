@@ -10,7 +10,7 @@ Selv-sikker: alle skrive-/læse-fejl sluges (en incident-log må aldrig vælte r
 from __future__ import annotations
 
 import sqlite3
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from core.runtime.db_core import connect
@@ -179,6 +179,37 @@ def resolve_central_incidents(*, cluster: str, nerve: str) -> int:
                 "UPDATE central_incidents SET resolved = 1 "
                 "WHERE resolved = 0 AND cluster = ? AND nerve = ?",
                 (str(cluster or ""), str(nerve or "")),
+            )
+            return int(cur.rowcount or 0)
+    except Exception:
+        return 0
+
+
+def expire_gate_enforce_incidents(*, older_than_hours: float = 2.0) -> int:
+    """Auto-luk ULØSTE governance-hændelser (kind='gate_enforce', severity != 'severe') ældre
+    end vinduet. Returnerer antal lukkede. Selv-sikker → 0.
+
+    Governance-hændelser er ØJEBLIKKE, ikke defekter: at verifikations-gaten håndhævede for
+    tre timer siden er ikke en ÅBEN sag. Men uden udløb hobede de sig op — 931 stod uløste
+    10. sep 2026 og voksede ubegrænset, fordi proactivity/verification er den eneste nerve
+    uden en selv-løsende modpart (config_drift, central_health og provider_health har alle
+    en). Ophobningen fyldte både incident-panelet og `root_causes()`, hvor governance-
+    aktivitet blev foreslået "fixet ved kilden" som var den en fejl.
+
+    severity != 'severe' (ikke kun 'info'): historiske rækker fra FØR severity-fixet 10. sep
+    ligger med severity='error' og er samme klasse — en gate der håndhævede. Rører ALDRIG
+    'severe': en SECURITY-RED (ægte cross-user-lækage) skal stå åben indtil nogen håndterer
+    den — den må ikke forsvinde af sig selv.
+    """
+    try:
+        cutoff = (datetime.now(UTC) - timedelta(hours=float(older_than_hours))).isoformat()
+        with connect() as conn:
+            _ensure_central_incidents_table(conn)
+            cur = conn.execute(
+                "UPDATE central_incidents SET resolved = 1 "
+                "WHERE resolved = 0 AND kind = 'gate_enforce' AND severity <> 'severe' "
+                "AND ts < ?",
+                (cutoff,),
             )
             return int(cur.rowcount or 0)
     except Exception:

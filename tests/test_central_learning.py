@@ -119,6 +119,31 @@ def test_root_causes_respects_min_count():
     assert cl.root_causes(incidents=inc) == []
 
 
+def test_root_causes_excludes_cognitive_gate_enforce():
+    """Kognitiv governance-hændelse (gate_enforce/info) er IKKE et fejl-symptom og må ikke
+    stå som rod-årsag med 'fix ved kilden'-forslag. En SECURITY-RED (severe) forbliver synlig."""
+    gov = [{"cluster": "proactivity", "nerve": "verification", "severity": "info",
+            "kind": "gate_enforce",
+            "message": "gate håndhævet: verification → yellow: R2 blød surface",
+            "ts": _ts(3 + i)} for i in range(5)]
+    # historiske rækker fra FØR severity-fixet 10. sep: severity='error', SAMME klasse —
+    # en gate der håndhævede er ikke et fejl-symptom uanset hvilken severity gammel kode gav
+    gov_err = [{"cluster": "proactivity", "nerve": "verification", "severity": "error",
+                "kind": "gate_enforce",
+                "message": "gate håndhævet: verification → red: R2.5 hård blok",
+                "ts": _ts(3 + i)} for i in range(4)]
+    assert cl.root_causes(incidents=gov + gov_err) == []
+    assert not [p for p in cl.propose_adjustments(incidents=gov + gov_err)
+                if p["kind"] == "fix_root_cause"]
+
+    # severe gate-hændelse (ægte cross-user-lækage) skal STADIG grupperes som rod-årsag
+    sec = [{"cluster": "privacy", "nerve": "cross_user_share", "severity": "severe",
+            "kind": "gate_enforce", "message": f"lækage {'a'*16}", "ts": _ts(3 + i)}
+           for i in range(3)]
+    rc = cl.root_causes(incidents=sec)
+    assert len(rc) == 1 and rc[0]["nerve"] == "cross_user_share" and rc[0]["count"] == 3
+
+
 def test_propose_root_cause_severe_is_top_priority():
     inc = [{"cluster": "auth", "nerve": "tool_access", "severity": "severe",
             "kind": "fail_open", "message": f"auth backstop kastede {'a'*12}", "ts": _ts(3 + i)}

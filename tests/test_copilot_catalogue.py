@@ -195,24 +195,80 @@ def test_noedplanen_indeholder_kun_NAABARE_modeller():
         assert not (set(navne) & doede), f"{tier} indeholder doede modeller"
 
 
-def test_maalt_doede_modeller_kommer_ikke_i_poolen():
-    """`claude-fable-5` og `-5.1` har `/chat/completions` i feltet og svarer
-    `model_not_supported`. Lag 1 slipper dem igennem, og lag 2 kan foerst
-    doemme efter tre loggede forsoeg — saa uden dette braendte hver
-    kode-rotation sit budget paa dem foerst. (Jarvis' fund, sjette koersel.)"""
+def test_poolen_MAALER_naabarhed_frem_for_at_liste_doede():
+    """Foerste udgave havde en HAARDKODET liste. Jarvis fandt at jeg dermed
+    havde erstattet to doede (claude-fable-*) med FIRE doede
+    (claude-opus-4.7/4.8/4.8-fast/5) — alle med `/chat/completions` OG
+    `tool_calls` i feltet, mens `claude-sonnet-5` fra samme familie virker."""
+    import inspect
+
     import core.services.copilot_catalogue as c
 
-    for navn in c._MAALT_DOEDE:
-        assert _brugbar({"id": navn,
-                         "capabilities": {"type": "chat",
-                                          "supports": {"tool_calls": True}},
-                         "model_picker_enabled": True,
-                         "supported_endpoints": ["/chat/completions"]}) is False
+    assert not hasattr(c, "_MAALT_DOEDE"), (
+        "den haardkodede liste er tilbage — den raadner igen")
+    assert "_naabar(" in inspect.getsource(c.rangeret)
 
 
-def test_listen_over_doede_holdes_KORT():
-    """Den maa ikke vokse til et skyggeregister ved siden af historikken. Er
-    der mange, hoerer de hjemme i den maalte historik, ikke i en konstant."""
+def test_proeven_sender_IKKE_max_tokens():
+    """Den parameter faar `gpt-5.4` til at svare 400. En proeve maa ikke selv
+    frembringe den fejl den leder efter."""
+    import ast
+    import inspect
+
     import core.services.copilot_catalogue as c
 
-    assert len(c._MAALT_DOEDE) <= 5
+    # Spoerg KODEN, ikke teksten: docstringen naevner `max_tokens` for at
+    # forklare hvorfor den ikke bruges, og en ren strengsoegning ville falde
+    # over sin egen forklaring. (Fjerde gang det moenster bider i dag.)
+    traeet = ast.parse(inspect.getsource(c._naabar).lstrip())
+    for knude in ast.walk(traeet):
+        if isinstance(knude, ast.Constant) and knude.value == "max_tokens":
+            raise AssertionError("proeven sender max_tokens — den frembringer "
+                                 "selv den fejl den leder efter")
+
+
+def test_en_NETVAERKSFEJL_doemmer_ikke_modellen(monkeypatch):
+    """Kun et svar fra tjenesten betyder «kan ikke kaldes». En proeve der
+    doemmer paa tavshed ville toemme poolen naar linjen vakler."""
+    import core.services.copilot_catalogue as c
+
+    c._naabar_cache.clear()
+    monkeypatch.setattr(c, "_api_token", lambda: "x")
+    monkeypatch.setattr(c.urllib.request, "urlopen",
+                        lambda *a, **k: (_ for _ in ()).throw(OSError("netvaerk")))
+    assert c._naabar("en-model") is True
+    assert "en-model" not in c._naabar_cache
+
+
+def test_et_HTTP_svar_ER_en_dom(monkeypatch):
+    import core.services.copilot_catalogue as c
+
+    c._naabar_cache.clear()
+    monkeypatch.setattr(c, "_api_token", lambda: "x")
+
+    def _fejl(*a, **k):
+        raise c.urllib.error.HTTPError("u", 400, "Bad Request", {}, None)
+
+    monkeypatch.setattr(c.urllib.request, "urlopen", _fejl)
+    assert c._naabar("doed-model") is False
+
+
+def test_proeven_cacher(monkeypatch):
+    import core.services.copilot_catalogue as c
+
+    c._naabar_cache.clear()
+    kald = {"n": 0}
+    monkeypatch.setattr(c, "_api_token", lambda: "x")
+
+    class _Svar:
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+
+    def _ok(*a, **k):
+        kald["n"] += 1
+        return _Svar()
+
+    monkeypatch.setattr(c.urllib.request, "urlopen", _ok)
+    for _ in range(5):
+        c._naabar("m")
+    assert kald["n"] == 1, f"proeven koerte {kald['n']} gange trods cache"

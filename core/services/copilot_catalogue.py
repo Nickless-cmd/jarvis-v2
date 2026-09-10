@@ -113,16 +113,61 @@ def hent_modeller(*, tving: bool = False) -> list[dict[str, Any]]:
 #: modsat en timeout, hvor tre uheld intet betyder.
 _MIN_FORSOEG = 3
 
-#: MAALT DOEDE — direkte kald 10/9-2026, uden faldback-lag imellem. De har
-#: `/chat/completions` i `supported_endpoints` og svarer alligevel
-#: `model_not_supported`, uanset parametre. Lag 1 slipper dem igennem, og lag
-#: 2 kan foerst doemme efter tre loggede forsoeg — saa uden dette ville hver
-#: kode-rotation braende sit budget paa dem foerst.
-#:
-#: Det er et OEJEBLIKSBILLEDE, ikke en lov: bliver de understoettet igen, er
-#: det historikken der skal vise det. Derfor staar datoen, og derfor er listen
-#: kort — den maa ikke vokse til et skyggeregister.
-_MAALT_DOEDE = frozenset({"claude-fable-5", "claude-fable-5.1"})
+#: HVOR LAENGE EN NAABARHEDS-MAALING GAELDER. Et doegn: en model bliver
+#: sjaeldent understoettet og uunderstoettet i samme dag, og et doegn holder
+#: proeverne nede paa en haandfuld.
+_NAABAR_TTL = 86400.0
+
+#: MAALT NAABARHED — {model: (naabar, tidspunkt)}. Proces-lokal med vilje:
+#: den koster ét lille kald pr. model pr. doegn, og en delt tabel ville vaere
+#: mere maskineri end problemet.
+_naabar_cache: dict[str, tuple[bool, float]] = {}
+
+
+def _naabar(model: str, *, timeout_s: float = 20.0) -> bool:
+    """Svarer modellen overhovedet? ÉT lille kald, cachet et doegn.
+
+    Foerste udgave havde en HAARDKODET liste over doede modeller. Jarvis
+    fandt at jeg dermed havde erstattet to doede (`claude-fable-*`) med FIRE
+    doede (`claude-opus-4.7/4.8/4.8-fast/5`) — de har alle
+    `/chat/completions` OG `tool_calls` i feltet, og svarer
+    `model_not_supported`. Mens `claude-sonnet-5` fra samme familie virker.
+
+    Hans indvending mod min liste er den rigtige: «han har maalt det» er
+    samme slags paastand som feltet — troevaerdig, og ikke det samme som
+    efterproevet. En liste jeg vedligeholder i hovedet raadner; en maaling
+    goer ikke.
+
+    INGEN `max_tokens`. Den parameter faar `gpt-5.4` til at svare 400, og det
+    kostede os en forkert dom om modellen i dag. Proeven maa ikke selv
+    frembringe den fejl den leder efter.
+    """
+    import time as _t
+    m = str(model or "").strip()
+    if not m:
+        return False
+    naa = _naabar_cache.get(m)
+    if naa is not None and (_t.monotonic() - naa[1]) < _NAABAR_TTL:
+        return naa[0]
+    try:
+        req = urllib.request.Request(
+            "https://api.githubcopilot.com/chat/completions",
+            data=json.dumps({"model": m,
+                             "messages": [{"role": "user", "content": "ping"}]}).encode(),
+            headers={**_HEADERS, "Authorization": f"Bearer {_api_token()}",
+                     "Content-Type": "application/json"})
+        with urllib.request.urlopen(req, timeout=timeout_s):
+            ud = True
+    except Exception as exc:
+        # En NETVAERKSFEJL er ikke en dom over modellen. Kun et svar fra
+        # tjenesten — en HTTPError — betyder «denne model kan ikke kaldes».
+        if not isinstance(exc, urllib.error.HTTPError):
+            logger.debug("naabarheds-proeven naaede ikke %s", m, exc_info=True)
+            return True
+        ud = False
+        logger.info("copilot-model %s svarer ikke (%s) — udelades", m, exc.code)
+    _naabar_cache[m] = (ud, _t.monotonic())
+    return ud
 
 
 def _maalt_uegnet() -> set[str]:
@@ -178,8 +223,6 @@ def _brugbar(m: dict[str, Any], *, uegnet: set[str] | None = None) -> bool:
     # virker har det. (Jarvis' femte koersel.)
     _ep = m.get("supported_endpoints") or []
     _id = str(m.get("id") or "")
-    if _id in _MAALT_DOEDE:
-        return False                # maalt direkte: model_not_supported
     if uegnet and _id in uegnet:
         return False                # proevet og aldrig svaret
     return (bool((cap.get("supports") or {}).get("tool_calls"))
@@ -210,6 +253,14 @@ def rangeret(opgave: str = "research", *, maks: int = 4) -> dict[str, Any]:
                             key=lambda x: -int(((x.get("capabilities") or {})
                                                 .get("limits") or {})
                                                .get("max_context_window_tokens") or 0)):
+                # MAAL FOER DU LOVER. Feltet siger `/chat/completions` og
+                # `tool_calls` for fire opus-modeller der svarer
+                # `model_not_supported` — mens `claude-sonnet-5` fra samme
+                # familie virker. Kun et RIGTIGT kald kan se forskel, og det
+                # er billigt her: kun de kandidater vi er ved at love, og kun
+                # ét kald pr. model pr. doegn.
+                if not _naabar(str(m.get("id") or "")):
+                    continue
                 valgt.append({"model": str(m.get("id") or ""), "tier": t,
                               "vendor": str(m.get("vendor") or ""),
                               "kontekst": int(((m.get("capabilities") or {})

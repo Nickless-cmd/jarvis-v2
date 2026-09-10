@@ -441,6 +441,16 @@ _Provider health check — periodic ping to detect outages early._
 | function | `_exec_run_health_check` | `(args)` | — | [src](../../../core/services/provider_health_check.py#L315) |
 | function | `_exec_get_health_snapshot` | `(args)` | — | [src](../../../core/services/provider_health_check.py#L319) |
 
+## `core/services/provider_model_epochs.py`
+_Hvilken model SVAREDE — ikke hvilken vi bad om._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_ensure` | `(conn)` | — | [src](../../../core/services/provider_model_epochs.py#L31) |
+| function | `_row` | `(r)` | — | [src](../../../core/services/provider_model_epochs.py#L53) |
+| function | `current_model_epoch` | `(*, provider, requested_model)` | Den epoke der gaelder nu, eller `None` hvis vi aldrig har observeret noget. | [src](../../../core/services/provider_model_epochs.py#L69) |
+| function | `record_model_observation` | `(*, provider, requested_model, observed_model)` | Bogfoer hvad udbyderen FAKTISK svarede med. | [src](../../../core/services/provider_model_epochs.py#L92) |
+
 ## `core/services/provider_retry_policy.py`
 _Provider retry policy — exponential backoff for transient failures._
 
@@ -651,26 +661,4 @@ _Reboot Awareness Daemon — proprioception: "I feel when I restart"._
 | function | `build_reboot_awareness_surface` | `()` | — | [src](../../../core/services/reboot_awareness_daemon.py#L206) |
 | function | `_surface_summary` | `(event, uptime)` | — | [src](../../../core/services/reboot_awareness_daemon.py#L229) |
 | function | `build_reboot_awareness_prompt_section` | `()` | Announce recent reboot once; stays silent after first ~10 min. | [src](../../../core/services/reboot_awareness_daemon.py#L252) |
-
-## `core/services/recall.py`
-_One recall path over every memory source (memory repair 2026-09-04, R5)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_clip` | `(text, cap=…)` | — | [src](../../../core/services/recall.py#L54) |
-| function | `_dedupe_key` | `(text)` | — | [src](../../../core/services/recall.py#L59) |
-| function | `_terms` | `(text)` | — | [src](../../../core/services/recall.py#L64) |
-| function | `_lexical_coverage` | `(query, text)` | — | [src](../../../core/services/recall.py#L76) |
-| function | `_default_sources_for_query` | `(query)` | — | [src](../../../core/services/recall.py#L84) |
-| function | `_source_workspace` | `(query, limit)` | — | [src](../../../core/services/recall.py#L94) |
-| function | `_source_brain` | `(query, limit)` | — | [src](../../../core/services/recall.py#L110) |
-| function | `_source_private_brain` | `(query, limit)` | — | [src](../../../core/services/recall.py#L129) |
-| function | `_source_sensory` | `(query, limit)` | — | [src](../../../core/services/recall.py#L154) |
-| function | `_rank_score` | `(index)` | FTS5 bm25() giver 0,05-0,09 efter 1/(1+|rank|) — aldrig konkurrencedygtig | [src](../../../core/services/recall.py#L172) |
-| function | `_source_session_summary` | `(query, limit)` | — | [src](../../../core/services/recall.py#L179) |
-| function | `_source_chat` | `(query, limit)` | — | [src](../../../core/services/recall.py#L193) |
-| function | `_source_chronicle` | `(query, limit)` | — | [src](../../../core/services/recall.py#L207) |
-| function | `fuse` | `(query, candidates)` | Re-score candidates: 0.6 × native + 0.4 × BM25 (over the candidate texts), | [src](../../../core/services/recall.py#L237) |
-| function | `empty_message` | `(query)` | — | [src](../../../core/services/recall.py#L281) |
-| function | `recall` | `(query, *, limit=…, sources=…, session_id=…, min_score=…, per_source=…)` | Search every memory source with one fused ranking. | [src](../../../core/services/recall.py#L285) |
 

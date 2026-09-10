@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 14261 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 14265 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -45,14 +45,14 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 14261 functions/
 - [`core.services.15`](core.services.15.md) — `mcp_auth` … `modulator_witness`
 - [`core.services.16`](core.services.16.md) — `monitor_streams` … `parallel_selves`
 - [`core.services.17`](core.services.17.md) — `past_context_router` … `process_watcher`
-- [`core.services.18`](core.services.18.md) — `producer_novelty` … `recall`
-- [`core.services.19`](core.services.19.md) — `recall_scheduler` … `runtime_cognitive_conductor`
-- [`core.services.20`](core.services.20.md) — `runtime_decision_engine` … `self_narrative_self_model_review_bridge`
-- [`core.services.21`](core.services.21.md) — `self_repair_engine` … `signal_decay_daemon`
-- [`core.services.22`](core.services.22.md) — `signal_delta_trigger` … `sustained_attention`
-- [`core.services.23`](core.services.23.md) — `system_cartographer` … `tool_tagger`
-- [`core.services.24`](core.services.24.md) — `tool_usage_store` … `visible_model_types`
-- [`core.services.25`](core.services.25.md) — `visible_run_abandonment` … `world_model_signal_tracking`
+- [`core.services.18`](core.services.18.md) — `producer_novelty` … `reboot_awareness_daemon`
+- [`core.services.19`](core.services.19.md) — `recall` … `runtime_browser_body`
+- [`core.services.20`](core.services.20.md) — `runtime_cognitive_conductor` … `self_narrative_continuity_signal_tracking`
+- [`core.services.21`](core.services.21.md) — `self_narrative_self_model_review_bridge` … `signal_baseline`
+- [`core.services.22`](core.services.22.md) — `signal_decay_daemon` … `surprise_detector`
+- [`core.services.23`](core.services.23.md) — `sustained_attention` … `tool_router_runtime`
+- [`core.services.24`](core.services.24.md) — `tool_tagger` … `visible_model_sse`
+- [`core.services.25`](core.services.25.md) — `visible_model_types` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

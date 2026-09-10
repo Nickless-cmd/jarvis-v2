@@ -22,6 +22,9 @@ distillation → ingen skrivning (nuværende bevares).
 from __future__ import annotations
 
 from typing import Any
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Generiske/mekaniske værdier der IKKE tæller som rig identitet.
 _GENERIC_FOCUS = frozenset({"", "visible-work", "unknown", "none", "n/a", "visible work"})
@@ -157,6 +160,27 @@ def distill_self_model(*, trigger: str = "cadence") -> dict[str, Any]:
         now = datetime.now(UTC).isoformat()
         from core.runtime.db_private_states import record_private_self_model
         record_private_self_model(created_at=now, updated_at=now, **candidate)
+        # VERSIONÉR BILLEDET (opgave 4). Uden dette ville historikken vaere et
+        # lager ingen fylder: `record_private_self_model` overskriver den
+        # aktuelle raekke, saa gaarsdagens selvbillede findes ikke laengere at
+        # holde det op mod. Kaeden er det der goer «hvad aendrede sig, og
+        # hvorfor» til et spoergsmaal man kan stille.
+        #
+        # Fail-safe: historikken maa aldrig kunne vaelte destillationen.
+        try:
+            from core.services.self_model_history import record_self_model_snapshot
+            record_self_model_snapshot(
+                identity_focus=str(candidate.get("identity_focus") or ""),
+                preferred_work_mode=str(candidate.get("preferred_work_mode") or ""),
+                recurring_tension=str(candidate.get("recurring_tension") or ""),
+                growth_direction=str(candidate.get("growth_direction") or ""),
+                confidence=str(candidate.get("confidence") or ""),
+                source=str(candidate.get("source") or "distiller"),
+                producer_trigger=str(trigger or ""),
+                created_at=now,
+            )
+        except Exception:
+            logger.warning("kunne ikke versionere selvbilledet", exc_info=True)
         try:
             from core.services.central_private_observe import record_private
             record_private("cognition", "self_model_distilled", value=float(cand_r),

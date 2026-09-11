@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `scripts/measure_prompt_payload.py`
+_Measure where Jarvis's visible-chat prompt tokens come from._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `count_tokens` | `(text)` | Count tokens with tiktoken if available; else chars/4 estimate. | [src](../../../scripts/measure_prompt_payload.py#L35) |
+| function | `split_system_by_sections` | `(text)` | Split a system prompt into (header, char_count, token_count) tuples. | [src](../../../scripts/measure_prompt_payload.py#L57) |
+| function | `main` | `()` | — | [src](../../../scripts/measure_prompt_payload.py#L80) |
+
 ## `scripts/measure_turn_latency.py`
 _Mål Jarvis' svartid — fra send til svar._
 

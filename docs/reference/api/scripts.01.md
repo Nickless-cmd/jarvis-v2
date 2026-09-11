@@ -221,6 +221,14 @@ _SP5 docs-drift checker — catch when docs/ diverges from git+runtime truth._
 | function | `run_check` | `(repo=…, staged=…)` | Run all checks and return a report dict with generated_at, hard/soft drift lists and | [src](../../../scripts/docs_drift_check.py#L178) |
 | function | `main` | `()` | CLI entry point. `--check` = gate mode: report hard drift and exit 1 if any, else 0. | [src](../../../scripts/docs_drift_check.py#L192) |
 
+## `scripts/drain_before_restart.py`
+_Vent til ingen tur er levende, så en genstart ikke kapper en._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `levende` | `(db=…)` | Er der et levende run lige nu? `None` = kunne ikke afgøres. | [src](../../../scripts/drain_before_restart.py#L48) |
+| function | `vent` | `(loft=…, db=…)` | 0 = frit, kan genstarte. 1 = loftet nået mens noget stadig kørte. | [src](../../../scripts/drain_before_restart.py#L75) |
+
 ## `scripts/enforce_commit_hygiene.py`
 _Pre-commit hook: catch kitchen-sink commits._
 
@@ -429,13 +437,4 @@ _Admin-migration: knyt Google-email til eksisterende konti (§12)._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `main` | `()` | — | [src](../../../scripts/link_google_email.py#L21) |
-
-## `scripts/measure_prompt_payload.py`
-_Measure where Jarvis's visible-chat prompt tokens come from._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `count_tokens` | `(text)` | Count tokens with tiktoken if available; else chars/4 estimate. | [src](../../../scripts/measure_prompt_payload.py#L35) |
-| function | `split_system_by_sections` | `(text)` | Split a system prompt into (header, char_count, token_count) tuples. | [src](../../../scripts/measure_prompt_payload.py#L57) |
-| function | `main` | `()` | — | [src](../../../scripts/measure_prompt_payload.py#L80) |
 

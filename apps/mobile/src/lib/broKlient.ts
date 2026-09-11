@@ -35,6 +35,13 @@ export interface BroOpsaetning {
   lavSocket?: (url: string, muligheder?: { headers: Record<string, string> }) => WebSocketLignende
   /** Injicerbar til test, så genforbindelse kan køres uden rigtig ventetid. */
   planlaeg?: (fn: () => void, ms: number) => unknown
+  /** Gentagende vagt. Egen injektion fordi `planlaeg` er engangs — og fordi
+   *  testene kalder den synkront, hvilket ville få en gentagende vagt til at
+   *  rekursere i stedet for at vente. */
+  planlaegVagt?: (fn: () => void, ms: number) => unknown
+  rydVagt?: (haandtag: unknown) => void
+  /** Injicerbart ur, så trafik-vagten kan testes uden at vente 75 sekunder. */
+  nu?: () => number
   log?: (besked: string, ...rest: unknown[]) => void
 }
 
@@ -52,6 +59,23 @@ export interface WebSocketLignende {
  *  en telefon der har ligget i lommen en time skal være tilbage inden for et
  *  halvt minut, ikke inden for en time. */
 export const GENFORBIND_MS = [1000, 2000, 5000, 10000, 20000, 30000]
+
+/** Hvor længe der må gå uden ÉN indgående frame før forbindelsen er død.
+ *
+ *  Klienten svarede på `ping`, men INTET opdagede en halvåben socket. Suspenderer
+ *  Android den i baggrunden, kommer `onclose` aldrig — og klienten sidder og tror
+ *  den er forbundet, mens serveren for længst har lukket efter tre ubesvarede
+ *  ping (uvicorn: 20 s interval, 20 s timeout).
+ *
+ *  Målt 11/9-2026 over 48 timer på `mobil-2j1dxlnh`: 98 huller, median-LEVETID
+ *  for en forbindelse 99 sekunder, 74 af 99 under fem minutter. Desk-klienten
+ *  har haft præcis denne vagt hele tiden (75 s / 10 s); mobilen havde ingen.
+ *
+ *  75 s = tre ubesvarede ping plus lidt luft. */
+export const TRAFIK_TIMEOUT_MS = 75_000
+/** Finere end timeouten, så vi opdager tavsheden inden for et vindue og ikke
+ *  først ved næste hele periode. */
+export const VAGT_INTERVAL_MS = 10_000
 
 export function broUrl(apiBaseUrl: string): string {
   const base = apiBaseUrl.endsWith('/') ? apiBaseUrl : `${apiBaseUrl}/`
@@ -90,10 +114,62 @@ export function opretBro(opsaetning: BroOpsaetning): Bro {
   const planlaeg = opsaetning.planlaeg ?? ((fn, ms) => setTimeout(fn, ms))
   const log = opsaetning.log ?? (() => {})
 
+  const planlaegVagt = opsaetning.planlaegVagt
+    ?? ((fn: () => void, ms: number) => setInterval(fn, ms))
+  const rydVagt = opsaetning.rydVagt
+    ?? ((h: unknown) => clearInterval(h as ReturnType<typeof setInterval>))
+  const nu = opsaetning.nu ?? (() => Date.now())
+
   let ws: WebSocketLignende | null = null
   let forbundet = false
   let stoppet = false
   let antalForsoeg = 0
+  let sidsteTrafik = 0
+  let vagt: unknown = null
+  let genforbindPlanlagt = false
+
+  function stopVagt() {
+    if (vagt !== null) {
+      try { rydVagt(vagt) } catch { /* allerede ryddet */ }
+      vagt = null
+    }
+  }
+
+  /** ÉN genforbindelse pr. socket. Både `onclose` og vagten kan nå hertil, og
+   *  uden denne spærre ville en halvåben socket der ENDELIG lukker give to
+   *  parallelle genforbindelser — og dermed to brorepræsentationer af samme
+   *  telefon. */
+  function planlaegGenforbind() {
+    if (stoppet || genforbindPlanlagt) return
+    genforbindPlanlagt = true
+    // ?? for at holde typetjekket ærligt: en indeksering KAN give undefined,
+    // og den længste pause er det rigtige fallback hvis listen nogensinde
+    // bliver tom.
+    const pause = GENFORBIND_MS[Math.min(antalForsoeg, GENFORBIND_MS.length - 1)] ?? 30000
+    antalForsoeg += 1
+    log(`bro: lukket, prøver igen om ${pause} ms`)
+    planlaeg(() => { genforbindPlanlagt = false; forbind() }, pause)
+  }
+
+  function startVagt() {
+    stopVagt()
+    sidsteTrafik = nu()
+    vagt = planlaegVagt(() => {
+      if (stoppet || !ws) return
+      const tavs = nu() - sidsteTrafik
+      if (tavs <= TRAFIK_TIMEOUT_MS) return
+      log(`bro: ingen trafik i ${Math.round(tavs / 1000)}s — tvinger genforbindelse`)
+      const doed = ws
+      stopVagt()
+      ws = null
+      forbundet = false
+      // Luk FØRST, genforbind bagefter. På en halvåben socket kommer `onclose`
+      // måske aldrig, så vi må selv planlægge — spærren ovenfor sikrer at et
+      // sent `onclose` ikke gør det én gang til.
+      try { doed.close() } catch { /* allerede væk */ }
+      planlaegGenforbind()
+    }, VAGT_INTERVAL_MS)
+  }
 
   function sendResultat(correlationId: string, status: string, data: unknown, fejl?: string) {
     if (!ws) return
@@ -133,6 +209,7 @@ export function opretBro(opsaetning: BroOpsaetning): Bro {
     ws = s
 
     s.onopen = () => {
+      startVagt()
       try {
         s.send(JSON.stringify({
           type: 'register',
@@ -150,6 +227,10 @@ export function opretBro(opsaetning: BroOpsaetning): Bro {
     }
 
     s.onmessage = (e) => {
+      // ENHVER indgående frame tæller som livstegn — også `ping`. Det er
+      // netop serverens ping der beviser at socket'en stadig lever, så en
+      // vagt der kun så `tool_invoke` ville fyre midt i en stille periode.
+      sidsteTrafik = nu()
       let besked: Record<string, unknown>
       try {
         besked = JSON.parse(e.data)
@@ -179,14 +260,8 @@ export function opretBro(opsaetning: BroOpsaetning): Bro {
     s.onclose = () => {
       forbundet = false
       ws = null
-      if (stoppet) return
-      // ?? for at holde typetjekket ærligt: en indeksering KAN give undefined,
-      // og den længste pause er det rigtige fallback hvis listen nogensinde
-      // bliver tom.
-      const pause = GENFORBIND_MS[Math.min(antalForsoeg, GENFORBIND_MS.length - 1)] ?? 30000
-      antalForsoeg += 1
-      log(`bro: lukket, prøver igen om ${pause} ms`)
-      planlaeg(forbind, pause)
+      stopVagt()
+      planlaegGenforbind()
     }
   }
 
@@ -198,6 +273,7 @@ export function opretBro(opsaetning: BroOpsaetning): Bro {
     },
     stop() {
       stoppet = true
+      stopVagt()
       forbundet = false
       try { ws?.close() } catch { /* allerede lukket */ }
       ws = null

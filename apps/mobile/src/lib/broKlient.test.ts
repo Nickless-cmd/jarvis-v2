@@ -22,7 +22,12 @@ const GRUND = {
   authToken: 'test-token', // noqa: literal-credential
   capabilities: ['phone_photo', 'phone_location'],
   clientId: 'mobil-1',
-  udfoer: async () => ({})
+  udfoer: async () => ({}),
+  // Vagten er en GENTAGENDE timer. Uden en no-op her ville hver test der ikke
+  // stopper broen efterlade en levende `setInterval` — Jest meldte præcis det
+  // ("did not exit") da vagten blev tilføjet.
+  planlaegVagt: () => 0,
+  rydVagt: () => {}
 }
 
 describe('broUrl', () => {
@@ -185,5 +190,99 @@ describe('genforbindelse', () => {
     sockets[1]!.onmessage!({ data: JSON.stringify({ type: 'registered' }) })
     expect(bro.forsoeg()).toBe(0)
     expect(bro.erForbundet()).toBe(true)
+  })
+})
+
+describe('trafik-vagt', () => {
+  /** En vagt man selv kan tikke, og et ur man selv kan flytte. */
+  function medVagt() {
+    let tik: (() => void) | null = null
+    let tid = 0
+    return {
+      opsaetning: {
+        planlaegVagt: (fn: () => void) => { tik = fn; return 1 },
+        rydVagt: () => { tik = null },
+        nu: () => tid
+      },
+      frem(ms: number) { tid += ms },
+      tik() { tik?.() },
+      lever() { return tik !== null }
+    }
+  }
+
+  it('tvinger genforbindelse når intet er kommet ind i 75 sekunder', () => {
+    // En halvåben socket: Android suspenderer den, serveren lukker efter tre
+    // ubesvarede ping — men `onclose` kommer aldrig. Uden vagten sad klienten
+    // og troede den var forbundet. Målt levetid-median: 99 sekunder.
+    const s = fakeSocket()
+    const v = medVagt()
+    const pauser: number[] = []
+    opretBro({
+      ...GRUND, ...v.opsaetning, lavSocket: () => s,
+      planlaeg: (fn, ms) => { pauser.push(ms); return 0 }
+    }).start()
+    s.onopen?.()
+    v.frem(76_000)
+    v.tik()
+    expect(s.lukket).toBe(true)
+    expect(pauser).toEqual([1000])
+  })
+
+  it('rører ikke en socket der stadig får trafik', () => {
+    const s = fakeSocket()
+    const v = medVagt()
+    const pauser: number[] = []
+    opretBro({
+      ...GRUND, ...v.opsaetning, lavSocket: () => s,
+      planlaeg: (fn, ms) => { pauser.push(ms); return 0 }
+    }).start()
+    s.onopen?.()
+    v.frem(60_000)
+    s.onmessage?.({ data: JSON.stringify({ type: 'ping' }) })  // livstegn
+    v.frem(60_000)
+    v.tik()
+    expect(s.lukket).toBe(false)
+    expect(pauser).toEqual([])
+  })
+
+  it('et ping ER trafik — ikke kun tool_invoke', () => {
+    const s = fakeSocket()
+    const v = medVagt()
+    opretBro({ ...GRUND, ...v.opsaetning, lavSocket: () => s, planlaeg: () => 0 }).start()
+    s.onopen?.()
+    v.frem(70_000)
+    s.onmessage?.({ data: JSON.stringify({ type: 'ping' }) })
+    v.frem(70_000)
+    v.tik()
+    expect(s.lukket).toBe(false)
+  })
+
+  it('genforbinder KUN én gang selv om onclose kommer bagefter', () => {
+    // Den halvåbne socket kan lukke sent. Uden spærren ville vagten og
+    // `onclose` give to parallelle genforbindelser — to brorepræsentationer
+    // af samme telefon.
+    const s = fakeSocket()
+    const v = medVagt()
+    const pauser: number[] = []
+    opretBro({
+      ...GRUND, ...v.opsaetning, lavSocket: () => s,
+      planlaeg: (fn, ms) => { pauser.push(ms); return 0 }
+    }).start()
+    s.onopen?.()
+    v.frem(76_000)
+    v.tik()
+    s.onclose?.()
+    expect(pauser).toEqual([1000])
+  })
+
+  it('stop() rydder vagten', () => {
+    const s = fakeSocket()
+    const v = medVagt()
+    const bro = opretBro({ ...GRUND, ...v.opsaetning, lavSocket: () => s, planlaeg: () => 0 })
+    bro.start()
+    s.onopen?.()
+    expect(v.lever()).toBe(true)
+    bro.stop()
+    expect(v.lever()).toBe(false)
   })
 })

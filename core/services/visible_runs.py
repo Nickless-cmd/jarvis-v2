@@ -2680,6 +2680,27 @@ async def _stream_visible_run(
                     _agentic_temp, _agentic_top_p = 0.3, 0.9
                 for _agentic_round in range(_AGENTIC_MAX_ROUNDS):
                     _run_stage = f"agentic_round_{_agentic_round + 1}"
+                    # LUKKER PROCESSEN? Så stop her, ved rundegrænsen.
+                    #
+                    # Målt 11/9-2026: uden dette kørte turen runde 3 → 10 EFTER
+                    # shutdown-signalet — syv runder, fjorten bash-kald — og blev
+                    # derefter annulleret med alt arbejdet tabt.
+                    # `--timeout-graceful-shutdown 30` var altså spild frem for
+                    # udsættelse. Ikke fordi løkken ignorerede signalet, men fordi
+                    # der intet signal var at spørge om.
+                    #
+                    # Det almindelige `break`, IKKE `_force_finalize_next`: den
+                    # sætter `_is_last_round` → `tool_choice="none"` → ét LLM-kald
+                    # mere. Det er præcis hvad man ikke vil på en døende proces.
+                    # Vejen efter løkken er ren bogføring (logging, observer,
+                    # timeseries) — ingen udbyder røres. (Bjørns spørgsmål, 11/9.)
+                    from core.runtime.process_lifecycle import lukker_ned as _lukker_ned
+                    if _lukker_ned():
+                        logger.warning(
+                            "agentic-loop-stop run_id=%s reason=shutdown round=%d",
+                            run.run_id, _agentic_round + 1)
+                        _agentic_loop_exit_reason = "shutdown"
+                        break
                     if not _provider_supports_followup:
                         logger.warning(
                             "agentic-loop-skip run_id=%s reason=provider-not-supported provider=%s",

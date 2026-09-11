@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7289/14318 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7290/14319 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -35,7 +35,7 @@ Generated from source. 7289/14318 functions/methods documented (50%). The list b
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 2 | 25 | 8% |
 | `core.util` | 9 | 10 | 90% |
-| `scripts` | 186 | 368 | 50% |
+| `scripts` | 187 | 369 | 50% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
@@ -1972,7 +1972,7 @@ Generated from source. 7289/14318 functions/methods documented (50%). The list b
 - `scripts/central_connectivity_audit.py` :: `render_md` (L212)
 - `scripts/central_connectivity_audit.py` :: `scan` (L144)
 - `scripts/commit_history_report.py` :: `build` (L125)
-- `scripts/commit_with_attribution.py` :: `main` (L37)
+- `scripts/commit_with_attribution.py` :: `main` (L58)
 - `scripts/db_decomposition_map.py` :: `comp_of` (L55)
 - `scripts/db_decomposition_map.py` :: `find` (L36)
 - `scripts/db_decomposition_map.py` :: `union` (L40)

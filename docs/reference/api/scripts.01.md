@@ -154,7 +154,8 @@ _CLI for creating a Git commit with canonical actor attribution._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_parser` | `()` | — | [src](../../../scripts/commit_with_attribution.py#L22) |
-| function | `main` | `(argv=…)` | — | [src](../../../scripts/commit_with_attribution.py#L37) |
+| function | `_laes_besked` | `(args)` | Beskeden, uanset hvilken vej den kom ind. | [src](../../../scripts/commit_with_attribution.py#L50) |
+| function | `main` | `(argv=…)` | — | [src](../../../scripts/commit_with_attribution.py#L58) |
 
 ## `scripts/db_decomposition_map.py`
 _Read-only db.py dekomponerings-kort — grupperer 171 tabeller i naturlige domæner efter_

@@ -2342,15 +2342,33 @@ async def _stream_visible_run(
                         # en worker-tråd så ping/keepalive bliver ved. Samme exception-
                         # type propageres til samme handler (to_thread re-raiser i den
                         # ventende frame); rækkefølge + semantik uændret.
-                        await asyncio.to_thread(
-                            append_chat_message,
-                            session_id=run.session_id,
-                            role="tool",
-                            content=result_text,
-                            full_content=str(sr.get("result_text_full") or ""),
-                            tool_name=str(sr.get("tool_name") or ""),
-                            tool_arguments=dict(sr.get("arguments") or {}),
-                        )
+                        try:
+                            await asyncio.to_thread(
+                                append_chat_message,
+                                session_id=run.session_id,
+                                role="tool",
+                                content=result_text,
+                                full_content=str(sr.get("result_text_full") or ""),
+                                tool_name=str(sr.get("tool_name") or ""),
+                                tool_arguments=dict(sr.get("arguments") or {}),
+                            )
+                        except Exception as _tool_persist_exc:
+                            # VAERKTOEJET HAR ALLEREDE KOERT. Foer var dette kald uvogtet,
+                            # saa en `ValueError("chat session not found")` fra
+                            # `append_chat_message` draebte HELE turen — efter at bash
+                            # havde aendret filer, men foer nogen kunne se hvad der skete.
+                            # Fem offer-ture doede saadan 11/9-2026, alle foer de naaede
+                            # den agentiske loekke.
+                            #
+                            # Kontrakten fandtes allerede: `persist_chat_message_with_retry`
+                            # dokumenterer at permanente fejl propageres "til caller, som
+                            # fyrer persist_failed-nerven". To kaldesteder (5050, 5685)
+                            # honorerer den. Dette gjorde ikke.
+                            #
+                            # Vi degraderer i stedet for at doe: resultatet er tabt for
+                            # historikken, men turen kan stadig fortaelle hvad den gjorde.
+                            # (Jarvis' maaling, 11/9-2026.)
+                            _observe_persist_failed(run, _tool_persist_exc)
 
                 # ── Agentic follow-up loop ────────────────────────────────────────────
                 # Runs up to _AGENTIC_MAX_ROUNDS LLM passes after the first-pass

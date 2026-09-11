@@ -493,3 +493,26 @@ def test_loop_logger_lander_faktisk_i_journalen():
     assert vr.logger.name == "uvicorn.error", (
         "et modulnavn går i gulvet — så tier løkken om hvorfor den stoppede"
     )
+
+
+def test_vaerktoejs_persist_draeber_ikke_turen():
+    """En tur der ikke kan gemme et værktøjssvar må ikke dø af det.
+
+    Målt 11/9-2026: fem ture døde på `append_chat_message` →
+    `ValueError("chat session not found")`, 6–17 sekunder inde, alle FØR den
+    agentiske løkke. Værktøjet havde allerede kørt — bash havde ændret filer —
+    men turen døde før nogen kunne se hvad der skete.
+
+    Kontrakten fandtes allerede: `persist_chat_message_with_retry` dokumenterer
+    at permanente fejl propageres «til caller, som fyrer persist_failed-nerven».
+    To kaldesteder honorerede den. Dette gjorde ikke.
+    """
+    import inspect
+    import core.services.visible_runs as vr
+    src = inspect.getsource(vr._stream_visible_run)
+    i = src.index('role="tool"')
+    # find try/except omkring kaldet
+    foer = src[max(0, i - 700):i]
+    efter = src[i:i + 2000]
+    assert "try:" in foer, "værktøjs-persist er uvogtet — en DB-fejl dræber turen"
+    assert "_observe_persist_failed" in efter, "nerven fyres ikke"

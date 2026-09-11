@@ -6099,7 +6099,13 @@ async def _stream_visible_run(
                 _mark_run_completed(run.run_id)
                 _clear_interrupted_session(run.session_id)
         except Exception:
-            pass
+            # FOER: `pass`. Fem ture efterlod deres in-flight-post urort, og
+            # denne linje slugte hvorfor. Uden den kunne ingen skelne «blokken
+            # koerte ikke» fra «blokken kastede» — og nedluknings-sweepen
+            # stemplede saa posterne med en grund der var falsk om dem.
+            logger.warning("kunne ikke rydde in-flight-posten for run=%s session=%s",
+                           getattr(run, "run_id", "?"),
+                           getattr(run, "session_id", "?"), exc_info=True)
 
 
 # Boy Scout-udtrækning (2026-06-30): stream-observabilitets-nerverne bor nu i

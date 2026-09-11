@@ -559,9 +559,22 @@ def create_app() -> FastAPI:
         # stoppe selv, maa arbejdet ikke forsvinde tavst: `interrupted_for_session`
         # er det samme spor genoptagelses-stien laeser paa naeste tur.
         try:
-            from core.services.in_flight_runs import list_running_orphans, mark_interrupted
+            from core.services.in_flight_runs import (
+                list_running_orphans, mark_completed, mark_interrupted,
+            )
+            from core.services.visible_runs_outcomes import run_er_terminal
             for _r in list_running_orphans(0.0):
-                mark_interrupted(str(_r.get("run_id") or ""),
+                _rid = str(_r.get("run_id") or "")
+                # SPOERG, GAET IKKE. Sweepens egen docstring kalder disse
+                # «crash-zombies whose finally never ran» — men med
+                # stale_after_s=0.0 tager den ogsaa poster som en HELT ALMINDELIG
+                # fejlet tur efterlod. Fem saadanne blev stemplet
+                # «api-nedlukning» 17-56 sekunder efter de var doede af noget
+                # helt andet. En grund der er falsk om det den beskriver.
+                if run_er_terminal(_rid) is True:
+                    mark_completed(_rid)      # turen var slut — ikke vores offer
+                    continue
+                mark_interrupted(_rid,
                                  reason="api-nedlukning",
                                  summary="processen lukkede mens turen koerte")
         except Exception:

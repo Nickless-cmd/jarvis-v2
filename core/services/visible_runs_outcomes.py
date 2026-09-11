@@ -335,6 +335,52 @@ def _persist_session_assistant_message(
         pass
 
 
+# Samme statusmaengde som zombie-slot-tjekket i `visible_runs.py:700-709`.
+# Den fandtes allerede dér; her faar den ét navn i stedet for en kopi mere.
+_TERMINALE_STATUSSER = ("completed", "error", "failed", "cancelled", "done")
+
+
+def run_er_terminal(run_id: str) -> bool | None:
+    """Er runnet slut? ``None`` = kunne ikke afgoeres.
+
+    Nedluknings-sweepen i ``app.py`` antog at «posten staar stadig running»
+    betyder «processen doede mens turen koerte». Den antagelse er forkert: en
+    tur der fejler kan efterlade sin in-flight-post urort, og saa stempler
+    sweepen den med ``api-nedlukning`` — en grund der er FALSK om den tur.
+
+    Maalt 11/9-2026 paa fem ture der doede af «chat session not found»:
+
+        doed 06:24:08 -> stemplet 06:24:25   (17 s efter)
+        doed 06:29:38 -> stemplet 06:30:34   (56 s efter)
+        doed 06:32:10 -> stemplet 06:32:47   (37 s efter)
+
+    Alle fem stod `failed` i `visible_runs` foer nedlukningen overhovedet
+    begyndte. Og `interrupted_for_session()` laeses i `visible_runs.py` for at
+    saette `resume_context` — saa en fejlet tur kunne blive tilbudt som en
+    AFBRUDT tur, med en grund der peger paa en genstart der aldrig ramte den.
+    (Jarvis' maaling.)
+
+    Raekken skrives KUN ved afslutning (`_persist_visible_run_outcome` kraever
+    `finished_at`), saa ingen raekke betyder at runnet aldrig naaede dertil —
+    en aegte zombie.
+    """
+    rid = str(run_id or "").strip()
+    if not rid:
+        return None
+    try:
+        with connect() as conn:
+            row = conn.execute(
+                "SELECT status, finished_at FROM visible_runs WHERE run_id = ?",
+                (rid,),
+            ).fetchone()
+    except Exception:
+        logger.debug("kunne ikke slaa run-status op for %s", rid, exc_info=True)
+        return None
+    if not row:
+        return False
+    return (str(row[0] or "").strip().lower() in _TERMINALE_STATUSSER) or bool(row[1])
+
+
 def _append_chat_message_with_retry(
     *,
     session_id: str,

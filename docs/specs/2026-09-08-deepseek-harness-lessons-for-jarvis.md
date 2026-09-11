@@ -1509,10 +1509,24 @@ of the 14 is a **duplicate**, which is what the criterion asks about:
   `retry_runtime`. Built and awaiting wiring is the expected state
   mid-migration.
 - three more — `model_benchmark`, `model_catalogue_sweep`, `model_probe` —
-  were added 2026-09-07, the day *before* this spec, and appear in no spec
-  file. Calling them "this spec's components" was wrong; they predate it.
-  `permission_axes` (2026-09-06) is the one this list should have named: it
-  is cited twice in this document and was left out.
+  belong to a **different migration**. Traced to their commits: `db000139a`
+  (2026-09-07 11:25, *«feat(cheap-lane): ugentlig prøve af hele modelkataloget
+  — cheap lane må aldrig dø»*) added the sweep and the probe with their own
+  script and tests; `4009d48c5` (12:50) added the benchmark. Neither touches a
+  single harness file. They are model-pool health, they landed the day before
+  this spec, and they were swept into the same review list only because an
+  index sees files and not work streams.
+
+  A trap for the next reader tracing provenance the same way: `4009d48c5` is
+  titled *«docs: regenerér api-reference for model_benchmark»*, and it
+  introduces the 235-line service. The message names the smallest of the three
+  things the commit did. `--stat` corrects it; the subject line does not.
+
+- `permission_axes` (2026-09-06, `36c2724a1`) is the one this list should have
+  named, and on stronger grounds than the four: this document does not merely
+  mention it, it **critiques its design** at line 369 — *«the present bash
+  sandbox does not complete that design»*. A component the spec already has an
+  opinion about belongs in a spec review; one it has never named does not.
 - `bro_broker.py` reads as a duplicate bridge and is not one: it *uses*
   `jarvisx_bridge.bridge_registry` and waits for the Phase 4 listener.
 

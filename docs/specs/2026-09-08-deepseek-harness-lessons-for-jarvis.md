@@ -1492,10 +1492,55 @@ ordinary read path sees it. The rehearsal ran on a session nobody would miss,
 because the flip is one-way and a broken write path would have surfaced on
 Bjørn's next message instead of on a probe.
 
-*Still open.* Criteria 4 and 5 are not investigated: old approval,
-tool-routing and agent adapters have not been audited for read-only status, and
-no capability/Mission Control sweep for orphaned duplicate subsystems has been
-run. Two sessions remain in `shadow` on purpose as a control group.
+*Criterion 5 — no orphaned duplicate subsystem.* The capability audit over 996
+services reports 364 LIVE, 618 PARTIAL, 0 STALE, 13 SUSPICIOUS, 1 ORPHAN. None
+of the 14 is a **duplicate**, which is what the criterion asks about:
+
+- the single orphan, `central_gardener.py`, is the tool that removes dead
+  scaffolding — itself now dead scaffolding, with zero importers. An orphan,
+  not a duplicate.
+- seven of the thirteen suspicious are this spec's own phase components, 2–5
+  days old (`compaction_runtime`, `ledger_recovery`, `prepared_request`,
+  `retry_runtime`, `model_benchmark`, `model_catalogue_sweep`, `model_probe`).
+  Built and awaiting wiring is the expected state mid-migration.
+- `bro_broker.py` reads as a duplicate bridge and is not one: it *uses*
+  `jarvisx_bridge.bridge_registry` and waits for the Phase 4 listener.
+
+The audit half therefore holds. **The Mission Control half cannot be measured:**
+MC was removed in `b8c98551` and is being rebuilt, so there is no surface to
+sweep. The criterion as written outlives the subsystem it names.
+
+*Criterion 4 — old adapters are read-only projections or removed.* **Not met,
+and not close.** Measured write recency and write sites:
+
+| adapter | newest row | write sites in code |
+|---|---|---|
+| `approval_claims` | today | 7 |
+| `tool_router_decisions` | today | 1 |
+| `agent_runs` / `agent_messages` / `agent_registry` | today | 2+ |
+| `capability_approval_requests` | 2026-05-15 | 5 |
+| `tool_intent_approval_requests` | 2026-08-17 | 4 |
+| `jc_agent_audit` | 2026-08-04 | 1 |
+| `approval_notification_outbox` | 2026-09-06 | 3 |
+
+The live three are still **direct writers**, not projections: there is no
+shadow mode, no drift comparison and no `storage_mode` equivalent for approval,
+tool-routing or agent state. The dormant four are not removed either — every
+one still has write sites that simply have not fired. A table with old rows and
+live code is not a retired adapter; it is an adapter waiting to surprise
+someone.
+
+Closing this criterion means repeating the `chat_messages` cutover three more
+times — build the projection, run it in shadow, verify drift, flip — and the
+runtimes from Phases 3–5 exist but none of that scaffolding does.
+
+*Incidental.* `tool_router_decisions` stamps `2026-09-11 19:38:09` — no zone,
+space separator — where every other table writes ISO with `+00:00`. A reader
+using `fromisoformat` gets a naive datetime and treats it as local. Same class
+as the `_friskere_end` fallback: true about its own writer, false about the
+world.
+
+Two sessions remain in `shadow` on purpose as a control group.
 
 ### Phase 12: optional remote, goal, hook, and team extensions
 

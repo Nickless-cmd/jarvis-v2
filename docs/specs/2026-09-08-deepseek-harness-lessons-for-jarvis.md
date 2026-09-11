@@ -1496,15 +1496,33 @@ Bjørn's next message instead of on a probe.
 services reports 364 LIVE, 618 PARTIAL, 0 STALE, 13 SUSPICIOUS, 1 ORPHAN. None
 of the 14 is a **duplicate**, which is what the criterion asks about:
 
-- the single orphan, `central_gardener.py`, is the tool that removes dead
-  scaffolding — itself now dead scaffolding, with zero importers. An orphan,
-  not a duplicate.
-- seven of the thirteen suspicious are this spec's own phase components, 2–5
-  days old (`compaction_runtime`, `ledger_recovery`, `prepared_request`,
-  `retry_runtime`, `model_benchmark`, `model_catalogue_sweep`, `model_probe`).
-  Built and awaiting wiring is the expected state mid-migration.
+- the single orphan, `central_gardener.py`, has zero importers — measured —
+  and is not a duplicate. **It is also not dead code**, and this document said
+  so wrongly on first writing: its docstring states «"Yes, Jarvis"-gaten =
+  mennesket kører execute + godkender», and `COMMIT_HISTORY.md:5587` already
+  settled it on 19 August — *«nul referencer er den KORREKTE tilstand for den.
+  Indekset måler referencer, og et værktøj man kalder i hånden ser identisk ud
+  med forladt kode.»* An index cannot distinguish a hand-run tool from
+  abandoned code, and this audit is itself hand-run.
+- four of the thirteen suspicious were added the day after this spec
+  (2026-09-09): `compaction_runtime`, `ledger_recovery`, `prepared_request`,
+  `retry_runtime`. Built and awaiting wiring is the expected state
+  mid-migration.
+- three more — `model_benchmark`, `model_catalogue_sweep`, `model_probe` —
+  were added 2026-09-07, the day *before* this spec, and appear in no spec
+  file. Calling them "this spec's components" was wrong; they predate it.
+  `permission_axes` (2026-09-06) is the one this list should have named: it
+  is cited twice in this document and was left out.
 - `bro_broker.py` reads as a duplicate bridge and is not one: it *uses*
   `jarvisx_bridge.bridge_registry` and waits for the Phase 4 listener.
+
+*What the audit was measuring.* `capability_matrix.md` had not been
+regenerated since **2026-07-23** (`781c8598`). The proof is a shift of exactly
++51 days on two unrelated files — `central_gardener` 16d→67d, `bro_broker`
+38d→89d — and both old figures were correct *for 23 July*. So the 1 965 changed
+lines are not a changed system; they are fifty days of arrears in a hand-run
+report whose output looks equally authoritative at any age. The numbers this
+document quoted before tonight were seven weeks old.
 
 The audit half therefore holds. **The Mission Control half cannot be measured:**
 MC was removed in `b8c98551` and is being rebuilt, so there is no surface to

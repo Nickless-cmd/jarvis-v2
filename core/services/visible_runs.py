@@ -2360,7 +2360,7 @@ async def _stream_visible_run(
                             # Fem offer-ture doede saadan 11/9-2026, alle foer de naaede
                             # den agentiske loekke.
                             #
-                            # Kontrakten fandtes allerede: `persist_chat_message_with_retry`
+                            # Kontrakten fandtes allerede: `_append_chat_message_with_retry`
                             # dokumenterer at permanente fejl propageres "til caller, som
                             # fyrer persist_failed-nerven". To kaldesteder (5050, 5685)
                             # honorerer den. Dette gjorde ikke.
@@ -4610,15 +4610,42 @@ async def _stream_visible_run(
                             # 2026-06-29 (loop-not-blocked): se første-pass-stedet.
                             # Synkron DB-skrivning på event-loop-tråden midt i en
                             # agentisk runde frøs _ping_loop. Offload til worker-tråd.
-                            await asyncio.to_thread(
-                                append_chat_message,
-                                session_id=run.session_id,
-                                role="tool",
-                                content=_a_rt,
-                                full_content=str(_a_sr.get("result_text_full") or ""),
-                                tool_name=str(_a_sr.get("tool_name") or ""),
-                                tool_arguments=dict(_a_sr.get("arguments") or {}),
-                            )
+                            try:
+                                await asyncio.to_thread(
+                                    append_chat_message,
+                                    session_id=run.session_id,
+                                    role="tool",
+                                    content=_a_rt,
+                                    full_content=str(_a_sr.get("result_text_full") or ""),
+                                    tool_name=str(_a_sr.get("tool_name") or ""),
+                                    tool_arguments=dict(_a_sr.get("arguments") or {}),
+                                )
+                            except Exception as _a_tool_persist_exc:
+                                # DET ANDET vaerktoejs-kaldested, i den AGENTISKE runde. Det var
+                                # uvogtet (AST: kun funktionsniveauets try 1542) og propagerede
+                                # til handleren paa ~5716, som saetter status=failed og kalder
+                                # `_fail_visible_run` — altsaa doeden, efter at vaerktoejet havde
+                                # koert.
+                                #
+                                # Eksponeringen er en ANDEN end paa det foerste kaldested. Alle ti
+                                # koersler der nogensinde doede med «chat session not found» doede
+                                # 5-30 s inde, altsaa foer denne linje: sessionen findes eller
+                                # findes ikke fra begyndelsen. Den sandsynlige klasse HER er den
+                                # transiente — `database is locked` draebte et autonomt run efter
+                                # 64 sekunder. Derfor RETRY foerst, ikke bare et vaern.
+                                # (Jarvis' maaling, 11/9-2026.)
+                                try:
+                                    await asyncio.to_thread(
+                                        _append_chat_message_with_retry,
+                                        session_id=run.session_id,
+                                        role="tool",
+                                        content=_a_rt,
+                                        full_content=str(_a_sr.get("result_text_full") or ""),
+                                        tool_name=str(_a_sr.get("tool_name") or ""),
+                                        tool_arguments=dict(_a_sr.get("arguments") or {}),
+                                    )
+                                except Exception as _a_retry_exc:
+                                    _observe_persist_failed(run, _a_retry_exc)
 
                     _a_followup_results = _to_followup_results(
                         _a_tool_calls,

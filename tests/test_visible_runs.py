@@ -503,7 +503,7 @@ def test_vaerktoejs_persist_draeber_ikke_turen():
     agentiske løkke. Værktøjet havde allerede kørt — bash havde ændret filer —
     men turen døde før nogen kunne se hvad der skete.
 
-    Kontrakten fandtes allerede: `persist_chat_message_with_retry` dokumenterer
+    Kontrakten fandtes allerede: `_append_chat_message_with_retry` dokumenterer
     at permanente fejl propageres «til caller, som fyrer persist_failed-nerven».
     To kaldesteder honorerede den. Dette gjorde ikke.
     """
@@ -516,3 +516,44 @@ def test_vaerktoejs_persist_draeber_ikke_turen():
     efter = src[i:i + 2000]
     assert "try:" in foer, "værktøjs-persist er uvogtet — en DB-fejl dræber turen"
     assert "_observe_persist_failed" in efter, "nerven fyres ikke"
+
+
+def test_BEGGE_vaerktoejs_persist_kaldesteder_er_vogtet():
+    """Klassen, ikke instansen.
+
+    Jeg rettede ét kaldested og skrev at klassen var lukket. Den var ikke: det
+    AGENTISKE kaldested stod uvogtet, og en tekstscanning baglæns efter `try:`
+    gav mig et forkert svar fordi den ikke så at blokkene allerede var lukket.
+    AST afgjorde det.
+
+    Testen spørger derfor skemaet, ikke teksten — så en ny `role="tool"`-
+    skrivning et tredje sted ikke kan smutte forbi."""
+    import ast
+    src = open("core/services/visible_runs.py", encoding="utf-8").read()
+    træ = ast.parse(src)
+
+    maal = [i + 1 for i, l in enumerate(src.splitlines()) if 'role="tool"' in l]
+    assert len(maal) >= 2, f"forventede mindst to tool-skrivninger, fandt {maal}"
+
+    for linje in maal:
+        omsluttende = {
+            n.lineno for n in ast.walk(træ) if isinstance(n, ast.Try)
+            for krop in n.body
+            if getattr(krop, "lineno", 0) <= linje <= getattr(krop, "end_lineno", 0)
+        }
+        # 1542 er funktionsniveauets try — den ENDER i `_fail_visible_run`.
+        assert omsluttende - {1542}, (
+            f"tool-skrivning på linje {linje} er kun vogtet af funktionsniveauet "
+            f"— en persist-fejl dér dræber hele turen"
+        )
+
+
+def test_retry_wrapperen_kan_baere_et_vaerktoejssvar():
+    """Før tog den kun `session_id/role/content/reasoning/content_json`, så den
+    kunne ikke bruges til et værktøjssvar. Assistentens svar var beskyttet to
+    gange; værktøjsresultaterne — det eneste bevis på hvad turen GJORDE — nul."""
+    import inspect
+    from core.services.visible_runs_outcomes import _append_chat_message_with_retry
+    p = inspect.signature(_append_chat_message_with_retry).parameters
+    for felt in ("tool_name", "tool_arguments", "full_content"):
+        assert felt in p, f"retry-wrapperen kan ikke bære {felt}"

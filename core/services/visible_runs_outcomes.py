@@ -342,6 +342,14 @@ def _append_chat_message_with_retry(
     content: str,
     reasoning_content: str = "",
     content_json: str | None = None,
+    # VAERKTOEJS-FELTERNE. `append_chat_message` har dem allerede; wrapperen
+    # videresendte dem bare ikke, saa den kunne kun bruges til assistent-
+    # beskeden. Nettoresultatet var skaevt: assistentens svar var beskyttet to
+    # gange (retry + nerve), og vaerktoejsresultaterne — det eneste bevis paa
+    # hvad turen faktisk GJORDE — nul gange. (Jarvis, 11/9-2026.)
+    tool_name: str | None = None,
+    tool_arguments: dict[str, object] | None = None,
+    full_content: str | None = None,
     _backoffs: tuple[float, ...] = (0.2, 0.5),
 ) -> dict[str, object]:
     """H5 persist-retry (spec §11.2 P5): persistering må ALDRIG tabes tavst pga.
@@ -367,6 +375,9 @@ def _append_chat_message_with_retry(
                 content=content,
                 reasoning_content=reasoning_content,
                 content_json=content_json,
+                tool_name=tool_name,
+                tool_arguments=tool_arguments,
+                full_content=full_content,
             )
         except sqlite3.OperationalError as exc:
             text = str(exc).lower()

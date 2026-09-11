@@ -63,3 +63,31 @@ def test_nyeste_vinder_stadig(_isoleret_lager):
     _post(_isoleret_lager, "gammel", "s1", alder_timer=5.0)
     _post(_isoleret_lager, "ny", "s1", alder_timer=0.5)
     assert (ifr.interrupted_for_session("s1") or {}).get("run_id") == "ny"
+
+
+def test_ulaeseligt_tidsstempel_siger_HOEJT_fra(_isoleret_lager, caplog):
+    """Fallbacken bevarer posten — men må ikke gøre det tavst.
+
+    Jarvis' indvending: «en fallback der er sand om sit formål og kan være
+    falsk om verden». Bliver et tidsstempel nogensinde skrevet i et format
+    `fromisoformat` ikke kan læse, bliver posten en evighedskandidat uden at
+    nogen opdager det."""
+    import logging
+    _isoleret_lager["r1"] = {"run_id": "r1", "session_id": "s1",
+                             "status": "interrupted",
+                             "interrupted_at": "11/09-2026 kl. 06:32"}
+    with caplog.at_level(logging.WARNING):
+        assert (ifr.interrupted_for_session("s1") or {}).get("run_id") == "r1"
+    assert any("kunne ikke dateres" in r.message for r in caplog.records), \
+        "posten blev beholdt tavst"
+
+
+def test_helt_manglende_tidsstempel_er_ikke_en_advarsel(_isoleret_lager, caplog):
+    """Der er forskel på «intet tidsstempel» (en gammel post) og «et
+    tidsstempel vi ikke kan læse» (noget er i stykker)."""
+    import logging
+    _isoleret_lager["r1"] = {"run_id": "r1", "session_id": "s1",
+                             "status": "interrupted"}
+    with caplog.at_level(logging.WARNING):
+        assert ifr.interrupted_for_session("s1") is not None
+    assert not [r for r in caplog.records if "kunne ikke dateres" in r.message]

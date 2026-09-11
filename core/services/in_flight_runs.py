@@ -156,6 +156,7 @@ def _friskere_end(rec: dict[str, Any], graense: datetime) -> bool:
     ikke laeses, svarer vi True: en post vi ikke kan datere maa ikke forsvinde
     tavst — fravaer af tidsstempel er ikke bevis for aelde.
     """
+    ulaeselige: list[str] = []
     for felt in ("interrupted_at", "started_at"):
         raa = str(rec.get(felt) or "").strip()
         if not raa:
@@ -163,10 +164,23 @@ def _friskere_end(rec: dict[str, Any], graense: datetime) -> bool:
         try:
             t = datetime.fromisoformat(raa)
         except Exception:
+            ulaeselige.append(f"{felt}={raa!r}")
             continue
         if t.tzinfo is None:
             t = t.replace(tzinfo=UTC)
         return t >= graense
+    # Retningen er rigtig — vi bevarer frem for at smide vaek — men den maa
+    # ikke vaere TAVS. Var der et tidsstempel som `fromisoformat` ikke kunne
+    # laese, er posten en evighedskandidat, og ingen ville opdage det.
+    # `mark_interrupted` skriver altid `interrupted_at`, saa dette er den
+    # defensive gren: rammer den, er der sket noget med formatet.
+    # (Jarvis' indvending, 11/9-2026.)
+    if ulaeselige:
+        logger.warning(
+            "in-flight-post kunne ikke dateres — beholdes som "
+            "genoptagelses-kandidat uden aldersgraense: run=%s session=%s %s",
+            rec.get("run_id", "?"), rec.get("session_id", "?"),
+            " ".join(ulaeselige))
     return True
 
 

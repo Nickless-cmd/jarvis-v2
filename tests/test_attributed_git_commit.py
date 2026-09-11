@@ -262,3 +262,57 @@ def test_en_ÆGTE_fejlet_commit_er_stadig_en_fejl(tmp_path):
     )
     assert run("rev-parse", "HEAD").stdout.strip() == før
     assert res.returncode != 0, "en commit der IKKE blev lavet skal melde fejl"
+
+
+def _hook(repo: Path, krop: str) -> None:
+    h = repo / ".git" / "hooks" / "commit-msg"
+    h.write_text(krop, encoding="utf-8")
+    h.chmod(0o755)
+
+
+def test_uroert_besked_giver_ingen_advarsel(git_repo: Path) -> None:
+    """Kontrolarmen. Uden den maaler arm to ingenting."""
+    (git_repo / "one.py").write_text("one = 3\n")
+    _git(git_repo, "add", "one.py")
+
+    result = commit_with_attribution(
+        repo=git_repo,
+        message="fix: en besked\n\nlinje to her\nlinje tre her",
+        attribution=_attribution(),
+        paths=("one.py",),
+    )
+
+    assert result.returncode == 0
+    assert "ADVARSEL" not in (result.stdout or "")
+
+
+def test_hook_der_spiser_en_linje_bliver_opdaget(git_repo: Path) -> None:
+    """Readbacken skal se HVAD der landede, ikke kun AT noget landede."""
+    _hook(git_repo, '#!/bin/sh\ngrep -v "linje to her" "$1" > "$1.t" && mv "$1.t" "$1"\n')
+    (git_repo / "one.py").write_text("one = 4\n")
+    _git(git_repo, "add", "one.py")
+
+    result = commit_with_attribution(
+        repo=git_repo,
+        message="fix: en besked\n\nlinje to her\nlinje tre her",
+        attribution=_attribution(),
+        paths=("one.py",),
+    )
+
+    assert result.returncode == 0, "commit'en lykkedes — kun beskeden blev aendret"
+    assert "ADVARSEL" in (result.stdout or "")
+    assert "er ikke den vi sendte" in result.stdout
+
+
+def test_ulaeselig_besked_siger_uvist_ikke_ja(tmp_path: Path) -> None:
+    """Tre tilstande: matchede / afveg / kunne ikke tjekke.
+
+    Foer denne test returnerede den tredje tilstand tom streng — samme vaerdi
+    som "alt er fint". En readback der ikke koerte er ikke en readback der
+    sagde ja.
+    """
+    from core.services.attributed_git_commit import _besked_afveg
+
+    svar = _besked_afveg(str(tmp_path), sendt="hvad som helst", timeout=10)
+
+    assert "IKKE verificeret" in svar

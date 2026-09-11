@@ -68,7 +68,16 @@ def _besked_afveg(root: str, *, sendt: str, timeout: float) -> str:
     """
     laest = _git(root, "log", "-1", "--format=%B", timeout=min(timeout, 10))
     if laest.returncode != 0:
-        return ""
+        # TRE TILSTANDE, IKKE TO. Tom streng betoed baade "beskeden matchede"
+        # og "jeg kunne ikke laese den". Det er samme sammenklapning som
+        # run_er_terminal blev rettet for: en gren der tier, laest som et goed.
+        # En readback der ikke koerte er ikke det samme som en der sagde ja.
+        uvist = (
+            "ADVARSEL: kunne ikke efterproeve commit-beskeden "
+            f"(git log gav exit={laest.returncode}). Beskeden er IKKE verificeret."
+        )
+        logger.warning("attributed_git_commit: %s", uvist)
+        return uvist
     if _linjer(laest.stdout) == _linjer(sendt):
         return ""
     besked = (

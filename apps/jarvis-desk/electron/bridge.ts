@@ -261,7 +261,7 @@ const SKIP_DIRS = new Set([
   'node_modules', '.git', '__pycache__',
   '.worktrees', 'worktrees',
   '.venv', 'venv', '.mypy_cache', '.pytest_cache', '.ruff_cache',
-  'dist', 'build', '.next', '.cache', '.parcel-cache',
+  'dist', 'build', 'release', '.next', '.cache', '.parcel-cache',
 ])
 
 /**
@@ -288,10 +288,19 @@ async function readTextHead(file: string): Promise<[string, boolean] | null> {
     fh = await fsp.open(file, 'r')
     const size = Number((await fh.stat()).size)
     if (size === 0) return ['', false]
+    // TO TRIN. Kommentaren nedenfor sagde "ripgrep uses the same rule" - men
+    // ripgrep laeser 8 KB og STOPPER. Foer laeste vi 4 MB og kastede dem bagefter.
+    // Maalt i dette trae: 321 filer over 4 MB, alle bygge-udgange. Det er
+    // ~1,28 GB laest og smidt vaek for hvert repo-daekkende grep.
+    const HOVED = Math.min(size, 8192)
+    const hoved = Buffer.allocUnsafe(HOVED)
+    await fh.read(hoved, 0, HOVED, 0)
+    if (hoved.includes(0)) return null        // binaer - stop her, ikke efter 4 MB
     const len = Math.min(size, MAX_FILE_BYTES)
+    if (len <= HOVED) return [hoved.subarray(0, len).toString('utf8'), size > len]
     const buf = Buffer.allocUnsafe(len)
-    await fh.read(buf, 0, len, 0)
-    if (buf.subarray(0, 8192).includes(0)) return null
+    hoved.copy(buf, 0, 0, HOVED)
+    await fh.read(buf, HOVED, len - HOVED, HOVED)
     return [buf.toString('utf8'), size > len]
   } catch {
     return null
@@ -305,6 +314,18 @@ async function readTextHead(file: string): Promise<[string, boolean] | null> {
  * so a pathological search returns partial results instead of nothing.
  */
 const GREP_BUDGET_MS = 20_000
+
+/**
+ * How many files one grep may WALK. Deliberately NOT tied to `max_results`.
+ *
+ * It used to be `maxResults * 50`. Asking for 5 answers therefore searched 250
+ * files; asking for 20 searched 1.000. Measured on a 5.749-file tree: a call
+ * with `max_results: 20` returned 5 of 41 real hits - and said nothing. A
+ * caller reading that list concludes "not found" about a tree it never saw.
+ *
+ * Asking for fewer answers must not make the search narrower. (Jarvis, 11/9-2026.)
+ */
+const MAX_FILES_WALKED = 20_000
 
 /**
  * Async recursive walk. EVERY await yields to the event loop.
@@ -583,24 +604,34 @@ const handlers: Record<string, ToolHandler> = {
       }
     }
 
-    let truncated = false
+    let truncated = false          // tidsbudgettet
+    let naaede_loftet = false      // svar-loftet
+    let trae_afkortet = false      // gennemgangens loft
     let partial = 0
     if (st.isFile()) {
       await scan(searchPath)
     } else {
-      for await (const file of walkDirAsync(searchPath, maxResults * 50, deadline)) {
-        if (out.length >= maxResults) break
+      let gaaet = 0
+      for await (const file of walkDirAsync(searchPath, MAX_FILES_WALKED, deadline)) {
+        gaaet++
+        if (out.length >= maxResults) { naaede_loftet = true; break }
         if (Date.now() > deadline) { truncated = true; break }
         await scan(file)
       }
       if (!truncated && Date.now() > deadline) truncated = true
+      // Gennemgangen stopper ogsaa LYDLOEST paa sit eget loft (`count < max`).
+      // Foer gav begge disse udgange en liste der saa komplet ud.
+      if (gaaet >= MAX_FILES_WALKED) trae_afkortet = true
+      if (out.length >= maxResults) naaede_loftet = true
     }
 
     // NEVER truncate silently. A short result that looks complete is how a
     // caller concludes "not found" about something that is simply unread.
-    if (truncated || partial) {
+    if (truncated || partial || naaede_loftet || trae_afkortet) {
       const why = [
         truncated ? `search exceeded ${GREP_BUDGET_MS / 1000}s` : '',
+        naaede_loftet ? `stopped at max_results=${maxResults} - there may be more` : '',
+        trae_afkortet ? `walked the ${MAX_FILES_WALKED}-file cap` : '',
         partial ? `${partial} file(s) read only to ${MAX_FILE_BYTES / 1048576} MB` : '',
       ].filter(Boolean).join('; ')
       out.push({

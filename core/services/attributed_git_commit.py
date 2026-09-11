@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import subprocess
 import tempfile
@@ -39,6 +40,49 @@ def _git(
         timeout=timeout,
         env=env,
     )
+
+
+logger = logging.getLogger(__name__)
+
+
+def _linjer(tekst: str) -> list[str]:
+    """Beskeden som git gemmer den: uden tomme linjer og hale-mellemrum."""
+    return [l.strip() for l in str(tekst or "").splitlines() if l.strip()]
+
+
+def _besked_afveg(root: str, *, sendt: str, timeout: float) -> str:
+    """Staar der i repoet det vi bad om? Tom streng = ingen afvigelse fundet.
+
+    Readbacken nedenfor spoerger `rev-parse HEAD`. Den beviser AT der blev
+    skrevet - aldrig HVAD. Og beskeden er det eneste i en commit der ikke kan
+    rettes bagefter: `--amend` naar kun HEAD, og `pre-rebase` blokerer vejen
+    til alt aeldre. En forvansket besked opdaget to commits senere er
+    permanent. Sandheden om beskeden staar ogsaa i repoet - den blev bare
+    aldrig spurgt.
+
+    GRAENSE, maalt 2026-09-12: dette fanger IKKE skal-substitution i
+    `--message "... `navn` ..."`. Den sker foer argv findes, saa `sendt` baerer
+    allerede skaden og de to sider er enige. Den vej lukkes af
+    `--message-file`, ikke af en readback. Her fanges det der sker MELLEM
+    vaerktoejet og repoet: hooks der omskriver, tab under skrivning, afkortning.
+    """
+    laest = _git(root, "log", "-1", "--format=%B", timeout=min(timeout, 10))
+    if laest.returncode != 0:
+        return ""
+    if _linjer(laest.stdout) == _linjer(sendt):
+        return ""
+    besked = (
+        "ADVARSEL: commit-beskeden i repoet er ikke den vi sendte "
+        f"(sendt {len(_linjer(sendt))} linjer, landede {len(_linjer(laest.stdout))}). "
+        "Se den faktiske med: git log -1 --format=%B"
+    )
+    # Maalt 2026-09-12: af syv kaldere laeser SEKS kun stdout naar
+    # returncode != 0 - paa succes tager de .sha og smider resten vaek.
+    # Advarslen her fyrer netop paa succes-vejen, saa stdout alene ville
+    # goere den usynlig for alle Jarvis' autonome commit-veje. Derfor logges
+    # den ogsaa, uafhaengigt af hvem der kaldte.
+    logger.warning("attributed_git_commit: %s", besked)
+    return besked
 
 
 def _verify_staged_paths(
@@ -141,6 +185,9 @@ def commit_with_attribution(
                     "commit LYKKEDES (HEAD flyttede sig), men git meldte "
                     f"exit={committed.returncode}. Kør ikke igen — det ville give en dublet."
                 )
+                _afvig = _besked_afveg(root, sendt=rendered, timeout=timeout)
+                if _afvig:
+                    note = note + "\n" + _afvig
                 return AttributedCommitResult(
                     returncode=0,
                     stdout=(committed.stdout or "") + "\n" + note,
@@ -154,9 +201,10 @@ def commit_with_attribution(
             )
         resolved = _git(root, "rev-parse", "HEAD", timeout=min(timeout, 10))
         sha = resolved.stdout.strip() if resolved.returncode == 0 else ""
+        _afvig = _besked_afveg(root, sendt=rendered, timeout=timeout)
         return AttributedCommitResult(
             returncode=0,
-            stdout=committed.stdout,
+            stdout=(committed.stdout or "") + ("\n" + _afvig if _afvig else ""),
             stderr=committed.stderr,
             sha=sha,
         )

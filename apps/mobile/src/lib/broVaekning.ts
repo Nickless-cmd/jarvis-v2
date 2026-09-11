@@ -72,7 +72,10 @@ export async function haandterVaekning(
     udfoer: async (vaerktoej, args) => {
       paa()
       return udfoerVaerktoej(vaerktoej, args)
-    }
+    },
+    // Samme grund som i broOpstart: uden en logger er vækningens bro lige så
+    // usynlig som appens egen.
+    log: (besked, ...rest) => console.log(besked, ...rest)
   }))
 
   const bro = lavBro(config, id, paaAktivitet)

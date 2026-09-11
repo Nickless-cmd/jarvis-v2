@@ -46,7 +46,13 @@ export function startBro(config: ApiConfig): () => void {
       capabilities: KAN_UDFOERE,
       clientId: id,
       version: Application.nativeApplicationVersion ?? '',
-      udfoer: udfoerVaerktoej
+      udfoer: udfoerVaerktoej,
+      // Uden denne er `log` en no-op, og BROENS livscyklus er usynlig: hverken
+      // «registreret», «lukket, prøver igen» eller trafik-vagtens «ingen trafik
+      // i Ns» naar nogen steder. En mekanisme ingen kan se virke er ikke til at
+      // skelne fra en der ikke virker. `console.log` lander i logcat under
+      // ReactNativeJS, så `adb logcat` kan følge broen.
+      log: (besked, ...rest) => console.log(besked, ...rest)
     })
     bro.start()
   })()

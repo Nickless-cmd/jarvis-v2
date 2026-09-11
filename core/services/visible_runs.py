@@ -697,16 +697,18 @@ def start_visible_run(
                 and str(active.get("session_id") or "") == normalized_session_id):
             _zid = str(active.get("run_id") or "")
             try:
-                with connect() as _zc:
-                    _zrow = _zc.execute(
-                        "SELECT status, finished_at FROM visible_runs WHERE run_id = ?",
-                        (_zid,),
-                    ).fetchone()
-                _terminal = bool(_zrow) and (
-                    str(_zrow[0] or "").strip().lower()
-                    in ("completed", "error", "failed", "cancelled", "done")
-                    or bool(_zrow[1])
-                )
+                # ÉT navn, ikke to definitioner. Denne inline-udgave var den
+                # oprindelige; `run_er_terminal` blev udledt af den til
+                # nedluknings-sweepen, og saa stod der to steder der begge
+                # svarede paa «hvad er terminalt». Det er praecis den form der
+                # gav fire udgaver af «hvad er paastanden» i nat: naeste
+                # terminale status skulle tilfoejes to steder, og kun det ene
+                # havde et navn nogen kunne greppe efter. (Jarvis' fund.)
+                #
+                # `is True` bevarer den gamle fail-closed-semantik praecist:
+                # baade «ikke terminal» og «kunne ikke afgoeres» giver False.
+                from core.services.visible_runs_outcomes import run_er_terminal
+                _terminal = run_er_terminal(_zid) is True
             except Exception:
                 _terminal = False
             if _terminal:

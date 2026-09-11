@@ -82,3 +82,18 @@ def test_sweepen_spoerger_foer_den_stempler():
     vindue = src[i:i + 1400]
     assert "run_er_terminal" in vindue
     assert vindue.index("run_er_terminal") < vindue.index('reason="api-nedlukning"')
+
+
+def test_der_er_KUN_ÉN_definition_af_terminal():
+    """Jeg skrev at jeg gav den ét navn. Det gjorde jeg halvt: det oprindelige
+    sted i `visible_runs.py` beholdt sin egen inline-kopi af statusmængden, og
+    `run_er_terminal` blev brugt nul gange dér.
+
+    Det er præcis den form der gav fire udgaver af «hvad er påstanden» i nat:
+    næste terminale status skulle tilføjes to steder, og kun det ene havde et
+    navn nogen kunne greppe efter. (Jarvis' fund.)"""
+    vr = open("core/services/visible_runs.py", encoding="utf-8").read()
+    assert "run_er_terminal" in vr, "det oprindelige sted bruger ikke navnet"
+    # Statusmængden må kun stå ÉT sted — i modulet der ejer navnet.
+    assert '"cancelled", "done"' not in vr, \
+        "visible_runs.py har stadig sin egen kopi af statusmængden"

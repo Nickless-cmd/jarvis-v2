@@ -16,7 +16,7 @@ Pattern follows phase 0's state_store (atomic JSON file).
 from __future__ import annotations
 
 import logging
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from core.runtime.state_store import load_json, save_json
@@ -141,6 +141,35 @@ def mark_interrupted(run_id: str, *, reason: str = "", summary: str = "") -> Non
     _save(records)
 
 
+# En afbrudt tur er en genoptagelses-kandidat i timer, ikke i uger. FOER havde
+# `interrupted_for_session` INGEN aldersgraense: den returnerede den nyeste
+# `interrupted`-post for en session for evigt, og baade `resume_context` og selve
+# prompt-teksten («du blev afbrudt») hang paa den. En post der aldrig aeldes ville
+# altsaa blive tilbudt som genoptagelse i det uendelige. (Jarvis' fund, 11/9-2026.)
+GENOPTAGELSES_VINDUE_TIMER = 24.0
+
+
+def _friskere_end(rec: dict[str, Any], graense: datetime) -> bool:
+    """Er posten ung nok til at vaere en genoptagelses-kandidat?
+
+    Bruger `interrupted_at` naar den findes, ellers `started_at`. Kan tiden
+    ikke laeses, svarer vi True: en post vi ikke kan datere maa ikke forsvinde
+    tavst — fravaer af tidsstempel er ikke bevis for aelde.
+    """
+    for felt in ("interrupted_at", "started_at"):
+        raa = str(rec.get(felt) or "").strip()
+        if not raa:
+            continue
+        try:
+            t = datetime.fromisoformat(raa)
+        except Exception:
+            continue
+        if t.tzinfo is None:
+            t = t.replace(tzinfo=UTC)
+        return t >= graense
+    return True
+
+
 def interrupted_for_session(session_id: str | None) -> dict[str, Any] | None:
     """Return the most recent in-flight record for this session, or None.
 
@@ -151,11 +180,16 @@ def interrupted_for_session(session_id: str | None) -> dict[str, Any] | None:
     if not session_id:
         return None
     sid = str(session_id)
+    graense = datetime.now(UTC) - timedelta(hours=GENOPTAGELSES_VINDUE_TIMER)
     records = _load()
     candidates = [
         r for r in records.values()
         if r.get("session_id") == sid
-        and str(r.get("status") or "interrupted") == "interrupted"
+        # `or "interrupted"` FOER: en post UDEN status talte som afbrudt. En
+        # default der laeses som en dom — samme figur som `holder: True` ved
+        # nul kontrollerede paastande. Nu kraeves det udtrykkeligt.
+        and str(r.get("status") or "") == "interrupted"
+        and _friskere_end(r, graense)
     ]
     if not candidates:
         return None

@@ -628,16 +628,35 @@ const handlers: Record<string, ToolHandler> = {
     // NEVER truncate silently. A short result that looks complete is how a
     // caller concludes "not found" about something that is simply unread.
     if (truncated || partial || naaede_loftet || trae_afkortet) {
-      const why = [
-        truncated ? `search exceeded ${GREP_BUDGET_MS / 1000}s` : '',
-        naaede_loftet ? `stopped at max_results=${maxResults} - there may be more` : '',
-        trae_afkortet ? `walked the ${MAX_FILES_WALKED}-file cap` : '',
-        partial ? `${partial} file(s) read only to ${MAX_FILE_BYTES / 1048576} MB` : '',
-      ].filter(Boolean).join('; ')
+      // THE ADVICE MUST FOLLOW THE CAUSE. The note used to end in a fixed
+      // "Narrow the path or glob" - correct when the tree or the clock ran out,
+      // and wrong when the caller simply asked for few results. Narrowing the
+      // path then makes the answer *worse*: it is already complete for the
+      // subtree, just capped. A remedy that does not fit its reason sends the
+      // reader further from the answer. (Jarvis, 11/9-2026.)
+      const grunde: Array<[string, string]> = []
+      if (naaede_loftet) {
+        grunde.push([`stopped at max_results=${maxResults} - there may be more`,
+                     'raise max_results'])
+      }
+      if (trae_afkortet) {
+        grunde.push([`walked the ${MAX_FILES_WALKED}-file cap`,
+                     'narrow the path'])
+      }
+      if (truncated) {
+        grunde.push([`search exceeded ${GREP_BUDGET_MS / 1000}s`,
+                     'narrow the path or glob'])
+      }
+      if (partial) {
+        grunde.push([`${partial} file(s) read only to ${MAX_FILE_BYTES / 1048576} MB`,
+                     'search those files directly'])
+      }
+      const why = grunde.map(([grund]) => grund).join('; ')
+      const raad = [...new Set(grunde.map(([, r]) => r))].join(', or ')
       out.push({
         file: searchPath,
         line: 0,
-        text: `[PARTIAL RESULTS — ${why}. Narrow the path or glob.]`,
+        text: `[PARTIAL RESULTS — ${why}. Try: ${raad}.]`,
       })
     }
     return out

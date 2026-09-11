@@ -63,10 +63,40 @@ def test_utf8_overlever(tmp_path):
 
 def test_de_to_veje_udelukker_hinanden():
     """Ellers ville en kalder kunne sende to beskeder og ikke vide hvilken der
-    gælder."""
-    p = cwa.build_parser() if hasattr(cwa, "build_parser") else None
-    if p is None:
-        pytest.skip("parseren er ikke udstillet separat")
+    gælder.
+
+    FØR sprang denne test over HVER gang: den slog op efter `build_parser`, og
+    funktionen hedder `_parser`. `hasattr` var falsk, `pytest.skip` fyrede, og
+    suiten meldte grønt. En test der aldrig har prøvet det den påstår er
+    `holder: True` ved nul kontrollerede påstande — i netop den test der skulle
+    bære den sætning. (Jarvis' fund, 11/9-2026.)
+
+    Derfor kaldes `_parser` nu DIREKTE. Omdøbes den, fejler testen med
+    AttributeError i stedet for at forsvinde i en overspringelse."""
     with pytest.raises(SystemExit):
-        p.parse_args(["--message", "a", "--message-file", "b",
-                      "--actor", "opus", "--origin", "x", "--approved-by", "y"])
+        cwa._parser().parse_args([
+            "--message", "a", "--message-file", "b",
+            "--actor", "opus", "--origin", "x", "--approved-by", "y"])
+
+
+def test_mindst_én_af_de_to_kraeves():
+    """`required=True` på gruppen: en commit uden besked må ikke kunne dannes."""
+    with pytest.raises(SystemExit):
+        cwa._parser().parse_args([
+            "--actor", "opus", "--origin", "x", "--approved-by", "y"])
+
+
+def test_denne_fil_springer_intet_over():
+    """Vagten mod at det sker igen — i denne fil OG i resten af suiten.
+
+    En overspringelse er ikke en fejl; den er en test der melder grønt uden at
+    have målt noget. Den eneste måde den bliver synlig er hvis nogen spørger."""
+    import ast
+    traeet = ast.parse(open(__file__, encoding="utf-8").read())
+    kald = [n for n in ast.walk(traeet)
+            if isinstance(n, ast.Call)
+            and isinstance(n.func, ast.Attribute) and n.func.attr == "skip"]
+    # AST, ikke tekstsøgning: første udgave ledte efter strengen og fangede sin
+    # EGEN docstring, hvor ordet står som forklaring. Instrumentet målte sig
+    # selv — samme fejl som det vogter imod, ét lag ude.
+    assert not kald, f"{len(kald)} overspringelse(r) i denne fil"

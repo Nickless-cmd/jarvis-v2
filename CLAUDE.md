@@ -28,14 +28,30 @@ wrapper:
 
 ```bash
 git add -- <paths...>
+# Skriv beskeden til en fil FØRST — se hvorfor nedenfor.
 python scripts/commit_with_attribution.py --repo . --actor opus \
-  --origin interactive --approved-by bjorn --message '<commit message>' \
+  --origin interactive --approved-by bjorn --message-file <fil> \
   --path <path>
 ```
 
 Repeat `--path` for every staged path. Supply the current task as `--run-id`
 when one exists. Raw `git commit`, `--no-verify`, and hand-written attribution
 trailers are not the normal commit path.
+
+**Brug `--message-file`, ikke `--message`.** `--message` sender prosaen gennem
+skallen, og enhver metategn i en dobbelt-citeret streng bliver tolket. Målt
+11/9-2026 på `38e82b7a6`: tre backtick-citerede navne blev kørt som
+kommando-substitution — `permission_axes` og `--stat` forsvandt HELT, og
+`4009d48c5` overlevede kun ét af sine to steder, så sætningen mistede sit
+subjekt. Commit'en gik igennem med exit 0; fejlen stod kun på stderr.
+
+Det er ikke tre fælder, men én: `---`-linjen (git læser den som patch-grænse),
+apostroffen (lukker quoten) og backticken (kommando-substitution) er samme
+symptom. `--message-file` lader prosaen aldrig røre skallen, og de to flag
+udelukker hinanden, så der ikke kan opstå tvivl om hvilken besked der gælder.
+
+`--amend` er blokeret af hookene, så en ødelagt besked kan **ikke** rettes
+bagefter. Det er derfor formen betyder noget her og ikke andre steder.
 
 All commits after `.commit-attribution-baseline` are checked by `commit-msg`,
 `pre-push`, and CI. Rebase is blocked because replay preserves stale actor

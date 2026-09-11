@@ -87,3 +87,56 @@ def test_vagten_staar_FOER_rundens_arbejde():
     vi brugt runden inden vi opdagede at vi lukkede."""
     vagt = _loekkens_vagt()
     assert vagt.index("lukker_ned") < vagt.index("_publish_agentic_round_start")
+
+
+# ---------------------------------------------------------------------------
+# EN VAGT DER FÅR BESKED SIDST KAN ALDRIG NÅ AT SIGE FRA
+#
+# Tre offer-ture blev kappet med vilje 11/9-2026. Vagten fyrede nul gange,
+# fordi lifespan-shutdown kører SIDST i uvicorns nedlukning — efter
+# forbindelserne er revet ned:
+#
+#     08:25:11  Waiting for application shutdown.
+#     08:25:13  visible-run unhandled exception: chat session not found
+#     08:25:13  proces markeret til nedlukning: lifespan-shutdown
+#
+# Flaget blev sat i samme sekund som runnet døde.
+# ---------------------------------------------------------------------------
+
+def test_signalvagten_saetter_flaget_naar_signalet_ankommer():
+    import signal
+    kaldt: list[int] = []
+    forrige = signal.getsignal(signal.SIGTERM)
+    signal.signal(signal.SIGTERM, lambda s, f: kaldt.append(s))
+    try:
+        pl.installer_signalvagt()
+        assert pl.lukker_ned() is False, "maa ikke fyre foer signalet"
+        signal.raise_signal(signal.SIGTERM)
+        assert pl.lukker_ned() is True, "flaget blev ikke sat af signalet"
+        assert kaldt == [signal.SIGTERM], \
+            "den oprindelige handler blev ikke kaldt — processen ville aldrig lukke"
+    finally:
+        signal.signal(signal.SIGTERM, forrige)
+
+
+def test_signalvagten_erstatter_ikke_uvicorns_handler():
+    """Uden videresendelse ville processen ikke lukke ned overhovedet."""
+    import signal
+    set_af: list[str] = []
+    forrige = signal.getsignal(signal.SIGTERM)
+    signal.signal(signal.SIGTERM, lambda s, f: set_af.append("uvicorn"))
+    try:
+        pl.installer_signalvagt()
+        signal.raise_signal(signal.SIGTERM)
+        assert set_af == ["uvicorn"]
+    finally:
+        signal.signal(signal.SIGTERM, forrige)
+
+
+def test_vagten_installeres_FOER_alt_andet_i_lifespan():
+    """Kildetekst-test: rækkefølgen i lifespan er hele pointen."""
+    src = open("apps/api/jarvis_api/app.py", encoding="utf-8").read()
+    i = src.index("async def lifespan(")
+    vindue = src[i:i + 1400]
+    assert "installer_signalvagt" in vindue
+    assert vindue.index("installer_signalvagt") < vindue.index("wire_root_logging")

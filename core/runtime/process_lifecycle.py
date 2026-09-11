@@ -65,6 +65,53 @@ def grund() -> str:
         return _grund
 
 
+def installer_signalvagt() -> None:
+    """Sæt flaget når SIGNALET ankommer — ikke når lifespan når sin shutdown.
+
+    Målt 11/9-2026 med tre offer-ture der blev kappet med vilje:
+
+        08:25:11  Waiting for application shutdown.
+        08:25:13  visible-run unhandled exception: chat session not found
+        08:25:13  proces markeret til nedlukning: lifespan-shutdown
+
+    Lifespan-shutdown kører SIDST i uvicorns nedlukning — efter at
+    forbindelserne er revet ned. Flaget blev altså sat i samme sekund som
+    runnet døde, og løkken nåede aldrig en rundegrænse hvor den kunne spørge.
+    Tre kappede ture, nul fyringer af vagten.
+
+    Det var ikke vagten der var forkert. Det var HVORNÅR nogen fortalte den at
+    vi lukkede. En vagt der får besked sidst er en vagt der aldrig kan nå at
+    sige fra.
+
+    uvicorn installerer sine egne handlers i `capture_signals()` FØR lifespan
+    starter (`serve()` wrapper `_serve()` i den context manager), så vi kan
+    lægge os udenom dem og kalde videre. Vi ERSTATTER dem aldrig: uden
+    videresendelse ville processen ikke lukke ned overhovedet.
+    """
+    import signal
+
+    for _sig in (signal.SIGTERM, signal.SIGINT):
+        try:
+            _forrige = signal.getsignal(_sig)
+        except Exception:
+            continue
+
+        def _vagt(signum, frame, _f=_forrige):  # noqa: ANN001
+            try:
+                markér_nedlukning(f"signal-{signum}")
+            except Exception:
+                pass
+            if callable(_f):
+                _f(signum, frame)
+
+        try:
+            signal.signal(_sig, _vagt)
+        except Exception:
+            # Kun hovedtråden må lytte på signaler. Kan vi ikke, falder vi
+            # tilbage på lifespan-hooken — sent, men ikke ingenting.
+            logger.debug("kunne ikke installere signalvagt for %s", _sig, exc_info=True)
+
+
 def nulstil_til_test() -> None:
     """Kun til tests — en proces vender ikke tilbage fra nedlukning."""
     global _lukker, _grund

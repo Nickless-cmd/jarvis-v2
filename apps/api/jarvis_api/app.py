@@ -210,6 +210,15 @@ def create_app() -> FastAPI:
         runtime_services_enabled = _runtime_services_enabled()
         # FØRST: giv alle modul-loggere et sted at lande. Alt hvad der logges
         # herefter i opstarten ville ellers være tabt.
+        # SIGNALVAGTEN FOERST: lifespan-shutdown koerer SIDST i uvicorns
+        # nedlukning, efter forbindelserne er revet ned. Saettes flaget foerst
+        # dér, er det to sekunder for sent — maalt med tre offer-ture der blev
+        # kappet uden at loekkens vagt kunne fyre én eneste gang.
+        try:
+            from core.runtime.process_lifecycle import installer_signalvagt
+            installer_signalvagt()
+        except Exception:
+            pass
         _wired = wire_root_logging()
         logger.info("jarvis api startup begin")
         logger.info("root-logging wired handlers=%s quieted=%s",

@@ -817,6 +817,16 @@ _OllamaFreeAPI adapter for PUBLIC-SAFE cheap-lane calls._
 | function | `_mismatch_reason` | `(*, preferred_lane, preferred_target)` | — | [src](../../../core/runtime/operational_preference_alignment.py#L61) |
 | function | `_recommended_action` | `(*, preferred_lane, preferred_target)` | — | [src](../../../core/runtime/operational_preference_alignment.py#L73) |
 
+## `core/runtime/process_lifecycle.py`
+_Lukker processen ned? Ét sted der ejer svaret._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `markér_nedlukning` | `(grund=…)` | Sig at processen er på vej ned. Idempotent. | [src](../../../core/runtime/process_lifecycle.py#L46) |
+| function | `lukker_ned` | `()` | Er processen på vej ned? Spørg ved en naturlig grænse, ikke midt i noget. | [src](../../../core/runtime/process_lifecycle.py#L57) |
+| function | `grund` | `()` | — | [src](../../../core/runtime/process_lifecycle.py#L63) |
+| function | `nulstil_til_test` | `()` | Kun til tests — en proces vender ikke tilbage fra nedlukning. | [src](../../../core/runtime/process_lifecycle.py#L68) |
+
 ## `core/runtime/provider_router.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -924,13 +934,4 @@ _`SessionHandle` — én ejer, én lease, én sekvens._
 | method | `RuntimeSettings.to_dict` | `(self)` | — | [src](../../../core/runtime/settings.py#L544) |
 | function | `load_settings` | `()` | — | [src](../../../core/runtime/settings.py#L649) |
 | function | `update_visible_execution_settings` | `(*, visible_model_provider=…, visible_model_name=…, visible_auth_profile=…)` | — | [src](../../../core/runtime/settings.py#L1100) |
-
-## `core/runtime/state_store.py`
-_Tiny JSON-file state store for module-globals that must survive restart._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_path` | `(name)` | — | [src](../../../core/runtime/state_store.py#L26) |
-| function | `load_json` | `(name, default)` | Read ``state/<name>.json``; return ``default`` if missing/corrupt. | [src](../../../core/runtime/state_store.py#L30) |
-| function | `save_json` | `(name, data)` | Atomically persist ``data`` to ``state/<name>.json``. | [src](../../../core/runtime/state_store.py#L47) |
 

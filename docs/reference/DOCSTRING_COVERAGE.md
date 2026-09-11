@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7283/14311 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7286/14315 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -23,7 +23,7 @@ Generated from source. 7283/14311 functions/methods documented (50%). The list b
 | `core.identity` | 66 | 159 | 41% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 610 | 1130 | 53% |
+| `core.runtime` | 613 | 1134 | 54% |
 | `core.services` | 4846 | 9873 | 49% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 108 | 184 | 58% |
@@ -40,7 +40,7 @@ Generated from source. 7283/14311 functions/methods documented (50%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2032)
+## Undocumented public functions (2033)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L201)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -498,6 +498,7 @@ Generated from source. 7283/14311 functions/methods documented (50%). The list b
 - `core/runtime/ollamafreeapi_provider.py` :: `collapse_messages_to_prompt` (L26)
 - `core/runtime/ollamafreeapi_provider.py` :: `list_ollamafreeapi_models` (L39)
 - `core/runtime/operational_preference_alignment.py` :: `build_operational_preference_alignment` (L4)
+- `core/runtime/process_lifecycle.py` :: `grund` (L63)
 - `core/runtime/provider_router.py` :: `configure_provider_router_entry` (L30)
 - `core/runtime/provider_router.py` :: `list_provider_router_targets` (L325)
 - `core/runtime/provider_router.py` :: `load_provider_router_registry` (L18)

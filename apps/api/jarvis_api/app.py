@@ -534,6 +534,29 @@ def create_app() -> FastAPI:
         logger.info("jarvis api startup complete")
         async with mcp_app.lifespan(app):
             yield
+        # FOERST af alt i nedlukningen: saet flaget, saa alt arbejde der naar en
+        # naturlig graense kan stoppe selv i stedet for at blive tvunget.
+        #
+        # Maalt 11/9-2026: uden det koerte en tur runde 3 -> 10 EFTER
+        # shutdown-signalet og blev derefter annulleret med alt arbejdet tabt.
+        # `--timeout-graceful-shutdown 30` var spild frem for udsaettelse, fordi
+        # ingen kunne spoerge om vi lukkede.
+        try:
+            from core.runtime.process_lifecycle import markér_nedlukning
+            markér_nedlukning("lifespan-shutdown")
+        except Exception:
+            logger.warning("kunne ikke markere nedlukning", exc_info=True)
+        # Og BOGFOER de ture vi er ved at afbryde. Selv naar loekken ikke naar at
+        # stoppe selv, maa arbejdet ikke forsvinde tavst: `interrupted_for_session`
+        # er det samme spor genoptagelses-stien laeser paa naeste tur.
+        try:
+            from core.services.in_flight_runs import list_running_orphans, mark_interrupted
+            for _r in list_running_orphans(0.0):
+                mark_interrupted(str(_r.get("run_id") or ""),
+                                 reason="api-nedlukning",
+                                 summary="processen lukkede mens turen koerte")
+        except Exception:
+            logger.debug("kunne ikke bogfoere afbrudte ture ved nedlukning", exc_info=True)
         logger.info("jarvis api shutdown begin")
         if runtime_services_enabled:
             stop_heartbeat_scheduler()

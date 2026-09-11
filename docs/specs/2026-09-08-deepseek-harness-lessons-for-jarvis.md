@@ -1459,12 +1459,43 @@ reported `beskeder: 579, skrevet: 0` — `backfill` is idempotent in production,
 not only in its docstring, and `UNIQUE(session_id, event_id)` enforces it at
 the schema level rather than in code.
 
-*Still open.* Criterion 1 cannot hold while a session is `shadow` (that mode
-means two authorities by definition). Criterion 3 is unreachable until a
-session is `ledger` — the enforcement lives at `session_handle.py:240` and has
-never run. Criteria 4 and 5 are not investigated. The cutover itself is one-way
-by design (`advance_storage_mode`: «Envejs — der er ingen vej tilbage»), so it
-is a decision, not a measurement.
+**Cutover taken 2026-09-11 (opus), on Bjørn's word.** The canary
+`chat-e58f16c5…` is now `ledger`, at seq 1 141 with the row fingerprint
+unchanged across the flip (`7336996b71ece52f`). Drift after the cutover:
+1 141/1 141, `bevis=verificeret`, and the session still reads normally.
+
+*Criterion 1 — one read/write authority.* Satisfied for the canary: `shadow`
+means two by definition, `ledger` means the event is canonical and
+`chat_messages` is derived.
+
+*Criterion 3 — direct writes fail for ledger sessions.* Verified differentially
+rather than in isolation, because a guard that raises for everything proves
+nothing:
+
+```
+canary (ledger)          -> DirekteSkrivningAfvist
+control group (shadow)   -> passes through
+```
+
+*The write path, proven end to end.* Not on Bjørn's conversation — a throwaway
+session was walked `legacy → shadow → ledger` and written through:
+
+```
+before   ledger=3  chat_messages=3  seq=3
+append   message-bdd70c4257234be8
+after    ledger=4  chat_messages=4  seq=4   drift 4/4, enige=True
+read path returns the new message
+```
+
+So the event lands in the ledger, the projector materialises the row, and the
+ordinary read path sees it. The rehearsal ran on a session nobody would miss,
+because the flip is one-way and a broken write path would have surfaced on
+Bjørn's next message instead of on a probe.
+
+*Still open.* Criteria 4 and 5 are not investigated: old approval,
+tool-routing and agent adapters have not been audited for read-only status, and
+no capability/Mission Control sweep for orphaned duplicate subsystems has been
+run. Two sessions remain in `shadow` on purpose as a control group.
 
 ### Phase 12: optional remote, goal, hook, and team extensions
 

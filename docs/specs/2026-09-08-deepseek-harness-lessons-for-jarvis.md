@@ -1426,6 +1426,46 @@ Exit criteria:
 - old approval, tool-routing, and agent adapters are read-only projections or removed
 - capability audit and Mission Control show no orphaned duplicate subsystem
 
+**Status 2026-09-11 (opus).** The observation window has enough data, and the
+second criterion is exercised.
+
+*Window.* `session_events` holds 2 509 events across three sessions,
+2026-09-09 10:14 → 2026-09-11 08:55. All three are `shadow`; drift is zero:
+
+| session | events | drift |
+|---|---|---|
+| `chat-055b2f70…` | 803 | `enige=True`, `bevis=verificeret` |
+| `chat-48db8cf9…` | 579 | `enige=True`, `bevis=verificeret` |
+| `chat-e58f16c5…` | 1 127 | `enige=True`, `bevis=verificeret` |
+
+`projection_drift.may_cut_over()` returns `True` for all three. The canary
+carried the heaviest traffic this system has seen — explore agents, five
+sacrificial turns, ~72 restarts, a bridge outage and a frozen event loop — with
+no disagreement. That is a better window than a quiet day would have given.
+
+*Criterion 2 — rollback exercised without deleting ledger events.* Run on the
+dormant `chat-48db8cf9…`, fingerprinting the ledger rows (not just counting
+them) at each step:
+
+```
+before     shadow   579 events   sha256[:16] 788e0dedd187c4fe   may_cut_over=True
+rollback   legacy   579 events   788e0dedd187c4fe               may_cut_over=False
+re-enter   shadow   579 events   788e0dedd187c4fe               may_cut_over=True
+```
+
+`abandon_shadow()` only flips `chat_sessions.storage_mode`; the events are
+untouched and still comparable afterwards. Re-entry through `enable_shadow()`
+reported `beskeder: 579, skrevet: 0` — `backfill` is idempotent in production,
+not only in its docstring, and `UNIQUE(session_id, event_id)` enforces it at
+the schema level rather than in code.
+
+*Still open.* Criterion 1 cannot hold while a session is `shadow` (that mode
+means two authorities by definition). Criterion 3 is unreachable until a
+session is `ledger` — the enforcement lives at `session_handle.py:240` and has
+never run. Criteria 4 and 5 are not investigated. The cutover itself is one-way
+by design (`advance_storage_mode`: «Envejs — der er ingen vej tilbage»), so it
+is a decision, not a measurement.
+
 ### Phase 12: optional remote, goal, hook, and team extensions
 
 After the core cutover, implement only extensions justified by an active Jarvis consumer: strict generated/declared remote contracts, revisioned `GoalRuntime`, native-enforced hook compatibility, and finally experimental `TeamRuntime` coordination.

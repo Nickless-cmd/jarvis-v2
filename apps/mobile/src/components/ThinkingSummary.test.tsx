@@ -65,3 +65,19 @@ describe('ThinkingSummary', () => {
     expect(screen.getByTestId('thinking-summary').props.accessibilityState?.disabled).toBe(true)
   })
 })
+
+/**
+ * Målt på Bjørns skærm 13/9-2026: to rækker sagde «Tænkte i 0 s» fordi tanken
+ * var lynhurtig. Nul sekunder er ikke en måling man kan stå inde for — samme
+ * skel som `undefined` vs `0` alle andre steder i den her kæde.
+ */
+it('en tanke under et tiendedels sekund faar ingen tid', async () => {
+  const s = await render(<ThinkingSummary seconds={0.04} text="lyn" />)
+  expect(s.getByText('Tænkte')).toBeTruthy()
+  expect(s.queryByText(/0 s/)).toBeNull()
+})
+
+it('et tiendedels sekund ER en maaling og vises', async () => {
+  const s = await render(<ThinkingSummary seconds={0.1} text="kort" />)
+  expect(s.getByText(/Tænkte i 0,1 s/)).toBeTruthy()
+})

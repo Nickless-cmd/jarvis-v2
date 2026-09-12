@@ -57,7 +57,11 @@ export function ThinkingSummary({
   const pulse = useRef(new Animated.Value(1)).current
 
   const isLive = !!live
-  const hasSeconds = seconds != null && seconds > 0
+  // Under 0,05 s runder ned til «0 s», og «Tænkte i 0 s» er en paastand vi
+  // ikke har daekning for — praecis samme skel som `undefined` vs `0` andre
+  // steder. Maalt paa Bjoerns skaerm 13/9-2026: to raekker sagde «Tænkte i
+  // 0 s» fordi tanken var lynhurtig. Uden tal siger etiketten bare «Tænkte».
+  const hasSeconds = seconds != null && Math.round(seconds * 10) / 10 >= 0.1
 
   // Intet at vise: ikke live, ingen tekst, ingen målt varighed.
   if (!isLive && !hasText && !hasSeconds) return null

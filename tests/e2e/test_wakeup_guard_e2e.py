@@ -294,3 +294,34 @@ def test_e2e_queue_is_really_used(e2e):
     after = json.loads(e2e.queue.read_text())
     done = [j for j in after if j.get("job_type") == "wakeup_dispatch"]
     assert done and done[-1].get("status") == "ok"
+
+
+def test_e2e_consumed_before_tick_leaves_trace(e2e):
+    """Sidste stille kant, ende til ende gennem den ÆGTE job-kø.
+
+    Sekvensen er den produktionsægte: wakeup'en forfalder og awareness-vejen
+    flipper den pending→fired når Jarvis får en tur; han kvitterer den; og
+    FØRST DEREFTER kommer dispatcher-tick'en. Dispatcheren filtrerer på
+    status=='fired', så den ser intet — men recorden skal bære sporet.
+    """
+    _plant_wakeup(e2e.store, session_id="chat-e2e")
+
+    # Awareness-vejen (samme kald prompt-contract bruger) flipper pending→fired
+    section = sw.self_wakeup_section()
+    assert section is not None
+    assert _record(e2e.store)["status"] == "fired"
+
+    # ... og han kvitterer FØR dispatcheren når sit næste tick
+    assert sw.mark_wakeup_consumed("wake-e2e")["status"] == "ok"
+
+    # Nu kommer tick'en — gennem den ægte kø
+    je.enqueue_job(job_type="wakeup_dispatch", payload={"reason": "e2e"}, priority=8)
+    _drain_queue()
+
+    rec = _record(e2e.store)
+    assert rec["status"] == "consumed"
+    assert e2e.spy.started is False
+    assert rec.get("dispatched") is None
+    assert rec.get("dispatch_skipped") is None       # dispatcheren så den aldrig
+    assert rec["consumed_without_dispatch"] is True  # ... men sporet står der
+    assert rec["consumed_without_dispatch_reason"] == "consumed_before_dispatch_tick"

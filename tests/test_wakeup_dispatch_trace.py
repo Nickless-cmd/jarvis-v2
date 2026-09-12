@@ -333,3 +333,90 @@ def test_section_shows_user_active_reason(monkeypatch):
     assert section is not None
     assert "user_active" in section
     assert "IKKE dispatchet" in section
+
+
+# ── Punkt 5: kvitteret FØR dispatcher-tick (12/9-2026) ─────────────
+#
+# Sidste stille kant. Dispatcheren filtrerer på status=='fired', så en FYRET
+# wakeup der kvitteres før næste 60 s-tick er usynlig for den: hverken
+# `dispatched` eller `dispatch_skipped` nåede at blive sat. Instruktionerne
+# overlevede (awareness bar dem), men sporet manglede. Sporet sættes nu ved
+# kvitteringen — det eneste sted der VED at den fyrede ubehandlet.
+
+
+def test_consume_before_dispatch_leaves_trace(monkeypatch):
+    """Fyret + kvitteret uden dispatch → sporet skal stå på recorden."""
+    state = [{
+        "wakeup_id": "w1", "status": "fired", "prompt": "Tjek X",
+        "reason": "r", "fired_at": _past(),
+    }]
+    monkeypatch.setattr(sw, "_load", lambda: list(state))
+    monkeypatch.setattr(sw, "_save", lambda r: state.clear() or state.extend(r))
+
+    res = sw.mark_wakeup_consumed("w1")
+
+    assert res["status"] == "ok"
+    assert state[0]["status"] == "consumed"
+    assert state[0]["consumed_without_dispatch"] is True
+    assert state[0]["consumed_without_dispatch_reason"] == "consumed_before_dispatch_tick"
+
+
+def test_consume_after_dispatch_leaves_no_trace(monkeypatch):
+    """Blev den dispatchet, er der intet hul at dække."""
+    state = [{"wakeup_id": "w1", "status": "fired", "prompt": "p", "dispatched": True}]
+    monkeypatch.setattr(sw, "_load", lambda: list(state))
+    monkeypatch.setattr(sw, "_save", lambda r: state.clear() or state.extend(r))
+
+    sw.mark_wakeup_consumed("w1")
+
+    assert state[0].get("consumed_without_dispatch") is not True
+
+
+def test_consume_after_skip_leaves_no_trace(monkeypatch):
+    """Blev den afvist MED spor (user_active), er den allerede forklaret."""
+    state = [{
+        "wakeup_id": "w1", "status": "fired", "prompt": "p",
+        "dispatch_skipped": True, "dispatch_skipped_reason": "user_active",
+    }]
+    monkeypatch.setattr(sw, "_load", lambda: list(state))
+    monkeypatch.setattr(sw, "_save", lambda r: state.clear() or state.extend(r))
+
+    sw.mark_wakeup_consumed("w1")
+
+    assert state[0].get("consumed_without_dispatch") is not True
+
+
+def test_consume_pending_leaves_no_trace(monkeypatch):
+    """En wakeup der aldrig fyrede har intet dispatch at mangle."""
+    state = [{"wakeup_id": "w1", "status": "pending", "prompt": "p"}]
+    monkeypatch.setattr(sw, "_load", lambda: list(state))
+    monkeypatch.setattr(sw, "_save", lambda r: state.clear() or state.extend(r))
+
+    sw.mark_wakeup_consumed("w1")
+
+    assert state[0].get("consumed_without_dispatch") is not True
+
+
+def test_consume_before_tick_is_invisible_to_dispatcher(monkeypatch, isolated):
+    """Bevis på hullet selv: dispatcheren ser INTET når den kvitteres først —
+    og netop derfor skal sporet sættes ved kvitteringen, ikke af dispatcheren."""
+    state = [{
+        "wakeup_id": "w1", "status": "fired", "fired_at": _past(),
+        "prompt": "Tjek X", "reason": "r", "channel": "app",
+    }]
+    monkeypatch.setattr(sw, "_load", lambda: list(state))
+    monkeypatch.setattr(sw, "_save", lambda r: state.clear() or state.extend(r))
+    monkeypatch.setattr(
+        "core.services.autonomous_stream_run.start_autonomous_stream_run",
+        lambda *a, **k: None,
+    )
+
+    sw.mark_wakeup_consumed("w1")          # kvitteret FØR dispatcheren ser den
+    result = wd.dispatch_due_wakeups()     # tick'en kommer bagefter
+
+    assert result["dispatched"] == 0
+    assert result.get("skipped", 0) == 0, "dispatcheren behandlede en kvitteret wakeup"
+    rec = state[0]
+    assert rec.get("dispatched") is None
+    assert rec.get("dispatch_skipped") is None
+    assert rec["consumed_without_dispatch"] is True

@@ -167,8 +167,19 @@ def mark_wakeup_consumed(wakeup_id: str) -> dict[str, Any]:
         return {"status": "error", "error": "wakeup not found"}
     if record.get("status") not in ("pending", "fired"):
         return {"status": "error", "error": f"wakeup status={record.get('status')}, can't consume"}
+    was_fired = str(record.get("status") or "") == "fired"
     record["status"] = "consumed"
     record["consumed_at"] = datetime.now(UTC).isoformat()
+    # 12/9-2026: luk den sidste stille kant. Dispatcheren filtrerer på
+    # status=='fired', så en FYRET wakeup der kvitteres før næste tick (60 s)
+    # er usynlig for den: hverken `dispatched` eller `dispatch_skipped` nåede
+    # at blive sat, og recorden stod tavs. Instruktionerne overlevede
+    # (awareness bar dem), men sporet manglede. Vi skriver det HER, hvor vi
+    # ved at den fyrede ubehandlet — så `list_self_wakeups` kan skelne
+    # «kørte» / «afvist» / «nåede aldrig frem».
+    if was_fired and not record.get("dispatched") and not record.get("dispatch_skipped"):
+        record["consumed_without_dispatch"] = True
+        record["consumed_without_dispatch_reason"] = "consumed_before_dispatch_tick"
     _save(records)
     try:
         from core.eventbus.bus import event_bus

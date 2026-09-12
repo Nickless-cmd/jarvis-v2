@@ -1895,7 +1895,7 @@ Generated from source. 7314/14384 functions/methods documented (50%). The list b
 - `core/services/visible_turn_accumulator.py` :: `TurnAccumulator.close_segment` (L56)
 - `core/services/visible_turn_accumulator.py` :: `TurnAccumulator.note_text` (L60)
 - `core/services/visible_turn_accumulator.py` :: `TurnAccumulator.note_tool` (L63)
-- `core/services/vision_backend.py` :: `build_vision_backend_surface` (L192)
+- `core/services/vision_backend.py` :: `build_vision_backend_surface` (L217)
 - `core/services/voice_daemon.py` :: `start_voice_daemon` (L60)
 - `core/services/voice_daemon.py` :: `stop_voice_daemon` (L73)
 - `core/services/witness_signal_tracking.py` :: `build_runtime_witness_signal_surface` (L120)

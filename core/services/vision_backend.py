@@ -16,6 +16,16 @@ skjult nøgle i en konfigfil. Bjørn (5/9): flash UDEN syn er stadig standard; k
 han vælge flash MED syn i vælgeren, skal syns-værktøjerne følge med. Vælger han
 den blinde, arbejder de som hidtil.
 
+OPDATERET 12/9-2026: forudsætningen for 5/9-valget er væk. DeepSeek opgraderede
+flash-vægten til 4.1, som ER multimodal — og providerens model-liste har nu kun
+`deepseek-flash` og `deepseek-v4-pro`. Der findes altså ikke længere en «flash
+uden syn» at vælge imellem; den gamle `-vision-exp` er væk fra listen. Målt med
+et probe-kald mod API'et: `prompt_tokens` gik 39 → 1031 da et billede blev
+vedhæftet, og svaret gengav billedets danske overskrift og alle fire motivnavne
+ordret — det kan ikke gættes. Konsekvens: den valgte model ser selv, og den
+blinde gren vogtes nu mod en model der virkelig er blind. Se `_VISION_CAPABLE`
+og `tests/test_vision_follows_selection.py`.
+
 Rækkefølgen er derfor:
 1. Kører der en synlig tur på en model der KAN se? Så bruger værktøjerne DEN —
    øjnene sidder i den model der svarer ham.
@@ -47,7 +57,22 @@ _MAX_TOKENS = 400
 
 # Modeller der selv kan se. En model uden syn kan ikke laane oejne af en tur —
 # saa falder vi tilbage til den konfigurerede vision-model.
-_VISION_CAPABLE = frozenset({"deepseek-v4-flash-vision-exp"})
+#
+# MAALT 12. sep 2026: DeepSeeks flash-vaegt blev opgraderet til 4.1, som ER
+# multimodal. Begge API-navne laeser et billede: `prompt_tokens` gik 39 -> 1031
+# (uden billede svarede modellen korrekt «I don't see an image»), og svaret
+# gengav den danske overskrift og alle fire motivnavne ORDRET. Det kan ikke
+# gaettes — modellen ser.
+#
+# Den gamle `deepseek-v4-flash-vision-exp` findes ikke laengere i providerens
+# model-liste (kun `deepseek-flash` og `deepseek-v4-pro`). Listen pegede altsaa
+# paa en model der var vaek og manglede den der faktisk ser — derfor gik alle
+# billeder gennem en separat vision-model i stedet for gennem mine egne oejne.
+_VISION_CAPABLE = frozenset({
+    "deepseek-flash",
+    "deepseek-v4-flash",
+    "deepseek-v4-flash-vision-exp",  # bevaret: aeldre configs kan stadig pege her
+})
 # gemma4-familien er multimodal i praksis — gemma4:31b-cloud laeste en statusskaerm
 # korrekt 5/9 (se docstring ovenfor), saa navnet alene betyder syn.
 _SEEING_NAME_RE = re.compile(r"vision|llava|gemma4|(?:^|[\d\-_.])vl(?:[:\-_.\d]|$)")

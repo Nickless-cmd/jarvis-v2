@@ -2648,6 +2648,16 @@ async def _stream_visible_run(
                 _SYNTH_PAUSE_AFTER = 8
                 _synth_pause_fired_at = -100  # runde hvor vi sidst tvang en pause
                 _agentic_loop_exit_reason = "completed"
+                # CUT-OFF-flag (12. sep 2026 — ROD-ÅRSAG til UnboundLocalError):
+                # initialiseres HER, ikke kun pr. forsøg inde i loopet. To tidlige
+                # udgange i loopets FØRSTE runde — `provider-not-supported` (~2729)
+                # og `shutdown` (~2722) — `break`er FØR den per-forsøg-reset
+                # (~3018), og så stod læsningen efter loopet (~4798) på en ubundet
+                # variabel: hele turen døde med UnboundLocalError i stedet for at
+                # blive afsluttet. Målt 12. sep 13:58: autonomous-4b4f517d,
+                # provider=alibaba (supports_followup=False). Samme mønster som
+                # _agentic_loop_exit_reason lige ovenfor.
+                _a_truncated = False
                 # ── LAG 3 no-progress-detektor state (Bjørn 4. jul) ──
                 _force_finalize_next = False       # sat i bunden af en no-progress-runde
                 _prev_round_sig: frozenset | None = None  # forrige rundes (tool,args,result)-signatur

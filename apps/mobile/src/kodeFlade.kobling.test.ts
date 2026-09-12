@@ -126,11 +126,14 @@ it('fladen gendannes FOER sessionen', () => {
   expect(blok.indexOf('onSkiftFlade?.(plads.kode)')).toBeLessThan(blok.indexOf('sessions.select'))
 })
 
-it('SESSIONEN har det sidste ord om fladen', () => {
-  // Den gemte flade er et minde; samtalens `kind` er et faktum.
+it('samtalens art spoerges KUN naar fladen er uvist', () => {
+  // Er fladen gemt, er den brugerens eget valg. Skifter man bevidst til chat
+  // med en code-samtale aaben og lukker appen, skal den aabne i chat igen -
+  // ikke hoppe tilbage til code.
   const cs = kilde('screens/ChatScreen.tsx')
-  expect(cs).toMatch(/const kode = s\.kind === 'code'/)
-  expect(cs).toMatch(/if \(kode !== plads\.kode\) onSkiftFlade\?\.\(kode\)/)
+  expect(cs).toMatch(/if \(plads\.kode === null\) onSkiftFlade\?\.\(s\.kind === 'code'\)/)
+  // ... og en gemt flade saettes uden at spoerge.
+  expect(cs).toMatch(/if \(plads\.kode !== null && plads\.kode !== kodeTilstand\) onSkiftFlade\?\.\(plads\.kode\)/)
 })
 
 it('fladen gemmes ogsaa naar man skifter UDEN at skifte samtale', () => {

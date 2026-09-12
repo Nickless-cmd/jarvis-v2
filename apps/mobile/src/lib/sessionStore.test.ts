@@ -25,12 +25,23 @@ it('chat-fladen huskes ogsaa, ikke kun code', async () => {
   expect(await loadLastSession()).toEqual({ id: 's1', kode: false })
 })
 
-it('en GAMMEL bar id-streng laeses stadig', async () => {
-  // Noeglen indeholdt foer kun id'et. Uden det her ville alle der opdaterer
-  // miste deres sidste samtale én gang - og det ville ligne at appen havde
-  // glemt dem.
+it('en GAMMEL bar id-streng laeses stadig — og fladen er UVIST', async () => {
+  // TRE tilstande, ikke to. Noeglen indeholdt foer kun id'et. Laeste man det
+  // som «chat», ville en gemt code-samtale aabne i chat-fladen én gang efter
+  // opdateringen - praecis den modstrid det her skulle fjerne.
   store.__saet('chat-gammel')
-  expect(await loadLastSession()).toEqual({ id: 'chat-gammel', kode: false })
+  expect(await loadLastSession()).toEqual({ id: 'chat-gammel', kode: null })
+})
+
+it('en GEMT chat-flade er «nej», ikke «uvist»', async () => {
+  // Forskellen afgoer om samtalens art faar lov at overskrive brugerens valg.
+  await saveLastSession('s1', false)
+  expect((await loadLastSession())?.kode).toBe(false)
+})
+
+it('en post UDEN kode-felt er uvist', async () => {
+  store.__saet('{"id":"s1"}')
+  expect(await loadLastSession()).toEqual({ id: 's1', kode: null })
 })
 
 it('tom eller vroevlet vaerdi giver null, ikke en halv plads', async () => {

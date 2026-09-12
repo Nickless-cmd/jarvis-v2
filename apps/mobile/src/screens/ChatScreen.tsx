@@ -474,16 +474,18 @@ export function ChatScreen({
       didRestore.current = true
       loadLastSession().then((plads) => {
         if (!plads) return
-        if (plads.kode !== kodeTilstand) onSkiftFlade?.(plads.kode)
+        if (plads.kode !== null && plads.kode !== kodeTilstand) onSkiftFlade?.(plads.kode)
         sessions.select(config, plads.id)
           .then((s) => {
-            // SESSIONEN HAR DET SIDSTE ORD. Den gemte flade er et minde;
-            // samtalens `kind` er et faktum. De to kan kun være uenige i ét
-            // tilfælde — nøglen fra før fladen blev husket indeholdt kun et
-            // id — og netop dér ville man lande i chat-fladen med en
-            // code-samtale, som er præcis det Bjørn beskrev.
-            const kode = s.kind === 'code'
-            if (kode !== plads.kode) onSkiftFlade?.(kode)
+            // KUN når fladen er UVIST spørger vi samtalen. Er den gemt, er den
+            // brugerens eget valg, og det må ikke overskrives: skifter man
+            // bevidst til chat med en code-samtale åben og lukker appen, skal
+            // den åbne i chat igen — ikke hoppe tilbage til code.
+            //
+            // Uvist sker kun én gang pr. installation: nøglen fra før fladen
+            // blev husket indeholder kun et id. Netop dér ville en code-samtale
+            // lande i chat-fladen, som er det Bjørn beskrev.
+            if (plads.kode === null) onSkiftFlade?.(s.kind === 'code')
           })
           .catch(() => undefined)
       })

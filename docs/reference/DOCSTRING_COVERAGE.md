@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7308/14341 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7309/14377 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 7308/14341 functions/methods documented (50%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 614 | 1135 | 54% |
-| `core.services` | 4866 | 9897 | 49% |
+| `core.services` | 4867 | 9932 | 49% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 108 | 184 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -35,12 +35,12 @@ Generated from source. 7308/14341 functions/methods documented (50%). The list b
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 2 | 25 | 8% |
 | `core.util` | 9 | 10 | 90% |
-| `scripts` | 187 | 369 | 50% |
+| `scripts` | 187 | 370 | 50% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2034)
+## Undocumented public functions (2059)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L201)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1446,6 +1446,30 @@ Generated from source. 7308/14341 functions/methods documented (50%). The list b
 - `core/services/repeated_requests.py` :: `counts` (L285)
 - `core/services/repeated_requests.py` :: `ensure_table` (L92)
 - `core/services/repeated_requests.py` :: `mark_asked` (L203)
+- `core/services/research_contract.py` :: `canonicalize_url` (L83)
+- `core/services/research_contract.py` :: `normalize_source` (L100)
+- `core/services/research_evidence_collector.py` :: `collecting_for` (L14)
+- `core/services/research_evidence_collector.py` :: `observe_web_result` (L38)
+- `core/services/research_orchestrator.py` :: `research_enabled` (L223)
+- `core/services/research_orchestrator.py` :: `stream_research_run` (L90)
+- `core/services/research_prompt_context.py` :: `research_context` (L23)
+- `core/services/research_prompt_context.py` :: `research_prompt_section` (L36)
+- `core/services/research_quality.py` :: `evaluate_research_report` (L19)
+- `core/services/research_router.py` :: `classify_research` (L15)
+- `core/services/research_store.py` :: `active_for_session` (L203)
+- `core/services/research_store.py` :: `add_source` (L146)
+- `core/services/research_store.py` :: `add_steer` (L162)
+- `core/services/research_store.py` :: `bind_visible_run` (L100)
+- `core/services/research_store.py` :: `complete_task` (L132)
+- `core/services/research_store.py` :: `consume_pending_steers` (L170)
+- `core/services/research_store.py` :: `create_run` (L67)
+- `core/services/research_store.py` :: `create_tasks` (L106)
+- `core/services/research_store.py` :: `get_run` (L61)
+- `core/services/research_store.py` :: `list_sources` (L186)
+- `core/services/research_store.py` :: `mark_stale_interrupted` (L214)
+- `core/services/research_store.py` :: `source_count` (L196)
+- `core/services/research_store.py` :: `start_task` (L120)
+- `core/services/research_store.py` :: `transition_run` (L79)
 - `core/services/resonance_decay.py` :: `build_resonance_decay_surface` (L410)
 - `core/services/retry_runtime.py` :: `Spent.plus_attempt` (L85)
 - `core/services/rhythm_engine.py` :: `build_rhythm_surface` (L73)
@@ -1982,6 +2006,7 @@ Generated from source. 7308/14341 functions/methods documented (50%). The list b
 - `scripts/db_split_baseline.py` :: `measure` (L18)
 - `scripts/diagnostics/canary_measure.py` :: `main` (L56)
 - `scripts/enforce_commit_hygiene.py` :: `main` (L80)
+- `scripts/eval_research_lane.py` :: `evaluate_cases` (L16)
 - `scripts/forced_tool_choice_report.py` :: `main` (L65)
 - `scripts/god_file_map.py` :: `blast` (L24)
 - `scripts/god_file_map.py` :: `own_py_files` (L14)

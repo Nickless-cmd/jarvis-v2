@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 14341 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 14377 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -46,13 +46,14 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 14341 functions/
 - [`core.services.16`](core.services.16.md) — `model_probe` … `paid_lane_guard`
 - [`core.services.17`](core.services.17.md) — `paradox_tracker` … `procedure_bank_pipeline`
 - [`core.services.18`](core.services.18.md) — `process_identity` … `reasoning_detectors`
-- [`core.services.19`](core.services.19.md) — `reasoning_escalation` … `run_follow`
-- [`core.services.20`](core.services.20.md) — `runtime_action_executor` … `self_model_blind_spots`
-- [`core.services.21`](core.services.21.md) — `self_model_distiller` … `share_guard_store`
-- [`core.services.22`](core.services.22.md) — `shared_cache` … `stream_sentinel`
-- [`core.services.23`](core.services.23.md) — `stream_settlement` … `tool_intent_runtime`
-- [`core.services.24`](core.services.24.md) — `tool_lexical_match` … `visible_followup_events`
-- [`core.services.25`](core.services.25.md) — `visible_followup_lean` … `world_model_signal_tracking`
+- [`core.services.19`](core.services.19.md) — `reasoning_escalation` … `role_registry`
+- [`core.services.20`](core.services.20.md) — `round_budget_notice` … `selective_forgetting_candidate_tracking`
+- [`core.services.21`](core.services.21.md) — `self_authored_prompt_proposal_tracking` … `session_topic_tracker`
+- [`core.services.22`](core.services.22.md) — `session_wakeup` … `spatial_entity_ledger`
+- [`core.services.23`](core.services.23.md) — `staged_edits` … `tool_calling_evidence`
+- [`core.services.24`](core.services.24.md) — `tool_catalog` … `value_formation`
+- [`core.services.25`](core.services.25.md) — `verification_gate` … `wakeup_dispatcher`
+- [`core.services.26`](core.services.26.md) — `weekly_manifest` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)
@@ -65,8 +66,8 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 14341 functions/
 - [`core.tools.agent_dispatch_tool`](core.tools.agent_dispatch_tool.md)
 - [`core.tools.claude_dispatch`](core.tools.claude_dispatch.md)
 - [`core.util`](core.util.md)
-- [`scripts.01`](scripts.01.md) — `__init__` … `link_google_email`
-- [`scripts.02`](scripts.02.md) — `measure_prompt_payload` … `verify_fase_a`
+- [`scripts.01`](scripts.01.md) — `__init__` … `ledger_rehearsal`
+- [`scripts.02`](scripts.02.md) — `link_google_email` … `verify_fase_a`
 - [`scripts.acceptance`](scripts.acceptance.md)
 - [`scripts.diagnostics`](scripts.diagnostics.md)
 - [`scripts.pipelines`](scripts.pipelines.md)

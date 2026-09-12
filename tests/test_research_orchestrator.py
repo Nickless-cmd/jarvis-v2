@@ -643,3 +643,158 @@ def test_C2_default_worker_sender_budgettet_til_spawn(monkeypatch):
     assert captured.get("max_turns") == 7, captured
     # Worker'en skal stadig være read-only — budgettet må ikke have ændret det.
     assert captured.get("tool_policy") == "read-only-runtime"
+
+
+# --- Fase C1: LLM-planlægger med regex-fallback (13/9-2026) ---
+#
+# Planneren må fejle på alle måder uden at runnet dør. Regex-planen er
+# kontrakten: er flaget slået fra, eller svarer planneren ikke, er outputtet
+# byte-identisk med `_plan()`.
+
+def test_C1_parse_plan_former():
+    """Plannerens svar i de former en model faktisk kan svare i."""
+    clean = orchestrator._parse_plan(
+        '[{"title": "Pris", "objective": "Find priser"}, {"title": "Drift", "objective": "Find driftsdata"}]',
+        6,
+    )
+    assert [t.title for t in clean] == ["Pris", "Drift"]
+    assert [t.ordinal for t in clean] == [1, 2]
+
+    fenced = orchestrator._parse_plan(
+        'Sure!\n```json\n[{"title": "A", "objective": "a"}, {"title": "B", "objective": "b"}]\n```',
+        6,
+    )
+    assert [t.title for t in fenced] == ["A", "B"]
+
+    wrapped = orchestrator._parse_plan(
+        '{"tasks": [{"title": "A", "objective": "a"}, {"title": "B", "objective": "b"}]}',
+        6,
+    )
+    assert [t.title for t in wrapped] == ["A", "B"]
+
+
+def test_C1_parse_plan_afviser_soepla():
+    """Garbage og for tynde planer giver [] — så kalderen falder til regex."""
+    assert orchestrator._parse_plan("jeg ved det ikke", 6) == []
+    assert orchestrator._parse_plan("", 6) == []
+    # Én track er ikke en plan — et orchestrated run med ét spor er inline.
+    assert orchestrator._parse_plan('[{"title": "A", "objective": "a"}]', 6) == []
+    # Manglende objective falder tilbage til titlen — en tynd opgave er bedre
+    # end et kasseret spor (speccen: planen skal fejle TILBAGE, ikke væk).
+    fallback = orchestrator._parse_plan('[{"title": "A"}, {"title": "B"}]', 6)
+    assert [t.objective for t in fallback] == ["A", "B"]
+    # Men et spor helt uden titel er ubrugeligt og kasseres.
+    assert orchestrator._parse_plan('[{"objective": "a"}, {"objective": "b"}]', 6) == []
+
+
+def test_C1_parse_plan_respekterer_loftet():
+    many = json.dumps([{"title": f"T{i}", "objective": f"o{i}"} for i in range(9)])
+    assert len(orchestrator._parse_plan(many, 4)) == 4
+
+
+def test_C1_flag_off_er_byte_identisk(monkeypatch):
+    """Uden flaget må planlægningen være præcis regex-planen — uden netværk."""
+    called = []
+    monkeypatch.setattr(
+        "core.services.cheap_provider_runtime.execute_public_safe_cheap_lane",
+        lambda **kw: called.append(kw) or {"status": "completed", "text": "[]"},
+    )
+    tasks = asyncio.run(
+        orchestrator._plan_tasks("Sammenlign fem leverandører", 6, planner_enabled=False)
+    )
+    assert called == [], "planneren blev kaldt selv om flaget var slået fra"
+    assert [t.title for t in tasks] == [t.title for t in orchestrator._plan("Sammenlign fem leverandører", 6)]
+
+
+def test_C1_planner_bruges_naar_flag_on(monkeypatch):
+    monkeypatch.setattr(
+        "core.services.cheap_provider_runtime.execute_public_safe_cheap_lane",
+        lambda **kw: {
+            "status": "completed",
+            "text": '[{"title": "Planner A", "objective": "aa"}, {"title": "Planner B", "objective": "bb"}]',
+        },
+    )
+    tasks = asyncio.run(
+        orchestrator._plan_tasks("Sammenlign fem leverandører", 6, planner_enabled=True)
+    )
+    assert [t.title for t in tasks] == ["Planner A", "Planner B"]
+
+
+def test_C1_planner_fejl_falder_til_regex(monkeypatch):
+    """En død planner må ikke koste planen — regex overtager."""
+    def boom(**kw):
+        raise RuntimeError("public-safe local fallback unavailable")
+
+    monkeypatch.setattr("core.services.cheap_provider_runtime.execute_public_safe_cheap_lane", boom)
+    tasks = asyncio.run(
+        orchestrator._plan_tasks("Sammenlign fem leverandører", 6, planner_enabled=True)
+    )
+    assert [t.title for t in tasks] == [t.title for t in orchestrator._plan("Sammenlign fem leverandører", 6)]
+
+
+def test_C1_planner_tomt_svar_falder_til_regex(monkeypatch):
+    monkeypatch.setattr(
+        "core.services.cheap_provider_runtime.execute_public_safe_cheap_lane",
+        lambda **kw: {"status": "completed", "text": "   "},
+    )
+    tasks = asyncio.run(
+        orchestrator._plan_tasks("Sammenlign fem leverandører", 6, planner_enabled=True)
+    )
+    assert [t.title for t in tasks] == [t.title for t in orchestrator._plan("Sammenlign fem leverandører", 6)]
+
+
+def test_C1_plannerens_plan_naar_create_tasks(monkeypatch):
+    """Dybeste test: planen fra planneren skal hele vejen til create_tasks."""
+    _fake_store(monkeypatch)
+    monkeypatch.setattr(orchestrator, "_topup_plan", lambda *a, **k: [])
+    monkeypatch.setattr(
+        orchestrator,
+        "_setting",
+        lambda name, default: True if name == "research_llm_planner_enabled" else default,
+    )
+    monkeypatch.setattr(
+        "core.services.cheap_provider_runtime.execute_public_safe_cheap_lane",
+        lambda **kw: {
+            "status": "completed",
+            "text": '[{"title": "Planner A", "objective": "aa"}, {"title": "Planner B", "objective": "bb"}]',
+        },
+    )
+    seen: list[list[str]] = []
+    real_create = orchestrator.store.create_tasks
+    monkeypatch.setattr(
+        orchestrator.store,
+        "create_tasks",
+        lambda rid, tasks: seen.append([t.title for t in tasks]) or real_create(rid, tasks),
+    )
+
+    events = _events(orchestrator.stream_research_run(
+        message="Sammenlign fem leverandører på pris, sikkerhed og drift",
+        session_id="s1",
+        decision=ResearchDecision(tier="orchestrated", max_workers=2, max_tasks=2),
+        visible_factory=_visible,
+        worker_factory=lambda **kw: {"text": "x", "status": "completed"},
+        orchestrator_enabled=True,
+    ))
+    assert any("event: research_completed" in e for e in events), events
+    assert seen and seen[0] == ["Planner A", "Planner B"], seen
+
+
+def test_C1_flag_off_kalder_aldrig_planneren_i_run(monkeypatch):
+    """Hele runnet med flaget fra: planneren må ikke kaldes én eneste gang."""
+    _fake_store(monkeypatch)
+    monkeypatch.setattr(orchestrator, "_topup_plan", lambda *a, **k: [])
+    called = []
+    monkeypatch.setattr(
+        "core.services.cheap_provider_runtime.execute_public_safe_cheap_lane",
+        lambda **kw: called.append(kw) or {"status": "completed", "text": "[]"},
+    )
+    events = _events(orchestrator.stream_research_run(
+        message="Sammenlign fem leverandører på pris, sikkerhed og drift",
+        session_id="s1",
+        decision=ResearchDecision(tier="orchestrated", max_workers=2, max_tasks=2),
+        visible_factory=_visible,
+        worker_factory=lambda **kw: {"text": "x", "status": "completed"},
+        orchestrator_enabled=True,
+    ))
+    assert any("event: research_completed" in e for e in events), events
+    assert called == [], "planneren blev kaldt i et run hvor flaget var slået fra"

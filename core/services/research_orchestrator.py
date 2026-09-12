@@ -78,6 +78,106 @@ def _plan(message: str, max_tasks: int) -> list[ResearchTask]:
     ]
 
 
+# ── Fase C1 (13/9-2026): LLM-planlægger med regex-fallback ────────────────────
+#
+# `_plan` er stadig fallback. Planneren må fejle på alle måder — ingen provider,
+# tomt svar, ulæselig JSON — uden at runnet dør. Er flaget slået fra, kaldes
+# `_plan` direkte, og adfærden er byte-identisk med før C1.
+
+_PLANNER_PROMPT = """You plan independent research tracks for one question.
+
+Split the question into {count} tracks that can each be researched independently by one worker with web tools.
+
+{topic_line}Reply with ONLY a JSON array (no prose, no code fence) in this shape:
+[{{"title": "short track name", "objective": "one sentence: what this track must establish"}}]
+
+The question: {message}"""
+
+
+def _parse_plan(text: str, max_tasks: int) -> list[ResearchTask]:
+    """Læs plannerens JSON til en ResearchTask-liste. Defensiv: [] ved mindste tvivl.
+
+    Vi beder om en liste af {title, objective}, men modeller pakker den ind i
+    kodeblokke eller et {"tasks": [...]}-objekt — begge accepteres. Er svaret
+    ikke til at læse, eller giver det færre end to tracks, returnerer vi [] og
+    kalderen falder tilbage til regex-planen.
+    """
+    candidate = _clean_text(text)
+    fenced = re.search(r"```(?:json)?\s*(.+?)```", text, re.S)
+    if fenced:
+        candidate = fenced.group(1).strip()
+    try:
+        parsed: object = json.loads(candidate)
+    except Exception:
+        bracket = re.search(r"\[.*\]", text, re.S)
+        if not bracket:
+            return []
+        try:
+            parsed = json.loads(bracket.group(0))
+        except Exception:
+            return []
+    if isinstance(parsed, dict):
+        for key in ("tasks", "tracks", "plan"):
+            if isinstance(parsed.get(key), list):
+                parsed = parsed[key]
+                break
+    if not isinstance(parsed, list):
+        return []
+    out: list[ResearchTask] = []
+    for item in parsed:
+        if not isinstance(item, dict):
+            continue
+        title = _clean_text(item.get("title"))
+        objective = _clean_text(item.get("objective") or item.get("goal") or title)
+        if not title or not objective:
+            continue
+        out.append(ResearchTask(ordinal=len(out) + 1, title=title, objective=objective))
+        if len(out) >= max(2, max_tasks):
+            break
+    return out if len(out) >= 2 else []
+
+
+def _llm_plan(message: str, max_tasks: int, facets: list[str]) -> list[ResearchTask] | None:
+    """Fase C1: bed en billig model om delopgaver. None = kunne ikke → regex.
+
+    Blokerende (netværk) — kalderen kører den i en tråd. Alle fejl giver None,
+    aldrig en exception: et run må ikke dø, fordi planneren ikke kunne svare.
+    """
+    from core.services.cheap_provider_runtime import execute_public_safe_cheap_lane
+
+    count = max(2, max_tasks or 2)
+    topic_line = ""
+    if facets:
+        # Facetterne er dem kvalitetsgaten måler dækning imod — planen skal dække
+        # dem, ellers dømmer gaten planen ude for noget den ikke blev bedt om.
+        topic_line = f"Together the tracks must cover: {', '.join(facets)}.\n\n"
+    prompt = _PLANNER_PROMPT.format(count=count, topic_line=topic_line, message=message)
+    try:
+        result = execute_public_safe_cheap_lane(message=prompt)
+    except Exception:
+        return None
+    text = str((result or {}).get("text") or "")
+    if not text.strip():
+        return None
+    return _parse_plan(text, max_tasks) or None
+
+
+async def _plan_tasks(message: str, max_tasks: int, *, planner_enabled: bool) -> list[ResearchTask]:
+    """Fase C1: LLM-planlægger med regex-fallback.
+
+    Slået fra eller fejlet → præcis `_plan()`. Netværkskaldet kører i en tråd,
+    så et langsomt planner-svar ikke blokerer event-loopet.
+    """
+    if planner_enabled:
+        try:
+            planned = await asyncio.to_thread(_llm_plan, message, max_tasks, _facets(message))
+        except Exception:
+            planned = None
+        if planned:
+            return planned
+    return _plan(message, max_tasks)
+
+
 def _tool_calls_used(run_id: str) -> int:
     """Observerede værktøjskald i runnet. Defensiv: 0 hvis tællingen ikke kan læses."""
     try:
@@ -487,7 +587,14 @@ async def stream_research_run(
     parsed_findings: list[ResearchFinding] = []
     gaps: list[str] = []
     if decision.tier == "orchestrated":
-        tasks = store.create_tasks(run_id, _plan(query, policy.max_tasks))
+        tasks = store.create_tasks(
+            run_id,
+            await _plan_tasks(
+                query,
+                policy.max_tasks,
+                planner_enabled=_setting("research_llm_planner_enabled", False),
+            ),
+        )
         yield _event("research_plan", {
             "research_run_id": run_id,
             "tasks": [{"ordinal": task["ordinal"], "title": task["title"]} for task in tasks],

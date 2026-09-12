@@ -936,6 +936,71 @@ def supersede(
             conn.close()
 
 
+def prune_orphaned_index_rows(*, maks_andel: float = 0.10) -> dict[str, int]:
+    """Fjern indeks-rækker hvis markdown-fil er væk. Den MODSATTE retning.
+
+    `rebuild_index_from_files` går kun én vej: filer → indeks. Den kan tilføje
+    og opdatere, og den kan strukturelt aldrig fjerne en række hvis fil er
+    slettet — uanset hvor mange gange den kører. Derfor blev seks rækker
+    liggende som `active` fra maj 2026 og blev prøvet som kandidater ved hvert
+    inferens-pass, for evigt.
+
+    En kommentar i inferens-løkken lovede at «the row will get cleaned up by
+    the next consolidation pass». Den pass findes (`_run_theme_consolidation_pass`)
+    og er en stub der returnerer 0, og der har aldrig været et eneste
+    `DELETE FROM brain_index` i repoet. Løftet havde ingen mekanisme bag sig.
+
+    **Indekset er afledt, filerne er sandheden.** `rebuild_index_from_files`
+    kan genskabe enhver række fra sin fil, så en række uden fil taber intet
+    ved at forsvinde — indholdet var allerede væk.
+
+    ## Værnet, og hvorfor det er nødvendigt
+
+    «Filen findes ikke» betyder normalt at én post blev slettet. Men det
+    betyder det SAMME hvis hele mappen er utilgængelig — forkert `JARVIS_HOME`,
+    en mount der ikke kom op, et fejlslagent deploy. Uden et værn ville den
+    situation slette hele indekset, og den ville se ud som en vellykket
+    oprydning.
+
+    Derfor: er mappen væk, gøres intet. Og overstiger andelen af forældreløse
+    `maks_andel`, afvises hele kørslen og siges højt — det er et symptom, ikke
+    et oprydningsbehov.
+    """
+    root = brain_dir()
+    if not root.exists():
+        return {"fjernet": 0, "foraeldreloese": 0, "afvist": 1}
+
+    ws = _workspace_root()
+    conn = connect_index()
+    try:
+        raekker = conn.execute("SELECT id, path FROM brain_index").fetchall()
+        i_alt = len(raekker)
+        forsvundne = [str(r[0]) for r in raekker if not (ws / str(r[1])).exists()]
+        antal = len(forsvundne)
+        if not antal:
+            return {"fjernet": 0, "foraeldreloese": 0, "afvist": 0}
+
+        if i_alt and (antal / i_alt) > maks_andel:
+            # SIG DET HOEJT og roer intet. Saa stor en andel er ikke seks
+            # slettede poster; det er en mappe der ikke er der.
+            try:
+                import logging
+                logging.getLogger(__name__).error(
+                    "brain: %d af %d indeks-raekker peger paa filer der ikke findes "
+                    "(%.0f%%) — oprydning AFVIST, det ligner en utilgaengelig mappe "
+                    "snarere end slettede poster", antal, i_alt, 100 * antal / i_alt)
+            except Exception:
+                pass
+            return {"fjernet": 0, "foraeldreloese": antal, "afvist": 1}
+
+        conn.executemany("DELETE FROM brain_index WHERE id = ?",
+                         [(i,) for i in forsvundne])
+        conn.commit()
+        return {"fjernet": antal, "foraeldreloese": antal, "afvist": 0}
+    finally:
+        conn.close()
+
+
 def rebuild_index_from_files() -> int:
     """Scan brain_dir() for .md files; new/changed hash → update index.
 
@@ -1188,10 +1253,16 @@ def infer_temporal_edges(
         # --- 3. Entity signal ---
         # 2026-06-09 (Claude): also catch FileNotFoundError/OSError so
         # stale brain_index rows pointing at deleted markdown files
-        # don't crash the inference loop. The row will get cleaned up
-        # by the next consolidation pass — meanwhile we just skip the
+        # don't crash the inference loop — meanwhile we just skip the
         # candidate silently. (jarvis_brain.py has no module-level
         # logger; emitting one here would be a regression.)
+        #
+        # 2026-09-12: this comment used to promise that "the row will get
+        # cleaned up by the next consolidation pass". It never was.
+        # `_run_theme_consolidation_pass` is a stub returning 0, and the repo
+        # had no `DELETE FROM brain_index` at all — so six rows sat `active`
+        # from May and were retried on every pass. `prune_orphaned_index_rows`
+        # is that cleanup, and `reindex_once` now calls it.
         #
         # 2026-09-12: `parse_frontmatter` also raises ValueError (missing or
         # unterminated frontmatter) and yaml.safe_load raises YAMLError (a

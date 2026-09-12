@@ -27,9 +27,15 @@ def reindex_once() -> int:
     """Et enkelt reindex-pass. Returnerer antal file changes opdaget."""
     from core.services import jarvis_brain
     n = jarvis_brain.rebuild_index_from_files()
+    # Den modsatte retning. `rebuild_index_from_files` kan kun tilfoeje og
+    # opdatere, saa en raekke hvis fil er slettet bliver liggende for evigt og
+    # proeves som kandidat ved hvert inferens-pass. Maalt 12/9-2026: seks
+    # saadanne, alle `active`, alle fra maj.
+    ryddet = jarvis_brain.prune_orphaned_index_rows()
     embedded = jarvis_brain.embed_pending_entries()
-    if n or embedded:
-        logger.info("reindex_once: %s file changes, %s embeddings", n, embedded)
+    if n or embedded or ryddet.get("fjernet"):
+        logger.info("reindex_once: %s file changes, %s embeddings, %s foraeldreloese fjernet",
+                    n, embedded, ryddet.get("fjernet", 0))
     return n
 
 

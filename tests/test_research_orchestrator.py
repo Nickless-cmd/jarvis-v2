@@ -289,3 +289,111 @@ def test_B1_topup_does_not_run_after_timeout(monkeypatch):
         orchestrator_enabled=True,
     ))
     assert not any("topping_up" in event for event in events), events
+
+
+# --- Fase B2: worker-svaret læses som den struktur det blev bedt om (13/9-2026) ---
+
+
+def test_B2_parser_laeser_findings_strukturen():
+    """Worker'ens result_contract beder om findings/sources/confidence/gaps."""
+    text = json.dumps({
+        "findings": [
+            {
+                "claim": "Prisen er 10 kr",
+                "sources": ["https://a.example/x"],
+                "confidence": "high",
+                "gaps": "kun én kilde",
+            },
+            {"claim": "Driften er stabil", "url": "https://b.example/y"},
+        ]
+    })
+    parsed = orchestrator._parse_findings(text, 3)
+    assert [f.claim for f in parsed] == ["Prisen er 10 kr", "Driften er stabil"]
+    assert parsed[0].source_urls == ("https://a.example/x",)
+    assert parsed[0].confidence == "high"
+    assert parsed[0].caveat == "kun én kilde"
+    assert parsed[1].source_urls == ("https://b.example/y",)
+    assert all(f.task_ordinal == 3 for f in parsed)
+
+
+def test_B2_parser_laeser_json_i_hegn_og_enkelt_objekt():
+    """Modeller pakker ofte JSON i ``` — og nogle gange ét enkelt objekt."""
+    fenced = 'Her er mine fund:\n```json\n{"claim": "X er sandt", "url": "https://c.example/z"}\n```'
+    parsed = orchestrator._parse_findings(fenced, 1)
+    assert len(parsed) == 1
+    assert parsed[0].claim == "X er sandt"
+    assert parsed[0].source_urls == ("https://c.example/z",)
+
+
+def test_B2_parser_falder_tilbage_til_prosa():
+    """Svarer worker'en i prosa, tabes evidensen ikke — men tilliden sænkes."""
+    med_url = orchestrator._parse_findings("Se https://d.example/q for detaljer.", 2)
+    assert len(med_url) == 1
+    assert med_url[0].source_urls == ("https://d.example/q",)
+    assert med_url[0].confidence == "medium"
+
+    uden_url = orchestrator._parse_findings("Jeg fandt ikke noget brugbart.", 2)
+    assert len(uden_url) == 1
+    assert uden_url[0].source_urls == ()
+    assert uden_url[0].confidence == "low"
+
+
+def test_B2_parser_kaster_aldrig():
+    """Kanter: tomt, skrald, uventede typer — et svar må ikke vælte et run."""
+    assert orchestrator._parse_findings("", 1) == []
+    assert orchestrator._parse_findings(None, 1) == []
+    for skrald in ("{ikke json", "[1, 2, 3]", "{}", json.dumps({"findings": "ikke en liste"})):
+        parsed = orchestrator._parse_findings(skrald, 1)
+        assert isinstance(parsed, list)  # ingen undtagelse
+    # En liste af objekter UDEN claim springes over — men hele teksten reddes.
+    parsed = orchestrator._parse_findings(json.dumps({"findings": [{"sources": ["https://e.example"]}]}), 1)
+    assert len(parsed) == 1
+
+
+def test_B2_evidensblokken_nummererer_kilderne():
+    """Syntesen skal kunne cite [N] mod præcis den liste gaten måler imod."""
+    sources = [
+        {"canonical_url": "https://a.example/1", "title": "A"},
+        {"url": "https://b.example/2", "title": ""},
+    ]
+    findings = [
+        orchestrator.ResearchFinding(task_ordinal=1, claim="Pris er 10", source_urls=("https://a.example/1",)),
+    ]
+    block = orchestrator._evidence_block(["rå note"], sources, findings)
+    assert "[1] https://a.example/1 — A" in block
+    assert "[2] https://b.example/2" in block
+    assert "Pris er 10" in block
+    assert "rå note" in block
+
+
+def test_B2_findings_gemmes_og_taelles(monkeypatch):
+    """Fundene skal gemmes struktureret — ikke kun som rå tekst."""
+    _fake_store(monkeypatch, sources=[{"canonical_url": "https://a.example/1", "title": "A"}])
+    gemt = []
+    monkeypatch.setattr(
+        orchestrator.store, "complete_task",
+        lambda task_id, finding, **kw: gemt.append((task_id, finding, kw)) or {"id": task_id},
+    )
+
+    async def worker(**_kwargs):
+        return {
+            "status": "completed",
+            "text": json.dumps({
+                "findings": [{"claim": "Kilde-båren påstand", "sources": ["https://a.example/1"]}]
+            }),
+        }
+
+    events = _events(orchestrator.stream_research_run(
+        message="Sammenlign fem leverandører på pris, sikkerhed og drift",
+        session_id="s1",
+        decision=ResearchDecision(tier="orchestrated", max_workers=2, max_tasks=2, source_target=99),
+        visible_factory=_visible,
+        worker_factory=worker,
+        orchestrator_enabled=True,
+    ))
+    # payloaden til complete_task bærer de parsee fund
+    payloads = [f for _tid, f, _kw in gemt if isinstance(f, dict) and f.get("findings")]
+    assert payloads, gemt
+    assert payloads[0]["findings"][0]["claim"] == "Kilde-båren påstand"
+    # og de tælles i det afsluttende event
+    assert _completed_payload(events).get("findings", 0) >= 1, events

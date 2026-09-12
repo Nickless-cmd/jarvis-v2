@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7379/14467 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7383/14473 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 7379/14467 functions/methods documented (51%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 614 | 1135 | 54% |
-| `core.services` | 4921 | 10004 | 49% |
+| `core.services` | 4925 | 10010 | 49% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 108 | 184 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1452,13 +1452,13 @@ Generated from source. 7379/14467 functions/methods documented (51%). The list b
 - `core/services/research_evidence_collector.py` :: `collecting_for` (L14)
 - `core/services/research_evidence_collector.py` :: `observe_web_result` (L38)
 - `core/services/research_ledger.py` :: `taellere` (L42)
-- `core/services/research_orchestrator.py` :: `research_enabled` (L423)
-- `core/services/research_orchestrator.py` :: `stream_research_run` (L200)
+- `core/services/research_orchestrator.py` :: `research_enabled` (L570)
+- `core/services/research_orchestrator.py` :: `stream_research_run` (L335)
 - `core/services/research_prompt_context.py` :: `research_context` (L23)
 - `core/services/research_prompt_context.py` :: `research_prompt_section` (L36)
 - `core/services/research_quality.py` :: `evaluate_research_report` (L19)
 - `core/services/research_router.py` :: `classify_research` (L15)
-- `core/services/research_store.py` :: `active_for_session` (L230)
+- `core/services/research_store.py` :: `active_for_session` (L257)
 - `core/services/research_store.py` :: `add_source` (L152)
 - `core/services/research_store.py` :: `add_steer` (L168)
 - `core/services/research_store.py` :: `bind_visible_run` (L106)
@@ -1468,10 +1468,10 @@ Generated from source. 7379/14467 functions/methods documented (51%). The list b
 - `core/services/research_store.py` :: `create_tasks` (L112)
 - `core/services/research_store.py` :: `get_run` (L67)
 - `core/services/research_store.py` :: `list_sources` (L192)
-- `core/services/research_store.py` :: `mark_stale_interrupted` (L241)
+- `core/services/research_store.py` :: `mark_stale_interrupted` (L268)
 - `core/services/research_store.py` :: `source_count` (L202)
 - `core/services/research_store.py` :: `start_task` (L126)
-- `core/services/research_store.py` :: `tool_call_count` (L223)
+- `core/services/research_store.py` :: `tool_call_count` (L250)
 - `core/services/research_store.py` :: `transition_run` (L85)
 - `core/services/resonance_decay.py` :: `build_resonance_decay_surface` (L410)
 - `core/services/retry_runtime.py` :: `Spent.plus_attempt` (L85)

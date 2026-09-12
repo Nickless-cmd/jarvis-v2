@@ -206,6 +206,33 @@ def source_count(run_id: str) -> int:
     return int(row["n"] if row else 0)
 
 
+def list_findings(run_id: str) -> list[dict]:
+    """Parsede findings for et run (Fase B2), i track-rækkefølge.
+
+    Læser `finding_json` fra de tasks der blev færdige. Defensiv: en række der
+    ikke kan parses springes over — et enkelt dårligt svar må ikke skjule resten.
+    """
+    with connect() as conn:
+        _ensure(conn)
+        rows = conn.execute(
+            "SELECT finding_json FROM research_tasks "
+            "WHERE research_run_id=? AND status='completed' ORDER BY ordinal",
+            (run_id,),
+        ).fetchall()
+    out: list[dict] = []
+    for row in rows:
+        try:
+            payload = json.loads(str(row["finding_json"] or "{}"))
+        except Exception:
+            continue
+        if not isinstance(payload, dict):
+            continue
+        for item in payload.get("findings") or []:
+            if isinstance(item, dict):
+                out.append(item)
+    return out
+
+
 def record_tool_call(run_id: str, tool_name: str, *, task_id: str = "") -> None:
     """Tæl ét observeret værktøjskald i runnet (Fase A3).
 

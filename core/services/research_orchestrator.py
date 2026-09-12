@@ -13,6 +13,7 @@ from typing import AsyncIterator, Callable
 from core.services import research_ledger, research_store as store
 from core.services.research_contract import (
     ResearchDecision,
+    ResearchFinding,
     ResearchPolicy,
     ResearchTask,
     load_research_contract,
@@ -83,6 +84,140 @@ def _tool_calls_used(run_id: str) -> int:
         return int(store.tool_call_count(run_id))
     except Exception:
         return 0
+
+
+_URL_RE = re.compile(r"https?://[^\s\)\]\"'<>]+")
+
+
+def _clean_text(value: object) -> str:
+    return " ".join(str(value or "").split())
+
+
+def _confidence(value: object) -> str:
+    word = _clean_text(value).lower()
+    return word if word in {"low", "medium", "high"} else "medium"
+
+
+def _finding_from_text(text: str, task_ordinal: int) -> ResearchFinding:
+    """Sidste udkast: hele teksten bliver ét fund med de URLs den bærer.
+
+    Bruges når worker'en svarer i prosa i stedet for den aftalte struktur. Vi
+    kaster ikke svaret væk — men vi lover heller ikke mere, end teksten bærer:
+    uden URL'er er tilliden `low`.
+    """
+    claim = _clean_text(text)
+    urls = tuple(dict.fromkeys(_URL_RE.findall(claim)))
+    return ResearchFinding(
+        task_ordinal=task_ordinal,
+        claim=claim[:2000],
+        source_urls=urls,
+        confidence="medium" if urls else "low",
+    )
+
+
+def _parse_findings(text: str, task_ordinal: int) -> list[ResearchFinding]:
+    """Fase B2: worker-svaret → `ResearchFinding`.
+
+    Worker'ens `result_contract` beder om `findings`/`sources`/`confidence`/
+    `gaps`. Den struktur blev før aldrig læst — svaret gik videre som rå tekst,
+    så claim→kilde-koblingen fandtes ingen steder, og syntesen kunne ikke vide
+    hvilke kilder der bar hvilke påstande.
+
+    Defensiv hele vejen: alt der ikke kan parses, falder tilbage til ét fund på
+    hele teksten. Et svar må aldrig tabe sin evidens på vej ind.
+    """
+    raw = str(text or "").strip()
+    if not raw:
+        return []
+    candidate = raw
+    fenced = re.search(r"```(?:json)?\s*(.+?)```", raw, re.S)
+    if fenced:
+        candidate = fenced.group(1).strip()
+    parsed: object = None
+    try:
+        parsed = json.loads(candidate)
+    except Exception:
+        parsed = None
+
+    items: list = []
+    if isinstance(parsed, list):
+        items = parsed
+    elif isinstance(parsed, dict):
+        for key in ("findings", "results", "claims"):
+            if isinstance(parsed.get(key), list):
+                items = parsed[key]
+                break
+        else:
+            if any(k in parsed for k in ("claim", "finding", "text", "summary")):
+                items = [parsed]
+
+    findings: list[ResearchFinding] = []
+    for item in items:
+        if isinstance(item, str):
+            if item.strip():
+                findings.append(_finding_from_text(item, task_ordinal))
+            continue
+        if not isinstance(item, dict):
+            continue
+        claim = _clean_text(
+            item.get("claim") or item.get("finding") or item.get("summary") or item.get("text")
+        )
+        if not claim:
+            continue
+        raw_urls = (
+            item.get("source_urls") or item.get("sources") or item.get("urls") or item.get("url") or ()
+        )
+        if isinstance(raw_urls, str):
+            raw_urls = (raw_urls,)
+        urls = tuple(
+            dict.fromkeys(
+                str(entry).strip() for entry in raw_urls
+                if str(entry).strip().startswith("http")
+            )
+        )
+        if not urls:
+            urls = tuple(dict.fromkeys(_URL_RE.findall(claim)))
+        findings.append(
+            ResearchFinding(
+                task_ordinal=task_ordinal,
+                claim=claim[:2000],
+                source_urls=urls,
+                confidence=_confidence(item.get("confidence")),
+                caveat=_clean_text(item.get("caveat") or item.get("gap") or item.get("gaps"))[:500],
+            )
+        )
+    return findings or [_finding_from_text(raw, task_ordinal)]
+
+
+def _evidence_block(
+    texts: list[str], sources: list[dict], findings: list[ResearchFinding],
+) -> str:
+    """Evidens til syntesen — med en KANONISK nummereret kilde-liste.
+
+    Uden nummereringen opdigter syntesen sin egen, og `citation_validity`-gaten
+    måler citationer mod et kildesæt modellen aldrig fik at se. Med den peger
+    `[3]` på præcis den kilde gaten kontrollerer imod.
+    """
+    parts: list[str] = []
+    if sources:
+        lines = []
+        for index, source in enumerate(sources, 1):
+            url = str(source.get("canonical_url") or source.get("url") or "")
+            title = _clean_text(source.get("title"))
+            lines.append(f"[{index}] {url}" + (f" — {title}" if title else ""))
+        parts.append("Canonical sources (cite these numbers):\n" + "\n".join(lines))
+    if findings:
+        lines = []
+        for finding in findings:
+            marker = " ".join(finding.source_urls) if finding.source_urls else "(no source)"
+            line = f"- (track {finding.task_ordinal}, {finding.confidence}) {finding.claim} — {marker}"
+            if finding.caveat:
+                line += f" [caveat: {finding.caveat}]"
+            lines.append(line)
+        parts.append("Findings:\n" + "\n".join(lines))
+    if texts:
+        parts.append("Raw worker notes:\n" + "\n\n".join(texts))
+    return "\n\n".join(parts)
 
 
 def _topup_plan(run_id: str, tasks: list[dict], policy: ResearchPolicy) -> list[ResearchTask]:
@@ -255,6 +390,8 @@ async def stream_research_run(
     store.transition_run(run_id, "planning")
 
     evidence = ""
+    findings: list[str] = []
+    parsed_findings: list[ResearchFinding] = []
     if decision.tier == "orchestrated":
         tasks = store.create_tasks(run_id, _plan(query, policy.max_tasks))
         yield _event("research_plan", {
@@ -286,13 +423,18 @@ async def stream_research_run(
                     provider_status = str((result or {}).get("status") or "")
                     if not text or provider_status in {"error", "failed", "provider_error"}:
                         raise RuntimeError("research worker returned no usable evidence")
-                    store.complete_task(str(task["id"]), result)
+                    # Fase B2: læs den struktur worker'en faktisk blev bedt om.
+                    # Defensivt — kan svaret ikke parses, bliver hele teksten ét
+                    # fund frem for at forsvinde.
+                    track = _parse_findings(text, int(task.get("ordinal") or 0))
+                    parsed_findings.extend(track)
+                    payload = dict(result) if isinstance(result, dict) else {"text": text}
+                    payload["findings"] = [asdict(item) for item in track]
+                    store.complete_task(str(task["id"]), payload)
                     return text
                 except Exception as exc:
                     store.complete_task(str(task["id"]), {"error": str(exc)}, status="failed")
                     return f"Track {task['ordinal']} failed: {exc}"
-
-        findings: list[str] = []
 
         async def _wave(wave_tasks: list, *, total: int):
             """Kør én bølge workers og yield fremskridt. Sætter `timed_out`."""
@@ -359,7 +501,11 @@ async def stream_research_run(
                     async for event in _wave(fresh, total=len(tasks) + len(fresh)):
                         yield event
 
-        evidence = "\n\n".join(findings)
+        try:
+            canonical = store.list_sources(run_id)
+        except Exception:
+            canonical = []
+        evidence = _evidence_block(findings, canonical, parsed_findings)
     else:
         store.transition_run(run_id, "researching")
 
@@ -403,6 +549,7 @@ async def stream_research_run(
                     yield _event("research_completed", {
                         "research_run_id": run_id,
                         "sources": store.source_count(run_id),
+                        "findings": len(parsed_findings),
                         "quality": quality["status"],
                         "quality_gates": quality["gates"],
                         "quality_failures": quality["failures"],

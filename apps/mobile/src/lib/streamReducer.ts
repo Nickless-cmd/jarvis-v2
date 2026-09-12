@@ -13,6 +13,17 @@ export interface ResearchUiState {
   quality: string
 }
 
+export interface LiveStep {
+  /** Værktøjets navn — samme streng som tool_use-blokken bærer. */
+  navn: string
+  /** Menneske-læsbar etiket, fx «bash: npm test». Serverens `detail`. */
+  etiket: string
+  /** Serverens skridt-tæller. Stiger pr. værktøj i turen. */
+  skridt: number
+  /** Hvornår klienten SÅ annonceringen. Til den tikkende tid i kortet. */
+  setAt: number
+}
+
 export interface StreamState {
   status: StreamStatus
   activeRunId: string | null
@@ -21,6 +32,18 @@ export interface StreamState {
   lane: string
   blocks: ContentBlock[]
   workingStep: string | null
+  /**
+   * Værktøjskald der er ANNONCERET men endnu ikke færdige.
+   *
+   * Serveren sender `working_step` FØR den kører værktøjet og `tool_use` +
+   * `tool_result` bagefter — begge fra samme payload, altså først når
+   * resultatet findes. Indtil da var der kun én statuslinje, og et værktøj der
+   * tog et minut så ud som om han var gået i stå.
+   *
+   * Disse rækker lever kun mens der ventes: de ryddes når det rigtige
+   * tool_use-blok kommer, og altid ved message_stop.
+   */
+  liveSteps: LiveStep[]
   research: ResearchUiState | null
   usage: { input: number; output: number; cacheHit: number; cacheMiss: number }
 }
@@ -34,6 +57,7 @@ export function initialStreamState(): StreamState {
     lane: '',
     blocks: [],
     workingStep: null,
+    liveSteps: [],
     research: null,
     usage: { input: 0, output: 0, cacheHit: 0, cacheMiss: 0 }
   }
@@ -67,6 +91,7 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
 
     case 'content_block_start': {
       const blocks = state.blocks.slice()
+      let nyeLive = state.liveSteps
       const cb = event.content_block
       if (cb.type === 'text') blocks[event.index] = { type: 'text', text: cb.text }
       else if (cb.type === 'thinking') blocks[event.index] = { type: 'thinking', thinking: cb.thinking }
@@ -79,6 +104,11 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
           partialJson: '',
           status: 'running'
         }
+        // Det rigtige kort er her nu — den foreløbige række skal væk, ellers
+        // stod samme værktøj to steder. Matches på NAVN: working_step har
+        // ingen id, og at tråde et nyt igennem hele rørledningen for det her
+        // ville koste mere end det gav.
+        if (nyeLive.length) nyeLive = nyeLive.filter((s) => s.navn !== cb.name)
       } else if (cb.type === 'tool_result') {
         // Fold resultatet ind på sin matchende tool_use-blok (via tool_use_id) i
         // stedet for at fylde `blocks[event.index]`. Dette er MED VILJE — hvis vi
@@ -100,7 +130,7 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
           }
         }
       }
-      return { ...state, blocks }
+      return { ...state, blocks, liveSteps: nyeLive }
     }
 
     case 'content_block_delta': {
@@ -180,7 +210,44 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
       if (event.kind === 'working_step') {
         const detail =
           typeof event.payload.detail === 'string' ? event.payload.detail : state.workingStep
-        return { ...state, workingStep: detail }
+        const navn = typeof event.payload.action === 'string' ? event.payload.action : ''
+        const status = String(event.payload.status ?? '')
+        // Kun «running» bliver til et live-kort. «blocked» betyder at en hook
+        // stoppede kaldet FØR det kørte — der er ingenting at vente på, og et
+        // kort med en tikkende tid ville påstå det modsatte.
+        //
+        // Og KUN ægte værktøjskald. `working_step` bruges også til
+        // livstegn: `action: "thinking"` for «Thinking via …» og «Tænker
+        // videre · runde N». De får aldrig et tool_use der kan rydde dem, så
+        // de hobede sig op — ti kort på skærmen efter ti runder (Bjørn
+        // 12/9-2026, og det er den ene skærm denne regel findes for).
+        //
+        // `er_vaerktoej` er serverens eget flag når det er der; `action`-navnet
+        // er faldback, så rettelsen virker mod den server der kører NU.
+        const erVaerktoej = event.payload.er_vaerktoej === true
+          || (event.payload.er_vaerktoej === undefined && navn !== 'thinking')
+        if (!navn || status !== 'running' || !erVaerktoej) {
+          return { ...state, workingStep: detail }
+        }
+        const skridt = Number(event.payload.step ?? 0)
+        // Samme skridt to gange = samme kald annonceret igen (genoptag efter
+        // reconnect). Erstat frem for at lægge til, ellers ville tråden vise
+        // det samme værktøj to steder.
+        // LOFT. Et værktøj hvis tool_use aldrig kommer ville ellers blive
+        // stående, og nok af dem ville æde skærmen igen. Fire er rigeligt: en
+        // batch kører sjældent flere parallelt, og de ældste er dem der er
+        // mest sandsynligt strandede.
+        const uden = state.liveSteps.filter((s) => s.skridt !== skridt).slice(-3)
+        return {
+          ...state,
+          workingStep: detail,
+          liveSteps: [...uden, {
+            navn,
+            etiket: typeof detail === 'string' ? detail : navn,
+            skridt,
+            setAt: Date.now(),
+          }],
+        }
       }
       return state
 
@@ -196,7 +263,10 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
       }
 
     case 'message_stop':
-      return { ...state, status: 'done' }
+      // Ryd ALTID de foreløbige rækker. Et værktøj hvis resultat aldrig kom
+      // (afbrudt run, tabt forbindelse) ville ellers stå og tælle for evigt
+      // under et svar der er slut.
+      return { ...state, status: 'done', liveSteps: [] }
 
     case 'round_restart_discard_partial':
       // §4.1 CLIENT CONTRACT: en runde fejlede mid-stream og re-køres. Drop den

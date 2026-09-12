@@ -214,3 +214,29 @@ it('baggrundsjobs sidder i tre-prik menuen — og KUN i code', () => {
   expect(cs).toMatch(/if \(jobsSignal > 0\) setJobsAaben\(true\)/)
   expect(cs).toMatch(/<JobsPanel/)
 })
+
+it('live-kort for koerende vaerktoejer tegnes over komponisten', () => {
+  // Bjoern: «tool result skal vises med live meta data under udfoerelsen».
+  const cs = kilde('screens/ChatScreen.tsx')
+  expect(cs).toMatch(/<LiveToolCard key=\{`\$\{s\.skridt\}-\$\{s\.navn\}`\} step=\{s\} \/>/)
+  // ... og de skal taelle med i afstandsklodsen, ellers ligger de BAG
+  // komponisten.
+  expect(cs).toMatch(/hasCard = canRetry \|\| Boolean\(stream\.approval && config\) \|\| liveSteps\.length > 0/)
+})
+
+it('godkendelseskortet ryddes FOER kaldet afventes', () => {
+  // /approve koerer vaerktoejet og svarer foerst naar det er faerdigt.
+  const sc = readFileSync(join(__dirname, 'state/StreamContext.tsx'), 'utf8')
+  // ÉN blok pr. funktion. Foerste udgave soegte i én blok der daekkede begge,
+  // og maalte derfor godkend-ryddet mod afvis-kaldet.
+  // Ankrene soeges FREM FRA foregaaende fund. `follow: (config` staar OGSAA i
+  // interfacet oeverst i filen, saa et raat indexOf gav et anker FOER `deny`
+  // og dermed en tom blok - og en tom blok bestaar ingen paastand om
+  // raekkefoelge; den fejler paa -1 uden at sige hvorfor.
+  const iG = sc.indexOf('approve: async')
+  const iA = sc.indexOf('deny: async', iG)
+  const godkend = sc.slice(iG, iA)
+  const afvis = sc.slice(iA, sc.indexOf('follow: (config', iA))
+  expect(godkend.indexOf('setApproval(null)')).toBeLessThan(godkend.indexOf('await approveTool'))
+  expect(afvis.indexOf('setApproval(null)')).toBeLessThan(afvis.indexOf('await denyTool'))
+})

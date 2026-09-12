@@ -125,6 +125,18 @@ async def run_tool_batch(
                 "detail": _tool_label(_tc_name, _tc_args),
                 "step": step_counter,
                 "status": "running",
+                # ET ÆGTE VÆRKTØJSKALD — ikke et livstegn.
+                #
+                # `working_step` bærer to slags ting: dette, og «Thinking via
+                # …» / «Tænker videre · runde N» fra visible_runs (action:
+                # "thinking"). Klienten viste et live-kort for hver, og
+                # livstegnene får aldrig et tool_use der kan rydde dem — ti
+                # runder blev til ti kort der åd skærmen (Bjørn 12/9-2026).
+                #
+                # Klienten kan gætte på at action != "thinking", og gør det
+                # som fallback. Men et gæt på en magisk streng holder kun
+                # indtil nogen tilføjer et tredje livstegn med et andet navn.
+                "er_vaerktoej": True,
             })
             if _local:
                 # Path B: register the pending call BEFORE the executor waits on it

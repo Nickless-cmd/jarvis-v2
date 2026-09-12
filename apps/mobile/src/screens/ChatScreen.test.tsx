@@ -244,3 +244,18 @@ it('sender permission-valget og bruger samtalens værktøjs-mode', async () => {
     expect.objectContaining({ mode: 'chat', approvalMode: 'trust' })
   )
 })
+
+it('UDEN en tidligere session vises greeting-siden, ikke en tom traad', async () => {
+  // Bjoern bad om «greeting side lige som i desk» naar der ingen session er.
+  // Den virkede allerede, men INGEN test roerte den - saa det var en paastand
+  // uden belaeg.
+  mockSessions = { ...mockSessions, activeId: null, messages: [], loading: false }
+  const screen = await render(<ChatScreen />)
+  await waitFor(() => expect(screen.getByTestId('greeting-hero')).toBeTruthy())
+})
+
+it('MED beskeder er greeting VAEK', async () => {
+  // Den maa ikke ligge og skygge for traaden.
+  const screen = await render(<ChatScreen />)
+  await waitFor(() => expect(screen.queryByTestId('greeting-hero')).toBeNull())
+})

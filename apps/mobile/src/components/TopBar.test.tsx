@@ -131,3 +131,27 @@ it('uden ring er feltet stadig en rund knap', async () => {
   const flad = StyleSheet.flatten(screen.getByTestId('topbar-mere').props.style)
   expect(flad.width).toBe(flad.height)
 })
+
+it('code-titlen staar i SAMME spor som tilbage-pilen', async () => {
+  // Bjoern bad om den flyttet «over til venstre lige efter pil tilbage». En
+  // etiket midt paa skaermen tvinger oejet til at soege den; laengst til
+  // venstre begynder man der alligevel.
+  const screen = await render(<TopBar {...base} kodeTilstand kodeTitel="Diagnose WLED" />)
+  const spor = screen.getByTestId('topbar-venstre').parent
+  expect(within(spor!).getByTestId('code-titel')).toBeTruthy()
+})
+
+it('segmentets MAALTE centrering roeres ikke af titlen', async () => {
+  // 172 dp med centrum paa skaermens midte er maalt i ChatGPT-appen. Den
+  // maaling holder kun hvis intet andet i raekken kan skubbe til den - saa
+  // i code tegnes den absolutte centrering slet ikke.
+  const { StyleSheet } = require('react-native')
+  const screen = await render(<TopBar {...base} />)
+  const spor = screen.getByTestId('topbar-segment')
+  expect(StyleSheet.flatten(spor.props.style).width).toBe(172)
+})
+
+it('i code tegnes den absolutte centrering slet ikke', async () => {
+  const screen = await render(<TopBar {...base} kodeTilstand kodeTitel="X" />)
+  expect(screen.queryByTestId('topbar-segment')).toBeNull()
+})

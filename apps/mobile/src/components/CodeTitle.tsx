@@ -48,9 +48,13 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 7,
     alignItems: 'center',
+    // Skal kunne blive smallere end sit indhold: en lang titel maa forkorte
+    // sig selv frem for at skubbe hoejre felt ud over skaermkanten.
+    flexShrink: 1,
+    minWidth: 0,
     ...tokens.elevation,
   },
-  titel: { color: tokens.color.fg1, fontSize: 14, fontWeight: '600' },
+  titel: { color: tokens.color.fg1, fontSize: 14, fontWeight: '600', flexShrink: 1 },
   kontekst: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
   meta: { color: tokens.color.fg2, fontSize: 11, maxWidth: 92 },
   prik: {

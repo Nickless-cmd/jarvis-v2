@@ -60,33 +60,38 @@ export function TopBar({
   const styles = useStyles(makestyles)
   return (
     <View style={styles.bar}>
-      {/* ÉN pil, uanset flade. Foer skiftede ikonet mellem hamburger og pil,
-          og de to foerte to forskellige steder hen - saa den samme plads gjorde
-          to ting afhaengigt af en tilstand man ikke kunne se paa knappen.
-          Vejen ud af code-fladen bor i menuen, sammen med vejen ind. */}
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Menu"
-        onPress={onMenu}
-        hitSlop={8}
-        style={styles.circle}
-        testID="topbar-venstre"
-      >
-        <ArrowLeft size={21} color={tokens.color.fg1} strokeWidth={2} />
-      </Pressable>
+      {/* Pilen og titlen hoerer SAMMEN, i ét spor til venstre. Titlen laa
+          foerst centreret - samme plads som segmentet - men det er to
+          forskellige slags oplysning: segmentet er en KONTAKT man sigter
+          efter, og titlen er en ETIKET man laeser. En etiket midt paa
+          skaermen tvinger oejet til at soege den; laengst til venstre
+          begynder man der alligevel.
 
-      {/* SAMME plads, to helt forskellige ting. I chat er den en kontakt
-          mellem Snak og Arbejde; i code er de to valg allerede truffet, og
-          pladsen bruges paa hvad man arbejder paa og hvor. Bredden er
-          heller ikke den samme: segmentet er MAALT (172 dp), titlen skal
-          kunne vokse. */}
-      <View pointerEvents="box-none" style={styles.centerWrap}>
-        {kodeTilstand ? (
-          <View style={styles.centerKode}>
-            <CodeTitle titel={kodeTitel} git={git} />
-          </View>
-        ) : (
-          <View style={styles.center}>
+          ÉN pil, uanset flade. Foer skiftede ikonet mellem hamburger og pil,
+          og de to foerte to forskellige steder hen - saa den samme plads
+          gjorde to ting afhaengigt af en tilstand man ikke kunne se paa
+          knappen. Vejen ud af code-fladen bor i menuen, sammen med vejen
+          ind. */}
+      <View style={styles.venstre}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Menu"
+          onPress={onMenu}
+          hitSlop={8}
+          style={styles.circle}
+          testID="topbar-venstre"
+        >
+          <ArrowLeft size={21} color={tokens.color.fg1} strokeWidth={2} />
+        </Pressable>
+        {kodeTilstand ? <CodeTitle titel={kodeTitel} git={git} /> : null}
+      </View>
+
+      {/* Segmentet bliver ved med at vaere ABSOLUT centreret. Dets geometri er
+          maalt i ChatGPT-appen (172 dp, centrum paa skaermens midte), og den
+          maaling holder kun hvis intet andet i raekken kan skubbe til den. */}
+      {kodeTilstand ? null : (
+        <View pointerEvents="box-none" style={styles.centerWrap}>
+          <View testID="topbar-segment" style={styles.center}>
             <SegmentedControl<AppMode>
               options={[
                 { value: 'snak', label: 'Snak' },
@@ -96,8 +101,8 @@ export function TopBar({
               onChange={onModeChange}
             />
           </View>
-        )}
-      </View>
+        </View>
+      )}
 
       {/* Hoejre felt: ringen FOERST, saa prikkerne - i samme felt. Ringen er
           det man laeser, prikkerne er det man trykker. Star de hver for sig
@@ -151,9 +156,17 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
     justifyContent: 'center'
   },
   center: { width: SEGMENT_W },
-  // Titlen faar mere plads end segmentet, men ikke ubegraenset: de to felter
-  // ved siden af skal blive ved med at vaere trykbare.
-  centerKode: { maxWidth: 235 },
+  // Pil + titel som ét spor. `flexShrink` frem for en fast bredde: titlen
+  // skal give plads til hoejre felt naar den er lang, ikke skubbe det ud
+  // over kanten. `minWidth: 0` er det der faktisk tillader det - uden den
+  // naegter en flex-boks at blive smallere end sit indhold.
+  venstre: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexShrink: 1,
+    minWidth: 0,
+  },
   // Feltet vokser til en pille naar ringen er der. Polstringen er sat efter
   // ChatGPT-appens eget hoejre felt (Bjoerns skaermbillede 12/9-2026): der er
   // luft HELE vejen rundt om begge ikoner. Foerste forsoeg havde 9 dp og 4 dp

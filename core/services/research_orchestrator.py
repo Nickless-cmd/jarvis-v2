@@ -6,6 +6,7 @@ import asyncio
 import inspect
 import json
 import re
+import time
 from dataclasses import asdict
 from typing import AsyncIterator, Callable
 
@@ -33,11 +34,36 @@ def _setting(name: str, default: bool) -> bool:
         return default
 
 
+_FACET_WORDS = (
+    "price", "pris", "security", "sikkerhed", "operations", "drift",
+    "performance", "ydelse", "features", "funktioner",
+)
+
+
+def _facets(message: str) -> list[str]:
+    """De emneord planlægningen deler beskeden i — og som gaten måler dækning imod.
+
+    Delt mellem `_plan` og `_evaluate_quality`, så de to altid måler det samme.
+    """
+    return [c for c in _FACET_WORDS if re.search(rf"\b{re.escape(c)}\b", message, re.I)]
+
+
+def _delta_text(frame: str) -> str:
+    """Træk syntese-teksten ud af en `delta`-frame. Andre frames giver ''."""
+    if not frame.startswith("event: delta"):
+        return ""
+    for line in frame.splitlines():
+        if line.startswith("data: "):
+            try:
+                payload = json.loads(line[6:])
+            except Exception:
+                return ""
+            return str(payload.get("text") or "")
+    return ""
+
+
 def _plan(message: str, max_tasks: int) -> list[ResearchTask]:
-    facets = []
-    for candidate in ("price", "pris", "security", "sikkerhed", "operations", "drift", "performance", "ydelse", "features", "funktioner"):
-        if re.search(rf"\b{re.escape(candidate)}\b", message, re.I):
-            facets.append(candidate)
+    facets = _facets(message)
     count = max(2, min(max_tasks or 2, max(2, len(facets))))
     if not facets:
         facets = ["authoritative facts", "independent verification"]
@@ -49,6 +75,44 @@ def _plan(message: str, max_tasks: int) -> list[ResearchTask]:
         )
         for index in range(count)
     ]
+
+
+def _tool_calls_used(run_id: str) -> int:
+    """Observerede værktøjskald i runnet. Defensiv: 0 hvis tællingen ikke kan læses."""
+    try:
+        return int(store.tool_call_count(run_id))
+    except Exception:
+        return 0
+
+
+def _evaluate_quality(run_id: str, query: str, report: str, policy: ResearchPolicy) -> dict:
+    """Fase A1: kobl kvalitetsgaten på den faktiske rapport.
+
+    **Markerer — blokerer aldrig** (spec §4 A1): en gate må ikke fjerne et svar
+    brugeren venter på. Fejler gaten selv, rapporteres `not_evaluated` frem for
+    at lade runnet dø.
+    """
+    blank = {"status": "not_evaluated", "gates": {}, "failures": [], "tool_calls": None}
+    try:
+        from core.services.research_contract import normalize_source
+        from core.services.research_quality import evaluate_research_report
+        sources = [normalize_source(row) for row in store.list_sources(run_id)]
+        used = _tool_calls_used(run_id)
+        result = evaluate_research_report(
+            report,
+            sources,
+            _facets(query),
+            tool_calls=used,
+            max_tool_calls=policy.max_tool_calls,
+        )
+    except Exception:
+        return blank
+    return {
+        "status": "passed" if result.passed else "failed",
+        "gates": dict(result.gates),
+        "failures": list(result.failures),
+        "tool_calls": used,
+    }
 
 
 def _default_worker_sync(*, task: dict, run_id: str, skill_instructions: str) -> dict:
@@ -130,6 +194,10 @@ async def stream_research_run(
     run_id = str(run["id"])
     if visible_run_id:
         store.bind_visible_run(run_id, visible_run_id)
+    # Fase A2: hård vagt. Et run må ikke kunne hænge på en worker der aldrig svarer —
+    # wall_time_seconds stod før kun i prompt-teksten.
+    deadline = time.monotonic() + policy.wall_time_seconds
+    timed_out = False
     yield _event("research_started", {"research_run_id": run_id, "tier": decision.tier})
     if contract.warnings:
         yield _event("research_warning", {"research_run_id": run_id, "warnings": list(contract.warnings)})
@@ -150,6 +218,13 @@ async def stream_research_run(
 
         async def one(task):
             async with semaphore:
+                # Fase A3: loftet over værktøjskald. Tjekkes når semaphore'en er vundet,
+                # så et run der har brændt sit budget ikke starter flere workers.
+                if _tool_calls_used(run_id) >= policy.max_tool_calls:
+                    store.complete_task(
+                        str(task["id"]), {"error": "tool budget exhausted"}, status="failed",
+                    )
+                    return f"Track {task['ordinal']} skipped: tool budget exhausted"
                 store.start_task(str(task["id"]))
                 try:
                     result = await _run_worker(
@@ -167,15 +242,42 @@ async def stream_research_run(
                     return f"Track {task['ordinal']} failed: {exc}"
 
         findings = []
-        futures = [asyncio.create_task(one(task)) for task in tasks]
-        for completed, future in enumerate(asyncio.as_completed(futures), 1):
-            findings.append(await future)
-            yield _event("research_progress", {
+        pending = {asyncio.create_task(one(task)) for task in tasks}
+        completed = 0
+        while pending:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                timed_out = True
+                break
+            done, pending = await asyncio.wait(
+                pending, timeout=remaining, return_when=asyncio.FIRST_COMPLETED,
+            )
+            if not done:
+                timed_out = True
+                break
+            for future in done:
+                completed += 1
+                try:
+                    findings.append(future.result())
+                except Exception as exc:
+                    findings.append(f"Track failed: {exc}")
+                yield _event("research_progress", {
+                    "research_run_id": run_id,
+                    "phase": "researching",
+                    "completed_tasks": completed,
+                    "total_tasks": len(tasks),
+                    "sources": store.source_count(run_id),
+                })
+        if timed_out:
+            for future in pending:
+                future.cancel()
+            await asyncio.gather(*pending, return_exceptions=True)
+            # Spec §4 A2: markér — men syntetisér på det der nåede ind, så brugeren
+            # ikke står uden svar fordi én worker hang.
+            yield _event("research_warning", {
                 "research_run_id": run_id,
-                "phase": "researching",
-                "completed_tasks": completed,
-                "total_tasks": len(tasks),
-                "sources": store.source_count(run_id),
+                "warning": "wall_time_exceeded",
+                "wall_time_seconds": policy.wall_time_seconds,
             })
         evidence = "\n\n".join(findings)
     else:
@@ -195,19 +297,29 @@ async def stream_research_run(
         visible_factory = start_visible_run
 
     saw_done = False
+    report_chunks: list[str] = []
     try:
         with research_context(policy, skill_instructions=contract.instructions, evidence=evidence), collecting_for(run_id):
             legacy = visible_factory(message=message, session_id=session_id, **visible_kwargs)
             async for frame in legacy:
+                if frame.startswith("event: delta"):
+                    report_chunks.append(_delta_text(frame))
                 if frame.startswith("event: done"):
                     saw_done = True
                     store.transition_run(run_id, "verifying")
+                    # Fase A1: gaten kører nu på den faktiske rapport + de indsamlede
+                    # kilder. Den MARKERER — den blokerer ikke (spec §4 A1).
+                    quality = _evaluate_quality(run_id, query, "".join(report_chunks), policy)
                     store.transition_run(run_id, "synthesizing")
                     store.transition_run(run_id, "completed")
                     yield _event("research_completed", {
                         "research_run_id": run_id,
                         "sources": store.source_count(run_id),
-                        "quality": "evidence_collected",
+                        "quality": quality["status"],
+                        "quality_gates": quality["gates"],
+                        "quality_failures": quality["failures"],
+                        "tool_calls": quality["tool_calls"],
+                        "timed_out": timed_out,
                     })
                 yield frame
     except Exception as exc:

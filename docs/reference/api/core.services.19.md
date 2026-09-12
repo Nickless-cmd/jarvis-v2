@@ -576,13 +576,17 @@ _Adaptive research coordinator around the existing visible and agent runtimes._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_event` | `(kind, payload)` | — | [src](../../../core/services/research_orchestrator.py#L24) |
-| function | `_setting` | `(name, default)` | — | [src](../../../core/services/research_orchestrator.py#L28) |
-| function | `_plan` | `(message, max_tasks)` | — | [src](../../../core/services/research_orchestrator.py#L36) |
-| function | `_default_worker_sync` | `(*, task, run_id, skill_instructions)` | — | [src](../../../core/services/research_orchestrator.py#L54) |
-| function | `_run_worker` | `(worker_factory, *, task, run_id, skill_instructions)` | — | [src](../../../core/services/research_orchestrator.py#L85) |
-| function | `stream_research_run` | `(*, message, original_query=…, session_id, visible_run_id=…, decision=…, visible_factory=…, worker_factory=…, orchestrator_enabled=…, **visible_kwargs)` | — | [src](../../../core/services/research_orchestrator.py#L90) |
-| function | `research_enabled` | `()` | — | [src](../../../core/services/research_orchestrator.py#L223) |
+| function | `_event` | `(kind, payload)` | — | [src](../../../core/services/research_orchestrator.py#L25) |
+| function | `_setting` | `(name, default)` | — | [src](../../../core/services/research_orchestrator.py#L29) |
+| function | `_facets` | `(message)` | De emneord planlægningen deler beskeden i — og som gaten måler dækning imod. | [src](../../../core/services/research_orchestrator.py#L43) |
+| function | `_delta_text` | `(frame)` | Træk syntese-teksten ud af en `delta`-frame. Andre frames giver ''. | [src](../../../core/services/research_orchestrator.py#L51) |
+| function | `_plan` | `(message, max_tasks)` | — | [src](../../../core/services/research_orchestrator.py#L65) |
+| function | `_tool_calls_used` | `(run_id)` | Observerede værktøjskald i runnet. Defensiv: 0 hvis tællingen ikke kan læses. | [src](../../../core/services/research_orchestrator.py#L80) |
+| function | `_evaluate_quality` | `(run_id, query, report, policy)` | Fase A1: kobl kvalitetsgaten på den faktiske rapport. | [src](../../../core/services/research_orchestrator.py#L88) |
+| function | `_default_worker_sync` | `(*, task, run_id, skill_instructions)` | — | [src](../../../core/services/research_orchestrator.py#L118) |
+| function | `_run_worker` | `(worker_factory, *, task, run_id, skill_instructions)` | — | [src](../../../core/services/research_orchestrator.py#L149) |
+| function | `stream_research_run` | `(*, message, original_query=…, session_id, visible_run_id=…, decision=…, visible_factory=…, worker_factory=…, orchestrator_enabled=…, **visible_kwargs)` | — | [src](../../../core/services/research_orchestrator.py#L154) |
+| function | `research_enabled` | `()` | — | [src](../../../core/services/research_orchestrator.py#L335) |
 
 ## `core/services/research_prompt_context.py`
 _Request-scoped research instructions consumed by prompt assembly surfaces._
@@ -616,21 +620,23 @@ _Durable SQLite state for research runs, tasks, sources, and steering._
 | class | `ResearchStateError` | `` | — | [src](../../../core/services/research_store.py#L17) |
 | function | `_now` | `()` | — | [src](../../../core/services/research_store.py#L21) |
 | function | `_ensure` | `(conn)` | — | [src](../../../core/services/research_store.py#L25) |
-| function | `_row` | `(row)` | — | [src](../../../core/services/research_store.py#L57) |
-| function | `get_run` | `(run_id)` | — | [src](../../../core/services/research_store.py#L61) |
-| function | `create_run` | `(*, session_id, original_query, tier, decision=…)` | — | [src](../../../core/services/research_store.py#L67) |
-| function | `transition_run` | `(run_id, status, *, warning=…)` | — | [src](../../../core/services/research_store.py#L79) |
-| function | `bind_visible_run` | `(run_id, visible_run_id)` | — | [src](../../../core/services/research_store.py#L100) |
-| function | `create_tasks` | `(run_id, tasks)` | — | [src](../../../core/services/research_store.py#L106) |
-| function | `start_task` | `(task_id, *, agent_run_id=…)` | — | [src](../../../core/services/research_store.py#L120) |
-| function | `complete_task` | `(task_id, finding, *, status=…)` | — | [src](../../../core/services/research_store.py#L132) |
-| function | `add_source` | `(run_id, source, *, task_id=…)` | — | [src](../../../core/services/research_store.py#L146) |
-| function | `add_steer` | `(run_id, message)` | — | [src](../../../core/services/research_store.py#L162) |
-| function | `consume_pending_steers` | `(run_id)` | — | [src](../../../core/services/research_store.py#L170) |
-| function | `list_sources` | `(run_id)` | — | [src](../../../core/services/research_store.py#L186) |
-| function | `source_count` | `(run_id)` | — | [src](../../../core/services/research_store.py#L196) |
-| function | `active_for_session` | `(session_id)` | — | [src](../../../core/services/research_store.py#L203) |
-| function | `mark_stale_interrupted` | `(*, older_than_seconds=…)` | — | [src](../../../core/services/research_store.py#L214) |
+| function | `_row` | `(row)` | — | [src](../../../core/services/research_store.py#L63) |
+| function | `get_run` | `(run_id)` | — | [src](../../../core/services/research_store.py#L67) |
+| function | `create_run` | `(*, session_id, original_query, tier, decision=…)` | — | [src](../../../core/services/research_store.py#L73) |
+| function | `transition_run` | `(run_id, status, *, warning=…)` | — | [src](../../../core/services/research_store.py#L85) |
+| function | `bind_visible_run` | `(run_id, visible_run_id)` | — | [src](../../../core/services/research_store.py#L106) |
+| function | `create_tasks` | `(run_id, tasks)` | — | [src](../../../core/services/research_store.py#L112) |
+| function | `start_task` | `(task_id, *, agent_run_id=…)` | — | [src](../../../core/services/research_store.py#L126) |
+| function | `complete_task` | `(task_id, finding, *, status=…)` | — | [src](../../../core/services/research_store.py#L138) |
+| function | `add_source` | `(run_id, source, *, task_id=…)` | — | [src](../../../core/services/research_store.py#L152) |
+| function | `add_steer` | `(run_id, message)` | — | [src](../../../core/services/research_store.py#L168) |
+| function | `consume_pending_steers` | `(run_id)` | — | [src](../../../core/services/research_store.py#L176) |
+| function | `list_sources` | `(run_id)` | — | [src](../../../core/services/research_store.py#L192) |
+| function | `source_count` | `(run_id)` | — | [src](../../../core/services/research_store.py#L202) |
+| function | `record_tool_call` | `(run_id, tool_name, *, task_id=…)` | Tæl ét observeret værktøjskald i runnet (Fase A3). | [src](../../../core/services/research_store.py#L209) |
+| function | `tool_call_count` | `(run_id)` | — | [src](../../../core/services/research_store.py#L223) |
+| function | `active_for_session` | `(session_id)` | — | [src](../../../core/services/research_store.py#L230) |
+| function | `mark_stale_interrupted` | `(*, older_than_seconds=…)` | — | [src](../../../core/services/research_store.py#L241) |
 
 ## `core/services/resonance_decay.py`
 _Resonance Decay — how emotional signals persist and fade over time._

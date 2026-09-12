@@ -51,6 +51,12 @@ def _ensure(conn) -> None:
           id TEXT PRIMARY KEY, research_run_id TEXT NOT NULL, message TEXT NOT NULL,
           status TEXT NOT NULL DEFAULT 'pending', created_at TEXT NOT NULL, applied_at TEXT
         );
+        CREATE TABLE IF NOT EXISTS research_tool_calls (
+          id TEXT PRIMARY KEY, research_run_id TEXT NOT NULL, task_id TEXT NOT NULL DEFAULT '',
+          tool_name TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_research_tool_calls_run
+          ON research_tool_calls(research_run_id);
     """)
 
 
@@ -197,6 +203,27 @@ def source_count(run_id: str) -> int:
     with connect() as conn:
         _ensure(conn)
         row = conn.execute("SELECT COUNT(*) AS n FROM research_sources WHERE research_run_id=?", (run_id,)).fetchone()
+    return int(row["n"] if row else 0)
+
+
+def record_tool_call(run_id: str, tool_name: str, *, task_id: str = "") -> None:
+    """Tæl ét observeret værktøjskald i runnet (Fase A3).
+
+    Kaldes fra evidence-collectoren for hvert web-kald et run ser. Durable, fordi
+    workerne kører i egne tråde — en in-memory-tæller ville ikke overleve den grænse.
+    """
+    with connect() as conn:
+        _ensure(conn)
+        conn.execute(
+            "INSERT INTO research_tool_calls(id,research_run_id,task_id,tool_name,created_at) VALUES(?,?,?,?,?)",
+            (f"research-call-{uuid4()}", run_id, task_id, str(tool_name or ""), _now()),
+        )
+
+
+def tool_call_count(run_id: str) -> int:
+    with connect() as conn:
+        _ensure(conn)
+        row = conn.execute("SELECT COUNT(*) AS n FROM research_tool_calls WHERE research_run_id=?", (run_id,)).fetchone()
     return int(row["n"] if row else 0)
 
 

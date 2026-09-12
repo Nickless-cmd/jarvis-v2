@@ -2,6 +2,21 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/shared_cache.py`
+_SQLite-backed shared cache for cross-process state._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_ensure_table` | `()` | Create the shared_cache table on first use. Idempotent. | [src](../../../core/services/shared_cache.py#L56) |
+| function | `get` | `(key)` | Return cached value, or None if missing/expired/invalid. | [src](../../../core/services/shared_cache.py#L88) |
+| function | `set` | `(key, value, *, ttl_seconds)` | Store ``value`` under ``key`` with TTL. Best-effort, never raises. | [src](../../../core/services/shared_cache.py#L127) |
+| function | `delete` | `(key)` | Remove a key from the cache. Best-effort, never raises. | [src](../../../core/services/shared_cache.py#L169) |
+| function | `invalidate_prefix` | `(prefix)` | Remove all keys starting with ``prefix``. Returns delete count. | [src](../../../core/services/shared_cache.py#L184) |
+| function | `cleanup_expired` | `()` | Purge rows whose expires_at has passed. Returns delete count. | [src](../../../core/services/shared_cache.py#L208) |
+| function | `stats` | `()` | Return basic cache stats for MC visibility. | [src](../../../core/services/shared_cache.py#L230) |
+| function | `build_shared_cache_surface` | `()` | MC surface — read-only meta-projection. | [src](../../../core/services/shared_cache.py#L259) |
+| function | `_emit_shared_cache_event` | `(kind, payload=…)` | Defensive scoped event emitter. | [src](../../../core/services/shared_cache.py#L274) |
+
 ## `core/services/shared_language.py`
 _Shared Language — tracks shorthand terms that develop between Jarvis and user._
 
@@ -550,24 +565,4 @@ _Stream-cluster — observabilitet for SSE-lanen. IKKE en blokerende gate: strea
 | function | `_sweep_stalled` | `(timeout_s=…)` | message_start uden message_stop i >timeout_s → ægte zombie → flag ÉN gang pr. run | [src](../../../core/services/stream_sentinel.py#L88) |
 | function | `sweep` | `()` | Eksternt-kaldbar stall-sweep (fx fra heartbeat-kadence). Returnér antal live streams. | [src](../../../core/services/stream_sentinel.py#L115) |
 | function | `live_count` | `()` | — | [src](../../../core/services/stream_sentinel.py#L125) |
-
-## `core/services/stream_settlement.py`
-_`StreamSettlement` — ét sted der afgør hvad et udbyder-forsøg BLEV til._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `Attempt` | `` | Hvad udbyderen faktisk gjorde. Ren beskrivelse, ingen fortolkning. | [src](../../../core/services/stream_settlement.py#L76) |
-| class | `Settlement` | `` | Nøjagtig ÉN pr. forsøg. | [src](../../../core/services/stream_settlement.py#L106) |
-| function | `har_indhold` | `(a)` | Findes der overhovedet noget der kunne være et svar? | [src](../../../core/services/stream_settlement.py#L122) |
-| function | `classify` | `(a)` | Afgør hvad forsøget blev til. Ren funktion — rører ingenting. | [src](../../../core/services/stream_settlement.py#L127) |
-| class | `AlreadySettled` | `` | Forsøget er afregnet. En anden afregning ville være en anden historik. | [src](../../../core/services/stream_settlement.py#L219) |
-| class | `StaleAttempt` | `` | En forsinket pumpe forsøgte at skrive efter afregningen. | [src](../../../core/services/stream_settlement.py#L223) |
-| class | `AttemptLedger` | `` | Holder styr på hvilke forsøg der er afregnet, og lukker dem for skrivning. | [src](../../../core/services/stream_settlement.py#L227) |
-| method | `AttemptLedger.__init__` | `(self)` | — | [src](../../../core/services/stream_settlement.py#L254) |
-| method | `AttemptLedger.next_frame` | `(self, attempt_id)` | Næste rammesekvens. Kaster hvis forsøget er afregnet. | [src](../../../core/services/stream_settlement.py#L259) |
-| method | `AttemptLedger.frames` | `(self, attempt_id)` | — | [src](../../../core/services/stream_settlement.py#L271) |
-| method | `AttemptLedger.settle` | `(self, attempt_id, settlement)` | Afregn ÉN gang. Et andet forsøg er en fejl, ikke en opdatering. | [src](../../../core/services/stream_settlement.py#L275) |
-| method | `AttemptLedger.settled` | `(self, attempt_id)` | — | [src](../../../core/services/stream_settlement.py#L286) |
-| method | `AttemptLedger.is_settled` | `(self, attempt_id)` | — | [src](../../../core/services/stream_settlement.py#L289) |
-| method | `AttemptLedger.guard` | `(self, attempt_id)` | Kaster hvis forsøget er afregnet. Til pumper der vil skrive. | [src](../../../core/services/stream_settlement.py#L292) |
 

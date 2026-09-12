@@ -175,6 +175,15 @@ _Skygge for godkendelses-broen: ville den have sagt det samme?_
 | function | `note_claim` | `(approval_id, *, tool_name, arguments, legacy_allowed)` | Ville broen have tilladt det samme som den kørende kode? | [src](../../../core/services/approval_bridge_shadow.py#L120) |
 | function | `note_settled` | `(approval_id, *, ok)` | Luk den post skyggen selv aabnede. | [src](../../../core/services/approval_bridge_shadow.py#L178) |
 
+## `core/services/approval_expiry_daemon.py`
+_Fejeren for udløbne godkendelser — den kalder `expire_stale()`._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_nulstil_for_tests` | `()` | — | [src](../../../core/services/approval_expiry_daemon.py#L46) |
+| function | `tick_approval_expiry_daemon` | `(now=…)` | Fej udløbne godkendelser hvis kadencen er gået. Selv-sikker. | [src](../../../core/services/approval_expiry_daemon.py#L52) |
+| function | `sidste_resultat` | `()` | Hvad fejeren sidst udrettede — så en læser kan se om den kører. | [src](../../../core/services/approval_expiry_daemon.py#L94) |
+
 ## `core/services/approval_feedback_subscriber.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -585,11 +594,4 @@ _Server-authoritative streaming lifecycle for autonomous visible runs._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `start_autonomous_stream_run` | `(message, *, session_id, origin=…)` | Start autonomous work and relay its v2 frames through ``run_event_log``. | [src](../../../core/services/autonomous_stream_run.py#L5) |
-
-## `core/services/autonomous_supervisor.py`
-_Autonom run-supervision (#3) — Centralen følger HVERT autonomt run, korrelerer det på tværs_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `supervise` | `(run_id, outcome, error=…)` | Vurdér ét autonomt run. outcome ∈ {completed, failed, interrupted}. Returnér verdict + | [src](../../../core/services/autonomous_supervisor.py#L23) |
 

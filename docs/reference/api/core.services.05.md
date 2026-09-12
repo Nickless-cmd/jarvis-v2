@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/central_injection_units.py`
+_Deklarative injektions-enheds-definitioner (adskilt fra mekanismen)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_compose_rule_conclusions` | `()` | — | [src](../../../core/services/central_injection_units.py#L13) |
+| function | `_compose_cognitive_state` | `()` | — | [src](../../../core/services/central_injection_units.py#L21) |
+| function | `_compose_tone_guidance` | `()` | Centralens sproglige stil-hint (rådets #5): én kort linje der kan injiceres | [src](../../../core/services/central_injection_units.py#L31) |
+| function | `register_default_units` | `()` | — | [src](../../../core/services/central_injection_units.py#L44) |
+
 ## `core/services/central_inner_life_ablation.py`
 _Inner-life-ablation-kontakt — måling #2 (Bjørn 4. jul)._
 
@@ -595,13 +605,4 @@ _Central-ejet unified router (spec §5.5). ÉT beslutnings-punkt for alle lanes.
 | function | `route` | `(*, lane, task=…, exclude=…)` | Vælg (provider, model) for en lane. Aldrig tør. | [src](../../../core/services/central_route.py#L154) |
 | function | `_fetch_invocations` | `(provider, since)` | (status, latency_ms) for provider siden 'since' fra SQLite. Self-safe. | [src](../../../core/services/central_route.py#L184) |
 | function | `provider_history` | `(provider, hours=…)` | Task 10: fejlrate, latency-p50, oppetid for en provider over N timer | [src](../../../core/services/central_route.py#L194) |
-
-## `core/services/central_route_headroom.py`
-_Proaktiv kvote-rotation (spec §5.5 Fund 3): flyt last væk FØR 429._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_usage_fraction` | `(provider)` | (brug/daily_limit) i seneste 24t-vindue. 0.0 ved fejl/ingen limit. | [src](../../../core/services/central_route_headroom.py#L11) |
-| function | `headroom_ok` | `(provider)` | False = proaktivt skip (>=95% brugt). | [src](../../../core/services/central_route_headroom.py#L29) |
-| function | `headroom_weight` | `(provider)` | 1.0 = fuld headroom; falder lineært mod 0.1 mellem 80% og 95%. | [src](../../../core/services/central_route_headroom.py#L34) |
 

@@ -7,6 +7,7 @@ import type { DictationState } from '../lib/useComposerDictation'
 import { DictationBar } from './DictationBar'
 import { tokens } from '../theme/tokens'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
+import { UploadRing, samletUploadAndel } from './UploadRing'
 
 /**
  * Komponisten har TO former — begge målt i ChatGPT-appen (densitet 2,625):
@@ -95,6 +96,9 @@ export function Composer({
   const inputRef = useRef<TextInput>(null)
   // Hvileform: intet skrevet, ikke i fokus, intet vedhæftet, ikke i gang.
   const att = attachments ?? []
+  // null = ingen upload i gang. Vigtigt at kunne skelne fra 0 %, ellers
+  // ville ringen staa tom paa skaermen naar der intet sker.
+  const uploadAndel = samletUploadAndel(att)
   const resting = !text && !focused && !wantFocus && att.length === 0 && !working && dictationState === 'idle'
 
   // Arbejdsformen er lige monteret efter et tryk på hvilepillen → giv feltet
@@ -166,14 +170,23 @@ export function Composer({
           <Pressable testID="composer-dictate" accessibilityRole="button" accessibilityLabel="Dikter" onPress={onDictate} hitSlop={6} style={styles.iconBtn}>
             <Mic size={21} color={tokens.color.fg1} strokeWidth={1.8} />
           </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Start samtale"
-            onPress={onConversation}
-            style={({ pressed }) => [styles.sendBtn, pressed ? styles.pressed : null]}
-          >
-            <AudioLines size={19} color={tokens.color.bg0} strokeWidth={2} />
-          </Pressable>
+          {uploadAndel !== null ? (
+            // UNDER UPLOAD viser knappen fremdrift i stedet for boelgen.
+            // Tallet blev maalt hele tiden og stod paa miniaturen — et sted
+            // ingen kigger mens de venter. Her er det dér hvor oejet hviler.
+            <View testID="composer-upload" style={styles.sendBtnTom}>
+              <UploadRing andel={uploadAndel} size={38} />
+            </View>
+          ) : (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Start samtale"
+              onPress={onConversation}
+              style={({ pressed }) => [styles.sendBtn, pressed ? styles.pressed : null]}
+            >
+              <AudioLines size={19} color={tokens.color.bg0} strokeWidth={2} />
+            </Pressable>
+          )}
         </Pressable>
       </View>
     )
@@ -435,6 +448,10 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
   },
   iconPlus: { color: tokens.color.fg1, fontSize: 20, lineHeight: 22, fontWeight: '600' },
   mic: { fontSize: 15 },
+  sendBtnTom: {
+    width: 44, height: 44, borderRadius: 22,
+    alignItems: 'center', justifyContent: 'center'
+  },
   controlIcon: {
     width: 34,
     height: 34,

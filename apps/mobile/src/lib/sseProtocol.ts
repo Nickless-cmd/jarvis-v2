@@ -103,7 +103,14 @@ export type StreamEvent =
 
 export type ContentBlock =
   | { type: 'text'; text: string }
-  | { type: 'thinking'; thinking: string }
+  | {
+      type: 'thinking'
+      thinking: string
+      /** Hvornaar den foerste tanke-delta faldt. */
+      startet?: number
+      /** Hvornaar den seneste faldt. Forskellen ER taenketiden. */
+      sidst?: number
+    }
   | {
       type: 'tool_use'
       id: string

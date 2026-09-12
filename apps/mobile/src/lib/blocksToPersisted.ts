@@ -33,7 +33,9 @@ export function blocksToPersisted(blocks: ContentBlock[]): PersistedBlock[] {
     if (b.type === 'text') {
       if (b.text.trim()) ud.push({ type: 'text', text: b.text })
     } else if (b.type === 'thinking') {
-      if (b.thinking.trim()) ud.push({ type: 'thinking', text: b.thinking })
+      if (b.thinking.trim()) {
+        ud.push({ type: 'thinking', text: b.thinking, seconds: taenketid(b) })
+      }
     } else if (b.type === 'tool_use') {
       // FORELØBIGE blokke springes over. De er annonceringer af noget der
       // aldrig nåede at blive kørt færdigt i denne stream; at gemme dem ville
@@ -51,4 +53,18 @@ export function blocksToPersisted(blocks: ContentBlock[]): PersistedBlock[] {
     }
   }
   return ud
+}
+
+
+/**
+ * Hvor laenge han taenkte, i sekunder — eller undefined hvis det ikke blev maalt.
+ *
+ * `undefined` og `0` er ikke det samme: `0` ville staa som «Taenkte i 0 s» paa
+ * en besked hvor vi bare ikke ved det. Derfor faar en umaalt tanke ingen tid,
+ * og etiketten falder tilbage til «Taenkte».
+ */
+function taenketid(b: { startet?: number; sidst?: number }): number | undefined {
+  if (b.startet == null || b.sidst == null) return undefined
+  const s = (b.sidst - b.startet) / 1000
+  return s > 0 ? s : undefined
 }

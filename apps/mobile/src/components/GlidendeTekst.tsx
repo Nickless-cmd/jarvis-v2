@@ -31,10 +31,12 @@ const BAAND = 90
  * billigere end at trække en afhængighed ind for én animation.
  */
 export function GlidendeTekst({
-  text, aktiv, style, numberOfLines,
+  text, aktiv, style, numberOfLines, fuldBredde,
 }: {
   text: string
   aktiv: boolean
+  /** Maal hele linjens bredde i stedet for tekstens. */
+  fuldBredde?: boolean
   style?: StyleProp<TextStyle>
   numberOfLines?: number
 }) {
@@ -64,7 +66,10 @@ export function GlidendeTekst({
   return (
     <View
       testID="glidende-tekst"
-      style={styles.wrap}
+      // `fuldBredde`: Bjoern 12/9-2026 — «den lyse boelge skal koere den fulde
+      // skaerm bredde selv om teksten ikke er saa lang». Uden den maaler
+      // onLayout kun tekstens egen bredde, og lyset naar aldrig ud i linjen.
+      style={[styles.wrap, fuldBredde ? styles.fuld : null]}
       // Bredden måles FØR lyset kan rejse. Uden den ville båndet enten stå
       // stille eller skyde forbi kanten på en linje af ukendt længde.
       onLayout={(e) => {
@@ -112,6 +117,7 @@ const styles = StyleSheet.create({
     width: BAAND,
     flexDirection: 'row',
   },
+  fuld: { alignSelf: 'stretch', flexShrink: 0 },
   lag: { flex: 1 },
   ydre: { backgroundColor: 'rgba(255,255,255,0.05)' },
   midt: { backgroundColor: 'rgba(255,255,255,0.13)' },

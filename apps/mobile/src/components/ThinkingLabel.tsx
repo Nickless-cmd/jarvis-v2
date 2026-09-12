@@ -7,6 +7,8 @@ import { GlidendeTekst } from './GlidendeTekst'
 
 interface Props {
   label?: string
+  /** Lad lyset rejse hele linjens bredde, ikke kun tekstens. */
+  fuldBredde?: boolean
 }
 
 /**
@@ -21,7 +23,7 @@ interface Props {
  * ét andet sted, og ChatGPT's rolige indtryk kommer netop af at ventetegnet
  * står PÅ SIN PLADS i samtalen frem for oppe i en header.
  */
-export function ThinkingLabel({ label = 'Tænker' }: Props) {
+export function ThinkingLabel({ label = 'Tænker', fuldBredde }: Props) {
   const tokens = useTheme()
   const styles = useStyles(makestyles)
   const sweep = useRef(new Animated.Value(0)).current
@@ -57,7 +59,7 @@ export function ThinkingLabel({ label = 'Tænker' }: Props) {
   // stykke tanke, ikke bare ét ord, saa man skal kunne laese med.
   return (
     <View style={styles.row} testID="thinking-label">
-      <GlidendeTekst text={label} aktiv style={styles.word} numberOfLines={2} />
+      <GlidendeTekst text={label} aktiv fuldBredde={fuldBredde} style={styles.word} numberOfLines={2} />
     </View>
   )
 }

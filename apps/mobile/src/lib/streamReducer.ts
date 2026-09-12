@@ -70,7 +70,14 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
       const blocks = state.blocks.slice()
       const cb = event.content_block
       if (cb.type === 'text') blocks[event.index] = { type: 'text', text: cb.text }
-      else if (cb.type === 'thinking') blocks[event.index] = { type: 'thinking', thinking: cb.thinking }
+      else if (cb.type === 'thinking') {
+        // Taenketiden maales HER. Serveren sender den ikke, og ThinkingSummary
+        // har kunnet vise «Taenkte i X s» hele tiden — feltet blev bare aldrig
+        // fyldt af nogen. Endnu et tilfaelde af built-but-not-connected.
+        blocks[event.index] = {
+          type: 'thinking', thinking: cb.thinking, startet: Date.now(), sidst: Date.now(),
+        }
+      }
       else if (cb.type === 'tool_use') {
         blocks[event.index] = {
           type: 'tool_use',
@@ -124,7 +131,12 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
         blocks[event.index] = { ...existing, text: existing.text + d.text }
       }
       if (d.type === 'thinking_delta' && existing.type === 'thinking') {
-        blocks[event.index] = { ...existing, thinking: existing.thinking + d.thinking }
+        blocks[event.index] = {
+          ...existing,
+          thinking: existing.thinking + d.thinking,
+          startet: existing.startet ?? Date.now(),
+          sidst: Date.now(),
+        }
       }
       if (d.type === 'input_json_delta' && existing.type === 'tool_use') {
         blocks[event.index] = {

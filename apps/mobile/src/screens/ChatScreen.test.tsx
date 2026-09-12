@@ -89,7 +89,12 @@ jest.mock('../components/Composer', () => ({
       ReactLib.Fragment,
       null,
       ReactLib.createElement(Text, null, `Composer permission ${props.permission ?? 'none'}`),
-      ReactLib.createElement(Text, { onPress: props.onPressPermission }, 'Open permissions'),
+      // Mocken skal foelge den AEGTE kontrakt: ingen handler = ingen knap.
+      // Uden det kan en test ikke se forskel paa «skjult» og «vist», og saa
+      // maaler den kun sig selv.
+      props.onPressPermission
+        ? ReactLib.createElement(Text, { onPress: props.onPressPermission }, 'Open permissions')
+        : null,
       ReactLib.createElement(Text, { onPress: () => props.onSend('ret remote delen') }, 'Send mocked composer')
     )
   }
@@ -136,7 +141,8 @@ jest.mock('../lib/apiClient', () => ({
   whoami: jest.fn().mockResolvedValue({ user_id: 'u', display_name: 'Bjørn', role: 'owner' }),
   getModelOptions: jest.fn().mockResolvedValue([]),
   getContextUsage: jest.fn().mockResolvedValue(null),
-  compactNow: jest.fn().mockResolvedValue({ started: true })
+  compactNow: jest.fn().mockResolvedValue({ started: true }),
+  getGitStatus: jest.fn().mockResolvedValue(null)
 }))
 
 beforeEach(() => {
@@ -220,6 +226,15 @@ it('renders approval requests and forwards explicit decisions', async () => {
   expect(mockDeny).toHaveBeenCalledWith(config)
 })
 
+it('tilladelses-knappen findes IKKE i chat-fladen', async () => {
+  // Tilladelser handler om hvad Jarvis maa goere ved filer og skal. I en
+  // samtale er skjoldet et ikon man aldrig roerer, paa den plads hvor de faa
+  // knapper man BRUGER skal staa.
+  const screen = await render(<ChatScreen />)
+  await waitFor(() => expect(screen.getByText('Send mocked composer')).toBeTruthy())
+  expect(screen.queryByText('Open permissions')).toBeNull()
+})
+
 it('sender permission-valget og bruger samtalens værktøjs-mode', async () => {
   mockStream = {
     ...mockStream,
@@ -229,7 +244,8 @@ it('sender permission-valget og bruger samtalens værktøjs-mode', async () => {
     }
   }
 
-  const screen = await render(<ChatScreen />)
+  // I CODE-fladen: det er dér knappen bor nu.
+  const screen = await render(<ChatScreen kodeTilstand />)
 
   await waitFor(() => expect(screen.getByText('Composer permission ask')).toBeTruthy())
   fireEvent.press(screen.getByText('Open permissions'))
@@ -249,7 +265,7 @@ it('UDEN en tidligere session vises greeting-siden, ikke en tom traad', async ()
   // Bjoern bad om «greeting side lige som i desk» naar der ingen session er.
   // Den virkede allerede, men INGEN test roerte den - saa det var en paastand
   // uden belaeg.
-  mockSessions = { ...mockSessions, activeId: null, messages: [], loading: false }
+  mockSessions = { ...mockSessions, activeId: '', messages: [] }
   const screen = await render(<ChatScreen />)
   await waitFor(() => expect(screen.getByTestId('greeting-hero')).toBeTruthy())
 })

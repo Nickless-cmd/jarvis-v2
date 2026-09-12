@@ -43,6 +43,8 @@ import { livesInHousehold } from '../lib/household'
 import { SensesScreen } from './SensesScreen'
 import { ArtifactsScreen } from './ArtifactsScreen'
 import { BillederScreen } from './BillederScreen'
+import { WorkspacePicker } from '../components/WorkspacePicker'
+import { saetSessionWorkspace } from '../lib/workspaceApi'
 import { ActivityCenterScreen } from './ActivityCenterScreen'
 import {
   cancelActiveRun,
@@ -107,11 +109,13 @@ interface ChatScreenProps {
   onSkiftFlade?: (tilKode: boolean) => void
   /** Titel og git-tilstand OP til code-headeren. Null = intet at vise. */
   onKodeKontekst?: (v: { titel: string; git: GitStatus | null }) => void
+  /** Stiger når titlen i headeren trykkes — åbner workspace-vælgeren. */
+  workspaceSignal?: number
 }
 
 export function ChatScreen({
   openPanelSignal = 0, syncSignal = 0, onSyncDone, onKontekst, compactSignal = 0,
-  kodeTilstand = false, onSkiftFlade, onKodeKontekst,
+  kodeTilstand = false, onSkiftFlade, onKodeKontekst, workspaceSignal = 0,
 }: ChatScreenProps) {
   const tokens = useTheme()
   const styles = useStyles(makestyles)
@@ -155,24 +159,43 @@ export function ChatScreen({
   // komponisten. Kun i code-fladen: i chat er den hverken relevant eller
   // gratis - det er et subprocess-kald pr. opslag.
   //
-  // 20 sekunder. Arbejdstraeet aendrer sig i ryk naar et vaerktoej skriver,
-  // ikke jaevnt; en hurtigere puls ville koste kald uden at vise andet.
+  // TO KADENCER. Bjoern: badgen skal vises «fra foerste aendring han laver».
+  // Arbejdstraeet aendrer sig praecis mens han arbejder, og stort set aldrig
+  // naar han ikke goer - saa en fast puls er enten for langsom til at fange
+  // den foerste aendring eller for dyr resten af tiden.
+  //
+  // 4 sekunder mens der streames, 20 naar der ikke goer.
+  //
+  // Det sidste kald naar streamen slutter kommer GRATIS: `arbejder` staar i
+  // afhaengighederne, saa effekten koerer om og henter med det samme naar den
+  // skifter. Det er vigtigt - det sidste vaerktoejskald kan skrive EFTER det
+  // sidste tick, og uden den hentning ville badgen staa med et forkert tal
+  // indtil naeste puls.
   const [git, setGit] = useState<GitStatus | null>(null)
+  // Hvor arbejdet foregaar. Kommer fra sessionen (dvs. det desk sidst brugte)
+  // og kan saettes direkte fra vaelgeren. `container`/`repo` er samme
+  // udgangspunkt som git-status i forvejen brugte.
+  const [ws, setWs] = useState<{ kind: 'container' | 'workstation'; root: string }>(
+    { kind: 'container', root: 'repo' },
+  )
+  const [wsAaben, setWsAaben] = useState(false)
+  useEffect(() => { if (workspaceSignal > 0) setWsAaben(true) }, [workspaceSignal])
+  const arbejder = stream.state.status === 'working'
   useEffect(() => {
     if (!config || !kodeTilstand) { setGit(null); return }
     let stoppet = false
     const hent = () => {
-      getGitStatus(config)
+      getGitStatus(config, ws.kind, ws.root)
         .then((g) => { if (!stoppet) setGit(g) })
         // Tavs, og NULSTIL. Et frossent difftal er vaerre end intet: man ville
         // tro der laa uafsluttet arbejde som for laengst er committet.
         .catch(() => { if (!stoppet) setGit(null) })
     }
     hent()
-    const t = setInterval(hent, 20_000)
+    const t = setInterval(hent, arbejder ? 4_000 : 20_000)
     return () => { stoppet = true; clearInterval(t) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [config, kodeTilstand])
+  }, [config, kodeTilstand, arbejder, ws.kind, ws.root])
 
   const aktivTitel = (sessions.sessions ?? []).find((x) => x.id === sessions.activeId)?.title || ''
   useEffect(() => {
@@ -190,7 +213,9 @@ export function ChatScreen({
   // ændre et eneste ciffer man kan nå at se.
   useEffect(() => {
     const sid = sessions.activeId
-    if (!config || !sid) { onKontekst?.(null); return }
+    // Kun i code-fladen — som git-tilstanden. Et opslag der aldrig vises er
+    // et kald pr. 12. sekund pr. bruger for ingenting.
+    if (!config || !sid || !kodeTilstand) { onKontekst?.(null); return }
     let stoppet = false
     const hent = () => {
       getContextUsage(config, sid)
@@ -203,7 +228,7 @@ export function ChatScreen({
     const t = setInterval(hent, 12_000)
     return () => { stoppet = true; clearInterval(t) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [config, sessions.activeId])
+  }, [config, sessions.activeId, kodeTilstand])
 
   useEffect(() => {
     if (compactSignal <= 0 || !config || !sessions.activeId) return
@@ -477,6 +502,12 @@ export function ChatScreen({
         if (plads.kode !== null && plads.kode !== kodeTilstand) onSkiftFlade?.(plads.kode)
         sessions.select(config, plads.id)
           .then((s) => {
+            // Sessionen baerer det workspace desk sidst brugte. Uden det ville
+            // headeren vise «repo» for en samtale der i virkeligheden koerer
+            // paa Bjoerns egen computer.
+            if (s.workspace_kind && s.workspace_root) {
+              setWs({ kind: s.workspace_kind, root: s.workspace_root })
+            }
             // KUN når fladen er UVIST spørger vi samtalen. Er den gemt, er den
             // brugerens eget valg, og det må ikke overskrives: skifter man
             // bevidst til chat med en code-samtale åben og lukker appen, skal
@@ -1016,7 +1047,15 @@ export function ChatScreen({
             if (sid) void gemIndstillinger(sid, next).then(setChatCfg).catch(() => undefined)
           }}
           permission={chatCfg.spoergFoerst ? 'ask' : 'trust'}
-          onPressPermission={() => setPermissionPickerOpen(true)}
+          // KUN i code-fladen. Komponisten har allerede kontrakten «ingen
+          // handler = ingen knap», saa porten hoerer hjemme her frem for som
+          // et ekstra flag ned gennem komponenten.
+          //
+          // Tilladelser handler om hvad Jarvis maa goere ved filer og skal —
+          // et valg der kun giver mening naar man arbejder. I en samtale er
+          // skjoldet et ikon man aldrig roerer, paa den plads hvor de faa
+          // knapper man BRUGER skal staa.
+          onPressPermission={kodeTilstand ? () => setPermissionPickerOpen(true) : undefined}
         />
         </View>
       </View>
@@ -1178,6 +1217,25 @@ export function ChatScreen({
       <Modal visible={artifactsOpen} animationType="slide" onRequestClose={() => setArtifactsOpen(false)}>
         <ArtifactsScreen onClose={() => setArtifactsOpen(false)} />
       </Modal>
+
+      {config ? (
+        <WorkspacePicker
+          aaben={wsAaben}
+          onClose={() => setWsAaben(false)}
+          config={config}
+          nuvaerende={ws}
+          onVaelg={(kind, root) => {
+            // Saet lokalt FOERST, saa headeren svarer med det samme. Serveren
+            // er stadig sandheden - men et valg der venter paa et rundtur
+            // foeles som om trykket ikke virkede.
+            setWs({ kind, root })
+            if (sessions.activeId) {
+              void saetSessionWorkspace(config, sessions.activeId, kind, root)
+                .catch(() => undefined)
+            }
+          }}
+        />
+      ) : null}
 
       <Modal visible={billederOpen} animationType="slide" onRequestClose={() => setBillederOpen(false)}>
         <BillederScreen

@@ -414,6 +414,57 @@ def _operator_exec(name: str, args: dict) -> dict:
     return execute_tool(name, args) or {}
 
 
+class SessionWorkspaceRequest(BaseModel):
+    # "container" = navngiven server-root, "workstation" = en mappe paa
+    # brugerens egen computer (gennem broen).
+    kind: str = "container"
+    root: str = ""
+
+
+@router.get("/roots")
+def chat_roots() -> dict:
+    """Hvilke navngivne server-roots må denne bruger vælge imellem?
+
+    Desk har listen hårdkodet i to konstanter (OWNER_ROOTS/MEMBER_ROOTS). Det
+    virker dér, fordi den kender rollen — men en hårdkodet liste i hver klient
+    er en liste der forfalder hver for sig. Rollen og rødderne bestemmes ét
+    sted i forvejen (`_allowed_roots`); denne rute siger bare hvad den fandt.
+    """
+    from core.identity.workspace_context import current_user_id
+    uid = current_user_id() or ""
+    roots = _allowed_roots(_resolve_role(uid), uid)
+    # Stien kommer MED: uden den kan klienten ikke vise hvad «repo» faktisk er,
+    # og et valg man ikke kan se konsekvensen af er et gæt.
+    return {"roots": [{"name": n, "path": str(p)} for n, p in roots.items()]}
+
+
+@router.post("/sessions/{session_id}/workspace")
+def chat_set_session_workspace(session_id: str, req: SessionWorkspaceRequest) -> dict:
+    """Bind samtalen til et workspace — server-root eller mappe på egen computer.
+
+    Desk gemmer sit valg i localStorage og sender det med hver stream; sessionen
+    får det derfor først når man har skrevet noget. Telefonen skal kunne sætte
+    det DIREKTE, så headeren kan vise hvor arbejdet foregår før første besked.
+    """
+    art = (req.kind or "").strip().lower()
+    if art not in ("container", "workstation"):
+        raise HTTPException(status_code=400, detail="kind skal være container eller workstation")
+    rod = (req.root or "").strip()
+    if not rod:
+        raise HTTPException(status_code=400, detail="root mangler")
+    if art == "container":
+        from core.identity.workspace_context import current_user_id
+        uid = current_user_id() or ""
+        if rod not in _allowed_roots(_resolve_role(uid), uid):
+            # SAMME kontrol som fil-træet. Uden den kunne en klient binde
+            # samtalen til et navn rollen ikke må browse, og først få 403 når
+            # den prøvede at læse — altså et valg der ser ud til at lykkes.
+            raise HTTPException(status_code=403, detail=f"root '{rod}' ikke tilladt for rollen")
+    from core.services.chat_sessions import set_session_workspace
+    set_session_workspace(session_id, kind=art, root=rod)
+    return {"ok": True, "kind": art, "root": rod}
+
+
 @router.get("/tree")
 async def chat_tree(kind: str = "container", root: str = "", path: str = "") -> dict:
     """Mappe-listing til Code-mode fil-træ. Blokerende fs/bro-kald offloades til tråd
@@ -481,6 +532,15 @@ def _parse_git_status(branch_out: str, porcelain_out: str, numstat_out: str) -> 
 _GIT_NONE = {"branch": "", "dirty": 0, "added": 0, "removed": 0, "is_git": False}
 
 
+def _bro_findes(uid: str) -> bool:
+    """Er der overhovedet en bro registreret for brugeren? Self-safe."""
+    try:
+        from core.services import bridge_presence
+        return bridge_presence.process_for_user(str(uid or "")) is not None
+    except Exception:
+        return False
+
+
 def _repo_og_vaert(root: str = "") -> dict:
     """Hvilket repo, og hvilken maskine — til code-headerens kontekstlinje.
 
@@ -514,10 +574,16 @@ def _git_status_sync(kind: str, root: str, uid: str = "") -> dict:
     if kind == "workstation":
         if not root.strip():
             return dict(_GIT_NONE)
+        # `hostname` hænger på DEN kommando der allerede køres derovre. Det
+        # er den eneste måde at få maskinens rigtige navn: bro-registret kender
+        # kun klientens id (målt 12/9-2026: «jarvisx-electron»), ikke værten.
+        # En ekstra tur over broen for ét ord ville koste det dobbelte i
+        # latens for ingenting.
         cmd = (
             f'git -C "{root}" rev-parse --abbrev-ref HEAD 2>/dev/null; echo "@@@"; '
             f'git -C "{root}" status --porcelain 2>/dev/null; echo "@@@"; '
-            f'git -C "{root}" diff --numstat HEAD 2>/dev/null'
+            f'git -C "{root}" diff --numstat HEAD 2>/dev/null; echo "@@@"; '
+            f'hostname 2>/dev/null'
         )
         res = _operator_exec("operator_bash", {"command": cmd, "_user_id": uid})
         # operator_bash-svaret pakkes af broen som {"status","result":{"stdout",...}}
@@ -525,12 +591,22 @@ def _git_status_sync(kind: str, root: str, uid: str = "") -> dict:
         # gamle res.get("stdout") var altid None → is_git=False → hele git-sektionen
         # skjult i workstation-mode selvom commit/PR faktisk virkede.
         r = res.get("result") or {}
-        out = str(r.get("stdout") or "") if res.get("status") == "ok" else ""
+        svarede = res.get("status") == "ok"
+        out = str(r.get("stdout") or "") if svarede else ""
         segs = out.split("@@@")
-        if len(segs) < 3 or not segs[0].strip():
-            return dict(_GIT_NONE)
+        # TRE FORBINDELSES-TILSTANDE, ikke to. «Broen findes» og «broen svarer»
+        # er ikke det samme: en desk der er ved at genstarte staar registreret
+        # et øjeblik endnu. At kalde det «nede» ville få prikken til at blinke
+        # rødt hver gang nogen genstartede sin app.
+        if not svarede or len(segs) < 3 or not segs[0].strip():
+            d = dict(_GIT_NONE)
+            d["link"] = "genforbinder" if _bro_findes(uid) else "nede"
+            return d
         d = _parse_git_status(segs[0], segs[1], segs[2])
         d["is_git"] = True
+        d["link"] = "ok"
+        if len(segs) >= 4:
+            d["host"] = segs[3].strip().splitlines()[0].strip() if segs[3].strip() else ""
         return d
 
     import subprocess
@@ -558,8 +634,16 @@ async def chat_git_status(kind: str = "container", root: str = "") -> dict:
     from core.identity.workspace_context import current_user_id
     uid = current_user_id() or ""
     svar = await asyncio.to_thread(_git_status_sync, kind, root, uid)
-    # ADDITIVT. Desk læser de samme felter som før; de to nye ignoreres dér.
-    svar.update(_repo_og_vaert(root))
+    # ADDITIVT. Desk læser de samme felter som før; de nye ignoreres dér.
+    #
+    # `host` fra workstation-grenen VINDER: den er maskinens eget navn, mens
+    # _repo_og_vaert kun kender API-værten. Uden den rækkefølge ville
+    # code-headeren sige «Jarvis» om en session der kører på Bjørns computer.
+    basis = _repo_og_vaert(root)
+    if svar.get("host"):
+        basis.pop("host", None)
+    svar.setdefault("link", "ok")
+    svar.update(basis)
     return svar
 
 

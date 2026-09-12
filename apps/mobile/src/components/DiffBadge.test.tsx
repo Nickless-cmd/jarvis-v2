@@ -4,7 +4,7 @@ import type { GitStatus } from '../lib/apiClient'
 
 const g = (o: Partial<GitStatus> = {}): GitStatus => ({
   branch: 'main', dirty: 73, added: 2925, removed: 1407,
-  isGit: true, repo: 'jarvis-v2', host: 'CheifOne', ...o,
+  isGit: true, repo: 'jarvis-v2', host: 'CheifOne', link: 'ok', ...o,
 })
 
 it('et RENT trae har ingen badge', () => {

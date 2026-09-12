@@ -24,6 +24,7 @@ import { bubble } from '../lib/bubbleModule'
 import { loadBubblePersist, saveBubblePersist } from '../lib/bubbleSetting'
 import { loadPrecision, precisionLabel, savePrecision, type LocationPrecision } from '../lib/location'
 import { loadBatterySaver, saveBatterySaver } from '../lib/batteryPrefs'
+import { loadFullThinking, saveFullThinking } from '../lib/fullThinking'
 import { loadCameraPrefs } from '../lib/cameraPrefs'
 import { getOrCreateDeviceIdentity } from '../lib/deviceIdentity'
 import { sensorRowsFromState } from '../lib/sensorPrivacy'
@@ -80,6 +81,7 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
   const [bubbleOk, setBubbleOk] = useState(false)
   const [locPrecision, setLocPrecision] = useState<LocationPrecision>('off')
   const [batterySaver, setBatterySaver] = useState(false)
+  const [fullThinking, setFullThinking] = useState(false)
   const [cameraShutterSound, setCameraShutterSound] = useState(true)
   const [deviceRows, setDeviceRows] = useState<DevicePresenceRow[]>([])
   const [currentDeviceName, setCurrentDeviceName] = useState('')
@@ -89,6 +91,7 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
   useEffect(() => { void loadBubblePersist().then(setPersistBubble) }, [])
   useEffect(() => { void loadPrecision().then(setLocPrecision) }, [])
   useEffect(() => { void loadBatterySaver().then(setBatterySaver) }, [])
+  useEffect(() => { void loadFullThinking().then(setFullThinking) }, [])
   useEffect(() => { void loadCameraPrefs().then((prefs) => setCameraShutterSound(prefs.shutterSound)) }, [])
   useEffect(() => { void loadOutbox().then((items) => setOutboxCount(items.length)) }, [])
 
@@ -352,6 +355,28 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
             />
           </View>
           <Text style={styles.muted}>Reducerer live-stream, polling og præcis GPS når Jarvis kan hente state igen senere.</Text>
+        </View>
+
+        {/* Tankestrømmen: standarden er ChatGPT-agtig (kun halen), hele
+            strømmen er et tilvalg for den avancerede bruger. */}
+        <Text style={styles.sectionTitle}>Chat</Text>
+        <View style={styles.card}>
+          <View style={styles.bubbleRow}>
+            <Text style={styles.value}>Vis hele tankestrømmen</Text>
+            <Switch
+              value={fullThinking}
+              onValueChange={(on) => {
+                setFullThinking(on)
+                void saveFullThinking(on)
+              }}
+              trackColor={{ true: tokens.color.accent, false: tokens.color.bg3 }}
+            />
+          </View>
+          <Text style={styles.muted}>
+            Som standard folder «Tænkte i X s» ud til den sidste del af tænkningen — nok til at
+            følge tanken. Slår du dette til, hentes HELE ræsonneringen bag svaret, når du folder
+            linjen ud. Den er markant længere, og den hentes kun når du selv beder om den.
+          </Text>
         </View>
 
         {/* Forbind enhed (scan QR fra desktop) */}

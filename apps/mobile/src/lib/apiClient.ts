@@ -150,12 +150,29 @@ export async function getSession(
   }
 }
 
+/** Den FULDE tankestrøm bag ét svar — dovent, kun når nogen beder om den.
+ *
+ *  Tænke-blokken i sessionen bærer kun HALEN (de sidste 4.000 tegn), fordi
+ *  `getSession` sender hele sessionen ved hvert poll. Denne henter resten for
+ *  ÉN besked, i det øjeblik en avanceret bruger folder linjen ud. Er
+ *  præferencen ikke slået til, kaldes den aldrig.
+ */
+export async function getMessageReasoning(
+  config: ApiConfig,
+  messageId: string
+): Promise<string> {
+  const raw = await apiFetch<{ reasoning?: string }>(
+    config,
+    `/chat/messages/${encodeURIComponent(messageId)}/reasoning`
+  )
+  return raw.reasoning ?? ''
+}
+
 export async function cancelRun(config: ApiConfig, runId: string): Promise<void> {
   await apiFetch(config, `/chat/runs/${encodeURIComponent(runId)}/cancel`, {
     method: 'POST'
   })
 }
-
 export async function cancelRunById(config: ApiConfig, runId: string): Promise<void> {
   await cancelRun(config, runId)
 }

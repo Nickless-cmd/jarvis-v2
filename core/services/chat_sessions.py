@@ -490,6 +490,36 @@ def _client_message_content(role: str, content: str) -> str:
     return f"Samtalen blev komprimeret — {len(content):,} tegn arkiveret".replace(",", ".")
 
 
+def get_message_reasoning(message_id: str) -> str | None:
+    """Den FULDE tankestrøm bag ét svar — dovent, kun når nogen beder om den.
+
+    Blokken klienten får (`_with_thinking_block`) bærer bevidst kun HALEN
+    (`text[-4000:]`): en ræsonnering kan være titusindvis af tegn, og
+    `get_chat_session` sender HELE sessionen ved hvert poll. Da 14
+    kompakterings-markører blev sendt rå med, voksede svaret til 17,94 MB —
+    den fejl må fuld tænkning ikke gentage.
+
+    Derfor dette smalle opslag: ÉN besked, når en avanceret bruger folder
+    linjen ud og beder om at se resten. Bjørns valg (12/9-2026): standarden
+    er ChatGPT-agtig — kun halen — og hele strømmen er et tilvalg.
+
+    ``None`` = beskeden findes ikke (kalderen svarer 404). Tom streng =
+    beskeden har ingen gemt ræsonnering (en model der ikke tænkte) — det er
+    et gyldigt svar, ikke en fejl.
+    """
+    normalized = (message_id or "").strip()
+    if not normalized:
+        return None
+    with connect() as conn:
+        row = conn.execute(
+            "SELECT reasoning_content FROM chat_messages WHERE message_id = ?",
+            (normalized,),
+        ).fetchone()
+    if row is None:
+        return None
+    return str(row["reasoning_content"] or "")
+
+
 def get_chat_session(session_id: str) -> dict[str, object] | None:
     normalized = (session_id or "").strip()
     if not normalized:

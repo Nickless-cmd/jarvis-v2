@@ -1269,10 +1269,25 @@ def _infra_approval_expiry_live(_snap: dict) -> dict[str, Any]:
     return tick_approval_expiry_daemon()
 
 
+def _infra_feedback_review_live(snap: dict) -> Any:
+    """Giv Jarvis månedens tommel-op/ned at tænke over. Rules-based, no LLM.
+
+    Self-throttler INTERNT (30 dage) og TIER når der intet er — en månedlig
+    påmindelse om nul stemmer lærer én at ignorere den månedlige påmindelse.
+
+    Selve dommen er hans: tikket planlægger en wakeup med stemmerne, ikke en
+    klassifikation. En prompt-sektion ville være husets hyppigste fejl om igen;
+    `schedule_self_wakeup` → `dispatch_due_wakeups` er efterprøvet ende-til-ende.
+    """
+    from core.services.message_feedback import tick_feedback_review
+    return tick_feedback_review()
+
+
 _INFRA_UNCONDITIONAL: tuple[tuple[str, Callable[[dict], Any]], ...] = (
     ("file_awareness", _infra_file_awareness_live),
     ("cache_maintenance", _infra_cache_maintenance_live),
     ("approval_expiry", _infra_approval_expiry_live),
+    ("feedback_review", _infra_feedback_review_live),
     ("signal_decay", _infra_signal_decay_live),
     ("wakeup_cleanup", _infra_wakeup_cleanup_live),
     ("cost_optimization", _infra_cost_optimization_live),

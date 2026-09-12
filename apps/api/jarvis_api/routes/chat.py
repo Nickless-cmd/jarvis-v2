@@ -421,6 +421,34 @@ class SessionWorkspaceRequest(BaseModel):
     root: str = ""
 
 
+class MessageFeedbackRequest(BaseModel):
+    # "" fortryder. Se message_feedback for hvorfor det SLETTER frem for at
+    # gemme en tom streng.
+    vote: str = ""
+    session_id: str = ""
+
+
+@router.post("/messages/{message_id}/feedback")
+def chat_message_feedback(message_id: str, req: MessageFeedbackRequest) -> dict:
+    """Tommel op/ned på ét svar.
+
+    Knappen har hidtil været ren pynt — `MessageBubble` sagde det selv: «der er
+    ingen feedback-kanal til serveren endnu». Det her er kanalen. Hvad der sker
+    med stemmerne bagefter står i `message_feedback`.
+    """
+    from core.identity.workspace_context import current_user_id
+    from core.services.message_feedback import sæt_stemme
+    ud = sæt_stemme(
+        message_id=message_id,
+        session_id=req.session_id or "",
+        user_id=current_user_id() or "",
+        vote=req.vote or "",
+    )
+    if ud.get("status") == "error":
+        raise HTTPException(status_code=400, detail=ud.get("error") or "ugyldig stemme")
+    return ud
+
+
 @router.get("/roots")
 def chat_roots() -> dict:
     """Hvilke navngivne server-roots må denne bruger vælge imellem?

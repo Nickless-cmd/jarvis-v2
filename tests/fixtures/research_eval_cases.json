@@ -1,0 +1,22 @@
+[
+  {"id":"i01","query":"Hvad er seneste WLED version?","tier":"inline","facets":["version"]},
+  {"id":"i02","query":"Find den officielle ESP32 pinout","tier":"inline","facets":["pinout"]},
+  {"id":"i03","query":"Hvad koster produktet i dag?","tier":"inline","facets":["price"]},
+  {"id":"i04","query":"Bekræft denne ene påstand","tier":"inline","facets":["claim"]},
+  {"id":"i05","query":"Forklar dette ene komplekse bevis grundigt","tier":"inline","facets":["proof"]},
+  {"id":"i06","query":"Find API dokumentationen til endpointet","tier":"inline","facets":["api"]},
+  {"id":"i07","query":"Hvornår blev standarden udgivet?","tier":"inline","facets":["date"]},
+  {"id":"i08","query":"Hvem er forfatteren til papiret?","tier":"inline","facets":["author"]},
+  {"id":"i09","query":"Find to kilder om batteritiden","tier":"inline","facets":["battery"]},
+  {"id":"i10","query":"Er denne CVE rettet i version 4?","tier":"inline","facets":["cve"]},
+  {"id":"o01","query":"Sammenlign fem leverandører på pris, sikkerhed og drift i en grundig rapport","tier":"orchestrated","facets":["price","security","operations"]},
+  {"id":"o02","query":"Compare four vendors on price and security in a due diligence report","tier":"orchestrated","facets":["price","security"]},
+  {"id":"o03","query":"Sammenlign tre alternativer på ydelse og funktioner i en omfattende rapport","tier":"orchestrated","facets":["performance","features"]},
+  {"id":"o04","query":"Compare five options by operations, price and performance in a deep research report","tier":"orchestrated","facets":["operations","price","performance"]},
+  {"id":"o05","query":"Lav en grundig rapport: sammenlign fire leverandører på sikkerhed og funktioner","tier":"orchestrated","facets":["security","features"]},
+  {"id":"o06","query":"Due diligence: compare three vendors on price, operations and security","tier":"orchestrated","facets":["price","operations","security"]},
+  {"id":"o07","query":"Sammenlign seks alternativer på pris og ydelse i en omfattende analyse","tier":"orchestrated","facets":["price","performance"]},
+  {"id":"o08","query":"Deep research report comparing four options on features and security","tier":"orchestrated","facets":["features","security"]},
+  {"id":"o09","query":"Grundig leverandørrapport: sammenlign fem på drift, pris og funktioner","tier":"orchestrated","facets":["operations","price","features"]},
+  {"id":"o10","query":"Compare six vendors on performance and price in a comprehensive report","tier":"orchestrated","facets":["performance","price"]}
+]

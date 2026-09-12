@@ -202,3 +202,15 @@ it('resumeet staar FOER tidslinjen', () => {
   expect(t).toMatch(/<RunResumeCard resume=\{opsummerRun\(/)
   expect(t.indexOf('<RunResumeCard')).toBeLessThan(t.indexOf('steps.length === 0'))
 })
+
+it('baggrundsjobs sidder i tre-prik menuen — og KUN i code', () => {
+  // Det man vil vide om koerende jobs, vil man vide mens man arbejder.
+  const m = kilde('components/TopBarMenu.tsx')
+  expect(m).toMatch(/\{kodeTilstand && onJobs \?/)
+  const app = kilde('App.tsx')
+  expect(app).toMatch(/onJobs=\{\(\) => setJobsSignal/)
+  expect(app).toMatch(/jobsSignal=\{jobsSignal\}/)
+  const cs = kilde('screens/ChatScreen.tsx')
+  expect(cs).toMatch(/if \(jobsSignal > 0\) setJobsAaben\(true\)/)
+  expect(cs).toMatch(/<JobsPanel/)
+})

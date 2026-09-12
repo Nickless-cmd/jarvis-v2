@@ -1,6 +1,6 @@
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { ArrowLeftRight, Minimize2, RefreshCw } from 'lucide-react-native'
+import { ArrowLeftRight, Activity, Minimize2, RefreshCw } from 'lucide-react-native'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 
 /**
@@ -22,13 +22,15 @@ import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
  * så den ligger et tryk inde.
  */
 export function TopBarMenu({
-  aaben, onClose, onSync, onCompact, onTilbageTilChat, kodeTilstand,
+  aaben, onClose, onSync, onCompact, onTilbageTilChat, onJobs, kodeTilstand,
 }: {
   aaben: boolean
   onClose: () => void
   onSync: () => void
   onCompact?: () => void
   onTilbageTilChat?: () => void
+  /** Baggrundsjobs. Kun i code-fladen — se punktet nedenfor. */
+  onJobs?: () => void
   kodeTilstand?: boolean
 }) {
   const tokens = useTheme()
@@ -52,6 +54,15 @@ export function TopBarMenu({
               navn="Komprimér kontekst"
               ikon={<Minimize2 size={17} color={tokens.color.fg2} strokeWidth={1.9} />}
               onPress={() => { onCompact(); onClose() }}
+            />
+          ) : null}
+          {kodeTilstand && onJobs ? (
+            // Kun i code. Det man vil vide om koerende jobs, vil man vide mens
+            // man arbejder - i en samtale er det et punkt man aldrig trykker.
+            <Punkt
+              navn="Baggrundsjobs"
+              ikon={<Activity size={17} color={tokens.color.fg2} strokeWidth={1.9} />}
+              onPress={() => { onJobs(); onClose() }}
             />
           ) : null}
           {kodeTilstand && onTilbageTilChat ? (

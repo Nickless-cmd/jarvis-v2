@@ -44,6 +44,7 @@ import { SensesScreen } from './SensesScreen'
 import { ArtifactsScreen } from './ArtifactsScreen'
 import { BillederScreen } from './BillederScreen'
 import { WorkspacePicker } from '../components/WorkspacePicker'
+import { JobsPanel } from '../components/JobsPanel'
 import { saetSessionWorkspace } from '../lib/workspaceApi'
 import { ActivityCenterScreen } from './ActivityCenterScreen'
 import {
@@ -111,11 +112,13 @@ interface ChatScreenProps {
   onKodeKontekst?: (v: { titel: string; git: GitStatus | null }) => void
   /** Stiger når titlen i headeren trykkes — åbner workspace-vælgeren. */
   workspaceSignal?: number
+  /** Stiger når «Baggrundsjobs» vælges i tre-prik menuen. */
+  jobsSignal?: number
 }
 
 export function ChatScreen({
   openPanelSignal = 0, syncSignal = 0, onSyncDone, onKontekst, compactSignal = 0,
-  kodeTilstand = false, onSkiftFlade, onKodeKontekst, workspaceSignal = 0,
+  kodeTilstand = false, onSkiftFlade, onKodeKontekst, workspaceSignal = 0, jobsSignal = 0,
 }: ChatScreenProps) {
   const tokens = useTheme()
   const styles = useStyles(makestyles)
@@ -180,6 +183,8 @@ export function ChatScreen({
   )
   const [wsAaben, setWsAaben] = useState(false)
   useEffect(() => { if (workspaceSignal > 0) setWsAaben(true) }, [workspaceSignal])
+  const [jobsAaben, setJobsAaben] = useState(false)
+  useEffect(() => { if (jobsSignal > 0) setJobsAaben(true) }, [jobsSignal])
   const arbejder = stream.state.status === 'working'
   useEffect(() => {
     if (!config || !kodeTilstand) { setGit(null); return }
@@ -1217,6 +1222,10 @@ export function ChatScreen({
       <Modal visible={artifactsOpen} animationType="slide" onRequestClose={() => setArtifactsOpen(false)}>
         <ArtifactsScreen onClose={() => setArtifactsOpen(false)} />
       </Modal>
+
+      {config ? (
+        <JobsPanel aaben={jobsAaben} onClose={() => setJobsAaben(false)} config={config} />
+      ) : null}
 
       {config ? (
         <WorkspacePicker

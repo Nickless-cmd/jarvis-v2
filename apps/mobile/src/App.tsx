@@ -65,6 +65,7 @@ function AppBody() {
   const [mereAaben, setMereAaben] = useState(false)
   const [compactSignal, setCompactSignal] = useState(0)
   const [workspaceSignal, setWorkspaceSignal] = useState(0)
+  const [jobsSignal, setJobsSignal] = useState(0)
   // Code-fladen. Den er IKKE porten fra en QR: målt 12/9-2026 udsteder
   // `/auth/pair/*` et login-token og binder ikke telefonen til en bestemt
   // desk-instans. Der findes intet led mellem de to enheder at hænge den på,
@@ -250,6 +251,7 @@ function AppBody() {
           // der ikke kan gøre noget er værre end et der ikke er der.
           onCompact={mode === 'snak' && kodeTilstand && kontekst ? () => setCompactSignal((n) => n + 1) : undefined}
           kodeTilstand={kodeTilstand}
+          onJobs={() => setJobsSignal((n) => n + 1)}
           onTilbageTilChat={() => setKodeTilstand(false)}
         />
         {/* Begge skærme holdes monteret: Snak må ikke miste stream-tilstand
@@ -266,6 +268,7 @@ function AppBody() {
               onSkiftFlade={setKodeTilstand}
               onKodeKontekst={setKodeKontekst}
               workspaceSignal={workspaceSignal}
+              jobsSignal={jobsSignal}
             />
           </ErrorBoundary>
         </View>

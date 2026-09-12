@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ActivityIndicator, AppState, StatusBar, StyleSheet, View } from 'react-native'
 import * as Application from 'expo-application'
 import {
@@ -65,12 +65,22 @@ function AppBody() {
   // Højden MÅLES, ikke gættes: bjælken har allerede skiftet højde én gang
   // (44 → 40 dp), og en konstant ville tie stille næste gang den gør det.
   const [headerHeight, setHeaderHeight] = useState(72)
-  const [batterySaver, setBatterySaver] = useState(false)
+  // Batterispare-flaget bruges KUN af presence, aldrig i render. Derfor en ref
+  // og ikke en tilstand: en tilstand ville gentegne, OG - fordi den stod i
+  // effektens afhaengigheder nedenfor - rive broen ned og bygge den op igen ved
+  // hvert skift. Flaget genindlaeses ved hver 'active', altsaa hver gang appen
+  // kommer i forgrunden, saa det skete tit. Maalt 12/9-2026: kommentaren under
+  // broen sagde "hoerer til token'et, ikke til en skaerm" mens arrayet sagde
+  // token OG batteriflag. Nu siger de det samme.
+  const batterySaverRef = useRef(false)
 
   useEffect(() => {
-    void loadBatterySaver().then(setBatterySaver)
+    const gem = (v: boolean) => {
+      batterySaverRef.current = v
+    }
+    void loadBatterySaver().then(gem)
     const sub = AppState.addEventListener('change', (s) => {
-      if (s === 'active') void loadBatterySaver().then(setBatterySaver)
+      if (s === 'active') void loadBatterySaver().then(gem)
     })
     return () => sub.remove()
   }, [])
@@ -81,7 +91,7 @@ function AppBody() {
     if (!config?.authToken) return
     void registerForPush(config)
     const unsub = attachForegroundHandler(config)
-    const stopPresence = startPresenceReporting(config, { getBatterySaver: () => batterySaver })
+    const stopPresence = startPresenceReporting(config, { getBatterySaver: () => batterySaverRef.current })
     // Broen: gør telefonen til en enhed Jarvis kan udføre ting på, ikke bare
     // en skærm han skriver til. Samme livstid som push og presence — den
     // hører til token'et, ikke til en skærm.
@@ -91,7 +101,7 @@ function AppBody() {
       stopPresence()
       stopBro()
     }
-  }, [config?.authToken, batterySaver])
+  }, [config?.authToken])
 
   // Et tryk på en godkendelses-notifikation skal lande i Arbejde → Godkend,
   // ikke i Snak. Ellers fører notifikationen hen til det forkerte rum, og

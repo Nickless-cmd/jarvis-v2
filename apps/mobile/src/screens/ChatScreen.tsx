@@ -746,7 +746,13 @@ export function ChatScreen({
 
   const handleNewSession = () => {
     setPanelOpen(false)
-    if (config) sessions.create(config).catch(() => undefined)
+    // I code-fladen faar den desk's eget navn. Der findes INGEN markoer paa en
+    // code-session - hverken kolonne eller felt; maalt 12/9-2026 er «Kode-session»
+    // udelukkende den titel desk's CodeView giver ved oprettelse. Derfor kan
+    // listen ikke filtreres aerligt (et omdoebt navn ville forsvinde, og en
+    // chat med samme titel ville dukke op), men EN NY kan godt hedde det samme
+    // paa begge enheder.
+    if (config) sessions.create(config, kodeTilstand ? 'Kode-session' : undefined).catch(() => undefined)
   }
 
   const lastUserMessage = [...sessions.messages].reverse().find((message) => message.role === 'user')

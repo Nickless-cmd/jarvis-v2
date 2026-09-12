@@ -63,3 +63,11 @@ it('komprimér-signalet når helt ud til serveren', () => {
   expect(cs).toMatch(/compactSignal/)
   expect(cs).toMatch(/compactNow\(config, sessions\.activeId\)/)
 })
+
+it('en ny samtale i code-fladen faar desk\'s eget navn', () => {
+  // Der findes ingen markoer paa en code-session - «Kode-session» er
+  // udelukkende den titel desk's CodeView giver ved oprettelse. Listen kan
+  // derfor ikke filtreres aerligt, men navnet kan matche paa begge enheder.
+  const cs = kilde('screens/ChatScreen.tsx')
+  expect(cs).toMatch(/sessions\.create\(config, kodeTilstand \? 'Kode-session' : undefined\)/)
+})

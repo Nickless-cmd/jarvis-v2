@@ -28,7 +28,7 @@ interface SessionContextValue {
   loading: boolean
   refresh: (config: ApiConfig) => Promise<void>
   select: (config: ApiConfig, sessionId: string) => Promise<void>
-  create: (config: ApiConfig) => Promise<ChatSession>
+  create: (config: ApiConfig, titel?: string) => Promise<ChatSession>
   appendLocalMessage: (message: ChatMessage) => void
   replaceMessages: (messages: ChatMessage[]) => void
 }
@@ -70,8 +70,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           setLoading(false)
         }
       },
-      create: async (config) => {
-        const session = await createSession(config)
+      create: async (config, titel) => {
+        const session = titel ? await createSession(config, titel) : await createSession(config)
         setSessions((current) => [session, ...current.filter((item) => item.id !== session.id)])
         setActiveId(session.id)
         setMessages([])

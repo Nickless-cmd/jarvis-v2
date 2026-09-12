@@ -28,7 +28,23 @@ _SCHEMA = (
     "id INTEGER PRIMARY KEY AUTOINCREMENT, "
     "run_id TEXT NOT NULL UNIQUE, lane TEXT, provider TEXT, model TEXT, "
     "status TEXT, started_at TEXT, finished_at TEXT, text_preview TEXT, "
-    "error TEXT, capability_id TEXT)"
+    "error TEXT, capability_id TEXT)",
+    # Outcome-stien skriver tre tabeller i ÉT write-lock. Uden dem her fejler
+    # `_persist_visible_run_outcome` midtvejs, og testen ville måle en fejl der
+    # ikke findes i produktion.
+    "CREATE TABLE visible_work_units ("
+    "id INTEGER PRIMARY KEY AUTOINCREMENT, work_id TEXT NOT NULL UNIQUE, "
+    "run_id TEXT NOT NULL UNIQUE, status TEXT NOT NULL, lane TEXT NOT NULL, "
+    "provider TEXT NOT NULL, model TEXT NOT NULL, started_at TEXT, "
+    "finished_at TEXT NOT NULL, user_message_preview TEXT, "
+    "capability_id TEXT, work_preview TEXT)",
+    "CREATE TABLE visible_work_notes ("
+    "id INTEGER PRIMARY KEY AUTOINCREMENT, note_id TEXT NOT NULL UNIQUE, "
+    "work_id TEXT NOT NULL, run_id TEXT NOT NULL UNIQUE, status TEXT NOT NULL, "
+    "lane TEXT NOT NULL, provider TEXT NOT NULL, model TEXT NOT NULL, "
+    "user_message_preview TEXT, capability_id TEXT, work_preview TEXT, "
+    "projection_source TEXT, created_at TEXT NOT NULL, "
+    "finished_at TEXT NOT NULL)",
 )
 _KOLONNER = ("run_id, lane, provider, model, status, started_at, "
              "finished_at, text_preview, error, capability_id")
@@ -37,7 +53,8 @@ _KOLONNER = ("run_id, lane, provider, model, status, started_at, "
 def _db(tmp_path, rows: list[tuple] = ()) -> str:
     sti = str(tmp_path / "v.db")
     con = sqlite3.connect(sti)
-    con.execute(_SCHEMA)
+    for _stmt in _SCHEMA:
+        con.execute(_stmt)
     con.executemany(
         f"INSERT INTO visible_runs ({_KOLONNER}) VALUES (?,?,?,?,?,?,?,?,?,?)",
         rows)
@@ -240,3 +257,84 @@ def test_visible_runs_laeser_kind_igennem():
     vindue = src[i:i + 700]
     assert 'kind="autonomous"' in vindue
     assert "provider=run.provider" in vindue
+
+
+# ── den synlige vej (lukket 12/9-2026) ──────────────────────────────────────
+
+class _SynligRun:
+    run_id = "visible-synlig-1"
+    lane = "primary"
+    provider = "deepseek"
+    model = "deepseek-v4-flash"
+    user_message = "hej fra en synlig tur"
+    session_id = "chat-synlig"
+    trust_all = False
+
+
+def _register_uden_state(monkeypatch):
+    """`register_visible_run` skriver også kontrol-tilstand til `runtime_state`.
+    Den del er ikke under test her — vi vil kun se på `visible_runs`-rækken."""
+    import core.services.visible_runs as vr
+    monkeypatch.setattr(vr, "_set_visible_run_control", lambda *a, **k: None)
+    monkeypatch.setattr(vr, "_set_active_visible_run", lambda *a, **k: None)
+    return vr
+
+
+def test_synlig_vej_skriver_start_raekken(tmp_path, monkeypatch):
+    """Den synlige vej skrev KUN en række ved afslutning — nu også ved START.
+
+    Uden dette var `stamp_visible_run_interrupted` en no-op for alle synlige
+    runs: der var ingen `running`-række at stemple.
+    """
+    sti = _db(tmp_path)
+    _forbind(monkeypatch, vro, sti)
+    vr = _register_uden_state(monkeypatch)
+    vr.register_visible_run(_SynligRun())
+    con = sqlite3.connect(sti)
+    row = con.execute(
+        "SELECT status, finished_at, text_preview FROM visible_runs "
+        "WHERE run_id='visible-synlig-1'").fetchone()
+    con.close()
+    assert row is not None, "en synlig tur skal efterlade en start-række"
+    assert row[0] == "running"
+    assert row[1] == ""
+    assert row[2]
+
+
+def test_synlig_vej_kalder_start_sporet_i_register():
+    """KALDET skal stå i `register_visible_run` — ikke bare navnet i importen."""
+    src = open("core/services/visible_runs.py", encoding="utf-8").read()
+    i = src.index("def register_visible_run(")
+    j = src.index("\ndef ", i + 10)
+    krop = src[i:j]
+    assert "persist_visible_run_start(run)" in krop, \
+        "den synlige vej skal skrive start-sporet i register_visible_run"
+    assert "persist_visible_run_start" in src, "navnet skal være importeret"
+
+
+def test_outcome_overskriver_start_raekken(tmp_path, monkeypatch):
+    """Ved normal afslutning skal outcome-rækken ERSTATTE running-rækken.
+
+    Ellers ville en færdig synlig tur stå `running` for evigt — værre end at
+    mangle rækken. (ON CONFLICT DO UPDATE i `_persist_visible_run_outcome`.)
+    """
+    sti = _db(tmp_path)
+    _forbind(monkeypatch, vro, sti)
+    import core.services.visible_runs as vr
+    monkeypatch.setattr(vr, "get_visible_run_controller", lambda rid: None)
+    monkeypatch.setattr(vr, "_get_visible_run_control", lambda rid: {})
+    monkeypatch.setattr(vro, "write_private_terminal_layers", lambda **k: None)
+    run = _SynligRun()
+    vro.persist_visible_run_start(run)
+    vro._persist_visible_run_outcome(
+        run, status="completed",
+        finished_at="2026-09-12T19:00:05+00:00",
+        text_preview="her er svaret")
+    con = sqlite3.connect(sti)
+    row = con.execute(
+        "SELECT status, finished_at, text_preview FROM visible_runs "
+        "WHERE run_id='visible-synlig-1'").fetchone()
+    con.close()
+    assert row[0] == "completed", "outcome skal overskrive running-rækken"
+    assert row[1] == "2026-09-12T19:00:05+00:00"
+    assert row[2] == "her er svaret"

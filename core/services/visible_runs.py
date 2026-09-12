@@ -6696,6 +6696,14 @@ def _cancel_visible_run(run: VisibleRun) -> AsyncIterator[str]:
 
 def register_visible_run(run: VisibleRun) -> VisibleRunController:
     started_at = datetime.now(UTC).isoformat()
+    # 12/9-2026: skriv start-sporet i `visible_runs` med det samme. Den synlige
+    # vej skrev tidligere KUN en række ved afslutning (`_persist_visible_run_outcome`
+    # kræver `finished_at`), så et run der blev dræbt midt i turen efterlod ingen
+    # række — og `stamp_visible_run_interrupted` var derfor en no-op for synlige
+    # runs. Nu skrives rækken ved START, præcis som den autonome vej gør, og de
+    # to døds-detektorer (nedluknings-sweepen + boot-reconcileren) kan stemple den.
+    # Self-safe: `persist_visible_run_start` kaster aldrig.
+    persist_visible_run_start(run)
     controller = VisibleRunController(
         run_id=run.run_id,
         lane=run.lane,
@@ -7452,5 +7460,6 @@ from core.services.visible_runs_outcomes import (  # noqa: E402
     _preview_text,
     _session_last_role,
     _survival_or_fallback,
+    persist_visible_run_start,
     set_last_visible_run_outcome,
 )

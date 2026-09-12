@@ -566,6 +566,79 @@ def set_last_visible_run_outcome(
     ).start()
 
 
+def persist_visible_run_start(run: "_vr.VisibleRun") -> None:
+    """Skriv en ``running``-række i ``visible_runs`` i det øjeblik runnet starter.
+
+    Baggrund (målt 12/9-2026): rækken blev KUN skrevet ved afslutning
+    (``_persist_visible_run_outcome`` kræver ``finished_at``). Et run hvis
+    daemon-tråd blev dræbt af en genstart efterlod derfor INTET spor — hverken
+    i ``visible_runs`` eller i in-flight-trackeren. Wakeup-dispatcheren satte
+    ``dispatched: True`` (fordi tråden startede), men der kom aldrig et svar, og
+    ingen kunne se at et run havde været i gang. Spørgsmålet «fyret den?» kunne
+    kun besvares ved at grave i event-loggen i hånden.
+
+    ``finished_at=''`` er den eksisterende idiom i denne fil for «ikke
+    afsluttet» — ``run_er_terminal`` læser netop ``bool(finished_at)``, så en
+    igangværende række tæller korrekt som ikke-terminal. Ved normal afslutning
+    overskriver ``_persist_visible_run_outcome`` rækken (ON CONFLICT); ved død
+    stempler ``stamp_visible_run_interrupted`` den. Self-safe: kaster aldrig.
+    """
+    rid = str(getattr(run, "run_id", "") or "")
+    if not rid:
+        return
+    try:
+        with connect() as conn:
+            conn.execute(
+                """
+                INSERT INTO visible_runs (
+                    run_id, lane, provider, model, status,
+                    started_at, finished_at, text_preview, error, capability_id
+                )
+                VALUES (?, ?, ?, ?, 'running', ?, '', ?, NULL, NULL)
+                ON CONFLICT(run_id) DO NOTHING
+                """,
+                (
+                    rid,
+                    str(getattr(run, "lane", "") or ""),
+                    str(getattr(run, "provider", "") or ""),
+                    str(getattr(run, "model", "") or ""),
+                    datetime.now(UTC).isoformat(),
+                    _preview_text(getattr(run, "user_message", "") or ""),
+                ),
+            )
+    except Exception:
+        logger.debug("kunne ikke skrive start-raekken for %s", rid, exc_info=True)
+
+
+def stamp_visible_run_interrupted(run_id: str, *, reason: str = "") -> bool:
+    """Stempl en ``running``-række som ``interrupted`` — kun hvis den stadig kører.
+
+    Smal og idempotent: rører ALDRIG en række der allerede har en terminal
+    status, så et rigtigt udfald ikke kan overskrives af en sweep der kommer
+    bagefter. Kaldes fra de to steder der allerede VED at et run blev dræbt:
+    nedluknings-sweepen i ``app.py`` og boot-reconcileren. Returnerer True hvis
+    rækken faktisk blev stemplet. Self-safe: kaster aldrig.
+    """
+    rid = str(run_id or "").strip()
+    if not rid:
+        return False
+    try:
+        with connect() as conn:
+            cur = conn.execute(
+                "UPDATE visible_runs SET status = 'interrupted', finished_at = ?, "
+                "error = ? WHERE run_id = ? AND status = 'running'",
+                (
+                    datetime.now(UTC).isoformat(),
+                    str(reason or "")[:200] or None,
+                    rid,
+                ),
+            )
+            return bool(cur.rowcount)
+    except Exception:
+        logger.debug("kunne ikke stemple %s interrupted", rid, exc_info=True)
+        return False
+
+
 def _persist_visible_run_outcome(
     run: "_vr.VisibleRun",
     *,

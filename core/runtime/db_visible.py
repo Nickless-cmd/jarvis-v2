@@ -95,6 +95,7 @@ def recent_visible_runs(
     *,
     user_id: str | None = None,
     include_unassigned: bool = False,
+    include_running: bool = False,
 ) -> list[dict[str, object]]:
     """De seneste runs. UDEN `user_id` er der intet filter.
 
@@ -105,6 +106,14 @@ def recent_visible_runs(
     er en member eller gaest. Ruten sender nu kalderens identitet med.
     """
     scope_sql, scope_params = _run_user_scope(user_id, include_unassigned)
+    # 12/9-2026: `visible_runs` får nu en `running`-række i det øjeblik et run
+    # STARTER (persist_visible_run_start). De 43 kaldere her læser «den sidste
+    # tur» og har altid fået en AFLUTTET række — en halvfærdig række med tom
+    # `text_preview` ville ændre deres billede. Vi holder derfor den gamle
+    # kontrakt som default og lader kalderen tilvælge igangværende runs
+    # eksplicit (companion_presence har sin egen query til dét spørgsmål).
+    if not include_running:
+        scope_sql = f"({scope_sql}) AND status != 'running'"
     with connect() as conn:
         rows = conn.execute(
             """

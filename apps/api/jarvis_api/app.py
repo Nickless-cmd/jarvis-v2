@@ -577,6 +577,16 @@ def create_app() -> FastAPI:
                 mark_interrupted(_rid,
                                  reason="api-nedlukning",
                                  summary="processen lukkede mens turen koerte")
+                # 12/9-2026: og spejl stemplet ind i `visible_runs`, så rækken
+                # ikke bliver staaende `running` for evigt. Kun `running` rækker
+                # rammes — et rigtigt udfald kan ikke overskrives.
+                try:
+                    from core.services.visible_runs_outcomes import (
+                        stamp_visible_run_interrupted,
+                    )
+                    stamp_visible_run_interrupted(_rid, reason="api-nedlukning")
+                except Exception:
+                    pass
         except Exception:
             logger.debug("kunne ikke bogfoere afbrudte ture ved nedlukning", exc_info=True)
         logger.info("jarvis api shutdown begin")

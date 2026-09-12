@@ -2,6 +2,17 @@ import type { ContentBlock, StreamEvent } from './sseProtocol'
 
 export type StreamStatus = 'idle' | 'working' | 'interrupted' | 'hung' | 'error' | 'done'
 
+export interface ResearchUiState {
+  runId: string
+  tier: string
+  phase: string
+  completedTasks: number
+  totalTasks: number
+  sources: number
+  warning: string
+  quality: string
+}
+
 export interface StreamState {
   status: StreamStatus
   activeRunId: string | null
@@ -10,6 +21,7 @@ export interface StreamState {
   lane: string
   blocks: ContentBlock[]
   workingStep: string | null
+  research: ResearchUiState | null
   usage: { input: number; output: number; cacheHit: number; cacheMiss: number }
 }
 
@@ -22,6 +34,7 @@ export function initialStreamState(): StreamState {
     lane: '',
     blocks: [],
     workingStep: null,
+    research: null,
     usage: { input: 0, output: 0, cacheHit: 0, cacheMiss: 0 }
   }
 }
@@ -48,6 +61,7 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
         lane: event.message.lane,
         blocks: [],
         workingStep: null,
+        research: null,
         usage: { ...state.usage, input: event.message.usage.input_tokens, output: 0 }
       }
 
@@ -110,6 +124,55 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
     }
 
     case 'system_event':
+      if (event.kind === 'research_started') {
+        return {
+          ...state,
+          research: {
+            runId: String(event.payload.research_run_id ?? ''),
+            tier: String(event.payload.tier ?? 'inline'),
+            phase: 'planning',
+            completedTasks: 0,
+            totalTasks: 0,
+            sources: 0,
+            warning: '',
+            quality: '',
+          }
+        }
+      }
+      if (event.kind === 'research_plan' && state.research) {
+        const tasks = Array.isArray(event.payload.tasks) ? event.payload.tasks.length : 0
+        return { ...state, research: { ...state.research, phase: 'planning', totalTasks: tasks } }
+      }
+      if (event.kind === 'research_progress' && state.research) {
+        return {
+          ...state,
+          research: {
+            ...state.research,
+            phase: String(event.payload.phase ?? state.research.phase),
+            completedTasks: Number(event.payload.completed_tasks ?? state.research.completedTasks),
+            totalTasks: Number(event.payload.total_tasks ?? state.research.totalTasks),
+            sources: Number(event.payload.sources ?? state.research.sources),
+          }
+        }
+      }
+      if (event.kind === 'research_source' && state.research) {
+        return { ...state, research: { ...state.research, sources: state.research.sources + 1 } }
+      }
+      if (event.kind === 'research_warning' && state.research) {
+        const warning = String(event.payload.error ?? event.payload.warning ?? 'Research er delvist begrænset')
+        return { ...state, research: { ...state.research, warning } }
+      }
+      if (event.kind === 'research_completed' && state.research) {
+        return {
+          ...state,
+          research: {
+            ...state.research,
+            phase: 'completed',
+            sources: Number(event.payload.sources ?? state.research.sources),
+            quality: String(event.payload.quality ?? ''),
+          }
+        }
+      }
       if (event.kind === 'run') {
         const runId = typeof event.payload.run_id === 'string' ? event.payload.run_id : ''
         return runId ? { ...state, activeRunId: runId } : state

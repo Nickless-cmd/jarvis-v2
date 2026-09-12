@@ -41,6 +41,38 @@ it('captures run id from system event', () => {
   expect(state.activeRunId).toBe('visible-1')
 })
 
+it('reducerer additive research-events til separat UI-state', () => {
+  let state = streamReducer(initialStreamState(), {
+    type: 'system_event', kind: 'research_started',
+    payload: { research_run_id: 'research-1', tier: 'orchestrated' }
+  })
+  state = streamReducer(state, {
+    type: 'system_event', kind: 'research_plan',
+    payload: { tasks: [{}, {}, {}] }
+  })
+  state = streamReducer(state, {
+    type: 'system_event', kind: 'research_progress',
+    payload: { phase: 'researching', completed_tasks: 2, total_tasks: 3, sources: 4 }
+  })
+  expect(state.research).toMatchObject({
+    runId: 'research-1', tier: 'orchestrated', phase: 'researching',
+    completedTasks: 2, totalTasks: 3, sources: 4,
+  })
+})
+
+it('bevarer research-resultatet til næste message_start', () => {
+  let state = streamReducer(initialStreamState(), {
+    type: 'system_event', kind: 'research_started',
+    payload: { research_run_id: 'r1', tier: 'inline' }
+  })
+  state = streamReducer(state, {
+    type: 'system_event', kind: 'research_completed',
+    payload: { quality: 'passed', sources: 5 }
+  })
+  state = streamReducer(state, { type: 'message_stop' })
+  expect(state.research).toMatchObject({ phase: 'completed', quality: 'passed', sources: 5 })
+})
+
 // Regression (samme bug som desk, sort skærm): en tool_result-content-blok må
 // ALDRIG efterlade et undefined-hul i blocks, og konsumenter må ikke crashe når
 // arrayet ER sparsomt.

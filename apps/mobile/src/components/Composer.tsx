@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import { Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
+import { Animated, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { haptik } from '../lib/haptics'
-import { ArrowUp, AudioLines, ChevronDown, Cpu, FileText, Mic, Plus, ShieldCheck, Square } from 'lucide-react-native'
+import { ArrowUp, AudioLines, ChevronDown, Cpu, FileText, Mic, Plus, SearchCheck, ShieldCheck, Square } from 'lucide-react-native'
 import type { ApprovalMode } from './PermissionPicker'
-import { shortModelLabel } from '../lib/modelLabel'
+import type { DictationState } from '../lib/useComposerDictation'
+import { DictationBar } from './DictationBar'
 import { tokens } from '../theme/tokens'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 
@@ -29,7 +30,8 @@ export function Composer({
   onStop,
   onPressModel,
   onAttach,
-  onMic,
+  onDictate,
+  onConversation,
   attachments,
   onRemoveAttachment,
   onFocusChange,
@@ -39,7 +41,13 @@ export function Composer({
   onResearchModeChange,
   permission,
   onPressPermission,
-  indsaet
+  indsaet,
+  dictationState = 'idle',
+  dictationElapsedMs = 0,
+  dictationError,
+  dictationLevel,
+  onStopDictation,
+  onCancelDictation,
 }: {
   disabled?: boolean
   working?: boolean
@@ -48,7 +56,8 @@ export function Composer({
   onStop: () => void
   onPressModel?: () => void
   onAttach?: () => void
-  onMic?: () => void
+  onDictate?: () => void
+  onConversation?: () => void
   attachments?: { id: string; uri: string; name: string; mime: string; status?: 'uploading' | 'ready' | 'error'; progress?: number }[]
   onRemoveAttachment?: (id: string) => void
   /** Løftes ud, så skærmen kan vide om komponisten er i brug. */
@@ -66,6 +75,12 @@ export function Composer({
    *  tekst to gange, ændrer strengen sig ikke, og en effekt på strengen alene
    *  ville tie anden gang. */
   indsaet?: { tekst: string; n: number }
+  dictationState?: DictationState
+  dictationElapsedMs?: number
+  dictationError?: string
+  dictationLevel?: Animated.Value
+  onStopDictation?: () => void
+  onCancelDictation?: () => void
 }) {
   const tokens = useTheme()
   const styles = useStyles(makestyles)
@@ -80,7 +95,7 @@ export function Composer({
   const inputRef = useRef<TextInput>(null)
   // Hvileform: intet skrevet, ikke i fokus, intet vedhæftet, ikke i gang.
   const att = attachments ?? []
-  const resting = !text && !focused && !wantFocus && att.length === 0 && !working
+  const resting = !text && !focused && !wantFocus && att.length === 0 && !working && dictationState === 'idle'
 
   // Arbejdsformen er lige monteret efter et tryk på hvilepillen → giv feltet
   // fokus, så tastaturet kommer frem uden et ekstra tryk.
@@ -148,13 +163,13 @@ export function Composer({
             <Plus size={22} color={tokens.color.fg1} strokeWidth={2} />
           </Pressable>
           <Text style={styles.restPlaceholder} numberOfLines={1}>Skriv til Jarvis</Text>
-          <Pressable accessibilityRole="button" accessibilityLabel="Diktér" onPress={onMic} hitSlop={6} style={styles.iconBtn}>
+          <Pressable testID="composer-dictate" accessibilityRole="button" accessibilityLabel="Dikter" onPress={onDictate} hitSlop={6} style={styles.iconBtn}>
             <Mic size={21} color={tokens.color.fg1} strokeWidth={1.8} />
           </Pressable>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Stemme"
-            onPress={onMic}
+            accessibilityLabel="Start samtale"
+            onPress={onConversation}
             style={({ pressed }) => [styles.sendBtn, pressed ? styles.pressed : null]}
           >
             <AudioLines size={19} color={tokens.color.bg0} strokeWidth={2} />
@@ -208,6 +223,14 @@ export function Composer({
             ))}
           </ScrollView>
         ) : null}
+        <DictationBar
+          state={dictationState}
+          elapsedMs={dictationElapsedMs}
+          error={dictationError}
+          level={dictationLevel}
+          onStop={() => onStopDictation?.()}
+          onCancel={() => onCancelDictation?.()}
+        />
         <TextInput
           ref={inputRef}
           testID="composer-input"
@@ -222,42 +245,42 @@ export function Composer({
           style={styles.input}
         />
         <View style={styles.controls}>
-          <View style={styles.left}>
+          <View testID="composer-control-row" style={styles.left}>
             <Pressable accessibilityRole="button" accessibilityLabel="Vedhæft" onPress={onAttach} hitSlop={6} style={styles.iconBtn}>
               <Plus size={22} color={tokens.color.fg1} strokeWidth={2} />
             </Pressable>
-            {modelLabel ? (
-              <Pressable
-                testID="composer-model"
-                accessibilityRole="button"
-                accessibilityLabel={`Model: ${modelLabel}`}
-                onPress={onPressModel}
-                style={styles.modelPill}
-              >
-                <Cpu size={15} color={tokens.color.fg2} strokeWidth={2} />
-                <Text style={styles.modelText} numberOfLines={1}>{shortModelLabel(modelLabel)}</Text>
-              </Pressable>
-            ) : null}
-            {onResearchModeChange ? (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityState={{ selected: Boolean(researchMode) }}
-                onPress={() => onResearchModeChange(!researchMode)}
-                style={[styles.researchPill, researchMode && styles.researchPillOn]}
-              >
-                <Text style={[styles.researchText, researchMode && styles.researchTextOn]}>Research</Text>
-              </Pressable>
-            ) : null}
             {onPressPermission ? (
               <Pressable
                 testID="composer-permission"
                 accessibilityRole="button"
                 accessibilityLabel={`Tilladelser: ${permission === 'trust' ? 'Fuld adgang' : 'Spørg først'}`}
                 onPress={onPressPermission}
-                style={[styles.permissionButton, permission === 'trust' && styles.permissionButtonTrust]}
+                style={[styles.controlIcon, permission === 'trust' && styles.controlIconOn]}
               >
-                <ShieldCheck size={16} color={permission === 'trust' ? tokens.color.bg0 : tokens.color.fg2} strokeWidth={2} />
-                <ChevronDown size={12} color={permission === 'trust' ? tokens.color.bg0 : tokens.color.fg2} strokeWidth={2} />
+                <ShieldCheck size={18} color={permission === 'trust' ? tokens.color.bg0 : tokens.color.fg2} strokeWidth={2} />
+              </Pressable>
+            ) : null}
+            {modelLabel ? (
+              <Pressable
+                testID="composer-model"
+                accessibilityRole="button"
+                accessibilityLabel={`Model: ${modelLabel}`}
+                onPress={onPressModel}
+                style={styles.controlIcon}
+              >
+                <Cpu size={18} color={tokens.color.fg2} strokeWidth={2} />
+              </Pressable>
+            ) : null}
+            {onResearchModeChange ? (
+              <Pressable
+                testID="composer-research"
+                accessibilityRole="button"
+                accessibilityLabel={`Research: ${researchMode ? 'Til' : 'Fra'}`}
+                accessibilityState={{ selected: Boolean(researchMode) }}
+                onPress={() => onResearchModeChange(!researchMode)}
+                style={[styles.controlIcon, researchMode && styles.controlIconOn]}
+              >
+                <SearchCheck size={18} color={researchMode ? tokens.color.bg0 : tokens.color.fg2} strokeWidth={2} />
               </Pressable>
             ) : null}
           </View>
@@ -274,14 +297,15 @@ export function Composer({
                 <ChevronDown size={20} color={tokens.color.fg1} strokeWidth={2.2} />
               </Pressable>
             ) : null}
-            <Pressable accessibilityRole="button" accessibilityLabel="Diktér" onPress={onMic} hitSlop={6} style={styles.iconBtn}>
+            <Pressable testID="composer-dictate" accessibilityRole="button" accessibilityLabel="Dikter" onPress={onDictate} hitSlop={6} style={styles.iconBtn}>
               <Mic size={21} color={tokens.color.fg1} strokeWidth={1.8} />
             </Pressable>
             <Pressable
               testID="composer-button"
               accessibilityRole="button"
               disabled={(disabled && !working) || submitting}
-              onPress={working ? () => { void haptik('stop'); onStop() } : submit}
+              accessibilityLabel={working ? 'Stop svar' : text || att.length ? 'Send' : 'Start samtale'}
+              onPress={working ? () => { void haptik('stop'); onStop() } : text || att.length ? submit : onConversation}
               style={({ pressed }) => [
                 styles.sendBtn,
                 working ? styles.stopBtn : null,
@@ -411,40 +435,15 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
   },
   iconPlus: { color: tokens.color.fg1, fontSize: 20, lineHeight: 22, fontWeight: '600' },
   mic: { fontSize: 15 },
-  // Chippen bar før hele strengen «deepseek · deepseek-v4-flash» og åd over
-  // halvdelen af rækken. Nu: et lille ikon + modellens egen del af navnet.
-  modelPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 10,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: tokens.color.bg3,
-    flexShrink: 1
-  },
-  modelText: { color: tokens.color.fg2, fontSize: 12, fontWeight: '600', flexShrink: 1 },
-  permissionButton: {
-    flexDirection: 'row',
+  controlIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 2,
-    width: 42,
-    height: 30,
-    borderRadius: 15,
     backgroundColor: tokens.color.bg3
   },
-  permissionButtonTrust: { backgroundColor: tokens.color.accent },
-  researchPill: {
-    height: 30,
-    justifyContent: 'center',
-    paddingHorizontal: 10,
-    borderRadius: 15,
-    backgroundColor: tokens.color.bg3
-  },
-  researchPillOn: { backgroundColor: tokens.color.accent },
-  researchText: { color: tokens.color.fg2, fontSize: 12, fontWeight: '700' },
-  researchTextOn: { color: tokens.color.bg0 },
+  controlIconOn: { backgroundColor: tokens.color.accent },
   sendBtn: {
     width: 40,
     height: 40,

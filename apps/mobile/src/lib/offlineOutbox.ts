@@ -2,6 +2,15 @@ import * as SecureStore from 'expo-secure-store'
 
 const OUTBOX_KEY = 'jarvis.mobile.offlineOutbox'
 
+export interface OutboxTurnControls {
+  model?: string
+  providerChoice?: string
+  mode?: 'chat' | 'cowork' | 'code'
+  thinkingMode?: 'think' | 'fast'
+  approvalMode?: 'ask' | 'trust'
+  researchMode?: boolean
+}
+
 export type OutboxItem =
   | {
       id: string
@@ -11,6 +20,7 @@ export type OutboxItem =
       sessionId: string
       text: string
       attachmentIds?: string[]
+      controls?: OutboxTurnControls
       lastError?: string
     }
   | {

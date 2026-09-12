@@ -167,16 +167,25 @@ export interface ActiveRunSnapshot {
   sessionId: string
   runId: string
   status: string
+  researchRunId?: string
+  researchStatus?: string
+  researchTier?: string
 }
 
 export async function getActiveRunSnapshot(config: ApiConfig): Promise<ActiveRunSnapshot[]> {
   const data = await apiFetch<{
-    sessions?: { session_id?: string; run_id?: string; status?: string }[]
+    sessions?: {
+      session_id?: string; run_id?: string; status?: string
+      research_run_id?: string; research_status?: string; research_tier?: string
+    }[]
   }>(config, '/chat/active-runs')
   return (data.sessions ?? []).map((item) => ({
     sessionId: String(item.session_id ?? ''),
     runId: String(item.run_id ?? ''),
-    status: String(item.status ?? 'working')
+    status: String(item.status ?? 'working'),
+    researchRunId: item.research_run_id ? String(item.research_run_id) : undefined,
+    researchStatus: item.research_status ? String(item.research_status) : undefined,
+    researchTier: item.research_tier ? String(item.research_tier) : undefined,
   })).filter((item) => item.sessionId)
 }
 

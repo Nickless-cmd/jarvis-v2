@@ -18,7 +18,9 @@ import { useKeyboardHeight } from '../lib/useKeyboardHeight'
 import { useConnectivity } from '../lib/useConnectivity'
 import { ApprovalCard } from '../components/ApprovalCard'
 import { Composer } from '../components/Composer'
+import { ResearchStatus } from '../components/ResearchStatus'
 import { useVoiceConversation } from '../lib/useVoiceConversation'
+import { useComposerDictation } from '../lib/useComposerDictation'
 import { VoiceOverlay } from '../components/VoiceOverlay'
 import type { ContentBlock } from '../lib/sseProtocol'
 import { ErrorBanner } from '../components/ErrorBanner'
@@ -26,7 +28,7 @@ import { ErrorCard } from '../components/ErrorCard'
 import { GreetingHero } from '../components/GreetingHero'
 import { MessageList, type MessageListHandle } from '../components/MessageList'
 import { ScrollToBottom } from '../components/ScrollToBottom'
-import { ModelPicker, type ModelChoice, type ThinkingMode } from '../components/ModelPicker'
+import { ModelPicker, type ModelChoice } from '../components/ModelPicker'
 import { PermissionPicker, type ApprovalMode } from '../components/PermissionPicker'
 import { SidePanel } from '../components/SidePanel'
 import { SettingsScreen } from './SettingsScreen'
@@ -43,7 +45,7 @@ import { ActivityCenterScreen } from './ActivityCenterScreen'
 import { cancelActiveRun, cancelRunById, denyTool, getActiveRunSnapshot, getActiveRuns, getModelOptions, uploadAttachment, whoami } from '../lib/apiClient'
 import { computeUnread } from '../lib/sessionStatus'
 import { loadLastSeen, markSeen } from '../lib/lastSeen'
-import { loadLastSession, saveLastSession, loadModelChoice, saveModelChoice } from '../lib/sessionStore'
+import { loadLastSession, saveLastSession } from '../lib/sessionStore'
 import { bubble } from '../lib/bubbleModule'
 import {
   clearRunInProgressNotification,
@@ -51,7 +53,6 @@ import {
   showRunInProgressNotification,
   submitNotificationReply
 } from '../lib/push'
-import { outgoingChatText } from '../lib/chatPrompt'
 import { computeRuntimePolicy } from '../lib/mobileRuntimePolicy'
 import { loadBatterySaver } from '../lib/batteryPrefs'
 import { enqueueOutboxItem, loadOutbox, removeOutboxItem, markOutboxFailed } from '../lib/offlineOutbox'
@@ -202,11 +203,8 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
   >([])
   const [displayName, setDisplayName] = useState('Jarvis')
   const [modelChoices, setModelChoices] = useState<ModelChoice[]>([])
-  const [model, setModel] = useState<ModelChoice | null>(null)
   const [modelPickerOpen, setModelPickerOpen] = useState(false)
   const [permissionPickerOpen, setPermissionPickerOpen] = useState(false)
-  const [researchMode, setResearchMode] = useState(false)
-  const [thinkingMode, setThinkingMode] = useState<ThinkingMode>('think')
   // Indstillinger PR. SAMTALE. Én samtale kan handle om kode og en anden om
   // aftaler; de har ikke brug for samme model eller samme værktøjs-omfang.
   const [chatCfg, setChatCfg] = useState<ChatIndstillinger>(STANDARD)
@@ -221,14 +219,6 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
   const [ctxUdklip, setCtxUdklip] = useState(false)
   const [indsaet, setIndsaet] = useState<{ tekst: string; n: number }>({ tekst: '', n: 0 })
   const [enhedsNavn, setEnhedsNavn] = useState('')
-  // FEATURE 1: gendan sidst valgte model på tværs af app-genstart. Sættes
-  // ubetinget når der findes et gemt valg — whoami-defaulten bruger `cur ??`
-  // og bevarer derfor det gemte uanset rækkefølge.
-  useEffect(() => {
-    void loadModelChoice().then((m) => {
-      if (m) setModel(m)
-    })
-  }, [])
   const connectivity = useConnectivity(config ?? null)
   // Server-side run-status for den aktive session (delt sandhed via /chat/active-
   // runs). Forhindrer at man sender ind i et kørende svar (= nudge-swallow,
@@ -323,7 +313,10 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
         if (cancelled) return
         try {
           if (item.kind === 'chat_message') {
-            stream.send(config, item.sessionId, item.text, { attachmentIds: item.attachmentIds })
+            stream.send(config, item.sessionId, item.text, {
+              ...item.controls,
+              attachmentIds: item.attachmentIds,
+            })
           } else if (item.kind === 'approval_action') {
             if (item.action === 'approve') {
               // Approval-id'er deles mellem chat/work; endpointet er serverens sandhed.
@@ -363,16 +356,13 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
             .then((opts) => {
               const choices = [OWNER_DEFAULT, ...opts.map((o) => ({ model: o.model, providerChoice: o.provider, label: o.label }))]
               setModelChoices(choices)
-              setModel((cur) => cur ?? OWNER_DEFAULT)
             })
             .catch(() => {
               setModelChoices([OWNER_DEFAULT])
-              setModel((cur) => cur ?? OWNER_DEFAULT)
             })
         } else {
           // Member/guest: låst til Standard/Pro.
           setModelChoices(MEMBER_CHOICES)
-          setModel((cur) => cur ?? MEMBER_CHOICES[0]!)
         }
       })
       .catch(() => undefined)
@@ -474,8 +464,6 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
     return () => { levende = false }
   }, [sessions.activeId])
 
-  const modelOpts = () => (model ? { model: model.model, providerChoice: model.providerChoice } : {})
-
   const ensureSessionAndSend = async (text: string) => {
     if (!config) return
     if (pendingAttachments.some((a) => a.status === 'uploading')) return
@@ -487,32 +475,26 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
       await enqueueOutboxItem({
         kind: 'chat_message',
         sessionId: sessions.activeId,
-        text: outgoingChatText(text, researchMode),
-        attachmentIds: pendingAttachments.filter((a) => a.status !== 'error' && a.status !== 'uploading').map((a) => a.uploadId ?? a.id)
+        text,
+        attachmentIds: pendingAttachments.filter((a) => a.status !== 'error' && a.status !== 'uploading').map((a) => a.uploadId ?? a.id),
+        controls: tilStreamFelter(chatCfg),
       })
       setOutboxCount((await loadOutbox()).length)
       setPendingAttachments([])
-      if (researchMode) setResearchMode(false)
       return
     }
     const sessionId = sessions.activeId ?? (await sessions.create(config)).id
+    if (!sessions.activeId) void gemIndstillinger(sessionId, chatCfg)
     const readyAttachments = pendingAttachments.filter((a) => a.status !== 'error' && a.status !== 'uploading')
     const attachmentIds = readyAttachments.length
       ? readyAttachments.map((a) => a.uploadId ?? a.id)
       : undefined
-    // Samtalens egne valg vinder over de globale. En tom per-chat-model
-    // betyder «som appen plejer» — ikke «ingen model».
-    const cfg = tilStreamFelter(chatCfg, model?.model ?? '')
-    stream.send(config, sessionId, outgoingChatText(text, researchMode), {
-      ...modelOpts(),
-      model: cfg.model,
+    const cfg = tilStreamFelter(chatCfg)
+    stream.send(config, sessionId, text, {
+      ...cfg,
       attachmentIds,
-      thinkingMode,
-      approvalMode: cfg.approvalMode,
-      mode: cfg.mode
     })
     setPendingAttachments([])
-    if (researchMode) setResearchMode(false)
   }
 
   // Samtale-mode (Trin 3): voice-hook. sendMessage=ensureSessionAndSend, text fra text-blocks.
@@ -524,7 +506,31 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
     blocks: stream.state.blocks,
     sendMessage: (t: string) => { void ensureSessionAndSend(t) },
     extractText: _voiceExtract,
+    readAllResponses: chatCfg.stemme,
   })
+  const dictation = useComposerDictation(config)
+  const dictationSequence = useRef(0)
+  const dictationCancelRef = useRef(dictation.cancel)
+  const dictationSessionRef = useRef(sessions.activeId)
+  useEffect(() => { dictationCancelRef.current = dictation.cancel }, [dictation.cancel])
+
+  useEffect(() => {
+    if (!dictation.text) return
+    dictationSequence.current += 1
+    setIndsaet({ tekst: dictation.text, n: dictationSequence.current })
+    dictation.clearResult()
+  }, [dictation.text, dictation.clearResult])
+
+  useEffect(() => {
+    if (String(appState).match(/inactive|background/)) void dictationCancelRef.current()
+  }, [appState])
+
+  useEffect(() => {
+    if (dictationSessionRef.current !== sessions.activeId) {
+      dictationSessionRef.current = sessions.activeId
+      void dictationCancelRef.current()
+    }
+  }, [sessions.activeId])
 
   // Upload billede (kamera/galleri) → stage som ventende vedhæftning i composeren
   // (BUG3: ikke auto-send). Sendes når brugeren trykker send, med valgfri besked.
@@ -814,11 +820,12 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
             setComposerHeight((prev) => (Math.abs(prev - h) > 1 ? h : prev))
           }}
         >
+        <ResearchStatus research={stream.state.research} />
         <Composer
           indsaet={indsaet}
           disabled={!config || pendingAttachments.some((a) => a.status === 'uploading')}
           working={stream.state.status === 'working' || serverBusy}
-          modelLabel={model?.label}
+          modelLabel={chatCfg.model?.label ?? modelChoices[0]?.label}
           onSend={ensureSessionAndSend}
           onStop={() => {
             if (!config) return
@@ -832,7 +839,20 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
           }}
           onPressModel={() => setModelPickerOpen(true)}
           onAttach={() => { opdaterKontekst(); setAttachMenuOpen(true) }}
-          onMic={voice.enter}
+          onDictate={() => {
+            voice.exit()
+            void dictation.start()
+          }}
+          onConversation={() => {
+            void dictation.cancel()
+            voice.enter()
+          }}
+          dictationState={dictation.state}
+          dictationElapsedMs={dictation.elapsedMs}
+          dictationError={dictation.error}
+          dictationLevel={dictation.level}
+          onStopDictation={() => { void dictation.stop() }}
+          onCancelDictation={() => { void dictation.cancel() }}
           attachments={pendingAttachments}
           onRemoveAttachment={(id) =>
             setPendingAttachments((prev) => prev.filter((a) => a.id !== id))
@@ -840,8 +860,13 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
           onFocusChange={setComposerFocused}
           showJumpToBottom={scrolledUp && composerFocused}
           onJumpToBottom={jumpToBottom}
-          researchMode={researchMode}
-          onResearchModeChange={setResearchMode}
+          researchMode={chatCfg.researchMode === 'on'}
+          onResearchModeChange={(enabled) => {
+            const next = { researchMode: enabled ? 'on' as const : 'off' as const }
+            const sid = sessions.activeId
+            setChatCfg((current) => ({ ...current, ...next }))
+            if (sid) void gemIndstillinger(sid, next).then(setChatCfg).catch(() => undefined)
+          }}
           permission={chatCfg.spoergFoerst ? 'ask' : 'trust'}
           onPressPermission={() => setPermissionPickerOpen(true)}
         />
@@ -851,12 +876,19 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
       <ModelPicker
         open={modelPickerOpen}
         choices={modelChoices}
-        selectedLabel={model?.label}
-        thinkingMode={thinkingMode}
-        onThinkingModeChange={setThinkingMode}
+        selectedLabel={chatCfg.model?.label ?? modelChoices[0]?.label}
+        thinkingMode={chatCfg.thinkingMode}
+        onThinkingModeChange={(thinkingMode) => {
+          const sid = sessions.activeId
+          const next = { thinkingMode }
+          setChatCfg((current) => ({ ...current, ...next }))
+          if (sid) void gemIndstillinger(sid, next).then(setChatCfg).catch(() => undefined)
+        }}
         onSelect={(m) => {
-          setModel(m)
-          void saveModelChoice(m)
+          const sid = sessions.activeId
+          const model = m.model ? m : null
+          setChatCfg((current) => ({ ...current, model }))
+          if (sid) void gemIndstillinger(sid, { model }).then(setChatCfg).catch(() => undefined)
         }}
         onClose={() => setModelPickerOpen(false)}
       />
@@ -924,7 +956,7 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
         visible={chatCfgOpen}
         onSearch={() => setSoegAaben(true)}
         cfg={chatCfg}
-        modeller={modelChoices.filter((c) => c.model).map((c) => ({ model: c.model, label: c.label }))}
+        modeller={modelChoices.filter((c) => c.model)}
         onChange={(next) => {
           const sid = sessions.activeId
           if (!sid) return
@@ -987,7 +1019,6 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
       <VoiceOverlay
         active={voice.active}
         state={voice.state}
-        mode={voice.mode}
         lastProvider={voice.lastProvider}
         level={voice.level}
         problem={voice.problem}
@@ -996,7 +1027,6 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
         approval={stream.approval && config ? stream.approval : null}
         onApprove={config ? () => void stream.approve(config) : undefined}
         onDeny={config ? () => void stream.deny(config) : undefined}
-        setMode={voice.setMode}
         startListening={voice.startListening}
         stopListening={voice.stopListening}
         exit={voice.exit}

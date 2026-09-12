@@ -33,6 +33,7 @@ interface StreamContextValue {
       mode?: 'chat' | 'cowork' | 'code'
       thinkingMode?: 'think' | 'fast'
       approvalMode?: 'ask' | 'trust'
+      researchMode?: boolean
     }
   ) => void
   stop: (config: ApiConfig) => Promise<void>
@@ -45,6 +46,18 @@ interface StreamContextValue {
   /** Mobil lifecycle: slip den lokale SSE når appen backgrounder, men lad
    * server-runnet leve videre. Foreground sync/follow samler op igen. */
   detachForBackground: () => void
+  /** Koldstart/reconnect: rekonstruér research-statusfladen fra et snapshot
+   * (spec §9.3). Stream-events er hints; DB-snapshot er autoritet efter reconnect. */
+  restoreResearch: (snapshot: {
+    runId: string
+    status: string
+    tier?: string
+    completedTasks?: number
+    totalTasks?: number
+    sources?: number
+    warning?: string
+    quality?: string
+  }) => void
 }
 
 /** Hvordan runtime forsøger at rette fejlen (central_error_envelope.recoverable).
@@ -192,6 +205,7 @@ export function StreamProvider({ children }: { children: ReactNode }) {
             approvalMode: opts?.approvalMode,
             model: opts?.model,
             providerChoice: opts?.providerChoice,
+            researchMode: opts?.researchMode,
             attachmentIds: opts?.attachmentIds
           },
           {
@@ -255,6 +269,23 @@ export function StreamProvider({ children }: { children: ReactNode }) {
             ? prev
             : { ...prev, status: 'working' }
         ))
+      },
+      restoreResearch: (snapshot) => {
+        // Spec §9.3: statusfladen rekonstrueres FØR live follow tilkobles, så
+        // et koldstartet run vises som aktivt uden at vente på næste event.
+        updateState((prev) => ({
+          ...prev,
+          research: {
+            runId: snapshot.runId,
+            tier: snapshot.tier ?? 'inline',
+            phase: snapshot.status,
+            completedTasks: snapshot.completedTasks ?? 0,
+            totalTasks: snapshot.totalTasks ?? 0,
+            sources: snapshot.sources ?? 0,
+            warning: snapshot.warning ?? '',
+            quality: snapshot.quality ?? ''
+          }
+        }))
       },
       approve: async (config) => {
         if (!approval?.approvalId) return

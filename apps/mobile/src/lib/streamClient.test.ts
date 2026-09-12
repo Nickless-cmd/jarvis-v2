@@ -142,7 +142,8 @@ it('sends the expected request payload and auth header', () => {
       thinkingMode: 'fast',
       mode: 'code',
       model: 'deepseek-r1',
-      providerChoice: 'ollama'
+      providerChoice: 'ollama',
+      researchMode: true
     },
     { onEvent: jest.fn() }
   )
@@ -165,6 +166,7 @@ it('sends the expected request payload and auth header', () => {
         mode: 'code',
         model: 'deepseek-r1',
         provider_choice: 'ollama',
+        research_mode: true,
         attachment_ids: []
       })
     })

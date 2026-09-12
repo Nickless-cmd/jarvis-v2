@@ -12,6 +12,7 @@ export interface StreamRequest {
   mode?: 'chat' | 'cowork' | 'code'
   model?: string
   providerChoice?: string
+  researchMode?: boolean
   attachmentIds?: string[]
 }
 
@@ -187,6 +188,7 @@ export function startStream(request: StreamRequest, handlers: StreamHandlers): S
       mode: request.mode ?? 'chat',
       model: request.model ?? '',
       provider_choice: request.providerChoice ?? '',
+      research_mode: request.researchMode ?? false,
       attachment_ids: request.attachmentIds ?? []
     })
   })

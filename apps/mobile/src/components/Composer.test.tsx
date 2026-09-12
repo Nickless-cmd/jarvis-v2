@@ -177,21 +177,48 @@ describe('Composer', () => {
     expect(onSend).toHaveBeenCalledWith('')
   })
 
-  it('viser research-toggle og melder skiftet ud', async () => {
+  it('viser permissions, model og research som ikoner i den rækkefølge', async () => {
     const onResearchModeChange = jest.fn()
     const screen = await render(
       <Composer
         onSend={jest.fn()}
         onStop={jest.fn()}
+        modelLabel="DeepSeek V4 Flash"
+        onPressModel={jest.fn()}
+        permission="ask"
+        onPressPermission={jest.fn()}
         researchMode={false}
         onResearchModeChange={onResearchModeChange}
       />
     )
     await openComposer(screen)
 
-    await act(async () => { fireEvent.press(screen.getByText('Research')) })
+    const row = screen.getByTestId('composer-control-row')
+    const ids = row.props.children
+      .filter(Boolean)
+      .map((child: { props: { testID?: string } }) => child.props.testID)
+      .filter(Boolean)
+    expect(ids).toEqual(['composer-permission', 'composer-model', 'composer-research'])
+    expect(screen.queryByText('Research')).toBeNull()
+    expect(screen.queryByText('DeepSeek V4 Flash')).toBeNull()
+
+    await act(async () => { fireEvent.press(screen.getByTestId('composer-research')) })
 
     expect(onResearchModeChange).toHaveBeenCalledWith(true)
+  })
+
+  it('bruger mikrofon til diktering og bølge til samtale', async () => {
+    const onDictate = jest.fn()
+    const onConversation = jest.fn()
+    const screen = await render(
+      <Composer onSend={jest.fn()} onStop={jest.fn()} onDictate={onDictate} onConversation={onConversation} />
+    )
+
+    await act(async () => { fireEvent.press(screen.getByLabelText('Dikter')) })
+    await act(async () => { fireEvent.press(screen.getByLabelText('Start samtale')) })
+
+    expect(onDictate).toHaveBeenCalledTimes(1)
+    expect(onConversation).toHaveBeenCalledTimes(1)
   })
 
   it('viser permissions som et ikon og har ikke Chat/Code-badget', async () => {
@@ -259,5 +286,21 @@ describe('Composer: tekst udefra', () => {
       )
     })
     expect(screen.getByTestId('composer-input').props.value).toBe(foer)
+  })
+
+  it('lægger dikteret tekst i kladden uden at sende', async () => {
+    const onSend = jest.fn()
+    const screen = await render(
+      <Composer onSend={onSend} onStop={jest.fn()} indsaet={{ tekst: '', n: 0 }} />
+    )
+    await openComposer(screen)
+    fireEvent.changeText(screen.getByTestId('composer-input'), 'eksisterende')
+    await act(async () => {
+      screen.rerender(
+        <Composer onSend={onSend} onStop={jest.fn()} indsaet={{ tekst: 'dikteret tekst', n: 1 }} />
+      )
+    })
+    expect(screen.getByTestId('composer-input').props.value).toBe('eksisterende\ndikteret tekst')
+    expect(onSend).not.toHaveBeenCalled()
   })
 })

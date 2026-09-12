@@ -27,11 +27,20 @@ it('queues chat messages with enough context to replay them after reconnect', as
     kind: 'chat_message',
     sessionId: 's1',
     text: 'fortsæt',
-    attachmentIds: ['a1']
+    attachmentIds: ['a1'],
+    controls: {
+      model: 'deepseek-v4-flash',
+      providerChoice: 'deepseek',
+      mode: 'chat',
+      thinkingMode: 'fast',
+      approvalMode: 'ask',
+      researchMode: true
+    }
   })
 
   expect(item.id).toMatch(/^outbox-/)
   expect(item.attempts).toBe(0)
+  expect(item).toMatchObject({ controls: { thinkingMode: 'fast', researchMode: true } })
   expect(store.setItemAsync).toHaveBeenCalledWith(
     'jarvis.mobile.offlineOutbox',
     expect.stringContaining('"kind":"chat_message"')

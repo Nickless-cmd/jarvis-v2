@@ -33,7 +33,7 @@ const config = {
 }
 
 function Probe() {
-  const { approval, approve, deny, state, send, stop, detachForBackground } = useStream()
+  const { approval, approve, deny, state, send, stop, detachForBackground, restoreResearch } = useStream()
 
   return (
     <>
@@ -41,9 +41,11 @@ function Probe() {
       <Text>{state.activeRunId ?? 'no-run'}</Text>
       <Text>{approval?.message ?? 'no-approval'}</Text>
       <Text onPress={() => send(config, 'session-1', 'Hej Jarvis')}>send</Text>
-      <Text onPress={() => send(config, 'session-1', 'Hej hurtigt', { thinkingMode: 'fast', approvalMode: 'trust' })}>send-controlled</Text>
+      <Text onPress={() => send(config, 'session-1', 'Hej hurtigt', { thinkingMode: 'fast', approvalMode: 'trust', researchMode: true })}>send-controlled</Text>
       <Text onPress={() => void stop(config)}>stop</Text>
       <Text onPress={() => detachForBackground()}>detach</Text>
+      <Text onPress={() => restoreResearch({ runId: 'research-1', status: 'researching', tier: 'orchestrated' })}>restore-research</Text>
+      <Text>{state.research?.phase ?? 'no-research'}</Text>
       <Text onPress={() => void approve(config)}>approve</Text>
       <Text onPress={() => void deny(config)}>deny</Text>
     </>
@@ -58,6 +60,12 @@ beforeEach(() => {
   })
   mockApproveTool.mockResolvedValue(undefined)
   mockDenyTool.mockResolvedValue(undefined)
+})
+
+it('gendanner aktiv research fra cold-start snapshot', async () => {
+  const screen = await render(<StreamProvider><Probe /></StreamProvider>)
+  await act(async () => { screen.getByText('restore-research').props.onPress() })
+  expect(screen.getByText('researching')).toBeTruthy()
 })
 
 it('detaches a backgrounded mobile stream without cancelling the server run', async () => {
@@ -100,7 +108,8 @@ it('videresender per-turn thinking og approval controls', async () => {
     expect.objectContaining({
       message: 'Hej hurtigt',
       thinkingMode: 'fast',
-      approvalMode: 'trust'
+      approvalMode: 'trust',
+      researchMode: true
     }),
     expect.any(Object)
   )

@@ -6,6 +6,7 @@ import { tokens } from '../theme/tokens'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 import { useAuth } from '../state/AuthContext'
 import { approveRequest, approveToolIntent, fetchApprovals, fetchRuns, pendingApprovals } from '../lib/mcClient'
+import { taelOpgaverDerKalder } from '../lib/opgaveBadge'
 import { isToolIntent } from '../lib/mcTypes'
 import type { Approval, McRun } from '../lib/mcTypes'
 import { WorkTaskCard, isActive } from '../components/WorkTaskCard'
@@ -284,7 +285,10 @@ export function WorkScreen({ topInset = 72, syncSignal = 0, focusTab, focusSigna
         <SegmentedControl<WorkTab>
           compact
           options={[
-            { value: 'tasks', label: 'Tasks' },
+            // Prik naar der er noget man ikke selv satte i gang: en autonom tur,
+            // eller en der stoppede undervejs. Samme kontrakt som Godkend —
+            // prikken siger «se her», ikke «her findes data».
+            { value: 'tasks', label: 'Tasks', badge: taelOpgaverDerKalder(runs) > 0 },
             { value: 'approve', label: 'Godkend', badge: venter > 0 },
             { value: 'review', label: 'Review', badge: tælReviewVentende(reviews) > 0 },
             { value: 'new', label: 'Ny' }

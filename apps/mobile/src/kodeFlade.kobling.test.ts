@@ -96,11 +96,11 @@ it('ChatScreen henter git-tilstanden — og KUN i code-fladen', () => {
   expect(cs).toMatch(/if \(!config \|\| !kodeTilstand\) \{ setGit\(null\); return \}/)
 })
 
-it('diff-badgen staar over komponisten og KUN i code', () => {
+it('der er INGEN diff-badge over komponisten laengere', () => {
+  // Bjoern: «i stedet for badge over composer skal +xx -xx flyttes til de
+  // inline tool resultater». Tallene bor nu dér hvor arbejdet staar.
   const cs = kilde('screens/ChatScreen.tsx')
-  expect(cs).toMatch(/<DiffBadge git=\{kodeTilstand && ws\.kind === 'workstation' \? git : null\} \/>/)
-  // ... og faktisk FOER komponisten, ikke et tilfaeldigt sted.
-  expect(cs.indexOf('<DiffBadge')).toBeLessThan(cs.indexOf('<Composer'))
+  expect(cs).not.toMatch(/DiffBadge/)
 })
 
 it('code-headeren faar titel og git meldt OP', () => {
@@ -246,12 +246,14 @@ it('godkendelseskortet ryddes FOER kaldet afventes', () => {
   expect(afvis.indexOf('setApproval(null)')).toBeLessThan(afvis.indexOf('await denyTool'))
 })
 
-it('diff-badgen maaler KUN hans egen maskine', () => {
-  // Serverens repo er FAELLES. Maalte badgen dét, ville enhver bruger kunne
-  // se hvor meget der laa uafsluttet i containeren - altsaa hvad ANDRE
-  // laver. Det er ikke en indstilling man kan slaa fra.
-  const cs = kilde('screens/ChatScreen.tsx')
-  expect(cs).toMatch(/<DiffBadge git=\{kodeTilstand && ws\.kind === 'workstation' \? git : null\} \/>/)
+it('linjetallene kommer fra KALDET, ikke fra et faelles arbejdstrae', () => {
+  // Den gamle badge maalte serverens repo, som er FAELLES - enhver bruger
+  // kunne dermed se hvad ANDRE havde liggende uafsluttet. Tallene pr. kald
+  // kan kun vise hvad DETTE kald gjorde, saa problemet kan ikke opstaa igen.
+  const ml = kilde('components/MessageList.tsx')
+  expect(ml).toMatch(/diff: toolDiff\(b\.name, b\.input\)/)
+  const g = kilde('components/InlineToolGroup.tsx')
+  expect(g).toMatch(/summerDiff\(items\)/)
 })
 
 it('linjetallene pr. vaerktoejskald regnes af argumenterne', () => {

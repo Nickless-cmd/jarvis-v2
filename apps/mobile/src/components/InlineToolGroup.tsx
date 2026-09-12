@@ -4,7 +4,7 @@ import { ChevronDown, ChevronRight, Code2 } from 'lucide-react-native'
 import { tokens } from '../theme/tokens'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 import { useReducedMotion } from '../lib/useReducedMotion'
-import { summarizeRound, type ToolItem } from '../lib/toolGroup'
+import { summarizeRound, summerDiff, type ToolItem } from '../lib/toolGroup'
 
 interface Props {
   items: ToolItem[]
@@ -29,6 +29,7 @@ export function InlineToolGroup({ items }: Props) {
   const reduced = useReducedMotion()
   const running = items.some((i) => i.running)
   const summary = summarizeRound(items)
+  const sum = summerDiff(items)
 
   useEffect(() => {
     if (!running || reduced) {
@@ -81,6 +82,19 @@ export function InlineToolGroup({ items }: Props) {
           <Text style={styles.summary} numberOfLines={1}>
             {summary}
           </Text>
+          {/* Gruppen er FOLDET som standard. Uden summen her ville tallene
+              vaere usynlige det meste af tiden, og saa var de lige saa godt
+              blevet i badgen. */}
+          {sum ? (
+            <View style={styles.tal}>
+              {sum.tilfoejet ? (
+                <Text style={[styles.talTekst, styles.plus]}>+{sum.tilfoejet}</Text>
+              ) : null}
+              {sum.fjernet ? (
+                <Text style={[styles.talTekst, styles.minus]}>−{sum.fjernet}</Text>
+              ) : null}
+            </View>
+          ) : null}
           {expandable ? (
             open ? (
               <ChevronDown size={16} color={tokens.color.fg2} strokeWidth={1.8} />
@@ -131,8 +145,11 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
     paddingBottom: tokens.spacing.sm,
     gap: 6
   },
-  detail: { color: tokens.color.fg3, fontSize: 14, flex: 1 },
-  detailRaekke: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  detail: { color: tokens.color.fg3, fontSize: 14, flexShrink: 1 },
+  // `gap: 6` og ingen flex-straekning: tallene staar LIGE efter teksten,
+  // ikke ude ved kanten. Bjoern bad om «lige efter meta dataen», og et tal
+  // i den anden ende af skaermen laeses ikke som en del af den linje.
+  detailRaekke: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   tal: { flexDirection: 'row', gap: 6 },
   // Tabular-nums: tallene staar under hinanden i en liste, og uden dem
   // danser kolonnen naar cifrene skifter bredde.

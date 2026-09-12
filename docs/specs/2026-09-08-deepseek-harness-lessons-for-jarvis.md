@@ -1780,6 +1780,68 @@ approval state, and `approval_bridge_shadow`'s own docstring names the cost:
 *"enten at en godkendt handling ikke sker, eller — værre — at en handling sker
 som ingen godkendte."* Publisher first, without exception.
 
+**But the publisher cannot be built as a projection, and the reason is in
+`claim()`.** The row is not a record of the decision; it *is* the mutual
+exclusion:
+
+```python
+# ÉN sætning. Enten rammer den én række, eller også ingen — der er
+# ikke noget mellem, og derfor kan to arbejdere ikke begge vinde.
+cur = conn.execute(
+    "UPDATE approval_claims SET state = ?, claimed_at = ? "
+    "WHERE approval_id = ? AND state IN (?, ?) AND invocation_digest = ? "
+    "AND expires_at > ?", ...)
+if cur.rowcount == 1:   # this worker won
+```
+
+`state` is a compare-and-set lock, conditioned on the invocation digest and
+the expiry, and `claim`'s contract is explicit: *"Kalderen må IKKE krydse
+udbyder-grænsen uden at dette kald er lykkedes."* An append-only ledger cannot
+supply that answer. Two workers appending `approval_claimed` events both
+succeed; the winner is only known once the events are folded — by which time
+both have already crossed the provider boundary. Moving the write into the
+ledger and projecting the row back would replace an exactly-once guarantee
+with an after-the-fact reconciliation.
+
+Measured 12 September, the load-bearing use is also the dominant one:
+
+```
+kind='approval'  283 completed + 5 pending = 288    the gate
+kind='auto'       62 completed                      bookkeeping
+bash 287 · edit_file 39 · write_file 21 · calendar_create_event 1
+```
+
+The table serves two callers with one state machine. `invocation_record.recorded()`
+is explicitly advisory — *"`recorded` kaster aldrig — kaldet koerer uanset"* —
+and that half could be event-sourced. The approval path cannot, and it is 288
+of 350 rows, live, on the session that is already in `ledger`.
+
+This is not "impossible": a lease-based writer could serialise per session,
+since the ledger has `UNIQUE(session_id, seq)` and fencing leases. But that is
+a **re-implementation of exactly-once dispatch**, not a projection of rows, and
+its granularity (per session) is not the claim's granularity (per approval and
+digest, across processes, at the moment of dispatch).
+
+### Criterion 4, restated after measurement
+
+All three remaining tables fail the criterion's frame, for three different
+reasons:
+
+| table | why it is not "an old adapter to project or remove" |
+|---|---|
+| `tool_router_decisions` | telemetry with a deliberate 45-day life and 7-day readers |
+| `approval_claims` | its `state` column is a compare-and-set lock, not a record |
+| `agent_runs` / `agent_messages` / `agent_registry` | no session column at all |
+
+The criterion was written for tables that duplicate session truth.
+`chat_messages` was one. These three are a metric, a lock, and a differently
+keyed store. Closing criterion 4 by repeating the `chat_messages` cutover three
+more times is not possible, and the reason is not effort — it is that the
+criterion's premise does not hold for the tables it names.
+
+What remains is an owner's decision on the criterion itself, not an engineering
+task underneath it.
+
 **Still open:** the tool-router projection is proven against fixtures and has
 never folded in production — `projection_checkpoints` has no row for it. No
 session has been moved for it. The remaining decision is the per-session

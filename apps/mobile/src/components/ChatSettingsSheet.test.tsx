@@ -40,11 +40,12 @@ it('model-valget skjules helt når der ikke er noget at vælge imellem', async (
   expect(screen.queryByTestId('chatcfg-models')).toBeNull()
 })
 
-it('«Som appen» er et eksplicit valg, ikke et tomt felt', async () => {
-  const { screen, onChange } = await vis({ modeller: [{ model: 'pro', label: 'Pro' }] })
+it('«Som appen» er et eksplicit valg, og model/provider gemmes atomisk', async () => {
+  const model = { model: 'pro', providerChoice: 'deepseek', label: 'Pro' }
+  const { screen, onChange } = await vis({ modeller: [model] })
   expect(screen.getByTestId('chatcfg-model-default')).toBeTruthy()
   fireEvent.press(screen.getByTestId('chatcfg-model-pro'))
-  expect(onChange).toHaveBeenCalledWith({ model: 'pro' })
+  expect(onChange).toHaveBeenCalledWith({ model })
 })
 
 it('har INGEN memory-scope-kontakt — serveren har intet felt for den', async () => {

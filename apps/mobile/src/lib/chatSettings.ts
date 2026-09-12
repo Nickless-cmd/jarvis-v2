@@ -1,4 +1,5 @@
 import * as SecureStore from 'expo-secure-store'
+import type { StoredModelChoice } from './sessionStore'
 
 /** Indstillinger PR. SAMTALE — ikke globalt.
  *
@@ -20,10 +21,15 @@ import * as SecureStore from 'expo-secure-store'
  */
 
 export type VaerktoejsOmfang = 'samtale' | 'fuldt'
+export type ResearchMode = 'off' | 'on'
+export type ThinkingMode = 'fast' | 'think'
 
-export interface ChatIndstillinger {
-  /** "" = brug appens globale valg. */
-  model: string
+export interface ChatIndstillingerV2 {
+  version: 2
+  /** `null` = brug serverens default for denne samtale. */
+  model: StoredModelChoice | null
+  thinkingMode: ThinkingMode
+  researchMode: ResearchMode
   vaerktoejer: VaerktoejsOmfang
   /** Læs svar højt i denne samtale. */
   stemme: boolean
@@ -31,8 +37,16 @@ export interface ChatIndstillinger {
   spoergFoerst: boolean
 }
 
-export const STANDARD: ChatIndstillinger = {
-  model: '', vaerktoejer: 'samtale', stemme: false, spoergFoerst: true,
+export type ChatIndstillinger = ChatIndstillingerV2
+
+export const STANDARD: ChatIndstillingerV2 = {
+  version: 2,
+  model: null,
+  thinkingMode: 'think',
+  researchMode: 'off',
+  vaerktoejer: 'samtale',
+  stemme: false,
+  spoergFoerst: true,
 }
 
 const PRAEFIKS = 'jarvis:chatcfg:'
@@ -41,10 +55,31 @@ function noegle(sessionId: string): string {
   return PRAEFIKS + String(sessionId || 'default').replace(/[^A-Za-z0-9._-]/g, '_')
 }
 
-function rens(v: unknown): ChatIndstillinger {
+function rensModel(v: unknown): StoredModelChoice | null {
+  if (!v || typeof v !== 'object') return null
+  const model = v as Record<string, unknown>
+  // providerChoice må være TOM: en member-model kan lade serveren vælge
+  // provider, og tom betyder netop det — ikke «ugyldig». Kun model og label
+  // skal være sat; de bærer valget brugeren faktisk traf.
+  if (
+    typeof model.model !== 'string' || !model.model.trim()
+    || typeof model.providerChoice !== 'string'
+    || typeof model.label !== 'string' || !model.label.trim()
+  ) return null
+  return {
+    model: model.model,
+    providerChoice: model.providerChoice,
+    label: model.label,
+  }
+}
+
+export function parseChatIndstillinger(v: unknown): ChatIndstillingerV2 {
   const o = (v && typeof v === 'object' ? v : {}) as Record<string, unknown>
   return {
-    model: typeof o.model === 'string' ? o.model : STANDARD.model,
+    version: 2,
+    model: rensModel(o.model),
+    thinkingMode: o.thinkingMode === 'fast' ? 'fast' : 'think',
+    researchMode: o.researchMode === 'on' ? 'on' : 'off',
     vaerktoejer: o.vaerktoejer === 'fuldt' ? 'fuldt' : 'samtale',
     stemme: o.stemme === true,
     spoergFoerst: o.spoergFoerst !== false,   // sikker vej som standard
@@ -54,7 +89,7 @@ function rens(v: unknown): ChatIndstillinger {
 export async function laesIndstillinger(sessionId: string): Promise<ChatIndstillinger> {
   try {
     const raa = await SecureStore.getItemAsync(noegle(sessionId))
-    return raa ? rens(JSON.parse(raa)) : { ...STANDARD }
+    return raa ? parseChatIndstillinger(JSON.parse(raa)) : { ...STANDARD }
   } catch {
     return { ...STANDARD }
   }
@@ -64,7 +99,7 @@ export async function gemIndstillinger(
   sessionId: string, next: Partial<ChatIndstillinger>,
 ): Promise<ChatIndstillinger> {
   const nu = await laesIndstillinger(sessionId)
-  const ny = rens({ ...nu, ...next })
+  const ny = parseChatIndstillinger({ ...nu, ...next })
   try {
     await SecureStore.setItemAsync(noegle(sessionId), JSON.stringify(ny))
   } catch {
@@ -77,12 +112,20 @@ export async function gemIndstillinger(
  *
  *  Er der ikke valgt en model for samtalen, sendes den globale videre — så en
  *  tom per-chat-værdi betyder «som appen plejer», ikke «ingen model». */
-export function tilStreamFelter(
-  cfg: ChatIndstillinger, globalModel = '',
-): { model: string; mode: 'chat' | 'code'; approvalMode: 'ask' | 'trust' } {
+export function tilStreamFelter(cfg: ChatIndstillinger): {
+  model: string
+  providerChoice: string
+  mode: 'chat' | 'code'
+  approvalMode: 'ask' | 'trust'
+  thinkingMode: ThinkingMode
+  researchMode: boolean
+} {
   return {
-    model: cfg.model || globalModel || '',
+    model: cfg.model?.model ?? '',
+    providerChoice: cfg.model?.providerChoice ?? '',
     mode: cfg.vaerktoejer === 'fuldt' ? 'code' : 'chat',
     approvalMode: cfg.spoergFoerst ? 'ask' : 'trust',
+    thinkingMode: cfg.thinkingMode,
+    researchMode: cfg.researchMode === 'on',
   }
 }

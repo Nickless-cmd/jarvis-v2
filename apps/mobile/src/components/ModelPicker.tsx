@@ -1,12 +1,9 @@
 import { FlatList, Modal, Pressable, StyleSheet, Text, View } from 'react-native'
 import { tokens } from '../theme/tokens'
+import type { StoredModelChoice } from '../lib/sessionStore'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 
-export interface ModelChoice {
-  model: string // konkret id (owner) eller 'standard'|'pro' (member)
-  providerChoice: string // provider (owner) — tom for member
-  label: string
-}
+export type ModelChoice = StoredModelChoice
 
 export type ThinkingMode = 'think' | 'fast'
 

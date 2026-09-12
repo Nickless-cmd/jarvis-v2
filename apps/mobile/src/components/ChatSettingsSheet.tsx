@@ -2,6 +2,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 're
 import { Search } from 'lucide-react-native'
 import { haptik } from '../lib/haptics'
 import type { ChatIndstillinger } from '../lib/chatSettings'
+import type { StoredModelChoice } from '../lib/sessionStore'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 
 /** Indstillinger for DENNE samtale.
@@ -20,7 +21,7 @@ export interface ChatSettingsSheetProps {
   visible: boolean
   cfg: ChatIndstillinger
   /** Modeller brugeren må vælge. Tom liste → model-valget skjules. */
-  modeller?: { model: string; label: string }[]
+  modeller?: StoredModelChoice[]
   onChange: (next: Partial<ChatIndstillinger>) => void
   onClose: () => void
   /** Åbner søgning i den åbne tråd. Udeladt → rækken vises ikke. */
@@ -72,16 +73,16 @@ export function ChatSettingsSheet({
               <Text style={styles.rowTitle}>Model</Text>
               <Text style={styles.rowHint}>Tom betyder «som appen plejer».</Text>
               <View style={styles.chips}>
-                {[{ model: '', label: 'Som appen' }, ...modeller].map((m) => (
+                {[null, ...modeller].map((m) => (
                   <Pressable
-                    key={m.model || 'default'}
-                    testID={`chatcfg-model-${m.model || 'default'}`}
+                    key={m?.model || 'default'}
+                    testID={`chatcfg-model-${m?.model || 'default'}`}
                     accessibilityRole="button"
-                    onPress={() => onChange({ model: m.model })}
-                    style={[styles.chip, cfg.model === m.model ? styles.chipOn : null]}
+                    onPress={() => onChange({ model: m })}
+                    style={[styles.chip, cfg.model?.model === (m?.model ?? undefined) ? styles.chipOn : null]}
                   >
-                    <Text style={[styles.chipText, cfg.model === m.model ? styles.chipTextOn : null]}>
-                      {m.label}
+                    <Text style={[styles.chipText, cfg.model?.model === (m?.model ?? undefined) ? styles.chipTextOn : null]}>
+                      {m?.label ?? 'Som appen'}
                     </Text>
                   </Pressable>
                 ))}

@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { Appearance, StyleSheet } from 'react-native'
-import * as SecureStore from 'expo-secure-store'
+import { loadThemePrefs, saveThemeAccent, saveThemeMode } from '../lib/themePrefs'
 import {
   ACCENTS, accentByName, onAccent, paletteFor,
   type Accent, type AccentName, type Scheme, type ThemeMode, elevation } from './palettes'
@@ -29,9 +29,6 @@ export interface Theme {
   /** Stil der får en flade til at ligge OVENPÅ resten. Se elevation(). */
   elevation: ReturnType<typeof elevation>
 }
-
-const MODE_KEY = 'jarvis_theme_mode'
-const ACCENT_KEY = 'jarvis_theme_accent'
 
 export function buildTheme(mode: ThemeMode, accentName: AccentName, systemScheme: Scheme): Theme {
   const accent = accentByName(accentName)
@@ -77,12 +74,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     void (async () => {
       try {
-        const [m, a] = await Promise.all([
-          SecureStore.getItemAsync(MODE_KEY),
-          SecureStore.getItemAsync(ACCENT_KEY)
-        ])
-        if (m === 'dark' || m === 'light' || m === 'auto') setModeState(m)
-        if (a) setAccentState(a as AccentName)
+        const prefs = await loadThemePrefs()
+        setModeState(prefs.mode)
+        setAccentState(prefs.accent)
       } catch {
         // Kan valget ikke læses, står vi på mørk — appens hidtidige udseende.
       }
@@ -91,12 +85,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   const setMode = useCallback((m: ThemeMode) => {
     setModeState(m)
-    void SecureStore.setItemAsync(MODE_KEY, m).catch(() => undefined)
+    void saveThemeMode(m).catch(() => undefined)
   }, [])
 
   const setAccent = useCallback((a: AccentName) => {
     setAccentState(a)
-    void SecureStore.setItemAsync(ACCENT_KEY, a).catch(() => undefined)
+    void saveThemeAccent(a).catch(() => undefined)
   }, [])
 
   const theme = useMemo(

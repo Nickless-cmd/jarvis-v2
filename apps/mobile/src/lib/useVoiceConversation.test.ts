@@ -35,7 +35,7 @@ beforeEach(() => {
   api.synthesizeTtsToFile.mockResolvedValue({ uri: 'file:///tts.mp3', provider: 'elevenlabs' })
 })
 
-describe('push-to-talk', () => {
+describe('hænderfri optagelse', () => {
   // Fejlen: knappen blev sluppet FØR optageren var oppe. stopListening spurgte
   // React' tilstand, som stadig stod på 'idle', og gjorde derfor ingenting —
   // mikrofonen kørte videre bag et overlay der sagde «Lytter…». Et hurtigt
@@ -43,10 +43,6 @@ describe('push-to-talk', () => {
   it('stopper optagelsen selv når knappen slippes før mikrofonen er oppe', async () => {
     const rec = slowRecorder(40)
     const { result } = await renderHook(() => useVoiceConversation(config, deps))
-    // Standarden er hænderfri; dét her handler om push-to-talk, hvor et slip
-    // SKAL stoppe optagelsen — også hvis det kom før mikrofonen var oppe.
-    await act(async () => { result.current.setMode('push') })
-
     await act(async () => {
       const started = result.current.startListening()
       result.current.stopListening()   // sluppet med det samme
@@ -55,6 +51,7 @@ describe('push-to-talk', () => {
 
     await waitFor(() => expect(rec.stop).toHaveBeenCalled())
     expect(result.current.state).not.toBe('listening')
+    expect(result.current).not.toHaveProperty('setMode')
   })
 
   it('et normalt hold optager og sender lyden videre', async () => {

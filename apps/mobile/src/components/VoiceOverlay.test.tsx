@@ -4,9 +4,7 @@ import { VoiceOverlay } from './VoiceOverlay'
 const base = {
   active: true,
   state: 'idle' as const,
-  mode: 'hands-free' as const,
   lastProvider: '',
-  setMode: jest.fn(),
   startListening: jest.fn(),
   stopListening: jest.fn(),
   interrupt: jest.fn(),
@@ -17,6 +15,11 @@ const wrap = (props: Partial<React.ComponentProps<typeof VoiceOverlay>> = {}) =>
   render(<VoiceOverlay {...base} {...props} />)
 
 describe('VoiceOverlay', () => {
+  it('er kun hænderfri og viser ingen push-to-talk-vælger', async () => {
+    const { queryByText } = await wrap()
+    expect(queryByText('Push-to-talk')).toBeNull()
+    expect(queryByText('Hænderfri')).toBeNull()
+  })
   // Samtalen er FULDSKÆRM. Et godkendelses-kort der kun bor i chatten er
   // usynligt herinde: man skulle lukke samtalen for at opdage at der
   // overhovedet blev spurgt, og imens stod runnet stille og ventede.

@@ -13,12 +13,11 @@ import type { ApiConfig } from './types'
 import type { ContentBlock } from './sseProtocol'
 import { transcribeAudio } from './voiceApi'
 
-/** Samtale-mode. Tilstandsmaskine hvile→lyt→transskriber→tænk→tal→(loop).
- *  STT→/transcribe, TTS→ElevenLabs via useSpeechPlayer. Push-to-talk + hænderfri
- *  med VAD. Fejl → idle MED en grund; brækker aldrig UI. */
+/** Hænderfri samtale. Tilstandsmaskine hvile→lyt→transskriber→tænk→tal→(loop).
+ *  STT→/transcribe, TTS→ElevenLabs via useSpeechPlayer. Fejl → idle MED en
+ *  grund; brækker aldrig UI. Composer-diktering ejes af en separat hook. */
 
 export type VoiceState = 'idle' | 'listening' | 'transcribing' | 'thinking' | 'speaking'
-export type VoiceMode = 'push' | 'hands-free'
 
 const _SILENCE_MS = 1300
 const _MAX_UTTERANCE_MS = 30000
@@ -42,11 +41,12 @@ export interface VoiceStreamDeps {
   blocks: ContentBlock[]
   sendMessage: (text: string) => void
   extractText: (blocks: ContentBlock[]) => string
+  /** Læs alle svar i den valgte samtale højt, også når de blev skrevet. */
+  readAllResponses?: boolean
 }
 
 export function useVoiceConversation(config: ApiConfig | null | undefined, deps: VoiceStreamDeps) {
   const [state, setState] = useState<VoiceState>('idle')
-  const [mode, setMode] = useState<VoiceMode>('hands-free')
   const [active, setActive] = useState(false)
   const [problem, setProblem] = useState<string>('')
   // Niveauet er en Animated.Value og ikke React-tilstand: det opdateres ~8
@@ -57,7 +57,6 @@ export function useVoiceConversation(config: ApiConfig | null | undefined, deps:
   const awaitingRef = useRef(false)
   const sawWorkingRef = useRef(false)
   const activeRef = useRef(active)
-  const modeRef = useRef(mode)
   // Optageren KØRER (native), uafhængigt af hvad React har nået at rendere.
   // Og: brugeren HOLDER knappen. De to skal spørges med refs, ikke med state —
   // se startListening for hvorfor.
@@ -75,13 +74,12 @@ export function useVoiceConversation(config: ApiConfig | null | undefined, deps:
   const startListeningRef = useRef<(() => Promise<void>) | undefined>(undefined)
 
   useEffect(() => { activeRef.current = active }, [active])
-  useEffect(() => { modeRef.current = mode }, [mode])
 
   // Talen er færdig. I hænderfri lytter vi igen med det samme — det er dét der
   // gør det til en samtale frem for en række enkeltbeskeder.
   const onSpoken = useCallback(() => {
     setState('idle')
-    if (activeRef.current && modeRef.current === 'hands-free') {
+    if (activeRef.current) {
       setTimeout(() => { void startListeningRef.current?.() }, 350)
     }
   }, [])
@@ -131,6 +129,16 @@ export function useVoiceConversation(config: ApiConfig | null | undefined, deps:
   // historik. Læser man først dér, er der intet tilbage.
   const lastTextRef = useRef('')
   const takenRef = useRef(0)
+  useEffect(() => {
+    if (!deps.readAllResponses || activeRef.current || deps.status !== 'working') return
+    if (!awaitingRef.current) {
+      awaitingRef.current = true
+      sawWorkingRef.current = false
+      takenRef.current = 0
+      lastTextRef.current = ''
+    }
+  }, [deps.readAllResponses, deps.status])
+
   useEffect(() => {
     if (!awaitingRef.current) return
     const full = deps.extractText(deps.blocks)
@@ -195,11 +203,9 @@ export function useVoiceConversation(config: ApiConfig | null | undefined, deps:
       smooth += (levelFromDb(db) - smooth) * 0.4
       level.setValue(smooth)
       const now = Date.now()
-      if (modeRef.current === 'hands-free') {
-        const r = utteranceStep(watch, db, now, { speechDb: _SPEECH_DB, silenceMs: _SILENCE_MS })
-        watch = r.watch
-        if (r.ended) { void stopListeningRef.current?.(); return }
-      }
+      const r = utteranceStep(watch, db, now, { speechDb: _SPEECH_DB, silenceMs: _SILENCE_MS })
+      watch = r.watch
+      if (r.ended) { void stopListeningRef.current?.(); return }
       if (now - startedAtRef.current > _MAX_UTTERANCE_MS) void stopListeningRef.current?.()
     }, _POLL_MS)
   }, [recorder, stopPoll, level])
@@ -249,8 +255,7 @@ export function useVoiceConversation(config: ApiConfig | null | undefined, deps:
         setState('idle')
         // En pause må ikke afslutte samtalen — men mikrofonen må heller ikke
         // stå åben i det uendelige, så der er en grænse.
-        if (activeRef.current && modeRef.current === 'hands-free'
-            && emptyRoundsRef.current < _EMPTY_ROUNDS) {
+        if (activeRef.current && emptyRoundsRef.current < _EMPTY_ROUNDS) {
           emptyRoundsRef.current += 1
           setTimeout(() => { void startListeningRef.current?.() }, 400)
         } else {
@@ -309,7 +314,7 @@ export function useVoiceConversation(config: ApiConfig | null | undefined, deps:
       setState('listening')
       startCapturePoll()
       // Nået at slippe imens? Så stop nu — ellers hænger optagelsen.
-      if (!wantRef.current && modeRef.current === 'push') void stopListeningRef.current?.()
+      if (!wantRef.current) void stopListeningRef.current?.()
     } catch (e) {
       wantRef.current = false
       recordingRef.current = false
@@ -319,13 +324,11 @@ export function useVoiceConversation(config: ApiConfig | null | undefined, deps:
   }, [config, recorder, speech, startCapturePoll, stopBarge])
   useEffect(() => { startListeningRef.current = startListening }, [startListening])
 
-  // Lyt efter afbrydelse KUN mens han taler, og kun i hænderfri. I
-  // push-to-talk holder man alligevel knappen, og en åben mikrofon dér ville
-  // være en overraskelse.
+  // Lyt efter afbrydelse mens han taler i hænderfri samtale.
   useEffect(() => {
-    if (speech.speaking && active && mode === 'hands-free') void startBargePoll()
+    if (speech.speaking && active) void startBargePoll()
     else stopBarge()
-  }, [speech.speaking, active, mode, startBargePoll, stopBarge])
+  }, [speech.speaking, active, startBargePoll, stopBarge])
 
   useEffect(() => () => { stopPoll(); stopBarge() }, [stopPoll, stopBarge])
 
@@ -339,7 +342,7 @@ export function useVoiceConversation(config: ApiConfig | null | undefined, deps:
     takenRef.current = 0
     lastTextRef.current = ''
     setState('idle')
-    if (modeRef.current === 'hands-free') void startListeningRef.current?.()
+    void startListeningRef.current?.()
   }, [speech, stopBarge])
   useEffect(() => { interruptRef.current = interrupt }, [interrupt])
 
@@ -362,8 +365,8 @@ export function useVoiceConversation(config: ApiConfig | null | undefined, deps:
   const shown: VoiceState = speech.speaking && state !== 'listening' ? 'speaking' : state
 
   return {
-    active, state: shown, mode, level, problem,
+    active, state: shown, level, problem,
     lastProvider: speech.provider,
-    setMode, enter, exit, interrupt, startListening, stopListening,
+    enter, exit, interrupt, startListening, stopListening,
   }
 }

@@ -1,6 +1,6 @@
 import { Animated, Modal, Pressable, StyleSheet, Text, View } from 'react-native'
 import { Camera, X } from 'lucide-react-native'
-import type { VoiceState, VoiceMode } from '../lib/useVoiceConversation'
+import type { VoiceState } from '../lib/useVoiceConversation'
 import { ApprovalCard, type ApprovalViewModel } from './ApprovalCard'
 import { VoiceOrb } from './VoiceOrb'
 import { voiceStatusCopy } from '../lib/voiceUiState'
@@ -22,9 +22,7 @@ export interface VoiceOverlayProps {
    *  endnu ikke er skrevet et ord. Uden noget at se på ligner den tavshed en
    *  fejl; med den ser man at der arbejdes. */
   workingStep?: string | null
-  mode: VoiceMode
   lastProvider: string
-  setMode: (m: VoiceMode) => void
   startListening: () => void
   stopListening: () => void
   interrupt: () => void
@@ -43,13 +41,8 @@ export function VoiceOverlay(p: VoiceOverlayProps) {
   const s = useStyles(makes)
   const busy = p.state === 'transcribing' || p.state === 'thinking'
 
-  // I push-to-talk holder man kuglen. I hænderfri trykker man kun for at gribe
-  // ind — starte, stoppe, eller afbryde ham midt i et svar.
-  const down = () => { if (p.mode === 'push' && !busy && p.state !== 'speaking') p.startListening() }
-  const up = () => { if (p.mode === 'push') p.stopListening() }
   const tap = () => {
     if (p.state === 'speaking') { p.interrupt(); return }
-    if (p.mode !== 'hands-free') return
     if (p.state === 'listening') p.stopListening()
     else if (!busy) p.startListening()
   }
@@ -58,7 +51,7 @@ export function VoiceOverlay(p: VoiceOverlayProps) {
     : p.lastProvider === 'edge' ? 'edge-tts'
       : p.lastProvider === 'device' ? 'telefonens stemme' : ''
 
-  const copy = voiceStatusCopy({ state: p.state, mode: p.mode, canInterrupt: p.state === 'speaking' })
+  const copy = voiceStatusCopy({ state: p.state, canInterrupt: p.state === 'speaking' })
 
   // Kuglen giver plads når der skal træffes en beslutning. Den skal stadig
   // være der — det er den samme samtale — men den skal ikke fylde mest.
@@ -77,8 +70,6 @@ export function VoiceOverlay(p: VoiceOverlayProps) {
             noget at hvile øjnene på mens man taler. */}
         <View style={s.middle}>
           <Pressable
-            onPressIn={down}
-            onPressOut={up}
             onPress={tap}
             accessibilityRole="button"
             accessibilityLabel={p.state === 'speaking' ? 'Afbryd Jarvis' : 'Tal med Jarvis'}
@@ -113,19 +104,6 @@ export function VoiceOverlay(p: VoiceOverlayProps) {
               <Text style={s.cameraText}>Kamera</Text>
             </Pressable>
           ) : null}
-          <View style={s.modeRow}>
-            {(['hands-free', 'push'] as VoiceMode[]).map((m) => (
-              <Pressable
-                key={m}
-                onPress={() => { if (!busy && p.state !== 'listening') p.setMode(m) }}
-                style={[s.modeBtn, p.mode === m && s.modeBtnActive]}
-              >
-                <Text style={[s.modeTxt, p.mode === m && s.modeTxtActive]}>
-                  {m === 'push' ? 'Push-to-talk' : 'Hænderfri'}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
           <Text style={s.hint}>{copy.hint}{providerLabel ? `  ·  ${providerLabel}` : ''}</Text>
         </View>
       </View>
@@ -158,13 +136,5 @@ const makes = (tokens: Theme) => StyleSheet.create({
     backgroundColor: tokens.color.bg2
   },
   cameraText: { color: tokens.color.fg1, fontSize: 13, fontWeight: '700' },
-  modeRow: { flexDirection: 'row', gap: 8 },
-  modeBtn: {
-    paddingVertical: 7, paddingHorizontal: 18, borderRadius: 999,
-    borderWidth: 1, borderColor: tokens.color.line,
-  },
-  modeBtnActive: { backgroundColor: tokens.color.accent, borderColor: tokens.color.accent },
-  modeTxt: { color: tokens.color.fg2, fontSize: 13 },
-  modeTxtActive: { color: tokens.color.onAccent },
   hint: { color: tokens.color.fg3, fontSize: 12, textAlign: 'center' },
 })

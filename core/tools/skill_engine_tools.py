@@ -58,6 +58,45 @@ def _split_bilingual_use_when(text: str) -> list[str]:
     return chunks or ([text.strip()] if text.strip() else [])
 
 
+import math as _math
+import re as _re
+
+
+def _noegle(tekst: str) -> str:
+    """Stabil cache-nøgle for et kandidat-fragment."""
+    import hashlib
+    return hashlib.sha1(tekst.encode("utf-8")).hexdigest()[:16]
+
+
+def _cosinus(a: list[float], b: list[float]) -> float:
+    s = sum(x * y for x, y in zip(a, b))
+    na = _math.sqrt(sum(x * x for x in a))
+    nb = _math.sqrt(sum(y * y for y in b))
+    return s / (na * nb) if na and nb else 0.0
+
+
+#: Ord der optræder i næsten enhver dansk sætning og derfor ikke kan bære et
+#: anker. Holdt kort med vilje: en for lang liste ville fjerne ægte signal.
+_STOPORD = frozenset("""
+og i at en et den det de er var til for med som paa på af om har kan skal vil
+jeg du min mit hvad her ned lav mig dig noget lige saa så men eller naar når
+""".split())
+
+
+def _betydende_ord(tekst: str) -> set[str]:
+    return {
+        o for o in _re.findall(r"[a-zA-ZæøåÆØÅ0-9]{3,}", (tekst or "").lower())
+        if o not in _STOPORD
+    }
+
+
+def _skill_ord(navn: str, kandidat: str) -> set[str]:
+    """Skillens egne ord: navnet (med bindestreg som mellemrum) plus det
+    fragment der vandt. Bindestregen betyder at «youtube-downloader» bidrager
+    med både «youtube» og «downloader»."""
+    return _betydende_ord(str(navn or "").replace("-", " ")) | _betydende_ord(kandidat)
+
+
 def _suggest_skills_for_query(
     query: str,
     threshold: float = _INTENT_MATCH_THRESHOLD_DEFAULT,
@@ -68,8 +107,12 @@ def _suggest_skills_for_query(
 
     For each skill, builds *multiple* candidate strings — split bilingual
     use_when into per-language fragments + description fragment + the
-    raw skill name — and runs semantic_similarity once over the combined
-    pool. Then takes the *max* score per skill.
+    raw skill name — embeds them with the LOCAL embedder (Ollama, via
+    `tool_embeddings`) and takes the *max* cosine per skill.
+
+    Ranking alene er ikke nok: embedderen peger altid paa noget. Et forslag
+    kraever derfor ogsaa et LEKSIKALSK ANKER — mindst ét betydningsbaerende ord
+    delt mellem forespoergsel og skill. Se kommentaren ved `_betydende_ord`.
 
     Why max-aggregation: a monolingual query (e.g. pure English "fact-check
     this article") gets diluted when the candidate concatenates both DA
@@ -116,18 +159,32 @@ def _suggest_skills_for_query(
 
     candidates = [c for c, _ in cand_to_skill]
 
+    # LOKAL EMBEDDER, ikke HuggingFace. Målt 12/9-2026 på runtime:
+    # `semantic_similarity` svarede «HF HTTP 402: You have depleted your monthly
+    # included credits». Hvert kald fejlede, `except` fangede det, og funktionen
+    # returnerede [] — i syv uger. Prompt-afsnittet «relevant skills» var derfor
+    # altid tomt, og sidste skill-værktøjskald var 21. juli.
+    #
+    # `tool_embeddings` kører mod Ollama lokalt, er det tool-routeren allerede
+    # bruger (178 af 400 seneste beslutninger), svarer på ~0,1 s og cacher i
+    # sqlite. Den afhængighed kan ikke løbe tør for kredit.
     try:
-        from core.tools.hf_inference_tools import semantic_similarity
-        result = semantic_similarity(
-            source=query,
-            candidates=candidates,
-        )
+        from core.services.tool_embeddings import get_embedding
+        qv = get_embedding("skillq", query)
+        if not qv:
+            return []
+        scores: list[tuple[str, float]] = []
+        for cand in candidates:
+            cv = get_embedding("skillcand:" + _noegle(cand), cand)
+            if cv:
+                scores.append((cand, _cosinus(qv, cv)))
     except Exception as exc:
-        logger.warning("skill_suggest: semantic_similarity failed: %s", exc)
+        logger.warning("skill_suggest: lokal embedding fejlede: %s", exc)
         return []
 
-    if result.get("status") != "ok":
+    if not scores:
         return []
+    result = {"status": "ok", "ranked": [{"candidate": c, "score": v} for c, v in scores]}
 
     # Aggregate to per-skill max score. A skill wins via its single best
     # fragment, not via the average of all fragments.
@@ -147,11 +204,29 @@ def _suggest_skills_for_query(
                 "candidate": cand[:120],
             }
 
-    suggestions = sorted(
-        (s for s in best_per_skill.values() if s["score"] >= threshold),
-        key=lambda s: s["score"],
-        reverse=True,
-    )
+    rangeret = sorted(best_per_skill.values(), key=lambda s: s["score"], reverse=True)
+
+    # LEKSIKALSK ANKER. Embedderen rangerer godt og kan IKKE sige «ingen passer».
+    # Målt over de 66 installerede skills: de tre rigtige forespørgsler ramte
+    # plads 1 (0,633-0,686) — men kontrollen «hvad er klokken» fik 0,640 på en
+    # skill der intet havde med den at gøre, altså HØJERE end en korrekt match.
+    # Hverken en absolut tærskel, top1-median eller top1-top2 kunne skille dem.
+    #
+    # Derfor: rangér semantisk, men vis kun en skill der deler mindst ét
+    # betydningsbærende ord med forespørgslen. Målt 5 af 5 rigtigt — de tre
+    # ægte fik anker (youtube/research/kode), de to uden relevant skill fik
+    # ingen. Præcision frem for dækning: en forkert skill i prompten er værre
+    # end ingen, fordi den bruger plads og peger et forkert sted hen.
+    q_ord = _betydende_ord(query)
+    suggestions: list[dict[str, Any]] = []
+    for s in rangeret:
+        if s["score"] < threshold:
+            continue
+        faelles = q_ord & _skill_ord(s["name"], s.get("candidate", ""))
+        if not faelles:
+            continue
+        s["anker"] = sorted(faelles)[:4]
+        suggestions.append(s)
     return suggestions[:max_results]
 
 

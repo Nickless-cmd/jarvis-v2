@@ -78,6 +78,18 @@ def reconcile_on_boot(stale_after_s: float = STALE_AFTER_SECONDS) -> dict[str, A
                 continue
             try:
                 in_flight_runs.mark_interrupted(run_id, reason=_INTERRUPTION_REASON)
+                # 12/9-2026: spejl stemplet ind i `visible_runs`. Uden dette stod
+                # rækken `running` for evigt efter et crash — og et run der aldrig
+                # blev afsluttet så ud som et der stadig kørte. Kun `running`
+                # rækker rammes, så et rigtigt udfald ikke kan overskrives.
+                try:
+                    from core.services.visible_runs_outcomes import (
+                        stamp_visible_run_interrupted,
+                    )
+                    stamp_visible_run_interrupted(
+                        run_id, reason=_INTERRUPTION_REASON)
+                except Exception:
+                    pass
             except Exception as exc:  # noqa: BLE001 — én fejl må ikke stoppe resten
                 logger.warning(
                     "session_boot_reconciler: mark_interrupted(%s) failed: %s",

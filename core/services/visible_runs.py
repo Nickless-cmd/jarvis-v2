@@ -1479,6 +1479,13 @@ async def _stream_visible_run(
             run_id=run.run_id,
             session_id=run.session_id,
             user_message=run.user_message,
+            # 12/9-2026: kind/provider/model blev aldrig sendt med, så ALLE
+            # poster stod som `visible` — også de autonome. Boot-reconcilerens
+            # `kinds`-opsummering kunne derfor ikke skelne dem, og et dræbt
+            # autonomt run blev talt som en almindelig tur.
+            kind="autonomous" if getattr(run, "autonomous", False) else "visible",
+            provider=run.provider,
+            model=run.model,
         )
     except Exception:
         pass

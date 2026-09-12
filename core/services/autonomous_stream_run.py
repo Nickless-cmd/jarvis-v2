@@ -46,6 +46,31 @@ def start_autonomous_stream_run(
         autonomous=True,
     )
 
+    # SPORET SKRIVES FØR TRÅDEN (målt 12/9-2026). Runnet kører i en daemon-tråd,
+    # så et genstart midt i turen dræbte tråden uden at efterlade noget som
+    # helst: ingen række i `visible_runs`, ingen in-flight-post. Dispatcheren
+    # havde sat `dispatched: True` (fordi tråden STARTEDE), men der kom aldrig et
+    # svar — og forskellen kunne kun ses ved at grave i event-loggen i hånden.
+    # Begge spor skrives derfor her, synkront i api-processen, så de findes fra
+    # første sekund uanset hvad der sker med tråden bagefter.
+    try:
+        from core.services import in_flight_runs as _ifr
+        _ifr.mark_started(
+            run_id=run.run_id,
+            session_id=sid,
+            user_message=run.user_message,
+            kind="autonomous",
+            provider=run.provider,
+            model=run.model,
+        )
+    except Exception:
+        pass
+    try:
+        from core.services.visible_runs_outcomes import persist_visible_run_start
+        persist_visible_run_start(run)
+    except Exception:
+        pass
+
     from core.services.run_follow import begin_follow
 
     relay.create(run.run_id, sid)

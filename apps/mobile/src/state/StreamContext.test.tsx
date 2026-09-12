@@ -33,7 +33,7 @@ const config = {
 }
 
 function Probe() {
-  const { approval, approve, deny, state, send, stop, detachForBackground, restoreResearch } = useStream()
+  const { approval, approve, deny, state, send, stop, detachForBackground, restoreResearch, genoptagKoerende} = useStream()
 
   return (
     <>
@@ -44,6 +44,7 @@ function Probe() {
       <Text onPress={() => send(config, 'session-1', 'Hej hurtigt', { thinkingMode: 'fast', approvalMode: 'trust', researchMode: true })}>send-controlled</Text>
       <Text onPress={() => void stop(config)}>stop</Text>
       <Text onPress={() => detachForBackground()}>detach</Text>
+      <Text onPress={() => { genoptagKoerende(config) }}>genoptag</Text>
       <Text onPress={() => restoreResearch({ runId: 'research-1', status: 'researching', tier: 'orchestrated' })}>restore-research</Text>
       <Text>{state.research?.phase ?? 'no-research'}</Text>
       <Text onPress={() => void approve(config)}>approve</Text>
@@ -56,7 +57,8 @@ beforeEach(() => {
   jest.clearAllMocks()
   mockStartStream.mockReturnValue({
     abort: jest.fn(),
-    getRunId: () => 'run-123'
+    getRunId: () => 'run-123',
+    getOffset: () => 0
   })
   mockApproveTool.mockResolvedValue(undefined)
   mockDenyTool.mockResolvedValue(undefined)
@@ -72,7 +74,8 @@ it('detaches a backgrounded mobile stream without cancelling the server run', as
   const abort = jest.fn()
   mockStartStream.mockReturnValue({
     abort,
-    getRunId: () => 'run-123'
+    getRunId: () => 'run-123',
+    getOffset: () => 0
   })
 
   const screen = await render(
@@ -121,7 +124,8 @@ it('appends a local message and updates state from stream events', async () => {
     handlers = nextHandlers
     return {
       abort: jest.fn(),
-      getRunId: () => 'run-123'
+      getRunId: () => 'run-123',
+      getOffset: () => 0
     }
   })
 
@@ -173,7 +177,8 @@ it('aborts and cancels the active run when stopped', async () => {
   const abort = jest.fn()
   mockStartStream.mockReturnValue({
     abort,
-    getRunId: () => 'run-123'
+    getRunId: () => 'run-123',
+    getOffset: () => 0
   })
 
   const screen = await render(
@@ -202,7 +207,8 @@ it('persists partial assistant output when a stream is interrupted', async () =>
     handlers = nextHandlers
     return {
       abort: jest.fn(),
-      getRunId: () => 'run-123'
+      getRunId: () => 'run-123',
+      getOffset: () => 0
     }
   })
 
@@ -254,7 +260,8 @@ it('marks the stream interrupted even when server cancel fails', async () => {
   mockCancelRun.mockRejectedValueOnce(new Error('cancel failed'))
   mockStartStream.mockReturnValue({
     abort,
-    getRunId: () => 'run-123'
+    getRunId: () => 'run-123',
+    getOffset: () => 0
   })
 
   const screen = await render(
@@ -281,7 +288,8 @@ it('captures approval requests and posts explicit decisions', async () => {
     handlers = nextHandlers
     return {
       abort: jest.fn(),
-      getRunId: () => 'run-123'
+      getRunId: () => 'run-123',
+      getOffset: () => 0
     }
   })
 
@@ -355,4 +363,25 @@ it('fanger backendens error-system_event som struktureret streamError; clearErro
   // FIX: dismiss/clearError virker.
   await act(async () => { screen.getByText('clear').props.onPress() })
   await waitFor(() => expect(screen.getByText('no-err')).toBeTruthy())
+})
+
+it('genoptager et koerende run efter baggrund — fra det offset vi naaede', async () => {
+  // Fejlen: detachForBackground river ned MED VILJE, hvilket saetter
+  // `closed = true` i streamClient og dermed springer dens egen offset-baserede
+  // reconnect over. Ved retur blev kun BESKEDER hentet, saa en tur der stadig
+  // koerte saa doed ud indtil man lukkede appen helt.
+  mockStartStream.mockReturnValue({ abort: jest.fn(), getRunId: () => 'run-123', getOffset: () => 17 })
+  const screen = await render(<StreamProvider><Probe /></StreamProvider>)
+  await act(async () => { screen.getByText('send').props.onPress() })
+  await act(async () => { screen.getByText('detach').props.onPress() })
+  await act(async () => { screen.getByText('genoptag').props.onPress() })
+  expect(mockStartStream).toHaveBeenCalledTimes(2)
+  expect(mockStartStream.mock.calls[1][0].genoptag).toEqual({ runId: 'run-123', fromIdx: 17 })
+})
+
+it('genoptager IKKE naar der ikke var noget at genoptage', async () => {
+  // Kontrolarm. Uden den ville en genoptagelse der altid fyrede bestaa ovenfor.
+  const screen = await render(<StreamProvider><Probe /></StreamProvider>)
+  await act(async () => { screen.getByText('genoptag').props.onPress() })
+  expect(mockStartStream).not.toHaveBeenCalled()
 })

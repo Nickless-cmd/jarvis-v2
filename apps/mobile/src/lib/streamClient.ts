@@ -14,6 +14,15 @@ export interface StreamRequest {
   providerChoice?: string
   researchMode?: boolean
   attachmentIds?: string[]
+  /** Genoptag et run der allerede kører, i stedet for at sende en ny besked.
+   *
+   *  Appen river strømmen ned MED VILJE når den baggrunder (Android dræber
+   *  SSE alligevel), men runnet kører videre server-side. Den indbyggede
+   *  reconnect nedenfor dækker kun den UTILSIGTEDE død: `abort()` sætter
+   *  `closed = true`, så den gren springes over. Uden denne vej var der
+   *  ingen måde tilbage til et kørende run — man måtte lukke appen helt.
+   */
+  genoptag?: { runId: string; fromIdx: number }
 }
 
 export interface StreamHandlers {
@@ -45,6 +54,10 @@ function errorDetail(event: unknown): string {
 export interface StreamControl {
   abort: () => void
   getRunId: () => string | null
+  /** Hvor mange frames vi har modtaget. Skal gemmes FØR `abort()`, ellers
+   *  forsvinder det med closuren — og så kan et run kun genoptages fra 0,
+   *  hvilket ville afspille hele turen igen. */
+  getOffset: () => number
 }
 
 const eventNames = [
@@ -175,6 +188,29 @@ export function startStream(request: StreamRequest, handlers: StreamHandlers): S
     })
   }
 
+  if (request.genoptag) {
+    // GENOPTAG: samme endpoint som den indbyggede reconnect bruger, så
+    // rammerne, offset-tællingen, 404-håndteringen og backoff'en nedenfor
+    // gælder uændret. Der sendes ingen besked — runnet kører allerede.
+    activeRunId = request.genoptag.runId
+    offset = Math.max(0, request.genoptag.fromIdx)
+    const genUrl = new URL(
+      `/chat/runs/${encodeURIComponent(activeRunId)}/subscribe?from_idx=${offset}`,
+      request.config.apiBaseUrl
+    ).toString()
+    current = new EventSource<StreamEventName>(genUrl, {
+      method: 'GET',
+      pollingInterval: 0,
+      headers: authHeaders(false)
+    })
+    attach(current)
+    return {
+      abort: () => { closed = true; current?.close() },
+      getRunId: () => activeRunId,
+      getOffset: () => offset
+    }
+  }
+
   const startUrl = new URL('/chat/stream/v2', request.config.apiBaseUrl).toString()
   current = new EventSource<StreamEventName>(startUrl, {
     method: 'POST',
@@ -199,7 +235,8 @@ export function startStream(request: StreamRequest, handlers: StreamHandlers): S
       closed = true
       current?.close()
     },
-    getRunId: () => activeRunId
+    getRunId: () => activeRunId,
+    getOffset: () => offset
   }
 }
 
@@ -266,6 +303,9 @@ export function followSession(
   })
 
   return {
+    // followSession laeser en sessions live-stream, ikke et enkelt run, saa
+    // der er intet offset at genoptage fra. 0 er aerligt: "jeg har ingen".
+    getOffset: () => 0,
     abort: () => source.close(),
     getRunId: () => activeRunId
   }

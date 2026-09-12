@@ -3,7 +3,7 @@ import { approveTool, cancelRun, denyTool } from '../lib/apiClient'
 import type { ApprovalViewModel } from '../components/ApprovalCard'
 import type { ContentBlock } from '../lib/sseProtocol'
 import { denseBlocks } from '../lib/blockHelpers'
-import { followSession, startStream, type StreamControl } from '../lib/streamClient'
+import { followSession, startStream, type StreamControl, type StreamHandlers } from '../lib/streamClient'
 import {
   initialStreamState,
   streamReducer,
@@ -46,6 +46,9 @@ interface StreamContextValue {
   /** Mobil lifecycle: slip den lokale SSE når appen backgrounder, men lad
    * server-runnet leve videre. Foreground sync/follow samler op igen. */
   detachForBackground: () => void
+  /** Kobl paa igen naar appen kommer tilbage og runnet stadig koerer.
+   *  Returnerer true hvis der var noget at genoptage. */
+  genoptagKoerende: (config: ApiConfig) => boolean
   /** Koldstart/reconnect: rekonstruér research-statusfladen fra et snapshot
    * (spec §9.3). Stream-events er hints; DB-snapshot er autoritet efter reconnect. */
   restoreResearch: (snapshot: {
@@ -141,6 +144,10 @@ export function StreamProvider({ children }: { children: ReactNode }) {
   const followControl = useRef<StreamControl | null>(null)
   const stateRef = useRef(state)
   const persistedRunRef = useRef<string | null>(null)
+  /** Hvad baggrunds-nedrivningen efterlod. Offset SKAL laeses foer
+   *  `abort()`, ellers forsvinder det med streamClientens closure — og saa
+   *  kan et run kun genoptages fra 0, hvilket afspiller hele turen igen. */
+  const baggrundRef = useRef<{ runId: string; offset: number } | null>(null)
 
   const updateState = (next: StreamState | ((current: StreamState) => StreamState)) => {
     const resolved = typeof next === 'function' ? next(stateRef.current) : next
@@ -168,6 +175,48 @@ export function StreamProvider({ children }: { children: ReactNode }) {
     // (delt-session sync) må køre igen. control.current != null ⟺ aktiv send.
     control.current = null
   }
+
+  /** Handlerne deles af send() og genoptagKoerende(): begge foder de SAMME
+   *  frames ind i reduceren, saa et genoptaget run opfoerer sig praecis som
+   *  et der aldrig blev afbrudt. */
+  const lavHandlers = (): StreamHandlers => ({
+      onReconnecting: () => setReconnecting(true),
+      onEvent: (event) => {
+        // Ubetinget: enhver indkommende frame = forbindelsen er i live igen.
+        // (Ikke `if (reconnecting)` — closuren fanger en forældet
+        // reconnecting-værdi fra send-tidspunktet, så guarden ryddede aldrig
+        // banneret. setReconnecting(false) er en no-op hvis allerede false.)
+        setReconnecting(false)
+        if (event.type === 'system_event' && event.kind === 'approval_request') {
+          setApproval({
+            approvalId: String(event.payload.approval_id ?? ''),
+            tool: String(event.payload.tool ?? ''),
+            message: String(event.payload.message ?? 'Jarvis beder om tilladelse.'),
+            detail:
+              typeof event.payload.detail === 'string' ? event.payload.detail : undefined
+          })
+        } else if (event.type === 'system_event' && event.kind === 'error') {
+          // Unified fejl-system: backendens envelope → struktureret bruger-fejl.
+          const info = eventToErrorInfo(event.payload as Record<string, unknown>)
+          setStreamError(info)
+          setLastError(info.message)
+        }
+        updateState((prev) => streamReducer(prev, event))
+        if (event.type === 'message_stop') {
+          persistAssistantSnapshot('done')
+        }
+      },
+      onInterrupted: () => persistAssistantSnapshot('interrupted'),
+      onError: (err) => {
+        // Fyrer FØRST når den indbyggede reconnect (offset-baseret re-attach)
+        // er opbrugt → ægte terminal fejl. Struktureret + retryable.
+        setReconnecting(false)
+        const info = clientErrorToInfo(err)
+        setStreamError(info)
+        setLastError(err?.message ?? info.message)
+        persistAssistantSnapshot('error')
+      }
+  })
 
   const value = useMemo<StreamContextValue>(
     () => ({
@@ -208,44 +257,7 @@ export function StreamProvider({ children }: { children: ReactNode }) {
             researchMode: opts?.researchMode,
             attachmentIds: opts?.attachmentIds
           },
-          {
-            onReconnecting: () => setReconnecting(true),
-            onEvent: (event) => {
-              // Ubetinget: enhver indkommende frame = forbindelsen er i live igen.
-              // (Ikke `if (reconnecting)` — closuren fanger en forældet
-              // reconnecting-værdi fra send-tidspunktet, så guarden ryddede aldrig
-              // banneret. setReconnecting(false) er en no-op hvis allerede false.)
-              setReconnecting(false)
-              if (event.type === 'system_event' && event.kind === 'approval_request') {
-                setApproval({
-                  approvalId: String(event.payload.approval_id ?? ''),
-                  tool: String(event.payload.tool ?? ''),
-                  message: String(event.payload.message ?? 'Jarvis beder om tilladelse.'),
-                  detail:
-                    typeof event.payload.detail === 'string' ? event.payload.detail : undefined
-                })
-              } else if (event.type === 'system_event' && event.kind === 'error') {
-                // Unified fejl-system: backendens envelope → struktureret bruger-fejl.
-                const info = eventToErrorInfo(event.payload as Record<string, unknown>)
-                setStreamError(info)
-                setLastError(info.message)
-              }
-              updateState((prev) => streamReducer(prev, event))
-              if (event.type === 'message_stop') {
-                persistAssistantSnapshot('done')
-              }
-            },
-            onInterrupted: () => persistAssistantSnapshot('interrupted'),
-            onError: (err) => {
-              // Fyrer FØRST når den indbyggede reconnect (offset-baseret re-attach)
-              // er opbrugt → ægte terminal fejl. Struktureret + retryable.
-              setReconnecting(false)
-              const info = clientErrorToInfo(err)
-              setStreamError(info)
-              setLastError(err?.message ?? info.message)
-              persistAssistantSnapshot('error')
-            }
-          }
+          lavHandlers()
         )
       },
       stop: async (config) => {
@@ -261,6 +273,13 @@ export function StreamProvider({ children }: { children: ReactNode }) {
         }
       },
       detachForBackground: () => {
+        // GEM FOER NEDRIVNING. `abort()` saetter `closed = true` inde i
+        // streamClient, saa dens egen offset-baserede reconnect springes over —
+        // med vilje, for vi river ned frivilligt. Prisen er at vejen tilbage
+        // skal kende run_id og offset, og begge dele lever kun i closuren.
+        const runId = control.current?.getRunId() ?? stateRef.current.activeRunId
+        const offset = control.current?.getOffset() ?? 0
+        baggrundRef.current = runId ? { runId, offset } : null
         control.current?.abort()
         control.current = null
         setReconnecting(false)
@@ -269,6 +288,20 @@ export function StreamProvider({ children }: { children: ReactNode }) {
             ? prev
             : { ...prev, status: 'working' }
         ))
+      },
+      genoptagKoerende: (config) => {
+        // Modstykket til detachForBackground. Kontrakten paa den lovede at
+        // "foreground sync/follow samler op igen" — det gjorde den aldrig for
+        // et run der stadig KOERER: ved retur blev kun beskederne hentet, og
+        // en tur midt i arbejdet saa doed ud indtil man lukkede appen helt.
+        const gemt = baggrundRef.current
+        if (!gemt || control.current) return false
+        baggrundRef.current = null
+        control.current = startStream(
+          { config, sessionId: '', message: '', genoptag: { runId: gemt.runId, fromIdx: gemt.offset } },
+          lavHandlers()
+        )
+        return true
       },
       restoreResearch: (snapshot) => {
         // Spec §9.3: statusfladen rekonstrueres FØR live follow tilkobles, så

@@ -399,8 +399,14 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
       if (prev.match(/inactive|background/) && next === 'active' && config && sessions.activeId) {
         void clearRunInProgressNotification()
         void loadBatterySaver().then(setBatterySaver)
+        // KOBL PAA IGEN hvis runnet stadig kører. Det her manglede: linjen
+        // nedenfor henter BESKEDER, og det dækker et run der blev færdigt mens
+        // man var væk. Var det stadig i gang, var der ingen live-vej tilbage —
+        // turen så død ud indtil man lukkede appen helt og startede forfra.
+        stream.genoptagKoerende(config)
         // Gen-synkronisér: A3 lader runnet køre færdigt server-side mens appen er
         // i baggrunden → ved retur henter vi sessionen så det færdige svar vises.
+        // Begge dele: den ene dækker "blev færdig", den anden "kører endnu".
         sessions.select(config, sessions.activeId).catch(() => undefined)
       }
     })

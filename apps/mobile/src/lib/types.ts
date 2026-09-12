@@ -29,6 +29,9 @@ export interface ChatSession {
   /** Hvilken FLADE samtalen hører til. IKKE det samme som workspace_kind,
    *  der siger hvor arbejdet kører. */
   kind?: 'chat' | 'code'
+  /** Hvor arbejdet kører: en navngiven server-root eller brugerens computer. */
+  workspace_kind?: 'container' | 'workstation' | null
+  workspace_root?: string | null
 }
 
 export interface ChatMessage {

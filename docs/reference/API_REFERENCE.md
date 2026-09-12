@@ -1,6 +1,6 @@
 # API_REFERENCE
 
-> Generated 2026-09-12 from app.routes (live) — 544 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
+> Generated 2026-09-12 from app.routes (live) — 546 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
 
 | Method | Path | Response model | Source |
 |---|---|---|---|
@@ -224,6 +224,7 @@
 | GET | `/chat/model-context` | dict | chat |
 | GET | `/chat/ollama-models` | dict | chat |
 | POST | `/chat/open-external` | dict | chat |
+| GET | `/chat/roots` | dict | chat |
 | POST | `/chat/runs/{run_id}/cancel` | dict | chat |
 | POST | `/chat/runs/{run_id}/steer` | dict | chat |
 | GET | `/chat/runs/{run_id}/subscribe` |  | chat |
@@ -239,6 +240,7 @@
 | GET | `/chat/sessions/{session_id}/follow` |  | chat |
 | GET | `/chat/sessions/{session_id}/live` |  | chat |
 | PUT | `/chat/sessions/{session_id}/rename` | dict | chat |
+| POST | `/chat/sessions/{session_id}/workspace` | dict | chat |
 | POST | `/chat/stream` |  | chat |
 | POST | `/chat/stream/v2` |  | chat_stream_v2 |
 | POST | `/chat/terminal/run` | dict | chat |

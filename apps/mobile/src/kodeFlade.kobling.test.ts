@@ -90,7 +90,7 @@ it('et fladeskift henter listen OM', () => {
 
 it('ChatScreen henter git-tilstanden — og KUN i code-fladen', () => {
   const cs = kilde('screens/ChatScreen.tsx')
-  expect(cs).toMatch(/getGitStatus\(config\)/)
+  expect(cs).toMatch(/getGitStatus\(config, ws\.kind, ws\.root\)/)
   // Et subprocess-kald pr. opslag skal ikke koere i chat, hvor tallet
   // hverken vises eller er relevant.
   expect(cs).toMatch(/if \(!config \|\| !kodeTilstand\) \{ setGit\(null\); return \}/)
@@ -154,5 +154,38 @@ it('og henter ÉN gang til naar streamen slutter', () => {
   // Det sidste vaerktoejskald kan skrive efter det sidste tick. Hentningen
   // kommer af at `arbejder` staar i afhaengighederne.
   const cs = kilde('screens/ChatScreen.tsx')
-  expect(cs).toMatch(/\}, \[config, kodeTilstand, arbejder\]\)/)
+  expect(cs).toMatch(/\}, \[config, kodeTilstand, arbejder, ws\.kind, ws\.root\]\)/)
+})
+
+it('kontekst-ringen vises KUN i code-fladen', () => {
+  // Ringen advarer om at samtalen naermer sig en komprimering - noget man
+  // handler paa naar man arbejder, og stoej naar man bare snakker.
+  const app = kilde('App.tsx')
+  expect(app).toMatch(/kontekst=\{mode === 'snak' && kodeTilstand \? kontekst : null\}/)
+  // ... og saa skal den heller ikke HENTES i chat.
+  const cs = kilde('screens/ChatScreen.tsx')
+  expect(cs).toMatch(/if \(!config \|\| !sid \|\| !kodeTilstand\) \{ onKontekst\?\.\(null\); return \}/)
+})
+
+it('titlen i headeren AABNER workspace-vaelgeren', () => {
+  const app = kilde('App.tsx')
+  expect(app).toMatch(/onTrykTitel=\{\(\) => setWorkspaceSignal/)
+  expect(app).toMatch(/workspaceSignal=\{workspaceSignal\}/)
+  const cs = kilde('screens/ChatScreen.tsx')
+  expect(cs).toMatch(/if \(workspaceSignal > 0\) setWsAaben\(true\)/)
+  expect(cs).toMatch(/<WorkspacePicker/)
+})
+
+it('et valg gemmes PAA sessionen, ikke kun lokalt', () => {
+  // Ellers ville det vaere glemt naeste gang appen aabnede - og desk ville
+  // aldrig faa det at vide.
+  const cs = kilde('screens/ChatScreen.tsx')
+  expect(cs).toMatch(/saetSessionWorkspace\(config, sessions\.activeId, kind, root\)/)
+})
+
+it('sessionens eget workspace vinder ved gendannelse', () => {
+  // Uden det ville headeren vise «repo» for en samtale der i virkeligheden
+  // koerer paa Bjoerns egen computer.
+  const cs = kilde('screens/ChatScreen.tsx')
+  expect(cs).toMatch(/setWs\(\{ kind: s\.workspace_kind, root: s\.workspace_root \}\)/)
 })

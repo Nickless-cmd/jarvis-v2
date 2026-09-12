@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { FolderGit2, Monitor } from 'lucide-react-native'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 import { BADGE_H } from './badgeGeometri'
@@ -26,11 +26,23 @@ import type { GitStatus } from '../lib/apiClient'
  * linje med tomme navne og en grøn prik ville påstå en forbindelse der ikke
  * er efterprøvet.
  */
-export function CodeTitle({ titel, git }: { titel: string; git: GitStatus | null }) {
+export function CodeTitle({ titel, git, onPress }: {
+  titel: string
+  git: GitStatus | null
+  /** Åbner workspace-vælgeren. Uden den er pillen ren visning. */
+  onPress?: () => void
+}) {
   const tokens = useTheme()
   const styles = useStyles(makestyles)
   return (
-    <View style={styles.pille} testID="code-titel">
+    <Pressable
+      testID="code-titel"
+      accessibilityRole={onPress ? 'button' : 'text'}
+      accessibilityLabel={onPress ? `${titel || 'Kode-session'} — vælg hvor Jarvis skal arbejde` : undefined}
+      onPress={onPress}
+      disabled={!onPress}
+      style={({ pressed }) => [styles.pille, pressed && onPress ? styles.trykket : null]}
+    >
       <Text style={styles.titel} numberOfLines={1}>
         {titel || 'Kode-session'}
       </Text>
@@ -47,7 +59,7 @@ export function CodeTitle({ titel, git }: { titel: string; git: GitStatus | null
           />
         </View>
       ) : null}
-    </View>
+    </Pressable>
   )
 }
 
@@ -94,6 +106,7 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
     color: tokens.color.fg1, fontSize: 13.5, fontWeight: '600',
     lineHeight: 16, flexShrink: 1,
   },
+  trykket: { opacity: 0.65 },
   kontekst: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 1 },
   meta: { color: tokens.color.fg2, fontSize: 10.5, lineHeight: 12, maxWidth: 92 },
   // Farven saettes inline efter forbindelsen; her staar kun formen.

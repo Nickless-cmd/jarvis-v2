@@ -26,6 +26,8 @@ interface Props {
   /** Code-fladens titel og kontekst. Kun brugt når kodeTilstand er sat. */
   kodeTitel?: string
   git?: GitStatus | null
+  /** Tryk paa titlen: aabner workspace-vaelgeren. */
+  onTrykTitel?: () => void
 }
 
 /**
@@ -56,7 +58,7 @@ const SEGMENT_W = 172
 
 export function TopBar({
   mode, onModeChange, onMenu, onSync, pendingWork, syncing,
-  kodeTilstand, kontekst, onMereMenu, kodeTitel = '', git = null,
+  kodeTilstand, kontekst, onMereMenu, kodeTitel = '', git = null, onTrykTitel,
 }: Props) {
   const tokens = useTheme()
   const styles = useStyles(makestyles)
@@ -85,7 +87,7 @@ export function TopBar({
         >
           <ArrowLeft size={21} color={tokens.color.fg1} strokeWidth={2} />
         </Pressable>
-        {kodeTilstand ? <CodeTitle titel={kodeTitel} git={git} /> : null}
+        {kodeTilstand ? <CodeTitle titel={kodeTitel} git={git} onPress={onTrykTitel} /> : null}
       </View>
 
       {/* Segmentet bliver ved med at vaere ABSOLUT centreret. Dets geometri er

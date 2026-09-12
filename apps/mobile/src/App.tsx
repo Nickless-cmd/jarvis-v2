@@ -64,6 +64,7 @@ function AppBody() {
   const [kontekst, setKontekst] = useState<ContextUsage | null>(null)
   const [mereAaben, setMereAaben] = useState(false)
   const [compactSignal, setCompactSignal] = useState(0)
+  const [workspaceSignal, setWorkspaceSignal] = useState(0)
   // Code-fladen. Den er IKKE porten fra en QR: målt 12/9-2026 udsteder
   // `/auth/pair/*` et login-token og binder ikke telefonen til en bestemt
   // desk-instans. Der findes intet led mellem de to enheder at hænge den på,
@@ -233,7 +234,11 @@ function AppBody() {
             kodeTilstand={kodeTilstand}
             kodeTitel={kodeKontekst.titel}
             git={kodeKontekst.git}
-            kontekst={mode === 'snak' ? kontekst : null}
+            onTrykTitel={() => setWorkspaceSignal((n) => n + 1)}
+            // KUN i code-fladen. Ringen advarer om at samtalen naermer sig en
+            // komprimering — en oplysning man handler paa naar man arbejder, og
+            // stoej naar man bare snakker.
+            kontekst={mode === 'snak' && kodeTilstand ? kontekst : null}
             onMereMenu={() => setMereAaben(true)}
           />
         </View>
@@ -243,7 +248,7 @@ function AppBody() {
           onSync={() => { setSyncing(true); setSyncSignal((n) => n + 1) }}
           // Komprimér vises KUN når der er en ring at komprimere. Et punkt
           // der ikke kan gøre noget er værre end et der ikke er der.
-          onCompact={mode === 'snak' && kontekst ? () => setCompactSignal((n) => n + 1) : undefined}
+          onCompact={mode === 'snak' && kodeTilstand && kontekst ? () => setCompactSignal((n) => n + 1) : undefined}
           kodeTilstand={kodeTilstand}
           onTilbageTilChat={() => setKodeTilstand(false)}
         />
@@ -260,6 +265,7 @@ function AppBody() {
               kodeTilstand={kodeTilstand}
               onSkiftFlade={setKodeTilstand}
               onKodeKontekst={setKodeKontekst}
+              workspaceSignal={workspaceSignal}
             />
           </ErrorBoundary>
         </View>

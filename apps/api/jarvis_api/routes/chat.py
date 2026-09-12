@@ -414,6 +414,57 @@ def _operator_exec(name: str, args: dict) -> dict:
     return execute_tool(name, args) or {}
 
 
+class SessionWorkspaceRequest(BaseModel):
+    # "container" = navngiven server-root, "workstation" = en mappe paa
+    # brugerens egen computer (gennem broen).
+    kind: str = "container"
+    root: str = ""
+
+
+@router.get("/roots")
+def chat_roots() -> dict:
+    """Hvilke navngivne server-roots må denne bruger vælge imellem?
+
+    Desk har listen hårdkodet i to konstanter (OWNER_ROOTS/MEMBER_ROOTS). Det
+    virker dér, fordi den kender rollen — men en hårdkodet liste i hver klient
+    er en liste der forfalder hver for sig. Rollen og rødderne bestemmes ét
+    sted i forvejen (`_allowed_roots`); denne rute siger bare hvad den fandt.
+    """
+    from core.identity.workspace_context import current_user_id
+    uid = current_user_id() or ""
+    roots = _allowed_roots(_resolve_role(uid), uid)
+    # Stien kommer MED: uden den kan klienten ikke vise hvad «repo» faktisk er,
+    # og et valg man ikke kan se konsekvensen af er et gæt.
+    return {"roots": [{"name": n, "path": str(p)} for n, p in roots.items()]}
+
+
+@router.post("/sessions/{session_id}/workspace")
+def chat_set_session_workspace(session_id: str, req: SessionWorkspaceRequest) -> dict:
+    """Bind samtalen til et workspace — server-root eller mappe på egen computer.
+
+    Desk gemmer sit valg i localStorage og sender det med hver stream; sessionen
+    får det derfor først når man har skrevet noget. Telefonen skal kunne sætte
+    det DIREKTE, så headeren kan vise hvor arbejdet foregår før første besked.
+    """
+    art = (req.kind or "").strip().lower()
+    if art not in ("container", "workstation"):
+        raise HTTPException(status_code=400, detail="kind skal være container eller workstation")
+    rod = (req.root or "").strip()
+    if not rod:
+        raise HTTPException(status_code=400, detail="root mangler")
+    if art == "container":
+        from core.identity.workspace_context import current_user_id
+        uid = current_user_id() or ""
+        if rod not in _allowed_roots(_resolve_role(uid), uid):
+            # SAMME kontrol som fil-træet. Uden den kunne en klient binde
+            # samtalen til et navn rollen ikke må browse, og først få 403 når
+            # den prøvede at læse — altså et valg der ser ud til at lykkes.
+            raise HTTPException(status_code=403, detail=f"root '{rod}' ikke tilladt for rollen")
+    from core.services.chat_sessions import set_session_workspace
+    set_session_workspace(session_id, kind=art, root=rod)
+    return {"ok": True, "kind": art, "root": rod}
+
+
 @router.get("/tree")
 async def chat_tree(kind: str = "container", root: str = "", path: str = "") -> dict:
     """Mappe-listing til Code-mode fil-træ. Blokerende fs/bro-kald offloades til tråd

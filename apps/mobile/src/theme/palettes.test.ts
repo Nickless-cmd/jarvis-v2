@@ -1,5 +1,27 @@
-import { ACCENTS, accentByName, onAccent, paletteFor } from './palettes'
+import { ACCENTS, accentByName, elevation, onAccent, paletteFor } from './palettes'
 import { buildTheme } from './ThemeContext'
+
+describe('elevation', () => {
+  // Kanten er det ENESTE der løfter en flade i mørkt tema — sort på næsten-sort
+  // kan ikke bære en skygge. Målt 12. sep 2026 på Bjørns skærmbillede: fladen
+  // #212121 (33), kanten 66, altså alpha ≈ 0,15. Den stod på 0,10 (= 55), hvor
+  // kanten fandtes men druknede i fladen. Testen holder tallet oppe: falder det
+  // tilbage under 0,12, forsvinder den markering Bjørn pegede på.
+  it('moerk kant er synligt lysere end fladen den tegner omridset af', () => {
+    const e = elevation('dark')
+    const m = /rgba\(255,\s*255,\s*255,\s*([\d.]+)\)/.exec(e.borderColor ?? '')
+    expect(m).not.toBeNull()
+    expect(Number(m![1])).toBeGreaterThanOrEqual(0.12)
+    expect(e.borderWidth).toBeGreaterThan(0)
+  })
+
+  // Lyst tema kan bruge en skygge; der skal kanten IKKE være en streg.
+  it('lys loeftning bruger skygger, ikke en kant', () => {
+    const e = elevation('light')
+    expect(e.boxShadow).toBeTruthy()
+    expect(e.borderColor).toBeUndefined()
+  })
+})
 
 describe('paletter', () => {
   it('alle accenter har begge boble-varianter og en rgb-trippel', () => {

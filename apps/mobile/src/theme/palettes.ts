@@ -173,7 +173,15 @@ export function onAccent(accent: Accent): string {
  */
 export function elevation(scheme: Scheme): { boxShadow?: string; borderWidth?: number; borderColor?: string } {
   if (scheme === 'dark') {
-    return { borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.10)' }
+    // MÅLT 12. sep 2026 på Bjørns skærmbillede: fladen er #212121 (33), og
+    // kanten måler 66 — præcis dobbelt så lys. alpha = (66-33)/(255-33) ≈ 0,15.
+    //
+    // Den stod på 0,10, som giver 55: kanten VAR der, men lå for tæt på fladen
+    // til at løfte den. Det var netop den forskel Bjørn pegede på — den tynde,
+    // lysere linje om komponisten og om cirklerne i toppen. Begge steder kommer
+    // kanten herfra (Composer.card og TopBar.circle spreder tokens.elevation),
+    // så ét tal flytter begge.
+    return { borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.15)' }
   }
   // To skygger, ikke én: den brede giver højden, den tætte giver kanten noget
   // at hvile på. Med kun den brede flyder omridset ud; med kun den tætte

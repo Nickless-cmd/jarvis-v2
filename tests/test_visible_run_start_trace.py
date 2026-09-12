@@ -239,8 +239,12 @@ def test_autonom_vej_skriver_sporet_FOER_traaden():
 
 def test_nedluknings_sweepen_stempler_ogsaa_raekken():
     src = open("apps/api/jarvis_api/app.py", encoding="utf-8").read()
-    i = src.index("list_running_orphans(0.0)")
+    i = src.index("list_running_orphans(0.0")
     vindue = src[i:i + 2200]
+    # 12/9-2026: sweepen SKAL sende sin egen identitet med. Uden den stempler
+    # en nedlukning af api-processen runtime-processens aktive ture — begge
+    # kører samme app mod samme delte fil.
+    assert "dying_owner=current_owner()" in vindue
     # KALDET, ikke bare navnet: import-linjen står der uanset, så et navnetjek
     # bestod selv da kaldet var fjernet. (Mutationstest 12/9-2026.)
     assert "stamp_visible_run_interrupted(_rid" in vindue

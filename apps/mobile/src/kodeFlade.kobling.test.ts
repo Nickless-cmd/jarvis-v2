@@ -215,13 +215,18 @@ it('baggrundsjobs sidder i tre-prik menuen — og KUN i code', () => {
   expect(cs).toMatch(/<JobsPanel/)
 })
 
-it('live-kort for koerende vaerktoejer tegnes over komponisten', () => {
-  // Bjoern: «tool result skal vises med live meta data under udfoerelsen».
+it('koerende vaerktoejer staar INLINE i traaden, ikke som et kort ved siden af', () => {
+  // Bjoern: «i stedet for at bruge dem der er inline i chatview». Foerste
+  // udgave lavede en NY korttype over komponisten - en ting ved siden af den
+  // der allerede fandtes.
+  const r = kilde('lib/streamReducer.ts')
+  expect(r).toMatch(/foreloebig: \{/)
+  expect(r).not.toMatch(/liveSteps/)
   const cs = kilde('screens/ChatScreen.tsx')
-  expect(cs).toMatch(/<LiveToolCard key=\{`\$\{s\.skridt\}-\$\{s\.navn\}`\} step=\{s\} \/>/)
-  // ... og de skal taelle med i afstandsklodsen, ellers ligger de BAG
-  // komponisten.
-  expect(cs).toMatch(/hasCard = canRetry \|\| Boolean\(stream\.approval && config\) \|\| liveSteps\.length > 0/)
+  expect(cs).not.toMatch(/LiveToolCard/)
+  // ... og raekken bruger serverens EGEN etiket.
+  const ml = kilde('components/MessageList.tsx')
+  expect(ml).toMatch(/r\.etiket \|\| describeTool\(/)
 })
 
 it('godkendelseskortet ryddes FOER kaldet afventes', () => {

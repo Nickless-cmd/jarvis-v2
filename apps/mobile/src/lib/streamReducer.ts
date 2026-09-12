@@ -13,17 +13,6 @@ export interface ResearchUiState {
   quality: string
 }
 
-export interface LiveStep {
-  /** Værktøjets navn — samme streng som tool_use-blokken bærer. */
-  navn: string
-  /** Menneske-læsbar etiket, fx «bash: npm test». Serverens `detail`. */
-  etiket: string
-  /** Serverens skridt-tæller. Stiger pr. værktøj i turen. */
-  skridt: number
-  /** Hvornår klienten SÅ annonceringen. Til den tikkende tid i kortet. */
-  setAt: number
-}
-
 export interface StreamState {
   status: StreamStatus
   activeRunId: string | null
@@ -32,18 +21,7 @@ export interface StreamState {
   lane: string
   blocks: ContentBlock[]
   workingStep: string | null
-  /**
-   * Værktøjskald der er ANNONCERET men endnu ikke færdige.
-   *
-   * Serveren sender `working_step` FØR den kører værktøjet og `tool_use` +
-   * `tool_result` bagefter — begge fra samme payload, altså først når
-   * resultatet findes. Indtil da var der kun én statuslinje, og et værktøj der
-   * tog et minut så ud som om han var gået i stå.
-   *
-   * Disse rækker lever kun mens der ventes: de ryddes når det rigtige
-   * tool_use-blok kommer, og altid ved message_stop.
-   */
-  liveSteps: LiveStep[]
+
   research: ResearchUiState | null
   usage: { input: number; output: number; cacheHit: number; cacheMiss: number }
 }
@@ -57,7 +35,6 @@ export function initialStreamState(): StreamState {
     lane: '',
     blocks: [],
     workingStep: null,
-    liveSteps: [],
     research: null,
     usage: { input: 0, output: 0, cacheHit: 0, cacheMiss: 0 }
   }
@@ -91,7 +68,6 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
 
     case 'content_block_start': {
       const blocks = state.blocks.slice()
-      let nyeLive = state.liveSteps
       const cb = event.content_block
       if (cb.type === 'text') blocks[event.index] = { type: 'text', text: cb.text }
       else if (cb.type === 'thinking') blocks[event.index] = { type: 'thinking', thinking: cb.thinking }
@@ -104,11 +80,17 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
           partialJson: '',
           status: 'running'
         }
-        // Det rigtige kort er her nu — den foreløbige række skal væk, ellers
-        // stod samme værktøj to steder. Matches på NAVN: working_step har
-        // ingen id, og at tråde et nyt igennem hele rørledningen for det her
-        // ville koste mere end det gav.
-        if (nyeLive.length) nyeLive = nyeLive.filter((s) => s.navn !== cb.name)
+        // Den rigtige blok er her nu — den foreløbige for SAMME værktøj skal
+        // væk, ellers stod det to steder. Matches på navn: `working_step` har
+        // intet id, og at tråde et nyt gennem hele rørledningen ville koste
+        // mere end det gav. Landede serverens blok på det samme index, er
+        // pladsen allerede overskrevet og løkken finder ingenting.
+        for (let i = 0; i < blocks.length; i++) {
+          const b = blocks[i]
+          if (i !== event.index && b && b.type === 'tool_use' && b.foreloebig && b.name === cb.name) {
+            delete blocks[i]
+          }
+        }
       } else if (cb.type === 'tool_result') {
         // Fold resultatet ind på sin matchende tool_use-blok (via tool_use_id) i
         // stedet for at fylde `blocks[event.index]`. Dette er MED VILJE — hvis vi
@@ -130,7 +112,7 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
           }
         }
       }
-      return { ...state, blocks, liveSteps: nyeLive }
+      return { ...state, blocks }
     }
 
     case 'content_block_delta': {
@@ -212,42 +194,46 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
           typeof event.payload.detail === 'string' ? event.payload.detail : state.workingStep
         const navn = typeof event.payload.action === 'string' ? event.payload.action : ''
         const status = String(event.payload.status ?? '')
-        // Kun «running» bliver til et live-kort. «blocked» betyder at en hook
-        // stoppede kaldet FØR det kørte — der er ingenting at vente på, og et
-        // kort med en tikkende tid ville påstå det modsatte.
+        // Kun «running» og kun ÆGTE værktøjskald. «blocked» betyder at en hook
+        // stoppede kaldet FØR det kørte. Og `working_step` bærer også livstegn
+        // — `action: "thinking"` for «Thinking via …» og «Tænker videre ·
+        // runde N» — som aldrig får et tool_use der kan rydde dem.
         //
-        // Og KUN ægte værktøjskald. `working_step` bruges også til
-        // livstegn: `action: "thinking"` for «Thinking via …» og «Tænker
-        // videre · runde N». De får aldrig et tool_use der kan rydde dem, så
-        // de hobede sig op — ti kort på skærmen efter ti runder (Bjørn
-        // 12/9-2026, og det er den ene skærm denne regel findes for).
-        //
-        // `er_vaerktoej` er serverens eget flag når det er der; `action`-navnet
-        // er faldback, så rettelsen virker mod den server der kører NU.
+        // `er_vaerktoej` er serverens eget flag; navnet er fallback, så
+        // rettelsen virker mod den server der kører NU.
         const erVaerktoej = event.payload.er_vaerktoej === true
           || (event.payload.er_vaerktoej === undefined && navn !== 'thinking')
         if (!navn || status !== 'running' || !erVaerktoej) {
           return { ...state, workingStep: detail }
         }
         const skridt = Number(event.payload.step ?? 0)
-        // Samme skridt to gange = samme kald annonceret igen (genoptag efter
-        // reconnect). Erstat frem for at lægge til, ellers ville tråden vise
-        // det samme værktøj to steder.
-        // LOFT. Et værktøj hvis tool_use aldrig kommer ville ellers blive
-        // stående, og nok af dem ville æde skærmen igen. Fire er rigeligt: en
-        // batch kører sjældent flere parallelt, og de ældste er dem der er
-        // mest sandsynligt strandede.
-        const uden = state.liveSteps.filter((s) => s.skridt !== skridt).slice(-3)
-        return {
-          ...state,
-          workingStep: detail,
-          liveSteps: [...uden, {
-            navn,
-            etiket: typeof detail === 'string' ? detail : navn,
-            skridt,
-            setAt: Date.now(),
-          }],
+        // Allerede annonceret (genoptag efter reconnect) → lad blokken stå.
+        if (state.blocks.some((b) => b && b.type === 'tool_use' && b.foreloebig?.skridt === skridt)) {
+          return { ...state, workingStep: detail }
         }
+        // EN RIGTIG BLOK I TRÅDEN — ikke et kort ved siden af. Det er de samme
+        // rækker MessageList allerede tegner for færdige værktøjer; de skal
+        // bare findes fra annonceringen og ikke først når resultatet kommer.
+        //
+        // Lagt i ENDEN: serveren adresserer sine blokke på index, og et
+        // vilkårligt index ville enten overskrive en tekstblok eller efterlade
+        // et hul. Kommer serverens rigtige blok på samme index, erstatter den
+        // denne af sig selv.
+        const medPlads = state.blocks.slice()
+        medPlads[medPlads.length] = {
+          type: 'tool_use',
+          id: `foreloebig:${skridt}`,
+          name: navn,
+          input: {},
+          partialJson: '',
+          status: 'running',
+          foreloebig: {
+            startet: Date.now(),
+            skridt,
+            etiket: typeof detail === 'string' ? detail : navn,
+          },
+        }
+        return { ...state, workingStep: detail, blocks: medPlads }
       }
       return state
 
@@ -262,11 +248,16 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
         }
       }
 
-    case 'message_stop':
-      // Ryd ALTID de foreløbige rækker. Et værktøj hvis resultat aldrig kom
-      // (afbrudt run, tabt forbindelse) ville ellers stå og tælle for evigt
-      // under et svar der er slut.
-      return { ...state, status: 'done', liveSteps: [] }
+    case 'message_stop': {
+      // Et værktøj hvis rigtige blok aldrig kom (afbrudt run, tabt
+      // forbindelse) ville ellers stå og snurre under et svar der er slut.
+      const uden = state.blocks.slice()
+      for (let i = 0; i < uden.length; i++) {
+        const b = uden[i]
+        if (b && b.type === 'tool_use' && b.foreloebig) delete uden[i]
+      }
+      return { ...state, status: 'done', blocks: uden }
+    }
 
     case 'round_restart_discard_partial':
       // §4.1 CLIENT CONTRACT: en runde fejlede mid-stream og re-køres. Drop den

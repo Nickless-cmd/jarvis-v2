@@ -70,7 +70,7 @@ type Row =
   /** Billeder/filer sendt MED en brugerbesked, tegnet over boblen. */
   | { kind: 'attachments'; key: string; items: PersistedBlock[] }
   | { kind: 'tool'; key: string; content: string }
-  | { kind: 'live-tool'; key: string; name: string; body: string; running: boolean }
+  | { kind: 'live-tool'; key: string; name: string; body: string; running: boolean; etiket?: string }
   /** Én RUNDE værktøjsarbejde, foldet sammen til én linje. */
   | { kind: 'tool-group'; key: string; items: ToolItem[] }
 
@@ -88,7 +88,7 @@ function groupToolRounds(rows: Row[]): Row[] {
     if (buf.length === 0) return
     const items: ToolItem[] = buf.map((r) =>
       r.kind === 'live-tool'
-        ? { label: describeTool(r.name, r.body, r.running), running: r.running, tool: r.name }
+        ? { label: r.etiket || describeTool(r.name, r.body, r.running), running: r.running, tool: r.name }
         : {
             label: describeToolResult((r as { content: string }).content),
             running: false,
@@ -160,7 +160,12 @@ function buildStreamingRows(blocks: ContentBlock[]): Row[] {
         key: `stream-tool-${b.id || i}`,
         name: b.name,
         body: toolBody(b),
-        running: b.status !== 'done' && b.status !== 'error'
+        running: b.status !== 'done' && b.status !== 'error',
+        // Serverens egen etiket, brugt ORDRET. En foreløbig række har ingen
+        // argumenter endnu — `describeTool` ville sige «Kører bash…» og tabe
+        // netop dét der gør ventetiden forståelig. Etiketten findes allerede
+        // i `working_step`; den skulle bare ikke smides væk.
+        etiket: b.foreloebig?.etiket
       })
     }
   }

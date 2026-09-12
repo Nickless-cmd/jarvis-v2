@@ -112,5 +112,17 @@ export type ContentBlock =
       partialJson?: string
       status?: 'running' | 'done' | 'error'
       result?: string
+      /**
+       * Sat af KLIENTEN når serveren annoncerer kaldet (`working_step`), før
+       * den rigtige blok findes. Bærer starttidspunktet, så rækken kan vise
+       * hvor længe det har kørt — og markerer at blokken skal vige for den
+       * rigtige når den kommer.
+       */
+      foreloebig?: {
+        startet: number
+        skridt: number
+        /** Serverens egen menneske-læsbare etiket, fx «bash: npm test». */
+        etiket: string
+      }
     }
   | { type: 'image'; src: string; alt?: string }

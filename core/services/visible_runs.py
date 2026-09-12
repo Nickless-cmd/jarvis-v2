@@ -5080,6 +5080,17 @@ async def _stream_visible_run(
                 except Exception:
                     pass
 
+                # MAAL HALEN. Bjoern: «streamen haenger et par sekunder efter
+                # endt svar». Herfra til `done` ligger persistering, changelog,
+                # cost og et par oprydninger — og ingen af os ved hvilket led
+                # der koster. Instrumentet logger kun naar det er langsomt.
+                try:
+                    from core.services import turn_tail_timing as _hale
+                    _hale.start(run.run_id or "")
+                    _hale.mark(run.run_id or "", "impact")
+                except Exception:
+                    pass
+
                 set_last_visible_run_outcome(
                     run,
                     status=_outcome_state.status,
@@ -5098,6 +5109,12 @@ async def _stream_visible_run(
                     except Exception:
                         pass
 
+                try:
+                    from core.services import turn_tail_timing as _hale
+                    _hale.mark(run.run_id or "", "outcome")
+                except Exception:
+                    pass
+
                 # Persist the assistant message BEFORE done so loadSession()
                 # finds it immediately (avoids "message disappears" race).
                 # reasoning_content threaded through so thinking-mode-models
@@ -5112,6 +5129,11 @@ async def _stream_visible_run(
                 except Exception as _persist_exc:
                     # H5: svaret er vist live, men gemmes ikke → væk ved reload.
                     _observe_persist_failed(run, _persist_exc)
+                try:
+                    from core.services import turn_tail_timing as _hale
+                    _hale.mark(run.run_id or "", "persist")
+                except Exception:
+                    pass
 
                 # (Lifecycle-avanceringen lå FØR her — i den agentiske gren alene.
                 # Den bor nu i run-afslutningens finally, som alle runs når. Ét
@@ -5138,6 +5160,11 @@ async def _stream_visible_run(
                     pass
                 _outcome_state.reach_finalization()
 
+                try:
+                    from core.services import turn_tail_timing as _hale
+                    _hale.mark(run.run_id or "", "changelog")
+                except Exception:
+                    pass
                 # Cost-ledger er en del af run-kontrakten, ikke best-effort
                 # efterbehandling. SSE-v2 lukker legacy-generatoren så snart den
                 # ser done; kode efter yield'et bliver derfor aldrig kørt.
@@ -5152,6 +5179,12 @@ async def _stream_visible_run(
                     cache_miss_tokens=total_cache_miss_tokens,
                     run_id=run.run_id,
                 )
+                try:
+                    from core.services import turn_tail_timing as _hale
+                    _hale.mark(run.run_id or "", "cost")
+                    _hale.slut(run.run_id or "")
+                except Exception:
+                    pass
                 yield _sse("done", {
                     "type": "done",
                     "run_id": run.run_id,

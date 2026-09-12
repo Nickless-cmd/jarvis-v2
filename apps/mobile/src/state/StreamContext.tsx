@@ -320,15 +320,37 @@ export function StreamProvider({ children }: { children: ReactNode }) {
           }
         }))
       },
+      // KORTET FORSVINDER FØRST, KALDET BAGEFTER.
+      //
+      // `/chat/approvals/{id}/approve` hedder bogstaveligt «approve a pending
+      // tool approval AND RUN IT» — den kører værktøjet og svarer først når
+      // det er færdigt. Ventede vi på svaret før vi ryddede kortet (som før),
+      // blev spørgsmålet stående i minutvis på noget der for længst var
+      // besvaret. Bjørn: «hvis der er et approval card skal det forsvinde med
+      // det samme uanset valg».
+      //
+      // Kaldet afventes STADIG — fejler det, skal man vide det. Men et kort
+      // der bliver hængende er ikke en fejlbesked; det er en der ser ud som om
+      // trykket ikke virkede.
       approve: async (config) => {
-        if (!approval?.approvalId) return
-        await approveTool(config, approval.approvalId)
+        const id = approval?.approvalId
+        if (!id) return
         setApproval(null)
+        try {
+          await approveTool(config, id)
+        } catch (err) {
+          setLastError(err instanceof Error ? err.message : 'Kunne ikke godkende')
+        }
       },
       deny: async (config) => {
-        if (!approval?.approvalId) return
-        await denyTool(config, approval.approvalId)
+        const id = approval?.approvalId
+        if (!id) return
         setApproval(null)
+        try {
+          await denyTool(config, id)
+        } catch (err) {
+          setLastError(err instanceof Error ? err.message : 'Kunne ikke afvise')
+        }
       },
       follow: (config, sessionId) => {
         // Passiv: ALDRIG oven på en aktiv send (control.current != null ⟺ vi

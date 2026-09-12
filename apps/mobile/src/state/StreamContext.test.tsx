@@ -325,6 +325,53 @@ it('captures approval requests and posts explicit decisions', async () => {
   expect(screen.getByText('no-approval')).toBeTruthy()
 })
 
+async function medAabenStroem() {
+  let handlers: StreamHandlers | undefined
+  mockStartStream.mockImplementation((_r: unknown, next: StreamHandlers) => {
+    handlers = next
+    return { abort: jest.fn(), getRunId: () => 'run-1', getOffset: () => 0 }
+  })
+  const screen = await render(<StreamProvider><Probe /></StreamProvider>)
+  await act(async () => { screen.getByText('send').props.onPress() })
+  return { screen, h: () => handlers }
+}
+
+it('godkendelseskortet forsvinder MED DET SAMME — ogsaa naar vaerktoejet koerer laenge', async () => {
+  // `/chat/approvals/{id}/approve` KOERER vaerktoejet og svarer foerst naar det
+  // er faerdigt. Ventede vi paa svaret foer vi ryddede kortet, blev
+  // spoergsmaalet staaende i minutvis paa noget der for laengst var besvaret.
+  let løsUd: (() => void) | undefined
+  mockApproveTool.mockImplementation(() => new Promise<void>((r) => { løsUd = r }))
+  const { screen, h } = await medAabenStroem()
+  await act(async () => {
+    h()?.onEvent({
+      type: 'system_event', kind: 'approval_request',
+      payload: { approval_id: 'a-2', tool: 'shell', message: 'Tillad?', detail: 'sleep 300' },
+    } satisfies StreamEvent)
+  })
+  expect(screen.getByText('Tillad?')).toBeTruthy()
+
+  // TRYK - men lad kaldet HAENGE. Kortet skal vaere vaek allerede nu.
+  await act(async () => { void screen.getByText('approve').props.onPress() })
+  expect(screen.getByText('no-approval')).toBeTruthy()
+  await act(async () => { løsUd?.() })
+})
+
+it('det samme gaelder AFVIS — «uanset valg»', async () => {
+  let løsUd: (() => void) | undefined
+  mockDenyTool.mockImplementation(() => new Promise<void>((r) => { løsUd = r }))
+  const { screen, h } = await medAabenStroem()
+  await act(async () => {
+    h()?.onEvent({
+      type: 'system_event', kind: 'approval_request',
+      payload: { approval_id: 'a-3', tool: 'shell', message: 'Tillad?', detail: 'rm' },
+    } satisfies StreamEvent)
+  })
+  await act(async () => { void screen.getByText('deny').props.onPress() })
+  expect(screen.getByText('no-approval')).toBeTruthy()
+  await act(async () => { løsUd?.() })
+})
+
 function ErrorProbe() {
   const { streamError, clearError, send } = useStream()
   return (

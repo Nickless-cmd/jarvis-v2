@@ -83,6 +83,7 @@ OWNER_ONLY_TOOLS: frozenset[str] = frozenset({
     "list_recurring",
     "list_self_wakeups",
     "mark_wakeup_consumed",
+    "add_wakeup_extra",
     "schedule_recurring",
     "schedule_self_wakeup",
 })

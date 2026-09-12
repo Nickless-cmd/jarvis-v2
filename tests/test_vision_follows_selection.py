@@ -5,6 +5,14 @@ vælgeren … med syn bruger tools flash model med syn.»
 
 Så: kører der en synlig tur på en model der selv kan se, låner værktøjerne
 DENS øjne. Ellers arbejder de som hidtil på den konfigurerede vision-model.
+
+OPDATERET 12/9-2026 — forudsætningen for 5/9-beslutningen forsvandt: DeepSeek
+opgraderede flash-vægten til 4.1, som ER multimodal. Der findes ikke længere en
+«flash uden syn» at vælge imellem (provideren har kun `deepseek-flash` og
+`deepseek-v4-pro`). Målt med et probe-kald: begge flash-navne læser et billede —
+`prompt_tokens` gik 39 → 1031, og svaret gengav billedets danske overskrift og
+alle fire motivnavne ordret. Så grenen «modellen ser selv» er nu den normale vej
+for flash, og den blinde gren vogtes mod `glm-5.3-flash:cloud`.
 """
 from __future__ import annotations
 
@@ -27,7 +35,13 @@ def _active(monkeypatch, state):
 
 @pytest.mark.parametrize("model,sees", [
     ("deepseek-v4-flash-vision-exp", True),
-    ("deepseek-v4-flash", False),
+    # MAALT 12/9-2026: flash-vaegten blev opgraderet til 4.1, som ER multimodal.
+    # Begge API-navne laeser et billede — prompt_tokens gik 39 -> 1031, og
+    # svaret gengav baade overskriften og motivnavnene ordret. Den blinde
+    # plads i denne test holdes nu af glm-5.3-flash:cloud (se nedenfor).
+    ("deepseek-v4-flash", True),
+    ("deepseek-flash", True),
+    ("glm-5.3-flash:cloud", False),   # den virkelig blinde
     ("deepseek-v4-pro", False),
     ("gemma4:31b-cloud", True),   # familien er multimodal (opdateret 5/9: navnet alene betyder syn)
     ("qwen2.5vl:3b", True),
@@ -45,10 +59,17 @@ def test_a_seeing_model_lends_its_own_eyes(no_config, monkeypatch):
         "deepseek", "deepseek-v4-flash-vision-exp", "selected-model")
 
 
-def test_the_blind_default_keeps_the_old_eyes(no_config, monkeypatch):
-    """Flash UDEN syn er stadig standard — vaerktoejerne arbejder som hidtil."""
-    _active(monkeypatch, {"active": True, "provider": "deepseek",
-                          "model": "deepseek-v4-flash"})
+def test_a_genuinely_blind_model_keeps_the_old_eyes(no_config, monkeypatch):
+    """En model der IKKE kan se laaner stadig den konfigurerede vision-model.
+
+    (Opdateret 12/9-2026. Denne test hed «the blind default» og pegede paa
+    `deepseek-v4-flash` — indtil DeepSeek opgraderede flash-vaegten til 4.1, som
+    ER multimodal (maalt: prompt_tokens 39 -> 1031 med billede). Den blinde rolle
+    holdes nu af `glm-5.3-flash:cloud`, saa grenen der virkelig er blind stadig
+    er vogtet — ellers ville testen bare maale en model der ikke findes mere.)
+    """
+    _active(monkeypatch, {"active": True, "provider": "ollama",
+                          "model": "glm-5.3-flash:cloud"})
     assert VB.resolve_vision_target() == ("ollama", "gemma4:31b-cloud", "config")
 
 
@@ -132,7 +153,10 @@ def test_the_chosen_provider_is_not_thrown_away(monkeypatch, tmp_path):
     assert out["content"] == "et skilt"
 
 
-def test_the_blind_default_still_goes_to_ollama(monkeypatch, tmp_path):
+def test_a_blind_turn_still_goes_to_ollama(monkeypatch, tmp_path):
+    """Kører turen paa en model der ikke kan se, gaar billedet til ollama —
+    som hidtil. (Opdateret 12/9-2026: den blinde model er nu glm-5.3-flash:cloud;
+    `deepseek-v4-flash` ser selv efter 4.1-opgraderingen.)"""
     from core.services import attachment_service as AS
     path = tmp_path / "x.png"
     path.write_bytes(b"\x89PNG\r\n\x1a\n" + b"0" * 20)
@@ -141,8 +165,8 @@ def test_the_blind_default_still_goes_to_ollama(monkeypatch, tmp_path):
     monkeypatch.setattr("core.runtime.secrets.read_runtime_key", lambda *a, **k: None)
     monkeypatch.setattr("core.services.attachment_service._vision_model",
                         lambda: "gemma4:31b-cloud")
-    _active(monkeypatch, {"active": True, "provider": "deepseek",
-                          "model": "deepseek-v4-flash"})
+    _active(monkeypatch, {"active": True, "provider": "ollama",
+                          "model": "glm-5.3-flash:cloud"})
     called: dict = {}
     monkeypatch.setattr("core.services.visual_memory._describe_via_ollama",
                         lambda b64, *, model, prompt=None: called.update(model=model) or "ok")

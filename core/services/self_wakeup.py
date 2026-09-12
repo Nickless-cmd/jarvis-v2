@@ -61,6 +61,7 @@ def schedule_self_wakeup(
     delay_seconds: int,
     prompt: str,
     reason: str = "",
+    extra: str = "",
     channel: str | None = None,
     session_id: str | None = None,
     user_id: str | None = None,
@@ -72,6 +73,7 @@ def schedule_self_wakeup(
     """Queue a self-wakeup. Returns the wakeup record."""
     prompt = (prompt or "").strip()
     reason = (reason or "").strip()
+    extra = (extra or "").strip()
     if not prompt:
         return {"status": "error", "error": "prompt is required"}
     delay = int(max(_MIN_DELAY_SECONDS, min(_MAX_DELAY_SECONDS, delay_seconds)))
@@ -93,6 +95,10 @@ def schedule_self_wakeup(
         "delay_seconds": delay,
         "prompt": prompt[:1000],
         "reason": reason[:200],
+        # Bjørns tilføjelse: han skriver ofte en ekstra besked lige efter en tur.
+        # Den hører til wakeup'en, ikke kun turen — så den følger med i
+        # awareness-noten og i dispatcherens self_directive (12/9-2026).
+        "extra": extra[:1000] or None,
         "status": "pending",
         "fired_at": None,
         "consumed_at": None,
@@ -170,6 +176,36 @@ def mark_wakeup_consumed(wakeup_id: str) -> dict[str, Any]:
     except Exception:
         pass
     return {"status": "ok", "wakeup_id": wakeup_id}
+
+
+def add_wakeup_extra(wakeup_id: str, extra: str) -> dict[str, Any]:
+    """Læg en tilføjelse på en booket wakeup — så den følger med i noten.
+
+    Bjørns vane (12/9-2026): han skriver ofte en ekstra besked lige efter en
+    tur. Den hører til wakeup'en, ikke kun turen. Vi APPENDER frem for at
+    overskrive, så flere tilføjelser samler sig i rækkefølge.
+
+    Virker på både 'pending' og 'fired' — en tilføjelse kan komme efter
+    fyre-tidspunktet, men før wakeup'en er kvitteret.
+    """
+    extra = (extra or "").strip()
+    if not extra:
+        return {"status": "error", "error": "extra is required"}
+    records = _load()
+    record = next((r for r in records if r.get("wakeup_id") == wakeup_id), None)
+    if record is None:
+        return {"status": "error", "error": "wakeup not found"}
+    if record.get("status") not in ("pending", "fired"):
+        return {
+            "status": "error",
+            "error": f"wakeup status={record.get('status')}, can't add extra",
+        }
+    existing = str(record.get("extra") or "").strip()
+    merged = f"{existing}\n{extra}".strip() if existing else extra
+    record["extra"] = merged[:1000]
+    record["extra_updated_at"] = datetime.now(UTC).isoformat()
+    _save(records)
+    return {"status": "ok", "wakeup_id": wakeup_id, "extra": record["extra"]}
 
 
 def cancel_wakeup(wakeup_id: str) -> dict[str, Any]:
@@ -280,7 +316,20 @@ def self_wakeup_section() -> str | None:
         prompt = str(r.get("prompt", ""))[:200]
         reason = str(r.get("reason", ""))
         reason_part = f" ({reason})" if reason else ""
-        lines.append(f"  • {wid}{reason_part}: {prompt}")
+        # 12/9-2026: skeln «dispatchet af sig selv» fra «faldt tilbage til
+        # awareness fordi du var aktiv». Uden dette står begge som 'fired',
+        # og Jarvis kan ikke se om mekanismen kørte (målt: wake-d07eaea13d
+        # fyrede midt i en aktiv tur, uden dispatched-flag, uden forklaring).
+        skip_part = ""
+        if r.get("dispatch_skipped"):
+            skip_part = (
+                f" [IKKE dispatchet — {r.get('dispatch_skipped_reason') or 'ukendt'}; "
+                "instrukserne står her, følg op selv]"
+            )
+        lines.append(f"  • {wid}{reason_part}{skip_part}: {prompt}")
+        extra = str(r.get("extra") or "").strip()
+        if extra:
+            lines.append(f"      ↳ tilføjelse: {extra[:300]}")
     lines.append(
         "Når du har handlet på en af dem, brug `mark_wakeup_consumed(wakeup_id)` "
         "så den ikke gentager sig i din awareness."
@@ -305,6 +354,7 @@ def _exec_schedule_self_wakeup(args: dict[str, Any]) -> dict[str, Any]:
         delay_seconds=int(args.get("delay_seconds") or 60),
         prompt=str(args.get("prompt") or ""),
         reason=str(args.get("reason") or ""),
+        extra=str(args.get("extra") or ""),
         session_id=current_session_id() or None,
         user_id=current_user_id() or None,
         workspace_name=current_workspace_name() or None,
@@ -332,6 +382,13 @@ def _exec_mark_wakeup_consumed(args: dict[str, Any]) -> dict[str, Any]:
     return mark_wakeup_consumed(str(args.get("wakeup_id") or ""))
 
 
+def _exec_add_wakeup_extra(args: dict[str, Any]) -> dict[str, Any]:
+    return add_wakeup_extra(
+        str(args.get("wakeup_id") or ""),
+        str(args.get("extra") or ""),
+    )
+
+
 SELF_WAKEUP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
     {
         "type": "function",
@@ -351,6 +408,13 @@ SELF_WAKEUP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
                     "delay_seconds": {"type": "integer"},
                     "prompt": {"type": "string", "description": "What to resume / do when waking."},
                     "reason": {"type": "string", "description": "Short label for telemetry."},
+                    "extra": {
+                        "type": "string",
+                        "description": (
+                            "Optional extra note carried with the wakeup — surfaces "
+                            "in awareness and in the dispatched self-directive."
+                        ),
+                    },
                 },
                 "required": ["delay_seconds", "prompt"],
             },
@@ -392,6 +456,25 @@ SELF_WAKEUP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
                 "type": "object",
                 "properties": {"wakeup_id": {"type": "string"}},
                 "required": ["wakeup_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "add_wakeup_extra",
+            "description": (
+                "Append an extra note to a queued or fired wakeup so it carries "
+                "into awareness and the dispatched directive. Use when the user "
+                "adds something right after a turn that belongs to the wakeup."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "wakeup_id": {"type": "string"},
+                    "extra": {"type": "string", "description": "Note to append."},
+                },
+                "required": ["wakeup_id", "extra"],
             },
         },
     },

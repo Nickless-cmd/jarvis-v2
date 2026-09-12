@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7321/14392 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7323/14395 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 7321/14392 functions/methods documented (50%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 614 | 1135 | 54% |
-| `core.services` | 4875 | 9941 | 49% |
+| `core.services` | 4877 | 9944 | 49% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 108 | 184 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1643,7 +1643,7 @@ Generated from source. 7321/14392 functions/methods documented (50%). The list b
 - `core/services/self_review_unified.py` :: `build_self_review_surface` (L371)
 - `core/services/self_review_unified.py` :: `list_self_reviews` (L352)
 - `core/services/self_system_code_awareness.py` :: `build_self_system_code_awareness_surface` (L16)
-- `core/services/self_wakeup.py` :: `list_wakeups` (L193)
+- `core/services/self_wakeup.py` :: `list_wakeups` (L229)
 - `core/services/selfhood_proposal_tracking.py` :: `build_runtime_selfhood_proposal_surface` (L83)
 - `core/services/selfhood_proposal_tracking.py` :: `refresh_runtime_selfhood_proposal_statuses` (L52)
 - `core/services/selfhood_proposal_tracking.py` :: `track_runtime_selfhood_proposals_for_visible_turn` (L30)
@@ -1895,7 +1895,7 @@ Generated from source. 7321/14392 functions/methods documented (50%). The list b
 - `core/services/visible_turn_accumulator.py` :: `TurnAccumulator.close_segment` (L56)
 - `core/services/visible_turn_accumulator.py` :: `TurnAccumulator.note_text` (L60)
 - `core/services/visible_turn_accumulator.py` :: `TurnAccumulator.note_tool` (L63)
-- `core/services/vision_backend.py` :: `build_vision_backend_surface` (L192)
+- `core/services/vision_backend.py` :: `build_vision_backend_surface` (L237)
 - `core/services/voice_daemon.py` :: `start_voice_daemon` (L60)
 - `core/services/voice_daemon.py` :: `stop_voice_daemon` (L73)
 - `core/services/witness_signal_tracking.py` :: `build_runtime_witness_signal_surface` (L120)
@@ -1969,10 +1969,10 @@ Generated from source. 7321/14392 functions/methods documented (50%). The list b
 - `core/tools/tool_definition_v2.py` :: `all_definitions` (L211)
 - `core/tools/tool_schema_contract.py` :: `Brud.haard` (L72)
 - `core/tools/tool_schema_contract.py` :: `haarde` (L164)
-- `core/tools/tool_scoping.py` :: `reset_tool_scope` (L209)
-- `core/tools/tool_scoping.py` :: `set_local_exec` (L227)
-- `core/tools/tool_scoping.py` :: `set_tool_scope` (L205)
-- `core/tools/tool_scoping.py` :: `tool_scope` (L232)
+- `core/tools/tool_scoping.py` :: `reset_tool_scope` (L210)
+- `core/tools/tool_scoping.py` :: `set_local_exec` (L228)
+- `core/tools/tool_scoping.py` :: `set_tool_scope` (L206)
+- `core/tools/tool_scoping.py` :: `tool_scope` (L233)
 - `core/tools/wake_word_tool.py` :: `wake_word_status` (L217)
 - `core/tools/workspace_capabilities.py` :: `classify_workspace_execution_mode` (L1870)
 - `core/tools/workspace_capabilities.py` :: `get_capability_invocation_truth` (L555)

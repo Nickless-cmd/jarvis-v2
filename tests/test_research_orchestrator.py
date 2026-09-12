@@ -20,7 +20,7 @@ def _events(iterator):
     return asyncio.run(collect())
 
 
-def _fake_store(monkeypatch, *, sources=None, tool_calls=0):
+def _fake_store(monkeypatch, *, sources=None, findings=None, tool_calls=0):
     statuses = []
     monkeypatch.setattr(orchestrator.store, "create_run", lambda **kw: {"id": "research-1", **kw})
     monkeypatch.setattr(orchestrator.store, "transition_run", lambda rid, status, **kw: statuses.append(status) or {"id": rid, "status": status})
@@ -32,6 +32,9 @@ def _fake_store(monkeypatch, *, sources=None, tool_calls=0):
     monkeypatch.setattr(orchestrator.store, "complete_task", lambda task_id, finding, **kw: {"id": task_id})
     monkeypatch.setattr(orchestrator.store, "source_count", lambda rid: 0)
     monkeypatch.setattr(orchestrator.store, "list_sources", lambda rid: list(sources or []))
+    # Fase C3: dommeren læser fund-antal. Uden denne rammer den den ægte DB og
+    # falder i `_judge_quality`s except — et falsk grønt.
+    monkeypatch.setattr(orchestrator.store, "list_findings", lambda rid: list(findings or []))
     monkeypatch.setattr(orchestrator.store, "tool_call_count", lambda rid: tool_calls)
     monkeypatch.setattr(orchestrator.store, "consume_pending_steers", lambda rid: [])
     monkeypatch.setattr(orchestrator.store, "bind_visible_run", lambda rid, visible: None)
@@ -798,3 +801,142 @@ def test_C1_flag_off_kalder_aldrig_planneren_i_run(monkeypatch):
     ))
     assert any("event: research_completed" in e for e in events), events
     assert called == [], "planneren blev kaldt i et run hvor flaget var slået fra"
+
+
+# --- Fase C3: LLM-dommer mod rubric (13/9-2026) ---
+#
+# Dommeren er et SUPPLEMENT til de deterministiske gates. Den kan fejle frit,
+# den må aldrig ændre `quality["status"]`, og flag-off må ikke røre netværket.
+
+def _judge_flag(monkeypatch, *, enabled: bool = True):
+    """Slå KUN dommer-flaget til/fra; andre flag beholder deres default."""
+    monkeypatch.setattr(
+        orchestrator,
+        "_setting",
+        lambda name, default: enabled if name == "research_llm_judge_enabled" else default,
+    )
+
+
+def _fake_cheap_lane(monkeypatch, *, verdict: str = "pass", raise_exc: bool = False):
+    """Stub den billige lane. Registrerer kald, så vi kan bevise at den (ikke) kørte."""
+    import core.services.cheap_provider_runtime as cheap_runtime
+
+    calls: list[str] = []
+
+    def _fake(*, message: str):
+        calls.append(message)
+        if raise_exc:
+            raise RuntimeError("cheap lane nede")
+        payload = {
+            "answers_question": True,
+            "evidence_separated": True,
+            "uncertainty_honest": True,
+            "no_unsupported_claims": verdict == "pass",
+            "reason": "vurderet",
+        }
+        return {"status": "completed", "text": json.dumps(payload)}
+
+    monkeypatch.setattr(cheap_runtime, "execute_public_safe_cheap_lane", _fake)
+    return calls
+
+
+def test_C3_parse_verdict_binaer():
+    """Alle fire ja → pass; ét nej → fail; et halvt svar er ikke en dom."""
+    ok = json.dumps({
+        "answers_question": True, "evidence_separated": True,
+        "uncertainty_honest": True, "no_unsupported_claims": True,
+        "reason": "solid",
+    })
+    verdict = orchestrator._parse_verdict(ok)
+    assert verdict["verdict"] == "pass"
+    assert all(verdict["criteria"].values())
+
+    one_no = json.dumps({
+        "answers_question": True, "evidence_separated": False,
+        "uncertainty_honest": True, "no_unsupported_claims": True,
+    })
+    failed = orchestrator._parse_verdict(one_no)
+    assert failed["verdict"] == "fail"
+    assert failed["criteria"]["evidence_separated"] is False
+
+    # Manglende kriterium → None. Et ufuldstændigt svar må ikke ligne en dom.
+    assert orchestrator._parse_verdict('{"answers_question": true}') is None
+    # Ikke-boolean → None.
+    assert orchestrator._parse_verdict(json.dumps({
+        "answers_question": "yes", "evidence_separated": True,
+        "uncertainty_honest": True, "no_unsupported_claims": True,
+    })) is None
+    # Garbage → None.
+    assert orchestrator._parse_verdict("jeg ved det ikke") is None
+    assert orchestrator._parse_verdict("") is None
+    # Fenced JSON parses.
+    assert orchestrator._parse_verdict(f"```json\n{ok}\n```")["verdict"] == "pass"
+
+
+def test_C3_flag_off_roerer_aldrig_netvaerket(monkeypatch):
+    _fake_store(monkeypatch)
+    _judge_flag(monkeypatch, enabled=False)
+    calls = _fake_cheap_lane(monkeypatch)
+    events = _events(orchestrator.stream_research_run(
+        message="Sammenlign fem leverandører på pris, sikkerhed og drift",
+        session_id="s1",
+        decision=ResearchDecision(tier="orchestrated", max_workers=2, max_tasks=2),
+        visible_factory=_visible,
+        worker_factory=lambda **kw: {"text": "x", "status": "completed"},
+        orchestrator_enabled=True,
+    ))
+    assert calls == [], "dommeren kaldte netværket selvom flaget var slået fra"
+    assert _completed_payload(events)["judge"] == {}
+
+
+def test_C3_dommen_naar_completed_eventet(monkeypatch):
+    _fake_store(monkeypatch)
+    _judge_flag(monkeypatch)
+    calls = _fake_cheap_lane(monkeypatch, verdict="pass")
+    events = _events(orchestrator.stream_research_run(
+        message="Sammenlign fem leverandører på pris, sikkerhed og drift",
+        session_id="s1",
+        decision=ResearchDecision(tier="orchestrated", max_workers=2, max_tasks=2),
+        visible_factory=_visible,
+        worker_factory=lambda **kw: {"text": "x", "status": "completed"},
+        orchestrator_enabled=True,
+    ))
+    assert len(calls) == 1, calls
+    payload = _completed_payload(events)
+    assert payload["judge"]["verdict"] == "pass"
+    assert payload["judge"]["criteria"]["answers_question"] is True
+
+
+def test_C3_dommer_fejl_koster_ikke_svaret(monkeypatch):
+    """En dommer der kaster må ikke fjerne svaret brugeren venter på."""
+    _fake_store(monkeypatch)
+    _judge_flag(monkeypatch)
+    _fake_cheap_lane(monkeypatch, raise_exc=True)
+    events = _events(orchestrator.stream_research_run(
+        message="Sammenlign fem leverandører på pris, sikkerhed og drift",
+        session_id="s1",
+        decision=ResearchDecision(tier="orchestrated", max_workers=2, max_tasks=2),
+        visible_factory=_visible,
+        worker_factory=lambda **kw: {"text": "x", "status": "completed"},
+        orchestrator_enabled=True,
+    ))
+    assert any("event: research_completed" in e for e in events), events
+    assert _completed_payload(events)["judge"] == {}
+
+
+def test_C3_dommen_aendrer_ikke_gate_status(monkeypatch):
+    """Dommeren er et supplement: 'failed' gate forbliver failed, også når dommeren siger pass."""
+    _fake_store(monkeypatch, sources=[])  # ingen kilder → citation_validity + source_quality fejler
+    _judge_flag(monkeypatch)
+    _fake_cheap_lane(monkeypatch, verdict="pass")
+    events = _events(orchestrator.stream_research_run(
+        message="Sammenlign fem leverandører på pris, sikkerhed og drift",
+        session_id="s1",
+        decision=ResearchDecision(tier="orchestrated", max_workers=2, max_tasks=2),
+        visible_factory=_visible,
+        worker_factory=lambda **kw: {"text": "x", "status": "completed"},
+        orchestrator_enabled=True,
+    ))
+    payload = _completed_payload(events)
+    assert payload["quality"] == "failed", payload
+    assert payload["judge"]["verdict"] == "pass", payload

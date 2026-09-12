@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7390/14479 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7393/14482 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 7390/14479 functions/methods documented (51%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 614 | 1135 | 54% |
-| `core.services` | 4932 | 10016 | 49% |
+| `core.services` | 4935 | 10019 | 49% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 108 | 184 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1452,8 +1452,8 @@ Generated from source. 7390/14479 functions/methods documented (51%). The list b
 - `core/services/research_evidence_collector.py` :: `collecting_for` (L14)
 - `core/services/research_evidence_collector.py` :: `observe_web_result` (L38)
 - `core/services/research_ledger.py` :: `taellere` (L42)
-- `core/services/research_orchestrator.py` :: `research_enabled` (L821)
-- `core/services/research_orchestrator.py` :: `stream_research_run` (L524)
+- `core/services/research_orchestrator.py` :: `research_enabled` (L941)
+- `core/services/research_orchestrator.py` :: `stream_research_run` (L638)
 - `core/services/research_prompt_context.py` :: `research_context` (L23)
 - `core/services/research_prompt_context.py` :: `research_prompt_section` (L36)
 - `core/services/research_quality.py` :: `evaluate_research_report` (L19)

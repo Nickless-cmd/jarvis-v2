@@ -454,6 +454,120 @@ def _evaluate_quality(run_id: str, query: str, report: str, policy: ResearchPoli
     }
 
 
+# ── Fase C3 (13/9-2026): LLM-dommer mod rubric ──────────────────────────────
+#
+# De syv deterministiske gates kan TÆLLE — citationer i range, facetter nævnt,
+# kilder dateret — men de kan ikke VURDERE. De kan ikke se om syntesen svarer på
+# spørgsmålet, om den skelner evidens fra påstand, eller om den er ærlig om det
+# den ikke ved. Det er hvad en dommer kan, og derfor er den et SUPPLEMENT til
+# gaterne, ikke en erstatning (spec §4 C3).
+#
+# Anthropic målte binær bedømmelse som det stærkeste: dommeren svarer ja/nej pr.
+# kriterium, ikke på en skala. Verdict er "pass" kun når ALLE fire er ja.
+# Dommeren fejler frit og rører aldrig `quality["status"]`.
+
+_JUDGE_CRITERIA = (
+    "answers_question",
+    "evidence_separated",
+    "uncertainty_honest",
+    "no_unsupported_claims",
+)
+
+
+def _judge_prompt(query: str, report: str, sources: int, findings: int, gaps: int) -> str:
+    """Binær rubric — kort nok til en billig model, konkret nok til at være falsificerbar."""
+    return (
+        "You are a strict research-report judge. Answer each criterion with true "
+        "or false. Be adversarial: when in doubt, answer false.\n\n"
+        f"QUESTION: {query}\n\n"
+        f"REPORT:\n{report}\n\n"
+        f"CONTEXT: the report cites {sources} collected source(s), {findings} "
+        f"parsed finding(s), and flags {gaps} known gap(s).\n\n"
+        "CRITERIA:\n"
+        "- answers_question: does the report directly answer the question — not a "
+        "nearby question?\n"
+        "- evidence_separated: are factual claims tied to the evidence, with "
+        "inference marked as inference?\n"
+        "- uncertainty_honest: are unknowns and weak spots stated rather than "
+        "glossed over?\n"
+        "- no_unsupported_claims: is every confident claim supported by the "
+        "evidence? (false if any confident claim has no support)\n\n"
+        'Reply with ONLY this JSON: {"answers_question": true, '
+        '"evidence_separated": true, "uncertainty_honest": true, '
+        '"no_unsupported_claims": true, "reason": "one sentence"}'
+    )
+
+
+def _parse_verdict(text: str) -> dict | None:
+    """Dommerens svar → {"verdict", "criteria", "reason"}. None hvis uafgørbart.
+
+    Kræver ALLE fire kriterier som ægte booleans: et halvt svar er ikke en dom,
+    og en dom vi ikke kan læse må ikke ligne en dom der bestod.
+    """
+    raw = _clean_text(text)
+    if not raw:
+        return None
+    candidate = raw
+    fenced = re.search(r"```(?:json)?\s*(.*?)```", raw, re.S)
+    if fenced:
+        candidate = fenced.group(1).strip()
+    parsed: object = None
+    try:
+        parsed = json.loads(candidate)
+    except Exception:
+        match = re.search(r"\{.*\}", candidate, re.S)
+        if match:
+            try:
+                parsed = json.loads(match.group(0))
+            except Exception:
+                parsed = None
+    if not isinstance(parsed, dict):
+        return None
+    criteria: dict[str, bool] = {}
+    for name in _JUDGE_CRITERIA:
+        value = parsed.get(name)
+        if not isinstance(value, bool):
+            return None
+        criteria[name] = value
+    return {
+        "verdict": "pass" if all(criteria.values()) else "fail",
+        "criteria": criteria,
+        "reason": _clean_text(parsed.get("reason"))[:500],
+    }
+
+
+async def _judge_quality(run_id: str, query: str, report: str, gaps: int = 0) -> dict:
+    """Kør dommeren i en tråd, så event-loopet ikke blokeres. Fejler altid blødt.
+
+    Returnerer {} ved enhver tvivl — flag af, tom rapport, ingen provider, eller
+    et svar vi ikke kan læse. Tomt betyder "ikke dømt", ikke "bestået".
+    """
+    if not _setting("research_llm_judge_enabled", False):
+        return {}
+    if not str(report or "").strip():
+        return {}
+    try:
+        sources = int(store.source_count(run_id))
+        findings = len(store.list_findings(run_id))
+    except Exception:
+        sources, findings = 0, 0
+    try:
+        from core.services.cheap_provider_runtime import execute_public_safe_cheap_lane
+
+        result = await asyncio.to_thread(
+            execute_public_safe_cheap_lane,
+            message=_judge_prompt(query, report, sources, findings, gaps),
+        )
+    except Exception:
+        return {}
+    verdict = _parse_verdict(str((result or {}).get("text") or ""))
+    if not verdict:
+        return {}
+    verdict["sources"] = sources
+    verdict["findings"] = findings
+    return verdict
+
+
 def _default_worker_sync(
     *,
     task: dict,
@@ -786,6 +900,11 @@ async def stream_research_run(
                     # Fase A1: gaten kører nu på den faktiske rapport + de indsamlede
                     # kilder. Den MARKERER — den blokerer ikke (spec §4 A1).
                     quality = _evaluate_quality(run_id, query, "".join(report_chunks), policy)
+                    # Fase C3: dommeren er et SUPPLEMENT — den kører efter gaten,
+                    # i en tråd, og lægges ved siden af uden at røre `status`.
+                    judge = await _judge_quality(run_id, query, "".join(report_chunks), len(gaps))
+                    if judge:
+                        quality["judge"] = judge
                     store.transition_run(run_id, "synthesizing")
                     store.transition_run(run_id, "completed")
                     research_ledger.record_run_completed(
@@ -804,6 +923,7 @@ async def stream_research_run(
                         "quality": quality["status"],
                         "quality_gates": quality["gates"],
                         "quality_failures": quality["failures"],
+                        "judge": quality.get("judge", {}),
                         "tool_calls": quality["tool_calls"],
                         "timed_out": timed_out,
                     })

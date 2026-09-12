@@ -45,11 +45,20 @@ async def run_tool_batch(
     out: dict,
     heartbeat_extra: dict | None = None,
     exec_start: float | None = None,
+    er_afbrudt=None,
 ) -> AsyncIterator[str]:
     """Announce → execute → heartbeat pump for one tool batch.
 
     Yields the SSE strings (working_step, tool_call [Path B only], heartbeat). On
     completion fills ``out`` with ``{"results": [...], "step_counter": int}``.
+
+    ``er_afbrudt`` er et kald der siger om brugeren har trykket stop. Uden det
+    kunne et stop foerst opdages NAAR hele batchen var faerdig: maalt 12/9-2026
+    svarede serveren 200 OK paa Bjoerns to tryk 22:51:28 og :30, og runnet
+    stoppede foerst 22:52:27 — 59 sekunder senere, fordi loekken hernede kun
+    ventede paa vaerktoejerne. Traaden kan ikke draebes (run_in_executor), men
+    vi kan holde op med at VENTE paa den; saa svarer stop-knappen inden for et
+    sekund i stedet for inden for en vaerktoejskoersel.
 
     Args:
         tool_calls: the round's native tool_calls (already possibly held/emptied by
@@ -212,10 +221,26 @@ async def run_tool_batch(
     _start = exec_start if exec_start is not None else time.monotonic()
     _beats = 0
     _tool_exc: BaseException | None = None
+    # Vent i SMAA spring og bank i store. Hjerteslaget skal stadig falde hvert
+    # heartbeat_interval_s — det er klientens livstegn — men afbrydelsen skal
+    # kunne ses imellem slagene.
+    _puls = min(1.0, heartbeat_interval_s)
+    _ventet = 0.0
     while not _tool_task.done():
         try:
-            await asyncio.wait_for(asyncio.shield(_tool_task), timeout=heartbeat_interval_s)
+            await asyncio.wait_for(asyncio.shield(_tool_task), timeout=_puls)
         except asyncio.TimeoutError:
+            if er_afbrudt is not None and er_afbrudt():
+                # Brugeren trykkede stop. Traaden loeber faerdig for sig selv —
+                # vi holder op med at vente, og runnet afsluttes som afbrudt.
+                out["results"] = []
+                out["step_counter"] = step_counter
+                out["afbrudt"] = True
+                return
+            _ventet += _puls
+            if _ventet < heartbeat_interval_s:
+                continue
+            _ventet = 0.0
             # Tools still running — keep the stream alive + touch cross-process liveness.
             _beats += 1
             try:

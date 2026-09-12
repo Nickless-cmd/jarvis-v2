@@ -4353,8 +4353,17 @@ async def _stream_visible_run(
                         heartbeat_extra={"round": _agentic_round + 1},
                         out=_a_batch_out,
                         exec_start=_a_exec_start,
+                        er_afbrudt=controller.is_cancelled,
                     ):
                         yield _frame
+                    if _a_batch_out.get("afbrudt"):
+                        # Stop-knappen blev trykket MENS vaerktoejerne koerte.
+                        # Uden denne gren loeb runden faerdig foerst, og de
+                        # naeste tjek ligger runder laengere fremme.
+                        _agentic_loop_exit_reason = "user-cancelled"
+                        _outcome_state.mark("interrupted", finalized=False)
+                        _outcome_state.set_error("user-cancelled-during-tool-exec")
+                        break
                     _a_results = _a_batch_out["results"]
                     _step_counter = _a_batch_out["step_counter"]
                     logger.info(

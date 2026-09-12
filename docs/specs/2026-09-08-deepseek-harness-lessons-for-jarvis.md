@@ -1714,9 +1714,71 @@ was swept into the list alongside six tables that are. The projection built
 for it is sound, and wiring it would be a mistake — which is a stronger reason
 to leave the guard detached than the missing publisher was.
 
-**This is a scoping question, not a measurement gap.** The measurement is
-unambiguous; whether criterion 4 should still name this table is the owner's
-call.
+**Two corrections to the paragraph above, 12 September.**
+
+*The daemon is shown as off.* `daemon_status` lists `cache_maintenance` as
+"Slukket". Saying the pruner "is called from `cache_maintenance_daemon.py:85`"
+is true about the function and misleading about the system: a reader who
+checks the daemon's own switch concludes the reasoning failed. The real route
+is `cluster_infra` (on, every 2 minutes) →
+`cluster_daemon_families.py:1337` → `_run_infra_unconditional` → the
+`("cache_maintenance", _infra_cache_maintenance_live)` entry registered at
+line 1261 → `tick_cache_maintenance_daemon()` → `prune_telemetry_tables()`.
+The function's own name carries the answer: *unconditional*. The daemon's
+switch does not gate it. This is the same shape as everything else in this
+section — the coupling exists, under a different name than the one you would
+search for.
+
+*The evidence is stronger than a 44-day span.* The age distribution is the
+result rather than an indicator: **0 rows above 46 days, 0 in 45–46, 3 in
+44–45, 14 in 43–44.** A pruner at 45 days must leave exactly that shape.
+
+And one nuance that makes the conclusion self-supporting: every reader of this
+table uses a **7-day window** — `tool_router.py:141,165,169,211-253` and
+`routes/tool_router.py:29-65`, all of it `d7_iso` or `datetime('now','-7
+days')`; only `recent_rows` (`ORDER BY id DESC LIMIT 10`) is unbounded. Of the
+1907 rows, 674 (35%) fall inside that window and 1234 (65%) are pruned without
+ever having been read. A 45-day life serving 7-day readers is a 6.4× margin,
+so a projection would not give any reader one new datapoint — the "permanent
+drift" would sit in a band nobody looks at.
+
+**Decision: `tool_router_decisions` is descoped from criterion 4.** It is
+telemetry all the way through — classified as such with an explicit comment,
+pruned as such by a running path, read at 7 days by every one of its readers.
+The projection built for it stays in the tree as sound but unwired code, and
+the guard stays detached.
+
+### Criterion 4's real candidate, measured 12 September
+
+`approval_claims` passes every test `tool_router_decisions` failed, and one it
+did not face:
+
+| property | `tool_router_decisions` | `approval_claims` |
+|---|---|---|
+| in a retention list | yes, 45 days | **no — load-bearing** |
+| natural key | none (`id` only) | **`approval_id`, 310 unique of 310 rows** |
+| session-scoped | yes | yes — 307 of 310 (99%) |
+| readers | 7-day window | outcome state, read by id |
+
+And the distribution is the reason this is urgent rather than theoretical:
+
+```
+chat-e58f16c561a64747b8da583302f   291 rows   ledger    newest 06:47:10 today
+chat-d8c4401477af410f89040a729bd    15 rows   legacy
+(empty) + "default"                  4 rows   not in chat_sessions
+```
+
+**94% of the rows belong to the one session that is already in `ledger`, and
+it is still being written.** That session is therefore already in the state
+the cutover exists to prevent: the ledger is authoritative, and a load-bearing
+table is being written around it. No projection, no guard, no publisher exists
+for approvals.
+
+The lesson from `tool_router` transfers with higher stakes. Attaching a guard
+before a publisher exists would not lose telemetry here — it would lose
+approval state, and `approval_bridge_shadow`'s own docstring names the cost:
+*"enten at en godkendt handling ikke sker, eller — værre — at en handling sker
+som ingen godkendte."* Publisher first, without exception.
 
 **Still open:** the tool-router projection is proven against fixtures and has
 never folded in production — `projection_checkpoints` has no row for it. No

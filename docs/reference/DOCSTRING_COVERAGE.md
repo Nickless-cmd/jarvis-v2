@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7349/14427 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7355/14437 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,7 +8,7 @@ Generated from source. 7349/14427 functions/methods documented (50%). The list b
 |---|---|---|---|
 | `apps.api.jarvis_api` | 34 | 36 | 94% |
 | `apps.api.jarvis_api.middleware` | 7 | 17 | 41% |
-| `apps.api.jarvis_api.routes` | 621 | 813 | 76% |
+| `apps.api.jarvis_api.routes` | 622 | 814 | 76% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 67 | 168 | 39% |
 | `apps.desktop` | 6 | 7 | 85% |
@@ -24,7 +24,7 @@ Generated from source. 7349/14427 functions/methods documented (50%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 614 | 1135 | 54% |
-| `core.services` | 4893 | 9966 | 49% |
+| `core.services` | 4898 | 9975 | 49% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 108 | 184 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -40,7 +40,7 @@ Generated from source. 7349/14427 functions/methods documented (50%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2060)
+## Undocumented public functions (2061)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L201)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1183,6 +1183,7 @@ Generated from source. 7349/14427 functions/methods documented (50%). The list b
 - `core/services/memory_write_policy.py` :: `build_memory_write_policy_surface` (L206)
 - `core/services/memory_write_policy.py` :: `list_pending_reviews` (L176)
 - `core/services/memory_write_policy.py` :: `reject_review` (L194)
+- `core/services/message_feedback.py` :: `markér_gennemgået` (L122)
 - `core/services/meta_learning_hypotheses.py` :: `list_active_hypotheses` (L189)
 - `core/services/meta_learning_retrospective.py` :: `fetch_memo_by_id` (L256)
 - `core/services/meta_learning_retrospective.py` :: `list_recent_memos` (L272)

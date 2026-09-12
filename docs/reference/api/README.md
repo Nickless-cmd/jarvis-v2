@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 14427 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 14437 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -42,18 +42,18 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 14427 functions/
 - [`core.services.12`](core.services.12.md) — `followup_observer` … `gut_calibration`
 - [`core.services.13`](core.services.13.md) — `gut_engine` … `interlanguage_practice`
 - [`core.services.14`](core.services.14.md) — `internal_cadence` … `loop_runtime`
-- [`core.services.15`](core.services.15.md) — `loyalty_gradient_signal_tracking` … `model_context`
-- [`core.services.16`](core.services.16.md) — `model_pair_resolver` … `override_store`
-- [`core.services.17`](core.services.17.md) — `paid_lane_guard` … `procedure_bank`
-- [`core.services.18`](core.services.18.md) — `procedure_bank_pipeline` … `read_before_write_guard`
-- [`core.services.19`](core.services.19.md) — `reasoning_classifier` … `rhythm_engine`
-- [`core.services.20`](core.services.20.md) — `role_model_resolver` … `selective_attention`
-- [`core.services.21`](core.services.21.md) — `selective_consolidation_daemon` … `session_persistence_flag`
-- [`core.services.22`](core.services.22.md) — `session_prewarm` … `somatic_runtime_body`
-- [`core.services.23`](core.services.23.md) — `source_confidence_gate` … `thought_thread`
-- [`core.services.24`](core.services.24.md) — `tick_cache` … `user_temperature_runtime`
-- [`core.services.25`](core.services.25.md) — `user_theory_of_mind` … `visual_memory`
-- [`core.services.26`](core.services.26.md) — `voice_anchor` … `world_model_signal_tracking`
+- [`core.services.15`](core.services.15.md) — `loyalty_gradient_signal_tracking` … `model_catalogue_sweep`
+- [`core.services.16`](core.services.16.md) — `model_context` … `override_command`
+- [`core.services.17`](core.services.17.md) — `override_store` … `proactivity_bridge`
+- [`core.services.18`](core.services.18.md) — `procedure_bank` … `r2_5_blocking_gate`
+- [`core.services.19`](core.services.19.md) — `read_before_write_guard` … `retry_runtime`
+- [`core.services.20`](core.services.20.md) — `rhythm_engine` … `seed_system`
+- [`core.services.21`](core.services.21.md) — `selective_attention` … `session_milestones`
+- [`core.services.22`](core.services.22.md) — `session_persistence_flag` … `somatic_daemon`
+- [`core.services.23`](core.services.23.md) — `somatic_runtime_body` … `thought_stream_daemon`
+- [`core.services.24`](core.services.24.md) — `thought_thread` … `user_temperature_engine`
+- [`core.services.25`](core.services.25.md) — `user_temperature_runtime` … `vision_backend`
+- [`core.services.26`](core.services.26.md) — `visual_memory` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

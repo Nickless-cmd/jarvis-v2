@@ -2,6 +2,24 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/central_injection_registry.py`
+_Central-styret injektions-register (ændrings-drevet indre liv, spec 2026-07-05)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `InjectionUnit` | `` | — | [src](../../../core/services/central_injection_registry.py#L21) |
+| function | `_kv_get` | `(key, default)` | — | [src](../../../core/services/central_injection_registry.py#L33) |
+| function | `_kv_set` | `(key, value)` | — | [src](../../../core/services/central_injection_registry.py#L42) |
+| function | `register` | `(unit)` | — | [src](../../../core/services/central_injection_registry.py#L50) |
+| function | `registered_keys` | `()` | — | [src](../../../core/services/central_injection_registry.py#L54) |
+| function | `read_injection` | `(key)` | Hot-path (api-proces): læs den cachede injektions-tekst. ALDRIG et compose-kald. | [src](../../../core/services/central_injection_registry.py#L58) |
+| function | `_nerve_latest` | `(nerve)` | Seneste værdi for 'cluster:nerve' fra central_timeseries. None hvis ukendt. | [src](../../../core/services/central_injection_registry.py#L67) |
+| function | `is_dirty` | `(unit, now)` | Beskidt hvis: aldrig komponeret, over max-alder, ELLER en kilde-nerve flyttet > tærskel. | [src](../../../core/services/central_injection_registry.py#L79) |
+| function | `refresh_unit` | `(unit, now)` | Genberegn ÉN enhed (det tunge LLM/subsystem-kald — OFF hot-path) og skriv durabelt. | [src](../../../core/services/central_injection_registry.py#L105) |
+| function | `refresh_dirty` | `(now=…)` | Kaldes fra Centralens cadence: refresh alle beskidte enheder. Self-safe pr. enhed. | [src](../../../core/services/central_injection_registry.py#L118) |
+| function | `injection_live` | `(key)` | Er denne enhed 'live' (hot-path læser cached) eller rullet tilbage (direkte build)? | [src](../../../core/services/central_injection_registry.py#L134) |
+| function | `set_injection_live` | `(key, live)` | — | [src](../../../core/services/central_injection_registry.py#L140) |
+
 ## `core/services/central_injection_units.py`
 _Deklarative injektions-enheds-definitioner (adskilt fra mekanismen)._
 
@@ -591,18 +609,4 @@ _core/services/central_render.py_
 | function | `render_anomaly` | `(name, *, importance=…)` | En anomali = kilden førte til et STØD (overraskelse/afvigelse) → '<term> → stød'. Renderet som | [src](../../../core/services/central_render.py#L42) |
 | function | `render_decision` | `(cluster, *, verdict=…)` | En central-beslutning → notation. deny → 'grænse ! <term>' (grænsen blokerer); allow → | [src](../../../core/services/central_render.py#L50) |
 | function | `render_state_snapshot` | `(*, limit=…)` | Aktuelle central-tilstande renderet til notation (on-read). I dag: uløste anomalier. B2 lader | [src](../../../core/services/central_render.py#L64) |
-
-## `core/services/central_route.py`
-_Central-ejet unified router (spec §5.5). ÉT beslutnings-punkt for alle lanes._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_model_capability` | `(provider, model)` | Capability estimate in [0,1] from the model name. Higher = stronger reasoner. | [src](../../../core/services/central_route.py#L30) |
-| function | `_rank_candidates` | `(lane, task, exclude)` | Rangerede (provider, model) for en lane — tynd wrapper over _scored_candidates. | [src](../../../core/services/central_route.py#L54) |
-| function | `_scored_candidates` | `(lane, task, exclude)` | (-cap, rank, provider, model) sorteret bedst-først. rank = prio/headroom_weight | [src](../../../core/services/central_route.py#L59) |
-| function | `_flag_cheap_provider_spread` | `()` | Cheap-lane kvote-proportional provider-spredning. Default OFF → uændret | [src](../../../core/services/central_route.py#L109) |
-| function | `_weighted_provider_pick` | `(scored, rng=…)` | Vælg (provider, model) kvote-proportionalt: bedste model pr. provider, vægt = | [src](../../../core/services/central_route.py#L121) |
-| function | `route` | `(*, lane, task=…, exclude=…)` | Vælg (provider, model) for en lane. Aldrig tør. | [src](../../../core/services/central_route.py#L154) |
-| function | `_fetch_invocations` | `(provider, since)` | (status, latency_ms) for provider siden 'since' fra SQLite. Self-safe. | [src](../../../core/services/central_route.py#L184) |
-| function | `provider_history` | `(provider, hours=…)` | Task 10: fejlrate, latency-p50, oppetid for en provider over N timer | [src](../../../core/services/central_route.py#L194) |
 

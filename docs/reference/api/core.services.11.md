@@ -2,6 +2,31 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/emotion_concepts.py`
+_Emotion Concepts — discrete, event-driven Lag-2 emotional signals._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_now` | `()` | Indirected for monkeypatching in tests. | [src](../../../core/services/emotion_concepts.py#L123) |
+| function | `trigger_emotion_concept` | `(concept, intensity, trigger=…, source=…, lifetime_hours=…, *, min_seconds_since_last_from_same_source=…)` | Create or strengthen an active emotion concept instance. | [src](../../../core/services/emotion_concepts.py#L128) |
+| function | `tick_emotion_concepts` | `(elapsed_seconds)` | Decay all active concepts proportional to elapsed time. | [src](../../../core/services/emotion_concepts.py#L215) |
+| function | `drain_expired_residue` | `()` | Return accumulated residue deltas from expired concepts and reset to zero. | [src](../../../core/services/emotion_concepts.py#L250) |
+| function | `get_active_emotion_concepts` | `()` | Return all active concepts above threshold, sorted by intensity descending. | [src](../../../core/services/emotion_concepts.py#L264) |
+| function | `get_lag1_influence_deltas` | `()` | Compute cumulative influence on Lag-1 axes from all active concepts. | [src](../../../core/services/emotion_concepts.py#L276) |
+| function | `get_bearing_push` | `()` | Return bearing push from the highest-intensity bearing-influencing concept. | [src](../../../core/services/emotion_concepts.py#L294) |
+| function | `build_emotion_concept_surface` | `()` | MC surface: active concepts + influence deltas. | [src](../../../core/services/emotion_concepts.py#L309) |
+| function | `_prune_if_needed` | `()` | Remove the weakest concept when over limit. Must be called under _lock. | [src](../../../core/services/emotion_concepts.py#L326) |
+| function | `_persist_loop` | `()` | — | [src](../../../core/services/emotion_concepts.py#L360) |
+| function | `_persist_async` | `(signal)` | Læg i kø. Fire-and-forget, men på ÉN tråd med ÉN forbindelse. | [src](../../../core/services/emotion_concepts.py#L371) |
+| function | `_persist_koe_status` | `()` | Til tests og til at kigge på hvor langt bagud skrivningen er. | [src](../../../core/services/emotion_concepts.py#L390) |
+| function | `_safe_persist` | `(signal)` | — | [src](../../../core/services/emotion_concepts.py#L396) |
+| function | `_handle_event` | `(kind, payload)` | Map eventbus events to emotion concept triggers. | [src](../../../core/services/emotion_concepts.py#L421) |
+| function | `_handle_heartbeat_tick` | `(payload)` | Map heartbeat tick outcomes to emotion concepts. | [src](../../../core/services/emotion_concepts.py#L487) |
+| function | `_handle_tool_completed` | `(payload)` | Map the actual simple_tools event shape to emotion concepts. | [src](../../../core/services/emotion_concepts.py#L522) |
+| function | `_listener_loop` | `(q)` | Background thread: reads from eventbus queue and dispatches events. | [src](../../../core/services/emotion_concepts.py#L553) |
+| function | `register_event_listeners` | `()` | Subscribe to eventbus and start background listener thread. | [src](../../../core/services/emotion_concepts.py#L570) |
+| function | `stop_event_listeners` | `()` | Stop the background listener thread. | [src](../../../core/services/emotion_concepts.py#L592) |
+
 ## `core/services/emotion_concepts_channel_triggers.py`
 _Helper module for emotion concept triggers from channel messages._
 
@@ -630,23 +655,4 @@ _Flow State Detection — when everything clicks._
 | function | `update_flow_detection` | `(*, recent_outcomes, correction_count=…, sustained_minutes=…)` | — | [src](../../../core/services/flow_state_detection.py#L11) |
 | function | `get_flow_state` | `()` | — | [src](../../../core/services/flow_state_detection.py#L33) |
 | function | `build_flow_state_surface` | `()` | — | [src](../../../core/services/flow_state_detection.py#L37) |
-
-## `core/services/followup_observer.py`
-_Followup-cluster — gør den agentiske followup-loop synlig i Den Intelligente Central._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_observe` | `(nerve, run_id, **data)` | — | [src](../../../core/services/followup_observer.py#L24) |
-| function | `note_round` | `(run_id, round_num, provider=…, model=…, *, exchanges=…)` | En agentisk followup-runde startede. Metadata-only. | [src](../../../core/services/followup_observer.py#L33) |
-| function | `note_round_failed` | `(run_id, round_num, provider=…, error=…, **data)` | En followup-runde fejlede (provider-fejl) → synlig. Det er her copilot-400 / | [src](../../../core/services/followup_observer.py#L41) |
-| function | `note_round_retry` | `(run_id, round_num, attempt, reason=…, *, outcome=…, **data)` | RUND-NIVEAU RETRY (spec §4.1/S7): en forbigående runde-fejl blev retry'et | [src](../../../core/services/followup_observer.py#L49) |
-| function | `note_lean_prompt` | `(run_id, round_num, *, provider=…, model=…, before_chars=…, after_chars=…, saved_tokens=…, applied=…)` | LEAN AGENTIC-PROMPT (spec §4.7/I7): på runde ≥2 trimmede vi den tunge per-turn- | [src](../../../core/services/followup_observer.py#L67) |
-| function | `note_loop_complete` | `(run_id, *, rounds=…, exit_reason=…, provider=…, model=…)` | Followup-loopet sluttede → observe runder kørt + exit-grund (completed/ | [src](../../../core/services/followup_observer.py#L81) |
-| function | `note_empty_completion` | `(run_id, *, provider=…, model=…, rounds=…, tools_executed=…, session_id=…, path=…)` | TAVS CUT-OFF: loopet sluttede 'completed' men producerede INTET synligt svar. | [src](../../../core/services/followup_observer.py#L90) |
-| function | `note_truncation` | `(run_id, *, provider=…, model=…, text_len=…, round_num=…)` | AFKORTET SVAR (finish_reason='length'): provideren lukkede streamen tidligt, | [src](../../../core/services/followup_observer.py#L129) |
-| function | `note_hollow_promise` | `(run_id, *, provider=…, model=…, round_index=…, session_id=…, resolved=…)` | TOM LØFTE (4. jul): modellen lovede imminent handling men kaldte NUL værktøj hele | [src](../../../core/services/followup_observer.py#L163) |
-| function | `note_resend` | `(run_id, *, provider=…, model=…, recovered=…)` | RESEND-PÅ-TOM (Bjørn option 1): runtimen fangede en transient tom completion | [src](../../../core/services/followup_observer.py#L206) |
-| function | `note_leak` | `(run_id, *, provider=…, model=…, chars=…, reason=…)` | LEAK/DUMP: modellen echoede et råt (kæmpe) tool-result som prosa-svar i stedet | [src](../../../core/services/followup_observer.py#L215) |
-| function | `note_degeneration` | `(run_id, *, provider=…, model=…, reason=…, chars=…)` | MODEL-LOOP: streaming-laget fangede en runaway-repetition og dræbte den ved | [src](../../../core/services/followup_observer.py#L234) |
-| function | `followup_summary` | `(*, window=…)` | Read-only: nylig followup-loop-aktivitet (til MC). Self-safe. | [src](../../../core/services/followup_observer.py#L253) |
 

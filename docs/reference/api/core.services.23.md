@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/source_confidence_gate.py`
+_Source-confidence gate (epistemisk gate, 2026-07-10)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_tool_names` | `(tools_used)` | — | [src](../../../core/services/source_confidence_gate.py#L38) |
+| function | `assess_source_confidence` | `(*, output_text, tools_used=…)` | Vurdér epistemisk kilde-konfidens for en tur. | [src](../../../core/services/source_confidence_gate.py#L47) |
+| function | `build_source_confidence_surface` | `(*, output_text=…, tools_used=…)` | Central-CLI: jc raw /central/source-confidence (senest vurderede tur, hvis givet). | [src](../../../core/services/source_confidence_gate.py#L88) |
+
 ## `core/services/spaced_repetition.py`
 _Spaced Repetition — schedule reviews for things Jarvis learned._
 
@@ -624,15 +633,4 @@ _Thought Thread — continuity of attention across ticks._
 | function | `build_thought_thread_prompt_section` | `()` | Tell him what thread he was holding before this turn. | [src](../../../core/services/thought_thread.py#L227) |
 | function | `reset_thought_thread` | `()` | Reset cached state (for testing). | [src](../../../core/services/thought_thread.py#L249) |
 | function | `_emit_thought_thread_event` | `(kind, payload=…)` | Emit a scoped event for cartographer observability. | [src](../../../core/services/thought_thread.py#L256) |
-
-## `core/services/tick_cache.py`
-_Tick-scoped in-memory cache — lives exactly one heartbeat tick._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `start_tick` | `()` | Activate cache for this tick. Resets any previous data. | [src](../../../core/services/tick_cache.py#L14) |
-| function | `end_tick` | `()` | Deactivate cache and clear all data. | [src](../../../core/services/tick_cache.py#L22) |
-| function | `get` | `(key)` | Return cached value or None. Safe to call when inactive. | [src](../../../core/services/tick_cache.py#L30) |
-| function | `set` | `(key, value)` | Store value for this tick. No-op when inactive. | [src](../../../core/services/tick_cache.py#L43) |
-| function | `get_tick_cache_stats` | `()` | Return hit/miss stats for current tick. | [src](../../../core/services/tick_cache.py#L50) |
 

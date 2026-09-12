@@ -2,6 +2,18 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/diagnosis_gate.py`
+_Diagnosis-gate (spec 2026-06-14) — fanger uverificerede diagnostiske konklusioner._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_promise_footnote` | `(claim_snippet)` | Fodnote-linje for en uverificeret completion-claim (konsistent stil). | [src](../../../core/services/diagnosis_gate.py#L53) |
+| class | `DiagnosisResult` | `` | — | [src](../../../core/services/diagnosis_gate.py#L88) |
+| class | `DiagnosisEvent` | `` | — | [src](../../../core/services/diagnosis_gate.py#L97) |
+| function | `analyze_diagnosis` | `(text, *, tools_used=…)` | Ren detektion: er der en uverificeret diagnostisk konklusion i teksten? | [src](../../../core/services/diagnosis_gate.py#L110) |
+| function | `analyze_completion_claim` | `(text, *, tools_used=…)` | Promise-ledger §8: påstår teksten en FULDFØRT handling ('det er committet/ | [src](../../../core/services/diagnosis_gate.py#L151) |
+| function | `diagnosis_gate_enforce` | `(text, *, session_id=…, run_id=…, tools_used=…)` | Pipeline-hook (spec §3.2): kører efter fact-gate, før append_chat_message. | [src](../../../core/services/diagnosis_gate.py#L185) |
+
 ## `core/services/diary_synthesis_signal_tracking.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -685,29 +697,4 @@ _Hvad nåede FAKTISK ud til klienten, før turen blev afbrudt?_
 | method | `Prefix.__bool__` | `(self)` | — | [src](../../../core/services/emitted_prefix.py#L55) |
 | function | `_tekst_fra_ramme` | `(raa)` | Tekstindholdet i én SSE-ramme. Tom streng for alt der ikke er tekst. | [src](../../../core/services/emitted_prefix.py#L59) |
 | function | `emitted_prefix` | `(run_id)` | Præcis den tekst der nåede den genoptagelige buffer for dette run. | [src](../../../core/services/emitted_prefix.py#L81) |
-
-## `core/services/emotion_concepts.py`
-_Emotion Concepts — discrete, event-driven Lag-2 emotional signals._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_now` | `()` | Indirected for monkeypatching in tests. | [src](../../../core/services/emotion_concepts.py#L123) |
-| function | `trigger_emotion_concept` | `(concept, intensity, trigger=…, source=…, lifetime_hours=…, *, min_seconds_since_last_from_same_source=…)` | Create or strengthen an active emotion concept instance. | [src](../../../core/services/emotion_concepts.py#L128) |
-| function | `tick_emotion_concepts` | `(elapsed_seconds)` | Decay all active concepts proportional to elapsed time. | [src](../../../core/services/emotion_concepts.py#L215) |
-| function | `drain_expired_residue` | `()` | Return accumulated residue deltas from expired concepts and reset to zero. | [src](../../../core/services/emotion_concepts.py#L250) |
-| function | `get_active_emotion_concepts` | `()` | Return all active concepts above threshold, sorted by intensity descending. | [src](../../../core/services/emotion_concepts.py#L264) |
-| function | `get_lag1_influence_deltas` | `()` | Compute cumulative influence on Lag-1 axes from all active concepts. | [src](../../../core/services/emotion_concepts.py#L276) |
-| function | `get_bearing_push` | `()` | Return bearing push from the highest-intensity bearing-influencing concept. | [src](../../../core/services/emotion_concepts.py#L294) |
-| function | `build_emotion_concept_surface` | `()` | MC surface: active concepts + influence deltas. | [src](../../../core/services/emotion_concepts.py#L309) |
-| function | `_prune_if_needed` | `()` | Remove the weakest concept when over limit. Must be called under _lock. | [src](../../../core/services/emotion_concepts.py#L326) |
-| function | `_persist_loop` | `()` | — | [src](../../../core/services/emotion_concepts.py#L360) |
-| function | `_persist_async` | `(signal)` | Læg i kø. Fire-and-forget, men på ÉN tråd med ÉN forbindelse. | [src](../../../core/services/emotion_concepts.py#L371) |
-| function | `_persist_koe_status` | `()` | Til tests og til at kigge på hvor langt bagud skrivningen er. | [src](../../../core/services/emotion_concepts.py#L390) |
-| function | `_safe_persist` | `(signal)` | — | [src](../../../core/services/emotion_concepts.py#L396) |
-| function | `_handle_event` | `(kind, payload)` | Map eventbus events to emotion concept triggers. | [src](../../../core/services/emotion_concepts.py#L421) |
-| function | `_handle_heartbeat_tick` | `(payload)` | Map heartbeat tick outcomes to emotion concepts. | [src](../../../core/services/emotion_concepts.py#L487) |
-| function | `_handle_tool_completed` | `(payload)` | Map the actual simple_tools event shape to emotion concepts. | [src](../../../core/services/emotion_concepts.py#L522) |
-| function | `_listener_loop` | `(q)` | Background thread: reads from eventbus queue and dispatches events. | [src](../../../core/services/emotion_concepts.py#L553) |
-| function | `register_event_listeners` | `()` | Subscribe to eventbus and start background listener thread. | [src](../../../core/services/emotion_concepts.py#L570) |
-| function | `stop_event_listeners` | `()` | Stop the background listener thread. | [src](../../../core/services/emotion_concepts.py#L592) |
 

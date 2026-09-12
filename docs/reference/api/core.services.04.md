@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/central_architect.py`
+_The Architect — periodisk selv-arkitekt der foreslår ÉT tungt strukturelt snit._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `assess` | `()` | Se hele systemet → ét prioriteret strukturelt snit-forslag. READ-ONLY. Self-safe. | [src](../../../core/services/central_architect.py#L20) |
+| function | `record_architect` | `()` | Månedlig cadence: observér Arkitektens forslag til nerve system/architect. Metadata-only. | [src](../../../core/services/central_architect.py#L52) |
+
 ## `core/services/central_belief_gap.py`
 _temet nosce — The Belief Gap (BONUS)._
 
@@ -557,22 +565,4 @@ _central_initiative_ladder — den gradvise, gatede initiativ-stige (rådets #3)
 | function | `_strongest_stage` | `(accumulator, proposals)` | Afled hvilket trin det STÆRKESTE initiativ er nået til. | [src](../../../core/services/central_initiative_ladder.py#L189) |
 | function | `evaluate_ladder` | `()` | Afled initiativ-stigens tilstand fra eksisterende runtime-state. | [src](../../../core/services/central_initiative_ladder.py#L208) |
 | function | `absorb_ladder` | `()` | Evaluér stigen og absorbér den som en levende central-nerve. | [src](../../../core/services/central_initiative_ladder.py#L250) |
-
-## `core/services/central_injection_registry.py`
-_Central-styret injektions-register (ændrings-drevet indre liv, spec 2026-07-05)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `InjectionUnit` | `` | — | [src](../../../core/services/central_injection_registry.py#L21) |
-| function | `_kv_get` | `(key, default)` | — | [src](../../../core/services/central_injection_registry.py#L33) |
-| function | `_kv_set` | `(key, value)` | — | [src](../../../core/services/central_injection_registry.py#L42) |
-| function | `register` | `(unit)` | — | [src](../../../core/services/central_injection_registry.py#L50) |
-| function | `registered_keys` | `()` | — | [src](../../../core/services/central_injection_registry.py#L54) |
-| function | `read_injection` | `(key)` | Hot-path (api-proces): læs den cachede injektions-tekst. ALDRIG et compose-kald. | [src](../../../core/services/central_injection_registry.py#L58) |
-| function | `_nerve_latest` | `(nerve)` | Seneste værdi for 'cluster:nerve' fra central_timeseries. None hvis ukendt. | [src](../../../core/services/central_injection_registry.py#L67) |
-| function | `is_dirty` | `(unit, now)` | Beskidt hvis: aldrig komponeret, over max-alder, ELLER en kilde-nerve flyttet > tærskel. | [src](../../../core/services/central_injection_registry.py#L79) |
-| function | `refresh_unit` | `(unit, now)` | Genberegn ÉN enhed (det tunge LLM/subsystem-kald — OFF hot-path) og skriv durabelt. | [src](../../../core/services/central_injection_registry.py#L105) |
-| function | `refresh_dirty` | `(now=…)` | Kaldes fra Centralens cadence: refresh alle beskidte enheder. Self-safe pr. enhed. | [src](../../../core/services/central_injection_registry.py#L118) |
-| function | `injection_live` | `(key)` | Er denne enhed 'live' (hot-path læser cached) eller rullet tilbage (direkte build)? | [src](../../../core/services/central_injection_registry.py#L134) |
-| function | `set_injection_live` | `(key, live)` | — | [src](../../../core/services/central_injection_registry.py#L140) |
 

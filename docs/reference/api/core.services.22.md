@@ -2,6 +2,18 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/session_prewarm.py`
+_Session-aware DeepSeek prefix cache warming (prewarm-on-return)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `session_prewarm_enabled` | `()` | Kill-switch via runtime-state (default True). Self-safe. | [src](../../../core/services/session_prewarm.py#L45) |
+| function | `_should_warm` | `(session_id)` | Throttle pr. session: skip hvis varmet < _COOLDOWN_S siden. | [src](../../../core/services/session_prewarm.py#L55) |
+| function | `_deepseek_key` | `()` | — | [src](../../../core/services/session_prewarm.py#L70) |
+| function | `_post_deepseek` | `(api_key, payload, *, timeout_s=…)` | Minimal POST til deepseek /chat/completions. Returnerer body-dict eller None. | [src](../../../core/services/session_prewarm.py#L79) |
+| function | `warm_session_prefix` | `(session_id, *, provider=…, model=…, user_id=…, role=…, workspace_name=…, force=…)` | Varm en sessions [system][historik]-prefix i DeepSeeks disk-cache. | [src](../../../core/services/session_prewarm.py#L98) |
+| function | `warm_session_prefix_async` | `(session_id, **kwargs)` | Fire-and-forget: kør warm_session_prefix i en daemon-tråd. Blokerer aldrig | [src](../../../core/services/session_prewarm.py#L241) |
+
 ## `core/services/session_tool_pin.py`
 _Fastlås tool-sættet pr. session, så prompt-præfikset holder (2026-09-05)._
 
@@ -549,13 +561,4 @@ _Somatic runtime body: turn runtime signals into bodily regulation cues._
 | function | `_base_levels` | `()` | — | [src](../../../core/services/somatic_runtime_body.py#L129) |
 | function | `_posture` | `(levels)` | — | [src](../../../core/services/somatic_runtime_body.py#L133) |
 | function | `_regulation` | `(posture)` | — | [src](../../../core/services/somatic_runtime_body.py#L145) |
-
-## `core/services/source_confidence_gate.py`
-_Source-confidence gate (epistemisk gate, 2026-07-10)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_tool_names` | `(tools_used)` | — | [src](../../../core/services/source_confidence_gate.py#L38) |
-| function | `assess_source_confidence` | `(*, output_text, tools_used=…)` | Vurdér epistemisk kilde-konfidens for en tur. | [src](../../../core/services/source_confidence_gate.py#L47) |
-| function | `build_source_confidence_surface` | `(*, output_text=…, tools_used=…)` | Central-CLI: jc raw /central/source-confidence (senest vurderede tur, hvis givet). | [src](../../../core/services/source_confidence_gate.py#L88) |
 

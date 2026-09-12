@@ -2,6 +2,29 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/loyalty_gradient_signal_tracking.py`
+_Loyalty-gradient signal tracking — migrated onto signal_tracking_framework._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `track_runtime_loyalty_gradient_signals_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/loyalty_gradient_signal_tracking.py#L43) |
+| function | `refresh_runtime_loyalty_gradient_signal_statuses` | `()` | — | [src](../../../core/services/loyalty_gradient_signal_tracking.py#L91) |
+| function | `build_runtime_loyalty_gradient_signal_surface` | `(*, limit=…)` | — | [src](../../../core/services/loyalty_gradient_signal_tracking.py#L95) |
+| function | `_extract_loyalty_gradient_candidates` | `(*, run_id)` | — | [src](../../../core/services/loyalty_gradient_signal_tracking.py#L99) |
+| function | `_build_candidate` | `(*, domain_key, attachment_topology, relation_continuity, meaning, witness, chronicle_brief, metabolism, forgetting_candidate)` | — | [src](../../../core/services/loyalty_gradient_signal_tracking.py#L185) |
+| function | `_with_surface_view` | `(item)` | — | [src](../../../core/services/loyalty_gradient_signal_tracking.py#L332) |
+| function | `_loyalty_gradient_surface_extra` | `(summary, latest)` | — | [src](../../../core/services/loyalty_gradient_signal_tracking.py#L357) |
+| function | `_derive_gradient_score` | `(*, attachment_weight, attachment_state, relation_weight, meaning_weight, witness_status, witness_persistence, brief_weight, metabolism_state, metabolism_weight, forgetting_state)` | — | [src](../../../core/services/loyalty_gradient_signal_tracking.py#L384) |
+| function | `_score_to_weight` | `(score)` | — | [src](../../../core/services/loyalty_gradient_signal_tracking.py#L419) |
+| function | `_derive_gradient_state` | `(*, attachment_state, gradient_weight, witness_status, forgetting_state)` | — | [src](../../../core/services/loyalty_gradient_signal_tracking.py#L427) |
+| function | `_gradient_summary` | `(*, focus, gradient_state, gradient_weight, forgetting_candidate)` | — | [src](../../../core/services/loyalty_gradient_signal_tracking.py#L443) |
+| function | `_domain_key` | `(canonical_key)` | — | [src](../../../core/services/loyalty_gradient_signal_tracking.py#L476) |
+| function | `_humanize_focus` | `(value)` | — | [src](../../../core/services/loyalty_gradient_signal_tracking.py#L483) |
+| function | `_anchor` | `(item)` | — | [src](../../../core/services/loyalty_gradient_signal_tracking.py#L487) |
+| function | `_merge_fragments` | `(*fragments)` | — | [src](../../../core/services/loyalty_gradient_signal_tracking.py#L493) |
+| function | `_find_support_value` | `(summary, key, default)` | — | [src](../../../core/services/loyalty_gradient_signal_tracking.py#L506) |
+| function | `_stronger_confidence` | `(*values)` | — | [src](../../../core/services/loyalty_gradient_signal_tracking.py#L515) |
+
 ## `core/services/mail_checker_daemon.py`
 _Mail checker daemon — checks jarvis@srvlab.dk inbox for new mail._
 
@@ -621,16 +644,4 @@ _Per-model context-vinduer + model-bevidst beskeds-trimning (delt kilde)._
 | function | `effective_context_limit` | `(provider, model, compact_threshold)` | Det første loft der rammer: min(modellens vindue, autocompact-tærskel). | [src](../../../core/services/model_context.py#L50) |
 | function | `_est_tokens` | `(text)` | — | [src](../../../core/services/model_context.py#L65) |
 | function | `fit_messages_to_window` | `(messages, *, provider, model, output_budget=…, tools_reserve=…, safety_margin=…)` | Model-bevidst sikkerhedsnet: drop ÆLDSTE ikke-system-beskeder indtil den | [src](../../../core/services/model_context.py#L69) |
-
-## `core/services/model_pair_resolver.py`
-_Findes den valgte model hos den valgte udbyder?_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `UnknownModelPair` | `` | Modellen findes ikke hos udbyderen — eller navnet er tvetydigt. | [src](../../../core/services/model_pair_resolver.py#L45) |
-| function | `_nulstil_cache_for_tests` | `()` | — | [src](../../../core/services/model_pair_resolver.py#L54) |
-| function | `_ollama_modeller` | `(base_url=…)` | Ollamas modelnavne. `None` betyder «kunne ikke spørge», ikke «tom». | [src](../../../core/services/model_pair_resolver.py#L58) |
-| function | `kandidater` | `(navne, model)` | Hvilke navne på listen kunne `model` mene? | [src](../../../core/services/model_pair_resolver.py#L80) |
-| function | `resolve` | `(provider, model, *, base_url=…)` | Returnér (provider, model) med modellen oversat hvis det er entydigt. | [src](../../../core/services/model_pair_resolver.py#L94) |
-| function | `resolve_safe` | `(provider, model, *, base_url=…)` | Som `resolve`, men returnerer fejlen frem for at kaste. | [src](../../../core/services/model_pair_resolver.py#L132) |
 

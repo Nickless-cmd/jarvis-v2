@@ -86,13 +86,19 @@ _JarvisX process-supervisor + trading + operator-wakeup route group._
 |---|---|---|---|---|
 | function | `list_managed_processes` | `(include_stopped=…)` | List processes Jarvis has spawned via the process_supervisor. | [src](../../../apps/api/jarvis_api/routes/jarvisx_processes.py#L30) |
 | function | `tail_managed_process_log` | `(name, lines=…)` | Return the tail of a managed process's combined stdout/stderr log. | [src](../../../apps/api/jarvis_api/routes/jarvisx_processes.py#L37) |
-| function | `stop_managed_process` | `(name, grace=…)` | SIGTERM (then SIGKILL after grace) a managed process. Owner-only. | [src](../../../apps/api/jarvis_api/routes/jarvisx_processes.py#L53) |
-| function | `remove_managed_process` | `(name)` | Remove a stopped process from the registry. Owner-only. | [src](../../../apps/api/jarvis_api/routes/jarvisx_processes.py#L64) |
-| class | `_SpawnPayload` | `` | — | [src](../../../apps/api/jarvis_api/routes/jarvisx_processes.py#L82) |
-| function | `spawn_managed_process` | `(payload)` | Spawn a managed background process. Owner-only. | [src](../../../apps/api/jarvis_api/routes/jarvisx_processes.py#L90) |
-| function | `trading_state` | `()` | Read the current trading-bot state. Read-only. | [src](../../../apps/api/jarvis_api/routes/jarvisx_processes.py#L149) |
-| function | `_trading_inactive_default` | `(reason)` | Synthetic 'inactive' state so UI always has something to render. | [src](../../../apps/api/jarvis_api/routes/jarvisx_processes.py#L182) |
-| function | `operator_wakeup_fired` | `(payload)` | Hit af jarvis-desk når en operator_wakeup-timer fyrer. | [src](../../../apps/api/jarvis_api/routes/jarvisx_processes.py#L215) |
+| function | `list_background_jobs` | `(include_done=…)` | Alle kørende baggrundsopgaver — supervisor OG operatørens egne shells. | [src](../../../apps/api/jarvis_api/routes/jarvisx_processes.py#L53) |
+| function | `_operator_exec_for_jobs` | `(navn, args)` | Bro-kald til operatørens maskine. Adskilt, så testen kan erstatte den. | [src](../../../apps/api/jarvis_api/routes/jarvisx_processes.py#L70) |
+| function | `pause_background_job` | `(kilde, job_id)` | Sæt en opgave på pause. Ejer-kun. | [src](../../../apps/api/jarvis_api/routes/jarvisx_processes.py#L77) |
+| function | `resume_background_job` | `(kilde, job_id)` | Kør videre hvor den slap. Ejer-kun. | [src](../../../apps/api/jarvis_api/routes/jarvisx_processes.py#L84) |
+| function | `stop_background_job` | `(kilde, job_id)` | Stop en opgave for altid. Ejer-kun. | [src](../../../apps/api/jarvis_api/routes/jarvisx_processes.py#L91) |
+| function | `_signal_job` | `(kilde, job_id, handling)` | Én vej for begge kilder — de signaleres bare ikke samme sted. | [src](../../../apps/api/jarvis_api/routes/jarvisx_processes.py#L100) |
+| function | `stop_managed_process` | `(name, grace=…)` | SIGTERM (then SIGKILL after grace) a managed process. Owner-only. | [src](../../../apps/api/jarvis_api/routes/jarvisx_processes.py#L140) |
+| function | `remove_managed_process` | `(name)` | Remove a stopped process from the registry. Owner-only. | [src](../../../apps/api/jarvis_api/routes/jarvisx_processes.py#L151) |
+| class | `_SpawnPayload` | `` | — | [src](../../../apps/api/jarvis_api/routes/jarvisx_processes.py#L169) |
+| function | `spawn_managed_process` | `(payload)` | Spawn a managed background process. Owner-only. | [src](../../../apps/api/jarvis_api/routes/jarvisx_processes.py#L177) |
+| function | `trading_state` | `()` | Read the current trading-bot state. Read-only. | [src](../../../apps/api/jarvis_api/routes/jarvisx_processes.py#L236) |
+| function | `_trading_inactive_default` | `(reason)` | Synthetic 'inactive' state so UI always has something to render. | [src](../../../apps/api/jarvis_api/routes/jarvisx_processes.py#L269) |
+| function | `operator_wakeup_fired` | `(payload)` | Hit af jarvis-desk når en operator_wakeup-timer fyrer. | [src](../../../apps/api/jarvis_api/routes/jarvisx_processes.py#L302) |
 
 ## `apps/api/jarvis_api/routes/jarvisx_project.py`
 _JarvisX project-anchor + file-watch route group._

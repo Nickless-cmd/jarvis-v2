@@ -2,6 +2,18 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/model_pair_resolver.py`
+_Findes den valgte model hos den valgte udbyder?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `UnknownModelPair` | `` | Modellen findes ikke hos udbyderen — eller navnet er tvetydigt. | [src](../../../core/services/model_pair_resolver.py#L45) |
+| function | `_nulstil_cache_for_tests` | `()` | — | [src](../../../core/services/model_pair_resolver.py#L54) |
+| function | `_ollama_modeller` | `(base_url=…)` | Ollamas modelnavne. `None` betyder «kunne ikke spørge», ikke «tom». | [src](../../../core/services/model_pair_resolver.py#L58) |
+| function | `kandidater` | `(navne, model)` | Hvilke navne på listen kunne `model` mene? | [src](../../../core/services/model_pair_resolver.py#L80) |
+| function | `resolve` | `(provider, model, *, base_url=…)` | Returnér (provider, model) med modellen oversat hvis det er entydigt. | [src](../../../core/services/model_pair_resolver.py#L94) |
+| function | `resolve_safe` | `(provider, model, *, base_url=…)` | Som `resolve`, men returnerer fejlen frem for at kaste. | [src](../../../core/services/model_pair_resolver.py#L132) |
+
 ## `core/services/model_probe.py`
 _Prøv én model: kan den kaldes, kan den bruge værktøjer, kan den kode._
 
@@ -628,15 +640,4 @@ _Owner-override-session-store — DB-backed, cross-proces._
 | function | `level` | `(session_id, *, now=…)` | Override-niveau hvis aktiv, ellers None. | [src](../../../core/services/override_store.py#L72) |
 | function | `touch` | `(session_id, *, now=…)` | Forny en AKTIV override til +5 min ved aktivitet. False hvis udløbet/fraværende. | [src](../../../core/services/override_store.py#L80) |
 | function | `revoke` | `(session_id)` | Deaktivér override (sæt udløbet — runtime_state har ingen delete). | [src](../../../core/services/override_store.py#L97) |
-
-## `core/services/paid_lane_guard.py`
-_Vagt: kun Bjørns egen lane må ramme den betalte DeepSeek-API (2026-09-05)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_host` | `(url)` | — | [src](../../../core/services/paid_lane_guard.py#L33) |
-| function | `is_paid` | `(base_url)` | — | [src](../../../core/services/paid_lane_guard.py#L40) |
-| function | `audit_paid_lanes` | `()` | Hvilke lanes peger på en betalt vært uden at måtte? | [src](../../../core/services/paid_lane_guard.py#L44) |
-| function | `check_paid_lanes` | `()` | Kør vagten: log + Central-nerve ved brud. Retter aldrig noget selv. | [src](../../../core/services/paid_lane_guard.py#L72) |
-| function | `build_paid_lane_guard_surface` | `()` | — | [src](../../../core/services/paid_lane_guard.py#L98) |
 

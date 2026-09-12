@@ -106,6 +106,19 @@ _Avoidance Detector — unbidden self-observation of patterns over time._
 | function | `_surface_summary` | `(findings)` | — | [src](../../../core/services/avoidance_detector.py#L175) |
 | function | `build_avoidance_prompt_section` | `()` | Only speaks when there's a real pattern to notice. | [src](../../../core/services/avoidance_detector.py#L185) |
 
+## `core/services/background_jobs.py`
+_Alle kørende baggrundsopgaver — uanset hvor de kører._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_nu` | `()` | — | [src](../../../core/services/background_jobs.py#L56) |
+| function | `_operator_jobs` | `(uid, exec_fn)` | Baggrunds-shells på operatørens maskine. Tom liste hvis broen tier. | [src](../../../core/services/background_jobs.py#L60) |
+| class | `BroTier` | `` | Broen svarede ikke — vi VED ikke hvad der kører på operatørens maskine. | [src](../../../core/services/background_jobs.py#L96) |
+| function | `_tal` | `(v)` | — | [src](../../../core/services/background_jobs.py#L100) |
+| function | `_supervisor_jobs` | `()` | — | [src](../../../core/services/background_jobs.py#L107) |
+| function | `liste` | `(*, uid=…, exec_fn=…, kun_aktive=…)` | Alle jobs fra begge kilder. | [src](../../../core/services/background_jobs.py#L127) |
+| function | `_skal_vises` | `(job)` | Kører den, eller gik den galt? | [src](../../../core/services/background_jobs.py#L152) |
+
 ## `core/services/background_resume.py`
 _Turen maa ikke slutte mens en baggrunds-shell stadig producerer._
 
@@ -614,12 +627,4 @@ _§4 cluster-arbitrage — deterministisk afgørelse når flere clusters' verdic
 | function | `arbitrate` | `(verdicts)` | Kombinér flere verdicts til ÉT deterministisk udfald. Tom liste → GREEN. | [src](../../../core/services/central_arbitration.py#L21) |
 | function | `observe_shadow` | `(verdicts, *, enforced_blocked, run_id=…, where=…)` | §11 Trin 1 (SHADOW, 0-risiko): sammenlign den DEKLAREREDE arbitrage mod det faktisk | [src](../../../core/services/central_arbitration.py#L40) |
 | function | `explain` | `(verdicts)` | Read-only forklaring af en arbitrage (til debug/MC): hvem vandt og hvorfor. | [src](../../../core/services/central_arbitration.py#L65) |
-
-## `core/services/central_architect.py`
-_The Architect — periodisk selv-arkitekt der foreslår ÉT tungt strukturelt snit._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `assess` | `()` | Se hele systemet → ét prioriteret strukturelt snit-forslag. READ-ONLY. Self-safe. | [src](../../../core/services/central_architect.py#L20) |
-| function | `record_architect` | `()` | Månedlig cadence: observér Arkitektens forslag til nerve system/architect. Metadata-only. | [src](../../../core/services/central_architect.py#L52) |
 

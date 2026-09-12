@@ -444,8 +444,11 @@ function TasksView({
       {afsluttede.length > 0 ? (
         <>
           <Text style={styles.groupLabel}>Afsluttet</Text>
+          {/* OGSAA de afsluttede kan aabnes. Foer fik kun de aktive `onOpen`,
+              saa et faerdigt run var en blindgyde - og det er praecis dem man
+              vil kigge paa bagefter for at se om det gik godt. */}
           {afsluttede.map((r) => (
-            <WorkTaskCard key={r.run_id} run={r} />
+            <WorkTaskCard key={r.run_id} run={r} onOpen={onOpen} />
           ))}
         </>
       ) : null}

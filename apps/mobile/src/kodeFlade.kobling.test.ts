@@ -189,3 +189,16 @@ it('sessionens eget workspace vinder ved gendannelse', () => {
   const cs = kilde('screens/ChatScreen.tsx')
   expect(cs).toMatch(/setWs\(\{ kind: s\.workspace_kind, root: s\.workspace_root \}\)/)
 })
+
+it('OGSAA afsluttede runs kan aabnes', () => {
+  // Foer fik kun de aktive `onOpen`, saa et faerdigt run var en blindgyde -
+  // og det er praecis dem man vil kigge paa bagefter.
+  const ws = kilde('screens/WorkScreen.tsx')
+  expect(ws).toMatch(/afsluttede\.map\(\(r\) => \(\s*<WorkTaskCard key=\{r\.run_id\} run=\{r\} onOpen=\{onOpen\} \/>/s)
+})
+
+it('resumeet staar FOER tidslinjen', () => {
+  const t = kilde('screens/TaskThreadScreen.tsx')
+  expect(t).toMatch(/<RunResumeCard resume=\{opsummerRun\(/)
+  expect(t.indexOf('<RunResumeCard')).toBeLessThan(t.indexOf('steps.length === 0'))
+})

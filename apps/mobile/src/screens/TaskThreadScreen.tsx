@@ -4,6 +4,8 @@ import { useAuth } from '../state/AuthContext'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 import { steerRun } from '../lib/apiClient'
 import { fetchRunDetail } from '../lib/mcClient'
+import { opsummerRun } from '../lib/runResume'
+import { RunResumeCard } from '../components/RunResumeCard'
 import type { McRun, McRunStep } from '../lib/mcTypes'
 
 /**
@@ -93,6 +95,10 @@ export function TaskThreadScreen({
         <View style={styles.midt}><ActivityIndicator color={tokens.color.accent} /></View>
       ) : (
         <ScrollView contentContainerStyle={styles.traad}>
+          {/* Resuméet FØRST. Tidslinjen nedenunder er lang, og spørgsmålet man
+              har når man trykker paa et afsluttet run er «gik det godt, hvor
+              længe tog det, og hvad gik galt» — ikke rækkefølgen. */}
+          <RunResumeCard resume={opsummerRun(r as McRun, steps)} />
           {r.text_preview ? <Text style={styles.agentTekst}>{r.text_preview}</Text> : null}
 
           {steps.length === 0 ? (

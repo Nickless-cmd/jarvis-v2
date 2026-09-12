@@ -16,6 +16,9 @@ export interface McRun {
   started_at: string
   finished_at: string | null
   text_preview: string | null
+  /** Serverens egen dom over hvad der gik galt. Feltet har staaet i
+   *  visible_runs hele tiden; klienten kastede det bare vaek. */
+  error?: string | null
 }
 
 export interface McRunsResponse {
@@ -138,6 +141,9 @@ export interface McRunStep {
   kind: string
   at: string
   summary: string
+  /** Værktøjets navn, når trinnet er et værktøjskald. Serveren sender det
+   *  allerede; klienten kastede det bare væk. */
+  tool?: string
 }
 
 export interface McRunDetail {

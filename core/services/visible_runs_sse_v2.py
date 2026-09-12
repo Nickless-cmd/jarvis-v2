@@ -475,7 +475,20 @@ async def translate_to_v2(
 
                 # Pluk metadata ud af tidlige events så message_start har
                 # meningsfulde værdier hvis de ikke blev givet til kaldet.
-                if event_name == "delta" and payload.get("run_id"):
+                #
+                # ROD-FIX (12. sep): her stod der `event_name == "delta"`, og
+                # det gjorde tænke-varigheden umulig at måle. Kalderen sender
+                # run_id="" (chat_stream_v2.py:566 — «plukkes fra første legacy
+                # event»), og tænkningen kommer FØR svaret: den første
+                # reasoning_delta ramte derfor _open_thinking_block() med en tom
+                # run_id, og visible_thinking_trace.mark_start("") returnerede
+                # tavst. Målingen fandtes aldrig, take_seconds(run.run_id) gav
+                # None ved persistering, og «Tænkte i …»-linjen blev aldrig
+                # skrevet — 787 ture med en tænke-blok, 0 med et tal.
+                #
+                # Ethvert legacy-event må bidrage med run_id, ikke kun "delta".
+                # reasoning_delta bærer det selv (visible_runs.py:1727).
+                if payload.get("run_id"):
                     _state["run_id"] = _state["run_id"] or str(payload.get("run_id") or "")
 
                 if event_name == "reasoning_delta":

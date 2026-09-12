@@ -513,3 +513,54 @@ def test_run_still_active_uses_run_event_log_not_flaky_slot():
         assert _run_still_active(rid) is False
     finally:
         _set_active_visible_run({})
+
+
+@pytest.mark.asyncio
+async def test_taenke_varighed_maales_naar_kalderen_sender_tom_run_id():
+    """Tænkningens varighed skal måles, selv når kalderen ikke kender run_id.
+
+    ROD-FIX 12. sep 2026. Den ægte kalder sender ``run_id=""``
+    (chat_stream_v2.py:566 — «plukkes fra første legacy event»), og tænkningen
+    kommer FØR svaret. Plukkede oversætteren kun run_id fra ``delta``, ramte den
+    første ``reasoning_delta`` _open_thinking_block() med en tom run_id:
+    mark_start("") returnerede tavst, målingen fandtes aldrig, og
+    take_seconds(run.run_id) gav None ved persistering.
+
+    Konsekvensen var usynlig i data: 787 ture havde en tænke-blok, 0 havde et
+    tal — så «Tænkte i 14 s ›» blev aldrig skrevet, og tænkningen forsvandt fra
+    tråden i samme sekund streamen sluttede.
+
+    De øvrige tænke-tests kalder mark_start direkte og kan derfor ikke se
+    dette: de beviser at måleren virker, ikke at nogen kalder den rigtigt.
+    """
+    from core.services import visible_thinking_trace as vtt
+
+    with vtt._lock:
+        vtt._marks.clear()
+    try:
+        async def legacy() -> AsyncIterator[str]:
+            # Tænkningen kommer først — og bærer selv run_id.
+            yield _legacy_sse("reasoning_delta", {
+                "type": "reasoning_delta", "run_id": "visible-t", "delta": "jeg overvejer",
+            })
+            await asyncio.sleep(0.15)
+            yield _legacy_sse("delta", {
+                "type": "delta", "run_id": "visible-t", "delta": "svaret",
+            })
+            yield _legacy_sse("done", {
+                "type": "done", "run_id": "visible-t", "status": "completed",
+            })
+
+        # run_id="" præcis som den ægte kalder gør det.
+        await _collect(translate_to_v2(
+            legacy(), run_id="", model="m", provider="p", lane="l",
+            session_id="sess", ping_interval_s=999.0,
+        ))
+
+        sec = vtt.take_seconds("visible-t")
+        assert sec is not None and sec > 0, (
+            "tænkningen blev ikke målt — run_id blev ikke plukket fra reasoning_delta"
+        )
+    finally:
+        with vtt._lock:
+            vtt._marks.clear()

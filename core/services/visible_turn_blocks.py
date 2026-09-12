@@ -85,11 +85,28 @@ def _build_progress_blocks(
     return out
 
 
+def _tanke_blok(par: tuple) -> dict:
+    """Én tanke-blok. Halen er nok: klienten viser den foldet ud, og en hel
+    raesonnering kan vaere titusinder af tegn — hele teksten bliver i
+    ``reasoning_content``.
+
+    Varigheden udelades naar den ikke blev maalt. «Taenkte i 0 s» ville vaere en
+    paastand vi ikke har daekning for, og klienten falder selv tilbage paa
+    «Taenkte» uden tal.
+    """
+    tekst, sekunder = par
+    blok: dict = {"type": "thinking", "text": str(tekst).strip()[-4000:]}
+    if sekunder is not None and float(sekunder) > 0:
+        blok["seconds"] = round(float(sekunder), 1)
+    return blok
+
+
 def _build_turn_blocks(
     *, text: str, tool_calls: list[dict], tool_results: list[dict],
     interleave: list[str] | None = None,
     text_segments: list[str] | None = None,
     thinking_segments: list[str] | None = None,
+    thinking_seconds: list | None = None,
 ) -> list[dict]:
     """Byg den kanoniske content-blok-array for en assistant-tur (spec §4).
 
@@ -155,7 +172,13 @@ def _build_turn_blocks(
         # fortælling → værktøj → fortælling.
         segments = [s for s in (text_segments or []) if str(s or "").strip()]
         seg_i = 0
-        tanker = [t for t in (thinking_segments or []) if str(t or "").strip()]
+        # Tid og tekst holdes PARVIS. Filtrerer man kun teksterne, skrider
+        # indekset, og tanke nr. 3 faar tanke nr. 2's varighed.
+        _par = list(zip(
+            thinking_segments or [],
+            (thinking_seconds or []) + [None] * len(thinking_segments or []),
+        ))
+        tanker = [(t, sek) for t, sek in _par if str(t or "").strip()]
         tank_i = 0
         for idx, kind in enumerate(deduped):
             if kind == "text":
@@ -169,11 +192,7 @@ def _build_turn_blocks(
                     text_placed = True
             elif kind == "think":
                 if tank_i < len(tanker):
-                    # Halen er nok: klienten viser den foldet ud, og en hel
-                    # raesonnering kan vaere titusinder af tegn. Hele teksten
-                    # bliver i reasoning_content.
-                    blocks.append({"type": "thinking",
-                                   "text": tanker[tank_i].strip()[-4000:]})
+                    blocks.append(_tanke_blok(tanker[tank_i]))
                     tank_i += 1
             elif kind == "tool":
                 if pi < len(tool_pairs):
@@ -214,8 +233,7 @@ def _build_turn_blocks(
             pi += 1
         # Rester: tanker der ikke fik en markør må ikke tabes.
         while tank_i < len(tanker):
-            blocks.append({"type": "thinking",
-                           "text": tanker[tank_i].strip()[-4000:]})
+            blocks.append(_tanke_blok(tanker[tank_i]))
             tank_i += 1
         # Rester: segmenter der ikke fik en markør må ikke tabes.
         if segments:

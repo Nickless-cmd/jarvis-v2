@@ -40,6 +40,13 @@ class TurnAccumulator:
     #: Samme form som text_segments og af samme grund: uden segmenter kan
     #: tænkningen kun placeres ét sted, og alle mellemtanker falder sammen.
     thinking_segments: list[str] = field(default_factory=list)
+    #: [start, seneste] pr. tanke-segment. Forskellen ER tænketiden for netop
+    #: DEN tanke. `visible_thinking_trace` måler hele turen under ét og kunne
+    #: derfor kun beskrive den samlede blok; med segmenter skal hver tanke
+    #: bære sin egen tid, ellers står de alle uden.
+    thinking_times: list[list[float]] = field(default_factory=list)
+    #: Uret. Injicerbart, så en test kan måle uden at vente.
+    ur: object = None
     _segment_open: bool = False
     _thinking_open: bool = False
 
@@ -113,15 +120,36 @@ class TurnAccumulator:
         """
         if not chunk:
             return
+        nu = self._nu()
         if not self._thinking_open:
             self.thinking_segments.append("")
+            self.thinking_times.append([nu, nu])
             self.interleave.append("think")
             self._thinking_open = True
             self._segment_open = False
         self.thinking_segments[-1] += chunk
+        self.thinking_times[-1][1] = nu
 
     def close_thinking(self) -> None:
         self._thinking_open = False
+
+    def _nu(self) -> float:
+        if callable(self.ur):
+            return float(self.ur())
+        import time
+        return time.monotonic()
+
+    def thinking_seconds(self) -> list[float | None]:
+        """Sekunder pr. tanke-segment; None hvor der ikke blev maalt noget.
+
+        `None` og `0` er ikke det samme: `0` ville staa som «Tænkte i 0 s» paa
+        en tanke vi bare ikke naaede at tage tid paa.
+        """
+        ud: list[float | None] = []
+        for par in self.thinking_times:
+            d = par[1] - par[0]
+            ud.append(d if d > 0 else None)
+        return ud
 
     # ── udtag ────────────────────────────────────────────────────────────
     def build_blocks(self, text: str) -> list[dict]:
@@ -134,6 +162,7 @@ class TurnAccumulator:
             interleave=self.interleave,
             text_segments=self.text_segments,
             thinking_segments=self.thinking_segments,
+            thinking_seconds=self.thinking_seconds(),
         )
 
 

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7368/14452 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7370/14455 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 7368/14452 functions/methods documented (50%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 614 | 1135 | 54% |
-| `core.services` | 4910 | 9989 | 49% |
+| `core.services` | 4912 | 9992 | 49% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 108 | 184 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1894,10 +1894,10 @@ Generated from source. 7368/14452 functions/methods documented (50%). The list b
 - `core/services/visible_runs_sse_v2.py` :: `ToolEchoFilter.flush` (L149)
 - `core/services/visible_stream_gate.py` :: `enter_visible_stream` (L38)
 - `core/services/visible_stream_gate.py` :: `exit_visible_stream` (L44)
-- `core/services/visible_turn_accumulator.py` :: `TurnAccumulator.close_segment` (L61)
-- `core/services/visible_turn_accumulator.py` :: `TurnAccumulator.close_thinking` (L123)
-- `core/services/visible_turn_accumulator.py` :: `TurnAccumulator.note_text` (L65)
-- `core/services/visible_turn_accumulator.py` :: `TurnAccumulator.note_tool` (L69)
+- `core/services/visible_turn_accumulator.py` :: `TurnAccumulator.close_segment` (L68)
+- `core/services/visible_turn_accumulator.py` :: `TurnAccumulator.close_thinking` (L133)
+- `core/services/visible_turn_accumulator.py` :: `TurnAccumulator.note_text` (L72)
+- `core/services/visible_turn_accumulator.py` :: `TurnAccumulator.note_tool` (L76)
 - `core/services/vision_backend.py` :: `build_vision_backend_surface` (L237)
 - `core/services/voice_daemon.py` :: `start_voice_daemon` (L60)
 - `core/services/voice_daemon.py` :: `stop_voice_daemon` (L73)

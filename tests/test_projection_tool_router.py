@@ -188,14 +188,27 @@ def test_legacy_session_skriver_direkte_som_foer(sid):
     assert _antal(sid) == 1
 
 
-def test_ledger_session_faar_INGEN_direkte_raekke(sid):
-    """Ellers ville tabellen have to raekker pr. beslutning: projektionens
-    med udledt `decision_id` og skrivestedets med NULL, som det fulde unikke
-    indeks netop tillader."""
+def test_ledger_session_skriver_STADIG_direkte_indtil_der_er_en_udgiver(sid):
+    """Vagten er IKKE koblet paa skrivestedet, og det er med vilje.
+
+    Den var det i et par timer den 12/9-2026, og denne test paastod dengang
+    `== 0`. Maalingen bagefter viste hvorfor det var forkert:
+
+      * `KIND = "tool_router_decision"` optraeder ÉT sted i repoet — sin egen
+        definition. Ingen udgiver haendelsen, saa projektionen folder intet.
+      * `session_handle.py:240-246` registrerer kun `chat_messages` ved navn.
+      * `chat-e58f16c561a6474` er ALLEREDE i `ledger` og havde 82 raekker her.
+
+    Med vagten inde ville den session have mistet sin router-telemetri ved
+    naeste genstart, i tavshed. En vagt der spaerrer den gamle vej foer den
+    nye findes, er ikke et vaern — det er datatab.
+
+    Naar udgiveren findes, vender denne test tilbage til `== 0`.
+    """
     L.advance_storage_mode(sid, to="shadow")
     L.advance_storage_mode(sid, to="ledger")
     _beslut(sid)
-    assert _antal(sid) == 0
+    assert _antal(sid) == 1
 
 
 def test_shadow_session_skriver_stadig_direkte(sid):

@@ -1611,7 +1611,7 @@ the table above first changed what the work is:
   coupling has to be decided before any second cutover flips, not after.
 
 Built: `projection_tool_router.py` (the smallest of the three — one write
-site, 183 rows), and `projection_drift` generalised so each projection
+site), and `projection_drift` generalised so each projection
 describes itself with `KIND`, `TABEL`, `NOEGLE` and `SAMMENLIGN` instead of
 being known by name. Ten tests, mutation-checked: an unstable `decision_id`
 fails only the idempotence test, and an always-true time comparison fails only
@@ -1648,16 +1648,48 @@ both places — which is the whole point of shadow — and the refusal names the
 table and says what to do instead. Disconnecting the guard fails exactly the
 `ledger` test.
 
-**Still open:** nothing is in shadow yet, and nothing has flipped. The
-tool-router projection exists and is proven against fixtures; it has not been
-run against the 183 production rows, and no session has been moved. What that
-now waits on is not a missing part but a decision: `storage_mode` is per
-session, so flipping makes every projection for that session authoritative at
-once. Measured mitigation: `project()` re-folds from 0 when the marker is
-absent, so a projection registered *after* a flip still lands correctly — the
-requirement is therefore not "register everything first" but "every projection
-must be idempotent and re-fold safe", which is exactly what the derived
-`decision_id` buys.
+**Correction, 12 September — "nothing has flipped" was false.** Measured on
+the runtime's database: `storage_mode` is `legacy` 476, `shadow` 2, `ledger`
+**2**, and `projection_checkpoints` holds two rows, both `chat_messages`, one
+advanced today. Sessions have been flipped and the chat projection has been
+folding for them. That makes the per-session coupling more urgent than this
+note claimed, not less.
+
+**And the guard must not be wired before a publisher exists.** The guard was
+attached to `tool_router.py`'s write site and then detached again the same
+day, because measurement showed it removes the only writer:
+
+* `KIND = "tool_router_decision"` occurs **once** in the whole repository —
+  its own definition. Nothing publishes the event, so the projection folds
+  nothing.
+* `session_handle.py:240-246` decides whether a projection runs at all, and it
+  does so **by name**: it registers `chat_messages` and nothing else. This was
+  the third site that knew the layer by name; generalising `projection_drift`
+  and the guard had left it behind.
+* `chat-e58f16c561a6474` is **already** in `ledger` and carries 82 rows in
+  `tool_router_decisions`, the newest written while this was being measured.
+
+With the guard attached, that session would have lost its router telemetry at
+the next restart — silently, because the refusal is caught. The guard's own
+message says "write the event to the ledger instead", and that path does not
+exist: `append_unowned` *refuses* a `ledger` session, so a publisher needs a
+`SessionHandle` with a lease inside a turn that may already hold one.
+
+A guard that blocks the old path before the new one exists is not a safeguard;
+it is silent data loss. The order is therefore: **publish the event, generalise
+the registration site, then attach the guard.** The guard module and its seven
+tests stay; only the wiring is deferred, and the test that asserted zero rows
+for a `ledger` session now asserts one, carrying the reason.
+
+**Still open:** the tool-router projection is proven against fixtures and has
+never folded in production — `projection_checkpoints` has no row for it. No
+session has been moved for it. The remaining decision is the per-session
+coupling: `storage_mode` is per session, so flipping makes every projection
+for that session authoritative at once. Measured mitigation: `project()`
+re-folds from 0 when the marker is absent, so a projection registered *after*
+a flip still lands correctly — the requirement is therefore not "register
+everything first" but "every projection must be idempotent and re-fold safe",
+which is exactly what the derived `decision_id` buys.
 
 ### Phase 12: optional remote, goal, hook, and team extensions
 

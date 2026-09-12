@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native'
 import { FolderGit2, Monitor } from 'lucide-react-native'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
+import { BADGE_H } from './badgeGeometri'
 import type { GitStatus } from '../lib/apiClient'
 
 /**
@@ -44,15 +45,29 @@ export function CodeTitle({ titel, git }: { titel: string; git: GitStatus | null
 const makestyles = (tokens: Theme) => StyleSheet.create({
   pille: {
     backgroundColor: tokens.color.bgFloat,
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 7,
+    // EKSPLICIT hoejde, ikke en der bliver til af sig selv. To tekstlinjer
+    // plus polstring gav 47 dp mod de andre badges' 40, og forskellen var
+    // ikke til at se paa koden.
+    height: BADGE_H,
+    borderRadius: BADGE_H / 2,
+    paddingHorizontal: 14,
+    justifyContent: 'center',
     alignItems: 'center',
+    // Skal kunne blive smallere end sit indhold: en lang titel maa forkorte
+    // sig selv frem for at skubbe hoejre felt ud over skaermkanten.
+    flexShrink: 1,
+    minWidth: 0,
     ...tokens.elevation,
   },
-  titel: { color: tokens.color.fg1, fontSize: 14, fontWeight: '600' },
-  kontekst: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
-  meta: { color: tokens.color.fg2, fontSize: 11, maxWidth: 92 },
+  // Faste linjehoejder: uden dem afhaenger indholdets hoejde af systemets
+  // skriftindstilling, og saa ville pillen klippe sin egen tekst paa en
+  // telefon med stoerre tekst.
+  titel: {
+    color: tokens.color.fg1, fontSize: 13.5, fontWeight: '600',
+    lineHeight: 16, flexShrink: 1,
+  },
+  kontekst: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 1 },
+  meta: { color: tokens.color.fg2, fontSize: 10.5, lineHeight: 12, maxWidth: 92 },
   prik: {
     width: 6, height: 6, borderRadius: 3,
     backgroundColor: tokens.color.accent, marginLeft: 1,

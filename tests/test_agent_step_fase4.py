@@ -14,6 +14,7 @@ for the fake model response.
 """
 from types import SimpleNamespace
 
+import pytest
 from fastapi.testclient import TestClient
 
 from apps.api.jarvis_api.app import app
@@ -34,6 +35,23 @@ def _fake_settings(**overrides) -> SimpleNamespace:
     )
     base.update(overrides)
     return SimpleNamespace(**base)
+
+
+@pytest.fixture(autouse=True)
+def _default_fase4_flags(monkeypatch):
+    """Fase-4-flagene skal være deres DEFAULT (alle False) i denne fil.
+
+    Filens præmis er at hvert flag default'er til False, og at flag-off er
+    byte-identisk med pre-Fase-4. Men `al._settings()` læser den LEVENDE
+    config — og Bjørns maskine har alle fire slået til (målt 12/9-2026:
+    agent_step_{reasoning_replay,env_block,cache_contract,harness_contract}_enabled
+    = True), så de seks «flag off»-tests målte flag-ON-adfærd. CI var grøn
+    fordi runtime.json ikke findes der. Testene der VIL have et flag tændt
+    monkeypatcher selv `al._settings` i kroppen — det kører efter denne
+    fixture og vinder.
+    """
+    monkeypatch.setattr(al, "_settings", lambda: _fake_settings())
+    yield
 
 
 # ── Task 1: extended-thinking / reasoning-replay across tool rounds ────────

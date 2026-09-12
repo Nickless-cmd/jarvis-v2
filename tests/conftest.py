@@ -106,24 +106,46 @@ def _prod_db_shield_path(tmp_path_factory):
         try:
             src = sqlite3.connect(f"file:{prod}?mode=ro", uri=True)
             try:
-                stmts = [
-                    r[0] for r in src.execute(
-                        "SELECT sql FROM sqlite_master "
-                        "WHERE sql IS NOT NULL AND name NOT LIKE 'sqlite_%' "
-                        "ORDER BY CASE type WHEN 'table' THEN 0 WHEN 'index' "
-                        "THEN 1 ELSE 2 END"
-                    ).fetchall() if r[0]
-                ]
+                _rows = src.execute(
+                    "SELECT type, name, sql FROM sqlite_master "
+                    "WHERE sql IS NOT NULL AND name NOT LIKE 'sqlite_%' "
+                    "ORDER BY CASE type WHEN 'table' THEN 0 WHEN 'index' "
+                    "THEN 1 ELSE 2 END"
+                ).fetchall()
             finally:
                 src.close()
-            dst = sqlite3.connect(str(shield))
+            # FTS-skyggetabeller må IKKE kopieres. `CREATE VIRTUAL TABLE` bygger
+            # dem selv — men de har type='table' ligesom deres virtuelle tabel,
+            # så sorteringen ovenfor lagde dem FØRST. Kopien fejlede da med
+            # «fts5: error creating shadow table …_data: table already exists»
+            # og den virtuelle tabel blev ALDRIG oprettet. Målt 12/9-2026:
+            # `chat_messages_fts` manglede i shielden → `append_chat_message`
+            # døde med «no such table: main.chat_messages_fts»
+            # (tests/services/test_chat_sessions_id.py). Spring skyggerne over;
+            # den virtuelle tabel genskaber dem. Dækker FTS5 og FTS3/4-navnene.
+            _shadow: set[str] = set()
+            for _t, _n, _s in _rows:
+                if _s and _s.lstrip().upper().startswith("CREATE VIRTUAL TABLE"):
+                    _shadow |= {
+                        f"{_n}_data", f"{_n}_idx", f"{_n}_docsize",
+                        f"{_n}_config", f"{_n}_content", f"{_n}_segments",
+                        f"{_n}_segdir", f"{_n}_stat",
+                    }
+            stmts = [s for _t, _n, s in _rows if _n not in _shadow]
+            # ÉN transaktion — ellers kører hver DDL i autocommit og får sit
+            # eget fsync. Målt 12/9-2026 mod Bjørns 1,98 GB-prod-DB: 564
+            # sætninger = 54,49 s, hvilket sprænger pytest-timeout (45 s) og
+            # gør at HVER test der rammer den ægte DB fejler i setup (45
+            # errors i tre filer). I én transaktion: samme skema, ~0,1 s.
+            dst = sqlite3.connect(str(shield), isolation_level=None)
             try:
+                dst.execute("BEGIN")
                 for sql in stmts:
                     try:
                         dst.execute(sql)
                     except Exception:
                         pass  # dublet/afhængigheds-rækkefølge — skip, aldrig vælt
-                dst.commit()
+                dst.execute("COMMIT")
             finally:
                 dst.close()
         except Exception:
@@ -140,6 +162,64 @@ def _prod_db_shield_path(tmp_path_factory):
     finally:
         db_core.DB_PATH = prev
     return shield
+
+
+@pytest.fixture(autouse=True)
+def _pin_deployment_env_for_tests(monkeypatch):
+    """Ingen test må arve maskinens levende deploy-env (§20-sikkerhedsflag).
+
+    Målt 12/9-2026: 29 tests i tre filer (tests/test_agent_step_fase4.py,
+    tests/api/test_agent_step_envelope.py, tests/multi_user/test_agent_step_scoping.py)
+    fejlede LOKALT men ikke i CI. To lækager fra Bjørns maskine — begge
+    «testen arvede maskinens tilstand», ikke kode-fejl:
+
+      1. `JARVISX_HTTPS_REDIRECT=1` (systemd-drop-in + runtime-env). TestClient'ens
+         host er "testclient" — ikke loopback — så HttpsRedirectMiddleware 301'ede
+         hvert kald til https, og redirect-opfølgningen gav 404. Middleware'ens
+         egen beslutning var korrekt; det var testklienten der ikke skulle have
+         været redirectet.
+      2. `config/runtime.json: jarvisx_auth_required=true`. Middleware'en 401'ede
+         hvert kald uden bearer-token. `auth_required()` læser miljøet FØRST og
+         config'en bagefter, så et "0" her overtrumfer den levende fil.
+
+    I CI findes hverken env-varen eller runtime.json, så testene er grønne der.
+    Dette sikkerhedsnet gør suiten hermetsk — samme familie som
+    `_guard_prod_db_path` («ingen test må skrive i den ægte prod-DB»).
+
+    Tests der VIL måle 401'en eller redirect'et sætter selv flaget: deres
+    opsætning kører EFTER denne fixture og vinder
+    (tests/test_jarvisx_user_routing.py patcher `auth_required`;
+    tests/test_api_security.py sætter JARVISX_HTTPS_REDIRECT pr. test).
+    """
+    monkeypatch.setenv("JARVISX_AUTH_REQUIRED", "0")
+    monkeypatch.setenv("JARVISX_HTTPS_REDIRECT", "0")
+    # 3. `config/runtime.json` bærer maskinens levende flag — bl.a. Fase-4's
+    #    `agent_step_*`. `load_settings()` læser filen hvis den findes, så
+    #    «flag OFF (default)»-tests arvede Bjørns config, hvor de står True, og
+    #    fejlede på deres egen præmis. Peg på en ikke-eksisterende fil →
+    #    `load_settings()` returnerer `RuntimeSettings()`-defaults. Samme
+    #    kirurgi som `isolated_runtime` gør med reload; her for de tests der
+    #    rammer den ægte `app` uden den fixture.
+    try:
+        import tempfile
+        from pathlib import Path as _Path
+
+        import core.runtime.settings as _settings_mod
+
+        # Fast, ikke-eksisterende sti: ingen mappe oprettes pr. test (894 af dem),
+        # og `load_settings()` tager altid defaults-grenen.
+        _tom = _Path(tempfile.gettempdir()) / "jarvis-test-uden-runtime.json"
+        if _tom.exists():
+            _tom.unlink()
+        monkeypatch.setattr(
+            _settings_mod,
+            "SETTINGS_FILE",
+            _tom,
+            raising=False,
+        )
+    except Exception:
+        pass
+    yield
 
 
 @pytest.fixture(autouse=True)

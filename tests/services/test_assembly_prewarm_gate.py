@@ -17,12 +17,32 @@ def test_should_prewarm_skips_when_recent_real_traffic(monkeypatch):
     monkeypatch.setattr(ap, "_seconds_since_last_real_deepseek_call", lambda: 120.0)  # <300 default
     assert ap._should_prewarm() is False
 
+def _aabn_gate3(monkeypatch):
+    """Åbn idle-gaten (3) eksplicit — testene handler om gate 1+2.
+
+    `_should_prewarm()` har tre gates, og den tredje kræver at der HAR været
+    visible/agent-aktivitet inden for `idle_window` (900 s). Den læser
+    `_max_created_at_visible()`, som går DIREKTE mod `~/.jarvis-v2/state/jarvis.db`
+    (`_COSTS_DB`) — ikke gennem `db_core.DB_PATH`, så conftest-shielden rører
+    den ikke. Uden denne patch arvede testene maskinens live-tilstand: de var
+    grønne når Bjørn havde talt med Jarvis for nylig og RØDE efter ~15 min
+    stilhed (målt 12/9-2026: since_activity=1107 s > 900 s → False → rød).
+    Gate 1 patches samtidig, så en forurenet shared_cache-post ikke kan vælte
+    den. Samme familie som resten af suiten: ingen test må arve maskinens
+    tilstand.
+    """
+    monkeypatch.setattr(ap, "_seconds_since_last_prewarm", lambda: None)
+    monkeypatch.setattr(ap, "_seconds_since_last_user_activity", lambda: 60.0)
+
+
 def test_should_prewarm_true_when_cold_and_no_recent_prewarm(monkeypatch):
     # Cold traffic -> traffic-gate lets it through (cross-process dedup moved to lease).
+    _aabn_gate3(monkeypatch)
     monkeypatch.setattr(ap, "_seconds_since_last_real_deepseek_call", lambda: 9999.0)
     assert ap._should_prewarm() is True
 
 def test_should_prewarm_true_when_no_traffic_data(monkeypatch):
+    _aabn_gate3(monkeypatch)
     monkeypatch.setattr(ap, "_seconds_since_last_real_deepseek_call", lambda: None)
     assert ap._should_prewarm() is True
 

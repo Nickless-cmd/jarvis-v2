@@ -195,35 +195,22 @@ def rebuild(session_id: str) -> dict[str, Any]:
 
 
 # ── kun projektoren må skrive kompatibilitets-rækker ─────────────────────
+#
+# Selve vagten bor i `projection_guard`, hvor alle projektioner kan naa den.
+# Den laa her indtil 12/9-2026, og da drift-sammenligneren blev gjort
+# genbrugelig, fulgte vagten ikke med — saa den anden projektion kunne foldes
+# men ikke vogtes. Navnene bliver staaende her, saa `chat_sessions` og
+# testene importerer som foer, og `isinstance` stadig holder: det er den
+# SAMME klasse, ikke en kopi.
 
-class DirekteSkrivningAfvist(RuntimeError):
-    """En ledger-session fik et direkte skrive-forsøg uden om projektoren."""
+from core.services.projection_guard import (  # noqa: E402
+    DirekteSkrivningAfvist,
+    guard_direct_write as _guard,
+)
+
+__all__ = [n for n in dir() if not n.startswith("_")]
 
 
 def guard_direct_write(session_id: str, *, conn=None) -> None:
-    """Afvis direkte `chat_messages`-skrivninger for en ledger-session.
-
-    Uden denne vagt ville skiftet give DOBBELT sandhed i stedet for at flytte
-    den: nogle rækker foldet fra ledgeren, andre skrevet udenom — og ingen
-    måde at se hvilke. Vagten er grunden til at et skifte kan fortrydes.
-
-    Tilstanden læses fra databasen hver gang, ikke fra en cache i processen:
-    et skifte sker i den ene proces og skal ses i den anden med det samme.
-    Kan tilstanden ikke læses, tillades skrivningen — en utilgængelig
-    tilstands-kolonne må ikke gøre samtalen skrivebeskyttet.
-
-    `conn` SKAL gives når kalderen allerede har en forbindelse åben:
-    forbindelserne er poolede, så et nyt `with connect()` ville være den samme
-    forbindelse og committe kalderens transaktion for tidligt.
-    """
-    try:
-        from core.runtime.db_session_ledger import storage_mode
-        mode = storage_mode(session_id, conn=conn)
-    except Exception:
-        logger.warning("projection_chat_messages: kunne ikke laese storage_mode", exc_info=True)
-        return
-    if mode == "ledger":
-        raise DirekteSkrivningAfvist(
-            f"session {session_id!r} er i ledger-tilstand: rækker skrives af "
-            "projektoren, ikke direkte. Skriv hændelsen til ledgeren i stedet."
-        )
+    """Afvis direkte `chat_messages`-skrivninger for en ledger-session."""
+    _guard(session_id, projektion=PROJEKTION, tabel="chat_messages", conn=conn)

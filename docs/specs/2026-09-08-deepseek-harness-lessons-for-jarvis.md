@@ -1611,9 +1611,39 @@ the first; hence a derived `decision_id` and a lazy unique index. And the
 and new rows carry different time formats, so drift comparison normalises time
 — narrowly, answering true only when both strings name the same instant.
 
+**The cutover was half built, and the half that was missing was the guard.**
+`guard_direct_write` lived in `projection_chat_messages` and was called only
+from `chat_sessions`. When `projection_drift` was generalised, the guard did
+not come with it — so the new projection could fold but its direct write site
+in `tool_router.py` was unguarded. Flipping a session there would have written
+*two* rows per decision: the projection's with a derived `decision_id`, and
+the write site's with NULL, which the full unique index permits. The router's
+own statistics (`COUNT`, `AVG(tokens_saved_estimate)`, `AVG(elapsed_ms)`)
+would have double-counted from the first flip.
+
+Eighth instance of the session's pattern, and the purest: a mechanism built
+for one caller, generalised halfway. The comparer was made reusable; the
+guard was not.
+
+Now fixed. The guard lives in `projection_guard.py`, reachable by every
+projection; `projection_chat_messages` re-exports it so existing imports and
+`isinstance` still hold — the same class object, not a copy. Four tests cover
+the write site through the router's own `_persist`, not an imitation of it:
+legacy writes one row (control), `ledger` writes none, `shadow` still writes
+both places — which is the whole point of shadow — and the refusal names the
+table and says what to do instead. Disconnecting the guard fails exactly the
+`ledger` test.
+
 **Still open:** nothing is in shadow yet, and nothing has flipped. The
 tool-router projection exists and is proven against fixtures; it has not been
-run against the 183 production rows, and no session has been moved.
+run against the 183 production rows, and no session has been moved. What that
+now waits on is not a missing part but a decision: `storage_mode` is per
+session, so flipping makes every projection for that session authoritative at
+once. Measured mitigation: `project()` re-folds from 0 when the marker is
+absent, so a projection registered *after* a flip still lands correctly — the
+requirement is therefore not "register everything first" but "every projection
+must be idempotent and re-fold safe", which is exactly what the derived
+`decision_id` buys.
 
 ### Phase 12: optional remote, goal, hook, and team extensions
 

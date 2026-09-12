@@ -13,6 +13,10 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 
+from core.services.projection_guard import (
+    DirekteSkrivningAfvist as _DirekteSkrivningAfvist,
+)
+
 from core.eventbus.bus import event_bus
 from core.runtime.db import connect
 from core.runtime.settings import RuntimeSettings
@@ -467,6 +471,15 @@ def _persist(
         pass
     try:
         with connect() as c:
+            # VAGTEN, ikke bare projektionen. En udskiftning bestaar af to
+            # dele: projektoren der folder, og vagten der naegter det direkte
+            # skrivested naar sessionen er i `ledger`. Uden den ville et
+            # skifte give TO raekker pr. beslutning — projektionens med udledt
+            # `decision_id` og denne med NULL, som det fulde unikke indeks
+            # netop tillader — og routerens egne AVG/COUNT nedenfor ville
+            # dobbelttaelle fra foerste skifte.
+            from core.services.projection_tool_router import guard_direct_write
+            guard_direct_write(str(session_id or ""), conn=c)
             c.execute(
                 "INSERT INTO tool_router_decisions("
                 "run_id, session_id, lane, user_message_preview, "
@@ -490,5 +503,12 @@ def _persist(
                 ),
             )
             c.commit()
+    except _DirekteSkrivningAfvist:
+        # IKKE en fejl. Sessionen er skiftet, og raekken kommer fra
+        # projektionen. Uden denne gren ville den generelle nedenfor melde
+        # «persist failed» for noget der virkede praecis efter hensigten — og
+        # saa ville en rigtig fejl og et rigtigt skifte se ens ud i loggen.
+        logger.info("tool_router: direkte skrivning sprunget over, "
+                    "sessionen er i ledger-tilstand")
     except Exception as exc:
         logger.warning("tool_router._persist failed: %s", exc)

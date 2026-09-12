@@ -156,3 +156,64 @@ def test_en_ukendt_projektion_er_en_fejl_ikke_et_tomt_svar(sid):
     """Et tomt svar ville melde «enige» om noget der ikke findes."""
     with pytest.raises(ValueError):
         D.compare(sid, "findes-ikke")
+
+
+# ── vagten paa det direkte skrivested ────────────────────────────────────
+#
+# En udskiftning bestaar af TO dele. Projektionen ovenfor folder; vagten her
+# naegter det direkte skrivested naar sessionen er skiftet. Uden den anden
+# halvdel ville et skifte fordoble sandheden i stedet for at flytte den.
+
+def _beslut(sid: str):
+    """Koer routerens egen persist-vej — ikke en efterligning af den."""
+    from core.services.tool_router import ToolSelection, _persist
+    sel = ToolSelection(
+        selected_names=["read_file"], always_core=["bash"], embedding_picks=[],
+        confidence=0.9, threshold=0.5, fallback_used=False, fallback_reason="",
+        elapsed_ms=3,
+    )
+    _persist(sel, "hej", sid, "primary", "run-1")
+
+
+def _antal(sid: str) -> int:
+    with connect() as c:
+        return c.execute(
+            "SELECT COUNT(*) FROM tool_router_decisions WHERE session_id = ?",
+            (sid,)).fetchone()[0]
+
+
+def test_legacy_session_skriver_direkte_som_foer(sid):
+    """Kontrolarm. Uden den beviser proeven nedenfor ingenting."""
+    _beslut(sid)
+    assert _antal(sid) == 1
+
+
+def test_ledger_session_faar_INGEN_direkte_raekke(sid):
+    """Ellers ville tabellen have to raekker pr. beslutning: projektionens
+    med udledt `decision_id` og skrivestedets med NULL, som det fulde unikke
+    indeks netop tillader."""
+    L.advance_storage_mode(sid, to="shadow")
+    L.advance_storage_mode(sid, to="ledger")
+    _beslut(sid)
+    assert _antal(sid) == 0
+
+
+def test_shadow_session_skriver_stadig_direkte(sid):
+    """I skygge skrives der BEGGE steder — det er hele pointen med skyggen.
+    En vagt der ogsaa spaerrede her ville goere sammenligningen umulig."""
+    L.advance_storage_mode(sid, to="shadow")
+    _beslut(sid)
+    assert _antal(sid) == 1
+
+
+def test_vagten_afviser_hoejlydt_ikke_tavst(sid):
+    """Beskeden skal sige hvad man skal goere i stedet."""
+    from core.services.projection_tool_router import (
+        DirekteSkrivningAfvist, guard_direct_write)
+    L.advance_storage_mode(sid, to="shadow")
+    L.advance_storage_mode(sid, to="ledger")
+    with connect() as c:
+        with pytest.raises(DirekteSkrivningAfvist) as ei:
+            guard_direct_write(sid, conn=c)
+    assert "tool_router_decisions" in str(ei.value)
+    assert "hovedbogen" in str(ei.value)

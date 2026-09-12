@@ -219,3 +219,21 @@ def rebuild(session_id: str) -> dict[str, Any]:
     if PROJEKTION not in pr.registered():
         register()
     return pr.project(session_id, PROJEKTION, force_refold=True)
+
+
+# ── kun projektoren må skrive kompatibilitets-rækker ─────────────────────
+
+from core.services.projection_guard import (  # noqa: E402
+    DirekteSkrivningAfvist,  # noqa: F401  (re-eksporteret, som i chat_messages)
+    guard_direct_write as _guard,
+)
+
+
+def guard_direct_write(session_id: str, *, conn=None) -> None:
+    """Afvis direkte `tool_router_decisions`-skrivninger for en ledger-session.
+
+    Uden den ville et skifte give TO rækker pr. beslutning: projektionens med
+    udledt `decision_id`, og skrivestedets med NULL — som det fulde unikke
+    indeks netop tillader.
+    """
+    _guard(session_id, projektion=PROJEKTION, tabel=TABEL, conn=conn)

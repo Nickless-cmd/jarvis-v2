@@ -597,13 +597,15 @@ _Adaptive research coordinator around the existing visible and agent runtimes._
 | function | `_confidence` | `(value)` | — | [src](../../../core/services/research_orchestrator.py#L96) |
 | function | `_finding_from_text` | `(text, task_ordinal)` | Sidste udkast: hele teksten bliver ét fund med de URLs den bærer. | [src](../../../core/services/research_orchestrator.py#L101) |
 | function | `_parse_findings` | `(text, task_ordinal)` | Fase B2: worker-svaret → `ResearchFinding`. | [src](../../../core/services/research_orchestrator.py#L118) |
-| function | `_evidence_block` | `(texts, sources, findings)` | Evidens til syntesen — med en KANONISK nummereret kilde-liste. | [src](../../../core/services/research_orchestrator.py#L192) |
-| function | `_topup_plan` | `(run_id, tasks, policy)` | Fase B1: hvilke tracks skal styrkes — og med hvad? | [src](../../../core/services/research_orchestrator.py#L223) |
-| function | `_evaluate_quality` | `(run_id, query, report, policy)` | Fase A1: kobl kvalitetsgaten på den faktiske rapport. | [src](../../../core/services/research_orchestrator.py#L269) |
-| function | `_default_worker_sync` | `(*, task, run_id, skill_instructions)` | — | [src](../../../core/services/research_orchestrator.py#L299) |
-| function | `_run_worker` | `(worker_factory, *, task, run_id, skill_instructions)` | — | [src](../../../core/services/research_orchestrator.py#L330) |
-| function | `stream_research_run` | `(*, message, original_query=…, session_id, visible_run_id=…, decision=…, visible_factory=…, worker_factory=…, orchestrator_enabled=…, **visible_kwargs)` | — | [src](../../../core/services/research_orchestrator.py#L335) |
-| function | `research_enabled` | `()` | — | [src](../../../core/services/research_orchestrator.py#L570) |
+| function | `_gap_objective` | `(query, findings)` | Fase B3: critic-opgaven — hvad MANGLER der, givet de fundne påstande. | [src](../../../core/services/research_orchestrator.py#L192) |
+| function | `_parse_gaps` | `(text)` | Fase B3: critic-svaret → korte gap-linjer. Defensiv hele vejen. | [src](../../../core/services/research_orchestrator.py#L209) |
+| function | `_evidence_block` | `(texts, sources, findings, gaps=…)` | Evidens til syntesen — med en KANONISK nummereret kilde-liste. | [src](../../../core/services/research_orchestrator.py#L243) |
+| function | `_topup_plan` | `(run_id, tasks, policy)` | Fase B1: hvilke tracks skal styrkes — og med hvad? | [src](../../../core/services/research_orchestrator.py#L281) |
+| function | `_evaluate_quality` | `(run_id, query, report, policy)` | Fase A1: kobl kvalitetsgaten på den faktiske rapport. | [src](../../../core/services/research_orchestrator.py#L327) |
+| function | `_default_worker_sync` | `(*, task, run_id, skill_instructions)` | — | [src](../../../core/services/research_orchestrator.py#L357) |
+| function | `_run_worker` | `(worker_factory, *, task, run_id, skill_instructions)` | — | [src](../../../core/services/research_orchestrator.py#L388) |
+| function | `stream_research_run` | `(*, message, original_query=…, session_id, visible_run_id=…, decision=…, visible_factory=…, worker_factory=…, orchestrator_enabled=…, **visible_kwargs)` | — | [src](../../../core/services/research_orchestrator.py#L393) |
+| function | `research_enabled` | `()` | — | [src](../../../core/services/research_orchestrator.py#L669) |
 
 ## `core/services/research_prompt_context.py`
 _Request-scoped research instructions consumed by prompt assembly surfaces._

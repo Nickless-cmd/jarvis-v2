@@ -397,3 +397,155 @@ def test_B2_findings_gemmes_og_taelles(monkeypatch):
     assert payloads[0]["findings"][0]["claim"] == "Kilde-båren påstand"
     # og de tælles i det afsluttende event
     assert _completed_payload(events).get("findings", 0) >= 1, events
+
+
+# --- Fase B3: gap/repair-pass — ÉN critic-runde (13/9-2026) ---
+
+
+def _fake_store_seq(monkeypatch, *, tool_calls=0):
+    """Som `_fake_store`, men `create_tasks` giver GLOBALT unikke id'er.
+
+    Den almindelige fake starter forfra på `t1` ved hvert kald, så critic-opgaven
+    ville kollidere med planens id'er og blive filtreret væk — og B3 ville aldrig
+    køre i testen. Her får hver opgave sit eget id på tværs af kald.
+    """
+    counter = {"n": 0}
+
+    def create_tasks(rid, tasks):
+        out = []
+        for task in tasks:
+            counter["n"] += 1
+            out.append({
+                "id": f"t{counter['n']}",
+                "ordinal": task.ordinal,
+                "title": task.title,
+                "objective": task.objective,
+            })
+        return out
+
+    statuses = _fake_store(monkeypatch, tool_calls=tool_calls)
+    monkeypatch.setattr(orchestrator.store, "create_tasks", create_tasks)
+    # B3 testes i isolation: top-up-bølgen (B1) patches væk, så det er critic-
+    # rundens opførsel der måles — ikke om der også blev fyldt kilder på.
+    monkeypatch.setattr(orchestrator, "_topup_plan", lambda *a, **k: [])
+    return statuses
+
+
+def test_B3_gap_pass_runs_exactly_once(monkeypatch):
+    """Critic'en skal køre ÉN gang — ikke i en løkke (spec princip 5)."""
+    _fake_store_seq(monkeypatch)
+    titles = []
+
+    async def worker(**kwargs):
+        task = kwargs["task"]
+        titles.append(task["title"])
+        if task["title"] == "Gap check":
+            return {"text": json.dumps({"gaps": ["Pris mangler for leverandør 3"]}), "status": "completed"}
+        return {
+            "text": json.dumps({"findings": [{"claim": "A koster 10", "sources": ["https://a.example"]}]}),
+            "status": "completed",
+        }
+
+    events = _events(orchestrator.stream_research_run(
+        message="Sammenlign fem leverandører på pris, sikkerhed og drift",
+        session_id="s1",
+        decision=ResearchDecision(tier="orchestrated", max_workers=2, max_tasks=2),
+        visible_factory=_visible,
+        worker_factory=worker,
+        orchestrator_enabled=True,
+    ))
+    assert titles.count("Gap check") == 1, titles
+    assert any("gap_check" in event for event in events), events
+    assert _completed_payload(events).get("gaps") == 1, events
+
+
+def test_B3_skipped_after_timeout(monkeypatch):
+    """Et run der allerede har overskredet sin væg-tid må ikke starte flere workers."""
+    _fake_store_seq(monkeypatch)
+    monkeypatch.setattr(orchestrator, "time", _FakeClock(0.0, 10_000.0))
+    titles = []
+
+    async def worker(**kwargs):
+        titles.append(kwargs["task"]["title"])
+        await asyncio.sleep(30)
+        return {"text": "for sent", "status": "completed"}
+
+    events = _events(orchestrator.stream_research_run(
+        message="Sammenlign fem leverandører på pris, sikkerhed og drift",
+        session_id="s1",
+        decision=ResearchDecision(tier="orchestrated", max_workers=1, max_tasks=1),
+        visible_factory=_visible,
+        worker_factory=worker,
+        orchestrator_enabled=True,
+    ))
+    assert "Gap check" not in titles, titles
+    assert not any("gap_check" in event for event in events), events
+
+
+def test_B3_skipped_when_budget_exhausted(monkeypatch):
+    """Er værktøjs-budgettet brugt, har critic'en ikke råd til at køre."""
+    _fake_store_seq(monkeypatch, tool_calls=999)
+    titles = []
+
+    async def worker(**kwargs):
+        titles.append(kwargs["task"]["title"])
+        return {"text": "x", "status": "completed"}
+
+    events = _events(orchestrator.stream_research_run(
+        message="Sammenlign fem leverandører på pris, sikkerhed og drift",
+        session_id="s1",
+        decision=ResearchDecision(tier="orchestrated", max_workers=1, max_tasks=1),
+        visible_factory=_visible,
+        worker_factory=worker,
+        orchestrator_enabled=True,
+    ))
+    assert "Gap check" not in titles, titles
+    assert not any("gap_check" in event for event in events), events
+
+
+def test_B3_critic_failure_does_not_kill_the_run(monkeypatch):
+    """Critic'en er et supplement, ikke et krav: fejler den, kommer svaret stadig."""
+    _fake_store_seq(monkeypatch)
+
+    async def worker(**kwargs):
+        task = kwargs["task"]
+        if task["title"] == "Gap check":
+            raise RuntimeError("critic døde")
+        return {
+            "text": json.dumps({"findings": [{"claim": "A koster 10", "sources": ["https://a.example"]}]}),
+            "status": "completed",
+        }
+
+    events = _events(orchestrator.stream_research_run(
+        message="Sammenlign fem leverandører på pris, sikkerhed og drift",
+        session_id="s1",
+        decision=ResearchDecision(tier="orchestrated", max_workers=2, max_tasks=2),
+        visible_factory=_visible,
+        worker_factory=worker,
+        orchestrator_enabled=True,
+    ))
+    assert any("event: research_completed" in event for event in events), events
+    assert _completed_payload(events).get("gaps") == 0, events
+
+
+def test_B3_parse_gaps_former():
+    """Critic-svaret i de former en worker faktisk kan svare i."""
+    assert orchestrator._parse_gaps('{"gaps": ["a", "b"]}') == ["a", "b"]
+    assert orchestrator._parse_gaps('```json\n{"gaps": ["c"]}\n```') == ["c"]
+    assert orchestrator._parse_gaps("linje en\nlinje to") == ["linje en", "linje to"]
+    # Et gyldigt svar uden huller giver nul huller — ikke hele svaret som ét hul.
+    assert orchestrator._parse_gaps("[]") == []
+    assert orchestrator._parse_gaps('{"gaps": []}') == []
+    assert orchestrator._parse_gaps("") == []
+    assert orchestrator._parse_gaps("ikke json") == ["ikke json"]
+
+
+def test_B3_gaps_naar_evidensblokken():
+    """Hullerne skal stå i den evidens syntesen får — ellers er de uden virkning."""
+    block = orchestrator._evidence_block(
+        [], [{"canonical_url": "https://a.dk", "title": "A"}], [], ["Pris mangler for 3"]
+    )
+    assert "Known gaps" in block
+    assert "Pris mangler for 3" in block
+    # Uden huller må sektionen ikke stå tom og støjende.
+    assert "Known gaps" not in orchestrator._evidence_block([], [], [], [])

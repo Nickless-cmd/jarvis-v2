@@ -189,8 +189,62 @@ def _parse_findings(text: str, task_ordinal: int) -> list[ResearchFinding]:
     return findings or [_finding_from_text(raw, task_ordinal)]
 
 
+def _gap_objective(query: str, findings: list[ResearchFinding]) -> str:
+    """Fase B3: critic-opgaven — hvad MANGLER der, givet de fundne påstande.
+
+    Critic'en skal ikke forske videre; den skal pege på hullerne. Derfor står
+    påstandene i selve opgaven: worker-stien sender kun `objective` videre som
+    goal, så konteksten skal ligge i teksten.
+    """
+    claims = "\n".join(f"- {finding.claim}" for finding in findings) or "(ingen påstande endnu)"
+    return (
+        "You are a gap-checker, not a researcher. Given the original task and the "
+        "claims already gathered, list ONLY what is missing, unsupported, stale, or "
+        "contradictory. Be specific and terse; do not repeat the claims. "
+        'Reply with JSON: {"gaps": ["..."]}.\n\n'
+        f"Original task: {query}\n\nClaims so far:\n{claims}"
+    )
+
+
+def _parse_gaps(text: str) -> list[str]:
+    """Fase B3: critic-svaret → korte gap-linjer. Defensiv hele vejen.
+
+    Kan svaret ikke læses som JSON, bruges linjerne som de står — et svar må
+    ikke tabe sine huller på vej ind, og et tomt svar giver ingen huller.
+    """
+    raw = str(text or "").strip()
+    if not raw:
+        return []
+    candidate = raw
+    fenced = re.search(r"```(?:json)?\s*(.+?)```", raw, re.S)
+    if fenced:
+        candidate = fenced.group(1).strip()
+    parsed: object = None
+    try:
+        parsed = json.loads(candidate)
+    except Exception:
+        parsed = None
+    out: list[str] = []
+    if isinstance(parsed, dict):
+        for key in ("gaps", "missing", "unsupported", "issues"):
+            value = parsed.get(key)
+            if isinstance(value, list):
+                out = [_clean_text(item) for item in value if _clean_text(item)]
+                break
+    elif isinstance(parsed, list):
+        out = [_clean_text(item) for item in parsed if _clean_text(item)]
+    if not out and parsed is None:
+        # Kun når svaret SLET IKKE var JSON: brug linjerne som de står. Et gyldigt
+        # svar uden huller skal give nul huller — ikke hele svaret som ét hul.
+        out = [_clean_text(line) for line in raw.splitlines() if _clean_text(line)]
+    return out[:20]
+
+
 def _evidence_block(
-    texts: list[str], sources: list[dict], findings: list[ResearchFinding],
+    texts: list[str],
+    sources: list[dict],
+    findings: list[ResearchFinding],
+    gaps: list[str] | None = None,
 ) -> str:
     """Evidens til syntesen — med en KANONISK nummereret kilde-liste.
 
@@ -215,6 +269,10 @@ def _evidence_block(
                 line += f" [caveat: {finding.caveat}]"
             lines.append(line)
         parts.append("Findings:\n" + "\n".join(lines))
+    if gaps:
+        # Fase B3: hullerne skal med til syntesen — ellers ved den ikke hvad den
+        # skal være forsigtig med. Den skal adressere dem eller flagge dem.
+        parts.append("Known gaps (address or flag these):\n" + "\n".join(f"- {gap}" for gap in gaps))
     if texts:
         parts.append("Raw worker notes:\n" + "\n\n".join(texts))
     return "\n\n".join(parts)
@@ -392,6 +450,7 @@ async def stream_research_run(
     evidence = ""
     findings: list[str] = []
     parsed_findings: list[ResearchFinding] = []
+    gaps: list[str] = []
     if decision.tier == "orchestrated":
         tasks = store.create_tasks(run_id, _plan(query, policy.max_tasks))
         yield _event("research_plan", {
@@ -483,13 +542,14 @@ async def stream_research_run(
         # Fase B1: stop på EVIDENS, ikke på «bølgen blev færdig». Er kilderne for
         # få OG er der råd, kører ÉN ekstra bølge på de tyndeste tracks. Den kaldes
         # her — ikke i en løkke — så et run kan strukturelt ikke loope her.
+        known_ids = {str(t["id"]) for t in tasks}
         if not timed_out:
             plan = _topup_plan(run_id, tasks, policy)
             if plan:
-                known = {str(t["id"]) for t in tasks}
                 fresh = [t for t in store.create_tasks(run_id, plan)
-                         if str(t["id"]) not in known]
+                         if str(t["id"]) not in known_ids]
                 if fresh:
+                    known_ids |= {str(t["id"]) for t in fresh}
                     yield _event("research_progress", {
                         "research_run_id": run_id,
                         "phase": "topping_up",
@@ -501,11 +561,49 @@ async def stream_research_run(
                     async for event in _wave(fresh, total=len(tasks) + len(fresh)):
                         yield event
 
+        # Fase B3: ÉN critic-runde — hvad mangler der? (spec princip 5: ét
+        # gennemløb). Kun når der er påstande at kritisere, tid tilbage og
+        # budget tilbage. Defensiv: en critic der fejler må ikke koste svaret.
+        if not timed_out and parsed_findings and _tool_calls_used(run_id) < policy.max_tool_calls:
+            try:
+                fresh_critic = [
+                    t for t in store.create_tasks(
+                        run_id,
+                        [ResearchTask(
+                            ordinal=0,
+                            title="Gap check",
+                            objective=_gap_objective(query, parsed_findings),
+                        )],
+                    )
+                    if str(t["id"]) not in known_ids
+                ]
+                if fresh_critic:
+                    critic_task = fresh_critic[0]
+                    store.start_task(str(critic_task["id"]))
+                    yield _event("research_progress", {
+                        "research_run_id": run_id,
+                        "phase": "gap_check",
+                        "sources": store.source_count(run_id),
+                    })
+                    critic_result = await _run_worker(
+                        worker_factory,
+                        task=critic_task,
+                        run_id=run_id,
+                        skill_instructions=contract.instructions,
+                    )
+                    critic_text = str((critic_result or {}).get("text") or "").strip()
+                    gaps = _parse_gaps(critic_text)
+                    store.complete_task(str(critic_task["id"]), {"text": critic_text, "gaps": gaps})
+            except Exception:
+                # Critic'en er et supplement, ikke et krav. Fejler den, kører
+                # runnet videre uden huller — men det bliver ikke skjult.
+                gaps = []
+
         try:
             canonical = store.list_sources(run_id)
         except Exception:
             canonical = []
-        evidence = _evidence_block(findings, canonical, parsed_findings)
+        evidence = _evidence_block(findings, canonical, parsed_findings, gaps)
     else:
         store.transition_run(run_id, "researching")
 
@@ -550,6 +648,7 @@ async def stream_research_run(
                         "research_run_id": run_id,
                         "sources": store.source_count(run_id),
                         "findings": len(parsed_findings),
+                        "gaps": len(gaps),
                         "quality": quality["status"],
                         "quality_gates": quality["gates"],
                         "quality_failures": quality["failures"],

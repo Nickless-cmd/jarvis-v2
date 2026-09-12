@@ -1,4 +1,6 @@
-import { Image, Modal, Pressable, StyleSheet, Text, View } from 'react-native'
+import { Modal, Pressable, StyleSheet, Text, View } from 'react-native'
+import { AuthImage } from './AuthImage'
+import { useAuth } from '../state/AuthContext'
 import { X } from 'lucide-react-native'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 
@@ -17,6 +19,9 @@ export function FullscreenImagePreview({
 }) {
   const tokens = useTheme()
   const styles = useStyles(makes)
+  // Token'et hentes HER frem for at komme ind som `headers`: den prop gik til
+  // en <Image> der tabte den. Se AuthImage.
+  const { config } = useAuth()
   return (
     <Modal visible={visible} transparent={false} animationType="fade" onRequestClose={onClose}>
       <View style={styles.root}>
@@ -26,12 +31,16 @@ export function FullscreenImagePreview({
             <X size={22} color={tokens.color.fg1} strokeWidth={2} />
           </Pressable>
         </View>
-        <Image
-          testID="attachment-fullscreen-image"
-          source={{ uri, headers }}
-          resizeMode="contain"
-          style={styles.image}
-        />
+        {config ? (
+          <AuthImage
+            testID="attachment-fullscreen-image"
+            config={config}
+            url={uri}
+            navn={uri}
+            resizeMode="contain"
+            style={styles.image}
+          />
+        ) : null}
       </View>
     </Modal>
   )

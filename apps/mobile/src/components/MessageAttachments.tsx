@@ -4,6 +4,7 @@ import { planlaegPreview } from '../lib/filePreview'
 import { aabnUdgivetFil, blokUrl } from '../lib/aabnFil'
 import { FileText } from 'lucide-react-native'
 import { useAuth } from '../state/AuthContext'
+import { AuthImage } from './AuthImage'
 import type { PersistedBlock } from '../lib/persistedBlocks'
 import { tokens } from '../theme/tokens'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
@@ -49,11 +50,16 @@ export function MessageAttachments({ items }: { items: PersistedBlock[] }) {
               accessibilityLabel={`Åbn ${b.filename || 'billede'}`}
               onPress={() => setPreview({ uri, title: b.filename || 'Billede', headers })}
             >
-              <Image
+              {/* IKKE <Image source={{uri, headers}}>. Maalt 12/9-2026:
+                  React Natives billed-loader sender anmodningen UDEN
+                  headeren, og serveren svarer 401 - saa billedet blev et
+                  tomt felt. Se AuthImage. */}
+              <AuthImage
                 testID={`attachment-image-${id}`}
-                source={{ uri, headers }}
+                config={config}
+                url={uri}
+                navn={id}
                 style={styles.image}
-                resizeMode="cover"
               />
             </Pressable>
           )

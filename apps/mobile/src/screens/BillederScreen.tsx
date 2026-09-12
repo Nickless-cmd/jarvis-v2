@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Image, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native'
+import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native'
 import { Sparkles, Upload, X } from 'lucide-react-native'
 import { billedUrl, hentSessionBilleder, type SessionBillede } from '../lib/billederApi'
 import { aabnUdgivetFil } from '../lib/aabnFil'
 import { useAuth } from '../state/AuthContext'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 import { StatusState } from '../components/StatusState'
+import { AuthImage } from '../components/AuthImage'
 
 /**
  * Billederne i denne samtale — Jarvis' egne og ens egne, i ét gitter.
@@ -39,10 +40,6 @@ export function BillederScreen({
   // Tre i bredden, med luft. Regnes ud fra den FAKTISKE bredde frem for et
   // fast tal: en foldbar eller landskab ville ellers give tre smalle striber.
   const kant = useMemo(() => Math.floor((width - 16 * 2 - 8 * 2) / 3), [width])
-  const headers = config?.authToken
-    ? { Authorization: `Bearer ${config.authToken}` }
-    : undefined
-
   return (
     <View style={styles.root}>
       <View style={styles.header}>
@@ -79,10 +76,12 @@ export function BillederScreen({
               }}
               style={[styles.felt, { width: kant, height: kant }]}
             >
-              <Image
-                source={{ uri: billedUrl(config!, b.attachmentId), headers }}
+              <AuthImage
+                config={config!}
+                url={billedUrl(config!, b.attachmentId)}
+                navn={b.attachmentId}
                 style={styles.billede}
-                resizeMode="cover"
+                testID={`billede-img-${b.attachmentId}`}
               />
               <View style={styles.maerke}>
                 {b.lavetAfJarvis

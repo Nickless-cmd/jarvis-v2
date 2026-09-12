@@ -3,6 +3,9 @@
 and A8 typed-forwarded-error contract, plus proof the Fase-0 default-OFF flag
 is inert. Monkeypatches the provider seam only — no real network/provider.
 """
+from types import SimpleNamespace
+
+import pytest
 from fastapi.testclient import TestClient
 
 from apps.api.jarvis_api.app import app
@@ -11,6 +14,29 @@ import apps.api.jarvis_api.routes.agent_loop as al
 from .server_mock_provider import fake_chat, fake_stream, raising_chat
 
 client = TestClient(app)
+
+
+@pytest.fixture(autouse=True)
+def _default_fase4_flags(monkeypatch):
+    """Fase-4-flagene skal være deres DEFAULT (alle False) i denne fil.
+
+    Samme grund som `tests/test_agent_step_fase4.py`: `al._settings()` læser
+    den LEVENDE config, og Bjørns maskine har alle fire slået til (målt
+    12/9-2026). Uden dette målte de to «flag off»-tests flag-ON-adfærd —
+    `reasoning_content` stod i svaret, hvor testen kræver det fraværende.
+    CI var grøn fordi runtime.json ikke findes der.
+    """
+    monkeypatch.setattr(
+        al,
+        "_settings",
+        lambda: SimpleNamespace(
+            agent_step_reasoning_replay_enabled=False,
+            agent_step_env_block_enabled=False,
+            agent_step_cache_contract_enabled=False,
+            agent_step_harness_contract_enabled=False,
+        ),
+    )
+    yield
 
 
 def _patch_chat(monkeypatch, fn):

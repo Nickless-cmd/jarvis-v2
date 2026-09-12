@@ -1192,9 +1192,18 @@ def infer_temporal_edges(
         # by the next consolidation pass — meanwhile we just skip the
         # candidate silently. (jarvis_brain.py has no module-level
         # logger; emitting one here would be a regression.)
+        #
+        # 2026-09-12: `parse_frontmatter` also raises ValueError (missing or
+        # unterminated frontmatter) and yaml.safe_load raises YAMLError (a
+        # title containing ": " without quoting). Neither was caught, so ONE
+        # malformed file aborted the whole candidate loop for every entry that
+        # had it as a candidate — and the candidate set is ALL active entries,
+        # not just related ones. Measured: 2 of 7954 files were malformed and
+        # hung 14 entries permanently (126 warnings/day, 9 per entry, forever,
+        # because an entry with no edges stays in the catch-up set).
         try:
             cand_text = _extract_text_for_entry(cand_id)
-        except (KeyError, FileNotFoundError, OSError):
+        except (KeyError, FileNotFoundError, OSError, ValueError, yaml.YAMLError):
             continue
         entity_score = entity_overlap_score(new_text, cand_text)
 

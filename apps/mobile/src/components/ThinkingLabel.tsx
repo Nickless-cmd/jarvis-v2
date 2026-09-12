@@ -3,12 +3,9 @@ import { Animated, Easing, StyleSheet, Text, View } from 'react-native'
 import { tokens } from '../theme/tokens'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 import { useReducedMotion } from '../lib/useReducedMotion'
-import { GlidendeTekst } from './GlidendeTekst'
 
 interface Props {
   label?: string
-  /** Lad lyset rejse hele linjens bredde, ikke kun tekstens. */
-  fuldBredde?: boolean
 }
 
 /**
@@ -23,7 +20,7 @@ interface Props {
  * ét andet sted, og ChatGPT's rolige indtryk kommer netop af at ventetegnet
  * står PÅ SIN PLADS i samtalen frem for oppe i en header.
  */
-export function ThinkingLabel({ label = 'Tænker', fuldBredde }: Props) {
+export function ThinkingLabel({ label = 'Tænker' }: Props) {
   const tokens = useTheme()
   const styles = useStyles(makestyles)
   const sweep = useRef(new Animated.Value(0)).current
@@ -54,12 +51,14 @@ export function ThinkingLabel({ label = 'Tænker', fuldBredde }: Props) {
     )
   }
 
-  // LYSET GLIDER, ordet aander ikke. Hele linjen der toner op og ned gjorde
-  // teksten svaer at laese i halvdelen af tiden — og her staar der nu et
-  // stykke tanke, ikke bare ét ord, saa man skal kunne laese med.
+  // INTET LYS HER. Bjoern 13/9-2026: lyset bliver i traaden — paa
+  // tool-raekkerne og paa «Tænker/Tænkte» — men linjen over skrivefeltet skal
+  // staa stille. Den skifter i forvejen indhold hele tiden (vaerktoejets
+  // etiket, «Arbejder», tankestroemmen) og baerer sin egen prik-sekvens; et
+  // lys ovenpaa dét er ét signal for meget paa det sted oejet hviler mest.
   return (
     <View style={styles.row} testID="thinking-label">
-      <GlidendeTekst text={label} aktiv fuldBredde={fuldBredde} style={styles.word} numberOfLines={2} />
+      <Text style={styles.word} numberOfLines={2}>{label}</Text>
     </View>
   )
 }

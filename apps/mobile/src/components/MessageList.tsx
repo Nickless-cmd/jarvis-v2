@@ -485,7 +485,7 @@ function ThinkingLabelRow({ blocks }: { blocks: ContentBlock[] }) {
   }, [reduced])
   return (
     <View style={styles.thinkingRow}>
-      <ThinkingLabel label={arbejdsLinje(blocks, trin)} fuldBredde />
+      <ThinkingLabel label={arbejdsLinje(blocks, trin)} />
     </View>
   )
 }

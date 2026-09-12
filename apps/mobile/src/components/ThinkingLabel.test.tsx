@@ -20,3 +20,18 @@ it('reduceret bevægelse slukker sweepet men beholder ordet', async () => {
   expect(s.queryByTestId('thinking-label')).toBeNull()
   jest.restoreAllMocks()
 })
+
+/**
+ * Bjørn 13/9-2026: «fjern lys bølge helt fra tænker linje over composer men
+ * behold i chatview tool results og tænker/tænkte linje med lys bølge».
+ *
+ * Linjen over skrivefeltet skifter i forvejen indhold hele tiden — værktøjets
+ * etiket, «Arbejder», tankestrømmen — og bærer sin egen prik-sekvens. Et lys
+ * ovenpå dét er ét signal for meget netop dér hvor øjet hviler mest.
+ */
+it('linjen over skrivefeltet har INTET lys', async () => {
+  const s = await render(<ThinkingLabel label="Kører kommando: sleep" />)
+  expect(s.queryByTestId('glidende-lys')).toBeNull()
+  expect(s.queryByTestId('glidende-tekst')).toBeNull()
+  expect(s.getByText('Kører kommando: sleep')).toBeTruthy()
+})

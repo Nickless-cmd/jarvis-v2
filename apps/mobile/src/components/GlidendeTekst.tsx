@@ -5,7 +5,7 @@ import { useReducedMotion } from '../lib/useReducedMotion'
 /** Hvor længe lyset er om at rejse hen over linjen. */
 const VARIGHED_MS = 1600
 /** Båndets bredde i dp. Bredere = blødere stryg. */
-const BAAND = 140
+const BAAND = 90
 
 /**
  * Tekst med et lys der glider hen over den, mens noget kører.
@@ -31,12 +31,10 @@ const BAAND = 140
  * billigere end at trække en afhængighed ind for én animation.
  */
 export function GlidendeTekst({
-  text, aktiv, style, numberOfLines, fuldBredde,
+  text, aktiv, style, numberOfLines,
 }: {
   text: string
   aktiv: boolean
-  /** Maal hele linjens bredde i stedet for tekstens. */
-  fuldBredde?: boolean
   style?: StyleProp<TextStyle>
   numberOfLines?: number
 }) {
@@ -66,10 +64,7 @@ export function GlidendeTekst({
   return (
     <View
       testID="glidende-tekst"
-      // `fuldBredde`: Bjoern 12/9-2026 — «den lyse boelge skal koere den fulde
-      // skaerm bredde selv om teksten ikke er saa lang». Uden den maaler
-      // onLayout kun tekstens egen bredde, og lyset naar aldrig ud i linjen.
-      style={[styles.wrap, fuldBredde ? styles.fuld : null]}
+      style={styles.wrap}
       // Bredden måles FØR lyset kan rejse. Uden den ville båndet enten stå
       // stille eller skyde forbi kanten på en linje af ukendt længde.
       onLayout={(e) => {
@@ -117,11 +112,6 @@ const styles = StyleSheet.create({
     width: BAAND,
     flexDirection: 'row',
   },
-  // `width: '100%'` frem for kun `alignSelf: 'stretch'`. Stretch ER
-  // standarden i en kolonne, saa flaget aendrede i praksis ingenting — og en
-  // forkert antagelse om hvad der allerede gjaldt er svaerere at faa oeje paa
-  // end en eksplicit bredde. Nu maaler onLayout linjen, ikke teksten.
-  fuld: { alignSelf: 'stretch', flexShrink: 0, width: '100%' },
   lag: { flex: 1 },
   // Lyset skal kunne foelges hen over TOM linje, ikke kun hen over bogstaver.
   // Paa den korte etiket «Arbejder…» er det meste af rejsen tom baggrund, og

@@ -129,6 +129,16 @@ def _with_thinking_block(
     except Exception:
         seconds = None
 
+    # Byggeren laegger nu turens tanker paa deres EGNE pladser (se
+    # visible_turn_blocks: «think»-markoerer i interleave). Er de der, maa vi
+    # ikke ogsaa haenge en samlet kopi i toppen — saa stod den foerste tanke to
+    # gange. Varigheden hoerer stadig til, og den gives til den foerste tanke.
+    for b in (blocks or []):
+        if isinstance(b, dict) and b.get("type") == "thinking":
+            if seconds is not None and "seconds" not in b:
+                b["seconds"] = seconds
+            return blocks
+
     text = str(reasoning or "").strip()
     if seconds is None and not text:
         return blocks

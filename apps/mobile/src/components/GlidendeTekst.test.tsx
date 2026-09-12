@@ -59,24 +59,3 @@ it('lyset kan ikke trykkes paa og laeses ikke op', async () => {
   expect(lys.props.pointerEvents).toBe('none')
   expect(lys.props.accessibilityElementsHidden).toBe(true)
 })
-
-/**
- * `fuldBredde` var i praksis en attrap.
- *
- * Første udgave satte kun `alignSelf: 'stretch'` — men stretch ER standarden i
- * en kolonne, så flaget ændrede ingenting. Lyset rejste allerede den bredde
- * det kunne, og fejlen lå et andet sted. En eksplicit bredde er ikke pynt: den
- * gør det muligt at SE at reglen gælder, i stedet for at antage det.
- */
-it('fuldBredde giver båndet hele linjen at rejse på', async () => {
-  const s = await render(<GlidendeTekst text="Tænker." aktiv fuldBredde />)
-  const wrap = s.getByTestId('glidende-tekst')
-  expect(StyleSheet.flatten(wrap.props.style).width).toBe('100%')
-})
-
-it('uden fuldBredde krymper linjen om teksten som før', async () => {
-  // Tool-rækkerne sidder side om side med en chevron og SKAL kunne klippes.
-  const s = await render(<GlidendeTekst text="Kørte bash" aktiv />)
-  const wrap = s.getByTestId('glidende-tekst')
-  expect(StyleSheet.flatten(wrap.props.style).width).toBeUndefined()
-})

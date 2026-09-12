@@ -89,6 +89,7 @@ def _build_turn_blocks(
     *, text: str, tool_calls: list[dict], tool_results: list[dict],
     interleave: list[str] | None = None,
     text_segments: list[str] | None = None,
+    thinking_segments: list[str] | None = None,
 ) -> list[dict]:
     """Byg den kanoniske content-blok-array for en assistant-tur (spec §4).
 
@@ -101,6 +102,14 @@ def _build_turn_blocks(
     text-markør, og turen kan læses som den blev til: fortælling → værktøj →
     fortælling. Uden den falder vi tilbage på den gamle adfærd (én samlet blob
     ved sidste markør), som mistede alle mellemsynteser.
+
+    *thinking_segments* er det samme for tænkningen, og findes af samme grund.
+    Før lagde ``_with_thinking_block`` ÉN samlet tanke øverst i turen — «én
+    foldet linje over svaret». Det holdt kun så længe en tur tænkte én gang.
+    Jarvis tænker mellem hvert værktøjskald, og resultatet var at kun den
+    første overlevede streamen (Bjørn 13/9-2026: «tænker/tænkte i chatview
+    forsvinder stadig efter end stream i stedet for at persiste som tool
+    results»). Nu står hver tanke dér hvor den blev tænkt.
     """
     blocks: list[dict] = []
     clean = str(text or "").strip()
@@ -146,6 +155,8 @@ def _build_turn_blocks(
         # fortælling → værktøj → fortælling.
         segments = [s for s in (text_segments or []) if str(s or "").strip()]
         seg_i = 0
+        tanker = [t for t in (thinking_segments or []) if str(t or "").strip()]
+        tank_i = 0
         for idx, kind in enumerate(deduped):
             if kind == "text":
                 if segments:
@@ -156,6 +167,14 @@ def _build_turn_blocks(
                 elif not text_placed and clean and idx == last_text_idx:
                     blocks.append({"type": "text", "text": clean})
                     text_placed = True
+            elif kind == "think":
+                if tank_i < len(tanker):
+                    # Halen er nok: klienten viser den foldet ud, og en hel
+                    # raesonnering kan vaere titusinder af tegn. Hele teksten
+                    # bliver i reasoning_content.
+                    blocks.append({"type": "thinking",
+                                   "text": tanker[tank_i].strip()[-4000:]})
+                    tank_i += 1
             elif kind == "tool":
                 if pi < len(tool_pairs):
                     tc = tool_pairs[pi]
@@ -193,6 +212,11 @@ def _build_turn_blocks(
                     "content": str(r.get("content") or ""), "is_error": bool(r.get("is_error")),
                 })
             pi += 1
+        # Rester: tanker der ikke fik en markør må ikke tabes.
+        while tank_i < len(tanker):
+            blocks.append({"type": "thinking",
+                           "text": tanker[tank_i].strip()[-4000:]})
+            tank_i += 1
         # Rester: segmenter der ikke fik en markør må ikke tabes.
         if segments:
             while seg_i < len(segments):

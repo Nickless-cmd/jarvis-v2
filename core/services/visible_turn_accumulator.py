@@ -36,7 +36,12 @@ class TurnAccumulator:
     interleave: list[str] = field(default_factory=list)
     #: Ét element pr. sammenhængende stykke tekst mellem værktøjskald.
     text_segments: list[str] = field(default_factory=list)
+    #: Ét element pr. sammenhængende stykke TÆNKNING mellem værktøjskald.
+    #: Samme form som text_segments og af samme grund: uden segmenter kan
+    #: tænkningen kun placeres ét sted, og alle mellemtanker falder sammen.
+    thinking_segments: list[str] = field(default_factory=list)
     _segment_open: bool = False
+    _thinking_open: bool = False
 
     # ── tekst ────────────────────────────────────────────────────────────
     def add_text(self, chunk: str) -> None:
@@ -58,9 +63,11 @@ class TurnAccumulator:
 
     # ── rækkefølge ───────────────────────────────────────────────────────
     def note_text(self) -> None:
+        self._thinking_open = False
         self.interleave.append("text")
 
     def note_tool(self) -> None:
+        self._thinking_open = False
         self.interleave.append("tool")
 
     # ── værktøjskald ─────────────────────────────────────────────────────
@@ -96,6 +103,26 @@ class TurnAccumulator:
         except Exception:
             pass
 
+    # ── tænkning ─────────────────────────────────────────────────────────
+    def add_thinking(self, chunk: str) -> None:
+        """Læg reasoning i det ÅBNE tanke-segment, eller åbn et nyt.
+
+        Et segment lukkes af tekst eller et værktøjskald — præcis som
+        tekst-segmenterne. Derfor bliver «tænk → kald → tænk → svar» til fire
+        blokke i den rækkefølge det skete, i stedet for én tanke i toppen.
+        """
+        if not chunk:
+            return
+        if not self._thinking_open:
+            self.thinking_segments.append("")
+            self.interleave.append("think")
+            self._thinking_open = True
+            self._segment_open = False
+        self.thinking_segments[-1] += chunk
+
+    def close_thinking(self) -> None:
+        self._thinking_open = False
+
     # ── udtag ────────────────────────────────────────────────────────────
     def build_blocks(self, text: str) -> list[dict]:
         """Den kanoniske blok-liste for turen."""
@@ -106,6 +133,7 @@ class TurnAccumulator:
             tool_results=self.tool_results,
             interleave=self.interleave,
             text_segments=self.text_segments,
+            thinking_segments=self.thinking_segments,
         )
 
 

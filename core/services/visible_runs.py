@@ -1731,6 +1731,8 @@ async def _stream_visible_run(
                     # ved `done` — denne gren er ren visning.
                     if item.delta:
                         _all_first_pass_reasoning.append(item.delta)
+                        # Tanken hoerer med i turens blokke, paa SIN plads.
+                        _turn.add_thinking(item.delta)
                         yield _sse("reasoning_delta", {
                             "type": "reasoning_delta",
                             "run_id": run.run_id,
@@ -3280,6 +3282,7 @@ async def _stream_visible_run(
                                 # sker via reasoning_content i FollowupDone.
                                 if _a_item.delta:
                                     _all_followup_reasoning_parts.append(_a_item.delta)
+                                    _turn.add_thinking(_a_item.delta)
                                     yield _sse("reasoning_delta", {
                                         "type": "reasoning_delta",
                                         "run_id": run.run_id,

@@ -59,9 +59,18 @@ describe('arbejdsLinje', () => {
     expect(ud).toContain('sleep')
   })
 
-  it('en foreløbig række regnes som kørende', () => {
-    const b = { type: 'tool_use', id: '', name: 'bash', input: { command: 'ls' },
-                foreloebig: { startet: 0, skridt: 1, etiket: 'bash' } } as ContentBlock
+  it('en foreløbig række regnes som kørende og bruger serverens egen etiket', () => {
+    // Målt på telefonen: rækken i tråden sagde «Kører kommando: sleep» mens
+    // linjen sagde «Kører bash…» — samme værktøj, to sandheder. Etiketten
+    // ligger allerede i working_step; den skulle bare bruges.
+    const b = { type: 'tool_use', id: '', name: 'bash', input: {},
+                foreloebig: { startet: 0, skridt: 1, etiket: 'Kører kommando: sleep' } } as ContentBlock
+    expect(arbejdsLinje([b], 0)).toBe('Kører kommando: sleep')
+  })
+
+  it('uden serverens etiket beskrives værktøjet ud fra argumenterne', () => {
+    const b = { type: 'tool_use', id: 't', name: 'bash', input: { command: 'ls -la' },
+                status: 'running' } as ContentBlock
     expect(arbejdsLinje([b], 0)).toContain('ls')
   })
 })

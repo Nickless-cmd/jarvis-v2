@@ -32,8 +32,13 @@ export function arbejdsLinje(blocks: ContentBlock[] | null, trin: number): strin
   if (!sidste) return `Tænker${prikker(trin)}`
   if (sidste.type === 'tool_use') {
     if (sidste.status === 'running' || sidste.foreloebig) {
-      // Værktøjets egen metadata — «Kører kommando: sleep», «Læser fil: x».
-      return describeTool(sidste.name, argTekst(sidste.input), true)
+      // Serverens EGEN etiket, ordret, når den findes. En foreløbig række har
+      // ingen argumenter endnu, og `describeTool` ville så sige «Kører bash…»
+      // og tabe netop det der gør ventetiden forståelig. Målt på telefonen
+      // 12/9-2026: rækken i tråden sagde «Kører kommando: sleep» mens linjen
+      // over skrivefeltet sagde «Kører bash…» — samme værktøj, to sandheder.
+      return sidste.foreloebig?.etiket
+        || describeTool(sidste.name, argTekst(sidste.input), true)
     }
     // Værktøjet er færdigt, men modellen har ikke sagt noget endnu.
     return `Arbejder${prikker(trin)}`

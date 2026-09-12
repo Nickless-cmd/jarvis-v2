@@ -143,6 +143,10 @@ function buildStreamingRows(blocks: ContentBlock[]): Row[] {
   const rows: Row[] = []
   let textBuf = ''
   let thinkingBuf = ''
+  // Taenketiden for den raekke der bygges nu. Bufferen kan samle flere
+  // tanke-blokke, saa start er den foerste og slut den seneste.
+  let tankeStart: number | undefined
+  let tankeSlut: number | undefined
   let i = 0
   const flushText = () => {
     if (textBuf.trim()) {
@@ -171,9 +175,12 @@ function buildStreamingRows(blocks: ContentBlock[]): Row[] {
       rows.push({
         kind: 'thinking',
         key: `stream-thinking-${i}`,
-        text: thinkingBuf
+        text: thinkingBuf,
+        seconds: taenketid(tankeStart, tankeSlut)
       })
       thinkingBuf = ''
+      tankeStart = undefined
+      tankeSlut = undefined
     }
   }
   const flush = () => {
@@ -199,6 +206,8 @@ function buildStreamingRows(blocks: ContentBlock[]): Row[] {
     else if (b.type === 'thinking') {
       flushText()
       thinkingBuf += b.thinking
+      if (b.startet != null) tankeStart = Math.min(tankeStart ?? b.startet, b.startet)
+      if (b.sidst != null) tankeSlut = Math.max(tankeSlut ?? b.sidst, b.sidst)
     }
     else if (b.type === 'tool_use') {
       flush()
@@ -225,6 +234,18 @@ function buildStreamingRows(blocks: ContentBlock[]): Row[] {
   const sidste = rows[rows.length - 1]
   if (sidste?.kind === 'thinking') sidste.live = true
   return rows
+}
+
+/**
+ * Sekunder mellem to maalinger — eller undefined hvis der ikke blev maalt.
+ *
+ * Samme skel som i `blocksToPersisted`: «Taenkte i 0 s» ville vaere en paastand
+ * vi ikke har daekning for, og uden tal falder etiketten tilbage til «Taenkte».
+ */
+function taenketid(start?: number, slut?: number): number | undefined {
+  if (start == null || slut == null) return undefined
+  const s = (slut - start) / 1000
+  return s > 0 ? s : undefined
 }
 
 export const MessageList = forwardRef<MessageListHandle, MessageListProps>(function MessageList(

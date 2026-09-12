@@ -19,11 +19,25 @@ describe('ThinkingSummary', () => {
 
   // Uden en måling skriver vi ikke «Tænkte» — det ville være en paastand vi
   // ikke har daekning for.
-  it('viser INTET uden maalt varighed', async () => {
+  // 12/9-2026: en blok med tekst men uden maalt varighed skal VISES —
+  // før returnerede den null, og tænkningen forsvandt tavst.
+  // Kun helt tom input (ingen tekst, ingen seconds, ikke live) skjules.
+  it('viser «Tænkte» uden maalt varighed men med tekst', async () => {
     const a = await render(<ThinkingSummary text="noget" />)
-    expect(a.queryByTestId('thinking-summary')).toBeNull()
+    expect(a.getByTestId('thinking-summary')).toBeTruthy()
+    expect(a.getByText('Tænkte')).toBeTruthy()
     const b = await render(<ThinkingSummary seconds={0} text="noget" />)
-    expect(b.queryByTestId('thinking-summary')).toBeNull()
+    expect(b.getByTestId('thinking-summary')).toBeTruthy()
+  })
+
+  it('viser INTET når der slet intet er', async () => {
+    const a = await render(<ThinkingSummary />)
+    expect(a.queryByTestId('thinking-summary')).toBeNull()
+  })
+
+  it('viser «Tænker…» når live', async () => {
+    const screen = await render(<ThinkingSummary text="jeg tænker" live />)
+    expect(screen.getByText('Tænker…')).toBeTruthy()
   })
 
   it('folder teksten ud og sammen igen', async () => {

@@ -66,8 +66,9 @@ type Row =
       // af det han faktisk slog op. Uden dem faldt kilderne væk i samme sekund
       // streamen stoppede.
       kildeBlokke?: PersistedBlock[] | null }
-  /** «Tænkte i 14 s ›» — foldet spor af turens overvejelse. */
-  | { kind: 'thinking'; key: string; seconds?: number; text?: string }
+  /** «Tænkte i 14 s ›» — foldet spor af turens overvejelse.
+   *  `live`: tænkningen streames lige nu → «Tænker…» med åndedrag. */
+  | { kind: 'thinking'; key: string; seconds?: number; text?: string; live?: boolean }
   /** Billeder/filer sendt MED en brugerbesked, tegnet over boblen. */
   | { kind: 'attachments'; key: string; items: PersistedBlock[] }
   | { kind: 'tool'; key: string; content: string }
@@ -136,8 +137,9 @@ function toolBody(block: Extract<ContentBlock, { type: 'tool_use' }>): string {
 function buildStreamingRows(blocks: ContentBlock[]): Row[] {
   const rows: Row[] = []
   let textBuf = ''
+  let thinkingBuf = ''
   let i = 0
-  const flush = () => {
+  const flushText = () => {
     if (textBuf.trim()) {
       rows.push({
         kind: 'msg',
@@ -151,16 +153,42 @@ function buildStreamingRows(blocks: ContentBlock[]): Row[] {
       })
       textBuf = ''
     }
+  }
+  const flushThinking = () => {
+    if (thinkingBuf.trim()) {
+      rows.push({
+        kind: 'thinking',
+        key: `stream-thinking-${i}`,
+        text: thinkingBuf,
+        live: true
+      })
+      thinkingBuf = ''
+    }
+  }
+  const flush = () => {
+    flushThinking()
+    flushText()
     i += 1
   }
   // denseBlocks: `blocks` kan være sparsomt (foldede tool_result-content-blokke
   // efterlader `undefined`-huller mellem indices). `for..of` over det rå array
   // ville ramme et hul og crashe på `b.type` → hele React-træet unmounter → sort
   // skærm. `b &&` er defense-in-depth.
+  //
+  // 12/9-2026: thinking får sin EGEN række, ikke smeltet ind i textBuf.
+  // Før blev rå CoT lagt direkte i svarets tekstboble — en ny bruger så
+  // intern monolog flyde ind i det svar han skulle læse. Nu står tænkningen
+  // som én foldbar linje (Brain-ikon + «Tænker…»), præcis som værktøjerne.
   for (const b of denseBlocks(blocks)) {
     if (!b) continue
-    if (b.type === 'text') textBuf += b.text
-    else if (b.type === 'thinking') textBuf += b.thinking
+    if (b.type === 'text') {
+      flushThinking()
+      textBuf += b.text
+    }
+    else if (b.type === 'thinking') {
+      flushText()
+      thinkingBuf += b.thinking
+    }
     else if (b.type === 'tool_use') {
       flush()
       rows.push({
@@ -358,7 +386,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
         // ligger bag linjen, ikke foran den.
         if (item.kind === 'tool-group') return <InlineToolGroup items={item.items} />
         if (item.kind === 'thinking') {
-          return <ThinkingSummary seconds={item.seconds} text={item.text} />
+          return <ThinkingSummary seconds={item.seconds} text={item.text} live={item.live} />
         }
         if (item.kind === 'attachments') return <MessageAttachments items={item.items} />
         if (item.kind === 'compact-marker') return <CompactMarkerRow content={item.content} />

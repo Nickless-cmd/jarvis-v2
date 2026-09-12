@@ -1256,9 +1256,23 @@ def _infra_provider_autodiscovery_live(_snap: dict) -> dict[str, Any]:
     return tick_provider_autodiscovery_daemon()
 
 
+def _infra_approval_expiry_live(_snap: dict) -> dict[str, Any]:
+    """Markér udløbne, ikke-besluttede godkendelser. Rules-based, no LLM.
+    Self-throttles INTERNALLY (5 min), so the family calls it every tick.
+
+    `expire_stale()` existed and was tested from day one and had ZERO
+    production callers — measured 12/9-2026: five claims stuck `pending`,
+    the oldest 36 hours past expiry. Its sibling `abandon_run` got its caller
+    when `visible_run_abandonment` was built; that fix did not check the
+    neighbour."""
+    from core.services.approval_expiry_daemon import tick_approval_expiry_daemon
+    return tick_approval_expiry_daemon()
+
+
 _INFRA_UNCONDITIONAL: tuple[tuple[str, Callable[[dict], Any]], ...] = (
     ("file_awareness", _infra_file_awareness_live),
     ("cache_maintenance", _infra_cache_maintenance_live),
+    ("approval_expiry", _infra_approval_expiry_live),
     ("signal_decay", _infra_signal_decay_live),
     ("wakeup_cleanup", _infra_wakeup_cleanup_live),
     ("cost_optimization", _infra_cost_optimization_live),

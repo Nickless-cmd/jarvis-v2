@@ -9,7 +9,6 @@ export interface ModelChoice {
 }
 
 export type ThinkingMode = 'think' | 'fast'
-export type ApprovalMode = 'ask' | 'trust'
 
 /**
  * Bottom-sheet model-vælger. Rolle-bevidst indhold leveres af kalderen:
@@ -20,9 +19,7 @@ export function ModelPicker({
   choices,
   selectedLabel,
   thinkingMode,
-  approvalMode,
   onThinkingModeChange,
-  onApprovalModeChange,
   onSelect,
   onClose
 }: {
@@ -30,9 +27,7 @@ export function ModelPicker({
   choices: ModelChoice[]
   selectedLabel?: string
   thinkingMode?: ThinkingMode
-  approvalMode?: ApprovalMode
   onThinkingModeChange?: (mode: ThinkingMode) => void
-  onApprovalModeChange?: (mode: ApprovalMode) => void
   onSelect: (c: ModelChoice) => void
   onClose: () => void
 }) {
@@ -57,25 +52,6 @@ export function ModelPicker({
                   >
                     <Text style={[styles.segmentText, thinkingMode === m && styles.segmentTextOn]}>
                       {m === 'think' ? 'Think' : 'Fast'}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-            </>
-          ) : null}
-          {onApprovalModeChange ? (
-            <>
-              <Text style={styles.subTitle}>Godkendelser</Text>
-              <View style={styles.segmentRow}>
-                {(['ask', 'trust'] as ApprovalMode[]).map((m) => (
-                  <Pressable
-                    key={m}
-                    accessibilityRole="button"
-                    onPress={() => onApprovalModeChange(m)}
-                    style={[styles.segment, approvalMode === m && styles.segmentOn]}
-                  >
-                    <Text style={[styles.segmentText, approvalMode === m && styles.segmentTextOn]}>
-                      {m === 'ask' ? 'Ask' : 'Trust'}
                     </Text>
                   </Pressable>
                 ))}

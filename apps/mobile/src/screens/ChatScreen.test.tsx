@@ -80,18 +80,31 @@ jest.mock('../state/StreamContext', () => ({
 jest.mock('../components/Composer', () => ({
   Composer: (props: {
     onSend: (text: string) => void
-    remoteMode?: string
-    onRemoteModeChange?: (mode: 'chat' | 'code') => void
+    permission?: string
+    onPressPermission?: () => void
   }) => {
     const ReactLib = jest.requireActual('react')
     const { Text } = jest.requireActual('react-native')
     return ReactLib.createElement(
       ReactLib.Fragment,
       null,
-      ReactLib.createElement(Text, null, `Composer ${props.remoteMode ?? 'none'}`),
-      ReactLib.createElement(Text, { onPress: () => props.onRemoteModeChange?.('code') }, 'Set code mode'),
+      ReactLib.createElement(Text, null, `Composer permission ${props.permission ?? 'none'}`),
+      ReactLib.createElement(Text, { onPress: props.onPressPermission }, 'Open permissions'),
       ReactLib.createElement(Text, { onPress: () => props.onSend('ret remote delen') }, 'Send mocked composer')
     )
+  }
+}))
+
+jest.mock('../components/PermissionPicker', () => ({
+  PermissionPicker: (props: {
+    open: boolean
+    onSelect: (mode: 'ask' | 'trust') => void
+  }) => {
+    const ReactLib = jest.requireActual('react')
+    const { Text } = jest.requireActual('react-native')
+    return props.open
+      ? ReactLib.createElement(Text, { onPress: () => props.onSelect('trust') }, 'Choose full access')
+      : null
   }
 }))
 
@@ -201,7 +214,7 @@ it('renders approval requests and forwards explicit decisions', async () => {
   expect(mockDeny).toHaveBeenCalledWith(config)
 })
 
-it('sender almindelige mobilbeskeder som code mode naar Code er valgt', async () => {
+it('sender permission-valget og bruger samtalens værktøjs-mode', async () => {
   mockStream = {
     ...mockStream,
     state: {
@@ -212,15 +225,16 @@ it('sender almindelige mobilbeskeder som code mode naar Code er valgt', async ()
 
   const screen = await render(<ChatScreen />)
 
-  await waitFor(() => expect(screen.getByText('Composer chat')).toBeTruthy())
-  fireEvent.press(screen.getByText('Set code mode'))
-  await waitFor(() => expect(screen.getByText('Composer code')).toBeTruthy())
+  await waitFor(() => expect(screen.getByText('Composer permission ask')).toBeTruthy())
+  fireEvent.press(screen.getByText('Open permissions'))
+  fireEvent.press(await screen.findByText('Choose full access'))
+  await waitFor(() => expect(screen.getByText('Composer permission trust')).toBeTruthy())
   fireEvent.press(screen.getByText('Send mocked composer'))
 
   expect(mockSend).toHaveBeenCalledWith(
     config,
     'session-1',
     'ret remote delen',
-    expect.objectContaining({ mode: 'code' })
+    expect.objectContaining({ mode: 'chat', approvalMode: 'trust' })
   )
 })

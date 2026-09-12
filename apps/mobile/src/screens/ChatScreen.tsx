@@ -26,7 +26,8 @@ import { ErrorCard } from '../components/ErrorCard'
 import { GreetingHero } from '../components/GreetingHero'
 import { MessageList, type MessageListHandle } from '../components/MessageList'
 import { ScrollToBottom } from '../components/ScrollToBottom'
-import { ModelPicker, type ApprovalMode, type ModelChoice, type ThinkingMode } from '../components/ModelPicker'
+import { ModelPicker, type ModelChoice, type ThinkingMode } from '../components/ModelPicker'
+import { PermissionPicker, type ApprovalMode } from '../components/PermissionPicker'
 import { SidePanel } from '../components/SidePanel'
 import { SettingsScreen } from './SettingsScreen'
 import { CameraCapture, type CapturedPhoto } from './CameraCapture'
@@ -203,14 +204,9 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
   const [modelChoices, setModelChoices] = useState<ModelChoice[]>([])
   const [model, setModel] = useState<ModelChoice | null>(null)
   const [modelPickerOpen, setModelPickerOpen] = useState(false)
+  const [permissionPickerOpen, setPermissionPickerOpen] = useState(false)
   const [researchMode, setResearchMode] = useState(false)
-  // Chat/Code — «hvad slags arbejde er det?», ikke «hvordan skal modellen køre?».
-  // Derfor her og ikke i ModelPicker: mode hører til ved composeren, tæt på det
-  // man er ved at skrive. Modsat researchMode nulstilles den IKKE efter afsendelse
-  // — vælger man kode-tilstand, bliver man som regel i den et stykke tid.
-  const [remoteMode, setRemoteMode] = useState<'chat' | 'code'>('chat')
   const [thinkingMode, setThinkingMode] = useState<ThinkingMode>('think')
-  const [approvalMode, setApprovalMode] = useState<ApprovalMode>('ask')
   // Indstillinger PR. SAMTALE. Én samtale kan handle om kode og en anden om
   // aftaler; de har ikke brug for samme model eller samme værktøjs-omfang.
   const [chatCfg, setChatCfg] = useState<ChatIndstillinger>(STANDARD)
@@ -513,7 +509,7 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
       attachmentIds,
       thinkingMode,
       approvalMode: cfg.approvalMode,
-      mode: chatCfg.vaerktoejer === 'fuldt' ? cfg.mode : remoteMode
+      mode: cfg.mode
     })
     setPendingAttachments([])
     if (researchMode) setResearchMode(false)
@@ -846,8 +842,8 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
           onJumpToBottom={jumpToBottom}
           researchMode={researchMode}
           onResearchModeChange={setResearchMode}
-          remoteMode={remoteMode}
-          onRemoteModeChange={setRemoteMode}
+          permission={chatCfg.spoergFoerst ? 'ask' : 'trust'}
+          onPressPermission={() => setPermissionPickerOpen(true)}
         />
         </View>
       </View>
@@ -857,14 +853,24 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
         choices={modelChoices}
         selectedLabel={model?.label}
         thinkingMode={thinkingMode}
-        approvalMode={approvalMode}
         onThinkingModeChange={setThinkingMode}
-        onApprovalModeChange={setApprovalMode}
         onSelect={(m) => {
           setModel(m)
           void saveModelChoice(m)
         }}
         onClose={() => setModelPickerOpen(false)}
+      />
+
+      <PermissionPicker
+        open={permissionPickerOpen}
+        selected={chatCfg.spoergFoerst ? 'ask' : 'trust'}
+        onSelect={(mode: ApprovalMode) => {
+          const next = { spoergFoerst: mode === 'ask' }
+          const sid = sessions.activeId
+          setChatCfg((current) => ({ ...current, ...next }))
+          if (sid) void gemIndstillinger(sid, next).then(setChatCfg).catch(() => undefined)
+        }}
+        onClose={() => setPermissionPickerOpen(false)}
       />
 
       {config ? (

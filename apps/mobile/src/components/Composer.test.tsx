@@ -194,22 +194,24 @@ describe('Composer', () => {
     expect(onResearchModeChange).toHaveBeenCalledWith(true)
   })
 
-  it('viser Chat/Code remote mode og melder skiftet ud', async () => {
-    const onRemoteModeChange = jest.fn()
+  it('viser permissions som et ikon og har ikke Chat/Code-badget', async () => {
+    const onPressPermission = jest.fn()
     const screen = await render(
       <Composer
         onSend={jest.fn()}
         onStop={jest.fn()}
-        remoteMode="chat"
-        onRemoteModeChange={onRemoteModeChange}
+        permission="ask"
+        onPressPermission={onPressPermission}
       />
     )
     await openComposer(screen)
 
-    expect(screen.getByText('Chat')).toBeTruthy()
-    await act(async () => { fireEvent.press(screen.getByText('Code')) })
+    expect(screen.queryByText('Chat')).toBeNull()
+    expect(screen.queryByText('Code')).toBeNull()
+    await act(async () => { fireEvent.press(screen.getByTestId('composer-permission')) })
 
-    expect(onRemoteModeChange).toHaveBeenCalledWith('code')
+    expect(screen.getByTestId('icon-ShieldCheck')).toBeTruthy()
+    expect(onPressPermission).toHaveBeenCalledTimes(1)
   })
 })
 

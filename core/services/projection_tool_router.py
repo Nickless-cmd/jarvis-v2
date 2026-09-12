@@ -2,8 +2,12 @@
 
 Anden projektion efter `chat_messages`, og den er valgt først af de tre der
 mangler i fase 11, punkt 4, fordi den er den mindste: ét skrivested
-(`tool_router.py:471`), 183 rækker, og den er nøglet på `session_id` ligesom
-hovedbogen selv.
+(`tool_router.py:471`), og den er nøglet på `session_id` ligesom hovedbogen
+selv.
+
+Rækketallet her stod først som 183. Det var arbejdsstationens database;
+runtime'ens ligger på serveren og havde 1905 rækker den 12/9-2026. Et tal
+uden en maskine er ikke en måling.
 
 **Hvad der IKKE fulgte med fra `chat_messages`.** Tabellen har ingen naturlig
 nøgle — kun `id INTEGER PRIMARY KEY`. Uden en udledt nøgle ville en genfoldning
@@ -150,7 +154,8 @@ def _migrer(conn) -> None:
         # bruge et FULDT unikt indeks som `ON CONFLICT`-maal, og et partielt
         # gav «does not match any PRIMARY KEY or UNIQUE constraint». Det er
         # ufarligt, fordi SQLite tæller NULL'er som forskellige fra hinanden —
-        # de 183 gamle rækker uden `decision_id` kolliderer altsaa ikke.
+        # de gamle rækker uden `decision_id` (1905 paa serveren 12/9) kolliderer
+        # altsaa ikke.
         conn.execute(
             "CREATE UNIQUE INDEX IF NOT EXISTS idx_tool_router_decisions_decision_id "
             "ON tool_router_decisions(decision_id)"

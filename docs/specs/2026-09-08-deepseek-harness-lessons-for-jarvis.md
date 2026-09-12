@@ -1588,10 +1588,24 @@ the table above first changed what the work is:
   fits them. `agent_runs`, `agent_messages` and `agent_registry` have **no
   session column at all** — the third cutover needs a key dimension the ledger
   does not have, and is a design decision rather than a repetition.
-* `approval_claims` holds **one row**, and it is a test fixture
-  (`approval_id='x'`, `run_id='r'`, empty `session_id`, 9 September). Its
-  "7 write sites" are all in one file, `db_approval_bridge.py`, and they are
-  one lifecycle — created, decided, claimed, settled — not seven writers.
+* `approval_claims`' "7 write sites" are all in one file,
+  `db_approval_bridge.py`, and they are one lifecycle — created, decided,
+  claimed, settled — not seven writers.
+
+  **Correction, 12 September.** This bullet first read "holds one row, and it
+  is a test fixture". That was measured on the **workstation's**
+  `~/.jarvis-v2/state/jarvis.db`, not the runtime's. The runtime lives on the
+  server, and the two databases have diverged: `approval_claims` holds **279
+  rows there** (274 `completed`, 5 `pending`, newest 06:15 today) and
+  `tool_router_decisions` holds **1905, not 183**. `agent_runs`,
+  `agent_messages` and `agent_registry` were all written today as well. So the
+  original table in this section was right about recency and the correction
+  was wrong: these are live adapters carrying real state, which raises the
+  stakes of a cutover rather than lowering them.
+
+  The measurement was true about its form — the rows really were counted —
+  and silent about which machine it counted on. Any future row count in this
+  spec should name the host it was taken from.
 * `storage_mode` is **per session, not per projection**. A flip therefore
   makes every projection for that session ledger-authoritative at once. That
   coupling has to be decided before any second cutover flips, not after.

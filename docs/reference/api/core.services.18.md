@@ -117,18 +117,18 @@ _Projektion: `tool_router_decisions` foldet fra sessionens hændelser._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `decision_id_for` | `(session_id, event_id)` | Stabilt id: samme hændelse giver altid samme id. | [src](../../../core/services/projection_tool_router.py#L61) |
-| function | `_decision_id` | `(session_id, e, payload)` | Et id hændelsen allerede bærer VINDER over et udledt. | [src](../../../core/services/projection_tool_router.py#L71) |
-| function | `_json_tekst` | `(v)` | Lister og objekter gemmes som tekst; tekst gemmes uændret. | [src](../../../core/services/projection_tool_router.py#L82) |
-| function | `valider` | `(payload)` | Returnér en grund hvis hændelsen ikke kan blive en række, ellers None. | [src](../../../core/services/projection_tool_router.py#L95) |
-| function | `_raekke` | `(session_id, e)` | — | [src](../../../core/services/projection_tool_router.py#L111) |
-| function | `_migrer` | `(conn)` | Doven migration: `decision_id` og dens unikke indeks. | [src](../../../core/services/projection_tool_router.py#L137) |
-| function | `_skriv` | `(raekke)` | — | [src](../../../core/services/projection_tool_router.py#L162) |
-| function | `start` | `()` | Formen ligger i STARTEN, ikke i den første fold — som `chat_messages`. | [src](../../../core/services/projection_tool_router.py#L185) |
-| function | `fold` | `(state, e)` | Ren pr. hændelse og idempotent: samme hændelse igen ændrer ingenting. | [src](../../../core/services/projection_tool_router.py#L190) |
-| function | `register` | `()` | — | [src](../../../core/services/projection_tool_router.py#L207) |
-| function | `rebuild` | `(session_id)` | Genskab sessionens router-beslutninger fra hovedbogen. | [src](../../../core/services/projection_tool_router.py#L212) |
-| function | `guard_direct_write` | `(session_id, *, conn=…)` | Afvis direkte `tool_router_decisions`-skrivninger for en ledger-session. | [src](../../../core/services/projection_tool_router.py#L232) |
+| function | `decision_id_for` | `(session_id, event_id)` | Stabilt id: samme hændelse giver altid samme id. | [src](../../../core/services/projection_tool_router.py#L65) |
+| function | `_decision_id` | `(session_id, e, payload)` | Et id hændelsen allerede bærer VINDER over et udledt. | [src](../../../core/services/projection_tool_router.py#L75) |
+| function | `_json_tekst` | `(v)` | Lister og objekter gemmes som tekst; tekst gemmes uændret. | [src](../../../core/services/projection_tool_router.py#L86) |
+| function | `valider` | `(payload)` | Returnér en grund hvis hændelsen ikke kan blive en række, ellers None. | [src](../../../core/services/projection_tool_router.py#L99) |
+| function | `_raekke` | `(session_id, e)` | — | [src](../../../core/services/projection_tool_router.py#L115) |
+| function | `_migrer` | `(conn)` | Doven migration: `decision_id` og dens unikke indeks. | [src](../../../core/services/projection_tool_router.py#L141) |
+| function | `_skriv` | `(raekke)` | — | [src](../../../core/services/projection_tool_router.py#L167) |
+| function | `start` | `()` | Formen ligger i STARTEN, ikke i den første fold — som `chat_messages`. | [src](../../../core/services/projection_tool_router.py#L190) |
+| function | `fold` | `(state, e)` | Ren pr. hændelse og idempotent: samme hændelse igen ændrer ingenting. | [src](../../../core/services/projection_tool_router.py#L195) |
+| function | `register` | `()` | — | [src](../../../core/services/projection_tool_router.py#L212) |
+| function | `rebuild` | `(session_id)` | Genskab sessionens router-beslutninger fra hovedbogen. | [src](../../../core/services/projection_tool_router.py#L217) |
+| function | `guard_direct_write` | `(session_id, *, conn=…)` | Afvis direkte `tool_router_decisions`-skrivninger for en ledger-session. | [src](../../../core/services/projection_tool_router.py#L237) |
 
 ## `core/services/promise_ledger.py`
 _Promise-ledger (Bjørn-gate) — 16. jun 2026._

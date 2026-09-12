@@ -1350,7 +1350,7 @@ Generated from source. 7304/14336 functions/methods documented (50%). The list b
 - `core/services/producer_novelty.py` :: `get_producer` (L73)
 - `core/services/projection_chat_messages.py` :: `register` (L180)
 - `core/services/projection_runtime.py` :: `registered` (L80)
-- `core/services/projection_tool_router.py` :: `register` (L207)
+- `core/services/projection_tool_router.py` :: `register` (L212)
 - `core/services/prompt_cache_probe.py` :: `ProbeVerdict.as_line` (L61)
 - `core/services/prompt_contract.py` :: `build_future_agent_task_prompt_assembly` (L3471)
 - `core/services/prompt_contract.py` :: `build_heartbeat_prompt_assembly` (L3319)

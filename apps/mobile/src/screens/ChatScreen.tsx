@@ -18,7 +18,6 @@ import { useKeyboardHeight } from '../lib/useKeyboardHeight'
 import { useConnectivity } from '../lib/useConnectivity'
 import { ApprovalCard } from '../components/ApprovalCard'
 import { Composer } from '../components/Composer'
-import { DiffBadge } from '../components/DiffBadge'
 import { ResearchStatus } from '../components/ResearchStatus'
 import { useVoiceConversation } from '../lib/useVoiceConversation'
 import { useComposerDictation } from '../lib/useComposerDictation'
@@ -1001,16 +1000,6 @@ export function ChatScreen({
           }}
         >
         <ResearchStatus research={stream.state.research} />
-        {/* Lige OVER komponisten, som i Codex. Den tegner sig selv vaek naar
-            traeet er rent - se DiffBadge for hvorfor det ikke er «0 filer». */}
-        {/* KUN hans egen maskine. Serverens repo er FÆLLES: målte badgen
-            dét, ville enhver bruger kunne se hvor meget der lå uafsluttet i
-            containeren — altså hvad andre laver. Bjørn 12/9-2026: «kun måle
-            på de ting han ændrer på computeren».
-
-            Det er ikke en indstilling man kan slå fra. Et tal der lækker
-            andres arbejde må slet ikke kunne vises. */}
-        <DiffBadge git={kodeTilstand && ws.kind === 'workstation' ? git : null} />
         <Composer
           indsaet={indsaet}
           disabled={!config || pendingAttachments.some((a) => a.status === 'uploading')}

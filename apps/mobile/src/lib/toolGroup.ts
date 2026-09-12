@@ -93,3 +93,23 @@ export function countFromResult(content: string): number | undefined {
   const n = Number(m[1])
   return Number.isFinite(n) && n > 0 ? n : undefined
 }
+
+/**
+ * Gruppens samlede linjeændringer — eller null når ingen af kaldene ændrede noget.
+ *
+ * `null` frem for `{0,0}`: en runde der kun læste og søgte skal stå UDEN tal,
+ * ikke med to nuller. Samme regel som `toolDiff` selv, og som ringen og
+ * upload-andelen: «ingenting at vise» og «nul» er to forskellige beskeder.
+ */
+export function summerDiff(items: ToolItem[]): { tilfoejet: number; fjernet: number } | null {
+  let t = 0
+  let f = 0
+  let nogen = false
+  for (const i of items) {
+    if (!i.diff) continue
+    t += i.diff.tilfoejet
+    f += i.diff.fjernet
+    nogen = true
+  }
+  return nogen ? { tilfoejet: t, fjernet: f } : null
+}

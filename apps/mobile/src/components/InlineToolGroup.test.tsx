@@ -42,3 +42,24 @@ it('en tom runde tegner ingenting', async () => {
   const s = await render(<InlineToolGroup items={[]} />)
   expect(s.queryByTestId('tool-group')).toBeNull()
 })
+
+it('linjetallene staar paa den FOLDEDE linje', async () => {
+  // Gruppen er foldet som standard. Uden summen dér ville tallene vaere
+  // usynlige det meste af tiden - og saa var de lige saa godt blevet i badgen.
+  const s = await render(
+    <InlineToolGroup items={[
+      { label: 'Rettede a.py', running: false, tool: 'edit_file', diff: { tilfoejet: 12, fjernet: 3 } },
+      { label: 'Rettede b.py', running: false, tool: 'edit_file', diff: { tilfoejet: 1, fjernet: 0 } },
+    ]} />,
+  )
+  expect(s.getByText('+13')).toBeTruthy()
+  expect(s.getByText('−3')).toBeTruthy()
+})
+
+it('en runde der kun LAESTE staar uden tal', async () => {
+  const s = await render(
+    <InlineToolGroup items={[{ label: 'Læste USER.md', running: false, tool: 'read_file' }]} />,
+  )
+  expect(s.queryByText('+0')).toBeNull()
+  expect(s.queryByText('−0')).toBeNull()
+})

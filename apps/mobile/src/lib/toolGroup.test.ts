@@ -1,4 +1,4 @@
-import { countFromResult, summarizeRound, type ToolItem } from './toolGroup'
+import { countFromResult, summarizeRound, summerDiff, type ToolItem } from './toolGroup'
 
 const it_ = (over: Partial<ToolItem> = {}): ToolItem => ({
   label: 'Læste USER.md',
@@ -57,4 +57,26 @@ describe('optælling læses ud af resultatet — vi gætter ikke', () => {
   it('nul tæller ikke som en optælling', () => {
     expect(countFromResult('0 filer')).toBeUndefined()
   })
+})
+
+// ── linjetal for hele runden ───────────────────────────────────────────────
+
+const med = (t: number, f: number) => it_({ diff: { tilfoejet: t, fjernet: f } })
+
+it('summen laegger kaldenes tal sammen', () => {
+  expect(summerDiff([med(3, 1), med(10, 4)])).toEqual({ tilfoejet: 13, fjernet: 5 })
+})
+
+it('en runde UDEN redigeringer giver null — ikke +0 -0', () => {
+  // «Ingenting at vise» og «nul» er to forskellige beskeder. En runde der kun
+  // laeste og soegte skal staa uden tal.
+  expect(summerDiff([it_(), it_()])).toBeNull()
+})
+
+it('kald uden diff springes over frem for at taelle som nul', () => {
+  expect(summerDiff([it_(), med(2, 0), it_()])).toEqual({ tilfoejet: 2, fjernet: 0 })
+})
+
+it('en tom runde giver null', () => {
+  expect(summerDiff([])).toBeNull()
 })

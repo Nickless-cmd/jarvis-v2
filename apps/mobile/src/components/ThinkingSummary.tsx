@@ -6,6 +6,8 @@ import { useReducedMotion } from '../lib/useReducedMotion'
 import { useAuthOptional } from '../state/AuthContext'
 import { getMessageReasoning } from '../lib/apiClient'
 import { loadFullThinking } from '../lib/fullThinking'
+import { GlidendeTekst } from './GlidendeTekst'
+import { tankeFragment } from '../lib/tankeFragment'
 
 /**
  * «🧠 Tænker…» mens den tænker. «🧠 Tænkte i 14 s ›» når den er færdig.
@@ -86,8 +88,13 @@ export function ThinkingSummary({
     return () => loop.stop()
   }, [isLive, reduced, pulse])
 
+  // MENS DEN TÆNKER: det sidste stykke tanke, ikke bare at den tænker.
+  // Forskellen er den samme som mellem en spinner og en ring der fyldes —
+  // «der sker noget» mod «dét her sker». Er der endnu ingen tekst (de første
+  // tokens er ikke kommet), står der «Tænker…» indtil der er noget at vise.
+  const fragment = isLive ? tankeFragment(text) : ''
   const label = isLive
-    ? 'Tænker…'
+    ? (fragment || 'Tænker…')
     : hasSeconds
       ? seconds! < 60
         ? `Tænkte i ${formatSeconds(seconds!)} s`
@@ -137,9 +144,13 @@ export function ThinkingSummary({
         onPress={toggle}
         hitSlop={8}
       >
-        <Animated.View style={[styles.row, isLive ? { opacity: pulse } : null]}>
+        {/* LYSET GLIDER GENNEM TEKSTEN — hele linjen toner ikke op og ned.
+            Et aandedrag siger «noget er i gang»; et lys der vandrer siger det
+            samme uden at goere teksten svaer at laese i halvdelen af tiden.
+            Man kan laese med mens den koerer. */}
+        <View style={styles.row}>
           <Brain size={16} color={tokens.color.fg2} strokeWidth={1.8} />
-          <Text style={styles.label} numberOfLines={1}>{label}</Text>
+          <GlidendeTekst text={label} aktiv={!!isLive} style={styles.label} numberOfLines={1} />
           {expandable ? (
             open ? (
               <ChevronDown size={16} color={tokens.color.fg2} strokeWidth={1.8} />
@@ -147,7 +158,7 @@ export function ThinkingSummary({
               <ChevronRight size={16} color={tokens.color.fg2} strokeWidth={1.8} />
             )
           ) : null}
-        </Animated.View>
+        </View>
       </Pressable>
       {open && vist ? <Text selectable style={styles.body}>{vist}</Text> : null}
     </View>

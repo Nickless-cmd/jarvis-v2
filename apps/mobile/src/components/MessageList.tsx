@@ -156,13 +156,19 @@ function buildStreamingRows(blocks: ContentBlock[]): Row[] {
       textBuf = ''
     }
   }
+  // `live` sættes IKKE her. En tankerække der bliver skyllet ud, bliver det
+  // fordi noget ANDET kom bagefter — tekst eller et værktøj — og så er den
+  // tanke afsluttet. Kun den sidste række i turen kan stadig være i gang, og
+  // den afgøres til sidst.
+  //
+  // Før stod `live: true` på dem alle, så hver eneste tankerække pulsede
+  // resten af streamen. Bjørn: «intet fanger dem og markerer dem færdig».
   const flushThinking = () => {
     if (thinkingBuf.trim()) {
       rows.push({
         kind: 'thinking',
         key: `stream-thinking-${i}`,
-        text: thinkingBuf,
-        live: true
+        text: thinkingBuf
       })
       thinkingBuf = ''
     }
@@ -211,6 +217,10 @@ function buildStreamingRows(blocks: ContentBlock[]): Row[] {
     }
   }
   flush()
+  // KUN den sidste række kan være i gang. Alt før den er overhalet af noget
+  // der kom bagefter; det er selve beviset for at den er færdig.
+  const sidste = rows[rows.length - 1]
+  if (sidste?.kind === 'thinking') sidste.live = true
   return rows
 }
 

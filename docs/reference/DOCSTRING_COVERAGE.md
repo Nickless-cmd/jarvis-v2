@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7375/14461 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7378/14466 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 7375/14461 functions/methods documented (50%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 614 | 1135 | 54% |
-| `core.services` | 4917 | 9998 | 49% |
+| `core.services` | 4920 | 10003 | 49% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 108 | 184 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -40,7 +40,7 @@ Generated from source. 7375/14461 functions/methods documented (50%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2063)
+## Undocumented public functions (2064)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L201)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1111,8 +1111,8 @@ Generated from source. 7375/14461 functions/methods documented (50%). The list b
 - `core/services/layer_tension_daemon.py` :: `build_layer_tension_surface` (L194)
 - `core/services/layer_tension_daemon.py` :: `get_active_tensions` (L190)
 - `core/services/learning_policy_engine.py` :: `build_learning_policy_prompt_section` (L130)
-- `core/services/ledger_canary.py` :: `disarm` (L223)
-- `core/services/ledger_canary.py` :: `is_armed` (L215)
+- `core/services/ledger_canary.py` :: `disarm` (L232)
+- `core/services/ledger_canary.py` :: `is_armed` (L224)
 - `core/services/life_milestones.py` :: `build_life_milestones_surface` (L88)
 - `core/services/life_projects.py` :: `abandon_life_project` (L50)
 - `core/services/life_projects.py` :: `build_life_projects_surface` (L36)
@@ -1451,7 +1451,8 @@ Generated from source. 7375/14461 functions/methods documented (50%). The list b
 - `core/services/research_contract.py` :: `normalize_source` (L100)
 - `core/services/research_evidence_collector.py` :: `collecting_for` (L14)
 - `core/services/research_evidence_collector.py` :: `observe_web_result` (L38)
-- `core/services/research_orchestrator.py` :: `research_enabled` (L335)
+- `core/services/research_ledger.py` :: `taellere` (L42)
+- `core/services/research_orchestrator.py` :: `research_enabled` (L348)
 - `core/services/research_orchestrator.py` :: `stream_research_run` (L154)
 - `core/services/research_prompt_context.py` :: `research_context` (L23)
 - `core/services/research_prompt_context.py` :: `research_prompt_section` (L36)

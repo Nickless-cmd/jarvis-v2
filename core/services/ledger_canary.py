@@ -81,7 +81,16 @@ def backfill(session_id: str) -> dict[str, Any]:
     # Derfor: hvis ledgeren ikke er et PRÆFIKS af tabellen, afvises det med en
     # henvisning til `reseed`. At føje til alligevel ville lave en ledger der
     # ser fyldt ud og er forkert.
-    findes = [e["event_id"] for e in read_session_events(sid)]
+    #
+    # Målt 13/9-2026: sammenligningen tog ALLE ledger-hændelser med, men
+    # tabellen indeholder kun beskeder. Enhver sidecar-hændelse — et
+    # research-run (`kind="research"`, `research_ledger.py`) eller en lukket
+    # tur (`kind="turn_abandoned"`, `ledger_recovery.py`) — fik derfor
+    # præfiks-tjekket til at melde afvigelse og BLOKERE en ellers ren
+    # migrering. Invarianten handler om BESKED-rækkefølgen, så det er den der
+    # måles: sidecar-hændelser er ikke en del af præfikset.
+    findes = [e["event_id"] for e in read_session_events(sid)
+              if str(e.get("kind") or "") == "message"]
     vil = [h["event_id"] for h in haendelser]
     if findes and findes != vil[:len(findes)]:
         for i, (a, b) in enumerate(zip(findes, vil)):

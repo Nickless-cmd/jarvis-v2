@@ -10,7 +10,7 @@ import time
 from dataclasses import asdict
 from typing import AsyncIterator, Callable
 
-from core.services import research_store as store
+from core.services import research_ledger, research_store as store
 from core.services.research_contract import (
     ResearchDecision,
     ResearchPolicy,
@@ -199,6 +199,11 @@ async def stream_research_run(
     deadline = time.monotonic() + policy.wall_time_seconds
     timed_out = False
     yield _event("research_started", {"research_run_id": run_id, "tier": decision.tier})
+    # Fase A4: gør runnet synligt i sessionens egen historik. Defensiv — en
+    # manglende metadatalinje må aldrig vælte et run.
+    research_ledger.record_run_started(
+        session_id, run_id=run_id, tier=decision.tier, query=query,
+    )
     if contract.warnings:
         yield _event("research_warning", {"research_run_id": run_id, "warnings": list(contract.warnings)})
     store.transition_run(run_id, "planning")
@@ -312,6 +317,14 @@ async def stream_research_run(
                     quality = _evaluate_quality(run_id, query, "".join(report_chunks), policy)
                     store.transition_run(run_id, "synthesizing")
                     store.transition_run(run_id, "completed")
+                    research_ledger.record_run_completed(
+                        session_id,
+                        run_id=run_id,
+                        sources=store.source_count(run_id),
+                        quality=quality["status"],
+                        timed_out=timed_out,
+                        tool_calls=quality["tool_calls"],
+                    )
                     yield _event("research_completed", {
                         "research_run_id": run_id,
                         "sources": store.source_count(run_id),

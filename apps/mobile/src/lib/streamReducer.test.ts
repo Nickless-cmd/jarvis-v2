@@ -149,3 +149,65 @@ describe('tool_result content-block (hole-safety)', () => {
     expect(s.blocks[0]?.type).toBe('tool_use')
   })
 })
+
+// ── live-kort for vaerktoejer der KOERER ───────────────────────────────────
+
+const workingStep = (o: Record<string, unknown>) => ({
+  type: 'system_event' as const, kind: 'working_step' as const,
+  payload: { action: 'bash', detail: 'bash: npm test', step: 1, status: 'running', ...o },
+})
+
+it('et annonceret vaerktoej bliver til et live-kort FOER resultatet', () => {
+  // Serveren sender working_step FOER den koerer, og tool_use+tool_result
+  // foerst naar resultatet findes. Indtil da var der kun én statuslinje, og
+  // et vaerktoej der tog et minut saa ud som om han var gaaet i staa.
+  const s = streamReducer(initialStreamState(), workingStep({}) as never)
+  expect(s.liveSteps).toHaveLength(1)
+  expect(s.liveSteps[0]?.navn).toBe('bash')
+  expect(s.liveSteps[0]?.etiket).toBe('bash: npm test')
+})
+
+it('et BLOKERET skridt bliver IKKE et live-kort', () => {
+  // En hook stoppede kaldet FOER det koerte. Der er ingenting at vente paa, og
+  // et kort med en tikkende tid ville paastaa det modsatte.
+  const s = streamReducer(initialStreamState(), workingStep({ status: 'blocked' }) as never)
+  expect(s.liveSteps).toHaveLength(0)
+  expect(s.workingStep).toBe('bash: npm test')
+})
+
+it('det RIGTIGE kort fjerner det foreloebige', () => {
+  let s = streamReducer(initialStreamState(), workingStep({}) as never)
+  s = streamReducer(s, {
+    type: 'content_block_start', index: 0,
+    content_block: { type: 'tool_use', id: 'bash', name: 'bash', input: {} },
+  } as never)
+  expect(s.liveSteps).toHaveLength(0)
+  expect(s.blocks[0]?.type).toBe('tool_use')
+})
+
+it('SAMME skridt annonceret igen erstatter frem for at lægge til', () => {
+  // Genoptag efter reconnect ville ellers vise det samme vaerktoej to steder.
+  let s = streamReducer(initialStreamState(), workingStep({}) as never)
+  s = streamReducer(s, workingStep({}) as never)
+  expect(s.liveSteps).toHaveLength(1)
+})
+
+it('TO forskellige skridt staar begge', () => {
+  let s = streamReducer(initialStreamState(), workingStep({}) as never)
+  s = streamReducer(s, workingStep({ action: 'read_file', step: 2, detail: 'læser a.py' }) as never)
+  expect(s.liveSteps.map((x) => x.navn)).toEqual(['bash', 'read_file'])
+})
+
+it('message_stop rydder ALTID de foreloebige', () => {
+  // Et vaerktoej hvis resultat aldrig kom ville ellers taelle for evigt under
+  // et svar der er slut.
+  let s = streamReducer(initialStreamState(), workingStep({}) as never)
+  s = streamReducer(s, { type: 'message_stop' } as never)
+  expect(s.liveSteps).toEqual([])
+  expect(s.status).toBe('done')
+})
+
+it('et skridt UDEN vaerktoejsnavn bliver ikke et kort', () => {
+  const s = streamReducer(initialStreamState(), workingStep({ action: '' }) as never)
+  expect(s.liveSteps).toHaveLength(0)
+})

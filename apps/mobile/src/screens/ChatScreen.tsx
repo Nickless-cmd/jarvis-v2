@@ -17,6 +17,7 @@ import { ChatSettingsSheet } from '../components/ChatSettingsSheet'
 import { useKeyboardHeight } from '../lib/useKeyboardHeight'
 import { useConnectivity } from '../lib/useConnectivity'
 import { ApprovalCard } from '../components/ApprovalCard'
+import { LiveToolCard } from '../components/LiveToolCard'
 import { Composer } from '../components/Composer'
 import { DiffBadge } from '../components/DiffBadge'
 import { ResearchStatus } from '../components/ResearchStatus'
@@ -873,7 +874,12 @@ export function ChatScreen({
     !!lastUserMessage && (stream.state.status === 'interrupted' || stream.state.status === 'error')
   // Er der overhovedet et kort at gøre plads til? Afgør om afstandsklodsen
   // nedenfor findes — en klods uden noget at holde afstand fra er bare et hul.
-  const hasCard = canRetry || Boolean(stream.approval && config)
+  // Live-kort for vaerktoejer der koerer taeller MED: uden det ville
+  // afstandsklodsen mangle, og kortene ville ligge bag komponisten.
+  // `?? []` er ikke defensiv pynt: en gendannet eller mocket tilstand kan
+  // mangle feltet, og en tom liste er det rigtige svar - ikke et nedbrud.
+  const liveSteps = stream.state.liveSteps ?? []
+  const hasCard = canRetry || Boolean(stream.approval && config) || liveSteps.length > 0
 
   return (
     <View style={styles.root}>
@@ -981,6 +987,12 @@ export function ChatScreen({
             />
           )
         ) : null}
+        {/* Vaerktoejer der KOERER — over komponisten, sammen med det andet
+            der kraever opmaerksomhed lige nu. De forsvinder af sig selv naar
+            det rigtige resultat-kort kommer, og altid ved message_stop. */}
+        {liveSteps.map((s) => (
+          <LiveToolCard key={`${s.skridt}-${s.navn}`} step={s} />
+        ))}
         {stream.approval && config ? (
           <ApprovalCard
             approval={stream.approval}

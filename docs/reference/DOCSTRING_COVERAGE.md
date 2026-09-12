@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7385/14475 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7387/14476 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 7385/14475 functions/methods documented (51%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 614 | 1135 | 54% |
-| `core.services` | 4927 | 10012 | 49% |
+| `core.services` | 4929 | 10013 | 49% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 108 | 184 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1447,17 +1447,17 @@ Generated from source. 7385/14475 functions/methods documented (51%). The list b
 - `core/services/repeated_requests.py` :: `counts` (L285)
 - `core/services/repeated_requests.py` :: `ensure_table` (L92)
 - `core/services/repeated_requests.py` :: `mark_asked` (L203)
-- `core/services/research_contract.py` :: `canonicalize_url` (L83)
-- `core/services/research_contract.py` :: `normalize_source` (L100)
+- `core/services/research_contract.py` :: `canonicalize_url` (L90)
+- `core/services/research_contract.py` :: `normalize_source` (L107)
 - `core/services/research_evidence_collector.py` :: `collecting_for` (L14)
 - `core/services/research_evidence_collector.py` :: `observe_web_result` (L38)
 - `core/services/research_ledger.py` :: `taellere` (L42)
-- `core/services/research_orchestrator.py` :: `research_enabled` (L669)
-- `core/services/research_orchestrator.py` :: `stream_research_run` (L393)
+- `core/services/research_orchestrator.py` :: `research_enabled` (L714)
+- `core/services/research_orchestrator.py` :: `stream_research_run` (L424)
 - `core/services/research_prompt_context.py` :: `research_context` (L23)
 - `core/services/research_prompt_context.py` :: `research_prompt_section` (L36)
 - `core/services/research_quality.py` :: `evaluate_research_report` (L19)
-- `core/services/research_router.py` :: `classify_research` (L15)
+- `core/services/research_router.py` :: `classify_research` (L42)
 - `core/services/research_store.py` :: `active_for_session` (L257)
 - `core/services/research_store.py` :: `add_source` (L152)
 - `core/services/research_store.py` :: `add_steer` (L168)

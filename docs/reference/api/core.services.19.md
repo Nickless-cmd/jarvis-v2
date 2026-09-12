@@ -551,16 +551,16 @@ _Typed contracts and source normalization for explicit research runs._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | class | `ResearchPolicy` | `` | — | [src](../../../core/services/research_contract.py#L17) |
-| class | `ResearchDecision` | `` | — | [src](../../../core/services/research_contract.py#L26) |
-| class | `ResearchTask` | `` | — | [src](../../../core/services/research_contract.py#L37) |
-| class | `ResearchPlan` | `` | — | [src](../../../core/services/research_contract.py#L44) |
-| class | `ResearchSource` | `` | — | [src](../../../core/services/research_contract.py#L50) |
-| class | `ResearchFinding` | `` | — | [src](../../../core/services/research_contract.py#L63) |
-| class | `ResearchContract` | `` | — | [src](../../../core/services/research_contract.py#L72) |
-| function | `_clean` | `(value)` | — | [src](../../../core/services/research_contract.py#L79) |
-| function | `canonicalize_url` | `(raw)` | — | [src](../../../core/services/research_contract.py#L83) |
-| function | `normalize_source` | `(value)` | — | [src](../../../core/services/research_contract.py#L100) |
-| function | `load_research_contract` | `(query=…)` | Load the canonical skill deterministically; fall back without hiding it. | [src](../../../core/services/research_contract.py#L117) |
+| class | `ResearchDecision` | `` | — | [src](../../../core/services/research_contract.py#L31) |
+| class | `ResearchTask` | `` | — | [src](../../../core/services/research_contract.py#L44) |
+| class | `ResearchPlan` | `` | — | [src](../../../core/services/research_contract.py#L51) |
+| class | `ResearchSource` | `` | — | [src](../../../core/services/research_contract.py#L57) |
+| class | `ResearchFinding` | `` | — | [src](../../../core/services/research_contract.py#L70) |
+| class | `ResearchContract` | `` | — | [src](../../../core/services/research_contract.py#L79) |
+| function | `_clean` | `(value)` | — | [src](../../../core/services/research_contract.py#L86) |
+| function | `canonicalize_url` | `(raw)` | — | [src](../../../core/services/research_contract.py#L90) |
+| function | `normalize_source` | `(value)` | — | [src](../../../core/services/research_contract.py#L107) |
+| function | `load_research_contract` | `(query=…)` | Load the canonical skill deterministically; fall back without hiding it. | [src](../../../core/services/research_contract.py#L124) |
 
 ## `core/services/research_evidence_collector.py`
 _Capture structured web-tool evidence for the active research run._
@@ -602,10 +602,10 @@ _Adaptive research coordinator around the existing visible and agent runtimes._
 | function | `_evidence_block` | `(texts, sources, findings, gaps=…)` | Evidens til syntesen — med en KANONISK nummereret kilde-liste. | [src](../../../core/services/research_orchestrator.py#L243) |
 | function | `_topup_plan` | `(run_id, tasks, policy)` | Fase B1: hvilke tracks skal styrkes — og med hvad? | [src](../../../core/services/research_orchestrator.py#L281) |
 | function | `_evaluate_quality` | `(run_id, query, report, policy)` | Fase A1: kobl kvalitetsgaten på den faktiske rapport. | [src](../../../core/services/research_orchestrator.py#L327) |
-| function | `_default_worker_sync` | `(*, task, run_id, skill_instructions)` | — | [src](../../../core/services/research_orchestrator.py#L357) |
-| function | `_run_worker` | `(worker_factory, *, task, run_id, skill_instructions)` | — | [src](../../../core/services/research_orchestrator.py#L388) |
-| function | `stream_research_run` | `(*, message, original_query=…, session_id, visible_run_id=…, decision=…, visible_factory=…, worker_factory=…, orchestrator_enabled=…, **visible_kwargs)` | — | [src](../../../core/services/research_orchestrator.py#L393) |
-| function | `research_enabled` | `()` | — | [src](../../../core/services/research_orchestrator.py#L669) |
+| function | `_default_worker_sync` | `(*, task, run_id, skill_instructions, max_turns=…, budget_tokens=…)` | — | [src](../../../core/services/research_orchestrator.py#L357) |
+| function | `_run_worker` | `(worker_factory, *, task, run_id, skill_instructions, max_turns=…, budget_tokens=…)` | Kør én worker gennem factory'en. | [src](../../../core/services/research_orchestrator.py#L398) |
+| function | `stream_research_run` | `(*, message, original_query=…, session_id, visible_run_id=…, decision=…, visible_factory=…, worker_factory=…, orchestrator_enabled=…, **visible_kwargs)` | — | [src](../../../core/services/research_orchestrator.py#L424) |
+| function | `research_enabled` | `()` | — | [src](../../../core/services/research_orchestrator.py#L714) |
 
 ## `core/services/research_prompt_context.py`
 _Request-scoped research instructions consumed by prompt assembly surfaces._
@@ -629,7 +629,8 @@ _Conservative and explainable inline/orchestrated research routing._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `classify_research` | `(message, *, attachment_count=…, policy=…)` | — | [src](../../../core/services/research_router.py#L15) |
+| function | `_effort` | `(independent)` | Indsatsen for N uafhængige signaler — klippet til tabellens rækker. | [src](../../../core/services/research_router.py#L37) |
+| function | `classify_research` | `(message, *, attachment_count=…, policy=…)` | — | [src](../../../core/services/research_router.py#L42) |
 
 ## `core/services/research_store.py`
 _Durable SQLite state for research runs, tasks, sources, and steering._

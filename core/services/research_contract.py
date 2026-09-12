@@ -20,6 +20,11 @@ class ResearchPolicy:
     max_tool_calls: int = 24
     wall_time_seconds: int = 600
     source_target: int = 6
+    # Fase C2: hvor meget ÉN worker må bruge. 0 = ubegrænset (nuværende adfærd).
+    # Målt 13/9-2026: researcher-agenter brænder i snit 14.561 tokens (maks
+    # 95.882 over 138 kørsler) — uden et loft er halen ubegrænset.
+    worker_max_turns: int = 8
+    worker_token_budget: int = 0
 
 
 @dataclass(frozen=True)
@@ -31,6 +36,8 @@ class ResearchDecision:
     max_tool_calls: int = 8
     wall_time_seconds: int = 180
     source_target: int = 3
+    worker_max_turns: int = 8
+    worker_token_budget: int = 0
 
 
 @dataclass(frozen=True)

@@ -549,3 +549,97 @@ def test_B3_gaps_naar_evidensblokken():
     assert "Pris mangler for 3" in block
     # Uden huller må sektionen ikke stå tom og støjende.
     assert "Known gaps" not in orchestrator._evidence_block([], [], [], [])
+
+
+# --- Fase C2: indsatsen skal nå hele vejen ned til worker'en (13/9-2026) ---
+#
+# Speccens §2.2-fund: `spawn_agent_task` TAR `budget_tokens`, og
+# `_check_budget_and_expire` kan dræbe en agent der sprænger sit budget — men
+# lane'en sendte den aldrig. Målt 13/9-2026: 113 af 138 researcher-kørsler
+# havde intet budget, så vagten var inert. Disse tests holder de to led fast.
+
+def test_C2_budgettet_naar_worker_factory(monkeypatch):
+    """Beslutningens indsats skal nå worker'en — ellers er tallet uden modtager."""
+    _fake_store(monkeypatch)
+    seen = []
+
+    async def worker(**kwargs):
+        seen.append(kwargs)
+        return {"text": "finding [1]", "status": "completed"}
+
+    decision = ResearchDecision(
+        tier="orchestrated",
+        signals=("comparative_breadth",),
+        max_workers=1,
+        max_tasks=1,
+        max_tool_calls=8,
+        wall_time_seconds=180,
+        source_target=2,
+        worker_max_turns=7,
+        worker_token_budget=12_345,
+    )
+    _events(orchestrator.stream_research_run(
+        message="Sammenlign fem leverandører på pris og sikkerhed",
+        session_id="s1",
+        worker_factory=worker,
+        decision=decision,
+        orchestrator_enabled=True,
+    ))
+    assert seen, "ingen workers blev kørt"
+    assert any(
+        kw["budget_tokens"] == 12_345 and kw["max_turns"] == 7 for kw in seen
+    ), f"indsatsen nåede ikke worker'en: {[ (k['max_turns'], k['budget_tokens']) for k in seen ]}"
+    # Ingen worker må stå uden loft når beslutningen satte et.
+    assert all(kw["budget_tokens"] > 0 for kw in seen), seen
+
+
+def test_C2_intet_budget_bevarer_gammel_adfaerd(monkeypatch):
+    """0 = ubegrænset. En kalder der ikke sætter et loft må ikke få et."""
+    _fake_store(monkeypatch)
+    seen = []
+
+    async def worker(**kwargs):
+        seen.append(kwargs)
+        return {"text": "finding", "status": "completed"}
+
+    decision = ResearchDecision(
+        tier="orchestrated", max_workers=1, max_tasks=1,
+        worker_max_turns=8, worker_token_budget=0,
+    )
+    _events(orchestrator.stream_research_run(
+        message="Sammenlign fem leverandører på pris og sikkerhed",
+        session_id="s1",
+        worker_factory=worker,
+        decision=decision,
+        orchestrator_enabled=True,
+    ))
+    assert seen
+    assert all(kw["budget_tokens"] == 0 for kw in seen), seen
+
+
+def test_C2_default_worker_sender_budgettet_til_spawn(monkeypatch):
+    """Den dybeste led. Uden dette kald er hele C2 kosmetisk: budgettet står i
+    policy'en, men `spawn_agent_task` hører det aldrig, og vagten forbliver død."""
+    import core.runtime.db as db_mod
+    import core.services.agent_runtime_spawn as spawn_mod
+
+    captured = {}
+
+    def fake_spawn(**kwargs):
+        captured.update(kwargs)
+        return {"agent_id": "a1", "status": "completed"}
+
+    monkeypatch.setattr(spawn_mod, "spawn_agent_task", fake_spawn)
+    monkeypatch.setattr(db_mod, "list_agent_messages", lambda **kwargs: [])
+
+    orchestrator._default_worker_sync(
+        task={"id": "t1", "objective": "undersøg pris"},
+        run_id="r1",
+        skill_instructions="",
+        max_turns=7,
+        budget_tokens=12_345,
+    )
+    assert captured.get("budget_tokens") == 12_345, captured
+    assert captured.get("max_turns") == 7, captured
+    # Worker'en skal stadig være read-only — budgettet må ikke have ændret det.
+    assert captured.get("tool_policy") == "read-only-runtime"

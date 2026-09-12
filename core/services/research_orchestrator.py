@@ -354,7 +354,14 @@ def _evaluate_quality(run_id: str, query: str, report: str, policy: ResearchPoli
     }
 
 
-def _default_worker_sync(*, task: dict, run_id: str, skill_instructions: str) -> dict:
+def _default_worker_sync(
+    *,
+    task: dict,
+    run_id: str,
+    skill_instructions: str,
+    max_turns: int = 8,
+    budget_tokens: int = 0,
+) -> dict:
     from core.runtime.db import list_agent_messages
     from core.services.agent_runtime_spawn import spawn_agent_task
 
@@ -370,7 +377,10 @@ def _default_worker_sync(*, task: dict, run_id: str, skill_instructions: str) ->
             allowed_tools=["web_search", "web_fetch", "web_scrape"],
             tool_policy="read-only-runtime",
             parent_agent_id="jarvis",
-            max_turns=8,
+            # Fase C2: budgettet følger med herfra. Uden det er
+            # `_check_budget_and_expire` inert for research-workers.
+            max_turns=max_turns,
+            budget_tokens=budget_tokens,
             context={"research_run_id": run_id, "research_task_id": task["id"]},
             result_contract={"findings": True, "sources": True, "confidence": True, "gaps": True},
             execution_mode="research-worker",
@@ -385,8 +395,29 @@ def _default_worker_sync(*, task: dict, run_id: str, skill_instructions: str) ->
     return {"status": str(surface.get("status") or "completed"), "text": result_text, "agent_id": agent_id}
 
 
-async def _run_worker(worker_factory, *, task: dict, run_id: str, skill_instructions: str):
-    value = worker_factory(task=task, run_id=run_id, skill_instructions=skill_instructions)
+async def _run_worker(
+    worker_factory,
+    *,
+    task: dict,
+    run_id: str,
+    skill_instructions: str,
+    max_turns: int = 8,
+    budget_tokens: int = 0,
+):
+    """Kør én worker gennem factory'en.
+
+    Fase C2: `max_turns` og `budget_tokens` følger med hele vejen ned til
+    `spawn_agent_task`. Uden dem er `_check_budget_and_expire` inert — den
+    læser `budget_tokens` fra agent-registry'en og returnerer straks når den
+    er 0 (målt 13/9-2026: 113 af 138 researcher-kørsler havde intet budget).
+    """
+    value = worker_factory(
+        task=task,
+        run_id=run_id,
+        skill_instructions=skill_instructions,
+        max_turns=max_turns,
+        budget_tokens=budget_tokens,
+    )
     return await value if inspect.isawaitable(value) else value
 
 
@@ -423,6 +454,10 @@ async def stream_research_run(
         max_tool_calls=max(1, decision.max_tool_calls or 8),
         wall_time_seconds=max(30, decision.wall_time_seconds or 180),
         source_target=max(2, decision.source_target or 3),
+        # Fase C2: indsatsen pr. worker følger beslutningen. 0 budget = ubegrænset,
+        # så en kalder der ikke sætter et loft får nøjagtig den gamle adfærd.
+        worker_max_turns=max(2, decision.worker_max_turns or 8),
+        worker_token_budget=max(0, decision.worker_token_budget or 0),
     )
     run = store.create_run(
         session_id=session_id,
@@ -477,6 +512,8 @@ async def stream_research_run(
                     result = await _run_worker(
                         worker_factory, task=task, run_id=run_id,
                         skill_instructions=contract.instructions,
+                        max_turns=policy.worker_max_turns,
+                        budget_tokens=policy.worker_token_budget,
                     )
                     text = str((result or {}).get("text") or "").strip()
                     provider_status = str((result or {}).get("status") or "")
@@ -590,6 +627,14 @@ async def stream_research_run(
                         task=critic_task,
                         run_id=run_id,
                         skill_instructions=contract.instructions,
+                        # Critic'en researcher ikke — den læser og peger. Derfor
+                        # færre ture og et lavere loft end research-workerne
+                        # (målt: critic brænder i snit 7.382 tokens mod
+                        # researcher'ens 14.561).
+                        max_turns=min(4, policy.worker_max_turns),
+                        budget_tokens=min(20_000, policy.worker_token_budget)
+                        if policy.worker_token_budget
+                        else 0,
                     )
                     critic_text = str((critic_result or {}).get("text") or "").strip()
                     gaps = _parse_gaps(critic_text)

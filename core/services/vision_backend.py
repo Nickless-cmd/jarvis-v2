@@ -52,7 +52,12 @@ logger = logging.getLogger(__name__)
 
 _DEEPSEEK_URL = "https://api.deepseek.com/v1/chat/completions"
 _TIMEOUT = 180
-_MAX_TOKENS = 400
+# 12/9-2026: 400 var for lavt — og fejlen var tavs. `deepseek-flash` er en
+# taenkende model: `max_tokens` daekker BAADE `reasoning_content` og selve
+# svaret. Ved et foto braendte taenkningen hele budgettet → finish_reason
+# "length" og TOM `content`. Maalt samme dag: 600 → tomt svar, 2500 → fuldt.
+# 1600 giver plads til begge dele.
+_MAX_TOKENS = 1600
 
 
 # Modeller der selv kan se. En model uden syn kan ikke laane oejne af en tur —
@@ -164,8 +169,23 @@ def describe_via_deepseek(
 
     _record_cost(data.get("usage") or {}, model=model, run_id=run_id)
     choices = data.get("choices") or []
-    content = (choices[0] or {}).get("message", {}).get("content", "") if choices else ""
-    return str(content or "").strip()
+    msg = ((choices[0] or {}).get("message") or {}) if choices else {}
+    content = str(msg.get("content") or "").strip()
+    if content:
+        return content
+    # Et TOMT svar er ikke "der var intet at se": taenkningen kan have spist
+    # hele budgettet (finish_reason="length"). Maalt 12/9-2026: et foto gav
+    # 400-600 reasoning-tokens og NUL svar, og fejlen var tavs — værktøjet
+    # returnerede "" som om billedet var tomt. Sig det højt i stedet.
+    finish = (choices[0] or {}).get("finish_reason") if choices else None
+    reasoning = str(msg.get("reasoning_content") or "").strip()
+    if reasoning:
+        logger.warning(
+            "vision_backend: tomt svar fra %s (finish_reason=%s, %d tegn "
+            "reasoning) — budgettet blev spist af taenkning",
+            model, finish, len(reasoning))
+        return reasoning
+    return ""
 
 
 def _record_cost(usage: dict[str, Any], *, model: str, run_id: str) -> None:

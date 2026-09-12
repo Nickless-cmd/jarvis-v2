@@ -474,10 +474,14 @@ def get_chat_session(session_id: str) -> dict[str, object] | None:
     if not normalized:
         return None
     with connect() as conn:
+        # Samme grund som i listningen: kolonnen staar ikke i CREATE TABLE, saa
+        # en frisk database ville falde over `s.kind` her.
+        _sikr_flag_kolonner(conn)
         session = conn.execute(
             """
             SELECT session_id, title, created_at, updated_at,
-                   workspace_kind, workspace_root
+                   workspace_kind, workspace_root,
+                   COALESCE(kind, 'chat') AS kind
             FROM chat_sessions
             WHERE session_id = ?
             """,

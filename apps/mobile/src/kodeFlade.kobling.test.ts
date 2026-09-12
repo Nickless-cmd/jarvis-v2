@@ -117,3 +117,24 @@ it('billed-feltet aabner DENNE samtales billeder', () => {
   expect(cs).toMatch(/onOpenBilleder=\{/)
   expect(cs).toMatch(/<BillederScreen\s+sessionId=\{sessions\.activeId \?\? ''\}/)
 })
+
+it('fladen gendannes FOER sessionen', () => {
+  // Saetter man sessionen foerst, staar man et oejeblik i chat-fladen med en
+  // code-samtale og en chat-liste - praecis den modstrid Bjoern beskrev.
+  const cs = kilde('screens/ChatScreen.tsx')
+  const blok = cs.slice(cs.indexOf('loadLastSession()'), cs.indexOf('loadLastSession()') + 700)
+  expect(blok.indexOf('onSkiftFlade?.(plads.kode)')).toBeLessThan(blok.indexOf('sessions.select'))
+})
+
+it('SESSIONEN har det sidste ord om fladen', () => {
+  // Den gemte flade er et minde; samtalens `kind` er et faktum.
+  const cs = kilde('screens/ChatScreen.tsx')
+  expect(cs).toMatch(/const kode = s\.kind === 'code'/)
+  expect(cs).toMatch(/if \(kode !== plads\.kode\) onSkiftFlade\?\.\(kode\)/)
+})
+
+it('fladen gemmes ogsaa naar man skifter UDEN at skifte samtale', () => {
+  const cs = kilde('screens/ChatScreen.tsx')
+  expect(cs).toMatch(/saveLastSession\(sessions\.activeId, kodeTilstand\)/)
+  expect(cs).toMatch(/\}, \[sessions\.activeId, kodeTilstand\]\)/)
+})

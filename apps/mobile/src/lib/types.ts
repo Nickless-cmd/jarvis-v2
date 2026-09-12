@@ -26,6 +26,9 @@ export interface ChatSession {
   /** Arkiveret: falder ud af listen. Serveren filtrerer dem fra, saa feltet er
    *  her for menuens skyld — den skal kunne vise «Fjern fra arkiv». */
   archived?: boolean
+  /** Hvilken FLADE samtalen hører til. IKKE det samme som workspace_kind,
+   *  der siger hvor arbejdet kører. */
+  kind?: 'chat' | 'code'
 }
 
 export interface ChatMessage {

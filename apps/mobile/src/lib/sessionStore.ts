@@ -3,18 +3,40 @@ import * as SecureStore from 'expo-secure-store'
 // Husk hvilken session brugeren sidst var i, så app'en åbner samme sted.
 const KEY = 'jarvis.mobile.lastSession'
 
-export async function saveLastSession(sessionId: string): Promise<void> {
+export interface SidstePlads {
+  id: string
+  /** Stod vi i code-fladen? */
+  kode: boolean
+}
+
+/**
+ * Session og flade gemmes SAMMEN, i én nøgle.
+ *
+ * Bjørn 12/9-2026: «appen glemmer code mode så starter den stadig op i chat
+ * mode med en code session loaded». To nøgler kan blive uenige — én kan ikke.
+ * Det er ikke sparsommelighed; det er den eneste form hvor tilstanden ikke kan
+ * være halvt gendannet.
+ */
+export async function saveLastSession(sessionId: string, kode = false): Promise<void> {
   if (!sessionId) return
   try {
-    await SecureStore.setItemAsync(KEY, sessionId)
+    await SecureStore.setItemAsync(KEY, JSON.stringify({ id: sessionId, kode: !!kode }))
   } catch {
     // Persistering er best-effort — en fejl må ikke vælte chatten.
   }
 }
 
-export async function loadLastSession(): Promise<string | null> {
+export async function loadLastSession(): Promise<SidstePlads | null> {
   try {
-    return await SecureStore.getItemAsync(KEY)
+    const raa = await SecureStore.getItemAsync(KEY)
+    if (!raa) return null
+    // BAGUDKOMPATIBELT: nøglen indeholdt før en bar session-id-streng. Uden det
+    // her ville alle der opdaterer miste deres sidste samtale én gang — og det
+    // ville ligne at appen havde glemt dem.
+    if (!raa.trimStart().startsWith('{')) return { id: raa, kode: false }
+    const o = JSON.parse(raa) as { id?: unknown; kode?: unknown }
+    const id = typeof o.id === 'string' ? o.id : ''
+    return id ? { id, kode: o.kode === true } : null
   } catch {
     return null
   }

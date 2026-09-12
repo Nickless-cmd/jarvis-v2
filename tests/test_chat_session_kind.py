@@ -81,3 +81,14 @@ def test_tilbagefyldet_overskriver_IKKE_et_senere_valg(isolated_runtime):
         conn.execute("UPDATE chat_sessions SET kind = 'chat' WHERE session_id = ?", (s["id"],))
     assert _ids(list_chat_sessions(kind="chat")) == {s["id"]}
     assert list_chat_sessions(kind="code") == []
+
+
+def test_EN_session_baerer_ogsaa_sin_art(isolated_runtime):
+    # Klienten gendanner fladen ud fra sessionen, ikke kun ud fra hvad den
+    # selv huskede. To kilder der kan blive uenige er ikke to kilder - det er
+    # én der lyver halvdelen af tiden.
+    from core.services.chat_sessions import get_chat_session
+    kode = create_chat_session(title="K", kind="code")
+    chat = create_chat_session(title="C")
+    assert get_chat_session(str(kode["id"]))["kind"] == "code"
+    assert get_chat_session(str(chat["id"]))["kind"] == "chat"

@@ -464,11 +464,28 @@ export function ChatScreen({
         }
       })
       .catch(() => undefined)
-    // Gendan den session brugeren sidst var i (åbn samme sted som ved app-luk).
+    // Gendan den session brugeren sidst var i — OG den flade den hørte til.
+    //
+    // Fladen gendannes FØRST. Bjørn 12/9-2026: «appen glemmer code mode så
+    // starter den stadig op i chat mode med en code session loaded». Sætter
+    // man sessionen først, står man et øjeblik i chat-fladen med en
+    // code-samtale og en chat-liste — præcis den modstrid han beskrev.
     if (!didRestore.current) {
       didRestore.current = true
-      loadLastSession().then((id) => {
-        if (id) sessions.select(config, id).catch(() => undefined)
+      loadLastSession().then((plads) => {
+        if (!plads) return
+        if (plads.kode !== kodeTilstand) onSkiftFlade?.(plads.kode)
+        sessions.select(config, plads.id)
+          .then((s) => {
+            // SESSIONEN HAR DET SIDSTE ORD. Den gemte flade er et minde;
+            // samtalens `kind` er et faktum. De to kan kun være uenige i ét
+            // tilfælde — nøglen fra før fladen blev husket indeholdt kun et
+            // id — og netop dér ville man lande i chat-fladen med en
+            // code-samtale, som er præcis det Bjørn beskrev.
+            const kode = s.kind === 'code'
+            if (kode !== plads.kode) onSkiftFlade?.(kode)
+          })
+          .catch(() => undefined)
       })
     }
   }, [config])
@@ -486,10 +503,13 @@ export function ChatScreen({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [art, config])
 
-  // Husk aktiv session på tværs af app-luk.
+  // Husk aktiv session OG flade på tværs af app-luk. Begge, altid, i samme
+  // skrivning — to nøgler kan blive uenige, én kan ikke. `kodeTilstand` står
+  // derfor også i afhængighederne: skifter man flade uden at skifte samtale,
+  // skal det også huskes.
   useEffect(() => {
-    if (sessions.activeId) void saveLastSession(sessions.activeId)
-  }, [sessions.activeId])
+    if (sessions.activeId) void saveLastSession(sessions.activeId, kodeTilstand)
+  }, [sessions.activeId, kodeTilstand])
 
   // Stream dør når appen baggrunder (Android dræber SSE), men kørslen fortsætter
   // server-side. Når appen kommer tilbage i forgrunden, gen-synkroniserer vi den

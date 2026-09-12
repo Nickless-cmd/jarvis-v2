@@ -27,7 +27,7 @@ interface SessionContextValue {
   messages: LocalMessage[]
   loading: boolean
   refresh: (config: ApiConfig, art?: 'chat' | 'code') => Promise<void>
-  select: (config: ApiConfig, sessionId: string) => Promise<void>
+  select: (config: ApiConfig, sessionId: string) => Promise<ChatSession>
   create: (config: ApiConfig, titel?: string, art?: 'chat' | 'code') => Promise<ChatSession>
   appendLocalMessage: (message: ChatMessage) => void
   replaceMessages: (messages: ChatMessage[]) => void
@@ -66,6 +66,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           // persisteret local-assistant-snapshot ikke blank-forsvinder når en
           // resync/poll-select rammer midt i svar-halen.
           setMessages((local) => mergeServer(local, result.messages))
+          // Returnér sessionen: kalderen skal kunne se dens ART og rette
+          // fladen efter den. To kilder der kan blive uenige er ikke to
+          // kilder — det er én der lyver halvdelen af tiden.
+          return result.session
         } finally {
           setLoading(false)
         }

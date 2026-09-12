@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 14482 functions/methods, 51% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 14492 functions/methods, 51% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -29,31 +29,31 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 14482 functions/
 - [`core.runtime.02`](core.runtime.02.md) — `db_private_signals` … `settings`
 - [`core.runtime.03`](core.runtime.03.md) — `state_store` … `workspace_paths`
 - [`core.services.01`](core.services.01.md) — `__init__` … `agentic_working_conclusions`
-- [`core.services.02`](core.services.02.md) — `agents` … `autonomous_stream_run`
-- [`core.services.03`](core.services.03.md) — `autonomous_supervisor` … `central_arbitration`
-- [`core.services.04`](core.services.04.md) — `central_architect` … `central_initiative_ladder`
-- [`core.services.05`](core.services.05.md) — `central_injection_registry` … `central_render`
-- [`core.services.06`](core.services.06.md) — `central_route` … `cheap_provider_runtime_adapters`
-- [`core.services.07`](core.services.07.md) — `cheap_provider_runtime_keys` … `conflict_resolution`
-- [`core.services.08`](core.services.08.md) — `connections` … `curiosity_budget`
-- [`core.services.09`](core.services.09.md) — `curiosity_consolidation` … `device_tokens`
-- [`core.services.10`](core.services.10.md) — `diagnosis_gate` … `emitted_prefix`
-- [`core.services.11`](core.services.11.md) — `emotion_concepts` … `flow_state_detection`
-- [`core.services.12`](core.services.12.md) — `followup_observer` … `gut_calibration`
-- [`core.services.13`](core.services.13.md) — `gut_engine` … `interlanguage_practice`
-- [`core.services.14`](core.services.14.md) — `internal_cadence` … `loop_runtime`
-- [`core.services.15`](core.services.15.md) — `loyalty_gradient_signal_tracking` … `model_catalogue_sweep`
-- [`core.services.16`](core.services.16.md) — `model_context` … `override_command`
-- [`core.services.17`](core.services.17.md) — `override_store` … `proactivity_bridge`
-- [`core.services.18`](core.services.18.md) — `procedure_bank` … `r2_5_blocking_gate`
-- [`core.services.19`](core.services.19.md) — `read_before_write_guard` … `retry_admissibility`
-- [`core.services.20`](core.services.20.md) — `retry_runtime` … `security_guard`
-- [`core.services.21`](core.services.21.md) — `seed_system` … `session_inbox`
-- [`core.services.22`](core.services.22.md) — `session_milestones` … `social_labilizer`
-- [`core.services.23`](core.services.23.md) — `somatic_daemon` … `thought_leak_guard`
-- [`core.services.24`](core.services.24.md) — `thought_stream_daemon` … `user_scope`
-- [`core.services.25`](core.services.25.md) — `user_temperature_engine` … `visible_turn_accumulator`
-- [`core.services.26`](core.services.26.md) — `visible_turn_blocks` … `world_model_signal_tracking`
+- [`core.services.02`](core.services.02.md) — `agents` … `autonomous_sessions`
+- [`core.services.03`](core.services.03.md) — `autonomous_stream_run` … `central_anomaly`
+- [`core.services.04`](core.services.04.md) — `central_arbitration` … `central_hypothesis_sampler`
+- [`core.services.05`](core.services.05.md) — `central_initiative_ladder` … `central_relational`
+- [`core.services.06`](core.services.06.md) — `central_render` … `cheap_provider_runtime`
+- [`core.services.07`](core.services.07.md) — `cheap_provider_runtime_adapters` … `conflict_prompt_service`
+- [`core.services.08`](core.services.08.md) — `conflict_resolution` … `cross_user_share_guard`
+- [`core.services.09`](core.services.09.md) — `curiosity_budget` … `device_presence`
+- [`core.services.10`](core.services.10.md) — `device_tokens` … `emergent_signal_tracking`
+- [`core.services.11`](core.services.11.md) — `emitted_prefix` … `first_pass_recovery`
+- [`core.services.12`](core.services.12.md) — `flow_state_detection` … `guided_learning_runtime`
+- [`core.services.13`](core.services.13.md) — `gut_calibration` … `inner_voice_shadow`
+- [`core.services.14`](core.services.14.md) — `interlanguage_practice` … `longing_signal_daemon`
+- [`core.services.15`](core.services.15.md) — `loop_runtime` … `model_benchmark`
+- [`core.services.16`](core.services.16.md) — `model_catalogue_sweep` … `outreach_composer`
+- [`core.services.17`](core.services.17.md) — `override_command` … `proactive_question_gate_tracking`
+- [`core.services.18`](core.services.18.md) — `proactivity_bridge` … `quota_store`
+- [`core.services.19`](core.services.19.md) — `r2_5_blocking_gate` … `retention`
+- [`core.services.20`](core.services.20.md) — `retry_admissibility` … `secret_redaction`
+- [`core.services.21`](core.services.21.md) — `security_guard` … `session_distillation`
+- [`core.services.22`](core.services.22.md) — `session_inbox` … `smith_noise_veto`
+- [`core.services.23`](core.services.23.md) — `social_labilizer` … `thought_action_proposal_daemon`
+- [`core.services.24`](core.services.24.md) — `thought_leak_guard` … `user_md_update_proposal_tracking`
+- [`core.services.25`](core.services.25.md) — `user_model_daemon` … `visible_thinking_trace`
+- [`core.services.26`](core.services.26.md) — `visible_tool_exec` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

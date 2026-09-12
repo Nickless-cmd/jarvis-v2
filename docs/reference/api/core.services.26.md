@@ -2,6 +2,31 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/visible_tool_exec.py`
+_Shared tool-exec pump for the visible run (Boy-Scout extraction, 2026-07-19)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `run_tool_batch` | `(tool_calls, *, run, loop, tool_scope, step_counter, heartbeat_interval_s, heartbeat_phase, out, heartbeat_extra=…, exec_start=…, er_afbrudt=…)` | Announce → execute → heartbeat pump for one tool batch. | [src](../../../core/services/visible_tool_exec.py#L36) |
+
+## `core/services/visible_turn_accumulator.py`
+_Turens content-blokke, samlet i den rækkefølge de faktisk opstod._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `TurnAccumulator` | `` | Samler tekst-segmenter, værktøjskald og deres rækkefølge for én tur. | [src](../../../core/services/visible_turn_accumulator.py#L30) |
+| method | `TurnAccumulator.add_text` | `(self, chunk)` | Læg tekst i det ÅBNE segment, eller åbn et nyt. | [src](../../../core/services/visible_turn_accumulator.py#L54) |
+| method | `TurnAccumulator.close_segment` | `(self)` | — | [src](../../../core/services/visible_turn_accumulator.py#L68) |
+| method | `TurnAccumulator.note_text` | `(self)` | — | [src](../../../core/services/visible_turn_accumulator.py#L72) |
+| method | `TurnAccumulator.note_tool` | `(self)` | — | [src](../../../core/services/visible_turn_accumulator.py#L76) |
+| method | `TurnAccumulator.add_tools` | `(self, tool_calls, results)` | Optag et batch af kald og deres resultater. Kaster ALDRIG. | [src](../../../core/services/visible_turn_accumulator.py#L81) |
+| method | `TurnAccumulator.add_thinking` | `(self, chunk)` | Læg reasoning i det ÅBNE tanke-segment, eller åbn et nyt. | [src](../../../core/services/visible_turn_accumulator.py#L114) |
+| method | `TurnAccumulator.close_thinking` | `(self)` | — | [src](../../../core/services/visible_turn_accumulator.py#L133) |
+| method | `TurnAccumulator._nu` | `(self)` | — | [src](../../../core/services/visible_turn_accumulator.py#L136) |
+| method | `TurnAccumulator.thinking_seconds` | `(self)` | Sekunder pr. tanke-segment; None hvor der ikke blev maalt noget. | [src](../../../core/services/visible_turn_accumulator.py#L142) |
+| method | `TurnAccumulator.build_blocks` | `(self, text)` | Den kanoniske blok-liste for turen. | [src](../../../core/services/visible_turn_accumulator.py#L155) |
+| function | `coerce_tool_input` | `(raw)` | Normalisér tool-input til et DICT. | [src](../../../core/services/visible_turn_accumulator.py#L169) |
+
 ## `core/services/visible_turn_blocks.py`
 _Den kanoniske content-blok-array for en assistent-tur (spec §4)._
 

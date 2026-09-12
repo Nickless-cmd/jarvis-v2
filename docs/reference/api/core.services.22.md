@@ -2,6 +2,22 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/session_inbox.py`
+_Session inbox — gates daemon notifications during active sessions._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_ensure_table` | `(conn)` | — | [src](../../../core/services/session_inbox.py#L59) |
+| function | `_connect` | `()` | — | [src](../../../core/services/session_inbox.py#L78) |
+| function | `is_session_active` | `(session_id, *, window_seconds=…)` | Has this session seen chat-stream activity recently? | [src](../../../core/services/session_inbox.py#L88) |
+| function | `enqueue` | `(*, session_id, content, source, urgent=…)` | Add a daemon notification to the inbox for later delivery. | [src](../../../core/services/session_inbox.py#L122) |
+| function | `pending_for_session` | `(session_id)` | List items still queued for delivery in this session. | [src](../../../core/services/session_inbox.py#L153) |
+| function | `flush_session` | `(session_id)` | Deliver all queued items for a session. Each becomes an actual | [src](../../../core/services/session_inbox.py#L171) |
+| function | `pending_count` | `(session_id=…)` | — | [src](../../../core/services/session_inbox.py#L237) |
+| function | `_listener_loop` | `()` | Background flusher. | [src](../../../core/services/session_inbox.py#L262) |
+| function | `start_session_inbox` | `()` | Start the DB-polling flusher. Idempotent. | [src](../../../core/services/session_inbox.py#L346) |
+| function | `stop_session_inbox` | `()` | — | [src](../../../core/services/session_inbox.py#L363) |
+
 ## `core/services/session_milestones.py`
 _Session-milepæle (kapitler) til navigations-rail'en — som Claude Code's mark_chapter._
 
@@ -533,16 +549,4 @@ _Veto mod Smiths sproglige stoej — modellen kan kun sige nej, aldrig ja._
 |---|---|---|---|---|
 | function | `_er_risikabel` | `(etiket, cfg)` | Risiko afgoeres af den liste stigen allerede bruger — ikke af en model. | [src](../../../core/services/smith_noise_veto.py#L80) |
 | function | `maa_minte` | `(pattern_key, etiket=…, cfg=…)` | Skal Smith have lov at minte dette moenster? | [src](../../../core/services/smith_noise_veto.py#L99) |
-
-## `core/services/social_labilizer.py`
-_Social labilizer — Fase 2 of generative autonomy._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_matches_any` | `(text, patterns)` | — | [src](../../../core/services/social_labilizer.py#L84) |
-| function | `_classify` | `(user_message)` | Return a dict of detected social signals in the user message. | [src](../../../core/services/social_labilizer.py#L91) |
-| function | `_flatten_longing` | `(reduction)` | Reduce longing-toward-user pressure by `reduction` (0.0–1.0). | [src](../../../core/services/social_labilizer.py#L107) |
-| function | `_boost_caution` | `(boost, target_topic=…)` | Add caution-pressure (push-away from a topic). Used for critique modulation. | [src](../../../core/services/social_labilizer.py#L133) |
-| function | `_sharpen_self_anchor` | `()` | When the user asks about Jarvis' state, add a small self-orient signal. | [src](../../../core/services/social_labilizer.py#L155) |
-| function | `labilize_pressures_from_user_message` | `(user_message, *, run_id=…)` | Apply social-input deltas to the pressure state. | [src](../../../core/services/social_labilizer.py#L180) |
 

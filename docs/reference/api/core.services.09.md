@@ -2,6 +2,25 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/curiosity_budget.py`
+_Curiosity-budget service — Phase 1 (AGI track #6 Åben udforskning)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `ensure_schema` | `()` | Idempotently create curiosity_observations table + indexes. | [src](../../../core/services/curiosity_budget.py#L32) |
+| function | `_today_iso` | `()` | — | [src](../../../core/services/curiosity_budget.py#L71) |
+| function | `load_or_reset_budget` | `()` | Return current budget state. Resets to 5/5 if stored date != today. | [src](../../../core/services/curiosity_budget.py#L75) |
+| function | `decrement_budget` | `(*, action, observation_id)` | Reduce remaining by 1, append to used_today, persist. | [src](../../../core/services/curiosity_budget.py#L92) |
+| function | `remaining_today` | `()` | — | [src](../../../core/services/curiosity_budget.py#L121) |
+| function | `record_observation` | `(action, args_json, observation_text, follow_up_hint)` | Persist an observation row; return the generated obs_id. | [src](../../../core/services/curiosity_budget.py#L129) |
+| function | `fetch_recent_observations` | `(*, limit=…)` | Return newest-first list of recent observations (for awareness). | [src](../../../core/services/curiosity_budget.py#L156) |
+| function | `_safe_publish` | `(family_event, payload)` | — | [src](../../../core/services/curiosity_budget.py#L173) |
+| function | `curiosity_enabled` | `()` | Read killswitch from settings. Fail-open: settings errors → True. | [src](../../../core/services/curiosity_budget.py#L185) |
+| function | `idle_window_open` | `()` | — | [src](../../../core/services/curiosity_budget.py#L197) |
+| function | `open_idle_window` | `()` | Mark window open IF there's still budget. No-op if budget exhausted. | [src](../../../core/services/curiosity_budget.py#L202) |
+| function | `close_idle_window` | `(*, reason)` | Close the window. Reason is logged for diagnostics. | [src](../../../core/services/curiosity_budget.py#L212) |
+| function | `format_curiosity_window_for_awareness` | `()` | Render the curiosity window text for prompt_contract injection. | [src](../../../core/services/curiosity_budget.py#L225) |
+
 ## `core/services/curiosity_consolidation.py`
 _Curiosity-observations weekly consolidation._
 
@@ -552,14 +571,4 @@ _In-memory device-presence pr. bruger. Efemær — genopbygges af klient-pings._
 | function | `summary` | `(user_id)` | — | [src](../../../core/services/device_presence.py#L235) |
 | function | `location_for` | `(user_id)` | Bedst-kendte lokation for en bruger på tværs af enheder (til geo-tools). | [src](../../../core/services/device_presence.py#L259) |
 | function | `debug_snapshot` | `(user_id)` | Diagnostik: live presence-tilstande + rank-resultat for én bruger. | [src](../../../core/services/device_presence.py#L279) |
-
-## `core/services/device_tokens.py`
-_Per-bruger FCM device-tokens. Egen tabel — rører ikke db.py's 33k linjer._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_ensure_table` | `()` | — | [src](../../../core/services/device_tokens.py#L11) |
-| function | `register` | `(user_id, token, platform=…)` | — | [src](../../../core/services/device_tokens.py#L28) |
-| function | `list_for_user` | `(user_id)` | — | [src](../../../core/services/device_tokens.py#L45) |
-| function | `delete` | `(token)` | — | [src](../../../core/services/device_tokens.py#L57) |
 

@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/r2_5_blocking_gate.py`
+_R2.5 — conditional blocking gate._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_live_thresholds` | `()` | Settings-backed tærskler (config uden deploy, 2026-06-22); modul-konstanterne | [src](../../../core/services/r2_5_blocking_gate.py#L57) |
+| function | `_heed_rate_24h` | `()` | — | [src](../../../core/services/r2_5_blocking_gate.py#L76) |
+| function | `should_block_for_verification` | `(*, reasoning_tier)` | Decide whether to inject a 'stop and look back' block. | [src](../../../core/services/r2_5_blocking_gate.py#L88) |
+| function | `r2_5_block_section` | `(reasoning_tier)` | Render the block as a high-priority awareness section, or None. | [src](../../../core/services/r2_5_blocking_gate.py#L218) |
+
 ## `core/services/read_before_write_guard.py`
 _Read-before-write guard — prevents overwrite of existing files without prior read._
 
@@ -695,14 +705,4 @@ _Retention-sweep — bremser ubegrænset vækst på høj-volumen tabeller._
 | function | `_prune_telemetry` | `(table, max_age_days, now)` | — | [src](../../../core/services/retention.py#L45) |
 | function | `_prune_unmatched_policies` | `(max_age_days, now)` | Slet generaliserede principper der ALDRIG har matchet og er >max_age gamle — | [src](../../../core/services/retention.py#L57) |
 | function | `run_retention_sweep` | `(*, force=…, now=…)` | Kør retention. Selv-throttlende (max 1×/24h) medmindre force=True. | [src](../../../core/services/retention.py#L74) |
-
-## `core/services/retry_admissibility.py`
-_Et ukendt udfald maa aldrig gentages automatisk — Fase 3, K7._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `Dom` | `` | — | [src](../../../core/services/retry_admissibility.py#L43) |
-| function | `_er_beviseligt_uskadeligt` | `(tool_name)` | Kun `read_only` — og kun naar den er ERKLAERET, ikke gaettet. | [src](../../../core/services/retry_admissibility.py#L49) |
-| function | `may_auto_retry` | `(tool_name, arguments)` | Maa dette kald gentages AUTOMATISK — uden at et menneske ser paa det? | [src](../../../core/services/retry_admissibility.py#L59) |
-| function | `advar_hvis_gentagelse` | `(tool_name, arguments)` | Sig hoejt at dette kald gentager noget med ukendt udfald. | [src](../../../core/services/retry_admissibility.py#L86) |
 

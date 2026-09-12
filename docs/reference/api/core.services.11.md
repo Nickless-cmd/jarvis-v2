@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/emitted_prefix.py`
+_Hvad nåede FAKTISK ud til klienten, før turen blev afbrudt?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `Prefix` | `` | Det leverede præfiks — og om det er HELE det leverede. | [src](../../../core/services/emitted_prefix.py#L45) |
+| method | `Prefix.__bool__` | `(self)` | — | [src](../../../core/services/emitted_prefix.py#L55) |
+| function | `_tekst_fra_ramme` | `(raa)` | Tekstindholdet i én SSE-ramme. Tom streng for alt der ikke er tekst. | [src](../../../core/services/emitted_prefix.py#L59) |
+| function | `emitted_prefix` | `(run_id)` | Præcis den tekst der nåede den genoptagelige buffer for dette run. | [src](../../../core/services/emitted_prefix.py#L81) |
+
 ## `core/services/emotion_concepts.py`
 _Emotion Concepts — discrete, event-driven Lag-2 emotional signals._
 
@@ -646,13 +656,4 @@ _Hvad gør vi når FØRSTE pas kom tilbage ubrugelig?_
 | function | `resend_target` | `(provider, model)` | (provider, model, thinking_mode) til ét gen-spørg efter et TOMT første pas. | [src](../../../core/services/first_pass_recovery.py#L35) |
 | function | `first_pass_is_hollow` | `(text, tool_calls)` | Lovede første pas en handling uden at kalde ét eneste værktøj? | [src](../../../core/services/first_pass_recovery.py#L57) |
 | function | `nudge_for_tool_calls` | `(*, message, provider, model, session_id, thinking_mode, tool_scope=…, local_exec=…)` | Spoerg ÉN gang mere, med nudget, ad en vej der ANNONCERER vaerktoejer. | [src](../../../core/services/first_pass_recovery.py#L79) |
-
-## `core/services/flow_state_detection.py`
-_Flow State Detection — when everything clicks._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `update_flow_detection` | `(*, recent_outcomes, correction_count=…, sustained_minutes=…)` | — | [src](../../../core/services/flow_state_detection.py#L11) |
-| function | `get_flow_state` | `()` | — | [src](../../../core/services/flow_state_detection.py#L33) |
-| function | `build_flow_state_surface` | `()` | — | [src](../../../core/services/flow_state_detection.py#L37) |
 

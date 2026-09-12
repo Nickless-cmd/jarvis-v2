@@ -2,6 +2,22 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/loop_runtime.py`
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `build_loop_runtime_surface` | `()` | — | [src](../../../core/services/loop_runtime.py#L14) |
+| function | `_build_loop_runtime_surface_uncached` | `()` | — | [src](../../../core/services/loop_runtime.py#L22) |
+| function | `build_loop_runtime_from_sources` | `(*, open_loop_surface, proactive_loop_surface, quiet_initiative, previous=…, now=…)` | — | [src](../../../core/services/loop_runtime.py#L45) |
+| function | `build_loop_runtime_prompt_section` | `(surface=…)` | — | [src](../../../core/services/loop_runtime.py#L110) |
+| function | `_open_loop_items` | `(surface, *, previous_items)` | — | [src](../../../core/services/loop_runtime.py#L142) |
+| function | `_proactive_loop_items` | `(surface, *, previous_items)` | — | [src](../../../core/services/loop_runtime.py#L179) |
+| function | `_quiet_initiative_item` | `(quiet, *, previous_items, built_at)` | — | [src](../../../core/services/loop_runtime.py#L217) |
+| function | `_loop_item_sort_key` | `(item)` | — | [src](../../../core/services/loop_runtime.py#L260) |
+| function | `_reason_code_for_open_loop` | `(status)` | — | [src](../../../core/services/loop_runtime.py#L271) |
+| function | `_reason_code_for_proactive_loop` | `(status, loop_state)` | — | [src](../../../core/services/loop_runtime.py#L279) |
+| function | `_parse_iso` | `(value)` | — | [src](../../../core/services/loop_runtime.py#L288) |
+
 ## `core/services/loyalty_gradient_signal_tracking.py`
 _Loyalty-gradient signal tracking — migrated onto signal_tracking_framework._
 
@@ -630,22 +646,4 @@ _Rangér modeller på ÆGTE opgaver med facit hentet fra repoet._
 | function | `opgave_for` | `(fil, *, rod=…)` | Spørgsmålet stilles i den FORM der udløser fejlen: en liste med mange | [src](../../../core/services/model_benchmark.py#L175) |
 | function | `kør_benchmark` | `(*, provider, model, antal_filer=…, frø=…, kald=…, rod=…)` | Kør benchmarken for én model. Kaster aldrig. | [src](../../../core/services/model_benchmark.py#L187) |
 | function | `gem_kvalitet` | `(*, provider, model, resultat)` | Skriv `kvalitets_score` ved siden af `probe_score` i registret. | [src](../../../core/services/model_benchmark.py#L234) |
-
-## `core/services/model_catalogue_sweep.py`
-_Ugentlig gennemgang: hvilke modeller lever, og hvad kan de?_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_now` | `()` | — | [src](../../../core/services/model_catalogue_sweep.py#L45) |
-| function | `_foretræk_gratis` | `(navne)` | `:free` først. En gratis model der virker er mere værd for cheap lane | [src](../../../core/services/model_catalogue_sweep.py#L49) |
-| function | `kandidater_for` | `(provider, *, registrerede, fra_api, statiske, maks_nye=…)` | Hvad skal prøves hos denne udbyder? | [src](../../../core/services/model_catalogue_sweep.py#L55) |
-| function | `beslut` | `(resultat)` | (skal_være_aktiv, grund). Ren funktion — al politik ét sted. | [src](../../../core/services/model_catalogue_sweep.py#L81) |
-| function | `egnet_til_agentarbejde` | `(resultat)` | Explore og andre opgave-agenter må kun få modeller der kan bruge et | [src](../../../core/services/model_catalogue_sweep.py#L107) |
-| function | `sweep_provider` | `(provider, *, hent_modeller=…, proev=…, skriv=…, maks_nye=…)` | Gennemgå én udbyder. Returnerer en ændringsrapport. | [src](../../../core/services/model_catalogue_sweep.py#L114) |
-| function | `_registrerede_modeller` | `(provider)` | — | [src](../../../core/services/model_catalogue_sweep.py#L197) |
-| function | `_hent_modeller_fra_api` | `(provider, profil)` | — | [src](../../../core/services/model_catalogue_sweep.py#L213) |
-| function | `_skriv_registret` | `(*, provider, model, aktiv, grund, score, detalje, profil)` | Skriv én models tilstand. Returnerer True hvis noget ÆNDREDE sig. | [src](../../../core/services/model_catalogue_sweep.py#L224) |
-| function | `sammendrag` | `(rapporter)` | Én besked til mobilen. Kun ÆNDRINGER — en push der hver uge siger | [src](../../../core/services/model_catalogue_sweep.py#L297) |
-| function | `underret_ejeren` | `(besked, *, send=…)` | Kun ejeren. Cheap-lane-helbred er driftsdata om HANS konti og penge — | [src](../../../core/services/model_catalogue_sweep.py#L325) |
-| function | `sweep_alle` | `(*, providers=…, underret=…, proev=…, skriv=…)` | Gennemgå hele cheap lane. Returnerer rapporter + den sendte besked. | [src](../../../core/services/model_catalogue_sweep.py#L346) |
 

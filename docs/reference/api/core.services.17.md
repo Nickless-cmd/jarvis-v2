@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/override_command.py`
+_Owner-override-kommando — delt handler for gateways (Discord/Telegram)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `handle_override_command` | `(text, *, session_id, owner_seed, level=…, now=…)` | Håndtér `!override <kode>` / `!revoke-override` — Auth-cluster GENNEM Centralen (observe). | [src](../../../core/services/override_command.py#L24) |
+| function | `_handle_override_command_impl` | `(text, *, session_id, owner_seed, level=…, now=…)` | Håndtér `!override <kode>` / `!revoke-override`. | [src](../../../core/services/override_command.py#L52) |
+
 ## `core/services/override_store.py`
 _Owner-override-session-store — DB-backed, cross-proces._
 
@@ -639,28 +647,4 @@ _Proactive-outbound substrate — what Jarvis just said proactively._
 | function | `_merge_fragments` | `(*values)` | — | [src](../../../core/services/proactive_question_gate_tracking.py#L581) |
 | function | `_slug` | `(value)` | — | [src](../../../core/services/proactive_question_gate_tracking.py#L590) |
 | function | `_parse_dt` | `(value)` | — | [src](../../../core/services/proactive_question_gate_tracking.py#L597) |
-
-## `core/services/proactivity_bridge.py`
-_Proaktivitets-broen — samler Jarvis' indre spørgsmål/initiativer/undren og overflader dem til_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `classify` | `(candidate)` | 'urgent' hvis høj/kritisk prioritet eller kritisk kind; ellers 'normal'. Ren. | [src](../../../core/services/proactivity_bridge.py#L21) |
-| function | `select` | `(candidates)` | Dedup på source_id, split i urgent/normal, sortér (urgent først/friskest), cap normal-listen. | [src](../../../core/services/proactivity_bridge.py#L30) |
-| function | `should_reach_owner` | `(*, owner_present, is_quiet, sent_today, cap, within_cooldown, urgent)` | Ren contact-gate (kalderen injicerer signalerne). Rækkefølge = spam-værn: | [src](../../../core/services/proactivity_bridge.py#L46) |
-| function | `build_urgent` | `(item)` | Enkelt-item besked (urgent-gren). | [src](../../../core/services/proactivity_bridge.py#L62) |
-| function | `build_digest` | `(normal)` | 'Mens du var væk'-digest af normale items (kort, prioriteret). | [src](../../../core/services/proactivity_bridge.py#L69) |
-| function | `_norm_digest` | `(text)` | Normalisér digest til gentagelses-sammenligning (trim/lowercase/kollaps whitespace). | [src](../../../core/services/proactivity_bridge.py#L89) |
-| function | `_digest_is_repeat` | `(text)` | True hvis digest-teksten ~= den sidst postede assistant-besked i proactivity-sessionen. | [src](../../../core/services/proactivity_bridge.py#L94) |
-| function | `_owner_uid` | `()` | Kanonisk owner-uid = owner-resolver'ens discord-id (samme som den virkende outreach-daemon | [src](../../../core/services/proactivity_bridge.py#L126) |
-| function | `_owner_presence` | `(uid)` | (present, away_seconds) fra ÆGTE owner-signaler — IKKE runs (som inkluderer autonome → | [src](../../../core/services/proactivity_bridge.py#L143) |
-| function | `collect_candidates` | `()` | Læs de EKSISTERENDE kilder (egress-frit, skriver intet). Self-safe → []. | [src](../../../core/services/proactivity_bridge.py#L172) |
-| function | `_route` | `(uid, text, importance)` | Send direkte via den eksisterende notifikations-router (springer nudge-brønden over — broen | [src](../../../core/services/proactivity_bridge.py#L203) |
-| function | `_sidst_aktive_samtale` | `()` | Den senest rørte af HANS egne samtaler — ikke en baggrunds-session. | [src](../../../core/services/proactivity_bridge.py#L225) |
-| function | `_persist_as_chat` | `(uid, text)` | Skriv beskeden som en RIGTIG chat-besked, så Bjørn kan se og SVARE på den | [src](../../../core/services/proactivity_bridge.py#L256) |
-| function | `_mark_sent_items_acted` | `(items)` | Markér afsendte initiativer som acted, så de ikke sendes igen senere (før kun | [src](../../../core/services/proactivity_bridge.py#L277) |
-| function | `_observe` | `(nerve, meta)` | — | [src](../../../core/services/proactivity_bridge.py#L301) |
-| function | `run_proactivity_bridge_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence run_fn. Hybrid: urgent straks / ellers digest / ellers observe suppressed. | [src](../../../core/services/proactivity_bridge.py#L309) |
-| function | `register_proactivity_bridge_producer` | `()` | Registrér broen som cadence-producer (~10 min, visible_grace 15 min). | [src](../../../core/services/proactivity_bridge.py#L377) |
-| function | `build_proactivity_bridge_surface` | `()` | Read-only surface til /central/proactivity + jc. Self-safe. | [src](../../../core/services/proactivity_bridge.py#L384) |
 

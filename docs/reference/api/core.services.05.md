@@ -2,6 +2,24 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/central_initiative_ladder.py`
+_central_initiative_ladder — den gradvise, gatede initiativ-stige (rådets #3)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `InitiativeStage` | `` | De fire trin et initiativ stiger igennem. | [src](../../../core/services/central_initiative_ladder.py#L32) |
+| function | `_label_for_want` | `(top_want)` | Byg et kort, ufølsomt label for det stærkeste initiativ. | [src](../../../core/services/central_initiative_ladder.py#L54) |
+| function | `_read_accumulator_state` | `()` | Læs initiative-accumulator-tilstand. Self-safe → tomt. | [src](../../../core/services/central_initiative_ladder.py#L67) |
+| function | `_read_proposal_surface` | `()` | Læs autonomy-proposal-surfacen. Self-safe → tomt. | [src](../../../core/services/central_initiative_ladder.py#L80) |
+| function | `_proposals_from_surface` | `(surface)` | Uddrag proposal-listen fra surfacen (items eller recent). Self-safe. | [src](../../../core/services/central_initiative_ladder.py#L93) |
+| function | `_stage_counts` | `(accumulator, proposals)` | Tæl hvor mange initiativer der pt. sidder på hvert trin. | [src](../../../core/services/central_initiative_ladder.py#L103) |
+| function | `_gate_observe_to_propose` | `(accumulator)` | Gate: er der et vedvarende/stærkt nok want til at foreslå? | [src](../../../core/services/central_initiative_ladder.py#L143) |
+| function | `_gate_propose_to_execute` | `(proposals)` | Gate: er et forslag godkendt/sikkert (læser status, auto-godkender IKKE)? | [src](../../../core/services/central_initiative_ladder.py#L157) |
+| function | `_gate_execute_to_learn` | `(proposals)` | Gate: kørte det seneste initiativ-forslag færdigt? | [src](../../../core/services/central_initiative_ladder.py#L176) |
+| function | `_strongest_stage` | `(accumulator, proposals)` | Afled hvilket trin det STÆRKESTE initiativ er nået til. | [src](../../../core/services/central_initiative_ladder.py#L189) |
+| function | `evaluate_ladder` | `()` | Afled initiativ-stigens tilstand fra eksisterende runtime-state. | [src](../../../core/services/central_initiative_ladder.py#L208) |
+| function | `absorb_ladder` | `()` | Evaluér stigen og absorbér den som en levende central-nerve. | [src](../../../core/services/central_initiative_ladder.py#L250) |
+
 ## `core/services/central_injection_registry.py`
 _Central-styret injektions-register (ændrings-drevet indre liv, spec 2026-07-05)._
 
@@ -597,16 +615,4 @@ _Relationel Continuity — så Jarvis kan sige "velkommen tilbage" og MENE det._
 | function | `wake_greeting` | `()` | En jordet opvågnings-hilsen der står på ægte varighed + tone — ikke en generisk floskel. | [src](../../../core/services/central_relational.py#L51) |
 | function | `build_relational_surface` | `()` | Owner/self-view: dage + tone + opvågnings-hilsen. Self-safe. | [src](../../../core/services/central_relational.py#L68) |
 | function | `record_relational` | `(*, trigger=…, last_visible_at=…)` | Cadence: observér relations-kontinuitet (KUN dage + tone-label, ingen indhold — §24.4). | [src](../../../core/services/central_relational.py#L77) |
-
-## `core/services/central_render.py`
-_core/services/central_render.py_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_term` | `(name)` | — | [src](../../../core/services/central_render.py#L19) |
-| function | `_head` | `(name)` | Første led af et sammensat navn (cluster/nerve, familie.subtype) — det bindbare hoved. | [src](../../../core/services/central_render.py#L27) |
-| function | `render_cluster_relation` | `(cluster_a, cluster_b, *, relation=…)` | To clusters i relation → notation (X → Y / X ↔ Y). None hvis ét led er ubundet. Self-safe. | [src](../../../core/services/central_render.py#L32) |
-| function | `render_anomaly` | `(name, *, importance=…)` | En anomali = kilden førte til et STØD (overraskelse/afvigelse) → '<term> → stød'. Renderet som | [src](../../../core/services/central_render.py#L42) |
-| function | `render_decision` | `(cluster, *, verdict=…)` | En central-beslutning → notation. deny → 'grænse ! <term>' (grænsen blokerer); allow → | [src](../../../core/services/central_render.py#L50) |
-| function | `render_state_snapshot` | `(*, limit=…)` | Aktuelle central-tilstande renderet til notation (on-read). I dag: uløste anomalier. B2 lader | [src](../../../core/services/central_render.py#L64) |
 

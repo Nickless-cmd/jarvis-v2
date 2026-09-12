@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/device_tokens.py`
+_Per-bruger FCM device-tokens. Egen tabel — rører ikke db.py's 33k linjer._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_ensure_table` | `()` | — | [src](../../../core/services/device_tokens.py#L11) |
+| function | `register` | `(user_id, token, platform=…)` | — | [src](../../../core/services/device_tokens.py#L28) |
+| function | `list_for_user` | `(user_id)` | — | [src](../../../core/services/device_tokens.py#L45) |
+| function | `delete` | `(token)` | — | [src](../../../core/services/device_tokens.py#L57) |
+
 ## `core/services/diagnosis_gate.py`
 _Diagnosis-gate (spec 2026-06-14) — fanger uverificerede diagnostiske konklusioner._
 
@@ -687,14 +697,4 @@ _Emergent Goals — desires that grow from experience, not assignment._
 | function | `_safe_daemon_state` | `(module_name, fn_name)` | — | [src](../../../core/services/emergent_signal_tracking.py#L410) |
 | function | `_inner_voice_recent` | `(state, *, now)` | — | [src](../../../core/services/emergent_signal_tracking.py#L419) |
 | function | `_parse_dt` | `(value)` | — | [src](../../../core/services/emergent_signal_tracking.py#L432) |
-
-## `core/services/emitted_prefix.py`
-_Hvad nåede FAKTISK ud til klienten, før turen blev afbrudt?_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `Prefix` | `` | Det leverede præfiks — og om det er HELE det leverede. | [src](../../../core/services/emitted_prefix.py#L45) |
-| method | `Prefix.__bool__` | `(self)` | — | [src](../../../core/services/emitted_prefix.py#L55) |
-| function | `_tekst_fra_ramme` | `(raa)` | Tekstindholdet i én SSE-ramme. Tom streng for alt der ikke er tekst. | [src](../../../core/services/emitted_prefix.py#L59) |
-| function | `emitted_prefix` | `(run_id)` | Præcis den tekst der nåede den genoptagelige buffer for dette run. | [src](../../../core/services/emitted_prefix.py#L81) |
 

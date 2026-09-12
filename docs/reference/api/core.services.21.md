@@ -2,6 +2,24 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/security_guard.py`
+_Identity-verification-guard & abuse-monitoring — kerne (spec 2026-06-21)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_now` | `()` | — | [src](../../../core/services/security_guard.py#L30) |
+| function | `_iso` | `(dt=…)` | — | [src](../../../core/services/security_guard.py#L34) |
+| function | `is_owner` | `(user_id)` | True hvis user_id er ejeren (Bjørn). Owner kan få session-lock men | [src](../../../core/services/security_guard.py#L39) |
+| function | `record_audit` | `(user_id, action, *, session_id=…, details=…, device_info=…)` | Append-only. Aktioner: override_activated, sudo_executed, session_locked, | [src](../../../core/services/security_guard.py#L54) |
+| function | `record_abuse` | `(user_id, session_id, event_type, severity, *, details=…)` | severity ∈ {low, medium, high}. Kun high eskalerer til lock (§11.4). | [src](../../../core/services/security_guard.py#L73) |
+| function | `lock_session` | `(session_id, reason, *, user_id=…)` | — | [src](../../../core/services/security_guard.py#L93) |
+| function | `unlock_session` | `(session_id, *, user_id=…)` | — | [src](../../../core/services/security_guard.py#L108) |
+| function | `is_session_locked` | `(session_id)` | — | [src](../../../core/services/security_guard.py#L123) |
+| function | `is_account_locked` | `(user_id)` | True hvis brugeren har en AKTIV (ikke-udløbet) 'locked'-flag. | [src](../../../core/services/security_guard.py#L138) |
+| function | `_lock_account` | `(user_id, *, hours=…)` | Lås ALLE brugerens sessioner + sæt 'locked'-flag (udløber om `hours`). | [src](../../../core/services/security_guard.py#L156) |
+| function | `_recent_session_lock_count` | `(user_id, *, hours=…)` | Antal session-lock-audit-entries for user_id i de sidste `hours`. | [src](../../../core/services/security_guard.py#L180) |
+| function | `escalate_session_lock` | `(user_id, session_id, reason)` | Lås sessionen, og afgør om det også udløser account-lockdown. | [src](../../../core/services/security_guard.py#L198) |
+
 ## `core/services/seed_system.py`
 _Seed System — prospective memory / dormant intentions._
 
@@ -754,20 +772,4 @@ _Session distillation and private brain continuity._
 | function | `build_session_distillation_surface` | `(*, limit=…)` | Return recent distillation records for observability. | [src](../../../core/services/session_distillation.py#L885) |
 | function | `generate_session_summary` | `(*, session_id, run_id=…, user_message=…, assistant_response=…)` | Generate and store a compact conversation summary for the given session. | [src](../../../core/services/session_distillation.py#L905) |
 | function | `build_previous_session_summaries` | `(*, limit=…)` | Build a text block with recent session summaries for prompt injection. | [src](../../../core/services/session_distillation.py#L1000) |
-
-## `core/services/session_inbox.py`
-_Session inbox — gates daemon notifications during active sessions._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_ensure_table` | `(conn)` | — | [src](../../../core/services/session_inbox.py#L59) |
-| function | `_connect` | `()` | — | [src](../../../core/services/session_inbox.py#L78) |
-| function | `is_session_active` | `(session_id, *, window_seconds=…)` | Has this session seen chat-stream activity recently? | [src](../../../core/services/session_inbox.py#L88) |
-| function | `enqueue` | `(*, session_id, content, source, urgent=…)` | Add a daemon notification to the inbox for later delivery. | [src](../../../core/services/session_inbox.py#L122) |
-| function | `pending_for_session` | `(session_id)` | List items still queued for delivery in this session. | [src](../../../core/services/session_inbox.py#L153) |
-| function | `flush_session` | `(session_id)` | Deliver all queued items for a session. Each becomes an actual | [src](../../../core/services/session_inbox.py#L171) |
-| function | `pending_count` | `(session_id=…)` | — | [src](../../../core/services/session_inbox.py#L237) |
-| function | `_listener_loop` | `()` | Background flusher. | [src](../../../core/services/session_inbox.py#L262) |
-| function | `start_session_inbox` | `()` | Start the DB-polling flusher. Idempotent. | [src](../../../core/services/session_inbox.py#L346) |
-| function | `stop_session_inbox` | `()` | — | [src](../../../core/services/session_inbox.py#L363) |
 

@@ -2,6 +2,13 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/autonomous_stream_run.py`
+_Server-authoritative streaming lifecycle for autonomous visible runs._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `start_autonomous_stream_run` | `(message, *, session_id, origin=…)` | Start autonomous work and relay its v2 frames through ``run_event_log``. | [src](../../../core/services/autonomous_stream_run.py#L5) |
+
 ## `core/services/autonomous_supervisor.py`
 _Autonom run-supervision (#3) — Centralen følger HVERT autonomt run, korrelerer det på tværs_
 
@@ -618,13 +625,4 @@ _Anomali-detektor — fanger de fejl Centralen IKKE selv har en nerve til endnu.
 | function | `install_hooks` | `()` | Installér globale fang-hooks (idempotent). Kaldes ved proces-start. | [src](../../../core/services/central_anomaly.py#L233) |
 | function | `install_asyncio_hook` | `(loop)` | Installér asyncio-exception-handler på en kørende event-loop (self-safe). | [src](../../../core/services/central_anomaly.py#L290) |
 | function | `anomaly_summary` | `(*, limit=…)` | Til realtime-panelet: tæller pr. importance + de seneste/vigtigste anomalier. | [src](../../../core/services/central_anomaly.py#L318) |
-
-## `core/services/central_arbitration.py`
-_§4 cluster-arbitrage — deterministisk afgørelse når flere clusters' verdicts konflikter_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `arbitrate` | `(verdicts)` | Kombinér flere verdicts til ÉT deterministisk udfald. Tom liste → GREEN. | [src](../../../core/services/central_arbitration.py#L21) |
-| function | `observe_shadow` | `(verdicts, *, enforced_blocked, run_id=…, where=…)` | §11 Trin 1 (SHADOW, 0-risiko): sammenlign den DEKLAREREDE arbitrage mod det faktisk | [src](../../../core/services/central_arbitration.py#L40) |
-| function | `explain` | `(verdicts)` | Read-only forklaring af en arbitrage (til debug/MC): hvem vandt og hvorfor. | [src](../../../core/services/central_arbitration.py#L65) |
 

@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/flow_state_detection.py`
+_Flow State Detection — when everything clicks._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `update_flow_detection` | `(*, recent_outcomes, correction_count=…, sustained_minutes=…)` | — | [src](../../../core/services/flow_state_detection.py#L11) |
+| function | `get_flow_state` | `()` | — | [src](../../../core/services/flow_state_detection.py#L33) |
+| function | `build_flow_state_surface` | `()` | — | [src](../../../core/services/flow_state_detection.py#L37) |
+
 ## `core/services/followup_observer.py`
 _Followup-cluster — gør den agentiske followup-loop synlig i Den Intelligente Central._
 
@@ -502,13 +511,4 @@ _Grounded capability follow-up — det andet pas efter en udført evne._
 | function | `_safe_dream_influence` | `()` | — | [src](../../../core/services/guided_learning_runtime.py#L482) |
 | function | `_safe_loop_runtime` | `()` | — | [src](../../../core/services/guided_learning_runtime.py#L489) |
 | function | `_safe_council_runtime` | `()` | — | [src](../../../core/services/guided_learning_runtime.py#L497) |
-
-## `core/services/gut_calibration.py`
-_Gut-calibration wiring — fodrer cognitive_gut_state fra run-livscyklussen._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `observe_run_event` | `(kind, payload)` | Dispatch fra run_closure_gate's listener. Kaster aldrig. | [src](../../../core/services/gut_calibration.py#L29) |
-| function | `_on_started` | `(payload)` | — | [src](../../../core/services/gut_calibration.py#L40) |
-| function | `_on_outcome` | `(payload, actual_outcome)` | — | [src](../../../core/services/gut_calibration.py#L70) |
 

@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/central_arbitration.py`
+_§4 cluster-arbitrage — deterministisk afgørelse når flere clusters' verdicts konflikter_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `arbitrate` | `(verdicts)` | Kombinér flere verdicts til ÉT deterministisk udfald. Tom liste → GREEN. | [src](../../../core/services/central_arbitration.py#L21) |
+| function | `observe_shadow` | `(verdicts, *, enforced_blocked, run_id=…, where=…)` | §11 Trin 1 (SHADOW, 0-risiko): sammenlign den DEKLAREREDE arbitrage mod det faktisk | [src](../../../core/services/central_arbitration.py#L40) |
+| function | `explain` | `(verdicts)` | Read-only forklaring af en arbitrage (til debug/MC): hvem vandt og hvorfor. | [src](../../../core/services/central_arbitration.py#L65) |
+
 ## `core/services/central_architect.py`
 _The Architect — periodisk selv-arkitekt der foreslår ÉT tungt strukturelt snit._
 
@@ -547,22 +556,4 @@ _core/services/central_hypothesis_sampler.py_
 | function | `test_stance_persistence` | `(tension_key)` | stance_divergence (§8.4): 'to organer er gentagne gange uenige'. Test PERSISTENS — gentager | [src](../../../core/services/central_hypothesis_sampler.py#L93) |
 | function | `run_hypothesis_sampler_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence-producer: test hver aktiv CAUSAL-hypotese mod event-strømmen, registrér ét grounded | [src](../../../core/services/central_hypothesis_sampler.py#L106) |
 | function | `register_hypothesis_sampler_producer` | `()` | Registrér samleren som cadence-producer (~hvert 30 min). | [src](../../../core/services/central_hypothesis_sampler.py#L169) |
-
-## `core/services/central_initiative_ladder.py`
-_central_initiative_ladder — den gradvise, gatede initiativ-stige (rådets #3)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `InitiativeStage` | `` | De fire trin et initiativ stiger igennem. | [src](../../../core/services/central_initiative_ladder.py#L32) |
-| function | `_label_for_want` | `(top_want)` | Byg et kort, ufølsomt label for det stærkeste initiativ. | [src](../../../core/services/central_initiative_ladder.py#L54) |
-| function | `_read_accumulator_state` | `()` | Læs initiative-accumulator-tilstand. Self-safe → tomt. | [src](../../../core/services/central_initiative_ladder.py#L67) |
-| function | `_read_proposal_surface` | `()` | Læs autonomy-proposal-surfacen. Self-safe → tomt. | [src](../../../core/services/central_initiative_ladder.py#L80) |
-| function | `_proposals_from_surface` | `(surface)` | Uddrag proposal-listen fra surfacen (items eller recent). Self-safe. | [src](../../../core/services/central_initiative_ladder.py#L93) |
-| function | `_stage_counts` | `(accumulator, proposals)` | Tæl hvor mange initiativer der pt. sidder på hvert trin. | [src](../../../core/services/central_initiative_ladder.py#L103) |
-| function | `_gate_observe_to_propose` | `(accumulator)` | Gate: er der et vedvarende/stærkt nok want til at foreslå? | [src](../../../core/services/central_initiative_ladder.py#L143) |
-| function | `_gate_propose_to_execute` | `(proposals)` | Gate: er et forslag godkendt/sikkert (læser status, auto-godkender IKKE)? | [src](../../../core/services/central_initiative_ladder.py#L157) |
-| function | `_gate_execute_to_learn` | `(proposals)` | Gate: kørte det seneste initiativ-forslag færdigt? | [src](../../../core/services/central_initiative_ladder.py#L176) |
-| function | `_strongest_stage` | `(accumulator, proposals)` | Afled hvilket trin det STÆRKESTE initiativ er nået til. | [src](../../../core/services/central_initiative_ladder.py#L189) |
-| function | `evaluate_ladder` | `()` | Afled initiativ-stigens tilstand fra eksisterende runtime-state. | [src](../../../core/services/central_initiative_ladder.py#L208) |
-| function | `absorb_ladder` | `()` | Evaluér stigen og absorbér den som en levende central-nerve. | [src](../../../core/services/central_initiative_ladder.py#L250) |
 

@@ -415,6 +415,21 @@ _Auto code-review heuristic for git-commit proposals._
 | function | `review_pending_commit` | `(*, repo_root, files, message, rationale)` | — | [src](../../../core/services/auto_code_review.py#L77) |
 | function | `review_pending_commit_gated` | `(**kwargs)` | Som review_pending_commit, men GOVERNET af Centralen (COGNITIVE, cluster='commit') | [src](../../../core/services/auto_code_review.py#L168) |
 
+## `core/services/auto_continuation.py`
+_Fortsæt automatisk når turen blev klippet af sit eget budget._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `Beslutning` | `` | Svaret, med grunden. Grunden er ikke pynt — den skal i loggen, så en | [src](../../../core/services/auto_continuation.py#L53) |
+| function | `beslut` | `(*, exit_reason, slaaet_til, autonom, kaede_nr, bruger_skrev_imens, maks_kaede=…)` | Skal denne tur fortsætte af sig selv? | [src](../../../core/services/auto_continuation.py#L61) |
+| function | `fortsaettelses_besked` | `(kaede_nr, maks_kaede=…)` | Teksten Jarvis får. Den siger hvor han er, og at han skal sige til når | [src](../../../core/services/auto_continuation.py#L93) |
+| function | `noter_udfald` | `(run_id, exit_reason)` | — | [src](../../../core/services/auto_continuation.py#L123) |
+| function | `hent_udfald` | `(run_id)` | — | [src](../../../core/services/auto_continuation.py#L134) |
+| function | `kaede_nr` | `(session_id)` | — | [src](../../../core/services/auto_continuation.py#L139) |
+| function | `saet_kaede` | `(session_id, nr)` | — | [src](../../../core/services/auto_continuation.py#L144) |
+| function | `noter_brugerbesked` | `(session_id)` | Brugeren skrev selv. Bruges til to ting: nulstille kæden, og afgøre om | [src](../../../core/services/auto_continuation.py#L157) |
+| function | `bruger_skrev_efter` | `(session_id, tidspunkt)` | Har brugeren skrevet efter `tidspunkt`? Så har han taget over, og en | [src](../../../core/services/auto_continuation.py#L169) |
+
 ## `core/services/auto_improvement_proposer.py`
 _Auto improvement proposer — close the self-improvement loop SAFELY._
 
@@ -588,11 +603,4 @@ _Autonome sessioner — rotér pr. oprindelse+dag, og gør historien synlig._
 | function | `resolve_autonomous_session` | `(origin)` | Returnér (opret idempotent) sessionen for (oprindelse, i dag). | [src](../../../core/services/autonomous_sessions.py#L44) |
 | function | `_origin_of_session` | `(session_id)` | Udled oprindelse fra et ``auto-{origin}-{dato}``-id. | [src](../../../core/services/autonomous_sessions.py#L63) |
 | function | `build_autonomous_history_surface` | `(*, days=…, per_origin_limit=…)` | Projicér den autonome historie for owner-visning (§24.4-sikker). | [src](../../../core/services/autonomous_sessions.py#L73) |
-
-## `core/services/autonomous_stream_run.py`
-_Server-authoritative streaming lifecycle for autonomous visible runs._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `start_autonomous_stream_run` | `(message, *, session_id, origin=…)` | Start autonomous work and relay its v2 frames through ``run_event_log``. | [src](../../../core/services/autonomous_stream_run.py#L5) |
 

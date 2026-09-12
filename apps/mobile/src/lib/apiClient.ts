@@ -556,3 +556,19 @@ export async function getGitStatus(
     link,
   }
 }
+
+/**
+ * Tommel op/ned på ét svar. Tom streng fortryder.
+ *
+ * Knappen har hidtil været ren lokal markering — `MessageBubble` sagde det
+ * selv: «der er ingen feedback-kanal til serveren endnu, og en knap der lader
+ * som om den sender noget, er værre end ingen knap». Det her er kanalen.
+ */
+export async function sendMessageFeedback(
+  config: ApiConfig, messageId: string, vote: 'up' | 'down' | '', sessionId = '',
+): Promise<void> {
+  await apiFetch(config, `/chat/messages/${encodeURIComponent(messageId)}/feedback`, {
+    method: 'POST',
+    body: { vote, session_id: sessionId },
+  })
+}

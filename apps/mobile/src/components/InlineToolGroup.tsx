@@ -94,9 +94,22 @@ export function InlineToolGroup({ items }: Props) {
       {open ? (
         <View style={styles.details} testID="tool-group-details">
           {items.map((item, i) => (
-            <Text key={`${item.label}-${i}`} style={styles.detail} numberOfLines={1}>
-              {item.label}
-            </Text>
+            <View key={`${item.label}-${i}`} style={styles.detailRaekke}>
+              <Text style={styles.detail} numberOfLines={1}>{item.label}</Text>
+              {item.diff ? (
+                // Groen/roed pr. kald. Samme semantik som diff-badgen: `ok` og
+                // `error`, ikke accent — en diff maa ikke skifte betydning
+                // fordi nogen vaelger en anden accentfarve.
+                <View style={styles.tal}>
+                  {item.diff.tilfoejet ? (
+                    <Text style={[styles.talTekst, styles.plus]}>+{item.diff.tilfoejet}</Text>
+                  ) : null}
+                  {item.diff.fjernet ? (
+                    <Text style={[styles.talTekst, styles.minus]}>−{item.diff.fjernet}</Text>
+                  ) : null}
+                </View>
+              ) : null}
+            </View>
           ))}
         </View>
       ) : null}
@@ -118,5 +131,12 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
     paddingBottom: tokens.spacing.sm,
     gap: 6
   },
-  detail: { color: tokens.color.fg3, fontSize: 14 }
+  detail: { color: tokens.color.fg3, fontSize: 14, flex: 1 },
+  detailRaekke: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  tal: { flexDirection: 'row', gap: 6 },
+  // Tabular-nums: tallene staar under hinanden i en liste, og uden dem
+  // danser kolonnen naar cifrene skifter bredde.
+  talTekst: { fontSize: 12.5, fontWeight: '600', fontVariant: ['tabular-nums'] },
+  plus: { color: tokens.color.ok },
+  minus: { color: tokens.color.error }
 })

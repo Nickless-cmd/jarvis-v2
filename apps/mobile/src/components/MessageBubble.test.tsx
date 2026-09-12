@@ -22,15 +22,17 @@ describe('handlingsrækken hører til turens SIDSTE afsnit', () => {
   }
 
   it('vises som standard', async () => {
+    // Kopiér bor under «...» nu; oplæsning staar stadig i raekken.
     const s = await render(<MessageBubble message={svar} />)
-    expect(s.getByLabelText('Kopiér')).toBeTruthy()
+    expect(s.getByLabelText('Læs op')).toBeTruthy()
+    expect(s.getByLabelText('Flere handlinger')).toBeTruthy()
   })
 
   it('skjules på afsnit der ikke er turens sidste', async () => {
     // En tur udfoldes i flere afsnit; uden dette fik HVERT afsnit sin egen
     // kopiér/oplæs-række, og tråden blev støjende.
     const s = await render(<MessageBubble message={svar} hideActions />)
-    expect(s.queryByLabelText('Kopiér')).toBeNull()
+    expect(s.queryByLabelText('Læs op')).toBeNull()
   })
 
   // Kodeblokke tegnes af CodeBlock via en markdown-REGEL, ikke via en stil.
@@ -214,5 +216,43 @@ describe('markér hele beskeden', () => {
     await act(async () => { fireEvent.press(r.getByTestId('msg-select-text')) })
     await act(async () => { fireEvent.press(r.getByTestId('msg-select-done')) })
     expect(r.queryByTestId('msg-select-done')).toBeNull()
+  })
+})
+
+describe('tilbagemeldinger', () => {
+  const svar2 = {
+    id: 'm-9', role: 'assistant' as const,
+    content: 'et svar', created_at: '2026-09-12T12:00:00Z',
+  }
+
+  it('kopier og tommelfingre bor under «...» — ikke i raekken', async () => {
+    // Seks ikoner i en raekke koster seks pladser, og det man vaelger ÉN gang
+    // om maaneden skal ikke have en fast plads.
+    const s = await render(<MessageBubble message={svar2} />)
+    expect(s.queryByLabelText('God besvarelse')).toBeNull()
+    await fireEvent.press(s.getByLabelText('Flere handlinger'))
+    expect(s.getByTestId('msg-copy')).toBeTruthy()
+    expect(s.getByTestId('msg-vote-up')).toBeTruthy()
+    expect(s.getByTestId('msg-vote-down')).toBeTruthy()
+  })
+
+  it('en stemme MARKERES med det samme', async () => {
+    // Et tryk der venter paa et netvaerkssvar foeles som et tryk der ikke
+    // virkede - samme regel som godkendelseskortet.
+    const s = await render(<MessageBubble message={svar2} />)
+    await fireEvent.press(s.getByLabelText('Flere handlinger'))
+    await fireEvent.press(s.getByTestId('msg-vote-up'))
+    await fireEvent.press(s.getByLabelText('Flere handlinger'))
+    expect(s.getByText('God besvarelse ✓')).toBeTruthy()
+  })
+
+  it('samme stemme igen FORTRYDER', async () => {
+    const s = await render(<MessageBubble message={svar2} />)
+    await fireEvent.press(s.getByLabelText('Flere handlinger'))
+    await fireEvent.press(s.getByTestId('msg-vote-up'))
+    await fireEvent.press(s.getByLabelText('Flere handlinger'))
+    await fireEvent.press(s.getByTestId('msg-vote-up'))
+    await fireEvent.press(s.getByLabelText('Flere handlinger'))
+    expect(s.getByText('God besvarelse')).toBeTruthy()
   })
 })

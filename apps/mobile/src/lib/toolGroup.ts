@@ -17,6 +17,14 @@
 export interface ToolItem {
   /** Beskrivelsen af det enkelte kald: «Læste USER.md». */
   label: string
+  /**
+   * Linjer ændret af DETTE kald. null når værktøjet ikke redigerer noget.
+   *
+   * Regnet af klienten ud af kaldets egne argumenter — se `toolDiff`. Det er
+   * ikke det samme tal som badgen over komponisten: dén måler HELE
+   * arbejdstræet, denne måler ét kald.
+   */
+  diff?: { tilfoejet: number; fjernet: number } | null
   running: boolean
   /** Værktøjets navn — bruges til at afgøre om runden er ensartet. */
   tool: string

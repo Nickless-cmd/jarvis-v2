@@ -176,8 +176,7 @@ export function ChatScreen({
   // indtil naeste puls.
   const [git, setGit] = useState<GitStatus | null>(null)
   // Hvor arbejdet foregaar. Kommer fra sessionen (dvs. det desk sidst brugte)
-  // og kan saettes direkte fra vaelgeren. `container`/`repo` er samme
-  // udgangspunkt som git-status i forvejen brugte.
+  // og kan saettes direkte fra vaelgeren.
   const [ws, setWs] = useState<{ kind: 'container' | 'workstation'; root: string }>(
     { kind: 'container', root: 'repo' },
   )
@@ -1004,7 +1003,14 @@ export function ChatScreen({
         <ResearchStatus research={stream.state.research} />
         {/* Lige OVER komponisten, som i Codex. Den tegner sig selv vaek naar
             traeet er rent - se DiffBadge for hvorfor det ikke er «0 filer». */}
-        <DiffBadge git={kodeTilstand ? git : null} />
+        {/* KUN hans egen maskine. Serverens repo er FÆLLES: målte badgen
+            dét, ville enhver bruger kunne se hvor meget der lå uafsluttet i
+            containeren — altså hvad andre laver. Bjørn 12/9-2026: «kun måle
+            på de ting han ændrer på computeren».
+
+            Det er ikke en indstilling man kan slå fra. Et tal der lækker
+            andres arbejde må slet ikke kunne vises. */}
+        <DiffBadge git={kodeTilstand && ws.kind === 'workstation' ? git : null} />
         <Composer
           indsaet={indsaet}
           disabled={!config || pendingAttachments.some((a) => a.status === 'uploading')}

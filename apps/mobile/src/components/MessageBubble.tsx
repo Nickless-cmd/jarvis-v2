@@ -5,6 +5,7 @@ import MarkdownIt from 'markdown-it'
 import * as Clipboard from 'expo-clipboard'
 import { readAloud as readAloudText, stopReading } from '../lib/readAloud'
 import { useAuthOptional } from '../state/AuthContext'
+import { sendMessageFeedback } from '../lib/apiClient'
 import { Animated, Linking, Modal, Platform, Pressable, Share, StyleSheet, Text, View } from 'react-native'
 import { CodeBlock } from './CodeBlock'
 import type { ChatMessage } from '../lib/types'
@@ -67,10 +68,23 @@ export function MessageBubble({
   const isUser = message.role === 'user'
   const [speaking, setSpeaking] = useState(false)
   const [copied, setCopied] = useState(false)
-  // Tommelen er indtil videre KUN lokal markering. Der er ingen feedback-kanal
-  // til serveren endnu, og en knap der lader som om den sender noget, er værre
-  // end ingen knap. Når kanalen findes, sendes den herfra.
+  // Tommelen SENDER nu. Kanalen findes (`/chat/messages/{id}/feedback`), og
+  // stemmerne bliver til noget: én gang om måneden vågner Jarvis op til dem og
+  // afgør om hver enkelt er en lektie, en overvejelse eller støj.
+  //
+  // Tilstanden sættes LOKALT først og sendes bagefter. Et tryk der venter på
+  // et netværkssvar føles som et tryk der ikke virkede — samme regel som
+  // godkendelseskortet.
   const [vote, setVote] = useState<'up' | 'down' | null>(null)
+  const stem = (ny: 'up' | 'down') => {
+    const naeste = vote === ny ? null : ny
+    setVote(naeste)
+    setMenuOpen(false)
+    if (config) {
+      void sendMessageFeedback(config, message.id, naeste ?? '')
+        .catch(() => undefined)
+    }
+  }
   // «...» havde en handler INGEN sendte — knappen har aldrig gjort noget.
   // Den er nu dét den ligner: en menu med de handlinger der ikke er værd at
   // bruge en plads på i den målte seks-ikon-række.
@@ -220,35 +234,10 @@ export function MessageBubble({
           dér, og hver linje man IKKE skriver, er en linje mindre støj. */}
       {!streaming && !isUser && !hideActions ? (
         <View style={styles.actions}>
-          <Pressable accessibilityLabel="Kopiér" hitSlop={10} onPress={copy}>
-            {copied ? (
-              <Check size={ICON} color={tokens.color.fg2} strokeWidth={1.8} />
-            ) : (
-              <Copy size={ICON} color={tokens.color.fg2} strokeWidth={1.8} />
-            )}
-          </Pressable>
-          <Pressable
-            accessibilityLabel="God besvarelse"
-            hitSlop={10}
-            onPress={() => setVote((v) => (v === 'up' ? null : 'up'))}
-          >
-            <ThumbsUp
-              size={ICON}
-              color={vote === 'up' ? tokens.color.accent : tokens.color.fg2}
-              strokeWidth={1.8}
-            />
-          </Pressable>
-          <Pressable
-            accessibilityLabel="Dårlig besvarelse"
-            hitSlop={10}
-            onPress={() => setVote((v) => (v === 'down' ? null : 'down'))}
-          >
-            <ThumbsDown
-              size={ICON}
-              color={vote === 'down' ? tokens.color.error : tokens.color.fg2}
-              strokeWidth={1.8}
-            />
-          </Pressable>
+          {/* Kopiér og tommelfingrene bor under «...» nu. Bjørn bad om det, og
+              geometrien giver ham ret: seks ikoner i en række koster seks
+              pladser, og de tre man bruger oftest er ikke dem der stod først.
+              Det man vælger ÉN gang om måneden skal ikke have en fast plads. */}
           <Pressable accessibilityLabel="Læs op" hitSlop={10} onPress={readAloud}>
             {speaking ? (
               <Square size={ICON} color={tokens.color.fg2} strokeWidth={1.8} />
@@ -277,6 +266,50 @@ export function MessageBubble({
         <Modal visible transparent animationType="fade" onRequestClose={() => setMenuOpen(false)}>
           <Pressable style={styles.menuBackdrop} onPress={() => setMenuOpen(false)} accessibilityLabel="Luk" />
           <View style={styles.menuSheet}>
+            <Pressable
+              testID="msg-copy"
+              accessibilityRole="button"
+              accessibilityLabel="Kopiér"
+              onPress={() => { setMenuOpen(false); void copy() }}
+              style={styles.menuRow}
+            >
+              {copied
+                ? <Check size={18} color={tokens.color.fg2} strokeWidth={1.8} />
+                : <Copy size={18} color={tokens.color.fg2} strokeWidth={1.8} />}
+              <Text style={styles.menuText}>Kopiér</Text>
+            </Pressable>
+            <Pressable
+              testID="msg-vote-up"
+              accessibilityRole="button"
+              accessibilityLabel="God besvarelse"
+              onPress={() => stem('up')}
+              style={styles.menuRow}
+            >
+              <ThumbsUp
+                size={18}
+                color={vote === 'up' ? tokens.color.accent : tokens.color.fg2}
+                strokeWidth={1.8}
+              />
+              <Text style={styles.menuText}>
+                {vote === 'up' ? 'God besvarelse ✓' : 'God besvarelse'}
+              </Text>
+            </Pressable>
+            <Pressable
+              testID="msg-vote-down"
+              accessibilityRole="button"
+              accessibilityLabel="Dårlig besvarelse"
+              onPress={() => stem('down')}
+              style={styles.menuRow}
+            >
+              <ThumbsDown
+                size={18}
+                color={vote === 'down' ? tokens.color.error : tokens.color.fg2}
+                strokeWidth={1.8}
+              />
+              <Text style={styles.menuText}>
+                {vote === 'down' ? 'Dårlig besvarelse ✓' : 'Dårlig besvarelse'}
+              </Text>
+            </Pressable>
             {onTogglePin ? (
               <Pressable
                 testID="msg-toggle-pin"

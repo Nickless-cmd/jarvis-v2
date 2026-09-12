@@ -10,6 +10,7 @@ import { nextUserRow } from '../lib/messageNav'
 import { MessageBubble } from './MessageBubble'
 import { InlineToolGroup } from './InlineToolGroup'
 import { ThinkingLabel } from './ThinkingLabel'
+import { toolDiff } from '../lib/toolDiff'
 import { describeTool, describeToolResult } from '../lib/toolSummary'
 import { countFromResult, type ToolItem } from '../lib/toolGroup'
 import { attachmentBlocks, hasOrdering, parseBlocks, thinkingBlock } from '../lib/persistedBlocks'
@@ -70,7 +71,7 @@ type Row =
   /** Billeder/filer sendt MED en brugerbesked, tegnet over boblen. */
   | { kind: 'attachments'; key: string; items: PersistedBlock[] }
   | { kind: 'tool'; key: string; content: string }
-  | { kind: 'live-tool'; key: string; name: string; body: string; running: boolean; etiket?: string }
+  | { kind: 'live-tool'; key: string; name: string; body: string; running: boolean; etiket?: string; diff?: { tilfoejet: number; fjernet: number } | null }
   /** Én RUNDE værktøjsarbejde, foldet sammen til én linje. */
   | { kind: 'tool-group'; key: string; items: ToolItem[] }
   /**
@@ -95,7 +96,7 @@ function groupToolRounds(rows: Row[]): Row[] {
     if (buf.length === 0) return
     const items: ToolItem[] = buf.map((r) =>
       r.kind === 'live-tool'
-        ? { label: r.etiket || describeTool(r.name, r.body, r.running), running: r.running, tool: r.name }
+        ? { label: r.etiket || describeTool(r.name, r.body, r.running), running: r.running, tool: r.name, diff: r.diff ?? null }
         : {
             label: describeToolResult((r as { content: string }).content),
             running: false,
@@ -168,6 +169,9 @@ function buildStreamingRows(blocks: ContentBlock[]): Row[] {
         name: b.name,
         body: toolBody(b),
         running: b.status !== 'done' && b.status !== 'error',
+        // Linjetallene for DETTE kald. De ligger allerede i argumenterne;
+        // serveren skulle ikke spoerges om noget klienten har.
+        diff: toolDiff(b.name, b.input),
         // Serverens egen etiket, brugt ORDRET. En foreløbig række har ingen
         // argumenter endnu — `describeTool` ville sige «Kører bash…» og tabe
         // netop dét der gør ventetiden forståelig. Etiketten findes allerede

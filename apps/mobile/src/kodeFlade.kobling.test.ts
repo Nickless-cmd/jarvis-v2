@@ -98,7 +98,7 @@ it('ChatScreen henter git-tilstanden — og KUN i code-fladen', () => {
 
 it('diff-badgen staar over komponisten og KUN i code', () => {
   const cs = kilde('screens/ChatScreen.tsx')
-  expect(cs).toMatch(/<DiffBadge git=\{kodeTilstand \? git : null\} \/>/)
+  expect(cs).toMatch(/<DiffBadge git=\{kodeTilstand && ws\.kind === 'workstation' \? git : null\} \/>/)
   // ... og faktisk FOER komponisten, ikke et tilfaeldigt sted.
   expect(cs.indexOf('<DiffBadge')).toBeLessThan(cs.indexOf('<Composer'))
 })
@@ -244,4 +244,31 @@ it('godkendelseskortet ryddes FOER kaldet afventes', () => {
   const afvis = sc.slice(iA, sc.indexOf('follow: (config', iA))
   expect(godkend.indexOf('setApproval(null)')).toBeLessThan(godkend.indexOf('await approveTool'))
   expect(afvis.indexOf('setApproval(null)')).toBeLessThan(afvis.indexOf('await denyTool'))
+})
+
+it('diff-badgen maaler KUN hans egen maskine', () => {
+  // Serverens repo er FAELLES. Maalte badgen dét, ville enhver bruger kunne
+  // se hvor meget der laa uafsluttet i containeren - altsaa hvad ANDRE
+  // laver. Det er ikke en indstilling man kan slaa fra.
+  const cs = kilde('screens/ChatScreen.tsx')
+  expect(cs).toMatch(/<DiffBadge git=\{kodeTilstand && ws\.kind === 'workstation' \? git : null\} \/>/)
+})
+
+it('linjetallene pr. vaerktoejskald regnes af argumenterne', () => {
+  const ml = kilde('components/MessageList.tsx')
+  expect(ml).toMatch(/diff: toolDiff\(b\.name, b\.input\)/)
+  const g = kilde('components/InlineToolGroup.tsx')
+  expect(g).toMatch(/item\.diff\.tilfoejet/)
+  expect(g).toMatch(/item\.diff\.fjernet/)
+})
+
+it('tommelen SENDER faktisk — den er ikke laengere en lokal markering', () => {
+  // Kommentaren i MessageBubble sagde det selv: «der er ingen feedback-kanal
+  // til serveren endnu, og en knap der lader som om den sender noget, er
+  // vaerre end ingen knap». Kanalen findes nu.
+  const mb = kilde('components/MessageBubble.tsx')
+  expect(mb).toMatch(/sendMessageFeedback\(config, message\.id, naeste \?\? ''\)/)
+  // ... og tilstanden saettes FOER kaldet.
+  const blok = mb.slice(mb.indexOf('const stem ='), mb.indexOf('const stem =') + 500)
+  expect(blok.indexOf('setVote(naeste)')).toBeLessThan(blok.indexOf('sendMessageFeedback'))
 })

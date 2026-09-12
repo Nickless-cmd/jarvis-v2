@@ -49,10 +49,23 @@ export const STANDARD: ChatIndstillingerV2 = {
   spoergFoerst: true,
 }
 
-const PRAEFIKS = 'jarvis:chatcfg:'
+// PUNKTUM, IKKE KOLON. Expo SecureStore tillader kun [A-Za-z0-9._-] i en
+// nøgle. Præfikset var 'jarvis:chatcfg:', og rensningen nedenfor ramte KUN
+// sessionId — så hver eneste nøgle indeholdt to ugyldige tegn, kaldet kastede,
+// og `catch {}` i gemIndstillinger slugte det. Disse indstillinger har aldrig
+// kunnet gemmes.
+//
+// Målt 12. sep 2026 på testtelefonen: sæt «Fuld adgang», tving-stop, start
+// igen → «Spørg først», ved T+6s, T+14s og T+26s. Ikke en race; værdien var
+// aldrig skrevet. Alle de præferencer der VIRKER bruger punktum-nøgler:
+// jarvis.mobile.batterySaver, jarvis.mobile.bubblePersist,
+// jarvis.mobile.lastSession, jarvis_theme_mode.
+const PRAEFIKS = 'jarvis.chatcfg.'
 
 function noegle(sessionId: string): string {
-  return PRAEFIKS + String(sessionId || 'default').replace(/[^A-Za-z0-9._-]/g, '_')
+  // Rens HELE nøglen, ikke kun sessionId. Var det gjort fra start, havde
+  // præfiksets kolon aldrig nået ud — og fejlen havde ikke kunnet opstå.
+  return (PRAEFIKS + String(sessionId || 'default')).replace(/[^A-Za-z0-9._-]/g, '_')
 }
 
 function rensModel(v: unknown): StoredModelChoice | null {
@@ -100,12 +113,18 @@ export async function gemIndstillinger(
 ): Promise<ChatIndstillinger> {
   const nu = await laesIndstillinger(sessionId)
   const ny = parseChatIndstillinger({ ...nu, ...next })
+  let skrevet = false
   try {
     await SecureStore.setItemAsync(noegle(sessionId), JSON.stringify(ny))
-  } catch {
-    /* stille — en indstilling der ikke kan gemmes må ikke vælte skærmen */
+    skrevet = true
+  } catch (fejl) {
+    // IKKE STILLE. En indstilling der ikke kan gemmes må ikke vælte skærmen —
+    // men den må heller ikke se ud som om den blev gemt. Den tavse udgave af
+    // denne catch skjulte en ugyldig nøgle i hele funktionens levetid, og
+    // kalderen fik den nye værdi retur som om alt var i orden.
+    console.warn('chatSettings: kunne ikke gemme indstillinger', fejl)
   }
-  return ny
+  return skrevet ? ny : nu
 }
 
 /** Oversæt til de felter stream-kroppen faktisk forstår.

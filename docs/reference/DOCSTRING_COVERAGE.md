@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7328/14400 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7329/14401 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,7 +8,7 @@ Generated from source. 7328/14400 functions/methods documented (50%). The list b
 |---|---|---|---|
 | `apps.api.jarvis_api` | 34 | 36 | 94% |
 | `apps.api.jarvis_api.middleware` | 7 | 17 | 41% |
-| `apps.api.jarvis_api.routes` | 612 | 804 | 76% |
+| `apps.api.jarvis_api.routes` | 613 | 805 | 76% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 67 | 168 | 39% |
 | `apps.desktop` | 6 | 7 | 85% |

@@ -481,6 +481,15 @@ def _parse_git_status(branch_out: str, porcelain_out: str, numstat_out: str) -> 
 _GIT_NONE = {"branch": "", "dirty": 0, "added": 0, "removed": 0, "is_git": False}
 
 
+def _bro_findes(uid: str) -> bool:
+    """Er der overhovedet en bro registreret for brugeren? Self-safe."""
+    try:
+        from core.services import bridge_presence
+        return bridge_presence.process_for_user(str(uid or "")) is not None
+    except Exception:
+        return False
+
+
 def _repo_og_vaert(root: str = "") -> dict:
     """Hvilket repo, og hvilken maskine — til code-headerens kontekstlinje.
 
@@ -514,10 +523,16 @@ def _git_status_sync(kind: str, root: str, uid: str = "") -> dict:
     if kind == "workstation":
         if not root.strip():
             return dict(_GIT_NONE)
+        # `hostname` hænger på DEN kommando der allerede køres derovre. Det
+        # er den eneste måde at få maskinens rigtige navn: bro-registret kender
+        # kun klientens id (målt 12/9-2026: «jarvisx-electron»), ikke værten.
+        # En ekstra tur over broen for ét ord ville koste det dobbelte i
+        # latens for ingenting.
         cmd = (
             f'git -C "{root}" rev-parse --abbrev-ref HEAD 2>/dev/null; echo "@@@"; '
             f'git -C "{root}" status --porcelain 2>/dev/null; echo "@@@"; '
-            f'git -C "{root}" diff --numstat HEAD 2>/dev/null'
+            f'git -C "{root}" diff --numstat HEAD 2>/dev/null; echo "@@@"; '
+            f'hostname 2>/dev/null'
         )
         res = _operator_exec("operator_bash", {"command": cmd, "_user_id": uid})
         # operator_bash-svaret pakkes af broen som {"status","result":{"stdout",...}}
@@ -525,12 +540,22 @@ def _git_status_sync(kind: str, root: str, uid: str = "") -> dict:
         # gamle res.get("stdout") var altid None → is_git=False → hele git-sektionen
         # skjult i workstation-mode selvom commit/PR faktisk virkede.
         r = res.get("result") or {}
-        out = str(r.get("stdout") or "") if res.get("status") == "ok" else ""
+        svarede = res.get("status") == "ok"
+        out = str(r.get("stdout") or "") if svarede else ""
         segs = out.split("@@@")
-        if len(segs) < 3 or not segs[0].strip():
-            return dict(_GIT_NONE)
+        # TRE FORBINDELSES-TILSTANDE, ikke to. «Broen findes» og «broen svarer»
+        # er ikke det samme: en desk der er ved at genstarte staar registreret
+        # et øjeblik endnu. At kalde det «nede» ville få prikken til at blinke
+        # rødt hver gang nogen genstartede sin app.
+        if not svarede or len(segs) < 3 or not segs[0].strip():
+            d = dict(_GIT_NONE)
+            d["link"] = "genforbinder" if _bro_findes(uid) else "nede"
+            return d
         d = _parse_git_status(segs[0], segs[1], segs[2])
         d["is_git"] = True
+        d["link"] = "ok"
+        if len(segs) >= 4:
+            d["host"] = segs[3].strip().splitlines()[0].strip() if segs[3].strip() else ""
         return d
 
     import subprocess
@@ -558,8 +583,16 @@ async def chat_git_status(kind: str = "container", root: str = "") -> dict:
     from core.identity.workspace_context import current_user_id
     uid = current_user_id() or ""
     svar = await asyncio.to_thread(_git_status_sync, kind, root, uid)
-    # ADDITIVT. Desk læser de samme felter som før; de to nye ignoreres dér.
-    svar.update(_repo_og_vaert(root))
+    # ADDITIVT. Desk læser de samme felter som før; de nye ignoreres dér.
+    #
+    # `host` fra workstation-grenen VINDER: den er maskinens eget navn, mens
+    # _repo_og_vaert kun kender API-værten. Uden den rækkefølge ville
+    # code-headeren sige «Jarvis» om en session der kører på Bjørns computer.
+    basis = _repo_og_vaert(root)
+    if svar.get("host"):
+        basis.pop("host", None)
+    svar.setdefault("link", "ok")
+    svar.update(basis)
     return svar
 
 

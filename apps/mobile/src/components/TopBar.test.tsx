@@ -62,7 +62,7 @@ it('code-titlen baerer repo og vaert naar git svarede', async () => {
   // Den ene oplysning telefonen ikke selv kan regne ud: API'et koerer et
   // andet sted end appen.
   const git = { branch: 'main', dirty: 73, added: 2925, removed: 1407, isGit: true as const,
-                repo: 'jarvis-v2', host: 'CheifOne' }
+                repo: 'jarvis-v2', host: 'CheifOne', link: 'ok' as const }
   const screen = await render(<TopBar {...base} kodeTilstand kodeTitel="Diagnose WLED" git={git} />)
   expect(screen.getByText('jarvis-v2')).toBeTruthy()
   expect(screen.getByText('CheifOne')).toBeTruthy()

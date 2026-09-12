@@ -15,11 +15,16 @@ import type { GitStatus } from '../lib/apiClient'
  * regne ud: hvilket repo på hvilken maskine. API'et kører et andet sted end
  * appen, og forskellen på at VIDE det og at gætte det er hele pointen.
  *
- * ## Hvorfor prikken er grøn
+ * ## Prikken har TRE farver
  *
- * Den siger at værten svarede. Er der ingen git-status, tegnes hele
- * kontekstlinjen ikke — en linje med tomme navne og en grøn prik ville
- * påstå en forbindelse der ikke er efterprøvet.
+ * Grøn: maskinen svarede. Gul: broen er der, men svarede ikke på det sidste
+ * kald — en desk der genstarter står registreret et øjeblik endnu, og rødt
+ * hver gang nogen genstartede sin app ville lære én at se bort fra farven.
+ * Rød: ingen forbindelse.
+ *
+ * Er der ingen git-status overhovedet, tegnes hele kontekstlinjen ikke — en
+ * linje med tomme navne og en grøn prik ville påstå en forbindelse der ikke
+ * er efterprøvet.
  */
 export function CodeTitle({ titel, git }: { titel: string; git: GitStatus | null }) {
   const tokens = useTheme()
@@ -35,11 +40,34 @@ export function CodeTitle({ titel, git }: { titel: string; git: GitStatus | null
           <Text style={styles.meta} numberOfLines={1}>{git.repo || 'repo'}</Text>
           <Monitor size={11} color={tokens.color.fg2} strokeWidth={1.9} />
           <Text style={styles.meta} numberOfLines={1}>{git.host || 'vært'}</Text>
-          <View style={styles.prik} />
+          <View
+            testID={`link-${git.link}`}
+            accessibilityLabel={LINK_ORD[git.link]}
+            style={[styles.prik, { backgroundColor: linkFarve(git.link, tokens) }]}
+          />
         </View>
       ) : null}
     </View>
   )
+}
+
+const LINK_ORD: Record<GitStatus['link'], string> = {
+  ok: 'Forbundet',
+  genforbinder: 'Genforbinder',
+  nede: 'Ingen forbindelse',
+}
+
+/**
+ * Farven på prikken.
+ *
+ * `ok` og `error` — IKKE accent. Det er semantik, ikke appens kulør: en
+ * forbindelse må ikke skifte betydning fordi nogen vælger en anden accentfarve
+ * i indstillingerne. Samme regel som diff-badgens plus og minus.
+ */
+export function linkFarve(link: GitStatus['link'], tokens: Theme): string {
+  if (link === 'nede') return tokens.color.error
+  if (link === 'genforbinder') return tokens.color.warn
+  return tokens.color.ok
 }
 
 const makestyles = (tokens: Theme) => StyleSheet.create({
@@ -68,8 +96,6 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
   },
   kontekst: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 1 },
   meta: { color: tokens.color.fg2, fontSize: 10.5, lineHeight: 12, maxWidth: 92 },
-  prik: {
-    width: 6, height: 6, borderRadius: 3,
-    backgroundColor: tokens.color.accent, marginLeft: 1,
-  },
+  // Farven saettes inline efter forbindelsen; her staar kun formen.
+  prik: { width: 6, height: 6, borderRadius: 3, marginLeft: 1 },
 })

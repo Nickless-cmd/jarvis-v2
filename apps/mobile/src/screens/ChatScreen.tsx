@@ -155,9 +155,20 @@ export function ChatScreen({
   // komponisten. Kun i code-fladen: i chat er den hverken relevant eller
   // gratis - det er et subprocess-kald pr. opslag.
   //
-  // 20 sekunder. Arbejdstraeet aendrer sig i ryk naar et vaerktoej skriver,
-  // ikke jaevnt; en hurtigere puls ville koste kald uden at vise andet.
+  // TO KADENCER. Bjoern: badgen skal vises «fra foerste aendring han laver».
+  // Arbejdstraeet aendrer sig praecis mens han arbejder, og stort set aldrig
+  // naar han ikke goer - saa en fast puls er enten for langsom til at fange
+  // den foerste aendring eller for dyr resten af tiden.
+  //
+  // 4 sekunder mens der streames, 20 naar der ikke goer.
+  //
+  // Det sidste kald naar streamen slutter kommer GRATIS: `arbejder` staar i
+  // afhaengighederne, saa effekten koerer om og henter med det samme naar den
+  // skifter. Det er vigtigt - det sidste vaerktoejskald kan skrive EFTER det
+  // sidste tick, og uden den hentning ville badgen staa med et forkert tal
+  // indtil naeste puls.
   const [git, setGit] = useState<GitStatus | null>(null)
+  const arbejder = stream.state.status === 'working'
   useEffect(() => {
     if (!config || !kodeTilstand) { setGit(null); return }
     let stoppet = false
@@ -169,10 +180,10 @@ export function ChatScreen({
         .catch(() => { if (!stoppet) setGit(null) })
     }
     hent()
-    const t = setInterval(hent, 20_000)
+    const t = setInterval(hent, arbejder ? 4_000 : 20_000)
     return () => { stoppet = true; clearInterval(t) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [config, kodeTilstand])
+  }, [config, kodeTilstand, arbejder])
 
   const aktivTitel = (sessions.sessions ?? []).find((x) => x.id === sessions.activeId)?.title || ''
   useEffect(() => {
@@ -1016,7 +1027,15 @@ export function ChatScreen({
             if (sid) void gemIndstillinger(sid, next).then(setChatCfg).catch(() => undefined)
           }}
           permission={chatCfg.spoergFoerst ? 'ask' : 'trust'}
-          onPressPermission={() => setPermissionPickerOpen(true)}
+          // KUN i code-fladen. Komponisten har allerede kontrakten «ingen
+          // handler = ingen knap», saa porten hoerer hjemme her frem for som
+          // et ekstra flag ned gennem komponenten.
+          //
+          // Tilladelser handler om hvad Jarvis maa goere ved filer og skal —
+          // et valg der kun giver mening naar man arbejder. I en samtale er
+          // skjoldet et ikon man aldrig roerer, paa den plads hvor de faa
+          // knapper man BRUGER skal staa.
+          onPressPermission={kodeTilstand ? () => setPermissionPickerOpen(true) : undefined}
         />
         </View>
       </View>

@@ -141,3 +141,18 @@ it('fladen gemmes ogsaa naar man skifter UDEN at skifte samtale', () => {
   expect(cs).toMatch(/saveLastSession\(sessions\.activeId, kodeTilstand\)/)
   expect(cs).toMatch(/\}, \[sessions\.activeId, kodeTilstand\]\)/)
 })
+
+it('git-tilstanden pulser HURTIGERE mens der streames', () => {
+  // Bjoern: badgen skal vises «fra foerste aendring». Arbejdstraeet aendrer
+  // sig praecis mens han arbejder og naesten aldrig ellers, saa en fast puls
+  // er enten for langsom eller for dyr.
+  const cs = kilde('screens/ChatScreen.tsx')
+  expect(cs).toMatch(/setInterval\(hent, arbejder \? 4_000 : 20_000\)/)
+})
+
+it('og henter ÉN gang til naar streamen slutter', () => {
+  // Det sidste vaerktoejskald kan skrive efter det sidste tick. Hentningen
+  // kommer af at `arbejder` staar i afhaengighederne.
+  const cs = kilde('screens/ChatScreen.tsx')
+  expect(cs).toMatch(/\}, \[config, kodeTilstand, arbejder\]\)/)
+})

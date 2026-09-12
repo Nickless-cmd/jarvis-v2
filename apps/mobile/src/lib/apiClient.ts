@@ -505,7 +505,17 @@ export interface GitStatus {
   removed: number
   isGit: boolean
   repo: string
+  /** Maskinen sessionen kører på. I workstation-tilstand dens EGET navn. */
   host: string
+  /**
+   * Forbindelsen til den maskine.
+   *
+   * Tre tilstande, ikke to: «broen findes» og «broen svarer» er ikke det
+   * samme. En desk der genstarter står registreret et øjeblik endnu, og at
+   * kalde det nede ville få prikken til at blinke rødt hver gang nogen
+   * genstartede sin app.
+   */
+  link: 'ok' | 'genforbinder' | 'nede'
 }
 
 /**
@@ -528,16 +538,21 @@ export async function getGitStatus(
   const qs = new URLSearchParams({ kind, root }).toString()
   const d = await apiFetch<{
     branch?: string; dirty?: number; added?: number; removed?: number
-    is_git?: boolean; repo?: string; host?: string
+    is_git?: boolean; repo?: string; host?: string; link?: string
   }>(config, `/chat/git-status?${qs}`)
-  if (!d.is_git) return null
+  const link = d.link === 'nede' || d.link === 'genforbinder' ? d.link : 'ok'
+  // IKKE null naar det ikke er et git-repo. Forbindelsen og maskinens navn er
+  // sande uanset om mappen er versionsstyret, og headeren skal kunne sige
+  // «nede» frem for at forsvinde. Foerste udgave returnerede null her, og saa
+  // ville en tabt forbindelse ligne at code-fladen slet ikke havde en maskine.
   return {
     branch: String(d.branch || ''),
     dirty: Number(d.dirty || 0),
     added: Number(d.added || 0),
     removed: Number(d.removed || 0),
-    isGit: true,
+    isGit: d.is_git === true,
     repo: String(d.repo || ''),
     host: String(d.host || ''),
+    link,
   }
 }

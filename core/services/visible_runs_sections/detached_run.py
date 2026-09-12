@@ -7,7 +7,11 @@ Log keyed pr. RUN → ingen kollision mellem overlappende runs (A3's fejl elimin
 """
 from __future__ import annotations
 
+import logging
 from uuid import uuid4
+
+
+logger = logging.getLogger(__name__)
 
 
 def start_user_run_detached(
@@ -129,11 +133,31 @@ def start_user_run_detached(
 
         try:
             loop.run_until_complete(_consume())
-        except Exception:
+        except BaseException:
+            # DEN TAVSE SLUGER (Bjoern 13/9-2026). Her loeber HELE svaret. Foer
+            # stod der `except Exception: mark_done()` og ikke ét ord mere — saa
+            # naar noget gik galt herinde, fik brugeren 200 OK, en valgt udbyder,
+            # et run-id, og derefter absolut stilhed. Ingen fejl, intet svar,
+            # ingen raekke i visible_runs. Eneste udvej var at skrive «Forsæt» og
+            # slaa terningen igen; maalt 24 gange paa ét doegn.
+            #
+            # `BaseException`, ikke `Exception`: en CancelledError herinde er
+            # netop den slags der forsvandt sporloest.
+            logger.exception(
+                "detached-run KRAKKEDE run_id=%s session=%s — svaret naaede aldrig brugeren",
+                run_id, sid,
+            )
+            # Og saa skal klienten VIDE det. Uden en terminal frame bliver
+            # telefonen staaende i «arbejder» til den giver op af sig selv.
+            try:
+                rel.append(run_id, rel.synthetic_terminal_frame(
+                    run_id, sid, reason="detached_run_crashed"))
+            except Exception:
+                logger.warning("kunne ikke sende terminal-frame for %s", run_id)
             try:
                 rel.mark_done(run_id)
             except Exception:
-                pass
+                logger.warning("kunne ikke markere %s som done", run_id)
         finally:
             loop.close()
 

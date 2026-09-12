@@ -873,3 +873,91 @@ def test_get_skill_instructions_security_warning(isolated_skills_root) -> None:
     res = get_skill_instructions("tampered")
     assert res["status"] == "ok"                  # blokerer ikke (advisory)
     assert "security_warning" in res
+
+
+# ── hash-vagt: er skillens tekst en anden end sidst? ─────────────────────
+#
+# gate_skill scanner for prompt-injection og koerer ved LAESNING netop fordi
+# "en skill kan vaere aendret paa disk efter oprettelse". Men en heuristik der
+# gaetter paa om tekst SER ondsindet ud, er et svagt svar paa det spoergsmaal.
+# "Teksten er en anden end sidst" er praecist: sandt eller falsk, ingen falske
+# positiver. De to supplerer hinanden.
+
+class _FalskSkill:
+    def __init__(self, navn, beskrivelse="b", naar="n", instruktioner="i"):
+        self.name = navn
+        self.description = beskrivelse
+        self.use_when = naar
+        self.instructions = instruktioner
+
+
+def _lager(monkeypatch):
+    """Runtime-state i hukommelsen + opsamlede audit-poster."""
+    from core.services import skill_engine as E
+    state: dict[str, str] = {}
+    poster: list[tuple] = []
+    import core.runtime.db_core as DB
+    monkeypatch.setattr(DB, "get_runtime_state_value", lambda k, d="": state.get(k, d))
+    monkeypatch.setattr(DB, "set_runtime_state_value", lambda k, v, **kw: state.update({k: v}))
+    monkeypatch.setattr(E, "_record_audit_entry",
+                        lambda n, a, **kw: poster.append((n, a, kw)))
+    return state, poster
+
+
+def test_foerste_laesning_noterer_ingen_aendring(monkeypatch):
+    """Der er intet at sammenligne med. En post her ville vaere stoej ved
+    hver eneste ny skill."""
+    from core.services import skill_engine as E
+    state, poster = _lager(monkeypatch)
+    E._noter_hvis_indhold_aendret(_FalskSkill("s1"))
+    assert poster == []
+    assert state["skill_content_hash.s1"]
+
+
+def test_uaendret_indhold_giver_ingen_post(monkeypatch):
+    """Kontrolarm. Uden den ville en vagt der ALTID noterede bestaa nedenfor."""
+    from core.services import skill_engine as E
+    _, poster = _lager(monkeypatch)
+    s = _FalskSkill("s1")
+    E._noter_hvis_indhold_aendret(s)
+    E._noter_hvis_indhold_aendret(s)
+    assert poster == []
+
+
+def test_aendret_indhold_bliver_noteret(monkeypatch):
+    from core.services import skill_engine as E
+    _, poster = _lager(monkeypatch)
+    E._noter_hvis_indhold_aendret(_FalskSkill("s1", instruktioner="gammel"))
+    E._noter_hvis_indhold_aendret(_FalskSkill("s1", instruktioner="NY OG ANDERLEDES"))
+    assert len(poster) == 1
+    navn, handling, kw = poster[0]
+    assert navn == "s1" and handling == "content_changed_on_disk"
+    assert kw["snapshot"]["forrige_hash"] != kw["snapshot"]["ny_hash"]
+
+
+def test_kun_de_felter_der_naar_prompten_taeller(monkeypatch):
+    """Tags og stier maa ikke udloese en post — ellers ligner en ligegyldig
+    omdoebning en indholds-aendring, og vagten bliver stoej man lærer at
+    ignorere."""
+    from core.services import skill_engine as E
+    _, poster = _lager(monkeypatch)
+    a = _FalskSkill("s1"); a.tags = ["x"]
+    b = _FalskSkill("s1"); b.tags = ["helt", "andre", "tags"]
+    E._noter_hvis_indhold_aendret(a)
+    E._noter_hvis_indhold_aendret(b)
+    assert poster == []
+
+
+def test_handlingen_er_registreret_ellers_skrives_der_i_ingenting(monkeypatch):
+    """_record_audit_entry AFVISER ukendte handlinger med en warning. Var den
+    nye ikke i listen, ville vagten koere og intet efterlade."""
+    from core.services.skill_engine import AUDIT_ACTIONS
+    assert "content_changed_on_disk" in AUDIT_ACTIONS
+
+
+def test_en_fejl_i_vagten_braekker_ikke_laesningen(monkeypatch):
+    from core.services import skill_engine as E
+    import core.runtime.db_core as DB
+    monkeypatch.setattr(DB, "get_runtime_state_value",
+                        lambda *a, **k: (_ for _ in ()).throw(RuntimeError("db nede")))
+    assert E._noter_hvis_indhold_aendret(_FalskSkill("s1")) == ""

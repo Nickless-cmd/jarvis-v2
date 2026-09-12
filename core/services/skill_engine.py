@@ -551,11 +551,86 @@ def delete_skill(name: str, *, force: bool = False) -> dict[str, Any]:
     return {"status": "ok", "name": name, "note": "Skill deleted."}
 
 
+def _indholds_hash(skill: Any) -> str:
+    """Fingeraftryk af det en skill FAKTISK siger til modellen.
+
+    Kun de tre felter der naar prompten: beskrivelse, use_when og selve
+    instruktionerne. Ikke tags, ikke stier, ikke tidsstempler — ellers ville
+    en ligegyldig omdøbning ligne en indholds-ændring.
+    """
+    import hashlib
+    raa = "\x00".join([
+        str(getattr(skill, "description", "") or ""),
+        str(getattr(skill, "use_when", "") or ""),
+        str(getattr(skill, "instructions", "") or ""),
+    ])
+    return hashlib.sha256(raa.encode("utf-8")).hexdigest()[:32]
+
+
+def _noter_hvis_indhold_aendret(skill: Any) -> str:
+    """Har denne skills tekst ændret sig siden sidst vi læste den?
+
+    ## Hvorfor dette findes ved siden af scanneren
+
+    `gate_skill` scanner skill-indhold for prompt-injection, og docstringen i
+    `get_skill_instructions` forklarer hvorfor den koerer ved LAESNING og ikke
+    kun ved oprettelse: «en skill kan vaere aendret paa disk efter oprettelse».
+
+    Men en heuristik der gaetter paa om tekst SER ondsindet ud, er et svagt svar
+    paa det spoergsmaal. «Teksten er en anden end sidst» er et praecist svar:
+    det er enten sandt eller falsk, og det har ingen falske positiver.
+
+    De to supplerer hinanden. Scanneren siger «det her ligner noget slemt»;
+    denne siger «nogen har aendret den, uden at du bad om det».
+
+    ## Hvorfor den ikke blokerer
+
+    En aendring er ikke i sig selv forkert — Bjoern retter selv skills. Derfor
+    noteres den i `skill_audit_log`, hvor resten af en skills liv staar, frem
+    for at spaerre en laesning. Er aendringen uventet, staar den der naar nogen
+    kigger. Det er den samme afvejning `gate_skill` traf for sin advisory-gren.
+
+    Returnerer den nye hash, eller "" hvis den ikke kunne beregnes.
+    """
+    try:
+        from core.runtime.db_core import get_runtime_state_value, set_runtime_state_value
+        navn = str(getattr(skill, "name", "") or "")
+        if not navn:
+            return ""
+        ny = _indholds_hash(skill)
+        noegle = f"skill_content_hash.{navn}"
+        gammel = str(get_runtime_state_value(noegle, "") or "")
+        if gammel and gammel != ny:
+            # FOERST notatet, saa hash'en. Faldt processen imellem, ville den
+            # omvendte raekkefoelge tabe hændelsen for altid — hash'en var
+            # opdateret og aendringen aldrig skrevet ned.
+            _record_audit_entry(
+                navn, "content_changed_on_disk",
+                diff_summary=f"{gammel[:12]}… → {ny[:12]}…",
+                reason="indholdet er et andet end sidst det blev laest",
+                snapshot={"forrige_hash": gammel, "ny_hash": ny},
+            )
+            logger.warning(
+                "skill_engine: indholdet i '%s' er aendret paa disk (%s… → %s…)",
+                navn, gammel[:12], ny[:12],
+            )
+        if gammel != ny:
+            set_runtime_state_value(noegle, ny)
+        return ny
+    except Exception as exc:
+        # Maa aldrig braekke en laesning. Men heller ikke tie: en vagt der er
+        # holdt op med at virke er praecis den fejl den blev bygget imod.
+        logger.warning("skill_engine: kunne ikke hash-tjekke skill: %s", exc)
+        return ""
+
+
 def get_skill_instructions(name: str) -> dict[str, Any]:
     """Get the full instructions + context for a skill (for prompt injection)."""
     skill = get_skill(name)
     if not skill:
         return {"status": "error", "error": f"skill '{name}' not found"}
+
+    _noter_hvis_indhold_aendret(skill)
 
     result = {
         "status": "ok",
@@ -634,7 +709,12 @@ def build_skill_engine_surface() -> dict[str, Any]:
 
 # ── Audit trail (C1 — Skills versionering) ────────────────────────────
 
-AUDIT_ACTIONS = ("created", "updated", "deleted", "bulk_reloaded")
+# `content_changed_on_disk` er den eneste der IKKE kommer fra en mutation vi
+# selv foretog: den noteres naar en skills tekst er en anden end sidst den
+# blev laest. Uden den i listen ville _record_audit_entry springe den over
+# med en warning — og vagten ville skrive i ingenting.
+AUDIT_ACTIONS = ("created", "updated", "deleted", "bulk_reloaded",
+                 "content_changed_on_disk")
 
 
 def _ensure_audit_table() -> None:

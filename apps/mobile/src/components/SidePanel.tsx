@@ -16,6 +16,28 @@ const PANEL_WIDTH = Math.min(360, Math.round(Dimensions.get('window').width * 0.
  * "Ny samtale", og et tandhjul → Settings (hvor plugins/connectors + log ud
  * bor — spec §"Settings vs Plugins"). Lukker ved ring-tryk, valg, eller udenfor.
  */
+/** En raekke i panelet: ikon + navn. Erstatter de navnloese ikoner i toppen —
+ *  en oejenpaere og en kasse siger ikke hvad de goer, og man skulle trykke for
+ *  at finde ud af det. */
+function Felt({
+  ikon, navn, onPress, testID,
+}: { ikon: React.ReactNode; navn: string; onPress?: () => void; testID?: string }) {
+  const styles = useStyles(makestyles)
+  return (
+    <Pressable
+      testID={testID}
+      accessibilityRole="button"
+      accessibilityLabel={navn}
+      onPress={onPress}
+      style={({ pressed }) => [styles.felt, pressed ? styles.pressed : null]}
+    >
+      {ikon}
+      <Text style={styles.feltTekst} numberOfLines={1}>{navn}</Text>
+    </Pressable>
+  )
+}
+
+
 export function SidePanel({
   open,
   onClose,
@@ -64,6 +86,9 @@ export function SidePanel({
   const translateX = useRef(new Animated.Value(-PANEL_WIDTH)).current
   const [mounted, setMounted] = useState(open)
   const [query, setQuery] = useState('')
+  // Soegefeltet er foldet sammen som standard: det blev brugt sjaeldent og
+  // fyldte en linje hele tiden. Ikonet i toppen folder det ud.
+  const [soegAaben, setSoegAaben] = useState(false)
   // Initialer som R4's «BS»-cirkel. To bogstaver, aldrig flere.
   const initials = useMemo(
     () =>
@@ -120,82 +145,68 @@ export function SidePanel({
                 {displayName || 'Jarvis'}
               </Text>
             </Pressable>
+            {/* SØGNINGEN ER ET IKON HER, ikke et felt nedenfor. Feltet stod og
+                fyldte en linje hele tiden for noget man goer sjaeldent, mens de
+                fem genveje sad som ikoner uden navn — altsaa det modsatte af
+                hvor tit de bruges. */}
+            <Pressable
+              testID="panel-search-toggle"
+              accessibilityRole="button"
+              accessibilityLabel={soegAaben ? 'Luk søgning' : 'Søg samtaler'}
+              accessibilityState={{ expanded: soegAaben }}
+              onPress={() => setSoegAaben((v) => !v)}
+              hitSlop={8}
+              style={styles.gear}
+            >
+              <Search size={18} color={soegAaben ? tokens.color.accent : tokens.color.fg2} strokeWidth={1.8} />
+            </Pressable>
+          </View>
+
+          {soegAaben ? (
+            <View style={styles.searchWrap}>
+              <Search size={15} color={tokens.color.fg3} strokeWidth={1.8} />
+              <TextInput
+                autoFocus
+                value={query}
+                onChangeText={setQuery}
+                placeholder="Søg samtaler"
+                placeholderTextColor={tokens.color.fg3}
+                style={styles.search}
+              />
+            </View>
+          ) : null}
+
+          {/* De fem som FELTER. Som ikoner sagde de ikke hvad de var — en oejenpaere
+              og en kasse er ikke selvforklarende, og man skulle trykke for at finde
+              ud af det. Et felt baerer sit eget navn. */}
+          <View style={styles.felter}>
             {bubbleSupported && activeId ? (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Flyt chat til boble"
-                onPress={onFloatActive}
-                hitSlop={8}
-                style={styles.gear}
-              >
-                <MessageCircle size={18} color={tokens.color.fg2} strokeWidth={1.8} />
-              </Pressable>
+              <Felt ikon={<MessageCircle size={17} color={tokens.color.fg2} strokeWidth={1.8} />}
+                    navn="Flyt chat til boble" onPress={onFloatActive} />
             ) : null}
             {inHousehold && onOpenSenses ? (
               // Skjuler kun noget der ALLEREDE er lukket: /companion/senses
               // afviser alle uden for husstanden med 403 i auth-laget.
               // Forskellen på en dør og et gardin — her er gardinet.
-              <Pressable
-                testID="open-senses"
-                accessibilityRole="button"
-                accessibilityLabel="Sansernes Arkiv"
-                onPress={onOpenSenses}
-                hitSlop={8}
-                style={styles.gear}
-              >
-                <Eye size={19} color={tokens.color.fg2} strokeWidth={1.8} />
-              </Pressable>
+              <Felt testID="open-senses"
+                    ikon={<Eye size={18} color={tokens.color.fg2} strokeWidth={1.8} />}
+                    navn="Sansernes Arkiv" onPress={onOpenSenses} />
             ) : null}
             {onOpenArtifacts ? (
-              <Pressable
-                testID="open-artifacts"
-                accessibilityRole="button"
-                accessibilityLabel="Artifacts"
-                onPress={onOpenArtifacts}
-                hitSlop={8}
-                style={styles.gear}
-              >
-                <Boxes size={18} color={tokens.color.fg2} strokeWidth={1.8} />
-              </Pressable>
+              <Felt testID="open-artifacts"
+                    ikon={<Boxes size={17} color={tokens.color.fg2} strokeWidth={1.8} />}
+                    navn="Artifacts" onPress={onOpenArtifacts} />
             ) : null}
             {onOpenActivity ? (
-              <Pressable
-                testID="open-activity"
-                accessibilityRole="button"
-                accessibilityLabel="Aktivitet"
-                onPress={onOpenActivity}
-                hitSlop={8}
-                style={styles.gear}
-              >
-                <Activity size={18} color={tokens.color.fg2} strokeWidth={1.8} />
-              </Pressable>
+              <Felt testID="open-activity"
+                    ikon={<Activity size={17} color={tokens.color.fg2} strokeWidth={1.8} />}
+                    navn="Aktivitet" onPress={onOpenActivity} />
             ) : null}
             {onOpenChatSettings ? (
-              <Pressable
-                testID="open-chat-settings"
-                accessibilityRole="button"
-                accessibilityLabel="Denne samtale"
-                onPress={onOpenChatSettings}
-                hitSlop={8}
-                style={styles.gear}
-              >
-                <SlidersHorizontal size={18} color={tokens.color.fg2} strokeWidth={1.8} />
-              </Pressable>
+              <Felt testID="open-chat-settings"
+                    ikon={<SlidersHorizontal size={17} color={tokens.color.fg2} strokeWidth={1.8} />}
+                    navn="Denne samtale" onPress={onOpenChatSettings} />
             ) : null}
-            <Pressable accessibilityRole="button" accessibilityLabel="Indstillinger" onPress={onOpenSettings} hitSlop={8} style={styles.gear}>
-              <Settings size={18} color={tokens.color.fg2} strokeWidth={1.8} />
-            </Pressable>
-          </View>
-
-          <View style={styles.searchWrap}>
-            <Search size={15} color={tokens.color.fg3} strokeWidth={1.8} />
-            <TextInput
-              value={query}
-              onChangeText={setQuery}
-              placeholder="Søg samtaler"
-              placeholderTextColor={tokens.color.fg3}
-              style={styles.search}
-            />
           </View>
 
           <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
@@ -231,6 +242,20 @@ export function SidePanel({
             )}
             <TeamsPanel config={config} onSelectSession={onSelectSession} />
           </ScrollView>
+
+          {/* Indstillinger NEDERST. Den sad som et af seks ikoner i toppen, hvor
+              den konkurrerede med fem genveje man bruger oftere. Nederst er den
+              hvor man leder efter den — og fastlaast, saa den ikke ruller vaek. */}
+          <Pressable
+            testID="open-settings"
+            accessibilityRole="button"
+            accessibilityLabel="Indstillinger"
+            onPress={onOpenSettings}
+            style={({ pressed }) => [styles.felt, styles.feltBund, pressed ? styles.pressed : null]}
+          >
+            <Settings size={17} color={tokens.color.fg2} strokeWidth={1.8} />
+            <Text style={styles.feltTekst}>Indstillinger</Text>
+          </Pressable>
 
           {/* Bundlaget, målt på R4: en lilla pille med blyant + label i
               venstre side, og brugerens initial-cirkel til højre. Den flyder
@@ -293,6 +318,17 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
   ringInner: { width: 10, height: 10, borderRadius: 5, backgroundColor: tokens.color.accent },
   name: { color: tokens.color.fg1, fontSize: 24, fontWeight: '700', flexShrink: 1 },
   gear: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 20, backgroundColor: tokens.color.bg2 },
+  felter: { paddingHorizontal: tokens.spacing.sm, paddingBottom: tokens.spacing.xs },
+  felt: {
+    flexDirection: 'row', alignItems: 'center', gap: tokens.spacing.sm,
+    paddingVertical: 10, paddingHorizontal: tokens.spacing.sm, borderRadius: 10,
+  },
+  feltBund: {
+    marginHorizontal: tokens.spacing.sm,
+    borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: tokens.color.bg2,
+    borderRadius: 0, paddingTop: 12,
+  },
+  feltTekst: { color: tokens.color.fg1, fontSize: 14, flexShrink: 1 },
   searchWrap: {
     flexDirection: 'row',
     alignItems: 'center',

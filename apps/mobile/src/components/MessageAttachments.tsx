@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native'
 import { planlaegPreview } from '../lib/filePreview'
+import { aabnUdgivetFil, blokUrl } from '../lib/aabnFil'
 import { FileText } from 'lucide-react-native'
 import { useAuth } from '../state/AuthContext'
 import type { PersistedBlock } from '../lib/persistedBlocks'
@@ -31,12 +32,12 @@ export function MessageAttachments({ items }: { items: PersistedBlock[] }) {
   return (
     <View style={styles.wrap}>
       {items.map((b) => {
-        const id = String(b.attachment_id ?? '')
+        // En UDGIVET fil har ingen attachment_id — den baerer sin egen url.
+        // Noeglen maa derfor falde tilbage paa navnet, ellers ville alle
+        // udgivne filer i samme tur dele noeglen '' og React tegne én.
+        const id = String(b.attachment_id ?? '') || String(b.filename ?? '')
         if (b.type === 'image' && config?.apiBaseUrl) {
-          const uri = new URL(
-            `/attachments/image/${encodeURIComponent(id)}`,
-            config.apiBaseUrl
-          ).toString()
+          const uri = blokUrl(b, config.apiBaseUrl)
           const headers = config.authToken
             ? { Authorization: `Bearer ${config.authToken}` }
             : undefined
@@ -61,8 +62,26 @@ export function MessageAttachments({ items }: { items: PersistedBlock[] }) {
         // det var — en PDF og en zip så ens ud. Planen siger nu typen, og om
         // filen kan vises inde i appen eller hører til i systemets fremviser.
         const plan = planlaegPreview(String(b.filename || ''), String((b as { mime_type?: string }).mime_type || ''), Number(b.size_bytes || 0))
+        // TRYKBAR. Kortet viste foer navn og type og kunne ikke aabnes — en
+        // fil man kan se og ikke naa. `/files` kraever token, saa et browser-
+        // tryk ville give 401; appen henter den selv og viser telefonens kopi.
+        const filUrl = config?.apiBaseUrl ? blokUrl(b, config.apiBaseUrl) : ''
         return (
-          <View key={id} testID={`attachment-file-${id}`} style={styles.file}>
+          <Pressable
+            key={id}
+            testID={`attachment-file-${id}`}
+            accessibilityRole={filUrl ? 'button' : undefined}
+            accessibilityLabel={filUrl ? `Åbn ${b.filename || 'fil'}` : undefined}
+            disabled={!filUrl}
+            onPress={() => {
+              if (!filUrl || !config) return
+              void aabnUdgivetFil(
+                config, filUrl, String(b.filename || 'fil'),
+                String((b as { mime_type?: string }).mime_type || ''),
+              ).catch(() => undefined)
+            }}
+            style={styles.file}
+          >
             <FileText size={18} color={tokens.color.fg2} strokeWidth={1.8} />
             <View style={styles.fileMeta}>
               <Text style={styles.fileName} numberOfLines={1}>
@@ -76,7 +95,7 @@ export function MessageAttachments({ items }: { items: PersistedBlock[] }) {
             {typeof b.size_bytes === 'number' && b.size_bytes > 0 ? (
               <Text style={styles.fileSize}>{formatSize(b.size_bytes)}</Text>
             ) : null}
-          </View>
+          </Pressable>
         )
       })}
       {preview ? (

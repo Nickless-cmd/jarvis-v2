@@ -199,6 +199,19 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
     if (m.role === 'assistant') {
       const blocks = parseBlocks(m)
       const think = thinkingBlock(blocks)
+      // UDGIVNE FILER, lagt fra sig FOER grenene nedenfor. Foerste forsoeg lagde
+      // dem i en egen gren til sidst — men baade ordre-grenen og taenke-grenen
+      // `continue`r foer den, altsaa paa de fleste ture, og filen forsvandt.
+      //
+      // `unshift` saetter forrest, og listen bygges bagfra: den SIDST
+      // unshiftede staar oeverst. Filerne laegges derfor foerst, saa turens
+      // tekst ender OVER dem. En fil er et resultat og hoerer under det den
+      // handler om — modsat brugerens billeder, der ligger over boblen fordi
+      // billedet dér ofte ER beskeden.
+      const afiler = attachmentBlocks(blocks)
+      if (afiler.length) {
+        persisted.unshift({ kind: 'attachments', key: `${m.id}-pub`, items: afiler })
+      }
       if (hasOrdering(blocks)) {
         const expanded: Row[] = []
         if (think) {

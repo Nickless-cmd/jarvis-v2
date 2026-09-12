@@ -72,3 +72,58 @@ it('en lille kodefil vises ikke som «åbnes i telefonen»', async () => {
   expect(t).toContain('Python')
   expect(t).not.toContain('åbnes i telefonen')
 })
+
+
+// ── udgivne filer (12/9-2026) ────────────────────────────────────────────
+//
+// publish_file lagde filen i files/ og gav en URL, men turen bar den aldrig:
+// nul assistent-beskeder havde en image/file-blok. Nu baerer den dem, og
+// kortet skal kunne AABNES — foer viste det navn og type og kunne ikke trykkes.
+// /files kraever token, saa appen henter filen selv og viser telefonens kopi.
+
+jest.mock('../lib/aabnFil', () => ({
+  ...jest.requireActual('../lib/aabnFil'),
+  aabnUdgivetFil: jest.fn(async () => undefined),
+}))
+
+it('en udgivet fil uden attachment_id faar stadig et kort', async () => {
+  const screen = await render(
+    <MessageAttachments
+      items={[{ type: 'file', filename: 'rapport.html',
+                url: 'https://api.srvlab.dk/files/rapport.html',
+                mime_type: 'text/html' } as never]}
+    />
+  )
+  expect(screen.getByText('rapport.html')).toBeTruthy()
+})
+
+it('fil-kortet kan trykkes og aabner den UDGIVNE adresse', async () => {
+  const { aabnUdgivetFil } = require('../lib/aabnFil')
+  const screen = await render(
+    <MessageAttachments
+      items={[{ type: 'file', filename: 'rapport.html',
+                url: 'https://api.srvlab.dk/files/rapport.html',
+                mime_type: 'text/html' } as never]}
+    />
+  )
+  await act(async () => {
+    fireEvent.press(screen.getByTestId('attachment-file-rapport.html'))
+  })
+  expect(aabnUdgivetFil).toHaveBeenCalled()
+  const [, url, navn, mime] = (aabnUdgivetFil as jest.Mock).mock.calls[0]
+  expect(url).toBe('https://api.srvlab.dk/files/rapport.html')
+  expect(navn).toBe('rapport.html')
+  expect(mime).toBe('text/html')
+})
+
+it('MessageList laegger assistentens filer fra sig FOER grenene', () => {
+  // Koblingen. Baade ordre-grenen og taenke-grenen `continue`r, saa en
+  // haandtering placeret efter dem ville aldrig naas paa en almindelig tur —
+  // og uden denne proeve var mutationen usynlig: at fjerne linjen lod alle
+  // 156 komponent-tests bestaa.
+  const kilde = require('fs').readFileSync(
+    require('path').join(__dirname, 'MessageList.tsx'), 'utf8') as string
+  const iAssistent = kilde.split("if (m.role === 'assistant') {")[1] ?? ''
+  const foerOrdre = iAssistent.split('if (hasOrdering(blocks))')[0] ?? ''
+  expect(foerOrdre).toContain('attachmentBlocks(blocks)')
+})

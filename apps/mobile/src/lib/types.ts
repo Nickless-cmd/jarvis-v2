@@ -36,7 +36,7 @@ export interface ChatSession {
 
 export interface ChatMessage {
   id: string
-  role: 'user' | 'assistant' | 'tool' | 'system' | 'approval_request'
+  role: 'user' | 'assistant' | 'tool' | 'system' | 'approval_request' | 'compact_marker'
   content: string
   created_at: string
   parent_id?: string | null

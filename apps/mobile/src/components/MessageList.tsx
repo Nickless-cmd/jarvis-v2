@@ -1,5 +1,5 @@
 import { forwardRef, useImperativeHandle, useRef } from 'react'
-import { FlatList, StyleSheet, View } from 'react-native'
+import { FlatList, StyleSheet, Text, View } from 'react-native'
 import type { ContentBlock } from '../lib/sseProtocol'
 import { denseBlocks } from '../lib/blockHelpers'
 import type { ChatMessage } from '../lib/types'
@@ -73,6 +73,13 @@ type Row =
   | { kind: 'live-tool'; key: string; name: string; body: string; running: boolean }
   /** Én RUNDE værktøjsarbejde, foldet sammen til én linje. */
   | { kind: 'tool-group'; key: string; items: ToolItem[] }
+  /**
+   * Kompakteringens markør — intern bogholderi, ikke en samtale-besked.
+   * Tegnes som én diskret linje. Serveren trimmer dens indhold; uden denne gren
+   * faldt rollen i default og blev tegnet som en almindelig boble med hele den
+   * serialiserede transcript (målt 111k tegn).
+   */
+  | { kind: 'compact-marker'; key: string; content: string }
 
 /**
  * Fold sammenhængende værktøjsrækker sammen til én pr. runde.
@@ -279,6 +286,15 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
       persisted.unshift({ kind: 'tool', key: m.id, content: m.content })
       continue
     }
+    if (m.role === 'compact_marker') {
+      // Intern bogholderi, ikke en samtale-besked. Uden denne gren faldt rollen
+      // i default nedenfor og blev tegnet som en almindelig boble — med hele den
+      // serialiserede transcript som indhold (målt 111k tegn: `[Bjørn] …`,
+      // `[tool:tool] …`, «Use read_tool_result with result_id=…»).
+      skipToolRows = false
+      persisted.unshift({ kind: 'compact-marker', key: m.id, content: m.content })
+      continue
+    }
     persisted.unshift({ kind: 'msg', key: m.id, message: m })
   }
 
@@ -336,6 +352,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
           return <ThinkingSummary seconds={item.seconds} text={item.text} />
         }
         if (item.kind === 'attachments') return <MessageAttachments items={item.items} />
+        if (item.kind === 'compact-marker') return <CompactMarkerRow content={item.content} />
         return (
           <MessageBubble
             message={item.message}
@@ -372,6 +389,23 @@ function ThinkingLabelRow() {
 }
 
 /**
+ * Kompakteringens markør. Én diskret linje — ikke en boble.
+ *
+ * Markøren er intern bogholderi: den fortæller at ældre beskeder er blevet
+ * foldet sammen til en summary. Den er værd at vise (ellers forstår man ikke
+ * hvorfor historikken ændrede sig), men den er ikke en samtale-besked og skal
+ * ikke se ud som en. Samme form som desktop-klienten (jarvisx MessageList).
+ */
+function CompactMarkerRow({ content }: { content: string }) {
+  const styles = useStyles(makestyles)
+  return (
+    <View style={styles.compactMarkerRow} testID="compact-marker">
+      <Text style={styles.compactMarkerText}>{content}</Text>
+    </View>
+  )
+}
+
+/**
  * INVERTERET liste: indholdet er vendt 180°, så contentContainer'ens
  * `paddingTop` lander VISUELT NEDERST og `paddingBottom` visuelt øverst.
  * Det er kontraintuitivt nok til at være værd at skrive ned.
@@ -386,6 +420,24 @@ const TOP_CLEARANCE = 72
 
 const makestyles = (tokens: Theme) => StyleSheet.create({
   thinkingRow: { paddingHorizontal: tokens.spacing.lg },
+  // Kompakterings-markøren: diskret, tonet i warn — samme udtryk som desktop.
+  compactMarkerRow: {
+    marginHorizontal: tokens.spacing.lg,
+    marginVertical: tokens.spacing.sm,
+    paddingVertical: tokens.spacing.sm,
+    paddingHorizontal: tokens.spacing.md,
+    borderRadius: tokens.radius.sm,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: tokens.color.warn + '33',
+    backgroundColor: tokens.color.warn + '0D'
+  },
+  compactMarkerText: {
+    fontSize: 11,
+    fontStyle: 'italic',
+    lineHeight: 15,
+    color: tokens.color.warn,
+    opacity: 0.8
+  },
   content: {
     // paddingTop sættes dynamisk (BOTTOM_CLEARANCE + tastaturhøjde) — se
     // contentContainerStyle. Kun den øverste er konstant.

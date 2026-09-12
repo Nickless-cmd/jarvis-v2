@@ -469,6 +469,27 @@ def session_version(session_id: str) -> str | None:
     return f"{row[0]}-{agg[0]}-{agg[1]}-{agg[2]}-{agg[3]}"
 
 
+# ── Klient-grænse for compact_marker (12/9-2026) ───────────────────────────
+# Markørens content er HELE den serialiserede transcript, når summariser-
+# modellen fejler og falder tilbage til «Mechanical fallback» (målt: 111.507
+# tegn i Bjørns session). Den er intern bogholderi — prompt-stien ekskluderer
+# den seks steder (`role != 'compact_marker'`) — men `get_chat_session` sendte
+# den RÅT til klienten. Mobilens MessageList har ingen gren for rollen, så den
+# faldt i default og blev tegnet som en almindelig boble: `[Bjørn] Ja og
+# commit` … `[tool:tool]` … `«Use read_tool_result with result_id=…»`.
+#
+# Under grænsen er content en rigtig, kort summary — den vises uændret. Det er
+# kun den maskinelle fallback, der er rå, og den skal ikke forbi en klient.
+_COMPACT_MARKER_CLIENT_LIMIT = 400
+
+
+def _client_message_content(role: str, content: str) -> str:
+    """Hvad klienten må se. Intern bogholderi bliver til én kort, ærlig linje."""
+    if role != "compact_marker" or len(content) <= _COMPACT_MARKER_CLIENT_LIMIT:
+        return content
+    return f"Samtalen blev komprimeret — {len(content):,} tegn arkiveret".replace(",", ".")
+
+
 def get_chat_session(session_id: str) -> dict[str, object] | None:
     normalized = (session_id or "").strip()
     if not normalized:
@@ -498,18 +519,26 @@ def get_chat_session(session_id: str) -> dict[str, object] | None:
             """,
             (normalized,),
         ).fetchall()
-    message_items = [
-        {
+    message_items = []
+    for row in messages:
+        role = str(row["role"])
+        raw_content = str(row["content"])
+        content = _client_message_content(role, raw_content)
+        # Blokke bygget af den RÅ tekst må ikke følge med ud, når teksten blev
+        # trimmet — så ville transcripten lække ad bagdøren i stedet.
+        blocks = (
+            []
+            if role == "compact_marker" and content != raw_content
+            else _content_json_for_row(role, content, row["content_json"])
+        )
+        message_items.append({
             "id": str(row["message_id"]),
-            "role": str(row["role"]),
-            "content": str(row["content"]),
-            "content_json": _content_json_for_row(
-                str(row["role"]), str(row["content"]), row["content_json"]),
+            "role": role,
+            "content": content,
+            "content_json": blocks,
             "ts": _time_label(str(row["created_at"])),
             "created_at": str(row["created_at"]),
-        }
-        for row in messages
-    ]
+        })
     summary = _session_summary(
         {
             **dict(session),

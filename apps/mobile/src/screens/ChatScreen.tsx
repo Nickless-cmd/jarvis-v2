@@ -42,7 +42,19 @@ import { livesInHousehold } from '../lib/household'
 import { SensesScreen } from './SensesScreen'
 import { ArtifactsScreen } from './ArtifactsScreen'
 import { ActivityCenterScreen } from './ActivityCenterScreen'
-import { cancelActiveRun, cancelRunById, denyTool, getActiveRunSnapshot, getActiveRuns, getModelOptions, uploadAttachment, whoami } from '../lib/apiClient'
+import {
+  cancelActiveRun,
+  cancelRunById,
+  deleteSession,
+  denyTool,
+  getActiveRunSnapshot,
+  getActiveRuns,
+  getModelOptions,
+  renameSession,
+  setSessionFlags,
+  uploadAttachment,
+  whoami,
+} from '../lib/apiClient'
 import { computeUnread } from '../lib/sessionStatus'
 import { loadLastSeen, markSeen } from '../lib/lastSeen'
 import { loadLastSession, saveLastSession } from '../lib/sessionStore'
@@ -923,6 +935,26 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
           onNewSession={handleNewSession}
           workingIds={activeRunIds}
           unreadIds={unreadIds}
+          onSessionAction={(h) => {
+            if (!config) return
+            // Handlingen udfoeres OG listen hentes igen. Uden opfriskningen
+            // ville en fastgjort samtale blive staaende hvor den var, og en
+            // slettet blive staaende helt — serveren er den der bestemmer
+            // raekkefoelgen, ikke klienten.
+            const efter = () => { void sessions.refresh(config) }
+            if (h.slags === 'rename' && h.titel) {
+              void renameSession(config, h.id, h.titel).then(efter).catch(() => undefined)
+            } else if (h.slags === 'delete') {
+              void deleteSession(config, h.id).then(() => {
+                // Slettede man den man stod i, skal skaermen ikke blive ved med
+                // at vise en samtale der ikke findes.
+                if (sessions.activeId === h.id) void sessions.refresh(config)
+                efter()
+              }).catch(() => undefined)
+            } else if (h.slags === 'flags' && h.flags) {
+              void setSessionFlags(config, h.id, h.flags).then(efter).catch(() => undefined)
+            }
+          }}
           isOwner={inHousehold}
           onOpenSenses={() => {
             setPanelOpen(false)

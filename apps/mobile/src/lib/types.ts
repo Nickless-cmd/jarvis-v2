@@ -21,6 +21,11 @@ export interface ChatSession {
   title: string
   updated_at: string
   message_count?: number
+  /** Fastgjort: staar oeverst i listen. */
+  pinned?: boolean
+  /** Arkiveret: falder ud af listen. Serveren filtrerer dem fra, saa feltet er
+   *  her for menuens skyld — den skal kunne vise «Fjern fra arkiv». */
+  archived?: boolean
 }
 
 export interface ChatMessage {

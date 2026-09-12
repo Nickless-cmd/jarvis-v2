@@ -14,7 +14,7 @@ export class ApiError extends Error {
 }
 
 interface FetchOptions {
-  method?: 'GET' | 'POST' | 'PUT' | 'DELETE'
+  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
   body?: unknown
 }
 
@@ -158,6 +158,40 @@ export async function steerRun(config: ApiConfig, runId: string, content: string
 
 /** Sessioner med et aktivt run lige nu (server-side). Bruges til at vise
  * "arbejder" og forhindre at man sender ind i et kørende svar (= nudge-swallow). */
+/** Omdoeb en samtale. Serveren svarer med hele sessionen. */
+export async function renameSession(
+  config: ApiConfig, sessionId: string, title: string,
+): Promise<void> {
+  await apiFetch(config, `/chat/sessions/${encodeURIComponent(sessionId)}/rename`, {
+    method: 'PUT',
+    body: JSON.stringify({ title }),
+  })
+}
+
+/** Slet en samtale. Uigenkaldeligt — kalderen spoerger foerst. */
+export async function deleteSession(config: ApiConfig, sessionId: string): Promise<void> {
+  await apiFetch(config, `/chat/sessions/${encodeURIComponent(sessionId)}`, {
+    method: 'DELETE',
+  })
+}
+
+/**
+ * Fastgoer eller arkivér.
+ *
+ * Kun de felter man vil aendre sendes med: `undefined` betyder «roer ikke», og
+ * serveren skelner. Ellers ville et kald der kun vil arkivere ogsaa frigoere
+ * en fastgjort samtale.
+ */
+export async function setSessionFlags(
+  config: ApiConfig, sessionId: string,
+  flags: { pinned?: boolean; archived?: boolean },
+): Promise<void> {
+  await apiFetch(config, `/chat/sessions/${encodeURIComponent(sessionId)}/flags`, {
+    method: 'PATCH',
+    body: JSON.stringify(flags),
+  })
+}
+
 export async function getActiveRuns(config: ApiConfig): Promise<string[]> {
   const data = await apiFetch<{ session_ids?: string[] }>(config, '/chat/active-runs')
   return data.session_ids ?? []

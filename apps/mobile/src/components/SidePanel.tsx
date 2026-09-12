@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Animated, Dimensions, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Activity, Boxes, Eye, MessageCircle, Search, Settings, SquarePen, SlidersHorizontal } from 'lucide-react-native'
+import { Activity, Boxes, Eye, MessageCircle, MoreVertical, Pin, Search, Settings, SlidersHorizontal, SquarePen } from 'lucide-react-native'
 import { formatRelativeDate } from '../lib/relativeDate'
 import { HeartbeatDot } from './HeartbeatDot'
 import type { ChatSession } from '../lib/types'
 import { tokens } from '../theme/tokens'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
+import { SessionMenu } from './SessionMenu'
 import { TeamsPanel } from './TeamsPanel'
 
 const PANEL_WIDTH = Math.min(360, Math.round(Dimensions.get('window').width * 0.86))
@@ -53,6 +54,7 @@ export function SidePanel({
   onOpenActivity,
   isOwner: inHousehold = false,
   workingIds = [],
+  onSessionAction,
   unreadIds = {},
   onFloatActive,
   bubbleSupported = false,
@@ -75,6 +77,14 @@ export function SidePanel({
   /** Bor brugeren i hjemmet (owner eller partner)? Skjuler kun indgangen. */
   isOwner?: boolean
   workingIds?: string[]
+  /** Handlinger paa én samtale. Uden den tegnes prikkerne slet ikke —
+   *  en menu der aabner og ikke kan goere noget er vaerre end ingen. */
+  onSessionAction?: (handling: {
+    slags: 'rename' | 'delete' | 'flags'
+    id: string
+    titel?: string
+    flags?: { pinned?: boolean; archived?: boolean }
+  }) => void
   unreadIds?: Record<string, boolean>
   onFloatActive?: () => void
   bubbleSupported?: boolean
@@ -89,6 +99,7 @@ export function SidePanel({
   // Soegefeltet er foldet sammen som standard: det blev brugt sjaeldent og
   // fyldte en linje hele tiden. Ikonet i toppen folder det ud.
   const [soegAaben, setSoegAaben] = useState(false)
+  const [menuFor, setMenuFor] = useState<ChatSession | null>(null)
   // Initialer som R4's «BS»-cirkel. To bogstaver, aldrig flere.
   const initials = useMemo(
     () =>
@@ -231,10 +242,27 @@ export function SidePanel({
                     {formatRelativeDate(session.updated_at, now)} · {session.message_count ?? 0} beskeder
                   </Text>
                   <View style={styles.sessionIndicator}>
+                    {session.pinned ? (
+                      <Pin size={11} color={tokens.color.fg3} strokeWidth={2} />
+                    ) : null}
                     {workingIds.includes(session.id) ? (
                       <HeartbeatDot size={8} />
                     ) : unreadIds[session.id] ? (
                       <View style={styles.unreadDot} />
+                    ) : null}
+                    {onSessionAction ? (
+                      // Egen Pressable OVENPAA raekken, ikke inde i dens onPress:
+                      // et tryk paa prikkerne maa ikke ogsaa aabne samtalen.
+                      <Pressable
+                        testID={`session-menu-${session.id}`}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Handlinger for ${session.title || 'Ny samtale'}`}
+                        hitSlop={10}
+                        onPress={() => setMenuFor(session)}
+                        style={styles.prikker}
+                      >
+                        <MoreVertical size={16} color={tokens.color.fg3} strokeWidth={2} />
+                      </Pressable>
                     ) : null}
                   </View>
                 </Pressable>
@@ -277,6 +305,15 @@ export function SidePanel({
           </View>
         </Animated.View>
 
+        <SessionMenu
+          session={menuFor}
+          open={Boolean(menuFor)}
+          onClose={() => setMenuFor(null)}
+          onRename={(id, titel) => onSessionAction?.({ slags: 'rename', id, titel })}
+          onDelete={(id) => onSessionAction?.({ slags: 'delete', id })}
+          onSetFlags={(id, flags) => onSessionAction?.({ slags: 'flags', id, flags })}
+        />
+
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Luk panel"
@@ -318,6 +355,7 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
   ringInner: { width: 10, height: 10, borderRadius: 5, backgroundColor: tokens.color.accent },
   name: { color: tokens.color.fg1, fontSize: 24, fontWeight: '700', flexShrink: 1 },
   gear: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 20, backgroundColor: tokens.color.bg2 },
+  prikker: { paddingLeft: 2, paddingVertical: 2 },
   felter: { paddingHorizontal: tokens.spacing.sm, paddingBottom: tokens.spacing.xs },
   felt: {
     flexDirection: 'row', alignItems: 'center', gap: tokens.spacing.sm,

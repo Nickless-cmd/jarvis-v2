@@ -23,7 +23,7 @@ export function GreetingHero({ userName, presence }: {
   const g = useMemo(() => greetingFor(new Date(), Math.floor(Math.random() * 1000)), [])
 
   return (
-    <View style={styles.root}>
+    <View style={styles.root} testID="greeting-hero">
       <View style={[styles.ring, { borderColor: g.tint }]}>
         <Text style={styles.glyph}>{g.glyph}</Text>
       </View>

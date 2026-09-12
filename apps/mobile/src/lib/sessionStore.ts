@@ -5,8 +5,16 @@ const KEY = 'jarvis.mobile.lastSession'
 
 export interface SidstePlads {
   id: string
-  /** Stod vi i code-fladen? */
-  kode: boolean
+  /**
+   * Stod vi i code-fladen? `null` betyder UVIST — ikke «nej».
+   *
+   * Tre tilstande, ikke to. Nøglen indeholdt før kun et session-id, og der er
+   * fladen ukendt. Læste man det som «chat», ville en gemt code-samtale åbne
+   * i chat-fladen én gang efter opdateringen — præcis den modstrid det her
+   * skulle fjerne. Kun i DEN tilstand spørger klienten samtalen om dens art;
+   * ellers er det brugerens eget valg der gælder.
+   */
+  kode: boolean | null
 }
 
 /**
@@ -33,10 +41,10 @@ export async function loadLastSession(): Promise<SidstePlads | null> {
     // BAGUDKOMPATIBELT: nøglen indeholdt før en bar session-id-streng. Uden det
     // her ville alle der opdaterer miste deres sidste samtale én gang — og det
     // ville ligne at appen havde glemt dem.
-    if (!raa.trimStart().startsWith('{')) return { id: raa, kode: false }
+    if (!raa.trimStart().startsWith('{')) return { id: raa, kode: null }
     const o = JSON.parse(raa) as { id?: unknown; kode?: unknown }
     const id = typeof o.id === 'string' ? o.id : ''
-    return id ? { id, kode: o.kode === true } : null
+    return id ? { id, kode: typeof o.kode === 'boolean' ? o.kode : null } : null
   } catch {
     return null
   }

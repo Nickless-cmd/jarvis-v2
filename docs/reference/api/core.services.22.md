@@ -2,6 +2,23 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/session_tool_pin.py`
+_Fastlås tool-sættet pr. session, så prompt-præfikset holder (2026-09-05)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `pin_enabled` | `()` | Er låsen slået til? Fail-safe: enhver fejl → til (den nye adfærd). | [src](../../../core/services/session_tool_pin.py#L41) |
+| function | `_key` | `(session_id)` | — | [src](../../../core/services/session_tool_pin.py#L50) |
+| function | `_compact_epoch` | `(session_id)` | Compaction-markøren for sessionen. Skifter den, er historikken skrevet | [src](../../../core/services/session_tool_pin.py#L54) |
+| function | `_state_get` | `(session_id)` | — | [src](../../../core/services/session_tool_pin.py#L64) |
+| function | `_state_set` | `(session_id, payload)` | — | [src](../../../core/services/session_tool_pin.py#L73) |
+| function | `get_pinned` | `(session_id)` | Det låste sæt for sessionen — tom liste når intet er låst, eller når | [src](../../../core/services/session_tool_pin.py#L81) |
+| function | `pin` | `(session_id, names)` | Lås sættet for sessionen. Returnerer det låste sæt. | [src](../../../core/services/session_tool_pin.py#L96) |
+| function | `extend` | `(session_id, names)` | Udvid låsen (load_more_tools). Tilføjelser holder ved til næste tur. | [src](../../../core/services/session_tool_pin.py#L106) |
+| function | `clear` | `(session_id)` | — | [src](../../../core/services/session_tool_pin.py#L120) |
+| function | `resolve` | `(session_id, selected_names)` | Hvilke værktøjer skal denne tur sende? | [src](../../../core/services/session_tool_pin.py#L124) |
+| function | `build_session_tool_pin_surface` | `(session_id=…)` | — | [src](../../../core/services/session_tool_pin.py#L145) |
+
 ## `core/services/session_topic_tracker.py`
 _Session topic tracker — real-time topic extraction and accumulation._
 
@@ -541,21 +558,4 @@ _Source-confidence gate (epistemisk gate, 2026-07-10)._
 | function | `_tool_names` | `(tools_used)` | — | [src](../../../core/services/source_confidence_gate.py#L38) |
 | function | `assess_source_confidence` | `(*, output_text, tools_used=…)` | Vurdér epistemisk kilde-konfidens for en tur. | [src](../../../core/services/source_confidence_gate.py#L47) |
 | function | `build_source_confidence_surface` | `(*, output_text=…, tools_used=…)` | Central-CLI: jc raw /central/source-confidence (senest vurderede tur, hvis givet). | [src](../../../core/services/source_confidence_gate.py#L88) |
-
-## `core/services/spaced_repetition.py`
-_Spaced Repetition — schedule reviews for things Jarvis learned._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_storage_path` | `()` | — | [src](../../../core/services/spaced_repetition.py#L39) |
-| function | `_load` | `()` | — | [src](../../../core/services/spaced_repetition.py#L43) |
-| function | `_save` | `(data)` | — | [src](../../../core/services/spaced_repetition.py#L59) |
-| function | `schedule_reviews_on_completion` | `(*, topic, plan_id=…, intervals_days=…)` | Create review entries for a topic at expanding intervals. | [src](../../../core/services/spaced_repetition.py#L71) |
-| function | `list_due_reviews` | `(*, now=…, limit=…)` | — | [src](../../../core/services/spaced_repetition.py#L103) |
-| function | `complete_review` | `(review_id, *, score)` | Mark a review as completed with score in [0, 1], update profile. | [src](../../../core/services/spaced_repetition.py#L120) |
-| function | `_update_profile` | `(profile, score)` | — | [src](../../../core/services/spaced_repetition.py#L150) |
-| function | `get_profile` | `(topic)` | — | [src](../../../core/services/spaced_repetition.py#L170) |
-| function | `build_spaced_repetition_surface` | `()` | — | [src](../../../core/services/spaced_repetition.py#L174) |
-| function | `_summary_line` | `(due, profiles, avg_conf)` | — | [src](../../../core/services/spaced_repetition.py#L205) |
-| function | `build_spaced_repetition_prompt_section` | `()` | — | [src](../../../core/services/spaced_repetition.py#L214) |
 

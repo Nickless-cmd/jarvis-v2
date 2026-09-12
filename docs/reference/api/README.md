@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 14395 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 14398 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -48,12 +48,12 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 14395 functions/
 - [`core.services.18`](core.services.18.md) — `process_identity` … `reasoning_classifier`
 - [`core.services.19`](core.services.19.md) — `reasoning_detectors` … `role_model_resolver`
 - [`core.services.20`](core.services.20.md) — `role_registry` … `selective_consolidation_daemon`
-- [`core.services.21`](core.services.21.md) — `selective_forgetting_candidate_tracking` … `session_tool_pin`
-- [`core.services.22`](core.services.22.md) — `session_topic_tracker` … `spaced_repetition`
-- [`core.services.23`](core.services.23.md) — `spatial_entity_ledger` … `tiny_webchat_execution_pilot`
-- [`core.services.24`](core.services.24.md) — `tool_calling_evidence` … `valence_trajectory`
-- [`core.services.25`](core.services.25.md) — `value_formation` … `voice_daemon`
-- [`core.services.26`](core.services.26.md) — `wakeup_dispatcher` … `world_model_signal_tracking`
+- [`core.services.21`](core.services.21.md) — `selective_forgetting_candidate_tracking` … `session_prewarm`
+- [`core.services.22`](core.services.22.md) — `session_tool_pin` … `source_confidence_gate`
+- [`core.services.23`](core.services.23.md) — `spaced_repetition` … `tick_cache`
+- [`core.services.24`](core.services.24.md) — `tiny_webchat_execution_pilot` … `user_understanding_signal_tracking`
+- [`core.services.25`](core.services.25.md) — `valence_trajectory` … `voice_curator`
+- [`core.services.26`](core.services.26.md) — `voice_daemon` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

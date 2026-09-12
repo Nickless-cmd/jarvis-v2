@@ -473,7 +473,12 @@ def _persist(
                 "selected_names_json, always_core_names_json, embedding_picks_json, "
                 "confidence, threshold, fallback_used, fallback_reason, "
                 "elapsed_ms, tokens_saved_estimate, created_at) "
-                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?, datetime('now'))",
+                # `datetime('now')` gav `2026-09-11 19:38:09` — mellemrum og
+                # ingen zone, hvor hver anden tabel i huset skriver ISO med
+                # `+00:00`. En laeser med `fromisoformat` fik en naiv datetime
+                # og behandlede den som lokal tid, altsaa to timer forkert om
+                # sommeren. Tiden er stadig UTC; nu siger raekken det ogsaa.
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 (
                     run_id, session_id, lane, preview,
                     json.dumps(sel.selected_names), json.dumps(sel.always_core),
@@ -481,6 +486,7 @@ def _persist(
                     sel.confidence, sel.threshold,
                     1 if sel.fallback_used else 0, sel.fallback_reason,
                     sel.elapsed_ms, tokens_saved,
+                    datetime.now(timezone.utc).isoformat(),
                 ),
             )
             c.commit()

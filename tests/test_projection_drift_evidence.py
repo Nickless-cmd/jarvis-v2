@@ -17,8 +17,10 @@ import core.services.projection_drift as pd
 
 
 def _stub(monkeypatch, ledger, tabel):
-    monkeypatch.setattr(pd, "_fra_ledger", lambda sid: ledger)
-    monkeypatch.setattr(pd, "_fra_tabellen", lambda sid: tabel)
+    # Signaturen tager nu ogsaa projektions-modulet: sammenligneren slaar
+    # tabelnavn, haendelsestype og kolonner op i stedet for at kende dem.
+    monkeypatch.setattr(pd, "_fra_ledger", lambda sid, m: ledger)
+    monkeypatch.setattr(pd, "_fra_tabellen", lambda sid, m: tabel)
 
 
 def _besked(mid, tekst, tid="2026-09-10T10:00:00"):

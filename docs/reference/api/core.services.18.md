@@ -62,30 +62,32 @@ _Kompatibilitets-projektoren — ledger-hændelser → `chat_messages`-rækker._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `message_id_for` | `(session_id, event_id)` | Udled et stabilt `message_id`. Samme hændelse → altid samme id. | [src](../../../core/services/projection_chat_messages.py#L59) |
-| function | `_message_id` | `(session_id, e, payload)` | Et id sessionen allerede har, VINDER over et udledt. | [src](../../../core/services/projection_chat_messages.py#L71) |
-| function | `valider` | `(payload)` | Returnér en grund hvis hændelsen ikke kan blive en række, ellers None. | [src](../../../core/services/projection_chat_messages.py#L85) |
-| function | `_raekke` | `(session_id, e)` | — | [src](../../../core/services/projection_chat_messages.py#L98) |
-| function | `_skriv` | `(raekke)` | — | [src](../../../core/services/projection_chat_messages.py#L119) |
-| function | `start` | `()` | Formen ligger i STARTEN, ikke i den første fold. | [src](../../../core/services/projection_chat_messages.py#L143) |
-| function | `fold` | `(state, e)` | Ren pr. hændelse og idempotent: samme hændelse igen ændrer ingenting. | [src](../../../core/services/projection_chat_messages.py#L152) |
-| function | `register` | `()` | — | [src](../../../core/services/projection_chat_messages.py#L171) |
-| function | `rebuild` | `(session_id)` | Genskab sessionens `chat_messages`-rækker fra ledgeren. | [src](../../../core/services/projection_chat_messages.py#L176) |
-| class | `DirekteSkrivningAfvist` | `` | En ledger-session fik et direkte skrive-forsøg uden om projektoren. | [src](../../../core/services/projection_chat_messages.py#L190) |
-| function | `guard_direct_write` | `(session_id, *, conn=…)` | Afvis direkte `chat_messages`-skrivninger for en ledger-session. | [src](../../../core/services/projection_chat_messages.py#L194) |
+| function | `message_id_for` | `(session_id, event_id)` | Udled et stabilt `message_id`. Samme hændelse → altid samme id. | [src](../../../core/services/projection_chat_messages.py#L68) |
+| function | `_message_id` | `(session_id, e, payload)` | Et id sessionen allerede har, VINDER over et udledt. | [src](../../../core/services/projection_chat_messages.py#L80) |
+| function | `valider` | `(payload)` | Returnér en grund hvis hændelsen ikke kan blive en række, ellers None. | [src](../../../core/services/projection_chat_messages.py#L94) |
+| function | `_raekke` | `(session_id, e)` | — | [src](../../../core/services/projection_chat_messages.py#L107) |
+| function | `_skriv` | `(raekke)` | — | [src](../../../core/services/projection_chat_messages.py#L128) |
+| function | `start` | `()` | Formen ligger i STARTEN, ikke i den første fold. | [src](../../../core/services/projection_chat_messages.py#L152) |
+| function | `fold` | `(state, e)` | Ren pr. hændelse og idempotent: samme hændelse igen ændrer ingenting. | [src](../../../core/services/projection_chat_messages.py#L161) |
+| function | `register` | `()` | — | [src](../../../core/services/projection_chat_messages.py#L180) |
+| function | `rebuild` | `(session_id)` | Genskab sessionens `chat_messages`-rækker fra ledgeren. | [src](../../../core/services/projection_chat_messages.py#L185) |
+| class | `DirekteSkrivningAfvist` | `` | En ledger-session fik et direkte skrive-forsøg uden om projektoren. | [src](../../../core/services/projection_chat_messages.py#L199) |
+| function | `guard_direct_write` | `(session_id, *, conn=…)` | Afvis direkte `chat_messages`-skrivninger for en ledger-session. | [src](../../../core/services/projection_chat_messages.py#L203) |
 
 ## `core/services/projection_drift.py`
 _Drift-detektion — er ledgeren og `chat_messages` enige?_
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_normaliser_json` | `(v)` | `content_json` kan være tekst ét sted og et objekt et andet. Det er | [src](../../../core/services/projection_drift.py#L50) |
-| function | `_felt` | `(raekke, navn)` | — | [src](../../../core/services/projection_drift.py#L67) |
-| function | `_fra_ledger` | `(session_id)` | Fold i HUKOMMELSEN. At kalde projektoren ville skrive de rækker vi | [src](../../../core/services/projection_drift.py#L73) |
-| function | `_fra_tabellen` | `(session_id)` | — | [src](../../../core/services/projection_drift.py#L89) |
-| function | `compare` | `(session_id)` | Sammenlign de to sider. `enige` er svaret på om sessionen må skifte. | [src](../../../core/services/projection_drift.py#L101) |
-| function | `_nyeste` | `(raekker)` | Tidsstemplet paa den nyeste raekke — saa en laeser kan se om «enige» | [src](../../../core/services/projection_drift.py#L151) |
-| function | `may_cut_over` | `(session_id)` | Må denne session skifte til `ledger`? | [src](../../../core/services/projection_drift.py#L162) |
+| function | `_normaliser_json` | `(v)` | `content_json` kan være tekst ét sted og et objekt et andet. Det er | [src](../../../core/services/projection_drift.py#L46) |
+| function | `_felt` | `(raekke, navn)` | — | [src](../../../core/services/projection_drift.py#L63) |
+| function | `_modul` | `(projektion)` | Slå projektionen op. Et ukendt navn er en fejl, ikke et tomt svar — | [src](../../../core/services/projection_drift.py#L77) |
+| function | `_samme_tid` | `(a, b)` | Samme øjeblik skrevet på to måder er ikke uenighed. | [src](../../../core/services/projection_drift.py#L88) |
+| function | `_fra_ledger` | `(session_id, m)` | Fold i HUKOMMELSEN. At kalde projektoren ville skrive de rækker vi | [src](../../../core/services/projection_drift.py#L117) |
+| function | `_fra_tabellen` | `(session_id, m)` | — | [src](../../../core/services/projection_drift.py#L132) |
+| function | `compare` | `(session_id, projektion=…)` | Sammenlign de to sider. `enige` er svaret på om sessionen må skifte. | [src](../../../core/services/projection_drift.py#L144) |
+| function | `_nyeste` | `(raekker)` | Tidsstemplet paa den nyeste raekke — saa en laeser kan se om «enige» | [src](../../../core/services/projection_drift.py#L199) |
+| function | `may_cut_over` | `(session_id, projektion=…)` | Må denne session skifte til `ledger`? | [src](../../../core/services/projection_drift.py#L210) |
 
 ## `core/services/projection_runtime.py`
 _Projektions-runtime — rene, versionerede folder over session-ledgeren._
@@ -102,6 +104,23 @@ _Projektions-runtime — rene, versionerede folder over session-ledgeren._
 | function | `project` | `(session_id, navn, *, force_refold=…)` | Fold sessionens hændelser gennem projektionen og ryk markøren frem. | [src](../../../core/services/projection_runtime.py#L148) |
 | function | `snapshot` | `(session_id, navne=…)` | Fold FLERE projektioner og giv dem ÉT fælles `as_of_seq`. | [src](../../../core/services/projection_runtime.py#L176) |
 | function | `run_for_session` | `(session_id, navne=…)` | Kør alle registrerede projektioner for én session. | [src](../../../core/services/projection_runtime.py#L196) |
+
+## `core/services/projection_tool_router.py`
+_Projektion: `tool_router_decisions` foldet fra sessionens hændelser._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `decision_id_for` | `(session_id, event_id)` | Stabilt id: samme hændelse giver altid samme id. | [src](../../../core/services/projection_tool_router.py#L61) |
+| function | `_decision_id` | `(session_id, e, payload)` | Et id hændelsen allerede bærer VINDER over et udledt. | [src](../../../core/services/projection_tool_router.py#L71) |
+| function | `_json_tekst` | `(v)` | Lister og objekter gemmes som tekst; tekst gemmes uændret. | [src](../../../core/services/projection_tool_router.py#L82) |
+| function | `valider` | `(payload)` | Returnér en grund hvis hændelsen ikke kan blive en række, ellers None. | [src](../../../core/services/projection_tool_router.py#L95) |
+| function | `_raekke` | `(session_id, e)` | — | [src](../../../core/services/projection_tool_router.py#L111) |
+| function | `_migrer` | `(conn)` | Doven migration: `decision_id` og dens unikke indeks. | [src](../../../core/services/projection_tool_router.py#L137) |
+| function | `_skriv` | `(raekke)` | — | [src](../../../core/services/projection_tool_router.py#L162) |
+| function | `start` | `()` | Formen ligger i STARTEN, ikke i den første fold — som `chat_messages`. | [src](../../../core/services/projection_tool_router.py#L185) |
+| function | `fold` | `(state, e)` | Ren pr. hændelse og idempotent: samme hændelse igen ændrer ingenting. | [src](../../../core/services/projection_tool_router.py#L190) |
+| function | `register` | `()` | — | [src](../../../core/services/projection_tool_router.py#L207) |
+| function | `rebuild` | `(session_id)` | Genskab sessionens router-beslutninger fra hovedbogen. | [src](../../../core/services/projection_tool_router.py#L212) |
 
 ## `core/services/promise_ledger.py`
 _Promise-ledger (Bjørn-gate) — 16. jun 2026._
@@ -659,11 +678,4 @@ _Reasoning interceptor orchestrator. intercept_round() runs between a round's re
 | function | `build_reasoning_interceptor_surface` | `()` | Central-CLI view: recent interceptor verdicts. Self-safe, read-only. Returns static shape | [src](../../../core/services/reasoning_interceptor.py#L114) |
 | function | `intercept_round_async` | `(*, run_id, round_num, reasoning_text, tool_calls_this_run, ctx=…, budget_ms=…)` | Async wrapper (invariant 4 — async/keepalive): runs the sync intercept in a thread with a | [src](../../../core/services/reasoning_interceptor.py#L140) |
 | function | `intercept_round` | `(*, run_id, round_num, reasoning_text, tool_calls_this_run, ctx=…)` | — | [src](../../../core/services/reasoning_interceptor.py#L161) |
-
-## `core/services/reasoning_prefilter.py`
-_Deterministic pre-filter (interceptor invariant 5): cheap regex/heuristics over reasoning text →_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `prefilter` | `(reasoning_text, *, ctx=…, other_user_ids=…)` | Return the risk classes present in `reasoning_text`. Self-safe (never raises). | [src](../../../core/services/reasoning_prefilter.py#L15) |
 

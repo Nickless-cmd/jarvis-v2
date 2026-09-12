@@ -1574,6 +1574,47 @@ world.
 
 Two sessions remain in `shadow` on purpose as a control group.
 
+**Status 12 September — one of the three built, none flipped.** Re-measuring
+the table above first changed what the work is:
+
+* The scaffolding is **not reusable**. `projection_runtime` is generic
+  (`register(navn, ...)`, `project(session_id, navn)`), but `projection_drift`
+  imported `projection_chat_messages` by name and hard-coded the table, the
+  event kind and the column list. `chat_messages` appears in all four
+  machinery files. So "repeat the cutover three times" presupposed a cutover
+  that could be repeated; there wasn't one.
+* The three are **not the same shape**. `tool_router_decisions` and
+  `approval_claims` are keyed on `session_id`, so the session-keyed ledger
+  fits them. `agent_runs`, `agent_messages` and `agent_registry` have **no
+  session column at all** — the third cutover needs a key dimension the ledger
+  does not have, and is a design decision rather than a repetition.
+* `approval_claims` holds **one row**, and it is a test fixture
+  (`approval_id='x'`, `run_id='r'`, empty `session_id`, 9 September). Its
+  "7 write sites" are all in one file, `db_approval_bridge.py`, and they are
+  one lifecycle — created, decided, claimed, settled — not seven writers.
+* `storage_mode` is **per session, not per projection**. A flip therefore
+  makes every projection for that session ledger-authoritative at once. That
+  coupling has to be decided before any second cutover flips, not after.
+
+Built: `projection_tool_router.py` (the smallest of the three — one write
+site, 183 rows), and `projection_drift` generalised so each projection
+describes itself with `KIND`, `TABEL`, `NOEGLE` and `SAMMENLIGN` instead of
+being known by name. Ten tests, mutation-checked: an unstable `decision_id`
+fails only the idempotence test, and an always-true time comparison fails only
+the real-time-jump test.
+
+Two things the projection surfaced that the table above could not:
+`tool_router_decisions` has **no natural key** — only `id INTEGER PRIMARY KEY`
+— so a re-fold would have appended a second set of rows rather than updating
+the first; hence a derived `decision_id` and a lazy unique index. And the
+`datetime('now')` note above is now fixed at the write site, which means old
+and new rows carry different time formats, so drift comparison normalises time
+— narrowly, answering true only when both strings name the same instant.
+
+**Still open:** nothing is in shadow yet, and nothing has flipped. The
+tool-router projection exists and is proven against fixtures; it has not been
+run against the 183 production rows, and no session has been moved.
+
 ### Phase 12: optional remote, goal, hook, and team extensions
 
 After the core cutover, implement only extensions justified by an active Jarvis consumer: strict generated/declared remote contracts, revisioned `GoalRuntime`, native-enforced hook compatibility, and finally experimental `TeamRuntime` coordination.

@@ -2,6 +2,22 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/shared_language_extended.py`
+_Shared Language Extended — shorthand-udvikling og -resolution._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_now_iso` | `()` | — | [src](../../../core/services/shared_language_extended.py#L34) |
+| function | `_ensure_table` | `()` | — | [src](../../../core/services/shared_language_extended.py#L38) |
+| function | `_ngrams` | `(text)` | — | [src](../../../core/services/shared_language_extended.py#L60) |
+| function | `_load_recent_user_messages` | `(days=…, limit=…)` | — | [src](../../../core/services/shared_language_extended.py#L71) |
+| function | `propose_shorthand_terms` | `(*, min_occurrences=…, max_proposals=…)` | Scan chat messages for repeated n-grams; propose as shorthand. | [src](../../../core/services/shared_language_extended.py#L87) |
+| function | `_latest_suggestion_ts` | `()` | — | [src](../../../core/services/shared_language_extended.py#L151) |
+| function | `maybe_weekly_shorthand_suggestion` | `()` | Max 1 shorthand per 7 days. Returns the new term if added. | [src](../../../core/services/shared_language_extended.py#L166) |
+| function | `list_shorthand_terms` | `(*, limit=…)` | — | [src](../../../core/services/shared_language_extended.py#L210) |
+| function | `resolve_shorthand_text` | `(text)` | Expand shorthand in text. Returns {resolved_text, matched_terms}. | [src](../../../core/services/shared_language_extended.py#L229) |
+| function | `build_shared_language_extended_surface` | `()` | — | [src](../../../core/services/shared_language_extended.py#L265) |
+
 ## `core/services/shell_confinement_report.py`
 _Hver shell-sti skal SIGE om den er indespaerret — Fase 3, K10._
 
@@ -553,15 +569,4 @@ _Governed kill-switch for struktureret content-persist + wire. Default ON._
 |---|---|---|---|---|
 | function | `_read_flag` | `()` | Læs rå flag-værdi fra runtime-state. None = usat. | [src](../../../core/services/structured_content_flag.py#L12) |
 | function | `structured_content_v2_enabled` | `()` | True medmindre eksplicit slået fra ('off'/'0'/'false'/'no'). Læse-fejl → True | [src](../../../core/services/structured_content_flag.py#L18) |
-
-## `core/services/subagent_digest.py`
-_Surface recently-completed subagents into the visible prompt._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_load_marks` | `()` | — | [src](../../../core/services/subagent_digest.py#L30) |
-| function | `_save_marks` | `(marks)` | — | [src](../../../core/services/subagent_digest.py#L37) |
-| function | `_last_seen` | `(session_id)` | — | [src](../../../core/services/subagent_digest.py#L41) |
-| function | `_mark_seen` | `(session_id, when_iso)` | — | [src](../../../core/services/subagent_digest.py#L45) |
-| function | `subagent_digest_section` | `(session_id)` | Format completed subagents (since this session last looked) as a block. | [src](../../../core/services/subagent_digest.py#L52) |
 

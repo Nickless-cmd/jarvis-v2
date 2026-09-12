@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7292/14321 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7302/14334 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 7292/14321 functions/methods documented (50%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 614 | 1135 | 54% |
-| `core.services` | 4850 | 9877 | 49% |
+| `core.services` | 4860 | 9890 | 49% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 108 | 184 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -40,7 +40,7 @@ Generated from source. 7292/14321 functions/methods documented (50%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2033)
+## Undocumented public functions (2034)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L201)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1348,8 +1348,9 @@ Generated from source. 7292/14321 functions/methods documented (50%). The list b
 - `core/services/process_watcher.py` :: `set_watch_enabled` (L239)
 - `core/services/producer_novelty.py` :: `clear_producer` (L66)
 - `core/services/producer_novelty.py` :: `get_producer` (L73)
-- `core/services/projection_chat_messages.py` :: `register` (L171)
+- `core/services/projection_chat_messages.py` :: `register` (L180)
 - `core/services/projection_runtime.py` :: `registered` (L80)
+- `core/services/projection_tool_router.py` :: `register` (L207)
 - `core/services/prompt_cache_probe.py` :: `ProbeVerdict.as_line` (L61)
 - `core/services/prompt_contract.py` :: `build_future_agent_task_prompt_assembly` (L3471)
 - `core/services/prompt_contract.py` :: `build_heartbeat_prompt_assembly` (L3319)

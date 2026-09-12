@@ -2,6 +2,13 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/reasoning_prefilter.py`
+_Deterministic pre-filter (interceptor invariant 5): cheap regex/heuristics over reasoning text →_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `prefilter` | `(reasoning_text, *, ctx=…, other_user_ids=…)` | Return the risk classes present in `reasoning_text`. Self-safe (never raises). | [src](../../../core/services/reasoning_prefilter.py#L15) |
+
 ## `core/services/reasoning_store.py`
 _Reasoning Store — Phase 1 of Generalized Learning._
 
@@ -693,12 +700,4 @@ _Follow-stream for runs → klienter kan token-streame dem live + liveness-kilde
 | function | `_persist_learning_signals` | `(outcome)` | — | [src](../../../core/services/runtime_action_outcome_tracking.py#L105) |
 | function | `_completion_outcome_label` | `(status)` | — | [src](../../../core/services/runtime_action_outcome_tracking.py#L130) |
 | function | `_consecutive_repetition_count` | `(items)` | — | [src](../../../core/services/runtime_action_outcome_tracking.py#L141) |
-
-## `core/services/runtime_action_registry.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `RuntimeActionSpec` | `` | — | [src](../../../core/services/runtime_action_registry.py#L12) |
-| function | `list_runtime_action_specs` | `()` | — | [src](../../../core/services/runtime_action_registry.py#L109) |
-| function | `get_runtime_action_spec` | `(action_id)` | — | [src](../../../core/services/runtime_action_registry.py#L113) |
 

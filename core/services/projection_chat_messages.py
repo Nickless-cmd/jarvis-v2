@@ -48,6 +48,15 @@ logger = logging.getLogger(__name__)
 PROJEKTION = "chat_messages"
 VERSION = "1"
 
+#: Beskrivelsen af projektionen som DATA. Drift-sammenligneren slog
+#: tidligere disse op ved at importere netop dette modul og hardkode
+#: tabelnavn, hændelsestype og kolonner — hvilket gjorde den til en
+#: `chat_messages`-sammenligner der hed noget generelt.
+KIND = "message"
+TABEL = "chat_messages"
+NOEGLE = "session_id"
+SAMMENLIGN = ("role", "content", "reasoning_content", "content_json", "created_at")
+
 #: Hændelsen skal have en rolle og et indhold. Alt andet har et forsvarligt
 #: standardsvar; disse to har ikke — en række uden dem ville være støj.
 PAAKRAEVET = ("role", "content")

@@ -78,8 +78,11 @@ def test_uafgjort_er_ikke_terminal(tmp_path, _forbind):
 def test_sweepen_spoerger_foer_den_stempler():
     """Kildetjek på kaldestedet: rækkefølgen er hele pointen."""
     src = open("apps/api/jarvis_api/app.py", encoding="utf-8").read()
-    i = src.index("list_running_orphans(0.0)")
+    i = src.index("list_running_orphans(0.0")
     vindue = src[i:i + 1400]
+    # Ejer-identiteten skal med (12/9-2026), ellers stempler en proces den
+    # andens aktive ture — api og runtime deler både app og state-fil.
+    assert "dying_owner=current_owner()" in vindue
     assert "run_er_terminal" in vindue
     assert vindue.index("run_er_terminal") < vindue.index('reason="api-nedlukning"')
 

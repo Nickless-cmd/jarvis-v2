@@ -560,10 +560,15 @@ def create_app() -> FastAPI:
         # er det samme spor genoptagelses-stien laeser paa naeste tur.
         try:
             from core.services.in_flight_runs import (
-                list_running_orphans, mark_completed, mark_interrupted,
+                current_owner, list_running_orphans, mark_completed, mark_interrupted,
             )
             from core.services.visible_runs_outcomes import run_er_terminal
-            for _r in list_running_orphans(0.0):
+            # 12/9-2026: send VORES identitet med. Sweepen deler fil med
+            # soester-processen (api og runtime koerer samme app), og uden
+            # dette stemplede en nedlukning af den ene den andens aktive ture —
+            # maalt paa visible-d1fa743d, der stod `interrupted`/`api-nedlukning`
+            # mens den koerte videre og sluttede `completed`.
+            for _r in list_running_orphans(0.0, dying_owner=current_owner()):
                 _rid = str(_r.get("run_id") or "")
                 # SPOERG, GAET IKKE. Sweepens egen docstring kalder disse
                 # «crash-zombies whose finally never ran» — men med

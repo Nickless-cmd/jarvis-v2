@@ -16,6 +16,7 @@ Pattern follows phase 0's state_store (atomic JSON file).
 from __future__ import annotations
 
 import logging
+import os
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -38,6 +39,79 @@ _RESTART_WORDS = (
     "start forfra", "ny opgave", "glem den", "drop den", "restart",
     "start over", "ignore previous", "glem det",
 )
+
+
+# ── Ejer-identitet (12/9-2026) ───────────────────────────────────────────────
+# Hvorfor: api- og runtime-processen kører SAMME app (`apps.api.jarvis_api.app:app`)
+# mod SAMME delte `in_flight_runs.json`. Uden en ejer på posten kunne den ene
+# proses nedluknings-sweep stemple den andens aktive ture — målt på
+# `visible-d1fa743d`, der stod `interrupted`/`api-nedlukning` kl. 17:39:47 mens
+# den kørte videre og sluttede `completed` 17:43:08. Flaget målte «min proces
+# lukker», ikke «dette run er dødt».
+
+
+def _proc_start_ticks(pid: int) -> str | None:
+    """Start-tid for ``pid`` (Linux: ``/proc/<pid>/stat`` felt 22).
+
+    Tre udfald, og forskellen er hele pointen:
+    ``None`` = processen findes ikke (bevis) · ``""`` = findes, men vi kunne
+    ikke læse starttiden (et spørgsmål) · ellers selve start-tiden.
+
+    Hvorfor ikke bare pid'en: Linux genbruger pid'er. Uden start-tiden kunne en
+    post fra en død proces se ud som om den tilhørte en helt ny proces med samme
+    pid — og så ville sweepen stemple en levende turs post, eller lade en ægte
+    zombie ligge.
+    """
+    try:
+        with open(f"/proc/{pid}/stat", "rb") as f:
+            data = f.read()
+    except FileNotFoundError:
+        return None
+    except Exception:
+        return ""
+    try:
+        # ``comm`` (felt 2) kan indeholde både mellemrum og parenteser, så vi
+        # splitter efter den SIDSTE ')'. Derefter starter felt 3 ved index 0 —
+        # og felt 22 (starttime) er index 19.
+        return data.rsplit(b")", 1)[1].split()[19].decode()
+    except Exception:
+        return ""
+
+
+def current_owner() -> str:
+    """Denne proces' identitet: ``<pid>:<starttime>``.
+
+    Skrives på hver in-flight-post, så posten bærer HVEM der ejer den — ikke kun
+    hvornår den blev skrevet.
+    """
+    pid = os.getpid()
+    return f"{pid}:{_proc_start_ticks(pid) or ''}"
+
+
+def owner_still_alive(owner: str) -> bool | None:
+    """Kører den proces der ejer posten stadig?
+
+    ``True`` = lever · ``False`` = væk · ``None`` = kunne ikke afgøres.
+    ``None`` er ikke ``False``: en post vi ikke kan afgøre ejerskabet på må ikke
+    stemples på et gæt.
+    """
+    if not owner:
+        return None
+    pid_str, _, start = str(owner).partition(":")
+    try:
+        pid = int(pid_str)
+    except Exception:
+        return None
+    if pid <= 0:
+        return None
+    nuvaerende = _proc_start_ticks(pid)
+    if nuvaerende is None:
+        return False                    # processen findes ikke → ejeren er væk
+    if nuvaerende == "":
+        return None                     # findes måske — vi kunne ikke læse den
+    if not start:
+        return True                     # ingen starttid at sammenligne med
+    return nuvaerende == start          # samme pid, NY starttid = genbrugt pid
 
 
 def _load() -> dict[str, dict[str, Any]]:
@@ -75,6 +149,11 @@ def mark_started(
     ``model`` are additive, backward-compatible metadata: existing callers that
     omit them get the visible/empty defaults. The boot-reconciler uses them to
     describe which kinds of run were orphaned by a crash.
+
+    ``owner_proc`` (12/9-2026) er denne proces' identitet (pid + starttid).
+    Uden den kunne en nedluknings-sweep i én proces stemple en aktiv tur i en
+    anden — begge services kører samme app mod samme delte fil. Poster uden
+    feltet (ældre, eller skrevet af en test) falder tilbage til alders-filteret.
     """
     if not run_id:
         return
@@ -99,6 +178,7 @@ def mark_started(
         "excerpt": (user_message or "")[:_EXCERPT_LIMIT],
         "started_at": datetime.now(UTC).isoformat(),
         "last_tool": "",
+        "owner_proc": current_owner(),
     }
     _save(records)
 
@@ -211,14 +291,31 @@ def interrupted_for_session(session_id: str | None) -> dict[str, Any] | None:
     return candidates[0]
 
 
-def list_running_orphans(stale_after_s: float) -> list[dict[str, Any]]:
-    """Return records still marked ``running`` whose ``started_at`` is older than
-    ``stale_after_s`` seconds — i.e. crash-zombies whose ``finally`` never ran.
+def list_running_orphans(
+    stale_after_s: float,
+    *,
+    dying_owner: str | None = None,
+) -> list[dict[str, Any]]:
+    """Return ``running`` records whose OWNER is gone — i.e. genuine zombies.
 
-    Pure read (no writes). Fresh ``running`` records (probably still streaming
-    on another worker) and ``interrupted`` records are excluded. Records with an
-    unparseable ``started_at`` are conservatively NOT reported as orphans — we
-    only surface a run we can confirm is genuinely stale, never on a bad clock.
+    Hvem er en forladt post? (12/9-2026.) Før var svaret «enhver ``running``-post
+    ældre end ``stale_after_s``». Det er et svar om TID, ikke om ejerskab — og
+    api- og runtime-processen kører SAMME app mod SAMME delte ``in_flight_runs``.
+    En nedlukning af den ene stemplede derfor den andens aktive ture: målt på
+    ``visible-d1fa743d``, der stod ``interrupted``/``api-nedlukning`` kl. 17:39:47
+    mens den kørte videre og sluttede ``completed`` 17:43:08.
+
+    Reglen er nu, pr. post med et ``owner_proc``:
+
+    - ejeren ER ``dying_owner`` (os selv, vi er ved at lukke) → forladt, stempl.
+    - ejeren lever → IKKE forladt. Det er søster-processens tur, ikke vores.
+    - ejeren er væk → forladt (crash).
+    - ejerskabet kan ikke afgøres, eller posten har slet ingen ejer (ældre post,
+      eller skrevet af en test) → alders-filteret afgør, præcis som før.
+      Bagudkompatibelt: ingen eksisterende kald ændrer adfærd for sådanne poster.
+
+    Pure read (no writes). Records med et ``started_at`` vi ikke kan læse
+    rapporteres konservativt IKKE — vi stempler kun en post vi kan bekræfte.
     """
     now = datetime.now(UTC)
     out: list[dict[str, Any]] = []
@@ -232,7 +329,21 @@ def list_running_orphans(stale_after_s: float) -> list[dict[str, Any]]:
             started_dt = datetime.fromisoformat(started_iso)
         except Exception:
             continue
-        if (now - started_dt).total_seconds() >= float(stale_after_s):
+        gammel_nok = (now - started_dt).total_seconds() >= float(stale_after_s)
+
+        owner = str(rec.get("owner_proc") or "")
+        if owner:
+            if dying_owner and owner == str(dying_owner):
+                out.append(rec)      # os selv — vi er ved at dø
+                continue
+            alive = owner_still_alive(owner)
+            if alive is False:
+                out.append(rec)      # ejeren er væk = ægte zombie
+                continue
+            if alive is True:
+                continue             # lever — ikke vores at stemple
+            # alive is None → kunne ikke afgøres; alderen afgør nedenfor.
+        if gammel_nok:
             out.append(rec)
     return out
 

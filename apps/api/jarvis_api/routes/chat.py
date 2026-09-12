@@ -11,6 +11,7 @@ from core.services.chat_sessions import (
     create_chat_session,
     delete_chat_session,
     get_chat_session,
+    get_message_reasoning,
     list_chat_sessions,
     rename_chat_session,
     session_version,
@@ -447,6 +448,25 @@ def chat_message_feedback(message_id: str, req: MessageFeedbackRequest) -> dict:
     if ud.get("status") == "error":
         raise HTTPException(status_code=400, detail=ud.get("error") or "ugyldig stemme")
     return ud
+
+
+@router.get("/messages/{message_id}/reasoning")
+def chat_message_reasoning(message_id: str) -> dict:
+    """Den FULDE tankestrøm bag ét svar — dovent, kun når nogen beder om den.
+
+    Tænke-blokken klienten får bærer bevidst kun HALEN (`text[-4000:]`), fordi
+    `get_chat_session` sender hele sessionen ved hvert poll — og fuld
+    ræsonnering er titusindvis af tegn pr. tur. Denne rute henter resten for
+    ÉN besked, i det øjeblik en avanceret bruger folder linjen ud. Standard-
+    klienten kalder den aldrig.
+
+    Bjørns valg (12/9-2026): standarden er ChatGPT-agtig — kun halen — og
+    hele strømmen er et tilvalg i indstillingerne.
+    """
+    text = get_message_reasoning(message_id)
+    if text is None:
+        raise HTTPException(status_code=404, detail="beskeden findes ikke")
+    return {"id": message_id, "reasoning": text, "chars": len(text)}
 
 
 @router.get("/roots")

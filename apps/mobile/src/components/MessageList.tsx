@@ -67,8 +67,10 @@ type Row =
       // streamen stoppede.
       kildeBlokke?: PersistedBlock[] | null }
   /** «Tænkte i 14 s ›» — foldet spor af turens overvejelse.
-   *  `live`: tænkningen streames lige nu → «Tænker…» med åndedrag. */
-  | { kind: 'thinking'; key: string; seconds?: number; text?: string; live?: boolean }
+   *  `live`: tænkningen streames lige nu → «Tænker…» med åndedrag.
+   *  `messageId`: beskedens id — nøglen til at hente den FULDE strøm, hvis
+   *  den avancerede bruger har slået det til i indstillingerne. */
+  | { kind: 'thinking'; key: string; seconds?: number; text?: string; live?: boolean; messageId?: string }
   /** Billeder/filer sendt MED en brugerbesked, tegnet over boblen. */
   | { kind: 'attachments'; key: string; items: PersistedBlock[] }
   | { kind: 'tool'; key: string; content: string }
@@ -261,7 +263,8 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
         if (think) {
           expanded.push({
             kind: 'thinking', key: `${m.id}-think`,
-            seconds: think.seconds, text: think.text
+            seconds: think.seconds, text: think.text,
+            messageId: m.id
           })
         }
         const thread = threadBlocks(blocks!)
@@ -303,7 +306,8 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
         persisted.unshift({ kind: 'msg', key: m.id, message: m, kildeBlokke: blocks })
         persisted.unshift({
           kind: 'thinking', key: `${m.id}-think`,
-          seconds: think.seconds, text: think.text
+          seconds: think.seconds, text: think.text,
+          messageId: m.id
         })
         continue
       }
@@ -386,7 +390,14 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
         // ligger bag linjen, ikke foran den.
         if (item.kind === 'tool-group') return <InlineToolGroup items={item.items} />
         if (item.kind === 'thinking') {
-          return <ThinkingSummary seconds={item.seconds} text={item.text} live={item.live} />
+          return (
+            <ThinkingSummary
+              seconds={item.seconds}
+              text={item.text}
+              live={item.live}
+              messageId={item.messageId}
+            />
+          )
         }
         if (item.kind === 'attachments') return <MessageAttachments items={item.items} />
         if (item.kind === 'compact-marker') return <CompactMarkerRow content={item.content} />

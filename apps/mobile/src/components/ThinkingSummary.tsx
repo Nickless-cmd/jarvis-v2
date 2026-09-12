@@ -3,6 +3,9 @@ import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-nativ
 import { Brain, ChevronDown, ChevronRight } from 'lucide-react-native'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 import { useReducedMotion } from '../lib/useReducedMotion'
+import { useAuthOptional } from '../state/AuthContext'
+import { getMessageReasoning } from '../lib/apiClient'
+import { loadFullThinking } from '../lib/fullThinking'
 
 /**
  * «🧠 Tænker…» mens den tænker. «🧠 Tænkte i 14 s ›» når den er færdig.
@@ -23,11 +26,30 @@ import { useReducedMotion } from '../lib/useReducedMotion'
  * - færdig med målt varighed → «Tænkte i X s»
  * - færdig uden målt varighed men med tekst → «Tænkte» (vi ved den tænkte,
  *   bare ikke hvor længe — så vi påstår ikke et tal vi ikke har)
+ *
+ * HVOR MEGET MAN SER (12/9-2026). Serveren sender kun HALEN af ræsonneringen
+ * (de sidste 4.000 tegn) i blokken — fuld CoT ville sprænge session-pollingen.
+ * Det er standarden, og den er ChatGPT-agtig: nok til at følge tanken, ikke
+ * hele den interne monolog. En avanceret bruger kan slå HELE strømmen til i
+ * indstillingerne; først da hentes resten for den ene besked, dovent.
  */
-export function ThinkingSummary({ seconds, text, live }: { seconds?: number; text?: string; live?: boolean }) {
+export function ThinkingSummary({
+  seconds,
+  text,
+  live,
+  messageId
+}: {
+  seconds?: number
+  text?: string
+  live?: boolean
+  /** Beskedens id — nøglen til at hente den FULDE strøm, hvis tilvalget er til. */
+  messageId?: string
+}) {
   const tokens = useTheme()
   const styles = useStyles(makestyles)
   const [open, setOpen] = useState(false)
+  const [fullText, setFullText] = useState<string | null>(null)
+  const { config } = useAuthOptional()
   const hasText = !!(text ?? '').trim()
   const reduced = useReducedMotion()
   const pulse = useRef(new Animated.Value(1)).current
@@ -77,13 +99,32 @@ export function ThinkingSummary({ seconds, text, live }: { seconds?: number; tex
 
   const toggle = () => {
     if (!expandable) return
-    if (!reduced) {
-      // LayoutAnimation er ikke importeret her for at holde afhængighederne
-      // minimale — InlineToolGroup bruger den, men tænkningen er typisk ét
-      // blok tekst, ikke en liste der har brug for glidende animation.
-    }
-    setOpen((v) => !v)
+    const naeste = !open
+    setOpen(naeste)
+    // Kun når man ÅBNER, tilvalget er slået til, og vi har noget at hente fra.
+    // Er halen allerede det hele (en kort ræsonnering), sker der ingenting —
+    // den fulde tekst er den samme, og et kald ville være spild.
+    if (naeste) void hentFuld()
   }
+
+  /** Hent den fulde strøm — men kun hvis brugeren selv har slået det til.
+   *
+   *  Self-safe: fejler kaldet (netværk, 404, gammel besked uden gemt
+   *  ræsonnering), bliver halen stående. En fejl her må aldrig fjerne noget
+   *  brugeren allerede kunne se.
+   */
+  const hentFuld = async () => {
+    if (fullText !== null || !messageId || !config) return
+    if (!(await loadFullThinking())) return
+    try {
+      const fuld = await getMessageReasoning(config, messageId)
+      if (fuld.trim()) setFullText(fuld)
+    } catch {
+      /* behold halen */
+    }
+  }
+
+  const vist = fullText ?? text
 
   return (
     <View style={styles.wrap}>
@@ -108,7 +149,7 @@ export function ThinkingSummary({ seconds, text, live }: { seconds?: number; tex
           ) : null}
         </Animated.View>
       </Pressable>
-      {open && hasText ? <Text selectable style={styles.body}>{text}</Text> : null}
+      {open && vist ? <Text selectable style={styles.body}>{vist}</Text> : null}
     </View>
   )
 }

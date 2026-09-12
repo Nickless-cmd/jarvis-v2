@@ -194,12 +194,24 @@ def _pin_deployment_env_for_tests(monkeypatch):
     monkeypatch.setenv("JARVISX_AUTH_REQUIRED", "0")
     monkeypatch.setenv("JARVISX_HTTPS_REDIRECT", "0")
     # 3. `config/runtime.json` bærer maskinens levende flag — bl.a. Fase-4's
-    #    `agent_step_*`. `load_settings()` læser filen hvis den findes, så
-    #    «flag OFF (default)»-tests arvede Bjørns config, hvor de står True, og
-    #    fejlede på deres egen præmis. Peg på en ikke-eksisterende fil →
-    #    `load_settings()` returnerer `RuntimeSettings()`-defaults. Samme
-    #    kirurgi som `isolated_runtime` gør med reload; her for de tests der
-    #    rammer den ægte `app` uden den fixture.
+    #    `agent_step_*`, `client_turn_*`, `skill_autosurface_*` og
+    #    `cache_split_*`. `load_settings()` læser filen hvis den findes, så
+    #    «flag default = False»-tests arvede Bjørns config, hvor de står True,
+    #    og fejlede på deres egen præmis. Peg på en ikke-eksisterende fil →
+    #    `load_settings()` returnerer `RuntimeSettings()`-defaults.
+    #
+    #    MÅLT 12/9-2026 (fjernet igen for at se om den gjorde skade — den gør
+    #    ikke): uden dette punkt fejler 8 tests i fire filer
+    #    (test_client_turn_live, test_skill_autosurface, test_agent_step_cache_split,
+    #    test_client_turn_absorb) plus tests/faults/test_agent_step_faults.py —
+    #    alle med præcis samme signatur: «flag default false» målt mod en config
+    #    der har det True. Jeg fandt INGEN test der fejlede PÅ GRUND AF punktet.
+    #    Derfor er det tilbage.
+    #
+    #    BEMÆRK hvad det IKKE løser: tests der med rette forventer en VÆRDI fra
+    #    config (fx tests/test_settings.py vil have
+    #    `context_compact_threshold_tokens >= 200_000`) fejler uanset — Bjørns
+    #    config har 130_000, så det er en config↔test-uenighed, ikke pin'en.
     try:
         import tempfile
         from pathlib import Path as _Path

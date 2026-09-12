@@ -94,8 +94,26 @@ def test_orchestrated_research_bounds_worker_concurrency(monkeypatch):
 
 
 async def _visible_with_report(**_kwargs):
-    yield _legacy("delta", {"text": "Pris er 10 kr [1]"})
+    # Ægte legacy-form (`visible_runs.py:1722`): delta bæres i `delta`-nøglen,
+    # ikke `text`. Faken SKAL matche producenten — ellers validerer A1-testen
+    # en form der ikke findes (og skjuler netop den bug `_delta_text` havde).
+    yield _legacy("delta", {"type": "delta", "run_id": "visible-a1", "delta": "Pris er 10 kr [1]"})
     yield _legacy("done", {})
+
+
+def test_A1_delta_text_laeser_den_aegte_frame():
+    """Regression (13/9-2026): `_delta_text` læste `text`, producenten sender `delta`.
+
+    Målt: den returnerede '' på enhver ægte frame, så A1's gate evaluerede en tom
+    rapport i produktion. Begge former skal nu give teksten.
+    """
+    aegte = 'event: delta\ndata: {"type": "delta", "run_id": "r1", "delta": "Pris er 10 kr [1]"}\n\n'
+    assert orchestrator._delta_text(aegte) == "Pris er 10 kr [1]"
+    # Bagudkompatibilitet: den gamle (fake) form må ikke knække.
+    gammel = 'event: delta\ndata: {"text": "Pris er 10 kr [1]"}\n\n'
+    assert orchestrator._delta_text(gammel) == "Pris er 10 kr [1]"
+    # Andre frames bidrager ikke.
+    assert orchestrator._delta_text('event: research_plan\ndata: {}\n\n') == ""
 
 
 def test_A1_quality_gate_runs_on_the_real_report(monkeypatch):

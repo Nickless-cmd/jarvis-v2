@@ -50,7 +50,15 @@ def _facets(message: str) -> list[str]:
 
 
 def _delta_text(frame: str) -> str:
-    """Træk syntese-teksten ud af en `delta`-frame. Andre frames giver ''."""
+    """Træk syntese-teksten ud af en `delta`-frame. Andre frames giver ''.
+
+    ROD-FIX (13/9-2026): denne læste `{"text": ...}` — men den ægte producent
+    (`visible_runs.py:1722`) sender `{"type": "delta", "run_id": ..., "delta": ...}`.
+    Målt: `_delta_text` returnerede '' på enhver ægte frame, så A1's kvalitetsgate
+    evaluerede en TOM rapport i produktion (gates fejlede altid). Fase A's egne
+    tests slap igennem fordi deres fake brugte `text`-nøglen. Begge læses nu,
+    den ægte først.
+    """
     if not frame.startswith("event: delta"):
         return ""
     for line in frame.splitlines():
@@ -59,7 +67,7 @@ def _delta_text(frame: str) -> str:
                 payload = json.loads(line[6:])
             except Exception:
                 return ""
-            return str(payload.get("text") or "")
+            return str(payload.get("delta") or payload.get("text") or "")
     return ""
 
 

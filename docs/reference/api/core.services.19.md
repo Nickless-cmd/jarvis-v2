@@ -593,11 +593,12 @@ _Adaptive research coordinator around the existing visible and agent runtimes._
 | function | `_delta_text` | `(frame)` | Træk syntese-teksten ud af en `delta`-frame. Andre frames giver ''. | [src](../../../core/services/research_orchestrator.py#L51) |
 | function | `_plan` | `(message, max_tasks)` | — | [src](../../../core/services/research_orchestrator.py#L65) |
 | function | `_tool_calls_used` | `(run_id)` | Observerede værktøjskald i runnet. Defensiv: 0 hvis tællingen ikke kan læses. | [src](../../../core/services/research_orchestrator.py#L80) |
-| function | `_evaluate_quality` | `(run_id, query, report, policy)` | Fase A1: kobl kvalitetsgaten på den faktiske rapport. | [src](../../../core/services/research_orchestrator.py#L88) |
-| function | `_default_worker_sync` | `(*, task, run_id, skill_instructions)` | — | [src](../../../core/services/research_orchestrator.py#L118) |
-| function | `_run_worker` | `(worker_factory, *, task, run_id, skill_instructions)` | — | [src](../../../core/services/research_orchestrator.py#L149) |
-| function | `stream_research_run` | `(*, message, original_query=…, session_id, visible_run_id=…, decision=…, visible_factory=…, worker_factory=…, orchestrator_enabled=…, **visible_kwargs)` | — | [src](../../../core/services/research_orchestrator.py#L154) |
-| function | `research_enabled` | `()` | — | [src](../../../core/services/research_orchestrator.py#L348) |
+| function | `_topup_plan` | `(run_id, tasks, policy)` | Fase B1: hvilke tracks skal styrkes — og med hvad? | [src](../../../core/services/research_orchestrator.py#L88) |
+| function | `_evaluate_quality` | `(run_id, query, report, policy)` | Fase A1: kobl kvalitetsgaten på den faktiske rapport. | [src](../../../core/services/research_orchestrator.py#L134) |
+| function | `_default_worker_sync` | `(*, task, run_id, skill_instructions)` | — | [src](../../../core/services/research_orchestrator.py#L164) |
+| function | `_run_worker` | `(worker_factory, *, task, run_id, skill_instructions)` | — | [src](../../../core/services/research_orchestrator.py#L195) |
+| function | `stream_research_run` | `(*, message, original_query=…, session_id, visible_run_id=…, decision=…, visible_factory=…, worker_factory=…, orchestrator_enabled=…, **visible_kwargs)` | — | [src](../../../core/services/research_orchestrator.py#L200) |
+| function | `research_enabled` | `()` | — | [src](../../../core/services/research_orchestrator.py#L423) |
 
 ## `core/services/research_prompt_context.py`
 _Request-scoped research instructions consumed by prompt assembly surfaces._

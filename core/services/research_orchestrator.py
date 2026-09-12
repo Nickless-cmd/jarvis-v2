@@ -85,6 +85,52 @@ def _tool_calls_used(run_id: str) -> int:
         return 0
 
 
+def _topup_plan(run_id: str, tasks: list[dict], policy: ResearchPolicy) -> list[ResearchTask]:
+    """Fase B1: hvilke tracks skal styrkes — og med hvad?
+
+    Stop på EVIDENS frem for på «bølgen blev færdig»: er kilderne for få OG er
+    der råd, kører én ekstra bølge på de TYNDESTE tracks. Returnerer [] når
+    evidensen er nok, budgettet er brugt, eller der ikke er noget at styrke.
+
+    Defensiv hele vejen: kan tællingen ikke læses, kører vi ingen ekstra bølge.
+    En top-up der ikke kan begrundes, er en udgift uden dækning.
+    """
+    if not tasks:
+        return []
+    try:
+        if store.source_count(run_id) >= policy.source_target:
+            return []
+    except Exception:
+        return []
+    if _tool_calls_used(run_id) >= policy.max_tool_calls:
+        return []
+    per_task: dict[str, int] = {}
+    try:
+        for row in store.list_sources(run_id):
+            tid = str((row or {}).get("task_id") or "")
+            per_task[tid] = per_task.get(tid, 0) + 1
+    except Exception:
+        per_task = {}
+    ranked = sorted(
+        tasks,
+        key=lambda t: (per_task.get(str(t.get("id")), 0), int(t.get("ordinal") or 0)),
+    )
+    thin = ranked[: max(1, min(int(policy.max_workers or 1), len(ranked)))]
+    base = max(int(t.get("ordinal") or 0) for t in tasks)
+    return [
+        ResearchTask(
+            ordinal=base + index + 1,
+            title=f"Top-up track {t.get('ordinal')}: {t.get('title') or ''}".strip(),
+            objective=(
+                "Find ADDITIONAL independent sources for: "
+                f"{t.get('objective') or ''} Prefer sources that are not already "
+                "cited, and preserve their URLs."
+            ),
+        )
+        for index, t in enumerate(thin)
+    ]
+
+
 def _evaluate_quality(run_id: str, query: str, report: str, policy: ResearchPolicy) -> dict:
     """Fase A1: kobl kvalitetsgaten på den faktiske rapport.
 
@@ -246,44 +292,73 @@ async def stream_research_run(
                     store.complete_task(str(task["id"]), {"error": str(exc)}, status="failed")
                     return f"Track {task['ordinal']} failed: {exc}"
 
-        findings = []
-        pending = {asyncio.create_task(one(task)) for task in tasks}
-        completed = 0
-        while pending:
-            remaining = deadline - time.monotonic()
-            if remaining <= 0:
-                timed_out = True
-                break
-            done, pending = await asyncio.wait(
-                pending, timeout=remaining, return_when=asyncio.FIRST_COMPLETED,
-            )
-            if not done:
-                timed_out = True
-                break
-            for future in done:
-                completed += 1
-                try:
-                    findings.append(future.result())
-                except Exception as exc:
-                    findings.append(f"Track failed: {exc}")
-                yield _event("research_progress", {
+        findings: list[str] = []
+
+        async def _wave(wave_tasks: list, *, total: int):
+            """Kør én bølge workers og yield fremskridt. Sætter `timed_out`."""
+            nonlocal timed_out
+            pending = {asyncio.create_task(one(task)) for task in wave_tasks}
+            completed = 0
+            while pending:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    timed_out = True
+                    break
+                done, pending = await asyncio.wait(
+                    pending, timeout=remaining, return_when=asyncio.FIRST_COMPLETED,
+                )
+                if not done:
+                    timed_out = True
+                    break
+                for future in done:
+                    completed += 1
+                    try:
+                        findings.append(future.result())
+                    except Exception as exc:
+                        findings.append(f"Track failed: {exc}")
+                    yield _event("research_progress", {
+                        "research_run_id": run_id,
+                        "phase": "researching",
+                        "completed_tasks": completed,
+                        "total_tasks": total,
+                        "sources": store.source_count(run_id),
+                    })
+            if timed_out:
+                for future in pending:
+                    future.cancel()
+                await asyncio.gather(*pending, return_exceptions=True)
+                # Spec §4 A2: markér — men syntetisér på det der nåede ind, så brugeren
+                # ikke står uden svar fordi én worker hang.
+                yield _event("research_warning", {
                     "research_run_id": run_id,
-                    "phase": "researching",
-                    "completed_tasks": completed,
-                    "total_tasks": len(tasks),
-                    "sources": store.source_count(run_id),
+                    "warning": "wall_time_exceeded",
+                    "wall_time_seconds": policy.wall_time_seconds,
                 })
-        if timed_out:
-            for future in pending:
-                future.cancel()
-            await asyncio.gather(*pending, return_exceptions=True)
-            # Spec §4 A2: markér — men syntetisér på det der nåede ind, så brugeren
-            # ikke står uden svar fordi én worker hang.
-            yield _event("research_warning", {
-                "research_run_id": run_id,
-                "warning": "wall_time_exceeded",
-                "wall_time_seconds": policy.wall_time_seconds,
-            })
+
+        async for event in _wave(tasks, total=len(tasks)):
+            yield event
+
+        # Fase B1: stop på EVIDENS, ikke på «bølgen blev færdig». Er kilderne for
+        # få OG er der råd, kører ÉN ekstra bølge på de tyndeste tracks. Den kaldes
+        # her — ikke i en løkke — så et run kan strukturelt ikke loope her.
+        if not timed_out:
+            plan = _topup_plan(run_id, tasks, policy)
+            if plan:
+                known = {str(t["id"]) for t in tasks}
+                fresh = [t for t in store.create_tasks(run_id, plan)
+                         if str(t["id"]) not in known]
+                if fresh:
+                    yield _event("research_progress", {
+                        "research_run_id": run_id,
+                        "phase": "topping_up",
+                        "reason": "source_target",
+                        "source_target": policy.source_target,
+                        "sources": store.source_count(run_id),
+                        "tracks": [int(t["ordinal"]) for t in fresh],
+                    })
+                    async for event in _wave(fresh, total=len(tasks) + len(fresh)):
+                        yield event
+
         evidence = "\n\n".join(findings)
     else:
         store.transition_run(run_id, "researching")

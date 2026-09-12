@@ -2,7 +2,7 @@ import asyncio
 import json
 
 from core.services import research_orchestrator as orchestrator
-from core.services.research_contract import ResearchDecision
+from core.services.research_contract import ResearchDecision, ResearchPolicy
 
 
 def _legacy(name, payload=None):
@@ -202,3 +202,90 @@ def test_A3_tool_budget_stops_new_workers(monkeypatch):
         for finding, kw in completed
     ), completed
     assert any("event: research_completed" in event for event in events)
+
+
+# --- Fase B1: source_target som rigtigt stop-kriterium (13/9-2026) ---
+
+
+def test_B1_topup_picks_the_thinnest_track(monkeypatch):
+    """Top-up-bølgen skal ramme HULLET — den track der har færrest kilder."""
+    _fake_store(monkeypatch, sources=[{"task_id": "t1"}, {"task_id": "t1"}])
+    tasks = [
+        {"id": "t1", "ordinal": 1, "title": "A", "objective": "om A"},
+        {"id": "t2", "ordinal": 2, "title": "B", "objective": "om B"},
+    ]
+    plan = orchestrator._topup_plan(
+        "r", tasks, ResearchPolicy(max_workers=1, source_target=6),
+    )
+    assert len(plan) == 1
+    assert "om B" in plan[0].objective
+    assert plan[0].ordinal == 3  # fortsætter nummereringen
+
+
+def test_B1_topup_stops_when_evidence_is_enough(monkeypatch):
+    """Er kilderne nok, er en ekstra bølge bare dobbelt arbejde."""
+    _fake_store(monkeypatch)
+    monkeypatch.setattr(orchestrator.store, "source_count", lambda rid: 99)
+    assert orchestrator._topup_plan(
+        "r", [{"id": "t1", "ordinal": 1}], ResearchPolicy(source_target=6),
+    ) == []
+
+
+def test_B1_topup_stops_when_budget_is_gone(monkeypatch):
+    """En ekstra bølge er en udgift. Er rådet brugt, kører den ikke."""
+    _fake_store(monkeypatch, tool_calls=999)
+    assert orchestrator._topup_plan(
+        "r", [{"id": "t1", "ordinal": 1}], ResearchPolicy(),
+    ) == []
+
+
+def test_B1_topup_wave_runs_end_to_end(monkeypatch):
+    """Er kilderne for få, kører der en ekstra bølge — med NYE tracks."""
+    _fake_store(monkeypatch)
+    calls = {"n": 0}
+
+    def fake_create_tasks(rid, tasks):
+        calls["n"] += 1
+        prefix = "t" if calls["n"] == 1 else "u"
+        return [
+            {"id": f"{prefix}{i}", "ordinal": i, "title": t.title, "objective": t.objective}
+            for i, t in enumerate(tasks, 1)
+        ]
+
+    monkeypatch.setattr(orchestrator.store, "create_tasks", fake_create_tasks)
+    started: list[str] = []
+
+    async def worker(**kwargs):
+        started.append(str(kwargs["task"]["id"]))
+        return {"text": "f", "status": "completed"}
+
+    events = _events(orchestrator.stream_research_run(
+        message="Sammenlign fem leverandører på pris, sikkerhed og drift",
+        session_id="s1",
+        decision=ResearchDecision(tier="orchestrated", max_workers=2, max_tasks=2, source_target=5),
+        visible_factory=_visible,
+        worker_factory=worker,
+        orchestrator_enabled=True,
+    ))
+    assert any("topping_up" in event for event in events), events
+    assert any(sid.startswith("u") for sid in started), started
+
+
+def test_B1_topup_does_not_run_after_timeout(monkeypatch):
+    """Et run der allerede har brændt sin tid skal IKKE have en ekstra bølge."""
+    _fake_store(monkeypatch)
+    monkeypatch.setattr(orchestrator, "time", _FakeClock(0.0, 10_000.0))
+
+    async def slow_worker(**_kwargs):
+        await asyncio.sleep(30)
+        return {"text": "for sent", "status": "completed"}
+
+    events = _events(orchestrator.stream_research_run(
+        message="Sammenlign fem leverandører på pris, sikkerhed og drift",
+        session_id="s1",
+        decision=ResearchDecision(tier="orchestrated", max_workers=1, max_tasks=2),
+        visible_factory=_visible,
+        worker_factory=slow_worker,
+        orchestrator_enabled=True,
+    ))
+    assert not any("topping_up" in event for event in events), events

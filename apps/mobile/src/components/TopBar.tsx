@@ -1,5 +1,5 @@
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native'
-import { ArrowLeft, Menu, MoreVertical } from 'lucide-react-native'
+import { ArrowLeft, MoreVertical } from 'lucide-react-native'
 import { SegmentedControl } from './SegmentedControl'
 import { ContextRing } from './ContextRing'
 import { tokens } from '../theme/tokens'
@@ -15,9 +15,8 @@ interface Props {
   onSync: () => void
   pendingWork?: boolean
   syncing?: boolean
-  /** Code-fladen: venstre felt bliver en tilbage-pil og segmentet siger «Code». */
+  /** Code-fladen: segmentet siger «Code» i stedet for «Snak». */
   kodeTilstand?: boolean
-  onBack?: () => void
   /** Kontekst-fyld. Ringen tegner sig selv væk når den er null. */
   kontekst?: ContextUsage | null
   /** Åbner tre-prik menuen. Opdatér bor derinde nu. */
@@ -51,27 +50,25 @@ const SEGMENT_W = 172
 
 export function TopBar({
   mode, onModeChange, onMenu, onSync, pendingWork, syncing,
-  kodeTilstand, onBack, kontekst, onMereMenu,
+  kodeTilstand, kontekst, onMereMenu,
 }: Props) {
   const tokens = useTheme()
   const styles = useStyles(makestyles)
-  // I code-fladen er venstre felt en VEJ UD, ikke en menu. At lade det blive
-  // ved med at aabne sessionslisten ville efterlade code-fladen uden udgang
-  // paa den plads oejet leder efter den.
-  const tilbage = Boolean(kodeTilstand && onBack)
   return (
     <View style={styles.bar}>
+      {/* ÉN pil, uanset flade. Foer skiftede ikonet mellem hamburger og pil,
+          og de to foerte to forskellige steder hen - saa den samme plads gjorde
+          to ting afhaengigt af en tilstand man ikke kunne se paa knappen.
+          Vejen ud af code-fladen bor i menuen, sammen med vejen ind. */}
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={tilbage ? 'Tilbage til chat' : 'Menu'}
-        onPress={tilbage ? onBack : onMenu}
+        accessibilityLabel="Menu"
+        onPress={onMenu}
         hitSlop={8}
         style={styles.circle}
         testID="topbar-venstre"
       >
-        {tilbage
-          ? <ArrowLeft size={21} color={tokens.color.fg1} strokeWidth={2} />
-          : <Menu size={21} color={tokens.color.fg1} strokeWidth={2} />}
+        <ArrowLeft size={21} color={tokens.color.fg1} strokeWidth={2} />
       </Pressable>
 
       <View pointerEvents="box-none" style={styles.centerWrap}>
@@ -98,7 +95,11 @@ export function TopBar({
         accessibilityState={{ busy: Boolean(syncing) }}
         onPress={onMereMenu ?? onSync}
         hitSlop={8}
-        style={[styles.circle, kontekst ? styles.pille : null]}
+        // EGEN stil frem for [circle, pille]. Begge virker - StyleSheet.flatten
+        // lader `width: undefined` fjerne en tidligere bredde - men to stilarter
+        // der delvist ophaever hinanden er svaerere at laese end to der hver
+        // beskriver én form.
+        style={kontekst ? styles.pille : styles.circle}
         testID="topbar-mere"
       >
         {syncing ? (
@@ -137,15 +138,24 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
     justifyContent: 'center'
   },
   center: { width: SEGMENT_W },
-  // Feltet vokser til en pille naar ringen er der. Segmentet er ABSOLUT
-  // centreret, saa den maalte geometri i midten staar stille alligevel.
+  // Feltet vokser til en pille naar ringen er der. Polstringen er sat efter
+  // ChatGPT-appens eget hoejre felt (Bjoerns skaermbillede 12/9-2026): der er
+  // luft HELE vejen rundt om begge ikoner. Foerste forsoeg havde 9 dp og 4 dp
+  // mellemrum, og saa roerte ringen kanten - baggrunden saa ud til at ligge
+  // bag halvdelen af indholdet frem for at daekke det.
+  //
+  // Ingen `width`: indholdet bestemmer bredden. Segmentet er ABSOLUT centreret,
+  // saa den maalte geometri i midten staar stille uanset hvor bred pillen er.
   pille: {
-    width: undefined,
+    height: CIRCLE,
+    borderRadius: CIRCLE / 2,
+    backgroundColor: tokens.color.bgFloat,
+    ...tokens.elevation,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 9,
-    borderRadius: CIRCLE / 2,
+    justifyContent: 'center',
+    gap: 7,
+    paddingHorizontal: 13,
   },
   circle: {
     width: CIRCLE,

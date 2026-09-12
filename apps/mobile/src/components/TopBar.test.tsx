@@ -38,10 +38,9 @@ it('baerer en prik paa Arbejde naar noget venter', async () => {
 
 // --- code-fladen ---
 
-it('uden code-tilstand hedder segmentet Snak og venstre felt er en menu', async () => {
+it('uden code-tilstand hedder segmentet Snak', async () => {
   const screen = await render(<TopBar {...base} />)
   expect(screen.getByLabelText('Snak')).toBeTruthy()
-  expect(screen.getByLabelText('Menu')).toBeTruthy()
 })
 
 it('i code-tilstand hedder SAMME segment Code', async () => {
@@ -50,20 +49,13 @@ it('i code-tilstand hedder SAMME segment Code', async () => {
   expect(screen.queryByLabelText('Snak')).toBeNull()
 })
 
-it('i code-tilstand er venstre felt en vej UD, ikke en menu', async () => {
-  // Uden det ville code-fladen ikke have nogen udgang paa den plads oejet
-  // leder efter den.
-  const onBack = jest.fn()
-  const screen = await render(<TopBar {...base} kodeTilstand onBack={onBack} />)
-  await fireEvent.press(screen.getByLabelText('Tilbage til chat'))
-  expect(onBack).toHaveBeenCalledTimes(1)
-  expect(base.onMenu).not.toHaveBeenCalled()
-})
-
-it('code-tilstand UDEN en vej ud beholder menuen', async () => {
-  // Et tilbage-ikon der ikke foerer nogen steder hen er vaerre end ingen.
+it('venstre felt er ALTID en pil til menuen — ogsaa i code', async () => {
+  // Foer skiftede ikonet mellem hamburger og pil, og de to foerte to
+  // forskellige steder hen. Samme plads maa ikke goere to ting afhaengigt af
+  // en tilstand man ikke kan se paa knappen. Vejen ud af code bor i menuen.
   const screen = await render(<TopBar {...base} kodeTilstand />)
-  expect(screen.getByLabelText('Menu')).toBeTruthy()
+  await fireEvent.press(screen.getByLabelText('Menu'))
+  expect(base.onMenu).toHaveBeenCalledTimes(1)
 })
 
 it('hoejre felt aabner tre-prik menuen naar den findes — ikke sync direkte', async () => {
@@ -89,4 +81,26 @@ it('ringen staar i SAMME felt som prikkerne', async () => {
 it('uden kontekst er der ingen ring', async () => {
   const screen = await render(<TopBar {...base} />)
   expect(screen.queryByTestId('context-ring')).toBeNull()
+})
+
+it('feltet omkring ring og prikker har INGEN fast bredde og RIGELIG luft', async () => {
+  // Bjoern: feltet skal «udvides saa den faktisk daekker» ringen og prikkerne.
+  // Bredden skal komme fra indholdet, og polstringen skal vaere stor nok til
+  // at ringen ikke roerer kanten - ved 9 dp gjorde den.
+  const { StyleSheet } = require('react-native')
+  const screen = await render(
+    <TopBar {...base} kontekst={{ tokens: 65_000, compactAt: 130_000, compacting: false }} />,
+  )
+  const flad = StyleSheet.flatten(screen.getByTestId('topbar-mere').props.style)
+  expect(flad.width).toBeUndefined()
+  // ... og der SKAL vaere luft, ellers roerer indholdet kanten.
+  expect(flad.paddingHorizontal).toBeGreaterThanOrEqual(12)
+  expect(flad.gap).toBeGreaterThanOrEqual(6)
+})
+
+it('uden ring er feltet stadig en rund knap', async () => {
+  const { StyleSheet } = require('react-native')
+  const screen = await render(<TopBar {...base} />)
+  const flad = StyleSheet.flatten(screen.getByTestId('topbar-mere').props.style)
+  expect(flad.width).toBe(flad.height)
 })

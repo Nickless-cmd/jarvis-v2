@@ -227,7 +227,6 @@ function AppBody() {
             syncing={syncing}
             pendingWork={pendingWork > 0}
             kodeTilstand={kodeTilstand}
-            onBack={() => setKodeTilstand(false)}
             kontekst={mode === 'snak' ? kontekst : null}
             onMereMenu={() => setMereAaben(true)}
           />

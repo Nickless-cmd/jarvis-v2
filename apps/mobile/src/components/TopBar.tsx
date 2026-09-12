@@ -3,6 +3,7 @@ import { ArrowLeft, MoreVertical } from 'lucide-react-native'
 import { SegmentedControl } from './SegmentedControl'
 import { ContextRing } from './ContextRing'
 import { CodeTitle } from './CodeTitle'
+import { BADGE_H } from './badgeGeometri'
 import { tokens } from '../theme/tokens'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 import type { ContextUsage, GitStatus } from '../lib/apiClient'
@@ -48,7 +49,8 @@ interface Props {
  * bliver midten et gennemsnit af de to knappers bredde — og den var synligt
  * skæv.
  */
-const CIRCLE = 40
+// Samme tal som titel-pillen. Se badgeGeometri for hvorfor det bor udenfor.
+const CIRCLE = BADGE_H
 const EDGE = 14
 const SEGMENT_W = 172
 

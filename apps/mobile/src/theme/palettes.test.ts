@@ -15,11 +15,38 @@ describe('elevation', () => {
     expect(e.borderWidth).toBeGreaterThan(0)
   })
 
-  // Lyst tema kan bruge en skygge; der skal kanten IKKE være en streg.
-  it('lys loeftning bruger skygger, ikke en kant', () => {
+  // OMVENDT 12. sep 2026. Denne test krævede før at lyst tema IKKE havde en
+  // kant — «der skal kanten IKKE være en streg». Antagelsen var at skyggen
+  // kunne bære adskillelsen alene. Den holder ikke mod paletten: i lyst tema
+  // er `bgFloat` og `bg1` BEGGE #FFFFFF, så den svævende flade har præcis
+  // samme farve som baggrunden. Uden kant er skyggen det ENESTE der adskiller
+  // dem — og `boxShadow` som streng er nyt i React Native og tegnes ikke ens
+  // på Android.
+  it('lys loeftning har BAADE skygge og en kant', () => {
     const e = elevation('light')
     expect(e.boxShadow).toBeTruthy()
-    expect(e.borderColor).toBeUndefined()
+    expect(e.borderColor).toBeTruthy()
+    expect(e.borderWidth).toBeGreaterThan(0)
+  })
+
+  // Invarianten frem for tallet. Har den svævende flade samme farve som
+  // baggrunden, er kanten det eneste der tegner formen — så SKAL den findes.
+  // Ændrer nogen `bgFloat` så den adskiller sig, må kanten gerne falde væk
+  // igen; denne test binder de to ting sammen i stedet for at fastholde 0,10.
+  it.each(['dark', 'light'] as const)(
+    'har en kant naar fladen ikke kan ses paa baggrunden (%s)', (scheme) => {
+      const pal = paletteFor(scheme, ACCENTS[0]!)
+      if (pal.bgFloat.toUpperCase() !== pal.bg1.toUpperCase()) return
+      const e = elevation(scheme)
+      expect(e.borderColor).toBeTruthy()
+      expect(e.borderWidth).toBeGreaterThan(0)
+    })
+
+  // Og kanten skal have den rigtige KULOER for sit tema: hvid loefter paa
+  // moerkt, sort afgraenser paa lyst. Byttes de om, forsvinder markeringen.
+  it('kantens kuloer foelger temaet', () => {
+    expect(elevation('dark').borderColor).toMatch(/^rgba\(255,\s*255,\s*255/)
+    expect(elevation('light').borderColor).toMatch(/^rgba\(0,\s*0,\s*0/)
   })
 })
 

@@ -187,5 +187,23 @@ export function elevation(scheme: Scheme): { boxShadow?: string; borderWidth?: n
   // at hvile på. Med kun den brede flyder omridset ud; med kun den tætte
   // ligner det en streg. Vægten er målt mod ChatGPT — deres flade er ca. 7 %
   // mørkere lige ved kanten og toner ud over omtrent 100 px.
-  return { boxShadow: '0px 8px 34px rgba(0,0,0,0.16), 0px 2px 5px rgba(0,0,0,0.07)' }
+  //
+  // OG EN KANT, ikke kun skygger. I lyst tema er `bgFloat` og `bg1` BEGGE
+  // #FFFFFF — den svævende flade har præcis samme farve som baggrunden, så
+  // skyggen er det eneste der adskiller dem. To ting gør det utilstrækkeligt:
+  // `boxShadow` som streng er nyt i React Native og tegnes ikke ens på
+  // Android, og en skygge alene giver ingen skarp afgrænsning at læse
+  // formen på. I mørkt tema bærer fladen selv en del af adskillelsen
+  // (#212121 mod #121212); her bærer kanten det hele.
+  //
+  // 0,10 og ikke 0,15: på hvid er en sort kant langt mere synlig end en hvid
+  // er på næsten-sort, så samme tal ville tegne en streg frem for et omrids.
+  // Til forskel fra den mørke er dette tal IKKE målt på et skærmbillede —
+  // der findes ikke et af GPT i lyst tema endnu. Testen nedenfor holder på at
+  // kanten FINDES, ikke på hvilket tal den har.
+  return {
+    boxShadow: '0px 8px 34px rgba(0,0,0,0.16), 0px 2px 5px rgba(0,0,0,0.07)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(0,0,0,0.10)'
+  }
 }

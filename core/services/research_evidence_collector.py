@@ -40,6 +40,13 @@ def observe_web_result(tool_name: str, result: object) -> int:
     if active is None or not isinstance(result, dict):
         return 0
     run_id, task_id = active
+    # Fase A3: tæl kaldet FØR kilde-udtrækket. Loftet handler om forbrug, ikke om
+    # udbytte — et kald der giver nul brugbare kilder har stadig kostet et kald.
+    try:
+        from core.services.research_store import record_tool_call
+        record_tool_call(run_id, tool_name, task_id=task_id)
+    except Exception:
+        pass
     seen: set[str] = set()
     captured = 0
     for raw in _structured_sources(tool_name, result):

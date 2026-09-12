@@ -551,16 +551,16 @@ _Typed contracts and source normalization for explicit research runs._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | class | `ResearchPolicy` | `` | — | [src](../../../core/services/research_contract.py#L17) |
-| class | `ResearchDecision` | `` | — | [src](../../../core/services/research_contract.py#L26) |
-| class | `ResearchTask` | `` | — | [src](../../../core/services/research_contract.py#L37) |
-| class | `ResearchPlan` | `` | — | [src](../../../core/services/research_contract.py#L44) |
-| class | `ResearchSource` | `` | — | [src](../../../core/services/research_contract.py#L50) |
-| class | `ResearchFinding` | `` | — | [src](../../../core/services/research_contract.py#L63) |
-| class | `ResearchContract` | `` | — | [src](../../../core/services/research_contract.py#L72) |
-| function | `_clean` | `(value)` | — | [src](../../../core/services/research_contract.py#L79) |
-| function | `canonicalize_url` | `(raw)` | — | [src](../../../core/services/research_contract.py#L83) |
-| function | `normalize_source` | `(value)` | — | [src](../../../core/services/research_contract.py#L100) |
-| function | `load_research_contract` | `(query=…)` | Load the canonical skill deterministically; fall back without hiding it. | [src](../../../core/services/research_contract.py#L117) |
+| class | `ResearchDecision` | `` | — | [src](../../../core/services/research_contract.py#L31) |
+| class | `ResearchTask` | `` | — | [src](../../../core/services/research_contract.py#L44) |
+| class | `ResearchPlan` | `` | — | [src](../../../core/services/research_contract.py#L51) |
+| class | `ResearchSource` | `` | — | [src](../../../core/services/research_contract.py#L57) |
+| class | `ResearchFinding` | `` | — | [src](../../../core/services/research_contract.py#L70) |
+| class | `ResearchContract` | `` | — | [src](../../../core/services/research_contract.py#L79) |
+| function | `_clean` | `(value)` | — | [src](../../../core/services/research_contract.py#L86) |
+| function | `canonicalize_url` | `(raw)` | — | [src](../../../core/services/research_contract.py#L90) |
+| function | `normalize_source` | `(value)` | — | [src](../../../core/services/research_contract.py#L107) |
+| function | `load_research_contract` | `(query=…)` | Load the canonical skill deterministically; fall back without hiding it. | [src](../../../core/services/research_contract.py#L124) |
 
 ## `core/services/research_evidence_collector.py`
 _Capture structured web-tool evidence for the active research run._
@@ -571,18 +571,47 @@ _Capture structured web-tool evidence for the active research run._
 | function | `_structured_sources` | `(tool_name, result)` | — | [src](../../../core/services/research_evidence_collector.py#L22) |
 | function | `observe_web_result` | `(tool_name, result)` | — | [src](../../../core/services/research_evidence_collector.py#L38) |
 
+## `core/services/research_ledger.py`
+_Research-runnet synligt i session-ledgeren (spec Fase A4)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `taellere` | `()` | — | [src](../../../core/services/research_ledger.py#L42) |
+| function | `_nulstil_for_tests` | `()` | — | [src](../../../core/services/research_ledger.py#L46) |
+| function | `record_research_event` | `(session_id, *, event_id, event, payload=…)` | Skriv én research-hændelse i session-ledgeren. Kaster aldrig. | [src](../../../core/services/research_ledger.py#L51) |
+| function | `record_run_started` | `(session_id, *, run_id, tier, query)` | Runnet er startet: tier og den oprindelige forespørgsel. | [src](../../../core/services/research_ledger.py#L96) |
+| function | `record_run_completed` | `(session_id, *, run_id, sources, quality, timed_out, tool_calls=…)` | Runnet er slut: hvad det blev — kilder, kvalitetsdom, timeout, forbrug. | [src](../../../core/services/research_ledger.py#L106) |
+
 ## `core/services/research_orchestrator.py`
 _Adaptive research coordinator around the existing visible and agent runtimes._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_event` | `(kind, payload)` | — | [src](../../../core/services/research_orchestrator.py#L24) |
-| function | `_setting` | `(name, default)` | — | [src](../../../core/services/research_orchestrator.py#L28) |
-| function | `_plan` | `(message, max_tasks)` | — | [src](../../../core/services/research_orchestrator.py#L36) |
-| function | `_default_worker_sync` | `(*, task, run_id, skill_instructions)` | — | [src](../../../core/services/research_orchestrator.py#L54) |
-| function | `_run_worker` | `(worker_factory, *, task, run_id, skill_instructions)` | — | [src](../../../core/services/research_orchestrator.py#L85) |
-| function | `stream_research_run` | `(*, message, original_query=…, session_id, visible_run_id=…, decision=…, visible_factory=…, worker_factory=…, orchestrator_enabled=…, **visible_kwargs)` | — | [src](../../../core/services/research_orchestrator.py#L90) |
-| function | `research_enabled` | `()` | — | [src](../../../core/services/research_orchestrator.py#L223) |
+| function | `_event` | `(kind, payload)` | — | [src](../../../core/services/research_orchestrator.py#L26) |
+| function | `_setting` | `(name, default)` | — | [src](../../../core/services/research_orchestrator.py#L30) |
+| function | `_facets` | `(message)` | De emneord planlægningen deler beskeden i — og som gaten måler dækning imod. | [src](../../../core/services/research_orchestrator.py#L44) |
+| function | `_delta_text` | `(frame)` | Træk syntese-teksten ud af en `delta`-frame. Andre frames giver ''. | [src](../../../core/services/research_orchestrator.py#L52) |
+| function | `_plan` | `(message, max_tasks)` | — | [src](../../../core/services/research_orchestrator.py#L74) |
+| function | `_parse_plan` | `(text, max_tasks)` | Læs plannerens JSON til en ResearchTask-liste. Defensiv: [] ved mindste tvivl. | [src](../../../core/services/research_orchestrator.py#L105) |
+| function | `_llm_plan` | `(message, max_tasks, facets)` | Fase C1: bed en billig model om delopgaver. None = kunne ikke → regex. | [src](../../../core/services/research_orchestrator.py#L148) |
+| function | `_plan_tasks` | `(message, max_tasks, *, planner_enabled)` | Fase C1: LLM-planlægger med regex-fallback. | [src](../../../core/services/research_orchestrator.py#L173) |
+| function | `_tool_calls_used` | `(run_id)` | Observerede værktøjskald i runnet. Defensiv: 0 hvis tællingen ikke kan læses. | [src](../../../core/services/research_orchestrator.py#L189) |
+| function | `_clean_text` | `(value)` | — | [src](../../../core/services/research_orchestrator.py#L200) |
+| function | `_confidence` | `(value)` | — | [src](../../../core/services/research_orchestrator.py#L204) |
+| function | `_finding_from_text` | `(text, task_ordinal)` | Sidste udkast: hele teksten bliver ét fund med de URLs den bærer. | [src](../../../core/services/research_orchestrator.py#L209) |
+| function | `_parse_findings` | `(text, task_ordinal)` | Fase B2: worker-svaret → `ResearchFinding`. | [src](../../../core/services/research_orchestrator.py#L226) |
+| function | `_gap_objective` | `(query, findings)` | Fase B3: critic-opgaven — hvad MANGLER der, givet de fundne påstande. | [src](../../../core/services/research_orchestrator.py#L300) |
+| function | `_parse_gaps` | `(text)` | Fase B3: critic-svaret → korte gap-linjer. Defensiv hele vejen. | [src](../../../core/services/research_orchestrator.py#L317) |
+| function | `_evidence_block` | `(texts, sources, findings, gaps=…)` | Evidens til syntesen — med en KANONISK nummereret kilde-liste. | [src](../../../core/services/research_orchestrator.py#L351) |
+| function | `_topup_plan` | `(run_id, tasks, policy)` | Fase B1: hvilke tracks skal styrkes — og med hvad? | [src](../../../core/services/research_orchestrator.py#L389) |
+| function | `_evaluate_quality` | `(run_id, query, report, policy)` | Fase A1: kobl kvalitetsgaten på den faktiske rapport. | [src](../../../core/services/research_orchestrator.py#L435) |
+| function | `_judge_prompt` | `(query, report, sources, findings, gaps)` | Binær rubric — kort nok til en billig model, konkret nok til at være falsificerbar. | [src](../../../core/services/research_orchestrator.py#L485) |
+| function | `_parse_verdict` | `(text)` | Dommerens svar → {"verdict", "criteria", "reason"}. None hvis uafgørbart. | [src](../../../core/services/research_orchestrator.py#L509) |
+| function | `_judge_quality` | `(run_id, query, report, gaps=…)` | Kør dommeren i en tråd, så event-loopet ikke blokeres. Fejler altid blødt. | [src](../../../core/services/research_orchestrator.py#L547) |
+| function | `_default_worker_sync` | `(*, task, run_id, skill_instructions, max_turns=…, budget_tokens=…)` | — | [src](../../../core/services/research_orchestrator.py#L579) |
+| function | `_run_worker` | `(worker_factory, *, task, run_id, skill_instructions, max_turns=…, budget_tokens=…)` | Kør én worker gennem factory'en. | [src](../../../core/services/research_orchestrator.py#L620) |
+| function | `stream_research_run` | `(*, message, original_query=…, session_id, visible_run_id=…, decision=…, visible_factory=…, worker_factory=…, orchestrator_enabled=…, **visible_kwargs)` | — | [src](../../../core/services/research_orchestrator.py#L646) |
+| function | `research_enabled` | `()` | — | [src](../../../core/services/research_orchestrator.py#L949) |
 
 ## `core/services/research_prompt_context.py`
 _Request-scoped research instructions consumed by prompt assembly surfaces._
@@ -606,7 +635,8 @@ _Conservative and explainable inline/orchestrated research routing._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `classify_research` | `(message, *, attachment_count=…, policy=…)` | — | [src](../../../core/services/research_router.py#L15) |
+| function | `_effort` | `(independent)` | Indsatsen for N uafhængige signaler — klippet til tabellens rækker. | [src](../../../core/services/research_router.py#L37) |
+| function | `classify_research` | `(message, *, attachment_count=…, policy=…)` | — | [src](../../../core/services/research_router.py#L42) |
 
 ## `core/services/research_store.py`
 _Durable SQLite state for research runs, tasks, sources, and steering._
@@ -616,21 +646,24 @@ _Durable SQLite state for research runs, tasks, sources, and steering._
 | class | `ResearchStateError` | `` | — | [src](../../../core/services/research_store.py#L17) |
 | function | `_now` | `()` | — | [src](../../../core/services/research_store.py#L21) |
 | function | `_ensure` | `(conn)` | — | [src](../../../core/services/research_store.py#L25) |
-| function | `_row` | `(row)` | — | [src](../../../core/services/research_store.py#L57) |
-| function | `get_run` | `(run_id)` | — | [src](../../../core/services/research_store.py#L61) |
-| function | `create_run` | `(*, session_id, original_query, tier, decision=…)` | — | [src](../../../core/services/research_store.py#L67) |
-| function | `transition_run` | `(run_id, status, *, warning=…)` | — | [src](../../../core/services/research_store.py#L79) |
-| function | `bind_visible_run` | `(run_id, visible_run_id)` | — | [src](../../../core/services/research_store.py#L100) |
-| function | `create_tasks` | `(run_id, tasks)` | — | [src](../../../core/services/research_store.py#L106) |
-| function | `start_task` | `(task_id, *, agent_run_id=…)` | — | [src](../../../core/services/research_store.py#L120) |
-| function | `complete_task` | `(task_id, finding, *, status=…)` | — | [src](../../../core/services/research_store.py#L132) |
-| function | `add_source` | `(run_id, source, *, task_id=…)` | — | [src](../../../core/services/research_store.py#L146) |
-| function | `add_steer` | `(run_id, message)` | — | [src](../../../core/services/research_store.py#L162) |
-| function | `consume_pending_steers` | `(run_id)` | — | [src](../../../core/services/research_store.py#L170) |
-| function | `list_sources` | `(run_id)` | — | [src](../../../core/services/research_store.py#L186) |
-| function | `source_count` | `(run_id)` | — | [src](../../../core/services/research_store.py#L196) |
-| function | `active_for_session` | `(session_id)` | — | [src](../../../core/services/research_store.py#L203) |
-| function | `mark_stale_interrupted` | `(*, older_than_seconds=…)` | — | [src](../../../core/services/research_store.py#L214) |
+| function | `_row` | `(row)` | — | [src](../../../core/services/research_store.py#L63) |
+| function | `get_run` | `(run_id)` | — | [src](../../../core/services/research_store.py#L67) |
+| function | `create_run` | `(*, session_id, original_query, tier, decision=…)` | — | [src](../../../core/services/research_store.py#L73) |
+| function | `transition_run` | `(run_id, status, *, warning=…)` | — | [src](../../../core/services/research_store.py#L85) |
+| function | `bind_visible_run` | `(run_id, visible_run_id)` | — | [src](../../../core/services/research_store.py#L106) |
+| function | `create_tasks` | `(run_id, tasks)` | — | [src](../../../core/services/research_store.py#L112) |
+| function | `start_task` | `(task_id, *, agent_run_id=…)` | — | [src](../../../core/services/research_store.py#L126) |
+| function | `complete_task` | `(task_id, finding, *, status=…)` | — | [src](../../../core/services/research_store.py#L138) |
+| function | `add_source` | `(run_id, source, *, task_id=…)` | — | [src](../../../core/services/research_store.py#L152) |
+| function | `add_steer` | `(run_id, message)` | — | [src](../../../core/services/research_store.py#L168) |
+| function | `consume_pending_steers` | `(run_id)` | — | [src](../../../core/services/research_store.py#L176) |
+| function | `list_sources` | `(run_id)` | — | [src](../../../core/services/research_store.py#L192) |
+| function | `source_count` | `(run_id)` | — | [src](../../../core/services/research_store.py#L202) |
+| function | `list_findings` | `(run_id)` | Parsede findings for et run (Fase B2), i track-rækkefølge. | [src](../../../core/services/research_store.py#L209) |
+| function | `record_tool_call` | `(run_id, tool_name, *, task_id=…)` | Tæl ét observeret værktøjskald i runnet (Fase A3). | [src](../../../core/services/research_store.py#L236) |
+| function | `tool_call_count` | `(run_id)` | — | [src](../../../core/services/research_store.py#L250) |
+| function | `active_for_session` | `(session_id)` | — | [src](../../../core/services/research_store.py#L257) |
+| function | `mark_stale_interrupted` | `(*, older_than_seconds=…)` | — | [src](../../../core/services/research_store.py#L268) |
 
 ## `core/services/resonance_decay.py`
 _Resonance Decay — how emotional signals persist and fade over time._
@@ -672,17 +705,4 @@ _Et ukendt udfald maa aldrig gentages automatisk — Fase 3, K7._
 | function | `_er_beviseligt_uskadeligt` | `(tool_name)` | Kun `read_only` — og kun naar den er ERKLAERET, ikke gaettet. | [src](../../../core/services/retry_admissibility.py#L49) |
 | function | `may_auto_retry` | `(tool_name, arguments)` | Maa dette kald gentages AUTOMATISK — uden at et menneske ser paa det? | [src](../../../core/services/retry_admissibility.py#L59) |
 | function | `advar_hvis_gentagelse` | `(tool_name, arguments)` | Sig hoejt at dette kald gentager noget med ukendt udfald. | [src](../../../core/services/retry_admissibility.py#L86) |
-
-## `core/services/retry_runtime.py`
-_`RetryRuntime` — genforsøg som en BEGRÆNSET beslutning, ikke en refleks._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `Budget` | `` | Lofter for HELE turen. Failover nulstiller intet af det. | [src](../../../core/services/retry_runtime.py#L65) |
-| class | `Spent` | `` | Hvad turen allerede har brugt — på tværs af alle udbydere. | [src](../../../core/services/retry_runtime.py#L76) |
-| method | `Spent.plus_attempt` | `(self, *, wall_s=…, tokens=…, cost_usd=…, failover=…)` | — | [src](../../../core/services/retry_runtime.py#L85) |
-| class | `Decision` | `` | — | [src](../../../core/services/retry_runtime.py#L97) |
-| function | `_udtoemt` | `(b, s)` | Hvilket loft er nået? Tom streng hvis der er plads. | [src](../../../core/services/retry_runtime.py#L107) |
-| function | `backoff` | `(forsoeg, *, provider_hint_s=…, mindst=…, hoejst=…)` | Ventetid før næste forsøg. | [src](../../../core/services/retry_runtime.py#L126) |
-| function | `decide` | `(*, failure, budget, spent, cancelled=…, provider_hint_s=…, route_override=…)` | Skal der prøves igen? Ren funktion — ændrer ingenting. | [src](../../../core/services/retry_runtime.py#L139) |
 

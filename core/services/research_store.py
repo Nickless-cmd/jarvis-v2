@@ -51,6 +51,12 @@ def _ensure(conn) -> None:
           id TEXT PRIMARY KEY, research_run_id TEXT NOT NULL, message TEXT NOT NULL,
           status TEXT NOT NULL DEFAULT 'pending', created_at TEXT NOT NULL, applied_at TEXT
         );
+        CREATE TABLE IF NOT EXISTS research_tool_calls (
+          id TEXT PRIMARY KEY, research_run_id TEXT NOT NULL, task_id TEXT NOT NULL DEFAULT '',
+          tool_name TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_research_tool_calls_run
+          ON research_tool_calls(research_run_id);
     """)
 
 
@@ -197,6 +203,54 @@ def source_count(run_id: str) -> int:
     with connect() as conn:
         _ensure(conn)
         row = conn.execute("SELECT COUNT(*) AS n FROM research_sources WHERE research_run_id=?", (run_id,)).fetchone()
+    return int(row["n"] if row else 0)
+
+
+def list_findings(run_id: str) -> list[dict]:
+    """Parsede findings for et run (Fase B2), i track-rækkefølge.
+
+    Læser `finding_json` fra de tasks der blev færdige. Defensiv: en række der
+    ikke kan parses springes over — et enkelt dårligt svar må ikke skjule resten.
+    """
+    with connect() as conn:
+        _ensure(conn)
+        rows = conn.execute(
+            "SELECT finding_json FROM research_tasks "
+            "WHERE research_run_id=? AND status='completed' ORDER BY ordinal",
+            (run_id,),
+        ).fetchall()
+    out: list[dict] = []
+    for row in rows:
+        try:
+            payload = json.loads(str(row["finding_json"] or "{}"))
+        except Exception:
+            continue
+        if not isinstance(payload, dict):
+            continue
+        for item in payload.get("findings") or []:
+            if isinstance(item, dict):
+                out.append(item)
+    return out
+
+
+def record_tool_call(run_id: str, tool_name: str, *, task_id: str = "") -> None:
+    """Tæl ét observeret værktøjskald i runnet (Fase A3).
+
+    Kaldes fra evidence-collectoren for hvert web-kald et run ser. Durable, fordi
+    workerne kører i egne tråde — en in-memory-tæller ville ikke overleve den grænse.
+    """
+    with connect() as conn:
+        _ensure(conn)
+        conn.execute(
+            "INSERT INTO research_tool_calls(id,research_run_id,task_id,tool_name,created_at) VALUES(?,?,?,?,?)",
+            (f"research-call-{uuid4()}", run_id, task_id, str(tool_name or ""), _now()),
+        )
+
+
+def tool_call_count(run_id: str) -> int:
+    with connect() as conn:
+        _ensure(conn)
+        row = conn.execute("SELECT COUNT(*) AS n FROM research_tool_calls WHERE research_run_id=?", (run_id,)).fetchone()
     return int(row["n"] if row else 0)
 
 

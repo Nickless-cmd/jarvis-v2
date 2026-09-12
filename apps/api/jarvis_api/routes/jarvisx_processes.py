@@ -49,6 +49,93 @@ def tail_managed_process_log(
     return out
 
 
+@router.get("/jobs")
+def list_background_jobs(include_done: bool = Query(default=False)) -> dict[str, Any]:
+    """Alle kørende baggrundsopgaver — supervisor OG operatørens egne shells.
+
+    To kilder, ét svar. Et panel der kun viste den ene ville være sandt om sin
+    form og tavst om sit indhold: man ville tro der ikke kørte noget, mens der
+    gjorde.
+
+    `bridge_ok=false` betyder at vi ikke VED hvad der kører på operatørens
+    maskine — ikke at der ingenting kører. De to er stik modsat, og klienten
+    skal kunne sige forskel.
+    """
+    from core.identity.workspace_context import current_user_id
+    from core.services.background_jobs import liste
+    uid = current_user_id() or ""
+    return liste(uid=uid, exec_fn=_operator_exec_for_jobs, kun_aktive=not include_done)
+
+
+def _operator_exec_for_jobs(navn: str, args: dict[str, Any]) -> dict[str, Any]:
+    """Bro-kald til operatørens maskine. Adskilt, så testen kan erstatte den."""
+    from apps.api.jarvis_api.routes.chat import _operator_exec
+    return _operator_exec(navn, args)
+
+
+@router.post("/jobs/{kilde}/{job_id}/pause")
+def pause_background_job(kilde: str, job_id: str) -> dict[str, Any]:
+    """Sæt en opgave på pause. Ejer-kun."""
+    _require_owner()
+    return _signal_job(kilde, job_id, "pause")
+
+
+@router.post("/jobs/{kilde}/{job_id}/resume")
+def resume_background_job(kilde: str, job_id: str) -> dict[str, Any]:
+    """Kør videre hvor den slap. Ejer-kun."""
+    _require_owner()
+    return _signal_job(kilde, job_id, "resume")
+
+
+@router.post("/jobs/{kilde}/{job_id}/stop")
+def stop_background_job(kilde: str, job_id: str) -> dict[str, Any]:
+    """Stop en opgave for altid. Ejer-kun."""
+    _require_owner()
+    return _signal_job(kilde, job_id, "stop")
+
+
+_SIGNALER = {"pause": "STOP", "resume": "CONT", "stop": "TERM"}
+
+
+def _signal_job(kilde: str, job_id: str, handling: str) -> dict[str, Any]:
+    """Én vej for begge kilder — de signaleres bare ikke samme sted.
+
+    Supervisoren har sine egne funktioner med et værn mod at signalere
+    serverens EGEN proces-gruppe. Operatørens shells ligger på en anden
+    maskine, så de går over broen — og `shell_id` valideres mod mønstret, for
+    et id er en del af en kommandolinje derovre.
+    """
+    if handling not in _SIGNALER:
+        raise HTTPException(status_code=400, detail="ukendt handling")
+    if kilde == "supervisor":
+        from core.services.process_supervisor import (
+            pause_process, resume_process, stop_process,
+        )
+        fn = {"pause": pause_process, "resume": resume_process, "stop": stop_process}[handling]
+        out = fn(job_id)
+        if out.get("status") == "error":
+            raise HTTPException(status_code=400, detail=out.get("error") or "handling fejlede")
+        return out
+    if kilde == "operator":
+        import re
+        # SAMME moenster som operator_background._valid. Uden det kunne et id
+        # smugle sti- eller kommando-fragmenter ind i en kommandolinje der
+        # koerer paa Bjoerns maskine.
+        if not re.fullmatch(r"bg_[0-9a-f]{12}", job_id):
+            raise HTTPException(status_code=400, detail="ugyldigt job-id")
+        from core.identity.workspace_context import current_user_id
+        uid = current_user_id() or ""
+        sig = _SIGNALER[handling]
+        cmd = f'pid=$(cat /tmp/jarvis-bg/{job_id}.pid 2>/dev/null); [ -n "$pid" ] && kill -{sig} "$pid" && echo ok'
+        res = _operator_exec_for_jobs("operator_bash", {"command": cmd, "_user_id": uid})
+        if res.get("status") != "ok":
+            raise HTTPException(status_code=502, detail="broen svarede ikke")
+        if "ok" not in str((res.get("result") or {}).get("stdout") or ""):
+            raise HTTPException(status_code=400, detail="processen svarede ikke — er den allerede slut?")
+        return {"status": "ok"}
+    raise HTTPException(status_code=400, detail="ukendt kilde")
+
+
 @router.post("/processes/{name}/stop")
 def stop_managed_process(name: str, grace: int = Query(default=5, ge=0, le=60)) -> dict[str, Any]:
     """SIGTERM (then SIGKILL after grace) a managed process. Owner-only."""

@@ -94,9 +94,15 @@ def _read_status(entry: dict[str, Any]) -> dict[str, Any]:
     """Snapshot of a registry entry's live status."""
     pid = int(entry.get("pid") or 0)
     alive = _pid_alive(pid)
-    status = "running" if alive else (
-        "exited" if entry.get("exit_code") is not None else "lost"
-    )
+    # PAUSET er en tredje tilstand, ikke «koerer». En pauset proces ER i live
+    # for kernen, saa uden det felt ville UI'et vise den som koerende og
+    # tilbyde at pause den igen.
+    if alive and entry.get("paused"):
+        status = "paused"
+    else:
+        status = "running" if alive else (
+            "exited" if entry.get("exit_code") is not None else "lost"
+        )
     started_at = entry.get("started_at") or ""
     uptime_s: float | None = None
     if alive and started_at:
@@ -116,6 +122,10 @@ def _read_status(entry: dict[str, Any]) -> dict[str, Any]:
         "exit_code": entry.get("exit_code"),
         "stopped_at": entry.get("stopped_at"),
         "log_path": entry.get("log_path"),
+        # Kan den overhovedet pauses? En doed proces kan ikke, og klienten skal
+        # ikke tilbyde en knap der ikke goer noget.
+        "can_pause": bool(alive),
+        "paused": bool(alive and entry.get("paused")),
     }
 
 
@@ -226,6 +236,38 @@ def list_processes(*, include_stopped: bool = True) -> dict[str, Any]:
     return {"count": len(items), "processes": items}
 
 
+def _egen_gruppe_vaern(pid: int, name: str) -> int | None:
+    """Processens gruppe — eller None hvis vi ikke tør signalere den.
+
+    ## Hvorfor det her er en funktion og ikke to linjer inde i hver kalder
+
+    Fordi hazarden er den SAMME for stop og pause, og den blev opdaget i den
+    ene: pause-testen SIGSTOP'ede sin egen testkoerer (exit 147). Da den var
+    rettet, hang STOP-testen — fordi `_stop_locked` havde nøjagtig samme
+    `os.killpg(os.getpgid(pid), …)` og sendte SIGTERM til vores egen gruppe.
+
+    To fælder af samme slags rettes ét sted, ellers rettes kun den man faldt i.
+
+    `killpg(0, sig)` betyder KALDERENS EGEN GRUPPE, så et mislykket opslag må
+    aldrig blive til 0. `spawn_process` bruger `start_new_session=True`, så i
+    praksis sker det ikke — men konsekvensen (en frossen eller dræbt server)
+    kan ikke rettes udefra bagefter.
+    """
+    try:
+        gruppe = os.getpgid(pid)
+    except Exception as exc:
+        logger.warning("process_supervisor: ukendt proces-gruppe for %s: %s", name, exc)
+        return None
+    if gruppe == os.getpgid(0):
+        logger.error(
+            "process_supervisor: NAEGTER at signalere egen proces-gruppe "
+            "(job=%s pid=%s) — spawn_process maa have mistet start_new_session",
+            name, pid,
+        )
+        return None
+    return gruppe
+
+
 def _stop_locked(reg: dict[str, dict[str, Any]], name: str, grace: int) -> dict[str, Any]:
     """Caller must hold _LOCK. Stops the named process gracefully."""
     entry = reg.get(name)
@@ -234,9 +276,12 @@ def _stop_locked(reg: dict[str, dict[str, Any]], name: str, grace: int) -> dict[
     pid = int(entry.get("pid") or 0)
     if not _pid_alive(pid):
         return {"status": "ok", "message": "already stopped", "process": _read_status(entry)}
+    gruppe = _egen_gruppe_vaern(pid, name)
+    if gruppe is None:
+        return {"status": "error", "error": "kunne ikke bestemme proces-gruppen"}
     # SIGTERM, wait grace seconds, SIGKILL if still alive.
     try:
-        os.killpg(os.getpgid(pid), signal.SIGTERM)
+        os.killpg(gruppe, signal.SIGTERM)
     except Exception as exc:
         logger.debug("process_supervisor: SIGTERM %s failed: %s", pid, exc)
         try:
@@ -250,7 +295,7 @@ def _stop_locked(reg: dict[str, dict[str, Any]], name: str, grace: int) -> dict[
         time.sleep(0.2)
     if _pid_alive(pid):
         try:
-            os.killpg(os.getpgid(pid), signal.SIGKILL)
+            os.killpg(gruppe, signal.SIGKILL)
         except Exception:
             try:
                 os.kill(pid, signal.SIGKILL)
@@ -259,6 +304,65 @@ def _stop_locked(reg: dict[str, dict[str, Any]], name: str, grace: int) -> dict[
     entry["stopped_at"] = _now_iso()
     _save_registry(reg)
     return {"status": "ok", "process": _read_status(entry)}
+
+
+def pause_process(name: str) -> dict[str, Any]:
+    """SIGSTOP hele proces-gruppen. Genoptages med `resume_process`.
+
+    ## Hvorfor gruppen og ikke bare pid'en
+
+    Samme grund som stop: `spawn_process` starter i sin egen proces-gruppe, og
+    et job er typisk en shell der har startet noget andet. Stopper man kun
+    shellen, koerer barnet videre — og saa ser UI'et «pauset» mens maskinen
+    arbejder.
+
+    ## Hvorfor SIGSTOP og ikke en venlig pause
+
+    Fordi der ikke findes en venlig. Et vilkaarligt program har ingen
+    pause-protokol; SIGSTOP er kernens, den virker paa alt, og den er
+    fuldstaendig reversibel med SIGCONT. Prisen er at processen ikke ved at
+    den er pauset — aabne sockets kan timeoute imens. Derfor staar det ogsaa
+    i UI'et som «pauset», ikke som «venter».
+    """
+    return _signal_locked(name, signal.SIGSTOP, paused=True)
+
+
+def resume_process(name: str) -> dict[str, Any]:
+    """SIGCONT — koer videre hvor den slap."""
+    return _signal_locked(name, signal.SIGCONT, paused=False)
+
+
+def _signal_locked(name: str, sig: int, *, paused: bool) -> dict[str, Any]:
+    name = _safe_name(name)
+    with _LOCK:
+        reg = _load_registry()
+        entry = reg.get(name)
+        if not entry:
+            return {"status": "error", "error": f"unknown process '{name}'"}
+        pid = int(entry.get("pid") or 0)
+        if not _pid_alive(pid):
+            # IKKE en fejl. Processen naaede at slutte; brugeren skal se at den
+            # er faerdig, ikke en roed besked om noget der ordnede sig selv.
+            return {"status": "ok", "message": "not running", "process": _read_status(entry)}
+        gruppe = _egen_gruppe_vaern(pid, name)
+        if gruppe is None:
+            return {"status": "error", "error": "kunne ikke bestemme proces-gruppen"}
+        sendt = False
+        try:
+            os.killpg(gruppe, sig)
+            sendt = True
+        except Exception as exc:
+            logger.debug("process_supervisor: %s paa gruppe %s fejlede: %s", sig, pid, exc)
+            try:
+                os.kill(pid, sig)
+                sendt = True
+            except Exception as exc2:
+                logger.warning("process_supervisor: kunne ikke signalere %s: %s", name, exc2)
+        if not sendt:
+            return {"status": "error", "error": "kunne ikke signalere processen"}
+        entry["paused"] = paused
+        _save_registry(reg)
+        return {"status": "ok", "process": _read_status(entry)}
 
 
 def stop_process(name: str, *, grace: int = _GRACE_SECONDS) -> dict[str, Any]:

@@ -70,6 +70,9 @@ def start_user_run_detached(
         from core.services.visible_runs import start_visible_run
         legacy_iter = start_visible_run(**visible_args)
 
+    import time as _time
+    _startet = _time.monotonic()
+
     def _in_thread() -> None:
         import asyncio as _asyncio
 
@@ -121,6 +124,17 @@ def start_user_run_detached(
                         _set_active_visible_run({})
                 except Exception:
                     pass
+                # ── AUTO-FORTSAETTELSE ────────────────────────────────────
+                # EFTER mark_done: single-flight ville ellers se dette run som
+                # stadig levende og haenge fortsaettelsen paa det doede run.
+                try:
+                    _fortsaet_hvis_budgettet_loeb_toert(
+                        run_id=run_id, sid=sid, startet=_startet,
+                        visible_args=visible_args, eff_model=eff_model,
+                        eff_provider=eff_provider, lane=lane,
+                    )
+                except Exception:
+                    logger.exception("auto-fortsaettelse fejlede for %s", run_id)
                 try:
                     from core.services.push_dispatcher import on_run_done
                     on_run_done(run_id)
@@ -203,6 +217,14 @@ def start_or_attach_user_run(
                     nudge_enabled = False
         except Exception:
             pass
+    # En AEGTE brugerbesked nulstiller kaeden og markerer at han er paa
+    # tasterne. Fortsaettelser gaar uden om denne funktion (de kalder
+    # start_user_run_detached direkte), saa de taeller ikke med her.
+    try:
+        from core.services.auto_continuation import noter_brugerbesked
+        noter_brugerbesked(sid)
+    except Exception:
+        pass
     # ATOMISK claim (rod-fix mod rapid-resend-race): find-eller-opret under laas.
     claimed, is_new = rel.claim_or_create(sid)
     if not is_new:
@@ -227,3 +249,49 @@ def start_or_attach_user_run(
 
     run_id = start_user_run_detached(message=message, session_id=session_id, run_id=claimed, **kw)
     return run_id, False
+
+
+def _fortsaet_hvis_budgettet_loeb_toert(
+    *, run_id: str, sid: str, startet: float,
+    visible_args: dict, eff_model: str, eff_provider: str, lane: str,
+) -> None:
+    """Start en fortsaettelse hvis — og kun hvis — turen blev klippet af sit
+    eget rundebudget.
+
+    Beslutningen ligger i `auto_continuation.beslut`, som er ren og proevet fra
+    alle kanter. Her er kun ledningen: hent kendsgerningerne, spoerg, og start.
+
+    Grunden logges ALTID — ogsaa naar svaret er nej. En fortsaettelse der
+    udebliver skal kunne forklares uden at laese koden.
+    """
+    from core.services import auto_continuation as ac
+
+    try:
+        from core.runtime.settings import load_settings
+        _slaaet_til = bool(getattr(load_settings(), "auto_continuation_enabled", True))
+    except Exception:
+        _slaaet_til = True
+
+    beslutning = ac.beslut(
+        exit_reason=ac.hent_udfald(run_id),
+        slaaet_til=_slaaet_til,
+        # Denne sti er brugerens; autonome runs kommer aldrig herigennem.
+        autonom=False,
+        kaede_nr=ac.kaede_nr(sid),
+        bruger_skrev_imens=ac.bruger_skrev_efter(sid, startet),
+    )
+    if not beslutning.fortsaet:
+        logger.info("auto-fortsaettelse NEJ run_id=%s: %s", run_id, beslutning.grund)
+        return
+
+    nr = ac.kaede_nr(sid) + 1
+    ac.saet_kaede(sid, nr)
+    logger.info("auto-fortsaettelse JA run_id=%s: %s", run_id, beslutning.grund)
+
+    nye = dict(visible_args)
+    nye["message"] = ac.fortsaettelses_besked(nr)
+    nye.pop("session_id", None)
+    start_user_run_detached(
+        session_id=sid, eff_model=eff_model, eff_provider=eff_provider,
+        lane=lane, **nye,
+    )

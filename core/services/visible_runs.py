@@ -2659,6 +2659,9 @@ async def _stream_visible_run(
                 _SYNTH_PAUSE_AFTER = 8
                 _synth_pause_fired_at = -100  # runde hvor vi sidst tvang en pause
                 _agentic_loop_exit_reason = "completed"
+                # Batch-vink: maalt 13/9 kaldte 304 af 366 runder ÉT vaerktoej.
+                _forrige_runde_kald = 0
+                _batch_vink_vist = 0
                 # CUT-OFF-flag (12. sep 2026 — ROD-ÅRSAG til UnboundLocalError):
                 # initialiseres HER, ikke kun pr. forsøg inde i loopet. To tidlige
                 # udgange i loopets FØRSTE runde — `provider-not-supported` (~2729)
@@ -2987,6 +2990,21 @@ async def _stream_visible_run(
                         if _varsel:
                             _round_base_messages = list(_round_base_messages) + [
                                 {"role": "user", "content": _varsel},
+                            ]
+                    if not _is_last_round:
+                        try:
+                            from core.services.tool_batch_notice import tool_batch_notice as _tbn
+                            _vink = _tbn(
+                                forrige_runde_kald=_forrige_runde_kald,
+                                runder_tilbage=_AGENTIC_MAX_ROUNDS - _agentic_round,
+                                gange_vist=_batch_vink_vist,
+                            )
+                        except Exception:
+                            _vink = ""
+                        if _vink:
+                            _batch_vink_vist += 1
+                            _round_base_messages = list(_round_base_messages) + [
+                                {"role": "user", "content": _vink},
                             ]
                     if _is_last_round:
                         _round_tool_definitions = None
@@ -4367,6 +4385,7 @@ async def _stream_visible_run(
                         _outcome_state.mark("interrupted", finalized=False)
                         _outcome_state.set_error("user-cancelled-during-tool-exec")
                         break
+                    _forrige_runde_kald = len(_a_tool_calls or [])
                     _a_results = _a_batch_out["results"]
                     _step_counter = _a_batch_out["step_counter"]
                     logger.info(
@@ -4831,12 +4850,29 @@ async def _stream_visible_run(
                                     pass
                     except Exception:
                         pass
+                else:
+                    # LOEKKEN LOEB TOER — ikke et `break`, men alle 30 runder brugt.
+                    #
+                    # Loekken bryder ud af sig selv saa snart Jarvis skriver prosa
+                    # uden vaerktoejskald. Naaede vi hertil, arbejdede han stadig da
+                    # doeren smaekkede. Foer stod grunden som "completed" — praecis
+                    # samme ord som en faerdig tur — og saa kunne hverken Bjoern
+                    # eller systemet skelne «gjort» fra «loebet toer». Maalt
+                    # 13/9-2026: syv af fjorten ture den nat endte saadan.
+                    from core.services.auto_continuation import OPBRUGT as _OPBRUGT
+                    if _agentic_loop_exit_reason == "completed":
+                        _agentic_loop_exit_reason = _OPBRUGT
                 # CUT-OFF (2026-08-19): loopet sluttede "completed", men en runde
                 # blev afkortet (finish_reason=length) → exit-grunden skal ikke
                 # lyve om ren succes. Status forbliver completed (der ER et svar),
                 # men telemetri/incident viser truncation ærligt.
                 if _a_truncated and _agentic_loop_exit_reason == "completed":
                     _agentic_loop_exit_reason = "completed-truncated"
+                try:
+                    from core.services.auto_continuation import noter_udfald as _nu
+                    _nu(run.run_id, _agentic_loop_exit_reason)
+                except Exception:
+                    logger.warning("kunne ikke notere udfald for %s", run.run_id)
                 logger.info(
                     "agentic-loop-exit run_id=%s reason=%s rounds_done=%d",
                     run.run_id, _agentic_loop_exit_reason,

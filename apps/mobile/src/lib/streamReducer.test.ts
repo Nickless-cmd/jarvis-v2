@@ -211,3 +211,50 @@ it('et skridt UDEN vaerktoejsnavn bliver ikke et kort', () => {
   const s = streamReducer(initialStreamState(), workingStep({ action: '' }) as never)
   expect(s.liveSteps).toHaveLength(0)
 })
+
+it('«Taenker videre · runde N» er IKKE et vaerktoej', () => {
+  // DEN FEJL: `working_step` bruges ogsaa til livstegn med action="thinking".
+  // De faar aldrig et tool_use der kan rydde dem, saa de hobede sig op - ti
+  // kort paa skaermen efter ti runder. Min mutationstest fangede det ikke,
+  // fordi jeg kun proevede med et rigtigt vaerktoejsnavn.
+  let s = initialStreamState()
+  for (let r = 2; r <= 10; r++) {
+    s = streamReducer(s, workingStep({
+      action: 'thinking', detail: `Tænker videre · runde ${r}`, step: r,
+    }) as never)
+  }
+  expect(s.liveSteps).toHaveLength(0)
+  expect(s.workingStep).toBe('Tænker videre · runde 10')
+})
+
+it('«Thinking via …» er heller ikke et vaerktoej', () => {
+  const s = streamReducer(initialStreamState(), workingStep({
+    action: 'thinking', detail: 'Thinking via deepseek/deepseek-v4-flash', step: 0,
+  }) as never)
+  expect(s.liveSteps).toHaveLength(0)
+})
+
+it('serverens eget flag vinder over navne-gaettet', () => {
+  // Naar serveren markerer kaldet, skal klienten ikke gaette paa en streng.
+  const s = streamReducer(initialStreamState(), workingStep({
+    action: 'thinking', er_vaerktoej: true, step: 1,
+  }) as never)
+  expect(s.liveSteps).toHaveLength(1)
+})
+
+it('et flag der siger NEJ holder kortet vaek, selv med et vaerktoejsnavn', () => {
+  const s = streamReducer(initialStreamState(), workingStep({
+    action: 'bash', er_vaerktoej: false, step: 1,
+  }) as never)
+  expect(s.liveSteps).toHaveLength(0)
+})
+
+it('listen har et LOFT — strandede kort maa ikke aede skaermen igen', () => {
+  let s = initialStreamState()
+  for (let i = 1; i <= 12; i++) {
+    s = streamReducer(s, workingStep({ action: `t${i}`, step: i }) as never)
+  }
+  expect(s.liveSteps).toHaveLength(4)
+  // ... og det er de NYESTE der staar.
+  expect(s.liveSteps[3]?.navn).toBe('t12')
+})

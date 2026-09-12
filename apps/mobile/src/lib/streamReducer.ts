@@ -215,12 +215,29 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
         // Kun «running» bliver til et live-kort. «blocked» betyder at en hook
         // stoppede kaldet FØR det kørte — der er ingenting at vente på, og et
         // kort med en tikkende tid ville påstå det modsatte.
-        if (!navn || status !== 'running') return { ...state, workingStep: detail }
+        //
+        // Og KUN ægte værktøjskald. `working_step` bruges også til
+        // livstegn: `action: "thinking"` for «Thinking via …» og «Tænker
+        // videre · runde N». De får aldrig et tool_use der kan rydde dem, så
+        // de hobede sig op — ti kort på skærmen efter ti runder (Bjørn
+        // 12/9-2026, og det er den ene skærm denne regel findes for).
+        //
+        // `er_vaerktoej` er serverens eget flag når det er der; `action`-navnet
+        // er faldback, så rettelsen virker mod den server der kører NU.
+        const erVaerktoej = event.payload.er_vaerktoej === true
+          || (event.payload.er_vaerktoej === undefined && navn !== 'thinking')
+        if (!navn || status !== 'running' || !erVaerktoej) {
+          return { ...state, workingStep: detail }
+        }
         const skridt = Number(event.payload.step ?? 0)
         // Samme skridt to gange = samme kald annonceret igen (genoptag efter
         // reconnect). Erstat frem for at lægge til, ellers ville tråden vise
         // det samme værktøj to steder.
-        const uden = state.liveSteps.filter((s) => s.skridt !== skridt)
+        // LOFT. Et værktøj hvis tool_use aldrig kommer ville ellers blive
+        // stående, og nok af dem ville æde skærmen igen. Fire er rigeligt: en
+        // batch kører sjældent flere parallelt, og de ældste er dem der er
+        // mest sandsynligt strandede.
+        const uden = state.liveSteps.filter((s) => s.skridt !== skridt).slice(-3)
         return {
           ...state,
           workingStep: detail,

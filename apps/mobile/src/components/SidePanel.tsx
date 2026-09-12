@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Animated, Dimensions, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Activity, Boxes, Eye, MessageCircle, MoreVertical, Pin, Search, Settings, SlidersHorizontal, SquarePen } from 'lucide-react-native'
+import { Activity, Boxes, Eye, MessageCircle, MessagesSquare, MoreVertical, Pin, Search, Settings, SlidersHorizontal, SquarePen, Terminal } from 'lucide-react-native'
 import { formatRelativeDate } from '../lib/relativeDate'
 import { HeartbeatDot } from './HeartbeatDot'
 import type { ChatSession } from '../lib/types'
@@ -58,6 +58,8 @@ export function SidePanel({
   unreadIds = {},
   onFloatActive,
   bubbleSupported = false,
+  kodeTilstand = false,
+  onSkiftFlade,
   config = null
 }: {
   open: boolean
@@ -76,6 +78,10 @@ export function SidePanel({
   onOpenActivity?: () => void
   /** Bor brugeren i hjemmet (owner eller partner)? Skjuler kun indgangen. */
   isOwner?: boolean
+  /** Står vi i code-fladen? Afgør om feltet fører IND eller UD. */
+  kodeTilstand?: boolean
+  /** Skifter mellem chat og code. Uden den tegnes feltet ikke. */
+  onSkiftFlade?: (tilKode: boolean) => void
   workingIds?: string[]
   /** Handlinger paa én samtale. Uden den tegnes prikkerne slet ikke —
    *  en menu der aabner og ikke kan goere noget er vaerre end ingen. */
@@ -217,6 +223,20 @@ export function SidePanel({
               <Felt testID="open-chat-settings"
                     ikon={<SlidersHorizontal size={17} color={tokens.color.fg2} strokeWidth={1.8} />}
                     navn="Denne samtale" onPress={onOpenChatSettings} />
+            ) : null}
+            {/* SAMME felt, to retninger. Bjørn bad om «et tilbage til chat felt
+                i panelet når man er i code mode» — men en dør der kun åbner
+                indad efterlader code-fladen uden en indgang, og porten han
+                beskrev (QR'en) findes ikke: `/auth/pair/*` udsteder et
+                login-token og binder ikke telefonen til en desk-instans.
+                Derfor bærer feltet begge veje. */}
+            {onSkiftFlade ? (
+              <Felt testID="skift-flade"
+                    ikon={kodeTilstand
+                      ? <MessagesSquare size={17} color={tokens.color.fg2} strokeWidth={1.8} />
+                      : <Terminal size={17} color={tokens.color.fg2} strokeWidth={1.8} />}
+                    navn={kodeTilstand ? 'Tilbage til chat' : 'Code'}
+                    onPress={() => onSkiftFlade(!kodeTilstand)} />
             ) : null}
           </View>
 

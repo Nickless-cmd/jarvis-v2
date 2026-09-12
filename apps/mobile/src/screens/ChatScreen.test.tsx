@@ -128,9 +128,15 @@ jest.mock('../lib/useConnectivity', () => ({
   useConnectivity: () => 'connected'
 }))
 
+// HVIDLISTE, ikke en delvis mock: alt der ikke staar her er `undefined` naar
+// skaermen kalder det. En ny eksport i apiClient braekker derfor denne fil
+// uden at have noget med den at goere - det er praecis hvad der skete da
+// kontekst-ringen kom til.
 jest.mock('../lib/apiClient', () => ({
   whoami: jest.fn().mockResolvedValue({ user_id: 'u', display_name: 'Bjørn', role: 'owner' }),
-  getModelOptions: jest.fn().mockResolvedValue([])
+  getModelOptions: jest.fn().mockResolvedValue([]),
+  getContextUsage: jest.fn().mockResolvedValue(null),
+  compactNow: jest.fn().mockResolvedValue({ started: true })
 }))
 
 beforeEach(() => {

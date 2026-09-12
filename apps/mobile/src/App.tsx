@@ -10,6 +10,8 @@ import {
 import { ChatScreen } from './screens/ChatScreen'
 import { WorkScreen } from './screens/WorkScreen'
 import { TopBar, type AppMode } from './components/TopBar'
+import { TopBarMenu } from './components/TopBarMenu'
+import type { ContextUsage } from './lib/apiClient'
 import { OnboardingGuide } from './components/OnboardingGuide'
 import { erGennemfoert, type Tilladelse } from './lib/onboarding'
 import { alleredeGivneTilladelser } from './lib/permissionRequests'
@@ -57,6 +59,16 @@ function AppBody() {
   const [pendingWork, setPendingWork] = useState(0)
   const [menuSignal, setMenuSignal] = useState(0)
   const [syncing, setSyncing] = useState(false)
+  // Kontekst-fyldet meldes OP fra ChatScreen, som er den der kender den
+  // aktive session. Headeren ejer ringen, men ikke tallet.
+  const [kontekst, setKontekst] = useState<ContextUsage | null>(null)
+  const [mereAaben, setMereAaben] = useState(false)
+  const [compactSignal, setCompactSignal] = useState(0)
+  // Code-fladen. Den er IKKE porten fra en QR: målt 12/9-2026 udsteder
+  // `/auth/pair/*` et login-token og binder ikke telefonen til en bestemt
+  // desk-instans. Der findes intet led mellem de to enheder at hænge den på,
+  // så fladen slås til fra menuen og porten står åben som en note.
+  const [kodeTilstand, setKodeTilstand] = useState(false)
   // Headeren SVÆVER. Alt der ligger i den almindelige kolonne starter derfor
   // øverst på skærmen — altså BAG bjælken. Tråden må gerne rulle bagved (det er
   // med vilje), men en opdaterings- eller fejlbesked må ikke gemme sig der:
@@ -214,8 +226,22 @@ function AppBody() {
             }}
             syncing={syncing}
             pendingWork={pendingWork > 0}
+            kodeTilstand={kodeTilstand}
+            onBack={() => setKodeTilstand(false)}
+            kontekst={mode === 'snak' ? kontekst : null}
+            onMereMenu={() => setMereAaben(true)}
           />
         </View>
+        <TopBarMenu
+          aaben={mereAaben}
+          onClose={() => setMereAaben(false)}
+          onSync={() => { setSyncing(true); setSyncSignal((n) => n + 1) }}
+          // Komprimér vises KUN når der er en ring at komprimere. Et punkt
+          // der ikke kan gøre noget er værre end et der ikke er der.
+          onCompact={mode === 'snak' && kontekst ? () => setCompactSignal((n) => n + 1) : undefined}
+          kodeTilstand={kodeTilstand}
+          onTilbageTilChat={() => setKodeTilstand(false)}
+        />
         {/* Begge skærme holdes monteret: Snak må ikke miste stream-tilstand
             fordi Bjørn kigger på Arbejde. Skjult frem for unmountet. */}
         <View style={mode === 'snak' ? styles.visible : styles.hidden}>
@@ -224,6 +250,10 @@ function AppBody() {
               openPanelSignal={menuSignal}
               syncSignal={mode === 'snak' ? syncSignal : 0}
               onSyncDone={() => setSyncing(false)}
+              onKontekst={setKontekst}
+              compactSignal={compactSignal}
+              kodeTilstand={kodeTilstand}
+              onSkiftFlade={setKodeTilstand}
             />
           </ErrorBoundary>
         </View>

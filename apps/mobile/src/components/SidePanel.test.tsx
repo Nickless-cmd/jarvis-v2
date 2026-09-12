@@ -101,3 +101,32 @@ it('indstillinger staar som et felt med navn', async () => {
   expect(onOpenSettings).toHaveBeenCalled()
   expect(screen.getByText('Indstillinger')).toBeTruthy()
 })
+
+// --- flade-feltet (chat <-> code) ---
+
+it('uden onSkiftFlade tegnes feltet slet ikke', async () => {
+  // Et felt der ikke kan skifte noget er en knap der lyver.
+  const screen = await wrap(<SidePanel open {...base} />)
+  expect(screen.queryByTestId('skift-flade')).toBeNull()
+})
+
+it('i CHAT hedder feltet Code og foerer IND', async () => {
+  const onSkift = jest.fn()
+  const screen = await wrap(<SidePanel open {...base} onSkiftFlade={onSkift} />)
+  fireEvent.press(screen.getByText('Code'))
+  expect(onSkift).toHaveBeenCalledWith(true)
+})
+
+it('i CODE hedder SAMME felt Tilbage til chat og foerer UD', async () => {
+  // Bjoern bad om et «tilbage til chat felt naar man er i code mode». Doeren
+  // skal aabne begge veje - ellers har code-fladen ingen indgang.
+  const onSkift = jest.fn()
+  const screen = await wrap(<SidePanel open {...base} kodeTilstand onSkiftFlade={onSkift} />)
+  fireEvent.press(screen.getByText('Tilbage til chat'))
+  expect(onSkift).toHaveBeenCalledWith(false)
+})
+
+it('feltet siger ikke Code naar man allerede ER i code', async () => {
+  const screen = await wrap(<SidePanel open {...base} kodeTilstand onSkiftFlade={jest.fn()} />)
+  expect(screen.queryByText('Code')).toBeNull()
+})

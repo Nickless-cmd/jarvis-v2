@@ -45,15 +45,18 @@ import { ActivityCenterScreen } from './ActivityCenterScreen'
 import {
   cancelActiveRun,
   cancelRunById,
+  compactNow,
   deleteSession,
   denyTool,
   getActiveRunSnapshot,
+  getContextUsage,
   getActiveRuns,
   getModelOptions,
   renameSession,
   setSessionFlags,
   uploadAttachment,
   whoami,
+  type ContextUsage,
 } from '../lib/apiClient'
 import { computeUnread } from '../lib/sessionStatus'
 import { loadLastSeen, markSeen } from '../lib/lastSeen'
@@ -91,9 +94,19 @@ interface ChatScreenProps {
   syncSignal?: number
   /** Kaldes når opdateringen er FÆRDIG — så knappen kan holde op med at snurre. */
   onSyncDone?: () => void
+  /** Melder kontekst-fyldet op til headerens ring. Null = intet at vise. */
+  onKontekst?: (brug: ContextUsage | null) => void
+  /** Stiger når «Komprimér kontekst» vælges i tre-prik menuen. */
+  compactSignal?: number
+  /** Står vi i code-fladen? Panelet bruger det til at vende sit felt. */
+  kodeTilstand?: boolean
+  onSkiftFlade?: (tilKode: boolean) => void
 }
 
-export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: ChatScreenProps) {
+export function ChatScreen({
+  openPanelSignal = 0, syncSignal = 0, onSyncDone, onKontekst, compactSignal = 0,
+  kodeTilstand = false, onSkiftFlade,
+}: ChatScreenProps) {
   const tokens = useTheme()
   const styles = useStyles(makestyles)
   const { config } = useAuth()
@@ -126,6 +139,37 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [syncSignal])
+  // Kontekst-ringen i headeren. Tallet er BACKEND-autoritativt: desk prøvede
+  // først at regne det ud af `stream.usage.input + cacheHit` og fik en ring
+  // der aldrig faldt, fordi det tal indeholder systemprompten. Her spørges
+  // serveren om transcript-fyldet siden sidste komprimering — dét tal falder.
+  //
+  // Hvert 12. sekund, ikke hvert 2,5. Ringen skal vise hvor man er, ikke
+  // tælle tokens; en hurtigere puls ville koste et kald pr. bruger uden at
+  // ændre et eneste ciffer man kan nå at se.
+  useEffect(() => {
+    const sid = sessions.activeId
+    if (!config || !sid) { onKontekst?.(null); return }
+    let stoppet = false
+    const hent = () => {
+      getContextUsage(config, sid)
+        .then((brug) => { if (!stoppet) onKontekst?.(brug) })
+        // Tavs: en ring der ikke kan hentes skal FORSVINDE, ikke fryse paa
+        // et gammelt tal. Et frossent tal er vaerre end intet tal.
+        .catch(() => { if (!stoppet) onKontekst?.(null) })
+    }
+    hent()
+    const t = setInterval(hent, 12_000)
+    return () => { stoppet = true; clearInterval(t) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [config, sessions.activeId])
+
+  useEffect(() => {
+    if (compactSignal <= 0 || !config || !sessions.activeId) return
+    void compactNow(config, sessions.activeId).catch(() => {})
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [compactSignal])
+
   // Session-panel live-status: arbejder-prik (active-runs mens panel åbent) + ulæst.
   const [activeRunIds, setActiveRunIds] = useState<string[]>([])
   const [lastSeen, setLastSeen] = useState<Record<string, number>>({})
@@ -929,6 +973,10 @@ export function ChatScreen({ openPanelSignal = 0, syncSignal = 0, onSyncDone }: 
           onClose={() => setPanelOpen(false)}
           displayName={displayName}
           config={config}
+          kodeTilstand={kodeTilstand}
+          onSkiftFlade={onSkiftFlade
+            ? (tilKode) => { onSkiftFlade(tilKode); setPanelOpen(false) }
+            : undefined}
           sessions={sessions.sessions}
           activeId={sessions.activeId}
           onSelectSession={handleSelectSession}

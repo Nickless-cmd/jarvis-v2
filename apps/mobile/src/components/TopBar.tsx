@@ -1,8 +1,10 @@
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native'
-import { Menu, RefreshCw } from 'lucide-react-native'
+import { ArrowLeft, Menu, MoreVertical } from 'lucide-react-native'
 import { SegmentedControl } from './SegmentedControl'
+import { ContextRing } from './ContextRing'
 import { tokens } from '../theme/tokens'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
+import type { ContextUsage } from '../lib/apiClient'
 
 export type AppMode = 'snak' | 'arbejde'
 
@@ -13,6 +15,13 @@ interface Props {
   onSync: () => void
   pendingWork?: boolean
   syncing?: boolean
+  /** Code-fladen: venstre felt bliver en tilbage-pil og segmentet siger «Code». */
+  kodeTilstand?: boolean
+  onBack?: () => void
+  /** Kontekst-fyld. Ringen tegner sig selv væk når den er null. */
+  kontekst?: ContextUsage | null
+  /** Åbner tre-prik menuen. Opdatér bor derinde nu. */
+  onMereMenu?: () => void
 }
 
 /**
@@ -40,26 +49,38 @@ const CIRCLE = 40
 const EDGE = 14
 const SEGMENT_W = 172
 
-export function TopBar({ mode, onModeChange, onMenu, onSync, pendingWork, syncing }: Props) {
+export function TopBar({
+  mode, onModeChange, onMenu, onSync, pendingWork, syncing,
+  kodeTilstand, onBack, kontekst, onMereMenu,
+}: Props) {
   const tokens = useTheme()
   const styles = useStyles(makestyles)
+  // I code-fladen er venstre felt en VEJ UD, ikke en menu. At lade det blive
+  // ved med at aabne sessionslisten ville efterlade code-fladen uden udgang
+  // paa den plads oejet leder efter den.
+  const tilbage = Boolean(kodeTilstand && onBack)
   return (
     <View style={styles.bar}>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Menu"
-        onPress={onMenu}
+        accessibilityLabel={tilbage ? 'Tilbage til chat' : 'Menu'}
+        onPress={tilbage ? onBack : onMenu}
         hitSlop={8}
         style={styles.circle}
+        testID="topbar-venstre"
       >
-        <Menu size={21} color={tokens.color.fg1} strokeWidth={2} />
+        {tilbage
+          ? <ArrowLeft size={21} color={tokens.color.fg1} strokeWidth={2} />
+          : <Menu size={21} color={tokens.color.fg1} strokeWidth={2} />}
       </Pressable>
 
       <View pointerEvents="box-none" style={styles.centerWrap}>
         <View style={styles.center}>
           <SegmentedControl<AppMode>
             options={[
-              { value: 'snak', label: 'Snak' },
+              // «Code» naar man staar i code-fladen. Samme plads, samme
+              // kontakt - men et navn der siger hvor man er.
+              { value: 'snak', label: kodeTilstand ? 'Code' : 'Snak' },
               { value: 'arbejde', label: 'Arbejde', badge: pendingWork }
             ]}
             value={mode}
@@ -68,19 +89,25 @@ export function TopBar({ mode, onModeChange, onMenu, onSync, pendingWork, syncin
         </View>
       </View>
 
+      {/* Hoejre felt: ringen FOERST, saa prikkerne - i samme felt. Ringen er
+          det man laeser, prikkerne er det man trykker. Star de hver for sig
+          bliver bjaelken til tre knapper der ligner hinanden. */}
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Synkronisér"
+        accessibilityLabel="Mere"
         accessibilityState={{ busy: Boolean(syncing) }}
-        onPress={onSync}
+        onPress={onMereMenu ?? onSync}
         hitSlop={8}
-        style={styles.circle}
-        testID="sync-button"
+        style={[styles.circle, kontekst ? styles.pille : null]}
+        testID="topbar-mere"
       >
         {syncing ? (
           <ActivityIndicator size="small" color={tokens.color.fg1} />
         ) : (
-          <RefreshCw size={20} color={tokens.color.fg1} strokeWidth={2} />
+          <>
+            <ContextRing brug={kontekst ?? null} />
+            <MoreVertical size={20} color={tokens.color.fg1} strokeWidth={2} />
+          </>
         )}
       </Pressable>
     </View>
@@ -110,6 +137,16 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
     justifyContent: 'center'
   },
   center: { width: SEGMENT_W },
+  // Feltet vokser til en pille naar ringen er der. Segmentet er ABSOLUT
+  // centreret, saa den maalte geometri i midten staar stille alligevel.
+  pille: {
+    width: undefined,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 9,
+    borderRadius: CIRCLE / 2,
+  },
   circle: {
     width: CIRCLE,
     height: CIRCLE,

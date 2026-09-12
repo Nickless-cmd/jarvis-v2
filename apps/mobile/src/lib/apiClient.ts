@@ -427,3 +427,56 @@ export async function googleLoginResult(
 export async function googleLinkStart(config: ApiConfig): Promise<GoogleLoginStartResult> {
   return apiFetch(config, '/api/auth/google/link/start')
 }
+
+export interface ContextUsage {
+  /** Transcript-fyld siden sidste compaction. Backend-autoritativt. */
+  tokens: number
+  /** Tallet der komprimeres ved. Nævneren i ringen. */
+  compactAt: number
+  compacting: boolean
+}
+
+/**
+ * Hvor fuld er samtalens kontekst?
+ *
+ * ## Hvorfor den IKKE regnes ud i klienten
+ *
+ * Desk prøvede det først og fik en ring der skøjtede: den blev fodret af
+ * `stream.usage.input + cacheHit`, altså HELE prompten inklusive
+ * systemprompten. Den viste derfor et tal der aldrig faldt når compaction
+ * fyrede, fordi systemprompten bliver ved med at være der.
+ *
+ * `/chat/context-usage` svarer med transcript-fyldet siden sidste compaction
+ * — tallet der faktisk falder. Den lektie er allerede betalt én gang; den
+ * gentages ikke her.
+ */
+export async function getContextUsage(
+  config: ApiConfig, sessionId: string,
+): Promise<ContextUsage | null> {
+  if (!sessionId) return null
+  const data = await apiFetch<{
+    tokens?: number; compact_at?: number; effective?: number; compacting?: boolean
+  }>(config, `/chat/context-usage?session_id=${encodeURIComponent(sessionId)}`)
+  const compactAt = Number(data.compact_at ?? data.effective ?? 0)
+  return {
+    tokens: Number(data.tokens ?? 0),
+    compactAt,
+    compacting: Boolean(data.compacting),
+  }
+}
+
+/**
+ * Komprimér samtalen NU frem for at vente på at grænsen nås.
+ *
+ * Den hører sammen med ringen: ringen fortæller at det snart sker, og det her
+ * er den eneste handling ringen inviterer til. Uden den er ringen en advarsel
+ * man ikke kan gøre noget ved.
+ */
+export async function compactNow(
+  config: ApiConfig, sessionId: string, focus = '',
+): Promise<{ started: boolean; reason?: string }> {
+  return apiFetch(config, '/chat/compact-now', {
+    method: 'POST',
+    body: { session_id: sessionId, focus },
+  })
+}

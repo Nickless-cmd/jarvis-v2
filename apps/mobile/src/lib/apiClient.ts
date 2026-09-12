@@ -496,3 +496,48 @@ export async function compactNow(
     body: { session_id: sessionId, focus },
   })
 }
+
+export interface GitStatus {
+  branch: string
+  /** Antal filer med ændringer. «73 filer ændret». */
+  dirty: number
+  added: number
+  removed: number
+  isGit: boolean
+  repo: string
+  host: string
+}
+
+/**
+ * Arbejdstræets tilstand — branch, antal berørte filer og linjer ind/ud.
+ *
+ * ## Hvad tallene FAKTISK er
+ *
+ * `git diff --numstat HEAD` på arbejdstræet: det der er ændret og endnu ikke
+ * committet. Det er IKKE et regnskab over hvad netop denne samtale har lavet
+ * — et sådant findes ikke, og et tal der lod som om det gjorde, ville lyve så
+ * snart to ting arbejdede i samme repo.
+ *
+ * Det er stadig det rigtige tal at vise: når Jarvis er midt i en opgave, er
+ * arbejdstræet præcis dét arbejde. Er der committet, står badgen på nul —
+ * og det er en sand besked, ikke en tom.
+ */
+export async function getGitStatus(
+  config: ApiConfig, kind = 'container', root = '',
+): Promise<GitStatus | null> {
+  const qs = new URLSearchParams({ kind, root }).toString()
+  const d = await apiFetch<{
+    branch?: string; dirty?: number; added?: number; removed?: number
+    is_git?: boolean; repo?: string; host?: string
+  }>(config, `/chat/git-status?${qs}`)
+  if (!d.is_git) return null
+  return {
+    branch: String(d.branch || ''),
+    dirty: Number(d.dirty || 0),
+    added: Number(d.added || 0),
+    removed: Number(d.removed || 0),
+    isGit: true,
+    repo: String(d.repo || ''),
+    host: String(d.host || ''),
+  }
+}

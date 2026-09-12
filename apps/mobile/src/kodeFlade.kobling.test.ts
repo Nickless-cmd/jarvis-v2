@@ -87,3 +87,33 @@ it('et fladeskift henter listen OM', () => {
   expect(cs).toMatch(/forrigeArt\.current === art/)
   expect(cs).toMatch(/\}, \[art, config\]\)/)
 })
+
+it('ChatScreen henter git-tilstanden — og KUN i code-fladen', () => {
+  const cs = kilde('screens/ChatScreen.tsx')
+  expect(cs).toMatch(/getGitStatus\(config\)/)
+  // Et subprocess-kald pr. opslag skal ikke koere i chat, hvor tallet
+  // hverken vises eller er relevant.
+  expect(cs).toMatch(/if \(!config \|\| !kodeTilstand\) \{ setGit\(null\); return \}/)
+})
+
+it('diff-badgen staar over komponisten og KUN i code', () => {
+  const cs = kilde('screens/ChatScreen.tsx')
+  expect(cs).toMatch(/<DiffBadge git=\{kodeTilstand \? git : null\} \/>/)
+  // ... og faktisk FOER komponisten, ikke et tilfaeldigt sted.
+  expect(cs.indexOf('<DiffBadge')).toBeLessThan(cs.indexOf('<Composer'))
+})
+
+it('code-headeren faar titel og git meldt OP', () => {
+  const cs = kilde('screens/ChatScreen.tsx')
+  expect(cs).toMatch(/onKodeKontekst\?\.\(\{ titel: aktivTitel, git \}\)/)
+  const app = kilde('App.tsx')
+  expect(app).toMatch(/onKodeKontekst=\{setKodeKontekst\}/)
+  expect(app).toMatch(/kodeTitel=\{kodeKontekst\.titel\}/)
+  expect(app).toMatch(/git=\{kodeKontekst\.git\}/)
+})
+
+it('billed-feltet aabner DENNE samtales billeder', () => {
+  const cs = kilde('screens/ChatScreen.tsx')
+  expect(cs).toMatch(/onOpenBilleder=\{/)
+  expect(cs).toMatch(/<BillederScreen\s+sessionId=\{sessions\.activeId \?\? ''\}/)
+})

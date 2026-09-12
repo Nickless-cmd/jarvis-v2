@@ -11,7 +11,7 @@ import { ChatScreen } from './screens/ChatScreen'
 import { WorkScreen } from './screens/WorkScreen'
 import { TopBar, type AppMode } from './components/TopBar'
 import { TopBarMenu } from './components/TopBarMenu'
-import type { ContextUsage } from './lib/apiClient'
+import type { ContextUsage, GitStatus } from './lib/apiClient'
 import { OnboardingGuide } from './components/OnboardingGuide'
 import { erGennemfoert, type Tilladelse } from './lib/onboarding'
 import { alleredeGivneTilladelser } from './lib/permissionRequests'
@@ -69,6 +69,10 @@ function AppBody() {
   // desk-instans. Der findes intet led mellem de to enheder at hænge den på,
   // så fladen slås til fra menuen og porten står åben som en note.
   const [kodeTilstand, setKodeTilstand] = useState(false)
+  // Titel og git meldes OP fra ChatScreen, som er den der kender sessionen.
+  const [kodeKontekst, setKodeKontekst] = useState<{ titel: string; git: GitStatus | null }>({
+    titel: '', git: null,
+  })
   // Headeren SVÆVER. Alt der ligger i den almindelige kolonne starter derfor
   // øverst på skærmen — altså BAG bjælken. Tråden må gerne rulle bagved (det er
   // med vilje), men en opdaterings- eller fejlbesked må ikke gemme sig der:
@@ -227,6 +231,8 @@ function AppBody() {
             syncing={syncing}
             pendingWork={pendingWork > 0}
             kodeTilstand={kodeTilstand}
+            kodeTitel={kodeKontekst.titel}
+            git={kodeKontekst.git}
             kontekst={mode === 'snak' ? kontekst : null}
             onMereMenu={() => setMereAaben(true)}
           />
@@ -253,6 +259,7 @@ function AppBody() {
               compactSignal={compactSignal}
               kodeTilstand={kodeTilstand}
               onSkiftFlade={setKodeTilstand}
+              onKodeKontekst={setKodeKontekst}
             />
           </ErrorBoundary>
         </View>

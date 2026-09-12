@@ -2,9 +2,10 @@ import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native'
 import { ArrowLeft, MoreVertical } from 'lucide-react-native'
 import { SegmentedControl } from './SegmentedControl'
 import { ContextRing } from './ContextRing'
+import { CodeTitle } from './CodeTitle'
 import { tokens } from '../theme/tokens'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
-import type { ContextUsage } from '../lib/apiClient'
+import type { ContextUsage, GitStatus } from '../lib/apiClient'
 
 export type AppMode = 'snak' | 'arbejde'
 
@@ -21,6 +22,9 @@ interface Props {
   kontekst?: ContextUsage | null
   /** Åbner tre-prik menuen. Opdatér bor derinde nu. */
   onMereMenu?: () => void
+  /** Code-fladens titel og kontekst. Kun brugt når kodeTilstand er sat. */
+  kodeTitel?: string
+  git?: GitStatus | null
 }
 
 /**
@@ -50,7 +54,7 @@ const SEGMENT_W = 172
 
 export function TopBar({
   mode, onModeChange, onMenu, onSync, pendingWork, syncing,
-  kodeTilstand, kontekst, onMereMenu,
+  kodeTilstand, kontekst, onMereMenu, kodeTitel = '', git = null,
 }: Props) {
   const tokens = useTheme()
   const styles = useStyles(makestyles)
@@ -71,19 +75,28 @@ export function TopBar({
         <ArrowLeft size={21} color={tokens.color.fg1} strokeWidth={2} />
       </Pressable>
 
+      {/* SAMME plads, to helt forskellige ting. I chat er den en kontakt
+          mellem Snak og Arbejde; i code er de to valg allerede truffet, og
+          pladsen bruges paa hvad man arbejder paa og hvor. Bredden er
+          heller ikke den samme: segmentet er MAALT (172 dp), titlen skal
+          kunne vokse. */}
       <View pointerEvents="box-none" style={styles.centerWrap}>
-        <View style={styles.center}>
-          <SegmentedControl<AppMode>
-            options={[
-              // «Code» naar man staar i code-fladen. Samme plads, samme
-              // kontakt - men et navn der siger hvor man er.
-              { value: 'snak', label: kodeTilstand ? 'Code' : 'Snak' },
-              { value: 'arbejde', label: 'Arbejde', badge: pendingWork }
-            ]}
-            value={mode}
-            onChange={onModeChange}
-          />
-        </View>
+        {kodeTilstand ? (
+          <View style={styles.centerKode}>
+            <CodeTitle titel={kodeTitel} git={git} />
+          </View>
+        ) : (
+          <View style={styles.center}>
+            <SegmentedControl<AppMode>
+              options={[
+                { value: 'snak', label: 'Snak' },
+                { value: 'arbejde', label: 'Arbejde', badge: pendingWork }
+              ]}
+              value={mode}
+              onChange={onModeChange}
+            />
+          </View>
+        )}
       </View>
 
       {/* Hoejre felt: ringen FOERST, saa prikkerne - i samme felt. Ringen er
@@ -138,6 +151,9 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
     justifyContent: 'center'
   },
   center: { width: SEGMENT_W },
+  // Titlen faar mere plads end segmentet, men ikke ubegraenset: de to felter
+  // ved siden af skal blive ved med at vaere trykbare.
+  centerKode: { maxWidth: 235 },
   // Feltet vokser til en pille naar ringen er der. Polstringen er sat efter
   // ChatGPT-appens eget hoejre felt (Bjoerns skaermbillede 12/9-2026): der er
   // luft HELE vejen rundt om begge ikoner. Foerste forsoeg havde 9 dp og 4 dp

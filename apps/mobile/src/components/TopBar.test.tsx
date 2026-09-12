@@ -43,10 +43,37 @@ it('uden code-tilstand hedder segmentet Snak', async () => {
   expect(screen.getByLabelText('Snak')).toBeTruthy()
 })
 
-it('i code-tilstand hedder SAMME segment Code', async () => {
-  const screen = await render(<TopBar {...base} kodeTilstand />)
-  expect(screen.getByLabelText('Code')).toBeTruthy()
+it('i code-tilstand er segmentet VAEK — pladsen er titlens', async () => {
+  // «Snak | Arbejde» hoerer til chat-fladen. I code er de to valg allerede
+  // truffet, og kontakten er kun stoej paa appens mest vaerdifulde plads.
+  const screen = await render(<TopBar {...base} kodeTilstand kodeTitel="Diagnose WLED" />)
   expect(screen.queryByLabelText('Snak')).toBeNull()
+  expect(screen.queryByLabelText('Arbejde')).toBeNull()
+  expect(screen.getByText('Diagnose WLED')).toBeTruthy()
+})
+
+it('i chat-tilstand er titlen VAEK — pladsen er segmentets', async () => {
+  const screen = await render(<TopBar {...base} kodeTitel="Diagnose WLED" />)
+  expect(screen.queryByTestId('code-titel')).toBeNull()
+  expect(screen.getByLabelText('Snak')).toBeTruthy()
+})
+
+it('code-titlen baerer repo og vaert naar git svarede', async () => {
+  // Den ene oplysning telefonen ikke selv kan regne ud: API'et koerer et
+  // andet sted end appen.
+  const git = { branch: 'main', dirty: 73, added: 2925, removed: 1407, isGit: true as const,
+                repo: 'jarvis-v2', host: 'CheifOne' }
+  const screen = await render(<TopBar {...base} kodeTilstand kodeTitel="Diagnose WLED" git={git} />)
+  expect(screen.getByText('jarvis-v2')).toBeTruthy()
+  expect(screen.getByText('CheifOne')).toBeTruthy()
+})
+
+it('UDEN git-svar tegnes kontekstlinjen slet ikke', async () => {
+  // En linje med tomme navne og en groen prik ville paastaa en forbindelse
+  // der ikke er efterproevet.
+  const screen = await render(<TopBar {...base} kodeTilstand kodeTitel="Diagnose WLED" />)
+  expect(screen.queryByText('repo')).toBeNull()
+  expect(screen.queryByText('vært')).toBeNull()
 })
 
 it('venstre felt er ALTID en pil til menuen — ogsaa i code', async () => {

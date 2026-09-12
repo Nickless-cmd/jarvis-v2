@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Animated, Dimensions, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Activity, Boxes, Eye, MessageCircle, MessagesSquare, MoreVertical, Pin, Search, Settings, SlidersHorizontal, SquarePen, Terminal } from 'lucide-react-native'
+import { Activity, Boxes, Eye, Image as ImageIcon, MessageCircle, MessagesSquare, MoreVertical, Pin, Search, Settings, SlidersHorizontal, SquarePen, Terminal } from 'lucide-react-native'
 import { formatRelativeDate } from '../lib/relativeDate'
 import { HeartbeatDot } from './HeartbeatDot'
 import type { ChatSession } from '../lib/types'
@@ -51,6 +51,7 @@ export function SidePanel({
   onOpenChatSettings,
   onOpenSenses,
   onOpenArtifacts,
+  onOpenBilleder,
   onOpenActivity,
   isOwner: inHousehold = false,
   workingIds = [],
@@ -75,6 +76,8 @@ export function SidePanel({
   /** Sansernes Arkiv. Kun sat for husstanden — men serveren er den ægte grænse. */
   onOpenSenses?: () => void
   onOpenArtifacts?: () => void
+  /** Billederne i DENNE samtale. Uden en aktiv samtale er der intet at vise. */
+  onOpenBilleder?: () => void
   onOpenActivity?: () => void
   /** Bor brugeren i hjemmet (owner eller partner)? Skjuler kun indgangen. */
   isOwner?: boolean
@@ -213,6 +216,14 @@ export function SidePanel({
               <Felt testID="open-artifacts"
                     ikon={<Boxes size={17} color={tokens.color.fg2} strokeWidth={1.8} />}
                     navn="Artifacts" onPress={onOpenArtifacts} />
+            ) : null}
+            {onOpenBilleder && activeId ? (
+              // Kraever en AKTIV samtale: feltet hedder «Billeder» og betyder
+              // billederne HER. Uden en samtale ville det foere til en tom
+              // skaerm der ser ud som om der ingen billeder findes.
+              <Felt testID="open-billeder"
+                    ikon={<ImageIcon size={17} color={tokens.color.fg2} strokeWidth={1.8} />}
+                    navn="Billeder" onPress={onOpenBilleder} />
             ) : null}
             {onOpenActivity ? (
               <Felt testID="open-activity"

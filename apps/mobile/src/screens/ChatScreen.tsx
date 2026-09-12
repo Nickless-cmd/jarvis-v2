@@ -18,6 +18,7 @@ import { useKeyboardHeight } from '../lib/useKeyboardHeight'
 import { useConnectivity } from '../lib/useConnectivity'
 import { ApprovalCard } from '../components/ApprovalCard'
 import { Composer } from '../components/Composer'
+import { DiffBadge } from '../components/DiffBadge'
 import { ResearchStatus } from '../components/ResearchStatus'
 import { useVoiceConversation } from '../lib/useVoiceConversation'
 import { useComposerDictation } from '../lib/useComposerDictation'
@@ -41,6 +42,7 @@ import { fetchPresence, type Presence } from '../lib/companionClient'
 import { livesInHousehold } from '../lib/household'
 import { SensesScreen } from './SensesScreen'
 import { ArtifactsScreen } from './ArtifactsScreen'
+import { BillederScreen } from './BillederScreen'
 import { ActivityCenterScreen } from './ActivityCenterScreen'
 import {
   cancelActiveRun,
@@ -50,6 +52,7 @@ import {
   denyTool,
   getActiveRunSnapshot,
   getContextUsage,
+  getGitStatus,
   getActiveRuns,
   getModelOptions,
   renameSession,
@@ -57,6 +60,7 @@ import {
   uploadAttachment,
   whoami,
   type ContextUsage,
+  type GitStatus,
 } from '../lib/apiClient'
 import { computeUnread } from '../lib/sessionStatus'
 import { loadLastSeen, markSeen } from '../lib/lastSeen'
@@ -101,11 +105,13 @@ interface ChatScreenProps {
   /** Står vi i code-fladen? Panelet bruger det til at vende sit felt. */
   kodeTilstand?: boolean
   onSkiftFlade?: (tilKode: boolean) => void
+  /** Titel og git-tilstand OP til code-headeren. Null = intet at vise. */
+  onKodeKontekst?: (v: { titel: string; git: GitStatus | null }) => void
 }
 
 export function ChatScreen({
   openPanelSignal = 0, syncSignal = 0, onSyncDone, onKontekst, compactSignal = 0,
-  kodeTilstand = false, onSkiftFlade,
+  kodeTilstand = false, onSkiftFlade, onKodeKontekst,
 }: ChatScreenProps) {
   const tokens = useTheme()
   const styles = useStyles(makestyles)
@@ -145,6 +151,35 @@ export function ChatScreen({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [syncSignal])
+  // Git-tilstanden bag code-headerens kontekstlinje OG diff-badgen over
+  // komponisten. Kun i code-fladen: i chat er den hverken relevant eller
+  // gratis - det er et subprocess-kald pr. opslag.
+  //
+  // 20 sekunder. Arbejdstraeet aendrer sig i ryk naar et vaerktoej skriver,
+  // ikke jaevnt; en hurtigere puls ville koste kald uden at vise andet.
+  const [git, setGit] = useState<GitStatus | null>(null)
+  useEffect(() => {
+    if (!config || !kodeTilstand) { setGit(null); return }
+    let stoppet = false
+    const hent = () => {
+      getGitStatus(config)
+        .then((g) => { if (!stoppet) setGit(g) })
+        // Tavs, og NULSTIL. Et frossent difftal er vaerre end intet: man ville
+        // tro der laa uafsluttet arbejde som for laengst er committet.
+        .catch(() => { if (!stoppet) setGit(null) })
+    }
+    hent()
+    const t = setInterval(hent, 20_000)
+    return () => { stoppet = true; clearInterval(t) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [config, kodeTilstand])
+
+  const aktivTitel = (sessions.sessions ?? []).find((x) => x.id === sessions.activeId)?.title || ''
+  useEffect(() => {
+    onKodeKontekst?.({ titel: aktivTitel, git })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [aktivTitel, git])
+
   // Kontekst-ringen i headeren. Tallet er BACKEND-autoritativt: desk prøvede
   // først at regne det ud af `stream.usage.input + cacheHit` og fik en ring
   // der aldrig faldt, fordi det tal indeholder systemprompten. Her spørges
@@ -214,6 +249,7 @@ export function ChatScreen({
   const [inHousehold, setInHousehold] = useState(false)
   const [sensesOpen, setSensesOpen] = useState(false)
   const [artifactsOpen, setArtifactsOpen] = useState(false)
+  const [billederOpen, setBillederOpen] = useState(false)
   const [activityOpen, setActivityOpen] = useState(false)
   const [activityRuns, setActivityRuns] = useState<import('../lib/apiClient').ActiveRunSnapshot[]>([])
   const [outboxCount, setOutboxCount] = useState(0)
@@ -908,6 +944,9 @@ export function ChatScreen({
           }}
         >
         <ResearchStatus research={stream.state.research} />
+        {/* Lige OVER komponisten, som i Codex. Den tegner sig selv vaek naar
+            traeet er rent - se DiffBadge for hvorfor det ikke er «0 filer». */}
+        <DiffBadge git={kodeTilstand ? git : null} />
         <Composer
           indsaet={indsaet}
           disabled={!config || pendingAttachments.some((a) => a.status === 'uploading')}
@@ -1037,6 +1076,10 @@ export function ChatScreen({
             setPanelOpen(false)
             setArtifactsOpen(true)
           }}
+          onOpenBilleder={() => {
+            setPanelOpen(false)
+            setBillederOpen(true)
+          }}
           onOpenActivity={() => {
             setPanelOpen(false)
             setActivityOpen(true)
@@ -1112,6 +1155,13 @@ export function ChatScreen({
 
       <Modal visible={artifactsOpen} animationType="slide" onRequestClose={() => setArtifactsOpen(false)}>
         <ArtifactsScreen onClose={() => setArtifactsOpen(false)} />
+      </Modal>
+
+      <Modal visible={billederOpen} animationType="slide" onRequestClose={() => setBillederOpen(false)}>
+        <BillederScreen
+          sessionId={sessions.activeId ?? ''}
+          onClose={() => setBillederOpen(false)}
+        />
       </Modal>
 
       <Modal visible={activityOpen} animationType="slide" onRequestClose={() => setActivityOpen(false)}>

@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react-native'
+import { render, within } from '@testing-library/react-native'
 import { MessageList } from './MessageList'
 import type { ChatMessage } from '../lib/types'
 import type { ContentBlock } from '../lib/sseProtocol'
@@ -84,7 +84,13 @@ it('thinking-blokke i stream får egen række — ikke smeltet ind i svaret', as
   expect(s.getByTestId('thinking-summary')).toBeTruthy()
   // Og teksten skal være en separat boble
   expect(s.getByText('Svaret er 4')).toBeTruthy()
-  // Thinking-teksten må IKKE ligge i samme boble som svaret
-  // — den skal være i ThinkingSummary's kollapsede label
-  expect(s.queryByText('jeg overvejer om 2+2 er 4')).toBeNull()
+
+  // TANKESTROEMMEN STAAR OVER KOMPONISTEN, ikke i traaden. Traadens linje
+  // beholder sin rolige form (ikon + «Tænker» + prikker), saa man kan laese
+  // med mens han taenker; raa monolog der flimrer i traaden goer den
+  // ulaeselig. Bjoern 12/9-2026.
+  expect(within(s.getByTestId('thinking-label')).getByText('jeg overvejer om 2+2 er 4'))
+    .toBeTruthy()
+  expect(within(s.getByTestId('thinking-summary')).queryByText('jeg overvejer om 2+2 er 4'))
+    .toBeNull()
 })

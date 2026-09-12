@@ -189,6 +189,40 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
         const runId = typeof event.payload.run_id === 'string' ? event.payload.run_id : ''
         return runId ? { ...state, activeRunId: runId } : state
       }
+      if (event.kind === 'tool_result') {
+        // SERVERENS EGEN FALDBACK, som klienten aldrig læste.
+        //
+        // `visible_runs_sse_v2` sender udfaldet TO gange: som denne
+        // system_event (altid) og som en tool_result-content-blok (bag flaget
+        // `structured_content_v2`). Kommentaren i serveren siger det lige ud —
+        // «system_event bærer stadig udfaldet (aldrig break stream)» — men
+        // reduceren foldede kun content-blokken. Var flaget slukket, eller kom
+        // blokken ikke, stod rækken og kørte for evigt.
+        //
+        // Foldningen er idempotent: kommer begge, sætter den anden det samme.
+        const id = String(event.payload.tool_use_id ?? '')
+        const navn = String(event.payload.tool ?? '')
+        const fejl = String(event.payload.status ?? '').toLowerCase()
+        const blokke = state.blocks.slice()
+        let rørt = false
+        for (let i = 0; i < blokke.length; i++) {
+          const b = blokke[i]
+          if (!b || b.type !== 'tool_use') continue
+          // Den RIGTIGE blok kendes på id'et. En FORELØBIG har intet id fra
+          // serveren og kendes derfor på navnet — den skal væk uanset, ellers
+          // bliver den stående og kører mens resultatet allerede er kommet.
+          const rammer = b.id === id || (b.foreloebig && b.name === navn)
+          if (!rammer) continue
+          if (b.foreloebig) { delete blokke[i]; rørt = true; continue }
+          blokke[i] = {
+            ...b,
+            status: fejl === 'error' || fejl === 'failed' || fejl === 'denied' ? 'error' : 'done',
+            result: typeof event.payload.result === 'string' ? event.payload.result : b.result,
+          }
+          rørt = true
+        }
+        return rørt ? { ...state, blocks: blokke } : state
+      }
       if (event.kind === 'working_step') {
         const detail =
           typeof event.payload.detail === 'string' ? event.payload.detail : state.workingStep

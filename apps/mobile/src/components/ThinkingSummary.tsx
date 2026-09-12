@@ -7,7 +7,7 @@ import { useAuthOptional } from '../state/AuthContext'
 import { getMessageReasoning } from '../lib/apiClient'
 import { loadFullThinking } from '../lib/fullThinking'
 import { GlidendeTekst } from './GlidendeTekst'
-import { tankeFragment } from '../lib/tankeFragment'
+import { prikker, TRIN_MS } from '../lib/prikSekvens'
 
 /**
  * «🧠 Tænker…» mens den tænker. «🧠 Tænkte i 14 s ›» når den er færdig.
@@ -88,13 +88,23 @@ export function ThinkingSummary({
     return () => loop.stop()
   }, [isLive, reduced, pulse])
 
-  // MENS DEN TÆNKER: det sidste stykke tanke, ikke bare at den tænker.
-  // Forskellen er den samme som mellem en spinner og en ring der fyldes —
-  // «der sker noget» mod «dét her sker». Er der endnu ingen tekst (de første
-  // tokens er ikke kommet), står der «Tænker…» indtil der er noget at vise.
-  const fragment = isLive ? tankeFragment(text) : ''
+  // Prik-tælleren løber kun mens den tænker; ellers ville en færdig besked
+  // holde en timer i live resten af sessionen.
+  const [trin, setTrin] = useState(0)
+  useEffect(() => {
+    if (!isLive || reduced) return
+    const t = setInterval(() => setTrin((n) => n + 1), TRIN_MS)
+    return () => clearInterval(t)
+  }, [isLive, reduced])
+
+  // ROLIG FORM I TRÅDEN. Selve tankestrømmen står i linjen over komponisten;
+  // her er det ikon + «Tænker» + prikker der løber. Tråden skal kunne læses
+  // mens han tænker, og rå monolog der flimrer i den gør den ulæselig.
+  //
+  // Prikkerne og lyset siger to forskellige ting: lyset «her arbejdes»,
+  // prikkerne «og det tager tid». Ordet alene siger ingen af delene.
   const label = isLive
-    ? (fragment || 'Tænker…')
+    ? `Tænker${prikker(trin)}`
     : hasSeconds
       ? seconds! < 60
         ? `Tænkte i ${formatSeconds(seconds!)} s`

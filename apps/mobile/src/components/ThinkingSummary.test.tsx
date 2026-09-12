@@ -35,19 +35,18 @@ describe('ThinkingSummary', () => {
     expect(a.queryByTestId('thinking-summary')).toBeNull()
   })
 
-  it('viser TANKEN mens den koerer — ikke bare at den taenker', async () => {
-    // Forskellen er den samme som mellem en spinner og en ring der fyldes:
-    // «der sker noget» mod «dét her sker».
+  it('traadens linje er ROLIG — «Tænker» og prikker, ikke raa monolog', async () => {
+    // Selve tankestroemmen staar over komponisten. Traaden skal kunne laeses
+    // mens han taenker, og monolog der flimrer i den goer den ulaeselig.
     const screen = await render(<ThinkingSummary text={'foerst\njeg tænker nu'} live />)
-    expect(screen.getByText('jeg tænker nu')).toBeTruthy()
-    expect(screen.queryByText('Tænker…')).toBeNull()
+    expect(screen.queryByText('jeg tænker nu')).toBeNull()
+    expect(screen.getByText(/^Tænker\.+\s*$/)).toBeTruthy()
   })
 
-  it('«Tænker…» staar indtil der ER en tanke at vise', async () => {
-    // De foerste tokens er ikke kommet endnu; en tom linje ville se ud som om
-    // intet skete.
-    const screen = await render(<ThinkingSummary text="" live />)
-    expect(screen.getByText('Tænker…')).toBeTruthy()
+  it('prikkerne holder FAST bredde — etiketten maa ikke hoppe', async () => {
+    const screen = await render(<ThinkingSummary text="noget" live />)
+    const t = screen.getByText(/^Tænker/)
+    expect(String(t.props.children)).toHaveLength('Tænker'.length + 3)
   })
 
   it('folder teksten ud og sammen igen', async () => {

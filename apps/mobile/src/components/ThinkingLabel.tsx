@@ -3,6 +3,7 @@ import { Animated, Easing, StyleSheet, Text, View } from 'react-native'
 import { tokens } from '../theme/tokens'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 import { useReducedMotion } from '../lib/useReducedMotion'
+import { GlidendeTekst } from './GlidendeTekst'
 
 interface Props {
   label?: string
@@ -51,21 +52,12 @@ export function ThinkingLabel({ label = 'Tænker' }: Props) {
     )
   }
 
-  const opacity = sweep.interpolate({
-    inputRange: [0, 0.5, 1],
-    outputRange: [0.35, 1, 0.35]
-  })
-
+  // LYSET GLIDER, ordet aander ikke. Hele linjen der toner op og ned gjorde
+  // teksten svaer at laese i halvdelen af tiden — og her staar der nu et
+  // stykke tanke, ikke bare ét ord, saa man skal kunne laese med.
   return (
-    <View style={styles.row}>
-      <Animated.Text
-        style={[styles.word, { opacity }]}
-        accessibilityLabel={label}
-        accessibilityRole="text"
-        testID="thinking-label"
-      >
-        {label}
-      </Animated.Text>
+    <View style={styles.row} testID="thinking-label">
+      <GlidendeTekst text={label} aktiv style={styles.word} numberOfLines={2} />
     </View>
   )
 }

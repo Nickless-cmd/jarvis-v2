@@ -11,6 +11,7 @@ import { MessageBubble } from './MessageBubble'
 import { InlineToolGroup } from './InlineToolGroup'
 import { ThinkingLabel } from './ThinkingLabel'
 import { toolDiff } from '../lib/toolDiff'
+import { tankeFragment } from '../lib/tankeFragment'
 import { describeTool, describeToolResult } from '../lib/toolSummary'
 import { countFromResult, type ToolItem } from '../lib/toolGroup'
 import { attachmentBlocks, hasOrdering, parseBlocks, thinkingBlock } from '../lib/persistedBlocks'
@@ -377,6 +378,9 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
     },
   }), [userFlags, ordered])
 
+  // Tankestrømmen hører til linjen over komponisten, ikke til tråden.
+  const liveTanke = thinking ? sidsteTanke(blocks ?? []) : ''
+
   return (
     <FlatList
       ref={flatRef}
@@ -384,7 +388,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
       // Inverteret liste: ListHeaderComponent tegnes NEDERST på skærmen —
       // altså lige efter den nyeste besked, præcis hvor ChatGPT viser
       // «Thinking». Det er derfor labelen ligger her og ikke over komponisten.
-      ListHeaderComponent={thinking ? <ThinkingLabelRow /> : null}
+      ListHeaderComponent={thinking ? <ThinkingLabelRow label={liveTanke} /> : null}
       data={ordered}
       keyExtractor={(item) => item.key}
       onContentSizeChange={(_w, h) => { contentLenRef.current = h }}
@@ -437,11 +441,26 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
   )
 })
 
-function ThinkingLabelRow() {
+/**
+ * Den sidste tanke, til linjen over komposer.
+ *
+ * Tankestrømmen vises HER under en tur — ikke i chatviewets tænke-linje.
+ * Dén beholder sin rolige form (ikon + «Tænker» + prikker), så tråden ikke
+ * flimrer med rå monolog mens man læser. Bjørn 12/9-2026.
+ */
+function sidsteTanke(blocks: ContentBlock[]): string {
+  for (let i = blocks.length - 1; i >= 0; i--) {
+    const b = blocks[i]
+    if (b?.type === 'thinking' && b.thinking.trim()) return tankeFragment(b.thinking)
+  }
+  return ''
+}
+
+function ThinkingLabelRow({ label }: { label?: string }) {
   const styles = useStyles(makestyles)
   return (
     <View style={styles.thinkingRow}>
-      <ThinkingLabel />
+      <ThinkingLabel label={label || 'Tænker'} />
     </View>
   )
 }

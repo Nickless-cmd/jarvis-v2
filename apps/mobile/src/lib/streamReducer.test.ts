@@ -240,3 +240,57 @@ it('message_stop rydder foreloebige der aldrig blev til noget', () => {
   expect(foreloebige(s)).toHaveLength(0)
   expect(s.status).toBe('done')
 })
+
+// ── serverens system_event-faldback ────────────────────────────────────────
+
+const sysResultat = (o: Record<string, unknown>) => ({
+  type: 'system_event' as const, kind: 'tool_result' as const,
+  payload: { tool_use_id: 'b1', tool: 'bash', status: 'ok', result: 'ok', ...o },
+})
+const ægteKald = (id = 'b1', navn = 'bash', index = 0) => ({
+  type: 'content_block_start' as const, index,
+  content_block: { type: 'tool_use' as const, id, name: navn, input: {} },
+})
+
+it('system_event ALENE afslutter kaldet', () => {
+  // Serveren sender udfaldet BAADE som system_event (altid) og som
+  // content-blok (bag et flag). Reduceren foldede kun blokken - var flaget
+  // slukket, stod raekken og koerte for evigt.
+  let s = streamReducer(initialStreamState(), ægteKald() as never)
+  s = streamReducer(s, sysResultat({}) as never)
+  const b = s.blocks[0]
+  expect(b && b.type === 'tool_use' && b.status).toBe('done')
+  expect(b && b.type === 'tool_use' && b.result).toBe('ok')
+})
+
+it('en FEJL foldes som fejl', () => {
+  let s = streamReducer(initialStreamState(), ægteKald() as never)
+  s = streamReducer(s, sysResultat({ status: 'denied', result: 'afvist' }) as never)
+  const b = s.blocks[0]
+  expect(b && b.type === 'tool_use' && b.status).toBe('error')
+})
+
+it('en FORELOEBIG raekke ryddes af system_event — paa NAVN', () => {
+  // Den har intet id fra serveren. Uden navne-matchet ville den blive
+  // staaende og koere mens resultatet allerede var kommet.
+  let s = streamReducer(initialStreamState(), workingStep({}) as never)
+  s = streamReducer(s, sysResultat({ tool_use_id: 'noget-andet' }) as never)
+  expect(foreloebige(s)).toHaveLength(0)
+})
+
+it('foldningen er IDEMPOTENT — begge veje giver det samme', () => {
+  let s = streamReducer(initialStreamState(), ægteKald() as never)
+  s = streamReducer(s, sysResultat({}) as never)
+  s = streamReducer(s, {
+    type: 'content_block_start', index: 1,
+    content_block: { type: 'tool_result', tool_use_id: 'b1', status: 'ok', content: 'ok' },
+  } as never)
+  const b = s.blocks[0]
+  expect(b && b.type === 'tool_use' && b.status).toBe('done')
+})
+
+it('et resultat for et UKENDT kald aendrer ingenting', () => {
+  const s0 = streamReducer(initialStreamState(), ægteKald() as never)
+  const s1 = streamReducer(s0, sysResultat({ tool_use_id: 'x', tool: 'ukendt' }) as never)
+  expect(s1).toBe(s0)
+})

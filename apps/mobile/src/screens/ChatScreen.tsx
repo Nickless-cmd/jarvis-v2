@@ -114,6 +114,12 @@ export function ChatScreen({
   const stream = useStream()
   const [panelOpen, setPanelOpen] = useState(false)
 
+  // Fladens art ÉT sted. Fire kaldesteder henter sessioner, og de skal alle
+  // fire spoerge om det samme - ellers ville en omdoebning i code-fladen
+  // hente chat-listen tilbage og se ud som om samtalen forsvandt.
+  const art: 'chat' | 'code' = kodeTilstand ? 'code' : 'chat'
+
+
   // TopBar ejer toppen (ChatGPT-paritet): ChatScreens egen header er fjernet.
   // Den bar LivenessRing + ConnectionPill, men ventetegnet står nu INLINE i
   // tråden som ChatGPT gør det — derfor er ringen ikke længere nødvendig, og
@@ -397,7 +403,7 @@ export function ChatScreen({
 
   useEffect(() => {
     if (!config) return
-    sessions.refresh(config).catch(() => undefined)
+    sessions.refresh(config, art).catch(() => undefined)
     whoami(config)
       .then((me) => {
         setDisplayName(me.display_name || 'Jarvis')
@@ -430,6 +436,19 @@ export function ChatScreen({
       })
     }
   }, [config])
+
+  // Skift af flade henter listen om. EGEN effekt frem for at haenge `art` paa
+  // [config]: den ovenfor kalder ogsaa whoami og gendanner sidste session, og
+  // begge dele ville koere igen hver gang man trykkede Code.
+  //
+  // Foerste gang springes over - effekten ovenfor har lige hentet.
+  const forrigeArt = useRef(art)
+  useEffect(() => {
+    if (forrigeArt.current === art) return
+    forrigeArt.current = art
+    if (config) sessions.refresh(config, art).catch(() => undefined)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [art, config])
 
   // Husk aktiv session på tværs af app-luk.
   useEffect(() => {
@@ -752,7 +771,7 @@ export function ChatScreen({
     // listen ikke filtreres aerligt (et omdoebt navn ville forsvinde, og en
     // chat med samme titel ville dukke op), men EN NY kan godt hedde det samme
     // paa begge enheder.
-    if (config) sessions.create(config, kodeTilstand ? 'Kode-session' : undefined).catch(() => undefined)
+    if (config) sessions.create(config, kodeTilstand ? 'Kode-session' : 'Ny samtale', art).catch(() => undefined)
   }
 
   const lastUserMessage = [...sessions.messages].reverse().find((message) => message.role === 'user')
@@ -995,14 +1014,14 @@ export function ChatScreen({
             // ville en fastgjort samtale blive staaende hvor den var, og en
             // slettet blive staaende helt — serveren er den der bestemmer
             // raekkefoelgen, ikke klienten.
-            const efter = () => { void sessions.refresh(config) }
+            const efter = () => { void sessions.refresh(config, art) }
             if (h.slags === 'rename' && h.titel) {
               void renameSession(config, h.id, h.titel).then(efter).catch(() => undefined)
             } else if (h.slags === 'delete') {
               void deleteSession(config, h.id).then(() => {
                 // Slettede man den man stod i, skal skaermen ikke blive ved med
                 // at vise en samtale der ikke findes.
-                if (sessions.activeId === h.id) void sessions.refresh(config)
+                if (sessions.activeId === h.id) void sessions.refresh(config, art)
                 efter()
               }).catch(() => undefined)
             } else if (h.slags === 'flags' && h.flags) {

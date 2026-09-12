@@ -546,7 +546,7 @@ export function CodeView({
   const doSend = async (text: string, opts: ComposerSendOpts) => {
     if (!ready) return
     let sid = sessionId
-    if (!sid) sid = (await sessions.create('Kode-session')).id
+    if (!sid) sid = (await sessions.create('Kode-session', 'code')).id
     const message = text.trim() || 'Vedhæftet'
     sessions.appendOptimistic({
       id: `u-${Date.now()}`,
@@ -656,7 +656,7 @@ export function CodeView({
       model="deepseek-flash"
       thinking="think"
       config={config}
-      getSessionId={async () => sessionId ?? (await sessions.create('Kode-session')).id}
+      getSessionId={async () => sessionId ?? (await sessions.create('Kode-session', 'code')).id}
       showPermissions={true}
       contextTokens={contextTokens}
       onGauge={setGauge}

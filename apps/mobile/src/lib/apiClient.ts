@@ -95,10 +95,20 @@ export async function whoami(config: ApiConfig): Promise<WhoAmI> {
   }
 }
 
-export async function listSessions(config: ApiConfig): Promise<ChatSession[]> {
+/**
+ * Sessionerne — valgfrit kun den ene slags.
+ *
+ * `kind` UDELADT betyder ALT, ikke «chat». Serveren har samme regel, og de to
+ * skal være enige: en klient der beder om alt, og en server der leverer chat,
+ * ville vise en tom liste for én af fladerne uden at nogen af dem tog fejl.
+ */
+export async function listSessions(
+  config: ApiConfig, kind?: 'chat' | 'code',
+): Promise<ChatSession[]> {
+  const sti = kind ? `/chat/sessions?kind=${encodeURIComponent(kind)}` : '/chat/sessions'
   const raw = await apiFetch<{ items?: ChatSession[]; sessions?: ChatSession[] } | ChatSession[]>(
     config,
-    '/chat/sessions'
+    sti
   )
 
   if (Array.isArray(raw)) {
@@ -110,11 +120,12 @@ export async function listSessions(config: ApiConfig): Promise<ChatSession[]> {
 
 export async function createSession(
   config: ApiConfig,
-  title = 'Ny samtale'
+  title = 'Ny samtale',
+  kind: 'chat' | 'code' = 'chat'
 ): Promise<ChatSession> {
   const raw = await apiFetch<{ session?: ChatSession } | ChatSession>(config, '/chat/sessions', {
     method: 'POST',
-    body: { title }
+    body: { title, kind }
   })
 
   if ('session' in raw && raw.session) {

@@ -20,7 +20,7 @@ export interface SessionContextValue {
   select: (id: string) => void
   /** Ryd aktiv samtale → greeting-skærm (session oprettes først ved første send). */
   newChat: () => void
-  create: (title: string) => Promise<ChatSession>
+  create: (title: string, kind?: 'chat' | 'code') => Promise<ChatSession>
   rename: (id: string, title: string) => Promise<void>
   remove: (id: string) => Promise<void>
   refresh: () => Promise<void>
@@ -156,8 +156,8 @@ export function SessionProvider({
     setMessages((local) => mergeServer(local, server))
   }, [config, activeId, loadSessions])
 
-  const create = useCallback(async (title: string) => {
-    const sess = await createSession(config, title)
+  const create = useCallback(async (title: string, kind: 'chat' | 'code' = 'chat') => {
+    const sess = await createSession(config, title, kind)
     const titled = { ...sess, title: sess.title || title } // server kan returnere tom titel
     loadedRef.current = titled.id // markér som loaded (tom) FØR activeId-skift → select skipper fetch
     setSessions((prev) => [titled, ...prev])

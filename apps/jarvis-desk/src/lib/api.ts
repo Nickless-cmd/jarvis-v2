@@ -238,11 +238,15 @@ export async function getSession(
 export async function createSession(
   config: ApiConfig,
   title: string,
+  // Hvilken FLADE samtalen hører til. Telefonen deler listen op på den, så en
+  // code-session lavet her skal også være en code-session dér — ellers står
+  // den i chat-listen på mobilen og mangler i code-listen.
+  kind: 'chat' | 'code' = 'chat',
 ): Promise<ChatSession> {
   // Serveren returnerer { session: {...} } — unwrap så .id ikke bliver undefined.
   const raw = await apiFetch<{ session: ChatSession } | ChatSession>(config, '/chat/sessions', {
     method: 'POST',
-    body: { title },
+    body: { title, kind },
   })
   return (raw as { session?: ChatSession }).session ?? (raw as ChatSession)
 }

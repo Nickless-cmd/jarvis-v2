@@ -825,6 +825,10 @@ class ChatSessionCreateRequest(BaseModel):
     title: str = "New chat"
     workspace_kind: str = ""   # "container" | "workstation" | "" (Code mode)
     workspace_root: str = ""
+    # HVILKEN FLADE samtalen hører til — ikke hvor arbejdet kører. Det er
+    # `workspace_kind` ovenfor. To felter med næsten samme navn, to helt
+    # forskellige spørgsmål.
+    kind: str = "chat"
 
 
 class ChatSessionRenameRequest(BaseModel):
@@ -832,7 +836,7 @@ class ChatSessionRenameRequest(BaseModel):
 
 
 @router.get("/sessions")
-def chat_sessions() -> dict:
+def chat_sessions(kind: str = "") -> dict:
     """List chat sessions.
 
     When the request carries an X-JarvisX-User header (set by the
@@ -841,10 +845,13 @@ def chat_sessions() -> dict:
     Mikkel's chat histories from bleeding into each other in the
     sidebar. Webchat without the header returns the unfiltered list,
     same as before.
+
+    `kind=chat|code` skiller de to flader. UDELADT betyder ALT — ikke «chat».
+    Enhver klient der fandtes før kolonnen, får præcis det den altid har fået.
     """
     from core.identity.workspace_context import current_user_id
     uid = current_user_id() or None
-    return {"items": list_chat_sessions(user_id=uid)}
+    return {"items": list_chat_sessions(user_id=uid, kind=(kind or None))}
 
 
 # Bemærk: defineres FØR /sessions/{session_id} så "search" ikke fanges som id.
@@ -1304,6 +1311,7 @@ def chat_create_session(request: ChatSessionCreateRequest) -> dict:
         title=request.title,
         workspace_kind=request.workspace_kind or None,
         workspace_root=request.workspace_root or None,
+        kind=request.kind or "chat",
     )}
 
 

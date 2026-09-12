@@ -54,6 +54,7 @@ def _content_json_for_row(role: str, content: str, raw_json: object) -> list[dic
 def create_chat_session(
     *, title: str = "New chat",
     workspace_kind: str | None = None, workspace_root: str | None = None,
+    kind: str = "chat",
 ) -> dict[str, object]:
     # `team_id` fjernet 19. aug 2026 med Teams-featuren. Kolonnen bliver liggende i
     # eksisterende databaser (data røres ikke), men intet skriver den mere.
@@ -61,16 +62,22 @@ def create_chat_session(
     session_id = f"chat-{uuid4().hex}"
     created_at = datetime.now(UTC).isoformat()
     normalized_title = _normalize_title(title) or "New chat"
+    # Kun to slags. En ukendt vaerdi bliver til 'chat' frem for at blive skrevet
+    # ned: en raekke med kind='kode' (dansk stavning, et tastefejl, hvad som
+    # helst) ville vaere usynlig i BEGGE lister, og en samtale man ikke kan
+    # finde igen er vaerre end en der staar det forkerte sted.
+    art = "code" if str(kind or "").strip().lower() == "code" else "chat"
     with connect() as conn:
         _ensure_chat_session_workspace_columns(conn)
+        _sikr_flag_kolonner(conn)
         conn.execute(
             """
             INSERT INTO chat_sessions (session_id, title, created_at, updated_at,
-                                       workspace_kind, workspace_root)
-            VALUES (?, ?, ?, ?, ?, ?)
+                                       workspace_kind, workspace_root, kind)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
             (session_id, normalized_title, created_at, created_at,
-             (workspace_kind or None), (workspace_root or None)),
+             (workspace_kind or None), (workspace_root or None), art),
         )
     # Ledger-kanariefugl (fase 11): er den armet, baerer DENNE session
     # observationsvinduet. Fail-safe — en kanariefugl maa aldrig kunne vaelte
@@ -160,6 +167,25 @@ def _sikr_flag_kolonner(conn) -> None:
             conn.execute(f"ALTER TABLE chat_sessions ADD COLUMN {kolonne} INTEGER NOT NULL DEFAULT 0")
         except Exception:
             pass  # findes allerede
+    try:
+        conn.execute("ALTER TABLE chat_sessions ADD COLUMN kind TEXT NOT NULL DEFAULT 'chat'")
+    except Exception:
+        pass  # findes allerede
+    else:
+        # ENGANGS-tilbagefyld, og kun her: `else` koerer udelukkende naar ALTER
+        # lykkedes, altsaa praecis én gang pr. database. Laa den udenfor, ville
+        # hver listning skrive oven i en `kind` nogen siden havde aendret.
+        #
+        # Titlen er den ENESTE oplysning der findes om de gamle raekker: desk's
+        # CodeView har siden begyndelsen kaldt sessions.create('Kode-session'),
+        # og der var ingen anden markoer. Det er et gaet - men det er et
+        # engangsgaet paa historikken, ikke en regel systemet koerer paa.
+        try:
+            conn.execute(
+                "UPDATE chat_sessions SET kind = 'code' WHERE title = 'Kode-session'"
+            )
+        except Exception:
+            pass
 
 
 def set_session_flags(
@@ -209,6 +235,7 @@ def set_session_flags(
 
 def list_chat_sessions(
     *, user_id: str | None = None, inkluder_arkiverede: bool = False,
+    kind: str | None = None,
 ) -> list[dict[str, object]]:
     """List chat sessions, optionally filtered to one user.
 
@@ -222,8 +249,15 @@ def list_chat_sessions(
 
     user_id=None preserves the legacy behavior (return everything) so
     Mission Control and other internal callers aren't affected.
+
+    `kind` skiller chat fra code. None betyder ALT — samme valg som user_id:
+    en ny parameter maa ikke stiltiende smalne det Mission Control og de andre
+    interne kaldere allerede faar. Kun klienter der beder om én slags, faar én
+    slags.
     """
     uid = (user_id or "").strip()
+    art = (kind or "").strip().lower()
+    art = art if art in ("chat", "code") else ""
     if uid:
         with connect() as conn:
             _sikr_flag_kolonner(conn)
@@ -236,6 +270,7 @@ def list_chat_sessions(
                     s.updated_at,
                     COALESCE(s.pinned, 0) AS pinned,
                     COALESCE(s.archived, 0) AS archived,
+                    COALESCE(s.kind, 'chat') AS kind,
                     COALESCE((
                         SELECT content
                         FROM chat_messages m
@@ -258,9 +293,10 @@ def list_chat_sessions(
                     )
                 )
                   AND (? = 1 OR COALESCE(s.archived, 0) = 0)
+                  AND (? = '' OR COALESCE(s.kind, 'chat') = ?)
                 ORDER BY COALESCE(s.pinned, 0) DESC, s.updated_at DESC, s.id DESC
                 """,
-                (uid, 1 if inkluder_arkiverede else 0),
+                (uid, 1 if inkluder_arkiverede else 0, art, art),
             ).fetchall()
         return [_session_summary(dict(row)) for row in rows]
     with connect() as conn:
@@ -274,6 +310,7 @@ def list_chat_sessions(
                 s.updated_at,
                 COALESCE(s.pinned, 0) AS pinned,
                 COALESCE(s.archived, 0) AS archived,
+                COALESCE(s.kind, 'chat') AS kind,
                 COALESCE((
                     SELECT content
                     FROM chat_messages m
@@ -289,9 +326,10 @@ def list_chat_sessions(
                 s.workspace_kind
             FROM chat_sessions s
             WHERE (? = 1 OR COALESCE(s.archived, 0) = 0)
+              AND (? = '' OR COALESCE(s.kind, 'chat') = ?)
             ORDER BY COALESCE(s.pinned, 0) DESC, s.updated_at DESC, s.id DESC
             """,
-            (1 if inkluder_arkiverede else 0,),
+            (1 if inkluder_arkiverede else 0, art, art),
         ).fetchall()
     return [_session_summary(dict(row)) for row in rows]
 
@@ -1204,6 +1242,11 @@ def _session_summary(row: dict[str, object]) -> dict[str, object]:
         "workspace_kind": (str(row.get("workspace_kind")) if row.get("workspace_kind") else None),
         "pinned": bool(row.get("pinned") or 0),
         "archived": bool(row.get("archived") or 0),
+        # IKKE det samme som `workspace_kind` ovenfor. Den siger HVOR arbejdet
+        # koerer (container/workstation); denne siger hvilken FLADE samtalen
+        # hoerer til. To felter, to spoergsmaal, naesten samme navn — derfor
+        # staar det skrevet her.
+        "kind": (str(row.get("kind")) if row.get("kind") else "chat"),
     }
 
 

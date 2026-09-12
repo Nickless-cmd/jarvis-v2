@@ -38,10 +38,10 @@ it('opdatér virker stadig — den bor bare i menuen nu', () => {
 
 it('code-fladen kan baade aabnes og forlades', () => {
   const app = kilde('App.tsx')
-  // Panelet fører IND ...
+  // Panelets felt fører begge veje, og menuens punkt fører UD. Headerens
+  // venstre pil aabner menuen — den er IKKE laengere en vej ud af code.
   expect(app).toMatch(/onSkiftFlade=\{setKodeTilstand\}/)
-  // ... og headerens tilbage-pil fører UD.
-  expect(app).toMatch(/onBack=\{\(\) => setKodeTilstand\(false\)\}/)
+  expect(app).toMatch(/onTilbageTilChat=\{\(\) => setKodeTilstand\(false\)\}/)
 })
 
 it('ChatScreen spørger faktisk serveren om kontekst-fyldet', () => {
@@ -64,10 +64,26 @@ it('komprimér-signalet når helt ud til serveren', () => {
   expect(cs).toMatch(/compactNow\(config, sessions\.activeId\)/)
 })
 
-it('en ny samtale i code-fladen faar desk\'s eget navn', () => {
-  // Der findes ingen markoer paa en code-session - «Kode-session» er
-  // udelukkende den titel desk's CodeView giver ved oprettelse. Listen kan
-  // derfor ikke filtreres aerligt, men navnet kan matche paa begge enheder.
+it('en ny samtale i code-fladen faar BAADE desk\'s navn og arten', () => {
+  // Navnet, saa den ser ens ud paa begge enheder. Arten, saa den ogsaa
+  // HAVNER i code-listen - et navn alene er ikke en markoer.
   const cs = kilde('screens/ChatScreen.tsx')
-  expect(cs).toMatch(/sessions\.create\(config, kodeTilstand \? 'Kode-session' : undefined\)/)
+  expect(cs).toMatch(/sessions\.create\(config, kodeTilstand \? 'Kode-session' : 'Ny samtale', art\)/)
+})
+
+it('ALLE fire hentninger spoerger om samme flade', () => {
+  // Fire kaldesteder henter sessioner. Glemmer ét af dem arten, ville en
+  // omdoebning i code-fladen hente chat-listen tilbage - og samtalen ville
+  // se ud som om den forsvandt.
+  const cs = kilde('screens/ChatScreen.tsx')
+  const kald = cs.match(/sessions\.refresh\(config[^)]*\)/g) || []
+  expect(kald.length).toBeGreaterThanOrEqual(4)
+  expect(kald.every((k) => k.includes('art'))).toBe(true)
+})
+
+it('et fladeskift henter listen OM', () => {
+  // Uden det ville man staa i code-fladen med chat-listen foran sig.
+  const cs = kilde('screens/ChatScreen.tsx')
+  expect(cs).toMatch(/forrigeArt\.current === art/)
+  expect(cs).toMatch(/\}, \[art, config\]\)/)
 })

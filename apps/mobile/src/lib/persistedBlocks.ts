@@ -91,14 +91,22 @@ export function hasOrdering(blocks: PersistedBlock[] | null): boolean {
 
 /**
  * Progress-sporet er et separat, fladt spor (spec §5) — ikke en del af tråden.
+ * Vedhæftninger filtreres også fra; de renderes over boblen.
  *
- * Tænkning og vedhæftninger filtreres også fra: de renderes af hver sin egen
- * komponent OVER turen (foldet tænke-linje, billeder over boblen) og hører
- * ikke til i den løbende blok-rækkefølge.
+ * ## Hvorfor tænkning nu BLIVER i rækkefølgen
+ *
+ * Før blev den filtreret fra, fordi designet var «én foldet tænke-linje over
+ * turen». Det holdt kun så længe en tur tænkte én gang. Jarvis tænker mellem
+ * hvert værktøjskald, og resultatet var at kun den FØRSTE tanke overlevede:
+ * `thinkingBlock` tager `.find()`, og de øvrige blev filtreret bort her.
+ *
+ * Bjørn 12/9-2026: «det er kun den første tænkte der bliver i chatview, dem
+ * der er under forsvinder efter streamen». Præcis dét — og kun efter streamen,
+ * fordi den LEVENDE visning bygger rækkerne af blokkene i rækkefølge og derfor
+ * altid har vist dem alle. De to visninger var uenige om samme tur.
  */
 export function threadBlocks(blocks: PersistedBlock[]): PersistedBlock[] {
   return blocks.filter(
-    (b) => b.type !== 'progress' && b.type !== 'thinking'
-      && b.type !== 'image' && b.type !== 'file'
+    (b) => b.type !== 'progress' && b.type !== 'image' && b.type !== 'file'
   )
 }

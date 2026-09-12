@@ -294,13 +294,6 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
       }
       if (hasOrdering(blocks)) {
         const expanded: Row[] = []
-        if (think) {
-          expanded.push({
-            kind: 'thinking', key: `${m.id}-think`,
-            seconds: think.seconds, text: think.text,
-            messageId: m.id
-          })
-        }
         const thread = threadBlocks(blocks!)
         const lastTextIdx = thread.reduce(
           (acc, b, i) => (b.type === 'text' && (b.text ?? '').trim() ? i : acc),
@@ -326,6 +319,13 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
               body: JSON.stringify(b.input ?? {}),
               running: false
             })
+          } else if (b.type === 'thinking' && (b.text ?? '').trim()) {
+            // PAA SIN PLADS, ikke hejst op over turen. En tanke hoerer til dér
+            // hvor den blev taenkt — mellem de to vaerktoejer den forbinder.
+            expanded.push({
+              kind: 'thinking', key: `${m.id}-tk${bi}`,
+              seconds: b.seconds, text: b.text, messageId: m.id
+            })
           }
         })
         persisted.unshift(...expanded)
@@ -338,11 +338,17 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
       // tænkningen ofte er mest interessant: de rene svar.
       if (think) {
         persisted.unshift({ kind: 'msg', key: m.id, message: m, kildeBlokke: blocks })
-        persisted.unshift({
-          kind: 'thinking', key: `${m.id}-think`,
-          seconds: think.seconds, text: think.text,
-          messageId: m.id
-        })
+        // ALLE turens tanker, i raekkefoelge. `unshift` saetter forrest, saa
+        // listen vendes for at bevare den.
+        const tanker = (blocks ?? []).filter(
+          (b) => b.type === 'thinking' && (b.text ?? '').trim())
+        for (let ti = tanker.length - 1; ti >= 0; ti--) {
+          persisted.unshift({
+            kind: 'thinking', key: `${m.id}-tk${ti}`,
+            seconds: tanker[ti]!.seconds, text: tanker[ti]!.text,
+            messageId: m.id
+          })
+        }
         continue
       }
     }
@@ -515,7 +521,10 @@ const BOTTOM_CLEARANCE = 124
 const TOP_CLEARANCE = 72
 
 const makestyles = (tokens: Theme) => StyleSheet.create({
-  thinkingRow: { paddingHorizontal: tokens.spacing.lg },
+  // 12 dp — SAMME indrykning som komponisten har under brug (Composer.outer).
+  // Bjoern: lyset skal loebe «hele composers laengde». Med 16 dp sluttede
+  // linjen fire punkter inde paa hver side, saa de to kanter ikke floej.
+  thinkingRow: { paddingHorizontal: 12 },
   // Kompakterings-markøren: diskret, tonet i warn — samme udtryk som desktop.
   compactMarkerRow: {
     marginHorizontal: tokens.spacing.lg,

@@ -109,16 +109,29 @@ describe('taenkning og vedhaeftninger', () => {
     expect(attachmentBlocks(b)).toEqual([])
   })
 
-  // De tre typer renderes af hver sin egen komponent OVER turen og maa ikke
-  // ogsaa dukke op i den loebende blok-raekkefoelge.
-  it('threadBlocks filtrerer taenkning, billeder og filer fra', () => {
+  // Billeder og filer renderes over boblen; progress er sit eget flade spor.
+  it('threadBlocks filtrerer billeder, filer og progress fra', () => {
     const b = parseBlocks(msg([
-      { type: 'thinking', seconds: 3 },
       { type: 'image', attachment_id: 'a' },
       { type: 'file', attachment_id: 'b' },
       { type: 'progress', text: 'p' },
       { type: 'text', text: 'svar' }
     ]))!
     expect(threadBlocks(b).map((x) => x.type)).toEqual(['text'])
+  })
+
+  // Taenkningen blev FOER filtreret fra her, fordi designet var «én foldet
+  // linje over turen». Det holdt kun saa laenge en tur taenkte én gang. Jarvis
+  // taenker mellem hvert vaerktoejskald, og resultatet var at kun den FOERSTE
+  // overlevede — `thinkingBlock` tager `.find()`, resten faldt bort her.
+  it('threadBlocks beholder ALLE tanker, i raekkefoelge', () => {
+    const b = parseBlocks(msg([
+      { type: 'thinking', text: 'foerste', seconds: 3 },
+      { type: 'tool_use', name: 'bash', input: {} },
+      { type: 'thinking', text: 'anden', seconds: 9 },
+      { type: 'text', text: 'svar' }
+    ]))!
+    expect(threadBlocks(b).map((x) => x.type))
+      .toEqual(['thinking', 'tool_use', 'thinking', 'text'])
   })
 })

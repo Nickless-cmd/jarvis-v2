@@ -94,3 +94,40 @@ it('thinking-blokke i stream får egen række — ikke smeltet ind i svaret', as
   expect(within(s.getByTestId('thinking-summary')).queryByText('jeg overvejer om 2+2 er 4'))
     .toBeNull()
 })
+
+/**
+ * Bjørn 12/9-2026: «det er kun den første tænkte der bliver i chatview, dem der
+ * er under forsvinder efter streamen».
+ *
+ * Netop EFTER streamen: den levende visning bygger rækkerne af blokkene i
+ * rækkefølge og har derfor altid vist dem alle. Den gemte visning hentede
+ * tænkningen med `thinkingBlock` — som er `.find()` — og filtrerede resten væk
+ * i `threadBlocks`. De to visninger var uenige om den samme tur.
+ */
+it('en gemt tur med flere tanker beholder dem alle, på deres plads', async () => {
+  const s = await render(
+    <MessageList
+      messages={[
+        msg({ id: 'u1', role: 'user', content: 'kør noget' }),
+        msg({
+          id: 'a1',
+          role: 'assistant',
+          content: 'færdig',
+          content_json: [
+            { type: 'thinking', text: 'først overvejer jeg planen', seconds: 3 },
+            { type: 'tool_use', name: 'bash', input: { command: 'ls' }, tool_use_id: 't1' },
+            { type: 'tool_result', tool_use_id: 't1', content: 'fil.txt', status: 'ok' },
+            { type: 'thinking', text: 'så ser jeg på resultatet', seconds: 9 },
+            { type: 'text', text: 'færdig' }
+          ]
+        } as Partial<ChatMessage>)
+      ]}
+      blocks={[]}
+    />
+  )
+  const taenkte = s.queryAllByText(/Tænkte/)
+  expect(taenkte.length).toBe(2)
+  // Og de baerer hver sin maalte tid — ikke den foerstes for dem begge.
+  expect(s.queryAllByText(/Tænkte i 3 s/).length).toBe(1)
+  expect(s.queryAllByText(/Tænkte i 9 s/).length).toBe(1)
+})

@@ -5,7 +5,7 @@ import { useReducedMotion } from '../lib/useReducedMotion'
 /** Hvor længe lyset er om at rejse hen over linjen. */
 const VARIGHED_MS = 1600
 /** Båndets bredde i dp. Bredere = blødere stryg. */
-const BAAND = 90
+const BAAND = 140
 
 /**
  * Tekst med et lys der glider hen over den, mens noget kører.
@@ -117,8 +117,15 @@ const styles = StyleSheet.create({
     width: BAAND,
     flexDirection: 'row',
   },
-  fuld: { alignSelf: 'stretch', flexShrink: 0 },
+  // `width: '100%'` frem for kun `alignSelf: 'stretch'`. Stretch ER
+  // standarden i en kolonne, saa flaget aendrede i praksis ingenting — og en
+  // forkert antagelse om hvad der allerede gjaldt er svaerere at faa oeje paa
+  // end en eksplicit bredde. Nu maaler onLayout linjen, ikke teksten.
+  fuld: { alignSelf: 'stretch', flexShrink: 0, width: '100%' },
   lag: { flex: 1 },
-  ydre: { backgroundColor: 'rgba(255,255,255,0.05)' },
-  midt: { backgroundColor: 'rgba(255,255,255,0.13)' },
+  // Lyset skal kunne foelges hen over TOM linje, ikke kun hen over bogstaver.
+  // Paa den korte etiket «Arbejder…» er det meste af rejsen tom baggrund, og
+  // ved 0,05/0,13 forsvandt baandet praktisk talt saa snart det forlod ordet.
+  ydre: { backgroundColor: 'rgba(255,255,255,0.06)' },
+  midt: { backgroundColor: 'rgba(255,255,255,0.18)' },
 })

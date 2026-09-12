@@ -2697,9 +2697,38 @@ def _exec_publish_file(args: dict[str, Any]) -> dict[str, Any]:
     except Exception as exc:
         return {"status": "error", "error": str(exc)}
 
-    url = f"http://localhost:8080/files/{safe_name}"
+    # ADRESSEN SKAL VIRKE DÉR HVOR BRUGEREN ER. Indtil 12/9-2026 stod her
+    # `http://localhost:8080/...`. Filen blev udgivet helt korrekt — og
+    # brugeren fik en adresse der kun virker på den maskine Jarvis selv kører
+    # på. Paa en telefon er `localhost` telefonen. Derfor kunne Bjoern ikke se
+    # en HTML Jarvis lige havde lavet, naar han ikke sad ved computeren.
+    #
+    # Vaerre: hallucinations-vagten nedenfor hentede netop den localhost-URL
+    # FRA SERVEREN, hvor den svarer 200. Vagten var sand om sin form og tavs
+    # om at adressen kun virkede ét sted.
+    _lokal = "http://localhost:8080"
+    try:
+        from core.runtime.secrets import read_runtime_key
+        _base = str(read_runtime_key("public_base_url", "JARVIS_PUBLIC_BASE_URL") or "").strip()
+    except Exception:
+        _base = ""
+    _base = (_base or _lokal).rstrip("/")
+    url = f"{_base}/files/{safe_name}"
 
-    # Hallucination guard: verificér at URL'en faktisk virker
+    # Hallucination guard: virker ruten?
+    #
+    # 401 OG 403 ER SUCCES HER. Ruten kraever godkendelse — maalt 12/9-2026
+    # giver baade localhost og den udadvendte adresse 401 uden token. Vagten
+    # hentede uden Authorization, fik 401, satte url_verified=False og skrev
+    # «Praesenter IKKE URL'en for brugeren — den virker ikke».
+    #
+    # Resultatet: hver eneste gang en fil blev udgivet, fik Jarvis besked paa
+    # at LADE VAERE med at vise linket. Funktionen virkede; vagten maalte et
+    # ubeskyttet kald mod en beskyttet rute og kaldte det et nedbrud.
+    #
+    # Det vagten skal kunne skelne er «ruten findes og serverer» fra «filen er
+    # ikke der» (404) eller «serveren er nede» (forbindelsesfejl). En 401 svarer
+    # praecis paa det foerste: noget lytter, og det beskytter filen.
     url_verified = False
     url_error = ""
     try:
@@ -2708,6 +2737,13 @@ def _exec_publish_file(args: dict[str, Any]) -> dict[str, Any]:
             url_verified = 200 <= resp.status < 300
             if not url_verified:
                 url_error = f"HTTP {resp.status}"
+    except urllib_error.HTTPError as exc:
+        if exc.code in (401, 403):
+            url_verified = True          # ruten lever og beskytter filen
+            url_error = ""
+        else:
+            url_verified = False
+            url_error = f"HTTP {exc.code}"
     except Exception as exc:
         url_verified = False
         url_error = str(exc)
@@ -2727,6 +2763,17 @@ def _exec_publish_file(args: dict[str, Any]) -> dict[str, Any]:
             f"URL'en {url} returnerede ikke 200 ({url_error or 'unknown'}). "
             "Præsenter IKKE URL'en for brugeren — den virker ikke."
         )
+    if _base == _lokal:
+        # SIG DET. En localhost-adresse er ikke en fejl her paa maskinen, men
+        # den kan ikke deles. Uden denne linje ville svaret se fuldt gyldigt ud
+        # og vaere ubrugeligt for enhver anden end serveren selv.
+        result["kun_lokal"] = True
+        result["warning"] = (
+            f"{result.get('warning', '')} Adressen er en LOKAL adresse "
+            "({_lokal}) og virker ikke fra telefon eller anden maskine. "
+            "Saet `public_base_url` i runtime.json til den adresse klienterne "
+            "bruger, hvis filen skal kunne deles."
+        ).strip().replace("{_lokal}", _lokal)
     return result
 
 

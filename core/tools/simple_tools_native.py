@@ -2664,6 +2664,7 @@ def _exec_queue_followup(args: dict[str, Any]) -> dict[str, Any]:
 
 def _exec_publish_file(args: dict[str, Any]) -> dict[str, Any]:
     """Copy or create a file in ~/.jarvis-v2/files/ and return a download URL."""
+    import mimetypes
     import shutil
     from core.runtime.config import JARVIS_HOME
 
@@ -2763,6 +2764,22 @@ def _exec_publish_file(args: dict[str, Any]) -> dict[str, Any]:
             f"URL'en {url} returnerede ikke 200 ({url_error or 'unknown'}). "
             "Præsenter IKKE URL'en for brugeren — den virker ikke."
         )
+    # HAEFT DEN PAA TUREN. Uden dette bar svaret ikke filen: maalt 12/9-2026
+    # havde NUL assistent-beskeder en image/file-blok, saa klienten - der
+    # renderer efter blokke - kunne ikke vise den. Samme hul som taenkningen
+    # havde, og samme loesning: laeg fra dig her, tag imod ved persistering.
+    try:
+        from core.services.published_files import note as _note_udgivet
+        _note_udgivet(
+            str(args.get("_runtime_run_id") or ""),
+            filename=safe_name,
+            url=url,
+            mime_type=str(mimetypes.guess_type(safe_name)[0] or ""),
+            size_bytes=int(result.get("size_bytes") or 0),
+        )
+    except Exception:
+        pass  # en visning maa aldrig braekke selve udgivelsen
+
     if _base == _lokal:
         # SIG DET. En localhost-adresse er ikke en fejl her paa maskinen, men
         # den kan ikke deles. Uden denne linje ville svaret se fuldt gyldigt ud

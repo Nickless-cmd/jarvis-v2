@@ -85,6 +85,26 @@ def _origin_of_session(session_id: str) -> str:
     return dele[1] if len(dele) >= 2 else ""
 
 
+def _med_udgivne_filer(blocks: list[dict], run: "_vr.VisibleRun") -> list[dict]:
+    """Laeg turens udgivne filer BAGEST i blok-arrayet.
+
+    Bagest, fordi en fil er et resultat: den blev til undervejs og hoerer til
+    efter det den handler om. Taenkningen ligger forrest af den modsatte grund.
+
+    Ingen udgivne filer → arrayet urOert. En tom blok ville faa klienten til at
+    tegne et hul der aldrig kan fyldes.
+    """
+    try:
+        from core.services.published_files import as_blocks, take
+        poster = take(str(getattr(run, "run_id", "") or ""))
+        if not poster:
+            return blocks
+        return list(blocks) + as_blocks(poster)
+    except Exception:
+        logger.warning("visible_runs_outcomes: kunne ikke haefte udgivne filer", exc_info=True)
+        return blocks
+
+
 def _with_thinking_block(
     blocks: list[dict], run: "_vr.VisibleRun", reasoning: str,
 ) -> list[dict]:
@@ -310,10 +330,9 @@ def _persist_session_assistant_message(
             from core.services.structured_content_flag import structured_content_v2_enabled
             if structured_content_v2_enabled():
                 import json as _json
-                content_json = _json.dumps(
-                    _with_thinking_block(blocks, run, str(reasoning_content or "")),
-                    ensure_ascii=False,
-                )
+                _blokke = _with_thinking_block(blocks, run, str(reasoning_content or ""))
+                _blokke = _med_udgivne_filer(_blokke, run)
+                content_json = _json.dumps(_blokke, ensure_ascii=False)
         except Exception:
             content_json = None
 

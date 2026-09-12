@@ -83,8 +83,12 @@ def tick_approval_expiry_daemon(now: datetime | None = None) -> dict[str, object
         logger.info("approval_expiry: markerede %d udloebet godkendelse(r)", antal)
         try:
             from core.eventbus.bus import event_bus
-            event_bus.publish("approval.expired", {"count": antal,
-                                                   "at": nu.isoformat()})
+            # "approvals" i FLERTAL: det er den familie der findes i
+            # ALLOWED_EVENT_FAMILIES. Foerste udgave brugte ental, og publish()
+            # kaster paa en ukendt familie - hvorefter except nedenfor slugte
+            # det. Haendelsen var altsaa aldrig blevet udsendt.
+            event_bus.publish("approvals.expired", {"count": antal,
+                                                    "at": nu.isoformat()})
         except Exception:
             logger.debug("approval_expiry: kunne ikke publicere hændelsen", exc_info=True)
 

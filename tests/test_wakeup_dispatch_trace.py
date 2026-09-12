@@ -184,3 +184,152 @@ def test_schedule_persists_extra(monkeypatch):
     )
     assert res["status"] == "ok"
     assert res["wakeup"]["extra"] == "husk Y"
+
+
+# ── Punkt 4: aktiv-guarden (12/9-2026) ─────────────────────────────
+#
+# Målt: wake-d07eaea13d fyrede 16:57:35, mens Bjørn skrev 16:58:01 — 26 s efter
+# han selv tog ordet. Nu skal dispatcheren NÆGTE at starte et konkurrerende run
+# i den session, efterlade sporet 'user_active', og lade awareness-vejen bære
+# instruktionerne inde i den aktive tur i stedet.
+
+
+def _active_state(*, session: str = "sess-1", age_s: float = 1.0) -> dict:
+    ts = (datetime.now(UTC) - timedelta(seconds=age_s)).isoformat()
+    return {
+        "active": True,
+        "run_id": "visible-abc",
+        "session_id": session,
+        "started_at": ts,
+        "last_activity_at": ts,
+    }
+
+
+def _patch_active(monkeypatch, state) -> None:
+    monkeypatch.setattr(
+        "core.services.visible_runs._get_active_visible_run_state",
+        lambda: state,
+    )
+
+
+def _wakeup_record(**over) -> dict:
+    rec = {
+        "wakeup_id": "w1", "status": "pending", "fire_at": _past(),
+        "prompt": "Tjek X", "reason": "r1", "channel": "app",
+    }
+    rec.update(over)
+    return rec
+
+
+def test_guard_skips_run_when_user_turn_active(monkeypatch, isolated):
+    """Kernen: aktiv tur i samme session → INTET autonomt run, men et spor."""
+    started: list = []
+    state = [_wakeup_record(session_id="sess-1")]
+    monkeypatch.setattr(sw, "_load", lambda: list(state))
+    monkeypatch.setattr(sw, "_save", lambda r: state.clear() or state.extend(r))
+    _patch_active(monkeypatch, _active_state(session="sess-1"))
+    monkeypatch.setattr(
+        "core.services.autonomous_stream_run.start_autonomous_stream_run",
+        lambda *a, **k: started.append(a),
+    )
+
+    result = wd.dispatch_due_wakeups()
+
+    assert started == [], "der blev startet et run oveni en aktiv tur"
+    assert result["dispatched"] == 0
+    assert result["skipped"] == 1
+    assert state[0]["dispatch_skipped"] is True
+    assert state[0]["dispatch_skipped_reason"] == "user_active"
+
+
+def test_guard_allows_run_when_other_session_active(monkeypatch, isolated):
+    """Aktiv tur i en ANDEN session er ikke «du taler her» → run må starte."""
+    started: list = []
+    state = [_wakeup_record(session_id="sess-1")]
+    monkeypatch.setattr(sw, "_load", lambda: list(state))
+    monkeypatch.setattr(sw, "_save", lambda r: state.clear() or state.extend(r))
+    _patch_active(monkeypatch, _active_state(session="sess-OTHER"))
+    monkeypatch.setattr(
+        "core.services.autonomous_stream_run.start_autonomous_stream_run",
+        lambda *a, **k: started.append(a),
+    )
+
+    result = wd.dispatch_due_wakeups()
+
+    assert len(started) == 1
+    assert result["dispatched"] == 1
+
+
+def test_guard_allows_run_when_active_turn_is_stale(monkeypatch, isolated):
+    """Et run der ikke har rørt sig i >120 s er ikke «nogen taler nu»."""
+    started: list = []
+    state = [_wakeup_record(session_id="sess-1")]
+    monkeypatch.setattr(sw, "_load", lambda: list(state))
+    monkeypatch.setattr(sw, "_save", lambda r: state.clear() or state.extend(r))
+    _patch_active(monkeypatch, _active_state(session="sess-1", age_s=600))
+    monkeypatch.setattr(
+        "core.services.autonomous_stream_run.start_autonomous_stream_run",
+        lambda *a, **k: started.append(a),
+    )
+
+    result = wd.dispatch_due_wakeups()
+
+    assert len(started) == 1
+    assert result["dispatched"] == 1
+
+
+def test_guard_is_self_safe_when_state_unreadable(monkeypatch, isolated):
+    """Kunne aktiv-tilstanden ikke læses, må wakeup'en IKKE forsvinde."""
+    started: list = []
+    state = [_wakeup_record(session_id="sess-1")]
+    monkeypatch.setattr(sw, "_load", lambda: list(state))
+    monkeypatch.setattr(sw, "_save", lambda r: state.clear() or state.extend(r))
+
+    def boom():
+        raise RuntimeError("db nede")
+
+    monkeypatch.setattr(
+        "core.services.visible_runs._get_active_visible_run_state", boom
+    )
+    monkeypatch.setattr(
+        "core.services.autonomous_stream_run.start_autonomous_stream_run",
+        lambda *a, **k: started.append(a),
+    )
+
+    result = wd.dispatch_due_wakeups()
+
+    assert len(started) == 1, "guarden slugte wakeup'en da DB'en fejlede"
+    assert result["dispatched"] == 1
+
+
+def test_user_active_skip_is_not_retried(monkeypatch, isolated):
+    """En user_active-afvisning må ikke prøve igen ved hver tick."""
+    started: list = []
+    state = [_wakeup_record(
+        dispatch_skipped=True, dispatch_skipped_reason="user_active",
+    )]
+    monkeypatch.setattr(sw, "_load", lambda: list(state))
+    monkeypatch.setattr(sw, "_save", lambda r: state.clear() or state.extend(r))
+    _patch_active(monkeypatch, _active_state(session="sess-1"))
+    monkeypatch.setattr(
+        "core.services.autonomous_stream_run.start_autonomous_stream_run",
+        lambda *a, **k: started.append(a),
+    )
+
+    result = wd.dispatch_due_wakeups()
+
+    assert started == []
+    assert result["dispatched"] == 0
+    assert result["skipped"] == 0, "den blev behandlet igen — ikke terminal"
+
+
+def test_section_shows_user_active_reason(monkeypatch):
+    """Bjørn skal kunne se at den blev afvist FORDI han var der."""
+    monkeypatch.setattr(sw, "due_wakeups", lambda **kw: [{
+        "wakeup_id": "w1", "status": "fired", "prompt": "Tjek X", "reason": "r",
+        "dispatch_skipped": True, "dispatch_skipped_reason": "user_active",
+    }])
+    section = sw.self_wakeup_section()
+    assert section is not None
+    assert "user_active" in section
+    assert "IKKE dispatchet" in section

@@ -1379,6 +1379,32 @@ def chat_rename_session(session_id: str, request: ChatSessionRenameRequest) -> d
     return {"session": session}
 
 
+class ChatSessionFlagsRequest(BaseModel):
+    """Kun de felter man vil aendre. `None` betyder «roer ikke» — ikke «saet
+    falsk»: ellers ville et kald der kun vil arkivere ogsaa frigoere en
+    fastgjort samtale."""
+    pinned: bool | None = None
+    archived: bool | None = None
+
+
+@router.patch("/sessions/{session_id}/flags")
+def chat_set_session_flags(session_id: str, request: ChatSessionFlagsRequest) -> dict:
+    """Fastgoer eller arkivér en samtale.
+
+    Fastgjorte staar oeverst i listen; arkiverede falder ud af den (og kan
+    hentes med `inkluder_arkiverede`). De to udelukker hinanden: en samtale man
+    har lagt vaek skal ikke staa oeverst, saa arkivering frigoer fastgoerelsen.
+    """
+    from core.services.chat_sessions import set_session_flags
+    svar = set_session_flags(
+        session_id, pinned=request.pinned, archived=request.archived,
+    )
+    if svar.get("status") != "ok":
+        fejl = str(svar.get("error") or "")
+        raise HTTPException(status_code=404 if "ukendt" in fejl else 400, detail=fejl)
+    return svar
+
+
 @router.delete("/sessions/{session_id}")
 def chat_delete_session(session_id: str) -> dict:
     """Slet en chat-session. 404 hvis den ikke findes; ellers {ok: True, session_id}."""

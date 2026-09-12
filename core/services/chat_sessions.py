@@ -135,7 +135,81 @@ def most_recent_session_id() -> str:
     return str(row[0]) if row and row[0] else ""
 
 
-def list_chat_sessions(*, user_id: str | None = None) -> list[dict[str, object]]:
+def _sikr_flag_kolonner(conn) -> None:
+    """Doven migration: `pinned` og `archived` paa chat_sessions.
+
+    Samme moenster som `git_sha` i chat_messages — kolonnerne staar ikke i
+    CREATE TABLE, saa en frisk database har dem ikke, og foerste opslag ville
+    falde over dem. LISTNINGEN skal ogsaa kalde den, ikke kun saetteren: foerste
+    udgave migrerede kun fra `set_session_flags`, og saa fejlede
+    `SELECT s.pinned` med «no such column» for ALLE lister paa en base hvor
+    ingen endnu havde fastgjort noget.
+
+    INGEN CACHE. Foerste udgave havde et modul-flag der huskede «allerede
+    proevet», og det var forkert: forbindelsen kan pege paa en ANDEN database
+    end sidst — i testene giver `isolated_runtime` en ny base pr. test, og
+    flaget sagde saa at kolonner var sikret i en base der aldrig havde set dem.
+    Et procesvist flag kan ikke huske noget om en base der er skiftet ud.
+
+    Prisen er to ALTER-forsoeg der fejler hurtigt pr. opslag. Det er billigt
+    ved siden af de subselects forespoergslen allerede laver — og langt
+    billigere end en cache der lyver.
+    """
+    for kolonne in ("pinned", "archived"):
+        try:
+            conn.execute(f"ALTER TABLE chat_sessions ADD COLUMN {kolonne} INTEGER NOT NULL DEFAULT 0")
+        except Exception:
+            pass  # findes allerede
+
+
+def set_session_flags(
+    session_id: str, *, pinned: bool | None = None, archived: bool | None = None,
+) -> dict[str, object]:
+    """Saet fastgjort/arkiveret paa én samtale. Kun de felter der gives.
+
+    `None` betyder «roer ikke» — ikke «sæt falsk». Uden den skelnen ville et
+    kald der kun vil arkivere ogsaa komme til at frigoere en fastgjort samtale.
+
+    Fastgjort OG arkiveret paa samme tid giver ingen mening: en samtale man har
+    lagt vaek skal ikke staa oeverst. Arkivering frigoer derfor fastgoerelsen.
+    """
+    sid = str(session_id or "").strip()
+    if not sid:
+        return {"status": "error", "error": "session_id mangler"}
+    if pinned is None and archived is None:
+        return {"status": "error", "error": "intet at aendre"}
+    with connect() as conn:
+        _sikr_flag_kolonner(conn)
+        saet: list[str] = []
+        vaerdier: list[object] = []
+        if archived is not None:
+            saet.append("archived = ?")
+            vaerdier.append(1 if archived else 0)
+            if archived:
+                saet.append("pinned = 0")
+        if pinned is not None:
+            saet.append("pinned = ?")
+            vaerdier.append(1 if pinned else 0)
+            if pinned:
+                saet.append("archived = 0")
+        vaerdier.append(sid)
+        cur = conn.execute(
+            f"UPDATE chat_sessions SET {', '.join(saet)} WHERE session_id = ?", vaerdier,
+        )
+        if cur.rowcount != 1:
+            return {"status": "error", "error": f"ukendt samtale: {sid}"}
+        raekke = conn.execute(
+            "SELECT pinned, archived FROM chat_sessions WHERE session_id = ?", (sid,),
+        ).fetchone()
+    return {
+        "status": "ok", "id": sid,
+        "pinned": bool(raekke[0]), "archived": bool(raekke[1]),
+    }
+
+
+def list_chat_sessions(
+    *, user_id: str | None = None, inkluder_arkiverede: bool = False,
+) -> list[dict[str, object]]:
     """List chat sessions, optionally filtered to one user.
 
     When user_id is given, only returns sessions that have AT LEAST ONE
@@ -152,6 +226,7 @@ def list_chat_sessions(*, user_id: str | None = None) -> list[dict[str, object]]
     uid = (user_id or "").strip()
     if uid:
         with connect() as conn:
+            _sikr_flag_kolonner(conn)
             rows = conn.execute(
                 """
                 SELECT
@@ -159,6 +234,8 @@ def list_chat_sessions(*, user_id: str | None = None) -> list[dict[str, object]]
                     s.title,
                     s.created_at,
                     s.updated_at,
+                    COALESCE(s.pinned, 0) AS pinned,
+                    COALESCE(s.archived, 0) AS archived,
                     COALESCE((
                         SELECT content
                         FROM chat_messages m
@@ -180,12 +257,14 @@ def list_chat_sessions(*, user_id: str | None = None) -> list[dict[str, object]]
                           AND mu.user_id = ?
                     )
                 )
-                ORDER BY s.updated_at DESC, s.id DESC
+                  AND (? = 1 OR COALESCE(s.archived, 0) = 0)
+                ORDER BY COALESCE(s.pinned, 0) DESC, s.updated_at DESC, s.id DESC
                 """,
-                (uid,),
+                (uid, 1 if inkluder_arkiverede else 0),
             ).fetchall()
         return [_session_summary(dict(row)) for row in rows]
     with connect() as conn:
+        _sikr_flag_kolonner(conn)
         rows = conn.execute(
             """
             SELECT
@@ -193,6 +272,8 @@ def list_chat_sessions(*, user_id: str | None = None) -> list[dict[str, object]]
                 s.title,
                 s.created_at,
                 s.updated_at,
+                COALESCE(s.pinned, 0) AS pinned,
+                COALESCE(s.archived, 0) AS archived,
                 COALESCE((
                     SELECT content
                     FROM chat_messages m
@@ -207,8 +288,10 @@ def list_chat_sessions(*, user_id: str | None = None) -> list[dict[str, object]]
                 ), 0) AS message_count,
                 s.workspace_kind
             FROM chat_sessions s
-            ORDER BY s.updated_at DESC, s.id DESC
-            """
+            WHERE (? = 1 OR COALESCE(s.archived, 0) = 0)
+            ORDER BY COALESCE(s.pinned, 0) DESC, s.updated_at DESC, s.id DESC
+            """,
+            (1 if inkluder_arkiverede else 0,),
         ).fetchall()
     return [_session_summary(dict(row)) for row in rows]
 
@@ -281,6 +364,11 @@ def search_chat_sessions(
         if uid:
             title_sql += " AND EXISTS (SELECT 1 FROM chat_messages mu WHERE mu.session_id = s.session_id AND mu.user_id = ?)"
             title_params.append(uid)
+        # Soegning sorteres efter TID, ikke efter fastgoerelse. Naar man
+        # soeger, er det traeffet der taeller — en fastgjort samtale der
+        # matcher daarligere skal ikke skubbe den rigtige ned. (Og
+        # soegningen migrerer ikke kolonnerne, saa en ORDER BY paa dem
+        # fejlede TAVST og gav nul traef.)
         title_sql += " ORDER BY s.updated_at DESC, s.id DESC LIMIT ?"
         title_params.append(lim)
         try:
@@ -1114,6 +1202,8 @@ def _session_summary(row: dict[str, object]) -> dict[str, object]:
         "last_message": _preview_text(str(row.get("last_message") or "")) or "Ready",
         "message_count": int(row.get("message_count") or 0),
         "workspace_kind": (str(row.get("workspace_kind")) if row.get("workspace_kind") else None),
+        "pinned": bool(row.get("pinned") or 0),
+        "archived": bool(row.get("archived") or 0),
     }
 
 

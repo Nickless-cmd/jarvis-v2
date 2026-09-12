@@ -5,6 +5,7 @@ import { tokens } from '../theme/tokens'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 import { useReducedMotion } from '../lib/useReducedMotion'
 import { summarizeRound, summerDiff, type ToolItem } from '../lib/toolGroup'
+import { GlidendeTekst } from './GlidendeTekst'
 
 interface Props {
   items: ToolItem[]
@@ -77,11 +78,11 @@ export function InlineToolGroup({ items }: Props) {
         onPress={toggle}
         testID="tool-group"
       >
-        <Animated.View style={[styles.row, running ? { opacity: pulse } : null]}>
+        {/* Samme lys som taenke-linjen. De to er soeskende; de skal ogsaa
+            opfoere sig ens naar de arbejder. */}
+        <View style={styles.row}>
           <Code2 size={16} color={tokens.color.fg2} strokeWidth={1.8} />
-          <Text style={styles.summary} numberOfLines={1}>
-            {summary}
-          </Text>
+          <GlidendeTekst text={summary} aktiv={running} style={styles.summary} numberOfLines={1} />
           {/* Gruppen er FOLDET som standard. Uden summen her ville tallene
               vaere usynlige det meste af tiden, og saa var de lige saa godt
               blevet i badgen. */}
@@ -102,7 +103,7 @@ export function InlineToolGroup({ items }: Props) {
               <ChevronRight size={16} color={tokens.color.fg2} strokeWidth={1.8} />
             )
           ) : null}
-        </Animated.View>
+        </View>
       </Pressable>
 
       {open ? (

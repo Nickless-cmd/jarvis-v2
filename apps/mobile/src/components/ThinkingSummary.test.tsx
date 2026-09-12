@@ -35,8 +35,18 @@ describe('ThinkingSummary', () => {
     expect(a.queryByTestId('thinking-summary')).toBeNull()
   })
 
-  it('viser «Tænker…» når live', async () => {
-    const screen = await render(<ThinkingSummary text="jeg tænker" live />)
+  it('viser TANKEN mens den koerer — ikke bare at den taenker', async () => {
+    // Forskellen er den samme som mellem en spinner og en ring der fyldes:
+    // «der sker noget» mod «dét her sker».
+    const screen = await render(<ThinkingSummary text={'foerst\njeg tænker nu'} live />)
+    expect(screen.getByText('jeg tænker nu')).toBeTruthy()
+    expect(screen.queryByText('Tænker…')).toBeNull()
+  })
+
+  it('«Tænker…» staar indtil der ER en tanke at vise', async () => {
+    // De foerste tokens er ikke kommet endnu; en tom linje ville se ud som om
+    // intet skete.
+    const screen = await render(<ThinkingSummary text="" live />)
     expect(screen.getByText('Tænker…')).toBeTruthy()
   })
 

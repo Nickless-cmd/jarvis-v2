@@ -1,5 +1,6 @@
 import { createContext, useContext, useMemo, useRef, useState, type ReactNode } from 'react'
 import { approveTool, cancelRun, denyTool } from '../lib/apiClient'
+import { blocksToPersisted } from '../lib/blocksToPersisted'
 import type { ApprovalViewModel } from '../components/ApprovalCard'
 import type { ContentBlock } from '../lib/sseProtocol'
 import { denseBlocks } from '../lib/blockHelpers'
@@ -166,7 +167,13 @@ export function StreamProvider({ children }: { children: ReactNode }) {
         id: `local-assistant-${runId}-${Date.now()}`,
         role: 'assistant',
         content: assistantText,
-        created_at: new Date().toISOString()
+        created_at: new Date().toISOString(),
+        // BLOKKENE FØLGER MED. Uden dem forsvandt tænkningen og
+        // værktøjsrækkerne i det sekund svaret var færdigt — `blocks` ryddes
+        // lige nedenfor — og kom først igen når sessionen blev hentet fra
+        // serveren, typisk ved næste app-start. Serveren gemmer det samme;
+        // det her er ikke en ny sandhed, bare den samme uden at vente.
+        content_json: blocksToPersisted(current.blocks)
       })
     }
 

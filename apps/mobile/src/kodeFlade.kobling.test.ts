@@ -274,3 +274,26 @@ it('tommelen SENDER faktisk — den er ikke laengere en lokal markering', () => 
   const blok = mb.slice(mb.indexOf('const stem ='), mb.indexOf('const stem =') + 500)
   expect(blok.indexOf('setVote(naeste)')).toBeLessThan(blok.indexOf('sendMessageFeedback'))
 })
+
+it('taenkningen og vaerktoejerne OVERLEVER at streamen slutter', () => {
+  // Foer blev der lagt en lokal besked med KUN teksten, og `blocks` blev
+  // ryddet i samme aandedrag - saa taenkningen og vaerktoejsraekkerne
+  // forsvandt i det sekund svaret var faerdigt.
+  const sc = readFileSync(join(__dirname, 'state/StreamContext.tsx'), 'utf8')
+  expect(sc).toMatch(/content_json: blocksToPersisted\(current\.blocks\)/)
+})
+
+it('kun den SIDSTE tankeraekke er i gang', () => {
+  // Alt foer den er overhalet af noget der kom bagefter; det er selve beviset
+  // for at den er faerdig. Foer pulsede de alle resten af streamen.
+  const ml = kilde('components/MessageList.tsx')
+  expect(ml).toMatch(/if \(sidste\?\.kind === 'thinking'\) sidste\.live = true/)
+})
+
+it('lyset glider i BEGGE linjer — de er soeskende', () => {
+  for (const f of ['components/ThinkingSummary.tsx', 'components/InlineToolGroup.tsx']) {
+    expect(kilde(f)).toMatch(/<GlidendeTekst/)
+    // ... og aandedrag-opaciteten er vaek.
+    expect(kilde(f)).not.toMatch(/opacity: pulse/)
+  }
+})

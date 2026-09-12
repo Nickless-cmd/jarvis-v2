@@ -457,7 +457,12 @@ export async function getContextUsage(
   const data = await apiFetch<{
     tokens?: number; compact_at?: number; effective?: number; compacting?: boolean
   }>(config, `/chat/context-usage?session_id=${encodeURIComponent(sessionId)}`)
-  const compactAt = Number(data.compact_at ?? data.effective ?? 0)
+  // `effective` FOERST: serveren regner den som min(model_window, compact_at),
+  // altsaa den graense der faktisk fyrer. De to er identiske her fordi
+  // klienten ikke sender provider/model - men den dag den goer, er `effective`
+  // den rigtige, og `compact_at` ville tegne en ring der naaede 80 % og saa
+  // blev komprimeret.
+  const compactAt = Number(data.effective ?? data.compact_at ?? 0)
   return {
     tokens: Number(data.tokens ?? 0),
     compactAt,

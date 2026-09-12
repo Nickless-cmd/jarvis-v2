@@ -1,4 +1,5 @@
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { ArrowLeftRight, Minimize2, RefreshCw } from 'lucide-react-native'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 
@@ -32,9 +33,14 @@ export function TopBarMenu({
 }) {
   const tokens = useTheme()
   const styles = useStyles(makestyles)
+  // MÅLT paa telefonen 12/9-2026: et fast tal her lagde menuen hen OVER det
+  // felt der aabnede den. Statuslinjens hoejde er enhedsafhaengig, saa toppen
+  // regnes ud fra insettet plus bjaelkens egen hoejde (40 dp cirkel + 2x6 dp)
+  // frem for at blive gaettet.
+  const insets = useSafeAreaInsets()
   return (
     <Modal transparent visible={aaben} animationType="fade" onRequestClose={onClose}>
-      <Pressable style={styles.scrim} onPress={onClose}>
+      <Pressable style={[styles.scrim, { paddingTop: insets.top + 58 }]} onPress={onClose}>
         <Pressable style={styles.ark} onPress={(e) => e.stopPropagation()}>
           <Punkt
             navn="Opdatér"
@@ -79,7 +85,7 @@ function Punkt({ navn, ikon, onPress }: { navn: string; ikon: React.ReactNode; o
 const makestyles = (tokens: Theme) => StyleSheet.create({
   // Menuen lander under det felt den kom fra, ikke midt paa skaermen: oejet
   // skal kunne se hvad der aabnede den.
-  scrim: { flex: 1, backgroundColor: 'rgba(0,0,0,0.25)', alignItems: 'flex-end', paddingTop: 58, paddingRight: 14 },
+  scrim: { flex: 1, backgroundColor: 'rgba(0,0,0,0.25)', alignItems: 'flex-end', paddingRight: 14 },
   ark: {
     minWidth: 210,
     backgroundColor: tokens.color.bgFloat,

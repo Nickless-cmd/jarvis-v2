@@ -98,6 +98,32 @@ Tre ting mere er værd at anerkende, fordi de er *foran* hvad mange implementati
 
 **Konsekvens for v2:** vi skal ikke bygge en ny motor. Vi skal koble de dele der allerede virker sammen, og gøre de fire døde grænser levende. Det er derfor Fase A er den billigste og mest værdifulde retning — ikke en antagelse, men en måling.
 
+### 2.2 Hvordan lane'en er koblet til resten af kodebasen (målt)
+
+Lane'en står ikke alene. Den låner fire ting af den eksisterende infrastruktur — og tre af lånene er ubetalte:
+
+**Dispatch-seamen er `spawn_agent_task`.** Workerne starter ikke sig selv: `research_orchestrator.py:56` importerer `spawn_agent_task` fra `agent_runtime_spawn.py:92`. Det betyder lane'en **arver** concurrency-loftet (`_check_spawn_limits`, `MAX_CONCURRENT_AGENTS`), recursion-guarden og livscyklus-transitionerne. Den ejer dem ikke. Et research-run konkurrerer altså med alle andre agenter om samme plads — det er ikke synligt nogen steder i lane'ens egen kode.
+
+**`budget_tokens` findes — og bruges ikke 🔴 (nyt fund).** `spawn_agent_task` tager `budget_tokens: int` (`:102`), og `_check_budget_and_expire` (`:1249`) kan dræbe en agent der sprænger sit budget. Men lane'en sender **aldrig** parameteren — den sender kun `max_turns=8` (`research_orchestrator.py:71`). Vagten er derfor **inert for research-workers**: en worker kan brænde ubegrænset tokens indtil `max_turns` rammer.
+
+Det er præcis Anthropics største enkeltfaktor — *token-forbrug forklarede 80 % af variansen*. **Vi har knappen. Ingen drejer den.** Og det er den *billigste* form for "skalér efter kompleksitet" (princip 1): ikke en ny planlægger, bare et tal der følger signalstyrken. Det hører i Fase C — men det er værd at bemærke at infrastrukturen allerede findes.
+
+**`result_contract` sendes — og ignoreres.** Worker'ens kontrakt beder eksplicit om `findings`, `sources`, `confidence`, `gaps` (`research_orchestrator.py:73`). Men svaret læses som **rå tekst** fra `list_agent_messages` (`:78-84`) og joines. Kontrakten er et løfte ingen indfrier — det er den præcise mekanisme bag §3.5, nu med kaldsstedet.
+
+**Ingen omkostnings-måling.** Der er ingen `cost`/`tokens`-reference i orchestratoren (grep: 0). Anthropic måler agent-kald til **~4×** et chat-kald og multi-agent til **~15×**, og deres egen konklusion er at det kun kan betale sig hvor værdien gør. Vi kan i dag **ikke svare på hvad et research-run koster.** Det gør Fase C (skalering) til en beslutning uden grundlag — man skal først kunne måle.
+
+**Ledgeren er ikke koblet på.** Research-state lever i sin egen SQLite-store (`research_store.py`) med lovlige transitions — men rører **ikke** den append-only session-ledger (grep: 0). Det er et bevidst valg eller en forglemmelse; det bør afklares, for ledgeren er netop det lag der gør en session genskabelig (4.021 beskeder, byte for byte, 9/9).
+
+**Skill'en ligger uden for repo'et.** Lane'en læser `~/.jarvis-v2/skills/deep-research/SKILL.md` via `load_research_contract` med fallback. Filen er **ikke versionsstyret i repo'et** — så lane'ens instruktionslag kan ændre sig uden at nogen commit viser det.
+
+| Lån | Fra | Betalt? |
+|---|---|---|
+| Dispatch + concurrency | `agent_runtime_spawn` | ✅ arvet korrekt |
+| Token-budget | `budget_tokens` | ❌ aldrig sendt |
+| Resultat-kontrakt | `result_contract` | ❌ svaret parses ikke |
+| Cost-måling | — | ❌ findes ikke |
+| Durable historik | session-ledger | ❌ ikke koblet |
+
 ---
 
 ## 3. Gap-analysen
@@ -183,7 +209,7 @@ Rækkefølgen er valgt efter **værdi / risiko**: luk loopet først, byg ikke ny
 
 **C1. LLM-planlægger med regex-fallback.** Behold `_plan()` som fallback, men lad en billig model foreslå delopgaver når routeren siger `orchestrated`. Skal kunne fejle tilbage til regex uden at runnet dør.
 
-**C2. Skalér indsats efter kompleksitet.** Kobl `decision.signals` til budgetterne: flere uafhængige signaler → højere `max_tasks`/`max_turns`/`source_target`. Kræver at man først har målt hvad der faktisk virker (Fase A+B).
+**C2. Skalér indsats efter kompleksitet.** Kobl `decision.signals` til budgetterne: flere uafhængige signaler → højere `max_tasks`/`max_turns`/`source_target` — **og `budget_tokens`** (§2.2). Sidstnævnte er den billigste form: parameteren findes allerede i `spawn_agent_task`, den skal bare sendes med. Kræver at man først har målt hvad der faktisk virker (Fase A+B).
 
 **C3. LLM-dommer mod rubric.** Supplement til de deterministiske gates — ikke en erstatning. Anthropic målte binær bedømmelse som det stærkeste.
 
@@ -216,6 +242,8 @@ Det vigtigste bidrag fra Del 1, samlet ét sted. Et run må maksimalt fortsætte
 2. **Er `max_tool_calls` et loft pr. worker eller for hele runnet?** Kontrakten siger ikke. Det afgør hvordan A3 bygges.
 3. **Skal `research_orchestrator_enabled` på efter Fase A — eller vil du se evidens fra Fase B først?**
 4. **Planlægger: er regex godt nok til vi har målt, eller vil du have LLM-planlæggeren med i Fase A?** Min anbefaling: vent — mål først (YAGNI).
+5. **Skal `budget_tokens` sendes med til workerne (§2.2)?** Parameteren findes i `spawn_agent_task` og vagten (`_check_budget_and_expire`) virker — den er bare aldrig i brug. Et tal pr. worker ville lukke det største hul mod Anthropics fund (token-forbrug = 80 % af variansen). Min anbefaling: ja, men som **Fase C**, efter vi kan måle hvad et run koster.
+6. **Skal et research-run være synligt i session-ledgeren?** I dag lever det i sin egen store. Fordelen ved ledgeren er genskabelighed — men det koster et integration. Min anbefaling: afklar først om der er et behov; ellers lad det ligge.
 
 ---
 
@@ -227,6 +255,8 @@ Det vigtigste bidrag fra Del 1, samlet ét sted. Et run må maksimalt fortsætte
 **4. Tvetydighed — rettet:** Første udkast sagde "håndhæv budgetterne" uden at sige *hvor*. Rettet til konkrete kaldesteder (`stream_research_run`, worker-fasen). Første udkast kaldte `max_tool_calls` "ubrugt" — upræcist: den *læses* af `research_quality.py:50`, men får aldrig værdier i produktion. Rettet i 3.2.
 
 **5. Balanceret læsning — tilføjet:** Første udkast listede kun manglerne og læste derfor som "intet virker". Tilføjet §2.1: en målt optælling af hvad der *allerede* matcher de fem principper — fire af fem er helt eller halvt dækket, og kvalitetsgaten er bygget (princip 4 er ✅). Tesen er præciseret: manglen er håndhævelse, ikke komponenter.
+
+**6. Kobling til resten af kodebasen — tilføjet (§2.2):** Første udkast behandlede lane'en som isoleret. Den er ikke. Tilføjet en målt gennemgang af hvad den låner: dispatch (`spawn_agent_task`), token-budget, resultat-kontrakt, cost-måling og ledgeren. **Nyt fund:** `budget_tokens` findes i `spawn_agent_task:102` med en virkende vagt (`_check_budget_and_expire:1249`), men lane'en sender den aldrig — så vagten er inert for research-workers. Det er samme familie som §3.1/§3.2: noget der er bygget, men ikke koblet på.
 
 **Verifikation af Del 3's påstande** — kørt to gange: 12/9 og igen 13/9 mod HEAD `963e2b88` (ingen af påstandene var skredet):
 

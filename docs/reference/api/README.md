@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 14384 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 14389 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -45,15 +45,15 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 14384 functions/
 - [`core.services.15`](core.services.15.md) — `mail_checker_daemon` … `model_pair_resolver`
 - [`core.services.16`](core.services.16.md) — `model_probe` … `paid_lane_guard`
 - [`core.services.17`](core.services.17.md) — `paradox_tracker` … `procedure_bank_pipeline`
-- [`core.services.18`](core.services.18.md) — `process_identity` … `reasoning_detectors`
-- [`core.services.19`](core.services.19.md) — `reasoning_escalation` … `role_registry`
-- [`core.services.20`](core.services.20.md) — `round_budget_notice` … `selective_forgetting_candidate_tracking`
-- [`core.services.21`](core.services.21.md) — `self_authored_prompt_proposal_tracking` … `session_topic_tracker`
-- [`core.services.22`](core.services.22.md) — `session_wakeup` … `spatial_entity_ledger`
-- [`core.services.23`](core.services.23.md) — `staged_edits` … `tool_calling_evidence`
-- [`core.services.24`](core.services.24.md) — `tool_catalog` … `value_formation`
-- [`core.services.25`](core.services.25.md) — `verification_gate` … `wakeup_dispatcher`
-- [`core.services.26`](core.services.26.md) — `weekly_manifest` … `world_model_signal_tracking`
+- [`core.services.18`](core.services.18.md) — `process_identity` … `reasoning_classifier`
+- [`core.services.19`](core.services.19.md) — `reasoning_detectors` … `role_model_resolver`
+- [`core.services.20`](core.services.20.md) — `role_registry` … `selective_consolidation_daemon`
+- [`core.services.21`](core.services.21.md) — `selective_forgetting_candidate_tracking` … `session_tool_pin`
+- [`core.services.22`](core.services.22.md) — `session_topic_tracker` … `spaced_repetition`
+- [`core.services.23`](core.services.23.md) — `spatial_entity_ledger` … `tiny_webchat_execution_pilot`
+- [`core.services.24`](core.services.24.md) — `tool_calling_evidence` … `valence_trajectory`
+- [`core.services.25`](core.services.25.md) — `value_formation` … `voice_daemon`
+- [`core.services.26`](core.services.26.md) — `wakeup_dispatcher` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

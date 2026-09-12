@@ -1681,6 +1681,43 @@ the registration site, then attach the guard.** The guard module and its seven
 tests stay; only the wiring is deferred, and the test that asserted zero rows
 for a `ledger` session now asserts one, carrying the reason.
 
+**A prior question, measured 12 September: is `tool_router_decisions` an
+adapter at all?** The repository already classifies it, and not as session
+state. `events_retention.py` divides tables into two lists with an explicit
+comment — *"Pure-telemetry tables safe to age-prune (logs/metrics, no
+cognitive value)"* versus *"Load-bearing memory/identity/learning tables are
+DELIBERATELY excluded"* — and `tool_router_decisions` sits in the first, at 45
+days. `chat_messages` and `session_events` appear in neither list.
+
+That classification is enforced, not aspirational. Measured on the runtime
+database:
+
+| table | oldest row | age | pruned |
+|---|---|---|---|
+| `tool_router_decisions` | 2026-07-30 | **44 days** | yes — `prune_telemetry_tables`, called from `cache_maintenance_daemon.py:85` |
+| `chat_messages` | 2026-04-10 | 155 days | no |
+| `session_events` | 2026-09-09 | 3 days | the ledger has no pruning at all |
+
+A 44-day span against a 45-day ceiling is a running daemon, not a setting.
+
+So making this table a projection of the ledger sets two live mechanisms
+against each other. The ledger is append-only and never pruned; the table is
+deliberately aged. After 45 days `_fra_ledger` would return every event while
+`_fra_tabellen` returns the surviving rows, so drift would report permanent
+disagreement — and any `rebuild()` would resurrect exactly the rows the
+maintenance daemon had just deleted.
+
+Criterion 4 says old adapters should be "read-only projections **or
+removed**". For a table whose 45-day life is a deliberate decision, neither
+fits: it was never a second store of session truth, it is observability that
+was swept into the list alongside six tables that are. The projection built
+for it is sound, and wiring it would be a mistake — which is a stronger reason
+to leave the guard detached than the missing publisher was.
+
+**This is a scoping question, not a measurement gap.** The measurement is
+unambiguous; whether criterion 4 should still name this table is the owner's
+call.
+
 **Still open:** the tool-router projection is proven against fixtures and has
 never folded in production — `projection_checkpoints` has no row for it. No
 session has been moved for it. The remaining decision is the per-session

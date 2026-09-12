@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7348/14426 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7349/14427 functions/methods documented (50%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 7348/14426 functions/methods documented (50%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 614 | 1135 | 54% |
-| `core.services` | 4892 | 9965 | 49% |
+| `core.services` | 4893 | 9966 | 49% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 108 | 184 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -763,13 +763,13 @@ Generated from source. 7348/14426 functions/methods documented (50%). The list b
 - `core/services/central_trace.py` :: `sink` (L96)
 - `core/services/central_white_rabbit.py` :: `build_white_rabbit_surface` (L58)
 - `core/services/central_white_rabbit.py` :: `record_white_rabbit` (L62)
-- `core/services/chat_sessions.py` :: `append_chat_message` (L543)
+- `core/services/chat_sessions.py` :: `append_chat_message` (L572)
 - `core/services/chat_sessions.py` :: `create_chat_session` (L54)
-- `core/services/chat_sessions.py` :: `delete_chat_session` (L1216)
-- `core/services/chat_sessions.py` :: `get_chat_session` (L472)
-- `core/services/chat_sessions.py` :: `recent_chat_session_messages` (L896)
-- `core/services/chat_sessions.py` :: `recent_chat_tool_messages` (L1177)
-- `core/services/chat_sessions.py` :: `rename_chat_session` (L1202)
+- `core/services/chat_sessions.py` :: `delete_chat_session` (L1245)
+- `core/services/chat_sessions.py` :: `get_chat_session` (L493)
+- `core/services/chat_sessions.py` :: `recent_chat_session_messages` (L925)
+- `core/services/chat_sessions.py` :: `recent_chat_tool_messages` (L1206)
+- `core/services/chat_sessions.py` :: `rename_chat_session` (L1231)
 - `core/services/cheap_lane_balancer.py` :: `BalancerSlot.slot_id` (L33)
 - `core/services/cheap_provider_runtime_adapters.py` :: `list_provider_models` (L180)
 - `core/services/cheap_provider_runtime_adapters.py` :: `provider_auth_ready` (L135)

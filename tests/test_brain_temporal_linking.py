@@ -605,3 +605,97 @@ def test_full_rebuild_empty_db(tmp_path):
         assert result["total_entries"] == 0
         assert result["edges_created"] == 0
         assert result["errors"] == []
+
+
+# ── Regression 2026-09-12: én brakket fil må ikke dræbe hele løkken ──
+#
+# `_extract_text_for_entry` kalder `read_entry` → `parse_frontmatter`, som
+# rejser ValueError (manglende/utermineret frontmatter) og yaml.safe_load som
+# rejser YAMLError (fx `title: noget: med kolon` uden quotes). Ingen af dem
+# stod i except-listen, så ÉT dårligt formet dokument afbrød hele
+# kandidat-løkken — og kandidat-sættet er ALLE aktive entries, ikke kun
+# relaterede. Målt i drift: 2 af 7954 filer hang 14 entries permanent
+# (126 advarsler/dag, 9 pr. entry, i det uendelige, fordi en entry uden edges
+# bliver ved med at være i catch-up-sættet).
+
+
+def _kandidat_opsaetning(tmp_path, monkeypatch):
+    """Byg et rigtigt indeks i tmp_path med tre kandidater, alle med embedding."""
+    from core.services import jarvis_brain as JB
+
+    monkeypatch.setattr(JB, "_state_root", lambda: tmp_path)
+    now = datetime(2026, 9, 12, tzinfo=timezone.utc)
+    vec = np.ones(4, dtype=np.float32)
+
+    conn = JB.connect_index()
+    for cid in ("cand-1-braekket", "cand-2", "cand-3"):
+        conn.execute(
+            """INSERT INTO brain_index
+               (id, path, kind, visibility, domain, title, created_at, updated_at,
+                last_used_at, salience_base, salience_bumps, recall_count, importance,
+                tags, related, status, superseded_by, file_hash, embedding,
+                embedding_dim, indexed_at)
+               VALUES (?,?,'fakta','personal','infra',?,?,?,NULL,1.0,0,0,0.8,
+                       '[]','[]','active',NULL,'h',?,4,?)""",
+            (cid, f"p/{cid}.md", cid, now.isoformat(), now.isoformat(),
+             JB._embedding_to_blob(vec), now.isoformat()),
+        )
+    conn.commit()
+    conn.close()
+
+    ny = JB.BrainEntry(
+        id="ny", kind="fakta", visibility="personal", domain="infra",
+        title="ny", content="", created_at=now, updated_at=now,
+        last_used_at=None, salience_base=1.0, salience_bumps=0,
+    )
+    return JB, now, vec, ny
+
+
+def test_yamlerror_paa_en_kandidat_afbryder_ikke_loekken(tmp_path, monkeypatch):
+    """En kandidat hvis frontmatter ikke kan parses skal springes over —
+    ikke rive hele løkken med sig."""
+    import yaml
+    from unittest.mock import patch
+
+    JB, now, vec, ny = _kandidat_opsaetning(tmp_path, monkeypatch)
+    kaldt = []
+
+    def _extract(entry_id):
+        kaldt.append(entry_id)
+        if entry_id == "cand-1-braekket":
+            raise yaml.YAMLError("mapping values are not allowed here")
+        return "tekst"
+
+    with patch.object(JB, "read_entry", return_value=ny), \
+         patch.object(JB, "_embed_text", return_value=vec), \
+         patch.object(JB, "_extract_text_for_entry", side_effect=_extract):
+        JB.infer_temporal_edges("ny", now=now)
+
+    assert len(kaldt) == 3, (
+        f"løkken blev afbrudt ved den brækkede kandidat — kun {kaldt} blev behandlet"
+    )
+    assert set(kaldt) == {"cand-1-braekket", "cand-2", "cand-3"}
+
+
+def test_valueerror_paa_en_kandidat_afbryder_ikke_loekken(tmp_path, monkeypatch):
+    """Samme gren, anden undtagelse: `parse_frontmatter` rejser ValueError
+    for manglende eller utermineret frontmatter."""
+    from unittest.mock import patch
+
+    JB, now, vec, ny = _kandidat_opsaetning(tmp_path, monkeypatch)
+    kaldt = []
+
+    def _extract(entry_id):
+        kaldt.append(entry_id)
+        if entry_id == "cand-1-braekket":
+            raise ValueError("missing frontmatter in p/cand-1-braekket.md")
+        return "tekst"
+
+    with patch.object(JB, "read_entry", return_value=ny), \
+         patch.object(JB, "_embed_text", return_value=vec), \
+         patch.object(JB, "_extract_text_for_entry", side_effect=_extract):
+        JB.infer_temporal_edges("ny", now=now)
+
+    assert len(kaldt) == 3, (
+        f"løkken blev afbrudt ved den brækkede kandidat — kun {kaldt} blev behandlet"
+    )

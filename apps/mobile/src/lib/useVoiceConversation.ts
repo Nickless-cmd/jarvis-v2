@@ -346,7 +346,20 @@ export function useVoiceConversation(config: ApiConfig | null | undefined, deps:
   }, [speech, stopBarge])
   useEffect(() => { interruptRef.current = interrupt }, [interrupt])
 
-  const enter = useCallback(() => { setActive(true); setProblem(''); setState('idle') }, [])
+  const enter = useCallback(() => {
+    setActive(true)
+    setProblem('')
+    setState('idle')
+    // Samtalen skal begynde af sig selv. Uden dette åbner overlayet i 'idle',
+    // og man skal først trykke på kuglen før mikrofonen overhovedet tændes —
+    // så et tryk på lydbølge-ikonet ser ud som om der ikke skete noget.
+    // Kort ventetid, så overlayet (og mikrofon-tilladelsen) når at vise sig.
+    setTimeout(() => {
+      // Lukkede han igen inden da, må mikrofonen ikke tændes bag et lukket
+      // overlay. Tjekket ligger EFTER ventetiden — det er hele pointen med den.
+      if (activeRef.current) void startListeningRef.current?.()
+    }, 350)
+  }, [])
   const exit = useCallback(() => {
     setActive(false)
     stopPoll()

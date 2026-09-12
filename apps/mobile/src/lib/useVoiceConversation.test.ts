@@ -228,22 +228,49 @@ describe('oplæsning mens svaret skrives', () => {
 })
 
 describe('hænderfri holder samtalen i gang', () => {
+  // Samtalen skal begynde af sig selv: et tryk på lydbølge-ikonet åbner
+  // overlayet, og mikrofonen skal tændes uden at man først trykker på kuglen.
+  // Fejlen var at enter() kun satte active — man stod i et overlay der ventede
+  // på et tryk man ikke vidste man skulle give.
+  it('enter starter lytningen af sig selv — uden at nogen trykker', async () => {
+    const rec = slowRecorder(0)
+    const { result } = await renderHook(() => useVoiceConversation(config, deps))
+    await act(async () => { result.current.enter() })
+
+    await waitFor(() => expect(rec.record).toHaveBeenCalledTimes(1))
+    expect(result.current.state).toBe('listening')
+  })
+
+  it('tænder ikke mikrofonen hvis samtalen lukkes før den er oppe', async () => {
+    const rec = slowRecorder(0)
+    const { result } = await renderHook(() => useVoiceConversation(config, deps))
+    await act(async () => {
+      result.current.enter()
+      result.current.exit()          // lukket med det samme
+    })
+
+    await new Promise((r) => setTimeout(r, 500))
+    expect(rec.record).not.toHaveBeenCalled()
+  })
+
   // En pause hvor man tænker må ikke afslutte samtalen. Men mikrofonen må
   // heller ikke stå åben i stuen resten af dagen, så der er en grænse.
   it('lytter igen efter én tom runde — og holder så inde', async () => {
     const rec = slowRecorder(0)
     const api = jest.requireMock('./voiceApi') as { transcribeAudio: jest.Mock }
     const { result } = await renderHook(() => useVoiceConversation(config, deps))
-    await act(async () => { result.current.enter() })
 
+    // enter() er nu selv den første optagelse — der skal ikke trykkes.
     api.transcribeAudio.mockResolvedValue({ status: 'ok', text: '' })
-    await act(async () => { await result.current.startListening() })
-    await act(async () => { await result.current.stopListening() })
+    await act(async () => { result.current.enter() })
+    await waitFor(() => expect(rec.record).toHaveBeenCalledTimes(1))
 
+    // Tom runde 1: den lytter igen af sig selv.
+    await act(async () => { await result.current.stopListening() })
     await waitFor(() => expect(rec.record).toHaveBeenCalledTimes(2))
-    await act(async () => { await result.current.stopListening() })
 
-    // Anden tomme runde: nu holder den inde i stedet for at blive ved.
+    // Tom runde 2: nu holder den inde i stedet for at blive ved.
+    await act(async () => { await result.current.stopListening() })
     await new Promise((r) => setTimeout(r, 600))
     expect(rec.record).toHaveBeenCalledTimes(2)
     expect(result.current.problem).toMatch(/hørte ikke noget/)

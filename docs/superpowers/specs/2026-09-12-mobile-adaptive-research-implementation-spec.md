@@ -12,7 +12,8 @@ implementation: ikke startet
 Denne spec beskriver én samlet ændring med tre brugerrettede resultater:
 
 1. Mobil-composerens valg vises som tre ikonknapper i rækkefølgen
-   **permissions -> model -> research**.
+   **permissions -> model -> research**, og voice-kontrollerne deles rent i
+   inline diktering og orb-baseret samtale.
 2. Alle egentlige brugerpræferencer i mobilappen overlever app-genstart. Valg,
    der påvirker en samtale, gemmes pr. samtale; globale enheds- og
    kontopræferencer beholder deres korrekte ejer.
@@ -35,6 +36,8 @@ eksekveringsplan skal dele arbejdet i reviewbare faser efter godkendelse.
   statusresuméer, handlinger, kilder og resultater må streames.
 - Midlertidig UI-state som åbne sheets, loading, scroll-position, kamera-preview,
   diagnostikresultater og igangværende haptik gemmes ikke som præferencer.
+- Et dikteret lydklip er midlertidigt input. Det gemmes ikke som en besked og
+  sendes ikke til Jarvis, før brugeren selv trykker send.
 - Memory-skærmens lokale demohandlinger (`hidden`, `pinned`, `drafts`) må ikke
   fejlagtigt omfattes af en preference-store. De kræver særskilte server-API'er,
   før de kan love varige memory-ændringer.
@@ -145,6 +148,78 @@ Krav:
 - En ny besked under et aktivt research-run er en steer/follow-up til runnet,
   ikke et konkurrerende visible run.
 
+### 4.3 Voice-kontroller: Dikter og Samtale
+
+Composerens to voice-indgange får ét ansvar hver:
+
+- **Mikrofonikonet hedder `Dikter`.** Det starter inline diktering og åbner
+  aldrig orb-overlayet.
+- **Wave-ikonet hedder `Start samtale`.** Det åbner orb-overlayet direkte i
+  hands-free samtaletilstand.
+- Så snart composerfeltet indeholder tekst eller en sendbar attachment, skifter
+  wave-knappen til send-pilen som i dag.
+- Mens et Jarvis-run arbejder, viser samme primære knap stop-firkanten som i
+  dag. Stop har højere prioritet end wave og send.
+
+Den primære højre knaps deterministiske prioritet er:
+
+```text
+working                         -> stop
+not working AND sendable draft -> send
+not working AND empty draft    -> start conversation (wave)
+```
+
+Et tryk på mikrofonikonet starter en ny inline recording state i composeren.
+Den normale kontrolrække erstattes midlertidigt af en kompakt optagerlinje med:
+
+```text
+[cancel] [live waveform / elapsed time] [stop dictation]
+```
+
+Flowet er:
+
+```text
+idle -> recording -> transcribing -> draft inserted -> idle
+  |         |              |
+  +------ cancelled <-------+  (ved cancel/fejl)
+```
+
+Krav:
+
+- Optagerlinjen bliver i composerens eksisterende flade; den er ikke et modal,
+  overlay eller chat-element.
+- Recording viser live niveau og forløbet tid uden at rerendere hele
+  `ChatScreen` på hvert meter-sample. Genbrug `Animated.Value`-mønstret fra
+  voice-state machine.
+- Stop afslutter optagelsen og viser en tydelig transcribing-state i samme
+  linje. Der kan ikke startes endnu en optagelse imens.
+- En vellykket transskription indsættes i composerfeltet som et redigerbart
+  udkast. Den sendes **aldrig automatisk**.
+- Hvis feltet allerede indeholder tekst, indsættes dikteringen ved cursoren når
+  selection er kendt; ellers appendes den med passende whitespace. Eksisterende
+  tekst må aldrig overskrives.
+- Efter indsættelse bliver den primære wave-knap automatisk til send, fordi
+  draftet nu er sendbart.
+- Cancel sletter den aktuelle lydfil og efterlader det eksisterende draft
+  uændret.
+- STT-fejl efterlader draftet uændret, viser en kort inline fejl og giver retry
+  eller ny diktering. En fejl må ikke lukke appens almindelige composer.
+- Android back, app-background, session-skift og unmount stopper og rydder en
+  aktiv dikteringsoptagelse. Et halvt lydklip må ikke sendes automatisk.
+- Diktering og orb-samtale er gensidigt eksklusive. Wave er disabled under
+  recording/transcribing; `Dikter` er disabled mens orb-samtalen er aktiv eller
+  Jarvis-runnet arbejder.
+- Audio recorder ownership skal være entydigt. Inline diktering må ikke starte
+  en tredje samtidig native recorder ved siden af samtalens capture/barge
+  recorders.
+- Accessibility annoncerer `Dikter`, `Stop diktering`, `Annuller diktering`,
+  `Transskriberer` og `Start samtale` som separate handlinger/states.
+
+Orb-overlayets push-mode fjernes fra den synlige mode-vælger, fordi den
+brugeropgave nu ejes af inline diktering. Orb'en åbner i hands-free og forbliver
+den kontinuerlige taleoplevelse: lyt -> transskriber -> Jarvis arbejder -> tal ->
+lyt igen. Der må ikke længere være to UI-veje, der begge kaldes push-to-talk.
+
 ## 5. Preference-model
 
 ### 5.1 Ejerprincip
@@ -252,13 +327,18 @@ Implementeringen skal bevare og teste denne matrix:
 | Connectors enabled | server API | Bevar serverautoritet; rollback ved save-fejl |
 | Notifikationskanaler/quiet hours | server API | Bevar serverautoritet; reload fra server |
 | Sidst aktive samtale | `sessionStore` SecureStore | Bevar |
-| Voice push/hands-free | kun hook-state | Tilføj enhedspræference, hvis vælgeren fortsat præsenteres som et bruger valg |
+| Voice push/hands-free | kun hook-state | Fjern valget: wave ejer hands-free, mikrofon ejer diktering |
 | Kamera zoom | flygtig capture-state | Forbliver flygtig; det er shot-state, ikke en appindstilling |
 
 Acceptance-kriteriet er ikke "persistér alle `useState`s". Det er: enhver
 kontrol der præsenteres som et varigt valg eller en indstilling gendannes fra sin
 autoritative store efter en kold app-start og anvendes af den funktion, den
 påstår at styre.
+
+Efter voice-opdelingen findes der ikke længere et varigt push/hands-free-valg:
+indgangen bestemmer mode. Wave er altid hands-free samtale; mikrofon er altid
+inline diktering. `voicePrefs` skal derfor ikke tilføjes alene for at bevare den
+gamle, nu fjernede mode-vælger.
 
 ## 6. Wire-kontrakt
 
@@ -663,7 +743,9 @@ Forventede ændringer:
 
 - `apps/mobile/src/components/Composer.tsx`
   - ikon-only layout og rækkefølge;
-  - stabile knapdimensioner og accessibility.
+  - stabile knapdimensioner og accessibility;
+  - primærknappens stop/send/wave-prioritet;
+  - inline recorder-linje og transcribing/error states.
 - `apps/mobile/src/components/ModelPicker.tsx`
   - forbliver picker for model + thinking;
   - alle ændringer skriver til aktiv chat-config.
@@ -677,7 +759,20 @@ Forventede ændringer:
   - ingen separat transient research/thinking/global-model sandhed;
   - ingen reset efter send;
   - `chatCfg.stemme` styrer faktisk automatisk TTS for svar i den aktive
-    samtale uden at starte hands-free mikrofonen.
+    samtale uden at starte hands-free mikrofonen;
+  - wave kalder samtale-entry, mens mikrofon kalder dictation-controlleren;
+  - session/lifecycle cleanup for aktiv diktering.
+- `apps/mobile/src/lib/useVoiceConversation.ts`
+  - forenkles til orb-baseret hands-free samtale;
+  - ejer fortsat conversation capture, barge-in og streaming TTS;
+  - eksponerer ikke længere push som bruger-valgt orb-mode.
+- ny `apps/mobile/src/lib/useComposerDictation.ts`
+  - ejer inline recording/transcription state machine og cleanup;
+  - genbruger den eksisterende STT-klient og lydkonfiguration gennem en fælles,
+    lille audio-capture helper, så recorder-semantik ikke kopieres.
+- `apps/mobile/src/components/VoiceOverlay.tsx`
+  - åbner direkte i hands-free;
+  - fjerner push/hands-free segmentvælgeren og push-hold gestures.
 - `apps/mobile/src/lib/chatPrompt.ts`
   - slettes, når alle call-sites og tests er migreret.
 - `apps/mobile/src/lib/streamClient.ts`
@@ -688,8 +783,10 @@ Forventede ændringer:
   - versioneret turn-controls.
 - ny `apps/mobile/src/components/ResearchStatus.tsx`
   - flydende status over composer, ikke inde i chat-listen.
-- ny `apps/mobile/src/lib/voicePrefs.ts`
-  - kun hvis voice mode-vælgeren bevares som et varigt valg.
+- eventuel fælles `apps/mobile/src/lib/audioCapture.ts`
+  - kun den naturlige recorder-lifecycle, permission og cleanup, som både
+    dictation og conversation faktisk deler;
+  - VAD, barge-in og samtaleloop forbliver i `useVoiceConversation`.
 
 Bemærk eksisterende duplikerede `thinkingMode` property i
 `ChatScreen.ensureSessionAndSend`: den fjernes under den samlede projektion.
@@ -762,6 +859,14 @@ suites og TypeScript-check.
 - Composer viser ingen model/research-labels og har rækkefølgen
   permissions -> model -> research.
 - Ikonernes accessibility labels/states er korrekte.
+- Tom composer viser wave; tekst/attachment viser send; working viser stop.
+- Wave åbner orb direkte i hands-free og sender ikke en besked alene.
+- Mikrofon åbner ikke orb; den viser recording -> transcribing inline.
+- Dictation stop indsætter tekst i draft uden auto-send og uden at overskrive
+  eksisterende tekst.
+- Dictation cancel, STT-fejl, session-skift, background og unmount rydder native
+  recorder sikkert og bevarer det eksisterende draft.
+- Conversation og dictation kan ikke eje audio capture samtidigt.
 - Chat settings V1 -> V2 migration, corrupt JSON og defaults.
 - Model/provider/label gemmes og gendannes atomisk pr. session.
 - Thinking, permissions, research, tool-scope og voice reloades pr. session.
@@ -865,24 +970,27 @@ Leverancen er færdig når:
 
 1. Composerens tre indstillingsknapper er ikon-only i korrekt rækkefølge på
    små og store mobile viewports.
-2. En bruger kan sætte forskellige model/thinking/permission/research-valg i to
+2. Mikrofonikonet giver inline diktering, hvis resultat lander som et redigerbart
+   draft uden auto-send; wave åbner den hands-free orb-samtale, og den primære
+   knap følger stop -> send -> wave-prioriteten uden tvetydige states.
+3. En bruger kan sætte forskellige model/thinking/permission/research-valg i to
    samtaler, force-close appen og få præcis de samme valg tilbage.
-3. Alle kontroller, der præsenteres som indstillinger, består persistence-audit;
+4. Alle kontroller, der præsenteres som indstillinger, består persistence-audit;
    den gendannede værdi har reel effekt, og flygtig state er eksplicit
    klassificeret.
-4. Research ændrer aldrig brugerens tekst eller transcript.
-5. Research-mode aktiverer den kanoniske deep-research-kontrakt server-side.
-6. Små opgaver spawner ingen agents; store paralleliserbare opgaver kan bruge
+5. Research ændrer aldrig brugerens tekst eller transcript.
+6. Research-mode aktiverer den kanoniske deep-research-kontrakt server-side.
+7. Små opgaver spawner ingen agents; store paralleliserbare opgaver kan bruge
    eksisterende agents under et hårdt budget.
-7. Jarvis skriver altid det endelige svar; workers vises kun som status/evidens.
-8. Et orkestreret run fortsætter ved mobil disconnect og kan rekonstrueres efter
+8. Jarvis skriver altid det endelige svar; workers vises kun som status/evidens.
+9. Et orkestreret run fortsætter ved mobil disconnect og kan rekonstrueres efter
    app-koldstart.
-9. Slutrapportens citations kan spores til ledgeren, og quality gates kan
+10. Slutrapportens citations kan spores til ledgeren, og quality gates kan
    blokere falsk success.
-10. Cancel, providerfejl, manglende skill og backend-restart ender i en synlig,
+11. Cancel, providerfejl, manglende skill og backend-restart ender i en synlig,
     terminal og retrybar tilstand.
-11. Fokuserede mobil/backend-tests og typecheck består.
-12. Build/release udføres først efter separat godkendt eksekveringsplan og
+12. Fokuserede mobil/backend-tests og typecheck består.
+13. Build/release udføres først efter separat godkendt eksekveringsplan og
     implementation review.
 
 ## 18. Fagligt grundlag
@@ -922,7 +1030,5 @@ Disse valg kan afgøres i eksekveringsplanen uden at ændre designet:
 - `SearchCheck` versus `Telescope` som research-ikon efter screenshot-test.
 - Om active-research snapshot udvider `/chat/active-runs` eller får et fokuseret
   endpoint. Der skal kun være én DB-autoritet i begge tilfælde.
-- Om voice mode føjes til eksisterende device preference-envelope eller får en
-  lille selvstændig `voicePrefs` store.
 - Præcise første budgettal efter baseline-måling. Arkitekturens hårde loft og
   max tre samtidige workers er ikke åbne valg.

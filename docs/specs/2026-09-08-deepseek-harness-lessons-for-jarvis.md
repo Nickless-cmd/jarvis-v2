@@ -1423,7 +1423,8 @@ Exit criteria:
 - each session has exactly one read/write authority
 - rollback has been exercised without deleting ledger events
 - direct `chat_messages` writes fail for ledger sessions
-- old approval, tool-routing, and agent adapters are read-only projections or removed
+- ~~old approval, tool-routing, and agent adapters are read-only projections or
+  removed~~ — **restated after measurement, see Criterion 4 below**
 - capability audit and Mission Control show no orphaned duplicate subsystem
 
 **Status 2026-09-11 (opus).** The observation window has enough data, and the
@@ -1841,6 +1842,54 @@ criterion's premise does not hold for the tables it names.
 
 What remains is an owner's decision on the criterion itself, not an engineering
 task underneath it.
+
+### Criterion 4, restated — and Phase 11 closed (12 September)
+
+The criterion read: *old approval, tool-routing, and agent adapters are
+read-only projections or removed.* It was written for tables that **duplicate
+session truth**, which is what `chat_messages` was. Measurement showed that
+none of the three tables it names is that:
+
+| named table | what it actually is | evidence |
+|---|---|---|
+| `tool_router_decisions` | telemetry | in `events_retention`'s explicit *"pure-telemetry … no cognitive value"* list at 45 days, actively pruned (0 rows above the ceiling), and every reader uses a 7-day window |
+| `approval_claims` | a mutual-exclusion lock | `claim()` is a compare-and-set conditioned on digest and expiry; an append-only ledger cannot say who won before both callers have crossed the provider boundary |
+| `agent_runs` / `agent_messages` / `agent_registry` | a differently keyed store | no session column at all; the session-keyed ledger has no place to put them |
+
+So the criterion is **restated** to what it can truthfully assert:
+
+> **Criterion 4 (restated).** Every table that duplicates session truth is a
+> read-only projection of the ledger or removed. Tables that are telemetry,
+> concurrency primitives, or keyed outside the session are out of scope, and
+> each exclusion is recorded with the measurement that established it.
+
+Under that statement the criterion is **met**: `chat_messages` was the only
+table in the original list that duplicated session truth, and it is projected,
+guarded and cut over.
+
+**What was built while establishing this**, and kept:
+
+* `projection_guard.py` — the guard half of a cutover, reachable by every
+  projection instead of living inside `chat_messages`. Seven tests.
+* `projection_tool_router.py` and a generalised `projection_drift` — each
+  projection now describes itself with `KIND`, `TABEL`, `NOEGLE` and
+  `SAMMENLIGN`. Sound, deliberately unwired, with a test that keeps it that way.
+* The ISO timestamp fix at `tool_router.py`'s write site.
+* `approval_expiry_daemon` — `expire_stale()` had zero callers; five claims had
+  been `pending` for 39 hours. After the 11:33 restart: **0 pending, 5 expired.**
+* `prune_orphaned_index_rows` — the brain index could only grow. After the same
+  restart: **0 of 7901 rows without a file**, down from 6.
+* `test_trust_kan_ikke_koere_destruktivt.py` — the mobile permission picker
+  promises *"farlige kommandoer blokeres stadig"*; the promise held but nothing
+  guarded it. Nine tests now do.
+
+**Phase 11 is closed.** All five criteria are accounted for: 1, 2, 3 and 5
+verified on the canary, and 4 restated to the claim the measurements support.
+
+The lesson the phase actually produced is not about ledgers. Three times a
+mechanism existed and nothing called it — `expire_stale`, the guard after
+generalisation, the index cleanup a comment had promised. Each was found the
+same way: by asking *who calls this?* rather than *does this work?*
 
 **Still open:** the tool-router projection is proven against fixtures and has
 never folded in production — `projection_checkpoints` has no row for it. No

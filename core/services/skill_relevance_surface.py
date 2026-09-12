@@ -55,11 +55,16 @@ def relevant_skills_section(user_message: str) -> str:
 
     Kaster aldrig — en fejlende matcher må ikke kunne vælte prompt-bygningen.
     """
+    try:
+        from core.services.research_prompt_context import research_prompt_section
+        research = research_prompt_section()
+    except Exception:
+        research = ""
     besked = str(user_message or "").strip()
     if not besked or len(besked) < _MIN_MESSAGE_CHARS:
-        return ""
+        return research
     if not _enabled():
-        return ""
+        return research
 
     try:
         from core.tools.skill_engine_tools import _suggest_skills_for_query
@@ -68,10 +73,10 @@ def relevant_skills_section(user_message: str) -> str:
         ) or []
     except Exception as exc:
         logger.debug("skill_relevance_surface: opslag fejlede: %s", exc)
-        return ""
+        return research
 
     if not traef:
-        return ""
+        return research
 
     linjer = [
         "[SKILLS DER MATCHER DENNE OPGAVE]",
@@ -105,7 +110,8 @@ def relevant_skills_section(user_message: str) -> str:
         linjer.append(
             "Ingen af dem er et stærkt match (<0,50) — de er et tilbud, ikke et krav."
         )
-    return "\n".join(linjer)
+    ordinary = "\n".join(linjer)
+    return f"{research}\n\n{ordinary}" if research else ordinary
 
 
 def build_skill_relevance_surface(user_message: str = "") -> dict[str, object]:

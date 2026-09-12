@@ -571,6 +571,8 @@ class ChatStreamRequest(BaseModel):
     # "deep" = max reasoning effort (slowest, hardest problems)
     # Ignored for models that don't support thinking parameters.
     thinking_mode: str = "think"
+    # Additive explicit research lane. The original message remains untouched.
+    research_mode: bool = False
     # UI-mode: "chat" begrænser værktøjer til en samtale-allowlist; "code"
     # låser kode-tools op (tool_scope="code"). "" = ubegrænset (rolle-filter
     # gælder stadig). Sættes af jarvis-desk pr. mode.
@@ -878,7 +880,19 @@ def chat_active_runs() -> dict:
             sid = rel.session_for_run(rid)
             if sid and sid not in sids:
                 sids.append(sid)
-                sessions.append({"session_id": sid, "run_id": rid, "status": "working"})
+                item = {"session_id": sid, "run_id": rid, "status": "working"}
+                try:
+                    from core.services.research_store import active_for_session
+                    research = active_for_session(sid)
+                    if research:
+                        item.update({
+                            "research_run_id": str(research["id"]),
+                            "research_status": str(research["status"]),
+                            "research_tier": str(research["tier"]),
+                        })
+                except Exception:
+                    pass
+                sessions.append(item)
         return {"session_ids": sids, "sessions": sessions}
     # FLAG OFF -> run_follow.live_sessions (uaendret)
     from core.services.run_follow import live_sessions

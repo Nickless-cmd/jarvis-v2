@@ -266,7 +266,7 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
     append_chat_message(
         session_id=session_id,
         role="user",
-        content=effective_message,
+        content=request.message,
         user_id=_uid,
         content_json=_att_json,
     )
@@ -423,6 +423,7 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
         # begge fejler). Helper'en attacher + nudger i stedet. Se helper-docstring.
         run_id, _attached = start_or_attach_user_run(
             message=model_message,
+            original_message=request.message,
             session_id=session_id,
             nudge_enabled=bool(getattr(settings, "nudge_system_enabled", True)),
             approval_mode=request.approval_mode,
@@ -435,6 +436,7 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
             eff_provider=_eff_provider,
             lane=settings.primary_model_lane,
             local_tool_exec=_local_exec,
+            research_mode=bool(request.research_mode),
         )
         if _attached:
             print(
@@ -539,17 +541,25 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
         )
 
     # FLAG OFF → nuværende stabile A1-tee (uændret).
-    legacy_iter = start_visible_run(
-        message=model_message,
-        session_id=session_id,
-        approval_mode=request.approval_mode,
-        thinking_mode=request.thinking_mode,
-        force_user_id=_uid,
-        tool_scope=_tool_scope,
-        provider_override=_prov_override,
-        model_override=_model_override,
-        local_tool_exec=_local_exec,
-    )
+    _legacy_args = {
+        "message": model_message,
+        "session_id": session_id,
+        "approval_mode": request.approval_mode,
+        "thinking_mode": request.thinking_mode,
+        "force_user_id": _uid,
+        "tool_scope": _tool_scope,
+        "provider_override": _prov_override,
+        "model_override": _model_override,
+        "local_tool_exec": _local_exec,
+    }
+    if request.research_mode:
+        from core.services.research_orchestrator import research_enabled, stream_research_run
+        legacy_iter = stream_research_run(
+            original_query=request.message,
+            **_legacy_args,
+        ) if research_enabled() else start_visible_run(**_legacy_args)
+    else:
+        legacy_iter = start_visible_run(**_legacy_args)
 
     v2_stream = translate_to_v2(
         legacy_iter,

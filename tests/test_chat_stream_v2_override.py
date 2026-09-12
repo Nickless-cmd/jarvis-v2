@@ -9,6 +9,12 @@ from __future__ import annotations
 import asyncio
 
 from apps.api.jarvis_api.routes import chat_stream_v2 as mod
+from apps.api.jarvis_api.routes.chat import ChatStreamRequest
+
+
+def test_research_mode_is_additive_and_defaults_off():
+    assert ChatStreamRequest(message="x").research_mode is False
+    assert ChatStreamRequest(message="x", research_mode=True).research_mode is True
 
 
 def _drain(resp) -> str:

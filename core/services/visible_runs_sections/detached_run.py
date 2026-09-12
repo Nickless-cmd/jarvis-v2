@@ -13,6 +13,7 @@ from uuid import uuid4
 def start_user_run_detached(
     *,
     message: str,
+    original_message: str | None = None,
     session_id: str,
     approval_mode: str = "ask",
     thinking_mode: str = "think",
@@ -25,6 +26,7 @@ def start_user_run_detached(
     lane: str = "",
     run_id: str | None = None,
     local_tool_exec: bool = False,
+    research_mode: bool = False,
 ) -> str:
     """Start et server-autoritativt run. Returnerer run_id (klienten abonnerer
     via run_event_log gennem /chat/stream/v2 eller /chat/runs/{id}/subscribe)."""
@@ -32,7 +34,6 @@ def start_user_run_detached(
     import threading
 
     import core.services.run_event_log as rel
-    from core.services.visible_runs import start_visible_run
     from core.services.visible_runs_sse_v2 import translate_to_v2
 
     sid = (session_id or "").strip()
@@ -41,17 +42,29 @@ def start_user_run_detached(
         rel.create(run_id, sid)  # synkront FØR retur → straks synlig i live_run_ids
     # ellers: run_id er allerede claimet+oprettet atomisk af claim_or_create
 
-    legacy_iter = start_visible_run(
-        message=message,
-        session_id=session_id,
-        approval_mode=approval_mode,
-        thinking_mode=thinking_mode,
-        force_user_id=force_user_id,
-        tool_scope=tool_scope,
-        provider_override=provider_override,
-        model_override=model_override,
-        local_tool_exec=local_tool_exec,
-    )
+    visible_args = {
+        "message": message,
+        "session_id": session_id,
+        "approval_mode": approval_mode,
+        "thinking_mode": thinking_mode,
+        "force_user_id": force_user_id,
+        "tool_scope": tool_scope,
+        "provider_override": provider_override,
+        "model_override": model_override,
+        "local_tool_exec": local_tool_exec,
+    }
+    if research_mode:
+        from core.services.research_orchestrator import research_enabled, stream_research_run
+        legacy_iter = stream_research_run(
+            original_query=original_message,
+            visible_run_id=run_id,
+            **visible_args,
+        ) if research_enabled() else None
+    else:
+        legacy_iter = None
+    if legacy_iter is None:
+        from core.services.visible_runs import start_visible_run
+        legacy_iter = start_visible_run(**visible_args)
 
     def _in_thread() -> None:
         import asyncio as _asyncio
@@ -156,6 +169,16 @@ def start_or_attach_user_run(
     import core.services.run_event_log as rel
 
     sid = (session_id or "").strip()
+    if bool(kw.get("research_mode")):
+        try:
+            from core.services.research_store import active_for_session, add_steer
+            active = active_for_session(sid)
+            if active:
+                add_steer(str(active["id"]), message)
+                if str(active.get("tier") or "") == "orchestrated":
+                    nudge_enabled = False
+        except Exception:
+            pass
     # ATOMISK claim (rod-fix mod rapid-resend-race): find-eller-opret under laas.
     claimed, is_new = rel.claim_or_create(sid)
     if not is_new:

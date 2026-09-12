@@ -92,6 +92,15 @@ def _cached_web_search_fn(*, query: str, max_results: int, fetch_fn: Any) -> dic
     return _st()._cached_web_search_fn(query=query, max_results=max_results, fetch_fn=fetch_fn)
 
 
+def _observe_research_result(tool_name: str, result: object) -> None:
+    """Best-effort observer; ordinary web calls never depend on research state."""
+    try:
+        from core.services.research_evidence_collector import observe_web_result
+        observe_web_result(tool_name, result)
+    except Exception:
+        logger.debug("research evidence observer failed", exc_info=True)
+
+
 def _exec_search(args: dict[str, Any]) -> dict[str, Any]:
     pattern = str(args.get("pattern") or "").strip()
     search_path = str(args.get("path") or "").strip() or str(PROJECT_ROOT)
@@ -845,9 +854,11 @@ def _exec_web_fetch(args: dict[str, Any]) -> dict[str, Any]:
     total = len(text)
 
     if offset >= total and total > 0:
-        return {"text": f"[offset {offset} er forbi sidens slut (total {total} tegn)]",
+        result = {"text": f"[offset {offset} er forbi sidens slut (total {total} tegn)]",
                 "url": url, "offset": offset, "returned": 0, "total_chars": total,
                 "has_more": False, "next_offset": None, "chars": 0, "status": "ok"}
+        _observe_research_result("web_fetch", result)
+        return result
 
     window = text[offset: offset + MAX_WEB_FETCH_CHARS]
     returned = len(window)
@@ -862,7 +873,7 @@ def _exec_web_fetch(args: dict[str, Any]) -> dict[str, Any]:
         body = (f"{body}\n\n… [{total - end} tegn tilbage — kald web_fetch igen med "
                 f"offset={next_offset} for næste vindue ({offset}-{end} af {total})] …")
 
-    return {
+    result = {
         "text": body or "[tom side]",
         "url": url,
         "offset": offset,
@@ -873,6 +884,8 @@ def _exec_web_fetch(args: dict[str, Any]) -> dict[str, Any]:
         "chars": returned,  # bagudkompat med tidligere felt
         "status": "ok",
     }
+    _observe_research_result("web_fetch", result)
+    return result
 
 
 def _exec_web_scrape(args: dict[str, Any]) -> dict[str, Any]:
@@ -887,7 +900,11 @@ def _exec_web_scrape(args: dict[str, Any]) -> dict[str, Any]:
     mode = str(args.get("mode") or "auto").strip()
     extract = str(args.get("extract") or "").strip()
     include_links = bool(args.get("include_links", False))
-    return web_scrape(url, mode=mode, extract=extract, include_links=include_links)
+    result = web_scrape(url, mode=mode, extract=extract, include_links=include_links)
+    if isinstance(result, dict) and result.get("status") == "ok":
+        result.setdefault("url", url)
+    _observe_research_result("web_scrape", result)
+    return result
 
 
 def _read_api_key(key: str) -> str:
@@ -932,7 +949,13 @@ def _fetch_tavily(query: str, max_results: int) -> dict[str, Any]:
         content = r.get("content", "")[:300]
         lines.append(f"{i}. **{title}**\n   {content}\n   {url}")
     text = "\n\n".join(lines) if lines else "[no results]"
-    return {"text": text, "result_count": len(data.get("results", [])), "query": query, "status": "ok"}
+    return {
+        "text": text,
+        "results": [dict(item) for item in data.get("results", []) if isinstance(item, dict)],
+        "result_count": len(data.get("results", [])),
+        "query": query,
+        "status": "ok",
+    }
 
 
 def _cached_web_search_fn_impl(*, query: str, max_results: int, fetch_fn: Any) -> dict[str, Any]:
@@ -949,7 +972,9 @@ def _exec_web_search(args: dict[str, Any]) -> dict[str, Any]:
         return {"error": "query is required", "status": "error"}
     max_results = min(int(args.get("max_results") or 5), 10)
 
-    return _cached_web_search_fn(query=query, max_results=max_results, fetch_fn=_fetch_tavily)
+    result = _cached_web_search_fn(query=query, max_results=max_results, fetch_fn=_fetch_tavily)
+    _observe_research_result("web_search", result)
+    return result
 
 
 def _read_user_location() -> str:

@@ -123,3 +123,14 @@ def test_overfladen_rapporterer_uden_at_kaste(monkeypatch):
     assert flade["section_chars"] > 0
     kort = S.build_skill_relevance_surface("hej")
     assert kort["skipped_short"] is True
+
+
+def test_explicit_research_context_precedes_ordinary_skill_suggestions(monkeypatch):
+    from core.services.research_contract import ResearchPolicy
+    from core.services.research_prompt_context import research_context
+
+    _stub(monkeypatch, [])
+    with research_context(ResearchPolicy(), skill_instructions="Use primary sources"):
+        section = S.relevant_skills_section("find dokumentation for denne påstand")
+    assert section.startswith("[RESEARCH CONTRACT]")
+    assert "Use primary sources" in section

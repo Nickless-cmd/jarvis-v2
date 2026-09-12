@@ -37,3 +37,27 @@ def test_detached_run_creates_log_appends_and_marks_done(monkeypatch):
         time.sleep(0.05)
     assert [f for _r, f in appended] == ["a", "b", "c"]
     assert done and done[0] == rid
+
+
+def test_detached_run_selects_research_iterator_when_requested(monkeypatch):
+    created, appended, done = _patch(monkeypatch, ["research-frame"])
+    import core.services.research_orchestrator as research
+    calls = []
+    monkeypatch.setattr(research, "research_enabled", lambda: True)
+    monkeypatch.setattr(
+        research,
+        "stream_research_run",
+        lambda **kwargs: calls.append(kwargs) or _make_async_iter([]),
+    )
+    from core.services.visible_runs_sections.detached_run import start_user_run_detached
+    rid = start_user_run_detached(
+        message="model message", original_message="original", session_id="s1",
+        eff_model="m", eff_provider="p", lane="l", research_mode=True,
+    )
+    for _ in range(60):
+        if calls and done:
+            break
+        time.sleep(0.05)
+    assert calls[0]["message"] == "model message"
+    assert calls[0]["original_query"] == "original"
+    assert calls[0]["visible_run_id"] == rid

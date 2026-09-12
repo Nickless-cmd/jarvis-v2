@@ -182,7 +182,13 @@ def test_dispatch_does_not_mark_delivered_when_run_start_fails():
 
     assert result["dispatched"] == 0
     assert state[0].get("dispatched") is not True
-    fake_save.assert_not_called()
+    # 12/9-2026: _save SKAL kaldes nu — sporet (dispatch_skipped) efterlades, så
+    # awareness-vejen kan skelne «faldt tilbage» fra «kørte planlagt». Før sprang
+    # `if not run_started: continue` _save() over, og recorden stod som 'fired'
+    # uden forklaring (målt: wake-d07eaea13d). Kernen er uændret: ikke leveret.
+    fake_save.assert_called_once()
+    assert state[0]["dispatch_skipped"] is True
+    assert "run_start_failed" in state[0]["dispatch_skipped_reason"]
 
 
 # ── Discord-routing-guard (Bjørn 2026-06-13: wakeup landede på Discord) ──

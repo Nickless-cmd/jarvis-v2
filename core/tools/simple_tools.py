@@ -426,6 +426,7 @@ from core.services.self_wakeup import (
     _exec_list_self_wakeups,
     _exec_cancel_self_wakeup,
     _exec_mark_wakeup_consumed,
+    _exec_add_wakeup_extra,
 )
 from core.services.wakeup_dispatcher import (
     WAKEUP_DISPATCHER_TOOL_DEFINITIONS,
@@ -1777,6 +1778,7 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "list_self_wakeups": _exec_list_self_wakeups,
     "cancel_self_wakeup": _exec_cancel_self_wakeup,
     "mark_wakeup_consumed": _exec_mark_wakeup_consumed,
+    "add_wakeup_extra": _exec_add_wakeup_extra,
     "dispatch_due_wakeups": _exec_dispatch_due_wakeups,
     "scan_crisis_markers": _exec_scan_crisis_markers,
     "list_crisis_markers": _exec_list_crisis_markers,

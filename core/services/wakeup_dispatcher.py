@@ -75,6 +75,7 @@ def dispatch_due_wakeups() -> dict[str, Any]:
         by_id = {r.get("wakeup_id"): r for r in all_records}
 
         dispatched: list[str] = []
+        skipped: list[str] = []
         for w in fired:
             wid = w.get("wakeup_id")
             record = by_id.get(wid)
@@ -126,7 +127,10 @@ def dispatch_due_wakeups() -> dict[str, Any]:
 
             # C: actually EXECUTE the wakeup prompt as a self-directive run
             run_started = False
-            if prompt.strip():
+            skip_reason = ""
+            if not prompt.strip():
+                skip_reason = "empty_prompt"
+            else:
                 try:
                     from core.services.autonomous_stream_run import (
                         start_autonomous_stream_run,
@@ -147,11 +151,13 @@ def dispatch_due_wakeups() -> dict[str, Any]:
                         owner_resolver=resolve_owner_target_session,
                         is_external=session_is_external_channel,
                     )
+                    extra = str(record.get("extra") or "").strip()
                     self_directive = (
                         f"[SELF-WAKEUP FIRED — wakeup_id={wid}]\n"
                         f"Du bad dig selv: {prompt}\n"
-                        f"Kontekst: {reason or '(ingen begrundelse angivet)'}\n\n"
-                        "UDFØR opgaven nu med dine tools — beskriv den ikke bare. "
+                        f"Kontekst: {reason or '(ingen begrundelse angivet)'}\n"
+                        + (f"Tilføjelse: {extra}\n" if extra else "")
+                        + "\nUDFØR opgaven nu med dine tools — beskriv den ikke bare. "
                         "Hvis prompten siger 'tjek Discord', så BRUG discord_channel-værktøjet. "
                         "Hvis den siger 'læs filen X', så BRUG read_file. "
                         "Når du er færdig, kald `mark_wakeup_consumed` med wakeup_id="
@@ -176,8 +182,18 @@ def dispatch_due_wakeups() -> dict[str, Any]:
                         reset_context(context_token)
                 except Exception as exc:
                     logger.warning("wakeup autonomous run trigger failed: %s", exc)
+                    skip_reason = f"run_start_failed: {str(exc)[:160]}"
 
             if not run_started:
+                # 12/9-2026: efterlad spor. Uden dette står recorden som 'fired'
+                # uden forklaring, og awareness-vejen kan ikke skelne «kørte
+                # planlagt» fra «faldt tilbage fordi du var aktiv». Målt på
+                # wake-d07eaea13d (intet flag) vs wake-bc9c4ebdbc (flag sat,
+                # +0,76 s efter fired_at, med autonomt run).
+                record["dispatch_skipped"] = True
+                record["dispatch_skipped_at"] = datetime.now(UTC).isoformat()
+                record["dispatch_skipped_reason"] = skip_reason or "unknown"
+                skipped.append(str(wid))
                 continue
 
             # Mark dispatched in record (inside lock — TOCTOU race fix)
@@ -195,10 +211,16 @@ def dispatch_due_wakeups() -> dict[str, Any]:
             except Exception:
                 pass
 
-        if dispatched:
+        if dispatched or skipped:
             _save(all_records)
 
-        return {"status": "ok", "dispatched": len(dispatched), "dispatched_ids": dispatched}
+        return {
+            "status": "ok",
+            "dispatched": len(dispatched),
+            "dispatched_ids": dispatched,
+            "skipped": len(skipped),
+            "skipped_ids": skipped,
+        }
 
 
 def _exec_dispatch_due_wakeups(args: dict[str, Any]) -> dict[str, Any]:

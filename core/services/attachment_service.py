@@ -105,42 +105,111 @@ def _db_list(session_id: str, limit: int) -> list[dict]:
         return list_channel_attachments(conn=conn, session_id=session_id, limit=limit)
 
 
-def list_image_attachments(*, user_id: str | None = None, limit: int = 200) -> list[dict]:
-    """List billed-attachments på tværs af sessioner til galleriet (#6).
+def list_image_attachments(
+    *, user_id: str | None = None, limit: int = 200, session_id: str | None = None,
+) -> list[dict]:
+    """List billed-attachments til galleriet (#6).
 
     Scoping pr. bruger som chat_sessions: user_id sat → kun billeder i
     sessioner brugeren deltog i. user_id=None → alle (owner/legacy).
+
+    `session_id` snævrer til ÉN samtale. Udeladt betyder ALT — samme regel som
+    `user_id` og som `kind` på chat_sessions: en ny parameter må ikke
+    stiltiende smalne det eksisterende kaldere allerede får.
+
+    `channel_type` kommer med ud, så den der viser billederne kan skelne dem
+    Jarvis lavede fra dem brugeren sendte. Uden det felt ville galleriet være
+    en bunke uden ophav.
     """
     from core.runtime.db import _ensure_channel_attachments_table, connect
     uid = (user_id or "").strip()
+    sid = (session_id or "").strip()
     lim = max(1, min(int(limit or 200), 500))
     with connect() as conn:
         _ensure_channel_attachments_table(conn)
         if uid:
             rows = conn.execute(
                 """
-                SELECT attachment_id, session_id, filename, mime_type, created_at
+                SELECT attachment_id, session_id, filename, mime_type, created_at,
+                       channel_type
                 FROM channel_attachments ca
                 WHERE ca.mime_type LIKE 'image/%'
+                  AND (? = '' OR ca.session_id = ?)
                   AND EXISTS (
                       SELECT 1 FROM chat_messages mu
                       WHERE mu.session_id = ca.session_id AND mu.user_id = ?
                   )
                 ORDER BY ca.created_at DESC LIMIT ?
                 """,
-                (uid, lim),
+                (sid, sid, uid, lim),
             ).fetchall()
         else:
             rows = conn.execute(
                 """
-                SELECT attachment_id, session_id, filename, mime_type, created_at
+                SELECT attachment_id, session_id, filename, mime_type, created_at,
+                       channel_type
                 FROM channel_attachments
                 WHERE mime_type LIKE 'image/%'
+                  AND (? = '' OR session_id = ?)
                 ORDER BY created_at DESC LIMIT ?
                 """,
-                (lim,),
+                (sid, sid, lim),
             ).fetchall()
     return [dict(r) for r in rows]
+
+
+GENERERET = "generated"
+
+
+def register_generated_image(
+    *, local_path: str, mime_type: str = "image/jpeg", source_url: str = "",
+    session_id: str | None = None,
+) -> str:
+    """Gør et billede Jarvis LAVEDE synligt — returnerer attachment_id, ellers "".
+
+    ## Hvorfor den findes
+
+    Målt 12/9-2026 på runtime: `channel_attachments` havde 72 billeder, og
+    ALLE var uploads. Billeder Jarvis genererede blev skrevet til
+    `workspaces/<bruger>/memory/generated/` med en sidecar der ikke kender
+    nogen session — og de 392 assistent-beskeder med billed-blokke havde
+    tilsammen NUL af typen `image`. Han kunne altså lave et billede man aldrig
+    kunne se.
+
+    Filen bliver liggende hvor den er; det er kun opslaget der mangler.
+
+    Self-safe og tavs på fejl: en registrering der slår fejl må aldrig kunne
+    vælte den generering der lykkedes. Værktøjet svarer stadig med stien.
+    """
+    from pathlib import Path as _P
+    from uuid import uuid4
+    try:
+        sti = _P(str(local_path))
+        if not sti.exists():
+            return ""
+        if session_id is None:
+            from core.services.session_context_resolve import aktiv_session_id
+            session_id = aktiv_session_id()
+        sid = str(session_id or "").strip()
+        # UDEN en session ville billedet staa i galleriet uden ophav og dukke
+        # op i ENHVER samtales liste. Hellere ikke registrere det.
+        if not sid:
+            return ""
+        aid = uuid4().hex
+        _db_store(
+            attachment_id=aid,
+            session_id=sid,
+            channel_type=GENERERET,
+            filename=sti.name,
+            mime_type=mime_type or "image/jpeg",
+            size_bytes=int(sti.stat().st_size),
+            local_path=str(sti),
+            source_url=source_url or "",
+        )
+        return aid
+    except Exception:
+        logger.debug("register_generated_image: kunne ikke registrere", exc_info=True)
+        return ""
 
 
 def attachment_visible_to_user(attachment_id: str, user_id: str | None) -> bool:

@@ -481,6 +481,33 @@ def _parse_git_status(branch_out: str, porcelain_out: str, numstat_out: str) -> 
 _GIT_NONE = {"branch": "", "dirty": 0, "added": 0, "removed": 0, "is_git": False}
 
 
+def _repo_og_vaert(root: str = "") -> dict:
+    """Hvilket repo, og hvilken maskine — til code-headerens kontekstlinje.
+
+    Telefonen kan ikke selv vide det. Den taler med en API der kører et andet
+    sted, og «jarvis-v2 · CheifOne» er præcis den oplysning der gør forskel på
+    at vide HVOR arbejdet sker og at gætte.
+
+    Begge felter er self-safe: en header der mangler et navn er en skønhedsfejl,
+    en header der vælter er en app der ikke starter.
+    """
+    import os
+    import socket
+    navn = ""
+    try:
+        navn = os.path.basename(str(root).rstrip("/")) if str(root).strip() else ""
+        if not navn:
+            navn = os.path.basename(str(_repo_root()).rstrip("/"))
+    except Exception:
+        navn = ""
+    vaert = ""
+    try:
+        vaert = socket.gethostname()
+    except Exception:
+        vaert = ""
+    return {"repo": navn, "host": vaert}
+
+
 def _git_status_sync(kind: str, root: str, uid: str = "") -> dict:
     """BLOKERENDE git-opsamling — KØRES I TRÅD (asyncio.to_thread) så uvicorn-
     worker'en (--workers 1) ikke fryser på subprocess/bro-kald."""
@@ -530,7 +557,10 @@ async def chat_git_status(kind: str = "container", root: str = "") -> dict:
     import asyncio
     from core.identity.workspace_context import current_user_id
     uid = current_user_id() or ""
-    return await asyncio.to_thread(_git_status_sync, kind, root, uid)
+    svar = await asyncio.to_thread(_git_status_sync, kind, root, uid)
+    # ADDITIVT. Desk læser de samme felter som før; de to nye ignoreres dér.
+    svar.update(_repo_og_vaert(root))
+    return svar
 
 
 @router.get("/workspace-trust")

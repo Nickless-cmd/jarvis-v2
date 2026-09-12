@@ -326,12 +326,18 @@ async def upload_attachment(
 
 # Registreres FØR /{attachment_id} så "images"/"image" ikke fanges som id.
 @router.get("/images")
-async def list_images(limit: int = 200) -> dict:
-    """Galleri-liste (#6): billed-attachments på tværs af sessioner, user-scopet."""
+async def list_images(limit: int = 200, session_id: str = "") -> dict:
+    """Galleri-liste (#6): billed-attachments, user-scopet.
+
+    `session_id` snævrer til én samtale. UDELADT betyder ALT — desk's galleri
+    kalder uden og skal blive ved med at få hele historikken.
+    """
     from core.identity.workspace_context import current_user_id
     from core.services.attachment_service import list_image_attachments
     uid = current_user_id() or None
-    return {"items": list_image_attachments(user_id=uid, limit=limit)}
+    return {"items": list_image_attachments(
+        user_id=uid, limit=limit, session_id=(session_id or None),
+    )}
 
 
 @router.get("/image/{attachment_id}")

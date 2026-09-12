@@ -247,6 +247,24 @@ def _exec_pollinations_image(args: dict[str, Any]) -> dict[str, Any]:
         seed=seed, nologo=nologo, enhance=enhance,
     )
     if result.get("status") == "ok":
+        # GØR DET SYNLIGT. Filen blev skrevet til workspace'et og var dermed
+        # usynlig for enhver klient: målt 12/9-2026 havde de 392
+        # assistent-beskeder med billed-blokke NUL af typen `image`, og alle
+        # 72 rækker i channel_attachments var uploads. Jarvis kunne lave et
+        # billede man aldrig kunne se.
+        #
+        # Fejler registreringen, svarer værktøjet præcis som før — en
+        # genereret fil må ikke gå tabt fordi et opslag ikke kunne skrives.
+        attachment_id = ""
+        try:
+            from core.services.attachment_service import register_generated_image
+            attachment_id = register_generated_image(
+                local_path=str(result.get("path") or ""),
+                mime_type=str(result.get("content_type") or "image/jpeg"),
+                source_url=str(result.get("url") or ""),
+            )
+        except Exception:
+            attachment_id = ""
         return {
             "status": "ok",
             "text": (
@@ -254,6 +272,7 @@ def _exec_pollinations_image(args: dict[str, Any]) -> dict[str, Any]:
                 f"saved to {result['path']}"
             ),
             **result,
+            "attachment_id": attachment_id,
         }
     return result
 

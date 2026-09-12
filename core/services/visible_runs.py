@@ -25,6 +25,7 @@ from dataclasses import dataclass, field
 from typing import AsyncIterator
 from uuid import uuid4
 
+from core.services import visible_text_scrub as _vts
 from core.services.orb_phase import set_phase as _set_orb_phase
 
 from core.services.markdown_structure import normalize_markdown_structure
@@ -2457,6 +2458,7 @@ async def _stream_visible_run(
                 # ellers falsk empty_completion → fallback wiper det streamede svar.
                 _all_followup_reasoning_parts: list[str] = []
                 _a_parts: list[str] = []
+                _skrub = _vts.StroemSkrubber()
                 # Decision-signal EFEMER staging (2026-07-04 runaway-fix): fyrede
                 # decision-signals akkumulerede før i _a_parts → forurenede BÅDE det
                 # persisterede svar OG resolution-exit-tjekket (self-poisoning runaway,
@@ -3263,12 +3265,14 @@ async def _stream_visible_run(
                                     # Opfølgnings-runder logførte IKKE rækkefølge —
                                     # så en tur med flere runder tabte den helt.
                                     _turn.note_text()
-                                    _turn.add_text(_a_item.delta)
-                                    yield _sse("delta", {
-                                        "type": "delta",
-                                        "run_id": run.run_id,
-                                        "delta": _a_item.delta,
-                                    })
+                                    _ren = _skrub.foed(_a_item.delta)
+                                    if _ren:
+                                        _turn.add_text(_ren)
+                                        yield _sse("delta", {
+                                            "type": "delta",
+                                            "run_id": run.run_id,
+                                            "delta": _ren,
+                                        })
                                 continue
                             if isinstance(_a_item, _vf.FollowupReasoningDelta):
                                 # Live reasoning-trace (thinking-mode) → frontend viser
@@ -3324,6 +3328,13 @@ async def _stream_visible_run(
                                     pass
                                 continue
                             if isinstance(_a_item, _vf.FollowupDone):
+                                _rest = _skrub.skyl()
+                                if _rest:
+                                    _turn.add_text(_rest)
+                                    yield _sse("delta", {
+                                        "type": "delta", "run_id": run.run_id,
+                                        "delta": _rest,
+                                    })
                                 if _a_item.text and not _a_parts:
                                     _a_parts.append(_a_item.text)
                                     _all_followup_parts.append(_a_item.text)
@@ -4927,6 +4938,7 @@ async def _stream_visible_run(
                             )
                         except Exception:
                             _rescued = ""
+                        _rescued = _vts.fjern_interne_markoerer(_rescued)
                         if _rescued:
                             followup_text = _rescued
                             if not run.autonomous:
@@ -4982,6 +4994,7 @@ async def _stream_visible_run(
                             exchanges=_fu_ex_guard,
                         )
                         if should_replace_with_synthesis(_real_answer, _synth_guard):
+                            _synth_guard = _vts.fjern_interne_markoerer(_synth_guard)
                             followup_text = _synth_guard
                             _real_answer = _synth_guard
                             if not run.autonomous:
@@ -5060,6 +5073,10 @@ async def _stream_visible_run(
                 # Runderne bogfoerer nu deres egne raekker i
                 # visible_followup_adapters, saa denne skal taelle FOERSTE pas
                 # og kun det — ellers tælles den ene runde to gange.
+                # Gaternes noter naar Jarvis via _exchange_text() og skal blive
+                # ved med det — men de maa aldrig naa skaermen. Her er den ene
+                # tragt alt gemt indhold loeber igennem.
+                followup_text = _vts.fjern_interne_markoerer(followup_text)
                 total_input_tokens = result.input_tokens
                 total_output_tokens = result.output_tokens + _estimate_tokens(followup_text)
                 # 2026-06-13: denne agentiske completion-gren satte input/output

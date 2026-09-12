@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 14439 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 14450 functions/methods, 50% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -52,8 +52,8 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 14439 functions/
 - [`core.services.22`](core.services.22.md) — `session_persistence_flag` … `somatic_daemon`
 - [`core.services.23`](core.services.23.md) — `somatic_runtime_body` … `thought_stream_daemon`
 - [`core.services.24`](core.services.24.md) — `thought_thread` … `user_temperature_engine`
-- [`core.services.25`](core.services.25.md) — `user_temperature_runtime` … `vision_backend`
-- [`core.services.26`](core.services.26.md) — `visual_memory` … `world_model_signal_tracking`
+- [`core.services.25`](core.services.25.md) — `user_temperature_runtime` … `visible_turn_blocks`
+- [`core.services.26`](core.services.26.md) — `vision_backend` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

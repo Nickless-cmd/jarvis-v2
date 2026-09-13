@@ -597,7 +597,7 @@ _Pre-eksekverings commit-gate arbitrage — udskilt fra visible_runs (Boy Scout,
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | class | `CommitGateOutcome` | `` | Udfald af commit-gate-arbitrage. ``blocked`` → værktøjet må ikke køre; ``soft_warn`` → | [src](../../../core/services/commit_gate_arbiter.py#L21) |
-| function | `evaluate_commit_gates` | `(*, name, arguments, user_message, session_id, run_id)` | Kør veto + decision_gate gennem central().decide, observér arbitrage, og returnér | [src](../../../core/services/commit_gate_arbiter.py#L30) |
+| function | `evaluate_commit_gates` | `(*, name, arguments, user_message, session_id, run_id, user_present=…)` | Kør veto + decision_gate gennem central().decide, observér arbitrage, og returnér | [src](../../../core/services/commit_gate_arbiter.py#L30) |
 
 ## `core/services/communication_guard.py`
 _Communication guard — scanner assistant-output for boundary violations._

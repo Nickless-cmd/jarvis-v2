@@ -1,6 +1,6 @@
 # API_REFERENCE
 
-> Generated 2026-09-12 from app.routes (live) — 552 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
+> Generated 2026-09-13 from app.routes (live) — 553 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
 
 | Method | Path | Response model | Source |
 |---|---|---|---|
@@ -183,6 +183,7 @@
 | GET | `/central/permission-classifier` | dict | central_matrix |
 | GET | `/central/persephone` | dict | central_matrix |
 | GET | `/central/proactivity` | dict | central_proactivity |
+| GET | `/central/profiles` | dict | central_profiles |
 | GET | `/central/providers` | dict | central |
 | GET | `/central/queues/scheduled` | dict | central_absorb_routes |
 | GET | `/central/rca` | dict | central_matrix |

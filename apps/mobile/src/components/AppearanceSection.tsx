@@ -2,6 +2,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { Check } from 'lucide-react-native'
 import { useStyles, useTheme, useThemeControls, type Theme } from '../theme/ThemeContext'
 import type { ThemeMode } from '../theme/palettes'
+import { useI18n } from '../i18n/I18nContext'
 
 /**
  * Udseende — lys/mørk/automatisk og accentfarve.
@@ -15,20 +16,21 @@ import type { ThemeMode } from '../theme/palettes'
  * af de to andre.
  */
 
-const MODES: { value: ThemeMode; label: string; hint: string }[] = [
-  { value: 'light', label: 'Lys', hint: 'Altid lys' },
-  { value: 'dark', label: 'Mørk', hint: 'Altid mørk' },
-  { value: 'auto', label: 'Automatisk', hint: 'Følger telefonen' }
+const MODES: { value: ThemeMode; labelKey: string; hintKey: string }[] = [
+  { value: 'light', labelKey: 'appearance.light', hintKey: 'appearance.light.hint' },
+  { value: 'dark', labelKey: 'appearance.dark', hintKey: 'appearance.dark.hint' },
+  { value: 'auto', labelKey: 'appearance.auto', hintKey: 'appearance.auto.hint' }
 ]
 
 export function AppearanceSection() {
   const t = useTheme()
+  const { t: tr } = useI18n()
   const styles = useStyles(makeStyles)
   const { setMode, setAccent, accents } = useThemeControls()
 
   return (
     <>
-      <Text style={styles.sectionTitle}>Udseende</Text>
+      <Text style={styles.sectionTitle}>{tr('appearance.title')}</Text>
 
       <View style={styles.card}>
         <View style={styles.modeRow}>
@@ -45,20 +47,20 @@ export function AppearanceSection() {
                   styles.mode, on && styles.modeOn, pressed && styles.pressed
                 ]}
               >
-                <Text style={[styles.modeLabel, on && styles.modeLabelOn]}>{m.label}</Text>
-                <Text style={[styles.modeHint, on && styles.modeHintOn]}>{m.hint}</Text>
+                <Text style={[styles.modeLabel, on && styles.modeLabelOn]}>{tr(m.labelKey)}</Text>
+                <Text style={[styles.modeHint, on && styles.modeHintOn]}>{tr(m.hintKey)}</Text>
               </Pressable>
             )
           })}
         </View>
         {t.mode === 'auto' ? (
           <Text style={styles.autoNote}>
-            Lige nu: {t.scheme === 'light' ? 'lyst' : 'mørkt'}.
+            {tr('appearance.now', { scheme: tr(`appearance.scheme.${t.scheme}`) })}
           </Text>
         ) : null}
       </View>
 
-      <Text style={styles.groupLabel}>Farve</Text>
+      <Text style={styles.groupLabel}>{tr('appearance.color')}</Text>
       <View style={styles.card}>
         <View style={styles.swatches}>
           {accents.map((a) => {

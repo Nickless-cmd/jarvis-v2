@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { setLocale } from '../../lib/i18n'
 
 const getAccountMe = vi.fn()
 const setAccountLanguage = vi.fn().mockResolvedValue(undefined)
@@ -13,7 +14,7 @@ import { SprogSection } from './SprogSection'
 const cfg = { apiBaseUrl: 'http://x', authToken: 't' }
 
 describe('SprogSection', () => {
-  beforeEach(() => { getAccountMe.mockReset(); setAccountLanguage.mockClear() })
+  beforeEach(() => { getAccountMe.mockReset(); setAccountLanguage.mockClear(); setLocale('da') })
 
   it('viser nuværende sprog og skifter det', async () => {
     getAccountMe.mockResolvedValue({ user_id: 'u1', email: '', email_verified: true, language: 'da', role: 'owner', tier: 'owner' })
@@ -22,5 +23,15 @@ describe('SprogSection', () => {
     expect((sel as HTMLSelectElement).value).toBe('da')
     fireEvent.change(sel, { target: { value: 'en' } })
     await waitFor(() => expect(setAccountLanguage).toHaveBeenCalledWith(cfg, 'en'))
+  })
+
+  it('opdaterer desk-locale straks naar brugeren skifter sprog', async () => {
+    getAccountMe.mockResolvedValue({ user_id: 'u1', email: '', email_verified: true, language: 'da', role: 'owner', tier: 'owner' })
+    render(<SprogSection config={cfg} />)
+
+    fireEvent.change(await screen.findByLabelText(/sprog/i), { target: { value: 'en' } })
+
+    await waitFor(() => expect(screen.getByText('Saved')).toBeInTheDocument())
+    expect(screen.getByRole('heading', { name: 'Language' })).toBeInTheDocument()
   })
 })

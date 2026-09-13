@@ -33,6 +33,8 @@ import { buildSettingsHealthTiles } from '../lib/settingsHealth'
 import { loadOutbox } from '../lib/offlineOutbox'
 import { NotificationsSection } from '../components/NotificationsSection'
 import { AppearanceSection } from '../components/AppearanceSection'
+import { LanguageSection } from '../components/LanguageSection'
+import { useI18n } from '../i18n/I18nContext'
 
 const CONN_LABEL: Record<string, string> = {
   connected: 'Forbundet til Jarvis ✓',
@@ -62,6 +64,7 @@ export function initials(name: string): string {
 export function SettingsScreen({ onClose }: { onClose?: () => void }) {
   const tokens = useTheme()
   const styles = useStyles(makestyles)
+  const { t, setLocale } = useI18n()
   const { config, signOut, signInWithToken } = useAuth()
   const [dataOpen, setDataOpen] = useState(false)
   const [memoryOpen, setMemoryOpen] = useState(false)
@@ -98,7 +101,11 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
   useEffect(() => {
     if (!config) return
     let alive = true
-    getAccountMe(config).then((p) => { if (alive) setProfile(p) }).catch(() => undefined)
+    getAccountMe(config).then((p) => {
+      if (!alive) return
+      setProfile(p)
+      if (p.language === 'da' || p.language === 'en' || p.language === 'auto') setLocale(p.language)
+    }).catch(() => undefined)
     setConnectorsLoading(true)
     listConnectors(config)
       .then((items) => { if (alive) setConnectors(items) })
@@ -193,9 +200,9 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
       <View style={styles.header}>
-        <Text style={styles.heading}>Indstillinger</Text>
+        <Text style={styles.heading}>{t('settings.title')}</Text>
         {onClose ? (
-          <Pressable accessibilityRole="button" accessibilityLabel="Luk" onPress={onClose} hitSlop={8} style={styles.close}>
+          <Pressable accessibilityRole="button" accessibilityLabel={t('settings.close')} onPress={onClose} hitSlop={8} style={styles.close}>
             <Text style={styles.closeX}>✕</Text>
           </Pressable>
         ) : null}
@@ -226,9 +233,9 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
           ))}
         </View>
 
-        <Text style={styles.sectionTitle}>Enheder</Text>
+        <Text style={styles.sectionTitle}>{t('devices.section')}</Text>
         <View style={styles.card}>
-          <Text style={styles.value}>Denne enhed: {currentDeviceName || 'Ikke hentet endnu'}</Text>
+          <Text style={styles.value}>{t('devices.current', { name: currentDeviceName || t('devices.none') })}</Text>
           <Text style={styles.muted}>
             {routeTargetName ? `Jarvis router lige nu til ${routeTargetName}.` : 'Kør testen for at se hvilken enhed Jarvis vælger.'}
           </Text>
@@ -255,7 +262,7 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
           <Text style={styles.chevron}>›</Text>
         </Pressable>
 
-        <Text style={styles.sectionTitle}>Konto</Text>
+        <Text style={styles.sectionTitle}>{t('settings.account')}</Text>
         <View style={styles.card}>
           <Text style={styles.cardEmail}>{profile?.email || config?.apiBaseUrl || 'Konto'}</Text>
           <View style={styles.badges}>
@@ -282,6 +289,7 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
 
         {/* Plugins / connectors */}
         <AppearanceSection />
+        <LanguageSection config={config ?? null} currentLanguage={profile?.language} />
 
         <Text style={styles.sectionTitle}>Tilsluttede tjenester</Text>
         <View style={styles.card}>

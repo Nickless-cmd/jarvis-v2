@@ -351,6 +351,10 @@ export async function getAccountMe(config: ApiConfig): Promise<AccountProfile> {
   return apiFetch<AccountProfile>(config, '/account/me')
 }
 
+export async function setAccountLanguage(config: ApiConfig, language: string): Promise<void> {
+  await apiFetch(config, '/account/language', { method: 'PATCH', body: { language } })
+}
+
 export async function getModelOptions(config: ApiConfig): Promise<ModelOption[]> {
   // Owner-only endpoint; member/guest får 403 → tom liste (skjuler pillen).
   let raw: { providers?: VisibleProvider[] }

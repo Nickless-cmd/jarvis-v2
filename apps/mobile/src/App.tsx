@@ -35,6 +35,7 @@ import { StreamProvider } from './state/StreamContext'
 import { tokens } from './theme/tokens'
 import { ThemeProvider } from './theme/ThemeContext'
 import { useStyles, useTheme, type Theme } from './theme/ThemeContext'
+import { I18nProvider } from './i18n/I18nContext'
 
 function AppBody() {
   const tokens = useTheme()
@@ -313,11 +314,13 @@ export default function App() {
   return (
     <ErrorBoundary label="app">
       <SafeAreaProvider initialMetrics={initialWindowMetrics}>
-        <ThemeProvider>
-          <AuthProvider>
-            <Shell />
-          </AuthProvider>
-        </ThemeProvider>
+        <I18nProvider>
+          <ThemeProvider>
+            <AuthProvider>
+              <Shell />
+            </AuthProvider>
+          </ThemeProvider>
+        </I18nProvider>
       </SafeAreaProvider>
     </ErrorBoundary>
   )

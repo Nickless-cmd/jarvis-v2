@@ -1,86 +1,106 @@
-"""Tests for core/auth/profiles.py — profil-identitet.
+"""De syv navngivne profiler — Fase 9.
 
-FUNDET LIVE 2026-09-02: `default.bak-20260716-150508` bar stadig
-``profile: "default"`` i sit manifest. Da listen rapporterede manifestets felt
-frem for mappenavnet, optrådte en syv uger gammel backup som en ANDEN "default"
-— en profil med potentielt tilbagekaldte tokens, som readiness-tjek kunne
-komme til at spørge.
-
-Mappenavnet ER identiteten: ``_profile_dir()`` slår op med
-``AUTH_PROFILES_DIR / navn``. Et manifest der siger noget andet, peger på en
-profil der ikke kan adresseres.
+Spec'en navngiver dem praecist: `visible-owner`, `visible-member`,
+`jarvis-code`, `autonomous`, `maintenance`, `research`, `safe-offline`.
 """
-
-from __future__ import annotations
-
-import json
-
 import pytest
 
-import core.auth.profiles as profiles
+from core.runtime.profile_composer import SIKKERHEDS_AKSER, UKRAENKELIGE
+from core.runtime.profiles import GRUND, PROFILER, byg, kendte
+
+SPEC_NAVNE = (
+    "visible-owner", "visible-member", "jarvis-code",
+    "autonomous", "maintenance", "research", "safe-offline",
+)
 
 
-@pytest.fixture
-def profildir(tmp_path, monkeypatch):
-    d = tmp_path / "profiles"
-    d.mkdir()
-    monkeypatch.setattr(profiles, "AUTH_PROFILES_DIR", d)
-    return d
+@pytest.mark.parametrize("navn", SPEC_NAVNE)
+def test_hver_profil_spec_en_navngiver_findes(navn):
+    assert navn in kendte()
 
 
-def _lav(d, navn: str, manifest_navn: str | None = None, created: str = "2026-01-01T00:00:00Z"):
-    p = d / navn
-    p.mkdir()
-    (p / "profile.json").write_text(json.dumps({
-        "profile": manifest_navn if manifest_navn is not None else navn,
-        "created_at": created,
-    }), encoding="utf-8")
-    return p
+def test_der_er_ikke_smuttet_flere_ind():
+    """En profil er en sikkerhedsgraense. Kommer der én mere, skal den staa i
+    spec'en foerst."""
+    assert set(kendte()) == set(SPEC_NAVNE)
 
 
-class TestIdentitet:
-    def test_mappenavnet_vinder_over_manifestet(self, profildir) -> None:
-        """Selve fejlen: en backup der udgav sig for at være 'default'."""
-        _lav(profildir, "default")
-        _lav(profildir, "default.bak-20260716-150508", manifest_navn="default")
-        navne = [i["profile"] for i in profiles.list_auth_profiles()]
-        assert navne.count("default") == 1
-        assert "default.bak-20260716-150508" in navne
-
-    def test_manifestets_paastand_bevares_som_spor(self, profildir) -> None:
-        """Uenigheden skal kunne ses, ikke skjules."""
-        _lav(profildir, "default.bak-20260716-150508", manifest_navn="default")
-        item = profiles.list_auth_profiles()[0]
-        assert item["profile"] == "default.bak-20260716-150508"
-        assert item["manifest_profile"] == "default"
-
-    def test_hvert_navn_kan_slaas_op_igen(self, profildir) -> None:
-        """Kontrakten: det listen giver, skal kunne bruges som profilnavn."""
-        _lav(profildir, "default")
-        _lav(profildir, "account2")
-        for item in profiles.list_auth_profiles():
-            assert profiles._profile_dir(item["profile"]).is_dir()
-
-    def test_created_at_kommer_stadig_fra_manifestet(self, profildir) -> None:
-        _lav(profildir, "groq", created="2026-04-11T11:10:51Z")
-        assert profiles.list_auth_profiles()[0]["created_at"] == "2026-04-11T11:10:51Z"
-
-    def test_filer_i_profilmappen_ignoreres(self, profildir) -> None:
-        _lav(profildir, "default")
-        (profildir / "løsfil.json").write_text("{}", encoding="utf-8")
-        assert [i["profile"] for i in profiles.list_auth_profiles()] == ["default"]
-
-    def test_tom_mappe_giver_tom_liste(self, profildir) -> None:
-        assert profiles.list_auth_profiles() == []
-
-    def test_manglende_manifest_falder_tilbage_paa_mappenavnet(self, profildir) -> None:
-        (profildir / "uden-manifest").mkdir()
-        item = profiles.list_auth_profiles()[0]
-        assert item["profile"] == "uden-manifest"
+@pytest.mark.parametrize("navn", SPEC_NAVNE)
+@pytest.mark.parametrize("akse", sorted(SIKKERHEDS_AKSER))
+def test_ingen_profil_kan_give_mere_end_GRUNDEN(navn, akse):
+    """Grunden saetter loftet. Kan en profil haeve sig over den, er loftet
+    ikke et loft."""
+    raekke = SIKKERHEDS_AKSER[akse]
+    effektiv = byg(navn).felter.get(akse)
+    if effektiv is None or GRUND.get(akse) is None:
+        pytest.skip("aksen indgaar ikke")
+    assert raekke.index(effektiv) >= raekke.index(GRUND[akse])
 
 
-class TestProfilNavnValidering:
-    @pytest.mark.parametrize("daarlig", ["", "a/b", "a\\b"])
-    def test_uaddresserbare_navne_afvises(self, profildir, daarlig: str) -> None:
-        with pytest.raises(ValueError):
-            profiles._profile_dir(daarlig)
+def test_safe_offline_er_den_mest_lukkede():
+    """Den er sidste udvej. Er der en strammere profil, er navnet forkert."""
+    so = byg("safe-offline").felter
+    for navn in SPEC_NAVNE:
+        andre = byg(navn).felter
+        for akse, raekke in SIKKERHEDS_AKSER.items():
+            if akse in so and akse in andre:
+                assert raekke.index(so[akse]) >= raekke.index(andre[akse]), \
+                    f"{navn} er strammere end safe-offline paa {akse}"
+
+
+def test_safe_offline_kan_stadig_SVARE():
+    """«Nul til alt» ville vaere ubrugeligt. Den skal kunne svare — den maa
+    bare ikke raekke ud."""
+    p = byg("safe-offline").felter
+    assert p["tool_scope"] == "none"
+    assert p["telemetry_sharing"] == "none"
+    assert p["memory"] is True
+
+
+@pytest.mark.parametrize("ukendt", ["", "  ", "findes-ikke", "visible_owner", None])
+def test_et_UKENDT_navn_falder_til_safe_offline(ukendt):
+    """Tvivl om hvilke regler der gaelder maa aldrig ende i de mest tilladte."""
+    assert byg(ukendt).navn == "safe-offline"
+
+
+def test_en_koerselsoverstyring_kan_indsnaevre():
+    p = byg("visible-owner", overstyring={"tool_scope": "none"})
+    assert p.felter["tool_scope"] == "none"
+
+
+def test_en_koerselsoverstyring_kan_IKKE_udvide():
+    """Det er komponistens regel, ikke en hoeflighed her — men netop derfor
+    skal den ogsaa gaelde gennem denne vej."""
+    p = byg("safe-offline", overstyring={"tool_scope": "all", "approval_mode": "never"})
+    assert p.felter["tool_scope"] == "none"
+    assert p.felter["approval_mode"] == "always"
+
+
+@pytest.mark.parametrize("navn", SPEC_NAVNE)
+def test_ingen_profil_slaar_revision_fra(navn):
+    felter = byg(navn).felter
+    for felt in UKRAENKELIGE:
+        assert felter[felt] is True
+
+
+@pytest.mark.parametrize("navn", SPEC_NAVNE)
+def test_hver_profil_har_en_stabil_hash(navn):
+    assert byg(navn).hash == byg(navn).hash
+    assert len(byg(navn).hash) == 16
+
+
+def test_to_forskellige_profiler_har_forskellig_hash():
+    hashes = {byg(n).hash for n in SPEC_NAVNE}
+    assert len(hashes) == len(SPEC_NAVNE), "to profiler kan ikke skelnes"
+
+
+def test_en_koerselsoverstyring_VINDER_paa_ikke_sikkerheds_felter():
+    """Overstyringen skal ligge SIDST. For sikkerhed er raekkefoelgen
+    ligegyldig — man kan kun indsnaevre — og derfor saa mutations-proeven ikke
+    at et ombyttet lag var forkert. For model og retry er den afgoerende: en
+    koersel der beder om en anden model skal faa den, ikke profilens.
+    """
+    p = byg("visible-owner", overstyring={"model": "glm-5.2:cloud", "retry": 9})
+    assert p.felter["model"] == "glm-5.2:cloud"
+    assert p.felter["retry"] == 9
+    assert p.lag[-1] == "overstyring", "overstyringen er ikke sidste lag"

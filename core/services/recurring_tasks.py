@@ -119,8 +119,48 @@ def _get_due(now_iso: str) -> list[dict]:
     return [_row_to_dict(r) for r in rows]
 
 
-def _advance(task_id: str, interval_minutes: int, now: datetime) -> None:
-    next_fire = (now + timedelta(minutes=interval_minutes)).isoformat()
+def _naeste_tid(planlagt_iso: str, interval_minutes: int, now: datetime) -> datetime:
+    """Næste affyring — regnet fra den PLANLAGTE tid, ikke fra den faktiske.
+
+    ## Hvorfor det ikke er det samme
+
+    Før stod der ``now + interval``. `now` er det tidspunkt opgaven faktisk
+    fyrede, og dermed blev enhver forsinkelse permanent: en opgave der skulle
+    køre 05:40, men først blev plukket 07:40, fik 07:40 som sit nye
+    tidspunkt — i morgen, og alle dage derefter.
+
+    MÅLT 13/9-2026: Bjørns morgenbrief (`rec-2a7fcce8e0`, dagligt) var planlagt
+    05:40, fyrede 07:40:54, og stod bagefter til 07:40 næste dag. Det samme for
+    Mikkels morgenvejr. Driften kan kun gå én vej — senere — så et dagligt
+    morgenbrev vandrer mod middag, én travl morgen ad gangen.
+
+    ## Hvorfor den springer frem i hele intervaller
+
+    Har maskinen været nede et døgn, er der ti forfaldne tidspunkter bagud. At
+    sætte næste tid til det første af dem ville give en byge af affyringer der
+    alle skulle indhentes. Vi springer derfor frem i hele intervaller til det
+    første tidspunkt der ligger i fremtiden: tidspunktet PÅ DAGEN holdes, og
+    der affyres én gang.
+    """
+    trin = timedelta(minutes=max(1, int(interval_minutes)))
+    try:
+        naeste = datetime.fromisoformat(str(planlagt_iso))
+    except Exception:
+        # Ukendt planlagt tid — så er det bedste vi kan gøre det gamle.
+        return now + trin
+    if naeste.tzinfo is None:
+        naeste = naeste.replace(tzinfo=UTC)
+    if naeste > now:
+        # Fyrede før tid (eller uret gik baglæns): rør ikke ved planen.
+        return naeste + trin
+    # Spring frem i hele intervaller — bevarer tidspunktet på dagen.
+    spring = int((now - naeste) / trin) + 1
+    return naeste + trin * spring
+
+
+def _advance(task_id: str, interval_minutes: int, now: datetime,
+             planlagt_iso: str = "") -> None:
+    next_fire = _naeste_tid(planlagt_iso, interval_minutes, now).isoformat()
     now_iso = now.isoformat()
     with runtime_db.connect() as conn:
         conn.execute(
@@ -279,7 +319,8 @@ def _fire_due() -> None:
             # Push to initiative queue only as a fallback signal — but do NOT
             # let both paths produce a user-visible message independently.
             start_autonomous_run(message=focus, session_id=None, origin="recurring")
-            _advance(task_id, interval_minutes, now)
+            _advance(task_id, interval_minutes, now,
+                     str(task.get('next_fire_at') or ''))
             logger.info(
                 "recurring_tasks: fired %s as autonomous run (every %dm) user=%s",
                 task_id, interval_minutes, task.get("user_id") or "-",

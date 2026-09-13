@@ -215,6 +215,7 @@ _Central-absorb routes — MC-kategorier PROJICERET som levende central-nerver._
 | function | `get_initiative` | `()` | Projicér den gatede initiativ-stige + absorbér den som levende nerve. | [src](../../../apps/api/jarvis_api/routes/central_absorb_routes.py#L583) |
 | function | `get_execution` | `()` | Projicér visible-execution-config (whitelisted flags) + absorbér liveness. | [src](../../../apps/api/jarvis_api/routes/central_absorb_routes.py#L611) |
 | function | `get_tone` | `()` | Projicér Centralens sproglige TONE-PROFIL (rådets #5) + absorbér den. | [src](../../../apps/api/jarvis_api/routes/central_absorb_routes.py#L631) |
+| function | `get_work` | `(limit=…)` | Det aktive arbejde — opgave OG dens næste handling i samme række. | [src](../../../apps/api/jarvis_api/routes/central_absorb_routes.py#L653) |
 
 ## `apps/api/jarvis_api/routes/central_affect.py`
 _Central 'affect' route — surfaces nervesystemets affektive fordeling til OWNER._

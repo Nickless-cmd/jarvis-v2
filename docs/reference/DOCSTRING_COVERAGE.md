@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7463/14570 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7466/14574 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,9 +8,9 @@ Generated from source. 7463/14570 functions/methods documented (51%). The list b
 |---|---|---|---|
 | `apps.api.jarvis_api` | 34 | 36 | 94% |
 | `apps.api.jarvis_api.middleware` | 7 | 17 | 41% |
-| `apps.api.jarvis_api.routes` | 623 | 817 | 76% |
+| `apps.api.jarvis_api.routes` | 624 | 818 | 76% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
-| `apps.central_cli.central_cli` | 67 | 168 | 39% |
+| `apps.central_cli.central_cli` | 69 | 171 | 40% |
 | `apps.desktop` | 6 | 7 | 85% |
 | `core.auth` | 4 | 49 | 8% |
 | `core.browser` | 11 | 13 | 84% |
@@ -114,11 +114,11 @@ Generated from source. 7463/14570 functions/methods documented (51%). The list b
 - `apps/central_cli/central_cli/feed.py` :: `FeedBuffer.add` (L34)
 - `apps/central_cli/central_cli/feed.py` :: `FeedBuffer.recent` (L37)
 - `apps/central_cli/central_cli/feed.py` :: `feed_line_from_event` (L19)
-- `apps/central_cli/central_cli/hud.py` :: `CentralHud.compose` (L272)
-- `apps/central_cli/central_cli/hud.py` :: `CentralHud.on_mount` (L297)
-- `apps/central_cli/central_cli/hud.py` :: `CentralHud.refresh_data` (L462)
-- `apps/central_cli/central_cli/hud.py` :: `CentralHud.show_tab` (L355)
-- `apps/central_cli/central_cli/hud.py` :: `run_hud` (L557)
+- `apps/central_cli/central_cli/hud.py` :: `CentralHud.compose` (L273)
+- `apps/central_cli/central_cli/hud.py` :: `CentralHud.on_mount` (L298)
+- `apps/central_cli/central_cli/hud.py` :: `CentralHud.refresh_data` (L465)
+- `apps/central_cli/central_cli/hud.py` :: `CentralHud.show_tab` (L356)
+- `apps/central_cli/central_cli/hud.py` :: `run_hud` (L560)
 - `apps/central_cli/central_cli/main.py` :: `build_arg_parser` (L8)
 - `apps/central_cli/central_cli/main.py` :: `main` (L20)
 - `apps/central_cli/central_cli/renderer.py` :: `render_generic` (L27)

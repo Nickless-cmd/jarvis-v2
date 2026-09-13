@@ -67,21 +67,22 @@ _Data layer for the Central HUD._
 | function | `cost_today` | `(client)` | Today's total cost in USD from /central/costs-daily, or None if unavailable. | [src](../../../apps/central_cli/central_cli/datasource.py#L572) |
 | function | `council` | `(client)` | Council/swarm sessions from /central/council. Self-safe → []. | [src](../../../apps/central_cli/central_cli/datasource.py#L590) |
 | function | `scheduled` | `(client)` | Pending scheduled tasks from /central/queues/scheduled. Self-safe → []. | [src](../../../apps/central_cli/central_cli/datasource.py#L601) |
-| function | `runs` | `(client, limit=…)` | Recent visible runs from /central/runs. Self-safe → []. | [src](../../../apps/central_cli/central_cli/datasource.py#L612) |
-| function | `run_detail` | `(client, run_id)` | One run detail from /central/runs/{run_id}. Self-safe → {}. | [src](../../../apps/central_cli/central_cli/datasource.py#L623) |
-| function | `autonomy` | `(client)` | Autonomy proposal queue from /central/autonomy. Self-safe → | [src](../../../apps/central_cli/central_cli/datasource.py#L634) |
-| function | `initiative` | `(client)` | Gated initiativ-stige fra /central/initiative. Self-safe → | [src](../../../apps/central_cli/central_cli/datasource.py#L650) |
-| function | `events` | `(client, family=…, limit=…)` | Recent eventbus items from /central/events. Self-safe → []. | [src](../../../apps/central_cli/central_cli/datasource.py#L681) |
-| function | `memory_health` | `(client)` | Memory-pipeline health from /central/memory-health. Self-safe → | [src](../../../apps/central_cli/central_cli/datasource.py#L698) |
-| function | `inner_life` | `(client)` | Jarvis' reducerede living-mind + experiment-digest fra /central/inner-life. | [src](../../../apps/central_cli/central_cli/datasource.py#L715) |
-| function | `soul` | `(client)` | Jarvis' mørke sjæle-/tids-signaler fra /central/soul. | [src](../../../apps/central_cli/central_cli/datasource.py#L736) |
-| function | `dark_products` | `(client)` | Jarvis' mørke daemon-PRODUKTER fra /central/dark-products. | [src](../../../apps/central_cli/central_cli/datasource.py#L756) |
-| function | `costs_daily` | `(client)` | Daily cost time-series from /central/costs-daily, shaped for the CLI. | [src](../../../apps/central_cli/central_cli/datasource.py#L776) |
-| function | `attention` | `(client)` | Attention-budget-surface fra /central/attention. Self-safe → {}. | [src](../../../apps/central_cli/central_cli/datasource.py#L808) |
-| function | `skills` | `(client)` | Skill-engine + skill-contract-registry fra /central/skills. Self-safe → | [src](../../../apps/central_cli/central_cli/datasource.py#L820) |
-| function | `integrity` | `(client)` | Self-deception-guard-surface fra /central/integrity. Self-safe → {}. | [src](../../../apps/central_cli/central_cli/datasource.py#L838) |
-| function | `experiments` | `(client)` | Cognitive-core-experiments-surface fra /central/experiments. Self-safe → {}. | [src](../../../apps/central_cli/central_cli/datasource.py#L850) |
-| function | `execution` | `(client)` | Visible-execution-config (whitelisted flags) fra /central/execution. | [src](../../../apps/central_cli/central_cli/datasource.py#L862) |
+| function | `work` | `(client, limit=…)` | Aktivt arbejde fra /central/work. Self-safe → tomt. | [src](../../../apps/central_cli/central_cli/datasource.py#L612) |
+| function | `runs` | `(client, limit=…)` | Recent visible runs from /central/runs. Self-safe → []. | [src](../../../apps/central_cli/central_cli/datasource.py#L628) |
+| function | `run_detail` | `(client, run_id)` | One run detail from /central/runs/{run_id}. Self-safe → {}. | [src](../../../apps/central_cli/central_cli/datasource.py#L639) |
+| function | `autonomy` | `(client)` | Autonomy proposal queue from /central/autonomy. Self-safe → | [src](../../../apps/central_cli/central_cli/datasource.py#L650) |
+| function | `initiative` | `(client)` | Gated initiativ-stige fra /central/initiative. Self-safe → | [src](../../../apps/central_cli/central_cli/datasource.py#L666) |
+| function | `events` | `(client, family=…, limit=…)` | Recent eventbus items from /central/events. Self-safe → []. | [src](../../../apps/central_cli/central_cli/datasource.py#L697) |
+| function | `memory_health` | `(client)` | Memory-pipeline health from /central/memory-health. Self-safe → | [src](../../../apps/central_cli/central_cli/datasource.py#L714) |
+| function | `inner_life` | `(client)` | Jarvis' reducerede living-mind + experiment-digest fra /central/inner-life. | [src](../../../apps/central_cli/central_cli/datasource.py#L731) |
+| function | `soul` | `(client)` | Jarvis' mørke sjæle-/tids-signaler fra /central/soul. | [src](../../../apps/central_cli/central_cli/datasource.py#L752) |
+| function | `dark_products` | `(client)` | Jarvis' mørke daemon-PRODUKTER fra /central/dark-products. | [src](../../../apps/central_cli/central_cli/datasource.py#L772) |
+| function | `costs_daily` | `(client)` | Daily cost time-series from /central/costs-daily, shaped for the CLI. | [src](../../../apps/central_cli/central_cli/datasource.py#L792) |
+| function | `attention` | `(client)` | Attention-budget-surface fra /central/attention. Self-safe → {}. | [src](../../../apps/central_cli/central_cli/datasource.py#L824) |
+| function | `skills` | `(client)` | Skill-engine + skill-contract-registry fra /central/skills. Self-safe → | [src](../../../apps/central_cli/central_cli/datasource.py#L836) |
+| function | `integrity` | `(client)` | Self-deception-guard-surface fra /central/integrity. Self-safe → {}. | [src](../../../apps/central_cli/central_cli/datasource.py#L854) |
+| function | `experiments` | `(client)` | Cognitive-core-experiments-surface fra /central/experiments. Self-safe → {}. | [src](../../../apps/central_cli/central_cli/datasource.py#L866) |
+| function | `execution` | `(client)` | Visible-execution-config (whitelisted flags) fra /central/execution. | [src](../../../apps/central_cli/central_cli/datasource.py#L878) |
 
 ## `apps/central_cli/central_cli/feed.py`
 
@@ -99,21 +100,21 @@ _Central HUD — J.A.R.V.I.S-style Textual UI, built 1:1 to the mockup._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| class | `CentralHud` | `` | The Central HUD app shell (mockup-faithful). | [src](../../../apps/central_cli/central_cli/hud.py#L82) |
-| method | `CentralHud.__init__` | `(self, *, client=…, live=…)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L237) |
-| method | `CentralHud.compose` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L272) |
-| method | `CentralHud.on_mount` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L297) |
-| method | `CentralHud._prime` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L315) |
-| method | `CentralHud._tick_pulse` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L343) |
-| method | `CentralHud._keep_focus` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L347) |
-| method | `CentralHud.show_tab` | `(self, name)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L355) |
-| method | `CentralHud._apply_tab_visibility` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L361) |
-| method | `CentralHud._populate_active_tab` | `(self, force=…)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L373) |
-| method | `CentralHud.refresh_data` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L462) |
-| method | `CentralHud._render_header` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L494) |
-| method | `CentralHud._render_tabs` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L528) |
-| method | `CentralHud._render_cmd` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L539) |
-| function | `run_hud` | `(ns)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L557) |
+| class | `CentralHud` | `` | The Central HUD app shell (mockup-faithful). | [src](../../../apps/central_cli/central_cli/hud.py#L83) |
+| method | `CentralHud.__init__` | `(self, *, client=…, live=…)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L238) |
+| method | `CentralHud.compose` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L273) |
+| method | `CentralHud.on_mount` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L298) |
+| method | `CentralHud._prime` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L316) |
+| method | `CentralHud._tick_pulse` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L344) |
+| method | `CentralHud._keep_focus` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L348) |
+| method | `CentralHud.show_tab` | `(self, name)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L356) |
+| method | `CentralHud._apply_tab_visibility` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L362) |
+| method | `CentralHud._populate_active_tab` | `(self, force=…)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L374) |
+| method | `CentralHud.refresh_data` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L465) |
+| method | `CentralHud._render_header` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L497) |
+| method | `CentralHud._render_tabs` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L531) |
+| method | `CentralHud._render_cmd` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L542) |
+| function | `run_hud` | `(ns)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L560) |
 
 ## `apps/central_cli/central_cli/hud_actions.py`
 _Central HUD — action handlers + command/write layer (``_ActionMixin``)._
@@ -192,25 +193,27 @@ _Central HUD — read-side rendering (``_PopulateMixin``)._
 | method | `_PopulateMixin._populate_anomalies` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L379) |
 | method | `_PopulateMixin._render_anomaly_detail` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L405) |
 | method | `_PopulateMixin._render_row_detail` | `(self, row)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L450) |
-| method | `_PopulateMixin._render_nerve_detail` | `(self, row)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L471) |
-| method | `_PopulateMixin._render_cluster_detail` | `(self, row)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L503) |
-| method | `_PopulateMixin._render_gov_detail` | `(self, row)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L532) |
-| method | `_PopulateMixin._render_overview_panel` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L566) |
-| method | `_PopulateMixin._render_diagnostics_panel` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L659) |
-| method | `_PopulateMixin._populate_governance` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L720) |
-| method | `_PopulateMixin._populate_runs` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L745) |
-| method | `_PopulateMixin._render_run_detail` | `(self, row)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L784) |
-| method | `_PopulateMixin._populate_approvals` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L829) |
-| method | `_PopulateMixin._populate_agents` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L865) |
-| method | `_PopulateMixin._render_agent_detail` | `(self, row)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L928) |
-| method | `_PopulateMixin._populate_balancer` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L992) |
-| method | `_PopulateMixin._render_balancer_detail` | `(self, row)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L1065) |
-| method | `_PopulateMixin._render_mind_self_panel` | `(self)` | Render Jarvis' reduced self as HIS presence in the Central — warm, | [src](../../../apps/central_cli/central_cli/hud_populate.py#L1131) |
-| method | `_PopulateMixin._rel_age` | `(iso)` | ISO timestamp → short relative age (2s / 4m / 3t / 2d). '—' on failure. | [src](../../../apps/central_cli/central_cli/hud_populate.py#L1355) |
-| method | `_PopulateMixin._fmt_value` | `(value)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L1375) |
-| method | `_PopulateMixin._healer_flag_name` | `(self, healer)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L1386) |
-| method | `_PopulateMixin._render_healing_panel` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L1389) |
-| method | `_PopulateMixin._render_placeholder_panel` | `(self, name)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L1427) |
+| method | `_PopulateMixin._render_nerve_detail` | `(self, row)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L473) |
+| method | `_PopulateMixin._render_cluster_detail` | `(self, row)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L505) |
+| method | `_PopulateMixin._render_gov_detail` | `(self, row)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L534) |
+| method | `_PopulateMixin._render_overview_panel` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L568) |
+| method | `_PopulateMixin._render_diagnostics_panel` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L661) |
+| method | `_PopulateMixin._populate_governance` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L722) |
+| method | `_PopulateMixin._populate_work` | `(self)` | Aktivt arbejde: mål, status og NÆSTE HANDLING i samme række. | [src](../../../apps/central_cli/central_cli/hud_populate.py#L747) |
+| method | `_PopulateMixin._render_work_detail` | `(self, row)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L802) |
+| method | `_PopulateMixin._populate_runs` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L833) |
+| method | `_PopulateMixin._render_run_detail` | `(self, row)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L872) |
+| method | `_PopulateMixin._populate_approvals` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L917) |
+| method | `_PopulateMixin._populate_agents` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L953) |
+| method | `_PopulateMixin._render_agent_detail` | `(self, row)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L1016) |
+| method | `_PopulateMixin._populate_balancer` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L1080) |
+| method | `_PopulateMixin._render_balancer_detail` | `(self, row)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L1153) |
+| method | `_PopulateMixin._render_mind_self_panel` | `(self)` | Render Jarvis' reduced self as HIS presence in the Central — warm, | [src](../../../apps/central_cli/central_cli/hud_populate.py#L1219) |
+| method | `_PopulateMixin._rel_age` | `(iso)` | ISO timestamp → short relative age (2s / 4m / 3t / 2d). '—' on failure. | [src](../../../apps/central_cli/central_cli/hud_populate.py#L1443) |
+| method | `_PopulateMixin._fmt_value` | `(value)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L1463) |
+| method | `_PopulateMixin._healer_flag_name` | `(self, healer)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L1474) |
+| method | `_PopulateMixin._render_healing_panel` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L1477) |
+| method | `_PopulateMixin._render_placeholder_panel` | `(self, name)` | — | [src](../../../apps/central_cli/central_cli/hud_populate.py#L1515) |
 
 ## `apps/central_cli/central_cli/hud_theme.py`
 _Central HUD palette, status-maps and the ``_esc`` markup guard._

@@ -2,6 +2,13 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/scheduled_task_runner.py`
+_Scheduled task dispatcher — binds workspace_context before firing._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `fire_scheduled_task` | `(task, *, runner)` | Bind workspace_context to task's scheduled_for_user_id and run. | [src](../../../core/services/scheduled_task_runner.py#L20) |
+
 ## `core/services/scheduled_tasks.py`
 _Scheduled tasks service — lets Jarvis schedule future reminders/actions._
 
@@ -752,12 +759,4 @@ _Boot-reconciler: crash-zombie runs → interrupted, så de genoptages._
 |---|---|---|---|---|
 | function | `_observe` | `(payload)` | Fyr central-nerve ``session_persistence`` (cluster runtime). Best-effort, | [src](../../../core/services/session_boot_reconciler.py#L37) |
 | function | `reconcile_on_boot` | `(stale_after_s=…)` | Reconcile crash-zombie runs ved opstart. Fail-open. | [src](../../../core/services/session_boot_reconciler.py#L51) |
-
-## `core/services/session_context_resolve.py`
-_Hvilken samtale kører vi i? — ét sted, frem for én kopi pr. værktøj._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `aktiv_session_id` | `(standard=…)` | Sessionens id, eller `standard` hvis ingen kilde kender den. | [src](../../../core/services/session_context_resolve.py#L17) |
-| function | `aktivt_run_id` | `(standard=…)` | Det run der er i gang lige nu, eller `standard` hvis ingen kender det. | [src](../../../core/services/session_context_resolve.py#L47) |
 

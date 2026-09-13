@@ -2,6 +2,33 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/research_store.py`
+_Durable SQLite state for research runs, tasks, sources, and steering._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `ResearchStateError` | `` | — | [src](../../../core/services/research_store.py#L17) |
+| function | `_now` | `()` | — | [src](../../../core/services/research_store.py#L21) |
+| function | `_ensure` | `(conn)` | — | [src](../../../core/services/research_store.py#L25) |
+| function | `_row` | `(row)` | — | [src](../../../core/services/research_store.py#L63) |
+| function | `get_run` | `(run_id)` | — | [src](../../../core/services/research_store.py#L67) |
+| function | `create_run` | `(*, session_id, original_query, tier, decision=…)` | — | [src](../../../core/services/research_store.py#L73) |
+| function | `transition_run` | `(run_id, status, *, warning=…)` | — | [src](../../../core/services/research_store.py#L85) |
+| function | `bind_visible_run` | `(run_id, visible_run_id)` | — | [src](../../../core/services/research_store.py#L106) |
+| function | `create_tasks` | `(run_id, tasks)` | — | [src](../../../core/services/research_store.py#L112) |
+| function | `start_task` | `(task_id, *, agent_run_id=…)` | — | [src](../../../core/services/research_store.py#L126) |
+| function | `complete_task` | `(task_id, finding, *, status=…)` | — | [src](../../../core/services/research_store.py#L138) |
+| function | `add_source` | `(run_id, source, *, task_id=…)` | — | [src](../../../core/services/research_store.py#L152) |
+| function | `add_steer` | `(run_id, message)` | — | [src](../../../core/services/research_store.py#L168) |
+| function | `consume_pending_steers` | `(run_id)` | — | [src](../../../core/services/research_store.py#L176) |
+| function | `list_sources` | `(run_id)` | — | [src](../../../core/services/research_store.py#L192) |
+| function | `source_count` | `(run_id)` | — | [src](../../../core/services/research_store.py#L202) |
+| function | `list_findings` | `(run_id)` | Parsede findings for et run (Fase B2), i track-rækkefølge. | [src](../../../core/services/research_store.py#L209) |
+| function | `record_tool_call` | `(run_id, tool_name, *, task_id=…)` | Tæl ét observeret værktøjskald i runnet (Fase A3). | [src](../../../core/services/research_store.py#L236) |
+| function | `tool_call_count` | `(run_id)` | — | [src](../../../core/services/research_store.py#L250) |
+| function | `active_for_session` | `(session_id)` | — | [src](../../../core/services/research_store.py#L257) |
+| function | `mark_stale_interrupted` | `(*, older_than_seconds=…)` | — | [src](../../../core/services/research_store.py#L268) |
+
 ## `core/services/resonance_decay.py`
 _Resonance Decay — how emotional signals persist and fade over time._
 
@@ -716,11 +743,4 @@ _Scheduled Job Windows — time-window batch scheduling with provider preference
 | function | `tick` | `(_seconds=…)` | Heartbeat hook — evaluates windows, no-op when not inside any. | [src](../../../core/services/scheduled_job_windows.py#L198) |
 | function | `build_scheduled_job_windows_surface` | `()` | — | [src](../../../core/services/scheduled_job_windows.py#L204) |
 | function | `_surface_summary` | `(windows, active_now, history)` | — | [src](../../../core/services/scheduled_job_windows.py#L228) |
-
-## `core/services/scheduled_task_runner.py`
-_Scheduled task dispatcher — binds workspace_context before firing._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `fire_scheduled_task` | `(task, *, runner)` | Bind workspace_context to task's scheduled_for_user_id and run. | [src](../../../core/services/scheduled_task_runner.py#L20) |
 

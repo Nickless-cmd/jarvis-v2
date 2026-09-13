@@ -2,6 +2,22 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/pushback.py`
+_Pushback — three prompt-level mechanisms that give Jarvis a real voice_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_emit_pushback_telemetry` | `(section, *, triggered, reason=…, **fields)` | Log pushback section generation to eventbus for observability. | [src](../../../core/services/pushback.py#L34) |
+| function | `_ambiguity_score` | `(message)` | Heuristic 0-1 ambiguity. Returns (score, reasons). | [src](../../../core/services/pushback.py#L67) |
+| function | `_conflict_with_decisions` | `(message)` | Check if the request appears to contradict an active behavioral decision. | [src](../../../core/services/pushback.py#L113) |
+| function | `doubt_signal_section` | `(user_message)` | Render doubt as a prompt section. None when doubt is low. | [src](../../../core/services/pushback.py#L146) |
+| function | `disagreement_invite_section` | `()` | Always-on reminder that pushback is welcome. Static text. | [src](../../../core/services/pushback.py#L184) |
+| function | `_affective_pressure` | `(snapshot)` | Map the emotional snapshot to the feeling most likely to drive pushback. | [src](../../../core/services/pushback.py#L217) |
+| function | `_request_risk_evidence` | `(user_message)` | — | [src](../../../core/services/pushback.py#L244) |
+| function | `affective_pushback_section` | `(user_message)` | Render feeling-driven pushback as bounded prompt guidance. | [src](../../../core/services/pushback.py#L257) |
+| function | `_is_high_stakes` | `(user_message, reasoning_tier)` | — | [src](../../../core/services/pushback.py#L330) |
+| function | `direction_confirm_section` | `(*, user_message, reasoning_tier)` | Inject a 'plan-first, confirm-before-tools' section for high-stakes | [src](../../../core/services/pushback.py#L337) |
+
 ## `core/services/query_language_bridge.py`
 _Bro fra Bjoerns dansk til de engelske vektorer — foer et embedding-opslag._
 
@@ -671,31 +687,4 @@ _Conservative and explainable inline/orchestrated research routing._
 |---|---|---|---|---|
 | function | `_effort` | `(independent)` | Indsatsen for N uafhængige signaler — klippet til tabellens rækker. | [src](../../../core/services/research_router.py#L37) |
 | function | `classify_research` | `(message, *, attachment_count=…, policy=…)` | — | [src](../../../core/services/research_router.py#L42) |
-
-## `core/services/research_store.py`
-_Durable SQLite state for research runs, tasks, sources, and steering._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `ResearchStateError` | `` | — | [src](../../../core/services/research_store.py#L17) |
-| function | `_now` | `()` | — | [src](../../../core/services/research_store.py#L21) |
-| function | `_ensure` | `(conn)` | — | [src](../../../core/services/research_store.py#L25) |
-| function | `_row` | `(row)` | — | [src](../../../core/services/research_store.py#L63) |
-| function | `get_run` | `(run_id)` | — | [src](../../../core/services/research_store.py#L67) |
-| function | `create_run` | `(*, session_id, original_query, tier, decision=…)` | — | [src](../../../core/services/research_store.py#L73) |
-| function | `transition_run` | `(run_id, status, *, warning=…)` | — | [src](../../../core/services/research_store.py#L85) |
-| function | `bind_visible_run` | `(run_id, visible_run_id)` | — | [src](../../../core/services/research_store.py#L106) |
-| function | `create_tasks` | `(run_id, tasks)` | — | [src](../../../core/services/research_store.py#L112) |
-| function | `start_task` | `(task_id, *, agent_run_id=…)` | — | [src](../../../core/services/research_store.py#L126) |
-| function | `complete_task` | `(task_id, finding, *, status=…)` | — | [src](../../../core/services/research_store.py#L138) |
-| function | `add_source` | `(run_id, source, *, task_id=…)` | — | [src](../../../core/services/research_store.py#L152) |
-| function | `add_steer` | `(run_id, message)` | — | [src](../../../core/services/research_store.py#L168) |
-| function | `consume_pending_steers` | `(run_id)` | — | [src](../../../core/services/research_store.py#L176) |
-| function | `list_sources` | `(run_id)` | — | [src](../../../core/services/research_store.py#L192) |
-| function | `source_count` | `(run_id)` | — | [src](../../../core/services/research_store.py#L202) |
-| function | `list_findings` | `(run_id)` | Parsede findings for et run (Fase B2), i track-rækkefølge. | [src](../../../core/services/research_store.py#L209) |
-| function | `record_tool_call` | `(run_id, tool_name, *, task_id=…)` | Tæl ét observeret værktøjskald i runnet (Fase A3). | [src](../../../core/services/research_store.py#L236) |
-| function | `tool_call_count` | `(run_id)` | — | [src](../../../core/services/research_store.py#L250) |
-| function | `active_for_session` | `(session_id)` | — | [src](../../../core/services/research_store.py#L257) |
-| function | `mark_stale_interrupted` | `(*, older_than_seconds=…)` | — | [src](../../../core/services/research_store.py#L268) |
 

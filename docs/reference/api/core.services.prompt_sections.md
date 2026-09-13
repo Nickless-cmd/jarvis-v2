@@ -75,11 +75,11 @@ _Cross-session arc — surface recent named conversations as a temporal arc._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_is_noise_title` | `(title)` | — | [src](../../../core/services/prompt_sections/cross_session_arc.py#L63) |
-| function | `_humanize_dt` | `(iso, now)` | Return short Danish relative time for the arc render. | [src](../../../core/services/prompt_sections/cross_session_arc.py#L75) |
-| function | `_fetch_recent_arc` | `()` | — | [src](../../../core/services/prompt_sections/cross_session_arc.py#L97) |
-| function | `cross_session_arc_section` | `()` | Render last N user-facing sessions as a chronological arc. | [src](../../../core/services/prompt_sections/cross_session_arc.py#L124) |
-| function | `invalidate_cache` | `()` | — | [src](../../../core/services/prompt_sections/cross_session_arc.py#L157) |
+| function | `_is_noise_title` | `(title)` | — | [src](../../../core/services/prompt_sections/cross_session_arc.py#L68) |
+| function | `_humanize_dt` | `(iso, now)` | Return short Danish relative time for the arc render. | [src](../../../core/services/prompt_sections/cross_session_arc.py#L80) |
+| function | `_fetch_recent_arc` | `()` | (de viste raekker, HVOR MANGE der fandtes i vinduet). | [src](../../../core/services/prompt_sections/cross_session_arc.py#L102) |
+| function | `cross_session_arc_section` | `()` | Render last N user-facing sessions as a chronological arc. | [src](../../../core/services/prompt_sections/cross_session_arc.py#L143) |
+| function | `invalidate_cache` | `()` | — | [src](../../../core/services/prompt_sections/cross_session_arc.py#L192) |
 
 ## `core/services/prompt_sections/dead_skills.py`
 _Dead-skill detector: installed skills never invoked._

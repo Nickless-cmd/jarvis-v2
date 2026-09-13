@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 14608 functions/methods, 51% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 14618 functions/methods, 51% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -39,30 +39,30 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 14608 functions/
 - [`core.services.09`](core.services.09.md) — `cross_signal_analysis` … `developmental_valence`
 - [`core.services.10`](core.services.10.md) — `device_pairing` … `emergent_bridge`
 - [`core.services.11`](core.services.11.md) — `emergent_goals` … `file_watch_daemon`
-- [`core.services.12`](core.services.12.md) — `finitude_runtime` … `ground_truth_registry`
-- [`core.services.13`](core.services.13.md) — `grounded_capability_followup` … `inner_voice_daemon`
-- [`core.services.14`](core.services.14.md) — `inner_voice_notifier` … `long_arc_synthesizer`
-- [`core.services.15`](core.services.15.md) — `long_horizon_goals` … `mirror_engine`
-- [`core.services.16`](core.services.16.md) — `missions_pipeline` … `outbound_nudges`
-- [`core.services.17`](core.services.17.md) — `outcome_learning` … `proactive_context_governor`
-- [`core.services.18`](core.services.18.md) — `proactive_loop_lifecycle_tracking` … `push_dispatcher`
-- [`core.services.19`](core.services.19.md) — `pushback` … `research_router`
-- [`core.services.20`](core.services.20.md) — `research_store` … `scheduled_job_windows`
-- [`core.services.21`](core.services.21.md) — `scheduled_task_runner` … `session_boot_reconciler`
-- [`core.services.22`](core.services.22.md) — `session_context_resolve` … `skill_scanner`
-- [`core.services.23`](core.services.23.md) — `skill_security_scanner` … `text_resonance`
-- [`core.services.24`](core.services.24.md) — `theater_audit` … `upload_sandbox`
-- [`core.services.25`](core.services.25.md) — `user_activity` … `visible_runs_watchdog`
-- [`core.services.26`](core.services.26.md) — `visible_self_state_summary` … `world_model_signal_tracking`
+- [`core.services.12`](core.services.12.md) — `finitude_runtime` … `gratitude_tracker`
+- [`core.services.13`](core.services.13.md) — `ground_truth_registry` … `inner_visible_support_signal_tracking`
+- [`core.services.14`](core.services.14.md) — `inner_voice_daemon` … `local_tool_broker`
+- [`core.services.15`](core.services.15.md) — `long_arc_synthesizer` … `metacognitive_integration`
+- [`core.services.16`](core.services.16.md) — `mirror_engine` … `orb_phase`
+- [`core.services.17`](core.services.17.md) — `outbound_nudges` … `proactive_candidates`
+- [`core.services.18`](core.services.18.md) — `proactive_context_governor` … `published_files`
+- [`core.services.19`](core.services.19.md) — `push_dispatcher` … `research_quality`
+- [`core.services.20`](core.services.20.md) — `research_router` … `rupture_repair`
+- [`core.services.21`](core.services.21.md) — `scheduled_job_windows` … `sensory_perception_bridge`
+- [`core.services.22`](core.services.22.md) — `session_boot_reconciler` … `skill_relevance_surface`
+- [`core.services.23`](core.services.23.md) — `skill_scanner` … `text_clip`
+- [`core.services.24`](core.services.24.md) — `text_resonance` … `untrusted_fencing`
+- [`core.services.25`](core.services.25.md) — `upload_sandbox` … `visible_runs_sse_v2`
+- [`core.services.26`](core.services.26.md) — `visible_runs_watchdog` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)
 - [`core.services.visible_runs_sections`](core.services.visible_runs_sections.md)
 - [`core.skills`](core.skills.md)
 - [`core.skills.voice`](core.skills.voice.md)
-- [`core.tools.01`](core.tools.01.md) — `__init__` … `mic_listen_tool`
-- [`core.tools.02`](core.tools.02.md) — `monitor_tools` … `skill_chain_revise_tool`
-- [`core.tools.03`](core.tools.03.md) — `skill_chain_tool` … `world_model_tools`
+- [`core.tools.01`](core.tools.01.md) — `__init__` … `meta_learning_tools`
+- [`core.tools.02`](core.tools.02.md) — `mic_listen_tool` … `skill_chain_propose_tool`
+- [`core.tools.03`](core.tools.03.md) — `skill_chain_revise_tool` … `world_model_tools`
 - [`core.tools.agent_dispatch_tool`](core.tools.agent_dispatch_tool.md)
 - [`core.tools.claude_dispatch`](core.tools.claude_dispatch.md)
 - [`core.util`](core.util.md)

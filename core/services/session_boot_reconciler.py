@@ -20,6 +20,7 @@ Governance (§5.5):
 from __future__ import annotations
 
 import logging
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from core.services import in_flight_runs
@@ -32,6 +33,16 @@ logger = logging.getLogger(__name__)
 STALE_AFTER_SECONDS = 600.0
 
 _INTERRUPTION_REASON = "afbrudt af container-genstart"
+
+#: Hvor gammel skal en `visible_runs`-række være, før fraværet i
+#: `in_flight_runs` tolkes som drift og ikke som et kapløb ved opstart?
+#:
+#: Seks timer, ikke ti minutter. Tærsklen ovenfor (600 s) hviler på ET
+#: EJERSKAB — pid plus proces-starttid — og kan derfor være stram. Denne her
+#: hviler på et FRAVÆR, og et fravær kan skyldes en startvej der (endnu) ikke
+#: skriver begge spor. Så længe vi ikke kan afgøre ejerskab, skal alderen bære
+#: hele beviset alene, og den længste kørsel målt i huset er minutter.
+VISIBLE_DRIFT_AFTER_SECONDS = 6 * 3600.0
 
 
 def _observe(payload: dict[str, Any]) -> None:
@@ -96,11 +107,14 @@ def reconcile_on_boot(stale_after_s: float = STALE_AFTER_SECONDS) -> dict[str, A
                     run_id, exc,
                 )
 
+    drift = _ryd_visible_drift(enforced)
+
     summary: dict[str, Any] = {
         "count": count,
         "enforced": enforced,
         "kinds": kinds,
         "error": False,
+        "visible_drift": drift,
     }
 
     try:
@@ -116,4 +130,79 @@ def reconcile_on_boot(stale_after_s: float = STALE_AFTER_SECONDS) -> dict[str, A
             ",".join(kinds) or "-",
         )
 
+    if drift:
+        logger.warning(
+            "session_boot_reconciler: %d visible_runs-raekke(r) stod 'running' "
+            "uden en post i in_flight_runs %s",
+            drift,
+            "— stemplet" if enforced else "— SKYGGE, intet skrevet",
+        )
+
     return summary
+
+
+def _ryd_visible_drift(enforced: bool) -> int:
+    """`visible_runs`-rækker der står `running` og som INTET kender.
+
+    ## Hullet
+
+    `list_running_orphans` itererer over `in_flight_runs`. En række der findes i
+    `visible_runs` men aldrig blev skrevet — eller blev ryddet — i det andet
+    lager er derfor usynlig for reconcileren **for altid**.
+
+    Målt 13/9-2026: `autonomous-53cc4ddf…` stod `running` uden `finished_at`
+    siden 12/9 kl. 20:19, altså ~20 timer, mens reconcileren rapporterede
+    `count: 0` ved hver eneste opstart. Begge dele var sande. De så bare på hvert
+    sit lager.
+
+    ## Hvorfor fraværet er signalet
+
+    Hver startvej skriver begge spor — `autonomous_stream_run` gør det endda
+    synkront i api-processen med en kommentar om præcis den fejl. Er posten væk
+    fra `in_flight_runs`, er der ingen proces der streamer den.
+
+    Men fravær er et svagere bevis end ejerskab, og derfor bærer alderen resten:
+    seks timer, mod de ti minutter der gælder når vi kan spørge om en pid.
+    En kørsel der har været «i gang» i seks timer er død efter enhver målestok
+    huset kender — medianen er 77 sekunder.
+
+    Skygge følger samme kontakt som resten af reconcileren. Kaster aldrig.
+    """
+    try:
+        from core.runtime.db import connect
+    except Exception:
+        return 0
+    try:
+        graense = (datetime.now(UTC)
+                   - timedelta(seconds=VISIBLE_DRIFT_AFTER_SECONDS)).isoformat()
+        with connect() as conn:
+            raekker = conn.execute(
+                "SELECT run_id FROM visible_runs WHERE status = 'running' "
+                "AND (finished_at IS NULL OR finished_at = '') "
+                "AND started_at < ? LIMIT 200",
+                (graense,),
+            ).fetchall()
+    except Exception as exc:
+        logger.warning("session_boot_reconciler: visible-drift-opslag fejlede: %s", exc)
+        return 0
+
+    kendte: set[str] = set()
+    try:
+        kendte = {str(r.get("run_id") or "") for r in in_flight_runs._load().values()}
+    except Exception:
+        # Kan vi ikke laese det andet lager, kan vi ikke vide at posten er
+        # ukendt — og saa stempler vi ikke. Et gaet er ikke et fravaer.
+        return 0
+
+    drift = [str(r[0]) for r in raekker if str(r[0]) and str(r[0]) not in kendte]
+    if enforced:
+        for rid in drift:
+            try:
+                from core.services.visible_runs_outcomes import (
+                    stamp_visible_run_interrupted,
+                )
+                stamp_visible_run_interrupted(
+                    rid, reason="proces doede uden at afslutte koerslen")
+            except Exception:
+                pass
+    return len(drift)

@@ -53,6 +53,16 @@ def _prepare_call(tc, *, force, run_id, session_id, user_message, controller, ro
         arguments["_runtime_session_id"] = session_id
     if run_id:
         arguments["_runtime_turn_id"] = run_id
+    # Kald-id'et. Uden det kan en fil et vaerktoej udgiver ikke placeres DÉR
+    # hvor den blev lavet — den kan kun haenges bagpaa turen.
+    #
+    # Maalt 13/9-2026 paa en aegte besked: 50 blokke, hvor de to billeder laa
+    # paa plads 49 og 50 efter fyrre `progress`-blokke. `progress` 39 var
+    # `openrouter_image` med sit `tool_use_id`; ankeret fandtes, id'et naaede
+    # bare ikke vaerktoejet.
+    _kald_id = str(tc.get("id") or "").strip()
+    if _kald_id:
+        arguments["_runtime_tool_use_id"] = _kald_id
     try:
         from core.identity.workspace_context import current_user_id
         uid = current_user_id()

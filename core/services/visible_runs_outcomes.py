@@ -99,10 +99,58 @@ def _med_udgivne_filer(blocks: list[dict], run: "_vr.VisibleRun") -> list[dict]:
         poster = take(str(getattr(run, "run_id", "") or ""))
         if not poster:
             return blocks
-        return list(blocks) + as_blocks(poster)
+        return _indsaet_ved_deres_vaerktoej(list(blocks), as_blocks(poster))
     except Exception:
         logger.warning("visible_runs_outcomes: kunne ikke haefte udgivne filer", exc_info=True)
         return blocks
+
+
+def _indsaet_ved_deres_vaerktoej(
+    blocks: list[dict], filer: list[dict],
+) -> list[dict]:
+    """Sæt hver udgiven fil DÉR hvor den blev lavet.
+
+    ## Hvad der var galt
+
+    Målt 13/9-2026 på en ægte besked: 50 blokke, hvor begge billeder lå på
+    plads 49 og 50 — efter fyrre `progress`-blokke. Bjørn: «hans billeder
+    kommer først efter streamen er slut i stedet for inde i streamen hvor de
+    faktisk bliver lavet».
+
+    Begge dele kom af ét udtryk: `list(blocks) + as_blocks(poster)`.
+
+    ## Ankeret fandtes i forvejen
+
+    `progress`-blokken for værktøjet bærer et `tool_use_id`
+    (`progress 39: openrouter_image, call_00_WO06n96h…`). Filen bærer nu det
+    samme, så den kan indsættes lige efter sit eget værktøj.
+
+    En fil uden anker — eller hvis værktøj ikke står i blokkene — lægges
+    bagerst som før. Et gæt på en placering ville være værre: et billede ved
+    den forkerte tekst læses som hørende til den.
+    """
+    if not filer:
+        return blocks
+    efter_id: dict[str, list[dict]] = {}
+    bagerst: list[dict] = []
+    for f in filer:
+        tid = str(f.get("tool_use_id") or "")
+        if tid:
+            efter_id.setdefault(tid, []).append(f)
+        else:
+            bagerst.append(f)
+
+    ud: list[dict] = []
+    for b in blocks:
+        ud.append(b)
+        tid = str(b.get("tool_use_id") or "")
+        if tid and tid in efter_id:
+            ud.extend(efter_id.pop(tid))
+    # Filer hvis vaerktoej ikke stod i blokkene skal stadig med — ellers ville
+    # en manglende `progress`-blok faa billedet til at forsvinde helt.
+    for rest in efter_id.values():
+        bagerst.extend(rest)
+    return ud + bagerst
 
 
 def _with_thinking_block(

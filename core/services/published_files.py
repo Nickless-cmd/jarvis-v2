@@ -49,7 +49,8 @@ def _nulstil_for_tests() -> None:
 
 
 def note(run_id: str, *, filename: str, url: str = "", mime_type: str = "",
-         size_bytes: int = 0, attachment_id: str = "") -> None:
+         size_bytes: int = 0, attachment_id: str = "",
+         tool_use_id: str = "") -> None:
     """Registrér at turen udgav en fil eller et billede. Kaster aldrig.
 
     `run_id` tom → gør ingenting. En post uden tur kan ikke hæftes på noget,
@@ -86,6 +87,10 @@ def note(run_id: str, *, filename: str, url: str = "", mime_type: str = "",
                 "mime_type": str(mime_type or ""),
                 "size_bytes": int(size_bytes or 0),
                 "attachment_id": aid,
+                # Ankeret. Blokken indsaettes efter den `progress`-blok med
+                # samme id, saa billedet staar DÉR hvor det blev lavet — ikke
+                # bagerst efter fyrre andre blokke.
+                "tool_use_id": str(tool_use_id or ""),
             })
     except Exception:
         logger.warning("published_files: kunne ikke notere %s", navn, exc_info=True)
@@ -123,6 +128,8 @@ def as_blocks(poster: list[dict[str, Any]]) -> list[dict[str, Any]]:
             "filename": navn,
             "mime_type": mime or "application/octet-stream",
         }
+        if p.get("tool_use_id"):
+            blok["tool_use_id"] = str(p["tool_use_id"])
         aid = str(p.get("attachment_id") or "").strip()
         if aid:
             blok["attachment_id"] = aid

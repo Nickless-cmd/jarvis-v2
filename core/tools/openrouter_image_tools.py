@@ -513,6 +513,7 @@ def _haeng_paa_turen(args: dict[str, Any], result: dict[str, Any]) -> None:
             mime_type=str(result.get("media_type") or "image/png"),
             size_bytes=int(result.get("bytes") or 0),
             attachment_id=aid,
+            tool_use_id=str(args.get("_runtime_tool_use_id") or ""),
         )
     except Exception:
         logger.debug("openrouter_image: kunne ikke haefte paa turen", exc_info=True)

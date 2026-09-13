@@ -46,6 +46,67 @@ def _save_all(data: dict[str, dict[str, Any]]) -> None:
     save_json(_STATE_KEY, data)
 
 
+# Dedup-vindue (2026-08-30): en terminal plan med samme titel blokerer et nyt
+# forslag i så lang tid. Ophøjet til modul-niveau 13/9-2026, så prune kan
+# bruge PRÆCIS samme grænse — brugte den en anden, kunne den fjerne et
+# dedup-anker og gøre dedup'en blind (bugen fixet 2026-08-30 lukkede).
+_DEDUP_WINDOW_DAYS = 30
+
+# Prune (2026-09-13): registret voksede ubegrænset — målt 181 planer, hvoraf
+# 173 var den samme auto-plan med skiftende score i titlen. Titlerne er nu
+# stabile (fix 9e17b4b9), så floden er væk; men terminale planer blev aldrig
+# fjernet. Vi beholder:
+#   * alt ikke-terminalt (awaiting_approval / approved) — ALTID
+#   * terminale planer inden for dedup-vinduet — de ER dedup-ankre
+#   * de nyeste _MAX_ARCHIVED_PLANS terminale planer derudover (historik)
+# Dermed er registret begrænset uden at dedup'en bliver blind.
+_TERMINAL_STATUSES = frozenset({"dismissed", "superseded", "completed"})
+_MAX_ARCHIVED_PLANS = 50
+
+
+def _prune_plans(
+    data: dict[str, dict[str, Any]],
+) -> tuple[dict[str, dict[str, Any]], int]:
+    """Fjern gamle terminale planer. Returnerer (beholdt, antal fjernet).
+
+    Sikkerheds-invariant: en plan der ikke er terminal fjernes ALDRIG, og en
+    terminal plan inden for dedup-vinduet fjernes ALDRIG — den er et
+    dedup-anker. Fjernede vi den, ville planen genopstå ved næste kørsel.
+
+    Vi beholder bevidst en OVERMÆNGDE: dedup'en matcher på ``created_at``,
+    mens vi beholder hvis enten ``created_at`` ELLER ``resolved_at`` er inden
+    for vinduet. Det kan kun gøre os mere forsigtige — aldrig blinde.
+    """
+    cutoff = datetime.now(UTC) - timedelta(days=_DEDUP_WINDOW_DAYS)
+    keep: dict[str, dict[str, Any]] = {}
+    old_terminal: list[tuple[str, dict[str, Any]]] = []
+
+    for pid, rec in data.items():
+        if not isinstance(rec, dict) or rec.get("status") not in _TERMINAL_STATUSES:
+            keep[pid] = rec
+            continue
+        created = _parse_iso(str(rec.get("created_at") or ""))
+        resolved = _parse_iso(str(rec.get("resolved_at") or ""))
+        if (created is not None and created >= cutoff) or (
+            resolved is not None and resolved >= cutoff
+        ):
+            keep[pid] = rec
+        else:
+            old_terminal.append((pid, rec))
+
+    # Behold de nyeste af de gamle — resten er ren støj (samme plan, ny titel).
+    old_terminal.sort(
+        key=lambda item: str(
+            item[1].get("resolved_at") or item[1].get("created_at") or ""
+        ),
+        reverse=True,
+    )
+    for pid, rec in old_terminal[:_MAX_ARCHIVED_PLANS]:
+        keep[pid] = rec
+
+    return keep, len(data) - len(keep)
+
+
 def propose_plan(
     *,
     session_id: str | None,
@@ -74,7 +135,6 @@ def propose_plan(
     # including plans the user already dismissed or that were superseded,
     # which would otherwise be re-proposed at every restart.
     normalized_title = title[:160].strip().lower()
-    _DEDUP_WINDOW_DAYS = 30
     cutoff = datetime.now(UTC) - timedelta(days=_DEDUP_WINDOW_DAYS)
     for rec in data.values():
         if (rec.get("title") or "").strip().lower() != normalized_title:
@@ -126,6 +186,9 @@ def propose_plan(
         "revision_reason": None,
         "superseded_by": None,
     }
+    data, pruned = _prune_plans(data)
+    if pruned:
+        logger.info("plan_proposals: pruned %d terminal plan(s)", pruned)
     _save_all(data)
     return {"status": "ok", "plan_id": plan_id, "awaiting": True, "session_id": sid}
 
@@ -344,6 +407,9 @@ def revise_plan(
         "revision_reason": reason_clean,
         "superseded_by": None,
     }
+    data, pruned = _prune_plans(data)
+    if pruned:
+        logger.info("plan_proposals: pruned %d terminal plan(s)", pruned)
     _save_all(data)
 
     try:

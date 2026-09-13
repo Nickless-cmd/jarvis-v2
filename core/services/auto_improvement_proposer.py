@@ -79,7 +79,11 @@ def _check_tick_quality_degraded() -> dict[str, Any] | None:
         return None
     avg = summary.get("avg_score") or 0
     return {
-        "title": f"Heartbeat tick-kvalitet er degraderende ({avg}/100)",
+        # Titel UDEN scoren (fix 13/9-2026): tallet ændrer sig fra kørsel til
+        # kørsel, og dedup'en i plan_proposals matcher på EKSAKT titel. Med
+        # `(85.0/100)` i titlen slap en dismissed plan igennem som "ny" så snart
+        # scoren blev 83.2 — og genopstod ved hver genstart. Scoren lever i `why`.
+        "title": "Heartbeat tick-kvalitet er degraderende",
         "why": (
             f"Sidste 5 ticks gennemsnit lavere end 7-dages baseline. "
             f"Trend: degrading. Avg score: {avg}/100."
@@ -105,9 +109,12 @@ def _check_stale_goals() -> dict[str, Any] | None:
         return None
     titles = [g.get("title", "?") for g in stale[:3]]
     return {
-        "title": f"{len(stale)} aktive mål uden progress i ≥3 dage",
+        # Titel uden antallet (fix 13/9-2026): samme grund som tick-kvalitet
+        # ovenfor — dedup'en matcher eksakt, så "2 aktive mål" blev en "ny" plan
+        # i det øjeblik tallet blev 3. Antallet lever nu i `why`.
+        "title": "Aktive mål uden progress i ≥3 dage",
         "why": (
-            f"Goals stagnerer: {', '.join(titles)}. Enten har tidsbudgettet "
+            f"{len(stale)} mål stagnerer: {', '.join(titles)}. Enten har tidsbudgettet "
             "været forkert estimeret, motivationen er faldet, eller målene er "
             "blevet overhalet af nye prioriteter."
         ),
@@ -131,9 +138,11 @@ def _check_decision_adherence() -> dict[str, Any] | None:
         return None
     score = summary.get("score") or 0
     return {
-        "title": f"Decision adherence er lav ({score}%)",
+        # Titel uden procenten (fix 13/9-2026): dedup matcher eksakt, så `(55%)`
+        # slap igennem som "ny" i det øjeblik den blev `(48%)`. Scoren er i `why`.
+        "title": "Decision adherence er lav",
         "why": (
-            f"Kun {summary.get('adhered', 0)}/{summary.get('total', 0)} recent "
+            f"Adherence: {score}%. Kun {summary.get('adhered', 0)}/{summary.get('total', 0)} recent "
             f"decisions blev faktisk applied. {summary.get('revoked', 0)} blev "
             "revoked. Mønster: enten dårlige decisions tages, eller gode "
             "decisions ikke følges igennem."
@@ -168,7 +177,11 @@ def _check_provider_health_chronic() -> dict[str, Any] | None:
     if not unreachable:
         return None
     return {
-        "title": f"{len(unreachable)} provider(e) kronisk ikke-tilgængelige",
+        # Titel uden antallet (fix 13/9-2026): dedup matcher eksakt, så
+        # `1 provider(e)` blev en "ny" plan da den blev `2` — og genopstod ved
+        # hver genstart. Listen af navne lever i `why` (2026-08-30-fixet ramte
+        # kun friskheden af snapshot'et, ikke denne titel-volatilitet).
+        "title": "Provider(e) kronisk ikke-tilgængelige",
         "why": (
             f"Providers nede ved sidste health check: {', '.join(unreachable)}. "
             "Kæden falder igennem, men hvert kald spilder ~5s på at forsøge "

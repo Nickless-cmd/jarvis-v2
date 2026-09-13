@@ -189,9 +189,14 @@ def _ryd_visible_drift(enforced: bool) -> int:
     kendte: set[str] = set()
     try:
         kendte = {str(r.get("run_id") or "") for r in in_flight_runs._load().values()}
-    except Exception:
+    except Exception as exc:
         # Kan vi ikke laese det andet lager, kan vi ikke vide at posten er
         # ukendt — og saa stempler vi ikke. Et gaet er ikke et fravaer.
+        # MEN: fejlen skal ses. Sker den ved hver opstart, ryddes intet, og
+        # uden denne linje ville det aldrig staa nogen steder.
+        logger.warning(
+            "session_boot_reconciler: kunne ikke laese in_flight_runs — "
+            "rydder ingen visible-drift denne gang: %s", exc)
         return 0
 
     drift = [str(r[0]) for r in raekker if str(r[0]) and str(r[0]) not in kendte]
@@ -203,6 +208,12 @@ def _ryd_visible_drift(enforced: bool) -> int:
                 )
                 stamp_visible_run_interrupted(
                     rid, reason="proces doede uden at afslutte koerslen")
-            except Exception:
-                pass
+            except Exception as exc:
+                # Tavs slugning her gjorde netop DENNE fejl usynlig: importen
+                # af `visible_runs_outcomes` er cirkulaer og kan fejle hvis
+                # `visible_runs` endnu ikke er importeret. Uden loggen ville
+                # raekken bare blive staaende `running` — igen.
+                logger.warning(
+                    "session_boot_reconciler: kunne ikke stemple %s som "
+                    "interrupted: %s", rid, exc)
     return len(drift)

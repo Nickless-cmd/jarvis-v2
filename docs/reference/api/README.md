@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 14504 functions/methods, 51% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 14508 functions/methods, 51% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -43,17 +43,17 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 14504 functions/
 - [`core.services.13`](core.services.13.md) — `gut_calibration` … `inner_voice_shadow`
 - [`core.services.14`](core.services.14.md) — `interlanguage_practice` … `longing_signal_daemon`
 - [`core.services.15`](core.services.15.md) — `loop_runtime` … `model_benchmark`
-- [`core.services.16`](core.services.16.md) — `model_catalogue_sweep` … `outreach_composer`
-- [`core.services.17`](core.services.17.md) — `override_command` … `proactive_question_gate_tracking`
-- [`core.services.18`](core.services.18.md) — `proactivity_bridge` … `quota_store`
-- [`core.services.19`](core.services.19.md) — `r2_5_blocking_gate` … `retention`
-- [`core.services.20`](core.services.20.md) — `retry_admissibility` … `secret_redaction`
-- [`core.services.21`](core.services.21.md) — `security_guard` … `session_distillation`
-- [`core.services.22`](core.services.22.md) — `session_inbox` … `smith_noise_veto`
-- [`core.services.23`](core.services.23.md) — `social_labilizer` … `thought_action_proposal_daemon`
-- [`core.services.24`](core.services.24.md) — `thought_leak_guard` … `user_md_update_proposal_tracking`
-- [`core.services.25`](core.services.25.md) — `user_model_daemon` … `visible_thinking_trace`
-- [`core.services.26`](core.services.26.md) — `visible_tool_exec` … `world_model_signal_tracking`
+- [`core.services.16`](core.services.16.md) — `model_catalogue_sweep` … `outcome_projector`
+- [`core.services.17`](core.services.17.md) — `outreach_composer` … `proactive_outbound_substrate`
+- [`core.services.18`](core.services.18.md) — `proactive_question_gate_tracking` … `query_language_bridge`
+- [`core.services.19`](core.services.19.md) — `quota_store` … `resonance_decay`
+- [`core.services.20`](core.services.20.md) — `retention` … `scheduled_tasks`
+- [`core.services.21`](core.services.21.md) — `secret_redaction` … `session_continuity`
+- [`core.services.22`](core.services.22.md) — `session_distillation` … `smith_confrontation`
+- [`core.services.23`](core.services.23.md) — `smith_noise_veto` … `theory_of_mind_engine`
+- [`core.services.24`](core.services.24.md) — `thought_action_proposal_daemon` … `user_emotional_resonance`
+- [`core.services.25`](core.services.25.md) — `user_md_update_proposal_tracking` … `visible_text_scrub`
+- [`core.services.26`](core.services.26.md) — `visible_thinking_trace` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

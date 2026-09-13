@@ -62,8 +62,24 @@ def _load() -> dict[str, Any]:
 
 def _save(data: dict[str, Any]) -> None:
     try:
-        data["surfaces"] = list(data.get("surfaces", []))[-_MAX_RECORDS:]
-        data["reactions"] = list(data.get("reactions", []))[-_MAX_RECORDS:]
+        # Beskaering der TAELLER. Foer stod her `list(...)[-_MAX_RECORDS:]`, og
+        # maalt 13/9-2026 stod begge ringe praecis paa 500/500 — altsaa havde de
+        # kastet vaek, og der fandtes ikke ét tal for hvor meget.
+        #
+        # Fase 10, kriterium 2: «tolerate loss honestly». Ikke «undgaa tab» —
+        # tab er i orden for telemetri, det er netop forskellen paa telemetri og
+        # sandhed. Usynligt tab er ikke.
+        try:
+            from core.services.telemetry_gate import beskaer
+            data["surfaces"] = beskaer(data.get("surfaces", []), _MAX_RECORDS,
+                                       navn="decision_signal_telemetry.surfaces")
+            data["reactions"] = beskaer(data.get("reactions", []), _MAX_RECORDS,
+                                        navn="decision_signal_telemetry.reactions")
+        except Exception:
+            # Regnskabet maa aldrig koste os selve beskaeringen — en ring uden
+            # loft ville vokse til den spiste state-filen.
+            data["surfaces"] = list(data.get("surfaces", []))[-_MAX_RECORDS:]
+            data["reactions"] = list(data.get("reactions", []))[-_MAX_RECORDS:]
         save_json(_TELEMETRY_KEY, data)
     except Exception as exc:
         logger.debug("decision_telemetry: persist failed: %s", exc)

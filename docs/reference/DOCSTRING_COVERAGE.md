@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7408/14500 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7410/14500 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 7408/14500 functions/methods documented (51%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 614 | 1135 | 54% |
-| `core.services` | 4949 | 10036 | 49% |
+| `core.services` | 4951 | 10036 | 49% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 108 | 184 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -40,7 +40,7 @@ Generated from source. 7408/14500 functions/methods documented (51%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2066)
+## Undocumented public functions (2065)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L201)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1081,9 +1081,8 @@ Generated from source. 7408/14500 functions/methods documented (51%). The list b
 - `core/services/identity_mutation_log.py` :: `list_mutations` (L206)
 - `core/services/idle_consolidation.py` :: `build_idle_consolidation_surface` (L312)
 - `core/services/idle_thinking.py` :: `build_idle_thinking_surface` (L83)
-- `core/services/infra_weather_daemon.py` :: `build_infra_weather_surface` (L257)
-- `core/services/infra_weather_daemon.py` :: `get_weather` (L243)
-- `core/services/infra_weather_daemon.py` :: `tick` (L253)
+- `core/services/infra_weather_daemon.py` :: `build_infra_weather_surface` (L290)
+- `core/services/infra_weather_daemon.py` :: `get_weather` (L268)
 - `core/services/initiative_queue.py` :: `abandon_long_term_intention` (L550)
 - `core/services/initiative_queue.py` :: `list_active_long_term_intentions` (L535)
 - `core/services/inner_dialectic_engine.py` :: `build_inner_dialectic_prompt_section` (L42)

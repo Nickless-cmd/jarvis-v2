@@ -497,20 +497,20 @@ _Infra Weather Daemon — "The atmosphere of my system"._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_psutil` | `()` | — | [src](../../../core/services/infra_weather_daemon.py#L36) |
-| function | `_system_load` | `()` | — | [src](../../../core/services/infra_weather_daemon.py#L44) |
-| function | `_disk_pressure` | `()` | — | [src](../../../core/services/infra_weather_daemon.py#L59) |
-| function | `_network_latency` | `()` | Lightweight network health check. | [src](../../../core/services/infra_weather_daemon.py#L79) |
-| function | `_api_cost_today` | `()` | Sum of today's API costs via the costs ledger. | [src](../../../core/services/infra_weather_daemon.py#L122) |
-| function | `_process_health` | `()` | Check some expected child processes / threads are alive. | [src](../../../core/services/infra_weather_daemon.py#L143) |
-| function | `_weather_label` | `(load, disk_pct, cost)` | Return (label, emoji) — ☀️ clear, 🌧 under pressure, ⛈ critical. | [src](../../../core/services/infra_weather_daemon.py#L162) |
-| function | `_compose_report` | `()` | — | [src](../../../core/services/infra_weather_daemon.py#L179) |
-| function | `_maybe_emit_critical` | `(report)` | — | [src](../../../core/services/infra_weather_daemon.py#L211) |
-| function | `get_weather` | `()` | — | [src](../../../core/services/infra_weather_daemon.py#L243) |
-| function | `tick` | `(_seconds=…)` | — | [src](../../../core/services/infra_weather_daemon.py#L253) |
-| function | `build_infra_weather_surface` | `()` | — | [src](../../../core/services/infra_weather_daemon.py#L257) |
-| function | `_surface_summary` | `(r)` | — | [src](../../../core/services/infra_weather_daemon.py#L273) |
-| function | `build_infra_weather_prompt_section` | `()` | Silent when clear. Speaks when pressure or critical. | [src](../../../core/services/infra_weather_daemon.py#L282) |
+| function | `_psutil` | `()` | — | [src](../../../core/services/infra_weather_daemon.py#L35) |
+| function | `_system_load` | `()` | — | [src](../../../core/services/infra_weather_daemon.py#L43) |
+| function | `_disk_pressure` | `()` | — | [src](../../../core/services/infra_weather_daemon.py#L58) |
+| function | `_network_latency` | `()` | Lightweight network health check. | [src](../../../core/services/infra_weather_daemon.py#L78) |
+| function | `_api_cost_today` | `()` | Sum of today's API costs via the costs ledger. | [src](../../../core/services/infra_weather_daemon.py#L121) |
+| function | `_process_health` | `()` | Check some expected child processes / threads are alive. | [src](../../../core/services/infra_weather_daemon.py#L142) |
+| function | `_weather_label` | `(load, disk_pct, cost)` | Return (label, emoji) — ☀️ clear, 🌧 under pressure, ⛈ critical. | [src](../../../core/services/infra_weather_daemon.py#L161) |
+| function | `_compose_report` | `()` | — | [src](../../../core/services/infra_weather_daemon.py#L178) |
+| function | `_maybe_emit_critical` | `(report)` | Send ÉN alarm pr. cooldown-vindue — på tværs af processer og genstarter. | [src](../../../core/services/infra_weather_daemon.py#L214) |
+| function | `get_weather` | `()` | — | [src](../../../core/services/infra_weather_daemon.py#L268) |
+| function | `tick` | `(_seconds=…)` | Dæmonens eget slag — og det ENESTE sted der alarmerer. | [src](../../../core/services/infra_weather_daemon.py#L277) |
+| function | `build_infra_weather_surface` | `()` | — | [src](../../../core/services/infra_weather_daemon.py#L290) |
+| function | `_surface_summary` | `(r)` | — | [src](../../../core/services/infra_weather_daemon.py#L306) |
+| function | `build_infra_weather_prompt_section` | `()` | Silent when clear. Speaks when pressure or critical. | [src](../../../core/services/infra_weather_daemon.py#L315) |
 
 ## `core/services/inheritance_seed.py`
 _Inheritance seed — writes near-thoughts before version transition or shutdown._

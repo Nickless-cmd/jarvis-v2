@@ -96,6 +96,23 @@ FAMILY_ROUTES: dict[str, tuple[str, str]] = {
     # composite.{invoked,revoked,deleted} — mutationer af Jarvis' capability-overflade (nye/fjernede
     # composite-tools). Capability-mutation er protected core; var usynlig. Metadata-only (kind).
     "composite": ("tools", "composite"),
+
+    # ── 13/9-2026: syv af de nitten families der aldrig havde ét event ──
+    #
+    # `ce912fd3` rettede dict-formen og REGISTRERede familierne, saa de nu
+    # persisterer. Men registrering er ikke routing: uden en linje her naar de
+    # aldrig Centralen, og saa er de synlige i databasen og usynlige for den
+    # der kigger.
+    #
+    # Delingen foelger husets egen regel, ikke et skoen pr. familie: drift og
+    # infrastruktur routes her; indre liv og SANSER routes egress-frit nedenfor.
+    "autonomous_outreach": ("runtime", "autonomous_outreach"),  # at raekke ud — en handling
+    "autonomous_work": ("runtime", "autonomous_work"),          # baggrundsarbejdets status
+    "file_watch": ("runtime", "file_watch"),                    # filsystem-overvaagning
+    "hf_inference": ("providers", "hf_inference"),              # udbyder-kald
+    "infra_weather": ("infra", "infra_weather"),                # infrastrukturens helbred
+    "pollinations": ("providers", "pollinations"),              # billed-udbyder
+    "shadow_scan": ("runtime", "shadow_scan"),                  # skygge-koersler af gates
 }
 
 # ── PRIVATE_NO_EGRESS (§24.4 keystone, 2026-07-01): privat inner-life observeres EGRESS-FRIT ──
@@ -110,6 +127,33 @@ PRIVATE_NO_EGRESS_ROUTES: dict[str, tuple[str, str]] = {
     # (egress-frit). affect_modulation/completion_satisfaction publicerer events; somatic/cognitive_gut/
     # circadian er registrerede. Ruter dem så følelser+krop bliver synlige uden at lække indhold.
     "affect_modulation": ("cognition", "affect"),
+
+    # ── 13/9-2026: de tolv af nitten der roerer indre liv eller SANSER ──
+    #
+    # Routet EGRESS-FRIT, ikke holdt moerke. Forskellen er hele pointen:
+    # `_observe_private` skriver kun til trace-sink og tidsserie, aldrig til
+    # `central().observe/_emit`, saa de kan ikke naa Discord eller en abonnent.
+    # Metadata alene — aldrig payload-tekst.
+    #
+    # `mic`, `ambient`, `wake_word` og `voice_journal` roerer en mikrofon i hans
+    # hjem. `memory_density` og `prompt_mutation` er indre bogholderi
+    # (`memory` og `prompt_evolution` staar i forvejen paa udelukkelses-listen).
+    # `proprioception` hoerer til felt-kroppen ved siden af `somatic`.
+    #
+    # Havde de vaeret routet operationelt, ville de vaere synlige — og kunne
+    # laekke. Her er de synlige og kan ikke.
+    "ambient": ("cognition", "ambient"),
+    "anticipation": ("cognition", "anticipation"),
+    "collective_pulse": ("cognition", "collective_pulse"),
+    "creative_impulse": ("cognition", "creative_impulse"),
+    "deep_reflection": ("cognition", "deep_reflection"),
+    "dream_consolidation": ("cognition", "dream_consolidation"),
+    "memory_density": ("cognition", "memory_density"),
+    "mic": ("cognition", "mic"),
+    "proprioception": ("cognition", "proprioception"),
+    "prompt_mutation": ("cognition", "prompt_mutation"),
+    "voice_journal": ("cognition", "voice_journal"),
+    "wake_word": ("cognition", "wake_word"),
     "completion_satisfaction": ("cognition", "satisfaction"),
     "somatic": ("cognition", "somatic"),
     "cognitive_gut": ("cognition", "gut"),
@@ -379,6 +423,12 @@ PRIVATE_NO_EGRESS_ROUTES: dict[str, tuple[str, str]] = {
 # §24.4). Ikke brugt til routing (allowlisten afgør alt) — men gør intentionen eksplicit
 # og testbar: ingen af disse må nogensinde optræde i FAMILY_ROUTES uden PRIVATE_NO_EGRESS.
 PRIVATE_FAMILIES_EXCLUDED_M0: frozenset[str] = frozenset({
+    # 13/9-2026: spejl af de nye PRIVATE_NO_EGRESS_ROUTES. Invarianten er
+    # testet (`test_eventbus_central_bridge.py`): enhver egress-fri rute SKAL
+    # staa her, ellers er udelukkelsen kun en hensigt.
+    "ambient", "anticipation", "collective_pulse", "deep_reflection",
+    "memory_density", "mic", "proprioception", "prompt_mutation",
+    "voice_journal", "wake_word",
     "inner_voice", "dreams", "dream_consolidation", "witness", "creative_impulse",
     "prompt_evolution", "self_critique", "meta_learning", "private_brain", "impulse",
     "pressure", "emergent_signal", "cognitive_counterfactual", "cognitive_state",

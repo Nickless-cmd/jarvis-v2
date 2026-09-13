@@ -446,3 +446,75 @@ def test_sec71_batch6_signal_event_observed_egress_free(wired, monkeypatch):
     # de 4 private nåede _observe_private med korrekt cluster, IKKE central().observe
     assert {c[0] for c in calls} == {"cognition", "system", "memory", "channel"}
     assert {o["event_kind"] for o in central.observed} == {"tool.called"}
+
+
+# ────────────────────────────────────────────────────────────────────────
+# De nitten families der aldrig havde ét event (13/9-2026)
+#
+# `ce912fd3` rettede dict-formen og REGISTRERede familierne, så de persisterer.
+# Men registrering er ikke routing: uden en rute når de aldrig Centralen, og så
+# er de synlige i databasen og usynlige for den der kigger.
+# ────────────────────────────────────────────────────────────────────────
+
+_DE_NITTEN = [
+    "ambient", "anticipation", "autonomous_outreach", "autonomous_work",
+    "collective_pulse", "creative_impulse", "deep_reflection",
+    "dream_consolidation", "file_watch", "hf_inference", "infra_weather",
+    "memory_density", "mic", "pollinations", "prompt_mutation",
+    "proprioception", "shadow_scan", "voice_journal", "wake_word",
+]
+
+#: Dem der rører indre liv eller SANSER. Routes egress-frit — synlige, men de
+#: kan ikke nå Discord eller en abonnent.
+_SKAL_VAERE_PRIVATE = {
+    "ambient", "anticipation", "collective_pulse", "creative_impulse",
+    "deep_reflection", "dream_consolidation", "memory_density", "mic",
+    "proprioception", "prompt_mutation", "voice_journal", "wake_word",
+}
+
+
+def test_alle_nitten_er_ROUTET():
+    """En registreret familie uden rute er stadig usynlig."""
+    import core.services.eventbus_central_bridge as br
+    routet = set(br.FAMILY_ROUTES) | set(br.PRIVATE_NO_EGRESS_ROUTES)
+    mangler = [f for f in _DE_NITTEN if f not in routet]
+    assert not mangler, f"uroutede families: {mangler}"
+
+
+def test_sanser_og_indre_liv_kan_IKKE_egresse():
+    """`mic`, `ambient`, `wake_word` og `voice_journal` roerer en mikrofon i
+    hans hjem. Routet operationelt ville de vaere synlige — OG kunne laekke.
+
+    Egress-fri routing giver det foerste uden det andet.
+    """
+    import core.services.eventbus_central_bridge as br
+    for f in sorted(_SKAL_VAERE_PRIVATE):
+        assert f in br.PRIVATE_NO_EGRESS_ROUTES, f"{f} er ikke egress-fri"
+        assert f not in br.FAMILY_ROUTES, \
+            f"{f} staar i FAMILY_ROUTES og kan naa Discord"
+
+
+def test_mikrofon_familierne_staar_eksplicit_paa_udelukkelses_listen():
+    """Invarianten er kun saa staerk som listen. En egress-fri rute uden en
+    post her er en udelukkelse der kun er en hensigt."""
+    import core.services.eventbus_central_bridge as br
+    for f in ("mic", "ambient", "wake_word", "voice_journal"):
+        assert f in br.PRIVATE_FAMILIES_EXCLUDED_M0, f"{f} mangler i EXCLUDED_M0"
+
+
+def test_de_operationelle_syv_kan_naa_centralen():
+    """Drift og infrastruktur SKAL kunne ses. Routet egress-frit ville de
+    vaere laast inde sammen med det private uden grund."""
+    import core.services.eventbus_central_bridge as br
+    for f in ("file_watch", "hf_inference", "infra_weather", "pollinations",
+              "autonomous_work", "autonomous_outreach", "shadow_scan"):
+        assert f in br.FAMILY_ROUTES, f"{f} naar ikke Centralen"
+        assert f not in br.PRIVATE_NO_EGRESS_ROUTES
+
+
+def test_ingen_familie_staar_BEGGE_steder():
+    """To ruter for samme familie ville goere egress-spoergsmaalet
+    uafgoerbart — og den loeseste ville vinde."""
+    import core.services.eventbus_central_bridge as br
+    overlap = set(br.FAMILY_ROUTES) & set(br.PRIVATE_NO_EGRESS_ROUTES)
+    assert not overlap, f"familier i begge ruter: {sorted(overlap)}"

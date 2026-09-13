@@ -817,6 +817,19 @@ _OllamaFreeAPI adapter for PUBLIC-SAFE cheap-lane calls._
 | function | `_mismatch_reason` | `(*, preferred_lane, preferred_target)` | — | [src](../../../core/runtime/operational_preference_alignment.py#L61) |
 | function | `_recommended_action` | `(*, preferred_lane, preferred_target)` | — | [src](../../../core/runtime/operational_preference_alignment.py#L73) |
 
+## `core/runtime/plugin_graph.py`
+_Afhængighedsgrafen — Fase 9: «plugin boot rejects missing/cyclic dependencies»._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `GrafFejl` | `` | Grafen kan ikke bære arbejde. Rejses kun i streng tilstand. | [src](../../../core/runtime/plugin_graph.py#L48) |
+| class | `Rapport` | `` | Hvad grafen fejler — og hvad den kan, hvis noget. | [src](../../../core/runtime/plugin_graph.py#L53) |
+| method | `Rapport.rask` | `(self)` | — | [src](../../../core/runtime/plugin_graph.py#L66) |
+| method | `Rapport.forklar` | `(self)` | Menneskelæsbart. Hver linje skal kunne handles på uden opslag. | [src](../../../core/runtime/plugin_graph.py#L69) |
+| function | `valider` | `(graf, *, streng=…)` | Find manglende udbydere og cykler, og læg knuderne i en gyldig orden. | [src](../../../core/runtime/plugin_graph.py#L79) |
+| function | `_find_cykler` | `(knuder)` | Dybde-først med tre farver. Hver fundet cyklus returneres som sin sti. | [src](../../../core/runtime/plugin_graph.py#L115) |
+| function | `_toposorter` | `(knuder)` | Kahn. Afhængigheder først, og navne-sorteret inden for hvert lag. | [src](../../../core/runtime/plugin_graph.py#L155) |
+
 ## `core/runtime/process_lifecycle.py`
 _Lukker processen ned? Ét sted der ejer svaret._
 
@@ -907,13 +920,4 @@ _Refresh-token-rotation (spec §22.6)._
 | function | `_deactivate` | `(h)` | — | [src](../../../core/runtime/refresh_tokens.py#L81) |
 | function | `rotate_refresh_token` | `(token, *, app_id=…)` | Veksl en refresh-token til et nyt access+refresh-par. Den gamle refresh-token | [src](../../../core/runtime/refresh_tokens.py#L92) |
 | function | `revoke_all` | `(user_id)` | Invalidér ALLE brugerens refresh-tokens (§22.6 + !revoke-override). Returnerer | [src](../../../core/runtime/refresh_tokens.py#L115) |
-
-## `core/runtime/run_profile.py`
-_Hvilken profil koerer en given koersel under — Fase 9._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `profil_navn_for` | `(run, *, research=…)` | Profilnavnet for en koersel. Falder altid ud i noget kendt. | [src](../../../core/runtime/run_profile.py#L30) |
-| function | `_synlig_profil` | `(run)` | Ejeren eller et husstandsmedlem? | [src](../../../core/runtime/run_profile.py#L45) |
-| function | `profil_for` | `(run, *, research=…, overstyring=…)` | Den effektive profil for en koersel — klar til at gemmes paa raekken. | [src](../../../core/runtime/run_profile.py#L83) |
 

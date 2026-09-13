@@ -861,4 +861,23 @@ def build_cadence_producers_surface() -> dict[str, object]:
             "reflective_critic", "reflection_signal", "self_model_signal", "development_focus",
             "emergent_signal", "decision_log", "lifecycle_progression",
         ],
+        # Fase 9: «plugin boot rejects missing/cyclic dependencies». Rapporten
+        # skrives ved bootstrap; uden den her kunne den kun ses i loggen, og en
+        # fejl man skal vide at man skal lede efter er halvt tavs.
+        #
+        # Uden validering giver en tastefejl i et `depends_on`-navn
+        # ('blocked', 'dependency-not-met:...') FOR EVIGT — og `blocked` er
+        # ikke til at skelne fra det lovlige «foraelderen har ikke koert endnu».
+        "afhaengighedsgraf": _graf_rapport(),
     }
+
+
+def _graf_rapport() -> dict[str, object]:
+    """Sidste validering af producent-grafen. Selv-sikker: en flade maa ikke
+    kunne vaeltes af det den rapporterer om."""
+    try:
+        from core.services.internal_cadence import sidste_graf_rapport
+        return dict(sidste_graf_rapport) or {"rask": None,
+                                             "note": "ikke valideret endnu"}
+    except Exception:
+        return {"rask": None, "note": "kunne ikke laeses"}

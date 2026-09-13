@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/runtime/run_profile.py`
+_Hvilken profil koerer en given koersel under — Fase 9._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `profil_navn_for` | `(run, *, research=…)` | Profilnavnet for en koersel. Falder altid ud i noget kendt. | [src](../../../core/runtime/run_profile.py#L30) |
+| function | `_synlig_profil` | `(run)` | Ejeren eller et husstandsmedlem? | [src](../../../core/runtime/run_profile.py#L45) |
+| function | `profil_for` | `(run, *, research=…, overstyring=…)` | Den effektive profil for en koersel — klar til at gemmes paa raekken. | [src](../../../core/runtime/run_profile.py#L83) |
+
 ## `core/runtime/runtime_json_io.py`
 _Safe read/merge/write helpers for runtime.json._
 

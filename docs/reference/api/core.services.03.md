@@ -368,6 +368,7 @@ _Cadence Producers — central orchestration for waking up dead MC fields._
 | function | `_observe_frozen` | `(nerve, meta)` | EGRESS-FRI liveness for en vækket frossen detektor (rettet 2026-07-01: var central().observe). | [src](../../../core/services/cadence_producers.py#L788) |
 | function | `tick_frozen_detectors` | `(tick_count)` | LivingNeuron Fase B: væk de frosne detektorer på LAV cadence (deres consumers sultede på | [src](../../../core/services/cadence_producers.py#L797) |
 | function | `build_cadence_producers_surface` | `()` | MC surface for cadence producer status. | [src](../../../core/services/cadence_producers.py#L854) |
+| function | `_graf_rapport` | `()` | Sidste validering af producent-grafen. Selv-sikker: en flade maa ikke | [src](../../../core/services/cadence_producers.py#L875) |
 
 ## `core/services/calm_anchor.py`
 _Calm Anchor — baseline reference state Jarvis can return to._

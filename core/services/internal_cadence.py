@@ -476,6 +476,57 @@ def _ensure_producers_registered() -> None:
     register_maintenance_producers(register_producer)
     register_central_wiring_producers()
 
+    _valider_afhaengigheder()
+
+
+#: Sidste validerings-rapport. Laeses af Centralen — en rapport ingen kan se
+#: er lige saa tavs som den fejl den beskriver.
+sidste_graf_rapport: dict[str, object] = {}
+
+
+def _valider_afhaengigheder() -> None:
+    """Afvis manglende udbydere og cykler HOEJLYDT ved bootstrap.
+
+    Fase 9: «plugin boot rejects missing/cyclic dependencies».
+
+    Grunden er maalt, ikke antaget. Uden denne kontrol giver en tastefejl i et
+    `depends_on`-navn:
+
+        _evaluate_producer(...) -> ('blocked', 'dependency-not-met:findes_slet_ikke')
+
+    FOR EVIGT — og `blocked` er ikke til at skelne fra det helt lovlige
+    «foraelderen har bare ikke koert endnu». En cyklus laaser begge sider paa
+    samme maade. Producenten er doed, og det eneste spor er en grund-streng i
+    et tick-resultat ingen laeser.
+
+    Rapporterer, kaster IKKE. Et kast her ville tage hele runtime ned fordi én
+    producent havde en tastefejl — vaerre end sygdommen. Spec'en siger selv at
+    eksisterende tjenester migrerer gradvist; streng tilstand hoerer til nye
+    soemme. Fejlen staar nu i loggen OG paa Centralens flade, hvor nogen kan
+    naa at reagere.
+    """
+    global sidste_graf_rapport
+    try:
+        from core.runtime.plugin_graph import valider
+        rapport = valider({n: list(s.depends_on or []) for n, s in _producers.items()})
+        sidste_graf_rapport = {
+            "rask": rapport.rask,
+            "antal_producenter": len(_producers),
+            "manglende": {k: list(v) for k, v in rapport.manglende.items()},
+            "cykler": [list(c) for c in rapport.cykler],
+            "forklaring": rapport.forklar(),
+        }
+        if not rapport.rask:
+            for linje in rapport.forklar():
+                logger.error("kadence-graf BRUDT: %s", linje)
+            logger.error("kadence-graf: %d producent(er) er permanent blokeret "
+                         "uden at det fremgaar af deres status",
+                         len(rapport.manglende) + sum(len(c) - 1 for c in rapport.cykler))
+    except Exception:
+        # En validator der vaelter opstarten er vaerre end ingen validator.
+        logger.warning("kunne ikke validere kadence-grafen", exc_info=True)
+        sidste_graf_rapport = {"rask": None, "fejl": True}
+
 
 def run_cadence_tick_with_bootstrap(
     *,

@@ -231,12 +231,13 @@ _Primary lane cache warmer._
 | function | `_build_headers` | `(api_key)` | — | [src](../../../scripts/primary_cache_warmer.py#L280) |
 | function | `_call_api` | `(api_key, base_url, payload, *, timeout_s=…)` | Kald DeepSeek chat completions API. | [src](../../../scripts/primary_cache_warmer.py#L287) |
 | function | `_insert_cost_row` | `(result)` | Indsæt warmer-kald i costs-tabellen. | [src](../../../scripts/primary_cache_warmer.py#L359) |
-| function | `_append_log` | `(entry)` | — | [src](../../../scripts/primary_cache_warmer.py#L403) |
-| function | `_read_key_from_runtime_json` | `()` | Læs deepseek_api_key fra ~/.jarvis-v2/config/runtime.json. | [src](../../../scripts/primary_cache_warmer.py#L414) |
-| function | `_resolve_api_key` | `(*, override=…)` | Resolve DeepSeek API key: override > env > runtime.json. | [src](../../../scripts/primary_cache_warmer.py#L424) |
-| function | `warm_primary_cache` | `(*, api_key=…, base_url=…, system_prompt=…, force=…, workspace_name=…)` | Udfør ét cache-warmer kald og returnér resultat. | [src](../../../scripts/primary_cache_warmer.py#L441) |
-| function | `_warm_one_workspace` | `(workspace_name, *, api_key, base_url, dry_run)` | Cache-warm én bestemt workspace. Logger separat per workspace. | [src](../../../scripts/primary_cache_warmer.py#L521) |
-| function | `main` | `(argv=…)` | — | [src](../../../scripts/primary_cache_warmer.py#L595) |
+| function | `_rotér` | `(sti)` | Flyt filen til `.1` naar den bliver for stor. Én generation, ikke fem. | [src](../../../scripts/primary_cache_warmer.py#L413) |
+| function | `_append_log` | `(entry)` | — | [src](../../../scripts/primary_cache_warmer.py#L432) |
+| function | `_read_key_from_runtime_json` | `()` | Læs deepseek_api_key fra ~/.jarvis-v2/config/runtime.json. | [src](../../../scripts/primary_cache_warmer.py#L448) |
+| function | `_resolve_api_key` | `(*, override=…)` | Resolve DeepSeek API key: override > env > runtime.json. | [src](../../../scripts/primary_cache_warmer.py#L458) |
+| function | `warm_primary_cache` | `(*, api_key=…, base_url=…, system_prompt=…, force=…, workspace_name=…)` | Udfør ét cache-warmer kald og returnér resultat. | [src](../../../scripts/primary_cache_warmer.py#L475) |
+| function | `_warm_one_workspace` | `(workspace_name, *, api_key, base_url, dry_run)` | Cache-warm én bestemt workspace. Logger separat per workspace. | [src](../../../scripts/primary_cache_warmer.py#L555) |
+| function | `main` | `(argv=…)` | — | [src](../../../scripts/primary_cache_warmer.py#L629) |
 
 ## `scripts/publish_mobile_apk.py`
 _Læg en ny mobil-APK op — og behold præcis én version tilbage._

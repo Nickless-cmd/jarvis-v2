@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7410/14500 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7411/14501 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -35,7 +35,7 @@ Generated from source. 7410/14500 functions/methods documented (51%). The list b
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 2 | 25 | 8% |
 | `core.util` | 9 | 10 | 90% |
-| `scripts` | 187 | 370 | 50% |
+| `scripts` | 188 | 371 | 50% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
@@ -2085,7 +2085,7 @@ Generated from source. 7410/14500 functions/methods documented (51%). The list b
 - `scripts/pipelines/tiktok_import_firefox_cookies.py` :: `extract_tiktok_cookies` (L39)
 - `scripts/pipelines/tiktok_import_firefox_cookies.py` :: `find_firefox_cookie_db` (L28)
 - `scripts/pipelines/tiktok_import_firefox_cookies.py` :: `main` (L70)
-- `scripts/primary_cache_warmer.py` :: `main` (L595)
+- `scripts/primary_cache_warmer.py` :: `main` (L629)
 - `scripts/publish_mobile_apk.py` :: `apk_navn` (L42)
 - `scripts/publish_mobile_apk.py` :: `hovedet` (L86)
 - `scripts/repro_streaming_fault.py` :: `main` (L77)

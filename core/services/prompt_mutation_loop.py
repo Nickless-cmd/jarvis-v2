@@ -303,16 +303,16 @@ def rollback_mutation(mutation_id: str, *, note: str = "", auto: bool = False) -
     # Publish event so rollback shows up in chronicle
     try:
         from core.eventbus.bus import event_bus
-        event_bus.publish({
-            "kind": "prompt_mutation.rolled_back",
-            "payload": {
+        event_bus.publish(
+            "prompt_mutation.rolled_back",
+            {
                 "mutation_id": mutation_id,
                 "target_file": target_file,
                 "auto": bool(auto),
                 "score": target.get("score"),
                 "reason": target.get("reason"),
             },
-        })
+        )
     except Exception:
         pass
     return True

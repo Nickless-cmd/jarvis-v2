@@ -150,10 +150,10 @@ def write_density_note(
     _save(items)
     try:
         from core.eventbus.bus import event_bus
-        event_bus.publish({
-            "kind": "memory_density.written",
-            "payload": {"note_id": note_id, "title": record["title"], "trigger": trigger_type},
-        })
+        event_bus.publish(
+            "memory_density.written",
+            {"note_id": note_id, "title": record["title"], "trigger": trigger_type},
+        )
     except Exception:
         pass
     return record

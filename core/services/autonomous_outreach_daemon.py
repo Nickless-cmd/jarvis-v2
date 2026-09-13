@@ -323,14 +323,14 @@ def attempt_outreach() -> dict[str, Any]:
         _log_decision(**decision)
         try:
             from core.eventbus.bus import event_bus
-            event_bus.publish({
-                "kind": "autonomous_outreach.sent",
-                "payload": {
+            event_bus.publish(
+                "autonomous_outreach.sent",
+                {
                     "message": message[:240],
                     "priority": priority,
                     "channel": channel,
                 },
-            })
+            )
         except Exception:
             pass
         return decision

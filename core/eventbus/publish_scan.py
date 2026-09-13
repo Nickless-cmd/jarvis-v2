@@ -83,3 +83,61 @@ def unregistered_families(rod: Path | None = None) -> dict[str, list[str]]:
         for f, steder in scan_published_families(rod).items()
         if f not in ALLOWED_EVENT_FAMILIES
     }
+
+
+def dict_form_publish_calls(rod: Path | None = None) -> list[str]:
+    """Find hvert ``X.publish({...})``-kald — dict-formen der ALTID raiser på event_bus.
+
+    Målt 13/9-2026: 24 kaldesteder skrev
+    ``event_bus.publish({"kind": .., "payload": ..})``. ``EventBus.publish`` tager
+    ``(kind, payload)``; et dict som ``kind`` gør at ``Event.validate`` kalder
+    ``kind.partition(".")`` på et dict → ``AttributeError`` — og hvert kaldsteds
+    ``except`` sluger den. Regex-scanneren ovenfor er BLIND for formen (den kræver
+    et streng-literal som første argument), så gælden var usynlig i månedsvis.
+
+    Derfor AST i stedet for regex her: vi leder efter en *struktur* (et dict-agtigt
+    objekt som første argument), ikke en tekststreng. Formen fanges i alle tre
+    skikkelser — ``{...}``, ``{k: v for ...}`` og ``dict(...)`` — for alle tre ville
+    give samme fejl på event_bus. (Målt: `bridge_presence`-kaldet er en DictComp,
+    så en scanner der kun kendte ``ast.Dict`` var blind for det.)
+
+    Returnerer ``"sti:linje (receiver)"``. ``bridge_presence.publish(dict)`` er en
+    ANDEN, legitim signatur (dict ER første argument der) — den listes også, så
+    kalderen selv kan skelne. Filtrér på ``(event_bus)`` for bus-kaldene.
+    """
+    import ast
+    import warnings
+
+    base = rod or _repo_root()
+    ud: list[str] = []
+    for navn in _ROEDDER:
+        for p in (base / navn).rglob("*.py"):
+            rel = p.relative_to(base)
+            if {"node_modules", ".worktrees"} & set(rel.parts):
+                continue
+            try:
+                txt = p.read_text(encoding="utf-8")
+                with warnings.catch_warnings():
+                    # Andre filers ugyldige escape-sekvenser er ikke vores sag —
+                    # uden dette drukner scanningen i DeprecationWarnings.
+                    warnings.simplefilter("ignore")
+                    tree = ast.parse(txt)
+            except Exception:
+                continue
+            for node in ast.walk(tree):
+                if not (
+                    isinstance(node, ast.Call)
+                    and isinstance(node.func, ast.Attribute)
+                    and node.func.attr == "publish"
+                    and node.args
+                ):
+                    continue
+                first = node.args[0]
+                dict_agtig = isinstance(first, (ast.Dict, ast.DictComp)) or (
+                    isinstance(first, ast.Call)
+                    and isinstance(first.func, ast.Name)
+                    and first.func.id == "dict"
+                )
+                if dict_agtig:
+                    ud.append(f"{rel}:{node.lineno} ({ast.unparse(node.func.value)})")
+    return sorted(ud)

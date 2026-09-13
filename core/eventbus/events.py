@@ -193,6 +193,21 @@ ALLOWED_EVENT_FAMILIES = {
     "coding_lane",  # auto-reviewer + future code-gen (added 2026-05-17)
     "cross_user_share",  # privacy-guard flag (§4.4) — var latent afvist → guarden fejlede
                          # ÅBENT (svar sendt + approval-kort aldrig registreret) (added 2026-06-23)
+    # ── 13. sep 2026: 24 kaldesteder publicerede med DICT-formen
+    #    `publish({"kind": .., "payload": ..})`. Den raiser ALTID (Event.validate
+    #    kalder kind.partition(".") på et dict), og hvert kaldsted sluger fejlen
+    #    med `except Exception: pass`. Fundet ved at bygge OpenRouter-billed-
+    #    værktøjet og opdage at pollinations' eget event ALDRIG havde fyret:
+    #    0 rækker i DB for familien. Målt: 19 familier, nul events nogensinde.
+    #    NB: registrering HER får eventet til at PERSISTERE i events-tabellen.
+    #    Routing til Central (FAMILY_ROUTES / PRIVATE_NO_EGRESS_ROUTES) er en
+    #    separat, konservativ allowlist-beslutning og er IKKE taget her — disse
+    #    19 er stadig dark for Central indtil de routes eksplicit. ──
+    "ambient", "anticipation", "autonomous_outreach", "autonomous_work",
+    "collective_pulse", "creative_impulse", "deep_reflection", "dream_consolidation",
+    "file_watch", "hf_inference", "infra_weather", "memory_density", "mic",
+    "pollinations", "prompt_mutation", "proprioception", "shadow_scan",
+    "voice_journal", "wake_word",
 }
 
 

@@ -244,16 +244,16 @@ def _maybe_emit_critical(report: dict[str, Any]) -> None:
         pass
     try:
         from core.eventbus.bus import event_bus
-        event_bus.publish({
-            "kind": "infra_weather.critical",
-            "payload": {
+        event_bus.publish(
+            "infra_weather.critical",
+            {
                 "reasons": report.get("reasons"),
                 "load_0_1": report.get("load", {}).get("load_0_1"),
                 "disk_worst_pct": report.get("disk", {}).get("worst_used_pct"),
                 "api_cost": report.get("api_cost_today_usd"),
                 "at": report.get("computed_at"),
             },
-        })
+        )
     except Exception:
         pass
     # ntfy alert

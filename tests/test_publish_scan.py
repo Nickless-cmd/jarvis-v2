@@ -141,3 +141,31 @@ def test_scanneren_finder_ikke_sin_egen_dokumentation():
     """Første udgave havde `publish("familie.navn")` i sin egen docstring og
     opfandt dermed familien «familie» — som endte i baselinen som ægte gæld."""
     assert "familie" not in scan_published_families()
+
+
+def test_ingen_dict_form_paa_eventbus():
+    """Dict-formen `event_bus.publish({"kind":.., "payload":..})` raiser ALTID.
+
+    Målt 13/9-2026: 24 kaldesteder skrev den. `Event.validate` kalder
+    `kind.partition(".")` på et dict → AttributeError, og hvert kaldsteds
+    `except Exception: pass` slugede den. Konsekvens: 19 familier havde NUL
+    events nogensinde (pollinations, wake_word, hf_inference, mic, ...).
+
+    Regex-scanneren i publish_scan er blind for formen — den kræver et
+    streng-literal — så denne test bruger AST. `bridge_presence.publish(dict)`
+    er en anden, legitim signatur og må ikke flagges; derfor tjekker vi receiveren.
+    """
+    from core.eventbus.publish_scan import dict_form_publish_calls
+
+    fund = dict_form_publish_calls()
+    # Scanneren skal faktisk kunne finde noget, ellers består testen på ingenting.
+    assert any("bridge_presence" in f for f in fund), (
+        "scanneren er blind — den fandt ikke det kendte bridge_presence-kald. "
+        f"fund={fund}"
+    )
+    bus = [f for f in fund if "(event_bus)" in f]
+    assert not bus, (
+        "Dict-formen raiser på event_bus (kind bliver et dict):\n"
+        + "\n".join(f"  {f}" for f in bus)
+        + "\n\nBrug event_bus.publish(kind, payload)."
+    )

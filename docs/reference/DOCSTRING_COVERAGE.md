@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7484/14597 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7485/14598 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -19,7 +19,7 @@ Generated from source. 7484/14597 functions/methods documented (51%). The list b
 | `core.coding_lane` | 9 | 10 | 90% |
 | `core.context` | 53 | 67 | 79% |
 | `core.costing` | 6 | 8 | 75% |
-| `core.eventbus` | 11 | 25 | 44% |
+| `core.eventbus` | 12 | 26 | 46% |
 | `core.identity` | 66 | 159 | 41% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
@@ -233,10 +233,10 @@ Generated from source. 7484/14597 functions/methods documented (51%). The list b
 - `core/eventbus/bus.py` :: `EventBus.recent_since_id` (L195)
 - `core/eventbus/bus.py` :: `EventBus.subscribe` (L217)
 - `core/eventbus/bus.py` :: `EventBus.unsubscribe` (L223)
-- `core/eventbus/events.py` :: `Event.create` (L210)
-- `core/eventbus/events.py` :: `Event.family` (L206)
-- `core/eventbus/events.py` :: `Event.from_record` (L216)
-- `core/eventbus/events.py` :: `Event.validate` (L227)
+- `core/eventbus/events.py` :: `Event.create` (L225)
+- `core/eventbus/events.py` :: `Event.family` (L221)
+- `core/eventbus/events.py` :: `Event.from_record` (L231)
+- `core/eventbus/events.py` :: `Event.validate` (L242)
 - `core/identity/candidate_workflow.py` :: `apply_approved_runtime_contract_candidates` (L318)
 - `core/identity/candidate_workflow.py` :: `apply_runtime_contract_candidate` (L119)
 - `core/identity/candidate_workflow.py` :: `approve_runtime_contract_candidate` (L51)
@@ -1399,10 +1399,10 @@ Generated from source. 7484/14597 functions/methods documented (51%). The list b
 - `core/services/prompt_sections/transcript_sections.py` :: `recent_chat_session_messages` (L69)
 - `core/services/prompt_sections/transcript_sections.py` :: `recent_chat_session_messages_by_user_turns` (L74)
 - `core/services/prompt_sections/transcript_sections.py` :: `visible_session_continuity` (L79)
-- `core/services/proprioception_metrics.py` :: `build_proprioception_metrics_surface` (L144)
-- `core/services/proprioception_metrics.py` :: `recent_snapshots` (L140)
-- `core/services/proprioception_metrics.py` :: `reset_proprioception_metrics` (L213)
-- `core/services/proprioception_metrics.py` :: `tick` (L97)
+- `core/services/proprioception_metrics.py` :: `build_proprioception_metrics_surface` (L147)
+- `core/services/proprioception_metrics.py` :: `recent_snapshots` (L143)
+- `core/services/proprioception_metrics.py` :: `reset_proprioception_metrics` (L216)
+- `core/services/proprioception_metrics.py` :: `tick` (L100)
 - `core/services/push_dispatcher.py` :: `on_approval_requested` (L143)
 - `core/services/push_dispatcher.py` :: `on_initiative` (L131)
 - `core/services/push_dispatcher.py` :: `on_reminder` (L137)

@@ -374,9 +374,9 @@ def listen_and_transcribe(
 
     try:
         from core.eventbus.bus import event_bus
-        event_bus.publish({
-            "kind": "mic.transcribed",
-            "payload": {
+        event_bus.publish(
+            "mic.transcribed",
+            {
                 "text": transcript[:500],
                 "chars": len(transcript),
                 "backend": backend_used,
@@ -386,7 +386,7 @@ def listen_and_transcribe(
                 "trigger": trigger_action,
                 "trigger_result": trigger_result,
             },
-        })
+        )
     except Exception:
         pass
 

@@ -64,14 +64,14 @@ def _on_wake(phrase: str) -> None:
     # Emit bus event
     try:
         from core.eventbus.bus import event_bus
-        event_bus.publish({
-            "kind": "wake_word.detected",
-            "payload": {
+        event_bus.publish(
+            "wake_word.detected",
+            {
                 "phrase": phrase,
                 "at": _last_detection_ts.isoformat(),
                 "detection_count": _detection_count,
             },
-        })
+        )
     except Exception:
         pass
 
@@ -92,14 +92,14 @@ def _on_wake(phrase: str) -> None:
                 )
                 try:
                     from core.eventbus.bus import event_bus
-                    event_bus.publish({
-                        "kind": "wake_word.follow_up_transcribed",
-                        "payload": {
+                    event_bus.publish(
+                        "wake_word.follow_up_transcribed",
+                        {
                             "text": str(result.get("text") or "")[:500],
                             "trigger": result.get("trigger"),
                             "trigger_result": result.get("trigger_result"),
                         },
-                    })
+                    )
                 except Exception:
                     pass
         except Exception as exc:
@@ -156,14 +156,14 @@ def start_wake_word(
 
     try:
         from core.eventbus.bus import event_bus
-        event_bus.publish({
-            "kind": "wake_word.started",
-            "payload": {
+        event_bus.publish(
+            "wake_word.started",
+            {
                 "at": _start_ts.isoformat(),
                 "auto_listen": _auto_listen_after_wake,
                 "auto_listen_duration": _auto_listen_duration,
             },
-        })
+        )
     except Exception:
         pass
 
@@ -196,14 +196,14 @@ def stop_wake_word() -> dict[str, Any]:
 
     try:
         from core.eventbus.bus import event_bus
-        event_bus.publish({
-            "kind": "wake_word.stopped",
-            "payload": {
+        event_bus.publish(
+            "wake_word.stopped",
+            {
                 "at": datetime.now(UTC).isoformat(),
                 "clean_shutdown": not was_alive,
                 "detections_during_session": _detection_count,
             },
-        })
+        )
     except Exception:
         pass
 

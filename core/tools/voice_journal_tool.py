@@ -121,16 +121,16 @@ def _exec_voice_journal(args: dict[str, Any]) -> dict[str, Any]:
     # Emit event so action_router / autonomous_outreach can notice
     try:
         from core.eventbus.bus import event_bus
-        event_bus.publish({
-            "kind": "voice_journal.recorded",
-            "payload": {
+        event_bus.publish(
+            "voice_journal.recorded",
+            {
                 "note_id": note.get("note_id"),
                 "title": note.get("title"),
                 "chars": len(transcript),
                 "duration_s": duration,
                 "wav_path": wav_path,
             },
-        })
+        )
     except Exception:
         pass
 

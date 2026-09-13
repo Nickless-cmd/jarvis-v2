@@ -196,15 +196,15 @@ def generate_video(
 
     try:
         from core.eventbus.bus import event_bus
-        event_bus.publish({
-            "kind": "hf_inference.video_generated",
-            "payload": {
+        event_bus.publish(
+            "hf_inference.video_generated",
+            {
                 "generation_id": gen_id,
                 "model": model,
                 "path": str(path),
                 "bytes": len(data),
             },
-        })
+        )
     except Exception:
         pass
 
@@ -367,15 +367,15 @@ def transcribe_audio(
 
     try:
         from core.eventbus.bus import event_bus
-        event_bus.publish({
-            "kind": "hf_inference.transcribed",
-            "payload": {
+        event_bus.publish(
+            "hf_inference.transcribed",
+            {
                 "model": model,
                 "chars": len(text),
                 "source": audio_source[:200],
                 "has_timestamps": bool(chunks),
             },
-        })
+        )
     except Exception:
         pass
 

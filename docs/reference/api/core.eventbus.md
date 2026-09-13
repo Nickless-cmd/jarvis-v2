@@ -40,11 +40,11 @@ _EventContext — ContextVar holding the current parent event_id._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| class | `Event` | `` | — | [src](../../../core/eventbus/events.py#L200) |
-| method | `Event.family` | `(self)` | — | [src](../../../core/eventbus/events.py#L206) |
-| method | `Event.create` | `(cls, kind, payload=…)` | — | [src](../../../core/eventbus/events.py#L210) |
-| method | `Event.from_record` | `(cls, *, kind, payload, created_at)` | — | [src](../../../core/eventbus/events.py#L216) |
-| method | `Event.validate` | `(self)` | — | [src](../../../core/eventbus/events.py#L227) |
+| class | `Event` | `` | — | [src](../../../core/eventbus/events.py#L215) |
+| method | `Event.family` | `(self)` | — | [src](../../../core/eventbus/events.py#L221) |
+| method | `Event.create` | `(cls, kind, payload=…)` | — | [src](../../../core/eventbus/events.py#L225) |
+| method | `Event.from_record` | `(cls, *, kind, payload, created_at)` | — | [src](../../../core/eventbus/events.py#L231) |
+| method | `Event.validate` | `(self)` | — | [src](../../../core/eventbus/events.py#L242) |
 
 ## `core/eventbus/publish_scan.py`
 _Find hvert publish-kald med en familie.navn-literal — statisk, uden at koere noget._
@@ -54,4 +54,5 @@ _Find hvert publish-kald med en familie.navn-literal — statisk, uden at koere 
 | function | `_repo_root` | `()` | — | [src](../../../core/eventbus/publish_scan.py#L42) |
 | function | `scan_published_families` | `(rod=…)` | familie → liste af "sti:linje" hvor den publiceres. | [src](../../../core/eventbus/publish_scan.py#L46) |
 | function | `unregistered_families` | `(rod=…)` | De publicerede familier der IKKE er tilladt → publish raiser tavst. | [src](../../../core/eventbus/publish_scan.py#L77) |
+| function | `dict_form_publish_calls` | `(rod=…)` | Find hvert ``X.publish({...})``-kald — dict-formen der ALTID raiser på event_bus. | [src](../../../core/eventbus/publish_scan.py#L88) |
 

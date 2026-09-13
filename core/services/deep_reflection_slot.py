@@ -311,14 +311,14 @@ def run_reflection() -> dict[str, Any]:
     # Publish event so action_router or others can react
     try:
         from core.eventbus.bus import event_bus
-        event_bus.publish({
-            "kind": "deep_reflection.completed",
-            "payload": {
+        event_bus.publish(
+            "deep_reflection.completed",
+            {
                 "reflection_id": reflection_id,
                 "note_path": note_path,
                 "text_length": len(text),
             },
-        })
+        )
     except Exception:
         pass
 

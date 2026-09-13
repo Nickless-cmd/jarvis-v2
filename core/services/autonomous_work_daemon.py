@@ -151,14 +151,14 @@ def _file_proposal(
     _log_entry(entry)
     try:
         from core.eventbus.bus import event_bus
-        event_bus.publish({
-            "kind": "autonomous_work.proposal",
-            "payload": {
+        event_bus.publish(
+            "autonomous_work.proposal",
+            {
                 "proposal_id": prop_id,
                 "type": proposal_type,
                 "title": entry["title"],
             },
-        })
+        )
     except Exception:
         pass
     return prop_id

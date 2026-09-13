@@ -217,14 +217,14 @@ def run_pulse() -> dict[str, Any]:
     _save(data)
     try:
         from core.eventbus.bus import event_bus
-        event_bus.publish({
-            "kind": "collective_pulse.computed",
-            "payload": {
+        event_bus.publish(
+            "collective_pulse.computed",
+            {
                 "zeitgeist": zeitgeist,
                 "fragment_count": len(fragments),
                 "top_term": top_terms[0][0] if top_terms else None,
             },
-        })
+        )
     except Exception:
         pass
     return pulse

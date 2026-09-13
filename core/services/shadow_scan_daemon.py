@@ -244,14 +244,14 @@ def run_scan() -> dict[str, Any]:
     _append_shadow_log(scan)
     try:
         from core.eventbus.bus import event_bus
-        event_bus.publish({
-            "kind": "shadow_scan.completed",
-            "payload": {
+        event_bus.publish(
+            "shadow_scan.completed",
+            {
                 "scan_id": scan["scan_id"],
                 "finding_count": len(findings),
                 "top_pattern": findings[0].get("pattern_name") if findings else None,
             },
-        })
+        )
     except Exception:
         pass
     return scan

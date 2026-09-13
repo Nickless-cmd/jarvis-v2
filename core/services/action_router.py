@@ -176,9 +176,9 @@ def _maybe_suggest_listen_on_ambient_talk(payload: dict[str, Any]) -> dict[str, 
     _last_ambient_suggestion_ts = now_ts
     try:
         from core.eventbus.bus import event_bus
-        event_bus.publish({
-            "kind": "ambient.talk_suggests_listen",
-            "payload": {
+        event_bus.publish(
+            "ambient.talk_suggests_listen",
+            {
                 "at": datetime.now(_LOCAL_TZ).isoformat(),
                 "amplitude_mean": payload.get("amplitude_mean"),
                 "note": (
@@ -188,7 +188,7 @@ def _maybe_suggest_listen_on_ambient_talk(payload: dict[str, Any]) -> dict[str, 
                     "remains in control."
                 ),
             },
-        })
+        )
     except Exception:
         pass
     return {"outcome": "suggestion-emitted", "reason": "ambient-talk-detected"}

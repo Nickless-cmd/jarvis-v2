@@ -100,10 +100,10 @@ def _record_change(path: Path, change_type: str) -> None:
     _recent.appendleft(entry)
     try:
         from core.eventbus.bus import event_bus
-        event_bus.publish({
-            "kind": "file_watch.change",
-            "payload": entry,
-        })
+        event_bus.publish(
+            "file_watch.change",
+            entry,
+        )
     except Exception:
         pass
 

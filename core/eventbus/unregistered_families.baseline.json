@@ -1,6 +1,6 @@
 {
   "_forklaring": "Kendt gæld pr. 2026-09-06: familier der publiceres men ikke står i ALLOWED_EVENT_FAMILIES, så publish() raiser og fejlen sluges. Listen er FROSSEN — testen fejler på NYE tilføjelser, ikke på disse. Retter du en, så fjern den herfra; testen siger til hvis den er overflødig, så listen kun kan skrumpe.",
-  "_maalt": "64 familier, 83 kaldsteder, nul events i DB for de stikprøvede",
+  "_maalt": "64 familier, 83 kaldsteder, nul events i DB for de stikprøvede. 13/9-2026: dream_consolidation registreret i ALLOWED og fjernet herfra → 63.",
   "familier": [
     "absence_awareness",
     "absence_trace",
@@ -28,7 +28,6 @@
     "cowork",
     "crisis_marker",
     "decision",
-    "dream_consolidation",
     "dreaming_session",
     "embodied_presence",
     "emotion_tagging",

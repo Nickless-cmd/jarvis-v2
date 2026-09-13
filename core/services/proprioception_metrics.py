@@ -89,7 +89,10 @@ def _measure_self_latency_ms() -> float | None:
 def _emit(kind: str, payload: dict[str, Any]) -> None:
     try:
         from core.eventbus.bus import event_bus
-        event_bus.publish({"kind": kind, "payload": payload})
+        event_bus.publish(
+            kind,
+            payload,
+        )
     except Exception:
         pass
 

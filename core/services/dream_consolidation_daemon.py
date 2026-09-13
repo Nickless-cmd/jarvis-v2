@@ -806,15 +806,15 @@ def consolidate_now() -> dict[str, Any] | None:
     _save(data)
     try:
         from core.eventbus.bus import event_bus
-        event_bus.publish({
-            "kind": "dream_consolidation.completed",
-            "payload": {
+        event_bus.publish(
+            "dream_consolidation.completed",
+            {
                 "consolidation_id": consolidation_id,
                 "theme_count": len(themes),
                 "top_theme": themes[0].get("theme") if themes else None,
                 "d4_synthesis_ran": bool(artifacts),
             },
-        })
+        )
     except Exception:
         pass
     return record

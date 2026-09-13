@@ -248,14 +248,14 @@ def create_now() -> dict[str, Any]:
     _save(data)
     try:
         from core.eventbus.bus import event_bus
-        event_bus.publish({
-            "kind": "creative_impulse.created",
-            "payload": {
+        event_bus.publish(
+            "creative_impulse.created",
+            {
                 "form": form,
                 "creation_id": creation["creation_id"],
                 "path": path,
             },
-        })
+        )
     except Exception:
         pass
     return creation

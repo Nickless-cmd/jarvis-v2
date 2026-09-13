@@ -190,15 +190,15 @@ def generate_image(
 
     try:
         from core.eventbus.bus import event_bus
-        event_bus.publish({
-            "kind": "pollinations.image_generated",
-            "payload": {
+        event_bus.publish(
+            "pollinations.image_generated",
+            {
                 "generation_id": gen_id,
                 "model": model,
                 "path": str(path),
                 "bytes": len(data),
             },
-        })
+        )
     except Exception:
         pass
 
@@ -370,16 +370,16 @@ def generate_video(
 
     try:
         from core.eventbus.bus import event_bus
-        event_bus.publish({
-            "kind": "pollinations.video_generated",
-            "payload": {
+        event_bus.publish(
+            "pollinations.video_generated",
+            {
                 "generation_id": gen_id,
                 "model": model,
                 "path": str(path),
                 "bytes": len(data),
                 "duration": duration,
             },
-        })
+        )
     except Exception:
         pass
 

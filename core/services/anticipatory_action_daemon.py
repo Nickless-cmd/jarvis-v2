@@ -172,10 +172,10 @@ def _maybe_emit_anticipation(peaks: list[dict[str, Any]]) -> list[dict[str, Any]
             emitted.append(signal)
             try:
                 from core.eventbus.bus import event_bus
-                event_bus.publish({
-                    "kind": "anticipation.contact_expected",
-                    "payload": signal,
-                })
+                event_bus.publish(
+                    "anticipation.contact_expected",
+                    signal,
+                )
             except Exception:
                 pass
     return emitted

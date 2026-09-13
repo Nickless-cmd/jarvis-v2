@@ -487,6 +487,37 @@ def edit_image(
 # ---------------------------------------------------------------------------
 
 
+def _haeng_paa_turen(args: dict[str, Any], result: dict[str, Any]) -> None:
+    """Læg det genererede billede på turen, så klienten kan vise det i tråden.
+
+    Målt 13/9-2026: billedet blev skrevet til disken OG registreret som
+    attachment — men INGEN besked bar en reference til det. Klienten renderer
+    efter blokke, så billedet var usynligt i samtalen selvom det fandtes.
+
+    Samme «læg og tag»-mønster som ``publish_file`` bruger: værktøjet lægger
+    posten fra sig under turen, ``visible_runs_outcomes`` tager den når svaret
+    persisteres. Referencen er ``attachment_id`` — genererede billeder hentes
+    over det user-scopede ``/attachments/image/{id}``, ikke over ``/files/``.
+
+    Kaster aldrig: en visning må ikke brække en generering der lykkedes.
+    """
+    try:
+        from core.services.published_files import note as _note
+        sti = str(result.get("path") or "")
+        aid = str(result.get("attachment_id") or "")
+        if not aid and not sti:
+            return
+        _note(
+            str(args.get("_runtime_turn_id") or args.get("_runtime_run_id") or ""),
+            filename=Path(sti).name if sti else "billede",
+            mime_type=str(result.get("media_type") or "image/png"),
+            size_bytes=int(result.get("bytes") or 0),
+            attachment_id=aid,
+        )
+    except Exception:
+        logger.debug("openrouter_image: kunne ikke haefte paa turen", exc_info=True)
+
+
 def _exec_openrouter_image(args: dict[str, Any]) -> dict[str, Any]:
     prompt = str(args.get("prompt") or "").strip()
     if not prompt:
@@ -508,6 +539,7 @@ def _exec_openrouter_image(args: dict[str, Any]) -> dict[str, Any]:
         references=[str(r) for r in refs] if refs else None,
     )
     if result.get("status") == "ok":
+        _haeng_paa_turen(args, result)
         return {
             "status": "ok",
             "text": (
@@ -538,6 +570,7 @@ def _exec_openrouter_image_edit(args: dict[str, Any]) -> dict[str, Any]:
         seed=args.get("seed"),
     )
     if result.get("status") == "ok":
+        _haeng_paa_turen(args, result)
         return {
             "status": "ok",
             "text": (

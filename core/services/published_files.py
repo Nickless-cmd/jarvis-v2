@@ -48,16 +48,32 @@ def _nulstil_for_tests() -> None:
         _pr_run.clear()
 
 
-def note(run_id: str, *, filename: str, url: str, mime_type: str = "",
-         size_bytes: int = 0) -> None:
-    """Registrér at turen udgav en fil. Kaster aldrig.
+def note(run_id: str, *, filename: str, url: str = "", mime_type: str = "",
+         size_bytes: int = 0, attachment_id: str = "") -> None:
+    """Registrér at turen udgav en fil eller et billede. Kaster aldrig.
 
     `run_id` tom → gør ingenting. En post uden tur kan ikke hæftes på noget,
     og at gemme den ville bare lade den ligge til den forkerte tur.
+
+    To slags kilder, to slags referencer:
+    - **publiceret fil** (`publish_file`): ligger i `files/`, hentes over
+      `/files/{navn}` → `url` bæres.
+    - **genereret billede** (`openrouter_image`, `pollinations_image`): ligger
+      i `memory/generated/`, hentes over det user-scopede
+      `/attachments/image/{id}` → `attachment_id` bæres.
+
+    Referencen SKAL være den rigtige af slagsen: en genereret fil har ingen
+    `/files/`-adresse, og et attachment-id kan ikke hentes fra `/files/`.
+    Klienten renderer begge som `image`/`file`-blokke — den kender formen fra
+    brugerbeskeder — men adressen den henter på er forskellig.
     """
     rid = str(run_id or "").strip()
     navn = str(filename or "").strip()
+    aid = str(attachment_id or "").strip()
     if not rid or not navn:
+        return
+    # En post uden nogen hentbar reference er en blok klienten ikke kan fylde.
+    if not aid and not str(url or "").strip():
         return
     try:
         with _laas:
@@ -69,6 +85,7 @@ def note(run_id: str, *, filename: str, url: str, mime_type: str = "",
                 "url": str(url or ""),
                 "mime_type": str(mime_type or ""),
                 "size_bytes": int(size_bytes or 0),
+                "attachment_id": aid,
             })
     except Exception:
         logger.warning("published_files: kunne ikke notere %s", navn, exc_info=True)
@@ -89,9 +106,11 @@ def as_blocks(poster: list[dict[str, Any]]) -> list[dict[str, Any]]:
     Klienten kender allerede `image`/`file` fra brugerbeskeder, så en udgivet
     fil kan genbruge den renderer i stedet for at kræve en ny bloktype.
 
-    `url` frem for `attachment_id`: en udgivet fil ligger i `files/`-mappen og
-    hentes over `/files/{navn}`, ikke over det vedhæftnings-scopede endpoint.
-    Klienten skal kunne se forskel, for de to har hver sin adresse.
+    `attachment_id` frem for `url` når billedet er GENERERET: en genereret fil
+    ligger i `memory/generated/` og hentes over det user-scopede
+    `/attachments/image/{id}` — den har ingen `/files/`-adresse. En publiceret
+    fil har omvendt ingen attachment-række. Klienten skal kunne se forskel,
+    for de to har hver sin adresse; derfor bærer blokken `kilde`.
     """
     ud: list[dict[str, Any]] = []
     for p in poster or []:
@@ -103,9 +122,14 @@ def as_blocks(poster: list[dict[str, Any]]) -> list[dict[str, Any]]:
             "type": "image" if mime.startswith("image/") else "file",
             "filename": navn,
             "mime_type": mime or "application/octet-stream",
-            "url": str(p.get("url") or ""),
-            "kilde": "published",
         }
+        aid = str(p.get("attachment_id") or "").strip()
+        if aid:
+            blok["attachment_id"] = aid
+            blok["kilde"] = "generated"
+        else:
+            blok["url"] = str(p.get("url") or "")
+            blok["kilde"] = "published"
         stoerrelse = p.get("size_bytes")
         if isinstance(stoerrelse, int) and stoerrelse > 0:
             blok["size_bytes"] = stoerrelse

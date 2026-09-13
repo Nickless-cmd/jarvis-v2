@@ -113,3 +113,85 @@ def test_persisteringen_KALDER_den_faktisk():
         "content_json-grenen kalder ikke laengere _med_udgivne_filer - "
         "udgivne filer vil ikke naa klienten"
     )
+
+
+# ── Genererede billeder (13/9-2026) ─────────────────────────────────────────
+# Samme hul, anden kilde: billed-værktøjerne registrerede billedet som
+# attachment — men lagde det ALDRIG på turen. Filen fandtes, opslaget fandtes,
+# og ingen besked pegede på den. Klienten renderer efter blokke → usynligt.
+
+
+def test_genereret_billede_baerer_attachment_id():
+    """Et genereret billede hentes over /attachments/image/{id} — ikke /files/."""
+    P.note("run-g", filename="a.png", mime_type="image/png",
+           size_bytes=42, attachment_id="att-1")
+    b = P.as_blocks(P.take("run-g"))
+    assert b[0]["attachment_id"] == "att-1"
+    assert b[0]["kilde"] == "generated"
+    assert "url" not in b[0]
+
+
+def test_post_uden_hentbar_reference_afvises():
+    """Hverken attachment_id eller url → en blok klienten ikke kan fylde."""
+    P.note("run-g", filename="a.png", mime_type="image/png")
+    assert P.take("run-g") == []
+
+
+def test_publish_file_laeser_den_run_id_executoren_stamper():
+    """REGRESSION (målt 13/9-2026): `publish_file` læste `_runtime_run_id`, men
+    executoren (`simple_tool_executor._prepare_call`) stamper `_runtime_turn_id`.
+    `note()` fik derfor ALTID tom run_id og returnerede straks — udgivne filer
+    blev aldrig hæftet, selvom hele mekanismen var bygget til det. Fejlen var
+    usynlig fordi begge sider af koblingen så korrekte ud hver for sig.
+    """
+    import inspect
+    from core.tools import simple_tools_native as N
+    kilde = inspect.getsource(N)
+    assert 'args.get("_runtime_turn_id")' in kilde, (
+        "publish_file læser ikke den nøgle executoren stammer "
+        "(_runtime_turn_id) — udgivne filer bliver aldrig hæftet"
+    )
+
+
+def test_billedvaerktoejet_haefter_billedet_paa_turen(monkeypatch):
+    """FUNKTIONEL kobling: kald værktøjet og se at posten ligger på turen.
+
+    Uden dette kan registreringen virke og billedet stadig være usynligt — det
+    var præcis tilstanden 13/9-2026.
+    """
+    from core.tools import openrouter_image_tools as OI
+    monkeypatch.setattr(OI, "generate_image", lambda **kw: {
+        "status": "ok", "path": "/tmp/x/tegning.png", "bytes": 10,
+        "media_type": "image/png", "cost_usd": 0.03, "attachment_id": "att-9",
+    })
+    OI._exec_openrouter_image({"prompt": "en kat", "_runtime_turn_id": "run-z"})
+    poster = P.take("run-z")
+    assert len(poster) == 1
+    assert poster[0]["attachment_id"] == "att-9"
+    assert poster[0]["filename"] == "tegning.png"
+
+
+def test_redigering_haefter_ogsaa(monkeypatch):
+    """Redigerings-vejen er en selvstændig exec — den skal hæfte for sig."""
+    from core.tools import openrouter_image_tools as OI
+    monkeypatch.setattr(OI, "edit_image", lambda **kw: {
+        "status": "ok", "path": "/tmp/x/ret.png", "bytes": 11,
+        "media_type": "image/png", "cost_usd": 0.03, "attachment_id": "att-10",
+    })
+    OI._exec_openrouter_image_edit(
+        {"prompt": "gør den blå", "reference": "/tmp/x/a.png",
+         "_runtime_turn_id": "run-e"})
+    poster = P.take("run-e")
+    assert len(poster) == 1 and poster[0]["attachment_id"] == "att-10"
+
+
+def test_billedvaerktoejet_uden_tur_haefter_intet(monkeypatch):
+    """Kontrolarm: kaldes værktøjet uden for en tur (fx direkte via bash), er
+    der ingen run_id — og posten må ikke lægges på en tilfældig tur."""
+    from core.tools import openrouter_image_tools as OI
+    monkeypatch.setattr(OI, "generate_image", lambda **kw: {
+        "status": "ok", "path": "/tmp/x/a.png", "bytes": 10,
+        "media_type": "image/png", "cost_usd": 0.03, "attachment_id": "att-1",
+    })
+    OI._exec_openrouter_image({"prompt": "en kat"})
+    assert P.take("") == []

@@ -265,6 +265,24 @@ def _exec_pollinations_image(args: dict[str, Any]) -> dict[str, Any]:
             )
         except Exception:
             attachment_id = ""
+        # LÆG DET PÅ TUREN. Registreringen alene gør billedet hentbart, men
+        # INGEN besked bar en reference til det — og klienten renderer efter
+        # blokke, så det var usynligt i tråden. Samme «læg og tag»-mønster som
+        # publish_file: her lægges posten, visible_runs_outcomes tager den når
+        # svaret persisteres. Referencen er attachment_id (user-scopet
+        # /attachments/image/{id}), ikke en /files/-adresse.
+        try:
+            from core.services.published_files import note as _note
+            _sti = str(result.get("path") or "")
+            _note(
+                str(args.get("_runtime_turn_id") or args.get("_runtime_run_id") or ""),
+                filename=_sti.replace("\\", "/").rsplit("/", 1)[-1] or "billede",
+                mime_type=str(result.get("content_type") or "image/jpeg"),
+                size_bytes=int(result.get("bytes") or 0),
+                attachment_id=attachment_id,
+            )
+        except Exception:
+            pass
         return {
             "status": "ok",
             "text": (

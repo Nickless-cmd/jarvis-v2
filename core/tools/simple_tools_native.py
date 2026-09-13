@@ -2770,8 +2770,14 @@ def _exec_publish_file(args: dict[str, Any]) -> dict[str, Any]:
     # havde, og samme loesning: laeg fra dig her, tag imod ved persistering.
     try:
         from core.services.published_files import note as _note_udgivet
+        # NØGLENAVNET ER `_runtime_turn_id` — ikke `_runtime_run_id`. Executoren
+        # (simple_tool_executor._prepare_call) stamper `_runtime_turn_id`, så den
+        # gamle læsning gav ALTID tom run_id og `note()` returnerede straks.
+        # Målt 13/9-2026: `published_files` havde derfor aldrig haeftet noget —
+        # nul assistent-beskeder bar en image/file-blok. Fallback'et beholdes saa
+        # en fremtidig kilde med det andet navn ikke tavst falder ud igen.
         _note_udgivet(
-            str(args.get("_runtime_run_id") or ""),
+            str(args.get("_runtime_turn_id") or args.get("_runtime_run_id") or ""),
             filename=safe_name,
             url=url,
             mime_type=str(mimetypes.guess_type(safe_name)[0] or ""),

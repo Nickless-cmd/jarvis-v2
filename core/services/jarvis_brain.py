@@ -17,6 +17,7 @@ import os
 import re
 import secrets
 import sqlite3
+import threading
 import time
 
 import numpy as np
@@ -314,13 +315,73 @@ def index_db_path() -> Path:
     return _state_root() / "jarvis_brain_index.sqlite"
 
 
+# --- Index-connection lifecycle (fix 2026-09-13) --------------------------
+#
+# Målt 13. sep 2026: 98 "database is locked" på 36 timer på tværs af
+# b4_catchup_infer (72), reindex_loop (15) og memory_pruning (9). Roden var
+# ikke én fejl men tre ting i connect_index():
+#   1. journal_mode=delete — én skrive-lock pr. commit, mens mange samtidige
+#      daemons skriver til den samme 505 MB-fil.
+#   2. busy_timeout=0 — ingen venten; fejl i det øjeblik en lock var taget.
+#   3. executescript(_INDEX_SCHEMA) + migrations + commit ved HVERT kald, så
+#      selv rene læsninger tog en skrive-lock og kolliderede med skriverne.
+# Fixen: WAL (samtidige læsere + én skriver), busy_timeout=30s, og schema-DDL
+# kun når den faktisk mangler. Alle tre er verificeret mod koden samme dag.
+_SCHEMA_INIT_LOCK = threading.Lock()
+_SCHEMA_READY: set[str] = set()
+_WAL_READY: set[str] = set()
+
+
+def _ensure_wal(conn: sqlite3.Connection, key: str) -> None:
+    """Slå WAL til én gang per (proces, db-sti). Persistent på filen.
+
+    WAL lader læsere og én skriver arbejde samtidigt i stedet for at
+    serialisere alt gennem én eksklusiv lock. Fejler forsøget fordi en anden
+    proces holder lock lige nu, fortsætter vi — busy_timeout tager næste.
+    """
+    if key in _WAL_READY:
+        return
+    try:
+        row = conn.execute("PRAGMA journal_mode=WAL").fetchone()
+    except sqlite3.OperationalError:
+        return
+    if row and str(row[0]).lower() == "wal":
+        _WAL_READY.add(key)
+
+
+def _ensure_schema(conn: sqlite3.Connection, key: str) -> None:
+    """Opret/migrér index-schema — men kun når det faktisk mangler.
+
+    Schema-DDL tager en skrive-lock på hele DB'en. Den billige læsning mod
+    sqlite_master afgør om vi kan springe over. Filen kan være skiftet eller
+    nulstillet under os (fx i tests), så vi verificerer at tabellen stadig
+    findes og genskaber schemaet hvis ikke.
+    """
+    if key in _SCHEMA_READY:
+        row = conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='brain_index'"
+        ).fetchone()
+        if row:
+            return
+        _SCHEMA_READY.discard(key)
+    with _SCHEMA_INIT_LOCK:
+        if key in _SCHEMA_READY:
+            return
+        conn.executescript(_INDEX_SCHEMA)
+        _ensure_index_schema_migrations(conn)
+        conn.commit()
+        _SCHEMA_READY.add(key)
+
+
 def connect_index() -> sqlite3.Connection:
     p = index_db_path()
     p.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(str(p))
-    conn.executescript(_INDEX_SCHEMA)
-    _ensure_index_schema_migrations(conn)
-    conn.commit()
+    key = str(p)
+    # timeout spejler busy_timeout: vent på låsen i stedet for at fejle straks.
+    conn = sqlite3.connect(str(p), timeout=30.0)
+    conn.execute("PRAGMA busy_timeout=30000")
+    _ensure_wal(conn, key)
+    _ensure_schema(conn, key)
     return conn
 
 

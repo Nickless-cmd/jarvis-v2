@@ -58,16 +58,41 @@ def chronicle_days_stale() -> float | None:
     return (datetime.now(UTC) - at).total_seconds() / 86400.0
 
 
+def chronicle_period_covered() -> bool:
+    """True når seneste kronik-post allerede dækker indeværende ISO-uge.
+
+    Spejler chronicle_engine.maybe_write_chronicle_entry's periode-gate: motoren
+    nægter at skrive to poster for samme periode. Uden dette tjek fyrer hintet
+    hver tick fra alderen passerer 3 døgn og indtil ugen skifter — og hvert slag
+    ender som en tavs no-op. Målt 13. sep 2026: 34 af 60 ticks (57%) var netop
+    det, fordi seneste post var W37 og vi stadig var i W37.
+    """
+    try:
+        from core.runtime.db import get_latest_cognitive_chronicle_entry
+
+        latest = get_latest_cognitive_chronicle_entry()
+    except Exception:
+        return False
+    if not latest:
+        return False
+    now = datetime.now(UTC)
+    period = f"{now.year}-W{now.isocalendar().week:02d}"
+    return str(latest.get("period") or "") == period
+
+
 def chronicle_hint() -> str | None:
     """Vink om at skrive kronik — kun når handlingen FAKTISK ville skrive noget.
 
-    Spejler motorens gates: der skal være gået ≥3 døgn siden sidste post, og der skal
-    være nylige runs at fortælle om. Er en af delene ikke opfyldt, tier vi.
+    Spejler motorens tre gates: der skal være gået ≥3 døgn siden sidste post, den
+    indeværende periode må ikke allerede have en post, og der skal være nylige
+    runs at fortælle om. Er en af delene ikke opfyldt, tier vi.
     """
     try:
         days = chronicle_days_stale()
         if days is None or days < _CHRONICLE_MIN_AGE_DAYS:
             return None
+        if chronicle_period_covered():
+            return None  # perioden har allerede en post — motoren ville nægte
         from core.runtime.db import recent_visible_runs
 
         if not recent_visible_runs(limit=20):

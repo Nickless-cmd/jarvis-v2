@@ -200,17 +200,40 @@ def _surface_summary(counts: dict[str, int]) -> str:
 
 
 def build_cross_session_threads_prompt_section() -> str | None:
-    """Surface active + paused threads so Jarvis can resume them."""
+    """Surface active + paused threads so Jarvis can resume them.
+
+    Fase 10, kriterium 1: indholdet kommer fra ANDRE sessioner og skal baere
+    sin herkomst og sine budgetter. Gaten er i SKYGGE som standard — den regner
+    ud hvad den ville fjerne og skriver det, men fjerner intet endnu.
+    """
     items = _load()
     active = [t for t in items if t.get("status") == "active"]
     paused = [t for t in items if t.get("status") == "paused"]
     if not (active or paused):
         return None
-    lines: list[str] = []
+
+    try:
+        from core.services.cross_session_gate import afgraens
+        g_a = afgraens(active, kilde="cross_session_threads/aktive",
+                       maks_antal=1, maks_tegn=400, fundet_i_alt=len(active))
+        g_p = afgraens(paused, kilde="cross_session_threads/pausede",
+                       maks_antal=3, maks_tegn=400, fundet_i_alt=len(paused))
+        active, paused = list(g_a.poster), list(g_p.poster)
+        herkomst = g_a.herkomst()
+    except Exception:
+        logger.debug("cross_session_threads: gate fejlede — sender ugateret",
+                     exc_info=True)
+        herkomst = "[utroværdig kilde (andre sessioner) | herkomst utilgængelig]"
+
+    lines: list[str] = [herkomst]
     if active:
         first = max(active, key=lambda x: x.get("last_pickup_at") or "")
         lines.append(f"Aktiv tråd: \"{first['topic']}\" — {first.get('synopsis', '')[:120]}")
     if paused:
         titles = ", ".join(f"\"{t['topic']}\"" for t in paused[:3])
         lines.append(f"Pausede tråde ({len(paused)}): {titles}")
+    # Kun herkomsten tilbage betyder at gaten fjernede ALT. En linje der kun er
+    # en herkomst er stoej, ikke kontekst.
+    if len(lines) == 1:
+        return None
     return " ; ".join(lines)

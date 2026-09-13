@@ -49,6 +49,15 @@ from typing import Any, Callable
 
 logger = logging.getLogger("uvicorn.error")
 
+class _Skygge(Exception):
+    """Håndhæveren findes, men er slået fra. Hverken «mangler» eller «fejlet».
+
+    Tre tilstande, tre handlinger: byg gaten, tænd gaten, ret gaten. Skrives de
+    sammen, forsvinder den midterste — og en gate der bare mangler at blive
+    tændt ville ligne en der ikke er bygget.
+    """
+
+
 #: De tre akser kriterium 7 nævner ved navn.
 AKSER: tuple[str, ...] = ("sandbox", "cross_session_context", "telemetry_sharing")
 
@@ -89,8 +98,14 @@ def _maal_kryds_session() -> tuple[Any, str]:
     når han ikke findes — det er meningen, `maal()` oversætter det til et
     ærligt «ikke håndhævet».
     """
-    from core.services.cross_session_gate import gaeldende_niveau  # type: ignore
-    return gaeldende_niveau(), "cross_session_gate"
+    from core.services.cross_session_gate import HAANDHAEV, gaeldende_niveau
+    niveau = gaeldende_niveau()
+    if not HAANDHAEV:
+        # Gaten FINDES, men skaerer ikke endnu. At melde den som haandhaevet
+        # ville vaere den samme «anmodet forklaedt som faktisk» som resten af
+        # modulet er skrevet imod — en gate i skygge beskytter ingenting.
+        raise _Skygge(f"cross_session_gate i SKYGGE (ville give {niveau!r})")
+    return niveau, "cross_session_gate"
 
 
 def _maal_telemetri() -> tuple[Any, str]:
@@ -136,6 +151,10 @@ def maal(anmodet: dict[str, Any] | None = None) -> dict[str, dict[str, Any]]:
                 post["faktisk"] = værdi
                 post["haandhaevet"] = True
                 post["kilde"] = str(kilde)
+            except _Skygge as s:
+                # Gaten findes og er ikke taendt. Det er hverken «mangler»
+                # eller «braekket», og maa ikke skrives sammen med nogen af dem.
+                post["kilde"] = str(s)
             except ImportError:
                 # Håndhæveren findes ikke. Det er et FUND, ikke en fejl.
                 post["kilde"] = "ingen haandhaever"

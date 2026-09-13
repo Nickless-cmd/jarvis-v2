@@ -56,7 +56,12 @@ _NOISE_TITLE_SUBSTRINGS: tuple[str, ...] = (
 )
 
 _CACHE_TTL_SECONDS = 600.0  # 10 min — sessions don't change often
-_cached_text: str | None = None
+# Cachen holder nu RAAdata, ikke faerdig tekst. Afgraensningen afhaenger af
+# BRUGEREN (`cross_session_gate.gaeldende_niveau()`), og en cachet faerdig tekst
+# ville servere den ene brugers niveau til den naeste — en lille cache-aendring
+# der ville have vaeret et aegte laek.
+_cached_rows: list[dict] | None = None
+_cached_i_alt: int = 0
 _cached_at: float = 0.0
 
 
@@ -94,9 +99,23 @@ def _humanize_dt(iso: str, now: datetime) -> str:
     return f"{days} dage siden"
 
 
-def _fetch_recent_arc() -> list[dict]:
+def _fetch_recent_arc() -> tuple[list[dict], int]:
+    """(de viste raekker, HVOR MANGE der fandtes i vinduet).
+
+    Det andet tal er nyt og er hele pointen. Foer stod der «Din samtale-bue de
+    sidste 7 dage» over seks linjer, og maalt 13/9-2026 laa der 45 sessioner i
+    vinduet. Niogtredive forsvandt uden at det stod nogen steder, og teksten
+    laeses som BUEN — ikke som seks af femogfyrre.
+
+    Over-hentningen (`_MAX_TO_SHOW * 5`) kender heller ikke tallet: den saa 30.
+    Derfor et separat COUNT, som er billigt paa en indekseret kolonne.
+    """
     cutoff = (datetime.now(UTC) - timedelta(days=LOOKBACK_DAYS)).isoformat()
     with connect() as c:
+        i_alt = int(c.execute(
+            "SELECT COUNT(*) FROM chat_sessions WHERE updated_at >= ?",
+            (cutoff,),
+        ).fetchone()[0] or 0)
         rows = c.execute(
             "SELECT session_id, title, created_at, updated_at "
             "FROM chat_sessions "
@@ -118,43 +137,60 @@ def _fetch_recent_arc() -> list[dict]:
         })
         if len(out) >= _MAX_TO_SHOW:
             break
-    return out
+    return out, i_alt
 
 
 def cross_session_arc_section() -> str:
     """Render last N user-facing sessions as a chronological arc."""
-    global _cached_text, _cached_at
+    global _cached_rows, _cached_i_alt, _cached_at
     now = time.monotonic()
-    if _cached_text is not None and (now - _cached_at) < _CACHE_TTL_SECONDS:
-        return _cached_text
-
-    try:
-        rows = _fetch_recent_arc()
-    except Exception as exc:
-        logger.debug("cross_session_arc: fetch failed: %s", exc)
-        _cached_text = ""
+    if _cached_rows is None or (now - _cached_at) >= _CACHE_TTL_SECONDS:
+        try:
+            _cached_rows, _cached_i_alt = _fetch_recent_arc()
+        except Exception as exc:
+            logger.debug("cross_session_arc: fetch failed: %s", exc)
+            _cached_rows, _cached_i_alt = [], 0
         _cached_at = now
-        return ""
+    rows, i_alt = list(_cached_rows), _cached_i_alt
 
     if not rows:
-        _cached_text = ""
-        _cached_at = now
         return ""
 
+    # Fase 10, kriterium 1. Gaten er i SKYGGE som standard: den regner ud hvad
+    # den ville fjerne og skriver det, men fjerner intet endnu.
+    try:
+        from core.services.cross_session_gate import afgraens
+        g = afgraens(rows, kilde="chat_sessions/arc",
+                     maks_antal=_MAX_TO_SHOW, maks_tegn=1200,
+                     fundet_i_alt=i_alt)
+        rows = list(g.poster)
+        # Gaten foerer regnskabet, saa overskriften og herkomsten ikke kan
+        # komme til at sige hvert sit tal.
+        udeladt = g.udeladt_antal
+        herkomst = g.herkomst()
+    except Exception:
+        logger.debug("cross_session_arc: gate fejlede — sender ugateret",
+                     exc_info=True)
+        udeladt = max(0, i_alt - len(rows))
+        herkomst = "[utroværdig kilde (andre sessioner) | herkomst utilgængelig]"
+
     now_dt = datetime.now(UTC)
-    lines = ["📜 Din samtale-bue de sidste 7 dage (nyeste først):"]
+    hoved = "📜 Din samtale-bue de sidste 7 dage (nyeste først)"
+    if udeladt:
+        # Tallet staar i OVERSKRIFTEN, ikke i en fodnote. En liste der ser
+        # komplet ud, laeses som komplet.
+        hoved += f" — viser {len(rows)} af {i_alt}, {udeladt} udeladt"
+    lines = [herkomst, hoved + ":"]
     for r in rows:
         when = _humanize_dt(r["updated_at"], now_dt)
         title = r["title"][:60]
         lines.append(f"  · {when:>14} — \"{title}\"")
 
-    text = "\n".join(lines)
-    _cached_text = text
-    _cached_at = now
-    return text
+    return "\n".join(lines)
 
 
 def invalidate_cache() -> None:
-    global _cached_text, _cached_at
-    _cached_text = None
+    global _cached_rows, _cached_i_alt, _cached_at
+    _cached_rows = None
+    _cached_i_alt = 0
     _cached_at = 0.0

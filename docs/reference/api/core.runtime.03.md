@@ -109,6 +109,19 @@ _Fornyelse af bearer-tokens — så en klient ikke låses ude af tiden alene._
 | function | `renew` | `(raw_token, *, now=…)` | Veksl et bearer-token til et friskt et. | [src](../../../core/runtime/token_renewal.py#L189) |
 | function | `revoke_user_tokens` | `(user_id)` | Sortlist alle fornyede tokens for én bruger. Returnerer antallet. | [src](../../../core/runtime/token_renewal.py#L260) |
 
+## `core/runtime/work_ref.py`
+_Én præfikset reference til et stykke arbejde — og ét sted at opløse den._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `UgyldigReference` | `` | Referencen kan ikke opløses. Rejses hellere end at gætte en art. | [src](../../../core/runtime/work_ref.py#L62) |
+| function | `lav` | `(art, id_)` | Byg en reference. Afviser ukendte arter og tomme id'er. | [src](../../../core/runtime/work_ref.py#L66) |
+| function | `opløs` | `(reference)` | `art:id` → `(art, id)`. Afviser alt den ikke kan opløse. | [src](../../../core/runtime/work_ref.py#L88) |
+| function | `er_gyldig` | `(reference)` | Kan referencen opløses? Til steder der skal filtrere, ikke fejle. | [src](../../../core/runtime/work_ref.py#L109) |
+| function | `lager_for` | `(reference)` | Hvilket lager peger referencen ind i? Til fejlbeskeder og flader. | [src](../../../core/runtime/work_ref.py#L118) |
+| function | `fra_run` | `(run_id)` | Genvej for den hyppigste rod: en synlig eller autonom kørsel. | [src](../../../core/runtime/work_ref.py#L124) |
+| function | `fra_task` | `(task_id)` | — | [src](../../../core/runtime/work_ref.py#L129) |
+
 ## `core/runtime/workspace_paths.py`
 _Workspace path resolver — single source of truth for filesystem layout._
 

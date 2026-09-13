@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7485/14598 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7494/14608 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,7 +8,7 @@ Generated from source. 7485/14598 functions/methods documented (51%). The list b
 |---|---|---|---|
 | `apps.api.jarvis_api` | 34 | 36 | 94% |
 | `apps.api.jarvis_api.middleware` | 7 | 17 | 41% |
-| `apps.api.jarvis_api.routes` | 625 | 819 | 76% |
+| `apps.api.jarvis_api.routes` | 626 | 820 | 76% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 69 | 171 | 40% |
 | `apps.desktop` | 6 | 7 | 85% |
@@ -23,8 +23,8 @@ Generated from source. 7485/14598 functions/methods documented (51%). The list b
 | `core.identity` | 66 | 159 | 41% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 640 | 1175 | 54% |
-| `core.services` | 4977 | 10064 | 49% |
+| `core.runtime` | 646 | 1182 | 54% |
+| `core.services` | 4978 | 10065 | 49% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 109 | 184 | 59% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -33,14 +33,14 @@ Generated from source. 7485/14598 functions/methods documented (51%). The list b
 | `core.skills.voice` | 39 | 49 | 79% |
 | `core.tools` | 468 | 969 | 48% |
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
-| `core.tools.claude_dispatch` | 4 | 27 | 14% |
+| `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.util` | 9 | 10 | 90% |
 | `scripts` | 189 | 372 | 50% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2076)
+## Undocumented public functions (2077)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L201)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -451,11 +451,11 @@ Generated from source. 7485/14598 functions/methods documented (51%). The list b
 - `core/runtime/db_runtime_signals.py` :: `recent_runtime_learning_signals` (L146)
 - `core/runtime/db_runtime_signals.py` :: `record_runtime_action_outcome` (L171)
 - `core/runtime/db_runtime_signals.py` :: `record_runtime_learning_signal` (L239)
-- `core/runtime/db_runtime_tasks.py` :: `create_runtime_task` (L74)
-- `core/runtime/db_runtime_tasks.py` :: `ensure_runtime_tasks_tables` (L13)
-- `core/runtime/db_runtime_tasks.py` :: `get_runtime_task` (L145)
-- `core/runtime/db_runtime_tasks.py` :: `list_runtime_tasks` (L178)
-- `core/runtime/db_runtime_tasks.py` :: `update_runtime_task` (L224)
+- `core/runtime/db_runtime_tasks.py` :: `create_runtime_task` (L103)
+- `core/runtime/db_runtime_tasks.py` :: `ensure_runtime_tasks_tables` (L41)
+- `core/runtime/db_runtime_tasks.py` :: `get_runtime_task` (L174)
+- `core/runtime/db_runtime_tasks.py` :: `list_runtime_tasks` (L207)
+- `core/runtime/db_runtime_tasks.py` :: `update_runtime_task` (L253)
 - `core/runtime/db_scheduled_tasks.py` :: `create_scheduled_task` (L70)
 - `core/runtime/db_scheduled_tasks.py` :: `get_due_scheduled_tasks` (L101)
 - `core/runtime/db_scheduled_tasks.py` :: `get_scheduled_task` (L92)
@@ -529,6 +529,7 @@ Generated from source. 7485/14598 functions/methods documented (51%). The list b
 - `core/runtime/settings.py` :: `RuntimeSettings.to_dict` (L544)
 - `core/runtime/settings.py` :: `load_settings` (L649)
 - `core/runtime/settings.py` :: `update_visible_execution_settings` (L1100)
+- `core/runtime/work_ref.py` :: `fra_task` (L129)
 - `core/services/absence_daemon.py` :: `build_absence_surface` (L155)
 - `core/services/absence_daemon.py` :: `get_latest_absence` (L151)
 - `core/services/action_router.py` :: `build_action_router_surface` (L617)
@@ -1934,9 +1935,9 @@ Generated from source. 7485/14598 functions/methods documented (51%). The list b
 - `core/skills/voice/voice_daemon_worker.py` :: `on_wake_word` (L113)
 - `core/skills/voice/voice_test_full.py` :: `get_first_session_id` (L25)
 - `core/skills/voice/voice_test_full.py` :: `run_voice_loop` (L65)
-- `core/tools/claude_dispatch/audit.py` :: `finalize_audit_row` (L77)
-- `core/tools/claude_dispatch/audit.py` :: `read_audit_row` (L95)
-- `core/tools/claude_dispatch/audit.py` :: `start_audit_row` (L61)
+- `core/tools/claude_dispatch/audit.py` :: `finalize_audit_row` (L98)
+- `core/tools/claude_dispatch/audit.py` :: `read_audit_row` (L116)
+- `core/tools/claude_dispatch/audit.py` :: `start_audit_row` (L81)
 - `core/tools/claude_dispatch/budget.py` :: `BudgetTracker.check_and_reserve` (L24)
 - `core/tools/claude_dispatch/budget.py` :: `BudgetTracker.current_dispatch_count` (L63)
 - `core/tools/claude_dispatch/budget.py` :: `BudgetTracker.record_usage` (L50)

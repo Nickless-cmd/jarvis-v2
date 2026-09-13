@@ -406,7 +406,8 @@ _Cognitive conductor — Jarvis' bounded mental state assembler._
 |---|---|---|---|---|
 | function | `dispatch_unhandled_hook_events` | `(*, limit=…, event_kinds=…)` | — | [src](../../../core/services/runtime_hooks.py#L16) |
 | function | `dispatch_hook_event` | `(event)` | — | [src](../../../core/services/runtime_hooks.py#L41) |
-| function | `_find_active_task` | `(*, kind, goal, scope)` | — | [src](../../../core/services/runtime_hooks.py#L164) |
+| function | `_tick_ref` | `(tick_id)` | `tick:<id>` — eller tom, hvis der ikke er et tick. | [src](../../../core/services/runtime_hooks.py#L167) |
+| function | `_find_active_task` | `(*, kind, goal, scope)` | — | [src](../../../core/services/runtime_hooks.py#L189) |
 
 ## `core/services/runtime_learning_signals.py`
 _Runtime learning signal extraction and digest generation._
@@ -695,10 +696,10 @@ _Runtime self-model — small producer/subsystem surfaces + role helpers._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `create_task` | `(*, kind, goal, origin, scope=…, priority=…, flow_id=…, session_id=…, run_id=…, owner=…)` | — | [src](../../../core/services/runtime_tasks.py#L16) |
+| function | `create_task` | `(*, kind, goal, origin, scope=…, priority=…, flow_id=…, session_id=…, origin_ref=…, owner=…)` | — | [src](../../../core/services/runtime_tasks.py#L16) |
 | function | `list_tasks` | `(*, status=…, kind=…, limit=…)` | — | [src](../../../core/services/runtime_tasks.py#L58) |
 | function | `get_task` | `(task_id)` | — | [src](../../../core/services/runtime_tasks.py#L77) |
-| function | `update_task` | `(task_id, *, status=…, flow_id=…, session_id=…, run_id=…, owner=…, retry_at=…, blocked_reason=…, result_summary=…, artifact_ref=…)` | — | [src](../../../core/services/runtime_tasks.py#L81) |
+| function | `update_task` | `(task_id, *, status=…, flow_id=…, session_id=…, origin_ref=…, owner=…, retry_at=…, blocked_reason=…, result_summary=…, artifact_ref=…)` | — | [src](../../../core/services/runtime_tasks.py#L81) |
 | function | `_task_sort_key` | `(task)` | — | [src](../../../core/services/runtime_tasks.py#L117) |
 | function | `_priority_with_runtime_bias` | `(requested_priority, *, kind, goal, scope, origin)` | — | [src](../../../core/services/runtime_tasks.py#L127) |
 

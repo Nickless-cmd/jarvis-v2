@@ -171,10 +171,21 @@ export function opretBro(opsaetning: BroOpsaetning): Bro {
     }, VAGT_INTERVAL_MS)
   }
 
-  function sendResultat(correlationId: string, status: string, data: unknown, fejl?: string) {
-    if (!ws) return
+  function sendResultat(paa: WebSocketLignende, correlationId: string, status: string,
+                        data: unknown, fejl?: string) {
+    // Svaret sendes på DEN socket kaldet kom fra — ikke på modulets `ws`.
+    //
+    // Før skrev den til `ws`, altså den NYE socket efter en genforbindelse.
+    // Et værktøj udløst af en død forbindelse fik derfor sit svar leveret
+    // over en anden, med et correlation_id den nye session ikke kender. To
+    // fejl i én: arbejdet blev udført for en forbindelse der var opgivet, og
+    // svaret forstyrrede en der ikke havde bedt om noget.
+    if (paa !== ws) {
+      log('bro: svar kasseret — forbindelsen er skiftet siden kaldet kom')
+      return
+    }
     try {
-      ws.send(JSON.stringify({
+      paa.send(JSON.stringify({
         type: 'tool_result',
         correlation_id: correlationId,
         status,
@@ -186,18 +197,18 @@ export function opretBro(opsaetning: BroOpsaetning): Bro {
     }
   }
 
-  async function haandterInvoke(besked: Record<string, unknown>) {
+  async function haandterInvoke(paa: WebSocketLignende, besked: Record<string, unknown>) {
     const correlationId = String(besked.correlation_id ?? '')
     const vaerktoej = String(besked.tool ?? '')
     const args = (besked.args ?? {}) as Record<string, unknown>
     if (!correlationId) return
     try {
       const svar = await udfoer(vaerktoej, args)
-      sendResultat(correlationId, 'ok', svar)
+      sendResultat(paa, correlationId, 'ok', svar)
     } catch (e) {
       // Aldrig tavshed: serveren venter på correlation_id og ville ellers
       // stå og time ud på et kald vi allerede VED er fejlet.
-      sendResultat(correlationId, 'error', null, String((e as Error)?.message ?? e).slice(0, 300))
+      sendResultat(paa, correlationId, 'error', null, String((e as Error)?.message ?? e).slice(0, 300))
     }
   }
 
@@ -209,6 +220,7 @@ export function opretBro(opsaetning: BroOpsaetning): Bro {
     ws = s
 
     s.onopen = () => {
+      if (ws !== s) { try { s.close() } catch { /* allerede væk */ } ; return }
       startVagt()
       try {
         s.send(JSON.stringify({
@@ -227,6 +239,20 @@ export function opretBro(opsaetning: BroOpsaetning): Bro {
     }
 
     s.onmessage = (e) => {
+      // GENERATIONS-HEGN. Fase 10, kriterium 3: «fences late old-generation
+      // callbacks».
+      //
+      // Uden den her linje udførte en OPGIVET socket stadig værktøjer. Vagten
+      // sætter `ws = null` og lukker, men `onclose` kommer måske aldrig på en
+      // halvåben forbindelse — og imens kunne en frame fra den døde socket
+      // stadig ramme `haandterInvoke`, nulstille `antalForsoeg`, sætte
+      // `forbundet = true` og holde vagten stille med `sidsteTrafik`.
+      //
+      // Alt det sker før nogen fejl er synlig. Hegnet skal derfor stå ØVERST,
+      // før selv livstegnet — et livstegn fra en død forbindelse er netop det
+      // der får vagten til at lade være med at redde os.
+      if (ws !== s) return
+
       // ENHVER indgående frame tæller som livstegn — også `ping`. Det er
       // netop serverens ping der beviser at socket'en stadig lever, så en
       // vagt der kun så `tool_invoke` ville fyre midt i en stille periode.
@@ -245,7 +271,7 @@ export function opretBro(opsaetning: BroOpsaetning): Bro {
         return
       }
       if (type === 'tool_invoke') {
-        void haandterInvoke(besked)
+        void haandterInvoke(s, besked)
         return
       }
       if (type === 'ping') {
@@ -258,6 +284,13 @@ export function opretBro(opsaetning: BroOpsaetning): Bro {
     s.onerror = () => { /* onclose kommer bagefter og håndterer genforbindelse */ }
 
     s.onclose = () => {
+      // Samme hegn. Et SENT `onclose` fra en socket vi allerede har opgivet
+      // ville ellers sætte `ws = null` og stoppe vagten for den NYE
+      // forbindelse — og så planlægge endnu en genforbindelse oveni.
+      //
+      // Vagten sætter selv `ws = null` og planlægger, så den sti er dækket;
+      // det her er kun for den gamle sockets forsinkede farvel.
+      if (ws !== s) return
       forbundet = false
       ws = null
       stopVagt()

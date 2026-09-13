@@ -286,3 +286,159 @@ describe('trafik-vagt', () => {
     expect(v.lever()).toBe(false)
   })
 })
+
+// ─────────────────────────────────────────────────────────────────────────
+// Fase 10, kriterium 3: «fences late old-generation callbacks»
+//
+// Maalt 13/9-2026: `s.onmessage` tjekkede aldrig `ws === s`. En OPGIVET socket
+// kunne derfor stadig udfoere vaerktoejer, nulstille forsoegs-taelleren, saette
+// `forbundet = true` og holde vagten stille med sit livstegn.
+// ─────────────────────────────────────────────────────────────────────────
+
+describe('generations-hegn paa bro-socket', () => {
+  /** To generationer: giv broen en ny socket hver gang, og hold den
+   *  planlagte genforbindelse i haanden saa testen selv bestemmer naar den
+   *  anden opstaar. Samme moenster som «genforbinder KUN én gang» ovenfor. */
+  function toGenerationer(ekstra: Record<string, unknown> = {}) {
+    const sockets: ReturnType<typeof fakeSocket>[] = []
+    let planlagt: (() => void) | null = null
+    const bro = opretBro({
+      ...GRUND,
+      ...ekstra,
+      lavSocket: () => { const s = fakeSocket(); sockets.push(s); return s },
+      planlaeg: (fn: () => void) => { planlagt = fn; return 0 }
+    } as never)
+    bro.start()
+    return { bro, sockets, genforbind: () => { const f = planlagt; planlagt = null; f?.() } }
+  }
+
+  it('en OPGIVET socket udfoerer IKKE et vaerktoej', async () => {
+    const udfoert: string[] = []
+    const { bro, sockets, genforbind } = toGenerationer({
+      udfoer: async (navn: string) => { udfoert.push(navn); return {} }
+    })
+    const gammel = sockets[0]
+    gammel.onopen?.()
+    gammel.onclose?.()
+    genforbind()
+    expect(sockets.length).toBe(2)          // der ER en ny generation
+
+    // Den gamle er halvaaben og leverer stadig frames.
+    gammel.onmessage?.({ data: JSON.stringify({
+      type: 'tool_invoke', correlation_id: 'c1', tool: 'phone_photo', args: {}
+    }) } as never)
+    await Promise.resolve(); await Promise.resolve()
+
+    expect(udfoert).toEqual([])
+    bro.stop()
+  })
+
+  it('den AKTUELLE socket udfoerer stadig — hegnet maa ikke slukke broen', async () => {
+    const udfoert: string[] = []
+    const { bro, sockets } = toGenerationer({
+      udfoer: async (navn: string) => { udfoert.push(navn); return { ok: true } }
+    })
+    const s = sockets[0]
+    s.onopen?.()
+    s.onmessage?.({ data: JSON.stringify({
+      type: 'tool_invoke', correlation_id: 'c1', tool: 'phone_photo', args: {}
+    }) } as never)
+    await Promise.resolve(); await Promise.resolve()
+
+    expect(udfoert).toEqual(['phone_photo'])
+    expect(beskeder(s).some((b) => b.type === 'tool_result' && b.correlation_id === 'c1'))
+      .toBe(true)
+    bro.stop()
+  })
+
+  it('et svar fra en DOED generation lander ikke paa den nye socket', async () => {
+    // Foer skrev `sendResultat` til modulets `ws` — altsaa den NYE socket. Et
+    // vaerktoej udloest af en opgivet forbindelse fik sit svar leveret over en
+    // anden, med et correlation_id den nye session ikke kender.
+    let slip: ((v: unknown) => void) | null = null
+    const { bro, sockets, genforbind } = toGenerationer({
+      udfoer: () => new Promise((r) => { slip = r })
+    })
+    const gammel = sockets[0]
+    gammel.onopen?.()
+    gammel.onmessage?.({ data: JSON.stringify({
+      type: 'tool_invoke', correlation_id: 'c1', tool: 'phone_photo', args: {}
+    }) } as never)
+
+    // Forbindelsen skifter MENS vaerktoejet koerer.
+    gammel.onclose?.()
+    genforbind()
+    const ny = sockets[1]
+    ny.onopen?.()
+
+    slip?.({ ok: true })
+    await Promise.resolve(); await Promise.resolve(); await Promise.resolve()
+
+    // Svaret skal droppes HELT — ikke bare undgaa den nye socket.
+    //
+    // Foerste udgave af denne test tjekkede kun `ny`, og var derfor groen ogsaa
+    // uden hegnet: uden det gik svaret til `gammel`, som testen ikke saa paa.
+    // En «gammel socket faar svaret» er lige saa forkert — serveren paa den
+    // anden ende har opgivet forbindelsen og laeser ikke mere.
+    expect(beskeder(ny).some((b) => b.type === 'tool_result')).toBe(false)
+    expect(beskeder(gammel).some((b) => b.type === 'tool_result')).toBe(false)
+    bro.stop()
+  })
+
+  it('en OPGIVET socket melder ikke broen forbundet igen', () => {
+    const { bro, sockets, genforbind } = toGenerationer()
+    const gammel = sockets[0]
+    gammel.onopen?.()
+    gammel.onmessage?.({ data: JSON.stringify({ type: 'registered' }) } as never)
+    expect(bro.erForbundet()).toBe(true)
+
+    gammel.onclose?.()
+    genforbind()
+    expect(bro.erForbundet()).toBe(false)
+
+    // Sent livstegn fra den doede — maa ikke genoplive tilstanden.
+    gammel.onmessage?.({ data: JSON.stringify({ type: 'registered' }) } as never)
+    expect(bro.erForbundet()).toBe(false)
+    bro.stop()
+  })
+
+  it('et SENT onopen fra en gammel socket kaprer ikke vagten', () => {
+    // `startVagt()` nulstiller `sidsteTrafik`. Kom et forsinket `onopen` fra
+    // en opgivet socket, ville vagten begynde at maale paa den FORKERTE
+    // generation — og dermed tie stille om at den nye er doed.
+    const tikker: number[] = []
+    const { bro, sockets, genforbind } = toGenerationer({
+      planlaegVagt: () => { tikker.push(1); return 0 }
+    })
+    const gammel = sockets[0]
+    gammel.onopen?.()
+    const foer = tikker.length
+    gammel.onclose?.()
+    genforbind()
+    const ny = sockets[1]
+    ny.onopen?.()
+    const efterNy = tikker.length
+    expect(efterNy).toBeGreaterThan(foer)
+
+    gammel.onopen?.()                        // forsinket haandtryk fra den doede
+    expect(tikker.length).toBe(efterNy)      // vagten blev IKKE startet igen
+    expect(gammel.lukket).toBe(true)         // og den doede blev lukket
+    bro.stop()
+  })
+
+  it('et SENT onclose fra en gammel socket draeber ikke den nye', () => {
+    const { bro, sockets, genforbind } = toGenerationer()
+    const gammel = sockets[0]
+    gammel.onopen?.()
+    gammel.onclose?.()
+    genforbind()
+    const ny = sockets[1]
+    ny.onopen?.()
+    ny.onmessage?.({ data: JSON.stringify({ type: 'registered' }) } as never)
+    expect(bro.erForbundet()).toBe(true)
+
+    gammel.onclose?.()                       // forsinket farvel fra den gamle
+    expect(bro.erForbundet()).toBe(true)
+    bro.stop()
+  })
+})

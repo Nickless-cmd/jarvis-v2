@@ -51,6 +51,7 @@ from core.tools.worktree_tools import (WORKTREE_TOOL_DEFINITIONS)
 from core.tools.identity_pin_tools import (IDENTITY_PIN_TOOL_DEFINITIONS)
 from core.tools.ui_panel_tools import (UI_PANEL_TOOL_DEFINITIONS)
 from core.tools.state_flag_tools import (STATE_FLAG_TOOL_DEFINITIONS)
+from core.tools.gate_override_tools import (GATE_OVERRIDE_TOOL_DEFINITIONS)
 from core.tools.app_control_tool import (APP_CONTROL_TOOL_DEFINITIONS)
 from core.tools.agent_todo_tools import (AGENT_TODO_TOOL_DEFINITIONS)
 from core.tools.monitor_tools import (MONITOR_TOOL_DEFINITIONS)
@@ -3423,6 +3424,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     # kendte scope. Modulet og dets handler bevares for bagudkompatibilitet.
     # *UI_PANEL_TOOL_DEFINITIONS,
     *STATE_FLAG_TOOL_DEFINITIONS,
+    *GATE_OVERRIDE_TOOL_DEFINITIONS,
     *APP_CONTROL_TOOL_DEFINITIONS,
     *AGENT_TODO_TOOL_DEFINITIONS,
     *MONITOR_TOOL_DEFINITIONS,

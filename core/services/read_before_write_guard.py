@@ -183,6 +183,33 @@ def _normalize_path(p: str, *, base: Path | None = None) -> Path | None:
         return None
 
 
+
+def _samme_navn_andetsteds(target: Path) -> Path | None:
+    """Findes en AEGTE fil med samme beskyttede navn i et kendt workspace?
+
+    Returnerer stien, eller None hvis navnet ikke findes nogen steder. Kun
+    direkte under workspace-roden — vi leder efter «samme fil, forkert rod»,
+    ikke efter et hvilket som helst sammenfald dybt nede i et traee.
+
+    Self-safe: kan roden ikke slaas op, siger vi None og lader skrivningen gaa
+    igennem. En vagt der ikke kan se maa ikke gaette.
+    """
+    try:
+        from core.runtime.config import WORKSPACES_DIR
+        rod = Path(WORKSPACES_DIR)
+    except Exception:
+        return None
+    try:
+        if target.parent.parent == rod:
+            return None            # allerede den rigtige rod
+        bruger = target.parent.name
+        kandidat = rod / bruger / target.name
+        if kandidat.exists() and kandidat.is_file():
+            return kandidat
+    except Exception:
+        return None
+    return None
+
 def check_bash_command_safe(
     command: str,
     *,
@@ -262,24 +289,50 @@ def check_bash_command_safe(
     for target in unique_candidates:
         if _was_read(str(target), session_id):
             continue
-        # FINDES FILEN OVERHOVEDET? Vagten beskytter indhold man ikke har set.
-        # Findes filen ikke, er der intet indhold at miste — og kravet «læs den
-        # først» er da umuligt at efterkomme.
+        # FINDES FILEN IKKE? Saa er der to vidt forskellige tilfaelde, og den
+        # gamle vagt behandlede dem ens — forkert.
         #
-        # MAALT 12/9-2026 (incident 6798): et run blev blokeret i at skrive til
-        # /media/projects/jarvis-v2/workspaces/bjorn/MEMORY.md. Hverken filen
-        # eller mappen `workspaces/` fandtes. Beskeden bad ham laese en fil der
-        # ikke var der — en betingelse han aldrig kunne opfylde.
+        # MAALT 12/9-2026 (incident 6798): et autonomt run blev blokeret i at
+        # skrive til /media/projects/jarvis-v2/workspaces/bjorn/MEMORY.md med
+        # beskeden «laes den foerst». Den fil fandtes ikke. Kravet var altsaa
+        # umuligt at opfylde, og vagten sagde det selv i sin egen fejlbesked:
+        # «Foerste 20 linjer af filen: (could not read preview)».
         #
-        # Den manglende forhaandsvisning var selve symptomet: «(could not read
-        # preview)» stod der, fordi der ikke var noget at vise. Vagten sagde
-        # altsaa selv hvad der var galt, i sin egen fejlbesked.
+        # MEN filen fandtes ANDETSTEDS: /home/bs/.jarvis-v2/workspaces/bjorn/
+        # MEMORY.md, 124 KB, aendret samme dag. Repoet har `workspace/` i
+        # ental; de levende brugerworkspaces ligger under JARVIS_HOME. Runnet
+        # skrev altsaa til den rigtige FIL i den forkerte ROD — sandsynligvis
+        # fordi kommandoen begyndte med `cd` ind i repoet.
+        #
+        # Lod vi den passere, ville der blive oprettet en spoegelses-MEMORY.md
+        # ingen laeser, mens den rigtige stod uroert: Jarvis ville tro han havde
+        # gemt, og intet var gemt. Det er vaerre end at blokere.
+        #
+        # Derfor: findes navnet som en AEGTE beskyttet fil et andet sted, er det
+        # en forkert sti → bloker, og sig HVOR den rigtige ligger. Findes den
+        # ingen steder, er det en ny fil, og der er intet indhold at miste.
         try:
-            if not target.exists():
-                continue
+            findes = target.exists()
         except Exception:
-            # Kan vi ikke engang afgoere det, blokerer vi hellere end at gaette.
-            pass
+            findes = True          # i tvivl: bloker hellere end at gaette
+        if not findes:
+            andetsteds = _samme_navn_andetsteds(target)
+            if andetsteds is None:
+                continue           # helt ny fil — intet at beskytte
+            reason = (
+                f"⚠️ READ-BEFORE-WRITE GUARD (bash): {target.name} findes ikke "
+                f"paa {target} — men den findes paa {andetsteds}.\n\n"
+                f"Det ser ud som en skrivning til den rigtige fil i den FORKERTE "
+                f"rod. Skriver du her, bliver der oprettet en kopi ingen laeser, "
+                f"mens den rigtige staar uroert.\n\n"
+                f"Brug stien ovenfor — eller opret filen bevidst med write_file "
+                f"hvis du virkelig mener dette sted."
+            )
+            logger.info(
+                "read_before_write_guard: BLOCKED wrong-root write %s (findes paa %s)",
+                target, andetsteds,
+            )
+            return False, reason
         # Block — found a protected overwrite without prior read
         try:
             preview = "\n".join(

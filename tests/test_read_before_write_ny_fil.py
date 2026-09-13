@@ -21,12 +21,39 @@ import pytest
 from core.services.read_before_write_guard import check_bash_command_safe
 
 
-def test_en_fil_der_ikke_findes_blokeres_ikke(tmp_path):
-    """Selve tilfaeldet fra produktionen."""
-    maal = tmp_path / "workspaces" / "bjorn" / "MEMORY.md"
+def test_en_HELT_ny_fil_blokeres_ikke(tmp_path):
+    """Findes navnet ingen steder, er der intet indhold at miste — og kravet
+    «laes den foerst» er umuligt at opfylde."""
+    maal = tmp_path / "et-nyt-sted" / "MEMORY.md"
     tilladt, grund = check_bash_command_safe(
         f"cd /tmp && cat > {maal}", session_id="prøve")
-    assert tilladt is True, f"blokeret paa en fil der ikke findes: {grund}"
+    assert tilladt is True, f"blokeret paa en fil der findes ingen steder: {grund}"
+
+
+def test_den_RIGTIGE_fil_i_den_FORKERTE_rod_blokeres(tmp_path, monkeypatch):
+    """Selve tilfaeldet fra produktionen, forstaaet rigtigt.
+
+    Incident 6798 blev foerst laest som «vagten kraever det umulige». Det gjorde
+    den — men filen fandtes ANDETSTEDS: repo-stien
+    /media/projects/jarvis-v2/workspaces/bjorn/MEMORY.md fandtes ikke, mens
+    /home/bs/.jarvis-v2/workspaces/bjorn/MEMORY.md var 124 KB og aendret samme
+    dag. Runnet skrev til den rigtige FIL i den forkerte ROD.
+
+    Lod vi den passere, ville der blive oprettet en kopi ingen laeser, mens den
+    rigtige stod uroert — Jarvis ville tro han havde gemt, og intet var gemt.
+    """
+    rigtig_rod = tmp_path / "hjem" / "workspaces"
+    (rigtig_rod / "bjorn").mkdir(parents=True)
+    (rigtig_rod / "bjorn" / "MEMORY.md").write_text("det rigtige indhold\n", encoding="utf-8")
+    monkeypatch.setattr("core.runtime.config.WORKSPACES_DIR", rigtig_rod)
+
+    forkert = tmp_path / "repo" / "workspaces" / "bjorn" / "MEMORY.md"
+    tilladt, grund = check_bash_command_safe(
+        f"cd {tmp_path}/repo && cat > {forkert}", session_id="prøve-rod")
+    assert tilladt is False, "en skrivning til forkert rod slap igennem"
+    assert "forkerte rod" in (grund or "").lower() or "FORKERTE" in (grund or "")
+    assert str(rigtig_rod / "bjorn" / "MEMORY.md") in (grund or ""), \
+        "beskeden siger ikke hvor den rigtige ligger"
 
 
 def test_en_fil_der_FINDES_beskyttes_stadig(tmp_path):

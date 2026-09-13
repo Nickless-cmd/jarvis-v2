@@ -102,6 +102,23 @@ export function startStream(request: StreamRequest, handlers: StreamHandlers): S
   const attach = (source: EventSource<StreamEventName>) => {
     for (const name of eventNames) {
       source.addEventListener(name, (event) => {
+        // GENERATIONS-HEGN. Fase 10, kriterium 3: «fences late old-generation
+        // callbacks».
+        //
+        // `attach()` kaldes igen ved hver genforbindelse, og den gamle
+        // EventSource'ens lyttere fjernes ALDRIG — kun `close()` kaldes. En
+        // sen frame fra en afloest kilde kunne derfor stadig koere hele
+        // kroppen nedenfor.
+        //
+        // Den dyreste foelge var `offset`. Det er GENOPTAGELSES-MAERKET:
+        // taeller to kilder den samme logiske frame hver sin gang, springer
+        // naeste genforbindelse forbi indhold der aldrig blev vist. En tavs
+        // mangel i samtalen, ikke en fejl nogen ser.
+        //
+        // Dertil: `attempt = 0` nulstiller backoff'en paa en doed forbindelse,
+        // og `handlers.onEvent` skriver i reduceren.
+        if (source !== current || closed) return
+
         const payload = event as SsePayloadEvent
         if (!payload.data) return
         let parsed: StreamEvent
@@ -141,6 +158,10 @@ export function startStream(request: StreamRequest, handlers: StreamHandlers): S
     }
 
     source.addEventListener('error', (event) => {
+      // Samme hegn. En afloest kilde der fejler bagefter ville ellers
+      // planlaegge ENDNU en genforbindelse — to kilder paa samme run, som
+      // begge taeller `offset` op.
+      if (source !== current) return
       if (gotStop || closed) return
       try {
         source.close()

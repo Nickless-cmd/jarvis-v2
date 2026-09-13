@@ -317,7 +317,7 @@ describe('generations-hegn paa bro-socket', () => {
     const { bro, sockets, genforbind } = toGenerationer({
       udfoer: async (navn: string) => { udfoert.push(navn); return {} }
     })
-    const gammel = sockets[0]
+    const gammel = sockets[0]!
     gammel.onopen?.()
     gammel.onclose?.()
     genforbind()
@@ -338,7 +338,7 @@ describe('generations-hegn paa bro-socket', () => {
     const { bro, sockets } = toGenerationer({
       udfoer: async (navn: string) => { udfoert.push(navn); return { ok: true } }
     })
-    const s = sockets[0]
+    const s = sockets[0]!
     s.onopen?.()
     s.onmessage?.({ data: JSON.stringify({
       type: 'tool_invoke', correlation_id: 'c1', tool: 'phone_photo', args: {}
@@ -355,11 +355,14 @@ describe('generations-hegn paa bro-socket', () => {
     // Foer skrev `sendResultat` til modulets `ws` — altsaa den NYE socket. Et
     // vaerktoej udloest af en opgivet forbindelse fik sit svar leveret over en
     // anden, med et correlation_id den nye session ikke kender.
-    let slip: ((v: unknown) => void) | null = null
+    // Holderen er et objekt, ikke en `let`. TypeScript kan ikke se at
+    // tildelingen inde i promise-konstruktoeren er sket, og indsnaevrer
+    // variablen til `never` ved kaldet bagefter.
+    const holder: { slip?: (v: unknown) => void } = {}
     const { bro, sockets, genforbind } = toGenerationer({
-      udfoer: () => new Promise((r) => { slip = r })
+      udfoer: () => new Promise((r) => { holder.slip = r })
     })
-    const gammel = sockets[0]
+    const gammel = sockets[0]!
     gammel.onopen?.()
     gammel.onmessage?.({ data: JSON.stringify({
       type: 'tool_invoke', correlation_id: 'c1', tool: 'phone_photo', args: {}
@@ -368,10 +371,10 @@ describe('generations-hegn paa bro-socket', () => {
     // Forbindelsen skifter MENS vaerktoejet koerer.
     gammel.onclose?.()
     genforbind()
-    const ny = sockets[1]
+    const ny = sockets[1]!
     ny.onopen?.()
 
-    slip?.({ ok: true })
+    holder.slip?.({ ok: true })
     await Promise.resolve(); await Promise.resolve(); await Promise.resolve()
 
     // Svaret skal droppes HELT — ikke bare undgaa den nye socket.
@@ -387,7 +390,7 @@ describe('generations-hegn paa bro-socket', () => {
 
   it('en OPGIVET socket melder ikke broen forbundet igen', () => {
     const { bro, sockets, genforbind } = toGenerationer()
-    const gammel = sockets[0]
+    const gammel = sockets[0]!
     gammel.onopen?.()
     gammel.onmessage?.({ data: JSON.stringify({ type: 'registered' }) } as never)
     expect(bro.erForbundet()).toBe(true)
@@ -410,12 +413,12 @@ describe('generations-hegn paa bro-socket', () => {
     const { bro, sockets, genforbind } = toGenerationer({
       planlaegVagt: () => { tikker.push(1); return 0 }
     })
-    const gammel = sockets[0]
+    const gammel = sockets[0]!
     gammel.onopen?.()
     const foer = tikker.length
     gammel.onclose?.()
     genforbind()
-    const ny = sockets[1]
+    const ny = sockets[1]!
     ny.onopen?.()
     const efterNy = tikker.length
     expect(efterNy).toBeGreaterThan(foer)
@@ -428,11 +431,11 @@ describe('generations-hegn paa bro-socket', () => {
 
   it('et SENT onclose fra en gammel socket draeber ikke den nye', () => {
     const { bro, sockets, genforbind } = toGenerationer()
-    const gammel = sockets[0]
+    const gammel = sockets[0]!
     gammel.onopen?.()
     gammel.onclose?.()
     genforbind()
-    const ny = sockets[1]
+    const ny = sockets[1]!
     ny.onopen?.()
     ny.onmessage?.({ data: JSON.stringify({ type: 'registered' }) } as never)
     expect(bro.erForbundet()).toBe(true)

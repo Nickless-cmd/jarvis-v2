@@ -271,3 +271,122 @@ it('omits the authorization header when auth token is empty', () => {
     })
   )
 })
+
+// ─────────────────────────────────────────────────────────────────────────
+// Fase 10, kriterium 3: «fences late old-generation callbacks»
+//
+// `attach()` kaldes igen ved hver genforbindelse, og den gamle EventSource'ens
+// lyttere fjernes ALDRIG — kun `close()`. En sen frame fra en afloest kilde
+// kunne derfor stadig taelle `offset` op, nulstille backoff'en og skrive i
+// reduceren.
+//
+// `offset` er GENOPTAGELSES-MAERKET. Taelles den samme logiske frame to gange,
+// springer naeste genforbindelse forbi indhold der aldrig blev vist — en tavs
+// mangel i samtalen, ikke en fejl nogen ser.
+// ─────────────────────────────────────────────────────────────────────────
+
+describe('generations-hegn paa stroemmen', () => {
+  /** Hver `new EventSource` faar sine EGNE lyttere, saa generationer kan skilles. */
+  function medGenerationer() {
+    const gen: { lyt: Record<string, Listener[]>; lukket: boolean }[] = []
+    ;(EventSource as unknown as jest.Mock).mockImplementation(() => {
+      const g = { lyt: {} as Record<string, Listener[]>, lukket: false }
+      gen.push(g)
+      return {
+        addEventListener: (navn: string, fn: Listener) => {
+          (g.lyt[navn] ||= []).push(fn)
+        },
+        close: () => { g.lukket = true }
+      }
+    })
+    return {
+      gen,
+      fyr: (i: number, navn: string, event: unknown) => {
+        for (const fn of gen[i]?.lyt[navn] ?? []) fn(event as never)
+      }
+    }
+  }
+
+  afterEach(() => {
+    jest.useRealTimers()
+    ;(EventSource as unknown as jest.Mock).mockImplementation(() => ({
+      addEventListener: mockAddEventListener,
+      close: mockClose
+    }))
+  })
+
+  it('en AFLOEST kilde taeller ikke offset op', () => {
+    jest.useFakeTimers()
+    const { gen, fyr } = medGenerationer()
+    const events: StreamEvent[] = []
+    const ctrl = startStream(
+      { config, message: 'hej' } as never,
+      { onEvent: (e) => { events.push(e) } } as never
+    )
+
+    // Generation 0 leverer to frames og laerer sit run_id.
+    fyr(0, 'message_start', { data: JSON.stringify({
+      type: 'message_start', message: { id: 'visible-1' } }) })
+    fyr(0, 'content_block_delta', { data: JSON.stringify({
+      type: 'content_block_delta', delta: { text: 'a' } }) })
+    expect(ctrl.getOffset()).toBe(2)
+
+    // Forbindelsen dør; klienten planlaegger en genforbindelse.
+    fyr(0, 'error', { type: 'error', message: 'brud' })
+    jest.advanceTimersByTime(5_000)
+    expect(gen.length).toBe(2)
+
+    const foer = ctrl.getOffset()
+    // Den GAMLE kilde leverer en sen frame.
+    fyr(0, 'content_block_delta', { data: JSON.stringify({
+      type: 'content_block_delta', delta: { text: 'spoegelse' } }) })
+
+    expect(ctrl.getOffset()).toBe(foer)
+    expect(events.some((e) => JSON.stringify(e).includes('spoegelse'))).toBe(false)
+    ctrl.abort()
+  })
+
+  it('den AKTUELLE kilde taeller stadig — hegnet maa ikke slukke stroemmen', () => {
+    jest.useFakeTimers()
+    const { gen, fyr } = medGenerationer()
+    const events: StreamEvent[] = []
+    const ctrl = startStream(
+      { config, message: 'hej' } as never,
+      { onEvent: (e) => { events.push(e) } } as never
+    )
+    fyr(0, 'message_start', { data: JSON.stringify({
+      type: 'message_start', message: { id: 'visible-1' } }) })
+    fyr(0, 'error', { type: 'error', message: 'brud' })
+    jest.advanceTimersByTime(5_000)
+    expect(gen.length).toBe(2)
+
+    const foer = ctrl.getOffset()
+    fyr(1, 'content_block_delta', { data: JSON.stringify({
+      type: 'content_block_delta', delta: { text: 'aegte' } }) })
+
+    expect(ctrl.getOffset()).toBe(foer + 1)
+    expect(events.some((e) => JSON.stringify(e).includes('aegte'))).toBe(true)
+    ctrl.abort()
+  })
+
+  it('en AFLOEST kilde planlaegger ikke ENDNU en genforbindelse', () => {
+    jest.useFakeTimers()
+    const { gen, fyr } = medGenerationer()
+    const ctrl = startStream(
+      { config, message: 'hej' } as never,
+      { onEvent: () => {} } as never
+    )
+    fyr(0, 'message_start', { data: JSON.stringify({
+      type: 'message_start', message: { id: 'visible-1' } }) })
+    fyr(0, 'error', { type: 'error', message: 'brud' })
+    jest.advanceTimersByTime(5_000)
+    expect(gen.length).toBe(2)
+
+    // Den gamle fejler igen bagefter — to kilder paa samme run ville begge
+    // taelle offset op.
+    fyr(0, 'error', { type: 'error', message: 'sent brud' })
+    jest.advanceTimersByTime(30_000)
+    expect(gen.length).toBe(2)
+    ctrl.abort()
+  })
+})

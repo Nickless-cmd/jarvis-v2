@@ -684,7 +684,7 @@ _Filer Jarvis har udgivet i en tur — så de kan hæfte sig på svaret._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_nulstil_for_tests` | `()` | — | [src](../../../core/services/published_files.py#L46) |
-| function | `note` | `(run_id, *, filename, url, mime_type=…, size_bytes=…)` | Registrér at turen udgav en fil. Kaster aldrig. | [src](../../../core/services/published_files.py#L51) |
-| function | `take` | `(run_id)` | Hent og RYD turens udgivne filer. Tom liste hvis ingen. | [src](../../../core/services/published_files.py#L77) |
-| function | `as_blocks` | `(poster)` | Oversæt til content_json-blokke i samme form som vedhæftninger. | [src](../../../core/services/published_files.py#L86) |
+| function | `note` | `(run_id, *, filename, url=…, mime_type=…, size_bytes=…, attachment_id=…)` | Registrér at turen udgav en fil eller et billede. Kaster aldrig. | [src](../../../core/services/published_files.py#L51) |
+| function | `take` | `(run_id)` | Hent og RYD turens udgivne filer. Tom liste hvis ingen. | [src](../../../core/services/published_files.py#L94) |
+| function | `as_blocks` | `(poster)` | Oversæt til content_json-blokke i samme form som vedhæftninger. | [src](../../../core/services/published_files.py#L103) |
 

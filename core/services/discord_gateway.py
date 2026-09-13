@@ -393,7 +393,28 @@ def _open_dm_and_send(
 
 
 def send_dm_to_owner(text: str, timeout: float = 10.0) -> dict[str, object]:
-    """Send a DM directly to the owner via owner_discord_id."""
+    """Send a DM directly to the owner via owner_discord_id.
+
+    ## Testmiljøet må ALDRIG nå hans telefon
+
+    Bjørn fik to alarmer 12/9-2026 kl. 22:36 og 22:45: «⚠️ Self-repair failed:
+    X — Action: control_daemon → test failure». Ingen af delene var ægte.
+    `tests/test_self_repair_integration.py` opretter et mønster med `name="X"`,
+    og fejl-stien kalder `_notify_owner_async` → hertil. Der stod ingen
+    tilsvarende række i `self_repair_attempts` overhovedet; beskeden kom fra en
+    testkørsel.
+
+    Vagten sidder HER og ikke hos den enkelte kalder, fordi der er fem af dem
+    (self_repair_engine, process_watcher, restart_self_tools,
+    simple_tools_native, og gatewayen selv). En vagt pr. kalder ville skulle
+    huskes hver gang der kommer en sjette. Denne skal huskes én gang.
+
+    Samme markør som `central_timeseries` allerede bruger.
+    """
+    import os
+    if "PYTEST_CURRENT_TEST" in os.environ:
+        logger.info("discord: DM til ejeren DROPPET (testmiljø): %s", str(text)[:80])
+        return {"status": "skipped", "reason": "pytest"}
     if not _is_gateway_owner():
         return _dispatch_to_runtime(
             "send_dm_to_owner",

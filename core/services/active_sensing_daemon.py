@@ -241,14 +241,47 @@ def _sense_visual(state: dict[str, Any], now: datetime) -> dict[str, Any]:
 
 
 def _sense_audio(state: dict[str, Any], now: datetime) -> dict[str, Any]:
-    """Lyt i rummet på eget initiativ."""
+    """Lyt i rummet på eget initiativ — og arkivér indtrykket.
+
+    Optager sit EGET metadata-sample (ingen temp-WAV) og skriver til Sansernes
+    Arkiv via record_audio. Tidligere delegerede denne til
+    ambient_sound_daemonens tick, hvilket betød at (a) sansningen var bundet til
+    ambient-daemonens 6-timers cooldown, og (b) arkiveringen var en side-effekt
+    hos en anden daemon — så et lyt uden ambient-sample arkiverede intet.
+    Fix 2026-09-13: active_sensing ejer nu sit eget lyt og sin egen arkivering.
+    """
     try:
-        from core.services.ambient_sound_daemon import tick_ambient_sound_daemon
-        result = tick_ambient_sound_daemon()
-        preview = f"category={result.get('category')} amplitude={result.get('amplitude_mean', 0):.4f}"
+        from core.services.ambient_sound_daemon import _capture_sample
+        category, amplitude_mean, amplitude_std, _wav = _capture_sample(save_wav=False)
+        if category is None:
+            return {"preview": "no_audio_device", "reason": "audio_no_device"}
+
+        preview = f"category={category} amplitude={amplitude_mean:.4f}"
+        content = (
+            f"Jeg lyttede til rummet. Klassifikation: {category} "
+            f"(amplitude {amplitude_mean:.4f}±{amplitude_std:.4f})."
+        )
+
+        try:
+            from core.services.sensory_archive import record_audio
+            record_audio(
+                content,
+                metadata={
+                    "source": "active_sensing_daemon",
+                    "modality": "audio",
+                    "category": category,
+                    "amplitude_mean": round(amplitude_mean, 4),
+                    "amplitude_std": round(amplitude_std, 4),
+                    "desire": state.get("last_desire", 0),
+                },
+            )
+        except Exception as exc:
+            logger.warning("active_sensing: audio archive failed: %s", exc)
+
         return {
             "preview": preview,
-            "reason": f"audio_{result.get('category', 'unknown')}",
+            "reason": f"audio_{category}",
+            "description": content,
         }
     except Exception as exc:
         logger.warning("active_sensing: audio capture failed: %s", exc)
@@ -280,8 +313,8 @@ def _sense_atmosphere(state: dict[str, Any], now: datetime) -> dict[str, Any]:
                     "desire": state.get("last_desire", 0),
                 },
             )
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("active_sensing: atmosphere archive failed: %s", exc)
 
         return {
             "preview": atmosphere[:120],
@@ -312,8 +345,8 @@ def _sense_mixed(state: dict[str, Any], now: datetime) -> dict[str, Any]:
                 "audio_status": audio_result.get("reason", ""),
             },
         )
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("active_sensing: mixed archive failed: %s", exc)
 
     return {
         "preview": combined[:120],

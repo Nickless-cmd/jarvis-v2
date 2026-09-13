@@ -114,12 +114,16 @@ def tick_ambient_sound_daemon() -> dict[str, object]:
     }
 
 
-def _capture_sample() -> tuple[str | None, float, float, str | None]:
-    """Record 10 seconds of audio, classify, save to temp WAV.
+def _capture_sample(*, save_wav: bool = True) -> tuple[str | None, float, float, str | None]:
+    """Record 10 seconds of audio, classify, optionally save to temp WAV.
 
     Returns (category, mean, std, wav_path) on success; (None, 0, 0, None) if
     the mic/device is unavailable. Caller is responsible for deleting the
     WAV file after transcription (or not) — see tick_ambient_sound_daemon.
+
+    ``save_wav=False`` springer temp-WAV-skrivningen helt over (wav_path=None).
+    Bruges af active_sensing, der kun skal have metadata til Sansernes Arkiv —
+    ikke en transskriptions-fil.
     """
     try:
         import numpy as np
@@ -137,7 +141,7 @@ def _capture_sample() -> tuple[str | None, float, float, str | None]:
         std = float(amplitude.std())
         peak = float(amplitude.max())
         category = _classify(mean, std, peak)
-        wav_path = _save_wav(samples)
+        wav_path = _save_wav(samples) if save_wav else None
         return category, mean, std, wav_path
     except ImportError:
         logger.debug("ambient_sound: sounddevice not available")
@@ -288,7 +292,7 @@ def _archive_sensory(sample: dict, now: datetime) -> None:
             },
         )
     except Exception as exc:
-        logger.debug("ambient_sound: archive mirror failed: %s", exc)
+        logger.warning("ambient_sound: archive mirror failed: %s", exc)
 
 
 def get_latest_ambient_sound_for_prompt() -> str:

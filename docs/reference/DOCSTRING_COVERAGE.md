@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7474/14581 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7477/14584 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,7 +8,7 @@ Generated from source. 7474/14581 functions/methods documented (51%). The list b
 |---|---|---|---|
 | `apps.api.jarvis_api` | 34 | 36 | 94% |
 | `apps.api.jarvis_api.middleware` | 7 | 17 | 41% |
-| `apps.api.jarvis_api.routes` | 624 | 818 | 76% |
+| `apps.api.jarvis_api.routes` | 625 | 819 | 76% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 69 | 171 | 40% |
 | `apps.desktop` | 6 | 7 | 85% |
@@ -33,7 +33,7 @@ Generated from source. 7474/14581 functions/methods documented (51%). The list b
 | `core.skills.voice` | 39 | 49 | 79% |
 | `core.tools` | 461 | 956 | 48% |
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
-| `core.tools.claude_dispatch` | 2 | 25 | 8% |
+| `core.tools.claude_dispatch` | 4 | 27 | 14% |
 | `core.util` | 9 | 10 | 90% |
 | `scripts` | 189 | 372 | 50% |
 | `scripts.acceptance` | 3 | 7 | 42% |
@@ -1934,9 +1934,9 @@ Generated from source. 7474/14581 functions/methods documented (51%). The list b
 - `core/skills/voice/voice_daemon_worker.py` :: `on_wake_word` (L113)
 - `core/skills/voice/voice_test_full.py` :: `get_first_session_id` (L25)
 - `core/skills/voice/voice_test_full.py` :: `run_voice_loop` (L65)
-- `core/tools/claude_dispatch/audit.py` :: `finalize_audit_row` (L29)
-- `core/tools/claude_dispatch/audit.py` :: `read_audit_row` (L47)
-- `core/tools/claude_dispatch/audit.py` :: `start_audit_row` (L16)
+- `core/tools/claude_dispatch/audit.py` :: `finalize_audit_row` (L77)
+- `core/tools/claude_dispatch/audit.py` :: `read_audit_row` (L95)
+- `core/tools/claude_dispatch/audit.py` :: `start_audit_row` (L61)
 - `core/tools/claude_dispatch/budget.py` :: `BudgetTracker.check_and_reserve` (L24)
 - `core/tools/claude_dispatch/budget.py` :: `BudgetTracker.current_dispatch_count` (L63)
 - `core/tools/claude_dispatch/budget.py` :: `BudgetTracker.record_usage` (L50)

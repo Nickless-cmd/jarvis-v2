@@ -26,6 +26,19 @@ router = APIRouter(prefix="/api", tags=["jarvisx"])
 
 
 @router.get("/dispatches", dependencies=[Depends(require_owner)])
+def _felt(row: Any, navn: str) -> str:
+    """Et kolonne-opslag der taaler at kolonnen ikke findes endnu.
+
+    Migrationen er doven, saa en database der ikke har skrevet en dispatch
+    siden feltet kom til, har det ikke. Et `KeyError` her ville vaelte HELE
+    listen paa grund af ét manglende felt.
+    """
+    try:
+        return str(row[navn] or "")
+    except Exception:
+        return ""
+
+
 def list_dispatches(limit: int = Query(default=50, ge=1, le=200)) -> dict[str, Any]:
     """Recent dispatches, running first then by started_at desc.
 
@@ -36,10 +49,20 @@ def list_dispatches(limit: int = Query(default=50, ge=1, le=200)) -> dict[str, A
     from core.runtime.db import connect
 
     with connect() as conn:
+        # Kolonnerne er dovent migreret, saa de findes maaske ikke endnu paa en
+        # database der ikke har skrevet en dispatch siden. Uden det her ville
+        # HELE listen fejle paa en manglende kolonne — en flade der gaar ned
+        # fordi et nyt felt kom til.
+        try:
+            from core.tools.claude_dispatch.audit import _sikr_ophav_kolonner
+            _sikr_ophav_kolonner(conn)
+        except Exception:
+            pass
         rows = conn.execute(
             """
             SELECT task_id, started_at, ended_at, status, tokens_used,
-                   exit_code, diff_summary, error, spec_json
+                   exit_code, diff_summary, error, spec_json,
+                   origin_run_id, origin_session_id
             FROM claude_dispatch_audit
             ORDER BY
                 CASE WHEN status = 'running' THEN 0 ELSE 1 END,
@@ -85,6 +108,18 @@ def list_dispatches(limit: int = Query(default=50, ge=1, le=200)) -> dict[str, A
             "model": spec.get("model"),
             "max_turns": spec.get("max_turns"),
             "allowed_paths": spec.get("allowed_paths") or [],
+            # OPHAVET. Hvilken tur startede det her arbejde?
+            #
+            # Uden de to felter er en dispatch en oe: den praeger sit eget
+            # `task_id` og deler intet med noget andet lager. En flade kan
+            # derfor ikke vise «denne samtale satte det her i gang», og et
+            # faerdigt stykke arbejde kan ikke foeres tilbage til den
+            # beslutning der udloeste det.
+            #
+            # Tom streng betyder AERLIGT ukendt — historiske raekker koerte foer
+            # kanten fandtes, og der er intet tilbagefyld.
+            "origin_run_id": _felt(r, "origin_run_id"),
+            "origin_session_id": _felt(r, "origin_session_id"),
         })
     return {"count": len(out), "dispatches": out}
 

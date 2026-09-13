@@ -11,9 +11,11 @@ _(no top-level classes or functions)_
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_now_iso` | `()` | — | [src](../../../core/tools/claude_dispatch/audit.py#L12) |
-| function | `start_audit_row` | `(task_id, spec)` | — | [src](../../../core/tools/claude_dispatch/audit.py#L16) |
-| function | `finalize_audit_row` | `(task_id, *, status, tokens_used, exit_code, diff_summary, error)` | — | [src](../../../core/tools/claude_dispatch/audit.py#L29) |
-| function | `read_audit_row` | `(task_id)` | — | [src](../../../core/tools/claude_dispatch/audit.py#L47) |
+| function | `_sikr_ophav_kolonner` | `(conn)` | Doven migration — samme mønster som `kind` på chat_sessions. | [src](../../../core/tools/claude_dispatch/audit.py#L16) |
+| function | `_ophav` | `()` | Hvilken kørsel og session udløste denne dispatch? | [src](../../../core/tools/claude_dispatch/audit.py#L33) |
+| function | `start_audit_row` | `(task_id, spec)` | — | [src](../../../core/tools/claude_dispatch/audit.py#L61) |
+| function | `finalize_audit_row` | `(task_id, *, status, tokens_used, exit_code, diff_summary, error)` | — | [src](../../../core/tools/claude_dispatch/audit.py#L77) |
+| function | `read_audit_row` | `(task_id)` | — | [src](../../../core/tools/claude_dispatch/audit.py#L95) |
 
 ## `core/tools/claude_dispatch/budget.py`
 

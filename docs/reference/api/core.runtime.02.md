@@ -895,6 +895,15 @@ _Refresh-token-rotation (spec §22.6)._
 | function | `rotate_refresh_token` | `(token, *, app_id=…)` | Veksl en refresh-token til et nyt access+refresh-par. Den gamle refresh-token | [src](../../../core/runtime/refresh_tokens.py#L92) |
 | function | `revoke_all` | `(user_id)` | Invalidér ALLE brugerens refresh-tokens (§22.6 + !revoke-override). Returnerer | [src](../../../core/runtime/refresh_tokens.py#L115) |
 
+## `core/runtime/run_profile.py`
+_Hvilken profil koerer en given koersel under — Fase 9._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `profil_navn_for` | `(run, *, research=…)` | Profilnavnet for en koersel. Falder altid ud i noget kendt. | [src](../../../core/runtime/run_profile.py#L30) |
+| function | `_synlig_profil` | `(run)` | Ejeren eller et husstandsmedlem? | [src](../../../core/runtime/run_profile.py#L45) |
+| function | `profil_for` | `(run, *, research=…, overstyring=…)` | Den effektive profil for en koersel — klar til at gemmes paa raekken. | [src](../../../core/runtime/run_profile.py#L59) |
+
 ## `core/runtime/runtime_json_io.py`
 _Safe read/merge/write helpers for runtime.json._
 
@@ -904,16 +913,4 @@ _Safe read/merge/write helpers for runtime.json._
 | function | `_prune_old_backups` | `()` | — | [src](../../../core/runtime/runtime_json_io.py#L40) |
 | function | `_write_backup` | `(payload)` | — | [src](../../../core/runtime/runtime_json_io.py#L56) |
 | function | `write_runtime_merged` | `(updates)` | Merge `updates` into runtime.json, writing atomically. | [src](../../../core/runtime/runtime_json_io.py#L68) |
-
-## `core/runtime/secrets.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `MailConfig` | `` | — | [src](../../../core/runtime/secrets.py#L18) |
-| function | `_backup_file` | `()` | — | [src](../../../core/runtime/secrets.py#L27) |
-| function | `_missing_key_message` | `(key)` | — | [src](../../../core/runtime/secrets.py#L31) |
-| function | `ensure_runtime_file_perms` | `()` | Garantér at runtime.json kun er læsbar af ejeren (0600). | [src](../../../core/runtime/secrets.py#L41) |
-| function | `_parse_int` | `(value, key)` | — | [src](../../../core/runtime/secrets.py#L59) |
-| function | `read_runtime_key` | `(key, env_override=…, *, as_int=…)` | Read a top-level key from ~/.jarvis-v2/config/runtime.json. | [src](../../../core/runtime/secrets.py#L68) |
-| function | `mail_config` | `()` | — | [src](../../../core/runtime/secrets.py#L103) |
 

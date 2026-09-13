@@ -2,6 +2,18 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/runtime/secrets.py`
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `MailConfig` | `` | — | [src](../../../core/runtime/secrets.py#L18) |
+| function | `_backup_file` | `()` | — | [src](../../../core/runtime/secrets.py#L27) |
+| function | `_missing_key_message` | `(key)` | — | [src](../../../core/runtime/secrets.py#L31) |
+| function | `ensure_runtime_file_perms` | `()` | Garantér at runtime.json kun er læsbar af ejeren (0600). | [src](../../../core/runtime/secrets.py#L41) |
+| function | `_parse_int` | `(value, key)` | — | [src](../../../core/runtime/secrets.py#L59) |
+| function | `read_runtime_key` | `(key, env_override=…, *, as_int=…)` | Read a top-level key from ~/.jarvis-v2/config/runtime.json. | [src](../../../core/runtime/secrets.py#L68) |
+| function | `mail_config` | `()` | — | [src](../../../core/runtime/secrets.py#L103) |
+
 ## `core/runtime/session_handle.py`
 _`SessionHandle` — én ejer, én lease, én sekvens._
 

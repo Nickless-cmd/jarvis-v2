@@ -423,12 +423,12 @@ _Fortsæt automatisk når turen blev klippet af sit eget budget._
 | class | `Beslutning` | `` | Svaret, med grunden. Grunden er ikke pynt — den skal i loggen, så en | [src](../../../core/services/auto_continuation.py#L53) |
 | function | `beslut` | `(*, exit_reason, slaaet_til, autonom, kaede_nr, bruger_skrev_imens, maks_kaede=…)` | Skal denne tur fortsætte af sig selv? | [src](../../../core/services/auto_continuation.py#L61) |
 | function | `fortsaettelses_besked` | `(kaede_nr, maks_kaede=…)` | Teksten Jarvis får. Den siger hvor han er, og at han skal sige til når | [src](../../../core/services/auto_continuation.py#L93) |
-| function | `noter_udfald` | `(run_id, exit_reason)` | — | [src](../../../core/services/auto_continuation.py#L123) |
-| function | `hent_udfald` | `(run_id)` | — | [src](../../../core/services/auto_continuation.py#L134) |
-| function | `kaede_nr` | `(session_id)` | — | [src](../../../core/services/auto_continuation.py#L139) |
-| function | `saet_kaede` | `(session_id, nr)` | — | [src](../../../core/services/auto_continuation.py#L144) |
-| function | `noter_brugerbesked` | `(session_id)` | Brugeren skrev selv. Bruges til to ting: nulstille kæden, og afgøre om | [src](../../../core/services/auto_continuation.py#L157) |
-| function | `bruger_skrev_efter` | `(session_id, tidspunkt)` | Har brugeren skrevet efter `tidspunkt`? Så har han taget over, og en | [src](../../../core/services/auto_continuation.py#L169) |
+| function | `noter_udfald` | `(run_id, exit_reason, session_id=…)` | Noter under BEGGE noegler: runnets eget id og sessionen. | [src](../../../core/services/auto_continuation.py#L123) |
+| function | `hent_udfald` | `(run_id, session_id=…)` | Udfaldet for et run — slaa op paa run-id, og fald tilbage paa sessionen. | [src](../../../core/services/auto_continuation.py#L150) |
+| function | `kaede_nr` | `(session_id)` | — | [src](../../../core/services/auto_continuation.py#L166) |
+| function | `saet_kaede` | `(session_id, nr)` | — | [src](../../../core/services/auto_continuation.py#L171) |
+| function | `noter_brugerbesked` | `(session_id)` | Brugeren skrev selv. Bruges til to ting: nulstille kæden, og afgøre om | [src](../../../core/services/auto_continuation.py#L184) |
+| function | `bruger_skrev_efter` | `(session_id, tidspunkt)` | Har brugeren skrevet efter `tidspunkt`? Så har han taget over, og en | [src](../../../core/services/auto_continuation.py#L196) |
 
 ## `core/services/auto_improvement_proposer.py`
 _Auto improvement proposer — close the self-improvement loop SAFELY._

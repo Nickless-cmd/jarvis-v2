@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7399/14492 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7401/14492 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 7399/14492 functions/methods documented (51%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 614 | 1135 | 54% |
-| `core.services` | 4940 | 10028 | 49% |
+| `core.services` | 4942 | 10028 | 49% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 108 | 184 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -40,7 +40,7 @@ Generated from source. 7399/14492 functions/methods documented (51%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2068)
+## Undocumented public functions (2066)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L201)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -621,10 +621,8 @@ Generated from source. 7399/14492 functions/methods documented (51%). The list b
 - `core/services/attention_contour.py` :: `format_attention_for_prompt` (L17)
 - `core/services/attention_contour.py` :: `get_attention_shape` (L10)
 - `core/services/auto_code_review.py` :: `review_pending_commit` (L77)
-- `core/services/auto_continuation.py` :: `hent_udfald` (L134)
-- `core/services/auto_continuation.py` :: `kaede_nr` (L139)
-- `core/services/auto_continuation.py` :: `noter_udfald` (L123)
-- `core/services/auto_continuation.py` :: `saet_kaede` (L144)
+- `core/services/auto_continuation.py` :: `kaede_nr` (L166)
+- `core/services/auto_continuation.py` :: `saet_kaede` (L171)
 - `core/services/auto_remember_subscriber.py` :: `stop_auto_remember_subscriber` (L457)
 - `core/services/automation_dsl.py` :: `build_automation_dsl_surface` (L228)
 - `core/services/automation_dsl.py` :: `deactivate_automation` (L180)

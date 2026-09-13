@@ -836,8 +836,21 @@ _Profil-komponisten — Fase 9 i DeepSeek-harness-spec'en._
 | class | `EffektivProfil` | `` | Resultatet af en komposition — og det en kørsel gemmer om sig selv. | [src](../../../core/runtime/profile_composer.py#L66) |
 | method | `EffektivProfil.hash` | `(self)` | Hash over det EFFEKTIVE resultat, ikke over navnet. | [src](../../../core/runtime/profile_composer.py#L75) |
 | method | `EffektivProfil.forklar` | `(self)` | Hvad Mission Control skal kunne vise. Exit-kriteriet kræver at | [src](../../../core/runtime/profile_composer.py#L87) |
-| function | `_er_indsnaevring` | `(akse, fra, til)` | Bevæger `til` sig væk fra «mest tilladt» i forhold til `fra`? | [src](../../../core/runtime/profile_composer.py#L102) |
-| function | `komponer` | `(lag, *, navn=…)` | Sæt lagene sammen i rækkefølge. Senere lag vinder — undtagen sikkerhed, | [src](../../../core/runtime/profile_composer.py#L117) |
+| method | `EffektivProfil.haandhaevelse` | `(self)` | Maalt virkelighed for de tre akser i kriterium 7. Selv-sikker. | [src](../../../core/runtime/profile_composer.py#L108) |
+| method | `EffektivProfil.afvigelser` | `(self)` | Hvor holder virkeligheden ikke hvad profilen lover? | [src](../../../core/runtime/profile_composer.py#L116) |
+| function | `_er_indsnaevring` | `(akse, fra, til)` | Bevæger `til` sig væk fra «mest tilladt» i forhold til `fra`? | [src](../../../core/runtime/profile_composer.py#L125) |
+| function | `komponer` | `(lag, *, navn=…)` | Sæt lagene sammen i rækkefølge. Senere lag vinder — undtagen sikkerhed, | [src](../../../core/runtime/profile_composer.py#L140) |
+
+## `core/runtime/profile_enforcement.py`
+_ANMODET vs FAKTISK — Fase 9, exit-kriterium 7._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_maal_sandkasse` | `()` | Sandkassen har en ægte håndhæver — samme kilde som exec-stien. | [src](../../../core/runtime/profile_enforcement.py#L56) |
+| function | `_maal_kryds_session` | `()` | Findes der en gate på kontekst fra andre sessioner? | [src](../../../core/runtime/profile_enforcement.py#L71) |
+| function | `_maal_telemetri` | `()` | Findes der en gate på udgående telemetri? | [src](../../../core/runtime/profile_enforcement.py#L82) |
+| function | `maal` | `(anmodet=…)` | Anmodet vs faktisk for hver af de tre akser. | [src](../../../core/runtime/profile_enforcement.py#L103) |
+| function | `afvigelser` | `(maalt)` | Hvor holder virkeligheden ikke hvad profilen lover? | [src](../../../core/runtime/profile_enforcement.py#L137) |
 
 ## `core/runtime/profiles.py`
 _De navngivne profiler — Fase 9 i DeepSeek-harness-spec'en._
@@ -903,14 +916,4 @@ _Hvilken profil koerer en given koersel under — Fase 9._
 | function | `profil_navn_for` | `(run, *, research=…)` | Profilnavnet for en koersel. Falder altid ud i noget kendt. | [src](../../../core/runtime/run_profile.py#L30) |
 | function | `_synlig_profil` | `(run)` | Ejeren eller et husstandsmedlem? | [src](../../../core/runtime/run_profile.py#L45) |
 | function | `profil_for` | `(run, *, research=…, overstyring=…)` | Den effektive profil for en koersel — klar til at gemmes paa raekken. | [src](../../../core/runtime/run_profile.py#L83) |
-
-## `core/runtime/runtime_json_io.py`
-_Safe read/merge/write helpers for runtime.json._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `read_runtime_raw` | `()` | Return current runtime.json as a plain dict. Empty dict if file missing. | [src](../../../core/runtime/runtime_json_io.py#L30) |
-| function | `_prune_old_backups` | `()` | — | [src](../../../core/runtime/runtime_json_io.py#L40) |
-| function | `_write_backup` | `(payload)` | — | [src](../../../core/runtime/runtime_json_io.py#L56) |
-| function | `write_runtime_merged` | `(updates)` | Merge `updates` into runtime.json, writing atomically. | [src](../../../core/runtime/runtime_json_io.py#L68) |
 

@@ -88,3 +88,32 @@ def test_ruten_er_registreret_i_appen():
     kilde = pathlib.Path("apps/api/jarvis_api/app.py").read_text()
     assert "central_profiles" in kilde
     assert "_central_profiles.router" in kilde
+
+
+# ----------------------------------------- kriterium 7: anmodet vs faktisk
+
+def test_fladen_viser_HAANDHAEVELSE_ikke_kun_oenske():
+    """En flade der kun viser hvad profilen ønsker, tegner en grænse der
+    maaske ikke findes.
+
+    Maalt 13/9-2026: `cross_session_context` er erklaeret i FIRE profiler og
+    haandhaevet i nul — `cross_session_arc_section()` kaldes ubetinget fra
+    `prompt_contract`. Uden dette felt ville fladen vise «none» og se rigtig ud.
+    """
+    from core.services.central_profiles import build_profiles_surface
+    s = build_profiles_surface()
+    for p in s["profiler"]:
+        assert "haandhaevelse" in p, f"{p['navn']} viser kun oenske"
+        assert "afvigelser" in p
+        for akse, post in p["haandhaevelse"].items():
+            assert {"anmodet", "faktisk", "haandhaevet"} <= set(post)
+
+
+def test_fladen_samler_de_uhaandhaevede_akser():
+    """En operatoer skal ikke aabne syv profiler for at se at et loefte ikke
+    holdes nogen steder."""
+    from core.services.central_profiles import build_profiles_surface
+    s = build_profiles_surface()
+    assert isinstance(s["uhaandhaevede_akser"], list)
+    assert isinstance(s["afvigelser_i_alt"], int)
+

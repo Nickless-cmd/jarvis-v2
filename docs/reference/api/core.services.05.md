@@ -499,8 +499,8 @@ _Profil-overfladen til Centralen — Fase 9._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_profil_rækker` | `()` | — | [src](../../../core/services/central_profiles.py#L36) |
-| function | `_seneste_kørsler` | `(graense=…)` | Hvad koerslerne FAKTISK koerte under. Tom liste hvis kolonnerne ikke | [src](../../../core/services/central_profiles.py#L50) |
-| function | `build_profiles_surface` | `()` | Alt Centralen skal bruge for at kunne forklare en koersels regler. | [src](../../../core/services/central_profiles.py#L81) |
+| function | `_seneste_kørsler` | `(graense=…)` | Hvad koerslerne FAKTISK koerte under. Tom liste hvis kolonnerne ikke | [src](../../../core/services/central_profiles.py#L56) |
+| function | `build_profiles_surface` | `()` | Alt Centralen skal bruge for at kunne forklare en koersels regler. | [src](../../../core/services/central_profiles.py#L87) |
 
 ## `core/services/central_projection_cache.py`
 _Kortlivet cache for Centralens projektioner — så polling ikke koster._

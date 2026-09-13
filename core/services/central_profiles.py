@@ -43,6 +43,12 @@ def _profil_rækker() -> list[dict[str, Any]]:
             "hash": p.hash,
             "skema_version": p.skema_version,
             **{f: p.felter.get(f) for f in FORKLAREDE_FELTER},
+            # Kriterium 7. Uden disse to viser fladen kun hvad profilen
+            # OENSKER — og fire af de syv oensker en kryds-session-begraensning
+            # som (maalt 13/9-2026) ingen haandhaever. En flade der kun viser
+            # oensket ville tegne en graense der ikke findes.
+            "haandhaevelse": p.haandhaevelse(),
+            "afvigelser": p.afvigelser(),
         })
     return ud
 
@@ -97,4 +103,12 @@ def build_profiles_surface() -> dict[str, Any]:
         # siden, og at en undersoegelse skal tage hoejde for det.
         "hashes_uden_nulevende_profil": ukendte,
         "forklarede_felter": list(FORKLAREDE_FELTER),
+        # Samlet, saa en operatoer ikke skal aabne syv profiler for at se at
+        # et loefte ikke holdes nogen steder.
+        "uhaandhaevede_akser": sorted({
+            a for p in profiler
+            for a, v in (p.get("haandhaevelse") or {}).items()
+            if not v.get("haandhaevet")
+        }),
+        "afvigelser_i_alt": sum(len(p.get("afvigelser") or []) for p in profiler),
     }

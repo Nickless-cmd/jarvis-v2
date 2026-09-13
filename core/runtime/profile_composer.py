@@ -96,7 +96,30 @@ class EffektivProfil:
             "felter": dict(self.felter),
             "sikkerhed": {a: self.felter.get(a) for a in SIKKERHEDS_AKSER
                           if a in self.felter},
+            # Kriterium 7: ANMODET vs FAKTISK. Uden det er «sikkerhed»
+            # ovenfor kun hvad profilen ØNSKER — og fire af de syv profiler
+            # oensker en kryds-session-begraensning som (maalt 13/9-2026)
+            # ingen haandhaever. En flade der kun viser oensket ville vise en
+            # graense der ikke findes.
+            "haandhaevelse": self.haandhaevelse(),
+            "afvigelser": self.afvigelser(),
         }
+
+    def haandhaevelse(self) -> dict[str, Any]:
+        """Maalt virkelighed for de tre akser i kriterium 7. Selv-sikker."""
+        try:
+            from core.runtime.profile_enforcement import maal
+            return maal(self.felter)
+        except Exception:
+            return {}
+
+    def afvigelser(self) -> list[str]:
+        """Hvor holder virkeligheden ikke hvad profilen lover?"""
+        try:
+            from core.runtime.profile_enforcement import afvigelser as _a
+            return _a(self.haandhaevelse())
+        except Exception:
+            return []
 
 
 def _er_indsnaevring(akse: str, fra: Any, til: Any) -> bool:

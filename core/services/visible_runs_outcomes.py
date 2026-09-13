@@ -596,15 +596,18 @@ def persist_visible_run_start(run: "_vr.VisibleRun") -> None:
     rid = str(getattr(run, "run_id", "") or "")
     if not rid:
         return
+    profil_navn, profil_hash, profil_version = _profil_for_raekken(run)
     try:
         with connect() as conn:
+            _sikr_profil_kolonner(conn)
             conn.execute(
                 """
                 INSERT INTO visible_runs (
                     run_id, lane, provider, model, status,
-                    started_at, finished_at, text_preview, error, capability_id
+                    started_at, finished_at, text_preview, error, capability_id,
+                    profile_name, profile_hash, profile_schema_version
                 )
-                VALUES (?, ?, ?, ?, 'running', ?, '', ?, NULL, NULL)
+                VALUES (?, ?, ?, ?, 'running', ?, '', ?, NULL, NULL, ?, ?, ?)
                 ON CONFLICT(run_id) DO NOTHING
                 """,
                 (
@@ -614,11 +617,48 @@ def persist_visible_run_start(run: "_vr.VisibleRun") -> None:
                     str(getattr(run, "model", "") or ""),
                     datetime.now(UTC).isoformat(),
                     _preview_text(getattr(run, "user_message", "") or ""),
+                    profil_navn, profil_hash, profil_version,
                 ),
             )
     except Exception:
         logger.debug("kunne ikke skrive start-raekken for %s", rid, exc_info=True)
 
+
+
+def _sikr_profil_kolonner(conn) -> None:
+    """Doven migration — samme moenster som `kind` paa chat_sessions.
+
+    Tre kolonner, fordi exit-kriteriet kraever baade version OG hash: hashen
+    siger HVILKE regler, versionen siger hvordan de skal laeses. Navnet er med
+    for at kunne laese en raekke uden at slaa hashen op.
+    """
+    for kolonne, definition in (
+        ("profile_name", "TEXT NOT NULL DEFAULT ''"),
+        ("profile_hash", "TEXT NOT NULL DEFAULT ''"),
+        ("profile_schema_version", "INTEGER NOT NULL DEFAULT 0"),
+    ):
+        try:
+            conn.execute(f"ALTER TABLE visible_runs ADD COLUMN {kolonne} {definition}")
+        except Exception:
+            pass  # findes allerede
+    # INTET tilbagefyld. Gamle raekker koerte foer profilerne fandtes, og en
+    # gaettet profil paa en historisk koersel ville vaere praecis den slags
+    # «sandhed» man ikke kan efterproeve. Tom streng betyder aerligt «ukendt».
+
+
+def _profil_for_raekken(run) -> tuple[str, str, int]:
+    """(navn, hash, skema-version) for koerslen. Selv-sikker.
+
+    Kan profilen ikke afgoeres, gemmes tomme vaerdier frem for et gaet. En
+    forkert profil paa raekken er vaerre end ingen: den ville se ud som viden.
+    """
+    try:
+        from core.runtime.run_profile import profil_for
+        p = profil_for(run)
+        return p.navn, p.hash, int(p.skema_version)
+    except Exception:
+        logger.debug("kunne ikke afgoere profil for koerslen", exc_info=True)
+        return "", "", 0
 
 def stamp_visible_run_interrupted(run_id: str, *, reason: str = "") -> bool:
     """Stempl en ``running``-række som ``interrupted`` — kun hvis den stadig kører.

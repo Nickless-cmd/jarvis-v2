@@ -114,8 +114,14 @@ CHAT_MODE_TOOLS_BASE: frozenset[str] = frozenset({
     "get_weather", "get_exchange_rate", "wolfram_query",
     # Geolocation (read-only eksterne opslag)
     "geolocation_lookup", "geocode", "reverse_geocode", "route_directions", "nearby_search",
-    # Vision
+    # Vision — at SE et billede
     "analyze_image",
+    # …og at TEGNE et. Vaerktoejerne blev bygget 13/9-2026 og stod i INGEN
+    # mode-liste: maalt gav baade chat og code «INGEN billedvaerktoejer», og de
+    # var kun naabare i cowork. Bygget, korrekt, usynligt praecis dér hvor
+    # arbejdet foregaar — samme moenster som `read_attachment` ovenfor, hvor et
+    # skaermbillede var noget han kunne modtage og ikke se paa.
+    "openrouter_image", "openrouter_image_edit",
     # Hukommelse — read (2026-09-04: `recall` = ét tool over alle kilder)
     "recall", "search_memory", "memory_graph_query", "resurface_old_memory",
     "search_jarvis_brain", "read_brain_entry",
@@ -162,6 +168,9 @@ CODE_MODE_TOOLS_BASE: frozenset[str] = frozenset({
     "todo_list", "todo_add", "todo_update_status", "todo_set", "todo_remove",
     # App-self-control (desk) — foreslå fuld adgang (trust) i code mode
     "request_app_action",
+    # Billeder. Ogsaa i kode-mode: et diagram, en mockup eller en illustration
+    # til en README hoerer til i arbejdet, ikke i en anden fane.
+    "openrouter_image", "openrouter_image_edit",
 })
 CODE_MODE_OWNER_EXTRA: frozenset[str] = frozenset({
     "read_file", "write_file", "edit_file", "search", "find_files", "bash",

@@ -48,7 +48,18 @@ _MEMBER_CHAT_UTIL = frozenset({"calculate", "unit_convert", "percentage"})
 _MEMBER_CHAT_MEM = frozenset({
     "remember_this", "search_memory", "recall_memories", "memory_list_headings",
 })
-_MEMBER_CHAT = _MEMBER_CHAT_WEB | _MEMBER_CHAT_UTIL | _MEMBER_CHAT_MEM
+# Billeder — at SE et og at TEGNE et.
+#
+# `analyze_image` stod allerede i `_MEMBER_CHAT_WEB`, altsaa kunne Michelle
+# kigge paa et billede men ikke lave et. Bjoern bad 13/9-2026 om at aabne begge
+# veje for hende.
+#
+# BEMÆRK at det koster penge: `openrouter_image` bruger betalingsnoeglen, og
+# free-tier-profilen er eksplicit forbudt i vaerktoejet. Det er derfor et
+# bevidst valg og ikke en oprydning — en ikke-ejer kan nu bruge af puljen.
+_MEMBER_IMAGE = frozenset({"openrouter_image", "openrouter_image_edit"})
+
+_MEMBER_CHAT = _MEMBER_CHAT_WEB | _MEMBER_CHAT_UTIL | _MEMBER_CHAT_MEM | _MEMBER_IMAGE
 
 
 # ── Member CODE (= det Claude har) ──────────────────────────────────────────
@@ -81,7 +92,8 @@ _MEMBER_CODE_FILE = frozenset({"read_file", "write_file", "edit_file", "find_fil
 # Rører aldrig ejerens/Jarvis' GitHub. Yderligere gated af connected+enabled i runtime.
 _MEMBER_CODE_CONNECTOR = frozenset({"github_list_issues", "github_list_prs"})
 _MEMBER_CODE = (
-    _MEMBER_CODE_OPERATOR | _MEMBER_CODE_WEB | _MEMBER_CODE_FILE | _MEMBER_CODE_CONNECTOR
+    _MEMBER_CODE_OPERATOR | _MEMBER_CODE_WEB | _MEMBER_CODE_FILE
+    | _MEMBER_CODE_CONNECTOR | _MEMBER_IMAGE
 )
 
 

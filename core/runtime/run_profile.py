@@ -45,9 +45,33 @@ def profil_navn_for(run: Any, *, research: bool = False) -> str:
 def _synlig_profil(run: Any) -> str:
     """Ejeren eller et husstandsmedlem?
 
-    Rollen kommer fra workspace-konteksten, ikke fra koerslen — en koersel kan
-    ikke udnaevne sig selv til ejer.
+    ## Hvorfor brugeren slaas op FOER konteksten
+
+    Rollen laa foer udelukkende i `effective_role()`, som laeser en ContextVar.
+    Den foelger ikke med ind i den detached traad hvor koerslens raekke skrives —
+    saa Bjoerns EGNE ture blev bogfoert som `visible-member`. Maalt 13/9-2026 kl.
+    13:44 paa hans «Forsæt»: `visible-1bacf4df… | visible-member`.
+
+    Det er harmloest saa laenge profilen kun REGISTRERES. Den dag den haandhaeves,
+    ville ejeren koere med et medlems rettigheder.
+
+    Koerslen baerer nu sin egen bruger (`user_id`, fanget ved forespoergslen), og
+    brugerens rolle staar i husstandsregistret. Konteksten er stadig med som
+    faldback — men den er ikke laengere det eneste svar.
+
+    En koersel kan stadig ikke udnaevne sig selv til ejer: `user_id` er et
+    OPSLAG i registret, ikke en paastand koerslen selv kan saette.
     """
+    uid = str(getattr(run, "user_id", "") or "").strip()
+    if uid:
+        try:
+            from core.identity.users import find_user_by_discord_id
+            bruger = find_user_by_discord_id(uid)
+            rolle = (getattr(bruger, "role", "") or "").strip().lower()
+            if rolle:
+                return "visible-owner" if rolle == "owner" else "visible-member"
+        except Exception:
+            pass
     try:
         from core.identity.workspace_context import effective_role
         rolle = (effective_role() or "").strip().lower()

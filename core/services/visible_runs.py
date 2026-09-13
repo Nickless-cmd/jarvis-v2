@@ -419,6 +419,12 @@ class VisibleRun:
     thinking_adaptive: bool = False
     local_tool_exec: bool = False  # Path B: emit tool_call to client + wait on broker
                                    # instead of running tools server-side (default OFF).
+    # Hvem koerslen tilhoerer. ROLLEN kan ikke slaas op i den detached traad —
+    # `effective_role()` laeser en ContextVar der ikke foelger med derind, saa
+    # Bjoerns egne ture blev bogfoert som `visible-member` (maalt 13/9 kl.
+    # 13:44 paa hans «Forsæt»). Brugeren fanges derfor HER, hvor konteksten
+    # stadig gaelder, og foelger med koerslen.
+    user_id: str = ""
 
 
 @dataclass(slots=True)
@@ -883,6 +889,7 @@ def start_visible_run(
         thinking_mode=_resolved_thinking,
         thinking_adaptive=_thinking_was_adaptive,
         local_tool_exec=bool(local_tool_exec),
+        user_id=str(force_user_id or ""),
     )
     # KERNE-FORRANG (2026-07-22): markér den synlige tur som aktiv i HELE dens levetid
     # (assembly + streaming) via en in-proces gate, så private baggrunds-LLM-lag

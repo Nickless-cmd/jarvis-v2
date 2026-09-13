@@ -108,3 +108,92 @@ def test_gamle_raekker_faar_IKKE_en_gaettet_profil():
     kilde = inspect.getsource(vro._sikr_profil_kolonner)
     assert "UPDATE" not in kilde.upper(), "migrationen tilbagefylder"
     assert "DEFAULT ''" in kilde
+
+
+# ── Rollen: maalt i drift, ikke gaettet ─────────────────────────────────────
+
+def test_ejerens_egen_tur_bliver_IKKE_bogfoert_som_medlem(monkeypatch):
+    """MAALT 13/9-2026 kl. 13:44 paa runtime: Bjoerns egen «Forsæt» blev skrevet
+    som `visible-1bacf4df… | visible-member`.
+
+    Aarsagen var at rollen kun kunne slaas op via `effective_role()`, som laeser
+    en ContextVar. Den foelger ikke med ind i den detached traad hvor raekken
+    skrives — samme familie som ContextVar-tabet i `visible_tool_exec`.
+
+    Harmloest saa laenge profilen kun REGISTRERES. Den dag den haandhaeves,
+    ville ejeren koere med et medlems rettigheder.
+    """
+    from types import SimpleNamespace
+    monkeypatch.setattr("core.identity.users.find_user_by_discord_id",
+                        lambda uid: SimpleNamespace(role="owner"))
+    # Konteksten er TOM — praecis som i den detached traad.
+    monkeypatch.setattr("core.identity.workspace_context.effective_role",
+                        lambda: "")
+    assert profil_navn_for(_run(user_id="bjoerns-id")) == "visible-owner"
+
+
+def test_et_medlems_tur_bliver_ved_med_at_vaere_et_medlems(monkeypatch):
+    from types import SimpleNamespace
+    monkeypatch.setattr("core.identity.users.find_user_by_discord_id",
+                        lambda uid: SimpleNamespace(role="member"))
+    monkeypatch.setattr("core.identity.workspace_context.effective_role",
+                        lambda: "owner")   # konteksten siger ejer — registret vinder
+    assert profil_navn_for(_run(user_id="et-medlem")) == "visible-member"
+
+
+def test_en_koersel_kan_ikke_PAASTAA_at_vaere_ejer(monkeypatch):
+    """`user_id` er et OPSLAG i husstandsregistret, ikke en paastand koerslen
+    selv kan saette. Findes brugeren ikke, er svaret ikke «ejer»."""
+    monkeypatch.setattr("core.identity.users.find_user_by_discord_id",
+                        lambda uid: None)
+    monkeypatch.setattr("core.identity.workspace_context.effective_role",
+                        lambda: "")
+    assert profil_navn_for(_run(user_id="opfundet-id")) == "visible-member"
+
+
+def test_konteksten_bruges_STADIG_naar_koerslen_ikke_kender_sin_bruger(monkeypatch):
+    """Faldbacken maa ikke forsvinde — aeldre kaldeveje saetter ikke user_id."""
+    monkeypatch.setattr("core.identity.workspace_context.effective_role",
+                        lambda: "owner")
+    assert profil_navn_for(_run(user_id="")) == "visible-owner"
+
+
+def test_koerslen_BAERER_sin_bruger():
+    """Uden feltet paa dataklassen er opslaget umuligt i den detached traad."""
+    from core.services.visible_runs import VisibleRun
+    assert "user_id" in VisibleRun.__dataclass_fields__
+
+
+def test_brugeren_bliver_FAKTISK_sat_naar_koerslen_bygges():
+    """Feltet kan findes uden nogensinde at blive fyldt.
+
+    Mutations-proeven viste det: at saette `user_id=""` paa konstruktionsstedet
+    blev ikke fanget, fordi alle andre tests bygger deres EGNE koersels-objekter
+    og roerer aldrig den rigtige vej. En kilde-vagt er den eneste maade at se
+    forskel uden at rejse et helt run.
+    """
+    import ast
+    import pathlib as _p
+
+    # AST, ikke tekst: strengen `user_id=str(force_user_id or "")` staar FIRE
+    # steder i filen, saa et `in kilde` er groent selv om netop koerslens
+    # konstruktion mangler den. Foerste udgave af denne test var praecis saa
+    # svag — mutationen overlevede den.
+    træ = ast.parse(_p.Path("core/services/visible_runs.py").read_text())
+    kald = [n for n in ast.walk(træ)
+            if isinstance(n, ast.Call) and getattr(n.func, "id", "") == "VisibleRun"]
+    assert kald, "VisibleRun bygges ikke i filen — er den flyttet?"
+    for n in kald:
+        nøgler = {k.arg: k.value for k in n.keywords}
+        autonom = nøgler.get("autonomous")
+        if isinstance(autonom, ast.Constant) and autonom.value is True:
+            # En autonom koersel HAR ingen bruger. Profilen afgoeres af
+            # `autonomous=True` foer rollen overhovedet slaas op, saa et krav
+            # om user_id dér ville vaere formalia uden indhold.
+            continue
+        assert "user_id" in nøgler, \
+            f"VisibleRun paa linje {n.lineno} bygges uden sin bruger"
+        værdi = nøgler["user_id"]
+        assert not (isinstance(værdi, ast.Constant) and værdi.value == ""), \
+            f"VisibleRun paa linje {n.lineno} faar en TOM bruger — rollen kan " \
+            "ikke slaas op bagefter"

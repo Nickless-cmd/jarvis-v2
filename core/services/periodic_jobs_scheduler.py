@@ -78,16 +78,19 @@ def check_and_enqueue_due_periodic_jobs() -> dict[str, Any]:
     now = datetime.now(UTC)
 
     try:
-        from core.services.jobs_engine import enqueue_job, list_jobs
+        from core.services.jobs_engine import all_jobs, enqueue_job
     except Exception as exc:
         logger.debug("periodic_jobs_scheduler: jobs_engine import failed: %s", exc)
         return {"enqueued": [], "skipped": [], "error": str(exc)}
 
     # Load ONE gang — herfra arbejder vi på in-memory data
     try:
-        all_items = list_jobs(limit=200)
+        # ALLE jobs, ikke de seneste 200. Vinduet skar netop de gamle koersler
+        # af — og det er dem der afgoer om et kvartals-job har koert. Se
+        # jobs_engine.all_jobs for maalingen.
+        all_items = all_jobs()
     except Exception as exc:
-        logger.warning("periodic_jobs_scheduler: list_jobs failed: %s", exc)
+        logger.warning("periodic_jobs_scheduler: kunne ikke laese jobs: %s", exc)
         all_items = []
 
     # Byg pending-set + last-time map i én pass

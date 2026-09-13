@@ -531,6 +531,23 @@ def _fej_ulaast(stale_seconds: int) -> dict[str, int]:
     return {"swept": swept, "remaining_running": still_running}
 
 
+def all_jobs() -> list[dict[str, Any]]:
+    """ALLE jobs — ingen hale klippet af.
+
+    `list_jobs` er `items[-limit:]` paa en liste der allerede er laest helt ind,
+    saa loftet sparer hverken hukommelse eller tid; det skjuler kun halen. For
+    en kalder der skal vide *hvornaar en jobtype sidst koerte* er den hale hele
+    pointen: et kvartals-job ligger langt nede.
+
+    MAALT 13/9-2026: 2.007 jobs i filen, `limit=200` i
+    `periodic_jobs_scheduler`. `quarterly_arc` havde koert 156 gange og laa med
+    NUL raekker i vinduet — saa scheduleren konkluderede «last seen never» og
+    lagde den i koe hvert 30. sekund. Hver ny raekke skubbede de gamle koersler
+    laengere ud af vinduet: selvforstaerkende.
+    """
+    return _load()
+
+
 def list_jobs(*, status: str | None = None, limit: int = 50) -> list[dict[str, Any]]:
     items = _load()
     if status:

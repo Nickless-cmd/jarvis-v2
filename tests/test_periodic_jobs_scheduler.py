@@ -21,12 +21,12 @@ def _job(job_type: str, hours_ago: float, status: str = "completed"):
 
 def test_no_history_enqueues_all():
     enq_calls = []
-    def fake_list(**kw):
+    def fake_list(*a, **kw):
         return []
     def fake_enqueue(**kw):
         enq_calls.append(kw["job_type"])
         return f"job-{kw['job_type']}-x"
-    with patch("core.services.jobs_engine.list_jobs", side_effect=fake_list), \
+    with patch("core.services.jobs_engine.all_jobs", side_effect=fake_list), \
          patch("core.services.jobs_engine.enqueue_job", side_effect=fake_enqueue):
         result = check_and_enqueue_due_periodic_jobs()
     assert "chronicle_refresh" in result["enqueued"]
@@ -36,13 +36,13 @@ def test_no_history_enqueues_all():
 def test_recent_chronicle_skipped():
     # 2026-05-17 perf fix: scheduler nu loader job-listen ÉN gang og filtrerer
     # in-memory. fake_list returnerer derfor det fulde sæt, ikke pre-filtreret.
-    def fake_list(**kw):
+    def fake_list(*a, **kw):
         return [_job("chronicle_refresh", hours_ago=2)]
     enq_calls = []
     def fake_enqueue(**kw):
         enq_calls.append(kw["job_type"])
         return "job-x"
-    with patch("core.services.jobs_engine.list_jobs", side_effect=fake_list), \
+    with patch("core.services.jobs_engine.all_jobs", side_effect=fake_list), \
          patch("core.services.jobs_engine.enqueue_job", side_effect=fake_enqueue):
         result = check_and_enqueue_due_periodic_jobs()
     assert "chronicle_refresh" not in result["enqueued"]
@@ -50,13 +50,13 @@ def test_recent_chronicle_skipped():
 
 
 def test_pending_chronicle_skipped():
-    def fake_list(**kw):
+    def fake_list(*a, **kw):
         return [_job("chronicle_refresh", hours_ago=0.1, status="pending")]
     enq_calls = []
     def fake_enqueue(**kw):
         enq_calls.append(kw["job_type"])
         return "job-x"
-    with patch("core.services.jobs_engine.list_jobs", side_effect=fake_list), \
+    with patch("core.services.jobs_engine.all_jobs", side_effect=fake_list), \
          patch("core.services.jobs_engine.enqueue_job", side_effect=fake_enqueue):
         result = check_and_enqueue_due_periodic_jobs()
     assert "chronicle_refresh" not in result["enqueued"]
@@ -64,28 +64,28 @@ def test_pending_chronicle_skipped():
 
 
 def test_old_chronicle_enqueued():
-    def fake_list(**kw):
+    def fake_list(*a, **kw):
         return [_job("chronicle_refresh", hours_ago=48)]
     enq_calls = []
     def fake_enqueue(**kw):
         enq_calls.append(kw["job_type"])
         return "job-x"
-    with patch("core.services.jobs_engine.list_jobs", side_effect=fake_list), \
+    with patch("core.services.jobs_engine.all_jobs", side_effect=fake_list), \
          patch("core.services.jobs_engine.enqueue_job", side_effect=fake_enqueue):
         result = check_and_enqueue_due_periodic_jobs()
     assert "chronicle_refresh" in result["enqueued"]
 
 
 def test_recent_weekly_manifest_skipped():
-    def fake_list(**kw):
+    def fake_list(*a, **kw):
         return [_job("weekly_manifest_refresh", hours_ago=24)]
-    with patch("core.services.jobs_engine.list_jobs", side_effect=fake_list), \
+    with patch("core.services.jobs_engine.all_jobs", side_effect=fake_list), \
          patch("core.services.jobs_engine.enqueue_job", return_value="job-x") as enq:
         result = check_and_enqueue_due_periodic_jobs()
     assert "weekly_manifest_refresh" not in result["enqueued"]
 
 
-def test_list_jobs_called_at_most_once_per_call():
+def test_job_listen_laeses_hoejst_ÉN_gang_pr_kald():
     """Performance contract: scheduler loader job-listen ÉN gang pr. call.
 
     Tidligere blev _load() kaldt op til 36× pr. 30s heartbeat-poll (18 job_types
@@ -94,17 +94,22 @@ def test_list_jobs_called_at_most_once_per_call():
     inclusive samples på _load. Daemons "kogede" fordi scheduleren ikke nåede
     at enqueue dem i tide.
 
-    Fix: ÉN list_jobs() øverst, in-memory filter for pending + last_time.
+    Fix: ÉN læsning øverst, in-memory filter for pending + last_time.
+
+    13/9-2026: `list_jobs(limit=200)` blev til `all_jobs()`, fordi vinduet skar
+    de gamle kørsler af og gjorde et kvartals-job «last seen never». Prisen er
+    NUL: `list_jobs` kaldte selv `_load()` og klippede bagefter. Kontrakten om
+    ét kald er derfor uændret — kun navnet skiftede.
     """
     call_count = {"n": 0}
-    def counting_fake_list(**kw):
+    def counting_fake_list(*a, **kw):
         call_count["n"] += 1
         return [
             _job("chronicle_refresh", hours_ago=48),
             _job("weekly_manifest_refresh", hours_ago=24),
             _job("provider_health_check", hours_ago=0.1, status="pending"),
         ]
-    with patch("core.services.jobs_engine.list_jobs", side_effect=counting_fake_list), \
+    with patch("core.services.jobs_engine.all_jobs", side_effect=counting_fake_list), \
          patch("core.services.jobs_engine.enqueue_job", return_value="job-x"):
         check_and_enqueue_due_periodic_jobs()
     assert call_count["n"] <= 1, (

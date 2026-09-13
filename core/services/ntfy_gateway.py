@@ -48,7 +48,27 @@ def send_notification(
 
     priority: min / low / default / high / urgent
     tags: ntfy emoji tags e.g. ["robot", "bell"]
+
+    ## Testmiljøet må ALDRIG nå hans telefon
+
+    Bjørn fik 12/9-2026 kl. 23:31 og 23:40 fire ALVORLIG-alarmer i
+    `jarvis-heartbeat`: «Central greb ALVORLIG fejl: skill/skill_scan —
+    RuntimeError: scanner exploded», «auth/tool_access — RuntimeError: boom»,
+    «privacy/cross_user_share — RuntimeError: boom».
+
+    Ingen af dem var ægte. `scanner exploded` rejses i
+    `tests/test_gate_skill.py:55`; `boom` er testfixturens standardfejl overalt
+    i suiten. Det var en testkørsel der ringede på hans telefon — midt om
+    natten, med ordet ALVORLIG på.
+
+    Samme klasse som Discord-porten (`discord_gateway.send_dm_to_owner`), men
+    en anden vej ud, så den spærre dækkede den ikke. Vagten hører til HER, hos
+    porten: fjorten moduler sender herigennem, og en vagt pr. kalder skal
+    huskes hver gang der kommer en femtende.
     """
+    import os as _os
+    if "PYTEST_CURRENT_TEST" in _os.environ:
+        return {"status": "skipped", "reason": "pytest", "message": str(message)[:200]}
     # ── Notification-hook ────────────────────────────────────────────────
     # Foer beskeden sendes: `block` betyder send den ikke. Bagefter er den ude
     # af huset og kan ikke kaldes tilbage — det er her dommen kan gaelde.

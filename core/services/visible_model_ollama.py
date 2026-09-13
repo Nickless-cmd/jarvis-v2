@@ -111,7 +111,10 @@ def _execute_ollama_model(
         pass  # fail-open — hellere et forsøg end ingen
 
     payload: dict[str, object] = {
-        "model": model,
+        # Bart navn → det tag ollama faktisk serverer. `glm-5.2` uden `:cloud`
+        # gav HTTP 404 og slog autonome koersler ihjel; se
+        # core/services/ollama_model_names for maalingen.
+        "model": _opløs(model),
         "messages": messages,
         "stream": False,
     }
@@ -244,6 +247,15 @@ _OLLAMA_FIRST_BYTE_BUDGET_S = 90
 _OLLAMA_INTER_BYTE_BUDGET_S = 30
 
 
+def _opløs(model: str) -> str:
+    """Modelnavnet ollama faktisk kender. Fail-open."""
+    try:
+        from core.services.ollama_model_names import resolve_model_name
+        return resolve_model_name(model)
+    except Exception:
+        return model
+
+
 def _stream_ollama_model(
     *,
     message: str,
@@ -297,7 +309,10 @@ def _stream_ollama_model(
         pass  # fail-open — hellere et forsøg end ingen
 
     payload: dict[str, object] = {
-        "model": model,
+        # Bart navn → det tag ollama faktisk serverer. `glm-5.2` uden `:cloud`
+        # gav HTTP 404 og slog autonome koersler ihjel; se
+        # core/services/ollama_model_names for maalingen.
+        "model": _opløs(model),
         "messages": messages,
         "stream": True,
     }

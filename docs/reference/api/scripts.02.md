@@ -247,7 +247,8 @@ _Læg en ny mobil-APK op — og behold præcis én version tilbage._
 | function | `apk_navn` | `(version_code)` | — | [src](../../../scripts/publish_mobile_apk.py#L42) |
 | function | `vaelg_hvad_der_slettes` | `(filer, ny, forrige)` | Hvilke APK'er beholdes, og hvilke ryger? | [src](../../../scripts/publish_mobile_apk.py#L46) |
 | function | `_kald` | `(host, kommando, *, dry)` | Kør en kommando lokalt eller på host. Returnerer stdout. | [src](../../../scripts/publish_mobile_apk.py#L74) |
-| function | `hovedet` | `(argv=…)` | — | [src](../../../scripts/publish_mobile_apk.py#L86) |
+| function | `apk_version` | `(apk)` | (versionCode, versionName) læst ud af APK'ens EGEN manifest. | [src](../../../scripts/publish_mobile_apk.py#L86) |
+| function | `hovedet` | `(argv=…)` | — | [src](../../../scripts/publish_mobile_apk.py#L113) |
 
 ## `scripts/regenerate_tier1.py`
 _Regenerate TIER_1_ALWAYS_ON in copilot_tool_pruning.py from 30-day usage data._

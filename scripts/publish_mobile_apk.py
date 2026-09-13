@@ -83,6 +83,33 @@ def _kald(host: str | None, kommando: str, *, dry: bool) -> str:
     return res.stdout
 
 
+def apk_version(apk: Path) -> tuple[int | None, str | None]:
+    """(versionCode, versionName) læst ud af APK'ens EGEN manifest.
+
+    Findes aapt2 ikke, returneres (None, None), og kalderen springer kontrollen
+    over MED en synlig note. En kontrol der tavst ikke kører er værre end ingen
+    kontrol — så tror man man har den.
+    """
+    import glob
+
+    kandidater = sorted(
+        glob.glob(str(Path.home() / "Android/Sdk/build-tools/*/aapt2")), reverse=True
+    )
+    if not kandidater:
+        return None, None
+    try:
+        ud = subprocess.run(
+            [kandidater[0], "dump", "badging", str(apk)],
+            capture_output=True, text=True, timeout=60,
+        ).stdout
+    except Exception:
+        return None, None
+    kode = re.search(r"versionCode='(\d+)'", ud)
+    navn = re.search(r"versionName='([^']*)'", ud)
+    return (int(kode.group(1)) if kode else None,
+            navn.group(1) if navn else None)
+
+
 def hovedet(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--apk", required=True, help="sti til den byggede APK")
@@ -97,6 +124,34 @@ def hovedet(argv: list[str] | None = None) -> int:
     apk = Path(a.apk)
     if not apk.is_file():
         raise SystemExit(f"findes ikke: {apk}")
+
+    # Er APK'en DEN version vi siger den er?
+    #
+    # Målt 13/9-2026: nej. `app.json` blev bumpet til 0.2.65/166, men projektet
+    # er prebuild-ejected, så `android/app/build.gradle` er den eneste kilde
+    # APK'en bygges fra — og den stod stadig på 0.2.63/164. To udgivelser gik
+    # igennem med et tal de ikke havde dækning for.
+    #
+    # Intet så forkert ud undervejs: bundlen HAVDE den nye kode, byte-kontrollen
+    # nedenfor sagde god for filen, og telefonen installerede den uden brok.
+    # Kun `versionCode` stod stille, så appen blev ved med at tilbyde den
+    # opdatering den lige havde taget. To gange.
+    #
+    # Byte-kontrollen svarer på «kom filen uskadt frem». Den her svarer på «er
+    # det den version vi tror» — og det var det andet spørgsmål der manglede.
+    faktisk_kode, faktisk_navn = apk_version(apk)
+    if faktisk_kode is None:
+        print("ADVARSEL: aapt2 ikke fundet — APK'ens egen version er IKKE efterprøvet")
+    else:
+        print(f"APK'ens egen version: {faktisk_navn} / {faktisk_kode}")
+        if faktisk_kode != a.version_code or faktisk_navn != a.version:
+            raise SystemExit(
+                f"AFVIGELSE: APK'en er {faktisk_navn}/{faktisk_kode}, men du udgiver "
+                f"den som {a.version}/{a.version_code}.\n"
+                f"  Ret android/app/build.gradle (versionCode + versionName) og byg igen.\n"
+                f"  app.json alene er IKKE nok — den fodrer ikke det native build."
+            )
+
     host = a.host or None
     maal = a.dir
     navn = apk_navn(a.version_code)
@@ -152,7 +207,7 @@ def hovedet(argv: list[str] | None = None) -> int:
     stoerrelse = int(tjek[-1])
     if stoerrelse != apk.stat().st_size:
         raise SystemExit(f"AFVIGELSE: {navn} er {stoerrelse} bytes, kilden er {apk.stat().st_size}")
-    print(f"efterprøvet: {navn} {stoerrelse} bytes — manifest og fil passer sammen")
+    print(f"efterprøvet: {navn} {stoerrelse} bytes — filen kom uskadt frem")
     print("ingen service genstartet: manifestet læses ved hvert kald")
     if len(behold) > 1:
         print(f"rul tilbage med:  cp {maal}/latest.json.forrige {maal}/latest.json")

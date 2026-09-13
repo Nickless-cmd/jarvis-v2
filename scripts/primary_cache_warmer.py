@@ -400,8 +400,42 @@ def _insert_cost_row(result: dict[str, Any]) -> None:
 # ---------------------------------------------------------------------------
 
 
+#: Naar en logfil er stoerre end dette, roteres den til `.1`. 8 MB er ca. tre
+#: ugers varmer-koersler ved ét slag hvert tiende minut — laenge nok til at
+#: undersoege et moenster, lille nok til at kunne aabnes.
+LOG_MAKS_BYTES = 8 * 1024 * 1024
+
+#: Cron omdirigerer stdout hertil med `>>`. Den vokser derfor uden for denne
+#: fils kontrol, men vi er det eneste der koerer regelmaessigt og kender stien.
+CRON_LOG_PATH = HOME_DIR / "logs" / "cache_warmer_cron.log"
+
+
+def _rotér(sti: Path) -> None:
+    """Flyt filen til `.1` naar den bliver for stor. Én generation, ikke fem.
+
+    MAALT 13/9-2026: `cache_warmer.jsonl` var 28,8 MB og
+    `cache_warmer_cron.log` 19,3 MB — begge uden nogen form for rotation, skrevet
+    hvert tiende minut siden de blev oprettet.
+
+    Én generation er et bevidst valg: formaalet er at kende det seneste moenster,
+    ikke at foere arkiv. To filer aa 8 MB er et loft man kan regne med.
+
+    Selv-sikker: en varmer der ikke kan rotere sin log skal stadig varme.
+    """
+    try:
+        if sti.exists() and sti.stat().st_size > LOG_MAKS_BYTES:
+            sti.replace(sti.with_suffix(sti.suffix + ".1"))
+    except Exception as exc:  # pragma: no cover — logning maa aldrig vaelte varmeren
+        logger.warning("kunne ikke rotere %s: %s", sti.name, exc)
+
+
 def _append_log(entry: dict[str, Any]) -> None:
     LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    _rotér(LOG_PATH)
+    # Cron-loggen skrives af skallen, ikke af os — men vi er det eneste der
+    # koerer regelmaessigt og kender stien. Den koerende invokation skriver
+    # videre til den omdoebte fil; den naeste aabner en frisk.
+    _rotér(CRON_LOG_PATH)
     with LOG_PATH.open("a", encoding="utf-8") as f:
         f.write(json.dumps(entry, ensure_ascii=False) + "\n")
 

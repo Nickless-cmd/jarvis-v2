@@ -327,6 +327,54 @@ def _pfsense_restart_syslogd() -> bool:
     return _pfsense_syslogd_running() is True
 
 
+def _syslogd_doedsattest() -> str:
+    """Hvad var der sket lige foer syslogd doede? Samles FOER genstarten.
+
+    ## Hvorfor det ikke stod nogen steder i forvejen
+
+    syslogd kan ikke logge sin egen doed — den ER loggeren. `grep -ril syslogd
+    /var/log/*.log` paa pfSense giver ingenting, og det er ikke en fejl; det er
+    logisk uundgaaeligt. Derfor har incidenten i seks doegn kun kunnet sige «den
+    var doed, jeg genstartede den», mens den doede 5-6 gange om dagen.
+
+    MAALT 13/9-2026: disken er paa 6 %, 1,3 GB hukommelse fri, CPU 98,8 % idle.
+    Det er altsaa ingen af de sae dvanlige aarsager, og uden spor kan man ikke
+    komme videre.
+
+    De fire ting her er valgt fordi de overlever processens doed: kernens ring-
+    buffer (husker et OOM-drab eller en signal-haendelse), pid-filen (peger paa
+    en doed proces hvis den blev draebt udefra), og `newsyslog`-koerslen der paa
+    pfSense fyrer HVERT MINUT og sender signaler til netop syslogd.
+
+    Self-safe: en diagnose der fejler maa aldrig forhindre healen.
+    """
+    try:
+        from core.runtime.secrets import read_runtime_key
+        key = read_runtime_key("pfsense_api_key", env_override="JARVIS_PFSENSE_API_KEY")
+    except Exception:
+        key = None
+    if not key:
+        return ""
+    kommandoer = {
+        "dmesg": "dmesg | tail -12",
+        "pidfil": "cat /var/run/syslog.pid 2>/dev/null; ps -p $(cat /var/run/syslog.pid 2>/dev/null) 2>&1 | tail -2",
+        "newsyslog": "tail -4 /var/log/system.log 2>/dev/null",
+        "oppetid": "uptime",
+    }
+    dele: list[str] = []
+    for navn, cmd in kommandoer.items():
+        try:
+            d = _http_json("https://10.0.0.1/api/v2/diagnostics/command_prompt",
+                           headers={"X-API-Key": key}, method="POST", timeout=15.0,
+                           body={"command": cmd})
+            ud = str(((d or {}).get("data") or {}).get("output") or "").strip()
+            if ud:
+                dele.append(f"[{navn}] {ud[:300]}")
+        except Exception:
+            continue
+    return " | ".join(dele)[:1200]
+
+
 def poll_syslog() -> dict[str, Any]:
     """Dræn pfSense-syslog-detektioner (port-scan/brute-force) → Centralen: observe + incident
     + notifikation. Plus lytter-liveness + staleness-vagt (fang hvis syslogd dør). READ-ONLY. Self-safe."""
@@ -367,11 +415,14 @@ def poll_syslog() -> dict[str, Any]:
                 if alive is False and not _syslog_stale_flagged:
                     _syslog_stale_flagged = True
                     # AUTO-HEAL: genstart syslogd selv (flaky) i stedet for kun at alarmere.
+                    attest = _syslogd_doedsattest()
                     healed = _pfsense_restart_syslogd() if _SYSLOGD_AUTOHEAL else False
                     if healed:
                         _syslog_stale_flagged = False  # genoplivet → nulstil vagt
                         msg = ("pfSense syslogd var død (10.0.0.1) — AUTO-HEALED (genstartet via "
-                               "API). Firewall-logning genoptaget. syslogd er flaky; overvåges.")
+                               "API). Firewall-logning genoptaget. syslogd er flaky; overvåges."
+                               + (f" SPOR: {attest}" if attest else
+                                  " (ingen spor kunne hentes — API-nøgle eller forbindelse)"))
                         # info (6. jul): en GENNEMFØRT auto-heal er en succes, ikke en fejl. "warning"
                         # var ikke i _SEVERITIES → coercede til "error" (gult). syslogd er flaky+selv-
                         # helende → info holder den synlig i feed'et uden at farve infra gul.

@@ -161,8 +161,24 @@ def test_prepare_call_videresender_user_present(monkeypatch):
     assert seen.get("user_present") is False
 
 
-def test_visible_tool_exec_udleder_flaget_fra_run_autonomous():
-    """Kilden: exec-stedet sætter flaget fra run.autonomous — ikke fra tekst."""
+def test_visible_tool_exec_udleder_flaget_fra_KOERSLEN_ikke_fra_tekst():
+    """Kilden: exec-stedet sætter flaget fra kørslen — aldrig fra beskedtekst.
+
+    Vagten hed før `..._fra_run_autonomous` og fastholdt den præcise streng
+    `user_present=not run.autonomous`. Hensigten var rigtig; bindingen var for
+    stram. Ankeret er siden flyttet til `run.origin` (med `autonomous` som
+    faldback), fordi flaget kun virkede ved et sammentræf: enhver
+    system-startet tur går I DAG gennem `start_autonomous_run`.
+
+    Vagten holder nu EGENSKABEN — udledt af kørslen, ikke af teksten — frem for
+    én bestemt måde at skrive den på.
+    """
     src = Path("core/services/visible_tool_exec.py").read_text(encoding="utf-8")
-    assert "user_present=not run.autonomous" in src, (
-        "exec-stedet skal udlede 'ingen bruger' af run.autonomous, ikke af beskedtekst")
+    assert "user_present=_bruger_til_stede(run)" in src, (
+        "exec-stedet skal udlede 'ingen bruger' af kørslen")
+    # …og det maa ALDRIG komme fra beskeden. Det var hele kategorifejlen:
+    # «Du er i en drømmetilstand…» laest som brugerens frustration.
+    assert "user_present=" in src
+    for forbudt in ("user_message", "user_message_preview", "besked"):
+        assert f"user_present={forbudt}" not in src, (
+            f"flaget udledes af tekst ({forbudt}) — det var netop fejlen")

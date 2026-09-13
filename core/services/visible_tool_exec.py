@@ -33,6 +33,36 @@ from typing import AsyncIterator
 logger = logging.getLogger(__name__)
 
 
+def _bruger_til_stede(run) -> bool:
+    """Er der et menneske i den anden ende af den her tur?
+
+    ## Hvorfor ikke bare `not run.autonomous`
+
+    Det var svaret indtil nu, og det virker — men kun ved et sammentræf.
+    Enhver system-startet tur går I DAG gennem `start_autonomous_run`, som
+    sætter flaget. Den dag én ikke gør, vender kategorifejlen tilbage: 105
+    blokerede rækker hvor «brugerens besked» i virkeligheden var «Du er i en
+    drømmetilstand…» eller «Du bad dig selv: …», fodret ind i en detektor
+    bygget til at læse BRUGERENS frustration.
+
+    `origin` navngiver egenskaben direkte i stedet for at hvile på en
+    korrelation. Vokabularet er `autonomous_sessions.ORIGINS`, og værdien blev
+    allerede beregnet til at route sessionen — den landede bare ikke på
+    kørslen før nu.
+
+    Flaget beholdes som faldback for kørsler uden en oprindelse, så adfærden er
+    uændret for alt der ikke sætter den.
+    """
+    try:
+        from core.services.autonomous_sessions import ORIGINS
+        o = str(getattr(run, "origin", "") or "").strip().lower()
+        if o in ORIGINS:
+            return False          # en kendt system-oprindelse: intet menneske
+    except Exception:
+        pass
+    return not bool(getattr(run, "autonomous", False))
+
+
 async def run_tool_batch(
     tool_calls: list[dict],
     *,
@@ -214,7 +244,7 @@ async def run_tool_batch(
                 run_id=run.run_id,
                 session_id=run.session_id,
                 user_message=run.user_message,
-                user_present=not run.autonomous,
+                user_present=_bruger_til_stede(run),
             ),
         )
 

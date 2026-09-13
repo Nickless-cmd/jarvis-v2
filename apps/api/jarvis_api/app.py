@@ -595,92 +595,83 @@ def create_app() -> FastAPI:
         except Exception:
             logger.debug("kunne ikke bogfoere afbrudte ture ved nedlukning", exc_info=True)
         logger.info("jarvis api shutdown begin")
+        # SAMME kald, SAMME orden. Det eneste der aendrer sig er tavsheden.
+        #
+        # Maalt 13/9-2026 havde blokken TO modsatte fejl paa én gang: 15 kald
+        # stod HELT uden vaern (fejlede `stop_heartbeat_scheduler()`, blev de
+        # 14 efterfoelgende aldrig koert), og 14 laa i `except: pass` og
+        # fejlede tavst. Den ene halvdel mistede resten af listen, den anden
+        # mistede sandheden.
+        #
+        # Listen er en haandskrevet raekkefoelge, ikke en registrerings-stak —
+        # derfor `koer_nedlukning` og ikke et `Omfang`, som ville vende ordenen.
+        def _senere(sti: str, navn: str):
+            """Dovent kald. En manglende import rapporteres som ethvert andet
+            fejlet trin i stedet for at forsvinde."""
+            def _koer():
+                import importlib
+                getattr(importlib.import_module(sti), navn)()
+            return _koer
+
+        _trin: list[tuple[str, object]] = []
         if runtime_services_enabled:
-            stop_heartbeat_scheduler()
-            stop_notification_bridge()
-            stop_scheduled_tasks_service()
-            stop_discord_gateway()
-            stop_telegram_gateway()
-            try:
-                stop_auto_remember_subscriber()
-            except Exception:
-                pass
-            try:
-                stop_daily_journal_daemon()
-            except Exception:
-                pass
-            stop_voice_daemon()
-            try:
-                from core.services.process_watcher import stop_watcher_daemon
-                stop_watcher_daemon()
-            except Exception:
-                pass
-            try:
-                from core.services.self_repair_engine import stop_listener as stop_self_repair
-                stop_self_repair()
-            except Exception:
-                pass
-            try:
-                from core.services.living_executive import stop_listener as stop_living_executive
-                stop_living_executive()
-            except Exception:
-                pass
-            try:
-                from core.services.agency_cartographer import stop_agency_cartographer_daemon
-                stop_agency_cartographer_daemon()
-            except Exception:
-                pass
-            try:
-                from core.services.system_cartographer import stop_system_cartographer_daemon
-                stop_system_cartographer_daemon()
-            except Exception:
-                pass
-            try:
-                from core.services.jarvis_brain_daemon import stop_brain_daemon
-                stop_brain_daemon()
-            except Exception:
-                pass
-            try:
-                from core.services.tool_router_runtime import stop_tool_router_runtime
-                stop_tool_router_runtime()
-            except Exception:
-                pass
-            try:
-                from core.services.counterfactual_engine_runtime import stop_counterfactual_runtime
-                stop_counterfactual_runtime()
-            except Exception:
-                pass
-            try:
-                from core.services.forgetting_runtime import stop_forgetting_runtime
-                stop_forgetting_runtime()
-            except Exception:
-                pass
-            try:
-                from core.services.user_temperature_runtime import stop_user_temperature_runtime
-                stop_user_temperature_runtime()
-            except Exception:
-                pass
-            stop_global_workspace_listener()
-            stop_coding_lane_reviewer()
-            stop_emotion_concept_listener()
-            stop_mood_listener()
-            stop_semantic_indexer()
-            stop_mood_regulator_subscriber()
-            stop_inner_voice_notifier()
-            stop_approval_feedback_subscriber()
-            stop_runtime_hook_runtime()
-        try:
-            from core.browser.playwright_session import stop_browser_session
-            stop_browser_session()
-        except Exception:
-            pass
+            _trin += [
+                ("stop_heartbeat_scheduler", stop_heartbeat_scheduler),
+                ("stop_notification_bridge", stop_notification_bridge),
+                ("stop_scheduled_tasks_service", stop_scheduled_tasks_service),
+                ("stop_discord_gateway", stop_discord_gateway),
+                ("stop_telegram_gateway", stop_telegram_gateway),
+                ("stop_auto_remember_subscriber", stop_auto_remember_subscriber),
+                ("stop_daily_journal_daemon", stop_daily_journal_daemon),
+                ("stop_voice_daemon", stop_voice_daemon),
+                ("stop_watcher_daemon", _senere("core.services.process_watcher",
+                                                "stop_watcher_daemon")),
+                ("stop_self_repair", _senere("core.services.self_repair_engine",
+                                             "stop_listener")),
+                ("stop_living_executive", _senere("core.services.living_executive",
+                                                  "stop_listener")),
+                ("stop_agency_cartographer_daemon",
+                 _senere("core.services.agency_cartographer",
+                         "stop_agency_cartographer_daemon")),
+                ("stop_system_cartographer_daemon",
+                 _senere("core.services.system_cartographer",
+                         "stop_system_cartographer_daemon")),
+                ("stop_brain_daemon", _senere("core.services.jarvis_brain_daemon",
+                                              "stop_brain_daemon")),
+                ("stop_tool_router_runtime", _senere("core.services.tool_router_runtime",
+                                                     "stop_tool_router_runtime")),
+                ("stop_counterfactual_runtime",
+                 _senere("core.services.counterfactual_engine_runtime",
+                         "stop_counterfactual_runtime")),
+                ("stop_forgetting_runtime", _senere("core.services.forgetting_runtime",
+                                                    "stop_forgetting_runtime")),
+                ("stop_user_temperature_runtime",
+                 _senere("core.services.user_temperature_runtime",
+                         "stop_user_temperature_runtime")),
+                ("stop_global_workspace_listener", stop_global_workspace_listener),
+                ("stop_coding_lane_reviewer", stop_coding_lane_reviewer),
+                ("stop_emotion_concept_listener", stop_emotion_concept_listener),
+                ("stop_mood_listener", stop_mood_listener),
+                ("stop_semantic_indexer", stop_semantic_indexer),
+                ("stop_mood_regulator_subscriber", stop_mood_regulator_subscriber),
+                ("stop_inner_voice_notifier", stop_inner_voice_notifier),
+                ("stop_approval_feedback_subscriber", stop_approval_feedback_subscriber),
+                ("stop_runtime_hook_runtime", stop_runtime_hook_runtime),
+            ]
+        _trin.append(("stop_browser_session",
+                      _senere("core.browser.playwright_session", "stop_browser_session")))
         if runtime_services_enabled:
-            try:
-                from core.services.inheritance_seed import write_inheritance_seed
-                write_inheritance_seed()
-            except Exception:
-                pass
-        logger.info("jarvis api shutdown complete")
+            _trin.append(("write_inheritance_seed",
+                          _senere("core.services.inheritance_seed",
+                                  "write_inheritance_seed")))
+
+        from core.runtime.plugin_lifecycle import koer_nedlukning
+        _rapport = koer_nedlukning(_trin, navn="api-nedlukning")
+        if _rapport.uafklarede:
+            logger.error("jarvis api shutdown: %d af %d trin efterlod uafklaret "
+                         "ejerskab", len(_rapport.uafklarede), len(_trin))
+        logger.info("jarvis api shutdown complete — %d/%d trin, %.2fs",
+                    len(_rapport.afhaendte), len(_trin), _rapport.varighed_s)
 
     # Sikkerhed (Bjørn 16.jul): slå Swagger/ReDoc/OpenAPI-schema HELT fra i produktion.
     # api.srvlab.dk er offentligt eksponeret (pfSense→Caddy); alle rigtige endpoints er

@@ -51,6 +51,8 @@ def veto_gate(ctx: dict[str, Any]) -> Verdict:
     ctx: {tool_name, user_message, session_id}.
       veto fundet → RED (block — tool erstattes med bekræftelses-besked)
       ellers      → GREEN (pass)
+    ``ctx['user_present']=False`` (autonom tur, ingen bruger) → gaten abstainer
+    når den ellers ville have fyret (se ``check_veto``).
     COGNITIVE → fail-OPEN (paritet med det gamle inline except:pass: gate-fejl må aldrig
     blokere en legitim handling)."""
     from core.services.veto_gate import check_veto
@@ -59,6 +61,7 @@ def veto_gate(ctx: dict[str, Any]) -> Verdict:
         str(ctx.get("tool_name") or ""),
         user_message=str(ctx.get("user_message") or ""),
         session_id=ctx.get("session_id"),
+        user_present=bool(ctx.get("user_present", True)),
     )
     if not allowed:
         return Verdict("veto", Decision.RED, str(reason or "vetoed"), action="block",

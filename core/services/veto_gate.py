@@ -569,6 +569,7 @@ def check_veto(
     user_message: str = "",
     session_id: str | None = None,
     record_event: bool = True,
+    user_present: bool = True,
 ) -> tuple[bool, str | None]:
     """Check if a tool call should be vetoed.
 
@@ -584,6 +585,15 @@ def check_veto(
        Only veto if intensity exceeds the adaptive threshold.
     5. Log every veto decision to the veto_events table (unless record_event=False).
     6. Otherwise → allow.
+
+    ``user_present=False`` markerer en tur hvor INGEN bruger er til stede —
+    autonome runs (drøm, self-wakeup, heartbeat, scheduled, recurring), hvor
+    ``VisibleRun.autonomous`` er sat. Gatens grundlag er BRUGERENS pushback; i
+    sådanne ture er beskeden en system-prompt, ikke et bruger-udbrud. Gaten
+    abstainer derfor når den ellers ville have fyret (og logger hvorfor), men
+    blokerer ikke på et grundlag der ikke findes. Målt 13/9-2026: 100 drømme-
+    rækker + 5 wakeup-rækker stod som ``blocked`` på ordret prompttekst
+    ("Du er i en drømmetilstand …"). Se lag 1 (00080eb5) for samme fejlklasse.
 
     ``record_event=False`` er til GENANVENDELSE af gaten uden for den ægte
     præ-eksekverings-vej — hvor der ikke er nogen brugermelding at dømme efter.
@@ -647,6 +657,30 @@ def check_veto(
     below_threshold = (intensity > 0.0) and (intensity < threshold)
 
     if action == "firm_pushback" and has_evidence and not below_threshold:
+        # ── Ingen bruger til stede (13/9-2026) ────────────────────────────────
+        # Gaten FYRER kun på BRUGERENS pushback. I autonome ture — drøm,
+        # self-wakeup, heartbeat, scheduled, recurring — findes der ingen bruger:
+        # beskeden er en system-prompt som runtime eller Jarvis selv skrev.
+        # Målt 13/9-2026: 100 drømme-rækker + 5 wakeup-rækker stod som "blocked"
+        # på ordret prompttekst ("Du er i en drømmetilstand …", "Du bad dig
+        # selv: …"). Samme kategorifejl som lag 1 (00080eb5) — men her på den
+        # ÆGTE præ-eksekverings-vej, hvor den faktisk blokerer, hver nat.
+        # Gaten ABSTAINER: den logger at den ville have fyret (signalet forbliver
+        # synligt — C-forudsætningen), men blokerer ikke på et grundlag der ikke
+        # findes. Placeret FØR override-forbruget, så en armeret one-shot ikke
+        # bliver spist af en tur hvor der intet var at overstyre.
+        if not user_present:
+            if record_event:
+                log_veto_event(
+                    tool_name=tool_name,
+                    user_message=user_message,
+                    feeling=feeling or "unknown",
+                    intensity=intensity,
+                    evidence_summary=_summarize_evidence(section),
+                    veto_result="allowed",
+                    resolution="false_positive",
+                )
+            return True, None
         # ── Per-kald override (13/9-2026) ──────────────────────────────────────
         # Gaten FYRER og logger FØRST; en overstyring er et SVAR på signalet, ikke en
         # vej udenom det. One-shoten forbruges her — næste kald skal overstyres igen.

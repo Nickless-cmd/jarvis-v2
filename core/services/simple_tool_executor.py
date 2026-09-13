@@ -24,7 +24,8 @@ from contextvars import copy_context
 from core.eventbus.bus import event_bus
 
 
-def _prepare_call(tc, *, force, run_id, session_id, user_message, controller, round_seen):
+def _prepare_call(tc, *, force, run_id, session_id, user_message, controller, round_seen,
+                  user_present=True):
     """Single-thread prep for one call: parse/stamp args, signature, dedup, cache,
     commit-gate. Returns ("result", result_dict) for a short-circuit (duplicate/
     cached/gate-blocked), ("skip", None) for a nameless call, or ("run", token)
@@ -85,7 +86,8 @@ def _prepare_call(tc, *, force, run_id, session_id, user_message, controller, ro
     from core.services.commit_gate_arbiter import evaluate_commit_gates
     _cg = evaluate_commit_gates(name=name, arguments=arguments,
                                 user_message=user_message,
-                                session_id=session_id or "", run_id=run_id or "")
+                                session_id=session_id or "", run_id=run_id or "",
+                                user_present=user_present)
     if _cg.blocked:
         _gate_reason = _cg.reason or "Ukendt gate-blokering"
         _gate_type = _cg.gate_type or "decision_gate"
@@ -231,6 +233,7 @@ def _execute_simple_tool_calls(
     run_id: str | None = None,
     session_id: str | None = None,
     user_message: str = "",
+    user_present: bool = True,
 ) -> list[dict[str, object]]:
     """Execute native tool_calls directly via simple_tools. Returns results.
 
@@ -271,7 +274,8 @@ def _execute_simple_tool_calls(
         for tc in calls:
             kind, payload = _prepare_call(
                 tc, force=force, run_id=run_id, session_id=session_id,
-                user_message=user_message, controller=controller, round_seen=round_seen)
+                user_message=user_message, controller=controller, round_seen=round_seen,
+                user_present=user_present)
             if kind == "skip":
                 continue
             if kind == "result":
@@ -288,7 +292,8 @@ def _execute_simple_tool_calls(
     for idx, tc in enumerate(calls):
         kind, payload = _prepare_call(
             tc, force=force, run_id=run_id, session_id=session_id,
-            user_message=user_message, controller=controller, round_seen=round_seen)
+            user_message=user_message, controller=controller, round_seen=round_seen,
+            user_present=user_present)
         plan.append((idx, kind, payload))
     run_items = [(idx, p) for (idx, kind, p) in plan if kind == "run"]
     raw_by_idx: dict[int, dict] = {}
@@ -337,6 +342,7 @@ def _execute_local_tool_calls(
     run_id: str | None = None,
     session_id: str | None = None,
     user_message: str = "",
+    user_present: bool = True,
 ) -> list[dict[str, object]]:
     """Path B (local_tool_exec) executor — server-owned transcript, CLIENT-side run.
 
@@ -371,7 +377,8 @@ def _execute_local_tool_calls(
         call_id = str(tc.get("id") or "")
         kind, payload = _prepare_call(
             tc, force=force, run_id=run_id, session_id=session_id,
-            user_message=user_message, controller=controller, round_seen=round_seen)
+            user_message=user_message, controller=controller, round_seen=round_seen,
+            user_present=user_present)
         plan.append((kind, payload, call_id))
         if kind == "run":
             run_call_ids.append(call_id)

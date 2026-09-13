@@ -214,6 +214,7 @@ async def run_tool_batch(
                 run_id=run.run_id,
                 session_id=run.session_id,
                 user_message=run.user_message,
+                user_present=not run.autonomous,
             ),
         )
 

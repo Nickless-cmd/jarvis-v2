@@ -28,9 +28,15 @@ class CommitGateOutcome:
 
 
 def evaluate_commit_gates(*, name: str, arguments: dict[str, Any], user_message: str,
-                          session_id: str, run_id: str) -> CommitGateOutcome:
+                          session_id: str, run_id: str,
+                          user_present: bool = True) -> CommitGateOutcome:
     """Kør veto + decision_gate gennem central().decide, observér arbitrage, og returnér
-    et governed block-udfald. Kaster aldrig (self-safe)."""
+    et governed block-udfald. Kaster aldrig (self-safe).
+
+    ``user_present=False`` = autonom tur (ingen bruger til stede). Veto-gaten får det
+    videre og abstainer når den ellers ville have fyret — dens grundlag er BRUGERENS
+    pushback, og i en autonom tur er beskeden en system-prompt. decision_gate er
+    upåvirket (den dømmer på aktive beslutninger, ikke på bruger-pres)."""
     from core.services.gate_kernel import Decision, GateClass
     from core.services import gate_enforcement
 
@@ -44,7 +50,8 @@ def evaluate_commit_gates(*, name: str, arguments: dict[str, Any], user_message:
         from core.services.central_core import central as _central_veto
         from core.services.gate_commit import veto_gate as _veto_gate_fn
         _veto_ctx = {"tool_name": name, "user_message": user_message,
-                     "session_id": session_id, "run_id": run_id}
+                     "session_id": session_id, "run_id": run_id,
+                     "user_present": user_present}
         # Decentralisering (Keymaker): en bevist altid-grøn veto-gate MED en gyldig optjent+godkendt
         # nøgle resolver LOKALT — spring Centralens chokepoint-round-trip over (central_decentralization-
         # doktrinen: altid-grønne højvolumen-gates er ren overhead). Gatens dømmekraft KØRER altid

@@ -797,6 +797,10 @@ def create_app() -> FastAPI:
     app.include_router(central_router)
     from apps.api.jarvis_api.routes import central_governance as _central_governance
     app.include_router(_central_governance.router)
+    # Fase 9: profil-forklaringen. MC findes ikke laengere — central_cli og desk
+    # henter begge deres /central/*-overflader her.
+    from apps.api.jarvis_api.routes import central_profiles as _central_profiles
+    app.include_router(_central_profiles.router)
     from apps.api.jarvis_api.routes import central_healers as _central_healers
     app.include_router(_central_healers.router)
     from apps.api.jarvis_api.routes import central_breakers as _central_breakers

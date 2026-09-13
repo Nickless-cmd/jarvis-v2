@@ -75,7 +75,7 @@ type Row =
    *  den avancerede bruger har slået det til i indstillingerne. */
   | { kind: 'thinking'; key: string; seconds?: number; text?: string; live?: boolean; messageId?: string }
   /** Billeder/filer sendt MED en brugerbesked, tegnet over boblen. */
-  | { kind: 'attachments'; key: string; items: PersistedBlock[] }
+  | { kind: 'attachments'; key: string; items: PersistedBlock[]; side: 'left' | 'right' }
   | { kind: 'tool'; key: string; content: string }
   | { kind: 'live-tool'; key: string; name: string; body: string; running: boolean; etiket?: string; diff?: { tilfoejet: number; fjernet: number } | null }
   /** Én RUNDE værktøjsarbejde, foldet sammen til én linje. */
@@ -290,7 +290,10 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
       // billedet dér ofte ER beskeden.
       const afiler = attachmentBlocks(blocks)
       if (afiler.length) {
-        persisted.unshift({ kind: 'attachments', key: `${m.id}-pub`, items: afiler })
+        // `side: 'left'`: assistenten skriver fra venstre. Uden den landede et
+        // billede Jarvis havde lavet i brugerens side og så ud som om brugeren
+        // havde sendt det — målt 13/9-2026 på telefonen.
+        persisted.unshift({ kind: 'attachments', key: `${m.id}-pub`, items: afiler, side: 'left' })
       }
       if (hasOrdering(blocks)) {
         const expanded: Row[] = []
@@ -358,7 +361,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
       if (ublocks.length) {
         persisted.unshift({ kind: 'msg', key: m.id, message: m, kildeBlokke: blocks })
         // Billederne ligger OVER boblen, som i referencen — ikke inde i den.
-        persisted.unshift({ kind: 'attachments', key: `${m.id}-att`, items: ublocks })
+        persisted.unshift({ kind: 'attachments', key: `${m.id}-att`, items: ublocks, side: 'right' })
         continue
       }
     }
@@ -440,7 +443,9 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
             />
           )
         }
-        if (item.kind === 'attachments') return <MessageAttachments items={item.items} />
+        if (item.kind === 'attachments') {
+          return <MessageAttachments items={item.items} side={item.side} />
+        }
         if (item.kind === 'compact-marker') return <CompactMarkerRow content={item.content} />
         return (
           <MessageBubble

@@ -127,3 +127,55 @@ it('MessageList laegger assistentens filer fra sig FOER grenene', () => {
   const foerOrdre = iAssistent.split('if (hasOrdering(blocks))')[0] ?? ''
   expect(foerOrdre).toContain('attachmentBlocks(blocks)')
 })
+
+// ── hvilken side af traaden? (13/9-2026) ─────────────────────────────────
+//
+// Komponenten var stilet til HOEJRE side alene, og blev brugt til BAADE
+// brugerens uploads og assistentens udgivne billeder. Et billede Jarvis havde
+// lavet landede derfor i brugerens boble og saa ud som om brugeren havde sendt
+// det. Siden er nu en prop — og koblingen skal kunne ses.
+
+it('assistentens billeder tegnes i VENSTRE side — brugerens i hoejre', () => {
+  const kilde = require('fs').readFileSync(
+    require('path').join(__dirname, 'MessageList.tsx'), 'utf8') as string
+
+  // Proeven kraever den KONKRETE kodelinje, ikke bare ordene. Foerste udgave
+  // spurgte om `side: 'left'` — og bestod mutationen, fordi kommentaren
+  // ovenfor selv skriver `side: 'left'`. En test der matcher beskrivelsen af
+  // rettelsen i stedet for rettelsen.
+  const iAssistent = kilde.split("if (m.role === 'assistant') {")[1] ?? ''
+  expect(iAssistent.split('if (hasOrdering(blocks))')[0] ?? '')
+    .toContain("items: afiler, side: 'left'")
+
+  const iBruger = kilde.split("if (m.role === 'user') {")[1] ?? ''
+  expect(iBruger.split("if (m.role === 'tool')")[0] ?? '')
+    .toContain("items: ublocks, side: 'right'")
+})
+
+it('siden foelger med hele vejen ud i komponenten', () => {
+  const kilde = require('fs').readFileSync(
+    require('path').join(__dirname, 'MessageList.tsx'), 'utf8') as string
+  expect(kilde).toContain('<MessageAttachments items={item.items} side={item.side} />')
+})
+
+const flad = (s: unknown): Record<string, unknown> =>
+  Array.isArray(s)
+    ? Object.assign({}, ...s.map(flad))
+    : ((s as Record<string, unknown>) ?? {})
+
+it('en assistent-vedhaeftning staar til venstre', async () => {
+  const screen = await render(
+    <MessageAttachments
+      side="left"
+      items={[{ type: 'image', attachment_id: 'imgL', filename: 'a.png' }]}
+    />
+  )
+  expect(flad(screen.getByTestId('attachment-wrap').props.style).alignSelf).toBe('flex-start')
+})
+
+it('en bruger-vedhaeftning staar til hoejre — ogsaa uden at sige det', async () => {
+  const screen = await render(
+    <MessageAttachments items={[{ type: 'image', attachment_id: 'imgR', filename: 'b.png' }]} />
+  )
+  expect(flad(screen.getByTestId('attachment-wrap').props.style).alignSelf).toBe('flex-end')
+})

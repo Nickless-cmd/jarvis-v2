@@ -40,10 +40,25 @@ jest.mock('expo-application', () => ({
 jest.mock('expo-file-system/legacy', () => ({
   __esModule: true,
   documentDirectory: 'file:///doc/',
+  cacheDirectory: 'file:///cache/',
+  // `hentTilCache` spørger ALTID om filen findes før den henter. Uden svaret
+  // kastede den i hver eneste test der rendrede et billede — og fejlen blev
+  // slugt af AuthImage, så testene var grønne af den forkerte grund.
+  getInfoAsync: jest.fn(async () => ({ exists: false, size: 0 })),
   createDownloadResumable: jest.fn(() => ({
     downloadAsync: jest.fn(async () => ({ uri: 'file:///doc/app.apk' })),
   })),
   getContentUriAsync: jest.fn(async () => 'content://app.apk'),
+}))
+
+// Galleriet. Bruges af «gem billedet» i fuldskærms-visningen og af AttachMenu,
+// som overskriver denne mock lokalt med sit eget svar.
+jest.mock('expo-media-library/legacy', () => ({
+  __esModule: true,
+  getPermissionsAsync: jest.fn(async () => ({ granted: true })),
+  requestPermissionsAsync: jest.fn(async () => ({ granted: true })),
+  getAssetsAsync: jest.fn(async () => ({ assets: [] })),
+  saveToLibraryAsync: jest.fn(async () => undefined),
 }))
 
 // expo-file-system (ny API). Lyd-uploadet går NATIVT gennem File.upload —

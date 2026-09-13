@@ -11,7 +11,7 @@ import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 import { FullscreenImagePreview } from './FullscreenImagePreview'
 
 /**
- * Vedhæftninger på en brugerbesked — tegnet OVER boblen, ikke inde i den.
+ * Vedhæftninger på en besked — tegnet OVER boblen, ikke inde i den.
  *
  * Sådan gør ChatGPT: billedet står som en stor afrundet flade, og teksten
  * ligger som sin egen boble nedenunder. Det er den rigtige vej rundt, fordi
@@ -22,16 +22,33 @@ import { FullscreenImagePreview } from './FullscreenImagePreview'
  * /attachments/image/{id} med brugerens eget token — ingen billeddata har
  * nogensinde ligget i beskeden, og adgangskontrollen bliver derfor spurgt
  * hver gang.
+ *
+ * Komponenten tegner BAADE brugerens uploads og assistentens udgivne billeder.
+ * Det var kilden til en fejl: den var stilet til højre side alene, så et
+ * billede Jarvis havde lavet havnede i brugerens side og så ud som om brugeren
+ * havde sendt det. Derfor `side` — målt 13/9-2026 på telefonen.
  */
-export function MessageAttachments({ items }: { items: PersistedBlock[] }) {
+export function MessageAttachments({ items, side = 'right' }: {
+  items: PersistedBlock[]
+  /** Hvilken side af tråden vedhæftningen hører til. */
+  side?: 'left' | 'right'
+}) {
   const tokens = useTheme()
   const styles = useStyles(makestyles)
   const { config } = useAuth()
-  const [preview, setPreview] = useState<{ uri: string; title: string; headers?: Record<string, string> } | null>(null)
+  const [preview, setPreview] = useState<{
+    uri: string
+    title: string
+    filnavn: string
+    mime: string
+  } | null>(null)
   if (!items.length) return null
 
   return (
-    <View style={styles.wrap}>
+    <View
+      testID="attachment-wrap"
+      style={[styles.wrap, side === 'left' ? styles.venstre : styles.hoejre]}
+    >
       {items.map((b) => {
         // En UDGIVET fil har ingen attachment_id — den baerer sin egen url.
         // Noeglen maa derfor falde tilbage paa navnet, ellers ville alle
@@ -39,16 +56,20 @@ export function MessageAttachments({ items }: { items: PersistedBlock[] }) {
         const id = String(b.attachment_id ?? '') || String(b.filename ?? '')
         if (b.type === 'image' && config?.apiBaseUrl) {
           const uri = blokUrl(b, config.apiBaseUrl)
-          const headers = config.authToken
-            ? { Authorization: `Bearer ${config.authToken}` }
-            : undefined
           return (
             <Pressable
               key={id}
               testID={`attachment-open-${id}`}
               accessibilityRole="imagebutton"
               accessibilityLabel={`Åbn ${b.filename || 'billede'}`}
-              onPress={() => setPreview({ uri, title: b.filename || 'Billede', headers })}
+              onPress={() => setPreview({
+                uri,
+                title: b.filename || 'Billede',
+                // Endelsen foelger med videre: galleriet afgoer typen ud fra
+                // den, og `mime` er reserven naar navnet ikke har en.
+                filnavn: String(b.filename || ''),
+                mime: String(b.mime_type || ''),
+              })}
             >
               {/* IKKE <Image source={{uri, headers}}>. Maalt 12/9-2026:
                   React Natives billed-loader sender anmodningen UDEN
@@ -109,7 +130,8 @@ export function MessageAttachments({ items }: { items: PersistedBlock[] }) {
           visible
           uri={preview.uri}
           title={preview.title}
-          headers={preview.headers}
+          filnavn={preview.filnavn}
+          mime={preview.mime}
           onClose={() => setPreview(null)}
         />
       ) : null}
@@ -134,13 +156,15 @@ export function formatSize(bytes: number): string {
 
 const makestyles = (tokens: Theme) => StyleSheet.create({
   wrap: {
-    alignSelf: 'flex-end',
-    alignItems: 'flex-end',
     gap: tokens.spacing.sm,
     marginHorizontal: tokens.spacing.lg,
     marginBottom: tokens.spacing.xs,
     maxWidth: '82%'
   },
+  // Assistenten skriver fra venstre, brugeren fra højre. Siden ligger her og
+  // ikke i `wrap`, så der ikke findes en standard der kan blive forkert.
+  venstre: { alignSelf: 'flex-start', alignItems: 'flex-start' },
+  hoejre: { alignSelf: 'flex-end', alignItems: 'flex-end' },
   image: {
     width: 240,
     height: 240,

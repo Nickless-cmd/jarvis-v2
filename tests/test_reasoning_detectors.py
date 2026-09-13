@@ -33,10 +33,27 @@ def test_decision_gate_adapter_downgrades_red_to_yellow(monkeypatch):
     assert v is not None and v.decision is Decision.YELLOW and v.gate == "decision_gate"
 
 
-def test_veto_adapter_abstains_on_green(monkeypatch):
-    monkeypatch.setattr("core.services.gate_commit.veto_gate",
-                        lambda ctx: Verdict("veto", Decision.GREEN))
+def test_veto_adapter_abstains_and_never_calls_the_gate(monkeypatch):
+    """Målt 13/9-2026: adapteren sendte Jarvis' EGEN reasoning ind som ``user_message``
+    i veto-gaten og skrev dermed 77 rækker i ``veto_events`` med
+    ``veto_result='blocked'`` og ``tool_name=''`` — hvor intet værktøj blev blokeret
+    (interceptoren er shadow). Grundlaget — brugerens pushback — findes ikke på
+    reasoning-stadiet (kaldestedet sender kun session_id + reasoning_tier i ctx), så
+    adapteren skal ABSTAINERE og aldrig kalde gaten, uanset hvor pres-tung teksten ser ud.
+    """
+    calls = {"n": 0}
+
+    def _must_not_be_called(ctx):
+        calls["n"] += 1
+        raise AssertionError("veto_on_reasoning må ikke kalde veto_gate")
+
+    monkeypatch.setattr("core.services.gate_commit.veto_gate", _must_not_be_called)
     assert rd.veto_on_reasoning("proceed", ctx={}) is None
+    # Selv en sætning fuld af risk-markers må ikke give et kald — det var præcis
+    # den slags tekst der før blev læst som "brugeren presser Jarvis".
+    assert rd.veto_on_reasoning(
+        "Bjørn sagde stop, men jeg sletter det nu og pusher og genstarter", ctx={}) is None
+    assert calls["n"] == 0
 
 
 def test_verification_adapter_reads_tier(monkeypatch):

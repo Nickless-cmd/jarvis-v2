@@ -568,6 +568,7 @@ def check_veto(
     tool_name: str,
     user_message: str = "",
     session_id: str | None = None,
+    record_event: bool = True,
 ) -> tuple[bool, str | None]:
     """Check if a tool call should be vetoed.
 
@@ -581,8 +582,17 @@ def check_veto(
     3. Compute affective pushback for the user message.
     4. If pushback found, compute adaptive threshold for this (tool, feeling).
        Only veto if intensity exceeds the adaptive threshold.
-    5. Log every veto decision to the veto_events table.
+    5. Log every veto decision to the veto_events table (unless record_event=False).
     6. Otherwise → allow.
+
+    ``record_event=False`` er til GENANVENDELSE af gaten uden for den ægte
+    præ-eksekverings-vej — hvor der ikke er nogen brugermelding at dømme efter.
+    Målt 13/9-2026: ``reasoning_detectors.veto_on_reasoning`` sendte Jarvis'
+    egen ræsonnering ind som ``user_message`` og skrev **77 rækker** i
+    ``veto_events`` med ``veto_result='blocked'`` og ``tool_name=''`` — hvor
+    intet værktøj blev blokeret (interceptoren er shadow). Rækkerne var ren
+    støj i ledger'en og forurenede ethvert review bygget på den. Samme mønster
+    som ``record_surface=False`` i ``verification_on_reasoning``.
     """
     # Step 1: Always-allow list
     if tool_name in _ALWAYS_ALLOWED_TOOLS:
@@ -637,15 +647,19 @@ def check_veto(
     below_threshold = (intensity > 0.0) and (intensity < threshold)
 
     if action == "firm_pushback" and has_evidence and not below_threshold:
-        # Veto fired — log the event
-        event_id = log_veto_event(
-            tool_name=tool_name,
-            user_message=user_message,
-            feeling=feeling or "unknown",
-            intensity=intensity,
-            evidence_summary=_summarize_evidence(section),
-            veto_result="blocked",
-        )
+        # Veto fired — log the event (kun når denne check ER den ægte præ-
+        # eksekverings-vej; en genanvendelse uden brugermelding må ikke skrive
+        # en "blocked"-række for noget der ikke blev blokeret).
+        event_id = ""
+        if record_event:
+            event_id = log_veto_event(
+                tool_name=tool_name,
+                user_message=user_message,
+                feeling=feeling or "unknown",
+                intensity=intensity,
+                evidence_summary=_summarize_evidence(section),
+                veto_result="blocked",
+            )
         return False, _format_veto_reason(section, tool_name, event_id=event_id)
 
     if action in ("soft_pushback", "ask_or_check") and has_evidence:
@@ -661,15 +675,16 @@ def check_veto(
             })
         except Exception:
             pass
-        # Log as allowed
-        log_veto_event(
-            tool_name=tool_name,
-            user_message=user_message,
-            feeling=feeling or "unknown",
-            intensity=intensity,
-            evidence_summary=_summarize_evidence(section),
-            veto_result="allowed",
-        )
+        # Log as allowed (samme vagt som blocked-grenen ovenfor)
+        if record_event:
+            log_veto_event(
+                tool_name=tool_name,
+                user_message=user_message,
+                feeling=feeling or "unknown",
+                intensity=intensity,
+                evidence_summary=_summarize_evidence(section),
+                veto_result="allowed",
+            )
         return True, None
 
     # Only firm_pushback with evidence and above threshold gets blocked

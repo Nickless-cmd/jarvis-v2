@@ -647,6 +647,32 @@ def check_veto(
     below_threshold = (intensity > 0.0) and (intensity < threshold)
 
     if action == "firm_pushback" and has_evidence and not below_threshold:
+        # ── Per-kald override (13/9-2026) ──────────────────────────────────────
+        # Gaten FYRER og logger FØRST; en overstyring er et SVAR på signalet, ikke en
+        # vej udenom det. One-shoten forbruges her — næste kald skal overstyres igen.
+        # KUN på den ægte præ-eksekverings-vej (``record_event``): en genanvendelse af
+        # gaten må hverken blokere eller forbruge en armering.
+        # Nøglen normaliseres som ved logningen nedenfor (``feeling or "unknown"``),
+        # ellers rammer armeringen ikke når feeling er tom.
+        if record_event:
+            try:
+                from core.services.gate_override import consume_override
+                _override_reason = consume_override(tool_name, feeling or "unknown")
+            except Exception:
+                _override_reason = None
+            if _override_reason:
+                # Log hændelsen som overstyret: sporet skal vise at gaten fyrede OG at
+                # Jarvis svarede den. Tærskel-hævning + resolution sker i consume_override.
+                log_veto_event(
+                    tool_name=tool_name,
+                    user_message=user_message,
+                    feeling=feeling or "unknown",
+                    intensity=intensity,
+                    evidence_summary=_summarize_evidence(section),
+                    veto_result="overridden",
+                    resolution="overridden_by_jarvis",
+                )
+                return True, None
         # Veto fired — log the event (kun når denne check ER den ægte præ-
         # eksekverings-vej; en genanvendelse uden brugermelding må ikke skrive
         # en "blocked"-række for noget der ikke blev blokeret).
@@ -828,6 +854,36 @@ def record_override(tool_name: str, feeling: str) -> int:
     except Exception:
         pass
     _emit_veto_gate_event("override_recorded", {
+        "tool_name": tool_name,
+        "feeling": feeling,
+        "override_count": count,
+        "new_threshold": round(threshold, 2),
+    })
+    return count
+
+
+def record_jarvis_override(tool_name: str, feeling: str) -> int:
+    """Registrér at JARVIS — ikke brugeren — overstyrede en gate for dette (tool, feeling).
+
+    Adskilt fra ``record_override`` (som er brugerens "kør"): begge hæver den adaptive
+    tærskel, fordi begge betyder "gaten tog fejl her". Men de er ikke samme hændelse, og
+    sporet skal vise hvem der svarede. ``record_override`` resolver ALLE pending-rækker for
+    kombinationen til 'overridden_by_user'; denne rører ingen resolution — Jarvis'
+    overstyring auditeres på præcis den hændelse den gjaldt (via ``resolve_veto_event``),
+    så ledger'en ikke tillægger brugeren en beslutning han ikke tog.
+
+    Tilføjet 13/9-2026 sammen med ``gate_override`` (per-kald override, Bjørn: "B med C
+    som forudsætning").
+
+    Returns the new override count.
+    """
+    count = _increment_override_count(tool_name, feeling)
+    threshold = _adaptive_threshold(tool_name, feeling, 1.0)
+    logger.info(
+        "Jarvis-override recorded for %s/%s: count=%d, new_threshold=%.2f",
+        tool_name, feeling, count, threshold,
+    )
+    _emit_veto_gate_event("jarvis_override_recorded", {
         "tool_name": tool_name,
         "feeling": feeling,
         "override_count": count,

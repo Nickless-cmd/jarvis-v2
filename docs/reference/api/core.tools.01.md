@@ -306,6 +306,14 @@ _Fuzzy tekst-match til fil-redigering — porteret fra jarvis-code._
 | function | `_difflib_fuzzy_find` | `(content, old_text, threshold=…)` | Best-matching line-window in content vs. old_text, by | [src](../../../core/tools/fuzzy_edit.py#L126) |
 | function | `resolve_edit` | `(content, old_text, new_text, replace_all=…)` | Loes et redigerings-oenske mod filens FAKTISKE indhold. | [src](../../../core/tools/fuzzy_edit.py#L159) |
 
+## `core/tools/gate_override_tools.py`
+_Gate-override-værktøj — Jarvis' eksplicitte svar på en gate der tog fejl._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_exec_override_gate` | `(args)` | — | [src](../../../core/tools/gate_override_tools.py#L15) |
+| function | `_exec_gate_override_status` | `(_args)` | — | [src](../../../core/tools/gate_override_tools.py#L30) |
+
 ## `core/tools/geolocation_tools.py`
 _Native geolocation-tools til Jarvis — geocode, reverse-geocode, routing,_
 
@@ -510,24 +518,4 @@ _Meta-læring tools — Phase 1 (AGI track #3)._
 | function | `_exec_list_learning_memos` | `(args)` | — | [src](../../../core/tools/meta_learning_tools.py#L73) |
 | function | `_exec_register_hypothesis` | `(args)` | Promote a memo hypothesis_candidate to an active tracked hypothesis. | [src](../../../core/tools/meta_learning_tools.py#L136) |
 | function | `_exec_record_hypothesis_sample` | `(args)` | — | [src](../../../core/tools/meta_learning_tools.py#L154) |
-
-## `core/tools/mic_listen_tool.py`
-_Mic listen tool — Jarvis hears the room when he actively chooses to._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_normalize_for_match` | `(text)` | Lowercase + replace punctuation with spaces + collapse whitespace. | [src](../../../core/tools/mic_listen_tool.py#L54) |
-| function | `detect_trigger` | `(text)` | Return the action_key of a trigger matched in text, or None. | [src](../../../core/tools/mic_listen_tool.py#L66) |
-| function | `_strip_trigger` | `(text, action_key)` | Remove the matched trigger phrase from the transcript so the remainder | [src](../../../core/tools/mic_listen_tool.py#L78) |
-| function | `_route_trigger` | `(action_key, transcript, metadata)` | Route a detected trigger to the appropriate downstream system. | [src](../../../core/tools/mic_listen_tool.py#L102) |
-| function | `_parec_binary` | `()` | — | [src](../../../core/tools/mic_listen_tool.py#L171) |
-| function | `_recording_dir` | `()` | — | [src](../../../core/tools/mic_listen_tool.py#L178) |
-| function | `_capture_parec` | `(duration)` | Capture from Logitech via parec. Returns raw s16le mono 16kHz bytes. | [src](../../../core/tools/mic_listen_tool.py#L185) |
-| function | `_capture_sounddevice` | `(duration)` | Fallback capture via sounddevice (default input device). | [src](../../../core/tools/mic_listen_tool.py#L207) |
-| function | `_capture_audio` | `(duration)` | Try parec first (NOS X500), then sounddevice fallback. | [src](../../../core/tools/mic_listen_tool.py#L225) |
-| function | `_write_wav` | `(raw_pcm, path)` | Wrap raw s16le mono 16kHz bytes as a WAV file. | [src](../../../core/tools/mic_listen_tool.py#L236) |
-| function | `_transcribe_hf` | `(wav_path, language)` | — | [src](../../../core/tools/mic_listen_tool.py#L247) |
-| function | `_transcribe_local` | `(raw_pcm, language)` | — | [src](../../../core/tools/mic_listen_tool.py#L259) |
-| function | `listen_and_transcribe` | `(*, duration=…, backend=…, language=…, save_recording=…)` | Active mic listen. Captures audio, transcribes, returns text. | [src](../../../core/tools/mic_listen_tool.py#L273) |
-| function | `_exec_mic_listen` | `(args)` | — | [src](../../../core/tools/mic_listen_tool.py#L406) |
 

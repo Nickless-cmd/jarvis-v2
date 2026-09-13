@@ -1,6 +1,6 @@
 # CAPABILITIES
 
-> Generated 2026-09-13 — 469 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
+> Generated 2026-09-13 — 471 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
 
 | Tool | Kind | Mutating |
 |---|---|---|
@@ -117,6 +117,7 @@
 | `find_symbol` | native | no |
 | `find_usages` | native | no |
 | `flag_side_task` | native | no |
+| `gate_override_status` | native | no |
 | `generate_improvement_proposals` | native | no |
 | `geocode` | native | no |
 | `geolocation_lookup` | native | no |
@@ -228,6 +229,7 @@
 | `open_ui_panel` | native | no |
 | `openrouter_image` | native | no |
 | `openrouter_image_edit` | native | no |
+| `override_gate` | native | no |
 | `pause_and_ask` | native | no |
 | `pdf_read` | native | no |
 | `percentage` | native | no |

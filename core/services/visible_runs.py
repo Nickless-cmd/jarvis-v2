@@ -4870,7 +4870,7 @@ async def _stream_visible_run(
                     _agentic_loop_exit_reason = "completed-truncated"
                 try:
                     from core.services.auto_continuation import noter_udfald as _nu
-                    _nu(run.run_id, _agentic_loop_exit_reason)
+                    _nu(run.run_id, _agentic_loop_exit_reason, run.session_id)
                 except Exception:
                     logger.warning("kunne ikke notere udfald for %s", run.run_id)
                 logger.info(

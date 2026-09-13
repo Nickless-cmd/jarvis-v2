@@ -273,7 +273,7 @@ def _fortsaet_hvis_budgettet_loeb_toert(
         _slaaet_til = True
 
     beslutning = ac.beslut(
-        exit_reason=ac.hent_udfald(run_id),
+        exit_reason=ac.hent_udfald(run_id, sid),
         slaaet_til=_slaaet_til,
         # Denne sti er brugerens; autonome runs kommer aldrig herigennem.
         autonom=False,

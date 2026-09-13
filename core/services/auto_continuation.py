@@ -120,20 +120,47 @@ _KAEDE: dict[str, int] = {}
 _UDFALD_LOFT = 200
 
 
-def noter_udfald(run_id: str, exit_reason: str) -> None:
+def noter_udfald(run_id: str, exit_reason: str, session_id: str = "") -> None:
+    """Noter under BEGGE noegler: runnets eget id og sessionen.
+
+    Relayet og `start_visible_run` bruger IKKE samme run-id for samme tur.
+    Maalt i produktion 13/9-2026 kl. 08:09: relayet kaldte turen
+    `visible-41cd6759…` (over 4000 frames), mens `visible_runs` bogfoerte den
+    som `visible-b1da4321…`. Den detached traad kender kun det YDRE id, og
+    udfaldet blev noteret under det indre — saa opslaget gav altid «ukendt», og
+    fortsaettelsen kunne aldrig fyre.
+
+    Sessionen er den faelles noegle de to sider ER enige om, og single-flight
+    garanterer at der hoejst er ét levende run pr. session.
+    """
     rid = (run_id or "").strip()
-    if not rid:
+    sid = (session_id or "").strip()
+    if not rid and not sid:
         return
     with _laas:
-        _UDFALD[rid] = str(exit_reason or "")
+        if rid:
+            _UDFALD[rid] = str(exit_reason or "")
+        if sid:
+            _UDFALD["session:" + sid] = str(exit_reason or "")
         if len(_UDFALD) > _UDFALD_LOFT:
             for k in list(_UDFALD.keys())[: len(_UDFALD) - _UDFALD_LOFT]:
                 _UDFALD.pop(k, None)
 
 
-def hent_udfald(run_id: str) -> str:
+def hent_udfald(run_id: str, session_id: str = "") -> str:
+    """Udfaldet for et run — slaa op paa run-id, og fald tilbage paa sessionen.
+
+    Fallbacken er ikke pynt: de to sider af en tur bruger forskellige run-id'er
+    (se `noter_udfald`), og sessionen er den eneste noegle de deler.
+    """
     with _laas:
-        return _UDFALD.get((run_id or "").strip(), "")
+        rid = (run_id or "").strip()
+        if rid and rid in _UDFALD:
+            return _UDFALD[rid]
+        sid = (session_id or "").strip()
+        if sid:
+            return _UDFALD.get("session:" + sid, "")
+        return ""
 
 
 def kaede_nr(session_id: str) -> int:

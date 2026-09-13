@@ -138,3 +138,42 @@ def test_fortsaettelsen_kaldes_EFTER_at_runnet_er_markeret_faerdigt():
     ville haenge sig paa det doede run i stedet for at starte."""
     k = inspect.getsource(dr.start_user_run_detached)
     assert k.index("mark_done") < k.index("_fortsaet_hvis_budgettet_loeb_toert")
+
+
+# ── Id-uenigheden ────────────────────────────────────────────────────────────
+
+def test_udfaldet_findes_ogsaa_naar_de_to_sider_bruger_FORSKELLIGE_run_id(startede):
+    """Relayet og `visible_runs` bruger IKKE samme run-id for samme tur.
+
+    MAALT i produktion 13/9-2026 kl. 08:09:07: relayet kaldte turen
+    `visible-41cd6759…` (over 4000 frames, ring-roll i loggen), mens
+    `visible_runs` bogfoerte den som `visible-b1da4321…`. Den detached traad
+    kender kun det YDRE id. Foerste udgave noterede kun under det indre — saa
+    opslaget gav «ukendt» hver eneste gang, og fortsaettelsen kunne ALDRIG fyre.
+
+    Min egen e2e-test saa det ikke, fordi den brugte samme id paa begge sider.
+    """
+    ac.noter_udfald("visible-INDRE", ac.OPBRUGT, session_id="s1")
+    _koer(run_id="visible-YDRE", sid="s1")
+    assert len(startede) == 1, "udfaldet blev ikke fundet paa tvaers af de to id'er"
+
+
+def test_sessionens_udfald_forurener_ikke_en_ANDEN_session(startede):
+    ac.noter_udfald("visible-INDRE", ac.OPBRUGT, session_id="s1")
+    _koer(run_id="visible-YDRE", sid="s2")
+    assert startede == [], "en anden sessions udfald blev brugt"
+
+
+def test_run_id_vinder_over_sessionen_naar_begge_findes():
+    """Sessionen er en FALDBACK. Er runnets eget udfald kendt, er det sandheden
+    — ellers ville et gammelt sessions-udfald kunne overskrive et nyt run."""
+    ac.noter_udfald("visible-A", "completed", session_id="s1")
+    ac.noter_udfald("visible-B", ac.OPBRUGT, session_id="s1")
+    assert ac.hent_udfald("visible-A", "s1") == "completed"
+
+
+def test_visible_runs_sender_sessionen_med():
+    import pathlib as _p
+    kilde = _p.Path("core/services/visible_runs.py").read_text()
+    assert "run.session_id)" in kilde.split("_nu(run.run_id")[1][:80], \
+        "sessionen sendes ikke med — faldbacken er doed"

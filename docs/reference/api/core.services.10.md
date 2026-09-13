@@ -582,12 +582,12 @@ _Hvad GJALDT der faktisk for denne koersel — Fase 9._
 | function | `_tool_scope` | `()` | — | [src](../../../core/services/effective_policy.py#L36) |
 | function | `_autonom` | `()` | — | [src](../../../core/services/effective_policy.py#L44) |
 | function | `_sandkasse` | `()` | (slaaet_til, kraevet_for_denne_koersel) — anmodet vs faktisk. | [src](../../../core/services/effective_policy.py#L52) |
-| function | `_tillid` | `()` | — | [src](../../../core/services/effective_policy.py#L70) |
-| function | `_ejer_godkendt` | `()` | — | [src](../../../core/services/effective_policy.py#L78) |
-| function | `snapshot` | `(**ekstra)` | Tag et oejebliksbillede af den politik der gaelder LIGE NU. | [src](../../../core/services/effective_policy.py#L86) |
-| function | `_maal` | `()` | — | [src](../../../core/services/effective_policy.py#L110) |
-| function | `_hash` | `(felter)` | sha256 over de politik-baerende felter — uden tidsstempler og id'er, | [src](../../../core/services/effective_policy.py#L129) |
-| function | `afviger` | `(a, b)` | Hvilke politik-felter er forskellige? Til at forklare et hash-skift. | [src](../../../core/services/effective_policy.py#L142) |
+| function | `_tillid` | `()` | — | [src](../../../core/services/effective_policy.py#L75) |
+| function | `_ejer_godkendt` | `()` | — | [src](../../../core/services/effective_policy.py#L83) |
+| function | `snapshot` | `(**ekstra)` | Tag et oejebliksbillede af den politik der gaelder LIGE NU. | [src](../../../core/services/effective_policy.py#L91) |
+| function | `_maal` | `()` | — | [src](../../../core/services/effective_policy.py#L115) |
+| function | `_hash` | `(felter)` | sha256 over de politik-baerende felter — uden tidsstempler og id'er, | [src](../../../core/services/effective_policy.py#L134) |
+| function | `afviger` | `(a, b)` | Hvilke politik-felter er forskellige? Til at forklare et hash-skift. | [src](../../../core/services/effective_policy.py#L147) |
 
 ## `core/services/egress_guard.py`
 _SSRF-vaern for udgaaende hentninger — porteret fra jarvis-code._

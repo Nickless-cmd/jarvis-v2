@@ -567,11 +567,13 @@ def _exec_bash(args: dict[str, Any]) -> dict[str, Any]:
             # kun reserve-stien blev indespærret. Rapporten er hele forskellen
             # mellem «ikke indespærret» og «troede den var det».
             try:
-                from core.services.bash_sandbox import is_available, is_enabled
+                from core.services.bash_sandbox import is_enabled, kan_koere
                 if is_enabled():
                     svar["confinement"] = {
                         "requested": True, "actual": False, "honored": False,
-                        "available": is_available(), "enabled": True,
+                        # BRUGBAR, ikke «findes» — modellen faar ellers at
+                        # vide at bash er indespaerret naar den ikke er.
+                        "available": kan_koere()[0], "enabled": True,
                         "reason": ("vedvarende delt shell — kan ikke indespærres "
                                    "pr. kommando; kun engangs-stien kan"),
                     }

@@ -189,3 +189,45 @@ def test_proeverne_leder_efter_KALDEREN_ikke_efter_kode():
                          for n in ast.walk(fn))
         assert importerer, \
             f"{navn} importerer ingen haandhaever — den paastaar i stedet for at maale"
+
+
+# ------------------------------------- «findes» er ikke «virker» (sandkassen)
+
+def test_sandkassen_er_IKKE_haandhaevet_naar_bwrap_ikke_kan_koere(monkeypatch):
+    """Den fejl jeg selv shippede samme dag som modulet.
+
+    Maalt paa runtime 13/9-2026: `is_enabled()` OG `is_available()` sagde
+    begge True, mens hvert bwrap-kald fejlede med «Unexpected capabilities but
+    not setuid». Proeven rapporterede «workspace» — at sandkassen var
+    haandhaevet — paa en maskine hvor den ikke kunne starte.
+
+    `is_available()` er `shutil.which("bwrap")`. Den siger at binaeren ligger
+    der, ikke at den koerer.
+    """
+    import core.services.bash_sandbox as bs
+    monkeypatch.setattr(bs, "is_enabled", lambda: True)
+    monkeypatch.setattr(bs, "kan_koere", lambda **k: (
+        False, "bwrap: Unexpected capabilities but not setuid, old file caps config?"))
+
+    værdi, kilde = pe._maal_sandkasse()
+
+    assert værdi == "none", "en sandkasse der ikke kan starte blev meldt haandhaevet"
+    assert "kan ikke koere" in kilde and "Unexpected capabilities" in kilde, \
+        "grunden skal staa i klartekst — ellers leder nogen forkert sted"
+
+
+def test_sandkassen_er_haandhaevet_naar_bwrap_FAKTISK_koerer(monkeypatch):
+    import core.services.bash_sandbox as bs
+    monkeypatch.setattr(bs, "is_enabled", lambda: True)
+    monkeypatch.setattr(bs, "kan_koere", lambda **k: (True, "proevet"))
+    assert pe._maal_sandkasse() == ("workspace", "bash_sandbox")
+
+
+def test_slukket_sandkasse_skelnes_fra_braekket(monkeypatch):
+    """To forskellige tilstande. «Slukket» er et valg, «braekket» er en fejl —
+    og en flade der skriver dem sammen sender nogen til det forkerte sted."""
+    import core.services.bash_sandbox as bs
+    monkeypatch.setattr(bs, "is_enabled", lambda: False)
+    monkeypatch.setattr(bs, "kan_koere", lambda **k: (True, "proevet"))
+    _, kilde = pe._maal_sandkasse()
+    assert "slukket" in kilde and "kan ikke koere" not in kilde

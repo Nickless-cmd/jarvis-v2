@@ -58,8 +58,13 @@ def _sandkasse() -> tuple[bool | None, bool | None]:
         # profil der viser «sandkasse til» paa en fail-open-default ville
         # lyve. Foerste udgave gaettede funktionsnavnet og fik tavst `None`:
         # maalt, men forkert maalt.
-        from core.services.bash_sandbox import is_available, is_enabled
-        taendt = bool(is_enabled()) and bool(is_available())
+        # `is_available()` er `which("bwrap")` — den siger at binaeren ligger
+        # der, ikke at den koerer. Maalt 13/9-2026 gav den `sandkasse_taendt:
+        # True` paa en maskine hvor hvert bwrap-kald fejlede med «Unexpected
+        # capabilities but not setuid». Denne fil handler om ANMODET vs
+        # FAKTISK; et stedfortraeder-tal hoerer ikke til i FAKTISK-siden.
+        from core.services.bash_sandbox import is_enabled, kan_koere
+        taendt = bool(is_enabled()) and bool(kan_koere()[0])
     except Exception:
         taendt = None
     aut = _autonom()

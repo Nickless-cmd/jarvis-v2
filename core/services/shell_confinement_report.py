@@ -43,11 +43,16 @@ def rapport(grund: str) -> dict[str, Any] | None:
     daekket.
     """
     try:
-        from core.services.bash_sandbox import is_available, is_enabled
+        from core.services.bash_sandbox import is_available, is_enabled  # noqa: F401
+        from core.services.bash_sandbox import kan_koere
         if not is_enabled():
             return None
         return {"requested": True, "actual": False, "honored": False,
-                "available": is_available(), "enabled": True, "reason": grund}
+                # «available» betyder her BRUGBAR, ikke «binaeren findes».
+                # En rapport om indespaerring der siger available=True paa en
+                # bwrap der naegter at starte, er praecis den slags rapport
+                # ingen opdager er forkert.
+                "available": kan_koere()[0], "enabled": True, "reason": grund}
     except Exception:
         return None
 

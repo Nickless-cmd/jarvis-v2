@@ -120,8 +120,94 @@ def _runtime_hjem() -> str | None:
 
 
 def is_available() -> bool:
-    """Findes bwrap på DENNE maskine?"""
+    """Findes bwrap på DENNE maskine?
+
+    ATTEN: «findes» er ikke «virker». Se `kan_koere()` — en bwrap der ligger
+    paa PATH kan naegte at starte, og denne funktion siger stadig True.
+    """
     return shutil.which("bwrap") is not None
+
+
+#: (tidspunkt, resultat, grund) for sidste aegte proeve. En exec pr. opslag
+#: ville vaere for dyrt; en proeve der aldrig gentages ville aldrig opdage at
+#: konfigurationen blev rettet.
+_KAN_KOERE_CACHE: tuple[float, bool, str] | None = None
+_KAN_KOERE_TTL_S = 300.0
+
+
+def kan_koere(*, tving: bool = False) -> tuple[bool, str]:
+    """Kan bwrap FAKTISK starte her? (svar, grund)
+
+    ## Hvorfor det ikke er det samme som `is_available()`
+
+    Maalt paa runtime 13/9-2026. `which("bwrap")` gav `/usr/bin/bwrap`, og
+    baade `is_enabled()` og `is_available()` sagde True — men hvert eneste
+    kald fejlede:
+
+        bwrap: Unexpected capabilities but not setuid, old file caps config?
+
+    Aarsagen er en kollision mellem to ting der hver for sig er rigtige:
+    `jarvis-runtime.service` saetter `AmbientCapabilities=CAP_SETUID CAP_SETGID`,
+    og ambient capabilities arves ind i ETHVERT barn — ogsaa bwrap. Bubblewrap
+    naegter bevidst at koere med capabilities uden at vaere setuid; det er
+    bwraps egen sikkerhedsvagt, ikke en fejl (containers/bubblewrap#380).
+
+    Reproduceret med `systemd-run --uid=bs` og de samme ambient caps: exit 1 og
+    ordret samme streng. Uden dem: exit 0. Servicen koerer som `bs`, ikke som
+    root — en proeve som root ville vaere groen og bevise intet, og det var
+    praecis fejlen i de to foerste forsoeg paa at reproducere.
+
+    ## Hvorfor en aegte exec
+
+    Der findes ingen maade at udlede svaret af konfigurationen. Det afhaenger
+    af den arvede capability-maske, af binaerens file caps, og af brugeren. Et
+    gaet ville vaere den slags «anmodet forklaedt som faktisk» der lod fejlen
+    staa uopdaget i foerste omgang.
+
+    Resultatet caches i 5 minutter: en exec pr. opslag er for dyrt, og en
+    proeve der aldrig gentages ville aldrig opdage at nogen rettede unit-filen.
+    """
+    global _KAN_KOERE_CACHE
+    import subprocess
+    import time as _t
+
+    # «Findes den overhovedet» spoerges FOER cachen, og gennem modulets egen
+    # `is_available()` — ikke `shutil.which` direkte.
+    #
+    # To grunde, og begge kostede mig en roed test:
+    #   * Gaar man uden om `is_available()`, kan den ikke laengere bruges til
+    #     at simulere en maskine uden bwrap, og fire eksisterende tests der
+    #     koder en RIGTIG kontrakt («taendt men umuligt = uopfyldt oenske»)
+    #     holdt op med at maale noget.
+    #   * Ligger tjekket EFTER cachen, kan en gemt `True` skjule at binaeren
+    #     er forsvundet. Et which-opslag er billigt; det skal ikke caches.
+    if not is_available():
+        return False, "bwrap findes ikke paa PATH"
+
+    if not tving and _KAN_KOERE_CACHE is not None:
+        tid, svar, grund = _KAN_KOERE_CACHE
+        if _t.monotonic() - tid < _KAN_KOERE_TTL_S:
+            return svar, grund
+
+    sti = shutil.which("bwrap")
+    if not sti:
+        resultat = (False, "bwrap findes ikke paa PATH")
+    else:
+        try:
+            p = subprocess.run(
+                [sti, "--ro-bind", "/", "/", "--dev", "/dev", "/bin/true"],
+                capture_output=True, text=True, timeout=5.0,
+            )
+            if p.returncode == 0:
+                resultat = (True, "proevet")
+            else:
+                fejl = (p.stderr or p.stdout or "").strip().splitlines()
+                resultat = (False, fejl[0] if fejl else f"exit {p.returncode}")
+        except Exception as e:
+            resultat = (False, f"{type(e).__name__}: {e}")
+
+    _KAN_KOERE_CACHE = (_t.monotonic(), resultat[0], resultat[1])
+    return resultat
 
 
 def is_enabled() -> bool:
@@ -142,16 +228,30 @@ def set_enabled(on: bool) -> dict[str, Any]:
 
 
 def status() -> dict[str, Any]:
-    tilgaengelig = is_available()
+    """Tilstanden — og «findes» holdes adskilt fra «kører».
+
+    Maalt 13/9-2026: denne funktion meldte `aktiv: True` paa en maskine hvor
+    hvert eneste bwrap-kald fejlede. `bwrap_findes` var sandt, og «findes» blev
+    laest som «virker».
+    """
+    findes = is_available()
     taendt = is_enabled()
+    koerer, grund = kan_koere()
     return {
         "status": "ok",
         "tændt": taendt,
-        "bwrap_findes": tilgaengelig,
-        "aktiv": taendt and tilgaengelig,
-        "note": ("aktiv" if (taendt and tilgaengelig) else
+        "bwrap_findes": findes,
+        # NY: den aegte proeve. `bwrap_findes` beholdes, fordi de to svar er
+        # forskellige og begge er brugbare — en manglende binaer og en binaer
+        # der naegter at starte kraever hver sin handling.
+        "bwrap_kører": koerer,
+        "bwrap_grund": grund,
+        "aktiv": taendt and koerer,
+        "note": ("aktiv" if (taendt and koerer) else
+                 "slukket (standard)" if not taendt else
                  "tændt, men bwrap findes ikke på denne maskine — kører uindespærret"
-                 if taendt else "slukket (standard)"),
+                 if not findes else
+                 f"tændt, men bwrap kan ikke starte ({grund}) — kører uindespærret"),
     }
 
 
@@ -195,6 +295,22 @@ def maybe_wrap(command: str, cwd: str, *, writable_roots: list[str] | None = Non
         return None
     if not is_available():
         logger.warning("bash_sandbox: tændt, men bwrap findes ikke — kører uindespærret")
+        return None
+    # «Findes» daekker ikke «kan starte». Fandtes bwrap men naegtede at koere,
+    # blev kommandoen alligevel pakket ind — og HVERT bash-kald doede.
+    #
+    # Maalt 13/9-2026: ambient capabilities fra unit-filen arves ind i bwrap,
+    # og bwrap afviser bevidst at koere med capabilities uden at vaere setuid.
+    # Resultatet var ikke en indespaerret bash, men INGEN bash.
+    #
+    # Fail-open er modulets egen dokumenterede adfaerd her (`require=True` er
+    # den eneste vej til fail-closed), saa dette fjerner ingen beskyttelse der
+    # fandtes — det bytter «intet virker og intet er indespaerret» ud med
+    # «det virker, uindespaerret, og loggen siger det».
+    _kan, _grund = kan_koere()
+    if not _kan:
+        logger.warning("bash_sandbox: tændt, men bwrap kan ikke starte (%s) — "
+                       "kører uindespærret", _grund)
         return None
     return wrap_bwrap(command, cwd, writable_roots=writable_roots,
                       allow_egress=allow_egress)
@@ -253,16 +369,25 @@ def enforcement(command: str, cwd: str, *, writable_roots: list[str] | None = No
     `require=True` er den eneste vej til fail-CLOSED. Standarden er uændret
     fail-open, så eksisterende kaldere opfører sig præcis som før.
     """
-    tilgaengelig = is_available()
+    # K9 siger «actual enforcement». `is_available()` er `which("bwrap")` og
+    # svarer paa noget andet: at binaeren ligger der. Mekanismen til at
+    # rapportere faktisk haandhaevelse har vaeret her siden Fase 3 — den maalte
+    # bare et stedfortraeder-tal. Maalt 13/9-2026 rapporterede den haandhaevelse
+    # paa en maskine hvor bwrap afviste hvert kald.
+    brugbar, brugbar_grund = kan_koere()
+    findes = is_available()          # `available` BETYDER «findes» — feltet
+                                     # beholder sin mening, det er `actual` der
+                                     # skal rette sig efter virkeligheden.
     taendt = is_enabled()
     oensket = bool(taendt) and bool(command) and bool(cwd)
 
     if not oensket:
         grund = "ikke tændt" if not taendt else "manglende kommando eller cwd"
-        e = Enforcement(False, False, tilgaengelig, taendt, None, grund)
-    elif not tilgaengelig:
-        e = Enforcement(True, False, False, taendt, None,
-                        "bwrap findes ikke på denne maskine")
+        e = Enforcement(False, False, findes, taendt, None, grund)
+    elif not brugbar:
+        e = Enforcement(True, False, findes, taendt, None,
+                        "bwrap findes ikke på denne maskine" if not findes
+                        else f"bwrap kan ikke starte: {brugbar_grund}")
     else:
         argv = wrap_bwrap(command, cwd, writable_roots=writable_roots,
                           allow_egress=allow_egress)

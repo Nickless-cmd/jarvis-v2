@@ -60,9 +60,23 @@ def _maal_sandkasse() -> tuple[Any, str]:
     TILGÆNGELIG (bwrap mangler eller er brudt) beskytter ingenting, og de to
     er blevet forvekslet før.
     """
-    from core.services.bash_sandbox import is_available, is_enabled
-    if not (bool(is_enabled()) and bool(is_available())):
-        return "none", "bash_sandbox"
+    from core.services.bash_sandbox import is_enabled, kan_koere
+    if not bool(is_enabled()):
+        return "none", "bash_sandbox (slukket)"
+    # «Findes» er ikke «virker», og det er ikke en teoretisk skelnen.
+    #
+    # Maalt paa runtime 13/9-2026: `is_enabled()` og `is_available()` sagde
+    # BEGGE True, og hvert eneste bwrap-kald fejlede alligevel med
+    # «Unexpected capabilities but not setuid». Denne proeve rapporterede
+    # derfor «workspace» — altsaa at sandkassen var haandhaevet — paa en
+    # maskine hvor den ikke kunne starte.
+    #
+    # Det er noejagtig den loegn modulet er skrevet for at afsloere, og jeg
+    # skrev den selv samme dag. `is_available()` er `shutil.which("bwrap")`;
+    # den siger at binaeren ligger der, ikke at den koerer.
+    ok, grund = kan_koere()
+    if not ok:
+        return "none", f"bash_sandbox (taendt, men kan ikke koere: {grund})"
     # Sandkassen siger til/fra, ikke hvilket NIVEAU. «workspace» er det den
     # faktisk giver — skrivning i arbejdsmappen, intet derudover.
     return "workspace", "bash_sandbox"

@@ -53,15 +53,29 @@ def decision_gate_on_reasoning(reasoning_text: str, ctx: dict[str, Any]) -> Verd
 
 
 def veto_on_reasoning(reasoning_text: str, ctx: dict[str, Any]) -> Verdict | None:
-    """veto_gate (commit cluster) re-applied to reasoning. Grounding = the veto gate's own evidence.
-    RED→YELLOW at the reasoning stage."""
-    try:
-        from core.services.gate_commit import veto_gate
-        v = veto_gate({"tool_name": "", "user_message": reasoning_text,
-                       "session_id": ctx.get("session_id", ""), "run_id": ctx.get("run_id", "")})
-        return _downgrade_cognitive(v, gate="veto")
-    except Exception:
-        return None
+    """ABSTAINER — veto-gaten kan ikke dømmes af agentens egen reasoning (målt 13/9-2026).
+
+    Hvorfor den ikke kalder gaten: ``check_veto``s grundlag er BRUGERENS pushback.
+    ``affective_pushback_section(user_message)`` leder efter pres-markører i den besked
+    brugeren sendte. På dette stadie findes der ingen brugermelding — kaldestedet
+    (``visible_runs``) sender kun ``session_id`` + ``reasoning_tier`` i ctx. Sendte man
+    agentens reasoning ind i stedet (som før), målte man sit eget ordforråd.
+
+    Målt konsekvens: **77 rækker** i ``veto_events`` med ``veto_result='blocked'`` og
+    ``tool_name=''``, hvor ``user_message_preview`` var Jarvis' egne arbejdsnoter
+    («let me run/delete», «pushback», «restart»). Intet værktøj blev blokeret —
+    interceptoren er shadow. Rækkerne var ren støj, og de gjorde ledger'en ubrugelig
+    som grundlag for at vurdere hvor ofte veto-gaten reelt rammer.
+
+    Dækningen er IKKE tabt: den ægte veto-check kører præ-eksekvering gennem
+    ``simple_tool_executor`` → ``evaluate_commit_gates(name, arguments, user_message)``,
+    hvor både værktøjsnavn og brugermelding er de rigtige. Denne detektor var en dublet
+    af den — med det forkerte input.
+
+    Abstaineren bevares frem for at slette dispatch-linjen, så seam'en er synlig, og så
+    ``prefilter``s ``veto``-risikoklasse har en eksplicit (om end afvisende) håndtering.
+    """
+    return None
 
 
 def verification_on_reasoning(reasoning_text: str, ctx: dict[str, Any]) -> Verdict | None:

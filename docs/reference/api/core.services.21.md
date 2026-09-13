@@ -734,6 +734,7 @@ _Hvilken samtale kører vi i? — ét sted, frem for én kopi pr. værktøj._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `aktiv_session_id` | `(standard=…)` | Sessionens id, eller `standard` hvis ingen kilde kender den. | [src](../../../core/services/session_context_resolve.py#L17) |
+| function | `aktivt_run_id` | `(standard=…)` | Det run der er i gang lige nu, eller `standard` hvis ingen kender det. | [src](../../../core/services/session_context_resolve.py#L47) |
 
 ## `core/services/session_continuity.py`
 _Session Continuity — kontinuitet der føles, ikke kun opslås._

@@ -542,12 +542,12 @@ _Fabrikerede tool-resultater — den ene løgn der ikke kan bortforklares._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| class | `FabricationVerdict` | `` | Resultatet af en scanning. ``ok`` = intet fundet. | [src](../../../core/services/fabricated_tool_result_gate.py#L44) |
-| method | `FabricationVerdict.ok` | `(self)` | — | [src](../../../core/services/fabricated_tool_result_gate.py#L51) |
-| method | `FabricationVerdict.severity` | `(self)` | — | [src](../../../core/services/fabricated_tool_result_gate.py#L55) |
-| method | `FabricationVerdict.note` | `(self)` | Menneskelæsbar fodnote i husets ✋-stil, eller None. | [src](../../../core/services/fabricated_tool_result_gate.py#L62) |
-| function | `_id_exists` | `(result_id)` | Findes ID'et i tool-result-storen? Fejl → True (fail-open: anklag ALDRIG | [src](../../../core/services/fabricated_tool_result_gate.py#L80) |
-| function | `scan_for_fabricated_tool_results` | `(text, *, known_ids=…)` | Scan synligt output for tool-result-referencer og afgør om de er ægte. | [src](../../../core/services/fabricated_tool_result_gate.py#L90) |
+| class | `FabricationVerdict` | `` | Resultatet af en scanning. ``ok`` = intet fundet. | [src](../../../core/services/fabricated_tool_result_gate.py#L60) |
+| method | `FabricationVerdict.ok` | `(self)` | — | [src](../../../core/services/fabricated_tool_result_gate.py#L67) |
+| method | `FabricationVerdict.severity` | `(self)` | — | [src](../../../core/services/fabricated_tool_result_gate.py#L71) |
+| method | `FabricationVerdict.note` | `(self)` | Menneskelæsbar fodnote i husets ✋-stil, eller None. | [src](../../../core/services/fabricated_tool_result_gate.py#L78) |
+| function | `_id_exists` | `(result_id)` | Findes ID'et i tool-result-storen? Fejl → True (fail-open: anklag ALDRIG | [src](../../../core/services/fabricated_tool_result_gate.py#L96) |
+| function | `scan_for_fabricated_tool_results` | `(text, *, known_ids=…)` | Scan synligt output for tool-result-referencer og afgør om de er ægte. | [src](../../../core/services/fabricated_tool_result_gate.py#L106) |
 
 ## `core/services/fact_gate.py`
 _Fact-Gate — blocking output gate for unverifiable factual claims._

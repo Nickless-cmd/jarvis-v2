@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7405/14496 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7407/14499 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 7405/14496 functions/methods documented (51%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 614 | 1135 | 54% |
-| `core.services` | 4946 | 10032 | 49% |
+| `core.services` | 4948 | 10035 | 49% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 108 | 184 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1004,8 +1004,8 @@ Generated from source. 7405/14496 functions/methods documented (51%). The list b
 - `core/services/experiential_runtime_context.py` :: `build_experiential_runtime_prompt_section` (L127)
 - `core/services/experiential_runtime_context.py` :: `resolve_prior_experiential_snapshot` (L43)
 - `core/services/experiment_runner.py` :: `list_experiments` (L177)
-- `core/services/fabricated_tool_result_gate.py` :: `FabricationVerdict.ok` (L51)
-- `core/services/fabricated_tool_result_gate.py` :: `FabricationVerdict.severity` (L55)
+- `core/services/fabricated_tool_result_gate.py` :: `FabricationVerdict.ok` (L67)
+- `core/services/fabricated_tool_result_gate.py` :: `FabricationVerdict.severity` (L71)
 - `core/services/fcm_gateway.py` :: `is_configured` (L34)
 - `core/services/file_watch_daemon.py` :: `build_file_watch_surface` (L172)
 - `core/services/file_watch_daemon.py` :: `recent_changes` (L168)
@@ -1020,10 +1020,10 @@ Generated from source. 7405/14496 functions/methods documented (51%). The list b
 - `core/services/forgetting_curve.py` :: `build_forgetting_curve_surface` (L90)
 - `core/services/forgetting_engine.py` :: `is_fredet_path` (L64)
 - `core/services/forgetting_engine.py` :: `is_fredet_table` (L68)
-- `core/services/gate_execution.py` :: `check_command` (L245)
-- `core/services/gate_execution.py` :: `check_file` (L252)
-- `core/services/gate_execution.py` :: `check_operator` (L264)
-- `core/services/gate_execution.py` :: `check_workspace_trust` (L259)
+- `core/services/gate_execution.py` :: `check_command` (L265)
+- `core/services/gate_execution.py` :: `check_file` (L272)
+- `core/services/gate_execution.py` :: `check_operator` (L284)
+- `core/services/gate_execution.py` :: `check_workspace_trust` (L279)
 - `core/services/gate_kernel.py` :: `GateKernel.gates_for` (L120)
 - `core/services/gate_kernel.py` :: `GateKernel.register` (L112)
 - `core/services/gate_kernel.py` :: `Verdict.is_blocking` (L59)

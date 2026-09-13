@@ -34,6 +34,7 @@ miljø-blok må aldrig kunne forsinke eller vælte en tur.
 from __future__ import annotations
 
 import logging
+import pathlib
 import os
 import platform
 import subprocess
@@ -131,4 +132,38 @@ def render_env_block(cwd: str | None = None) -> str:
     if env.get("seneste_commit"):
         dele.append(f"seneste={env['seneste_commit']}")
     dele.append(f"os={env.get('os', '?')}")
+    ws = _workspace_rod()
+    if ws:
+        dele.append(f"workspace={ws}")
     return "🖥 HER STÅR DU (serveren, ikke Bjørns maskine): " + " · ".join(dele)
+
+
+def _workspace_rod() -> str:
+    """Den ABSOLUTTE sti til den aktuelle brugers workspace.
+
+    ## Hvorfor den skal staa her
+
+    Blokken fortalte hvor han STAAR — som regel repoet — men aldrig hvor hans
+    workspace ligger. Og repoet omtaler workspacet som en RELATIV sti:
+    `workspaces/<bruger>/MEMORY.md` staar saadan i kommentarer, tests og planer,
+    aldrig forankret til JARVIS_HOME.
+
+    De to ting ganget sammen giver én bestemt fejl. MAALT 12/9-2026 kl. 20:04
+    (incident 6798) i Bjoerns egen chat-session: en skrivning til
+    `/media/projects/jarvis-v2/workspaces/bjorn/MEMORY.md` — repo-roden plus den
+    relative sti. Den rigtige fil er `/home/bs/.jarvis-v2/workspaces/bjorn/
+    MEMORY.md`, 124 KB. Havde read-before-write-vagten ikke staaet i vejen, var
+    der blevet oprettet en kopi ingen laeser, mens den rigtige stod uroert.
+
+    Én linje her fjerner gaetteriet: han faar roden at vide, samme sted han
+    faar at vide hvor han staar.
+    """
+    try:
+        from core.identity.workspace_context import current_workspace_name
+        from core.runtime.config import WORKSPACES_DIR
+        navn = (current_workspace_name() or "").strip()
+        rod = pathlib.Path(WORKSPACES_DIR)
+        return str(rod / navn) if navn else str(rod)
+    except Exception:
+        logger.debug("env_block: kunne ikke slaa workspace-roden op", exc_info=True)
+        return ""

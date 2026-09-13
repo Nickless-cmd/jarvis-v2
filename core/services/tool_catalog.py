@@ -56,7 +56,13 @@ _CORE_TOOL_GROUPS: list[tuple[str, list[str]]] = [
     ("Web", ["web_search", "web_fetch"]),
     # At se selv: har den model der svarer oejne, faar den pixels direkte;
     # ellers laeser en vision-model billedet og svarer paa spoergsmaalet.
-    ("Syn", ["read_attachment"]),
+    #
+    # Og at TEGNE. Vaerktoejerne fandtes fra 13/9-2026, men stod hverken i en
+    # mode-liste eller her — saa de laa i «+ N flere vaerktoejer» og kunne kun
+    # findes ved at soege efter et navn man ikke vidste fandtes. Et vaerktoej
+    # der kraever at man kender det i forvejen, er ikke tilgaengeligt.
+    ("Syn & billeder", ["read_attachment", "openrouter_image",
+                        "openrouter_image_edit"]),
     # Eksterne vaerktoejer via MCP — ét vaerktoej, mange servere bagved.
     ("MCP (eksterne værktøjer)", ["mcp"]),
     ("Hukommelse", [

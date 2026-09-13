@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Alert, Animated, AppState, Linking, Modal, Pressable, StyleSheet, Text, View } from 'react-native'
+import { Alert, Animated, AppState, BackHandler, Linking, Modal, Pressable, StyleSheet, Text, View } from 'react-native'
 import notifee, { EventType } from '@notifee/react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { laesPins, skiftPin } from '../lib/pinnedMessages'
@@ -25,6 +25,7 @@ import { VoiceOverlay } from '../components/VoiceOverlay'
 import type { ContentBlock } from '../lib/sseProtocol'
 import { ErrorBanner } from '../components/ErrorBanner'
 import { ErrorCard } from '../components/ErrorCard'
+import { OfflineNotice } from '../components/OfflineNotice'
 import { GreetingHero } from '../components/GreetingHero'
 import { MessageList, type MessageListHandle } from '../components/MessageList'
 import { ScrollToBottom } from '../components/ScrollToBottom'
@@ -78,6 +79,7 @@ import { computeRuntimePolicy } from '../lib/mobileRuntimePolicy'
 import { loadBatterySaver } from '../lib/batteryPrefs'
 import { enqueueOutboxItem, loadOutbox, removeOutboxItem, markOutboxFailed } from '../lib/offlineOutbox'
 import { intentFromPushData, intentFromUrl, type MobileIntent } from '../lib/deepLink'
+import { popRoute, pushRoute, topRoute, type MobileRoute, type MobileRouteName } from '../lib/mobileRoutes'
 import { useAuth } from '../state/AuthContext'
 import { useSessions } from '../state/SessionContext'
 import { useStream } from '../state/StreamContext'
@@ -272,15 +274,27 @@ export function ChatScreen({
     listRef.current?.jumpBottom()
     setScrolledUp(false)
   }, [])
-  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [modalStack, setModalStack] = useState<MobileRoute[]>([])
   const [isOwner, setIsOwner] = useState(false)
   const [inHousehold, setInHousehold] = useState(false)
-  const [sensesOpen, setSensesOpen] = useState(false)
-  const [artifactsOpen, setArtifactsOpen] = useState(false)
-  const [billederOpen, setBillederOpen] = useState(false)
-  const [activityOpen, setActivityOpen] = useState(false)
   const [activityRuns, setActivityRuns] = useState<import('../lib/apiClient').ActiveRunSnapshot[]>([])
   const [outboxCount, setOutboxCount] = useState(0)
+  const openRoute = useCallback((name: MobileRouteName) => {
+    setModalStack((stack) => pushRoute(stack, { name }))
+  }, [])
+  const closeTopRoute = useCallback(() => {
+    setModalStack((stack) => popRoute(stack))
+  }, [])
+  const isRouteOpen = useCallback((name: MobileRouteName) => topRoute(modalStack)?.name === name, [modalStack])
+
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (!modalStack.length) return false
+      closeTopRoute()
+      return true
+    })
+    return () => sub.remove()
+  }, [closeTopRoute, modalStack.length])
   // Livstegn. Hentes ved opstart og hvert minut — hjerteslaget slår ~hvert
   // 15. minut, så tættere polling ville kun koste strøm uden at vise mere.
   const [presence, setPresence] = useState<Presence>({ state: 'unknown' })
@@ -301,15 +315,15 @@ export function ChatScreen({
       sessions.select(config, intent.sessionId).catch(() => undefined)
     }
     if (intent.kind === 'run' || intent.kind === 'approval') {
-      setActivityOpen(true)
+      openRoute('activity')
     } else if (intent.kind === 'artifact') {
-      setArtifactsOpen(true)
+      openRoute('artifacts')
     } else if (intent.kind === 'memory') {
-      setSettingsOpen(true)
+      openRoute('settings')
     } else if (intent.kind === 'settings') {
-      setSettingsOpen(true)
+      openRoute('settings')
     }
-  }, [config, sessions])
+  }, [config, openRoute, sessions])
 
   useEffect(() => {
     const openUrl = ({ url }: { url: string }) => routeIntent(intentFromUrl(url))
@@ -875,17 +889,7 @@ export function ChatScreen({
 
   return (
     <View style={styles.root}>
-      {connectivity !== 'connected' ? (
-        <View style={[styles.connBanner, connectivity === 'offline' ? styles.connOffline : styles.connReconnect]}>
-          <Text style={styles.connText}>
-            {connectivity === 'offline' ? 'Offline — venter på forbindelse' : 'Genopretter forbindelse til Jarvis…'}
-          </Text>
-        </View>
-      ) : stream.reconnecting ? (
-        <View style={[styles.connBanner, styles.connReconnect]}>
-          <Text style={styles.connText}>Genforbinder — Jarvis arbejder videre…</Text>
-        </View>
-      ) : null}
+      <OfflineNotice connectivity={connectivity} reconnecting={stream.reconnecting} outboxCount={outboxCount} />
 
       <View style={styles.flex}>
         {/* Svæver ligesom TopBar og komponisten. Som almindeligt søskende-
@@ -1131,19 +1135,19 @@ export function ChatScreen({
           isOwner={inHousehold}
           onOpenSenses={() => {
             setPanelOpen(false)
-            setSensesOpen(true)
+            openRoute('senses')
           }}
           onOpenArtifacts={() => {
             setPanelOpen(false)
-            setArtifactsOpen(true)
+            openRoute('artifacts')
           }}
           onOpenBilleder={() => {
             setPanelOpen(false)
-            setBillederOpen(true)
+            openRoute('images')
           }}
           onOpenActivity={() => {
             setPanelOpen(false)
-            setActivityOpen(true)
+            openRoute('activity')
             if (config) {
               void getActiveRunSnapshot(config).then(setActivityRuns).catch(() => undefined)
               void loadOutbox().then((items) => setOutboxCount(items.length))
@@ -1151,7 +1155,7 @@ export function ChatScreen({
           }}
           onOpenSettings={() => {
             setPanelOpen(false)
-            setSettingsOpen(true)
+            openRoute('settings')
           }}
           onOpenChatSettings={sessions.activeId ? () => {
             setPanelOpen(false)
@@ -1183,8 +1187,8 @@ export function ChatScreen({
         onClose={() => setChatCfgOpen(false)}
       />
 
-      <Modal visible={settingsOpen} animationType="slide" onRequestClose={() => setSettingsOpen(false)}>
-        <SettingsScreen onClose={() => setSettingsOpen(false)} />
+      <Modal visible={isRouteOpen('settings')} animationType="slide" onRequestClose={closeTopRoute}>
+        <SettingsScreen onClose={closeTopRoute} />
       </Modal>
 
       <AttachMenu
@@ -1210,12 +1214,12 @@ export function ChatScreen({
         onClose={() => setAttachMenuOpen(false)}
       />
 
-      <Modal visible={sensesOpen} animationType="slide" onRequestClose={() => setSensesOpen(false)}>
-        <SensesScreen onClose={() => setSensesOpen(false)} />
+      <Modal visible={isRouteOpen('senses')} animationType="slide" onRequestClose={closeTopRoute}>
+        <SensesScreen onClose={closeTopRoute} />
       </Modal>
 
-      <Modal visible={artifactsOpen} animationType="slide" onRequestClose={() => setArtifactsOpen(false)}>
-        <ArtifactsScreen onClose={() => setArtifactsOpen(false)} />
+      <Modal visible={isRouteOpen('artifacts')} animationType="slide" onRequestClose={closeTopRoute}>
+        <ArtifactsScreen onClose={closeTopRoute} />
       </Modal>
 
       {config ? (
@@ -1241,16 +1245,16 @@ export function ChatScreen({
         />
       ) : null}
 
-      <Modal visible={billederOpen} animationType="slide" onRequestClose={() => setBillederOpen(false)}>
+      <Modal visible={isRouteOpen('images')} animationType="slide" onRequestClose={closeTopRoute}>
         <BillederScreen
           sessionId={sessions.activeId ?? ''}
-          onClose={() => setBillederOpen(false)}
+          onClose={closeTopRoute}
         />
       </Modal>
 
-      <Modal visible={activityOpen} animationType="slide" onRequestClose={() => setActivityOpen(false)}>
+      <Modal visible={isRouteOpen('activity')} animationType="slide" onRequestClose={closeTopRoute}>
         <ActivityCenterScreen
-          onClose={() => setActivityOpen(false)}
+          onClose={closeTopRoute}
           runs={activityRuns}
           outboxCount={outboxCount}
           presenceSummary={presence.state}
@@ -1311,12 +1315,5 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
     // NEDEN UNDER komponisten i skærmens sidste par millimeter — teksten
     // rullede korrekt bagved, men fortsatte forbi pillens underkant.
     backgroundColor: tokens.color.scrim
-  },
-  connBanner: {
-    paddingVertical: tokens.spacing.xs,
-    alignItems: 'center'
-  },
-  connOffline: { backgroundColor: tokens.color.error },
-  connReconnect: { backgroundColor: tokens.color.warn },
-  connText: { color: tokens.color.bg0, fontSize: 12, fontWeight: '700' }
+  }
 })

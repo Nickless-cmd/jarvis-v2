@@ -9,6 +9,7 @@ import { tokens } from '../theme/tokens'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 import { SessionMenu } from './SessionMenu'
 import { TeamsPanel } from './TeamsPanel'
+import { useI18n } from '../i18n/I18nContext'
 
 const PANEL_WIDTH = Math.min(360, Math.round(Dimensions.get('window').width * 0.86))
 
@@ -101,6 +102,7 @@ export function SidePanel({
 }) {
   const tokens = useTheme()
   const styles = useStyles(makestyles)
+  const { t } = useI18n()
   const insets = useSafeAreaInsets()
   const translateX = useRef(new Animated.Value(-PANEL_WIDTH)).current
   const [mounted, setMounted] = useState(open)
@@ -153,7 +155,7 @@ export function SidePanel({
           <View style={styles.headerRow}>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Luk panel"
+              accessibilityLabel={t('common.closePanel')}
               onPress={onClose}
               hitSlop={8}
               style={styles.identity}
@@ -172,7 +174,7 @@ export function SidePanel({
             <Pressable
               testID="panel-search-toggle"
               accessibilityRole="button"
-              accessibilityLabel={soegAaben ? 'Luk søgning' : 'Søg samtaler'}
+              accessibilityLabel={soegAaben ? t('side.closeSearch') : t('side.searchConversations')}
               accessibilityState={{ expanded: soegAaben }}
               onPress={() => setSoegAaben((v) => !v)}
               hitSlop={8}
@@ -189,7 +191,7 @@ export function SidePanel({
                 autoFocus
                 value={query}
                 onChangeText={setQuery}
-                placeholder="Søg samtaler"
+                placeholder={t('side.searchConversations')}
                 placeholderTextColor={tokens.color.fg3}
                 style={styles.search}
               />
@@ -202,7 +204,7 @@ export function SidePanel({
           <View style={styles.felter}>
             {bubbleSupported && activeId ? (
               <Felt ikon={<MessageCircle size={17} color={tokens.color.fg2} strokeWidth={1.8} />}
-                    navn="Flyt chat til boble" onPress={onFloatActive} />
+                    navn={t('side.moveChatToBubble')} onPress={onFloatActive} />
             ) : null}
             {inHousehold && onOpenSenses ? (
               // Skjuler kun noget der ALLEREDE er lukket: /companion/senses
@@ -210,12 +212,12 @@ export function SidePanel({
               // Forskellen på en dør og et gardin — her er gardinet.
               <Felt testID="open-senses"
                     ikon={<Eye size={18} color={tokens.color.fg2} strokeWidth={1.8} />}
-                    navn="Sansernes Arkiv" onPress={onOpenSenses} />
+                    navn={t('side.sensesArchive')} onPress={onOpenSenses} />
             ) : null}
             {onOpenArtifacts ? (
               <Felt testID="open-artifacts"
                     ikon={<Boxes size={17} color={tokens.color.fg2} strokeWidth={1.8} />}
-                    navn="Artifacts" onPress={onOpenArtifacts} />
+                    navn={t('side.artifacts')} onPress={onOpenArtifacts} />
             ) : null}
             {onOpenBilleder && activeId ? (
               // Kraever en AKTIV samtale: feltet hedder «Billeder» og betyder
@@ -223,17 +225,17 @@ export function SidePanel({
               // skaerm der ser ud som om der ingen billeder findes.
               <Felt testID="open-billeder"
                     ikon={<ImageIcon size={17} color={tokens.color.fg2} strokeWidth={1.8} />}
-                    navn="Billeder" onPress={onOpenBilleder} />
+                    navn={t('side.images')} onPress={onOpenBilleder} />
             ) : null}
             {onOpenActivity ? (
               <Felt testID="open-activity"
                     ikon={<Activity size={17} color={tokens.color.fg2} strokeWidth={1.8} />}
-                    navn="Aktivitet" onPress={onOpenActivity} />
+                    navn={t('side.activity')} onPress={onOpenActivity} />
             ) : null}
             {onOpenChatSettings ? (
               <Felt testID="open-chat-settings"
                     ikon={<SlidersHorizontal size={17} color={tokens.color.fg2} strokeWidth={1.8} />}
-                    navn="Denne samtale" onPress={onOpenChatSettings} />
+                    navn={t('side.thisConversation')} onPress={onOpenChatSettings} />
             ) : null}
             {/* SAMME felt, to retninger. Bjørn bad om «et tilbage til chat felt
                 i panelet når man er i code mode» — men en dør der kun åbner
@@ -246,14 +248,14 @@ export function SidePanel({
                     ikon={kodeTilstand
                       ? <MessagesSquare size={17} color={tokens.color.fg2} strokeWidth={1.8} />
                       : <Terminal size={17} color={tokens.color.fg2} strokeWidth={1.8} />}
-                    navn={kodeTilstand ? 'Tilbage til chat' : 'Code'}
+                    navn={kodeTilstand ? t('topbar.backToChat') : t('app.code')}
                     onPress={() => onSkiftFlade(!kodeTilstand)} />
             ) : null}
           </View>
 
           <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
             {filtered.length === 0 ? (
-              <Text style={styles.empty}>{query ? 'Ingen match' : 'Ingen samtaler endnu'}</Text>
+              <Text style={styles.empty}>{query ? t('side.noMatches') : t('side.noConversations')}</Text>
             ) : (
               filtered.map((session) => (
                 <Pressable
@@ -267,10 +269,10 @@ export function SidePanel({
                   ]}
                 >
                   <Text style={styles.sessionTitle} numberOfLines={1}>
-                    {session.title || 'Ny samtale'}
+                    {session.title || t('side.newConversation')}
                   </Text>
                   <Text style={styles.sessionMeta}>
-                    {formatRelativeDate(session.updated_at, now)} · {session.message_count ?? 0} beskeder
+                    {formatRelativeDate(session.updated_at, now)} · {t('side.messageCount', { count: session.message_count ?? 0 })}
                   </Text>
                   <View style={styles.sessionIndicator}>
                     {session.pinned ? (
@@ -287,7 +289,7 @@ export function SidePanel({
                       <Pressable
                         testID={`session-menu-${session.id}`}
                         accessibilityRole="button"
-                        accessibilityLabel={`Handlinger for ${session.title || 'Ny samtale'}`}
+                        accessibilityLabel={t('side.sessionActions', { title: session.title || t('side.newConversation') })}
                         hitSlop={10}
                         onPress={() => setMenuFor(session)}
                         style={styles.prikker}
@@ -308,12 +310,12 @@ export function SidePanel({
           <Pressable
             testID="open-settings"
             accessibilityRole="button"
-            accessibilityLabel="Indstillinger"
+            accessibilityLabel={t('settings.title')}
             onPress={onOpenSettings}
             style={({ pressed }) => [styles.felt, styles.feltBund, pressed ? styles.pressed : null]}
           >
             <Settings size={17} color={tokens.color.fg2} strokeWidth={1.8} />
-            <Text style={styles.feltTekst}>Indstillinger</Text>
+            <Text style={styles.feltTekst}>{t('settings.title')}</Text>
           </Pressable>
 
           {/* Bundlaget, målt på R4: en lilla pille med blyant + label i
@@ -323,12 +325,12 @@ export function SidePanel({
           <View style={styles.dock} pointerEvents="box-none">
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Ny samtale"
+              accessibilityLabel={t('side.newConversation')}
               onPress={onNewSession}
               style={({ pressed }) => [styles.fab, pressed ? styles.pressed : null]}
             >
               <SquarePen size={18} color={tokens.color.bg0} strokeWidth={2} />
-              <Text style={styles.fabText}>Ny samtale</Text>
+              <Text style={styles.fabText}>{t('side.newConversation')}</Text>
             </Pressable>
             <View style={styles.avatar}>
               <Text style={styles.avatarText}>{initials}</Text>
@@ -347,7 +349,7 @@ export function SidePanel({
 
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Luk panel"
+          accessibilityLabel={t('common.closePanel')}
           style={styles.scrim}
           onPress={onClose}
         />

@@ -1,5 +1,6 @@
 import { fireEvent, render, within } from '@testing-library/react-native'
 import { TopBar } from './TopBar'
+import { I18nProvider } from '../i18n/I18nContext'
 
 const base = {
   mode: 'snak' as const,
@@ -14,6 +15,21 @@ it('skifter tilstand via segmented control', async () => {
   const screen = await render(<TopBar {...base} />)
   await fireEvent.press(screen.getByLabelText('Arbejde'))
   expect(base.onModeChange).toHaveBeenCalledWith('arbejde')
+})
+
+it('bruger appens valgte sprog til segmenter og accessibility labels', async () => {
+  const screen = await render(
+    <I18nProvider initialLocale="en">
+      <TopBar {...base} />
+    </I18nProvider>,
+  )
+  expect(screen.getByLabelText('Chat')).toBeTruthy()
+  expect(screen.getByLabelText('Work')).toBeTruthy()
+  expect(screen.getByLabelText('Menu')).toBeTruthy()
+  expect(screen.getByLabelText('More')).toBeTruthy()
+  expect(screen.queryByLabelText('Snak')).toBeNull()
+  expect(screen.queryByLabelText('Arbejde')).toBeNull()
+  expect(screen.queryByLabelText('Mere')).toBeNull()
 })
 
 it('menu og hoejre felt er selvstændige knapper', async () => {

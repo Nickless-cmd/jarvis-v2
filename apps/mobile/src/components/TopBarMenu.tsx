@@ -2,6 +2,7 @@ import { Modal, Pressable, StyleSheet, Text, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { ArrowLeftRight, Activity, Minimize2, RefreshCw } from 'lucide-react-native'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
+import { useI18n } from '../i18n/I18nContext'
 
 /**
  * Menuen bag de tre prikker i headerens højre felt.
@@ -35,6 +36,7 @@ export function TopBarMenu({
 }) {
   const tokens = useTheme()
   const styles = useStyles(makestyles)
+  const { t } = useI18n()
   // MÅLT paa telefonen 12/9-2026: et fast tal her lagde menuen hen OVER det
   // felt der aabnede den. Statuslinjens hoejde er enhedsafhaengig, saa toppen
   // regnes ud fra insettet plus bjaelkens egen hoejde (40 dp cirkel + 2x6 dp)
@@ -45,13 +47,13 @@ export function TopBarMenu({
       <Pressable style={[styles.scrim, { paddingTop: insets.top + 58 }]} onPress={onClose}>
         <Pressable style={styles.ark} onPress={(e) => e.stopPropagation()}>
           <Punkt
-            navn="Opdatér"
+            navn={t('topbar.refresh')}
             ikon={<RefreshCw size={17} color={tokens.color.fg2} strokeWidth={1.9} />}
             onPress={() => { onSync(); onClose() }}
           />
           {onCompact ? (
             <Punkt
-              navn="Komprimér kontekst"
+              navn={t('topbar.compactContext')}
               ikon={<Minimize2 size={17} color={tokens.color.fg2} strokeWidth={1.9} />}
               onPress={() => { onCompact(); onClose() }}
             />
@@ -60,14 +62,14 @@ export function TopBarMenu({
             // Kun i code. Det man vil vide om koerende jobs, vil man vide mens
             // man arbejder - i en samtale er det et punkt man aldrig trykker.
             <Punkt
-              navn="Baggrundsjobs"
+              navn={t('topbar.backgroundJobs')}
               ikon={<Activity size={17} color={tokens.color.fg2} strokeWidth={1.9} />}
               onPress={() => { onJobs(); onClose() }}
             />
           ) : null}
           {kodeTilstand && onTilbageTilChat ? (
             <Punkt
-              navn="Tilbage til chat"
+              navn={t('topbar.backToChat')}
               ikon={<ArrowLeftRight size={17} color={tokens.color.fg2} strokeWidth={1.9} />}
               onPress={() => { onTilbageTilChat(); onClose() }}
             />

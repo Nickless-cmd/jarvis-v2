@@ -5,6 +5,7 @@ import { ApprovalCard, type ApprovalViewModel } from './ApprovalCard'
 import { VoiceOrb } from './VoiceOrb'
 import { voiceStatusCopy } from '../lib/voiceUiState'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
+import { useI18n } from '../i18n/I18nContext'
 
 /** Samtale-mode. Push-to-talk: hold kuglen. Hænderfri: den lytter selv videre. */
 
@@ -39,6 +40,7 @@ export interface VoiceOverlayProps {
 export function VoiceOverlay(p: VoiceOverlayProps) {
   const tokens = useTheme()
   const s = useStyles(makes)
+  const { t } = useI18n()
   const busy = p.state === 'transcribing' || p.state === 'thinking'
 
   const tap = () => {
@@ -51,7 +53,7 @@ export function VoiceOverlay(p: VoiceOverlayProps) {
     : p.lastProvider === 'edge' ? 'edge-tts'
       : p.lastProvider === 'device' ? 'telefonens stemme' : ''
 
-  const copy = voiceStatusCopy({ state: p.state, canInterrupt: p.state === 'speaking' })
+  const copy = voiceStatusCopy({ state: p.state, canInterrupt: p.state === 'speaking' }, t)
 
   // Kuglen giver plads når der skal træffes en beslutning. Den skal stadig
   // være der — det er den samme samtale — men den skal ikke fylde mest.
@@ -61,7 +63,7 @@ export function VoiceOverlay(p: VoiceOverlayProps) {
     <Modal visible={p.active} transparent={false} animationType="fade" onRequestClose={p.exit}>
       <View style={s.screen}>
         <View style={s.top}>
-          <Pressable onPress={p.exit} hitSlop={16} accessibilityRole="button" accessibilityLabel="Luk samtale">
+          <Pressable onPress={p.exit} hitSlop={16} accessibilityRole="button" accessibilityLabel={t('voice.close')}>
             <X size={24} color={tokens.color.fg2} strokeWidth={2} />
           </Pressable>
         </View>
@@ -72,11 +74,11 @@ export function VoiceOverlay(p: VoiceOverlayProps) {
           <Pressable
             onPress={tap}
             accessibilityRole="button"
-            accessibilityLabel={p.state === 'speaking' ? 'Afbryd Jarvis' : 'Tal med Jarvis'}
+            accessibilityLabel={p.state === 'speaking' ? t('voice.interruptJarvis') : t('voice.talk')}
           >
             <VoiceOrb state={p.state} level={p.level} size={asking ? 128 : 232} />
           </Pressable>
-          <Text style={s.state}>{asking ? 'Jeg venter på dit svar' : copy.primary || copy.action}</Text>
+          <Text style={s.state}>{asking ? t('voice.waitingApproval') : copy.primary || copy.action}</Text>
           {!asking && p.workingStep && (p.state === 'thinking' || p.state === 'speaking') ? (
             <Text style={s.step} numberOfLines={2}>{p.workingStep}</Text>
           ) : null}
@@ -96,12 +98,12 @@ export function VoiceOverlay(p: VoiceOverlayProps) {
           {p.onCameraContext ? (
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Tilføj kamera-kontekst"
+              accessibilityLabel={t('voice.cameraContext')}
               onPress={p.onCameraContext}
               style={s.cameraBtn}
             >
               <Camera size={16} color={tokens.color.fg1} strokeWidth={1.9} />
-              <Text style={s.cameraText}>Kamera</Text>
+              <Text style={s.cameraText}>{t('voice.camera')}</Text>
             </Pressable>
           ) : null}
           <Text style={s.hint}>{copy.hint}{providerLabel ? `  ·  ${providerLabel}` : ''}</Text>

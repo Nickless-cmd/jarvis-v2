@@ -1,6 +1,7 @@
 import { fireEvent, render, waitFor } from '@testing-library/react-native'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { SidePanel } from './SidePanel'
+import { I18nProvider } from '../i18n/I18nContext'
 
 const metrics = {
   frame: { x: 0, y: 0, width: 360, height: 800 },
@@ -9,6 +10,14 @@ const metrics = {
 
 function wrap(ui: React.ReactElement) {
   return render(<SafeAreaProvider initialMetrics={metrics}>{ui}</SafeAreaProvider>)
+}
+
+function wrapEn(ui: React.ReactElement) {
+  return render(
+    <I18nProvider initialLocale="en">
+      <SafeAreaProvider initialMetrics={metrics}>{ui}</SafeAreaProvider>
+    </I18nProvider>,
+  )
 }
 
 const sessions = [
@@ -49,6 +58,35 @@ it('filters sessions by search', async () => {
   fireEvent.changeText(felt, 'anden')
   await waitFor(() => expect(screen.queryByText('Første samtale')).toBeNull())
   expect(screen.getByText('Anden samtale')).toBeTruthy()
+})
+
+it('bruger appens valgte sprog til panel chrome', async () => {
+  const screen = await wrapEn(
+    <SidePanel
+      open
+      {...base}
+      bubbleSupported
+      activeId="s1"
+      onFloatActive={jest.fn()}
+      onOpenArtifacts={jest.fn()}
+      onOpenActivity={jest.fn()}
+      onOpenChatSettings={jest.fn()}
+      onSkiftFlade={jest.fn()}
+    />,
+  )
+  fireEvent.press(screen.getByTestId('panel-search-toggle'))
+  expect(await screen.findByPlaceholderText('Search conversations')).toBeTruthy()
+  expect(screen.getByText('Move chat to bubble')).toBeTruthy()
+  expect(screen.getByText('Activity')).toBeTruthy()
+  expect(screen.getByText('This conversation')).toBeTruthy()
+  expect(screen.getByText('Settings')).toBeTruthy()
+  expect(screen.getByText('New chat')).toBeTruthy()
+  expect(screen.queryByPlaceholderText('Søg samtaler')).toBeNull()
+  expect(screen.queryByText('Flyt chat til boble')).toBeNull()
+  expect(screen.queryByText('Aktivitet')).toBeNull()
+  expect(screen.queryByText('Denne samtale')).toBeNull()
+  expect(screen.queryByText('Indstillinger')).toBeNull()
+  expect(screen.queryByText('Ny samtale')).toBeNull()
 })
 
 it('opens settings via gear', async () => {

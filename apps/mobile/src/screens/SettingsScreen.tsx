@@ -195,7 +195,7 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
     currentDeviceName,
     routeTargetName,
     outboxCount
-  })
+  }, t)
 
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
@@ -237,7 +237,7 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
         <View style={styles.card}>
           <Text style={styles.value}>{t('devices.current', { name: currentDeviceName || t('devices.none') })}</Text>
           <Text style={styles.muted}>
-            {routeTargetName ? `Jarvis router lige nu til ${routeTargetName}.` : 'Kør testen for at se hvilken enhed Jarvis vælger.'}
+            {routeTargetName ? t('devices.routeNow', { name: routeTargetName }) : t('devices.routeHint')}
           </Text>
           {deviceRows.slice(0, 3).map((row) => (
             <Text key={row.key} style={styles.deviceLine}>
@@ -245,7 +245,7 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
             </Text>
           ))}
           <Pressable accessibilityRole="button" onPress={checkPresence} style={styles.secondaryButton}>
-            <Text style={styles.secondaryButtonText}>Opdater enheder</Text>
+            <Text style={styles.secondaryButtonText}>{t('devices.refresh')}</Text>
           </Pressable>
         </View>
 

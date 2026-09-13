@@ -7,6 +7,7 @@ import { BADGE_H } from './badgeGeometri'
 import { tokens } from '../theme/tokens'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 import type { ContextUsage, GitStatus } from '../lib/apiClient'
+import { useI18n } from '../i18n/I18nContext'
 
 export type AppMode = 'snak' | 'arbejde'
 
@@ -62,6 +63,7 @@ export function TopBar({
 }: Props) {
   const tokens = useTheme()
   const styles = useStyles(makestyles)
+  const { t } = useI18n()
   return (
     <View style={styles.bar}>
       {/* Pilen og titlen hoerer SAMMEN, i ét spor til venstre. Titlen laa
@@ -79,7 +81,7 @@ export function TopBar({
       <View style={styles.venstre}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Menu"
+          accessibilityLabel={t('common.menu')}
           onPress={onMenu}
           hitSlop={8}
           style={styles.circle}
@@ -98,8 +100,8 @@ export function TopBar({
           <View testID="topbar-segment" style={styles.center}>
             <SegmentedControl<AppMode>
               options={[
-                { value: 'snak', label: 'Snak' },
-                { value: 'arbejde', label: 'Arbejde', badge: pendingWork }
+                { value: 'snak', label: t('app.chat') },
+                { value: 'arbejde', label: t('app.work'), badge: pendingWork }
               ]}
               value={mode}
               onChange={onModeChange}
@@ -113,7 +115,7 @@ export function TopBar({
           bliver bjaelken til tre knapper der ligner hinanden. */}
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Mere"
+        accessibilityLabel={t('common.more')}
         accessibilityState={{ busy: Boolean(syncing) }}
         onPress={onMereMenu ?? onSync}
         hitSlop={8}

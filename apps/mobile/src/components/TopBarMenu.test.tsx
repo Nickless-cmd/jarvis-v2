@@ -1,6 +1,7 @@
 import { fireEvent, render } from '@testing-library/react-native'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { TopBarMenu } from './TopBarMenu'
+import { I18nProvider } from '../i18n/I18nContext'
 
 // Menuen laeser statuslinjens hoejde for ikke at lande oven paa det felt der
 // aabnede den - derfor skal den have en provider her.
@@ -10,6 +11,12 @@ const metrics = {
 }
 const wrap = (ui: React.ReactElement) =>
   render(<SafeAreaProvider initialMetrics={metrics}>{ui}</SafeAreaProvider>)
+const wrapEn = (ui: React.ReactElement) =>
+  render(
+    <I18nProvider initialLocale="en">
+      <SafeAreaProvider initialMetrics={metrics}>{ui}</SafeAreaProvider>
+    </I18nProvider>,
+  )
 
 const base = () => ({
   aaben: true, onClose: jest.fn(), onSync: jest.fn(),
@@ -20,6 +27,27 @@ it('opdatér bor i menuen nu, ikke som sit eget ikon i bjaelken', async () => {
   const screen = await wrap(<TopBarMenu {...p} />)
   fireEvent.press(screen.getByText('Opdatér'))
   expect(p.onSync).toHaveBeenCalledTimes(1)
+})
+
+it('bruger appens valgte sprog til menupunkter', async () => {
+  const p = base()
+  const screen = await wrapEn(
+    <TopBarMenu
+      {...p}
+      kodeTilstand
+      onCompact={jest.fn()}
+      onJobs={jest.fn()}
+      onTilbageTilChat={jest.fn()}
+    />,
+  )
+  expect(screen.getByText('Refresh')).toBeTruthy()
+  expect(screen.getByText('Compact context')).toBeTruthy()
+  expect(screen.getByText('Background jobs')).toBeTruthy()
+  expect(screen.getByText('Back to chat')).toBeTruthy()
+  expect(screen.queryByText('Opdatér')).toBeNull()
+  expect(screen.queryByText('Komprimér kontekst')).toBeNull()
+  expect(screen.queryByText('Baggrundsjobs')).toBeNull()
+  expect(screen.queryByText('Tilbage til chat')).toBeNull()
 })
 
 it('menuen lukker sig selv naar man har valgt noget', async () => {

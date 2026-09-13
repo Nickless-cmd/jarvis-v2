@@ -2,6 +2,10 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/cheap_provider_runtime.py`
+
+_(no top-level classes or functions)_
+
 ## `core/services/cheap_provider_runtime_adapters.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -763,12 +767,4 @@ _Conflict daemon — detects when Jarvis' signals pull in opposite directions._
 | function | `_store_conflict` | `(phrase, conflict_type)` | — | [src](../../../core/services/conflict_daemon.py#L196) |
 | function | `get_latest_conflict` | `()` | — | [src](../../../core/services/conflict_daemon.py#L227) |
 | function | `build_conflict_surface` | `()` | — | [src](../../../core/services/conflict_daemon.py#L231) |
-
-## `core/services/conflict_prompt_service.py`
-_Conflict memory prompt service — surfaces recent conversation conflicts in the prompt._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `build_conflict_memory_prompt_section` | `(limit=…)` | Return a prompt section with recent conflict lessons, or None if empty. | [src](../../../core/services/conflict_prompt_service.py#L11) |
-| function | `build_conflict_memory_surface` | `(limit=…)` | — | [src](../../../core/services/conflict_prompt_service.py#L37) |
 

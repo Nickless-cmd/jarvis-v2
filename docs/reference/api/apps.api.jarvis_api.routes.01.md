@@ -394,6 +394,14 @@ _Central 'proactivity' route — proaktivitets-broens beslutninger (owner, read-
 | function | `_require_owner` | `()` | — | [src](../../../apps/api/jarvis_api/routes/central_proactivity.py#L13) |
 | function | `get_proactivity` | `()` | Proaktivitets-broen: switch-status + ventende urgent/normal kandidater. Owner-only. | [src](../../../apps/api/jarvis_api/routes/central_proactivity.py#L19) |
 
+## `apps/api/jarvis_api/routes/central_profiles.py`
+_`/central/profiles` — Fase 9's forklarings-flade._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_require_owner` | `()` | — | [src](../../../apps/api/jarvis_api/routes/central_profiles.py#L18) |
+| function | `get_profiles` | `()` | — | [src](../../../apps/api/jarvis_api/routes/central_profiles.py#L24) |
+
 ## `apps/api/jarvis_api/routes/central_self.py`
 _Central 'self' route — surfaces Jarvis' SELF to the OWNER, reduced + absorbed._
 
@@ -619,15 +627,4 @@ _Internal loopback endpoint for cross-process Discord dispatch._
 |---|---|---|---|---|
 | class | `DispatchRequest` | `` | — | [src](../../../apps/api/jarvis_api/routes/internal_discord.py#L27) |
 | function | `dispatch` | `(req, request)` | — | [src](../../../apps/api/jarvis_api/routes/internal_discord.py#L33) |
-
-## `apps/api/jarvis_api/routes/internal_errors.py`
-_Internal loopback endpoint for canonical error reports (Fase 0)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `_Origin` | `` | — | [src](../../../apps/api/jarvis_api/routes/internal_errors.py#L46) |
-| class | `ErrorReport` | `` | Canonical fejl-wire-form (REVIEW §4 / impl-plan §3). Kun kind/severity/ | [src](../../../apps/api/jarvis_api/routes/internal_errors.py#L51) |
-| function | `_build_envelope` | `(*, kind, origin_cluster, run_id, detail, scope)` | Byg en ErrorEnvelope fra kind. Foretrækker Fase-0-udvidelsen envelope_from_kind | [src](../../../apps/api/jarvis_api/routes/internal_errors.py#L66) |
-| function | `_route_into_central` | `(report)` | Router én canonical fejl ind i eksisterende Central-maskineri. Returnerer | [src](../../../apps/api/jarvis_api/routes/internal_errors.py#L80) |
-| function | `report_error` | `(report, request)` | Modtag én canonical fejl og router den ind i Central. Returnerer 202. | [src](../../../apps/api/jarvis_api/routes/internal_errors.py#L166) |
 

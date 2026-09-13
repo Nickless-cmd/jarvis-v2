@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 14519 functions/methods, 51% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 14524 functions/methods, 51% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -8,9 +8,9 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 14519 functions/
 
 - [`apps.api.jarvis_api`](apps.api.jarvis_api.md)
 - [`apps.api.jarvis_api.middleware`](apps.api.jarvis_api.middleware.md)
-- [`apps.api.jarvis_api.routes.01`](apps.api.jarvis_api.routes.01.md) — `__init__` … `internal_errors`
-- [`apps.api.jarvis_api.routes.02`](apps.api.jarvis_api.routes.02.md) — `internal_runtime_surface` … `totp`
-- [`apps.api.jarvis_api.routes.03`](apps.api.jarvis_api.routes.03.md) — `transcribe` … `workbench`
+- [`apps.api.jarvis_api.routes.01`](apps.api.jarvis_api.routes.01.md) — `__init__` … `internal_discord`
+- [`apps.api.jarvis_api.routes.02`](apps.api.jarvis_api.routes.02.md) — `internal_errors` … `tool_router`
+- [`apps.api.jarvis_api.routes.03`](apps.api.jarvis_api.routes.03.md) — `totp` … `workbench`
 - [`apps.api.jarvis_api.schemas`](apps.api.jarvis_api.schemas.md)
 - [`apps.central_cli.central_cli`](apps.central_cli.central_cli.md)
 - [`apps.desktop`](apps.desktop.md)
@@ -32,28 +32,28 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 14519 functions/
 - [`core.services.02`](core.services.02.md) — `agents` … `autonomous_sessions`
 - [`core.services.03`](core.services.03.md) — `autonomous_stream_run` … `central_anomaly`
 - [`core.services.04`](core.services.04.md) — `central_arbitration` … `central_hypothesis_sampler`
-- [`core.services.05`](core.services.05.md) — `central_initiative_ladder` … `central_relational`
-- [`core.services.06`](core.services.06.md) — `central_render` … `cheap_provider_runtime`
-- [`core.services.07`](core.services.07.md) — `cheap_provider_runtime_adapters` … `conflict_prompt_service`
-- [`core.services.08`](core.services.08.md) — `conflict_resolution` … `cross_user_share_guard`
-- [`core.services.09`](core.services.09.md) — `curiosity_budget` … `device_presence`
-- [`core.services.10`](core.services.10.md) — `device_tokens` … `emergent_signal_tracking`
-- [`core.services.11`](core.services.11.md) — `emitted_prefix` … `first_pass_recovery`
-- [`core.services.12`](core.services.12.md) — `flow_state_detection` … `guided_learning_runtime`
-- [`core.services.13`](core.services.13.md) — `gut_calibration` … `inner_voice_shadow`
-- [`core.services.14`](core.services.14.md) — `interlanguage_practice` … `longing_signal_daemon`
-- [`core.services.15`](core.services.15.md) — `loop_runtime` … `model_benchmark`
-- [`core.services.16`](core.services.16.md) — `model_catalogue_sweep` … `outcome_projector`
-- [`core.services.17`](core.services.17.md) — `outreach_composer` … `proactive_outbound_substrate`
-- [`core.services.18`](core.services.18.md) — `proactive_question_gate_tracking` … `query_language_bridge`
-- [`core.services.19`](core.services.19.md) — `quota_store` … `resonance_decay`
-- [`core.services.20`](core.services.20.md) — `retention` … `scheduled_tasks`
-- [`core.services.21`](core.services.21.md) — `secret_redaction` … `session_continuity`
-- [`core.services.22`](core.services.22.md) — `session_distillation` … `smith_confrontation`
-- [`core.services.23`](core.services.23.md) — `smith_noise_veto` … `theory_of_mind_engine`
-- [`core.services.24`](core.services.24.md) — `thought_action_proposal_daemon` … `user_emotional_resonance`
-- [`core.services.25`](core.services.25.md) — `user_md_update_proposal_tracking` … `visible_text_scrub`
-- [`core.services.26`](core.services.26.md) — `visible_thinking_trace` … `world_model_signal_tracking`
+- [`core.services.05`](core.services.05.md) — `central_initiative_ladder` … `central_redpill`
+- [`core.services.06`](core.services.06.md) — `central_relational` … `cheap_provider_catalogue`
+- [`core.services.07`](core.services.07.md) — `cheap_provider_runtime` … `conflict_daemon`
+- [`core.services.08`](core.services.08.md) — `conflict_prompt_service` … `cross_signal_analysis`
+- [`core.services.09`](core.services.09.md) — `cross_user_share_guard` … `device_pairing`
+- [`core.services.10`](core.services.10.md) — `device_presence` … `emergent_goals`
+- [`core.services.11`](core.services.11.md) — `emergent_signal_tracking` … `finitude_runtime`
+- [`core.services.12`](core.services.12.md) — `first_pass_recovery` … `grounded_capability_followup`
+- [`core.services.13`](core.services.13.md) — `guided_learning_runtime` … `inner_voice_notifier`
+- [`core.services.14`](core.services.14.md) — `inner_voice_shadow` … `long_horizon_goals`
+- [`core.services.15`](core.services.15.md) — `longing_signal_daemon` … `missions_pipeline`
+- [`core.services.16`](core.services.16.md) — `model_benchmark` … `outcome_learning`
+- [`core.services.17`](core.services.17.md) — `outcome_projector` … `proactive_loop_lifecycle_tracking`
+- [`core.services.18`](core.services.18.md) — `proactive_outbound_substrate` … `pushback`
+- [`core.services.19`](core.services.19.md) — `query_language_bridge` … `research_store`
+- [`core.services.20`](core.services.20.md) — `resonance_decay` … `scheduled_task_runner`
+- [`core.services.21`](core.services.21.md) — `scheduled_tasks` … `session_context_resolve`
+- [`core.services.22`](core.services.22.md) — `session_continuity` … `skill_security_scanner`
+- [`core.services.23`](core.services.23.md) — `smith_confrontation` … `theory_of_mind`
+- [`core.services.24`](core.services.24.md) — `theory_of_mind_engine` … `user_contradiction_tracker`
+- [`core.services.25`](core.services.25.md) — `user_emotional_resonance` … `visible_stream_gate`
+- [`core.services.26`](core.services.26.md) — `visible_text_scrub` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

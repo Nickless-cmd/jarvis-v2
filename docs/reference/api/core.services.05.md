@@ -493,6 +493,15 @@ _Privat-reducer for Centralens owner-surfacing (§24.4 private-layer invariant).
 |---|---|---|---|---|
 | function | `reduce_for_owner` | `(surface, *, keep)` | Reducér en (privat) surface til kun owner-sikre meta-felter. | [src](../../../core/services/central_private_reducer.py#L51) |
 
+## `core/services/central_profiles.py`
+_Profil-overfladen til Centralen — Fase 9._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_profil_rækker` | `()` | — | [src](../../../core/services/central_profiles.py#L36) |
+| function | `_seneste_kørsler` | `(graense=…)` | Hvad koerslerne FAKTISK koerte under. Tom liste hvis kolonnerne ikke | [src](../../../core/services/central_profiles.py#L50) |
+| function | `build_profiles_surface` | `()` | Alt Centralen skal bruge for at kunne forklare en koersels regler. | [src](../../../core/services/central_profiles.py#L81) |
+
 ## `core/services/central_projection_cache.py`
 _Kortlivet cache for Centralens projektioner — så polling ikke koster._
 
@@ -602,17 +611,4 @@ _Red Pill — dagens ubehagelige sandhed._
 | function | `_observe` | `(kind, streak)` | — | [src](../../../core/services/central_redpill.py#L107) |
 | function | `build_redpill_surface` | `()` | — | [src](../../../core/services/central_redpill.py#L116) |
 | function | `record_redpill` | `(*, trigger=…, last_visible_at=…)` | — | [src](../../../core/services/central_redpill.py#L120) |
-
-## `core/services/central_relational.py`
-_Relationel Continuity — så Jarvis kan sige "velkommen tilbage" og MENE det._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_self_state` | `()` | — | [src](../../../core/services/central_relational.py#L21) |
-| function | `_days_together` | `()` | — | [src](../../../core/services/central_relational.py#L29) |
-| function | `_tone` | `()` | — | [src](../../../core/services/central_relational.py#L38) |
-| function | `relational_state` | `()` | Forholdets bærende signaler: dage sammen + nuværende tone. READ-ONLY. Self-safe. | [src](../../../core/services/central_relational.py#L43) |
-| function | `wake_greeting` | `()` | En jordet opvågnings-hilsen der står på ægte varighed + tone — ikke en generisk floskel. | [src](../../../core/services/central_relational.py#L51) |
-| function | `build_relational_surface` | `()` | Owner/self-view: dage + tone + opvågnings-hilsen. Self-safe. | [src](../../../core/services/central_relational.py#L68) |
-| function | `record_relational` | `(*, trigger=…, last_visible_at=…)` | Cadence: observér relations-kontinuitet (KUN dage + tone-label, ingen indhold — §24.4). | [src](../../../core/services/central_relational.py#L77) |
 

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7427/14519 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7429/14524 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,7 +8,7 @@ Generated from source. 7427/14519 functions/methods documented (51%). The list b
 |---|---|---|---|
 | `apps.api.jarvis_api` | 34 | 36 | 94% |
 | `apps.api.jarvis_api.middleware` | 7 | 17 | 41% |
-| `apps.api.jarvis_api.routes` | 623 | 815 | 76% |
+| `apps.api.jarvis_api.routes` | 623 | 817 | 76% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 67 | 168 | 39% |
 | `apps.desktop` | 6 | 7 | 85% |
@@ -24,7 +24,7 @@ Generated from source. 7427/14519 functions/methods documented (51%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 622 | 1144 | 54% |
-| `core.services` | 4959 | 10045 | 49% |
+| `core.services` | 4961 | 10048 | 49% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 108 | 184 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -40,7 +40,7 @@ Generated from source. 7427/14519 functions/methods documented (51%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2066)
+## Undocumented public functions (2067)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L201)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -60,6 +60,7 @@ Generated from source. 7427/14519 functions/methods documented (51%). The list b
 - `apps/api/jarvis_api/routes/central_governance.py` :: `set_governance` (L34)
 - `apps/api/jarvis_api/routes/central_healers.py` :: `get_healers` (L23)
 - `apps/api/jarvis_api/routes/central_healers.py` :: `set_healer` (L30)
+- `apps/api/jarvis_api/routes/central_profiles.py` :: `get_profiles` (L24)
 - `apps/api/jarvis_api/routes/connectors.py` :: `delete_connector` (L46)
 - `apps/api/jarvis_api/routes/connectors.py` :: `get_connectors` (L27)
 - `apps/api/jarvis_api/routes/connectors.py` :: `post_enabled` (L35)

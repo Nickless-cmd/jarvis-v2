@@ -2,6 +2,19 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/central_relational.py`
+_Relationel Continuity — så Jarvis kan sige "velkommen tilbage" og MENE det._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_self_state` | `()` | — | [src](../../../core/services/central_relational.py#L21) |
+| function | `_days_together` | `()` | — | [src](../../../core/services/central_relational.py#L29) |
+| function | `_tone` | `()` | — | [src](../../../core/services/central_relational.py#L38) |
+| function | `relational_state` | `()` | Forholdets bærende signaler: dage sammen + nuværende tone. READ-ONLY. Self-safe. | [src](../../../core/services/central_relational.py#L43) |
+| function | `wake_greeting` | `()` | En jordet opvågnings-hilsen der står på ægte varighed + tone — ikke en generisk floskel. | [src](../../../core/services/central_relational.py#L51) |
+| function | `build_relational_surface` | `()` | Owner/self-view: dage + tone + opvågnings-hilsen. Self-safe. | [src](../../../core/services/central_relational.py#L68) |
+| function | `record_relational` | `(*, trigger=…, last_visible_at=…)` | Cadence: observér relations-kontinuitet (KUN dage + tone-label, ingen indhold — §24.4). | [src](../../../core/services/central_relational.py#L77) |
+
 ## `core/services/central_render.py`
 _core/services/central_render.py_
 
@@ -652,10 +665,6 @@ _Per-provider circuit-breaker adaptere for OllamaFreeAPI og Arko._
 
 ## `core/services/cheap_provider_catalogue.py`
 _Kataloget over cheap-lane-udbydere — hvem findes, hvad koster de, hvad virker._
-
-_(no top-level classes or functions)_
-
-## `core/services/cheap_provider_runtime.py`
 
 _(no top-level classes or functions)_
 

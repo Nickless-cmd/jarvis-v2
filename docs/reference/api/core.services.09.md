@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/cross_user_share_guard.py`
+_Altid-aktiv deling-guard — stopper Jarvis før han deler info om en ANDEN bruger._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `check_outbound` | `(text, *, current_user_id, known_users, session_id=…)` | Tjek et udgående svar for omtale af andre brugere end samtalepartneren. | [src](../../../core/services/cross_user_share_guard.py#L25) |
+| function | `check_against_registry` | `(text, *, current_user_id)` | Som check_outbound, men henter kendte brugere fra users-registry. | [src](../../../core/services/cross_user_share_guard.py#L68) |
+
 ## `core/services/curiosity_budget.py`
 _Curiosity-budget service — Phase 1 (AGI track #6 Åben udforskning)._
 
@@ -554,21 +562,4 @@ _QR-device-pairing (mobile companion ↔ desktop). Kort-levende engangs-koder._
 | function | `create_pairing` | `(user_id, role=…, *, now=…)` | Opret en pairing-kode for en (autentificeret) bruger. Returnerer {code, expires_in}. | [src](../../../core/services/device_pairing.py#L30) |
 | function | `redeem` | `(code, *, now=…)` | Indløs en pairing-kode (engangs) → udsted friskt token. None hvis ukendt/udløbet. | [src](../../../core/services/device_pairing.py#L41) |
 | function | `status` | `(code, *, now=…)` | Status på en pairing-kode (til desktop-poll): redeemed | pending | expired. | [src](../../../core/services/device_pairing.py#L54) |
-
-## `core/services/device_presence.py`
-_In-memory device-presence pr. bruger. Efemær — genopbygges af klient-pings._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `DeviceState` | `` | — | [src](../../../core/services/device_presence.py#L40) |
-| function | `reset` | `()` | Kun til tests. | [src](../../../core/services/device_presence.py#L57) |
-| function | `record_ping` | `(user_id, device_key, platform, *, foreground, awake, network, interaction=…, location=…, push_token=…, device_name=…, active_session_id=…, battery_saver=…)` | — | [src](../../../core/services/device_presence.py#L63) |
-| function | `_sanitize_location` | `(location)` | Validér og normalisér en indkommen lokation. Returnerer None ved ugyldigt. | [src](../../../core/services/device_presence.py#L120) |
-| class | `RankedDevice` | `` | — | [src](../../../core/services/device_presence.py#L138) |
-| function | `_recency_weight` | `(now, last_interaction_at)` | — | [src](../../../core/services/device_presence.py#L145) |
-| function | `rank` | `(user_id)` | — | [src](../../../core/services/device_presence.py#L152) |
-| function | `prune` | `(user_id=…)` | — | [src](../../../core/services/device_presence.py#L222) |
-| function | `summary` | `(user_id)` | — | [src](../../../core/services/device_presence.py#L235) |
-| function | `location_for` | `(user_id)` | Bedst-kendte lokation for en bruger på tværs af enheder (til geo-tools). | [src](../../../core/services/device_presence.py#L259) |
-| function | `debug_snapshot` | `(user_id)` | Diagnostik: live presence-tilstande + rank-resultat for én bruger. | [src](../../../core/services/device_presence.py#L279) |
 

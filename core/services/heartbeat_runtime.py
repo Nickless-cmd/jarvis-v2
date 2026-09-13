@@ -5817,8 +5817,12 @@ def _execute_heartbeat_internal_action(
                     "artifact": json.dumps(result, ensure_ascii=False, default=str),
                     "blocked_reason": "",
                 }
+            # Motoren nægtede (for nyligt skrevet / perioden har allerede en post /
+            # ingen runs). Det er en no-op, ikke en udført handling — og den skal
+            # ikke rapportere "executed". Målt 13. sep 2026: 34 af 60 ticks endte
+            # her, alle med action_status="executed", mens intet blev skrevet.
             return {
-                "status": "executed",
+                "status": "skipped",
                 "summary": "Chronicle is current — no new entry needed.",
                 "artifact": "",
                 "blocked_reason": "",

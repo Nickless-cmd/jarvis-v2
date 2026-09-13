@@ -79,6 +79,61 @@ class TestVinketSpejlerMotorensGates:
             assert hints.chronicle_hint() is None
 
 
+class TestPeriodenGate:
+    """Motoren nægter to poster for samme ISO-uge — hintet skal spejle det.
+
+    Målt 13. sep 2026: seneste kronik var W37 (skrevet 9. sep) og vi var stadig i
+    W37. Alder-gaten (≥3 døgn) fyrede fra ~9. sep, motoren nægtede hver gang, og
+    34 af 60 ticks (57%) endte som tavse no-ops. Loopet ville først stoppe ved
+    ugens skifte — hintet manglede den tredje gate koden selv lovede.
+    """
+
+    @staticmethod
+    def _current_period() -> str:
+        now = datetime.now(UTC)
+        return f"{now.year}-W{now.isocalendar().week:02d}"
+
+    def _hint(self, days_ago, runs, period):
+        latest = {"created_at": _iso(days_ago), "period": period}
+        with patch("core.runtime.db.get_latest_cognitive_chronicle_entry", return_value=latest), \
+             patch("core.runtime.db.recent_visible_runs", return_value=runs):
+            return hints.chronicle_hint()
+
+    def test_samme_periode_tier_selv_naar_forfalden(self):
+        """Kernen i fejlen: forfalden alder alene må ikke fyre vinket."""
+        assert self._hint(10, [{"id": 1}], self._current_period()) is None
+
+    def test_tidligere_periode_giver_vink(self):
+        h = self._hint(10, [{"id": 1}], "2020-W01")
+        assert h and "write_chronicle_entry" in h
+
+    def test_perioden_daekket_sand_for_samme_uge(self):
+        with patch("core.runtime.db.get_latest_cognitive_chronicle_entry",
+                   return_value={"period": self._current_period()}):
+            assert hints.chronicle_period_covered() is True
+
+    def test_perioden_daekket_falsk_for_tidligere_uge(self):
+        with patch("core.runtime.db.get_latest_cognitive_chronicle_entry",
+                   return_value={"period": "2020-W01"}):
+            assert hints.chronicle_period_covered() is False
+
+    def test_perioden_daekket_falsk_uden_post(self):
+        with patch("core.runtime.db.get_latest_cognitive_chronicle_entry",
+                   return_value=None):
+            assert hints.chronicle_period_covered() is False
+
+    def test_perioden_daekket_falsk_ved_db_fejl(self):
+        with patch("core.runtime.db.get_latest_cognitive_chronicle_entry",
+                   side_effect=RuntimeError("db")):
+            assert hints.chronicle_period_covered() is False
+
+    def test_ukendt_periode_taeller_ikke_som_daekket(self):
+        """Motoren sammenligner kun naar perioden findes — vi maa ikke vaere strengere."""
+        with patch("core.runtime.db.get_latest_cognitive_chronicle_entry",
+                   return_value={"created_at": _iso(10)}):
+            assert hints.chronicle_period_covered() is False
+
+
 class TestSamletListe:
     def test_tom_naar_intet_er_forfaldent(self):
         with patch.object(hints, "chronicle_hint", return_value=None):

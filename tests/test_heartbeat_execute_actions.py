@@ -706,3 +706,67 @@ def test_manage_runtime_work_orchestrates_hooks_tasks_flows_and_browser_body(
     assert "hook dispatches" in result["summary"]
     assert task_updates[0]["task_id"] == "task-1"
     assert flow_updates[0]["flow_id"] == "flow-1"
+
+
+def test_chronicle_noop_reports_skipped_not_executed(isolated_runtime, monkeypatch) -> None:
+    """En no-op er ikke en udført handling — den skal ikke kalde sig "executed".
+
+    Målt 13. sep 2026: 34 af 60 ticks valgte write_chronicle_entry, motoren
+    returnerede None (perioden havde allerede en post), og alligevel svarede
+    handleren status="executed". En tavs no-op bogført som succes.
+    """
+    import core.services.chronicle_engine as chronicle_engine
+
+    heartbeat_runtime = isolated_runtime.heartbeat_runtime
+    monkeypatch.setattr(chronicle_engine, "maybe_write_chronicle_entry", lambda: None)
+
+    result = heartbeat_runtime._execute_heartbeat_internal_action(
+        action_type="write_chronicle_entry",
+        tick_id="heartbeat-tick:chronicle-noop",
+        workspace_dir=Path("/tmp/test-workspace"),
+    )
+
+    assert result["status"] == "skipped", result
+    assert "no new entry" in result["summary"]
+    assert result["blocked_reason"] == ""
+
+
+def test_chronicle_write_reports_executed(isolated_runtime, monkeypatch) -> None:
+    """Den ægte skrivning skal stadig melde "executed" med perioden i summary."""
+    import core.services.chronicle_engine as chronicle_engine
+
+    heartbeat_runtime = isolated_runtime.heartbeat_runtime
+    monkeypatch.setattr(
+        chronicle_engine,
+        "maybe_write_chronicle_entry",
+        lambda: {"entry_id": "chr-test", "period": "2026-W37"},
+    )
+
+    result = heartbeat_runtime._execute_heartbeat_internal_action(
+        action_type="write_chronicle_entry",
+        tick_id="heartbeat-tick:chronicle-write",
+        workspace_dir=Path("/tmp/test-workspace"),
+    )
+
+    assert result["status"] == "executed", result
+    assert "2026-W37" in result["summary"]
+
+
+def test_chronicle_engine_error_reports_blocked(isolated_runtime, monkeypatch) -> None:
+    """En fejl i motoren skal fortsat blokere synligt — ikke ties ihjel."""
+    import core.services.chronicle_engine as chronicle_engine
+
+    def _boom():
+        raise RuntimeError("chronicle nede")
+
+    heartbeat_runtime = isolated_runtime.heartbeat_runtime
+    monkeypatch.setattr(chronicle_engine, "maybe_write_chronicle_entry", _boom)
+
+    result = heartbeat_runtime._execute_heartbeat_internal_action(
+        action_type="write_chronicle_entry",
+        tick_id="heartbeat-tick:chronicle-error",
+        workspace_dir=Path("/tmp/test-workspace"),
+    )
+
+    assert result["status"] == "blocked", result
+    assert result["blocked_reason"] == "chronicle-error"

@@ -262,6 +262,24 @@ def check_bash_command_safe(
     for target in unique_candidates:
         if _was_read(str(target), session_id):
             continue
+        # FINDES FILEN OVERHOVEDET? Vagten beskytter indhold man ikke har set.
+        # Findes filen ikke, er der intet indhold at miste — og kravet «læs den
+        # først» er da umuligt at efterkomme.
+        #
+        # MAALT 12/9-2026 (incident 6798): et run blev blokeret i at skrive til
+        # /media/projects/jarvis-v2/workspaces/bjorn/MEMORY.md. Hverken filen
+        # eller mappen `workspaces/` fandtes. Beskeden bad ham laese en fil der
+        # ikke var der — en betingelse han aldrig kunne opfylde.
+        #
+        # Den manglende forhaandsvisning var selve symptomet: «(could not read
+        # preview)» stod der, fordi der ikke var noget at vise. Vagten sagde
+        # altsaa selv hvad der var galt, i sin egen fejlbesked.
+        try:
+            if not target.exists():
+                continue
+        except Exception:
+            # Kan vi ikke engang afgoere det, blokerer vi hellere end at gaette.
+            pass
         # Block — found a protected overwrite without prior read
         try:
             preview = "\n".join(

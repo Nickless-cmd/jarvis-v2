@@ -22,7 +22,6 @@ _CRITICAL_COOLDOWN_MINUTES = 360  # 6 hours — kun éngang per døgn i praksis
 
 _last_state: dict[str, Any] = {}
 _last_computed_ts: float = 0.0
-_last_critical_alert_ts: float | None = None
 
 _DISK_PATHS = ("/", "/media/projects")
 _DISK_WARN_PCT = 85.0
@@ -208,15 +207,41 @@ def _compose_report() -> dict[str, Any]:
     }
 
 
+#: Nøglen der holder cooldownen. DELT, ikke en modul-global — se nedenfor.
+_COOLDOWN_NOEGLE = "infra_weather:sidste_kritiske_alarm"
+
+
 def _maybe_emit_critical(report: dict[str, Any]) -> None:
-    global _last_critical_alert_ts
+    """Send ÉN alarm pr. cooldown-vindue — på tværs af processer og genstarter.
+
+    ## Hvorfor den gamle cooldown ikke holdt
+
+    Den var en modul-global. To ting fulgte af det, og begge stod i Bjørns
+    `jarvis-heartbeat` natten til 13/9-2026:
+
+    * **Dubletter.** Både jarvis-api og jarvis-runtime kører denne kode, og hver
+      proces havde sin egen tæller. Derfor kom alarmen to gange i samme minut —
+      00:21, 00:34 og 01:36 står alle dobbelt.
+    * **Genstart re-armerede den.** Cooldownen er seks timer, men alarmerne kom
+      00:00, 00:21, 00:34, 01:36 og 02:25. Hver genstart nulstillede tælleren,
+      og der var mange genstarter den nat.
+
+    `shared_cache` med en TTL løser begge: nøglen findes = vi har allerede
+    ringet, uanset hvilken proces der ringede og hvor mange gange nogen er
+    blevet genstartet siden.
+    """
     if report.get("label") != "critical":
         return
-    now_ts = datetime.now(UTC).timestamp()
-    if _last_critical_alert_ts is not None:
-        if (now_ts - _last_critical_alert_ts) < _CRITICAL_COOLDOWN_MINUTES * 60:
+    try:
+        from core.services import shared_cache
+        if shared_cache.get(_COOLDOWN_NOEGLE):
             return
-    _last_critical_alert_ts = now_ts
+        shared_cache.set(_COOLDOWN_NOEGLE, datetime.now(UTC).isoformat(),
+                         ttl_seconds=_CRITICAL_COOLDOWN_MINUTES * 60)
+    except Exception:
+        # Delt tilstand utilgængelig — hellere én alarm for meget end tavshed
+        # om at systemet er under kritisk pres.
+        pass
     try:
         from core.eventbus.bus import event_bus
         event_bus.publish({
@@ -246,12 +271,20 @@ def get_weather() -> dict[str, Any]:
     if not _last_state or (now_ts - _last_computed_ts) > _RECOMPUTE_SECONDS:
         _last_state = _compose_report()
         _last_computed_ts = now_ts
-        _maybe_emit_critical(_last_state)
     return dict(_last_state)
 
 
 def tick(_seconds: float = 0.0) -> dict[str, Any]:
-    return {"label": get_weather().get("label")}
+    """Dæmonens eget slag — og det ENESTE sted der alarmerer.
+
+    Før sad udsendelsen i `get_weather()`, altså i LÆSE-stien. Enhver der
+    byggede infra-overfladen kunne dermed komme til at sende en alarm til
+    Bjørns telefon — blandt andet prompt-samlingen, som kører pr. tur. Husets
+    egen regel er «no hidden side effects»; det her var en af dem.
+    """
+    rapport = get_weather()
+    _maybe_emit_critical(rapport)
+    return {"label": rapport.get("label")}
 
 
 def build_infra_weather_surface() -> dict[str, Any]:

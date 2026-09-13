@@ -49,6 +49,9 @@ _STATE_DIR = Path.home() / ".jarvis-v2" / "state"
 _SOCKET_PATH = _STATE_DIR / "bash_session.sock"
 _LOCK_PATH = _STATE_DIR / "bash_session.lock"
 _DAEMON_LOG = _STATE_DIR / "bash_session_daemon.log"
+# PID-fil (fix 13. sep 2026): uden den kunne klienten ikke skelne en LEVENDE
+# daemon fra en HÆNGENDE, og kunne derfor ikke dræbe den. Se _ensure_daemon_running.
+_PID_PATH = _STATE_DIR / "bash_session.pid"
 _MAX_SESSIONS = 8
 _OUTPUT_LIMIT_BYTES = 32 * 1024
 _DEFAULT_TIMEOUT = 30
@@ -307,6 +310,10 @@ def _daemon_main() -> int:
         return 1
     sock.listen(16)
     os.chmod(_SOCKET_PATH, 0o600)
+    try:
+        _PID_PATH.write_text(str(os.getpid()))
+    except OSError as exc:
+        log.write(f"pid file write failed: {exc}\n")
 
     sessions: dict[str, _Session] = {}
     sess_lock = threading.Lock()
@@ -316,20 +323,30 @@ def _daemon_main() -> int:
         while True:
             time.sleep(60)
             now = time.time()
+            # VIGTIGT (fix 13. sep 2026): pop under låsen, luk UDENFOR.
+            # `s.close()` tager sessionens EGEN lås, som en igangværende `run` holder
+            # i op til kommandotidens timeout (max 300s). Blev lukningen gjort inde i
+            # sess_lock, blokerede det HVER open/run i hele daemonen — mens `ping`
+            # (som ikke rører låsen) stadig svarede, så klienten troede alt var vel.
+            # Det var den 5-timers tavse hængning: daemonen så sund ud og blev derfor
+            # aldrig erstattet.
             with sess_lock:
                 stale = [
                     sid for sid, s in sessions.items()
                     if (not s.alive()) or (now - s.last_used > _IDLE_SESSION_TTL)
                 ]
-                for sid in stale:
-                    s = sessions.pop(sid, None)
-                    if s is not None:
-                        s.close()
-                        log.write(f"[{now:.0f}] reaped session {sid}\n")
-                # Self-exit if no sessions and idle > daemon TTL
-                if not sessions and (now - last_activity[0] > _IDLE_DAEMON_TTL):
-                    log.write(f"[{now:.0f}] daemon self-exit (idle)\n")
-                    os._exit(0)
+                doomed = [sessions.pop(sid) for sid in stale if sid in sessions]
+                self_exit = (not sessions) and (now - last_activity[0] > _IDLE_DAEMON_TTL)
+            for s in doomed:
+                s.close()
+                log.write(f"[{now:.0f}] reaped session {s.session_id}\n")
+            if self_exit:
+                log.write(f"[{now:.0f}] daemon self-exit (idle)\n")
+                try:
+                    _PID_PATH.unlink()
+                except OSError:
+                    pass
+                os._exit(0)
 
     threading.Thread(target=_reaper, name="bash-daemon-reaper", daemon=True).start()
 
@@ -364,11 +381,15 @@ def _daemon_main() -> int:
                                            "error": f"max {_MAX_SESSIONS} concurrent sessions"})
                             return
                     sid = f"bsh-{uuid.uuid4().hex[:10]}"
-                    try:
-                        sessions[sid] = _Session(sid)
-                    except Exception as exc:
-                        _send(client, {"status": "error", "error": f"spawn failed: {exc}"})
-                        return
+                # _Session() fork'er en bash og dræner PTY'en (~0.6s). Det må ikke
+                # ske under sess_lock — så venter open/run for alle andre imens.
+                try:
+                    sess = _Session(sid)
+                except Exception as exc:
+                    _send(client, {"status": "error", "error": f"spawn failed: {exc}"})
+                    return
+                with sess_lock:
+                    sessions[sid] = sess
                 _send(client, {"status": "ok", "session_id": sid})
 
             elif op == "run":
@@ -450,10 +471,82 @@ def _send(client: socket.socket, payload: dict[str, Any]) -> None:
 # ─────────────────────────────────────────────────────────────────────
 
 
+def _read_daemon_pid() -> int | None:
+    """Læs daemonens PID fra pid-filen. None hvis den ikke findes/er ulaesbar."""
+    try:
+        return int(_PID_PATH.read_text().strip())
+    except Exception:
+        return None
+
+
+def _pid_is_our_daemon(pid: int) -> bool:
+    """Kill-guard: kun en ÆGTE bash-session-daemon. En genbrugt PID må aldrig rammes."""
+    if pid <= 1:
+        return False
+    try:
+        cmdline = Path(f"/proc/{pid}/cmdline").read_bytes().replace(b"\0", b" ").decode()
+    except OSError:
+        return False
+    return "bash_session" in cmdline and "--daemon" in cmdline
+
+
+def _kill_daemon(pid: int) -> None:
+    """SIGTERM, derefter SIGKILL. Gør intet hvis PID'en ikke er vores daemon."""
+    if not _pid_is_our_daemon(pid):
+        return
+    try:
+        os.kill(pid, signal.SIGTERM)
+    except OSError:
+        return
+    for _ in range(20):
+        if not Path(f"/proc/{pid}").exists():
+            return
+        time.sleep(0.1)
+    try:
+        os.kill(pid, signal.SIGKILL)
+    except OSError:
+        pass
+    for _ in range(10):
+        if not Path(f"/proc/{pid}").exists():
+            return
+        time.sleep(0.1)
+
+
+def _force_restart_daemon() -> bool:
+    """Dræb en hængende daemon og start en frisk. True hvis den svarer bagefter."""
+    hung = _read_daemon_pid()
+    if hung is not None:
+        logger.warning("bash_session: daemon %s svarer ikke — dræber og genstarter", hung)
+        _kill_daemon(hung)
+    try:
+        if _SOCKET_PATH.exists():
+            _SOCKET_PATH.unlink()
+    except OSError:
+        pass
+    _spawn_daemon()
+    for _ in range(50):
+        if _ping_daemon():
+            return True
+        time.sleep(0.1)
+    return False
+
+
 def _ensure_daemon_running() -> bool:
     """Return True if a reachable daemon exists. Spawn one if not."""
     if _ping_daemon():
         return True
+    # Ping fejlede, men der kan STADIG leve en daemon-proces: den hænger, holder
+    # socket'en, og en ny daemon ville kæmpe med den om stien. Dræb den først —
+    # ellers arver vi den hængende daemon (13. sep 2026: 5 timer uden shell).
+    hung = _read_daemon_pid()
+    if hung is not None and _pid_is_our_daemon(hung):
+        logger.warning("bash_session: hængende daemon %s fundet — dræber", hung)
+        _kill_daemon(hung)
+        try:
+            if _SOCKET_PATH.exists():
+                _SOCKET_PATH.unlink()
+        except OSError:
+            pass
     _STATE_DIR.mkdir(parents=True, exist_ok=True)
     # Use a file lock to ensure only one process spawns the daemon.
     lock_fd = os.open(str(_LOCK_PATH), os.O_CREAT | os.O_RDWR, 0o600)
@@ -522,7 +615,8 @@ def _ping_daemon() -> bool:
         return False
 
 
-def _client_call(payload: dict[str, Any], timeout: float = 310.0) -> dict[str, Any]:
+def _client_call_once(payload: dict[str, Any], timeout: float = 310.0) -> dict[str, Any]:
+    """Ét IPC-forsøg mod daemonen. Ingen selv-helbredelse — se _client_call."""
     if not _ensure_daemon_running():
         return {"status": "error", "error": "bash session daemon unavailable"}
     try:
@@ -546,6 +640,38 @@ def _client_call(payload: dict[str, Any], timeout: float = 310.0) -> dict[str, A
         return json.loads(line.decode("utf-8"))
     except Exception as exc:
         return {"status": "error", "error": f"daemon ipc failed: {exc}"}
+
+
+def _client_call(payload: dict[str, Any], timeout: float = 310.0) -> dict[str, Any]:
+    """Send ét kald til daemonen — og helbred den selv hvis den er hængt.
+
+    Rod (målt 13. sep 2026): daemonen kunne hænge mens den STADIG svarede på ping
+    (`ping` rører ikke sess_lock, `open` gør). Klienten havde ingen selv-helbredelse,
+    så hvert kald timede ud i 5+ timer — også efter en service-genstart, fordi systemd
+    kalder en gammel daemon for "left-over process" og IGNORERER den frem for at dræbe
+    den. Fixet: når IPC fejler, dræb den hængende daemon og start en frisk.
+
+    SIKKERHED: en `run` gentages ALDRIG — kommandoen kan være delvist udført. Ved en
+    run-heal returneres en eksplicit fejl, så kalderen åbner en frisk session. Det er
+    samme kontrakt som desync-stien i `_Session.run`.
+    """
+    result = _client_call_once(payload, timeout=timeout)
+    if result.get("status") != "error":
+        return result
+    err = str(result.get("error") or "")
+    # Kun en IPC-hængning skal udløse et drab. Applikationsfejl (ukendt session_id,
+    # spawn failed, max sessions) er svar fra en SUND daemon — dem rører vi ikke.
+    if not err.startswith("daemon ipc failed"):
+        return result
+    if not _force_restart_daemon():
+        return result
+    if str(payload.get("op") or "") == "run":
+        return {
+            "status": "error",
+            "session_id": str(payload.get("session_id") or ""),
+            "error": "session lost (daemonen var hængt og blev genstartet — åbn en ny session)",
+        }
+    return _client_call_once(payload, timeout=timeout)
 
 
 # ─────────────────────────────────────────────────────────────────────

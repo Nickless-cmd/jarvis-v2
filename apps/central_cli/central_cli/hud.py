@@ -50,6 +50,7 @@ _TABS: list[tuple[str, str, bool]] = [
     ("nerves", "Nerves", False),
     ("clusters", "Clusters", False),
     ("incidents", "Incidents", False),
+    ("work", "Work", False),
     ("runs", "Runs", False),
     ("approvals", "Approvals", False),
     ("agents", "Agents", False),
@@ -68,7 +69,7 @@ _TABS: list[tuple[str, str, bool]] = [
 # (its populate/detail logic is unchanged) and folds into the incidents tab as a
 # sub-view — so no anomaly functionality is lost.
 _TABLE_TABS = {"nerves", "clusters", "incidents", "anomalies", "governance",
-               "agents", "balancer", "runs", "approvals",
+               "agents", "balancer", "work", "runs", "approvals",
                "connections", "users", "excess", "decentral"}
 # Panel-backed tabs (single full-width panel). "runs"/"approvals" are now wired
 # as real table-tabs (scheduled/autonomy), so they no longer live here.
@@ -432,6 +433,8 @@ class CentralHud(_PopulateMixin, _ActionMixin, App):
                 self._render_healing_panel()
             elif name == "mind":
                 self._render_mind_self_panel()
+            elif name == "work":
+                self._populate_work()
             elif name == "runs":
                 self._populate_runs()
                 self._refresh_detail_for_current()
@@ -453,7 +456,7 @@ class CentralHud(_PopulateMixin, _ActionMixin, App):
                         pass
                     # detaljen skal følge den gendannede markør (ikke row 0 fra populate)
                     if name in ("nerves", "clusters", "incidents", "anomalies",
-                                "governance", "agents", "balancer", "runs"):
+                                "governance", "agents", "balancer", "runs", "work"):
                         self._refresh_detail_for_current()
         except Exception:
             return

@@ -1,6 +1,6 @@
 # API_REFERENCE
 
-> Generated 2026-09-13 from app.routes (live) — 553 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
+> Generated 2026-09-13 from app.routes (live) — 554 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
 
 | Method | Path | Response model | Source |
 |---|---|---|---|
@@ -212,6 +212,7 @@
 | GET | `/central/twins` | dict | central_matrix |
 | GET | `/central/users` | dict | central_users |
 | GET | `/central/white-rabbit` | dict | central_matrix |
+| GET | `/central/work` | dict | central_absorb_routes |
 | GET | `/chat/active-file` | dict | chat |
 | GET | `/chat/active-runs` | dict | chat |
 | POST | `/chat/approvals/{approval_id}/approve` | dict | chat |

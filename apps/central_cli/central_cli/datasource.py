@@ -609,6 +609,22 @@ def scheduled(client: Any) -> list:
         return []
 
 
+def work(client: Any, limit: int = 12) -> dict:
+    """Aktivt arbejde fra /central/work. Self-safe → tomt.
+
+    Ruten foejer opgave og flow sammen paa serveren, saa én raekke er ét stykke
+    arbejde med sin `next_action`. Foer den fandtes, laa de tal i
+    `_runtime_work_surface()` — korrekte, komplette og uden en eneste laeser.
+    """
+    try:
+        data = client.get_json("/central/work", params={"limit": limit})
+        if not isinstance(data, dict):
+            return {"arbejde": [], "antal": {}}
+        return data
+    except Exception:
+        return {"arbejde": [], "antal": {}}
+
+
 def runs(client: Any, limit: int = 20) -> list:
     """Recent visible runs from /central/runs. Self-safe → []."""
     try:

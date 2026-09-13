@@ -465,6 +465,8 @@ class _PopulateMixin:
             self._render_agent_detail(row)
         elif t == "balancer":
             self._render_balancer_detail(row)
+        elif t == "work":
+            self._render_work_detail(row)
         elif t == "runs":
             self._render_run_detail(row)
 
@@ -742,6 +744,92 @@ class _PopulateMixin:
             table.add_row(Text(label, style=FG), val_text, danger_cell)
 
     # -- Runs (recent visible runs, drill-in detail) -----------------------
+    def _populate_work(self) -> None:
+        """Aktivt arbejde: mål, status og NÆSTE HANDLING i samme række.
+
+        Fanen findes fordi tallene allerede fandtes. `_runtime_work_surface()`
+        har siden den blev skrevet beregnet køede, kørende og blokerede opgaver,
+        deres flows og `next_action` — og målt 13/9-2026 havde **ingen klient
+        nogensinde læst den**. Koden var rigtig; ledningen manglede.
+
+        Blokerede står ØVERST. En liste sorteret efter tid begraver netop det
+        arbejde der er gået i stå, og det er det eneste der kræver et menneske.
+        """
+        try:
+            table = self.query_one("#nerve-table", DataTable)
+        except Exception:
+            return
+        self._reset_columns(
+            table, ("opgave", 18), ("status", 10), ("mål", 30), ("næste handling", 30)
+        )
+        if self._client is None:
+            return
+        try:
+            data = datasource.work(self._client, limit=12)
+        except Exception:
+            data = {"arbejde": [], "antal": {}}
+        raekker = list(data.get("arbejde") or [])
+        # Blokeret foerst, saa koerende, saa koeet.
+        _orden = {"blocked": 0, "running": 1, "queued": 2}
+        raekker.sort(key=lambda r: _orden.get(str(r.get("status") or ""), 9))
+        self._work_rows = raekker
+        antal = data.get("antal") or {}
+        forladte = int(antal.get("foraeldreloese_flows") or 0)
+        self._set_paneh(
+            f"[{CYAN}]WORK[/] [{FGDIM}]— {int(antal.get('running') or 0)} kører · "
+            f"{int(antal.get('blocked') or 0)} blokeret · "
+            f"{int(antal.get('queued') or 0)} i kø"
+            + (f" · {forladte} forældreløse flows" if forladte else "")
+            + "[/]"
+        )
+        if not raekker:
+            table.add_row(
+                Text("— intet aktivt arbejde —", style=DIM), Text(""), Text(""), Text("")
+            )
+            return
+        for r in raekker:
+            status = str(r.get("status", "") or "—")
+            farve = {"blocked": "#e06c75", "running": "#98c379"}.get(status, FGDIM)
+            # Naar noget er blokeret, er GRUNDEN den naeste handling.
+            naeste = str(r.get("blocked_reason") or r.get("next_action") or "") or "—"
+            table.add_row(
+                Text(_esc(str(r.get("task_id", "") or "")[:16]), style=FG),
+                Text(f"● {_esc(status)}", style=farve),
+                Text(_esc(str(r.get("goal", "") or "")[:28]), style=FGDIM),
+                Text(_esc(naeste[:28]), style=farve if status == "blocked" else FGDIM),
+            )
+
+    def _render_work_detail(self, row: int) -> None:
+        try:
+            panel = self.query_one("#hud-detail", Static)
+        except Exception:
+            return
+        raekker = getattr(self, "_work_rows", None) or []
+        if not (0 <= row < len(raekker)):
+            return
+        r = raekker[row]
+        linjer = [
+            f"[{CYAN}]{_esc(str(r.get('task_id') or ''))}[/]",
+            "",
+            f"[{FGDIM}]art[/]        {_esc(str(r.get('kind') or '—'))}",
+            f"[{FGDIM}]oprindelse[/] {_esc(str(r.get('origin') or '—'))}",
+            f"[{FGDIM}]status[/]     {_esc(str(r.get('status') or '—'))}",
+            f"[{FGDIM}]prioritet[/]  {_esc(str(r.get('priority') or '—'))}",
+            f"[{FGDIM}]ejer[/]       {_esc(str(r.get('owner') or '—'))}",
+            "",
+            f"[{FGDIM}]mål[/]        {_esc(str(r.get('goal') or '—'))}",
+            f"[{FGDIM}]skridt[/]     {_esc(str(r.get('current_step') or '—'))}",
+            f"[{FGDIM}]næste[/]      {_esc(str(r.get('next_action') or '—'))}",
+        ]
+        if r.get("blocked_reason"):
+            linjer += ["", f"[#e06c75]BLOKERET[/] {_esc(str(r['blocked_reason']))}"]
+        if r.get("last_error"):
+            linjer += [f"[{FGDIM}]sidste fejl[/] {_esc(str(r['last_error'])[:120])}"]
+        if r.get("attempt_count"):
+            linjer += [f"[{FGDIM}]forsøg[/]     {r['attempt_count']}"]
+        linjer += ["", f"[{FGDIM}]opdateret[/]  {_esc(str(r.get('updated_at') or '—'))}"]
+        panel.update("\n".join(linjer))
+
     def _populate_runs(self) -> None:
         try:
             table = self.query_one("#nerve-table", DataTable)

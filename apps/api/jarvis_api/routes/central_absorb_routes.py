@@ -647,3 +647,107 @@ def get_tone() -> dict:
     if not isinstance(profile, dict):
         profile = {}
     return {"tone": profile}
+
+
+@router.get("/work")
+def get_work(limit: int = 12) -> dict:
+    """Det aktive arbejde — opgave OG dens næste handling i samme række.
+
+    ## Hvorfor denne rute findes
+
+    `_runtime_work_surface()` i `mission_control_common.py` har siden den blev
+    skrevet beregnet præcis det her: køede, kørende og **blokerede** opgaver,
+    deres flows, et `current_focus` — og `flows.next_action`, altså feltet der
+    svarer på «hvad venter den på?».
+
+    Målt 13/9-2026: **ingen klient har nogensinde læst den.** Hver eneste
+    forekomst af nøglen `runtime_work` er server-intern. Fladen var bygget,
+    korrekt, og usynlig — husets hyppigste fejl i sin dyreste form.
+
+    ## Hvorfor den ikke bare genbruges uændret
+
+    Den gamle flade returnerer opgaver og flows som **to adskilte lister**. Et
+    cockpit kan ikke bruge det: for at vise «denne opgave venter på dét» skal
+    man selv sammenføje på `flow_id`, og gør hver klient det for sig, gør de
+    det forskelligt.
+
+    Her er de føjet sammen én gang, på serveren, hvor `flow_id`-relationen bor.
+
+    ## Hvad den IKKE gør
+
+    Den samler ikke de elleve andre arbejds-lagre. `claude_dispatch_audit`,
+    `visible_runs`, `autonomy_proposals` og resten har hver deres id-rum, og
+    `runtime_tasks.run_id` er i praksis fyldt med hjerteslags-tick-id'er, ikke
+    kørsels-id'er. At lade som om de var samlet ville være værre end at vise ét
+    ærligt udsnit.
+    """
+    require_central_owner()
+    try:
+        from core.runtime.db_runtime_flows import list_runtime_flows as list_flows
+        from core.runtime.db_runtime_tasks import list_runtime_tasks as list_tasks
+    except Exception:
+        return {"active": False, "arbejde": [], "antal": {}, "note": "lagrene kunne ikke laeses"}
+
+    def _hent(f, status: str) -> list[dict]:
+        try:
+            return list(f(status=status, limit=max(1, limit)) or [])
+        except Exception:
+            return []
+
+    opgaver: list[dict] = []
+    for status in ("running", "blocked", "queued"):
+        opgaver.extend(_hent(list_tasks, status))
+
+    flows: list[dict] = []
+    for status in ("running", "blocked", "queued"):
+        flows.extend(_hent(list_flows, status))
+    pr_flow = {str(f.get("flow_id") or ""): f for f in flows if f.get("flow_id")}
+
+    arbejde: list[dict] = []
+    for t in opgaver:
+        flow = pr_flow.get(str(t.get("flow_id") or "")) or {}
+        # `next_action` er flowets; `blocked_reason` er opgavens. Et cockpit
+        # skal kunne se BEGGE — de svarer paa hvert sit spoergsmaal: «hvad er
+        # naeste skridt» og «hvorfor staar den stille».
+        arbejde.append({
+            "task_id": t.get("task_id"),
+            "kind": t.get("kind"),
+            "origin": t.get("origin"),
+            "status": t.get("status"),
+            "goal": t.get("goal"),
+            "priority": t.get("priority"),
+            "owner": t.get("owner"),
+            "blocked_reason": t.get("blocked_reason") or "",
+            "flow_id": t.get("flow_id") or "",
+            "current_step": flow.get("current_step") or "",
+            "next_action": flow.get("next_action") or "",
+            "attempt_count": flow.get("attempt_count") or 0,
+            "last_error": flow.get("last_error") or "",
+            "updated_at": t.get("updated_at"),
+        })
+
+    # Flows uden en opgave er ikke stoej — det er forældreloest arbejde, og det
+    # er praecis den slags der ellers koerer videre uden at nogen ved det.
+    kendte = {str(t.get("flow_id") or "") for t in opgaver}
+    foraeldreloese = [f for f in flows if str(f.get("flow_id") or "") not in kendte]
+
+    antal = {
+        "running": sum(1 for a in arbejde if a["status"] == "running"),
+        "blocked": sum(1 for a in arbejde if a["status"] == "blocked"),
+        "queued": sum(1 for a in arbejde if a["status"] == "queued"),
+        "foraeldreloese_flows": len(foraeldreloese),
+    }
+    blokerede = [a for a in arbejde if a["status"] == "blocked"]
+
+    absorb(
+        "runtime", "work",
+        {"antal": antal, "blokerede": len(blokerede)},
+        flag_if=lambda v: v["blokerede"] > 0,
+        flag_reason="arbejde staar blokeret",
+    )
+    return {
+        "active": bool(arbejde or foraeldreloese),
+        "arbejde": arbejde,
+        "foraeldreloese_flows": foraeldreloese,
+        "antal": antal,
+    }

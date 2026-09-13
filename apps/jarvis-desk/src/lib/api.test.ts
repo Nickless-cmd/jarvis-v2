@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { cancelRun, getSession, createSession } from './api'
+import { cancelRun, getSession, createSession, apiFetch } from './api'
 
 const cfg = { apiBaseUrl: 'http://test', authToken: 't' }
 
@@ -56,5 +56,59 @@ describe('getTree', () => {
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining('/chat/tree?kind=container'), expect.anything(),
     )
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────
+// Fase 10, kriterium 4: «connection retry never replays a unary mutation»
+//
+// Maalt 13/9-2026: `retries = 2` var METODE-AGNOSTISK. Loekken gentog paa
+// timeout (10 s), netvaerksfejl og 5xx uden at se paa metoden, og disse arvede
+// den uden vaern eller idempotens-noegle:
+//
+//   POST /chat/git/commit-all   POST /chat/git/create-pr
+//   POST /chat/file             POST /central/command
+//
+// En git-operation over ti sekunder ville altsaa blive sendt igen.
+// ─────────────────────────────────────────────────────────────────────────
+
+describe('gentagelse maa aldrig gentage en HANDLING', () => {
+  function taellende503() {
+    const f = vi.fn().mockResolvedValue(new Response('nej', { status: 503 }))
+    vi.stubGlobal('fetch', f)
+    return f
+  }
+
+  it('POST sendes ÉN gang selv naar serveren svarer 503', async () => {
+    const f = taellende503()
+    await expect(
+      apiFetch(cfg, '/chat/git/commit-all', { method: 'POST' }),
+    ).rejects.toBeTruthy()
+    expect(f).toHaveBeenCalledTimes(1)
+  })
+
+  it('DELETE og PUT gentages heller ikke', async () => {
+    for (const method of ['DELETE', 'PUT'] as const) {
+      const f = taellende503()
+      await expect(apiFetch(cfg, '/x', { method })).rejects.toBeTruthy()
+      expect(f).toHaveBeenCalledTimes(1)
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('GET gentages STADIG — en gentagen laesning koster tid, ikke en handling', async () => {
+    const f = taellende503()
+    await expect(apiFetch(cfg, '/chat/sessions')).rejects.toBeTruthy()
+    expect(f).toHaveBeenCalledTimes(3)   // 1 forsoeg + 2 gentagelser
+  })
+
+  it('en kalder kan STADIG bede om gentagelse eksplicit', async () => {
+    // Doeren staar aaben for et endpoint der beviseligt er idempotent — men
+    // valget skal traeffes af den der VED det, ikke af en default.
+    const f = taellende503()
+    await expect(
+      apiFetch(cfg, '/noget/idempotent', { method: 'POST', retries: 2 }),
+    ).rejects.toBeTruthy()
+    expect(f).toHaveBeenCalledTimes(3)
   })
 })

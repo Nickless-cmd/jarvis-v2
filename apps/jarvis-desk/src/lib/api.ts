@@ -87,9 +87,35 @@ export async function apiFetch<T>(
     method = 'GET',
     body,
     timeoutMs = 10_000,
-    retries = 2,
     signal,
   } = options
+
+  // Et GENTAGET POST er en GENTAGET handling.
+  //
+  // Fase 10, kriterium 4: «connection retry never replays a unary mutation».
+  // Loekken nedenfor gentager paa timeout (10 s), netvaerksfejl og 5xx, og den
+  // saa FOER ikke paa metoden. Maalt 13/9-2026 arvede disse den:
+  //
+  //   POST /chat/git/commit-all   POST /chat/git/create-pr
+  //   POST /chat/file             POST /central/command
+  //
+  // Ingen af dem har et krav eller en idempotens-noegle. En git-operation der
+  // tager over ti sekunder ville altsaa blive sendt igen — to commits, to PR'er.
+  // Klienten kan ikke se forskel paa «serveren naaede det ikke» og «serveren
+  // naaede det, men svaret naaede ikke tilbage», og derfor er den eneste
+  // sikre default at lade vaere.
+  //
+  // Godkendelses-stien er den ene undtagelse der ALLEREDE er daekket:
+  // `resolve_pending_approval` tager kortet under en laas foer
+  // udbyder-graensen («a decision is consumed at most once by atomic claim»,
+  // fikset 9/9-2026 efter en MAALT dobbelt-udfoerelse), saa en gentagelse faar
+  // «Approval already resolved» og et 404, som ikke er retry-bart. Men det er
+  // ét endpoints fortjeneste, ikke klientens — og resten deler ikke det vaern.
+  //
+  // Laeseoperationer gentages uaendret. En gentaget GET koster tid, ikke en
+  // handling.
+  const erLaesning = method === 'GET' || method === 'HEAD'
+  const retries = options.retries ?? (erLaesning ? 2 : 0)
 
   const url = new URL(path, config.apiBaseUrl).toString()
   const headers: Record<string, string> = {

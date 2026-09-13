@@ -86,3 +86,60 @@ def test_beskeden_giver_ham_en_vej_UD_af_kaeden():
     faerdig — og hver fortsaettelse koster et helt run."""
     t = fortsaettelses_besked(1)
     assert "færdigt" in t or "færdig" in t
+
+
+# ────────────────────────────────────────────────────────────────────────
+# «ukendt» daekkede TO tilstande — maalt 13/9-2026
+#
+# Fire beslutninger loed `udfald=ukendt`, og ordet daekkede baade «turen naaede
+# aldrig bogfoerings-punktet» (et KORREKT nej) og «udfaldet blev noteret under
+# en noegle vi ikke slog op» (en FEJL). Med ét ord for begge kan man ikke se
+# hvilken man har — og saa bliver den anden aldrig fundet.
+# ────────────────────────────────────────────────────────────────────────
+
+def test_intet_bogfoert_er_IKKE_det_samme_som_bogfoert_tomt():
+    import core.services.auto_continuation as ac
+    ac._UDFALD.clear()
+    # intet bogfoert
+    assert ac.hent_udfald("findes-ikke", "heller-ikke") == ac.IKKE_BOGFOERT
+    # bogfoert, men tomt
+    ac.noter_udfald("r-tom", "", "s-tom")
+    assert ac.hent_udfald("r-tom", "s-tom") == ""
+    assert ac.hent_udfald("r-tom", "s-tom") != ac.IKKE_BOGFOERT
+    ac._UDFALD.clear()
+
+
+def test_beslutningens_GRUND_skelner_de_to():
+    """Grunden havner i journalen. Kan man ikke skelne dér, kan man ikke
+    skelne nogen steder."""
+    import core.services.auto_continuation as ac
+    ac._UDFALD.clear()
+    uden = ac.beslut(exit_reason=ac.hent_udfald("x", "y"), slaaet_til=True,
+                     autonom=False, kaede_nr=0, bruger_skrev_imens=False)
+    assert "ikke-bogfoert" in uden.grund
+
+    ac.noter_udfald("r", "completed", "s")
+    med = ac.beslut(exit_reason=ac.hent_udfald("r", "s"), slaaet_til=True,
+                    autonom=False, kaede_nr=0, bruger_skrev_imens=False)
+    assert "completed" in med.grund and "ikke-bogfoert" not in med.grund
+    ac._UDFALD.clear()
+
+
+def test_sentinel_udloeser_ALDRIG_en_fortsaettelse():
+    """Et manglende udfald maa ikke kunne forveksles med et budget der loeb
+    toert. Tvivl fortsaetter ikke af sig selv."""
+    import core.services.auto_continuation as ac
+    b = ac.beslut(exit_reason=ac.IKKE_BOGFOERT, slaaet_til=True, autonom=False,
+                  kaede_nr=0, bruger_skrev_imens=False)
+    assert b.fortsaet is False
+
+
+def test_session_fallbacken_virker_stadig():
+    """Vagt mod at skelnen braekker den fallback der var hele pointen med
+    b32928c8c: de to sider af en tur bruger FORSKELLIGE run-id."""
+    import core.services.auto_continuation as ac
+    ac._UDFALD.clear()
+    ac.noter_udfald("indre-id", ac.OPBRUGT, "fælles-session")
+    # opslag med det YDRE id — kun sessionen er faelles
+    assert ac.hent_udfald("ydre-id", "fælles-session") == ac.OPBRUGT
+    ac._UDFALD.clear()

@@ -48,6 +48,16 @@ MAKS_KAEDE = 3
 #: De udfald der betyder «løb tør», og ikke «nogen greb ind».
 OPBRUGT = "budget-opbrugt"
 
+#: Der stod INTET under nogen af noeglerne. Det er ikke det samme som et udfald
+#: der blev bogfoert tomt.
+#:
+#: Maalt 13/9-2026: fire beslutninger loed «udfald=ukendt», og det ene ord
+#: daekkede to helt forskellige tilstande — «turen naaede aldrig
+#: bogfoerings-punktet» (et korrekt nej) og «udfaldet blev noteret under en
+#: noegle vi ikke slog op» (en fejl). Med ét ord for begge kan man ikke se
+#: hvilken man har, og saa bliver den anden aldrig fundet.
+IKKE_BOGFOERT = "ikke-bogfoert"
+
 
 @dataclass(frozen=True)
 class Beslutning:
@@ -158,9 +168,12 @@ def hent_udfald(run_id: str, session_id: str = "") -> str:
         if rid and rid in _UDFALD:
             return _UDFALD[rid]
         sid = (session_id or "").strip()
-        if sid:
-            return _UDFALD.get("session:" + sid, "")
-        return ""
+        nøgle = "session:" + sid
+        if sid and nøgle in _UDFALD:
+            return _UDFALD[nøgle]
+        # Ingen af noeglerne fandtes. Det er en ANDEN tilstand end et bogfoert
+        # tomt udfald, og de to maa ikke smelte sammen til ét ord i loggen.
+        return IKKE_BOGFOERT
 
 
 def kaede_nr(session_id: str) -> int:

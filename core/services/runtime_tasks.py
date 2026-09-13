@@ -22,7 +22,7 @@ def create_task(
     priority: str = "medium",
     flow_id: str = "",
     session_id: str = "",
-    run_id: str = "",
+    origin_ref: str = "",
     owner: str = "",
 ) -> dict[str, object]:
     now = datetime.now(UTC).isoformat()
@@ -48,7 +48,7 @@ def create_task(
         priority=normalized_priority,
         flow_id=str(flow_id or "").strip(),
         session_id=str(session_id or "").strip(),
-        run_id=str(run_id or "").strip(),
+        origin_ref=str(origin_ref or "").strip(),
         owner=str(owner or "").strip(),
         created_at=now,
         updated_at=now,
@@ -84,7 +84,7 @@ def update_task(
     status: str | None = None,
     flow_id: str | None = None,
     session_id: str | None = None,
-    run_id: str | None = None,
+    origin_ref: str | None = None,
     owner: str | None = None,
     retry_at: str | None = None,
     blocked_reason: str | None = None,
@@ -100,7 +100,7 @@ def update_task(
         status=normalized_status,
         flow_id=str(flow_id or "").strip() if flow_id is not None else None,
         session_id=str(session_id or "").strip() if session_id is not None else None,
-        run_id=str(run_id or "").strip() if run_id is not None else None,
+        origin_ref=str(origin_ref or "").strip() if origin_ref is not None else None,
         owner=str(owner or "").strip() if owner is not None else None,
         retry_at=str(retry_at or "").strip() if retry_at is not None else None,
         blocked_reason=(

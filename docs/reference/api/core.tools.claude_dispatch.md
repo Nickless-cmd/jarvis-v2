@@ -13,10 +13,9 @@ _(no top-level classes or functions)_
 | function | `_now_iso` | `()` | — | [src](../../../core/tools/claude_dispatch/audit.py#L12) |
 | function | `_sikr_ophav_kolonner` | `(conn)` | Doven migration — samme mønster som `kind` på chat_sessions. | [src](../../../core/tools/claude_dispatch/audit.py#L16) |
 | function | `_ophav` | `()` | Hvilken kørsel og session udløste denne dispatch? | [src](../../../core/tools/claude_dispatch/audit.py#L33) |
-| function | `_work_ref` | `(run_id, task_id)` | RODEN for dette arbejde, som en præfikset reference. | [src](../../../core/tools/claude_dispatch/audit.py#L61) |
-| function | `start_audit_row` | `(task_id, spec)` | — | [src](../../../core/tools/claude_dispatch/audit.py#L81) |
-| function | `finalize_audit_row` | `(task_id, *, status, tokens_used, exit_code, diff_summary, error)` | — | [src](../../../core/tools/claude_dispatch/audit.py#L98) |
-| function | `read_audit_row` | `(task_id)` | — | [src](../../../core/tools/claude_dispatch/audit.py#L116) |
+| function | `start_audit_row` | `(task_id, spec)` | — | [src](../../../core/tools/claude_dispatch/audit.py#L61) |
+| function | `finalize_audit_row` | `(task_id, *, status, tokens_used, exit_code, diff_summary, error)` | — | [src](../../../core/tools/claude_dispatch/audit.py#L77) |
+| function | `read_audit_row` | `(task_id)` | — | [src](../../../core/tools/claude_dispatch/audit.py#L95) |
 
 ## `core/tools/claude_dispatch/budget.py`
 

@@ -14,7 +14,10 @@ def test_runtime_tasks_persist_and_update(isolated_runtime) -> None:
         scope="/media/projects/jarvis-v2",
         priority="high",
         session_id="session-123",
-        run_id="run-123",
+        # Kolonnen hed `run_id` og indeholdt ikke et run (maalt 13/9-2026:
+        # 984 raekker med `heartbeat-tick:…`). Navnet er rettet til det den
+        # faktisk baerer.
+        origin_ref="run-123",
         owner="visible-chat",
     )
 

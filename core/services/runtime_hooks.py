@@ -128,7 +128,10 @@ def dispatch_hook_event(event: dict[str, object]) -> dict[str, object]:
             origin=f"hook:{event_kind}",
             scope=scope,
             priority="medium",
-            run_id=str(payload.get("tick_id") or "").strip(),
+            # Ophavet er et TICK, ikke en koersel. Feltet hed `run_id` og
+            # loej derfor om hvad det indeholdt; det hedder nu `origin_ref`.
+            # Praefikset goer arten laesbar og referencen oploeselig.
+            origin_ref=_tick_ref(payload.get("tick_id")),
             owner="runtime-hook",
         )
         flow = runtime_flows.create_flow(
@@ -159,6 +162,28 @@ def dispatch_hook_event(event: dict[str, object]) -> dict[str, object]:
         summary="Event kind is not supported by runtime hook dispatch.",
         created_at=created_at,
     )
+
+
+def _tick_ref(tick_id: object) -> str:
+    """`tick:<id>` — eller tom, hvis der ikke er et tick.
+
+    Praefikset foelger `core.runtime.work_ref`, saa referencen kan oploeses ét
+    sted. Et bart id kunne vaere baade et tick og en koersel, og de to peger
+    ikke samme sted hen.
+    """
+    from core.runtime.work_ref import er_gyldig, lav, UgyldigReference
+    raa = str(tick_id or "").strip()
+    if not raa:
+        return ""
+    # Producenten sender ALLEREDE `heartbeat-tick:…`. En ekstra praefiksering
+    # ville goere referencen tvetydig — og i foerste udgave tabte den vaerdien
+    # helt, fordi id'et saa indeholdt et skilletegn.
+    if er_gyldig(raa):
+        return raa
+    try:
+        return lav("heartbeat-tick", raa)
+    except UgyldigReference:
+        return ""
 
 
 def _find_active_task(

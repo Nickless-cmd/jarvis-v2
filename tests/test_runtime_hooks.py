@@ -62,7 +62,7 @@ def test_runtime_hooks_dispatch_blocked_heartbeat_ticks_into_followup_work(isola
     task = isolated_runtime.db.get_runtime_task(dispatch["task_id"])
     assert task is not None
     assert task["kind"] == "heartbeat-followup"
-    assert task["run_id"] == "heartbeat-tick:abc"
+    assert task["origin_ref"] == "heartbeat-tick:abc"
 
 
 def test_runtime_hooks_dispatch_tick_blocked_events_into_followup_work(isolated_runtime) -> None:
@@ -93,7 +93,7 @@ def test_runtime_hooks_dispatch_tick_blocked_events_into_followup_work(isolated_
     task = isolated_runtime.db.get_runtime_task(dispatch["task_id"])
     assert task is not None
     assert task["kind"] == "heartbeat-followup"
-    assert task["run_id"] == "heartbeat-tick:def"
+    assert task["origin_ref"] == "heartbeat-tick:def"
 
 
 def test_runtime_hooks_coalesce_duplicate_blocked_heartbeat_work(isolated_runtime) -> None:

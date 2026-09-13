@@ -10,7 +10,36 @@ import sqlite3
 from core.runtime.db_core import connect
 
 
+def _omdoeb_run_id_til_origin_ref(conn: sqlite3.Connection) -> None:
+    """Kolonnen hed `run_id` og indeholdt ikke et run.
+
+    Målt 13/9-2026: 984 rækker, og værdien er `heartbeat-tick:036bd93e-…` — et
+    TIDSPUNKT, ikke en kørsel. Ingen af de øvrige opgave-skabere
+    (`runtime_action_executor`, `system_cartographer`, `agency_cartographer`)
+    sender overhovedet en kørsel med.
+
+    Så længe den hed `run_id`, løj navnet — og det er præcis den slags der
+    koster en eftermiddag om et halvt år, fordi nogen joiner på den i god tro.
+
+    Doven og idempotent: findes `origin_ref` allerede, sker der intet. Findes
+    `run_id` ikke, er tabellen ny og har det rigtige navn fra skemaet.
+    """
+    try:
+        kolonner = {r[1] for r in conn.execute("PRAGMA table_info(runtime_tasks)")}
+    except Exception:
+        return
+    if "origin_ref" in kolonner or "run_id" not in kolonner:
+        return
+    try:
+        conn.execute("ALTER TABLE runtime_tasks RENAME COLUMN run_id TO origin_ref")
+    except Exception:
+        # Kan den ikke omdøbes, er det bedre at lade den gamle kolonne stå end
+        # at efterlade tabellen halvt migreret.
+        pass
+
+
 def ensure_runtime_tasks_tables(conn: sqlite3.Connection) -> None:
+    _omdoeb_run_id_til_origin_ref(conn)
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS runtime_tasks (
@@ -24,7 +53,7 @@ def ensure_runtime_tasks_tables(conn: sqlite3.Connection) -> None:
             priority TEXT NOT NULL DEFAULT 'medium',
             flow_id TEXT NOT NULL DEFAULT '',
             session_id TEXT NOT NULL DEFAULT '',
-            run_id TEXT NOT NULL DEFAULT '',
+            origin_ref TEXT NOT NULL DEFAULT '',
             owner TEXT NOT NULL DEFAULT '',
             retry_at TEXT NOT NULL DEFAULT '',
             blocked_reason TEXT NOT NULL DEFAULT '',
@@ -60,7 +89,7 @@ def _runtime_task_from_row(row: sqlite3.Row) -> dict[str, object]:
         "priority": row["priority"],
         "flow_id": row["flow_id"],
         "session_id": row["session_id"],
-        "run_id": row["run_id"],
+        "origin_ref": row["origin_ref"],
         "owner": row["owner"],
         "retry_at": row["retry_at"],
         "blocked_reason": row["blocked_reason"],
@@ -82,7 +111,7 @@ def create_runtime_task(
     priority: str = "medium",
     flow_id: str = "",
     session_id: str = "",
-    run_id: str = "",
+    origin_ref: str = "",
     owner: str = "",
     retry_at: str = "",
     blocked_reason: str = "",
@@ -104,7 +133,7 @@ def create_runtime_task(
                 priority,
                 flow_id,
                 session_id,
-                run_id,
+                origin_ref,
                 owner,
                 retry_at,
                 blocked_reason,
@@ -125,7 +154,7 @@ def create_runtime_task(
                 priority,
                 flow_id,
                 session_id,
-                run_id,
+                origin_ref,
                 owner,
                 retry_at,
                 blocked_reason,
@@ -156,7 +185,7 @@ def get_runtime_task(task_id: str) -> dict[str, object] | None:
                 priority,
                 flow_id,
                 session_id,
-                run_id,
+                origin_ref,
                 owner,
                 retry_at,
                 blocked_reason,
@@ -203,7 +232,7 @@ def list_runtime_tasks(
                 priority,
                 flow_id,
                 session_id,
-                run_id,
+                origin_ref,
                 owner,
                 retry_at,
                 blocked_reason,
@@ -227,7 +256,7 @@ def update_runtime_task(
     status: str | None = None,
     flow_id: str | None = None,
     session_id: str | None = None,
-    run_id: str | None = None,
+    origin_ref: str | None = None,
     owner: str | None = None,
     retry_at: str | None = None,
     blocked_reason: str | None = None,
@@ -241,7 +270,7 @@ def update_runtime_task(
         "status": status,
         "flow_id": flow_id,
         "session_id": session_id,
-        "run_id": run_id,
+        "origin_ref": origin_ref,
         "owner": owner,
         "retry_at": retry_at,
         "blocked_reason": blocked_reason,

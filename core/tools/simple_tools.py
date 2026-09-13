@@ -55,6 +55,11 @@ from core.tools.pollinations_tools import (
     _exec_pollinations_image,
     _exec_pollinations_video,
 )
+from core.tools.openrouter_image_tools import (
+    OPENROUTER_IMAGE_TOOL_DEFINITIONS,
+    _exec_openrouter_image,
+    _exec_openrouter_image_edit,
+)
 from core.tools.hf_inference_tools import (
     HF_INFERENCE_TOOL_DEFINITIONS,
     _exec_hf_text_to_video,
@@ -1605,6 +1610,9 @@ _TOOL_HANDLERS: dict[str, Any] = {
     # Pollinations.ai free image gen (no RAM, no auth)
     "pollinations_image": _exec_pollinations_image,
     "pollinations_video": _exec_pollinations_video,
+    # OpenRouter paid image gen + edit (Gemini draws — sharp, vector-like)
+    "openrouter_image": _exec_openrouter_image,
+    "openrouter_image_edit": _exec_openrouter_image_edit,
     # HuggingFace serverless inference
     "hf_text_to_video": _exec_hf_text_to_video,
     "hf_transcribe_audio": _exec_hf_transcribe_audio,

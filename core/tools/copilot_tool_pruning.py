@@ -142,6 +142,11 @@ TIER_2_CATEGORIES: dict[str, tuple[tuple[str, ...], tuple[str, ...]]] = {
          "lav video"),
         ("pollinations_image", "pollinations_video"),
     ),
+    "openrouter_image": (
+        ("openrouter image", "rediger billede", "edit image", "tegn", "ikon",
+         "icon", "logo", "sharp image", "vektor", "vector"),
+        ("openrouter_image", "openrouter_image_edit"),
+    ),
     "hf": (
         ("hugging", "transcribe", "embed", "classify", "zero-shot"),
         ("hf_text_to_video", "hf_transcribe_audio", "hf_embed",

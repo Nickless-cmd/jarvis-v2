@@ -16,6 +16,7 @@ from typing import Any
 from core.tools.browser_tools import (BROWSER_TOOL_DEFINITIONS)
 from core.tools.comfyui_tools import (COMFYUI_TOOL_DEFINITIONS)
 from core.tools.pollinations_tools import (POLLINATIONS_TOOL_DEFINITIONS)
+from core.tools.openrouter_image_tools import (OPENROUTER_IMAGE_TOOL_DEFINITIONS)
 from core.tools.hf_inference_tools import (HF_INFERENCE_TOOL_DEFINITIONS)
 from core.tools.mic_listen_tool import (MIC_LISTEN_TOOL_DEFINITIONS)
 from core.tools.screen_tool import (SCREEN_TOOL_DEFINITIONS)
@@ -3376,6 +3377,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *BROWSER_TOOL_DEFINITIONS,
     *COMFYUI_TOOL_DEFINITIONS,
     *POLLINATIONS_TOOL_DEFINITIONS,
+    *OPENROUTER_IMAGE_TOOL_DEFINITIONS,
     *HF_INFERENCE_TOOL_DEFINITIONS,
     *MIC_LISTEN_TOOL_DEFINITIONS,
     *SCREEN_TOOL_DEFINITIONS,

@@ -409,6 +409,14 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "retired": "2026-07-15",
         "description": "[PENSIONERET → cluster_cognition] Aktiv sansetrang: Sansernes Arkiv vælger selv at sanse (visual/audio/atmosphere/mixed) på eget initiativ",
     },
+    "ambient_sound": {
+        "module": "core.services.ambient_sound_daemon",
+        "reset_var": "_unused_reset_marker",
+        "reset_value": None,
+        "default_cadence_minutes": 360,
+        "default_enabled": True,  # REGISTRERET 2026-09-13 — var FORÆLDRELØS (ikke i registret → is_enabled() returnerede True for ukendt navn, tick-siten kørte UGATED, og record_daemon_tick no-op'ede så den så "aldrig kørt" ud). Selv-gatet internt via ambient_sound_experiment_enabled (opt-in) + 6t cooldown. Nu synlig/togglebar via daemon-manageren.
+        "description": "Layer 6½: 4x/dag akustisk metadata-sample (opt-in via ambient_sound_experiment_enabled); hvert sample mirror'es til Sansernes Arkiv (record_audio)",
+    },
     "ground_truth_registry": {
         "module": "core.services.ground_truth_registry",
         "reset_var": "_unused_reset_marker",

@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 14562 functions/methods, 51% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 14569 functions/methods, 51% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -50,10 +50,10 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 14562 functions/
 - [`core.services.20`](core.services.20.md) — `research_store` … `scheduled_job_windows`
 - [`core.services.21`](core.services.21.md) — `scheduled_task_runner` … `session_boot_reconciler`
 - [`core.services.22`](core.services.22.md) — `session_context_resolve` … `skill_scanner`
-- [`core.services.23`](core.services.23.md) — `skill_security_scanner` … `theater_audit`
-- [`core.services.24`](core.services.24.md) — `theory_of_mind` … `user_activity`
-- [`core.services.25`](core.services.25.md) — `user_contradiction_tracker` … `visible_self_state_summary`
-- [`core.services.26`](core.services.26.md) — `visible_stream_gate` … `world_model_signal_tracking`
+- [`core.services.23`](core.services.23.md) — `skill_security_scanner` … `text_resonance`
+- [`core.services.24`](core.services.24.md) — `theater_audit` … `upload_sandbox`
+- [`core.services.25`](core.services.25.md) — `user_activity` … `visible_runs_watchdog`
+- [`core.services.26`](core.services.26.md) — `visible_self_state_summary` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

@@ -303,8 +303,9 @@ _Jobs Engine — proper async job queue with provider selection and cost trackin
 | function | `cancel_job` | `(job_id)` | Marker jobbet afbrudt. Returnerer om afbrydelsen blev REGISTRERET. | [src](../../../core/services/jobs_engine.py#L456) |
 | function | `sweep_zombie_jobs` | `(stale_seconds=…)` | Marker 'running' jobs aeldre end stale_seconds som `lost`. | [src](../../../core/services/jobs_engine.py#L478) |
 | function | `_fej_ulaast` | `(stale_seconds)` | — | [src](../../../core/services/jobs_engine.py#L500) |
-| function | `list_jobs` | `(*, status=…, limit=…)` | — | [src](../../../core/services/jobs_engine.py#L534) |
-| function | `build_jobs_engine_surface` | `()` | — | [src](../../../core/services/jobs_engine.py#L541) |
+| function | `all_jobs` | `()` | ALLE jobs — ingen hale klippet af. | [src](../../../core/services/jobs_engine.py#L534) |
+| function | `list_jobs` | `(*, status=…, limit=…)` | — | [src](../../../core/services/jobs_engine.py#L551) |
+| function | `build_jobs_engine_surface` | `()` | — | [src](../../../core/services/jobs_engine.py#L558) |
 
 ## `core/services/kerne_curator.py`
 _Kerne-kurator — holder USER.md `## Kerne` kort og levende (blok A, 2026-09-04)._

@@ -29,7 +29,18 @@ StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=jarvis-runtime
 
-AmbientCapabilities=CAP_SETUID CAP_SETGID
+# INGEN AmbientCapabilities. Linjen stod her indtil 13/9-2026 og braekkede
+# bash-sandkassen fuldstaendigt: ambient capabilities arves ind i ETHVERT barn,
+# ogsaa bwrap, og bubblewrap naegter bevidst at koere med capabilities uden at
+# vaere setuid (containers/bubblewrap#380). Hvert eneste sandkasse-kald doede med
+#   bwrap: Unexpected capabilities but not setuid, old file caps config?
+# mens status() meldte «aktiv: True».
+#
+# Intet i koden bruger capabilities (nul traef paa os.setuid/setgid/prctl), og
+# 443 ejes af Caddy — Jarvis sidder paa 8011/8080. De var altsaa overfloedige.
+#
+# CapabilityBoundingSet nedenfor BLIVER: den BEGRAENSER kun hvad processen maa
+# faa, arves ikke som ambient, og er aegte hardening.
 CapabilityBoundingSet=CAP_SETUID CAP_SETGID
 
 MemoryMax=16G

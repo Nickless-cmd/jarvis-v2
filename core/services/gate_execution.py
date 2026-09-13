@@ -83,10 +83,26 @@ def _rapporter_fail_open(nerve: str, hvad: str, exc: BaseException) -> None:
         from core.runtime.db_central_incidents import record_central_incident
         record_central_incident(
             cluster="execution", nerve=str(nerve or "exec"), kind="fail_open",
-            severity="error", message=besked[:300], dedup=True,
+            severity="error", message=besked[:300],
+            # Ogsaa fail-open skal kunne spores. En gate der giver op er
+            # praecis dér man vil vide HVILKEN koersel der slap forbi.
+            run_id=_spor_run_id(), session_id=_spor_session_id(),
+            dedup=True,
         )
     except Exception:
         pass
+
+def _spor_run_id() -> str:
+    """Hvilken koersel fyrede gaten. Self-safe: et manglende spor maa aldrig
+    kunne vaelte den gate der spurgte."""
+    from core.services.session_context_resolve import aktivt_run_id
+    return aktivt_run_id()
+
+
+def _spor_session_id() -> str:
+    from core.services.session_context_resolve import aktiv_session_id
+    return aktiv_session_id()
+
 
 # ── den konsoliderede gate ───────────────────────────────────────────────
 def execution_gate(ctx: dict[str, Any]) -> Verdict:
@@ -234,6 +250,10 @@ def _decide(nerve: str, ctx: dict[str, Any]) -> Verdict:
                     severity="severe",
                     message=f"exec-gate kollaps (central+direkte) → sidste-udvej GREEN (enforcement-tab): "
                             f"{type(_exec_exc).__name__}: {_exec_exc}"[:300],
+                    # Den VIGTIGSTE at kunne spore: en SIKKERHEDS-gate der
+                    # falder aaben. Uden run_id kan man ikke bagefter finde ud
+                    # af hvad der slap igennem.
+                    run_id=_spor_run_id(), session_id=_spor_session_id(),
                 )
             except Exception:
                 pass
@@ -355,6 +375,11 @@ def gate_observation(
             severity="warning" if count < 3 else "error",
             message=f"gate {gate} → {classification or status}: {reason or '(ingen begrundelse)'} "
                     f"| emne={subject[:120]} | gentagelse={count}",
+            # HVEM gjorde det. Incident 6798 (exec_command_guard blokerede en
+            # overskrivning af MEMORY.md, 12/9-2026) stod uden spor til nogen
+            # koersel — feltet fandtes, kalderen sendte det bare ikke.
+            run_id=_spor_run_id(),
+            session_id=_spor_session_id(),
             dedup=True,
         )
     except Exception:

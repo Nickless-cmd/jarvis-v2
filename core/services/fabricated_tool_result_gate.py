@@ -35,9 +35,25 @@ import re
 from dataclasses import dataclass, field
 
 # Matcher både "[tool_result:<id>]" og bar "tool-result-<id>" (som i den fabrikerede
-# ``([tool_result:tool-result-4f0a… — bash_session_open: …])``-form). Bredt nok til at
-# fange enhver reference, snævert nok til ikke at ramme almindelig prosa.
-_TOOL_RESULT_ID_RE = re.compile(r"tool-result-([A-Za-z0-9_-]{6,})")
+# ``([tool_result:tool-result-4f0a… — bash_session_open: …])``-form).
+#
+# HEX, ikke hvad som helst. Det stod der «snævert nok til ikke at ramme almindelig
+# prosa» og «nul falske positiver» — og begge dele var forkerte. `[A-Za-z0-9_-]{6,}`
+# matcher ethvert ord, saa da Jarvis den 12/9-2026 skrev OM tool-resultater (vi
+# byggede netop tool-result-visningen i mobilen den aften), blev
+# «tool-result-visning» og «tool-result-rendering» udtrukket som id'er. De findes
+# selvsagt ikke i storen, saa gaten bogfoerte to FABRIKEREDE resultater — incident
+# 8839, gentaget fire gange. Anklagen for den ene loegn der ikke kan bortforklares,
+# udloest af at tale om emnet.
+#
+# AEgte id'er er `tool-result-{uuid4().hex}` = 32 tegn hex (tool_result_store:41).
+# Den dokumenterede fabrikation var ogsaa hex (`4f0a1b2c…`, `5a6b7c8d…`), saa
+# hex-kravet rammer stadig praecis det den blev bygget til — og otte tegn i stedet
+# for 32 lader en model der opfinder et kortere hex-id blive fanget.
+#
+# «visning» (v, s, n, g) og «rendering» (r, n, i, g) indeholder ikke-hex bogstaver
+# og kan derfor ikke laengere forveksles med et id.
+_TOOL_RESULT_ID_RE = re.compile(r"tool-result-([0-9a-fA-F]{8,})")
 
 
 @dataclass

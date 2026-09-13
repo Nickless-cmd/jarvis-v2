@@ -523,6 +523,11 @@ def _fabricated_tool_result_footnote(text: str) -> str | None:
         try:
             from core.runtime.db_central_incidents import record_central_incident
             _ids = verdict.fabricated or verdict.leaked
+            # HVEM gjorde det. Feltet fandtes; kalderen sendte det bare ikke,
+            # saa incident 8839 stod uden spor til nogen koersel.
+            from core.services.session_context_resolve import (
+                aktiv_session_id, aktivt_run_id,
+            )
             record_central_incident(
                 cluster="honesty",
                 nerve="fabricated_tool_result" if verdict.fabricated else "tool_marker_leak",
@@ -533,6 +538,8 @@ def _fabricated_tool_result_footnote(text: str) -> str | None:
                     f"{len(verdict.fabricated)} fabrikeret, {len(verdict.leaked)} lækket; "
                     f"ids={', '.join(_ids[:5])}"
                 ),
+                run_id=aktivt_run_id(),
+                session_id=aktiv_session_id(),
                 dedup=True,          # gentagelse bumper recurrence i stedet for at spamme
             )
         except Exception:

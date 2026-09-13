@@ -114,7 +114,9 @@ export async function apiFetch<T>(
   //
   // Laeseoperationer gentages uaendret. En gentaget GET koster tid, ikke en
   // handling.
-  const erLaesning = method === 'GET' || method === 'HEAD'
+  // Kun 'GET'. Klientens `method`-type indeholder ikke 'HEAD', saa en
+  // sammenligning med den var doed kode — og TypeScript sagde det.
+  const erLaesning = method === 'GET'
   const retries = options.retries ?? (erLaesning ? 2 : 0)
 
   const url = new URL(path, config.apiBaseUrl).toString()

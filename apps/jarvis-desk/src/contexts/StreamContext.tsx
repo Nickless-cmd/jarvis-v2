@@ -154,6 +154,15 @@ export function StreamProvider({
   const [override, setOverride] = useState<null | 'hung' | 'interrupted' | 'error' | 'reconnecting'>(null)
   // Netværks-reconnect (re-attach til det LEVENDE run via followRun — IKKE re-POST).
   const reconnectCtrlRef = useRef<{ abort: () => void } | null>(null)
+  // GENERATIONER. Fase 10, kriterium 3: «fences late old-generation callbacks».
+  //
+  // Begge controller-refs blev FOER overskrevet uden at den forrige blev
+  // afbrudt, saa to strømme dispatchede ind i den samme reducer samtidig.
+  // Et tal pr. ref goer det muligt for en callback at spoerge «er jeg stadig
+  // den aktuelle?» — en ref-sammenligning duer ikke, fordi callback'en er
+  // lukket om en vaerdi der er sat FOER tildelingen returnerer.
+  const reconnectGenRef = useRef(0)
+  const controlGenRef = useRef(0)
   const reconnectAttemptRef = useRef(0)
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const sessionRef = useRef<string | null>(null)
@@ -179,10 +188,16 @@ export function StreamProvider({
         return
       }
       let sawStop = false
+      // Afbryd den forrige FOER vi laver en ny. Uden det kunne to
+      // `/live`-strømme paa samme session dispatche parallelt.
+      reconnectCtrlRef.current?.abort()
+      const minGen = ++reconnectGenRef.current
+      const erAktuel = () => reconnectGenRef.current === minGen
       reconnectCtrlRef.current = followRun(
         { apiBaseUrl: config.apiBaseUrl, authToken: config.authToken },
         sessionId,
         (e: StreamEvent) => {
+          if (!erAktuel()) return
           if (e.type === 'message_start' || e.type === 'content_block_delta') {
             reconnectAttemptRef.current = 0
             setOverride(null) // genforbundet og streamer igen
@@ -249,6 +264,9 @@ export function StreamProvider({
     runIdRef.current = null
     startedAtRef.current = Date.now()
     deskRunBridge()?.setRunAuth?.(config.apiBaseUrl, config.authToken)
+    controlRef.current?.abort()
+    const minKoersel = ++controlGenRef.current
+    const koerslenErAktuel = () => controlGenRef.current === minKoersel
     controlRef.current = startStream(
       {
         apiBaseUrl: config.apiBaseUrl,
@@ -267,6 +285,7 @@ export function StreamProvider({
       },
       {
         onEvent: (e: StreamEvent) => {
+          if (!koerslenErAktuel()) return
           // En frame er landet: er vi ved at genforbinde, er vi det ikke
           // laengere. Uden dette ville «genforbinder» blive haengende paa
           // skaermen resten af turen.

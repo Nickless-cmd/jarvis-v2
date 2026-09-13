@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import type { ReactNode } from 'react'
 import { renderHook, act } from '@testing-library/react'
 import { StreamProvider } from './StreamContext'
@@ -14,8 +14,14 @@ interface FakeHandlers {
 }
 const handlersRef: { current: FakeHandlers | null } = { current: null }
 
+// Standard-implementeringen kan overtages pr. test, saa en test kan samle ALLE
+// generationer i stedet for kun den seneste.
+const startStreamImpl: { current: ((r: unknown, h: FakeHandlers) => unknown) | null } = {
+  current: null,
+}
 vi.mock('../lib/streamClient', () => ({
   startStream: (_req: unknown, handlers: FakeHandlers) => {
+    if (startStreamImpl.current) return startStreamImpl.current(_req, handlers)
     handlersRef.current = handlers
     return { abort: vi.fn(), getRunId: () => 'visible-1' }
   },
@@ -134,5 +140,146 @@ describe('StreamContext', () => {
     act(() => { handlersRef.current?.onError(authErr as unknown as Error) })
     expect(result.current.status).toBe('error')
     expect(result.current.streamError?.code).toBe('auth')
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────
+// Fase 10, kriterium 3: «fences late old-generation callbacks»
+//
+// Maalt 13/9-2026: baade `controlRef.current = startStream(...)` og
+// `reconnectCtrlRef.current = followRun(...)` blev overskrevet UDEN at den
+// forrige blev afbrudt. To stroemme dispatchede ind i samme reducer.
+// ─────────────────────────────────────────────────────────────────────────
+
+describe('generations-hegn i StreamContext', () => {
+  /** Saml ALLE handler-saet, ikke kun det seneste. */
+  function alleGenerationer() {
+    const gen: { handlers: FakeHandlers; abort: ReturnType<typeof vi.fn> }[] = []
+    startStreamImpl.current = (_req: unknown, handlers: FakeHandlers) => {
+      const abort = vi.fn()
+      gen.push({ handlers, abort })
+      return { abort, getRunId: () => `visible-${gen.length}` }
+    }
+    return gen
+  }
+
+  // Uden den her laekker overtagelsen til de FOELGENDE describe-blokke, og
+  // `handlersRef` bliver aldrig fyldt dér. Min egen reattach-test maalte
+  // ingenting paa grund af det.
+  afterEach(() => { startStreamImpl.current = null })
+
+  it('et nyt send AFBRYDER den forrige stroem', () => {
+    const gen = alleGenerationer()
+    const { result } = renderHook(() => useStream(), { wrapper })
+    act(() => { result.current.send('en', { sessionId: 's' }) })
+    act(() => { result.current.send('to', { sessionId: 's' }) })
+    expect(gen.length).toBe(2)
+    expect(gen[0]!.abort).toHaveBeenCalled()
+  })
+
+  it('en AFLOEST stroem skriver ikke i tilstanden', () => {
+    const gen = alleGenerationer()
+    const { result } = renderHook(() => useStream(), { wrapper })
+    act(() => { result.current.send('en', { sessionId: 's' }) })
+    act(() => { result.current.send('to', { sessionId: 's' }) })
+
+    // Den GAMLE generation leverer en sen fejl-ramme.
+    act(() => {
+      gen[0]!.handlers.onEvent({
+        type: 'system_event', kind: 'error',
+        payload: { message: 'spoegelse fra en doed stroem' },
+      })
+    })
+    expect(JSON.stringify(result.current.streamError ?? {}))
+      .not.toContain('spoegelse')
+  })
+
+  it('den AKTUELLE stroem skriver stadig — hegnet maa ikke slukke den', () => {
+    const gen = alleGenerationer()
+    const { result } = renderHook(() => useStream(), { wrapper })
+    act(() => { result.current.send('en', { sessionId: 's' }) })
+    act(() => { result.current.send('to', { sessionId: 's' }) })
+    act(() => {
+      gen[1]!.handlers.onEvent({
+        type: 'system_event', kind: 'error',
+        payload: { message: 'aegte fejl' },
+      })
+    })
+    expect(JSON.stringify(result.current.streamError ?? {})).toContain('aegte fejl')
+  })
+})
+
+describe('generations-hegn paa reattach', () => {
+  /** Saml alle `followRun`-kald med hver sin handler og abort-spion. */
+  function alleFollows() {
+    const gen: { paaEvent: (e: unknown) => void; abort: ReturnType<typeof vi.fn> }[] = []
+    followRunMock.mockImplementation(
+      (..._a: unknown[]) => {
+        const abort = vi.fn()
+        gen.push({ paaEvent: _a[2] as (e: unknown) => void, abort })
+        return { abort }
+      },
+    )
+    return gen
+  }
+
+  // `reattach` planlaegger sit arbejde med `setTimeout(arm, delay)`. Uden
+  // falske timere sker der INTET, og testen maaler ingenting — hvilket var
+  // praecis hvad foerste udgave gjorde.
+  beforeEach(() => { vi.useFakeTimers() })
+  afterEach(() => { vi.useRealTimers(); followRunMock.mockReset() })
+
+  /** Fremkald en netvaerksfejl, som er det der udloeser `reattach`. */
+  function brudPaaNettet() {
+    const fejl = Object.assign(new Error('brud'), {
+      category: 'network', retryable: true,
+    })
+    act(() => { (handlersRef.current as unknown as {
+      onError: (e: Error) => void }).onError(fejl as Error) })
+    act(() => { vi.advanceTimersByTime(10_000) })
+  }
+
+  it('et nyt reattach AFBRYDER det forrige', () => {
+    const gen = alleFollows()
+    const { result } = renderHook(() => useStream(), { wrapper })
+    act(() => { result.current.send('hej', { sessionId: 's' }) })
+    brudPaaNettet()
+    brudPaaNettet()
+    expect(gen.length).toBeGreaterThanOrEqual(2)
+    expect(gen[0]!.abort).toHaveBeenCalled()
+  })
+
+  it('et AFLOEST reattach skriver ikke i tilstanden', () => {
+    const gen = alleFollows()
+    const { result } = renderHook(() => useStream(), { wrapper })
+    act(() => { result.current.send('hej', { sessionId: 's' }) })
+    brudPaaNettet()
+    brudPaaNettet()
+
+    act(() => {
+      gen[0]!.paaEvent({
+        type: 'system_event', kind: 'error',
+        payload: { message: 'spoegelse fra et doedt reattach' },
+      })
+    })
+    expect(JSON.stringify(result.current.streamError ?? {}))
+      .not.toContain('spoegelse')
+  })
+
+  it('det AKTUELLE reattach skriver stadig', () => {
+    const gen = alleFollows()
+    const { result } = renderHook(() => useStream(), { wrapper })
+    act(() => { result.current.send('hej', { sessionId: 's' }) })
+    brudPaaNettet()
+    brudPaaNettet()
+
+    act(() => {
+      gen[gen.length - 1]!.paaEvent({
+        type: 'system_event', kind: 'error',
+        payload: { message: 'aegte reattach-fejl' },
+      })
+    })
+    expect(JSON.stringify(result.current.streamError ?? {}))
+      .toContain('aegte reattach-fejl')
   })
 })

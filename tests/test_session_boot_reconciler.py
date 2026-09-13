@@ -3,6 +3,32 @@ from __future__ import annotations
 import importlib
 from datetime import UTC, datetime, timedelta
 
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def _isolate_state_store(tmp_path, monkeypatch):
+    """Hold disse tests væk fra produktionens ``in_flight_runs.json``.
+
+    ``isolated_runtime`` reloader bevidst IKKE ``core.runtime.state_store``
+    (se conftest ~1092: et reload ville desynkronisere moduler der importerer
+    ``load_json``/``save_json`` ved navn). Men ``state_store._STATE_DIR`` bindes
+    til ``Path.home()/".jarvis-v2"/"state"`` ved import — altså den RIGTIGE
+    sti. Uden denne fixture læste og SKREV testene produktionens fil.
+
+    Målt 13/9-2026: en ægte ``running``-post ældre end ``STALE_AFTER_SECONDS``
+    blev et ekstra orphan, så ``test_enabled_zombie_...`` gav ``count == 2``
+    afhængigt af hvad der tilfældigvis kørte i produktionen — og hver kørsel
+    efterlod sine egne poster i den rigtige fil.
+
+    Vi reloader ikke (det er den desync conftest advarer om). Vi flytter blot
+    stien for disse tests; ``load_json``/``save_json`` læser ``_STATE_DIR``
+    ved kald, så det er nok.
+    """
+    from core.runtime import state_store
+
+    monkeypatch.setattr(state_store, "_STATE_DIR", tmp_path / "state")
+
 
 def _fresh_modules():
     runs = importlib.reload(importlib.import_module("core.services.in_flight_runs"))
@@ -137,3 +163,90 @@ def test_kinds_aggregated_across_orphans(isolated_runtime, monkeypatch):
 
     assert summary["count"] == 2
     assert set(observed[0]["kinds"]) == {"visible", "autonomous"}
+
+
+# ── visible_drift: rækker reconcileren ellers aldrig ser ────────────────────
+#
+# `list_running_orphans` itererer over `in_flight_runs`. En række der findes i
+# `visible_runs` men aldrig blev skrevet — eller blev ryddet — i det andet lager
+# er derfor usynlig for reconcileren for altid. Målt 13/9-2026: en kørsel stod
+# `running` i ~20 timer mens reconcileren rapporterede `count: 0` ved hver
+# opstart. Begge dele var sande; de så på hvert sit lager.
+
+
+def _vis_row(run_id, *, age_s=1000, status="running", finished_at=""):
+    """Skriv én række direkte i `visible_runs` (den isolerede DB)."""
+    from core.runtime.db import connect
+    from core.runtime.db_visible import ensure_visible_tables
+
+    started = (datetime.now(UTC) - timedelta(seconds=age_s)).isoformat()
+    with connect() as conn:
+        ensure_visible_tables(conn)
+        conn.execute(
+            "INSERT OR REPLACE INTO visible_runs "
+            "(run_id, lane, provider, model, status, started_at, finished_at, "
+            " text_preview, error, capability_id) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?)",
+            (run_id, "primary", "ollama", "glm-5.2:cloud", status, started,
+             finished_at, "arbejde", None, None),
+        )
+
+
+def _vis_status(run_id):
+    from core.runtime.db import connect
+    with connect() as conn:
+        row = conn.execute(
+            "SELECT status FROM visible_runs WHERE run_id=?", (run_id,)
+        ).fetchone()
+    return row["status"] if row else None
+
+
+def test_visible_ukendt_lager_stempler_ikke(isolated_runtime, monkeypatch, caplog):
+    """Kan vi ikke læse det andet lager, kan vi ikke vide at posten er ukendt.
+
+    Et gæt er ikke et fravær — så vi stempler ikke. Men fejlen skal SES.
+    """
+    import logging
+
+    runs, rec = _fresh_modules()
+    _vis_row("visible-zombie", age_s=20 * 3600)
+
+    def _boom():
+        raise RuntimeError("lageret svarer ikke")
+
+    monkeypatch.setattr(rec.in_flight_runs, "_load", _boom)
+
+    with caplog.at_level(logging.WARNING):
+        n = rec._ryd_visible_drift(enforced=True)
+
+    assert n == 0
+    assert _vis_status("visible-zombie") == "running"
+    assert any("kunne ikke laese in_flight_runs" in r.message
+               for r in caplog.records)
+
+
+def test_visible_stemplingsfejl_logges_ikke_sluges(isolated_runtime, monkeypatch, caplog):
+    """En fejlende stempling må ikke forsvinde lydløst.
+
+    Importen af `visible_runs_outcomes` er cirkulær og kan fejle hvis
+    `visible_runs` endnu ikke er importeret. Lå fejlen bag `except: pass`, stod
+    rækken bare `running` igen — uden et ord nogen steder.
+    """
+    import logging
+
+    import core.services.visible_runs_outcomes as vro
+
+    runs, rec = _fresh_modules()
+    _vis_row("visible-zombie", age_s=20 * 3600)
+
+    def _boom(*_a, **_k):
+        raise RuntimeError("cirkulaer import")
+
+    monkeypatch.setattr(vro, "stamp_visible_run_interrupted", _boom)
+
+    with caplog.at_level(logging.WARNING):
+        n = rec._ryd_visible_drift(enforced=True)
+
+    assert n == 1                       # den tæller stadig driften
+    assert _vis_status("visible-zombie") == "running"   # men kunne ikke stemple
+    assert any("kunne ikke stemple" in r.message for r in caplog.records)

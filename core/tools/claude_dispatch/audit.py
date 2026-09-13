@@ -20,7 +20,7 @@ def _sikr_ophav_kolonner(conn) -> None:
     gættet ophav ville være præcis den slags «sandhed» man ikke kan efterprøve.
     Tom streng betyder ærligt «ukendt».
     """
-    for kolonne in ("origin_run_id", "origin_session_id"):
+    for kolonne in ("origin_run_id", "origin_session_id", "work_ref"):
         try:
             conn.execute(
                 f"ALTER TABLE claude_dispatch_audit ADD COLUMN {kolonne} "
@@ -58,18 +58,39 @@ def _ophav() -> tuple[str, str]:
         return "", ""
 
 
+def _work_ref(run_id: str, task_id: str) -> str:
+    """RODEN for dette arbejde, som en præfikset reference.
+
+    Er dispatchen født af en kørsel, er kørslen roden — alt arbejdet hører til
+    den tur. Ellers er dispatchen sin egen rod.
+
+    Det er forskellen på rod og ophav i praksis: `origin_run_id` siger *hvorfor*
+    dispatchen findes, `work_ref` siger *hvilket* stykke arbejde den er en del
+    af. For en dispatch født af en samtale er de to det samme — for en dispatch
+    uden ophav er de ikke.
+    """
+    from core.runtime.work_ref import UgyldigReference, lav
+    for art, id_ in (("run", run_id), ("dispatch", task_id)):
+        try:
+            return lav(art, id_)
+        except UgyldigReference:
+            continue
+    return ""
+
+
 def start_audit_row(task_id: str, spec: TaskSpec) -> None:
     rid, sid = _ophav()
+    ref = _work_ref(rid, task_id)
     with connect() as conn:
         _sikr_ophav_kolonner(conn)
         conn.execute(
             """
             INSERT INTO claude_dispatch_audit
                 (task_id, started_at, spec_json, status, tokens_used,
-                 origin_run_id, origin_session_id)
-            VALUES (?, ?, ?, 'running', 0, ?, ?)
+                 origin_run_id, origin_session_id, work_ref)
+            VALUES (?, ?, ?, 'running', 0, ?, ?, ?)
             """,
-            (task_id, _now_iso(), json.dumps(asdict(spec)), rid, sid),
+            (task_id, _now_iso(), json.dumps(asdict(spec)), rid, sid, ref),
         )
         conn.commit()
 

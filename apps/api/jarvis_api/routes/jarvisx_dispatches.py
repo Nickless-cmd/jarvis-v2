@@ -62,7 +62,7 @@ def list_dispatches(limit: int = Query(default=50, ge=1, le=200)) -> dict[str, A
             """
             SELECT task_id, started_at, ended_at, status, tokens_used,
                    exit_code, diff_summary, error, spec_json,
-                   origin_run_id, origin_session_id
+                   origin_run_id, origin_session_id, work_ref
             FROM claude_dispatch_audit
             ORDER BY
                 CASE WHEN status = 'running' THEN 0 ELSE 1 END,
@@ -120,6 +120,11 @@ def list_dispatches(limit: int = Query(default=50, ge=1, le=200)) -> dict[str, A
             # kanten fandtes, og der er intet tilbagefyld.
             "origin_run_id": _felt(r, "origin_run_id"),
             "origin_session_id": _felt(r, "origin_session_id"),
+            # RODEN. `origin_*` siger hvorfor dispatchen findes; `work_ref`
+            # siger hvilket stykke arbejde den er en del af — og den kan
+            # oploeses ét sted (`core.runtime.work_ref`) i stedet for at hver
+            # flade opfinder sin egen parser.
+            "work_ref": _felt(r, "work_ref"),
         })
     return {"count": len(out), "dispatches": out}
 

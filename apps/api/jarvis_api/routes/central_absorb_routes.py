@@ -649,6 +649,18 @@ def get_tone() -> dict:
     return {"tone": profile}
 
 
+def _task_ref(task_id) -> str:
+    """`task:<id>` — opgaven er sin egen rod.
+
+    Selv-sikker: en manglende reference maa ikke kunne vaelte cockpittet.
+    """
+    try:
+        from core.runtime.work_ref import lav
+        return lav("task", str(task_id or ""))
+    except Exception:
+        return ""
+
+
 @router.get("/work")
 def get_work(limit: int = 12) -> dict:
     """Det aktive arbejde — opgave OG dens næste handling i samme række.
@@ -711,6 +723,14 @@ def get_work(limit: int = 12) -> dict:
         # naeste skridt» og «hvorfor staar den stille».
         arbejde.append({
             "task_id": t.get("task_id"),
+            # RODEN og OPHAVET — to felter, to spoergsmaal.
+            #
+            # `work_ref` siger HVILKET stykke arbejde det er (opgaven er sin
+            # egen rod), `origin_ref` siger HVORFOR det findes (et tick, en
+            # kartograf). Begge er praefiksede, saa de kan oploeses ét sted i
+            # stedet for at hver flade gaetter paa id-rummet.
+            "work_ref": _task_ref(t.get("task_id")),
+            "origin_ref": t.get("origin_ref") or "",
             "kind": t.get("kind"),
             "origin": t.get("origin"),
             "status": t.get("status"),

@@ -212,3 +212,36 @@ def test_blokeret_arbejde_sorteres_OEVERST():
     import pathlib
     kilde = pathlib.Path("apps/central_cli/central_cli/hud_populate.py").read_text()
     assert '_orden = {"blocked": 0, "running": 1, "queued": 2}' in kilde
+
+
+# ------------------------------------------------- rod og ophav paa fladen
+
+def test_fladen_baerer_BAADE_rod_og_ophav(monkeypatch):
+    """To felter, to spoergsmaal: `work_ref` siger HVILKET stykke arbejde det
+    er, `origin_ref` siger HVORFOR det findes.
+
+    Smeltede de sammen, kunne et cockpit ikke skelne «denne opgave» fra
+    «tidspunktet den blev foedt» — og det var praecis den forveksling der lod
+    kolonnen hedde `run_id` og indeholde et tick.
+    """
+    _lagre(monkeypatch,
+           [{"task_id": "t1", "status": "running", "flow_id": "",
+             "origin_ref": "tick:036bd93e"}], [])
+    r = cw.get_work()["arbejde"][0]
+    assert r["work_ref"] == "task:t1"
+    assert r["origin_ref"] == "tick:036bd93e"
+
+
+def test_roden_kan_oploeses_af_den_faelles_vej(monkeypatch):
+    from core.runtime.work_ref import opløs
+    _lagre(monkeypatch, [{"task_id": "t1", "status": "running", "flow_id": ""}], [])
+    r = cw.get_work()["arbejde"][0]
+    assert opløs(r["work_ref"]) == ("task", "t1")
+
+
+def test_manglende_reference_vaelter_ikke_cockpittet(monkeypatch):
+    """En opgave uden id er en fejl et andet sted. Cockpittet skal stadig
+    kunne vise resten."""
+    _lagre(monkeypatch, [{"task_id": "", "status": "running", "flow_id": ""}], [])
+    r = cw.get_work()["arbejde"][0]
+    assert r["work_ref"] == ""

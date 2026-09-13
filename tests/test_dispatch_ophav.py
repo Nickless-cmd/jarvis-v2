@@ -157,3 +157,44 @@ def test_fladen_sikrer_kolonnerne_foer_den_laeser():
     assert fn is not None
     kaldt = {getattr(k.func, "id", "") for k in ast.walk(fn) if isinstance(k, ast.Call)}
     assert "_sikr_ophav_kolonner" in kaldt
+
+
+# ------------------------------------------------------- RODEN, ikke ophavet
+
+def test_work_ref_er_KOERSLEN_naar_der_er_en():
+    """Er dispatchen foedt af en tur, hoerer arbejdet til den tur."""
+    assert audit._work_ref("visible-abc", "d1") == "run:visible-abc"
+
+
+def test_work_ref_falder_tilbage_paa_dispatchen_selv():
+    """Uden ophav er dispatchen sin EGEN rod. Et tomt felt ville goere den
+    hjemloes; en reference til en kørsel der ikke findes ville vaere en loegn."""
+    assert audit._work_ref("", "d1") == "dispatch:d1"
+
+
+def test_work_ref_er_tom_naar_INTET_kan_refereres():
+    assert audit._work_ref("", "") == ""
+
+
+def test_roden_GEMMES(_db, monkeypatch):
+    monkeypatch.setattr(audit, "_ophav", lambda: ("visible-abc", "s1"))
+    audit.start_audit_row("t9", _spec())
+    r = _db.execute("SELECT work_ref, origin_run_id FROM claude_dispatch_audit "
+                    "WHERE task_id='t9'").fetchone()
+    assert r["work_ref"] == "run:visible-abc"
+    # De to felter svarer paa hvert sit spoergsmaal og maa ikke smelte sammen.
+    assert r["origin_run_id"] == "visible-abc"
+
+
+def test_roden_kan_OPLOESES_af_den_faelles_vej():
+    """En reference hver flade selv skal parse, er ikke en faelles noegle."""
+    from core.runtime.work_ref import opløs
+    assert opløs(audit._work_ref("visible-abc", "d1")) == ("run", "visible-abc")
+
+
+def test_fladen_baerer_roden_videre():
+    import pathlib
+    kilde = pathlib.Path(
+        "apps/api/jarvis_api/routes/jarvisx_dispatches.py").read_text()
+    assert 'origin_session_id, work_ref' in kilde, "kolonnelisten henter ikke roden"
+    assert '"work_ref": _felt(' in kilde, "roden naar ikke ud i svaret"

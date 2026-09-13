@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7413/14503 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7414/14504 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 7413/14503 functions/methods documented (51%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 614 | 1135 | 54% |
-| `core.services` | 4953 | 10038 | 49% |
+| `core.services` | 4954 | 10039 | 49% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 108 | 184 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -984,7 +984,7 @@ Generated from source. 7413/14503 functions/methods documented (51%). The list b
 - `core/services/emotion_tagging.py` :: `build_emotion_tagging_surface` (L90)
 - `core/services/end_of_run_memory_consolidation.py` :: `consolidate_run_memory` (L31)
 - `core/services/endpoint_usage_store.py` :: `usage_stats` (L83)
-- `core/services/env_block.py` :: `is_enabled` (L47)
+- `core/services/env_block.py` :: `is_enabled` (L48)
 - `core/services/epistemic_runtime_state.py` :: `build_epistemic_runtime_prompt_section` (L185)
 - `core/services/epistemic_runtime_state.py` :: `build_epistemic_runtime_state_from_sources` (L30)
 - `core/services/epistemic_runtime_state.py` :: `build_epistemic_runtime_state_surface` (L10)

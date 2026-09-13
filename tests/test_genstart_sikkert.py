@@ -55,3 +55,26 @@ def test_det_giver_op_frem_for_at_vente_i_evighed():
     """En genstart der haenger for evigt er ogsaa en genstart der ikke sker."""
     kilde = SCRIPT.read_text()
     assert "exit 1" in kilde
+
+
+def test_scriptet_LYVER_ikke_naar_det_overstyrer():
+    """Linjen «ingen aktive kørsler» stod UBETINGET efter løkken.
+
+    Maalt 13/9-2026: en `VENT=0`-koersel skrev baade «genstarter alligevel» OG
+    «ingen aktive koersler» — og draebte en koersel. En besked der siger noget
+    andet end det der skete, er praecis den fejlklasse hele dagen gik med.
+    """
+    kilde = SCRIPT.read_text()
+    assert 'tvunget' in kilde, "der er ingen markering af en overstyring"
+    assert 'genstarter TRODS aktive kørsler' in kilde
+    # og den ubetingede paastand maa ikke staa alene
+    i = kilde.index('ingen aktive kørsler — genstarter')
+    foran = kilde[max(0, i - 200):i]
+    assert 'else' in foran, "«ingen aktive» staar stadig ubetinget"
+
+
+def test_noedudgangen_siger_hvad_den_KOSTER():
+    """Jeg brugte VENT=0 af vane faa minutter efter at have bygget vaernet, og
+    draebte en fjerde koersel. Linjen skal naevne konsekvensen ved navn."""
+    kilde = SCRIPT.read_text()
+    assert "Forsæt" in kilde, "noedudgangen naevner ikke hvad den koster"

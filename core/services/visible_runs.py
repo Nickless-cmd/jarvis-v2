@@ -425,6 +425,17 @@ class VisibleRun:
     # 13:44 paa hans «Forsæt»). Brugeren fanges derfor HER, hvor konteksten
     # stadig gaelder, og foelger med koerslen.
     user_id: str = ""
+    # HVEM startede turen. Vokabularet er `autonomous_sessions.ORIGINS`
+    # (dream, council, work, outreach, recurring, heartbeat, scheduled,
+    # wakeup, autonomous) — tom for en almindelig brugertur.
+    #
+    # Vaerdien BLEV allerede beregnet (`normalize_origin`) og brugt til at
+    # route sessionen, men landede aldrig paa koerslen. Veto-gaten maatte
+    # derfor bruge `autonomous`-flaget som stedfortraeder, og det virker kun
+    # saa laenge ENHVER system-startet tur gaar gennem `start_autonomous_run`.
+    # Den dag én ikke goer, vender kategorifejlen tilbage: 105 blokerede
+    # raekker hvor «brugerens besked» var «Du er i en droemmetilstand…».
+    origin: str = ""
 
 
 @dataclass(slots=True)
@@ -1066,6 +1077,7 @@ def start_autonomous_run(message: str, session_id: str | None = None, follow: bo
         user_message=(message or "").strip() or "Autonomous heartbeat check-in",
         session_id=resolved_session,
         autonomous=True,
+        origin=_origin,
     )
     event_bus.publish(
         "runtime.autonomous_run_started",

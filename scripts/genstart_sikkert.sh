@@ -15,6 +15,7 @@ set -euo pipefail
 VAERT="${VAERT:-bs@10.0.0.39}"
 ROD="${ROD:-/media/projects/jarvis-v2}"
 MAKS_VENT="${MAKS_VENT:-180}"
+tvunget=0
 
 aktive() {
   ssh "$VAERT" "cd $ROD && /opt/conda/envs/ai/bin/python - <<'PY'
@@ -38,7 +39,10 @@ while true; do
   echo "  $antal kørsel/kørsler i gang:"
   printf '%s\n' "$ud" | sed 's/^/    /'
   if [ "${VENT:-1}" = "0" ]; then
-    echo "  VENT=0 — genstarter alligevel (de bliver stemplet 'api-nedlukning')"
+    echo "  ⚠ VENT=0 — genstarter MIDT I $antal kørsel/kørsler."
+    echo "  ⚠ De bliver stemplet 'api-nedlukning'. Det er dét der får Bjørn"
+    echo "  ⚠ til at skrive «Forsæt»."
+    tvunget=1
     break
   fi
   if [ "$ventet" -ge "$MAKS_VENT" ]; then
@@ -49,7 +53,15 @@ while true; do
   ventet=$((ventet + 5))
 done
 
-echo "ingen aktive kørsler — genstarter: $*"
+# Linjen herunder loej foer: den stod UBETINGET efter loekken, saa en
+# VENT=0-overstyring skrev baade «genstarter alligevel» OG «ingen aktive
+# koersler» i samme koersel. En besked der siger noget andet end det der skete,
+# er praecis den fejlklasse hele dagen gik med.
+if [ "${tvunget:-0}" = "1" ]; then
+  echo "genstarter TRODS aktive kørsler: $*"
+else
+  echo "ingen aktive kørsler — genstarter: $*"
+fi
 ssh "$VAERT" "sudo systemctl restart $*"
 sleep 8
 ssh "$VAERT" "systemctl is-active $*"

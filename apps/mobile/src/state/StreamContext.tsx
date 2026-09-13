@@ -143,6 +143,17 @@ export function StreamProvider({ children }: { children: ReactNode }) {
   const [reconnecting, setReconnecting] = useState(false)
   const control = useRef<StreamControl | null>(null)
   const followControl = useRef<StreamControl | null>(null)
+  // GENERATION. Fase 10, kriterium 3: «fences late old-generation callbacks».
+  //
+  // `follow()` afbryder den forrige, men handler-closuren havde ingen
+  // identitets-kontrol. En sen `onEvent` fra den afbrudte kunne derfor stadig
+  // skrive i tilstanden — og rejse en GODKENDELSES-dialog for et kald ingen
+  // venter paa mere.
+  //
+  // Vaerre: `onComplete`/`onError` satte `followControl.current = null`
+  // UBETINGET. En gammel follows sene afslutning gjorde dermed den NYE
+  // uafbrydelig, fordi `stopFollow` ikke laengere havde noget at kalde abort paa.
+  const followGen = useRef(0)
   const stateRef = useRef(state)
   const persistedRunRef = useRef<string | null>(null)
   /** Hvad baggrunds-nedrivningen efterlod. Offset SKAL laeses foer
@@ -365,9 +376,12 @@ export function StreamProvider({ children }: { children: ReactNode }) {
         // værnet der forhindrer den dobbelt-render der knækkede follow før.
         if (control.current) return
         followControl.current?.abort()
+        const minFollow = ++followGen.current
+        const erAktuel = () => followGen.current === minFollow
         let skip = false
         followControl.current = followSession(config, sessionId, {
           onRunId: (runId) => {
+            if (!erAktuel()) return
             // Dedup: er dette run allerede persisteret (vores eget afsluttede,
             // eller set før), så er der intet nyt at vise live → drop follow.
             if (runId && persistedRunRef.current === runId) {
@@ -377,7 +391,7 @@ export function StreamProvider({ children }: { children: ReactNode }) {
             }
           },
           onEvent: (event) => {
-            if (skip) return
+            if (!erAktuel() || skip) return
             if (event.type === 'system_event' && event.kind === 'approval_request') {
               setApproval({
                 approvalId: String(event.payload.approval_id ?? ''),
@@ -392,12 +406,14 @@ export function StreamProvider({ children }: { children: ReactNode }) {
           },
           // Follow der lukker uden svar er normalt (intet aktivt run) → tilbage til idle.
           onComplete: () => {
+            if (!erAktuel()) return
             followControl.current = null
             if (!skip && stateRef.current.blocks.length === 0) {
               updateState((prev) => (prev.status === 'working' ? { ...prev, status: 'idle' } : prev))
             }
           },
           onError: () => {
+            if (!erAktuel()) return
             followControl.current = null
           }
         })

@@ -321,7 +321,7 @@ describe('generations-hegn paa stroemmen', () => {
     const events: StreamEvent[] = []
     const ctrl = startStream(
       { config, message: 'hej' } as never,
-      { onEvent: (e) => { events.push(e) } } as never
+      { onEvent: (e: StreamEvent) => { events.push(e) } } as never
     )
 
     // Generation 0 leverer to frames og laerer sit run_id.
@@ -352,7 +352,7 @@ describe('generations-hegn paa stroemmen', () => {
     const events: StreamEvent[] = []
     const ctrl = startStream(
       { config, message: 'hej' } as never,
-      { onEvent: (e) => { events.push(e) } } as never
+      { onEvent: (e: StreamEvent) => { events.push(e) } } as never
     )
     fyr(0, 'message_start', { data: JSON.stringify({
       type: 'message_start', message: { id: 'visible-1' } }) })

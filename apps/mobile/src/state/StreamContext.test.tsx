@@ -432,3 +432,102 @@ it('genoptager IKKE naar der ikke var noget at genoptage', async () => {
   await act(async () => { screen.getByText('genoptag').props.onPress() })
   expect(mockStartStream).not.toHaveBeenCalled()
 })
+
+// ─────────────────────────────────────────────────────────────────────────
+// Fase 10, kriterium 3: «fences late old-generation callbacks»
+//
+// `follow()` afbroed den forrige, men handler-closuren havde ingen
+// identitets-kontrol. En sen `onEvent` fra den afbrudte kunne stadig skrive i
+// tilstanden — og rejse en GODKENDELSES-dialog for et kald ingen venter paa.
+//
+// Og `onComplete`/`onError` satte `followControl.current = null` UBETINGET, saa
+// en gammel follows sene afslutning gjorde den NYE uafbrydelig.
+// ─────────────────────────────────────────────────────────────────────────
+
+describe('generations-hegn paa follow', () => {
+  const { followSession } = jest.requireMock('../lib/streamClient') as {
+    followSession: jest.Mock
+  }
+
+  function FollowProbe() {
+    const { follow, approval } = useStream()
+    return (
+      <>
+        <Text>{`godkendelse:${approval?.tool ?? 'ingen'}`}</Text>
+        <Text onPress={() => follow(config, 's')}>start-follow</Text>
+      </>
+    )
+  }
+
+  /** Saml ALLE follow-generationer med hver sine handlers. */
+  function alleFollows() {
+    const gen: { h: StreamHandlers; abort: jest.Mock }[] = []
+    followSession.mockImplementation((_c: unknown, _s: unknown, h: StreamHandlers) => {
+      const abort = jest.fn()
+      gen.push({ h, abort })
+      return { abort, getRunId: () => null, getOffset: () => 0 }
+    })
+    return gen
+  }
+
+  afterEach(() => { followSession.mockReset() })
+
+  it('en AFLOEST follow rejser ikke en godkendelses-dialog', async () => {
+    const gen = alleFollows()
+    const skaerm = await render(<StreamProvider><FollowProbe /></StreamProvider>)
+    await act(async () => { skaerm.getByText('start-follow').props.onPress() })
+    await act(async () => { skaerm.getByText('start-follow').props.onPress() })
+    expect(gen.length).toBe(2)
+    expect(gen[0]!.abort).toHaveBeenCalled()
+
+    // Den FOERSTE, afbrudte follow leverer en sen godkendelses-anmodning.
+    await act(async () => {
+      gen[0]!.h.onEvent({
+        type: 'system_event', kind: 'approval_request',
+        payload: { approval_id: 'a1', tool: 'spoegelse', message: 'm' }
+      } as StreamEvent)
+    })
+    expect(JSON.stringify(skaerm.toJSON())).toContain('godkendelse:ingen')
+  })
+
+  it('den AKTUELLE follow rejser den stadig — hegnet maa ikke slukke den', async () => {
+    const gen = alleFollows()
+    const skaerm = await render(<StreamProvider><FollowProbe /></StreamProvider>)
+    await act(async () => { skaerm.getByText('start-follow').props.onPress() })
+    await act(async () => { skaerm.getByText('start-follow').props.onPress() })
+
+    await act(async () => {
+      gen[1]!.h.onEvent({
+        type: 'system_event', kind: 'approval_request',
+        payload: { approval_id: 'a2', tool: 'aegte', message: 'm' }
+      } as StreamEvent)
+    })
+    expect(JSON.stringify(skaerm.toJSON())).toContain('godkendelse:aegte')
+  })
+
+  it('en gammel follows onComplete goer ikke den nye uafbrydelig', async () => {
+    const gen = alleFollows()
+    const skaerm = await render(<StreamProvider><FollowProbe /></StreamProvider>)
+    await act(async () => { skaerm.getByText('start-follow').props.onPress() })
+    await act(async () => { skaerm.getByText('start-follow').props.onPress() })
+
+    // Den gamle afslutter sent. Uden hegnet nulstilledes `followControl`, og
+    // den NYE kunne derefter ikke afbrydes af en tredje follow.
+    await act(async () => { gen[0]!.h.onComplete?.() })
+    await act(async () => { skaerm.getByText('start-follow').props.onPress() })
+    expect(gen[1]!.abort).toHaveBeenCalled()
+  })
+
+  it('en gammel follows onError goer heller ikke den nye uafbrydelig', async () => {
+    // Samme vej ind, anden doer ud. `onError` nulstillede ogsaa
+    // `followControl.current` ubetinget.
+    const gen = alleFollows()
+    const skaerm = await render(<StreamProvider><FollowProbe /></StreamProvider>)
+    await act(async () => { skaerm.getByText('start-follow').props.onPress() })
+    await act(async () => { skaerm.getByText('start-follow').props.onPress() })
+
+    await act(async () => { gen[0]!.h.onError?.(new Error('sent brud')) })
+    await act(async () => { skaerm.getByText('start-follow').props.onPress() })
+    expect(gen[1]!.abort).toHaveBeenCalled()
+  })
+})

@@ -84,8 +84,12 @@ def test_punktum_og_anfoerselstegn_fjernes(monkeypatch):
 
 
 def test_kun_FOERSTE_linje(monkeypatch):
+    """Fiksturen baerer stien, fordi opdigt-vagten ellers — med rette —
+    kasserer en etiket der naevner en fil kaldet aldrig roerte. Den fangede
+    denne test da vagten kom til, og fiksturen var det der ikke lignede
+    virkeligheden."""
     monkeypatch.setattr(trl, "_kald_model", lambda p: "Læste config.json\n\nHer er hvorfor:")
-    assert trl.etiket([_v("read_file")]) == "Læste config.json"
+    assert trl.etiket([_v("read_file", {"path": "config.json"})]) == "Læste config.json"
 
 
 def test_INGEN_vaerktoejer_giver_intet_kald(monkeypatch):
@@ -181,3 +185,55 @@ def test_et_openai_kald_UDEN_navn_springes_over():
     p = trl.byg_prompt([{"id": "a", "function": {"name": "", "arguments": "{}"}},
                         {"name": "bash", "input": {}}])
     assert p.count("Værktøj:") == 1
+
+
+# ───────────────────────────── opdigt kasseres (14/9-2026, maalt i produktion)
+#
+# Foerste ægte etiketter: «Kørte ssh og hentede logfiler» (god) og
+# «Søgte i bash/» (opdigt). Den anden er modellen der efteraber promptens eget
+# eksempel «Søgte i auth/» og opfinder et bibliotek `bash/` der ikke findes.
+#
+# En strammere prompt er et haab. Huset har et bedre greb: `explore_claim_check`
+# slaar paastande op i kilden. Samme princip her — en etiket der naevner en sti
+# eller et navn der ikke staar i kaldene, er opdigt. En kedelig etiket er
+# harmloes; en der lyver om hvad der skete, er ikke.
+
+def test_en_opdigtet_sti_kasseres(monkeypatch):
+    """Det ægte fund fra produktion."""
+    monkeypatch.setattr(trl, "_kald_model", lambda p: "Søgte i bash/")
+    assert trl.etiket([_v("bash", {"command": "ssh bs@10.0.0.39 'journalctl -n 50'"})]) == ""
+
+
+def test_en_sti_der_FAKTISK_staar_i_kaldet_slipper_igennem(monkeypatch):
+    monkeypatch.setattr(trl, "_kald_model", lambda p: "Læste config.json")
+    assert trl.etiket([_v("read_file", {"path": "apps/config.json"})]) == "Læste config.json"
+
+
+def test_et_navn_med_understreg_efterproeves_ogsaa(monkeypatch):
+    monkeypatch.setattr(trl, "_kald_model", lambda p: "Søgte i heartbeat_model_provider")
+    kald = [_v("grep", {"pattern": "heartbeat_model_provider"})]
+    assert trl.etiket(kald) == "Søgte i heartbeat_model_provider"
+    monkeypatch.setattr(trl, "_kald_model", lambda p: "Søgte i noget_der_ikke_findes")
+    assert trl.etiket(kald) == ""
+
+
+def test_almindelige_ORD_efterproeves_ikke(monkeypatch):
+    """«Kørte ssh og hentede logfiler» skal igennem. Kraevede vi at hvert ord
+    stod i kaldet, ville enhver omskrivning blive kasseret — og en etiket der
+    kun maa gentage input er ikke en etiket."""
+    monkeypatch.setattr(trl, "_kald_model", lambda p: "Kørte ssh og hentede logfiler")
+    ud = trl.etiket([_v("bash", {"command": "ssh bs@10.0.0.39 'journalctl -n 50'"})])
+    assert ud == "Kørte ssh og hentede logfiler"
+
+
+def test_tal_og_korte_stumper_udloeser_ikke_vagten(monkeypatch):
+    """«2 filer» og «v2» maa ikke se ud som opdigtede stier."""
+    monkeypatch.setattr(trl, "_kald_model", lambda p: "Rettede 2 fejl")
+    assert trl.etiket([_v("edit_file", {"path": "a.py"})]) == "Rettede 2 fejl"
+
+
+def test_efterproevningen_ser_bort_fra_KASSE(monkeypatch):
+    """Modellen retter gerne begyndelsesbogstavet. Et match der kraevede samme
+    kasse ville kassere en RIGTIG etiket."""
+    monkeypatch.setattr(trl, "_kald_model", lambda p: "Læste Config.json")
+    assert trl.etiket([_v("read_file", {"path": "apps/config.json"})]) == "Læste Config.json"

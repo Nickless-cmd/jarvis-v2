@@ -70,11 +70,24 @@ TIMEOUT_S: Final[float] = 3.0
 _PROMPT = (
     "Skriv en kort etiket der beskriver hvad de her værktøjskald UDRETTEDE.\n"
     "Den vises som én linje i en app og klippes omkring 30 tegn — tænk "
-    "commit-emne, ikke sætning. Datid. Behold det mest sigende navneord. "
+    "commit-emne, ikke sætning. Behold det mest sigende navneord. "
+    # Målt: modellen gentog brugerens egen formulering — «Hent logfilerne» om
+    # en runde der HAVDE hentet dem, «Finder ucommittede filer» om en der
+    # fandt dem. «Datid» alene var ikke nok; den skal se forvandlingen.
+    "Skriv i DATID om noget der ER sket — ikke i bydeform og ikke i nutid. "
+    "«hent loggen» bliver til «Hentede loggen», ikke «Hent loggen». "
     "Drop artikler, bindeord og lange stinavne først. Svar KUN med etiketten, "
-    "uden anførselstegn og uden punktum.\n\n"
-    "Eksempler: «Søgte i auth/» · «Rettede NPE i UserService» · "
-    "«Byggede signup-endpoint» · «Læste config.json» · «Kørte fejlende tests»\n\n"
+    "uden anførselstegn og uden punktum.\n"
+    # Målt i produktion 14/9: modellen skrev «Søgte i bash/» om et ssh-kald —
+    # den efterabede eksemplet «Søgte i auth/» og opfandt et bibliotek. Derfor
+    # står forbuddet nu FØR eksemplerne, og eksemplerne siger selv at deres
+    # navne er opdigtede.
+    "VIGTIGT: brug kun navne, stier og kommandoer der FAKTISK står i kaldene "
+    "nedenfor. Opfind aldrig et filnavn eller en mappe. Er der intet sigende "
+    "navn, så skriv etiketten uden et.\n\n"
+    "Eksempler paa FORMEN (navnene i dem er opdigtede — brug dem ikke): "
+    "«Rettede NPE i brugerlaget» · «Byggede endpointet» · "
+    "«Læste konfigurationen» · «Kørte de fejlende tests»\n\n"
 )
 
 
@@ -180,6 +193,37 @@ def _ryd(s: str) -> str:
     return s
 
 
+#: Ser ud som en sti eller et navn — det modellen kan finde på at opdigte.
+#: Almindelige ord efterprøves IKKE: krævede vi at hvert ord stod i kaldet,
+#: ville enhver omskrivning blive kasseret, og en etiket der kun må gentage
+#: sit input er ikke en etiket.
+_NAVNAGTIGT = re.compile(r"[A-Za-zÆØÅæøå][\wÆØÅæøå.\-/]*[./_\-][\wÆØÅæøå.\-/]*")
+
+
+def _opdigtet(tekst: str, billede: str) -> str:
+    """Hvilket navn i etiketten står IKKE i kaldene? `""` når alt er dækket.
+
+    Målt i produktion 14/9: første ægte etiketter var «Kørte ssh og hentede
+    logfiler» (god) og «Søgte i bash/» — hvor modellen efterabede promptens
+    eget eksempel «Søgte i auth/» og opfandt et bibliotek der ikke findes.
+
+    En strammere prompt er et håb. Huset har et bedre greb: `explore_claim_check`
+    slår påstande op i kilden. Samme princip her. En kedelig etiket er harmløs;
+    en der lyver om hvad der skete, er ikke.
+
+    Kassen ses der bort fra — modellen retter gerne begyndelsesbogstavet, og et
+    match der krævede samme kasse ville kassere en RIGTIG etiket.
+    """
+    lav = billede.lower()
+    for m in _NAVNAGTIGT.finditer(tekst or ""):
+        navn = m.group().strip(".,;:")
+        if len(navn) < 3:
+            continue
+        if navn.lower() not in lav:
+            return navn
+    return ""
+
+
 def etiket(vaerktoejer: list[dict[str, Any]], hensigt: str = "") -> str:
     """Én kort etiket for runden, eller `""`.
 
@@ -189,12 +233,18 @@ def etiket(vaerktoejer: list[dict[str, Any]], hensigt: str = "") -> str:
     kald = [v for v in (vaerktoejer or []) if _navn_og_input(v)[0]]
     if not kald:
         return ""
+    billede = byg_prompt(kald, hensigt)
     try:
-        raa = _kald_model(byg_prompt(kald, hensigt))
+        raa = _kald_model(billede)
     except Exception:
         logger.debug("tool_round_label: kald fejlede", exc_info=True)
         return ""
-    return _ryd(raa)
+    ud = _ryd(raa)
+    fundet = _opdigtet(ud, billede)
+    if fundet:
+        logger.info("runde-etiket kasseret — %r staar ikke i kaldene: %r", fundet, ud)
+        return ""
+    return ud
 
 
 def tool_use_ids(vaerktoejer: list[dict[str, Any]]) -> list[str]:

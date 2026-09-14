@@ -175,22 +175,68 @@ def _kald_model(prompt: str) -> str:
     return str(besked.get("content") or "")
 
 
+#: Modellen skriver af og til sin egen instruktion med. Målt i produktion
+#: 14/9: «Skriv etiketten: Kørte beacon scriptet». Kun KENDTE instruktions-ord
+#: foran kolonet udløser det — ellers ville «Kørte ls: fandt 3 filer» blive
+#: klippet, og det er en rigtig etiket.
+_INSTRUKTION = re.compile(
+    r"^\s*(?:skriv\s+)?(?:etiket(?:ten)?|label|svar|resultat)\s*[:：—–-]\s*",
+    re.IGNORECASE,
+)
+
+#: Bindeord der starter et NYT led. Blev teksten klippet, ryger leddet efter
+#: dem — se `_klip_haengende`.
+_LED_SKEL = (" og ", " eller ", " samt ", " men ")
+
+#: Ord en etiket ikke må slutte på når den er blevet klippet.
+_HAENGENDE = {
+    "og", "eller", "i", "til", "fra", "med", "af", "for", "som", "der",
+    "at", "paa", "på", "om", "ved", "over", "under", "efter", "men",
+}
+
 _AFSLUT = re.compile(r"[.\s]+$")
 
 
+def _klip_haengende(s: str, blev_klippet: bool) -> str:
+    """Få en klippet etiket til at slutte hvor et led slutter.
+
+    Det ægte fund 14/9: «Restartede crash-beacon og hentede». Den ender ikke på
+    et bindeord — den ender på et VERBUM hvis objekt blev klippet væk, og det
+    er derfor en liste over bindeord aldrig kunne fange den. To mutationer
+    overlevede den test, og det var testen der var tom.
+
+    Er teksten klippet, ryger det sidste led med, så etiketten slutter hvor
+    noget faktisk slutter. Var den IKKE klippet, er «og» forfatterens egen
+    sætning og skal blive stående.
+    """
+    if blev_klippet:
+        for skel in _LED_SKEL:
+            i = s.lower().rfind(skel)
+            if i > 0:
+                s = s[:i]
+                break
+    ord_ = s.split()
+    while ord_ and ord_[-1].lower().strip(",;:") in _HAENGENDE:
+        ord_.pop()
+    return " ".join(ord_)
+
+
 def _ryd(s: str) -> str:
-    """Én linje, uden anførselstegn, uden punktum, klippet ved et ordskel."""
+    """Én linje, uden instruktion, uden anførselstegn, uden punktum, klippet
+    ved et ordskel — og uden et hængende bindeord til sidst."""
     s = (s or "").split("\n")[0].strip()
+    s = _INSTRUKTION.sub("", s).strip()
     for a, b in (('"', '"'), ("'", "'"), ("«", "»"), ("“", "”")):
         if len(s) >= 2 and s.startswith(a) and s.endswith(b):
             s = s[1:-1].strip()
     s = _AFSLUT.sub("", s)
-    if len(s) > MAKS_ETIKET:
+    blev_klippet = len(s) > MAKS_ETIKET
+    if blev_klippet:
         klip = s[:MAKS_ETIKET]
         mellemrum = klip.rfind(" ")
         s = (klip[:mellemrum] if mellemrum > 0 else klip).rstrip()
         s = _AFSLUT.sub("", s)
-    return s
+    return _klip_haengende(s, blev_klippet)
 
 
 #: Ser ud som en sti eller et navn — det modellen kan finde på at opdigte.

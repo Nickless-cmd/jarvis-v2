@@ -237,3 +237,79 @@ def test_efterproevningen_ser_bort_fra_KASSE(monkeypatch):
     kasse ville kassere en RIGTIG etiket."""
     monkeypatch.setattr(trl, "_kald_model", lambda p: "Læste Config.json")
     assert trl.etiket([_v("read_file", {"path": "apps/config.json"})]) == "Læste Config.json"
+
+
+# ──────── to fejl fra anden produktions-runde (14/9-2026)
+#
+# Fem ægte etiketter efter opdigt-vagten. Tre var gode. To var ikke:
+#
+#   «Skriv etiketten: Kørte beacon scriptet»  — modellen skrev min INSTRUKTION
+#                                               med som en del af svaret
+#   «Restartede crash-beacon og hentede»      — klippet ved 40 tegn og efterlod
+#                                               et hængende bindeord
+#
+# Begge er mekaniske. En etiket der bærer sin egen prompt, og en der slutter
+# på «og», ligner begge en fejl i appen — og de ER det.
+
+def test_en_laekket_instruktion_fjernes(monkeypatch):
+    """Det ægte fund. Modellen skrev prompten med."""
+    monkeypatch.setattr(trl, "_kald_model", lambda p: "Skriv etiketten: Kørte beacon scriptet")
+    assert trl.etiket([_v("bash", {"command": "./beacon.sh"})]) == "Kørte beacon scriptet"
+
+
+def test_flere_former_for_instruktion(monkeypatch):
+    for raa in ("Etiket: Læste loggen", "etiketten: Læste loggen",
+                "Svar: Læste loggen", "Etiket - Læste loggen"):
+        monkeypatch.setattr(trl, "_kald_model", lambda p, r=raa: r)
+        assert trl.etiket([_v("bash", {"command": "cat log"})]) == "Læste loggen", raa
+
+
+def test_et_almindeligt_kolon_MIDT_i_etiketten_roeres_ikke(monkeypatch):
+    """«Kørte: ls» ville vaere en anden sag — men kun et kendt instruktions-ord
+    foran kolonet maa udloese det. Ellers ville vi klippe i rigtige etiketter."""
+    monkeypatch.setattr(trl, "_kald_model", lambda p: "Kørte ls: fandt 3 filer")
+    assert trl.etiket([_v("bash", {"command": "ls"})]) == "Kørte ls: fandt 3 filer"
+
+
+def test_en_KLIPPET_etiket_slutter_hvor_et_led_slutter(monkeypatch):
+    """Det ægte fund: «Restartede crash-beacon og hentede».
+
+    Den ender IKKE paa et bindeord — den ender paa et VERBUM hvis objekt blev
+    klippet vaek, og derfor kunne en liste over bindeord aldrig fange den.
+    Foerste udgave af den her test proevede netop for et haengende bindeord og
+    bestod TOMT: to mutationer overlevede den.
+
+    Reglen er en anden: er teksten klippet, ryger det sidste led med.
+    """
+    monkeypatch.setattr(
+        trl, "_kald_model",
+        lambda p: "Restartede crash-beacon og hentede logfilerne bagefter ogsaa")
+    ud = trl.etiket([_v("bash", {"command": "systemctl restart crash-beacon"})])
+    assert ud == "Restartede crash-beacon", ud
+
+
+def test_en_KORT_etiket_med_og_klippes_IKKE(monkeypatch):
+    """Var den ikke klippet, er «og» forfatterens egen saetning."""
+    monkeypatch.setattr(trl, "_kald_model", lambda p: "Læste og rettede filen")
+    assert trl.etiket([_v("edit_file", {"path": "filen.py"})]) == "Læste og rettede filen"
+
+
+def test_klipning_efterlader_ikke_et_haengende_ord(monkeypatch):
+    """Uden led-skel, men med et forholdsord til sidst efter klipningen.
+
+    Foerste udgave brugte en tekst med «og» i — og saa var det LED-reglen der
+    ryddede op, ikke den her loekke. Testen bestod uden loekken, og mutationen
+    overlevede. Inputtet er nu valgt saa KUN loekken kan redde den: klippet
+    ved 40 tegn ender den paa «til».
+    """
+    monkeypatch.setattr(trl, "_kald_model",
+                        lambda p: "Læste beskeden fra brugeren til systemet med")
+    ud = trl.etiket([_v("read_file", {"path": "a.py"})])
+    assert ud == "Læste beskeden fra brugeren", ud
+
+
+def test_et_forholdsord_til_sidst_ryger_ogsaa_UDEN_klipning(monkeypatch):
+    """«Skrev den nye fil til disken som» er en braekket saetning uanset om den
+    blev klippet. Loekken koerer derfor altid."""
+    monkeypatch.setattr(trl, "_kald_model", lambda p: "Skrev den nye fil til disken som")
+    assert trl.etiket([_v("write_file", {"path": "a.py"})]) == "Skrev den nye fil til disken"

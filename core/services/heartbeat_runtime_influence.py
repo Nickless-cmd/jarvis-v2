@@ -1139,9 +1139,16 @@ def _build_influence_trace(
     # den betalte deepseek-API. Reglen stod i settings, men lane-sandheden bor i
     # provider_router.json — og dér var den brudt i ~7 uger uden at nogen saa
     # det. Vagten retter intet; den goer bruddet synligt.
+    #
+    # 14/9: vagten sagde «kun hans egne ture koster penge» MENS fire lanes
+    # brugte penge. Den spurgte kun konfigurationen, og kun seks lane-navne.
+    # `check_paid_spend` laeser hovedbogen — hvad der FAKTISK blev betalt — og
+    # spoerger om hvert kald baerer et `visible-` run-id. Den invariant kan ikke
+    # forældes af et nyt lane-navn.
     try:
-        from core.services.paid_lane_guard import check_paid_lanes
+        from core.services.paid_lane_guard import check_paid_lanes, check_paid_spend
         check_paid_lanes()
+        check_paid_spend()
     except Exception:
         logger.debug("betalt-lane-vagt fejlede i heartbeat", exc_info=True)
 

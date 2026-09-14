@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7508/14624 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7512/14627 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 7508/14624 functions/methods documented (51%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 646 | 1182 | 54% |
-| `core.services` | 4990 | 10077 | 49% |
+| `core.services` | 4994 | 10080 | 49% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 109 | 184 | 59% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -40,7 +40,7 @@ Generated from source. 7508/14624 functions/methods documented (51%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2077)
+## Undocumented public functions (2076)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L201)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1273,8 +1273,7 @@ Generated from source. 7508/14624 functions/methods documented (51%). The list b
 - `core/services/outcome_projector.py` :: `OutcomeLedger.is_terminal` (L198)
 - `core/services/outcome_projector.py` :: `OutcomeLedger.outcome` (L195)
 - `core/services/outcome_projector.py` :: `OutcomeLedger.record` (L179)
-- `core/services/paid_lane_guard.py` :: `build_paid_lane_guard_surface` (L98)
-- `core/services/paid_lane_guard.py` :: `is_paid` (L40)
+- `core/services/paid_lane_guard.py` :: `is_paid` (L62)
 - `core/services/paradox_tracker.py` :: `build_paradox_surface` (L88)
 - `core/services/paradoxes_capture.py` :: `build_paradoxes_surface` (L269)
 - `core/services/paradoxes_capture.py` :: `list_paradoxes` (L246)

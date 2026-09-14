@@ -52,6 +52,17 @@ RESTART_SELF_TOOL_DEFINITIONS = [
                         "description": "Channel for confirmation after restart (discord, telegram, webchat). Default: discord",
                         "default": "discord",
                     },
+                    "force": {
+                        "type": "boolean",
+                        "description": (
+                            "Genstart OGSAA hvis der koerer noget. Uden den "
+                            "svarer vaerktoejet med hvad der koerer, saa du kan "
+                            "vente. Med den bliver koerslerne stemplet "
+                            "'api-nedlukning' — og det er dét der faar Bjoern "
+                            "til at skrive «Forsæt»."
+                        ),
+                        "default": False,
+                    },
                     "message": {
                         "type": "string",
                         "description": "Custom confirmation message. Default: auto-generated.",
@@ -63,6 +74,44 @@ RESTART_SELF_TOOL_DEFINITIONS = [
         },
     }
 ]
+
+
+#: Hvor ung skal en `running`-raekke vaere for at taelle som LEVENDE?
+#:
+#: En time. En raekke der har staaet `running` laengere er en zombie — og en
+#: vagt der taeller zombier med kan ALDRIG tilfredsstilles. Saa bliver den
+#: omgaaet med `force`, og saa beskytter den ingenting.
+#:
+#: Maalt lokalt: 5 «aktive» koersler, hvoraf ingen levede. Paa runtime var det
+#: tal 1. Forskellen er praecis grunden til loftet.
+LEVENDE_INDEN_FOR_SEKUNDER = 3600.0
+
+
+def _aktive_koersler(graense: int = 5) -> list[dict[str, str]]:
+    """Hvilke synlige koersler er i gang lige nu — og kan plausibelt leve?
+
+    Selv-sikker: kan vi ikke spoerge, svarer vi TOMT — altsaa «ingen kendte».
+    En vagt der blokerer paa sin egen fejl ville goere en noedvendig genstart
+    umulig, og det er vaerre end den fejl den beskytter mod.
+    """
+    from datetime import UTC, datetime, timedelta
+    try:
+        from core.runtime.db import connect
+        graense_tid = (datetime.now(UTC)
+                       - timedelta(seconds=LEVENDE_INDEN_FOR_SEKUNDER)).isoformat()
+        with connect() as conn:
+            raekker = conn.execute(
+                "SELECT run_id, substr(text_preview, 1, 60) FROM visible_runs "
+                "WHERE status = 'running' AND (finished_at IS NULL OR "
+                "finished_at = '') AND started_at >= ? "
+                "ORDER BY started_at DESC LIMIT ?",
+                (graense_tid, int(graense)),
+            ).fetchall()
+        return [{"run_id": str(r[0]), "preview": str(r[1] or "")} for r in raekker]
+    except Exception:
+        logger.debug("restart_self: kunne ikke slaa aktive koersler op",
+                     exc_info=True)
+        return []
 
 
 def _exec_restart_self(args: dict[str, Any]) -> dict[str, Any]:
@@ -77,6 +126,28 @@ def _exec_restart_self(args: dict[str, Any]) -> dict[str, Any]:
             "status": "error",
             "error": "No valid services. Allowed: jarvis-api, jarvis-runtime",
         }
+
+    # 0. Koerer der noget lige nu?
+    #
+    # Maalt 13/9-2026: SYV nedlukninger paa 75 minutter, FEM draebte koersler.
+    # To af dem havde preview'et «Forsæt» — altsaa den besked Bjoern skriver
+    # NAAR en koersel er doed. Baade denne vej og mine egne ssh-genstarter
+    # spurgte ikke foerst.
+    #
+    # Vagten AFVISER ikke; den svarer med hvad der koerer, saa Jarvis selv kan
+    # vaelge at vente. En genstart der bare naegter ville han omgaa ad en anden
+    # vej, og saa er vi vaerre stillet end nu.
+    if not bool(args.get("force")):
+        aktive = _aktive_koersler()
+        if aktive:
+            return {
+                "status": "afvist",
+                "grund": "der koerer noget lige nu",
+                "aktive": aktive,
+                "raad": "vent til de er faerdige, eller kald igen med force=true "
+                        "hvis genstarten ikke kan vente. De bliver stemplet "
+                        "'api-nedlukning'.",
+            }
 
     # 1. Write pending confirmation file
     confirmation = {

@@ -5527,7 +5527,7 @@ def _execute_heartbeat_internal_action(
                     origin="heartbeat:initiative",
                     scope=focus,
                     priority=priority,
-                    run_id=tick_id,
+                    origin_ref=tick_id,
                     owner="heartbeat-runtime",
                 )
                 flow = runtime_flows.create_flow(

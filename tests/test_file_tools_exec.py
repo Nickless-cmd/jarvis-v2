@@ -203,3 +203,107 @@ def test_verify_hint_points_at_the_readback(monkeypatch) -> None:
     })
     assert "Readback" in hint
     assert "verify_file_contains" not in hint
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# Linjetallene bag «+12 −4» (14/9-2026)
+#
+# Bjørn vil have Claude Codes rundelinje: «ran a command, edited 3 files
+# +12 −4». Den linje er MEKANISK i CC — den bygges af værktøjernes egne
+# resultater, og det er derfor den står der med det samme.
+#
+# Huset havde allerede en rundelinje i begge apps («Kørte 2 ting»). Det der
+# manglede var ikke en model, men TAL: `edit_file` returnerede `path`,
+# `match_count` og previews — ingen steder stod hvor meget der blev ændret.
+#
+# Tallene følger git-diff-semantik: en ændring INDEN i én linje er +1 −1,
+# ikke 0. Det er ikke en tilnærmelse — det er sådan en diff tæller.
+# ─────────────────────────────────────────────────────────────────────────
+
+from core.tools.file_tools_exec import linjetal  # noqa: E402
+
+
+def test_en_linje_byttet_er_plus_en_minus_en():
+    """git tæller en ændret linje som én slettet og én tilføjet."""
+    assert linjetal("gammel", "ny", 1) == (1, 1)
+
+
+def test_en_aendring_INDEN_i_en_linje_er_ogsaa_plus_en_minus_en():
+    """«foo» → «foobar» roerer én linje. Nul ville skjule aendringen helt."""
+    assert linjetal("foo", "foobar", 1) == (1, 1)
+
+
+def test_flere_linjer_taelles_hver_for_sig():
+    assert linjetal("a\nb\nc", "x\ny", 1) == (2, 3)
+
+
+def test_en_ren_SLETNING_tilfoejer_ingenting():
+    """Tom ny tekst er en sletning — ikke «én tom linje tilfoejet»."""
+    assert linjetal("a\nb", "", 1) == (0, 2)
+
+
+def test_en_ren_TILFOEJELSE_fjerner_ingenting():
+    assert linjetal("", "a\nb\nc", 1) == (3, 0)
+
+
+def test_replace_all_ganger_med_antal_traef():
+    """Tre erstatninger af samme to-linjers blok er seks linjer roert."""
+    assert linjetal("a\nb", "x\ny", 3) == (6, 6)
+
+
+def test_nul_erstatninger_roerer_intet():
+    assert linjetal("a", "b", 0) == (0, 0)
+
+
+def test_afsluttende_newline_giver_ikke_en_fantomlinje():
+    """«a\\n» er ÉN linje, ikke to. Ellers ville hvert eneste tal vaere for
+    hoejt, og en linje der altid lyver lidt er vaerre end ingen linje."""
+    assert linjetal("a\n", "b\n", 1) == (1, 1)
+
+
+def test_edit_resultatet_BAERER_linjetallene(tmp_path) -> None:
+    """Kilde-vagten er ikke nok: tallene skal ud i det resultat klienterne ser.
+
+    Et regnestykke ingen kalder er husets hyppigste fejl — og her ville den
+    vise sig som en rundelinje der bare siger «redigerede 3 filer» for evigt.
+    """
+    from core.tools import file_tools_exec as fx
+    p = tmp_path / "f.txt"
+    p.write_text("a\nb\nc\n", encoding="utf-8")
+    res = fx._exec_edit_file({"path": str(p), "old_text": "a\nb", "new_text": "x"})
+    assert res["status"] == "ok"
+    assert res["linjer_tilfoejet"] == 1
+    assert res["linjer_fjernet"] == 2
+
+
+def test_write_resultatet_BAERER_linjetallene(tmp_path) -> None:
+    """En NY fil tilfoejer alt og fjerner intet."""
+    from core.tools import file_tools_exec as fx
+    p = tmp_path / "ny.txt"
+    res = fx._exec_write_file({"path": str(p), "content": "en\nto\ntre\n"})
+    assert res["status"] == "ok"
+    assert res["linjer_tilfoejet"] == 3
+    assert res["linjer_fjernet"] == 0
+
+
+def test_write_OVER_en_fil_fjerner_den_gamle(tmp_path) -> None:
+    """Overskrivning er ikke en tilfoejelse. Talte vi kun det nye, ville
+    linjen sige «+3» om en handling der ogsaa slettede fem linjer."""
+    from core.tools import file_tools_exec as fx
+    p = tmp_path / "f.txt"
+    p.write_text("1\n2\n3\n4\n5\n", encoding="utf-8")
+    res = fx._exec_write_file({"path": str(p), "content": "en\nto\n"})
+    assert res["status"] == "ok"
+    assert res["linjer_tilfoejet"] == 2
+    assert res["linjer_fjernet"] == 5
+
+
+def test_en_FEJLET_edit_baerer_ingen_tal(tmp_path) -> None:
+    """Nul er et tal og ville staa i linjen som «+0 −0» — en handling der ikke
+    skete skal slet ikke taelle med."""
+    from core.tools import file_tools_exec as fx
+    p = tmp_path / "f.txt"
+    p.write_text("abc", encoding="utf-8")
+    res = fx._exec_edit_file({"path": str(p), "old_text": "findes-ikke", "new_text": "x"})
+    assert res["status"] == "error"
+    assert "linjer_tilfoejet" not in res

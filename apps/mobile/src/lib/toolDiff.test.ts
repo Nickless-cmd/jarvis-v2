@@ -47,3 +47,59 @@ it('manglende eller forkerte argumenter giver null frem for at braekke', () => {
   expect(toolDiff('multi_edit', { edits: 'ikke et array' })).toBeNull()
   expect(toolDiff('multi_edit', { edits: [{ path: '/x' }] })).toBeNull()
 })
+
+// ─────────────────────────────────────────────────────────────────────────
+// Serveren måler nu, klienten behøver ikke gætte (14/9-2026)
+//
+// `toolDiff` regner ud af kaldets ARGUMENTER, og for `write_file` stod der en
+// ærlig kommentar: «KUN tilføjet. Vi ved ikke om filen fandtes; at kalde dens
+// tidligere indhold for «fjernet» ville være et gæt på et tal man ikke har.»
+//
+// Klienten havde ret — den KUNNE ikke vide det. Men serveren kan: den har
+// filen i hånden lige før den skriver. `edit_file`/`write_file` returnerer nu
+// `linjer_tilfoejet` og `linjer_fjernet`, målt på det faktiske indhold.
+//
+// Rækkefølgen er derfor: MÅLT slår gættet. Ikke omvendt.
+// ─────────────────────────────────────────────────────────────────────────
+
+import { diffFraResultat } from './toolDiff'
+
+describe('diffFraResultat', () => {
+  it('bruger serverens målte tal', () => {
+    expect(diffFraResultat('{"status":"ok","linjer_tilfoejet":12,"linjer_fjernet":4}'))
+      .toEqual({ tilfoejet: 12, fjernet: 4 })
+  })
+
+  it('tager imod et objekt lige så vel som en streng', () => {
+    // Desk får `result` som objekt, mobilen som (evt. ufuldstændig) JSON.
+    expect(diffFraResultat({ linjer_tilfoejet: 3, linjer_fjernet: 0 }))
+      .toEqual({ tilfoejet: 3, fjernet: 0 })
+  })
+
+  it('giver null når serveren ikke har målt noget', () => {
+    // Et læsende værktøj har ingen tal. null, ikke {0,0}: «ingenting at vise»
+    // og «nul» er to forskellige beskeder.
+    expect(diffFraResultat('{"status":"ok","text":"hej"}')).toBeNull()
+  })
+
+  it('giver null på et ufuldstændigt resultat midt i streamen', () => {
+    expect(diffFraResultat('{"status":"ok","linjer_til')).toBeNull()
+  })
+
+  it('giver null på tomt og på vrøvl', () => {
+    expect(diffFraResultat('')).toBeNull()
+    expect(diffFraResultat(undefined)).toBeNull()
+    expect(diffFraResultat('ikke json')).toBeNull()
+  })
+
+  it('accepterer et rent nul-nul resultat som MÅLT', () => {
+    // En edit der erstattede nul steder ER målt til nul. Det er ikke det
+    // samme som at der ikke findes tal.
+    expect(diffFraResultat('{"linjer_tilfoejet":0,"linjer_fjernet":0}'))
+      .toEqual({ tilfoejet: 0, fjernet: 0 })
+  })
+
+  it('afviser tal der ikke er tal', () => {
+    expect(diffFraResultat('{"linjer_tilfoejet":"tolv","linjer_fjernet":4}')).toBeNull()
+  })
+})

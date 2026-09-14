@@ -232,11 +232,18 @@ def _exec_write_file(args: dict[str, Any]) -> dict[str, Any]:
     # en skrivning der aldrig skete. `recorded` kaster aldrig — kaldet koerer
     # uanset — men den tier heller ikke.
     from core.services.invocation_record import recorded
+    # Det gamle indhold skal laeses FOER skrivningen, ellers kan vi ikke sige
+    # hvor meget der forsvandt. En overskrivning er ikke en tilfoejelse: talte
+    # vi kun det nye, ville linjen sige «+2» om en handling der ogsaa slettede
+    # fem linjer.
+    _foer = _ws_read_text(target) or ""
     with recorded("write_file", {"path": str(target)},
                   session_id=str(_session_id or "")):
         target.parent.mkdir(parents=True, exist_ok=True)
         _ws_write_text(target, content)
-    result = {"status": "ok", "path": str(target), "bytes_written": len(content.encode("utf-8"))}
+    _plus, _minus = linjetal(_foer, content, 1)
+    result = {"status": "ok", "path": str(target), "bytes_written": len(content.encode("utf-8")),
+              "linjer_tilfoejet": _plus, "linjer_fjernet": _minus}
     # ── Read-back fra disken (se read-back-blokken i toppen af filen) ──────
     # Før var `bytes_written` en PÅSTAND fra værktøjet. Nu bærer resultatet
     # også filens faktiske begyndelse, læst tilbage EFTER skrivningen — og
@@ -268,6 +275,35 @@ def _exec_write_file(args: dict[str, Any]) -> dict[str, Any]:
         pass
     _record_active_file(str(target), "write", args)
     return result
+
+
+def linjetal(gammel: str, ny: str, erstatninger: int) -> tuple[int, int]:
+    """(tilføjet, fjernet) for én erstatning ganget op — git-diff-semantik.
+
+    Bjørn vil have Claude Codes rundelinje: «edited 3 files +12 −4». Den linje
+    er MEKANISK i CC — den bygges af værktøjernes egne resultater, og det er
+    derfor den står der med det samme. Huset havde allerede rundelinjen i
+    begge apps; det der manglede var tallene.
+
+    En ændring INDEN i én linje er +1 −1, ikke 0. Det er ikke en tilnærmelse:
+    det er sådan en diff tæller, og nul ville skjule ændringen helt.
+
+    Tom tekst er nul linjer, ikke én. Ellers ville en sletning se ud som «én
+    tom linje tilføjet», og hvert eneste tal ville være for højt — en linje
+    der altid lyver lidt er værre end ingen linje.
+    """
+    n = max(0, int(erstatninger or 0))
+    if not n:
+        return (0, 0)
+
+    def _linjer(s: str) -> int:
+        if not s:
+            return 0
+        # En afsluttende newline afslutter den sidste linje; den starter ikke
+        # en ny. «a\n» er ÉN linje.
+        return s.count("\n") + (0 if s.endswith("\n") else 1)
+
+    return (_linjer(ny) * n, _linjer(gammel) * n)
 
 
 def _exec_edit_file(args: dict[str, Any]) -> dict[str, Any]:
@@ -349,7 +385,9 @@ def _exec_edit_file(args: dict[str, Any]) -> dict[str, Any]:
         record_self_mutation(target_path=str(target), change_type="edit")
     except Exception:
         pass
-    result = {"status": "ok", "path": str(target), "replacements": replacements}
+    _plus, _minus = linjetal(old_text, new_text, replacements)
+    result = {"status": "ok", "path": str(target), "replacements": replacements,
+              "linjer_tilfoejet": _plus, "linjer_fjernet": _minus}
     # ── Read-back fra disken (se read-back-blokken i toppen af filen) ──────
     # En edit er en DELVIS ændring — «skete den?» kan ikke besvares ved at se
     # om filen findes. Derfor: læs filen tilbage og vis udsnittet omkring

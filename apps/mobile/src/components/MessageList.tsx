@@ -10,7 +10,7 @@ import { nextUserRow } from '../lib/messageNav'
 import { MessageBubble } from './MessageBubble'
 import { InlineToolGroup } from './InlineToolGroup'
 import { ThinkingLabel } from './ThinkingLabel'
-import { toolDiff } from '../lib/toolDiff'
+import { diffFraResultat, toolDiff } from '../lib/toolDiff'
 import { arbejdsLinje } from '../lib/arbejdsLinje'
 import { TRIN_MS } from '../lib/prikSekvens'
 import { useReducedMotion } from '../lib/useReducedMotion'
@@ -217,9 +217,13 @@ function buildStreamingRows(blocks: ContentBlock[]): Row[] {
         name: b.name,
         body: toolBody(b),
         running: b.status !== 'done' && b.status !== 'error',
-        // Linjetallene for DETTE kald. De ligger allerede i argumenterne;
-        // serveren skulle ikke spoerges om noget klienten har.
-        diff: toolDiff(b.name, b.input),
+        // Linjetallene for DETTE kald. Serverens MAALTE tal foerst: den har
+        // filen i haanden lige foer den skriver, og kan derfor sige hvor meget
+        // en overskrivning FJERNEDE — noget klienten umuligt kan vide af
+        // argumenterne alene. Gaettet bliver som faldback, fordi et kald der
+        // stadig koerer ikke HAR et resultat endnu, og linjen skal kunne
+        // tegnes mens svaret kommer ind.
+        diff: diffFraResultat(b.result) ?? toolDiff(b.name, b.input),
         // Serverens egen etiket, brugt ORDRET. En foreløbig række har ingen
         // argumenter endnu — `describeTool` ville sige «Kører bash…» og tabe
         // netop dét der gør ventetiden forståelig. Etiketten findes allerede

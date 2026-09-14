@@ -20,8 +20,13 @@ describe('én linje pr. runde', () => {
     expect(summarizeRound([it_({ tool: 'bash' }), it_({ tool: 'bash' })])).toBe('Kørte 2 kommandoer')
   })
 
-  it('flere FORSKELLIGE kald bliver til «værktøjer»', () => {
-    expect(summarizeRound([it_({ tool: 'read_file' }), it_({ tool: 'bash' })])).toBe('Kørte 2 værktøjer')
+  it('flere FORSKELLIGE kald bliver til ét led PR. VÆRKTØJ', () => {
+    // 14/9: linjen sagde «Kørte 2 værktøjer» — en optælling af hvor mange
+    // funktionskald der var, hvilket ikke interesserer nogen. Hvad der SKETE
+    // stod der ikke. Den gamle forventning står her som det den var: den
+    // fattigste mulige beskrivelse af en tur.
+    expect(summarizeRound([it_({ tool: 'read_file' }), it_({ tool: 'bash' })]))
+      .toBe('Læste en fil og kørte en kommando')
   })
 
   it('nutid mens runden kører', () => {
@@ -79,4 +84,74 @@ it('kald uden diff springes over frem for at taelle som nul', () => {
 
 it('en tom runde giver null', () => {
   expect(summerDiff([])).toBeNull()
+})
+
+// ─────────────────────────────────────────────────────────────────────────
+// En blandet runde sagde ingenting (14/9-2026)
+//
+// Bjørn vil have Claude Codes linje: «ran a command, edited 3 files +12 −4».
+// Huset havde allerede rundelinjen — men for en BLANDET runde sagde den
+// «Kørte 5 værktøjer». Det er en optælling af noget der ikke interesserer
+// nogen: hvor mange funktionskald der var. Hvad der SKETE stod der ikke.
+//
+// Nu grupperes runden pr. værktøj og bliver til led: «Kørte en kommando,
+// redigerede 3 filer». Rækkefølgen er den kaldene skete i — det er
+// fortællingen om turen, og en sortering ville bytte om på årsag og virkning.
+// ─────────────────────────────────────────────────────────────────────────
+
+const kald = (tool: string, label = 'x', running = false): ToolItem =>
+  ({ label, tool, running }) as ToolItem
+
+describe('summarizeRound — blandede runder', () => {
+  it('samler pr. vaerktoej i den raekkefoelge de skete', () => {
+    // «og» foer det sidste led, komma imellem — som i Bjoerns egen
+    // formulering: «ran a command, edited 3 files AND restarted api».
+    // Foerste udgave af den her test skrev komma ogsaa foer det sidste led;
+    // det var mit eget vilkaarlige valg, ikke noget beviset stoettede.
+    expect(summarizeRound([kald('bash'), kald('edit_file'), kald('edit_file')]))
+      .toBe('Kørte en kommando og redigerede 2 filer')
+  })
+
+  it('kun det FOERSTE led har stort begyndelsesbogstav', () => {
+    const s = summarizeRound([kald('read_file'), kald('bash')])
+    expect(s).toBe('Læste en fil og kørte en kommando')
+  })
+
+  it('tre slags led bindes med komma og «og»', () => {
+    expect(summarizeRound([kald('bash'), kald('read_file'), kald('edit_file')]))
+      .toBe('Kørte en kommando, læste en fil og redigerede en fil')
+  })
+
+  it('«en» frem for «1» — det er en saetning, ikke en tabel', () => {
+    expect(summarizeRound([kald('bash'), kald('edit_file')]))
+      .toBe('Kørte en kommando og redigerede en fil')
+  })
+
+  it('et ukendt vaerktoej faar sit eget led og ikke en tavshed', () => {
+    // Uden det ville et nyt vaerktoej forsvinde ud af saetningen, og linjen
+    // ville lyve om hvad turen gjorde.
+    expect(summarizeRound([kald('bash'), kald('et_nyt_vaerktoej')]))
+      .toBe('Kørte en kommando og kørte en ting')
+  })
+
+  it('en runde der stadig koerer slutter med prikker', () => {
+    expect(summarizeRound([kald('bash', 'x', true), kald('edit_file')]))
+      .toMatch(/…$/)
+  })
+
+  it('en runde der koerer bruger NUTID', () => {
+    expect(summarizeRound([kald('bash', 'x', true), kald('edit_file', 'x', true)]))
+      .toBe('Kører en kommando og redigerer en fil…')
+  })
+
+  it('ensartede runder er UROERTE', () => {
+    // Den gren virkede allerede. En aendring her ville vaere en regression
+    // forklaedt som en forbedring.
+    expect(summarizeRound([kald('edit_file'), kald('edit_file'), kald('edit_file')]))
+      .toBe('Redigerede 3 filer')
+  })
+
+  it('ét kald er stadig sin egen beskrivelse', () => {
+    expect(summarizeRound([kald('bash', 'Kørte agent.ts')])).toBe('Kørte agent.ts')
+  })
 })

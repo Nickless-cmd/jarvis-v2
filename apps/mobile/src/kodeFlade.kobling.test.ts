@@ -251,14 +251,17 @@ it('linjetallene kommer fra KALDET, ikke fra et faelles arbejdstrae', () => {
   // kunne dermed se hvad ANDRE havde liggende uafsluttet. Tallene pr. kald
   // kan kun vise hvad DETTE kald gjorde, saa problemet kan ikke opstaa igen.
   const ml = kilde('components/MessageList.tsx')
-  expect(ml).toMatch(/diff: toolDiff\(b\.name, b\.input\)/)
+  expect(ml).toMatch(/diff: diffFraResultat\(b\.result\) \?\? toolDiff\(b\.name, b\.input\)/)
   const g = kilde('components/InlineToolGroup.tsx')
   expect(g).toMatch(/summerDiff\(items\)/)
 })
 
-it('linjetallene pr. vaerktoejskald regnes af argumenterne', () => {
+it('linjetallene pr. vaerktoejskald er MAALT, med argumenterne som faldback', () => {
+  // 14/9: serveren maaler nu. Gaettet beholdes fordi et koerende kald ikke
+  // HAR et resultat endnu — uden det ville linjen staa tom under arbejdet.
   const ml = kilde('components/MessageList.tsx')
-  expect(ml).toMatch(/diff: toolDiff\(b\.name, b\.input\)/)
+  expect(ml).toMatch(/diffFraResultat\(b\.result\)/)
+  expect(ml).toMatch(/toolDiff\(b\.name, b\.input\)/)
   const g = kilde('components/InlineToolGroup.tsx')
   expect(g).toMatch(/item\.diff\.tilfoejet/)
   expect(g).toMatch(/item\.diff\.fjernet/)

@@ -46,10 +46,14 @@ describe('én linje for hele runden', () => {
     ])).toBe('Læste 2 filer')
   })
 
-  it('blandede → «værktøjer»', () => {
+  it('blandede → ét led PR. VÆRKTØJ', () => {
+    // 14/9: linjen sagde «Kørte 2 værktøjer» — en optælling af hvor mange
+    // funktionskald der var, hvilket ikke interesserer nogen. Den gamle
+    // forventning står her som det den var: den fattigste mulige beskrivelse
+    // af en tur.
     expect(summarizeRound([
       t('read_file', { path: 'a.ts' }), t('bash', { command: 'ls' }),
-    ])).toBe('Kørte 2 værktøjer')
+    ])).toBe('Læste en fil og kørte en kommando')
   })
 
   it('resultatets EGEN optælling slår antallet af kald', () => {
@@ -73,5 +77,64 @@ describe('én linje for hele runden', () => {
 
   it('tom runde giver tom linje — ikke en tom ramme', () => {
     expect(summarizeRound([])).toBe('')
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────
+// En blandet runde sagde ingenting (14/9-2026) — 1:1 med mobilen
+//
+// Bjørn vil have Claude Codes linje: «ran a command, edited 3 files +12 −4».
+// Rundelinjen fandtes, men for en BLANDET runde sagde den «Kørte 5
+// værktøjer»: en optælling af hvor mange funktionskald der var, hvilket ikke
+// interesserer nogen. Hvad der SKETE stod der ikke.
+//
+// Denne fil er porteret fra mobilen og skal blive ved med at være 1:1 — to
+// flader der siger forskelligt om den samme tur er værre end én dårlig linje.
+// ─────────────────────────────────────────────────────────────────────────
+
+describe('summarizeRound — blandede runder', () => {
+  const t = (name: string, status: 'running' | 'done' = 'done') =>
+    ({ type: 'tool_use', name, input: {}, status }) as never
+
+  it('samler pr. vaerktoej i den raekkefoelge de skete', () => {
+    expect(summarizeRound([t('bash'), t('edit_file'), t('edit_file')]))
+      .toBe('Kørte en kommando og redigerede 2 filer')
+  })
+
+  it('tre slags led bindes med komma og «og»', () => {
+    expect(summarizeRound([t('bash'), t('read_file'), t('edit_file')]))
+      .toBe('Kørte en kommando, læste en fil og redigerede en fil')
+  })
+
+  it('kun det FOERSTE led har stort begyndelsesbogstav', () => {
+    expect(summarizeRound([t('read_file'), t('bash')]))
+      .toBe('Læste en fil og kørte en kommando')
+  })
+
+  it('«en» frem for «1» — det er en saetning, ikke en tabel', () => {
+    expect(summarizeRound([t('bash'), t('edit_file')]))
+      .toBe('Kørte en kommando og redigerede en fil')
+  })
+
+  it('et ukendt vaerktoej faar sit eget led og ikke en tavshed', () => {
+    expect(summarizeRound([t('bash'), t('et_nyt_vaerktoej')]))
+      .toBe('Kørte en kommando og kørte en ting')
+  })
+
+  it('en runde der koerer bruger NUTID og slutter med prikker', () => {
+    expect(summarizeRound([t('bash', 'running'), t('edit_file', 'running')]))
+      .toBe('Kører en kommando og redigerer en fil…')
+  })
+
+  it('ensartede runder er UROERTE', () => {
+    expect(summarizeRound([t('edit_file'), t('edit_file'), t('edit_file')]))
+      .toBe('Redigerede 3 filer')
+  })
+
+  it('operator-varianten taeller som samme vaerktoej', () => {
+    // `grundnavn` fjerner operator-praefikset. Uden det ville «kørte en
+    // kommando og kørte en kommando» staa der — to led om det samme.
+    expect(summarizeRound([t('bash'), t('operator_bash')]))
+      .toBe('Kørte 2 kommandoer')
   })
 })

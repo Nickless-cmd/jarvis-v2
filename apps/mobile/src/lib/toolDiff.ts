@@ -69,3 +69,43 @@ function linjer(s: string): number {
   const rent = s.endsWith('\n') ? s.slice(0, -1) : s
   return rent.split('\n').length
 }
+
+
+/**
+ * Linjetal som SERVEREN har målt — frem for klientens gæt.
+ *
+ * `toolDiff` ovenfor regner ud af kaldets argumenter, og for `write_file`
+ * stod der en ærlig indrømmelse: vi ved ikke om filen fandtes, så «fjernet»
+ * kunne ikke opgøres. Klienten havde ret — den KUNNE ikke vide det.
+ *
+ * Serveren kan: den har filen i hånden lige før den skriver.
+ * `edit_file`/`write_file` returnerer nu `linjer_tilfoejet` og
+ * `linjer_fjernet`, målt på det faktiske indhold. Rækkefølgen er derfor:
+ * målt slår gættet.
+ *
+ * `null` når serveren ikke har målt noget — et læsende værktøj har ingen tal,
+ * og «ingenting at vise» er en anden besked end «nul». Men et resultat der
+ * FAKTISK siger 0 og 0 er målt, og returneres som sådan.
+ *
+ * Et halvt JSON-objekt midt i en stream giver null frem for at kaste: linjen
+ * skal kunne tegnes mens svaret stadig kommer ind.
+ */
+export function diffFraResultat(resultat: unknown): ToolDiff | null {
+  let o: Record<string, unknown> | null = null
+  if (resultat && typeof resultat === 'object') {
+    o = resultat as Record<string, unknown>
+  } else if (typeof resultat === 'string' && resultat.trim()) {
+    try {
+      const p = JSON.parse(resultat)
+      if (p && typeof p === 'object') o = p as Record<string, unknown>
+    } catch {
+      return null
+    }
+  }
+  if (!o) return null
+  const t = o.linjer_tilfoejet
+  const f = o.linjer_fjernet
+  if (typeof t !== 'number' || typeof f !== 'number') return null
+  if (!Number.isFinite(t) || !Number.isFinite(f)) return null
+  return { tilfoejet: t, fjernet: f }
+}

@@ -140,6 +140,48 @@ export function summarizeRound(tools: ToolUse[]): string {
     return `${running ? now : past} ${n} ${n === 1 ? one : many}${running ? '…' : ''}`
   }
 
-  const n = tools.length
-  return `${running ? 'Kører' : 'Kørte'} ${n} værktøjer${running ? '…' : ''}`
+  return blandetRunde(tools, running)
+}
+
+/** «en» frem for «1»: linjen er en sætning, ikke en tabel. */
+function antalOrd(n: number): string {
+  return n === 1 ? 'en' : String(n)
+}
+
+/**
+ * Led pr. værktøj, i den rækkefølge kaldene skete. 1:1 med mobilens
+ * `toolGroup.ts` — to flader der siger forskelligt om den samme tur er værre
+ * end én dårlig linje.
+ *
+ * Den gamle linje sagde «Kørte 5 værktøjer»: en optælling af hvor mange
+ * funktionskald der var, hvilket ikke interesserer nogen. Hvad der SKETE stod
+ * der ikke. Nu står der «Kørte en kommando og redigerede 3 filer».
+ *
+ * Rækkefølgen er kaldenes egen — en sortering ville bytte om på årsag og
+ * virkning i en linje der læses som en fortælling om turen. Et ukendt værktøj
+ * får sit eget led frem for at blive tiet ihjel.
+ */
+function blandetRunde(tools: ToolUse[], running: boolean): string {
+  const orden: string[] = []
+  const antal = new Map<string, number>()
+  for (const t of tools) {
+    const g = grundnavn(t.name)
+    if (!antal.has(g)) orden.push(g)
+    antal.set(g, (antal.get(g) ?? 0) + 1)
+  }
+
+  const led = orden.map((tool, idx) => {
+    const n = antal.get(tool) ?? 0
+    const [nu, da] = PLURAL[tool] ?? ['Kører', 'Kørte']
+    const [en, flere] = UNIT[tool] ?? ['ting', 'ting']
+    const verbum = running ? nu : da
+    // Kun det første led bærer stort begyndelsesbogstav — resten er led i
+    // samme sætning, ikke selvstændige overskrifter.
+    const v = idx === 0 ? verbum : verbum.charAt(0).toLowerCase() + verbum.slice(1)
+    return `${v} ${antalOrd(n)} ${n === 1 ? en : flere}`
+  })
+
+  const hale = running ? '…' : ''
+  if (led.length === 1) return led[0]! + hale
+  return `${led.slice(0, -1).join(', ')} og ${led[led.length - 1]}${hale}`
 }

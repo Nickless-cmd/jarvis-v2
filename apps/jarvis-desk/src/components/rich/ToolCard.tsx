@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Check, X, Loader } from 'lucide-react'
 import type { ContentBlock } from '../../lib/sseProtocol'
 import { lookupTool } from '../../lib/toolRegistry'
-import { diffStat } from '../../lib/diffStat'
+import { diffFraResultat, diffStat } from '../../lib/diffStat'
 import { DiffView } from './DiffView'
 import { PauseAndAskCard } from './PauseAndAskCard'
 import { parsePauseAsk } from '../../lib/pauseAsk'
@@ -25,7 +25,11 @@ export function ToolCard({
   const fam = toolFamily(block.name)
   const meta = lookupTool(block.name)
   const summary = meta.summarize(args, block.result)
-  const ds = diffStat(block.name, args)
+  // Serverens MAALTE tal foerst: den har filen i haanden lige foer den
+  // skriver og kan derfor sige hvor meget en overskrivning FJERNEDE — noget
+  // klienten umuligt kan vide af argumenterne alene. Gaettet bliver som
+  // faldback, fordi et kald der stadig koerer ikke HAR et resultat endnu.
+  const ds = diffFraResultat(block.result) ?? diffStat(block.name, args)
   const status = block.status ?? 'running'
   const ask = parsePauseAsk(block.result)
   const Icon = meta.Icon

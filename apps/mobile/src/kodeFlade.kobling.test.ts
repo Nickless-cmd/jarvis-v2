@@ -324,3 +324,29 @@ it('runde-etiketten naar hele vejen fra stream til skaerm', () => {
   expect(g).toMatch(/testID="tool-group-etiket"/)
   expect(g.indexOf('tool-group-etiket')).toBeLessThan(g.indexOf('<GlidendeTekst'))
 })
+
+// ─────────────────────────────────────────────────────────────────────────
+// Tallene og etiketterne skal OVERLEVE streamen (14/9-2026)
+//
+// Bjoern: «+/- persister ikke efter streaming».
+//
+// Den gemte gren bygger allerede `live-tool`-raekker ud af beskedens blokke —
+// den udelod bare `id` og `diff`. Derfor forsvandt BAADE linjetallene og
+// runde-etiketterne i det oejeblik turen var faerdig: uden `id` kan etiketten
+// ikke slaas op, og uden `diff` er der ingen tal at summere.
+//
+// Blokkene HAR det der skal til. `types.ts` siger det selv: «Har beskeden
+// blokke, er de sandheden.»
+// ─────────────────────────────────────────────────────────────────────────
+it('den gemte visning baerer id og linjetal videre', () => {
+  const ml = kilde('components/MessageList.tsx')
+  // Ankeret er selve noeglen paa den gemte raekke; vinduet loeber FREM derfra.
+  // Foerste udgave regnede 300 tegn BAGUD og landede i en helt anden gren —
+  // en vagt der maaler det forkerte sted er lige saa blind som ingen vagt.
+  const i = ml.indexOf('`${m.id}-t${bi}`')
+  expect(i).toBeGreaterThan(0)
+  const gemt = ml.slice(i, i + 700)
+  expect(gemt).toMatch(/id: b\.id/)
+  expect(gemt).toMatch(/diffFraResultat\(b\.result\)/)
+  expect(gemt).toMatch(/toolDiff\(/)
+})

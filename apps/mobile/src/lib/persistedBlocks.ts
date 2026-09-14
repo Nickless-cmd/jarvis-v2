@@ -23,6 +23,22 @@ export interface PersistedBlock {
   text?: string
   name?: string
   input?: Record<string, unknown>
+  /**
+   * tool_use: kaldets id — det samme serveren bruger i `tool_use_ids` på en
+   * runde-etiket.
+   *
+   * Feltet fandtes i dataen hele tiden; typen kendte det bare ikke, og derfor
+   * blev det aldrig båret videre. Uden det kan etiketten ikke slås op på en
+   * gemt tur, og overskriften forsvandt i det øjeblik streamen sluttede.
+   */
+  id?: string
+  /**
+   * tool_use: værktøjets resultat, når serveren har lagt det ved.
+   *
+   * Bærer `linjer_tilfoejet`/`linjer_fjernet` når der er målt. Er ofte `null`,
+   * og så regnes tallene af argumenterne i stedet.
+   */
+  result?: unknown
   tool_use_id?: string
   content?: string
   status?: string

@@ -335,8 +335,15 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
             expanded.push({
               kind: 'live-tool',
               key: `${m.id}-t${bi}`,
+              // `id` og `diff` skal MED, ellers doer baade linjetallene og
+              // runde-etiketten i det oejeblik turen er faerdig: uden id'et
+              // kan etiketten ikke slaas op, og uden diff'en er der intet at
+              // summere. Blokkene HAR begge dele — `types.ts` siger det selv:
+              // «Har beskeden blokke, er de sandheden.»
+              id: b.id,
               name: String(b.name ?? ''),
               body: JSON.stringify(b.input ?? {}),
+              diff: diffFraResultat(b.result) ?? toolDiff(String(b.name ?? ''), b.input),
               running: false
             })
           } else if (b.type === 'thinking' && (b.text ?? '').trim()) {

@@ -198,3 +198,40 @@ def test_returen_paastaar_ikke_en_PRIS():
                       if isinstance(k, ast.Constant)}
             assert "cost_usd" not in nøgler, \
                 "returen paastaar en pris — hovedbogen er det ene sted den hoerer hjemme"
+
+
+def test_bogfoeringen_baerer_KOERSLEN(monkeypatch):
+    """Uden run-id'et lyver hovedbogen om EJERSKAB.
+
+    `truth_gate_v2` kaldes fra `visible_runs` — altsaa inde i en af Bjoerns egne
+    ture. Bogfoerte vi uden run-id, ville betalt-lane-vagten melde hans eget
+    arbejde som et brud, og en vagt der raaber op om hans egne ture bliver
+    slaaet fra. Ejerskab skal MAALES, ikke gaettes.
+
+    Samme fejlform som incident 8839/6798: feltet fandtes, kalderen sendte det
+    bare ikke.
+    """
+    bogfoert: list = []
+    monkeypatch.setattr("core.services.session_context_resolve.aktivt_run_id",
+                        lambda *a, **k: "visible-abc")
+    _koer(monkeypatch, bogfoert, usage={"prompt_tokens": 800, "completion_tokens": 60})
+    assert bogfoert[0]["run_id"] == "visible-abc"
+
+
+def test_ukendt_koersel_bogfoeres_TOMT_ikke_gaettet(monkeypatch):
+    """Et gaettet run-id ville frikende et aegte brud. Tomt er aerligt: vagten
+    behandler det som «hoerer ikke til en tur», hvilket er den sikre retning."""
+    bogfoert: list = []
+    monkeypatch.setattr("core.services.session_context_resolve.aktivt_run_id",
+                        lambda *a, **k: "")
+    _koer(monkeypatch, bogfoert, usage={"prompt_tokens": 5, "completion_tokens": 1})
+    assert bogfoert[0]["run_id"] == ""
+
+
+def test_run_opslag_der_KASTER_vaelter_ikke_kaldet(monkeypatch):
+    bogfoert: list = []
+    monkeypatch.setattr("core.services.session_context_resolve.aktivt_run_id",
+                        lambda *a, **k: (_ for _ in ()).throw(RuntimeError("nede")))
+    ud = _koer(monkeypatch, bogfoert, usage={"prompt_tokens": 5, "completion_tokens": 1})
+    assert ud["text"] == "resume"
+    assert bogfoert and bogfoert[0]["run_id"] == ""

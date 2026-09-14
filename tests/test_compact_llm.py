@@ -11,6 +11,7 @@ Rækkefølge: primær (visible provider/model) → cheap-no-groq → heartbeat/g
 """
 from __future__ import annotations
 
+import pytest
 from unittest.mock import patch
 
 import core.context.compact_llm as cl
@@ -97,3 +98,69 @@ class TestPrimaryLanens_egne_vaern:
             assert cl._call_primary("p", max_tokens=2500) == "resumé"
 
         assert ex.call_args.kwargs["target"]["auth_profile"] == "default"
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# Kalderen troede den var på den billige lane (14/9-2026)
+#
+# `truth_gate_v2._llm_judge` siger i sin EGEN docstring «Spørg billig lane».
+# Den kalder `call_compact_llm`, hvis rute-prioritet sætter den BETALTE
+# primær-lane først — og gaten kører på hvert svar der påstår en handling.
+# Målt: ~540 kald i timen mod api.deepseek.com, den største enkeltforbruger
+# uden for Bjørns egne ture.
+#
+# Rute-prioriteten er RIGTIG for komprimering: Bjørn satte den dér 19. august
+# med en begrundelse — et compact-resumé ER Jarvis' hukommelse om et helt
+# forløb. Den beslutning står urørt. Det der manglede var en måde at sige
+# «jeg er ikke komprimering» på.
+# ─────────────────────────────────────────────────────────────────────────
+
+def test_tillad_betalt_False_springer_primaer_lanen_over(monkeypatch):
+    """Kernen: en kalder skal kunne sige fra over for den betalte lane."""
+    kaldt: list[str] = []
+    monkeypatch.setattr(cl, "_call_primary",
+                        lambda p, **k: kaldt.append("primary") or "betalt svar")
+    monkeypatch.setattr(cl, "_call_cheap_no_groq",
+                        lambda p: kaldt.append("cheap") or "gratis svar")
+    ud = cl.call_compact_llm("x", tillad_betalt=False)
+    assert "primary" not in kaldt, "den betalte lane blev spurgt alligevel"
+    assert ud == "gratis svar"
+
+
+def test_standarden_er_UAENDRET(monkeypatch):
+    """Komprimering skal stadig ramme primær-lanen. Et default-skifte ville
+    stiltiende vende Bjørns beslutning fra 19. august."""
+    kaldt: list[str] = []
+    monkeypatch.setattr(cl, "_call_primary",
+                        lambda p, **k: kaldt.append("primary") or "betalt svar")
+    monkeypatch.setattr(cl, "_call_cheap_no_groq", lambda p: "gratis svar")
+    assert cl.call_compact_llm("x") == "betalt svar"
+    assert kaldt == ["primary"]
+
+
+def test_gratis_vejen_har_stadig_sin_SIDSTE_udvej(monkeypatch):
+    """Fejler den billige lane, må dommeren ikke falde tilbage på den BETALTE.
+    Ellers ville afkaldet kun gælde når alt virkede."""
+    monkeypatch.setattr(cl, "_call_primary",
+                        lambda p, **k: pytest.fail("betalt lane brugt som fallback"))
+    monkeypatch.setattr(cl, "_call_cheap_no_groq", lambda p: None)
+    monkeypatch.setattr(cl, "_call_heartbeat_llm_simple", lambda p, m: "hjerteslag")
+    assert cl.call_compact_llm("x", tillad_betalt=False) == "hjerteslag"
+
+
+def test_truth_gaten_BEDER_om_den_gratis_vej():
+    """Kilde-vagt på kalderen. AST: `tillad_betalt=False` skal staa som
+    nøgleord i det faktiske kald, ikke i en kommentar."""
+    import ast
+    import inspect
+    import textwrap
+    from core.services import truth_gate_v2 as tg
+    træ = ast.parse(textwrap.dedent(inspect.getsource(tg._llm_judge)))
+    for k in ast.walk(træ):
+        if isinstance(k, ast.Call) and getattr(k.func, "id", "") == "call_compact_llm":
+            nøgler = {kw.arg: kw.value for kw in k.keywords}
+            assert "tillad_betalt" in nøgler, "dommeren beder ikke om den gratis vej"
+            assert nøgler["tillad_betalt"].value is False
+            break
+    else:
+        raise AssertionError("call_compact_llm kaldes ikke laengere i _llm_judge")

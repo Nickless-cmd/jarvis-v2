@@ -89,7 +89,8 @@ def _call_heartbeat_llm_simple(prompt: str, max_tokens: int) -> str:
     return call_heartbeat_llm_simple(prompt, max_tokens=max_tokens)
 
 
-def call_compact_llm(prompt: str, *, max_tokens: int = 400) -> str:
+def call_compact_llm(prompt: str, *, max_tokens: int = 400,
+                     tillad_betalt: bool = True) -> str:
     """Summarise prompt. Tries non-Groq cheap providers first, Groq as fallback.
 
     Memory Fix Phase 2: automatically prepends the current identity sketch
@@ -97,6 +98,22 @@ def call_compact_llm(prompt: str, *, max_tokens: int = 400) -> str:
     original prompt if sketch is unavailable.
 
     Never raises — returns a fallback string if all providers are unavailable.
+
+    ## `tillad_betalt` (14/9-2026)
+
+    Rute-prioriteten ovenfor er RIGTIG for komprimering: Bjørn satte den dér
+    19. august med en begrundelse — et compact-resumé ER Jarvis' hukommelse om
+    et helt forløb. Den beslutning står urørt, og standarden er derfor uændret.
+
+    Men `truth_gate_v2._llm_judge` kalder også herind, siger i sin egen
+    docstring «Spørg billig lane», og kører på hvert svar der påstår en
+    handling. Målt: ~540 kald i timen mod api.deepseek.com — den største
+    enkeltforbruger uden for Bjørns egne ture, mod hans gentagne regel om at
+    kun hans egne ture må koste penge.
+
+    Det der manglede var ikke en anden rute, men en måde at sige «jeg er ikke
+    komprimering» på. En kalder der beder om den gratis vej falder ALDRIG
+    tilbage på den betalte — ellers ville afkaldet kun gælde når alt virkede.
     """
     try:
         from core.services.identity_sketch import get_identity_sketch
@@ -112,9 +129,10 @@ def call_compact_llm(prompt: str, *, max_tokens: int = 400) -> str:
     except Exception:
         pass
 
-    text = _call_primary(prompt, max_tokens=max_tokens)
-    if text:
-        return text
+    if tillad_betalt:
+        text = _call_primary(prompt, max_tokens=max_tokens)
+        if text:
+            return text
     text = _call_cheap_no_groq(prompt)
     if text:
         return text

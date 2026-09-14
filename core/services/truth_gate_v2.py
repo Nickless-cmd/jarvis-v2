@@ -255,7 +255,14 @@ _UNCERTAIN_HINT = re.compile(
 
 def _llm_judge(text: str) -> dict[str, Any]:
     """Spørg billig lane om teksten påstår en handling der kræver tool-evidens.
-    Kan kaste — kalderen fail-open'er."""
+    Kan kaste — kalderen fail-open'er.
+
+    14/9-2026: docstringen ovenfor har altid sagt «billig lane», men
+    `call_compact_llm` sætter den BETALTE primær-lane først. Gaten kører på
+    hvert svar der påstår en handling, så den blev den største enkeltforbruger
+    af Bjørns DeepSeek-nøgle uden for hans egne ture — ~540 kald i timen.
+    `tillad_betalt=False` gør kaldet til det docstringen altid har lovet.
+    """
     from core.context.compact_llm import call_compact_llm
     raw = call_compact_llm(
         "Påstår denne besked at AI'en har UDFØRT en handling/produceret et resultat der "
@@ -263,6 +270,7 @@ def _llm_judge(text: str) -> dict[str, Any]:
         "{\"claims_action\": true/false, \"kind\": \"ran|committed|read_file|deployed|output|null\"}."
         "\n\nBesked:\n" + text[:1500],
         max_tokens=60,
+        tillad_betalt=False,
     )
     m = re.search(r"\{.*\}", raw or "", re.DOTALL)
     return _json.loads(m.group(0)) if m else {"claims_action": False, "kind": None}

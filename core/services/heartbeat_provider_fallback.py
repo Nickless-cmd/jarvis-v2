@@ -131,12 +131,24 @@ def execute_openai_compat_heartbeat_prompt(
     # Bogfoeringen staar HER og ikke hos kalderne, saa ingen fremtidig kalder
     # kan glemme den. Den maa aldrig kunne vaelte kaldet: arbejdet er vigtigere
     # end sporet til det.
+    #
+    # Run-id'et er ikke pynt: `truth_gate_v2` kaldes fra `visible_runs`, altsaa
+    # INDE i en af Bjoerns egne ture. Uden det ville betalt-lane-vagten melde
+    # hans eget arbejde som et brud — og en vagt der raaber op om hans egne
+    # ture bliver slaaet fra. Ejerskab skal maales, ikke gaettes; ukendt bliver
+    # TOMT, aldrig et gaet.
     try:
         from core.costing.ledger import record_cost
+        try:
+            from core.services.session_context_resolve import aktivt_run_id
+            run_id = aktivt_run_id("")
+        except Exception:
+            run_id = ""
         record_cost(
             lane="compat_oneshot", provider=provider, model=model,
             input_tokens=input_tokens, output_tokens=output_tokens,
             cache_hit_tokens=cache_hit, cache_miss_tokens=cache_miss,
+            run_id=run_id,
         )
     except Exception:
         logger.debug("compat_oneshot: kunne ikke bogfoere %s/%s", provider, model,

@@ -212,3 +212,60 @@ def test_lytter_start_kalder_indhentningen(monkeypatch):
         assert kaldt, "start_listener indhenter ikke det der skete foer den lyttede"
     finally:
         lex.stop_listener()
+
+
+# ───────────────────────────────────── selve forespoergslen, mod en RIGTIG base
+
+@pytest.fixture
+def base(monkeypatch):
+    """En rigtig sqlite. De ovenstående tests udskifter `_afbrudte_fra_db`, så
+    forespørgslen selv står utestet — og det er netop det led der kan give et
+    stille nul (kind stavet forkert, tidsvinduet vendt om, halen skjult af et
+    blankt limit)."""
+    import sqlite3
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    conn.execute("CREATE TABLE events (id INTEGER PRIMARY KEY, kind TEXT, "
+                 "payload_json TEXT, created_at TEXT)")
+
+    class _Uden:
+        def __enter__(self): return conn
+        def __exit__(self, *a): return False
+
+    import core.runtime.db as db
+    monkeypatch.setattr(db, "connect", lambda: _Uden())
+    return conn
+
+
+def _laeg(conn, eid, kind, run_id, minutter_siden):
+    import json
+    conn.execute(
+        "INSERT INTO events (id, kind, payload_json, created_at) "
+        "VALUES (?,?,?, datetime('now', ?))",
+        (eid, kind, json.dumps({"run_id": run_id}), f"-{minutter_siden} minutes"),
+    )
+
+
+def test_forespoergslen_tager_kun_afbrydelser(base):
+    """Ét bogstav galt i arten giver nul rækker og ingen fejl."""
+    _laeg(base, 1, "runtime.visible_run_interrupted", "visible-a", 2)
+    _laeg(base, 2, "runtime.visible_run_completed", "visible-b", 2)
+    ud = lex._afbrudte_fra_db()
+    assert [e["payload"]["run_id"] for e in ud] == ["visible-a"]
+
+
+def test_forespoergslen_lader_det_gamle_ligge(base):
+    """Målt på hans base inden deploy: ét event i et 24-timers vindue, en
+    autonom kørsel fra i GÅR. Det er ikke afbrudt arbejde, det er historie."""
+    _laeg(base, 1, "runtime.visible_run_interrupted", "visible-ny", 5)
+    _laeg(base, 2, "runtime.visible_run_interrupted", "visible-gammel", 300)
+    ud = lex._afbrudte_fra_db()
+    assert [e["payload"]["run_id"] for e in ud] == ["visible-ny"]
+
+
+def test_forespoergslen_giver_AELDST_foerst(base):
+    """Så loftet rammer de nyeste sidst, og sporet står i dødsrækkefølge."""
+    _laeg(base, 1, "runtime.visible_run_interrupted", "visible-foerst", 9)
+    _laeg(base, 2, "runtime.visible_run_interrupted", "visible-sidst", 1)
+    ud = lex._afbrudte_fra_db()
+    assert [e["payload"]["run_id"] for e in ud] == ["visible-foerst", "visible-sidst"]

@@ -79,6 +79,18 @@ vejen hvor kørslerne dør live og lytteren får dem ét event ad gangen.
 Og det er **ikke tavst**: et ramt loft skriver et spor med status `capped`. At
 droppe uden spor er præcis den fejl hele øvelsen handler om.
 
+## Vinduet, rettet af en måling lige inden deploy
+
+Første udgave kiggede 24 timer tilbage. Inden jeg deployede, målte jeg hvad
+indhentningen så ville vække på hans base: **præcis ét event — en autonom
+kørsel fra i går aftes.**
+
+Det afslørede at vinduet var valgt forkert. Indhentningen findes for at lukke
+et ét-sekunds hul, hvor eventene er sekunder gamle. Et døgngammelt afbrudt
+arbejde er ikke noget nogen venter på, og et bredt vindue gør hver genstart
+til en mulig genoplivning af gammelt arbejde. Vinduet er nu **60 minutter** —
+rigeligt til «API'en stemplede ved nedlukning, runtime kom op et minut senere».
+
 ## Mutations-prøve
 
 | Mutation | Udfald |
@@ -98,3 +110,8 @@ mekanismen findes, kalderen mangler. Der er nu en test på selve koblingen.
 
 Den sidste er ægte ækvivalent: med tomt id giver `f"{noegle}:{rid}"` strengen
 `"visible-run-interrupted:"`, som stadig er én konstant nøgle for alle.
+
+Forespørgslen selv blev testet mod en rigtig sqlite, fordi de ti første tests
+udskifter den — og det er netop det led der kan give et stille nul. Tre
+mutationer til, alle døde: art-filteret fjernet, tidsvinduet vendt om,
+rækkefølgen ikke vendt.

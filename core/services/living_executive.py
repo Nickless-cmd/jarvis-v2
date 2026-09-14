@@ -31,9 +31,18 @@ _GENOPTAG_NOEGLE = "visible-run-interrupted"
 # daekker alt andet i 244 af 245 maalte vinduer.
 _MAKS_GENOPTAG_PR_VINDUE = 5
 _GENOPTAG_VINDUE_S = 900
-# Hvor langt tilbage indhentningen kigger. Aeldre end et doegn er ikke
-# «afbrudt arbejde» laengere — det er historie.
-_INDHENT_TIMER = 24
+# Hvor langt tilbage indhentningen kigger.
+#
+# Den findes for at lukke et ÉT-SEKUNDS hul: genopretteren stempler kl. :33,
+# lytteren abonnerer kl. :34. De events er sekunder gamle.
+#
+# Foerste udgave stod paa 24 timer. Maalt paa hans base inden deploy var der
+# praecis ét event i det vindue — en autonom koersel fra i GAAR aftes. Et
+# doegngammelt afbrudt arbejde er ikke noget nogen venter paa, og et bredt
+# vindue goer hver genstart til en mulig genoplivning af gammelt arbejde.
+# En time daekker rigeligt «API'en stemplede ved nedlukning, runtime kom op
+# et minut senere».
+_INDHENT_MINUTTER = 60
 
 _LISTENER_THREAD: threading.Thread | None = None
 _LISTENER_STOP = threading.Event()
@@ -710,7 +719,7 @@ def _aftertaste(*, status: str, impulse: dict[str, Any]) -> str:
     return "quiet"
 
 
-def _afbrudte_fra_db(*, timer: int = _INDHENT_TIMER, maks: int = 40) -> list[dict[str, Any]]:
+def _afbrudte_fra_db(*, minutter: int = _INDHENT_MINUTTER, maks: int = 40) -> list[dict[str, Any]]:
     """Afbrydelses-events fra DB'en — delt paa tvaers af processer.
 
     Filtreret paa ART i SQL og ikke hentet som «de seneste N events». Et
@@ -730,7 +739,7 @@ def _afbrudte_fra_db(*, timer: int = _INDHENT_TIMER, maks: int = 40) -> list[dic
                 ORDER BY id DESC
                 LIMIT ?
                 """,
-                (_GENOPTAG_ART, f"-{int(timer)} hours", int(maks)),
+                (_GENOPTAG_ART, f"-{int(minutter)} minutes", int(maks)),
             ).fetchall()
     except Exception as exc:
         logger.warning("living_executive: kunne ikke laese afbrydelser: %s", exc)
@@ -753,7 +762,7 @@ def _afbrudte_fra_db(*, timer: int = _INDHENT_TIMER, maks: int = 40) -> list[dic
     return ud
 
 
-def indhent_forsoemte_afbrydelser(*, timer: int = _INDHENT_TIMER) -> dict[str, object]:
+def indhent_forsoemte_afbrydelser(*, minutter: int = _INDHENT_MINUTTER) -> dict[str, object]:
     """Genoptag crash-draebte koersler der doede FOER nogen lyttede.
 
     Den aegte aarsag til at genoptagelsen aldrig fyrede. Genstart-loggen, i
@@ -777,7 +786,7 @@ def indhent_forsoemte_afbrydelser(*, timer: int = _INDHENT_TIMER) -> dict[str, o
     """
     set_ = 0
     genoptaget = 0
-    for event in _afbrudte_fra_db(timer=timer):
+    for event in _afbrudte_fra_db(minutter=minutter):
         set_ += 1
         spor = process_event(event)
         if spor and str(spor.get("status") or "") == "executed":

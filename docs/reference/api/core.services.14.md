@@ -597,35 +597,35 @@ _Living Executive — Jarvis' active impulse/choice/action loop._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_now_iso` | `()` | — | [src](../../../core/services/living_executive.py#L43) |
-| function | `_load_state` | `()` | — | [src](../../../core/services/living_executive.py#L47) |
-| function | `_save_state` | `(state)` | — | [src](../../../core/services/living_executive.py#L58) |
-| function | `build_living_executive_surface` | `(*, limit=…)` | — | [src](../../../core/services/living_executive.py#L62) |
-| function | `choose_impulse` | `(events)` | — | [src](../../../core/services/living_executive.py#L87) |
-| function | `process_event` | `(event)` | — | [src](../../../core/services/living_executive.py#L99) |
-| function | `run_once` | `(*, events=…)` | One non-daemon pass used by tests and manual MC experiments. | [src](../../../core/services/living_executive.py#L106) |
-| function | `execute_impulse` | `(impulse)` | — | [src](../../../core/services/living_executive.py#L116) |
-| function | `_impulse_from_event` | `(event)` | — | [src](../../../core/services/living_executive.py#L150) |
-| function | `_impulse` | `(*, source_event_id, source_kind, felt_signal, impulse, intensity, action_id, choice, payload, cooldown_key, cooldown_seconds=…)` | — | [src](../../../core/services/living_executive.py#L317) |
-| function | `_genoptag_loft_naaet` | `()` | Hvor mange genoptagelser er der fyret i det sidste vindue? | [src](../../../core/services/living_executive.py#L344) |
-| function | `_noter_genoptagelse` | `()` | — | [src](../../../core/services/living_executive.py#L358) |
-| function | `_action_schedule_self_wakeup` | `(impulse)` | — | [src](../../../core/services/living_executive.py#L368) |
-| function | `_action_record_focus_intent` | `(impulse)` | — | [src](../../../core/services/living_executive.py#L401) |
-| function | `_action_create_jarvis_brain_observation` | `(impulse)` | — | [src](../../../core/services/living_executive.py#L420) |
-| function | `_action_propose_tool_plan` | `(impulse)` | — | [src](../../../core/services/living_executive.py#L435) |
-| function | `_record_trace` | `(impulse, *, status, outcome, details=…)` | — | [src](../../../core/services/living_executive.py#L476) |
-| function | `_attach_memory_precedents` | `(impulse)` | — | [src](../../../core/services/living_executive.py#L543) |
-| function | `_recent_memory_precedents` | `(*, action_hint=…, tool_hint=…, limit=…)` | — | [src](../../../core/services/living_executive.py#L557) |
-| function | `_choice_bias_from_precedents` | `(impulse, precedents)` | — | [src](../../../core/services/living_executive.py#L592) |
-| function | `_emotional_choice_precedents` | `(*, limit)` | — | [src](../../../core/services/living_executive.py#L612) |
-| function | `_tool_family` | `(tool_name)` | — | [src](../../../core/services/living_executive.py#L632) |
-| function | `_runnable_tool_proposals` | `(*, tool_name, status, reason, precedents)` | — | [src](../../../core/services/living_executive.py#L640) |
-| function | `_aftertaste` | `(*, status, impulse)` | — | [src](../../../core/services/living_executive.py#L701) |
-| function | `_afbrudte_fra_db` | `(*, timer=…, maks=…)` | Afbrydelses-events fra DB'en — delt paa tvaers af processer. | [src](../../../core/services/living_executive.py#L713) |
-| function | `indhent_forsoemte_afbrydelser` | `(*, timer=…)` | Genoptag crash-draebte koersler der doede FOER nogen lyttede. | [src](../../../core/services/living_executive.py#L756) |
-| function | `start_listener` | `()` | — | [src](../../../core/services/living_executive.py#L791) |
-| function | `stop_listener` | `()` | — | [src](../../../core/services/living_executive.py#L812) |
-| function | `_listener_loop` | `(q)` | — | [src](../../../core/services/living_executive.py#L821) |
+| function | `_now_iso` | `()` | — | [src](../../../core/services/living_executive.py#L52) |
+| function | `_load_state` | `()` | — | [src](../../../core/services/living_executive.py#L56) |
+| function | `_save_state` | `(state)` | — | [src](../../../core/services/living_executive.py#L67) |
+| function | `build_living_executive_surface` | `(*, limit=…)` | — | [src](../../../core/services/living_executive.py#L71) |
+| function | `choose_impulse` | `(events)` | — | [src](../../../core/services/living_executive.py#L96) |
+| function | `process_event` | `(event)` | — | [src](../../../core/services/living_executive.py#L108) |
+| function | `run_once` | `(*, events=…)` | One non-daemon pass used by tests and manual MC experiments. | [src](../../../core/services/living_executive.py#L115) |
+| function | `execute_impulse` | `(impulse)` | — | [src](../../../core/services/living_executive.py#L125) |
+| function | `_impulse_from_event` | `(event)` | — | [src](../../../core/services/living_executive.py#L159) |
+| function | `_impulse` | `(*, source_event_id, source_kind, felt_signal, impulse, intensity, action_id, choice, payload, cooldown_key, cooldown_seconds=…)` | — | [src](../../../core/services/living_executive.py#L326) |
+| function | `_genoptag_loft_naaet` | `()` | Hvor mange genoptagelser er der fyret i det sidste vindue? | [src](../../../core/services/living_executive.py#L353) |
+| function | `_noter_genoptagelse` | `()` | — | [src](../../../core/services/living_executive.py#L367) |
+| function | `_action_schedule_self_wakeup` | `(impulse)` | — | [src](../../../core/services/living_executive.py#L377) |
+| function | `_action_record_focus_intent` | `(impulse)` | — | [src](../../../core/services/living_executive.py#L410) |
+| function | `_action_create_jarvis_brain_observation` | `(impulse)` | — | [src](../../../core/services/living_executive.py#L429) |
+| function | `_action_propose_tool_plan` | `(impulse)` | — | [src](../../../core/services/living_executive.py#L444) |
+| function | `_record_trace` | `(impulse, *, status, outcome, details=…)` | — | [src](../../../core/services/living_executive.py#L485) |
+| function | `_attach_memory_precedents` | `(impulse)` | — | [src](../../../core/services/living_executive.py#L552) |
+| function | `_recent_memory_precedents` | `(*, action_hint=…, tool_hint=…, limit=…)` | — | [src](../../../core/services/living_executive.py#L566) |
+| function | `_choice_bias_from_precedents` | `(impulse, precedents)` | — | [src](../../../core/services/living_executive.py#L601) |
+| function | `_emotional_choice_precedents` | `(*, limit)` | — | [src](../../../core/services/living_executive.py#L621) |
+| function | `_tool_family` | `(tool_name)` | — | [src](../../../core/services/living_executive.py#L641) |
+| function | `_runnable_tool_proposals` | `(*, tool_name, status, reason, precedents)` | — | [src](../../../core/services/living_executive.py#L649) |
+| function | `_aftertaste` | `(*, status, impulse)` | — | [src](../../../core/services/living_executive.py#L710) |
+| function | `_afbrudte_fra_db` | `(*, minutter=…, maks=…)` | Afbrydelses-events fra DB'en — delt paa tvaers af processer. | [src](../../../core/services/living_executive.py#L722) |
+| function | `indhent_forsoemte_afbrydelser` | `(*, minutter=…)` | Genoptag crash-draebte koersler der doede FOER nogen lyttede. | [src](../../../core/services/living_executive.py#L765) |
+| function | `start_listener` | `()` | — | [src](../../../core/services/living_executive.py#L800) |
+| function | `stop_listener` | `()` | — | [src](../../../core/services/living_executive.py#L821) |
+| function | `_listener_loop` | `(q)` | — | [src](../../../core/services/living_executive.py#L830) |
 
 ## `core/services/living_heartbeat_cycle.py`
 _Living Heartbeat Cycle — Jarvis' inner life rhythm._

@@ -187,7 +187,7 @@ def test_act_on_initiative_materializes_runtime_work(isolated_runtime) -> None:
     assert task is not None
     assert flow is not None
     assert task["kind"] == "initiative-followup"
-    assert task["run_id"] == "heartbeat-tick:test"
+    assert task["origin_ref"] == "heartbeat-tick:test"
 
     queue_state = initiative_queue.get_initiative_queue_state()
     assert not any(item["initiative_id"] == initiative_id for item in queue_state["pending"])

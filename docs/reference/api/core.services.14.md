@@ -602,11 +602,13 @@ _Living Heartbeat Cycle — Jarvis' inner life rhythm._
 | function | `_emit_living_heartbeat_cycle_event` | `(kind, payload=…)` | Emit a scoped event for cartographer observability. | [src](../../../core/services/living_heartbeat_cycle.py#L194) |
 
 ## `core/services/llm_pricing.py`
-_Central LLM-pris-tabel + cost-beregner (WS2, 13. jul 2026)._
+_Central LLM-pris-tabel + cost-beregner._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `compute_cost_usd` | `(provider, model, *, cache_hit_tokens=…, cache_miss_tokens=…, output_tokens=…, input_tokens=…)` | Beregn cost_usd fra tokens × pris. Returnerer 0.0 for ukendte (provider, model). | [src](../../../core/services/llm_pricing.py#L31) |
+| function | `_som_utc` | `(at)` | Læs et tidspunkt. Returnerer None når det ikke kan afgøres. | [src](../../../core/services/llm_pricing.py#L66) |
+| function | `er_myldretid` | `(at=…)` | Falder tidspunktet i DeepSeeks myldretid? Ukendt tid → True (det dyre). | [src](../../../core/services/llm_pricing.py#L89) |
+| function | `compute_cost_usd` | `(provider, model, *, cache_hit_tokens=…, cache_miss_tokens=…, output_tokens=…, input_tokens=…, at=…)` | Beregn cost_usd fra tokens × pris. 0.0 for ukendte (provider, model). | [src](../../../core/services/llm_pricing.py#L100) |
 
 ## `core/services/local_intent_gate.py`
 _Er dét vaerktoej faktisk bestilt? — afgjort af en lille lokal model._

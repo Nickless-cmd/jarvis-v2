@@ -113,11 +113,41 @@ def execute_openai_compat_heartbeat_prompt(
 
     from core.services.heartbeat_runtime import _estimate_tokens
     usage = data.get("usage") or {}
+    input_tokens = int(usage.get("prompt_tokens") or _estimate_tokens(prompt))
+    output_tokens = int(usage.get("completion_tokens") or _estimate_tokens(text))
+    # DeepSeek sender splittet med; udbydere der ikke goer, faar NUL — aldrig
+    # et gaet. `record_cost` behandler saa al input som miss, hvilket er
+    # konservativt og aerligt. Et opfundet split ville se ud som en maaling.
+    cache_hit = int(usage.get("prompt_cache_hit_tokens") or 0)
+    cache_miss = int(usage.get("prompt_cache_miss_tokens") or 0)
+
+    # ── HOVEDBOGEN (14/9-2026) ──────────────────────────────────────────────
+    # Det her er et AEGTE betalt kald, og returen sagde tidligere
+    # `"cost_usd": 0.0` som et hardkodet tal. Ingen af de tre kaldere bogfoerte
+    # — compact_llm (komprimering, identitets-skitse, truth-gate),
+    # try_heartbeat_cheap_fallback og heartbeat_runtime. Pengene blev brugt og
+    # stod ingen steder, og det var en del af svaret paa «hvem bruger DeepSeek».
+    #
+    # Bogfoeringen staar HER og ikke hos kalderne, saa ingen fremtidig kalder
+    # kan glemme den. Den maa aldrig kunne vaelte kaldet: arbejdet er vigtigere
+    # end sporet til det.
+    try:
+        from core.costing.ledger import record_cost
+        record_cost(
+            lane="compat_oneshot", provider=provider, model=model,
+            input_tokens=input_tokens, output_tokens=output_tokens,
+            cache_hit_tokens=cache_hit, cache_miss_tokens=cache_miss,
+        )
+    except Exception:
+        logger.debug("compat_oneshot: kunne ikke bogfoere %s/%s", provider, model,
+                     exc_info=True)
+
     return {
         "text": text,
-        "input_tokens": int(usage.get("prompt_tokens") or _estimate_tokens(prompt)),
-        "output_tokens": int(usage.get("completion_tokens") or _estimate_tokens(text)),
-        "cost_usd": 0.0,
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "cache_hit_tokens": cache_hit,
+        "cache_miss_tokens": cache_miss,
         "execution_status": "success",
     }
 

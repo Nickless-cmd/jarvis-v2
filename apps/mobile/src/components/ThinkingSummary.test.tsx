@@ -1,5 +1,5 @@
 import { act, fireEvent, render } from '@testing-library/react-native'
-import { ThinkingSummary } from './ThinkingSummary'
+import { KORT_TAERSKEL_S, ThinkingSummary } from './ThinkingSummary'
 
 describe('ThinkingSummary', () => {
   it('viser varigheden', async () => {
@@ -77,7 +77,66 @@ it('en tanke under et tiendedels sekund faar ingen tid', async () => {
   expect(s.queryByText(/0 s/)).toBeNull()
 })
 
-it('et tiendedels sekund ER en maaling og vises', async () => {
+it('et tiendedels sekund ER en maaling — men under taersklen vises tallet ikke', async () => {
+  // Den oprindelige test skelnede «0 s» (en paastand uden daekning) fra
+  // «0,1 s» (en aegte maaling) og kraevede at den sidste blev VIST. Den
+  // skelnen staar stadig i koden — `hasSeconds` er uaendret — men fra 14/9
+  // afgoer en anden regel om tallet naar skaermen: under tre sekunder er
+  // talraekken stoej, og etiketten siger bare «Tænkte».
+  //
+  // Raekken er der uanset. Det er tallet der forsvinder, ikke doeren.
   const s = await render(<ThinkingSummary seconds={0.1} text="kort" />)
-  expect(s.getByText(/Tænkte i 0,1 s/)).toBeTruthy()
+  expect(s.getByText('Tænkte')).toBeTruthy()
+  expect(s.queryByText(/0,1 s/)).toBeNull()
+})
+
+// ─────────────────────────────────────────────────────────────────────────
+// Korte tanker staar STILLE (14/9-2026)
+//
+// Jarvis maalte Bjoerns skaerm: tre «Tænkte i X s» paa ét billede (1,5 / 2,6 /
+// 1,1 s), tre af 31 baand der siger naesten det samme. De stjaeler
+// opmaerksomhed fra de linjer der baerer indhold.
+//
+// Men baandet er ogsaa DOEREN til selve tanken. Maalt paa 1.511 taenke-blokke:
+// 67 % er under tre sekunder — og de korte er IKKE tomme, median 457 tegn,
+// nul tomme. At skjule dem ville ikke fjerne stoej, det ville skjule 1.018
+// tanker.
+//
+// Derfor: de korte mister deres TAL, ikke deres plads. «Tænkte» i stedet for
+// «Tænkte i 1,1 s» — den gentagne talraekke var stoejen, doeren er ikke.
+// ─────────────────────────────────────────────────────────────────────────
+
+describe('korte tanker', () => {
+  it('under taersklen vises INTET tal', async () => {
+    const s = await render(<ThinkingSummary seconds={1.1} text="en rigtig tanke" />)
+    expect(s.getByText('Tænkte')).toBeTruthy()
+    expect(s.queryByText('Tænkte i 1,1 s')).toBeNull()
+  })
+
+  it('men doeren er der stadig — teksten kan foldes ud', async () => {
+    const s = await render(<ThinkingSummary seconds={1.1} text="en rigtig tanke" />)
+    await act(async () => { fireEvent.press(s.getByText('Tænkte')) })
+    expect(s.getByText('en rigtig tanke')).toBeTruthy()
+  })
+
+  it('PAA taersklen vises tallet', async () => {
+    const s = await render(<ThinkingSummary seconds={3} text="x" />)
+    expect(s.getByText('Tænkte i 3 s')).toBeTruthy()
+  })
+
+  it('over taersklen vises tallet', async () => {
+    const s = await render(<ThinkingSummary seconds={8.3} text="x" />)
+    expect(s.getByText('Tænkte i 8,3 s')).toBeTruthy()
+  })
+
+  it('en LIVE tanke er uroert — den siger «her arbejdes»', async () => {
+    const s = await render(<ThinkingSummary seconds={0.5} text="x" live />)
+    expect(s.queryByText('Tænkte')).toBeNull()
+  })
+
+  it('taersklen er maalt, ikke valgt paa foelelsen', () => {
+    // 67 % af 1.511 maalte blokke ligger under tre sekunder; 90.-percentilen
+    // er 8,3 s. Taersklen skiller stoejen fra de aegte pauser.
+    expect(KORT_TAERSKEL_S).toBe(3)
+  })
 })

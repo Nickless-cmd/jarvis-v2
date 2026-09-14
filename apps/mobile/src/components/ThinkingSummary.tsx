@@ -35,6 +35,15 @@ import { prikker, TRIN_MS } from '../lib/prikSekvens'
  * hele den interne monolog. En avanceret bruger kan slå HELE strømmen til i
  * indstillingerne; først da hentes resten for den ene besked, dovent.
  */
+/**
+ * Under så mange sekunder vises varigheden ikke.
+ *
+ * Målt 14/9-2026 på 1.511 tænke-blokke: 67 % ligger under tre sekunder, mens
+ * 90.-percentilen er 8,3 s og den længste 171,7 s. Tærsklen skiller den
+ * gentagne talrække fra de pauser der faktisk betyder noget.
+ */
+export const KORT_TAERSKEL_S = 3
+
 export function ThinkingSummary({
   seconds,
   text,
@@ -107,9 +116,24 @@ export function ThinkingSummary({
   //
   // Prikkerne og lyset siger to forskellige ting: lyset «her arbejdes»,
   // prikkerne «og det tager tid». Ordet alene siger ingen af delene.
+  // KORTE TANKER STÅR STILLE (14/9-2026).
+  //
+  // Jarvis målte Bjørns skærm: tre «Tænkte i X s» på ét billede (1,5 / 2,6 /
+  // 1,1 s) — tre af 31 bånd der siger næsten det samme og stjæler
+  // opmærksomhed fra de linjer der bærer indhold.
+  //
+  // Men båndet er også DØREN til selve tanken. Målt på 1.511 tænke-blokke:
+  // 67 % er under tre sekunder, og de korte er IKKE tomme — median 457 tegn,
+  // nul tomme. At skjule dem ville ikke fjerne støj; det ville skjule 1.018
+  // tanker.
+  //
+  // Derfor mister de korte deres TAL, ikke deres plads. Den gentagne talrække
+  // var støjen; døren er ikke.
+  const kort = !isLive && hasSeconds && seconds! < KORT_TAERSKEL_S
+
   const label = isLive
     ? `Tænker${prikker(trin)}`
-    : hasSeconds
+    : hasSeconds && !kort
       ? seconds! < 60
         ? `Tænkte i ${formatSeconds(seconds!)} s`
         : `Tænkte i ${Math.floor(seconds! / 60)} min ${Math.round(seconds! % 60)} s`

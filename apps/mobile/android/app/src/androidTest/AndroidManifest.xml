@@ -1,0 +1,11 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <!-- Kalibrerings-fladen. Ligger KUN i androidTest-APK'en og naar aldrig
+             app-APK'en. `exported` fordi instrumenteringen starter den fra sin
+             egen kontekst. -->
+        <activity
+            android:name="dk.srvlab.jarvis.mobile.KalibreringsAktivitet"
+            android:exported="true"
+            android:label="Knib-kalibrering" />
+    </application>
+</manifest>

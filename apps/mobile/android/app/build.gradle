@@ -97,6 +97,14 @@ android {
         versionName "0.2.66"
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
+
+        // Instrumenterings-tests (14/9-2026). Knib-for-zoom kan IKKE proeves af
+        // uden en telefon: `PanResponder` laeser `nativeEvent.touches`, som
+        // ingen jest-test leverer, og `sendevent` fra adb blokeres af SELinux
+        // (shell maa ikke skrive til touchscreen-noden, uanset gruppe).
+        // En instrumenterings-proces maa injicere input. Det er den ENESTE vej
+        // til et ægte to-finger-knib paa enheden.
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
     signingConfigs {
         debug {
@@ -106,6 +114,15 @@ android {
             keyPassword 'android'
         }
     }
+    // Instrumenterings-testene skal koere mod den RELEASE-app der faktisk
+    // sidder paa telefonen — ikke mod en debug-build der opfoerer sig anderledes
+    // og som ville skulle erstatte hans app. Uden den her linje findes
+    // `assembleReleaseAndroidTest` slet ikke; standarden er «debug».
+    //
+    // Det virker fordi release er signeret med debug-noeglen (se nedenfor), og
+    // instrumentering kraever at test- og app-APK deler certifikat.
+    testBuildType "release"
+
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
@@ -180,4 +197,10 @@ dependencies {
     } else {
         implementation jscFlavor
     }
+
+    // Kun androidTest — intet af det her naar ind i app-APK'en.
+    androidTestImplementation "androidx.test:runner:1.6.2"
+    androidTestImplementation "androidx.test:rules:1.6.1"
+    androidTestImplementation "androidx.test.uiautomator:uiautomator:2.3.0"
+    androidTestImplementation "androidx.test.ext:junit:1.2.1"
 }

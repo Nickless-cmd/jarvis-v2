@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 14630 functions/methods, 51% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 14637 functions/methods, 51% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -8,9 +8,9 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 14630 functions/
 
 - [`apps.api.jarvis_api`](apps.api.jarvis_api.md)
 - [`apps.api.jarvis_api.middleware`](apps.api.jarvis_api.middleware.md)
-- [`apps.api.jarvis_api.routes.01`](apps.api.jarvis_api.routes.01.md) — `__init__` … `internal_discord`
-- [`apps.api.jarvis_api.routes.02`](apps.api.jarvis_api.routes.02.md) — `internal_errors` … `tool_router`
-- [`apps.api.jarvis_api.routes.03`](apps.api.jarvis_api.routes.03.md) — `totp` … `workbench`
+- [`apps.api.jarvis_api.routes.01`](apps.api.jarvis_api.routes.01.md) — `__init__` … `interlanguage_blind`
+- [`apps.api.jarvis_api.routes.02`](apps.api.jarvis_api.routes.02.md) — `internal_discord` … `system_health`
+- [`apps.api.jarvis_api.routes.03`](apps.api.jarvis_api.routes.03.md) — `tool_router` … `workbench`
 - [`apps.api.jarvis_api.schemas`](apps.api.jarvis_api.schemas.md)
 - [`apps.central_cli.central_cli`](apps.central_cli.central_cli.md)
 - [`apps.desktop`](apps.desktop.md)
@@ -34,26 +34,26 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 14630 functions/
 - [`core.services.04`](core.services.04.md) — `central_arbitration` … `central_hypothesis_sampler`
 - [`core.services.05`](core.services.05.md) — `central_initiative_ladder` … `central_redpill`
 - [`core.services.06`](core.services.06.md) — `central_relational` … `cheap_provider_catalogue`
-- [`core.services.07`](core.services.07.md) — `cheap_provider_runtime` … `conflict_daemon`
-- [`core.services.08`](core.services.08.md) — `conflict_prompt_service` … `cross_session_threads`
-- [`core.services.09`](core.services.09.md) — `cross_signal_analysis` … `developmental_valence`
-- [`core.services.10`](core.services.10.md) — `device_pairing` … `emergent_bridge`
-- [`core.services.11`](core.services.11.md) — `emergent_goals` … `file_watch_daemon`
-- [`core.services.12`](core.services.12.md) — `finitude_runtime` … `gratitude_tracker`
-- [`core.services.13`](core.services.13.md) — `ground_truth_registry` … `inner_visible_support_signal_tracking`
-- [`core.services.14`](core.services.14.md) — `inner_voice_daemon` … `local_tool_broker`
-- [`core.services.15`](core.services.15.md) — `long_arc_synthesizer` … `metacognitive_integration`
-- [`core.services.16`](core.services.16.md) — `mirror_engine` … `orb_phase`
-- [`core.services.17`](core.services.17.md) — `outbound_nudges` … `proactive_candidates`
-- [`core.services.18`](core.services.18.md) — `proactive_context_governor` … `published_files`
-- [`core.services.19`](core.services.19.md) — `push_dispatcher` … `research_quality`
-- [`core.services.20`](core.services.20.md) — `research_router` … `rupture_repair`
-- [`core.services.21`](core.services.21.md) — `scheduled_job_windows` … `sensory_perception_bridge`
-- [`core.services.22`](core.services.22.md) — `session_boot_reconciler` … `skill_relevance_surface`
-- [`core.services.23`](core.services.23.md) — `skill_scanner` … `text_clip`
-- [`core.services.24`](core.services.24.md) — `text_resonance` … `untrusted_fencing`
-- [`core.services.25`](core.services.25.md) — `upload_sandbox` … `visible_runs_sse_v2`
-- [`core.services.26`](core.services.26.md) — `visible_runs_watchdog` … `world_model_signal_tracking`
+- [`core.services.07`](core.services.07.md) — `cheap_provider_runtime` … `config_drift`
+- [`core.services.08`](core.services.08.md) — `conflict_daemon` … `cross_session_gate`
+- [`core.services.09`](core.services.09.md) — `cross_session_threads` … `development_sense`
+- [`core.services.10`](core.services.10.md) — `developmental_valence` … `emergence`
+- [`core.services.11`](core.services.11.md) — `emergent_bridge` … `file_awareness_daemon`
+- [`core.services.12`](core.services.12.md) — `file_watch_daemon` … `governance_bootstrap`
+- [`core.services.13`](core.services.13.md) — `gratitude_tracker` … `inner_dialectic_engine`
+- [`core.services.14`](core.services.14.md) — `inner_visible_support_signal_tracking` … `local_small_model`
+- [`core.services.15`](core.services.15.md) — `local_tool_broker` … `metacognition_signal_tracker`
+- [`core.services.16`](core.services.16.md) — `metacognitive_integration` … `operator_channel`
+- [`core.services.17`](core.services.17.md) — `orb_phase` … `private_temporal_promotion_signal_tracking`
+- [`core.services.18`](core.services.18.md) — `proactive_candidates` … `provider_self_heal`
+- [`core.services.19`](core.services.19.md) — `published_files` … `research_prompt_context`
+- [`core.services.20`](core.services.20.md) — `research_quality` … `runtime_tasks`
+- [`core.services.21`](core.services.21.md) — `rupture_repair` … `sensory_archive`
+- [`core.services.22`](core.services.22.md) — `sensory_perception_bridge` … `skill_engine`
+- [`core.services.23`](core.services.23.md) — `skill_relevance_surface` … `terminal_sanitize`
+- [`core.services.24`](core.services.24.md) — `text_clip` … `unfinished_intent`
+- [`core.services.25`](core.services.25.md) — `untrusted_fencing` … `visible_runs_outcomes`
+- [`core.services.26`](core.services.26.md) — `visible_runs_sse_v2` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

@@ -550,6 +550,14 @@ _Companion-endpoints — Jarvis' tre ønsker til mobil-appen._
 | function | `companion_senses` | `(limit=…)` | Sansernes Arkiv — hvad Jarvis har set i hjemmet. Kun husstanden. | [src](../../../apps/api/jarvis_api/routes/companion.py#L46) |
 | function | `companion_thoughts` | `(limit=…)` | Jarvis' initiativer — også dem der blev holdt tilbage. | [src](../../../apps/api/jarvis_api/routes/companion.py#L66) |
 
+## `apps/api/jarvis_api/routes/composer_suggest_routes.py`
+_`/composer/suggest` — hvad der kunne skrives videre i komponisten._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `Udkast` | `` | — | [src](../../../apps/api/jarvis_api/routes/composer_suggest_routes.py#L34) |
+| function | `suggest` | `(krop)` | Fortsættelsen af et udkast, eller tom streng. Fejler aldrig. | [src](../../../apps/api/jarvis_api/routes/composer_suggest_routes.py#L39) |
+
 ## `apps/api/jarvis_api/routes/connectors.py`
 _Connectors-API til jarvis-desk Marketplace (16. jun 2026)._
 
@@ -621,12 +629,4 @@ _Interlanguage validation — Bjørn blind dommer UI route._
 | function | `confusion` | `(session_id=…)` | — | [src](../../../apps/api/jarvis_api/routes/interlanguage_blind.py#L240) |
 | function | `serve_phase4_ui` | `()` | Phase 4 binary blind test: jarvis_full vs jarvis_bare. | [src](../../../apps/api/jarvis_api/routes/interlanguage_blind.py#L253) |
 | function | `serve_ui` | `()` | — | [src](../../../apps/api/jarvis_api/routes/interlanguage_blind.py#L269) |
-
-## `apps/api/jarvis_api/routes/internal_discord.py`
-_Internal loopback endpoint for cross-process Discord dispatch._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `DispatchRequest` | `` | — | [src](../../../apps/api/jarvis_api/routes/internal_discord.py#L27) |
-| function | `dispatch` | `(req, request)` | — | [src](../../../apps/api/jarvis_api/routes/internal_discord.py#L33) |
 

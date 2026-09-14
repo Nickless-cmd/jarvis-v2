@@ -243,3 +243,63 @@ def test_hjerteslaget_KALDER_hovedbogs_revisionen():
     kaldt = {getattr(k.func, "id", "") for k in ast.walk(træ) if isinstance(k, ast.Call)}
     assert "check_paid_spend" in kaldt, "hovedbogs-revisionen bliver aldrig koert"
     assert "check_paid_lanes" in kaldt, "konfigurations-vagten forsvandt"
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# Hjerteslaget stod paa den betalte API (14/9-2026)
+#
+# `heartbeat_model_provider = "deepseek"` i runtime.json. Hjerteslaget er det
+# mest baggrundsagtige der findes i systemet, og det koerte paa Bjoerns betalte
+# noegle. Rettet til ollama + `deepseek-v4-flash:cloud` — samme model, gratis,
+# samme moenster som inner_enrichment-rettelsen 5/9.
+#
+# Vagten kunne ikke se det: hjerteslagets udbyder bor i runtime.json, ikke i
+# provider_router.json som den kiggede i. Endnu et sted hvor sandheden om en
+# lane ligger et STEDS ANDET end vagten spoerger.
+# ─────────────────────────────────────────────────────────────────────────
+
+
+def _indstillinger(monkeypatch, provider, model="m"):
+    class _S:
+        heartbeat_model_provider = provider
+        heartbeat_model_name = model
+    monkeypatch.setattr("core.runtime.settings.load_settings", lambda: _S())
+
+
+def test_hjerteslag_paa_BETALT_udbyder_er_et_brud(monkeypatch):
+    """Den tilstand der faktisk stod i runtime.json."""
+    _indstillinger(monkeypatch, "deepseek", "deepseek-v4-flash")
+    brud = PLG.audit_heartbeat_provider()
+    assert brud is not None
+    assert brud["provider"] == "deepseek"
+
+
+def test_hjerteslag_paa_ollama_er_rent(monkeypatch):
+    _indstillinger(monkeypatch, "ollama", "deepseek-v4-flash:cloud")
+    assert PLG.audit_heartbeat_provider() is None
+
+
+def test_modelnavnet_alene_goer_det_ikke_betalt(monkeypatch):
+    """`deepseek-v4-flash:cloud` PAA ollama er gratis. Doemte vi paa modellens
+    navn, ville selve rettelsen se ud som bruddet — og en vagt der raaber op om
+    sin egen loesning bliver slaaet fra."""
+    _indstillinger(monkeypatch, "ollama", "deepseek-v4-flash:cloud")
+    assert PLG.audit_heartbeat_provider() is None
+
+
+def test_ULAESELIGE_indstillinger_frikender_ikke(monkeypatch):
+    """Samme regel som den ulaeselige hovedbog: «jeg kunne ikke se efter» maa
+    ikke blive til «alt er godt»."""
+    monkeypatch.setattr("core.runtime.settings.load_settings",
+                        lambda: (_ for _ in ()).throw(RuntimeError("nede")))
+    brud = PLG.audit_heartbeat_provider()
+    assert brud is not None and brud.get("ukendt") is True
+
+
+def test_fladen_baerer_hjerteslagets_udbyder(monkeypatch):
+    _targets({"visible": ("deepseek", "deepseek-v4-flash", _PAID)}, monkeypatch)
+    _hovedbog(monkeypatch, [])
+    _indstillinger(monkeypatch, "deepseek", "deepseek-v4-flash")
+    u = PLG.build_paid_lane_guard_surface()
+    assert u["ok"] is False
+    assert u["heartbeat_leak"], "hjerteslaget naar ikke ud paa fladen"

@@ -176,6 +176,34 @@ def check_paid_spend(timer: int = SPEND_VINDUE_TIMER) -> dict[str, Any]:
     return {"checked": True, "leaks": brud}
 
 
+def audit_heartbeat_provider() -> dict[str, Any] | None:
+    """Kører hjerteslaget på en betalt udbyder? None = nej.
+
+    Hjerteslagets udbyder bor i `runtime.json` (`heartbeat_model_provider`),
+    ikke i `provider_router.json` — så `audit_paid_lanes` kunne strukturelt
+    ikke se det. Målt 14/9: den stod på `deepseek`. Hjerteslaget er det mest
+    baggrundsagtige der findes i systemet, og det kørte på Bjørns betalte nøgle.
+
+    Dommen falder på UDBYDEREN, aldrig på modelnavnet. `deepseek-v4-flash:cloud`
+    på ollama er gratis, og dømte vi på navnet ville selve rettelsen se ud som
+    bruddet — en vagt der råber op om sin egen løsning bliver slået fra.
+
+    Kan indstillingerne ikke læses, meldes det som et brud med `ukendt: True`.
+    «Jeg kunne ikke se efter» må ikke blive til «alt er godt».
+    """
+    try:
+        from core.runtime.settings import load_settings
+        s = load_settings()
+        provider = str(getattr(s, "heartbeat_model_provider", "") or "").strip().lower()
+        model = str(getattr(s, "heartbeat_model_name", "") or "").strip()
+    except Exception as exc:
+        logger.debug("paid_lane_guard: kunne ikke laese hjerteslagets udbyder: %s", exc)
+        return {"provider": "", "model": "", "ukendt": True}
+    if provider in _PAID_PROVIDERS:
+        return {"provider": provider, "model": model, "ukendt": False}
+    return None
+
+
 def check_paid_lanes() -> dict[str, Any]:
     """Kør vagten: log + Central-nerve ved brud. Retter aldrig noget selv."""
     try:
@@ -212,10 +240,16 @@ def build_paid_lane_guard_surface() -> dict[str, Any]:
     leaks = audit_paid_lanes()
     spend = check_paid_spend()
     spend_leaks = spend.get("leaks") or []
+    hb = audit_heartbeat_provider()
+    if hb:
+        logger.warning(
+            "HJERTESLAGET KOERER PAA BETALT UDBYDER: %s/%s. Ret "
+            "heartbeat_model_provider i runtime.json til ollama.",
+            hb.get("provider") or "?", hb.get("model") or "?")
     if not spend.get("checked"):
         ok: bool | None = None
         resume = "hovedbogen kunne ikke laeses — reglen er UEFTERPROEVET"
-    elif leaks or spend_leaks:
+    elif leaks or spend_leaks or hb:
         dele = []
         if leaks:
             dele.append("%d lane(s) peger paa betalt vaert: %s" % (
@@ -223,6 +257,9 @@ def build_paid_lane_guard_surface() -> dict[str, Any]:
         if spend_leaks:
             dele.append("betalt uden for hans ture: %s" % ", ".join(
                 "%s $%.4f" % (b["lane"], b["cost_usd"]) for b in spend_leaks))
+        if hb:
+            dele.append("hjerteslaget paa %s" % (
+                "en ULAESELIG udbyder" if hb.get("ukendt") else hb["provider"]))
         ok = False
         resume = "; ".join(dele)
     else:
@@ -234,5 +271,6 @@ def build_paid_lane_guard_surface() -> dict[str, Any]:
         "leaks": leaks,
         "spend_leaks": spend_leaks,
         "spend_checked": bool(spend.get("checked")),
+        "heartbeat_leak": hb,
         "summary": resume,
     }

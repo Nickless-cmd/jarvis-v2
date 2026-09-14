@@ -283,3 +283,34 @@ def test_tillad_betalt_False_vinder_OGSAA_inde_i_hans_koersel(monkeypatch):
     monkeypatch.setattr(cl, "_call_primary", lambda p, **k: pytest.fail("afkaldet blev ignoreret"))
     monkeypatch.setattr(cl, "_call_cheap_no_groq", lambda p: "gratis")
     assert cl.call_compact_llm("x", tillad_betalt=False) == "gratis"
+
+
+def test_en_komprimering_der_MISTER_primaer_lanen_raaber_op(monkeypatch, caplog):
+    """Sidste værn om beslutningen fra 19. august.
+
+    De fire komprimerings-kaldesteder nås alle fra en synlig kørsel — men det
+    er en ANTAGELSE om kaldekæder, ikke en måling. Holder den ikke, falder
+    resuméet til den billige lane, og resultatet er nøjagtig det Bjørn afviste:
+    et helt samtaleforløb reduceret til en 200-tegns-stub i hans hukommelse.
+
+    Det ville være TAVST. En stub ligner et resumé. Så den siger fra i stedet.
+    """
+    import logging
+    _koersel(monkeypatch, "")            # ingen synlig koersel
+    monkeypatch.setattr(cl, "_call_cheap_no_groq", lambda p: "gratis")
+    with caplog.at_level(logging.WARNING, logger=cl.logger.name):
+        cl.call_compact_llm("x", tillad_betalt=True)
+    assert any("komprimering" in r.message.lower() for r in caplog.records), \
+        "faldet til den billige lane var tavst"
+
+
+def test_almindeligt_baggrundsarbejde_raaber_IKKE_op(monkeypatch, caplog):
+    """De elleve baggrundskaldere SKAL være på den gratis vej. Advarede vi om
+    dem, ville loggen fyldes med den normale tilstand, og advarslen der betyder
+    noget ville drukne."""
+    import logging
+    _koersel(monkeypatch, "")
+    monkeypatch.setattr(cl, "_call_cheap_no_groq", lambda p: "gratis")
+    with caplog.at_level(logging.WARNING, logger=cl.logger.name):
+        cl.call_compact_llm("x")
+    assert not [r for r in caplog.records if "komprimering" in r.message.lower()]

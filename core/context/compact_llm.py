@@ -188,10 +188,20 @@ def call_compact_llm(prompt: str, *, max_tokens: int = 400,
     except Exception:
         pass
 
-    if tillad_betalt and _er_hans_tur():
-        text = _call_primary(prompt, max_tokens=max_tokens)
-        if text:
-            return text
+    if tillad_betalt:
+        if _er_hans_tur():
+            text = _call_primary(prompt, max_tokens=max_tokens)
+            if text:
+                return text
+        else:
+            # Kun komprimering sætter `tillad_betalt`. Naar den alligevel ikke
+            # ser en synlig koersel, holder antagelsen om kaldekaeden ikke — og
+            # resumeet falder til den billige lane. Det er praecis det Bjoern
+            # afviste 19/8, og det ville vaere TAVST: en stub ligner et resume.
+            logger.warning(
+                "compact_llm: en KOMPRIMERING fandt ingen synlig koersel og "
+                "falder til den billige lane — resumeet bliver ringere. "
+                "Kaldekaeden er aendret siden 14/9.")
     text = _call_cheap_no_groq(prompt)
     if text:
         return text

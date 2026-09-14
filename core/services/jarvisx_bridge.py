@@ -301,6 +301,21 @@ class BridgeConnection:
         self._pending.clear()
 
 
+#: Platforme hvis klient forlader broen af sig selv — ved skaerm-dvale OG ved
+#: et almindeligt app-skift. Maalt 14/9-2026 paa Bjoerns telefon.
+#:
+#: En TOM platform regnes som stabil: en klient der ikke siger hvad den er,
+#: skal opfoere sig som foer. At laese tavshed som «kan forsvinde» ville flytte
+#: rundt paa aeldre broer uden belaeg.
+_FLYGTIGE_PLATFORME = ("android", "ios", "ipados")
+
+
+def _kan_forsvinde(conn: "BridgeConnection") -> bool:
+    """Forlader den her klient broen naar brugeren kigger et andet sted hen?"""
+    p = str(getattr(conn, "platform", "") or "").strip().lower()
+    return any(p.startswith(x) for x in _FLYGTIGE_PLATFORME)
+
+
 class BridgeRegistry:
     """Process-local registry of active bridges: user_id → client_id → bro.
 
@@ -474,8 +489,24 @@ class BridgeRegistry:
         if tool:
             kan = [c for c in klienter.values() if tool in (c.capabilities or ())]
             if kan:
-                # Melder BEGGE enheder vaerktoejet, vinder den nyest forbundne —
-                # den Bjoern sidst har haft i haanden.
+                # Melder FLERE enheder vaerktoejet, vinder den der ikke kan
+                # forsvinde. Maalt 14/9-2026: telefonen var registreret som
+                # udfoerer, koerte `operator_bash` hvert tredje sekund indtil
+                # 20:37:18, og otte sekunder senere stod der «unregistered
+                # client=mobil-…» — hvorefter alt arbejde stoppede doedt.
+                # Desk-appen sad forbundet hele tiden.
+                #
+                # Bjoern: «det sker ikk kun naar skaermen gaar i sort men ogsaa
+                # naar man bar gaar ud af appen». En telefon forlader broen ved
+                # hvert app-skift; en desk-maskine goer ikke.
+                #
+                # «Sidst i haanden» er stadig rigtig for ENHEDS-specifikke
+                # vaerktoejer — men dér melder kun én klient vaerktoejet, saa
+                # den gren naar aldrig herned.
+                if len(kan) > 1:
+                    stabile = [c for c in kan if not _kan_forsvinde(c)]
+                    if stabile:
+                        return max(stabile, key=lambda c: c.reg_seq)
                 return max(kan, key=lambda c: c.reg_seq)
             # Ingen melder vaerktoejet. Fallbacken nedenfor findes for klienter
             # der slet ikke annoncerer capabilities (aeldre broer) — den maa
@@ -560,8 +591,35 @@ class BridgeRegistry:
             # døde bro og fald tilbage til presence/forward-stien i stedet for at lække
             # den rå ASGI-fejl ud som bridge_send_failed (16× bridge_not_connected +
             # 2× 'send efter close' i live-diagnosen 4. jul).
+            # ── EN ANDEN LOKAL KLIENT FOERST (14/9-2026) ────────────────────
+            # Bjoern: «Et run maa aldrig doe».
+            #
+            # Kan klienten ikke tage kaldet, er det ligegyldigt HVORDAN fejlen
+            # staves — der sad maaske en anden klient hos samme bruger der kan
+            # udfoere det. Maalt i aften: telefonen forsvandt midt i arbejdet
+            # mens desk-appen sad forbundet hele tiden, og broen forwardede
+            # videre til en anden PROCES uden at proeve den.
+            #
+            # Vagten laa foer bag `_looks_like_closed_ws`, altsaa bag en
+            # stregmatch paa exceptionens tekst. Det er praecis den slags der
+            # holder op med at virke naar et bibliotek omformulerer sin fejl.
+            #
+            # Kun ÉT ekstra forsoeg: `_evict_if_current` har fjernet den doede
+            # bro, saa `get_bridge` kan ikke give den samme igen, og en loekke
+            # over alle klienter ville goere et doedt kald til en runde af
+            # timeouts. En aerlig fejl er bedre end en langsom.
+            self._evict_if_current(user_id, bridge, reason="send_failed")
+            anden = self.get_bridge(user_id, tool=tool)
+            if anden is not None and anden is not bridge:
+                logger.warning(
+                    "[bridge-dispatch] FAILOVER corr=%s user=%s -> client=%s",
+                    correlation_id, user_id, self._client_key(anden),
+                )
+                return await self.dispatch(
+                    user_id=user_id, tool=tool, args=args,
+                    timeout_s=timeout_s, allow_cross_process=allow_cross_process,
+                )
             if "bridge_closed" in str(exc) or _looks_like_closed_ws(exc):
-                self._evict_if_current(user_id, bridge, reason="stale_ws_on_send")
                 logger.warning("[bridge-dispatch] STALE_WS_EVICTED corr=%s user=%s", correlation_id, user_id)
                 return await self._dispatch_without_local_bridge(
                     user_id=user_id, tool=tool, args=args,

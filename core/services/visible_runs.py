@@ -1666,18 +1666,39 @@ async def _stream_visible_run(
             _pump_ctx = _cv_pump.copy_context()
             thread_future = loop.run_in_executor(None, lambda: _pump_ctx.run(_pump_model_stream))
 
+            from core.services import visible_run_firstpass as _fp
             _fp_first = False
             _fp_beat = 0
-            _FP_KEEPALIVE_S = 6.0
+            _fp_opgivet = False
+            _FP_KEEPALIVE_S = _fp.KEEPALIVE_S
             while True:
                 try:
                     item = await asyncio.wait_for(queue.get(), timeout=_FP_KEEPALIVE_S)
                 except asyncio.TimeoutError:
-                    # Første token ikke kommet endnu — typisk fordi prompt-assembly
-                    # kører ~15s inde i pump-tråden. Send livstegn så klienten IKKE
+                    # Første token ikke kommet endnu. Send livstegn så klienten IKKE
                     # timer ud (~20s) og river forbindelsen før første byte
                     # (Bjørn 2026-06-17 "spinner drejer ~20s → død").
                     if not _fp_first:
+                        _ventet = _fptime.monotonic() - _fp_t0
+                        # LOFTET (14/9-2026). Fire af Bjørns kørsler døde samme aften
+                        # efter 907, 908, 924 og 940 sekunder uden ét tegn på skærmen.
+                        # httpx' læse-timeout kunne aldrig fyre, fordi udbyderen sendte
+                        # keepalive — ca. 41 bytes hvert 8. sekund. Den målte BYTES.
+                        # Ingen målte FREMDRIFT.
+                        if _fp.loft_naaet(_ventet):
+                            _fp_opgivet = True
+                            _besked = _fp.opgiv_tekst(
+                                _ventet, provider=run.provider, model=run.model)
+                            logger.error("[firstpass-loft] run=%s %s", run.run_id, _besked)
+                            try:
+                                controller.cancel()
+                            except Exception:
+                                logger.debug("kunne ikke standse pumpen for %s",
+                                             run.run_id, exc_info=True)
+                            yield _sse("error", {"type": "error", "error": _besked,
+                                                 "hint": "Prøv igen, eller vælg en anden udbyder."})
+                            yield _sse("done", {"type": "done", "status": "failed"})
+                            break
                         _fp_beat += 1
                         try:
                             touch_active_visible_run(run.run_id)
@@ -1686,8 +1707,11 @@ async def _stream_visible_run(
                         yield _sse("heartbeat", {
                             "type": "heartbeat",
                             "run_id": run.run_id,
-                            "phase": "prompt_assembly",
-                            "elapsed_s": int(_fptime.monotonic() - _fp_t0),
+                            # Loopet kan ikke se OM ventetiden ligger i prompt-bygningen
+                            # eller i udbyderens socket. Den gamle kode paastod det
+                            # foerste uanset hvad og narrede mig selv i aften.
+                            "phase": _fp.hjerteslag_fase(_ventet),
+                            "elapsed_s": int(_ventet),
                             "beat": _fp_beat,
                         })
                     continue

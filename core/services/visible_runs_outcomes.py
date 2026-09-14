@@ -731,10 +731,45 @@ def stamp_visible_run_interrupted(run_id: str, *, reason: str = "") -> bool:
                     rid,
                 ),
             )
-            return bool(cur.rowcount)
+            stemplet = bool(cur.rowcount)
     except Exception:
         logger.debug("kunne ikke stemple %s interrupted", rid, exc_info=True)
         return False
+
+    # ── SIG DET HØJT (14/9-2026) ────────────────────────────────────────────
+    # Bjørn, efter at værten crashede to gange på tre minutter: «Et run må
+    # aldrig dø».
+    #
+    # Genoptagelsen FINDES — `living_executive` planlægger en self-wakeup på
+    # «Resume from interrupted visible run» — men den lytter efter eventet
+    # `runtime.visible_run_interrupted`, og det blev udsendt ÉT sted: inde i
+    # grenen for UDBYDER-fejl. Denne funktion lavede en bar UPDATE og tav.
+    #
+    # Og den kaldes præcis dér hvor det gør mest ondt: fra boot-reconcileren,
+    # altså når en kørsel døde SAMMEN MED sin proces. Målt i aften: kørslen
+    # der døde kl. 20:20 blev stemplet, og NUL self-wakeups fyrede. En kørsel
+    # dræbt af et crash lå død for evigt, fordi det eneste der kunne vække den
+    # var en udbyder-fejl — ikke en død.
+    #
+    # KUN når en række faktisk blev rørt. Sweepen kører ved hver opstart, og
+    # udsendte den hver gang, ville én død kørsel vække Jarvis igen og igen.
+    #
+    # Udsendelsen må aldrig vælte stemplingen: en række der bliver stående
+    # «running» blokerer næste tur, og det er værre end en tabt genoptagelse.
+    if stemplet:
+        try:
+            event_bus.publish(
+                "runtime.visible_run_interrupted",
+                {
+                    "run_id": rid,
+                    "summary": str(reason or "")[:200],
+                    "error": str(reason or "")[:200],
+                    "kilde": "stamp_visible_run_interrupted",
+                },
+            )
+        except Exception:
+            logger.debug("kunne ikke udsende afbrydelsen for %s", rid, exc_info=True)
+    return stemplet
 
 
 def _persist_visible_run_outcome(

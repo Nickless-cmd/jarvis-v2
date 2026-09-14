@@ -143,3 +143,89 @@ def test_drift_staar_i_opsummeringen(monkeypatch):
     monkeypatch.setattr(sbr.in_flight_runs, "list_running_orphans", lambda *a, **k: [])
     ud = sbr.reconcile_on_boot()
     assert ud.get("visible_drift") == 7
+
+
+# ──────── en doed koersel blev stemplet i TAVSHED (14/9-2026)
+#
+# Bjoern, efter at vaerten crashede to gange paa tre minutter:
+# «Et run maa aldrig doe».
+#
+# Genoptagelsen FINDES — `living_executive` planlaegger en self-wakeup paa
+# «Resume from interrupted visible run» — men den lytter efter eventet
+# `runtime.visible_run_interrupted`. Og det event udsendes ÉT sted:
+# `visible_runs.py:3859`, inde i grenen for UDBYDER-fejl.
+#
+# `stamp_visible_run_interrupted` laver en bar UPDATE og udsender ingenting.
+# Den kaldes praecis to steder — begge i boot-reconcileren, altsaa naar en
+# koersel doede SAMMEN MED sin proces. Maalt i aften: koerslen der doede kl.
+# 20:20 blev stemplet, og NUL self-wakeups fyrede.
+#
+# En koersel dræbt af et crash laa altsaa doed for evigt, fordi det eneste der
+# kunne vaekke den var en udbyder-fejl — ikke en doed.
+
+def test_stemplet_UDSENDER_at_koerslen_blev_afbrudt(monkeypatch):
+    """Uden eventet naar genoptagelsen aldrig at hoere om det."""
+    import core.services.visible_runs_outcomes as vro
+    sendt: list[tuple[str, dict]] = []
+    monkeypatch.setattr(vro.event_bus, "publish",
+                        lambda navn, nyttelast=None, **k: sendt.append((navn, nyttelast or {})))
+
+    class _Cur:
+        rowcount = 1
+    class _Conn:
+        def execute(self, *a, **k): return _Cur()
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+    monkeypatch.setattr(vro, "connect", lambda: _Conn())
+
+    assert vro.stamp_visible_run_interrupted("visible-abc", reason="proces doede") is True
+    assert sendt, "stemplet var tavst — genoptagelsen hoerer intet"
+    navn, p = sendt[0]
+    assert navn == "runtime.visible_run_interrupted"
+    assert p["run_id"] == "visible-abc"
+    # Genoptagelsens prompt bygges af `summary` ELLER `error`
+    # (`living_executive:276`). Begge udfyldes med vilje, saa en aendring i
+    # hvilken der laeses ikke kan goere prompten til «unknown interruption».
+    #
+    # Foerste udgave af den her paastand skrev `summary or error` — og saa kunne
+    # en mutation toemme `summary` uden at testen opdagede det. En test der
+    # accepterer et faldback kan ikke vogte det den vogter over.
+    assert "proces doede" in (p.get("summary") or "")
+    assert "proces doede" in (p.get("error") or "")
+
+
+def test_en_raekke_der_IKKE_blev_stemplet_udsender_intet(monkeypatch):
+    """Idempotens: sweepen koerer igen og igen. Udsendte den hver gang, ville
+    én doed koersel vaekke Jarvis ved hver opstart resten af sessionen."""
+    import core.services.visible_runs_outcomes as vro
+    sendt: list = []
+    monkeypatch.setattr(vro.event_bus, "publish", lambda *a, **k: sendt.append(1))
+
+    class _Cur:
+        rowcount = 0          # allerede terminal — ingen raekke roert
+    class _Conn:
+        def execute(self, *a, **k): return _Cur()
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+    monkeypatch.setattr(vro, "connect", lambda: _Conn())
+
+    assert vro.stamp_visible_run_interrupted("visible-abc", reason="x") is False
+    assert sendt == []
+
+
+def test_en_fejlende_udsendelse_vaelter_ikke_stemplingen(monkeypatch):
+    """Stemplingen er det vigtige: en raekke der bliver staaende «running»
+    blokerer naeste tur. Eventet er en bonus, ikke en betingelse."""
+    import core.services.visible_runs_outcomes as vro
+    monkeypatch.setattr(vro.event_bus, "publish",
+                        lambda *a, **k: (_ for _ in ()).throw(RuntimeError("bus nede")))
+
+    class _Cur:
+        rowcount = 1
+    class _Conn:
+        def execute(self, *a, **k): return _Cur()
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+    monkeypatch.setattr(vro, "connect", lambda: _Conn())
+
+    assert vro.stamp_visible_run_interrupted("visible-abc", reason="x") is True

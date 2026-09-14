@@ -562,7 +562,7 @@ def auto_regenerate_compact_marker(
         "Keep it under 300 words."
     )
 
-    new_summary = call_compact_llm(corrected_prompt)
+    new_summary = call_compact_llm(corrected_prompt, tillad_betalt=True)  # komprimering: Bjoerns valg 19/8 — resumeet ER hans hukommelse
     if not new_summary or new_summary.startswith("[Kontekst komprimeret"):
         logger.warning("auto_regenerate: LLM returned fallback — keeping original")
         return None

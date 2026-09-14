@@ -73,6 +73,42 @@ def _call_primary(prompt: str, *, max_tokens: int) -> str | None:
         return None
 
 
+def _er_hans_tur() -> bool:
+    """Sker det her INDE i en af Bjørns egne kørsler?
+
+    ## Hvorfor ejerskab og ikke en liste
+
+    `call_compact_llm` har femten kaldere, og standarden var den betalte lane.
+    `daily_journal`, `session_milestones`, `cognitive_state_narrativizer`,
+    `identity_sketch`, `auto_remember_subscriber`, `semantic_search_tools`,
+    `memory_tools` — næsten alt sammen baggrundsarbejde på Bjørns betalte nøgle,
+    mod hans gentagne regel.
+
+    At sætte `tillad_betalt=False` femten steder ville være præcis den fejl den
+    gamle betalt-lane-vagt lavede: at vedligeholde en liste over navne. Lister
+    forfalder, og kalder nummer seksten ville arve den forkerte standard.
+
+    Reglen siger det selv: DeepSeek kun i visible lane AF HAM. Er der ingen
+    synlig kørsel, er der ingen ham.
+
+    ## Retningen ved tvivl
+
+    Kan vi ikke afgøre hvem kaldet tilhører, koster det ikke penge. Det er
+    modsat hovedbogens ukendt-regler, og med vilje: dér måler vi en udgift der
+    ALLEREDE er sket, og skal ikke underrapportere. Her beslutter vi om en
+    udgift skal ske.
+
+    Komprimering sker inde i hans kørsel og beholder derfor primær-lanen —
+    beslutningen fra 19. august står urørt, nu af en grund koden selv kan tjekke.
+    """
+    try:
+        from core.services.session_context_resolve import aktivt_run_id
+        return str(aktivt_run_id("") or "").startswith("visible-")
+    except Exception:
+        logger.debug("compact_llm: kunne ikke afgoere koerslen — gratis vej", exc_info=True)
+        return False
+
+
 def _call_cheap_no_groq(prompt: str) -> str | None:
     """Try cheap lane providers, skipping Groq. Returns text or None."""
     try:
@@ -90,7 +126,7 @@ def _call_heartbeat_llm_simple(prompt: str, max_tokens: int) -> str:
 
 
 def call_compact_llm(prompt: str, *, max_tokens: int = 400,
-                     tillad_betalt: bool = True) -> str:
+                     tillad_betalt: bool = False) -> str:
     """Summarise prompt. Tries non-Groq cheap providers first, Groq as fallback.
 
     Memory Fix Phase 2: automatically prepends the current identity sketch
@@ -114,6 +150,29 @@ def call_compact_llm(prompt: str, *, max_tokens: int = 400,
     Det der manglede var ikke en anden rute, men en måde at sige «jeg er ikke
     komprimering» på. En kalder der beder om den gratis vej falder ALDRIG
     tilbage på den betalte — ellers ville afkaldet kun gælde når alt virkede.
+
+    ## Standarden er GRATIS, og at bruge penge er udtrykkeligt
+
+    Funktionen har femten kaldere. Elleve er baggrundsarbejde — dagbog,
+    milepæle, narrativizer, identitets-skitse, auto-remember, semantisk søgning,
+    hukommelses-fletning. Fire er komprimering, som Bjørn 19. august
+    udtrykkeligt satte på primær-modellen fordi et compact-resumé ER Jarvis'
+    hukommelse om et helt forløb.
+
+    Da standarden var `True`, betalte de elleve for de fires beslutning, og
+    kalder nummer seksten ville arve det samme. Nu er det omvendt: en ny kalder
+    arver den gratis vej, og den der vil bruge penge skal sige det.
+
+    Fejlretningen peger altså mod det billige. Det er den rigtige retning her:
+    en for dyr baggrundsopgave er tavs, en for billig komprimering viser sig
+    som et dårligere resumé.
+
+    ## OG kaldet skal ske inde i hans tur
+
+    `tillad_betalt=True` er ikke nok alene — se `_er_hans_tur`. En komprimering
+    under en AUTONOM kørsel er ikke hans tur og betaler ikke. Begge betingelser
+    skal holde, og de svarer på hvert sit spørgsmål: *må det her koste penge?*
+    og *er det ham?*
     """
     try:
         from core.services.identity_sketch import get_identity_sketch
@@ -129,7 +188,7 @@ def call_compact_llm(prompt: str, *, max_tokens: int = 400,
     except Exception:
         pass
 
-    if tillad_betalt:
+    if tillad_betalt and _er_hans_tur():
         text = _call_primary(prompt, max_tokens=max_tokens)
         if text:
             return text

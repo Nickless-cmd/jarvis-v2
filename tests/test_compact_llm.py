@@ -17,18 +17,29 @@ from unittest.mock import patch
 import core.context.compact_llm as cl
 
 
+def _koersel(monkeypatch, run_id):
+    monkeypatch.setattr("core.services.session_context_resolve.aktivt_run_id",
+                        lambda *a, **k: run_id)
+
+
 class TestPrimaryFoerst:
-    def test_primaer_svar_bruges_og_cheap_roeres_ikke(self):
+    """14/9: komprimering naar primaer-lanen gennem et UDTRYKKELIGT opt-in og
+    inde i en af Bjoerns koersler. Begge betingelser staar i hver test her, saa
+    det er tydeligt hvad der faktisk kraeves — standarden er nu gratis."""
+
+    def test_primaer_svar_bruges_og_cheap_roeres_ikke(self, monkeypatch):
+        _koersel(monkeypatch, "visible-abc")
         with patch.object(cl, "_call_primary", return_value="## Resumé\nalt vel"), \
              patch.object(cl, "_call_cheap_no_groq") as cheap:
-            out = cl.call_compact_llm("opsummér", max_tokens=2500)
+            out = cl.call_compact_llm("opsummér", max_tokens=2500, tillad_betalt=True)
         assert out == "## Resumé\nalt vel"
         cheap.assert_not_called()
 
-    def test_max_tokens_naar_primaerlanen(self):
+    def test_max_tokens_naar_primaerlanen(self, monkeypatch):
         """Summariseren beder om 2500 — den gamle heartbeat-hardcode var 1536."""
+        _koersel(monkeypatch, "visible-abc")
         with patch.object(cl, "_call_primary", return_value="x") as prim:
-            cl.call_compact_llm("opsummér", max_tokens=2500)
+            cl.call_compact_llm("opsummér", max_tokens=2500, tillad_betalt=True)
         assert prim.call_args.kwargs["max_tokens"] == 2500
 
     def test_primaer_fejl_falder_til_cheap(self):
@@ -127,15 +138,51 @@ def test_tillad_betalt_False_springer_primaer_lanen_over(monkeypatch):
     assert ud == "gratis svar"
 
 
-def test_standarden_er_UAENDRET(monkeypatch):
-    """Komprimering skal stadig ramme primær-lanen. Et default-skifte ville
-    stiltiende vende Bjørns beslutning fra 19. august."""
+def test_standarden_er_GRATIS(monkeypatch):
+    """Retningen er vendt (14/9). Elleve af femten kaldere er baggrundsarbejde;
+    de betalte for de fires beslutning. Nu arver en ny kalder den gratis vej,
+    og den der vil bruge penge skal sige det."""
     kaldt: list[str] = []
+    _koersel(monkeypatch, "visible-abc")
     monkeypatch.setattr(cl, "_call_primary",
                         lambda p, **k: kaldt.append("primary") or "betalt svar")
     monkeypatch.setattr(cl, "_call_cheap_no_groq", lambda p: "gratis svar")
-    assert cl.call_compact_llm("x") == "betalt svar"
-    assert kaldt == ["primary"]
+    assert cl.call_compact_llm("x") == "gratis svar"
+    assert kaldt == [], "standarden betalte stadig"
+
+
+def test_komprimerings_kaldestederne_melder_sig_TIL(monkeypatch):
+    """Bjørns beslutning fra 19. august, nu skrevet hvor den gælder.
+
+    Kilde-vagt: forsvinder `tillad_betalt=True` fra et komprimerings-kaldested,
+    falder resuméet stille ned på den billige lane — præcis det han afviste,
+    fordi et helt samtaleforløb så blev til 200-tegns-stubbe i hans hukommelse.
+    """
+    import pathlib
+    for fil, antal in [("core/context/auto_compact.py", 1),
+                       ("core/context/compact_ground_truth.py", 1),
+                       ("core/services/visible_runs.py", 2)]:
+        n = pathlib.Path(fil).read_text().count("tillad_betalt=True")
+        assert n == antal, f"{fil}: {n} opt-ins, ventede {antal}"
+
+
+def test_INGEN_andre_end_komprimering_melder_sig_til():
+    """Vagten mod at opt-in'et spreder sig. De elleve baggrundskaldere skal
+    BLIVE paa den gratis vej — ellers er standard-skiftet uden virkning."""
+    import pathlib
+    tilladt = {"core/context/auto_compact.py", "core/context/compact_ground_truth.py",
+               "core/services/visible_runs.py", "core/context/compact_llm.py"}
+    fundet = set()
+    for p in pathlib.Path(".").rglob("*.py"):
+        s = str(p)
+        if s.startswith("tests/") or "/__pycache__/" in s or s.startswith(".worktrees"):
+            continue
+        try:
+            if "tillad_betalt=True" in p.read_text():
+                fundet.add(s)
+        except Exception:
+            continue
+    assert fundet <= tilladt, f"nye betalte kaldere: {sorted(fundet - tilladt)}"
 
 
 def test_gratis_vejen_har_stadig_sin_SIDSTE_udvej(monkeypatch):
@@ -164,3 +211,75 @@ def test_truth_gaten_BEDER_om_den_gratis_vej():
             break
     else:
         raise AssertionError("call_compact_llm kaldes ikke laengere i _llm_judge")
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# Femten kaldere, én standard (14/9-2026)
+#
+# `tillad_betalt=False` rettede truth-gaten, og forbruget faldt fra ~540 til
+# ~150 kald i timen — men ikke til nul. Målingen viste klynger af fem kald i
+# samme sekund med identisk form. Årsagen: `call_compact_llm` har FEMTEN
+# kaldere, og standarden er den betalte lane. `daily_journal`,
+# `session_milestones`, `cognitive_state_narrativizer`, `identity_sketch`,
+# `auto_remember_subscriber`, `semantic_search_tools`, `memory_tools` — næsten
+# alt sammen baggrundsarbejde.
+#
+# At sætte `tillad_betalt=False` femten steder ville være præcis den fejl den
+# gamle betalt-lane-vagt lavede: at vedligeholde en liste. Lister forfalder, og
+# kalder nummer seksten ville arve den forkerte standard.
+#
+# Bjørns regel siger det selv: DeepSeek kun i visible lane AF HAM. Er der ingen
+# synlig kørsel, er der ingen ham — så er der heller ikke noget at betale for.
+# Ejerskab, ikke en liste over navne. Samme invariant som betalt-lane-vagten.
+#
+# Komprimering sker INDE i hans kørsel og beholder derfor primær-lanen:
+# beslutningen fra 19. august står urørt, nu af en grund koden selv kan tjekke.
+# ─────────────────────────────────────────────────────────────────────────
+
+
+def test_UDEN_synlig_koersel_bruges_den_betalte_lane_IKKE(monkeypatch):
+    """Baggrundsarbejde: dagbog, milepaele, skitse. Han sidder der ikke."""
+    kaldt: list[str] = []
+    _koersel(monkeypatch, "")
+    monkeypatch.setattr(cl, "_call_primary", lambda p, **k: kaldt.append("primary") or "betalt")
+    monkeypatch.setattr(cl, "_call_cheap_no_groq", lambda p: "gratis")
+    assert cl.call_compact_llm("x", tillad_betalt=True) == "gratis"
+    assert kaldt == [], "baggrundsarbejde ramte den betalte lane"
+
+
+def test_INDE_i_hans_koersel_beholdes_primaer_lanen(monkeypatch):
+    """Komprimering sker under hans tur. Beslutningen fra 19. august staar."""
+    _koersel(monkeypatch, "visible-abc")
+    monkeypatch.setattr(cl, "_call_primary", lambda p, **k: "betalt")
+    monkeypatch.setattr(cl, "_call_cheap_no_groq", lambda p: "gratis")
+    assert cl.call_compact_llm("x", tillad_betalt=True) == "betalt"
+
+
+def test_en_AUTONOM_koersel_betaler_ikke(monkeypatch):
+    """Et run-id alene er ikke nok — det skal vaere HANS."""
+    kaldt: list[str] = []
+    _koersel(monkeypatch, "autonomous-xyz")
+    monkeypatch.setattr(cl, "_call_primary", lambda p, **k: kaldt.append("p") or "betalt")
+    monkeypatch.setattr(cl, "_call_cheap_no_groq", lambda p: "gratis")
+    assert cl.call_compact_llm("x", tillad_betalt=True) == "gratis"
+    assert kaldt == []
+
+
+def test_et_UKENDT_run_opslag_betaler_ikke(monkeypatch):
+    """Kan vi ikke afgoere hvem kaldet tilhoerer, koster det ikke penge.
+    Den sikre retning er den gratis — modsat hovedbogens ukendt-regler, fordi
+    det her er en UDGIFT og ikke en maaling af en udgift."""
+    monkeypatch.setattr("core.services.session_context_resolve.aktivt_run_id",
+                        lambda *a, **k: (_ for _ in ()).throw(RuntimeError("nede")))
+    monkeypatch.setattr(cl, "_call_primary", lambda p, **k: pytest.fail("betalte alligevel"))
+    monkeypatch.setattr(cl, "_call_cheap_no_groq", lambda p: "gratis")
+    assert cl.call_compact_llm("x", tillad_betalt=True) == "gratis"
+
+
+def test_tillad_betalt_False_vinder_OGSAA_inde_i_hans_koersel(monkeypatch):
+    """Truth-gaten koerer inde i hans tur, men er en intern vagt og ikke hans
+    samtale. Et udtrykkeligt afkald skal stadig gaelde."""
+    _koersel(monkeypatch, "visible-abc")
+    monkeypatch.setattr(cl, "_call_primary", lambda p, **k: pytest.fail("afkaldet blev ignoreret"))
+    monkeypatch.setattr(cl, "_call_cheap_no_groq", lambda p: "gratis")
+    assert cl.call_compact_llm("x", tillad_betalt=False) == "gratis"

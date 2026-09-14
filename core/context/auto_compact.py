@@ -102,6 +102,7 @@ def maybe_auto_compact_session(session_id: str, *, provider: str = "", model: st
                 _SMART_PROMPT
                 + "\n".join(f"{m['role']}: {m.get('content', '')[:600]}" for m in msgs),
                 max_tokens=600,
+                tillad_betalt=True,  # komprimering: Bjoerns valg 19/8 — resumeet ER hans hukommelse
             ),
             git_sha=current_sha,
         )

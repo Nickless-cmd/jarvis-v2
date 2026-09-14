@@ -1215,7 +1215,7 @@ def start_autonomous_run(message: str, session_id: str | None = None, follow: bo
 def _compact_llm_for_run(prompt: str) -> str:
     """Call the compact LLM for run-level summarisation (monkeypatchable)."""
     from core.context.compact_llm import call_compact_llm
-    return call_compact_llm(prompt, max_tokens=400)
+    return call_compact_llm(prompt, max_tokens=400, tillad_betalt=True)  # komprimering: Bjoerns valg 19/8 — resumeet ER hans hukommelse
 
 
 def _handle_compact_command(run: "VisibleRun") -> str:
@@ -1232,6 +1232,7 @@ def _handle_compact_command(run: "VisibleRun") -> str:
                 "Komprimér denne dialog til max 400 ord. Bevar fakta, beslutninger og kontekst:\n\n"
                 + "\n".join(f"{m['role']}: {m.get('content', '')}" for m in msgs),
                 max_tokens=500,
+                tillad_betalt=True,  # komprimering: Bjoerns valg 19/8 — resumeet ER hans hukommelse
             ),
         )
         if cr:

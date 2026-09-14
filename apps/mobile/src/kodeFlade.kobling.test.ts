@@ -300,3 +300,25 @@ it('lyset glider i BEGGE linjer — de er soeskende', () => {
     expect(kilde(f)).not.toMatch(/opacity: pulse/)
   }
 })
+
+// ─────────────────────────────────────────────────────────────────────────
+// Runde-etiketten skal hele vejen ud (14/9-2026)
+//
+// Serveren regner den, streamen baerer den, reduceren gemmer den — og uden de
+// to sidste led bliver den regnet, sendt og gemt uden nogensinde at naa
+// skaermen. Det er husets hyppigste fejl, og den her kaede har fem led.
+// ─────────────────────────────────────────────────────────────────────────
+it('runde-etiketten naar hele vejen fra stream til skaerm', () => {
+  // 1. navnet registreret — ellers leverer react-native-sse den ALDRIG
+  expect(kilde('lib/streamClient.ts')).toMatch(/'tool_round_label'/)
+  // 2. reduceren gemmer den paa tool-id
+  expect(kilde('lib/streamReducer.ts')).toMatch(/case 'tool_round_label'/)
+  // 3. skaermen giver kortet videre
+  expect(kilde('screens/ChatScreen.tsx')).toMatch(/rundeEtiketter=\{stream\.state\.rundeEtiketter\}/)
+  // 4. listen slaar op og sender den ind i gruppen
+  expect(kilde('components/MessageList.tsx')).toMatch(/etiket=\{etik\}/)
+  // 5. gruppen tegner den OVER den mekaniske linje
+  const g = kilde('components/InlineToolGroup.tsx')
+  expect(g).toMatch(/testID="tool-group-etiket"/)
+  expect(g.indexOf('tool-group-etiket')).toBeLessThan(g.indexOf('<GlidendeTekst'))
+})

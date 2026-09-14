@@ -76,7 +76,11 @@ const eventNames = [
   // live on-screen partial (advisory — serveren har allerede trunkeret det
   // persisterede svar, så en klient der ignorerer det forbliver korrekt).
   'retry',
-  'round_restart_discard_partial'
+  'round_restart_discard_partial',
+  // Runde-etiketten. Uden navnet her leverer `react-native-sse` den ALDRIG —
+  // samme fælde som `retry` og `round_restart_discard_partial` ovenfor, hvor
+  // desk fik dem og mobilen ikke.
+  'tool_round_label'
 ] as const
 
 type StreamEventName = (typeof eventNames)[number]

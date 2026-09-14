@@ -83,6 +83,26 @@ export interface RetryEvent {
   message?: string
 }
 
+/**
+ * Én kort etiket for en afsluttet værktøjs-runde — «Rettede fejl i login».
+ *
+ * Skrevet af en lille LOKAL model på serveren, og leveret ved NÆSTE rundes
+ * start: etiketten regnes i en tråd, og en generator kan kun yield'e fra sit
+ * eget flow. Det er samme grund som får Claude Code til at levere sin næste
+ * TUR — vores løkke har bare flere runder pr. tur.
+ *
+ * `tool_use_ids` er ikke pynt. Etiketten hæfter sig på DE kald den opsummerer,
+ * ikke på en plads i strømmen: en sen etiket, eller en tråd der genopbygges i
+ * en anden rækkefølge, ville ellers sætte sig over de forkerte.
+ */
+export interface ToolRoundLabelEvent {
+  type: 'tool_round_label'
+  run_id: string
+  round: number
+  etiket: string
+  tool_use_ids: string[]
+}
+
 export interface RoundRestartDiscardPartialEvent {
   type: 'round_restart_discard_partial'
   run_id: string
@@ -90,6 +110,7 @@ export interface RoundRestartDiscardPartialEvent {
 }
 
 export type StreamEvent =
+  | ToolRoundLabelEvent
   | MessageStartEvent
   | ContentBlockStartEvent
   | ContentBlockDeltaEvent

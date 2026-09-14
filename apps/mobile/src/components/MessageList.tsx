@@ -45,6 +45,13 @@ interface MessageListProps {
    * stående, og de nyeste linjer forsvandt bag den. Nu følger indholdet med op.
    */
   bottomInset?: number
+  /**
+   * Runde-etiketter slået op på tool-id — «Rettede fejl i login».
+   *
+   * Kommer fra streamens `tool_round_label`. Udeladt = ingen overskrifter;
+   * tråden ser ud som før.
+   */
+  rundeEtiketter?: Record<string, string>
   onResend?: (text: string) => void
   /** Id'er på fastgjorte beskeder. Styrer ikonet i besked-menuen. */
   pins?: string[]
@@ -77,7 +84,7 @@ type Row =
   /** Billeder/filer sendt MED en brugerbesked, tegnet over boblen. */
   | { kind: 'attachments'; key: string; items: PersistedBlock[]; side: 'left' | 'right' }
   | { kind: 'tool'; key: string; content: string }
-  | { kind: 'live-tool'; key: string; name: string; body: string; running: boolean; etiket?: string; diff?: { tilfoejet: number; fjernet: number } | null }
+  | { kind: 'live-tool'; key: string; id?: string; name: string; body: string; running: boolean; etiket?: string; diff?: { tilfoejet: number; fjernet: number } | null }
   /** Én RUNDE værktøjsarbejde, foldet sammen til én linje. */
   | { kind: 'tool-group'; key: string; items: ToolItem[] }
   /**
@@ -102,7 +109,7 @@ function groupToolRounds(rows: Row[]): Row[] {
     if (buf.length === 0) return
     const items: ToolItem[] = buf.map((r) =>
       r.kind === 'live-tool'
-        ? { label: r.etiket || describeTool(r.name, r.body, r.running), running: r.running, tool: r.name, diff: r.diff ?? null }
+        ? { label: r.etiket || describeTool(r.name, r.body, r.running), running: r.running, tool: r.name, id: r.id, diff: r.diff ?? null }
         : {
             label: describeToolResult((r as { content: string }).content),
             running: false,
@@ -214,6 +221,8 @@ function buildStreamingRows(blocks: ContentBlock[]): Row[] {
       rows.push({
         kind: 'live-tool',
         key: `stream-tool-${b.id || i}`,
+        // Kaldets id baeres med, saa rundens etiket kan slaas op paa DEN.
+        id: b.id,
         name: b.name,
         body: toolBody(b),
         running: b.status !== 'done' && b.status !== 'error',
@@ -253,7 +262,7 @@ function taenketid(start?: number, slut?: number): number | undefined {
 }
 
 export const MessageList = forwardRef<MessageListHandle, MessageListProps>(function MessageList(
-  { messages, blocks, onResend, onScrollOffset, thinking, bottomInset = 0, pins, onTogglePin, onSaveMemory },
+  { messages, blocks, onResend, onScrollOffset, thinking, bottomInset = 0, pins, onTogglePin, onSaveMemory, rundeEtiketter },
   ref
 ) {
   const tokens = useTheme()
@@ -436,7 +445,15 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
         // Værktøjsarbejde er ÉN linje inde i samtalen — ikke et kort.
         // Målt i Codex-tråden: «</> Ændrede 16 filer ›». Det fulde output
         // ligger bag linjen, ikke foran den.
-        if (item.kind === 'tool-group') return <InlineToolGroup items={item.items} />
+        if (item.kind === 'tool-group') {
+          // Etiketten daekker HELE runden, saa det foerste kald der har en, er
+          // rundens. Opslaget gaar paa kaldets id og ikke paa raekkefoelgen:
+          // en sen etiket ville ellers saette sig over de forkerte kald.
+          const etik = item.items
+            .map((i: ToolItem) => (i.id ? rundeEtiketter?.[i.id] : undefined))
+            .find(Boolean)
+          return <InlineToolGroup items={item.items} etiket={etik} />
+        }
         if (item.kind === 'thinking') {
           return (
             <ThinkingSummary

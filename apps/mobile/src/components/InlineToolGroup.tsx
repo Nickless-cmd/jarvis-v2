@@ -9,6 +9,14 @@ import { GlidendeTekst } from './GlidendeTekst'
 
 interface Props {
   items: ToolItem[]
+  /**
+   * Overskriften over runden — «Rettede fejl i login».
+   *
+   * Skrevet af en lille lokal model på serveren og slået op på kaldets id, så
+   * den hæfter sig på DE kald den opsummerer. Udeladt = ingen overskrift; den
+   * kommer først når runden er talt op, og linjen skal kunne stå uden.
+   */
+  etiket?: string
 }
 
 /**
@@ -22,7 +30,7 @@ interface Props {
  * Mens runden kører, ånder linjen; når den er færdig, står den stille.
  * Bevægelse betyder «i gang». En linje der pulser efter den er færdig, lyver.
  */
-export function InlineToolGroup({ items }: Props) {
+export function InlineToolGroup({ items, etiket }: Props) {
   const tokens = useTheme()
   const styles = useStyles(makestyles)
   const [open, setOpen] = useState(false)
@@ -73,13 +81,22 @@ export function InlineToolGroup({ items }: Props) {
     <View style={styles.wrap}>
       <Pressable
         accessibilityRole={expandable ? 'button' : 'text'}
-        accessibilityLabel={summary}
+        accessibilityLabel={etiket ? `${etiket}. ${summary}` : summary}
         accessibilityState={expandable ? { expanded: open } : undefined}
         onPress={toggle}
         testID="tool-group"
       >
         {/* Samme lys som taenke-linjen. De to er soeskende; de skal ogsaa
             opfoere sig ens naar de arbejder. */}
+        {/* Bjoerns raekkefoelge: etiketten FOERST, det mekaniske efter.
+            Overskriften siger hvad runden UDRETTEDE; linjen under siger hvad
+            der SKETE. Den ene uden den anden er enten uden detalje eller uden
+            mening. */}
+        {etiket ? (
+          <Text testID="tool-group-etiket" style={styles.etiket} numberOfLines={1}>
+            {etiket}
+          </Text>
+        ) : null}
         <View style={styles.row}>
           <Code2 size={16} color={tokens.color.fg2} strokeWidth={1.8} />
           <GlidendeTekst text={summary} aktiv={running} style={styles.summary} numberOfLines={1} />
@@ -134,6 +151,14 @@ export function InlineToolGroup({ items }: Props) {
 
 const makestyles = (tokens: Theme) => StyleSheet.create({
   wrap: { paddingHorizontal: tokens.spacing.lg },
+  // Overskriften staar STAERKERE end den mekaniske linje under. Oejet skal
+  // fange hvad der blev udrettet foerst; tallene er detaljen man gaar ned i.
+  etiket: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: tokens.color.fg1,
+    marginBottom: 2
+  },
   row: {
     flexDirection: 'row',
     alignItems: 'center',

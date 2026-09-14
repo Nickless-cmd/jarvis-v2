@@ -294,3 +294,71 @@ it('et resultat for et UKENDT kald aendrer ingenting', () => {
   const s1 = streamReducer(s0, sysResultat({ tool_use_id: 'x', tool: 'ukendt' }) as never)
   expect(s1).toBe(s0)
 })
+
+// ─────────────────────────────────────────────────────────────────────────
+// Runde-etiketten (14/9-2026)
+//
+// «Rettede fejl i login» — hvad runden UDRETTEDE, skrevet af en lille lokal
+// model på serveren. Den mekaniske linje («Kørte en kommando og redigerede
+// 2 filer +12 −4») siger hvad der SKETE og bliver stående UNDER etiketten.
+//
+// Etiketten bærer `tool_use_ids` og hæfter sig på DEM — ikke på en plads i
+// strømmen. Det er samme greb som Claude Codes `preceding_tool_use_ids`: en
+// etiket der kommer sent, eller en tråd der genopbygges i en anden rækkefølge,
+// ville ellers sætte sig over de forkerte kald.
+// ─────────────────────────────────────────────────────────────────────────
+
+describe('tool_round_label', () => {
+  it('gemmer etiketten under sine tool-id-er', () => {
+    const s = streamReducer(initialStreamState(), {
+      type: 'tool_round_label', run_id: 'r', round: 1,
+      etiket: 'Rettede fejl i login', tool_use_ids: ['t1', 't2']
+    } as never)
+    expect(s.rundeEtiketter?.t1).toBe('Rettede fejl i login')
+    expect(s.rundeEtiketter?.t2).toBe('Rettede fejl i login')
+  })
+
+  it('en etiket UDEN id-er gemmes ikke', () => {
+    // Uden id-er er der intet at hæfte den på, og en etiket der svæver ville
+    // sætte sig over det forkerte.
+    const s = streamReducer(initialStreamState(), {
+      type: 'tool_round_label', run_id: 'r', round: 1,
+      etiket: 'Noget', tool_use_ids: []
+    } as never)
+    expect(s.rundeEtiketter ?? {}).toEqual({})
+  })
+
+  it('en TOM etiket gemmes ikke', () => {
+    const s = streamReducer(initialStreamState(), {
+      type: 'tool_round_label', run_id: 'r', round: 1,
+      etiket: '   ', tool_use_ids: ['t1']
+    } as never)
+    expect(s.rundeEtiketter ?? {}).toEqual({})
+  })
+
+  it('flere runder lever side om side', () => {
+    let s = streamReducer(initialStreamState(), {
+      type: 'tool_round_label', run_id: 'r', round: 1,
+      etiket: 'Læste config.json', tool_use_ids: ['a']
+    } as never)
+    s = streamReducer(s, {
+      type: 'tool_round_label', run_id: 'r', round: 2,
+      etiket: 'Kørte fejlende tests', tool_use_ids: ['b']
+    } as never)
+    expect(s.rundeEtiketter?.a).toBe('Læste config.json')
+    expect(s.rundeEtiketter?.b).toBe('Kørte fejlende tests')
+  })
+
+  it('roerer ikke blokkene', () => {
+    // Etiketten er en overskrift. Ændrede den strømmen, kunne en sen etiket
+    // flytte rundt på det der allerede står på skærmen.
+    const foer = streamReducer(initialStreamState(), { type: 'content_block_start', index: 0,
+      content_block: { type: 'text', text: 'hej' } } as never)
+    const efter = streamReducer(foer, {
+      type: 'tool_round_label', run_id: 'r', round: 1,
+      etiket: 'x', tool_use_ids: ['t1']
+    } as never)
+    expect(efter.blocks).toEqual(foer.blocks)
+    expect(efter.status).toBe(foer.status)
+  })
+})

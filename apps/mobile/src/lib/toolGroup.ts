@@ -28,6 +28,14 @@ export interface ToolItem {
   running: boolean
   /** Værktøjets navn — bruges til at afgøre om runden er ensartet. */
   tool: string
+  /**
+   * Kaldets id, når streamen har givet et.
+   *
+   * Bruges KUN til at slå rundens etiket op: serveren sender den med de
+   * `tool_use_ids` den opsummerer, og et opslag på id hæfter den på de rigtige
+   * kald frem for på en plads i tråden.
+   */
+  id?: string
   /** Antal ting kaldet rørte, hvis resultatet siger det (fx «16 filer»). */
   count?: number
 }

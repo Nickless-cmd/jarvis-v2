@@ -912,6 +912,10 @@ export function ChatScreen({
               ref={listRef}
               messages={sessions.messages}
               blocks={stream.state.blocks}
+              // Rundens overskrift — «Rettede fejl i login». Uden den her linje
+              // ville etiketten blive regnet, sendt og gemt i tilstanden uden
+              // nogensinde at naa skaermen: husets hyppigste fejl.
+              rundeEtiketter={stream.state.rundeEtiketter}
               onResend={(text) => void ensureSessionAndSend(text)}
               pins={pins}
               onTogglePin={sessions.activeId ? handleTogglePin : undefined}

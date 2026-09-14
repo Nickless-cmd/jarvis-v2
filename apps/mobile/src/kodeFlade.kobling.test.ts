@@ -251,7 +251,7 @@ it('linjetallene kommer fra KALDET, ikke fra et faelles arbejdstrae', () => {
   // kunne dermed se hvad ANDRE havde liggende uafsluttet. Tallene pr. kald
   // kan kun vise hvad DETTE kald gjorde, saa problemet kan ikke opstaa igen.
   const ml = kilde('components/MessageList.tsx')
-  expect(ml).toMatch(/diff: diffFraResultat\(b\.result\) \?\? toolDiff\(b\.name, b\.input\)/)
+  expect(ml).toMatch(/diff: diffFraResultat\(b\.result\) \?\? toolDiff\(b\.name, b\.partialJson \|\| b\.input\)/)
   const g = kilde('components/InlineToolGroup.tsx')
   expect(g).toMatch(/summerDiff\(items\)/)
 })
@@ -261,7 +261,9 @@ it('linjetallene pr. vaerktoejskald er MAALT, med argumenterne som faldback', ()
   // HAR et resultat endnu — uden det ville linjen staa tom under arbejdet.
   const ml = kilde('components/MessageList.tsx')
   expect(ml).toMatch(/diffFraResultat\(b\.result\)/)
-  expect(ml).toMatch(/toolDiff\(b\.name, b\.input\)/)
+  // `partialJson` FOER `input`: under streaming ligger argumenterne i strengen,
+  // og uden den raekkefoelge manglede «+12 −4» netop paa edit-runderne.
+  expect(ml).toMatch(/toolDiff\(b\.name, b\.partialJson \|\| b\.input\)/)
   const g = kilde('components/InlineToolGroup.tsx')
   expect(g).toMatch(/item\.diff\.tilfoejet/)
   expect(g).toMatch(/item\.diff\.fjernet/)

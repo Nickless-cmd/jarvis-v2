@@ -232,7 +232,11 @@ function buildStreamingRows(blocks: ContentBlock[]): Row[] {
         // argumenterne alene. Gaettet bliver som faldback, fordi et kald der
         // stadig koerer ikke HAR et resultat endnu, og linjen skal kunne
         // tegnes mens svaret kommer ind.
-        diff: diffFraResultat(b.result) ?? toolDiff(b.name, b.input),
+        // `b.partialJson` FOERST: under streaming lander argumenterne dér som
+        // en streng, ikke i `b.input` — og det er praecis de runder hvor en fil
+        // bliver redigeret, saa «+12 −4» manglede netop hvor det betoed noget.
+        // `toolBody` lige nedenfor har hele tiden gjort det samme.
+        diff: diffFraResultat(b.result) ?? toolDiff(b.name, b.partialJson || b.input),
         // Serverens egen etiket, brugt ORDRET. En foreløbig række har ingen
         // argumenter endnu — `describeTool` ville sige «Kører bash…» og tabe
         // netop dét der gør ventetiden forståelig. Etiketten findes allerede

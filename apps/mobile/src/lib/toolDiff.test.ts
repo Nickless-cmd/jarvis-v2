@@ -103,3 +103,47 @@ describe('diffFraResultat', () => {
     expect(diffFraResultat('{"linjer_tilfoejet":"tolv","linjer_fjernet":4}')).toBeNull()
   })
 })
+
+// ─────────────────────────────────────────────────────────────────────────
+// Argumenterne kommer som en STRENG under streaming (14/9-2026)
+//
+// Bjoern: «+xx og -xx mangler for den runde hvor han redigeret en fil».
+//
+// Under streaming lander et vaerktoejs argumenter i `partialJson` — en streng
+// samlet af `input_json_delta` — og IKKE i `input`. `toolDiff` kiggede kun i
+// `input`, saa den saa et tomt objekt og gav null. `toolBody` i MessageList
+// har hele tiden foretrukket `partialJson`; diff'en gjorde ikke.
+// ─────────────────────────────────────────────────────────────────────────
+
+describe('toolDiff med streamede argumenter', () => {
+  it('parser en JSON-streng', () => {
+    const s = JSON.stringify({ path: 'a.py', old_text: 'a\nb', new_text: 'x' })
+    expect(toolDiff('edit_file', s)).toEqual({ tilfoejet: 1, fjernet: 2 })
+  })
+
+  it('et objekt virker stadig', () => {
+    expect(toolDiff('edit_file', { old_text: 'a\nb', new_text: 'x' }))
+      .toEqual({ tilfoejet: 1, fjernet: 2 })
+  })
+
+  it('en HALV streng midt i streamen giver null frem for at kaste', () => {
+    // Argumenterne kommer stykvis. Indtil de er hele, er der intet at vise —
+    // og en raekke der kaster ville tage hele traaden med sig.
+    expect(toolDiff('edit_file', '{"path":"a.py","old_te')).toBeNull()
+  })
+
+  it('en tom streng giver null', () => {
+    expect(toolDiff('edit_file', '')).toBeNull()
+  })
+
+  it('write_file virker ogsaa fra en streng', () => {
+    expect(toolDiff('write_file', JSON.stringify({ content: 'en\nto\ntre' })))
+      .toEqual({ tilfoejet: 3, fjernet: 0 })
+  })
+
+  it('multi_edit virker ogsaa fra en streng', () => {
+    const s = JSON.stringify({ edits: [{ old_text: 'a', new_text: 'b' },
+                                       { old_text: 'c\nd', new_text: 'e' }] })
+    expect(toolDiff('multi_edit', s)).toEqual({ tilfoejet: 2, fjernet: 3 })
+  })
+})

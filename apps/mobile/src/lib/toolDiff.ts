@@ -20,9 +20,34 @@ export interface ToolDiff {
  * der blev overskrevet. Et værktøj der ikke redigerer, giver null; så står
  * rækken uden tal frem for med et opdigtet nul.
  */
+/**
+ * Argumenterne, uanset om de er et objekt eller en streng under streaming.
+ *
+ * Et værktøjs argumenter lander i `partialJson` — en streng samlet af
+ * `input_json_delta` — og ikke i `input`. `toolBody` i MessageList har hele
+ * tiden foretrukket strengen; diff'en gjorde ikke, og derfor manglede
+ * «+12 −4» på præcis de runder hvor en fil blev redigeret.
+ *
+ * En HALV streng midt i streamen giver `{}` frem for at kaste: indtil
+ * argumenterne er hele, er der intet at vise, og en række der kaster ville
+ * tage hele tråden med sig.
+ */
+function somArgumenter(input: unknown): Record<string, unknown> {
+  if (input && typeof input === 'object') return input as Record<string, unknown>
+  if (typeof input === 'string' && input.trim()) {
+    try {
+      const p = JSON.parse(input)
+      if (p && typeof p === 'object') return p as Record<string, unknown>
+    } catch {
+      return {}
+    }
+  }
+  return {}
+}
+
 export function toolDiff(navn: string, input: unknown): ToolDiff | null {
   const t = (navn || '').replace(/^operator_/, '')
-  const o = (input && typeof input === 'object' ? input : {}) as Record<string, unknown>
+  const o = somArgumenter(input)
 
   if (t === 'edit_file') return fraPar(o.old_text, o.new_text)
 

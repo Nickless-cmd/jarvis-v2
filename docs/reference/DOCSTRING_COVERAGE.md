@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7535/14654 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7538/14658 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 7535/14654 functions/methods documented (51%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 646 | 1182 | 54% |
-| `core.services` | 5014 | 10104 | 49% |
+| `core.services` | 5017 | 10108 | 49% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 109 | 184 | 59% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1130,12 +1130,12 @@ Generated from source. 7535/14654 functions/methods documented (51%). The list b
 - `core/services/life_projects.py` :: `abandon_life_project` (L50)
 - `core/services/life_projects.py` :: `build_life_projects_surface` (L36)
 - `core/services/life_projects.py` :: `create_life_project` (L12)
-- `core/services/living_executive.py` :: `build_living_executive_surface` (L50)
-- `core/services/living_executive.py` :: `choose_impulse` (L75)
-- `core/services/living_executive.py` :: `execute_impulse` (L104)
-- `core/services/living_executive.py` :: `process_event` (L87)
-- `core/services/living_executive.py` :: `start_listener` (L642)
-- `core/services/living_executive.py` :: `stop_listener` (L658)
+- `core/services/living_executive.py` :: `build_living_executive_surface` (L62)
+- `core/services/living_executive.py` :: `choose_impulse` (L87)
+- `core/services/living_executive.py` :: `execute_impulse` (L116)
+- `core/services/living_executive.py` :: `process_event` (L99)
+- `core/services/living_executive.py` :: `start_listener` (L791)
+- `core/services/living_executive.py` :: `stop_listener` (L812)
 - `core/services/local_small_model.py` :: `base_url` (L39)
 - `core/services/long_arc_synthesizer.py` :: `list_arcs` (L208)
 - `core/services/long_horizon_goals.py` :: `create_goal` (L32)

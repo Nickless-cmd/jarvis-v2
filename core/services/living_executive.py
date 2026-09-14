@@ -23,6 +23,18 @@ _STATE_KEY = "living_executive"
 _MAX_TRACES = 80
 _DEFAULT_COOLDOWN_SECONDS = 900
 
+# Genoptagelse af crash-draebte koersler. Bjoern: «Et run maa aldrig doe».
+_GENOPTAG_ART = "runtime.visible_run_interrupted"
+_GENOPTAG_NOEGLE = "visible-run-interrupted"
+# Loftet findes paa grund af ÉT vindue i hans historik med 17 doede koersler.
+# Sytten vaekninger paa én gang er ikke en redning, det er et stormloeb. Fem
+# daekker alt andet i 244 af 245 maalte vinduer.
+_MAKS_GENOPTAG_PR_VINDUE = 5
+_GENOPTAG_VINDUE_S = 900
+# Hvor langt tilbage indhentningen kigger. Aeldre end et doegn er ikke
+# «afbrudt arbejde» laengere — det er historie.
+_INDHENT_TIMER = 24
+
 _LISTENER_THREAD: threading.Thread | None = None
 _LISTENER_STOP = threading.Event()
 _LISTENER_QUEUE: "queue.Queue[dict[str, Any] | None] | None" = None
@@ -261,7 +273,27 @@ def _impulse_from_event(event: dict[str, Any]) -> dict[str, Any] | None:
             cooldown_seconds=3600,
         )
 
-    if kind == "runtime.visible_run_interrupted":
+    if kind == _GENOPTAG_ART:
+        # Noeglen staar paa KOERSLEN og ikke paa arten. Foer var den
+        # konstanten «visible-run-interrupted» med 900 sekunder, saa to
+        # forskellige koersler der doer tre minutter fra hinanden gav ÉN
+        # genoptagelse — og den anden forsvandt uden spor. Maalt i hans egne
+        # tal: 54 af 245 vinduer havde mere end én doed koersel, i alt 111 af
+        # 356 der aldrig kunne vaere genoptaget.
+        #
+        # En nedkoeling skal afvise DET SAMME tabte arbejde to gange. Ikke
+        # tabt arbejde i almindelighed.
+        rid = str(payload.get("run_id") or "").strip()
+        # Uden id kan vi ikke bevise at to afbrydelser er forskellige. Saa
+        # deler de den gamle faelles noegle: tavshed er ikke belaeg for at
+        # gange genoptagelserne op.
+        noegle = f"{_GENOPTAG_NOEGLE}:{rid}" if rid else _GENOPTAG_NOEGLE
+        hvad = payload.get("summary") or payload.get("error") or "unknown interruption"
+        # Id'et SKAL med i prompten. Uden det kan den vaekkede umuligt vide
+        # hvilken koersel der skal genoptages.
+        prompt = f"Resume from interrupted visible run: {hvad}"
+        if rid:
+            prompt = f"Resume interrupted visible run {rid}: {hvad}"
         return _impulse(
             source_event_id=event_id,
             source_kind=kind,
@@ -272,10 +304,11 @@ def _impulse_from_event(event: dict[str, Any]) -> dict[str, Any] | None:
             choice="Schedule return to interrupted visible run",
             payload={
                 "delay_seconds": 30,
-                "prompt": f"Resume from interrupted visible run: {payload.get('summary') or payload.get('error') or 'unknown interruption'}",
-                "reason": "living-executive:visible-run-interrupted",
+                "prompt": prompt,
+                "reason": f"living-executive:{_GENOPTAG_NOEGLE}",
+                "run_id": rid,
             },
-            cooldown_key="visible-run-interrupted",
+            cooldown_key=noegle,
         )
 
     return None
@@ -308,10 +341,48 @@ def _impulse(
     }
 
 
+def _genoptag_loft_naaet() -> int | None:
+    """Hvor mange genoptagelser er der fyret i det sidste vindue?
+
+    Returnerer antallet hvis loftet er naaet, ellers None. Loftet sidder i
+    selve HANDLINGEN og ikke i indhentningen, saa det ogsaa daekker den vej
+    hvor sytten koersler doer live og lytteren faar dem ét event ad gangen.
+    """
+    state = _load_state()
+    nu = time.time()
+    tider = [float(x) for x in (state.get("genoptag_tider") or [])
+             if nu - float(x) < _GENOPTAG_VINDUE_S]
+    return len(tider) if len(tider) >= _MAKS_GENOPTAG_PR_VINDUE else None
+
+
+def _noter_genoptagelse() -> None:
+    state = _load_state()
+    nu = time.time()
+    tider = [float(x) for x in (state.get("genoptag_tider") or [])
+             if nu - float(x) < _GENOPTAG_VINDUE_S]
+    tider.append(nu)
+    state["genoptag_tider"] = tider
+    _save_state(state)
+
+
 def _action_schedule_self_wakeup(impulse: dict[str, Any]) -> dict[str, object]:
     from core.services.self_wakeup import schedule_self_wakeup
 
     payload = dict(impulse.get("payload") or {})
+    er_genoptagelse = _GENOPTAG_NOEGLE in str(payload.get("reason") or "")
+    if er_genoptagelse:
+        naaet = _genoptag_loft_naaet()
+        if naaet is not None:
+            # IKKE tavst. At droppe uden spor er praecis den fejl hele denne
+            # oevelse handler om — status «capped» bliver et rigtigt spor.
+            return {
+                "status": "capped",
+                "summary": (
+                    f"loft naaet: {naaet} genoptagelser inden for "
+                    f"{_GENOPTAG_VINDUE_S}s, springer {payload.get('run_id') or 'ukendt'} over"
+                ),
+            }
+        _noter_genoptagelse()
     result = schedule_self_wakeup(
         delay_seconds=int(payload.get("delay_seconds") or 300),
         prompt=str(payload.get("prompt") or ""),
@@ -639,6 +710,84 @@ def _aftertaste(*, status: str, impulse: dict[str, Any]) -> str:
     return "quiet"
 
 
+def _afbrudte_fra_db(*, timer: int = _INDHENT_TIMER, maks: int = 40) -> list[dict[str, Any]]:
+    """Afbrydelses-events fra DB'en — delt paa tvaers af processer.
+
+    Filtreret paa ART i SQL og ikke hentet som «de seneste N events». Et
+    blankt `limit` ville begrave afbrydelserne under tusindvis af andre
+    events og give et stille nul — den faelde har bidt tre gange i dette hus.
+    """
+    from core.runtime.db import connect
+
+    try:
+        with connect() as conn:
+            raekker = conn.execute(
+                """
+                SELECT id, kind, payload_json, created_at
+                FROM events
+                WHERE kind = ?
+                  AND created_at >= datetime('now', ?)
+                ORDER BY id DESC
+                LIMIT ?
+                """,
+                (_GENOPTAG_ART, f"-{int(timer)} hours", int(maks)),
+            ).fetchall()
+    except Exception as exc:
+        logger.warning("living_executive: kunne ikke laese afbrydelser: %s", exc)
+        return []
+
+    import json as _json
+
+    ud: list[dict[str, Any]] = []
+    for r in raekker:
+        try:
+            last = _json.loads(r["payload_json"])
+        except Exception:
+            last = {}
+        ud.append({"id": int(r["id"]), "kind": str(r["kind"]),
+                   "payload": last if isinstance(last, dict) else {},
+                   "created_at": str(r["created_at"])})
+    # AELDST foerst, saa loftet rammer de nyeste sidst og raekkefoelgen i
+    # sporet svarer til raekkefoelgen tingene doede i.
+    ud.reverse()
+    return ud
+
+
+def indhent_forsoemte_afbrydelser(*, timer: int = _INDHENT_TIMER) -> dict[str, object]:
+    """Genoptag crash-draebte koersler der doede FOER nogen lyttede.
+
+    Den aegte aarsag til at genoptagelsen aldrig fyrede. Genstart-loggen, i
+    raekkefoelge::
+
+        21:44:33  session_boot_reconciler   ← stempler de doede koersler
+        21:44:34  living_executive: listener started
+
+    ``event_bus.subscribe()`` lægger i en liste i PROCESSEN. Genopretteren —
+    den eneste der finder crash-draebte koersler — koerer et sekund foer
+    lytteren abonnerer, saa eventet udgives til en tom abonnent-liste. Det er
+    ikke et kaplob; det er en fast raekkefoelge, og den kan ikke vindes.
+
+    Maalt 14/9-2026: 25 afbrydelses-events i basen, NUL spor om en afbrudt
+    koersel blandt direktoerens 744.
+
+    Derfor laeser vi fra DB'en i stedet for at stole paa at have vaeret til
+    stede i det rigtige sekund. Nedkoelingens noegle pr. koersel er samtidig
+    kvitteringen for hvad der allerede er genoptaget, saa en genstart ikke
+    koerer historikken forfra.
+    """
+    set_ = 0
+    genoptaget = 0
+    for event in _afbrudte_fra_db(timer=timer):
+        set_ += 1
+        spor = process_event(event)
+        if spor and str(spor.get("status") or "") == "executed":
+            genoptaget += 1
+    if set_:
+        logger.info("living_executive: indhentede %s afbrydelser, genoptog %s",
+                    set_, genoptaget)
+    return {"set": set_, "genoptaget": genoptaget}
+
+
 def start_listener() -> None:
     global _LISTENER_THREAD, _LISTENER_QUEUE
     if _LISTENER_THREAD is not None and _LISTENER_THREAD.is_alive():
@@ -653,6 +802,11 @@ def start_listener() -> None:
     )
     _LISTENER_THREAD.start()
     logger.info("living_executive: listener started")
+    # Foerst NU — ellers ville vi selv have samme problem som genopretteren.
+    try:
+        indhent_forsoemte_afbrydelser()
+    except Exception:
+        logger.warning("living_executive: indhentning fejlede", exc_info=True)
 
 
 def stop_listener() -> None:

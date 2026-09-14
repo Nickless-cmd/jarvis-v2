@@ -343,6 +343,20 @@ _Provider-agnostic tool-result aging for the visible agentic loop._
 | function | `_parse_dt` | `(value)` | — | [src](../../../core/services/tool_result_store.py#L355) |
 | function | `repair_permissions` | `()` | Saet 0600 paa gamle handles der blev skrevet foer O_EXCL-stien fandtes. | [src](../../../core/services/tool_result_store.py#L370) |
 
+## `core/services/tool_round_label.py`
+_Én kort etiket for en afsluttet værktøjs-runde — «Rettede NPE i UserService»._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_model` | `()` | — | [src](../../../core/services/tool_round_label.py#L81) |
+| function | `_base_url` | `()` | — | [src](../../../core/services/tool_round_label.py#L92) |
+| function | `_klip` | `(v, maks)` | Kort, én linje, og aldrig `None` som teksten «None». | [src](../../../core/services/tool_round_label.py#L103) |
+| function | `byg_prompt` | `(vaerktoejer, hensigt=…)` | Det kompakte billede af runden som modellen får. | [src](../../../core/services/tool_round_label.py#L112) |
+| function | `_kald_model` | `(prompt)` | — | [src](../../../core/services/tool_round_label.py#L135) |
+| function | `_ryd` | `(s)` | Én linje, uden anførselstegn, uden punktum, klippet ved et ordskel. | [src](../../../core/services/tool_round_label.py#L153) |
+| function | `etiket` | `(vaerktoejer, hensigt=…)` | Én kort etiket for runden, eller `""`. | [src](../../../core/services/tool_round_label.py#L168) |
+| function | `tool_use_ids` | `(vaerktoejer)` | Hvilke kald etiketten dækker. | [src](../../../core/services/tool_round_label.py#L185) |
+
 ## `core/services/tool_router.py`
 _Per-turn tool selection._
 
@@ -503,16 +517,4 @@ _Unconscious temperature field — backwards-compat wrapper for Lag 10._
 |---|---|---|---|---|
 | function | `build_unconscious_temperature_hint` | `()` | Backwards-compat: returns heartbeat-formatted hint string or None. | [src](../../../core/services/unconscious_temperature_field.py#L13) |
 | function | `build_unconscious_temperature_field_surface` | `(*, force_refresh=…)` | Backwards-compat: surface dict for Mission Control consumers. | [src](../../../core/services/unconscious_temperature_field.py#L28) |
-
-## `core/services/unfinished_intent.py`
-_Unfinished-intent detector for visible-run output._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `UnfinishedIntent` | `` | Resultat af detector: hvilken pattern matched. | [src](../../../core/services/unfinished_intent.py#L30) |
-| function | `_tail` | `(text, n=…)` | Returner sidste ~n tegn af teksten. | [src](../../../core/services/unfinished_intent.py#L126) |
-| function | `detect_unfinished_intent` | `(text)` | Returner UnfinishedIntent hvis teksten antyder Jarvis stoppede midt | [src](../../../core/services/unfinished_intent.py#L133) |
-| function | `is_in_cooldown` | `(session_id)` | True hvis session_id har triggered en continuation indenfor cooldown-vinduet. | [src](../../../core/services/unfinished_intent.py#L239) |
-| function | `mark_triggered` | `(session_id)` | Marker at en continuation netop er triggered for session_id. | [src](../../../core/services/unfinished_intent.py#L248) |
-| function | `reset_cooldown_for_tests` | `()` | Test-helper: tøm cooldown-state mellem test cases. | [src](../../../core/services/unfinished_intent.py#L256) |
 

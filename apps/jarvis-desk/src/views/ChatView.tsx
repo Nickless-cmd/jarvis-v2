@@ -645,14 +645,14 @@ export function ChatView({
           </div>
         ))}
         {streaming && stream.blocks.length > 0 && (
-          <MessageRow role="assistant" blocks={withoutPauseAsk(stream.blocks)} density="compact" streaming />
+          <MessageRow role="assistant" blocks={withoutPauseAsk(stream.blocks)} density="compact" streaming rundeEtiketter={stream.rundeEtiketter} />
         )}
         {/* Autonomt wakeup-run: token-stream live mens det kører. Når det er
             færdigt (status≠working) overtager serverens persisterede besked via
             refresh — så vi undgår dobbelt-render. ÉN kilde pr. run: undertryk
             follow-renderen hvis svaret allerede står i transcript'en (server/bro). */}
         {!streaming && bgActive && followState.status === 'working' && followState.blocks.length > 0 && !followAlreadyInTranscript && (
-          <MessageRow role="assistant" blocks={withoutPauseAsk(followState.blocks)} density="compact" streaming />
+          <MessageRow role="assistant" blocks={withoutPauseAsk(followState.blocks)} density="compact" streaming rundeEtiketter={followState.rundeEtiketter} />
         )}
       </div>
       </div>

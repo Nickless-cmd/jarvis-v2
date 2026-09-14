@@ -1236,6 +1236,13 @@ button.sidebar-group svg { flex: none; opacity: .7; }
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .toolgroup-chevron { flex: 0 0 auto; color: var(--fg-2); }
+/* Overskriften staar STAERKERE end den mekaniske linje under. Oejet skal fange
+   hvad der blev udrettet foerst; tallene er detaljen man gaar ned i. */
+.toolgroup-etiket {
+  color: var(--fg-1); font-size: 14px; font-weight: 600;
+  padding: 2px 2px 0; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap;
+}
 /* Mens runden koerer, aander linjen; naar den er faerdig, staar den stille.
    Bevaegelse betyder «i gang» — en linje der pulser bagefter lyver. Mobilen
    gaar 1 → 0,4 over 800 ms hver vej. */

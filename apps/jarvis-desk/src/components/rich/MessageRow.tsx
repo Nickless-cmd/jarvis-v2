@@ -24,6 +24,7 @@ function MessageRowImpl({
   blocks: rawBlocks,
   density,
   streaming,
+  rundeEtiketter,
   createdAt,
   onResend,
   config,
@@ -32,6 +33,11 @@ function MessageRowImpl({
   blocks: ContentBlock[]
   density: 'compact' | 'full'
   streaming: boolean
+  /**
+   * Rundens overskrift slået op på tool-id — «Rettede fejl i login».
+   * Udeladt = ingen overskrifter; tråden ser ud som før.
+   */
+  rundeEtiketter?: Record<string, string>
   createdAt?: string
   /** Kun bruger-beskeder: send samme tekst igen (sparer copy-paste). */
   onResend?: (text: string) => void
@@ -87,7 +93,7 @@ function MessageRowImpl({
               tool-blok under streaming) isoleres i stedet for at nuke hele appen
               til sort skærm. Fejlen logges (localStorage jarvis-desk:lastCrash). */}
           <InlineErrorBoundary label="assistant-blocks">
-            <BlocksRenderer blocks={blocks} density={density} streaming={streaming} />
+            <BlocksRenderer blocks={blocks} density={density} streaming={streaming} rundeEtiketter={rundeEtiketter} />
             {!streaming && detectArtifacts(blocks).map((a, i) => (
               <ArtifactAffordance key={`${a.kind}-${i}`} artifact={a} />
             ))}

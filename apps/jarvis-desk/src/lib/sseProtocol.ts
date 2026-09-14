@@ -69,7 +69,24 @@ export interface SystemEvent {
   payload: Record<string, unknown>
 }
 
+/**
+ * Én kort etiket for en afsluttet værktøjs-runde — «Rettede fejl i login».
+ *
+ * Skrevet af en lille LOKAL model på serveren og leveret ved NÆSTE rundes
+ * start: etiketten regnes i en tråd, og en generator kan kun yield'e fra sit
+ * eget flow. `tool_use_ids` binder den til DE kald den opsummerer — ikke til en
+ * plads i strømmen.
+ */
+export interface ToolRoundLabelEvent {
+  type: 'tool_round_label'
+  run_id: string
+  round: number
+  etiket: string
+  tool_use_ids: string[]
+}
+
 export type StreamEvent =
+  | ToolRoundLabelEvent
   | MessageStartEvent
   | ContentBlockStartEvent
   | ContentBlockDeltaEvent

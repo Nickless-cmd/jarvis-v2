@@ -12,6 +12,14 @@ export interface StreamState {
   blocks: ContentBlock[]
   workingStep: string | null // nyeste live progress-tekst (fx "Kalder analyze_image")
   usage: { input: number; output: number; cacheHit: number; cacheMiss: number }
+  /**
+   * Runde-etiketter slået op på TOOL-ID — «Rettede fejl i login».
+   *
+   * Nøglen er kaldets id og ikke rundenummeret: en etiket der kom sent, eller
+   * en tråd der blev genopbygget i en anden rækkefølge, ville ellers sætte sig
+   * over de forkerte kald. 1:1 med mobilen.
+   */
+  rundeEtiketter?: Record<string, string>
 }
 
 export function initialStreamState(): StreamState {
@@ -161,6 +169,18 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
 
     case 'message_stop':
       return { ...state, status: 'done' }
+
+    case 'tool_round_label': {
+      // Overskriften over en runde. Rører ALDRIG blokkene: ændrede den
+      // strømmen, kunne en sen etiket flytte rundt på det der allerede står på
+      // skærmen. Uden id-er er der intet at hæfte den på.
+      const tekst = (event.etiket ?? '').trim()
+      const ids = event.tool_use_ids ?? []
+      if (!tekst || ids.length === 0) return state
+      const kort = { ...(state.rundeEtiketter ?? {}) }
+      for (const id of ids) kort[id] = tekst
+      return { ...state, rundeEtiketter: kort }
+    }
 
     case 'ping':
       return state

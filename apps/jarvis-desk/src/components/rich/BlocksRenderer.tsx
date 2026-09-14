@@ -45,10 +45,18 @@ export function BlocksRenderer({
   blocks,
   density,
   streaming,
+  rundeEtiketter,
 }: {
   blocks: ContentBlock[]
   density: 'compact' | 'full'
   streaming: boolean
+  /**
+   * Runde-etiketter slået op på tool-id — «Rettede fejl i login».
+   *
+   * Kommer fra streamens `tool_round_label`. Udeladt = ingen overskrifter;
+   * tråden ser ud som før.
+   */
+  rundeEtiketter?: Record<string, string>
 }) {
   // denseBlocks FØRST: fjern sparsomme huller (foldede tool_result-indices) FØR
   // groupToolRounds/coalesceProgress itererer med for..of — ellers crash på et
@@ -58,7 +66,7 @@ export function BlocksRenderer({
   return (
     <>
       {rendered.map((b, i) => (
-        <BlockView key={i} block={b} density={density} streaming={streaming} isLast={i === lastIdx} />
+        <BlockView key={i} block={b} density={density} streaming={streaming} isLast={i === lastIdx} rundeEtiketter={rundeEtiketter} />
       ))}
     </>
   )
@@ -69,11 +77,14 @@ function BlockView({
   density,
   streaming,
   isLast,
+  rundeEtiketter,
 }: {
   block: RenderBlock | ProgressTrailBlock
   density: 'compact' | 'full'
   streaming: boolean
   isLast: boolean
+  /** Rundens overskrift, slået op på kaldets id. Se `BlocksRenderer`. */
+  rundeEtiketter?: Record<string, string>
 }) {
   switch (block.type) {
     // Narrationen vises KUN mens der streames. Når turen er slut, staar den i
@@ -89,7 +100,13 @@ function BlockView({
     case 'text':
       return <MarkdownRenderer text={block.text} streaming={streaming} />
     case 'tool_group':
-      return <ToolGroupCard block={block} density={density} />
+      {
+        // Etiketten daekker HELE runden, saa det foerste kald der har en, er
+        // rundens. Opslaget gaar paa kaldets id og ikke paa raekkefoelgen: en
+        // sen etiket ville ellers saette sig over de forkerte kald.
+        const etik = block.tools.map((t) => rundeEtiketter?.[t.id]).find(Boolean)
+        return <ToolGroupCard block={block} density={density} etiket={etik} />
+      }
     case 'tool_use':
       return <ToolCard block={block} density={density} />
     case 'image':

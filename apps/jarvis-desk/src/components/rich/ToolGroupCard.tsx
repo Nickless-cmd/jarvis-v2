@@ -24,9 +24,18 @@ import { ToolCard } from './ToolCard'
 export function ToolGroupCard({
   block,
   density,
+  etiket,
 }: {
   block: ToolGroupBlock
   density: 'compact' | 'full'
+  /**
+   * Overskriften over runden — «Rettede fejl i login».
+   *
+   * Skrevet af en lille lokal model på serveren og slået op på kaldets id.
+   * Udeladt = ingen overskrift; kortet skal kunne stå uden, for den kommer
+   * først når runden er talt op. 1:1 med mobilen.
+   */
+  etiket?: string
 }) {
   const [open, setOpen] = useState(false)
   const Chevron = open ? ChevronDown : ChevronRight
@@ -37,10 +46,15 @@ export function ToolGroupCard({
 
   return (
     <div className={`toolgroup${koerer ? ' er-koerende' : ''}`}>
+      {/* Bjoerns raekkefoelge: etiketten FOERST, det mekaniske efter.
+          Overskriften siger hvad runden UDRETTEDE; linjen under hvad der
+          SKETE. */}
+      {etiket ? <div className="toolgroup-etiket">{etiket}</div> : null}
       <button
         type="button"
         className="toolgroup-head"
         aria-expanded={open}
+        aria-label={etiket ? `${etiket}. ${resume}` : resume}
         onClick={() => setOpen((o) => !o)}
       >
         <Code2 size={15} className="toolgroup-icon" strokeWidth={1.8} />

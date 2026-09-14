@@ -101,6 +101,11 @@ export interface StreamContextValue {
   /** Token-forbrug fra seneste/aktive run (til context-ring #9). */
   usage: { input: number; output: number; cacheHit: number; cacheMiss: number }
   blocks: ContentBlock[]
+  /**
+   * Rundens overskrift slået op på tool-id — «Rettede fejl i login».
+   * Skrevet af en lille lokal model på serveren, leveret ved næste rundes start.
+   */
+  rundeEtiketter?: Record<string, string>
   activeRunId: string | null
   elapsedMs: number
   workingStep: string | null
@@ -445,6 +450,7 @@ export function StreamProvider({
       activeProvider: state.provider,
       activeLane: state.lane,
       blocks: state.blocks,
+      rundeEtiketter: state.rundeEtiketter,
       activeRunId: state.activeRunId,
       workingSessionId: status === 'working' ? workingSessionId : null,
       usage: state.usage,
@@ -468,7 +474,7 @@ export function StreamProvider({
       armAutoContinue,
       consumeAutoContinue,
     }),
-    [status, state.model, state.provider, state.lane, state.blocks, state.activeRunId, workingSessionId, state.usage, elapsedMs, state.workingStep, error, streamError, canonical.errors, canonical.current, clearError, needsAttention, send, abort, continueFromPartial, pendingApproval, approve, deny, pendingAppAction, clearAppAction, autoContinue, armAutoContinue, consumeAutoContinue],
+    [status, state.model, state.provider, state.lane, state.blocks, state.rundeEtiketter, state.activeRunId, workingSessionId, state.usage, elapsedMs, state.workingStep, error, streamError, canonical.errors, canonical.current, clearError, needsAttention, send, abort, continueFromPartial, pendingApproval, approve, deny, pendingAppAction, clearAppAction, autoContinue, armAutoContinue, consumeAutoContinue],
   )
   return <StreamContext.Provider value={value}>{children}</StreamContext.Provider>
 }

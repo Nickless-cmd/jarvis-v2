@@ -2797,6 +2797,19 @@ async def _stream_visible_run(
                         "agentic-round-start run_id=%s round=%d exchanges=%d inter_round_gap_ms=%d",
                         run.run_id, _agentic_round + 1, len(_followup_exchanges), _inter_round_gap_ms,
                     )
+                    # ── Toem koeen af faerdige runde-etiketter ──────────
+                    # Etiketten for FORRIGE runde regnes i en traad, og en
+                    # generator kan kun yield'e fra sit eget flow. Derfor
+                    # leveres den her, ved naeste rundes start. Det er samme
+                    # grund som faar Claude Code til at levere sin naeste TUR —
+                    # vi har bare flere runder pr. tur, saa ventetiden er
+                    # kortere. En koe ingen toemmer er en etiket ingen ser.
+                    for _etik in _haent_ventende_etiketter(run.run_id):
+                        yield _sse("tool_round_label", {
+                            "type": "tool_round_label",
+                            **_etik,
+                        })
+
                     # Followup-cluster: runde synlig i Centralen (self-safe).
                     try:
                         from core.services import followup_observer as _fu_obs
@@ -4202,6 +4215,24 @@ async def _stream_visible_run(
                     # but minimal visible text. This catches the "digging
                     # without delivering" pattern where each round has a
                     # few chars (resetting empty-text) but no real answer. ──
+                    # ── Runde-etiket (14/9-2026) ────────────────────────
+                    # «Rettede fejl i login» — hvad runden UDRETTEDE. Skrives
+                    # af en lille LOKAL model i en daemon-traad; runden venter
+                    # ALDRIG. Klienternes mekaniske linje («Koerte en kommando
+                    # og redigerede 2 filer +12 −4») siger hvad der SKETE, og
+                    # staar efter etiketten.
+                    #
+                    # Claude Code baerer sin som et loefte der indfries naeste
+                    # tur. Vi kan levere i SAMME runde, fordi streamen allerede
+                    # baerer top-level runde-events — betingelsen er kun at
+                    # kaldet ikke blokerer, og det goer det ikke.
+                    if _a_tool_calls:
+                        _publish_runde_etiket(
+                            run_id=run.run_id, round_num=_agentic_round + 1,
+                            vaerktoejer=list(_a_tool_calls),
+                            hensigt=str(run.user_message or ""),
+                        )
+
                     if _a_tool_calls and _round_text_total < _TOOL_ONLY_TEXT_THRESHOLD:
                         _consecutive_tool_only_rounds += 1
                         # Eskalerende synthese-pause: efter N tavse tool-runder, tving
@@ -7477,6 +7508,8 @@ from core.services.visible_runs_outcomes import (  # noqa: E402
 # runde-publiceringen, heraf tests der griber direkte i dette navnerum.
 from core.services.visible_run_trace import (  # noqa: E402,F401
     _publish_agentic_round_start,
+    haent_ventende as _haent_ventende_etiketter,
+    udsend_runde_etiket as _publish_runde_etiket,
     _set_last_visible_execution_trace,
     _start_visible_execution_trace,
     _update_visible_execution_trace,

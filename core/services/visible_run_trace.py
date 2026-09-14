@@ -34,13 +34,31 @@ funktions-grænser, ikke et udsnit man ikke har læst til ende.
 """
 from __future__ import annotations
 
+import logging
+import threading
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING
+from typing import Any, TYPE_CHECKING
 
 from core.eventbus.bus import event_bus
 
 if TYPE_CHECKING:
     from core.services.visible_runs import VisibleRun
+
+logger = logging.getLogger(__name__)
+
+#: Færdige etiketter der venter på at blive sendt, pr. kørsel.
+#:
+#: En generator kan kun `yield` fra sit eget flow, og etiketten regnes i en
+#: tråd. Derfor lægges den her, og løkken tømmer køen ved næste rundes start.
+#: Det er samme grund som får Claude Code til at levere sin NÆSTE tur — vi har
+#: bare flere runder pr. tur, så ventetiden bliver kortere.
+_VENTENDE: dict[str, list[dict[str, Any]]] = {}
+_VENTENDE_LAAS = threading.Lock()
+
+#: Loft pr. kørsel. En kørsel der døde midt i tømmer aldrig sin kø, og en kø
+#: uden loft vokser til den fylder noget. Huset har haft 2,81 mio. kanter på
+#: præcis den måde.
+MAKS_VENTENDE: int = 8
 
 #: Sidste kørsels spor. Bor her sammen med de funktioner der rører den — en
 #: tilstand uden sine funktioner er en global, ikke en enhed.
@@ -162,3 +180,90 @@ def _publish_agentic_round_start(*, run_id: str, round_num: int) -> int:
                 ("runtime.agentic_round_start",),
             ).fetchone()
     return int(row["id"]) if row else 0
+
+
+def _etiket(vaerktoejer: list[dict[str, Any]], hensigt: str) -> str:
+    """Indirektion så tråden kan byttes ud i en test uden at røre modellen."""
+    from core.services.tool_round_label import etiket
+    return etiket(vaerktoejer, hensigt)
+
+
+def udsend_runde_etiket(
+    *, run_id: str, round_num: int,
+    vaerktoejer: list[dict[str, Any]], hensigt: str = "",
+) -> threading.Thread | None:
+    """Skriv én kort etiket for runden og udsend den. Blokerer ALDRIG.
+
+    ## Hvad den er
+
+    «Rettede fejl i login» — hvad runden UDRETTEDE. Klienternes mekaniske linje
+    («Kørte en kommando og redigerede 2 filer +12 −4») siger hvad der SKETE. De
+    to står sammen, etiketten først.
+
+    ## Hvorfor en tråd, og hvorfor det er betingelsen
+
+    Claude Code bærer sin som `pendingToolUseSummary: Promise<…>` og leverer den
+    NÆSTE tur — derfor koster den ingen ventetid. Vi kan levere i SAMME runde,
+    fordi streamen allerede bærer top-level runde-events og begge klienter
+    grupperer værktøjer pr. runde. Men kun hvis kaldet ikke får runden til at
+    vente: ellers havde vi byttet en langsommere tur for en pænere linje.
+
+    Tråden er daemon. Ellers kunne en langsom etiket holde processen i live ved
+    nedlukning, og det er præcis den slags der har kostet en dag i dette hus.
+
+    ## Hvad der ikke sker
+
+    Ingen værktøjer → ingen tråd. En runde uden værktøjer har intet at
+    opsummere, og en tråd pr. tekst-runde ville være ren spild.
+
+    Tom etiket → intet event. En tom overskrift ville få klienten til at rydde
+    plads til ingenting.
+
+    En fejl vælter ingenting. En etiket er en overskrift; en tur må aldrig
+    vælte fordi overskriften ikke kunne skrives.
+    """
+    if not vaerktoejer:
+        return None
+
+    def _arbejd() -> None:
+        try:
+            from core.services.tool_round_label import tool_use_ids
+            tekst = _etiket(vaerktoejer, hensigt)
+            if not (tekst or "").strip():
+                return
+            nyttelast = {
+                "run_id": run_id,
+                "round": round_num,
+                "etiket": tekst,
+                "tool_use_ids": tool_use_ids(vaerktoejer),
+            }
+            event_bus.publish("runtime.tool_round_label", nyttelast)
+            with _VENTENDE_LAAS:
+                koe = _VENTENDE.setdefault(run_id, [])
+                koe.append(nyttelast)
+                if len(koe) > MAKS_VENTENDE:
+                    del koe[:-MAKS_VENTENDE]
+        except Exception:
+            logger.debug("runde-etiket fejlede for %s runde %s", run_id, round_num,
+                         exc_info=True)
+
+    t = threading.Thread(target=_arbejd, name=f"runde-etiket-{run_id}", daemon=True)
+    t.start()
+    return t
+
+
+def haent_ventende(run_id: str) -> list[dict[str, Any]]:
+    """Tøm køen af færdige etiketter for en kørsel.
+
+    Tømmes den ikke, ville samme etiket blive sendt igen ved hver runde-start.
+    En ukendt kørsel giver en tom liste — ikke en fejl; den normale tilstand er
+    at der intet er.
+    """
+    with _VENTENDE_LAAS:
+        return _VENTENDE.pop(run_id, [])
+
+
+def ryd_ventende(run_id: str) -> None:
+    """Smid en kørsels kø væk — ved afslutning, og i tests."""
+    with _VENTENDE_LAAS:
+        _VENTENDE.pop(run_id, None)

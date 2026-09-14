@@ -116,3 +116,187 @@ def test_runde_publiceringen_kaldes_stadig_fra_loekken():
     assert fn is not None, "_stream_visible_run er flyttet"
     kaldt = {getattr(k.func, "id", "") for k in ast.walk(fn) if isinstance(k, ast.Call)}
     assert "_publish_agentic_round_start" in kaldt
+
+
+# ─────────────────────────────────────── runde-etiketten (14/9-2026)
+#
+# «Rettede fejl i login» — hvad runden UDRETTEDE. Den mekaniske linje i
+# klienterne siger hvad der SKETE; de to står sammen, etiketten først.
+#
+# CC bærer sin som `pendingToolUseSummary` og leverer den NÆSTE tur. Vi kan
+# levere i samme runde, fordi streamen allerede bærer top-level runde-events —
+# men kun hvis kaldet ikke får runden til at vente. Derfor en tråd.
+
+def test_runden_venter_ALDRIG_paa_etiketten(monkeypatch):
+    """Det er hele betingelsen for at levere i samme runde i stedet for næste.
+    Blokerede den, ville vi have byttet en langsommere tur for en pænere linje.
+    """
+    import threading
+    laas = threading.Event()
+    monkeypatch.setattr(vrt, "_etiket", lambda *a, **k: (laas.wait(5), "sent")[1])
+    monkeypatch.setattr(vrt.event_bus, "publish", lambda *a, **k: None)
+    t = vrt.udsend_runde_etiket(run_id="visible-a", round_num=1,
+                                vaerktoejer=[{"name": "bash", "input": {}}])
+    assert t is not None and t.is_alive(), "kaldet blev kørt synkront"
+    laas.set()
+    t.join(timeout=5)
+
+
+def test_etiketten_UDSENDES_med_sine_tool_ids(monkeypatch):
+    """`preceding_tool_use_ids` i CC. Uden dem hæfter etiketten sig på en PLADS
+    i strømmen i stedet for på sit batch."""
+    sendt: list[tuple[str, dict]] = []
+    monkeypatch.setattr(vrt, "_etiket", lambda *a, **k: "Rettede fejl i login")
+    monkeypatch.setattr(vrt.event_bus, "publish",
+                        lambda navn, nyttelast=None, **k: sendt.append((navn, nyttelast or {})))
+    t = vrt.udsend_runde_etiket(run_id="visible-a", round_num=2,
+                                vaerktoejer=[{"name": "bash", "input": {}, "id": "t1"}],
+                                hensigt="ret den fejl")
+    t.join(timeout=5)
+    assert sendt, "intet event"
+    navn, p = sendt[0]
+    assert navn == "runtime.tool_round_label"
+    assert p["etiket"] == "Rettede fejl i login"
+    assert p["tool_use_ids"] == ["t1"]
+    assert p["run_id"] == "visible-a" and p["round"] == 2
+
+
+def test_en_TOM_etiket_udsendes_ikke(monkeypatch):
+    """En tom overskrift ville få klienten til at rydde plads til ingenting."""
+    sendt: list = []
+    monkeypatch.setattr(vrt, "_etiket", lambda *a, **k: "")
+    monkeypatch.setattr(vrt.event_bus, "publish", lambda *a, **k: sendt.append(1))
+    t = vrt.udsend_runde_etiket(run_id="a", round_num=1,
+                                vaerktoejer=[{"name": "bash", "input": {}}])
+    t.join(timeout=5)
+    assert sendt == []
+
+
+def test_INGEN_vaerktoejer_starter_slet_ingen_traad(monkeypatch):
+    """En runde uden værktøjer har intet at opsummere. En tråd pr. tekst-runde
+    ville være ren spild."""
+    monkeypatch.setattr(vrt, "_etiket", lambda *a, **k: "x")
+    assert vrt.udsend_runde_etiket(run_id="a", round_num=1, vaerktoejer=[]) is None
+
+
+def test_en_FEJL_i_etiketten_vaelter_ikke_noget(monkeypatch):
+    """En etiket er en overskrift. En tur må aldrig vælte fordi overskriften
+    ikke kunne skrives — CC's egen kilde logger og lader kaldet passere.
+
+    Målt med en mutation: første udgave af testen ventede blot på `join()` og
+    kaldte det bevis. Det er det ikke — en exception i en tråd når ALDRIG ud
+    gennem `join()`, så testen bestod også da fejlen blev kastet videre. Den
+    lytter nu på `threading.excepthook`, som er det eneste sted en ubehandlet
+    tråd-exception viser sig.
+    """
+    import threading
+    fanget: list[object] = []
+    monkeypatch.setattr(threading, "excepthook", lambda a: fanget.append(a))
+    monkeypatch.setattr(vrt, "_etiket",
+                        lambda *a, **k: (_ for _ in ()).throw(RuntimeError("nede")))
+    t = vrt.udsend_runde_etiket(run_id="a", round_num=1,
+                                vaerktoejer=[{"name": "bash", "input": {}}])
+    t.join(timeout=5)
+    assert fanget == [], "fejlen slap ubehandlet ud af traaden"
+
+
+def test_traaden_er_DAEMON(monkeypatch):
+    """Ellers kunne en langsom etiket holde processen i live ved nedlukning —
+    og huset har lige brugt en dag på kørsler der ikke ville dø."""
+    monkeypatch.setattr(vrt, "_etiket", lambda *a, **k: "x")
+    monkeypatch.setattr(vrt.event_bus, "publish", lambda *a, **k: None)
+    t = vrt.udsend_runde_etiket(run_id="a", round_num=1,
+                                vaerktoejer=[{"name": "bash", "input": {}}])
+    assert t.daemon is True
+    t.join(timeout=5)
+
+
+def test_loekken_KALDER_runde_etiketten():
+    """En generator ingen kalder er husets hyppigste fejl — og præcis den jeg
+    selv efterlod i `90a5bc56c`, med en note om at den ventede på en
+    udskillelse. AST, ikke tekstsøgning: kaldet nævnes også i en kommentar lige
+    over kaldestedet."""
+    import ast
+    import pathlib
+    træ = ast.parse(pathlib.Path("core/services/visible_runs.py").read_text())
+    fn = next((n for n in ast.walk(træ)
+               if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
+               and n.name == "_stream_visible_run"), None)
+    assert fn is not None
+    kaldt = {getattr(k.func, "id", "") for k in ast.walk(fn) if isinstance(k, ast.Call)}
+    assert "_publish_runde_etiket" in kaldt, "runden skriver ingen etiket"
+
+
+# ─────────────────── etiketten skal kunne NÅ skærmen (14/9-2026)
+#
+# Den regnes i en tråd, og en generator kan kun `yield` fra sit eget flow. Det
+# er derfor Claude Code leverer sin NÆSTE tur — ikke et tilfælde ved deres
+# løkke, men en følge af at streame. Vores løkke har flere runder pr. tur, så
+# vi kan tømme køen ved næste RUNDES start: én runde senere, ikke én tur.
+
+def test_en_faerdig_etiket_kan_haentes_af_loekken(monkeypatch):
+    monkeypatch.setattr(vrt, "_etiket", lambda *a, **k: "Rettede fejl i login")
+    monkeypatch.setattr(vrt.event_bus, "publish", lambda *a, **k: None)
+    vrt.ryd_ventende("visible-k")
+    t = vrt.udsend_runde_etiket(run_id="visible-k", round_num=1,
+                                vaerktoejer=[{"name": "bash", "input": {}, "id": "t1"}])
+    t.join(timeout=5)
+    ventende = vrt.haent_ventende("visible-k")
+    assert len(ventende) == 1
+    assert ventende[0]["etiket"] == "Rettede fejl i login"
+    assert ventende[0]["tool_use_ids"] == ["t1"]
+
+
+def test_koeen_TOEMMES_naar_den_er_hentet(monkeypatch):
+    """Ellers ville samme etiket blive sendt igen ved hver runde-start."""
+    monkeypatch.setattr(vrt, "_etiket", lambda *a, **k: "x")
+    monkeypatch.setattr(vrt.event_bus, "publish", lambda *a, **k: None)
+    vrt.ryd_ventende("visible-k2")
+    vrt.udsend_runde_etiket(run_id="visible-k2", round_num=1,
+                            vaerktoejer=[{"name": "bash", "input": {}}]).join(timeout=5)
+    assert len(vrt.haent_ventende("visible-k2")) == 1
+    assert vrt.haent_ventende("visible-k2") == []
+
+
+def test_koeen_holder_koerslerne_ADSKILT(monkeypatch):
+    """To samtidige kørsler må ikke få hinandens overskrifter."""
+    monkeypatch.setattr(vrt, "_etiket", lambda v, h: h)
+    monkeypatch.setattr(vrt.event_bus, "publish", lambda *a, **k: None)
+    for r in ("visible-a1", "visible-b1"):
+        vrt.ryd_ventende(r)
+        vrt.udsend_runde_etiket(run_id=r, round_num=1, hensigt=r,
+                                vaerktoejer=[{"name": "bash", "input": {}}]).join(timeout=5)
+    assert vrt.haent_ventende("visible-a1")[0]["etiket"] == "visible-a1"
+    assert vrt.haent_ventende("visible-b1")[0]["etiket"] == "visible-b1"
+
+
+def test_en_ukendt_koersel_giver_en_TOM_liste():
+    assert vrt.haent_ventende("findes-ikke") == []
+
+
+def test_koeen_har_et_LOFT(monkeypatch):
+    """En kørsel der aldrig tømmer sin kø — fordi den døde midt i — må ikke
+    kunne vokse ubegrænset. Huset har haft 2,81 mio. kanter på den måde."""
+    monkeypatch.setattr(vrt, "_etiket", lambda *a, **k: "x")
+    monkeypatch.setattr(vrt.event_bus, "publish", lambda *a, **k: None)
+    vrt.ryd_ventende("visible-loft")
+    for i in range(vrt.MAKS_VENTENDE + 5):
+        vrt.udsend_runde_etiket(run_id="visible-loft", round_num=i,
+                                vaerktoejer=[{"name": "bash", "input": {}}]).join(timeout=5)
+    assert len(vrt.haent_ventende("visible-loft")) <= vrt.MAKS_VENTENDE
+
+
+def test_loekken_TOEMMER_koeen_og_sender_den():
+    """Kilde-vagt. En kø ingen tømmer er en etiket ingen ser — og huset har
+    haft præcis den fejl: «events i en kø ingen tømmer»."""
+    import ast
+    import pathlib
+    kilde = pathlib.Path("core/services/visible_runs.py").read_text()
+    træ = ast.parse(kilde)
+    fn = next((n for n in ast.walk(træ)
+               if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
+               and n.name == "_stream_visible_run"), None)
+    assert fn is not None
+    kaldt = {getattr(k.func, "id", "") for k in ast.walk(fn) if isinstance(k, ast.Call)}
+    assert "_haent_ventende_etiketter" in kaldt, "koeen toemmes aldrig"
+    assert '_sse("tool_round_label"' in kilde, "etiketten sendes ikke paa streamen"

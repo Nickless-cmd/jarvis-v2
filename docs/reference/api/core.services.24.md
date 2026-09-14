@@ -351,11 +351,12 @@ _Én kort etiket for en afsluttet værktøjs-runde — «Rettede NPE i UserServi
 | function | `_model` | `()` | — | [src](../../../core/services/tool_round_label.py#L81) |
 | function | `_base_url` | `()` | — | [src](../../../core/services/tool_round_label.py#L92) |
 | function | `_klip` | `(v, maks)` | Kort, én linje, og aldrig `None` som teksten «None». | [src](../../../core/services/tool_round_label.py#L103) |
-| function | `byg_prompt` | `(vaerktoejer, hensigt=…)` | Det kompakte billede af runden som modellen får. | [src](../../../core/services/tool_round_label.py#L112) |
-| function | `_kald_model` | `(prompt)` | — | [src](../../../core/services/tool_round_label.py#L135) |
-| function | `_ryd` | `(s)` | Én linje, uden anførselstegn, uden punktum, klippet ved et ordskel. | [src](../../../core/services/tool_round_label.py#L153) |
-| function | `etiket` | `(vaerktoejer, hensigt=…)` | Én kort etiket for runden, eller `""`. | [src](../../../core/services/tool_round_label.py#L168) |
-| function | `tool_use_ids` | `(vaerktoejer)` | Hvilke kald etiketten dækker. | [src](../../../core/services/tool_round_label.py#L185) |
+| function | `_navn_og_input` | `(v)` | Navn og argumenter, uanset hvilken form kaldet har. | [src](../../../core/services/tool_round_label.py#L112) |
+| function | `byg_prompt` | `(vaerktoejer, hensigt=…)` | Det kompakte billede af runden som modellen får. | [src](../../../core/services/tool_round_label.py#L126) |
+| function | `_kald_model` | `(prompt)` | — | [src](../../../core/services/tool_round_label.py#L150) |
+| function | `_ryd` | `(s)` | Én linje, uden anførselstegn, uden punktum, klippet ved et ordskel. | [src](../../../core/services/tool_round_label.py#L168) |
+| function | `etiket` | `(vaerktoejer, hensigt=…)` | Én kort etiket for runden, eller `""`. | [src](../../../core/services/tool_round_label.py#L183) |
+| function | `tool_use_ids` | `(vaerktoejer)` | Hvilke kald etiketten dækker. | [src](../../../core/services/tool_round_label.py#L200) |
 
 ## `core/services/tool_router.py`
 _Per-turn tool selection._

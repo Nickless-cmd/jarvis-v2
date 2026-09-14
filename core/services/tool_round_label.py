@@ -109,6 +109,20 @@ def _klip(v: Any, maks: int) -> str:
     return s[:maks]
 
 
+def _navn_og_input(v: dict[str, Any]) -> tuple[str, Any]:
+    """Navn og argumenter, uanset hvilken form kaldet har.
+
+    Runde-løkken i `visible_runs` holder kaldene i OpenAI-form —
+    `{id, type, function: {name, arguments}}` — mens klienterne og
+    værktøjs-laget bruger `{name, input}`. En etiket der kun forstod den ene
+    ville tie om den halvdel af huset der bruger den anden.
+    """
+    fn = v.get("function")
+    if isinstance(fn, dict):
+        return str(fn.get("name") or ""), fn.get("arguments")
+    return str(v.get("name") or v.get("navn") or ""), v.get("input")
+
+
 def byg_prompt(vaerktoejer: list[dict[str, Any]], hensigt: str = "") -> str:
     """Det kompakte billede af runden som modellen får.
 
@@ -121,12 +135,13 @@ def byg_prompt(vaerktoejer: list[dict[str, Any]], hensigt: str = "") -> str:
     if hensigt.strip():
         dele.append(f"Brugeren bad om: {_klip(hensigt, MAKS_HENSIGT)}\n")
     for v in vaerktoejer or []:
-        navn = _klip(v.get("name") or v.get("navn"), 60)
+        raa_navn, raa_input = _navn_og_input(v)
+        navn = _klip(raa_navn, 60)
         if not navn:
             continue
         dele.append(
             f"Værktøj: {navn}\n"
-            f"Input: {_klip(v.get('input'), MAKS_PR_VAERKTOEJ)}\n"
+            f"Input: {_klip(raa_input, MAKS_PR_VAERKTOEJ)}\n"
             f"Output: {_klip(v.get('result') or v.get('output'), MAKS_PR_VAERKTOEJ)}"
         )
     return _PROMPT + "\n\n".join(dele)
@@ -171,7 +186,7 @@ def etiket(vaerktoejer: list[dict[str, Any]], hensigt: str = "") -> str:
     Kaster aldrig. En etiket er en overskrift; en tur må aldrig vælte fordi
     overskriften ikke kunne skrives.
     """
-    kald = [v for v in (vaerktoejer or []) if (v.get("name") or v.get("navn"))]
+    kald = [v for v in (vaerktoejer or []) if _navn_og_input(v)[0]]
     if not kald:
         return ""
     try:

@@ -143,3 +143,41 @@ def test_der_bruges_en_LOKAL_model():
 def test_ventetiden_har_et_loft():
     """Et loefte der ikke er indfriet inden da, er uinteressant."""
     assert trl.TIMEOUT_S <= 5.0
+
+
+# ────────────────────────────── serverens EGEN form (14/9-2026)
+#
+# Runde-løkken i `visible_runs` holder kaldene i OpenAI-form:
+# `{id, type, function: {name, arguments}}` — og UDEN resultater. Målt: det
+# koster næsten ingenting. Samme fire runder med og uden outputs gav
+# «Rettede fejl i login» begge gange, og «Søgte i heartbeat_model_provider»
+# uden outputs mod «Søgte i heartbeat_runtime» med — den uden er endda mere
+# præcis. Derfor kobles den på den form serveren HAR, frem for at vente på en
+# den ikke har.
+
+def test_openai_formen_forstaas():
+    p = trl.byg_prompt([{"id": "a", "type": "function",
+                         "function": {"name": "bash", "arguments": '{"command": "ls"}'}}])
+    assert "Værktøj: bash" in p
+    assert '"command": "ls"' in p
+
+
+def test_id_hentes_ogsaa_fra_openai_formen():
+    kald = [{"id": "call_1", "function": {"name": "bash", "arguments": "{}"}}]
+    assert trl.tool_use_ids(kald) == ["call_1"]
+
+
+def test_de_to_former_kan_BLANDES():
+    """En runde kan indeholde begge, og en etiket der tier om halvdelen er
+    værre end ingen."""
+    p = trl.byg_prompt([
+        {"id": "a", "function": {"name": "bash", "arguments": "{}"}},
+        {"name": "read_file", "input": {"path": "x.py"}},
+    ])
+    assert p.count("Værktøj:") == 2
+
+
+def test_et_openai_kald_UDEN_navn_springes_over():
+    p = trl.byg_prompt([{"id": "a", "function": {"name": "", "arguments": "{}"}},
+                        {"name": "bash", "input": {}}])
+    assert p.count("Værktøj:") == 1

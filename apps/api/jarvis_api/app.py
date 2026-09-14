@@ -97,6 +97,9 @@ from core.services.voice_daemon import (
     stop_voice_daemon,
 )
 from apps.api.jarvis_api.routes.attachments import router as attachments_router
+from apps.api.jarvis_api.routes.composer_suggest_routes import (
+    router as composer_suggest_router,
+)
 from apps.api.jarvis_api.routes.workbench import router as workbench_router
 from apps.api.jarvis_api.routes.companion import router as companion_router
 from apps.api.jarvis_api.routes.files import router as files_router
@@ -765,6 +768,7 @@ def create_app() -> FastAPI:
     app.add_middleware(ApiConnectionNerveMiddleware)
 
     app.include_router(attachments_router)
+    app.include_router(composer_suggest_router)
     # Operator-kanal, checkpoints og runtime-kontakter (6/9-2026): bygget som
     # vaerktoejer, men uden ruter kunne hverken desk eller mobil se dem.
     app.include_router(workbench_router)

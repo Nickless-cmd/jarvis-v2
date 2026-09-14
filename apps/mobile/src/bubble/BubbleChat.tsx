@@ -37,6 +37,7 @@ function BubbleChat({ sessionId, title }: { sessionId: string; title: string }) 
         <MessageList messages={sessions.messages} blocks={stream.state.blocks} />
       </View>
       <Composer
+      config={config}
         onSend={onSend}
         working={stream.state.status === 'working'}
         onStop={() => {

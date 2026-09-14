@@ -1005,6 +1005,7 @@ export function ChatScreen({
         >
         <ResearchStatus research={stream.state.research} />
         <Composer
+        config={config}
           indsaet={indsaet}
           disabled={!config || pendingAttachments.some((a) => a.status === 'uploading')}
           working={stream.state.status === 'working' || serverBusy}

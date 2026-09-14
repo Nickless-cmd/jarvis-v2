@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { hentForslag, PAUSE_MS, saetSammen } from '../lib/forslag'
 import { Animated, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { haptik } from '../lib/haptics'
 import { ArrowUp, AudioLines, ChevronDown, Cpu, FileText, Mic, Plus, SearchCheck, ShieldCheck, Square } from 'lucide-react-native'
@@ -24,6 +25,7 @@ import { UploadRing, samletUploadAndel } from './UploadRing'
  * ChatGPT skifter ikke farve for at kunne stoppe.
  */
 export function Composer({
+  config,
   disabled,
   working,
   modelLabel,
@@ -50,6 +52,8 @@ export function Composer({
   onStopDictation,
   onCancelDictation,
 }: {
+  /** API-adgang til forslag. Udeladt = ingen forslag, alt andet virker. */
+  config?: { apiBaseUrl: string; authToken: string } | null
   disabled?: boolean
   working?: boolean
   modelLabel?: string
@@ -87,6 +91,54 @@ export function Composer({
   const styles = useStyles(makestyles)
   const [text, setText] = useState('')
   const sidsteIndsaet = useRef(0)
+
+  // ── Forslag i komponisten ────────────────────────────────────────────────
+  // Hvad der kunne skrives videre. Laves af en LOKAL model (qwen paa GPU'en):
+  // et forslag fyrer mens han skriver, altsaa foer der overhovedet er en tur,
+  // og den betalte lane er kun til hans egne ture. Vigtigere endnu: et halvt
+  // skrevet udkast er det mest private i en samtale — det indeholder det man
+  // fortryder og sletter igen — og det forlader ikke maskinen.
+  //
+  // `config` kommer som PROP og ikke fra `useAuth()`. Foerste udgave greb i
+  // konteksten, og alle sytten komponist-tests gik roede med «useAuth must be
+  // used within AuthProvider» — med rette: en praesentations-komponent der
+  // raekker ned i auth-laget kan ikke proeves alene. Uden config er der bare
+  // ingen forslag; alt andet i komponisten virker.
+  const [forslag, setForslag] = useState('')
+  const afbryd = useRef<AbortController | null>(null)
+
+  /**
+   * Skriv i feltet — og ryd forslaget i SAMME opdatering.
+   *
+   * Første udgave ryddede det i effekten nedenfor. Det er ét billede for sent:
+   * en test fangede at linjen stadig stod med det gamle forslag efter et nyt
+   * tastetryk, og i appen ville man se et forslag der passer til en sætning
+   * der ikke findes mere. React batcher de to `set` her, så der er ingen
+   * mellemtilstand at få øje på.
+   */
+  function skriv(ny: string) {
+    setText(ny)
+    setForslag('')
+  }
+
+  useEffect(() => {
+    afbryd.current?.abort()
+    if (!config || disabled) {
+      // Slaas feltet fra midt i det hele, skal linjen ogsaa vaek. `skriv`
+      // rydder kun ved tastetryk, og et forslag hen over et deaktiveret felt
+      // er noget man kan trykke paa uden at kunne goere noget ved det.
+      setForslag('')
+      return
+    }
+    const c = new AbortController()
+    afbryd.current = c
+    const id = setTimeout(() => {
+      void hentForslag(
+        config.apiBaseUrl.replace(/\/$/, ''), config.authToken, text, c.signal
+      ).then((f) => { if (!c.signal.aborted) setForslag(f) })
+    }, PAUSE_MS)
+    return () => { clearTimeout(id); c.abort() }
+  }, [text, config, disabled])
   const [submitting, setSubmitting] = useState(false)
   const [focused, setFocused] = useState(false)
   // Et tryk på hvilepillen skal åbne arbejdsformen FØR tastaturet er nået frem.
@@ -244,11 +296,28 @@ export function Composer({
           onStop={() => onStopDictation?.()}
           onCancel={() => onCancelDictation?.()}
         />
+        {forslag ? (
+          <Pressable
+            testID="composer-forslag"
+            accessibilityRole="button"
+            accessibilityLabel={`Forslag: ${text}${forslag}. Tryk for at bruge det.`}
+            onPress={() => {
+              setText(saetSammen(text, forslag))
+              setForslag('')
+              inputRef.current?.focus()
+            }}
+            style={styles.forslag}
+          >
+            <Text numberOfLines={1} style={styles.forslagTekst}>
+              <Text style={styles.forslagSkrevet}>{text}</Text>{forslag}
+            </Text>
+          </Pressable>
+        ) : null}
         <TextInput
           ref={inputRef}
           testID="composer-input"
           value={text}
-          onChangeText={setText}
+          onChangeText={skriv}
           onFocus={() => setFocused(true)}
           onBlur={() => { setFocused(false); setWantFocus(false) }}
           multiline
@@ -418,6 +487,24 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
   attachName: { color: tokens.color.fg2, fontSize: 13, flexShrink: 1 },
   attachRemove: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: tokens.color.bg3 },
   attachRemoveText: { color: tokens.color.fg1, fontSize: 18, lineHeight: 20 },
+  // Forslags-linjen staar OVER feltet, ikke inde i det. Ghost-tekst inde i et
+  // RN-TextInput kraever en usynlig kopi ovenpaa, holdt i synk ved hvert
+  // tastetryk — to sandheder om hvad der staar. En linje man kan trykke paa
+  // siger det samme, rammes med en tommelfinger og kan laeses op.
+  forslag: {
+    paddingHorizontal: 2,
+    paddingBottom: 4
+  },
+  forslagTekst: {
+    fontSize: 15,
+    color: tokens.color.fg3
+  },
+  // Det ALLEREDE skrevne staar endnu svagere: oejet skal fange fortsaettelsen,
+  // ikke laese sin egen saetning igen.
+  forslagSkrevet: {
+    color: tokens.color.fg3,
+    opacity: 0.45
+  },
   input: {
     minHeight: 28,
     maxHeight: 140,

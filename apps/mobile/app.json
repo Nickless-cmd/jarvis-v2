@@ -2,12 +2,12 @@
   "expo": {
     "name": "Jarvis",
     "slug": "jarvis-mobile",
-    "version": "0.2.70",
+    "version": "0.2.71",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "android": {
       "package": "dk.srvlab.jarvis.mobile",
-      "versionCode": 171,
+      "versionCode": 172,
       "softwareKeyboardLayoutMode": "resize",
       "permissions": [
         "android.permission.ACCESS_FINE_LOCATION",

@@ -55,3 +55,16 @@ describe('runde-etiketten når fra stream til skærm', () => {
     expect(kilde('styles/app.css')).toMatch(/\.toolgroup-etiket/)
   })
 })
+
+describe('etiketten kommer ad TO veje', () => {
+  it('reduceren tager BEGGE former — direkte og indpakket i system_event', () => {
+    // SSE-v2 pakker ukendte event-navne som `system_event` med
+    // `kind = event_name`. Uden den gren fyrede `case 'tool_round_label'`
+    // aldrig — maalt i produktion 14/9 paa en klient der HAVDE koden.
+    const r = kilde('lib/streamReducer.ts')
+    expect(r).toMatch(/case 'tool_round_label':/)
+    expect(r).toMatch(/event\.kind === 'tool_round_label'/)
+    // ÉT sted der laegger den ind — to kopier ville drive fra hinanden.
+    expect((r.match(/function medEtiket/g) ?? []).length).toBe(1)
+  })
+})

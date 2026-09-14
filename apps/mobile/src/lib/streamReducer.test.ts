@@ -362,3 +362,42 @@ describe('tool_round_label', () => {
     expect(efter.status).toBe(foer.status)
   })
 })
+
+// ─────────────────────────────────────────────────────────────────────────
+// Etiketten kommer som system_event (14/9-2026, maalt i produktion)
+//
+// Serveren sender `event: tool_round_label`, men SSE-v2 oversaetter den gamle
+// stroem og pakker UKENDTE event-navne som `system_event` med
+// `kind = event_name`. Reducerens `case 'tool_round_label'` fyrede derfor
+// aldrig — Bjoern saa ingen etiketter paa en telefon der HAVDE den nye klient.
+//
+// Samme v1/v2-asymmetri som gjorde at `retry` virkede i desk og ikke paa
+// mobilen. Begge former haandteres nu: den direkte for v1, og den indpakkede
+// for v2.
+// ─────────────────────────────────────────────────────────────────────────
+
+describe('tool_round_label via system_event (SSE-v2)', () => {
+  it('den INDPAKKEDE form gemmes ogsaa', () => {
+    const s = streamReducer(initialStreamState(), {
+      type: 'system_event',
+      kind: 'tool_round_label',
+      payload: { run_id: 'r', round: 1, etiket: 'Rettede fejl i login', tool_use_ids: ['t1'] }
+    } as never)
+    expect(s.rundeEtiketter?.t1).toBe('Rettede fejl i login')
+  })
+
+  it('et andet system_event roerer ikke etiketterne', () => {
+    const s = streamReducer(initialStreamState(), {
+      type: 'system_event', kind: 'working_step', payload: { detail: 'x' }
+    } as never)
+    expect(s.rundeEtiketter ?? {}).toEqual({})
+  })
+
+  it('en indpakket etiket UDEN id-er kasseres ogsaa', () => {
+    const s = streamReducer(initialStreamState(), {
+      type: 'system_event', kind: 'tool_round_label',
+      payload: { run_id: 'r', round: 1, etiket: 'Noget', tool_use_ids: [] }
+    } as never)
+    expect(s.rundeEtiketter ?? {}).toEqual({})
+  })
+})

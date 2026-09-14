@@ -300,3 +300,82 @@ def test_loekken_TOEMMER_koeen_og_sender_den():
     kaldt = {getattr(k.func, "id", "") for k in ast.walk(fn) if isinstance(k, ast.Call)}
     assert "_haent_ventende_etiketter" in kaldt, "koeen toemmes aldrig"
     assert '_sse("tool_round_label"' in kilde, "etiketten sendes ikke paa streamen"
+
+
+# ──────── den sidste rundes etiket blev aldrig leveret (14/9-2026)
+#
+# Køen fyldtes ved rundens SLUTNING og tømtes kun ved NÆSTE rundes start. To
+# følger, og begge er stille:
+#
+#   - den sidste tool-rundes etiket bliver aldrig hentet — der er ingen næste
+#   - en etiket der ikke er klar inden for løkkens omløb venter en hel runde
+#
+# Det er «events i en kø ingen tømmer» — den fejl huset har haft før, og som
+# jeg selv skrev en test-kommentar om da jeg byggede køen.
+
+def test_en_etiket_der_stadig_regnes_VENTES_der_paa(monkeypatch):
+    """Ved turens slutning er der ikke mere at lave — saa en kort venten paa en
+    etiket der er 0,3 s fra at vaere faerdig, er bedre end at tabe den."""
+    import threading
+    start = threading.Event()
+    monkeypatch.setattr(vrt, "_etiket", lambda *a, **k: (start.wait(2), "Sen etiket")[1])
+    monkeypatch.setattr(vrt.event_bus, "publish", lambda *a, **k: None)
+    vrt.ryd_ventende("visible-sen")
+    vrt.udsend_runde_etiket(run_id="visible-sen", round_num=1,
+                            vaerktoejer=[{"name": "bash", "input": {}, "id": "t1"}])
+    # Intet klart endnu
+    assert vrt.haent_ventende("visible-sen") == []
+    start.set()
+    ud = vrt.haent_ventende_med_frist("visible-sen", 2.0)
+    assert len(ud) == 1 and ud[0]["etiket"] == "Sen etiket"
+
+
+def test_fristen_er_et_LOFT_og_ikke_en_ventetid(monkeypatch):
+    """En etiket der haenger, maa ikke forsinke turens afslutning i det
+    uendelige. Fristen loeber ud, og turen lukker."""
+    import threading
+    import time
+    monkeypatch.setattr(vrt, "_etiket", lambda *a, **k: (time.sleep(5), "x")[1])
+    monkeypatch.setattr(vrt.event_bus, "publish", lambda *a, **k: None)
+    vrt.ryd_ventende("visible-haeng")
+    vrt.udsend_runde_etiket(run_id="visible-haeng", round_num=1,
+                            vaerktoejer=[{"name": "bash", "input": {}, "id": "t1"}])
+    t0 = time.time()
+    ud = vrt.haent_ventende_med_frist("visible-haeng", 0.4)
+    brugt = time.time() - t0
+    assert ud == []
+    assert brugt < 1.5, f"ventede {brugt:.1f}s paa en frist paa 0,4"
+
+
+def test_uden_noget_i_gang_ventes_der_SLET_ikke(monkeypatch):
+    """Den almindelige tilstand er at der intet er. Den maa ikke koste tid."""
+    import time
+    vrt.ryd_ventende("visible-tom")
+    t0 = time.time()
+    assert vrt.haent_ventende_med_frist("visible-tom", 2.0) == []
+    assert time.time() - t0 < 0.3
+
+
+def test_traadene_ryddes_med_koeen(monkeypatch):
+    """Ellers vokser bogholderiet over traade for hver eneste koersel."""
+    monkeypatch.setattr(vrt, "_etiket", lambda *a, **k: "x")
+    monkeypatch.setattr(vrt.event_bus, "publish", lambda *a, **k: None)
+    vrt.udsend_runde_etiket(run_id="visible-ryd", round_num=1,
+                            vaerktoejer=[{"name": "bash", "input": {}}]).join(timeout=5)
+    vrt.ryd_ventende("visible-ryd")
+    assert "visible-ryd" not in vrt._TRAADE
+
+
+def test_loekken_toemmer_koeen_FOER_turen_lukker():
+    """Kilde-vagt paa det led der manglede. Uden det gaar den sidste
+    tool-rundes etiket tabt — og det er ofte den mest interessante runde."""
+    import ast
+    import pathlib
+    kilde = pathlib.Path("core/services/visible_runs.py").read_text()
+    træ = ast.parse(kilde)
+    fn = next((n for n in ast.walk(træ)
+               if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
+               and n.name == "_stream_visible_run"), None)
+    assert fn is not None
+    kaldt = {getattr(k.func, "id", "") for k in ast.walk(fn) if isinstance(k, ast.Call)}
+    assert "_haent_etiketter_med_frist" in kaldt, "den sidste etiket hentes aldrig"

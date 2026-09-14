@@ -46,6 +46,26 @@ function estimateOutputTokens(blocks: ContentBlock[]): number {
  * Status hung/interrupted/error sættes UDENFOR reduceren (fra streamClient-
  * handlers i StreamContext), ikke fra events.
  */
+/**
+ * Læg en runde-etiket ind, slået op på de kald den opsummerer. 1:1 med mobilen.
+ *
+ * Ét sted, fordi etiketten kommer ad TO veje: direkte (SSE-v1) og pakket ind
+ * som `system_event` (SSE-v2). To kopier ville før eller siden komme til at
+ * opføre sig forskelligt.
+ */
+function medEtiket(
+  state: StreamState,
+  etiket: string | undefined,
+  ids: string[] | undefined
+): StreamState {
+  const tekst = (etiket ?? '').trim()
+  const liste = ids ?? []
+  if (!tekst || liste.length === 0) return state
+  const kort = { ...(state.rundeEtiketter ?? {}) }
+  for (const id of liste) kort[id] = tekst
+  return { ...state, rundeEtiketter: kort }
+}
+
 export function streamReducer(state: StreamState, event: StreamEvent): StreamState {
   switch (event.type) {
     case 'message_start': {
@@ -113,6 +133,13 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
       return state
 
     case 'system_event': {
+      // SSE-v2 oversætter den gamle strøm og pakker UKENDTE event-navne som
+      // `system_event` med `kind = event_name`. Etiketten kom derfor aldrig
+      // frem til `case 'tool_round_label'` ovenfor — målt i produktion 14/9.
+      if (event.kind === 'tool_round_label') {
+        const p = (event.payload ?? {}) as { etiket?: string; tool_use_ids?: string[] }
+        return medEtiket(state, p.etiket, p.tool_use_ids)
+      }
       // run-event bærer det rigtige run_id (message_start har det tomt).
       if (event.kind === 'run') {
         const rp = event.payload as { run_id?: string }
@@ -170,17 +197,10 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
     case 'message_stop':
       return { ...state, status: 'done' }
 
-    case 'tool_round_label': {
-      // Overskriften over en runde. Rører ALDRIG blokkene: ændrede den
-      // strømmen, kunne en sen etiket flytte rundt på det der allerede står på
-      // skærmen. Uden id-er er der intet at hæfte den på.
-      const tekst = (event.etiket ?? '').trim()
-      const ids = event.tool_use_ids ?? []
-      if (!tekst || ids.length === 0) return state
-      const kort = { ...(state.rundeEtiketter ?? {}) }
-      for (const id of ids) kort[id] = tekst
-      return { ...state, rundeEtiketter: kort }
-    }
+    case 'tool_round_label':
+      // Den DIREKTE form (SSE-v1). Den indpakkede kommer som `system_event` —
+      // se `medEtiket`.
+      return medEtiket(state, event.etiket, event.tool_use_ids)
 
     case 'ping':
       return state

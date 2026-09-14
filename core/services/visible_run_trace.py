@@ -60,6 +60,11 @@ _VENTENDE_LAAS = threading.Lock()
 #: præcis den måde.
 MAKS_VENTENDE: int = 8
 
+#: Traade der stadig regner en etiket, pr. kørsel. Bogføres for at kunne vente
+#: KORT paa dem naar turen lukker — uden dem ville den sidste tool-rundes
+#: etiket gaa tabt, og det er ofte den mest interessante runde.
+_TRAADE: dict[str, list[threading.Thread]] = {}
+
 #: Sidste kørsels spor. Bor her sammen med de funktioner der rører den — en
 #: tilstand uden sine funktioner er en global, ikke en enhed.
 _LAST_VISIBLE_EXECUTION_TRACE: dict[str, object] | None = None
@@ -248,6 +253,10 @@ def udsend_runde_etiket(
                          exc_info=True)
 
     t = threading.Thread(target=_arbejd, name=f"runde-etiket-{run_id}", daemon=True)
+    with _VENTENDE_LAAS:
+        traade = _TRAADE.setdefault(run_id, [])
+        traade[:] = [x for x in traade if x.is_alive()]
+        traade.append(t)
     t.start()
     return t
 
@@ -264,6 +273,42 @@ def haent_ventende(run_id: str) -> list[dict[str, Any]]:
 
 
 def ryd_ventende(run_id: str) -> None:
-    """Smid en kørsels kø væk — ved afslutning, og i tests."""
+    """Smid en kørsels kø OG dens tråd-bogholderi væk.
+
+    Begge dele, ellers vokser `_TRAADE` for hver eneste kørsel.
+    """
     with _VENTENDE_LAAS:
         _VENTENDE.pop(run_id, None)
+        _TRAADE.pop(run_id, None)
+
+
+def haent_ventende_med_frist(run_id: str, frist_s: float) -> list[dict[str, Any]]:
+    """Tøm køen — men vent KORT på en etiket der stadig regnes.
+
+    ## Hvorfor den findes
+
+    Køen fyldtes ved rundens SLUTNING og tømtes kun ved NÆSTE rundes start. Den
+    sidste tool-rundes etiket blev derfor aldrig hentet — der var ingen næste
+    runde — og det er ofte den mest interessante runde. Det er «events i en kø
+    ingen tømmer», den fejl huset har haft før.
+
+    Ved turens afslutning er der ikke mere at lave, så en kort venten på en
+    etiket der er et halvt sekund fra at være færdig, er bedre end at tabe den.
+
+    ## Fristen er et LOFT, ikke en ventetid
+
+    Er der intet i gang, ventes der slet ikke — den almindelige tilstand må
+    ikke koste tid. Hænger en etiket, løber fristen ud og turen lukker; en
+    overskrift må aldrig kunne forsinke et svar i det uendelige.
+    """
+    with _VENTENDE_LAAS:
+        traade = [x for x in _TRAADE.get(run_id, []) if x.is_alive()]
+    if traade:
+        import time
+        udloeb = time.monotonic() + max(0.0, float(frist_s))
+        for x in traade:
+            rest = udloeb - time.monotonic()
+            if rest <= 0:
+                break
+            x.join(timeout=rest)
+    return haent_ventende(run_id)

@@ -106,6 +106,10 @@ def test_ntfy_gateway_uses_configured_topic(monkeypatch):
             return False
 
     monkeypatch.setattr(ntfy.urllib.request, "urlopen", lambda req, timeout=10: FakeResp())
+    # Pytest-vagten (69fd08f10) svarer «skipped» foer afsendelsen. Her er urlopen
+    # erstattet, saa intet kan naa hans telefon; vagten selv er daekket af
+    # test_ingen_ntfy_fra_tests.py.
+    monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
 
     result = ntfy.send_notification("hello", title="Jarvis", priority="high", tags=["robot"])
 

@@ -107,9 +107,11 @@ def test_predictive_self_model_uses_internal_signals(monkeypatch):
 
     assert model["tick_quality"]["avg"] == 73
     assert model["productive_idle_ratio_7d"] == 0.42
-    assert "Hvem du *empirisk* er" in section
-    assert "Tick-kvalitet" in section
-    assert "Beslutnings-adherence" in section
+    # Sektionen blev engelsk med vilje i 758ffee87 (22/7, «English self-model
+    # telemetry»); testen ledte stadig efter den danske ordlyd.
+    assert "Who you *empirically* are" in section
+    assert "Tick quality: 73/100" in section
+    assert "Decision adherence: 0.75" in section
 
 
 def test_self_monitor_flags_repeated_tool_errors(monkeypatch):

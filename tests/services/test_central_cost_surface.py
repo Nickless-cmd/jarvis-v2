@@ -8,18 +8,21 @@ from core.costing.ledger import record_cost
 def _seed(monkeypatch):
     # saldo-kald må ALDRIG ramme nettet i test
     monkeypatch.setattr(ccs, "_deepseek_balance", lambda: None)
+    # Prisen afhaenger af klokken siden 3229cf788 — fastlaas til off-peak.
+    import core.services.llm_pricing as lp
+    monkeypatch.setattr(lp, "er_myldretid", lambda at=None: False)
 
 
 def test_surface_aggregates_today(isolated_runtime, monkeypatch):
     _seed(monkeypatch)
-    # 1M cache_miss + 1M output på flash = 0.42
+    # 1M cache_miss + 1M output på flash, off-peak = 0,15 + 0,60
     record_cost(lane="cheap", provider="deepseek", model="deepseek-v4-flash",
                 cost_usd=0.0, cache_miss_tokens=1_000_000, output_tokens=1_000_000)
     s = ccs.build_cost_surface(window="today")
     today = s["windows"]["today"]
     assert today["calls"] == 1
     assert today["output_tokens"] == 1_000_000
-    assert abs(today["cost_usd"] - 0.42) < 1e-3
+    assert abs(today["cost_usd"] - 0.75) < 1e-3
     assert "7d" in s["windows"] and "30d" in s["windows"]
 
 

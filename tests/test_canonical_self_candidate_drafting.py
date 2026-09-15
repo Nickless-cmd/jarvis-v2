@@ -63,12 +63,12 @@ def test_selfhood_proposal_can_draft_governed_canonical_self_candidate(isolated_
     assert candidates[0]["target_file"] == "SOUL.md"
     assert candidates[0]["candidate_type"] == "soul_update"
     assert candidates[0]["source_mode"] == "runtime_selfhood_proposal"
-    # Commit e6ee4fa8 ("Self-authorization … per user directive"): the drafting
-    # status_reason wording changed. The candidate is still drafted as
-    # "proposed" (not auto-applied) — the apply gate remains
-    # needs-user-confirmation, verified in the dedicated apply/does-not-auto-apply
-    # tests below.
-    assert "Self-authorized per user directive" in str(candidates[0]["status_reason"])
+    # 4a8aeb4dd fjernede «Self-authorized per user directive» — den paastand var
+    # falsk: kandidaten er kun et forslag, og identitets-aendringer gaar gennem
+    # det ugentlige «## Udvikling»-ritual. Grunden skal sige netop det.
+    grund = str(candidates[0]["status_reason"])
+    assert "Self-authorized" not in grund
+    assert "Proposal only" in grund and "## Udvikling" in grund
 
 
 def test_canonical_self_candidate_drafting_does_not_auto_apply(isolated_runtime) -> None:

@@ -75,7 +75,7 @@ def test_endpoint_resolves_pending(monkeypatch):
     _inmem(monkeypatch)
     from apps.api.jarvis_api.routes import chat as chat_routes
     ctd.begin_client_tool("e1", tool_name="bash", arguments=None, run_id="r", session_id="s")
-    resp = asyncio.run(chat_routes.chat_client_tool_result("r", {"call_id": "e1", "result": "ok-out"}))
+    resp = chat_routes.chat_client_tool_result("r", {"call_id": "e1", "result": "ok-out"})  # ruten er synkron siden e7923033f
     assert resp["resolved"] is True
     assert rcs._get_visible_client_tool_state("e1")["result_text"] == "ok-out"
 
@@ -85,7 +85,7 @@ def test_endpoint_404_for_unknown(monkeypatch):
     from apps.api.jarvis_api.routes import chat as chat_routes
     from fastapi import HTTPException
     try:
-        asyncio.run(chat_routes.chat_client_tool_result("r", {"call_id": "ghost", "result": "x"}))
+        chat_routes.chat_client_tool_result("r", {"call_id": "ghost", "result": "x"})  # ruten er synkron siden e7923033f
         assert False, "expected 404"
     except HTTPException as exc:
         assert exc.status_code == 404
@@ -96,7 +96,7 @@ def test_endpoint_400_for_missing_call_id(monkeypatch):
     from apps.api.jarvis_api.routes import chat as chat_routes
     from fastapi import HTTPException
     try:
-        asyncio.run(chat_routes.chat_client_tool_result("r", {"result": "x"}))
+        chat_routes.chat_client_tool_result("r", {"result": "x"})  # ruten er synkron siden e7923033f
         assert False, "expected 400"
     except HTTPException as exc:
         assert exc.status_code == 400

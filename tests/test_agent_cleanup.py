@@ -190,6 +190,9 @@ def test_cleanup_publishes_events(isolated_runtime):
         waiting_timeout_minutes=120,
         failed_timeout_minutes=30,
     )
+    # Bussen skriver asynkront (en writer-traad); uden flush laeses DB'en foer
+    # eventet er skrevet, og testen saa ingenting selvom det blev publiceret.
+    event_bus.flush()
     after_events = event_bus.recent(limit=200)
     new_events = [e for e in after_events if e.get("id") not in before_events]
 

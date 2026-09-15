@@ -1,6 +1,8 @@
 """Tests for core.costing.ledger — cost tracking and D5 optimization utilities."""
 from __future__ import annotations
 
+import pytest
+
 from core.costing.ledger import (
     telemetry_summary,
     recent_costs,
@@ -89,6 +91,16 @@ class TestDeprecatedDeepseekAliasLabel:
         assert r["model"] == "deepseek-chat"
 
 
+@pytest.fixture
+def uden_myldretid(monkeypatch):
+    """Prisen afhaenger af klokken siden 3229cf788 (14/9): myldretid koster det
+    dobbelte. Uden en fast tid ville testene skifte farve efter tidspunktet.
+    Tallene nedenfor er off-peak fra tabellen, efterproevet samme dag."""
+    import core.services.llm_pricing as lp
+    monkeypatch.setattr(lp, "er_myldretid", lambda at=None: False)
+
+
+@pytest.mark.usefixtures("uden_myldretid")
 class TestRecordCostComputesUsd:
     def test_deepseek_zero_cost_gets_computed(self, isolated_runtime):
         # cost_usd=0.0 (default) + kendte tokens → beregnet fra pris-tabel
@@ -98,7 +110,9 @@ class TestRecordCostComputesUsd:
         from core.runtime.db import connect
         with connect() as conn:
             r = conn.execute("SELECT cost_usd FROM costs ORDER BY id DESC LIMIT 1").fetchone()
-        assert abs(float(r["cost_usd"]) - 0.42) < 1e-6
+        # 1M miss x 0,15 + 1M output x 0,60 (off-peak, 14/9). Var 0,42 med den
+        # gamle tabel fra 13/7, hvor alle seks linjer var forkerte.
+        assert abs(float(r["cost_usd"]) - 0.75) < 1e-6
 
     def test_provided_cost_not_overwritten(self, isolated_runtime):
         record_cost(lane="cheap", provider="deepseek", model="deepseek-v4-flash",
@@ -115,7 +129,7 @@ class TestRecordCostComputesUsd:
         with connect() as conn:
             r = conn.execute("SELECT model, cost_usd FROM costs ORDER BY id DESC LIMIT 1").fetchone()
         assert r["model"] == "deepseek-v4-flash"
-        assert abs(float(r["cost_usd"]) - 0.14) < 1e-6
+        assert abs(float(r["cost_usd"]) - 0.15) < 1e-6  # 1M miss off-peak
 
 
 class TestTelemetrySummary:

@@ -154,11 +154,16 @@ def test_early_retire_only_when_configured():
 
 
 def test_build_surface_buckets_and_summary():
+    # Tider RELATIVT til nu: build_surface koerer refresh_statuses foerst, og
+    # med faste datoer fra 23/7 blev «active» og «softening» selv markeret stale
+    # en uge efter testen blev skrevet — saa bucketen var tom og active=False.
+    nu = datetime.now(UTC)
+    iso = lambda d: d.isoformat().replace("+00:00", "Z")
     db = _FakeDB()
     db.rows = [
-        {"signal_id": "1", "status": "active", "title": "A", "updated_at": "2026-07-23T10:00:00Z"},
-        {"signal_id": "2", "status": "softening", "title": "B", "updated_at": "2026-07-23T09:00:00Z"},
-        {"signal_id": "3", "status": "stale", "title": "C", "updated_at": "2026-07-01T09:00:00Z"},
+        {"signal_id": "1", "status": "active", "title": "A", "updated_at": iso(nu - timedelta(hours=1))},
+        {"signal_id": "2", "status": "softening", "title": "B", "updated_at": iso(nu - timedelta(hours=2))},
+        {"signal_id": "3", "status": "stale", "title": "C", "updated_at": iso(nu - timedelta(days=30))},
     ]
     spec = _plain_spec(db, lambda s, c: [])
     surface = f.build_surface(spec, limit=8)

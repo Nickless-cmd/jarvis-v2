@@ -11,7 +11,7 @@ def test_read_attachment_calls_service(monkeypatch):
     import core.tools.simple_tools as st
     monkeypatch.setattr(
         "core.services.attachment_service.read_attachment_content",
-        lambda aid: {"status": "ok", "type": "text", "content": "hello", "filename": "f.txt"},
+        lambda aid, question="": {"status": "ok", "type": "text", "content": "hello", "filename": "f.txt"},
     )
     result = st._exec_read_attachment({"attachment_id": "abc-123"})
     assert result["status"] == "ok"
@@ -28,7 +28,7 @@ def test_read_attachment_not_found(monkeypatch):
     import core.tools.simple_tools as st
     monkeypatch.setattr(
         "core.services.attachment_service.read_attachment_content",
-        lambda aid: {"status": "error", "reason": "not-found"},
+        lambda aid, question="": {"status": "error", "reason": "not-found"},
     )
     result = st._exec_read_attachment({"attachment_id": "bad-id"})
     assert result["status"] == "error"

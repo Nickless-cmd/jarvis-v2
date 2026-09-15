@@ -50,8 +50,11 @@ def test_jarvis_brain_enabled_by_default() -> None:
 
 def test_context_compact_threshold_uses_1m_context() -> None:
     """Auto-compact tærskel skal stå højt — premature compaction var en bug."""
-    from core.runtime.settings import load_settings
-    s = load_settings()
-    # 200k tokens — bumpet fra 40k/60k da visible kører deepseek-v4-flash (1M)
-    assert s.context_compact_threshold_tokens >= 200_000
+    from core.runtime.settings import RuntimeSettings
+    # STANDARDEN, ikke den lokale runtime.json: testen laeste maskinens egen
+    # konfiguration og gav forskelligt svar paa arbejdsstationen (200k) og CT105
+    # (130k). Standarden blev saenket 200k -> 130k med vilje i bab866a58 (23/6):
+    # paa et 200k-vindue kunne en session sidde paa 87 % uden at compacte.
+    s = RuntimeSettings()
+    assert s.context_compact_threshold_tokens >= 130_000
     assert s.context_keep_recent >= 20

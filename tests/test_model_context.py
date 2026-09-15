@@ -8,14 +8,17 @@ from core.services.model_context import (
 
 def test_window_lookup_by_family():
     assert model_context_window("deepseek", "deepseek-v4-flash") == 1_000_000
-    assert model_context_window("ollama", "glm-5.1:cloud") == 200_000
+    # GLM-familien har 200k, men 5.1 har sit eget vindue (bcb32388b, 18/7).
+    # Testen brugte 5.1 som repraesentant for 200k og blev roed da den fik 256k.
+    assert model_context_window("ollama", "glm-4.6:cloud") == 200_000
+    assert model_context_window("ollama", "glm-5.1:cloud") == 256_000
     assert model_context_window("github-copilot", "gpt-4o") == 128_000
     assert model_context_window("x", "ukendt-model-xyz") == 0
 
 
 def test_effective_limit_is_first_ceiling():
     # GLM (200k) < compact (240k) → 200k; deepseek (1M) > compact → compact.
-    assert effective_context_limit("ollama", "glm-5.1:cloud", 240_000) == 200_000
+    assert effective_context_limit("ollama", "glm-4.6:cloud", 240_000) == 200_000
     assert effective_context_limit("deepseek", "flash", 200_000) == 200_000
 
 
@@ -32,7 +35,7 @@ def test_fit_trims_oldest_to_fit_glm():
                 "content": "h" * (20_000 * 4)} for i in range(8)]  # 8 × ~20k = 160k
     msgs = [system, *history]
     out, dropped = fit_messages_to_window(
-        msgs, provider="ollama", model="glm-5.1:cloud",
+        msgs, provider="ollama", model="glm-4.6:cloud",
         output_budget=16_000, tools_reserve=16_000, safety_margin=4_000,
     )
     assert dropped > 0

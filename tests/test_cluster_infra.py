@@ -46,12 +46,20 @@ _MEMBER_TICKS = {
     "provider_autodiscovery": (
         "core.services.provider_autodiscovery", "tick_provider_autodiscovery_daemon",
     ),
+    # Tilfoejet 12/9-2026 (ed88f80d3): fejeren havde nul kaldere, fem godkendelser
+    # stod pending op til 36 timer efter udloeb. Selv-throttler internt (5 min).
+    "approval_expiry": (
+        "core.services.approval_expiry_daemon", "tick_approval_expiry_daemon",
+    ),
+    # Tilfoejet i 6bd736ddc: maanedens tommel-op/ned som wakeup. Selv-throttler
+    # internt (30 dage).
+    "feedback_review": ("core.services.message_feedback", "tick_feedback_review"),
 }
 
 # Members that run EVERY tick (no family throttle): internal-throttle maintenance +
 # the idempotent file_awareness watcher-ensure.
 _EVERY_TICK = {"file_awareness", "cache_maintenance", "signal_decay",
-               "provider_autodiscovery"}
+               "provider_autodiscovery", "approval_expiry", "feedback_review"}
 # Members the family self-throttles (had no internal timer) → cadence in minutes.
 _FAMILY_THROTTLED = {
     "wakeup_cleanup": 60,
@@ -113,6 +121,8 @@ def test_alle_medlemmer_i_den_ubetingede_traekke():
         "mail_checker",
         "visual_memory",
         "provider_autodiscovery",
+        "approval_expiry",
+        "feedback_review",
     }
     assert len(names) == len(set(names)), "et medlem må ikke stå to gange"
 

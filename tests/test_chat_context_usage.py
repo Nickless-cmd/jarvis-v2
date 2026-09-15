@@ -73,7 +73,10 @@ def test_compacting_reflects_inflight_set(monkeypatch):
 
 def _compact_now(**kw):
     from apps.api.jarvis_api.routes.chat import chat_compact_now, _CompactNowBody
-    return asyncio.run(chat_compact_now(_CompactNowBody(**kw)))
+    # Ruten blev synkron med vilje i e7923033f (den blokerede event-loopet som
+    # async), saa FastAPI koerer den i en traad. Testen kaldte den stadig med
+    # asyncio.run og fik en dict hvor den ventede en coroutine.
+    return chat_compact_now(_CompactNowBody(**kw))
 
 
 def test_manual_compact_spawns_and_sets_inflight(monkeypatch):

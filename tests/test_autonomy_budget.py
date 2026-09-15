@@ -39,7 +39,10 @@ def test_budget_resets_the_next_day(state):
 
 
 def test_the_log_says_what_he_did(state):
-    now = dt.datetime(2026, 9, 4, 10, tzinfo=dt.UTC)
+    # NU, ikke en fast dato: fladen taeller «i dag» uden et `now`-argument, saa
+    # en handling noteret 4/9 var kun «i dag» paa den dag testen blev skrevet.
+    # Den var groen i ét doegn og roed siden.
+    now = dt.datetime.now(dt.UTC)
     AB.note_action("write_growth_journal", now=now)
     surface = AB.build_autonomy_budget_surface()
     assert surface["spent_today"] == 1 and surface["remaining"] == AB.DEFAULT_DAILY_BUDGET - 1

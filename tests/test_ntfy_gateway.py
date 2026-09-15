@@ -18,6 +18,18 @@ def _ingen_rigtig_afsendelse(monkeypatch):
     monkeypatch.setattr(ng, "_load_config", lambda: None, raising=False)
 
 
+def _forbi_vagten(monkeypatch):
+    """Pytest-vagten (69fd08f10) returnerer «skipped» FOER hooken og konfigurationen
+    — saa disse tests naaede aldrig det de tester. Afsendelse er allerede umulig
+    (fixturen fjerner konfigurationen), saa markoeren kan fjernes for den ene test.
+
+    Kaldes INDE i testen: pytest saetter markoeren igen naar kald-fasen starter,
+    saa en fixture kan ikke fjerne den. Vagten selv er daekket af
+    test_ingen_ntfy_fra_tests.py.
+    """
+    monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
+
+
 def _hooks(tmp_path, monkeypatch, konfiguration):
     monkeypatch.setenv("JARVIS_HOME", str(tmp_path))
     (tmp_path / "config").mkdir(exist_ok=True)
@@ -28,12 +40,14 @@ class TestNotificationHook:
     def test_block_stopper_beskeden(self, tmp_path, monkeypatch):
         _hooks(tmp_path, monkeypatch, {"hooks": {"Notification": [
             {"type": "command", "command": "echo for sent; exit 2"}]}})
+        _forbi_vagten(monkeypatch)
         r = ng.send_notification("noget vigtigt")
         assert r["status"] == "blocked" and "for sent" in r["reason"]
 
     def test_uden_hooks_gaar_den_sin_normale_vej(self, tmp_path, monkeypatch):
         """Uden config skal porten opføre sig præcis som før."""
         _hooks(tmp_path, monkeypatch, {"hooks": {}})
+        _forbi_vagten(monkeypatch)
         r = ng.send_notification("hej")
         assert r["status"] == "error" and r["reason"] == "ntfy-not-configured"
 
@@ -47,6 +61,7 @@ class TestNotificationHook:
             return None
 
         monkeypatch.setattr(ng, "_load_config", _fake_cfg, raising=False)
+        _forbi_vagten(monkeypatch)
         ng.send_notification("hej")
         # Hooken må ikke have forhindret den normale vej.
         assert fanget.get("kaldt") is True
@@ -55,11 +70,13 @@ class TestNotificationHook:
         """Et værn omkring notifikationer må aldrig gøre systemet stumt."""
         _hooks(tmp_path, monkeypatch, {"hooks": {"Notification": [
             {"type": "command", "command": "sleep 99", "timeout_s": 0.1}]}})
+        _forbi_vagten(monkeypatch)
         r = ng.send_notification("hej")
         assert r["status"] == "error"  # nåede den normale vej
 
 
 class TestPortenSelv:
-    def test_uden_konfiguration_fejler_den_pænt(self):
+    def test_uden_konfiguration_fejler_den_pænt(self, monkeypatch):
+        _forbi_vagten(monkeypatch)
         r = ng.send_notification("hej")
         assert r["status"] == "error" and "ntfy-not-configured" in r["reason"]

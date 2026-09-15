@@ -156,6 +156,32 @@ så `bundt/pdf` kom før `pdf`. Når rod-skillet ankom, var bundtnavnet tomt,
 kvalificeringen gav samme navn — og den overskrev alligevel, med en advarsel
 der sagde «indlæser som 'pdf'» om noget der allerede hed `pdf`.
 
+## Autonome ture undtaget (samme dag, efter måling)
+
+Vagten på kæden gav sit første svar, og det var ikke det jeg ventede. Tre
+fæstnelser på tre timer — og **alle tre var autonome ture**:
+
+```
+12:15:59  autonomous-e  «Begge bekræftet. Dream note verificeret…»
+13:18:43  autonomous-d  «Data samlet. DB er sund (integrity OK)…»
+14:00:43  autonomous-3  «hjemme. Her er den korte rapport…»
+```
+
+Der var ingen bruger der spurgte om noget. Fladen foreslog `deep-research`,
+`code-review` og `git-advanced` til hans egne baggrundsture, og nul blev brugt.
+
+**Det var korrekt adfærd, ikke en fejl.** Jeg havde en time tidligere skrevet at
+«han går udenom døren» — forkert. Døren blev åbnet på ture hvor der ikke var
+noget bag den. Og den kostede ~55 ms opslag plus en plads ud af 48 på hver
+eneste baggrundstur.
+
+Undtagelsen ligger i `_traef`, som **begge** forbrugere går igennem — prompten
+og beskæreren kan derfor ikke komme til at sige hver sit. Run-id'et sættes af
+`run_closure_gate._on_run_started`, der kun lytter på
+`runtime.autonomous_run_started`, så et `autonomous-`-præfiks er et positivt
+bevis. Er id'et tomt, kører vi som før: **tvivlen falder ud til at beholde
+skills for hans egne ture.**
+
 ## Udestår — og hvordan det måles
 
 Atomariteten gør værktøjet **tilgængeligt**. Om det er **nok** kan kun afgøres

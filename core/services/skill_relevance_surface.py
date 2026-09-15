@@ -118,9 +118,44 @@ def sidst_foreslaaede() -> list[str]:
     return list(_SIDSTE[1])
 
 
+def _er_autonom_tur() -> bool:
+    """Koerer vi en autonom tur lige nu?
+
+    ## Hvorfor (15/9-2026)
+
+    Maalt over tre timer: skill-fladen fyrede TRE gange, og alle tre var
+    autonome ture — 12:15:59, 13:18:43, 14:00:43:
+
+        autonomous-e  «Begge bekraeftet. Dream note verificeret…»
+        autonomous-d  «Data samlet. DB er sund (integrity OK)…»
+        autonomous-3  «hjemme. Her er den korte rapport…»
+
+    Der var ingen bruger der spurgte om noget. Fladen foreslog deep-research,
+    code-review og git-advanced til hans egne baggrundsture, og nul af dem
+    blev brugt — hvilket var KORREKT adfaerd, ikke en fejl.
+
+    Det kostede ~55 ms matcher-opslag og en plads ud af de 48 paa hver eneste
+    baggrundstur. Bjoern: «Autonome undtaget».
+
+    Run-id'et saettes af `run_closure_gate._on_run_started`, som kun lytter paa
+    `runtime.autonomous_run_started` — saa et `autonomous-`-praefiks er et
+    positivt bevis. Er det tomt (synlig tur, eller vi ved det ikke), koerer vi
+    som foer: tvivlen falder ud til at BEHOLDE skills for hans egne ture.
+    """
+    try:
+        from core.services.session_context_resolve import aktivt_run_id
+
+        return str(aktivt_run_id("")).startswith("autonomous-")
+    except Exception:
+        logger.debug("kunne ikke afgoere om turen er autonom", exc_info=True)
+        return False
+
+
 def _traef(besked: str) -> list[dict]:
     """Selve opslaget. Adskilt saa baade sektionen og memoen bruger samme vej."""
     if not _enabled():
+        return []
+    if _er_autonom_tur():
         return []
     if len(besked) < _MIN_MESSAGE_CHARS and not _naevner_mekanismen(besked):
         return []

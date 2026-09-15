@@ -134,3 +134,70 @@ def test_prompt_og_beskaerer_deler_opslaget(monkeypatch):
     n_efter_prompt = len(kald)
     p._betinget_kraevede("hjaelp mig med excel")
     assert len(kald) == n_efter_prompt, "beskaereren slog op igen i stedet for at genbruge"
+
+
+# ─────────────────────────────── autonome ture (15/9-2026)
+
+@pytest.fixture
+def ryd_memo():
+    s._SIDSTE = ("", [])
+    yield
+    s._SIDSTE = ("", [])
+
+
+def _saet_run(rid: str) -> None:
+    import core.services.run_closure_gate as g
+    g._set_current_run(rid)
+
+
+def test_autonome_ture_faar_ingen_skills(ryd_memo):
+    """Målt over tre timer: fladen fyrede tre gange, og alle tre var autonome
+    ture. Der var ingen bruger der spurgte om noget.
+
+        autonomous-e  «Begge bekræftet. Dream note verificeret…»
+        autonomous-d  «Data samlet. DB er sund (integrity OK)…»
+        autonomous-3  «hjemme. Her er den korte rapport…»
+
+    Nul af forslagene blev brugt — hvilket var KORREKT, ikke en fejl. Det
+    kostede ~55 ms opslag og en plads ud af 48 på hver baggrundstur.
+    """
+    _saet_run("autonomous-abc123")
+    try:
+        assert s.matchede_skills("hjaelp mig med excel") == []
+        assert s.relevant_skills_section("hjaelp mig med excel").find("excel") == -1
+    finally:
+        _saet_run("")
+
+
+def test_synlige_ture_er_uberoerte(ryd_memo):
+    _saet_run("visible-abc123")
+    try:
+        assert s.matchede_skills("hjaelp mig med excel") == ["excel-automation"]
+    finally:
+        _saet_run("")
+
+
+def test_uden_et_kendt_run_koerer_vi_som_foer(ryd_memo):
+    """Fejlretningen: tvivlen falder ud til at BEHOLDE skills for hans ture.
+    Run-id'et sættes kun af `runtime.autonomous_run_started`, så en synlig tur
+    har ofte slet intet id — og den må ikke miste sine skills af den grund."""
+    _saet_run("")
+    assert s.matchede_skills("hjaelp mig med excel") == ["excel-automation"]
+
+
+def test_beskaereren_foelger_med(ryd_memo):
+    """Det er hele pointen med ét delt opslag: prompten og værktøjsvalget kan
+    ikke komme til at sige hver sit."""
+    _saet_run("autonomous-abc123")
+    try:
+        assert p._betinget_kraevede("hjaelp mig med excel") == ()
+    finally:
+        _saet_run("")
+
+
+def test_en_fejl_i_opslaget_undtager_ikke(ryd_memo, monkeypatch):
+    """Kan vi ikke afgøre det, er svaret NEJ — altså kør som før."""
+    import core.services.session_context_resolve as scr
+    monkeypatch.setattr(scr, "aktivt_run_id",
+                        lambda standard="": (_ for _ in ()).throw(RuntimeError("i stykker")))
+    assert s._er_autonom_tur() is False

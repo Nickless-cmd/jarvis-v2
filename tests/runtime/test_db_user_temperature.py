@@ -12,8 +12,16 @@ def fresh_db(monkeypatch, tmp_path):
     """Steer connect() at a fresh on-disk DB for each test."""
     db_path = tmp_path / "jarvis.db"
     from core.runtime import db as db_mod
+    from core.runtime import db_core
     monkeypatch.setattr(db_mod, "DB_PATH", db_path)
+    # `connect()` laeser `db_core.DB_PATH` — `db.DB_PATH` er kun en re-eksport.
+    # Uden denne linje var den «friske» DB workerens delte DB (15/9-2026), og
+    # en anden tests trigger-flag kunne staa der: consume gav True to gange.
+    monkeypatch.setattr(db_core, "DB_PATH", db_path)
     db_mod.init_db()
+    from core.runtime.db import connect
+    with connect() as c:
+        assert c.execute("PRAGMA database_list").fetchone()[2] == str(db_path)
     return db_path
 
 

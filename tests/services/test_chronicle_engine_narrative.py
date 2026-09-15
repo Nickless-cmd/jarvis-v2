@@ -51,6 +51,13 @@ def test_narrative_uses_llm_when_available(monkeypatch) -> None:
         "daemon_llm_call",
         lambda *args, **kwargs: "Jeg mærkede, at arbejdet samlede sig til en mere rolig rytme.",
     )
+    # Efter indlaegget koerer motoren drømme-hypotesen og selv-reviewet, som
+    # henter `daemon_llm_call` direkte fra `daemon_llm`. Uden denne linje gik
+    # der et RIGTIGT kald ud til cheap-lane-udbyderne (15/9-2026: traceback
+    # gennem cheap_provider_runtime_adapters), og under belastning ramte det
+    # 45 s-timeouten. En test maa aldrig naa en udbyder.
+    import core.services.daemon_llm as _dl
+    monkeypatch.setattr(_dl, "daemon_llm_call", lambda *a, **kw: "")
 
     result = chronicle_engine.maybe_write_chronicle_entry()
 

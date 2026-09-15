@@ -1,20 +1,6 @@
 """Tests for the cognitive conductor — bounded mental state assembly."""
 from __future__ import annotations
 
-import pytest
-
-
-@pytest.fixture(autouse=True)
-def _tom_frame_cache():
-    """Frame'en fik en 45 s cache i 9590482b6 (18/7). Den er korrekt i drift —
-    frame'en aendrer sig kun i daemon-takt — men i suiten fik test nr. 2 test
-    nr. 1's frame, og hver test's monkeypatch blev aldrig laest. Syv tests stod
-    roede med «KeyError: 'active'» og forkerte modes af den grund."""
-    from core.services import runtime_cognitive_conductor as conductor
-    conductor._FRAME_CACHE.clear()
-    yield
-    conductor._FRAME_CACHE.clear()
-
 
 def _quiet_carry_surfaces(monkeypatch, conductor) -> None:
     """Neutralize the newer carry/salient surfaces to their inactive shape.

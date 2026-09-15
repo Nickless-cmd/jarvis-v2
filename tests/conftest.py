@@ -332,6 +332,15 @@ def _reset_ensure_once_cache():
     except ImportError:
         pass
 
+    # 2026-09-15: build_cognitive_frame fik en 45 s cache i 9590482b6. En test
+    # der monkeypatcher en carry-flade og bygger frame'en, fik ellers den
+    # FORRIGE tests frame — maalt i test_cognitive_conductor (7 roede) og
+    # test_emotional_memory_integration (roed i hver parallel koersel). Kun
+    # hvis modulet allerede er indlaest, saa fixturen ikke importerer det.
+    _rcc = sys.modules.get("core.services.runtime_cognitive_conductor")
+    if _rcc is not None:
+        getattr(_rcc, "_FRAME_CACHE", {}).clear()
+
     # 2026-07-07: core.services.emotion_concepts holder ÉT proces-globalt
     # register af aktive emotion-koncepter (_active) + akkumuleret residue
     # (_expired_residue) + trigger-throttle (_last_trigger_at). Modulet

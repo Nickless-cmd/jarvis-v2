@@ -3170,3 +3170,10 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 .lk-ja:disabled, .lk-nej:disabled { opacity: .5; cursor: default; }
 .lk-tom { color: var(--fg-3); font-size: 12.5px; }
 @media (prefers-reduced-motion: reduce) { .lk-ja, .lk-nej { transition: none; } }
+
+/* Tallet paa et runs-filter: man skal kunne SE at der ligger noget til
+   gennemsyn uden foerst at klikke sig ind (Bjoern 15/9-2026). */
+.mc-filter-antal {
+  margin-left: 6px; font-size: 10.5px; padding: 0 5px; border-radius: 8px;
+  background: var(--bg-3); color: var(--fg-3);
+}

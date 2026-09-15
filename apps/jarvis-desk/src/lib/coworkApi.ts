@@ -397,7 +397,7 @@ export async function getMcRuns(
 /** Hvilken spand hører et run til? Ren funktion — testbar uden netværk. */
 export function spandForRun(status: string): KoeSpand {
   const s = (status || '').toLowerCase()
-  if (s === 'running' || s === 'active' || s === 'streaming') return 'aktiv'
+  if (s === 'running' || s === 'active' || s === 'streaming' || s === 'working') return 'aktiv'
   if (s === 'failed' || s === 'cancelled' || s === 'error') return 'fejlet'
   // «interrupted» er hverken fejlet eller færdigt: turen blev afbrudt og
   // efterlod noget halvt — det fortjener et blik, ikke en fejlmarkering.

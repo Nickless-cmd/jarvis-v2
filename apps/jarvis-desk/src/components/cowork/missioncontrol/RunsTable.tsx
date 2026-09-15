@@ -3,8 +3,27 @@ import type { ApiConfig } from '../../../lib/api'
 import type { McRun } from '../../../lib/missionControlApi'
 import { StatusChip } from './StatusChip'
 import { RunDetail } from './RunDetail'
+import { spandForRun, type KoeSpand } from '../../../lib/coworkApi'
 
-type Filter = 'alle' | 'kører' | 'fejlet'
+// «Til gennemsyn» = afbrudte koersler. Bjoern 15/9-2026: «afventer dig mangler
+// til gemmensyn som arbejde havde». Han havde ret — den spand fandtes i den
+// slettede WorkQueue og havde intet modstykke i MC. «fejlet» daekker
+// failed/cancelled/error, saa `interrupted` faldt kun i «alle».
+//
+// Maalt paa 30 dage: 2.861 completed, 78 INTERRUPTED, 13 failed, 13 cancelled.
+// Afbrudte er den stoerste ikke-faerdige kategori — og hver af dem er
+// potentielt halvt arbejde der venter paa et blik.
+//
+// Kortlaegningen status→spand genbruges fra coworkApi i stedet for en ny
+// liste her. Den stod uden kaldere efter WorkQueue blev slettet, og to
+// lister ville vaere dobbelt sandhed om det samme.
+type Filter = 'alle' | 'kører' | 'til gennemsyn' | 'fejlet'
+
+const SPAND_FOR_FILTER: Record<Exclude<Filter, 'alle'>, KoeSpand> = {
+  'kører': 'aktiv',
+  'til gennemsyn': 'til_gennemsyn',
+  'fejlet': 'fejlet',
+}
 
 /** Runs-tabel: filtrerbar liste over kørsler; klik en række → drill-down (RunDetail).
  *  Landingsfladen for "hvad sker der". */
@@ -12,26 +31,31 @@ export function RunsTable({ config, runs }: { config: ApiConfig | undefined; run
   const [filter, setFilter] = useState<Filter>('alle')
   const [selected, setSelected] = useState<string | null>(null)
 
-  const shown = runs.filter((r) => {
-    const s = String(r.status || '').toLowerCase()
-    if (filter === 'kører') return s === 'running' || s === 'active' || s === 'working'
-    if (filter === 'fejlet') return s === 'failed' || s === 'cancelled' || s === 'error'
-    return true
-  })
+  const spandFor = (r: McRun) => spandForRun(String(r.status || ''))
+  const shown = filter === 'alle'
+    ? runs
+    : runs.filter((r) => spandFor(r) === SPAND_FOR_FILTER[filter])
+  const antal = (f: Filter) =>
+    f === 'alle' ? runs.length : runs.filter((r) => spandFor(r) === SPAND_FOR_FILTER[f]).length
 
   return (
     <div className="mc-runs">
       <div className="mc-filters">
-        {(['alle', 'kører', 'fejlet'] as Filter[]).map((f) => (
-          <button
-            key={f}
-            type="button"
-            className={`mc-filter ${filter === f ? 'active' : ''}`}
-            onClick={() => setFilter(f)}
-          >
-            {f}
-          </button>
-        ))}
+        {(['alle', 'kører', 'til gennemsyn', 'fejlet'] as Filter[]).map((f) => {
+          const n = antal(f)
+          return (
+            <button
+              key={f}
+              type="button"
+              className={`mc-filter ${filter === f ? 'active' : ''}`}
+              onClick={() => setFilter(f)}
+            >
+              {/* Tallet staar paa knappen, saa man kan SE at der ligger noget
+                  til gennemsyn uden foerst at klikke sig ind. */}
+              {f}{n > 0 && <span className="mc-filter-antal">{n}</span>}
+            </button>
+          )
+        })}
       </div>
 
       {shown.length === 0 ? (

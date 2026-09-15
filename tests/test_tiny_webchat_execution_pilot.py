@@ -474,12 +474,28 @@ def test_execution_pilot_publishes_live_chat_event_for_sent_message(
         ping_text="",
     )
 
-    recent = event_bus.recent(limit=8)
-    chat_event = next(
+    # FLUSH FOERST (rettet 15/9-2026). Bussen har en skrive-traad der batcher,
+    # saa `recent()` kunne laese FOER eventet var skrevet. `flush()` findes
+    # netop til dette — «Intended for tests» staar i dens egen docstring — og
+    # testen kaldte den ikke. Den fejlede med et bart StopIteration, hvilket
+    # ikke rober noget om hvorfor.
+    event_bus.flush()
+
+    # Og et vindue paa 8 gjorde udfaldet afhaengigt af hvor meget ANDET der
+    # tilfaeldigvis blev skrevet imens. Den faelde har bidt tre gange i dette
+    # hus; se reference_limit_vindue_faelden.
+    recent = event_bus.recent(limit=200)
+    passende = [
         item for item in recent
         if item["kind"] == "channel.chat_message_appended"
         and item["payload"].get("source") == "proactive-execution-pilot"
+    ]
+    assert passende, (
+        "intet chat_message_appended fra proactive-execution-pilot blandt "
+        f"{len(recent)} events — arter set: "
+        f"{sorted({i['kind'] for i in recent})[:8]}"
     )
+    chat_event = passende[0]
 
     assert result["delivery_state"] == "sent"
     assert chat_event["payload"]["session_id"] == session["id"]

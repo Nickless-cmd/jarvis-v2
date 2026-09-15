@@ -28,6 +28,40 @@ def _insert_reflection_signal(db, *, status: str = "integrating") -> None:
     )
 
 
+def _bind_budget_profil(monkeypatch) -> None:
+    """Bind budget-profilen, saa testen maaler sig selv og ikke sin omverden.
+
+    Maalt 15/9-2026: testen var flaky (2-3 roede ud af 5) og aarsagen laa i
+    `prompt_contract`:
+
+        compact = (provider == "ollama") and not _is_cloud_model
+                  and (0 < _win < 200_000)
+        budget_profile = "visible_compact" if compact else "visible_full"
+
+    Profilerne giver support-signaler 276 tegn (kompakt) mod 476 (fuld). I den
+    kompakte er der ikke plads til hele refleksions-blokken, saa den blev
+    klippet — og testen kunne ikke vide hvilken profil den fik, fordi den
+    hverken binder udbyder eller kontekstvindue.
+
+    Den maaler altsaa noget den ikke kontrollerer, og derfor binder den nu den
+    fulde profil — den blokken er dimensioneret til.
+
+    AERLIGT FORBEHOLD: bindingen gjorde den IKKE stabil. Maalt over mange
+    koersler efter aendringen: 10/10 groenne i én omgang, 2/5 i den naeste,
+    5/5 naar den koeres sammen med test_attention_budget. Raten varierer
+    mellem koersler af samme kommando, saa der er en anden kilde jeg ikke har
+    fundet. Udelukket undervejs: DB-isolationen (den ER isoleret, i
+    /tmp/pytest-of-*), blok-byggeren (`_reflection_support_signal_instruction`
+    returnerer altid det rigtige) og mine egne aendringer denne dag.
+
+    Bindingen bliver staaende alligevel: en test skal maale noget den
+    kontrollerer, uanset om det var kuren.
+    """
+    import core.services.model_context as mc
+    # Et vindue over 200.000 slaar `compact` fra uanset udbyder.
+    monkeypatch.setattr(mc, "model_context_window", lambda *a, **k: 1_000_000)
+
+
 def _system_text_from_visible_input(visible_model, message: str = "Hello") -> str:
     payload = visible_model._build_visible_input(message, session_id="test-session")
     assert payload[0]["role"] == "system"
@@ -40,7 +74,8 @@ def test_visible_input_omits_reflection_support_block_when_no_relevant_signals_e
     assert "Reflection support signal:" not in system_text
 
 
-def test_visible_input_includes_small_subordinate_reflection_support_block(isolated_runtime) -> None:
+def test_visible_input_includes_small_subordinate_reflection_support_block(isolated_runtime, monkeypatch) -> None:
+    _bind_budget_profil(monkeypatch)
     _insert_reflection_signal(isolated_runtime.db)
 
     system_text = _system_text_from_visible_input(isolated_runtime.visible_model)

@@ -79,16 +79,39 @@ jobs:
           # Ingen Apple-signing/notarisering sat op — byg usigneret.
           CSC_IDENTITY_AUTO_DISCOVERY: false
 
+      # Tre jobs uploader til SAMME release samtidig. `action-gh-release`
+      # HENTER release'en foer den uploader, og netop det opslag fejlede med
+      # HttpError i to ud af tre bygninger 15/9-2026 — mac paa 0.3.70, win paa
+      # 0.3.71. Forskelligt job hver gang, altsaa et kaploeb og ikke et
+      # kodeproblem. Linux-filerne naaede frem begge gange.
+      #
+      # `gh release upload` springer opslaget over (release'en er allerede
+      # oprettet af `prepare`-jobbet) og kan proeves igen. `--clobber` goer en
+      # gentagelse ufarlig, ogsaa naar man koerer et fejlet job om.
       - name: Upload til GitHub-release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ github.event.inputs.tag || github.ref_name }}
-          fail_on_unmatched_files: false
-          files: |
-            apps/jarvis-desk/release/*.deb
-            apps/jarvis-desk/release/*.AppImage
-            apps/jarvis-desk/release/*.dmg
-            apps/jarvis-desk/release/*.zip
-            apps/jarvis-desk/release/*.exe
-            apps/jarvis-desk/release/latest*.yml
-            apps/jarvis-desk/release/*.blockmap
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="${{ github.event.inputs.tag || github.ref_name }}"
+          shopt -s nullglob
+          filer=(release/*.deb release/*.AppImage release/*.dmg release/*.zip
+                 release/*.exe release/latest*.yml release/*.blockmap)
+          if [ ${#filer[@]} -eq 0 ]; then
+            echo "Ingen filer for denne platform — intet at uploade."
+            exit 0
+          fi
+          printf 'Uploader %s fil(er):\n' "${#filer[@]}"
+          printf '  %s\n' "${filer[@]}"
+          for forsoeg in 1 2 3 4 5; do
+            if gh release upload "$tag" "${filer[@]}" \
+                 --repo "$GITHUB_REPOSITORY" --clobber; then
+              echo "Uploadet i forsoeg $forsoeg."
+              exit 0
+            fi
+            vent=$((forsoeg * 10))
+            echo "Forsoeg $forsoeg fejlede — venter ${vent}s og proever igen."
+            sleep "$vent"
+          done
+          echo "Kunne ikke uploade efter 5 forsoeg."
+          exit 1

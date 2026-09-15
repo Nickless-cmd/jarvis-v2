@@ -182,19 +182,40 @@ def test_suggest_respects_context_tags(monkeypatch):
     monkeypatch.setattr(se, "list_skills", _mock_list_skills)
 
     # semantic_similarity er importeret inde i funktionen — mock via modul-path
-    def _mock_similarity(source, candidates):
-        return {
-            "status": "ok",
-            "ranked": [
-                {"candidate": c, "score": 0.50 if "coding" in c.lower() else 0.10}
-                for c in candidates
-            ],
-        }
+    # FORAELDET 12/9-2026 → rettet 15/9. Testen udskiftede
+    # `hf_inference_tools.semantic_similarity`, men matcheren skiftede til den
+    # LOKALE embedder da HF svarede «HTTP 402: You have depleted your monthly
+    # included credits». Testen maalte derfor en vej der ikke fandtes mere og
+    # fejlede paa en tom liste — ikke fordi koden var forkert.
+    #
+    # Nu udskiftes `tool_embeddings.get_embedding`, som er den vej der ER.
+    # Vektorerne er konstruerede saa cosinus giver samme rangering som den
+    # gamle attrap: kandidater med «coding» peger én vej, resten en anden.
+    import core.services.tool_embeddings as te
 
-    # Patch der hvor det importeres — inde i funktions-kroppen
-    # Vi patcher den konkrete import i hf_inference_tools da den bruges derfra
-    import core.tools.hf_inference_tools as hf_tools
-    monkeypatch.setattr(hf_tools, "semantic_similarity", _mock_similarity)
+    def _falsk_embedding(noegle: str, tekst: str):
+        """Attrap der rangerer som en RIGTIG embedder ville.
+
+        Foerste udgave gav alle «coding»-kandidater samme vektor, saa
+        «skill name: coding-helper» kom paa lige fod med «use_when: code
+        tasks». Vinderen blev navne-fragmentet — og det leksikalske anker
+        maales KUN mod vinderen, hvis ord er {coding, helper, name}. Forespoerg-
+        slen har «code», ikke «coding», saa ankeret faldt og listen blev tom.
+
+        En aegte embedder ville saette use_when foerst for «help me write code».
+        Attrappen goer nu det samme, saa testen maaler tag-filteret — det den
+        hedder — og ikke et artefakt af sin egen attrap.
+        """
+        if noegle == "skillq":
+            return [1.0, 0.0]
+        lav = tekst.lower()
+        if lav.startswith("use_when:") and "code" in lav:
+            return [1.0, 0.0]          # bedst — det er dét en embedder ville vaelge
+        if "coding" in lav:
+            return [0.80, 0.60]        # taet paa, men under
+        return [0.0, 1.0]
+
+    monkeypatch.setattr(te, "get_embedding", _falsk_embedding)
 
     # Med context_tags=["coding"] — kun coding-helper bør returneres
     result = _suggest_skills_for_query(

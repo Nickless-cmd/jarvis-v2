@@ -222,6 +222,40 @@ def apply_section_budget(
     if last_nl > budget.max_chars // 2:
         trimmed = trimmed[:last_nl]
 
+    # EN NOEGEN OVERSKRIFT ER VAERRE END INGENTING (15/9-2026).
+    #
+    # Maalt: «Reflection support signal:» stod i prompten med NUL indhold efter
+    # sig — blokken bygges korrekt, men budgettet klippede den til sin foerste
+    # linje. Naeste sektion begyndte straks derefter.
+    #
+    # Det er stoej der ligner data: modellen ser en overskrift der lover et
+    # signal og faar intet. En sektion skal vaere hel eller vaek.
+    #
+    # Det forklarede ogsaa en flaky test: der er to budget-profiler for
+    # support-signaler (276/2 og 476/4), saa den fulde beholdt blokken mens den
+    # kompakte skar den til overskriften — og testen kunne ikke vide hvilken
+    # den fik.
+    #
+    # TO forbehold, begge fundet af test_run_budget_selection_trims_large_sections
+    # da foerste udgave manglede dem:
+    #   · en `must_include`-sektion maa ALDRIG droppes — den er paakraevet.
+    #   · en sektion der i forvejen KUN er én linje har ingen krop at miste;
+    #     den er hel som den er.
+    if (
+        not budget.must_include
+        and "\n" in content_stripped
+        and "\n" not in trimmed.strip()
+    ):
+        return None, SectionResult(
+            name=name,
+            included=False,
+            omission_reason=(
+                f"trimmed to header only ({chars} chars vs "
+                f"{budget.max_chars} budget) — droppet frem for at efterlade "
+                "en overskrift uden indhold"
+            ),
+        )
+
     return trimmed, SectionResult(
         name=name,
         included=True,

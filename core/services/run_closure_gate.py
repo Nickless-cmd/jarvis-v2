@@ -211,6 +211,26 @@ def _get_current_run() -> str:
         return _current_run_id
 
 
+_current_origin: str = ""
+
+
+def _set_current_origin(origin: str) -> None:
+    with _current_run_lock:
+        global _current_origin
+        _current_origin = origin
+
+
+def aktuel_origin() -> str:
+    """Hvad startede den koersel der er i gang? "" naar vi ikke ved det.
+
+    Vaerdier maalt i produktion: recurring, heartbeat, dream, wakeup,
+    autonomous. Kun den sidste har en bruger bag sig — den bruges naar hans
+    beskeder kommer ind via en kanal-gateway (Telegram, Discord).
+    """
+    with _current_run_lock:
+        return _current_origin
+
+
 def _record_tool_call(run_id: str, tool_name: str) -> None:
     # Fall back to the in-flight run if payload didn't include run_id.
     if not run_id:
@@ -635,6 +655,13 @@ def _on_run_started(payload: dict[str, Any]) -> None:
     if run_id:
         _record_pre_run_state(run_id)
         _set_current_run(run_id)
+        # ORIGIN gemmes ved siden af (15/9-2026). Run-id'ets «autonomous-»
+        # praefiks kan IKKE skelne en hjerteslags-tur fra en besked han sender
+        # via Telegram — begge faar det. Maalt paa 478 ture over 14 dage:
+        #   recurring 249 · heartbeat 111 · dream 53 · wakeup 34 · autonomous 31
+        # og kun den sidste har en bruger bag sig. Uden origin traf en
+        # undtagelse baseret paa praefikset ogsaa hans egne samtaler.
+        _set_current_origin(str(payload.get("origin") or ""))
 
 
 def _on_tool_used(payload: dict[str, Any]) -> None:

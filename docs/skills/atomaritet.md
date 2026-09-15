@@ -176,11 +176,40 @@ noget bag den. Og den kostede ~55 ms opslag plus en plads ud af 48 på hver
 eneste baggrundstur.
 
 Undtagelsen ligger i `_traef`, som **begge** forbrugere går igennem — prompten
-og beskæreren kan derfor ikke komme til at sige hver sit. Run-id'et sættes af
-`run_closure_gate._on_run_started`, der kun lytter på
-`runtime.autonomous_run_started`, så et `autonomous-`-præfiks er et positivt
-bevis. Er id'et tomt, kører vi som før: **tvivlen falder ud til at beholde
-skills for hans egne ture.**
+og beskæreren kan derfor ikke komme til at sige hver sit.
+
+### Første udgave var forkert, og den skadede hans samtaler
+
+Jeg byggede den på run-id'ets `autonomous-`-præfiks. **Det er ikke et bevis på
+at ingen bruger er til stede.** Kanal-gatewayen for Telegram og Discord
+(`POST /plugins/channel/{id}/inbound`) sender hans egne beskeder gennem
+`start_autonomous_run`, som giver dem netop det præfiks.
+
+Målt to timer senere: hans samtale om aftensmad kl. 15:54 og 16:02 kørte som
+`autonomous-96c2b` og `autonomous-473bd`. Undtagelsen fjernede altså skills fra
+alt hvad han skriver via Telegram — det stik modsatte af hensigten.
+
+Fundet fordi vagten rapporterede en fæstnelse kl. 16:18 og jeg tjekkede hvilken
+slags tur det var i stedet for at notere den som forventet.
+
+### `origin` skelner, hvor præfikset ikke kan
+
+Målt på 478 ture over 14 dage:
+
+| origin | antal | bruger bag? |
+|---|---|---|
+| `recurring` | 249 | nej |
+| `heartbeat` | 111 | nej |
+| `dream` | 53 | nej |
+| `wakeup` | 34 | ja — genoptager hans afbrudte arbejde |
+| `autonomous` | 31 | **ja — hans beskeder via kanal** |
+
+Navnet `autonomous` som origin for en brugerbesked er forvirrende, og præcis
+den forvirring kostede fejlen. `_on_run_started` gemmer nu origin ved siden af
+run-id'et, og kun `recurring`, `heartbeat` og `dream` undtages.
+
+Fejlretningen: kender vi ikke origin, undtager vi **ikke**. Det er hans ture
+der betyder noget.
 
 ## Kalibrering, og derefter stramning (samme dag)
 

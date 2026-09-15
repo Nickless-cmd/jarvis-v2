@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7555/14678 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7557/14681 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 7555/14678 functions/methods documented (51%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 649 | 1186 | 54% |
-| `core.services` | 5027 | 10119 | 49% |
+| `core.services` | 5029 | 10122 | 49% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 109 | 184 | 59% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1497,7 +1497,7 @@ Generated from source. 7555/14678 functions/methods documented (51%). The list b
 - `core/services/rule_engine.py` :: `build_rule_engine_surface` (L224)
 - `core/services/rule_engine.py` :: `get_engine` (L185)
 - `core/services/run_autonomy_context.py` :: `reset_autonomous` (L38)
-- `core/services/run_closure_gate.py` :: `stop_run_closure_gate` (L709)
+- `core/services/run_closure_gate.py` :: `stop_run_closure_gate` (L736)
 - `core/services/run_event_log.py` :: `active_run_for_session` (L211)
 - `core/services/run_event_log.py` :: `append` (L101)
 - `core/services/run_event_log.py` :: `create` (L83)

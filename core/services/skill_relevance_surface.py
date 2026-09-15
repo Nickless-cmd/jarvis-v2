@@ -157,6 +157,33 @@ def sidst_foreslaaede() -> list[str]:
     return list(_SIDSTE[1])
 
 
+#: Ture ingen bruger har startet. Maalt paa 478 ture over 14 dage:
+#:   recurring 249 · heartbeat 111 · dream 53 · wakeup 34 · autonomous 31
+#:
+#: `autonomous` er IKKE med: det er den origin hans egne beskeder faar naar de
+#: kommer ind via en kanal-gateway (Telegram, Discord). Navnet er forvirrende,
+#: og netop den forvirring kostede en fejl samme dag — se `_er_autonom_tur`.
+#:
+#: `wakeup` er heller ikke med: den genoptager HANS afbrudte arbejde, saa der
+#: er en opgave bag den.
+_SELVSTARTEDE_ORIGINS = frozenset({"recurring", "heartbeat", "dream"})
+
+
+def _er_selvstartet_tur() -> bool:
+    """Startede maskinen sig selv, uden nogen opgave fra ham?
+
+    Fejlretningen: kender vi ikke origin, siger vi NEJ. En ukendt tur skal
+    beholde sine skills — det er hans ture der betyder noget.
+    """
+    try:
+        from core.services.run_closure_gate import aktuel_origin
+
+        return aktuel_origin().strip().lower() in _SELVSTARTEDE_ORIGINS
+    except Exception:
+        logger.debug("kunne ikke laese turens origin", exc_info=True)
+        return False
+
+
 def _er_autonom_tur() -> bool:
     """Koerer vi en autonom tur lige nu?
 
@@ -194,7 +221,22 @@ def _traef(besked: str) -> list[dict]:
     """Selve opslaget. Adskilt saa baade sektionen og memoen bruger samme vej."""
     if not _enabled():
         return []
-    if _er_autonom_tur():
+    # MIDLERTIDIGT SLAAET FRA (15/9-2026, samme dag den blev bygget).
+    #
+    # Undtagelsen hvilede paa at `autonomous-`-praefikset betyder «ingen bruger
+    # til stede». Det er FORKERT: kanal-gatewayen for Telegram og Discord
+    # (`POST /plugins/channel/{id}/inbound`) sender hans egne beskeder gennem
+    # `start_autonomous_run`, som giver dem netop det praefiks.
+    #
+    # Maalt: hans samtale om aftensmad 15:54 og 16:02 koerte som
+    # `autonomous-96c2b` og `autonomous-473bd`. Undtagelsen fjernede altsaa
+    # skills fra alt hvad han skriver via Telegram — det stik modsatte af det
+    # den skulle.
+    #
+    # Slaaet fra frem for at gaette et nyt signal. Praefikset skelner ikke
+    # mellem «hjerteslag uden bruger» og «bruger paa en anden kanal», og den
+    # skelnen er hele pointen.
+    if _er_selvstartet_tur():
         return []
     if len(besked) < _MIN_MESSAGE_CHARS and not _naevner_mekanismen(besked):
         return []

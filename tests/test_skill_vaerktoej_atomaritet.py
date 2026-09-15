@@ -150,6 +150,65 @@ def _saet_run(rid: str) -> None:
     g._set_current_run(rid)
 
 
+def _saet_origin(o: str) -> None:
+    import core.services.run_closure_gate as g
+    g._set_current_origin(o)
+
+
+def test_TELEGRAM_beskeder_beholder_deres_skills(ryd_memo):
+    """Fejlen jeg selv lavede, og som denne test findes for at forhindre.
+
+    Første udgave undtog på run-id'ets «autonomous-»-præfiks. Men
+    kanal-gatewayen for Telegram og Discord sender HANS beskeder gennem
+    `start_autonomous_run`, som giver dem netop det præfiks. Målt: hans samtale
+    om aftensmad 15:54 og 16:02 kørte som `autonomous-96c2b` og
+    `autonomous-473bd`, og undtagelsen fjernede skills fra dem.
+
+    `origin` skelner hvor præfikset ikke kan. Målt på 478 ture over 14 dage:
+    recurring 249 · heartbeat 111 · dream 53 · wakeup 34 · **autonomous 31**,
+    og kun den sidste har en bruger bag sig.
+    """
+    _saet_origin("autonomous")
+    try:
+        assert s.matchede_skills("lav et regneark over forbruget")
+    finally:
+        _saet_origin("")
+
+
+@pytest.mark.parametrize("origin", ["recurring", "heartbeat", "dream"])
+def test_selvstartede_ture_faar_ingen_skills(ryd_memo, origin):
+    """Maskinen der starter sig selv har ingen opgave fra ham."""
+    _saet_origin(origin)
+    try:
+        assert s.matchede_skills("lav et regneark over forbruget") == []
+    finally:
+        _saet_origin("")
+
+
+def test_genoptagelser_beholder_skills(ryd_memo):
+    """`wakeup` genoptager HANS afbrudte arbejde — der er en opgave bag den."""
+    _saet_origin("wakeup")
+    try:
+        assert s.matchede_skills("lav et regneark over forbruget")
+    finally:
+        _saet_origin("")
+
+
+def test_ukendt_origin_beholder_skills(ryd_memo):
+    """Fejlretningen: kender vi ikke turen, er det hans der betyder noget."""
+    _saet_origin("")
+    assert s.matchede_skills("lav et regneark over forbruget")
+
+
+def test_beskaereren_foelger_origin(ryd_memo):
+    """Ét delt opslag — prompten og værktøjsvalget kan ikke sige hver sit."""
+    _saet_origin("heartbeat")
+    try:
+        assert p._betinget_kraevede("lav et regneark over forbruget") == ()
+    finally:
+        _saet_origin("")
+
+
 def test_autonome_ture_faar_ingen_skills(ryd_memo):
     """Målt over tre timer: fladen fyrede tre gange, og alle tre var autonome
     ture. Der var ingen bruger der spurgte om noget.
@@ -161,12 +220,14 @@ def test_autonome_ture_faar_ingen_skills(ryd_memo):
     Nul af forslagene blev brugt — hvilket var KORREKT, ikke en fejl. Det
     kostede ~55 ms opslag og en plads ud af 48 på hver baggrundstur.
     """
+    # RETTET 15/9: praefikset alene undtager IKKE laengere — det ramte ogsaa
+    # hans Telegram-beskeder. Det er `origin` der afgoer.
     _saet_run("autonomous-abc123")
+    _saet_origin("heartbeat")
     try:
         assert s.matchede_skills("hjaelp mig med excel") == []
-        assert s.relevant_skills_section("hjaelp mig med excel").find("excel") == -1
     finally:
-        _saet_run("")
+        _saet_run(""); _saet_origin("")
 
 
 def test_synlige_ture_er_uberoerte(ryd_memo):
@@ -187,12 +248,16 @@ def test_uden_et_kendt_run_koerer_vi_som_foer(ryd_memo):
 
 def test_beskaereren_foelger_med(ryd_memo):
     """Det er hele pointen med ét delt opslag: prompten og værktøjsvalget kan
-    ikke komme til at sige hver sit."""
-    _saet_run("autonomous-abc123")
+    ikke komme til at sige hver sit.
+
+    RETTET 15/9: testen brugte run-id'ets præfiks, som ikke længere undtager —
+    det ramte også hans Telegram-beskeder. Det er `origin` der afgør.
+    """
+    _saet_origin("heartbeat")
     try:
         assert p._betinget_kraevede("hjaelp mig med excel") == ()
     finally:
-        _saet_run("")
+        _saet_origin("")
 
 
 def test_en_fejl_i_opslaget_undtager_ikke(ryd_memo, monkeypatch):
@@ -261,3 +326,32 @@ def test_eksplicit_navn_slaar_scoren(monkeypatch):
 ])
 def test_navne_genkendelsen(navn, besked, forventet):
     assert s._navnet_staar_i(navn, besked) is forventet
+
+
+def test_origin_bliver_FAKTISK_gemt_fra_eventet(ryd_memo):
+    """Mutationen der overlevede: fjern `_set_current_origin` fra
+    `_on_run_started`, og alle tests blev grønne — fordi de sætter origin
+    direkte og aldrig rører vejen fra eventet.
+
+    Husets hyppigste fejl, endnu en gang: mekanismen findes, kalderen mangler.
+    """
+    import core.services.run_closure_gate as g
+    _saet_origin("")
+    try:
+        g._on_run_started({"run_id": "autonomous-xyz", "origin": "heartbeat"})
+        assert g.aktuel_origin() == "heartbeat"
+        # …og det skal faktisk undtage turen.
+        assert s.matchede_skills("lav et regneark over forbruget") == []
+    finally:
+        _saet_origin("")
+        g._set_current_run("")
+
+
+def test_en_fejl_i_origin_opslaget_undtager_IKKE(ryd_memo, monkeypatch):
+    """Kan vi ikke læse turen, er det hans ture der betyder noget. Mutationen
+    «returnér True ved fejl» ville have taget skills fra alt i stilhed."""
+    import core.services.run_closure_gate as g
+    monkeypatch.setattr(g, "aktuel_origin",
+                        lambda: (_ for _ in ()).throw(RuntimeError("i stykker")))
+    assert s._er_selvstartet_tur() is False
+    assert s.matchede_skills("lav et regneark over forbruget")

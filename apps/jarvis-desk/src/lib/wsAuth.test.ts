@@ -23,7 +23,11 @@ afterEach(() => { fanget.length = 0; vi.unstubAllGlobals() })
 function aabn(cfg: { apiBaseUrl: string; authToken: string | null }) {
   vi.stubGlobal('WebSocket', FalskSocket as unknown as typeof WebSocket)
   openEventSocket(cfg)
-  return fanget[fanget.length - 1]
+  const sidste = fanget[fanget.length - 1]
+  // Uden denne fejler `tsc` paa noUncheckedIndexedAccess — testene koerte
+  // groent, men bygningen ville braekke.
+  if (!sidste) throw new Error('openEventSocket aabnede ingen socket')
+  return sidste
 }
 
 describe('event-socketen bærer legitimation', () => {

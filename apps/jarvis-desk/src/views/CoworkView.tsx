@@ -65,8 +65,15 @@ export function CoworkView(
       // lander paa, og det foerste spoergsmaal er altid «hvad venter paa mig».
       // Mission Control bliver staaende nedenunder — den er stadig
       // kontrolpanelet, koeen er bare det man ser foerst.
+      // Bjoern 15/9-2026: «de er bare kastet ind i toppen og ikk som det
+      // andet». Maalt i den aegte stilblok ved 1600px: .work-queue, .lk og
+      // .aw var alle 1600 bred med max-width: none, mens .mc sad centreret i
+      // 1120. De tre havde heller ingen baggrund, ramme eller polstring.
+      // `mc` var den ENESTE zone uden en indpakning — alle andre gaar gennem
+      // wrap(). Nu har den sin egen, med MC's bredde i stedet for
+      // indstillingernes smalle 720px-kolonne.
       case 'mc': return (
-        <>
+        <div className="mc-zone">
           <WorkQueue config={config} />
           {/* Koeen viser hvad der venter; arbejderne hvad der faktisk KOERTE.
               De to hoerer sammen — begge svarer paa «hvad foregaar der». */}
@@ -74,7 +81,7 @@ export function CoworkView(
           {ownerAuth && <ReviewPanel config={config} />}
           {ownerAuth && <AgentWork config={config} />}
           {missionControl}
-        </>
+        </div>
       )
       case 'marketplace': return <MarketplacePane config={config} />
 

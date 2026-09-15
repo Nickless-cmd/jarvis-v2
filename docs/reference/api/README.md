@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 14684 functions/methods, 51% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 14685 functions/methods, 51% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -40,20 +40,20 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 14684 functions/
 - [`core.services.10`](core.services.10.md) — `developmental_valence` … `emergence`
 - [`core.services.11`](core.services.11.md) — `emergent_bridge` … `file_awareness_daemon`
 - [`core.services.12`](core.services.12.md) — `file_watch_daemon` … `governance_bootstrap`
-- [`core.services.13`](core.services.13.md) — `gratitude_tracker` … `inner_dialectic_engine`
-- [`core.services.14`](core.services.14.md) — `inner_visible_support_signal_tracking` … `local_small_model`
-- [`core.services.15`](core.services.15.md) — `local_tool_broker` … `metacognition_signal_tracker`
-- [`core.services.16`](core.services.16.md) — `metacognitive_integration` … `operator_channel`
-- [`core.services.17`](core.services.17.md) — `orb_phase` … `private_temporal_promotion_signal_tracking`
-- [`core.services.18`](core.services.18.md) — `proactive_candidates` … `provider_self_heal`
-- [`core.services.19`](core.services.19.md) — `published_files` … `research_prompt_context`
-- [`core.services.20`](core.services.20.md) — `research_quality` … `runtime_tasks`
-- [`core.services.21`](core.services.21.md) — `rupture_repair` … `sensory_archive`
-- [`core.services.22`](core.services.22.md) — `sensory_perception_bridge` … `skill_engine`
-- [`core.services.23`](core.services.23.md) — `skill_relevance_surface` … `terminal_sanitize`
-- [`core.services.24`](core.services.24.md) — `text_clip` … `unconscious_temperature_field`
-- [`core.services.25`](core.services.25.md) — `unfinished_intent` … `visible_runs_error_messaging`
-- [`core.services.26`](core.services.26.md) — `visible_runs_learning_signals` … `world_model_signal_tracking`
+- [`core.services.13`](core.services.13.md) — `gratitude_tracker` … `initiative_queue`
+- [`core.services.14`](core.services.14.md) — `inner_dialectic_engine` … `local_intent_gate`
+- [`core.services.15`](core.services.15.md) — `local_small_model` … `metabolism_state_signal_tracking`
+- [`core.services.16`](core.services.16.md) — `metacognition_signal_tracker` … `operator_allowlist`
+- [`core.services.17`](core.services.17.md) — `operator_channel` … `private_temporal_curiosity_state_tracking`
+- [`core.services.18`](core.services.18.md) — `private_temporal_promotion_signal_tracking` … `provider_retry_policy`
+- [`core.services.19`](core.services.19.md) — `provider_self_heal` … `research_orchestrator`
+- [`core.services.20`](core.services.20.md) — `research_prompt_context` … `runtime_surface_cache`
+- [`core.services.21`](core.services.21.md) — `runtime_tasks` … `semantic_memory`
+- [`core.services.22`](core.services.22.md) — `sensory_archive` … `skill_contract_registry`
+- [`core.services.23`](core.services.23.md) — `skill_engine` … `temporal_self_continuity`
+- [`core.services.24`](core.services.24.md) — `terminal_sanitize` … `unconscious_modulation`
+- [`core.services.25`](core.services.25.md) — `unconscious_temperature_field` … `visible_runs_cognitive`
+- [`core.services.26`](core.services.26.md) — `visible_runs_error_messaging` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

@@ -307,7 +307,7 @@ _Mission Control dashboard-endpoints — de tre data-kilder som kontrolcenter-UI
 | function | `_event_to_step` | `(row)` | events-række → kompakt trin til run-detaljens tidslinje/træ. | [src](../../../apps/api/jarvis_api/routes/mission_control_dashboard.py#L47) |
 | function | `_run_synlig_for_kalder` | `(conn, run_id)` | Maa den nuvaerende kalder se dette run? | [src](../../../apps/api/jarvis_api/routes/mission_control_dashboard.py#L68) |
 | function | `mc_run_detail` | `(run_id, event_limit=…)` | Enkelt-run-detalje: selve run-rækken (visible_runs) + de hændelser der bærer dens | [src](../../../apps/api/jarvis_api/routes/mission_control_dashboard.py#L91) |
-| function | `mc_run_prompt` | `(run_id)` | Hvad byggede han svaret paa? Sektionerne i prompten for netop dette run. | [src](../../../apps/api/jarvis_api/routes/mission_control_dashboard.py#L134) |
+| function | `mc_run_prompt` | `(run_id)` | Hvad byggede han svaret paa? Sektionerne i prompten for netop dette run. | [src](../../../apps/api/jarvis_api/routes/mission_control_dashboard.py#L139) |
 
 ## `apps/api/jarvis_api/routes/mission_control_helpers.py`
 _Mission Control: tool/skill/hardening/lab-hjælpere._

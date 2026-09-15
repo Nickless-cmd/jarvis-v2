@@ -171,23 +171,82 @@ _last_scan: str = ""
 _registry_lock = threading.RLock()
 
 
+def _find_skill_md(mappe: Path) -> Path | None:
+    for navn in ("SKILL.md", "skill.md"):
+        sti = mappe / navn
+        if sti.exists():
+            return sti
+    return None
+
+
 def _scan_skills() -> dict[str, Skill]:
-    """Scan SKILLS_ROOT for all skills (mappe med SKILL.md)."""
+    """Scan SKILLS_ROOT for all skills (mappe med SKILL.md).
+
+    ## Bundter (15/9-2026)
+
+    Scanneren kiggede kun ÉT niveau ned: ``<rod>/<navn>/SKILL.md``. Men et
+    bundt som ``composio-document-skills/`` har ingen egen SKILL.md — det er
+    en mappe med fire skills i, hver med sin egen.
+
+    Maalt: 66 SKILL.md paa dybde 2, og 4 paa dybde 3 —
+    ``composio-document-skills/{docx,pdf,xlsx,pptx}``. Alle fire var usynlige.
+
+    Det forklarede en fejl der lignede noget andet: «brug pdf skill» gav intet
+    match, og konklusionen var at matcheren manglede navne-genkendelse. Den
+    kunne bare ikke matche noget den aldrig havde faaet at se.
+
+    Kun ÉT ekstra niveau. Et bundt er en mappe med skills i, ikke et traa af
+    vilkaarlig dybde, og en ubegraenset scanning ville goere enhver tilfaeldig
+    undermappe med en SKILL.md til et skill.
+    """
     skills: dict[str, Skill] = {}
     if not SKILLS_ROOT.exists():
         return skills
+
+    def _laeg_ind(sti, kilde: str) -> None:
+        skill = _parse_skill_md(sti)
+        if not skill:
+            # En SKILL.md der ikke kan laeses forsvandt foer i stilhed. Nu
+            # siges det — tre af de 66 paa dybde 2 falder her.
+            logger.warning("skill_engine: kunne ikke laese %s", sti)
+            return
+        if skill.name in skills:
+            # Navnet er noeglen i registret, saa en dublet ville overskrive
+            # TAVST. Bundtets navn goer den entydig.
+            #
+            # Foerste udgave brugte `kilde or navnet`, og den havde et hul:
+            # mapperne scannes sorteret, saa `bundt/pdf` kom FOER `pdf`. Naar
+            # rod-skillet saa ankom, var `kilde` tom, kvalificeringen gav
+            # samme navn — og den overskrev alligevel, med en advarsel der
+            # sagde «indlaeser som 'pdf'» om noget der allerede hed 'pdf'.
+            # Fundet af en test der modellerede den aegte kollision.
+            grundlag = f"{kilde}/{skill.name}" if kilde else skill.name
+            # Uden bundt er der intet meningsfuldt praefiks — saa taeller vi.
+            # Det vigtige er at INGEN af dem forsvinder.
+            kvalificeret = grundlag if grundlag != skill.name else f"{grundlag}-2"
+            n = 2
+            while kvalificeret in skills:
+                kvalificeret = f"{grundlag}-{n}"
+                n += 1
+            logger.warning("skill_engine: navnet %r er taget — indlaeser som %r",
+                           skill.name, kvalificeret)
+            skill.name = kvalificeret
+        skills[skill.name] = skill
+
     for child in sorted(SKILLS_ROOT.iterdir()):
         if not child.is_dir():
             continue
-        skill_md = child / "SKILL.md"
-        if not skill_md.exists():
-            # Try lowercase
-            skill_md = child / "skill.md"
-        if not skill_md.exists():
+        egen = _find_skill_md(child)
+        if egen is not None:
+            _laeg_ind(egen, "")
             continue
-        skill = _parse_skill_md(skill_md)
-        if skill:
-            skills[skill.name] = skill
+        # Ingen egen SKILL.md → maaske et bundt. Kig ét niveau dybere.
+        for barnebarn in sorted(child.iterdir()):
+            if not barnebarn.is_dir():
+                continue
+            i_bundt = _find_skill_md(barnebarn)
+            if i_bundt is not None:
+                _laeg_ind(i_bundt, child.name)
     return skills
 
 

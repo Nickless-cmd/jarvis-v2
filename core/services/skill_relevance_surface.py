@@ -40,6 +40,18 @@ _MAX_SUGGESTIONS = 3
 # kald pr. tur på præcis de ture hvor der alligevel aldrig er et match.
 _MIN_MESSAGE_CHARS = 15
 
+# ...med ÉN undtagelse (15/9-2026). «brug pdf skill» er 14 tegn — ét under
+# taersklen — og er samtidig den mest eksplicitte skill-anmodning der findes.
+# Naevner beskeden mekanismen, er den aldrig smaasnak, uanset laengde.
+#
+# Prisen er maalt: af 1.527 brugerbeskeder paa 30 dage var 294 under 15 tegn,
+# og NUL af dem naevnte «skill». Undtagelsen koster altsaa reelt ingenting.
+#
+# Bemaerk forskellen fra `_MEKANIK_ORD` i matcheren: dér kan ordet «skill» ikke
+# BEVISE et match. Her siger det bare at vi skal se efter. At spoerge og at
+# bevise er ikke det samme.
+_SKILL_ORD = ("skill", "skills", "skillet", "skillene")
+
 
 def _enabled() -> bool:
     """Kill-switch. Self-safe: kan config ikke læses, slår vi op."""
@@ -90,9 +102,17 @@ def matchede_skills(user_message: str) -> list[str]:
     return list(navne)
 
 
+def _naevner_mekanismen(besked: str) -> bool:
+    """Beder brugeren udtrykkeligt om et skill? Saa er beskeden aldrig smaasnak."""
+    lav = f" {str(besked or '').lower()} "
+    return any(f"{o}" in lav for o in _SKILL_ORD)
+
+
 def _traef(besked: str) -> list[dict]:
     """Selve opslaget. Adskilt saa baade sektionen og memoen bruger samme vej."""
-    if len(besked) < _MIN_MESSAGE_CHARS or not _enabled():
+    if not _enabled():
+        return []
+    if len(besked) < _MIN_MESSAGE_CHARS and not _naevner_mekanismen(besked):
         return []
     try:
         from core.tools.skill_engine_tools import _suggest_skills_for_query
@@ -115,7 +135,9 @@ def relevant_skills_section(user_message: str) -> str:
     except Exception:
         research = ""
     besked = str(user_message or "").strip()
-    if not besked or len(besked) < _MIN_MESSAGE_CHARS:
+    if not besked:
+        return research
+    if len(besked) < _MIN_MESSAGE_CHARS and not _naevner_mekanismen(besked):
         return research
     if not _enabled():
         return research

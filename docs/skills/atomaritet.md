@@ -100,6 +100,62 @@ kontraktbrud: 0
 | memoen deles ikke (to opslag) | 1 rød |
 | fejl i matcheren fæstner alligevel | 1 rød |
 
+## Matcheren (samme dag) — og Codex' diagnose var forkert her
+
+Han konkluderede at matcheren manglede eksplicit navne-genkendelse. Den
+fejlede ikke. Den kendte **63 skills, og PDF-skillet var ikke iblandt dem.**
+
+`_scan_skills` kiggede kun ét niveau ned. `composio-document-skills/` har ingen
+egen SKILL.md — det er en mappe med fire skills i:
+
+```
+66 SKILL.md paa dybde 2   ← det scanneren saa (63 unikke mapper)
+ 4 paa dybde 3            ← docx, pdf, xlsx, pptx — usynlige
+```
+
+**Loader-rettelsen alene løste det.** 63 → 67 skills, og «brug pdf skill» giver
+`pdf (0,76)`. Matcheren kunne ikke matche noget den aldrig havde fået at se.
+
+### To lag mere, som først blev synlige bagefter
+
+**Ankeret.** «brug pdf skill» trak også `composio-skill-creator` (0,71) og
+`composio-template-skill` (0,71) — kun fordi ordet «skill» stod på begge sider.
+To af tre pladser gik til støj. Ord der handler om *mekanismen* bærer ikke
+længere et anker.
+
+**Længde-gulvet.** «brug pdf skill» er 14 tegn mod en tærskel på 15. Ét tegn.
+Den mest eksplicitte skill-anmodning der findes, blev kasseret som småsnak.
+Prisen for undtagelsen er målt: af 1.527 brugerbeskeder på 30 dage var 294
+under 15 tegn, og **nul** af dem nævnte «skill».
+
+De to regler ser modsatrettede ud og er det ikke: ordet «skill» siger at vi
+skal **se efter**, men det kan ikke **bevise** et match. At spørge og at bevise
+er ikke det samme.
+
+### Efter
+
+```
+forespørgsel                 matchet            i prompten  værktøj
+brug pdf skill               pdf                True        JA
+udfyld en pdf formular       pdf                True        JA
+hjaelp mig med excel         excel-automation   True        JA
+brug excel skillet           excel-automation   True        JA
+hej                          —                  False       nej
+hvilke skills har du         —                  False       nej
+```
+
+### To fejl i mine egne tests undervejs
+
+Begge samme slags: **skillets navn er MAPPENS navn**, ikke frontmatterens
+(`name = path.parent.name`). Første test antog det modsatte og bestod derfor
+selv når koden gjorde det forkerte. Skrevet ned i testen, så den næste ikke
+skal finde det igen.
+
+Og kollisions-værnet havde et hul jeg selv byggede: mapperne scannes sorteret,
+så `bundt/pdf` kom før `pdf`. Når rod-skillet ankom, var bundtnavnet tomt,
+kvalificeringen gav samme navn — og den overskrev alligevel, med en advarsel
+der sagde «indlæser som 'pdf'» om noget der allerede hed `pdf`.
+
 ## Udestår — og hvordan det måles
 
 Atomariteten gør værktøjet **tilgængeligt**. Om det er **nok** kan kun afgøres
@@ -111,6 +167,11 @@ Sammen med `cognitive_state.skill_invoked` giver det: matched → surfaced →
 tilgængelig → invoked. Det led der stadig mangler er et **run-id** på
 invokeringen; uden det kan en ægte invokering ikke skelnes fra en test.
 
-Ikke rørt endnu, bevidst: matcheren (eksplicit navn resolver ikke),
-selvmodsigelsen i prompten, og `skill_autosurface_enabled`. Ét greb ad gangen,
-så det kan måles hvad der virkede.
+Ikke rørt endnu, bevidst: selvmodsigelsen i prompten («du skal ikke kalde
+skill_suggest» mod decision-gatens krav om det modsatte) og
+`skill_autosurface_enabled`.
+
+Og et hul målingen afslørede undervejs: «lav et regneark» og «lav en
+powerpoint» matcher **ingenting**, selvom `excel-automation` og `pptx` findes.
+Skillenes egne `use_when`-linjer dækker ikke de danske ord. Det er en
+indholds-mangel i skillene, ikke i matcheren.

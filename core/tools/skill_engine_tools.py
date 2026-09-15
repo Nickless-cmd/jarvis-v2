@@ -82,11 +82,28 @@ og i at en et den det de er var til for med som paa på af om har kan skal vil
 jeg du min mit hvad her ned lav mig dig noget lige saa så men eller naar når
 """.split())
 
+#: Ord der handler om MEKANISMEN og ikke om opgaven. De maa ikke baere et
+#: anker, for saa matcher enhver forespoergsel med ordet «skill» ethvert skill
+#: hvis navn ogsaa indeholder det.
+#:
+#: Maalt 15/9-2026: «brug pdf skill» gav pdf (0,76) — men ogsaa
+#: composio-skill-creator (0,71) og composio-template-skill (0,71), som kun kom
+#: med fordi ordet «skill» stod paa begge sider. To af tre pladser i fladen gik
+#: til stoej.
+#:
+#: Holdt kort og konkret. En bred liste af «generiske» ord ville fjerne aegte
+#: signal — og en liste udledt af vaerktoejs-korpusset alene har vaeret forkert
+#: her foer (se reference_nudge_shadow_verdict: den kendte ikke hans sprog).
+_MEKANIK_ORD = frozenset("""
+skill skills skillet skillene tool tools vaerktoej værktøj vaerktoejer værktøjer
+workflow brug bruge anvend use using
+""".split())
+
 
 def _betydende_ord(tekst: str) -> set[str]:
     return {
         o for o in _re.findall(r"[a-zA-ZæøåÆØÅ0-9]{3,}", (tekst or "").lower())
-        if o not in _STOPORD
+        if o not in _STOPORD and o not in _MEKANIK_ORD
     }
 
 

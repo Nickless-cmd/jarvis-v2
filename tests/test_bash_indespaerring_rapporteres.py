@@ -103,7 +103,7 @@ def test_bash_svaret_baerer_rapporten_naar_der_er_noget_at_sige(sandbox):
     assert r["confinement"]["requested"] is True and r["confinement"]["actual"] is False
 
 
-def test_den_VEDVARENDE_shell_siger_at_den_ikke_kan_indespaerres(sandbox):
+def test_den_VEDVARENDE_shell_siger_at_den_ikke_kan_indespaerres(sandbox, monkeypatch):
     """Uden denne linje ville en tændt sandbox SE UD som om den dækkede bash,
     mens den normale vej gik udenom og kun reserve-stien blev indespærret.
 
@@ -112,6 +112,13 @@ def test_den_VEDVARENDE_shell_siger_at_den_ikke_kan_indespaerres(sandbox):
     bare ærligt."""
     sandbox(taendt=True, tilgaengelig=True)
     from core.tools import simple_tools_web as W
+    # Lever den vedvarende session SELV (15/9-2026). Testen afhang af at
+    # session-daemonen koerte paa maskinen; uden den faldt kaldet til
+    # engangs-stien, som ER indespaerret, og testen maalte den forkerte sti.
+    monkeypatch.setattr(W, "_get_or_open_default_bash_session", lambda: "sess-test")
+    import core.tools.bash_session as BS
+    monkeypatch.setattr(BS, "_exec_bash_session_run",
+                        lambda a: {"status": "ok", "exit_code": 0, "output": "hej"})
     r = W._exec_bash({"command": "echo hej"})
     c = r.get("confinement") or {}
     assert c.get("requested") is True and c.get("actual") is False

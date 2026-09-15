@@ -164,6 +164,101 @@ def _prod_db_shield_path(tmp_path_factory):
     return shield
 
 
+# ── Ingen test maa naa nettet (15/9-2026) ────────────────────────────────
+#
+# Maalt i to parallelle koersler af hele suiten: tests ringede RIGTIGE
+# udbydere op — heartbeat_fallback gennem opencode og nvidia-nim, og ollama
+# svarede «429 Too Many Requests». Det bruger kvote i drift, goer suiten
+# langsom og goer udfaldet afhaengigt af hvad en udbyder svarer den dag.
+#
+# Vagten afviser alt der ikke er loopback eller en unix-socket. Koden sluger
+# de fleste netvaerksfejl med `except Exception`, saa en afvisning alene ville
+# vaere tavs — derfor registreres hvert forsoeg og skrives til sidst.
+import os
+import socket as _socket
+
+_NET_FORSOEG: list[tuple[str, str]] = []
+_ORIG_CONNECT = _socket.socket.connect
+_ORIG_CONNECT_EX = _socket.socket.connect_ex
+
+
+def _er_lokal(adresse) -> bool:
+    if not isinstance(adresse, tuple) or not adresse:
+        return True  # unix-socket (str/bytes) eller ukendt form — ikke nettet
+    vaert = str(adresse[0])
+    return vaert in ("localhost", "::1", "0.0.0.0") or vaert.startswith("127.")
+
+
+def _hvem() -> str:
+    return os.environ.get("PYTEST_CURRENT_TEST", "(baggrundstraad)").split(" ")[0]
+
+
+def _net_fil():
+    # Under xdist koerer testene i workers, men opsummeringen i hovedprocessen.
+    # En faelles fil pr. koersel (id'et arves via miljoeet) samler dem.
+    koersel = os.environ.get("JARVIS_TEST_NETVAGT_ID", "")
+    if not koersel:
+        return None
+    import tempfile
+    return Path(tempfile.gettempdir()) / f"jarvis-test-netvagt-{koersel}.log"
+
+
+def _noter(adresse) -> None:
+    linje = (_hvem(), f"{adresse[0]}:{adresse[1]}")
+    _NET_FORSOEG.append(linje)
+    fil = _net_fil()
+    if fil is not None:
+        try:
+            with open(fil, "a", encoding="utf-8") as f:
+                f.write(f"{linje[0]}\t{linje[1]}\n")
+        except Exception:
+            pass
+
+
+def pytest_configure(config):
+    if not os.environ.get("JARVIS_TEST_NETVAGT_ID") and not hasattr(config, "workerinput"):
+        import uuid
+        os.environ["JARVIS_TEST_NETVAGT_ID"] = uuid.uuid4().hex[:12]
+
+
+def _vagt_connect(self, adresse):
+    if _er_lokal(adresse):
+        return _ORIG_CONNECT(self, adresse)
+    _noter(adresse)
+    raise ConnectionRefusedError(f"test-vagt: ingen test maa naa {adresse[0]}")
+
+
+def _vagt_connect_ex(self, adresse):
+    if _er_lokal(adresse):
+        return _ORIG_CONNECT_EX(self, adresse)
+    _noter(adresse)
+    return 111  # ECONNREFUSED
+
+
+_socket.socket.connect = _vagt_connect
+_socket.socket.connect_ex = _vagt_connect_ex
+
+
+def pytest_terminal_summary(terminalreporter, config):
+    if hasattr(config, "workerinput"):
+        return  # kun hovedprocessen samler; en worker ville slette filen foerst
+    forsoeg = list(_NET_FORSOEG)
+    fil = _net_fil()
+    if fil is not None and fil.exists():
+        for raekke in fil.read_text(encoding="utf-8").splitlines():
+            if "\t" in raekke:
+                forsoeg.append(tuple(raekke.split("\t", 1)))
+        fil.unlink(missing_ok=True)
+    if not forsoeg:
+        return
+    pr_test: dict[str, set[str]] = {}
+    for node, maal in forsoeg:
+        pr_test.setdefault(node, set()).add(maal)
+    terminalreporter.section(f"test-vagt: {len(pr_test)} test(s) forsoegte at naa nettet")
+    for node, maal in sorted(pr_test.items()):
+        terminalreporter.write_line(f"{node} -> {', '.join(sorted(maal))[:200]}")
+
+
 @pytest.fixture(autouse=True)
 def _pin_deployment_env_for_tests(monkeypatch):
     """Ingen test må arve maskinens levende deploy-env (§20-sikkerhedsflag).

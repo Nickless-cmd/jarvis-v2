@@ -32,6 +32,13 @@ def test_a_clean_setup_reports_nothing(monkeypatch):
         "local": ("ollama", "glm-5.2:cloud", _FREE),
         "cheap": ("aihubmix", "gpt-5.5-free", "https://aihubmix.com/v1"),
     }, monkeypatch)
+    # Fladen dømmer ogsaa hovedbogen og hjerteslaget. I workerens delte DB
+    # kunne en anden tests bogfoerte deepseek-kald paa `cheap` staa (fx
+    # test_ledger) — saa sagde vagten med rette «betalt uden for hans ture»,
+    # og testen fejlede efter hvem der koerte foer (15/9-2026). En REN
+    # opsaetning er ren i alle tre kilder.
+    monkeypatch.setattr(PLG, "check_paid_spend", lambda *a, **kw: {"checked": True, "leaks": []})
+    monkeypatch.setattr(PLG, "audit_heartbeat_provider", lambda *a, **kw: None)
     assert PLG.audit_paid_lanes() == []
     assert PLG.build_paid_lane_guard_surface()["ok"] is True
 

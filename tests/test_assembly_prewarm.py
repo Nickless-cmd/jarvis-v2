@@ -42,6 +42,11 @@ def test_prewarm_once_sets_and_clears_flag(monkeypatch):
         "core.services.prompt_contract.build_visible_chat_prompt_assembly", _fake_build
     )
     monkeypatch.setattr(ap, "_should_prewarm", lambda: True)   # test af flag, ikke event-gate
+    # Leaset er delt paa tvaers af processer: holdt en anden test (eller
+    # prewarm-loekken) det, returnerede prewarm_once None og testen fejlede
+    # efter raekkefoelgen (15/9-2026). Testen handler om flaget, ikke leaset.
+    monkeypatch.setattr(ap, "_try_acquire_prewarm_lease", lambda *a, **kw: True)
+    monkeypatch.setattr(ap, "_mark_prewarmed", lambda *a, **kw: None)
     elapsed = ap.prewarm_once()
     assert elapsed is not None and elapsed >= 0.0
     assert seen["active_during_build"] is True          # flag set during build

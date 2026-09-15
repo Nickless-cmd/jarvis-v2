@@ -842,7 +842,12 @@ def _fake_cheap_lane(monkeypatch, *, verdict: str = "pass", raise_exc: bool = Fa
     calls: list[str] = []
 
     def _fake(*, message: str):
-        calls.append(message)
+        # KUN dommerens kald taeller (15/9-2026). Stubben er modul-global, saa
+        # en baggrundstraad fra en tidligere test — «Extract 3-5 key
+        # topics…» — landede ogsaa her, og «praecis ét kald» fejlede efter
+        # hvem der koerte foer. Dommerens prompt beder altid om rubrikken.
+        if "answers_question" in message:
+            calls.append(message)
         if raise_exc:
             raise RuntimeError("cheap lane nede")
         payload = {

@@ -701,6 +701,13 @@ def get_skill_instructions(name: str) -> dict[str, Any]:
         "readonly": skill.readonly,
     }
 
+    # SKILL-MAPPEN (15/9-2026). Dokument-skillene skriver `scripts/recalc.py`,
+    # `scripts/office/unpack.py` osv. — stier RELATIVT til mappen. Svaret gav
+    # ham kun scriptenes navne, aldrig hvor de laa, saa han maatte lede med
+    # find og fandt en tilfaeldig kopi i en Claude-konfig-mappe.
+    if skill.path:
+        result["skill_dir"] = str(Path(skill.path).parent)
+
     # §19.8 defense-in-depth: scan ved indlæsning (en skill kan være ændret på disk
     # efter oprettelse). Advisory — blokerer ikke (undgår at brække legitime skills på
     # en heuristik-false-positive), men flagger så caller/UI kan reagere.

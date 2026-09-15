@@ -165,3 +165,17 @@ def test_at_spoerge_og_at_bevise_er_ikke_det_samme():
     bevise et match. De to regler ser modsatrettede ud og er det ikke."""
     assert srs._naevner_mekanismen("brug pdf skill")       # se efter: ja
     assert "skill" not in st._betydende_ord("brug pdf skill")  # bevise: nej
+
+
+def test_invokering_siger_HVOR_skillet_ligger(rod, monkeypatch):
+    """Dokument-skillene henviser til `scripts/recalc.py` relativt til mappen.
+    Uden mappen i svaret kan han ikke finde scriptet — 15/9 fandt han en
+    tilfaeldig kopi et helt andet sted."""
+    _skriv(rod / "bundt" / "xlsx", "xlsx")
+    (rod / "bundt" / "xlsx" / "scripts").mkdir()
+    (rod / "bundt" / "xlsx" / "scripts" / "recalc.py").write_text("", encoding="utf-8")
+    monkeypatch.setattr(se, "_skills_cache", None, raising=False)
+    monkeypatch.setattr(se, "get_skill", lambda n: se._scan_skills().get(n))
+    ud = se.get_skill_instructions("xlsx")
+    assert ud["skill_dir"] == str(rod / "bundt" / "xlsx")
+    assert "recalc.py" in ud["scripts"]

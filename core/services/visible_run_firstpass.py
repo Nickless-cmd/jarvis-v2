@@ -55,8 +55,38 @@ from __future__ import annotations
 # ~20s → død»), saa der skal vaere rigeligt mellemrum til at naa flere.
 KEEPALIVE_S = 6.0
 
-# Over dette er der ingen sund koersel maalt nogensinde.
-FOERSTE_ELEMENT_LOFT_S = 120.0
+# ── De tre tal og hvordan de haenger sammen ──────────────────────────────
+#
+# STALL_UDEN_DATA_S  <  STALL * 2  <  FOERSTE_ELEMENT_LOFT_S
+#        60                120              240
+#
+# Den INDRE vagt (60 s) sidder i selve laese-loopet og kan se forskel paa
+# «der kommer keepalive-linjer» og «der kommer indhold». Den fyrer foerst, og
+# den kan noejes med ét nyt forsoeg.
+#
+# Det YDRE loft (240 s) sidder i stroem-generatoren og kan kun se at der intet
+# er kommet. Det er et bagstop for alt den indre vagt ikke kan se, og det skal
+# derfor ligge over to fulde indre forsoeg (2 x 60 = 120) plus den langsomste
+# sunde koersel vi har maalt (40 s) med rigelig luft.
+#
+# Loftet stod paa 120 s da det blev bygget, foer der fandtes et genforsoeg.
+# Med et genforsoeg nedenunder ville 120 slaa netop det forsoeg ihjel som var
+# ved at lykkes. Seks gange den vaerste maalte sunde koersel er stadig knap
+# fire gange hurtigere end de 906-940 sekunder det kostede 14/9.
+FOERSTE_ELEMENT_LOFT_S = 240.0
+
+# Hvor laenge der maa komme linjer UDEN indhold foer vi opgiver forsoeget.
+# 14/9 kom der ca. 41 bytes hvert 8. sekund i femten minutter — keepalive,
+# ikke tekst. httpx' laese-timeout saa bytes og var derfor tilfreds.
+STALL_UDEN_DATA_S = 60.0
+
+# Fejlkoden der betyder «udbyderen tav FOER sit foerste event». Kun den maa
+# udloese et nyt forsoeg: er der allerede streamet tekst, ville et genforsoeg
+# gentage den paa skaermen.
+STALL_KODE = "stalled-before-first-event"
+
+# Ét. Samme regel som bro-failoveren: en aerlig fejl er bedre end en langsom.
+MAKS_GENFORSOEG = 1
 
 # Under dette er ventetiden helt normal (p90 = 22,3 s), og der er ingen grund
 # til at goere en bruger nervoes.

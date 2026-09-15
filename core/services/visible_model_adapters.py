@@ -368,197 +368,221 @@ def _stream_openai_compatible_model(
     except Exception:
         _tt = None
     _tt_first_tok = True
-    try:
-        for ev in _iter_openai_compatible_chat_events(
-            provider=provider,
-            model=model,
-            auth_profile=auth_profile,
-            base_url=base_url,
-            messages=chat_messages,
-            tools=tools or None,
-            temperature=_mod_temp,
-            top_p=_mod_top_p,
-            extra_body=_thinking_body or None,
-        ):
+    # ── ÉT NYT FORSOEG NAAR UDBYDEREN TAV (15/9-2026) ────────────────────
+    # Bjoern 14/9: seks koersler doede efter 906-940 sekunder uden ét tegn paa
+    # skaermen. Kl. 22:27 sendte han det SAMME spoergsmaal igen og fik svar paa
+    # fem sekunder, mens det foerste forsoeg stadig hang. Han leverede altsaa
+    # selv beviset for at et genforsoeg virker.
+    #
+    # Kun paa _vf.STALL_KODE, som stroem-funktionen kun rejser naar den ikke
+    # har sendt ét eneste event. Hver `yield` herunder drives af et `ev`, saa
+    # den kode er samtidig beviset for at intet er naaet skaermen.
+    #
+    # ÉT forsoeg. Samme regel som bro-failoveren: en aerlig fejl er bedre end
+    # en langsom. Genforsoeget staar FOER observationen i handleren, saa den
+    # endelige fejl stadig bliver bogfoert i Centralen.
+    from core.services import visible_run_firstpass as _vf
+    for _forsoeg in range(_vf.MAKS_GENFORSOEG + 1):
+        try:
+            for ev in _iter_openai_compatible_chat_events(
+                provider=provider,
+                model=model,
+                auth_profile=auth_profile,
+                base_url=base_url,
+                messages=chat_messages,
+                tools=tools or None,
+                temperature=_mod_temp,
+                top_p=_mod_top_p,
+                extra_body=_thinking_body or None,
+            ):
+                if controller is not None and controller.is_cancelled():
+                    raise VisibleModelStreamCancelled("visible-run-cancelled")
+                kind = ev.get("kind")
+                if kind == "delta":
+                    delta = str(ev.get("text") or "")
+                    if delta:
+                        if _tt_first_tok and _tt is not None:
+                            _tt.mark("deepseek_first_token", f"{provider}/{model}")
+                            _tt_first_tok = False
+                        yield VisibleModelDelta(delta=delta)
+                elif kind == "reasoning_delta":
+                    # Thinking-modeller sender ræsonnering FØR svaret. Videresend den
+                    # live, så brugeren ser et foldbart «tænker…» med det samme i
+                    # stedet for tomhed. Uden dette var deepseek-v4-flash tavs i
+                    # 20,66 s (målt 2026-09-01) mens 1.653 tanke-bidder blev
+                    # kasseret her og først læst igen ved `done`.
+                    _rd = str(ev.get("text") or "")
+                    if _rd:
+                        if _tt_first_tok and _tt is not None:
+                            _tt.mark("deepseek_first_token", f"{provider}/{model} (reasoning)")
+                            _tt_first_tok = False
+                        yield VisibleModelReasoningDelta(delta=_rd)
+                elif kind == "tool_call":
+                    tc = {
+                        "id": str(ev.get("id") or ""),
+                        "type": "function",
+                        "function": {
+                            "name": str(ev.get("name") or ""),
+                            "arguments": str(ev.get("arguments") or ""),
+                        },
+                    }
+                    collected_tool_calls.append(tc)
+                elif kind == "done":
+                    if _tt is not None:
+                        _tt.mark("deepseek_done", f"{provider}/{model} stream done")
+                    if collected_tool_calls:
+                        yield VisibleModelToolCalls(tool_calls=collected_tool_calls)
+                    full_text = str(ev.get("full_text") or "")
+                    _reasoning = str(ev.get("reasoning_content") or "")
+                    _finish_reason = str(ev.get("finish_reason") or "").strip()
+                    # I1-heal (port fra ollama-stien linje 1854, 2026-06-30 — DEN ægte
+                    # cutoff-rod): deepseek-v4-flash/v4-pro/reasoner (thinking) lægger NOGLE
+                    # GANGE hele svaret i reasoning_content mens content er TOM. reasoning-
+                    # deltaerne streames til klienten (brugeren SER teksten), men content-
+                    # accumulatoren forblev tom → text_preview='' → falsk empty_completion →
+                    # fallback wiper det ægte (streamede) svar. Denne openai-compat-sti (native
+                    # deepseek) MANGLEDE heal'en ollama-stien har. Nu: tom content + ingen
+                    # tools + reasoning har indhold → surfacér reasoning som svaret. Fallback,
+                    # ikke default: uændret når content er til stede.
+                    if (
+                        not full_text
+                        and not collected_tool_calls
+                        and _reasoning.strip()
+                    ):
+                        full_text = _reasoning_fallback_text(
+                            _reasoning, finish_reason=_finish_reason,
+                        )
+                        if full_text:
+                            _observe_content_empty_thinking_fallback(
+                                provider, model, "openai_compat_first_pass", len(_reasoning),
+                            )
+                    _output_tokens = int(
+                        ev.get("output_tokens") or _estimate_tokens(full_text)
+                    )
+                    # First-pass streams used to lose finish_reason here. Also, the
+                    # agentic hollow-promise guard is not reached by a tool-free first
+                    # pass. Recover both cases before emitting one terminal result.
+                    _deferred_text = False
+                    if full_text and not collected_tool_calls and _finish_reason != "length":
+                        try:
+                            from core.services.hollow_promise_guard import (
+                                hollow_promise_guard_enabled,
+                                is_deferred_text_promise,
+                            )
+                            _deferred_text = (
+                                hollow_promise_guard_enabled()
+                                and is_deferred_text_promise(full_text)
+                            )
+                        except Exception:
+                            _deferred_text = False
+                    if (
+                        (_finish_reason == "length" or _deferred_text)
+                        and full_text
+                        and not collected_tool_calls
+                    ):
+                        try:
+                            from core.services.visible_followup import synthesize_continuation
+                            _continued = synthesize_continuation(
+                                provider=provider,
+                                model=model,
+                                base_messages=chat_messages,
+                                exchanges=[],
+                                partial_text=full_text,
+                                continuation_instruction=(
+                                    "Du afsluttede med at love næste tekstafsnit. Skriv det "
+                                    "lovede afsnit nu og afslut hele svaret i denne tur. "
+                                    "Gentag ikke teksten ovenfor."
+                                    if _deferred_text else ""
+                                ),
+                            ).strip()
+                        except Exception:
+                            _continued = ""
+                        if _continued:
+                            _joiner = "" if full_text[-1:].isspace() else " "
+                            _continuation_delta = _joiner + _continued
+                            yield VisibleModelDelta(delta=_continuation_delta)
+                            full_text += _continuation_delta
+                            _output_tokens += _estimate_tokens(_continued)
+                            _finish_reason = "stop"
+                        else:
+                            _failure_note = (
+                                "\n\nJeg lovede en fortsættelse, men den automatiske "
+                                "fortsættelse fejlede i denne tur."
+                                if _deferred_text else
+                                "\n\nMit svar blev afkortet af providerens outputgrænse, "
+                                "og jeg kunne ikke hente resten automatisk."
+                            )
+                            yield VisibleModelDelta(delta=_failure_note)
+                            full_text += _failure_note
+                            _output_tokens += _estimate_tokens(_failure_note)
+                            _finish_reason = "stop"
+                    # 2026-05-22 (Claude): pull cache_hit/miss from the streaming
+                    # done-event. cheap_provider_runtime already yields them
+                    # (search for "cache_hit_tokens" in that file's done-yield),
+                    # but this handler only read input/output/cost/reasoning —
+                    # which is why cost.recorded events still showed 0% cache
+                    # hit even after we plumbed the VisibleModelResult fields.
+                    yield VisibleModelStreamDone(
+                        result=VisibleModelResult(
+                            text=full_text,
+                            input_tokens=int(ev.get("input_tokens") or _estimate_tokens(message)),
+                            output_tokens=_output_tokens,
+                            cost_usd=float(ev.get("cost_usd") or 0.0),
+                            reasoning_content=str(ev.get("reasoning_content") or ""),
+                            cache_hit_tokens=int(ev.get("cache_hit_tokens") or 0),
+                            cache_miss_tokens=int(ev.get("cache_miss_tokens") or 0),
+                            finish_reason=_finish_reason,
+                            # Hvad udbyderen FAKTISK svarede med. Tom = den sagde
+                            # det ikke; det er uvidenhed, ikke «ingen model».
+                            observed_model=str(ev.get("observed_model") or ""),
+                        )
+                    )
+                    # BOGFOER OBSERVATIONEN HER, hvor den sker. Et lager over
+                    # model-epoker som ingen fylder ville vaere endnu et lag ingen
+                    # bruger. Fail-safe: en observation maa aldrig kunne vaelte den
+                    # tur der frembragte den.
+                    try:
+                        from core.services.provider_model_epochs import (
+                            record_model_observation,
+                        )
+                        record_model_observation(
+                            provider=str(provider or ""),
+                            requested_model=str(model or ""),
+                            observed_model=str(ev.get("observed_model") or ""),
+                        )
+                    except Exception:
+                        pass
+                    return
+        except VisibleModelStreamCancelled:
+            raise
+        except Exception as _prov_exc:
             if controller is not None and controller.is_cancelled():
                 raise VisibleModelStreamCancelled("visible-run-cancelled")
-            kind = ev.get("kind")
-            if kind == "delta":
-                delta = str(ev.get("text") or "")
-                if delta:
-                    if _tt_first_tok and _tt is not None:
-                        _tt.mark("deepseek_first_token", f"{provider}/{model}")
-                        _tt_first_tok = False
-                    yield VisibleModelDelta(delta=delta)
-            elif kind == "reasoning_delta":
-                # Thinking-modeller sender ræsonnering FØR svaret. Videresend den
-                # live, så brugeren ser et foldbart «tænker…» med det samme i
-                # stedet for tomhed. Uden dette var deepseek-v4-flash tavs i
-                # 20,66 s (målt 2026-09-01) mens 1.653 tanke-bidder blev
-                # kasseret her og først læst igen ved `done`.
-                _rd = str(ev.get("text") or "")
-                if _rd:
-                    if _tt_first_tok and _tt is not None:
-                        _tt.mark("deepseek_first_token", f"{provider}/{model} (reasoning)")
-                        _tt_first_tok = False
-                    yield VisibleModelReasoningDelta(delta=_rd)
-            elif kind == "tool_call":
-                tc = {
-                    "id": str(ev.get("id") or ""),
-                    "type": "function",
-                    "function": {
-                        "name": str(ev.get("name") or ""),
-                        "arguments": str(ev.get("arguments") or ""),
-                    },
-                }
-                collected_tool_calls.append(tc)
-            elif kind == "done":
-                if _tt is not None:
-                    _tt.mark("deepseek_done", f"{provider}/{model} stream done")
-                if collected_tool_calls:
-                    yield VisibleModelToolCalls(tool_calls=collected_tool_calls)
-                full_text = str(ev.get("full_text") or "")
-                _reasoning = str(ev.get("reasoning_content") or "")
-                _finish_reason = str(ev.get("finish_reason") or "").strip()
-                # I1-heal (port fra ollama-stien linje 1854, 2026-06-30 — DEN ægte
-                # cutoff-rod): deepseek-v4-flash/v4-pro/reasoner (thinking) lægger NOGLE
-                # GANGE hele svaret i reasoning_content mens content er TOM. reasoning-
-                # deltaerne streames til klienten (brugeren SER teksten), men content-
-                # accumulatoren forblev tom → text_preview='' → falsk empty_completion →
-                # fallback wiper det ægte (streamede) svar. Denne openai-compat-sti (native
-                # deepseek) MANGLEDE heal'en ollama-stien har. Nu: tom content + ingen
-                # tools + reasoning har indhold → surfacér reasoning som svaret. Fallback,
-                # ikke default: uændret når content er til stede.
-                if (
-                    not full_text
-                    and not collected_tool_calls
-                    and _reasoning.strip()
-                ):
-                    full_text = _reasoning_fallback_text(
-                        _reasoning, finish_reason=_finish_reason,
-                    )
-                    if full_text:
-                        _observe_content_empty_thinking_fallback(
-                            provider, model, "openai_compat_first_pass", len(_reasoning),
-                        )
-                _output_tokens = int(
-                    ev.get("output_tokens") or _estimate_tokens(full_text)
+            if (getattr(_prov_exc, "code", "") == _vf.STALL_KODE
+                    and _forsoeg < _vf.MAKS_GENFORSOEG):
+                # Udbyderen tav FOER sit foerste event, saa intet er naaet
+                # skaermen og et nyt forsoeg kan ikke gentage tekst.
+                logger.warning(
+                    "[stille-udbyder] %s/%s tav — proever igen (forsoeg %s): %s",
+                    provider, model, _forsoeg + 2, _prov_exc,
                 )
-                # First-pass streams used to lose finish_reason here. Also, the
-                # agentic hollow-promise guard is not reached by a tool-free first
-                # pass. Recover both cases before emitting one terminal result.
-                _deferred_text = False
-                if full_text and not collected_tool_calls and _finish_reason != "length":
-                    try:
-                        from core.services.hollow_promise_guard import (
-                            hollow_promise_guard_enabled,
-                            is_deferred_text_promise,
-                        )
-                        _deferred_text = (
-                            hollow_promise_guard_enabled()
-                            and is_deferred_text_promise(full_text)
-                        )
-                    except Exception:
-                        _deferred_text = False
-                if (
-                    (_finish_reason == "length" or _deferred_text)
-                    and full_text
-                    and not collected_tool_calls
-                ):
-                    try:
-                        from core.services.visible_followup import synthesize_continuation
-                        _continued = synthesize_continuation(
-                            provider=provider,
-                            model=model,
-                            base_messages=chat_messages,
-                            exchanges=[],
-                            partial_text=full_text,
-                            continuation_instruction=(
-                                "Du afsluttede med at love næste tekstafsnit. Skriv det "
-                                "lovede afsnit nu og afslut hele svaret i denne tur. "
-                                "Gentag ikke teksten ovenfor."
-                                if _deferred_text else ""
-                            ),
-                        ).strip()
-                    except Exception:
-                        _continued = ""
-                    if _continued:
-                        _joiner = "" if full_text[-1:].isspace() else " "
-                        _continuation_delta = _joiner + _continued
-                        yield VisibleModelDelta(delta=_continuation_delta)
-                        full_text += _continuation_delta
-                        _output_tokens += _estimate_tokens(_continued)
-                        _finish_reason = "stop"
-                    else:
-                        _failure_note = (
-                            "\n\nJeg lovede en fortsættelse, men den automatiske "
-                            "fortsættelse fejlede i denne tur."
-                            if _deferred_text else
-                            "\n\nMit svar blev afkortet af providerens outputgrænse, "
-                            "og jeg kunne ikke hente resten automatisk."
-                        )
-                        yield VisibleModelDelta(delta=_failure_note)
-                        full_text += _failure_note
-                        _output_tokens += _estimate_tokens(_failure_note)
-                        _finish_reason = "stop"
-                # 2026-05-22 (Claude): pull cache_hit/miss from the streaming
-                # done-event. cheap_provider_runtime already yields them
-                # (search for "cache_hit_tokens" in that file's done-yield),
-                # but this handler only read input/output/cost/reasoning —
-                # which is why cost.recorded events still showed 0% cache
-                # hit even after we plumbed the VisibleModelResult fields.
-                yield VisibleModelStreamDone(
-                    result=VisibleModelResult(
-                        text=full_text,
-                        input_tokens=int(ev.get("input_tokens") or _estimate_tokens(message)),
-                        output_tokens=_output_tokens,
-                        cost_usd=float(ev.get("cost_usd") or 0.0),
-                        reasoning_content=str(ev.get("reasoning_content") or ""),
-                        cache_hit_tokens=int(ev.get("cache_hit_tokens") or 0),
-                        cache_miss_tokens=int(ev.get("cache_miss_tokens") or 0),
-                        finish_reason=_finish_reason,
-                        # Hvad udbyderen FAKTISK svarede med. Tom = den sagde
-                        # det ikke; det er uvidenhed, ikke «ingen model».
-                        observed_model=str(ev.get("observed_model") or ""),
-                    )
-                )
-                # BOGFOER OBSERVATIONEN HER, hvor den sker. Et lager over
-                # model-epoker som ingen fylder ville vaere endnu et lag ingen
-                # bruger. Fail-safe: en observation maa aldrig kunne vaelte den
-                # tur der frembragte den.
-                try:
-                    from core.services.provider_model_epochs import (
-                        record_model_observation,
-                    )
-                    record_model_observation(
-                        provider=str(provider or ""),
-                        requested_model=str(model or ""),
-                        observed_model=str(ev.get("observed_model") or ""),
-                    )
-                except Exception:
-                    pass
-                return
-    except VisibleModelStreamCancelled:
-        raise
-    except Exception as _prov_exc:
-        if controller is not None and controller.is_cancelled():
-            raise VisibleModelStreamCancelled("visible-run-cancelled")
-        # Stream-cluster: visible-lanens DEFAULT-provider-sti (deepseek/glm/openai-
-        # compat) var blind — en 429/4xx/timeout her forsvandt mod visible_runs uden
-        # spor i Centralen. Nu synlig (rate-limit vs øvrig fejl). Self-safe, re-raiser.
-        try:
-            from core.services.central_core import central
-            _sc = getattr(_prov_exc, "status_code", None)
-            central().observe({
-                "cluster": "stream",
-                "nerve": "provider_rate_limited" if _sc == 429 else "provider_error",
-                "lane": "visible", "provider": str(provider or ""),
-                "model": str(model or ""), "status_code": _sc,
-                "detail": f"{type(_prov_exc).__name__}: {_prov_exc}"[:200],
-            })
-        except Exception:
-            pass
-        raise
+                continue
+            # Stream-cluster: visible-lanens DEFAULT-provider-sti (deepseek/glm/openai-
+            # compat) var blind — en 429/4xx/timeout her forsvandt mod visible_runs uden
+            # spor i Centralen. Nu synlig (rate-limit vs øvrig fejl). Self-safe, re-raiser.
+            try:
+                from core.services.central_core import central
+                _sc = getattr(_prov_exc, "status_code", None)
+                central().observe({
+                    "cluster": "stream",
+                    "nerve": "provider_rate_limited" if _sc == 429 else "provider_error",
+                    "lane": "visible", "provider": str(provider or ""),
+                    "model": str(model or ""), "status_code": _sc,
+                    "detail": f"{type(_prov_exc).__name__}: {_prov_exc}"[:200],
+                })
+            except Exception:
+                pass
+            raise
 
 
 def _run_openai_compatible_visible(

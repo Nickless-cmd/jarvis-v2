@@ -141,6 +141,20 @@ def _iter_openai_compatible_chat_events(
     # kan traede til. Uden dette felt kender runtimen kun sit oenske.
     _observed_model = ""
 
+    # ── STILHEDS-VAGT (15/9-2026) ────────────────────────────────────────
+    # 14/9 hang seks af Bjoerns koersler i 906-940 sekunder. `py-spy` fandt
+    # traaden i ssl.read; `ss -tin` viste at der KOM bytes — ca. 41 hvert 8.
+    # sekund. Sporet sagde hvad de var: «FIRST item efter 905.6s:
+    # VisibleModelStreamDone» — en stroem der lukkede helt uden indhold.
+    # Keepalive, ikke tekst.
+    #
+    # httpx' laese-timeout saa de bytes og var tilfreds. Den maaler om der
+    # kommer BYTES. Ingen maalte om der kom INDHOLD.
+    from core.services import visible_run_firstpass as _vf
+    import time as _stime
+    _t_aabnet = _stime.monotonic()
+    _har_data = False
+
     try:
         with httpx.stream(
             "POST", f"{root}/chat/completions",
@@ -171,10 +185,23 @@ def _iter_openai_compatible_chat_events(
                     message=f"HTTP {response.status_code}: {body.decode('utf-8', errors='replace')[:500]}",
                     status_code=response.status_code,
                 )
+            _t_aabnet = _stime.monotonic()
             for line in response.iter_lines():
                 line = (line or "").strip()
                 if not line.startswith("data: "):
+                    # Keepalive-linjer naaede allerede herned og blev sprunget
+                    # over. De skal bare taelles med et ur paa.
+                    if not _har_data and (_stime.monotonic() - _t_aabnet) >= _vf.STALL_UDEN_DATA_S:
+                        raise CheapProviderError(
+                            provider=provider, code=_vf.STALL_KODE,
+                            message=(
+                                f"{provider}/{model} holdt forbindelsen aaben i "
+                                f"{int(_stime.monotonic() - _t_aabnet)}s uden ét "
+                                f"eneste indholds-event"
+                            ),
+                        )
                     continue
+                _har_data = True
                 data_str = line[6:]
                 if data_str == "[DONE]":
                     break
@@ -235,6 +262,20 @@ def _iter_openai_compatible_chat_events(
                         slot["arguments"] += str(args_frag)
     except CheapProviderError:
         raise
+    except httpx.TimeoutException as exc:
+        # Det ANDET tavshedstilfaelde: der kom slet ingen linjer. De to
+        # daekker hinanden — linjer uden indhold fanges ovenfor, total
+        # stilhed her — saa vagten er ikke afhaengig af hvilken form
+        # udbyderens keepalive tilfaeldigvis har.
+        if not _har_data:
+            raise CheapProviderError(
+                provider=provider, code=_vf.STALL_KODE,
+                message=f"{provider}/{model} sendte intet foer timeout: {exc}",
+            ) from exc
+        raise CheapProviderError(
+            provider=provider, code="stream-error",
+            message=f"{provider} streaming failed: {exc}",
+        ) from exc
     except Exception as exc:
         raise CheapProviderError(
             provider=provider, code="stream-error",

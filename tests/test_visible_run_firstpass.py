@@ -51,10 +51,29 @@ def test_de_syge_koersler_ville_vaere_blevet_fanget():
         assert fp.loft_naaet(ventet), ventet
 
 
-def test_loftet_fanger_7_gange_hurtigere_end_i_aften():
+def test_det_han_MAERKER_er_den_indre_vagt():
     """Pointen er ikke bare at fange det, men at fange det mens han stadig
-    sidder der. 900 sekunder er femten minutter."""
-    assert 907.0 / fp.FOERSTE_ELEMENT_LOFT_S >= 7.0
+    sidder der. 900 sekunder er femten minutter.
+
+    Da loftet stod alene var det loftet han ventede paa. Med et genforsoeg
+    nedenunder er det den INDRE vagt der afgoer ventetiden: den opdager
+    stilheden, proever igen, og et sundt forsoeg er ovre paa under 40 s.
+    """
+    vaerst_foelt = fp.STALL_UDEN_DATA_S + 40.0
+    assert vaerst_foelt <= 105.0
+    assert 906.0 / vaerst_foelt >= 9.0
+
+
+def test_loftet_kvaeler_ikke_genforsoeget():
+    """Det er hele grunden til at loftet blev flyttet fra 120 til 240. Ved 120
+    ville bagstoppet slaa netop det forsoeg ihjel som var ved at lykkes."""
+    to_forsoeg_og_et_sundt_svar = fp.STALL_UDEN_DATA_S * 2 + 40.0
+    assert fp.FOERSTE_ELEMENT_LOFT_S > to_forsoeg_og_et_sundt_svar
+
+
+def test_loftet_er_stadig_langt_under_det_der_skete():
+    """Et bagstop der ligger over skaden er ikke et bagstop."""
+    assert 906.0 / fp.FOERSTE_ELEMENT_LOFT_S >= 3.5
 
 
 # ───────────────────────────────────────────────────── hjerteslaget skal ikke lyve

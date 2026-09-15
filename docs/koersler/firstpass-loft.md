@@ -84,8 +84,58 @@ Koblings-testen er en kilde-vagt, ikke en ægte kørsel — loopet ligger inde i
 5.000-linjers async-generator. Den er svagere, og det står i testen. Men den
 fanger præcis den fejl der ellers gør hele filen til død kode.
 
-## Udestår
+## Genforsøget (15/9)
 
-Et loft giver en ærlig fejl efter to minutter. Et **nyt forsøg** ville give et
-svar: kl. 22:27 lykkedes netop sådan et på fem sekunder. Det er den rigtige
-næste ting, og det rører ikke lane-politikken.
+Et loft giver en ærlig fejl. Et **nyt forsøg** giver et svar — og Bjørn
+leverede selv beviset kl. 22:27: samme spørgsmål, nyt forsøg, svar på fem
+sekunder mens det første stadig hang.
+
+Det er delt i to, så cheap-lane ikke røres:
+
+**Detektionen** sidder i læse-loopet i `cheap_provider_runtime_streaming.py`.
+Keepalive-linjerne nåede allerede derned og blev sprunget over — de har nu et
+ur på. To tilfælde dækker hinanden: linjer uden indhold fanges af tælleren,
+total stilhed af httpx' egen timeout, som nu bærer samme kode. Vagten afhænger
+derfor ikke af hvilken form udbyderens keepalive tilfældigvis har.
+
+**Genforsøget** sidder i `visible_model_adapters.py`, som kun den synlige lane
+bruger. Ét forsøg, samme regel som bro-failoveren.
+
+Det er sikkert at gentage kaldet, fordi `STALL_KODE` kun rejses når
+strøm-funktionen ikke har sendt ét eneste event — og hver `yield` i adapteren
+drives af et event. Koden er dermed samtidig beviset for at intet er nået
+skærmen.
+
+Genforsøget står **før** bogføringen i Centralen, så et vellykket nyt forsøg
+ikke efterlader en fejl-observation for noget der gik godt.
+
+### De tre tal
+
+    STALL_UDEN_DATA_S  <  2 x STALL  <  FOERSTE_ELEMENT_LOFT_S
+           60                120              240
+
+Loftet stod på 120 da det blev bygget alene. Med et genforsøg nedenunder ville
+120 slå netop det forsøg ihjel som var ved at lykkes: 60 s til at opdage
+stilheden plus 40 s (den langsomste sunde kørsel) er 100 s. Loftet er derfor
+flyttet til 240 og er nu et bagstop for det den indre vagt ikke kan se.
+
+Det han **mærker** er den indre vagt: værst 60 + 40 = 100 sekunder mod
+aftenens 906. Ni gange hurtigere.
+
+### Mutations-prøve
+
+| Mutation | Udfald |
+|---|---|
+| stilheds-vagten fjernes | 1 rød |
+| vagten fyrer også efter indhold (ville gentage tekst) | 1 rød |
+| `_har_data` sættes aldrig | 1 rød |
+| genforsøget fjernes fra adapteren | 1 rød |
+| løkken fjernes | 1 rød |
+| stall-tærsklen over det ydre loft | 5 røde |
+| ubegrænset antal forsøg | 1 rød |
+
+### En fejl i testen selv
+
+Første udgave udskiftede et auth-navn jeg havde gættet på, så den målte
+«auth-not-ready» i stedet for vagten. Den så rød ud af den rigtige grund og
+ville have set grøn ud af den forkerte.

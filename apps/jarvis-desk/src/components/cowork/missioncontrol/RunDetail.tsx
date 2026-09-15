@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { X } from 'lucide-react'
 import type { ApiConfig } from '../../../lib/api'
 import { getMcRunDetail, type McRunDetail } from '../../../lib/missionControlApi'
+import { PromptSammensaetning } from '../PromptSammensaetning'
 import { StatusChip } from './StatusChip'
 
 /** Enkelt-run drill-down: run-metadata + trin-tidslinje (dens hændelser). Åbnes fra
@@ -59,6 +60,12 @@ export function RunDetail({
           )}
           {run?.error && <div className="mc-rundetail-error">{run.error}</div>}
           {run?.text_preview && <div className="mc-rundetail-preview">{run.text_preview}</div>}
+
+          {/* «Hvad byggede han svaret på?» — prompt-sammensaetningen laa FOER
+              kun i WorkQueue, som var dobbelt sandhed med «Afventer dig» og
+              «Seneste koersler» (Bjoern 15/9-2026). Den hoerer hjemme her, hvor
+              man i forvejen er gaaet ind i ÉN koersel. */}
+          <PromptSammensaetning config={config} runId={runId} />
 
           <div className="mc-rundetail-steps-head">Trin ({detail?.steps.length ?? 0})</div>
           <ol className="mc-steps">

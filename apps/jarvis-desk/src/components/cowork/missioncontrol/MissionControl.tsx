@@ -10,11 +10,14 @@ import { ShareGuardPane } from '../ShareGuardPane'
 import { SummaryBar } from './SummaryBar'
 import { RunsTable } from './RunsTable'
 import { AgentRoster } from './AgentRoster'
+import { AgentWork } from '../AgentWork'
+import { Lektier } from '../Lektier'
+import { ReviewPanel } from '../ReviewPanel'
 import { CostPanel } from './CostPanel'
 import { EventStream } from './EventStream'
 import { StatusChip } from './StatusChip'
 
-type Tab = 'oversigt' | 'runs' | 'agenter' | 'godkendelser' | 'opgaver' | 'planlagt' | 'cost' | 'haendelser'
+type Tab = 'oversigt' | 'runs' | 'agenter' | 'godkendelser' | 'opgaver' | 'planlagt' | 'cost' | 'review' | 'haendelser'
 
 const TABS: { id: Tab; label: string; ownerOnly?: boolean }[] = [
   { id: 'oversigt', label: 'Oversigt' },
@@ -22,6 +25,9 @@ const TABS: { id: Tab; label: string; ownerOnly?: boolean }[] = [
   { id: 'agenter', label: 'Agenter', ownerOnly: true },
   { id: 'godkendelser', label: 'Godkendelser' },
   { id: 'opgaver', label: 'Opgaver' },
+  // Lektier + arbejdstraeet er begge /review/* og havde intet modstykke i MC.
+  // De laa foer loest ovenover fladen (Bjoern 15/9: «kastet ind i toppen»).
+  { id: 'review', label: 'Review', ownerOnly: true },
   { id: 'planlagt', label: 'Planlagt' },
   { id: 'cost', label: 'Cost', ownerOnly: true },
   { id: 'haendelser', label: 'Hændelser', ownerOnly: true },
@@ -131,8 +137,33 @@ export function MissionControl({
           </div>
         )}
         {tab === 'runs' && <RunsTable config={config} runs={runs} />}
-        {tab === 'agenter' && isOwner && <AgentRoster agents={agents} />}
+        {tab === 'agenter' && isOwner && (
+          <div className="mc-overview">
+            <section className="cowork-pane">
+              <div className="cowork-pane-head">Agenter <span className="cowork-count">{agents.length}</span></div>
+              <AgentRoster agents={agents} />
+            </section>
+            {/* Rosteret er HVEM der findes; arbejdet er HVAD der koerte. To lag
+                af samme sandhed — de laa foer paa hver sin flade, og det var
+                dobbelt sandhed (Bjoern 15/9). */}
+            <section className="cowork-pane">
+              <AgentWork config={config} />
+            </section>
+          </div>
+        )}
         {tab === 'godkendelser' && approvalsPane}
+        {tab === 'review' && isOwner && (
+          <div className="mc-overview">
+            {/* Begge er /review/* og hoerer sammen: lektier er hvad han LAERTE,
+                arbejdstraeet er hvad han AENDREDE. */}
+            <section className="cowork-pane">
+              <Lektier config={config} />
+            </section>
+            <section className="cowork-pane">
+              <ReviewPanel config={config} />
+            </section>
+          </div>
+        )}
         {tab === 'opgaver' && (
           <div className="mc-overview">
             <section className="cowork-pane">

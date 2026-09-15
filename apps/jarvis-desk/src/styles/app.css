@@ -1768,32 +1768,6 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 .cowork-zone-body { flex: 1; overflow-y: auto; padding: 16px; }
 .cowork-settings { display: flex; flex-direction: column; gap: 18px; max-width: 720px; margin: 0 auto; }
 
-/* ── Arbejde-zonen (15/9-2026) ─────────────────────────────────────────────
-   Bjoern: «de er bare kastet ind i toppen og ikk som det andet».
-
-   Maalt i den aegte stilblok ved 1600px bredde:
-       .work-queue 1600   .lk 1600   .rv 1600   .aw 1600   .mc 1120 centreret
-
-   De fire havde `max-width: none` og ingen auto-margin, og .lk/.rv/.aw havde
-   hverken baggrund, ramme eller polstring — mens Mission Control nedenunder
-   sidder centreret med sine egne kort. Derfor laeste de som noget der var
-   tabt ind ovenover, ikke som en del af fladen.
-
-   De faar husets eget kort (.cowork-pane) og MC's bredde — ikke
-   indstillingernes smalle 720px-kolonne, for de staar side om side med MC. */
-.mc-zone { display: flex; flex-direction: column; gap: 18px; }
-.mc-zone > * { width: 100%; max-width: 1120px; margin-left: auto; margin-right: auto; }
-.mc-zone > .work-queue,
-.mc-zone > .lk,
-.mc-zone > .rv,
-.mc-zone > .aw,
-.mc-zone > .lk-tom,
-.mc-zone > .rv-tom,
-.mc-zone > .aw-tom,
-.mc-zone > .wq-tom {
-  background: var(--bg-1); border: 1px solid var(--line);
-  border-radius: 10px; padding: 12px 14px; margin-bottom: 0;
-}
 
 /* ── Central HUD (JARVIS-design 1:1 — docs/design/jarvis-mind-design-tokens.md) ── */
 .central-hud {

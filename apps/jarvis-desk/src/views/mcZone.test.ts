@@ -3,56 +3,71 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 /**
- * Bjørn 15/9-2026: «Arbejde, Lektier og hans arbejdere ... de er bare kastet
- * ind i toppen og ikk som det andet».
+ * Arbejde-fladen: Mission Control ER siden — ikke noget der ligger under fire
+ * løse sektioner.
  *
- * Målt i den ægte stilblok ved 1600px bredde, FØR:
+ * Bjørn 15/9-2026: «de 4 bør være under mission control da det er toppen af
+ * siden... der findes allerede en felt der hedder agenter foreks. arbejder er
+ * dobbelt sandhed... og arbejde er i afventer dig feltet».
  *
- *     .work-queue 1600   .lk 1600   .rv 1600   .aw 1600   .mc 1120 centreret
+ * Målt før omlægningen:
  *
- * `mc` var den eneste zone uden indpakning — alle andre går gennem `wrap()`.
- * De fire havde `max-width: none`, ingen auto-margin, og .lk/.rv/.aw havde
- * hverken baggrund, ramme eller polstring.
+ *   «Arbejde»        /cowork/queue        = MC's «Afventer dig» (samme endpoint)
+ *   «Hans arbejdere» /central/agents/work ≈ Agenter-fanen (/central/agents)
+ *   Lektier          /review/lessons      — intet modstykke
+ *   Arbejdstræet     /review/changes      — intet modstykke
  *
- * Dette er en KILDE-vagt og ikke en layout-test: jsdom regner ikke CSS-layout,
- * så bredder kan ikke måles her. Den er svagere end målingen i en rigtig
- * browser, og det skal siges. Men den fanger det der ellers ville skride
- * tilbage: at indpakningen eller reglen forsvinder.
+ * Testen er en kilde-vagt: jsdom regner ikke layout, og disse påstande handler
+ * om STRUKTUR, ikke om pixels. Den er svagere end at se fladen, og det skal
+ * siges. Men den fanger det der ellers ville skride tilbage: at en kopi
+ * genopstår, eller at en sektion falder ud af fanen.
  */
 const læs = (p: string) => fs.readFileSync(path.join(__dirname, '..', p), 'utf8')
 
-describe('Arbejde-zonen har samme ramme som Mission Control', () => {
-  it('zonen er pakket ind', () => {
+describe('Mission Control er hele Arbejde-fladen', () => {
+  it('zonen indeholder KUN Mission Control', () => {
     const v = læs('views/CoworkView.tsx')
-    expect(v).toMatch(/case 'mc': return \(\s*<div className="mc-zone">/)
+    expect(v).toMatch(/case 'mc': return missionControl/)
   })
 
-  it('rammen findes i stilblokken', () => {
-    expect(læs('styles/app.css')).toMatch(/\.mc-zone \{[^}]*flex-direction: column/)
-  })
-
-  it('bredden er MCs 1120 og ikke indstillingernes 720', () => {
-    // 720 er den smalle indstillings-kolonne. Zonen står side om side med
-    // Mission Control, så den skal følge MCs bredde.
-    const css = læs('styles/app.css')
-    const regel = css.slice(css.indexOf('.mc-zone > *'))
-    expect(regel.slice(0, 120)).toContain('max-width: 1120px')
-  })
-
-  it('de fire sektioner får husets kort', () => {
-    const css = læs('styles/app.css')
-    const blok = css.slice(css.indexOf('.mc-zone > .work-queue'))
-    for (const k of ['.lk', '.rv', '.aw']) {
-      expect(blok.slice(0, 400)).toContain(`.mc-zone > ${k},`)
+  it('de fire ligger ikke længere løst ovenover', () => {
+    const v = læs('views/CoworkView.tsx')
+    // Kun omtale i kommentarer er i orden; en JSX-brug er ikke.
+    for (const navn of ['WorkQueue', 'Lektier', 'ReviewPanel', 'AgentWork']) {
+      expect(v).not.toContain(`<${navn} `)
     }
-    expect(blok.slice(0, 600)).toContain('border-radius: 10px')
   })
 
-  it('Mission Control bliver liggende i zonen', () => {
-    // Fjernes den, mister siden sit kontrolpanel — og testene ovenfor ville
-    // stadig være grønne.
-    const v = læs('views/CoworkView.tsx')
-    const zone = v.slice(v.indexOf('<div className="mc-zone">'))
-    expect(zone.slice(0, 600)).toContain('{missionControl}')
+  it('duplikatet af koeen er VAEK, ikke bare skjult', () => {
+    // Dobbelt sandhed loeses ikke ved at lade kopien ligge som doed kode.
+    expect(fs.existsSync(path.join(__dirname, '../components/cowork/WorkQueue.tsx'))).toBe(false)
+    expect(fs.existsSync(path.join(__dirname, '../hooks/useWorkQueue.ts'))).toBe(false)
+  })
+
+  it('prompt-sammensaetningen overlevede flytningen', () => {
+    // Den var WorkQueue's ENESTE unikke funktion. Uden denne ville sletningen
+    // have kostet en evne — og ingen anden test ville have opdaget det.
+    const rd = læs('components/cowork/missioncontrol/RunDetail.tsx')
+    expect(rd).toContain('<PromptSammensaetning')
+  })
+
+  it('arbejderne bor under Agenter-fanen', () => {
+    const mc = læs('components/cowork/missioncontrol/MissionControl.tsx')
+    const fane = mc.slice(mc.indexOf("tab === 'agenter'"))
+    expect(fane.slice(0, 700)).toContain('<AgentRoster')
+    expect(fane.slice(0, 700)).toContain('<AgentWork')
+  })
+
+  it('Lektier og arbejdstraeet har deres egen fane', () => {
+    const mc = læs('components/cowork/missioncontrol/MissionControl.tsx')
+    expect(mc).toMatch(/\{ id: 'review', label: 'Review'/)
+    const fane = mc.slice(mc.indexOf("tab === 'review'"))
+    expect(fane.slice(0, 700)).toContain('<Lektier')
+    expect(fane.slice(0, 700)).toContain('<ReviewPanel')
+  })
+
+  it('fanen er med i Tab-typen — ellers kan den ikke vaelges', () => {
+    const mc = læs('components/cowork/missioncontrol/MissionControl.tsx')
+    expect(mc).toMatch(/type Tab =[^\n]*'review'/)
   })
 })

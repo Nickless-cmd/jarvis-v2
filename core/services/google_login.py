@@ -13,8 +13,11 @@ Sikkerhed/GDPR:
 """
 from __future__ import annotations
 
+import logging
 import secrets
 import time
+
+logger = logging.getLogger(__name__)
 
 _TTL = 300.0
 _LOGIN_PREFIX = "__login__:"
@@ -78,10 +81,12 @@ def complete(state_uid: str, google_email: str, *, now: float | None = None) -> 
         nonce, _, app_id = rest.partition(":")
         if not google_email:
             _RESULTS[nonce] = {"status": "error", "error": "no_email", "exp": t + _TTL}
+            logger.warning("[google-login] nonce=%s app=%s AFVIST: ingen email fra Google", nonce, app_id)
             return "Kunne ikke læse din Google-email."
         user = user_db.find_user_by_google_email(google_email)
         if not user:
             _RESULTS[nonce] = {"status": "error", "error": "no_account", "exp": t + _TTL}
+            logger.warning("[google-login] nonce=%s app=%s AFVIST: ingen konto knyttet til den google-email", nonce, app_id)
             return "Ingen Jarvis-konto er knyttet til denne Google-konto."
         from core.runtime.jarvisx_auth import issue_token
         tok = issue_token(user_id=user["user_id"], role=user.get("role", "member"), app_id=app_id or "")
@@ -89,6 +94,11 @@ def complete(state_uid: str, google_email: str, *, now: float | None = None) -> 
             "status": "ok", "token": tok["token"], "user_id": user["user_id"],
             "role": user.get("role", "member"), "exp": t + _TTL,
         }
+        # Tokens er stateless JWT'er og efterlader intet spor, saa uden denne
+        # linje kan man bagefter ikke skelne «logget ind, men klienten tabte
+        # tokenet» fra «afvist». Det kostede en fejlsoegning 15/9-2026.
+        logger.info("[google-login] nonce=%s app=%s OK: token udstedt til user=%s rolle=%s",
+                    nonce, app_id, user["user_id"], user.get("role", "member"))
         return f"Logget ind som {user.get('name') or 'bruger'} — gå tilbage til appen."
     if state_uid.startswith(_LINK_PREFIX):
         rest = state_uid[len(_LINK_PREFIX):]

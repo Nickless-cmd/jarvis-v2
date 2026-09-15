@@ -50,7 +50,9 @@ export function authHeaders() {
  *  required»; requestJson pakker den som `${path}: ${detail}`. */
 export function erUautoriseret(fejl) {
   const s = String((fejl && fejl.message) || fejl || '')
-  return s.includes('401') || s.includes('authentication required')
+  return (s.includes('401')
+    || s.includes('authentication required')
+    || s.includes('ikke logget ind'))
 }
 
 // ── Google-login, samme kontrakt som desk ────────────────────────────────

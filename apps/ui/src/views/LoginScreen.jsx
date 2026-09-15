@@ -23,7 +23,19 @@ export function LoginScreen({ onLoggedIn }) {
 
   const faerdig = (t) => {
     gemToken(t)
+    // GENINDLAES — saet ikke bare state (15/9-2026, maalt paa Bjoerns login).
+    //
+    // `useUnifiedShell()` kaldes i App FOER login-tjekket, saa dens
+    // `initialize()` er allerede koert ÉN gang uden token og har lagt en
+    // 401-fejl i `error`. Satte vi bare tokenet, ville App se den GAMLE fejl,
+    // konkludere «afvist token» og smide det nyudstedte token vaek med det
+    // samme. Bjoern loggede ind, og appen loggede ham ud igen i samme aandedrag.
+    //
+    // En genindlaesning starter appen forfra MED tokenet, saa `initialize()`
+    // koerer én gang med legitimation. Det er ogsaa hvad en login-side
+    // normalt goer.
     onLoggedIn(t)
+    window.location.reload()
   }
 
   const medGoogle = async () => {

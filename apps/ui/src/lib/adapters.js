@@ -7,12 +7,17 @@
 // genuinely needs (session model selection, system health/git for the
 // composer, and the Jarvis presence surface for the chat support rail).
 
-import { authHeaders } from './auth.js'
+import { authHeaders, hentToken } from './auth.js'
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' }
 const inflightJsonRequests = new Map()
 
 async function requestJson(path, options = {}) {
+  // Uden token er svaret givet: 401. `useUnifiedShell` starter sine timere
+  // ved mount — ogsaa mens login-skaermen staar — saa uden denne vagt
+  // hamrede login-siden serveren med afvisninger den selv havde forudsagt.
+  if (!hentToken()) throw new Error(`${path}: ikke logget ind`)
+
   const method = String(options.method || 'GET').toUpperCase()
   const isDedupableGet = method === 'GET' && !options.body
   const requestKey = isDedupableGet ? `${method}:${path}` : ''

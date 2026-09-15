@@ -1061,7 +1061,7 @@ Generated from source. 7542/14663 functions/methods documented (51%). The list b
 - `core/services/google_connector.py` :: `list_events` (L216)
 - `core/services/google_connector.py` :: `sheets_read` (L283)
 - `core/services/google_connector.py` :: `slides_read` (L311)
-- `core/services/google_login.py` :: `is_login_state` (L67)
+- `core/services/google_login.py` :: `is_login_state` (L70)
 - `core/services/gratitude_tracker.py` :: `build_gratitude_surface` (L59)
 - `core/services/gratitude_tracker.py` :: `detect_gratitude_from_interaction` (L44)
 - `core/services/gratitude_tracker.py` :: `track_gratitude` (L20)

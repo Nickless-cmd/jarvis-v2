@@ -1594,22 +1594,39 @@ def _cog_dream_insight_live(_snap: dict) -> dict[str, Any]:
     return {"persisted": False, "reason": "no-articulation-candidate"}
 
 
-def _cog_autonomous_council_live(_snap: dict) -> dict[str, Any]:
-    """Spontan selv-udloest raadsdeliberation via signal-scoring. Self-throttler
-    INTERNT (_CADENCE_MINUTES = 30 + _last_council_at), saa familien kalder hver
-    tick og daemonen afgoer selv om der er grund til at samle raadet.
-
-    Stod maerket [PENSIONERET] 15/7 uden at nogen familie tog den, saa evnen var
-    reelt vaek. Genindsat 5/9-2026 efter daekningsrevisionen."""
-    from core.services.autonomous_council_daemon import tick_autonomous_council_daemon
-    return tick_autonomous_council_daemon()
-
-
+# ── 15/9-2026: "autonomous_council" TAGET UD af den ubetingede liste ──────────
+#
+# Den stod her og koerte UBETINGET paa hver familie-tick (genindsat 5/9 efter
+# daekningsrevisionen, se commit 1662aa82). Maalt mod state/jarvis.db 15/9:
+#
+#   · 35 raad paa 11 dage — tre per nat, kl. 00:00–00:32
+#   · ~108 council-runs i doegnet, ~32–40 per raad (deliberationen gik i staa
+#     og blev tvunget til konklusion — Centralen flaggede det selv)
+#   · alle paa GRATIS smaa-modeller (llama3.2, deepseek-r1, llama-4-scout),
+#     altsaa praecis de providers council_models.json siger rollerne IKKE maa
+#     bruge, fordi de ikke kan tool-calls
+#   · emner som "The API key used for this request has reached its budget"
+#     (en billig LLM gjorde en fejlstreng til et spoergsmaal)
+#   · og konklusionerne blev ALDRIG laest: recall_council_conclusions findes
+#     som vaerktoej, men kaldes ikke fra én eneste produktionslinje
+#
+# Bjoern 15/9: "council er spildt tokens ... hvilken effekt har det uden du
+# aktivt skal lede efter det". Det har ingen. Derfor er den blinde trigger vaek.
+#
+# MOTOREN ER INTAKT. convene_council (on-demand vaerktoej), council_deliberation_
+# controller og council-tabellerne er den DELTE motor og er urort — den bruges
+# ogsaa af Mission Control. Det er KUN den automatiske indkaldelse der er fjernet:
+# raadet samles naar nogen beder om det, ikke fordi en timer siger det.
+#
+# Claude og OpenAI har begge fravalgt council som tjeneste til fordel for
+# orchestrator-worker (fan-out + syntese), og Anthropic fraraader eksplicit
+# multi-agent hvor agenterne skal DELE kontekst — hvilket er praecis hvad et
+# raad goer. Vil raadet tilbage, skal det bygges som en komposition oven paa
+# agent-runtimen (spawn N med forskellige briefs → synthesizer), ikke som timer.
 _COGNITION_UNCONDITIONAL = (
     ("causal_inference", _cog_causal_inference_live),
     ("dream_insight", _cog_dream_insight_live),
     ("active_sensing", _cog_active_sensing_live),
-    ("autonomous_council", _cog_autonomous_council_live),
 )
 
 

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { ApiConfig } from '../../../lib/api'
+import { openEventSocket } from '../../../lib/api'
 import { getMcEvents, type McEvent } from '../../../lib/missionControlApi'
 
 const FAMILIES = ['alle', 'runtime', 'tool', 'approvals', 'cost', 'channel', 'incident'] as const
@@ -23,7 +24,7 @@ export function EventStream({ config }: { config: ApiConfig | undefined }) {
     const id = setInterval(load, 4000)
     let ws: WebSocket | null = null
     try {
-      ws = new WebSocket(config.apiBaseUrl.replace(/^http/, 'ws').replace(/\/$/, '') + '/ws')
+      ws = openEventSocket(config)
       ws.onmessage = load
       ws.onerror = () => { /* polling dækker */ }
     } catch { /* polling dækker */ }

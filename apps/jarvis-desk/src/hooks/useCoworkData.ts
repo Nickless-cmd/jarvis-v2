@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ApiConfig } from '../lib/api'
+import { openEventSocket } from '../lib/api'
 import {
   getCoworkQueue, getCoworkPlans, getCoworkTodos, getCoworkChannels, resolveQueueItem,
   getShareGuard, resolveShareGuard, getCoworkAgents,
@@ -52,10 +53,9 @@ export function useCoworkData(config: ApiConfig | undefined, isOwner: boolean) {
   useEffect(() => {
     const cfg = cfgRef.current
     if (!cfg) return
-    const wsUrl = cfg.apiBaseUrl.replace(/^http/, 'ws').replace(/\/$/, '') + '/ws'
     let ws: WebSocket | null = null
     try {
-      ws = new WebSocket(wsUrl)
+      ws = openEventSocket(cfg)
       ws.onmessage = () => { void refresh() }
       ws.onerror = () => { /* polling-fallback dækker; sluger fejl-event så det ikke bobler */ }
     } catch { /* polling-fallback dækker */ }

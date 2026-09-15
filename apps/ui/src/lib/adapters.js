@@ -7,7 +7,7 @@
 // genuinely needs (session model selection, system health/git for the
 // composer, and the Jarvis presence surface for the chat support rail).
 
-import { authHeaders, hentToken } from './auth.js'
+import { authHeaders, hentToken, WS_SUBPROTOKOL } from './auth.js'
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' }
 const inflightJsonRequests = new Map()
@@ -97,7 +97,13 @@ function normalizeEventItem(item = {}) {
 function ensureLiveSocket() {
   if (liveSocket || liveEventListeners.size === 0) return
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-  const socket = new WebSocket(`${protocol}//${window.location.host}/ws`)
+  // Tokenet gaar ad SUBPROTOKOLLEN, ikke som ?token= — en query havner i
+  // serverens adgangslog ved hver forbindelse. Browsere kan ikke saette
+  // headers paa en WebSocket, men de kan saette denne.
+  const socket = new WebSocket(
+    `${protocol}//${window.location.host}/ws`,
+    [WS_SUBPROTOKOL, hentToken()],
+  )
   liveSocket = socket
 
   socket.onopen = () => {

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ApiConfig } from '../lib/api'
+import { openEventSocket } from '../lib/api'
 import {
   getMcRuns, getMcAgents, getMcScheduledTasks, getMcOverviewSafe,
   type McRun, type McAgent, type McScheduledTask, type McOverview,
@@ -51,10 +52,9 @@ export function useMissionControl(config: ApiConfig | undefined, isOwner: boolea
   useEffect(() => {
     const cfg = cfgRef.current
     if (!cfg) return
-    const wsUrl = cfg.apiBaseUrl.replace(/^http/, 'ws').replace(/\/$/, '') + '/ws'
     let ws: WebSocket | null = null
     try {
-      ws = new WebSocket(wsUrl)
+      ws = openEventSocket(cfg)
       ws.onmessage = () => { void refresh() }
       ws.onerror = () => { /* polling-fallback dækker */ }
     } catch { /* polling-fallback dækker */ }

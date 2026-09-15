@@ -20,7 +20,33 @@ _EVENT_BATCH_SIZE = 100
 async def websocket_stream(ws: WebSocket) -> None:
     client = getattr(ws, "client", None)
     client_label = f"{getattr(client, 'host', 'unknown')}:{getattr(client, 'port', 'unknown')}"
-    await ws.accept()
+
+    # ── LEGITIMATION (15/9-2026) ─────────────────────────────────────────
+    # Her stod foer bare `await ws.accept()`. Middlewaren er registreret som
+    # app.middleware("http"), saa WebSockets gaar uden om den helt, og denne
+    # rute streamer HELE event-bussen — indre stemme, raesonnements-
+    # konklusioner, private_brain. Maalt: en forbindelse uden token gav
+    # straks rigtige interne events, og Caddy videresender alle stier paa det
+    # offentligt naaelige api.srvlab.dk.
+    #
+    # Tokenet kommer ad subprotokollen og ikke som ?token=, fordi uvicorns
+    # adgangslog skriver hele stien med query — hver forbindelse ville ellers
+    # laegge et gyldigt token i journalen.
+    from core.runtime import ws_auth
+
+    token, bad_om_sub = ws_auth.token_fra_handshake(ws.headers)
+    krav = ws_auth.verificer(token)
+    if krav is None and ws_auth.kraeves_auth():
+        logger.warning("ws afvist (ingen gyldig legitimation) client=%s", client_label)
+        await ws.close(code=1008, reason="auth_required")
+        return
+
+    # Bekraeft KUN en protokol klienten selv bad om — ellers afviser browseren
+    # forbindelsen.
+    if bad_om_sub:
+        await ws.accept(subprotocol=bad_om_sub)
+    else:
+        await ws.accept()
     items = sorted(event_bus.recent(limit=20), key=lambda x: x["id"])
     last_seen_id = 0
     logger.info(

@@ -963,3 +963,32 @@ export async function pingServer(config: ApiConfig): Promise<number | null> {
     clearTimeout(timer)
   }
 }
+
+/** Navnet paa den WS-subprotokol der baerer tokenet. Skal matche
+ *  `core/runtime/ws_auth.SUBPROTOKOL` og web-UI'ens `WS_SUBPROTOKOL`. */
+export const WS_SUBPROTOKOL = 'jarvis-bearer'
+
+/**
+ * Aabn event-socketen MED legitimation.
+ *
+ * `/ws` var uden auth indtil 15/9-2026 og streamede hele event-bussen —
+ * indre stemme, raesonnements-konklusioner, private_brain — til enhver der
+ * forbandt. Middlewaren er `app.middleware("http")`, saa WebSockets gik uden
+ * om den helt.
+ *
+ * Tokenet gaar ad subprotokollen og ikke som `?token=`: uvicorns adgangslog
+ * skriver hele stien med query, saa hver forbindelse ville laegge et gyldigt
+ * token i journalen. Browsere kan ikke saette headers paa en WebSocket, men
+ * de kan saette denne.
+ *
+ * Samlet ét sted fordi der er TRE kaldesteder i desk. Tre kopier ville drive
+ * fra hinanden, og den ene der blev glemt ville fejle tavst — socketen falder
+ * tilbage til polling, saa intet ser i stykker ud.
+ */
+export function openEventSocket(config: ApiConfig): WebSocket {
+  const url = config.apiBaseUrl.replace(/^http/, 'ws').replace(/\/$/, '') + '/ws'
+  const token = (config.authToken || '').trim()
+  return token
+    ? new WebSocket(url, [WS_SUBPROTOKOL, token])
+    : new WebSocket(url)
+}

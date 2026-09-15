@@ -14,6 +14,10 @@
 
 const NOEGLE = 'jarvis.ui.token'
 
+/** Navnet paa den WS-subprotokol der baerer tokenet. Skal matche
+ *  `core/runtime/ws_auth.SUBPROTOKOL` — to steder, ét navn. */
+export const WS_SUBPROTOKOL = 'jarvis-bearer'
+
 export function hentToken() {
   try {
     return String(localStorage.getItem(NOEGLE) || '')

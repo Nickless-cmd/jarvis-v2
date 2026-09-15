@@ -73,3 +73,42 @@ def test_runtime_tasks_priority_uses_standing_orders_and_daily_memory(isolated_r
     )
 
     assert task["priority"] == "high"
+
+
+# ── en afsluttet opgave afslutter sit flow (15/9-2026) ───────────────────
+#
+# 4.872 flows stod `queued` for opgaver der allerede var `succeeded`: intet satte
+# nogensinde et flow til faerdigt.
+
+import pytest
+
+
+@pytest.mark.parametrize("udfald", ["succeeded", "failed", "cancelled"])
+def test_afsluttet_opgave_afslutter_flowet(isolated_runtime, udfald) -> None:
+    from core.services import runtime_flows, runtime_tasks
+    opgave = runtime_tasks.create_task(kind="initiative-followup", goal="g", origin="t")
+    flow = runtime_flows.create_flow(task_id=opgave["task_id"], current_step="review-initiative")
+    assert runtime_flows.get_flow(flow["flow_id"])["status"] == "queued"
+
+    runtime_tasks.update_task(opgave["task_id"], status=udfald)
+
+    lukket = runtime_flows.get_flow(flow["flow_id"])
+    assert lukket["status"] == udfald
+    assert lukket["step_state"] == "done"
+
+
+def test_en_aaben_status_roerer_ikke_flowet(isolated_runtime) -> None:
+    from core.services import runtime_flows, runtime_tasks
+    opgave = runtime_tasks.create_task(kind="initiative-followup", goal="g", origin="t")
+    flow = runtime_flows.create_flow(task_id=opgave["task_id"])
+    runtime_tasks.update_task(opgave["task_id"], status="running")
+    assert runtime_flows.get_flow(flow["flow_id"])["status"] == "queued"
+
+
+def test_et_allerede_afsluttet_flow_skrives_ikke_om(isolated_runtime) -> None:
+    from core.services import runtime_flows, runtime_tasks
+    opgave = runtime_tasks.create_task(kind="initiative-followup", goal="g", origin="t")
+    flow = runtime_flows.create_flow(task_id=opgave["task_id"])
+    runtime_flows.update_flow(flow["flow_id"], status="failed")
+    runtime_tasks.update_task(opgave["task_id"], status="succeeded")
+    assert runtime_flows.get_flow(flow["flow_id"])["status"] == "failed"

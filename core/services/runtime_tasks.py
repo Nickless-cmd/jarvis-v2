@@ -8,6 +8,10 @@ from uuid import uuid4
 from core.runtime import db as runtime_db
 from core.identity.workspace_bootstrap import workspace_memory_paths
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 _VALID_STATUSES = {"queued", "running", "blocked", "succeeded", "failed", "cancelled"}
 _VALID_PRIORITIES = {"low", "medium", "high"}
 _TOKEN_RE = re.compile(r"[a-z0-9]{3,}")
@@ -95,7 +99,7 @@ def update_task(
     if status is not None:
         candidate = str(status or "").strip().lower()
         normalized_status = candidate if candidate in _VALID_STATUSES else "queued"
-    return runtime_db.update_runtime_task(
+    opdateret = runtime_db.update_runtime_task(
         str(task_id or "").strip(),
         status=normalized_status,
         flow_id=str(flow_id or "").strip() if flow_id is not None else None,
@@ -112,6 +116,41 @@ def update_task(
         artifact_ref=str(artifact_ref or "").strip() if artifact_ref is not None else None,
         updated_at=datetime.now(UTC).isoformat(),
     )
+    if opdateret is not None and normalized_status in _AFSLUTTEDE:
+        _luk_flowet(opdateret, normalized_status)
+    return opdateret
+
+
+#: En opgave i en af disse er faerdig — og saa er dens flow det ogsaa.
+_AFSLUTTEDE = frozenset({"succeeded", "failed", "cancelled"})
+
+
+def _luk_flowet(opgave: dict[str, object], status: str) -> None:
+    """Afslut opgavens flow med samme udfald. Selv-sikker.
+
+    ## Hvorfor (15/9-2026)
+
+    4.969 flows stod som `queued`, og 4.872 af dem hoerte til opgaver der
+    ALLEREDE var `succeeded`. Opgaven blev afsluttet her; flowet fulgte aldrig
+    med, fordi intet i koden nogensinde satte et flow til faerdigt. To sandheder
+    om det samme stykke arbejde — og det var den forkerte, hans selvbillede
+    (`runtime_self_model_state`) og `manage_runtime_work` laeste.
+
+    Kun et flow der stadig er aabent roeres: et flow der allerede er afsluttet
+    har sin egen historie, og den skrives ikke om.
+    """
+    flow_id = str(opgave.get("flow_id") or "").strip()
+    if not flow_id:
+        return
+    try:
+        from core.services import runtime_flows  # cirkulaer import: runtime_flows -> runtime_tasks
+        flow = runtime_flows.get_flow(flow_id)
+        if flow is None or str(flow.get("status") or "") in _AFSLUTTEDE:
+            return
+        runtime_flows.update_flow(flow_id, status=status, step_state="done")
+    except Exception:
+        logger.warning("runtime_tasks: kunne ikke lukke flow %s for opgave %s",
+                       flow_id, opgave.get("task_id"), exc_info=True)
 
 
 def _task_sort_key(task: dict[str, object]) -> tuple[int, str, str]:

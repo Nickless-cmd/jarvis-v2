@@ -1460,6 +1460,27 @@ button { cursor: pointer; }
   margin-right: 4px;
 }
 
+/* En fil Jarvis har udgivet — hentes med token ved klik (se AttachmentStrip). */
+.message-attachment-file {
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+.message-attachment-file:hover:not(:disabled) {
+  border-color: rgba(64,179,179,0.5);
+  color: #ddd;
+}
+.message-attachment-file:disabled {
+  cursor: progress;
+  opacity: 0.6;
+}
+.message-attachment-error {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 10px;
+  color: #e06c6c;
+}
+
 /* ── Attachment lightbox overlay ─────────────────────────────── */
 
 .attachment-lightbox-overlay {

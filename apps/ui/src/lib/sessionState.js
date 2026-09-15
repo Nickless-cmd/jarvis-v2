@@ -90,6 +90,11 @@ export function upsertSessionMessage(session, message) {
     ts: String(message?.ts || '').trim(),
     created_at: String(message?.created_at || '').trim(),
   }
+  // Vedhæftninger (fx en fil Jarvis udgav) må ikke falde ud ved en opdatering:
+  // de kommer fra serverens blokke, ikke fra streamen, og kan ikke genskabes.
+  if (Array.isArray(message?.attachments) && message.attachments.length > 0) {
+    normalized.attachments = message.attachments
+  }
   if (!normalized.id || !normalized.content) {
     return session
   }

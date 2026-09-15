@@ -3,6 +3,7 @@ import { Copy, Check, ThumbsUp, Globe } from 'lucide-react'
 import { MarkdownRenderer } from './MarkdownRenderer'
 import { ApprovalCard } from './ApprovalCard'
 import { ThinkingBar } from './ChatThinking'
+import { hentUdgivetFil } from '../../lib/attachmentBlocks.js'
 
 const SMILEY_REPLACEMENTS = [
   [/:\-\)/g, '😊'], [/:\)/g, '😊'],
@@ -59,7 +60,7 @@ function BrowserIndicator({ browserBody }) {
 // where each bubble owns a MarkdownRenderer + Prism syntax highlighter.
 // We only re-render if the message reference changed or if workingSteps
 // became relevant to a still-pending message.
-const MessageWithActions = memo(function MessageWithActions({ message, workingSteps }) {
+const MessageWithActions = memo(function MessageWithActions({ message, workingSteps, sessionId, onOpenLightbox }) {
   const [copied, setCopied] = useState(false)
   const [liked, setLiked] = useState(false)
 
@@ -72,6 +73,13 @@ const MessageWithActions = memo(function MessageWithActions({ message, workingSt
 
   return (
     <div className="message-group">
+      {message.attachments?.length > 0 && (
+        <AttachmentStrip
+          attachments={message.attachments}
+          sessionId={sessionId}
+          onOpenLightbox={onOpenLightbox}
+        />
+      )}
       <div className={`message-bubble ${message.pending ? 'pending' : ''}`}>
         {message.pending && !message.content ? (
           <ThinkingBar workingSteps={workingSteps} isStreaming={true} />
@@ -107,6 +115,9 @@ const MessageWithActions = memo(function MessageWithActions({ message, workingSt
     if (prev.message?.content !== next.message?.content) return false
     if (prev.message?.pending !== next.message?.pending) return false
     if (prev.message?.message_id !== next.message?.message_id) return false
+    // Vedhæftninger kommer fra serverens blokke, ikke fra streamen — de kan
+    // dukke op i en opdatering uden at content ændrer sig.
+    if ((prev.message?.attachments?.length || 0) !== (next.message?.attachments?.length || 0)) return false
   }
   // workingSteps only matters for pending bubbles — skip the reference
   // check otherwise. For pending bubbles, identity change forces re-render.
@@ -119,6 +130,8 @@ const MessageWithActions = memo(function MessageWithActions({ message, workingSt
  * Images are clickable to open the lightbox.
  */
 function AttachmentStrip({ attachments, sessionId, onOpenLightbox }) {
+  const [henter, setHenter] = useState('')
+  const [fejl, setFejl] = useState('')
   if (!attachments || attachments.length === 0) return null
 
   const images = attachments.filter((a) => a.mimeType?.startsWith('image/'))
@@ -128,6 +141,23 @@ function AttachmentStrip({ attachments, sessionId, onOpenLightbox }) {
     if (a.objectUrl) return a.objectUrl
     if (a.id && sessionId) return `/attachments/${a.id}?session_id=${sessionId}`
     return null
+  }
+
+  // En udgivet fil bærer en `url`, ikke et attachment_id — og `/files/` svarer
+  // 401 uden token. Derfor hentes den med Bearer og gemmes som blob, i stedet
+  // for at være et dødt link man selv skal skrive af.
+  async function hentFil(a) {
+    setFejl('')
+    setHenter(a.filename)
+    try {
+      const kilde = a.url || (a.id && sessionId ? `/attachments/${a.id}?session_id=${sessionId}` : '')
+      if (!kilde) throw new Error('Filen har ingen hentbar adresse')
+      await hentUdgivetFil(kilde, a.filename)
+    } catch (e) {
+      setFejl(e instanceof Error ? e.message : 'Kunne ikke hente filen')
+    } finally {
+      setHenter('')
+    }
   }
 
   return (
@@ -150,10 +180,19 @@ function AttachmentStrip({ attachments, sessionId, onOpenLightbox }) {
         </div>
       )}
       {files.map((a) => (
-        <span key={a.id} className="message-attachment-pill">
+        <button
+          key={a.id || a.filename}
+          type="button"
+          className="message-attachment-pill message-attachment-file"
+          onClick={() => hentFil(a)}
+          disabled={henter === a.filename}
+          title={`Hent ${a.filename}`}
+        >
           📎 {a.filename}
-        </span>
+          {henter === a.filename ? ' …' : ''}
+        </button>
       ))}
+      {fejl && <span className="message-attachment-error">{fejl}</span>}
     </div>
   )
 }
@@ -216,7 +255,12 @@ export function ChatTranscript({ messages, workingSteps, sessionId, isStreaming,
                 {message.role === 'assistant' ? 'Jarvis' : 'Du'}
               </div>
               {message.role === 'assistant' ? (
-                <MessageWithActions message={message} workingSteps={workingSteps} />
+                <MessageWithActions
+                  message={message}
+                  workingSteps={workingSteps}
+                  sessionId={sessionId}
+                  onOpenLightbox={setLightbox}
+                />
               ) : (
                 <div className={`message-bubble ${message.pending ? 'pending' : ''}`}>
                   {message.attachments?.length > 0 && (

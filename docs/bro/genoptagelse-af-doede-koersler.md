@@ -112,6 +112,25 @@ time.monotonic()` inde i grenen, fejer den ved **hver** tik efter første gang �
 samme skade som intet interval, ad en anden vej. En test på konstanten kan ikke
 se det, fordi konstanten er uændret. Takten måles nu over tid med et styret ur.
 
+## Er brugeren gået videre? (15/9-2026)
+
+Genoptagelsen tjekkede ikke om arbejdet allerede var gjort om. Målt samme dag:
+Bjørns kørsel blev afbrudt 10:41:31, og han fik sit svar **32 sekunder senere**
+fra en ny kørsel. Genoptagelsen vidste det ikke, vækkede Jarvis, og han brugte
+en runde på at undersøge en afbrydelse ingen ventede på længere.
+
+Reglen: **er der kommet en senere synlig kørsel helt igennem, er brugeren gået
+videre.**
+
+Vejen dertil var mest udelukkelse. `cognitive_episodes` har både
+`source_run_id` og `session_id` — og er tom for synlige kørsler (målt: 50
+kørsler, 0 episoder). `chat_messages` har session og indhold, men intet
+`run_id`. `visible_runs` har intet `session_id`. Så den eksakte kobling
+findes ikke i praksis, og reglen bruger det der faktisk er fyldt.
+
+Fejlretningen: kan basen ikke læses, siger vagten **nej** — altså genoptag.
+«Et run må aldrig dø», så tvivlen falder ud til fordel for at prøve.
+
 ## Mutations-prøve
 
 | Mutation | Udfald |

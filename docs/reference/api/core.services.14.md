@@ -622,10 +622,11 @@ _Living Executive — Jarvis' active impulse/choice/action loop._
 | function | `_runnable_tool_proposals` | `(*, tool_name, status, reason, precedents)` | — | [src](../../../core/services/living_executive.py#L661) |
 | function | `_aftertaste` | `(*, status, impulse)` | — | [src](../../../core/services/living_executive.py#L722) |
 | function | `_afbrudte_fra_db` | `(*, minutter=…, maks=…)` | Afbrydelses-events fra DB'en — delt paa tvaers af processer. | [src](../../../core/services/living_executive.py#L734) |
-| function | `indhent_forsoemte_afbrydelser` | `(*, minutter=…)` | Genoptag crash-draebte koersler der doede FOER nogen lyttede. | [src](../../../core/services/living_executive.py#L777) |
-| function | `start_listener` | `()` | — | [src](../../../core/services/living_executive.py#L812) |
-| function | `stop_listener` | `()` | — | [src](../../../core/services/living_executive.py#L833) |
-| function | `_listener_loop` | `(q)` | — | [src](../../../core/services/living_executive.py#L842) |
+| function | `_allerede_besvaret` | `(run_id)` | Er brugeren gaaet videre siden den her koersel doede? | [src](../../../core/services/living_executive.py#L777) |
+| function | `indhent_forsoemte_afbrydelser` | `(*, minutter=…)` | Genoptag crash-draebte koersler der doede FOER nogen lyttede. | [src](../../../core/services/living_executive.py#L822) |
+| function | `start_listener` | `()` | — | [src](../../../core/services/living_executive.py#L863) |
+| function | `stop_listener` | `()` | — | [src](../../../core/services/living_executive.py#L884) |
+| function | `_listener_loop` | `(q)` | — | [src](../../../core/services/living_executive.py#L893) |
 
 ## `core/services/living_heartbeat_cycle.py`
 _Living Heartbeat Cycle — Jarvis' inner life rhythm._

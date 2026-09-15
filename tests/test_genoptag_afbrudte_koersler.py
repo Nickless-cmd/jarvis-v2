@@ -356,3 +356,83 @@ def test_fejningen_holder_sin_takt_over_TID(monkeypatch):
 
     # 20 sekunder, interval 5 → et par gange. Uden nulstilling: ~16.
     assert 2 <= len(fejet) <= 5, f"{len(fejet)} fejninger paa 20 tik: {fejet}"
+
+
+# ────────────────── er brugeren gaaet videre? (målt 15/9-2026)
+
+@pytest.fixture
+def koersels_base(monkeypatch):
+    """En rigtig sqlite med visible_runs."""
+    import sqlite3
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    conn.execute("CREATE TABLE visible_runs (run_id TEXT, status TEXT, "
+                 "started_at TEXT, finished_at TEXT)")
+
+    class _Uden:
+        def __enter__(self): return conn
+        def __exit__(self, *a): return False
+
+    import core.runtime.db as db
+    monkeypatch.setattr(db, "connect", lambda: _Uden())
+    return conn
+
+
+def _run(conn, rid, status, start, slut=None):
+    conn.execute("INSERT INTO visible_runs VALUES (?,?,?,?)", (rid, status, start, slut))
+
+
+def test_en_senere_faerdig_koersel_betyder_gaaet_videre(koersels_base):
+    """Det ægte forløb: afbrudt 10:41:31, ny kørsel 10:42:03 blev færdig, og
+    Bjørn havde sit svar. En genoptagelse dér er ren støj."""
+    _run(koersels_base, "visible-doed", "interrupted", "2026-09-15T08:41:27", "2026-09-15T08:41:31")
+    _run(koersels_base, "visible-ny", "completed", "2026-09-15T08:42:03", "2026-09-15T08:42:38")
+    assert lex._allerede_besvaret("visible-doed") is True
+
+
+def test_ingen_senere_koersel_betyder_IKKE_besvaret(koersels_base):
+    """Den almindelige sag: noget døde om natten og ingen har været der siden.
+    Den SKAL genoptages — «Et run må aldrig dø»."""
+    _run(koersels_base, "visible-doed", "interrupted", "2026-09-15T08:41:27", "2026-09-15T08:41:31")
+    assert lex._allerede_besvaret("visible-doed") is False
+
+
+def test_en_senere_koersel_der_ogsaa_DOEDE_taeller_ikke(koersels_base):
+    """To crash i træk er ikke et svar. Ellers ville den anden død dække over
+    den første."""
+    _run(koersels_base, "visible-doed", "interrupted", "2026-09-15T08:41:27", "2026-09-15T08:41:31")
+    _run(koersels_base, "visible-ogsaa-doed", "cancelled", "2026-09-15T08:42:03", "2026-09-15T08:57:00")
+    assert lex._allerede_besvaret("visible-doed") is False
+
+
+def test_en_TIDLIGERE_faerdig_koersel_taeller_ikke(koersels_base):
+    """Svaret skal komme EFTER døden for at være et svar på den."""
+    _run(koersels_base, "visible-foer", "completed", "2026-09-15T08:30:00", "2026-09-15T08:30:20")
+    _run(koersels_base, "visible-doed", "interrupted", "2026-09-15T08:41:27", "2026-09-15T08:41:31")
+    assert lex._allerede_besvaret("visible-doed") is False
+
+
+def test_ukendt_run_genoptages(koersels_base):
+    """Fejlretningen: tvivlen falder ud til fordel for at prøve."""
+    assert lex._allerede_besvaret("visible-findes-ikke") is False
+    assert lex._allerede_besvaret("") is False
+
+
+def test_basen_utilgaengelig_giver_GENOPTAG(monkeypatch):
+    """«Et run må aldrig dø». Kan vi ikke måle, skal vi prøve — ikke tie."""
+    import core.runtime.db as db
+    def _knald():
+        raise RuntimeError("ingen base")
+    monkeypatch.setattr(db, "connect", _knald)
+    assert lex._allerede_besvaret("visible-hvadsomhelst") is False
+
+
+def test_indhentningen_springer_de_besvarede_over(monkeypatch, vaekninger):
+    monkeypatch.setattr(lex, "_afbrudte_fra_db", lambda **kw: [
+        _afbrudt("visible-gammel", event_id=1), _afbrudt("visible-frisk", event_id=2),
+    ])
+    monkeypatch.setattr(lex, "_allerede_besvaret", lambda rid: rid == "visible-gammel")
+    ud = lex.indhent_forsoemte_afbrydelser()
+    assert ud["sprunget"] == 1
+    assert len(vaekninger) == 1, vaekninger
+    assert "visible-frisk" in str(vaekninger[0].get("prompt") or "")

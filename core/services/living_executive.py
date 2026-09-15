@@ -774,6 +774,51 @@ def _afbrudte_fra_db(*, minutter: int = _INDHENT_MINUTTER, maks: int = 40) -> li
     return ud
 
 
+def _allerede_besvaret(run_id: str) -> bool:
+    """Er brugeren gaaet videre siden den her koersel doede?
+
+    Maalt 15/9-2026: jeg genstartede api'en midt i Bjoerns besked, koerslen
+    blev afbrudt 10:41:31 — og han fik sit svar 32 sekunder senere fra en NY
+    koersel. Genoptagelsen vidste det ikke, vaekkede Jarvis, og han brugte en
+    runde paa at undersoege en afbrydelse ingen ventede paa laengere.
+
+    Reglen: er der kommet en senere SYNLIG koersel helt igennem, er brugeren
+    gaaet videre. Den bruger kun `visible_runs`, som faktisk er fyldt —
+    `cognitive_episodes` har baade source_run_id og session_id, men er tom for
+    synlige koersler (maalt: 50 koersler, 0 episoder), og `chat_messages` har
+    intet run_id.
+
+    Fejlretningen: kan vi ikke laese basen, siger vi NEJ (ikke besvaret) og
+    genoptager. Bjoern: «Et run maa aldrig doe» — saa tvivlen skal falde ud til
+    fordel for at prooeve, ikke til at tie.
+    """
+    rid = str(run_id or "").strip()
+    if not rid:
+        return False
+    from core.runtime.db import connect
+
+    try:
+        with connect() as conn:
+            raekke = conn.execute(
+                "SELECT finished_at FROM visible_runs WHERE run_id = ?", (rid,)
+            ).fetchone()
+            if not raekke or not raekke[0]:
+                return False
+            senere = conn.execute(
+                """
+                SELECT COUNT(*) FROM visible_runs
+                WHERE run_id LIKE 'visible-%'
+                  AND status = 'completed'
+                  AND started_at > ?
+                """,
+                (raekke[0],),
+            ).fetchone()
+    except Exception:
+        logger.warning("kunne ikke afgoere om %s er besvaret", rid, exc_info=True)
+        return False
+    return bool(senere and int(senere[0]) > 0)
+
+
 def indhent_forsoemte_afbrydelser(*, minutter: int = _INDHENT_MINUTTER) -> dict[str, object]:
     """Genoptag crash-draebte koersler der doede FOER nogen lyttede.
 
@@ -798,15 +843,21 @@ def indhent_forsoemte_afbrydelser(*, minutter: int = _INDHENT_MINUTTER) -> dict[
     """
     set_ = 0
     genoptaget = 0
+    sprunget = 0
     for event in _afbrudte_fra_db(minutter=minutter):
         set_ += 1
+        rid = str((event.get("payload") or {}).get("run_id") or "")
+        if _allerede_besvaret(rid):
+            sprunget += 1
+            logger.info("living_executive: %s er allerede besvaret — springer over", rid)
+            continue
         spor = process_event(event)
         if spor and str(spor.get("status") or "") == "executed":
             genoptaget += 1
     if set_:
-        logger.info("living_executive: indhentede %s afbrydelser, genoptog %s",
-                    set_, genoptaget)
-    return {"set": set_, "genoptaget": genoptaget}
+        logger.info("living_executive: indhentede %s afbrydelser, genoptog %s, sprang %s over",
+                    set_, genoptaget, sprunget)
+    return {"set": set_, "genoptaget": genoptaget, "sprunget": sprunget}
 
 
 def start_listener() -> None:

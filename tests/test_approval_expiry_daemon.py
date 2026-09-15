@@ -61,17 +61,24 @@ def test_en_udloebet_pending_bliver_fejet():
     assert _tilstand(aid) == B.EXPIRED
 
 
-def test_dispatching_roeres_ALDRIG(monkeypatch):
+def test_dispatching_UDLOEBER_aldrig(monkeypatch):
     """En afsendelse der er i gang udloeber ikke — dens udfald er ukendt, og
-    at kalde den udloebet ville vaere at paastaa noget vi ikke ved."""
+    at kalde den udloebet ville vaere at paastaa noget vi ikke ved.
+
+    15/9-2026: invarianten var «roeres aldrig». En post der stod i dispatching
+    efter et crash, stod der for evigt. Nu: inden for vinduet roeres den ikke;
+    efter vinduet bliver den `outcome_unknown` — ALDRIG `expired`."""
     aid = "a-dispatching"
     args = {"til": "x"}
     B.request(aid, tool_name="gmail_send", arguments=args, run_id="r1", session_id="s1")
     B.decide(aid, approved=True)
     B.claim(aid, tool_name="gmail_send", arguments=args)
     assert _tilstand(aid) == B.DISPATCHING
-    D.tick_approval_expiry_daemon(now=datetime.now(UTC) + timedelta(hours=2))
-    assert _tilstand(aid) == B.DISPATCHING
+    D.tick_approval_expiry_daemon(now=datetime.now(UTC) + timedelta(hours=1))
+    assert _tilstand(aid) == B.DISPATCHING          # i gang: urørt
+    D._nulstil_for_tests()
+    D.tick_approval_expiry_daemon(now=datetime.now(UTC) + timedelta(hours=3))
+    assert _tilstand(aid) == B.OUTCOME_UNKNOWN     # forældreløs: ukendt, ikke udløbet
 
 
 def test_en_frisk_godkendelse_roeres_ikke():
@@ -114,3 +121,15 @@ def test_en_fejl_kaster_ikke_men_tier_heller_ikke(monkeypatch, caplog):
         r = D.tick_approval_expiry_daemon(now=datetime.now(UTC))
     assert r["fejet"] is False and r["grund"] == "fejl"
     assert any("approval_expiry" in x.getMessage() for x in caplog.records)
+
+
+def test_fejeren_afslutter_ogsaa_FORAELDRELOESE_afsendelser():
+    """Kalderen, ikke kun mekanismen — husets hyppigste fejl."""
+    aid = "appr-foraeldreloes"
+    B.request(aid, tool_name="bash", arguments={"command": "x"})
+    B.decide(aid, approved=True)
+    B.claim(aid, tool_name="bash", arguments={"command": "x"})
+    senere = datetime.now(UTC) + timedelta(seconds=B.FORAELDRELOES_EFTER_S + 60)
+    ud = D.tick_approval_expiry_daemon(now=senere)
+    assert ud["foraeldreloese_afsendelser"] == 1
+    assert _tilstand(aid) == B.OUTCOME_UNKNOWN

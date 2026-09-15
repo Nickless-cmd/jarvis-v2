@@ -341,6 +341,47 @@ def expire_stale(now: datetime | None = None) -> int:
         return int(cur.rowcount)
 
 
+#: En afsendelse der har staaet i `dispatching` saa laenge, er ikke i gang.
+#: To gange en godkendelses levetid; intet vaerktoej her koerer i naerheden af
+#: det (operator_bash har 55 s, bash-sessionen 300 s).
+FORAELDRELOES_EFTER_S = 2 * 3600
+
+
+def abandon_orphaned_dispatching(now: datetime | None = None, *,
+                                 older_than_s: int = FORAELDRELOES_EFTER_S) -> int:
+    """Afslut `dispatching`-poster hvis afsender er vaek. → `outcome_unknown`.
+
+    ## Hvorfor (15/9-2026)
+
+    `approval-5815853a103c` stod i `dispatching` fra 14/9 kl. 18:22 og for
+    evigt. Vaerten crashede to gange paa tre minutter; efter foerste crash
+    ryddede boot-reconcileren koerslen op (`interrupted`), og DEREFTER blev
+    godkendelsen overtaget og kommandoen sendt — midt i andet crash. Den faldt
+    mellem alle tre mekanismer: `abandon_run` var allerede loebet, `expire_stale`
+    roerer med vilje aldrig `dispatching`, og ingen `settle` kom.
+
+    ## Hvorfor det er sikkert
+
+    Udfaldet ER ukendt, og `outcome_unknown` siger praecis det. Det er ikke et
+    genforsoeg: K7 (`prior_unknown_outcome`) nægter netop et automatisk nyt
+    forsoeg paa en digest i den tilstand. Posten holder bare op med at ligne
+    noget der stadig er i gang.
+    """
+    nu = now or datetime.now(UTC)
+    graense = (nu - timedelta(seconds=int(older_than_s))).isoformat()
+    with connect() as conn:
+        _ensure(conn)
+        raekker = list(conn.execute(
+            "SELECT approval_id FROM approval_claims "
+            "WHERE state = ? AND claimed_at IS NOT NULL AND claimed_at < ?",
+            (DISPATCHING, graense)))
+    antal = 0
+    for (aid,) in raekker:
+        if abandon(aid, detail="forældreløs: ingen afslutning efter afsendelsen") == OUTCOME_UNKNOWN:
+            antal += 1
+    return antal
+
+
 def abandon_run(run_id: str, *, detail: str = "") -> dict[str, int]:
     """Opgiv ALLE uafklarede poster for et doedt run — K6.
 

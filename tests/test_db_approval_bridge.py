@@ -377,3 +377,31 @@ def test_EN_vinder_ogsaa_paa_tvaers_af_PROCESSER(isolated_runtime):
     # og de fem tabte skal have tabt af den RIGTIGE grund
     assert all("allerede overtaget" in s for s in svar if s.startswith("tabte")), svar
     assert B.state(aid)["state"] == B.DISPATCHING
+
+
+# ── forældreløse afsendelser (15/9-2026) ─────────────────────────────────
+
+def test_en_FORAELDRELOES_afsendelse_bliver_outcome_unknown(aid):
+    """`approval-5815853a103c` stod i dispatching fra et crash og for evigt."""
+    _bed(aid); B.decide(aid, approved=True)
+    B.claim(aid, tool_name="bash", arguments=ARGS)
+    senere = datetime.now(UTC) + timedelta(seconds=B.FORAELDRELOES_EFTER_S + 60)
+    assert B.abandon_orphaned_dispatching(now=senere) == 1
+    assert B.state(aid)["state"] == B.OUTCOME_UNKNOWN
+
+
+def test_en_FRISK_afsendelse_roeres_ikke(aid):
+    """En kommando der koerer lige nu, maa ikke erklæres forældreløs."""
+    _bed(aid); B.decide(aid, approved=True)
+    B.claim(aid, tool_name="bash", arguments=ARGS)
+    assert B.abandon_orphaned_dispatching() == 0
+    assert B.state(aid)["state"] == B.DISPATCHING
+
+
+def test_forældreløs_betyder_IKKE_genforsoeg(aid):
+    """K7 skal stadig naegte et nyt forsoeg paa samme kald bagefter."""
+    _bed(aid); B.decide(aid, approved=True)
+    B.claim(aid, tool_name="bash", arguments=ARGS)
+    senere = datetime.now(UTC) + timedelta(seconds=B.FORAELDRELOES_EFTER_S + 60)
+    B.abandon_orphaned_dispatching(now=senere)
+    assert aid in B.prior_unknown_outcome("bash", ARGS)

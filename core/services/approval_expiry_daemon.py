@@ -22,6 +22,11 @@ er passeret. Den rører **aldrig** `dispatching`: en afsendelse der er i gang
 udløber ikke, fordi dens udfald stadig er ukendt. Den regel ligger i broen, ikke
 her — denne fil beslutter kun HVORNÅR der fejes, aldrig HVAD.
 
+15/9-2026: en `dispatching` der har stået i over to timer, er ikke i gang —
+afsenderen døde (målt: et vært-crash midt i afsendelsen, posten stod for evigt).
+`abandon_orphaned_dispatching()` gør den til `outcome_unknown`. Den bliver
+stadig aldrig `expired`, og K7 nægter stadig et automatisk genforsøg.
+
 ## Kadencen
 
 Fem minutter. Godkendelser lever en time (`DEFAULT_TTL_S`), så det er rigeligt
@@ -63,8 +68,13 @@ def tick_approval_expiry_daemon(now: datetime | None = None) -> dict[str, object
         return {"fejet": False, "grund": "kadence"}
 
     try:
-        from core.runtime.db_approval_bridge import expire_stale
+        from core.runtime.db_approval_bridge import (
+            abandon_orphaned_dispatching, expire_stale,
+        )
         antal = int(expire_stale(now=nu))
+        # Forældreløse afsendelser (15/9-2026) — se broen. Samme fejning, en
+        # anden tilstand: `expire_stale` roerer stadig aldrig `dispatching`.
+        foraeldreloese = int(abandon_orphaned_dispatching(now=nu))
     except Exception as exc:
         # Familien isolerer allerede fejl, men en fejer der stille holder op
         # med at virke er praecis den fejl denne fil blev skrevet for at rette.
@@ -74,7 +84,12 @@ def tick_approval_expiry_daemon(now: datetime | None = None) -> dict[str, object
         return dict(_last_result)
 
     _last_tick_at = nu
-    _last_result = {"fejet": True, "udloebet": antal}
+    _last_result = {"fejet": True, "udloebet": antal,
+                    "foraeldreloese_afsendelser": foraeldreloese}
+
+    if foraeldreloese:
+        logger.warning("approval_expiry: %d afsendelse(r) uden afslutning — "
+                       "markeret outcome_unknown", foraeldreloese)
 
     if antal:
         # SIG DET HOEJT. En post der gaar fra «venter» til «udloebet» er en

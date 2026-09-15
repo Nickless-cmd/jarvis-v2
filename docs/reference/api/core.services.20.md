@@ -182,6 +182,9 @@ _Er DEN HER koersel uovervaaget? — run-scopet, ikke gaettet._
 | function | `set_autonomous` | `(vaerdi)` | Markér koerslen. Returnerer token'et saa kalderen kan nulstille. | [src](../../../core/services/run_autonomy_context.py#L33) |
 | function | `reset_autonomous` | `(token)` | — | [src](../../../core/services/run_autonomy_context.py#L38) |
 | function | `is_autonomous` | `()` | Kaster aldrig. Ved vi det ikke, er svaret NEJ — og saa opfoerer alt sig | [src](../../../core/services/run_autonomy_context.py#L45) |
+| function | `set_run_identity` | `(run_id, origin=…)` | — | [src](../../../core/services/run_autonomy_context.py#L75) |
+| function | `current_run_id` | `()` | "" naar ingen koersel har sat det. Kaster aldrig. | [src](../../../core/services/run_autonomy_context.py#L80) |
+| function | `current_origin` | `()` | "" for en almindelig brugertur, eller naar vi ikke ved det. | [src](../../../core/services/run_autonomy_context.py#L88) |
 
 ## `core/services/run_closure_gate.py`
 _Run-closure gate — fang tomme replies og unstaged changes efter agentic runs._

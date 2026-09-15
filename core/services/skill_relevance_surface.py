@@ -176,9 +176,15 @@ def _er_selvstartet_tur() -> bool:
     beholde sine skills — det er hans ture der betyder noget.
     """
     try:
+        # Koerslens egen origin foerst: gatens globale deles af alle koersler i
+        # processen og husker den SENESTE autonome — en hjerteslags-tur kl. 16
+        # ville ellers undtage hans brugertur kl. 16:05. Har koerslen sat sin
+        # identitet, gaelder dens origin, OGSAA naar den er tom (= brugertur).
+        from core.services.run_autonomy_context import current_origin, current_run_id
         from core.services.run_closure_gate import aktuel_origin
 
-        return aktuel_origin().strip().lower() in _SELVSTARTEDE_ORIGINS
+        origin = current_origin() if current_run_id() else aktuel_origin()
+        return origin.strip().lower() in _SELVSTARTEDE_ORIGINS
     except Exception:
         logger.debug("kunne ikke laese turens origin", exc_info=True)
         return False

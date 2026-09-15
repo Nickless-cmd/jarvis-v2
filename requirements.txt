@@ -78,4 +78,11 @@ detect-secrets
 #   watchdog         # filesystem watching
 #   rarfile          # rar attachment handling
 #   ulid-py          # import: ulid
+#
+# Needed by the document skills he invokes (skills/composio-document-skills), not by
+# the runtime itself. Measured 15/9-2026: the xlsx skill was invoked correctly, but
+# openpyxl was missing from every env on the server, so he could neither rebuild the
+# sheet nor verify it — he fell back to reading the XML by hand. Installed in `ai`.
+#   openpyxl         # xlsx skill
+#   pandas           # xlsx skill (already present via other deps)
 # Desktop app (apps/jarvis-desk) has its own toolchain (PyQt5 / packaging) — see that dir.

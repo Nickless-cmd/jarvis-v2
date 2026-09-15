@@ -1321,8 +1321,9 @@ async def _stream_visible_run(
     # run-scopede moenster som workspace-trust nedenfor — og ikke et opslag paa
     # `autonomous-`-praefikset, som er en konvention og ikke en sandhed.
     try:
-        from core.services.run_autonomy_context import set_autonomous
+        from core.services.run_autonomy_context import set_autonomous, set_run_identity
         set_autonomous(bool(getattr(run, "autonomous", False)))
+        set_run_identity(run.run_id, getattr(run, "origin", ""))
     except Exception:
         pass
 

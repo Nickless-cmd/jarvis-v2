@@ -63,6 +63,16 @@ def aktivt_run_id(standard: str = "") -> str:
     Self-safe hele vejen: et manglende run maa aldrig kunne vaelte den gate der
     spurgte.
     """
+    # Koerslens egen ContextVar foerst (15/9-2026). Gatens globale kender kun
+    # autonome koersler og er tom i jarvis-api, hvor de synlige ture koerer —
+    # se run_autonomy_context.
+    try:
+        from core.services.run_autonomy_context import current_run_id
+        rid = (current_run_id() or "").strip()
+        if rid:
+            return rid
+    except Exception:
+        pass
     try:
         from core.services.run_closure_gate import _get_current_run
         rid = (_get_current_run() or "").strip()

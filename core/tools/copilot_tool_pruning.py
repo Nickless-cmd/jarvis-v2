@@ -20,6 +20,10 @@ import threading
 import time
 from collections import deque
 from typing import Iterable
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 
 MAX_TOOLS = 128
@@ -275,15 +279,8 @@ def select_tools_for_copilot(
 
     remaining = max_tools - len(selected_names)
     if remaining <= 0:
-        for required_name in REQUIRED_LAZY_TOOL_NAMES:
-            if required_name in by_name and required_name not in seen:
-                selected_names.append(required_name)
-                seen.add(required_name)
-        if len(selected_names) > max_tools:
-            required = set(REQUIRED_LAZY_TOOL_NAMES)
-            kept_required = [name for name in selected_names if name in required]
-            kept_other = [name for name in selected_names if name not in required]
-            selected_names = kept_other[: max(0, max_tools - len(kept_required))] + kept_required
+        selected_names = _faestn_kraevede(
+            selected_names, seen, by_name, max_tools, user_message)
         # Katalog-raekkefoelge ogsaa her (6/9-2026). Den anden udgang nedenfor
         # har altid genoprettet den; DENNE returnerede i udvaelgelsesraekkefoelge,
         # saa de pinnede navne endte til sidst i arrayet. Det er den udgang der
@@ -319,15 +316,8 @@ def select_tools_for_copilot(
     # Ensure the lazy schema loader survives aggressive caps. If Tier 1 alone
     # exceeds the cap, the old slice could drop load_more_tools and strand every
     # omitted tool until the next user turn.
-    for required_name in REQUIRED_LAZY_TOOL_NAMES:
-        if required_name in by_name and required_name not in seen:
-            selected_names.append(required_name)
-            seen.add(required_name)
-    if len(selected_names) > max_tools:
-        required = set(REQUIRED_LAZY_TOOL_NAMES)
-        kept_required = [name for name in selected_names if name in required]
-        kept_other = [name for name in selected_names if name not in required]
-        selected_names = kept_other[: max(0, max_tools - len(kept_required))] + kept_required
+    selected_names = _faestn_kraevede(
+        selected_names, seen, by_name, max_tools, user_message)
 
     # Preserve original catalog order for consistent caching/debug.
     original_order: dict[str, int] = {
@@ -337,6 +327,80 @@ def select_tools_for_copilot(
     selected_names.sort(key=lambda n: original_order.get(n, 10_000))
 
     return [by_name[n] for n in selected_names if n in by_name]
+
+
+def _faestn_kraevede(
+    selected_names: list[str], seen: set[str], by_name: dict[str, dict],
+    max_tools: int, user_message: str,
+) -> list[str]:
+    """Saet de vaerktoejer ind der SKAL overleve kappen, og skaer resten.
+
+    Laa foer i TO kopier i samme funktion — én i den tidlige udgang
+    (``remaining <= 0``) og én efter Tier 2. Da atomaritets-reglen blev
+    tilfoejet 15/9-2026, ramte den kun den ene, og fejlen saa ud som om
+    rettelsen ikke virkede: Tier 1 spraenger kappen alene i cowork-scope, saa
+    det er netop den TIDLIGE udgang der tages.
+
+    To kopier af den samme beslutning er dobbelt sandhed. Nu er der én.
+    """
+    kraevede = tuple(REQUIRED_LAZY_TOOL_NAMES) + _betinget_kraevede(user_message)
+    for navn in kraevede:
+        if navn in by_name and navn not in seen:
+            selected_names.append(navn)
+            seen.add(navn)
+    if len(selected_names) > max_tools:
+        paakraevet = set(kraevede)
+        beholdt = [n for n in selected_names if n in paakraevet]
+        oevrige = [n for n in selected_names if n not in paakraevet]
+        selected_names = oevrige[: max(0, max_tools - len(beholdt))] + beholdt
+    return selected_names
+
+
+def _betinget_kraevede(user_message: str) -> tuple[str, ...]:
+    """Vaerktoejer der SKAL med netop denne tur, fordi prompten naevner dem.
+
+    ## Atomaritet (15/9-2026)
+
+    Runtimen maa aldrig bede modellen kalde noget der ikke ligger i kaldet.
+    Maalt samme dag: prompten skriver ordret ``skill_invoke("<navn>")``, og af
+    kataloget paa 471 vaerktoejer overlevede INGEN af de 24 skill-vaerktoejer
+    beskaeringen til 48 — heller ikke paa «brug pdf skill».
+
+    Jarvis gjorde derfor det rationelle: fandt filen med ``explore`` og laeste
+    SKILL.md i haanden. Det var ikke ulydighed; det var den eneste vej han
+    kunne se.
+
+    Tredje gang moensteret bider. Kommentaren over ``REQUIRED_LAZY_TOOL_NAMES``
+    beskriver praecis det samme for ``explore`` 6/9: «scope tillod det,
+    kataloget naevnte det, prompten anbefalede det — og pruneren fjernede det».
+
+    BETINGET og ikke fast: uden et match naevner prompten ingen skills, og saa
+    ville ``skill_invoke`` vaere et vaerktoej uden et navn at give det — en
+    spildt plads ud af 48. Betingelsen er praecis den samme som prompt-
+    sektionens, og den deler dens opslag, saa de to ikke kan komme til at sige
+    hver sit.
+
+    Kaster aldrig: kan vi ikke afgoere det, faestner vi ingenting og er praecis
+    lige saa daarligt stillet som foer — aldrig vaerre.
+    """
+    besked = str(user_message or "").strip()
+    if not besked:
+        return ()
+    try:
+        from core.services.skill_relevance_surface import matchede_skills
+        navne = matchede_skills(besked)
+        if navne:
+            # Spor for kaeden matched → surfaced → TILGAENGELIG → invoked.
+            # Uden dette led kan man ikke svare paa «virkede rettelsen»: det
+            # eneste andet spor, cognitive_state.skill_invoked, baerer kun
+            # {"name": ...} og hverken run- eller session-id, saa man kan ikke
+            # engang skelne en aegte invokering fra en test.
+            logger.info("[skill-atomaritet] faestner skill_invoke — match: %s",
+                        ", ".join(navne[:3]))
+            return ("skill_invoke",)
+    except Exception:
+        logger.debug("kunne ikke afgoere om skills blev naevnt", exc_info=True)
+    return ()
 
 
 def _stable_idx(name: str) -> int:

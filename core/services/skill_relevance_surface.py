@@ -50,6 +50,60 @@ def _enabled() -> bool:
         return True
 
 
+# Ét opslag, to forbrugere (15/9-2026).
+#
+# Prompten naevner `skill_invoke("<navn>")`, men MAALT samme dag: af kataloget
+# paa 471 vaerktoejer har 24 «skill» i navnet, og INGEN af dem overlever
+# beskaeringen til de 48 i den synlige lane — heller ikke naar brugeren
+# bogstaveligt skriver «brug pdf skill».
+#
+# Runtimen bad altsaa modellen om at kalde noget der ikke laa i kaldet. Den
+# eneste vej var `load_more_tools`, som ER blandt de 48 — men prompten naevner
+# den ikke, saa modellen skulle gaette. Den gjorde det rationelle i stedet:
+# fandt filen med `explore` og laeste SKILL.md i haanden.
+#
+# Beskaereren har brug for at vide det SAMME som prompten. Den kunne koere
+# matcheren selv, men det ville koste ~55 ms to gange og kunne give to
+# forskellige svar. Derfor deles ét resultat.
+_SIDSTE: tuple[str, list[str]] = ("", [])
+
+
+def matchede_skills(user_message: str) -> list[str]:
+    """Navnene paa de skills der matcher denne besked. Tom liste hvis ingen.
+
+    Memoiseret paa beskeden, saa beskaereren og prompt-sektionen faar SAMME
+    svar uden at betale for opslaget to gange. Kun ét trin huskes: turene
+    kommer én ad gangen, og et ubegraenset lager ville vokse i en proces der
+    koerer i ugevis.
+
+    Kaster aldrig — en fejlende matcher maa hverken vaelte prompten eller
+    vaerktoejsvalget.
+    """
+    global _SIDSTE
+    besked = str(user_message or "").strip()
+    if not besked:
+        return []
+    if _SIDSTE[0] == besked:
+        return list(_SIDSTE[1])
+    navne = [str(t.get("name") or "") for t in _traef(besked) if t.get("name")]
+    _SIDSTE = (besked, navne)
+    return list(navne)
+
+
+def _traef(besked: str) -> list[dict]:
+    """Selve opslaget. Adskilt saa baade sektionen og memoen bruger samme vej."""
+    if len(besked) < _MIN_MESSAGE_CHARS or not _enabled():
+        return []
+    try:
+        from core.tools.skill_engine_tools import _suggest_skills_for_query
+        return _suggest_skills_for_query(
+            query=besked, threshold=_THRESHOLD, max_results=_MAX_SUGGESTIONS,
+        ) or []
+    except Exception as exc:
+        logger.debug("skill_relevance_surface: opslag fejlede: %s", exc)
+        return []
+
+
 def relevant_skills_section(user_message: str) -> str:
     """Prompt-sektion med de skills der matcher turens opgave. "" hvis ingen.
 
@@ -66,14 +120,10 @@ def relevant_skills_section(user_message: str) -> str:
     if not _enabled():
         return research
 
-    try:
-        from core.tools.skill_engine_tools import _suggest_skills_for_query
-        traef = _suggest_skills_for_query(
-            query=besked, threshold=_THRESHOLD, max_results=_MAX_SUGGESTIONS,
-        ) or []
-    except Exception as exc:
-        logger.debug("skill_relevance_surface: opslag fejlede: %s", exc)
-        return research
+    traef = _traef(besked)
+    # Fyld memoen, saa beskaereren faar samme svar uden et nyt opslag.
+    global _SIDSTE
+    _SIDSTE = (besked, [str(x.get("name") or "") for x in traef if x.get("name")])
 
     if not traef:
         return research

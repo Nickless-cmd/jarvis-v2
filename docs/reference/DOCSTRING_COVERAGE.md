@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7561/14687 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7562/14693 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 7561/14687 functions/methods documented (51%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 650 | 1187 | 54% |
-| `core.services` | 5032 | 10127 | 49% |
+| `core.services` | 5033 | 10128 | 49% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 109 | 184 | 59% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -35,12 +35,12 @@ Generated from source. 7561/14687 functions/methods documented (51%). The list b
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.util` | 9 | 10 | 90% |
-| `scripts` | 189 | 372 | 50% |
+| `scripts` | 189 | 377 | 50% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2078)
+## Undocumented public functions (2083)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L204)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1597,10 +1597,10 @@ Generated from source. 7561/14687 functions/methods documented (51%). The list b
 - `core/services/runtime_surface_cache.py` :: `get_timed_runtime_surface` (L51)
 - `core/services/runtime_surface_cache.py` :: `peek_cached_runtime_surface` (L44)
 - `core/services/runtime_surface_cache.py` :: `runtime_surface_cache` (L21)
-- `core/services/runtime_tasks.py` :: `create_task` (L16)
-- `core/services/runtime_tasks.py` :: `get_task` (L77)
-- `core/services/runtime_tasks.py` :: `list_tasks` (L58)
-- `core/services/runtime_tasks.py` :: `update_task` (L81)
+- `core/services/runtime_tasks.py` :: `create_task` (L20)
+- `core/services/runtime_tasks.py` :: `get_task` (L81)
+- `core/services/runtime_tasks.py` :: `list_tasks` (L62)
+- `core/services/runtime_tasks.py` :: `update_task` (L85)
 - `core/services/rupture_repair.py` :: `list_repairs` (L540)
 - `core/services/rupture_repair.py` :: `list_ruptures` (L517)
 - `core/services/rupture_repair.py` :: `summarize_ruptures` (L570)
@@ -2053,6 +2053,11 @@ Generated from source. 7561/14687 functions/methods documented (51%). The list b
 - `scripts/ledger_rehearsal.py` :: `kopiér` (L39)
 - `scripts/ledger_rehearsal.py` :: `main` (L70)
 - `scripts/link_google_email.py` :: `main` (L21)
+- `scripts/luk_foraeldede_flows.py` :: `annuller_testdata` (L66)
+- `scripts/luk_foraeldede_flows.py` :: `find_foraeldede` (L78)
+- `scripts/luk_foraeldede_flows.py` :: `find_testdata` (L53)
+- `scripts/luk_foraeldede_flows.py` :: `luk` (L92)
+- `scripts/luk_foraeldede_flows.py` :: `main` (L109)
 - `scripts/measure_prompt_payload.py` :: `main` (L80)
 - `scripts/measure_turn_latency.py` :: `probe` (L134)
 - `scripts/measure_turn_latency.py` :: `watch` (L101)

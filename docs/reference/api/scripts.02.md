@@ -9,6 +9,17 @@ _Admin-migration: knyt Google-email til eksisterende konti (§12)._
 |---|---|---|---|---|
 | function | `main` | `()` | — | [src](../../../scripts/link_google_email.py#L21) |
 
+## `scripts/luk_foraeldede_flows.py`
+_Engangs-oprydning: luk flows hvis opgave allerede er afsluttet._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `find_testdata` | `(conn)` | — | [src](../../../scripts/luk_foraeldede_flows.py#L53) |
+| function | `annuller_testdata` | `(conn, testdata)` | — | [src](../../../scripts/luk_foraeldede_flows.py#L66) |
+| function | `find_foraeldede` | `(conn)` | — | [src](../../../scripts/luk_foraeldede_flows.py#L78) |
+| function | `luk` | `(conn, foraeldede)` | — | [src](../../../scripts/luk_foraeldede_flows.py#L92) |
+| function | `main` | `(argv=…)` | — | [src](../../../scripts/luk_foraeldede_flows.py#L109) |
+
 ## `scripts/measure_prompt_payload.py`
 _Measure where Jarvis's visible-chat prompt tokens come from._
 

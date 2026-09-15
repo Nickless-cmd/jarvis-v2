@@ -7,6 +7,8 @@
 // genuinely needs (session model selection, system health/git for the
 // composer, and the Jarvis presence surface for the chat support rail).
 
+import { authHeaders } from './auth.js'
+
 const JSON_HEADERS = { 'Content-Type': 'application/json' }
 const inflightJsonRequests = new Map()
 
@@ -24,6 +26,8 @@ async function requestJson(path, options = {}) {
     ...options,
     headers: {
       ...(options.body ? JSON_HEADERS : {}),
+      // Uden denne fik HVERT kald 401, og skallen hang paa «Loading…».
+      ...authHeaders(),
       ...(options.headers || {}),
     },
   }).then(async (response) => {
@@ -302,7 +306,7 @@ export const backend = {
   async streamMessage({ sessionId, content, attachmentIds = [], approvalMode = 'ask', thinkingMode = 'think', signal, onRun, onDelta, onDone, onFailed, onWorkingStep, onCapability, onApprovalRequest }) {
     const response = await fetch('/chat/stream', {
       method: 'POST',
-      headers: JSON_HEADERS,
+      headers: { ...JSON_HEADERS, ...authHeaders() },
       body: JSON.stringify({
         message: content,
         session_id: sessionId,
@@ -322,7 +326,9 @@ export const backend = {
     const form = new FormData()
     form.append('file', file)
     form.append('session_id', sessionId)
-    const response = await fetch('/attachments/upload', { method: 'POST', body: form })
+    const response = await fetch('/attachments/upload', {
+      method: 'POST', body: form, headers: { ...authHeaders() },
+    })
     if (!response.ok) {
       const err = await response.json().catch(() => ({}))
       throw new Error(err.detail || `Upload failed: ${response.status}`)
@@ -331,7 +337,9 @@ export const backend = {
   },
 
   async cancelRun(runId) {
-    const res = await fetch(`/chat/runs/${runId}/cancel`, { method: 'POST', headers: JSON_HEADERS })
+    const res = await fetch(`/chat/runs/${runId}/cancel`, {
+      method: 'POST', headers: { ...JSON_HEADERS, ...authHeaders() },
+    })
     if (!res.ok) throw new Error(`Cancel failed: ${res.status}`)
     return res.json()
   },
@@ -339,7 +347,7 @@ export const backend = {
   async steerRun(runId, content) {
     const res = await fetch(`/chat/runs/${runId}/steer`, {
       method: 'POST',
-      headers: JSON_HEADERS,
+      headers: { ...JSON_HEADERS, ...authHeaders() },
       body: JSON.stringify({ content }),
     })
     if (!res.ok) throw new Error(`Steer failed: ${res.status}`)
@@ -376,7 +384,7 @@ export const backend = {
   async gitCommit(message) {
     return await requestJson('/mc/system/git/commit', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({ message }),
     })
   },

@@ -2086,3 +2086,36 @@ button { cursor: pointer; }
   background: rgba(255,255,255,.04);
   color: #c9d1d9;
 }
+
+/* ── Login (15/9-2026) ──────────────────────────────────────────────────
+   Skaermen fandtes ikke foer. UI'en sendte ingen legitimation, fik 401, og
+   blev staaende paa «Loading unified shell…». */
+.login-skaerm {
+  min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(1200px 600px at 20% 0%, #0d1f1c 0%, #070a0c 60%);
+}
+.login-kort {
+  width: min(360px, 90vw); display: flex; flex-direction: column; gap: 12px;
+  padding: 28px; border-radius: 14px;
+  background: rgba(16, 24, 28, .92); border: 1px solid rgba(120, 220, 200, .16);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, .45);
+}
+.login-kort h1 { margin: 0; font-size: 20px; letter-spacing: .14em; color: #7fe3cb; }
+.login-under { margin: 0 0 6px; font-size: 13px; color: #8ba3a0; }
+.login-kort label { display: flex; flex-direction: column; gap: 5px; font-size: 12px; color: #9fb6b2; }
+.login-kort input {
+  padding: 9px 10px; border-radius: 8px; font-size: 14px;
+  background: #0b1114; color: #dff3ee; border: 1px solid rgba(120, 220, 200, .2);
+}
+.login-kort button {
+  padding: 10px; border-radius: 8px; font-size: 14px; cursor: pointer;
+  background: #16252a; border: 1px solid rgba(120, 220, 200, .3); color: #dff3ee;
+}
+.login-kort button:disabled { opacity: .5; cursor: default; }
+.login-google { background: #1b2b2f; font-weight: 600; }
+.login-eller { text-align: center; font-size: 11px; color: #6f8683; letter-spacing: .1em; }
+.login-token { font-size: 12px; color: #8ba3a0; }
+.login-token summary { cursor: pointer; padding: 4px 0; }
+.login-besked { margin: 4px 0 0; font-size: 12px; color: #e0b972; }
+.boot-fejl { flex-direction: column; gap: 8px; text-align: center; }
+.boot-fejl-detalje { font-size: 12px; color: #d08a8a; max-width: 60ch; }

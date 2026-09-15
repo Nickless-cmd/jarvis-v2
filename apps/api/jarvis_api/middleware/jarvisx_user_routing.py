@@ -128,6 +128,50 @@ _PUBLIC_PATHS = (
 )
 
 
+# ── UI-SKALLEN, KUN LOKALT (15/9-2026) ───────────────────────────────────
+# Bjoern: «jeg kan ikk åbene den i min browser». `/` svarede 401, saa den side
+# der skulle logge ham ind laa selv bag login'et. Doeren var laast udefra.
+#
+# Bjoern valgte lokalt frem for offentligt: «Lad os bar holde den lokalt
+# aaben... de andre bruger har pt. Discord, desk og mobil adgang og det er
+# fint for nu». api.srvlab.dk peger offentligt paa 185.107.14.241, saa en
+# blank undtagelse ville laegge login-siden paa internettet.
+#
+# Det her aabner KUN skallen — HTML, JS, CSS. Hvert eneste /mc/* og /chat/*
+# kraever stadig et token, saa login'et er ikke en formalitet: uden det viser
+# siden en login-skaerm og intet andet.
+_UI_SKAL = ("/", "/index.html", "/favicon.ico", "/vite.svg")
+_UI_SKAL_PREFIX = ("/assets/",)
+
+
+def _er_lokal_afsender(request: "Request") -> bool:
+    """Kom kaldet fra loopback eller vores eget net?
+
+    Hviler paa ``request.client.host``, og det er MAALT 15/9 foer det blev
+    brugt: tre kald gennem Caddy til api.srvlab.dk, ét rent og to med
+    forfalsket ``X-Forwarded-For`` (10.0.0.99 og 8.8.8.8). Alle tre blev
+    logget som den aegte afsender 10.0.0.20 — Caddy og uvicorn tager det
+    betroede hop, ikke klientens paastand.
+
+    Fejlretning: kan adressen ikke laeses, er svaret NEJ. En doer man ikke kan
+    se hvem der staar foran, skal blive lukket.
+    """
+    import ipaddress
+
+    vaert = (getattr(getattr(request, "client", None), "host", "") or "").strip()
+    if not vaert:
+        return False
+    try:
+        ip = ipaddress.ip_address(vaert)
+    except ValueError:
+        return False
+    return bool(ip.is_loopback or ip.is_private)
+
+
+def _er_ui_skal(path: str) -> bool:
+    return path in _UI_SKAL or any(path.startswith(p) for p in _UI_SKAL_PREFIX)
+
+
 def _is_public_path(path: str) -> bool:
     # OAuth connector-callback rammes af BROWSEREN uden bearer-token (16. jun 2026).
     # Kun /callback er public — /start kræver auth. State-parameteren er signeret +
@@ -170,7 +214,9 @@ async def jarvisx_user_routing_middleware(
     # ── Step 2: enforce auth_required() globally ──────────────────
     # If we require auth and the request didn't bring a valid token,
     # block it before any context binding happens.
-    if not token_claims and not _is_public_path(request.url.path):
+    _sti = request.url.path
+    if (not token_claims and not _is_public_path(_sti)
+            and not (_er_ui_skal(_sti) and _er_lokal_afsender(request))):
         try:
             from core.runtime.jarvisx_auth import auth_required
             require = auth_required()

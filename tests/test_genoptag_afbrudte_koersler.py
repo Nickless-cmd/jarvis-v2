@@ -269,3 +269,90 @@ def test_forespoergslen_giver_AELDST_foerst(base):
     _laeg(base, 2, "runtime.visible_run_interrupted", "visible-sidst", 1)
     ud = lex._afbrudte_fra_db()
     assert [e["payload"]["run_id"] for e in ud] == ["visible-foerst", "visible-sidst"]
+
+
+# ───────────────────────── opstarts-fejning var ikke nok (målt 15/9-2026)
+
+def test_lytteren_fejer_LOEBENDE_ikke_kun_ved_opstart(monkeypatch):
+    """Den ægte hændelse: jeg genstartede jarvis-api, som udgav
+    «api-nedlukning» for Bjørns kørsel — og lytteren bor i jarvis-runtime, som
+    IKKE blev genstartet. Eventet lå i DB'en, ingen så det, og hans besked blev
+    aldrig genoptaget.
+
+    Event-bussens abonnenter er process-lokale; DB'en er den delte sandhed. En
+    lytter der kun kigger ved sin egen opstart er blind for alt hvad den ANDEN
+    proces udgiver imens.
+    """
+    import queue as _q
+    import time as _t
+
+    fejet: list[int] = []
+    monkeypatch.setattr(lex, "indhent_forsoemte_afbrydelser",
+                        lambda **kw: fejet.append(1) or {"set": 0, "genoptaget": 0})
+    monkeypatch.setattr(lex, "_FEJE_INTERVAL_S", 0.0)
+
+    kø: _q.Queue = _q.Queue()
+    lex._LISTENER_STOP.clear()
+
+    def _stop_snart():
+        _t.sleep(0.25)
+        lex._LISTENER_STOP.set()
+        kø.put(None)
+
+    import threading
+    threading.Thread(target=_stop_snart, daemon=True).start()
+    try:
+        lex._listener_loop(kø)
+    finally:
+        lex._LISTENER_STOP.set()
+
+    assert fejet, "lytteren fejede ikke mens den koerte"
+
+
+def test_fejningen_har_et_interval_saa_den_ikke_hamrer_DBen():
+    """Løkken tikker hvert sekund. Uden et interval ville den forespørge
+    DB'en 86.400 gange i døgnet for noget der sker et par gange om ugen."""
+    assert lex._FEJE_INTERVAL_S >= 30.0
+
+
+def test_fejningen_holder_sin_takt_over_TID(monkeypatch):
+    """Mutationen der overlevede: fjern `sidst_fejet = ...` inde i grenen.
+
+    Så fejer den ved HVER tik efter første gang — samme skade som intet
+    interval, ad en anden vej. En test på konstanten kan ikke se det, fordi
+    konstanten er uændret. Takten skal måles over tid.
+    """
+    import queue as _q
+    import threading
+    from types import SimpleNamespace
+
+    ur = {"t": 0.0}
+    monkeypatch.setattr(lex, "time", SimpleNamespace(monotonic=lambda: ur["t"]))
+    monkeypatch.setattr(lex, "_FEJE_INTERVAL_S", 5.0)
+
+    fejet: list[float] = []
+    monkeypatch.setattr(lex, "indhent_forsoemte_afbrydelser",
+                        lambda **kw: fejet.append(ur["t"]) or {"set": 0, "genoptaget": 0})
+
+    kø: _q.Queue = _q.Queue()
+    for _ in range(20):
+        kø.put({"kind": "noget.ligegyldigt", "payload": {}})
+
+    lex._LISTENER_STOP.clear()
+    rigtig_get = kø.get
+
+    def _get_og_tik(*a, **kw):
+        ur["t"] += 1.0          # ét sekund pr. tik
+        v = rigtig_get(*a, **kw)
+        if kø.empty():
+            lex._LISTENER_STOP.set()
+        return v
+
+    monkeypatch.setattr(kø, "get", _get_og_tik)
+    try:
+        lex._listener_loop(kø)
+    finally:
+        lex._LISTENER_STOP.set()
+
+    # 20 sekunder, interval 5 → et par gange. Uden nulstilling: ~16.
+    assert 2 <= len(fejet) <= 5, f"{len(fejet)} fejninger paa 20 tik: {fejet}"

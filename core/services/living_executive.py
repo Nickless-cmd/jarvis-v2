@@ -44,6 +44,18 @@ _GENOPTAG_VINDUE_S = 900
 # et minut senere».
 _INDHENT_MINUTTER = 60
 
+# Hvor ofte lytteren fejer DB'en igennem mens den koerer.
+#
+# Indhentningen var foerst KUN en opstarts-fejning, og det var ikke nok. Maalt
+# 15/9-2026: jeg genstartede jarvis-api, den udgav «api-nedlukning» for Bjoerns
+# koersel — og lytteren bor i jarvis-runtime, som IKKE blev genstartet. Eventet
+# laa i DB'en, ingen saa det, og hans besked blev aldrig genoptaget.
+#
+# Event-bussens abonnenter er process-lokale; DB'en er den delte sandhed. Saa
+# en lytter der kun kigger i DB'en ved sin egen opstart, er blind for alt hvad
+# den ANDEN proces udgiver imens.
+_FEJE_INTERVAL_S = 60.0
+
 _LISTENER_THREAD: threading.Thread | None = None
 _LISTENER_STOP = threading.Event()
 _LISTENER_QUEUE: "queue.Queue[dict[str, Any] | None] | None" = None
@@ -828,7 +840,17 @@ def stop_listener() -> None:
 
 
 def _listener_loop(q: "queue.Queue[dict[str, Any] | None]") -> None:
+    sidst_fejet = time.monotonic()
     while not _LISTENER_STOP.is_set():
+        # Loekken tikker alligevel hvert sekund, saa fejningen behoever ingen
+        # egen traad. Nedkoelingens noegle pr. koersel er kvitteringen, saa en
+        # gentagen fejning kan ikke genoptage det samme to gange.
+        if time.monotonic() - sidst_fejet >= _FEJE_INTERVAL_S:
+            sidst_fejet = time.monotonic()
+            try:
+                indhent_forsoemte_afbrydelser()
+            except Exception:
+                logger.warning("living_executive: fejning fejlede", exc_info=True)
         try:
             item = q.get(timeout=1.0)
         except queue.Empty:

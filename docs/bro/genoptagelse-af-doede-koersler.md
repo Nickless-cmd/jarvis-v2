@@ -91,6 +91,27 @@ arbejde er ikke noget nogen venter på, og et bredt vindue gør hver genstart
 til en mulig genoplivning af gammelt arbejde. Vinduet er nu **60 minutter** —
 rigeligt til «API'en stemplede ved nedlukning, runtime kom op et minut senere».
 
+## Opstarts-fejning var ikke nok (15/9-2026)
+
+Jeg genstartede `jarvis-api`. Den udgav pligtskyldigt «api-nedlukning» for
+Bjørns kørsel — og lytteren bor i `jarvis-runtime`, som **ikke** blev
+genstartet. Eventet lå i DB'en, ingen så det, og hans besked blev aldrig
+genoptaget.
+
+Rettelsen fra natten lukkede kun det ene hul: lytteren læste DB'en **ved sin
+egen opstart**. Men event-bussens abonnenter er process-lokale, og DB'en er den
+delte sandhed — så en lytter der kun kigger ved opstart er blind for alt hvad
+den anden proces udgiver imens.
+
+Lytterens løkke tikker allerede hvert sekund, så fejningen kører nu løbende
+derfra — hvert 60. sekund, uden en ny tråd. Nøglen pr. kørsel er kvitteringen,
+så en gentagen fejning kan ikke genoptage det samme to gange.
+
+To mutationer til, og den ene overlevede først: fjerner man `sidst_fejet =
+time.monotonic()` inde i grenen, fejer den ved **hver** tik efter første gang —
+samme skade som intet interval, ad en anden vej. En test på konstanten kan ikke
+se det, fordi konstanten er uændret. Takten måles nu over tid med et styret ur.
+
 ## Mutations-prøve
 
 | Mutation | Udfald |

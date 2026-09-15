@@ -22,7 +22,14 @@ export function LoginScreen({ onLoggedIn }) {
   const afbrudt = useRef(false)
 
   const faerdig = (t) => {
-    gemToken(t)
+    if (!gemToken(t)) {
+      // Uden lager overlever tokenet ikke genindlaesningen, og brugeren ville
+      // bare lande her igen uden at vide hvorfor.
+      setBesked('Din browser gemmer ikke data for dette websted — slå det til, '
+        + 'eller brug et almindeligt vindue i stedet for privat browsing.')
+      setTravl(false)
+      return
+    }
     // GENINDLAES — saet ikke bare state (15/9-2026, maalt paa Bjoerns login).
     //
     // `useUnifiedShell()` kaldes i App FOER login-tjekket, saa dens

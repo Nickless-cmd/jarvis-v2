@@ -876,7 +876,29 @@ def create_app() -> FastAPI:
     )
     _ui_dist = os.path.normpath(_ui_dist)
     if os.path.isdir(_ui_dist):
-        app.mount("/", StaticFiles(directory=_ui_dist, html=True), name="ui")
+        # ── SKALLEN MAA ALDRIG CACHES (15/9-2026) ────────────────────────
+        # Vite giver hvert bundt et indholds-hash i navnet, saa navnet SKIFTER
+        # ved hver bygning. index.html peger paa det aktuelle navn.
+        #
+        # StaticFiles satte kun etag og last-modified — ingen Cache-Control.
+        # Uden den cacher browsere heuristisk (typisk 10% af filens alder), og
+        # en gammel index.html peger saa paa et bundt der ikke findes mere.
+        # Maalt paa Bjoern 15/9: han loggede ind, saa intet ske, og «da jeg
+        # manuelt opdaterede siden kom jeg ind». Filen paa serveren havde
+        # ligget uroert siden 6. juli, saa det heuristiske vindue var dage.
+        #
+        # Aktiverne maa til gengaeld gerne caches for evigt — deres navn
+        # ÆNDRER sig naar indholdet goer, saa en cache kan ikke blive forkert.
+        class _UiFiler(StaticFiles):
+            async def get_response(self, path, scope):
+                svar = await super().get_response(path, scope)
+                if path.startswith("assets/"):
+                    svar.headers["cache-control"] = "public, max-age=31536000, immutable"
+                else:
+                    svar.headers["cache-control"] = "no-cache"
+                return svar
+
+        app.mount("/", _UiFiler(directory=_ui_dist, html=True), name="ui")
 
     return app
 

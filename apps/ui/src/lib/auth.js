@@ -23,12 +23,23 @@ export function hentToken() {
   }
 }
 
+/** Gemmer tokenet og siger til hvis det IKKE overlevede.
+ *
+ *  Foerste udgave slugte fejlen tavst. Da login genindlaeser siden, ville et
+ *  mislykket gem betyde at man landede paa login igen uden nogen forklaring —
+ *  praecis den tavse fejl resten af dagen gik med at rydde op i. Sker i
+ *  private vinduer og naar site-data er blokeret.
+ *
+ *  Returnerer true naar tokenet kan laeses tilbage. Skriv-fejlen alene er ikke
+ *  nok at gaa efter: nogle browsere accepterer skrivningen og kasserer den. */
 export function gemToken(token) {
+  const t = String(token || '')
   try {
-    localStorage.setItem(NOEGLE, String(token || ''))
+    localStorage.setItem(NOEGLE, t)
   } catch {
-    /* uden lager virker sessionen kun indtil genindlaesning — bedre end intet */
+    return false
   }
+  return hentToken() === t
 }
 
 export function glemToken() {

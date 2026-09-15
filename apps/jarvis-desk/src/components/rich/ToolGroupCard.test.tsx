@@ -54,4 +54,27 @@ describe('ToolGroupCard', () => {
     // Desk beholder sin funktion: de tre rigtige tool-kort med krop og metadata.
     expect(screen.getAllByText('Læs fil')).toHaveLength(3)
   })
+
+  it('summer +/− i den foldede linje — serverens tal foerst', () => {
+    // Bjoern saa tallene paa mobilen men ikke paa desk: her stod de kun inde i
+    // hvert kort, og gruppen er foldet som standard.
+    const block: ToolGroupBlock = {
+      type: 'tool_group', kind: 'round', count: 2,
+      tools: [
+        { type: 'tool_use', id: 'e1', name: 'edit_file', input: { path: '/a' }, status: 'done',
+          result: JSON.stringify({ linjer_tilfoejet: 3, linjer_fjernet: 1 }) },
+        { type: 'tool_use', id: 'e2', name: 'write_file', input: { path: '/b', content: 'x' }, status: 'done',
+          result: JSON.stringify({ linjer_tilfoejet: 10, linjer_fjernet: 4 }) },
+      ],
+    }
+    render(<ToolGroupCard block={block} density="compact" />)
+    const tal = screen.getByTestId('toolgroup-diffstat')
+    expect(tal).toHaveTextContent('+13')
+    expect(tal).toHaveTextContent('−5')
+  })
+
+  it('en runde der kun laeste har ingen tal — ikke to nuller', () => {
+    render(<ToolGroupCard block={group(3)} density="compact" />)
+    expect(screen.queryByTestId('toolgroup-diffstat')).toBeNull()
+  })
 })

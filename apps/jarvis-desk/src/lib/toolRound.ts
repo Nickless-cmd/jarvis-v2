@@ -18,6 +18,7 @@
  * fiske i.
  */
 import type { ContentBlock } from './sseProtocol'
+import { diffFraResultat, diffStat } from './diffStat'
 
 type ToolUse = Extract<ContentBlock, { type: 'tool_use' }>
 
@@ -184,4 +185,32 @@ function blandetRunde(tools: ToolUse[], running: boolean): string {
   const hale = running ? '…' : ''
   if (led.length === 1) return led[0]! + hale
   return `${led.slice(0, -1).join(', ')} og ${led[led.length - 1]}${hale}`
+}
+
+/**
+ * Rundens samlede linjeændringer — 1:1 med mobilens `summerDiff`.
+ *
+ * Gruppen er FOLDET som standard. Desk viste kun tallene inde i hvert kort, så
+ * de var usynlige det meste af tiden; mobilen summer dem op i selve linjen.
+ *
+ * Samme kilde som `ToolCard`: serverens MÅLTE tal først, klientens beregning
+ * ud fra argumenterne som faldback mens kaldet stadig kører. `null` for en
+ * runde der kun læste — «ingenting at vise» er en anden besked end «nul».
+ */
+export function summerDiff(tools: ToolUse[]): { add: number; del: number } | null {
+  let add = 0
+  let del = 0
+  let nogen = false
+  for (const t of tools) {
+    let args: Record<string, unknown> = t.input && Object.keys(t.input).length ? t.input : {}
+    if (!Object.keys(args).length && t.partialJson) {
+      try { args = JSON.parse(t.partialJson) } catch { args = {} }
+    }
+    const ds = diffFraResultat(t.result) ?? diffStat(t.name, args)
+    if (!ds) continue
+    add += ds.add
+    del += ds.del
+    nogen = true
+  }
+  return nogen ? { add, del } : null
 }

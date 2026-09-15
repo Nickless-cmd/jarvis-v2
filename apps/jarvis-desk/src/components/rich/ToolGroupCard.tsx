@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { ChevronRight, ChevronDown, Code2 } from 'lucide-react'
 import type { ToolGroupBlock } from '../../lib/toolRounds'
-import { summarizeRound } from '../../lib/toolRound'
+import { summarizeRound, summerDiff } from '../../lib/toolRound'
 import { ToolCard } from './ToolCard'
 
 /**
@@ -40,6 +40,7 @@ export function ToolGroupCard({
   const [open, setOpen] = useState(false)
   const Chevron = open ? ChevronDown : ChevronRight
   const resume = summarizeRound(block.tools)
+  const sum = summerDiff(block.tools)
   if (!resume) return null
 
   const koerer = block.tools.some((t) => (t.status ?? 'running') === 'running')
@@ -59,6 +60,15 @@ export function ToolGroupCard({
       >
         <Code2 size={15} className="toolgroup-icon" strokeWidth={1.8} />
         <span className="toolgroup-label">{resume}</span>
+        {/* Summen i selve linjen, 1:1 med mobilen: foldet som standard ville
+            tallene ellers kun ses af den der folder ud. Et nul vises ikke. */}
+        {sum ? (
+          <span className="toolgroup-diffstat" data-testid="toolgroup-diffstat">
+            {sum.add ? <span className="git-add">+{sum.add}</span> : null}
+            {sum.add && sum.del ? ' ' : null}
+            {sum.del ? <span className="git-del">−{sum.del}</span> : null}
+          </span>
+        ) : null}
         <Chevron size={15} className="toolgroup-chevron" strokeWidth={1.8} />
       </button>
       {open && (

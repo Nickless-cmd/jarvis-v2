@@ -43,4 +43,35 @@ describe('foldToolResults', () => {
     const out = foldToolResults(blocks as any)
     expect((out[0] as any).status).toBe('error')
   })
+
+  // Målt 15/9-2026: Jarvis udgav et regneark med `publish_file`. Blokken blev
+  // gemt i beskeden — med `url` og `kilde: "published"` og INTET attachment_id
+  // — men typen fandtes ikke i denne kæde, så den blev droppet og filen nåede
+  // aldrig skærmen.
+  it('bevarer en UDGIVET fil — den bærer url, ikke attachment_id', () => {
+    const blocks = [
+      { type: 'file', filename: 'forbrug.xlsx', url: 'https://api.srvlab.dk/files/forbrug.xlsx', kilde: 'published', size_bytes: 8866 },
+    ]
+    const out = foldToolResults(blocks as any)
+    expect(out).toHaveLength(1)
+    expect(out[0]).toMatchObject({
+      type: 'file',
+      filename: 'forbrug.xlsx',
+      url: 'https://api.srvlab.dk/files/forbrug.xlsx',
+      kilde: 'published',
+      size_bytes: 8866,
+    })
+  })
+
+  it('bevarer et persisteret billede — reference, ikke src', () => {
+    const blocks = [{ type: 'image', attachment_id: 'abc', filename: 'x.png', mime_type: 'image/png' }]
+    const out = foldToolResults(blocks as any)
+    expect(out).toHaveLength(1)
+    expect(out[0]).toMatchObject({ type: 'image', attachment_id: 'abc', filename: 'x.png' })
+  })
+
+  it('en fil uden navn faar et brugbart fallback', () => {
+    const out = foldToolResults([{ type: 'file', url: 'https://x/files/y' }] as any)
+    expect((out[0] as any).filename).toBe('fil')
+  })
 })

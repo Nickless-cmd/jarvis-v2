@@ -5,6 +5,7 @@ import { MarkdownRenderer } from './MarkdownRenderer'
 import { ToolCard } from './ToolCard'
 import { ToolGroupCard } from './ToolGroupCard'
 import { ImageBlock } from './ImageBlock'
+import { AttachmentBlock } from './AttachmentBlock'
 import { ProgressTrail } from './ProgressTrail'
 import { LiveVerb } from '../shell/LiveVerb'
 
@@ -110,7 +111,17 @@ function BlockView({
     case 'tool_use':
       return <ToolCard block={block} density={density} />
     case 'image':
-      return <ImageBlock src={block.src} alt={block.alt} />
+      // LIVE billede bærer en `src` (data-URL fra streamen) og kan tegnes med
+      // det samme. PERSISTERET bærer kun en reference og skal hentes med token
+      // — uden denne forgrening faldt et gemt billede ud af tråden efter reload.
+      return block.src
+        ? <ImageBlock src={block.src} alt={block.alt} />
+        : <AttachmentBlock block={{ ...block, type: 'image' }} />
+    case 'file':
+      // UDGIVET fil (`publish_file`) eller en vedhæftning. Havde ingen gren
+      // før, så den ramte `default: return null` — filen lå i beskeden og nåede
+      // aldrig skærmen (målt 15/9-2026).
+      return <AttachmentBlock block={block} />
     case 'thinking': {
       // "Live" = han tænker lige NU (sidste blok + streamer stadig) → vis
       // "tænker…" + den ægte thinking-content mens den strømmer.

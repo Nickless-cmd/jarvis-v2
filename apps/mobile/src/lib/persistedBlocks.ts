@@ -46,6 +46,18 @@ export interface PersistedBlock {
   seconds?: number
   /** image/file: reference, ALDRIG data — hentning går over det user-scopede endpoint. */
   attachment_id?: string
+  /**
+   * file: UDGIVET fils egen adresse.
+   *
+   * `publish_file` lægger filen i `files/` og skriver sin URL i blokken — den
+   * bærer derfor INTET `attachment_id`. Uden dette felt kunne filteret nedenfor
+   * ikke skelne «en halv reference» fra «en udgivet fil», og alt Jarvis selv
+   * lagde ud faldt bort før skærmen så det. Målt 15/9-2026: blokken lå i
+   * beskeden hele tiden, den nåede bare aldrig frem.
+   */
+  url?: string
+  /** file: hvor filen kommer fra — `published` = Jarvis' egen udgivelse. */
+  kilde?: string
   filename?: string
   mime_type?: string
   size_bytes?: number
@@ -57,12 +69,26 @@ export function thinkingBlock(blocks: PersistedBlock[] | null): PersistedBlock |
   return blocks.find((b) => b.type === 'thinking') ?? null
 }
 
-/** Vedhæftninger på en brugerbesked, i den rækkefølge de blev sendt. */
+/**
+ * Vedhæftninger på en besked, i den rækkefølge de blev sendt.
+ *
+ * Der er TO slags referencer, og de hentes hver for sig (se `blokUrl`):
+ *
+ *   - `attachment_id` — en upload eller et genereret billede, hentet over det
+ *     user-scopede `/attachments/...`
+ *   - `url` — en fil Jarvis selv har udgivet med `publish_file`, hentet over
+ *     `/files/{navn}`
+ *
+ * Før krævede filteret et `attachment_id`, og en udgivet fil — som aldrig har
+ * et — faldt ud allerede her. Blokken var i beskeden hele tiden; den nåede
+ * bare ikke skærmen. `MessageAttachments` kunne hele tiden vise den.
+ */
 export function attachmentBlocks(blocks: PersistedBlock[] | null): PersistedBlock[] {
   if (!blocks) return []
-  return blocks.filter(
-    (b) => (b.type === 'image' || b.type === 'file') && !!(b.attachment_id ?? '').trim()
-  )
+  return blocks.filter((b) => {
+    if (b.type !== 'image' && b.type !== 'file') return false
+    return !!((b.attachment_id ?? '').trim() || (b.url ?? '').trim())
+  })
 }
 
 /**

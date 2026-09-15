@@ -59,3 +59,37 @@ describe('Runs-filteret kender afbrudte kørsler', () => {
     expect(screen.getByRole('button', { name: /alle\s*4/ })).toBeTruthy()
   })
 })
+
+/**
+ * Bjørn: «ja behold kører nu og færdig som selvstændige».
+ *
+ * Alle fire spande fra den gamle «Arbejde» står nu som egne filtre. Den femte
+ * — «Venter på dig» — er godkendelser og bor i «Afventer dig», ikke her.
+ */
+describe('alle fire spande står selvstændigt', () => {
+  for (const [navn, tekst] of [
+    ['kører nu', /i gang/],
+    ['til gennemsyn', /halvt arbejde/],
+    ['fejlet', /gik galt/],
+    ['færdig', /^faerdig$/],
+  ] as [string, RegExp][]) {
+    it(`«${navn}» viser kun sin egen spand`, async () => {
+      tegn()
+      await userEvent.click(screen.getByRole('button', { name: new RegExp(`^${navn}`) }))
+      expect(screen.getByText(tekst)).toBeTruthy()
+      // Præcis én række — ellers overlapper spandene.
+      expect(screen.getAllByRole('button').filter((b) =>
+        b.className.includes('mc-row')).length).toBe(1)
+    })
+  }
+
+  it('spandene overlapper ikke: de fire summer til «alle»', () => {
+    tegn()
+    const tal = (n: string) => {
+      const b = screen.getByRole('button', { name: new RegExp(`^${n}`) })
+      return Number(b.textContent?.replace(n, '').trim() || 0)
+    }
+    const sum = tal('kører nu') + tal('til gennemsyn') + tal('fejlet') + tal('færdig')
+    expect(sum).toBe(tal('alle'))
+  })
+})

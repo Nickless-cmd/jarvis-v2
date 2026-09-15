@@ -17,12 +17,20 @@ import { spandForRun, type KoeSpand } from '../../../lib/coworkApi'
 // Kortlaegningen status→spand genbruges fra coworkApi i stedet for en ny
 // liste her. Den stod uden kaldere efter WorkQueue blev slettet, og to
 // lister ville vaere dobbelt sandhed om det samme.
-type Filter = 'alle' | 'kører' | 'til gennemsyn' | 'fejlet'
+// Alle fire spande fra den gamle «Arbejde» staar nu som selvstaendige filtre
+// (Bjoern 15/9-2026: «ja behold kører nu og færdig som selvstændige»), med hans
+// egne etiketter. Femte spand — «Venter paa dig» — er godkendelser og bor i
+// «Afventer dig»/Godkendelser, ikke i runs-tabellen.
+//
+// Kortlaegningen daekker praecis spandene, saa hver koersel falder i ét og kun
+// ét filter. Det er testet: summen af de fire er lig antallet i «alle».
+type Filter = 'alle' | 'kører nu' | 'til gennemsyn' | 'fejlet' | 'færdig'
 
 const SPAND_FOR_FILTER: Record<Exclude<Filter, 'alle'>, KoeSpand> = {
-  'kører': 'aktiv',
+  'kører nu': 'aktiv',
   'til gennemsyn': 'til_gennemsyn',
   'fejlet': 'fejlet',
+  'færdig': 'faerdig',
 }
 
 /** Runs-tabel: filtrerbar liste over kørsler; klik en række → drill-down (RunDetail).
@@ -41,7 +49,7 @@ export function RunsTable({ config, runs }: { config: ApiConfig | undefined; run
   return (
     <div className="mc-runs">
       <div className="mc-filters">
-        {(['alle', 'kører', 'til gennemsyn', 'fejlet'] as Filter[]).map((f) => {
+        {(['alle', 'kører nu', 'til gennemsyn', 'fejlet', 'færdig'] as Filter[]).map((f) => {
           const n = antal(f)
           return (
             <button

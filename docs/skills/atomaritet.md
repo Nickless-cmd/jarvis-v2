@@ -167,11 +167,54 @@ Sammen med `cognitive_state.skill_invoked` giver det: matched → surfaced →
 tilgængelig → invoked. Det led der stadig mangler er et **run-id** på
 invokeringen; uden det kan en ægte invokering ikke skelnes fra en test.
 
-Ikke rørt endnu, bevidst: selvmodsigelsen i prompten («du skal ikke kalde
-skill_suggest» mod decision-gatens krav om det modsatte) og
-`skill_autosurface_enabled`.
+## De fire resterende (samme dag)
 
-Og et hul målingen afslørede undervejs: «lav et regneark» og «lav en
-powerpoint» matcher **ingenting**, selvom `excel-automation` og `pptx` findes.
-Skillenes egne `use_when`-linjer dækker ikke de danske ord. Det er en
-indholds-mangel i skillene, ikke i matcheren.
+**1 — Run-id på invokeringen.** Eventet bar kun `{"name": ...}`, så tre
+invokeringer i basen kunne ikke skelnes fra tests. Mekanismen fandtes:
+`aktivt_run_id()` blev bygget 12/9 efter to hændelser der ikke kunne
+efterforskes, og kommentaren dér siger det selv — «feltet fandtes; kalderen
+sendte det bare ikke». Nu bærer eventet `run_id`, `session_id` og `surfaced`,
+så kæden **matched → surfaced → invoked** kan lægges sammen bagefter.
+
+**2 — Selvmodsigelsen.** To aktive beslutninger krævede det modsatte af hvad
+fladen siger:
+
+| | efterlevelse |
+|---|---|
+| `dec_06d24592d650` «Før enhver opgave … kør `skill_suggest(query)`» | 0,10 |
+| `dec_470e3694d982` «Kald altid `skill_gate(...)` som allerførste step» | 0,00 |
+
+Begge navngav værktøjer der ikke lå i de 48 — de kunne slet ikke efterleves.
+Pensioneret via `revoke_decision` med begrundelse. Deres hensigt lever videre i
+runtimen; det var kun ritualet der var forkert.
+
+**3 — `skill_autosurface_enabled`: ikke rørt, med vilje.** Kontakten styrer
+`skill_gate(autosurface=true)` — og `skill_gate` er ikke blandt de 48 — samt
+`agent_loop.py`, som er **jarvis-code**'s loop («Klienten (jarvis-code) ejer
+loopet»), og den bruger han ikke længere. Tilladelses-listen er desuden tom, så
+`filter_to_approved` returnerer `[]` uanset. At tænde ville ændre ingenting og
+samtidig åbne en grænse koden selv beskriver som «widens the injection
+surface». Afventer hans ord.
+
+**4 — Dansk.** Seks af otte rimelige danske formuleringer fandt ingenting.
+De to der virkede havde det danske ord i navnet («pdf», «youtube»); resten
+kræver oversættelse — regneark er ikke excel, præsentation er ikke pptx.
+
+Matcheren **understøtter** tosprogede `use_when` og splitter dem per sprog.
+Ingen skill havde en `DA:`-linje. Fjerde gang på én dag at noget findes uden en
+kalder.
+
+Tillægget ligger i `core/tools/skill_dansk_tillaeg.py` og ikke i SKILL.md,
+fordi de fleste skills er leverandør-filer der overskrives ved opdatering. To
+værn holder listen ærlig: den må kun navngive skills der findes (en test
+kræver det), og den tilføjer kun **udtryk**, aldrig nye betydninger.
+
+```
+før:  6 af 8 fejlede
+efter: 0 af 8
+```
+
+En vagt fangede straks sin egen svaghed: den fejlede på `pfsense-api`, som
+findes i produktion men ikke på min maskine. Miljø-afhængig, ikke forkert i
+indhold — den måler nu mod alt der kan bevises findes, og navngiver de
+vært-lokale eksplicit.

@@ -108,6 +108,16 @@ def _naevner_mekanismen(besked: str) -> bool:
     return any(f"{o}" in lav for o in _SKILL_ORD)
 
 
+def sidst_foreslaaede() -> list[str]:
+    """Hvilke skills blev foreslaaet i den seneste prompt-bygning.
+
+    Laeser samme memo som beskaereren. Bruges til at maerke en invokering med
+    om runtimen havde foreslaaet skillet, eller han fandt det selv — uden det
+    kan kaeden matched → surfaced → invoked ikke laegges sammen bagefter.
+    """
+    return list(_SIDSTE[1])
+
+
 def _traef(besked: str) -> list[dict]:
     """Selve opslaget. Adskilt saa baade sektionen og memoen bruger samme vej."""
     if not _enabled():

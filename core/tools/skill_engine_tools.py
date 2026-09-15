@@ -19,6 +19,7 @@ from core.services.skill_security_scanner import (
     scan_skill_directory_gated,
     scan_skill_file,
 )
+from core.tools.skill_dansk_tillaeg import dansk_udtryk as _dansk_udtryk
 logger = logging.getLogger(__name__)
 
 # ── Intent matching (Fase 4) ──────────────────────────────────────────
@@ -170,6 +171,16 @@ def _suggest_skills_for_query(
         if s.get("description"):
             cand_to_skill.append((f"description: {s['description']}", name))
         cand_to_skill.append((f"skill name: {name}", name))
+        # DANSK TILLAEG (15/9-2026). Matcheren splitter tosprogede use_when i
+        # per-sprog-fragmenter, men INGEN skill har en DA-linje — mekanismen
+        # fandtes, indholdet blev aldrig skrevet. Maalt: 6 af 8 rimelige danske
+        # formuleringer fandt ingenting.
+        #
+        # Tillaegget ligger i repoet og ikke i SKILL.md, fordi de fleste skills
+        # er leverandoer-filer der overskrives ved opdatering.
+        da = _dansk_udtryk(name)
+        if da:
+            cand_to_skill.append((f"use_when: DA: {da}", name))
 
     if not cand_to_skill:
         return []
@@ -274,7 +285,33 @@ def _exec_skill_invoke(args: dict[str, Any]) -> dict[str, Any]:
     # installed skill from dead weight.
     try:
         from core.eventbus.bus import event_bus
-        event_bus.publish("cognitive_state.skill_invoked", {"name": name})
+        # RUN- OG SESSIONS-ID (15/9-2026). Eventet baerer foer KUN {"name": ...}.
+        # Det gjorde det umuligt at svare paa «bliver skills faktisk brugt»:
+        # tre invokeringer stod i basen, og ingen kunne afgoere om de kom fra
+        # en aegte tur eller fra en test der skriver i den levende DB.
+        #
+        # Mekanismen fandtes allerede — `aktivt_run_id` blev bygget efter to
+        # haendelser man ikke kunne spore (incident 8839 og 6798, 12/9). Samme
+        # moenster: feltet fandtes, kalderen sendte det bare ikke.
+        #
+        # `surfaced` lukker kaeden i ÉT event: matched → surfaced → invoked.
+        # Uden den kunne man se at et skill blev brugt, men ikke om runtimen
+        # havde foreslaaet det eller han fandt det selv.
+        last: dict[str, Any] = {"name": name}
+        try:
+            from core.services.session_context_resolve import (
+                aktiv_session_id, aktivt_run_id,
+            )
+            last["run_id"] = aktivt_run_id("")
+            last["session_id"] = aktiv_session_id("")
+        except Exception:
+            logger.debug("skill_invoke: kunne ikke oploese run/session", exc_info=True)
+        try:
+            from core.services.skill_relevance_surface import sidst_foreslaaede
+            last["surfaced"] = name in sidst_foreslaaede()
+        except Exception:
+            logger.debug("skill_invoke: kunne ikke se om det var foreslaaet", exc_info=True)
+        event_bus.publish("cognitive_state.skill_invoked", last)
     except Exception:
         pass
 

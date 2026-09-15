@@ -99,7 +99,12 @@ def mc_run_detail(run_id: str, event_limit: int = 60) -> dict:
     try:
         with connect() as conn:
             if not _run_synlig_for_kalder(conn, run_id):
-                return {"run": None, "steps": []}
+                # Samme form som «findes ikke» (15/9-2026): den tidlige retur
+                # manglede `found`, saa en kalder der laeste feltet fik KeyError
+                # netop paa et run den ikke maatte se. Et run man ikke maa se
+                # skal se ud som et der ikke findes — ikke som en anden form.
+                return {"run": None, "found": False, "steps": [],
+                        "summary": {"step_count": 0}}
             r = conn.execute(
                 """
                 SELECT run_id, lane, provider, model, status, started_at,

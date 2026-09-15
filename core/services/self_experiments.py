@@ -367,7 +367,10 @@ def materialize_learning_curriculum_tasks(
             origin=origin,
             scope=focus,
             priority=priority,
-            run_id=run_id,
+            # `run_id` blev til `origin_ref` i 4b53916a3 (13/9); denne kalder
+            # fulgte ikke med, og TypeError'en blev slugt af hjerteslagets
+            # `except: pass` — ingen laeringsplan blev til opgaver i to doegn.
+            origin_ref=run_id,
             owner=owner,
         )
         flow = runtime_flows.create_flow(

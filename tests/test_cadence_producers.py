@@ -89,3 +89,21 @@ def test_titlen_er_emnet_ikke_brugerens_raa_besked():
     blok = kilde[i:i + 900]
     assert "title=meaningful_topic[:80]" in blok
     assert "title=user_message[:80]" not in blok
+
+
+def test_fladen_viser_HELE_registret_ikke_en_frossen_liste():
+    """15/9-2026: fladen viste 11 haardkodede navne mod 119 registrerede."""
+    from core.services import internal_cadence as ic
+    from core.services.cadence_producers import build_cadence_producers_surface
+
+    ic._ensure_producers_registered()
+    flade = build_cadence_producers_surface()
+
+    assert flade["antal"] == len(ic._producers)
+    assert set(flade["producers"]) == set(ic._producers)
+    assert len(flade["producers"]) > 11
+    # Formen er uaendret for eksisterende laesere, og grafen staar der stadig.
+    assert all(isinstance(n, str) for n in flade["producers"])
+    assert "afhaengighedsgraf" in flade
+    detalje = flade["producer_detaljer"][0]
+    assert {"name", "priority", "cooldown_minutes", "depends_on"} <= set(detalje)

@@ -852,15 +852,22 @@ def tick_frozen_detectors(tick_count: int) -> dict[str, int]:
 
 
 def build_cadence_producers_surface() -> dict[str, object]:
-    """MC surface for cadence producer status."""
+    """MC surface for cadence producer status.
+
+    ## Det levende register, ikke en liste (15/9-2026)
+
+    Fladen viste en HAARDKODET liste paa 11 navne. Maalt 13/9: registret har
+    119 producenter. En operatoer der laeste fladen troede der var 11 — den
+    viste 9 % af sandheden. `producers` beholder sin form (en liste af navne),
+    saa ingen laeser braekker; den fyldes bare fra registret nu.
+    """
+    registret = _levende_register()
     return {
         "active": True,
         "summary": "Cadence producers fire signals after visible runs and heartbeat ticks",
-        "producers": [
-            "witness_signal", "self_review_record", "self_review_run", "self_review_outcome",
-            "reflective_critic", "reflection_signal", "self_model_signal", "development_focus",
-            "emergent_signal", "decision_log", "lifecycle_progression",
-        ],
+        "producers": [p["name"] for p in registret],
+        "antal": len(registret),
+        "producer_detaljer": registret,
         # Fase 9: «plugin boot rejects missing/cyclic dependencies». Rapporten
         # skrives ved bootstrap; uden den her kunne den kun ses i loggen, og en
         # fejl man skal vide at man skal lede efter er halvt tavs.
@@ -870,6 +877,27 @@ def build_cadence_producers_surface() -> dict[str, object]:
         # ikke til at skelne fra det lovlige «foraelderen har ikke koert endnu».
         "afhaengighedsgraf": _graf_rapport(),
     }
+
+
+def _levende_register() -> list[dict[str, object]]:
+    """Registrets producenter i prioritetsraekkefoelge. Selv-sikker: tomt ved
+    fejl, saa fladen ikke vaelter paa det den rapporterer om."""
+    try:
+        from core.services import internal_cadence as ic
+        ic._ensure_producers_registered()   # tomt foer bootstrap
+        specs = sorted(ic._producers.values(), key=lambda sp: (sp.priority, sp.name))
+    except Exception:
+        return []
+    return [
+        {
+            "name": sp.name,
+            "priority": sp.priority,
+            "cooldown_minutes": sp.cooldown_minutes,
+            "visible_grace_minutes": sp.visible_grace_minutes,
+            "depends_on": list(sp.depends_on),
+        }
+        for sp in specs
+    ]
 
 
 def _graf_rapport() -> dict[str, object]:

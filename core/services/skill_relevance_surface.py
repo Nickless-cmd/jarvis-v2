@@ -227,21 +227,11 @@ def _traef(besked: str) -> list[dict]:
     """Selve opslaget. Adskilt saa baade sektionen og memoen bruger samme vej."""
     if not _enabled():
         return []
-    # MIDLERTIDIGT SLAAET FRA (15/9-2026, samme dag den blev bygget).
-    #
-    # Undtagelsen hvilede paa at `autonomous-`-praefikset betyder «ingen bruger
-    # til stede». Det er FORKERT: kanal-gatewayen for Telegram og Discord
-    # (`POST /plugins/channel/{id}/inbound`) sender hans egne beskeder gennem
-    # `start_autonomous_run`, som giver dem netop det praefiks.
-    #
-    # Maalt: hans samtale om aftensmad 15:54 og 16:02 koerte som
-    # `autonomous-96c2b` og `autonomous-473bd`. Undtagelsen fjernede altsaa
-    # skills fra alt hvad han skriver via Telegram — det stik modsatte af det
-    # den skulle.
-    #
-    # Slaaet fra frem for at gaette et nyt signal. Praefikset skelner ikke
-    # mellem «hjerteslag uden bruger» og «bruger paa en anden kanal», og den
-    # skelnen er hele pointen.
+    # Selvstartede ture (hjerteslag, gentagne opgaver, drømme) faar ingen
+    # skill-flade. Afgjort paa koerslens ORIGIN, ikke paa `autonomous-`-
+    # praefikset: kanal-gatewayen for Telegram og Discord giver ogsaa hans egne
+    # beskeder det praefiks (maalt 15/9: aftensmads-samtalen 15:54 og 16:02),
+    # saa den foerste udgave tog skills fra alt han skrev derfra.
     if _er_selvstartet_tur():
         return []
     if len(besked) < _MIN_MESSAGE_CHARS and not _naevner_mekanismen(besked):

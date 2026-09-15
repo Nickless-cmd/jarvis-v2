@@ -31,9 +31,30 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# Fra beslutningen selv: ≥0,3 → læs skillet; ≥0,5 → brug det som primært format.
-_THRESHOLD = 0.30
-_PRIMARY_THRESHOLD = 0.50
+# KALIBRERET 15/9-2026 paa 200 af hans egne beskeder.
+#
+# De gamle tal (0,30 og 0,50) stammede fra HuggingFace-embedderen. Den lokale
+# (all-MiniLM-L6-v2 via Ollama, skiftet 12/9) har et helt andet interval: ALLE
+# scorer ligger mellem 0,59 og 0,80. Taersklerne laa altsaa under hele feltet,
+# saa «STAERKT match» betoed i praksis «altid» — 42% af hans ture fik ét.
+#
+# Grundlag: et match regnes som rigtigt naar beskeden indeholder skillets eget
+# domaeneord («regneark» → xlsx, «pdf» → pdf). Det er en PROXY og ikke en
+# haandlabel, n=17 rigtige mod 82 oevrige — svagt bevis, men aegte data, og
+# kurvens form er robust over for label-stoej:
+#
+#   taerskel   rigtige beholdt   stoej igennem   praecision
+#     0,50        100%              100%            17%
+#     0,75         70%               15%            48%
+#     0,77         52%                4%            69%   ← knaek
+#     0,78          5%                2%            33%   ← klippe
+#
+# Praecision vejer tungest her (jf. reference_model_quality_benchmark: opdigt
+# er vaerre end at overse). Et forkert STAERKT match koster en hel
+# SKILL.md-laesning og en begrundelse; et overset rigtigt koster at han loeser
+# opgaven selv — hvilket han beviseligt kan.
+_THRESHOLD = 0.70
+_PRIMARY_THRESHOLD = 0.77
 _MAX_SUGGESTIONS = 3
 
 # Under denne længde er en besked småsnak eller en kvittering. Sparer et embed-
@@ -100,6 +121,24 @@ def matchede_skills(user_message: str) -> list[str]:
     navne = [str(t.get("name") or "") for t in _traef(besked) if t.get("name")]
     _SIDSTE = (besked, navne)
     return list(navne)
+
+
+def _navnet_staar_i(skill_navn: str, besked: str) -> bool:
+    """Staar skillets eget navn i beskeden?
+
+    Bindestreger taeller som mellemrum, saa «excel-automation» ogsaa rammes af
+    «brug excel automation». Kraever mindst 3 tegn, saa korte navne ikke rammer
+    tilfaeldige stavelser.
+    """
+    n = str(skill_navn or "").strip().lower()
+    b = f" {str(besked or '').lower()} "
+    if len(n) < 3:
+        return False
+    if f" {n} " in b or n in b.replace("-", " "):
+        return True
+    # Sammensat navn: alle led skal staa der, ikke noedvendigvis samlet.
+    led = [x for x in n.replace("-", " ").split() if len(x) >= 3]
+    return bool(led) and all(f" {x}" in b for x in led)
 
 
 def _naevner_mekanismen(besked: str) -> bool:
@@ -209,7 +248,13 @@ def relevant_skills_section(user_message: str) -> str:
             score = float(s.get("score") or 0.0)
         except Exception:
             score = 0.0
-        if score >= _PRIMARY_THRESHOLD:
+        # EKSPLICIT NAVN SLAAR SCOREN (15/9-2026). Skriver han selv skillets
+        # navn, er det det staerkeste signal der findes — staerkere end nogen
+        # embedding. «brug pdf skill» gav 0,76, altsaa under den kalibrerede
+        # taerskel paa 0,77, og ville ellers blive et tilbud i stedet for en
+        # instruks. Det er den samme pointe Codex noterede: et eksplicit oenske
+        # skal resolves deterministisk, ikke semantisk.
+        if score >= _PRIMARY_THRESHOLD or _navnet_staar_i(navn, besked):
             har_primaer = True
             linjer.append(
                 "  • %s (%.2f) — STÆRKT match: brug skillets format som det "
@@ -218,15 +263,42 @@ def relevant_skills_section(user_message: str) -> str:
         else:
             linjer.append("  • %s (%.2f)" % (navn, score))
 
-    linjer.append(
-        "Vil du bruge et af dem: skill_invoke(\"<navn>\") og læs HELE SKILL.md "
-        "før du skriver svaret. Vil du ikke, så lad være — men sig aldrig at du "
-        "brugte et skill uden faktisk at have invokeret det."
-    )
-    if not har_primaer:
+    # STAERKT match og svagt match skal ikke lyde ens (15/9-2026).
+    #
+    # Maalt paa en aegte tur: «lav et regneark over deepseek-forbruget» gav
+    # xlsx 0,78 — STAERKT match. Fladen stod i prompten (498 tegn),
+    # `skill_invoke` var faestnet i vaerktoejssaettet, og han brugte 47
+    # bash-kald i stedet. Han loeste opgaven KORREKT uden skillet.
+    #
+    # Aarsagen stod i vores egen formulering: «Vil du ikke, saa lad vaere».
+    # Et match paa 0,78 blev praesenteret med samme vaegt som et paa 0,31 —
+    # som et tilbud han udtrykkeligt fik lov at afslaa. For en opgave han
+    # allerede kan loese, er det rationelle valg saa at lade vaere.
+    #
+    # Bjoern: «Stram formulering».
+    #
+    # BEMAERK hvorfor dette ikke er det ritual der fejlede: de to pensionerede
+    # beslutninger kraevede `skill_suggest` FOER hver opgave — en handling uden
+    # synlig gevinst, med efterlevelse 0,10 og 0,00. Her har runtimen allerede
+    # fundet svaret for DENNE opgave; der bedes om at laese det, ikke om at
+    # lede. Og et fravalg skal begrundes, ikke blokeres: en haard blokering
+    # ville goere et forkert match til en blindgyde.
+    if har_primaer:
         linjer.append(
-            "Ingen af dem er et stærkt match (<0,50) — de er et tilbud, ikke et krav."
+            "Det stærke match er skrevet til præcis denne opgave og indeholder "
+            "ting du ikke ved på forhånd. Kald skill_invoke(\"<navn>\") og læs "
+            "HELE SKILL.md før du svarer. Vælger du det fra, så skriv kort "
+            "hvorfor i dit svar — et fravalg må ikke være tavst."
         )
+    else:
+        linjer.append(
+            "Ingen af dem er et stærkt match — de er et tilbud, ikke et "
+            "krav. Vil du bruge et: skill_invoke(\"<navn>\") og læs HELE "
+            "SKILL.md før du skriver svaret."
+        )
+    linjer.append(
+        "Sig aldrig at du brugte et skill uden faktisk at have invokeret det."
+    )
     ordinary = "\n".join(linjer)
     return f"{research}\n\n{ordinary}" if research else ordinary
 

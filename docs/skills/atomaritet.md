@@ -182,6 +182,76 @@ og beskæreren kan derfor ikke komme til at sige hver sit. Run-id'et sættes af
 bevis. Er id'et tomt, kører vi som før: **tvivlen falder ud til at beholde
 skills for hans egne ture.**
 
+## Kalibrering, og derefter stramning (samme dag)
+
+Testen blev kørt. Kæden var **hel** — skill-sektionen stod i prompten (498
+tegn), `skill_invoke` var fæstnet — og han brugte **47 bash-kald**, lavede
+regnearket korrekt, og invokerede aldrig skillet.
+
+Årsagen stod i vores egen formulering:
+
+> Vil du bruge et af dem: `skill_invoke("<navn>")` … **Vil du ikke, så lad være**
+
+Et match på 0,79 blev præsenteret som et tilbud han udtrykkeligt fik lov at
+afslå. For noget han allerede kan, er det rationelle valg at lade være.
+
+### Men stramningen måtte ikke komme først
+
+Målt på hans 40 seneste beskeder: **42% fik et «STÆRKT match»** — og kun én af
+otte stikprøver var rigtig. `git-advanced` matchede «Det hjælper ikk at gå til
+læge desværre.. for bare smerte». En strammere tone ville gøre den støj dyrere,
+ikke mindre.
+
+### Kalibreringen
+
+Målt på 200 af hans egne beskeder. Et match regnes som rigtigt når beskeden
+indeholder skillets eget domæneord («regneark» → xlsx). Det er en **proxy**, ikke
+en håndlabel — n=17 rigtige mod 82 øvrige, altså svagt bevis, men ægte data:
+
+| tærskel | rigtige beholdt | støj igennem | præcision |
+|---|---|---|---|
+| 0,50 (gammel) | 100% | 100% | 17% |
+| 0,75 | 70% | 15% | 48% |
+| **0,77** | 52% | **4%** | **69%** |
+| 0,78 | 5% | 2% | 33% |
+
+De gamle tal stammede fra HuggingFace-embedderen. Den lokale har hele sit
+interval mellem **0,59 og 0,80**, så 0,50 lå under alt — «STÆRKT» betød i
+praksis «altid».
+
+Præcision vejer tungest: et forkert stærkt match koster en hel
+`SKILL.md`-læsning og en begrundelse; et overset rigtigt koster at han løser
+opgaven selv — hvilket han beviseligt kan.
+
+Gulvet flyttede fra 0,30 til 0,70, hvor 94% af de rigtige stadig er med.
+
+### Og et eksplicit navn slår scoren
+
+«brug pdf skill» giver 0,76 — under tærsklen. Men et navn han selv skriver er
+det stærkeste signal der findes, stærkere end nogen embedding. Det er samme
+pointe Codex noterede: et eksplicit ønske skal resolves deterministisk.
+
+### Formuleringen
+
+**Stærkt match:** «Kald `skill_invoke(...)` og læs HELE SKILL.md før du svarer.
+Vælger du det fra, så skriv kort hvorfor — et fravalg må ikke være tavst.»
+
+**Svagt match:** uændret tilbud.
+
+Et fravalg **begrundes**, ikke blokeres: tærsklen slipper stadig ~4% støj
+igennem, og en hård blokering ville gøre hvert af dem til en blindgyde.
+
+Dette er ikke det ritual der fejlede. De to pensionerede beslutninger krævede
+`skill_suggest` **før hver opgave** — en handling uden synlig gevinst,
+efterlevelse 0,10 og 0,00. Her har runtimen allerede fundet svaret for *denne*
+opgave; der bedes om at læse det, ikke om at lede.
+
+### En forældet test fanget undervejs
+
+`test_staerkt_match_markeres_som_primaert_format` brugte score 0,72 — valgt
+dengang tærsklen var 0,50. Den fejlede på sit eget magiske tal. Den er nu
+bundet til konstanten og kan ikke blive forældet igen.
+
 ## Udestår — og hvordan det måles
 
 Atomariteten gør værktøjet **tilgængeligt**. Om det er **nok** kan kun afgøres

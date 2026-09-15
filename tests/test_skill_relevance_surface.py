@@ -73,14 +73,17 @@ def test_sektionen_fjerner_ritualet(monkeypatch):
 
 
 def test_staerkt_match_markeres_som_primaert_format(monkeypatch):
-    _stub(monkeypatch, _traef(("deep-research", 0.72)))
+    # Bundet til KONSTANTEN og ikke et tal. Testen stod paa 0,72, valgt dengang
+    # taersklen var 0,50 — den blev foraeldet da taersklen blev kalibreret til
+    # 0,77 (15/9-2026) og fejlede paa sit eget magiske tal.
+    _stub(monkeypatch, _traef(("deep-research", S._PRIMARY_THRESHOLD + 0.01)))
     ud = S.relevant_skills_section("lav en grundig rapport om emnet")
     assert "STÆRKT match" in ud
     assert "primære" in ud
 
 
 def test_svagt_match_praesenteres_som_tilbud(monkeypatch):
-    _stub(monkeypatch, _traef(("code-review", 0.35)))
+    _stub(monkeypatch, _traef(("code-review", S._PRIMARY_THRESHOLD - 0.05)))
     ud = S.relevant_skills_section("kig lige på den her funktion for mig")
     assert "STÆRKT match" not in ud
     assert "tilbud, ikke et krav" in ud

@@ -201,3 +201,63 @@ def test_en_fejl_i_opslaget_undtager_ikke(ryd_memo, monkeypatch):
     monkeypatch.setattr(scr, "aktivt_run_id",
                         lambda standard="": (_ for _ in ()).throw(RuntimeError("i stykker")))
     assert s._er_autonom_tur() is False
+
+
+# ──────────────────── kalibrering og formulering (15/9-2026)
+
+def test_taersklerne_ligger_i_embedderens_faktiske_interval():
+    """De gamle tal (0,30/0,50) stammede fra HuggingFace-embedderen. Den lokale
+    har hele sit interval mellem 0,59 og 0,80 — målt på 200 af hans beskeder —
+    så en tærskel på 0,50 lå under ALT og gjorde «STÆRKT» til «altid»."""
+    assert s._THRESHOLD >= 0.59, "gulvet ligger under embedderens interval"
+    assert s._PRIMARY_THRESHOLD > s._THRESHOLD
+
+
+def test_et_staerkt_match_er_en_INSTRUKS(monkeypatch):
+    """Målt: et match på 0,79 blev præsenteret som «Vil du ikke, så lad være»
+    og han brugte 47 bash-kald i stedet."""
+    monkeypatch.setattr(s, "_traef", lambda b: [{"name": "xlsx", "score": 0.79}])
+    ud = s.relevant_skills_section("lav et regneark over noget")
+    assert "STÆRKT match" in ud
+    assert "Kald skill_invoke" in ud
+    assert "skriv kort hvorfor" in ud, "et fravalg skal begrundes"
+    assert "lad være" not in ud, "et staerkt match maa ikke lyde som et tilbud"
+
+
+def test_et_svagt_match_er_stadig_et_TILBUD(monkeypatch):
+    """Tærsklen slipper ~4% støj igennem. En hård tone på dem ville gøre hver
+    fejlmatch til en blindgyde."""
+    monkeypatch.setattr(s, "_traef", lambda b: [{"name": "tdd", "score": 0.72}])
+    ud = s.relevant_skills_section("noget helt andet her")
+    assert "STÆRKT" not in ud
+    assert "tilbud, ikke et krav" in ud
+    assert "skriv kort hvorfor" not in ud
+
+
+def test_aerligheds_klausulen_gaelder_BEGGE_veje(monkeypatch):
+    """«Sig aldrig at du brugte et skill uden at have invokeret det» må ikke
+    forsvinde i den ene gren."""
+    for score in (0.79, 0.72):
+        monkeypatch.setattr(s, "_traef", lambda b, _s=score: [{"name": "pdf", "score": _s}])
+        ud = s.relevant_skills_section("en opgave om noget")
+        assert "Sig aldrig at du brugte et skill" in ud, score
+
+
+def test_eksplicit_navn_slaar_scoren(monkeypatch):
+    """«brug pdf skill» giver 0,76 — under tærsklen. Men et navn han selv
+    skriver er det stærkeste signal der findes."""
+    monkeypatch.setattr(s, "_traef", lambda b: [{"name": "pdf", "score": 0.76}])
+    assert "STÆRKT match" in s.relevant_skills_section("brug pdf skill")
+    # Samme score, men navnet staar ikke i beskeden → stadig et tilbud.
+    assert "STÆRKT" not in s.relevant_skills_section("lav noget med tal og tabeller")
+
+
+@pytest.mark.parametrize("navn,besked,forventet", [
+    ("pdf", "brug pdf skill", True),
+    ("excel-automation", "brug excel automation", True),
+    ("pdf", "hej med dig", False),
+    ("xlsx", "lav et regneark", False),
+    ("ui", "noget om ui her", False),          # for kort til at taelle
+])
+def test_navne_genkendelsen(navn, besked, forventet):
+    assert s._navnet_staar_i(navn, besked) is forventet

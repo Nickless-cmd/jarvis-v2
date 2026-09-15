@@ -409,6 +409,37 @@ export async function fetchImageObjectUrl(
   return URL.createObjectURL(await res.blob())
 }
 
+/** Hent en fil som blob MED Bearer-token.
+ *
+ *  Både `/files/{navn}` og `/attachments/...` kræver godkendelse: målt
+ *  12/9-2026 svarer begge 401 uden `Authorization`. Et almindeligt link eller
+ *  et `<img src>` ville derfor give «unauthorized» på en fil der findes og er
+ *  ens egen — derfor hentes den her og vises fra en object-URL.
+ *
+ *  Generisk hvor `fetchImageObjectUrl` er bundet til ét attachment_id: en
+ *  UDGIVET fil bærer sin egen `url` og har intet id at slå op på.
+ */
+export async function fetchBlobWithAuth(config: ApiConfig, url: string): Promise<Blob> {
+  const abs = new URL(url, config.apiBaseUrl).toString()
+  const headers: Record<string, string> = {}
+  if (config.authToken) headers.Authorization = `Bearer ${config.authToken}`
+  const res = await fetch(abs, { headers })
+  if (!res.ok) throw new StreamError('unknown', `Fil fejlede: ${await serverForklaring(res)}`, { retryable: false })
+  return res.blob()
+}
+
+/** Trigger en browser-download af en blob under dens rigtige navn. */
+export function downloadBlob(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+
 export interface TreeEntry { name: string; kind: 'dir' | 'file' }
 /** Mappe-listing til Code-mode fil-træ. */
 export async function getTree(

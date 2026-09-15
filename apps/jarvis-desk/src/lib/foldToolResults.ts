@@ -20,6 +20,32 @@ export function foldToolResults(blocks: Array<Record<string, unknown>>): Content
       out.push({ type: 'text', text: String(b.text ?? '') })
     } else if (b.type === 'thinking') {
       out.push({ type: 'thinking', thinking: String(b.thinking ?? '') })
+    } else if (b.type === 'image') {
+      // PERSISTERET billede: en REFERENCE, ikke en src. Går urørt videre, så
+      // `AttachmentBlock` kan hente det med token ved visning. Før faldt
+      // typen ud af denne kæde, og et billede der levede i beskeden forsvandt
+      // fra tråden efter reload.
+      out.push({
+        type: 'image',
+        src: b.src != null ? String(b.src) : undefined,
+        alt: b.alt != null ? String(b.alt) : undefined,
+        attachment_id: b.attachment_id != null ? String(b.attachment_id) : undefined,
+        url: b.url != null ? String(b.url) : undefined,
+        filename: b.filename != null ? String(b.filename) : undefined,
+        mime_type: b.mime_type != null ? String(b.mime_type) : undefined,
+      })
+    } else if (b.type === 'file') {
+      // UDGIVET fil eller vedhæftning. Uden denne gren droppede normaliseringen
+      // den, og filen Jarvis lagde ud nåede aldrig skærmen (målt 15/9-2026).
+      out.push({
+        type: 'file',
+        filename: String(b.filename ?? 'fil'),
+        url: b.url != null ? String(b.url) : undefined,
+        attachment_id: b.attachment_id != null ? String(b.attachment_id) : undefined,
+        mime_type: b.mime_type != null ? String(b.mime_type) : undefined,
+        size_bytes: typeof b.size_bytes === 'number' ? b.size_bytes : undefined,
+        kilde: b.kilde != null ? String(b.kilde) : undefined,
+      })
     } else if (b.type === 'progress') {
       // Fladt progress-element (spec 2026-07-09) — bevares urørt så forløbs-
       // sporet kan rendres. parent_tool_use_id er null i v1.

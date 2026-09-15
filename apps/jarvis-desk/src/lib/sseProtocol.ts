@@ -110,7 +110,37 @@ export type ContentBlock =
       status?: 'running' | 'done' | 'error'
       result?: string
     }
-  | { type: 'image'; src: string; alt?: string }
+  | {
+      // Billede. LIVE bærer det en `src` (data-URL fra streamen). PERSISTERET
+      // bærer det en REFERENCE — `attachment_id` eller `url` — og hentes med
+      // token ved visning. Uden reference-felterne her faldt et gemt billede
+      // ud af `foldToolResults` og forsvandt fra tråden efter reload, selv om
+      // det lå i beskeden hele tiden.
+      type: 'image'
+      src?: string
+      alt?: string
+      attachment_id?: string
+      url?: string
+      filename?: string
+      mime_type?: string
+    }
+  | {
+      // UDGIVET fil (`publish_file`) eller en vedhæftning. Bærer ALTID kun en
+      // reference, aldrig data: `url` for Jarvis' egen udgivelse over
+      // `/files/{navn}`, `attachment_id` for uploads over `/attachments/...`.
+      //
+      // Målt 15/9-2026: blokken blev gemt i beskeden med `url` og
+      // `kilde: "published"`, men `foldToolResults` kendte ikke typen og
+      // droppede den — så filen nåede aldrig skærmen.
+      type: 'file'
+      filename: string
+      url?: string
+      attachment_id?: string
+      mime_type?: string
+      size_bytes?: number
+      /** `published` = Jarvis lagde den ud selv. */
+      kilde?: string
+    }
   | {
       // Fladt persisteret progress-element (spec 2026-07-09 §5). Bærer den
       // narration live-working_step viste ("Analyserede billede…") så forløbet

@@ -104,9 +104,32 @@ describe('taenkning og vedhaeftninger', () => {
     expect(attachmentBlocks(b).map((x) => x.attachment_id)).toEqual(['a', 'b'])
   })
 
-  it('springer vedhaeftninger uden id over — en halv reference kan ikke hentes', () => {
+  it('springer vedhaeftninger uden nogen reference over — en halv reference kan ikke hentes', () => {
     const b = parseBlocks(msg([{ type: 'image', filename: 'uden id' }, { type: 'image', attachment_id: '  ' }]))
     expect(attachmentBlocks(b)).toEqual([])
+  })
+
+  // Målt 15/9-2026: Jarvis udgav et regneark med `publish_file`. Blokken lå i
+  // beskeden med `url` og `kilde: "published"` — og INTET attachment_id. Det
+  // gamle filter krævede et id, så filen faldt ud her og nåede aldrig skærmen,
+  // selv om MessageAttachments hele tiden kunne vise den.
+  it('en UDGIVET fil baerer sin egen url — den skal med', () => {
+    const b = parseBlocks(msg([
+      { type: 'file', filename: 'forbrug.xlsx', url: 'https://api.srvlab.dk/files/forbrug.xlsx', kilde: 'published' }
+    ]))
+    const fundet = attachmentBlocks(b)
+    expect(fundet).toHaveLength(1)
+    expect(fundet[0]?.url).toBe('https://api.srvlab.dk/files/forbrug.xlsx')
+  })
+
+  it('baade id- og url-baserede referencer kommer med, i raekkefoelge', () => {
+    const b = parseBlocks(msg([
+      { type: 'image', attachment_id: 'a', filename: 'a.png' },
+      { type: 'file', filename: 'udgivet.xlsx', url: 'https://x/files/udgivet.xlsx', kilde: 'published' },
+      { type: 'file', attachment_id: 'c', filename: 'c.zip' }
+    ]))
+    expect(attachmentBlocks(b).map((x) => x.attachment_id ?? x.url))
+      .toEqual(['a', 'https://x/files/udgivet.xlsx', 'c'])
   })
 
   // Billeder og filer renderes over boblen; progress er sit eget flade spor.

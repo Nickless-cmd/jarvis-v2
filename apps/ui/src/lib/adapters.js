@@ -8,6 +8,7 @@
 // composer, and the Jarvis presence surface for the chat support rail).
 
 import { authHeaders, hentToken, WS_SUBPROTOKOL } from './auth.js'
+import { attachmentsFromBlocks } from './attachmentBlocks.js'
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' }
 const inflightJsonRequests = new Map()
@@ -254,6 +255,26 @@ async function readSseStream(response, handlers = {}) {
   }
 }
 
+/**
+ * Løft server-blokke op som vedhæftninger på hver besked.
+ *
+ * Serveren sender `content_json` (en liste af blokke) pr. besked. Den blev
+ * kastet væk i normaliseringen, så en fil Jarvis lagde ud ikke kunne vises.
+ * Her oversættes file/image-blokke til `message.attachments`, som
+ * `ChatTranscript` allerede ved hvordan den renderer.
+ */
+function normalizeSessionAttachments(session) {
+  if (!session || typeof session !== 'object') return session
+  const messages = Array.isArray(session.messages) ? session.messages : []
+  return {
+    ...session,
+    messages: messages.map((m) => {
+      const att = attachmentsFromBlocks(m && m.content_json)
+      return att.length > 0 ? { ...m, attachments: att } : m
+    }),
+  }
+}
+
 export const backend = {
   async getShell() {
     const selectionPayload = await requestJson('/mc/main-agent-selection')
@@ -311,7 +332,7 @@ export const backend = {
 
   async getSession(sessionId) {
     const data = await requestJson(`/chat/sessions/${sessionId}`)
-    return data.session
+    return normalizeSessionAttachments(data.session)
   },
 
   async streamMessage({ sessionId, content, attachmentIds = [], approvalMode = 'ask', thinkingMode = 'think', signal, onRun, onDelta, onDone, onFailed, onWorkingStep, onCapability, onApprovalRequest }) {

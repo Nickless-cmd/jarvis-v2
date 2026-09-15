@@ -220,6 +220,15 @@ async def run_tool_batch(
             _set_sid(run.session_id)
     except Exception:
         pass
+    # Run-id og origin af SAMME grund (15/9-2026): sat i _stream_visible_run,
+    # maalt tomt i skill_invoke 16:35 — de overlevede ikke hertil, praecis som
+    # session_id ovenfor. Uden dem kobles skill_invoked ikke til koerslen, og
+    # skill-undtagelsen falder tilbage paa gatens globale origin.
+    try:
+        from core.services.run_autonomy_context import set_run_identity as _set_rid
+        _set_rid(run.run_id, getattr(run, "origin", ""))
+    except Exception:
+        pass
     try:
         from core.services import override_store as _ovs
         if getattr(run, "session_id", "") and _ovs.is_active(run.session_id):

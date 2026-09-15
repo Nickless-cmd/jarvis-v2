@@ -84,3 +84,45 @@ def test_brugertur_arver_IKKE_en_tidligere_hjerteslags_origin():
 def test_uden_koerselsidentitet_falder_origin_tilbage_til_gaten():
     gate._set_current_origin("dream")
     assert _i_ren_kontekst(S._er_selvstartet_tur) is True
+
+
+def test_vaerktoejs_traaden_ser_koerslens_id_OGSAA_naar_konteksten_er_tabt(monkeypatch):
+    """Den der betyder noget — maalt i produktion 16:35, efter foerste rettelse:
+    run-id var sat i _stream_visible_run, men skill_invoke saa stadig "".
+    ContextVars overlever ikke async-generator-graensen hertil, saa
+    run_tool_batch skal saette dem igen foer copy_context, ligesom session_id.
+
+    Testen koerer den RIGTIGE run_tool_batch i en tom kontekst og maaler hvad
+    vaerktoejs-traaden faktisk ser.
+    """
+    import asyncio
+    from types import SimpleNamespace
+
+    import core.services.simple_tool_executor as ste
+    import core.services.visible_tool_exec as vte
+
+    set_i_traaden: dict = {}
+
+    def falsk_exec(kald, **kw):
+        set_i_traaden["run_id"] = aktivt_run_id("")
+        set_i_traaden["origin"] = A.current_origin()
+        return [{"tool_name": "skill_invoke", "status": "ok", "result_text": ""}]
+
+    monkeypatch.setattr(ste, "_execute_simple_tool_calls", falsk_exec)
+    run = SimpleNamespace(
+        run_id="visible-maalt", session_id="chat-x", origin="heartbeat",
+        autonomous=False, local_tool_exec=False, user_message="hej",
+    )
+
+    async def koer():
+        out: dict = {}
+        async for _ in vte.run_tool_batch(
+            [{"function": {"name": "skill_invoke", "arguments": "{}"}}],
+            run=run, loop=asyncio.get_running_loop(), tool_scope="",
+            step_counter=0, heartbeat_interval_s=5.0,
+            heartbeat_phase="first_pass_tools", out=out,
+        ):
+            pass
+
+    contextvars.Context().run(asyncio.run, koer())
+    assert set_i_traaden == {"run_id": "visible-maalt", "origin": "heartbeat"}

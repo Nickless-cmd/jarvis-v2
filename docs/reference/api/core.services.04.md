@@ -2,6 +2,22 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/central_anomaly.py`
+_Anomali-detektor — fanger de fejl Centralen IKKE selv har en nerve til endnu._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_signature` | `(category, message)` | Stabil signatur: kategori + normaliseret besked (strip id'er/tal/stier/adresser). | [src](../../../core/services/central_anomaly.py#L51) |
+| function | `_classify` | `(exc_type, message, source)` | → (kategori, importance). Deterministisk. | [src](../../../core/services/central_anomaly.py#L61) |
+| function | `_tb_location` | `(tb)` | Sidste frame i et traceback → 'fil:linje in funktion' (HVOR fejlede den). Self-safe. | [src](../../../core/services/central_anomaly.py#L79) |
+| function | `_full_trace` | `(tb)` | Fuld stack trace (sidste 15 frames) som formateret streng, max 2000 tegn. Self-safe. | [src](../../../core/services/central_anomaly.py#L96) |
+| function | `record_anomaly` | `(*, source, exc_type, message, module=…, location=…, trace=…)` | Klassificér + registrér én udefineret fejl + HVOR (lokation) + fuld trace. Self-safe + | [src](../../../core/services/central_anomaly.py#L110) |
+| class | `_AnomalyLogHandler` | `` | Fanger ERROR/CRITICAL-logs ingen nerve dækker → record_anomaly. | [src](../../../core/services/central_anomaly.py#L204) |
+| method | `_AnomalyLogHandler.emit` | `(self, record)` | — | [src](../../../core/services/central_anomaly.py#L207) |
+| function | `install_hooks` | `()` | Installér globale fang-hooks (idempotent). Kaldes ved proces-start. | [src](../../../core/services/central_anomaly.py#L233) |
+| function | `install_asyncio_hook` | `(loop)` | Installér asyncio-exception-handler på en kørende event-loop (self-safe). | [src](../../../core/services/central_anomaly.py#L290) |
+| function | `anomaly_summary` | `(*, limit=…)` | Til realtime-panelet: tæller pr. importance + de seneste/vigtigste anomalier. | [src](../../../core/services/central_anomaly.py#L318) |
+
 ## `core/services/central_arbitration.py`
 _§4 cluster-arbitrage — deterministisk afgørelse når flere clusters' verdicts konflikter_
 
@@ -544,16 +560,4 @@ _core/services/central_hypothesis_governance.py_
 | function | `gate_self_mutation` | `(current, *, budgets=…, total_budget=…, domain=…)` | OBLIGATORISK choke-point for enhver Lag 4-selvmutation: måler mod domænets ANKREDE baseline | [src](../../../core/services/central_hypothesis_governance.py#L351) |
 | class | `GovernanceVerdict` | `` | — | [src](../../../core/services/central_hypothesis_governance.py#L362) |
 | function | `evaluate` | `(hyp, *, confirming_evidence=…, grounded_sample_count=…, now=…, verifier=…)` | Anvend ALLE hypotese-værn → samlet dom der EKSEKVERER død (acts=False stopper handling). | [src](../../../core/services/central_hypothesis_governance.py#L370) |
-
-## `core/services/central_hypothesis_sampler.py`
-_core/services/central_hypothesis_sampler.py_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_parse` | `(ts)` | — | [src](../../../core/services/central_hypothesis_sampler.py#L30) |
-| function | `test_causal_hypothesis` | `(x_fam, y_fam, *, window=…, follow_s=…)` | Betinget rate P(Y følger X inden for follow_s) vs. baseline P(Y overhovedet). Self-safe. | [src](../../../core/services/central_hypothesis_sampler.py#L38) |
-| function | `test_divergence_persistence` | `(family)` | causal_divergence (§8.4): 'X → BÅDE godt og dårligt udfald'. Test PERSISTENS mod friske data — | [src](../../../core/services/central_hypothesis_sampler.py#L74) |
-| function | `test_stance_persistence` | `(tension_key)` | stance_divergence (§8.4): 'to organer er gentagne gange uenige'. Test PERSISTENS — gentager | [src](../../../core/services/central_hypothesis_sampler.py#L93) |
-| function | `run_hypothesis_sampler_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence-producer: test hver aktiv CAUSAL-hypotese mod event-strømmen, registrér ét grounded | [src](../../../core/services/central_hypothesis_sampler.py#L106) |
-| function | `register_hypothesis_sampler_producer` | `()` | Registrér samleren som cadence-producer (~hvert 30 min). | [src](../../../core/services/central_hypothesis_sampler.py#L169) |
 

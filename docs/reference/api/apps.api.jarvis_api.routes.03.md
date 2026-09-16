@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `apps/api/jarvis_api/routes/status.py`
+_Public-safe /status endpoint._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_format_uptime` | `(seconds)` | — | [src](../../../apps/api/jarvis_api/routes/status.py#L22) |
+| function | `_daemon_count` | `()` | — | [src](../../../apps/api/jarvis_api/routes/status.py#L36) |
+| function | `_visible_model_label` | `()` | — | [src](../../../apps/api/jarvis_api/routes/status.py#L44) |
+| function | `status` | `()` | — | [src](../../../apps/api/jarvis_api/routes/status.py#L54) |
+
 ## `apps/api/jarvis_api/routes/system_health.py`
 
 | Kind | Name | Signature | Summary | Source |

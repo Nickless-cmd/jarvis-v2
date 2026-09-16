@@ -421,6 +421,17 @@ _Agent-pool router (spec §4 + §5.5). Tyndt lag over central_route så agenter_
 | function | `_save_task_scores` | `(provider, model, scores)` | — | [src](../../../core/services/agent_pool_router.py#L77) |
 | function | `update_task_score` | `(*, provider, model, kind, outcome_quality, lr=…)` | §4.4 kvalitets-læring: EMA-opdatér task_score for (model, kind) fra et | [src](../../../core/services/agent_pool_router.py#L85) |
 
+## `core/services/agent_pool_surface.py`
+_Agent-puljen — en LET liste man kan filtrere i._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_rows` | `(sql, params=…)` | — | [src](../../../core/services/agent_pool_surface.py#L37) |
+| function | `agent_liste` | `(*, status=…, rolle=…, soeg=…, limit=…, offset=…)` | Agenterne med deres koersels-tal. Ét opslag, filtrerbart, sideinddelt. | [src](../../../core/services/agent_pool_surface.py#L43) |
+| function | `_varighed` | `(start, slut)` | Sekunder mellem to tidsstempler. 0 naar vi ikke kan regne det ud. | [src](../../../core/services/agent_pool_surface.py#L118) |
+| function | `pool_opsummering` | `(timer=…)` | Puljens tilstand: hvor mange, hvilke roller, hvad koster de, hvor er graenserne. | [src](../../../core/services/agent_pool_surface.py#L132) |
+| function | `seneste_arbejde` | `(limit=…)` | De nyeste koersler paa tvaers af agenter — «hvad sker der lige nu». | [src](../../../core/services/agent_pool_surface.py#L188) |
+
 ## `core/services/agent_relay.py`
 _Agent relay — direct A→B messaging between sub-agents._
 
@@ -654,17 +665,4 @@ _Small durable cache for read-only agentic tool results._
 | function | `_signature` | `(tool_name, arguments)` | — | [src](../../../core/services/agentic_tool_cache.py#L57) |
 | function | `get_cached_result` | `(tool_name, arguments)` | — | [src](../../../core/services/agentic_tool_cache.py#L66) |
 | function | `store_result` | `(*, tool_name, arguments, result_text, status)` | — | [src](../../../core/services/agentic_tool_cache.py#L78) |
-
-## `core/services/agentic_working_conclusions.py`
-_Durable working conclusions for interrupted agentic runs._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_load` | `()` | — | [src](../../../core/services/agentic_working_conclusions.py#L13) |
-| function | `_save` | `(records)` | — | [src](../../../core/services/agentic_working_conclusions.py#L20) |
-| function | `update_working_conclusion` | `(*, run_id, session_id, user_message, round_index, observation=…, next_step=…)` | — | [src](../../../core/services/agentic_working_conclusions.py#L27) |
-| function | `latest_for_session` | `(session_id)` | — | [src](../../../core/services/agentic_working_conclusions.py#L55) |
-| function | `clear_run` | `(run_id)` | — | [src](../../../core/services/agentic_working_conclusions.py#L66) |
-| function | `working_conclusion_prompt_section` | `(session_id)` | — | [src](../../../core/services/agentic_working_conclusions.py#L73) |
-| function | `build_round_observation` | `(*, text, tool_names, result_texts)` | — | [src](../../../core/services/agentic_working_conclusions.py#L90) |
 

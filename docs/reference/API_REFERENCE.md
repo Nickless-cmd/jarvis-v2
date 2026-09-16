@@ -1,6 +1,6 @@
 # API_REFERENCE
 
-> Generated 2026-09-16 from app.routes (live) — 565 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
+> Generated 2026-09-16 from app.routes (live) — 568 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
 
 | Method | Path | Response model | Source |
 |---|---|---|---|
@@ -301,6 +301,9 @@
 | GET | `/mc/affective-meta-state` | dict | mission_control_jarvis_state |
 | GET | `/mc/agency-map` | dict | mission_control_introspection |
 | GET | `/mc/agent-lineage` | dict | mission_control_agents |
+| GET | `/mc/agent-pool` | dict | agent_pool |
+| GET | `/mc/agent-pool/summary` | dict | agent_pool |
+| GET | `/mc/agent-pool/work` | dict | agent_pool |
 | GET | `/mc/agentic-guards-state` | dict | agentic_guards |
 | GET | `/mc/agents` | dict | mission_control_agents |
 | GET | `/mc/agents/{agent_id}` | dict | mission_control_agents |

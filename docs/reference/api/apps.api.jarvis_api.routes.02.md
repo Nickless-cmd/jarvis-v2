@@ -2,6 +2,27 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `apps/api/jarvis_api/routes/interlanguage_blind.py`
+_Interlanguage validation — Bjørn blind dommer UI route._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_fetch_expressions_by_peer` | `(peer_id, limit)` | Hent op til limit random expressions fra peer. | [src](../../../apps/api/jarvis_api/routes/interlanguage_blind.py#L57) |
+| function | `_generate_alpha_trials` | `(session_id, mode)` | Generér 50 α-trials — 10 fra hver af 5 peers, shuffled. | [src](../../../apps/api/jarvis_api/routes/interlanguage_blind.py#L70) |
+| function | `_generate_delta_trials` | `(session_id, mode, start_idx)` | Generér 25 δ-trials — anchor (jarvis) + 2 candidates (1 +JP, 1 -alone). | [src](../../../apps/api/jarvis_api/routes/interlanguage_blind.py#L91) |
+| function | `_strip_peer_from_trial` | `(trial)` | Fjern peer-id og other-metadata fra trial-dict før vi sender til frontend. | [src](../../../apps/api/jarvis_api/routes/interlanguage_blind.py#L136) |
+| class | `StartSessionRequest` | `` | — | [src](../../../apps/api/jarvis_api/routes/interlanguage_blind.py#L154) |
+| function | `start_session` | `(body)` | Start ny blind-dommer session. | [src](../../../apps/api/jarvis_api/routes/interlanguage_blind.py#L160) |
+| function | `next_trial` | `(session_id=…)` | Hent næste ubevarede trial i sessionen — uden true-peer-id leak. | [src](../../../apps/api/jarvis_api/routes/interlanguage_blind.py#L187) |
+| class | `AnswerRequest` | `` | — | [src](../../../apps/api/jarvis_api/routes/interlanguage_blind.py#L195) |
+| function | `submit_answer_route` | `(body)` | Submit svar. Returnerer correctness men IKKE forkert/rigtigt-besked. | [src](../../../apps/api/jarvis_api/routes/interlanguage_blind.py#L201) |
+| function | `progress` | `(session_id=…)` | — | [src](../../../apps/api/jarvis_api/routes/interlanguage_blind.py#L222) |
+| class | `FinishRequest` | `` | — | [src](../../../apps/api/jarvis_api/routes/interlanguage_blind.py#L226) |
+| function | `finish_session` | `(body)` | — | [src](../../../apps/api/jarvis_api/routes/interlanguage_blind.py#L232) |
+| function | `confusion` | `(session_id=…)` | — | [src](../../../apps/api/jarvis_api/routes/interlanguage_blind.py#L240) |
+| function | `serve_phase4_ui` | `()` | Phase 4 binary blind test: jarvis_full vs jarvis_bare. | [src](../../../apps/api/jarvis_api/routes/interlanguage_blind.py#L253) |
+| function | `serve_ui` | `()` | — | [src](../../../apps/api/jarvis_api/routes/interlanguage_blind.py#L269) |
+
 ## `apps/api/jarvis_api/routes/internal_discord.py`
 _Internal loopback endpoint for cross-process Discord dispatch._
 
@@ -691,14 +712,4 @@ _Sansernes Arkiv HTTP endpoints._
 | function | `summary` | `()` | — | [src](../../../apps/api/jarvis_api/routes/sensory.py#L54) |
 | function | `get_memory` | `(memory_id)` | — | [src](../../../apps/api/jarvis_api/routes/sensory.py#L59) |
 | function | `record_memory` | `(payload)` | — | [src](../../../apps/api/jarvis_api/routes/sensory.py#L67) |
-
-## `apps/api/jarvis_api/routes/status.py`
-_Public-safe /status endpoint._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_format_uptime` | `(seconds)` | — | [src](../../../apps/api/jarvis_api/routes/status.py#L22) |
-| function | `_daemon_count` | `()` | — | [src](../../../apps/api/jarvis_api/routes/status.py#L36) |
-| function | `_visible_model_label` | `()` | — | [src](../../../apps/api/jarvis_api/routes/status.py#L44) |
-| function | `status` | `()` | — | [src](../../../apps/api/jarvis_api/routes/status.py#L54) |
 

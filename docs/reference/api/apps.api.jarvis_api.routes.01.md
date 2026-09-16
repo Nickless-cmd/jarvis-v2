@@ -99,6 +99,16 @@ _Client-owned agent loop: /v1/agent/step._
 | function | `agent_turn_begin` | `(body)` | Registrér en klient-drevet tur som live (aktivt visible run + run_follow). | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L1419) |
 | function | `agent_turn_end` | `(body)` | Ryd live-tilstanden for en klient-drevet tur (altid safe at kalde). Flag | [src](../../../apps/api/jarvis_api/routes/agent_loop.py#L1442) |
 
+## `apps/api/jarvis_api/routes/agent_pool.py`
+_Agent-puljen — let liste, opsummering og seneste arbejde. Owner-only._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_require_owner` | `()` | — | [src](../../../apps/api/jarvis_api/routes/agent_pool.py#L18) |
+| function | `liste` | `(status=…, rolle=…, soeg=…, limit=…, offset=…)` | Agenterne med koerselstal. `status=aktive` daekker alle seks i-gang-statusser. | [src](../../../apps/api/jarvis_api/routes/agent_pool.py#L24) |
+| function | `opsummering` | `(timer=…)` | Hvor mange, hvilke roller, hvad de kostede, og hvor graenserne gaar. | [src](../../../apps/api/jarvis_api/routes/agent_pool.py#L34) |
+| function | `arbejde` | `(limit=…)` | De nyeste koersler paa tvaers af agenter. | [src](../../../apps/api/jarvis_api/routes/agent_pool.py#L42) |
+
 ## `apps/api/jarvis_api/routes/agentic_guards.py`
 _MC endpoint for agentic-loop guard observability._
 
@@ -611,25 +621,4 @@ _File download route — serves files Jarvis has published to ~/.jarvis-v2/files
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `health` | `()` | — | [src](../../../apps/api/jarvis_api/routes/health.py#L10) |
-
-## `apps/api/jarvis_api/routes/interlanguage_blind.py`
-_Interlanguage validation — Bjørn blind dommer UI route._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_fetch_expressions_by_peer` | `(peer_id, limit)` | Hent op til limit random expressions fra peer. | [src](../../../apps/api/jarvis_api/routes/interlanguage_blind.py#L57) |
-| function | `_generate_alpha_trials` | `(session_id, mode)` | Generér 50 α-trials — 10 fra hver af 5 peers, shuffled. | [src](../../../apps/api/jarvis_api/routes/interlanguage_blind.py#L70) |
-| function | `_generate_delta_trials` | `(session_id, mode, start_idx)` | Generér 25 δ-trials — anchor (jarvis) + 2 candidates (1 +JP, 1 -alone). | [src](../../../apps/api/jarvis_api/routes/interlanguage_blind.py#L91) |
-| function | `_strip_peer_from_trial` | `(trial)` | Fjern peer-id og other-metadata fra trial-dict før vi sender til frontend. | [src](../../../apps/api/jarvis_api/routes/interlanguage_blind.py#L136) |
-| class | `StartSessionRequest` | `` | — | [src](../../../apps/api/jarvis_api/routes/interlanguage_blind.py#L154) |
-| function | `start_session` | `(body)` | Start ny blind-dommer session. | [src](../../../apps/api/jarvis_api/routes/interlanguage_blind.py#L160) |
-| function | `next_trial` | `(session_id=…)` | Hent næste ubevarede trial i sessionen — uden true-peer-id leak. | [src](../../../apps/api/jarvis_api/routes/interlanguage_blind.py#L187) |
-| class | `AnswerRequest` | `` | — | [src](../../../apps/api/jarvis_api/routes/interlanguage_blind.py#L195) |
-| function | `submit_answer_route` | `(body)` | Submit svar. Returnerer correctness men IKKE forkert/rigtigt-besked. | [src](../../../apps/api/jarvis_api/routes/interlanguage_blind.py#L201) |
-| function | `progress` | `(session_id=…)` | — | [src](../../../apps/api/jarvis_api/routes/interlanguage_blind.py#L222) |
-| class | `FinishRequest` | `` | — | [src](../../../apps/api/jarvis_api/routes/interlanguage_blind.py#L226) |
-| function | `finish_session` | `(body)` | — | [src](../../../apps/api/jarvis_api/routes/interlanguage_blind.py#L232) |
-| function | `confusion` | `(session_id=…)` | — | [src](../../../apps/api/jarvis_api/routes/interlanguage_blind.py#L240) |
-| function | `serve_phase4_ui` | `()` | Phase 4 binary blind test: jarvis_full vs jarvis_bare. | [src](../../../apps/api/jarvis_api/routes/interlanguage_blind.py#L253) |
-| function | `serve_ui` | `()` | — | [src](../../../apps/api/jarvis_api/routes/interlanguage_blind.py#L269) |
 

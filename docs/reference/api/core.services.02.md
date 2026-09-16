@@ -2,6 +2,19 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/agentic_working_conclusions.py`
+_Durable working conclusions for interrupted agentic runs._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_load` | `()` | — | [src](../../../core/services/agentic_working_conclusions.py#L13) |
+| function | `_save` | `(records)` | — | [src](../../../core/services/agentic_working_conclusions.py#L20) |
+| function | `update_working_conclusion` | `(*, run_id, session_id, user_message, round_index, observation=…, next_step=…)` | — | [src](../../../core/services/agentic_working_conclusions.py#L27) |
+| function | `latest_for_session` | `(session_id)` | — | [src](../../../core/services/agentic_working_conclusions.py#L55) |
+| function | `clear_run` | `(run_id)` | — | [src](../../../core/services/agentic_working_conclusions.py#L66) |
+| function | `working_conclusion_prompt_section` | `(session_id)` | — | [src](../../../core/services/agentic_working_conclusions.py#L73) |
+| function | `build_round_observation` | `(*, text, tool_names, result_texts)` | — | [src](../../../core/services/agentic_working_conclusions.py#L90) |
+
 ## `core/services/agents.py`
 _Agents-cluster — gør multi-agent-systemerne synlige i Den Intelligente Central: agent-pool_
 
@@ -592,15 +605,4 @@ _Fejlede autonome kørsler — set af Jarvis selv, ikke gemt i hans mund._
 | function | `mark_retried` | `(failure_id)` | — | [src](../../../core/services/autonomous_run_failures.py#L141) |
 | function | `clear` | `()` | — | [src](../../../core/services/autonomous_run_failures.py#L149) |
 | function | `prompt_section` | `()` | Blokken Jarvis ser. Tom streng når der intet er at vide. | [src](../../../core/services/autonomous_run_failures.py#L153) |
-
-## `core/services/autonomous_sessions.py`
-_Autonome sessioner — rotér pr. oprindelse+dag, og gør historien synlig._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `normalize_origin` | `(origin)` | — | [src](../../../core/services/autonomous_sessions.py#L35) |
-| function | `_today` | `()` | — | [src](../../../core/services/autonomous_sessions.py#L40) |
-| function | `resolve_autonomous_session` | `(origin)` | Returnér (opret idempotent) sessionen for (oprindelse, i dag). | [src](../../../core/services/autonomous_sessions.py#L44) |
-| function | `_origin_of_session` | `(session_id)` | Udled oprindelse fra et ``auto-{origin}-{dato}``-id. | [src](../../../core/services/autonomous_sessions.py#L63) |
-| function | `build_autonomous_history_surface` | `(*, days=…, per_origin_limit=…)` | Projicér den autonome historie for owner-visning (§24.4-sikker). | [src](../../../core/services/autonomous_sessions.py#L73) |
 

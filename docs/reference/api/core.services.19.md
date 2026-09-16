@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/provider_model_epochs.py`
+_Hvilken model SVAREDE — ikke hvilken vi bad om._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_ensure` | `(conn)` | — | [src](../../../core/services/provider_model_epochs.py#L31) |
+| function | `_row` | `(r)` | — | [src](../../../core/services/provider_model_epochs.py#L53) |
+| function | `current_model_epoch` | `(*, provider, requested_model)` | Den epoke der gaelder nu, eller `None` hvis vi aldrig har observeret noget. | [src](../../../core/services/provider_model_epochs.py#L69) |
+| function | `record_model_observation` | `(*, provider, requested_model, observed_model)` | Bogfoer hvad udbyderen FAKTISK svarede med. | [src](../../../core/services/provider_model_epochs.py#L92) |
+
 ## `core/services/provider_registry_admin.py`
 _Registret over udbydere og modeller — nu med en skrivevej._
 
@@ -679,13 +689,4 @@ _Typed contracts and source normalization for explicit research runs._
 | function | `canonicalize_url` | `(raw)` | — | [src](../../../core/services/research_contract.py#L90) |
 | function | `normalize_source` | `(value)` | — | [src](../../../core/services/research_contract.py#L107) |
 | function | `load_research_contract` | `(query=…)` | Load the canonical skill deterministically; fall back without hiding it. | [src](../../../core/services/research_contract.py#L124) |
-
-## `core/services/research_evidence_collector.py`
-_Capture structured web-tool evidence for the active research run._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `collecting_for` | `(run_id, *, task_id=…)` | — | [src](../../../core/services/research_evidence_collector.py#L14) |
-| function | `_structured_sources` | `(tool_name, result)` | — | [src](../../../core/services/research_evidence_collector.py#L22) |
-| function | `observe_web_result` | `(tool_name, result)` | — | [src](../../../core/services/research_evidence_collector.py#L38) |
 

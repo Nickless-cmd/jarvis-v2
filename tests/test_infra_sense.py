@@ -287,3 +287,76 @@ def test_webservice_er_med_igen_paa_sin_nye_adresse():
     symptomet og gør huset usynligt netop dér."""
     ips = {n: ip for n, ip, _p in isense.HOSTS}
     assert ips.get("webservice") == "10.0.0.12"
+
+
+# ── vaertens vitals-vagt (16/9-2026) ─────────────────────────────────────────
+# Baggrund: tre haarde cut uden log, uden varme, uden MCE. Signaturen paa stroem,
+# ikke termik — maskinen doede efter 23 t i TOMGANG. Vagten findes fordi de to
+# tilstande der betyder noget ikke efterlader et spor: maskinen gaar bare ned.
+
+def _patch_vitals(monkeypatch):
+    """Fanger incidenter + notifikationer og nulstiller flag-state."""
+    from core.runtime import db_central_incidents
+    incidents: list = []
+    notes: list = []
+    monkeypatch.setattr(db_central_incidents, "record_central_incident",
+                        lambda **kw: incidents.append(kw))
+    monkeypatch.setattr(isense, "_notify_owner_security", lambda t, m: notes.append((t, m)))
+    monkeypatch.setattr(isense, "_vitals_flagged", set())
+    return incidents, notes
+
+
+def test_vitals_sunde_tal_ingen_alarm(monkeypatch):
+    # Maalt normal drift 16/9: ~5600 RPM, 36-57 grader i let last → INGEN alarm.
+    incidents, notes = _patch_vitals(monkeypatch)
+    isense._check_host_vitals("i9", {"cputemp": 51, "pump_rpm": 5648, "gpu0_temp": 52})
+    assert not incidents and not notes
+    assert isense._vitals_flagged == set()
+
+
+def test_vitals_pumpe_doed_flagger_en_gang(monkeypatch):
+    incidents, notes = _patch_vitals(monkeypatch)
+    isense._check_host_vitals("i9", {"cputemp": 42, "pump_rpm": 0})
+    assert isense._vitals_flagged == {"pump"}
+    assert len(incidents) == 1 and incidents[0]["severity"] == "error"
+    assert len(notes) == 1
+    # naeste tick med SAMME tilstand → ingen ny alarm (flag én gang, som syslogd-vagten)
+    isense._check_host_vitals("i9", {"cputemp": 42, "pump_rpm": 0})
+    assert len(incidents) == 1
+
+
+def test_vitals_flag_ryddes_ved_genoplivning(monkeypatch):
+    _inc, _n = _patch_vitals(monkeypatch)
+    isense._check_host_vitals("i9", {"pump_rpm": 0})
+    assert isense._vitals_flagged == {"pump"}
+    isense._check_host_vitals("i9", {"pump_rpm": 5648})
+    assert isense._vitals_flagged == set()
+
+
+def test_vitals_temp_over_taerskel(monkeypatch):
+    # 90 grader kan ikke naas af normal last (high=86, crit=100) → skal flagge.
+    incidents, _n = _patch_vitals(monkeypatch)
+    isense._check_host_vitals("i9", {"cputemp": 95, "pump_rpm": 5648})
+    assert isense._vitals_flagged == {"temp"}
+    assert len(incidents) == 1
+
+
+def test_vitals_uden_felter_er_sikker(monkeypatch):
+    # Host der ikke rapporterer vitals (fx fileserver) → ingen alarm, ingen crash.
+    incidents, notes = _patch_vitals(monkeypatch)
+    isense._check_host_vitals("fileserver", {"disk": 16, "smb": "active"})
+    assert not incidents and not notes
+
+
+def test_vitals_aldrig_kaster(monkeypatch):
+    # Self-safe: skaev input maa ikke vaelte cadence-ticket.
+    incidents, notes = _patch_vitals(monkeypatch)
+    isense._check_host_vitals("i9", {})                      # tom
+    isense._check_host_vitals("i9", {"pump_rpm": "n/a"})     # forkert type
+    assert not incidents and not notes
+
+
+def test_i9_er_med_i_ssh_hosts():
+    """Min egen vaert skal maales — Centralen var blind for sit eget underlag."""
+    targets = {n: t for n, t, _c in isense.SSH_HOSTS}
+    assert targets.get("i9") == "root@10.0.0.36"

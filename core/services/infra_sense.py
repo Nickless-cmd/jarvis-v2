@@ -177,6 +177,29 @@ SSH_HOSTS: list[tuple[str, str, str]] = [
     ("fileserver", "root@10.0.0.10",
      "echo disk=$(df --output=pcent /mnt/shares 2>/dev/null|tail -1|tr -d ' %') "
      "smb=$(systemctl is-active smbd 2>/dev/null||echo inactive)"),
+    # 16/9-2026: MIN EGEN VAERT (i9, LXC-105's host). Foerste gang Centralen kan
+    # maale den maskine den selv lever paa — hidtil var den blind for sit eget
+    # underlag. Baggrund: Bjorn skiftede koeler, alle kabinetblaesere og satte et
+    # ekstra GPU i 16/9, efter tre haarde cut uden log, uden varme, uden MCE
+    # (signaturen paa stroem, ikke termik — maskinen doede efter 23 t i TOMGANG).
+    #
+    # Pumpe-RPM er den vigtigste af de fire: falder den, falder vandkoeleren, og
+    # dét kan hverken han eller jeg se foer maskinen gaar ned. cputemp alene kan
+    # ikke bruges til at skelne "i last" fra "koeler doed" — en i9-9900K svinger
+    # 37-57 grader i let last paa sekunder.
+    #
+    # Vejen: containeren KAN naa hosten over SSH paa raa IP (verificeret 16/9).
+    # ICMP er blokeret for containeren, saa et ping-test ville fejlagtigt sige
+    # "kan ikke naas" — det var praecis den fejl jeg selv lavede foerst.
+    ("i9", "root@10.0.0.36",
+     "T=$(sensors 2>/dev/null|awk '/^Package/{gsub(/[^0-9.]/,\"\",$4);print int($4)}');"
+     "M=$(sensors 2>/dev/null|awk '/^Core/{gsub(/[^0-9.]/,\"\",$3);if(int($3)>m)m=int($3)}END{print m}');"
+     "F=$(sensors 2>/dev/null|awk '/^fan2:/{print int($2)}');"
+     "echo cputemp=$T cpumax=$M pump_rpm=$F"
+     " load1=$(cut -d' ' -f1 /proc/loadavg)"
+     " uptime_s=$(cut -d. -f1 /proc/uptime)"
+     " gpu0_temp=$(nvidia-smi --query-gpu=temperature.gpu --format=csv,noheader -i 0 2>/dev/null)"
+     " gpu0_watt=$(nvidia-smi --query-gpu=power.draw --format=csv,noheader,nounits -i 0 2>/dev/null)"),
 ]
 
 
@@ -203,6 +226,52 @@ def _parse_kv(s: str) -> dict[str, Any]:
     return out
 
 
+# ── Liveness-vagt for vaertens vitals (16/9-2026) ────────────────────────────
+# Samme moenster som syslogd-vagten ovenfor: flag ÉN gang naar tilstanden er
+# bekraeftet, ryd ved genoplivning. Nul falsk-alarm.
+#
+# Hvorfor det hoerer her og ikke i Centralen: de to tilstande der betyder noget —
+# pumpen doed, koeleren foelger ikke med — er praecis dem der IKKE efterlader et
+# spor i nogen log. Maskinen gaar bare ned, og bagefter staar der ingenting.
+# Det her er det eneste sted der kan naa at sige det FOER.
+#
+# Taersklerne er maalt 16/9, ikke gaettet:
+#   pump_rpm ligger paa ~5600 i drift → under 1000 = pumpen er doed eller doende.
+#   cputemp svinger 36-57 grader i LET last; high=86, crit=100. 90 kan derfor ikke
+#   naas af normal last — kun af en koeler der ikke foelger med. Filen advarer selv
+#   to gange om alarmer der ALTID staar hoejt; disse to goer ikke.
+_VITALS_TEMP_ALARM = 90
+_VITALS_PUMP_MIN = 1000
+_vitals_flagged: set[str] = set()
+
+
+def _check_host_vitals(name: str, kv: dict[str, Any]) -> None:
+    """Flag ÉN gang pr. tilstand naar en vaerts vitals gaar ud af normalen. Self-safe."""
+    try:
+        active: set[str] = set()
+        msgs: dict[str, str] = {}
+        pump = kv.get("pump_rpm")
+        if isinstance(pump, int) and pump < _VITALS_PUMP_MIN:
+            active.add("pump")
+            msgs["pump"] = (f"{name}: pumpe-RPM er {pump} (normal ~5600) — "
+                            f"vandkoeleren foelger muligvis ikke med.")
+        temp = kv.get("cputemp")
+        if isinstance(temp, int) and temp > _VITALS_TEMP_ALARM:
+            active.add("temp")
+            msgs["temp"] = f"{name}: CPU-temp er {temp} grader (high=86, crit=100)."
+        for key in sorted(active - _vitals_flagged):
+            _vitals_flagged.add(key)
+            from core.runtime.db_central_incidents import record_central_incident
+            record_central_incident(cluster="infra", nerve=f"{name}_health",
+                                    kind="health", severity="error", message=msgs[key])
+            _notify_owner_security(f"⚠️ Min vaert ({name})", msgs[key])
+        for key in list(_vitals_flagged):
+            if key not in active:
+                _vitals_flagged.discard(key)
+    except Exception:
+        pass
+
+
 def poll_ssh_hosts() -> dict[str, Any]:
     """Dyb health (disk/services/guests) via read-only SSH. Self-safe pr. host."""
     results: dict[str, Any] = {}
@@ -225,6 +294,15 @@ def poll_ssh_hosts() -> dict[str, Any]:
             disk = pool
         if isinstance(disk, int):
             central_timeseries.record("infra", f"{name}_disk", value=float(disk), meta=dict(kv))
+        # Vaerte-vitals som tidsserie (16/9-2026). Samme princip som disk ovenfor:
+        # Centralen skal kunne se en TREND, ikke kun et oejebliksbillede. Et cut
+        # efterlader ingen log — men stigningen FOER det ville staa her. Kun hosts
+        # der faktisk rapporterer felterne faar samples (i dag: i9).
+        for vk in ("cputemp", "pump_rpm", "gpu0_temp"):
+            vv = kv.get(vk)
+            if isinstance(vv, int):
+                central_timeseries.record("infra", f"{name}_{vk}", value=float(vv), meta=dict(kv))
+        _check_host_vitals(name, kv)
         if "svc_down" in kv:
             central_timeseries.record("infra", f"{name}_svc_down", value=float(kv["svc_down"]))
     return results

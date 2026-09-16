@@ -49,7 +49,7 @@ export function SessionProvider({
 
   const loadSessions = useCallback(async () => {
     const list = await listSessions(config)
-    setSessions(list)
+    setSessions((current) => stableSessions(current, list))
     return list
   }, [config])
 
@@ -57,6 +57,7 @@ export function SessionProvider({
   // genindlæser (og dermed wiper optimistiske/streamede beskeder) når ChatView
   // re-kalder select for en session vi allerede har — fx en netop oprettet.
   const loadedRef = useRef<string | null>(null)
+  const etagBySessionRef = useRef(new Map<string, string>())
 
   // Init: hent session-listen (til sidebar).
   useEffect(() => {
@@ -136,7 +137,10 @@ export function SessionProvider({
     getSession(config, id)
       // Merge med NUVÆRENDE lokale beskeder (ikke []) — så en optimistisk
       // besked tilføjet imens overlever (mergeServer bevarer optimistic_user).
-      .then(({ messages: server }) => setMessages((prev) => mergeServer(prev, server)))
+      .then(({ messages: server, etag }) => {
+        if (etag) etagBySessionRef.current.set(id, etag)
+        setMessages((prev) => mergeServer(prev, server))
+      })
       .finally(() => setLoading(false))
   }, [config])
 
@@ -152,8 +156,13 @@ export function SessionProvider({
     // også når der ikke er en aktiv samtale at hente beskeder for.
     void loadSessions()
     if (!activeId) return
-    const { messages: server } = await getSession(config, activeId)
-    setMessages((local) => mergeServer(local, server))
+    const etag = etagBySessionRef.current.get(activeId)
+    const snapshot = etag
+      ? await getSession(config, activeId, { ifNoneMatch: etag })
+      : await getSession(config, activeId)
+    if (!snapshot) return
+    if (snapshot.etag) etagBySessionRef.current.set(activeId, snapshot.etag)
+    setMessages((local) => mergeServer(local, snapshot.messages))
   }, [config, activeId, loadSessions])
 
   const create = useCallback(async (title: string, kind: 'chat' | 'code' = 'chat') => {
@@ -344,7 +353,32 @@ function mergeServer(local: LocalMessage[], server: ChatMessage[]): LocalMessage
     }
     // persisteret → drop placeholder; serverens rensede besked (nu m. re-injicerede tool-blokke) vises
   }
-  return result
+  // En poll med samme server-sandhed må ikke genrendre 2.000+ Markdown-rækker.
+  // Genbrug både de enkelte beskeder og hele arrayet, når indholdet er identisk.
+  const localById = new Map(local.map((m) => [m.id, m]))
+  const stable = result.map((next) => {
+    const previous = localById.get(next.id)
+    return previous && sameMessage(previous, next) ? previous : next
+  })
+  if (stable.length === local.length && stable.every((m, i) => m === local[i])) return local
+  return stable
+}
+
+function sameMessage(a: LocalMessage, b: LocalMessage): boolean {
+  return a.id === b.id && a.role === b.role && a.created_at === b.created_at &&
+    (a.parent_id ?? null) === (b.parent_id ?? null) &&
+    a.clientStatus === b.clientStatus &&
+    JSON.stringify(a.content) === JSON.stringify(b.content)
+}
+
+function stableSessions(current: ChatSession[], incoming: ChatSession[]): ChatSession[] {
+  const byId = new Map(current.map((s) => [s.id, s]))
+  const stable = incoming.map((next) => {
+    const previous = byId.get(next.id)
+    return previous && JSON.stringify(previous) === JSON.stringify(next) ? previous : next
+  })
+  if (stable.length === current.length && stable.every((s, i) => s === current[i])) return current
+  return stable
 }
 
 export { mergeServer, userText }

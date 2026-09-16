@@ -41,6 +41,37 @@ describe('getSession normalizes string content to blocks', () => {
     const { messages } = await getSession(cfg, 's')
     expect(messages[0]?.content).toEqual([{ type: 'text', text: '**hi**' }])
   })
+
+  it('revaliderer med ETag og returnerer null ved et uændret transcript', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null, {
+      status: 304,
+      headers: { etag: 'W/"v1"' },
+    }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const snapshot = await getSession(cfg, 's', { ifNoneMatch: 'W/"v1"' })
+
+    expect(snapshot).toBeNull()
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining('/chat/sessions/s'),
+      expect.objectContaining({
+        cache: 'no-store',
+        headers: expect.objectContaining({ 'If-None-Match': 'W/"v1"' }),
+      }),
+    )
+  })
+
+  it('giver ETag videre sammen med et ændret transcript', async () => {
+    const payload = { session: { id: 's', title: 't', updated_at: 'x', messages: [] } }
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(payload), {
+      status: 200,
+      headers: { 'content-type': 'application/json', etag: 'W/"v2"' },
+    })))
+
+    const snapshot = await getSession(cfg, 's')
+
+    expect(snapshot?.etag).toBe('W/"v2"')
+  })
 })
 
 describe('getTree', () => {

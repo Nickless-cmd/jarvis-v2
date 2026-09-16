@@ -9,6 +9,20 @@ const asstMsg = (id: string, text: string) => ({ id, role: 'assistant' as const,
 const toolMsg = (id: string) => ({ id, role: 'tool' as const, content: [{ type: 'text' as const, text: 'tool-resultat' }], created_at: 'now', parent_id: null })
 
 describe('mergeServer afdublering', () => {
+  it('beholder array- og beskedreferencer når serverens transcript er uændret', () => {
+    const local = [
+      { ...userMsg('u-1', 'hej'), clientStatus: 'server_confirmed' as const },
+      { ...asstMsg('a-1', 'svar'), clientStatus: 'server_confirmed' as const },
+    ]
+    const server = [userMsg('u-1', 'hej'), asstMsg('a-1', 'svar')]
+
+    const merged = mergeServer(local, server)
+
+    expect(merged).toBe(local)
+    expect(merged[0]).toBe(local[0])
+    expect(merged[1]).toBe(local[1])
+  })
+
   it('dropper optimistisk bruger-besked når serveren har indhentet svaret (ingen dublet før+efter)', () => {
     const local = [{ ...userMsg('u-123', 'hej'), clientStatus: 'optimistic_user' as const }]
     // Serveren har persisteret BÅDE bruger-beskeden (andet id!) OG svaret

@@ -81,14 +81,21 @@ export function TakeoverHost({
   }, [settings, activeSid])
 
   // 3) Poll transcript'en (efterslæb-kilde — fanger den persisterede besked).
+  const transcriptEtag = useRef<string | null>(null)
   useEffect(() => {
-    if (!settings || !activeSid) { setMsgs([]); return }
+    if (!settings || !activeSid) { setMsgs([]); transcriptEtag.current = null; return }
+    transcriptEtag.current = null
     const cfg = { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }
     let cancelled = false
     const pull = async () => {
       try {
-        const { messages } = await getSession(cfg, activeSid)
-        if (!cancelled) setMsgs(messages)
+        const snapshot = transcriptEtag.current
+          ? await getSession(cfg, activeSid, { ifNoneMatch: transcriptEtag.current })
+          : await getSession(cfg, activeSid)
+        if (!cancelled && snapshot) {
+          transcriptEtag.current = snapshot.etag
+          setMsgs(snapshot.messages)
+        }
       } catch { /* behold */ }
     }
     void pull()

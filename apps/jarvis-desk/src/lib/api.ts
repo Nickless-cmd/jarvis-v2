@@ -45,6 +45,10 @@ interface FetchOptions {
   timeoutMs?: number
   retries?: number
   signal?: AbortSignal
+  headers?: Record<string, string>
+  cache?: RequestCache
+  acceptedStatuses?: number[]
+  responseHandler?: (response: Response) => Promise<unknown>
 }
 
 /**
@@ -122,6 +126,7 @@ export async function apiFetch<T>(
   const url = new URL(path, config.apiBaseUrl).toString()
   const headers: Record<string, string> = {
     Accept: 'application/json',
+    ...options.headers,
   }
   if (body !== undefined) headers['Content-Type'] = 'application/json'
   if (config.authToken) headers.Authorization = `Bearer ${config.authToken}`
@@ -141,10 +146,16 @@ export async function apiFetch<T>(
         headers,
         body: body !== undefined ? JSON.stringify(body) : undefined,
         signal: timeoutController.signal,
+        cache: options.cache,
       })
       clearTimeout(timeoutId)
       signal?.removeEventListener('abort', onUserAbort)
 
+      if (options.acceptedStatuses?.includes(res.status)) {
+        return (options.responseHandler
+          ? await options.responseHandler(res)
+          : await res.json()) as T
+      }
       if (res.status === 401 || res.status === 403) {
         throw new StreamError('auth', `HTTP ${res.status}`, {
           retryable: false,
@@ -169,7 +180,9 @@ export async function apiFetch<T>(
           statusCode: res.status,
         })
       }
-      return (await res.json()) as T
+      return (options.responseHandler
+        ? await options.responseHandler(res)
+        : await res.json()) as T
     } catch (e) {
       clearTimeout(timeoutId)
       signal?.removeEventListener('abort', onUserAbort)
@@ -240,18 +253,52 @@ export async function searchSessions(
   return data.items ?? []
 }
 
+interface SessionSnapshot {
+  session: ChatSession
+  messages: ChatMessage[]
+  etag: string | null
+}
+
+export function getSession(config: ApiConfig, sessionId: string): Promise<SessionSnapshot>
+export function getSession(
+  config: ApiConfig,
+  sessionId: string,
+  options: { ifNoneMatch: string },
+): Promise<SessionSnapshot | null>
 export async function getSession(
   config: ApiConfig,
   sessionId: string,
-): Promise<{ session: ChatSession; messages: ChatMessage[] }> {
+  options?: { ifNoneMatch: string },
+): Promise<SessionSnapshot | null> {
   // Server returnerer { session: { ...session, messages: [...] } } hvor hver
   // beskeds content er en markdown-string. Vi normaliserer til ContentBlock[]
   // så streamede og loadede beskeder deler samme rendering-pipeline.
-  const raw = await apiFetch<{
+  type RawSession = {
     session: ChatSession & {
       messages?: Array<{ id: string; role: ChatMessage['role']; content: string; content_json?: unknown; created_at: string; parent_id?: string | null }>
     }
-  }>(config, `/chat/sessions/${encodeURIComponent(sessionId)}`)
+  }
+  const result = await apiFetch<{ raw: RawSession; etag: string | null } | null>(
+    config,
+    `/chat/sessions/${encodeURIComponent(sessionId)}`,
+    {
+      // Chromium omsætter ellers serverens 304 til et syntetisk 200 med den
+      // cachede krop. Det sparer netværk, men JavaScript parser stadig hele
+      // transcriptet. Manuel revalidering lader 304 nå helt frem til React.
+      cache: 'no-store',
+      headers: options?.ifNoneMatch ? { 'If-None-Match': options.ifNoneMatch } : undefined,
+      acceptedStatuses: [304],
+      responseHandler: async (response) => {
+        if (response.status === 304) return null
+        return {
+          raw: await response.json() as RawSession,
+          etag: response.headers.get('etag'),
+        }
+      },
+    },
+  )
+  if (result === null) return null
+  const { raw, etag } = result
   const session = raw.session
   const messages: ChatMessage[] = (session?.messages ?? []).map((m) => ({
     id: m.id,
@@ -260,7 +307,7 @@ export async function getSession(
     parent_id: m.parent_id ?? null,
     content: messageToBlocks(m),
   }))
-  return { session, messages }
+  return { session, messages, etag }
 }
 
 export async function createSession(

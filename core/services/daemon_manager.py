@@ -279,9 +279,9 @@ _REGISTRY: dict[str, dict[str, Any]] = {
         "reset_var": "_last_council_at",
         "reset_value": None,
         "default_cadence_minutes": 30,
-        "default_enabled": False,  # PENSIONERET 2026-07-13 (Lag 6) — convene_judge overtager; motor (convene_council + council_deliberation_controller) bevaret
+        "default_enabled": False,  # PENSIONERET 2026-07-13 (Lag 6) — convene_judge overtager; motor (convene_council + council_deliberation_controller) bevaret. GENINDSAT i cognition-familien 5/9, TAGET UD IGEN 15/9 (cluster_daemon._COGNITION_UNCONDITIONAL) — den blinde trigger er vaek, motoren intakt.
         "retired": "2026-07-13",
-        "description": "[PENSIONERET → cluster_cognition] Spontaneous self-triggered council deliberation via signal scoring",
+        "description": "[PENSIONERET] Blind, automatisk raadsindkaldelse via signal-scoring — ingen familie kalder den laengere (taget ud 15/9-2026). Motoren (convene_council + council_deliberation_controller + council-tabellerne) er intakt: raadet samles kun on-demand.",
     },
     "council_memory": {
         "module": "core.services.council_memory_daemon",

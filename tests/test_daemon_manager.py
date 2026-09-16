@@ -213,8 +213,14 @@ def test_set_interval_requires_minutes_param(tmp_path):
 # Bevidst slået fra, ikke afløst. Hver post skal bære sin begrundelse i registret.
 # 2026-09-05: decision_review er tændt igen — selv-bias'en er lukket med et
 # eksternt regnskab (decision_evidence.py), så den hører ikke længere til her.
-# Listen står tom med vilje: hver ny post skal begrundes i registret.
-_BEVIDST_SLUKKEDE: set[str] = set()
+#
+# 2026-09-15: autonomous_council er den FØRSTE post her, og det er med vilje.
+# Den er ikke afløst af en familie — den er bevidst slukket. Den koerte ubetinget
+# i cognition-familien (genindsat 5/9) og samlede 35 raad paa 11 dage, tre per nat,
+# paa gratis smaa-modeller, med konklusioner der aldrig blev laest. Bjoern 15/9:
+# "council er spildt tokens". Motoren er intakt (convene_council kan stadig kaldes
+# on-demand); det er kun den blinde, tidsstyrede trigger der er vaek.
+_BEVIDST_SLUKKEDE: set[str] = {"autonomous_council"}
 
 
 def test_hver_pensioneret_daemon_har_en_efterfoelger():
@@ -251,12 +257,16 @@ def test_bevidst_slukkede_baerer_deres_begrundelse():
 
 
 def test_de_fire_genindsatte_peger_paa_deres_familie():
-    """Vagt mod at 5/9-genindsættelsen stille bliver rullet tilbage."""
+    """Vagt mod at 5/9-genindsættelsen stille bliver rullet tilbage.
+
+    Bemaerk 15/9-2026: autonomous_council STOD ogsaa paa denne liste, men er
+    taget ud igen — den blinde trigger var spildt arbejde (35 raad / 11 dage,
+    konklusioner der aldrig blev laest). Motoren er intakt; kun triggeren er
+    vaek. Den er derfor fjernet fra denne liste, ikke fra registret."""
     from core.services import daemon_manager as dm
 
     forventet = {
         "provider_autodiscovery": "cluster_infra",
-        "autonomous_council": "cluster_cognition",
         "current_pull": "cluster_affect",
         "code_aesthetic": "cluster_aesthetic",
     }
@@ -272,7 +282,12 @@ def test_familierne_koerer_faktisk_de_genindsatte():
 
     assert "provider_autodiscovery" in [n for n, _fn in F._INFRA_UNCONDITIONAL]
     assert "code_aesthetic" in [n for n, _fn in F._AESTHETIC_UNCONDITIONAL]
-    assert "autonomous_council" in [n for n, _fn in C._COGNITION_UNCONDITIONAL]
+
+    # 15/9-2026: autonomous_council er TAGET UD. Den koerte ubetinget paa hver
+    # familie-tick og samlede ~3 raad i doegnet paa gratis smaa-modeller, hvis
+    # konklusioner aldrig blev laest. Denne assertion vender den gamle vagt: nu
+    # skal den IKKE ligge i listen, saa genindsættelsen ikke sker ved et uheld.
+    assert "autonomous_council" not in [n for n, _fn in C._COGNITION_UNCONDITIONAL]
     # current_pull køres inline i affect-familiens non-LLM-runner, ikke fra en liste.
     import inspect
     assert "current_pull" in inspect.getsource(C._run_affect_nonllm_members)

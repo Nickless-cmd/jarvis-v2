@@ -359,9 +359,8 @@ _Cluster-daemon primitive — one Central-governed daemon per FAMILY of nerves._
 | function | `_cog_causal_inference_live` | `(_snap)` | — | [src](../../../core/services/cluster_daemon.py#L1568) |
 | function | `_cog_active_sensing_live` | `(_snap)` | — | [src](../../../core/services/cluster_daemon.py#L1573) |
 | function | `_cog_dream_insight_live` | `(_snap)` | dream_insight is signal-driven (not a timer): gather the latest dream- | [src](../../../core/services/cluster_daemon.py#L1578) |
-| function | `_cog_autonomous_council_live` | `(_snap)` | Spontan selv-udloest raadsdeliberation via signal-scoring. Self-throttler | [src](../../../core/services/cluster_daemon.py#L1597) |
-| function | `_run_cognition_nonllm_members` | `(snap, result)` | Run the NON-LLM cognition members UNCONDITIONALLY (independent of the | [src](../../../core/services/cluster_daemon.py#L1616) |
-| function | `tick_cluster_cognition` | `(snapshot=…, *, shadow=…)` | Heartbeat entry-point for the cognition cluster-daemon family (#5). | [src](../../../core/services/cluster_daemon.py#L1632) |
+| function | `_run_cognition_nonllm_members` | `(snap, result)` | Run the NON-LLM cognition members UNCONDITIONALLY (independent of the | [src](../../../core/services/cluster_daemon.py#L1633) |
+| function | `tick_cluster_cognition` | `(snapshot=…, *, shadow=…)` | Heartbeat entry-point for the cognition cluster-daemon family (#5). | [src](../../../core/services/cluster_daemon.py#L1649) |
 
 ## `core/services/cluster_daemon_families.py`
 _Cluster-daemon FAMILIES — the second file of consolidated nerve-families._

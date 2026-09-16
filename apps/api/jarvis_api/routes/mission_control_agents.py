@@ -283,9 +283,29 @@ def mc_execute_agent(agent_id: str, payload: dict | None = None) -> dict:
     )
 
 
+def _kraev_ejer() -> None:
+    """Ejer-gate for de ruter der GRIBER IND i en agent.
+
+    De fem nedenfor stopper, pauser, genoptager, udloeber eller taler til en
+    koerende agent. De havde ingen gate overhovedet, mens provider-registret og
+    resten af de handlende flader bruger require_central_owner. Et medlem med
+    et gyldigt token kunne stoppe en vilkaarlig agent.
+
+    Gaten er den LEMPELIGE: en unbound kontekst (localhost, ingen token) taeller
+    stadig som ejer, saa runtimens egne kald indefra er uroerte. Det er kun en
+    klient med et medlems-token der nu faar 403.
+
+    Læse-ruterne er med vilje IKKE gatede — at kunne SE puljen er ikke det
+    samme som at kunne gribe ind i den.
+    """
+    from apps.api.jarvis_api.routes.central_auth import require_central_owner
+    require_central_owner()
+
+
 @router.post("/runtime/agents/{agent_id}/message")
 def mc_message_agent(agent_id: str, payload: dict | None = None) -> dict:
     """Send en besked til agenten (content/role/kind); auto-eksekverer som standard."""
+    _kraev_ejer()
     payload = payload or {}
     return send_message_to_agent(
         agent_id=agent_id,
@@ -332,6 +352,7 @@ def mc_run_due_agents(payload: dict | None = None) -> dict:
 @router.post("/runtime/agents/{agent_id}/cancel")
 def mc_cancel_agent(agent_id: str, payload: dict | None = None) -> dict:
     """Annullér agenten (valgfri note fra payload)."""
+    _kraev_ejer()
     payload = payload or {}
     return cancel_agent(agent_id, note=str(payload.get("note") or ""))
 
@@ -339,6 +360,7 @@ def mc_cancel_agent(agent_id: str, payload: dict | None = None) -> dict:
 @router.post("/runtime/agents/{agent_id}/suspend")
 def mc_suspend_agent(agent_id: str, payload: dict | None = None) -> dict:
     """Suspendér agenten (valgfri note fra payload)."""
+    _kraev_ejer()
     payload = payload or {}
     return suspend_agent(agent_id, note=str(payload.get("note") or ""))
 
@@ -346,12 +368,14 @@ def mc_suspend_agent(agent_id: str, payload: dict | None = None) -> dict:
 @router.post("/runtime/agents/{agent_id}/resume")
 def mc_resume_agent(agent_id: str) -> dict:
     """Genoptag en suspenderet agent."""
+    _kraev_ejer()
     return resume_agent(agent_id)
 
 
 @router.post("/runtime/agents/{agent_id}/expire")
 def mc_expire_agent(agent_id: str, payload: dict | None = None) -> dict:
     """Lad agenten udløbe (valgfri reason fra payload)."""
+    _kraev_ejer()
     payload = payload or {}
     return expire_agent(agent_id, reason=str(payload.get("reason") or ""))
 

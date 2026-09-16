@@ -12,6 +12,14 @@ const definerede = (css: string) =>
   new Set([...css.matchAll(/^\s*(--[a-z0-9-]+)\s*:/gm)].map((m) => m[1]))
 
 describe('design-tokens', () => {
+  it('holder miljø- og inspector-stil ude af den store app.css', () => {
+    const miljø = læs('environment-inspector.css')
+    expect(app).not.toMatch(/\.env-panel\s*\{/)
+    expect(miljø).toMatch(/\.env-panel\s*\{/)
+    expect(miljø).toMatch(/\.git-add/)
+    expect(miljø).toMatch(/\.git-del/)
+  })
+
   // Et var(--x) uden definition er ikke en skønhedsfejl: uden fallback
   // bliver `background: var(--bg)` gennemsigtig og `color: var(--fg)` arvet.
   // Med fallback brænder den en literal ind, som ikke følger temaskift.

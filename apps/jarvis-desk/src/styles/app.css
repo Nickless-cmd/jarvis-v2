@@ -1291,11 +1291,6 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 .progress-step-msg { min-width: 0; word-break: break-word; }
 /* Diff-stat (+N −M) i tool-chip-hovedet, som Claude Code */
 .toolcard-diffstat { margin-left: auto; font-family: ui-monospace, monospace; font-size: 11px; flex: 0 0 auto; }
-/* Tilfoejet/fjernet er groen og roed HVOR SOM HELST. Farverne var laast inde i
-   to steder (tool-kortet og git-chippen), saa miljoe-feltets «+182 −219» stod
-   graat — samme tal, samme betydning, ingen farve (Bjoern 8/9-2026). */
-.git-add { color: var(--ok); }
-.git-del { color: var(--error-fg); }
 .toolcard-diffstat + .toolcard-status { margin-left: 8px; }
 /* bash → terminal */
 .tc-term-cmd { font-family: ui-monospace, monospace; font-size: 12px; color: var(--accent-text); margin-bottom: 6px; white-space: pre-wrap; word-break: break-all; }
@@ -2412,9 +2407,6 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 
 /* ── Miljø-felt (code mode, vises under run) ── */
 .codeview-main { position: relative; }
-.env-panel { position: absolute; top: 52px; right: 16px; z-index: 50; width: 288px;
-  background: var(--bg-1, var(--bg)); border: 1px solid var(--line); border-radius: 12px;
-  padding: 12px 14px; box-shadow: 0 8px 28px rgba(0,0,0,.30); font-size: 13px; }
 
 /* Højre-stak: miljø-feltet + Central-feltet stables lodret (Central kun owner). */
 /* 240 → 288 (Bjoern 8/9-2026). Raekkerne klippede: «+193 −61», kommandoerne i
@@ -2423,7 +2415,6 @@ button.sidebar-group svg { flex: none; opacity: .7; }
    ruder med hver sin bredde ville flytte samtalen frem og tilbage. */
 .code-right-stack { position: absolute; top: 52px; right: 16px; z-index: 50; width: 288px;
   display: flex; flex-direction: column; gap: 10px; max-height: calc(100vh - 76px); overflow-y: auto; }
-.code-right-stack .env-panel { position: static; top: auto; right: auto; width: 100%; }
 
 /* ── Den Intelligente Central — real-time owner-vindue ── */
 .central-panel { background: var(--bg-1, var(--bg)); border: 1px solid var(--line);
@@ -2512,61 +2503,6 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 .central-detail-feed-head { font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: var(--fg-3, var(--fg)); opacity: .6; margin-bottom: 3px; }
 .central-detail-feed { list-style: none; margin: 0; padding: 0; max-height: 130px; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; }
 .central-detail-reason { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--fg-2, var(--fg)); font-size: 10.5px; }
-.env-head { display: flex; align-items: center; justify-content: space-between; font-size: 12px; letter-spacing: .04em; color: var(--fg-3, var(--fg)); margin-bottom: 8px; }
-.env-gear { display: inline-flex; background: none; border: none; padding: 2px; color: var(--fg-3, var(--fg)); opacity: .7; cursor: pointer; border-radius: 6px; }
-.env-gear:hover { opacity: 1; background: var(--bg-2, var(--bg)); }
-.env-divider { height: 1px; background: var(--line); margin: 10px 0; }
-.env-section-head { font-size: 11px; letter-spacing: .04em; color: var(--fg-3, var(--fg)); opacity: .8; margin-bottom: 6px; }
-/* En koerende agent skal kunne ses uden at laese: teksten aander, som
-   tool-linjen goer. Faerdige agenter staar stille. */
-.env-row.agent-koerer { animation: toolgroup-aande 1.6s ease-in-out infinite; }
-.agent-status { color: var(--warn-fg, #f5c451); font-size: 11px; }
-.agent-opgave { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 150px; }
-@media (prefers-reduced-motion: reduce) { .env-row.agent-koerer { animation: none; } }
-
-/* Kontekst-procenten skifter farve som ringen i skrivefeltet — samme zoner,
-   samme tal. Et tal der aldrig skifter udseende, laeses ikke. */
-/* En koerende agent skal kunne ses uden at laese: teksten aander, som
-   tool-linjen goer. Faerdige agenter staar stille. */
-.env-row.agent-koerer { animation: toolgroup-aande 1.6s ease-in-out infinite; }
-.agent-status { color: var(--warn-fg, #f5c451); font-size: 11px; }
-.agent-opgave { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 150px; }
-@media (prefers-reduced-motion: reduce) { .env-row.agent-koerer { animation: none; } }
-
-.rh-pct { font-variant-numeric: tabular-nums; }
-.rh-pct.zone-blaa { color: #5b9bd5; }
-.rh-pct.zone-gul { color: #eab308; }
-.rh-pct.zone-roed { color: #ef4444; }
-
-.env-muted { color: var(--fg-3, var(--fg)); opacity: .7; }
-/* Git-action-rækker (Indsæt / Opret pull request) — som Codex' klikbare rækker. */
-.env-action { padding: 0; }
-.env-actbtn { display: inline-flex; align-items: center; gap: 6px; width: 100%; background: none;
-  border: none; padding: 2px 0; font: inherit; font-size: 13px; color: var(--fg-2, var(--fg));
-  cursor: pointer; border-radius: 6px; }
-.env-actbtn:hover:not(:disabled) { color: var(--accent-text); }
-.env-actbtn:disabled { opacity: .55; cursor: default; }
-.env-note { margin-top: 8px; font-size: 11.5px; color: var(--fg-3, var(--fg)); }
-.env-note.is-err { color: #e0556b; }
-.env-note a { color: var(--accent-text); text-decoration: none; }
-.env-note a:hover { text-decoration: underline; }
-.env-rows { list-style: none; margin: 0 0 8px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
-.env-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-.env-label { display: inline-flex; align-items: center; gap: 6px; color: var(--fg-2, var(--fg)); }
-.env-live { display: flex; align-items: center; gap: 6px; padding-top: 8px; border-top: 1px solid var(--line); color: var(--fg-2, var(--fg)); }
-.env-live-icon { color: var(--accent-text); flex: none; }
-.env-step { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.env-tokens { font-size: 11px; color: var(--fg-3, var(--fg)); }
-.env-idle { color: var(--fg-3, var(--fg)); opacity: .8; }
-/* Live tools/agenter Jarvis kalder (Codex-paritet). */
-.env-tools { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
-.env-tool-chip { display: inline-flex; align-items: center; gap: 4px; font-size: 11px;
-  padding: 2px 7px; border-radius: 999px; background: var(--bg-2, var(--bg)); border: 1px solid var(--line);
-  color: var(--fg-2, var(--fg)); max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.env-tool-chip svg { flex: none; color: var(--fg-3, var(--fg)); }
-.env-tool-chip.is-agent { border-color: var(--accent); color: var(--accent-text); }
-.env-tool-chip.is-agent svg { color: var(--accent-text); }
-
 /* ── Besked-rail (venstre kant, hop til besked — chat + code) ── */
 .transcript-wrap { position: relative; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
 /* 1:1 med Claudes navigations-rail: en lodret indholdsfortegnelse i venstre

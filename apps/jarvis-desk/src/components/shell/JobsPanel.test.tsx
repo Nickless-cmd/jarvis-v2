@@ -1,103 +1,151 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 
-const listProcesses = vi.fn()
-const stopProcess = vi.fn()
+const listJobs = vi.fn()
+const stopJob = vi.fn()
+const pauseJob = vi.fn()
+const resumeJob = vi.fn()
+vi.mock('../../lib/jobsApi', async () => {
+  const rigtig = await vi.importActual<typeof import('../../lib/jobsApi')>('../../lib/jobsApi')
+  return {
+    varighed: rigtig.varighed,
+    kildeNavn: rigtig.kildeNavn,
+    listJobs: (...a: unknown[]) => listJobs(...a),
+    stopJob: (...a: unknown[]) => stopJob(...a),
+    pauseJob: (...a: unknown[]) => pauseJob(...a),
+    resumeJob: (...a: unknown[]) => resumeJob(...a),
+  }
+})
 const removeProcess = vi.fn()
 vi.mock('../../lib/processesApi', async () => {
   const rigtig = await vi.importActual<typeof import('../../lib/processesApi')>('../../lib/processesApi')
-  return {
-    varighed: rigtig.varighed,
-    listProcesses: (...a: unknown[]) => listProcesses(...a),
-    stopProcess: (...a: unknown[]) => stopProcess(...a),
-    removeProcess: (...a: unknown[]) => removeProcess(...a),
-  }
+  return { ...rigtig, removeProcess: (...a: unknown[]) => removeProcess(...a) }
 })
 
 import { JobsPanel } from './JobsPanel'
 
 const cfg = { apiBaseUrl: 'http://x', authToken: 't' }
-const JOBS = [
-  { name: 'grid-bot', pid: 1, status: 'running', command: 'python3 -m grid_bot --continuous', uptime_seconds: 11178 },
-  { name: 'toku-poller', pid: 2, status: 'running', command: 'node poller.mjs', uptime_seconds: 42 },
-  { name: 'gammel', pid: null, status: 'stopped', command: 'ting.sh', exit_code: 1 },
-]
+
+/**
+ * Det panelet skal kunne, og som det IKKE kunne før 16/9-2026:
+ *
+ *  1. vise job fra BEGGE maskiner — serverens supervisor og Bjørns egne shells
+ *  2. sige forskel på «der kører ingenting» og «jeg kan ikke se din maskine»
+ *  3. stoppe et job på den maskine det faktisk kører på
+ */
+const SERVER = {
+  id: 'grid-bot', kilde: 'supervisor' as const, navn: 'grid-bot',
+  kommando: 'python3 -m grid_bot --continuous', status: 'running', pid: 1,
+  sekunder: 11178, exit_code: null, can_pause: false,
+}
+const MIN_MASKINE = {
+  id: 'bg_a1b2c3d4e5f6', kilde: 'operator' as const, navn: 'bg_a1b2c3d4e5f6',
+  kommando: 'npm run build -- --watch', status: 'running', pid: 4242,
+  sekunder: 95, exit_code: null, can_pause: true,
+}
+const FAERDIG = {
+  id: 'gammel', kilde: 'supervisor' as const, navn: 'gammel', kommando: 'ting.sh',
+  status: 'exited', pid: null, sekunder: null, exit_code: 1, can_pause: false,
+}
 
 beforeEach(() => {
-  listProcesses.mockReset().mockResolvedValue(JOBS)
-  stopProcess.mockReset().mockResolvedValue(undefined)
+  listJobs.mockReset().mockResolvedValue({ jobs: [SERVER, MIN_MASKINE, FAERDIG], bridge_ok: true })
+  stopJob.mockReset().mockResolvedValue(undefined)
+  pauseJob.mockReset().mockResolvedValue(undefined)
+  resumeJob.mockReset().mockResolvedValue(undefined)
   removeProcess.mockReset().mockResolvedValue(undefined)
 })
 
-/**
- * Bjørn 8/9-2026: «vi mangler et sted at vise kørende background job … et fold
- * panel som de 2 andre, bare hvor man kan se og lukke jobs.» Formen er Claude
- * Codes egen Background tasks-rude.
- */
 describe('JobsPanel', () => {
-  it('viser kørende job med kommando og forløbet tid', async () => {
-    render(<JobsPanel config={cfg} isOwner onClose={vi.fn()} />)
+  it('viser job fra BEGGE maskiner', async () => {
+    // Kernen i fejlen: panelet hentede kun serverens supervisor, så alt Jarvis
+    // satte i gang på Bjørns egen maskine var usynligt.
+    render(<JobsPanel config={cfg} isOwner onClose={() => {}} />)
     expect(await screen.findByText('grid-bot')).toBeInTheDocument()
-    // Kommandoen siger HVAD der kører — det er dét man skal bruge for at
-    // afgøre om jobbet skal stoppes.
-    expect(screen.getByText('python3 -m grid_bot --continuous')).toBeInTheDocument()
-    expect(screen.getByText('3t 06m 18s')).toBeInTheDocument()
+    expect(screen.getByText('bg_a1b2c3d4e5f6')).toBeInTheDocument()
+    expect(screen.getByText('Server')).toBeInTheDocument()
+    expect(screen.getByText('Din maskine')).toBeInTheDocument()
   })
 
-  it('færdige job er foldet sammen — de kørende må ikke drukne', async () => {
-    render(<JobsPanel config={cfg} isOwner onClose={vi.fn()} />)
-    await screen.findByText('grid-bot')
-    expect(screen.queryByText('gammel')).not.toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: /Færdige/ }))
-    expect(screen.getByText('gammel')).toBeInTheDocument()
-    expect(screen.getByText('exit 1')).toBeInTheDocument()
+  it('henter den SAMLEDE liste, ikke kun serverens processer', async () => {
+    render(<JobsPanel config={cfg} isOwner onClose={() => {}} />)
+    await waitFor(() => expect(listJobs).toHaveBeenCalled())
+    // Med færdige, ellers ville «Færdige»-sektionen altid være tom.
+    expect(listJobs).toHaveBeenCalledWith(cfg, true)
   })
 
-  it('stop kalder serveren og henter listen igen', async () => {
-    render(<JobsPanel config={cfg} isOwner onClose={vi.fn()} />)
+  it('en død bro er IKKE en tom liste', async () => {
+    listJobs.mockResolvedValue({ jobs: [SERVER], bridge_ok: false })
+    render(<JobsPanel config={cfg} isOwner onClose={() => {}} />)
+    expect(await screen.findByText(/Kan ikke se din maskine/)).toBeInTheDocument()
+    // Serverens job vises stadig — den ene kilde må ikke tage den anden med sig.
+    expect(screen.getByText('grid-bot')).toBeInTheDocument()
+  })
+
+  it('stop rammer jobbet på DEN maskine det kører på', async () => {
+    render(<JobsPanel config={cfg} isOwner onClose={() => {}} />)
+    await screen.findByText('bg_a1b2c3d4e5f6')
+    fireEvent.click(screen.getByRole('button', { name: 'Stop bg_a1b2c3d4e5f6' }))
+    await waitFor(() => expect(stopJob).toHaveBeenCalledWith(cfg, expect.objectContaining({
+      kilde: 'operator', id: 'bg_a1b2c3d4e5f6',
+    })))
+  })
+
+  it('pause tilbydes kun hvor den kan lade sig gøre', async () => {
+    render(<JobsPanel config={cfg} isOwner onClose={() => {}} />)
     await screen.findByText('grid-bot')
-    fireEvent.click(screen.getByLabelText('Stop grid-bot'))
-    await waitFor(() => expect(stopProcess).toHaveBeenCalledWith(cfg, 'grid-bot'))
-    // Listen skal genhentes — ellers står jobbet som kørende til næste poll.
-    await waitFor(() => expect(listProcesses.mock.calls.length).toBeGreaterThan(1))
+    // can_pause=false på serverens job — en knap der ikke virker er værre end ingen.
+    expect(screen.queryByRole('button', { name: 'Pause grid-bot' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Pause bg_a1b2c3d4e5f6' })).toBeInTheDocument()
+  })
+
+  it('en pauset shell kan genoptages', async () => {
+    listJobs.mockResolvedValue({ jobs: [{ ...MIN_MASKINE, status: 'paused' }], bridge_ok: true })
+    render(<JobsPanel config={cfg} isOwner onClose={() => {}} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Genoptag bg_a1b2c3d4e5f6' }))
+    await waitFor(() => expect(resumeJob).toHaveBeenCalled())
+    expect(pauseJob).not.toHaveBeenCalled()
   })
 
   it('en member ser jobbene, men kan ikke stoppe dem', async () => {
-    // Serveren er ejer-gated; knappen skal ikke love noget den ikke kan holde.
-    render(<JobsPanel config={cfg} onClose={vi.fn()} />)
+    render(<JobsPanel config={cfg} isOwner={false} onClose={() => {}} />)
     await screen.findByText('grid-bot')
-    expect(screen.queryByLabelText('Stop grid-bot')).toBeNull()
-  })
-
-  it('siger det tydeligt når intet kører', async () => {
-    listProcesses.mockResolvedValue([])
-    render(<JobsPanel config={cfg} isOwner onClose={vi.fn()} />)
-    expect(await screen.findByText(/Ingenting kører lige nu/)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Stop / })).not.toBeInTheDocument()
   })
 
   it('en fejlet hentning vælter ikke panelet', async () => {
-    listProcesses.mockRejectedValue(new Error('nede'))
-    render(<JobsPanel config={cfg} isOwner onClose={vi.fn()} />)
-    expect(await screen.findByText(/kunne ikke hente jobs/)).toBeInTheDocument()
+    listJobs.mockRejectedValue(new Error('nede'))
+    render(<JobsPanel config={cfg} isOwner onClose={() => {}} />)
+    expect(await screen.findByText('kunne ikke hente jobs')).toBeInTheDocument()
+    expect(screen.getByText('Ingenting kører lige nu.')).toBeInTheDocument()
+  })
+
+  it('melder antal kørende op, så tælleren ikke kan modsige listen', async () => {
+    const taeller = vi.fn()
+    render(<JobsPanel config={cfg} isOwner onCount={taeller} onClose={() => {}} />)
+    await waitFor(() => expect(taeller).toHaveBeenCalledWith(2))   // FAERDIG tæller ikke med
+  })
+
+  it('«Ryd færdige» siger hvad den IKKE kunne rydde', async () => {
+    listJobs.mockResolvedValue({
+      jobs: [FAERDIG, { ...MIN_MASKINE, status: 'exited', exit_code: 0 }], bridge_ok: true,
+    })
+    render(<JobsPanel config={cfg} isOwner onClose={() => {}} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Ryd færdige' }))
+    // Operatørens shells er filer på hans maskine; der findes ingen rute til
+    // at slette dem. Knappen må ikke se ud som om den tog dem alle.
+    expect(await screen.findByText(/1 shell\(s\) på din maskine kan ikke ryddes/)).toBeInTheDocument()
+    expect(removeProcess).toHaveBeenCalledTimes(1)
   })
 })
 
 describe('tilstande der ikke er «kører» eller «exit N»', () => {
   it('«lost» vises som mistet — ikke som et gættet exit', async () => {
-    // pid'en er væk UDEN at vi nåede at se en exit-kode; typisk fordi runtime'en
-    // blev genstartet under jobbet. «exit ?» ville være et gæt.
-    listProcesses.mockResolvedValue([
-      { name: 'grid-bot', pid: 1, status: 'lost', command: 'x', exit_code: null },
-    ])
-    render(<JobsPanel config={cfg} isOwner onClose={vi.fn()} />)
+    listJobs.mockResolvedValue({
+      jobs: [{ ...FAERDIG, status: 'lost', exit_code: null }], bridge_ok: true,
+    })
+    render(<JobsPanel config={cfg} isOwner onClose={() => {}} />)
     fireEvent.click(await screen.findByRole('button', { name: /Færdige/ }))
-    expect(screen.getByText('mistet')).toBeInTheDocument()
-  })
-
-  it('melder antal kørende op, så tælleren ikke kan modsige listen', async () => {
-    const onCount = vi.fn()
-    render(<JobsPanel config={cfg} isOwner onCount={onCount} onClose={vi.fn()} />)
-    await screen.findByText('grid-bot')
-    await waitFor(() => expect(onCount).toHaveBeenCalledWith(2))
+    expect(await screen.findByText('mistet')).toBeInTheDocument()
   })
 })

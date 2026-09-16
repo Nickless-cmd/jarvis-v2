@@ -244,3 +244,35 @@ describe('miljø-feltets klippede lister', () => {
     expect(miljø).toMatch(/\.env-rows\.er-klippet[\s\S]{0,200}linear-gradient\(to bottom/)
   })
 })
+
+/**
+ * Titelbjælken har sin egen linje (Bjørn 16/9-2026). To ting skal holde
+ * sammen, ellers ligger knapperne oven i appens header igen:
+ * bjælken er 34 px høj, og .window starter 34 px nede.
+ */
+describe('vinduets egen titelbjælke', () => {
+  const bjaelke = app.match(/body\.egen-ramme \.vinduesbjaelke \{([\s\S]*?)\n\}/)?.[1] ?? ''
+  const vindue = app.match(/body\.egen-ramme \.window \{([^}]*)\}/)?.[1] ?? ''
+
+  it('bjælken er altid der — også uden skallen', () => {
+    // Uden OS-ramme er den den eneste måde at flytte vinduet på. Den må ikke
+    // være betinget af at en bestemt flade er tegnet.
+    expect(bjaelke, 'bjælken mangler').toBeTruthy()
+    expect(app).not.toMatch(/:not\(:has\(\.window\)\)\s*\.vinduesbjaelke/)
+    expect(bjaelke).toContain('-webkit-app-region: drag')
+  })
+
+  it('indholdet starter PRÆCIS under bjælken', () => {
+    const hoejde = bjaelke.match(/height:\s*(\d+)px/)?.[1]
+    expect(hoejde, 'bjælken har ingen højde').toBeTruthy()
+    expect(vindue).toContain(`margin-top: ${hoejde}px`)
+    expect(vindue).toContain(`calc(100vh - ${hoejde}px)`)
+  })
+
+  it('headeren reserverer ikke længere plads i højre side', () => {
+    // Den gamle løsning var en usynlig aftale mellem to regler: knapperne lå
+    // oven i headeren, og headeren holdt 152 px fri. Rykkede den ene sig,
+    // overlappede de uden at nogen kunne se hvorfor.
+    expect(app).not.toMatch(/body\.egen-ramme \.chatview-head \{[^}]*padding-right/)
+  })
+})

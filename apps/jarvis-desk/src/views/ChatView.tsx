@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react'
-import { ArrowDown, PanelRight, Loader2 } from 'lucide-react'
+import { ArrowDown, PanelRight, Loader2, SquareStack } from 'lucide-react'
+import { JobsPanel } from '../components/shell/JobsPanel'
 import { onPauseSvar, pauseAskIn, withoutPauseAsk, type PauseAsk } from '../lib/pauseAsk'
 import { useRedning } from '../hooks/useRedning'
 import { streamReducer, initialStreamState } from '../lib/streamReducer'
@@ -548,8 +549,26 @@ export function ChatView({
     </>
   )
 
+  // Baggrundsjob i CHATTEN ogsaa. Panelet fandtes kun i Code-visningen, saa
+  // i chat — hvor Bjoern arbejder mest — var der ingen vej til det overhovedet.
+  // (16/9-2026: «hvorfor de ikk bliver vist overhovede … alt du naesten laver
+  // bliver vist der i».)
+  const [jobsOpen, setJobsOpen] = useState(false)
+  const [koerendeJobs, setKoerendeJobs] = useState(0)
+
   const activeSession = sessions.sessions.find((s) => s.id === sessionId)
   const chatTitle = activeSession?.title || (isEmpty ? 'Ny samtale' : 'Samtale')
+  const jobsRude = settings && jobsOpen ? (
+    <div className="code-right-stack">
+      <JobsPanel
+        config={{ apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }}
+        isOwner={auth?.role === 'owner'}
+        onCount={setKoerendeJobs}
+        onClose={() => setJobsOpen(false)}
+      />
+    </div>
+  ) : null
+
   const header = (
     <div className="chatview-head">
       <div className="chatview-head-left">
@@ -576,6 +595,15 @@ export function ChatView({
         )}
         <button
           type="button"
+          className={`panel-toggle ${jobsOpen ? 'active' : ''}`}
+          aria-label="Vis/skjul baggrundsjob" title="Baggrundsjob"
+          onClick={() => setJobsOpen((o) => !o)}
+        >
+          <SquareStack size={15} strokeWidth={1.8} />
+          {koerendeJobs > 0 && <span className="panel-toggle-taeller">{koerendeJobs}</span>}
+        </button>
+        <button
+          type="button"
           className={`panel-toggle ${panel.open ? 'active' : ''}`}
           aria-label="Vis/skjul panel"
           title="Panel"
@@ -592,6 +620,7 @@ export function ChatView({
     return (
       <div className="chatview empty">
         {header}
+        {jobsRude}
         <div className="chat-empty">
           <GreetingHero
             mode="chat"
@@ -612,6 +641,7 @@ export function ChatView({
   return (
     <div className="chatview">
       {header}
+      {jobsRude}
       {showTakeover && (
         <div className="takeover-banner" role="status">
           <span className="takeover-text">📱→🖥 Aktiv på en anden enhed — følger med her live</span>

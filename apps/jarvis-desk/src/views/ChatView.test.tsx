@@ -103,3 +103,38 @@ describe('ChatView integration', () => {
     expect(screen.getByText('Hvilken vej skal jeg tage?')).toBeInTheDocument()
   })
 })
+
+/**
+ * Baggrundsjob i CHATTEN.
+ *
+ * Panelet fandtes kun i Code-visningen. Bjørn arbejder mest i chat, og der var
+ * ingen vej til det overhovedet — derfor «hvorfor de ikk bliver vist
+ * overhovede». En knap der ikke findes, kan ingen finde.
+ */
+describe('ChatView — baggrundsjob', () => {
+  const vis = () => render(
+    <SettingsProvider initialConfig={cfg}>
+      <SessionProvider config={cfg}>
+        <StreamProvider config={cfg}>
+          <PermissionProvider>
+            <PanelProvider defaultWidth={400}>
+              <ChatView sessionId="s1" />
+            </PanelProvider>
+          </PermissionProvider>
+        </StreamProvider>
+      </SessionProvider>
+    </SettingsProvider>,
+  )
+
+  it('har en knap til baggrundsjob i headeren', () => {
+    vis()
+    expect(screen.getByRole('button', { name: 'Vis/skjul baggrundsjob' })).toBeInTheDocument()
+  })
+
+  it('knappen åbner ruden', async () => {
+    vis()
+    expect(screen.queryByRole('complementary', { name: 'Baggrundsjob' })).not.toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Vis/skjul baggrundsjob' }))
+    expect(screen.getByRole('complementary', { name: 'Baggrundsjob' })).toBeInTheDocument()
+  })
+})

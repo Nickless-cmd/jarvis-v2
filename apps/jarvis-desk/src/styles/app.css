@@ -844,13 +844,46 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 }
 .jobs-kort.er-faerdig { background: none; }
 .jobs-kort-tekst { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1 1 auto; }
-.jobs-navn { color: var(--fg-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jobs-navn {
+  color: var(--fg-1);
+  /* To linjer, ikke én klippet. CC lader titlen bryde, og det er netop halen
+     af titlen der adskiller «Deploy and verify zombies are cleaned» fra
+     «Deploy and verify output». */
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+  overflow: hidden; line-height: 1.35;
+}
 .jobs-meta { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 11.5px; color: var(--fg-3); }
 .jobs-kommando {
   font-family: var(--font-mono); overflow: hidden; text-overflow: ellipsis;
   white-space: nowrap; min-width: 0;
 }
 .jobs-tid { flex: 0 0 auto; font-variant-numeric: tabular-nums; }
+/* Tilfoejet 16/9-2026 sammen med den samlede jobs-kilde.
+   Formen foelger CC's kort: navn, saa «hvor + hvor laenge», saa selve
+   kommandoen paa sin egen linje. */
+.jobs-kilde { flex: 0 0 auto; }
+.jobs-kort-tekst .jobs-kommando {
+  font-family: var(--font-mono); font-size: 11px; color: var(--fg-3);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%;
+}
+.jobs-knapper { display: flex; gap: 4px; flex: 0 0 auto; }
+/* Pause tegnes som to streger — et ikon mindre at hente ind. */
+.jobs-pause-ikon {
+  display: block; width: 9px; height: 10px;
+  border-left: 2px solid currentColor; border-right: 2px solid currentColor;
+}
+/* «Faerdige N ›» med en ryd-knap yderst til hoejre, som i CC. */
+.jobs-faerdige { display: flex; align-items: center; gap: 8px; }
+.jobs-faerdige .jobs-faerdige-head { flex: 1 1 auto; }
+.jobs-ryd {
+  flex: 0 0 auto; display: grid; place-items: center; width: 24px; height: 24px;
+  background: none; border: 0; color: var(--fg-3); cursor: pointer; border-radius: 5px;
+}
+.jobs-ryd:hover:not(:disabled) { color: var(--error-fg); background: var(--bg-3); }
+.jobs-ryd:disabled { opacity: .5; cursor: default; }
+/* En BESKED er ikke en fejl. Den laa foer i fejl-feltet og blev slettet af
+   den naeste hentning, saa den naaede aldrig skaermen. */
+.jobs-besked { color: var(--fg-2); padding: 2px 0 6px; font-size: 11.5px; }
 .jobs-exit { flex: 0 0 auto; }
 .jobs-exit.er-fejl { color: var(--error-fg); }
 .jobs-stop {
@@ -2426,7 +2459,7 @@ button.sidebar-group svg { flex: none; opacity: .7; }
    jobs-ruden og opgaven ved en agent er alle tekst der bliver ubrugelig naar
    den ender i «…». Miljoe-feltet og jobs-ruden deler bredden med vilje — to
    ruder med hver sin bredde ville flytte samtalen frem og tilbage. */
-.code-right-stack { position: absolute; top: 52px; right: 16px; z-index: 50; width: 288px;
+.code-right-stack { position: absolute; top: 52px; right: 16px; z-index: 50; width: 330px;
   display: flex; flex-direction: column; gap: 10px; max-height: calc(100vh - 76px); overflow-y: auto; }
 
 /* ── Den Intelligente Central — real-time owner-vindue ── */
@@ -3276,15 +3309,22 @@ body.egen-ramme .chatview-head button,
 body.egen-ramme .chatview-head input,
 body.egen-ramme .chatview-head select,
 body.egen-ramme .chatview-head a { -webkit-app-region: no-drag; }
-/* Plads til knapperne, saa headerens egne ikoner ikke havner under dem. */
-body.egen-ramme .chatview-head { padding-right: 152px; }
+/* Ingen reservering i headeren laengere: knapperne har deres egen linje. */
 
-/* Traek-bjaelke til de skaerme der ikke HAR en bjaelke (setup, indlaesning,
-   fejlskaerm). :has() gør at den forsvinder i samme oejeblik skallen er der —
-   ellers ville den ligge oven paa sidebarens og chattens egne knapper og
-   spise klikkene. */
+/* Titelbjaelken har sin EGEN linje (Bjoern 16/9-2026: «header linjen skal
+   rykkes ned saadan minimere og forstoer og exit er paa sin egen linje»).
+   Foer laa knapperne oven i appens egen header, og den maatte holde 152 px fri
+   i hoejre side — en usynlig aftale mellem to regler der ikke vidste om
+   hinanden. Nu er bjaelken en raekke for sig: alt andet starter under den.
+
+   Den er ALTID der, ogsaa paa setup- og fejlskaerme. Uden OS-ramme er den den
+   eneste maade at flytte vinduet paa. */
 .vinduesbjaelke { display: none; }
-body.egen-ramme:not(:has(.window)) .vinduesbjaelke {
+body.egen-ramme .vinduesbjaelke {
   display: block; position: fixed; top: 0; left: 0; right: 0; height: 34px;
   z-index: 190; -webkit-app-region: drag;
+  background: var(--bg-0); border-bottom: 1px solid var(--line);
 }
+/* Alt indhold starter under bjaelken. calc, ikke padding paa body: .window er
+   et grid paa 100vh, og en padding ville skubbe bunden ud af skaermen. */
+body.egen-ramme .window { height: calc(100vh - 34px); margin-top: 34px; }

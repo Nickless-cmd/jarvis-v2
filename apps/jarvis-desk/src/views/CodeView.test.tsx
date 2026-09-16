@@ -23,6 +23,7 @@ vi.mock('../lib/streamClient', () => ({
 }))
 vi.mock('../lib/api', () => ({
   listSessions: vi.fn().mockResolvedValue([]),
+  getSessionMilestones: vi.fn().mockResolvedValue({ milestones: [] }),
   getSession: vi.fn().mockResolvedValue({ session: { id: 's1', title: 'T', updated_at: '2026-09-16T10:00:00Z' }, messages: [] }),
   createSession: vi.fn(),
   cancelRun: vi.fn(),

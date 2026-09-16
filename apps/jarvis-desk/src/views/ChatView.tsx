@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useReducer, useRef, useState } from 'react'
+import { useEffect, useReducer, useRef, useState } from 'react'
 import { ArrowDown, PanelRight, Loader2, SquareStack, FileDiff } from 'lucide-react'
 import { JobsPanel } from '../components/shell/JobsPanel'
 import { ChangesPanel } from '../components/shell/ChangesPanel'
@@ -18,7 +18,7 @@ import { VoiceConversation } from '../components/chat/VoiceConversation'
 import { usePermission } from '../hooks/usePermission'
 import { useOnline } from '../hooks/useOnline'
 import { readModelPrefs } from '../lib/composerPrefs'
-import { getContextInfo, getContextUsage, getSessionMilestones, getActiveRuns, followRun, compactNow, warmSession } from '../lib/api'
+import { getContextInfo, getContextUsage, getActiveRuns, followRun, compactNow, warmSession } from '../lib/api'
 import { markInteraction } from '../lib/presenceSignal'
 import { PresenceDot } from '../components/shell/PresenceDot'
 import { DESK_CHROME } from '../lib/deskChrome'
@@ -31,7 +31,8 @@ import { HangPrompt } from '../components/feedback/HangPrompt'
 import { ErrorBanner } from '../components/feedback/ErrorBanner'
 import { ErrorCard } from '../components/feedback/ErrorCard'
 import { GreetingHero } from '../components/chat/GreetingHero'
-import { MessageRail, railAnchors as byggAnkre } from '../components/chat/MessageRail'
+import { MessageRail } from '../components/chat/MessageRail'
+import { useRailAnkre } from '../lib/useRailAnkre'
 import { PauseAndAskCard } from '../components/rich/PauseAndAskCard'
 
 const NEAR_BOTTOM_PX = 120
@@ -137,21 +138,6 @@ export function ChatView({
     window.addEventListener('focus', onFocus)
     return () => window.removeEventListener('focus', onFocus)
   }, [settings, sessionId])
-
-  // Saved rail = MILEPÆLE (kapitler), ikke ét anker pr. besked (Bjørn 2026-06-23). Backend
-  // segmenterer samtalen i titlede kapitler (cheap-lane, cached). Vi poller ved session-skift
-  // + når en tur slutter. Indtil milepæle er klar (eller ved fejl) falder rail'en tilbage til
-  // user-beskederne, så den aldrig forsvinder.
-  const [milestones, setMilestones] = useState<{ anchor_id: string; title: string }[]>([])
-  useEffect(() => {
-    if (!settings || !sessionId) { setMilestones([]); return }
-    let alive = true
-    const cfg = { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }
-    getSessionMilestones(cfg, sessionId)
-      .then((r) => { if (alive) setMilestones(r.milestones || []) })
-      .catch(() => { /* behold sidste — fallback til user-beskeder nedenfor */ })
-    return () => { alive = false }
-  }, [settings, sessionId, stream.status === 'idle'])
 
   useEffect(() => { if (sessionId) sessions.select(sessionId) }, [sessionId])
 
@@ -485,21 +471,11 @@ export function ChatView({
   const followAlreadyInTranscript =
     followText.length > 0 && lastVisibleAsstText.length > 0 &&
     (lastVisibleAsstText === followText || lastVisibleAsstText.startsWith(followText) || followText.startsWith(lastVisibleAsstText))
-  // Rail-ankre: MILEPÆLE (kapitler) når de findes (≥2 der matcher synlige beskeder), ellers
-  // fallback til user-beskederne så rail'en aldrig er tom mens milepæle genereres.
-  const railAnchors = useMemo(() => {
-    const afLedte = byggAnkre(visibleMessages)
-    const ids = new Set(visibleMessages.map((m) => m.id))
-    // Milepælene har de bedre TITLER (kapitler), men de ved intet om fejl.
-    // Fejl-markeringen kommer fra beskederne, så den bæres over her frem for at
-    // gå tabt bare fordi der findes milepæle.
-    const fejlPrId = new Map(afLedte.map((a) => [a.id, a.fejl]))
-    const fromMilestones = milestones
-      .filter((m) => ids.has(m.anchor_id))
-      .map((m) => ({ id: m.anchor_id, label: m.title, fejl: fejlPrId.get(m.anchor_id) }))
-    if (fromMilestones.length >= 2) return fromMilestones
-    return afLedte
-  }, [milestones, visibleMessages])
+  // Saved rail: kapitler + komprimeringer, ikke én streg pr. besked — se lib/railAnkre.ts.
+  const railAnchors = useRailAnkre(
+    settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : null,
+    sessionId, sessions.messages, stream.status === 'idle',
+  )
   const isEmpty =
     !sessionId ||
     (visibleMessages.length === 0 && stream.status === 'idle' && stream.blocks.length === 0 && !queued && !bgActive)

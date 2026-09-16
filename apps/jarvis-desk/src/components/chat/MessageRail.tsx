@@ -6,6 +6,8 @@ export interface RailAnchor {
   /** Turen endte i en fejl. Markeres i skinnen, så «hvor gik det galt» kan
    *  besvares uden at scrolle hele samtalen igennem. */
   fejl?: boolean
+  /** Kapitel (standard) eller komprimering — se `lib/railAnkre.ts`. */
+  slags?: 'kapitel' | 'komprimering'
 }
 
 /**
@@ -87,11 +89,13 @@ export function MessageRail({
   return (
     <nav className="msg-rail" aria-label="Spring til besked">
       <div className="msg-rail-panel">
-        {anchors.map((a) => (
+        {anchors.map((a, i) => (
           <button
-            key={a.id}
+            key={`${a.slags ?? 'kapitel'}:${a.id}`}
             type="button"
-            className={`msg-rail-row${a.id === aktivId ? ' is-active' : ''}${a.fejl ? ' har-fejl' : ''}`}
+            // `er-sidste`: den nederste streg er teal og længere end de andre
+            // (Bjørn 16/9-2026) — så man i hvile kan se hvor samtalen slutter.
+            className={`msg-rail-row${a.id === aktivId ? ' is-active' : ''}${a.fejl ? ' har-fejl' : ''}${a.slags === 'komprimering' ? ' er-komprimering' : ''}${i === anchors.length - 1 ? ' er-sidste' : ''}`}
             aria-current={a.id === aktivId ? 'true' : undefined}
             onClick={() => jump(a.id)}
           >

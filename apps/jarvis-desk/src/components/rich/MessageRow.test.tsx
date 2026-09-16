@@ -8,17 +8,20 @@ describe('MessageRow', () => {
     render(<MessageRow role="assistant" blocks={[{ type: 'text', text: '**hej**' }]} density="compact" streaming={false} />)
     expect(screen.getByText('hej').tagName).toBe('STRONG')
   })
-  it('forbi tænkning skjules helt; live tænkning viser "tænker…" + content', () => {
-    // 2026-06-13: den hardcodede "tænkte…"-chip var legacy fra før vi havde
-    // ægte thinking-content og rodede mellem tool-kald + i færdige beskeder.
-    // Forbi-tænkning skjules nu HELT (intet label, intet content); kun LIVE
-    // tænkning vises ("tænker…" + den strømmende content).
-    const { rerender } = render(<MessageRow role="assistant" blocks={[{ type: 'thinking', thinking: 'intern' }]} density="compact" streaming={false} />)
-    expect(screen.queryByText(/tænkte/i)).not.toBeInTheDocument()  // forbi → skjult
+  it('tænkning er én linje: live med tid, bagefter foldbar — monologen står aldrig åben i tråden', () => {
+    // 16/9-2026: live strømmede hele monologen ind i tråden, og bagefter var
+    // den væk. Nu en linje begge steder, som mobilen.
+    const { rerender } = render(<MessageRow role="assistant" blocks={[{ type: 'thinking', thinking: 'intern' }]} density="compact" streaming />)
+    expect(screen.getByText(/Tænker/)).toBeInTheDocument()
     expect(screen.queryByText('intern')).not.toBeInTheDocument()
-    rerender(<MessageRow role="assistant" blocks={[{ type: 'thinking', thinking: 'intern' }]} density="compact" streaming />)
-    expect(screen.getByText(/tænker/i)).toBeInTheDocument()
+    rerender(<MessageRow role="assistant" blocks={[{ type: 'thinking', thinking: 'intern', seconds: 8 }]} density="compact" streaming={false} />)
+    fireEvent.click(screen.getByRole('button', { name: /Tænkte i 8 s/ }))
     expect(screen.getByText('intern')).toBeInTheDocument()
+  })
+  it('en tanke FØR et værktøjskald er færdig, selv mens turen streamer', () => {
+    render(<MessageRow role="assistant" blocks={[{ type: 'thinking', thinking: 'plan' }, { type: 'text', text: 'svar' }]} density="compact" streaming />)
+    expect(screen.queryByText(/Tænker/)).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Tænkte' })).toBeInTheDocument()
   })
   it('renders user message as plain bubble text', () => {
     render(<MessageRow role="user" blocks={[{ type: 'text', text: 'hej Jarvis' }]} density="compact" streaming={false} />)

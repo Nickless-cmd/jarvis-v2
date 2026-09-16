@@ -1,4 +1,5 @@
 import type { ContentBlock } from './sseProtocol'
+import { SKILL_VAERKTOEJER } from './skillLinje'
 
 /** Render-lokal blok-type: en sammenfoldet run af read/søge-tool-kald.
  *  IKKE en del af sseProtocol.ContentBlock (wire/persist) — den findes kun i
@@ -25,7 +26,9 @@ export type RenderBlock = ContentBlock | ToolGroupBlock
  * ind i «Kørte 5 værktøjer» — den er netop det man leder efter.
  */
 function erSamlbar(b: RenderBlock): b is Extract<ContentBlock, { type: 'tool_use' }> {
-  return b.type === 'tool_use' && b.status !== 'error' && b.name !== 'pause_and_ask'
+  // Skill-kald står på deres egen linje (lib/skillLinje.ts) — i en runde ville
+  // «hvilken skill, og blev den indlæst» forsvinde i «Kørte 3 ting».
+  return b.type === 'tool_use' && b.status !== 'error' && b.name !== 'pause_and_ask' && !SKILL_VAERKTOEJER.has(b.name)
 }
 
 export function groupToolRounds(blocks: RenderBlock[]): RenderBlock[] {

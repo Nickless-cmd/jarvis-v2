@@ -19,7 +19,13 @@ export function foldToolResults(blocks: Array<Record<string, unknown>>): Content
     } else if (b.type === 'text') {
       out.push({ type: 'text', text: String(b.text ?? '') })
     } else if (b.type === 'thinking') {
-      out.push({ type: 'thinking', thinking: String(b.thinking ?? '') })
+      // Gemte tanke-blokke hedder `text`, ikke `thinking` (visible_turn_blocks).
+      // Kun `thinking` blev læst, så en tanke var ALTID tom efter reload.
+      out.push({
+        type: 'thinking',
+        thinking: String(b.thinking ?? b.text ?? ''),
+        ...(typeof b.seconds === 'number' ? { seconds: b.seconds } : {}),
+      })
     } else if (b.type === 'image') {
       // PERSISTERET billede: en REFERENCE, ikke en src. Går urørt videre, så
       // `AttachmentBlock` kan hente det med token ved visning. Før faldt

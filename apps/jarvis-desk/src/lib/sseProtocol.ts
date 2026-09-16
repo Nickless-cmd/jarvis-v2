@@ -100,7 +100,8 @@ export type StreamEvent =
 
 export type ContentBlock =
   | { type: 'text'; text: string }
-  | { type: 'thinking'; thinking: string }
+  /** `seconds`: målt varighed — kun på gemte beskeder; live tæller linjen selv. */
+  | { type: 'thinking'; thinking: string; seconds?: number }
   | {
       type: 'tool_use'
       id: string

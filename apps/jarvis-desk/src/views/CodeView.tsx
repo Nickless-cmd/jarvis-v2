@@ -27,7 +27,8 @@ import { ChangesPanel } from '../components/shell/ChangesPanel'
 import { paaAendringsFokus } from '../lib/aendringsFokus'
 import { listProcesses } from '../lib/processesApi'
 import { SystemHealth } from '../components/shell/SystemHealth'
-import { MessageRail, railAnchors } from '../components/chat/MessageRail'
+import { MessageRail } from '../components/chat/MessageRail'
+import { useRailAnkre } from '../lib/useRailAnkre'
 import { GreetingHero } from '../components/chat/GreetingHero'
 import { useResizableWidth } from '../components/panel/useResizableWidth'
 import { onHighlight } from '../lib/fileTreeHighlight'
@@ -696,6 +697,12 @@ export function CodeView({
   )
 
   const visibleMessages = sessions.messages.filter((m) => m.role === 'user' || m.role === 'assistant')
+  // Saved rail: kapitler + komprimeringer — samme regel som i Chat (lib/railAnkre.ts).
+  // Før hentede Code slet ikke kapitler og viste én streg pr. besked.
+  const railAnchors = useRailAnkre(
+    settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : null,
+    sessionId, sessions.messages, stream.status === 'idle',
+  )
 
   let pendingPauseAsk: PauseAsk | null = null
   for (const message of visibleMessages) {
@@ -906,7 +913,7 @@ export function CodeView({
         <div className="transcript-wrap">
         <MessageRail
           containerRef={transcriptRef}
-          anchors={railAnchors(visibleMessages)}
+          anchors={railAnchors}
         />
         <div className="transcript" ref={transcriptRef} onScroll={onScroll}>
           {visibleMessages.map((m) => (

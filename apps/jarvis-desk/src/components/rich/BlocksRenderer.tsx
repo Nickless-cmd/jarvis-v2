@@ -9,7 +9,9 @@ import { AttachmentBlock } from './AttachmentBlock'
 import { EditedFilesCard } from './EditedFilesCard'
 import { redigeredeFiler } from '../../lib/redigeredeFiler'
 import { visAendring } from '../../lib/aendringsFokus'
-import { LiveVerb } from '../shell/LiveVerb'
+import { ThinkingLine } from './ThinkingLine'
+import { SkillLine } from './SkillLine'
+import { SKILL_VAERKTOEJER } from '../../lib/skillLinje'
 
 type ProgressBlock = Extract<ContentBlock, { type: 'progress' }>
 
@@ -117,7 +119,9 @@ function BlockView({
         return <ToolGroupCard block={block} density={density} etiket={etik} />
       }
     case 'tool_use':
-      return <ToolCard block={block} density={density} />
+      return SKILL_VAERKTOEJER.has(block.name)
+        ? <SkillLine block={block} density={density} />
+        : <ToolCard block={block} density={density} />
     case 'image':
       // LIVE billede bærer en `src` (data-URL fra streamen) og kan tegnes med
       // det samme. PERSISTERET bærer kun en reference og skal hentes med token
@@ -130,22 +134,11 @@ function BlockView({
       // før, så den ramte `default: return null` — filen lå i beskeden og nåede
       // aldrig skærmen (målt 15/9-2026).
       return <AttachmentBlock block={block} />
-    case 'thinking': {
-      // "Live" = han tænker lige NU (sidste blok + streamer stadig) → vis
-      // "tænker…" + den ægte thinking-content mens den strømmer.
-      const live = streaming && isLast
-      // FORBI-tænkning skjules. Den sammenfoldede "tænkte…"-chip var legacy fra
-      // FØR vi havde ægte thinking-content — en hardcoded label der bare stod
-      // tilbage som rod mellem tool-kald og i færdige beskeder (Bjørn 2026-06-13).
-      // Den ægte thinking-content forsvinder som den skal; labelen skal også væk.
-      if (!live) return null
-      return (
-        <div className="thinking live">
-          <LiveVerb text="tænker" />
-          <MarkdownRenderer text={block.thinking} streaming />
-        </div>
-      )
-    }
+    case 'thinking':
+      // Én linje med live-tid og fold-ud — som mobilen og runde-linjen (Bjørn
+      // 16/9-2026). Før strømmede hele monologen ind i tråden og forsvandt
+      // bagefter. «Live» = sidste blok mens der streames.
+      return <ThinkingLine text={block.thinking} seconds={block.seconds} live={streaming && isLast} />
     default:
       return null
   }

@@ -117,3 +117,43 @@ def test_manual_compact_deduped_when_already_inflight(monkeypatch):
         assert r["reason"] == "already compacting"
     finally:
         pc._compact_inflight.discard("busy-1")
+
+
+def test_ring_pollen_starter_aldrig_komprimering_eller_omskrivning(monkeypatch):
+    """16/9-2026: /context-usage er en VISNING. Maalt 15/9 16:18:49: en
+    komprimering startede midt i en agentisk runde uden promptbygning — udloest
+    af desks ring-poll, som ogsaa kunne omskrive markoeren med et LLM-kald."""
+    from core.services import prompt_contract as pc
+    import core.services.chat_sessions as cs
+    import core.services.prompt_sections.transcript_sections as ts
+
+    monkeypatch.setattr(ts, "chat_session_messages_since_last_compact", lambda sid, **k: [
+        {"id": 1, "role": "user", "content": "hej " * 50, "created_at": "", "user_id": "", "reasoning_content": ""},
+        {"id": 2, "role": "assistant", "content": "svar " * 50, "created_at": "", "user_id": "", "reasoning_content": ""},
+    ])
+    monkeypatch.setattr(cs, "get_compact_marker", lambda sid: "resume")
+
+    # Registrér i stedet for at kaste: builderen sluger undtagelser fra
+    # auto-compact, saa et kast ville aldrig naa testen.
+    kald = []
+    monkeypatch.setattr(pc, "_maybe_auto_compact_session", lambda *a, **k: kald.append("compact"))
+    monkeypatch.setattr(pc, "_get_compact_marker_for_transcript", lambda *a, **k: kald.append("heal"))
+
+    r = _call(session_id="chat-x", provider="deepseek", model="deepseek-v4-flash")
+    assert kald == [], f"bivirkning fra en visnings-poll: {kald}"
+    assert r["tokens"] > 0, "maalingen skal stadig virke — med markoeren talt med"
+    assert r["compacted"] is True
+
+
+def test_promptbygning_har_stadig_bivirkningerne(monkeypatch):
+    from core.services import prompt_contract as pc
+    from core.services.prompt_sections.transcript_sections import _build_structured_transcript_messages
+    import core.services.prompt_sections.transcript_sections as ts
+    monkeypatch.setattr(ts, "chat_session_messages_since_last_compact", lambda sid, **k: [
+        {"id": 1, "role": "user", "content": "hej", "created_at": "", "user_id": "", "reasoning_content": ""},
+    ])
+    kald = []
+    monkeypatch.setattr(pc, "_get_compact_marker_for_transcript", lambda sid: kald.append("heal") or None)
+    monkeypatch.setattr(pc, "_maybe_auto_compact_session", lambda *a: kald.append("compact"))
+    _build_structured_transcript_messages("chat-x", limit=60, include=True)
+    assert kald == ["heal", "compact"]

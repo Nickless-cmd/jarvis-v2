@@ -232,8 +232,13 @@ def _build_structured_transcript_messages(
     *,
     limit: int,
     include: bool,
+    bivirkninger: bool = True,
 ) -> list[dict[str, str]]:
     """Build structured chat messages from recent transcript.
+
+    ``bivirkninger=False`` er for LAESERE der kun vil maale (desks kontekst-
+    ring). Uden den startede en visnings-poll komprimeringen og kunne omskrive
+    markoeren med et synkront LLM-kald — se chat.py:/context-usage.
 
     Returns list of {"role": "user"|"assistant", "content": "..."} dicts.
     Tool messages are compressed into the preceding assistant message as
@@ -496,7 +501,15 @@ def _build_structured_transcript_messages(
         # ._maybe_auto_compact_session og forventer at denne (udskilte) bygger
         # ser patchen. Bare-navn ville ramme dette moduls global → usynlig patch.
         from core.services import prompt_contract as _pc
-        marker_summary = _pc._get_compact_marker_for_transcript(session_id)
+        if bivirkninger:
+            marker_summary = _pc._get_compact_marker_for_transcript(session_id)
+        else:
+            # Kun laes: ingen mismatch-tjek, ingen omskrivning.
+            try:
+                from core.services.chat_sessions import get_compact_marker
+                marker_summary = get_compact_marker(session_id)
+            except Exception:
+                marker_summary = None
         if marker_summary:
             result = [
                 {
@@ -507,12 +520,17 @@ def _build_structured_transcript_messages(
             ] + result
 
         # ── Auto-compact check ─────────────────────────────────────────────
-        try:
-            from core.runtime.settings import load_settings as _load_compact_settings
-            _compact_settings = _load_compact_settings()
-            _pc._maybe_auto_compact_session(session_id, result, _compact_settings)
-        except Exception:
-            pass
+        # Kun naar transskriptet bygges til en PROMPT. Maalt 15/9-2026 16:18:49:
+        # komprimeringen startede midt i en agentisk runde, hvor ingen prompt
+        # blev bygget — udloest af desks ring-poll (hvert 6. s, hvert 1,2 s
+        # mens der komprimeres).
+        if bivirkninger:
+            try:
+                from core.runtime.settings import load_settings as _load_compact_settings
+                _compact_settings = _load_compact_settings()
+                _pc._maybe_auto_compact_session(session_id, result, _compact_settings)
+            except Exception:
+                pass
 
     return result
 

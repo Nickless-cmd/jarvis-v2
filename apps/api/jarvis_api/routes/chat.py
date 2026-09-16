@@ -1315,6 +1315,9 @@ async def chat_context_usage(
             from core.services.prompt_contract import _build_structured_transcript_messages
             msgs = await asyncio.to_thread(
                 _build_structured_transcript_messages, session_id, limit=60, include=True,
+                # Kun maal. Denne poll startede komprimeringer midt i hans ture
+                # og kunne omskrive markoeren med et LLM-kald (16/9-2026).
+                bivirkninger=False,
             )
             tokens = int(estimate_messages_tokens(msgs))
         except Exception:

@@ -66,3 +66,41 @@ def test_omskrivning_bevarer_den_ordrette_hale(monkeypatch):
     assert gt.auto_regenerate_compact_marker("s1") == "compact-ny"
     assert gemt[0].startswith("rettet resume")
     assert gemt[0].endswith(hale)
+
+
+# ── Valideringens commit-tjek (16/9-2026) ────────────────────────────────
+_COMMITS = "5e93f4ba3 feat(desk): saved rail viser kapitler — alle ingen virke brugerens\nabc fix: skill_flade_event i visible_runs.py"
+
+
+def _tjek(ctx):
+    return gt._check_claim_against_ground_truth(
+        {"pattern": "mangler", "context": ctx, "claim_type": "x"},
+        {"key_files": {}, "recent_commits": _COMMITS},
+    )
+
+
+def test_almindelige_ord_doemmer_ikke_et_resume_falsk():
+    # Produktionens aegte eksempler: alle 104 «fejl» saa saadan ud.
+    for ctx in (
+        "et i denne samtale, hæftningen bevist virke  Det eneste der mangler er dit blik",
+        "De noter er alle overflade-resuméer — jeg mangler selve fundet",
+        "r placeret i brugerens boble, manglende download- og zoom-funktionalit",
+        "Det jeg mangler: ingen LLM involveret",
+    ):
+        assert _tjek(ctx)["verified_false"] is False, ctx
+
+
+def test_identifikator_som_commits_roerer_doemmes_stadig():
+    r = _tjek("resumeet siger at `skill_flade_event` mangler")
+    assert r["verified_false"] is True
+    assert r["confidence"] == "medium"
+    assert _tjek("visible_runs.py mangler koblingen")["verified_false"] is True
+
+
+def test_identifikator_skal_matche_helt_ord():
+    # «skill_flade» er ikke «skill_flade_event».
+    assert _tjek("skill_flade mangler")["verified_false"] is False
+
+
+def test_versionsnumre_er_ikke_identifikatorer():
+    assert gt._identifikatorer("desk 0.3.94 og 15.09") == []

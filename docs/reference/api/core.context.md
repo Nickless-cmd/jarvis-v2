@@ -19,28 +19,29 @@ _Ground-truth injection and freshness checking for context compaction._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `get_current_git_sha` | `()` | Get the current git HEAD SHA of the Jarvis repo. Returns empty string on failure. | [src](../../../core/context/compact_ground_truth.py#L57) |
-| function | `get_commit_count_since` | `(start_sha=…)` | Count commits between start_sha and HEAD. Returns None if start_sha is empty or unknown. | [src](../../../core/context/compact_ground_truth.py#L70) |
-| function | `get_recent_commit_log` | `(since=…, count=…)` | Get recent git log as oneline. Optionally since an ISO timestamp. | [src](../../../core/context/compact_ground_truth.py#L86) |
-| function | `check_key_files` | `(key_files=…)` | Check existence of key files. Returns dict of {relative_path: 'exists'|'missing'}. | [src](../../../core/context/compact_ground_truth.py#L104) |
-| function | `check_cognitive_decisions_count` | `()` | Return count of cognitive_decision records in DB, or None on failure. | [src](../../../core/context/compact_ground_truth.py#L114) |
-| function | `collect_compact_ground_truth` | `(session_id=…)` | Collect ground-truth data before compaction. | [src](../../../core/context/compact_ground_truth.py#L127) |
-| function | `format_ground_truth_block` | `(gt)` | Format a ground-truth dict into a human-readable block for prompt injection. | [src](../../../core/context/compact_ground_truth.py#L162) |
-| function | `_parse_compact_claims` | `(marker_text)` | Extract suspicious claims from a compact marker text. | [src](../../../core/context/compact_ground_truth.py#L212) |
-| function | `_check_claim_against_ground_truth` | `(claim, ground_truth)` | Check a single claim against ground truth. Returns verification result. | [src](../../../core/context/compact_ground_truth.py#L271) |
-| function | `_ensure_compaction_validation_table` | `()` | Create compaction_validation_failures table if it doesn't exist (Lag D prep). | [src](../../../core/context/compact_ground_truth.py#L354) |
-| function | `_log_validation_failure` | `(session_id, marker_id, failures)` | Log a validation failure to DB. Returns the row ID or None. | [src](../../../core/context/compact_ground_truth.py#L377) |
-| function | `validate_compact_marker` | `(session_id, marker_text, marker_id=…, ground_truth=…)` | Post-compact validation of a compact marker against ground truth. | [src](../../../core/context/compact_ground_truth.py#L428) |
-| function | `mark_failures_superseded` | `(session_id, *, new_marker_id)` | Luk aabne valideringsfejl for sessionen: en nyere markoer har afloest dem. | [src](../../../core/context/compact_ground_truth.py#L517) |
-| function | `auto_regenerate_compact_marker` | `(session_id, original_marker_id=…)` | Auto-regenerate a compact marker if post-compact validation failed. | [src](../../../core/context/compact_ground_truth.py#L539) |
-| function | `get_validation_failures` | `(session_id=…, limit=…)` | Read recent compaction validation failures from DB. | [src](../../../core/context/compact_ground_truth.py#L644) |
-| function | `get_validation_failures_summary` | `(session_id=…)` | Get a summary of validation failures for awareness / heartbeat. | [src](../../../core/context/compact_ground_truth.py#L690) |
-| function | `get_compact_marker_freshness` | `(stored_sha)` | Check freshness of a stored compact marker against current git HEAD. | [src](../../../core/context/compact_ground_truth.py#L701) |
-| function | `_extract_topic_words` | `(text)` | Extract meaningful topic/noun words from a text, filtering noise. | [src](../../../core/context/compact_ground_truth.py#L773) |
-| function | `_check_user_message_against_marker` | `(user_msg, marker_text, marker_failures=…)` | Check if a user message corrects a compact marker's false claim. | [src](../../../core/context/compact_ground_truth.py#L795) |
-| function | `detect_compact_mismatch_in_chat` | `(session_id)` | Scan recent user messages for corrections contradicting the latest compact marker. | [src](../../../core/context/compact_ground_truth.py#L849) |
-| function | `resolve_stale_markers_on_load` | `(session_id)` | Boot-time check: auto-regenerate stale/unresolved compact markers. | [src](../../../core/context/compact_ground_truth.py#L884) |
-| function | `compact_healthcheck_daemon_tick` | `()` | Periodic healthcheck: scan all sessions with unresolved validation failures. | [src](../../../core/context/compact_ground_truth.py#L926) |
+| function | `get_current_git_sha` | `()` | Get the current git HEAD SHA of the Jarvis repo. Returns empty string on failure. | [src](../../../core/context/compact_ground_truth.py#L58) |
+| function | `get_commit_count_since` | `(start_sha=…)` | Count commits between start_sha and HEAD. Returns None if start_sha is empty or unknown. | [src](../../../core/context/compact_ground_truth.py#L71) |
+| function | `get_recent_commit_log` | `(since=…, count=…)` | Get recent git log as oneline. Optionally since an ISO timestamp. | [src](../../../core/context/compact_ground_truth.py#L87) |
+| function | `check_key_files` | `(key_files=…)` | Check existence of key files. Returns dict of {relative_path: 'exists'|'missing'}. | [src](../../../core/context/compact_ground_truth.py#L105) |
+| function | `check_cognitive_decisions_count` | `()` | Return count of cognitive_decision records in DB, or None on failure. | [src](../../../core/context/compact_ground_truth.py#L115) |
+| function | `collect_compact_ground_truth` | `(session_id=…)` | Collect ground-truth data before compaction. | [src](../../../core/context/compact_ground_truth.py#L128) |
+| function | `format_ground_truth_block` | `(gt)` | Format a ground-truth dict into a human-readable block for prompt injection. | [src](../../../core/context/compact_ground_truth.py#L163) |
+| function | `_parse_compact_claims` | `(marker_text)` | Extract suspicious claims from a compact marker text. | [src](../../../core/context/compact_ground_truth.py#L213) |
+| function | `_identifikatorer` | `(tekst)` | Ord i teksten der ligner kode: backtick-citeret, sti/filnavn eller snake_case. | [src](../../../core/context/compact_ground_truth.py#L272) |
+| function | `_check_claim_against_ground_truth` | `(claim, ground_truth)` | Check a single claim against ground truth. Returns verification result. | [src](../../../core/context/compact_ground_truth.py#L286) |
+| function | `_ensure_compaction_validation_table` | `()` | Create compaction_validation_failures table if it doesn't exist (Lag D prep). | [src](../../../core/context/compact_ground_truth.py#L374) |
+| function | `_log_validation_failure` | `(session_id, marker_id, failures)` | Log a validation failure to DB. Returns the row ID or None. | [src](../../../core/context/compact_ground_truth.py#L397) |
+| function | `validate_compact_marker` | `(session_id, marker_text, marker_id=…, ground_truth=…)` | Post-compact validation of a compact marker against ground truth. | [src](../../../core/context/compact_ground_truth.py#L448) |
+| function | `mark_failures_superseded` | `(session_id, *, new_marker_id)` | Luk aabne valideringsfejl for sessionen: en nyere markoer har afloest dem. | [src](../../../core/context/compact_ground_truth.py#L537) |
+| function | `auto_regenerate_compact_marker` | `(session_id, original_marker_id=…)` | Auto-regenerate a compact marker if post-compact validation failed. | [src](../../../core/context/compact_ground_truth.py#L559) |
+| function | `get_validation_failures` | `(session_id=…, limit=…)` | Read recent compaction validation failures from DB. | [src](../../../core/context/compact_ground_truth.py#L664) |
+| function | `get_validation_failures_summary` | `(session_id=…)` | Get a summary of validation failures for awareness / heartbeat. | [src](../../../core/context/compact_ground_truth.py#L710) |
+| function | `get_compact_marker_freshness` | `(stored_sha)` | Check freshness of a stored compact marker against current git HEAD. | [src](../../../core/context/compact_ground_truth.py#L721) |
+| function | `_extract_topic_words` | `(text)` | Extract meaningful topic/noun words from a text, filtering noise. | [src](../../../core/context/compact_ground_truth.py#L793) |
+| function | `_check_user_message_against_marker` | `(user_msg, marker_text, marker_failures=…)` | Check if a user message corrects a compact marker's false claim. | [src](../../../core/context/compact_ground_truth.py#L815) |
+| function | `detect_compact_mismatch_in_chat` | `(session_id)` | Scan recent user messages for corrections contradicting the latest compact marker. | [src](../../../core/context/compact_ground_truth.py#L869) |
+| function | `resolve_stale_markers_on_load` | `(session_id)` | Boot-time check: auto-regenerate stale/unresolved compact markers. | [src](../../../core/context/compact_ground_truth.py#L904) |
+| function | `compact_healthcheck_daemon_tick` | `()` | Periodic healthcheck: scan all sessions with unresolved validation failures. | [src](../../../core/context/compact_ground_truth.py#L946) |
 
 ## `core/context/compact_llm.py`
 _Thin wrapper for compact summarisation._

@@ -29,6 +29,7 @@ Usage:
 from __future__ import annotations
 
 import logging
+import re
 import subprocess
 from datetime import datetime, UTC
 from pathlib import Path
@@ -268,6 +269,20 @@ def _parse_compact_claims(marker_text: str) -> list[dict[str, str]]:
     return unique
 
 
+def _identifikatorer(tekst: str) -> list[str]:
+    """Ord i teksten der ligner kode: backtick-citeret, sti/filnavn eller snake_case."""
+    ud: list[str] = []
+    for m in re.findall(r"`([^`\s]{3,})`", tekst):
+        ud.append(m.strip(".,:;()"))
+    for m in re.findall(r"[A-Za-z0-9]+(?:[_./][A-Za-z0-9]+)+", tekst):
+        # Tal med punktum (0.3.94, 15.09) er ikke identifikatorer.
+        if re.fullmatch(r"[0-9.]+", m):
+            continue
+        ud.append(m)
+    set_: set[str] = set()
+    return [x for x in ud if len(x) >= 4 and not (x.lower() in set_ or set_.add(x.lower()))]
+
+
 def _check_claim_against_ground_truth(
     claim: dict[str, str],
     ground_truth: dict[str, Any],
@@ -311,21 +326,26 @@ def _check_claim_against_ground_truth(
                 result["confidence"] = "high"
                 return result
 
-    # Check 2: Does the context match any commit message topic?
+    # Check 2: Naevner paastanden en IDENTIFIKATOR som nylige commits roerer?
+    #
+    # STRAMMET 16/9-2026. Foer talte ethvert ord over 3 tegn i konteksten, fundet
+    # som DELSTRENG et sted i commit-loggen. Maalt paa alle 20 raekker i
+    # compaction_validation_failures: 104 af 104 «falske paastande» kom herfra,
+    # paa ord som «ingen», «alle», «virke» og brudstykket «nger». Ikke ét aegte
+    # fund — men hver eneste komprimering blev doemt og omskrevet.
+    #
+    # Nu taeller kun ord der ligner kode (sti, filnavn, snake_case, en
+    # backtick-citeret identifikator), og kun som HELT ord i loggen. Fundet er
+    # stadig kun medium: at en commit naevner noget, beviser ikke at det er
+    # faerdigt.
     commits = ground_truth.get("recent_commits", "")
     if commits:
-        # Extract topic words from context (remove noise words)
-        topic_words = [
-            w for w in ctx.lower().split()
-            if len(w) > 3 and w not in ("ikke", "med", "til", "det", "den", "der",
-                                        "some", "thing", "this", "that", "with", "from")
-        ]
-        for word in topic_words:
-            if word in commits.lower():
+        for ident in _identifikatorer(ctx):
+            if re.search(r"(?<![\w./-])" + re.escape(ident.lower()) + r"(?![\w/-])", commits.lower()):
                 result["verified_false"] = True
                 result["evidence"] = (
-                    f"Claim mentions '{word}' as unimplemented, but "
-                    f"recent commits reference '{word}'"
+                    f"Claim mentions '{ident}' as unimplemented, but "
+                    f"recent commits reference '{ident}'"
                 )
                 result["confidence"] = "medium"
                 return result

@@ -6,7 +6,7 @@
  *  CoworkZones (i CoworkView) ikke deler en fælles provider-gren.
  */
 export type Zone =
-  | 'mc' | 'marketplace'
+  | 'mc' | 'marketplace' | 'cheapLane' | 'agentPool' | 'providers'
   | 'konto' | 'privacy' | 'notifications'
   | 'appearance' | 'sprog' | 'location' | 'presence'
   | 'memory' | 'workspace' | 'connections'
@@ -24,6 +24,12 @@ export const COWORK_ZONES: ReadonlyArray<{
 }> = [
   { id: 'mc', label: 'Mission Control', icon: 'LayoutDashboard', group: 'Arbejde' },
   { id: 'marketplace', label: 'Marketplace', icon: 'Blocks', group: 'Arbejde' },
+  // Bjoern 16/9-2026: tre owner-flader under Arbejde. Cheap Lane foerst — «jeg
+  // ander intet om hvordan cheap lane eller load_balanceren klarer sig».
+  { id: 'cheapLane', label: 'Cheap Lane', icon: 'Gauge', group: 'Arbejde', ownerOnly: true },
+  // 'agentPool' og 'providers' er defineret som zoner, men staar IKKE i menuen
+  // endnu: de bygges som nr. 2 og 3. Et menupunkt der lander paa en anden side
+  // er vaerre end intet punkt.
 
   { id: 'konto', label: 'Konto', icon: 'User', group: 'Konto' },
   { id: 'privacy', label: 'Privatliv & Data', icon: 'ShieldCheck', group: 'Konto' },

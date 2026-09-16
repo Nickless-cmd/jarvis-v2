@@ -3195,3 +3195,43 @@ button.sidebar-group svg { flex: none; opacity: .7; }
   margin-left: 6px; font-size: 10.5px; padding: 0 5px; border-radius: 8px;
   background: var(--bg-3); color: var(--fg-3);
 }
+
+/* ── Cheap Lane (16/9-2026) ─────────────────────────────────────────────── */
+.cheaplane .cl-kort-raekke { display: flex; gap: 12px; flex-wrap: wrap; margin: 12px 0 18px; }
+.cl-kort {
+  flex: 1 1 150px; min-width: 150px; padding: 12px 14px;
+  background: var(--bg-2); border-radius: var(--radius-md, 10px);
+}
+.cl-kort-navn { color: var(--fg-2); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+.cl-kort-vaerdi { color: var(--fg-1); font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.cl-kort-under { color: var(--fg-3); font-size: 12px; }
+.cl-note { color: var(--fg-3); font-size: 13px; margin: 6px 0 12px; }
+.cl-advarsel {
+  background: color-mix(in srgb, #e2777a 18%, transparent);
+  color: var(--fg-1); padding: 10px 12px; border-radius: 8px; margin-bottom: 12px;
+}
+.cl-model { color: var(--fg-2); font-size: 13px; }
+.cl-profil { color: var(--fg-3); font-size: 12px; }
+.cl-daarlig { color: #e2777a; font-weight: 600; }
+.cl-inaktiv td { opacity: .55; }
+.cl-besked { color: var(--fg-2); font-size: 12px; max-width: 420px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cl-knapper { display: flex; gap: 6px; }
+.cl-knapper button, .cl-handlinger button {
+  background: var(--bg-3, var(--bg-2)); color: var(--fg-1); border: 1px solid var(--bg-3, transparent);
+  border-radius: 6px; padding: 3px 9px; font-size: 12px; cursor: pointer;
+}
+.cl-knapper button:hover, .cl-handlinger button:hover { background: var(--bg-1); }
+.cl-handlinger { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+/* Statusfarve som en VENSTREKANT: farven alene ville forsvinde for en
+   farveblind laeser, og raekken skal kunne skimmes paa form ogsaa. */
+.cl-status-cooldown td:first-child { border-left: 3px solid #e8b339; padding-left: 7px; }
+.cl-status-disabled td:first-child { border-left: 3px solid var(--fg-3); padding-left: 7px; }
+.cl-status-stale td:first-child { border-left: 3px solid #e2777a; padding-left: 7px; }
+.cl-status-healthy td:first-child { border-left: 3px solid #6ee7a8; padding-left: 7px; }
+.cl-kurve {
+  display: flex; align-items: flex-end; gap: 2px; height: 90px;
+  padding: 6px; background: var(--bg-2); border-radius: 8px; margin-bottom: 16px;
+}
+.cl-soejle { flex: 1 1 auto; height: 100%; display: flex; align-items: flex-end; }
+.cl-soejle-krop { width: 100%; background: #6ee7a8; border-radius: 2px 2px 0 0; position: relative; min-height: 2px; }
+.cl-soejle-fejl { position: absolute; top: 0; left: 0; right: 0; background: #e2777a; border-radius: 2px 2px 0 0; }

@@ -7,6 +7,7 @@ import { CoworkZones } from '../components/cowork/CoworkZones'
 import { JarvisMind } from '../components/cowork/JarvisMind'
 import { CentralBadge } from '../components/shell/CentralBadge'
 import { MarketplacePane } from '../components/cowork/MarketplacePane'
+import { CheapLanePanel } from '../components/cowork/cheaplane/CheapLanePanel'
 import { AccountSection } from '../components/settings/AccountSection'
 import { KvoteSection } from '../components/settings/KvoteSection'
 import { ThemeSection } from '../components/settings/ThemeSection'
@@ -77,6 +78,10 @@ export function CoworkView(
       case 'mc': return missionControl
 
       case 'marketplace': return <MarketplacePane config={config} />
+
+      // Owner-only (16/9-2026). Zonerne er allerede filtreret i sidebaren, men
+      // fladen spoerger ogsaa selv: en zone kan naas via open_ui_panel.
+      case 'cheapLane': return isOwner ? <CheapLanePanel config={config} /> : wrap(<div>Kun for ejeren.</div>)
 
       case 'konto': return wrap(<>
         <AccountSection config={config} />

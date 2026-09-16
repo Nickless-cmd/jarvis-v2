@@ -14,6 +14,8 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 
+from apps.api.jarvis_api.routes import review_traeer as _traeer
+
 
 def _kun_ejer() -> None:
     """Ruten laeser repoets arbejdstrae og filstoerrelser paa vaerten.
@@ -104,46 +106,127 @@ def _risici(rod: Path, filer: list[dict[str, Any]], test_koert: bool) -> list[di
 
 
 @router.get("/changes")
-def review_changes(test_koert: bool = False, diff: bool = True) -> dict:
+def review_changes(
+    test_koert: bool = False,
+    diff: bool = True,
+    kilde: str = "server",
+    rod: str = "",
+) -> dict:
     """Hvad er ændret i arbejdstræet — pr. fil, med diff og regel-baserede flag.
 
     `test_koert` kommer fra klienten, som ved om turen indeholdt en testkørsel
     (tidslinjen udleder det af værktøjskaldene). Serveren kan ikke se det:
     tool.completed bærer ikke run_id, så en server-side kobling ville kræve
     tidsmatch.
-    """
-    rod = _repo_root()
-    numstat = _kør(rod, "diff", "--numstat", "HEAD")
-    filer: list[dict[str, Any]] = []
-    for ln in numstat.splitlines():
-        dele = ln.split("\t")
-        if len(dele) < 3:
-            continue
-        tilf, fjern, sti = dele[0], dele[1], dele[2]
-        filer.append({
-            "path": sti,
-            "added": int(tilf) if tilf.isdigit() else 0,
-            "removed": int(fjern) if fjern.isdigit() else 0,
-            "binary": not tilf.isdigit(),
-        })
 
-    tekst = ""
+    `kilde` afgør HVILKET træ: «server» er runtimens eget repo, «maskine» er
+    Bjørns egen via broen. Ruten kørte før kun på serveren, så arbejde i hans
+    workspace gav en tom rude — uden at det var sandt (16/9-2026).
+
+    UTRACKEDE FILER TÆLLER MED. `git diff HEAD` ser kun sporede filer, så en
+    helt ny fil — den slags der opstår hver gang Jarvis skriver et nyt modul —
+    var usynlig. De kommer nu med som `ny: true`, med filens linjeantal som
+    `added` og en diff-blok i samme form som git selv skriver den.
+    """
+    if str(kilde).strip().lower() == "maskine":
+        return _aendringer_paa_maskinen(rod, test_koert, diff)
+    return _aendringer_paa_serveren(test_koert, diff)
+
+
+def _saml(
+    rod_til_laesning,
+    gren: str,
+    numstat: str,
+    porcelain: str,
+    diff_tekst: str,
+    test_koert: bool,
+    med_diff: bool,
+    laes_fil,
+) -> dict:
+    """Fælles opsamling for begge træer — så de to veje ikke kan svare i
+    hver sin form. `laes_fil` henter en utracket fils indhold (eller None)."""
+    filer = _traeer.numstat_til_filer(numstat)
+    kendte = {f["path"] for f in filer}
+    nye_diffs: list[str] = []
+    for sti in _traeer.utrackede_fra_status(porcelain):
+        if sti in kendte:
+            continue
+        indhold = laes_fil(sti) if med_diff else None
+        filer.append(_traeer.ny_fil_post(sti, indhold))
+        if med_diff:
+            nye_diffs.append(_traeer.ny_fil_diff(sti, indhold))
+
+    tekst = (diff_tekst + "".join(nye_diffs)) if med_diff else ""
     afkortet = False
-    if diff and filer:
-        tekst = _kør(rod, "diff", "HEAD")
-        if len(tekst.encode("utf-8", "ignore")) > _DIFF_MAX_BYTES:
-            tekst = tekst[: _DIFF_MAX_BYTES // 2]
-            afkortet = True
+    if len(tekst.encode("utf-8", "ignore")) > _DIFF_MAX_BYTES:
+        tekst = tekst[: _DIFF_MAX_BYTES // 2]
+        afkortet = True
 
     return {
-        "branch": (_kør(rod, "rev-parse", "--abbrev-ref", "HEAD") or "").strip(),
+        "branch": gren,
         "files": filer,
         "added": sum(f["added"] for f in filer),
         "removed": sum(f["removed"] for f in filer),
         "diff": tekst,
         "diff_truncated": afkortet,
-        "risks": _risici(rod, filer, test_koert),
+        "risks": _risici(rod_til_laesning, filer, test_koert) if rod_til_laesning else [],
+        "kilde": "server" if rod_til_laesning else "maskine",
     }
+
+
+def _aendringer_paa_serveren(test_koert: bool, med_diff: bool) -> dict:
+    rod = _repo_root()
+
+    def laes(sti: str) -> bytes | None:
+        try:
+            p = (rod / sti).resolve()
+            # Værn mod en sti der peger UD af repoet. `git status` giver os kun
+            # stier indeni, men en symlink kunne føre ud, og vi læser filen.
+            if not str(p).startswith(str(rod.resolve())):
+                return None
+            return p.read_bytes()[: _DIFF_MAX_BYTES]
+        except Exception:
+            return None
+
+    return _saml(
+        rod,
+        (_kør(rod, "rev-parse", "--abbrev-ref", "HEAD") or "").strip(),
+        _kør(rod, "diff", "--numstat", "HEAD"),
+        _kør(rod, "status", "--porcelain"),
+        _kør(rod, "diff", "HEAD") if med_diff else "",
+        test_koert, med_diff, laes,
+    )
+
+
+def _aendringer_paa_maskinen(rod: str, test_koert: bool, med_diff: bool) -> dict:
+    """Bjørns eget træ, læst over broen med ÉN compound-kommando.
+
+    Fejler broen, siges det — `fejl` i svaret. Et tomt svar ville ligne et rent
+    træ, og de to er stik modsatte.
+    """
+    if not str(rod).strip():
+        return {"branch": "", "files": [], "added": 0, "removed": 0, "diff": "",
+                "diff_truncated": False, "risks": [], "kilde": "maskine",
+                "fejl": "ingen sti til arbejdstræet"}
+    from apps.api.jarvis_api.routes.chat import _operator_exec
+    from core.identity.workspace_context import current_user_id
+
+    svar = _operator_exec("operator_bash", {
+        "command": _traeer.kommando_for(str(rod)),
+        "_user_id": current_user_id() or "",
+    })
+    if svar.get("status") != "ok":
+        return {"branch": "", "files": [], "added": 0, "removed": 0, "diff": "",
+                "diff_truncated": False, "risks": [], "kilde": "maskine",
+                "fejl": str(svar.get("error") or "broen svarede ikke")}
+
+    stdout = str((svar.get("result") or {}).get("stdout") or "")
+    gren, numstat, porcelain, diff_tekst = _traeer.parse_segmenter(stdout)
+    # Utrackede filers INDHOLD hentes ikke over broen: det ville være ét kald
+    # pr. fil. De står i listen som nye med ukendt linjeantal, og udfoldningen
+    # siger det. Hellere en ærlig mangel end fyrre netværksture.
+    return _saml(None, gren, numstat, porcelain, diff_tekst, test_koert, med_diff,
+                 lambda _sti: None)
 
 
 @router.get("/lessons")

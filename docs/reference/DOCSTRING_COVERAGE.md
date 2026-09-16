@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7607/14753 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7614/14763 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,7 +8,7 @@ Generated from source. 7607/14753 functions/methods documented (51%). The list b
 |---|---|---|---|
 | `apps.api.jarvis_api` | 34 | 36 | 94% |
 | `apps.api.jarvis_api.middleware` | 8 | 19 | 42% |
-| `apps.api.jarvis_api.routes` | 643 | 839 | 76% |
+| `apps.api.jarvis_api.routes` | 650 | 849 | 76% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 69 | 171 | 40% |
 | `apps.desktop` | 6 | 7 | 85% |
@@ -40,7 +40,7 @@ Generated from source. 7607/14753 functions/methods documented (51%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2087)
+## Undocumented public functions (2088)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L206)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -93,6 +93,7 @@ Generated from source. 7607/14753 functions/methods documented (51%). The list b
 - `apps/api/jarvis_api/routes/presence.py` :: `presence_ping` (L40)
 - `apps/api/jarvis_api/routes/push.py` :: `register` (L27)
 - `apps/api/jarvis_api/routes/push.py` :: `unregister` (L36)
+- `apps/api/jarvis_api/routes/review_traeer.py` :: `numstat_til_filer` (L82)
 - `apps/api/jarvis_api/routes/sensory.py` :: `get_memory` (L59)
 - `apps/api/jarvis_api/routes/sensory.py` :: `list_memories` (L31)
 - `apps/api/jarvis_api/routes/sensory.py` :: `record_memory` (L67)

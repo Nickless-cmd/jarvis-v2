@@ -697,24 +697,28 @@ _Review: hvad er der faktisk ændret, og hvad bør man kigge efter?_
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_kun_ejer` | `()` | Ruten laeser repoets arbejdstrae og filstoerrelser paa vaerten. | [src](../../../apps/api/jarvis_api/routes/review.py#L18) |
-| function | `_repo_root` | `()` | — | [src](../../../apps/api/jarvis_api/routes/review.py#L42) |
-| function | `_kør` | `(rod, *args)` | — | [src](../../../apps/api/jarvis_api/routes/review.py#L46) |
-| function | `_linjer_i` | `(sti)` | — | [src](../../../apps/api/jarvis_api/routes/review.py#L57) |
-| function | `_risici` | `(rod, filer, test_koert)` | Flag udledt af repoets EGNE regler. Ingen regel → intet flag. | [src](../../../apps/api/jarvis_api/routes/review.py#L65) |
-| function | `review_changes` | `(test_koert=…, diff=…)` | Hvad er ændret i arbejdstræet — pr. fil, med diff og regel-baserede flag. | [src](../../../apps/api/jarvis_api/routes/review.py#L107) |
-| function | `review_lessons` | `(limit=…)` | Lektier der venter paa en dom — og dem der allerede er i brug. | [src](../../../apps/api/jarvis_api/routes/review.py#L150) |
-| function | `review_lesson_set` | `(lesson_id, payload=…)` | Godkend (`active`), afvis (`rejected`) eller send tilbage (`proposed`). | [src](../../../apps/api/jarvis_api/routes/review.py#L174) |
+| function | `_kun_ejer` | `()` | Ruten laeser repoets arbejdstrae og filstoerrelser paa vaerten. | [src](../../../apps/api/jarvis_api/routes/review.py#L20) |
+| function | `_repo_root` | `()` | — | [src](../../../apps/api/jarvis_api/routes/review.py#L44) |
+| function | `_kør` | `(rod, *args)` | — | [src](../../../apps/api/jarvis_api/routes/review.py#L48) |
+| function | `_linjer_i` | `(sti)` | — | [src](../../../apps/api/jarvis_api/routes/review.py#L59) |
+| function | `_risici` | `(rod, filer, test_koert)` | Flag udledt af repoets EGNE regler. Ingen regel → intet flag. | [src](../../../apps/api/jarvis_api/routes/review.py#L67) |
+| function | `review_changes` | `(test_koert=…, diff=…, kilde=…, rod=…)` | Hvad er ændret i arbejdstræet — pr. fil, med diff og regel-baserede flag. | [src](../../../apps/api/jarvis_api/routes/review.py#L109) |
+| function | `_saml` | `(rod_til_laesning, gren, numstat, porcelain, diff_tekst, test_koert, med_diff, laes_fil)` | Fælles opsamling for begge træer — så de to veje ikke kan svare i | [src](../../../apps/api/jarvis_api/routes/review.py#L136) |
+| function | `_aendringer_paa_serveren` | `(test_koert, med_diff)` | — | [src](../../../apps/api/jarvis_api/routes/review.py#L177) |
+| function | `_aendringer_paa_maskinen` | `(rod, test_koert, med_diff)` | Bjørns eget træ, læst over broen med ÉN compound-kommando. | [src](../../../apps/api/jarvis_api/routes/review.py#L201) |
+| function | `review_lessons` | `(limit=…)` | Lektier der venter paa en dom — og dem der allerede er i brug. | [src](../../../apps/api/jarvis_api/routes/review.py#L233) |
+| function | `review_lesson_set` | `(lesson_id, payload=…)` | Godkend (`active`), afvis (`rejected`) eller send tilbage (`proposed`). | [src](../../../apps/api/jarvis_api/routes/review.py#L257) |
 
-## `apps/api/jarvis_api/routes/sensory.py`
-_Sansernes Arkiv HTTP endpoints._
+## `apps/api/jarvis_api/routes/review_traeer.py`
+_Hvilket arbejdstræ kigger vi i — serverens eller Bjørns egen maskine?_
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| class | `SensoryRecordPayload` | `` | — | [src](../../../apps/api/jarvis_api/routes/sensory.py#L23) |
-| function | `list_memories` | `(modality=…, limit=…, offset=…, since=…)` | — | [src](../../../apps/api/jarvis_api/routes/sensory.py#L31) |
-| function | `search_memories` | `(q=…, modality=…, limit=…)` | — | [src](../../../apps/api/jarvis_api/routes/sensory.py#L44) |
-| function | `summary` | `()` | — | [src](../../../apps/api/jarvis_api/routes/sensory.py#L54) |
-| function | `get_memory` | `(memory_id)` | — | [src](../../../apps/api/jarvis_api/routes/sensory.py#L59) |
-| function | `record_memory` | `(payload)` | — | [src](../../../apps/api/jarvis_api/routes/sensory.py#L67) |
+| function | `kommando_for` | `(rod)` | Én kommando, fire svar: gren, numstat, status, diff. | [src](../../../apps/api/jarvis_api/routes/review_traeer.py#L30) |
+| function | `parse_segmenter` | `(stdout)` | Del svaret op i (gren, numstat, status, diff). | [src](../../../apps/api/jarvis_api/routes/review_traeer.py#L47) |
+| function | `_er_binaer` | `(indhold)` | — | [src](../../../apps/api/jarvis_api/routes/review_traeer.py#L60) |
+| function | `utrackede_fra_status` | `(porcelain)` | Stierne bag `??` i `git status --porcelain`. | [src](../../../apps/api/jarvis_api/routes/review_traeer.py#L64) |
+| function | `numstat_til_filer` | `(numstat)` | — | [src](../../../apps/api/jarvis_api/routes/review_traeer.py#L82) |
+| function | `ny_fil_post` | `(sti, indhold)` | En utracket fil som en fil-post. | [src](../../../apps/api/jarvis_api/routes/review_traeer.py#L99) |
+| function | `ny_fil_diff` | `(sti, indhold)` | En diff-blok for en ny fil, i samme form som git selv skriver den. | [src](../../../apps/api/jarvis_api/routes/review_traeer.py#L114) |
 

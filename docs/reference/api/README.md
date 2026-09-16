@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 14753 functions/methods, 51% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 14763 functions/methods, 51% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -9,8 +9,8 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 14753 functions/
 - [`apps.api.jarvis_api`](apps.api.jarvis_api.md)
 - [`apps.api.jarvis_api.middleware`](apps.api.jarvis_api.middleware.md)
 - [`apps.api.jarvis_api.routes.01`](apps.api.jarvis_api.routes.01.md) — `__init__` … `health`
-- [`apps.api.jarvis_api.routes.02`](apps.api.jarvis_api.routes.02.md) — `interlanguage_blind` … `sensory`
-- [`apps.api.jarvis_api.routes.03`](apps.api.jarvis_api.routes.03.md) — `status` … `workbench`
+- [`apps.api.jarvis_api.routes.02`](apps.api.jarvis_api.routes.02.md) — `interlanguage_blind` … `review_traeer`
+- [`apps.api.jarvis_api.routes.03`](apps.api.jarvis_api.routes.03.md) — `sensory` … `workbench`
 - [`apps.api.jarvis_api.schemas`](apps.api.jarvis_api.schemas.md)
 - [`apps.central_cli.central_cli`](apps.central_cli.central_cli.md)
 - [`apps.desktop`](apps.desktop.md)

@@ -206,10 +206,17 @@ describe('EnvironmentPanel — hvilke agenter står fremme', () => {
     expect(await screen.findByText('rolle-a1')).toBeInTheDocument()
   })
 
-  it('hele feltet forsvinder når alle er færdige', async () => {
-    vis([agent('a1', 'completed'), agent('a2', 'cancelled'), agent('a3', 'completed')])
+  it('hele feltet forsvinder når alle LØSTE deres opgave', async () => {
+    vis([agent('a1', 'completed'), agent('a2', 'succeeded'), agent('a3', 'completed')])
     await screen.findByText('Ingen ændringer')
     expect(screen.queryByText('Underagenter')).not.toBeInTheDocument()
+  })
+
+  it('en ANNULLERET agent bliver hængende — den nåede ikke sin opgave', async () => {
+    // Bjørns dom 16/9-2026. Jeg havde regnet cancelled som en pæn slutning og
+    // spurgte; svaret var nej. Kun det der blev LØST forsvinder.
+    vis([agent('a1', 'cancelled')])
+    expect(await screen.findByText('rolle-a1')).toBeInTheDocument()
   })
 
   it('én fejlet blandt ti færdige holder feltet åbent — og viser KUN den ene', async () => {

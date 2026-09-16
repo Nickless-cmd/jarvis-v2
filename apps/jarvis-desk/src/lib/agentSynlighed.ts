@@ -20,14 +20,21 @@ const AKTIVE = new Set([
   'active', 'running', 'queued', 'starting', 'waiting', 'planned', 'suspended',
 ])
 
-/** Sluttede, men ikke af sig selv — derfor bliver den hængende. */
+/** Sluttede, men ikke af sig selv — derfor bliver den hængende.
+ *
+ * `cancelled` står her efter Bjørns dom 16/9-2026. Jeg havde regnet den som en
+ * pæn slutning — «nogen tog en beslutning, den er ikke uafsluttet» — og spurgte
+ * om det var rigtigt. Det var det ikke: en annulleret agent nåede ikke sin
+ * opgave, og hvad der ikke blev gjort færdigt, skal man kunne se. Kun en agent
+ * der LØSTE sin opgave forsvinder. */
 const HAENGER = new Set([
   'failed', 'error', 'expired', 'timeout', 'timed_out', 'stuck', 'orphaned',
+  'cancelled', 'canceled', 'aborted', 'interrupted',
 ])
 
-/** Sluttede som den skulle. Forsvinder. */
+/** Løste sin opgave. Forsvinder — det er det eneste udfald der ikke er nyt. */
 const FAERDIGE = new Set([
-  'completed', 'succeeded', 'success', 'done', 'finished', 'cancelled',
+  'completed', 'succeeded', 'success', 'done', 'finished',
 ])
 
 export function agentSkalStaaFremme(status?: string): boolean {

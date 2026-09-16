@@ -9,7 +9,9 @@
 
 /* ─── Sidebar ────────────────────────────────────────── */
 .sidebar {
-  background: var(--bg-1);
+  /* --bg-0, ikke --bg-1: sidebaren og .main stod paa NOEJAGTIG samme farve.
+     I CC er sidebaren det moerkeste i billedet. (Bjoern 16/9-2026) */
+  background: var(--bg-0);
   border-right: 1px solid var(--line);
   display: flex;
   flex-direction: column;
@@ -127,8 +129,8 @@
   color: var(--fg-2); font-size: 13px;
   padding: 7px 10px; margin-top: 2px; border-radius: var(--radius-sm, 6px);
 }
-.sidebar-nav-row:hover { background: var(--bg-2); color: var(--fg-1); }
-.sidebar-nav-row.active { background: var(--bg-3); color: var(--fg-1); }
+.sidebar-nav-row:hover { background: var(--bg-3); color: var(--fg-1); }
+.sidebar-nav-row.active { background: var(--bg-4); color: var(--fg-1); }
 
 /* ── Billed-galleri (#6) ── */
 .gallery { padding: 18px 22px; overflow-y: auto; height: 100%; }
@@ -574,7 +576,7 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 .composer {
   max-width: 820px;
   margin: 0 auto;
-  background: var(--bg-2);
+  background: var(--field-bg, var(--bg-2));
   border: 1px solid var(--line);
   border-radius: 12px;
   transition: 0.15s ease;
@@ -805,6 +807,9 @@ button.sidebar-group svg { flex: none; opacity: .7; }
   display: flex; flex-direction: column; gap: 2px;
   padding: 10px 12px; font-size: 12.5px; color: var(--fg-2);
   overflow-y: auto;
+  /* Havde ingen egen baggrund og laa gennemsigtig over chatten. Samme
+     panelfarve som miljoefeltet — de er to ruder i samme stak. */
+  background: var(--bg-2); border: 1px solid var(--line); border-radius: 12px;
 }
 .jobs-head {
   display: flex; align-items: center; justify-content: space-between;
@@ -827,7 +832,7 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 .jobs-kort {
   display: flex; align-items: flex-start; gap: 8px;
   padding: 8px 9px; border-radius: var(--radius-sm, 6px);
-  background: var(--bg-2); border: 1px solid var(--line);
+  background: var(--bg-3); border: 1px solid var(--line);
 }
 .jobs-kort.er-faerdig { background: none; }
 .jobs-kort-tekst { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1 1 auto; }
@@ -2413,7 +2418,7 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 /* ── Miljø-felt (code mode, vises under run) ── */
 .codeview-main { position: relative; }
 .env-panel { position: absolute; top: 52px; right: 16px; z-index: 50; width: 288px;
-  background: var(--bg-1, var(--bg)); border: 1px solid var(--line); border-radius: 12px;
+  background: var(--bg-2); border: 1px solid var(--line); border-radius: 12px;
   padding: 12px 14px; box-shadow: 0 8px 28px rgba(0,0,0,.30); font-size: 13px; }
 
 /* Højre-stak: miljø-feltet + Central-feltet stables lodret (Central kun owner). */

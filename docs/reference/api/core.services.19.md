@@ -30,6 +30,8 @@ _Registret over udbydere og modeller — nu med en skrivevej._
 | function | `fjern_udbyder` | `(*, provider)` | Fjern en udbyder OG dens modeller fra registret. | [src](../../../core/services/provider_registry_admin.py#L240) |
 | function | `gendan_backup` | `(*, sti=…)` | Rul registret tilbage til en backup. Tom sti = den nyeste. | [src](../../../core/services/provider_registry_admin.py#L260) |
 | function | `backups` | `()` | Hvilke backups findes — nyeste foerst. | [src](../../../core/services/provider_registry_admin.py#L282) |
+| function | `tilfoej` | `(*, provider, model, lane=…, auth_mode=…, auth_profile=…, base_url=…, api_key=…)` | Tilfoej (eller gen-aktivér) en udbyder + model i registret. | [src](../../../core/services/provider_registry_admin.py#L296) |
+| function | `saet_lane` | `(*, provider, model, lane)` | Flyt en model til en anden lane (cheap, local, coding, visible …). | [src](../../../core/services/provider_registry_admin.py#L332) |
 
 ## `core/services/provider_retry_policy.py`
 _Provider retry policy — exponential backoff for transient failures._

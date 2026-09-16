@@ -1,6 +1,6 @@
 # API_REFERENCE
 
-> Generated 2026-09-16 from app.routes (live) — 568 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
+> Generated 2026-09-16 from app.routes (live) — 570 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
 
 | Method | Path | Response model | Source |
 |---|---|---|---|
@@ -449,7 +449,9 @@
 | GET | `/mc/prompt-evolution` | dict | mission_control_jarvis_state |
 | GET | `/mc/provider-models` | dict | mission_control_runtime_config |
 | GET | `/mc/provider-registry` | dict | provider_registry |
+| POST | `/mc/provider-registry/add` | dict | provider_registry |
 | GET | `/mc/provider-registry/backups` | dict | provider_registry |
+| POST | `/mc/provider-registry/lane` | dict | provider_registry |
 | DELETE | `/mc/provider-registry/model` | dict | provider_registry |
 | POST | `/mc/provider-registry/model` | dict | provider_registry |
 | DELETE | `/mc/provider-registry/provider` | dict | provider_registry |

@@ -668,13 +668,17 @@ _Registret over udbydere og modeller — laesning OG skrivning. Owner-only._
 | class | `_ModelBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/provider_registry.py#L26) |
 | class | `_ProviderBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/provider_registry.py#L33) |
 | class | `_GendanBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/provider_registry.py#L39) |
-| function | `registret` | `()` | HELE registret: alle udbydere, alle modeller, pr. lane. | [src](../../../apps/api/jarvis_api/routes/provider_registry.py#L44) |
-| function | `saet_model` | `(body)` | Slaa én model til eller fra. | [src](../../../apps/api/jarvis_api/routes/provider_registry.py#L52) |
-| function | `saet_provider` | `(body)` | Slaa en hel udbyder til eller fra. | [src](../../../apps/api/jarvis_api/routes/provider_registry.py#L62) |
-| function | `fjern_model_route` | `(provider, model)` | Fjern én model fra registret. Legitimationen roeres ikke. | [src](../../../apps/api/jarvis_api/routes/provider_registry.py#L71) |
-| function | `fjern_provider_route` | `(provider)` | Fjern en udbyder og dens modeller. Legitimationen roeres ikke. | [src](../../../apps/api/jarvis_api/routes/provider_registry.py#L79) |
-| function | `liste_backups` | `()` | Hvilke tilbagerulninger kan vaelges. | [src](../../../apps/api/jarvis_api/routes/provider_registry.py#L87) |
-| function | `gendan` | `(body)` | Rul registret tilbage. Tom sti = nyeste backup. | [src](../../../apps/api/jarvis_api/routes/provider_registry.py#L95) |
+| class | `_TilfoejBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/provider_registry.py#L43) |
+| class | `_LaneBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/provider_registry.py#L55) |
+| function | `registret` | `()` | HELE registret: alle udbydere, alle modeller, pr. lane. | [src](../../../apps/api/jarvis_api/routes/provider_registry.py#L62) |
+| function | `saet_model` | `(body)` | Slaa én model til eller fra. | [src](../../../apps/api/jarvis_api/routes/provider_registry.py#L70) |
+| function | `saet_provider` | `(body)` | Slaa en hel udbyder til eller fra. | [src](../../../apps/api/jarvis_api/routes/provider_registry.py#L80) |
+| function | `fjern_model_route` | `(provider, model)` | Fjern én model fra registret. Legitimationen roeres ikke. | [src](../../../apps/api/jarvis_api/routes/provider_registry.py#L89) |
+| function | `fjern_provider_route` | `(provider)` | Fjern en udbyder og dens modeller. Legitimationen roeres ikke. | [src](../../../apps/api/jarvis_api/routes/provider_registry.py#L97) |
+| function | `liste_backups` | `()` | Hvilke tilbagerulninger kan vaelges. | [src](../../../apps/api/jarvis_api/routes/provider_registry.py#L105) |
+| function | `gendan` | `(body)` | Rul registret tilbage. Tom sti = nyeste backup. | [src](../../../apps/api/jarvis_api/routes/provider_registry.py#L113) |
+| function | `tilfoej_route` | `(body)` | Tilfoej en udbyder + model. `api_key` er valgfri og returneres aldrig. | [src](../../../apps/api/jarvis_api/routes/provider_registry.py#L121) |
+| function | `lane_route` | `(body)` | Flyt en model til en anden lane. Flytning er ikke en slukning. | [src](../../../apps/api/jarvis_api/routes/provider_registry.py#L132) |
 
 ## `apps/api/jarvis_api/routes/push.py`
 _Push token-registrering. Scoper til den auth'ede bruger._

@@ -133,13 +133,12 @@ export function getAgentDetalje(config: ApiConfig, agentId: string): Promise<Age
   return apiFetch(config, `/mc/agents/${encodeURIComponent(agentId)}`)
 }
 
-export function getAgentKoersler(config: ApiConfig, agentId: string): Promise<{ runs: AgentKoersel[] }> {
-  return apiFetch(config, `/mc/agents/${encodeURIComponent(agentId)}/runs`)
-}
-
-export function getAgentBeskeder(config: ApiConfig, agentId: string): Promise<{ messages: AgentBesked[] }> {
-  return apiFetch(config, `/mc/agents/${encodeURIComponent(agentId)}/messages`)
-}
+/* getAgentKoersler og getAgentBeskeder er FJERNET 16/9-2026. De hentede
+   /runs og /messages hver for sig, men getAgentDetalje ovenfor leverer begge
+   dele i ét kald, og efter at AgentInspector blev den faelles detalje-flade
+   havde de nul kaldere. To ekstra kald pr. agent, som ingen bad om — og en
+   fremtidig laeser ville tro de var den rigtige vej. Backendens ruter staar
+   uroerte; det er kun klientens genveje der er vaek. */
 
 /** Handlingerne findes allerede i backenden og er ikke ens:
  *  `cancel` stopper agenten, `expire` lukker den som udløbet, og `suspend`

@@ -23,7 +23,7 @@ vi.mock('../lib/streamClient', () => ({
 }))
 vi.mock('../lib/api', () => ({
   listSessions: vi.fn().mockResolvedValue([]),
-  getSession: vi.fn().mockResolvedValue({ session: { id: 's1', title: 'T' }, messages: [] }),
+  getSession: vi.fn().mockResolvedValue({ session: { id: 's1', title: 'T', updated_at: '2026-09-16T10:00:00Z' }, messages: [] }),
   createSession: vi.fn(),
   cancelRun: vi.fn(),
   whoami: vi.fn().mockResolvedValue({ user_id: 'u', display_name: 'Bjørn', role: 'owner' }),
@@ -67,7 +67,9 @@ describe('CodeView', () => {
   beforeEach(() => {
     localStorage.clear()
     handlersRef.current = null
-    vi.mocked(api.getSession).mockResolvedValue({ session: { id: 's1', title: 'T' }, messages: [] })
+    vi.mocked(api.getSession).mockResolvedValue({
+      session: { id: 's1', title: 'T', updated_at: '2026-09-16T10:00:00Z' }, messages: [], etag: null,
+    })
   })
 
   it('tom samtale: greeting m. brugernavn + composer', () => {
@@ -116,7 +118,8 @@ describe('CodeView', () => {
 
   it('fører historiske kilder fra transcriptet ind i den fælles inspector', async () => {
     vi.mocked(api.getSession).mockResolvedValue({
-      session: { id: 's1', title: 'T' },
+      etag: null,
+      session: { id: 's1', title: 'T', updated_at: '2026-09-16T10:00:00Z' },
       messages: [{
         id: 'a1', role: 'assistant', created_at: '2026-09-16T10:00:00Z',
         content: [{ type: 'text', text: 'Se https://docs.example.com/api for detaljerne.' }],

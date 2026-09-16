@@ -122,6 +122,7 @@ from apps.api.jarvis_api.routes.tts import router as tts_router
 from apps.api.jarvis_api.routes.mission_control import router as mc_router
 from apps.api.jarvis_api.routes.interlanguage_blind import router as interlanguage_blind_router
 from apps.api.jarvis_api.routes.cheap_balancer import router as cheap_balancer_router
+from apps.api.jarvis_api.routes.provider_registry import router as provider_registry_router
 from apps.api.jarvis_api.routes.agentic_guards import router as agentic_guards_router
 from apps.api.jarvis_api.routes.tool_router import router as tool_router_router
 from apps.api.jarvis_api.routes.anthropic_compat import router as anthropic_compat_router
@@ -850,6 +851,7 @@ def create_app() -> FastAPI:
     app.include_router(mc_dashboard_router, prefix="/mc")
     app.include_router(interlanguage_blind_router)
     app.include_router(cheap_balancer_router)
+    app.include_router(provider_registry_router)
     app.include_router(agentic_guards_router)
     app.include_router(tool_router_router)
     app.include_router(anthropic_compat_router)

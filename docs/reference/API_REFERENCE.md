@@ -1,6 +1,6 @@
 # API_REFERENCE
 
-> Generated 2026-09-14 from app.routes (live) — 555 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
+> Generated 2026-09-16 from app.routes (live) — 565 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
 
 | Method | Path | Response model | Source |
 |---|---|---|---|
@@ -329,6 +329,9 @@
 | POST | `/mc/cheap-balancer/slot/{slot_id:path}/disable` | dict | cheap_balancer |
 | POST | `/mc/cheap-balancer/slot/{slot_id:path}/enable` | dict | cheap_balancer |
 | POST | `/mc/cheap-balancer/slot/{slot_id:path}/reset` | dict | cheap_balancer |
+| GET | `/mc/cheap-lane/errors` | dict | cheap_balancer |
+| GET | `/mc/cheap-lane/history` | dict | cheap_balancer |
+| GET | `/mc/cheap-lane/timeseries` | dict | cheap_balancer |
 | GET | `/mc/chronicle` | dict | mission_control_introspection |
 | GET | `/mc/code-aesthetic` | dict | mission_control_living_mind |
 | GET | `/mc/cognitive-core-experiments` | dict | mission_control_introspection |
@@ -442,6 +445,13 @@
 | GET | `/mc/procedures` | dict | mission_control_introspection |
 | GET | `/mc/prompt-evolution` | dict | mission_control_jarvis_state |
 | GET | `/mc/provider-models` | dict | mission_control_runtime_config |
+| GET | `/mc/provider-registry` | dict | provider_registry |
+| GET | `/mc/provider-registry/backups` | dict | provider_registry |
+| DELETE | `/mc/provider-registry/model` | dict | provider_registry |
+| POST | `/mc/provider-registry/model` | dict | provider_registry |
+| DELETE | `/mc/provider-registry/provider` | dict | provider_registry |
+| POST | `/mc/provider-registry/provider` | dict | provider_registry |
+| POST | `/mc/provider-registry/restore` | dict | provider_registry |
 | GET | `/mc/recurrence-state` | dict | mission_control_introspection |
 | GET | `/mc/reflection-cycle` | dict | mission_control_living_mind |
 | GET | `/mc/reflection-to-plan` | dict | mission_control_introspection |

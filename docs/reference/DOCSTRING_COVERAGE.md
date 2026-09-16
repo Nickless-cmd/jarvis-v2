@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7601/14740 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7602/14741 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 7601/14740 functions/methods documented (51%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 650 | 1187 | 54% |
-| `core.services` | 5057 | 10158 | 49% |
+| `core.services` | 5058 | 10159 | 49% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 109 | 184 | 59% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -526,9 +526,9 @@ Generated from source. 7601/14740 functions/methods documented (51%). The list b
 - `core/runtime/session_handle.py` :: `SessionHandle.writable` (L174)
 - `core/runtime/session_handle.py` :: `SessionHeader.as_json` (L87)
 - `core/runtime/session_handle.py` :: `read_header` (L119)
-- `core/runtime/settings.py` :: `RuntimeSettings.to_dict` (L544)
-- `core/runtime/settings.py` :: `load_settings` (L649)
-- `core/runtime/settings.py` :: `update_visible_execution_settings` (L1100)
+- `core/runtime/settings.py` :: `RuntimeSettings.to_dict` (L549)
+- `core/runtime/settings.py` :: `load_settings` (L655)
+- `core/runtime/settings.py` :: `update_visible_execution_settings` (L1107)
 - `core/runtime/work_ref.py` :: `fra_task` (L129)
 - `core/services/absence_daemon.py` :: `build_absence_surface` (L155)
 - `core/services/absence_daemon.py` :: `get_latest_absence` (L151)

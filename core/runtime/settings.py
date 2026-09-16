@@ -397,6 +397,11 @@ class RuntimeSettings:
     # selection across all eligible (provider, model) slots and circuit
     # breakers. When False, falls back to task_kind="background" routing.
     daemon_balancer_enabled: bool = True
+
+    # Mine egne baggrundsprojekter (grid-bot, dealwork-worker,
+    # superteam-scanner, toku-poller). True = start dem ved boot og hold
+    # dem i live. False = lad dem vaere; definitionerne bliver staaende.
+    my_projects_enabled: bool = True
     # Emotional memory engine — thresholds and retention.
     emotional_memory_min_anchors: int = 2
     emotional_memory_retention_recent_days: int = 30
@@ -588,6 +593,7 @@ class RuntimeSettings:
             "jarvis_brain_auto_archive_days": self.jarvis_brain_auto_archive_days,
             "jarvis_brain_theme_consolidation_enabled": self.jarvis_brain_theme_consolidation_enabled,
             "daemon_balancer_enabled": self.daemon_balancer_enabled,
+            "my_projects_enabled": self.my_projects_enabled,
             "emotional_memory_min_anchors": self.emotional_memory_min_anchors,
             "emotional_memory_retention_recent_days": self.emotional_memory_retention_recent_days,
             "emotional_memory_retention_aging_days": self.emotional_memory_retention_aging_days,
@@ -1042,6 +1048,7 @@ def load_settings() -> RuntimeSettings:
         jarvis_brain_auto_archive_days=int(data.get("jarvis_brain_auto_archive_days", defaults.jarvis_brain_auto_archive_days)),
         jarvis_brain_theme_consolidation_enabled=bool(data.get("jarvis_brain_theme_consolidation_enabled", defaults.jarvis_brain_theme_consolidation_enabled)),
         daemon_balancer_enabled=bool(data.get("daemon_balancer_enabled", defaults.daemon_balancer_enabled)),
+        my_projects_enabled=bool(data.get("my_projects_enabled", defaults.my_projects_enabled)),
         emotional_memory_min_anchors=int(data.get("emotional_memory_min_anchors", defaults.emotional_memory_min_anchors)),
         emotional_memory_retention_recent_days=int(data.get("emotional_memory_retention_recent_days", defaults.emotional_memory_retention_recent_days)),
         emotional_memory_retention_aging_days=int(data.get("emotional_memory_retention_aging_days", defaults.emotional_memory_retention_aging_days)),

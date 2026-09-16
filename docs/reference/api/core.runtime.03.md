@@ -82,9 +82,9 @@ _`SessionHandle` — én ejer, én lease, én sekvens._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | class | `RuntimeSettings` | `` | — | [src](../../../core/runtime/settings.py#L11) |
-| method | `RuntimeSettings.to_dict` | `(self)` | — | [src](../../../core/runtime/settings.py#L544) |
-| function | `load_settings` | `()` | — | [src](../../../core/runtime/settings.py#L649) |
-| function | `update_visible_execution_settings` | `(*, visible_model_provider=…, visible_model_name=…, visible_auth_profile=…)` | — | [src](../../../core/runtime/settings.py#L1100) |
+| method | `RuntimeSettings.to_dict` | `(self)` | — | [src](../../../core/runtime/settings.py#L549) |
+| function | `load_settings` | `()` | — | [src](../../../core/runtime/settings.py#L655) |
+| function | `update_visible_execution_settings` | `(*, visible_model_provider=…, visible_model_name=…, visible_auth_profile=…)` | — | [src](../../../core/runtime/settings.py#L1107) |
 
 ## `core/runtime/state_store.py`
 _Tiny JSON-file state store for module-globals that must survive restart._

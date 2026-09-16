@@ -2,6 +2,17 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/config_drift.py`
+_Config-drift-nerve (§7) — fang når DEKLARERET config og RUNTIME-virkelighed er ude af sync._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_declared_port` | `()` | Læs den DEKLAREREDE port DIREKTE fra runtime.json på disk — IKKE in-memory settings. | [src](../../../core/services/config_drift.py#L19) |
+| function | `_api_responds` | `(port)` | True hvis NOGET svarer HTTP på 127.0.0.1:port (selv 4xx/5xx = porten lytter). | [src](../../../core/services/config_drift.py#L42) |
+| function | `check_port_drift` | `()` | Probe deklareret port + alternativer. drift=True hvis API'en svarer, men IKKE på den | [src](../../../core/services/config_drift.py#L55) |
+| function | `observe_config_drift` | `()` | Kør drift-check → observe til Centralen + flag incident hvis drift. Kadence-kaldt. | [src](../../../core/services/config_drift.py#L73) |
+| function | `build_config_drift_surface` | `()` | MC-surface — read-only config-drift-projektion. | [src](../../../core/services/config_drift.py#L119) |
+
 ## `core/services/conflict_daemon.py`
 _Conflict daemon — detects when Jarvis' signals pull in opposite directions._
 
@@ -609,15 +620,4 @@ _Cross-agent memory — shared observations queryable across agents._
 | function | `cross_agent_recall` | `(*, query, requesting_role=…, exclude_roles=…, days_back=…, limit=…, min_score=…)` | Find relevant observations from OTHER agents matching the query. | [src](../../../core/services/cross_agent_memory.py#L68) |
 | function | `cross_agent_recall_section` | `(role, query)` | Format cross-agent recall as text for sub-agent system_prompt injection. | [src](../../../core/services/cross_agent_memory.py#L130) |
 | function | `_exec_cross_agent_recall` | `(args)` | — | [src](../../../core/services/cross_agent_memory.py#L146) |
-
-## `core/services/cross_session_gate.py`
-_Kontekst fra ANDRE sessioner — Fase 10, kriterium 1._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `gaeldende_niveau` | `()` | `full` | `summary` | `none` | `ubestemt` for den kørsel vi er i nu. | [src](../../../core/services/cross_session_gate.py#L76) |
-| class | `Afgraenset` | `` | Det der slipper igennem — og hele regnskabet for det der ikke gjorde. | [src](../../../core/services/cross_session_gate.py#L118) |
-| method | `Afgraenset.herkomst` | `(self)` | Én linje modellen kan læse, med alt kriteriet kræver. | [src](../../../core/services/cross_session_gate.py#L136) |
-| function | `_digest` | `(poster)` | — | [src](../../../core/services/cross_session_gate.py#L159) |
-| function | `afgraens` | `(poster, *, kilde, maks_antal=…, maks_tegn=…, niveau=…, fundet_i_alt=…)` | Anvend niveau og budgetter, og før regnskab over alt der røg. | [src](../../../core/services/cross_session_gate.py#L167) |
 

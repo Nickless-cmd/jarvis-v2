@@ -638,6 +638,23 @@ _Device-presence + proaktive desktop-notifikationer. Scoper til auth'et bruger._
 | function | `presence_debug` | `()` | — | [src](../../../apps/api/jarvis_api/routes/presence.py#L106) |
 | function | `presence_state` | `()` | Spec E / E0 — TILSTANDS-KONTRAKTEN: Centralens ægte valens + selv-tilstand → jarvis-desk kan | [src](../../../apps/api/jarvis_api/routes/presence.py#L136) |
 
+## `apps/api/jarvis_api/routes/provider_registry.py`
+_Registret over udbydere og modeller — laesning OG skrivning. Owner-only._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_require_owner` | `()` | — | [src](../../../apps/api/jarvis_api/routes/provider_registry.py#L21) |
+| class | `_ModelBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/provider_registry.py#L26) |
+| class | `_ProviderBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/provider_registry.py#L33) |
+| class | `_GendanBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/provider_registry.py#L39) |
+| function | `registret` | `()` | HELE registret: alle udbydere, alle modeller, pr. lane. | [src](../../../apps/api/jarvis_api/routes/provider_registry.py#L44) |
+| function | `saet_model` | `(body)` | Slaa én model til eller fra. | [src](../../../apps/api/jarvis_api/routes/provider_registry.py#L52) |
+| function | `saet_provider` | `(body)` | Slaa en hel udbyder til eller fra. | [src](../../../apps/api/jarvis_api/routes/provider_registry.py#L62) |
+| function | `fjern_model_route` | `(provider, model)` | Fjern én model fra registret. Legitimationen roeres ikke. | [src](../../../apps/api/jarvis_api/routes/provider_registry.py#L71) |
+| function | `fjern_provider_route` | `(provider)` | Fjern en udbyder og dens modeller. Legitimationen roeres ikke. | [src](../../../apps/api/jarvis_api/routes/provider_registry.py#L79) |
+| function | `liste_backups` | `()` | Hvilke tilbagerulninger kan vaelges. | [src](../../../apps/api/jarvis_api/routes/provider_registry.py#L87) |
+| function | `gendan` | `(body)` | Rul registret tilbage. Tom sti = nyeste backup. | [src](../../../apps/api/jarvis_api/routes/provider_registry.py#L95) |
+
 ## `apps/api/jarvis_api/routes/push.py`
 _Push token-registrering. Scoper til den auth'ede bruger._
 
@@ -684,13 +701,4 @@ _Public-safe /status endpoint._
 | function | `_daemon_count` | `()` | — | [src](../../../apps/api/jarvis_api/routes/status.py#L36) |
 | function | `_visible_model_label` | `()` | — | [src](../../../apps/api/jarvis_api/routes/status.py#L44) |
 | function | `status` | `()` | — | [src](../../../apps/api/jarvis_api/routes/status.py#L54) |
-
-## `apps/api/jarvis_api/routes/system_health.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `system_health` | `()` | — | [src](../../../apps/api/jarvis_api/routes/system_health.py#L19) |
-| function | `system_git` | `()` | Return current git branch and diff stats (insertions/deletions since HEAD). | [src](../../../apps/api/jarvis_api/routes/system_health.py#L39) |
-| class | `CommitRequest` | `` | — | [src](../../../apps/api/jarvis_api/routes/system_health.py#L85) |
-| function | `system_git_commit` | `(body)` | Stage tracked changes and commit with the given message. | [src](../../../apps/api/jarvis_api/routes/system_health.py#L90) |
 

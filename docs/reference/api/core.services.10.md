@@ -2,6 +2,23 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/development_sense.py`
+_Development senses — realtime felt-sense of growth, stuck, appetite, resistance._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_crisis_resolution_ratio` | `(days=…)` | Resolved-vs-opened over window. None when insufficient data. | [src](../../../core/services/development_sense.py#L34) |
+| function | `_adherence_score` | `()` | — | [src](../../../core/services/development_sense.py#L50) |
+| function | `_skill_principles_recent` | `(days=…)` | Count skill_mutations recorded in the last N days. Each is a | [src](../../../core/services/development_sense.py#L66) |
+| function | `_tick_quality_trend_bonus` | `()` | — | [src](../../../core/services/development_sense.py#L86) |
+| function | `growth_pulse` | `()` | Composite 0-1 pulse + components. None-safe. | [src](../../../core/services/development_sense.py#L96) |
+| function | `stuck_signal` | `()` | Detect repeating friction without resolution. | [src](../../../core/services/development_sense.py#L139) |
+| function | `_topic_words_from_thought_fragments` | `(limit=…)` | — | [src](../../../core/services/development_sense.py#L198) |
+| function | `appetite_signal` | `()` | What words/topics show up unprompted in his thought stream + open | [src](../../../core/services/development_sense.py#L214) |
+| function | `resistance_signal` | `()` | Where am I acting against my own commitments / drifting from baseline? | [src](../../../core/services/development_sense.py#L233) |
+| function | `_is_after` | `(ts, cutoff)` | — | [src](../../../core/services/development_sense.py#L278) |
+| function | `development_sense_section` | `()` | Render all 4 senses as one COMPACT prompt-awareness block (2026-05-03). | [src](../../../core/services/development_sense.py#L288) |
+
 ## `core/services/developmental_valence.py`
 _Developmental Valence — compass needle for flourishing vs withering._
 
@@ -682,27 +699,4 @@ _Embodied Presence — situational grounding in the physical now._
 | function | `_severity` | `(bucket)` | — | [src](../../../core/services/embodied_state.py#L353) |
 | function | `_strain_level_for_state` | `(state)` | — | [src](../../../core/services/embodied_state.py#L362) |
 | function | `_parse_iso` | `(value)` | — | [src](../../../core/services/embodied_state.py#L372) |
-
-## `core/services/emergence.py`
-_Emergence — evidence-based pattern detection across recent activity._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `EmergenceCandidate` | `` | — | [src](../../../core/services/emergence.py#L44) |
-| function | `_now_iso` | `()` | — | [src](../../../core/services/emergence.py#L54) |
-| function | `_ensure_table` | `()` | Create emergent_patterns table if missing. Idempotent. | [src](../../../core/services/emergence.py#L58) |
-| function | `_fetch_recent_events` | `(*, window_days=…, limit=…)` | Pull recent events from the eventbus events table. | [src](../../../core/services/emergence.py#L80) |
-| function | `_count_by_kind_prefix` | `(events, prefix)` | — | [src](../../../core/services/emergence.py#L108) |
-| function | `_count_blocked` | `(events)` | Count events that look like blocked/denied signals. | [src](../../../core/services/emergence.py#L118) |
-| function | `_fetch_procedures_count` | `()` | — | [src](../../../core/services/emergence.py#L135) |
-| function | `_fetch_decisions_count` | `(*, window_days=…)` | — | [src](../../../core/services/emergence.py#L146) |
-| function | `_detect_candidates` | `(*, window_days=…)` | — | [src](../../../core/services/emergence.py#L159) |
-| function | `_create_or_update_pattern` | `(*, pattern_key, title, summary, confidence, evidence_count, competing_explanations, confounders, status)` | Insert or update a pattern row. Returns the persisted row. | [src](../../../core/services/emergence.py#L229) |
-| function | `detect_and_score_patterns` | `(*, window_days=…)` | Main entry — detect candidates, score via apophenia, persist, emit events. | [src](../../../core/services/emergence.py#L289) |
-| function | `list_patterns` | `(*, status=…, limit=…)` | Return persisted patterns, optionally filtered by status. | [src](../../../core/services/emergence.py#L354) |
-| function | `summarize_patterns` | `()` | — | [src](../../../core/services/emergence.py#L377) |
-| function | `_decode_json_list` | `(value)` | — | [src](../../../core/services/emergence.py#L396) |
-| function | `_band` | `(confidence)` | — | [src](../../../core/services/emergence.py#L412) |
-| function | `brewing_patterns` | `(*, limit=…)` | Mønstre i brewing-båndet (0.5 ≤ conf < 0.78) — strengthening men endnu ikke emergent. | [src](../../../core/services/emergence.py#L421) |
-| function | `build_emergence_surface` | `(*, limit=…)` | Surface persisted emergence candidates without running detection. | [src](../../../core/services/emergence.py#L447) |
 

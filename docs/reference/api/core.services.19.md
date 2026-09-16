@@ -2,6 +2,34 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/provider_registry_admin.py`
+_Registret over udbydere og modeller — nu med en skrivevej._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_fil` | `()` | — | [src](../../../core/services/provider_registry_admin.py#L43) |
+| function | `_nu` | `()` | — | [src](../../../core/services/provider_registry_admin.py#L48) |
+| function | `_laes` | `()` | — | [src](../../../core/services/provider_registry_admin.py#L52) |
+| function | `_backup` | `()` | Kopiér den nuvaerende fil til side. Returnerer stien, eller "" hvis intet. | [src](../../../core/services/provider_registry_admin.py#L58) |
+| function | `_skriv` | `(registry)` | Skriv registret. Backup FOERST — en fortrydelse skal kunne lade sig goere. | [src](../../../core/services/provider_registry_admin.py#L80) |
+| function | `_sig_det_hoejt` | `(handling, detalje)` | En aendring i registret er en driftsbeslutning. Den skal kunne ses bagefter. | [src](../../../core/services/provider_registry_admin.py#L95) |
+| function | `fuld_registrering` | `()` | HELE registret — ikke de foerste 8 og 12. | [src](../../../core/services/provider_registry_admin.py#L108) |
+| function | `saet_model_aktiv` | `(*, provider, model, aktiv, grund=…)` | Slaa én model til eller fra. Pladsen, lanen og historien bevares. | [src](../../../core/services/provider_registry_admin.py#L173) |
+| function | `saet_udbyder_aktiv` | `(*, provider, aktiv, grund=…)` | Slaa en HEL udbyder til eller fra. | [src](../../../core/services/provider_registry_admin.py#L201) |
+| function | `fjern_model` | `(*, provider, model)` | Fjern én model fra registret. Legitimationen roeres ikke. | [src](../../../core/services/provider_registry_admin.py#L226) |
+| function | `fjern_udbyder` | `(*, provider)` | Fjern en udbyder OG dens modeller fra registret. | [src](../../../core/services/provider_registry_admin.py#L240) |
+| function | `gendan_backup` | `(*, sti=…)` | Rul registret tilbage til en backup. Tom sti = den nyeste. | [src](../../../core/services/provider_registry_admin.py#L260) |
+| function | `backups` | `()` | Hvilke backups findes — nyeste foerst. | [src](../../../core/services/provider_registry_admin.py#L282) |
+
+## `core/services/provider_retry_policy.py`
+_Provider retry policy — exponential backoff for transient failures._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_is_transient` | `(exc)` | — | [src](../../../core/services/provider_retry_policy.py#L46) |
+| function | `retry_with_backoff` | `(fn, *, max_retries=…, base_delay=…, max_delay=…, only_transient=…, label=…)` | Run fn() with exponential backoff. Re-raises last exception on failure. | [src](../../../core/services/provider_retry_policy.py#L53) |
+| function | `_exec_test_retry` | `(args)` | Manual test handle — verify retry behaviour. Not for production use. | [src](../../../core/services/provider_retry_policy.py#L97) |
+
 ## `core/services/provider_self_heal.py`
 _Provider selvhelbredelse (spec Fase C). To sikre auto-handlinger:_
 
@@ -660,46 +688,4 @@ _Capture structured web-tool evidence for the active research run._
 | function | `collecting_for` | `(run_id, *, task_id=…)` | — | [src](../../../core/services/research_evidence_collector.py#L14) |
 | function | `_structured_sources` | `(tool_name, result)` | — | [src](../../../core/services/research_evidence_collector.py#L22) |
 | function | `observe_web_result` | `(tool_name, result)` | — | [src](../../../core/services/research_evidence_collector.py#L38) |
-
-## `core/services/research_ledger.py`
-_Research-runnet synligt i session-ledgeren (spec Fase A4)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `taellere` | `()` | — | [src](../../../core/services/research_ledger.py#L42) |
-| function | `_nulstil_for_tests` | `()` | — | [src](../../../core/services/research_ledger.py#L46) |
-| function | `record_research_event` | `(session_id, *, event_id, event, payload=…)` | Skriv én research-hændelse i session-ledgeren. Kaster aldrig. | [src](../../../core/services/research_ledger.py#L51) |
-| function | `record_run_started` | `(session_id, *, run_id, tier, query)` | Runnet er startet: tier og den oprindelige forespørgsel. | [src](../../../core/services/research_ledger.py#L96) |
-| function | `record_run_completed` | `(session_id, *, run_id, sources, quality, timed_out, tool_calls=…)` | Runnet er slut: hvad det blev — kilder, kvalitetsdom, timeout, forbrug. | [src](../../../core/services/research_ledger.py#L106) |
-
-## `core/services/research_orchestrator.py`
-_Adaptive research coordinator around the existing visible and agent runtimes._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_event` | `(kind, payload)` | — | [src](../../../core/services/research_orchestrator.py#L26) |
-| function | `_setting` | `(name, default)` | — | [src](../../../core/services/research_orchestrator.py#L30) |
-| function | `_facets` | `(message)` | De emneord planlægningen deler beskeden i — og som gaten måler dækning imod. | [src](../../../core/services/research_orchestrator.py#L44) |
-| function | `_delta_text` | `(frame)` | Træk syntese-teksten ud af en `delta`-frame. Andre frames giver ''. | [src](../../../core/services/research_orchestrator.py#L52) |
-| function | `_plan` | `(message, max_tasks)` | — | [src](../../../core/services/research_orchestrator.py#L74) |
-| function | `_parse_plan` | `(text, max_tasks)` | Læs plannerens JSON til en ResearchTask-liste. Defensiv: [] ved mindste tvivl. | [src](../../../core/services/research_orchestrator.py#L105) |
-| function | `_llm_plan` | `(message, max_tasks, facets)` | Fase C1: bed en billig model om delopgaver. None = kunne ikke → regex. | [src](../../../core/services/research_orchestrator.py#L148) |
-| function | `_plan_tasks` | `(message, max_tasks, *, planner_enabled)` | Fase C1: LLM-planlægger med regex-fallback. | [src](../../../core/services/research_orchestrator.py#L173) |
-| function | `_tool_calls_used` | `(run_id)` | Observerede værktøjskald i runnet. Defensiv: 0 hvis tællingen ikke kan læses. | [src](../../../core/services/research_orchestrator.py#L189) |
-| function | `_clean_text` | `(value)` | — | [src](../../../core/services/research_orchestrator.py#L200) |
-| function | `_confidence` | `(value)` | — | [src](../../../core/services/research_orchestrator.py#L204) |
-| function | `_finding_from_text` | `(text, task_ordinal)` | Sidste udkast: hele teksten bliver ét fund med de URLs den bærer. | [src](../../../core/services/research_orchestrator.py#L209) |
-| function | `_parse_findings` | `(text, task_ordinal)` | Fase B2: worker-svaret → `ResearchFinding`. | [src](../../../core/services/research_orchestrator.py#L226) |
-| function | `_gap_objective` | `(query, findings)` | Fase B3: critic-opgaven — hvad MANGLER der, givet de fundne påstande. | [src](../../../core/services/research_orchestrator.py#L300) |
-| function | `_parse_gaps` | `(text)` | Fase B3: critic-svaret → korte gap-linjer. Defensiv hele vejen. | [src](../../../core/services/research_orchestrator.py#L317) |
-| function | `_evidence_block` | `(texts, sources, findings, gaps=…)` | Evidens til syntesen — med en KANONISK nummereret kilde-liste. | [src](../../../core/services/research_orchestrator.py#L351) |
-| function | `_topup_plan` | `(run_id, tasks, policy)` | Fase B1: hvilke tracks skal styrkes — og med hvad? | [src](../../../core/services/research_orchestrator.py#L389) |
-| function | `_evaluate_quality` | `(run_id, query, report, policy)` | Fase A1: kobl kvalitetsgaten på den faktiske rapport. | [src](../../../core/services/research_orchestrator.py#L435) |
-| function | `_judge_prompt` | `(query, report, sources, findings, gaps)` | Binær rubric — kort nok til en billig model, konkret nok til at være falsificerbar. | [src](../../../core/services/research_orchestrator.py#L485) |
-| function | `_parse_verdict` | `(text)` | Dommerens svar → {"verdict", "criteria", "reason"}. None hvis uafgørbart. | [src](../../../core/services/research_orchestrator.py#L509) |
-| function | `_judge_quality` | `(run_id, query, report, gaps=…)` | Kør dommeren i en tråd, så event-loopet ikke blokeres. Fejler altid blødt. | [src](../../../core/services/research_orchestrator.py#L547) |
-| function | `_default_worker_sync` | `(*, task, run_id, skill_instructions, max_turns=…, budget_tokens=…)` | — | [src](../../../core/services/research_orchestrator.py#L579) |
-| function | `_run_worker` | `(worker_factory, *, task, run_id, skill_instructions, max_turns=…, budget_tokens=…)` | Kør én worker gennem factory'en. | [src](../../../core/services/research_orchestrator.py#L620) |
-| function | `stream_research_run` | `(*, message, original_query=…, session_id, visible_run_id=…, decision=…, visible_factory=…, worker_factory=…, orchestrator_enabled=…, **visible_kwargs)` | — | [src](../../../core/services/research_orchestrator.py#L646) |
-| function | `research_enabled` | `()` | — | [src](../../../core/services/research_orchestrator.py#L949) |
 

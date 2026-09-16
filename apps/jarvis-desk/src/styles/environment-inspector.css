@@ -87,3 +87,27 @@
 .inspector-link-list button:last-child { border-bottom: 0; }
 .inspector-link-list button:hover { color: var(--fg-0); }
 .inspector-link-list span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Shared agent detail body, used by both Code and the Agent Pool drawer. */
+.agent-inspector-role { color: var(--fg-0); font-size: 16px; font-weight: 600; }
+.agent-inspector-goal { margin-top: 5px; color: var(--fg-2); line-height: 1.45; overflow-wrap: anywhere; }
+.agent-status-error, .agent-feedback.is-error { color: var(--error-fg); }
+.agent-refreshing { margin-top: 10px; color: var(--fg-3); font-size: 11px; }
+.agent-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.agent-actions button, .agent-composer button { min-height: 30px; border: 1px solid var(--line); border-radius: 6px;
+  padding: 5px 9px; background: var(--bg-2); color: var(--fg-1); cursor: pointer; font: inherit; }
+.agent-actions button:disabled, .agent-composer button:disabled { opacity: .5; cursor: default; }
+.agent-composer { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 7px; }
+.agent-composer input { min-width: 0; min-height: 32px; border: 1px solid var(--line); border-radius: 6px;
+  padding: 5px 8px; background: var(--bg-0); color: var(--fg-1); font: inherit; }
+.agent-feedback, .agent-finished { margin: 12px 0 0; padding: 8px 10px; border: 1px solid var(--line);
+  border-radius: 6px; background: var(--bg-2); color: var(--fg-2); font-size: 12px; }
+.agent-run-list, .agent-message-list { display: flex; flex-direction: column; gap: 7px; }
+.agent-run-list article, .agent-message-list article { border: 1px solid var(--line); border-radius: 6px;
+  padding: 8px 9px; background: var(--bg-0); }
+.agent-run-list article > div, .agent-message-list article > div { display: flex; justify-content: space-between; gap: 8px;
+  color: var(--fg-3); font-size: 11px; }
+.agent-run-list strong, .agent-message-list strong { color: var(--fg-2); font-weight: 600; }
+.agent-run-list p, .agent-message-list p { margin: 5px 0 0; color: var(--fg-1); font-size: 12px;
+  line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; }
+.ap-detalje .agent-inspector { padding-inline: 0; }

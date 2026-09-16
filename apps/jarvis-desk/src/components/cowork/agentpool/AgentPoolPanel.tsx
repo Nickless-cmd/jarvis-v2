@@ -2,10 +2,10 @@ import { useCallback, useEffect, useState } from 'react'
 import type { ApiConfig } from '../../../lib/api'
 import {
   getPoolListe, getPoolOpsummering, getPoolArbejde,
-  getAgentKoersler, getAgentBeskeder, agentHandling, sendTilAgent,
   type PoolAgent, type PoolListe, type PoolOpsummering,
-  type AgentKoersel, type AgentBesked,
+  type AgentKoersel,
 } from '../../../lib/agentPoolApi'
+import { AgentInspector } from '../../panel/AgentInspector'
 
 /**
  * Agent pool — hvem findes, hvad laver de, hvad kostede de.
@@ -67,7 +67,6 @@ export function AgentPoolPanel({ config }: { config?: ApiConfig }) {
   const [opsum, setOpsum] = useState<PoolOpsummering | null>(null)
   const [arbejde, setArbejde] = useState<AgentKoersel[]>([])
   const [aaben, setAaben] = useState<PoolAgent | null>(null)
-  const [detalje, setDetalje] = useState<{ runs: AgentKoersel[]; messages: AgentBesked[] } | null>(null)
   const [besked, setBesked] = useState('')
   const [henter, setHenter] = useState(false)
 
@@ -90,30 +89,6 @@ export function AgentPoolPanel({ config }: { config?: ApiConfig }) {
   }, [config, status, soeg, side])
 
   useEffect(() => { void hent() }, [hent])
-
-  const aabn = async (a: PoolAgent) => {
-    setAaben(a)
-    setDetalje(null)
-    if (!config) return
-    // Detaljen hentes FØRST her — den er tung, og listen skal være hurtig.
-    const [r, m] = await Promise.allSettled([
-      getAgentKoersler(config, a.agent_id), getAgentBeskeder(config, a.agent_id),
-    ])
-    setDetalje({
-      runs: r.status === 'fulfilled' ? (r.value.runs ?? []) : [],
-      messages: m.status === 'fulfilled' ? (m.value.messages ?? []) : [],
-    })
-  }
-
-  const handling = async (fn: () => Promise<unknown>, hvad: string) => {
-    try {
-      await fn()
-      setBesked(hvad)
-      await hent()
-    } catch (e) {
-      setBesked(e instanceof Error ? e.message : 'handlingen fejlede')
-    }
-  }
 
   if (!config) return <div className="mc-tom">Ingen forbindelse til serveren.</div>
 
@@ -211,7 +186,7 @@ export function AgentPoolPanel({ config }: { config?: ApiConfig }) {
             </thead>
             <tbody>
               {(liste?.agenter ?? []).map((a) => (
-                <tr key={a.agent_id} onClick={() => void aabn(a)} className="ap-raekke"
+                <tr key={a.agent_id} onClick={() => setAaben(a)} className="ap-raekke"
                     title={a.agent_id}>
                   <td>{a.role || a.kind}</td>
                   <td className="ap-maal">{a.goal || '–'}</td>
@@ -270,99 +245,23 @@ export function AgentPoolPanel({ config }: { config?: ApiConfig }) {
       )}
 
       {aaben && (
-        <AgentDetalje
-          agent={aaben} detalje={detalje}
-          onLuk={() => { setAaben(null); setDetalje(null) }}
-          onHandling={(h) => void handling(
-            () => agentHandling(config, aaben.agent_id, h),
-            h === 'cancel' ? 'Agenten er stoppet'
-              : h === 'expire' ? 'Agenten er lukket som udløbet'
-                : h === 'suspend' ? 'Markeret som pauset i databasen'
-                  : 'Agenten er sat i gang igen')}
-          onSend={(t) => void handling(
-            () => sendTilAgent(config, aaben.agent_id, t), 'Beskeden er lagt i hans tråd')}
-        />
-      )}
-    </div>
-  )
-}
-
-function AgentDetalje({ agent, detalje, onLuk, onHandling, onSend }: {
-  agent: PoolAgent
-  detalje: { runs: AgentKoersel[]; messages: AgentBesked[] } | null
-  onLuk: () => void
-  onHandling: (h: 'cancel' | 'suspend' | 'resume' | 'expire') => void
-  onSend: (tekst: string) => void
-}) {
-  const [tekst, setTekst] = useState('')
-  return (
-    <div className="ap-detalje" role="dialog" aria-label={`Agent ${agent.role}`}>
-      <div className="ap-detalje-top">
-        <div>
-          <h3>{agent.role || agent.kind} <span className="cl-profil">{agent.agent_id}</span></h3>
-          <p className="ap-maal">{agent.goal}</p>
-        </div>
-        <button type="button" onClick={onLuk} aria-label="Luk">✕</button>
-      </div>
-
-      <div className="ap-detalje-fakta">
-        <span>Status: <strong>{agent.status}</strong></span>
-        <span>Model: <strong>{agent.model || '–'}</strong></span>
-        <span>Kørsler: <strong>{agent.koersler}</strong></span>
-        <span>Tokens: <strong>{agent.tokens.toLocaleString('da-DK')}</strong></span>
-        <span>Pris: <strong>${agent.pris_usd.toFixed(4)}</strong></span>
-        {agent.last_error && <span className="cl-daarlig">Fejl: {agent.last_error}</span>}
-      </div>
-
-      {agent.er_aktiv ? (
-        <div className="cl-handlinger">
-          <button type="button" onClick={() => onHandling('cancel')}>Stop</button>
-          {/* «Pause» sætter KUN databasestatus — en tråd der allerede kører
-              stopper ikke. Teksten siger det, så knappen ikke lover for meget. */}
-          <button type="button" onClick={() => onHandling('suspend')}>Marker pauset</button>
-          <button type="button" onClick={() => onHandling('resume')}>Genoptag</button>
-          <button type="button" onClick={() => onHandling('expire')}>Luk som udløbet</button>
-        </div>
-      ) : (
-        <p className="cl-note">Agenten er ikke aktiv — der er intet at stoppe.</p>
-      )}
-
-      <div className="ap-send">
-        <input value={tekst} onChange={(e) => setTekst(e.target.value)}
-               placeholder="Send en besked til agenten" aria-label="Besked til agenten" />
-        <button type="button" disabled={!tekst.trim()}
-                onClick={() => { onSend(tekst.trim()); setTekst('') }}>Send</button>
-      </div>
-
-      <h4>Kørsler</h4>
-      {!detalje ? <p className="cl-note">Henter…</p> : (
-        <table className="mc-tabel">
-          <thead><tr><th>Start</th><th>Udfald</th><th>Model</th><th>Tokens</th><th>Resultat</th></tr></thead>
-          <tbody>
-            {detalje.runs.map((r) => (
-              <tr key={r.run_id}>
-                <td>{tid(r.started_at)}</td>
-                <td className={r.status === 'failed' ? 'cl-daarlig' : ''}>{r.status}</td>
-                <td className="cl-model">{r.model || '–'}</td>
-                <td>{((r.input_tokens ?? 0) + (r.output_tokens ?? 0)).toLocaleString('da-DK')}</td>
-                <td className="cl-besked">{r.output_summary || r.failure_reason || '–'}</td>
-              </tr>
-            ))}
-            {!detalje.runs.length && <tr><td colSpan={5}>Ingen kørsler.</td></tr>}
-          </tbody>
-        </table>
-      )}
-
-      <h4>Beskeder</h4>
-      {!detalje ? null : (
-        <div className="ap-beskeder">
-          {detalje.messages.slice(-20).map((m, i) => (
-            <div key={m.message_id ?? i} className={`ap-besked ap-${m.direction ?? 'ind'}`}>
-              <span className="cl-profil">{m.role || m.direction} · {tid(m.created_at)}</span>
-              <div>{m.content}</div>
-            </div>
-          ))}
-          {!detalje.messages.length && <p className="cl-note">Ingen beskeder.</p>}
+        <div className="ap-detalje" role="dialog" aria-label={`Agent ${aaben.role || aaben.kind || aaben.agent_id}`}>
+          <div className="ap-detalje-top">
+            <h3>Agentdetaljer</h3>
+            <button type="button" onClick={() => setAaben(null)} aria-label="Luk">✕</button>
+          </div>
+          <AgentInspector
+            config={config}
+            agent={{
+              agentId: aaben.agent_id,
+              role: aaben.role || aaben.kind,
+              goal: aaben.goal,
+              status: aaben.status,
+              dispatchToolUseId: `agent-pool:${aaben.agent_id}`,
+            }}
+            canMessage
+            onChanged={hent}
+          />
         </div>
       )}
     </div>

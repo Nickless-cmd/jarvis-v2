@@ -90,6 +90,27 @@ export interface AgentBesked {
   created_at?: string
 }
 
+export interface AgentDetail {
+  agent_id: string
+  role?: string
+  kind?: string
+  goal?: string
+  status?: string
+  model?: string
+  tokens_burned?: number
+  tokens?: number
+  last_error?: string | null
+  created_at?: string
+  completed_at?: string | null
+  runs: AgentKoersel[]
+  messages: AgentBesked[]
+  allowed_tools?: string[]
+  progress_label?: string
+  message_count?: number
+  tool_call_count?: number
+  [key: string]: unknown
+}
+
 export function getPoolListe(
   config: ApiConfig,
   { status = '', rolle = '', soeg = '', limit = 50, offset = 0 } = {},
@@ -106,6 +127,10 @@ export function getPoolOpsummering(config: ApiConfig, timer = 24): Promise<PoolO
 
 export function getPoolArbejde(config: ApiConfig, limit = 30): Promise<{ koersler: AgentKoersel[] }> {
   return apiFetch(config, `/mc/agent-pool/work?limit=${limit}`)
+}
+
+export function getAgentDetalje(config: ApiConfig, agentId: string): Promise<AgentDetail> {
+  return apiFetch(config, `/mc/agents/${encodeURIComponent(agentId)}`)
 }
 
 export function getAgentKoersler(config: ApiConfig, agentId: string): Promise<{ runs: AgentKoersel[] }> {

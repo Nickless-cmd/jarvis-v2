@@ -37,10 +37,9 @@ beforeEach(() => {
       failure_reason: 'timeout mod udbyder', started_at: '2026-09-16T12:00:00Z', varighed_s: 42,
     }],
   })
-  vi.spyOn(api, 'getAgentKoersler').mockResolvedValue({
+  vi.spyOn(api, 'getAgentDetalje').mockResolvedValue({
+    ...agent,
     runs: [{ run_id: 'r1', status: 'completed', model: 'qwen3:4b', input_tokens: 1000, output_tokens: 500, output_summary: 'fandt tre kilder' }],
-  })
-  vi.spyOn(api, 'getAgentBeskeder').mockResolvedValue({
     messages: [{ message_id: 'm1', role: 'user', content: 'kom i gang', created_at: '2026-09-16T10:01:00Z' }],
   })
 })
@@ -67,11 +66,11 @@ describe('AgentPoolPanel', () => {
     render(<AgentPoolPanel config={config} />)
     await waitFor(() => expect(screen.getByRole('button', { name: /Agenter/ })).toBeInTheDocument())
     // Listen er hentet — men ikke detaljen. Det er hele pointen med den lette vej.
-    expect(api.getAgentKoersler).not.toHaveBeenCalled()
+    expect(api.getAgentDetalje).not.toHaveBeenCalled()
 
     await bruger.click(screen.getByRole('button', { name: /Agenter/ }))
     await bruger.click(screen.getByText('find noget om broen'))
-    await waitFor(() => expect(api.getAgentKoersler).toHaveBeenCalledWith(config, 'agent-1'))
+    await waitFor(() => expect(api.getAgentDetalje).toHaveBeenCalledWith(config, 'agent-1'))
     expect(await screen.findByText('fandt tre kilder')).toBeInTheDocument()
   })
 
@@ -92,12 +91,15 @@ describe('AgentPoolPanel', () => {
     vi.spyOn(api, 'getPoolListe').mockResolvedValue({
       agenter: [{ ...agent, status: 'completed', er_aktiv: false }], vist: 1, i_alt: 1,
     })
+    vi.spyOn(api, 'getAgentDetalje').mockResolvedValue({
+      ...agent, status: 'completed', er_aktiv: false, runs: [], messages: [],
+    })
     const bruger = userEvent.setup()
     render(<AgentPoolPanel config={config} />)
     await waitFor(() => expect(screen.getByRole('button', { name: /Agenter/ })).toBeInTheDocument())
     await bruger.click(screen.getByRole('button', { name: /Agenter/ }))
     await bruger.click(screen.getByText('find noget om broen'))
-    expect(await screen.findByText('Agenten er ikke aktiv — der er intet at stoppe.')).toBeInTheDocument()
+    expect(await screen.findByText('Agenten er afsluttet og kan ikke modtage beskeder.')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Stop' })).not.toBeInTheDocument()
   })
 

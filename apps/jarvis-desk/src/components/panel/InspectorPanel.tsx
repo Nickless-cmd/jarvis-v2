@@ -3,6 +3,7 @@ import type { ApiConfig } from '../../lib/api'
 import type { InspectorTarget } from '../../lib/inspectorTargets'
 import { lookupTool } from '../../lib/toolRegistry'
 import { ArtifactInspectorBody } from './ArtifactPanel'
+import { AgentInspector } from './AgentInspector'
 import { SourceInspector } from './SourceInspector'
 import { ToolInspector } from './ToolInspector'
 
@@ -56,7 +57,9 @@ export function InspectorPanel({
           onOpenSource={(source) => onOpenTarget({ type: 'source', source, tool: target.tool }, true)}
         />
       )}
-      {target?.type === 'agent' && <div className="artifact-body artifact-empty">Agentdetaljer indlæses i næste trin.</div>}
+      {target?.type === 'agent' && (config
+        ? <AgentInspector config={config} agent={target.agent} canMessage={target.canMessage} />
+        : <div className="artifact-body artifact-empty">Agentdetaljen kræver forbindelse til serveren.</div>)}
       {!target && <div className="artifact-body artifact-empty">Intet at vise endnu.</div>}
     </div>
   )

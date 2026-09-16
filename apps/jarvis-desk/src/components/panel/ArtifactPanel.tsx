@@ -19,6 +19,27 @@ export function ArtifactPanel({
   onClose: () => void
   config?: ApiConfig
 }) {
+  const Icon = artifact ? (ICON[artifact.kind] ?? File) : File
+  return (
+    <div className="artifact-panel">
+      <div className="artifact-head">
+        <Icon size={14} /> <span className="artifact-title">{artifact?.title ?? 'Panel'}</span>
+        <button type="button" className="artifact-close" aria-label="Luk panel" onClick={onClose}>
+          <X size={15} />
+        </button>
+      </div>
+      <ArtifactInspectorBody artifact={artifact} config={config} />
+    </div>
+  )
+}
+
+export function ArtifactInspectorBody({
+  artifact,
+  config,
+}: {
+  artifact: Artifact | null
+  config?: ApiConfig
+}) {
   const [fileData, setFileData] = useState<{ content: string; language: string } | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -45,16 +66,8 @@ export function ArtifactPanel({
     return () => { afbrudt = true }
   }, [kind, filePath, base, token])
 
-  const Icon = artifact ? (ICON[artifact.kind] ?? File) : File
   return (
-    <div className="artifact-panel">
-      <div className="artifact-head">
-        <Icon size={14} /> <span className="artifact-title">{artifact?.title ?? 'Panel'}</span>
-        <button type="button" className="artifact-close" aria-label="Luk panel" onClick={onClose}>
-          <X size={15} />
-        </button>
-      </div>
-      <div className="artifact-body">
+    <div className="artifact-body">
         {!artifact && (
           <div className="artifact-empty">
             Intet at vise endnu.<br />
@@ -70,7 +83,6 @@ export function ArtifactPanel({
             ? <MarkdownRenderer text={fileData.content} streaming={false} />
             : <CodeBlock code={fileData.content} lang={fileData.language} />
         )}
-      </div>
     </div>
   )
 }

@@ -31,14 +31,16 @@ describe('UiPanelWatcher', () => {
   it('preview med en filsti i detail → åbner filen (kind=file)', async () => {
     pending.push({ id: 'f1', panel: 'preview', action: 'open', session_id: '', detail: 'docs/spec.md', status: 'pending', created_at: '' })
     wrap(<UiPanelWatcher config={cfg} setSurface={vi.fn()} />)
-    await waitFor(() => expect(panelRef?.artifact?.kind).toBe('file'))
-    expect(panelRef?.artifact?.filePath).toBe('docs/spec.md')
+    await waitFor(() => expect(panelRef?.target?.type).toBe('artifact'))
+    expect(panelRef?.target?.type === 'artifact' ? panelRef.target.artifact.kind : undefined).toBe('file')
+    expect(panelRef?.target?.type === 'artifact' ? panelRef.target.artifact.filePath : undefined).toBe('docs/spec.md')
   })
 
   it('preview med en note i detail → markdown (ikke fil)', async () => {
     pending.push({ id: 'n1', panel: 'preview', action: 'open', session_id: '', detail: 'her er resultatet', status: 'pending', created_at: '' })
     wrap(<UiPanelWatcher config={cfg} setSurface={vi.fn()} />)
-    await waitFor(() => expect(panelRef?.artifact?.kind).toBe('markdown'))
+    await waitFor(() => expect(panelRef?.target?.type).toBe('artifact'))
+    expect(panelRef?.target?.type === 'artifact' ? panelRef.target.artifact.kind : undefined).toBe('markdown')
   })
 
   it('panel=settings → skifter surface til cowork', async () => {

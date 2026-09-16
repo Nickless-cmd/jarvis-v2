@@ -8,8 +8,10 @@ function Probe() {
   return (
     <div>
       <span data-testid="open">{String(p.open)}</span>
-      <span data-testid="title">{p.artifact?.title ?? '-'}</span>
+      <span data-testid="type">{p.target?.type ?? '-'}</span>
+      <span data-testid="title">{p.target?.type === 'artifact' ? p.target.artifact.title : '-'}</span>
       <button onClick={() => p.open_({ kind: 'markdown', title: 'Spec', content: '# x' })}>open</button>
+      <button onClick={() => p.openTarget({ type: 'tool', tool: { id: 't1', name: 'web', input: {}, status: 'done' } })}>tool</button>
       <button onClick={() => p.close()}>close</button>
     </div>
   )
@@ -21,7 +23,10 @@ describe('PanelContext', () => {
     expect(screen.getByTestId('open').textContent).toBe('false')
     act(() => { screen.getByText('open').click() })
     expect(screen.getByTestId('open').textContent).toBe('true')
+    expect(screen.getByTestId('type').textContent).toBe('artifact')
     expect(screen.getByTestId('title').textContent).toBe('Spec')
+    act(() => { screen.getByText('tool').click() })
+    expect(screen.getByTestId('type').textContent).toBe('tool')
     act(() => { screen.getByText('close').click() })
     expect(screen.getByTestId('open').textContent).toBe('false')
   })

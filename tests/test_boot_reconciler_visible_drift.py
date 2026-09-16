@@ -36,6 +36,7 @@ def _lager(monkeypatch):
 
     class _Conn:
         def execute(self, q, p=()):
+            tilstand["sidste_parametre"] = p        # hvilken graense blev brugt?
             return _Cursor(tilstand["raekker"])
         def __enter__(self): return self
         def __exit__(self, *a): return False
@@ -229,3 +230,57 @@ def test_en_fejlende_udsendelse_vaelter_ikke_stemplingen(monkeypatch):
     monkeypatch.setattr(vro, "connect", lambda: _Conn())
 
     assert vro.stamp_visible_run_interrupted("visible-abc", reason="x") is True
+
+
+# ── containerens opstart er et staerkere bevis end alder (16/9-2026) ──────
+#
+# Fire autonome koersler startede 15:28, containeren genstartede 15:37, og
+# reconcileren meldte NUL ved hver opstart bagefter: de laa ikke i
+# `in_flight_runs`, og seks timer var ikke gaaet.
+
+def test_graensen_er_containerens_opstart_naar_den_er_frisk(monkeypatch):
+    from datetime import UTC, datetime, timedelta
+    nu = datetime(2026, 9, 16, 14, 0, tzinfo=UTC)
+    start = nu - timedelta(minutes=20)
+    monkeypatch.setattr(sbr, "_container_start", lambda n=None: start)
+    assert sbr._drift_graense(nu) == start          # 20 min slaar 6 timer
+
+
+def test_graensen_er_alderen_naar_containeren_har_koert_laenge(monkeypatch):
+    from datetime import UTC, datetime, timedelta
+    nu = datetime(2026, 9, 16, 14, 0, tzinfo=UTC)
+    monkeypatch.setattr(sbr, "_container_start", lambda n=None: nu - timedelta(days=3))
+    assert sbr._drift_graense(nu) == nu - timedelta(seconds=sbr.VISIBLE_DRIFT_AFTER_SECONDS)
+
+
+def test_uden_opstartstid_falder_vi_tilbage_paa_alderen(monkeypatch):
+    """Kan vi ikke laese /proc/uptime, maa vi ikke stemple paa et gaet."""
+    from datetime import UTC, datetime, timedelta
+    nu = datetime(2026, 9, 16, 14, 0, tzinfo=UTC)
+    monkeypatch.setattr(sbr, "_container_start", lambda n=None: None)
+    assert sbr._drift_graense(nu) == nu - timedelta(seconds=sbr.VISIBLE_DRIFT_AFTER_SECONDS)
+
+
+def test_container_start_laeses_af_proc_uptime(monkeypatch, tmp_path):
+    from datetime import UTC, datetime
+    fil = tmp_path / "uptime"
+    fil.write_text("1200.5 1200.5\n", encoding="utf-8")
+    ægte = open
+    monkeypatch.setattr("builtins.open",
+                        lambda p, *a, **kw: ægte(fil, *a, **kw) if p == "/proc/uptime" else ægte(p, *a, **kw))
+    nu = datetime(2026, 9, 16, 14, 0, tzinfo=UTC)
+    start = sbr._container_start(nu)
+    assert start is not None and abs((nu - start).total_seconds() - 1200.5) < 1
+
+
+def test_opslaget_bruger_FAKTISK_graensen(_lager, monkeypatch):
+    """Mutations-proeve: uden den her kunne kalderen regne sin egen graense ud,
+    og alle proever ovenfor ville stadig vaere groenne — fixturen svarer jo det
+    samme uanset hvad der spoerges om."""
+    from datetime import UTC, datetime
+    valgt = datetime(2026, 9, 16, 13, 39, tzinfo=UTC)
+    monkeypatch.setattr(sbr, "_drift_graense", lambda *a, **kw: valgt)
+    _lager["raekker"] = [("autonomous-zombie",)]
+    _lager["kendte"] = {}
+    sbr._ryd_visible_drift(True)
+    assert _lager["sidste_parametre"] == (valgt.isoformat(),)

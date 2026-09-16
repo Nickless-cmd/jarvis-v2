@@ -45,6 +45,50 @@ _INTERRUPTION_REASON = "afbrudt af container-genstart"
 VISIBLE_DRIFT_AFTER_SECONDS = 6 * 3600.0
 
 
+def _container_start(nu: datetime | None = None) -> datetime | None:
+    """Hvornaar startede DENNE container? ``None`` naar det ikke kan afgoeres.
+
+    `/proc/uptime` er containerens egen (lxcfs), ikke vaertens. Kan vi ikke laese
+    den, falder vi tilbage paa alders-reglen alene — et gaet maa aldrig blive til
+    et stempel.
+    """
+    try:
+        with open("/proc/uptime", encoding="utf-8") as f:
+            sekunder = float(f.read().split()[0])
+        if sekunder <= 0:
+            return None
+        return (nu or datetime.now(UTC)) - timedelta(seconds=sekunder)
+    except Exception:
+        return None
+
+
+def _drift_graense(nu: datetime | None = None) -> datetime:
+    """Hvor gammel skal en `running`-raekke vaere, foer den er drift?
+
+    ## Hvorfor to regler (16/9-2026)
+
+    Alders-reglen alene lod fire autonome koersler staa `running` i timevis: de
+    startede 15:28, containeren genstartede 15:37, og reconcileren meldte NUL ved
+    hver eneste opstart bagefter. De var ikke i `in_flight_runs`, saa kun denne
+    vej kunne se dem — og seks timer var ikke gaaet.
+
+    Containerens opstart er et STAERKERE bevis end alder: en koersel der begyndte
+    FOER containeren startede, kan ikke koere i den nu. Det er ikke et skoen.
+
+    Vi tager den SENESTE af de to graenser. Er containeren lige startet, rydder
+    opstarts-reglen med det samme. Har den koert i dage, er alders-reglen den
+    stramme, og den gaelder. Genstarter KUN én tjeneste, aendrer containerens
+    opstart sig ikke — saa kan en koersel i den anden proces stadig vaere i live,
+    og den bliver ikke roert.
+    """
+    nu = nu or datetime.now(UTC)
+    efter_alder = nu - timedelta(seconds=VISIBLE_DRIFT_AFTER_SECONDS)
+    start = _container_start(nu)
+    if start is None:
+        return efter_alder
+    return max(efter_alder, start)
+
+
 def _observe(payload: dict[str, Any]) -> None:
     """Fyr central-nerve ``session_persistence`` (cluster runtime). Best-effort,
     kaster aldrig (Central.observe er selv fail-safe, men vær dobbelt-sikker)."""
@@ -173,8 +217,7 @@ def _ryd_visible_drift(enforced: bool) -> int:
     except Exception:
         return 0
     try:
-        graense = (datetime.now(UTC)
-                   - timedelta(seconds=VISIBLE_DRIFT_AFTER_SECONDS)).isoformat()
+        graense = _drift_graense().isoformat()
         with connect() as conn:
             raekker = conn.execute(
                 "SELECT run_id FROM visible_runs WHERE status = 'running' "

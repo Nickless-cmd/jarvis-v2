@@ -3,62 +3,26 @@ import { GitBranch, Monitor, Server, Globe, Bot, Settings, Activity, GitCompare,
 import { RunHealth } from './RunHealth'
 import { getGitStatus, commitAllChanges, createPullRequest, type GitStatus, type ApiConfig } from '../../lib/api'
 import { lookupTool } from '../../lib/toolRegistry'
-
-/** Tool-navne der er agent-dispatch (vises som "Underagenter" à la Codex). */
-/**
- * Vaerktoejer der STARTER en agent.
- *
- * Listen navngav foer fire dispatch-vaerktoejer — hvoraf `spawn_subagent` slet
- * ikke findes — og manglede dem han faktisk bruger. `explore` er ordret «send a
- * read-only research agent», og den kaldes hele tiden; den stod bare ikke her,
- * saa «Underagenter» var tom naesten altid (Bjoern 8/9-2026).
- *
- * De agent-STYRENDE vaerktoejer (list_agents, send_message_to_agent,
- * relay_to_agent, cancel_agent) hoerer IKKE hjemme her. De starter ingen agent;
- * at tage dem med ville faa et opslag i listen til at se ud som en agent.
- */
-const AGENT_TOOLS = new Set([
-  'explore',
-  'task',
-  'convene_council',
-  'quick_council_check',
-  'dispatch_code_mode_task',
-  'dispatch_to_claude_code',
-  'agent_dispatch',
-])
-/** Tool-navne der er eksterne kilder (Codex "Kilder"). */
-const SOURCE_RULES: { match: (n: string) => boolean; label: string }[] = [
-  { match: (n) => /web.?search|search.?web|websearch/.test(n), label: 'Websøgning' },
-  { match: (n) => /web.?fetch|fetch.?url|browse|open_url/.test(n), label: 'Web-hentning' },
-]
+import type { AgentReference, EnvironmentEvidence, SourceEvidence, ToolEvidence } from '../../lib/environmentEvidence'
 const AGENT_COLORS = ['#e0843a', '#3ab85f', '#9b6bff', '#e0556b', '#3a9be0']
-
-export interface ToolInvocation {
-  name: string
-  input: Record<string, unknown>
-  /** Kun sat for LIVE kald (fra streamens blokke). Persisterede kald fra
-   *  sessionen har den ikke — og det er rigtigt: de er per definition faerdige. */
-  status?: 'running' | 'done' | 'error'
-}
 
 /** Pænt tool-label som i chatview: label + opsummering (kommando/sti). For
  *  operator_bash bliver det fx "Terminal: git status" — IKKE bare "operator_bash". */
-function formatTool(t: ToolInvocation): string {
+function formatTool(t: ToolEvidence): string {
   const meta = lookupTool(t.name)
   const summary = meta.summarize(t.input || {})
   const short = summary.length > 38 ? summary.slice(0, 37) + '…' : summary
   return short ? `${meta.label}: ${short}` : meta.label
 }
 
-/** Miljø-felt (code mode) — 1:1 med Codex' "Miljø"-panel: Ændringer (+/−),
- *  workspace-type, branch, Underagenter, Kilder + SESSION-totaler (tokens,
- *  tool-kald) der akkumuleres HELE sessionen igennem (ikke pr. run). Tool-kald
- *  formateres som i chatview via toolRegistry. Latches fra session-start/resume,
- *  nulstilles ved session-skift. Skjules af CodeView ved åbne paneler/smalt vindue. */
+/** Miljø-felt (code mode): workspace-status og struktureret session-evidence.
+ *  Kilder, agenter og tool-kald åbner den fælles inspector; tokens og antal kald
+ *  er fortsat session-totaler. */
 export function EnvironmentPanel({
   config, kind, root, refreshKey = 0,
-  working, workingStep, totalTokens = 0, totalToolCalls = 0, tools = [], sessionId, hasHistory = false,
+  working, workingStep, totalTokens = 0, totalToolCalls = 0, evidence, sessionId, hasHistory = false,
   isOwner = false, onChanged,
+  onOpenAgent, onOpenSource, onOpenTool,
   gitMissing = false, installingTool = '', onInstallTool, komprimerVed = 0, kontekstTokens,
 }: {
   config?: ApiConfig
@@ -69,11 +33,14 @@ export function EnvironmentPanel({
   workingStep?: string
   totalTokens?: number
   totalToolCalls?: number
-  tools?: ToolInvocation[]
+  evidence?: EnvironmentEvidence
   sessionId?: string | null
   hasHistory?: boolean
   isOwner?: boolean
   onChanged?: () => void
+  onOpenAgent?: (agent: AgentReference) => void
+  onOpenSource?: (source: SourceEvidence) => void
+  onOpenTool?: (tool: ToolEvidence) => void
   gitMissing?: boolean
   komprimerVed?: number
   /** Kontekst-fyldet som ringen i skrivefeltet maaler det. `totalTokens` er noget
@@ -135,29 +102,9 @@ export function EnvironmentPanel({
 
   if (!everRan) return null
 
-  // Udled underagenter, kilder + pænt-formaterede tool-kald fra SESSIONENS tools.
-  const agents: ToolInvocation[] = []
-  const sources: string[] = []
-  const toolLabels: string[] = []
-  for (const t of tools) {
-    const nm = t.name || ''
-    if (AGENT_TOOLS.has(nm)) {
-      // KOERENDE agenter staar hver for sig — to parallelle explore-kald er to
-      // agenter, ikke én. Faerdige samles fortsat pr. navn, ellers ville listen
-      // vokse med hver eneste tur.
-      if (t.status === 'running' || !agents.some((a) => a.name === nm && a.status !== 'running')) {
-        agents.push(t)
-      }
-      continue
-    }
-    const src = SOURCE_RULES.find((r) => r.match(nm))
-    if (src) { if (!sources.includes(src.label)) sources.push(src.label); continue }
-    if (nm) {
-      const label = formatTool(t)
-      if (!toolLabels.includes(label)) toolLabels.push(label)
-    }
-  }
-  const recentTools = toolLabels.slice(-5)
+  const agents = evidence?.agents ?? []
+  const sources = (evidence?.sources ?? []).slice(-8)
+  const recentTools = (evidence?.tools ?? []).slice(-8)
 
   return (
     <aside className="env-panel" aria-label="Miljø">
@@ -172,18 +119,22 @@ export function EnvironmentPanel({
       {!collapsed && (
         <>
           <ul className="env-rows">
+            <li className="env-row env-changes">
+              <span className="env-label"><GitCompare size={13} /> Ændringer</span>
+              <span className="env-val">
+                {git?.is_git
+                  ? git.dirty > 0
+                    ? <><span className="git-add">+{git.added}</span> <span className="git-del">−{git.removed}</span></>
+                    : <span className="env-muted">Ingen ændringer</span>
+                  : <span className="env-muted">{git ? 'Ikke et git-repo' : 'Henter…'}</span>}
+              </span>
+            </li>
             {gitMissing && kind === 'workstation' && (
               <li className="env-row env-action">
                 <button type="button" className="env-actbtn" disabled={installingTool === 'git'}
                   onClick={() => onInstallTool?.('git')}>
                   <GitCompare size={13} /> {installingTool === 'git' ? 'Installerer git…' : 'git mangler — installér'}
                 </button>
-              </li>
-            )}
-            {git?.is_git && git.dirty > 0 && (
-              <li className="env-row">
-                <span className="env-label"><GitCompare size={13} /> Ændringer</span>
-                <span className="env-val"><span className="git-add">+{git.added}</span> <span className="git-del">−{git.removed}</span></span>
               </li>
             )}
             <li className="env-row">
@@ -227,24 +178,18 @@ export function EnvironmentPanel({
               <div className="env-divider" />
               <div className="env-section-head">Underagenter</div>
               <ul className="env-rows">
-                {agents.map((a, i) => {
+                {agents.map((agent, i) => {
                   const farve = AGENT_COLORS[i % AGENT_COLORS.length]
-                  const koerer = a.status === 'running'
-                  // Opgaven staar, ikke bare vaerktoejsnavnet: «(worker)» sagde
-                  // ingenting om hvad agenten var sat til. For explore er det
-                  // `query`, for task `prompt`, for et raad `question`.
-                  const opgave = String(
-                    a.input?.query ?? a.input?.task ?? a.input?.prompt
-                    ?? a.input?.description ?? a.input?.instruction ?? a.input?.question ?? '',
-                  ).replace(/\s+/g, ' ').trim()
+                  const koerer = ['active', 'queued', 'starting', 'waiting'].includes(agent.status || '')
+                  const label = agent.role || 'Agent'
                   return (
-                    <li className={`env-row${koerer ? ' agent-koerer' : ''}`} key={`${a.name}-${i}`}>
-                      <span className="env-label">
+                    <li className={`env-row${koerer ? ' agent-koerer' : ''}`} key={agent.agentId}>
+                      <button type="button" className="env-row-button" onClick={() => onOpenAgent?.(agent)}>
                         <Bot size={13} style={{ color: farve }} />
-                        <span style={{ color: farve }}>{lookupTool(a.name).label}</span>
-                        {opgave && <span className="env-muted agent-opgave" title={opgave}>{opgave}</span>}
-                      </span>
-                      {koerer && <span className="env-val agent-status">kører</span>}
+                        <span style={{ color: farve }}>{label}</span>
+                        {agent.goal && <span className="env-muted agent-opgave" title={agent.goal}>{agent.goal}</span>}
+                        <span className="env-val agent-status">{koerer ? 'kører' : agent.status || 'detaljer'}</span>
+                      </button>
                     </li>
                   )
                 })}
@@ -257,9 +202,11 @@ export function EnvironmentPanel({
               <div className="env-divider" />
               <div className="env-section-head">Kilder</div>
               <ul className="env-rows">
-                {sources.map((s) => (
-                  <li className="env-row" key={s}>
-                    <span className="env-label"><Globe size={13} /> {s}</span>
+                {sources.map((source) => (
+                  <li className="env-row" key={source.url}>
+                    <button type="button" className="env-row-button" onClick={() => onOpenSource?.(source)} title={source.url}>
+                      <Globe size={13} /><span>{source.domaene}</span>
+                    </button>
                   </li>
                 ))}
               </ul>
@@ -271,9 +218,14 @@ export function EnvironmentPanel({
               <div className="env-divider" />
               <div className="env-section-head">Tool-kald</div>
               <div className="env-tools">
-                {recentTools.map((label) => (
-                  <span key={label} className="env-tool-chip" title={label}>{label}</span>
-                ))}
+                {recentTools.map((tool) => {
+                  const label = formatTool(tool)
+                  return (
+                    <button type="button" key={tool.id} className="env-tool-chip" title={label} onClick={() => onOpenTool?.(tool)}>
+                      {label}
+                    </button>
+                  )
+                })}
               </div>
             </>
           )}

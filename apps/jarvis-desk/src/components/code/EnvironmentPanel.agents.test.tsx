@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 
 vi.mock('../../lib/api', async (orig) => ({
   ...(await orig() as object),
@@ -15,39 +16,39 @@ import { EnvironmentPanel } from './EnvironmentPanel'
  * manglede `explore`, som er ordret «send a read-only research agent» og
  * kaldes hele tiden. «Underagenter» var derfor tom næsten altid.
  */
-const vis = (tools: Array<{ name: string; input: Record<string, unknown>; status?: 'running' | 'done' | 'error' }>) =>
-  render(<EnvironmentPanel kind="workstation" root="/x" working tools={tools} totalToolCalls={tools.length} />)
+const agent = (id: string, goal: string, status = 'active') => ({
+  agentId: id, role: 'researcher', goal, status, dispatchToolUseId: `tool-${id}`,
+})
+
+const vis = (agents: ReturnType<typeof agent>[], onOpenAgent = vi.fn()) => ({
+  ...render(<EnvironmentPanel kind="workstation" root="/x" working
+    evidence={{ agents, tools: [], sources: [] }} onOpenAgent={onOpenAgent} />),
+  onOpenAgent,
+})
 
 describe('underagenter i miljø-feltet', () => {
-  it('explore ER en agent', () => {
-    vis([{ name: 'explore', input: { query: 'hvor håndteres token-fornyelse' }, status: 'running' }])
+  it('viser kun en agent når evidence har et rigtigt agent-id', async () => {
+    const { onOpenAgent } = vis([agent('agent-1', 'hvor håndteres token-fornyelse')])
     expect(screen.getByText('Underagenter')).toBeInTheDocument()
-    // Opgaven står ved siden af navnet — «(worker)» sagde ingenting om hvad
-    // agenten var sat til.
     expect(screen.getByText('hvor håndteres token-fornyelse')).toBeInTheDocument()
     expect(screen.getByText('kører')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: /researcher/ }))
+    expect(onOpenAgent).toHaveBeenCalledWith(expect.objectContaining({ agentId: 'agent-1' }))
   })
 
-  it('task og council er også agenter', () => {
-    vis([
-      { name: 'task', input: { prompt: 'ryd op i x' } },
-      { name: 'convene_council', input: { question: 'skal vi?' } },
-    ])
-    expect(screen.getByText('ryd op i x')).toBeInTheDocument()
-    expect(screen.getByText('skal vi?')).toBeInTheDocument()
-  })
-
-  it('list_agents er IKKE en agent — den slår agenter op', () => {
-    // Tager man de agent-STYRENDE værktøjer med, kommer et opslag til at se ud
-    // som en agent i listen.
-    vis([{ name: 'list_agents', input: {} }])
+  it('et task-tool uden agent-id bliver ikke opfundet som agent', () => {
+    render(<EnvironmentPanel kind="workstation" root="/x" working evidence={{
+      agents: [], sources: [],
+      tools: [{ id: 'task-1', name: 'task', input: { prompt: 'ryd op' }, status: 'done' }],
+    }} />)
     expect(screen.queryByText('Underagenter')).not.toBeInTheDocument()
+    expect(screen.getByText(/ryd op/)).toBeInTheDocument()
   })
 
   it('to parallelle explore-agenter er TO agenter', () => {
     vis([
-      { name: 'explore', input: { query: 'første' }, status: 'running' },
-      { name: 'explore', input: { query: 'anden' }, status: 'running' },
+      agent('agent-1', 'første'),
+      agent('agent-2', 'anden'),
     ])
     expect(screen.getByText('første')).toBeInTheDocument()
     expect(screen.getByText('anden')).toBeInTheDocument()

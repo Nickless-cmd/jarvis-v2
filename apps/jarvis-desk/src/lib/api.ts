@@ -503,6 +503,9 @@ export interface GitStatus {
   added: number
   removed: number
   is_git: boolean
+  repo?: string
+  host?: string
+  link?: string
 }
 
 /** Git-state for det aktive code-workspace (header-chip). */

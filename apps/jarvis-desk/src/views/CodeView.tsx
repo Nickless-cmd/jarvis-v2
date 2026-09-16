@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useRef, useState } from 'react'
+import { useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { FolderTree, PanelRight, Lock, ShieldCheck, FolderOpen, ArrowDown, Gauge, SquareStack } from 'lucide-react'
 import { onPauseSvar, pauseAskIn, withoutPauseAsk, type PauseAsk } from '../lib/pauseAsk'
 import { useStream } from '../hooks/useStream'
@@ -31,6 +31,7 @@ import { useResizableWidth } from '../components/panel/useResizableWidth'
 import { onHighlight } from '../lib/fileTreeHighlight'
 import { getWorkspaceTrust, setWorkspaceTrust, getContextInfo, getContextUsage, compactNow, getActiveRuns, followRun, warmSession } from '../lib/api'
 import { streamReducer, initialStreamState } from '../lib/streamReducer'
+import { buildEnvironmentEvidence, mergeEnvironmentEvidence } from '../lib/environmentEvidence'
 
 // Navngivne server-roots (matcher backend _allowed_roots). Owner: hele kodebasen
 // (repo) + runtime-home (~/.jarvis-v2/) + eget workspace. Member: KUN eget workspace.
@@ -132,8 +133,8 @@ export function CodeView({
       .finally(() => setInstallingTool(''))
   }
 
-  // Session-akkumulering til miljø-feltet: tokens + tool-kald + tool-liste SAMLET
-  // over HELE sessionen (ikke pr. run), så man kan se alt der er lavet (Codex-stil).
+  // Session-akkumulering til miljø-feltet: token- og tool-totaler over hele
+  // sessionen. Detaljerne genbygges fra transcriptets strukturerede evidence.
   // Cross-device live-state (effekter wires længere nede): bruges allerede her i
   // miljø-felt-beregningen, så deklarationen skal stå før den.
   const [bgActive, setBgActive] = useState(false)
@@ -141,26 +142,29 @@ export function CodeView({
   const followCtrlRef = useRef<{ abort: () => void } | null>(null)
 
   // Hjælper: indlæs gemte session-stats fra localStorage.
-  function _loadStats(sid: string | null): { tokens: number; toolCalls: number; tools: { name: string; input: Record<string, unknown> }[] } {
-    if (!sid) return { tokens: 0, toolCalls: 0, tools: [] }
+  function _loadStats(sid: string | null): { tokens: number; toolCalls: number } {
+    if (!sid) return { tokens: 0, toolCalls: 0 }
     try {
       const raw = localStorage.getItem(`jarvis-desk:session-stats:${sid}`)
-      return raw ? JSON.parse(raw) : { tokens: 0, toolCalls: 0, tools: [] }
-    } catch { return { tokens: 0, toolCalls: 0, tools: [] } }
+      const parsed = raw ? JSON.parse(raw) as { tokens?: unknown; toolCalls?: unknown } : {}
+      return {
+        tokens: typeof parsed.tokens === 'number' ? parsed.tokens : 0,
+        toolCalls: typeof parsed.toolCalls === 'number' ? parsed.toolCalls : 0,
+      }
+    } catch { return { tokens: 0, toolCalls: 0 } }
   }
   // Hjælper: gem session-stats til localStorage.
-  function _saveStats(sid: string, tokens: number, toolCalls: number, tools: { name: string; input: Record<string, unknown> }[]) {
-    try { localStorage.setItem(`jarvis-desk:session-stats:${sid}`, JSON.stringify({ tokens, toolCalls, tools })) }
+  function _saveStats(sid: string, tokens: number, toolCalls: number) {
+    try { localStorage.setItem(`jarvis-desk:session-stats:${sid}`, JSON.stringify({ tokens, toolCalls })) }
     catch { /* localStorage utilgængelig — ignorér */ }
   }
 
   // Foldes når et run slutter (working → ikke-working); nulstilles ved session-skift.
-  // PERSISTENT: gemmes i localStorage pr. sessionId, så miljø-feltets historik
-  // overlever app-genstart. Loades ved mount + session-skift; skrives ved hver opdatering.
+  // PERSISTENT: totalerne gemmes i localStorage pr. sessionId. Ældre poster kan
+  // have en `tools`-liste; den ignoreres, fordi transcriptet er autoriteten.
   const initStats = useRef(_loadStats(sessionId))
   const [sessTokens, setSessTokens] = useState(initStats.current.tokens)
   const [sessToolCalls, setSessToolCalls] = useState(initStats.current.toolCalls)
-  const [sessTools, setSessTools] = useState<{ name: string; input: Record<string, unknown> }[]>(initStats.current.tools)
   const prevStatusRef = useRef(stream.status)
   // Per-run dedup-vagt for reconcile (D1, 29. jun): uden den kan en re-render mens
   // status stadig er 'done' (eller onComplete's message_stop-gendispatch) reconcile
@@ -187,26 +191,25 @@ export function CodeView({
     prevSessionRef.current = sessionId
     if (prev && prev !== sessionId) {
       // Gem forrige sessions stats inden vi rydder.
-      _saveStats(prev, sessTokens, sessToolCalls, sessTools)
+      _saveStats(prev, sessTokens, sessToolCalls)
     }
     const loaded = _loadStats(sessionId)
     setSessTokens(loaded.tokens)
     setSessToolCalls(loaded.toolCalls)
-    setSessTools(loaded.tools)
     prevStatusRef.current = stream.status
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId])
-  // Persistér session-stats ved enhver ændring (akkumulerede tokens/tools).
+  // Persistér session-totaler ved enhver ændring.
   const persistTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
     if (!sessionId) return
     // Debounced: skriv til localStorage max 1 gang pr. 500ms for at undgå
     // skrive-storm under en tool-tung tur.
     if (persistTimer.current) clearTimeout(persistTimer.current)
-    persistTimer.current = setTimeout(() => _saveStats(sessionId, sessTokens, sessToolCalls, sessTools), 500)
+    persistTimer.current = setTimeout(() => _saveStats(sessionId, sessTokens, sessToolCalls), 500)
     return () => { if (persistTimer.current) clearTimeout(persistTimer.current) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessTokens, sessToolCalls, sessTools])
+  }, [sessTokens, sessToolCalls])
   useEffect(() => {
     const prev = prevStatusRef.current
     prevStatusRef.current = stream.status
@@ -216,7 +219,6 @@ export function CodeView({
         .map((b) => ({ name: (b as { name?: string }).name || '', input: ((b as { input?: Record<string, unknown> }).input) || {} }))
       setSessTokens((t) => t + (stream.usage.output || 0))
       setSessToolCalls((c) => c + tb.length)
-      if (tb.length) setSessTools((prevT) => [...prevT, ...tb].slice(-50))
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stream.status])
@@ -240,15 +242,14 @@ export function CodeView({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [followState.status])
-  // Når et cross-device run er HELT slut (latch udløbet): fold de akkumulerede
-  // tools ind i session-historikken og nulstil akkumulatoren til næste run.
+  // Når et cross-device run er HELT slut (latch udløbet): fold tælleren ind.
+  // Selve evidence kommer fra transcriptets strukturerede blokke.
   const prevBgActiveRef = useRef(bgActive)
   useEffect(() => {
     const was = prevBgActiveRef.current
     prevBgActiveRef.current = bgActive
     if (was && !bgActive && bgTools.length) {
       setSessToolCalls((c) => c + bgTools.length)
-      setSessTools((prevT) => [...prevT, ...bgTools].slice(-50))
       setBgTools([])
     } else if (!was && bgActive) {
       setBgTools([]) // nyt run → frisk akkumulator
@@ -275,7 +276,21 @@ export function CodeView({
   const liveUsageOut = stream.status === 'working' ? (stream.usage.output || 0) : (bgWorking ? (followState.usage.output || 0) : 0)
   const envTotalTokens = sessTokens + liveUsageOut
   const envTotalToolCalls = sessToolCalls + localLiveTools.length + crossLiveTools.length
-  const envTools = [...sessTools, ...localLiveTools, ...crossLiveTools]
+  const historicalEvidence = useMemo(() => buildEnvironmentEvidence(
+    sessions.messages.filter((message) => message.role === 'assistant').map((message) => message.content),
+  ), [sessions.messages])
+  const localEvidence = useMemo(
+    () => buildEnvironmentEvidence(stream.status === 'working' ? [stream.blocks] : []),
+    [stream.blocks, stream.status],
+  )
+  const followedEvidence = useMemo(
+    () => buildEnvironmentEvidence(bgActive && followState.status === 'working' ? [followState.blocks] : []),
+    [bgActive, followState.blocks, followState.status],
+  )
+  const environmentEvidence = useMemo(
+    () => mergeEnvironmentEvidence(historicalEvidence, localEvidence, followedEvidence),
+    [historicalEvidence, localEvidence, followedEvidence],
+  )
   // Trækbar bredde på hele fil-/preview-panelet (mod venstre). Bredere default
   // end før (380→460) så preview-ruden ikke er knald-smal.
   const codePanelW = useResizableWidth({
@@ -827,7 +842,15 @@ export function CodeView({
               kontekstTokens={gauge.tokens}
               totalTokens={envTotalTokens}
               totalToolCalls={envTotalToolCalls}
-              tools={envTools}
+              evidence={environmentEvidence}
+              onOpenAgent={(agent) => panel.openTarget({ type: 'agent', agent, canMessage: true })}
+              onOpenSource={(source) => {
+                const tool = source.toolUseId
+                  ? environmentEvidence.tools.find((item) => item.id === source.toolUseId)
+                  : undefined
+                panel.openTarget({ type: 'source', source, tool })
+              }}
+              onOpenTool={(tool) => panel.openTarget({ type: 'tool', tool })}
               sessionId={sessionId}
               hasHistory={visibleMessages.length > 0}
               isOwner={isOwner}

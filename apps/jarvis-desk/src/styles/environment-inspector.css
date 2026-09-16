@@ -35,7 +35,13 @@
 .env-note a:hover { text-decoration: underline; }
 .env-rows { list-style: none; margin: 0 0 8px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .env-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.env-changes { min-height: 20px; }
 .env-label { display: inline-flex; align-items: center; gap: 6px; color: var(--fg-2, var(--fg)); }
+.env-row-button { display: grid; grid-template-columns: 16px minmax(0, auto) minmax(0, 1fr) auto; align-items: center;
+  gap: 6px; width: 100%; min-width: 0; border: 0; padding: 2px 0; background: none; color: var(--fg-2);
+  text-align: left; cursor: pointer; font: inherit; }
+.env-row-button:hover { color: var(--fg-0); }
+.env-row-button > span { min-width: 0; }
 .env-live { display: flex; align-items: center; gap: 6px; padding-top: 8px; border-top: 1px solid var(--line); color: var(--fg-2, var(--fg)); }
 .env-live-icon { color: var(--accent-text); flex: none; }
 .env-step { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -44,7 +50,9 @@
 .env-tools { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
 .env-tool-chip { display: inline-flex; align-items: center; gap: 4px; font-size: 11px;
   padding: 2px 7px; border-radius: 999px; background: var(--bg-2, var(--bg)); border: 1px solid var(--line);
-  color: var(--fg-2, var(--fg)); max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  color: var(--fg-2, var(--fg)); max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  cursor: pointer; font-family: inherit; }
+.env-tool-chip:hover { color: var(--fg-0); border-color: var(--fg-3); }
 .env-tool-chip svg { flex: none; color: var(--fg-3, var(--fg)); }
 .env-tool-chip.is-agent { border-color: var(--accent); color: var(--accent-text); }
 .env-tool-chip.is-agent svg { color: var(--accent-text); }

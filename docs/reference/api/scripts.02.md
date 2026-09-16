@@ -2,6 +2,13 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `scripts/laering_status.py`
+_Hvad fangede laeringskredsloebet siden nulpunktet?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `main` | `()` | — | [src](../../../scripts/laering_status.py#L23) |
+
 ## `scripts/ledger_rehearsal.py`
 _Generalprøve: kan ledgeren holde RIGTIGE samtaler?_
 

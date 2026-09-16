@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7607/14752 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7607/14753 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -35,12 +35,12 @@ Generated from source. 7607/14752 functions/methods documented (51%). The list b
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.util` | 9 | 10 | 90% |
-| `scripts` | 193 | 387 | 49% |
+| `scripts` | 193 | 388 | 49% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2086)
+## Undocumented public functions (2087)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L206)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -2005,6 +2005,7 @@ Generated from source. 7607/14752 functions/methods documented (51%). The list b
 - `scripts/beacon_rapport.py` :: `main` (L207)
 - `scripts/beacon_rapport.py` :: `opgoer` (L144)
 - `scripts/beacon_rapport.py` :: `skriv` (L181)
+- `scripts/beacon_vagt.py` :: `main` (L37)
 - `scripts/bench_ollama_concurrency.py` :: `main` (L93)
 - `scripts/block_literal_credentials.py` :: `check` (L125)
 - `scripts/block_unattributed_rebase.py` :: `main` (L9)

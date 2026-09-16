@@ -53,6 +53,13 @@ _Opgørelse fra vaertens crash-beacon-log._
 | function | `skriv` | `(rapport, titel)` | — | [src](../../../scripts/beacon_rapport.py#L181) |
 | function | `main` | `()` | — | [src](../../../scripts/beacon_rapport.py#L207) |
 
+## `scripts/beacon_vagt.py`
+_Vagt paa vaertens beacon-log. Læser linjer fra stdin, skriver KUN hændelser._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `main` | `()` | — | [src](../../../scripts/beacon_vagt.py#L37) |
+
 ## `scripts/bench_ollama_concurrency.py`
 _Reproducérbart latency/concurrency-benchmark for Ollama-lanen._
 
@@ -440,11 +447,4 @@ _jarvis_bare practice runner — stripped-bare interlanguage expression generato
 | function | `_run_once` | `()` | Run a single tick and print result. Used by --once. | [src](../../../scripts/jarvis_bare_practice_runner.py#L222) |
 | function | `_run_loop` | `(args)` | Run forever (or for args.hours hours) with args.interval_min between ticks. | [src](../../../scripts/jarvis_bare_practice_runner.py#L232) |
 | function | `main` | `()` | — | [src](../../../scripts/jarvis_bare_practice_runner.py#L318) |
-
-## `scripts/laering_status.py`
-_Hvad fangede laeringskredsloebet siden nulpunktet?_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `main` | `()` | — | [src](../../../scripts/laering_status.py#L23) |
 

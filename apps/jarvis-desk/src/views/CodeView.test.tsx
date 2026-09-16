@@ -8,6 +8,8 @@ import { SettingsProvider } from '../contexts/SettingsContext'
 import { SessionProvider } from '../contexts/SessionContext'
 import { PanelProvider } from '../contexts/PanelContext'
 import { PermissionProvider } from '../contexts/PermissionContext'
+import * as api from '../lib/api'
+import { usePanel } from '../hooks/usePanel'
 
 interface FakeHandlers {
   onEvent: (e: unknown) => void
@@ -21,7 +23,7 @@ vi.mock('../lib/streamClient', () => ({
 }))
 vi.mock('../lib/api', () => ({
   listSessions: vi.fn().mockResolvedValue([]),
-  getSession: vi.fn().mockResolvedValue({ session: { id: 's1', title: 'T' }, messages: [] }),
+  getSession: vi.fn().mockResolvedValue({ session: { id: 's1', title: 'T', updated_at: '2026-09-16T10:00:00Z' }, messages: [] }),
   createSession: vi.fn(),
   cancelRun: vi.fn(),
   whoami: vi.fn().mockResolvedValue({ user_id: 'u', display_name: 'Bjørn', role: 'owner' }),
@@ -42,13 +44,18 @@ vi.mock('../lib/api', () => ({
 
 const cfg = { apiBaseUrl: 'http://t', authToken: 't' }
 
+function PanelProbe() {
+  const panel = usePanel()
+  return <span data-testid="panel-target">{panel.target?.type ?? 'none'}</span>
+}
+
 function wrap(ui: ReactNode) {
   return render(
     <SettingsProvider initialConfig={cfg}>
       <SessionProvider config={cfg}>
         <StreamProvider config={cfg}>
           <PermissionProvider>
-            <PanelProvider defaultWidth={400}>{ui}</PanelProvider>
+            <PanelProvider defaultWidth={400}>{ui}<PanelProbe /></PanelProvider>
           </PermissionProvider>
         </StreamProvider>
       </SessionProvider>
@@ -60,6 +67,9 @@ describe('CodeView', () => {
   beforeEach(() => {
     localStorage.clear()
     handlersRef.current = null
+    vi.mocked(api.getSession).mockResolvedValue({
+      session: { id: 's1', title: 'T', updated_at: '2026-09-16T10:00:00Z' }, messages: [], etag: null,
+    })
   })
 
   it('tom samtale: greeting m. brugernavn + composer', () => {
@@ -104,5 +114,21 @@ describe('CodeView', () => {
     expect(pauseCard).toBeInTheDocument()
     expect(container.querySelector('.transcript .pauseask')).not.toBeInTheDocument()
     expect(pauseCard!.compareDocumentPosition(liveness!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('fører historiske kilder fra transcriptet ind i den fælles inspector', async () => {
+    vi.mocked(api.getSession).mockResolvedValue({
+      etag: null,
+      session: { id: 's1', title: 'T', updated_at: '2026-09-16T10:00:00Z' },
+      messages: [{
+        id: 'a1', role: 'assistant', created_at: '2026-09-16T10:00:00Z',
+        content: [{ type: 'text', text: 'Se https://docs.example.com/api for detaljerne.' }],
+      }],
+    })
+    wrap(<CodeView sessionId="s1" userName="B" role="owner" />)
+    await screen.findByText(/docs\.example\.com\/api/)
+    await userEvent.click(screen.getByRole('button', { name: 'Vis/skjul miljø-felt' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'docs.example.com' }))
+    expect(screen.getByTestId('panel-target')).toHaveTextContent('source')
   })
 })

@@ -503,6 +503,12 @@ export interface GitStatus {
   added: number
   removed: number
   is_git: boolean
+  repo?: string
+  host?: string
+  /** Broens tilstand. TRE vaerdier, ikke to: «genforbinder» er en desk der er
+   *  ved at starte op igen, «nede» er ingen bro. Begge kommer med is_git=false
+   *  — uden dette felt ser de ud som «ikke et git-repo». */
+  link?: 'ok' | 'genforbinder' | 'nede'
 }
 
 /** Git-state for det aktive code-workspace (header-chip). */

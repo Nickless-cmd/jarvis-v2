@@ -12,6 +12,14 @@ const definerede = (css: string) =>
   new Set([...css.matchAll(/^\s*(--[a-z0-9-]+)\s*:/gm)].map((m) => m[1]))
 
 describe('design-tokens', () => {
+  it('holder miljø- og inspector-stil ude af den store app.css', () => {
+    const miljø = læs('environment-inspector.css')
+    expect(app).not.toMatch(/\.env-panel\s*\{/)
+    expect(miljø).toMatch(/\.env-panel\s*\{/)
+    expect(miljø).toMatch(/\.git-add/)
+    expect(miljø).toMatch(/\.git-del/)
+  })
+
   // Et var(--x) uden definition er ikke en skønhedsfejl: uden fallback
   // bliver `background: var(--bg)` gennemsigtig og `color: var(--fg)` arvet.
   // Med fallback brænder den en literal ind, som ikke følger temaskift.
@@ -120,6 +128,18 @@ describe('design-tokens', () => {
       const bg = regel.match(/background:\s*var\((--[a-z0-9-]+)/)?.[1]
       expect(bg, `${vaelger} svæver i hovedfladens egen farve`).toBe('--overlay-bg')
     }
+  })
+
+  // Miljoe-feltet flyttede til sin egen fil i samme uge som farven blev maalt.
+  // Sammenfletningen ville have rullet farven tilbage i stilhed: den ene gren
+  // SLETTEDE reglen i app.css, den anden RETTEDE den samme regel. Git kalder
+  // det en konflikt ét sted og loeser det tavst det andet. Derfor maales
+  // farven dér hvor reglen bor nu.
+  it('miljø-feltet har panelfarven, uanset hvilken fil reglen bor i', () => {
+    const miljø = læs('environment-inspector.css')
+    const regel = miljø.match(/^\.env-panel \{([\s\S]*?)\}/m)?.[1] ?? ''
+    expect(regel, '.env-panel findes ikke i environment-inspector.css').toBeTruthy()
+    expect(regel.match(/background:\s*var\((--[a-z0-9-]+)/)?.[1]).toBe('--bg-2')
   })
 
   // Et kort der har samme farve som sin rude er usynligt. I CC er der to trin

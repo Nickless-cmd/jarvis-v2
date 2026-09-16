@@ -19,7 +19,7 @@ import { TakeoverHost } from './components/shell/TakeoverHost'
 import { SessionSearch } from './components/SessionSearch'
 import { usePanel } from './hooks/usePanel'
 import { SplitLayout } from './components/panel/SplitLayout'
-import { ArtifactPanel } from './components/panel/ArtifactPanel'
+import { InspectorPanel } from './components/panel/InspectorPanel'
 import { useSessions } from './hooks/useSessions'
 import { SetupScreen } from './views/SetupScreen'
 import { ChatView } from './views/ChatView'
@@ -34,6 +34,7 @@ import { DESK_CHROME } from './lib/deskChrome'
 import { StatusBar } from './components/shell/StatusBar'
 import './styles/tokens.css'
 import './styles/app.css'
+import './styles/environment-inspector.css'
 
 /** App = ren wiring. SettingsProvider er wrappet i main.tsx, så useSettings
  *  virker her. Ikke-konfigureret → SetupScreen. Ellers shell med aktiv flade. */
@@ -189,7 +190,14 @@ function ShellWithPanel({ children }: { children: ReactNode }) {
       open={panel.open}
       width={panel.width}
       onResize={panel.resize}
-      panel={<ArtifactPanel artifact={panel.artifact} onClose={panel.close} config={config} />}
+      panel={<InspectorPanel
+        target={panel.target}
+        canGoBack={panel.canGoBack}
+        onBack={panel.back}
+        onClose={panel.close}
+        onOpenTarget={panel.openTarget}
+        config={config}
+      />}
     >
       {children}
     </SplitLayout>

@@ -40,6 +40,24 @@ class _GendanBody(BaseModel):
     sti: str = ""
 
 
+class _TilfoejBody(BaseModel):
+    provider: str
+    model: str
+    lane: str = "cheap"
+    auth_mode: str = "api_key"
+    auth_profile: str = "default"
+    base_url: str = ""
+    #: Valgfri. Tom = roer ikke legitimationen (udbyderen har den maaske i forvejen).
+    #: Gemmes i auth-profilen, aldrig i registret, og kommer aldrig tilbage i svaret.
+    api_key: str = ""
+
+
+class _LaneBody(BaseModel):
+    provider: str
+    model: str
+    lane: str
+
+
 @router.get("")
 async def registret() -> dict:
     """HELE registret: alle udbydere, alle modeller, pr. lane."""
@@ -97,3 +115,23 @@ async def gendan(body: _GendanBody) -> dict:
     _require_owner()
     from core.services.provider_registry_admin import gendan_backup
     return await asyncio.to_thread(gendan_backup, sti=body.sti)
+
+
+@router.post("/add")
+async def tilfoej_route(body: _TilfoejBody) -> dict:
+    """Tilfoej en udbyder + model. `api_key` er valgfri og returneres aldrig."""
+    _require_owner()
+    from core.services.provider_registry_admin import tilfoej
+    return await asyncio.to_thread(
+        tilfoej, provider=body.provider, model=body.model, lane=body.lane,
+        auth_mode=body.auth_mode, auth_profile=body.auth_profile,
+        base_url=body.base_url, api_key=body.api_key)
+
+
+@router.post("/lane")
+async def lane_route(body: _LaneBody) -> dict:
+    """Flyt en model til en anden lane. Flytning er ikke en slukning."""
+    _require_owner()
+    from core.services.provider_registry_admin import saet_lane
+    return await asyncio.to_thread(
+        saet_lane, provider=body.provider, model=body.model, lane=body.lane)

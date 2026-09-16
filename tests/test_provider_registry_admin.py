@@ -108,3 +108,46 @@ def test_aendringen_udsendes_saa_den_kan_ses_bagefter(registret, monkeypatch):
     A.saet_model_aktiv(provider="alfa", model="m2", aktiv=False, grund="fejler")
     assert set_ud and set_ud[0][0] == "runtime.provider_registry_changed"
     assert set_ud[0][1]["provider"] == "alfa" and set_ud[0][1]["handling"] == "model_inaktiv"
+
+
+# ── tilfoejelse og lane-flytning (16/9-2026) ─────────────────────────────
+
+def test_en_ny_model_kan_tilfoejes(registret, monkeypatch):
+    kaldt = {}
+    import core.runtime.provider_router as pr
+
+    def _fake(**kw):
+        kaldt.update(kw)
+        data = _laes(registret)
+        data["models"].append({"provider": kw["provider"], "model": kw["model"],
+                               "lane": kw["lane"], "enabled": True})
+        registret.write_text(json.dumps(data), encoding="utf-8")
+        return {"credentials_saved": bool(kw.get("api_key"))}
+
+    monkeypatch.setattr(pr, "configure_provider_router_entry", _fake)
+    ud = A.tilfoej(provider="ny", model="m9", lane="cheap", base_url="https://ny/v1")
+    assert ud["status"] == "ok" and ud["noegle_gemt"] is False
+    assert any(m["model"] == "m9" for m in _laes(registret)["models"])
+    assert kaldt["set_visible"] is False       # tilfoejelse maa ALDRIG skifte hans synlige model
+
+
+def test_noeglen_naar_aldrig_tilbage_i_svaret(registret, monkeypatch):
+    import core.runtime.provider_router as pr
+    monkeypatch.setattr(pr, "configure_provider_router_entry",
+                        lambda **kw: {"credentials_saved": True})
+    ud = A.tilfoej(provider="ny", model="m9", api_key="hemmelig-noegle")
+    assert ud["noegle_gemt"] is True
+    assert "hemmelig-noegle" not in json.dumps(ud)
+
+
+def test_lane_kan_flyttes(registret):
+    ud = A.saet_lane(provider="alfa", model="m1", lane="local")
+    assert ud["fra"] == "cheap" and ud["til"] == "local"
+    m = next(x for x in _laes(registret)["models"] if x["model"] == "m1")
+    assert m["lane"] == "local" and m["enabled"] is True   # flytning er ikke en slukning
+
+
+def test_lane_paa_ukendt_model_skriver_intet(registret):
+    foer = registret.read_text(encoding="utf-8")
+    assert A.saet_lane(provider="alfa", model="findes-ikke", lane="local")["status"] == "error"
+    assert registret.read_text(encoding="utf-8") == foer

@@ -291,3 +291,62 @@ def backups() -> list[dict[str, Any]]:
         return ud
     except Exception:
         return []
+
+
+def tilfoej(*, provider: str, model: str, lane: str = "cheap",
+            auth_mode: str = "api_key", auth_profile: str = "default",
+            base_url: str = "", api_key: str = "") -> dict[str, Any]:
+    """Tilfoej (eller gen-aktivér) en udbyder + model i registret.
+
+    Bygger paa `configure_provider_router_entry`, som allerede kan det —
+    og som ALTID saetter `enabled: True`. Det er rigtigt HER: man tilfoejer
+    noget for at bruge det. At slaa fra er en anden handling med sin egen knap.
+
+    ## Noeglen
+
+    `api_key` er valgfri. Er den tom, roeres legitimationen ikke — saa kan man
+    tilfoeje en model til en udbyder der allerede har sin noegle, uden at skulle
+    finde den frem igen. Noeglen gemmes af `save_provider_credentials` i
+    auth-profilen, aldrig i registret, og den vender aldrig tilbage i svaret.
+    """
+    p_navn, m_navn = (provider or "").strip(), (model or "").strip()
+    if not p_navn or not m_navn:
+        return {"status": "error", "fejl": "provider og model skal begge angives"}
+    backup = _backup()
+    try:
+        from core.runtime.provider_router import configure_provider_router_entry
+        ud = configure_provider_router_entry(
+            provider=p_navn, model=m_navn, auth_mode=auth_mode,
+            auth_profile=auth_profile, base_url=base_url,
+            api_key=api_key, lane=lane, set_visible=False,
+        )
+    except Exception as exc:
+        return {"status": "error", "fejl": str(exc)[:200], "backup": backup}
+    _sig_det_hoejt("tilfoejet", {"provider": p_navn, "model": m_navn, "lane": lane,
+                                "noegle_gemt": bool(ud.get("credentials_saved"))})
+    # Noeglen selv naar ALDRIG tilbage til klienten.
+    return {"status": "ok", "provider": p_navn, "model": m_navn, "lane": lane,
+            "noegle_gemt": bool(ud.get("credentials_saved")), "backup": backup}
+
+
+def saet_lane(*, provider: str, model: str, lane: str) -> dict[str, Any]:
+    """Flyt en model til en anden lane (cheap, local, coding, visible …).
+
+    Lanen afgoer HVEM der bruger modellen. Balanceren bygger sin pulje af
+    `lane == "cheap"`, saa en flytning herfra tager modellen ud af puljen ved
+    naeste opbygning — uden at den bliver slaaet fra.
+    """
+    p_navn, m_navn, l = (provider or "").strip(), (model or "").strip(), (lane or "").strip()
+    if not p_navn or not m_navn or not l:
+        return {"status": "error", "fejl": "provider, model og lane skal alle angives"}
+    r = _laes()
+    for post in r["models"]:
+        if str(post.get("provider")) == p_navn and str(post.get("model")) == m_navn:
+            foer = post.get("lane")
+            post["lane"] = l
+            post["updated_at"] = _nu()
+            backup = _skriv(r)
+            _sig_det_hoejt("lane_aendret", {"provider": p_navn, "model": m_navn,
+                                            "fra": foer, "til": l})
+            return {"status": "ok", "fra": foer, "til": l, "backup": backup}
+    return {"status": "error", "fejl": f"ukendt model: {p_navn}/{m_navn}"}

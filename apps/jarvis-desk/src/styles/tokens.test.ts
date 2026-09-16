@@ -88,6 +88,24 @@ describe('design-tokens', () => {
     expect(sidebar).not.toBe(main)
   })
 
+  // En menu der svæver over fladen i FLADENS egen farve har intet at løfte sig
+  // fra — kun skyggen siger at den ligger ovenpå. Målt i CC: popups ligger på
+  // #20201F med en lysere kant #363635.
+  //
+  // Bemærk hvad denne test IKKE kræver: at ALLE kort skiller sig ud. 18 kort i
+  // app.css står i hovedfladens farve, og jeg var på vej til at «rette» dem
+  // alle — indtil målingen viste at CC's eget «Edited 2 files»-kort står i
+  // NØJAGTIG samme #151515 som chatten bag det. Inline-kort flugter med vilje;
+  // det er kun de svævende der skal løfte sig.
+  it('svævende menuer og dialoger løfter sig fra fladen', () => {
+    for (const vaelger of ['.file-context-menu', '.connector-menu', '.mention-liste', '.pv-bekraeft']) {
+      const regel = app.match(new RegExp(`\\${vaelger} \\{([\\s\\S]*?)\\n\\}`))?.[1] ?? ''
+      expect(regel, `${vaelger} findes ikke`).toBeTruthy()
+      const bg = regel.match(/background:\s*var\((--[a-z0-9-]+)/)?.[1]
+      expect(bg, `${vaelger} svæver i hovedfladens egen farve`).toBe('--overlay-bg')
+    }
+  })
+
   // Et kort der har samme farve som sin rude er usynligt. I CC er der to trin
   // mellem dem (#1A1A19 → #252524) — det er sådan jobs-kortene træder frem.
   it('kort ligger over deres panel, ikke i det', () => {

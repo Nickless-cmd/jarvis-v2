@@ -50,6 +50,13 @@
   --accent-text: #e59a7d;
   --user-bubble: #202020;   /* målt: CC's boble er NEUTRAL, ikke tonet */
   --field-bg: #20201f;      /* inputfeltet — ét trin over panelet */
+  /* Svævende flader (menuer, dialoger) er IKKE almindelige kort. Målt i CC:
+     en popup ligger på #20201F med en lysere kant #363635 — den løfter sig
+     fra fladen. Et INLINE kort gør det modsatte: CC's «Edited 2 files» står
+     i #151515, altså flugtende med chatten, adskilt kun af sin kant. De to
+     er derfor to forskellige tokens og ikke ét «kort»-token. */
+  --overlay-bg: #20201f;
+  --overlay-line: #363635;
   --code-bg: #1a1a19;
 
   --error-fg: #ef7e6b;

@@ -1651,7 +1651,7 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 /* Højreklik-menu på en fil (editor/terminal) */
 .file-context-menu {
   position: fixed; z-index: 60; min-width: 160px; padding: 4px;
-  background: var(--bg-1); border: 1px solid var(--line); border-radius: 8px;
+  background: var(--overlay-bg); border: 1px solid var(--overlay-line); border-radius: 8px;
   box-shadow: 0 8px 24px rgba(0,0,0,0.4); display: flex; flex-direction: column; gap: 2px;
 }
 .file-context-item {
@@ -2043,7 +2043,7 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 .connector-menu-anchor { position: relative; }
 .connector-menu-anchor > button { background: none; border: none; color: var(--fg-3); cursor: pointer; display: flex; padding: 2px; }
 .connector-menu { position: absolute; right: 0; top: 22px; z-index: 20; min-width: 150px;
-  background: var(--bg-1); border: 1px solid var(--line); border-radius: 9px; padding: 4px; display: flex; flex-direction: column;
+  background: var(--overlay-bg); border: 1px solid var(--overlay-line); border-radius: 9px; padding: 4px; display: flex; flex-direction: column;
   box-shadow: 0 8px 24px rgba(0,0,0,.3); }
 .connector-menu button { text-align: left; background: none; border: none; color: var(--fg-2); cursor: pointer;
   font-size: 13px; padding: 7px 9px; border-radius: 6px; }
@@ -2918,7 +2918,7 @@ button.sidebar-group svg { flex: none; opacity: .7; }
   display: flex; flex-direction: column;
   max-height: 15rem; overflow-y: auto;
   margin: 0 0 6px; padding: 4px;
-  background: var(--bg-1); border: 1px solid var(--line);
+  background: var(--overlay-bg); border: 1px solid var(--overlay-line);
   border-radius: var(--radius-lg);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28);
 }
@@ -3291,7 +3291,7 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 .pv-form button:disabled { opacity: .5; cursor: default; }
 .pv-bekraeft {
   position: fixed; inset: 0; margin: auto; height: fit-content; width: min(460px, 92vw);
-  background: var(--bg-1); border: 1px solid var(--bg-3, var(--bg-2)); border-radius: 12px;
+  background: var(--overlay-bg); border: 1px solid var(--overlay-line); border-radius: 12px;
   padding: 18px 20px; z-index: 50; box-shadow: 0 12px 40px rgba(0,0,0,.4);
 }
 .pv-bekraeft p { color: var(--fg-1); margin: 0 0 14px; }

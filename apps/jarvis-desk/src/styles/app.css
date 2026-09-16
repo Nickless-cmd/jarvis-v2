@@ -14,6 +14,8 @@
 
 /* ─── Sidebar ────────────────────────────────────────── */
 .sidebar {
+  /* position: relative baerer traekgrebet paa hoejre kant. */
+  position: relative;
   /* --bg-0, ikke --bg-1: sidebaren og .main stod paa NOEJAGTIG samme farve.
      I CC er sidebaren det moerkeste i billedet. (Bjoern 16/9-2026) */
   background: var(--bg-0);
@@ -3525,3 +3527,17 @@ body.egen-ramme .main { padding-top: 34px; }
 }
 /* Separatoren staar UDEN FOR sti-elementet — se noten ved .sidebar-projekt-sti. */
 .sidebar-projekt-prik { color: var(--fg-3); flex: 0 0 auto; }
+
+/* Traekgreb paa sidepanelets hoejre kant (Bjoern 16/9-2026: «venstre panel
+   mangler traek og slip til breden»). Selve stregen er 1 px bred, men
+   ramme-omraadet er 7 px — en 1 px maalskive kan ingen ramme. */
+.sidebar-greb {
+  position: absolute; top: 0; right: -3px; bottom: 0; width: 7px;
+  cursor: col-resize; z-index: 60; background: transparent;
+}
+.sidebar-greb:hover::after, .sidebar-greb.er-aktiv::after,
+.sidebar-greb:focus-visible::after {
+  content: ''; position: absolute; top: 0; bottom: 0; left: 3px; width: 1px;
+  background: var(--accent);
+}
+.sidebar-greb:focus-visible { outline: none; }

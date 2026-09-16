@@ -12,6 +12,7 @@ import { useStream } from '../../hooks/useStream'
 import { getActiveRuns } from '../../lib/api'
 import { COWORK_ZONES, emitZone, onZone, normalizeZone, type Zone } from '../../lib/coworkZone'
 import { grupperSessioner, GRUPPER_I_MODE, grupperEfterProjekt, type SessionGruppe } from '../../lib/sessionGroups'
+import { SidebarGreb } from './SidebarGreb'
 import { ModeDropdown, type Mode } from './ModeDropdown'
 import { SecondaryNav, type SecondarySurface } from './SecondaryNav'
 
@@ -77,6 +78,7 @@ export function Sidebar({
 
   return (
     <aside className="sidebar">
+      <SidebarGreb />
       {/* Mode-vaelger + de to handlinger man bruger oftest. Slideren brugte hele
           bredden paa at vise tre valg; dropdown'en viser det aktive og frigoer
           plads ved siden af. */}

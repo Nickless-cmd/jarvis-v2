@@ -30,6 +30,7 @@ import * as os from 'node:os'
 import { spawn, type ChildProcess } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
 import * as geo from './geo'
+import { brugbarPlads, husk } from './vinduesplads'
 
 const isDev = process.env.NODE_ENV === 'development'
 const APP_NAME = 'J.A.R.V.I.S.'
@@ -326,9 +327,15 @@ function setupEditMenuAndContextMenu(win: BrowserWindow): void {
 }
 
 function createMainWindow(): void {
+  // Pladsen fra sidst — position, stoerrelse og maksimeret (Bjoern 16/9-2026:
+  // «husk at appen skal huske position efter restart»). Efterproevet mod de
+  // skaerme der ER tilsluttet; ellers ville en frakoblet skaerm lade vinduet
+  // aabne uden for alt synligt.
+  const plads = brugbarPlads()
   mainWindow = new BrowserWindow({
-    width: 1280,
-    height: 800,
+    width: plads.width,
+    height: plads.height,
+    ...(plads.x !== undefined && plads.y !== undefined ? { x: plads.x, y: plads.y } : {}),
     minWidth: 960,
     minHeight: 600,
     title: APP_NAME,
@@ -382,6 +389,11 @@ function createMainWindow(): void {
     }
     return { action: 'deny' }
   })
+
+  // Var den maksimeret da den blev lukket, aabner den maksimeret igen — og
+  // «gendan» giver den stoerrelse den havde FOER maksimeringen.
+  if (plads.maximized) mainWindow.maximize()
+  husk(mainWindow)
 
   setupEditMenuAndContextMenu(mainWindow)
 

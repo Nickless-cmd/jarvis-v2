@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7614/14763 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7615/14765 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 7614/14763 functions/methods documented (51%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 650 | 1187 | 54% |
-| `core.services` | 5058 | 10159 | 49% |
+| `core.services` | 5059 | 10160 | 49% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 109 | 184 | 59% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -35,12 +35,12 @@ Generated from source. 7614/14763 functions/methods documented (51%). The list b
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.util` | 9 | 10 | 90% |
-| `scripts` | 193 | 388 | 49% |
+| `scripts` | 193 | 389 | 49% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2088)
+## Undocumented public functions (2089)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L206)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -780,11 +780,11 @@ Generated from source. 7614/14763 functions/methods documented (51%). The list b
 - `core/services/central_white_rabbit.py` :: `record_white_rabbit` (L62)
 - `core/services/chat_sessions.py` :: `append_chat_message` (L602)
 - `core/services/chat_sessions.py` :: `create_chat_session` (L54)
-- `core/services/chat_sessions.py` :: `delete_chat_session` (L1275)
+- `core/services/chat_sessions.py` :: `delete_chat_session` (L1294)
 - `core/services/chat_sessions.py` :: `get_chat_session` (L523)
-- `core/services/chat_sessions.py` :: `recent_chat_session_messages` (L955)
-- `core/services/chat_sessions.py` :: `recent_chat_tool_messages` (L1236)
-- `core/services/chat_sessions.py` :: `rename_chat_session` (L1261)
+- `core/services/chat_sessions.py` :: `recent_chat_session_messages` (L974)
+- `core/services/chat_sessions.py` :: `recent_chat_tool_messages` (L1255)
+- `core/services/chat_sessions.py` :: `rename_chat_session` (L1280)
 - `core/services/cheap_lane_balancer.py` :: `BalancerSlot.slot_id` (L33)
 - `core/services/cheap_provider_runtime_adapters.py` :: `list_provider_models` (L180)
 - `core/services/cheap_provider_runtime_adapters.py` :: `provider_auth_ready` (L135)
@@ -2087,6 +2087,7 @@ Generated from source. 7614/14763 functions/methods documented (51%). The list b
 - `scripts/minimal_mode_baseline.py` :: `main` (L248)
 - `scripts/mint_jarvisx_token.py` :: `main` (L52)
 - `scripts/model_catalogue_sweep.py` :: `main` (L36)
+- `scripts/navngiv_kode_sessioner.py` :: `main` (L27)
 - `scripts/nudge_well_cleanup.py` :: `clean_broend` (L64)
 - `scripts/nudge_well_cleanup.py` :: `clean_outbound` (L24)
 - `scripts/nudge_well_cleanup.py` :: `main` (L85)

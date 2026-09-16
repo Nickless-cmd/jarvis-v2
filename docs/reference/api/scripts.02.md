@@ -154,6 +154,13 @@ _Ugentlig gennemgang af cheap lane: hvilke modeller lever, og hvad kan de?_
 |---|---|---|---|---|
 | function | `main` | `()` | — | [src](../../../scripts/model_catalogue_sweep.py#L36) |
 
+## `scripts/navngiv_kode_sessioner.py`
+_Døb de sessioner der aldrig fik et navn, efter deres første brugerbesked._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `main` | `()` | — | [src](../../../scripts/navngiv_kode_sessioner.py#L27) |
+
 ## `scripts/nudge_well_cleanup.py`
 _Drain the two dead nudge wells (redesign 2026-09-04). Dry-run by default._
 

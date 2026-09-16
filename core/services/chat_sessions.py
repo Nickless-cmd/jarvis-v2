@@ -849,6 +849,25 @@ _PLADSHOLDER_TITLER = frozenset({
 })
 
 
+def _er_pladsholder(titel: str) -> bool:
+    """Er titlen en pladsholder — uanset hvordan den er stavet?
+
+    HER LAA FEJLEN (fundet 16/9-2026). Saettet indeholdt «kode session» med
+    MELLEMRUM, men desk opretter sessionen som «Kode-session» med BINDESTREG.
+    Ét tegn til forskel, og omdoebningen fyrede aldrig: 12 kode-sessioner stod
+    som «Kode-session» med perfekte foerste beskeder — «Godmorgen», «Er du
+    der?», «hey.. samle lige op fra vores sidste samtale» — der aldrig blev
+    brugt. Bjoern: «kode sessioner arver stadig ikk navn fra foerste besked».
+
+    Derfor sammenlignes der ikke laengere paa den noejagtige streng. Bindestreg
+    og understreg regnes som mellemrum, saa «Kode-session», «kode_session» og
+    «Kode  Session» alle rammer den samme post. En liste over stavemaader vil
+    altid komme bagud for dem der skriver dem.
+    """
+    t = " ".join(str(titel or "").replace("-", " ").replace("_", " ").split()).lower()
+    return t in _PLADSHOLDER_TITLER
+
+
 def _navngiv_fra_foerste_besked(session_id: str, content: str) -> None:
     """Doeb sessionen efter det foerste brugeren skrev i den.
 
@@ -873,7 +892,7 @@ def _navngiv_fra_foerste_besked(session_id: str, content: str) -> None:
                 (session_id,)).fetchone()
             if row is None:
                 return
-            if str(row["title"] or "").strip().lower() not in _PLADSHOLDER_TITLER:
+            if not _er_pladsholder(row["title"]):
                 return
             conn.execute(
                 "UPDATE chat_sessions SET title = ? WHERE session_id = ?",

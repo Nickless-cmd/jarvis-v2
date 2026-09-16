@@ -424,3 +424,32 @@ describe('skinne-reglen rammer klasser der findes', () => {
     expect(døde, 'klasser ingen komponent bruger').toEqual([])
   })
 })
+
+/**
+ * Skinnen må ikke fange klik hvor den er tom.
+ *
+ * Den er en beholder i FULD HØJDE, også når den kun indeholder miljø-feltet
+ * på få rækker. Et element uden baggrund modtager stadig museklik, så hele
+ * højre kolonne var død: header-ikonerne kunne ikke trykkes, og det så ud som
+ * om appen var gået i stå (Bjørn 16/9-2026: «nu kan jeg slet ikk trykke på
+ * nogen af ikonerne … det er miljø feltet der skaber problemer»).
+ *
+ * HVAD DENNE TEST KAN OG IKKE KAN: den læser CSS'en. Den kan se at reglen er
+ * væk, men den kan ikke se om noget ANDET lægger sig oven på headeren — det
+ * kræver layout, og jsdom regner ikke layout. Den del blev målt i browseren
+ * med elementFromPoint.
+ */
+describe('skinnen fanger ikke klik hvor den er tom', () => {
+  const stak = app.match(/\.code-right-stack \{([^}]*)\}/)?.[1] ?? ''
+  const boern = app.match(/\.code-right-stack > \* \{([^}]*)\}/)?.[1] ?? ''
+
+  it('selve skinnen er klik-gennemsigtig', () => {
+    expect(stak).toMatch(/pointer-events:\s*none/)
+  })
+
+  it('men ruderne i den tager imod', () => {
+    // Uden denne ville rettelsen gøre panelerne ubrugelige i stedet for
+    // headeren — samme fejl, flyttet et skridt.
+    expect(boern).toMatch(/pointer-events:\s*auto/)
+  })
+})

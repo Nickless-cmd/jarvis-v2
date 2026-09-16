@@ -2498,6 +2498,15 @@ button.sidebar-group svg { flex: none; opacity: .7; }
   width: var(--skinne-bredde);
   display: flex; flex-direction: column; gap: 10px;
   overflow: hidden;
+  /* SKINNEN FANGER IKKE KLIK. Den er en beholder i fuld hoejde, ogsaa naar
+     den kun indeholder miljoe-feltet paa faa raekker — og et element uden
+     baggrund modtager stadig museklik. Resultatet var at hele hoejre kolonne
+     var doed: header-ikonerne kunne ikke trykkes, og det saa ud som om appen
+     var gaaet i staa (Bjoern 16/9-2026: «nu kan jeg slet ikk trykke på nogen
+     af ikonerne … det er miljø feltet der skaber problemer»).
+
+     Ruderne selv tager naturligvis imod klik igen. */
+  pointer-events: none;
 }
 /* To SEPARATE kort stablet, ikke én flade med en streg imellem — saadan gør
    CC det, og det er sådan Bjørn viste det. Hvert kort beholder sin egen kant,
@@ -2508,6 +2517,10 @@ button.sidebar-group svg { flex: none; opacity: .7; }
    en stribe. Én aaben rude fylder hele skinnen. */
 .code-right-stack > * {
   flex: 1 1 0; min-height: 0; overflow-y: auto;
+  /* Ruderne tager imod klik igen — skinnen selv er klik-gennemsigtig, se
+     noten dér. Uden denne linje ville rettelsen goere PANELERNE ubrugelige i
+     stedet for headeren: samme fejl, flyttet et skridt. */
+  pointer-events: auto;
 }
 /* Undtagelsen for miljoe-feltet staar i environment-inspector.css, hvor
    .env-panel bor — app.css maa ikke baere dens regler (test i tokens.test.ts). */

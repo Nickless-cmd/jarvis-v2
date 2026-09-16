@@ -511,6 +511,31 @@ def validate_compact_marker(
     }
 
 
+_HALE_OVERSKRIFT = "\n\n## Seneste udveksling (ordret bevaret siden compaction):\n"
+
+
+def mark_failures_superseded(session_id: str, *, new_marker_id: str) -> int:
+    """Luk aabne valideringsfejl for sessionen: en nyere markoer har afloest dem.
+
+    Returnerer antal lukkede. Kaster aldrig.
+    """
+    try:
+        _ensure_compaction_validation_table()
+        from core.runtime.db import connect as _connect
+        with _connect() as _conn:
+            cur = _conn.execute(
+                """
+                UPDATE compaction_validation_failures
+                SET resolved_at = ?, new_marker_id = ?
+                WHERE session_id = ? AND resolved_at IS NULL AND marker_id != ?
+                """,
+                (datetime.now(UTC).isoformat(), new_marker_id, session_id, new_marker_id),
+            )
+            return int(cur.rowcount or 0)
+    except Exception:
+        return 0
+
+
 def auto_regenerate_compact_marker(
     session_id: str,
     original_marker_id: str = "",
@@ -523,8 +548,24 @@ def auto_regenerate_compact_marker(
     Returns the new marker_id, or None on failure. If the original marker
     needs no correction, returns None without regenerating.
     """
-    # Fetch current marker
-    from core.services.chat_sessions import get_compact_marker_with_sha
+    # ALDRIG oven paa nyere beskeder (16/9-2026). Ledgeren er append-only, saa
+    # en omskrevet markoer kan kun laegges SIDST i sessionen — og kun beskeder
+    # efter den seneste markoer sendes med. Er der skrevet noget siden den
+    # gamle markoer, ville omskrivningen skubbe det hele ud af konteksten og
+    # erstatte det med 300 ord. Et resume med en fejl er mindre skadeligt end
+    # en samtale der forsvinder midt i en tur.
+    from core.services.chat_sessions import (
+        chat_session_messages_since_last_compact,
+        get_compact_marker_with_sha,
+    )
+    if chat_session_messages_since_last_compact(session_id, max_total=1):
+        logger.info(
+            "auto_regenerate: session=%s springer over — der er beskeder efter "
+            "markoeren, og en ny markoer ville skubbe dem ud af konteksten",
+            session_id,
+        )
+        return None
+
     current_text, current_sha = get_compact_marker_with_sha(session_id)
     if not current_text:
         return None
@@ -566,6 +607,11 @@ def auto_regenerate_compact_marker(
     if not new_summary or new_summary.startswith("[Kontekst komprimeret"):
         logger.warning("auto_regenerate: LLM returned fallback — keeping original")
         return None
+
+    # Den ordrette hale fra komprimeringen skal med over. Omskrivningen beder om
+    # «under 300 ord», og uden dette forsvandt den seneste udveksling ordret.
+    if _HALE_OVERSKRIFT in current_text and _HALE_OVERSKRIFT not in new_summary:
+        new_summary = new_summary.rstrip() + _HALE_OVERSKRIFT + current_text.split(_HALE_OVERSKRIFT, 1)[1]
 
     # Store the new marker
     from core.services.chat_sessions import store_compact_marker

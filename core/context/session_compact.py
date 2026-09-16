@@ -65,17 +65,21 @@ def compact_session_history(
                 return None
     except Exception:
         pass
-    # Lag D: self-heal stale markers before compacting
-    try:
-        from core.context.compact_ground_truth import resolve_stale_markers_on_load
-        healed = resolve_stale_markers_on_load(session_id)
-        if healed:
-            logger.info(
-                "session_compact: self-healed session=%s → new marker=%s",
-                session_id, healed,
-            )
-    except Exception as exc:
-        logger.debug("session_compact: self-heal skipped (%s)", exc)
+    # INGEN self-heal foer komprimeringen (fjernet 16/9-2026).
+    #
+    # Her stod «Lag D»: skriv den gamle markoer om, FOER den nye komprimering.
+    # Maalt i journalen: hver gang skrev den en ny kort markoer (~1.700 tegn,
+    # ofte ubrugelig — «We need answer user asks rewrite compact summary…»),
+    # og 10-17 s senere lagde komprimeringen den store oven paa. Bjoern saa
+    # parrene paa 12/9, 14/9 og 15/9 og koblede dem til sine stille cutoffs.
+    #
+    # Omskrivningen var spildt — markoeren blev afloest med det samme — og
+    # farlig i mellemtiden: markoeren laegges sidst i sessionen, og kun beskeder
+    # EFTER den sendes med. I hullet saa en ny prompt-bygning (prompt-cachen
+    # holder 45 s, og hans ture varer minutter) et resume paa 300 ord og
+    # INGENTING efter det — heller ikke den besked han var ved at faa svar paa.
+    #
+    # De gamle fejl markeres i stedet som afloest, naar den nye markoer staar.
 
     messages = _get_all_session_messages(session_id)
 
@@ -124,6 +128,15 @@ def compact_session_history(
             logger.debug("session_compact: tail-embed skipped (%s)", exc)
 
     marker_id = _store_marker(session_id, marker_content, git_sha=git_sha)
+
+    # Den nye markoer afloeser de gamle. Uden dette ville vagten (hvert 30.
+    # min) og prompt-stien senere «hele» en markoer der ikke laengere bruges —
+    # og laegge en ny oven paa alt der er skrevet siden.
+    try:
+        from core.context.compact_ground_truth import mark_failures_superseded
+        mark_failures_superseded(session_id, new_marker_id=marker_id)
+    except Exception as exc:
+        logger.debug("session_compact: afloesning ikke markeret (%s)", exc)
 
     # Lag C: post-compact validation — check for hallucinated claims
     validation: dict | None = None

@@ -31,15 +31,16 @@ _Ground-truth injection and freshness checking for context compaction._
 | function | `_ensure_compaction_validation_table` | `()` | Create compaction_validation_failures table if it doesn't exist (Lag D prep). | [src](../../../core/context/compact_ground_truth.py#L354) |
 | function | `_log_validation_failure` | `(session_id, marker_id, failures)` | Log a validation failure to DB. Returns the row ID or None. | [src](../../../core/context/compact_ground_truth.py#L377) |
 | function | `validate_compact_marker` | `(session_id, marker_text, marker_id=…, ground_truth=…)` | Post-compact validation of a compact marker against ground truth. | [src](../../../core/context/compact_ground_truth.py#L428) |
-| function | `auto_regenerate_compact_marker` | `(session_id, original_marker_id=…)` | Auto-regenerate a compact marker if post-compact validation failed. | [src](../../../core/context/compact_ground_truth.py#L514) |
-| function | `get_validation_failures` | `(session_id=…, limit=…)` | Read recent compaction validation failures from DB. | [src](../../../core/context/compact_ground_truth.py#L598) |
-| function | `get_validation_failures_summary` | `(session_id=…)` | Get a summary of validation failures for awareness / heartbeat. | [src](../../../core/context/compact_ground_truth.py#L644) |
-| function | `get_compact_marker_freshness` | `(stored_sha)` | Check freshness of a stored compact marker against current git HEAD. | [src](../../../core/context/compact_ground_truth.py#L655) |
-| function | `_extract_topic_words` | `(text)` | Extract meaningful topic/noun words from a text, filtering noise. | [src](../../../core/context/compact_ground_truth.py#L727) |
-| function | `_check_user_message_against_marker` | `(user_msg, marker_text, marker_failures=…)` | Check if a user message corrects a compact marker's false claim. | [src](../../../core/context/compact_ground_truth.py#L749) |
-| function | `detect_compact_mismatch_in_chat` | `(session_id)` | Scan recent user messages for corrections contradicting the latest compact marker. | [src](../../../core/context/compact_ground_truth.py#L803) |
-| function | `resolve_stale_markers_on_load` | `(session_id)` | Boot-time check: auto-regenerate stale/unresolved compact markers. | [src](../../../core/context/compact_ground_truth.py#L838) |
-| function | `compact_healthcheck_daemon_tick` | `()` | Periodic healthcheck: scan all sessions with unresolved validation failures. | [src](../../../core/context/compact_ground_truth.py#L880) |
+| function | `mark_failures_superseded` | `(session_id, *, new_marker_id)` | Luk aabne valideringsfejl for sessionen: en nyere markoer har afloest dem. | [src](../../../core/context/compact_ground_truth.py#L517) |
+| function | `auto_regenerate_compact_marker` | `(session_id, original_marker_id=…)` | Auto-regenerate a compact marker if post-compact validation failed. | [src](../../../core/context/compact_ground_truth.py#L539) |
+| function | `get_validation_failures` | `(session_id=…, limit=…)` | Read recent compaction validation failures from DB. | [src](../../../core/context/compact_ground_truth.py#L644) |
+| function | `get_validation_failures_summary` | `(session_id=…)` | Get a summary of validation failures for awareness / heartbeat. | [src](../../../core/context/compact_ground_truth.py#L690) |
+| function | `get_compact_marker_freshness` | `(stored_sha)` | Check freshness of a stored compact marker against current git HEAD. | [src](../../../core/context/compact_ground_truth.py#L701) |
+| function | `_extract_topic_words` | `(text)` | Extract meaningful topic/noun words from a text, filtering noise. | [src](../../../core/context/compact_ground_truth.py#L773) |
+| function | `_check_user_message_against_marker` | `(user_msg, marker_text, marker_failures=…)` | Check if a user message corrects a compact marker's false claim. | [src](../../../core/context/compact_ground_truth.py#L795) |
+| function | `detect_compact_mismatch_in_chat` | `(session_id)` | Scan recent user messages for corrections contradicting the latest compact marker. | [src](../../../core/context/compact_ground_truth.py#L849) |
+| function | `resolve_stale_markers_on_load` | `(session_id)` | Boot-time check: auto-regenerate stale/unresolved compact markers. | [src](../../../core/context/compact_ground_truth.py#L884) |
+| function | `compact_healthcheck_daemon_tick` | `()` | Periodic healthcheck: scan all sessions with unresolved validation failures. | [src](../../../core/context/compact_ground_truth.py#L926) |
 
 ## `core/context/compact_llm.py`
 _Thin wrapper for compact summarisation._
@@ -92,8 +93,8 @@ _Session-level context compaction._
 |---|---|---|---|---|
 | class | `CompactResult` | `` | — | [src](../../../core/context/session_compact.py#L18) |
 | function | `compact_session_history` | `(session_id, *, keep_recent=…, keep_recent_tokens=…, summarise_fn, git_sha=…)` | Compact old session history for session_id. | [src](../../../core/context/session_compact.py#L25) |
-| function | `_get_all_session_messages` | `(session_id)` | — | [src](../../../core/context/session_compact.py#L163) |
-| function | `_store_marker` | `(session_id, summary_text, git_sha=…)` | — | [src](../../../core/context/session_compact.py#L168) |
+| function | `_get_all_session_messages` | `(session_id)` | — | [src](../../../core/context/session_compact.py#L176) |
+| function | `_store_marker` | `(session_id, summary_text, git_sha=…)` | — | [src](../../../core/context/session_compact.py#L181) |
 
 ## `core/context/token_estimate.py`
 _Token estimation utilities — heuristic only, no tokenizer required._

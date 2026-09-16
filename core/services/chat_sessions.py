@@ -327,7 +327,12 @@ def list_chat_sessions(
                     FROM chat_messages m2
                     WHERE m2.session_id = s.session_id
                 ), 0) AS message_count,
-                s.workspace_kind
+                s.workspace_kind,
+                -- Samme kolonne som i forespoergslen ovenfor. Foerste rettelse
+                -- ramte KUN den ene af de to, saa kaldet uden bruger-id svarede
+                -- videre uden projekt — og listen saa tom ud paa praecis det
+                -- felt der var hele pointen.
+                s.workspace_root
             FROM chat_sessions s
             WHERE (? = 1 OR COALESCE(s.archived, 0) = 0)
               AND (? = '' OR COALESCE(s.kind, 'chat') = ?)

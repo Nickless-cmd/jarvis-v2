@@ -35,6 +35,53 @@ describe('design-tokens', () => {
     }
   })
 
+  // Bjørn 16/9-2026: «alt for mørk og alt har den samme farve sort». Den gamle
+  // rampe startede på RENT sort og var neutralt grå hele vejen — fladerne kunne
+  // ikke skilles ad. Begge dele er målbare, så de måles.
+  it('det mørke tema har SYNLIGE lag og starter ikke på sort', () => {
+    const blok = tokens.match(/^:root \{([\s\S]*?)\n\}/m)?.[1] ?? ''
+    const v = (navn: string) => (blok.match(new RegExp(`${navn}:\\s*(#[0-9a-f]{6})`, 'i')) ?? [])[1] ?? ''
+    const rampe = ['--bg-0', '--bg-1', '--bg-2', '--bg-3'].map(v)
+    expect(rampe.every(Boolean), 'rampen mangler et trin').toBe(true)
+    expect(rampe[0]).not.toBe('#000000')
+
+    const lum = (h: string) =>
+      [1, 3, 5].map((i) => parseInt(h.substr(i, 2), 16) / 255)
+        .map((x) => (x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4))
+        .reduce((a, c, i) => a + [0.2126, 0.7152, 0.0722][i]! * c, 0)
+
+    // To krav, fordi ét ikke er nok. Hvert trin skal kunne SES over det
+    // forrige — men springet canvas → panel er med vilje diskret i denne
+    // slags palet (Claude-appen gør det samme). Derfor maales ogsaa HELE
+    // rampen: uden den kunne fire naesten ens trin bestaa hver for sig.
+    for (let i = 1; i < rampe.length; i++) {
+      const forhold = (lum(rampe[i]!) + 0.05) / (lum(rampe[i - 1]!) + 0.05)
+      expect(forhold, `${rampe[i - 1]} → ${rampe[i]} gav ${forhold.toFixed(2)}`).toBeGreaterThan(1.1)
+    }
+    const helerampen = (lum(rampe[3]!) + 0.05) / (lum(rampe[0]!) + 0.05)
+    expect(helerampen, `hele rampen gav ${helerampen.toFixed(2)}`).toBeGreaterThan(1.45)
+  })
+
+  it('holder tekst og accent læsbare i mørkt tema', () => {
+    const blok = tokens.match(/^:root \{([\s\S]*?)\n\}/m)?.[1] ?? ''
+    const v = (navn: string) => (blok.match(new RegExp(`${navn}:\\s*(#[0-9a-f]{6})`, 'i')) ?? [])[1] ?? '#000000'
+    const lum = (h: string) =>
+      [1, 3, 5].map((i) => parseInt(h.substr(i, 2), 16) / 255)
+        .map((x) => (x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4))
+        .reduce((a, c, i) => a + [0.2126, 0.7152, 0.0722][i]! * c, 0)
+    const kontrast = (a: string, b: string) => {
+      const par = [lum(a), lum(b)].sort((p, q) => q - p)
+      return ((par[0] ?? 0) + 0.05) / ((par[1] ?? 0) + 0.05)
+    }
+    const panel = v('--bg-1')
+    // `--accent` er FLADE-farven og maa gerne vaere maettet; `--accent-text` er
+    // den der skal kunne laeses. Netop den forskel er grunden til at de er to.
+    for (const navn of ['--fg-1', '--fg-2', '--fg-3', '--accent-text', '--error-fg', '--warn-fg', '--ok']) {
+      const forhold = kontrast(v(navn), panel)
+      expect(forhold, `${navn} mod ${panel} gav ${forhold.toFixed(2)}:1`).toBeGreaterThanOrEqual(4.5)
+    }
+  })
+
   // Lyst tema arvede før de mørke semantiske farver fra :root — gul #ffd166
   // på hvid gav 1,44:1. Kontrast er målbar, så den måles.
   it('holder de semantiske farver læsbare i lyst tema', () => {

@@ -1,43 +1,54 @@
 /* Design tokens — locked 2026-06-10
    Spec: docs/superpowers/specs/2026-06-10-jarvis-desk-chat-mode-design.md */
 
-/* Mørkt tema — 1:1 med mobil-appens mørke palet (Bjørn 8/9-2026: «det er
-   voldsomt github agtigt»). Han havde ret, og det var bogstaveligt: #0d1117 ER
-   GitHubs canvas-farve, og hele rampen bar blåt overskud — i #0d1117 ligger blå
-   ti trin over rød, og dét blå skær er præcis det man genkender.
+/* Mørkt tema — efter Claude-appens palet (Bjørn 16/9-2026: «alt for mørk og
+   alt har den samme farve sort … jeg hælder mest til cc appen»).
 
-   Mobilens palet er neutralt grå og målt i ChatGPT-appen, ikke opfundet. Nu
-   er den grønne accent den eneste farve i billedet i stedet for at konkurrere
-   med en blå bund. Sammen med det lyse tema fra samme kilde er de to lys nu
-   ét produkt. */
+   Han har ret i begge dele. Den gamle rampe startede på RENT sort (#000) og
+   var neutralt grå hele vejen op, så de tre nederste trin lå 18 point fra
+   hinanden i en farve uden kulør — fladerne kunne ikke skilles ad, og
+   kanterne forsvandt.
+
+   To ting er ændret, og de hænger sammen:
+
+     KULØR. Claude-appens mørke er varmt, ikke sort: grundtonen har rødt og
+     grønt over blåt (#1F1E1D), hvor GitHub-mørke og den gamle palet har blåt
+     overskud eller intet. Det er den varme bund man genkender.
+
+     LAG. Bunden er ikke sort mere. Canvas #1A1917 → paneler #242321 →
+     hævede flader #2F2E2B → kant/hover #3B3A36. Springet mellem de to
+     nederste er med vilje diskret (1,12:1) — det er sådan Claude-appen ser
+     ud — men HELE rampen har 1,54:1 fra bund til top, og det er dér den
+     gamle faldt: rent sort i bunden gav ingen retning at bygge lag i.
+
+   Accenten er Claudes ler-orange. Som TEKST bruges en lysere udgave:
+   #D97757 giver 4,3:1 mod panelfarven, hvilket er under 4,5 — accent-text
+   lander på 6,1:1. Selve fladen beholder den ægte accent. */
 :root {
-  --bg-0: #000000;
-  --bg-1: #121212;
-  --bg-2: #212121;
-  --bg-3: #303030;
-  --bg-4: #414141;
-  --line: #2a2a2a;
-  --fg-1: #ffffff;
-  --fg-2: #b0b0b0;
-  --fg-3: #7a7a7a;
-  --accent: #6ee7a8;
-  /* Accenten som TEKST. I mørkt tema er den den samme; i lyst er den mørknet,
-     fordi accenterne er valgt til at lyse på sort og bliver næsten ulæselige
-     som tekst på hvidt. Mobilen skiller de to på nøjagtig samme måde — fladen
-     beholder den ægte accent, kun teksten mørknes. */
-  --accent-text: #6ee7a8;
-  --user-bubble: #14402f;   /* accentens dybt nedtonede kulør, som paa mobilen */
-  --code-bg: #303030;
+  --bg-0: #1a1917;
+  --bg-1: #242321;
+  --bg-2: #2f2e2b;
+  --bg-3: #3b3a36;
+  --bg-4: #4a4843;
+  --line: #383733;
+  --fg-1: #faf9f5;
+  --fg-2: #bfbcb2;
+  --fg-3: #95928a;
+  --accent: #d97757;
+  /* Accenten som TEKST — se noten ovenfor. I lyst tema mørknes den i stedet. */
+  --accent-text: #e59a7d;
+  --user-bubble: #3b2a22;   /* accentens dybt nedtonede kulør */
+  --code-bg: #2f2e2b;
 
-  --error-fg: #ff8080;
-  --warn-fg: #ffb347;
+  --error-fg: #ef7e6b;
+  --warn-fg: #e0a458;
 
   --radius-sm: 6px;
   --radius-md: 8px;
   --radius-lg: 12px;
   --fg-0: #ffffff;
-  --ok: #4caf50;
-  --tint: #6ea8fe;
+  --ok: #7cc49b;
+  --tint: #8ab0e8;
   --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
   --mono: var(--font-mono);
 

@@ -303,3 +303,30 @@ describe('vinduets egen titelbjælke', () => {
     expect(app).not.toMatch(/body\.egen-ramme \.chatview-head \{[^}]*padding-right/)
   })
 })
+
+/**
+ * Tekst OVENPÅ accent-fladen.
+ *
+ * Accenten skiftede fra ler-orange til teal 16/9-2026. Tre regler satte
+ * `color: #fff` på en accent-flade. Det gik an på den mørke orange (4,0:1 —
+ * stadig lavt); på teal #3FC7B4 er hvid 2,1:1 og reelt ulæselig.
+ *
+ * Kontrasten mod accenten kan ikke måles ud fra tokens alene, for `#fff` er
+ * en literal i app.css. Derfor måles REGLEN: en accent-flade må ikke bære lys
+ * tekst. Accenten er lys — teksten på den skal være mørk.
+ */
+describe('tekst på accent-flader', () => {
+  const regler = [...app.matchAll(/([^{}]+)\{([^{}]*background:\s*var\(--accent\)[^{}]*)\}/g)]
+
+  it('findes overhovedet nogle accent-flader at måle', () => {
+    expect(regler.length).toBeGreaterThan(0)
+  })
+
+  it('ingen accent-flade bærer lys tekst', () => {
+    const lyse = /color:\s*(#fff\b|#ffffff\b|white\b|var\(--fg-0\)|var\(--fg-1\))/i
+    const syndere = regler
+      .filter(([, , krop]) => lyse.test(krop!))
+      .map(([, vaelger]) => vaelger!.trim().split('\n').pop()!.trim())
+    expect(syndere, 'lys tekst på lys accent er ulæselig').toEqual([])
+  })
+})

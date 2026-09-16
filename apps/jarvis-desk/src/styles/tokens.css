@@ -20,7 +20,7 @@
      hævet panel      #1A1A19     kort i panelet   #252524
      valgt række      #343434     kant             #292929
      felt (input)     #20201F     bruger-boble     #202020
-     kodeblok         #1A1A19     accent (prik)    #D97757
+     kodeblok         #1A1A19     accent (prik)    #3FC7B4 (teal, ikke CC's)
 
    To ting ud over kuløren:
 
@@ -32,9 +32,9 @@
      forlæggets egne tal. Fladerne skilles ikke ad af lysstyrke alene, men af
      kanten (#292929) og af at kortene ligger to trin over deres panel.
 
-   Accenten er uændret — den målte jeg rigtigt første gang. Som TEKST bruges
-   stadig en lysere udgave: #D97757 giver 4,3:1 mod panelet, altså under
-   4,5; --accent-text lander over. Selve fladen beholder den ægte accent. */
+   Accenten er IKKE CC's. Den var ler-orange #D97757 indtil 16/9-2026, hvor
+   Bjørn bad om mobil-appens teal i stedet. Alt andet i paletten er stadig
+   målt i CC. */
 :root {
   --bg-0: #111111;   /* sidebar — det mørkeste i billedet */
   --bg-1: #151515;   /* chat- og hovedflade */
@@ -45,9 +45,17 @@
   --fg-1: #f0efec;
   --fg-2: #c3c2b7;
   --fg-3: #898781;
-  --accent: #d97757;
-  /* Accenten som TEKST — se noten ovenfor. I lyst tema mørknes den i stedet. */
-  --accent-text: #e59a7d;
+  /* TEAL, ikke Claudes ler-orange (Bjørn 16/9-2026: «kan du smide samme teal
+     farve ind som i mobil appen … teal skal være der der er orange nu»).
+     #3FC7B4 er teal-posten i mobil-appens egen palet (apps/mobile/src/theme/
+     palettes.ts). Bemærk: mobilens AKTIVE accent er den neongrønne #6EE7A8 —
+     teal er én af de seks valgbare. Han bad om teal, så det er teal.
+
+     Her behøver flade og tekst ikke være to forskellige farver: #3FC7B4 giver
+     8,7:1 mod panelfarven, hvor ler-orangen kun gav 4,3 og derfor måtte have
+     en lysere tvilling til tekst. */
+  --accent: #3fc7b4;
+  --accent-text: #3fc7b4;
   --user-bubble: #202020;   /* målt: CC's boble er NEUTRAL, ikke tonet */
   --field-bg: #20201f;      /* inputfeltet — ét trin over panelet */
   /* Svævende flader (menuer, dialoger) er IKKE almindelige kort. Målt i CC:

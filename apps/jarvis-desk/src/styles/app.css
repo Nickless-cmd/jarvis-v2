@@ -1042,7 +1042,7 @@ button.sidebar-group svg { flex: none; opacity: .7; }
   padding: 10px 12px; border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line));
   border-radius: 12px; background: color-mix(in srgb, var(--accent) 8%, var(--bg-2)); }
 .greeting-hint-text { flex: 1; font-size: 13px; color: var(--fg-1); text-align: left; }
-.greeting-hint-yes { background: var(--accent); color: #fff; border: none; border-radius: 8px;
+.greeting-hint-yes { background: var(--accent); color: var(--bg-0); border: none; border-radius: 8px;
   padding: 5px 12px; font-size: 12px; font-weight: 600; cursor: pointer; }
 .greeting-hint-no { background: none; border: none; color: var(--fg-3); cursor: pointer; font-size: 16px; }
 .marketplace-toast { align-self: flex-start; padding: 8px 12px; border-radius: 9px;
@@ -2076,7 +2076,7 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 .connector-actions .pill { font-size: 11px; font-weight: 600; border-radius: 999px; padding: 3px 9px; border: none; cursor: default; }
 .connector-actions .pill.connected { color: var(--ok, #5fcf80); background: transparent; }
 .connector-actions .pill.active { color: var(--accent-text); background: transparent; }
-.connector-actions .pill.connect { color: #fff; background: var(--accent); cursor: pointer; }
+.connector-actions .pill.connect { color: var(--bg-0); background: var(--accent); cursor: pointer; }
 .connector-actions .pill.connect:disabled { opacity: .6; cursor: default; }
 .connector-actions .pill.soon { color: var(--muted); background: color-mix(in srgb, var(--line) 50%, transparent); }
 .connector-card.is-soon { opacity: .62; }
@@ -2350,7 +2350,7 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 }
 .ai-notice-badge {
   display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: .08em;
-  color: #fff; background: var(--accent); border-radius: 6px; padding: 2px 8px; margin-bottom: .8rem;
+  color: var(--bg-0); background: var(--accent); border-radius: 6px; padding: 2px 8px; margin-bottom: .8rem;
 }
 .ai-notice-card h2 { margin: 0 0 .6rem; font-size: 1.25rem; font-weight: 600; }
 .ai-notice-card p { margin: 0 0 .9rem; color: var(--fg-2, var(--fg)); line-height: 1.5; }
@@ -2358,7 +2358,7 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 .ai-notice-points li { margin-bottom: .35rem; }
 .ai-notice-ok {
   width: 100%; padding: .7rem 1rem; border: none; border-radius: 9px;
-  background: var(--accent); color: #fff; font-weight: 600; font-size: .95rem; cursor: pointer;
+  background: var(--accent); color: var(--bg-0); font-weight: 600; font-size: .95rem; cursor: pointer;
 }
 .ai-notice-ok:hover { filter: brightness(1.08); }
 

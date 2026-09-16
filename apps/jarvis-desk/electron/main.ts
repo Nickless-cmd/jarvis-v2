@@ -332,8 +332,19 @@ function createMainWindow(): void {
     minWidth: 960,
     minHeight: 600,
     title: APP_NAME,
-    backgroundColor: '#0d1117',
+    // Maalt i CC 16/9-2026. Den gamle #0d1117 var en blaa rest fra foer
+    // paletten blev maalt; den blinkede blaat i det oejeblik vinduet aabner.
+    backgroundColor: '#111111',
     autoHideMenuBar: true,
+    // Integreret vinduesramme (Bjoern 16/9-2026: «den med luk minimere og
+    // forstoer integreret lige som i cc»).
+    //
+    // macOS faar IKKE vores egne knapper: der er lyskurven en del af systemet,
+    // og brugere flytter vinduet og bruger genveje ud fra den. hiddenInset
+    // beholder den ægte lyskurv og fjerner kun titelbjaelken.
+    ...(process.platform === 'darwin'
+      ? { titleBarStyle: 'hiddenInset' as const, trafficLightPosition: { x: 12, y: 14 } }
+      : { frame: false }),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -374,6 +385,15 @@ function createMainWindow(): void {
 
   setupEditMenuAndContextMenu(mainWindow)
 
+  // Uden disse to ville ikonet i vores egen ramme vise noget andet end
+  // virkeligheden, saa snart vinduet blev maksimeret UDEN OM knappen —
+  // dobbeltklik paa bjaelken, en tastaturgenvej eller vindueshaandteringen.
+  const fortaelTilstand = () => {
+    mainWindow?.webContents.send('vindue:maksimeretAendret', mainWindow.isMaximized())
+  }
+  mainWindow.on('maximize', fortaelTilstand)
+  mainWindow.on('unmaximize', fortaelTilstand)
+
   // Når brugeren klikker × → skjul i tray i stedet for at afslutte.
   // Kun hvis tray er oppe — ellers er vi den eneste UI og må lukke for at quit'e.
   mainWindow.on('close', (event) => {
@@ -397,6 +417,21 @@ function createMainWindow(): void {
 }
 
 // ─── IPC handlers (only what renderer needs from main) ─────────────────
+// ── Vinduesstyring (egen ramme) ───────────────────────────────────────
+//
+// Uden frame tegner OS'et ingen knapper. Findes disse handlers ikke, kan
+// vinduet hverken lukkes eller minimeres fra brugerfladen — derfor er de
+// bundet til selve vinduet og ikke til en enkelt flade i renderer'en.
+ipcMain.handle('vindue:minimer', () => { mainWindow?.minimize() })
+ipcMain.handle('vindue:vekselMaksimer', () => {
+  if (!mainWindow) return false
+  if (mainWindow.isMaximized()) mainWindow.unmaximize()
+  else mainWindow.maximize()
+  return mainWindow.isMaximized()
+})
+ipcMain.handle('vindue:luk', () => { mainWindow?.close() })
+ipcMain.handle('vindue:erMaksimeret', () => mainWindow?.isMaximized() ?? false)
+
 ipcMain.handle('config:get', () => loadConfig())
 ipcMain.handle('config:set', (_event, cfg: Partial<AppConfig>) => {
   // Bevar app-ID — renderer sender kun apiBaseUrl/authToken og må ikke kunne

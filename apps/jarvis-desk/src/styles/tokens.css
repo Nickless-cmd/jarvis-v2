@@ -1,46 +1,63 @@
 /* Design tokens — locked 2026-06-10
    Spec: docs/superpowers/specs/2026-06-10-jarvis-desk-chat-mode-design.md */
 
-/* Mørkt tema — efter Claude-appens palet (Bjørn 16/9-2026: «alt for mørk og
-   alt har den samme farve sort … jeg hælder mest til cc appen»).
+/* Mørkt tema — MÅLT i Claude Code-appen, trin for trin.
 
-   Han har ret i begge dele. Den gamle rampe startede på RENT sort (#000) og
-   var neutralt grå hele vejen op, så de tre nederste trin lå 18 point fra
-   hinanden i en farve uden kulør — fladerne kunne ikke skilles ad, og
-   kanterne forsvandt.
+   Bjørn 16/9-2026, anden runde: «du ramte oik farverne … jeg vil gerne have
+   farve i venstre panel 1:1 og i chatview 1:1 og miljøfeltet 1:1 … nu lige
+   har den stadig den brune farve».
 
-   To ting er ændret, og de hænger sammen:
+   Han har ret, og fejlen var MIN og bevidst. Første runde skrev jeg selv i
+   noten her: «CC's egen rampe har trin helt ned til 1,03:1 … denne holder
+   mindst 1,10 pr. trin. Bevidst én tak tydeligere end forlægget.» Jeg
+   afveg fra det han pegede på, og forklarede afvigelsen i stedet for at
+   fjerne den. Samtidig lå kuløren ét trin for varmt (#141413/#1E1E1B —
+   blå-kanalen under rød), og det er præcis det brune han ser.
 
-     KULØR. Tallene er MÅLT i Claude Code-appen på hans venstre skærm, ikke
-     valgt: sidebar #111111, hovedflade #151515, kort #252524, felter
-     #20201F. Den er altså næsten neutral med en ANELSE varme opad — rød og
-     grøn ét trin over blå i de øverste lag. Første forsøg her var for brunt
-     (#1A1917/#242321); det ramte stemningen, ikke farven.
+   Tallene nu er pixels fra hans venstre skærm (DP-4, +0+0), ikke skøn:
 
-     LAG. Canvas #141413 → paneler #1E1E1B → hævede flader #2A2926 →
-     kant/hover #363532. CC's egen rampe har trin helt ned til 1,03:1 og
-     1,45:1 i alt; denne holder mindst 1,10 pr. trin og 1,50 i alt. Bevidst
-     én tak tydeligere end forlægget — hans klage var netop at fladerne ikke
-     kunne skilles ad, og rent sort i bunden gav ingen retning at bygge i.
+     sidebar          #111111     chat/hovedflade  #151515
+     hævet panel      #1A1A19     kort i panelet   #252524
+     valgt række      #343434     kant             #292929
+     felt (input)     #20201F     bruger-boble     #202020
+     kodeblok         #1A1A19     accent (prik)    #D97757
 
-   Accenten er Claudes ler-orange. Som TEKST bruges en lysere udgave:
-   #D97757 giver 4,3:1 mod panelfarven, hvilket er under 4,5 — accent-text
-   lander på 6,1:1. Selve fladen beholder den ægte accent. */
+   To ting ud over kuløren:
+
+     SIDEBAR VAR IKKE MØRKERE END CHATTEN. Begge flader stod på --bg-1, altså
+     nøjagtig samme farve — hans «alt har den samme farve» var bogstaveligt
+     sandt her. I CC er sidebaren det mørkeste i billedet.
+
+     RAMPEN ER TÆT MED VILJE. Trinene er 1,03 · 1,05 · 1,14 · 1,23. Det er
+     forlæggets egne tal. Fladerne skilles ikke ad af lysstyrke alene, men af
+     kanten (#292929) og af at kortene ligger to trin over deres panel.
+
+   Accenten er uændret — den målte jeg rigtigt første gang. Som TEKST bruges
+   stadig en lysere udgave: #D97757 giver 4,3:1 mod panelet, altså under
+   4,5; --accent-text lander over. Selve fladen beholder den ægte accent. */
 :root {
-  --bg-0: #141413;
-  --bg-1: #1e1e1b;
-  --bg-2: #2a2926;
-  --bg-3: #363532;
-  --bg-4: #434240;
-  --line: #302f2c;
-  --fg-1: #f2f0ec;
-  --fg-2: #bdbab3;
-  --fg-3: #93908a;
+  --bg-0: #111111;   /* sidebar — det mørkeste i billedet */
+  --bg-1: #151515;   /* chat- og hovedflade */
+  --bg-2: #1a1a19;   /* hævet panel: miljøfelt, jobs-rude, kodeblok */
+  --bg-3: #252524;   /* kort inde i et panel */
+  --bg-4: #343434;   /* valgt række / hover */
+  --line: #292929;
+  --fg-1: #f0efec;
+  --fg-2: #c3c2b7;
+  --fg-3: #898781;
   --accent: #d97757;
   /* Accenten som TEKST — se noten ovenfor. I lyst tema mørknes den i stedet. */
   --accent-text: #e59a7d;
-  --user-bubble: #33251e;   /* accentens dybt nedtonede kulør */
-  --code-bg: #2a2926;
+  --user-bubble: #202020;   /* målt: CC's boble er NEUTRAL, ikke tonet */
+  --field-bg: #20201f;      /* inputfeltet — ét trin over panelet */
+  /* Svævende flader (menuer, dialoger) er IKKE almindelige kort. Målt i CC:
+     en popup ligger på #20201F med en lysere kant #363635 — den løfter sig
+     fra fladen. Et INLINE kort gør det modsatte: CC's «Edited 2 files» står
+     i #151515, altså flugtende med chatten, adskilt kun af sin kant. De to
+     er derfor to forskellige tokens og ikke ét «kort»-token. */
+  --overlay-bg: #20201f;
+  --overlay-line: #363635;
+  --code-bg: #1a1a19;
 
   --error-fg: #ef7e6b;
   --warn-fg: #e0a458;

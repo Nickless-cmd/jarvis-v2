@@ -43,31 +43,112 @@ describe('design-tokens', () => {
     }
   })
 
-  // Bjørn 16/9-2026: «alt for mørk og alt har den samme farve sort». Den gamle
-  // rampe startede på RENT sort og var neutralt grå hele vejen — fladerne kunne
-  // ikke skilles ad. Begge dele er målbare, så de måles.
-  it('det mørke tema har SYNLIGE lag og starter ikke på sort', () => {
+  // Bjørn 16/9-2026: «alt for mørk og alt har den samme farve sort», og efter
+  // første forsøg: «du ramte oik farverne … nu lige har den stadig den brune».
+  //
+  // Den gamle test krævede mindst 1,10 mellem hvert trin. Det tal var MIT, ikke
+  // forlæggets — CC's egne trin er 1,03 og 1,05. Kravet er nu 1:1 med det han
+  // peger på, så tærsklen er skiftet ud med selve målingen.
+  const MAALT_I_CC: Record<string, string> = {
+    '--bg-0': '#111111',   // sidebar
+    '--bg-1': '#151515',   // chat/hovedflade
+    '--bg-2': '#1a1a19',   // hævet panel (miljøfelt, jobs-rude)
+    '--bg-3': '#252524',   // kort i panelet
+    '--bg-4': '#343434',   // valgt række
+    '--line': '#292929',
+    '--user-bubble': '#202020',
+    '--field-bg': '#20201f',
+  }
+
+  it('det mørke tema er de MÅLTE pixels fra CC, ikke et skøn', () => {
     const blok = tokens.match(/^:root \{([\s\S]*?)\n\}/m)?.[1] ?? ''
-    const v = (navn: string) => (blok.match(new RegExp(`${navn}:\\s*(#[0-9a-f]{6})`, 'i')) ?? [])[1] ?? ''
-    const rampe = ['--bg-0', '--bg-1', '--bg-2', '--bg-3'].map(v)
-    expect(rampe.every(Boolean), 'rampen mangler et trin').toBe(true)
-    expect(rampe[0]).not.toBe('#000000')
-
-    const lum = (h: string) =>
-      [1, 3, 5].map((i) => parseInt(h.substr(i, 2), 16) / 255)
-        .map((x) => (x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4))
-        .reduce((a, c, i) => a + [0.2126, 0.7152, 0.0722][i]! * c, 0)
-
-    // To krav, fordi ét ikke er nok. Hvert trin skal kunne SES over det
-    // forrige — men springet canvas → panel er med vilje diskret i denne
-    // slags palet (Claude-appen gør det samme). Derfor maales ogsaa HELE
-    // rampen: uden den kunne fire naesten ens trin bestaa hver for sig.
-    for (let i = 1; i < rampe.length; i++) {
-      const forhold = (lum(rampe[i]!) + 0.05) / (lum(rampe[i - 1]!) + 0.05)
-      expect(forhold, `${rampe[i - 1]} → ${rampe[i]} gav ${forhold.toFixed(2)}`).toBeGreaterThan(1.1)
+    const v = (navn: string) =>
+      (blok.match(new RegExp(`${navn}:\\s*(#[0-9a-f]{6})`, 'i')) ?? [])[1]?.toLowerCase() ?? ''
+    for (const [navn, forventet] of Object.entries(MAALT_I_CC)) {
+      expect(v(navn), `${navn} skal være ${forventet} (målt på hans venstre skærm)`).toBe(forventet)
     }
-    const helerampen = (lum(rampe[3]!) + 0.05) / (lum(rampe[0]!) + 0.05)
-    expect(helerampen, `hele rampen gav ${helerampen.toFixed(2)}`).toBeGreaterThan(1.45)
+    expect(v('--bg-0')).not.toBe('#000000')
+  })
+
+  // Netop DET han kalder brunt: blå-kanalen under den røde. Første forsøg lå
+  // 2-4 point under (#141413, #1e1e1b, #2a2926). Forlægget ligger højst 1 under.
+  it('rampen er neutral — ikke brun', () => {
+    const blok = tokens.match(/^:root \{([\s\S]*?)\n\}/m)?.[1] ?? ''
+    for (const navn of ['--bg-0', '--bg-1', '--bg-2', '--bg-3', '--bg-4', '--line']) {
+      const h = (blok.match(new RegExp(`${navn}:\\s*(#[0-9a-f]{6})`, 'i')) ?? [])[1] ?? '#000000'
+      const [r, , b] = [1, 3, 5].map((i) => parseInt(h.substr(i, 2), 16)) as [number, number, number]
+      expect(r - b, `${navn} (${h}) er ${r - b} point varmere end neutral`).toBeLessThanOrEqual(1)
+    }
+  })
+
+  // Den egentlige fejl bag «alt har den samme farve»: sidebaren og hovedfladen
+  // stod bogstaveligt på samme token. En farvetest alene ville ikke se det —
+  // rampen kan være helt rigtig og begge flader stadig hente det samme trin.
+  it('sidebar, hovedflade og panel står på HVER sin flade', () => {
+    const bg = (vaelger: string) => {
+      const regel = app.match(new RegExp(`^\\${vaelger} \\{([\\s\\S]*?)\\n\\}`, 'm'))?.[1] ?? ''
+      return regel.match(/background:\s*var\((--[a-z0-9-]+)/)?.[1] ?? ''
+    }
+    const sidebar = bg('.sidebar')
+    const main = bg('.main')
+    expect(sidebar, 'sidebaren skal være den mørkeste flade').toBe('--bg-0')
+    expect(main).toBe('--bg-1')
+    expect(sidebar).not.toBe(main)
+  })
+
+  // Bjørn 16/9-2026: «fade i enden af sessionerne i venstre panel». «…» koster
+  // tre tegn af netop den del af titlen der skiller to sessioner ad — og to
+  // sessioner der begge hedder «Check system status and connecti…» er ikke til
+  // at skelne. Fade'en lader tegnene stå.
+  it('sessionstitlen fader i enden i stedet for at ende i «…»', () => {
+    const regel = app.match(/^\.session-item-label \{([\s\S]*?)\n\}/m)?.[1] ?? ''
+    expect(regel, '.session-item-label findes ikke').toBeTruthy()
+    expect(regel).not.toContain('text-overflow: ellipsis')
+    expect(regel).toMatch(/mask-image:\s*linear-gradient\(to right/)
+    // Uden -webkit-praefiks fader den ikke i Electrons Chromium-udgave.
+    expect(regel).toContain('-webkit-mask-image')
+    // Overflow skal stadig klippes — ellers flyder titlen ud over kanten og
+    // fade'en maskerer noget der alligevel ikke var klippet.
+    expect(regel).toContain('overflow: hidden')
+  })
+
+  // En menu der svæver over fladen i FLADENS egen farve har intet at løfte sig
+  // fra — kun skyggen siger at den ligger ovenpå. Målt i CC: popups ligger på
+  // #20201F med en lysere kant #363635.
+  //
+  // Bemærk hvad denne test IKKE kræver: at ALLE kort skiller sig ud. 18 kort i
+  // app.css står i hovedfladens farve, og jeg var på vej til at «rette» dem
+  // alle — indtil målingen viste at CC's eget «Edited 2 files»-kort står i
+  // NØJAGTIG samme #151515 som chatten bag det. Inline-kort flugter med vilje;
+  // det er kun de svævende der skal løfte sig.
+  it('svævende menuer og dialoger løfter sig fra fladen', () => {
+    for (const vaelger of ['.file-context-menu', '.connector-menu', '.mention-liste', '.pv-bekraeft']) {
+      const regel = app.match(new RegExp(`\\${vaelger} \\{([\\s\\S]*?)\\n\\}`))?.[1] ?? ''
+      expect(regel, `${vaelger} findes ikke`).toBeTruthy()
+      const bg = regel.match(/background:\s*var\((--[a-z0-9-]+)/)?.[1]
+      expect(bg, `${vaelger} svæver i hovedfladens egen farve`).toBe('--overlay-bg')
+    }
+  })
+
+  // Miljoe-feltet flyttede til sin egen fil i samme uge som farven blev maalt.
+  // Sammenfletningen ville have rullet farven tilbage i stilhed: den ene gren
+  // SLETTEDE reglen i app.css, den anden RETTEDE den samme regel. Git kalder
+  // det en konflikt ét sted og loeser det tavst det andet. Derfor maales
+  // farven dér hvor reglen bor nu.
+  it('miljø-feltet har panelfarven, uanset hvilken fil reglen bor i', () => {
+    const miljø = læs('environment-inspector.css')
+    const regel = miljø.match(/^\.env-panel \{([\s\S]*?)\}/m)?.[1] ?? ''
+    expect(regel, '.env-panel findes ikke i environment-inspector.css').toBeTruthy()
+    expect(regel.match(/background:\s*var\((--[a-z0-9-]+)/)?.[1]).toBe('--bg-2')
+  })
+
+  // Et kort der har samme farve som sin rude er usynligt. I CC er der to trin
+  // mellem dem (#1A1A19 → #252524) — det er sådan jobs-kortene træder frem.
+  it('kort ligger over deres panel, ikke i det', () => {
+    const kort = app.match(/^\.jobs-kort \{([\s\S]*?)\n\}/m)?.[1] ?? ''
+    const panel = app.match(/^\.jobs-panel \{([\s\S]*?)\n\}/m)?.[1] ?? ''
+    expect(kort.match(/background:\s*var\((--[a-z0-9-]+)/)?.[1]).toBe('--bg-3')
+    expect(panel.match(/background:\s*var\((--[a-z0-9-]+)/)?.[1]).toBe('--bg-2')
   })
 
   it('holder tekst og accent læsbare i mørkt tema', () => {

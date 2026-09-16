@@ -32,6 +32,15 @@ export interface JarvisDeskBridge {
   notifyTaskDone: (title: string, body: string) => Promise<void>
   /** Proaktiv device-awareness-notifikation (vises altid, også i fokus). */
   notifyShow: (kind: string, title: string, body: string) => Promise<void>
+  /** Vinduesstyring til vores egen ramme. Findes ikke i en browser-fane —
+   *  knapperne skal derfor SKJULES naar den mangler, ikke fejle. */
+  vindue: {
+    minimer: () => Promise<void>
+    vekselMaksimer: () => Promise<boolean>
+    luk: () => Promise<void>
+    erMaksimeret: () => Promise<boolean>
+    paaMaksimeretAendret: (cb: (maksimeret: boolean) => void) => () => void
+  }
   /** Er maskinen vågen (ikke i sleep)? Til device-presence. */
   isAwake: () => Promise<boolean>
   /** Geolocation-opslag (Nominatim/ip-api) via main — sætter korrekt User-Agent. */
@@ -146,6 +155,17 @@ const bridge: JarvisDeskBridge = {
     install: (tool) => ipcRenderer.invoke('dep:install', tool),
   },
   platform: process.platform,
+  vindue: {
+    minimer: () => ipcRenderer.invoke('vindue:minimer'),
+    vekselMaksimer: () => ipcRenderer.invoke('vindue:vekselMaksimer'),
+    luk: () => ipcRenderer.invoke('vindue:luk'),
+    erMaksimeret: () => ipcRenderer.invoke('vindue:erMaksimeret'),
+    paaMaksimeretAendret: (cb: (maksimeret: boolean) => void) => {
+      const handler = (_e: unknown, maksimeret: boolean) => cb(maksimeret)
+      ipcRenderer.on('vindue:maksimeretAendret', handler)
+      return () => ipcRenderer.removeListener('vindue:maksimeretAendret', handler)
+    },
+  },
 }
 
 contextBridge.exposeInMainWorld('jarvisDesk', bridge)

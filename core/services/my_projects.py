@@ -20,6 +20,26 @@ from core.services import process_supervisor as _ps
 
 logger = logging.getLogger("uvicorn.error")
 
+
+# ── Kontakten ────────────────────────────────────────────────────────
+
+
+def projekter_slaaet_til() -> bool:
+    """Skal mine egne baggrundsprojekter starte af sig selv?
+
+    Sat med `my_projects_enabled` i ~/.jarvis-v2/config/runtime.json.
+    Standard er True, saa intet aendrer sig for den der ikke roerer den.
+    Naar den er False bliver definitionerne staaende — de starter bare
+    ikke igen af sig selv, og en manuel process_spawn virker stadig.
+    """
+    try:
+        from core.runtime.settings import load_settings
+        return bool(getattr(load_settings(), "my_projects_enabled", True))
+    except Exception as exc:  # pragma: no cover - forsvar mod tidlig boot
+        logger.warning("my_projects: kunne ikke laese kontakten: %s", exc)
+        return True
+
+
 # ── Project definitions ──────────────────────────────────────────────
 
 PROJECTS: list[dict[str, Any]] = [
@@ -54,6 +74,15 @@ def ensure_my_projects_running() -> dict[str, Any]:
 
     Returns stats: {spawned: [...], already_running: [...], errors: [...]}.
     """
+    if not projekter_slaaet_til():
+        logger.info("my_projects: slaaet fra (my_projects_enabled=false) — spawner intet")
+        return {
+            "spawned": [],
+            "already_running": [],
+            "errors": [],
+            "slaaet_fra": True,
+        }
+
     spawned: list[str] = []
     already_running: list[str] = []
     errors: list[str] = []
@@ -106,6 +135,19 @@ def tick_my_projects_watchdog() -> dict[str, Any]:
 
     Returns summary dict suitable for daemon_manager.record_daemon_tick().
     """
+    if not projekter_slaaet_til():
+        return {
+            "status": "ok",
+            "running_count": 0,
+            "restarted_count": 0,
+            "error_count": 0,
+            "summary": "slaaet fra (my_projects_enabled=false)",
+            "running": [],
+            "restarted": [],
+            "errors": [],
+            "slaaet_fra": True,
+        }
+
     running: list[str] = []
     restarted: list[str] = []
     errors: list[str] = []

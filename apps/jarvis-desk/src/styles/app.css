@@ -9,7 +9,9 @@
 
 /* ─── Sidebar ────────────────────────────────────────── */
 .sidebar {
-  background: var(--bg-1);
+  /* --bg-0, ikke --bg-1: sidebaren og .main stod paa NOEJAGTIG samme farve.
+     I CC er sidebaren det moerkeste i billedet. (Bjoern 16/9-2026) */
+  background: var(--bg-0);
   border-right: 1px solid var(--line);
   display: flex;
   flex-direction: column;
@@ -127,8 +129,8 @@
   color: var(--fg-2); font-size: 13px;
   padding: 7px 10px; margin-top: 2px; border-radius: var(--radius-sm, 6px);
 }
-.sidebar-nav-row:hover { background: var(--bg-2); color: var(--fg-1); }
-.sidebar-nav-row.active { background: var(--bg-3); color: var(--fg-1); }
+.sidebar-nav-row:hover { background: var(--bg-3); color: var(--fg-1); }
+.sidebar-nav-row.active { background: var(--bg-4); color: var(--fg-1); }
 
 /* ── Billed-galleri (#6) ── */
 .gallery { padding: 18px 22px; overflow-y: auto; height: 100%; }
@@ -279,11 +281,19 @@ button.sidebar-group svg { flex: none; opacity: .7; }
   line-height: 1.35;
   position: relative;
 }
+/* Titlen FADER i enden i stedet for at ende i «…» (Bjørn 16/9-2026).
+   Maalt i CC: teksten er fuld styrke til ca. 30 px foer kanten og er helt
+   vaek ved kanten. En titel der slutter foer fade-zonen roeres ikke — derfor
+   staar de korte titler skarpe, praecis som i forlaegget.
+   «…» stjaeler tre tegn af netop den del af titlen der skiller sessionerne
+   ad; fade'en lader dem staa og lader oejet selv se hvor teksten slipper. */
 .session-item-label {
   flex: 1; min-width: 0;
   background: none; border: none; color: inherit; cursor: pointer;
   text-align: left; padding: 7px 0; font-size: 13.5px;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  overflow: hidden; white-space: nowrap;
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 30px), transparent);
+  mask-image: linear-gradient(to right, #000 calc(100% - 30px), transparent);
 }
 /* Per-session arbejds-indikator (#8): 3 hoppende prikker foran titlen. */
 .session-working {
@@ -574,7 +584,7 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 .composer {
   max-width: 820px;
   margin: 0 auto;
-  background: var(--bg-2);
+  background: var(--field-bg, var(--bg-2));
   border: 1px solid var(--line);
   border-radius: 12px;
   transition: 0.15s ease;
@@ -805,6 +815,9 @@ button.sidebar-group svg { flex: none; opacity: .7; }
   display: flex; flex-direction: column; gap: 2px;
   padding: 10px 12px; font-size: 12.5px; color: var(--fg-2);
   overflow-y: auto;
+  /* Havde ingen egen baggrund og laa gennemsigtig over chatten. Samme
+     panelfarve som miljoefeltet — de er to ruder i samme stak. */
+  background: var(--bg-2); border: 1px solid var(--line); border-radius: 12px;
 }
 .jobs-head {
   display: flex; align-items: center; justify-content: space-between;
@@ -827,7 +840,7 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 .jobs-kort {
   display: flex; align-items: flex-start; gap: 8px;
   padding: 8px 9px; border-radius: var(--radius-sm, 6px);
-  background: var(--bg-2); border: 1px solid var(--line);
+  background: var(--bg-3); border: 1px solid var(--line);
 }
 .jobs-kort.er-faerdig { background: none; }
 .jobs-kort-tekst { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1 1 auto; }
@@ -1641,7 +1654,7 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 /* Højreklik-menu på en fil (editor/terminal) */
 .file-context-menu {
   position: fixed; z-index: 60; min-width: 160px; padding: 4px;
-  background: var(--bg-1); border: 1px solid var(--line); border-radius: 8px;
+  background: var(--overlay-bg); border: 1px solid var(--overlay-line); border-radius: 8px;
   box-shadow: 0 8px 24px rgba(0,0,0,0.4); display: flex; flex-direction: column; gap: 2px;
 }
 .file-context-item {
@@ -2033,7 +2046,7 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 .connector-menu-anchor { position: relative; }
 .connector-menu-anchor > button { background: none; border: none; color: var(--fg-3); cursor: pointer; display: flex; padding: 2px; }
 .connector-menu { position: absolute; right: 0; top: 22px; z-index: 20; min-width: 150px;
-  background: var(--bg-1); border: 1px solid var(--line); border-radius: 9px; padding: 4px; display: flex; flex-direction: column;
+  background: var(--overlay-bg); border: 1px solid var(--overlay-line); border-radius: 9px; padding: 4px; display: flex; flex-direction: column;
   box-shadow: 0 8px 24px rgba(0,0,0,.3); }
 .connector-menu button { text-align: left; background: none; border: none; color: var(--fg-2); cursor: pointer;
   font-size: 13px; padding: 7px 9px; border-radius: 6px; }
@@ -2849,7 +2862,7 @@ button.sidebar-group svg { flex: none; opacity: .7; }
   display: flex; flex-direction: column;
   max-height: 15rem; overflow-y: auto;
   margin: 0 0 6px; padding: 4px;
-  background: var(--bg-1); border: 1px solid var(--line);
+  background: var(--overlay-bg); border: 1px solid var(--overlay-line);
   border-radius: var(--radius-lg);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28);
 }
@@ -3222,8 +3235,56 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 .pv-form button:disabled { opacity: .5; cursor: default; }
 .pv-bekraeft {
   position: fixed; inset: 0; margin: auto; height: fit-content; width: min(460px, 92vw);
-  background: var(--bg-1); border: 1px solid var(--bg-3, var(--bg-2)); border-radius: 12px;
+  background: var(--overlay-bg); border: 1px solid var(--overlay-line); border-radius: 12px;
   padding: 18px 20px; z-index: 50; box-shadow: 0 12px 40px rgba(0,0,0,.4);
 }
 .pv-bekraeft p { color: var(--fg-1); margin: 0 0 14px; }
 .providers select { background: var(--bg-2); color: var(--fg-1); border: none; border-radius: 6px; padding: 3px 6px; font-size: 12px; }
+
+/* ── Egen vinduesramme ───────────────────────────────────────────────────
+   Bjoern 16/9-2026: «vindues rammen den med luk miniere og forstoer
+   inttegreret lige som i cc». Vinduet er uden OS-ramme (frame: false), saa
+   knapperne her ER vinduets eneste knapper.
+
+   Derfor position: fixed i vinduets hjoerne og ikke i en flades header:
+   desk har ingen header der findes paa ALLE flader, og en knap der
+   forsvinder sammen med sin header ville betyde at vinduet ikke kan lukkes.
+
+   Traek-omraaderne er de to bjaelker der faktisk ligger oeverst. Alt
+   klikbart i dem skal have no-drag — ellers spiser traek-omraadet klikket,
+   og knapperne ser ud til at vaere gaaet i staa. */
+.vinduesknapper {
+  position: fixed; top: 0; right: 0; z-index: 200;
+  display: flex; -webkit-app-region: no-drag;
+}
+.vinduesknapper button {
+  width: 46px; height: 34px; display: grid; place-items: center;
+  background: none; border: 0; color: var(--fg-3); cursor: pointer;
+}
+.vinduesknapper button:hover { background: var(--bg-3); color: var(--fg-1); }
+/* Roedt paa luk er en konvention, ikke en maaling — den er den eneste af de
+   tre der ikke kan fortrydes. */
+.vinduesknapper .er-luk:hover { background: #c4372f; color: #ffffff; }
+.vinduesknapper button:focus-visible { outline: 1px solid var(--accent); outline-offset: -2px; }
+
+body.egen-ramme .sidebar-top,
+body.egen-ramme .chatview-head { -webkit-app-region: drag; }
+body.egen-ramme .sidebar-top button,
+body.egen-ramme .sidebar-top input,
+body.egen-ramme .sidebar-top a,
+body.egen-ramme .chatview-head button,
+body.egen-ramme .chatview-head input,
+body.egen-ramme .chatview-head select,
+body.egen-ramme .chatview-head a { -webkit-app-region: no-drag; }
+/* Plads til knapperne, saa headerens egne ikoner ikke havner under dem. */
+body.egen-ramme .chatview-head { padding-right: 152px; }
+
+/* Traek-bjaelke til de skaerme der ikke HAR en bjaelke (setup, indlaesning,
+   fejlskaerm). :has() gør at den forsvinder i samme oejeblik skallen er der —
+   ellers ville den ligge oven paa sidebarens og chattens egne knapper og
+   spise klikkene. */
+.vinduesbjaelke { display: none; }
+body.egen-ramme:not(:has(.window)) .vinduesbjaelke {
+  display: block; position: fixed; top: 0; left: 0; right: 0; height: 34px;
+  z-index: 190; -webkit-app-region: drag;
+}

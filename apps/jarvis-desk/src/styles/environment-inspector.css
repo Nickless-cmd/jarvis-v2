@@ -1,7 +1,11 @@
 /* Code-mode environment and the shared right-side inspector. */
 
 .env-panel { position: absolute; top: 52px; right: 16px; z-index: 50; width: 288px;
-  background: var(--bg-1, var(--bg)); border: 1px solid var(--line); border-radius: 12px;
+  /* --bg-2, ikke --bg-1: panelfarven fra CC's «Background tasks»-rude
+     (maalt 16/9-2026). Reglen flyttede hertil i samme uge som farven blev
+     rettet i app.css — uden dette ville sammenfletningen have rullet
+     miljoefeltet tilbage til hovedfladens farve i stilhed. */
+  background: var(--bg-2); border: 1px solid var(--line); border-radius: 12px;
   padding: 12px 14px; box-shadow: 0 8px 28px rgba(0,0,0,.30); font-size: 13px; }
 .code-right-stack .env-panel { position: static; top: auto; right: auto; width: 100%; }
 

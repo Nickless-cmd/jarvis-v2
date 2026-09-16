@@ -288,8 +288,9 @@ _My Projects — auto-start + watchdog for Jarvis' own background processes._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `ensure_my_projects_running` | `()` | Called at runtime boot. Spawn any of my 4 projects that aren't running. | [src](../../../core/services/my_projects.py#L52) |
-| function | `tick_my_projects_watchdog` | `()` | Check all 4 projects are alive; restart any that died. | [src](../../../core/services/my_projects.py#L104) |
+| function | `projekter_slaaet_til` | `()` | Skal mine egne baggrundsprojekter starte af sig selv? | [src](../../../core/services/my_projects.py#L27) |
+| function | `ensure_my_projects_running` | `()` | Called at runtime boot. Spawn any of my 4 projects that aren't running. | [src](../../../core/services/my_projects.py#L72) |
+| function | `tick_my_projects_watchdog` | `()` | Check all 4 projects are alive; restart any that died. | [src](../../../core/services/my_projects.py#L133) |
 
 ## `core/services/narrative_identity.py`
 _Narrative Identity — periodisk "Hvem er jeg lige nu?" selvfortælling._

@@ -99,6 +99,9 @@ def _enabled() -> bool:
 # matcheren selv, men det ville koste ~55 ms to gange og kunne give to
 # forskellige svar. Derfor deles ét resultat.
 _SIDSTE: tuple[str, list[str]] = ("", [])
+#: Samme memo med scorerne — det klienterne viser. Adskilt fra `_SIDSTE`, saa
+#: de eksisterende laesere (beskaereren, invokerings-maerket) er uroerte.
+_SIDSTE_TRAEF: tuple[str, list[dict]] = ("", [])
 
 
 def matchede_skills(user_message: str) -> list[str]:
@@ -118,8 +121,11 @@ def matchede_skills(user_message: str) -> list[str]:
         return []
     if _SIDSTE[0] == besked:
         return list(_SIDSTE[1])
-    navne = [str(t.get("name") or "") for t in _traef(besked) if t.get("name")]
+    global _SIDSTE_TRAEF
+    traef = _traef(besked)
+    navne = [str(t.get("name") or "") for t in traef if t.get("name")]
     _SIDSTE = (besked, navne)
+    _SIDSTE_TRAEF = (besked, list(traef))
     return list(navne)
 
 
@@ -145,6 +151,52 @@ def _naevner_mekanismen(besked: str) -> bool:
     """Beder brugeren udtrykkeligt om et skill? Saa er beskeden aldrig smaasnak."""
     lav = f" {str(besked or '').lower()} "
     return any(f"{o}" in lav for o in _SKILL_ORD)
+
+
+def skill_flade_event(user_message: str) -> dict | None:
+    """Det runtimen lagde i prompten, som et event klienterne kan vise.
+
+    Bjørn 16/9-2026 bad om en linje i chatten «når skillgates og skill loades».
+    Den hyppigste gate er denne: opslaget der skriver
+    [SKILLS DER MATCHER DENNE OPGAVE] ind i prompten. Den efterlod NUL spor —
+    intet event, intet i den gemte besked — så ingen klient kunne vise den.
+
+    Læser KUN memoen og slår aldrig op selv: kaldes den efter prompt-bygningen,
+    har opslaget allerede kørt for netop denne besked. Passer memoen ikke (en
+    anden besked, et opslag der blev sprunget over), er svaret None — hellere
+    ingen linje end en der beskriver en anden tur. Kaster aldrig.
+    """
+    try:
+        besked = str(user_message or "").strip()
+        # `in` og ikke `==`: korte bekraeftelser («ja») forankres med forrige
+        # svar FOER opslaget (affirmation_anchor), saa memoens noegle er den
+        # forlaengede tekst med hans egen besked inde i.
+        noegle = _SIDSTE_TRAEF[0]
+        if not besked or not noegle or besked not in noegle:
+            return None
+        matches = []
+        for t in _SIDSTE_TRAEF[1]:
+            navn = str(t.get("name") or "").strip()
+            if not navn:
+                continue
+            try:
+                score = float(t.get("score") or 0.0)
+            except Exception:
+                score = 0.0
+            # Samme regel som prompt-sektionen, saa linjen og prompten er enige
+            # om hvad der var et STAERKT match.
+            primaer = score >= _PRIMARY_THRESHOLD or _navnet_staar_i(navn, besked)
+            matches.append({"name": navn, "score": round(score, 3), "primary": primaer})
+        if not matches:
+            return None
+        return {
+            "type": "skill_surface",
+            "matches": matches,
+            "primary": any(m["primary"] for m in matches),
+        }
+    except Exception:
+        logger.debug("skill_flade_event fejlede", exc_info=True)
+        return None
 
 
 def sidst_foreslaaede() -> list[str]:
@@ -266,8 +318,9 @@ def relevant_skills_section(user_message: str) -> str:
 
     traef = _traef(besked)
     # Fyld memoen, saa beskaereren faar samme svar uden et nyt opslag.
-    global _SIDSTE
+    global _SIDSTE, _SIDSTE_TRAEF
     _SIDSTE = (besked, [str(x.get("name") or "") for x in traef if x.get("name")])
+    _SIDSTE_TRAEF = (besked, list(traef))
 
     if not traef:
         return research

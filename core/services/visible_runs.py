@@ -1718,6 +1718,13 @@ async def _stream_visible_run(
                     continue
                 if not _fp_first:
                     _fp_first = True
+                    # Prompten er bygget nu — send hvilke skills runtimen lagde i
+                    # den, og gem dem i beskeden (skill_relevance_surface).
+                    from core.services.skill_relevance_surface import skill_flade_event
+                    _skill_flade = skill_flade_event(run.user_message)
+                    if _skill_flade:
+                        _turn.skill_surface = _skill_flade
+                        yield _sse("skill_surface", {**_skill_flade, "run_id": run.run_id})
                     logger.warning("[firstpass-trace] run=%s FIRST item efter %.1fs: %s",
                                    run.run_id, _fptime.monotonic() - _fp_t0, type(item).__name__)
                 if item is _sentinel:

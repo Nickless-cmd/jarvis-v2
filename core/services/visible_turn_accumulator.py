@@ -45,6 +45,10 @@ class TurnAccumulator:
     #: derfor kun beskrive den samlede blok; med segmenter skal hver tanke
     #: bære sin egen tid, ellers står de alle uden.
     thinking_times: list[list[float]] = field(default_factory=list)
+    #: Skills runtimen lagde i prompten for turen (skill_relevance_surface.
+    #: skill_flade_event). Staar FOERST i blokkene: opslaget skete foer modellen
+    #: skrev et ord.
+    skill_surface: dict | None = None
     #: Uret. Injicerbart, så en test kan måle uden at vente.
     ur: object = None
     _segment_open: bool = False
@@ -155,7 +159,7 @@ class TurnAccumulator:
     def build_blocks(self, text: str) -> list[dict]:
         """Den kanoniske blok-liste for turen."""
         from core.services.visible_turn_blocks import _build_turn_blocks
-        return _build_turn_blocks(
+        blokke = _build_turn_blocks(
             text=text,
             tool_calls=self.tool_calls,
             tool_results=self.tool_results,
@@ -164,6 +168,9 @@ class TurnAccumulator:
             thinking_segments=self.thinking_segments,
             thinking_seconds=self.thinking_seconds(),
         )
+        if self.skill_surface:
+            return [dict(self.skill_surface), *blokke]
+        return blokke
 
 
 def coerce_tool_input(raw: object) -> dict:

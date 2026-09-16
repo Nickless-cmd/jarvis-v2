@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7615/14765 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7616/14766 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 7615/14765 functions/methods documented (51%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 650 | 1187 | 54% |
-| `core.services` | 5059 | 10160 | 49% |
+| `core.services` | 5060 | 10161 | 49% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 109 | 184 | 59% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1892,29 +1892,29 @@ Generated from source. 7615/14765 functions/methods documented (51%). The list b
 - `core/services/visible_runs.py` :: `VisibleRunController.cancel` (L464)
 - `core/services/visible_runs.py` :: `VisibleRunController.clear_stream` (L461)
 - `core/services/visible_runs.py` :: `VisibleRunController.is_cancelled` (L471)
-- `core/services/visible_runs.py` :: `cancel_visible_run` (L6928)
-- `core/services/visible_runs.py` :: `get_active_visible_run` (L6953)
-- `core/services/visible_runs.py` :: `get_last_visible_capability_use` (L7157)
-- `core/services/visible_runs.py` :: `get_last_visible_run_outcome` (L7153)
-- `core/services/visible_runs.py` :: `get_visible_run_controller` (L6924)
-- `core/services/visible_runs.py` :: `get_visible_selected_work_item` (L7066)
-- `core/services/visible_runs.py` :: `get_visible_selected_work_note` (L7118)
-- `core/services/visible_runs.py` :: `get_visible_selected_work_surface` (L7035)
-- `core/services/visible_runs.py` :: `get_visible_work` (L6976)
-- `core/services/visible_runs.py` :: `get_visible_work_surface` (L7008)
-- `core/services/visible_runs.py` :: `register_visible_run` (L6886)
-- `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L7174)
-- `core/services/visible_runs.py` :: `unregister_visible_run` (L6939)
+- `core/services/visible_runs.py` :: `cancel_visible_run` (L6935)
+- `core/services/visible_runs.py` :: `get_active_visible_run` (L6960)
+- `core/services/visible_runs.py` :: `get_last_visible_capability_use` (L7164)
+- `core/services/visible_runs.py` :: `get_last_visible_run_outcome` (L7160)
+- `core/services/visible_runs.py` :: `get_visible_run_controller` (L6931)
+- `core/services/visible_runs.py` :: `get_visible_selected_work_item` (L7073)
+- `core/services/visible_runs.py` :: `get_visible_selected_work_note` (L7125)
+- `core/services/visible_runs.py` :: `get_visible_selected_work_surface` (L7042)
+- `core/services/visible_runs.py` :: `get_visible_work` (L6983)
+- `core/services/visible_runs.py` :: `get_visible_work_surface` (L7015)
+- `core/services/visible_runs.py` :: `register_visible_run` (L6893)
+- `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L7181)
+- `core/services/visible_runs.py` :: `unregister_visible_run` (L6946)
 - `core/services/visible_runs_learning_signals.py` :: `record_visible_run_learning_signals` (L53)
 - `core/services/visible_runs_outcomes.py` :: `set_last_visible_run_outcome` (L566)
-- `core/services/visible_runs_sse_v2.py` :: `ToolEchoFilter.feed` (L100)
-- `core/services/visible_runs_sse_v2.py` :: `ToolEchoFilter.flush` (L149)
+- `core/services/visible_runs_sse_v2.py` :: `ToolEchoFilter.feed` (L102)
+- `core/services/visible_runs_sse_v2.py` :: `ToolEchoFilter.flush` (L151)
 - `core/services/visible_stream_gate.py` :: `enter_visible_stream` (L38)
 - `core/services/visible_stream_gate.py` :: `exit_visible_stream` (L44)
-- `core/services/visible_turn_accumulator.py` :: `TurnAccumulator.close_segment` (L68)
-- `core/services/visible_turn_accumulator.py` :: `TurnAccumulator.close_thinking` (L133)
-- `core/services/visible_turn_accumulator.py` :: `TurnAccumulator.note_text` (L72)
-- `core/services/visible_turn_accumulator.py` :: `TurnAccumulator.note_tool` (L76)
+- `core/services/visible_turn_accumulator.py` :: `TurnAccumulator.close_segment` (L72)
+- `core/services/visible_turn_accumulator.py` :: `TurnAccumulator.close_thinking` (L137)
+- `core/services/visible_turn_accumulator.py` :: `TurnAccumulator.note_text` (L76)
+- `core/services/visible_turn_accumulator.py` :: `TurnAccumulator.note_tool` (L80)
 - `core/services/vision_backend.py` :: `build_vision_backend_surface` (L237)
 - `core/services/voice_daemon.py` :: `start_voice_daemon` (L60)
 - `core/services/voice_daemon.py` :: `stop_voice_daemon` (L73)

@@ -137,3 +137,60 @@ def test_explicit_research_context_precedes_ordinary_skill_suggestions(monkeypat
         section = S.relevant_skills_section("find dokumentation for denne påstand")
     assert section.startswith("[RESEARCH CONTRACT]")
     assert "Use primary sources" in section
+
+
+# ── skill_flade_event (16/9-2026) ────────────────────────────────────────
+def _saet_memo(monkeypatch, besked, traef):
+    import core.services.skill_relevance_surface as m
+    monkeypatch.setattr(m, "_SIDSTE_TRAEF", (besked, traef))
+    return m
+
+
+def test_skill_flade_event_bygger_payload_med_primaer(monkeypatch):
+    m = _saet_memo(monkeypatch, "lav et regneark over forbruget",
+                   [{"name": "xlsx", "score": 0.78}, {"name": "csv", "score": 0.71}])
+    ev = m.skill_flade_event("lav et regneark over forbruget")
+    assert ev == {
+        "type": "skill_surface",
+        "matches": [
+            {"name": "xlsx", "score": 0.78, "primary": True},
+            {"name": "csv", "score": 0.71, "primary": False},
+        ],
+        "primary": True,
+    }
+
+
+def test_skill_flade_event_eksplicit_navn_er_primaert_trods_lav_score(monkeypatch):
+    m = _saet_memo(monkeypatch, "brug pdf skill til rapporten", [{"name": "pdf", "score": 0.72}])
+    ev = m.skill_flade_event("brug pdf skill til rapporten")
+    assert ev["matches"][0]["primary"] is True
+
+
+def test_skill_flade_event_anden_besked_giver_intet(monkeypatch):
+    m = _saet_memo(monkeypatch, "en helt anden tur", [{"name": "xlsx", "score": 0.9}])
+    assert m.skill_flade_event("lav et regneark") is None
+
+
+def test_skill_flade_event_ingen_traef_giver_intet(monkeypatch):
+    m = _saet_memo(monkeypatch, "lav et regneark", [])
+    assert m.skill_flade_event("lav et regneark") is None
+
+
+def test_skill_flade_event_forankret_kort_svar_matcher(monkeypatch):
+    m = _saet_memo(monkeypatch, "ja\n\n[forrige svar: skal jeg lave regnearket?]",
+                   [{"name": "xlsx", "score": 0.8}])
+    assert m.skill_flade_event("ja")["matches"][0]["name"] == "xlsx"
+
+
+def test_skill_flade_event_slaar_aldrig_op_selv(monkeypatch):
+    m = _saet_memo(monkeypatch, "", [])
+    monkeypatch.setattr(m, "_traef", lambda b: (_ for _ in ()).throw(AssertionError("opslag")))
+    assert m.skill_flade_event("lav et regneark") is None
+
+
+def test_sektionen_fylder_memoen_med_scorer(monkeypatch):
+    import core.services.skill_relevance_surface as m
+    monkeypatch.setattr(m, "_traef", lambda b: [{"name": "xlsx", "score": 0.8}])
+    monkeypatch.setattr("core.services.research_prompt_context.research_prompt_section", lambda: "")
+    m.relevant_skills_section("lav et regneark over forbruget i september")
+    assert m.skill_flade_event("lav et regneark over forbruget i september")["matches"][0]["score"] == 0.8

@@ -125,3 +125,22 @@ def test_en_tom_tur_giver_falsy_blokke():
     """Kaldstedet bruger `... or None`; en tom liste skal derfor være falsy og
     ikke en tom struktur der persisteres."""
     assert not TurnAccumulator().build_blocks("")
+
+
+def test_skill_surface_staar_foerst_i_blokkene():
+    from core.services.visible_turn_accumulator import TurnAccumulator
+    acc = TurnAccumulator()
+    acc.skill_surface = {"type": "skill_surface", "matches": [{"name": "xlsx", "score": 0.8, "primary": True}], "primary": True}
+    acc.add_text("svar")
+    acc.note_text()
+    blokke = acc.build_blocks("svar")
+    assert blokke[0]["type"] == "skill_surface"
+    assert blokke[1] == {"type": "text", "text": "svar"}
+
+
+def test_uden_skill_surface_ingen_ekstra_blok():
+    from core.services.visible_turn_accumulator import TurnAccumulator
+    acc = TurnAccumulator()
+    acc.add_text("svar")
+    acc.note_text()
+    assert [b["type"] for b in acc.build_blocks("svar")] == ["text"]

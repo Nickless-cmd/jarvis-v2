@@ -28,9 +28,7 @@ export const COWORK_ZONES: ReadonlyArray<{
   // ander intet om hvordan cheap lane eller load_balanceren klarer sig».
   { id: 'cheapLane', label: 'Cheap Lane', icon: 'Gauge', group: 'Arbejde', ownerOnly: true },
   { id: 'agentPool', label: 'Agent pool', icon: 'Users', group: 'Arbejde', ownerOnly: true },
-  // 'providers' er defineret som zone, men staar IKKE i menuen endnu — den
-  // bygges som nr. 3. Et menupunkt der lander paa en anden side er vaerre
-  // end intet punkt.
+  { id: 'providers', label: 'Udbydere', icon: 'Server', group: 'Arbejde', ownerOnly: true },
 
   { id: 'konto', label: 'Konto', icon: 'User', group: 'Konto' },
   { id: 'privacy', label: 'Privatliv & Data', icon: 'ShieldCheck', group: 'Konto' },

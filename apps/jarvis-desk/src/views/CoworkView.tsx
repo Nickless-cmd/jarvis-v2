@@ -9,6 +9,7 @@ import { CentralBadge } from '../components/shell/CentralBadge'
 import { MarketplacePane } from '../components/cowork/MarketplacePane'
 import { CheapLanePanel } from '../components/cowork/cheaplane/CheapLanePanel'
 import { AgentPoolPanel } from '../components/cowork/agentpool/AgentPoolPanel'
+import { ProvidersPanel } from '../components/cowork/providers/ProvidersPanel'
 import { AccountSection } from '../components/settings/AccountSection'
 import { KvoteSection } from '../components/settings/KvoteSection'
 import { ThemeSection } from '../components/settings/ThemeSection'
@@ -84,6 +85,7 @@ export function CoworkView(
       // fladen spoerger ogsaa selv: en zone kan naas via open_ui_panel.
       case 'cheapLane': return isOwner ? <CheapLanePanel config={config} /> : wrap(<div>Kun for ejeren.</div>)
       case 'agentPool': return isOwner ? <AgentPoolPanel config={config} /> : wrap(<div>Kun for ejeren.</div>)
+      case 'providers': return isOwner ? <ProvidersPanel config={config} /> : wrap(<div>Kun for ejeren.</div>)
 
       case 'konto': return wrap(<>
         <AccountSection config={config} />

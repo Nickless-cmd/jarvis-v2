@@ -3270,3 +3270,24 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 .ap-beskeder { display: flex; flex-direction: column; gap: 8px; }
 .ap-besked { background: var(--bg-2); border-radius: 8px; padding: 8px 10px; font-size: 13px; color: var(--fg-1); }
 .ap-besked.ap-ud { border-left: 3px solid var(--accent, #6ee7a8); }
+
+/* ── Udbydere (16/9-2026) ───────────────────────────────────────────────── */
+.cl-fare { color: #e2777a; }
+.pv-form { display: flex; flex-direction: column; gap: 10px; max-width: 460px; }
+.pv-form label { display: flex; flex-direction: column; gap: 4px; color: var(--fg-2); font-size: 13px; }
+.pv-form input, .pv-form select {
+  background: var(--bg-2); color: var(--fg-1); border: none;
+  border-radius: 8px; padding: 7px 10px; font-size: 14px;
+}
+.pv-form button {
+  align-self: flex-start; background: var(--accent, #6ee7a8); color: #0d1117;
+  border: none; border-radius: 8px; padding: 8px 18px; font-weight: 600; cursor: pointer;
+}
+.pv-form button:disabled { opacity: .5; cursor: default; }
+.pv-bekraeft {
+  position: fixed; inset: 0; margin: auto; height: fit-content; width: min(460px, 92vw);
+  background: var(--bg-1); border: 1px solid var(--bg-3, var(--bg-2)); border-radius: 12px;
+  padding: 18px 20px; z-index: 50; box-shadow: 0 12px 40px rgba(0,0,0,.4);
+}
+.pv-bekraeft p { color: var(--fg-1); margin: 0 0 14px; }
+.providers select { background: var(--bg-2); color: var(--fg-1); border: none; border-radius: 6px; padding: 3px 6px; font-size: 12px; }

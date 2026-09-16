@@ -225,3 +225,37 @@ export function gendanBackup(config: ApiConfig, sti = ''): Promise<{ status?: st
   return apiFetch(config, '/mc/provider-registry/restore',
     { method: 'POST', body: { sti } })
 }
+
+// ── udbyder-fladen (16/9-2026) ───────────────────────────────────────────
+
+export interface UdbyderHelbred {
+  provider?: string
+  ok?: boolean
+  degraded?: boolean
+  latency_ms?: number
+}
+
+/** `api_key` er valgfri: tom rører ikke legitimationen, så en model kan
+ *  tilføjes til en udbyder der allerede har sin nøgle. Nøglen gemmes i
+ *  auth-profilen, aldrig i registret, og kommer aldrig tilbage i svaret. */
+export function tilfoejUdbyder(
+  config: ApiConfig,
+  felter: { provider: string; model: string; lane?: string; auth_mode?: string;
+    auth_profile?: string; base_url?: string; api_key?: string },
+): Promise<{ status?: string; fejl?: string; noegle_gemt?: boolean }> {
+  return apiFetch(config, '/mc/provider-registry/add', { method: 'POST', body: felter })
+}
+
+/** Flytning er ikke en slukning: modellen bliver aktiv, men i en anden lane. */
+export function saetLane(
+  config: ApiConfig, provider: string, model: string, lane: string,
+): Promise<{ status?: string; fejl?: string; fra?: string; til?: string }> {
+  return apiFetch(config, '/mc/provider-registry/lane',
+    { method: 'POST', body: { provider, model, lane } })
+}
+
+export function getUdbyderHelbred(
+  config: ApiConfig,
+): Promise<{ providers?: UdbyderHelbred[]; checked_at?: string; summary?: unknown }> {
+  return apiFetch(config, '/central/providers')
+}

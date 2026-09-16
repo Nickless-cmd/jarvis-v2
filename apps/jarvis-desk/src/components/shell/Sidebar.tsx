@@ -11,7 +11,7 @@ import { useSettings } from '../../hooks/useSettings'
 import { useStream } from '../../hooks/useStream'
 import { getActiveRuns } from '../../lib/api'
 import { COWORK_ZONES, emitZone, onZone, normalizeZone, type Zone } from '../../lib/coworkZone'
-import { grupperSessioner, GRUPPER_I_MODE, type SessionGruppe } from '../../lib/sessionGroups'
+import { grupperSessioner, GRUPPER_I_MODE, grupperEfterProjekt, type SessionGruppe } from '../../lib/sessionGroups'
 import { ModeDropdown, type Mode } from './ModeDropdown'
 import { SecondaryNav, type SecondarySurface } from './SecondaryNav'
 
@@ -149,17 +149,48 @@ export function Sidebar({
                       <span>{g.navn}</span>
                       <span className="sidebar-group-count">{g.sessioner.length}</span>
                     </button>
-                    {!foldet && g.sessioner.map((s) => (
-                      <SessionItem
-                        key={s.id}
-                        id={s.id}
-                        title={s.title || 'Uden titel'}
-                        active={s.id === activeId}
-                        working={isWorking(s.id)}
-                        workspaceKind={s.workspace_kind}
-                        onSelect={() => { select(s.id); onSurface(s.workspace_kind ? 'code' : 'chat') }}
-                      />
-                    ))}
+                    {!foldet && (
+                      // KODE-gruppen deles yderligere op efter PROJEKT — som i
+                      // CC, hvor overskriften er «jarvis-v2 · /media/projects».
+                      // Chat-sessioner har intet workspace, saa dér ville en
+                      // projekt-overskrift vaere en gruppe uden indhold.
+                      g.gruppe === 'kode'
+                        ? grupperEfterProjekt(g.sessioner).map((p) => (
+                          <Fragment key={p.rod || 'uden'}>
+                            <div className="sidebar-label sidebar-projekt">
+                              <span className="sidebar-projekt-navn">{p.navn}</span>
+                              {p.sti && (
+                                <>
+                                  <span className="sidebar-projekt-prik" aria-hidden="true">·</span>
+                                  <span className="sidebar-projekt-sti" title={p.rod}>{p.sti}</span>
+                                </>
+                              )}
+                            </div>
+                            {p.sessioner.map((s) => (
+                              <SessionItem
+                                key={s.id}
+                                id={s.id}
+                                title={s.title || 'Uden titel'}
+                                active={s.id === activeId}
+                                working={isWorking(s.id)}
+                                workspaceKind={s.workspace_kind}
+                                onSelect={() => { select(s.id); onSurface(s.workspace_kind ? 'code' : 'chat') }}
+                              />
+                            ))}
+                          </Fragment>
+                        ))
+                        : g.sessioner.map((s) => (
+                          <SessionItem
+                            key={s.id}
+                            id={s.id}
+                            title={s.title || 'Uden titel'}
+                            active={s.id === activeId}
+                            working={isWorking(s.id)}
+                            workspaceKind={s.workspace_kind}
+                            onSelect={() => { select(s.id); onSurface(s.workspace_kind ? 'code' : 'chat') }}
+                          />
+                        ))
+                    )}
                   </Fragment>
                 )
               })}

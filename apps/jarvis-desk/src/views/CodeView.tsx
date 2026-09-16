@@ -738,7 +738,7 @@ export function CodeView({
         aria-label="Vis/skjul ændringer" title="Ændringer"
         onClick={() => setChangesOpen((o) => !o)}
       >
-        <FileDiff size={15} strokeWidth={1.8} />
+        <FileDiff size={15} />
         {aendredeFiler > 0 && <span className="panel-toggle-taeller">{aendredeFiler}</span>}
       </button>
       <button
@@ -747,7 +747,7 @@ export function CodeView({
         aria-label="Vis/skjul baggrundsjob" title="Baggrundsjob"
         onClick={() => setJobsOpen((o) => !o)}
       >
-        <SquareStack size={15} strokeWidth={1.8} />
+        <SquareStack size={15} />
         {koerendeJobs > 0 && <span className="panel-toggle-taeller">{koerendeJobs}</span>}
       </button>
       <button
@@ -756,7 +756,7 @@ export function CodeView({
         aria-label="Vis/skjul miljø-felt" title="Miljø"
         onClick={() => setEnvManual(!(envManual ?? envWide))}
       >
-        <Gauge size={15} strokeWidth={1.8} />
+        <Gauge size={15} />
       </button>
       <button
         type="button"
@@ -764,7 +764,7 @@ export function CodeView({
         aria-label="Vis/skjul fil-træ" title="Filer"
         onClick={() => setFilesOpen((o) => !o)}
       >
-        <FolderTree size={15} strokeWidth={1.8} />
+        <FolderTree size={15} />
       </button>
       <button
         type="button"
@@ -772,7 +772,7 @@ export function CodeView({
         aria-label="Vis/skjul preview-panel" title="Preview"
         onClick={panel.toggle}
       >
-        <PanelRight size={15} strokeWidth={1.8} />
+        <PanelRight size={15} />
       </button>
     </div>
   )

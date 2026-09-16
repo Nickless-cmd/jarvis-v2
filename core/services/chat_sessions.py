@@ -283,7 +283,11 @@ def list_chat_sessions(
                         FROM chat_messages m2
                         WHERE m2.session_id = s.session_id
                     ), 0) AS message_count,
-                    s.workspace_kind
+                    s.workspace_kind,
+                    -- Projektet. Kolonnen har ligget her hele tiden; den blev
+                    -- bare aldrig sendt med, saa sidepanelet kunne ikke gruppere
+                    -- efter projekt (Bjoern 16/9-2026).
+                    s.workspace_root
                 FROM chat_sessions s
                 WHERE (
                     EXISTS (
@@ -1322,6 +1326,9 @@ def _session_summary(row: dict[str, object]) -> dict[str, object]:
         "last_message": _preview_text(str(row.get("last_message") or "")) or "Ready",
         "message_count": int(row.get("message_count") or 0),
         "workspace_kind": (str(row.get("workspace_kind")) if row.get("workspace_kind") else None),
+        # PROJEKTET — stien til arbejdstraeet. Gemt siden begyndelsen, men
+        # aldrig sendt med, saa sidepanelet ikke kunne gruppere efter projekt.
+        "workspace_root": (str(row.get("workspace_root")) if row.get("workspace_root") else None),
         "pinned": bool(row.get("pinned") or 0),
         "archived": bool(row.get("archived") or 0),
         # IKKE det samme som `workspace_kind` ovenfor. Den siger HVOR arbejdet

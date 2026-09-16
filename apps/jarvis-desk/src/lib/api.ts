@@ -18,6 +18,9 @@ export interface ChatSession {
   updated_at: string
   message_count?: number
   workspace_kind?: string | null
+  /** Projektet — stien til arbejdstraeet. Gemt i basen siden begyndelsen, men
+   *  sendt med foerst 16/9-2026, saa sidepanelet kan gruppere efter projekt. */
+  workspace_root?: string | null
 }
 
 export interface ChatMessage {

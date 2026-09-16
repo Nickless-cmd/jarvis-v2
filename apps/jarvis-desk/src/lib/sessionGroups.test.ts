@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { erBaggrund, grupperAf, grupperSessioner, GRUPPE_ORDEN } from './sessionGroups'
+import { erBaggrund, grupperAf, grupperSessioner, GRUPPE_ORDEN, grupperEfterProjekt, projektNavn } from './sessionGroups'
 
 // Præfikserne er runtime'ens egne, målt 8/9-2026:
 //   chat-*  278 · auto-dream-* 65 · auto-recurring-* 57 · auto-heartbeat-* 46
@@ -63,5 +63,45 @@ describe('inddelingen', () => {
 
   it('rækkefølgen er fast: det han selv har skrevet står øverst', () => {
     expect(GRUPPE_ORDEN).toEqual(['chat', 'kode', 'baggrund'])
+  })
+})
+
+describe('projekt-gruppering', () => {
+  const s = (id: string, rod?: string) => ({ id, workspace_kind: 'workstation', workspace_root: rod })
+
+  it('deler sessionerne op efter projekt', () => {
+    const g = grupperEfterProjekt([
+      s('a', '/media/projects/jarvis-v2'),
+      s('b', '/home/bs/andet'),
+      s('c', '/media/projects/jarvis-v2'),
+    ])
+    expect(g.map((x) => x.navn)).toEqual(['jarvis-v2', 'andet'])
+    expect(g[0]!.sessioner.map((x) => x.id)).toEqual(['a', 'c'])
+  })
+
+  it('navn og sti skilles ad — som i CC', () => {
+    expect(projektNavn('/media/projects/jarvis-v2')).toEqual({ navn: 'jarvis-v2', sti: '/media/projects' })
+  })
+
+  it('Windows-stier deles på deres eget skilletegn', () => {
+    // «C:\Jarvis» findes i hans egne data. En deling der kun kender «/»
+    // ville give hele strengen som navn.
+    expect(projektNavn('C:\\Jarvis')).toEqual({ navn: 'Jarvis', sti: 'C:' })
+  })
+
+  it('en afsluttende skråstreg ændrer ikke navnet', () => {
+    expect(projektNavn('/media/projects/jarvis-v2/').navn).toBe('jarvis-v2')
+  })
+
+  it('sessioner UDEN projekt havner sidst, ikke øverst', () => {
+    const g = grupperEfterProjekt([s('uden'), s('med', '/x/repo')])
+    expect(g.map((x) => x.navn)).toEqual(['repo', 'Uden projekt'])
+  })
+
+  it('rækkefølgen inden for en gruppe røres ikke', () => {
+    // Serveren sorterer på updated_at. En sortering her ville betyde at
+    // «øverst» holdt op med at betyde «senest».
+    const g = grupperEfterProjekt([s('nyest', '/x'), s('aeldre', '/x')])
+    expect(g[0]!.sessioner.map((x) => x.id)).toEqual(['nyest', 'aeldre'])
   })
 })

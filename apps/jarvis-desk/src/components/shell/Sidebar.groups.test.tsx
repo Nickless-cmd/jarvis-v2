@@ -9,7 +9,12 @@ import { render, screen, fireEvent, within } from '@testing-library/react'
 const SESSIONER = [
   { id: 'chat-aaa', title: 'kan du kigge på gaten', updated_at: 'x', workspace_kind: null },
   { id: 'chat-bbb', title: 'Måtte starte en ny session', updated_at: 'x', workspace_kind: null },
-  { id: 'chat-ccc', title: 'ret lige den fil', updated_at: 'x', workspace_kind: 'code' },
+  // Projekt-stien er med fra 16/9-2026: sidepanelet grupperer kode-sessioner
+  // efter projekt, som i CC («jarvis-v2 · /media/projects»).
+  { id: 'chat-ccc', title: 'ret lige den fil', updated_at: 'x', workspace_kind: 'code',
+    workspace_root: '/media/projects/jarvis-v2' },
+  { id: 'chat-ddd', title: 'andet projekt', updated_at: 'x', workspace_kind: 'code',
+    workspace_root: '/home/bs/andet' },
   { id: 'auto-heartbeat-20260908', title: 'Autonom · Hjerteslag · 2026-09-08', updated_at: 'x' },
   { id: 'auto-dream-20260908', title: 'Autonom · Drømme · 2026-09-08', updated_at: 'x' },
   { id: 'proactivity-bridge', title: '💭 Proaktive spørgsmål', updated_at: 'x' },
@@ -47,7 +52,7 @@ describe('sessions-listen er inddelt', () => {
 
   it('code-mode viser KUN kode', () => {
     vis('code')
-    expect(within(gruppe('kode')).getByText('1')).toBeInTheDocument()
+    expect(within(gruppe('kode')).getByText('2')).toBeInTheDocument()
     expect(screen.getByText('ret lige den fil')).toBeInTheDocument()
     expect(screen.queryByText('kan du kigge på gaten')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /proaktive/i })).toBeNull()
@@ -97,5 +102,28 @@ describe('sessions-listen er inddelt', () => {
     vis()
     fireEvent.click(gruppe('samtaler'))
     expect(screen.queryByText('kan du kigge på gaten')).not.toBeInTheDocument()
+  })
+})
+
+describe('projekt-overskrifter i kode-tilstand', () => {
+  it('viser projektet over sessionerne — navn og sti hver for sig', () => {
+    vis('code')
+    expect(screen.getByText('jarvis-v2')).toBeInTheDocument()
+    expect(screen.getByText('/media/projects')).toBeInTheDocument()
+    expect(screen.getByText('andet')).toBeInTheDocument()
+  })
+
+  it('sessionerne staar under DERES eget projekt', () => {
+    vis('code')
+    expect(screen.getByText('ret lige den fil')).toBeInTheDocument()
+    expect(screen.getByText('andet projekt')).toBeInTheDocument()
+  })
+
+  it('chat-tilstand faar INGEN projekt-overskrift', () => {
+    // Chat-sessioner har intet workspace; en overskrift ville vaere en gruppe
+    // uden indhold.
+    vis('chat')
+    expect(screen.queryByText('Uden projekt')).not.toBeInTheDocument()
+    expect(screen.queryByText('jarvis-v2')).not.toBeInTheDocument()
   })
 })

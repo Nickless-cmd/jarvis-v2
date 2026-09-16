@@ -635,7 +635,7 @@ export function ChatView({
           aria-label="Vis/skjul ændringer" title="Ændringer"
           onClick={() => setChangesOpen((o) => !o)}
         >
-          <FileDiff size={15} strokeWidth={1.8} />
+          <FileDiff size={15} />
           {aendredeFiler > 0 && <span className="panel-toggle-taeller">{aendredeFiler}</span>}
         </button>
         <button
@@ -644,7 +644,7 @@ export function ChatView({
           aria-label="Vis/skjul baggrundsjob" title="Baggrundsjob"
           onClick={() => setJobsOpen((o) => !o)}
         >
-          <SquareStack size={15} strokeWidth={1.8} />
+          <SquareStack size={15} />
           {koerendeJobs > 0 && <span className="panel-toggle-taeller">{koerendeJobs}</span>}
         </button>
         <button
@@ -654,7 +654,7 @@ export function ChatView({
           title="Panel"
           onClick={panel.toggle}
         >
-          <PanelRight size={16} />
+          <PanelRight size={15} />
         </button>
       </div>
     </div>

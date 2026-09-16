@@ -75,3 +75,71 @@ export function grupperSessioner<T extends GrupperbarSession>(
     .filter((g) => bunker[g].length > 0)
     .map((g) => ({ gruppe: g, navn: GRUPPE_NAVN[g], sessioner: bunker[g] }))
 }
+
+/* ── Projekt-gruppering ───────────────────────────────────────────────────
+   Bjørn 16/9-2026: «det kunne være fint hvis man kunne projekt gruppere
+   sessionerne.. du kan se hvorn det ser ud i cc».
+
+   I CC hedder grupperne efter projektet: «jarvis-v2 · /media/projects». Det
+   er præcis den oplysning der HAR ligget i basen hele tiden — kolonnen
+   `workspace_root` — men som listningen aldrig sendte med. Endnu et tilfælde
+   af at mekanismen fandtes og kalderen manglede.
+
+   Kun kode-sessioner har et projekt. Chat-sessioner har intet workspace, og
+   at opfinde et til dem ville være en gruppe uden indhold. */
+
+export interface ProjektSession extends GrupperbarSession {
+  workspace_root?: string | null
+}
+
+/** «/media/projects/jarvis-v2» → { navn: 'jarvis-v2', sti: '/media/projects' }
+ *
+ *  Windows-stier deles på «\» — «C:\Jarvis» findes i hans egne data, og en
+ *  deling der kun kender «/» ville give hele strengen som navn. */
+export function projektNavn(rod: string): { navn: string; sti: string } {
+  const r = String(rod || '').trim().replace(/[/\\]+$/, '')
+  if (!r) return { navn: '', sti: '' }
+  const skille = r.includes('\\') ? '\\' : '/'
+  const dele = r.split(/[/\\]/).filter(Boolean)
+  if (dele.length === 0) return { navn: r, sti: '' }
+  const navn = dele[dele.length - 1]!
+  const sti = dele.slice(0, -1).join(skille)
+  return { navn, sti: sti ? (skille === '/' ? `/${sti}` : sti) : '' }
+}
+
+export interface ProjektGruppe<T> {
+  /** Stien — gruppens identitet. Tom = sessioner uden projekt. */
+  rod: string
+  /** «jarvis-v2» */
+  navn: string
+  /** «/media/projects» — vises dæmpet efter navnet, som i CC. */
+  sti: string
+  sessioner: T[]
+}
+
+/**
+ * Del sessionerne op efter PROJEKT.
+ *
+ * Rækkefølgen inden for en gruppe røres ikke (serveren sorterer på
+ * `updated_at`). Grupperne selv står efter deres nyeste session, så det
+ * projekt man sidst arbejdede i står øverst — ikke alfabetisk, som ville
+ * lade et gammelt projekt ligge og fylde foran det man er i gang med.
+ */
+export function grupperEfterProjekt<T extends ProjektSession>(
+  sessioner: T[],
+): ProjektGruppe<T>[] {
+  const bunker = new Map<string, T[]>()
+  for (const s of sessioner || []) {
+    const rod = String(s.workspace_root || '').trim()
+    const liste = bunker.get(rod)
+    if (liste) liste.push(s); else bunker.set(rod, [s])
+  }
+  return [...bunker.entries()]
+    .map(([rod, liste]) => {
+      const { navn, sti } = projektNavn(rod)
+      return { rod, navn: navn || 'Uden projekt', sti, sessioner: liste }
+    })
+    // Sessioner uden projekt sidst: de hører ikke til noget, og en gruppe
+    // uden navn øverst ville skubbe det man arbejder i nedad.
+    .sort((a, b) => (a.rod ? 0 : 1) - (b.rod ? 0 : 1))
+}

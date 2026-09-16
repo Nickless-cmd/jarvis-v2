@@ -150,3 +150,20 @@
 /* En agent-raekke uden agent-id aabner sit tool-kald; har den heller ikke
    det, er der intet at aabne — og saa skal den ikke se klikbar ud. */
 .env-row-button:disabled { cursor: default; opacity: .75; }
+
+/* Fire linjer, og halen fader ud i bunden med «Vis alle» under
+   (Bjørn 16/9-2026). Fade'en gør at listen ikke ender i en hård kant der
+   ligner slutningen — den siger «her er mere» uden at bruge en linje på det.
+   Masken sidder KUN når der faktisk er klippet: en komplet liste skal ikke
+   have sin sidste række dæmpet. */
+.env-rows.er-klippet, .env-tools.er-klippet {
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 22px), transparent);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 22px), transparent);
+}
+.env-vis-alle {
+  display: block; width: 100%; margin-top: 2px; padding: 3px 0;
+  background: none; border: 0; cursor: pointer;
+  color: var(--fg-3); font-size: 11px; text-align: left;
+}
+.env-vis-alle:hover { color: var(--accent-text); }
+.env-vis-alle:focus-visible { outline: 1px solid var(--accent); outline-offset: 2px; border-radius: 4px; }

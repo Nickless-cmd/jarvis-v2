@@ -6,7 +6,7 @@ import {
 } from '../../lib/agentPoolApi'
 import type { AgentReference } from '../../lib/environmentEvidence'
 
-const ACTIVE_STATUSES = new Set(['active', 'queued', 'starting', 'waiting'])
+import { agentErAktiv } from '../../lib/agentSynlighed'
 
 function tid(value?: string | null): string {
   if (!value) return '–'
@@ -18,9 +18,9 @@ function tid(value?: string | null): string {
     })
 }
 
-function statusErAktiv(status?: string): boolean {
-  return ACTIVE_STATUSES.has(String(status || '').toLowerCase())
-}
+// Samme regel som Miljoe-feltet bruger — to steder med hver sin liste over
+// «aktive» statusser ville drive fra hinanden i stilhed.
+const statusErAktiv = agentErAktiv
 
 export function AgentInspector({
   config, agent, canMessage, onChanged,

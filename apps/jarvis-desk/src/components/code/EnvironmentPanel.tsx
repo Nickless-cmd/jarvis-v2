@@ -4,6 +4,8 @@ import { RunHealth } from './RunHealth'
 import { getGitStatus, commitAllChanges, createPullRequest, type GitStatus, type ApiConfig } from '../../lib/api'
 import { lookupTool } from '../../lib/toolRegistry'
 import type { AgentReference, EnvironmentEvidence, SourceEvidence, ToolEvidence } from '../../lib/environmentEvidence'
+import { agentSkalStaaFremme } from '../../lib/agentSynlighed'
+const SYNLIGE_LINJER = 4
 const AGENT_COLORS = ['#e0843a', '#3ab85f', '#9b6bff', '#e0556b', '#3a9be0']
 
 /** Stabil plads i farvepaletten ud fra en streng — samme agent, samme farve. */
@@ -57,6 +59,8 @@ export function EnvironmentPanel({
   installingTool?: string
   onInstallTool?: (tool: string) => void
 }) {
+  const [visAlleKilder, setVisAlleKilder] = useState(false)
+  const [visAlleTools, setVisAlleTools] = useState(false)
   const [git, setGit] = useState<GitStatus | null>(null)
   const [collapsed, setCollapsed] = useState(false)
   const [busy, setBusy] = useState<'' | 'commit' | 'pr'>('')
@@ -109,13 +113,18 @@ export function EnvironmentPanel({
 
   if (!everRan) return null
 
-  const agents = evidence?.agents ?? []
-  // VIS ANTALLET, ikke kun de otte. Uden tallet ser en session med 40 opslag
-  // ud som om den havde 8 — samme stille forkerte konklusion som limit-faelden.
+  // Underagenter er ikke en historik, men en liste over det der kraever
+  // opmaerksomhed: noget der koerer, og noget der gik galt. En agent der
+  // gjorde sit arbejde faerdigt forsvinder. (Bjoern 16/9-2026)
+  const agents = (evidence?.agents ?? []).filter((a) => agentSkalStaaFremme(a.status))
   const alleSources = evidence?.sources ?? []
   const alleTools = evidence?.tools ?? []
-  const sources = alleSources.slice(-8)
-  const recentTools = alleTools.slice(-8)
+  // Fire linjer, resten bag «Vis alle». Tallet staar PAA knappen, saa halen
+  // aldrig er skjult uden at nogen kan se at den findes.
+  const sources = visAlleKilder ? alleSources : alleSources.slice(-SYNLIGE_LINJER)
+  const recentTools = visAlleTools ? alleTools : alleTools.slice(-SYNLIGE_LINJER)
+  const flereKilder = alleSources.length > sources.length
+  const flereTools = alleTools.length > recentTools.length
 
   return (
     <aside className="env-panel" aria-label="Miljø">
@@ -233,10 +242,8 @@ export function EnvironmentPanel({
           {sources.length > 0 && (
             <>
               <div className="env-divider" />
-              <div className="env-section-head">
-                Kilder{alleSources.length > sources.length && <> · {sources.length} af {alleSources.length}</>}
-              </div>
-              <ul className="env-rows">
+              <div className="env-section-head">Kilder</div>
+              <ul className={`env-rows${flereKilder ? ' er-klippet' : ''}`}>
                 {sources.map((source) => (
                   <li className="env-row" key={source.url}>
                     <button type="button" className="env-row-button" onClick={() => onOpenSource?.(source)} title={source.url}>
@@ -245,16 +252,19 @@ export function EnvironmentPanel({
                   </li>
                 ))}
               </ul>
+              {(flereKilder || visAlleKilder) && (
+                <button type="button" className="env-vis-alle" onClick={() => setVisAlleKilder((v) => !v)}>
+                  {visAlleKilder ? 'Vis færre' : `Vis alle ${alleSources.length}`}
+                </button>
+              )}
             </>
           )}
 
           {recentTools.length > 0 && (
             <>
               <div className="env-divider" />
-              <div className="env-section-head">
-                Tool-kald{alleTools.length > recentTools.length && <> · {recentTools.length} af {alleTools.length}</>}
-              </div>
-              <div className="env-tools">
+              <div className="env-section-head">Tool-kald</div>
+              <div className={`env-tools${flereTools ? ' er-klippet' : ''}`}>
                 {recentTools.map((tool) => {
                   const label = formatTool(tool)
                   return (
@@ -264,6 +274,11 @@ export function EnvironmentPanel({
                   )
                 })}
               </div>
+              {(flereTools || visAlleTools) && (
+                <button type="button" className="env-vis-alle" onClick={() => setVisAlleTools((v) => !v)}>
+                  {visAlleTools ? 'Vis færre' : `Vis alle ${alleTools.length}`}
+                </button>
+              )}
             </>
           )}
         </>

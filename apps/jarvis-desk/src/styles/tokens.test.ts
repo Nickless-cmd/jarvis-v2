@@ -224,3 +224,23 @@ describe('klassenavne uden sammenfald', () => {
     expect(css).toContain('.central-count-badge')
   })
 })
+
+/**
+ * Fade'en i bunden af Kilder og Tool-kald må KUN sidde når listen er klippet.
+ * Sad den altid, ville den sidste række i en komplet liste være dæmpet uden
+ * grund — og så betyder fade'en ikke længere «her er mere».
+ */
+describe('miljø-feltets klippede lister', () => {
+  const miljø = readFileSync(join(__dirname, 'environment-inspector.css'), 'utf8')
+
+  it('masken hænger på er-klippet, ikke på listen selv', () => {
+    expect(miljø).toMatch(/\.env-rows\.er-klippet[^{]*\{[^}]*mask-image/)
+    // .env-rows uden modifier må ikke have en maske.
+    const bar = miljø.match(/^\.env-rows \{([^}]*)\}/m)?.[1] ?? ''
+    expect(bar).not.toContain('mask-image')
+  })
+
+  it('fader NEDAD — en vandret fade hører til titler, ikke til lister', () => {
+    expect(miljø).toMatch(/\.env-rows\.er-klippet[\s\S]{0,200}linear-gradient\(to bottom/)
+  })
+})

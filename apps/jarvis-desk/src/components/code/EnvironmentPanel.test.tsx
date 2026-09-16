@@ -80,17 +80,43 @@ describe('EnvironmentPanel — agent-rækker og halen', () => {
     expect(await screen.findByText('kører')).toBeInTheDocument()
   })
 
-  it('siger hvor mange kilder der ER, ikke kun hvor mange der vises', async () => {
+  it('viser fire kilder og siger hvor mange der ER i alt', async () => {
+    // Aendret 16/9-2026: fire linjer + «Vis alle», ikke otte med et tal i
+    // overskriften. Tallet flyttede MED over paa knappen — halen maa aldrig
+    // vaere skjult uden at man kan se at den findes.
     const sources = Array.from({ length: 12 }, (_, i) => ({
       url: `https://kilde-${i}.dk/side`, domaene: `kilde-${i}.dk`, origin: 'assistant_text' as const,
     }))
     render(<EnvironmentPanel config={cfg} kind="container" root="/r" working
       evidence={{ tools: [], agents: [], sources }} />)
-    expect(await screen.findByText(/8 af 12/)).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Vis alle 12' })).toBeInTheDocument()
+    expect(screen.getAllByText(/^kilde-\d+\.dk$/)).toHaveLength(4)
+  })
+
+  it('«Vis alle» folder hele halen ud og kan foldes sammen igen', async () => {
+    const sources = Array.from({ length: 12 }, (_, i) => ({
+      url: `https://kilde-${i}.dk/side`, domaene: `kilde-${i}.dk`, origin: 'assistant_text' as const,
+    }))
+    render(<EnvironmentPanel config={cfg} kind="container" root="/r" working
+      evidence={{ tools: [], agents: [], sources }} />)
+    await userEvent.click(await screen.findByRole('button', { name: 'Vis alle 12' }))
+    expect(screen.getAllByText(/^kilde-\d+\.dk$/)).toHaveLength(12)
+    await userEvent.click(screen.getByRole('button', { name: 'Vis færre' }))
+    expect(screen.getAllByText(/^kilde-\d+\.dk$/)).toHaveLength(4)
+  })
+
+  it('under fem kilder giver ingen knap — der er ingen hale at folde ud', async () => {
+    const sources = Array.from({ length: 3 }, (_, i) => ({
+      url: `https://kilde-${i}.dk/side`, domaene: `kilde-${i}.dk`, origin: 'assistant_text' as const,
+    }))
+    render(<EnvironmentPanel config={cfg} kind="container" root="/r" working
+      evidence={{ tools: [], agents: [], sources }} />)
+    await screen.findByText('kilde-0.dk')
+    expect(screen.queryByRole('button', { name: /Vis alle/ })).not.toBeInTheDocument()
   })
 
   it('en agents farve følger agenten, ikke dens plads i listen', async () => {
-    const agent = { agentId: 'a1', role: 'researcher', dispatchToolUseId: 't1' }
+    const agent = { agentId: 'a1', role: 'researcher', status: 'active', dispatchToolUseId: 't1' }
     const farve = (el: HTMLElement) => el.style.color
     const { unmount } = render(<EnvironmentPanel config={cfg} kind="container" root="/r" working
       evidence={{ tools: [], sources: [], agents: [agent] }} />)
@@ -99,8 +125,8 @@ describe('EnvironmentPanel — agent-rækker og halen', () => {
 
     render(<EnvironmentPanel config={cfg} kind="container" root="/r" working
       evidence={{ tools: [], sources: [], agents: [
-        { agentId: 'a0', role: 'foran-1', dispatchToolUseId: 't0' },
-        { agentId: 'a2', role: 'foran-2', dispatchToolUseId: 't2' },
+        { agentId: 'a0', role: 'foran-1', status: 'active', dispatchToolUseId: 't0' },
+        { agentId: 'a2', role: 'foran-2', status: 'active', dispatchToolUseId: 't2' },
         agent,
       ] }} />)
     expect(farve(await screen.findByText('researcher'))).toBe(alene)
@@ -136,5 +162,60 @@ describe('EnvironmentPanel — hvad git-linjen tør påstå', () => {
     render(<EnvironmentPanel config={cfg} kind="workstation" root="/r" working />)
     expect(await screen.findByText('5 nye filer')).toBeInTheDocument()
     expect(screen.queryByText('+0')).not.toBeInTheDocument()
+  })
+})
+
+describe('EnvironmentPanel — hvilke agenter står fremme', () => {
+  beforeEach(() => {
+    getGitStatus.mockReset()
+    getGitStatus.mockResolvedValue({ is_git: true, branch: 'main', dirty: 0, added: 0, removed: 0, link: 'ok' })
+  })
+
+  const agent = (id: string, status: string) => ({
+    agentId: id, role: `rolle-${id}`, status, dispatchToolUseId: `t-${id}`,
+  })
+  const vis = (agents: ReturnType<typeof agent>[]) => render(
+    <EnvironmentPanel config={cfg} kind="container" root="/r" working
+      evidence={{ tools: [], sources: [], agents }} />,
+  )
+
+  it('en agent der er FÆRDIG forsvinder', async () => {
+    vis([agent('a1', 'completed')])
+    await screen.findByText('Ingen ændringer')          // panelet ER tegnet
+    expect(screen.queryByText('Underagenter')).not.toBeInTheDocument()
+    expect(screen.queryByText('rolle-a1')).not.toBeInTheDocument()
+  })
+
+  it('en agent der FEJLEDE bliver hængende', async () => {
+    vis([agent('a1', 'failed')])
+    expect(await screen.findByText('rolle-a1')).toBeInTheDocument()
+  })
+
+  it('en agent der ikke stoppede selv (expired) bliver hængende', async () => {
+    vis([agent('a1', 'expired')])
+    expect(await screen.findByText('rolle-a1')).toBeInTheDocument()
+  })
+
+  it('en aktiv agent står fremme', async () => {
+    vis([agent('a1', 'active')])
+    expect(await screen.findByText('rolle-a1')).toBeInTheDocument()
+  })
+
+  it('en pauset agent er ikke færdig og bliver stående', async () => {
+    vis([agent('a1', 'suspended')])
+    expect(await screen.findByText('rolle-a1')).toBeInTheDocument()
+  })
+
+  it('hele feltet forsvinder når alle er færdige', async () => {
+    vis([agent('a1', 'completed'), agent('a2', 'cancelled'), agent('a3', 'completed')])
+    await screen.findByText('Ingen ændringer')
+    expect(screen.queryByText('Underagenter')).not.toBeInTheDocument()
+  })
+
+  it('én fejlet blandt ti færdige holder feltet åbent — og viser KUN den ene', async () => {
+    vis([...Array.from({ length: 10 }, (_, i) => agent(`ok-${i}`, 'completed')), agent('gik-galt', 'failed')])
+    expect(await screen.findByText('Underagenter')).toBeInTheDocument()
+    expect(screen.getByText('rolle-gik-galt')).toBeInTheDocument()
+    expect(screen.queryByText('rolle-ok-0')).not.toBeInTheDocument()
   })
 })

@@ -161,10 +161,17 @@ function agentReferences(tool: ToolEvidence): AgentReference[] {
     }
   }
   if (refs.length === 0) {
+    // Toolets tilstand ER det eneste vi ved om agenten her. Den oversaettes
+    // til en agent-status, saa synligheds-reglen kan bedoemme raekken paa
+    // samme maade som en rigtig agent: en fejlet dispatch bliver haengende,
+    // en faerdig forsvinder.
+    const fraTool = tool.status === 'running' ? 'running'
+      : tool.status === 'error' ? 'failed'
+        : undefined
     refs.push({
       agentId: '',
       goal: commonGoal,
-      status: tool.status === 'running' ? 'running' : undefined,
+      status: fraTool,
       dispatchToolUseId: tool.id,
     })
   }

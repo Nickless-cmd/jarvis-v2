@@ -173,4 +173,20 @@
    strakt ud over en hel skaerm ville det vaere en halv meter luft under fem
    linjer tekst. Jobs og Aendringer er lister der VOKSER; det er de to der
    skal have hoejden. */
-.code-right-stack > .env-panel { flex: 0 0 auto; }
+.code-right-stack > .env-panel {
+  flex: 0 0 auto;
+  /* NED UNDER HEADEREN (Bjoern 16/9-2026: «miljø feltet skal lidt ned det gør
+     helt op i header»). Maalt: headeren fylder 34-76 px, og skinnen starter
+     ved 68 — feltet laa altsaa oven i dens sidste 8 px. 16 px giver plads
+     under den i stedet for at ligge lige op ad.
+
+     Jobs og Aendringer skal derimod blive hvor de er: de er lister der skal
+     have al hoejden, og de har deres egen header at moede.
+
+     SMALLERE end skinnen («og så må miljø feltet gerne være lidt smallere»).
+     Det er en oversigt paa faa raekker; 360 px goer den bred og tom. Den
+     flugter til hoejre, saa kanten foelger de andre ruder. */
+  margin-top: 16px;
+  width: 300px;
+  align-self: flex-end;
+}

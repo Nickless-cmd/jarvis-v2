@@ -369,4 +369,19 @@ describe('højre skinne', () => {
     expect(miljoe, 'undtagelsen for miljø-feltet mangler').toBeTruthy()
     expect(miljoe).toMatch(/flex:\s*0 0 auto/)
   })
+
+  it('miljø-feltet ligger UNDER headeren, ikke oven i den', () => {
+    // Målt 16/9-2026: headeren fylder 34-76 px og skinnen starter ved 68, så
+    // feltet lå oven i dens sidste 8 px. Uden en top-margen havner det dér
+    // igen, næste gang nogen flytter skinnen.
+    const m = Number(miljoe.match(/margin-top:\s*(\d+)px/)?.[1] ?? 0)
+    expect(m, 'for lidt til at rydde headeren').toBeGreaterThanOrEqual(8)
+  })
+
+  it('miljø-feltet er smallere end skinnen — og flugter til højre', () => {
+    const bredde = Number(miljoe.match(/width:\s*(\d+)px/)?.[1] ?? 0)
+    expect(bredde, 'miljø-feltet har ingen egen bredde').toBeGreaterThan(0)
+    expect(bredde).toBeLessThan(360)          // skinnens bredde
+    expect(miljoe).toContain('align-self: flex-end')
+  })
 })

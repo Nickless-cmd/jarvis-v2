@@ -71,8 +71,11 @@
   --warn-fg: #e0a458;
 
   /* Sidebarens bredde. Bor her, fordi BAADE .window (gitteret) og
-     .vinduesbjaelke (som er dens soeskende) skal bruge den. */
-  --sidebar-bredde: 260px;
+     .vinduesbjaelke (som er dens soeskende) skal bruge den.
+     260 → 290 px (Bjoern 16/9-2026: «venstre panel skal gerne vaere lidt
+     breder osse»). Titelbjaelkens venstrekant foelger automatisk, fordi den
+     laeser samme variabel — det var hele pointen med at flytte den hertil. */
+  --sidebar-bredde: 290px;
   /* Hoejre skinnens bredde. Samme tal skal bruges af BAADE skinnen og den
      header der goer plads til den. */
   --skinne-bredde: 360px;

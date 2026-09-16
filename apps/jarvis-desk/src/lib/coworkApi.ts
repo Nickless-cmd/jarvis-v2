@@ -492,6 +492,9 @@ export async function getAgentArbejde(
  *  testkørsel, og serveren kan ikke se det (tool.completed bærer ikke run_id). */
 export type ReviewFil = {
   path: string; added: number; removed: number; binary: boolean; lines?: number
+  /** Utracket fil. `git diff HEAD` udelod dem foer, saa en helt ny fil var
+   *  usynlig — og «+0» paa en fil paa 400 linjer er et tal der ikke findes. */
+  ny?: boolean
 }
 export type ReviewRisiko = { path: string; regel: string; note: string }
 export type ReviewAendringer = {
@@ -502,11 +505,24 @@ export type ReviewAendringer = {
   diff: string
   diff_truncated: boolean
   risks: ReviewRisiko[]
+  /** Hvilket traee svaret handler om. */
+  kilde?: 'server' | 'maskine'
+  /** Sat naar vi ikke KUNNE laese traeet. «Ingen aendringer» og «jeg kan ikke
+   *  se traeet» er stik modsatte udsagn, og klienten skal sige forskel. */
+  fejl?: string
 }
 export async function getReviewAendringer(
-  config: ApiConfig, testKoert: boolean,
+  config: ApiConfig,
+  testKoert: boolean,
+  /** 'server' = runtimens eget repo. 'maskine' = Bjoerns eget, laest over broen. */
+  kilde: 'server' | 'maskine' = 'server',
+  /** Sti til arbejdstraeet. Kun brugt — og paakraevet — for 'maskine'. */
+  rod = '',
 ): Promise<ReviewAendringer> {
-  return apiFetch(config, `/review/changes?test_koert=${testKoert ? 'true' : 'false'}`)
+  const q = new URLSearchParams({
+    test_koert: testKoert ? 'true' : 'false', kilde, rod,
+  })
+  return apiFetch(config, `/review/changes?${q.toString()}`)
 }
 
 /** Lektier: forslag der venter på en dom, og dem der allerede er i brug.

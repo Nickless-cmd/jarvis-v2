@@ -6,7 +6,9 @@ import { ToolCard } from './ToolCard'
 import { ToolGroupCard } from './ToolGroupCard'
 import { ImageBlock } from './ImageBlock'
 import { AttachmentBlock } from './AttachmentBlock'
-import { ProgressTrail } from './ProgressTrail'
+import { EditedFilesCard } from './EditedFilesCard'
+import { redigeredeFiler } from '../../lib/redigeredeFiler'
+import { visAendring } from '../../lib/aendringsFokus'
 import { LiveVerb } from '../shell/LiveVerb'
 
 type ProgressBlock = Extract<ContentBlock, { type: 'progress' }>
@@ -64,11 +66,16 @@ export function BlocksRenderer({
   // undefined-hul (sort skærm, Bjørn 9. jul).
   const rendered = coalesceProgress(groupToolRounds(denseBlocks(blocks)))
   const lastIdx = rendered.length - 1
+  // Filerne Jarvis redigerede i DENNE besked. Kortet staar nederst — som i CC
+  // — og kun naar der faktisk er redigeret noget.
+  const redigerede = redigeredeFiler(blocks)
+
   return (
     <>
       {rendered.map((b, i) => (
         <BlockView key={i} block={b} density={density} streaming={streaming} isLast={i === lastIdx} rundeEtiketter={rundeEtiketter} />
       ))}
+      <EditedFilesCard filer={redigerede} onAabn={visAendring} />
     </>
   )
 }
@@ -94,10 +101,11 @@ function BlockView({
     // samme besked (8/9-2026). Live har den stadig en opgave: den er det
     // eneste der fortaeller hvad der sker lige nu.
     case 'progress_trail':
-      return streaming ? <ProgressTrail items={block.items} /> : null
     case 'progress':
-      // Enkelt progress-blok (skulle være coalesced, men vær robust).
-      return streaming ? <ProgressTrail items={[block]} /> : null
+      // «Forløb (N)» er erstattet af «Redigerede N filer» nederst i beskeden
+      // (Bjørn 16/9-2026). Narrationen stod kun under streaming og forsvandt
+      // bagefter; kortet bliver stående og kan klikkes.
+      return null
     case 'text':
       return <MarkdownRenderer text={block.text} streaming={streaming} />
     case 'tool_group':

@@ -167,3 +167,10 @@
 }
 .env-vis-alle:hover { color: var(--accent-text); }
 .env-vis-alle:focus-visible { outline: 1px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+
+/* MILJOE-FELTET STRAEKKES IKKE i hoejre skinne (Bjoern 16/9-2026: «miljø
+   feltet skal ikk være fuld længde»). Det er en oversigt paa faa raekker —
+   strakt ud over en hel skaerm ville det vaere en halv meter luft under fem
+   linjer tekst. Jobs og Aendringer er lister der VOKSER; det er de to der
+   skal have hoejden. */
+.code-right-stack > .env-panel { flex: 0 0 auto; }

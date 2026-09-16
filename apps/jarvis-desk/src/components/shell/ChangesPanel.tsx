@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { X, ChevronRight, ChevronDown, FileDiff } from 'lucide-react'
+import { X, ChevronRight, ChevronDown, FileDiff, Maximize2, Minimize2 } from 'lucide-react'
 import { getReviewAendringer, type ReviewAendringer, type ReviewFil } from '../../lib/coworkApi'
 import type { ApiConfig } from '../../lib/api'
 
@@ -19,11 +19,13 @@ import type { ApiConfig } from '../../lib/api'
  * Et panel der viser «ingen ændringer» i alle tre tilfælde ville lyve i to af
  * dem. Det er samme fejl som jobs-ruden havde med den døde bro.
  *
- * KENDT BEGRÆNSNING, skrevet her så den ikke bliver en overraskelse:
- * `/review/changes` kører `git diff HEAD` på SERVERENS repo og ser derfor kun
- * SPOREDE filer. En helt ny fil tæller ikke med, og ændringer på Bjørns egen
- * maskine vises ikke. Panelet siger hvilket træ det taler om i headeren, så
- * tallet aldrig bliver forvekslet med «alt hvad Jarvis har lavet».
+ * BEGGE OPRINDELIGE BEGRÆNSNINGER ER LUKKET 16/9-2026:
+ *  - utrackede filer tæller med (`ny: true`), så en helt ny fil ikke er
+ *    usynlig — `git diff HEAD` ser kun sporede filer
+ *  - `kilde='maskine'` læser hans EGET træ over broen
+ *
+ * Headeren siger stadig hvilket træ der tales om. «Ingen ændringer» i
+ * serverens repo er ikke det samme som «Jarvis har ikke lavet noget».
  */
 export function ChangesPanel({
   config,
@@ -33,12 +35,25 @@ export function ChangesPanel({
   /** Stiger når en tur slutter — så diff'en hentes igen uden at vente på pollen. */
   refreshKey = 0,
   onCount,
+  /** Hvilket træ. 'maskine' kræver `rod` — stien til arbejdstræet hos ham. */
+  kilde = 'server',
+  rod = '',
+  /** Fil der skal foldes ud, sat UDEFRA: klik på en fil i «Redigerede N filer»
+   *  under Jarvis' besked åbner ruden med netop den fil åben. */
+  fokusFil = '',
+  fuld = false,
+  onFuld,
 }: {
   config?: ApiConfig
   onClose: () => void
   testKoert?: boolean
   refreshKey?: number
   onCount?: (antal: number) => void
+  kilde?: 'server' | 'maskine'
+  rod?: string
+  fokusFil?: string
+  fuld?: boolean
+  onFuld?: (fuld: boolean) => void
 }) {
   const [data, setData] = useState<ReviewAendringer | null>(null)
   const [fejl, setFejl] = useState('')
@@ -48,11 +63,11 @@ export function ChangesPanel({
   const hent = useCallback(() => {
     if (!config || undervejs.current) return
     undervejs.current = true
-    getReviewAendringer(config, testKoert)
+    getReviewAendringer(config, testKoert, kilde, rod)
       .then((d) => { setData(d); setFejl('') })
       .catch(() => setFejl('kunne ikke læse arbejdstræet'))
       .finally(() => { undervejs.current = false })
-  }, [config, testKoert])
+  }, [config, testKoert, kilde, rod])
 
   useEffect(() => {
     hent()
@@ -61,6 +76,11 @@ export function ChangesPanel({
     const id = setInterval(() => { if (!document.hidden) hent() }, 4000)
     return () => clearInterval(id)
   }, [hent, refreshKey])
+
+  // Én fil udefra folder sig ud — uden at lukke det man selv havde aabnet.
+  useEffect(() => {
+    if (fokusFil) setAabne((f) => new Set(f).add(fokusFil))
+  }, [fokusFil])
 
   const filer = data?.files ?? []
   useEffect(() => { onCount?.(filer.length) }, [filer.length, onCount])
@@ -92,13 +112,26 @@ export function ChangesPanel({
       <div className="changes-head">
         <span className="changes-gren">{data?.branch || '—'}</span>
         <span className="changes-pil" aria-hidden="true">→</span>
-        <span className="changes-maal">arbejdstræ</span>
+        {/* HVILKET træ. Uden det kan «ingen ændringer» forveksles med «alt hvad
+            Jarvis har lavet» — de to træer er ikke det samme. */}
+        <span className="changes-maal">{kilde === 'maskine' ? 'din maskine' : 'arbejdstræ'}</span>
+        {onFuld && (
+          <button type="button" className="jobs-close" onClick={() => onFuld(!fuld)}
+                  aria-label={fuld ? 'Formindsk' : 'Fuld visning'}
+                  title={fuld ? 'Formindsk' : 'Fuld visning'}>
+            {fuld ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
+          </button>
+        )}
         <button type="button" className="jobs-close" onClick={onClose} aria-label="Luk">
           <X size={14} />
         </button>
       </div>
 
-      {fejl ? (
+      {data?.fejl ? (
+        /* Serveren NAAEDE ud, men kunne ikke laese hans trae — typisk fordi
+           broen er nede. Vi ved altsaa ikke om der er aendringer. */
+        <div className="changes-tom is-fejl">{data.fejl}</div>
+      ) : fejl ? (
         /* IKKE «ingen ændringer». Vi kunne ikke læse træet, og de to udsagn
            er stik modsatte. */
         <div className="changes-tom is-fejl">{fejl}</div>
@@ -129,8 +162,13 @@ export function ChangesPanel({
                     {aaben ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
                     <FileDiff size={12} />
                     <span className="changes-sti" title={f.path}>{f.path}</span>
+                    {f.ny && <span className="changes-ny">ny</span>}
                     {f.binary ? (
                       <span className="changes-binaer">binær</span>
+                    ) : f.ny && f.added === 0 ? (
+                      /* Over broen henter vi ikke filens indhold, saa
+                         linjeantallet er UKENDT. «+0» ville vaere et gaet. */
+                      <span className="changes-binaer">—</span>
                     ) : (
                       <>
                         <span className="git-add">+{f.added}</span>

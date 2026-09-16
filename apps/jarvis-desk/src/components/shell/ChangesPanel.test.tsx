@@ -122,3 +122,63 @@ describe('ChangesPanel', () => {
     vi.useRealTimers()
   })
 })
+
+describe('ChangesPanel — begge træer og de nye filer', () => {
+  it('spørger om HANS maskine når kilden er det', async () => {
+    render(<ChangesPanel config={cfg} onClose={() => {}} kilde="maskine" rod="/home/bs/x" />)
+    await waitFor(() => expect(getReviewAendringer)
+      .toHaveBeenCalledWith(cfg, false, 'maskine', '/home/bs/x'))
+    expect(await screen.findByText('din maskine')).toBeInTheDocument()
+  })
+
+  it('en DØD bro siger det — den ligner ikke et rent træ', async () => {
+    getReviewAendringer.mockResolvedValue({
+      branch: '', files: [], added: 0, removed: 0, diff: '', diff_truncated: false,
+      risks: [], kilde: 'maskine', fejl: 'broen svarede ikke',
+    })
+    render(<ChangesPanel config={cfg} onClose={() => {}} kilde="maskine" rod="/x" />)
+    expect(await screen.findByText('broen svarede ikke')).toBeInTheDocument()
+    expect(screen.queryByText('Ingen ændringer')).not.toBeInTheDocument()
+  })
+
+  it('en NY fil markeres — 400 tilføjede linjer er ikke 400 ændrede', async () => {
+    getReviewAendringer.mockResolvedValue({
+      ...SVAR, files: [{ path: 'ny.ts', added: 400, removed: 0, binary: false, ny: true }],
+    })
+    render(<ChangesPanel config={cfg} onClose={() => {}} />)
+    expect(await screen.findByText('ny')).toBeInTheDocument()
+    expect(screen.getByText('+400')).toBeInTheDocument()
+  })
+
+  it('en ny fil med UKENDT linjeantal viser ikke «+0»', async () => {
+    // Over broen hentes filens indhold ikke. 0 ville være et gæt.
+    getReviewAendringer.mockResolvedValue({
+      ...SVAR, files: [{ path: 'ny.ts', added: 0, removed: 0, binary: false, ny: true }],
+    })
+    render(<ChangesPanel config={cfg} onClose={() => {}} />)
+    await screen.findByText('ny')
+    expect(screen.queryByText('+0')).not.toBeInTheDocument()
+    expect(screen.getByText('—')).toBeInTheDocument()
+  })
+
+  it('en fil sat UDEFRA foldes ud', async () => {
+    // Klik på en fil i «Redigerede N filer» under Jarvis' besked.
+    render(<ChangesPanel config={cfg} onClose={() => {}} fokusFil="src/b.ts" />)
+    expect(await screen.findByText(/tilføjet i b/)).toBeInTheDocument()
+    // Og den lukker ikke det man selv havde åbnet.
+    expect(screen.queryByText(/const ny = 2/)).not.toBeInTheDocument()
+  })
+
+  it('fuld visning kan slås til og fra', async () => {
+    const fuld = vi.fn()
+    render(<ChangesPanel config={cfg} onClose={() => {}} onFuld={fuld} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Fuld visning' }))
+    expect(fuld).toHaveBeenCalledWith(true)
+  })
+
+  it('uden onFuld er der ingen knap — den ville ikke gøre noget', async () => {
+    render(<ChangesPanel config={cfg} onClose={() => {}} />)
+    await screen.findByText('main')
+    expect(screen.queryByRole('button', { name: 'Fuld visning' })).not.toBeInTheDocument()
+  })
+})

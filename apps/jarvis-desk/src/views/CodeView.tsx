@@ -24,6 +24,7 @@ import { EnvironmentPanel } from '../components/code/EnvironmentPanel'
 import { CentralBadge } from '../components/shell/CentralBadge'
 import { JobsPanel } from '../components/shell/JobsPanel'
 import { ChangesPanel } from '../components/shell/ChangesPanel'
+import { paaAendringsFokus } from '../lib/aendringsFokus'
 import { listProcesses } from '../lib/processesApi'
 import { SystemHealth } from '../components/shell/SystemHealth'
 import { MessageRail, railAnchors } from '../components/chat/MessageRail'
@@ -305,6 +306,13 @@ export function CodeView({
   const [koerendeJobs, setKoerendeJobs] = useState(0)
   const [changesOpen, setChangesOpen] = useState(false)
   const [aendredeFiler, setAendredeFiler] = useState(0)
+  const [fokusFil, setFokusFil] = useState('')
+  const [fuldRude, setFuldRude] = useState<'' | 'changes' | 'jobs'>('')
+
+  useEffect(() => paaAendringsFokus((sti) => {
+    setFokusFil(sti)
+    setChangesOpen(true)
+  }), [])
   useEffect(() => {
     if (!config) return
     let levende = true
@@ -833,20 +841,31 @@ export function CodeView({
           </div>
         )}
         {config && (jobsOpen || changesOpen) && (
-          <div className="code-right-stack">
-            {changesOpen && (
+          <div className={`code-right-stack${fuldRude ? ' er-fuld' : ''}`}>
+            {changesOpen && fuldRude !== 'jobs' && (
               <ChangesPanel
                 config={config}
                 onCount={setAendredeFiler}
-                onClose={() => setChangesOpen(false)}
+                fokusFil={fokusFil}
+                fuld={fuldRude === 'changes'}
+                onFuld={(f) => setFuldRude(f ? 'changes' : '')}
+                {...(kind === 'workstation' && wsPath
+                  // Arbejder han i SIT eget workspace, er det dét trae diff'en
+                  // skal laese. Serverens repo ville staa tomt uden at det var
+                  // sandt.
+                  ? { kilde: 'maskine' as const, rod: wsPath }
+                  : {})}
+                onClose={() => { setChangesOpen(false); setFuldRude((v) => v === 'changes' ? '' : v) }}
               />
             )}
-            {jobsOpen && (
+            {jobsOpen && fuldRude !== 'changes' && (
               <JobsPanel
                 config={config}
                 isOwner={isOwner}
                 onCount={setKoerendeJobs}
-                onClose={() => setJobsOpen(false)}
+                fuld={fuldRude === 'jobs'}
+                onFuld={(f) => setFuldRude(f ? 'jobs' : '')}
+                onClose={() => { setJobsOpen(false); setFuldRude((v) => v === 'jobs' ? '' : v) }}
               />
             )}
           </div>

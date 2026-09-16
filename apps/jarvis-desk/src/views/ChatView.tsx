@@ -2,6 +2,7 @@ import { useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { ArrowDown, PanelRight, Loader2, SquareStack, FileDiff } from 'lucide-react'
 import { JobsPanel } from '../components/shell/JobsPanel'
 import { ChangesPanel } from '../components/shell/ChangesPanel'
+import { paaAendringsFokus } from '../lib/aendringsFokus'
 import { onPauseSvar, pauseAskIn, withoutPauseAsk, type PauseAsk } from '../lib/pauseAsk'
 import { useRedning } from '../hooks/useRedning'
 import { streamReducer, initialStreamState } from '../lib/streamReducer'
@@ -560,6 +561,14 @@ export function ChatView({
   // staa hver for sig i fuld hoejde eller ovenpaa hinanden.
   const [changesOpen, setChangesOpen] = useState(false)
   const [aendredeFiler, setAendredeFiler] = useState(0)
+  const [fokusFil, setFokusFil] = useState('')
+  const [fuldRude, setFuldRude] = useState<'' | 'changes' | 'jobs'>('')
+
+  // Klik paa en fil i «Redigerede N filer» aabner ruden PAA den fil.
+  useEffect(() => paaAendringsFokus((sti) => {
+    setFokusFil(sti)
+    setChangesOpen(true)
+  }), [])
 
   const activeSession = sessions.sessions.find((s) => s.id === sessionId)
   const chatTitle = activeSession?.title || (isEmpty ? 'Ny samtale' : 'Samtale')
@@ -567,22 +576,30 @@ export function ChatView({
   const cfgSkinne = settings
     ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined
   // Aendringer oeverst, jobs nederst — samme raekkefoelge som i CC.
+  // Er én rude i fuld visning, staar KUN den — det er hele pointen med ⤢.
+  const visChanges = changesOpen && fuldRude !== 'jobs'
+  const visJobs = jobsOpen && fuldRude !== 'changes'
   const jobsRude = skinneAaben ? (
-    <div className="code-right-stack">
-      {changesOpen && cfgSkinne && (
+    <div className={`code-right-stack${fuldRude ? ' er-fuld' : ''}`}>
+      {visChanges && cfgSkinne && (
         <ChangesPanel
           config={cfgSkinne}
           refreshKey={stream.status === 'working' ? 0 : 1}
           onCount={setAendredeFiler}
-          onClose={() => setChangesOpen(false)}
+          fokusFil={fokusFil}
+          fuld={fuldRude === 'changes'}
+          onFuld={(f) => setFuldRude(f ? 'changes' : '')}
+          onClose={() => { setChangesOpen(false); setFuldRude((v) => v === 'changes' ? '' : v) }}
         />
       )}
-      {jobsOpen && cfgSkinne && (
+      {visJobs && cfgSkinne && (
         <JobsPanel
           config={cfgSkinne}
           isOwner={auth?.role === 'owner'}
           onCount={setKoerendeJobs}
-          onClose={() => setJobsOpen(false)}
+          fuld={fuldRude === 'jobs'}
+          onFuld={(f) => setFuldRude(f ? 'jobs' : '')}
+          onClose={() => { setJobsOpen(false); setFuldRude((v) => v === 'jobs' ? '' : v) }}
         />
       )}
     </div>

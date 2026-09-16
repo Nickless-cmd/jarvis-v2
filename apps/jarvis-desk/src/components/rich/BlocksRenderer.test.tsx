@@ -8,35 +8,39 @@ function renderBlocks(blocks: ContentBlock[], streaming = false) {
 }
 
 describe('BlocksRenderer progress', () => {
-  // Narrationen vises KUN under streaming. Er turen slut, staar den i «Forløb»
-  // under beskeden (RunTimeline) — foer stod begge dele samtidig, og Bjoern saa
-  // to forloeb paa samme besked (8/9-2026).
-  it('rendrer progress som ét foldbart spor MENS der streames', () => {
+  // AENDRET 16/9-2026: «Forløb (N)» er erstattet af «Redigerede N filer»
+  // nederst i beskeden (Bjørn, efter skærmbillede fra CC). Narrationen stod
+  // kun UNDER streaming og forsvandt bagefter; kortet bliver stående, siger
+  // hvad der faktisk blev ændret, og kan klikkes.
+  it('viser IKKE længere et Forløb-spor under streaming', () => {
     const blocks: ContentBlock[] = [
       { type: 'text', text: 'Færdig.' },
       { type: 'tool_use', id: 'c1', name: 'read_file', input: { path: 'x.py' }, status: 'done' },
       { type: 'progress', tool_use_id: 'c1', parent_tool_use_id: null, message: 'Læste fil: x.py', status: 'done' },
     ]
     renderBlocks(blocks, true)
-    expect(screen.getByText(/Forløb \(1\)/)).toBeInTheDocument()
-    expect(screen.getByText('Læste fil: x.py')).toBeInTheDocument()
+    expect(screen.queryByText(/Forløb/)).not.toBeInTheDocument()
+    expect(screen.queryByText('Læste fil: x.py')).not.toBeInTheDocument()
   })
 
-  it('coalescer sammenhængende progress-blokke til ét spor', () => {
-    const blocks: ContentBlock[] = [
-      { type: 'progress', tool_use_id: 'c1', parent_tool_use_id: null, message: 'Trin 1', status: 'done' },
-      { type: 'progress', tool_use_id: 'c2', parent_tool_use_id: null, message: 'Trin 2', status: 'done' },
-    ]
-    renderBlocks(blocks, true)
-    // ét spor med to trin, ikke to separate spor
-    expect(screen.getByText(/Forløb \(2\)/)).toBeInTheDocument()
-    expect(screen.queryByText(/Forløb \(1\)/)).not.toBeInTheDocument()
+  it('en LÆST fil er ikke en redigeret fil — intet kort', () => {
+    renderBlocks([
+      { type: 'tool_use', id: 'c1', name: 'read_file', input: { path: 'x.py' }, status: 'done' },
+    ], true)
+    expect(screen.queryByText(/Redigerede/)).not.toBeInTheDocument()
   })
 
-  it('lader tekst-only besked være uændret (ingen Forløb)', () => {
+  it('kortet kommer FØRST når en fil er skrevet', () => {
+    renderBlocks([
+      { type: 'tool_use', id: 'c1', name: 'write_file', input: { path: 'src/x.py' }, status: 'done' },
+    ], false)
+    expect(screen.getByText('Redigerede 1 fil')).toBeInTheDocument()
+  })
+
+  it('lader tekst-only besked være uændret (intet kort)', () => {
     renderBlocks([{ type: 'text', text: 'bare tekst' }])
     expect(screen.getByText('bare tekst')).toBeInTheDocument()
-    expect(screen.queryByText(/Forløb/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Redigerede/)).not.toBeInTheDocument()
   })
 
   it('viser INTET spor når turen er slut — så der kun er ét forløb', () => {

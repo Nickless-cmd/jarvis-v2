@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Square, Trash2, ChevronRight, ChevronDown, X, Play } from 'lucide-react'
+import { Square, Trash2, ChevronRight, ChevronDown, X, Play, Maximize2, Minimize2 } from 'lucide-react'
 import {
   listJobs, stopJob, pauseJob, resumeJob, varighed, kildeNavn,
   type BackgroundJob,
@@ -31,10 +31,15 @@ export function JobsPanel({
   onClose,
   isOwner,
   onCount,
+  fuld = false,
+  onFuld,
 }: {
   config?: ApiConfig
   onClose: () => void
   isOwner?: boolean
+  /** Fuld visning — ruden fylder hele fladen i stedet for sin halvdel. */
+  fuld?: boolean
+  onFuld?: (fuld: boolean) => void
   /** Melder antal koerende op, saa taelleren paa ikonet og listen ikke kan staa
    *  side om side og vaere uenige. */
   onCount?: (n: number) => void
@@ -156,6 +161,13 @@ export function JobsPanel({
     <aside className="jobs-panel" aria-label="Baggrundsjob">
       <div className="jobs-head">
         <span>Baggrundsjob</span>
+        {onFuld && (
+          <button type="button" className="jobs-close jobs-fuld" onClick={() => onFuld(!fuld)}
+                  aria-label={fuld ? 'Formindsk' : 'Fuld visning'}
+                  title={fuld ? 'Formindsk' : 'Fuld visning'}>
+            {fuld ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
+          </button>
+        )}
         <button type="button" className="jobs-close" onClick={onClose} aria-label="Luk">
           <X size={14} />
         </button>

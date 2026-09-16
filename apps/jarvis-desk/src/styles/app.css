@@ -2492,16 +2492,26 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 .code-right-stack > * {
   flex: 1 1 0; min-height: 0; overflow-y: auto;
 }
+/* Undtagelsen for miljoe-feltet staar i environment-inspector.css, hvor
+   .env-panel bor — app.css maa ikke baere dens regler (test i tokens.test.ts). */
 
 /* Headeren goer plads naar skinnen er aabne — «de 4 ikoner ryk naar den
    vises». Padding frem for et smallere gitter: views'ene kender ikke
    skallens gitter, og en omlaegning ville flytte samtalen sidelaens hver
    gang man aabnede en rude. */
-/* KUN .chatview-head: Code-visningen bruger samme klasse til sin header.
+/* HELE fladen goer plads — ikke kun headeren.
+   Foerste udgave paddede kun .chatview-head, og saa laa skinnen oven paa
+   selve samtalen: «Redigerede 2 filer»-kortet var klippet midt over af
+   jobs-ruden. Det saa rigtigt ud i en test og forkert paa skaermen.
+
+   KUN .chatview-head: Code-visningen bruger samme klasse til sin header.
    Foerste udgave havde ogsaa .codeview-head — en klasse der ikke findes i
    nogen komponent. En regel der peger paa ingenting ser rigtig ud i en diff
    og goer ingenting paa skaermen. */
-.har-skinne .chatview-head { padding-right: calc(var(--skinne-bredde) + 16px); }
+.har-skinne .chatview-head,
+.har-skinne .transcript,
+.har-skinne .composer-wrap,
+.har-skinne .chat-empty { padding-right: calc(var(--skinne-bredde) + 16px); }
 
 /* ── Den Intelligente Central — real-time owner-vindue ── */
 .central-panel { background: var(--bg-1, var(--bg)); border: 1px solid var(--line);
@@ -3436,3 +3446,53 @@ body.egen-ramme .main { padding-top: 34px; }
 .diff-hunk { color: var(--tint); }
 .diff-tilf { color: var(--ok); }
 .diff-fjern { color: var(--error-fg); }
+
+/* Fuld visning af ÉN rude (⤢). Skinnen breder sig ud over hele hovedfladen,
+   og kun den udfoldede rude staar i den — det er hele pointen med knappen.
+   Bjoern 16/9-2026: «den skal osse vaere i fuld visning … og hver for sig i
+   fuld». */
+.code-right-stack.er-fuld { left: 12px; width: auto; }
+.jobs-head .jobs-fuld { margin-left: auto; }
+.jobs-head .jobs-fuld + .jobs-close { margin-left: 0; }
+/* Ny, utracket fil. «+400» paa en fil der ikke fandtes foer betyder noget
+   andet end 400 aendrede linjer. */
+.changes-ny {
+  flex: 0 0 auto; font-size: 10.5px; padding: 1px 5px; border-radius: 4px;
+  background: var(--bg-4); color: var(--fg-2);
+}
+
+/* ── «Redigerede N filer» under Jarvis' besked ───────────────────────────
+   Formen er CC's: titel til venstre, handling til hoejre, og én raekke pr.
+   fil med sti, +/- og en chevron. (Bjoern 16/9-2026, efter skaermbillede.) */
+.edited-files {
+  border: 1px solid var(--line); border-radius: 10px; overflow: hidden;
+  margin: 8px 0 0; background: var(--bg-1);
+}
+.edited-files-head {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px; border-bottom: 1px solid var(--line);
+}
+.edited-files-titel { color: var(--fg-1); font-size: 13px; }
+.edited-files-vis {
+  margin-left: auto; background: var(--bg-3); border: 1px solid var(--line);
+  color: var(--fg-1); border-radius: 6px; padding: 3px 9px;
+  font-size: 12px; cursor: pointer;
+}
+.edited-files-vis:hover { background: var(--bg-4); }
+.edited-files-liste { list-style: none; margin: 0; padding: 0; }
+.edited-files-rk {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  background: none; border: 0; color: inherit; cursor: pointer;
+  padding: 7px 10px; text-align: left; font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.edited-files-rk:hover { background: var(--bg-2); }
+.edited-files-liste li + li .edited-files-rk { border-top: 1px solid var(--line); }
+.edited-files-ikon { color: var(--fg-3); flex: 0 0 auto; }
+.edited-files-sti {
+  flex: 1 1 auto; min-width: 0; color: var(--fg-1);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.edited-files-gange { color: var(--fg-3); font-size: 11.5px; flex: 0 0 auto; }
+.edited-files-tal { display: flex; gap: 6px; flex: 0 0 auto; }
+.edited-files-chevron { color: var(--fg-3); flex: 0 0 auto; }

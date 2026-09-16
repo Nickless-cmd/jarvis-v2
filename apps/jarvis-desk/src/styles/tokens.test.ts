@@ -296,6 +296,17 @@ describe('vinduets egen titelbjælke', () => {
     expect(vindueRegel).not.toMatch(/--sidebar-bredde:/)
   })
 
+  it('HELE fladen gør plads til skinnen — ikke kun headeren', () => {
+    // Første udgave paddede kun headeren, og skinnen lå oven på samtalen:
+    // «Redigerede 2 filer»-kortet blev klippet midt over af jobs-ruden.
+    // Find den regel der FAKTISK gør plads — ikke en kommentar der nævner
+    // klassen. Uden det matchede regexen kommentaren lige over reglen.
+    const regel = app.match(/([^{}]*har-skinne[^{}]*)\{[^}]*padding-right:\s*calc\(var\(--skinne-bredde\)[^}]*\}/)?.[0] ?? ''
+    for (const flade of ['.chatview-head', '.transcript', '.composer-wrap']) {
+      expect(regel, `${flade} gør ikke plads`).toContain(flade)
+    }
+  })
+
   it('headeren reserverer ikke længere plads i højre side', () => {
     // Den gamle løsning var en usynlig aftale mellem to regler: knapperne lå
     // oven i headeren, og headeren holdt 152 px fri. Rykkede den ene sig,
@@ -328,5 +339,34 @@ describe('tekst på accent-flader', () => {
       .filter(([, , krop]) => lyse.test(krop!))
       .map(([, vaelger]) => vaelger!.trim().split('\n').pop()!.trim())
     expect(syndere, 'lys tekst på lys accent er ulæselig').toEqual([])
+  })
+})
+
+/**
+ * Højre skinne: hvem strækkes, og hvem gør ikke?
+ *
+ * Jobs og Ændringer er lister der vokser — de skal dele højden. Miljø-feltet
+ * er en oversigt på få rækker; strakt ud over en hel skærm ville det være en
+ * halv meter luft under fem linjer tekst (Bjørn 16/9-2026).
+ */
+describe('højre skinne', () => {
+  const stak = app.match(/\.code-right-stack \{([^}]*)\}/)?.[1] ?? ''
+  const boern = app.match(/\.code-right-stack > \* \{([^}]*)\}/)?.[1] ?? ''
+  const miljoe = læs('environment-inspector.css').match(/\.code-right-stack > \.env-panel \{([^}]*)\}/)?.[1] ?? ''
+
+  it('skinnen går fra top til bund', () => {
+    expect(stak).toContain('bottom:')
+    expect(stak).toMatch(/top:\s*34px/)
+  })
+
+  it('ruderne deler højden LIGELIGT — ikke efter indhold', () => {
+    // flex: 1 1 auto ville lade ruden med flest job tage det hele og den
+    // anden blive en stribe.
+    expect(boern).toMatch(/flex:\s*1 1 0/)
+  })
+
+  it('miljø-feltet strækkes IKKE', () => {
+    expect(miljoe, 'undtagelsen for miljø-feltet mangler').toBeTruthy()
+    expect(miljoe).toMatch(/flex:\s*0 0 auto/)
   })
 })

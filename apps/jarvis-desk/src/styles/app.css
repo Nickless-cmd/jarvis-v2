@@ -281,11 +281,19 @@ button.sidebar-group svg { flex: none; opacity: .7; }
   line-height: 1.35;
   position: relative;
 }
+/* Titlen FADER i enden i stedet for at ende i «…» (Bjørn 16/9-2026).
+   Maalt i CC: teksten er fuld styrke til ca. 30 px foer kanten og er helt
+   vaek ved kanten. En titel der slutter foer fade-zonen roeres ikke — derfor
+   staar de korte titler skarpe, praecis som i forlaegget.
+   «…» stjaeler tre tegn af netop den del af titlen der skiller sessionerne
+   ad; fade'en lader dem staa og lader oejet selv se hvor teksten slipper. */
 .session-item-label {
   flex: 1; min-width: 0;
   background: none; border: none; color: inherit; cursor: pointer;
   text-align: left; padding: 7px 0; font-size: 13.5px;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  overflow: hidden; white-space: nowrap;
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 30px), transparent);
+  mask-image: linear-gradient(to right, #000 calc(100% - 30px), transparent);
 }
 /* Per-session arbejds-indikator (#8): 3 hoppende prikker foran titlen. */
 .session-working {
@@ -3296,3 +3304,51 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 }
 .pv-bekraeft p { color: var(--fg-1); margin: 0 0 14px; }
 .providers select { background: var(--bg-2); color: var(--fg-1); border: none; border-radius: 6px; padding: 3px 6px; font-size: 12px; }
+
+/* ── Egen vinduesramme ───────────────────────────────────────────────────
+   Bjoern 16/9-2026: «vindues rammen den med luk miniere og forstoer
+   inttegreret lige som i cc». Vinduet er uden OS-ramme (frame: false), saa
+   knapperne her ER vinduets eneste knapper.
+
+   Derfor position: fixed i vinduets hjoerne og ikke i en flades header:
+   desk har ingen header der findes paa ALLE flader, og en knap der
+   forsvinder sammen med sin header ville betyde at vinduet ikke kan lukkes.
+
+   Traek-omraaderne er de to bjaelker der faktisk ligger oeverst. Alt
+   klikbart i dem skal have no-drag — ellers spiser traek-omraadet klikket,
+   og knapperne ser ud til at vaere gaaet i staa. */
+.vinduesknapper {
+  position: fixed; top: 0; right: 0; z-index: 200;
+  display: flex; -webkit-app-region: no-drag;
+}
+.vinduesknapper button {
+  width: 46px; height: 34px; display: grid; place-items: center;
+  background: none; border: 0; color: var(--fg-3); cursor: pointer;
+}
+.vinduesknapper button:hover { background: var(--bg-3); color: var(--fg-1); }
+/* Roedt paa luk er en konvention, ikke en maaling — den er den eneste af de
+   tre der ikke kan fortrydes. */
+.vinduesknapper .er-luk:hover { background: #c4372f; color: #ffffff; }
+.vinduesknapper button:focus-visible { outline: 1px solid var(--accent); outline-offset: -2px; }
+
+body.egen-ramme .sidebar-top,
+body.egen-ramme .chatview-head { -webkit-app-region: drag; }
+body.egen-ramme .sidebar-top button,
+body.egen-ramme .sidebar-top input,
+body.egen-ramme .sidebar-top a,
+body.egen-ramme .chatview-head button,
+body.egen-ramme .chatview-head input,
+body.egen-ramme .chatview-head select,
+body.egen-ramme .chatview-head a { -webkit-app-region: no-drag; }
+/* Plads til knapperne, saa headerens egne ikoner ikke havner under dem. */
+body.egen-ramme .chatview-head { padding-right: 152px; }
+
+/* Traek-bjaelke til de skaerme der ikke HAR en bjaelke (setup, indlaesning,
+   fejlskaerm). :has() gør at den forsvinder i samme oejeblik skallen er der —
+   ellers ville den ligge oven paa sidebarens og chattens egne knapper og
+   spise klikkene. */
+.vinduesbjaelke { display: none; }
+body.egen-ramme:not(:has(.window)) .vinduesbjaelke {
+  display: block; position: fixed; top: 0; left: 0; right: 0; height: 34px;
+  z-index: 190; -webkit-app-region: drag;
+}

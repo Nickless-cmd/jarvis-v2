@@ -88,6 +88,22 @@ describe('design-tokens', () => {
     expect(sidebar).not.toBe(main)
   })
 
+  // Bjørn 16/9-2026: «fade i enden af sessionerne i venstre panel». «…» koster
+  // tre tegn af netop den del af titlen der skiller to sessioner ad — og to
+  // sessioner der begge hedder «Check system status and connecti…» er ikke til
+  // at skelne. Fade'en lader tegnene stå.
+  it('sessionstitlen fader i enden i stedet for at ende i «…»', () => {
+    const regel = app.match(/^\.session-item-label \{([\s\S]*?)\n\}/m)?.[1] ?? ''
+    expect(regel, '.session-item-label findes ikke').toBeTruthy()
+    expect(regel).not.toContain('text-overflow: ellipsis')
+    expect(regel).toMatch(/mask-image:\s*linear-gradient\(to right/)
+    // Uden -webkit-praefiks fader den ikke i Electrons Chromium-udgave.
+    expect(regel).toContain('-webkit-mask-image')
+    // Overflow skal stadig klippes — ellers flyder titlen ud over kanten og
+    // fade'en maskerer noget der alligevel ikke var klippet.
+    expect(regel).toContain('overflow: hidden')
+  })
+
   // En menu der svæver over fladen i FLADENS egen farve har intet at løfte sig
   // fra — kun skyggen siger at den ligger ovenpå. Målt i CC: popups ligger på
   // #20201F med en lysere kant #363635.

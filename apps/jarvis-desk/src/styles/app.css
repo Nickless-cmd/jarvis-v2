@@ -818,7 +818,7 @@ button.sidebar-group svg { flex: none; opacity: .7; }
    og tilbage hver gang man skifter. */
 .jobs-panel {
   display: flex; flex-direction: column; gap: 2px;
-  padding: 10px 12px; font-size: 12.5px; color: var(--fg-2);
+  padding: 10px 12px; font-size: 13.5px; color: var(--fg-2);
   overflow-y: auto;
   /* Havde ingen egen baggrund og laa gennemsigtig over chatten. Samme
      panelfarve som miljoefeltet — de er to ruder i samme stak. */
@@ -826,7 +826,7 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 }
 .jobs-head {
   display: flex; align-items: center; justify-content: space-between;
-  font-size: 12px; letter-spacing: .04em; color: var(--fg-3); margin-bottom: 8px;
+  font-size: 13px; letter-spacing: .04em; color: var(--fg-3); margin-bottom: 8px;
 }
 .jobs-close { background: none; border: 0; color: var(--fg-3); cursor: pointer; padding: 2px; border-radius: 5px; }
 .jobs-close:hover { color: var(--fg-1); background: var(--bg-2); }
@@ -857,7 +857,7 @@ button.sidebar-group svg { flex: none; opacity: .7; }
   display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
   overflow: hidden; line-height: 1.35;
 }
-.jobs-meta { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 11.5px; color: var(--fg-3); }
+.jobs-meta { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 12.5px; color: var(--fg-3); }
 .jobs-kommando {
   font-family: var(--font-mono); overflow: hidden; text-overflow: ellipsis;
   white-space: nowrap; min-width: 0;
@@ -2464,8 +2464,44 @@ button.sidebar-group svg { flex: none; opacity: .7; }
    jobs-ruden og opgaven ved en agent er alle tekst der bliver ubrugelig naar
    den ender i «…». Miljoe-feltet og jobs-ruden deler bredden med vilje — to
    ruder med hver sin bredde ville flytte samtalen frem og tilbage. */
-.code-right-stack { position: absolute; top: 52px; right: 16px; z-index: 50; width: 330px;
-  display: flex; flex-direction: column; gap: 10px; max-height: calc(100vh - 76px); overflow-y: auto; }
+/* ── Hoejre skinne ────────────────────────────────────────────────────────
+   Bjoern 16/9-2026: «lav jobs ruden fuld hoejde som i cc … og lad den gaa
+   naesten helt op saa header er dynamisk».
+
+   Foer var det et svaevende kort paa 330 px med luft omkring. Nu er det en
+   SKINNE: fuld hoejde fra lige under titelbjaelken til bunden, flugtende med
+   hoejre kant, med en streg mod samtalen. Ruderne i den deler hoejden — én
+   aaben fylder det hele, to deler.
+
+   Den ligger stadig absolut (ikke som en gitter-kolonne), fordi den skal
+   kunne aabnes fra BAADE chat og code uden at de to views skal kende
+   skallens gitter. Headeren goer plads med padding, se .har-skinne. */
+.code-right-stack {
+  position: absolute; top: 34px; right: 12px; bottom: 12px; z-index: 50;
+  width: var(--skinne-bredde);
+  display: flex; flex-direction: column; gap: 10px;
+  overflow: hidden;
+}
+/* To SEPARATE kort stablet, ikke én flade med en streg imellem — saadan gør
+   CC det, og det er sådan Bjørn viste det. Hvert kort beholder sin egen kant,
+   runding og baggrund og scroller for sig selv.
+
+   flex: 1 1 0 (ikke auto): to aabne ruder deler hoejden LIGELIGT uanset
+   indhold. Med auto ville den med flest job tage det hele og den anden blive
+   en stribe. Én aaben rude fylder hele skinnen. */
+.code-right-stack > * {
+  flex: 1 1 0; min-height: 0; overflow-y: auto;
+}
+
+/* Headeren goer plads naar skinnen er aabne — «de 4 ikoner ryk naar den
+   vises». Padding frem for et smallere gitter: views'ene kender ikke
+   skallens gitter, og en omlaegning ville flytte samtalen sidelaens hver
+   gang man aabnede en rude. */
+/* KUN .chatview-head: Code-visningen bruger samme klasse til sin header.
+   Foerste udgave havde ogsaa .codeview-head — en klasse der ikke findes i
+   nogen komponent. En regel der peger paa ingenting ser rigtig ud i en diff
+   og goer ingenting paa skaermen. */
+.har-skinne .chatview-head { padding-right: calc(var(--skinne-bredde) + 16px); }
 
 /* ── Den Intelligente Central — real-time owner-vindue ── */
 .central-panel { background: var(--bg-1, var(--bg)); border: 1px solid var(--line);
@@ -3343,3 +3379,60 @@ body.egen-ramme:not(:has(.window)) .vinduesbjaelke {
 /* Sidebaren gaar HELT op; kun hovedfladen skubbes ned under bjaelken. */
 body.egen-ramme .window { height: 100vh; margin-top: 0; }
 body.egen-ramme .main { padding-top: 34px; }
+
+/* ── Ændringer (diff-ruden) ──────────────────────────────────────────────
+   Bjørn 16/9-2026: «et changes icon der åbner dette panel … der kan jeg
+   følge med i ændringer under runnet». Formen er CC's: gren → mål i
+   headeren, fil-liste med +/- pr. fil, og hunks foldet ud pr. fil. */
+.changes-panel {
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 10px 12px; font-size: 13.5px; color: var(--fg-2);
+  background: var(--bg-2); border: 1px solid var(--line); border-radius: 12px;
+  overflow-y: auto;
+}
+.changes-head {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 13px; color: var(--fg-2); margin-bottom: 8px;
+}
+.changes-gren { color: var(--fg-1); }
+.changes-pil { color: var(--fg-3); }
+.changes-maal { color: var(--fg-2); }
+.changes-head .jobs-close { margin-left: auto; }
+
+.changes-tom { color: var(--fg-3); padding: 28px 0; text-align: center; }
+/* «Kunne ikke læse træet» er ikke «ingen ændringer» — den skal kunne ses
+   som noget andet, ikke bare læses som noget andet. */
+.changes-tom.is-fejl { color: var(--error-fg); }
+.changes-tom.is-lille { padding: 8px 0 8px 22px; text-align: left; font-size: 12px; }
+
+.changes-opsummering {
+  display: flex; align-items: center; gap: 8px; color: var(--fg-3);
+  font-size: 12.5px; padding: 0 0 6px; font-variant-numeric: tabular-nums;
+}
+.changes-klippet { color: var(--warn-fg); }
+
+.changes-liste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.changes-fil-rk {
+  display: flex; align-items: center; gap: 6px; width: 100%;
+  background: none; border: 0; color: inherit; cursor: pointer;
+  padding: 5px 4px; border-radius: 6px; text-align: left; font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+.changes-fil-rk:hover { background: var(--bg-3); }
+.changes-sti {
+  flex: 1 1 auto; min-width: 0; color: var(--fg-1);
+  font-family: var(--font-mono); font-size: 12px;
+  /* Stien klippes i BEGYNDELSEN — filnavnet er det der adskiller to filer,
+     og det står til sidst. */
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: rtl;
+}
+.changes-binaer { color: var(--fg-3); }
+.changes-diff {
+  margin: 0 0 6px; padding: 6px 8px; background: var(--code-bg);
+  border-radius: 6px; overflow-x: auto;
+  font-family: var(--font-mono); font-size: 11.5px; line-height: 1.5;
+}
+.diff-fil { color: var(--fg-3); }
+.diff-hunk { color: var(--tint); }
+.diff-tilf { color: var(--ok); }
+.diff-fjern { color: var(--error-fg); }

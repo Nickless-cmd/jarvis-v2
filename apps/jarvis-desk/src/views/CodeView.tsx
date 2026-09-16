@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react'
-import { FolderTree, PanelRight, Lock, ShieldCheck, FolderOpen, ArrowDown, Gauge, SquareStack } from 'lucide-react'
+import { FolderTree, PanelRight, Lock, ShieldCheck, FolderOpen, ArrowDown, Gauge, SquareStack, FileDiff } from 'lucide-react'
 import { onPauseSvar, pauseAskIn, withoutPauseAsk, type PauseAsk } from '../lib/pauseAsk'
 import { useStream } from '../hooks/useStream'
 import { usePermission } from '../hooks/usePermission'
@@ -23,6 +23,7 @@ import { CodePanel } from '../components/panel/CodePanel'
 import { EnvironmentPanel } from '../components/code/EnvironmentPanel'
 import { CentralBadge } from '../components/shell/CentralBadge'
 import { JobsPanel } from '../components/shell/JobsPanel'
+import { ChangesPanel } from '../components/shell/ChangesPanel'
 import { listProcesses } from '../lib/processesApi'
 import { SystemHealth } from '../components/shell/SystemHealth'
 import { MessageRail, railAnchors } from '../components/chat/MessageRail'
@@ -302,6 +303,8 @@ export function CodeView({
   // TAELLEREN, saa ikonet kan sige om noget koerer uden at man skal aabne det.
   const [jobsOpen, setJobsOpen] = useState(false)
   const [koerendeJobs, setKoerendeJobs] = useState(0)
+  const [changesOpen, setChangesOpen] = useState(false)
+  const [aendredeFiler, setAendredeFiler] = useState(0)
   useEffect(() => {
     if (!config) return
     let levende = true
@@ -723,6 +726,15 @@ export function CodeView({
           tydeligt tungere end resten (Bjoern 8/9-2026). */}
       <button
         type="button"
+        className={`panel-toggle ${changesOpen ? 'active' : ''}`}
+        aria-label="Vis/skjul ændringer" title="Ændringer"
+        onClick={() => setChangesOpen((o) => !o)}
+      >
+        <FileDiff size={15} strokeWidth={1.8} />
+        {aendredeFiler > 0 && <span className="panel-toggle-taeller">{aendredeFiler}</span>}
+      </button>
+      <button
+        type="button"
         className={`panel-toggle ${jobsOpen ? 'active' : ''}`}
         aria-label="Vis/skjul baggrundsjob" title="Baggrundsjob"
         onClick={() => setJobsOpen((o) => !o)}
@@ -811,7 +823,7 @@ export function CodeView({
 
   // ── Aktiv samtale ──
   return (
-    <div className="codeview">
+    <div className={`codeview${(jobsOpen || changesOpen) ? ' har-skinne' : ''}`}>
       <div className="codeview-main">
         {headerActive}
         {bgActive && stream.status !== 'working' && !takeoverDismissed && (
@@ -820,17 +832,26 @@ export function CodeView({
             <button type="button" className="takeover-dismiss" aria-label="Skjul" onClick={() => setTakeoverDismissed(true)}>×</button>
           </div>
         )}
-        {config && jobsOpen && (
+        {config && (jobsOpen || changesOpen) && (
           <div className="code-right-stack">
-            <JobsPanel
-              config={config}
-              isOwner={isOwner}
-              onCount={setKoerendeJobs}
-              onClose={() => setJobsOpen(false)}
-            />
+            {changesOpen && (
+              <ChangesPanel
+                config={config}
+                onCount={setAendredeFiler}
+                onClose={() => setChangesOpen(false)}
+              />
+            )}
+            {jobsOpen && (
+              <JobsPanel
+                config={config}
+                isOwner={isOwner}
+                onCount={setKoerendeJobs}
+                onClose={() => setJobsOpen(false)}
+              />
+            )}
           </div>
         )}
-        {config && envOpen && !jobsOpen && !filesOpen && !panel.open && (
+        {config && envOpen && !jobsOpen && !changesOpen && !filesOpen && !panel.open && (
           <div className="code-right-stack">
             <EnvironmentPanel
               config={config}

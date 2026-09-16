@@ -138,3 +138,51 @@ describe('ChatView — baggrundsjob', () => {
     expect(screen.getByRole('complementary', { name: 'Baggrundsjob' })).toBeInTheDocument()
   })
 })
+
+describe('ChatView — ændringer og jobs i samme skinne', () => {
+  const vis = () => render(
+    <SettingsProvider initialConfig={cfg}>
+      <SessionProvider config={cfg}>
+        <StreamProvider config={cfg}>
+          <PermissionProvider>
+            <PanelProvider defaultWidth={400}>
+              <ChatView sessionId="s1" />
+            </PanelProvider>
+          </PermissionProvider>
+        </StreamProvider>
+      </SessionProvider>
+    </SettingsProvider>,
+  )
+
+  it('har et ændringer-ikon ved siden af baggrundsjob', () => {
+    vis()
+    expect(screen.getByRole('button', { name: 'Vis/skjul ændringer' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Vis/skjul baggrundsjob' })).toBeInTheDocument()
+  })
+
+  it('de to ruder kan stå SAMMEN i skinnen', async () => {
+    vis()
+    await userEvent.click(screen.getByRole('button', { name: 'Vis/skjul ændringer' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Vis/skjul baggrundsjob' }))
+    expect(screen.getByRole('complementary', { name: 'Ændringer' })).toBeInTheDocument()
+    expect(screen.getByRole('complementary', { name: 'Baggrundsjob' })).toBeInTheDocument()
+  })
+
+  it('og hver for sig', async () => {
+    vis()
+    await userEvent.click(screen.getByRole('button', { name: 'Vis/skjul ændringer' }))
+    expect(screen.getByRole('complementary', { name: 'Ændringer' })).toBeInTheDocument()
+    expect(screen.queryByRole('complementary', { name: 'Baggrundsjob' })).not.toBeInTheDocument()
+  })
+
+  it('headeren gør plads KUN når skinnen er åben', async () => {
+    const { container } = vis()
+    expect(container.querySelector('.chatview.har-skinne')).toBeNull()
+    await userEvent.click(screen.getByRole('button', { name: 'Vis/skjul ændringer' }))
+    expect(container.querySelector('.chatview.har-skinne')).not.toBeNull()
+    // Lukkes den igen, skal pladsen gives tilbage — ellers står headeren
+    // permanent skubbet ind med et tomt felt til højre.
+    await userEvent.click(screen.getByRole('button', { name: 'Vis/skjul ændringer' }))
+    expect(container.querySelector('.chatview.har-skinne')).toBeNull()
+  })
+})

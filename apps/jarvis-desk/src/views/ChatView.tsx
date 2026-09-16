@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react'
-import { ArrowDown, PanelRight, Loader2, SquareStack } from 'lucide-react'
+import { ArrowDown, PanelRight, Loader2, SquareStack, FileDiff } from 'lucide-react'
 import { JobsPanel } from '../components/shell/JobsPanel'
+import { ChangesPanel } from '../components/shell/ChangesPanel'
 import { onPauseSvar, pauseAskIn, withoutPauseAsk, type PauseAsk } from '../lib/pauseAsk'
 import { useRedning } from '../hooks/useRedning'
 import { streamReducer, initialStreamState } from '../lib/streamReducer'
@@ -555,17 +556,35 @@ export function ChatView({
   // bliver vist der i».)
   const [jobsOpen, setJobsOpen] = useState(false)
   const [koerendeJobs, setKoerendeJobs] = useState(0)
+  // Aendringer: diff'en mens turen koerer. Samme skinne som jobs — de to kan
+  // staa hver for sig i fuld hoejde eller ovenpaa hinanden.
+  const [changesOpen, setChangesOpen] = useState(false)
+  const [aendredeFiler, setAendredeFiler] = useState(0)
 
   const activeSession = sessions.sessions.find((s) => s.id === sessionId)
   const chatTitle = activeSession?.title || (isEmpty ? 'Ny samtale' : 'Samtale')
-  const jobsRude = settings && jobsOpen ? (
+  const skinneAaben = !!settings && (jobsOpen || changesOpen)
+  const cfgSkinne = settings
+    ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined
+  // Aendringer oeverst, jobs nederst — samme raekkefoelge som i CC.
+  const jobsRude = skinneAaben ? (
     <div className="code-right-stack">
-      <JobsPanel
-        config={{ apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }}
-        isOwner={auth?.role === 'owner'}
-        onCount={setKoerendeJobs}
-        onClose={() => setJobsOpen(false)}
-      />
+      {changesOpen && cfgSkinne && (
+        <ChangesPanel
+          config={cfgSkinne}
+          refreshKey={stream.status === 'working' ? 0 : 1}
+          onCount={setAendredeFiler}
+          onClose={() => setChangesOpen(false)}
+        />
+      )}
+      {jobsOpen && cfgSkinne && (
+        <JobsPanel
+          config={cfgSkinne}
+          isOwner={auth?.role === 'owner'}
+          onCount={setKoerendeJobs}
+          onClose={() => setJobsOpen(false)}
+        />
+      )}
     </div>
   ) : null
 
@@ -595,6 +614,15 @@ export function ChatView({
         )}
         <button
           type="button"
+          className={`panel-toggle ${changesOpen ? 'active' : ''}`}
+          aria-label="Vis/skjul ændringer" title="Ændringer"
+          onClick={() => setChangesOpen((o) => !o)}
+        >
+          <FileDiff size={15} strokeWidth={1.8} />
+          {aendredeFiler > 0 && <span className="panel-toggle-taeller">{aendredeFiler}</span>}
+        </button>
+        <button
+          type="button"
           className={`panel-toggle ${jobsOpen ? 'active' : ''}`}
           aria-label="Vis/skjul baggrundsjob" title="Baggrundsjob"
           onClick={() => setJobsOpen((o) => !o)}
@@ -618,7 +646,7 @@ export function ChatView({
   // ── Tom/ny samtale: header øverst, composer centreret midt på skærmen ──
   if (isEmpty) {
     return (
-      <div className="chatview empty">
+      <div className={`chatview empty${skinneAaben ? ' har-skinne' : ''}`}>
         {header}
         {jobsRude}
         <div className="chat-empty">
@@ -639,7 +667,7 @@ export function ChatView({
   // ── Aktiv samtale ──
   const showTakeover = bgActive && stream.status !== 'working' && !takeoverDismissed
   return (
-    <div className="chatview">
+    <div className={`chatview${skinneAaben ? ' har-skinne' : ''}`}>
       {header}
       {jobsRude}
       {showTakeover && (

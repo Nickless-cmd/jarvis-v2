@@ -1,7 +1,10 @@
 import { ArrowLeft, Bot, File, FileText, Globe, Wrench, X } from 'lucide-react'
 import type { ApiConfig } from '../../lib/api'
 import type { InspectorTarget } from '../../lib/inspectorTargets'
+import { lookupTool } from '../../lib/toolRegistry'
 import { ArtifactInspectorBody } from './ArtifactPanel'
+import { SourceInspector } from './SourceInspector'
+import { ToolInspector } from './ToolInspector'
 
 export interface InspectorPanelProps {
   target: InspectorTarget | null
@@ -17,11 +20,11 @@ function meta(target: InspectorTarget | null) {
   if (target.type === 'artifact') return { title: target.artifact.title, Icon: target.artifact.kind === 'markdown' ? FileText : File }
   if (target.type === 'agent') return { title: target.agent.role || target.agent.goal || target.agent.agentId, Icon: Bot }
   if (target.type === 'source') return { title: target.source.domaene, Icon: Globe }
-  return { title: target.tool.name, Icon: Wrench }
+  return { title: lookupTool(target.tool.name).label, Icon: Wrench }
 }
 
 export function InspectorPanel({
-  target, config, canGoBack, onBack, onClose,
+  target, config, canGoBack, onBack, onClose, onOpenTarget,
 }: InspectorPanelProps) {
   const { title, Icon } = meta(target)
   const showBack = canGoBack || (!!target && target.type !== 'artifact')
@@ -39,13 +42,22 @@ export function InspectorPanel({
           <X size={15} />
         </button>
       </div>
-      {target?.type === 'artifact'
-        ? <ArtifactInspectorBody artifact={target.artifact} config={config} />
-        : (
-          <div className="artifact-body artifact-empty">
-            {target ? 'Detaljer indlæses i næste trin.' : 'Intet at vise endnu.'}
-          </div>
-        )}
+      {target?.type === 'artifact' && <ArtifactInspectorBody artifact={target.artifact} config={config} />}
+      {target?.type === 'source' && (
+        <SourceInspector
+          source={target.source}
+          tool={target.tool}
+          onOpenTool={target.tool ? (tool) => onOpenTarget({ type: 'tool', tool }, true) : undefined}
+        />
+      )}
+      {target?.type === 'tool' && (
+        <ToolInspector
+          tool={target.tool}
+          onOpenSource={(source) => onOpenTarget({ type: 'source', source, tool: target.tool }, true)}
+        />
+      )}
+      {target?.type === 'agent' && <div className="artifact-body artifact-empty">Agentdetaljer indlæses i næste trin.</div>}
+      {!target && <div className="artifact-body artifact-empty">Intet at vise endnu.</div>}
     </div>
   )
 }

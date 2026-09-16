@@ -186,7 +186,10 @@
      SMALLERE end skinnen («og så må miljø feltet gerne være lidt smallere»).
      Det er en oversigt paa faa raekker; 360 px goer den bred og tom. Den
      flugter til hoejre, saa kanten foelger de andre ruder. */
-  margin-top: 16px;
+  /* 50 = headerens 42 px + 8 px luft. Skinnen starter nu i toppen (top: 0),
+     saa margenen skal baere hele headeren — foer laa skinnen 34 px nede og
+     margenen behoevede kun 16. */
+  margin-top: 50px;
   width: 300px;
   align-self: flex-end;
 }

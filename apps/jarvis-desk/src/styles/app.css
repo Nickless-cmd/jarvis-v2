@@ -2488,7 +2488,13 @@ button.sidebar-group svg { flex: none; opacity: .7; }
    kunne aabnes fra BAADE chat og code uden at de to views skal kende
    skallens gitter. Headeren goer plads med padding, se .har-skinne. */
 .code-right-stack {
-  position: absolute; top: 34px; right: 12px; bottom: 12px; z-index: 50;
+  /* top: 0 — ikke 34. Beholderen (.chatview/.codeview-main) starter allerede
+     under titelbjaelken, saa 34 px oveni skoed ruderne ned i headerens
+     underkant. Nu flugter de med headerens overkant og faar hele hoejden
+     (Bjoern 16/9-2026: «baggrundjob og changes paneler skal gaa laengere
+     op»). Miljoe-feltet har sin egen margen og bliver dermed staaende
+     under headeren. */
+  position: absolute; top: 0; right: 12px; bottom: 12px; z-index: 50;
   width: var(--skinne-bredde);
   display: flex; flex-direction: column; gap: 10px;
   overflow: hidden;
@@ -2521,7 +2527,7 @@ button.sidebar-group svg { flex: none; opacity: .7; }
    og goer ingenting paa skaermen. */
 .har-skinne .chatview-head,
 .har-skinne .transcript,
-.har-skinne .composer-wrap,
+.har-skinne .composer-area,
 .har-skinne .chat-empty { padding-right: calc(var(--skinne-bredde) + 16px); }
 
 /* ── Den Intelligente Central — real-time owner-vindue ── */

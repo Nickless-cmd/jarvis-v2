@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 
 const læs = (n: string) => readFileSync(join(__dirname, n), 'utf8')
@@ -302,7 +302,7 @@ describe('vinduets egen titelbjælke', () => {
     // Find den regel der FAKTISK gør plads — ikke en kommentar der nævner
     // klassen. Uden det matchede regexen kommentaren lige over reglen.
     const regel = app.match(/([^{}]*har-skinne[^{}]*)\{[^}]*padding-right:\s*calc\(var\(--skinne-bredde\)[^}]*\}/)?.[0] ?? ''
-    for (const flade of ['.chatview-head', '.transcript', '.composer-wrap']) {
+    for (const flade of ['.chatview-head', '.transcript', '.composer-area']) {
       expect(regel, `${flade} gør ikke plads`).toContain(flade)
     }
   })
@@ -356,7 +356,10 @@ describe('højre skinne', () => {
 
   it('skinnen går fra top til bund', () => {
     expect(stak).toContain('bottom:')
-    expect(stak).toMatch(/top:\s*34px/)
+    // top: 0, ikke 34. Beholderen starter allerede under titelbjælken; 34 px
+    // oveni skød ruderne ned i headerens underkant (Bjørn 16/9-2026:
+    // «baggrundjob og changes paneler skal gå længere op»).
+    expect(stak).toMatch(/top:\s*0(;|\s)/)
   })
 
   it('ruderne deler højden LIGELIGT — ikke efter indhold', () => {
@@ -383,5 +386,41 @@ describe('højre skinne', () => {
     expect(bredde, 'miljø-feltet har ingen egen bredde').toBeGreaterThan(0)
     expect(bredde).toBeLessThan(360)          // skinnens bredde
     expect(miljoe).toContain('align-self: flex-end')
+  })
+})
+
+/**
+ * DØDE SELEKTORER i skinne-reglen.
+ *
+ * Tre gange 16/9-2026 skrev jeg en regel mod en klasse ingen komponent
+ * bruger: `.codeview-head` (Code-visningen bruger .chatview-head) og
+ * `.composer-wrap` (begge views bruger .composer-area). Den sidste var den
+ * Bjørn så: «chatview rykker sig men composer gør ikke».
+ *
+ * En regel der peger på ingenting ser rigtig ud i en diff, består enhver
+ * test der læser CSS'en, og gør intet på skærmen. Derfor måles klasserne
+ * mod det der faktisk RENDERES.
+ */
+describe('skinne-reglen rammer klasser der findes', () => {
+  const kilder = (() => {
+    const ud: string[] = []
+    const gaa = (mappe: string) => {
+      for (const navn of readdirSync(mappe)) {
+        const sti = join(mappe, navn)
+        if (statSync(sti).isDirectory()) gaa(sti)
+        else if (/\.tsx?$/.test(navn) && !/\.test\./.test(navn)) ud.push(readFileSync(sti, 'utf8'))
+      }
+    }
+    gaa(join(__dirname, '..'))
+    return ud.join('\n')
+  })()
+
+  it('hver klasse i .har-skinne-reglen bruges af en komponent', () => {
+    const regel = app.match(/((?:\.har-skinne [^,{]+,\s*)*\.har-skinne [^,{]+)\{[^}]*--skinne-bredde/)?.[1] ?? ''
+    expect(regel, 'reglen blev ikke fundet').toBeTruthy()
+    const klasser = [...regel.matchAll(/\.har-skinne \.([a-z0-9-]+)/g)].map((m) => m[1]!)
+    expect(klasser.length).toBeGreaterThan(1)
+    const døde = klasser.filter((k) => !kilder.includes(`"${k}"`) && !kilder.includes(`${k} `) && !kilder.includes(`${k}\``))
+    expect(døde, 'klasser ingen komponent bruger').toEqual([])
   })
 })

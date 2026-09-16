@@ -195,6 +195,32 @@ export interface StreamControl {
  *  saa et langt run maa genoptage mange gange — bare ikke i tomgang. */
 const MAX_GENOPTAG = 5
 
+/**
+ * Vandmaerket efter en modtaget ramme.
+ *
+ * Foer talte hver ramme, ogsaa `ping`. Men pings logges aldrig i run_event_log
+ * (de smides vaek som keepalive), og baade den live stroem og subscribe sender
+ * deres egne hvert 5. sekund i stilhed. Hver ping skubbede vandmaerket ét
+ * skridt forbi serverens indeks, saa en genoptagelse efter N pings SPRANG N
+ * AEGTE rammer over — en `content_block_start` (hele blokken vaek) eller
+ * `message_stop` (turen haenger). Tavst; efter en genstart er alt der, fordi den
+ * henter fra databasen (16/9-2026).
+ *
+ * Gap-markoeren er heller ikke en log-ramme; den baerer serverens position for
+ * rammerne efter den (`resume_idx`). Samme regel som mobilens `naesteOffset`.
+ */
+export function naesteVandmaerke(
+  set: number,
+  ramme: { type?: string; kind?: string; resume_idx?: unknown },
+): number {
+  if (ramme.type === 'ping') return set
+  if (ramme.type === 'system_event' && ramme.kind === 'relay_gap') {
+    const idx = ramme.resume_idx
+    return typeof idx === 'number' && Number.isFinite(idx) ? idx : set
+  }
+  return set + 1
+}
+
 export function startStream(
   request: StreamRequest,
   handlers: StreamHandlers,
@@ -294,9 +320,9 @@ export function startStream(
     // Reset ping watchdog ved ENHVER aktivitet, ikke kun ping.
     resetPingWatchdog()
 
-    // Vandmaerke: hver modtaget frame = ét skridt i serverens run-log. Det er
-    // tallet `/chat/runs/{id}/subscribe?from_idx=` genoptager fra.
-    framesSeen += 1
+    // Vandmaerke: tallet `/chat/runs/{id}/subscribe?from_idx=` genoptager fra.
+    // Kun rammer der LIGGER i serverens run-log taeller — se naesteVandmaerke.
+    framesSeen = naesteVandmaerke(framesSeen, parsed as { type?: string; kind?: string })
     genoptagForsoeg = 0                 // fremgang: lange runs maa gerne genoptage mange gange
 
     // R3: fang aktivt run_id så caller kan server-cancel. Serveren sender det

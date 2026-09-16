@@ -291,6 +291,12 @@ export function StreamProvider({ children }: { children: ReactNode }) {
         }
       },
       detachForBackground: () => {
+        // IDEMPOTENT (16/9-2026). iOS fyrer active → inactive → background, og
+        // begge matcher baggrunds-grenen. Andet kald saa `control.current` som
+        // null, faldt tilbage til offset 0 og OVERSKREV det gemte maerke — saa
+        // genoptagelsen spolede hele turen forfra. Er der allerede sluppet og
+        // gemt, er der intet at goere.
+        if (!control.current && baggrundRef.current) return
         // GEM FOER NEDRIVNING. `abort()` saetter `closed = true` inde i
         // streamClient, saa dens egen offset-baserede reconnect springes over —
         // med vilje, for vi river ned frivilligt. Prisen er at vejen tilbage

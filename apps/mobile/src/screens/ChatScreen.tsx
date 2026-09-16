@@ -585,6 +585,17 @@ export function ChatScreen({
         // man var væk. Var det stadig i gang, var der ingen live-vej tilbage —
         // turen så død ud indtil man lukkede appen helt og startede forfra.
         stream.genoptagKoerende(config)
+        // Poll-kanten skal kunne fyre igen ved retur (16/9-2026). `follow`
+        // startes kun paa kanten ledig → travl, og maerket overlevede
+        // baggrunden: kom man tilbage til et run der stadig koerte, saa pollen
+        // travl → travl og koblede aldrig paa. Koldstart virkede, fordi en ny
+        // app starter paa «ledig». Nu starter en retur det samme sted.
+        //
+        // Nulstilles HER og ikke ved baggrund: pollens ekstra tick naar
+        // politikken skifter ville ellers starte `follow` i baggrunden. Og
+        // EFTER genoptagelsen: lykkedes den, er `follow` en no-op (den roerer
+        // aldrig en aktiv forbindelse); var der intet gemt, kobler den paa.
+        serverBusyRef.current = false
         // Gen-synkronisér: A3 lader runnet køre færdigt server-side mens appen er
         // i baggrunden → ved retur henter vi sessionen så det færdige svar vises.
         // Begge dele: den ene dækker "blev færdig", den anden "kører endnu".

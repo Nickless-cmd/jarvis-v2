@@ -426,6 +426,18 @@ it('genoptager et koerende run efter baggrund — fra det offset vi naaede', asy
   expect(mockStartStream.mock.calls[1][0].genoptag).toEqual({ runId: 'run-123', fromIdx: 17 })
 })
 
+it('detach to gange (iOS: inactive → background) beholder maerket', async () => {
+  // Andet kald saa control.current = null, faldt tilbage til offset 0 og
+  // overskrev det gemte — genoptagelsen spolede hele turen forfra.
+  mockStartStream.mockReturnValue({ abort: jest.fn(), getRunId: () => 'run-123', getOffset: () => 17 })
+  const screen = await render(<StreamProvider><Probe /></StreamProvider>)
+  await act(async () => { screen.getByText('send').props.onPress() })
+  await act(async () => { screen.getByText('detach').props.onPress() })
+  await act(async () => { screen.getByText('detach').props.onPress() })
+  await act(async () => { screen.getByText('genoptag').props.onPress() })
+  expect(mockStartStream.mock.calls[1][0].genoptag).toEqual({ runId: 'run-123', fromIdx: 17 })
+})
+
 it('genoptager IKKE naar der ikke var noget at genoptage', async () => {
   // Kontrolarm. Uden den ville en genoptagelse der altid fyrede bestaa ovenfor.
   const screen = await render(<StreamProvider><Probe /></StreamProvider>)

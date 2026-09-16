@@ -60,6 +60,31 @@ export interface StreamControl {
   getOffset: () => number
 }
 
+/**
+ * Genoptagelses-maerket efter en modtaget ramme.
+ *
+ * Kun rammer der LIGGER i serverens run-log taeller. Foer talte hver ramme,
+ * ogsaa `ping` — men pings logges aldrig (run_event_log smider dem vaek som
+ * keepalive), og baade den live stroem og subscribe sender deres egne hvert 5.
+ * sekund i stilhed. Hver ping skubbede maerket ét skridt forbi serverens
+ * indeks, saa en genoptagelse efter N pings SPRANG N AEGTE rammer over: en
+ * `content_block_start` (hele tekstblokken vaek) eller `message_stop` (turen
+ * haenger paa «arbejder»). Tavst — alt er der efter en genstart, fordi den
+ * henter fra databasen (16/9-2026).
+ *
+ * Gap-markoeren er heller ikke en log-ramme. Den baerer i stedet serverens
+ * position for rammerne efter den (`resume_idx`).
+ */
+export function naesteOffset(offset: number, ramme: { type?: string; kind?: string; payload?: unknown }): number {
+  if (ramme.type === 'ping') return offset
+  if (ramme.type === 'system_event' && ramme.kind === 'relay_gap') {
+    const r = (ramme as { resume_idx?: unknown; payload?: { resume_idx?: unknown } })
+    const idx = typeof r.resume_idx === 'number' ? r.resume_idx : r.payload?.resume_idx
+    return typeof idx === 'number' && Number.isFinite(idx) ? idx : offset
+  }
+  return offset + 1
+}
+
 const eventNames = [
   'message_start',
   'content_block_start',
@@ -137,7 +162,7 @@ export function startStream(request: StreamRequest, handlers: StreamHandlers): S
           source.close()
           return
         }
-        offset += 1 // hver modtaget frame = ét skridt i server-loggen
+        offset = naesteOffset(offset, parsed)
         attempt = 0 // fremgang → nulstil reconnect-tæller (tillader mange reconnects på lange runs)
         if (parsed.type === 'message_start' && parsed.message.id) {
           activeRunId = parsed.message.id

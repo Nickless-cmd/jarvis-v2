@@ -1,4 +1,4 @@
-import { fireEvent, render, waitFor } from '@testing-library/react-native'
+import { fireEvent, render, waitFor, act } from '@testing-library/react-native'
 import { ChatScreen } from './ChatScreen'
 import type { StreamErrorInfo } from '../state/StreamContext'
 
@@ -274,4 +274,39 @@ it('MED beskeder er greeting VAEK', async () => {
   // Den maa ikke ligge og skygge for traaden.
   const screen = await render(<ChatScreen />)
   await waitFor(() => expect(screen.queryByTestId('greeting-hero')).toBeNull())
+})
+
+// ─────────────────────────────────────────────────────────────────────────
+// LEDNINGEN, ikke enhederne (16/9-2026). Fixet fra 12/9 var testet med
+// detach og genoptag kaldt direkte op ad hinanden — ikke gennem AppState-
+// handleren. Her: et run koerer, appen gaar i baggrunden og kommer tilbage.
+describe('retur fra baggrund mens et run koerer', () => {
+  const { AppState } = require('react-native')
+  const api = require('../lib/apiClient')
+
+  it('kobler paa igen — samme vej som koldstart', async () => {
+    let handler: ((s: string) => void) | undefined
+    const spy = jest.spyOn(AppState, 'addEventListener').mockImplementation((_t: unknown, h: unknown) => {
+      handler = h as (s: string) => void
+      return { remove: jest.fn() }
+    })
+    AppState.currentState = 'active'
+    api.getActiveRunSnapshot = jest.fn().mockResolvedValue([{ sessionId: 'session-1', runId: 'run-1' }])
+    const follow = jest.fn()
+    mockSessions = { ...mockSessions, select: jest.fn().mockResolvedValue(undefined) } as never
+    const genoptagKoerende = jest.fn().mockReturnValue(false)
+    mockStream = { ...mockStream, state: { status: 'working', blocks: [] }, follow, detachForBackground: jest.fn(), genoptagKoerende } as never
+
+    await render(<ChatScreen />)
+    // Koldstart: foerste tick ser ledig → travl.
+    await waitFor(() => expect(follow).toHaveBeenCalledTimes(1))
+
+    await act(async () => { handler?.('background') })
+    await act(async () => { handler?.('active') })
+
+    // Intet at genoptage (genoptag gav false) → pollen skal koble paa igen.
+    expect(genoptagKoerende).toHaveBeenCalled()
+    await waitFor(() => expect(follow).toHaveBeenCalledTimes(2))
+    spy.mockRestore()
+  })
 })

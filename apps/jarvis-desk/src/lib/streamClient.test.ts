@@ -177,3 +177,38 @@ describe('startStream R1-R3', () => {
     expect(handle.getRunId()).toBe('visible-7')
   })
 })
+
+// Vandmaerket taeller KUN log-rammer (16/9-2026). Se naesteVandmaerke.
+describe('genoptagelses-vandmaerket', () => {
+  const START = 'event: message_start\ndata: {"type":"message_start","message":{"id":"r1","model":"m","provider":"p","lane":"l","session_id":"s","usage":{"input_tokens":0,"output_tokens":0}}}\n\n'
+  const PING = 'event: ping\ndata: {"type":"ping"}\n\n'
+  const DELTA = 'event: content_block_delta\ndata: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"x"}}\n\n'
+  const GAP = 'event: system_event\ndata: {"type":"system_event","kind":"relay_gap","resume_idx":800,"detail":"beskaaret"}\n\n'
+
+  async function genoptagelsesUrl(foerste: string[]): Promise<string> {
+    const kald: string[] = []
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      kald.push(String(url))
+      return kald.length === 1
+        ? sseResponse(foerste)
+        : sseResponse(['event: message_stop\ndata: {"type":"message_stop"}\n\n'])
+    }))
+    await new Promise<void>((resolve) => {
+      startStream(
+        { apiBaseUrl: 'http://t', authToken: null, sessionId: 's', message: 'hi' },
+        { onEvent: () => {}, onComplete: () => resolve(), onError: () => resolve(), onInterrupted: () => resolve() },
+      )
+    })
+    return kald[1] ?? ''
+  }
+
+  it('pings taeller ikke — genoptagelsen beder om det rigtige indeks', async () => {
+    const url = await genoptagelsesUrl([START, PING, PING, DELTA, PING])
+    expect(url).toContain('from_idx=2')
+  })
+
+  it('gap-markoeren saetter vandmaerket til serverens position', async () => {
+    const url = await genoptagelsesUrl([START, GAP, DELTA])
+    expect(url).toContain('from_idx=801')
+  })
+})

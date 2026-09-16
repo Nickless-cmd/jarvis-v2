@@ -390,3 +390,64 @@ describe('generations-hegn paa stroemmen', () => {
     ctrl.abort()
   })
 })
+
+// ─────────────────────────────────────────────────────────────────────────
+// Genoptagelses-maerket taeller KUN log-rammer (16/9-2026).
+//
+// Pings logges aldrig i run_event_log, men baade den live stroem og subscribe
+// sender dem hvert 5. sekund i stilhed. Talte de med, sprang en genoptagelse
+// efter N pings N aegte rammer over — tavst.
+describe('genoptagelses-maerket', () => {
+  const start = () => ({
+    data: JSON.stringify({
+      type: 'message_start',
+      message: { id: 'visible-x', model: 'm', provider: 'p', lane: 'l', session_id: 's1', usage: { input_tokens: 0, output_tokens: 0 } }
+    })
+  })
+  const delta = () => ({
+    data: JSON.stringify({ type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: 'x' } })
+  })
+  const ping = () => ({ data: JSON.stringify({ type: 'ping' }) })
+
+  it('pings taeller ikke med', () => {
+    const ctrl = startStream({ config, sessionId: 's1', message: 'Hej' }, { onEvent: jest.fn() })
+    getListener('message_start')(start())
+    getListener('ping')(ping())
+    getListener('ping')(ping())
+    getListener('content_block_delta')(delta())
+    getListener('ping')(ping())
+    expect(ctrl.getOffset()).toBe(2)
+  })
+
+  it('gap-markoeren saetter maerket til serverens position', () => {
+    const ctrl = startStream({ config, sessionId: 's1', message: 'Hej' }, { onEvent: jest.fn() })
+    getListener('message_start')(start())
+    getListener('system_event')({
+      data: JSON.stringify({ type: 'system_event', kind: 'relay_gap', resume_idx: 800, detail: 'beskaaret' })
+    })
+    getListener('content_block_delta')(delta())
+    expect(ctrl.getOffset()).toBe(801)
+  })
+
+  it('gap-markoer uden position (gammel server) taeller ikke som en ramme', () => {
+    const ctrl = startStream({ config, sessionId: 's1', message: 'Hej' }, { onEvent: jest.fn() })
+    getListener('message_start')(start())
+    getListener('system_event')({ data: JSON.stringify({ type: 'system_event', kind: 'relay_gap' }) })
+    expect(ctrl.getOffset()).toBe(1)
+  })
+
+  it('genforbindelse efter pings beder om det RIGTIGE indeks', () => {
+    jest.useFakeTimers()
+    startStream({ config, sessionId: 's1', message: 'Hej' }, { onEvent: jest.fn(), onReconnecting: jest.fn() })
+    getListener('message_start')(start())
+    for (let i = 0; i < 5; i++) getListener('ping')(ping())
+    getListener('content_block_delta')(delta())
+    getListener('error')({ message: 'software caused connection abort' } as never)
+    jest.runOnlyPendingTimers()
+    expect(EventSource).toHaveBeenLastCalledWith(
+      'https://api.srvlab.dk/chat/runs/visible-x/subscribe?from_idx=2',
+      expect.objectContaining({ method: 'GET' })
+    )
+    jest.useRealTimers()
+  })
+})

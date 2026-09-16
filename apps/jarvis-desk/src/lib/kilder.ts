@@ -43,19 +43,32 @@ function saml(tekst: string, ud: Map<string, Kilde>): void {
   }
 }
 
+/** URL-parseren som både chatview og Miljø-evidens bruger. */
+export function kilderFraTekst(tekst: string): Kilde[] {
+  const ud = new Map<string, Kilde>()
+  saml(tekst, ud)
+  return [...ud.values()]
+}
+
+function tilfoej(kilder: Kilde[], ud: Map<string, Kilde>): void {
+  for (const kilde of kilder) {
+    if (!ud.has(kilde.url)) ud.set(kilde.url, kilde)
+  }
+}
+
 /** Alle kilder i en tur, i brugsrækkefølge. Tomt array når han ikke slog noget op. */
 export function kilderFraBlokke(blokke: ContentBlock[] | null | undefined): Kilde[] {
   const ud = new Map<string, Kilde>()
   for (const b of blokke ?? []) {
     if (b?.type === 'tool_use') {
-      saml(JSON.stringify(b.input ?? {}), ud)
-      if (typeof b.result === 'string') saml(b.result, ud)
+      tilfoej(kilderFraTekst(JSON.stringify(b.input ?? {})), ud)
+      if (typeof b.result === 'string') tilfoej(kilderFraTekst(b.result), ud)
     }
   }
   // Svarteksten sidst: citerer han selv en adresse, hører den med — men efter
   // dem han rent faktisk hentede.
   for (const b of blokke ?? []) {
-    if (b?.type === 'text') saml(b.text ?? '', ud)
+    if (b?.type === 'text') tilfoej(kilderFraTekst(b.text ?? ''), ud)
   }
   return [...ud.values()]
 }

@@ -5,7 +5,7 @@ import { ChangesPanel } from '../components/shell/ChangesPanel'
 import { paaAendringsFokus } from '../lib/aendringsFokus'
 import { onPauseSvar, pauseAskIn, withoutPauseAsk, type PauseAsk } from '../lib/pauseAsk'
 import { useRedning } from '../hooks/useRedning'
-import { streamReducer, initialStreamState } from '../lib/streamReducer'
+import { streamReducer, initialStreamState, liveBlokke } from '../lib/streamReducer'
 import { useGenopretEfterBrud } from '../lib/genopretEfterBrud'
 import { useSessions } from '../hooks/useSessions'
 import { useStream } from '../hooks/useStream'
@@ -696,14 +696,14 @@ export function ChatView({
           </div>
         ))}
         {streaming && stream.blocks.length > 0 && (
-          <MessageRow role="assistant" blocks={withoutPauseAsk(stream.blocks)} density="compact" streaming rundeEtiketter={stream.rundeEtiketter} />
+          <MessageRow role="assistant" blocks={withoutPauseAsk(liveBlokke(stream))} density="compact" streaming rundeEtiketter={stream.rundeEtiketter} />
         )}
         {/* Autonomt wakeup-run: token-stream live mens det kører. Når det er
             færdigt (status≠working) overtager serverens persisterede besked via
             refresh — så vi undgår dobbelt-render. ÉN kilde pr. run: undertryk
             follow-renderen hvis svaret allerede står i transcript'en (server/bro). */}
         {!streaming && bgActive && followState.status === 'working' && followState.blocks.length > 0 && !followAlreadyInTranscript && (
-          <MessageRow role="assistant" blocks={withoutPauseAsk(followState.blocks)} density="compact" streaming rundeEtiketter={followState.rundeEtiketter} />
+          <MessageRow role="assistant" blocks={withoutPauseAsk(liveBlokke(followState))} density="compact" streaming rundeEtiketter={followState.rundeEtiketter} />
         )}
       </div>
       </div>

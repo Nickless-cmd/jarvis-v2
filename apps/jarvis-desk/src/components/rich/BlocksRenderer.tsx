@@ -10,7 +10,7 @@ import { EditedFilesCard } from './EditedFilesCard'
 import { redigeredeFiler } from '../../lib/redigeredeFiler'
 import { visAendring } from '../../lib/aendringsFokus'
 import { ThinkingLine } from './ThinkingLine'
-import { SkillLine } from './SkillLine'
+import { SkillLine, SkillSurfaceLine } from './SkillLine'
 import { SKILL_VAERKTOEJER } from '../../lib/skillLinje'
 
 type ProgressBlock = Extract<ContentBlock, { type: 'progress' }>
@@ -134,6 +134,8 @@ function BlockView({
       // før, så den ramte `default: return null` — filen lå i beskeden og nåede
       // aldrig skærmen (målt 15/9-2026).
       return <AttachmentBlock block={block} />
+    case 'skill_surface':
+      return <SkillSurfaceLine block={block} />
     case 'thinking':
       // Én linje med live-tid og fold-ud — som mobilen og runde-linjen (Bjørn
       // 16/9-2026). Før strømmede hele monologen ind i tråden og forsvandt

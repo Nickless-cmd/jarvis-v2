@@ -26,6 +26,15 @@ export function foldToolResults(blocks: Array<Record<string, unknown>>): Content
         thinking: String(b.thinking ?? b.text ?? ''),
         ...(typeof b.seconds === 'number' ? { seconds: b.seconds } : {}),
       })
+    } else if (b.type === 'skill_surface' && Array.isArray(b.matches)) {
+      // Skills runtimen lagde i prompten (gemt først i turen).
+      const matches = (b.matches as unknown[]).flatMap((m) => {
+        const mm = m as { name?: unknown; score?: unknown; primary?: unknown }
+        return typeof mm?.name === 'string' && typeof mm.score === 'number'
+          ? [{ name: mm.name, score: mm.score, primary: !!mm.primary }]
+          : []
+      })
+      if (matches.length) out.push({ type: 'skill_surface', matches, primary: !!b.primary || matches.some((m) => m.primary) })
     } else if (b.type === 'image') {
       // PERSISTERET billede: en REFERENCE, ikke en src. Går urørt videre, så
       // `AttachmentBlock` kan hente det med token ved visning. Før faldt

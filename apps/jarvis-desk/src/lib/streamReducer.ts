@@ -20,6 +20,12 @@ export interface StreamState {
    * over de forkerte kald. 1:1 med mobilen.
    */
   rundeEtiketter?: Record<string, string>
+  /**
+   * Skills runtimen lagde i prompten for dette run. Holdes UDEN FOR `blocks`:
+   * de er indekseret af serverens content-block-index, og en blok lagt på
+   * plads 0 ville blive overskrevet af det første tekst-stykke. Se `liveBlokke`.
+   */
+  skillFlade?: Extract<ContentBlock, { type: 'skill_surface' }>
 }
 
 export function initialStreamState(): StreamState {
@@ -66,6 +72,25 @@ function medEtiket(
   return { ...state, rundeEtiketter: kort }
 }
 
+/** Læg skill-fladen ind, uanset om den kom direkte eller pakket (se medEtiket). */
+function medSkillFlade(state: StreamState, p: { matches?: unknown; primary?: unknown }): StreamState {
+  const matches = Array.isArray(p.matches)
+    ? (p.matches as unknown[]).flatMap((m) => {
+      const mm = m as { name?: unknown; score?: unknown; primary?: unknown }
+      return typeof mm?.name === 'string' && typeof mm.score === 'number'
+        ? [{ name: mm.name, score: mm.score, primary: !!mm.primary }]
+        : []
+    })
+    : []
+  if (matches.length === 0) return state
+  return { ...state, skillFlade: { type: 'skill_surface', matches, primary: !!p.primary || matches.some((m) => m.primary) } }
+}
+
+/** De blokke en LIVE besked tegnes af: skill-fladen først, så strømmen. */
+export function liveBlokke(state: Pick<StreamState, 'blocks' | 'skillFlade'>): ContentBlock[] {
+  return state.skillFlade ? [state.skillFlade, ...state.blocks] : state.blocks
+}
+
 export function streamReducer(state: StreamState, event: StreamEvent): StreamState {
   switch (event.type) {
     case 'message_start': {
@@ -89,6 +114,7 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
         lane: event.message.lane || state.lane,
         blocks: _sameRun ? state.blocks : [],
         workingStep: _sameRun ? state.workingStep : null,
+        skillFlade: _sameRun ? state.skillFlade : undefined,
         usage: {
           ...state.usage,
           input: event.message.usage.input_tokens,
@@ -136,6 +162,9 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
       // SSE-v2 oversætter den gamle strøm og pakker UKENDTE event-navne som
       // `system_event` med `kind = event_name`. Etiketten kom derfor aldrig
       // frem til `case 'tool_round_label'` ovenfor — målt i produktion 14/9.
+      if (event.kind === 'skill_surface') {
+        return medSkillFlade(state, (event.payload ?? {}) as { matches?: unknown; primary?: unknown })
+      }
       if (event.kind === 'tool_round_label') {
         const p = (event.payload ?? {}) as { etiket?: string; tool_use_ids?: string[] }
         return medEtiket(state, p.etiket, p.tool_use_ids)
@@ -201,6 +230,9 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
       // Den DIREKTE form (SSE-v1). Den indpakkede kommer som `system_event` —
       // se `medEtiket`.
       return medEtiket(state, event.etiket, event.tool_use_ids)
+
+    case 'skill_surface':
+      return medSkillFlade(state, event)
 
     case 'ping':
       return state

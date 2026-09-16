@@ -33,7 +33,7 @@ import { GreetingHero } from '../components/chat/GreetingHero'
 import { useResizableWidth } from '../components/panel/useResizableWidth'
 import { onHighlight } from '../lib/fileTreeHighlight'
 import { getWorkspaceTrust, setWorkspaceTrust, getContextInfo, getContextUsage, compactNow, getActiveRuns, followRun, warmSession } from '../lib/api'
-import { streamReducer, initialStreamState } from '../lib/streamReducer'
+import { streamReducer, initialStreamState, liveBlokke } from '../lib/streamReducer'
 import { buildEnvironmentEvidence, mergeEnvironmentEvidence } from '../lib/environmentEvidence'
 
 // Navngivne server-roots (matcher backend _allowed_roots). Owner: hele kodebasen
@@ -922,12 +922,12 @@ export function CodeView({
             </div>
           ))}
           {stream.status === 'working' && stream.blocks.length > 0 && (
-            <MessageRow role="assistant" blocks={withoutPauseAsk(stream.blocks)} density="compact" streaming />
+            <MessageRow role="assistant" blocks={withoutPauseAsk(liveBlokke(stream))} density="compact" streaming />
           )}
           {/* Cross-device: live-stream fra et run startet på en anden enhed (mobil).
               Kun når VI ikke selv streamer, så ingen dobbelt-render. */}
           {!(stream.status === 'working' && stream.blocks.length > 0) && bgActive && followState.status === 'working' && followState.blocks.length > 0 && (
-            <MessageRow role="assistant" blocks={withoutPauseAsk(followState.blocks)} density="compact" streaming />
+            <MessageRow role="assistant" blocks={withoutPauseAsk(liveBlokke(followState))} density="compact" streaming />
           )}
         </div>
         </div>

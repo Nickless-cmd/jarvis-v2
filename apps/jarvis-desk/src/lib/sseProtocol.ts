@@ -85,8 +85,24 @@ export interface ToolRoundLabelEvent {
   tool_use_ids: string[]
 }
 
+/**
+ * Skills runtimen lagde i prompten, FØR modellen skrev et ord
+ * (skill_relevance_surface.skill_flade_event). Den hyppigste skill-gate —
+ * efterlod før intet spor. Kommer direkte (v1) eller som
+ * `system_event(kind='skill_surface')` (v2).
+ */
+export interface SkillSurfaceEvent {
+  type: 'skill_surface'
+  run_id?: string
+  matches: SkillMatchInfo[]
+  primary: boolean
+}
+
+export interface SkillMatchInfo { name: string; score: number; primary: boolean }
+
 export type StreamEvent =
   | ToolRoundLabelEvent
+  | SkillSurfaceEvent
   | MessageStartEvent
   | ContentBlockStartEvent
   | ContentBlockDeltaEvent
@@ -102,6 +118,7 @@ export type ContentBlock =
   | { type: 'text'; text: string }
   /** `seconds`: målt varighed — kun på gemte beskeder; live tæller linjen selv. */
   | { type: 'thinking'; thinking: string; seconds?: number }
+  | { type: 'skill_surface'; matches: SkillMatchInfo[]; primary: boolean }
   | {
       type: 'tool_use'
       id: string

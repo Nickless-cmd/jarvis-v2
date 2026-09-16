@@ -58,3 +58,54 @@ export function SkillLine({
     </div>
   )
 }
+
+/**
+ * Skills runtimen selv lagde i prompten — den automatiske gate, uden et kald.
+ *
+ *     ✦ Skill-match: xlsx · 0,78 · stærkt match  ›
+ *     ✦ Skills foreslået: pdf, csv · bedst 0,72  ›
+ *
+ * Et stærkt match er en instruks i prompten («læs skillet før du svarer»), et
+ * svagt et tilbud. Linjen skal skelne dem, ellers ser «han ignorerede et
+ * tilbud» og «han ignorerede en instruks» ens ud.
+ */
+export function SkillSurfaceLine({ block }: { block: Extract<ContentBlock, { type: 'skill_surface' }> }) {
+  const [open, setOpen] = useState(false)
+  const Chevron = open ? ChevronDown : ChevronRight
+  const sorteret = [...block.matches].sort((a, b) => b.score - a.score)
+  const bedst = sorteret[0]
+  if (!bedst) return null
+  const staerke = sorteret.filter((m) => m.primary)
+  const titel = staerke.length
+    ? `Skill-match: ${staerke.map((m) => m.name).join(', ')}`
+    : `Skills foreslået: ${sorteret.map((m) => m.name).join(', ')}`
+  const meta = staerke.length
+    ? [scoreTekst(staerke[0]!.score), 'stærkt match', ...(sorteret.length > staerke.length ? [`+${sorteret.length - staerke.length} svagere`] : [])]
+    : [`bedst ${scoreTekst(bedst.score)}`]
+  return (
+    <div className="toolgroup skill-linje skill-flade">
+      <button type="button" className="toolgroup-head" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
+        <Sparkles size={15} className="toolgroup-icon" strokeWidth={1.8} />
+        <span className="toolgroup-label">
+          {titel}
+          <span className="skill-meta">{meta.map((m) => ` · ${m}`).join('')}</span>
+        </span>
+        <Chevron size={15} className="toolgroup-chevron" strokeWidth={1.8} />
+      </button>
+      {open && (
+        <div className="toolgroup-body skill-body">
+          <p className="skill-beskrivelse">
+            {staerke.length
+              ? 'Runtimen lagde skillet i prompten som instruks: læs det før svaret.'
+              : 'Runtimen lagde skills i prompten som tilbud — ikke et krav.'}
+          </p>
+          <ul className="skill-matches">
+            {sorteret.map((m) => (
+              <li key={m.name}><span>{m.name}{m.primary ? ' · stærkt' : ''}</span><span className="skill-score">{scoreTekst(m.score)}</span></li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  )
+}

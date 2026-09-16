@@ -214,7 +214,11 @@ def test_efternoeler_faar_gap_markoer_ikke_tavshed_eller_duplikater():
         rel.append("r-lag", f"f{i}")
     # Efternøler starter fra 0 — positionen er rullet ud af vinduet.
     frames, _done, idx = rel.read_from("r-lag", 0)
-    assert frames[0] == rel.GAP_FRAME, "efternøleren skal SE at der mangler et stykke"
+    assert rel.er_gap_frame(frames[0]), "efternøleren skal SE at der mangler et stykke"
+    # Og markoeren siger hvor rammerne efter den starter — klienten kan ikke
+    # selv regne det ud (16/9-2026).
+    base = total - len(frames[1:])
+    assert f'"resume_idx": {base}' in frames[0]
     assert frames[-1] == f"f{total-1}"
     assert idx == total
     # Næste læsning må IKKE gen-levere noget (duplikat-værnet).

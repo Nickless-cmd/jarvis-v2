@@ -105,8 +105,8 @@ def emitted_prefix(run_id: str) -> Prefix:
     # tilfældigvis indeholdt ordet, ville ellers kunne læses som et hul.
     hel = True
     try:
-        from core.services.run_event_log import GAP_FRAME
-        if frames and frames[0] == GAP_FRAME:
+        from core.services.run_event_log import er_gap_frame
+        if frames and er_gap_frame(frames[0]):
             hel = False
             frames = frames[1:]
     except Exception:

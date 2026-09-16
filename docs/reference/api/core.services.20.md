@@ -286,18 +286,20 @@ _In-memory, append-only, offset-indekseret event-log PR. RUN._
 | function | `_emit_cap_nerve` | `(run_id)` | Observe (cluster='stream', nerve='relay_frame_cap') at ring-vinduet begyndte | [src](../../../core/services/run_event_log.py#L133) |
 | function | `touch_liveness` | `(run_id)` | Opdatér et runs liveness (last_append_at) UDEN at persistere en frame. | [src](../../../core/services/run_event_log.py#L148) |
 | function | `mark_done` | `(run_id)` | — | [src](../../../core/services/run_event_log.py#L163) |
-| function | `read` | `(run_id, from_idx)` | Bagudkompatibel læser (globalt from_idx). For ikke-rullede runs (base=0) | [src](../../../core/services/run_event_log.py#L180) |
-| function | `read_from` | `(run_id, from_idx)` | Ring-bevidst læser: returnerer (frames, done, next_idx) hvor next_idx er det | [src](../../../core/services/run_event_log.py#L192) |
-| function | `active_run_for_session` | `(session_id)` | — | [src](../../../core/services/run_event_log.py#L211) |
-| function | `is_live` | `(run_id)` | — | [src](../../../core/services/run_event_log.py#L222) |
-| function | `live_run_ids` | `()` | — | [src](../../../core/services/run_event_log.py#L233) |
-| function | `session_for_run` | `(run_id)` | — | [src](../../../core/services/run_event_log.py#L245) |
-| function | `prune` | `()` | Behold alle ikke-done runs + de seneste _KEEP_DONE_PER_SESSION done-runs | [src](../../../core/services/run_event_log.py#L251) |
-| function | `subscriber_opened` | `(run_id)` | — | [src](../../../core/services/run_event_log.py#L268) |
-| function | `subscriber_closed` | `(run_id)` | — | [src](../../../core/services/run_event_log.py#L275) |
-| function | `mark_consumed` | `(run_id)` | En subscriber yieldede message_stop -> nogen saa runnet til ende. | [src](../../../core/services/run_event_log.py#L282) |
-| function | `was_consumed_or_active` | `(run_id)` | True hvis en levende subscriber saa/ser runnet til ende -> undertryk push. | [src](../../../core/services/run_event_log.py#L290) |
-| function | `claim_or_create` | `(session_id, stale_cap_s=…)` | Atomisk find-eller-opret pr. session — under én laas, saa samtidige POSTs | [src](../../../core/services/run_event_log.py#L299) |
+| function | `gap_frame` | `(resume_idx)` | Gap-markoeren MED den globale position rammerne efter den starter ved. | [src](../../../core/services/run_event_log.py#L180) |
+| function | `er_gap_frame` | `(frame)` | Er rammen en gap-markoer (med eller uden position)? | [src](../../../core/services/run_event_log.py#L196) |
+| function | `read` | `(run_id, from_idx)` | Bagudkompatibel læser (globalt from_idx). For ikke-rullede runs (base=0) | [src](../../../core/services/run_event_log.py#L201) |
+| function | `read_from` | `(run_id, from_idx)` | Ring-bevidst læser: returnerer (frames, done, next_idx) hvor next_idx er det | [src](../../../core/services/run_event_log.py#L213) |
+| function | `active_run_for_session` | `(session_id)` | — | [src](../../../core/services/run_event_log.py#L232) |
+| function | `is_live` | `(run_id)` | — | [src](../../../core/services/run_event_log.py#L243) |
+| function | `live_run_ids` | `()` | — | [src](../../../core/services/run_event_log.py#L254) |
+| function | `session_for_run` | `(run_id)` | — | [src](../../../core/services/run_event_log.py#L266) |
+| function | `prune` | `()` | Behold alle ikke-done runs + de seneste _KEEP_DONE_PER_SESSION done-runs | [src](../../../core/services/run_event_log.py#L272) |
+| function | `subscriber_opened` | `(run_id)` | — | [src](../../../core/services/run_event_log.py#L289) |
+| function | `subscriber_closed` | `(run_id)` | — | [src](../../../core/services/run_event_log.py#L296) |
+| function | `mark_consumed` | `(run_id)` | En subscriber yieldede message_stop -> nogen saa runnet til ende. | [src](../../../core/services/run_event_log.py#L303) |
+| function | `was_consumed_or_active` | `(run_id)` | True hvis en levende subscriber saa/ser runnet til ende -> undertryk push. | [src](../../../core/services/run_event_log.py#L311) |
+| function | `claim_or_create` | `(session_id, stale_cap_s=…)` | Atomisk find-eller-opret pr. session — under én laas, saa samtidige POSTs | [src](../../../core/services/run_event_log.py#L320) |
 
 ## `core/services/run_follow.py`
 _Follow-stream for runs → klienter kan token-streame dem live + liveness-kilde._

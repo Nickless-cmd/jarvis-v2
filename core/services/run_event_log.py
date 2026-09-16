@@ -177,6 +177,27 @@ GAP_FRAME = (
 )
 
 
+def gap_frame(resume_idx: int) -> str:
+    """Gap-markoeren MED den globale position rammerne efter den starter ved.
+
+    Klienterne taeller modtagne rammer som genoptagelses-maerke. Markoeren er
+    ikke selv en log-ramme, og rammerne efter den starter ved `base` — ikke ved
+    klientens gamle position. Uden tallet kunne klienten ikke vide hvor den stod,
+    og naeste genoptagelse bad om et forkert indeks (16/9-2026).
+    """
+    return (
+        'event: system_event\n'
+        'data: {"type": "system_event", "kind": "relay_gap", '
+        f'"resume_idx": {int(resume_idx)}, '
+        '"detail": "tidlig del af streamen beskaaret (ring-vindue) - fortsaetter live"}\n\n'
+    )
+
+
+def er_gap_frame(frame: str) -> bool:
+    """Er rammen en gap-markoer (med eller uden position)?"""
+    return frame.startswith('event: system_event\ndata: {"type": "system_event", "kind": "relay_gap"')
+
+
 def read(run_id: str, from_idx: int) -> tuple[list[str], bool]:
     """Bagudkompatibel læser (globalt from_idx). For ikke-rullede runs (base=0)
     identisk med før. En efternøler under base får vinduet fra base — brug
@@ -202,7 +223,7 @@ def read_from(run_id: str, from_idx: int) -> tuple[list[str], bool, int]:
         done = bool(st["done"])
         if from_idx < base:
             frames = list(st["frames"])
-            return ([GAP_FRAME] + frames, done, base + len(frames))
+            return ([gap_frame(base)] + frames, done, base + len(frames))
         start = int(from_idx) - base
         frames = st["frames"][start:]
         return (frames, done, int(from_idx) + len(frames))

@@ -36,6 +36,23 @@ _Generate docs/reference/API_REFERENCE.md from the FastAPI app (ground truth)._
 | function | `render_md` | `(rows, source=…)` | — | [src](../../../scripts/api_reference_gen.py#L63) |
 | function | `main` | `()` | — | [src](../../../scripts/api_reference_gen.py#L74) |
 
+## `scripts/beacon_rapport.py`
+_Opgørelse fra vaertens crash-beacon-log._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `Proeve` | `` | — | [src](../../../scripts/beacon_rapport.py#L41) |
+| function | `_parse_tid` | `(raa)` | — | [src](../../../scripts/beacon_rapport.py#L53) |
+| function | `parse_linje` | `(linje)` | Én beacon-linje → Proeve. None hvis linjen ikke er en maaling. | [src](../../../scripts/beacon_rapport.py#L60) |
+| function | `find_genstarter` | `(proever)` | Et FALD i uptime = maskinen har vaeret nede imellem to proever. | [src](../../../scripts/beacon_rapport.py#L95) |
+| function | `_tal` | `(vaerdier, andel)` | — | [src](../../../scripts/beacon_rapport.py#L108) |
+| function | `proevetakt_sekunder` | `(proever)` | Median-afstand mellem to proever. Rapportens vigtigste tal ved en | [src](../../../scripts/beacon_rapport.py#L116) |
+| function | `pumpekanal` | `(proever)` | Pumpen er den hurtigste kanal. Den flyttede fra fan5 til fan2 15/9-2026, | [src](../../../scripts/beacon_rapport.py#L129) |
+| function | `opgoer` | `(proever)` | — | [src](../../../scripts/beacon_rapport.py#L144) |
+| function | `_linje` | `(navn, s, enhed)` | — | [src](../../../scripts/beacon_rapport.py#L174) |
+| function | `skriv` | `(rapport, titel)` | — | [src](../../../scripts/beacon_rapport.py#L181) |
+| function | `main` | `()` | — | [src](../../../scripts/beacon_rapport.py#L207) |
+
 ## `scripts/bench_ollama_concurrency.py`
 _Reproducérbart latency/concurrency-benchmark for Ollama-lanen._
 
@@ -430,12 +447,4 @@ _Hvad fangede laeringskredsloebet siden nulpunktet?_
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `main` | `()` | — | [src](../../../scripts/laering_status.py#L23) |
-
-## `scripts/ledger_rehearsal.py`
-_Generalprøve: kan ledgeren holde RIGTIGE samtaler?_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `kopiér` | `(antal, mindst, hoejst)` | — | [src](../../../scripts/ledger_rehearsal.py#L39) |
-| function | `main` | `()` | — | [src](../../../scripts/ledger_rehearsal.py#L70) |
 

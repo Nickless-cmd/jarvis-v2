@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `scripts/ledger_rehearsal.py`
+_Generalprøve: kan ledgeren holde RIGTIGE samtaler?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `kopiér` | `(antal, mindst, hoejst)` | — | [src](../../../scripts/ledger_rehearsal.py#L39) |
+| function | `main` | `()` | — | [src](../../../scripts/ledger_rehearsal.py#L70) |
+
 ## `scripts/link_google_email.py`
 _Admin-migration: knyt Google-email til eksisterende konti (§12)._
 

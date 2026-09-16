@@ -123,3 +123,30 @@
 .agent-run-list p, .agent-message-list p { margin: 5px 0 0; color: var(--fg-1); font-size: 12px;
   line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; }
 .ap-detalje .agent-inspector { padding-inline: 0; }
+
+/* Tilfoejet 16/9-2026 sammen med de fund Task 7 skulle have fanget. */
+
+/* «Proev igen» bor INDE i fejlbeskeden — en fejl uden vej videre er en
+   blindgyde, og knappen skal staa hvor fejlen staar. */
+.agent-feedback.is-error { display: flex; align-items: center; gap: 10px; justify-content: space-between; }
+.agent-retry {
+  flex: 0 0 auto; background: none; border: 1px solid currentColor; border-radius: 6px;
+  color: inherit; font-size: 11px; padding: 3px 8px; cursor: pointer;
+}
+.agent-retry:disabled { opacity: .5; cursor: default; }
+
+/* Agentens sidste fejl — var med i Agent Pool foer refaktoren. */
+.agent-last-error {
+  margin-top: 10px; padding: 7px 9px; border-radius: 6px;
+  background: var(--bg-2); color: var(--error-fg); font-size: 11.5px;
+}
+
+/* Model og tokens pr. koersel, samme oplysninger som den gamle tabel. */
+.agent-run-meta {
+  display: flex; flex-wrap: wrap; gap: 10px; margin-top: 4px;
+  color: var(--fg-3); font-size: 11px; font-variant-numeric: tabular-nums;
+}
+
+/* En agent-raekke uden agent-id aabner sit tool-kald; har den heller ikke
+   det, er der intet at aabne — og saa skal den ikke se klikbar ud. */
+.env-row-button:disabled { cursor: default; opacity: .75; }

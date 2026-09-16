@@ -61,10 +61,36 @@ function goalFrom(input: Record<string, unknown>): string | undefined {
   return undefined
 }
 
+/**
+ * Pak runtimens indpakning af et tool-resultat ud.
+ *
+ * Et resultat fra explore/spawn_agent_task/quick_council_check når ALDRIG
+ * klienten som ren JSON. Fire lag kan ligge udenom, og de kan optræde sammen:
+ *
+ *   ⚠ <advarsel>\n\n        simple_tool_executor.py (soft_warn)
+ *   [UTROET kilde=… ]\n…\n[/UTROET]   untrusted_fencing.py (fence)
+ *   \n[keys: …]             simple_tools.py, naar dumpen er klippet ved 8.000 tegn
+ *
+ * JSON.parse paa den raa streng kaster derfor hver eneste gang. Det var ikke
+ * til at se: alle tests fodrede ren, haandskrevet JSON ind.
+ */
+export function unwrapToolResult(result?: string): string {
+  if (!result) return ''
+  let tekst = result.trim()
+  // Soft-warn staar FOERST, uden for hegnet.
+  tekst = tekst.replace(/^⚠[^\n]*\n\n/, '').trim()
+  const hegn = tekst.match(/^\[UTROET kilde=[^\]]*\]\n([\s\S]*?)(?:\n\[\/UTROET\])?$/)
+  if (hegn) tekst = hegn[1]!.trim()
+  // Hale-noten fra en klippet dump er ikke en del af nyttelasten.
+  tekst = tekst.replace(/\n\[keys: [\s\S]*$/, '').trim()
+  return tekst
+}
+
 function objectResult(result?: string): Record<string, unknown> | null {
-  if (!result) return null
+  const tekst = unwrapToolResult(result)
+  if (!tekst) return null
   try {
-    const value = JSON.parse(result)
+    const value = JSON.parse(tekst)
     return value && typeof value === 'object' && !Array.isArray(value)
       ? value as Record<string, unknown>
       : null
@@ -73,27 +99,39 @@ function objectResult(result?: string): Record<string, unknown> | null {
   }
 }
 
+/** Sidste udvej: en KLIPPET dump er ugyldig JSON, men id'et staar der stadig. */
+function agentIdsFraTekst(result?: string): string[] {
+  const tekst = unwrapToolResult(result)
+  if (!tekst) return []
+  return [...tekst.matchAll(/"agent_id"\s*:\s*"([^"]+)"/g)].map((m) => m[1]!)
+}
+
 function textValue(value: unknown): string | undefined {
   return typeof value === 'string' && value.trim() ? value.trim() : undefined
 }
 
 function agentReferences(tool: ToolEvidence): AgentReference[] {
   if (!AGENT_RESULT_TOOLS.has(tool.name)) return []
+  // IKKE en tidlig return naar resultatet ikke kan parses: et hegnet, klippet
+  // eller endnu-ikke-ankommet resultat er netop de tilfaelde udvejene nedenfor
+  // findes for.
   const result = objectResult(tool.result)
-  if (!result) return []
   const refs: AgentReference[] = []
   const commonGoal = goalFrom(tool.input)
-  const topId = textValue(result.agent_id)
+  const topId = result ? textValue(result.agent_id) : undefined
   if (topId) {
     refs.push({
       agentId: topId,
-      role: textValue(result.role),
+      role: result ? textValue(result.role) : undefined,
       goal: commonGoal,
-      status: textValue(result.agent_status) ?? textValue(result.status),
+      // KUN agent_status. simple_tools.py:2112 filtrerer `status` ud af dumpen,
+      // saa den `status` der evt. overlever er TOOLETS — «ok» er ikke en
+      // agent-tilstand, og «koerer»-tjekket ville aldrig lyse.
+      status: result ? textValue(result.agent_status) : undefined,
       dispatchToolUseId: tool.id,
     })
   }
-  if (Array.isArray(result.spawned)) {
+  if (result && Array.isArray(result.spawned)) {
     for (const item of result.spawned) {
       if (!item || typeof item !== 'object' || Array.isArray(item)) continue
       const row = item as Record<string, unknown>
@@ -107,6 +145,28 @@ function agentReferences(tool: ToolEvidence): AgentReference[] {
         dispatchToolUseId: tool.id,
       })
     }
+  }
+
+  // To sidste udveje, saa fladen ikke er tom netop naar den betyder noget:
+  //
+  //  1. En KLIPPET dump kan ikke parses, men id'et staar der stadig.
+  //  2. En dispatch UNDER koersel har slet intet resultat endnu. Sådan opførte
+  //     main sig — en agent-dispatch VAR en agent-raekke — og det er praecis
+  //     mens agenten arbejder man vil se den. Raekken har intet agent_id, og
+  //     det skal kunne ses paa den: tom agentId betyder «detaljen kan ikke
+  //     hentes, men kaldet findes».
+  if (refs.length === 0) {
+    for (const id of agentIdsFraTekst(tool.result)) {
+      refs.push({ agentId: id, goal: commonGoal, dispatchToolUseId: tool.id })
+    }
+  }
+  if (refs.length === 0) {
+    refs.push({
+      agentId: '',
+      goal: commonGoal,
+      status: tool.status === 'running' ? 'running' : undefined,
+      dispatchToolUseId: tool.id,
+    })
   }
   return refs
 }

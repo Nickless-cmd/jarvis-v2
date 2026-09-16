@@ -6,6 +6,13 @@ import { lookupTool } from '../../lib/toolRegistry'
 import type { AgentReference, EnvironmentEvidence, SourceEvidence, ToolEvidence } from '../../lib/environmentEvidence'
 const AGENT_COLORS = ['#e0843a', '#3ab85f', '#9b6bff', '#e0556b', '#3a9be0']
 
+/** Stabil plads i farvepaletten ud fra en streng — samme agent, samme farve. */
+function stabiltIndeks(noegle: string): number {
+  let sum = 0
+  for (let i = 0; i < noegle.length; i++) sum = (sum * 31 + noegle.charCodeAt(i)) >>> 0
+  return sum
+}
+
 /** Pænt tool-label som i chatview: label + opsummering (kommando/sti). For
  *  operator_bash bliver det fx "Terminal: git status" — IKKE bare "operator_bash". */
 function formatTool(t: ToolEvidence): string {
@@ -103,8 +110,12 @@ export function EnvironmentPanel({
   if (!everRan) return null
 
   const agents = evidence?.agents ?? []
-  const sources = (evidence?.sources ?? []).slice(-8)
-  const recentTools = (evidence?.tools ?? []).slice(-8)
+  // VIS ANTALLET, ikke kun de otte. Uden tallet ser en session med 40 opslag
+  // ud som om den havde 8 — samme stille forkerte konklusion som limit-faelden.
+  const alleSources = evidence?.sources ?? []
+  const alleTools = evidence?.tools ?? []
+  const sources = alleSources.slice(-8)
+  const recentTools = alleTools.slice(-8)
 
   return (
     <aside className="env-panel" aria-label="Miljø">
@@ -122,11 +133,23 @@ export function EnvironmentPanel({
             <li className="env-row env-changes">
               <span className="env-label"><GitCompare size={13} /> Ændringer</span>
               <span className="env-val">
-                {git?.is_git
-                  ? git.dirty > 0
-                    ? <><span className="git-add">+{git.added}</span> <span className="git-del">−{git.removed}</span></>
-                    : <span className="env-muted">Ingen ændringer</span>
-                  : <span className="env-muted">{git ? 'Ikke et git-repo' : 'Henter…'}</span>}
+                {/* Fire tilstande, ikke tre. Backenden svarer is_git=false BAADE
+                    naar mappen ikke er et repo OG naar broen ikke svarer — de
+                    skelnes paa `link`. «Ikke et git-repo» om et repo der findes
+                    er en paastand vi ikke har belaeg for.
+                    Og +0 −0: `dirty` taelles af `git status --porcelain` (med
+                    utrackede), mens added/removed kommer fra `git diff --numstat
+                    HEAD` (kun trackede). Fem helt nye filer giver derfor dirty=5
+                    og 0/0 — et tal der ikke findes. */}
+                {git?.link && git.link !== 'ok'
+                  ? <span className="env-muted">{git.link === 'genforbinder' ? 'Genforbinder…' : 'Broen er nede'}</span>
+                  : git?.is_git
+                    ? git.dirty > 0
+                      ? (git.added > 0 || git.removed > 0
+                        ? <><span className="git-add">+{git.added}</span> <span className="git-del">−{git.removed}</span></>
+                        : <span className="env-muted">{git.dirty} {git.dirty === 1 ? 'ny fil' : 'nye filer'}</span>)
+                      : <span className="env-muted">Ingen ændringer</span>
+                    : <span className="env-muted">{git ? 'Ikke et git-repo' : 'Henter…'}</span>}
               </span>
             </li>
             {gitMissing && kind === 'workstation' && (
@@ -178,13 +201,23 @@ export function EnvironmentPanel({
               <div className="env-divider" />
               <div className="env-section-head">Underagenter</div>
               <ul className="env-rows">
-                {agents.map((agent, i) => {
-                  const farve = AGENT_COLORS[i % AGENT_COLORS.length]
-                  const koerer = ['active', 'queued', 'starting', 'waiting'].includes(agent.status || '')
+                {agents.map((agent) => {
+                  // Farven haenger paa dispatch-id'et, ikke paa pladsen i listen:
+                  // med indeks skiftede en agents farve hver gang listen voksede.
+                  const farve = AGENT_COLORS[stabiltIndeks(agent.dispatchToolUseId) % AGENT_COLORS.length]
+                  const koerer = ['active', 'queued', 'starting', 'waiting', 'running'].includes(agent.status || '')
                   const label = agent.role || 'Agent'
+                  // Uden agent-id findes der ingen detalje at hente (hegnet,
+                  // klippet eller endnu ikke ankommet resultat). Saa aabner
+                  // raekken selve kaldet — det er det vi FAKTISK har.
+                  const dispatchTool = alleTools.find((t) => t.id === agent.dispatchToolUseId)
+                  const aabn = agent.agentId
+                    ? () => onOpenAgent?.(agent)
+                    : dispatchTool ? () => onOpenTool?.(dispatchTool) : undefined
                   return (
-                    <li className={`env-row${koerer ? ' agent-koerer' : ''}`} key={agent.agentId}>
-                      <button type="button" className="env-row-button" onClick={() => onOpenAgent?.(agent)}>
+                    <li className={`env-row${koerer ? ' agent-koerer' : ''}`}
+                        key={`${agent.dispatchToolUseId}:${agent.agentId}`}>
+                      <button type="button" className="env-row-button" disabled={!aabn} onClick={aabn}>
                         <Bot size={13} style={{ color: farve }} />
                         <span style={{ color: farve }}>{label}</span>
                         {agent.goal && <span className="env-muted agent-opgave" title={agent.goal}>{agent.goal}</span>}
@@ -200,7 +233,9 @@ export function EnvironmentPanel({
           {sources.length > 0 && (
             <>
               <div className="env-divider" />
-              <div className="env-section-head">Kilder</div>
+              <div className="env-section-head">
+                Kilder{alleSources.length > sources.length && <> · {sources.length} af {alleSources.length}</>}
+              </div>
               <ul className="env-rows">
                 {sources.map((source) => (
                   <li className="env-row" key={source.url}>
@@ -216,7 +251,9 @@ export function EnvironmentPanel({
           {recentTools.length > 0 && (
             <>
               <div className="env-divider" />
-              <div className="env-section-head">Tool-kald</div>
+              <div className="env-section-head">
+                Tool-kald{alleTools.length > recentTools.length && <> · {recentTools.length} af {alleTools.length}</>}
+              </div>
               <div className="env-tools">
                 {recentTools.map((tool) => {
                   const label = formatTool(tool)

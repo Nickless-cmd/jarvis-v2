@@ -23,3 +23,22 @@ describe('InspectorPanel', () => {
     expect(back).toHaveBeenCalledOnce()
   })
 })
+
+describe('InspectorPanel — tilbage-knappens destination', () => {
+  const source = {
+    url: 'https://docs.example.com/a', domaene: 'docs.example.com', origin: 'tool_result' as const,
+  }
+  it('siger «Tilbage til Miljø» når der ikke er en historik at gå til', () => {
+    render(<InspectorPanel target={{ type: 'source', source }} canGoBack={false}
+      onBack={() => {}} onClose={() => {}} onOpenTarget={() => {}} />)
+    expect(screen.getByRole('button', { name: 'Tilbage til Miljø' })).toBeInTheDocument()
+  })
+  it('siger bare «Tilbage» når den går til det forrige panel', () => {
+    // Fra en kilde aabnet FRA et tool gaar knappen til tool-resultatet.
+    // «Tilbage til Miljø» ville laese en forkert destination op.
+    render(<InspectorPanel target={{ type: 'source', source }} canGoBack
+      onBack={() => {}} onClose={() => {}} onOpenTarget={() => {}} />)
+    expect(screen.getByRole('button', { name: 'Tilbage' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Tilbage til Miljø' })).not.toBeInTheDocument()
+  })
+})

@@ -32,8 +32,12 @@ export function InspectorPanel({
   return (
     <div className="artifact-panel inspector-panel">
       <div className="artifact-head inspector-head">
+        {/* Destinationen er ikke altid Miljoe: fra en kilde aabnet FRA et tool
+            gaar den tilbage til tool-resultatet. En skaermlaeser fik foer den
+            forkerte destination laest op hver gang. */}
         {showBack && (
-          <button type="button" className="artifact-close inspector-back" aria-label="Tilbage til Miljø" onClick={onBack}>
+          <button type="button" className="artifact-close inspector-back"
+                  aria-label={canGoBack ? 'Tilbage' : 'Tilbage til Miljø'} onClick={onBack}>
             <ArrowLeft size={15} />
           </button>
         )}

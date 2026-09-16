@@ -843,7 +843,7 @@ export function CodeView({
               totalTokens={envTotalTokens}
               totalToolCalls={envTotalToolCalls}
               evidence={environmentEvidence}
-              onOpenAgent={(agent) => panel.openTarget({ type: 'agent', agent, canMessage: true })}
+              onOpenAgent={(agent) => panel.openTarget({ type: 'agent', agent, canMessage: isOwner })}
               onOpenSource={(source) => {
                 const tool = source.toolUseId
                   ? environmentEvidence.tools.find((item) => item.id === source.toolUseId)

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Square, Trash2, ChevronRight, ChevronDown, X, Play } from 'lucide-react'
 import {
   listJobs, stopJob, pauseJob, resumeJob, varighed, kildeNavn,
@@ -49,11 +49,19 @@ export function JobsPanel({
   const [faerdigeAabne, setFaerdigeAabne] = useState(false)
   const [travl, setTravl] = useState('')
 
+  // Hvert opslag gaar over broen til Bjoerns maskine og koerer en kommando
+  // dér. Uden denne vagt ville en langsom bro give overlappende kald: panelet
+  // poller hvert 5. sekund uanset om det forrige svar er kommet, og saa staar
+  // der to-tre kald i koe paa hans maskine for ét aabent panel.
+  const undervejs = useRef(false)
+
   const hent = useCallback(() => {
-    if (!config) return
+    if (!config || undervejs.current) return
+    undervejs.current = true
     listJobs(config, true)
       .then((svar) => { setJobs(svar.jobs); setBroOk(svar.bridge_ok); setFejl('') })
       .catch(() => setFejl('kunne ikke hente jobs'))
+      .finally(() => { undervejs.current = false })
   }, [config])
 
   useEffect(() => {

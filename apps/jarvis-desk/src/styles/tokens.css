@@ -62,6 +62,10 @@
   --error-fg: #ef7e6b;
   --warn-fg: #e0a458;
 
+  /* Sidebarens bredde. Bor her, fordi BAADE .window (gitteret) og
+     .vinduesbjaelke (som er dens soeskende) skal bruge den. */
+  --sidebar-bredde: 260px;
+
   --radius-sm: 6px;
   --radius-md: 8px;
   --radius-lg: 12px;

@@ -2,7 +2,12 @@
 
 .window {
   display: grid;
-  grid-template-columns: 260px 1fr;
+  /* Bredden er defineret i tokens.css paa :root — IKKE her. Bjaelken er en
+     SOESKENDE til .window, og en variabel defineret her ville aldrig naa den
+     (custom properties arver nedad, ikke sidelaens). Den ville falde tavst
+     tilbage paa sin fallback, og de to tal kunne komme i utakt uden at nogen
+     saa det. */
+  grid-template-columns: var(--sidebar-bredde) 1fr;
   height: 100vh;
   width: 100%;
 }
@@ -3320,11 +3325,21 @@ body.egen-ramme .chatview-head a { -webkit-app-region: no-drag; }
    Den er ALTID der, ogsaa paa setup- og fejlskaerme. Uden OS-ramme er den den
    eneste maade at flytte vinduet paa. */
 .vinduesbjaelke { display: none; }
+/* Bjaelken starter hvor sidebaren slutter (Bjoern 16/9-2026: «venstre panel
+   skal gaa helt op»). Foer laa den henover hele bredden, og sidebaren
+   begyndte 34 px nede — den saa afskaaret ud i toppen.
+
+   Paa setup- og fejlskaermen findes sidebaren ikke; der daekker bjaelken hele
+   bredden, ellers ville de foerste 260 px ikke kunne traekkes. :has() afgoer
+   det, samme mekanik som resten af skallen bruger. */
 body.egen-ramme .vinduesbjaelke {
-  display: block; position: fixed; top: 0; left: 0; right: 0; height: 34px;
+  display: block; position: fixed; top: 0; right: 0; height: 34px;
+  left: var(--sidebar-bredde);
   z-index: 190; -webkit-app-region: drag;
-  background: var(--bg-0); border-bottom: 1px solid var(--line);
 }
-/* Alt indhold starter under bjaelken. calc, ikke padding paa body: .window er
-   et grid paa 100vh, og en padding ville skubbe bunden ud af skaermen. */
-body.egen-ramme .window { height: calc(100vh - 34px); margin-top: 34px; }
+body.egen-ramme:not(:has(.window)) .vinduesbjaelke {
+  left: 0; background: var(--bg-0); border-bottom: 1px solid var(--line);
+}
+/* Sidebaren gaar HELT op; kun hovedfladen skubbes ned under bjaelken. */
+body.egen-ramme .window { height: 100vh; margin-top: 0; }
+body.egen-ramme .main { padding-top: 34px; }

@@ -149,3 +149,23 @@ describe('tilstande der ikke er «kører» eller «exit N»', () => {
     expect(await screen.findByText('mistet')).toBeInTheDocument()
   })
 })
+
+describe('JobsPanel — belastningen på broen', () => {
+  it('starter ikke et nyt opslag mens det forrige er undervejs', async () => {
+    // Hvert opslag koerer en kommando paa Bjoerns maskine over broen. Er den
+    // langsom, ville en poll hvert 5. sekund lægge kald i kø hos ham.
+    vi.useFakeTimers()
+    let slip: ((v: unknown) => void) | null = null
+    listJobs.mockImplementation(() => new Promise((r) => { slip = r }))
+    render(<JobsPanel config={cfg} isOwner onClose={() => {}} />)
+    expect(listJobs).toHaveBeenCalledTimes(1)
+
+    await vi.advanceTimersByTimeAsync(15000)      // tre polls ville vaere fyret
+    expect(listJobs).toHaveBeenCalledTimes(1)
+
+    slip!({ jobs: [], bridge_ok: true })
+    await vi.advanceTimersByTimeAsync(5000)
+    expect(listJobs).toHaveBeenCalledTimes(2)     // og saa maa den igen
+    vi.useRealTimers()
+  })
+})

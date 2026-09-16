@@ -252,21 +252,48 @@ describe('miljø-feltets klippede lister', () => {
  */
 describe('vinduets egen titelbjælke', () => {
   const bjaelke = app.match(/body\.egen-ramme \.vinduesbjaelke \{([\s\S]*?)\n\}/)?.[1] ?? ''
+  const hoved = app.match(/body\.egen-ramme \.main \{([^}]*)\}/)?.[1] ?? ''
   const vindue = app.match(/body\.egen-ramme \.window \{([^}]*)\}/)?.[1] ?? ''
 
   it('bjælken er altid der — også uden skallen', () => {
     // Uden OS-ramme er den den eneste måde at flytte vinduet på. Den må ikke
     // være betinget af at en bestemt flade er tegnet.
     expect(bjaelke, 'bjælken mangler').toBeTruthy()
-    expect(app).not.toMatch(/:not\(:has\(\.window\)\)\s*\.vinduesbjaelke/)
     expect(bjaelke).toContain('-webkit-app-region: drag')
+    expect(bjaelke).toContain('display: block')
   })
 
-  it('indholdet starter PRÆCIS under bjælken', () => {
+  it('sidebaren går HELT op — bjælken starter hvor den slutter', () => {
+    // Bjørn 16/9-2026: «venstre panel skal gå helt op». Før lå bjælken henover
+    // hele bredden, og sidebaren begyndte 34 px nede.
+    expect(bjaelke).toContain('left: var(--sidebar-bredde)')
+    expect(vindue).toContain('height: 100vh')
+    expect(vindue).toContain('margin-top: 0')
+  })
+
+  it('uden skallen dækker bjælken hele bredden', () => {
+    // På setup- og fejlskærmen findes sidebaren ikke. Lod vi bjælken starte
+    // 260 px inde, kunne de første 260 px ikke trækkes — og så sidder et
+    // vindue uden OS-ramme fast.
+    const uden = app.match(/body\.egen-ramme:not\(:has\(\.window\)\) \.vinduesbjaelke \{([^}]*)\}/)?.[1] ?? ''
+    expect(uden, 'reglen for skærme uden skal mangler').toBeTruthy()
+    expect(uden).toContain('left: 0')
+  })
+
+  it('hovedfladen starter PRÆCIS under bjælken', () => {
     const hoejde = bjaelke.match(/height:\s*(\d+)px/)?.[1]
     expect(hoejde, 'bjælken har ingen højde').toBeTruthy()
-    expect(vindue).toContain(`margin-top: ${hoejde}px`)
-    expect(vindue).toContain(`calc(100vh - ${hoejde}px)`)
+    expect(hoved).toContain(`padding-top: ${hoejde}px`)
+  })
+
+  it('bredden står ÉT sted — bjælken er søskende til .window', () => {
+    // Custom properties arver nedad, ikke sidelæns. Defineret på .window ville
+    // variablen aldrig nå bjælken; den ville falde tavst tilbage på en
+    // fallback, og de to tal kunne komme i utakt uden at nogen så det.
+    expect(tokens).toMatch(/--sidebar-bredde:\s*\d+px/)
+    const vindueRegel = app.match(/^\.window \{([^}]*)\}/m)?.[1] ?? ''
+    expect(vindueRegel).toContain('var(--sidebar-bredde)')
+    expect(vindueRegel).not.toMatch(/--sidebar-bredde:/)
   })
 
   it('headeren reserverer ikke længere plads i højre side', () => {

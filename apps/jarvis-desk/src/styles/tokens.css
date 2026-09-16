@@ -11,34 +11,36 @@
 
    To ting er ændret, og de hænger sammen:
 
-     KULØR. Claude-appens mørke er varmt, ikke sort: grundtonen har rødt og
-     grønt over blåt (#1F1E1D), hvor GitHub-mørke og den gamle palet har blåt
-     overskud eller intet. Det er den varme bund man genkender.
+     KULØR. Tallene er MÅLT i Claude Code-appen på hans venstre skærm, ikke
+     valgt: sidebar #111111, hovedflade #151515, kort #252524, felter
+     #20201F. Den er altså næsten neutral med en ANELSE varme opad — rød og
+     grøn ét trin over blå i de øverste lag. Første forsøg her var for brunt
+     (#1A1917/#242321); det ramte stemningen, ikke farven.
 
-     LAG. Bunden er ikke sort mere. Canvas #1A1917 → paneler #242321 →
-     hævede flader #2F2E2B → kant/hover #3B3A36. Springet mellem de to
-     nederste er med vilje diskret (1,12:1) — det er sådan Claude-appen ser
-     ud — men HELE rampen har 1,54:1 fra bund til top, og det er dér den
-     gamle faldt: rent sort i bunden gav ingen retning at bygge lag i.
+     LAG. Canvas #141413 → paneler #1E1E1B → hævede flader #2A2926 →
+     kant/hover #363532. CC's egen rampe har trin helt ned til 1,03:1 og
+     1,45:1 i alt; denne holder mindst 1,10 pr. trin og 1,50 i alt. Bevidst
+     én tak tydeligere end forlægget — hans klage var netop at fladerne ikke
+     kunne skilles ad, og rent sort i bunden gav ingen retning at bygge i.
 
    Accenten er Claudes ler-orange. Som TEKST bruges en lysere udgave:
    #D97757 giver 4,3:1 mod panelfarven, hvilket er under 4,5 — accent-text
    lander på 6,1:1. Selve fladen beholder den ægte accent. */
 :root {
-  --bg-0: #1a1917;
-  --bg-1: #242321;
-  --bg-2: #2f2e2b;
-  --bg-3: #3b3a36;
-  --bg-4: #4a4843;
-  --line: #383733;
-  --fg-1: #faf9f5;
-  --fg-2: #bfbcb2;
-  --fg-3: #95928a;
+  --bg-0: #141413;
+  --bg-1: #1e1e1b;
+  --bg-2: #2a2926;
+  --bg-3: #363532;
+  --bg-4: #434240;
+  --line: #302f2c;
+  --fg-1: #f2f0ec;
+  --fg-2: #bdbab3;
+  --fg-3: #93908a;
   --accent: #d97757;
   /* Accenten som TEKST — se noten ovenfor. I lyst tema mørknes den i stedet. */
   --accent-text: #e59a7d;
-  --user-bubble: #3b2a22;   /* accentens dybt nedtonede kulør */
-  --code-bg: #2f2e2b;
+  --user-bubble: #33251e;   /* accentens dybt nedtonede kulør */
+  --code-bg: #2a2926;
 
   --error-fg: #ef7e6b;
   --warn-fg: #e0a458;

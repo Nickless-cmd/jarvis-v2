@@ -1,5 +1,13 @@
 """cheap-lane self-heal: re-probe fastlaaste providere saa en fikset provider kommer tilbage."""
+import pytest
+
 from core.services import cheap_lane_selfheal as sh
+
+
+@pytest.fixture(autouse=True)
+def _tomt_register(monkeypatch):
+    # Hermetisk: ingen test læser maskinens rigtige provider_router.json.
+    monkeypatch.setattr(sh, "_slukket", lambda: (set(), set()))
 
 
 def test_stale_targets_picks_any_unhealthy_without_cooldown(monkeypatch):
@@ -113,3 +121,52 @@ def test_run_selfheal_summarizes(monkeypatch):
     monkeypatch.setattr(sh, "reprobe", lambda p, m: p == "a")   # a healer, b fejler
     out = sh.run_selfheal(max_probes=6)
     assert out["healed"] == ["a/m1"] and out["still_down"] == ["b/m2"] and out["probed"] == 2
+
+
+def test_stale_targets_springer_slukkede_over(monkeypatch):
+    """17/9-2026: self-heal prøvede cerebras/cline igen efter de var slukket i registret."""
+    monkeypatch.setattr(sh, "_slukket", lambda: ({"cerebras"}, {("kilo", "doed")}))
+    monkeypatch.setattr("core.runtime.db_cheap_provider.list_cheap_provider_runtime_states",
+                        lambda lane="cheap": [
+                            {"provider": "cerebras", "model": "g", "status": "model-not-found", "cooldown_until": None},
+                            {"provider": "kilo", "model": "doed", "status": "empty-response", "cooldown_until": None},
+                            {"provider": "kilo", "model": "levende", "status": "provider-error", "cooldown_until": None},
+                        ])
+    monkeypatch.setattr("core.services.cheap_provider_runtime_adapters.CHEAP_PROVIDER_DEFAULTS",
+                        {"cerebras": {"static_models": ["g", "ny"]}, "kilo": {"static_models": ["doed", "levende"]}})
+    monkeypatch.setattr("core.services.cheap_provider_runtime_adapters.provider_cost_class", lambda p: "free")
+    monkeypatch.setattr("core.services.cheap_provider_runtime_adapters.is_routable_provider", lambda p: True)
+    monkeypatch.setattr("core.services.cheap_provider_runtime_adapters.provider_runtime_defaults",
+                        lambda p: {"static_models": ["g", "ny"] if p == "cerebras" else ["doed", "levende"]})
+    assert sh._stale_targets(10) == [("kilo", "levende")]
+
+
+def _reprobe_fejl(monkeypatch, **fejl):
+    from datetime import UTC, datetime
+    from core.services.cheap_provider_runtime_adapters import CheapProviderError
+    saved = {}
+    monkeypatch.setattr("core.runtime.db_cheap_provider.upsert_cheap_provider_runtime_state",
+                        lambda **kw: saved.update(kw))
+    monkeypatch.setattr("core.services.cheap_provider_runtime_adapters.provider_runtime_defaults",
+                        lambda p: {"base_url": "http://x"})
+
+    def _boom(**kw):
+        raise CheapProviderError(provider="p", **fejl)
+    monkeypatch.setattr("core.services.cheap_provider_runtime_adapters._execute_provider_chat", _boom)
+    sh.reprobe("p", "m")
+    return (datetime.fromisoformat(saved["cooldown_until"]) - datetime.now(UTC)).total_seconds()
+
+
+def test_reprobe_giver_pensioneret_model_24_timer(monkeypatch):
+    sek = _reprobe_fejl(monkeypatch, code="model-not-found",
+                        message="Model gemma-4-31b is archived and unavailable")
+    assert sek > 23 * 3600
+
+
+def test_reprobe_retry_after_vinder(monkeypatch):
+    sek = _reprobe_fejl(monkeypatch, code="model-not-found", message="gone", retry_after_seconds=90)
+    assert sek < 200
+
+
+def test_reprobe_forbigaaende_fejl_beholder_kort_cooldown(monkeypatch):
+    assert _reprobe_fejl(monkeypatch, code="provider-error", message="down") < 3 * 3600

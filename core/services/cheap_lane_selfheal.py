@@ -29,6 +29,24 @@ _HEALTHY_STATUSES = frozenset({"ready", "ok"})
 _PROBE_MESSAGE = "ping"
 
 
+def _slukket() -> tuple[set[str], set[tuple[str, str]]]:
+    """Udbydere og (udbyder, model) der er slået fra i registret.
+
+    Self-heal læste kun kataloget og prøvede derfor cerebras, cline og requesty
+    igen efter de var slukket 17/9-2026 — og skrev ny tilstand for dem."""
+    try:
+        from core.runtime.provider_router import load_provider_router_registry
+        reg = load_provider_router_registry()
+    except Exception:
+        return set(), set()
+    udbydere = {str(p.get("provider") or "") for p in reg.get("providers") or []
+                if not bool(p.get("enabled", True))}
+    modeller = {(str(m.get("provider") or ""), str(m.get("model") or ""))
+                for m in reg.get("models") or []
+                if not bool(m.get("enabled", True)) and str(m.get("lane") or "") == "cheap"}
+    return udbydere, modeller
+
+
 def _stale_targets(limit: int) -> list[tuple[str, str]]:
     """(provider, model) der skal re-probes. To kilder:
 
@@ -50,11 +68,14 @@ def _stale_targets(limit: int) -> list[tuple[str, str]]:
             provider_runtime_defaults,
         )
         now = datetime.now(UTC)
-        seen: set[tuple[str, str]] = set()
+        slukkede_udbydere, slukkede_modeller = _slukket()
+        seen: set[tuple[str, str]] = set(slukkede_modeller)
         # --- Kilde 1: eksisterende state-rows der er fast ---
         for st in list_cheap_provider_runtime_states(lane="cheap"):
             provider = str(st.get("provider") or "")
             model = str(st.get("model") or "")
+            if provider in slukkede_udbydere or (provider, model) in slukkede_modeller:
+                continue
             seen.add((provider, model))
             if str(st.get("status") or "ready") in _HEALTHY_STATUSES:
                 continue
@@ -76,6 +97,8 @@ def _stale_targets(limit: int) -> list[tuple[str, str]]:
                 return out
         # --- Kilde 2: zero-row cheap-kandidater (gratis+routbar, aldrig probet ind) ---
         for provider, cfg in CHEAP_PROVIDER_DEFAULTS.items():
+            if provider in slukkede_udbydere:
+                continue
             if provider_cost_class(provider) != "free" or not is_routable_provider(provider):
                 continue
             for model in (cfg.get("static_models") or []):
@@ -110,7 +133,15 @@ def reprobe(provider: str, model: str) -> bool:
             last_error_code="", last_error_message="", last_success_at=now.isoformat())
         return True
     except CheapProviderError as exc:
-        cd = (now + timedelta(seconds=_default_failure_cooldown_seconds(str(exc.code)))).isoformat()
+        sek = _default_failure_cooldown_seconds(str(exc.code))
+        # Samme karantæne som i selektorens fejl-sti: en pensioneret model fik
+        # 15 min her, så self-heal kaldte den døde cerebras-model hele dagen.
+        from core.services.cheap_lane_failure_policy import PERMANENT_QUARANTINE_S, model_retired
+        if exc.retry_after_seconds:
+            sek = exc.retry_after_seconds
+        elif model_retired(str(exc.code), str(exc.message)):
+            sek = PERMANENT_QUARANTINE_S
+        cd = (now + timedelta(seconds=sek)).isoformat()
         _up(provider=provider, model=model, lane="cheap", status=str(exc.code),
             last_error_code=str(exc.code), last_error_message=str(exc.message)[:200],
             cooldown_until=cd, last_failure_at=now.isoformat())

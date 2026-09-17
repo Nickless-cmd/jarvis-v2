@@ -394,6 +394,9 @@ CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
         "daily_limit": 1000,
         "cost_class": "free",
         "static_models": ["glm-4.5-flash"],
+        # 17/9-2026 igen 0 af 13 på to timer (timeouts + 1302 rate limit). Bjørn:
+        # «giv zai længere pause». Mindst 2 t efter hver fejl i stedet for 5 min.
+        "min_failure_cooldown_s": 7200,
     },
     # HuggingFace Router (15. jul, Bjørns eksisterende hf_-token fundet lokalt):
     # OpenAI-compat `router.huggingface.co/v1`. STÆRK tool-capable (Llama-3.3-70B/

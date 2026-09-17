@@ -1299,6 +1299,21 @@ def _default_failure_cooldown_seconds(code: str) -> int:
     return 300
 
 
+def provider_min_failure_cooldown_seconds(provider: str) -> int:
+    """Mindste pause efter en fejl for `provider` (katalog-nøgle
+    `min_failure_cooldown_s`), eller 0.
+
+    Til udbydere der fejler i lange stræk: zai timede ud i 92 % af kaldene i
+    juli og igen 17/9-2026 (0 af 13 på to timer). 5 min pause pr. timeout
+    betød et nyt forgæves kald hvert kvarter, og hvert koster fuld
+    timeout-ventetid for kalderen."""
+    try:
+        return max(0, int((CHEAP_PROVIDER_DEFAULTS.get(str(provider or "").strip()) or {})
+                          .get("min_failure_cooldown_s") or 0))
+    except (TypeError, ValueError):
+        return 0
+
+
 def _notify_checkin_required(provider: str) -> None:
     """Læg en nudge i Jarvis' awareness når en checkin-gated provider (FreeTheAi) er låst,
     så HAN kan huske at bede Bjørn køre /checkin. Dedup pr. UTC-dag (én nudge/dag, uanset

@@ -1267,6 +1267,12 @@ def _register_provider_failure(
     from core.services.cheap_lane_failure_policy import PERMANENT_QUARANTINE_S, model_retired
     if not error.retry_after_seconds and model_retired(error.code, error.message):
         cooldown_until = (now + timedelta(seconds=PERMANENT_QUARANTINE_S)).isoformat()
+    from core.services.cheap_provider_runtime_adapters import provider_min_failure_cooldown_seconds
+    _mindst = provider_min_failure_cooldown_seconds(provider)
+    if _mindst and error.code != "auth-rejected":
+        _gulv = now + timedelta(seconds=_mindst)
+        if cooldown_until is None or datetime.fromisoformat(cooldown_until) < _gulv:
+            cooldown_until = _gulv.isoformat()
     record_cheap_provider_invocation(
         provider=provider,
         model=model,

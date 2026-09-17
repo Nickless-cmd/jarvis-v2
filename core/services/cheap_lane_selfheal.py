@@ -141,6 +141,8 @@ def reprobe(provider: str, model: str) -> bool:
             sek = exc.retry_after_seconds
         elif model_retired(str(exc.code), str(exc.message)):
             sek = PERMANENT_QUARANTINE_S
+        from core.services.cheap_provider_runtime_adapters import provider_min_failure_cooldown_seconds
+        sek = max(sek, provider_min_failure_cooldown_seconds(provider))
         cd = (now + timedelta(seconds=sek)).isoformat()
         _up(provider=provider, model=model, lane="cheap", status=str(exc.code),
             last_error_code=str(exc.code), last_error_message=str(exc.message)[:200],

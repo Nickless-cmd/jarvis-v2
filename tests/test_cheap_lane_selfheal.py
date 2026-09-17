@@ -170,3 +170,9 @@ def test_reprobe_retry_after_vinder(monkeypatch):
 
 def test_reprobe_forbigaaende_fejl_beholder_kort_cooldown(monkeypatch):
     assert _reprobe_fejl(monkeypatch, code="provider-error", message="down") < 3 * 3600
+
+
+def test_reprobe_respekterer_udbyderens_mindste_pause(monkeypatch):
+    monkeypatch.setattr("core.services.cheap_provider_runtime_adapters.provider_min_failure_cooldown_seconds",
+                        lambda p: 7200)
+    assert _reprobe_fejl(monkeypatch, code="request-failed", message="timed out") > 7000

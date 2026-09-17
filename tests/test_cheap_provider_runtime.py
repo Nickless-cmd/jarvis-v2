@@ -872,3 +872,18 @@ def test_nim_function_id_404_er_ikke_en_doed_model(isolated_runtime) -> None:
         message="Function id '948fe171' version 'null': Specified function in account 'x' not found",
     )
     assert sek is not None and sek < 3600
+
+
+def test_udbyder_med_mindste_pause_faar_den_ved_timeout(isolated_runtime, monkeypatch) -> None:
+    # zai 17/9-2026: 5 min pause pr. timeout gav et forgæves kald hvert kvarter.
+    from core.services import cheap_provider_catalogue as kat
+    monkeypatch.setitem(kat.CHEAP_PROVIDER_DEFAULTS["groq"], "min_failure_cooldown_s", 7200)
+    sek = _registrer_fejl(isolated_runtime, code="request-failed", message="The read operation timed out", status=0)
+    assert sek is not None and sek > 7000
+
+
+def test_mindste_pause_forkorter_ikke_en_laengere_karantaene(isolated_runtime, monkeypatch) -> None:
+    from core.services import cheap_provider_catalogue as kat
+    monkeypatch.setitem(kat.CHEAP_PROVIDER_DEFAULTS["groq"], "min_failure_cooldown_s", 7200)
+    sek = _registrer_fejl(isolated_runtime, code="model-not-found", message="model not found", status=404)
+    assert sek is not None and sek > 23 * 3600

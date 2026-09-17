@@ -420,17 +420,18 @@ _Én kort etiket for en afsluttet værktøjs-runde — «Rettede NPE i UserServi
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_model` | `()` | — | [src](../../../core/services/tool_round_label.py#L94) |
-| function | `_base_url` | `()` | — | [src](../../../core/services/tool_round_label.py#L105) |
-| function | `_klip` | `(v, maks)` | Kort, én linje, og aldrig `None` som teksten «None». | [src](../../../core/services/tool_round_label.py#L116) |
-| function | `_navn_og_input` | `(v)` | Navn og argumenter, uanset hvilken form kaldet har. | [src](../../../core/services/tool_round_label.py#L125) |
-| function | `byg_prompt` | `(vaerktoejer, hensigt=…)` | Det kompakte billede af runden som modellen får. | [src](../../../core/services/tool_round_label.py#L139) |
-| function | `_kald_model` | `(prompt)` | — | [src](../../../core/services/tool_round_label.py#L163) |
-| function | `_klip_haengende` | `(s, blev_klippet)` | Få en klippet etiket til at slutte hvor et led slutter. | [src](../../../core/services/tool_round_label.py#L200) |
-| function | `_ryd` | `(s)` | Én linje, uden instruktion, uden anførselstegn, uden punktum, klippet | [src](../../../core/services/tool_round_label.py#L224) |
-| function | `_opdigtet` | `(tekst, billede)` | Hvilket navn i etiketten står IKKE i kaldene? `""` når alt er dækket. | [src](../../../core/services/tool_round_label.py#L249) |
-| function | `etiket` | `(vaerktoejer, hensigt=…)` | Én kort etiket for runden, eller `""`. | [src](../../../core/services/tool_round_label.py#L273) |
-| function | `tool_use_ids` | `(vaerktoejer)` | Hvilke kald etiketten dækker. | [src](../../../core/services/tool_round_label.py#L296) |
+| function | `_model` | `()` | — | [src](../../../core/services/tool_round_label.py#L123) |
+| function | `_base_url` | `()` | — | [src](../../../core/services/tool_round_label.py#L134) |
+| function | `_klip` | `(v, maks)` | Kort, én linje, og aldrig `None` som teksten «None». | [src](../../../core/services/tool_round_label.py#L145) |
+| function | `_navn_og_input` | `(v)` | Navn og argumenter, uanset hvilken form kaldet har. | [src](../../../core/services/tool_round_label.py#L154) |
+| function | `byg_prompt` | `(vaerktoejer, hensigt=…)` | Det kompakte billede af runden som modellen får. | [src](../../../core/services/tool_round_label.py#L168) |
+| function | `_kald_model` | `(prompt)` | — | [src](../../../core/services/tool_round_label.py#L196) |
+| function | `_klip_haengende` | `(s, blev_klippet)` | Få en klippet etiket til at slutte hvor et led slutter. | [src](../../../core/services/tool_round_label.py#L233) |
+| function | `_ryd` | `(s)` | Én linje, uden instruktion, uden anførselstegn, uden punktum, klippet | [src](../../../core/services/tool_round_label.py#L257) |
+| function | `_opdigtet` | `(tekst, billede)` | Hvilket navn i etiketten står IKKE i kaldene? `""` når alt er dækket. | [src](../../../core/services/tool_round_label.py#L282) |
+| function | `_er_kommandolinje` | `(s)` | Er etiketten bare kommandoen igen? | [src](../../../core/services/tool_round_label.py#L325) |
+| function | `etiket` | `(vaerktoejer, hensigt=…)` | Én kort etiket for runden, eller `""`. | [src](../../../core/services/tool_round_label.py#L341) |
+| function | `tool_use_ids` | `(vaerktoejer)` | Hvilke kald etiketten dækker. | [src](../../../core/services/tool_round_label.py#L373) |
 
 ## `core/services/tool_router.py`
 _Per-turn tool selection._

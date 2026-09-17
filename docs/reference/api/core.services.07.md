@@ -733,8 +733,9 @@ _Forslag i komponisten — hvad der kunne skrives videre, mens man skriver._
 | function | `_afkort` | `(udkast, svar)` | Fjern den del af svaret der gentager udkastet. | [src](../../../core/services/composer_suggest.py#L110) |
 | function | `_ryd` | `(s)` | Én linje, uden omsluttende anførselstegn, afkortet ved et ordskel. | [src](../../../core/services/composer_suggest.py#L129) |
 | function | `foreslaa` | `(udkast)` | Fortsættelsen af `udkast`, eller `""`. | [src](../../../core/services/composer_suggest.py#L145) |
-| function | `_samtale` | `(session_id)` | De seneste beskeder. Egen funktion, så testene kan sætte dem. | [src](../../../core/services/composer_suggest.py#L205) |
-| function | `foreslaa_naeste` | `(session_id)` | Et bud på brugerens næste besked, eller `""`. | [src](../../../core/services/composer_suggest.py#L211) |
+| function | `_er_paastand` | `(s)` | Er forslaget en konstatering frem for noget man beder om? | [src](../../../core/services/composer_suggest.py#L240) |
+| function | `_samtale` | `(session_id)` | De seneste beskeder. Egen funktion, så testene kan sætte dem. | [src](../../../core/services/composer_suggest.py#L256) |
+| function | `foreslaa_naeste` | `(session_id)` | Et bud på brugerens næste besked, eller `""`. | [src](../../../core/services/composer_suggest.py#L262) |
 
 ## `core/services/composite_tools.py`
 _Composite tools — safe self-extension through composition only._

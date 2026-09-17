@@ -64,13 +64,42 @@ MAKS_HENSIGT: Final[int] = 200
 #: Ud. «Omkring 30» i CC's prompt; vi klipper hårdt ved 40 så en model der
 #: skriver en sætning alligevel ikke sprænger linjen.
 MAKS_ETIKET: Final[int] = 40
-#: Et løfte der ikke er indfriet inden da, er uinteressant.
-TIMEOUT_S: Final[float] = 3.0
+#: Et løfte der ikke er indfriet inden da, er uinteressant. Målt 17/9-2026 på
+#: ægte runder: 0,45–3,0 s, og de LANGE runder ramte loftet og gav tom etiket.
+#: Ingen venter på den — tråden er daemon og etiketten bærer sine
+#: `tool_use_ids`, så den finder sine kald uanset hvornår den lander. Et loft
+#: der kaster halvdelen af arbejdet væk for at spare to sekunder ingen mærker,
+#: er en dårlig handel.
+TIMEOUT_S: Final[float] = 6.0
+
+#: Hvor mange kald der kommer MED i billedet. En runde på 50 kald gav en
+#: prompt på 15.000 tegn og dermed timeout. De første kald siger hvad runden
+#: handlede om; resten tælles med som et antal.
+MAKS_KALD: Final[int] = 8
 
 _PROMPT = (
     "Skriv en kort etiket der beskriver hvad de her værktøjskald UDRETTEDE.\n"
     "Den vises som én linje i en app og klippes omkring 30 tegn — tænk "
     "commit-emne, ikke sætning. Behold det mest sigende navneord. "
+    # Målt 17/9-2026 på ægte runder: «Sed 645 700p chatview tsx», «cd
+    # /media/projects/jarvis-v2 && grep -n», «Grep -rn instrument_fix core».
+    # Etiketten blev kommandolinjen selv — præcis det den mekaniske linje
+    # allerede viser, og ubrugelig som overskrift.
+    "Skriv ALDRIG kommandoen eller værktøjsnavnet af: «grep» bliver til "
+    "«Søgte», «sed»/«cat»/«head» til «Læste», «cd» nævnes slet ikke, "
+    "«git log» til «Hentede historikken». Ingen flag, stier med skråstreger "
+    "eller && i etiketten. "
+    # Samme måling: «Grepede», «Sættede», «Editerede», «CD'et til projects».
+    # Modellen boejer engelske kommandonavne som danske verber.
+    "Brug rigtige danske verber — ikke fordanskede kommandonavne som "
+    "«grepede», «editerede» eller «cd'et». "
+    # Og: «Hentede loggen» stod som etiket paa runder der hverken hentede
+    # eller loggede noget. Det er modellens standardgaet naar den ikke ved
+    # hvad runden handlede om.
+    "Sig hvad runden handlede OM — den fil, det navn, det tal der blev rørt. "
+    "Ved du det ikke, så skriv en kortere, sand etiket frem for at gætte; "
+    "«Hentede loggen» er forkert når der ikke blev hentet en log. "
+    "Præcis ÉN linje — ikke en liste. "
     # Målt: modellen gentog brugerens egen formulering — «Hent logfilerne» om
     # en runde der HAVDE hentet dem, «Finder ucommittede filer» om en der
     # fandt dem. «Datid» alene var ikke nok; den skal se forvandlingen.
@@ -147,7 +176,9 @@ def byg_prompt(vaerktoejer: list[dict[str, Any]], hensigt: str = "") -> str:
     dele: list[str] = []
     if hensigt.strip():
         dele.append(f"Brugeren bad om: {_klip(hensigt, MAKS_HENSIGT)}\n")
-    for v in vaerktoejer or []:
+    alle = list(vaerktoejer or [])
+    resten = len(alle) - MAKS_KALD
+    for v in alle[:MAKS_KALD]:
         raa_navn, raa_input = _navn_og_input(v)
         navn = _klip(raa_navn, 60)
         if not navn:
@@ -157,6 +188,8 @@ def byg_prompt(vaerktoejer: list[dict[str, Any]], hensigt: str = "") -> str:
             f"Input: {_klip(raa_input, MAKS_PR_VAERKTOEJ)}\n"
             f"Output: {_klip(v.get('result') or v.get('output'), MAKS_PR_VAERKTOEJ)}"
         )
+    if resten > 0:
+        dele.append(f"(og {resten} kald mere i samme runde)")
     return _PROMPT + "\n\n".join(dele)
 
 
@@ -270,6 +303,41 @@ def _opdigtet(tekst: str, billede: str) -> str:
     return ""
 
 
+#: Kommandonavne en etiket aldrig må begynde med. Prompten siger det, men en
+#: prompt er et håb — og målt 17/9-2026 skrev modellen alligevel «Sed 645 700p
+#: chatview tsx» og «cd /media/projects/jarvis-v2 && grep -n». Samme greb som
+#: fabrikations-værnet: en kedelig etiket er harmløs, en der bare gentager
+#: kommandolinjen er støj oven på den mekaniske linje der viser den i forvejen.
+_KOMMANDOER: Final[frozenset[str]] = frozenset({
+    "grep", "rg", "sed", "awk", "cat", "head", "tail", "ls", "cd", "cp", "mv",
+    "rm", "mkdir", "chmod", "curl", "wget", "git", "npm", "npx", "node",
+    "python", "python3", "pytest", "echo", "find", "wc", "sqlite3", "ssh",
+    "scp", "sudo", "systemctl", "journalctl", "diff", "tar", "df", "du", "ps",
+})
+
+#: Danske endelser modellen hæfter på et kommandonavn («grepede», «cd'et»).
+_ENDELSER: Final[tuple[str, ...]] = ("'ede", "'et", "ede", "et", "te", "de", "'ed")
+
+#: Skal-syntaks der aldrig hører til i en overskrift.
+_SKAL_SYNTAKS = re.compile(r"(?:&&|\|\||\s-{1,2}[A-Za-z]|\s\|\s)")
+
+
+def _er_kommandolinje(s: str) -> bool:
+    """Er etiketten bare kommandoen igen?"""
+    if _SKAL_SYNTAKS.search(s or ""):
+        return True
+    foerste = (s or "").strip().split()
+    if not foerste:
+        return False
+    ord0 = foerste[0].lower().strip(".,;:!?«»\"'")
+    if ord0 in _KOMMANDOER:
+        return True
+    for e in _ENDELSER:
+        if ord0.endswith(e) and ord0[: -len(e)] in _KOMMANDOER:
+            return True
+    return False
+
+
 def etiket(vaerktoejer: list[dict[str, Any]], hensigt: str = "") -> str:
     """Én kort etiket for runden, eller `""`.
 
@@ -286,6 +354,15 @@ def etiket(vaerktoejer: list[dict[str, Any]], hensigt: str = "") -> str:
         logger.debug("tool_round_label: kald fejlede", exc_info=True)
         return ""
     ud = _ryd(raa)
+    # Et nøgent verbum er ikke en overskrift. Målt 17/9-2026: modellen svarede
+    # «Søgte agent-21cc158c0a274d98ae2e4c0fb56bb57», og klipningen ved 40 tegn
+    # åd hele objektet, så der stod «Søgte». Bedre ingen linje end en der ikke
+    # siger mere end den mekaniske gør i forvejen.
+    if len(ud.split()) < 2:
+        return ""
+    if _er_kommandolinje(ud):
+        logger.info("runde-etiket kasseret — den gentager bare kommandoen: %r", ud)
+        return ""
     fundet = _opdigtet(ud, billede)
     if fundet:
         logger.info("runde-etiket kasseret — %r staar ikke i kaldene: %r", fundet, ud)

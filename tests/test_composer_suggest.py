@@ -192,14 +192,16 @@ def test_naeste_forslag_er_en_HEL_besked_uden_hoeftende_mellemrum(monkeypatch):
     """Fortsaettelses-formen haefter et mellemrum paa. Her er der intet at
     haefte paa: feltet er tomt, og et forslag der begynder med mellemrum ville
     blive til en besked der goer det samme."""
-    monkeypatch.setattr(cs, "_samtale", lambda sid: _samtale(("assistant", "Det er rettet.")))
+    monkeypatch.setattr(cs, "_samtale", lambda sid: _samtale(
+        ("assistant", "Det er rettet og verificeret — testene er groenne igen.")))
     monkeypatch.setattr(cs, "_kald_model", lambda p: "  deploy det til ct105  ")
     assert cs.foreslaa_naeste("s1") == "deploy det til ct105"
 
 
 def test_modellens_ROLLENAVN_fjernes(monkeypatch):
     """Rollerne staar i prompten, saa modellen skriver dem gerne med."""
-    monkeypatch.setattr(cs, "_samtale", lambda sid: _samtale(("assistant", "Klar.")))
+    monkeypatch.setattr(cs, "_samtale", lambda sid: _samtale(
+        ("assistant", "Klar — jeg har bygget det og deployet det til ct105.")))
     monkeypatch.setattr(cs, "_kald_model", lambda p: "Bruger: koer testene igen")
     assert cs.foreslaa_naeste("s1") == "koer testene igen"
 
@@ -245,10 +247,76 @@ def test_en_DB_fejl_giver_tomt_og_kaster_ikke(monkeypatch):
 
 
 def test_en_MODELFEJL_i_naeste_forslag_giver_tomt(monkeypatch):
-    monkeypatch.setattr(cs, "_samtale", lambda sid: _samtale(("assistant", "Klar.")))
+    monkeypatch.setattr(cs, "_samtale", lambda sid: _samtale(
+        ("assistant", "Klar — jeg har bygget det og deployet det til ct105.")))
     monkeypatch.setattr(cs, "_kald_model",
                         lambda p: (_ for _ in ()).throw(RuntimeError("nede")))
     assert cs.foreslaa_naeste("s1") == ""
+
+
+# ─────────────────────── forslaget skal vaere en ORDRE, ikke en replik (17/9)
+#
+# Maalt paa ti aegte samtaler: modellen SVAREDE assistenten i stedet for at
+# bede om noget — «Fire. Det er nemt.», «4. Takk for det.», «Ja, det kan vi
+# lave i morgen!», «Jeg forstaar ikke, hvad du mener». Et svar kan han skrive
+# selv; et forslag skal spare ham for at formulere en ordre. Og et forkert
+# forslag koster mere end intet: det staar og fylder pladsholderens plads.
+
+_LANGT_SVAR = "Det er rettet og verificeret — begge services koerer igen paa ct105."
+
+
+@pytest.mark.parametrize("replik", [
+    "Ja, det kan vi lave i morgen!",
+    "Nej, det behoever du ikke",
+    "Tak for det",
+    "Okay, saa proever vi det",
+    "Jeg forstaar ikke, hvad du mener",
+    "Super, det lyder godt",
+])
+def test_en_REPLIK_er_ikke_et_forslag(monkeypatch, replik):
+    monkeypatch.setattr(cs, "_samtale", lambda sid: _samtale(("assistant", _LANGT_SVAR)))
+    monkeypatch.setattr(cs, "_kald_model", lambda p: replik)
+    assert cs.foreslaa_naeste("s1") == ""
+
+
+def test_en_PAASTAND_er_heller_ikke_et_forslag(monkeypatch):
+    """Maalt: «Fyrede kl. 20:18, ventetid var 60 sekunder» — en konstatering.
+    En ordre begynder aldrig med et datids-verbum, og et spoergsmaal baerer
+    sit spoergsmaalstegn; derfor kan de skelnes uden at forstaa saetningen."""
+    monkeypatch.setattr(cs, "_samtale", lambda sid: _samtale(("assistant", _LANGT_SVAR)))
+    monkeypatch.setattr(cs, "_kald_model", lambda p: "Fyrede kl. 20:18, ventetid var 60 sekunder")
+    assert cs.foreslaa_naeste("s1") == ""
+
+
+@pytest.mark.parametrize("ordre", [
+    "Deploy det og hold oeje med journalen",
+    "Vis mig de to der staar i karantaene",
+    "Hvorfor fejler den kun paa ct105?",
+    "Ret det og koer testene igen",
+    "Jeg vil have dig til at rulle det tilbage",
+])
+def test_en_ORDRE_slipper_igennem(monkeypatch, ordre):
+    """Vagterne maa ikke aede det de er sat til at beskytte. «Jeg vil have dig
+    til at…» begynder med «Jeg» men er en ordre, ikke en replik."""
+    monkeypatch.setattr(cs, "_samtale", lambda sid: _samtale(("assistant", _LANGT_SVAR)))
+    monkeypatch.setattr(cs, "_kald_model", lambda p: ordre)
+    assert cs.foreslaa_naeste("s1") == ordre
+
+
+@pytest.mark.parametrize("stump", ["4.", "OK", "Generation cancelled.", "Ja."])
+def test_en_STUMP_til_sidst_giver_intet_forslag(monkeypatch, stump):
+    """Der er intet naeste skridt at bygge paa. Maalt: praecis dér begyndte
+    modellen at foere samtalen i stedet for at foreslaa noget."""
+    monkeypatch.setattr(cs, "_samtale", lambda sid: _samtale(("assistant", stump)))
+    monkeypatch.setattr(cs, "_kald_model", lambda p: pytest.fail("spurgte alligevel"))
+    assert cs.foreslaa_naeste("s1") == ""
+
+
+def test_prompten_forlanger_noget_KONKRET_fra_samtalen():
+    """«Saa kan vi gaa videre til naeste trin» er sandt om enhver samtale og
+    derfor ubrugeligt i denne. Kravet staar i prompten; dét kan maales."""
+    assert "KONKRET" in cs._PROMPT_NAESTE
+    assert "ORDRE" in cs._PROMPT_NAESTE
 
 
 def test_ruten_vaelger_tilstand_efter_om_der_ER_et_udkast(monkeypatch):

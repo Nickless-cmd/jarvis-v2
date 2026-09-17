@@ -12,6 +12,8 @@ resultater. Denne siger hvad runden UDRETTEDE.
 """
 from __future__ import annotations
 
+import pytest
+
 from core.services import tool_round_label as trl
 
 
@@ -145,8 +147,24 @@ def test_der_bruges_en_LOKAL_model():
 
 
 def test_ventetiden_har_et_loft():
-    """Et loefte der ikke er indfriet inden da, er uinteressant."""
-    assert trl.TIMEOUT_S <= 5.0
+    """Et loefte der ikke er indfriet inden da, er uinteressant.
+
+    Loftet blev haevet fra 3 til 6 s 17/9-2026, fordi maalingen viste hvad det
+    KOSTEDE: paa aegte runder ramte de lange kald loftet og gav TOM etiket.
+    Ingen venter paa den — traaden er daemon, og etiketten baerer sine
+    tool_use_ids, saa den finder sine kald uanset hvornaar den lander. Loftet
+    findes stadig, fordi et kald der haenger, ikke maa haenge for evigt.
+    """
+    assert trl.TIMEOUT_S <= 8.0
+
+
+def test_prompten_vokser_ikke_med_en_KAEMPE_runde():
+    """En runde paa 50 kald gav 15.000 tegns prompt og dermed timeout. De
+    foerste kald siger hvad runden handlede om; resten taelles."""
+    kald = [{"name": f"vaerktoej_{i}", "input": {"x": "y" * 200}} for i in range(50)]
+    p = trl.byg_prompt(kald)
+    assert p.count("Værktøj: ") == trl.MAKS_KALD
+    assert "(og 42 kald mere i samme runde)" in p
 
 
 # ────────────────────────────── serverens EGEN form (14/9-2026)
@@ -230,6 +248,49 @@ def test_tal_og_korte_stumper_udloeser_ikke_vagten(monkeypatch):
     """«2 filer» og «v2» maa ikke se ud som opdigtede stier."""
     monkeypatch.setattr(trl, "_kald_model", lambda p: "Rettede 2 fejl")
     assert trl.etiket([_v("edit_file", {"path": "a.py"})]) == "Rettede 2 fejl"
+
+
+# ──────────────────────────── etiketten maa ikke VAERE kommandoen (17/9-2026)
+#
+# Maalt paa 45 aegte etiketter i produktion: «Sed 645 700p chatview tsx», «cd
+# /media/projects/jarvis-v2 && grep -n», «Grep -rn instrument_fix core»,
+# «Grepede approved i core apps py», «Sættede maksimum til 5 kald». Etiketten
+# blev kommandolinjen igen — praecis det den mekaniske linje viser i forvejen —
+# eller et engelsk kommandonavn boejet som et dansk verbum.
+
+@pytest.mark.parametrize("raa", [
+    "Sed 645 700p chatview tsx",
+    "cd /media/projects/jarvis-v2 && grep -n",
+    "Grep -rn instrument_fix core",
+    "Grepede approved i core apps py",
+    "CD'et til projects jarvis v2",
+    "git log for de sidste 25",
+])
+def test_en_etiket_der_bare_gentager_kommandoen_kasseres(monkeypatch, raa):
+    monkeypatch.setattr(trl, "_kald_model", lambda p: raa)
+    assert trl.etiket([_v("bash", {"command": "cd /media/projects/jarvis-v2 && grep -rn x core"})]) == ""
+
+
+@pytest.mark.parametrize("raa", [
+    "Søgte efter instrument_fix i core",
+    "Læste linjerne i chatview",
+    "Hentede historikken fra repoet",
+])
+def test_en_RIGTIG_etiket_om_de_samme_kald_slipper_igennem(monkeypatch, raa):
+    """Vagten maa ikke ramme etiketter der BESKRIVER en kommando i stedet for
+    at gentage den — det er hele den form vi beder om."""
+    monkeypatch.setattr(trl, "_kald_model", lambda p: raa)
+    kald = [_v("bash", {"command": "cd /repo && grep -rn instrument_fix core chatview historikken"})]
+    assert trl.etiket(kald) == raa
+
+
+def test_et_naeget_verbum_er_ikke_en_etiket(monkeypatch):
+    """Maalt: modellen svarede «Søgte agent-21cc158c0a274d98ae2e4c0fb56bb57»,
+    og klipningen ved 40 tegn aad hele objektet. Tilbage stod «Søgte», som
+    ikke siger mere end den mekaniske linje."""
+    monkeypatch.setattr(trl, "_kald_model",
+                        lambda p: "Søgte agent-21cc158c0a274d98ae2e4c0fb56bb57xyz")
+    assert trl.etiket([_v("bash", {"command": "grep agent-21cc158c0a274d98ae2e4c0fb56bb57xyz x"})]) == ""
 
 
 def test_efterproevningen_ser_bort_fra_KASSE(monkeypatch):

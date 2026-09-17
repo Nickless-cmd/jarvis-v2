@@ -190,16 +190,67 @@ MAKS_HISTORIK: Final[int] = 6
 #: prompten og skubbe det der faktisk blev sagt ud.
 MAKS_BESKED_TEGN: Final[int] = 400
 
+#: Under det er assistentens sidste besked en stump — «4.», «Generation
+#: cancelled.», «OK» — og der er intet at bygge et næste skridt på. Målt
+#: 17/9-2026: netop dér svarede modellen «Fire. Det er nemt.» og «Jeg forstår
+#: ikke, hvad du mener», altså replikker i samtalen frem for forslag.
+MIN_SVAR_TEGN: Final[int] = 40
+
 _PROMPT_NAESTE = (
-    "Herunder er de seneste beskeder i en samtale mellem en bruger og hans "
-    "assistent. Foreslå hvad BRUGEREN kunne skrive som sin næste besked — et "
-    "naturligt næste skridt, ikke et resumé. Skriv den som brugeren selv ville "
-    "skrive den, på dansk, højst ti ord. Svar KUN med selve beskeden: ingen "
-    "anførselstegn, intet rollenavn, ingen forklaring.\n\nSamtalen:\n"
+    "Du hjælper en bruger med at skrive sin næste besked til sin assistent.\n"
+    "Herunder står de seneste beskeder. Foreslå ÉN besked brugeren kunne "
+    "sende nu.\n\n"
+    "Krav:\n"
+    # Målt 17/9-2026: modellen svarede assistenten i stedet for at bede om
+    # noget — «Fire. Det er nemt.», «Ja, det kan vi lave i morgen!». Et svar
+    # kan brugeren skrive selv; et forslag skal spare ham for at formulere en
+    # ordre.
+    "- Det skal være en ORDRE eller et SPØRGSMÅL til assistenten — noget "
+    "brugeren beder om. Aldrig et svar, en kommentar eller en høflighed.\n"
+    # Målt samme dag: «Så kan vi gå videre til næste trin» — sandt om enhver
+    # samtale, og derfor ubrugeligt i denne.
+    "- Det skal nævne noget KONKRET fra samtalen: en fil, et navn, et tal, en "
+    "opgave. Et forslag der passer på enhver samtale, er ikke et forslag.\n"
+    "- Dansk. Højst ti ord. Ingen indledning som «Så nu» eller «Okay».\n"
+    "- Svar KUN med beskeden: ingen anførselstegn, intet rollenavn, ingen "
+    "forklaring.\n\n"
+    "Eksempler på FORMEN (indholdet skal komme fra samtalen nedenfor): "
+    "«Deploy det og hold øje med journalen» · «Vis mig de to der står i "
+    "karantæne» · «Hvorfor fejler den kun på ct105?» · «Ret det og kør "
+    "testene igen»\n\n"
+    "Samtalen:\n"
+)
+
+#: Åbninger der afslører en REPLIK frem for en ordre. Kun begyndelser, og kun
+#: entydige: «Ja, det kan vi…» er et svar, mens «Jeg vil have dig til at…» er
+#: en ordre og skal slippe igennem.
+_REPLIK_START: Final[tuple[str, ...]] = (
+    "ja,", "ja.", "ja ", "nej,", "nej.", "nej ", "tak", "okay", "ok,", "ok.",
+    # Begge stavemaader: modellen skriver af og til uden danske bogstaver
+    # (målt: den svarede endda «Takk for det» på norsk).
+    "jeg forstår", "jeg forstaar", "det lyder", "det er godt", "godt,",
+    "super", "fedt", "takk",
+    "enig", "nemlig", "præcis",
 )
 
 #: Modellen svarer gerne med rollen foran, fordi den står i prompten.
 _ROLLE_PRAEFIKS = ("bruger:", "brugeren:", "user:", "assistent:", "assistant:")
+
+
+def _er_paastand(s: str) -> bool:
+    """Er forslaget en konstatering frem for noget man beder om?
+
+    Målt 17/9-2026: «Fyrede kl. 20:18, ventetid var 60 sekunder» — modellen
+    refererede hvad der var sket i stedet for at bede om noget. En ordre
+    begynder aldrig med et datids-verbum («Vis», «Ret», «Kør», «Verificer»),
+    og et spørgsmål bærer sit spørgsmålstegn. Derfor kan de to skelnes uden at
+    forstå sætningen.
+    """
+    t = (s or "").strip()
+    if not t or "?" in t:
+        return False
+    ord0 = t.split()[0].lower().strip(".,;:!«»\"'")
+    return len(ord0) > 4 and (ord0.endswith("ede") or ord0.endswith("te"))
 
 
 def _samtale(session_id: str) -> list[dict[str, str]]:
@@ -233,6 +284,10 @@ def foreslaa_naeste(session_id: str) -> str:
     # besked dér er at tale i munden på et svar der er på vej.
     if str(beskeder[-1].get("role") or "") != "assistant":
         return ""
+    # En stump til sidst («4.», «Generation cancelled.») er ikke et svar der
+    # peger nogen steder hen. Målt: dér begyndte modellen at føre samtalen.
+    if len(" ".join(str(beskeder[-1].get("content") or "").split())) < MIN_SVAR_TEGN:
+        return ""
 
     linjer = [
         f"{'Bruger' if b['role'] == 'user' else 'Assistent'}: "
@@ -250,6 +305,16 @@ def foreslaa_naeste(session_id: str) -> str:
         if ud.lower().startswith(praefiks):
             ud = ud[len(praefiks):].strip()
             break
+    ud = ud.strip()
+    # Et svar er ikke et forslag. Prompten siger det, men en 4b-model glider
+    # tilbage i replik-rollen, og et forkert forslag koster mere end intet:
+    # det står og fylder pladsholderens plads.
+    if ud.lower().startswith(_REPLIK_START):
+        logger.debug("composer_suggest: kasseret som replik: %r", ud)
+        return ""
+    if _er_paastand(ud):
+        logger.debug("composer_suggest: kasseret som påstand: %r", ud)
+        return ""
     # Ingen hæftning med mellemrum her: det er en hel besked, ikke en
     # fortsættelse af noget.
-    return ud.strip()
+    return ud

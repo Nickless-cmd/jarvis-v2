@@ -125,6 +125,10 @@ def start_user_run_detached(
                 ping_interval_s=5.0,
             )
             aliaseret = False
+            # Kørslens EGET id (ikke wrapperens). Det er dét id udfaldet
+            # skrives under i `visible_runs`, og dermed det der kan spørges om
+            # turen faktisk blev færdig.
+            indre_run_id = ""
             try:
                 async for frame in gen:
                     try:
@@ -137,6 +141,7 @@ def start_user_run_detached(
                         eget = rel.run_id_fra_ramme(frame)
                         if eget:
                             rel.alias(eget, run_id)
+                            indre_run_id = eget
                             aliaseret = True
             finally:
                 try:
@@ -147,6 +152,30 @@ def start_user_run_detached(
                     rel.mark_done(run_id)
                 except Exception:
                     pass
+                # ── OPGAVEN LUKKES NÅR FORTSÆTTELSEN ER FÆRDIG ────────────
+                # Målt 17/9-2026 i produktionen: den samme opgave blev
+                # genoptaget TRE gange — 21:48:12, 21:50:13, 21:52:14 — og hver
+                # gang svarede Jarvis færdigt på det samme spørgsmål. Afstanden
+                # var præcis lejemålets 120 sekunder, og dét var hele
+                # forklaringen: `recovery_task_id` blev kun LOGGET. Kravet stod
+                # som «running» i journalen, ingen lukkede det, lejemålet
+                # udløb, og opgaven var forfalden igen. Tre betalte ture på ét
+                # spørgsmål.
+                #
+                # Kun når turen FAKTISK blev terminal. Fejlede fortsættelsen,
+                # skal opgaven blive liggende og tages igen — det er
+                # genoptagelsens hele formål.
+                if recovery_task_id:
+                    try:
+                        from core.services.in_flight_runs import mark_completed
+                        from core.services.visible_runs_outcomes import run_er_terminal
+                        if run_er_terminal(indre_run_id or run_id) is True:
+                            mark_completed(recovery_task_id)
+                            logger.info("opgave %s lukket — fortsaettelsen %s blev faerdig",
+                                        recovery_task_id, indre_run_id or run_id)
+                    except Exception:
+                        logger.warning("kunne ikke lukke opgave %s", recovery_task_id,
+                                       exc_info=True)
                 # Ryd den globale active-visible-run-singleton for DENNE session.
                 # Den detached-sti er nu single-flight via run_event_log
                 # (claim_or_create), men start_visible_run's gamle globale slot

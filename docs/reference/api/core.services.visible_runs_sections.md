@@ -29,8 +29,8 @@ _Detached (request-uafhængig) bruger-run → server-autoritativt via run_event_
 |---|---|---|---|---|
 | function | `_persist_recovery_failure` | `(session_id, reason)` | Make a failed continuation visible even after the prior SSE has closed. | [src](../../../core/services/visible_runs_sections/detached_run.py#L17) |
 | function | `start_user_run_detached` | `(*, message, original_message=…, session_id, approval_mode=…, thinking_mode=…, force_user_id=…, tool_scope=…, provider_override=…, model_override=…, eff_model=…, eff_provider=…, lane=…, run_id=…, local_tool_exec=…, research_mode=…, recovery_task_id=…, recovery_generation=…, recovery_attempt=…)` | Start et server-autoritativt run. Returnerer run_id (klienten abonnerer | [src](../../../core/services/visible_runs_sections/detached_run.py#L37) |
-| function | `start_or_attach_user_run` | `(*, message, session_id, nudge_enabled=…, **kw)` | Single-flight pr. session for server-autoritative runs. | [src](../../../core/services/visible_runs_sections/detached_run.py#L228) |
-| function | `_fortsaet_hvis_budgettet_loeb_toert` | `(*, run_id, sid, startet, visible_args, eff_model, eff_provider, lane)` | Start en fortsættelse når terminal-policyen klassificerede segmentet | [src](../../../core/services/visible_runs_sections/detached_run.py#L315) |
+| function | `start_or_attach_user_run` | `(*, message, session_id, nudge_enabled=…, **kw)` | Single-flight pr. session for server-autoritative runs. | [src](../../../core/services/visible_runs_sections/detached_run.py#L257) |
+| function | `_fortsaet_hvis_budgettet_loeb_toert` | `(*, run_id, sid, startet, visible_args, eff_model, eff_provider, lane)` | Start en fortsættelse når terminal-policyen klassificerede segmentet | [src](../../../core/services/visible_runs_sections/detached_run.py#L344) |
 
 ## `core/services/visible_runs_sections/run_control_state.py`
 _Visible-run control state — udskilt fra visible_runs.py (Boy Scout)._

@@ -114,3 +114,47 @@ def test_sidste_runde_beder_om_en_AFSLUTNING_ikke_mere_arbejde(spawn):
     besked = spawn[0]["message"]
     assert "sidste runde" in besked and "Start ikke nyt arbejde" in besked
     assert "den store opgave" in besked, "opgaven skal stadig stå i beskeden"
+
+
+# ───────── en FAERDIG fortsaettelse maa ikke tages igen (Bjørn 17/9-2026)
+#
+# Maalt i produktionen: den samme opgave blev genoptaget TRE gange — 21:48:12,
+# 21:50:13, 21:52:14 — og hver gang svarede Jarvis faerdigt paa det samme
+# spoergsmaal. Afstanden var praecis lejemaalets 120 sekunder, og dét var hele
+# forklaringen: `recovery_task_id` blev kun LOGGET af den detachede koersel.
+# Kravet stod som «running» i journalen, ingen lukkede det, lejemaalet udloeb,
+# og opgaven var forfalden igen. Tre betalte ture paa ét spoergsmaal.
+
+def test_et_udloebet_lejemaal_tager_opgaven_igen(spawn):
+    """Mekanismen bag fejlen — den skal blive ved at virke, for det er den der
+    redder en opgave hvis processen doer midt i fortsaettelsen."""
+    from datetime import datetime, timedelta, UTC
+    _forladt_opgave()
+    assert D.recover_due_once()["started"] == 1
+    senere = datetime.now(UTC) + timedelta(seconds=D.LEASE_SECONDS + 5)
+    assert ifr.claim_due_recovery(owner="ny", now=senere) is not None
+
+
+def test_en_FAERDIG_fortsaettelse_tages_IKKE_igen(spawn):
+    """Og her er fejlen: naar fortsaettelsen blev faerdig, skal opgaven vaere
+    lukket — ogsaa efter at lejemaalet er udloebet."""
+    from datetime import datetime, timedelta, UTC
+    _forladt_opgave()
+    assert D.recover_due_once()["started"] == 1
+    ifr.mark_completed("task-1")            # det den detachede koersel nu goer
+    senere = datetime.now(UTC) + timedelta(seconds=D.LEASE_SECONDS + 5)
+    assert ifr.claim_due_recovery(owner="ny", now=senere) is None
+    assert len(spawn) == 1, "opgaven blev fortsat en gang for meget"
+
+
+def test_den_detachede_koersel_lukker_opgaven_naar_turen_ER_terminal():
+    """Kilde-vagt paa koblingen. `recovery_task_id` blev baaret hele vejen ind
+    og saa kun skrevet i loggen — derfor kunne journalen ikke se at opgaven var
+    loest, og lejemaalet blev den eneste ting der styrede."""
+    import inspect
+    from core.services.visible_runs_sections import detached_run
+    kilde = inspect.getsource(detached_run)
+    assert "mark_completed(recovery_task_id)" in kilde
+    # KUN naar turen faktisk blev faerdig: fejlede fortsaettelsen, skal
+    # opgaven blive liggende og tages igen — det er hele formaalet.
+    assert kilde.index("run_er_terminal(") < kilde.index("mark_completed(recovery_task_id)")

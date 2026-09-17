@@ -101,6 +101,7 @@ def classify(error_kind: str, message: str = "") -> str:
 
 # Koder der handler om MODELLEN, ikke om kontoen. Skelnen er nødvendig, fordi
 # `cheap_provider_runtime_state` gælder pr. (udbyder, model) — ikke pr. konto.
+_TRANSIENT_NOT_FOUND_PHRASES = ("function id",)
 _MODEL_GONE_CODES: frozenset[str] = frozenset({"model-not-found", "not-found", "http-404", "http-410"})
 
 
@@ -113,6 +114,12 @@ def model_retired(error_kind: str, message: str = "") -> bool:
     body = str(message or "").strip().lower()
     if body and any(p in body for p in _RETIRED_PHRASES):
         return True
+    # NVIDIA NIM svarer 404 «Function id '…' version 'null': Specified function
+    # in account '…' not found» når deres backend kortvarigt mangler en
+    # udrulning. Modellen lever — nemotron-3-ultra svarede før og efter (29 af
+    # dem 16/9-2026). Uden undtagelsen ville én hikke give 24 t karantæne.
+    if body and any(p in body for p in _TRANSIENT_NOT_FOUND_PHRASES):
+        return False
     return str(error_kind or "").strip().lower() in _MODEL_GONE_CODES
 
 

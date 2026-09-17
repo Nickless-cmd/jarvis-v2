@@ -863,3 +863,12 @@ def test_kvote_fejl_beholder_sin_korte_cooldown(isolated_runtime) -> None:
 def test_retry_after_vinder_over_karantaene(isolated_runtime) -> None:
     sek = _registrer_fejl(isolated_runtime, code="model-not-found", message="not found", status=404, retry_after=120)
     assert sek is not None and sek < 200
+
+
+def test_nim_function_id_404_er_ikke_en_doed_model(isolated_runtime) -> None:
+    # NVIDIA-backendens kortvarige «Function id … not found» — modellen lever.
+    sek = _registrer_fejl(
+        isolated_runtime, code="model-not-found", status=404,
+        message="Function id '948fe171' version 'null': Specified function in account 'x' not found",
+    )
+    assert sek is not None and sek < 3600

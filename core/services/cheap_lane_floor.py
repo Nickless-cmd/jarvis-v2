@@ -28,12 +28,16 @@ logger = logging.getLogger(__name__)
 # Målt alternativ: ``kilo/tencent/hy3:free`` — keyless, 2,5 s, og kilo var 5/5 sund i
 # hele pool-sweepet. Den er nu primær.
 #
+# OMLAGT IGEN 17. sep 2026: ``kilo/tencent/hy3:free`` svarer «does not exist» — bundens
+# primære target var dødt igen. Fuld prøve samme dag: ``kilo/cohere/north-mini-code:free``
+# 0,6 s, keyless. (Én model pr. udbyder i kæden — en nede udbyder skal ikke æde to pladser.)
+#
 # Rækkefølgen er hurtigst-og-sundest først. Hvis alle er nede → typet degraderet svar
 # (aldrig exception, aldrig en overraskelses-regning); daemon_llm falder derefter videre
 # til heartbeat-modellen (lokal Ollama), som er den egentlige backstop.
 # Overstyres af config-nøgle ``cheap_lane_floor_targets`` (liste af [provider, model]).
 _DEFAULT_FLOOR: list[tuple[str, str]] = [
-    ("kilo", "tencent/hy3:free"),
+    ("kilo", "cohere/north-mini-code:free"),
     ("ovhcloud", "Qwen3.5-9B"),
     ("pollinations", "openai-fast"),
 ]

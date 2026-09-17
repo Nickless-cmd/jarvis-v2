@@ -15,6 +15,34 @@ import { SKILL_VAERKTOEJER } from '../../lib/skillLinje'
 
 type ProgressBlock = Extract<ContentBlock, { type: 'progress' }>
 
+/**
+ * Et kald han er GÅET VIDERE fra, kører ikke — uanset hvad blokken siger.
+ *
+ * Bjørn 17/9-2026: «mange gange står tool kørsler og pulserer selv om han er
+ * videre». To veje dertil: en gemt besked hvis resultat-blok mangler (foldningen
+ * starter alle kald som «running»), og en udfalds-status klienten ikke kendte.
+ *
+ * Regler, i den rækkefølge de afgør:
+ *  - Beskeden er færdig (ikke streaming) → intet kører.
+ *  - Der kommer en tekst eller tanke EFTER kaldet → modellen har fået alle
+ *    resultater fra den batch og er i gang med næste runde.
+ * Et andet kald efter det tæller IKKE: parallelle kald i samme batch kan blive
+ * færdige i vilkårlig rækkefølge, og det ene kører stadig.
+ */
+export function afslutForladteKald(blocks: ContentBlock[], streaming: boolean): ContentBlock[] {
+  let senereOrd = !streaming
+  const ud = blocks.slice()
+  for (let i = ud.length - 1; i >= 0; i--) {
+    const b = ud[i]
+    if (!b) continue
+    if (b.type === 'text' || b.type === 'thinking') { senereOrd = true; continue }
+    if (b.type === 'tool_use' && senereOrd && (b.status ?? 'running') === 'running') {
+      ud[i] = { ...b, status: 'done' }
+    }
+  }
+  return ud
+}
+
 /** Saml sammenhængende progress-blokke til ét ProgressTrail-element; alt andet
  *  passeres uændret. Ren transform (view-lokal) — persist/wire urørt. */
 type ProgressTrailBlock = { type: 'progress_trail'; items: ProgressBlock[] }
@@ -66,7 +94,7 @@ export function BlocksRenderer({
   // denseBlocks FØRST: fjern sparsomme huller (foldede tool_result-indices) FØR
   // groupToolRounds/coalesceProgress itererer med for..of — ellers crash på et
   // undefined-hul (sort skærm, Bjørn 9. jul).
-  const rendered = coalesceProgress(groupToolRounds(denseBlocks(blocks)))
+  const rendered = coalesceProgress(groupToolRounds(afslutForladteKald(denseBlocks(blocks), streaming)))
   const lastIdx = rendered.length - 1
   // Filerne Jarvis redigerede i DENNE besked. Kortet staar nederst — som i CC
   // — og kun naar der faktisk er redigeret noget.
@@ -140,7 +168,7 @@ function BlockView({
       // Én linje med live-tid og fold-ud — som mobilen og runde-linjen (Bjørn
       // 16/9-2026). Før strømmede hele monologen ind i tråden og forsvandt
       // bagefter. «Live» = sidste blok mens der streames.
-      return <ThinkingLine text={block.thinking} seconds={block.seconds} live={streaming && isLast} />
+      return <ThinkingLine text={block.thinking} seconds={block.seconds} startet={block.startet} live={streaming && isLast && block.seconds == null} />
     default:
       return null
   }

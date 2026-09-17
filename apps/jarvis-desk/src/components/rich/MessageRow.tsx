@@ -2,7 +2,6 @@ import { memo } from 'react'
 import type { ContentBlock } from '../../lib/sseProtocol'
 import { BlocksRenderer } from './BlocksRenderer'
 import { MessageActions } from './MessageActions'
-import { RunTimeline } from './RunTimeline'
 import { ArtifactAffordance } from './ArtifactAffordance'
 import { detectArtifacts } from '../../lib/artifacts'
 import { blocksToPlainText } from '../../lib/formatTime'
@@ -100,12 +99,10 @@ function MessageRowImpl({
           </InlineErrorBoundary>
         </div>
       </article>
-      {/* Forløbet FØR handlingerne: «hvad skete der egentlig?» besvares
-          bedst lige under svaret, ikke i et panel man skal opsøge. */}
-      {/* Kilderne før forløbet: «hvor ved du det fra?» er et hyppigere
-          spørgsmål end «hvad gjorde du?», og svaret skal stå tættest på teksten. */}
+      {/* Kilderne står tættest på teksten: «hvor ved du det fra?».
+          «Forløb»-linjen under dem er slået fra (Bjørn 17/9-2026) — runde-,
+          tanke- og skill-linjerne i selve beskeden siger det samme. */}
       {!streaming && <Kilder blocks={blocks} />}
-      {!streaming && <RunTimeline blocks={blocks} />}
       {!streaming && <MessageActions text={blocksToPlainText(blocks)} createdAt={createdAt} />}
     </div>
   )

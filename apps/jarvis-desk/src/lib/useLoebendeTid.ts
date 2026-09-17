@@ -9,8 +9,11 @@ import { useEffect, useRef, useState } from 'react'
  *  - Kun en linje der HAR været live har en tid. En gemt blok der monteres som
  *    færdig ville ellers få «0 s».
  */
-export function useLoebendeTid(live: boolean): number | undefined {
-  const start = useRef<number>(Date.now())
+export function useLoebendeTid(live: boolean, startet?: number): number | undefined {
+  // `startet` fra blokken vinder: komponenten kan monteres om midt i en tanke
+  // (runderne grupperes om), og så ville et ur født ved montering starte forfra.
+  const start = useRef<number>(startet ?? Date.now())
+  if (startet != null && start.current !== startet) start.current = startet
   const varLive = useRef(live)
   const [nu, setNu] = useState(() => Date.now())
   const [frosset, setFrosset] = useState<number | undefined>(undefined)

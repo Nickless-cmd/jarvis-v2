@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { ChevronRight, ChevronDown, Code2 } from 'lucide-react'
 import type { ToolGroupBlock } from '../../lib/toolRounds'
 import { summarizeRound, summerDiff } from '../../lib/toolRound'
+import { useLoebendeTid } from '../../lib/useLoebendeTid'
 import { ToolCard } from './ToolCard'
 
 /**
@@ -41,9 +42,14 @@ export function ToolGroupCard({
   const Chevron = open ? ChevronDown : ChevronRight
   const resume = summarizeRound(block.tools)
   const sum = summerDiff(block.tools)
-  if (!resume) return null
-
   const koerer = block.tools.some((t) => (t.status ?? 'running') === 'running')
+  // Live tid for runden, fra det første kald der stadig kører (Bjørn 17/9-2026:
+  // live metadata i stedet for en linje der står stille til kaldet er færdigt).
+  const startet = block.tools
+    .filter((t) => (t.status ?? 'running') === 'running' && t.startet != null)
+    .reduce<number | undefined>((min, t) => (min == null || t.startet! < min ? t.startet : min), undefined)
+  const sek = useLoebendeTid(koerer && startet != null, startet)
+  if (!resume) return null
 
   return (
     <div className={`toolgroup${koerer ? ' er-koerende' : ''}`}>
@@ -59,7 +65,12 @@ export function ToolGroupCard({
         onClick={() => setOpen((o) => !o)}
       >
         <Code2 size={15} className="toolgroup-icon" strokeWidth={1.8} />
-        <span className="toolgroup-label">{resume}</span>
+        <span className="toolgroup-label">
+          <span className="linje-titel">{resume}</span>
+          {koerer && sek != null && sek >= 1
+            ? <span className="linje-meta" data-testid="runde-tid"> · {Math.floor(sek)} s</span>
+            : null}
+        </span>
         {/* Summen i selve linjen, 1:1 med mobilen: foldet som standard ville
             tallene ellers kun ses af den der folder ud. Et nul vises ikke. */}
         {sum ? (

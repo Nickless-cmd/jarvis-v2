@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useLoebendeTid } from '../../lib/useLoebendeTid'
+import { tankeFragment } from '../../lib/tankeFragment'
 import { Brain, ChevronDown, ChevronRight } from 'lucide-react'
 import { MarkdownRenderer } from './MarkdownRenderer'
 
@@ -7,13 +8,17 @@ import { MarkdownRenderer } from './MarkdownRenderer'
  * Tænkningen som ÉN linje — søskende til runde-linjen, 1:1 med mobilens
  * `ThinkingSummary`.
  *
- *     🧠 Tænker · 4 s           (mens den tænker — tallet løber)
- *     🧠 Tænkte i 12 s  ›       (bagefter — klik folder tanken ud)
+ *     🧠 Tænker · 4 s · Lad mig se hvor værnet sidder…   (live)
+ *     🧠 Tænkte i 12 s  ›                                (bagefter)
  *
  * Bjørn 16/9-2026: «lige nu vises fuld tænker output på skærmen.. i mobil er
  * det lige som tool results linjen. Live meta data og kollaps for at se
- * indholdet». Før strømmede hele monologen ind i tråden mens han tænkte og
- * forsvandt sporløst bagefter.
+ * indholdet». 17/9-2026: linjen skal også vise hvad han tænker PÅ mens den
+ * løber — mobilen har det over skrivefeltet, desk på selve linjen.
+ *
+ * Tiden kommer fra BLOKKEN (`startet`/`seconds`), ikke fra komponenten. Før
+ * forsvandt «Tænkte i xx s» nogle gange: linjen blev monteret om da runderne
+ * blev grupperet, og et ur født ved montering startede forfra.
  *
  * Under KORT_TAERSKEL_S vises intet tal — mobilens måling (1.511 blokke, 67 %
  * under 3 s) viste at den gentagne talrække var støjen, ikke linjen.
@@ -24,16 +29,18 @@ export function ThinkingLine({
   text,
   seconds,
   live,
+  startet,
 }: {
   text: string
-  /** Målt varighed fra serveren (gemte beskeder). */
+  /** Målt varighed: serverens (gemt) eller reducerens (live, når tanken sluttede). */
   seconds?: number
   /** Tænker lige NU. */
   live: boolean
+  /** Klientens ur da tanken startede. */
+  startet?: number
 }) {
   const [open, setOpen] = useState(false)
-  // Live tæller linjen selv — se useLoebendeTid. Serverens måling vinder.
-  const loebende = useLoebendeTid(live)
+  const loebende = useLoebendeTid(live, startet)
   const harTekst = text.trim().length > 0
   const sek = live ? loebende : seconds ?? loebende
   if (!live && !harTekst && sek == null) return null
@@ -44,6 +51,7 @@ export function ThinkingLine({
     : sek != null && sek >= KORT_TAERSKEL_S
       ? `Tænkte i ${formatSek(sek)}`
       : 'Tænkte'
+  const fragment = live ? tankeFragment(text) : ''
   const Chevron = open ? ChevronDown : ChevronRight
 
   return (
@@ -52,11 +60,15 @@ export function ThinkingLine({
         type="button"
         className="toolgroup-head"
         aria-expanded={harTekst ? open : undefined}
+        aria-label={label}
         disabled={!harTekst}
         onClick={() => setOpen((o) => !o)}
       >
         <Brain size={15} className="toolgroup-icon" strokeWidth={1.8} />
-        <span className="toolgroup-label">{label}</span>
+        <span className="toolgroup-label">
+          <span className="linje-titel">{label}</span>
+          {fragment ? <span className="linje-meta" data-testid="tanke-fragment"> · {fragment}</span> : null}
+        </span>
         {harTekst ? <Chevron size={15} className="toolgroup-chevron" strokeWidth={1.8} /> : null}
       </button>
       {open && harTekst ? (

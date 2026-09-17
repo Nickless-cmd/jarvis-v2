@@ -41,7 +41,8 @@ describe('streamReducer', () => {
       { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: 'B' } },
     ])
     expect(s.blocks[0]).toEqual({ type: 'text', text: 'AB' })
-    expect(s.blocks[1]).toEqual({ type: 'thinking', thinking: 'hmm' })
+    // `startet` er klientens ur (17/9-2026) — indholdet er det testen gælder.
+    expect(s.blocks[1]).toMatchObject({ type: 'thinking', thinking: 'hmm' })
   })
 
   it('accumulates tool_use input_json into partialJson', () => {

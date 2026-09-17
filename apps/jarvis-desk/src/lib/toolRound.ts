@@ -62,22 +62,50 @@ function shorten(value: string): string {
   return v.length > 48 ? `${v.slice(0, 47)}…` : v
 }
 
-export function subjectFromInput(input: Record<string, unknown> | undefined): string {
-  if (!input) return ''
-  for (const key of SUBJECT_KEYS) {
-    const v = input[key]
-    if (typeof v === 'string' && v.trim()) return shorten(v)
+export function subjectFromInput(input: Record<string, unknown> | undefined, partialJson?: string): string {
+  if (input) {
+    for (const key of SUBJECT_KEYS) {
+      const v = input[key]
+      if (typeof v === 'string' && v.trim()) return shorten(v)
+    }
+  }
+  return subjectFromPartial(partialJson)
+}
+
+/**
+ * Emnet fra argumenter der stadig STRØMMER ind — 1:1 med mobilens
+ * `subjectFromArgs`.
+ *
+ * Bjørn 17/9-2026: linjen sagde «Kører bash…» hele kørslen igennem. `input` er
+ * tomt til argumenterne er færdige; de ligger i `partialJson` imens. At vente
+ * på det afsluttende } ville betyde at linjen står tom netop mens den er mest
+ * interessant.
+ */
+export function subjectFromPartial(raw: string | undefined): string {
+  const s = (raw || '').trim()
+  if (!s) return ''
+  try {
+    const obj = JSON.parse(s) as Record<string, unknown>
+    for (const key of SUBJECT_KEYS) {
+      const v = obj[key]
+      if (typeof v === 'string' && v.trim()) return shorten(v)
+    }
+  } catch {
+    for (const key of SUBJECT_KEYS) {
+      const m = new RegExp(`"${key}"\\s*:\\s*"((?:[^"\\\\]|\\\\.){1,200})`).exec(s)
+      if (m?.[1]) return shorten(m[1].replace(/\\n/g, ' ').replace(/\\"/g, '"'))
+    }
   }
   return ''
 }
 
 /** «Kørte agent.ts» frem for «Kørte bash». Kan intet emne findes, falder vi
  *  tilbage på værktøjsnavnet frem for at finde på noget. */
-export function describeTool(name: string, input: Record<string, unknown> | undefined, running: boolean): string {
+export function describeTool(name: string, input: Record<string, unknown> | undefined, running: boolean, partialJson?: string): string {
   const tool = grundnavn(name) || 'værktøj'
   const [now, past] = VERBS[tool] ?? ['Kører', 'Kørte']
   const verb = running ? now : past
-  const subject = subjectFromInput(input)
+  const subject = subjectFromInput(input, partialJson)
   if (subject) return `${verb} ${subject}${running ? '…' : ''}`
   return `${verb} ${tool}${running ? '…' : ''}`
 }
@@ -127,7 +155,7 @@ export function summarizeRound(tools: ToolUse[]): string {
   const running = tools.some((t) => (t.status ?? 'running') === 'running')
   if (tools.length === 1) {
     const t = tools[0]!
-    return describeTool(t.name, t.input, (t.status ?? 'running') === 'running')
+    return describeTool(t.name, t.input, (t.status ?? 'running') === 'running', t.partialJson)
   }
 
   const navne = new Set(tools.map((t) => grundnavn(t.name)))

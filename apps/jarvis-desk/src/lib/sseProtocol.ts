@@ -116,8 +116,14 @@ export type StreamEvent =
 
 export type ContentBlock =
   | { type: 'text'; text: string }
-  /** `seconds`: målt varighed — kun på gemte beskeder; live tæller linjen selv. */
-  | { type: 'thinking'; thinking: string; seconds?: number }
+  /**
+   * `seconds`: målt varighed. Gemte beskeder har serverens tal; live sætter
+   * reduceren den, når næste blok starter. `startet`: klientens ur da blokken
+   * startede — på BLOKKEN og ikke i komponenten, fordi komponenten monteres om
+   * når runderne grupperes eller svaret bliver færdigt, og så startede uret
+   * forfra og «Tænkte i xx s» forsvandt (Bjørn 17/9-2026).
+   */
+  | { type: 'thinking'; thinking: string; seconds?: number; startet?: number }
   | { type: 'skill_surface'; matches: SkillMatchInfo[]; primary: boolean }
   | {
       type: 'tool_use'
@@ -127,6 +133,8 @@ export type ContentBlock =
       partialJson?: string
       status?: 'running' | 'done' | 'error'
       result?: string
+      /** Klientens ur da kaldet startede — til live-tiden på runde-linjen. */
+      startet?: number
     }
   | {
       // Billede. LIVE bærer det en `src` (data-URL fra streamen). PERSISTERET

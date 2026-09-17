@@ -92,6 +92,29 @@ export function liveBlokke(state: Pick<StreamState, 'blocks' | 'skillFlade'>): C
   return state.skillFlade ? [state.skillFlade, ...state.blocks] : state.blocks
 }
 
+/** Serverens udfald → linjens status. Alt der ikke kører mere, er færdigt:
+ *  en ukendt status («blocked», «timeout» …) lod før kaldet stå og pulsere. */
+const FEJL_STATUS = new Set(['error', 'failed', 'blocked', 'denied', 'rejected', 'timeout', 'cancelled', 'canceled'])
+export function udfaldsStatus(status: string | undefined): 'running' | 'done' | 'error' | undefined {
+  if (!status) return undefined
+  if (status === 'running' || status === 'pending' || status === 'started') return 'running'
+  return FEJL_STATUS.has(status) ? 'error' : 'done'
+}
+
+/** Luk åbne tanker: en tanke er slut når noget nyt begynder. `undtagen` er
+ *  blokken der starter — et replay af den samme tanke må ikke lukke sig selv. */
+function lukTanker(blocks: ContentBlock[], nu: number, undtagen = -1): ContentBlock[] {
+  let ændret = false
+  const ud = blocks.map((b, i) => {
+    if (i !== undtagen && b && b.type === 'thinking' && b.seconds == null && b.startet != null) {
+      ændret = true
+      return { ...b, seconds: Math.max(0, (nu - b.startet) / 1000) }
+    }
+    return b
+  })
+  return ændret ? ud : blocks
+}
+
 export function streamReducer(state: StreamState, event: StreamEvent): StreamState {
   switch (event.type) {
     case 'message_start': {
@@ -125,11 +148,19 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
     }
 
     case 'content_block_start': {
-      const blocks = state.blocks.slice()
+      const nu = Date.now()
       const cb = event.content_block
+      const blocks = (cb.type === 'tool_result' ? state.blocks : lukTanker(state.blocks, nu, event.index)).slice()
+      const forrige = state.blocks[event.index]
       if (cb.type === 'text') blocks[event.index] = { type: 'text', text: cb.text ?? '' }
-      else if (cb.type === 'thinking') blocks[event.index] = { type: 'thinking', thinking: cb.thinking ?? '' }
-      else if (cb.type === 'tool_use') blocks[event.index] = { type: 'tool_use', id: cb.id, name: cb.name, input: cb.input ?? {}, partialJson: '', status: 'running' }
+      else if (cb.type === 'thinking') blocks[event.index] = {
+        type: 'thinking', thinking: cb.thinking ?? '',
+        startet: forrige && forrige.type === 'thinking' && forrige.startet != null ? forrige.startet : nu,
+      }
+      else if (cb.type === 'tool_use') blocks[event.index] = {
+        type: 'tool_use', id: cb.id, name: cb.name, input: cb.input ?? {}, partialJson: '', status: 'running',
+        startet: forrige && forrige.type === 'tool_use' && forrige.startet != null ? forrige.startet : nu,
+      }
       else if (cb.type === 'tool_result') {
         const idx = blocks.findIndex((b) => b && b.type === 'tool_use' && b.id === cb.tool_use_id)
         if (idx >= 0) {
@@ -197,12 +228,7 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
         // reduceren → sort skærm (Bjørn 10. jul, dual-emit content-blok+system_event).
         const idx = state.blocks.findIndex((b) => b && b.type === 'tool_use' && b.id === tr.tool_use_id)
         if (idx < 0) return state
-        const mapped =
-          tr.status === 'ok' || tr.status === 'executed' || tr.status === 'completed'
-            ? 'done'
-            : tr.status === 'error' || tr.status === 'failed'
-              ? 'error'
-              : undefined
+        const mapped = udfaldsStatus(tr.status)
         const blocks = state.blocks.slice()
         const b = blocks[idx]
         if (b && b.type === 'tool_use') blocks[idx] = { ...b, status: mapped ?? b.status, result: tr.result ?? b.result }
@@ -239,8 +265,13 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
         },
       }
 
-    case 'message_stop':
-      return { ...state, status: 'done' }
+    case 'message_stop': {
+      // Svaret er slut: intet kører længere. Et kald hvis resultat aldrig kom,
+      // stod ellers og pulserede under et færdigt svar.
+      const blocks = lukTanker(state.blocks, Date.now()).map((b) =>
+        b && b.type === 'tool_use' && (b.status ?? 'running') === 'running' ? { ...b, status: 'done' as const } : b)
+      return { ...state, status: 'done', blocks }
+    }
 
     case 'tool_round_label':
       // Den DIREKTE form (SSE-v1). Den indpakkede kommer som `system_event` —

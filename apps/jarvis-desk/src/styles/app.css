@@ -1302,8 +1302,11 @@ button.sidebar-group svg { flex: none; opacity: .7; }
    ingen skygge. `</>` + én saetning + chevron. Mobilen bruger 15px i fg2 og
    gap `sm`; det er tallene her. */
 .toolgroup { margin: 2px 0; }
+/* Hovedet er så BREDT SOM SIN TEKST, ikke som chatten (Bjørn 17/9-2026:
+   chevronen stod helt ude i højre side, langt fra det den hører til).
+   max-width holder en lang linje inden for spalten, så den stadig klippes. */
 .toolgroup-head {
-  display: flex; align-items: center; gap: 8px; width: 100%;
+  display: inline-flex; align-items: center; gap: 8px; width: auto; max-width: 100%;
   background: none; border: none; color: var(--fg-2);
   padding: 6px 2px; cursor: pointer; font-size: 15px; text-align: left;
   border-radius: var(--radius-sm, 6px);
@@ -1311,7 +1314,7 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 .toolgroup-head:hover { background: var(--bg-2); }
 .toolgroup-icon { flex: 0 0 auto; color: var(--fg-2); }
 .toolgroup-label {
-  color: var(--fg-2); flex: 1 1 auto; min-width: 0;
+  color: var(--fg-2); flex: 0 1 auto; min-width: 0;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .toolgroup-chevron { flex: 0 0 auto; color: var(--fg-2); }
@@ -1413,7 +1416,12 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 
 /* Skill-linjen (SkillLine): samme hoved; metadata dæmpet efter titlen, som
    tallene i runde-linjen. */
-.skill-meta { color: var(--fg-3); font-variant-numeric: tabular-nums; }
+.skill-meta, .linje-meta { color: var(--fg-3); font-variant-numeric: tabular-nums; }
+/* En lang titel forkortes; tiden bag den skal blive stående — den er det
+   eneste på linjen der siger at der stadig sker noget. */
+.toolgroup-label:has(> .linje-titel) { display: inline-flex; min-width: 0; }
+.toolgroup-label > .linje-titel { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.toolgroup-label > .linje-meta { flex: 0 0 auto; white-space: pre; }
 .skill-linje.har-fejl .toolgroup-label { color: var(--error-fg); }
 .skill-beskrivelse { margin: 2px 0 6px; color: var(--fg-3); font-size: 13px; line-height: 1.45; }
 .skill-matches { list-style: none; margin: 0 0 6px; padding: 0; font-size: 13px; color: var(--fg-2); }

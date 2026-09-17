@@ -1,3 +1,4 @@
+import { registerGlobals } from '@livekit/react-native'
 import { registerRootComponent } from 'expo'
 import messaging from '@react-native-firebase/messaging'
 import notifee, { AndroidImportance, EventType } from '@notifee/react-native'
@@ -61,4 +62,6 @@ messaging().setBackgroundMessageHandler(async (msg) => {
 
 // Standard Expo-entry: registrér rod-komponenten fra src/App (appen ligger i src/,
 // så Expo's default expo/AppEntry.js's '../../App' fejlede i release-bundlen).
+// WebRTC-globaler til LiveKit (ægte stemme-samtale).
+registerGlobals()
 registerRootComponent(App)

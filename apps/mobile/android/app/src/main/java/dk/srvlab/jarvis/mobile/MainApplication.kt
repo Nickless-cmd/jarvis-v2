@@ -11,6 +11,7 @@ import com.facebook.react.ReactHost
 import com.facebook.react.common.ReleaseLevel
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint
 
+import com.livekit.reactnative.LiveKitReactNative
 import expo.modules.ApplicationLifecycleDispatcher
 import expo.modules.ExpoReactHostFactory
 
@@ -30,6 +31,10 @@ class MainApplication : Application(), ReactApplication {
 
   override fun onCreate() {
     super.onCreate()
+    // Ægte stemme-samtale (17/9-2026): WebRTC-lyden skal sættes op FØR React
+    // Native. Standard-lydtypen er «communication», som giver ekko-dæmpning på
+    // selve signalet — mikrofonen kan stå åben mens Jarvis taler i højttaleren.
+    LiveKitReactNative.setup(this)
     DefaultNewArchitectureEntryPoint.releaseLevel = try {
       ReleaseLevel.valueOf(BuildConfig.REACT_NATIVE_RELEASE_LEVEL.uppercase())
     } catch (e: IllegalArgumentException) {

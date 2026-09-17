@@ -85,6 +85,7 @@ import { useSessions } from '../state/SessionContext'
 import { useStream } from '../state/StreamContext'
 import { tokens } from '../theme/tokens'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
+import { LiveSamtale } from '../components/LiveSamtale'
 
 // Rolle-bevidst model-valg (spejler desktop-composeren):
 // member er LÅST til Standard/Pro (= ollama deepseek flash/pro, mappes
@@ -368,6 +369,7 @@ export function ChatScreen({
   const [activeRunId, setActiveRunId] = useState('')
   const [appState, setAppState] = useState(AppState.currentState)
   const [batterySaver, setBatterySaver] = useState(false)
+  const [liveSamtale, setLiveSamtale] = useState(false)
   const serverBusyRef = useRef(false)
   const pollSidRef = useRef<string | null>(null)
   const keyboardHeight = useKeyboardHeight()
@@ -1058,8 +1060,12 @@ export function ChatScreen({
             void dictation.start()
           }}
           onConversation={() => {
+            // Ægte samtale (prøvebygning 17/9-2026): opkald over WebRTC med
+            // naturlige afbrydelser. Den gamle `voice.enter()` bliver liggende
+            // til den nye er afprøvet.
             void dictation.cancel()
-            voice.enter()
+            voice.exit()
+            setLiveSamtale(true)
           }}
           dictationState={dictation.state}
           dictationElapsedMs={dictation.elapsedMs}
@@ -1296,6 +1302,12 @@ export function ChatScreen({
         <CameraCapture onCapture={handleCapture} onClose={() => setCameraOpen(false)} />
       </Modal>
 
+      <LiveSamtale
+        config={config ?? null}
+        sessionId={sessions.activeId ?? null}
+        aaben={liveSamtale}
+        onLuk={() => { setLiveSamtale(false); if (config && sessions.activeId) sessions.select(config, sessions.activeId).catch(() => undefined) }}
+      />
       <VoiceOverlay
         active={voice.active}
         state={voice.state}

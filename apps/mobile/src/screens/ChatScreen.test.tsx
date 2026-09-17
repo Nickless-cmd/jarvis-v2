@@ -114,6 +114,10 @@ jest.mock('../components/PermissionPicker', () => ({
   }
 }))
 
+jest.mock('../components/LiveSamtale', () => ({
+  LiveSamtale: () => null
+}))
+
 jest.mock('../components/MessageList', () => ({
   MessageList: () => {
     const ReactLib = jest.requireActual('react')

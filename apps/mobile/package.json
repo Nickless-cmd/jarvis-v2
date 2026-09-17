@@ -10,6 +10,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@livekit/react-native": "3.0.0",
+    "@livekit/react-native-webrtc": "144.2.0",
     "@notifee/react-native": "^9.1.8",
     "@react-native-community/netinfo": "12.0.1",
     "@react-native-firebase/app": "^24.1.1",
@@ -29,6 +31,7 @@
     "expo-secure-store": "^56.0.4",
     "expo-speech": "~56.0.3",
     "expo-task-manager": "~56.0.27",
+    "livekit-client": "2.22.3",
     "lucide-react-native": "^1.39.0",
     "react": "19.2.3",
     "react-native": "0.85.3",

@@ -194,7 +194,11 @@ SSH_HOSTS: list[tuple[str, str, str]] = [
     ("i9", "root@10.0.0.36",
      "T=$(sensors 2>/dev/null|awk '/^Package/{gsub(/[^0-9.]/,\"\",$4);print int($4)}');"
      "M=$(sensors 2>/dev/null|awk '/^Core/{gsub(/[^0-9.]/,\"\",$3);if(int($3)>m)m=int($3)}END{print m}');"
-     "F=$(sensors 2>/dev/null|awk '/^fan2:/{print int($2)}');"
+     # Pumpen = den HURTIGSTE kanal, ikke en fast kanal. 17/9-2026 flyttede Bjørn
+     # pumpen fra fan2 til fan5 ved omkoblingen, og fan2 blev en radiatorblæser
+     # der svinger 560-1090 RPM omkring grænsen — alarmen tændte og slukkede i
+     # ét væk og sendte ham notifikation på notifikation om en rask pumpe.
+     "F=$(sensors 2>/dev/null|awk '/^fan[0-9]+:/{if(int($2)>m)m=int($2)}END{print m+0}');"
      "echo cputemp=$T cpumax=$M pump_rpm=$F"
      " load1=$(cut -d' ' -f1 /proc/loadavg)"
      " uptime_s=$(cut -d. -f1 /proc/uptime)"
@@ -237,11 +241,14 @@ def _parse_kv(s: str) -> dict[str, Any]:
 #
 # Taersklerne er maalt 16/9, ikke gaettet:
 #   pump_rpm ligger paa ~5600 i drift → under 1000 = pumpen er doed eller doende.
+#   17/9-2026: pump_rpm er nu den HURTIGSTE blæserkanal. Står pumpen stille, er den
+#   hurtigste en kabinetblæser (højst ~1.600-2.000 RPM), så grænsen skal ligge over
+#   det — ellers ville en død pumpe aldrig give alarm. Derfor 3000.
 #   cputemp svinger 36-57 grader i LET last; high=86, crit=100. 90 kan derfor ikke
 #   naas af normal last — kun af en koeler der ikke foelger med. Filen advarer selv
 #   to gange om alarmer der ALTID staar hoejt; disse to goer ikke.
 _VITALS_TEMP_ALARM = 90
-_VITALS_PUMP_MIN = 1000
+_VITALS_PUMP_MIN = 3000
 _vitals_flagged: set[str] = set()
 
 

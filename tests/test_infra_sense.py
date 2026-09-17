@@ -360,3 +360,21 @@ def test_i9_er_med_i_ssh_hosts():
     """Min egen vaert skal maales — Centralen var blind for sit eget underlag."""
     targets = {n: t for n, t, _c in isense.SSH_HOSTS}
     assert targets.get("i9") == "root@10.0.0.36"
+
+
+def test_pumpen_er_hurtigste_kanal_ikke_fan2():
+    """17/9-2026: pumpen flyttede fra fan2 til fan5 ved omkoblingen. En fast kanal
+    gav notifikation på notifikation om en rask pumpe."""
+    cmd = {n: c for n, _t, c in isense.SSH_HOSTS}["i9"]
+    assert "/^fan2:/" not in cmd
+    assert "/^fan[0-9]+:/" in cmd
+
+
+def test_radiatorblaeser_under_1000_er_ikke_pumpealarm_men_doed_pumpe_er(monkeypatch):
+    # Pumpen er den hurtigste kanal. Står den stille, er den hurtigste en
+    # kabinetblæser (~1.600 RPM) — det SKAL give alarm.
+    incidents, notes = _patch_vitals(monkeypatch)
+    isense._check_host_vitals("i9", {"pump_rpm": 5648})
+    assert not notes
+    isense._check_host_vitals("i9", {"pump_rpm": 1610})
+    assert isense._vitals_flagged == {"pump"} and len(notes) == 1

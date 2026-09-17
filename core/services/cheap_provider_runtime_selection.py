@@ -913,6 +913,16 @@ def _configured_cheap_candidates(
         for item in registry.get("providers") or []
         if bool(item.get("enabled", True))
     }
+    # Slået fra i registret. Løkken over katalogets static_models nedenfor slog
+    # op i `provider_entries` (kun de TÆNDTE) og fik {} for en slukket udbyder —
+    # og tilføjede den så alligevel. `enabled: false` virkede altså kun for
+    # modeller registreret i selve registret (fundet 17/9-2026 da cerebras,
+    # cline og requesty skulle slukkes).
+    deaktiverede = {
+        str(item.get("provider") or "").strip()
+        for item in registry.get("providers") or []
+        if not bool(item.get("enabled", True))
+    }
     candidates: list[dict[str, object]] = []
     seen: set[tuple[str, str]] = set()
     emitted: set[tuple[str, str, str]] = set()
@@ -991,7 +1001,7 @@ def _configured_cheap_candidates(
     # whose models are already declared in CHEAP_PROVIDER_DEFAULTS.
     for provider_name, provider_cfg in CHEAP_PROVIDER_DEFAULTS.items():
         static_models = provider_cfg.get("static_models") or []
-        if not static_models:
+        if not static_models or provider_name in deaktiverede:
             continue
         provider_entry = provider_entries.get(provider_name, {})
         registry_profile = str(provider_entry.get("auth_profile") or "").strip()

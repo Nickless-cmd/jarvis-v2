@@ -233,3 +233,18 @@ def test_executor_no_proxy_when_flag_off(monkeypatch):
         base_url="https://api.cohere.ai/compatibility/v1", message="hi",
     )
     assert captured["proxy"] is None
+
+
+def test_slukket_udbyder_i_registret_giver_ingen_katalog_kandidater(monkeypatch):
+    """17/9-2026: `enabled: false` virkede ikke for katalogets static_models —
+    løkken slog op i de TÆNDTE og fik {} for en slukket udbyder."""
+    from core.services import cheap_provider_runtime_selection as sel
+    monkeypatch.setattr(sel, "load_provider_router_registry", lambda: {"providers": [
+        {"provider": "cerebras", "enabled": False, "auth_profile": "default"},
+        {"provider": "xkiro", "enabled": True, "auth_profile": "default"},
+    ], "models": []})
+    monkeypatch.setattr("core.services.auth_profile_scan.ready_profiles_for", lambda provider: ["default"])
+    monkeypatch.setattr(sel, "_flag_multiprofile", lambda: True)
+    udbydere = {c["provider"] for c in sel._configured_cheap_candidates(include_public_proxy=True)}
+    assert "cerebras" not in udbydere
+    assert "xkiro" in udbydere

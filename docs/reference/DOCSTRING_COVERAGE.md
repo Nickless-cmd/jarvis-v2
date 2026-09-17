@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7631/14806 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7633/14814 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -36,12 +36,12 @@ Generated from source. 7631/14806 functions/methods documented (51%). The list b
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.util` | 9 | 10 | 90% |
-| `scripts` | 193 | 389 | 49% |
+| `scripts` | 195 | 397 | 49% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2105)
+## Undocumented public functions (2111)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L207)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -2037,6 +2037,12 @@ Generated from source. 7631/14806 functions/methods documented (51%). The list b
 - `scripts/central_connectivity_audit.py` :: `main` (L276)
 - `scripts/central_connectivity_audit.py` :: `render_md` (L212)
 - `scripts/central_connectivity_audit.py` :: `scan` (L144)
+- `scripts/cheap_lane_fuld_proeve.py` :: `main` (L216)
+- `scripts/cheap_lane_fuld_proeve.py` :: `modeller_for` (L115)
+- `scripts/cheap_lane_fuld_proeve.py` :: `proev_kald` (L174)
+- `scripts/cheap_lane_fuld_proeve.py` :: `proev_udbyder` (L198)
+- `scripts/cheap_lane_fuld_proeve.py` :: `udgangs_ip` (L88)
+- `scripts/cheap_lane_fuld_proeve.py` :: `vej` (L70)
 - `scripts/commit_history_report.py` :: `build` (L125)
 - `scripts/commit_with_attribution.py` :: `main` (L58)
 - `scripts/db_decomposition_map.py` :: `comp_of` (L55)

@@ -2,6 +2,20 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `scripts/jarvis_bare_practice_runner.py`
+_jarvis_bare practice runner — stripped-bare interlanguage expression generator._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_call_model` | `(prompt, *, timeout=…)` | Call deepseek-v4-flash:cloud via local Ollama. Returns text or None. | [src](../../../scripts/jarvis_bare_practice_runner.py#L64) |
+| function | `_build_bare_prompt` | `()` | Build the minimal bare prompt: system line + protocol + instruction. | [src](../../../scripts/jarvis_bare_practice_runner.py#L118) |
+| function | `_preflight_check` | `()` | Run a quick model ping before starting the loop. | [src](../../../scripts/jarvis_bare_practice_runner.py#L150) |
+| function | `_ping_model` | `()` | Quick ping to verify model is reachable. Returns True if OK. | [src](../../../scripts/jarvis_bare_practice_runner.py#L176) |
+| function | `run_one_tick` | `()` | Generate one bare expression, persist it, return expression text or None. | [src](../../../scripts/jarvis_bare_practice_runner.py#L203) |
+| function | `_run_once` | `()` | Run a single tick and print result. Used by --once. | [src](../../../scripts/jarvis_bare_practice_runner.py#L222) |
+| function | `_run_loop` | `(args)` | Run forever (or for args.hours hours) with args.interval_min between ticks. | [src](../../../scripts/jarvis_bare_practice_runner.py#L232) |
+| function | `main` | `()` | — | [src](../../../scripts/jarvis_bare_practice_runner.py#L318) |
+
 ## `scripts/laering_status.py`
 _Hvad fangede laeringskredsloebet siden nulpunktet?_
 
@@ -411,13 +425,4 @@ _Validate commit attribution for commit-msg and pre-push hooks._
 | function | `_print_failures` | `(failures)` | — | [src](../../../scripts/validate_commit_attribution.py#L88) |
 | function | `_pre_push` | `(repo)` | — | [src](../../../scripts/validate_commit_attribution.py#L95) |
 | function | `main` | `(argv=…)` | — | [src](../../../scripts/validate_commit_attribution.py#L122) |
-
-## `scripts/verify_fase_a.py`
-_Fase A acceptance (kør på containeren). Beviser aldrig-tør-bunden:_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `check_selection_floor_no_raise` | `()` | — | [src](../../../scripts/verify_fase_a.py#L9) |
-| function | `check_balancer_floor_no_raise` | `()` | — | [src](../../../scripts/verify_fase_a.py#L21) |
-| function | `check_central_visibility` | `()` | — | [src](../../../scripts/verify_fase_a.py#L33) |
 

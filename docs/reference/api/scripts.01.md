@@ -160,6 +160,20 @@ _central_connectivity_audit.py — HOLDBART kort over hvad der er koblet til Cen
 | function | `render_md` | `(data)` | — | [src](../../../scripts/central_connectivity_audit.py#L212) |
 | function | `main` | `()` | — | [src](../../../scripts/central_connectivity_audit.py#L276) |
 
+## `scripts/cheap_lane_fuld_proeve.py`
+_Prøv HVER nøgle og HVER model i cheap lane — ad præcis den vej lanen selv bruger._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `konti_med_noegle` | `(udbyder)` | Konti der HAR en nøgle — også dem balanceren ikke regner for klar. | [src](../../../scripts/cheap_lane_fuld_proeve.py#L40) |
+| function | `vej` | `(udbyder, konto)` | — | [src](../../../scripts/cheap_lane_fuld_proeve.py#L70) |
+| function | `udgangs_ip` | `(rute, detalje)` | — | [src](../../../scripts/cheap_lane_fuld_proeve.py#L88) |
+| function | `modeller_for` | `(udbyder, konto)` | — | [src](../../../scripts/cheap_lane_fuld_proeve.py#L115) |
+| function | `liste_modeller` | `(udbyder, konto)` | Udbyderens egen /models, ad samme vej. (None, None, fejl) hvis den ikke svarer. | [src](../../../scripts/cheap_lane_fuld_proeve.py#L128) |
+| function | `proev_kald` | `(udbyder, konto, model, timeout)` | — | [src](../../../scripts/cheap_lane_fuld_proeve.py#L174) |
+| function | `proev_udbyder` | `(udbyder, timeout)` | — | [src](../../../scripts/cheap_lane_fuld_proeve.py#L198) |
+| function | `main` | `()` | — | [src](../../../scripts/cheap_lane_fuld_proeve.py#L216) |
+
 ## `scripts/commit_history_report.py`
 _Generér en læsbar commit-historie grupperet pr. måned og uge._
 
@@ -433,18 +447,4 @@ _Structural-feature classifier for interlanguage expressions._
 | function | `_visible_execution_truth` | `()` | — | [src](../../../scripts/jarvis.py#L702) |
 | function | `_capability_invocation_truth` | `()` | — | [src](../../../scripts/jarvis.py#L751) |
 | function | `main` | `()` | CLI entry point: parse arguments and dispatch to the selected subcommand handler. | [src](../../../scripts/jarvis.py#L766) |
-
-## `scripts/jarvis_bare_practice_runner.py`
-_jarvis_bare practice runner — stripped-bare interlanguage expression generator._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_call_model` | `(prompt, *, timeout=…)` | Call deepseek-v4-flash:cloud via local Ollama. Returns text or None. | [src](../../../scripts/jarvis_bare_practice_runner.py#L64) |
-| function | `_build_bare_prompt` | `()` | Build the minimal bare prompt: system line + protocol + instruction. | [src](../../../scripts/jarvis_bare_practice_runner.py#L118) |
-| function | `_preflight_check` | `()` | Run a quick model ping before starting the loop. | [src](../../../scripts/jarvis_bare_practice_runner.py#L150) |
-| function | `_ping_model` | `()` | Quick ping to verify model is reachable. Returns True if OK. | [src](../../../scripts/jarvis_bare_practice_runner.py#L176) |
-| function | `run_one_tick` | `()` | Generate one bare expression, persist it, return expression text or None. | [src](../../../scripts/jarvis_bare_practice_runner.py#L203) |
-| function | `_run_once` | `()` | Run a single tick and print result. Used by --once. | [src](../../../scripts/jarvis_bare_practice_runner.py#L222) |
-| function | `_run_loop` | `(args)` | Run forever (or for args.hours hours) with args.interval_min between ticks. | [src](../../../scripts/jarvis_bare_practice_runner.py#L232) |
-| function | `main` | `()` | — | [src](../../../scripts/jarvis_bare_practice_runner.py#L318) |
 

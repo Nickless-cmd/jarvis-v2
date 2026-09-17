@@ -359,6 +359,7 @@ def _persist_pending_approvals() -> None:
 # navn så eksisterende call-sites/monkeypatches ikke knækker.
 from core.services.visible_runs_sections.run_finalization import (  # noqa: E402
     advance_tool_lifecycle as _advance_tool_lifecycle,
+    finalize_in_flight as _finalize_in_flight,
     finalize_run as _finalize_run,
 )
 # Run control state — udskilt til visible_runs_sections/run_control_state.py
@@ -388,6 +389,7 @@ from core.services.visible_runs_sections.run_control_state import (  # noqa: E40
     _get_visible_client_tool_state,
     _set_visible_client_tool_state,
     resolve_visible_client_tool,
+    relay_owns_open_run as _relay_owns_open_run,
 )
 
 
@@ -679,8 +681,9 @@ def start_visible_run(
                 age_s = (_dt2.now(_UTC2) - started).total_seconds()
             except Exception:
                 age_s = 99999.0  # malformed timestamp → treat as very old
-            should_clear_dead = (not still_alive) and age_s > 300       # 5 min
-            should_clear_hung = age_s > 600                              # 10 min
+            relay_open = _relay_owns_open_run(stale_run_id)
+            should_clear_dead = (not still_alive) and age_s > 300 and not relay_open
+            should_clear_hung = age_s > 600 and not relay_open            # 10 min
             if should_clear_dead or should_clear_hung:
                 logger.warning(
                     "visible_runs: clearing stuck active_run %s "
@@ -754,7 +757,8 @@ def start_visible_run(
                 and not bool(active.get("cancelled"))
                 and normalized_session_id
                 and str(active.get("session_id") or "") == normalized_session_id
-                and str(active.get("run_id") or "") not in _VISIBLE_RUN_CONTROLLERS):
+                and str(active.get("run_id") or "") not in _VISIBLE_RUN_CONTROLLERS
+                and not _relay_owns_open_run(str(active.get("run_id") or ""))):
             logger.warning(
                 "visible_runs: same-session active_run %s has no live controller, "
                 "clearing and proceeding with fresh run",
@@ -792,7 +796,8 @@ def start_visible_run(
             # — beholder beskyttelse mod zombie SSE'er der hænger 5+ min,
             # uden at angribe legitime lange runs.
             _stale_threshold_s = 120.0
-            if _age_s > _stale_threshold_s:
+            if (_age_s > _stale_threshold_s
+                    and not _relay_owns_open_run(str(active.get("run_id") or ""))):
                 logger.warning(
                     "visible_runs: same-session active_run %s is stale "
                     "(age=%.0fs > %.0fs) — clearing and proceeding with fresh run",
@@ -2968,6 +2973,7 @@ async def _stream_visible_run(
                         # loopet — stadig bounded af range(_AGENTIC_MAX_ROUNDS) ovenfor.
                         if _lv.decision is _LDec.SKIP:
                             _is_last_round = True
+                            _agentic_loop_exit_reason = "early-exit-loop-gate-skip"
                         elif _lv.decision is _LDec.RED:
                             from core.services import gate_enforcement as _ge
                             if _ge.is_enforced("loop_control", _LGK.COGNITIVE):
@@ -4978,7 +4984,7 @@ async def _stream_visible_run(
                 )
                 _agentic_loop_exit_reason = _terminal.exit_reason
                 if _terminal.decision.should_continue:
-                    _outcome_state.mark("recovering")
+                    _outcome_state.mark("recovering", error=_terminal.exit_reason)
                 elif _terminal.decision.state.value == "failed_terminal":
                     _outcome_state.mark("failed", error=_terminal.exit_reason)
                 if _terminal.event_name:
@@ -6328,25 +6334,15 @@ async def _stream_visible_run(
         except Exception:
             pass
 
-        # Phase 5: clear in-flight record. Runs reaching this finally block
-        # have either completed, failed cleanly, or been cancelled — all
-        # equally "no longer hanging", so the next prompt build won't
-        # surface a stale "you were interrupted" notice.
+        # Phase 5: resolve the durable in-flight record. Recovering/interrupted
+        # work remains resumable across a process gap; terminal outcomes clear it.
         try:
-            if _outcome_state.status == "interrupted":
-                from core.services.in_flight_runs import mark_interrupted as _mark_run_interrupted
-                _mark_run_interrupted(
-                    run.run_id,
-                    reason=_outcome_state.error or "interrupted",
-                    summary=_outcome_state.error or "interrupted",
-                )
-            else:
-                from core.services.in_flight_runs import (
-                    clear_session as _clear_interrupted_session,
-                    mark_completed as _mark_run_completed,
-                )
-                _mark_run_completed(run.run_id)
-                _clear_interrupted_session(run.session_id)
+            _finalize_in_flight(
+                run_id=run.run_id,
+                session_id=run.session_id,
+                status=_outcome_state.status,
+                error=_outcome_state.error,
+            )
         except Exception:
             # FOER: `pass`. Fem ture efterlod deres in-flight-post urort, og
             # denne linje slugte hvorfor. Uden den kunne ingen skelne «blokken

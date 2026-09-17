@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import re
 
 from core.services.visible_terminal_policy import (
     TerminalDecision,
@@ -11,6 +12,30 @@ from core.services.visible_terminal_policy import (
     has_pending_tool_intent,
     recovery_notice,
 )
+
+
+_COMPLETION_EVIDENCE_RE = re.compile(
+    r"\b(?:konklusion(?:en)?\s+er|kort\s+sagt|svaret\s+er|"
+    r"færdig|afsluttet|fuldført|implementeret|rettet|løst|verificeret|"
+    r"completed|finished|done|fixed|implemented|verified)\b",
+    re.IGNORECASE,
+)
+_NEGATED_COMPLETION_RE = re.compile(
+    r"\b(?:ikke|ej|aldrig|not|never)\b.{0,32}"
+    r"\b(?:færdig|afsluttet|fuldført|implementeret|rettet|løst|verificeret|"
+    r"completed|finished|done|fixed|implemented|verified)\b",
+    re.IGNORECASE | re.DOTALL,
+)
+
+
+def has_completion_evidence(text: str | None) -> bool:
+    """Conservative positive evidence used only after a forced final round."""
+    value = str(text or "")
+    return bool(
+        value
+        and not _NEGATED_COMPLETION_RE.search(value)
+        and _COMPLETION_EVIDENCE_RE.search(value)
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -37,6 +62,7 @@ def resolve_agentic_exit(
         finish_reason=finish_reason,
         forced_finalize=forced_finalize,
         pending_tool_intent=pending,
+        completion_evidence=has_completion_evidence(final_text),
         recovery_attempt=recovery_attempt,
         recovery_limit=recovery_limit,
     ))

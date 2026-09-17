@@ -27,6 +27,7 @@ class TerminalEvidence:
     pending_tool_intent: bool = False
     explicit_user_cancel: bool = False
     waiting_for_user: bool = False
+    completion_evidence: bool = True
     recovery_attempt: int = 0
     recovery_limit: int = 3
 
@@ -60,7 +61,7 @@ def is_recoverable_exit_reason(reason: str | None) -> bool:
     return (
         value == "budget-opbrugt"
         or value in {"shutdown", "provider-not-supported", "completed-truncated",
-                     "pending-tool-intent"}
+                     "pending-tool-intent", "forced-finalize-unverified"}
         or value.startswith("interrupted:")
         or value.startswith("early-exit-")
     )
@@ -80,6 +81,8 @@ def classify_terminal(evidence: TerminalEvidence) -> TerminalDecision:
     recovery_reason = ""
     if evidence.pending_tool_intent:
         recovery_reason = "pending-tool-intent"
+    elif evidence.forced_finalize and not evidence.completion_evidence:
+        recovery_reason = "forced-finalize-unverified"
     elif str(evidence.finish_reason or "").strip().lower() == "length":
         recovery_reason = "completed-truncated"
     elif is_recoverable_exit_reason(reason):
@@ -107,6 +110,9 @@ def recovery_notice(reason: str, *, continuing: bool = True) -> dict[str, object
         "completed-truncated": "Modellens svar blev afkortet.",
         "shutdown": "Jarvis-runtime genstarter.",
         "provider-not-supported": "Den valgte model kunne ikke fortsaette vaerktoejssporet.",
+        "forced-finalize-unverified": "En tvungen slutrunde manglede bevis for at opgaven var faerdig.",
+        "relay_source_idle_timeout": "Svar-kilden var tavs ud over det haarde sikkerhedsloft.",
+        "relay_source_closed": "Svar-kilden lukkede uden en normal afslutning.",
     }
     detail = descriptions.get(str(reason or ""), "Det aktuelle run-segment sluttede foer opgaven.")
     if str(reason or "") == "shutdown" and continuing:

@@ -34,6 +34,7 @@ def test_budget_shutdown_and_provider_failures_are_recoverable_segments():
         "completed-truncated",
         "interrupted:provider-timeout",
         "early-exit-tool-only",
+        "forced-finalize-unverified",
     ):
         decision = classify_terminal(TerminalEvidence(exit_reason=reason))
         assert decision.state is TerminalState.RECOVERING, reason

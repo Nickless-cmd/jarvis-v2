@@ -42,17 +42,18 @@ _Visible-run control state — udskilt fra visible_runs.py (Boy Scout)._
 | function | `_get_visible_run_control` | `(run_id)` | — | [src](../../../core/services/visible_runs_sections/run_control_state.py#L44) |
 | function | `_set_active_visible_run` | `(payload)` | — | [src](../../../core/services/visible_runs_sections/run_control_state.py#L49) |
 | function | `_get_active_visible_run_state` | `()` | — | [src](../../../core/services/visible_runs_sections/run_control_state.py#L53) |
-| function | `touch_active_visible_run` | `(run_id)` | Heartbeat: opdatér last_activity_at i den DELTE active-run state (DB), | [src](../../../core/services/visible_runs_sections/run_control_state.py#L58) |
-| function | `_visible_run_cancelled` | `(run_id)` | — | [src](../../../core/services/visible_runs_sections/run_control_state.py#L73) |
-| function | `_mark_visible_run_cancelled` | `(run_id, *, cancelled=…)` | — | [src](../../../core/services/visible_runs_sections/run_control_state.py#L77) |
-| function | `append_visible_run_steer` | `(run_id, content)` | Append a mid-flight 'steer' message that the agentic loop will pick | [src](../../../core/services/visible_runs_sections/run_control_state.py#L86) |
-| function | `consume_visible_run_steers` | `(run_id)` | Pop unread steers for this run. Marks them consumed in shared state | [src](../../../core/services/visible_runs_sections/run_control_state.py#L110) |
-| function | `_set_visible_approval_state` | `(approval_id, payload)` | — | [src](../../../core/services/visible_runs_sections/run_control_state.py#L131) |
-| function | `_get_visible_approval_state` | `(approval_id)` | — | [src](../../../core/services/visible_runs_sections/run_control_state.py#L135) |
-| function | `_visible_run_client_tool_key` | `(call_id)` | — | [src](../../../core/services/visible_runs_sections/run_control_state.py#L143) |
-| function | `_set_visible_client_tool_state` | `(call_id, payload)` | Sæt state for en delegeret klient-tool (cross-worker via DB). | [src](../../../core/services/visible_runs_sections/run_control_state.py#L147) |
-| function | `_get_visible_client_tool_state` | `(call_id)` | — | [src](../../../core/services/visible_runs_sections/run_control_state.py#L152) |
-| function | `resolve_visible_client_tool` | `(call_id, result_text)` | Klienten leverer resultatet af en delegeret tool. Flip pending → resolved | [src](../../../core/services/visible_runs_sections/run_control_state.py#L157) |
+| function | `relay_owns_open_run` | `(run_id)` | Whether the detached relay still owns this run, independent of age. | [src](../../../core/services/visible_runs_sections/run_control_state.py#L58) |
+| function | `touch_active_visible_run` | `(run_id)` | Heartbeat: opdatér last_activity_at i den DELTE active-run state (DB), | [src](../../../core/services/visible_runs_sections/run_control_state.py#L67) |
+| function | `_visible_run_cancelled` | `(run_id)` | — | [src](../../../core/services/visible_runs_sections/run_control_state.py#L82) |
+| function | `_mark_visible_run_cancelled` | `(run_id, *, cancelled=…)` | — | [src](../../../core/services/visible_runs_sections/run_control_state.py#L86) |
+| function | `append_visible_run_steer` | `(run_id, content)` | Append a mid-flight 'steer' message that the agentic loop will pick | [src](../../../core/services/visible_runs_sections/run_control_state.py#L95) |
+| function | `consume_visible_run_steers` | `(run_id)` | Pop unread steers for this run. Marks them consumed in shared state | [src](../../../core/services/visible_runs_sections/run_control_state.py#L119) |
+| function | `_set_visible_approval_state` | `(approval_id, payload)` | — | [src](../../../core/services/visible_runs_sections/run_control_state.py#L140) |
+| function | `_get_visible_approval_state` | `(approval_id)` | — | [src](../../../core/services/visible_runs_sections/run_control_state.py#L144) |
+| function | `_visible_run_client_tool_key` | `(call_id)` | — | [src](../../../core/services/visible_runs_sections/run_control_state.py#L152) |
+| function | `_set_visible_client_tool_state` | `(call_id, payload)` | Sæt state for en delegeret klient-tool (cross-worker via DB). | [src](../../../core/services/visible_runs_sections/run_control_state.py#L156) |
+| function | `_get_visible_client_tool_state` | `(call_id)` | — | [src](../../../core/services/visible_runs_sections/run_control_state.py#L161) |
+| function | `resolve_visible_client_tool` | `(call_id, result_text)` | Klienten leverer resultatet af en delegeret tool. Flip pending → resolved | [src](../../../core/services/visible_runs_sections/run_control_state.py#L166) |
 
 ## `core/services/visible_runs_sections/run_finalization.py`
 _Hvad der skal ske NÅR et visible run er slut — samlet ét sted._
@@ -61,6 +62,7 @@ _Hvad der skal ske NÅR et visible run er slut — samlet ét sted._
 |---|---|---|---|---|
 | function | `advance_tool_lifecycle` | `(session_id)` | Ryk tool-result cold_floor frem (spec 2026-07-16). Self-safe. | [src](../../../core/services/visible_runs_sections/run_finalization.py#L33) |
 | function | `finalize_run` | `(session_id, *, status)` | Kaldes fra run-afslutningens finally — uanset hvordan runnet endte. | [src](../../../core/services/visible_runs_sections/run_finalization.py#L49) |
+| function | `finalize_in_flight` | `(*, run_id, session_id, status, error=…)` | Resolve durable recovery state without erasing resumable work. | [src](../../../core/services/visible_runs_sections/run_finalization.py#L60) |
 
 ## `core/services/visible_runs_sections/stream_observers.py`
 _Stream-observabilitets-nerver — Boy Scout-udtrækning fra visible_runs.py._

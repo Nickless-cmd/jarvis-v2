@@ -16,7 +16,7 @@ def test_forced_final_dsml_intent_becomes_recovery_event():
     assert result.event_payload["continuing"] is True
 
 
-def test_forced_final_clean_synthesis_can_complete():
+def test_forced_final_with_explicit_conclusion_can_complete():
     result = resolve_agentic_exit(
         exit_reason="completed",
         final_text="Konklusionen er, at firewall-reglen blokerede trafikken.",
@@ -27,6 +27,30 @@ def test_forced_final_clean_synthesis_can_complete():
     assert result.exit_reason == "completed"
     assert result.decision.state is TerminalState.COMPLETED
     assert result.event_name == ""
+
+
+def test_forced_final_without_completion_evidence_recovers():
+    result = resolve_agentic_exit(
+        exit_reason="completed",
+        final_text="Jeg har undersøgt loggen og samler nu resultaterne.",
+        finish_reason="stop",
+        forced_finalize=True,
+        pending_tool_intent=False,
+    )
+    assert result.exit_reason == "forced-finalize-unverified"
+    assert result.decision.state is TerminalState.RECOVERING
+    assert result.event_payload["continuing"] is True
+
+
+def test_negated_completion_claim_never_counts_as_evidence():
+    result = resolve_agentic_exit(
+        exit_reason="completed",
+        final_text="Opgaven er ikke afsluttet; jeg mangler stadig verifikationen.",
+        finish_reason="stop",
+        forced_finalize=True,
+    )
+    assert result.exit_reason == "forced-finalize-unverified"
+    assert result.decision.state is TerminalState.RECOVERING
 
 
 def test_length_finish_recovers_even_with_partial_text():
@@ -57,3 +81,4 @@ def test_visible_run_routes_exit_through_terminal_recovery():
     assert "resolve_agentic_exit(" in source
     assert '_agentic_loop_exit_reason = "early-exit-empty-text"' in source
     assert '_agentic_loop_exit_reason = "early-exit-tool-only"' in source
+    assert '_agentic_loop_exit_reason = "early-exit-loop-gate-skip"' in source

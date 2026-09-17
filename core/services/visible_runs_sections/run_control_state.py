@@ -55,6 +55,15 @@ def _get_active_visible_run_state() -> dict[str, object]:
     return payload if isinstance(payload, dict) else {}
 
 
+def relay_owns_open_run(run_id: str) -> bool:
+    """Whether the detached relay still owns this run, independent of age."""
+    try:
+        from core.services import run_event_log
+        return run_event_log.is_open(run_id)
+    except Exception:
+        return False
+
+
 def touch_active_visible_run(run_id: str) -> None:
     """Heartbeat: opdatér last_activity_at i den DELTE active-run state (DB),
     så CROSS-PROCES liveness virker. /chat/active-runs (jarvis-api) kan ikke se

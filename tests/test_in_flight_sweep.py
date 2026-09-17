@@ -84,7 +84,12 @@ def test_sweepen_spoerger_foer_den_stempler():
     # andens aktive ture — api og runtime deler både app og state-fil.
     assert "dying_owner=current_owner()" in vindue
     assert "run_er_terminal" in vindue
-    assert vindue.index("run_er_terminal") < vindue.index('reason="api-nedlukning"')
+    # Stemplet hed `reason="api-nedlukning"` indtil 17/9-2026. Nu afregner
+    # sweepen SYNLIGE ture som `recovering` (`mark_interrupted` var terminalt,
+    # og dispatcheren tager aldrig en interrupted post), mens «api-nedlukning»
+    # er flyttet ned i resuméet. Rækkefølgen er stadig hele pointen: spørg om
+    # turen allerede er slut, FØR der stemples noget.
+    assert vindue.index("run_er_terminal") < vindue.index("settle_recovering")
 
 
 def test_der_er_KUN_ÉN_definition_af_terminal():

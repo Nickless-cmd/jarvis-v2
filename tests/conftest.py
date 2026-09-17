@@ -347,6 +347,39 @@ def _guard_prod_db_path(request, monkeypatch):
     yield
 
 
+@pytest.fixture(scope="session")
+def _prod_state_shield_dir(tmp_path_factory):
+    """Én tmp-mappe pr. session som `state_store`s JSON-filer peges mod."""
+    return tmp_path_factory.mktemp("prod_state_shield")
+
+
+@pytest.fixture(autouse=True)
+def _guard_prod_state_dir(request, monkeypatch, _prod_state_shield_dir):
+    """INGEN test må skrive i de ægte ~/.jarvis-v2/state/*.json.
+
+    Databasen har haft sit værn længe; JSON-state havde intet, og det blev
+    dyrt 17/9-2026. `in_flight_runs.json` i produktionen stod fuld af
+    test-fikstur — `visible-cap-*`, `session-smoke`, `visible-loop-not-blocked`
+    — fordi enhver test der kaldte `mark_started` skrev direkte i den ægte fil.
+
+    Så længe journalen kun blev LÆST var det rod. Med den varige genoptagelse
+    er den en KØ: dispatcheren tog to af fikstur-posterne ved næste genstart og
+    kørte dem som ægte synlige ture med beskeden «hej» — den ene på den betalte
+    lane. Testdata blev til rigtige kald.
+
+    `@pytest.mark.real_state` slipper igennem, som `real_db` gør for DB'en.
+    """
+    if request.node.get_closest_marker("real_state") is not None:
+        yield
+        return
+    try:
+        from core.runtime import state_store
+        monkeypatch.setattr(state_store, "_STATE_DIR", Path(_prod_state_shield_dir))
+    except Exception:
+        pass
+    yield
+
+
 @pytest.fixture(autouse=True)
 def _restore_visible_runs_anchor_classes():
     """Gen-installér visible_runs' ANKER-klasser efter hver test (se blok ovenfor).

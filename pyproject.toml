@@ -40,4 +40,5 @@ markers = [
     "dirty_state: test muterer delt tilstand; isolér ved behov",
     "integration: kræver kørende infra (container/DB/net/subprocess); ekskl. fra default unit-kørsel",
     "real_db: test skal bevidst ramme den ægte ~/.jarvis-v2-DB (opt-out af _guard_prod_db_path)",
+    "real_state: test skal bevidst ramme de ægte ~/.jarvis-v2/state/*.json (opt-out af _guard_prod_state_dir)",
 ]

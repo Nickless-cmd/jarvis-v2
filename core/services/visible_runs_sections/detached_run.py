@@ -273,6 +273,22 @@ def start_or_attach_user_run(
     # ATOMISK claim (rod-fix mod rapid-resend-race): find-eller-opret under laas.
     claimed, is_new = rel.claim_or_create(sid)
     if not is_new:
+        # STYR, i stedet for kun at sige det til side (opgave 5). Turen kører
+        # stadig, og brugerens nye besked hører til DEN opgave. Kan den ikke
+        # leveres — fx fordi segmentet netop er ved at dø — lægges den i
+        # opgavens durable kø, så fortsættelsen får den med.
+        try:
+            from core.services.visible_runs import append_visible_run_steer
+            leveret = bool(append_visible_run_steer(claimed, (message or "").strip()))
+        except Exception:
+            leveret = False
+        if not leveret:
+            try:
+                from core.services.in_flight_runs import queue_steer
+                queue_steer(claimed, (message or "").strip())
+            except Exception:
+                logger.warning("kunne ikke koe brugerens besked for %s", claimed,
+                               exc_info=True)
         if nudge_enabled:
             try:
                 from core.services.outbound_nudges import push_nudge

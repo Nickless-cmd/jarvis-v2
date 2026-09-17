@@ -85,10 +85,16 @@ def recover_due_once(*, owner: str | None = None) -> dict[str, object]:
             retry_after_s=BACKOFF_SECONDS)
         return {"started": 0, "released": 1, "claimed": task_id, "error": "no-session"}
 
+    besked = _besked_fra(krav)
+    # Hvad brugeren nåede at skrive imens hører til opgaven — ikke til det
+    # segment der døde. Uden dette ville hans tilføjelse være tabt.
+    koe = [str(x).strip() for x in (krav.get("pending_steers") or []) if str(x).strip()]
+    if koe:
+        besked = besked + "\n\nBrugeren tilføjede imens:\n- " + "\n- ".join(koe)
     try:
         from core.services.visible_runs_sections.detached_run import start_user_run_detached
         run_id = start_user_run_detached(
-            message=_besked_fra(krav),
+            message=besked,
             session_id=session_id,
             provider_override=str(krav.get("provider") or ""),
             model_override=str(krav.get("model") or ""),

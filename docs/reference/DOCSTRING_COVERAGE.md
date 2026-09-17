@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7670/14861 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7673/14864 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,7 +8,7 @@ Generated from source. 7670/14861 functions/methods documented (51%). The list b
 |---|---|---|---|
 | `apps.api.jarvis_api` | 34 | 36 | 94% |
 | `apps.api.jarvis_api.middleware` | 8 | 19 | 42% |
-| `apps.api.jarvis_api.routes` | 652 | 853 | 76% |
+| `apps.api.jarvis_api.routes` | 653 | 854 | 76% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 69 | 171 | 40% |
 | `apps.desktop` | 6 | 7 | 85% |
@@ -25,7 +25,7 @@ Generated from source. 7670/14861 functions/methods documented (51%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 651 | 1188 | 54% |
-| `core.services` | 5098 | 10214 | 49% |
+| `core.services` | 5100 | 10216 | 49% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 109 | 184 | 59% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1107,8 +1107,8 @@ Generated from source. 7670/14861 functions/methods documented (51%). The list b
 - `core/services/identity_mutation_log.py` :: `list_mutations` (L206)
 - `core/services/idle_consolidation.py` :: `build_idle_consolidation_surface` (L312)
 - `core/services/idle_thinking.py` :: `build_idle_thinking_surface` (L83)
-- `core/services/in_flight_runs.py` :: `release_recovery_claim` (L483)
-- `core/services/in_flight_runs.py` :: `renew_recovery_lease` (L454)
+- `core/services/in_flight_runs.py` :: `release_recovery_claim` (L509)
+- `core/services/in_flight_runs.py` :: `renew_recovery_lease` (L480)
 - `core/services/infra_weather_daemon.py` :: `build_infra_weather_surface` (L290)
 - `core/services/infra_weather_daemon.py` :: `get_weather` (L268)
 - `core/services/initiative_queue.py` :: `abandon_long_term_intention` (L550)

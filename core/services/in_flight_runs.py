@@ -250,6 +250,32 @@ def mark_started(
     _mutate(change)
 
 
+def queue_steer(run_id: str, text: str) -> bool:
+    """Gem en brugerbesked der ikke kunne leveres til en kørende tur.
+
+    Opgave 5 (17/9-2026): skrev brugeren mens turen var ved at dø, forsvandt
+    beskeden. Den hørte til opgaven, ikke til segmentet — så den lægges i
+    opgavens post og følger med ind i fortsættelsen.
+    """
+    besked = str(text or "").strip()
+    if not run_id or not besked:
+        return False
+
+    def change(records):
+        key = _record_key(records, run_id)
+        if key is None:
+            return False
+        koe = list(records[key].get("pending_steers") or [])
+        if besked in koe:
+            return True            # samme besked to gange er én besked
+        koe.append(besked[:2000])
+        records[key]["pending_steers"] = koe[-10:]
+        records[key]["last_progress_at"] = _iso()
+        return True
+
+    return bool(_mutate(change))
+
+
 def mark_tool(run_id: str, tool_name: str) -> None:
     """Update the last-tool-attempted hint for an in-flight run."""
     if not run_id or not tool_name:

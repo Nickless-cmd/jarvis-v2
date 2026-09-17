@@ -1086,6 +1086,7 @@ def chat_cancel_active(session_id: str) -> dict:
         if str(st.get("session_id") or "") == sid:
             rid = str(st.get("run_id") or "")
             if rid:
+                _settle_user_stop(rid, sid)
                 return {"cancelled": bool(cancel_visible_run(rid)), "run_id": rid}
     except Exception:
         pass
@@ -1796,10 +1797,23 @@ async def chat_deny_tool(approval_id: str) -> dict:
     return result
 
 
+def _settle_user_stop(run_id: str, session_id: str = "") -> None:
+    """Skriv stoppet ned FØR kørslen afbrydes — ellers ligner det en afbrudt
+    tur, og en afbrudt tur bliver genoptaget (opgave 5, 17/9-2026)."""
+    try:
+        from core.services.visible_run_segment_settlement import settle_user_stop
+        settle_user_stop(run_id=run_id, session_id=session_id)
+    except Exception:
+        import logging
+        logging.getLogger("uvicorn.error").warning(
+            "kunne ikke gøre brugerens stop durabelt for %s", run_id, exc_info=True)
+
+
 @router.post("/runs/{run_id}/cancel")
 def chat_cancel_run(run_id: str) -> dict:
     """Afbryd et aktivt visible-run via run_id. 404 hvis runnet ikke er aktivt;
     ellers {ok: True, run_id, status: "cancelled"}."""
+    _settle_user_stop(run_id)
     if not cancel_visible_run(run_id):
         raise HTTPException(status_code=404, detail="Visible run not active")
     return {

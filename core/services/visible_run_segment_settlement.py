@@ -103,6 +103,23 @@ class SegmentUdfald:
     durable_write_failed: bool = False
 
 
+def settle_user_stop(*, run_id: str, session_id: str = "", task_id: str = "",
+                      reason: str = "user-cancelled") -> SegmentUdfald:
+    """Brugeren trykkede stop. Det er endeligt — og skal skrives ned FØRST.
+
+    Opgave 5 (17/9-2026). Før blev kørslen afbrudt, og journalen fik det at
+    vide bagefter, hvis nogen nåede det. Et stop der ikke er skrevet ned, ser
+    ud som en afbrudt tur — og en afbrudt tur bliver genoptaget. Brugeren ville
+    altså se sit eget stop starte igen af sig selv.
+    """
+    return settle_segment_exit(
+        run_id=run_id, session_id=session_id, task_id=task_id,
+        exit_reason=reason, explicit_user_cancel=True,
+        failure_class=FailureClass.CANCELLATION,
+        summary="stoppet af brugeren",
+    )
+
+
 def settle_segment_exit(
     *,
     run_id: str,

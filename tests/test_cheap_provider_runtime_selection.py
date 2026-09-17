@@ -248,3 +248,23 @@ def test_slukket_udbyder_i_registret_giver_ingen_katalog_kandidater(monkeypatch)
     udbydere = {c["provider"] for c in sel._configured_cheap_candidates(include_public_proxy=True)}
     assert "cerebras" not in udbydere
     assert "xkiro" in udbydere
+
+
+def test_slukket_model_i_registret_kommer_ikke_ind_via_kataloget(monkeypatch):
+    """17/9-2026: en model med `enabled: false` blev sprunget over FØR den blev
+    markeret som set, så katalogets static_models tilføjede den igen."""
+    from core.services import cheap_provider_runtime_selection as sel
+    from core.services.cheap_provider_catalogue import CHEAP_PROVIDER_DEFAULTS
+    modeller = list(CHEAP_PROVIDER_DEFAULTS["xkiro"]["static_models"])
+    assert len(modeller) >= 2
+    doed, levende = modeller[0], modeller[1]
+    monkeypatch.setattr(sel, "load_provider_router_registry", lambda: {"providers": [
+        {"provider": "xkiro", "enabled": True, "auth_profile": "default"},
+    ], "models": [
+        {"provider": "xkiro", "model": doed, "lane": "cheap", "enabled": False},
+    ]})
+    monkeypatch.setattr("core.services.auth_profile_scan.ready_profiles_for", lambda provider: ["default"])
+    monkeypatch.setattr(sel, "_flag_multiprofile", lambda: True)
+    xkiro = {c["model"] for c in sel._configured_cheap_candidates(include_public_proxy=True) if c["provider"] == "xkiro"}
+    assert doed not in xkiro
+    assert levende in xkiro

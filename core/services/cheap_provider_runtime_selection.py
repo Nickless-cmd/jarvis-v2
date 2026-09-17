@@ -945,6 +945,12 @@ def _configured_cheap_candidates(
         return list(ready_profiles_for(prov))
     for item in registry.get("models") or []:
         if not bool(item.get("enabled", True)):
+            # Samme hul på modelniveau: `continue` FØR `seen.add` lod løkken over
+            # katalogets static_models tilføje modellen igen. Ugeprøven slog
+            # hy3-free, laguna og copilots sonnet-4.6 fra 14/9 — og de blev
+            # kaldt videre (fundet 17/9-2026).
+            if str(item.get("lane") or "").strip() == "cheap":
+                seen.add((str(item.get("provider") or "").strip(), str(item.get("model") or "").strip()))
             continue
         if str(item.get("lane") or "").strip() != "cheap":
             continue

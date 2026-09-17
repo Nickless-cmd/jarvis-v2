@@ -162,14 +162,14 @@ CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
         "static_models": [
             "big-pickle",
             "deepseek-v4-flash-free",
-            "hy3-free",
+            # hy3-free og laguna-s-2.1-free udgik («Model … is not supported»,
+            # fuld prøve 17/9-2026 på begge konti).
             "mimo-v2.5-free",
             "nemotron-3-ultra-free",
             # north-mini-code-free udgik 19. aug 2026 ("Model … is not supported" —
             # rapporteret som auth-rejected, hvilket sendte fejlsøgningen efter nøgler
             # frem for efter modeller). /models viser 6 gratis; disse to er nye.
             "nemotron-3.5-lightning-free",
-            "laguna-s-2.1-free",
         ],
     },
     "openai-codex": {
@@ -348,8 +348,8 @@ CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
         "cost_class": "free",
         "static_models": ["nvidia/nemotron-3-super-120b-a12b:free",
                           "nvidia/nemotron-3-ultra-550b-a55b:free",
-                          "cohere/north-mini-code:free", "openrouter/free",
-                          "tencent/hy3:free"],
+                          "cohere/north-mini-code:free", "openrouter/free"],
+        # tencent/hy3:free fjernet 17/9-2026: «does not exist» på gatewayen.
     },
     # Z.ai / Zhipu GLM (15. jul, Bjørn-nøgle, live-verificeret): OpenAI-compat på
     # /paas/v4. glm-4.5-flash = ÆGTE GRATIS (ikke i /models-katalog men svarer $0;
@@ -596,8 +596,10 @@ CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
                           "Copilot-Integration-Id": "vscode-chat"},
         # Verificeret API-tilgængelige premium-modeller (opus-4.8/gpt-5.6 IKKE tilgængelig
         # via denne integration). claude-sonnet-5 = flagskib.
-        "static_models": ["claude-sonnet-5", "claude-sonnet-4.6", "gpt-5.4",
-                          "gemini-3.1-pro-preview"],
+        # claude-sonnet-4.6 + gemini-3.1-pro-preview fjernet 17/9-2026: «not
+        # available for integrator» — ugeprøven slog dem fra 14/9, men kataloget
+        # lagde dem ind igen.
+        "static_models": ["claude-sonnet-5", "gpt-5.4"],
     },
     # AionLabs (16. jul, Bjørn-nøgle, free-tier konto): OpenAI-compat `api.aionlabs.ai/v1`,
     # bearer. Live-verificeret — /models svarer, chat-kald returnerede content="PONG" på

@@ -71,6 +71,11 @@ def is_recoverable_exit_reason(reason: str | None) -> bool:
         or value.startswith("runtime-")
         or value.startswith("unhandled:")
         or value.startswith("relay_")
+        # Breakeren åbnede og der var ingen fallback tilbage. Turen er IKKE
+        # færdig — den blev stoppet af et værn. Uden den her blev et
+        # «breaker-open»-segment lukket som `end_turn`, altså som et helt svar
+        # (fundet 17/9-2026 da fejlklasserne blev kørt igennem).
+        or value == "breaker-open"
     )
 
 

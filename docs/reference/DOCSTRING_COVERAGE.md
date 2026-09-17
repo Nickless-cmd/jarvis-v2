@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7662/14852 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7664/14854 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 7662/14852 functions/methods documented (51%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 651 | 1188 | 54% |
-| `core.services` | 5090 | 10205 | 49% |
+| `core.services` | 5092 | 10207 | 49% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 109 | 184 | 59% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1907,29 +1907,29 @@ Generated from source. 7662/14852 functions/methods documented (51%). The list b
 - `core/services/visible_runs.py` :: `VisibleRunController.cancel` (L466)
 - `core/services/visible_runs.py` :: `VisibleRunController.clear_stream` (L463)
 - `core/services/visible_runs.py` :: `VisibleRunController.is_cancelled` (L473)
-- `core/services/visible_runs.py` :: `cancel_visible_run` (L6967)
-- `core/services/visible_runs.py` :: `get_active_visible_run` (L6992)
-- `core/services/visible_runs.py` :: `get_last_visible_capability_use` (L7196)
-- `core/services/visible_runs.py` :: `get_last_visible_run_outcome` (L7192)
-- `core/services/visible_runs.py` :: `get_visible_run_controller` (L6963)
-- `core/services/visible_runs.py` :: `get_visible_selected_work_item` (L7105)
-- `core/services/visible_runs.py` :: `get_visible_selected_work_note` (L7157)
-- `core/services/visible_runs.py` :: `get_visible_selected_work_surface` (L7074)
-- `core/services/visible_runs.py` :: `get_visible_work` (L7015)
-- `core/services/visible_runs.py` :: `get_visible_work_surface` (L7047)
-- `core/services/visible_runs.py` :: `register_visible_run` (L6925)
-- `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L7213)
-- `core/services/visible_runs.py` :: `unregister_visible_run` (L6978)
+- `core/services/visible_runs.py` :: `cancel_visible_run` (L7010)
+- `core/services/visible_runs.py` :: `get_active_visible_run` (L7035)
+- `core/services/visible_runs.py` :: `get_last_visible_capability_use` (L7239)
+- `core/services/visible_runs.py` :: `get_last_visible_run_outcome` (L7235)
+- `core/services/visible_runs.py` :: `get_visible_run_controller` (L7006)
+- `core/services/visible_runs.py` :: `get_visible_selected_work_item` (L7148)
+- `core/services/visible_runs.py` :: `get_visible_selected_work_note` (L7200)
+- `core/services/visible_runs.py` :: `get_visible_selected_work_surface` (L7117)
+- `core/services/visible_runs.py` :: `get_visible_work` (L7058)
+- `core/services/visible_runs.py` :: `get_visible_work_surface` (L7090)
+- `core/services/visible_runs.py` :: `register_visible_run` (L6968)
+- `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L7256)
+- `core/services/visible_runs.py` :: `unregister_visible_run` (L7021)
 - `core/services/visible_runs_learning_signals.py` :: `record_visible_run_learning_signals` (L53)
 - `core/services/visible_runs_outcomes.py` :: `set_last_visible_run_outcome` (L566)
 - `core/services/visible_runs_sse_v2.py` :: `ToolEchoFilter.feed` (L102)
 - `core/services/visible_runs_sse_v2.py` :: `ToolEchoFilter.flush` (L151)
 - `core/services/visible_stream_gate.py` :: `enter_visible_stream` (L38)
 - `core/services/visible_stream_gate.py` :: `exit_visible_stream` (L44)
-- `core/services/visible_terminal_policy.py` :: `classify_terminal` (L77)
+- `core/services/visible_terminal_policy.py` :: `classify_terminal` (L82)
 - `core/services/visible_terminal_policy.py` :: `has_pending_tool_intent` (L51)
 - `core/services/visible_terminal_policy.py` :: `is_recoverable_exit_reason` (L55)
-- `core/services/visible_terminal_policy.py` :: `recovery_notice` (L113)
+- `core/services/visible_terminal_policy.py` :: `recovery_notice` (L118)
 - `core/services/visible_turn_accumulator.py` :: `TurnAccumulator.close_segment` (L72)
 - `core/services/visible_turn_accumulator.py` :: `TurnAccumulator.close_thinking` (L150)
 - `core/services/visible_turn_accumulator.py` :: `TurnAccumulator.note_text` (L76)

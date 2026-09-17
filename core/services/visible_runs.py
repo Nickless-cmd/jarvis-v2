@@ -4968,19 +4968,27 @@ async def _stream_visible_run(
                 # men telemetri/incident viser truncation ærligt.
                 if _a_truncated and _agentic_loop_exit_reason == "completed":
                     _agentic_loop_exit_reason = "completed-truncated"
-                from core.services.visible_run_terminal_recovery import resolve_agentic_exit
+                # DURABEL FØRST, DEREFTER SSE (opgave 3). Før afgjorde dette
+                # sted selv hvad turen blev til og sendte beskeden — og hvis
+                # processen døde i mellemrummet, havde klienten set en
+                # afslutning ingen journal kendte. `settle_segment_exit` skriver
+                # posten og giver os dommen tilbage.
+                from core.services.visible_run_segment_settlement import settle_segment_exit
                 try:
                     from core.services.auto_continuation import kaede_nr as _recovery_kaede_nr
                     _recovery_attempt = _recovery_kaede_nr(run.session_id)
                 except Exception:
                     _recovery_attempt = 0
-                _terminal = resolve_agentic_exit(
+                _terminal = settle_segment_exit(
+                    run_id=run.run_id,
+                    session_id=run.session_id,
                     exit_reason=_agentic_loop_exit_reason,
                     final_text="".join(_a_parts),
                     finish_reason=_a_finish_reason,
                     forced_finalize=_forced_finalize_seen,
                     pending_tool_intent=_a_pending_tool_intent,
                     recovery_attempt=_recovery_attempt,
+                    summary=str(_agentic_loop_exit_reason or ""),
                 )
                 _agentic_loop_exit_reason = _terminal.exit_reason
                 if _terminal.decision.should_continue:
@@ -6004,6 +6012,26 @@ async def _stream_visible_run(
             "visible-run unhandled exception: %s", _outer_exc, exc_info=True
         )
         _outer_error = str(_outer_exc) or "unexpected-run-error"
+        # DURABEL FØRST (opgave 3). En undtagelse her efterlod intet i
+        # journalen: arbejdet var gjort, værktøjerne kørt, og turen lukkede som
+        # `failed` uden at nogen kunne genoptage den. Klassen er RUNTIME —
+        # hverken udbyderen eller processen svigtede, koden gjorde.
+        try:
+            from core.services.visible_run_recovery_coordinator import FailureClass as _FK
+            from core.services.visible_run_segment_settlement import settle_segment_exit as _settle
+            _exc_settle = _settle(
+                run_id=run.run_id, session_id=run.session_id,
+                exit_reason=f"runtime-{type(_outer_exc).__name__}",
+                final_text=visible_output_text or "",
+                summary=_outer_error[:200],
+                failure_class=_FK.RUNTIME,
+            )
+            if _exc_settle.event_name:
+                _exc_settle.event_payload["run_id"] = run.run_id
+                yield _sse(_exc_settle.event_name, _exc_settle.event_payload)
+        except Exception:
+            logger.warning("kunne ikke gøre undtagelsen durabel for %s", run.run_id,
+                           exc_info=True)
         _outcome_state.mark("failed", finalized=False)  # ellers overskriver _post_process (finally) med "completed"+tom → falsk survival
         _outcome_state.set_error(_outer_error)
         set_last_visible_run_outcome(run, status="failed", error=_outer_error)
@@ -6103,6 +6131,21 @@ async def _stream_visible_run(
             pass
 
         if _blev_nedgraderet:
+            # Forladt: hverken en normal afslutning eller en undtagelse vi så.
+            # Processen forsvandt under turen, og det er PROCESS-klassen.
+            try:
+                from core.services.visible_run_recovery_coordinator import FailureClass as _FKp
+                from core.services.visible_run_segment_settlement import settle_segment_exit as _settle_p
+                _settle_p(
+                    run_id=run.run_id, session_id=run.session_id,
+                    exit_reason=f"runtime-abandoned:{_abort_kind}",
+                    final_text=visible_output_text or "",
+                    summary=f"forladt: {_abort_kind}",
+                    failure_class=_FKp.PROCESS,
+                )
+            except Exception:
+                logger.warning("kunne ikke gøre den forladte kørsel durabel for %s",
+                               run.run_id, exc_info=True)
             # Udskilt til `visible_run_abandonment` (Boy Scout, 7.291 linjer),
             # foer K6 lagde broens opgivelse ind samme sted. De ting dér svarer
             # alle paa: runnet naaede aldrig sin beslutning — hvad skal saa

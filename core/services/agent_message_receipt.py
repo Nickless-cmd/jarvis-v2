@@ -43,6 +43,37 @@ logger = logging.getLogger("uvicorn.error")
 TAALMODIGHED_S = 20.0
 
 
+def _book_completion_wakeup(agent_id: str, resultat: dict[str, Any]) -> None:
+    """Book en self-wakeup saa forælderen faar besked naar baggrundsbarnet er faerdigt.
+
+    Kaldes fra baggrundstraadens finally-blok naar forælderen allerede har
+    faaet en kvittering (forsent.is_set()). Uden dette er et sent-faerdigt
+    baggrundsbarn tavst — forælderen skulle polle med get_agent.
+    """
+    try:
+        from core.services.self_wakeup import schedule_self_wakeup
+        status = str(resultat.get("status") or "completed")
+        svar = ""
+        for msg in reversed(resultat.get("messages") or []):
+            if str(msg.get("direction") or "") == "agent->jarvis":
+                kind = str(msg.get("kind") or "")
+                if kind in ("result", "") and not svar:
+                    svar = str(msg.get("content") or "")[:300]
+                    break
+        schedule_self_wakeup(
+            delay_seconds=60,
+            prompt=(
+                f"Baggrunds-agent {agent_id} er faerdig (status={status}). "
+                f"Svar-uddrag: {svar[:200] if svar else '(tomt)'}... "
+                f"Hent det fulde resultat med get_agent(agent_id='{agent_id}')."
+            ),
+            reason=f"agent-completion:{agent_id}",
+        )
+        logger.info("completion-wakeup booket for %s (status=%s)", agent_id, status)
+    except Exception:
+        logger.warning("kunne ikke booke completion-wakeup for %s", agent_id, exc_info=True)
+
+
 def send_med_kvittering(*, agent_id: str, content: str,
                         role: str = "user",
                         kind: str = "jarvis-message",
@@ -62,6 +93,7 @@ def send_med_kvittering(*, agent_id: str, content: str,
 
     resultat: dict[str, Any] = {}
     faerdig = threading.Event()
+    forsent = threading.Event()
     kontekst = contextvars.copy_context()
 
     def _koer() -> None:
@@ -85,6 +117,8 @@ def send_med_kvittering(*, agent_id: str, content: str,
                 pass
         finally:
             faerdig.set()
+            if forsent.is_set():
+                _book_completion_wakeup(agent_id, resultat)
 
     try:
         t = threading.Thread(target=lambda: kontekst.run(_koer),
@@ -105,6 +139,7 @@ def send_med_kvittering(*, agent_id: str, content: str,
     if faerdig.wait(timeout=max(0.0, float(taalmodighed_s))):
         return dict(resultat)
 
+    forsent.set()
     return kvittering(agent_id, taalmodighed_s=taalmodighed_s)
 
 
@@ -125,3 +160,77 @@ def kvittering(agent_id: str, *, taalmodighed_s: float = TAALMODIGHED_S) -> dict
             "lave andet imens — det bliver ikke kasseret."
         ),
     }
+
+
+def spawn_med_kvittering(*, taalmodighed_s: float = TAALMODIGHED_S,
+                         **spawn_kwargs) -> dict[str, Any]:
+    """Spawn en agent, vent kort, returner enten resultat eller kvittering.
+
+    Samme moenster som ``send_med_kvittering``, men for at SPAWNE nye agenter
+    i stedet for at sende beskeder til eksisterende. Bruges af explore for at
+    undgaa at blokere foraelderens tur paa langsomme research-agenter.
+
+    Maalt 17/9-2026 over 201 explore-koersler:
+        median  14,8 s
+        p90     51,7 s
+        max    430,5 s
+        over 60 s: 15 koersler
+
+    Med ``taalmodighed_s=60`` holder ~85% af koerslerne sig inline; halen
+    bliver asynkron med completion-signal.
+    """
+    from core.services.agent_runtime import spawn_agent_task, execute_agent_task
+
+    spawn_kwargs["auto_execute"] = False
+    try:
+        spawn_result = spawn_agent_task(**spawn_kwargs)
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)}
+
+    agent_id = str(spawn_result.get("agent_id") or "")
+    if not agent_id:
+        return {"status": "error", "error": "spawn returnerede ingen agent_id",
+                "spawn_result": spawn_result}
+
+    resultat: dict[str, Any] = {}
+    faerdig = threading.Event()
+    forsent = threading.Event()
+    kontekst = contextvars.copy_context()
+
+    def _koer() -> None:
+        from core.services.child_authority import uden_foraeldrens_godkendelse
+        try:
+            with uden_foraeldrens_godkendelse():
+                resultat.update(execute_agent_task(agent_id=agent_id) or {})
+        except Exception as exc:
+            logger.warning("barn %s: koerslen fejlede i baggrunden", agent_id,
+                           exc_info=True)
+            resultat.update({"status": "failed", "error": str(exc)})
+            try:
+                from core.services.child_failure_signal import note_child_ended
+                note_child_ended(agent_id, status="failed",
+                                 error="koerslen fejlede i baggrunden")
+            except Exception:
+                pass
+        finally:
+            faerdig.set()
+            if forsent.is_set():
+                _book_completion_wakeup(agent_id, resultat)
+
+    try:
+        t = threading.Thread(target=lambda: kontekst.run(_koer),
+                             name=f"agent-{agent_id[:12]}", daemon=True)
+        t.start()
+    except Exception as exc:
+        logger.warning("barn %s: kunne ikke starte baggrundstraad — koerer "
+                       "inline", agent_id, exc_info=True)
+        try:
+            return dict(execute_agent_task(agent_id=agent_id) or {})
+        except Exception:
+            return {"status": "error", "error": str(exc), "agent_id": agent_id}
+
+    if faerdig.wait(timeout=max(0.0, float(taalmodighed_s))):
+        return dict(resultat)
+
+    forsent.set()
+    return kvittering(agent_id, taalmodighed_s=taalmodighed_s)

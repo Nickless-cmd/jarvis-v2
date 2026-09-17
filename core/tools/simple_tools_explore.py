@@ -8,6 +8,7 @@ import re
 from typing import Any
 
 _EXPLORE_MAKS_RUNDER = 3
+_EXPLORE_TAALMODIGHED_S = 60.0  # explore median 14,8 s · p90 51,7 s · max 430 s
 
 
 logger = logging.getLogger(__name__)
@@ -52,7 +53,7 @@ def _execution_context(args: dict[str, Any]) -> tuple[str, dict[str, object], st
 
 def _explore_spawn(*, query: str, vejledning: str, provider: str = "", model: str = "",
                    target: str = "runtime", context: dict[str, object] | None = None) -> dict:
-    from core.services.agent_runtime import spawn_agent_task
+    from core.services.agent_message_receipt import spawn_med_kvittering
     from core.services.agent_runtime_base import tools_for_policy
     policy = "read-only-workstation" if target == "workstation" else "read-only-runtime"
     target_prompt = (
@@ -63,7 +64,8 @@ def _explore_spawn(*, query: str, vejledning: str, provider: str = "", model: st
         if target == "workstation" else
         "Du arbejder i Jarvis' runtime-container. `search` giver korrekte linjenumre."
     )
-    return spawn_agent_task(
+    return spawn_med_kvittering(
+        taalmodighed_s=_EXPLORE_TAALMODIGHED_S,
         role="researcher", goal=f"{query}\n\n{vejledning}",
         system_prompt=(
             "Du er en undersoegende agent. Du LAESER — du aendrer ingenting. "
@@ -80,7 +82,7 @@ def _explore_spawn(*, query: str, vejledning: str, provider: str = "", model: st
             f"{target_prompt}"
         ),
         tool_policy=policy, allowed_tools=tools_for_policy(policy), budget_tokens=0,
-        persistent=False, ttl_seconds=0, auto_execute=True, provider=provider,
+        persistent=False, ttl_seconds=0, provider=provider,
         model=model, context=dict(context or {"execution_target": target}),
         # Explores rotation har ALLEREDE filtreret paa egnethed OG paa om
         # modellen kan kalde vaerktoejer. En capability-vagt ovenpaa er ikke

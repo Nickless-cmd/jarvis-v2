@@ -149,6 +149,83 @@ def complete_task(task_id: str, finding: dict, *, status: str = "completed") -> 
         return dict(conn.execute("SELECT * FROM research_tasks WHERE id=?", (task_id,)).fetchone())
 
 
+def list_tasks(run_id: str) -> list[dict]:
+    """Alle spor i deres egen rækkefølge — også de uafsluttede."""
+    with connect() as conn:
+        _ensure(conn)
+        rows = conn.execute(
+            "SELECT * FROM research_tasks WHERE research_run_id=? ORDER BY ordinal",
+            (run_id,),
+        ).fetchall()
+    return [dict(row) for row in rows]
+
+
+def unfinished_tasks(run_id: str) -> list[dict]:
+    """De spor der IKKE blev færdige. Et genoptaget run må kun tage dem.
+
+    Opgave 6 (17/9-2026): en research-kørsel der blev afbrudt startede forfra,
+    og de spor der allerede havde leveret evidens blev kørt igen — dyrt, og
+    kilderne kom ind to gange.
+    """
+    return [t for t in list_tasks(run_id)
+            if str(t.get("status") or "pending") not in {"completed"}]
+
+
+def prepare_recovery(run_id: str, *, warning: str) -> dict:
+    """Gør et afbrudt research-run klar til at blive taget op igen.
+
+    Et spor der stod som `running` da segmentet døde, kører ikke længere —
+    ingen har dets resultat. Det sættes tilbage til `pending`, så det kan
+    startes igen; de færdige røres ikke.
+    """
+    run = get_run(run_id)
+    if not run:
+        raise ResearchStateError(f"unknown research run: {run_id}")
+    now = _now()
+    with connect() as conn:
+        _ensure(conn)
+        conn.execute(
+            "UPDATE research_tasks SET status='pending',agent_run_id='',updated_at=? "
+            "WHERE research_run_id=? AND status='running'",
+            (now, run_id),
+        )
+        conn.execute(
+            "UPDATE research_runs SET warning=?, updated_at=? WHERE id=?",
+            (str(warning or ""), now, run_id),
+        )
+    opdateret = get_run(run_id) or {}
+    return {"run": opdateret, "unfinished": unfinished_tasks(run_id),
+            # Evidens måles på FÆRDIGE SPOR. `list_findings` tæller parsede
+            # fund, og et spor kan have leveret tekst uden et eneste struktureret
+            # fund — det er stadig evidens at bygge en rapport på.
+            "completed_tasks": completed_task_count(run_id)}
+
+
+def advance_to_completed(run_id: str, *, warning: str = "") -> dict:
+    """Før runnet hele vejen til `completed` — ét trin ad gangen.
+
+    Overgangene er med vilje ordnede (`_ORDER`), så et run ikke kan hoppe fra
+    «created» til «completed» og dermed skjule at faserne aldrig skete. En
+    genoptagelse står derimod et vilkårligt sted i rækken, og skal stadig kunne
+    lukkes. Derfor gås rækken igennem i stedet for at springe.
+    """
+    run = get_run(run_id)
+    if not run:
+        raise ResearchStateError(f"unknown research run: {run_id}")
+    nu = str(run.get("status") or "")
+    if nu in _TERMINAL:
+        return run
+    start = _ORDER.index(nu) if nu in _ORDER else 0
+    for status in _ORDER[start + 1:]:
+        run = transition_run(run_id, status, warning=warning)
+    return run
+
+
+def completed_task_count(run_id: str) -> int:
+    return sum(1 for t in list_tasks(run_id)
+               if str(t.get("status") or "") == "completed")
+
+
 def add_source(run_id: str, source: ResearchSource | dict, *, task_id: str = "") -> dict:
     normalized = normalize_source(source)
     if not normalized.canonical_url:

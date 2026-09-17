@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7673/14864 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7678/14871 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 7673/14864 functions/methods documented (51%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 651 | 1188 | 54% |
-| `core.services` | 5100 | 10216 | 49% |
+| `core.services` | 5105 | 10223 | 49% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 109 | 184 | 59% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -41,7 +41,7 @@ Generated from source. 7673/14864 functions/methods documented (51%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2113)
+## Undocumented public functions (2114)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L207)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1480,26 +1480,27 @@ Generated from source. 7673/14864 functions/methods documented (51%). The list b
 - `core/services/research_evidence_collector.py` :: `collecting_for` (L14)
 - `core/services/research_evidence_collector.py` :: `observe_web_result` (L38)
 - `core/services/research_ledger.py` :: `taellere` (L42)
-- `core/services/research_orchestrator.py` :: `research_enabled` (L949)
-- `core/services/research_orchestrator.py` :: `stream_research_run` (L646)
+- `core/services/research_orchestrator.py` :: `research_enabled` (L1042)
+- `core/services/research_orchestrator.py` :: `stream_research_run` (L649)
 - `core/services/research_prompt_context.py` :: `research_context` (L23)
 - `core/services/research_prompt_context.py` :: `research_prompt_section` (L36)
 - `core/services/research_quality.py` :: `evaluate_research_report` (L19)
 - `core/services/research_router.py` :: `classify_research` (L42)
-- `core/services/research_store.py` :: `active_for_session` (L257)
-- `core/services/research_store.py` :: `add_source` (L152)
-- `core/services/research_store.py` :: `add_steer` (L168)
+- `core/services/research_store.py` :: `active_for_session` (L334)
+- `core/services/research_store.py` :: `add_source` (L229)
+- `core/services/research_store.py` :: `add_steer` (L245)
 - `core/services/research_store.py` :: `bind_visible_run` (L106)
 - `core/services/research_store.py` :: `complete_task` (L138)
-- `core/services/research_store.py` :: `consume_pending_steers` (L176)
+- `core/services/research_store.py` :: `completed_task_count` (L224)
+- `core/services/research_store.py` :: `consume_pending_steers` (L253)
 - `core/services/research_store.py` :: `create_run` (L73)
 - `core/services/research_store.py` :: `create_tasks` (L112)
 - `core/services/research_store.py` :: `get_run` (L67)
-- `core/services/research_store.py` :: `list_sources` (L192)
-- `core/services/research_store.py` :: `mark_stale_interrupted` (L268)
-- `core/services/research_store.py` :: `source_count` (L202)
+- `core/services/research_store.py` :: `list_sources` (L269)
+- `core/services/research_store.py` :: `mark_stale_interrupted` (L345)
+- `core/services/research_store.py` :: `source_count` (L279)
 - `core/services/research_store.py` :: `start_task` (L126)
-- `core/services/research_store.py` :: `tool_call_count` (L250)
+- `core/services/research_store.py` :: `tool_call_count` (L327)
 - `core/services/research_store.py` :: `transition_run` (L85)
 - `core/services/resonance_decay.py` :: `build_resonance_decay_surface` (L410)
 - `core/services/retry_runtime.py` :: `Spent.plus_attempt` (L85)

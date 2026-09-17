@@ -95,7 +95,24 @@ _KORT = {
     # ét ord for begge, fordi forskellen er HVORFOR turen stoppede, ikke
     # hvordan den endte. Kortlægges her frem for at kalde det en uenighed.
     "cancelled": "interrupted",
+    # 17/9-2026: `visible_terminal_policy` fik to nye ord. «recovering» er et
+    # segment der stoppede FØR opgaven var færdig og fortsætter automatisk fra
+    # sit checkpoint — altså en afbrydelse, ikke et helt svar. «failed_terminal»
+    # er samme situation når automatisk genoptagelse er opbrugt.
+    #
+    # Uden dem målte skyggen forkert: Jarvis' run autonomous-5365c59c døde på
+    # «model 'glm-5.2' not found», den kørende kode bogførte `recovering`, og
+    # kontrakten sagde `completed` med reglen «afregnet besked, hel». Skyggen
+    # bogfører ingenting, så ingen kørsel blev afregnet forkert — men målingen
+    # ville have blåstemplet et afbrudt run, og det er netop det den skal fange.
+    "recovering": "interrupted",
+    "failed_terminal": "failed",
 }
+
+
+#: Statusser hvor turen stoppede før den var færdig. Alle fem er «den blev
+#: stoppet», og kontrakten har ét ord for det.
+_AFBRUDT_STATUS = frozenset({"cancelled", "interrupted", "recovering"})
 
 
 #: Hvor ofte enigheden siges højt. Tavshed er ellers TVETYDIG: den kan betyde
@@ -147,7 +164,7 @@ def observe(*, run_id: str, legacy_status: str, legacy_error: str | None,
         # for et run der døde midt i flugten (GeneratorExit, CancelledError).
         # Begge er «turen blev stoppet», og at kalde den sidste `OK` ville få
         # klassifikatoren til at se et tomt svar hvor der var en afbrydelse.
-        terminal = (S.CANCELLED if (cancelled or str(legacy_status) == "interrupted")
+        terminal = (S.CANCELLED if (cancelled or str(legacy_status) in _AFBRUDT_STATUS)
                     else S.TRANSPORT_ERROR if transport_error else S.OK)
         # Præfikset måles fra den SERVER-EJEDE buffer, ikke fra kalderens
         # variabel: spec en siger at bytes en klient så, men som ikke er i den

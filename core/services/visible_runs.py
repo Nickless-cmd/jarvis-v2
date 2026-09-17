@@ -6095,7 +6095,9 @@ async def _stream_visible_run(
                 text=visible_output_text or "",
                 emitted_prefix=visible_output_text or "",
                 cancelled=_outcome_state.status == "cancelled",
-                transport_error=_outcome_state.status == "failed",
+                # `failed_terminal` er også «det gik i stykker» — et segment der
+                # stoppede før tid og ikke har flere genoptagelser tilbage.
+                transport_error=_outcome_state.status in ("failed", "failed_terminal"),
             )
         except Exception:
             pass

@@ -220,3 +220,30 @@ def test_legacy_INTERRUPTED_er_en_afbrydelse_ikke_et_tomt_svar(taendt):
     _obs(legacy_status="interrupted", text="", emitted_prefix="",
          legacy_error="run-abandoned-before-finalization:CancelledError")
     assert SH.taellere() == {"enige": 1, "uenige": 0, "fejl": 0, "sprunget_over": 0}
+
+
+# ── de to nye terminale ord (17/9-2026) ─────────────────────────────────
+
+def test_et_RECOVERING_segment_er_en_afbrydelse_ikke_et_helt_svar(taendt):
+    """Jarvis' run autonomous-5365c59c døde på «model 'glm-5.2' not found».
+    Den kørende kode bogførte `recovering`; kontrakten sagde `completed` med
+    reglen «afregnet besked, hel». Skyggen bogfører ingenting, men en måling
+    der blåstempler et afbrudt run kan ikke bruges til at afgøre noget."""
+    _obs(legacy_status="recovering",
+         legacy_error="interrupted:followup-round-1-provider-error: HTTP Error 404",
+         text="Vækkelsen fyrede — genstarten er sket.",
+         emitted_prefix="Vækkelsen fyrede — genstarten er sket.")
+    assert SH.taellere()["uenige"] == 0
+    assert SH.taellere()["enige"] == 1
+
+
+def test_failed_terminal_er_en_fejl(taendt):
+    _obs(legacy_status="failed_terminal", legacy_error="genoptagelser opbrugt",
+         text="", emitted_prefix="", transport_error=True)
+    assert SH.taellere()["enige"] == 1
+
+
+def test_et_HELT_svar_er_stadig_completed(taendt):
+    """Værnet må ikke gøre alt til en afbrydelse."""
+    _obs(legacy_status="completed")
+    assert SH.taellere()["enige"] == 1 and SH.taellere()["uenige"] == 0

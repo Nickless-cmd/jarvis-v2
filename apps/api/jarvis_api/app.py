@@ -607,9 +607,20 @@ def create_app() -> FastAPI:
                 if run_er_terminal(_rid) is True:
                     mark_completed(_rid)      # turen var slut — ikke vores offer
                     continue
-                mark_interrupted(_rid,
-                                 reason="api-nedlukning",
-                                 summary="processen lukkede mens turen koerte")
+                # GENOPTAGELIG, ikke bare afbrudt (17/9-2026). En `interrupted`
+                # post er ikke forfalden for dispatcheren, så en synlig tur
+                # dræbt af nedlukningen ville aldrig blive taget op igen —
+                # arbejdet, værktøjskaldene og checkpointet var tabt ved
+                # genstarten. Autonome kørsler beholder scheduleren.
+                if str(_r.get("kind") or "visible") == "visible":
+                    from core.services.in_flight_runs import settle_recovering
+                    settle_recovering(
+                        _rid, reason="shutdown",
+                        summary=str(_r.get("original_request") or "api-nedlukning"))
+                else:
+                    mark_interrupted(_rid,
+                                     reason="api-nedlukning",
+                                     summary="processen lukkede mens turen koerte")
                 # 12/9-2026: og spejl stemplet ind i `visible_runs`, så rækken
                 # ikke bliver staaende `running` for evigt. Kun `running` rækker
                 # rammes — et rigtigt udfald kan ikke overskrives.

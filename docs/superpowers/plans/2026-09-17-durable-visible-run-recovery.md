@@ -10,6 +10,14 @@
 
 **Spec:** `docs/superpowers/specs/2026-09-17-durable-visible-run-recovery-design.md`
 
+**Status 17/9-2026:** alle otte opgaver er bygget og flettet til main
+(`183d46164`) og deployet. Opgave 1-2 af codex, 3-8 af opus efter at hans kvote
+slap op. Afvigelser undervejs står i commit-beskederne; de to vigtigste: planens
+opgave 3 trin 4 (fjern direkte fortsættelse fra detached-completion) blev
+udført i opgave 4 i stedet, fordi dispatcheren skulle findes først, og
+`recovery_mode: final_synthesis` blev først koblet på beskeden i slutrunden
+efter en gennemgang af planens trin 5.
+
 ## Global Constraints
 
 - Only explicit user Stop, recognized stop intent, or safety policy may produce terminal `cancelled`.
@@ -41,7 +49,7 @@
 - Produces: `release_recovery_claim(task_id: str, generation: int, *, owner: str, reason: str, retry_after_s: float) -> bool`
 - Existing `mark_started`, `mark_interrupted`, `mark_completed`, and readers remain source-compatible.
 
-- [ ] **Step 1: Write failing journal and claim tests**
+- [x] **Step 1: Write failing journal and claim tests**
 
 ```python
 def test_recoverable_settlement_survives_reload(tmp_state):
@@ -82,7 +90,7 @@ def test_failed_strict_save_does_not_report_success(tmp_state, monkeypatch):
         save_json_strict("in_flight_runs", {"r1": {}})
 ```
 
-- [ ] **Step 2: Run tests and verify RED**
+- [x] **Step 2: Run tests and verify RED**
 
 Run:
 
@@ -92,7 +100,7 @@ python -m pytest tests/test_in_flight_runs.py tests/test_in_flight_recovery_clai
 
 Expected: failures for missing strict persistence and recovery claim APIs.
 
-- [ ] **Step 3: Implement strict persistence and cross-process mutation**
+- [x] **Step 3: Implement strict persistence and cross-process mutation**
 
 Add `save_json_strict`; keep `save_json` as the self-safe wrapper. In
 `in_flight_runs`, use one sidecar lock file under `~/.jarvis-v2/state/` and
@@ -101,12 +109,12 @@ records on write with `task_id=run_id`, generation `0`, and conservative
 defaults. Claims compare status, due time, owner liveness, lease, and session
 ownership while holding the lock.
 
-- [ ] **Step 4: Re-run focused tests to GREEN**
+- [x] **Step 4: Re-run focused tests to GREEN**
 
 Run the command from Step 2 plus a multiprocessing claim race test. Exactly one
 process must return a claim.
 
-- [ ] **Step 5: Commit Task 1 through the attribution wrapper**
+- [x] **Step 5: Commit Task 1 through the attribution wrapper**
 
 Stage only the four Task 1 paths and commit `feat(runtime): add durable recovery claims`.
 
@@ -128,7 +136,7 @@ Stage only the four Task 1 paths and commit `feat(runtime): add durable recovery
 - Produces: `settle_segment(request) -> RecoverySettlement`.
 - `RecoverySettlement` contains `decision`, `record`, `notice`, `dispatch_due`, and `final_synthesis_required`.
 
-- [ ] **Step 1: Write failing classification and idempotence tests**
+- [x] **Step 1: Write failing classification and idempotence tests**
 
 ```python
 @pytest.mark.parametrize("reason,failure_class", [
@@ -157,13 +165,13 @@ def test_explicit_cancel_is_final_and_revokes_claim(journal):
     assert out.dispatch_due is False
 ```
 
-- [ ] **Step 2: Run tests and verify RED**
+- [x] **Step 2: Run tests and verify RED**
 
 ```bash
 python -m pytest tests/test_visible_run_recovery_coordinator.py tests/test_visible_terminal_policy.py tests/services/test_visible_runs_lifecycle.py -q
 ```
 
-- [ ] **Step 3: Implement coordinator and broaden the terminal taxonomy**
+- [x] **Step 3: Implement coordinator and broaden the terminal taxonomy**
 
 Map provider errors, relay timeouts, watchdog limits, shutdown, research
 exhaustion, and `interrupted:*` to recovery. Preserve explicit cancellation as
@@ -171,9 +179,9 @@ the only normal cancelled path. `finalize_in_flight` delegates to the
 coordinator and must no longer clear failed/recovering records through the
 generic `mark_completed` branch.
 
-- [ ] **Step 4: Re-run focused tests to GREEN**
+- [x] **Step 4: Re-run focused tests to GREEN**
 
-- [ ] **Step 5: Commit Task 2**
+- [x] **Step 5: Commit Task 2**
 
 Commit `feat(runtime): centralize visible run recovery settlement`.
 
@@ -196,7 +204,7 @@ Commit `feat(runtime): centralize visible run recovery settlement`.
 - Consumes: `settle_segment` from Task 2.
 - Produces: every abnormal segment exit with a durable recovery record before terminal SSE.
 
-- [ ] **Step 1: Write fault-injection tests for each hot-path ending**
+- [x] **Step 1: Write fault-injection tests for each hot-path ending**
 
 Cover raised first-pass provider error, breaker-open with no fallback, round
 silence timeout, round total timeout, turn retry exhaustion, turn wall clock,
@@ -209,13 +217,13 @@ assert terminal_delta["delta"]["stop_reason"] == "recovering"
 assert not any(event_claims_completed_without_evidence(events))
 ```
 
-- [ ] **Step 2: Run focused tests and verify RED**
+- [x] **Step 2: Run focused tests and verify RED**
 
 ```bash
 python -m pytest tests/test_visible_run_terminal_recovery.py tests/test_visible_runs_sse_v2.py tests/test_detached_run_tavs_sluger.py tests/test_loop_stop_reasons.py tests/test_visible_run_failure_classes.py -q
 ```
 
-- [ ] **Step 3: Replace local abnormal finalization with coordinator calls**
+- [x] **Step 3: Replace local abnormal finalization with coordinator calls**
 
 Keep retry/failover and numeric limits unchanged. Before yielding terminal SSE,
 save checkpoint evidence, settle durably, then emit the coordinator notice.
@@ -224,15 +232,15 @@ abandoned non-`Exception` exits unless cancellation is already durable. A
 durable-write failure must emit failed infrastructure state where possible and
 must not clear the previous running record.
 
-- [ ] **Step 4: Remove direct continuation scheduling from detached completion**
+- [x] **Step 4: Remove direct continuation scheduling from detached completion**
 
 `_fortsaet_hvis_budgettet_loeb_toert` becomes a compatibility adapter that
 records/signal-wakes the dispatcher; it may not call
 `start_user_run_detached` itself. This establishes one continuation owner.
 
-- [ ] **Step 5: Re-run focused tests to GREEN**
+- [x] **Step 5: Re-run focused tests to GREEN**
 
-- [ ] **Step 6: Commit Task 3**
+- [x] **Step 6: Commit Task 3**
 
 Commit `fix(runtime): settle every abnormal visible run exit durably`.
 
@@ -255,7 +263,7 @@ Commit `fix(runtime): settle every abnormal visible run exit durably`.
 - Produces: `signal_recovery_dispatcher() -> None` for immediate wake after live settlement.
 - Consumes: `start_user_run_detached(*, message: str, session_id: str, run_id: str | None = None, recovery_task_id: str = "", recovery_generation: int = 0, recovery_attempt: int = 0, **visible_kwargs) -> str`.
 
-- [ ] **Step 1: Write failing dispatcher tests**
+- [x] **Step 1: Write failing dispatcher tests**
 
 ```python
 def test_boot_orphan_is_resumed_once_after_readiness(fake_spawn, journal):
@@ -277,13 +285,13 @@ def test_failed_spawn_releases_claim_with_backoff(fake_spawn_raises, journal):
     assert journal_record()["status"] == "recovering"
 ```
 
-- [ ] **Step 2: Run tests and verify RED**
+- [x] **Step 2: Run tests and verify RED**
 
 ```bash
 python -m pytest tests/test_visible_run_recovery_dispatcher.py tests/test_session_boot_reconciler.py tests/test_drain_before_restart.py -q
 ```
 
-- [ ] **Step 3: Implement boot reconciliation and dispatcher**
+- [x] **Step 3: Implement boot reconciliation and dispatcher**
 
 Boot reconciliation changes confirmed dead-owner visible records to
 `recovering` while preserving task metadata. The API process starts one daemon
@@ -292,9 +300,9 @@ identity, incremented generation, original request, checkpoint context, and
 unfinished intent into the detached run. Progress renews the lease. Graceful
 shutdown settles but never dispatches new work.
 
-- [ ] **Step 4: Re-run focused tests to GREEN**
+- [x] **Step 4: Re-run focused tests to GREEN**
 
-- [ ] **Step 5: Commit Task 4**
+- [x] **Step 5: Commit Task 4**
 
 Commit `feat(runtime): resume orphaned visible tasks exactly once`.
 
@@ -315,7 +323,7 @@ Commit `feat(runtime): resume orphaned visible tasks exactly once`.
 - New user input calls `steer_visible_run`; if steering is unavailable, it is durably queued rather than clearing the active task.
 - Explicit restart/forget intent calls `settle_terminal(run_id, status="cancelled", reason="user-restart")` and clears the prior task by authorization.
 
-- [ ] **Step 1: Write failing cancellation/supersession tests**
+- [x] **Step 1: Write failing cancellation/supersession tests**
 
 ```python
 def test_stop_is_terminal_and_never_recovered(active_run):
@@ -331,17 +339,17 @@ def test_new_message_steers_without_erasing_active_recovery(active_run):
     assert record(active_run.task_id)["status"] == "running"
 ```
 
-- [ ] **Step 2: Run tests and verify RED**
+- [x] **Step 2: Run tests and verify RED**
 
-- [ ] **Step 3: Wire explicit cancel and preserve non-cancelling supersession**
+- [x] **Step 3: Wire explicit cancel and preserve non-cancelling supersession**
 
 Remove any generic “new run implies prior finished” deletion from
 `mark_started`. Preserve terminal history until the coordinator prunes it.
 Session single-flight remains authoritative.
 
-- [ ] **Step 4: Re-run focused tests to GREEN**
+- [x] **Step 4: Re-run focused tests to GREEN**
 
-- [ ] **Step 5: Commit Task 5**
+- [x] **Step 5: Commit Task 5**
 
 Commit `fix(runtime): separate user stop from run supersession`.
 
@@ -365,7 +373,7 @@ Commit `fix(runtime): separate user stop from run supersession`.
 - Produces: `resume_research_run(run_id: str, *, visible_run_id: str, worker_factory=None) -> AsyncIterator[str]`.
 - Produces: `ResearchRecoverableError(run_id, reason, evidence_count)` when no synthesis is possible.
 
-- [ ] **Step 1: Write failing research recovery tests**
+- [x] **Step 1: Write failing research recovery tests**
 
 ```python
 async def test_timeout_synthesizes_completed_evidence_without_repeating_tracks(store):
@@ -430,13 +438,13 @@ def test_prepare_recovery_keeps_completed_tasks_and_resets_only_running(store):
     assert states == {1: "completed", 2: "pending"}
 ```
 
-- [ ] **Step 2: Run tests and verify RED**
+- [x] **Step 2: Run tests and verify RED**
 
 ```bash
 python -m pytest tests/test_research_store.py tests/test_research_orchestrator.py tests/test_research_recovery.py -q
 ```
 
-- [ ] **Step 3: Implement resumable research state**
+- [x] **Step 3: Implement resumable research state**
 
 Add `recovering` as a nonterminal research status. `prepare_recovery` keeps
 completed findings and sources, resets interrupted `running` tasks to pending,
@@ -444,14 +452,14 @@ and records an idempotent ledger event. Timeout still synthesizes partial
 evidence when usable; only absent/failed synthesis escalates parent recovery.
 Explicit cancellation remains terminal.
 
-- [ ] **Step 4: Connect research recovery metadata to visible recovery records**
+- [x] **Step 4: Connect research recovery metadata to visible recovery records**
 
 Store `research_run_id` and unfinished ordinals in the parent checkpoint. The
 dispatcher calls `resume_research_run` rather than creating a new research run.
 
-- [ ] **Step 5: Re-run focused tests to GREEN**
+- [x] **Step 5: Re-run focused tests to GREEN**
 
-- [ ] **Step 6: Commit Task 6**
+- [x] **Step 6: Commit Task 6**
 
 Commit `feat(research): resume timed out research without duplicate work`.
 
@@ -471,7 +479,7 @@ Commit `feat(research): resume timed out research without duplicate work`.
 - Produces: `GET /chat/sessions/{session_id}/recovery` returning `204` or `{task_id, run_id, state, reason, recovery_attempt, checkpoint_summary, notice}`.
 - Existing `/active-runs`, `/live`, and `/subscribe` consult durable recovery state when the process-local event log is absent.
 
-- [ ] **Step 1: Write failing reconnect tests**
+- [x] **Step 1: Write failing reconnect tests**
 
 ```python
 def test_reconnect_after_process_log_loss_returns_recovery_snapshot(client, journal):
@@ -487,16 +495,16 @@ def test_synthetic_stop_for_recovery_never_claims_end_turn():
     assert '"stop_reason": "end_turn"' not in frame
 ```
 
-- [ ] **Step 2: Run tests and verify RED**
+- [x] **Step 2: Run tests and verify RED**
 
-- [ ] **Step 3: Implement recovery snapshot and durable fallback**
+- [x] **Step 3: Implement recovery snapshot and durable fallback**
 
 Return redacted user-facing notice text only. A missing in-memory log is no
 longer equivalent to a completed run when a durable recovering record exists.
 
-- [ ] **Step 4: Re-run focused tests to GREEN**
+- [x] **Step 4: Re-run focused tests to GREEN**
 
-- [ ] **Step 5: Commit Task 7**
+- [x] **Step 5: Commit Task 7**
 
 Commit `feat(api): expose durable visible run recovery state`.
 
@@ -512,7 +520,7 @@ Commit `feat(api): expose durable visible run recovery state`.
 **Interfaces:**
 - Verifies all six failure classes against the same lifecycle assertions.
 
-- [ ] **Step 1: Add the parameterized end-to-end fault matrix**
+- [x] **Step 1: Add the parameterized end-to-end fault matrix**
 
 ```python
 @pytest.mark.parametrize("fault", [
@@ -536,7 +544,7 @@ def test_explicit_user_cancel_is_the_nonrecovering_control(harness):
     assert result.continuations == 0
 ```
 
-- [ ] **Step 2: Run all affected tests, not the full suite**
+- [x] **Step 2: Run all affected tests, not the full suite**
 
 ```bash
 python -m pytest \
@@ -563,7 +571,7 @@ python -m pytest \
   tests/test_visible_recovery_fault_matrix.py -q
 ```
 
-- [ ] **Step 3: Run syntax and repository checks**
+- [x] **Step 3: Run syntax and repository checks**
 
 ```bash
 python -m compileall -q core apps/api
@@ -571,23 +579,23 @@ git diff --check
 python scripts/install_git_hooks.py --check
 ```
 
-- [ ] **Step 4: Regenerate only required API documentation**
+- [x] **Step 4: Regenerate only required API documentation**
 
 Use the repository's existing docs generator for changed public modules, then
 inspect generated diffs and exclude unrelated churn.
 
-- [ ] **Step 5: Review invariants before final commit**
+- [x] **Step 5: Review invariants before final commit**
 
 Confirm no recoverable path calls `mark_completed`, every dispatcher claim has
 a lease and generation check, explicit cancel cannot be reclaimed, completed
 research tracks are immutable during recovery, and no secret or runtime state
 file is staged.
 
-- [ ] **Step 6: Commit final integration through attribution wrapper**
+- [x] **Step 6: Commit final integration through attribution wrapper**
 
 Commit `test(runtime): verify durable recovery across run failure classes`.
 
-- [ ] **Step 7: Push, deploy, and verify focused production behavior when requested**
+- [x] **Step 7: Push, deploy, and verify focused production behavior when requested**
 
 Drain active work before restart, pull the exact pushed revision on the Jarvis
 container, restart only affected services, verify both health endpoints and

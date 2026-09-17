@@ -102,3 +102,15 @@ def test_en_opgave_uden_session_startes_ikke(spawn):
 def test_intet_forfaldent_giver_ingen_stoej(spawn):
     assert D.recover_due_once() == {"started": 0, "released": 0, "claimed": ""}
     assert not spawn
+
+
+def test_sidste_runde_beder_om_en_AFSLUTNING_ikke_mere_arbejde(spawn):
+    """Er forsøgene brugt op, må den sidste runde ikke gå med at grave videre."""
+    ifr.mark_started(run_id="task-9", session_id="chat-1", user_message="den store opgave")
+    ifr.settle_recovering("task-9", reason="provider-round-timeout",
+                          summary="den store opgave", recovery_limit=1,
+                          final_synthesis_pending=True)
+    assert D.recover_due_once()["started"] == 1
+    besked = spawn[0]["message"]
+    assert "sidste runde" in besked and "Start ikke nyt arbejde" in besked
+    assert "den store opgave" in besked, "opgaven skal stadig stå i beskeden"

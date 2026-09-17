@@ -86,6 +86,16 @@ def recover_due_once(*, owner: str | None = None) -> dict[str, object]:
         return {"started": 0, "released": 1, "claimed": task_id, "error": "no-session"}
 
     besked = _besked_fra(krav)
+    # SIDSTE SLUTRUNDE (opgave 3/4). Er genoptagelserne brugt op, beder
+    # journalen om en AFSLUTNING — ikke om mere arbejde. Uden dette fik den
+    # samme besked som en almindelig fortsættelse og kunne bruge sin sidste
+    # runde på at grave videre i stedet for at svare.
+    if str(krav.get("recovery_mode") or "") == "final_synthesis":
+        besked = (
+            "Din sidste runde: du har ikke flere forsøg. Svar på det du ved nu "
+            "— sammenfat hvad du nåede, og sig tydeligt hvad der IKKE blev "
+            f"gjort. Start ikke nyt arbejde.\n\nOpgaven var:\n{besked}"
+        )
     # Hvad brugeren nåede at skrive imens hører til opgaven — ikke til det
     # segment der døde. Uden dette ville hans tilføjelse være tabt.
     koe = [str(x).strip() for x in (krav.get("pending_steers") or []) if str(x).strip()]

@@ -43,7 +43,8 @@ logger = logging.getLogger("uvicorn.error")
 TAALMODIGHED_S = 20.0
 
 
-def _book_completion_wakeup(agent_id: str, resultat: dict[str, Any]) -> None:
+def _book_completion_wakeup(agent_id: str, resultat: dict[str, Any],
+                            vurdering: str = "") -> None:
     """Book en self-wakeup saa forælderen faar besked naar baggrundsbarnet er faerdigt.
 
     Kaldes fra baggrundstraadens finally-blok naar forælderen allerede har
@@ -64,7 +65,8 @@ def _book_completion_wakeup(agent_id: str, resultat: dict[str, Any]) -> None:
             delay_seconds=60,
             prompt=(
                 f"Baggrunds-agent {agent_id} er faerdig (status={status}). "
-                f"Svar-uddrag: {svar[:200] if svar else '(tomt)'}... "
+                + (f"{vurdering} " if vurdering else "")
+                + f"Svar-uddrag: {svar[:200] if svar else '(tomt)'}... "
                 f"Hent det fulde resultat med get_agent(agent_id='{agent_id}')."
             ),
             reason=f"agent-completion:{agent_id}",
@@ -98,7 +100,8 @@ def send_med_kvittering(*, agent_id: str, content: str,
     return _koer_med_taalmodighed(agent_id, _udfoer, taalmodighed_s)
 
 
-def _koer_med_taalmodighed(agent_id: str, udfoer, taalmodighed_s: float) -> dict[str, Any]:
+def _koer_med_taalmodighed(agent_id: str, udfoer, taalmodighed_s: float,
+                           efterbehandling: Any = None) -> dict[str, Any]:
     """Kør barnet i en tråd med forælderens kontekst; svar eller kvittér.
 
     Fælles for `send_med_kvittering` og `spawn_med_kvittering`.
@@ -138,7 +141,17 @@ def _koer_med_taalmodighed(agent_id: str, udfoer, taalmodighed_s: float) -> dict
                 vaek = tilstand["forsent"]
             faerdig.set()
             if vaek:
-                _book_completion_wakeup(agent_id, resultat)
+                # Kun for et SENT svar: det inline-svar gennemgår kalderen selv.
+                vurdering = ""
+                if efterbehandling is not None:
+                    try:
+                        vurdering = str(efterbehandling(dict(resultat)) or "")
+                    except Exception as exc:
+                        logger.warning("barn %s: efterbehandling fejlede", agent_id,
+                                       exc_info=True)
+                        vurdering = (f"Efterbehandlingen af svaret fejlede ({exc}) — "
+                                     "efterprøv resultatet selv.")
+                _book_completion_wakeup(agent_id, resultat, vurdering)
 
     try:
         t = threading.Thread(target=lambda: kontekst.run(_koer),
@@ -182,6 +195,7 @@ def kvittering(agent_id: str, *, taalmodighed_s: float = TAALMODIGHED_S) -> dict
 
 
 def spawn_med_kvittering(*, taalmodighed_s: float = TAALMODIGHED_S,
+                         efterbehandling: Any = None,
                          **spawn_kwargs) -> dict[str, Any]:
     """Spawn en agent, vent kort, returner enten resultat eller kvittering.
 
@@ -214,7 +228,7 @@ def spawn_med_kvittering(*, taalmodighed_s: float = TAALMODIGHED_S,
     def _udfoer() -> dict[str, Any]:
         return execute_agent_task(agent_id=agent_id) or {}
 
-    svar = _koer_med_taalmodighed(agent_id, _udfoer, taalmodighed_s)
+    svar = _koer_med_taalmodighed(agent_id, _udfoer, taalmodighed_s, efterbehandling)
     # Kalderen (explore) skal kunne se model og udbyder, også i en kvittering.
     for felt in ("provider", "model"):
         if felt not in svar and spawn_result.get(felt):

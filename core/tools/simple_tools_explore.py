@@ -52,7 +52,8 @@ def _execution_context(args: dict[str, Any]) -> tuple[str, dict[str, object], st
 
 
 def _explore_spawn(*, query: str, vejledning: str, provider: str = "", model: str = "",
-                   target: str = "runtime", context: dict[str, object] | None = None) -> dict:
+                   target: str = "runtime", context: dict[str, object] | None = None,
+                   efterbehandling: Any = None) -> dict:
     from core.services.agent_message_receipt import spawn_med_kvittering
     from core.services.agent_runtime_base import tools_for_policy
     policy = "read-only-workstation" if target == "workstation" else "read-only-runtime"
@@ -65,7 +66,7 @@ def _explore_spawn(*, query: str, vejledning: str, provider: str = "", model: st
         "Du arbejder i Jarvis' runtime-container. `search` giver korrekte linjenumre."
     )
     return spawn_med_kvittering(
-        taalmodighed_s=_EXPLORE_TAALMODIGHED_S,
+        taalmodighed_s=_EXPLORE_TAALMODIGHED_S, efterbehandling=efterbehandling,
         role="researcher", goal=f"{query}\n\n{vejledning}",
         system_prompt=(
             "Du er en undersoegende agent. Du LAESER — du aendrer ingenting. "
@@ -218,6 +219,88 @@ def _bevis_note(bevis: str, kontrolleret: int, substans: int) -> str:
             "verificeret, det er blot ikke modsagt.")
 
 
+def _vurder_svar(result: dict, *, tjek_paastande: Any, bro_tjek: Any = None,
+                 bro_linje: Any = None) -> dict[str, Any]:
+    """Fabrikations-værnet på ÉT explore-resultat.
+
+    Udskilt 17/9-2026 så det SAMME værn kører både inline og på et svar der
+    lander efter kvitteringen. Jarvis' krav: «ellers bytter vi en låst tur for
+    et uverificeret svar». `holder` er True kun når påstandene holder OG
+    agenten faktisk læste noget.
+    """
+    svar, udbyder_fejl = _explore_svar(result)
+    ud: dict[str, Any] = {"svar": svar, "udbyder_fejl": udbyder_fejl, "tjekket": False,
+                          "holder": False, "dom": {}, "kontrolleret": 0, "substans": 0,
+                          "kald": 0, "fejl": []}
+    if not svar or tjek_paastande is None:
+        return ud
+    dom = (tjek_paastande(svar, findes_fn=bro_tjek, linje_fn=bro_linje)
+           if bro_tjek else tjek_paastande(svar))
+    kontrolleret = int(dom.get("kontrolleret") or 0)
+    _substans = int(dom.get("indhold_bekraeftet") or 0)
+    # NUL VAERKTOEJSKALD KAN IKKE HAVE FUNDET NOGET.
+    #
+    # Agenten skal LAESE noget for at kunne svare. Udfoerte den ingen kald,
+    # er svaret gaettet — uanset hvor praecist det lyder. Det var praecis
+    # hvad der skete: fire opdigtede citater med linjenumre, fra en model
+    # der aldrig kaldte et vaerktoej.
+    #
+    # `_run_agent_tool_loop` taeller kaldene og lagger dem i resultatet.
+    # Vi kraever kun at der var MINDST ét — ikke at det var det rigtige.
+    # `tool_calls` BETYDER TO TING, og det er derfor dette braekkede.
+    #
+    # I koerslens `output_payload_json` er det et TAL (loekkens taelling).
+    # I agent-fladen (`enrich_agent_surface`) er det en LISTE, og tallet
+    # hedder `tool_call_count`. Explore faar fladen, men laeste navnet med
+    # payloadens betydning: `int(<liste>)` kaster.
+    #
+    # Det havde ligget der hele tiden og aldrig fejlet, fordi `[] or 0`
+    # er 0 — saa laenge listen var TOM. Mine to fixes i dag gjorde den
+    # ikke-tom: bogfoeringen fyldte den, og rotationen soergede for at der
+    # var noget at bogfoere. Jo bedre agenten opfoerte sig, jo sikrere
+    # crashede det — agenten laeste filen KORREKT, og hele svaret blev
+    # kastet vaek af wrappen bagefter. (Jarvis' fjerde koersel.)
+    #
+    # Der laeses derfor efter FORM, ikke efter navn: et navn der er
+    # aerligt i to sammenhaenge og loegnagtigt i den tredje maa ikke
+    # afgoeres af hvilken vej svaret kom.
+    _raa = result.get("tool_call_count")
+    if _raa is None:
+        _raa = result.get("tool_calls")
+    _kald = (len(_raa) if isinstance(_raa, (list, tuple, set))
+             else int(_raa or 0))
+    _tomhaendet = _kald == 0 and _substans == 0
+    fejl = [str(x) for x in (dom.get("fejl") or [])]
+    if _tomhaendet and not fejl:
+        # Ingen paaviselig fejl — men heller intet belaeg. Rotér frem for
+        # at blaastemple. Foer returnerede vi paa runde 0, saa den
+        # mekanisme der skulle skifte modellen ud koerte ALDRIG: gaten
+        # blev sat ud af spil af netop den fejl den var bygget til at
+        # fange.
+        fejl = [f"agenten udfoerte {_kald} vaerktoejskald og fik intet indhold "
+                "bekraeftet — svaret kan ikke hvile paa noget den har laest"]
+    ud.update(tjekket=True, dom=dom, kontrolleret=kontrolleret, substans=_substans,
+              kald=_kald, fejl=fejl, holder=bool(dom.get("holder")) and not _tomhaendet)
+    return ud
+
+
+def _vurdering_til_wakeup(vurdering: dict[str, Any]) -> str:
+    """Dommen over et sent explore-svar, som den skal stå i vækningen."""
+    if not vurdering.get("svar"):
+        return ("Explore kom IKKE igennem: "
+                + (vurdering.get("udbyder_fejl") or "intet svar fra agenten") + ".")
+    if not vurdering.get("tjekket"):
+        return "Påstands-tjekket kunne ikke køre — efterprøv filstier og citater selv."
+    if vurdering.get("holder"):
+        dom = vurdering.get("dom") or {}
+        return "Påstands-tjek: " + _bevis_note(
+            str(dom.get("bevis") or "intet-bevis"), int(vurdering.get("kontrolleret") or 0),
+            int(vurdering.get("substans") or 0))
+    return ("ADVARSEL — påstandene kunne IKKE bekræftes i kilden: "
+            + "; ".join(list(vurdering.get("fejl") or [])[:4])
+            + ". Brug ikke fundene uden at efterprøve dem.")
+
+
 def _exec_explore(args: dict[str, Any]) -> dict[str, Any]:
     query = str(args.get("query") or args.get("goal") or "").strip()
     if not query:
@@ -324,6 +407,13 @@ def _exec_explore(args: dict[str, Any]) -> dict[str, Any]:
                 # Ogsaa paa runtime-stien: herkomsten hoerer til barnet,
                 # ikke til hvor det tilfaeldigvis koerer.
                 spawn_args["context"] = {"execution_target": target, **herkomst}
+            if tjek_paastande is not None:
+                # Et svar der lander EFTER kvitteringen skal igennem samme værn
+                # før Jarvis vækkes med det.
+                spawn_args["efterbehandling"] = (
+                    lambda res, _t=tjek_paastande, _b=_bro_tjek, _l=_bro_linje:
+                    _vurdering_til_wakeup(_vurder_svar(res, tjek_paastande=_t,
+                                                       bro_tjek=_b, bro_linje=_l)))
             result = _facade()._explore_spawn(**spawn_args)
         except Exception as exc:
             return {"status": "error", "error": str(exc), "breadth": bredde,
@@ -334,61 +424,28 @@ def _exec_explore(args: dict[str, Any]) -> dict[str, Any]:
             # fejl: uden dette læste løkken den tomme kvittering som «modellen
             # svarede ikke» og startede næste model — op til tre agenter om
             # samme spørgsmål, og Jarvis fik en fejl mens de alle kørte videre.
-            # Påstands-tjekket kan ikke køre på et svar der ikke findes endnu;
-            # det sker når resultatet hentes.
+            # Påstands-tjekket kører i baggrunden når svaret lander, og dommen
+            # står i vækningen.
             return {"status": "accepted", "agent_id": agent_id, "breadth": bredde,
                     "target": target,
                     "provider": str(result.get("provider") or prov),
                     "model": str(result.get("model") or mod),
                     "besked": ("Explore arbejder stadig i baggrunden. Du bliver vækket "
-                               "når den er færdig; hent svaret med "
-                               f"get_agent(agent_id='{agent_id}'). Fund i et sent svar "
-                               "er IKKE påstands-tjekket — efterprøv filstier selv.")}
+                               "når den er færdig, og påstands-tjekkets dom står i "
+                               "vækningen; hent svaret med "
+                               f"get_agent(agent_id='{agent_id}').")}
         brugt.add((str(result.get("provider") or prov), str(result.get("model") or mod)))
-        svar_n, udbyder_fejl = _explore_svar(result)
-        if not svar_n:
-            sidste_fejl = [udbyder_fejl or str(result.get("error") or "agenten fejlede")]
+        vurdering = _vurder_svar(result, tjek_paastande=tjek_paastande,
+                                 bro_tjek=_bro_tjek, bro_linje=_bro_linje)
+        if not vurdering["svar"]:
+            sidste_fejl = [vurdering["udbyder_fejl"] or str(result.get("error") or "agenten fejlede")]
             continue
-        svar = svar_n
+        svar = vurdering["svar"]
         if tjek_paastande is None:
             break
-        dom = (tjek_paastande(svar, findes_fn=_bro_tjek, linje_fn=_bro_linje)
-               if _bro_tjek else tjek_paastande(svar))
-        kontrolleret = int(dom.get("kontrolleret") or 0)
-        _substans = int(dom.get("indhold_bekraeftet") or 0)
-        # NUL VAERKTOEJSKALD KAN IKKE HAVE FUNDET NOGET.
-        #
-        # Agenten skal LAESE noget for at kunne svare. Udfoerte den ingen kald,
-        # er svaret gaettet — uanset hvor praecist det lyder. Det var praecis
-        # hvad der skete: fire opdigtede citater med linjenumre, fra en model
-        # der aldrig kaldte et vaerktoej.
-        #
-        # `_run_agent_tool_loop` taeller kaldene og lagger dem i resultatet.
-        # Vi kraever kun at der var MINDST ét — ikke at det var det rigtige.
-        # `tool_calls` BETYDER TO TING, og det er derfor dette braekkede.
-        #
-        # I koerslens `output_payload_json` er det et TAL (loekkens taelling).
-        # I agent-fladen (`enrich_agent_surface`) er det en LISTE, og tallet
-        # hedder `tool_call_count`. Explore faar fladen, men laeste navnet med
-        # payloadens betydning: `int(<liste>)` kaster.
-        #
-        # Det havde ligget der hele tiden og aldrig fejlet, fordi `[] or 0`
-        # er 0 — saa laenge listen var TOM. Mine to fixes i dag gjorde den
-        # ikke-tom: bogfoeringen fyldte den, og rotationen soergede for at der
-        # var noget at bogfoere. Jo bedre agenten opfoerte sig, jo sikrere
-        # crashede det — agenten laeste filen KORREKT, og hele svaret blev
-        # kastet vaek af wrappen bagefter. (Jarvis' fjerde koersel.)
-        #
-        # Der laeses derfor efter FORM, ikke efter navn: et navn der er
-        # aerligt i to sammenhaenge og loegnagtigt i den tredje maa ikke
-        # afgoeres af hvilken vej svaret kom.
-        _raa = result.get("tool_call_count")
-        if _raa is None:
-            _raa = result.get("tool_calls")
-        _kald = (len(_raa) if isinstance(_raa, (list, tuple, set))
-                 else int(_raa or 0))
-        _tomhaendet = _kald == 0 and _substans == 0
-        if dom.get("holder") and not _tomhaendet:
+        dom = vurdering["dom"]
+        kontrolleret = vurdering["kontrolleret"]
+        if vurdering["holder"]:
             # `bevis` SKAL med ud. Uden det laeser en modtager
             # «paastande_kontrolleret: 0» som en detalje og `status: ok` som en
             # blaastempling — og en rapport hvor INTET blev efterproevet ser
@@ -421,17 +478,7 @@ def _exec_explore(args: dict[str, Any]) -> dict[str, Any]:
                         if (_bro_tjek and int(dom.get("uafgjort") or 0) > 0
                             and not kontrolleret)
                         else ("workstation" if _bro_tjek else "container"))}
-        sidste_fejl = [str(x) for x in (dom.get("fejl") or [])]
-        if _tomhaendet and not sidste_fejl:
-            # Ingen paaviselig fejl — men heller intet belaeg. Rotér frem for
-            # at blaastemple. Foer returnerede vi paa runde 0, saa den
-            # mekanisme der skulle skifte modellen ud koerte ALDRIG: gaten
-            # blev sat ud af spil af netop den fejl den var bygget til at
-            # fange.
-            sidste_fejl = [
-                f"agenten udfoerte {_kald} vaerktoejskald og fik intet indhold "
-                "bekraeftet — svaret kan ikke hvile paa noget den har laest"
-            ]
+        sidste_fejl = list(vurdering["fejl"])
     if svar:
         payload: dict[str, Any] = {"status": "ok", "findings": svar[:12000],
                                    "agent_id": agent_id, "breadth": bredde,

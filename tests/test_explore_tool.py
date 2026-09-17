@@ -159,3 +159,27 @@ def test_en_kvittering_roterer_ikke_til_naeste_model(monkeypatch):
     assert len(kald) == 1, "explore startede flere agenter paa en kvittering"
     assert r["status"] == "accepted" and r["agent_id"] == "a-sen"
     assert "get_agent" in r["besked"]
+
+
+def test_sent_explore_svar_faar_samme_vaern_i_vaekningen(monkeypatch):
+    """Et svar der lander efter kvitteringen vurderes af _vurder_svar, og dommen
+    står i vækningen — et tomhændet, opdigtet svar giver en ADVARSEL."""
+    import core.tools.simple_tools_native as nat
+    from core.tools.simple_tools_explore import _vurder_svar, _vurdering_til_wakeup
+    fanget = {}
+
+    def _spawn(**kw):
+        fanget.update(kw)
+        return {"status": "accepted", "agent_id": "a-sen"}
+
+    monkeypatch.setattr(nat, "_explore_spawn", _spawn)
+    r = _exec_explore({"query": "noget langsomt"})
+    assert r["status"] == "accepted"
+    efter = fanget.get("efterbehandling")
+    assert callable(efter), "et sent svar ville slippe uden om fabrikations-værnet"
+    opdigtet = {"messages": [{"direction": "agent->jarvis", "kind": "result",
+                              "content": "Det står i core/findes_ikke.py:42"}],
+                "tool_call_count": 0}
+    assert efter(opdigtet).startswith("ADVARSEL")
+    tomt = _vurdering_til_wakeup(_vurder_svar({"messages": []}, tjek_paastande=None))
+    assert "IKKE igennem" in tomt

@@ -44,7 +44,7 @@ def test_explore_laeser_efter_FORM_ikke_efter_navn():
     maa ikke afgoeres af hvilken vej svaret kom."""
     from core.tools import simple_tools_explore as e
 
-    kilde = inspect.getsource(e._exec_explore)
+    kilde = inspect.getsource(e._exec_explore) + inspect.getsource(e._vurder_svar)
     assert 'result.get("tool_call_count")' in kilde, (
         "explore laeser stadig kun det tvetydige navn")
     assert "isinstance(_raa, (list, tuple, set))" in kilde, (

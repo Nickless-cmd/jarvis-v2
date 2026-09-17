@@ -491,11 +491,13 @@ _Read-only research-agent tool with runtime/Desk execution routing._
 |---|---|---|---|---|
 | function | `_facade` | `()` | — | [src](../../../core/tools/simple_tools_explore.py#L17) |
 | function | `_execution_context` | `(args)` | — | [src](../../../core/tools/simple_tools_explore.py#L22) |
-| function | `_explore_spawn` | `(*, query, vejledning, provider=…, model=…, target=…, context=…)` | — | [src](../../../core/tools/simple_tools_explore.py#L54) |
-| function | `_explore_svar` | `(result)` | — | [src](../../../core/tools/simple_tools_explore.py#L95) |
-| function | `_bro_kontrol` | `(args)` | Byg de to efterproevninger der slaar op OVER BROEN, paa Bjoerns maskine. | [src](../../../core/tools/simple_tools_explore.py#L109) |
-| function | `_bevis_note` | `(bevis, kontrolleret, substans)` | Én saetning der siger praecis hvad der blev efterproevet. | [src](../../../core/tools/simple_tools_explore.py#L203) |
-| function | `_exec_explore` | `(args)` | — | [src](../../../core/tools/simple_tools_explore.py#L221) |
+| function | `_explore_spawn` | `(*, query, vejledning, provider=…, model=…, target=…, context=…, efterbehandling=…)` | — | [src](../../../core/tools/simple_tools_explore.py#L54) |
+| function | `_explore_svar` | `(result)` | — | [src](../../../core/tools/simple_tools_explore.py#L96) |
+| function | `_bro_kontrol` | `(args)` | Byg de to efterproevninger der slaar op OVER BROEN, paa Bjoerns maskine. | [src](../../../core/tools/simple_tools_explore.py#L110) |
+| function | `_bevis_note` | `(bevis, kontrolleret, substans)` | Én saetning der siger praecis hvad der blev efterproevet. | [src](../../../core/tools/simple_tools_explore.py#L204) |
+| function | `_vurder_svar` | `(result, *, tjek_paastande, bro_tjek=…, bro_linje=…)` | Fabrikations-værnet på ÉT explore-resultat. | [src](../../../core/tools/simple_tools_explore.py#L222) |
+| function | `_vurdering_til_wakeup` | `(vurdering)` | Dommen over et sent explore-svar, som den skal stå i vækningen. | [src](../../../core/tools/simple_tools_explore.py#L287) |
+| function | `_exec_explore` | `(args)` | — | [src](../../../core/tools/simple_tools_explore.py#L304) |
 
 ## `core/tools/simple_tools_native.py`
 _Native (non-operator, non-web) tool executors for Jarvis._

@@ -94,11 +94,18 @@ def _kode_uden_kommentarer(fn) -> str:
     return "\n".join(linjer)
 
 
+def _explore_kode(E):
+    """Værnet blev 17/9-2026 udskilt fra `_exec_explore` til `_vurder_svar`, så
+    samme værn kan køre på et svar der lander efter kvitteringen. Testene læser
+    derfor begge."""
+    return _kode_uden_kommentarer(E._exec_explore) + "\n" + _kode_uden_kommentarer(E._vurder_svar)
+
+
 def test_workstation_slaar_ikke_laengere_vaernet_FRA():
     """Foer stod der `tjek_paastande = None` for workstation — vaernet var
     slaaet HELT fra netop dér hvor en fabrikeret rapport koster mest."""
     from core.tools import simple_tools_explore as E
-    kode = _kode_uden_kommentarer(E._exec_explore)
+    kode = _explore_kode(E)
     linjer = kode.splitlines()
     for i, ln in enumerate(linjer[:-1]):
         if 'if target == "workstation":' in ln:
@@ -107,14 +114,14 @@ def test_workstation_slaar_ikke_laengere_vaernet_FRA():
     # Bro-ruten bor nu ÉT sted (`_bro_kontrol`) — se
     # test_begge_grene_spoerger_SAMME_bro for hvorfor det maatte samles.
     assert "_bro_kontrol(args)" in kode
-    assert "findes_fn=_bro_tjek" in kode
+    assert "bro_tjek=_bro_tjek" in kode and "findes_fn=bro_tjek" in kode
     assert callable(E._bro_kontrol)
 
 
 def test_runtime_stien_bruger_stadig_containerens_repo():
     """Broen er KUN for workstation. Et runtime-explore skal slaa op lokalt."""
     from core.tools import simple_tools_explore as E
-    kode = _kode_uden_kommentarer(E._exec_explore)
+    kode = _explore_kode(E)
     assert 'if target == "workstation":' in kode
     assert "else tjek_paastande(svar)" in kode
 
@@ -194,8 +201,8 @@ def test_uden_linje_tjekker_efterproeves_kun_eksistensen():
 
 def test_workstation_stien_giver_BEGGE_tjekkere_med():
     from core.tools import simple_tools_explore as E
-    kode = _kode_uden_kommentarer(E._exec_explore)
-    assert "linje_fn=_bro_linje" in kode
+    kode = _explore_kode(E)
+    assert "bro_linje=_bro_linje" in kode and "linje_fn=bro_linje" in kode
     assert "_exec_operator_grep" in _kode_uden_kommentarer(E._bro_kontrol)
 
 
@@ -449,11 +456,12 @@ def test_nul_vaerktoejskald_blaastemples_ikke():
 
     from core.tools import simple_tools_explore as e
 
-    kilde = inspect.getsource(e._exec_explore)
+    kilde = inspect.getsource(e._exec_explore) + inspect.getsource(e._vurder_svar)
     assert "_tomhaendet" in kilde
     assert 'result.get("tool_calls")' in kilde
-    assert "if dom.get(\"holder\") and not _tomhaendet:" in kilde, (
+    assert 'holder=bool(dom.get("holder")) and not _tomhaendet' in kilde, (
         "et tomhaendet svar returneres stadig uden rotation")
+    assert 'if vurdering["holder"]:' in kilde
 
 
 # ── den AERLIGE models citatform var usynlig for vaernet ────────────────

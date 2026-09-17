@@ -173,7 +173,7 @@ def test_sent_barn_giver_kvittering_og_praecis_en_wakeup(monkeypatch):
 
     monkeypatch.setattr("core.services.agent_runtime.execute_agent_task", _langsom)
     monkeypatch.setattr(mr, "_book_completion_wakeup",
-                        lambda aid, res: (wakeups.append(aid), faerdig.set()))
+                        lambda aid, res, vurdering="": aid == "s2" and (wakeups.append(aid), faerdig.set()))
     svar = mr.spawn_med_kvittering(taalmodighed_s=0.05, role="r", goal="g")
     assert svar["status"] == "accepted" and svar["model"] == "m"
     assert faerdig.wait(3.0), "barnet blev faerdigt uden at forælderen blev vækket"
@@ -199,7 +199,7 @@ def test_barn_faerdigt_ved_fristen_mister_aldrig_sin_besked(monkeypatch):
         # Kun DETTE barn tæller: tidligere tests' sene baggrundstråde (fx
         # «a-landet») kan blive færdige mens denne test kører.
         monkeypatch.setattr(mr, "_book_completion_wakeup",
-                            lambda aid, res: aid == "s3" and wakeups.append(aid))
+                            lambda aid, res, vurdering="": aid == "s3" and wakeups.append(aid))
         svar = mr.spawn_med_kvittering(taalmodighed_s=0.003, role="r", goal="g")
         if svar["status"] == "accepted":
             slut = time.monotonic() + 2.0
@@ -209,3 +209,35 @@ def test_barn_faerdigt_ved_fristen_mister_aldrig_sin_besked(monkeypatch):
         else:
             time.sleep(0.02)
             assert wakeups == [], "svar OG wakeup — forælderen får det to gange"
+
+
+def test_sent_svar_gaar_gennem_efterbehandlingen_foer_vaekningen(monkeypatch):
+    """Jarvis' krav: et svar der lander efter kvitteringen skal igennem samme
+    fabrikations-værn — ellers bytter vi en låst tur for et uverificeret svar."""
+    import core.services.agent_message_receipt as mr
+    vaekket = []
+    faerdig = threading.Event()
+    monkeypatch.setattr("core.services.agent_runtime.spawn_agent_task",
+                        lambda **kw: {"agent_id": "s4"})
+
+    def _langsom(**kw):
+        time.sleep(0.2)
+        return {"status": "completed", "agent_id": "s4", "messages": []}
+
+    monkeypatch.setattr("core.services.agent_runtime.execute_agent_task", _langsom)
+    monkeypatch.setattr(mr, "_book_completion_wakeup",
+                        lambda aid, res, vurdering="": aid == "s4" and (vaekket.append(vurdering), faerdig.set()))
+    svar = mr.spawn_med_kvittering(taalmodighed_s=0.02, role="r", goal="g",
+                                   efterbehandling=lambda res: "ADVARSEL — kunne ikke bekræftes")
+    assert svar["status"] == "accepted"
+    assert faerdig.wait(3.0)
+    assert vaekket == ["ADVARSEL — kunne ikke bekræftes"]
+
+
+def test_efterbehandling_koerer_ikke_paa_et_svar_der_naaede_frem():
+    import core.services.agent_message_receipt as mr
+    kaldt = []
+    svar = mr._koer_med_taalmodighed("s5", lambda: {"status": "completed"}, 2.0,
+                                     efterbehandling=lambda r: kaldt.append(r) or "x")
+    time.sleep(0.05)
+    assert svar["status"] == "completed" and kaldt == []

@@ -96,8 +96,7 @@ class WhisperSTT(stt.STT):
     async def _recognize_impl(self, buffer: utils.AudioBuffer, *,
                               language: NotGivenOr[str] = NOT_GIVEN,
                               conn_options: APIConnectOptions) -> stt.SpeechEvent:
-        ramme = rtc.combine_audio_frames(buffer).remix_and_resample(16000, 1)
-        lyd = np.frombuffer(ramme.data, dtype=np.int16).astype(np.float32) / 32768.0
+        lyd = til_whisper_lyd(rtc.combine_audio_frames(buffer))
         t = time.monotonic()
         async with self._laas:
             tekst = await asyncio.to_thread(self._transskriber, lyd)
@@ -106,6 +105,17 @@ class WhisperSTT(stt.STT):
             type=stt.SpeechEventType.FINAL_TRANSCRIPT,
             alternatives=[stt.SpeechData(text=tekst, language="da")],
         )
+
+
+def til_whisper_lyd(ramme: rtc.AudioFrame) -> np.ndarray:
+    """int16 i vilkårlig rate/kanaler → float32 mono 16 kHz, som whisper vil have."""
+    lyd = np.frombuffer(ramme.data, dtype=np.int16).astype(np.float32) / 32768.0
+    if ramme.num_channels > 1:
+        lyd = lyd.reshape(-1, ramme.num_channels).mean(axis=1)
+    if ramme.sample_rate != 16000 and len(lyd):
+        n = int(round(len(lyd) * 16000 / ramme.sample_rate))
+        lyd = np.interp(np.linspace(0, len(lyd) - 1, n), np.arange(len(lyd)), lyd).astype(np.float32)
+    return lyd
 
 
 # ── Tekst til tale-venlig form ───────────────────────────────────────────────
@@ -120,12 +130,23 @@ def til_tale(tekst: str) -> str:
 
 
 # ── Jarvis som hjerne ────────────────────────────────────────────────────────
+class JarvisMarkoer(llm.LLM):
+    """Tom markør. Rammeværket springer HELT over at svare, hvis sessionen ikke
+    har en LLM (agent_activity: «skip response if no llm is set») — også når
+    llm_node er overskrevet. Svaret kommer fra `JarvisStemme.llm_node`; denne
+    kaldes aldrig."""
+
+    def chat(self, **kwargs: Any) -> Any:  # pragma: no cover - kaldes ikke
+        raise RuntimeError("JarvisMarkoer.chat må ikke kaldes — llm_node er Jarvis")
+
+
 class JarvisStemme(Agent):
     def __init__(self, *, jarvis_token: str, session_id: str) -> None:
         super().__init__(instructions="")
         self._token = jarvis_token
         self._session_id = session_id
         self._run_id = ""
+        self._annullering: asyncio.Task | None = None
 
     def _hoveder(self) -> dict[str, str]:
         return {"Authorization": f"Bearer {self._token}", "Content-Type": "application/json"}
@@ -153,6 +174,27 @@ class JarvisStemme(Agent):
         except Exception:
             log.warning("kunne ikke annullere run %s", run_id, exc_info=True)
 
+    async def _vent_til_forrige_er_stoppet(self, http: aiohttp.ClientSession, sid: str) -> None:
+        """Et annulleret run er ikke straks væk. Sendes den nye besked før, ser
+        single-flight det gamle som levende og HÆGTER beskeden på det
+        («attached til live run … ingen nyt run») — og den bliver aldrig
+        besvaret. Målt i prøven 17/9-2026."""
+        if self._annullering is not None:
+            await asyncio.shield(self._annullering)
+            self._annullering = None
+        if not sid:
+            return
+        for _ in range(25):  # op til 5 s
+            try:
+                async with http.get(f"{JARVIS_API}/chat/active-runs", headers=self._hoveder()) as svar:
+                    aktive = (await svar.json()).get("sessions") or []
+            except Exception:
+                return
+            if not any(str(a.get("session_id")) == sid for a in aktive):
+                return
+            await asyncio.sleep(0.2)
+        log.warning("forrige run i %s stoppede ikke inden 5 s", sid)
+
     async def llm_node(self, chat_ctx: llm.ChatContext, tools: list, model_settings: Any) -> AsyncIterable[str]:
         besked = ""
         for item in reversed(chat_ctx.items):
@@ -167,6 +209,7 @@ class JarvisStemme(Agent):
         try:
             async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=None, sock_read=120)) as http:
                 sid = await self._sikr_session(http)
+                await self._vent_til_forrige_er_stoppet(http, sid)
                 krop = {"message": besked, "session_id": sid, "approval_mode": "ask",
                         "thinking_mode": "fast", "mode": "chat"}
                 async with http.post(f"{JARVIS_API}/chat/stream/v2", headers=self._hoveder(), json=krop) as svar:
@@ -204,7 +247,7 @@ class JarvisStemme(Agent):
         finally:
             if not faerdig:
                 # Annulleret (afbrudt) eller fejlet midt i: stop runnet på serveren.
-                asyncio.ensure_future(self._annuller_run())
+                self._annullering = asyncio.ensure_future(self._annuller_run())
             else:
                 self._run_id = ""
 
@@ -225,6 +268,7 @@ async def entrypoint(ctx: JobContext) -> None:
 
     session = AgentSession(
         vad=vad,
+        llm=JarvisMarkoer(),
         stt=stt.StreamAdapter(stt=whisper, vad=vad),
         tts=elevenlabs.TTS(
             api_key=cfg.get("elevenlabs_api_key"),
@@ -235,7 +279,8 @@ async def entrypoint(ctx: JobContext) -> None:
         turn_detection="vad",
         allow_interruptions=True,
         min_interruption_duration=0.4,
-        min_endpointing_delay=0.5,
+        # 0,5 s delte «Hej Jarvis. <pause> Fortæl mig …» i to ture i prøven.
+        min_endpointing_delay=1.0,
     )
 
     @session.on("agent_state_changed")

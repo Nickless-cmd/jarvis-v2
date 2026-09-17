@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7628/14797 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7630/14800 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -12,7 +12,7 @@ Generated from source. 7628/14797 functions/methods documented (51%). The list b
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 69 | 171 | 40% |
 | `apps.desktop` | 6 | 7 | 85% |
-| `apps.voice_agent` | 2 | 19 | 10% |
+| `apps.voice_agent` | 4 | 22 | 18% |
 | `core.auth` | 4 | 49 | 8% |
 | `core.browser` | 11 | 13 | 84% |
 | `core.channels` | 0 | 0 | 0% |
@@ -41,7 +41,7 @@ Generated from source. 7628/14797 functions/methods documented (51%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2099)
+## Undocumented public functions (2100)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L207)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -131,15 +131,16 @@ Generated from source. 7628/14797 functions/methods documented (51%). The list b
 - `apps/central_cli/central_cli/tui.py` :: `CentralApp.on_input_submitted` (L52)
 - `apps/central_cli/central_cli/tui.py` :: `CentralApp.on_mount` (L34)
 - `apps/central_cli/central_cli/tui.py` :: `run_tui` (L74)
-- `apps/voice_agent/agent.py` :: `JarvisStemme.llm_node` (L156)
+- `apps/voice_agent/agent.py` :: `JarvisMarkoer.chat` (L139)
+- `apps/voice_agent/agent.py` :: `JarvisStemme.llm_node` (L198)
 - `apps/voice_agent/agent.py` :: `WhisperSTT.varm_op` (L86)
-- `apps/voice_agent/agent.py` :: `entrypoint` (L213)
-- `apps/voice_agent/agent.py` :: `main` (L260)
-- `apps/voice_agent/proeve.py` :: `afspil` (L41)
-- `apps/voice_agent/proeve.py` :: `main` (L52)
-- `apps/voice_agent/proeve.py` :: `stilhed` (L48)
-- `apps/voice_agent/proeve.py` :: `t` (L28)
-- `apps/voice_agent/proeve.py` :: `tale` (L32)
+- `apps/voice_agent/agent.py` :: `entrypoint` (L256)
+- `apps/voice_agent/agent.py` :: `main` (L305)
+- `apps/voice_agent/proeve.py` :: `afspil` (L40)
+- `apps/voice_agent/proeve.py` :: `main` (L51)
+- `apps/voice_agent/proeve.py` :: `stilhed` (L47)
+- `apps/voice_agent/proeve.py` :: `t` (L27)
+- `apps/voice_agent/proeve.py` :: `tale` (L31)
 - `core/auth/copilot_oauth.py` :: `get_copilot_oauth_credentials` (L75)
 - `core/auth/copilot_oauth.py` :: `get_copilot_oauth_truth` (L22)
 - `core/auth/copilot_oauth.py` :: `save_copilot_oauth_credentials` (L65)

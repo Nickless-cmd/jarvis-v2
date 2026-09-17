@@ -19,7 +19,6 @@ from pathlib import Path
 import numpy as np
 from livekit import api, rtc
 
-sys.path.insert(0, "/media/projects/jarvis-v2")
 KFG = json.loads((Path.home() / ".jarvis-v2/config/runtime.json").read_text())
 RUM = f"proeve-{int(time.time())}"
 T0 = time.monotonic()
@@ -50,9 +49,15 @@ async def stilhed(kilde: rtc.AudioSource, sek: float) -> None:
 
 
 async def main() -> None:
-    from core.runtime.jarvisx_auth import issue_token
-    ejer = str(KFG.get("owner_discord_id") or KFG.get("owner_user_id") or "1246415163603816499")
-    jarvis = issue_token(user_id=ejer, role="owner", ttl_seconds=900, extra_claims={"voice_room": RUM})["token"]
+    # Billetten udstedes med Jarvis' egen Python — agentens venv har ikke hans
+    # afhængigheder (og skal ikke have dem).
+    ejer = "1246415163603816499"
+    jarvis = subprocess.check_output([
+        "/opt/conda/envs/ai/bin/python", "-c",
+        "import sys; sys.path.insert(0, '/media/projects/jarvis-v2'); "
+        "from core.runtime.jarvisx_auth import issue_token; "
+        f"print(issue_token(user_id='{ejer}', role='owner', ttl_seconds=900, extra_claims={{'voice_room': '{RUM}'}})['token'])",
+    ], text=True, stderr=subprocess.DEVNULL).strip().splitlines()[-1]
 
     lk = api.LiveKitAPI("http://127.0.0.1:7880", KFG["livekit_api_key"], KFG["livekit_api_secret"])
     await lk.agent_dispatch.create_dispatch(api.CreateAgentDispatchRequest(
@@ -65,6 +70,21 @@ async def main() -> None:
 
     rum = rtc.Room()
     tilstande: list[tuple[float, str]] = []
+    # Seneste tidspunkt Jarvis' LYD var over støjgrænsen. Tilstanden alene lyver:
+    # ved en mulig afbrydelse PAUSES lyden straks, men tilstanden skifter først
+    # når afbrydelsen er bekræftet.
+    lyd_senest = [0.0]
+
+    async def lyt(spor: rtc.RemoteAudioTrack) -> None:
+        async for ev in rtc.AudioStream(spor, sample_rate=16000, num_channels=1):
+            data = np.frombuffer(ev.frame.data, dtype=np.int16)
+            if len(data) and np.sqrt(np.mean(data.astype(np.float32) ** 2)) > 300:
+                lyd_senest[0] = time.monotonic()
+
+    @rum.on("track_subscribed")
+    def _spor(spor, pub, deltager) -> None:
+        if spor.kind == rtc.TrackKind.KIND_AUDIO:
+            asyncio.ensure_future(lyt(spor))
 
     @rum.on("participant_attributes_changed")
     def _attr(aendret, deltager) -> None:
@@ -98,9 +118,15 @@ async def main() -> None:
         print(t(), "afbryder", flush=True)
         t_afbryd = time.monotonic()
         opgave = asyncio.create_task(afspil(kilde, afbryd))
+        # Lyden: første øjeblik efter afbrydelsen hvor der har været stille i 300 ms.
+        while time.monotonic() - t_afbryd < 10:
+            await asyncio.sleep(0.02)
+            if time.monotonic() - max(lyd_senest[0], t_afbryd) > 0.3:
+                break
+        print(t(), f"LYDEN tav efter: {max(lyd_senest[0], t_afbryd) - t_afbryd:.2f}s", flush=True)
         while tilstande[-1][1] == "speaking" and time.monotonic() - t_afbryd < 10:
             await asyncio.sleep(0.02)
-        print(t(), f"tavs efter afbrydelse: {time.monotonic() - t_afbryd:.2f}s (tilstand {tilstande[-1][1]})", flush=True)
+        print(t(), f"tilstanden skiftede efter: {time.monotonic() - t_afbryd:.2f}s ({tilstande[-1][1]})", flush=True)
         await opgave
         t_afbryd_slut = time.monotonic()
         start = time.monotonic()

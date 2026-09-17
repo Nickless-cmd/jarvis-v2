@@ -22,5 +22,16 @@ _Jarvis' stemme — ægte samtale med naturlige afbrydelser (LiveKit Agents)._
 | method | `JarvisStemme._annuller_run` | `(self)` | Afbrydelse skal nå SERVEREN. Uden dette stoppede kun lyden. | [src](../../../apps/voice_agent/agent.py#L143) |
 | method | `JarvisStemme.llm_node` | `(self, chat_ctx, tools, model_settings)` | — | [src](../../../apps/voice_agent/agent.py#L156) |
 | function | `entrypoint` | `(ctx)` | — | [src](../../../apps/voice_agent/agent.py#L213) |
-| function | `main` | `()` | — | [src](../../../apps/voice_agent/agent.py#L257) |
+| function | `main` | `()` | — | [src](../../../apps/voice_agent/agent.py#L260) |
+
+## `apps/voice_agent/proeve.py`
+_Syntetisk samtale-prøve: stil et spørgsmål, afbryd Jarvis midt i svaret, mål._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `t` | `()` | — | [src](../../../apps/voice_agent/proeve.py#L28) |
+| function | `tale` | `(tekst, navn)` | — | [src](../../../apps/voice_agent/proeve.py#L32) |
+| function | `afspil` | `(kilde, lyd)` | — | [src](../../../apps/voice_agent/proeve.py#L41) |
+| function | `stilhed` | `(kilde, sek)` | — | [src](../../../apps/voice_agent/proeve.py#L48) |
+| function | `main` | `()` | — | [src](../../../apps/voice_agent/proeve.py#L52) |
 

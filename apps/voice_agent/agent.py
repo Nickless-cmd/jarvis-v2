@@ -248,7 +248,10 @@ async def entrypoint(ctx: JobContext) -> None:
 
     @session.on("metrics_collected")
     def _maal(ev: Any) -> None:
-        log.info("metrik: %s", getattr(ev, "metrics", ev))
+        m = getattr(ev, "metrics", ev)
+        # VAD-metrik kommer hvert sekund og drukner alt andet i loggen.
+        if getattr(m, "type", "") != "vad_metrics":
+            log.info("metrik: %s", m)
 
     await session.start(room=ctx.room,
                         agent=JarvisStemme(jarvis_token=token, session_id=str(meta.get("session_id") or "")))

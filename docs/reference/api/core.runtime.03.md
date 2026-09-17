@@ -91,9 +91,10 @@ _Tiny JSON-file state store for module-globals that must survive restart._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_path` | `(name)` | — | [src](../../../core/runtime/state_store.py#L26) |
-| function | `load_json` | `(name, default)` | Read ``state/<name>.json``; return ``default`` if missing/corrupt. | [src](../../../core/runtime/state_store.py#L30) |
-| function | `save_json` | `(name, data)` | Atomically persist ``data`` to ``state/<name>.json``. | [src](../../../core/runtime/state_store.py#L47) |
+| function | `_path` | `(name)` | — | [src](../../../core/runtime/state_store.py#L27) |
+| function | `load_json` | `(name, default)` | Read ``state/<name>.json``; return ``default`` if missing/corrupt. | [src](../../../core/runtime/state_store.py#L31) |
+| function | `save_json` | `(name, data)` | Atomically persist ``data`` to ``state/<name>.json``. | [src](../../../core/runtime/state_store.py#L48) |
+| function | `save_json_strict` | `(name, data)` | Atomically persist JSON and propagate failures to authoritative callers. | [src](../../../core/runtime/state_store.py#L59) |
 
 ## `core/runtime/token_renewal.py`
 _Fornyelse af bearer-tokens — så en klient ikke låses ude af tiden alene._

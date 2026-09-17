@@ -17,10 +17,12 @@ from __future__ import annotations
 
 import logging
 import os
+import fcntl
+from contextlib import contextmanager
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from core.runtime.state_store import load_json, save_json
+from core.runtime import state_store
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +41,25 @@ _RESTART_WORDS = (
     "start forfra", "ny opgave", "glem den", "drop den", "restart",
     "start over", "ignore previous", "glem det",
 )
+
+_TERMINAL_STATUSES = {"completed", "cancelled", "failed_terminal"}
+
+
+class StaleRecoveryClaim(RuntimeError):
+    """A superseded recovery generation attempted to mutate durable truth."""
+
+
+@contextmanager
+def _med_laas():
+    """Serialize recovery-journal read/modify/write across API and runtime."""
+    path = state_store._path(_STATE_KEY).with_suffix(".lock")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a+") as handle:
+        fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
 
 
 # ── Ejer-identitet (12/9-2026) ───────────────────────────────────────────────
@@ -115,7 +136,7 @@ def owner_still_alive(owner: str) -> bool | None:
 
 
 def _load() -> dict[str, dict[str, Any]]:
-    raw = load_json(_STATE_KEY, {})
+    raw = state_store.load_json(_STATE_KEY, {})
     if not isinstance(raw, dict):
         return {}
     out: dict[str, dict[str, Any]] = {}
@@ -126,7 +147,48 @@ def _load() -> dict[str, dict[str, Any]]:
 
 
 def _save(records: dict[str, dict[str, Any]]) -> None:
-    save_json(_STATE_KEY, records)
+    state_store.save_json_strict(_STATE_KEY, records)
+
+
+def _mutate(fn):
+    with _med_laas():
+        records = _load()
+        result = fn(records)
+        _save(records)
+        return result
+
+
+def _record_key(records: dict[str, dict[str, Any]], identity: str) -> str | None:
+    value = str(identity or "")
+    if value in records:
+        return value
+    for key, rec in records.items():
+        if value in {str(rec.get("task_id") or ""), str(rec.get("run_id") or "")}:
+            return key
+    return None
+
+
+def _iso(value: datetime | None = None) -> str:
+    return (value or datetime.now(UTC)).isoformat()
+
+
+def _parsed(value: object) -> datetime | None:
+    try:
+        parsed = datetime.fromisoformat(str(value or ""))
+        return parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)
+    except Exception:
+        return None
+
+
+def _check_claim(
+    rec: dict[str, Any], *, expected_generation: int | None, expected_owner: str,
+) -> None:
+    if expected_generation is not None and int(
+        rec.get("recovery_generation") or 0
+    ) != int(expected_generation):
+        raise StaleRecoveryClaim("recovery generation was superseded")
+    if expected_owner and str(rec.get("recovery_owner") or "") != str(expected_owner):
+        raise StaleRecoveryClaim("recovery owner was superseded")
 
 
 def mark_started(
@@ -137,6 +199,10 @@ def mark_started(
     kind: str = "visible",
     provider: str = "",
     model: str = "",
+    task_id: str = "",
+    recovery_generation: int = 0,
+    recovery_attempt: int = 0,
+    recovery_limit: int = 3,
 ) -> None:
     """Record that a run is in flight. Keyed by run_id (unique).
 
@@ -158,41 +224,42 @@ def mark_started(
     if not run_id:
         return
     sid = str(session_id or "")
-    records = _load()
-    # Drop any earlier in_flight for the same session before adding the new one.
-    if sid:
-        stale_run_ids = [
-            rid for rid, rec in records.items()
-            if rec.get("session_id") == sid and rid != str(run_id)
-        ]
-    for rid in stale_run_ids:
-        if str(records.get(rid, {}).get("status") or "running") != "interrupted":
-            records.pop(rid, None)
-    records[str(run_id)] = {
-        "run_id": str(run_id),
-        "session_id": sid,
-        "status": "running",
-        "kind": str(kind or "visible"),
-        "provider": str(provider or ""),
-        "model": str(model or ""),
-        "excerpt": (user_message or "")[:_EXCERPT_LIMIT],
-        "started_at": datetime.now(UTC).isoformat(),
-        "last_tool": "",
-        "owner_proc": current_owner(),
-    }
-    _save(records)
+    def change(records):
+        records[str(run_id)] = {
+            "task_id": str(task_id or run_id),
+            "run_id": str(run_id),
+            "session_id": sid,
+            "status": "running",
+            "kind": str(kind or "visible"),
+            "provider": str(provider or ""),
+            "model": str(model or ""),
+            "excerpt": (user_message or "")[:_EXCERPT_LIMIT],
+            "original_request": str(user_message or ""),
+            "started_at": _iso(),
+            "last_progress_at": _iso(),
+            "last_tool": "",
+            "owner_proc": current_owner(),
+            "recovery_generation": max(0, int(recovery_generation)),
+            "recovery_attempt": max(0, int(recovery_attempt)),
+            "recovery_limit": max(0, int(recovery_limit)),
+            "recovery_owner": "",
+            "recovery_lease_until": "",
+            "next_attempt_at": "",
+            "notice_pending": False,
+        }
+    _mutate(change)
 
 
 def mark_tool(run_id: str, tool_name: str) -> None:
     """Update the last-tool-attempted hint for an in-flight run."""
     if not run_id or not tool_name:
         return
-    records = _load()
-    rec = records.get(str(run_id))
-    if rec is None:
-        return
-    rec["last_tool"] = str(tool_name)[:80]
-    _save(records)
+    def change(records):
+        key = _record_key(records, run_id)
+        if key is not None:
+            records[key]["last_tool"] = str(tool_name)[:80]
+            records[key]["last_progress_at"] = _iso()
+    _mutate(change)
 
 
 def mark_completed(run_id: str) -> None:
@@ -200,25 +267,219 @@ def mark_completed(run_id: str) -> None:
     only *unresolved* records should reach the next prompt build."""
     if not run_id:
         return
-    records = _load()
-    if str(run_id) in records:
-        records.pop(str(run_id), None)
-        _save(records)
+    def change(records):
+        key = _record_key(records, run_id)
+        if key is not None:
+            records.pop(key, None)
+    _mutate(change)
 
 
 def mark_interrupted(run_id: str, *, reason: str = "", summary: str = "") -> None:
     """Keep an in-flight record as a resumable interrupted run."""
     if not run_id:
         return
-    records = _load()
-    rec = records.get(str(run_id))
-    if rec is None:
-        return
-    rec["status"] = "interrupted"
-    rec["interruption_reason"] = str(reason or "")[:120]
-    rec["interruption_summary"] = str(summary or "")[:240]
-    rec["interrupted_at"] = datetime.now(UTC).isoformat()
-    _save(records)
+    def change(records):
+        key = _record_key(records, run_id)
+        if key is None:
+            return
+        rec = records[key]
+        rec["status"] = "interrupted"
+        rec["interruption_reason"] = str(reason or "")[:120]
+        rec["interruption_summary"] = str(summary or "")[:240]
+        rec["interrupted_at"] = _iso()
+    _mutate(change)
+
+
+def settle_recovering(
+    run_id: str,
+    *,
+    reason: str,
+    summary: str = "",
+    checkpoint_ref: str = "",
+    recovery_limit: int = 3,
+    expected_generation: int | None = None,
+    expected_owner: str = "",
+) -> dict[str, Any]:
+    """Durably make a run claimable without erasing its task identity."""
+    def change(records):
+        key = _record_key(records, run_id)
+        if key is None:
+            raise KeyError(f"unknown in-flight run: {run_id}")
+        rec = records[key]
+        _check_claim(
+            rec,
+            expected_generation=expected_generation,
+            expected_owner=expected_owner,
+        )
+        now = _iso()
+        rec.setdefault("task_id", str(rec.get("run_id") or key))
+        rec["status"] = "recovering"
+        rec["exit_reason"] = str(reason or "unknown")[:160]
+        rec["interruption_reason"] = rec["exit_reason"]
+        rec["interruption_summary"] = str(summary or reason or "")[:500]
+        rec["checkpoint_ref"] = str(checkpoint_ref or rec.get("checkpoint_ref") or "")
+        rec["recovery_limit"] = max(0, int(recovery_limit))
+        rec.setdefault("recovery_attempt", 0)
+        rec.setdefault("recovery_generation", 0)
+        rec["settled_at"] = now
+        rec["interrupted_at"] = now
+        rec["notice_pending"] = True
+        rec["recovery_owner"] = ""
+        rec["recovery_lease_until"] = ""
+        rec.setdefault("next_attempt_at", "")
+        return dict(rec)
+    return _mutate(change)
+
+
+def settle_terminal(
+    run_id: str,
+    *,
+    status: str,
+    reason: str = "",
+    expected_generation: int | None = None,
+    expected_owner: str = "",
+) -> dict[str, Any] | None:
+    """Persist a genuine terminal state and revoke every recovery claim."""
+    normalized = str(status or "")
+    if normalized not in _TERMINAL_STATUSES:
+        raise ValueError(f"invalid terminal status: {normalized}")
+
+    def change(records):
+        key = _record_key(records, run_id)
+        if key is None:
+            return None
+        rec = records[key]
+        _check_claim(
+            rec,
+            expected_generation=expected_generation,
+            expected_owner=expected_owner,
+        )
+        rec.setdefault("task_id", str(rec.get("run_id") or key))
+        rec["status"] = normalized
+        rec["exit_reason"] = str(reason or normalized)[:160]
+        rec["settled_at"] = _iso()
+        rec["recovery_owner"] = ""
+        rec["recovery_lease_until"] = ""
+        rec["next_attempt_at"] = ""
+        rec["notice_pending"] = normalized == "failed_terminal"
+        return dict(rec)
+    return _mutate(change)
+
+
+def claim_due_recovery(
+    *,
+    owner: str,
+    lease_seconds: float = 120.0,
+    now: datetime | None = None,
+) -> dict[str, Any] | None:
+    """Atomically claim one due visible recovery task."""
+    instant = now or datetime.now(UTC)
+
+    def change(records):
+        candidates: list[tuple[str, dict[str, Any]]] = []
+        for key, rec in records.items():
+            if str(rec.get("kind") or "visible") != "visible":
+                continue
+            status = str(rec.get("status") or "")
+            if status == "recovering":
+                pass
+            elif status == "running" and rec.get("recovery_owner"):
+                lease = _parsed(rec.get("recovery_lease_until"))
+                if lease is not None and lease > instant:
+                    continue
+            else:
+                continue
+            due = _parsed(rec.get("next_attempt_at"))
+            if due is not None and due > instant:
+                continue
+            if int(rec.get("recovery_attempt") or 0) >= int(
+                rec.get("recovery_limit") or 3
+            ):
+                continue
+            candidates.append((key, rec))
+        if not candidates:
+            return None
+        key, rec = min(
+            candidates,
+            key=lambda item: str(
+                item[1].get("settled_at") or item[1].get("started_at") or ""
+            ),
+        )
+        rec.setdefault("task_id", str(rec.get("run_id") or key))
+        rec["status"] = "running"
+        rec["recovery_generation"] = int(rec.get("recovery_generation") or 0) + 1
+        rec["recovery_attempt"] = int(rec.get("recovery_attempt") or 0) + 1
+        rec["recovery_owner"] = str(owner)
+        rec["owner_proc"] = str(owner)
+        rec["recovery_claimed_at"] = instant.isoformat()
+        rec["recovery_lease_until"] = (
+            instant + timedelta(seconds=max(1.0, float(lease_seconds)))
+        ).isoformat()
+        rec["next_attempt_at"] = ""
+        return dict(rec)
+    return _mutate(change)
+
+
+def renew_recovery_lease(
+    task_id: str,
+    generation: int,
+    *,
+    owner: str,
+    lease_seconds: float = 120.0,
+    now: datetime | None = None,
+) -> bool:
+    instant = now or datetime.now(UTC)
+
+    def change(records):
+        key = _record_key(records, task_id)
+        if key is None:
+            return False
+        rec = records[key]
+        if (
+            str(rec.get("recovery_owner") or "") != str(owner)
+            or int(rec.get("recovery_generation") or 0) != int(generation)
+            or str(rec.get("status") or "") != "running"
+        ):
+            return False
+        rec["recovery_lease_until"] = (
+            instant + timedelta(seconds=max(1.0, float(lease_seconds)))
+        ).isoformat()
+        rec["last_progress_at"] = instant.isoformat()
+        return True
+    return bool(_mutate(change))
+
+
+def release_recovery_claim(
+    task_id: str,
+    generation: int,
+    *,
+    owner: str,
+    reason: str,
+    retry_after_s: float,
+    now: datetime | None = None,
+) -> bool:
+    instant = now or datetime.now(UTC)
+
+    def change(records):
+        key = _record_key(records, task_id)
+        if key is None:
+            return False
+        rec = records[key]
+        if (
+            str(rec.get("recovery_owner") or "") != str(owner)
+            or int(rec.get("recovery_generation") or 0) != int(generation)
+        ):
+            return False
+        rec["status"] = "recovering"
+        rec["exit_reason"] = str(reason or "recovery-dispatch-failed")[:160]
+        rec["recovery_owner"] = ""
+        rec["recovery_lease_until"] = ""
+        rec["next_attempt_at"] = (
+            instant + timedelta(seconds=max(0.0, float(retry_after_s)))
+        ).isoformat()
+        rec["notice_pending"] = True
+        return True
+    return bool(_mutate(change))
 
 
 # En afbrudt tur er en genoptagelses-kandidat i timer, ikke i uger. FOER havde
@@ -354,13 +615,12 @@ def clear_session(session_id: str | None) -> int:
     if not session_id:
         return 0
     sid = str(session_id)
-    records = _load()
-    to_drop = [k for k, v in records.items() if v.get("session_id") == sid]
-    for k in to_drop:
-        records.pop(k, None)
-    if to_drop:
-        _save(records)
-    return len(to_drop)
+    def change(records):
+        to_drop = [k for k, v in records.items() if v.get("session_id") == sid]
+        for key in to_drop:
+            records.pop(key, None)
+        return len(to_drop)
+    return int(_mutate(change))
 
 
 def classify_resume_intent(user_message: str) -> str:
@@ -439,5 +699,4 @@ def interruption_prompt_section(
         f"{conclusion + chr(10) if conclusion else ''}"
         f"{policy}"
     )
-
 

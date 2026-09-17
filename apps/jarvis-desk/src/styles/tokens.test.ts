@@ -20,6 +20,14 @@ describe('design-tokens', () => {
     expect(miljø).toMatch(/\.git-del/)
   })
 
+  // 17/9-2026: et heredoc-script i kommandoen gjorde godkendelseskortet højere
+  // end vinduet, og Godkend/Afvis kunne ikke nås.
+  it('lader godkendelseskortets kommandotekst rulle, så knapperne kan nås', () => {
+    const regel = app.match(/\.approvalcard-action\s*\{([^}]*)\}/)?.[1] ?? ''
+    expect(regel).toMatch(/max-height:/)
+    expect(regel).toMatch(/overflow:\s*auto/)
+  })
+
   // Et var(--x) uden definition er ikke en skønhedsfejl: uden fallback
   // bliver `background: var(--bg)` gennemsigtig og `color: var(--fg)` arvet.
   // Med fallback brænder den en literal ind, som ikke følger temaskift.

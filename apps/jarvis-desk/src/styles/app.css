@@ -1382,6 +1382,10 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 .approvalcard-action {
   font-family: ui-monospace, monospace; font-size: 12.5px; color: var(--fg-1);
   white-space: pre-wrap; word-break: break-word; margin-bottom: 8px;
+  /* Et heredoc-script i kommandoen gjorde kortet højere end vinduet, og
+   * Godkend/Afvis røg ud under kanten (17/9-2026). Teksten ruller inde i
+   * kortet; knapperne bliver stående synlige. */
+  max-height: min(40vh, 360px); overflow: auto; scrollbar-color: var(--line) transparent;
 }
 .approvalcard-actions { display: flex; gap: 8px; }
 .approvalcard-actions button {

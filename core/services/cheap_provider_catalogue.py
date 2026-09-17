@@ -72,7 +72,10 @@ CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
         "models_endpoint": "/models",
         "rpm_limit": 15,
         "daily_limit": 1000,
-        "static_models": ["gemini-flash-latest", "gemini-flash-lite-latest", "gemini-pro-latest"],
+        # gemini-pro-latest fjernet 17/9-2026: gratis-kvoten for gemini-3.1-pro er
+        # «limit: 0» på begge konti — Google har taget pro ud af gratis-planen.
+        # Kaldet 12 gange i døgnet, 0 svar.
+        "static_models": ["gemini-flash-latest", "gemini-flash-lite-latest"],
     },
     "groq": {
         "label": "Groq",

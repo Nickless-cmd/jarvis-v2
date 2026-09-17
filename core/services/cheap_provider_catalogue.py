@@ -603,10 +603,25 @@ CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
         "cost_class": "free",
         "static_models": ["agnes-3.0-flash", "agnes-2.5-flash"],
     },
-    # OrcaRouter: nøglen virker, men gratis-modellerne svarer 429
-    # «free_rate_limited ... require the workspace owner to link a GitHub
-    # account». Ikke i kataloget før det er gjort (nøglen ligger klar som
-    # `orcarouter_api_key`).
+    # OrcaRouter: gratis-modellerne kræver en GitHub-konto koblet til
+    # arbejdsområdet («a newly created GitHub account does not qualify»). Koblet
+    # 17/9-2026; derefter værktøjskald MÅLT: deepseek-v4-flash-free 2,0 s,
+    # hy3-free 2,1 s, glm-5.3-flash-free 6,6 s. Udeladt: orcarouter/free
+    # («allowance is used up»), orcaverify (klassifikator, ikke chat),
+    # stealth/union-alpha-free (anonym udbyder).
+    "orcarouter": {
+        "label": "OrcaRouter",
+        "priority": 49,
+        "base_url": "https://api.orcarouter.ai/v1",
+        "auth_kind": "bearer",
+        "protocol": "openai-chat",
+        "models_endpoint": "/models",
+        "rpm_limit": 10,
+        "daily_limit": 500,
+        "cost_class": "free",
+        "static_models": ["deepseek/deepseek-v4-flash-free", "tencent/hy3-free",
+                          "z-ai/glm-5.3-flash-free"],
+    },
     # xkiro (7/9-2026, Bjørn-nøgle i runtime.json som `xkiro_api_key`):
     # OpenAI-compat `api.xkiro.com/v1`, bearer. MÅLT med nøglen, ikke læst på
     # deres side:

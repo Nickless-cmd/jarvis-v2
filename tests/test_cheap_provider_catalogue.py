@@ -100,7 +100,11 @@ def test_de_fem_nye_udbydere_er_koblet_til_noeglerne():
         assert RUNTIME_KEY_PROVIDERS[p][0] == f"{p}_api_key"
         assert p in kat._OPENAI_COMPATIBLE_PROVIDERS
         assert kat.CHEAP_PROVIDER_DEFAULTS[p]["cost_class"] == "free"
-    assert "orcarouter" not in kat.CHEAP_PROVIDER_DEFAULTS
+    # orcarouter kom med samme dag, da GitHub-kontoen var koblet.
+    assert RUNTIME_KEY_PROVIDERS["orcarouter"][0] == "orcarouter_api_key"
+    orca = kat.CHEAP_PROVIDER_DEFAULTS["orcarouter"]["static_models"]
+    assert all(m.endswith("-free") for m in orca)
+    assert not any(m.startswith("stealth/") or "orcaverify" in m for m in orca)
 
 
 def test_modeller_der_ikke_kaldte_vaerktoejet_er_udeladt():

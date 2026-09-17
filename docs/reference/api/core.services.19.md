@@ -2,6 +2,23 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/provider_health_check.py`
+_Provider health check — periodic ping to detect outages early._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_ping_host` | `(url)` | HTTP GET with short timeout. Returns reachable=True/False + latency_ms. | [src](../../../core/services/provider_health_check.py#L48) |
+| function | `health_check_all_providers` | `()` | Ping every cheap-lane provider once. Returns per-provider status. | [src](../../../core/services/provider_health_check.py#L66) |
+| function | `_cheap_dry_providers` | `()` | Providers i cheap-lane-cooldown (tør/quota-blokeret) — fra runtime-state. Self-safe. | [src](../../../core/services/provider_health_check.py#L115) |
+| function | `_model_drift` | `()` | Model-drift: en provider der FØR havde modeller men nu har 0 (model udfaset/omdøbt — den | [src](../../../core/services/provider_health_check.py#L135) |
+| function | `_spread_load_proactively` | `(reports, unreachable)` | Daemon-load-spredning (Jarvis-spec): sæt PROAKTIVT en kort cooldown på nede providers, så | [src](../../../core/services/provider_health_check.py#L170) |
+| function | `observe_and_flag` | `()` | Kadence-entry (Jarvis-spec 2026-06-23): ping + model-drift + cheap-dry → observe + FLAG | [src](../../../core/services/provider_health_check.py#L211) |
+| function | `build_provider_health_surface` | `()` | Read-only provider-helbreds-surface til Jarvis Mind / terminal: ÉT kald → ping + tør + | [src](../../../core/services/provider_health_check.py#L260) |
+| function | `latest_health_snapshot` | `()` | Read most-recent stored snapshot. | [src](../../../core/services/provider_health_check.py#L283) |
+| function | `health_section` | `()` | Awareness section listing currently unreachable providers. | [src](../../../core/services/provider_health_check.py#L295) |
+| function | `_exec_run_health_check` | `(args)` | — | [src](../../../core/services/provider_health_check.py#L315) |
+| function | `_exec_get_health_snapshot` | `(args)` | — | [src](../../../core/services/provider_health_check.py#L319) |
+
 ## `core/services/provider_model_epochs.py`
 _Hvilken model SVAREDE — ikke hvilken vi bad om._
 
@@ -674,21 +691,4 @@ _Efterproev det et barn PAASTAAR — Fase 6._
 |---|---|---|---|---|
 | function | `_opsloegere` | `(context)` | Vaelg den maskine paastanden skal efterproeves PAA. | [src](../../../core/services/report_claim_guard.py#L40) |
 | function | `tjek_rapport` | `(text, *, agent_id=…, role=…, run_id=…, context=…)` | Efterproev en barne-rapports filstier og linjenumre. Kaster ALDRIG. | [src](../../../core/services/report_claim_guard.py#L83) |
-
-## `core/services/research_contract.py`
-_Typed contracts and source normalization for explicit research runs._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `ResearchPolicy` | `` | — | [src](../../../core/services/research_contract.py#L17) |
-| class | `ResearchDecision` | `` | — | [src](../../../core/services/research_contract.py#L31) |
-| class | `ResearchTask` | `` | — | [src](../../../core/services/research_contract.py#L44) |
-| class | `ResearchPlan` | `` | — | [src](../../../core/services/research_contract.py#L51) |
-| class | `ResearchSource` | `` | — | [src](../../../core/services/research_contract.py#L57) |
-| class | `ResearchFinding` | `` | — | [src](../../../core/services/research_contract.py#L70) |
-| class | `ResearchContract` | `` | — | [src](../../../core/services/research_contract.py#L79) |
-| function | `_clean` | `(value)` | — | [src](../../../core/services/research_contract.py#L86) |
-| function | `canonicalize_url` | `(raw)` | — | [src](../../../core/services/research_contract.py#L90) |
-| function | `normalize_source` | `(value)` | — | [src](../../../core/services/research_contract.py#L107) |
-| function | `load_research_contract` | `(query=…)` | Load the canonical skill deterministically; fall back without hiding it. | [src](../../../core/services/research_contract.py#L124) |
 

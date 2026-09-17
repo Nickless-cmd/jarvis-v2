@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 14817 functions/methods, 51% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 14818 functions/methods, 51% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -35,26 +35,26 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 14817 functions/
 - [`core.services.04`](core.services.04.md) — `central_anomaly` … `central_hypothesis_governance`
 - [`core.services.05`](core.services.05.md) — `central_hypothesis_sampler` … `central_red_dress`
 - [`core.services.06`](core.services.06.md) — `central_redpill` … `cheap_lane_selfheal`
-- [`core.services.07`](core.services.07.md) — `cheap_provider_breaker_adapters` … `computer_use_policy`
-- [`core.services.08`](core.services.08.md) — `concept_baseline_tracker` … `crisis_marker_detector`
-- [`core.services.09`](core.services.09.md) — `cross_agent_memory` … `development_narrative_daemon`
-- [`core.services.10`](core.services.10.md) — `development_ritual` … `embodied_presence`
-- [`core.services.11`](core.services.11.md) — `embodied_state` … `fcm_gateway`
-- [`core.services.12`](core.services.12.md) — `felt_surface_store` … `google_connector`
-- [`core.services.13`](core.services.13.md) — `google_login` … `inheritance_seed`
-- [`core.services.14`](core.services.14.md) — `initiative_accumulator` … `living_heartbeat_cycle`
-- [`core.services.15`](core.services.15.md) — `llm_pricing` … `meta_learning_retrospective`
-- [`core.services.16`](core.services.16.md) — `meta_reflection_daemon` … `open_loop_closure_proposal_tracking`
-- [`core.services.17`](core.services.17.md) — `open_loop_signal_tracking` … `private_inner_note_signal_tracking`
-- [`core.services.18`](core.services.18.md) — `private_state_snapshot_tracking` … `provider_health_check`
-- [`core.services.19`](core.services.19.md) — `provider_model_epochs` … `research_contract`
-- [`core.services.20`](core.services.20.md) — `research_evidence_collector` … `runtime_self_model_identity`
-- [`core.services.21`](core.services.21.md) — `runtime_self_model_state` … `self_wakeup`
-- [`core.services.22`](core.services.22.md) — `selfhood_proposal_tracking` … `silence_patterns`
-- [`core.services.23`](core.services.23.md) — `simple_tool_executor` … `temporal_narrative`
-- [`core.services.24`](core.services.24.md) — `temporal_recurrence_signal_tracking` … `turn_tail_timing`
-- [`core.services.25`](core.services.25.md) — `turn_trace` … `visible_run_trace`
-- [`core.services.26`](core.services.26.md) — `visible_runs` … `world_model_signal_tracking`
+- [`core.services.07`](core.services.07.md) — `cheap_provider_breaker_adapters` … `composite_tools`
+- [`core.services.08`](core.services.08.md) — `computer_use_policy` … `creative_projects`
+- [`core.services.09`](core.services.09.md) — `crisis_marker_detector` … `development_focus_tracking`
+- [`core.services.10`](core.services.10.md) — `development_narrative_daemon` … `egress_routing`
+- [`core.services.11`](core.services.11.md) — `embodied_presence` … `fact_gate`
+- [`core.services.12`](core.services.12.md) — `fcm_gateway` … `good_enough_gate`
+- [`core.services.13`](core.services.13.md) — `google_connector` … `infra_weather_daemon`
+- [`core.services.14`](core.services.14.md) — `inheritance_seed` … `living_executive`
+- [`core.services.15`](core.services.15.md) — `living_heartbeat_cycle` … `meta_learning_hypotheses`
+- [`core.services.16`](core.services.16.md) — `meta_learning_retrospective` … `ollama_visible_prompt`
+- [`core.services.17`](core.services.17.md) — `open_loop_closure_proposal_tracking` … `private_inner_interplay_signal_tracking`
+- [`core.services.18`](core.services.18.md) — `private_inner_note_signal_tracking` … `provider_error_guard`
+- [`core.services.19`](core.services.19.md) — `provider_health_check` … `report_claim_guard`
+- [`core.services.20`](core.services.20.md) — `research_contract` … `runtime_self_model_builder`
+- [`core.services.21`](core.services.21.md) — `runtime_self_model_identity` … `self_system_code_awareness`
+- [`core.services.22`](core.services.22.md) — `self_wakeup` … `silence_listener`
+- [`core.services.23`](core.services.23.md) — `silence_patterns` … `temporal_depth`
+- [`core.services.24`](core.services.24.md) — `temporal_narrative` … `turn_changelog`
+- [`core.services.25`](core.services.25.md) — `turn_tail_timing` … `visible_run_terminal_recovery`
+- [`core.services.26`](core.services.26.md) — `visible_run_trace` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

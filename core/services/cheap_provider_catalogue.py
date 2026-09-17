@@ -519,6 +519,85 @@ CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
             "deepseek-v4-flash:free",
         ],
     },
+    # ── Fem nye nøgler (Bjørn 17/9-2026, alle i runtime.json). Endpoints fra hans
+    # liste; MÅLT samme dag med ét «pong»-kald og ét værktøjskald pr. model. Kun
+    # modeller der kaldte værktøjet korrekt er med.
+    #
+    # Inception (mercury): diffusion-model, den hurtigste vi har — 0,6-1,0 s med
+    # værktøjskald. Gratis-kreditter, ikke ubegrænset.
+    "inception": {
+        "label": "Inception (Mercury)",
+        "priority": 44,
+        "base_url": "https://api.inceptionlabs.ai/v1",
+        "auth_kind": "bearer",
+        "protocol": "openai-chat",
+        "models_endpoint": "/models",
+        "rpm_limit": 20,
+        "daily_limit": 500,
+        "cost_class": "free",
+        "static_models": ["mercury-2", "mercury-2.5"],
+    },
+    # Poolside: laguna-xs-2.1 kalder værktøjer på 0,8 s. laguna-s-2.1 svarede
+    # «jeg har ikke adgang til et værktøj» med værktøjet foran sig → udeladt.
+    "poolside": {
+        "label": "Poolside",
+        "priority": 46,
+        "base_url": "https://inference.poolside.ai/v1",
+        "auth_kind": "bearer",
+        "protocol": "openai-chat",
+        "models_endpoint": "/models",
+        "rpm_limit": 20,
+        "daily_limit": 500,
+        "cost_class": "free",
+        "static_models": ["poolside/laguna-xs-2.1"],
+    },
+    # ChatAnywhere: gratis-nøglen har DAGLIGE lofter pr. model (de mindste er de
+    # rummeligste), så kun mini/nano + deepseek-v4-flash. gpt-5-mini kaldte også
+    # værktøjer, men dens gratis-loft er lille. Alle fire: værktøjer på 1,6-2,7 s.
+    "chatanywhere": {
+        "label": "ChatAnywhere",
+        "priority": 50,
+        "base_url": "https://api.chatanywhere.tech/v1",
+        "auth_kind": "bearer",
+        "protocol": "openai-chat",
+        "models_endpoint": "/models",
+        "rpm_limit": 10,
+        "daily_limit": 200,
+        "cost_class": "free",
+        "static_models": ["gpt-4.1-mini", "gpt-4o-mini", "gpt-4.1-nano", "deepseek-v4-flash"],
+    },
+    # Intern AI 书生 (Shanghai AI Lab): 10 RPM, nøglen gælder 6 måneder (udløber
+    # ca. marts 2027). intern-latest skrev «Thinking Process» i svaret → udeladt.
+    "internlm": {
+        "label": "Intern AI",
+        "priority": 56,
+        "base_url": "https://chat.intern-ai.org.cn/api/v1",
+        "auth_kind": "bearer",
+        "protocol": "openai-chat",
+        "models_endpoint": "/models",
+        "rpm_limit": 8,
+        "daily_limit": 500,
+        "cost_class": "free",
+        "static_models": ["intern-s2", "intern-s1-mini"],
+    },
+    # Agnes AI: gratis-brugere har et stramt rate limit (agnes-2.0-flash gav 429
+    # under målingen). agnes-2.5-pro kræver saldo. 3.0-flash 6,8 s, 2.5-flash 15 s.
+    "agnes": {
+        "label": "Agnes AI",
+        "priority": 64,
+        "base_url": "https://apihub.agnes-ai.com/v1",
+        "auth_kind": "bearer",
+        "protocol": "openai-chat",
+        "models_endpoint": "/models",
+        "rpm_limit": 4,
+        "daily_limit": 200,
+        "cost_class": "free",
+        "static_models": ["agnes-3.0-flash", "agnes-2.5-flash"],
+    },
+    # OrcaRouter: nøglen virker, men gratis-modellerne svarer 429
+    # «free_rate_limited ... require the workspace owner to link a GitHub
+    # account». Ikke i kataloget før det er gjort (nøglen ligger klar som
+    # `orcarouter_api_key`).
     # xkiro (7/9-2026, Bjørn-nøgle i runtime.json som `xkiro_api_key`):
     # OpenAI-compat `api.xkiro.com/v1`, bearer. MÅLT med nøglen, ikke læst på
     # deres side:

@@ -90,3 +90,19 @@ def test_tokenharbor_kun_gratis_og_uden_mimo():
     assert "mimo-v2.5:free" not in e["static_models"]
     # Langsom (7-54 s): skal ligge bag de hurtige gratis-udbydere.
     assert e["priority"] > kat.CHEAP_PROVIDER_DEFAULTS["dahl"]["priority"]
+
+
+def test_de_fem_nye_udbydere_er_koblet_til_noeglerne():
+    """17/9-2026: nøgle i runtime.json + post i kortet + openai-compat, ellers når
+    de aldrig puljen (samme fælde som xkiro)."""
+    from core.services.cheap_provider_runtime_keys import RUNTIME_KEY_PROVIDERS
+    for p in ("inception", "poolside", "chatanywhere", "internlm", "agnes"):
+        assert RUNTIME_KEY_PROVIDERS[p][0] == f"{p}_api_key"
+        assert p in kat._OPENAI_COMPATIBLE_PROVIDERS
+        assert kat.CHEAP_PROVIDER_DEFAULTS[p]["cost_class"] == "free"
+    assert "orcarouter" not in kat.CHEAP_PROVIDER_DEFAULTS
+
+
+def test_modeller_der_ikke_kaldte_vaerktoejet_er_udeladt():
+    assert "poolside/laguna-s-2.1" not in kat.CHEAP_PROVIDER_DEFAULTS["poolside"]["static_models"]
+    assert "intern-latest" not in kat.CHEAP_PROVIDER_DEFAULTS["internlm"]["static_models"]

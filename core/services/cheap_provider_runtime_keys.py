@@ -36,6 +36,11 @@ RUNTIME_KEY_PROVIDERS: dict[str, tuple[str, str]] = {
     "llm7": ("llm7_api_key", "LLM7_API_KEY"),
     "dahl": ("dahl_api_key", "DAHL_API_KEY"),
     "tokenharbor": ("tokenharbor_api_key", "JARVIS_TOKENHARBOR_API_KEY"),
+    "inception": ("inception_api_key", "INCEPTION_API_KEY"),
+    "poolside": ("poolside_api_key", "POOLSIDE_API_KEY"),
+    "chatanywhere": ("chatanywhere_api_key", "CHATANYWHERE_API_KEY"),
+    "internlm": ("internlm_api_key", "INTERNLM_API_KEY"),
+    "agnes": ("agnes_api_key", "AGNES_API_KEY"),
 }
 
 

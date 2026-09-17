@@ -169,3 +169,24 @@ describe('JobsPanel — belastningen på broen', () => {
     vi.useRealTimers()
   })
 })
+
+describe('scout-agenter i panelet (17/9-2026)', () => {
+  beforeEach(() => { listJobs.mockReset(); stopJob.mockReset() })
+
+  const SCOUT = {
+    id: 'agent-' + 'a'.repeat(32), kilde: 'agent' as const, navn: 'Scout-agent',
+    kommando: 'Hvor bor cheap lane-værnet?', status: 'running', pid: null,
+    sekunder: 42, exit_code: null, can_pause: false,
+  }
+
+  it('en kørende scout vises under «Kører», med «Agent» som kilde og uden pause-knap', async () => {
+    listJobs.mockResolvedValue({ jobs: [SCOUT], bridge_ok: true })
+    render(<JobsPanel config={cfg} onClose={() => {}} isOwner />)
+    await waitFor(() => expect(screen.getByText('Scout-agent')).toBeInTheDocument())
+    expect(screen.getByText('Agent')).toBeInTheDocument()
+    expect(screen.getAllByText('Hvor bor cheap lane-værnet?').length).toBeGreaterThan(0)
+    expect(screen.queryByLabelText('Pause Scout-agent')).toBeNull()
+    fireEvent.click(screen.getByLabelText('Stop Scout-agent'))
+    await waitFor(() => expect(stopJob).toHaveBeenCalledWith(cfg, SCOUT))
+  })
+})

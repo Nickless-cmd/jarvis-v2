@@ -3,6 +3,8 @@ import pytest
 
 from core.services import background_jobs as bj
 
+_ægte_scout_jobs = bj._scout_jobs
+
 
 def _bro(stdout, status="ok"):
     def _exec(navn, args):
@@ -14,6 +16,7 @@ def _bro(stdout, status="ok"):
 @pytest.fixture(autouse=True)
 def ingen_supervisor(monkeypatch):
     monkeypatch.setattr(bj, "_supervisor_jobs", lambda: [])
+    monkeypatch.setattr(bj, "_scout_jobs", lambda: [])
 
 
 def test_en_standset_shell_er_PAUSET_ikke_koerende(monkeypatch):
@@ -81,3 +84,58 @@ def test_UDEN_bro_vises_kun_supervisor_og_broen_meldes_ok(monkeypatch):
     # «bro nede» - den spurgte ikke.
     monkeypatch.setattr(bj, "_supervisor_jobs", lambda: [])
     assert bj.liste()["bridge_ok"] is True
+
+
+
+# ── scout-agenter (17/9-2026) ───────────────────────────────────────────
+
+def _scout(**kw):
+    base = {"agent_id": "agent-" + "a" * 32, "role": "researcher", "tool_policy": "read-only-runtime",
+            "status": "running", "goal": "Hvor bor cheap lane-værnet?\n\nKig flere steder.",
+            "created_at": "2026-09-17T17:00:00Z", "updated_at": "2026-09-17T17:00:30Z", "completed_at": None}
+    base.update(kw)
+    return base
+
+
+def test_en_koerende_scout_vises_som_baggrundsjob(monkeypatch):
+    """Bjørn: «scout agenter [skal] vises i baggrundsjob panel i desk»."""
+    import core.runtime.db_agent_runtime as db
+    from datetime import datetime
+    monkeypatch.setattr(bj, "_scout_jobs", _ægte_scout_jobs)
+    monkeypatch.setattr(db, "list_agent_registry_entries", lambda **kw: [
+        _scout(), _scout(agent_id="agent-" + "b" * 32, role="planner"),
+        _scout(agent_id="agent-" + "c" * 32, tool_policy="full"),
+    ])
+    monkeypatch.setattr(bj, "_nu", lambda: datetime.fromisoformat("2026-09-17T17:00:42+00:00").timestamp())
+    j = bj.liste()["jobs"]
+    assert len(j) == 1, "kun scout-agenter — ikke andre agent-roller"
+    assert j[0]["kilde"] == "agent" and j[0]["status"] == "running"
+    assert j[0]["kommando"] == "Hvor bor cheap lane-værnet?"
+    assert j[0]["sekunder"] == 42 and j[0]["can_pause"] is False
+
+
+def test_faerdig_scout_forsvinder_og_fejlet_bliver_staaende(monkeypatch):
+    import core.runtime.db_agent_runtime as db
+    from datetime import datetime
+    monkeypatch.setattr(bj, "_scout_jobs", _ægte_scout_jobs)
+    monkeypatch.setattr(db, "list_agent_registry_entries", lambda **kw: [
+        _scout(status="completed", completed_at="2026-09-17T17:00:20Z"),
+        _scout(agent_id="agent-" + "d" * 32, status="failed", completed_at="2026-09-17T17:00:25Z"),
+        _scout(agent_id="agent-" + "e" * 32, status="completed", completed_at="2026-09-17T12:00:00Z"),
+    ])
+    monkeypatch.setattr(bj, "_nu", lambda: datetime.fromisoformat("2026-09-17T17:05:00+00:00").timestamp())
+    aktive = bj.liste()["jobs"]
+    assert [x["exit_code"] for x in aktive] == [1], "en fejlet scout skal ses; en lykkedes skal ikke"
+    alle = bj.liste(kun_aktive=False)["jobs"]
+    assert len(alle) == 2, "en scout der blev færdig for 5 timer siden ældes ud"
+    assert {x["sekunder"] for x in alle} == {20, 25}
+
+
+def test_et_brudt_register_vaelter_ikke_panelet(monkeypatch):
+    import core.runtime.db_agent_runtime as db
+    monkeypatch.setattr(bj, "_scout_jobs", _ægte_scout_jobs)
+    monkeypatch.setattr(db, "list_agent_registry_entries",
+                        lambda **kw: (_ for _ in ()).throw(RuntimeError("db nede")))
+    monkeypatch.setattr(bj, "_supervisor_jobs", lambda: [{"id": "x", "kilde": "supervisor", "status": "running",
+                                                          "sekunder": 1, "exit_code": None}])
+    assert [x["id"] for x in bj.liste()["jobs"]] == ["x"]

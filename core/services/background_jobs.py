@@ -16,6 +16,12 @@ virkelig forskellige:
     filer i ``/tmp/jarvis-bg/<id>.{log,pid,rc}``. De opstår midt i en opgave og
     dør igen. Målt 12/9 lå der poster fra samme dag.
 
+``agent``
+    Scout-agenter (`scout_agent`, før `explore`) — læsende research-agenter i
+    agent-registret. Tilføjet 17/9-2026: Jarvis gjorde dem til baggrundsjob fra
+    start til slut, og Bjørn: «scout agenter [skal] vises i baggrundsjob panel
+    i desk». Før var de usynlige her, selv mens de arbejdede i minutter.
+
 Et panel der kun viste den ene ville være sandt om sin form og tavst om sit
 indhold — man ville tro der ikke kørte noget, mens der gjorde.
 
@@ -124,6 +130,57 @@ def _supervisor_jobs() -> list[dict[str, Any]]:
     return jobs
 
 
+#: Scout-agentens tool-policies (`simple_tools_explore._explore_spawn`).
+_SCOUT_POLICIES = frozenset({"read-only-runtime", "read-only-workstation"})
+_AGENT_AKTIV = frozenset({"planned", "queued", "starting", "running", "active", "waiting"})
+#: Hvor længe en FÆRDIG scout står under «Færdige». Den kan ikke ryddes
+#: herfra (der er intet at slette — den er en række i registret), så den
+#: skal ældes ud af sig selv i stedet for at hobe sig op.
+_SCOUT_FAERDIG_VINDUE_S = 3600
+
+
+def _iso_ts(v: Any) -> float | None:
+    try:
+        return datetime.fromisoformat(str(v).replace("Z", "+00:00")).timestamp()
+    except Exception:
+        return None
+
+
+def _scout_jobs() -> list[dict[str, Any]]:
+    """Scout-agenter der kører — og dem der blev færdige den seneste time."""
+    from core.runtime.db_agent_runtime import list_agent_registry_entries
+    nu = _nu()
+    jobs: list[dict[str, Any]] = []
+    for a in list_agent_registry_entries(include_completed=True, limit=200):
+        if str(a.get("role") or "") != "researcher":
+            continue
+        if str(a.get("tool_policy") or "") not in _SCOUT_POLICIES:
+            continue
+        status = str(a.get("status") or "")
+        start = _iso_ts(a.get("created_at"))
+        aktiv = status in _AGENT_AKTIV
+        slut = None if aktiv else (_iso_ts(a.get("completed_at")) or _iso_ts(a.get("updated_at")))
+        if not aktiv and (slut is None or nu - slut > _SCOUT_FAERDIG_VINDUE_S):
+            continue
+        maal = str(a.get("goal") or "").strip().splitlines()
+        emne = maal[0] if maal else ""
+        jobs.append({
+            "id": str(a.get("agent_id") or ""),
+            "kilde": "agent",
+            "navn": "Scout-agent" + (
+                " · din maskine" if a.get("tool_policy") == "read-only-workstation" else ""),
+            "kommando": emne[:120] or "(scout)",
+            "status": "running" if aktiv else "exited",
+            "pid": None,
+            "sekunder": int(((nu if aktiv else slut) or nu) - start) if start else None,
+            # «failed» er en fejl og skal blive stående under «Kører»-filteret
+            # (_skal_vises); en annulleret eller udløbet scout er ikke gået galt.
+            "exit_code": None if aktiv else (1 if status == "failed" else 0),
+            "can_pause": False,
+        })
+    return jobs
+
+
 def liste(*, uid: str = "", exec_fn=None, kun_aktive: bool = True) -> dict[str, Any]:
     """Alle jobs fra begge kilder.
 
@@ -134,6 +191,12 @@ def liste(*, uid: str = "", exec_fn=None, kun_aktive: bool = True) -> dict[str, 
     åbne.
     """
     jobs = _supervisor_jobs()
+    try:
+        jobs += _scout_jobs()
+    except Exception:
+        # Registret er en tilføjelse til panelet, ikke dets fundament: fejler det,
+        # skal supervisor- og operator-jobbene stadig vises.
+        logger.warning("background_jobs: kunne ikke læse scout-agenter", exc_info=True)
     bro_ok = True
     if exec_fn is not None:
         try:

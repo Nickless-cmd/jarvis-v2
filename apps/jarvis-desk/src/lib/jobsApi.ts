@@ -15,8 +15,9 @@ import { apiFetch, type ApiConfig } from './api'
  */
 export interface BackgroundJob {
   id: string
-  /** 'supervisor' = serverens egne services. 'operator' = Bjørns maskine. */
-  kilde: 'supervisor' | 'operator'
+  /** 'supervisor' = serverens egne services. 'operator' = Bjørns maskine.
+   *  'agent' = en scout-agent (17/9-2026) — kan stoppes, ikke pauses. */
+  kilde: 'supervisor' | 'operator' | 'agent'
   navn: string
   kommando: string
   status: 'running' | 'paused' | 'exited' | string
@@ -72,5 +73,6 @@ export function varighed(sekunder?: number | null): string {
  *  MASKINEN, fordi det er dét der er forskellen her — og det var netop den
  *  ene af de to man ikke kunne se. */
 export function kildeNavn(kilde: string): string {
+  if (kilde === 'agent') return 'Agent'
   return kilde === 'operator' ? 'Din maskine' : 'Server'
 }

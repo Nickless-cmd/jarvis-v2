@@ -72,3 +72,21 @@ def test_ukendt_kilde_og_handling_afvises():
         r._signal_job("maanen", "x", "stop")
     with pytest.raises(HTTPException):
         r._signal_job("supervisor", "x", "eksploder")
+
+
+def test_en_scout_agent_stoppes_ved_at_annullere_den(monkeypatch):
+    import core.services.agent_runtime as ar
+    kaldt = {}
+    monkeypatch.setattr(ar, "cancel_agent", lambda aid, note="": kaldt.update(aid=aid) or {})
+    gyldig = "agent-" + "0" * 32
+    assert r._signal_job("agent", gyldig, "stop")["status"] == "ok"
+    assert kaldt["aid"] == gyldig
+
+
+def test_en_scout_agent_kan_ikke_pauses_og_id_valideres(monkeypatch):
+    for slem in ("agent-../../x", "; rm -rf /", "agent-abc"):
+        with pytest.raises(HTTPException):
+            r._signal_job("agent", slem, "stop")
+    with pytest.raises(HTTPException) as e:
+        r._signal_job("agent", "agent-" + "0" * 32, "pause")
+    assert e.value.status_code == 400

@@ -129,13 +129,15 @@ _Alle kørende baggrundsopgaver — uanset hvor de kører._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_nu` | `()` | — | [src](../../../core/services/background_jobs.py#L56) |
-| function | `_operator_jobs` | `(uid, exec_fn)` | Baggrunds-shells på operatørens maskine. Tom liste hvis broen tier. | [src](../../../core/services/background_jobs.py#L60) |
-| class | `BroTier` | `` | Broen svarede ikke — vi VED ikke hvad der kører på operatørens maskine. | [src](../../../core/services/background_jobs.py#L96) |
-| function | `_tal` | `(v)` | — | [src](../../../core/services/background_jobs.py#L100) |
-| function | `_supervisor_jobs` | `()` | — | [src](../../../core/services/background_jobs.py#L107) |
-| function | `liste` | `(*, uid=…, exec_fn=…, kun_aktive=…)` | Alle jobs fra begge kilder. | [src](../../../core/services/background_jobs.py#L127) |
-| function | `_skal_vises` | `(job)` | Kører den, eller gik den galt? | [src](../../../core/services/background_jobs.py#L152) |
+| function | `_nu` | `()` | — | [src](../../../core/services/background_jobs.py#L62) |
+| function | `_operator_jobs` | `(uid, exec_fn)` | Baggrunds-shells på operatørens maskine. Tom liste hvis broen tier. | [src](../../../core/services/background_jobs.py#L66) |
+| class | `BroTier` | `` | Broen svarede ikke — vi VED ikke hvad der kører på operatørens maskine. | [src](../../../core/services/background_jobs.py#L102) |
+| function | `_tal` | `(v)` | — | [src](../../../core/services/background_jobs.py#L106) |
+| function | `_supervisor_jobs` | `()` | — | [src](../../../core/services/background_jobs.py#L113) |
+| function | `_iso_ts` | `(v)` | — | [src](../../../core/services/background_jobs.py#L142) |
+| function | `_scout_jobs` | `()` | Scout-agenter der kører — og dem der blev færdige den seneste time. | [src](../../../core/services/background_jobs.py#L149) |
+| function | `liste` | `(*, uid=…, exec_fn=…, kun_aktive=…)` | Alle jobs fra begge kilder. | [src](../../../core/services/background_jobs.py#L184) |
+| function | `_skal_vises` | `(job)` | Kører den, eller gik den galt? | [src](../../../core/services/background_jobs.py#L215) |
 
 ## `core/services/background_resume.py`
 _Turen maa ikke slutte mens en baggrunds-shell stadig producerer._

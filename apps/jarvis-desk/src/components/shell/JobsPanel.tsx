@@ -96,8 +96,14 @@ export function JobsPanel({
     setBesked('')
     try {
       for (const j of kanFjernes) await removeProcess(config, j.navn)
-      const tilbage = faerdige.length - kanFjernes.length
-      setBesked(tilbage ? `${tilbage} shell(s) på din maskine kan ikke ryddes herfra` : '')
+      const shells = faerdige.filter((j) => j.kilde === 'operator').length
+      // Færdige scout-agenter er rækker i agent-registret, ikke processer —
+      // der er intet at slette. De forsvinder af sig selv efter en time.
+      const agenter = faerdige.filter((j) => j.kilde === 'agent').length
+      setBesked([
+        shells ? `${shells} shell(s) på din maskine kan ikke ryddes herfra` : '',
+        agenter ? `${agenter} scout-agent(er) forsvinder af sig selv efter en time` : '',
+      ].filter(Boolean).join(' · '))
       hent()
     } catch {
       setFejl('kunne ikke rydde')

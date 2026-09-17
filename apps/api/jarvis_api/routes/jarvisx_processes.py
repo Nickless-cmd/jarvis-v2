@@ -116,6 +116,18 @@ def _signal_job(kilde: str, job_id: str, handling: str) -> dict[str, Any]:
         if out.get("status") == "error":
             raise HTTPException(status_code=400, detail=out.get("error") or "handling fejlede")
         return out
+    if kilde == "agent":
+        import re
+        if handling != "stop":
+            raise HTTPException(status_code=400, detail="en scout-agent kan kun stoppes")
+        if not re.fullmatch(r"agent-[0-9a-f]{32}", job_id):
+            raise HTTPException(status_code=400, detail="ugyldigt agent-id")
+        from core.services.agent_runtime import cancel_agent
+        try:
+            cancel_agent(job_id, note="stoppet fra baggrundsjob-panelet")
+        except RuntimeError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        return {"status": "ok"}
     if kilde == "operator":
         import re
         # SAMME moenster som operator_background._valid. Uden det kunne et id

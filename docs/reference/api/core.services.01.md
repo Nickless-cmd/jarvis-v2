@@ -368,11 +368,12 @@ _En besked til et barn maa ikke fryse foraelderens tur — Fase 6._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_book_completion_wakeup` | `(agent_id, resultat, vurdering=…)` | Book en self-wakeup saa forælderen faar besked naar baggrundsbarnet er faerdigt. | [src](../../../core/services/agent_message_receipt.py#L46) |
-| function | `send_med_kvittering` | `(*, agent_id, content, role=…, kind=…, execution_mode=…, taalmodighed_s=…)` | Send beskeden, vent kort, og giv enten svaret eller en kvittering. | [src](../../../core/services/agent_message_receipt.py#L79) |
-| function | `_koer_med_taalmodighed` | `(agent_id, udfoer, taalmodighed_s, efterbehandling=…)` | Kør barnet i en tråd med forælderens kontekst; svar eller kvittér. | [src](../../../core/services/agent_message_receipt.py#L103) |
-| function | `kvittering` | `(agent_id, *, taalmodighed_s=…)` | Hvad der er ACCEPTERET — ikke hvad der blev svaret. | [src](../../../core/services/agent_message_receipt.py#L178) |
-| function | `spawn_med_kvittering` | `(*, taalmodighed_s=…, efterbehandling=…, **spawn_kwargs)` | Spawn en agent, vent kort, returner enten resultat eller kvittering. | [src](../../../core/services/agent_message_receipt.py#L197) |
+| function | `_completion_besked` | `(agent_id, resultat, vurdering=…)` | Den tekst der leveres naar baggrundsbarnet lander. | [src](../../../core/services/agent_message_receipt.py#L46) |
+| function | `_book_completion_wakeup` | `(agent_id, resultat, vurdering=…)` | LEVER baggrundsbarnets sene svar med det samme — uden 60-sekunders-gulvet. | [src](../../../core/services/agent_message_receipt.py#L65) |
+| function | `send_med_kvittering` | `(*, agent_id, content, role=…, kind=…, execution_mode=…, taalmodighed_s=…)` | Send beskeden, vent kort, og giv enten svaret eller en kvittering. | [src](../../../core/services/agent_message_receipt.py#L117) |
+| function | `_koer_med_taalmodighed` | `(agent_id, udfoer, taalmodighed_s, efterbehandling=…)` | Kør barnet i en tråd med forælderens kontekst; svar eller kvittér. | [src](../../../core/services/agent_message_receipt.py#L141) |
+| function | `kvittering` | `(agent_id, *, taalmodighed_s=…)` | Hvad der er ACCEPTERET — ikke hvad der blev svaret. | [src](../../../core/services/agent_message_receipt.py#L216) |
+| function | `spawn_med_kvittering` | `(*, taalmodighed_s=…, efterbehandling=…, **spawn_kwargs)` | Spawn en agent, vent kort, returner enten resultat eller kvittering. | [src](../../../core/services/agent_message_receipt.py#L235) |
 
 ## `core/services/agent_model_fitness.py`
 _Er denne model egnet til agent-arbejde? Svaret bygger på MÅLINGER._

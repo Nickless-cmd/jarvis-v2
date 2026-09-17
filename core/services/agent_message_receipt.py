@@ -43,37 +43,75 @@ logger = logging.getLogger("uvicorn.error")
 TAALMODIGHED_S = 20.0
 
 
+def _completion_besked(agent_id: str, resultat: dict[str, Any],
+                       vurdering: str = "") -> str:
+    """Den tekst der leveres naar baggrundsbarnet lander."""
+    status = str(resultat.get("status") or "completed")
+    svar = ""
+    for msg in reversed(resultat.get("messages") or []):
+        if str(msg.get("direction") or "") == "agent->jarvis":
+            kind = str(msg.get("kind") or "")
+            if kind in ("result", "") and not svar:
+                svar = str(msg.get("content") or "")[:300]
+                break
+    return (
+        f"Baggrunds-agent {agent_id} er faerdig (status={status}). "
+        + (f"{vurdering} " if vurdering else "")
+        + f"Svar-uddrag: {svar[:200] if svar else '(tomt)'}... "
+        f"Hent det fulde resultat med get_agent(agent_id='{agent_id}')."
+    )
+
+
 def _book_completion_wakeup(agent_id: str, resultat: dict[str, Any],
                             vurdering: str = "") -> None:
-    """Book en self-wakeup saa forælderen faar besked naar baggrundsbarnet er faerdigt.
+    """LEVER baggrundsbarnets sene svar med det samme — uden 60-sekunders-gulvet.
 
     Kaldes fra baggrundstraadens finally-blok naar forælderen allerede har
     faaet en kvittering (forsent.is_set()). Uden dette er et sent-faerdigt
     baggrundsbarn tavst — forælderen skulle polle med get_agent.
+
+    OMLAGT 17/9-2026 (Bjørn): «det burde være en baggrunds opgave fra start til
+    slut». Foer bookede vi en `schedule_self_wakeup(delay_seconds=60)` — men
+    `self_wakeup._MIN_DELAY_SECONDS` er 60, og `wakeup_dispatch` poller kun
+    hvert minut. Svaret kunne derfor tidligst lande 1-2 minutter efter barnet
+    var færdigt. Nu leverer vi direkte ad samme vej som wakeup-dispatcheren:
+    er forælderen midt i en tur, lægges beskeden i sessionen straks (intet
+    konkurrerende run); er forælderen fri, startes et autonomt run der kan
+    handle paa den.
     """
+    besked = _completion_besked(agent_id, resultat, vurdering)
     try:
-        from core.services.self_wakeup import schedule_self_wakeup
-        status = str(resultat.get("status") or "completed")
-        svar = ""
-        for msg in reversed(resultat.get("messages") or []):
-            if str(msg.get("direction") or "") == "agent->jarvis":
-                kind = str(msg.get("kind") or "")
-                if kind in ("result", "") and not svar:
-                    svar = str(msg.get("content") or "")[:300]
-                    break
-        schedule_self_wakeup(
-            delay_seconds=60,
-            prompt=(
-                f"Baggrunds-agent {agent_id} er faerdig (status={status}). "
-                + (f"{vurdering} " if vurdering else "")
-                + f"Svar-uddrag: {svar[:200] if svar else '(tomt)'}... "
-                f"Hent det fulde resultat med get_agent(agent_id='{agent_id}')."
-            ),
-            reason=f"agent-completion:{agent_id}",
-        )
-        logger.info("completion-wakeup booket for %s (status=%s)", agent_id, status)
+        from core.services.wakeup_dispatcher import _active_turn_blocks
+        from core.identity.owner_resolver import resolve_owner_app_session
+
+        session = ""
+        try:
+            session = str(resolve_owner_app_session() or "")
+        except Exception:
+            session = ""
+
+        if _active_turn_blocks(session):
+            # Midt i en tur: beskeden lander i sessionen nu. `urgent=True`
+            # bypasser inbox-koeen, som ellers ville vente til turen er omme.
+            from core.services.notification_bridge import send_session_notification
+            send_session_notification(besked, source="agent-completion", urgent=True)
+            logger.info("completion leveret i aktiv tur for %s", agent_id)
+        else:
+            from core.services.autonomous_stream_run import start_autonomous_stream_run
+            start_autonomous_stream_run(besked, session_id=session,
+                                        origin="agent-completion")
+            logger.info("completion-run startet for %s", agent_id)
     except Exception:
-        logger.warning("kunne ikke booke completion-wakeup for %s", agent_id, exc_info=True)
+        logger.warning("kunne ikke levere completion for %s", agent_id, exc_info=True)
+        # Sidste udvej: en vækning er bedre end tavshed — ogsaa selv om den
+        # tidligst lander efter et minut.
+        try:
+            from core.services.self_wakeup import schedule_self_wakeup
+            schedule_self_wakeup(delay_seconds=60, prompt=besked,
+                                 reason=f"agent-completion:{agent_id}")
+        except Exception:
+            logger.warning("fallback-wakeup fejlede ogsaa for %s", agent_id,
+                           exc_info=True)
 
 
 def send_med_kvittering(*, agent_id: str, content: str,

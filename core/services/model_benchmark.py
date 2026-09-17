@@ -202,9 +202,14 @@ def kør_benchmark(*, provider: str, model: str, antal_filer: int = 2,
             return ud
         if kald is None:
             def kald(spørgsmål: str) -> str:
+                from core.tools.simple_tools_explore import _EXPLORE_AFVENT_S
                 from core.tools.simple_tools_native import _explore_spawn, _explore_svar
+                # 17/9-2026: benchmarken SKAL have svaret for at kunne bedømme
+                # det — baggrunds-defaulten (0 s) giver en kvittering, og så
+                # ville hver model score 0.
                 res = _explore_spawn(query=spørgsmål, vejledning="Kig ét sted og svar kort.",
-                                     provider=provider, model=model)
+                                     provider=provider, model=model,
+                                     taalmodighed_s=_EXPLORE_AFVENT_S)
                 return _explore_svar(res)[0]
 
         delscorer: list[int] = []

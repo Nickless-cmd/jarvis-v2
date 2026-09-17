@@ -467,8 +467,8 @@ _Tool definitions catalog for Jarvis' visible-lane tools._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_til_openai_form` | `(td)` | Anthropic-formet definition → OpenAI-formet. Andet passerer urørt. | [src](../../../core/tools/simple_tools_definitions.py#L3610) |
-| function | `_ensret_tool_definitions` | `(defs)` | — | [src](../../../core/tools/simple_tools_definitions.py#L3627) |
+| function | `_til_openai_form` | `(td)` | Anthropic-formet definition → OpenAI-formet. Andet passerer urørt. | [src](../../../core/tools/simple_tools_definitions.py#L3620) |
+| function | `_ensret_tool_definitions` | `(defs)` | — | [src](../../../core/tools/simple_tools_definitions.py#L3637) |
 
 ## `core/tools/simple_tools_enforcement.py`
 _Commit-enforcement (repo-state attachment) for Jarvis' tool results._
@@ -489,15 +489,15 @@ _Read-only research-agent tool with runtime/Desk execution routing._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_facade` | `()` | — | [src](../../../core/tools/simple_tools_explore.py#L17) |
-| function | `_execution_context` | `(args)` | — | [src](../../../core/tools/simple_tools_explore.py#L22) |
-| function | `_explore_spawn` | `(*, query, vejledning, provider=…, model=…, target=…, context=…, efterbehandling=…)` | — | [src](../../../core/tools/simple_tools_explore.py#L54) |
-| function | `_explore_svar` | `(result)` | — | [src](../../../core/tools/simple_tools_explore.py#L96) |
-| function | `_bro_kontrol` | `(args)` | Byg de to efterproevninger der slaar op OVER BROEN, paa Bjoerns maskine. | [src](../../../core/tools/simple_tools_explore.py#L110) |
-| function | `_bevis_note` | `(bevis, kontrolleret, substans)` | Én saetning der siger praecis hvad der blev efterproevet. | [src](../../../core/tools/simple_tools_explore.py#L204) |
-| function | `_vurder_svar` | `(result, *, tjek_paastande, bro_tjek=…, bro_linje=…)` | Fabrikations-værnet på ÉT explore-resultat. | [src](../../../core/tools/simple_tools_explore.py#L222) |
-| function | `_vurdering_til_wakeup` | `(vurdering)` | Dommen over et sent explore-svar, som den skal stå i vækningen. | [src](../../../core/tools/simple_tools_explore.py#L287) |
-| function | `_exec_explore` | `(args)` | — | [src](../../../core/tools/simple_tools_explore.py#L304) |
+| function | `_facade` | `()` | — | [src](../../../core/tools/simple_tools_explore.py#L25) |
+| function | `_execution_context` | `(args)` | — | [src](../../../core/tools/simple_tools_explore.py#L30) |
+| function | `_explore_spawn` | `(*, query, vejledning, provider=…, model=…, target=…, context=…, efterbehandling=…, taalmodighed_s=…)` | — | [src](../../../core/tools/simple_tools_explore.py#L62) |
+| function | `_explore_svar` | `(result)` | — | [src](../../../core/tools/simple_tools_explore.py#L105) |
+| function | `_bro_kontrol` | `(args)` | Byg de to efterproevninger der slaar op OVER BROEN, paa Bjoerns maskine. | [src](../../../core/tools/simple_tools_explore.py#L119) |
+| function | `_bevis_note` | `(bevis, kontrolleret, substans)` | Én saetning der siger praecis hvad der blev efterproevet. | [src](../../../core/tools/simple_tools_explore.py#L213) |
+| function | `_vurder_svar` | `(result, *, tjek_paastande, bro_tjek=…, bro_linje=…)` | Fabrikations-værnet på ÉT explore-resultat. | [src](../../../core/tools/simple_tools_explore.py#L231) |
+| function | `_vurdering_til_wakeup` | `(vurdering)` | Dommen over et sent explore-svar, som den skal stå i vækningen. | [src](../../../core/tools/simple_tools_explore.py#L296) |
+| function | `_exec_explore` | `(args)` | — | [src](../../../core/tools/simple_tools_explore.py#L313) |
 
 ## `core/tools/simple_tools_native.py`
 _Native (non-operator, non-web) tool executors for Jarvis._

@@ -8,7 +8,15 @@ import re
 from typing import Any
 
 _EXPLORE_MAKS_RUNDER = 3
-_EXPLORE_TAALMODIGHED_S = 60.0  # explore median 14,8 s · p90 51,7 s · max 430 s
+# 17/9-2026 (Bjørn): baggrund fra start til slut. Turen må IKKE låse mens
+# agenten arbejder — den får en kvittering med agent_id straks og kan selv
+# polle med get_agent hvis den afventer svaret. Det sene svar leveres direkte
+# af `_book_completion_wakeup` (se agent_message_receipt). Målt: median 14,8 s
+# · p90 51,7 s · max 430 s — med 60 s tålmodighed låste 93% af kørslerne turen.
+_EXPLORE_TAALMODIGHED_S = 0.0
+# Den ventende vej: naar Jarvis SELV vaelger at afvente svaret (`afvent=true`)
+# — fx fordi han ikke kan komme videre uden det. Bevidst den gamle adfaerd.
+_EXPLORE_AFVENT_S = 60.0
 
 
 logger = logging.getLogger(__name__)
@@ -53,7 +61,8 @@ def _execution_context(args: dict[str, Any]) -> tuple[str, dict[str, object], st
 
 def _explore_spawn(*, query: str, vejledning: str, provider: str = "", model: str = "",
                    target: str = "runtime", context: dict[str, object] | None = None,
-                   efterbehandling: Any = None) -> dict:
+                   efterbehandling: Any = None,
+                   taalmodighed_s: float = _EXPLORE_TAALMODIGHED_S) -> dict:
     from core.services.agent_message_receipt import spawn_med_kvittering
     from core.services.agent_runtime_base import tools_for_policy
     policy = "read-only-workstation" if target == "workstation" else "read-only-runtime"
@@ -66,7 +75,7 @@ def _explore_spawn(*, query: str, vejledning: str, provider: str = "", model: st
         "Du arbejder i Jarvis' runtime-container. `search` giver korrekte linjenumre."
     )
     return spawn_med_kvittering(
-        taalmodighed_s=_EXPLORE_TAALMODIGHED_S, efterbehandling=efterbehandling,
+        taalmodighed_s=taalmodighed_s, efterbehandling=efterbehandling,
         role="researcher", goal=f"{query}\n\n{vejledning}",
         system_prompt=(
             "Du er en undersoegende agent. Du LAESER — du aendrer ingenting. "
@@ -351,6 +360,11 @@ def _exec_explore(args: dict[str, Any]) -> dict[str, Any]:
     brugt: set[tuple[str, str]] = set()
     sidste_fejl: list[str] = []
     svar, agent_id, kontrolleret = "", "", 0
+    # 17/9-2026 (Bjørn): «baggrund fra start til slut». Default er 0 s — turen
+    # faar en kvittering straks og laaser IKKE mens agenten arbejder. Vaelger
+    # Jarvis selv at afvente (`afvent=true`), venter vi som foer.
+    _taalmodighed = (_EXPLORE_AFVENT_S if bool(args.get("afvent"))
+                     else _EXPLORE_TAALMODIGHED_S)
 
     # COPILOT-POOLEN FOERST (Bjoern 10/9-2026). De gratis modeller kostede en
     # hel eftermiddag: fem af dem har 0 vaerktoejskald paa 167-172 koersler
@@ -399,7 +413,8 @@ def _exec_explore(args: dict[str, Any]) -> dict[str, Any]:
             prov, mod = kandidater[0]
         try:
             spawn_args: dict[str, Any] = {"query": query, "vejledning": vejledning,
-                                          "provider": prov, "model": mod}
+                                          "provider": prov, "model": mod,
+                                          "taalmodighed_s": _taalmodighed}
             if target == "workstation":
                 spawn_args.update({"target": target,
                                    "context": {**context, **herkomst}})

@@ -31,7 +31,7 @@ def _spawn(messages, **extra):
 def test_kvotebesked_er_en_fejl_ikke_et_fund():
     with _spawn([{"direction": "agent->jarvis", "kind": "provider-error", "content": KVOTE}],
                 status="failed"):
-        r = _exec_explore({"query": "hvor bor explore?"})
+        r = _exec_explore({"query": "hvor bor explore?", "afvent": True})
     assert r["status"] == "error"
     assert "kom ikke igennem" in r["error"]
     assert "findings" not in r
@@ -40,7 +40,7 @@ def test_kvotebesked_er_en_fejl_ikke_et_fund():
 def test_et_aegte_fund_kommer_stadig_igennem():
     with _spawn([{"direction": "agent->jarvis", "kind": "result",
                   "content": "Defineret i simple_tools_definitions.py:257"}]):
-        r = _exec_explore({"query": "hvor bor explore?"})
+        r = _exec_explore({"query": "hvor bor explore?", "afvent": True})
     assert r["status"] == "ok"
     assert "257" in r["findings"]
 
@@ -51,7 +51,7 @@ def test_fund_vinder_over_en_senere_udbyderfejl():
         {"direction": "agent->jarvis", "kind": "result", "content": "fundet i X.py:12"},
         {"direction": "agent->jarvis", "kind": "provider-error", "content": KVOTE},
     ]):
-        r = _exec_explore({"query": "q"})
+        r = _exec_explore({"query": "q", "afvent": True})
     assert r["status"] == "ok"
     assert "X.py:12" in r["findings"]
 
@@ -59,7 +59,7 @@ def test_fund_vinder_over_en_senere_udbyderfejl():
 def test_beskeder_uden_kind_regnes_stadig_som_fund():
     """Bagudkompatibilitet: ældre agent-beskeder har ingen `kind`."""
     with _spawn([{"direction": "agent->jarvis", "content": "gammelt svar"}]):
-        r = _exec_explore({"query": "q"})
+        r = _exec_explore({"query": "q", "afvent": True})
     assert r["status"] == "ok"
     assert r["findings"] == "gammelt svar"
 

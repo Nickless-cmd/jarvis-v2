@@ -285,6 +285,16 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
                             "workstation workspace when present; otherwise runtime."
                         ),
                     },
+                    "afvent": {
+                        "type": "boolean",
+                        "description": (
+                            "Default false: the scout runs in the BACKGROUND — you "
+                            "get an agent_id straight away and the turn does not "
+                            "block; the answer is delivered when it lands (or poll "
+                            "with get_agent). Set true ONLY when you cannot proceed "
+                            "without the answer right now — then the turn waits."
+                        ),
+                    },
                 },
                 "required": ["query"],
             },

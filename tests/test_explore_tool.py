@@ -37,7 +37,7 @@ class TestExplore:
         """Hele pointen: man beskriver hvad man leder efter, resten er ikke ens
         problem."""
         _fang(monkeypatch)
-        r = _exec_explore({"query": "hvor bygges prompten"})
+        r = _exec_explore({"query": "hvor bygges prompten", "afvent": True})
         assert r["status"] == "ok" and "core/x.py:42" in r["findings"]
 
     def test_query_kraeves(self):
@@ -62,7 +62,7 @@ class TestExplore:
         monkeypatch.setattr(claim_check, "tjek_paastande", lambda *_a, **_kw: {
             "holder": True, "kontrolleret": 0, "fejl": [],
         })
-        r = _exec_explore({"query": "find prompt builder",
+        r = _exec_explore({"query": "find prompt builder", "afvent": True,
                            "_runtime_session_id": "desk-session",
                            "_runtime_user_id": "bjorn"})
         assert r["status"] == "ok" and r["target"] == "workstation"

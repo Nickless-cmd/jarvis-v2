@@ -15,9 +15,17 @@ KVOTE = ("Sorry, to prevent abuse of free resources, accounts that have not been
 
 
 def _spawn(messages, **extra):
+    """explore spawner med auto_execute=False og koerer barnet selv (17/9-2026),
+    saa svaret skal komme fra execute_agent_task."""
+    from contextlib import ExitStack
     svar = {"agent_id": "agent-1", "messages": messages}
     svar.update(extra)
-    return patch("core.services.agent_runtime.spawn_agent_task", return_value=svar)
+    stak = ExitStack()
+    stak.enter_context(patch("core.services.agent_runtime.spawn_agent_task",
+                             return_value={"agent_id": "agent-1", "status": "planned"}))
+    stak.enter_context(patch("core.services.agent_runtime.execute_agent_task",
+                             return_value=svar))
+    return stak
 
 
 def test_kvotebesked_er_en_fejl_ikke_et_fund():

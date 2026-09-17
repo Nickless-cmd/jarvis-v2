@@ -329,6 +329,21 @@ def _exec_explore(args: dict[str, Any]) -> dict[str, Any]:
             return {"status": "error", "error": str(exc), "breadth": bredde,
                     "target": target}
         agent_id = str(result.get("agent_id") or "")
+        if str(result.get("status") or "") == "accepted":
+            # Barnet arbejder stadig efter tålmodigheden (60 s). Det er IKKE en
+            # fejl: uden dette læste løkken den tomme kvittering som «modellen
+            # svarede ikke» og startede næste model — op til tre agenter om
+            # samme spørgsmål, og Jarvis fik en fejl mens de alle kørte videre.
+            # Påstands-tjekket kan ikke køre på et svar der ikke findes endnu;
+            # det sker når resultatet hentes.
+            return {"status": "accepted", "agent_id": agent_id, "breadth": bredde,
+                    "target": target,
+                    "provider": str(result.get("provider") or prov),
+                    "model": str(result.get("model") or mod),
+                    "besked": ("Explore arbejder stadig i baggrunden. Du bliver vækket "
+                               "når den er færdig; hent svaret med "
+                               f"get_agent(agent_id='{agent_id}'). Fund i et sent svar "
+                               "er IKKE påstands-tjekket — efterprøv filstier selv.")}
         brugt.add((str(result.get("provider") or prov), str(result.get("model") or mod)))
         svar_n, udbyder_fejl = _explore_svar(result)
         if not svar_n:

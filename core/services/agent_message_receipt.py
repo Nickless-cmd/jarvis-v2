@@ -91,18 +91,35 @@ def send_med_kvittering(*, agent_id: str, content: str,
     except Exception as exc:
         return {"status": "error", "error": str(exc), "agent_id": agent_id}
 
+    def _udfoer() -> dict[str, Any]:
+        from core.services.agent_runtime import execute_agent_task
+        return execute_agent_task(agent_id=agent_id, execution_mode=execution_mode) or {}
+
+    return _koer_med_taalmodighed(agent_id, _udfoer, taalmodighed_s)
+
+
+def _koer_med_taalmodighed(agent_id: str, udfoer, taalmodighed_s: float) -> dict[str, Any]:
+    """Kør barnet i en tråd med forælderens kontekst; svar eller kvittér.
+
+    Fælles for `send_med_kvittering` og `spawn_med_kvittering`.
+
+    LÅSEN (17/9-2026): uden den kunne barnet blive færdigt i øjeblikket mellem
+    at forælderens ventetid udløb og at «for sent» blev sat. Så sprang
+    `finally` vækningen over, forælderen fik en kvittering — og hørte aldrig
+    at barnet var færdigt. Nu afgøres «nåede det frem?» og «skal der vækkes?»
+    under samme lås, så præcis én af dem sker.
+    """
     resultat: dict[str, Any] = {}
+    laas = threading.Lock()
+    tilstand = {"faerdig": False, "forsent": False}
     faerdig = threading.Event()
-    forsent = threading.Event()
     kontekst = contextvars.copy_context()
 
     def _koer() -> None:
         from core.services.child_authority import uden_foraeldrens_godkendelse
         try:
-            from core.services.agent_runtime import execute_agent_task
             with uden_foraeldrens_godkendelse():
-                resultat.update(execute_agent_task(agent_id=agent_id,
-                                                   execution_mode=execution_mode) or {})
+                resultat.update(udfoer() or {})
         except Exception as exc:
             # En traad der doer stille efterlader et barn der ser ud til at
             # arbejde for altid.
@@ -116,8 +133,11 @@ def send_med_kvittering(*, agent_id: str, content: str,
             except Exception:
                 pass
         finally:
+            with laas:
+                tilstand["faerdig"] = True
+                vaek = tilstand["forsent"]
             faerdig.set()
-            if forsent.is_set():
+            if vaek:
                 _book_completion_wakeup(agent_id, resultat)
 
     try:
@@ -126,20 +146,19 @@ def send_med_kvittering(*, agent_id: str, content: str,
         t.start()
     except Exception as exc:
         # Kunne vi ikke starte en traad, er det bedre at koere inline end at
-        # tabe beskeden helt.
+        # tabe barnet helt.
         logger.warning("barn %s: kunne ikke starte baggrundstraad — koerer "
                        "inline", agent_id, exc_info=True)
-        from core.services.agent_runtime import execute_agent_task
         try:
-            return dict(execute_agent_task(agent_id=agent_id,
-                                           execution_mode=execution_mode) or {})
+            return dict(udfoer() or {})
         except Exception:
             return {"status": "error", "error": str(exc), "agent_id": agent_id}
 
-    if faerdig.wait(timeout=max(0.0, float(taalmodighed_s))):
-        return dict(resultat)
-
-    forsent.set()
+    faerdig.wait(timeout=max(0.0, float(taalmodighed_s)))
+    with laas:
+        if tilstand["faerdig"]:
+            return dict(resultat)
+        tilstand["forsent"] = True
     return kvittering(agent_id, taalmodighed_s=taalmodighed_s)
 
 
@@ -176,8 +195,8 @@ def spawn_med_kvittering(*, taalmodighed_s: float = TAALMODIGHED_S,
         max    430,5 s
         over 60 s: 15 koersler
 
-    Med ``taalmodighed_s=60`` holder ~85% af koerslerne sig inline; halen
-    bliver asynkron med completion-signal.
+    Med ``taalmodighed_s=60`` holder ~93% af koerslerne sig inline (186 af
+    201); halen bliver asynkron med completion-signal.
     """
     from core.services.agent_runtime import spawn_agent_task, execute_agent_task
 
@@ -192,45 +211,12 @@ def spawn_med_kvittering(*, taalmodighed_s: float = TAALMODIGHED_S,
         return {"status": "error", "error": "spawn returnerede ingen agent_id",
                 "spawn_result": spawn_result}
 
-    resultat: dict[str, Any] = {}
-    faerdig = threading.Event()
-    forsent = threading.Event()
-    kontekst = contextvars.copy_context()
+    def _udfoer() -> dict[str, Any]:
+        return execute_agent_task(agent_id=agent_id) or {}
 
-    def _koer() -> None:
-        from core.services.child_authority import uden_foraeldrens_godkendelse
-        try:
-            with uden_foraeldrens_godkendelse():
-                resultat.update(execute_agent_task(agent_id=agent_id) or {})
-        except Exception as exc:
-            logger.warning("barn %s: koerslen fejlede i baggrunden", agent_id,
-                           exc_info=True)
-            resultat.update({"status": "failed", "error": str(exc)})
-            try:
-                from core.services.child_failure_signal import note_child_ended
-                note_child_ended(agent_id, status="failed",
-                                 error="koerslen fejlede i baggrunden")
-            except Exception:
-                pass
-        finally:
-            faerdig.set()
-            if forsent.is_set():
-                _book_completion_wakeup(agent_id, resultat)
-
-    try:
-        t = threading.Thread(target=lambda: kontekst.run(_koer),
-                             name=f"agent-{agent_id[:12]}", daemon=True)
-        t.start()
-    except Exception as exc:
-        logger.warning("barn %s: kunne ikke starte baggrundstraad — koerer "
-                       "inline", agent_id, exc_info=True)
-        try:
-            return dict(execute_agent_task(agent_id=agent_id) or {})
-        except Exception:
-            return {"status": "error", "error": str(exc), "agent_id": agent_id}
-
-    if faerdig.wait(timeout=max(0.0, float(taalmodighed_s))):
-        return dict(resultat)
-
-    forsent.set()
-    return kvittering(agent_id, taalmodighed_s=taalmodighed_s)
+    svar = _koer_med_taalmodighed(agent_id, _udfoer, taalmodighed_s)
+    # Kalderen (explore) skal kunne se model og udbyder, også i en kvittering.
+    for felt in ("provider", "model"):
+        if felt not in svar and spawn_result.get(felt):
+            svar[felt] = spawn_result[felt]
+    return svar

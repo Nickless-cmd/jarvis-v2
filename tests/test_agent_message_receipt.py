@@ -145,3 +145,67 @@ def test_barnet_baerer_foraelderens_kontekst_men_ikke_godkendelsen(isolated_runt
     assert set_i_barnet.get("godkendt") is False, (
         "barnet arvede foraelderens ejer-godkendelse: ET MENNESKE sagde ja til "
         "DEN handling, ikke til alt barnet maatte finde paa")
+
+
+def test_spawn_med_kvittering_hurtigt_barn_giver_svaret(monkeypatch):
+    import core.services.agent_message_receipt as mr
+    sendt = {}
+    monkeypatch.setattr("core.services.agent_runtime.spawn_agent_task",
+                        lambda **kw: sendt.update(kw) or {"agent_id": "s1", "provider": "p", "model": "m"})
+    monkeypatch.setattr("core.services.agent_runtime.execute_agent_task",
+                        lambda **kw: {"status": "completed", "agent_id": "s1", "messages": []})
+    monkeypatch.setattr(mr, "_book_completion_wakeup", lambda *a: (_ for _ in ()).throw(AssertionError("ingen wakeup")))
+    svar = mr.spawn_med_kvittering(taalmodighed_s=5.0, role="r", goal="g")
+    assert svar["status"] == "completed"
+    assert sendt["auto_execute"] is False, "spawn skal ikke selv koere barnet inline"
+
+
+def test_sent_barn_giver_kvittering_og_praecis_en_wakeup(monkeypatch):
+    import core.services.agent_message_receipt as mr
+    wakeups = []
+    faerdig = threading.Event()
+    monkeypatch.setattr("core.services.agent_runtime.spawn_agent_task",
+                        lambda **kw: {"agent_id": "s2", "provider": "p", "model": "m"})
+
+    def _langsom(**kw):
+        time.sleep(0.4)
+        return {"status": "completed", "agent_id": "s2", "messages": []}
+
+    monkeypatch.setattr("core.services.agent_runtime.execute_agent_task", _langsom)
+    monkeypatch.setattr(mr, "_book_completion_wakeup",
+                        lambda aid, res: (wakeups.append(aid), faerdig.set()))
+    svar = mr.spawn_med_kvittering(taalmodighed_s=0.05, role="r", goal="g")
+    assert svar["status"] == "accepted" and svar["model"] == "m"
+    assert faerdig.wait(3.0), "barnet blev faerdigt uden at forælderen blev vækket"
+    assert wakeups == ["s2"]
+
+
+def test_barn_faerdigt_ved_fristen_mister_aldrig_sin_besked(monkeypatch):
+    """Kapløbet: barnet bliver færdigt mellem at ventetiden udløber og at
+    «for sent» sættes. Enten får forælderen SVARET, eller også bliver han
+    VÆKKET — aldrig ingen af delene. Køres mange gange med fristen lagt lige
+    oven i barnets varighed."""
+    import core.services.agent_message_receipt as mr
+    for _ in range(60):
+        wakeups = []
+        monkeypatch.setattr("core.services.agent_runtime.spawn_agent_task",
+                            lambda **kw: {"agent_id": "s3"})
+
+        def _kort(**kw):
+            time.sleep(0.003)
+            return {"status": "completed", "agent_id": "s3", "messages": []}
+
+        monkeypatch.setattr("core.services.agent_runtime.execute_agent_task", _kort)
+        # Kun DETTE barn tæller: tidligere tests' sene baggrundstråde (fx
+        # «a-landet») kan blive færdige mens denne test kører.
+        monkeypatch.setattr(mr, "_book_completion_wakeup",
+                            lambda aid, res: aid == "s3" and wakeups.append(aid))
+        svar = mr.spawn_med_kvittering(taalmodighed_s=0.003, role="r", goal="g")
+        if svar["status"] == "accepted":
+            slut = time.monotonic() + 2.0
+            while not wakeups and time.monotonic() < slut:
+                time.sleep(0.005)
+            assert wakeups == ["s3"], "kvittering uden wakeup — forælderen hører aldrig svaret"
+        else:
+            time.sleep(0.02)
+            assert wakeups == [], "svar OG wakeup — forælderen får det to gange"

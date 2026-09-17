@@ -23,6 +23,12 @@ def _fang(monkeypatch, svar=None):
 
     import core.services.agent_runtime as ar
     monkeypatch.setattr(ar, "spawn_agent_task", _fake)
+    # 17/9-2026: explore spawner nu med auto_execute=False og koerer selv
+    # barnet via execute_agent_task (spawn_med_kvittering). Svaret kommer derfra.
+    monkeypatch.setattr(ar, "execute_agent_task", lambda **kw: dict(
+        svar or {"agent_id": "a1", "status": "completed",
+                 "messages": [{"direction": "agent->jarvis",
+                               "content": "fandt det i core/x.py:42"}]}))
     return fanget
 
 
@@ -135,3 +141,21 @@ class TestDispatchRettelser:
                                           "content": langt}]})
         r = _exec_spawn_agent_task({"goal": "x"})
         assert len(r["reply"]) == 5000
+
+
+def test_en_kvittering_roterer_ikke_til_naeste_model(monkeypatch):
+    """17/9-2026: tog barnet over 60 s, laeste explore den tomme kvittering som
+    «modellen svarede ikke» og startede NAESTE model — op til tre agenter om
+    samme spoergsmaal. En kvittering skal gives videre, ikke roteres vaek."""
+    import core.tools.simple_tools_native as ex  # explore slaar _explore_spawn op via facaden
+    kald = []
+
+    def _spawn(**kw):
+        kald.append(kw)
+        return {"status": "accepted", "agent_id": "a-sen", "hent_resultat": "get_agent"}
+
+    monkeypatch.setattr(ex, "_explore_spawn", _spawn)
+    r = _exec_explore({"query": "noget langsomt"})
+    assert len(kald) == 1, "explore startede flere agenter paa en kvittering"
+    assert r["status"] == "accepted" and r["agent_id"] == "a-sen"
+    assert "get_agent" in r["besked"]

@@ -139,3 +139,49 @@ def test_no_session_returns_blocked(tmp_db, monkeypatch):
     from core.services.notification_bridge import send_session_notification
     result = send_session_notification("hi", source="d")
     assert result["status"] == "blocked"
+
+
+# ── Stale pin (17/9-2026) ───────────────────────────────────────────────────
+# Pin'en pegede på `chat-8d36a224…`, som ikke længere fandtes. Alle kaldere
+# (wakeup-resolveren, heartbeat) troede de havde et gyldigt mål og sprang
+# deres egne fallbacks over. Nu valideres pin'en ved opslag.
+
+
+def test_pinned_session_ryddes_naar_den_ikke_findes(monkeypatch):
+    import core.services.notification_bridge as nb
+
+    ryddet: dict = {}
+    monkeypatch.setattr(nb, "get_runtime_state_value",
+                        lambda key, default=None: {"session_id": "chat-doed"})
+    monkeypatch.setattr(nb, "set_runtime_state_value",
+                        lambda key, value: ryddet.update({"key": key, "value": value}))
+    monkeypatch.setattr("core.services.chat_sessions.get_chat_session", lambda sid: None)
+
+    assert nb.get_pinned_session_id() == ""
+    assert ryddet.get("value") == {}  # pin'en blev ryddet, ikke blot ignoreret
+
+
+def test_pinned_session_beholdes_naar_den_findes(monkeypatch):
+    import core.services.notification_bridge as nb
+
+    monkeypatch.setattr(nb, "get_runtime_state_value",
+                        lambda key, default=None: {"session_id": "chat-levende"})
+    monkeypatch.setattr("core.services.chat_sessions.get_chat_session",
+                        lambda sid: {"id": sid, "title": "New chat"})
+
+    assert nb.get_pinned_session_id() == "chat-levende"
+
+
+def test_pinned_session_beholdes_naar_opslag_fejler(monkeypatch):
+    """En DB-hikke må ikke smide et gyldigt mål væk (fail-open)."""
+    import core.services.notification_bridge as nb
+
+    monkeypatch.setattr(nb, "get_runtime_state_value",
+                        lambda key, default=None: {"session_id": "chat-x"})
+
+    def boom(sid):
+        raise RuntimeError("db nede")
+
+    monkeypatch.setattr("core.services.chat_sessions.get_chat_session", boom)
+
+    assert nb.get_pinned_session_id() == "chat-x"

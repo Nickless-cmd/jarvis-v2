@@ -78,7 +78,8 @@ _Owner-identity resolution for autonomous dispatch._
 | function | `is_owner_session` | `(session)` | Decide whether a session record belongs to the owner. | [src](../../../core/identity/owner_resolver.py#L63) |
 | function | `resolve_owner_target_session` | `()` | Find the session that an autonomous Bjørn-event should target. | [src](../../../core/identity/owner_resolver.py#L104) |
 | function | `session_is_external_channel` | `(session_id)` | True hvis sessionen er en EKSTERN kanal (Discord/Telegram) ud fra titlen. | [src](../../../core/identity/owner_resolver.py#L166) |
-| function | `resolve_owner_app_session` | `()` | Som resolve_owner_target_session, men returnerer KUN en app/webchat- | [src](../../../core/identity/owner_resolver.py#L186) |
+| function | `_senest_aktive_app_session` | `(sessions)` | Sidste udvej: den senest opdaterede APP-session med bruger-beskeder. | [src](../../../core/identity/owner_resolver.py#L186) |
+| function | `resolve_owner_app_session` | `()` | Som resolve_owner_target_session, men returnerer KUN en app/webchat- | [src](../../../core/identity/owner_resolver.py#L233) |
 
 ## `core/identity/passwords.py`
 _Password-hashing (spec 2026-06-15 §5.2) — bcrypt, cost-factor 12._

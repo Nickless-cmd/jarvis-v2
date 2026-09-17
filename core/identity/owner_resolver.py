@@ -183,6 +183,53 @@ def session_is_external_channel(session_id: str | None) -> bool:
         return False
 
 
+def _senest_aktive_app_session(sessions: list[Any] | None) -> str:
+    """Sidste udvej: den senest opdaterede APP-session med bruger-beskeder.
+
+    MÅLT 17/9-2026: 0 af 502 chat-sessioner er stemplet med owner's user_id —
+    og ingen besked bærer den. Heuristikkerne i `is_owner_session` kan derfor
+    strukturelt ikke matche, og `resolve_owner_app_session` svarede "" for
+    enhver wakeup uden eksplicit session_id. De landede i en frisk
+    «auto-wakeup-*»-session som ingen åbner: wakeup'en fyrede, svaret blev
+    skrevet, og Bjørn så det aldrig (selvtest 17/9: selvtest-30s endte i
+    `auto-wakeup-20260917`).
+
+    Vi vælger derfor den senest opdaterede session der (a) ikke er en ekstern
+    kanal, (b) har mindst én bruger-besked og (c) ikke selv er en autonom
+    session. Discord/Telegram filtreres eksplicit, så guarden fra 13/6-2026
+    står ved magt — fallback'en kan aldrig lække til en ekstern kanal.
+    """
+    from core.services.chat_sessions import (
+        get_chat_session,
+        parse_channel_from_session_title,
+    )
+
+    kandidater: list[tuple[str, str]] = []
+    for s in sessions or []:
+        sid = str((s or {}).get("id") or "").strip()
+        if not sid or sid.startswith("auto-"):
+            continue
+        full = get_chat_session(sid)
+        if not full:
+            continue
+        if parse_channel_from_session_title(full.get("title"))[0] in ("discord", "telegram"):
+            continue
+        if not any(m.get("role") == "user" for m in (full.get("messages") or [])):
+            continue
+        kandidater.append((str(full.get("updated_at") or ""), sid))
+
+    if not kandidater:
+        return ""
+    kandidater.sort(reverse=True)
+    valgt = kandidater[0][1]
+    logger.warning(
+        "owner_resolver(app): ingen owner-stemplet session fundet — falder "
+        "tilbage til senest aktive app-session %s",
+        valgt,
+    )
+    return valgt
+
+
 def resolve_owner_app_session() -> str:
     """Som resolve_owner_target_session, men returnerer KUN en app/webchat-
     session — aldrig Discord/Telegram. Til wakeups der SKAL lande i jarvis-desk
@@ -224,4 +271,11 @@ def resolve_owner_app_session() -> str:
         if any(m.get("role") == "user" for m in (full.get("messages") or [])):
             return sid
 
-    return ""
+    # SIDSTE UDVEJ (17/9-2026): ingen owner-stemplet session matchede. Vi bruger
+    # den Ufiltrerede liste — `scoped` er tom netop fordi intet er stemplet, så
+    # et fallback på den ville også give "".
+    try:
+        alle = list_chat_sessions()
+    except Exception:
+        alle = []
+    return _senest_aktive_app_session(alle)

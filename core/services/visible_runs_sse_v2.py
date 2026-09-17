@@ -583,6 +583,26 @@ async def translate_to_v2(
                         kind="working_step", payload=payload,
                     ).to_sse_line())
 
+                elif (
+                    event_name == "capability"
+                    and str(payload.get("type") or "") in ("tool_denied", "gate_blocked")
+                    and payload.get("capability_id") in _annonceret
+                ):
+                    # Et kald der blev afvist har ingen resultat-event. Før
+                    # 17/9-2026 betød det bare at linjen aldrig blev født; nu
+                    # fødes den ved annonceringen, så uden dette ville den stå
+                    # og «køre» resten af turen. Udfaldet lukker den.
+                    await _emit_message_start_if_needed()
+                    await queue.put(SystemEvent(
+                        kind="tool_result",
+                        payload={"tool_use_id": str(payload.get("capability_id") or ""),
+                                 "tool": str(payload.get("tool") or ""),
+                                 "status": "denied",
+                                 "type": str(payload.get("type") or ""),
+                                 "result": str(payload.get("message")
+                                               or "Afvist.")},
+                    ).to_sse_line())
+
                 elif event_name == "capability" and str(payload.get("type") or "") in (
                     "tool_result", "capability"
                 ):

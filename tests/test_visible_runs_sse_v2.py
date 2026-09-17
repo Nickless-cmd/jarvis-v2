@@ -709,3 +709,25 @@ async def test_en_annoncering_UDEN_id_foeder_ingen_linje():
                 and e[1].get("content_block", {}).get("type") == "tool_use"]
     assert any(e[0] == "system_event" and e[1].get("kind") == "working_step"
                for e in events)
+
+
+@pytest.mark.asyncio
+async def test_et_AFVIST_kald_efterlader_ikke_linjen_koerende():
+    """Et afvist kald har ingen resultat-event. Før linjen blev født ved
+    annonceringen, betød det bare at den aldrig kom; nu ville den stå og
+    «køre» resten af turen."""
+    async def legacy() -> AsyncIterator[str]:
+        yield _legacy_sse("working_step", _annoncering(tool_id="call-7"))
+        yield _legacy_sse("capability", {
+            "type": "tool_denied", "tool": "bash", "capability_id": "call-7",
+        })
+        yield _legacy_sse("done", {"type": "done", "run_id": "v1", "status": "completed"})
+
+    events = _parse_v2_events(await _collect(translate_to_v2(
+        legacy(), run_id="v1", model="m", provider="p", lane="l",
+        session_id="s", ping_interval_s=999.0)))
+    lukket = [e for e in events if e[0] == "system_event"
+              and e[1].get("kind") == "tool_result"
+              and e[1]["payload"].get("tool_use_id") == "call-7"]
+    assert lukket, "linjen blev aldrig lukket"
+    assert lukket[0][1]["payload"]["status"] == "denied"

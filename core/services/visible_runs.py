@@ -2244,7 +2244,13 @@ async def _stream_visible_run(
                             _resolved_result_texts[_idx] = (
                                 f"[{sr['tool_name']}]: Autonomous run cannot approve tool calls — skipped."
                             )
-                            yield _sse("capability", {"type": "tool_denied", "tool": sr["tool_name"]})
+                            yield _sse("capability", {
+                                "type": "tool_denied", "tool": sr["tool_name"],
+                                # Uden id'et ville udfaldet ikke finde den linje
+                                # der blev vist da kaldet startede — og der ville
+                                # staa to linjer om samme kald.
+                                "capability_id": str(sr.get("call_id") or ""),
+                            })
                             continue
                         if run.trust_all:
                             # Trust gradient (E8): even in trust mode, DESTRUCTIVE
@@ -2323,10 +2329,20 @@ async def _stream_visible_run(
                         _resolved = _appr_out["result_text"]
                         if _resolved is None:
                             _resolved_result_texts[_idx] = f"[{sr['tool_name']}]: Tool call denied by user."
-                            yield _sse("capability", {"type": "tool_denied", "tool": sr["tool_name"]})
+                            yield _sse("capability", {
+                                "type": "tool_denied", "tool": sr["tool_name"],
+                                # Uden id'et ville udfaldet ikke finde den linje
+                                # der blev vist da kaldet startede — og der ville
+                                # staa to linjer om samme kald.
+                                "capability_id": str(sr.get("call_id") or ""),
+                            })
                         else:
                             _resolved_result_texts[_idx] = _resolved
-                            yield _sse("capability", {"type": "tool_result", "tool": sr["tool_name"], "status": "ok"})
+                            yield _sse("capability", {
+                                "type": "tool_result", "tool": sr["tool_name"],
+                                "status": "ok",
+                                "capability_id": str(sr.get("call_id") or ""),
+                            })
                         continue
                     # ── Gate-blocked tools (veto gate or decision gate) ──
                     if sr["status"] == "gate_blocked":

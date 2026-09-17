@@ -108,11 +108,11 @@ describe('Composer · auto-forslag', () => {
   })
 
   it('spørger slet ikke mens et svar streamer — samme GPU som det synlige svar', async () => {
-    const f = vi.fn(async () => ({ ok: true, json: async () => ({ forslag: 'x' }) } as unknown as Response))
+    const f = vi.fn(async (_url: string) => ({ ok: true, json: async () => ({ forslag: 'x' }) } as unknown as Response))
     vi.stubGlobal('fetch', f)
     opsæt({ streaming: true })
     await new Promise((r) => setTimeout(r, 900))
-    const suggest = f.mock.calls.filter((c) => String(c[0]).includes('/composer/suggest'))
+    const suggest = f.mock.calls.filter((c) => String(c[0] ?? '').includes('/composer/suggest'))
     expect(suggest).toHaveLength(0)
   })
 })

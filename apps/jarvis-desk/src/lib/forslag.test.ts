@@ -15,7 +15,7 @@ describe('hentNaesteForslag', () => {
     const f = svar({ forslag: 'deploy det til ct105' })
     vi.stubGlobal('fetch', f)
     expect(await hentNaesteForslag(cfg, 'sess-1')).toBe('deploy det til ct105')
-    const krop = JSON.parse((f.mock.calls[0][1] as RequestInit).body as string)
+    const krop = JSON.parse((f.mock.calls[0]?.[1] as RequestInit).body as string)
     expect(krop).toEqual({ udkast: '', session_id: 'sess-1' })
   })
 
@@ -50,7 +50,7 @@ describe('hentNaesteForslag', () => {
     const f = svar({ forslag: '' })
     vi.stubGlobal('fetch', f)
     await hentNaesteForslag({ apiBaseUrl: 'http://x', authToken: '' }, 's1')
-    const h = (f.mock.calls[0][1] as RequestInit).headers as Record<string, string>
+    const h = (f.mock.calls[0]?.[1] as RequestInit).headers as Record<string, string>
     expect(h.Authorization).toBeUndefined()
   })
 })

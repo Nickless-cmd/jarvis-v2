@@ -3,6 +3,7 @@ from core.services.visible_terminal_policy import (
     TerminalState,
     classify_terminal,
     has_pending_tool_intent,
+    is_recoverable_exit_reason,
     recovery_notice,
 )
 
@@ -26,11 +27,20 @@ def test_forced_finalize_with_pending_tool_intent_recovers():
     assert decision.stop_reason == "recovering"
 
 
+def test_en_model_uden_followup_genoptages_IKKE():
+    """`provider-not-supported` er ikke en midlertidig fejl — det er en
+    egenskab ved den valgte model. Grunden stod paa listen fra foer der fandtes
+    en dispatcher, hvor «genoptagelig» kun var en besked paa skaermen. Med
+    varig genoptagelse blev den til en handling: samme tur startes igen med
+    samme provider_override, rammer samme mur, og bruger tre forsoeg plus en
+    slutrunde paa et udfald der er afgjort paa forhaand."""
+    assert is_recoverable_exit_reason("provider-not-supported") is False
+
+
 def test_budget_shutdown_and_provider_failures_are_recoverable_segments():
     for reason in (
         "budget-opbrugt",
         "shutdown",
-        "provider-not-supported",
         "completed-truncated",
         "interrupted:provider-timeout",
         "early-exit-tool-only",

@@ -107,11 +107,14 @@ class TestPruneDenseEdges:
         # kant der er den eneste et sted.
         assert _count(brain_db) == 20
 
-    def test_deletes_only_when_weak_at_both_ends(self, brain_db) -> None:
-        """En tæt klike: kun kanter der er svage i BEGGE ender må ryge.
+    def test_en_taet_klike_trimmes_til_loftet(self, brain_db) -> None:
+        """En tæt klike: kanter uden for top-N i ÉN ende ryger.
 
-        Hver node i kliken har 9 kanter, så der findes kanter der ligger uden
-        for top-3 i begge retninger — dem og kun dem skal fjernes.
+        Reglen var «svag i BEGGE ender» indtil 17/9-2026, og det gjorde loftet
+        til en tom formulering: en kant overlevede bare fordi den var stærk nok
+        for det andet endepunkt. Målt i produktionen lå 4.415 noder over
+        loftet, den tætteste med 737 kanter, og reglen ville have fjernet 2.824
+        af 684.193 rækker.
         """
         nodes = [f"k{i}" for i in range(10)]
         rows = []
@@ -148,3 +151,30 @@ class TestPruneDenseEdges:
         _edges(brain_db, [("a", "b", 0.9), ("a", "c", 0.8)])
         assert jb.prune_dense_edges(max_per_node=64) == 0
         assert _count(brain_db) == 2
+
+    def test_en_nodes_SIDSTE_kant_beholdes_altid(self, brain_db) -> None:
+        """Ellers bygger loftet en rundgang der aldrig stopper.
+
+        En node uden kanter findes af `b4_catchup_infer_once` hver time og får
+        sine kanter udledt igen — tolv sekunders arbejde pr. post — hvorefter
+        næste oprydning fjerner dem igen. Målt 17/9-2026: 3.946 af de 387.180
+        kanter loftet ville fjerne, var en nodes eneste. Værnet koster dem og
+        fjerner løkken.
+        """
+        # En hub med 20 eger; hver ege har KUN sin ene kant.
+        _edges(brain_db, [("hub", f"n{i}", 0.5 + i / 1000.0) for i in range(20)])
+        jb.prune_dense_edges(max_per_node=5)
+        assert _count(brain_db) == 20, "en eges eneste kant blev slettet"
+
+    def test_loftet_holder_naar_ingen_bliver_foraeldreloes(self, brain_db) -> None:
+        """To hubs der deler alle deres naboer: her HAR hver nabo to kanter, så
+        loftet kan trimme uden at efterlade nogen uden kanter."""
+        rows = []
+        for i in range(30):
+            rows.append(("hub-a", f"m{i}", 0.5 + i / 1000.0))
+            rows.append(("hub-b", f"m{i}", 0.5 + i / 1000.0))
+        _edges(brain_db, rows)
+        jb.prune_dense_edges(max_per_node=5)
+        # Hver m{i} beholder sin stærkeste; hubberne er trimmet.
+        assert _count(brain_db) < 60, "loftet trimmede ingenting"
+        assert _count(brain_db) >= 30, "en nabo mistede sin sidste kant"

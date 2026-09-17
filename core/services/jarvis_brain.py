@@ -1374,7 +1374,13 @@ def infer_temporal_edges(
             chain_score=chain_score,
         )
 
-        if confidence < 0.4:
+        # Samme tærskel som LÆSEREN. Skrivningen lå på 0,4 mens
+        # `_compute_search_temporal_boost` kræver 0,5, så båndet 0,4–0,5 blev
+        # skrevet ned, aldrig læst, og slettet igen af `prune_unreadable_edges`
+        # ved næste pas. Ren rundgang (målt 17/9-2026: 966 saadanne raekker laa
+        # og ventede paa at blive fjernet). Én konstant, så de to ikke kan
+        # glide fra hinanden igen.
+        if confidence < TEMPORAL_EDGE_READ_MIN_CONFIDENCE:
             continue
 
         # Reasoning string for audit trail
@@ -1563,8 +1569,29 @@ def prune_dense_edges(*, max_per_node: int = TEMPORAL_EDGE_MAX_PER_NODE) -> int:
     havde 2,81 mio. kanter, altså 6,6 % af alle mulige par. Læseren tager
     MAX(confidence) pr. kandidat, så en tæt hale bidrager ingenting.
 
-    Konservativ: en kant beholdes hvis den er blandt de stærkeste for BEGGE
-    endepunkter — den slettes kun når den er ude af top-N i begge retninger.
+    ## Hvorfor reglen blev strammet (17/9-2026)
+
+    Første udgave var konservativ: en kant blev kun slettet når den lå uden for
+    top-N i BEGGE retninger. Det lyder forsigtigt, men det gør loftet til en
+    tom formulering — en kant overlever jo bare fordi den er stærk nok for det
+    ANDET endepunkt. Målt: 4.415 noder lå over loftet, den tætteste havde 737
+    kanter, og reglen ville have fjernet 2.824 af 684.193 rækker. Tabellen
+    voksede videre til 653 MB.
+
+    Nu er loftet et loft: en kant slettes når den er uden for top-N for ét af
+    endepunkterne. Det er sikkert, fordi læseren
+    (`_compute_search_temporal_boost`) tager MAX(confidence) pr. kandidat —
+    altså kun den STÆRKESTE kant. Top-64 er dermed allerede 64 gange mere end
+    nogen læser.
+
+    ## Værnet mod forældreløse noder
+
+    Den rene regel havde en fælde målingen fandt: 3.946 af de 387.180 kanter
+    var en nodes ENESTE. Slettes de, står noden uden kanter — og så finder
+    `b4_catchup_infer_once` den hver time og udleder dem igen (12 sekunders
+    arbejde pr. post), hvorefter næste oprydning fjerner dem igen. En rundgang
+    der aldrig stopper. Derfor beholdes altid den stærkeste kant i hver ende;
+    det koster 3.946 rækker af 387.180 og fjerner løkken helt.
     """
     conn = connect_index()
     try:
@@ -1579,7 +1606,8 @@ def prune_dense_edges(*, max_per_node: int = TEMPORAL_EDGE_MAX_PER_NODE) -> int:
                                   PARTITION BY to_id ORDER BY confidence DESC
                               ) AS rank_to
                        FROM brain_temporal_edges
-                   ) WHERE rank_from > ? AND rank_to > ?
+                   ) WHERE (rank_from > ? OR rank_to > ?)
+                       AND rank_from > 1 AND rank_to > 1
                )""",
             (int(max_per_node), int(max_per_node)),
         )

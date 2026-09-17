@@ -89,7 +89,11 @@ class Proeveopstilling:
 #: Fejl → (exit-grund, klasse). De fem klasser der kan genoptages.
 _FEJL = {
     "process_owner_dead": ("shutdown", FailureClass.PROCESS),
-    "provider_failure": ("provider-not-supported", FailureClass.PROVIDER),
+    # IKKE `provider-not-supported`: den grund blev deterministisk 17/9-2026 —
+    # en model uden followup-adapter faar den ikke af at proeve igen, saa den
+    # lukkes med det svar der ER. Her skal staa en udbyder-fejl der FAKTISK kan
+    # gaa godt naeste gang.
+    "provider_failure": ("provider-error:HTTP 503", FailureClass.PROVIDER),
     "watchdog_timeout": ("provider-round-timeout", FailureClass.WATCHDOG),
     "research_timeout": ("research-wall-time-exceeded", FailureClass.RESEARCH),
     "runtime_exception": ("runtime-ValueError", FailureClass.RUNTIME),

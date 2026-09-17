@@ -58,9 +58,19 @@ def is_recoverable_exit_reason(reason: str | None) -> bool:
         return False
     if value in {"user-cancelled", "user-steer-stop", "user-steer-stop-mid-stream"}:
         return False
+    # En model der ikke HAR en followup-adapter, får den ikke af at prøve igen.
+    # Grunden stod på listen fra før der fandtes en dispatcher, hvor
+    # «genoptagelig» kun var en besked på skærmen. Med varig genoptagelse (17/9-
+    # 2026) blev den til en handling: samme tur startes igen med samme
+    # `provider_override`, rammer nøjagtig samme mur, og bruger tre forsøg plus
+    # en slutrunde på et udfald der er afgjort på forhånd. Det er ikke en
+    # midlertidig fejl, det er en egenskab ved den valgte model — så turen
+    # lukkes med det svar der ER, og `recovery_notice` siger hvorfor.
+    if value == "provider-not-supported":
+        return False
     return (
         value == "budget-opbrugt"
-        or value in {"shutdown", "provider-not-supported", "completed-truncated",
+        or value in {"shutdown", "completed-truncated",
                      "pending-tool-intent", "forced-finalize-unverified"}
         or value.startswith("interrupted:")
         or value.startswith("early-exit-")

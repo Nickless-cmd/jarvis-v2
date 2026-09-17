@@ -38,7 +38,6 @@ def _start(run_id: str = "r1") -> None:
 #: De unormale udgange fra planens tabel — grund og forventet fejlklasse.
 UDGANGE = [
     ("provider-round-timeout", FailureClass.WATCHDOG),
-    ("provider-not-supported", FailureClass.PROVIDER),
     ("provider-error:HTTP 404", FailureClass.PROVIDER),
     ("breaker-open", FailureClass.PROVIDER),
     ("round-silence-timeout", FailureClass.WATCHDOG),
@@ -67,6 +66,21 @@ def test_hver_unormal_udgang_bliver_durabel_foer_den_lukkes(grund, klasse):
     assert post["status"] == "recovering"
     assert post["exit_reason"] == ud.exit_reason
     assert ud.durable_write_failed is False
+
+
+def test_en_model_uden_followup_genoptages_IKKE():
+    """Klassen er stadig PROVIDER — det ER udbyderens side der ikke kan det —
+    men grunden er deterministisk: at proeve igen med samme model giver samme
+    svar. Turen lukkes med det svar der ER, frem for at bruge tre forsoeg paa
+    et udfald der er afgjort paa forhaand (17/9-2026)."""
+    _start()
+    ud = settle_segment_exit(run_id="r1", session_id="s1",
+                             exit_reason="provider-not-supported",
+                             final_text="jeg naaede at svare paa det foerste")
+    assert failure_class_for("provider-not-supported") is FailureClass.PROVIDER
+    assert ud.decision.stop_reason == "end_turn"
+    assert ud.event_name == ""
+    assert ifr._load()["r1"]["status"] == "completed"
 
 
 def test_et_faerdigt_segment_skriver_ingen_genoptagelse():

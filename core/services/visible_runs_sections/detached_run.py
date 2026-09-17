@@ -72,6 +72,12 @@ def start_user_run_detached(
 
     import time as _time
     _startet = _time.monotonic()
+    # Ny tur: den forrige turs udfald maa ikke kunne arves (auto_continuation).
+    try:
+        from core.services.auto_continuation import glem_session_udfald
+        glem_session_udfald(sid)
+    except Exception:
+        pass
 
     def _in_thread() -> None:
         import asyncio as _asyncio

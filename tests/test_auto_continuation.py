@@ -143,3 +143,24 @@ def test_session_fallbacken_virker_stadig():
     # opslag med det YDRE id — kun sessionen er faelles
     assert ac.hent_udfald("ydre-id", "fælles-session") == ac.OPBRUGT
     ac._UDFALD.clear()
+
+
+def test_ny_tur_arver_ikke_forrige_turs_udfald():
+    """17/9-2026: session-noeglen blev aldrig nulstillet. En kort tur (ingen
+    agentisk loekke -> intet noteret) arvede «opbrugt» fra turen foer."""
+    from core.services import auto_continuation as ac
+    ac.noter_udfald("visible-foerste", ac.OPBRUGT, "s-arv")
+    assert ac.hent_udfald("visible-relay-anden", "s-arv") == ac.OPBRUGT  # uden nulstilling: arvet
+    ac.glem_session_udfald("s-arv")
+    assert ac.hent_udfald("visible-relay-anden", "s-arv") == ac.IKKE_BOGFOERT
+    # Runnets eget id er stadig slaaet op, hvis det findes.
+    assert ac.hent_udfald("visible-foerste", "s-arv") == ac.OPBRUGT
+
+
+def test_detached_run_glemmer_udfaldet_ved_ny_tur():
+    import inspect
+    from core.services.visible_runs_sections import detached_run
+    kilde = inspect.getsource(detached_run.start_user_run_detached)
+    i_glem = kilde.index("glem_session_udfald(sid)")
+    i_traad = kilde.index("def _in_thread")
+    assert i_glem < i_traad, "skal ske ved turens start, foer traaden koerer"

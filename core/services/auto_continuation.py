@@ -157,6 +157,23 @@ def noter_udfald(run_id: str, exit_reason: str, session_id: str = "") -> None:
                 _UDFALD.pop(k, None)
 
 
+def glem_session_udfald(session_id: str) -> None:
+    """Glem sessionens udfald — kaldes naar en NY tur starter.
+
+    Session-noeglen er fallback for opslaget (de to sider bruger forskellige
+    run-id'er). Men den blev aldrig nulstillet: noterede en tidligere tur
+    «budget opbrugt», og en senere tur noterede intet (en kort tur gaar aldrig
+    ind i den agentiske loekke, som er det eneste sted udfaldet noteres), saa
+    arvede den senere tur det gamle udfald — og kunne starte en fortsaettelse
+    ingen bad om (17/9-2026).
+    """
+    sid = (session_id or "").strip()
+    if not sid:
+        return
+    with _laas:
+        _UDFALD.pop("session:" + sid, None)
+
+
 def hent_udfald(run_id: str, session_id: str = "") -> str:
     """Udfaldet for et run — slaa op paa run-id, og fald tilbage paa sessionen.
 

@@ -31,3 +31,35 @@ def test_begin_resets_buffer():
 def test_snapshot_unknown_session():
     frames, done = rf._snapshot("nope", 0)
     assert frames == [] and done is False
+
+
+def test_follow_buffer_rolls_without_dropping_new_frames(monkeypatch):
+    monkeypatch.setattr(rf, "_MAX_FRAMES", 4)
+    monkeypatch.setattr(rf, "_ROLL_CHUNK", 2)
+    rf.begin_follow("s-ring", "run-ring")
+
+    for index in range(7):
+        rf.publish_follow_frame("s-ring", f"f{index}")
+
+    state = rf._STREAMS["s-ring"]
+    assert len(state["frames"]) <= 4
+    assert state["frames"][-1] == "f6"
+    frames, done, next_idx = rf.snapshot_from("s-ring", 0)
+    assert frames[0].startswith("event: system_event")
+    assert '"kind": "relay_gap"' in frames[0]
+    assert frames[-1] == "f6"
+    assert done is False
+    assert next_idx == 7
+
+
+def test_live_follow_reader_receives_every_frame_across_roll(monkeypatch):
+    monkeypatch.setattr(rf, "_MAX_FRAMES", 6)
+    monkeypatch.setattr(rf, "_ROLL_CHUNK", 2)
+    rf.begin_follow("s-live-ring", "run-live-ring")
+    idx = 0
+    received = []
+    for index in range(20):
+        rf.publish_follow_frame("s-live-ring", f"f{index}")
+        frames, _done, idx = rf.snapshot_from("s-live-ring", idx)
+        received.extend(frame for frame in frames if "relay_gap" not in frame)
+    assert received == [f"f{index}" for index in range(20)]

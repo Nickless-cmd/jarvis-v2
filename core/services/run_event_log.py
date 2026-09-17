@@ -315,6 +315,18 @@ def is_live(run_id: str) -> bool:
                 or (now - st["created_at"]) < _CREATE_GRACE_S)
 
 
+def is_open(run_id: str) -> bool:
+    """True while the detached producer still owns an unfinished run.
+
+    Freshness is a UI/liveness signal, not proof that a blocking provider or
+    tool call has died. Stream consumers use this state to avoid cancelling an
+    open producer merely because it has not emitted a frame recently.
+    """
+    with _lock:
+        st = _hent(run_id)
+        return bool(st) and not bool(st["done"])
+
+
 def live_run_ids() -> list[str]:
     now = time.monotonic()
     with _lock:
@@ -386,16 +398,17 @@ def was_consumed_or_active(run_id: str) -> bool:
 def claim_or_create(session_id: str, stale_cap_s: float = 150.0) -> tuple[str, bool]:
     """Atomisk find-eller-opret pr. session — under én laas, saa samtidige POSTs
     (hurtige gen-sends) ikke begge opretter et run (rod-aarsag til hard-block).
-    Stale-cap: et ikke-done run aeldre end stale_cap_s antages doedt/haengt og
-    claimes IKKE -> ny besked starter et frisk run. Returnerer (run_id, is_new)."""
+    Et run maa aldrig erstattes ud fra alder alene: lange runs er normale, og
+    den detached ejer markerer altid done ved ren afslutning eller crash.
+    ``stale_cap_s`` beholdes kun for kaldskompatibilitet. Returnerer
+    (run_id, is_new)."""
     sid = (session_id or "").strip()
     now = time.monotonic()
     with _lock:
         existing = None
         newest = -1.0
         for rid, st in _RUNS.items():
-            if (st["session_id"] == sid and not st["done"]
-                    and (now - st["created_at"]) < stale_cap_s):
+            if st["session_id"] == sid and not st["done"]:
                 if st["created_at"] > newest:
                     newest = st["created_at"]
                     existing = rid

@@ -1140,7 +1140,7 @@ async def chat_run_subscribe(run_id: str, from_idx: int = 0):
                     if (_xt.monotonic() - _last_emit) >= _PING_GAP_S:
                         yield _Ping().to_sse_line()
                         _last_emit = _xt.monotonic()
-                    if empty > 300 and rel.is_live(run_id):
+                    if empty > 300 and rel.is_open(run_id):
                         empty = 0  # run lever stadig (langsom) → bliv ved (se chat_stream_v2)
                     elif empty > 300:
                         # H1/G6: syntetisk terminal-frame + subscriber_timeout-nerve.
@@ -1200,7 +1200,7 @@ async def chat_session_live(session_id: str):
                     if (_xt.monotonic() - _last_emit) >= _PING_GAP_S:
                         yield _Ping().to_sse_line()
                         _last_emit = _xt.monotonic()
-                    if empty > 300 and rel.is_live(run_id):
+                    if empty > 300 and rel.is_open(run_id):
                         empty = 0  # run lever stadig (langsom) → bliv ved (se chat_stream_v2)
                     elif empty > 300:
                         # H1/G6: syntetisk terminal-frame + subscriber_timeout-nerve.
@@ -1228,7 +1228,7 @@ async def chat_session_follow(session_id: str):
 
     from fastapi.responses import StreamingResponse
 
-    from core.services.run_follow import _snapshot
+    from core.services.run_follow import snapshot_from
     import core.services.run_event_log as rel
 
     async def _gen():
@@ -1236,9 +1236,8 @@ async def chat_session_follow(session_id: str):
         empty_polls = 0
         saw_stop = False
         while True:
-            frames, done = _snapshot(session_id, idx)  # hurtig in-memory + lock
+            frames, done, idx = snapshot_from(session_id, idx)
             for f in frames:
-                idx += 1
                 if "message_stop" in f:
                     saw_stop = True
                 yield f

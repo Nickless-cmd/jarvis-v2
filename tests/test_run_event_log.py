@@ -49,6 +49,28 @@ def test_is_live_false_when_stale():
     assert rel.is_live("r1") is False
 
 
+def test_stale_but_open_run_is_still_authoritative():
+    rel.create("r-open", "s-open")
+    rel._RUNS["r-open"]["last_append_at"] = time.monotonic() - 999
+    rel._RUNS["r-open"]["created_at"] = time.monotonic() - 999
+
+    assert rel.is_live("r-open") is False
+    assert rel.is_open("r-open") is True
+
+
+def test_claim_or_create_never_replaces_an_open_run_based_on_age():
+    run_id, is_new = rel.claim_or_create("s-single")
+    assert is_new is True
+    rel._RUNS[run_id]["last_append_at"] = time.monotonic() - 999
+    rel._RUNS[run_id]["created_at"] = time.monotonic() - 999
+
+    claimed, is_new = rel.claim_or_create("s-single", stale_cap_s=1.0)
+
+    assert claimed == run_id
+    assert is_new is False
+    assert len([st for st in rel._RUNS.values() if st["session_id"] == "s-single"]) == 1
+
+
 def test_create_grace_keeps_new_run_live_without_appends():
     # Et frisk-oprettet run uden appends (det 14-19s sync assembly blokerer
     # ping-loopet) skal taelle som live i grace-vinduet, ellers flakker

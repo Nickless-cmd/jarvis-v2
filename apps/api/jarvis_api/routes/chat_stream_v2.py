@@ -508,7 +508,7 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
                     if (_xt.monotonic() - _last_emit) >= _PING_GAP_S:
                         yield _Ping().to_sse_line()
                         _last_emit = _xt.monotonic()
-                    if empty > 300 and rel.is_live(run_id):
+                    if empty > 300 and rel.is_open(run_id):
                         # ROD (Bjørn 29. jun, instrumenterings-bevist): glm-5.2's tænke/assembly-
                         # fase producerer ~ingen relay-frames i ~24s (ping-starvation) →
                         # give-up'en fyrede MENS runnet stadig var LIVE → syntetisk

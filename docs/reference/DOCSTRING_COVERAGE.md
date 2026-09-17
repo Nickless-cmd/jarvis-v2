@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7645/14826 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7648/14829 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,11 +25,11 @@ Generated from source. 7645/14826 functions/methods documented (51%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 650 | 1187 | 54% |
-| `core.services` | 5075 | 10181 | 49% |
+| `core.services` | 5077 | 10183 | 49% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 109 | 184 | 59% |
 | `core.services.trading` | 4 | 20 | 20% |
-| `core.services.visible_runs_sections` | 17 | 29 | 58% |
+| `core.services.visible_runs_sections` | 18 | 30 | 60% |
 | `core.skills` | 0 | 0 | 0% |
 | `core.skills.voice` | 39 | 49 | 79% |
 | `core.tools` | 476 | 979 | 48% |
@@ -1517,11 +1517,11 @@ Generated from source. 7645/14826 functions/methods documented (51%). The list b
 - `core/services/run_event_log.py` :: `append` (L165)
 - `core/services/run_event_log.py` :: `create` (L102)
 - `core/services/run_event_log.py` :: `is_live` (L307)
-- `core/services/run_event_log.py` :: `live_run_ids` (L318)
+- `core/services/run_event_log.py` :: `live_run_ids` (L330)
 - `core/services/run_event_log.py` :: `mark_done` (L227)
-- `core/services/run_event_log.py` :: `session_for_run` (L330)
-- `core/services/run_event_log.py` :: `subscriber_closed` (L362)
-- `core/services/run_event_log.py` :: `subscriber_opened` (L355)
+- `core/services/run_event_log.py` :: `session_for_run` (L342)
+- `core/services/run_event_log.py` :: `subscriber_closed` (L374)
+- `core/services/run_event_log.py` :: `subscriber_opened` (L367)
 - `core/services/runtime_action_executor.py` :: `execute_bounded_self_check` (L417)
 - `core/services/runtime_action_executor.py` :: `execute_follow_open_loop` (L259)
 - `core/services/runtime_action_executor.py` :: `execute_inspect_repo_context` (L307)

@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import json
 import re
+import time
 from typing import AsyncIterator
 
 import pytest
@@ -339,6 +340,8 @@ async def test_terminal_guarantee_stream_ends_without_done():
         yield _legacy_sse("delta", {"type": "delta", "run_id": "v1", "delta": "Halvt svar"})
         # INGEN done — strømmen slutter bare (som ved en backend-fejl).
 
+    from core.services import auto_continuation as ac
+    ac.glem_session_udfald("sess")
     output = await _collect(translate_to_v2(
         legacy(), run_id="v1", model="m", provider="p", lane="l",
         session_id="sess", ping_interval_s=999.0,
@@ -351,8 +354,36 @@ async def test_terminal_guarantee_stream_ends_without_done():
     recoveries = [payload for name, payload in _parse_v2_events(output)
                   if name == "system_event" and payload.get("kind") == "run_recovery"]
     assert recoveries and recoveries[-1]["payload"]["reason"] == "legacy_stream_ended_without_done"
+    assert ac.hent_udfald("v1", "sess") == "interrupted:legacy_stream_ended_without_done"
     # message_stop er sidste meningsfulde event (turen lukkes rent)
     assert names[-1] == "message_stop"
+
+
+@pytest.mark.asyncio
+async def test_hard_idle_ceiling_records_recoverable_outcome(monkeypatch):
+    from core.services import auto_continuation as ac
+    from core.services import run_event_log as rel
+    import core.services.visible_runs_sse_v2 as sse
+
+    monkeypatch.setattr(sse, "_IDLE_TICK_S", 0.01)
+    monkeypatch.setattr(sse, "_MAX_IDLE_TICKS", 2)
+    rel.create("v-idle", "s-idle")
+    ac.glem_session_udfald("s-idle")
+
+    async def legacy():
+        await asyncio.sleep(1.0)
+        if False:
+            yield ""
+
+    try:
+        await _collect(translate_to_v2(
+            legacy(), run_id="v-idle", session_id="s-idle", ping_interval_s=999.0,
+        ))
+        assert ac.hent_udfald(
+            "v-idle", "s-idle",
+        ) == "interrupted:relay_source_idle_timeout"
+    finally:
+        rel.mark_done("v-idle")
 
 
 @pytest.mark.asyncio
@@ -495,7 +526,7 @@ async def test_stream_error_observed_and_still_terminates(monkeypatch):
     assert errs and "RuntimeError" in errs[0].get("error", ""), f"fejl ikke observeret: {events}"
 
 
-def test_run_still_active_uses_run_event_log_not_flaky_slot():
+def test_run_still_active_uses_open_state_not_freshness_or_flaky_slot():
     """ROD-FIX (Bjørn 4. aug): _run_still_active må IKKE kun stole på den globale
     active-visible-run-slot — den vedligeholdes upålideligt for detached runs, så den
     returnerede False for LEVENDE runs → idle-timeouten (20s) brød runs midt i tool-exec
@@ -507,13 +538,16 @@ def test_run_still_active_uses_run_event_log_not_flaky_slot():
 
     # Slot peger bevidst på et ANDET run (simulér detached-slot-upålidelighed).
     _set_active_visible_run({"active": True, "run_id": "some-other-run"})
-    # Opret et LEVENDE run i run_event_log (den pålidelige autoritet). claim_or_create
+    # Opret et AABENT run i run_event_log (den pålidelige autoritet). claim_or_create
     # opretter entry'en; append alene gør IKKE (den returnerer hvis st is None).
     rid, _created = rel.claim_or_create("test-session-rodfix")
     try:
-        # FØR fixet: False (slot matcher ikke) → run brydes. EFTER: True (is_live).
+        rel._RUNS[rid]["last_append_at"] = time.monotonic() - 999
+        rel._RUNS[rid]["created_at"] = time.monotonic() - 999
+        assert rel.is_live(rid) is False
+        # Friskhed maa kun styre indikatorer, ikke om translatoren cancellerer kilden.
         assert _run_still_active(rid) is True
-        # Done → is_live False → falder til slot (matcher ikke) → False.
+        # Done → is_open False → falder til slot (matcher ikke) → False.
         rel.mark_done(rid)
         assert _run_still_active(rid) is False
     finally:

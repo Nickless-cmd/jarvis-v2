@@ -196,13 +196,13 @@ def _run_still_active(run_id: str) -> bool:
     returnerede False for LEVENDE runs → idle-timeouten (20s uden legacy-event) brød
     _translation_loop → gen.aclose() rev det stadig-kørende run ned midt i tool-exec →
     CancelledError/vis_len=0 i ALLE sessioner på tværs af klienter. run_event_log er den
-    PÅLIDELIGE autoritet (detached_run.py:144): is_live = not-done OG (frame <45s ELLER
-    created <60s), så et run der stadig sender 15s-heartbeats forbliver live; kun en ægte
-    død/hængt kilde brydes (og _MAX_IDLE_TICKS≈180s er sidste værn). Slot beholdes som
-    fallback for evt. ikke-registrerede/legacy runs → ingen regression."""
+    PÅLIDELIGE autoritet (detached_run.py:144): is_open = registreret OG ikke done.
+    Frame-friskhed er kun et UI-signal og må aldrig være dødsbevis for et blokerende
+    provider/tool-kald. _MAX_IDLE_TICKS≈180s er sidste hæng-værn; rammes det, bogføres
+    et recovery-udfald. Slot beholdes som fallback for legacy-runs."""
     try:
         from core.services import run_event_log as _rel
-        if _rel.is_live(run_id):
+        if _rel.is_open(run_id):
             return True
     except Exception:
         return True
@@ -257,6 +257,7 @@ async def translate_to_v2(
         "cache_miss_tokens": 0,
         "stop_reason": "end_turn",
         "saw_done": False,
+        "recovery_reason": "",
         "run_id": run_id,
         "model": model,
         "provider": provider,
@@ -461,6 +462,10 @@ async def translate_to_v2(
                     _idle_ticks += 1
                     _rid = str(_state.get("run_id") or "")
                     if (_rid and not _run_still_active(_rid)) or _idle_ticks >= _MAX_IDLE_TICKS:
+                        _state["recovery_reason"] = (
+                            "relay_source_closed" if _rid and not _run_still_active(_rid)
+                            else "relay_source_idle_timeout"
+                        )
                         _anext_task.cancel()  # ægte død kilde → nu må vi rydde op
                         break
                     continue
@@ -614,6 +619,20 @@ async def translate_to_v2(
             except Exception:
                 pass
         finally:
+            if not _state["saw_done"]:
+                _reason = str(
+                    _state.get("recovery_reason")
+                    or "legacy_stream_ended_without_done"
+                )
+                try:
+                    from core.services.auto_continuation import noter_udfald
+                    noter_udfald(
+                        str(_state.get("run_id") or ""),
+                        f"interrupted:{_reason}",
+                        str(_state.get("session_id") or ""),
+                    )
+                except Exception:
+                    pass
             # TERMINAL-GARANTI (Bjørn 2026-06-13: "random hangs"): klientens
             # status forlader kun 'working' når den ser message_stop. Hvis
             # runnet sluttede UDEN et 'done'-event (error, exception, cancel,
@@ -627,9 +646,13 @@ async def translate_to_v2(
                     await _close_text_block_if_open()
                     if not _state["saw_done"]:
                         from core.services.visible_terminal_policy import recovery_notice
+                        _reason = str(
+                            _state.get("recovery_reason")
+                            or "legacy_stream_ended_without_done"
+                        )
                         await queue.put(SystemEvent(
                             kind="run_recovery",
-                            payload=recovery_notice("legacy_stream_ended_without_done"),
+                            payload=recovery_notice(_reason),
                         ).to_sse_line())
                         _state["stop_reason"] = "recovering"
                     await queue.put(MessageDelta(

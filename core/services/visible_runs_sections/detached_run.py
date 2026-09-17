@@ -14,6 +14,26 @@ from uuid import uuid4
 logger = logging.getLogger(__name__)
 
 
+def _persist_recovery_failure(session_id: str, reason: str) -> None:
+    """Make a failed continuation visible even after the prior SSE has closed."""
+    sid = (session_id or "").strip()
+    if not sid:
+        return
+    try:
+        from core.services.chat_sessions import append_chat_message
+        append_chat_message(
+            session_id=sid,
+            role="assistant",
+            content=(
+                "Den automatiske fortsættelse kunne ikke startes. "
+                "Checkpointet er bevaret, så opgaven kan genoptages. "
+                f"Årsag: {str(reason or 'ukendt fejl')[:180]}"
+            ),
+        )
+    except Exception:
+        logger.exception("kunne ikke persistere fejlet auto-fortsættelse session=%s", sid)
+
+
 def start_user_run_detached(
     *,
     message: str,
@@ -149,6 +169,7 @@ def start_user_run_detached(
                     )
                 except Exception:
                     logger.exception("auto-fortsaettelse fejlede for %s", run_id)
+                    _persist_recovery_failure(sid, "continuation spawn failed")
                 try:
                     from core.services.push_dispatcher import on_run_done
                     on_run_done(run_id)

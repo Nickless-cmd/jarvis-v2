@@ -29,7 +29,8 @@ import time
 _lock = threading.Lock()
 # session_id → {"frames": list[str], "done": bool, "run_id": str, "last_frame_at": float}
 _STREAMS: dict[str, dict] = {}
-_MAX_FRAMES = 4000  # hård cap pr. run (sikkerhed mod runaway)
+_MAX_FRAMES = 4000  # ring-vindue pr. run (sikkerhed mod runaway)
+_ROLL_CHUNK = 256
 # Et run regnes som live hvis dets buffer ikke er done OG sidste frame er
 # nyere end dette (pings hvert ~5s → 20s giver rigelig margin mod falsk-negativ).
 _LIVE_IDLE_S = 20.0
@@ -43,6 +44,7 @@ def begin_follow(session_id: str, run_id: str = "") -> None:
     with _lock:
         _STREAMS[sid] = {
             "frames": [],
+            "base": 0,
             "done": False,
             "run_id": str(run_id or ""),
             "last_frame_at": time.monotonic(),
@@ -57,9 +59,14 @@ def publish_follow_frame(session_id: str, frame: str) -> None:
     with _lock:
         st = _STREAMS.get(sid)
         if st is None:
-            st = _STREAMS[sid] = {"frames": [], "done": False, "run_id": "", "last_frame_at": 0.0}
-        if len(st["frames"]) < _MAX_FRAMES:
-            st["frames"].append(frame)
+            st = _STREAMS[sid] = {
+                "frames": [], "base": 0, "done": False,
+                "run_id": "", "last_frame_at": 0.0,
+            }
+        st["frames"].append(frame)
+        if len(st["frames"]) > _MAX_FRAMES:
+            st["frames"][:_ROLL_CHUNK] = []
+            st["base"] = int(st.get("base", 0)) + _ROLL_CHUNK
         st["last_frame_at"] = time.monotonic()
 
 
@@ -77,12 +84,25 @@ def end_follow(session_id: str) -> None:
 
 def _snapshot(session_id: str, from_idx: int) -> tuple[list[str], bool]:
     """Returnér (nye frames fra from_idx, done)."""
+    frames, done, _next_idx = snapshot_from(session_id, from_idx)
+    return frames, done
+
+
+def snapshot_from(session_id: str, from_idx: int) -> tuple[list[str], bool, int]:
+    """Ring-aware snapshot with a monotonic global continuation offset."""
     with _lock:
         st = _STREAMS.get(session_id)
         if st is None:
-            return ([], False)
-        frames = st["frames"]
-        return (frames[from_idx:], bool(st["done"]))
+            return ([], False, int(from_idx))
+        base = int(st.get("base", 0))
+        done = bool(st["done"])
+        if from_idx < base:
+            from core.services.run_event_log import gap_frame
+            frames = list(st["frames"])
+            return ([gap_frame(base)] + frames, done, base + len(frames))
+        start = int(from_idx) - base
+        frames = st["frames"][start:]
+        return (frames, done, int(from_idx) + len(frames))
 
 
 def has_active_follow(session_id: str) -> bool:

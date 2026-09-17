@@ -51,3 +51,18 @@ def test_terminal_frame_kaldes_med_den_rigtige_signatur():
     k = _traad_kilde()
     assert "rel.append(run_id, rel.synthetic_terminal_frame(" in k
     assert "except TypeError" not in k, "gaetteriet staar der stadig"
+
+
+def test_failed_auto_continuation_is_persisted_for_the_user(monkeypatch):
+    saved = []
+    monkeypatch.setattr(
+        "core.services.chat_sessions.append_chat_message",
+        lambda **kw: saved.append(kw),
+    )
+
+    dr._persist_recovery_failure("session-1", "continuation spawn failed")
+
+    assert len(saved) == 1
+    assert saved[0]["session_id"] == "session-1"
+    assert saved[0]["role"] == "assistant"
+    assert "fortsættelse" in saved[0]["content"].lower()

@@ -109,6 +109,7 @@ class TestVisibleRunsModuleSurface:
             def cancel(self): cancel_called["v"] = True
         controllers = {stale_id: FakeController()}
         monkeypatch.setattr(visible_runs, "_VISIBLE_RUN_CONTROLLERS", controllers)
+        monkeypatch.setattr("core.services.run_event_log.is_open", lambda _rid: False)
 
         # 12-minute-old run that's still "active" with controller in memory
         stale_started = (datetime.now(UTC) - timedelta(minutes=12)).isoformat()
@@ -143,6 +144,41 @@ class TestVisibleRunsModuleSurface:
             f"Hung active_run (>10min) should clear even with controller; got: {captured.get('state')}"
         )
         assert cancel_called["v"], "Controller should have been cancelled to stop zombie work"
+
+    def test_old_active_run_is_never_cancelled_while_relay_is_open(self, monkeypatch):
+        from datetime import datetime, timedelta, UTC
+
+        run_id = "visible-long-running"
+        cancel_called = {"v": False}
+
+        class FakeController:
+            def cancel(self):
+                cancel_called["v"] = True
+
+        monkeypatch.setattr(
+            visible_runs, "_VISIBLE_RUN_CONTROLLERS", {run_id: FakeController()},
+        )
+        monkeypatch.setattr("core.services.run_event_log.is_open", lambda rid: rid == run_id)
+        old_started = (datetime.now(UTC) - timedelta(minutes=30)).isoformat()
+        state = {
+            "active": True,
+            "run_id": run_id,
+            "session_id": "chat-long",
+            "started_at": old_started,
+            "cancelled": False,
+        }
+        monkeypatch.setattr(visible_runs, "_get_active_visible_run_state", lambda: state)
+        cleared = []
+        monkeypatch.setattr(visible_runs, "_set_active_visible_run", lambda payload: cleared.append(payload))
+
+        result = visible_runs.start_visible_run(
+            message="status", session_id="chat-long",
+            approval_mode="approve", thinking_mode="none",
+        )
+
+        assert result is not None
+        assert cleared == []
+        assert cancel_called["v"] is False
 
     def test_preview_text_truncates(self):
         """Long input gets truncated to a single bounded line."""

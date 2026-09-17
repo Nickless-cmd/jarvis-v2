@@ -289,6 +289,19 @@ def create_app() -> FastAPI:
             logger.info("session_boot_reconciler: %s", _rec)
         except Exception as _exc:
             logger.warning("session_boot_reconciler failed at boot: %s", _exc)
+        # Genoptagelses-dispatcheren (opgave 4, 17/9-2026): ÉN ejer af
+        # fortsættelsen, og det er API-processen. Den starter EFTER
+        # boot-forligeren, så de forladte poster allerede står som
+        # `recovering` når den tager sit første krav. Runtime-processen siger
+        # selv nej (`start_recovery_dispatcher` → False), så begge processer må
+        # kalde den.
+        try:
+            from core.services.visible_run_recovery_dispatcher import (
+                start_recovery_dispatcher,
+            )
+            logger.info("recovery-dispatcher startet=%s", start_recovery_dispatcher())
+        except Exception:
+            logger.warning("kunne ikke starte recovery-dispatcheren", exc_info=True)
         if runtime_services_enabled:
             start_runtime_hook_runtime()
             start_approval_feedback_subscriber()
@@ -556,6 +569,15 @@ def create_app() -> FastAPI:
         # shutdown-signalet og blev derefter annulleret med alt arbejdet tabt.
         # `--timeout-graceful-shutdown 30` var spild frem for udsaettelse, fordi
         # ingen kunne spoerge om vi lukkede.
+        # Nedlukningen afregner, men dispatcher ALDRIG nyt arbejde: en
+        # fortsættelse startet her ville arve en proces der er ved at dø.
+        try:
+            from core.services.visible_run_recovery_dispatcher import (
+                stop_recovery_dispatcher,
+            )
+            stop_recovery_dispatcher()
+        except Exception:
+            logger.warning("kunne ikke stoppe recovery-dispatcheren", exc_info=True)
         try:
             from core.runtime.process_lifecycle import markér_nedlukning
             markér_nedlukning("lifespan-shutdown")

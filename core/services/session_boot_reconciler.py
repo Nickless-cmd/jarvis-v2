@@ -132,7 +132,18 @@ def reconcile_on_boot(stale_after_s: float = STALE_AFTER_SECONDS) -> dict[str, A
             if not run_id:
                 continue
             try:
-                in_flight_runs.mark_interrupted(run_id, reason=_INTERRUPTION_REASON)
+                # GENOPTAGELIG, ikke bare afbrudt (opgave 4, 17/9-2026). En
+                # synlig tur der døde med processen har stadig sin opgave,
+                # sine færdige værktøjskald og sit checkpoint. `mark_interrupted`
+                # lukkede den som «det skete», og så var der intet forfaldent
+                # for dispatcheren at tage. Autonome kørsler beholder deres egen
+                # vej: de genoptages af scheduleren, ikke herfra.
+                if str(rec.get("kind") or "visible") == "visible":
+                    in_flight_runs.settle_recovering(
+                        run_id, reason=_INTERRUPTION_REASON,
+                        summary=str(rec.get("original_request") or _INTERRUPTION_REASON))
+                else:
+                    in_flight_runs.mark_interrupted(run_id, reason=_INTERRUPTION_REASON)
                 # 12/9-2026: spejl stemplet ind i `visible_runs`. Uden dette stod
                 # rækken `running` for evigt efter et crash — og et run der aldrig
                 # blev afsluttet så ud som et der stadig kørte. Kun `running`

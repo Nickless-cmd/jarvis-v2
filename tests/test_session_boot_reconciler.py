@@ -69,8 +69,11 @@ def test_enabled_zombie_marked_interrupted_and_nerve_fired(isolated_runtime, mon
 
     summary = rec.reconcile_on_boot()
 
-    assert runs._load()["run-z"]["status"] == "interrupted"
-    assert runs._load()["run-z"]["interruption_reason"] == "afbrudt af container-genstart"
+    # Opgave 4 (17/9-2026): en SYNLIG tur der døde med processen er
+    # genoptagelig, ikke bare afbrudt — ellers er der intet forfaldent for
+    # dispatcheren at tage, og opgaven forsvinder med processen.
+    assert runs._load()["run-z"]["status"] == "recovering"
+    assert runs._load()["run-z"]["exit_reason"] == "afbrudt af container-genstart"
     assert summary["count"] == 1
     assert summary["enforced"] is True
     assert observed and observed[0]["count"] == 1
@@ -132,7 +135,7 @@ def test_idempotent_second_run_finds_nothing(isolated_runtime, monkeypatch):
 
     assert first["count"] == 1
     assert second["count"] == 0
-    assert runs._load()["run-z"]["status"] == "interrupted"
+    assert runs._load()["run-z"]["status"] == "recovering"
 
 
 def test_reconciler_swallows_exceptions(isolated_runtime, monkeypatch):

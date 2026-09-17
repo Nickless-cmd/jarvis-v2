@@ -2,6 +2,18 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/egress_routing.py`
+_Egress routing — which network egress a (provider, auth_profile) slot uses._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `resolve_egress` | `(provider, auth_profile)` | Which egress a slot uses. default profile -> 'home'; other profiles -> | [src](../../../core/services/egress_routing.py#L84) |
+| function | `resolve_v6bind_source` | `(provider, auth_profile)` | Native-IPv6 account2 egress: bind the outbound socket to a distinct v6 | [src](../../../core/services/egress_routing.py#L97) |
+| function | `_source_addr_usable` | `(addr)` | True if ``addr`` can be bound as an IPv6 source on this host (cheap check). | [src](../../../core/services/egress_routing.py#L132) |
+| function | `resolve_nat64` | `(provider, auth_profile)` | True if this (provider, auth_profile) slot should egress via NAT64 instead | [src](../../../core/services/egress_routing.py#L157) |
+| function | `nat64_synthesize` | `(host)` | Resolve ``host`` to a NAT64 synthetic IPv6 address via a DNS64 server. | [src](../../../core/services/egress_routing.py#L182) |
+| function | `proxy_endpoints` | `()` | Return {egress: url|None}. Reads runtime config override if present, else | [src](../../../core/services/egress_routing.py#L223) |
+
 ## `core/services/embodied_presence.py`
 _Embodied Presence — situational grounding in the physical now._
 
@@ -652,13 +664,4 @@ _Fabrikerede tool-resultater — den ene løgn der ikke kan bortforklares._
 | method | `FabricationVerdict.note` | `(self)` | Menneskelæsbar fodnote i husets ✋-stil, eller None. | [src](../../../core/services/fabricated_tool_result_gate.py#L78) |
 | function | `_id_exists` | `(result_id)` | Findes ID'et i tool-result-storen? Fejl → True (fail-open: anklag ALDRIG | [src](../../../core/services/fabricated_tool_result_gate.py#L96) |
 | function | `scan_for_fabricated_tool_results` | `(text, *, known_ids=…)` | Scan synligt output for tool-result-referencer og afgør om de er ægte. | [src](../../../core/services/fabricated_tool_result_gate.py#L106) |
-
-## `core/services/fact_gate.py`
-_Fact-Gate — blocking output gate for unverifiable factual claims._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_has_tool_evidence` | `(text, pattern, required, tool_names)` | Tjek om påstanden i text har tool-evidens. | [src](../../../core/services/fact_gate.py#L78) |
-| function | `fact_gate_enforce` | `(text, tool_names=…)` | Detekterende gate — kald FØR append_chat_message. | [src](../../../core/services/fact_gate.py#L104) |
-| function | `blocking_categories` | `()` | Returnér liste af aktive blokerbare kategorier. | [src](../../../core/services/fact_gate.py#L174) |
 

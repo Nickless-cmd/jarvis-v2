@@ -2,6 +2,23 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/composite_tools.py`
+_Composite tools — safe self-extension through composition only._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `propose` | `(*, name, description, input_schema, steps, created_by=…)` | Validate and store a proposal. Raises ValueError on invalid input. | [src](../../../core/services/composite_tools.py#L44) |
+| function | `approve` | `(name, *, approved_by=…)` | — | [src](../../../core/services/composite_tools.py#L115) |
+| function | `revoke` | `(name)` | — | [src](../../../core/services/composite_tools.py#L128) |
+| function | `delete` | `(name)` | — | [src](../../../core/services/composite_tools.py#L138) |
+| function | `get` | `(name)` | — | [src](../../../core/services/composite_tools.py#L148) |
+| function | `list_available` | `(*, status=…)` | — | [src](../../../core/services/composite_tools.py#L152) |
+| function | `invoke` | `(name, args)` | Execute an approved composite. Returns {status, steps, result}. | [src](../../../core/services/composite_tools.py#L156) |
+| function | `get_stats` | `()` | — | [src](../../../core/services/composite_tools.py#L224) |
+| function | `_substitute` | `(value, context)` | — | [src](../../../core/services/composite_tools.py#L237) |
+| function | `_resolve_string` | `(s, context)` | Resolve {{...}} templates. | [src](../../../core/services/composite_tools.py#L247) |
+| function | `_lookup` | `(path, context)` | — | [src](../../../core/services/composite_tools.py#L267) |
+
 ## `core/services/computer_use_policy.py`
 _Computer-use-politik (§4.7) — per-bruger on/off for operator/computer-tools._
 
@@ -602,22 +619,4 @@ _Creative Instinct — spontaneous idea-seeds written to INCUBATOR.md._
 | function | `_creative_journal_enabled` | `()` | — | [src](../../../core/services/creative_journal_runtime.py#L669) |
 | function | `_state` | `()` | — | [src](../../../core/services/creative_journal_runtime.py#L674) |
 | function | `_parse_iso` | `(value)` | — | [src](../../../core/services/creative_journal_runtime.py#L679) |
-
-## `core/services/creative_projects.py`
-_Creative Projects — multi-week persistent creative impulse._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_storage_path` | `()` | — | [src](../../../core/services/creative_projects.py#L36) |
-| function | `_load` | `()` | — | [src](../../../core/services/creative_projects.py#L40) |
-| function | `_save` | `(data)` | — | [src](../../../core/services/creative_projects.py#L54) |
-| function | `create_project` | `(*, title, intent, status=…)` | Create a new creative project. | [src](../../../core/services/creative_projects.py#L66) |
-| function | `add_progress_note` | `(project_id, note)` | Append a progress note to a project. Updates updated_at. | [src](../../../core/services/creative_projects.py#L86) |
-| function | `set_project_status` | `(project_id, status)` | — | [src](../../../core/services/creative_projects.py#L101) |
-| function | `list_projects` | `(*, status=…)` | — | [src](../../../core/services/creative_projects.py#L115) |
-| function | `get_project` | `(project_id)` | — | [src](../../../core/services/creative_projects.py#L123) |
-| function | `_is_stale` | `(project)` | — | [src](../../../core/services/creative_projects.py#L130) |
-| function | `build_creative_projects_surface` | `()` | — | [src](../../../core/services/creative_projects.py#L140) |
-| function | `_surface_summary` | `(active, paused, dreaming, stale)` | — | [src](../../../core/services/creative_projects.py#L168) |
-| function | `build_creative_projects_prompt_section` | `()` | Surface active/dreaming projects so he can resume or carry them. | [src](../../../core/services/creative_projects.py#L188) |
 

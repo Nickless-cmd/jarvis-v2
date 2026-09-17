@@ -2,6 +2,24 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/creative_projects.py`
+_Creative Projects — multi-week persistent creative impulse._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_storage_path` | `()` | — | [src](../../../core/services/creative_projects.py#L36) |
+| function | `_load` | `()` | — | [src](../../../core/services/creative_projects.py#L40) |
+| function | `_save` | `(data)` | — | [src](../../../core/services/creative_projects.py#L54) |
+| function | `create_project` | `(*, title, intent, status=…)` | Create a new creative project. | [src](../../../core/services/creative_projects.py#L66) |
+| function | `add_progress_note` | `(project_id, note)` | Append a progress note to a project. Updates updated_at. | [src](../../../core/services/creative_projects.py#L86) |
+| function | `set_project_status` | `(project_id, status)` | — | [src](../../../core/services/creative_projects.py#L101) |
+| function | `list_projects` | `(*, status=…)` | — | [src](../../../core/services/creative_projects.py#L115) |
+| function | `get_project` | `(project_id)` | — | [src](../../../core/services/creative_projects.py#L123) |
+| function | `_is_stale` | `(project)` | — | [src](../../../core/services/creative_projects.py#L130) |
+| function | `build_creative_projects_surface` | `()` | — | [src](../../../core/services/creative_projects.py#L140) |
+| function | `_surface_summary` | `(active, paused, dreaming, stale)` | — | [src](../../../core/services/creative_projects.py#L168) |
+| function | `build_creative_projects_prompt_section` | `()` | Surface active/dreaming projects so he can resume or carry them. | [src](../../../core/services/creative_projects.py#L188) |
+
 ## `core/services/crisis_marker_detector.py`
 _Crisis marker detector — flag identity-forming friction moments._
 
@@ -525,28 +543,4 @@ _Desperation Awareness — self-noticing safety signal._
 | function | `_surface_summary` | `(state)` | — | [src](../../../core/services/desperation_awareness.py#L199) |
 | function | `build_desperation_awareness_prompt_section` | `()` | Surfaces only when pressed or desperate — silent when calm. | [src](../../../core/services/desperation_awareness.py#L210) |
 | function | `reset_desperation_awareness` | `()` | Reset state (for testing). | [src](../../../core/services/desperation_awareness.py#L222) |
-
-## `core/services/development_focus_tracking.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `track_runtime_development_focuses_for_visible_turn` | `(*, session_id, run_id, user_message)` | — | [src](../../../core/services/development_focus_tracking.py#L32) |
-| function | `refresh_runtime_development_focus_statuses` | `()` | — | [src](../../../core/services/development_focus_tracking.py#L76) |
-| function | `build_runtime_development_focus_surface` | `(*, limit=…)` | — | [src](../../../core/services/development_focus_tracking.py#L120) |
-| function | `_extract_focus_candidates` | `(*, user_message, session_id)` | — | [src](../../../core/services/development_focus_tracking.py#L143) |
-| function | `_explicit_learning_focus` | `(message)` | — | [src](../../../core/services/development_focus_tracking.py#L177) |
-| function | `_repeated_correction_focus` | `(message, *, session_id)` | — | [src](../../../core/services/development_focus_tracking.py#L222) |
-| function | `_runtime_development_focus` | `()` | — | [src](../../../core/services/development_focus_tracking.py#L276) |
-| function | `_persist_focuses` | `(*, focuses, session_id, run_id)` | — | [src](../../../core/services/development_focus_tracking.py#L316) |
-| function | `_apply_completion_signals` | `(*, user_message, session_id)` | — | [src](../../../core/services/development_focus_tracking.py#L391) |
-| function | `_enrich_focus_support` | `(candidate, *, session_id)` | — | [src](../../../core/services/development_focus_tracking.py#L438) |
-| function | `_candidate_history` | `(canonical_key, *, session_id)` | — | [src](../../../core/services/development_focus_tracking.py#L457) |
-| function | `_recent_user_message_history` | `(*, limit_sessions, per_session_limit)` | — | [src](../../../core/services/development_focus_tracking.py#L477) |
-| function | `_matches_correction_key` | `(canonical_key, message)` | — | [src](../../../core/services/development_focus_tracking.py#L498) |
-| function | `_after_marker` | `(text, markers)` | — | [src](../../../core/services/development_focus_tracking.py#L509) |
-| function | `_parse_dt` | `(value)` | — | [src](../../../core/services/development_focus_tracking.py#L517) |
-| function | `_rank` | `(ranks, value)` | — | [src](../../../core/services/development_focus_tracking.py#L524) |
-| function | `_quote` | `(text)` | — | [src](../../../core/services/development_focus_tracking.py#L528) |
-| function | `_slug` | `(value)` | — | [src](../../../core/services/development_focus_tracking.py#L535) |
-| function | `_now_iso` | `()` | — | [src](../../../core/services/development_focus_tracking.py#L540) |
 

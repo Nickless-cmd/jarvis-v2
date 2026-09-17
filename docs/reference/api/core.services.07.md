@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/cheap_lane_selfheal.py`
+_cheap_lane_selfheal — cheap-lane maa ALDRIG stale eller doe (Bjoern 16.jul)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_slukket` | `()` | Udbydere og (udbyder, model) der er slået fra i registret. | [src](../../../core/services/cheap_lane_selfheal.py#L32) |
+| function | `_stale_targets` | `(limit)` | (provider, model) der skal re-probes. To kilder: | [src](../../../core/services/cheap_lane_selfheal.py#L50) |
+| function | `reprobe` | `(provider, model)` | Minimalt sundheds-probe. Healer state ved succes, saetter frisk cooldown ved fejl. | [src](../../../core/services/cheap_lane_selfheal.py#L116) |
+| function | `run_selfheal` | `(*, max_probes=…)` | Re-probe op til max_probes fastlaaste providere. Returnér {healed, still_down}. | [src](../../../core/services/cheap_lane_selfheal.py#L159) |
+
 ## `core/services/cheap_provider_breaker_adapters.py`
 _Per-provider circuit-breaker adaptere for OllamaFreeAPI og Arko._
 
@@ -736,21 +746,4 @@ _Forslag i komponisten — hvad der kunne skrives videre, mens man skriver._
 | function | `_er_paastand` | `(s)` | Er forslaget en konstatering frem for noget man beder om? | [src](../../../core/services/composer_suggest.py#L240) |
 | function | `_samtale` | `(session_id)` | De seneste beskeder. Egen funktion, så testene kan sætte dem. | [src](../../../core/services/composer_suggest.py#L256) |
 | function | `foreslaa_naeste` | `(session_id)` | Et bud på brugerens næste besked, eller `""`. | [src](../../../core/services/composer_suggest.py#L262) |
-
-## `core/services/composite_tools.py`
-_Composite tools — safe self-extension through composition only._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `propose` | `(*, name, description, input_schema, steps, created_by=…)` | Validate and store a proposal. Raises ValueError on invalid input. | [src](../../../core/services/composite_tools.py#L44) |
-| function | `approve` | `(name, *, approved_by=…)` | — | [src](../../../core/services/composite_tools.py#L115) |
-| function | `revoke` | `(name)` | — | [src](../../../core/services/composite_tools.py#L128) |
-| function | `delete` | `(name)` | — | [src](../../../core/services/composite_tools.py#L138) |
-| function | `get` | `(name)` | — | [src](../../../core/services/composite_tools.py#L148) |
-| function | `list_available` | `(*, status=…)` | — | [src](../../../core/services/composite_tools.py#L152) |
-| function | `invoke` | `(name, args)` | Execute an approved composite. Returns {status, steps, result}. | [src](../../../core/services/composite_tools.py#L156) |
-| function | `get_stats` | `()` | — | [src](../../../core/services/composite_tools.py#L224) |
-| function | `_substitute` | `(value, context)` | — | [src](../../../core/services/composite_tools.py#L237) |
-| function | `_resolve_string` | `(s, context)` | Resolve {{...}} templates. | [src](../../../core/services/composite_tools.py#L247) |
-| function | `_lookup` | `(path, context)` | — | [src](../../../core/services/composite_tools.py#L267) |
 

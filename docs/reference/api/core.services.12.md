@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/fact_gate.py`
+_Fact-Gate — blocking output gate for unverifiable factual claims._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_has_tool_evidence` | `(text, pattern, required, tool_names)` | Tjek om påstanden i text har tool-evidens. | [src](../../../core/services/fact_gate.py#L78) |
+| function | `fact_gate_enforce` | `(text, tool_names=…)` | Detekterende gate — kald FØR append_chat_message. | [src](../../../core/services/fact_gate.py#L104) |
+| function | `blocking_categories` | `()` | Returnér liste af aktive blokerbare kategorier. | [src](../../../core/services/fact_gate.py#L174) |
+
 ## `core/services/fcm_gateway.py`
 _FCM HTTP v1 gateway — data-only push. Google ser kun et vaekke-signal._
 
@@ -504,13 +513,4 @@ _Goal signal synthesizer — surface candidate goals from dreams/reflections._
 | function | `_merge_fragments` | `(*parts)` | — | [src](../../../core/services/goal_signal_tracking.py#L493) |
 | function | `_rank` | `(value)` | — | [src](../../../core/services/goal_signal_tracking.py#L502) |
 | function | `_parse_dt` | `(value)` | — | [src](../../../core/services/goal_signal_tracking.py#L506) |
-
-## `core/services/good_enough_gate.py`
-_Good-enough gate — completion criterion for autonomous runs._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_recent_run_signals` | `(run_id, limit=…)` | — | [src](../../../core/services/good_enough_gate.py#L34) |
-| function | `evaluate_good_enough` | `(*, run_id=…, iterations_done=…, iteration_budget=…, minutes_elapsed=…, minutes_budget=…)` | — | [src](../../../core/services/good_enough_gate.py#L57) |
-| function | `_exec_check_good_enough` | `(args)` | — | [src](../../../core/services/good_enough_gate.py#L148) |
 

@@ -297,6 +297,15 @@ _Boundary Awareness — "Where do I end?"_
 |---|---|---|---|---|
 | function | `build_bounded_workspace_write_execution_surface` | `()` | — | [src](../../../core/services/bounded_workspace_write_runtime.py#L7) |
 
+## `core/services/brain_edge_worker.py`
+_Kant-udledningen for en ny hjerne-post flyttes ud af værktøjets ventetid._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_arbejd` | `()` | — | [src](../../../core/services/brain_edge_worker.py#L58) |
+| function | `koesaet` | `(entry_id, now=…)` | Læg en post i kø til kant-udledning. `False` = køen er fuld. | [src](../../../core/services/brain_edge_worker.py#L74) |
+| function | `venter` | `()` | Hvor mange poster der står i kø. Til test og til at se hvor langt bagud. | [src](../../../core/services/brain_edge_worker.py#L100) |
+
 ## `core/services/bridge_presence.py`
 _Cross-proces bro-tilstedeværelse via shared_cache (samme mønster som central_xproc)._
 
@@ -614,15 +623,4 @@ _Central agents-/council-surface (B3, 13. jul 2026) — gør de nye agent-/counc
 | function | `_roster` | `()` | Full model roster (every pool model as a row) fra core.services.agents. | [src](../../../core/services/central_agents_surface.py#L166) |
 | function | `build_council_surface` | `(*, window=…)` | Council-observabilitet til /central/council + `jc council`. | [src](../../../core/services/central_agents_surface.py#L179) |
 | function | `build_recent_agent_work` | `(limit=…)` | De sidste subagent-koersler som arbejdskort — rolle, udfald, pris. | [src](../../../core/services/central_agents_surface.py#L234) |
-
-## `core/services/central_analyst.py`
-_The Analyst — observatør-effekten._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_texts` | `(*, autonomous, limit=…)` | — | [src](../../../core/services/central_analyst.py#L18) |
-| function | `measure_observer_effect` | `()` | Sammenlign klang når han bliver set vs når han er alene. READ-ONLY. Self-safe. | [src](../../../core/services/central_analyst.py#L32) |
-| function | `_observe` | `(div)` | — | [src](../../../core/services/central_analyst.py#L63) |
-| function | `build_analyst_surface` | `()` | — | [src](../../../core/services/central_analyst.py#L72) |
-| function | `record_analyst` | `(*, trigger=…, last_visible_at=…)` | — | [src](../../../core/services/central_analyst.py#L76) |
 

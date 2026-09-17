@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/provider_error_guard.py`
+_Provider-fejl-vagt — fang "providerens fejlbesked blev til Jarvis' svar"._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `looks_like_provider_error` | `(text)` | True hvis `text` ligner en udbyders fejlbesked frem for Jarvis' svar. | [src](../../../core/services/provider_error_guard.py#L72) |
+| function | `describe` | `(text)` | Kort, sikker beskrivelse til incident-beskeden. Lækker ikke hele teksten. | [src](../../../core/services/provider_error_guard.py#L96) |
+
 ## `core/services/provider_health_check.py`
 _Provider health check — periodic ping to detect outages early._
 
@@ -683,12 +691,4 @@ _Gentagne anmodninger → regel-forslag (lærings-sløjfe 2026-09-04, blok C)._
 | function | `note_and_surface` | `(*, text, session_id=…, kind=…)` | Tæl, og stil spørgsmålet hvis anmodningen netop modnede. Self-safe. | [src](../../../core/services/repeated_requests.py#L273) |
 | function | `counts` | `()` | — | [src](../../../core/services/repeated_requests.py#L285) |
 | function | `build_repeated_requests_surface` | `()` | — | [src](../../../core/services/repeated_requests.py#L295) |
-
-## `core/services/report_claim_guard.py`
-_Efterproev det et barn PAASTAAR — Fase 6._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_opsloegere` | `(context)` | Vaelg den maskine paastanden skal efterproeves PAA. | [src](../../../core/services/report_claim_guard.py#L40) |
-| function | `tjek_rapport` | `(text, *, agent_id=…, role=…, run_id=…, context=…)` | Efterproev en barne-rapports filstier og linjenumre. Kaster ALDRIG. | [src](../../../core/services/report_claim_guard.py#L83) |
 

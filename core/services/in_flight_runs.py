@@ -250,6 +250,45 @@ def mark_started(
     _mutate(change)
 
 
+def recovery_snapshot(session_id: str) -> dict[str, Any] | None:
+    """Hvad er der at genoptage for DENNE samtale? `None` = ingenting.
+
+    Opgave 7 (17/9-2026): en klient der kommer tilbage efter en genstart
+    spurgte den proces-lokale hændelseslog, og den er tom efter en genstart.
+    «Tom log» blev læst som «turen er færdig» — mens journalen på disken
+    stadig havde en opgave der var på vej til at blive taget op igen.
+    """
+    sid = str(session_id or "").strip()
+    if not sid:
+        return None
+    kandidater = [
+        rec for rec in _load().values()
+        if str(rec.get("session_id") or "") == sid
+        and str(rec.get("status") or "") in {"recovering", "running"}
+        and str(rec.get("kind") or "visible") == "visible"
+    ]
+    if not kandidater:
+        return None
+    # Den nyeste først: en samtale kan have en gammel post der aldrig blev ryddet.
+    rec = max(kandidater, key=lambda r: str(r.get("settled_at") or r.get("started_at") or ""))
+    status = str(rec.get("status") or "")
+    if status == "running" and not rec.get("recovery_owner"):
+        return None            # en helt almindelig kørende tur — intet at genoptage
+    grund = str(rec.get("exit_reason") or rec.get("interruption_reason") or "")
+    from core.services.visible_terminal_policy import recovery_notice
+    return {
+        "task_id": str(rec.get("task_id") or rec.get("run_id") or ""),
+        "run_id": str(rec.get("run_id") or ""),
+        "state": status,
+        "reason": grund,
+        "recovery_attempt": int(rec.get("recovery_attempt") or 0),
+        "recovery_limit": int(rec.get("recovery_limit") or 3),
+        # Kun det brugeren må se: hans egen anmodning, ikke intern tilstand.
+        "checkpoint_summary": str(rec.get("summary") or rec.get("excerpt") or "")[:400],
+        "notice": recovery_notice(grund or "unknown", continuing=status != "failed_terminal"),
+    }
+
+
 def queue_steer(run_id: str, text: str) -> bool:
     """Gem en brugerbesked der ikke kunne leveres til en kørende tur.
 

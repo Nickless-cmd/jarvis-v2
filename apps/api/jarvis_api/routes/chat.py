@@ -1027,6 +1027,27 @@ def chat_search_sessions(q: str = "", limit: int = 30) -> dict:
     return {"items": search_chat_sessions(q, user_id=uid, limit=limit)}
 
 
+@router.get("/sessions/{session_id}/recovery")
+def chat_session_recovery(session_id: str, response: Response) -> dict:
+    """Hvad er der at genoptage for denne samtale? 204 når der ikke er noget.
+
+    Opgave 7 (17/9-2026): efter en genstart er den proces-lokale hændelseslog
+    tom, og klienten læste «tom» som «færdig». Journalen på disken ved bedre.
+    """
+    from core.services.in_flight_runs import recovery_snapshot
+    try:
+        snapshot = recovery_snapshot(session_id)
+    except Exception:
+        import logging
+        logging.getLogger("uvicorn.error").warning(
+            "kunne ikke laese genoptagelses-tilstand for %s", session_id, exc_info=True)
+        snapshot = None
+    if not snapshot:
+        response.status_code = 204
+        return {}
+    return snapshot
+
+
 @router.get("/active-runs")
 def chat_active_runs() -> dict:
     """Sessioner med et aktivt visible-run lige nu (#8 — autonome/baggrunds-runs).

@@ -90,6 +90,8 @@ class FollowupDone:
     reasoning_content: str = ""
     # Provider stream end reason: "" (unknown/legacy), "stop", "length", ...
     finish_reason: str = ""
+    # Raw DSML requested a tool while structured tool calls were unavailable.
+    pending_tool_intent: bool = False
 
 
 @dataclass(frozen=True, slots=True)

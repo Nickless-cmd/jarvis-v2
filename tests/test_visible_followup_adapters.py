@@ -1057,6 +1057,22 @@ def test_deepseek_followup_budget_fits_reasoning_plus_answer(monkeypatch) -> Non
     assert bodies[0]["thinking"] == {"type": "enabled"}  # default think-mode, som første pas
 
 
+def test_deepseek_raw_calls_dsml_is_retained_as_pending_intent(monkeypatch) -> None:
+    _stub_deepseek_compat(monkeypatch)
+    _sequenced_urlopen(monkeypatch, [_sse(
+        'data: {"choices":[{"delta":{"content":"Nu tjekker jeg.\\n<｜｜DSML｜｜ calls>"}}]}'.encode(),
+        'data: {"choices":[{"delta":{"content":"<｜｜DSML｜｜ invoke name=\\"bash\\">x</｜｜DSML｜｜ invoke></｜｜DSML｜｜ calls>"}}]}'.encode(),
+        b'data: {"choices":[{"delta":{},"finish_reason":"stop"}]}')])
+    events = list(vf.stream_visible_followup(
+        provider="deepseek", model="deepseek-v4-flash",
+        base_messages=[{"role": "user", "content": "hi"}], exchanges=[],
+        tool_definitions=None, tool_choice="none",
+    ))
+    done = [e for e in events if isinstance(e, vf.FollowupDone)][-1]
+    assert done.text == "Nu tjekker jeg.\n"
+    assert done.pending_tool_intent is True
+
+
 @pytest.mark.parametrize("mode,expected", [
     ("think", {"reasoning_effort": "high", "thinking": {"type": "enabled"}}),
     ("deep", {"reasoning_effort": "max", "thinking": {"type": "enabled"}}),

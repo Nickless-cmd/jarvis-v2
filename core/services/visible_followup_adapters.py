@@ -926,9 +926,13 @@ class OpenAICompatFollowupAdapter:
         # spille sin interne tool-call DSL ud i delta.content sammen med
         # struktureret tool_calls — første-pass har allerede filteret,
         # men followup-runder gik gennem en separat SSE-parser uden det.)
-        from core.services.cheap_provider_runtime import _strip_dsml_leak
+        from core.services.cheap_provider_runtime import (
+            _strip_dsml_leak, contains_dsml_tool_intent,
+        )
         _dsml_in_block = False
         _dsml_buffer = ""
+        _dsml_probe = ""
+        _dsml_intent_seen = False
         import time as _time
         _t0 = _time.monotonic()
         _ttfb_ms: int | None = None
@@ -948,6 +952,9 @@ class OpenAICompatFollowupAdapter:
                         _usage = _u
                     delta = _extract_chat_completion_delta(event)
                     if delta:
+                        _dsml_probe = (_dsml_probe + delta)[-1024:]
+                        if contains_dsml_tool_intent(_dsml_probe):
+                            _dsml_intent_seen = True
                         _dsml_buffer += delta
                         safe, _dsml_buffer, _dsml_in_block = _strip_dsml_leak(
                             _dsml_buffer, _dsml_in_block
@@ -1218,6 +1225,7 @@ class OpenAICompatFollowupAdapter:
             text="".join(parts),
             reasoning_content="".join(reasoning_parts),
             finish_reason=_finish_reason,
+            pending_tool_intent=_dsml_intent_seen,
         )
 
 

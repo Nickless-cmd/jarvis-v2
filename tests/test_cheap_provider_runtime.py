@@ -790,3 +790,20 @@ def test_dsml_stripper_mid_string_lt_not_held():
     assert safe == "a < b er sandt."
     assert held == ""
     assert in_block is False
+
+
+def test_dsml_stripper_removes_deepseek_calls_invoke_dialect():
+    """DeepSeek v4-flash bruger ogsaa calls/invoke-dialekten. Den maa aldrig
+    lande som synlig prosa og blive fejlklassificeret som et faerdigt svar."""
+    import core.services.cheap_provider_runtime as cheap
+    raw = (
+        'Jeg tjekker.\n<｜｜DSML｜｜ calls>\n'
+        '<｜｜DSML｜｜ invoke name="bash">\n'
+        '<｜｜DSML｜｜ parameter name="command">echo hej</｜｜DSML｜｜ parameter>\n'
+        '</｜｜DSML｜｜ invoke>\n</｜｜DSML｜｜ calls>'
+    )
+    safe, held, in_block = cheap._strip_dsml_leak(raw, False)
+    assert safe == "Jeg tjekker.\n"
+    assert held == ""
+    assert in_block is False
+    assert cheap.contains_dsml_tool_intent(raw) is True

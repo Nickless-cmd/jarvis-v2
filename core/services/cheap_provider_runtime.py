@@ -51,6 +51,7 @@ from core.services.cheap_provider_runtime_adapters import (
     _DEFAULT_TIMEOUT_SECONDS,
     _DSML_CLOSE,
     _DSML_OPEN,
+    contains_dsml_tool_intent,
     _OFA_CB_OPEN_DURATION_S,
     _OFA_CB_THRESHOLD,
     _OFA_PROVIDER_ID,

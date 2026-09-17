@@ -606,6 +606,18 @@ def deepseek_model_for_thinking_mode(model: str, thinking_mode: str) -> str:
 
 _DSML_OPEN = "<｜｜DSML｜｜tool_calls>"
 _DSML_CLOSE = "</｜｜DSML｜｜tool_calls>"
+_DSML_CALLS_OPEN = "<｜｜DSML｜｜ calls>"
+_DSML_CALLS_CLOSE = "</｜｜DSML｜｜ calls>"
+_DSML_OPENERS = (_DSML_OPEN, _DSML_CALLS_OPEN)
+_DSML_CLOSERS = (_DSML_CLOSE, _DSML_CALLS_CLOSE)
+
+
+def contains_dsml_tool_intent(text: str | None) -> bool:
+    """True for every DeepSeek DSML tool-call dialect observed in production."""
+    if not text:
+        return False
+    raw = str(text)
+    return any(opener in raw for opener in _DSML_OPENERS) or "<｜｜DSML｜｜ invoke" in raw
 
 
 def _strip_dsml_leak(buffer: str, in_block: bool) -> tuple[str, str, bool]:
@@ -629,36 +641,41 @@ def _strip_dsml_leak(buffer: str, in_block: bool) -> tuple[str, str, bool]:
     safe: list[str] = []
     while buffer:
         if in_block:
-            close_idx = buffer.find(_DSML_CLOSE)
-            if close_idx == -1:
+            matches = [(buffer.find(closer), closer) for closer in _DSML_CLOSERS]
+            matches = [(idx, closer) for idx, closer in matches if idx >= 0]
+            if not matches:
                 # We're still inside the block; no close yet. Keep buffer
                 # but cap it so a never-closing block doesn't grow unbounded.
                 if len(buffer) > 8192:
                     buffer = buffer[-1024:]
                 return "".join(safe), buffer, in_block
-            buffer = buffer[close_idx + len(_DSML_CLOSE):]
+            close_idx, closer = min(matches, key=lambda item: item[0])
+            buffer = buffer[close_idx + len(closer):]
             in_block = False
             continue
         # Not in block — find next opener
-        open_idx = buffer.find(_DSML_OPEN)
-        if open_idx == -1:
+        matches = [(buffer.find(opener), opener) for opener in _DSML_OPENERS]
+        matches = [(idx, opener) for idx, opener in matches if idx >= 0]
+        if not matches:
             # No full opener. But the buffer's tail could still be a partial
             # opener mid-stream (e.g. ends with "<｜｜D"). Hold back any tail
             # that *could* be a prefix of the opener to avoid emitting "<｜"
             # before deciding.
             tail_keep = 0
-            for k in range(1, min(len(_DSML_OPEN), len(buffer)) + 1):
-                if _DSML_OPEN.startswith(buffer[-k:]):
-                    tail_keep = k
+            for opener in _DSML_OPENERS:
+                for k in range(1, min(len(opener), len(buffer)) + 1):
+                    if opener.startswith(buffer[-k:]):
+                        tail_keep = max(tail_keep, k)
             if tail_keep:
                 safe.append(buffer[:-tail_keep])
                 return "".join(safe), buffer[-tail_keep:], in_block
             safe.append(buffer)
             return "".join(safe), "", in_block
         # Emit prefix before the opener, then enter block
+        open_idx, opener = min(matches, key=lambda item: item[0])
         if open_idx > 0:
             safe.append(buffer[:open_idx])
-        buffer = buffer[open_idx + len(_DSML_OPEN):]
+        buffer = buffer[open_idx + len(opener):]
         in_block = True
     return "".join(safe), "", in_block
 

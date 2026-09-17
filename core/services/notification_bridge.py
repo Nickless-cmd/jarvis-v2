@@ -42,11 +42,33 @@ def pin_session(session_id: str) -> None:
 
 
 def get_pinned_session_id() -> str:
-    """Return the currently pinned session ID, or empty string if none."""
+    """Return the currently pinned session ID, or empty string if none.
+
+    17/9-2026: pin'en blev sat én gang og pegede derefter på en session der
+    ikke længere findes (`chat-8d36a224…`). Alle kaldere — wakeup-resolveren
+    og heartbeat — troede derfor de havde et gyldigt mål og sprang deres egne
+    fallbacks over. Vi validerer nu at sessionen faktisk findes; gør den ikke,
+    rydder vi pin'en og svarer "" så kalderen må vælge på ny.
+    """
     payload = get_runtime_state_value(_PINNED_SESSION_STATE_KEY, default={})
     if not isinstance(payload, dict):
         return ""
-    return str(payload.get("session_id") or "").strip()
+    sid = str(payload.get("session_id") or "").strip()
+    if not sid:
+        return ""
+    try:
+        from core.services.chat_sessions import get_chat_session
+        if get_chat_session(sid) is None:
+            logger.warning(
+                "notification_bridge: pinnet session %s findes ikke — rydder pin", sid
+            )
+            set_runtime_state_value(_PINNED_SESSION_STATE_KEY, {})
+            return ""
+    except Exception:
+        # Kan vi ikke slå op, lader vi pin'en stå: en DB-hikke må ikke smide et
+        # gyldigt mål væk (fail-open, samme valg som session_is_external_channel).
+        pass
+    return sid
 
 
 def _push_proactive(session_id: str, text: str) -> None:

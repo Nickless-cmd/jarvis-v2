@@ -29,9 +29,22 @@ describe('linjen siger hvad der laves, ikke hvilket værktøj', () => {
     expect(describeTool('operator_read_file', { path: 'x.ts' }, false)).toBe('Læste x.ts')
   })
 
-  it('en lang kommando klippes, en sti bliver til filnavnet', () => {
+  it('en sti bliver til filnavnet', () => {
     expect(subjectFromInput({ path: '/meget/lang/sti/til/fil.py' })).toBe('fil.py')
-    expect(subjectFromInput({ command: 'x'.repeat(80) }).endsWith('…')).toBe(true)
+  })
+
+  // Bjørn 17/9-2026: «næsten altid på køre kommando: cd indtil kommandoen er
+  // kørt». Linjen viste de første tegn af kommandoen, og næsten hver kommando
+  // her begynder med `cd /media/projects/jarvis-v2 && …`. Nu læses kommandoen:
+  // scene-sætningen springes over, og der står hvad der faktisk køres.
+  it('en kommando læses som en kommando — ikke som de første 48 tegn', () => {
+    expect(subjectFromInput({ command: 'cd /media/projects/jarvis-v2 && grep -rn "tool_calls" core' }))
+      .toBe('grep tool_calls')
+    expect(subjectFromInput({ command: 'sudo -n systemctl restart jarvis-api' }))
+      .toBe('systemctl restart')
+    expect(subjectFromInput({ command: 'cd /tmp/ocp && cat > fwd.py' })).toBe('cat fwd.py')
+    // Kun et mappeskift: så ER det hvad der skete.
+    expect(subjectFromInput({ command: 'cd /tmp' })).toBe('cd /tmp')
   })
 })
 

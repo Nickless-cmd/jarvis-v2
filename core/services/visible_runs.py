@@ -2354,6 +2354,9 @@ async def _stream_visible_run(
                         status=sr["status"],
                         arguments=sr.get("arguments"),
                         result_text=sr.get("result_text", ""),
+                        # Modellens eget kald-id: uden det kan resultatet ikke
+                        # finde den linje der blev vist da kaldet startede.
+                        call_id=str(sr.get("call_id") or ""),
                     ))
                     yield _sse("working_step", {
                         "type": "working_step",
@@ -4740,6 +4743,7 @@ async def _stream_visible_run(
                             status=_a_sr["status"],
                             arguments=_a_sr.get("arguments"),
                             result_text=_a_sr.get("result_text", ""),
+                            call_id=str(_a_sr.get("call_id") or ""),
                         ))
                         yield _sse("working_step", {
                             "type": "working_step",
@@ -6691,11 +6695,103 @@ _TOOL_LABELS: dict[str, str] = {
     "cancel_agent": "Annullerer agent",
     # Smart home
     "home_assistant": "Home Assistant",
+    # De hyppigste der MANGLEDE (målt 17/9-2026 på to ugers tool.invoked:
+    # operator_bash 16.045, remember_this 336, bash_session_run 237, …).
+    # Bjørn: «mange kommandoer har navne remember_this eller operator_bash og
+    # det ser sku ikke særlig godt ud». De stod med deres rå funktionsnavn,
+    # fordi tabellen kun kendte halvdelen af huset.
+    "remember_this": "Husker",
+    "archive_brain_entry": "Arkiverer note",
+    "bash_session_run": "Kører i terminalen",
+    "grep": "Søger efter",
+    "glob": "Finder filer",
+    "list_dir": "Ser i mappe",
+    "multi_edit": "Redigerer fil",
+    "verify_file_contains": "Verificerer fil",
+    "explore": "Undersøger",
+    "recall": "Genkalder",
+    "memory_search": "Søger i hukommelse",
+    "memory_upsert_section": "Opdaterer hukommelse",
+    "central_query": "Spørger centralen",
+    "channel": "Skriver i kanal",
+    "load_more_tools": "Henter flere værktøjer",
+    "schedule_self_wakeup": "Sætter en påmindelse",
+    "mark_wakeup_consumed": "Kvitterer påmindelse",
+    "skill_invoke": "Bruger en skill",
+    "scout_agent": "Sender en spejder",
+    "phone_adb_shell": "Styrer telefonen",
+    "list_proposals_diff": "Viser forslags-diff",
 }
 
 
+#: Led der KUN sætter scenen. Hele leddet springes over — resten af det er
+#: argumentet til skiftet, ikke en kommando («cd /media/projects/jarvis-v2»).
+_SCENE_LED = {"cd", "export", "source", ".", "set", "conda"}
+#: Ord der står FORAN den rigtige kommando i samme led og skal skrælles af.
+_PRAEFIKS = {"sudo", "nohup", "env", "time", "timeout", "exec", "command", "xargs"}
+#: Omdirigering: `>`, `>>`, `2>`, `<<'PY'`, `&1`.
+_OMDIRIGERING = re.compile(r"^(?:\d?[<>]{1,2}|&\d?|<<[-']?\w*)$")
+
+
+def _bash_hint(cmd: str) -> str:
+    """Hvad kommandoen egentlig GØR — ikke dens første ord.
+
+    Målt 17/9-2026: hintet var `cmd.split()[0]`, så liveness-linjen stod på
+    «Kører kommando: cd» det meste af en tung kørsel, fordi næsten hver
+    kommando begynder med `cd /media/projects/jarvis-v2 && …`. Bjørn: «næsten
+    altid på køre kommando: cd indtil kommandoen er kørt».
+
+    Her springes scene-sætningen over — mappeskift, `sudo`, `timeout`,
+    miljøvariable — og der vises kommandoen plus dens første rigtige argument.
+    """
+    s = " ".join((cmd or "").split())
+    if not s:
+        return ""
+    led = [d.strip() for d in re.split(r"&&|\|\||;", s) if d.strip()]
+    for d in led:
+        ord_ = d.split()
+        # Miljøvariable foran (FOO=bar kommando) hører til scenen.
+        while ord_ and "=" in ord_[0] and not ord_[0].startswith("-"):
+            ord_ = ord_[1:]
+        if not ord_ or ord_[0] in _SCENE_LED:
+            continue                      # hele leddet var scene-sætning
+        while ord_ and ord_[0] in _PRAEFIKS:
+            ord_ = ord_[1:]
+            # `sudo -n x`, `timeout 300 x`: flaget/tallet hører til præfikset.
+            while ord_ and (ord_[0].startswith("-") or ord_[0].isdigit()):
+                ord_ = ord_[1:]
+        if ord_:
+            return _hoved_og_genstand(ord_)
+    # Kun scene-sætning — så er DET hvad der skete («cd /tmp»).
+    return " ".join(led[0].split()[:2])[:40] if led else s[:40]
+
+
+def _hoved_og_genstand(ord_: list[str]) -> str:
+    """«grep tool_calls» — kommandoen og det den blev kørt på."""
+    hoved = ord_[0].split("/")[-1]        # /opt/conda/…/python → python
+    genstand = ""
+    for o in ord_[1:]:
+        # Flag og omdirigering er ikke kommandoens genstand: `cat > fil.py`
+        # handler om filen, ikke om pilen.
+        if o.startswith("-") or _OMDIRIGERING.match(o):
+            continue
+        genstand = o.strip("\"'`")
+        if "/" in genstand:
+            genstand = genstand.rstrip("/").split("/")[-1] or genstand
+        break
+    return (f"{hoved} {genstand}".strip() if genstand else hoved)[:40]
+
+
 def _tool_label(tool_name: str, arguments: dict | None = None) -> str:
-    base = _TOOL_LABELS.get(str(tool_name or ""), str(tool_name or "tool"))
+    navn = str(tool_name or "")
+    base = _TOOL_LABELS.get(navn)
+    if base is None:
+        # `operator_read_file` og `read_file` er samme handling for læseren —
+        # og operator-sættet er det MEST brugte (16.045 kald på to uger).
+        # Uden dette stod der «operator_bash» i klartekst.
+        grund = navn[len("operator_"):] if navn.startswith("operator_") else navn
+        base = _TOOL_LABELS.get(grund, grund or "tool")
+        tool_name = grund or tool_name
     if not arguments:
         return base
     # Append a short context hint from the arguments
@@ -6712,9 +6808,8 @@ def _tool_label(tool_name: str, arguments: dict | None = None) -> str:
     elif name == "web_fetch":
         url = str(arguments.get("url") or "")
         hint = url.replace("https://", "").replace("http://", "").split("/")[0][:40]
-    elif name == "bash":
-        cmd = str(arguments.get("command") or "")
-        hint = cmd.split()[0][:30] if cmd else ""
+    elif name in {"bash", "bash_session_run"}:
+        hint = _bash_hint(str(arguments.get("command") or ""))
     elif name in {"discord_channel", "send_discord_dm"}:
         hint = str(arguments.get("channel") or arguments.get("user") or "")[:30]
     elif name == "home_assistant":

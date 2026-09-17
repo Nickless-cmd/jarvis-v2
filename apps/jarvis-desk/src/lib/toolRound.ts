@@ -38,6 +38,62 @@ const VERBS: Record<string, [string, string]> = {
   web_fetch: ['Henter', 'Hentede'],
   memory_search: ['Søger i hukommelsen efter', 'Søgte i hukommelsen efter'],
   memory_write: ['Husker', 'Huskede'],
+  // De hyppigste der MANGLEDE — målt 17/9-2026 på to ugers tool.invoked.
+  // Bjørn: «mange kommandoer har navne remember_this eller operator_bash og
+  // det ser sku ikke særlig godt ud». Uden et verbum faldt linjen tilbage på
+  // det rå funktionsnavn: «Kører remember_this».
+  remember_this: ['Husker', 'Huskede'],
+  archive_brain_entry: ['Arkiverer', 'Arkiverede'],
+  bash_session_run: ['Kører', 'Kørte'],
+  search: ['Søger efter', 'Søgte efter'],
+  find_files: ['Finder', 'Fandt'],
+  explore: ['Undersøger', 'Undersøgte'],
+  recall: ['Genkalder', 'Genkaldte'],
+  search_memory: ['Søger i hukommelsen efter', 'Søgte i hukommelsen efter'],
+  memory_upsert_section: ['Opdaterer hukommelsen', 'Opdaterede hukommelsen'],
+  central_query: ['Spørger centralen om', 'Spurgte centralen om'],
+  channel: ['Skriver i', 'Skrev i'],
+  scout_agent: ['Sender en spejder efter', 'Sendte en spejder efter'],
+  skill_invoke: ['Bruger', 'Brugte'],
+  analyze_image: ['Analyserer', 'Analyserede'],
+  schedule_self_wakeup: ['Sætter en påmindelse om', 'Satte en påmindelse om'],
+  phone_adb_shell: ['Styrer telefonen', 'Styrede telefonen'],
+  home_assistant: ['Styrer', 'Styrede'],
+  load_more_tools: ['Henter flere værktøjer', 'Hentede flere værktøjer'],
+}
+
+/**
+ * Kommandoens egentlige handling — ikke dens første ord.
+ *
+ * Bjørn 17/9-2026: linjen stod på «cd», fordi næsten hver kommando begynder
+ * med `cd /media/projects/jarvis-v2 && …`. Serveren har samme oversættelse i
+ * `_bash_hint`; den her gælder den tekst klienten selv bygger ud af
+ * argumenterne mens de strømmer ind.
+ */
+const SCENE_LED = new Set(['cd', 'export', 'source', '.', 'set', 'conda'])
+const PRAEFIKS = new Set(['sudo', 'nohup', 'env', 'time', 'timeout', 'exec', 'command', 'xargs'])
+/** Omdirigering og lignende er ikke kommandoens genstand: `cat > fil.py` handler om filen. */
+const OPERATOR = /^(?:\d?[<>]{1,2}|&\d?|<<[-']?\w*)$/
+
+export function kommandoEmne(cmd: string): string {
+  const s = (cmd || '').trim().replace(/\s+/g, ' ')
+  if (!s) return ''
+  for (const led of s.split(/&&|\|\||;/).map((d) => d.trim()).filter(Boolean)) {
+    let ord = led.split(' ')
+    while (ord.length && ord[0]!.includes('=') && !ord[0]!.startsWith('-')) ord = ord.slice(1)
+    if (!ord.length || SCENE_LED.has(ord[0]!)) continue
+    while (ord.length && PRAEFIKS.has(ord[0]!)) {
+      ord = ord.slice(1)
+      while (ord.length && (ord[0]!.startsWith('-') || /^\d+$/.test(ord[0]!))) ord = ord.slice(1)
+    }
+    if (!ord.length) continue
+    const hoved = ord[0]!.split('/').pop() || ord[0]!
+    const arg = ord.slice(1).find((o) => !o.startsWith('-') && !OPERATOR.test(o))
+    const genstand = arg ? (arg.replace(/^["'`]|["'`]$/g, '').split('/').filter(Boolean).pop() ?? '') : ''
+    return (genstand ? `${hoved} ${genstand}` : hoved).slice(0, 40)
+  }
+  // Kun mappeskift og lignende — så er DET hvad der skete.
+  return s.split(' ').slice(0, 2).join(' ').slice(0, 40)
 }
 
 /** Argument-nøgler der plejer at bære emnet, i prioriteret rækkefølge. */
@@ -64,6 +120,10 @@ function shorten(value: string): string {
 
 export function subjectFromInput(input: Record<string, unknown> | undefined, partialJson?: string): string {
   if (input) {
+    // En kommando læses som en kommando, ikke som en tekststump: «grep
+    // tool_calls» frem for de første 48 tegn af `cd /media/… && grep …`.
+    const cmd = input['command'] ?? input['cmd']
+    if (typeof cmd === 'string' && cmd.trim()) return kommandoEmne(cmd)
     for (const key of SUBJECT_KEYS) {
       const v = input[key]
       if (typeof v === 'string' && v.trim()) return shorten(v)
@@ -86,6 +146,8 @@ export function subjectFromPartial(raw: string | undefined): string {
   if (!s) return ''
   try {
     const obj = JSON.parse(s) as Record<string, unknown>
+    const cmd = obj['command'] ?? obj['cmd']
+    if (typeof cmd === 'string' && cmd.trim()) return kommandoEmne(cmd)
     for (const key of SUBJECT_KEYS) {
       const v = obj[key]
       if (typeof v === 'string' && v.trim()) return shorten(v)
@@ -93,7 +155,10 @@ export function subjectFromPartial(raw: string | undefined): string {
   } catch {
     for (const key of SUBJECT_KEYS) {
       const m = new RegExp(`"${key}"\\s*:\\s*"((?:[^"\\\\]|\\\\.){1,200})`).exec(s)
-      if (m?.[1]) return shorten(m[1].replace(/\\n/g, ' ').replace(/\\"/g, '"'))
+      if (m?.[1]) {
+        const v = m[1].replace(/\\n/g, ' ').replace(/\\"/g, '"')
+        return key === 'command' || key === 'cmd' ? kommandoEmne(v) : shorten(v)
+      }
     }
   }
   return ''

@@ -302,6 +302,12 @@ def remember_this(
         importance_float = None
         if importance is not None:
             importance_float = max(0.0, min(1.0, importance / 100.0))
+        # Kant-udledningen kører EFTER svaret. Målt 17/9-2026: den koster ~12 s
+        # pr. note, fordi den læser alle 9.705 aktive posters filer fra disken,
+        # og den stod midt i værktøjets ventetid. Posten er skrevet og kan
+        # findes; kanterne kommer sekunder senere — og går tråden tabt, tager
+        # time-passet `b4_catchup_infer_once` den, som er bygget til netop
+        # `skip_temporal`. Se `core/services/brain_edge_worker.py`.
         new_id = jarvis_brain.write_entry(
             kind=kind, title=title, content=content,
             visibility=visibility, domain=domain,
@@ -310,7 +316,13 @@ def remember_this(
             source_url=source_url, source_chronicle=source_chronicle,
             importance=importance_float,
             now=now,
+            skip_temporal=True,
         )
+        try:
+            from core.services.brain_edge_worker import koesaet
+            koesaet(new_id, now)
+        except Exception:
+            pass    # time-passet tager den
     except Exception as exc:
         return {"status": "error", "error": "disk_write_failed",
                 "details": str(exc)}

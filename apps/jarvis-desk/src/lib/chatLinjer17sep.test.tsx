@@ -92,7 +92,9 @@ describe('kald der pulserede efter han var videre', () => {
 describe('live metadata i stedet for «Kører bash…»', () => {
   it('kommandoen læses mens argumenterne strømmer ind', () => {
     const partial = '{"command": "cd /tmp/ocp && cat > fwd.py <<\'PY\'\\nimport json'
-    expect(describeTool('bash', {}, true, partial)).toBe('Kører cd /tmp/ocp && cat > fwd.py <<\'PY\' import json…')
+    // Ikke de foerste tegn af kommandoen: mappeskiftet foran siger intet, og
+    // det var det der stod paa linjen hele koerslen igennem (17/9-2026).
+    expect(describeTool('bash', {}, true, partial)).toBe('Kører cat fwd.py…')
   })
 
   it('færdige argumenter vinder stadig', () => {

@@ -111,6 +111,7 @@ async def run_tool_batch(
     from core.services.simple_tool_executor import (
         _execute_simple_tool_calls, _execute_local_tool_calls,
     )
+    from core.services.tool_chip_payload import trim_arguments as _trim_arguments
 
     _local = bool(getattr(run, "local_tool_exec", False))
 
@@ -164,6 +165,14 @@ async def run_tool_batch(
                 "detail": _tool_label(_tc_name, _tc_args),
                 "step": step_counter,
                 "status": "running",
+                # Kaldets eget id + argumenter, saa klienten kan vise linjen NU
+                # frem for naar kaldet er faerdigt (Bjoern 17/9-2026: «ved tung
+                # eller laengerevarende kommandoer vises tool result linje
+                # foerst efter kommandoen er faerdig»). Uden id'et kunne den
+                # tidlige linje ikke parres med sit resultat, og klienten ville
+                # vise to linjer om samme kald.
+                "tool_id": str(_tc.get("id") or ""),
+                "arguments": _trim_arguments(_tc_args),
                 # ET ÆGTE VÆRKTØJSKALD — ikke et livstegn.
                 #
                 # `working_step` bærer to slags ting: dette, og «Thinking via
@@ -364,5 +373,13 @@ async def run_tool_batch(
     if _tool_exc is not None:
         # Parringen er holdt; nu maa fejlen fortsaette sin vej som foer.
         raise _tool_exc
+    # Haeft modellens eget kald-id paa hvert resultat (17/9-2026). Resultaterne
+    # ligger paa kaldenes plads — blokerede er flettet ind ovenfor netop for at
+    # holde den raekkefoelge — men de bar ikke id'et videre. Uden det kan den
+    # linje der blev vist da kaldet STARTEDE ikke finde sit eget resultat, og
+    # klienten ville faa to linjer om samme kald.
+    for _i, _r in enumerate(_results):
+        if isinstance(_r, dict) and not _r.get("call_id") and _i < len(tool_calls):
+            _r["call_id"] = str(tool_calls[_i].get("id") or "")
     out["results"] = _results
     out["step_counter"] = step_counter

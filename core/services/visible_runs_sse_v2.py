@@ -265,6 +265,10 @@ async def translate_to_v2(
         "session_id": session_id,
     }
 
+    #: Kald hvis linje allerede er født af annonceringen (før kørslen). Uden
+    #: den ville resultat-eventet føde en linje MERE om samme kald.
+    _annonceret: set[str] = set()
+
     def _alloc_index() -> int:
         idx = int(_state["next_index"])
         _state["next_index"] = idx + 1
@@ -351,6 +355,40 @@ async def translate_to_v2(
             ).to_sse_line())
             _state["text_block_open"] = False
 
+    async def _emit_tool_use_start(payload: dict) -> None:
+        """Vis værktøjslinjen NÅR kaldet starter — ikke når det er færdigt.
+
+        Bjørn 17/9-2026: «ved tung eller længerevarende kommandoer vises tool
+        result linje først efter kommandoen er færdig og den burde vises med
+        det samme». Årsagen var at blokken KUN blev født af resultat-eventet;
+        annonceringen før kørslen bar hverken id eller argumenter, så klienten
+        havde intet at vise. En `bash` der kører i to minutter stod derfor som
+        ingenting i to minutter.
+
+        Blokken skrives åben-og-lukket her; status og resultat foldes på af
+        `tool_result`-eventet bagefter, som klienten allerede er idempotent
+        over for.
+        """
+        tool_id = str(payload.get("tool_id") or "")
+        name = str(payload.get("action") or "")
+        if not tool_id or not name or tool_id in _annonceret:
+            return
+        _annonceret.add(tool_id)
+        tool_input = payload.get("arguments")
+        await _close_thinking_block_if_open()
+        await _close_text_block_if_open()
+        idx = _alloc_index()
+        await queue.put(ContentBlockStart(
+            index=idx, block_type="tool_use", tool_id=tool_id, tool_name=name,
+        ).to_sse_line())
+        if isinstance(tool_input, dict) and tool_input:
+            await queue.put(ContentBlockDelta(
+                index=idx,
+                delta_type="input_json_delta",
+                content=json.dumps(tool_input, ensure_ascii=False),
+            ).to_sse_line())
+        await queue.put(ContentBlockStop(index=idx).to_sse_line())
+
     async def _emit_tool_use(payload: dict) -> None:
         """Oversæt et tool-relateret capability-event til en tool_use-blok.
 
@@ -375,19 +413,23 @@ async def translate_to_v2(
             if v:
                 tool_input[k] = v
 
-        await _close_thinking_block_if_open()
-        await _close_text_block_if_open()
-        idx = _alloc_index()
-        await queue.put(ContentBlockStart(
-            index=idx, block_type="tool_use", tool_id=tool_id, tool_name=name,
-        ).to_sse_line())
-        if tool_input:
-            await queue.put(ContentBlockDelta(
-                index=idx,
-                delta_type="input_json_delta",
-                content=json.dumps(tool_input, ensure_ascii=False),
+        # Blev linjen allerede født da kaldet startede, skal den ikke fødes
+        # igen — så ville samme kald stå to gange i tråden. Resultatet foldes
+        # på den eksisterende blok via `tool_use_id` nedenfor.
+        if tool_id not in _annonceret:
+            await _close_thinking_block_if_open()
+            await _close_text_block_if_open()
+            idx = _alloc_index()
+            await queue.put(ContentBlockStart(
+                index=idx, block_type="tool_use", tool_id=tool_id, tool_name=name,
             ).to_sse_line())
-        await queue.put(ContentBlockStop(index=idx).to_sse_line())
+            if tool_input:
+                await queue.put(ContentBlockDelta(
+                    index=idx,
+                    delta_type="input_json_delta",
+                    content=json.dumps(tool_input, ensure_ascii=False),
+                ).to_sse_line())
+            await queue.put(ContentBlockStop(index=idx).to_sse_line())
         _result_text = str(payload.get("result_text") or "")
         # Status/udfald som system_event bundet til tool_use_id.
         # BEHOLDES ALTID (dual-read på klienten tolererer den) — også når
@@ -524,6 +566,22 @@ async def translate_to_v2(
                             delta_type="text_delta",
                             content=text,
                         ).to_sse_line())
+
+                elif (
+                    event_name == "working_step"
+                    and payload.get("er_vaerktoej")
+                    and str(payload.get("status") or "") == "running"
+                    and payload.get("tool_id")
+                ):
+                    # Kaldet er annonceret men ikke kørt endnu → linjen fødes
+                    # HER, så en tung kommando er synlig mens den kører.
+                    # Eventet sendes stadig videre som system_event nedenfor
+                    # (liveness-linjen lever af det), derfor ingen `continue`.
+                    await _emit_message_start_if_needed()
+                    await _emit_tool_use_start(payload)
+                    await queue.put(SystemEvent(
+                        kind="working_step", payload=payload,
+                    ).to_sse_line())
 
                 elif event_name == "capability" and str(payload.get("type") or "") in (
                     "tool_result", "capability"

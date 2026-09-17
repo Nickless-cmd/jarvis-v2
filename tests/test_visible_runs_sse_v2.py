@@ -603,3 +603,109 @@ async def test_taenke_varighed_maales_naar_kalderen_sender_tom_run_id():
     finally:
         with vtt._lock:
             vtt._marks.clear()
+
+
+# ─────────────── linjen skal fødes NÅR kaldet starter (Bjørn 17/9-2026)
+#
+# «ved tung eller længerevarende commandoer vises tool result linje først efter
+# kommandoen er færdig og den burde vises med det samme». Årsagen var at
+# tool_use-blokken KUN blev født af resultat-eventet. En bash der kører i to
+# minutter stod derfor som ingenting i to minutter.
+
+def _annoncering(tool_id: str = "call-1", navn: str = "bash", **ekstra) -> dict:
+    d = {
+        "type": "working_step", "run_id": "v1", "action": navn,
+        "detail": "Kører kommando: grep tool_calls", "step": 1, "status": "running",
+        "er_vaerktoej": True, "tool_id": tool_id,
+        "arguments": {"command": "cd /r && grep -rn tool_calls core"},
+    }
+    d.update(ekstra)
+    return d
+
+
+@pytest.mark.asyncio
+async def test_vaerktoejslinjen_foedes_FOER_kaldet_er_faerdigt():
+    async def legacy() -> AsyncIterator[str]:
+        yield _legacy_sse("working_step", _annoncering())
+        yield _legacy_sse("done", {"type": "done", "run_id": "v1", "status": "completed"})
+
+    events = _parse_v2_events(await _collect(translate_to_v2(
+        legacy(), run_id="v1", model="m", provider="p", lane="l",
+        session_id="s", ping_interval_s=999.0)))
+    starts = [e for e in events
+              if e[0] == "content_block_start"
+              and e[1].get("content_block", {}).get("type") == "tool_use"]
+    assert len(starts) == 1, "linjen blev ikke født af annonceringen"
+    assert starts[0][1]["content_block"]["id"] == "call-1"
+    assert starts[0][1]["content_block"]["name"] == "bash"
+    # Argumenterne skal med, ellers står linjen som «Kører bash…» imens.
+    deltas = [e for e in events if e[0] == "content_block_delta"
+              and e[1].get("delta", {}).get("type") == "input_json_delta"]
+    assert deltas and "grep" in deltas[0][1]["delta"]["partial_json"]
+    # Liveness-linjen lever stadig af det samme event.
+    assert any(e[0] == "system_event" and e[1].get("kind") == "working_step"
+               for e in events)
+
+
+@pytest.mark.asyncio
+async def test_resultatet_giver_IKKE_en_linje_mere_om_samme_kald():
+    """Den tidlige linje og resultatet er ét kald. To linjer ville være værre
+    end den fejl vi retter."""
+    async def legacy() -> AsyncIterator[str]:
+        yield _legacy_sse("working_step", _annoncering())
+        yield _legacy_sse("capability", {
+            "type": "tool_result", "tool": "bash", "status": "ok",
+            "capability_id": "call-1", "arguments": {"command": "grep x"},
+            "result_text": "fandt 3",
+        })
+        yield _legacy_sse("done", {"type": "done", "run_id": "v1", "status": "completed"})
+
+    events = _parse_v2_events(await _collect(translate_to_v2(
+        legacy(), run_id="v1", model="m", provider="p", lane="l",
+        session_id="s", ping_interval_s=999.0)))
+    starts = [e for e in events
+              if e[0] == "content_block_start"
+              and e[1].get("content_block", {}).get("type") == "tool_use"]
+    assert len(starts) == 1, "samme kald blev vist to gange"
+    # Udfaldet skal stadig nå frem — og pege på DEN linje.
+    tr = [e for e in events if e[0] == "system_event"
+          and e[1].get("kind") == "tool_result"]
+    assert tr and tr[0][1]["payload"]["tool_use_id"] == "call-1"
+
+
+@pytest.mark.asyncio
+async def test_et_kald_UDEN_annoncering_foedes_stadig_af_resultatet():
+    """Ældre stier (og godkendelses-vejen) annoncerer ikke. De må ikke tabe
+    linjen, bare fordi den nye vej findes."""
+    async def legacy() -> AsyncIterator[str]:
+        yield _legacy_sse("capability", {
+            "type": "tool_result", "tool": "read_file", "status": "ok",
+            "capability_id": "call-9", "arguments": {"path": "a.py"},
+            "result_text": "indhold",
+        })
+        yield _legacy_sse("done", {"type": "done", "run_id": "v1", "status": "completed"})
+
+    events = _parse_v2_events(await _collect(translate_to_v2(
+        legacy(), run_id="v1", model="m", provider="p", lane="l",
+        session_id="s", ping_interval_s=999.0)))
+    starts = [e for e in events
+              if e[0] == "content_block_start"
+              and e[1].get("content_block", {}).get("type") == "tool_use"]
+    assert len(starts) == 1 and starts[0][1]["content_block"]["id"] == "call-9"
+
+
+@pytest.mark.asyncio
+async def test_en_annoncering_UDEN_id_foeder_ingen_linje():
+    """Uden id kan resultatet ikke finde linjen igen — så ville den blive
+    stående som «kører» for evigt. Livstegnet sendes stadig videre."""
+    async def legacy() -> AsyncIterator[str]:
+        yield _legacy_sse("working_step", _annoncering(tool_id=""))
+        yield _legacy_sse("done", {"type": "done", "run_id": "v1", "status": "completed"})
+
+    events = _parse_v2_events(await _collect(translate_to_v2(
+        legacy(), run_id="v1", model="m", provider="p", lane="l",
+        session_id="s", ping_interval_s=999.0)))
+    assert not [e for e in events if e[0] == "content_block_start"
+                and e[1].get("content_block", {}).get("type") == "tool_use"]
+    assert any(e[0] == "system_event" and e[1].get("kind") == "working_step"
+               for e in events)

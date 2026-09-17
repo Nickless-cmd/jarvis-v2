@@ -18,6 +18,10 @@ from urllib import request as urllib_request
 import httpx
 
 from core.auth.profiles import get_provider_credentials, provider_has_real_credentials
+from core.services.cheap_provider_reasoning_budget import (
+    REASONING_RETRY_BUDGET as _REASONING_RETRY_BUDGET,
+    reasoning_exhausted as _reasoning_exhausted,
+)
 from core.runtime.provider_router import resolve_provider_router_target
 
 
@@ -542,7 +546,21 @@ def _execute_openai_compatible_chat(
         except CheapProviderError:
             text = ""
     else:
-        text = _extract_openai_compatible_text(provider=provider, data=data)
+        try:
+            text = _extract_openai_compatible_text(provider=provider, data=data)
+        except CheapProviderError as exc:
+            # Budgettet slap op midt i tænkningen (poolside/laguna brugte 17/9-2026
+            # ~290 tokens på at tænke før «pong»). Ét nyt forsøg med det største
+            # budget — ellers dømmes en rask model død på et for lille budget.
+            budget = int(payload.get("max_tokens") or payload.get("max_completion_tokens") or 0)
+            if exc.code != "reasoning-exhausted" or budget >= _REASONING_RETRY_BUDGET:
+                raise
+            return _execute_openai_compatible_chat(
+                provider=provider, model=model, auth_profile=auth_profile, base_url=base_url,
+                messages=messages, tools=tools, temperature=temperature, top_p=top_p,
+                extra_body={**(extra_body or {}), "max_tokens": _REASONING_RETRY_BUDGET},
+                timeout=timeout,
+            )
     usage = data.get("usage") or {}
     prompt_estimate = sum(len(str(m.get("content", ""))) for m in messages) // 4
     # Deepseek (and a few other openai-compat providers) report cache hit/miss
@@ -1383,6 +1401,12 @@ def _extract_openai_compatible_text(*, provider: str, data: dict[str, object]) -
             ]
             if parts:
                 return "\n".join(parts).strip()
+    if _reasoning_exhausted(data):
+        raise CheapProviderError(
+            provider=provider,
+            code="reasoning-exhausted",
+            message="budget brugt op i tænkningen (finish_reason=length, intet svar)",
+        )
     raise CheapProviderError(
         provider=provider,
         code="empty-response",

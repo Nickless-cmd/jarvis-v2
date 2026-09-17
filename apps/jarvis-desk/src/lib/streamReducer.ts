@@ -11,6 +11,7 @@ export interface StreamState {
   lane: string
   blocks: ContentBlock[]
   workingStep: string | null // nyeste live progress-tekst (fx "Kalder analyze_image")
+  recoveryNotice?: { reason: string; message: string; continuing: boolean }
   usage: { input: number; output: number; cacheHit: number; cacheMiss: number }
   /**
    * Runde-etiketter slået op på TOOL-ID — «Rettede fejl i login».
@@ -174,6 +175,18 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
         const rp = event.payload as { run_id?: string }
         return rp.run_id ? { ...state, activeRunId: rp.run_id } : state
       }
+      if (event.kind === 'run_recovery') {
+        const p = event.payload as { reason?: string; message?: string; continuing?: boolean }
+        if (!p.message) return state
+        return {
+          ...state,
+          recoveryNotice: {
+            reason: p.reason || 'unknown',
+            message: p.message,
+            continuing: p.continuing !== false,
+          },
+        }
+      }
       // Phase 2: tool_result formidler en tool_use-blocks udfald (status)
       // bundet til tool_use_id.
       if (event.kind === 'tool_result') {
@@ -212,6 +225,9 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
     case 'message_delta':
       return {
         ...state,
+        recoveryNotice: ['end_turn', 'completed'].includes(event.delta.stop_reason)
+          ? undefined
+          : state.recoveryNotice,
         usage: {
           ...state.usage,
           // input kommer i message_delta (v2 message_start bærer ikke usage) —

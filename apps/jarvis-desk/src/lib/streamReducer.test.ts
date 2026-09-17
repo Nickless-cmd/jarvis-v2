@@ -75,6 +75,21 @@ describe('streamReducer', () => {
     expect(s.status).toBe('working')
   })
 
+  it('run_recovery bliver synlig og holder segmentet i recovery', () => {
+    const state = streamReducer(initialStreamState(), {
+      type: 'system_event',
+      kind: 'run_recovery',
+      payload: {
+        reason: 'pending-tool-intent',
+        message: 'Jarvis havde stadig et værktøjskald klar. Jarvis fortsætter automatisk.',
+        continuing: true,
+      },
+    })
+    expect(state.recoveryNotice?.reason).toBe('pending-tool-intent')
+    expect(state.recoveryNotice?.continuing).toBe(true)
+    expect(state.recoveryNotice?.message).toContain('fortsætter automatisk')
+  })
+
   it('message_stop sets done', () => {
     const s = reduce([
       { type: 'message_start', message: { id: 'r', model: 'm', provider: 'p', lane: 'primary', session_id: 's', usage: { input_tokens: 0, output_tokens: 0 } } },

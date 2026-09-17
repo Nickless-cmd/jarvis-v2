@@ -709,6 +709,13 @@ export function ChatView({
       </div>
 
       <div className="composer-area">
+        {stream.recoveryNotice && (
+          <div className="composer-notices recovery-notice" role="status" aria-live="polite">
+            <div className="banner banner-reconnecting">
+              <span className="banner-message">{stream.recoveryNotice.message}</span>
+            </div>
+          </div>
+        )}
         {pendingPauseAsk && (
           <div className="composer-notices pauseask-notice">
             <PauseAndAskCard ask={pendingPauseAsk} />

@@ -109,6 +109,7 @@ export interface StreamContextValue {
   activeRunId: string | null
   elapsedMs: number
   workingStep: string | null
+  recoveryNotice?: { reason: string; message: string; continuing: boolean }
   error: Error | null
   /** Struktureret bruger-vendt fejl (unified fejl-system). Render i ErrorBanner. */
   streamError: StreamErrorInfo | null
@@ -436,12 +437,21 @@ export function StreamProvider({
   const prevStatusRef = useRef<StreamStatus>('idle')
   useEffect(() => {
     if (prevStatusRef.current === 'working' && status === 'done') {
-      const lastText = lastTextBlock(state.blocks)
-      const body = (lastText?.text || '').trim().slice(0, 140) || 'Opgaven er færdig.'
-      deskRunBridge()?.notifyTaskDone?.('Jarvis er færdig', body)
+      if (state.recoveryNotice) {
+        const title = state.recoveryNotice.reason === 'shutdown'
+          ? 'Checkpoint bevaret'
+          : state.recoveryNotice.continuing
+            ? 'Jarvis fortsætter'
+            : 'Jarvis kunne ikke fortsætte'
+        deskRunBridge()?.notifyTaskDone?.(title, state.recoveryNotice.message.slice(0, 180))
+      } else {
+        const lastText = lastTextBlock(state.blocks)
+        const body = (lastText?.text || '').trim().slice(0, 140) || 'Opgaven er færdig.'
+        deskRunBridge()?.notifyTaskDone?.('Jarvis er færdig', body)
+      }
     }
     prevStatusRef.current = status
-  }, [status, state.blocks])
+  }, [status, state.blocks, state.recoveryNotice])
 
   const value = useMemo<StreamContextValue>(
     () => ({
@@ -456,6 +466,7 @@ export function StreamProvider({
       usage: state.usage,
       elapsedMs,
       workingStep: state.workingStep,
+      recoveryNotice: state.recoveryNotice,
       error,
       streamError,
       canonicalErrors: canonical.errors,
@@ -474,7 +485,7 @@ export function StreamProvider({
       armAutoContinue,
       consumeAutoContinue,
     }),
-    [status, state.model, state.provider, state.lane, state.blocks, state.rundeEtiketter, state.activeRunId, workingSessionId, state.usage, elapsedMs, state.workingStep, error, streamError, canonical.errors, canonical.current, clearError, needsAttention, send, abort, continueFromPartial, pendingApproval, approve, deny, pendingAppAction, clearAppAction, autoContinue, armAutoContinue, consumeAutoContinue],
+    [status, state.model, state.provider, state.lane, state.blocks, state.rundeEtiketter, state.activeRunId, workingSessionId, state.usage, elapsedMs, state.workingStep, state.recoveryNotice, error, streamError, canonical.errors, canonical.current, clearError, needsAttention, send, abort, continueFromPartial, pendingApproval, approve, deny, pendingAppAction, clearAppAction, autoContinue, armAutoContinue, consumeAutoContinue],
   )
   return <StreamContext.Provider value={value}>{children}</StreamContext.Provider>
 }

@@ -50,6 +50,11 @@ interface StreamContextValue {
   /** Kobl paa igen naar appen kommer tilbage og runnet stadig koerer.
    *  Returnerer true hvis der var noget at genoptage. */
   genoptagKoerende: (config: ApiConfig) => boolean
+  /** Samtalen den nuvaerende stroem (send eller follow) tilhoerer. null = ingen. */
+  ejerSession: string | null
+  /** Skift til en anden samtale: slip stroemmen lokalt hvis den tilhoerer en
+   *  anden. Server-runnet koerer videre; pollen kobler paa igen ved retur. */
+  forladSession: (sessionId: string | null) => void
   /** Koldstart/reconnect: rekonstruér research-statusfladen fra et snapshot
    * (spec §9.3). Stream-events er hints; DB-snapshot er autoritet efter reconnect. */
   restoreResearch: (snapshot: {
@@ -160,6 +165,12 @@ export function StreamProvider({ children }: { children: ReactNode }) {
    *  `abort()`, ellers forsvinder det med streamClientens closure — og saa
    *  kan et run kun genoptages fra 0, hvilket afspiller hele turen igen. */
   const baggrundRef = useRef<{ runId: string; offset: number } | null>(null)
+  /** Hvilken samtale stroemmen tilhoerer (17/9-2026). Tilstanden er FAELLES
+   *  for alle samtaler; uden ejeren viste en ny samtale den forrige samtales
+   *  live-svar, stod paa «arbejder» og lagde beskeden i koe. */
+  const ejerRef = useRef<string | null>(null)
+  const [ejerSession, setEjerSession] = useState<string | null>(null)
+  const saetEjer = (sid: string | null) => { ejerRef.current = sid; setEjerSession(sid) }
 
   const updateState = (next: StreamState | ((current: StreamState) => StreamState)) => {
     const resolved = typeof next === 'function' ? next(stateRef.current) : next
@@ -262,6 +273,7 @@ export function StreamProvider({ children }: { children: ReactNode }) {
         setStreamError(null)
         setReconnecting(false)
         updateState(initialStreamState())
+        saetEjer(sessionId)
         control.current = startStream(
           {
             config,
@@ -382,6 +394,7 @@ export function StreamProvider({ children }: { children: ReactNode }) {
         // værnet der forhindrer den dobbelt-render der knækkede follow før.
         if (control.current) return
         followControl.current?.abort()
+        saetEjer(sessionId)
         const minFollow = ++followGen.current
         const erAktuel = () => followGen.current === minFollow
         let skip = false
@@ -427,9 +440,27 @@ export function StreamProvider({ children }: { children: ReactNode }) {
       stopFollow: () => {
         followControl.current?.abort()
         followControl.current = null
+      },
+      ejerSession,
+      forladSession: (sessionId) => {
+        const ejer = ejerRef.current
+        if (!ejer || ejer === sessionId) return
+        // Hegn sene callbacks fra den gamle follow (se followGen).
+        followGen.current += 1
+        followControl.current?.abort()
+        followControl.current = null
+        // Ogsaa en egen send: runnet koerer videre paa serveren. Vi river kun
+        // den LOKALE forbindelse ned, praecis som ved baggrund.
+        control.current?.abort()
+        control.current = null
+        baggrundRef.current = null
+        setApproval(null)
+        setReconnecting(false)
+        updateState(initialStreamState())
+        saetEjer(null)
       }
     }),
-    [appendLocalMessage, approval, state, lastError, streamError, reconnecting]
+    [appendLocalMessage, approval, state, lastError, streamError, reconnecting, ejerSession]
   )
 
   return <StreamContext.Provider value={value}>{children}</StreamContext.Provider>

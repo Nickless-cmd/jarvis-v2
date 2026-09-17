@@ -33,6 +33,7 @@ type MockStream = {
   stop: typeof mockStop
   follow: () => void
   stopFollow: () => void
+  forladSession?: (sid: string | null) => void
 }
 
 let mockSessions = {
@@ -173,7 +174,8 @@ beforeEach(() => {
     send: mockSend,
     stop: mockStop,
     follow: jest.fn(),
-    stopFollow: jest.fn()
+    stopFollow: jest.fn(),
+    forladSession: jest.fn()
   }
 })
 
@@ -291,6 +293,7 @@ describe('retur fra baggrund mens et run koerer', () => {
       return { remove: jest.fn() }
     })
     AppState.currentState = 'active'
+    const originalSnapshot = api.getActiveRunSnapshot
     api.getActiveRunSnapshot = jest.fn().mockResolvedValue([{ sessionId: 'session-1', runId: 'run-1' }])
     const follow = jest.fn()
     mockSessions = { ...mockSessions, select: jest.fn().mockResolvedValue(undefined) } as never
@@ -308,5 +311,21 @@ describe('retur fra baggrund mens et run koerer', () => {
     expect(genoptagKoerende).toHaveBeenCalled()
     await waitFor(() => expect(follow).toHaveBeenCalledTimes(2))
     spy.mockRestore()
+    api.getActiveRunSnapshot = originalSnapshot
   })
+})
+
+
+it('samtaleskift beder stroemmen slippe den forrige samtale', async () => {
+  const { AppState } = require('react-native')
+  const spy = jest.spyOn(AppState, 'addEventListener').mockImplementation(() => ({ remove: jest.fn() }))
+  const forladSession = jest.fn()
+  mockStream = { ...mockStream, forladSession } as never
+  mockSessions = { ...mockSessions, select: jest.fn().mockResolvedValue(undefined) } as never
+  const screen = await render(<ChatScreen />)
+  await waitFor(() => expect(forladSession).toHaveBeenCalledWith('session-1'))
+  mockSessions = { ...mockSessions, activeId: 'session-2' } as never
+  await screen.rerender(<ChatScreen />)
+  await waitFor(() => expect(forladSession).toHaveBeenLastCalledWith('session-2'))
+  spy.mockRestore()
 })

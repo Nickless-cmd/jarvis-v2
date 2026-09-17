@@ -369,6 +369,7 @@ export function ChatScreen({
   const [appState, setAppState] = useState(AppState.currentState)
   const [batterySaver, setBatterySaver] = useState(false)
   const serverBusyRef = useRef(false)
+  const pollSidRef = useRef<string | null>(null)
   const keyboardHeight = useKeyboardHeight()
   // Løft composeren op over tastaturet med fuld tastaturhøjde. (Tidligere
   // trak vi insets.bottom fra, men keyboardHeight inkluderer allerede
@@ -605,6 +606,14 @@ export function ChatScreen({
     return () => sub.remove()
   }, [config, sessions.activeId, stream, serverBusy, activeRunId])
 
+  // Samtaleskift: stroemmen tilhoerer den samtale den blev startet i (17/9-2026).
+  // Uden dette viste en ny samtale den forriges live-svar og stod paa
+  // «arbejder». Server-runnet koerer videre; gaar man tilbage, kobler pollen
+  // paa igen ad samme vej som koldstart.
+  useEffect(() => {
+    stream.forladSession(sessions.activeId ?? null)
+  }, [sessions.activeId])  // eslint-disable-line react-hooks/exhaustive-deps
+
   // Poll server-side run-status for den aktive session (delt sandhed). Mens et
   // run kører: vis "arbejder" (composeren blokerer send → ingen nudge-swallow).
   // Når det skifter fra kørende→færdig: hent sessionen så svaret dukker op (også
@@ -617,6 +626,12 @@ export function ChatScreen({
       return
     }
     const sid = sessions.activeId
+    // Ny samtale: kanten skal kunne fyre for DEN. Maerket var den forrige
+    // samtales «travl», og saa koblede pollen aldrig paa et run i den nye.
+    if (pollSidRef.current !== sid) {
+      pollSidRef.current = sid
+      serverBusyRef.current = false
+    }
     let cancelled = false
     const tick = async () => {
       try {

@@ -33,7 +33,7 @@ const config = {
 }
 
 function Probe() {
-  const { approval, approve, deny, state, send, stop, detachForBackground, restoreResearch, genoptagKoerende} = useStream()
+  const { approval, approve, deny, state, send, stop, detachForBackground, restoreResearch, genoptagKoerende, forladSession, ejerSession} = useStream()
 
   return (
     <>
@@ -45,6 +45,9 @@ function Probe() {
       <Text onPress={() => void stop(config)}>stop</Text>
       <Text onPress={() => detachForBackground()}>detach</Text>
       <Text onPress={() => { genoptagKoerende(config) }}>genoptag</Text>
+      <Text onPress={() => forladSession('session-2')}>forlad</Text>
+      <Text onPress={() => forladSession('session-1')}>bliv</Text>
+      <Text>{`ejer:${ejerSession ?? 'ingen'}`}</Text>
       <Text onPress={() => restoreResearch({ runId: 'research-1', status: 'researching', tier: 'orchestrated' })}>restore-research</Text>
       <Text>{state.research?.phase ?? 'no-research'}</Text>
       <Text onPress={() => void approve(config)}>approve</Text>
@@ -436,6 +439,27 @@ it('detach to gange (iOS: inactive → background) beholder maerket', async () =
   await act(async () => { screen.getByText('detach').props.onPress() })
   await act(async () => { screen.getByText('genoptag').props.onPress() })
   expect(mockStartStream.mock.calls[1][0].genoptag).toEqual({ runId: 'run-123', fromIdx: 17 })
+})
+
+it('skift til en ANDEN samtale slipper stroemmen — ingen «arbejder» med over', async () => {
+  // 17/9-2026 paa Moto'en: en ny samtale viste Godmorgens live-svar, stod paa
+  // «arbejder» og lagde beskeden i koe til det andet run var faerdigt.
+  const abort = jest.fn()
+  mockStartStream.mockReturnValue({ abort, getRunId: () => 'run-1', getOffset: () => 4 })
+  const screen = await render(<StreamProvider><Probe /></StreamProvider>)
+  await act(async () => { screen.getByText('send').props.onPress() })
+  expect(screen.getByText('ejer:session-1')).toBeTruthy()
+
+  await act(async () => { screen.getByText('bliv').props.onPress() })
+  expect(abort).not.toHaveBeenCalled()
+
+  await act(async () => { screen.getByText('forlad').props.onPress() })
+  expect(abort).toHaveBeenCalled()
+  expect(screen.getByText('idle')).toBeTruthy()
+  expect(screen.getByText('ejer:ingen')).toBeTruthy()
+  // Og der er intet at «genoptage» for den forladte samtale bagefter.
+  await act(async () => { screen.getByText('genoptag').props.onPress() })
+  expect(mockStartStream).toHaveBeenCalledTimes(1)
 })
 
 it('genoptager IKKE naar der ikke var noget at genoptage', async () => {

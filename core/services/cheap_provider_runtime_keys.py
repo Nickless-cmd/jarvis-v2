@@ -42,6 +42,7 @@ RUNTIME_KEY_PROVIDERS: dict[str, tuple[str, str]] = {
     "internlm": ("internlm_api_key", "INTERNLM_API_KEY"),
     "agnes": ("agnes_api_key", "AGNES_API_KEY"),
     "orcarouter": ("orcarouter_api_key", "ORCAROUTER_API_KEY"),
+    "meganova": ("meganova_api_key", "MEGANOVA_API_KEY"),
 }
 
 

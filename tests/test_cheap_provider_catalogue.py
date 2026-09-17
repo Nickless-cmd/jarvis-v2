@@ -117,3 +117,11 @@ def test_kilo_har_de_maalte_gratis_modeller_og_ikke_stealth():
     assert all(m.endswith(":free") or m == "openrouter/free" for m in ms)
     assert "nex-agi/nex-n2.5-mini:free" in ms
     assert not any(m.startswith("stealth/") for m in ms)
+
+
+def test_meganova_kun_modellen_der_kaldte_vaerktoejet():
+    from core.services.cheap_provider_runtime_keys import RUNTIME_KEY_PROVIDERS
+    assert RUNTIME_KEY_PROVIDERS["meganova"][0] == "meganova_api_key"
+    e = kat.CHEAP_PROVIDER_DEFAULTS["meganova"]
+    assert e["static_models"] == ["mistralai/Mistral-Small-3.2-24B-Instruct-2506"]
+    assert "meganova" in kat._OPENAI_COMPATIBLE_PROVIDERS

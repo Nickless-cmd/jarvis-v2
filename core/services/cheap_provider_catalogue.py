@@ -606,6 +606,23 @@ CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
         "cost_class": "free",
         "static_models": ["agnes-3.0-flash", "agnes-2.5-flash"],
     },
+    # MegaNova (17/9-2026, nøgle i runtime.json som `meganova_api_key`): OpenAI-compat
+    # api.meganova.ai/v1. Seks tekstmodeller er mærket «free», de fleste rollespil.
+    # MÅLT: Mistral-Small-3.2-24B «pong» 0,5 s + værktøjskald 1,1 s. Udeladt:
+    # manta-mini/flash (svarer, men kalder IKKE værktøjer), manta-pro og
+    # GLM-4.7-Flash (403 «not available for your current tier»).
+    "meganova": {
+        "label": "MegaNova",
+        "priority": 47,
+        "base_url": "https://api.meganova.ai/v1",
+        "auth_kind": "bearer",
+        "protocol": "openai-chat",
+        "models_endpoint": "/models",
+        "rpm_limit": 10,
+        "daily_limit": 500,
+        "cost_class": "free",
+        "static_models": ["mistralai/Mistral-Small-3.2-24B-Instruct-2506"],
+    },
     # OrcaRouter: gratis-modellerne kræver en GitHub-konto koblet til
     # arbejdsområdet («a newly created GitHub account does not qualify»). Koblet
     # 17/9-2026; derefter værktøjskald MÅLT: deepseek-v4-flash-free 2,0 s,

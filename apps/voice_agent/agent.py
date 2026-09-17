@@ -8,7 +8,7 @@ Kæden, alt lokalt på nær stemmen:
 
     mikrofon (WebRTC, ekko-dæmpet i telefonen)
       → Silero VAD          hører AT han taler — også mens Jarvis taler
-      → faster-whisper      GTX 1050 Ti, når han holder pause
+      → faster-whisper      GTX 1070 (large-v3-turbo), når han holder pause
       → JARVIS SELV         /chat/stream/v2 med samtalens egen billet
       → ElevenLabs          strømmende, sætning for sætning
 
@@ -60,10 +60,14 @@ def _runtime() -> dict[str, Any]:
 
 # ── Tale → tekst ─────────────────────────────────────────────────────────────
 class WhisperSTT(stt.STT):
-    """faster-whisper på GTX 1050 Ti. Ikke-strømmende: rammeværket samler
+    """faster-whisper på GTX 1070. Ikke-strømmende: rammeværket samler
     ytringen med VAD'en og kalder os når han holder pause."""
 
-    def __init__(self, *, model: str = "large-v3", device_index: int = 1,
+    # Målt 17/9-2026 på 6,6 s dansk tale (int8, beam 1):
+    #   large-v3 på GTX 1050 Ti  2,57 s
+    #   large-v3-turbo på 1050 Ti 1,43 s  (samme ordlyd som large-v3)
+    #   large-v3-turbo på GTX 1070 0,67 s ← valgt; deler kortet med Ollama (≈1 GB)
+    def __init__(self, *, model: str = "large-v3-turbo", device_index: int = 0,
                  beam_size: int = 1, prompt: str = "Samtale med Jarvis. Bjørn taler dansk.") -> None:
         super().__init__(capabilities=stt.STTCapabilities(streaming=False, interim_results=False))
         self._navn, self._gpu, self._beam, self._prompt = model, device_index, beam_size, prompt

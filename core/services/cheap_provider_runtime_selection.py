@@ -1251,6 +1251,16 @@ def _register_provider_failure(
     elif error.code in {"provider-blocked", "provider-error", "model-not-found", "model-unavailable", "request-failed"}:
         retry_after = error.retry_after_seconds or _default_failure_cooldown_seconds(error.code)
         cooldown_until = (now + timedelta(seconds=retry_after)).isoformat()
+    # KARANTÆNE HER TIL (17/9-2026). Politikken i cheap_lane_failure_policy (24 t for
+    # en pensioneret model) blev kun brugt i balancerens slot-tilstand — ikke i den
+    # tilstand selektoren læser. Her stod model-not-found på 900 s, og en arkiveret
+    # cerebras-model blev kaldt 21-69 gange i døgnet (453 gange på 7 dage). Et
+    # «not supported» bag auth-rejected fik slet ingen cooldown, så self-heal så
+    # slottet som fastlåst og prøvede igen og igen.
+    # Kun når MODELLEN er væk: tilstanden her gælder pr. model, ikke pr. konto.
+    from core.services.cheap_lane_failure_policy import PERMANENT_QUARANTINE_S, model_retired
+    if not error.retry_after_seconds and model_retired(error.code, error.message):
+        cooldown_until = (now + timedelta(seconds=PERMANENT_QUARANTINE_S)).isoformat()
     record_cheap_provider_invocation(
         provider=provider,
         model=model,

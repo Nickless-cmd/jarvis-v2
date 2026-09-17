@@ -99,6 +99,23 @@ def classify(error_kind: str, message: str = "") -> str:
     return "transient"
 
 
+# Koder der handler om MODELLEN, ikke om kontoen. Skelnen er nødvendig, fordi
+# `cheap_provider_runtime_state` gælder pr. (udbyder, model) — ikke pr. konto.
+_MODEL_GONE_CODES: frozenset[str] = frozenset({"model-not-found", "not-found", "http-404", "http-410"})
+
+
+def model_retired(error_kind: str, message: str = "") -> bool:
+    """Er selve MODELLEN væk — for alle konti? (Til den pr.-model-tilstand.)
+
+    `auth-rejected`, `credits-exhausted` osv. hører til ÉN konto og tæller ikke:
+    en tom saldo på account2 må ikke lukke modellen for account1.
+    """
+    body = str(message or "").strip().lower()
+    if body and any(p in body for p in _RETIRED_PHRASES):
+        return True
+    return str(error_kind or "").strip().lower() in _MODEL_GONE_CODES
+
+
 def quarantine_seconds(error_kind: str, *, retry_after_s: int = 0, message: str = "") -> int:
     """Karantæne-længde, eller ``0`` når slottet skal følge den normale breaker-trappe.
 

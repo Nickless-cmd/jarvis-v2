@@ -807,3 +807,59 @@ def test_dsml_stripper_removes_deepseek_calls_invoke_dialect():
     assert held == ""
     assert in_block is False
     assert cheap.contains_dsml_tool_intent(raw) is True
+
+
+def _registrer_fejl(isolated_runtime, *, code: str, message: str, status: int, retry_after: int = 0):
+    from datetime import UTC, datetime
+    cheap = isolated_runtime.cheap_provider_runtime
+    isolated_runtime.auth_profiles.save_provider_credentials(
+        profile="groq", provider="groq", credentials={"api_key": "groq_key"},
+    )
+    isolated_runtime.provider_router.configure_provider_router_entry(
+        provider="groq", model="llama-3.3-70b-versatile", auth_mode="api-key",
+        auth_profile="groq", base_url="https://api.groq.com/openai/v1", api_key="",
+        lane="cheap", set_visible=False,
+    )
+    cheap._register_provider_failure(
+        provider="groq", model="llama-3.3-70b-versatile", auth_profile="groq",
+        error=cheap.CheapProviderError(
+            provider="groq", code=code, message=message, status_code=status,
+            retry_after_seconds=retry_after,
+        ),
+    )
+    state = isolated_runtime.db.get_cheap_provider_runtime_state(
+        provider="groq", model="llama-3.3-70b-versatile",
+    )
+    if not state or not state.get("cooldown_until"):
+        return None
+    return (datetime.fromisoformat(state["cooldown_until"]) - datetime.now(UTC)).total_seconds()
+
+
+def test_pensioneret_model_faar_24_timers_karantaene(isolated_runtime) -> None:
+    # Før: 900 s — en arkiveret model blev kaldt igen hvert kvarter.
+    sek = _registrer_fejl(isolated_runtime, code="model-not-found", message="model not found", status=404)
+    assert sek is not None and sek > 23 * 3600
+
+
+def test_not_supported_bag_auth_rejected_faar_karantaene(isolated_runtime) -> None:
+    # Cerebras svarede «is not supported» med 403 → auth-rejected uden cooldown.
+    sek = _registrer_fejl(
+        isolated_runtime, code="auth-rejected",
+        message="Model gemma-4-31b is not supported for this account", status=403,
+    )
+    assert sek is not None and sek > 23 * 3600
+
+
+def test_ren_auth_afvisning_laaser_ikke_modellen(isolated_runtime) -> None:
+    # Tilstanden gælder pr. model — én kontos nøglefejl må ikke lukke den for alle.
+    assert _registrer_fejl(isolated_runtime, code="auth-rejected", message="invalid api key", status=401) is None
+
+
+def test_kvote_fejl_beholder_sin_korte_cooldown(isolated_runtime) -> None:
+    sek = _registrer_fejl(isolated_runtime, code="rate-limited", message="slow down", status=429)
+    assert sek is not None and sek < 3600
+
+
+def test_retry_after_vinder_over_karantaene(isolated_runtime) -> None:
+    sek = _registrer_fejl(isolated_runtime, code="model-not-found", message="not found", status=404, retry_after=120)
+    assert sek is not None and sek < 200

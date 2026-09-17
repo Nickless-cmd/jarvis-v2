@@ -64,6 +64,13 @@ def is_recoverable_exit_reason(reason: str | None) -> bool:
                      "pending-tool-intent", "forced-finalize-unverified"}
         or value.startswith("interrupted:")
         or value.startswith("early-exit-")
+        or value.startswith("provider-")
+        or value.startswith("round-")
+        or value.startswith("turn-")
+        or value.startswith("research-")
+        or value.startswith("runtime-")
+        or value.startswith("unhandled:")
+        or value.startswith("relay_")
     )
 
 

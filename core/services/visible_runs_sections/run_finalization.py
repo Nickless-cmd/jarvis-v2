@@ -61,15 +61,11 @@ def finalize_in_flight(
     *, run_id: str, session_id: str, status: str, error: str = "",
 ) -> None:
     """Resolve durable recovery state without erasing resumable work."""
-    from core.services.in_flight_runs import (
-        clear_session,
-        mark_completed,
-        mark_interrupted,
-    )
+    from core.services.in_flight_runs import settle_recovering, settle_terminal
 
     if status in {"interrupted", "recovering"}:
         reason = error or status
-        mark_interrupted(run_id, reason=reason, summary=reason)
+        settle_recovering(run_id, reason=reason, summary=reason)
         return
-    mark_completed(run_id)
-    clear_session(session_id)
+    terminal = status if status in {"completed", "cancelled", "failed_terminal"} else "failed_terminal"
+    settle_terminal(run_id, status=terminal, reason=error or terminal)

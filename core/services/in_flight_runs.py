@@ -299,6 +299,7 @@ def settle_recovering(
     recovery_limit: int = 3,
     expected_generation: int | None = None,
     expected_owner: str = "",
+    final_synthesis_pending: bool = False,
 ) -> dict[str, Any]:
     """Durably make a run claimable without erasing its task identity."""
     def change(records):
@@ -324,9 +325,35 @@ def settle_recovering(
         rec["settled_at"] = now
         rec["interrupted_at"] = now
         rec["notice_pending"] = True
+        rec["final_synthesis_pending"] = bool(final_synthesis_pending)
         rec["recovery_owner"] = ""
         rec["recovery_lease_until"] = ""
         rec.setdefault("next_attempt_at", "")
+        return dict(rec)
+    return _mutate(change)
+
+
+def get_record(identity: str) -> dict[str, Any] | None:
+    """Return a copy of one task/run record without changing ownership."""
+    records = _load()
+    key = _record_key(records, identity)
+    return dict(records[key]) if key is not None else None
+
+
+def settle_waiting(run_id: str, *, reason: str) -> dict[str, Any]:
+    """Persist a user/approval wait without making the task dispatchable."""
+    def change(records):
+        key = _record_key(records, run_id)
+        if key is None:
+            raise KeyError(f"unknown in-flight run: {run_id}")
+        rec = records[key]
+        rec.setdefault("task_id", str(rec.get("run_id") or key))
+        rec["status"] = "waiting_for_user"
+        rec["exit_reason"] = str(reason or "waiting_for_user")[:160]
+        rec["settled_at"] = _iso()
+        rec["recovery_owner"] = ""
+        rec["recovery_lease_until"] = ""
+        rec["notice_pending"] = True
         return dict(rec)
     return _mutate(change)
 
@@ -392,9 +419,9 @@ def claim_due_recovery(
             due = _parsed(rec.get("next_attempt_at"))
             if due is not None and due > instant:
                 continue
-            if int(rec.get("recovery_attempt") or 0) >= int(
-                rec.get("recovery_limit") or 3
-            ):
+            exhausted = int(rec.get("recovery_attempt") or 0) >= int(
+                rec.get("recovery_limit") or 3)
+            if exhausted and not bool(rec.get("final_synthesis_pending")):
                 continue
             candidates.append((key, rec))
         if not candidates:
@@ -416,6 +443,10 @@ def claim_due_recovery(
             instant + timedelta(seconds=max(1.0, float(lease_seconds)))
         ).isoformat()
         rec["next_attempt_at"] = ""
+        rec["recovery_mode"] = (
+            "final_synthesis" if rec.get("final_synthesis_pending") else "continue"
+        )
+        rec["final_synthesis_pending"] = False
         return dict(rec)
     return _mutate(change)
 
@@ -699,4 +730,3 @@ def interruption_prompt_section(
         f"{conclusion + chr(10) if conclusion else ''}"
         f"{policy}"
     )
-

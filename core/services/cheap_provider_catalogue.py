@@ -455,6 +455,57 @@ CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
             "mistral-Nemo-Instruct-2407",
         ],
     },
+    # Dahl (17/9-2026, Bjørn-nøgle i runtime.json som `dahl_api_key`):
+    # OpenAI-compat `inference.dahl.global/v1`, bearer. Decentral GPU-pulje
+    # («gonka»). MÅLT med nøglen samme dag, ikke læst på deres side:
+    #   * /v1/models giver KUN 3 modeller.
+    #   * zai-org/GLM-5.3-Flash: «pong» på 1,5 s, kalder værktøjer. Den bedste.
+    #   * MiniMaxAI/MiniMax-M2.7: svarer (1,8 s) og kalder værktøjer, men lægger
+    #     `<think>`-tekst i selve svaret.
+    #   * deepseek-ai/DeepSeek-V4-Flash-0731: 429 «model_concurrency — Paid
+    #     accounts are admitted first». Gratis-brugere får den KUN når der er
+    #     plads. Den står med, fordi det er den Bjørn fik tilbudt; breakeren
+    #     sætter den i karantæne når den 429'er.
+    "dahl": {
+        "label": "Dahl",
+        "priority": 48,
+        "base_url": "https://inference.dahl.global/v1",
+        "auth_kind": "bearer",
+        "protocol": "openai-chat",
+        "models_endpoint": "/models",
+        "rpm_limit": 20,
+        "daily_limit": 2000,
+        "cost_class": "free",
+        "static_models": [
+            "zai-org/GLM-5.3-Flash",
+            "MiniMaxAI/MiniMax-M2.7",
+            "deepseek-ai/DeepSeek-V4-Flash-0731",
+        ],
+    },
+    # Token Harbor (17/9-2026, nøgle i runtime.json som `tokenharbor_api_key`,
+    # kopieret fra repoets .env hvor Jarvis lagde den som
+    # JARVIS_TOKENHARBOR_API_KEY). OpenAI-compat `tokenharbor.ai/v1` — IKKE
+    # api.tokenharbor.ai (404). 35 modeller; kun `:free` er gratis. MÅLT:
+    #   * deepseek-v4-flash:free    «pong» på 23-26 s, kalder værktøjer
+    #   * deepseek-v4.1-flash:free  7-54 s, kalder værktøjer
+    #   * mimo-v2.5:free            svarer (11 s) men kalder IKKE værktøjer —
+    #                               udeladt, et agent-kald ville stå og vente.
+    # Langsom: bagerst i køen (priority 72), redundans ikke arbejdshest.
+    "tokenharbor": {
+        "label": "Token Harbor",
+        "priority": 72,
+        "base_url": "https://tokenharbor.ai/v1",
+        "auth_kind": "bearer",
+        "protocol": "openai-chat",
+        "models_endpoint": "/models",
+        "rpm_limit": 10,
+        "daily_limit": 500,
+        "cost_class": "free",
+        "static_models": [
+            "deepseek-v4.1-flash:free",
+            "deepseek-v4-flash:free",
+        ],
+    },
     # xkiro (7/9-2026, Bjørn-nøgle i runtime.json som `xkiro_api_key`):
     # OpenAI-compat `api.xkiro.com/v1`, bearer. MÅLT med nøglen, ikke læst på
     # deres side:

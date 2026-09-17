@@ -34,6 +34,8 @@ RUNTIME_KEY_PROVIDERS: dict[str, tuple[str, str]] = {
     "huggingface": ("huggingface_token", "HUGGINGFACE_TOKEN"),
     "xkiro": ("xkiro_api_key", "XKIRO_API_KEY"),
     "llm7": ("llm7_api_key", "LLM7_API_KEY"),
+    "dahl": ("dahl_api_key", "DAHL_API_KEY"),
+    "tokenharbor": ("tokenharbor_api_key", "JARVIS_TOKENHARBOR_API_KEY"),
 }
 
 

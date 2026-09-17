@@ -61,3 +61,32 @@ def test_runtime_key_etiketten_er_ikke_mekanismen():
               if e.get("auth_kind") == "runtime-key"}
     assert etiket == {"arko"}
     assert "arko" not in RUNTIME_KEY_PROVIDERS
+
+
+def test_dahl_og_tokenharbor_er_koblet_til_noeglerne():
+    """Nøglen skal kendes TRE steder (readiness, dispatch, profil-scan), og de
+    to sidste læser dette kort — uden en post her kom udbyderen aldrig i puljen
+    (xkiro 7/9-2026)."""
+    from core.services.cheap_provider_runtime_keys import RUNTIME_KEY_PROVIDERS
+    assert RUNTIME_KEY_PROVIDERS["dahl"][0] == "dahl_api_key"
+    assert RUNTIME_KEY_PROVIDERS["tokenharbor"][0] == "tokenharbor_api_key"
+    for p in ("dahl", "tokenharbor"):
+        assert p in kat._OPENAI_COMPATIBLE_PROVIDERS
+
+
+def test_dahl_har_kun_de_maalte_modeller():
+    e = kat.CHEAP_PROVIDER_DEFAULTS["dahl"]
+    assert e["base_url"] == "https://inference.dahl.global/v1"
+    assert set(e["static_models"]) == {
+        "zai-org/GLM-5.3-Flash", "MiniMaxAI/MiniMax-M2.7", "deepseek-ai/DeepSeek-V4-Flash-0731",
+    }
+
+
+def test_tokenharbor_kun_gratis_og_uden_mimo():
+    e = kat.CHEAP_PROVIDER_DEFAULTS["tokenharbor"]
+    assert e["base_url"] == "https://tokenharbor.ai/v1"
+    assert all(m.endswith(":free") for m in e["static_models"])
+    # mimo-v2.5:free kaldte ikke værktøjet i målingen.
+    assert "mimo-v2.5:free" not in e["static_models"]
+    # Langsom (7-54 s): skal ligge bag de hurtige gratis-udbydere.
+    assert e["priority"] > kat.CHEAP_PROVIDER_DEFAULTS["dahl"]["priority"]

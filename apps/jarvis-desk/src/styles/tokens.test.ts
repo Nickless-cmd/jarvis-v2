@@ -28,6 +28,12 @@ describe('design-tokens', () => {
     expect(regel).toMatch(/overflow:\s*auto/)
   })
 
+  it('inline-kode er teal, ikke guld (Bjørn 17/9-2026)', () => {
+    const regel = app.match(/\.jarvis-body :not\(pre\) > code\s*\{([^}]*)\}/)?.[1] ?? ''
+    expect(regel).toMatch(/var\(--accent\)/)
+    expect(app).not.toMatch(/#d4b97a/i)
+  })
+
   it('composerens fokus-kant er teal (accent), ikke den blå #2c3e54', () => {
     const regel = app.match(/\.composer:focus-within\s*\{([^}]*)\}/)?.[1] ?? ''
     expect(regel).toMatch(/var\(--accent\)/)

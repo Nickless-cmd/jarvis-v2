@@ -549,7 +549,10 @@ button.sidebar-group svg { flex: none; opacity: .7; }
   border-radius: 3px;
   font-family: "SF Mono", "JetBrains Mono", ui-monospace, Menlo, monospace;
   font-size: 0.92em;
-  color: #d4b97a;
+  /* Teal i stedet for guld (Bjørn 17/9-2026). Blandet med brødteksten, så
+     mange `code`-spans i ét afsnit ikke lyser som knapper — accenten selv er
+     til handling, ikke til løbende tekst. */
+  color: color-mix(in srgb, var(--accent) 78%, var(--fg-1));
 }
 /* tabeller — collapse, ingen scroll, celler wrapper naturligt */
 .jarvis-body table {

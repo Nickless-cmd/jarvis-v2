@@ -28,6 +28,12 @@ describe('design-tokens', () => {
     expect(regel).toMatch(/overflow:\s*auto/)
   })
 
+  it('composerens fokus-kant er teal (accent), ikke den blå #2c3e54', () => {
+    const regel = app.match(/\.composer:focus-within\s*\{([^}]*)\}/)?.[1] ?? ''
+    expect(regel).toMatch(/var\(--accent\)/)
+    expect(regel).not.toMatch(/#2c3e54/i)
+  })
+
   // Et var(--x) uden definition er ikke en skønhedsfejl: uden fallback
   // bliver `background: var(--bg)` gennemsigtig og `color: var(--fg)` arvet.
   // Med fallback brænder den en literal ind, som ikke følger temaskift.

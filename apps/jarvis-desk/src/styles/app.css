@@ -597,7 +597,9 @@ button.sidebar-group svg { flex: none; opacity: .7; }
   transition: 0.15s ease;
   overflow: visible;   /* tillad +/permissions-popovers at folde OP udenfor rammen */
 }
-.composer:focus-within { border-color: #2c3e54; }
+/* Teal, ikke blå (Bjørn 17/9-2026). Blandet med linjefarven, så kanten er
+   tydelig uden at konkurrere med send-knappen i fuld accent. */
+.composer:focus-within { border-color: color-mix(in srgb, var(--accent) 60%, var(--line)); }
 
 .composer-input {
   background: none;

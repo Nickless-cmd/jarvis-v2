@@ -241,9 +241,19 @@ CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
         "auth_kind": "bearer",
         "protocol": "openai-chat",
         "models_endpoint": "/models",
-        "rpm_limit": 20,
-        "daily_limit": 200,
-        "static_models": ["novita/tencent/hy3"],
+        # Gratis-planen (17/9-2026): 200 kald/døgn og kun ÉT samtidigt kald for en
+        # organisation uden saldo («limit scales with your organization's balance»).
+        # En hængende forespørgsel holder pladsen i minutter, så rpm holdes lavt.
+        # Den gamle konto (og account2) svarede 402 selv på pris-0-modeller: de stod
+        # ikke på gratis-planen. novita/tencent/hy3 var betalt. Prøvet én ad gangen:
+        # laguna-*, ling-3.0-tiny og nemotron-3-nano findes ikke / 410.
+        "rpm_limit": 4,
+        "daily_limit": 180,
+        "static_models": ["nvidia/nemotron-3-ultra-550b-a55b",
+                          "nvidia/nemotron-3-super-120b-a12b",
+                          "nvidia/nemotron-3.5-lightning-30b-a3b",
+                          "mistral/leanstral-1-5",
+                          "google/gemma-4-31b-it"],
     },
     # GitHub Models (14. jul research): 37 GRATIS modeller inkl. rigtige GPT-5/o3/o4-mini/
     # DeepSeek-R1. OpenAI-compat, tool_calls virker. Auth = github-copilot OAuth-token

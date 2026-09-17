@@ -15,7 +15,7 @@ def test_new_verified_providers_present_and_well_formed():
         "cerebras": "gpt-oss-120b",
         "cline": "deepseek/deepseek-chat",
         "aihubmix": "gpt-5.5-free",
-        "requesty": "novita/tencent/hy3",
+        "requesty": "nvidia/nemotron-3-ultra-550b-a55b",  # gratis-planen 17/9-2026
     }
     for provider, must_have_model in expected_models.items():
         assert provider in CHEAP_PROVIDER_DEFAULTS, f"{provider} mangler i defaults"

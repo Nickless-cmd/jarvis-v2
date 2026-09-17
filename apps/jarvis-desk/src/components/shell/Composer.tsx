@@ -15,7 +15,6 @@ import {
 import { usePermission } from '../../hooks/usePermission'
 import { useFileMention } from '../../hooks/useFileMention'
 import { useForslag } from '../../hooks/useForslag'
-import { saetSammen } from '../../lib/forslag'
 
 export interface SentAttachment { id: string; src?: string; name: string; isImage: boolean }
 
@@ -83,17 +82,13 @@ export function pushComposerHistory(text: string): void {
  *  Bjørn 2026-06-13). memo + stabile (useCallback) handlers gør at stream-tickets
  *  IKKE re-renderer inputtet når teksten er uændret → cursoren bliver stående. */
 const ComposerTextArea = memo(function ComposerTextArea({
-  value, placeholder, onChange, onKeyDown, onPaste, onSelect, inputRef,
+  value, placeholder, onChange, onKeyDown, onPaste, inputRef,
 }: {
   value: string
   placeholder: string
   onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void
   onKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void
   onPaste: (e: React.ClipboardEvent<HTMLTextAreaElement>) => void
-  /** Markør-flyt (mus OG tastatur). Ghost-forslaget må kun stå i ENDEN af
-   *  teksten — stod det midt i, ville det påstå at fortsættelsen hører til der,
-   *  og Tab ville indsætte den det forkerte sted. */
-  onSelect: (e: React.SyntheticEvent<HTMLTextAreaElement>) => void
   inputRef: React.RefObject<HTMLTextAreaElement | null>
 }) {
   return (
@@ -106,7 +101,6 @@ const ComposerTextArea = memo(function ComposerTextArea({
       onChange={onChange}
       onKeyDown={onKeyDown}
       onPaste={onPaste}
-      onSelect={onSelect}
     />
   )
 })
@@ -130,6 +124,7 @@ export function Composer({
   onManualCompact,
   isOwner = false,
   onOpenPrivacy,
+  sessionId = null,
 }: {
   streaming: boolean
   onSend: (text: string, opts: ComposerSendOpts) => void
@@ -138,6 +133,10 @@ export function Composer({
   thinking: string
   config?: ApiConfig
   getSessionId: () => Promise<string>
+  /** Den session der VISES lige nu — til auto-forslaget, som bygger på
+   *  samtalen. Bevidst adskilt fra `getSessionId`, der OPRETTER en session
+   *  hvis der ingen er: et forslag må aldrig føde en tom samtale. */
+  sessionId?: string | null
   /** Åbner Data & privatliv (Settings) fra disclaimer-linjen. */
   onOpenPrivacy?: () => void
   /** Permissions-dropdown vises kun hvor værktøjs-godkendelse er relevant
@@ -413,47 +412,34 @@ export function Composer({
   // @fil-komplettering. Kun for ejeren: endpointet læser værtens disk.
   const filnavne = useFileMention(config, isOwner)
 
-  // Auto-forslag (17/9-2026, Bjørn): hvad der kunne skrives videre, vist som grå
-  // ghost-tekst efter markøren — Tab tager imod. Hentes fra /composer/suggest
-  // (lokal ollama; udkastet forlader aldrig maskinen).
+  // Auto-forslag (17/9-2026, Bjørn): et bud på den NÆSTE besked, bygget på
+  // samtalen — ikke på det han er i gang med at skrive. Det stod først som
+  // ghost-tekst efter markøren, og dommen var klar samme dag: «det kommer
+  // dumpende mens jeg skriver, det er virkelig træls». Et forslag der
+  // konkurrerer med hans egne ord er en afbrydelse.
+  //
+  // Så det bor dér hvor pladsholderen står — i det TOMME felt. Tab tager imod
+  // (grå bliver til rigtig tekst), Enter sender. Skriver han selv, er
+  // forslaget væk af sig selv, fordi feltet ikke længere er tomt.
   //
   // IKKE mens et svar streamer: forslaget kører på samme GPU som det synlige
   // svar, og husets egen erfaring er at det køer bagved (recall-embeds ventede
-  // 28–91 s). Et forslag der kommer efter svaret er ikke et forslag.
-  const forslag = useForslag(config, text, !compacting && !streaming)
-  const [caretVedEnde, setCaretVedEnde] = useState(true)
-  // Escape afviser forslaget — men kun for DEN tekst man stod med. Skriver man
-  // videre, er det en ny sætning, og et nyt forslag er velkomment.
+  // 28–91 s). Og der er intet at foreslå før svaret er der.
+  const tomtFelt = text === ''
+  const forslag = useForslag(config, sessionId, tomtFelt && !compacting && !streaming)
+  // Escape afviser forslaget — men kun DET forslag. Kommer der et nyt efter
+  // næste svar, er det velkomment.
   const [afvistFor, setAfvistFor] = useState('')
-  const ghostRef = useRef<HTMLDivElement>(null)
-  const ghostAktiv = forslag !== '' && caretVedEnde && !filnavne.åben && afvistFor !== text
-
-  // Ghost-laget scroller med textarea'en (relevant først når teksten når
-  // max-height og feltet begynder at scrolle indvendigt).
-  useEffect(() => {
-    const ta = ref.current
-    const g = ghostRef.current
-    if (!ta || !g) return
-    const sync = () => { g.scrollTop = ta.scrollTop }
-    ta.addEventListener('scroll', sync)
-    return () => ta.removeEventListener('scroll', sync)
-  }, [ghostAktiv])
+  const ghostAktiv = forslag !== '' && tomtFelt && !filnavne.åben && afvistFor !== forslag
 
   // Stabile handlers til den memo'd textarea (ellers re-renderer den hvert tick).
   // Bruger-input nulstiller historik-navigationen (man redigerer draften igen).
   const onInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const v = e.target.value
     setText(v); setHistIdx(-1)
-    setCaretVedEnde((e.target.selectionStart ?? v.length) >= v.length)
     filnavne.opdater(v, e.target.selectionStart ?? v.length)
   }, [filnavne])
 
-  // Markøren flyttet uden at der blev skrevet (museklik, piletaster, Ctrl+A).
-  // Uden dette ville ghost'en blive stående selv om markøren stod midt i teksten.
-  const onInputSelect = useCallback((e: React.SyntheticEvent<HTMLTextAreaElement>) => {
-    const ta = e.currentTarget
-    setCaretVedEnde((ta.selectionStart ?? 0) >= ta.value.length)
-  }, [])
   const onInputKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     // Mention-listen skal have tasterne FØR historik og send — ellers
     // sender Enter beskeden mens man står og vælger en fil.
@@ -479,16 +465,16 @@ export function Composer({
     // ud af feltet, og Escape ville gøre ingenting.
     if (ghostAktiv) {
       if (e.key === 'Escape') {
-        e.preventDefault(); setAfvistFor(e.currentTarget.value); return
+        e.preventDefault(); setAfvistFor(forslag); return
       }
       if (e.key === 'Tab') {
         e.preventDefault()
+        // Grå bliver til rigtig tekst i feltet — derefter er det hans egen
+        // besked, som kan rettes i eller sendes med Enter.
         const ta = e.currentTarget
-        const nyt = saetSammen(ta.value, forslag)
-        setText(nyt)
-        setAfvistFor('')
+        setText(forslag)
         requestAnimationFrame(() => {
-          try { ta.selectionStart = ta.selectionEnd = nyt.length } catch { /* noop */ }
+          try { ta.selectionStart = ta.selectionEnd = forslag.length } catch { /* noop */ }
         })
         return
       }
@@ -612,25 +598,29 @@ export function Composer({
           ))}
         </div>
       )}
-      {/* Ghost-laget ligger UNDER textarea'en (absolut positioneret med
+      {/* Ghost-laget ligger OVEN PÅ textarea'en (absolut positioneret med
           pointer-events: none), så markøren og markeringen stadig er
-          textarea'ens. Placeholder'en vises kun ved et tomt felt — og et tomt
-          felt er under MIN_TEGN, så der står aldrig både placeholder og
-          forslag på samme tid. */}
+          textarea'ens. Det står præcis hvor pladsholderen ville stå, og
+          pladsholderen slukkes imens — ellers ville de to skrive oven i
+          hinanden. */}
       <div className="composer-input-wrap">
         <ComposerTextArea
           inputRef={ref}
           value={text}
-          placeholder={compacting ? 'Komprimerer kontekst — din besked sendes når den er færdig…' : streaming ? 'Skriv en follow-up (sendes når J.A.R.V.I.S. er færdig)…' : 'Spørg J.A.R.V.I.S. om et eller andet?'}
+          placeholder={
+            compacting ? 'Komprimerer kontekst — din besked sendes når den er færdig…'
+              : streaming ? 'Skriv en follow-up (sendes når J.A.R.V.I.S. er færdig)…'
+                : ghostAktiv ? ''
+                  : 'Bed om hvad som helst'
+          }
           onChange={onInputChange}
           onKeyDown={onInputKeyDown}
           onPaste={onInputPaste}
-          onSelect={onInputSelect}
         />
         {ghostAktiv && (
-          <div className="composer-ghost" ref={ghostRef} aria-hidden="true">
-            <span className="ghost-skjult">{text}</span>
+          <div className="composer-ghost" aria-hidden="true">
             <span className="ghost-forslag">{forslag}</span>
+            <span className="ghost-tast">Tab</span>
           </div>
         )}
       </div>

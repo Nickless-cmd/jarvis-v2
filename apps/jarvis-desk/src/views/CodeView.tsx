@@ -684,6 +684,7 @@ export function CodeView({
       thinking="think"
       config={config}
       getSessionId={async () => sessionId ?? (await sessions.create('Kode-session', 'code')).id}
+      sessionId={sessionId}
       showPermissions={true}
       contextTokens={contextTokens}
       onGauge={setGauge}

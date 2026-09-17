@@ -33,14 +33,28 @@ router = APIRouter(prefix="/composer", tags=["composer"])
 
 class Udkast(BaseModel):
     udkast: str = ""
+    #: Tomt udkast + en samtale = «hvad kunne jeg skrive nu?». Uden session
+    #: er der intet at bygge forslaget på, og svaret er tomt.
+    session_id: str = ""
 
 
 @router.post("/suggest")
 def suggest(krop: Udkast) -> dict[str, str]:
-    """Fortsættelsen af et udkast, eller tom streng. Fejler aldrig."""
+    """Et forslag, eller tom streng. Fejler aldrig.
+
+    To tilstande, ét endpoint, fordi det er det samme spørgsmål stillet to
+    steder i skrivningen:
+
+    * **Med udkast** → fortsættelsen af det (mobilens linje man trykker på).
+    * **Uden udkast** → et bud på den næste besked, ud fra samtalen. Det er
+      den form desk viser, hvor pladsholderen står.
+    """
     try:
-        from core.services.composer_suggest import foreslaa
-        return {"forslag": foreslaa(krop.udkast or "")}
+        from core.services.composer_suggest import foreslaa, foreslaa_naeste
+        udkast = (krop.udkast or "").strip()
+        if udkast:
+            return {"forslag": foreslaa(krop.udkast or "")}
+        return {"forslag": foreslaa_naeste(krop.session_id or "")}
     except Exception:
         logger.debug("composer/suggest fejlede", exc_info=True)
         return {"forslag": ""}

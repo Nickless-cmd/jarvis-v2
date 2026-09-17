@@ -618,7 +618,15 @@ button.sidebar-group svg { flex: none; opacity: .7; }
   border: none;
   outline: none;
   color: var(--fg-1);
-  font: 15px/1.55 inherit;
+  /* IKKE `font: 15px/1.55 inherit` — den kortform er ugyldig (CSS tillader kun
+     `inherit` som HELE værdien, ikke som familien), så hele erklæringen blev
+     droppet. Målt 17/9-2026: feltet stod i browserens standard, «13.3333px
+     monospace», og ghost-laget i 16px sans. To forskellige skrifter i samme
+     felt — derfor ville et forslag hoppe i det øjeblik Tab gjorde det til
+     rigtig tekst. De tre egenskaber hver for sig virker. */
+  font-family: inherit;
+  font-size: 15px;
+  line-height: 1.55;
   resize: none;
   min-height: 48px;
   max-height: 240px;
@@ -629,27 +637,44 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 .composer-input::placeholder { color: var(--fg-3); }
 .composer-input:disabled { opacity: 0.5; cursor: wait; }
 
-/* Auto-forslag som ghost-tekst (Bjørn 17/9-2026): forslaget står i grå efter
-   markøren, og Tab tager imod det. Laget SPEJLER textarea'en — samme font,
-   padding og linjeskift — så de to bryder linjerne præcis ens. Derfor de samme
-   værdier som .composer-input, ikke omtrentlige: en enkelt pixels forskel i
-   venstremargen ville få forslaget til at hoppe når man tager imod det.
-   Ingen scrollbar-gutter-behov: MAKS_UDKAST (600 tegn) holder teksten under
-   textarea'ens max-height, så feltet scroller ikke mens et forslag står. */
+/* Auto-forslag (Bjørn 17/9-2026): forslaget står i grå DÉR HVOR PLADSHOLDEREN
+   står — i det tomme felt — og Tab gør det til rigtig tekst. Det stod først som
+   ghost-tekst efter markøren mens man skrev; dommen var «det kommer dumpende
+   mens jeg skriver, det er virkelig træls».
+   Laget SPEJLER textarea'en — samme font og padding — så forslaget ikke hopper
+   en pixel når man tager imod det. Derfor de samme værdier som
+   .composer-input, ikke omtrentlige. */
 .composer-input-wrap { position: relative; }
 .composer-ghost {
   position: absolute;
   inset: 0;
   pointer-events: none;
   overflow: hidden;
-  font: 15px/1.55 inherit;
+  /* Samme tre egenskaber som .composer-input, og af samme grund — se der. */
+  font-family: inherit;
+  font-size: 15px;
+  line-height: 1.55;
   padding: 14px 16px 0;
   color: var(--fg-3);
   white-space: pre-wrap;
   overflow-wrap: break-word;
 }
-.ghost-skjult { visibility: hidden; }
 .ghost-forslag { color: var(--fg-3); opacity: 0.72; }
+/* Hvad man skal gøre ved det. Uden den ville forslaget bare ligne en
+   pladsholder man ikke kan bruge til noget. Dæmpet, så den ikke konkurrerer
+   med selve forslaget. */
+.ghost-tast {
+  margin-left: 8px;
+  padding: 1px 5px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  font-size: 10px;
+  line-height: 1.4;
+  letter-spacing: 0.04em;
+  color: var(--fg-3);
+  opacity: 0.5;
+  vertical-align: middle;
+}
 
 .composer-bar {
   display: flex;

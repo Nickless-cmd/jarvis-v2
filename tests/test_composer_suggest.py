@@ -163,6 +163,105 @@ def test_modellen_kan_saettes_uden_kode_deploy():
     assert cs.MODEL_NOEGLE == "composer_suggest_model"
 
 
+# ──────────────────────────────────── forslag til den NAESTE besked (17/9)
+#
+# Bjoern: «det kommer dumpende mens jeg skriver, det er virkelig traels» — og
+# «auto suggest skal jo vaere ud fra konteksten af DIN besked». Forslaget er
+# altsaa ikke resten af hans saetning, men et bud paa hvad han kunne sige nu,
+# vist dér hvor pladsholderen staar. Kilden er samtalen, ikke tastetrykkene.
+
+
+def _samtale(*par):
+    return [{"role": r, "content": c} for r, c in par]
+
+
+def test_naeste_forslag_bygger_paa_SAMTALEN(monkeypatch):
+    monkeypatch.setattr(cs, "_samtale", lambda sid: _samtale(
+        ("user", "hvordan ser cheap lane ud?"),
+        ("assistant", "81% succes, 34 udbydere. To staar i karantaene."),
+    ))
+    sendt: list[str] = []
+    monkeypatch.setattr(cs, "_kald_model",
+                        lambda p: sendt.append(p) or "vis de to i karantaene")
+    assert cs.foreslaa_naeste("s1") == "vis de to i karantaene"
+    # Samtalen skal FAKTISK med — ellers gaetter modellen i blinde.
+    assert "karantaene" in sendt[0] and "cheap lane" in sendt[0]
+
+
+def test_naeste_forslag_er_en_HEL_besked_uden_hoeftende_mellemrum(monkeypatch):
+    """Fortsaettelses-formen haefter et mellemrum paa. Her er der intet at
+    haefte paa: feltet er tomt, og et forslag der begynder med mellemrum ville
+    blive til en besked der goer det samme."""
+    monkeypatch.setattr(cs, "_samtale", lambda sid: _samtale(("assistant", "Det er rettet.")))
+    monkeypatch.setattr(cs, "_kald_model", lambda p: "  deploy det til ct105  ")
+    assert cs.foreslaa_naeste("s1") == "deploy det til ct105"
+
+
+def test_modellens_ROLLENAVN_fjernes(monkeypatch):
+    """Rollerne staar i prompten, saa modellen skriver dem gerne med."""
+    monkeypatch.setattr(cs, "_samtale", lambda sid: _samtale(("assistant", "Klar.")))
+    monkeypatch.setattr(cs, "_kald_model", lambda p: "Bruger: koer testene igen")
+    assert cs.foreslaa_naeste("s1") == "koer testene igen"
+
+
+def test_uden_SESSION_spoerges_der_ikke(monkeypatch):
+    monkeypatch.setattr(cs, "_kald_model", lambda p: pytest.fail("spurgte alligevel"))
+    assert cs.foreslaa_naeste("") == ""
+    assert cs.foreslaa_naeste("   ") == ""
+
+
+def test_en_TOM_samtale_giver_intet_forslag(monkeypatch):
+    """Foerste besked i en ny samtale er hans egen. Der er intet at foreslaa
+    ud fra, og GreetingHero staar der i forvejen."""
+    monkeypatch.setattr(cs, "_samtale", lambda sid: [])
+    monkeypatch.setattr(cs, "_kald_model", lambda p: pytest.fail("spurgte alligevel"))
+    assert cs.foreslaa_naeste("s1") == ""
+
+
+def test_mens_HANS_besked_venter_paa_svar_foreslaas_intet(monkeypatch):
+    """Sidste besked er hans egen → turen er i gang. At foreslaa den naeste
+    besked dér er at tale i munden paa et svar der er paa vej."""
+    monkeypatch.setattr(cs, "_samtale", lambda sid: _samtale(
+        ("assistant", "Det er rettet."), ("user", "og deploy det"),
+    ))
+    monkeypatch.setattr(cs, "_kald_model", lambda p: pytest.fail("spurgte alligevel"))
+    assert cs.foreslaa_naeste("s1") == ""
+
+
+def test_en_LANG_besked_klippes_i_prompten(monkeypatch):
+    """Ét vaerktoejs-svar paa 30k tegn ville ellers skubbe alt det der faktisk
+    blev sagt ud af prompten — og koere den lokale model i staa."""
+    monkeypatch.setattr(cs, "_samtale", lambda sid: _samtale(("assistant", "x" * 5000)))
+    sendt: list[str] = []
+    monkeypatch.setattr(cs, "_kald_model", lambda p: sendt.append(p) or "ok")
+    cs.foreslaa_naeste("s1")
+    assert len(sendt[0]) < 2000
+
+
+def test_en_DB_fejl_giver_tomt_og_kaster_ikke(monkeypatch):
+    monkeypatch.setattr(cs, "_samtale",
+                        lambda sid: (_ for _ in ()).throw(RuntimeError("laast")))
+    assert cs.foreslaa_naeste("s1") == ""
+
+
+def test_en_MODELFEJL_i_naeste_forslag_giver_tomt(monkeypatch):
+    monkeypatch.setattr(cs, "_samtale", lambda sid: _samtale(("assistant", "Klar.")))
+    monkeypatch.setattr(cs, "_kald_model",
+                        lambda p: (_ for _ in ()).throw(RuntimeError("nede")))
+    assert cs.foreslaa_naeste("s1") == ""
+
+
+def test_ruten_vaelger_tilstand_efter_om_der_ER_et_udkast(monkeypatch):
+    """Samme endpoint, to tilstande. Mobilen sender et udkast og skal stadig
+    faa fortsaettelsen; desk sender et tomt felt og skal have naeste besked."""
+    from apps.api.jarvis_api.routes import composer_suggest_routes as r
+    monkeypatch.setattr(cs, "foreslaa", lambda u: " tjekke det")
+    monkeypatch.setattr(cs, "foreslaa_naeste", lambda s: f"naeste til {s}")
+    assert r.suggest(r.Udkast(udkast="kan du lige", session_id="s1")) == {"forslag": " tjekke det"}
+    assert r.suggest(r.Udkast(udkast="   ", session_id="s1")) == {"forslag": "naeste til s1"}
+    assert r.suggest(r.Udkast(session_id="s1")) == {"forslag": "naeste til s1"}
+
+
 # ─────────────────────────────────────────────────── fladen skal kunne NAAS
 
 def test_ruten_er_MONTERET_i_appen():

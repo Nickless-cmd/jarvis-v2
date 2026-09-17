@@ -88,14 +88,14 @@ _PROMPT = (
 )
 
 
-def _kald_model(udkast: str) -> str:
-    """Ét kald til den lokale model. Kaster ved fejl; `foreslaa` fanger."""
+def _kald_model(prompt: str) -> str:
+    """Ét kald til den lokale model. Kaster ved fejl; kalderen fanger."""
     krop = json.dumps({
         "model": _model(),
         "stream": False,
         "temperature": 0.2,
         "max_tokens": 40,
-        "messages": [{"role": "user", "content": _PROMPT + udkast}],
+        "messages": [{"role": "user", "content": prompt}],
     }).encode("utf-8")
     req = urllib.request.Request(
         f"{_base_url()}/v1/chat/completions", data=krop,
@@ -154,7 +154,7 @@ def foreslaa(udkast: str) -> str:
     if _FAERDIG.search(u):
         return ""
     try:
-        raa = _kald_model(u)
+        raa = _kald_model(_PROMPT + u)
     except Exception:
         logger.debug("composer_suggest: kald fejlede", exc_info=True)
         return ""
@@ -169,3 +169,87 @@ def foreslaa(udkast: str) -> str:
     if not ud[0].isspace() and not ud[0] in ",.!?:;":
         ud = " " + ud
     return ud
+
+
+# ───────────────────────────────────────────── forslag til den NÆSTE besked
+#
+# Desk viser forslaget dér hvor pladsholderen står — i det TOMME felt, ikke
+# som grå tekst der dukker op midt i en sætning man er i gang med at skrive.
+# Bjørn 17/9-2026: «det kommer dumpende mens jeg skriver, det er virkelig
+# træls». Et forslag der konkurrerer med hans egne ord er en afbrydelse; et
+# forslag der står og venter i det tomme felt er et tilbud.
+#
+# Det ændrer hvad forslaget ER: ikke resten af en sætning, men et helt bud på
+# hvad han kunne sige nu. Derfor er kilden samtalen og ikke udkastet — der er
+# jo ikke noget udkast.
+
+#: Hvor langt tilbage der kigges. Nok til at vide hvad der foregår, kort nok
+#: til at prompten er lille på en lokal lille model.
+MAKS_HISTORIK: Final[int] = 6
+#: Hver besked klippes. Ét langt værktøjs-svar ville ellers fylde hele
+#: prompten og skubbe det der faktisk blev sagt ud.
+MAKS_BESKED_TEGN: Final[int] = 400
+
+_PROMPT_NAESTE = (
+    "Herunder er de seneste beskeder i en samtale mellem en bruger og hans "
+    "assistent. Foreslå hvad BRUGEREN kunne skrive som sin næste besked — et "
+    "naturligt næste skridt, ikke et resumé. Skriv den som brugeren selv ville "
+    "skrive den, på dansk, højst ti ord. Svar KUN med selve beskeden: ingen "
+    "anførselstegn, intet rollenavn, ingen forklaring.\n\nSamtalen:\n"
+)
+
+#: Modellen svarer gerne med rollen foran, fordi den står i prompten.
+_ROLLE_PRAEFIKS = ("bruger:", "brugeren:", "user:", "assistent:", "assistant:")
+
+
+def _samtale(session_id: str) -> list[dict[str, str]]:
+    """De seneste beskeder. Egen funktion, så testene kan sætte dem."""
+    from core.services.chat_sessions import recent_chat_session_messages
+    return recent_chat_session_messages(session_id, limit=MAKS_HISTORIK)
+
+
+def foreslaa_naeste(session_id: str) -> str:
+    """Et bud på brugerens næste besked, eller `""`.
+
+    Kaster aldrig — samme regel som `foreslaa`: komponisten skal virke uanset
+    hvad der sker med modellen.
+    """
+    sid = (session_id or "").strip()
+    if not sid:
+        return ""
+    try:
+        raekker = _samtale(sid)
+    except Exception:
+        logger.debug("composer_suggest: kunne ikke læse samtalen", exc_info=True)
+        return ""
+    beskeder = [
+        b for b in raekker
+        if str(b.get("role") or "") in ("user", "assistant")
+        and str(b.get("content") or "").strip()
+    ]
+    if not beskeder:
+        return ""
+    # Står der en ubesvaret besked fra ham, er turen i gang. At foreslå en ny
+    # besked dér er at tale i munden på et svar der er på vej.
+    if str(beskeder[-1].get("role") or "") != "assistant":
+        return ""
+
+    linjer = [
+        f"{'Bruger' if b['role'] == 'user' else 'Assistent'}: "
+        f"{' '.join(str(b.get('content') or '').split())[:MAKS_BESKED_TEGN]}"
+        for b in beskeder
+    ]
+    try:
+        raa = _kald_model(_PROMPT_NAESTE + "\n".join(linjer))
+    except Exception:
+        logger.debug("composer_suggest: næste-kald fejlede", exc_info=True)
+        return ""
+
+    ud = _ryd(raa)
+    for praefiks in _ROLLE_PRAEFIKS:
+        if ud.lower().startswith(praefiks):
+            ud = ud[len(praefiks):].strip()
+            break
+    # Ingen hæftning med mellemrum her: det er en hel besked, ikke en
+    # fortsættelse af noget.
+    return ud.strip()

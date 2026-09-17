@@ -1,98 +1,56 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import {
-  MAKS_UDKAST, MIN_TEGN, boerSpoerge, hentForslag, saetSammen,
-} from './forslag'
+import { hentNaesteForslag } from './forslag'
 import type { ApiConfig } from './api'
 
-const CFG: ApiConfig = { apiBaseUrl: 'http://x', authToken: 'tok' }
+const cfg: ApiConfig = { apiBaseUrl: 'http://x', authToken: 't' }
 
-afterEach(() => { vi.unstubAllGlobals() })
+afterEach(() => { vi.restoreAllMocks() })
 
-describe('boerSpoerge', () => {
-  it('afviser et udkast under minimumslængden', () => {
-    expect(boerSpoerge('kort')).toBe(false)
-    expect(boerSpoerge('a'.repeat(MIN_TEGN - 1))).toBe(false)
-  })
+function svar(krop: unknown, ok = true) {
+  return vi.fn().mockResolvedValue({ ok, json: async () => krop } as unknown as Response)
+}
 
-  it('spørger ved præcis minimumslængden', () => {
-    expect(boerSpoerge('a'.repeat(MIN_TEGN))).toBe(true)
-  })
-
-  it('afviser når sætningen er færdig — at foreslå videre er at tale i munden', () => {
-    expect(boerSpoerge('det her er færdigt.')).toBe(false)
-    expect(boerSpoerge('er det her færdigt?')).toBe(false)
-    expect(boerSpoerge('her er noget:')).toBe(false)
-    expect(boerSpoerge('færdig.  ')).toBe(false)  // luft efter tegnet tæller ikke
-  })
-
-  it('afviser et helt afsnit — dér ved man hvad man vil', () => {
-    expect(boerSpoerge('a'.repeat(MAKS_UDKAST + 1))).toBe(false)
-  })
-
-  it('spørger på en åben sætning midt i skrivningen', () => {
-    expect(boerSpoerge('hvordan virker den')).toBe(true)
-  })
-
-  it('tåler tom og manglende tekst', () => {
-    expect(boerSpoerge('')).toBe(false)
-    expect(boerSpoerge('   ')).toBe(false)
-  })
-})
-
-describe('saetSammen', () => {
-  it('hæfter forslaget på udkastet', () => {
-    expect(saetSammen('hvordan virker', ' den her')).toBe('hvordan virker den her')
-  })
-
-  it('giver ikke to mellemrum når udkastet selv slutter med et', () => {
-    expect(saetSammen('hvordan virker ', ' den her')).toBe('hvordan virker den her')
-  })
-
-  it('returnerer udkastet uændret ved et tomt forslag', () => {
-    expect(saetSammen('hvordan virker', '')).toBe('hvordan virker')
-  })
-})
-
-describe('hentForslag', () => {
-  it('returnerer forslaget fra serveren', async () => {
-    const f = vi.fn().mockResolvedValue({
-      ok: true, json: async () => ({ forslag: ' den her' }),
-    })
+describe('hentNaesteForslag', () => {
+  it('sender samtalen — ikke et udkast — og bærer forslaget igennem', async () => {
+    const f = svar({ forslag: 'deploy det til ct105' })
     vi.stubGlobal('fetch', f)
-    expect(await hentForslag(CFG, 'hvordan virker')).toBe(' den her')
-    expect(f.mock.calls[0]?.[0]).toBe('http://x/composer/suggest')
+    expect(await hentNaesteForslag(cfg, 'sess-1')).toBe('deploy det til ct105')
+    const krop = JSON.parse((f.mock.calls[0][1] as RequestInit).body as string)
+    expect(krop).toEqual({ udkast: '', session_id: 'sess-1' })
   })
 
-  it('spørger slet ikke når udkastet ikke indbyder til det', async () => {
-    const f = vi.fn()
+  it('spørger slet ikke uden en session — der er intet at bygge forslaget på', async () => {
+    const f = svar({ forslag: 'noget' })
     vi.stubGlobal('fetch', f)
-    expect(await hentForslag(CFG, 'kort')).toBe('')
+    expect(await hentNaesteForslag(cfg, '')).toBe('')
     expect(f).not.toHaveBeenCalled()
   })
 
+  it('trimmer — forslaget skal kunne stå hvor pladsholderen står', async () => {
+    vi.stubGlobal('fetch', svar({ forslag: '  kør testene igen  ' }))
+    expect(await hentNaesteForslag(cfg, 's1')).toBe('kør testene igen')
+  })
+
   it('giver tom streng ved en fejlkode — komponisten skal kunne skrives i', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, json: async () => ({}) }))
-    expect(await hentForslag(CFG, 'hvordan virker')).toBe('')
+    vi.stubGlobal('fetch', svar({ forslag: 'x' }, false))
+    expect(await hentNaesteForslag(cfg, 's1')).toBe('')
   })
 
   it('giver tom streng når kaldet fejler', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('nede')))
-    expect(await hentForslag(CFG, 'hvordan virker')).toBe('')
+    expect(await hentNaesteForslag(cfg, 's1')).toBe('')
   })
 
   it('giver tom streng hvis serveren svarer med noget andet end en streng', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true, json: async () => ({ forslag: 42 }),
-    }))
-    expect(await hentForslag(CFG, 'hvordan virker')).toBe('')
+    vi.stubGlobal('fetch', svar({ forslag: { nej: 1 } }))
+    expect(await hentNaesteForslag(cfg, 's1')).toBe('')
   })
 
-  it('sender udkastet med — og uden Authorization når der ikke er noget token', async () => {
-    const f = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ forslag: '' }) })
+  it('udelader Authorization når der ikke er noget token', async () => {
+    const f = svar({ forslag: '' })
     vi.stubGlobal('fetch', f)
-    await hentForslag({ apiBaseUrl: 'http://x', authToken: null }, 'hvordan virker')
-    const init = (f.mock.calls[0]?.[1] ?? {}) as RequestInit
-    expect(JSON.parse(String(init.body))).toEqual({ udkast: 'hvordan virker' })
-    expect((init.headers as Record<string, string>).Authorization).toBeUndefined()
+    await hentNaesteForslag({ apiBaseUrl: 'http://x', authToken: '' }, 's1')
+    const h = (f.mock.calls[0][1] as RequestInit).headers as Record<string, string>
+    expect(h.Authorization).toBeUndefined()
   })
 })

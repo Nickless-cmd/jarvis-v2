@@ -729,10 +729,12 @@ _Forslag i komponisten — hvad der kunne skrives videre, mens man skriver._
 |---|---|---|---|---|
 | function | `_base_url` | `()` | GPU-ollamaen. Aldrig en betalt vært — se modulets docstring. | [src](../../../core/services/composer_suggest.py#L60) |
 | function | `_model` | `()` | — | [src](../../../core/services/composer_suggest.py#L72) |
-| function | `_kald_model` | `(udkast)` | Ét kald til den lokale model. Kaster ved fejl; `foreslaa` fanger. | [src](../../../core/services/composer_suggest.py#L91) |
+| function | `_kald_model` | `(prompt)` | Ét kald til den lokale model. Kaster ved fejl; kalderen fanger. | [src](../../../core/services/composer_suggest.py#L91) |
 | function | `_afkort` | `(udkast, svar)` | Fjern den del af svaret der gentager udkastet. | [src](../../../core/services/composer_suggest.py#L110) |
 | function | `_ryd` | `(s)` | Én linje, uden omsluttende anførselstegn, afkortet ved et ordskel. | [src](../../../core/services/composer_suggest.py#L129) |
 | function | `foreslaa` | `(udkast)` | Fortsættelsen af `udkast`, eller `""`. | [src](../../../core/services/composer_suggest.py#L145) |
+| function | `_samtale` | `(session_id)` | De seneste beskeder. Egen funktion, så testene kan sætte dem. | [src](../../../core/services/composer_suggest.py#L205) |
+| function | `foreslaa_naeste` | `(session_id)` | Et bud på brugerens næste besked, eller `""`. | [src](../../../core/services/composer_suggest.py#L211) |
 
 ## `core/services/composite_tools.py`
 _Composite tools — safe self-extension through composition only._

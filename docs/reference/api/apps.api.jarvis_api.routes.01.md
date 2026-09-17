@@ -571,7 +571,7 @@ _`/composer/suggest` — hvad der kunne skrives videre i komponisten._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | class | `Udkast` | `` | — | [src](../../../apps/api/jarvis_api/routes/composer_suggest_routes.py#L34) |
-| function | `suggest` | `(krop)` | Fortsættelsen af et udkast, eller tom streng. Fejler aldrig. | [src](../../../apps/api/jarvis_api/routes/composer_suggest_routes.py#L39) |
+| function | `suggest` | `(krop)` | Et forslag, eller tom streng. Fejler aldrig. | [src](../../../apps/api/jarvis_api/routes/composer_suggest_routes.py#L42) |
 
 ## `apps/api/jarvis_api/routes/connectors.py`
 _Connectors-API til jarvis-desk Marketplace (16. jun 2026)._

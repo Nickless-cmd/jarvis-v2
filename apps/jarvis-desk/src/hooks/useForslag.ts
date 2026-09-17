@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react'
 import type { ApiConfig } from '../lib/api'
-import { PAUSE_MS, boerSpoerge, hentForslag } from '../lib/forslag'
+import { hentNaesteForslag } from '../lib/forslag'
 
 /**
- * Auto-forslag til komponisten — hvad der kunne skrives videre.
+ * Auto-forslag til komponisten — et bud på den NÆSTE besked.
  *
- * Henter fra `/composer/suggest` (lokal ollama; udkastet forlader aldrig
- * maskinen) efter en pause i tastningen, og kaster svaret væk hvis brugeren
- * nåede at skrive videre imens.
+ * Forslaget bygger på samtalen (Jarvis' sidste svar), ikke på hvad der bliver
+ * tastet. Det er hele pointen: et forslag der fyrer mens man skriver, lander
+ * midt i ens egen sætning. Bjørn 17/9-2026: «det kommer dumpende mens jeg
+ * skriver, det er virkelig træls». Så forslaget hentes når feltet er TOMT og
+ * står dér hvor pladsholderen står, indtil Tab tager imod.
  *
  * ## Hvorfor de primitive deps
  *
@@ -16,35 +18,41 @@ import { PAUSE_MS, boerSpoerge, hentForslag } from '../lib/forslag'
  * et kald pr. render. Under polling er det ~2×/sek. Det er samme fælde
  * Composerens model-context-effekt blev bidt af 16/6-2026.
  *
- * `aktiv` slukker for hentningen — fx mens et svar streamer, hvor forslaget
- * ville konkurrere med det synlige svar om den samme GPU.
+ * ## Hvorfor en pause selv uden tastning
+ *
+ * `aktiv` bliver sand i samme øjeblik et svar er færdigt — dér er GPU'en stadig
+ * varm fra turen. Pausen lader den komme fri, og den koster intet: feltet er
+ * tomt, så der er ingen der venter på forslaget.
  */
+export const HENT_PAUSE_MS = 700
+
 export function useForslag(
   config: ApiConfig | undefined,
-  tekst: string,
+  sessionId: string | null | undefined,
   aktiv: boolean,
 ): string {
   const [forslag, setForslag] = useState('')
   const base = config?.apiBaseUrl
   const token = config?.authToken ?? null
+  const sid = sessionId ?? ''
 
   useEffect(() => {
-    // Ryd straks: et forslag der blev hentet til en kortere tekst er ikke
-    // længere en gyldig fortsættelse af den der står nu.
+    // Ryd straks: et forslag hentet til en anden samtale — eller før det
+    // seneste svar — er ikke længere et bud på hvad der kunne skrives nu.
     setForslag('')
-    if (!aktiv || !base || !boerSpoerge(tekst)) return
+    if (!aktiv || !base || !sid) return
 
     const ctrl = new AbortController()
     const t = window.setTimeout(() => {
-      void hentForslag({ apiBaseUrl: base, authToken: token }, tekst, ctrl.signal)
+      void hentNaesteForslag({ apiBaseUrl: base, authToken: token }, sid, ctrl.signal)
         .then((f) => { if (!ctrl.signal.aborted) setForslag(f) })
-    }, PAUSE_MS)
+    }, HENT_PAUSE_MS)
 
     return () => {
       window.clearTimeout(t)
       ctrl.abort()
     }
-  }, [base, token, tekst, aktiv])
+  }, [base, token, sid, aktiv])
 
   return forslag
 }

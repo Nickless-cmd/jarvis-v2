@@ -515,6 +515,7 @@ export function ChatView({
         thinking="think"
         config={settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined}
         getSessionId={ensureSessionId}
+        sessionId={sessionId}
         showPermissions={false}
         contextTokens={contextTokens}
         overheadTokens={overheadTokens}

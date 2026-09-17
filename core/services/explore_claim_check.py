@@ -303,6 +303,41 @@ def _findes(sti: str, rod: Path) -> bool:
     return (rod / sti).exists()
 
 
+#: Hvor mange linjer et citat må være forskudt og stadig tælle som bekræftet.
+#:
+#: Jarvis målte 17/9-2026: et scout-svar med fem ægte referencer blev kasseret,
+#: fordi to af dem stod ÉN og TO linjer ved siden af. Værnet dømte binært og
+#: kunne ikke skelne «fabrikeret» fra «tæt på» — og et brugbart svar gik tabt.
+#: Formålet er uændret: teksten SKAL findes i filen. Et forskudt linjenummer er
+#: en unøjagtighed der noteres, ikke en anklage om opdigt.
+TOLERANCE_LINJER = 3
+
+
+def _naermeste_traef(linjer: list[str], nr: int, kandidater: list[str]) -> tuple[int, str] | None:
+    """(afstand, kerne) for det træf der ligger tættest på `nr`, eller None."""
+    bedst: tuple[int, str] | None = None
+    for k in kandidater:
+        for i, linje in enumerate(linjer, start=1):
+            if k in linje:
+                afstand = abs(i - nr)
+                if bedst is None or afstand < bedst[0]:
+                    bedst = (afstand, k)
+                if afstand == 0:
+                    return bedst
+    return bedst
+
+
+def _bogfoer_traef(ud: dict, fejl: list[str], *, sti: str, nr: int, kerne: str, afstand: int) -> None:
+    """Et træf tæller som belæg; ligger det for langt væk, er det en fejl."""
+    if afstand > TOLERANCE_LINJER:
+        fejl.append(f"{sti}:{nr}: {kerne!r} står {afstand} linjer derfra, ikke på {nr}")
+        return
+    ud["indhold_bekraeftet"] = int(ud.get("indhold_bekraeftet") or 0) + 1
+    if afstand:
+        ud["naer_traef"] = int(ud.get("naer_traef") or 0) + 1
+        ud.setdefault("forskudte", []).append(f"{sti}:{nr} (±{afstand})")
+
+
 def tjek_paastande(svar: str, *, rod: Path | None = None,
                    findes_fn=None, linje_fn=None) -> dict[str, object]:
     """Slå svarets efterprøvelige påstande op. Kaster aldrig.
@@ -456,21 +491,26 @@ def tjek_paastande(svar: str, *, rod: Path | None = None,
                 _kand = _laesninger(indhold)
                 if not _kand:
                     continue
-                passer, kerne = None, _kand[0]
+                passer, kerne, afstand = None, _kand[0], None
                 for k in _kand:
                     try:
                         svar_k = linje_fn(sti, nr, k)
                     except Exception:
                         svar_k = None
                     if svar_k is True:
-                        passer, kerne = True, k
+                        passer, kerne, afstand = True, k, 0
                         break
+                    if isinstance(svar_k, int) and not isinstance(svar_k, bool):
+                        # Fundet, men på en anden linje. Nærmeste træf vinder.
+                        if afstand is None or svar_k < afstand:
+                            passer, kerne, afstand = True, k, svar_k
+                        continue
                     if svar_k is False and passer is None:
                         passer, kerne = False, k
                 if passer is False:
-                    fejl.append(f"{sti}:{nr}: linjen indeholder ikke {kerne!r}")
+                    fejl.append(f"{sti}:{nr}: fragmentet {kerne!r} findes ikke i filen")
                 elif passer is True:
-                    ud["indhold_bekraeftet"] = int(ud.get("indhold_bekraeftet") or 0) + 1
+                    _bogfoer_traef(ud, fejl, sti=sti, nr=nr, kerne=kerne, afstand=afstand or 0)
                 continue
             try:
                 linjer = (r / sti if not Path(sti).is_absolute() else Path(sti)).read_text(
@@ -489,12 +529,12 @@ def tjek_paastande(svar: str, *, rod: Path | None = None,
             _kand = _laesninger(indhold)
             if not _kand:
                 continue
-            _linje = linjer[nr - 1]
-            _holdt = next((k for k in _kand if k in _linje), None)
-            if _holdt is None:
-                fejl.append(f"{sti}:{nr}: linjen indeholder ikke {_kand[0]!r}")
+            _traef = _naermeste_traef(linjer, nr, _kand)
+            if _traef is None:
+                fejl.append(f"{sti}:{nr}: fragmentet {_kand[0]!r} findes ikke i filen")
             else:
-                ud["indhold_bekraeftet"] = int(ud.get("indhold_bekraeftet") or 0) + 1
+                _afstand, _kerne = _traef
+                _bogfoer_traef(ud, fejl, sti=sti, nr=nr, kerne=_kerne, afstand=_afstand)
 
         for m in _STI.finditer(t):
             sti = m.group(1)

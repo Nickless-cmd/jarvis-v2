@@ -145,12 +145,32 @@ def test_et_citat_der_PASSER_holder():
     assert d["holder"] is True and d["kontrolleret"] == 1
 
 
-def test_et_citat_paa_den_FORKERTE_linje_falder():
+def test_et_citat_der_slet_ikke_findes_falder():
     d = tjek_paastande("se /home/bs/p/main.ts:42:const foo",
                        findes_fn=lambda s: True,
                        linje_fn=lambda s, n, f: False)
     assert d["holder"] is False
-    assert "indeholder ikke" in d["fejl"][0]
+    assert "findes ikke i filen" in d["fejl"][0]
+
+
+def test_et_citat_EN_linje_ved_siden_af_taeller_men_noteres():
+    """17/9-2026: fem ægte referencer blev kasseret fordi to stod én og to
+    linjer ved siden af. Teksten SKAL findes; et forskudt nummer er en
+    unøjagtighed, ikke en anklage om opdigt."""
+    d = tjek_paastande("se /home/bs/p/main.ts:42:const foo",
+                       findes_fn=lambda s: True,
+                       linje_fn=lambda s, n, f: 2)
+    assert d["holder"] is True and d["fejl"] == []
+    assert d["indhold_bekraeftet"] == 1 and d["naer_traef"] == 1
+    assert d["forskudte"] == ["/home/bs/p/main.ts:42 (±2)"]
+
+
+def test_et_citat_LANGT_derfra_er_stadig_en_fejl():
+    d = tjek_paastande("se /home/bs/p/main.ts:42:const foo",
+                       findes_fn=lambda s: True,
+                       linje_fn=lambda s, n, f: 400)
+    assert d["holder"] is False
+    assert "står 400 linjer derfra" in d["fejl"][0]
 
 
 def test_HELE_citatet_proeves_foerst():
@@ -266,8 +286,14 @@ def test_bro_kontrol_domsformer():
     for svar, ventet, hvorfor in [
         ({"status": "error"}, None, "bro-fejl maa ikke doemme"),
         ({"status": "ok", "result": []}, False, "intet match = opdigtet"),
-        ({"status": "ok", "result": [{"line": 9, "text": "x"}]}, False,
-         "forkert linjenummer"),
+        # 17/9-2026: broen svarer nu med AFSTANDEN, så kalderen kan skelne
+        # «to linjer ved siden af» fra «opdigtet».
+        ({"status": "ok", "result": [{"line": 9, "text": "x"}]}, 33,
+         "forkert linjenummer → afstand"),
+        ({"status": "ok", "result": [{"line": 44, "text": "x"}]}, 2,
+         "to linjer ved siden af"),
+        ({"status": "ok", "result": [{"text": "x"}]}, None,
+         "traef uden linjenummer kan ikke afgoeres"),
         ({"status": "ok", "result": [{"line": 42, "text": "x"}]}, True,
          "rigtig linje"),
         ({"status": "ok", "result": "ikke-en-liste"}, None, "ukendt form"),
@@ -814,3 +840,14 @@ def test_markdown_escapet_backtick_er_ikke_opdigt(tmp_path):
         rod=tmp_path)
     assert d["fejl"] == [], d["fejl"]
     assert int(d.get("indhold_bekraeftet") or 0) >= 1, d
+
+
+def test_lokal_fil_taeller_et_naert_traef_og_afviser_et_fjernt(tmp_path):
+    """Samme regel lokalt som over broen — ellers afhænger dommen af HVOR
+    filen ligger."""
+    f = tmp_path / "x.py"
+    f.write_text("\n".join(["a"] * 20 + ["def vaernet():"] + ["b"] * 200), encoding="utf-8")
+    naer = tjek_paastande("se x.py:19:def vaernet():", rod=tmp_path)
+    assert naer["fejl"] == [] and naer["indhold_bekraeftet"] == 1 and naer["naer_traef"] == 1
+    fjern = tjek_paastande("se x.py:150:def vaernet():", rod=tmp_path)
+    assert fjern["holder"] is False and "linjer derfra" in fjern["fejl"][0]

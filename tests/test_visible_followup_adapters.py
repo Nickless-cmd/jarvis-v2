@@ -1228,3 +1228,44 @@ def test_allerede_slaaet_fra_thinking_roeres_ikke():
     p = _payload(tool_choice="none", extra_body={"thinking": {"type": "disabled"}})
     assert p["thinking"] == {"type": "disabled"}
     assert p["tool_choice"] == "none"
+
+
+# ── ollama cloud-modelnavne (17/9-2026) ──────────────────────────────────────
+
+
+def test_ollama_followup_oploeser_bart_cloud_modelnavn(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Jarvis målte 17/9-2026: followup-runde 1 døde på «model 'glm-5.2' not
+    found». Oversættelsen fandtes, men kun på den synlige stream-vej."""
+    from core.runtime import provider_router
+    from core.services import ollama_model_names
+
+    monkeypatch.setattr(provider_router, "resolve_provider_router_target",
+                        lambda *, lane: {"base_url": "http://ollama.test:11434"})
+    monkeypatch.setattr(ollama_model_names, "served_tags", lambda: {"glm-5.2:cloud", "qwen3:8b"})
+    linjer = [(json.dumps({"done": True}) + "\n").encode("utf-8")]
+    with _patched_urlopen(monkeypatch, linjer) as captured:
+        list(vf.stream_visible_followup(
+            provider="ollama", model="glm-5.2",
+            base_messages=[{"role": "user", "content": "hi"}],
+            exchanges=[vf.ToolExchange(text="", tool_calls=[{"id": "x", "function": {"name": "f"}}],
+                                       results=[vf.ToolResult(tool_call_id="x", tool_name="f", content="ok")])],
+        ))
+    assert captured["body"]["model"] == "glm-5.2:cloud"
+
+
+def test_et_navn_ollama_kender_sendes_uaendret(monkeypatch: pytest.MonkeyPatch) -> None:
+    from core.runtime import provider_router
+    from core.services import ollama_model_names
+
+    monkeypatch.setattr(provider_router, "resolve_provider_router_target",
+                        lambda *, lane: {"base_url": "http://ollama.test:11434"})
+    monkeypatch.setattr(ollama_model_names, "served_tags", lambda: {"qwen3:8b"})
+    linjer = [(json.dumps({"done": True}) + "\n").encode("utf-8")]
+    with _patched_urlopen(monkeypatch, linjer) as captured:
+        list(vf.stream_visible_followup(
+            provider="ollama", model="qwen3:8b",
+            base_messages=[{"role": "user", "content": "hi"}],
+            exchanges=[vf.ToolExchange(text="", tool_calls=[{"id": "x", "function": {"name": "f"}}],
+                                       results=[vf.ToolResult(tool_call_id="x", tool_name="f", content="ok")])],
+        ))
+    assert captured["body"]["model"] == "qwen3:8b"

@@ -1,4 +1,5 @@
 import { useEffect, useReducer, useRef, useState } from 'react'
+import { useFastholdBund } from '../lib/useFastholdBund'
 import { ArrowDown, PanelRight, Loader2, SquareStack, FileDiff } from 'lucide-react'
 import { JobsPanel } from '../components/shell/JobsPanel'
 import { ChangesPanel } from '../components/shell/ChangesPanel'
@@ -305,6 +306,16 @@ export function ChatView({
     const el = transcriptRef.current
     if (el && atBottom) el.scrollTop = el.scrollHeight
   }, [stream.blocks, followState.blocks, atBottom])
+
+  // Mens der arbejdes: hold ruden i bund uanset hvor indholdet kommer fra.
+  // Effekterne ovenfor kender kun stream-blokke, follow-blokke og ANTALLET af
+  // beskeder; et svar der lander som en erstattet besked (samme antal) eller
+  // ved refresh efter et autonomt run voksede indholdet usynligt for dem.
+  useFastholdBund(
+    transcriptRef,
+    stream.status === 'working' || bgActive || followState.status === 'working',
+    atBottom,
+  )
 
   // Re-pin til bund når transcript-containerens HØJDE ændrer sig (Bjørn 29. jun):
   // takeover-banneret ("anden enhed følger med") + liveness-indikatoren sidder UDENFOR

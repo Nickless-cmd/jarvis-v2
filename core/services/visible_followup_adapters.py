@@ -259,6 +259,18 @@ class OllamaFollowupAdapter:
             _options["temperature"] = float(temperature)
         if top_p is not None:
             _options["top_p"] = float(top_p)
+        # Ollamas cloud-modeller hedder `<navn>:cloud`; et bart navn giver 404
+        # «model not found». Oversættelsen fandtes (ollama_model_names), men blev
+        # kun kaldt på den synlige stream-vej — followup-pumpen sendte det bare
+        # navn videre. Jarvis målte det 17/9-2026: autonomous-5365c59c døde på
+        # runde 1 med «model 'glm-5.2' not found», og settlement bogførte den
+        # som completed. Fail-open: kender ollama navnet, eller kan tag-listen
+        # ikke hentes, sendes det uændret.
+        try:
+            from core.services.ollama_model_names import resolve_model_name as _ollama_navn
+            model = _ollama_navn(model)
+        except Exception:
+            _log.debug("ollama-followup: kunne ikke opløse modelnavn %s", model, exc_info=True)
         payload: dict[str, object] = {
             "model": model,
             "messages": messages,

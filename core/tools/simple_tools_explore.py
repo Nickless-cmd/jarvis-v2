@@ -184,9 +184,10 @@ def _bro_kontrol(args: dict):
         koster 0,08 s — det SAMME som eksistens-tjekket — og giver fil,
         linjenummer og tekst i ét kald.
 
-        Findes fragmentet slet ikke, er citatet opdigtet; findes det paa en
-        ANDEN linje, er linjenummeret forkert. Begge dele er en fejl vaerd
-        at sige.
+        Svaret er GRADUERET: `True` = paa den paastaaede linje, `False` =
+        fragmentet findes slet ikke (opdigtet), et TAL = afstanden i linjer til
+        naermeste traef, `None` = broen kunne ikke afgoere det. Kalderen
+        bestemmer hvor stor en afvigelse der maa taelle som bekraeftet.
         """
         try:
             from core.tools.simple_tools_operator import _exec_operator_grep
@@ -205,8 +206,17 @@ def _bro_kontrol(args: dict):
             return None
         if not traef:
             return False                        # fragmentet findes slet ikke
-        return any(int(t.get("line") or 0) == int(nr)
-                   for t in traef if isinstance(t, dict))
+        linjer = [int(t.get("line") or 0) for t in traef if isinstance(t, dict)]
+        if int(nr) in linjer:
+            return True
+        # AFSTANDEN, ikke et bart nej. Jarvis målte 17/9-2026: et svar med fem
+        # ægte referencer blev kasseret fordi to af dem stod ÉN og TO linjer
+        # ved siden af. Værnet kunne ikke skelne «fabrikeret» fra «tæt på», og
+        # kalderen afgør nu hvor stor en afvigelse der må tælle.
+        afstande = [abs(x - int(nr)) for x in linjer if x > 0]
+        if not afstande:
+            return None            # traef uden linjenummer: kan ikke afgoeres
+        return min(afstande)
 
     return findes, linje
 

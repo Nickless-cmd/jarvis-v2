@@ -241,3 +241,35 @@ def test_efterbehandling_koerer_ikke_paa_et_svar_der_naaede_frem():
                                      efterbehandling=lambda r: kaldt.append(r) or "x")
     time.sleep(0.05)
     assert svar["status"] == "completed" and kaldt == []
+
+
+def test_sent_svar_leveres_til_den_samtale_der_sendte_barnet(monkeypatch):
+    """17/9-2026: scoutens svar landede i «auto-autonomous-20260917», mens Bjørn
+    ventede i desk-chatten, fordi leveringen spurgte efter ejerens app-session.
+    Barnet bærer selv sin herkomst — den skal bruges."""
+    import json
+    import core.services.agent_message_receipt as mr
+    monkeypatch.setattr("core.runtime.db_agent_runtime.get_agent_registry_entry",
+                        lambda aid: {"agent_id": aid, "context_json": json.dumps(
+                            {"parent_session_id": "chat-desk-1", "session_id": "chat-desk-1"})})
+    monkeypatch.setattr("core.identity.owner_resolver.resolve_owner_app_session",
+                        lambda: "auto-autonomous-20260917")
+    monkeypatch.setattr("core.services.wakeup_dispatcher._active_turn_blocks", lambda s: False)
+    startet = {}
+    monkeypatch.setattr("core.services.autonomous_stream_run.start_autonomous_stream_run",
+                        lambda besked, session_id="", origin="": startet.update(session=session_id))
+    mr._book_completion_wakeup("agent-x", {"status": "completed", "messages": []})
+    assert startet["session"] == "chat-desk-1"
+
+
+def test_barn_uden_herkomst_falder_tilbage_paa_ejerens_session(monkeypatch):
+    import core.services.agent_message_receipt as mr
+    monkeypatch.setattr("core.runtime.db_agent_runtime.get_agent_registry_entry",
+                        lambda aid: {"agent_id": aid, "context_json": "{}"})
+    monkeypatch.setattr("core.identity.owner_resolver.resolve_owner_app_session", lambda: "ejer-app")
+    monkeypatch.setattr("core.services.wakeup_dispatcher._active_turn_blocks", lambda s: False)
+    startet = {}
+    monkeypatch.setattr("core.services.autonomous_stream_run.start_autonomous_stream_run",
+                        lambda besked, session_id="", origin="": startet.update(session=session_id))
+    mr._book_completion_wakeup("agent-y", {"status": "completed", "messages": []})
+    assert startet["session"] == "ejer-app"

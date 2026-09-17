@@ -62,6 +62,21 @@ def _completion_besked(agent_id: str, resultat: dict[str, Any],
     )
 
 
+def _foraelder_session(agent_id: str) -> str:
+    """Den samtale der startede barnet, fra barnets egen kontekst — eller ""."""
+    try:
+        import json
+        from core.runtime.db_agent_runtime import get_agent_registry_entry
+        agent = get_agent_registry_entry(agent_id) or {}
+        ctx = agent.get("context_json") or agent.get("context") or {}
+        if isinstance(ctx, str):
+            ctx = json.loads(ctx or "{}")
+        return str((ctx or {}).get("parent_session_id") or "").strip()
+    except Exception:
+        logger.debug("kunne ikke læse forælder-session for %s", agent_id, exc_info=True)
+        return ""
+
+
 def _book_completion_wakeup(agent_id: str, resultat: dict[str, Any],
                             vurdering: str = "") -> None:
     """LEVER baggrundsbarnets sene svar med det samme — uden 60-sekunders-gulvet.
@@ -84,11 +99,18 @@ def _book_completion_wakeup(agent_id: str, resultat: dict[str, Any],
         from core.services.wakeup_dispatcher import _active_turn_blocks
         from core.identity.owner_resolver import resolve_owner_app_session
 
-        session = ""
-        try:
-            session = str(resolve_owner_app_session() or "")
-        except Exception:
-            session = ""
+        # Svaret går tilbage til den samtale der SENDTE barnet afsted. Før
+        # spurgte vi `resolve_owner_app_session()`, og 17/9-2026 landede en
+        # scouts svar i «auto-autonomous-20260917» mens Bjørn ventede i
+        # desk-chatten — for ham så det ud som om Jarvis aldrig gik videre.
+        # Barnet bærer sin herkomst (`parent_session_id`, Fase 5); ejerens
+        # app-session er kun et faldback for et barn uden.
+        session = _foraelder_session(agent_id)
+        if not session:
+            try:
+                session = str(resolve_owner_app_session() or "")
+            except Exception:
+                session = ""
 
         if _active_turn_blocks(session):
             # Midt i en tur: beskeden lander i sessionen nu. `urgent=True`

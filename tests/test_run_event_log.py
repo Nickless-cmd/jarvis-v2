@@ -251,3 +251,49 @@ def test_gammel_read_er_uaendret_for_normale_runs():
     rel.append("r-compat", "b")
     assert rel.read("r-compat", 0) == (["a", "b"], False)
     assert rel.read("r-compat", 1) == (["b"], False)
+
+
+# ── Aliaser (17/9-2026) ──────────────────────────────────────────────────
+# Loggen oprettes under claim_or_create's id; runnet sender sit EGET id til
+# klienten. Genoptagelse med det id gav 404 midt i et levende run.
+def test_runnets_eget_id_finder_loggen():
+    log_id, _ = rel.claim_or_create("s-alias")
+    rel.append(log_id, "f0")
+    rel.append(log_id, "f1")
+    rel.alias("visible-eget", log_id)
+    assert rel.session_for_run("visible-eget") == "s-alias"
+    frames, done, idx = rel.read_from("visible-eget", 1)
+    assert frames == ["f1"] and done is False and idx == 2
+    rel.mark_done("visible-eget")
+    assert rel.read_from(log_id, 2)[1] is True
+
+
+def test_run_id_fra_den_aegte_run_ramme():
+    from apps.api.jarvis_api.sse_v2_events import SystemEvent
+    ramme = SystemEvent(kind="run", payload={"run_id": "visible-936e", "status": "running"}).to_sse_line()
+    assert rel.run_id_fra_ramme(ramme) == "visible-936e"
+    andet = SystemEvent(kind="working_step", payload={"run_id": "visible-x"}).to_sse_line()
+    assert rel.run_id_fra_ramme(andet) is None
+
+
+def test_ukendt_id_er_stadig_ukendt():
+    assert rel.session_for_run("visible-findes-ikke") is None
+
+
+def test_detached_run_registrerer_aliaset():
+    import inspect
+    from core.services.visible_runs_sections import detached_run
+    kilde = inspect.getsource(detached_run)
+    assert "rel.run_id_fra_ramme(frame)" in kilde
+    assert "rel.alias(eget, run_id)" in kilde
+
+
+def test_subscribe_med_runnets_eget_id_svarer_ikke_404():
+    import asyncio
+    from apps.api.jarvis_api.routes.chat import chat_run_subscribe
+    log_id, _ = rel.claim_or_create("s-sub-alias")
+    rel.append(log_id, "event: x\ndata: {}\n\n")
+    rel.alias("visible-klientens", log_id)
+    rel.mark_done(log_id)
+    svar = asyncio.run(chat_run_subscribe("visible-klientens", from_idx=0))
+    assert svar.status_code == 200

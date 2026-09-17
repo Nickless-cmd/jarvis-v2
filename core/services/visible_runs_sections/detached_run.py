@@ -88,12 +88,20 @@ def start_user_run_detached(
                 session_id=sid,
                 ping_interval_s=5.0,
             )
+            aliaseret = False
             try:
                 async for frame in gen:
                     try:
                         rel.append(run_id, frame)
                     except Exception:
                         pass
+                    # Runnets eget id kommer i system_event(kind=run) — det er
+                    # det id klienten genoptager med. Se run_event_log._ALIASER.
+                    if not aliaseret and '"run"' in frame and "system_event" in frame:
+                        eget = rel.run_id_fra_ramme(frame)
+                        if eget:
+                            rel.alias(eget, run_id)
+                            aliaseret = True
             finally:
                 try:
                     await gen.aclose()  # -> _stream_visible_run finally -> unregister

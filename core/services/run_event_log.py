@@ -98,13 +98,58 @@ def create(run_id: str, session_id: str) -> None:
         }
 
 
+# ── Aliaser (17/9-2026) ────────────────────────────────────────────────────
+# Loggen oprettes under det id `claim_or_create` finder paa, men selve runnet
+# (start_visible_run) laver sit EGET id og sender DET til klienten i
+# system_event(kind=run). Klienterne bruger det til stop og til genoptagelse.
+# Stop slaar runnet op og virker; genoptagelse slog LOGGEN op og fik 404 —
+# «run not found» midt i et run der koerte 32 s endnu (maalt 17/9 06:37).
+# Appen tolker 404 som «runnet blev faerdigt mens du var vaek» og giver op.
+_ALIASER: dict[str, str] = {}
+
+
+def _hent(run_id: str) -> dict | None:
+    """Loggens tilstand for et id — log-id'et selv eller et alias. Kaldes UNDER _lock."""
+    rid = (run_id or "").strip()
+    st = _RUNS.get(rid)
+    if st is None and rid in _ALIASER:
+        st = _RUNS.get(_ALIASER[rid])
+    return st
+
+
+def alias(extern_id: str, log_id: str) -> None:
+    """Lad `extern_id` (runnets eget id) pege paa loggen `log_id`."""
+    ext = (extern_id or "").strip()
+    lid = (log_id or "").strip()
+    if not ext or not lid or ext == lid:
+        return
+    with _lock:
+        if lid in _RUNS:
+            _ALIASER[ext] = lid
+
+
+def run_id_fra_ramme(frame: str) -> str | None:
+    """run_id fra en system_event(kind=run)-ramme, ellers None. Kaster aldrig."""
+    try:
+        import json as _json
+        for linje in frame.splitlines():
+            if linje.startswith("data:"):
+                d = _json.loads(linje[5:].strip())
+                if d.get("type") == "system_event" and d.get("kind") == "run":
+                    rid = (d.get("payload") or {}).get("run_id")
+                    return str(rid) if rid else None
+    except Exception:
+        return None
+    return None
+
+
 def append(run_id: str, frame: str) -> None:
     rid = (run_id or "").strip()
     if not rid or not frame:
         return
     cap_just_hit = False
     with _lock:
-        st = _RUNS.get(rid)
+        st = _hent(rid)
         if st is None:
             return
         st["last_append_at"] = time.monotonic()
@@ -155,14 +200,14 @@ def touch_liveness(run_id: str) -> None:
     på det samme blokerede event-loop sultes ligesom ping-loopet, og da er
     _LIVE_IDLE_S-gulvet det reelle værn."""
     with _lock:
-        st = _RUNS.get((run_id or "").strip())
+        st = _hent(run_id)
         if st is not None and not st["done"]:
             st["last_append_at"] = time.monotonic()
 
 
 def mark_done(run_id: str) -> None:
     with _lock:
-        st = _RUNS.get((run_id or "").strip())
+        st = _hent(run_id)
         if st is not None:
             st["done"] = True
 
@@ -203,7 +248,7 @@ def read(run_id: str, from_idx: int) -> tuple[list[str], bool]:
     identisk med før. En efternøler under base får vinduet fra base — brug
     read_from() i stream-loops for korrekt indeks-bogføring + gap-markør."""
     with _lock:
-        st = _RUNS.get((run_id or "").strip())
+        st = _hent(run_id)
         if st is None:
             return ([], False)
         start = max(int(from_idx) - int(st.get("base", 0)), 0)
@@ -216,7 +261,7 @@ def read_from(run_id: str, from_idx: int) -> tuple[list[str], bool, int]:
     vinduet (efternøler/re-subscriber), prependes GAP_FRAME så klienten ved at der
     mangler et stykke — i stedet for stille duplikater eller tavshed."""
     with _lock:
-        st = _RUNS.get((run_id or "").strip())
+        st = _hent(run_id)
         if st is None:
             return ([], False, int(from_idx))
         base = int(st.get("base", 0))
@@ -242,7 +287,7 @@ def active_run_for_session(session_id: str) -> str | None:
 
 def is_live(run_id: str) -> bool:
     with _lock:
-        st = _RUNS.get((run_id or "").strip())
+        st = _hent(run_id)
         if not st or st["done"]:
             return False
         now = time.monotonic()
@@ -265,7 +310,7 @@ def live_run_ids() -> list[str]:
 
 def session_for_run(run_id: str) -> str | None:
     with _lock:
-        st = _RUNS.get((run_id or "").strip())
+        st = _hent(run_id)
         return st["session_id"] if st else None
 
 
@@ -284,18 +329,20 @@ def prune() -> None:
                 drop.add(rid)
         for rid in drop:
             _RUNS.pop(rid, None)
+        for ext in [e for e, lid in _ALIASER.items() if lid not in _RUNS]:
+            _ALIASER.pop(ext, None)
 
 
 def subscriber_opened(run_id: str) -> None:
     with _lock:
-        st = _RUNS.get((run_id or "").strip())
+        st = _hent(run_id)
         if st is not None:
             st["subscribers"] = int(st.get("subscribers", 0)) + 1
 
 
 def subscriber_closed(run_id: str) -> None:
     with _lock:
-        st = _RUNS.get((run_id or "").strip())
+        st = _hent(run_id)
         if st is not None:
             st["subscribers"] = max(0, int(st.get("subscribers", 0)) - 1)
 
@@ -303,7 +350,7 @@ def subscriber_closed(run_id: str) -> None:
 def mark_consumed(run_id: str) -> None:
     """En subscriber yieldede message_stop -> nogen saa runnet til ende."""
     with _lock:
-        st = _RUNS.get((run_id or "").strip())
+        st = _hent(run_id)
         if st is not None:
             st["consumed"] = True
 
@@ -311,7 +358,7 @@ def mark_consumed(run_id: str) -> None:
 def was_consumed_or_active(run_id: str) -> bool:
     """True hvis en levende subscriber saa/ser runnet til ende -> undertryk push."""
     with _lock:
-        st = _RUNS.get((run_id or "").strip())
+        st = _hent(run_id)
         if st is None:
             return False
         return bool(st.get("consumed")) or int(st.get("subscribers", 0)) > 0

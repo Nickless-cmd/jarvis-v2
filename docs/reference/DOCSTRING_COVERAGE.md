@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7620/14770 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7623/14773 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 7620/14770 functions/methods documented (51%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 650 | 1187 | 54% |
-| `core.services` | 5062 | 10163 | 49% |
+| `core.services` | 5065 | 10166 | 49% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 109 | 184 | 59% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1501,15 +1501,15 @@ Generated from source. 7620/14770 functions/methods documented (51%). The list b
 - `core/services/run_autonomy_context.py` :: `reset_autonomous` (L38)
 - `core/services/run_autonomy_context.py` :: `set_run_identity` (L75)
 - `core/services/run_closure_gate.py` :: `stop_run_closure_gate` (L736)
-- `core/services/run_event_log.py` :: `active_run_for_session` (L232)
-- `core/services/run_event_log.py` :: `append` (L101)
+- `core/services/run_event_log.py` :: `active_run_for_session` (L277)
+- `core/services/run_event_log.py` :: `append` (L146)
 - `core/services/run_event_log.py` :: `create` (L83)
-- `core/services/run_event_log.py` :: `is_live` (L243)
-- `core/services/run_event_log.py` :: `live_run_ids` (L254)
-- `core/services/run_event_log.py` :: `mark_done` (L163)
-- `core/services/run_event_log.py` :: `session_for_run` (L266)
-- `core/services/run_event_log.py` :: `subscriber_closed` (L296)
-- `core/services/run_event_log.py` :: `subscriber_opened` (L289)
+- `core/services/run_event_log.py` :: `is_live` (L288)
+- `core/services/run_event_log.py` :: `live_run_ids` (L299)
+- `core/services/run_event_log.py` :: `mark_done` (L208)
+- `core/services/run_event_log.py` :: `session_for_run` (L311)
+- `core/services/run_event_log.py` :: `subscriber_closed` (L343)
+- `core/services/run_event_log.py` :: `subscriber_opened` (L336)
 - `core/services/runtime_action_executor.py` :: `execute_bounded_self_check` (L417)
 - `core/services/runtime_action_executor.py` :: `execute_follow_open_loop` (L259)
 - `core/services/runtime_action_executor.py` :: `execute_inspect_repo_context` (L307)

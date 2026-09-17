@@ -424,6 +424,15 @@ button.sidebar-group svg { flex: none; opacity: .7; }
   scrollbar-width: none;           /* Firefox: skjul grim scrollbar */
 }
 .transcript::-webkit-scrollbar { width: 0; height: 0; display: none; }
+/* Naar man ER i bunden er der intet nedenfor at tone ud. Maalt (17/9-2026):
+   padding-bottom var 8px mod en 44px fade-zone, saa den sidste linje stod i
+   18-70% opacitet — den sa ud som om den gled bag liveness-linjen, men
+   linjen ligger UDEN FOR scroll-containeren; det var masken selv.
+   Toppen beholder sin fade: der ER altid mere indhold ovenfor. */
+.transcript.is-at-bottom {
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 40px, #000 100%);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 40px, #000 100%);
+}
 .transcript > * { max-width: 820px; width: 100%; margin: 0 auto; }
 .messages {
   max-width: 820px;

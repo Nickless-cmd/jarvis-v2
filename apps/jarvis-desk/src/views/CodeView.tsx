@@ -915,7 +915,8 @@ export function CodeView({
           containerRef={transcriptRef}
           anchors={railAnchors}
         />
-        <div className="transcript" ref={transcriptRef} onScroll={onScroll}>
+        {/* Samme som ChatView: bund-fade'en slukkes naar man ER i bunden. */}
+        <div className={`transcript${atBottom ? ' is-at-bottom' : ''}`} ref={transcriptRef} onScroll={onScroll}>
           {visibleMessages.map((m) => (
             <div key={m.id} data-rail-id={m.id} className="msg-block">
             <MessageRow role={m.role === 'user' ? 'user' : 'assistant'} blocks={withoutPauseAsk(m.content)} density="compact" streaming={false} createdAt={m.created_at} onResend={m.role === 'user' ? resend : undefined} />

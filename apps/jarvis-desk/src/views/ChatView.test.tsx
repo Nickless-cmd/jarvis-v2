@@ -186,3 +186,68 @@ describe('ChatView — ændringer og jobs i samme skinne', () => {
     expect(container.querySelector('.chatview.har-skinne')).toBeNull()
   })
 })
+
+/**
+ * Bund-fade'en i transcripten (Bjørn 17/9-2026).
+ *
+ * MÅLT: `padding-bottom` var 8px mod en 44px fade-zone, så den sidste linje
+ * stod i 18–70% opacitet. Den så ud som om den gled bag liveness-linjen — men
+ * den linje ligger UDEN FOR scroll-containeren. Det var masken selv.
+ *
+ * Fade'ens opgave er at sige «der er mere nedenfor». Står man i bunden, er der
+ * ikke — og så skal den ikke æde den sidste linje.
+ */
+describe('ChatView — bund-fade', () => {
+  // Transcripten findes kun i en AKTIV samtale — den tomme visning har sin
+  // egen (GreetingHero, ChatView.tsx:653). Én sendt besked gør den aktiv.
+  const vis = async () => {
+    const r = render(
+      <SettingsProvider initialConfig={cfg}>
+        <SessionProvider config={cfg}>
+          <StreamProvider config={cfg}>
+            <PermissionProvider>
+              <PanelProvider defaultWidth={400}>
+                <ChatView sessionId="s1" />
+              </PanelProvider>
+            </PermissionProvider>
+          </StreamProvider>
+        </SessionProvider>
+      </SettingsProvider>,
+    )
+    await userEvent.type(screen.getByRole('textbox'), 'hej{Enter}')
+    return r
+  }
+
+  const maal = (t: HTMLElement, scrollHeight: number, clientHeight: number, scrollTop: number) => {
+    Object.defineProperty(t, 'scrollHeight', { value: scrollHeight, configurable: true })
+    Object.defineProperty(t, 'clientHeight', { value: clientHeight, configurable: true })
+    t.scrollTop = scrollTop
+    act(() => { t.dispatchEvent(new Event('scroll')) })
+  }
+
+  it('slukker bund-fade naar man staar i bunden', async () => {
+    const { container } = await vis()
+    const t = container.querySelector('.transcript') as HTMLElement
+    expect(t).toBeInTheDocument()
+    // atBottom starter true: der er ikke noget nedenfor at tone ud
+    expect(t.className).toContain('is-at-bottom')
+  })
+
+  it('taender den igen naar man scroller op — der ER mere nedenfor', async () => {
+    const { container } = await vis()
+    const t = container.querySelector('.transcript') as HTMLElement
+    // 1000 indhold, 300 synligt, staar i toppen → 700px ned til bunden
+    maal(t, 1000, 300, 0)
+    expect(t.className).not.toContain('is-at-bottom')
+  })
+
+  it('regner naer-bunden som bund (NEAR_BOTTOM_PX = 120)', async () => {
+    const { container } = await vis()
+    const t = container.querySelector('.transcript') as HTMLElement
+    maal(t, 1000, 300, 0)
+    expect(t.className).not.toContain('is-at-bottom')
+    // 50px fra bunden → inden for graensen
+    maal(t, 1000, 300, 650)
+    expect(t.className).toContain('is-at-bottom')
+  })
+})

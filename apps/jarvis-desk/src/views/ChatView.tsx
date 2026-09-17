@@ -692,7 +692,10 @@ export function ChatView({
         containerRef={transcriptRef}
         anchors={railAnchors}
       />
-      <div className="transcript" ref={transcriptRef} onScroll={onScroll}>
+      {/* is-at-bottom slukker bund-fade'en naar man ER i bunden (Bjørn 17/9):
+          der er intet nedenfor at tone ud, og masken aad ellers den sidste
+          linje. Toppen beholder sin — der ER altid mere ovenfor. */}
+      <div className={`transcript${atBottom ? ' is-at-bottom' : ''}`} ref={transcriptRef} onScroll={onScroll}>
         {visibleMessages.map((m) => (
           <div key={m.id} data-rail-id={m.id} className="msg-block">
           <MessageRow

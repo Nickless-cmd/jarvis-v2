@@ -576,7 +576,7 @@ def test_explore_vejledningen_staar_i_prompten():
 
     import core.services.prompt_contract as pc
     kilde = inspect.getsource(pc)
-    assert "explore before reading wide" in kilde
+    assert "scout before reading wide" in kilde
 
 
 def test_vejledningen_siger_ogsaa_hvornaar_man_IKKE_skal():
@@ -586,7 +586,7 @@ def test_vejledningen_siger_ogsaa_hvornaar_man_IKKE_skal():
 
     import core.services.prompt_contract as pc
     kilde = inspect.getsource(pc)
-    afsnit = kilde[kilde.index("explore before reading wide"):][:800]
+    afsnit = kilde[kilde.index("scout before reading wide"):][:800]
     assert "laes den selv" in afsnit
 
 
@@ -597,7 +597,7 @@ def test_vejledningen_er_kort():
 
     import core.services.prompt_contract as pc
     import inspect
-    m = re.search(r'_awareness_add\(8, "explore before reading wide", \(\n(.*?)\n    \)\)',
+    m = re.search(r'_awareness_add\(8, "scout before reading wide", \(\n(.*?)\n    \)\)',
                   inspect.getsource(pc), re.S)
     tekst = "".join(re.findall(r'"([^"]+)"', m.group(1)))
     assert len(tekst) < 500, f"{len(tekst)} tegn er for meget til én vejledning"

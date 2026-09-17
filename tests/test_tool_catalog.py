@@ -36,7 +36,7 @@ def test_explore_staar_foerst_under_filer_og_kode():
     """Rækkefølgen er budskabet: når han tænker «jeg skal finde noget i koden»,
     skal alternativet til at læse alt selv stå først."""
     gruppe = dict(_CORE_TOOL_GROUPS)["Filer & kode"]
-    assert gruppe[0] == "explore"
+    assert gruppe[0] == "scout_agent"  # omdøbt fra explore 17/9-2026
 
 
 def test_de_nye_operator_vaerktoejer_er_med():

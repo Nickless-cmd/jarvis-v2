@@ -81,7 +81,7 @@ function slagsFor(navn: string, input: Record<string, unknown>): FaseSlags | nul
   if (n.includes('write_file') || n.includes('edit_file') || n.includes('multi_edit')) return 'aendrede'
   if (n.includes('read_file') || n.includes('list_dir')) return 'laeste'
   if (n.includes('grep') || n.includes('glob') || n.includes('find_files')
-      || n === 'search' || n.includes('explore')) return 'soegte'
+      || n === 'search' || n.includes('explore') || n === 'scout_agent') return 'soegte'
   return null   // resten er ikke en fase — de ville sløre linjen
 }
 

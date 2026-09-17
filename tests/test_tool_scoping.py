@@ -295,8 +295,8 @@ class TestNyeVaerktoejerErSynlige:
     def test_explore_er_i_BEGGE_modes(self):
         """Læse-kun undersøgelse ændrer intet og sparer den kontekst en manuel
         gennemlæsning ville koste — den hører hjemme begge steder."""
-        assert "explore" in self._navne("code")
-        assert "explore" in self._navne("chat")
+        assert "scout_agent" in self._navne("code")
+        assert "scout_agent" in self._navne("chat")
 
     def test_de_nye_operator_vaerktoejer_er_i_code_mode(self):
         navne = self._navne("code")
@@ -310,3 +310,16 @@ class TestNyeVaerktoejerErSynlige:
         for t in ("operator_bash", "operator_read_file", "operator_edit_file",
                   "operator_glob", "operator_grep"):
             assert t in navne
+
+
+def test_scout_agent_og_dispatch_er_i_den_faste_flade_og_explore_er_kun_alias():
+    """Bjørn 17/9-2026: explore omdøbt til scout_agent, og dispatch_code_mode_task
+    i Jarvis' faste værktøjer. Det gamle navn virker stadig ved kald, men
+    tilbydes ikke som definition — ellers ser han to ens værktøjer."""
+    from core.tools.copilot_tool_pruning import REQUIRED_LAZY_TOOL_NAMES
+    import core.tools.simple_tools as st
+    navne = {t["function"]["name"] for t in st.get_tool_definitions()}
+    assert "scout_agent" in navne and "explore" not in navne
+    assert st._TOOL_HANDLERS["explore"] is st._TOOL_HANDLERS["scout_agent"]
+    assert "scout_agent" in REQUIRED_LAZY_TOOL_NAMES
+    assert "dispatch_code_mode_task" in REQUIRED_LAZY_TOOL_NAMES

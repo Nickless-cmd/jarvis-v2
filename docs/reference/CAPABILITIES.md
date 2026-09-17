@@ -1,6 +1,6 @@
 # CAPABILITIES
 
-> Generated 2026-09-13 — 471 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
+> Generated 2026-09-17 — 472 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
 
 | Tool | Kind | Mutating |
 |---|---|---|
@@ -327,6 +327,7 @@
 | `schedule_recurring` | native | no |
 | `schedule_self_wakeup` | native | no |
 | `schedule_task` | native | no |
+| `scout_agent` | native | no |
 | `screen_control` | native | no |
 | `search` | native | no |
 | `search_chat_history` | native | no |

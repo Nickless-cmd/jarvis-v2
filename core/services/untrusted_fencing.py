@@ -37,7 +37,7 @@ _LOKALE_STRUKTUREREDE = frozenset({
 })
 
 _UDEFRA = frozenset({
-    "web_fetch", "web_scrape", "web_search", "get_news", "explore",
+    "web_fetch", "web_scrape", "web_search", "get_news", "scout_agent", "explore",
     "spawn_agent_task", "task", "convene_council", "quick_council_check",
     "send_message_to_agent",
 })
@@ -78,7 +78,7 @@ def kilde_for_tool(navn: str) -> str:
         return "mcp"
     if n in ("web_fetch", "web_scrape", "web_search", "get_news"):
         return "web"
-    if n in ("explore", "task", "spawn_agent_task", "send_message_to_agent",
+    if n in ("scout_agent", "explore", "task", "spawn_agent_task", "send_message_to_agent",
              "convene_council", "quick_council_check"):
         return "subagent"
     if n == "bash":

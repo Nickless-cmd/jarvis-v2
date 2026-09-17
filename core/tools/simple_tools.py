@@ -1576,6 +1576,10 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "council_status": _exec_council_status,
     "quick_council_check": _exec_quick_council_check,
     "spawn_agent_task": _exec_spawn_agent_task,
+    "scout_agent": _exec_explore,
+    # Gammelt navn (omdøbt 17/9-2026, Bjørn). Beholdt som skjult alias: Jarvis'
+    # MEMORY.md, dagbøger og gamle ture nævner `explore`, og et kald til et navn
+    # der pludselig ikke findes, er en tavs fejl. Står IKKE i definitionerne.
     "explore": _exec_explore,
     "send_message_to_agent": _exec_send_message_to_agent,
     "relay_to_agent": _exec_relay_to_agent,

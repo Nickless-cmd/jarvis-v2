@@ -1500,12 +1500,12 @@ def _build_visible_chat_prompt_assembly_impl(
     # Tilgaengelighed er ikke adoption. Vaerktoejslisten var ikke problemet, saa
     # loeftestangen er her. Sidste saetning er lige saa vigtig som de foerste:
     # uden den bliver `explore` en omvej naar han allerede ved hvor filen er.
-    _awareness_add(8, "explore before reading wide", (
-        "Kraever svaret at du laeser paa tvaers af FLERE filer — «hvor ligger X», "
-        "«hvordan haenger Y sammen» — saa send `explore` afsted i stedet for at "
-        "laese dem selv. Den laeser og kommer tilbage med fund og linjenumre, og "
-        "du beholder din kontekst til selve arbejdet. Ved du allerede hvilken fil "
-        "det er, saa laes den selv — explore er til det brede, ikke det praecise."
+    _awareness_add(8, "scout before reading wide", (
+        "Kraever svaret at du laeser paa tvaers af FLERE filer, saa send "
+        "`scout_agent` (foer `explore`) afsted i stedet for at laese dem selv. "
+        "Den kommer tilbage med fund og linjenumre, og du beholder din kontekst. "
+        "Ved du allerede hvilken fil det er, saa laes den selv. Skal der SKRIVES "
+        "kode af flere agenter: `dispatch_code_mode_task`."
     ))
 
     _awareness_add(7, "no tool-result echo", (

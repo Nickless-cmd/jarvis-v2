@@ -41,7 +41,7 @@ _CORE_TOOL_GROUPS: list[tuple[str, list[str]]] = [
     # cognitive_state; INVENTARET er dét han laeser naar han spoerger sig selv
     # «hvad kan jeg». Det er loeftestangen, ikke mere instruks-tekst.
     ("Filer & kode", [
-        "explore",
+        "scout_agent", "dispatch_code_mode_task",
         "read_file", "write_file", "edit_file", "search", "find_files",
         "bash", "run_pytest", "db_query", "git_status",
     ]),

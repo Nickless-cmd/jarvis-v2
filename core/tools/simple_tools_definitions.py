@@ -258,9 +258,9 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
-            "name": "explore",
+            "name": "scout_agent",
             "description": (
-                "Send a read-only research agent to look something up for you, "
+                "Scout agent: send a read-only research agent to look something up for you, "
                 "in parallel with your own work. Give it a question in plain "
                 "words — it reads files, greps, searches, and comes back with "
                 "findings (paths + line numbers where relevant). It changes "

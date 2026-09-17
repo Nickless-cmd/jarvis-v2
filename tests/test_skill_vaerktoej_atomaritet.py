@@ -93,7 +93,7 @@ def test_de_faste_vaerktoejer_overlever_stadig(katalog):
     """`load_more_tools` og `explore` var der før. En ny betinget regel må ikke
     have skubbet dem ud — det var netop sådan `explore` forsvandt 6/9."""
     ud = {_navn(t) for t in p.select_tools_for_visible(katalog, user_message="hjaelp mig med excel")}
-    for navn in ("load_more_tools", "explore"):
+    for navn in ("load_more_tools", "scout_agent", "dispatch_code_mode_task"):
         assert navn in ud, navn
 
 
@@ -115,7 +115,10 @@ def test_faestningen_findes_praecis_ÉT_sted():
 
 def test_den_tidlige_udgang_faestner_ogsaa(katalog):
     """Den vej der FAKTISK tages i cowork-scope, hvor Tier 1 alene er over 48."""
-    lille = 8   # tvinger remaining <= 0
+    # Tvinger remaining <= 0. Var 8, da de faste var 8; bundet til listens
+    # længde nu, så en ny fast post (dispatch_code_mode_task 17/9) ikke gør testen
+    # til en test af listens længde.
+    lille = len(p.REQUIRED_LAZY_TOOL_NAMES) + 1
     ud = p.select_tools_for_copilot(
         katalog, user_message="hjaelp mig med excel", max_tools=lille, stable_only=True)
     assert "skill_invoke" in {_navn(t) for t in ud}

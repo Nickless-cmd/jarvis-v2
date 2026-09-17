@@ -91,8 +91,14 @@ OWNER_ONLY_TOOLS: frozenset[str] = frozenset({
 # Chat-mode allowlist (gælder ALLE roller i chat). Member/guest får yderligere
 # OWNER_ONLY_TOOLS strippet ovenpå (så fx search_jarvis_brain kun er owner).
 CHAT_MODE_TOOLS_BASE: frozenset[str] = frozenset({
-    # Undersoegelse — laese-kun agent, aendrer intet
-    "explore",
+    # Undersoegelse — laese-kun agent, aendrer intet (omdøbt fra `explore` 17/9-2026;
+    # det gamle navn står her som alias, så et kald med det ikke afvises af scope)
+    "scout_agent", "explore",
+    # Kode-flåden i den faste flade også i chat (Bjørn 17/9-2026: «lad ham få
+    # det i sit fast toolset så ser vi»). Står i OWNER_ONLY_TOOLS, så member og
+    # guest får den strippet — den hører ikke i OWNER_EXTRA, der kun må være
+    # læse-værktøjer.
+    "dispatch_code_mode_task",
     # Kanalen til hans egen maskine. Gaten sidder i modulet (owner-only), ikke
     # her — men uden for scope kunne han slet ikke aabne den.
     "operator_channel",
@@ -163,7 +169,7 @@ CODE_MODE_TOOLS_BASE: frozenset[str] = frozenset({
     "operator_run_in_background", "operator_bash_output", "operator_kill_shell",
     # Laese-kun undersoegelse. Hoerer hjemme i BEGGE modes: den aendrer intet og
     # sparer den kontekst en manuel gennemlaesning ville koste.
-    "explore",
+    "scout_agent", "explore",
     # Arbejdshukommelse — en kode-opgave er praecis dér man har brug for den.
     "todo_list", "todo_add", "todo_update_status", "todo_set", "todo_remove",
     # App-self-control (desk) — foreslå fuld adgang (trust) i code mode

@@ -32,7 +32,8 @@ export interface EnvironmentEvidence {
 }
 
 const AGENT_RESULT_TOOLS = new Set([
-  'explore',
+  'scout_agent',
+  'explore', // gammelt navn (omdøbt 17/9-2026) — gemte ture bruger det stadig
   'spawn_agent_task',
   'quick_council_check',
   'dispatch_code_mode_task',

@@ -37,8 +37,11 @@ VISIBLE_MAX_TOOLS = 48
 # fjernede det fra selve tool-arrayet, saa det aldrig kunne kaldes.
 REQUIRED_LAZY_TOOL_NAMES: tuple[str, ...] = (
     "load_more_tools",
-    "explore",
+    "scout_agent",
     "spawn_agent_task",
+    # Fast i hans flade (Bjørn 17/9-2026): kode-flåden. Jarvis: «de er ikke i min
+    # standard-værktøjsflade, så jeg griber dem ikke af mig selv».
+    "dispatch_code_mode_task",
     "read_attachment",
     "recall_memories",
     # Uden den kan han ikke AABNE kanalen til sin egen maskine — og saa er alt

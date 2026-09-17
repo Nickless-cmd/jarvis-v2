@@ -20,7 +20,7 @@ from core.services.untrusted_fencing import (
 class TestHvadDerHegnes:
     @pytest.mark.parametrize("t", [
         "web_fetch", "web_scrape", "web_search", "get_news",
-        "explore", "spawn_agent_task", "convene_council", "mcp_noget",
+        "scout_agent", "explore", "spawn_agent_task", "convene_council", "mcp_noget",
     ])
     def test_udefra_hegnes(self, t):
         assert should_fence(t)
@@ -37,7 +37,7 @@ class TestHvadDerHegnes:
 
 class TestKilder:
     @pytest.mark.parametrize("t,k", [
-        ("web_fetch", "web"), ("mcp_search", "mcp"), ("explore", "subagent"),
+        ("web_fetch", "web"), ("mcp_search", "mcp"), ("scout_agent", "subagent"), ("explore", "subagent"),
         ("spawn_agent_task", "subagent"), ("bash", "bash"),
         ("runtime_web_fetch", "web"), ("operator_bash", "bash"),
     ])

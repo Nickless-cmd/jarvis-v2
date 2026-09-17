@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7630/14800 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7630/14805 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 7630/14800 functions/methods documented (51%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 650 | 1187 | 54% |
-| `core.services` | 5066 | 10167 | 49% |
+| `core.services` | 5066 | 10172 | 49% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 109 | 184 | 59% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -41,7 +41,7 @@ Generated from source. 7630/14800 functions/methods documented (51%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2100)
+## Undocumented public functions (2105)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L207)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1899,6 +1899,7 @@ Generated from source. 7630/14800 functions/methods documented (51%). The list b
 - `core/services/visible_run_outcome_state.py` :: `RunOutcomeState.error` (L61)
 - `core/services/visible_run_outcome_state.py` :: `RunOutcomeState.set_error` (L93)
 - `core/services/visible_run_outcome_state.py` :: `RunOutcomeState.status` (L57)
+- `core/services/visible_run_terminal_recovery.py` :: `resolve_agentic_exit` (L24)
 - `core/services/visible_run_trace.py` :: `get_last_visible_execution_trace` (L73)
 - `core/services/visible_runs.py` :: `VisibleRunController.attach_stream` (L458)
 - `core/services/visible_runs.py` :: `VisibleRunController.cancel` (L464)
@@ -1923,6 +1924,10 @@ Generated from source. 7630/14800 functions/methods documented (51%). The list b
 - `core/services/visible_runs_sse_v2.py` :: `ToolEchoFilter.flush` (L151)
 - `core/services/visible_stream_gate.py` :: `enter_visible_stream` (L38)
 - `core/services/visible_stream_gate.py` :: `exit_visible_stream` (L44)
+- `core/services/visible_terminal_policy.py` :: `classify_terminal` (L69)
+- `core/services/visible_terminal_policy.py` :: `has_pending_tool_intent` (L50)
+- `core/services/visible_terminal_policy.py` :: `is_recoverable_exit_reason` (L54)
+- `core/services/visible_terminal_policy.py` :: `recovery_notice` (L103)
 - `core/services/visible_turn_accumulator.py` :: `TurnAccumulator.close_segment` (L72)
 - `core/services/visible_turn_accumulator.py` :: `TurnAccumulator.close_thinking` (L137)
 - `core/services/visible_turn_accumulator.py` :: `TurnAccumulator.note_text` (L76)

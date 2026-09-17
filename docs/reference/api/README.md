@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 14800 functions/methods, 51% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 14805 functions/methods, 51% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -53,8 +53,8 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 14800 functions/
 - [`core.services.22`](core.services.22.md) — `selfhood_proposal_tracking` … `silence_patterns`
 - [`core.services.23`](core.services.23.md) — `simple_tool_executor` … `temporal_narrative`
 - [`core.services.24`](core.services.24.md) — `temporal_recurrence_signal_tracking` … `turn_tail_timing`
-- [`core.services.25`](core.services.25.md) — `turn_trace` … `visible_runs`
-- [`core.services.26`](core.services.26.md) — `visible_runs_approvals` … `world_model_signal_tracking`
+- [`core.services.25`](core.services.25.md) — `turn_trace` … `visible_run_trace`
+- [`core.services.26`](core.services.26.md) — `visible_runs` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

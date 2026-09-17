@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7648/14829 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7649/14830 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 7648/14829 functions/methods documented (51%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 650 | 1187 | 54% |
-| `core.services` | 5077 | 10183 | 49% |
+| `core.services` | 5078 | 10184 | 49% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 109 | 184 | 59% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1929,7 +1929,7 @@ Generated from source. 7648/14829 functions/methods documented (51%). The list b
 - `core/services/visible_terminal_policy.py` :: `is_recoverable_exit_reason` (L55)
 - `core/services/visible_terminal_policy.py` :: `recovery_notice` (L106)
 - `core/services/visible_turn_accumulator.py` :: `TurnAccumulator.close_segment` (L72)
-- `core/services/visible_turn_accumulator.py` :: `TurnAccumulator.close_thinking` (L137)
+- `core/services/visible_turn_accumulator.py` :: `TurnAccumulator.close_thinking` (L150)
 - `core/services/visible_turn_accumulator.py` :: `TurnAccumulator.note_text` (L76)
 - `core/services/visible_turn_accumulator.py` :: `TurnAccumulator.note_tool` (L80)
 - `core/services/vision_backend.py` :: `build_vision_backend_surface` (L237)

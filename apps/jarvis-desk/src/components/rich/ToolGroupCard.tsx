@@ -3,6 +3,7 @@ import { ChevronRight, ChevronDown, Code2 } from 'lucide-react'
 import type { ToolGroupBlock } from '../../lib/toolRounds'
 import { summarizeRound, summerDiff } from '../../lib/toolRound'
 import { useLoebendeTid } from '../../lib/useLoebendeTid'
+import { medPrikker, usePrikTrin } from '../../lib/prikSekvens'
 import { ToolCard } from './ToolCard'
 
 /**
@@ -49,6 +50,7 @@ export function ToolGroupCard({
     .filter((t) => (t.status ?? 'running') === 'running' && t.startet != null)
     .reduce<number | undefined>((min, t) => (min == null || t.startet! < min ? t.startet : min), undefined)
   const sek = useLoebendeTid(koerer && startet != null, startet)
+  const trin = usePrikTrin(koerer)
   if (!resume) return null
 
   return (
@@ -66,7 +68,7 @@ export function ToolGroupCard({
       >
         <Code2 size={15} className="toolgroup-icon" strokeWidth={1.8} />
         <span className="toolgroup-label">
-          <span className="linje-titel">{resume}</span>
+          <span className="linje-titel">{koerer ? medPrikker(resume, trin) : resume}</span>
           {koerer && sek != null && sek >= 1
             ? <span className="linje-meta" data-testid="runde-tid"> · {Math.floor(sek)} s</span>
             : null}

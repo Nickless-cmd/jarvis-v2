@@ -144,3 +144,30 @@ def test_uden_skill_surface_ingen_ekstra_blok():
     acc.add_text("svar")
     acc.note_text()
     assert [b["type"] for b in acc.build_blocks("svar")] == ["text"]
+
+
+def test_tanketid_varer_til_naeste_blok_begynder():
+    """17/9-2026: serveren talte kun mens tanke-teksten strømmede (0,4-1,7 s),
+    desk live til næste blok (7 s). Tallet forsvandt når den gemte besked
+    overtog. Nu samme mål: fra tanken begynder til modellen går videre."""
+    tid = [100.0]
+    a = TurnAccumulator(ur=lambda: tid[0])
+    a.add_thinking("lad mig se")
+    tid[0] = 100.8
+    a.add_thinking(" …og så")
+    tid[0] = 107.0          # modellen skriver kaldet færdigt
+    a.note_tool()
+    tid[0] = 150.0          # værktøjet kører — tæller IKKE med
+    a.add_thinking("næste")
+    tid[0] = 102.0 + 150.0 - 100.0
+    a.note_text()
+    assert a.thinking_seconds() == [7.0, 2.0]
+
+
+def test_aaben_tanke_uden_efterfoelger_beholder_sin_strømtid():
+    tid = [10.0]
+    a = TurnAccumulator(ur=lambda: tid[0])
+    a.add_thinking("a")
+    tid[0] = 11.5
+    a.add_thinking("b")
+    assert a.thinking_seconds() == [1.5]

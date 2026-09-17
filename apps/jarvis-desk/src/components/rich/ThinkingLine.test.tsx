@@ -9,10 +9,11 @@ describe('ThinkingLine', () => {
   it('live: én linje med løbende tid — monologen står IKKE i tråden', () => {
     vi.useFakeTimers()
     render(<ThinkingLine text="intern monolog" live />)
-    expect(screen.getByText('Tænker')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Tænker' })).toBeInTheDocument()
+    // Monologen står ikke som tekst i tråden — kun dens sidste linje, dæmpet, som metadata.
     expect(screen.queryByText('intern monolog')).not.toBeInTheDocument()
     act(() => { vi.advanceTimersByTime(4200) })
-    expect(screen.getByText('Tænker · 4 s')).toBeInTheDocument()
+    expect(screen.getByTestId('tanke-meta')).toHaveTextContent('· 4 s · intern monolog')
   })
 
   it('færdig: «Tænkte i X s» og klik folder tanken ud', () => {
@@ -23,9 +24,9 @@ describe('ThinkingLine', () => {
     expect(screen.getByText('intern monolog')).toBeInTheDocument()
   })
 
-  it('kort tanke mister sit tal, ikke sin plads', () => {
+  it('kort tanke BEHOLDER sit tal (Bjørn 17/9-2026: tiden «var ikke persistet»)', () => {
     render(<ThinkingLine text="kort" seconds={1.1} live={false} />)
-    expect(screen.getByRole('button', { name: 'Tænkte' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Tænkte i 1,1 s' })).toBeInTheDocument()
   })
 
   it('live → færdig fryser tiden', () => {

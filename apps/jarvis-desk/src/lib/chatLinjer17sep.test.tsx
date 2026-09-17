@@ -11,6 +11,7 @@ import { afslutForladteKald } from '../components/rich/BlocksRenderer'
 import { ThinkingLine } from '../components/rich/ThinkingLine'
 import { ToolGroupCard } from '../components/rich/ToolGroupCard'
 import type { ContentBlock, StreamEvent } from './sseProtocol'
+import { prikker } from './prikSekvens'
 
 afterEach(() => { vi.useRealTimers() })
 
@@ -41,14 +42,14 @@ describe('tænketid ligger på blokken', () => {
     const startet = Date.now()
     vi.setSystemTime(2_007_000)
     render(<ThinkingLine text="x" live startet={startet} />)
-    expect(screen.getByText('Tænker · 7 s')).toBeInTheDocument()
+    expect(screen.getByTestId('tanke-meta')).toHaveTextContent('· 7 s')
   })
 
   it('live viser hvad han tænker på, og det forsvinder når tanken er slut', () => {
     const { rerender } = render(<ThinkingLine text={'Første tanke\nLad mig se hvor værnet sidder'} live />)
-    expect(screen.getByTestId('tanke-fragment')).toHaveTextContent('Lad mig se hvor værnet sidder')
+    expect(screen.getByTestId('tanke-meta')).toHaveTextContent('Lad mig se hvor værnet sidder')
     rerender(<ThinkingLine text={'Første tanke\nLad mig se hvor værnet sidder'} live={false} seconds={9} />)
-    expect(screen.queryByTestId('tanke-fragment')).toBeNull()
+    expect(screen.queryByTestId('tanke-meta')).toBeNull()
     expect(screen.getByText('Tænkte i 9 s')).toBeInTheDocument()
   })
 })
@@ -109,5 +110,33 @@ describe('live metadata i stedet for «Kører bash…»', () => {
     expect(screen.getByTestId('runde-tid')).toHaveTextContent('12 s')
     act(() => { vi.advanceTimersByTime(3000) })
     expect(screen.getByTestId('runde-tid')).toHaveTextContent('15 s')
+  })
+})
+
+
+describe('prikker i enden af en linje der kører', () => {
+  it('runde-linjen: «…» bliver til løbende prikker, og de forsvinder når kaldet er færdigt', () => {
+    vi.useFakeTimers()
+    const blok = (status: 'running' | 'done') => ({ type: 'tool_group' as const, kind: 'round' as const, count: 1,
+      tools: [{ type: 'tool_use' as const, id: 't', name: 'bash', input: { command: 'npm test' }, status }] })
+    const { container, rerender } = render(<ToolGroupCard density="compact" block={blok('running')} />)
+    const titel = () => container.querySelector('.linje-titel')!.textContent!
+    expect(titel()).toBe('Kører npm test' + prikker(0))
+    act(() => { vi.advanceTimersByTime(420) })
+    expect(titel()).toBe('Kører npm test' + prikker(1))
+    act(() => { vi.advanceTimersByTime(420) })
+    expect(titel()).toBe('Kører npm test' + prikker(2))
+    rerender(<ToolGroupCard density="compact" block={blok('done')} />)
+    expect(titel()).toBe('Kørte npm test')
+  })
+
+  it('tanke-linjen: «Tænker» med løbende prikker', () => {
+    vi.useFakeTimers()
+    const { container } = render(<ThinkingLine text="x" live />)
+    const titel = () => container.querySelector('.linje-titel')!.textContent!
+    expect(titel()).toBe('Tænker' + prikker(0))
+    act(() => { vi.advanceTimersByTime(840) })
+    expect(titel()).toBe('Tænker' + prikker(2))
+    expect(prikker(2)).toBe('...')
   })
 })

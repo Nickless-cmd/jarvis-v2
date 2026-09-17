@@ -74,12 +74,25 @@ class TurnAccumulator:
 
     # ── rækkefølge ───────────────────────────────────────────────────────
     def note_text(self) -> None:
-        self._thinking_open = False
+        self._luk_tanketid()
         self.interleave.append("text")
 
     def note_tool(self) -> None:
-        self._thinking_open = False
+        self._luk_tanketid()
         self.interleave.append("tool")
+
+    def _luk_tanketid(self) -> None:
+        """En tanke varer til det NÆSTE begynder — ikke til dens sidste token.
+
+        17/9-2026: desk målte live fra tanken startede til næste blok (7 s),
+        mens den gemte blok kun talte tiden tanke-teksten strømmede (0,4-1,7 s).
+        Bjørn så tallet forsvinde når serverens besked overtog efter turen. Nu
+        er det samme mål begge steder: modellens tid fra tanken begyndte til
+        den gik videre til tekst eller et kald.
+        """
+        if self._thinking_open and self.thinking_times:
+            self.thinking_times[-1][1] = self._nu()
+        self._thinking_open = False
 
     # ── værktøjskald ─────────────────────────────────────────────────────
     def add_tools(self, tool_calls: list | None, results: list | None) -> None:

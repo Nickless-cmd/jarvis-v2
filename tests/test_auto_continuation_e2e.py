@@ -59,6 +59,18 @@ def test_faerdig_tur_starter_INTET(startede):
     assert startede == []
 
 
+def test_shutdown_checkpoint_does_not_spawn_a_run_in_the_dying_process(
+    startede, monkeypatch,
+):
+    from core.runtime import process_lifecycle
+
+    monkeypatch.setattr(process_lifecycle, "lukker_ned", lambda: True)
+    ac.noter_udfald("visible-1", "shutdown")
+    _koer()
+    assert startede == []
+    assert ac.kaede_nr("s1") == 0
+
+
 def test_ukendt_run_starter_intet(startede):
     """Ingen noteret udfald = vi ved det ikke. Tvivl koster ikke penge."""
     _koer(run_id="visible-findes-ikke")

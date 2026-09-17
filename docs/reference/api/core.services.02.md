@@ -429,20 +429,20 @@ _Auto code-review heuristic for git-commit proposals._
 | function | `review_pending_commit_gated` | `(**kwargs)` | Som review_pending_commit, men GOVERNET af Centralen (COGNITIVE, cluster='commit') | [src](../../../core/services/auto_code_review.py#L168) |
 
 ## `core/services/auto_continuation.py`
-_Fortsæt automatisk når turen blev klippet af sit eget budget._
+_Fortsæt automatisk når et synligt run-segment sluttede før opgaven._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| class | `Beslutning` | `` | Svaret, med grunden. Grunden er ikke pynt — den skal i loggen, så en | [src](../../../core/services/auto_continuation.py#L63) |
-| function | `beslut` | `(*, exit_reason, slaaet_til, autonom, kaede_nr, bruger_skrev_imens, maks_kaede=…)` | Skal denne tur fortsætte af sig selv? | [src](../../../core/services/auto_continuation.py#L71) |
-| function | `fortsaettelses_besked` | `(kaede_nr, maks_kaede=…)` | Teksten Jarvis får. Den siger hvor han er, og at han skal sige til når | [src](../../../core/services/auto_continuation.py#L103) |
-| function | `noter_udfald` | `(run_id, exit_reason, session_id=…)` | Noter under BEGGE noegler: runnets eget id og sessionen. | [src](../../../core/services/auto_continuation.py#L133) |
-| function | `glem_session_udfald` | `(session_id)` | Glem sessionens udfald — kaldes naar en NY tur starter. | [src](../../../core/services/auto_continuation.py#L160) |
-| function | `hent_udfald` | `(run_id, session_id=…)` | Udfaldet for et run — slaa op paa run-id, og fald tilbage paa sessionen. | [src](../../../core/services/auto_continuation.py#L177) |
-| function | `kaede_nr` | `(session_id)` | — | [src](../../../core/services/auto_continuation.py#L196) |
-| function | `saet_kaede` | `(session_id, nr)` | — | [src](../../../core/services/auto_continuation.py#L201) |
-| function | `noter_brugerbesked` | `(session_id)` | Brugeren skrev selv. Bruges til to ting: nulstille kæden, og afgøre om | [src](../../../core/services/auto_continuation.py#L214) |
-| function | `bruger_skrev_efter` | `(session_id, tidspunkt)` | Har brugeren skrevet efter `tidspunkt`? Så har han taget over, og en | [src](../../../core/services/auto_continuation.py#L226) |
+| class | `Beslutning` | `` | Svaret, med grunden. Grunden er ikke pynt — den skal i loggen, så en | [src](../../../core/services/auto_continuation.py#L62) |
+| function | `beslut` | `(*, exit_reason, slaaet_til, autonom, kaede_nr, bruger_skrev_imens, maks_kaede=…)` | Skal denne tur fortsætte af sig selv? | [src](../../../core/services/auto_continuation.py#L70) |
+| function | `fortsaettelses_besked` | `(kaede_nr, maks_kaede=…, *, reason=…)` | Teksten Jarvis får. Den siger hvor han er, og at han skal sige til når | [src](../../../core/services/auto_continuation.py#L103) |
+| function | `noter_udfald` | `(run_id, exit_reason, session_id=…)` | Noter under BEGGE noegler: runnets eget id og sessionen. | [src](../../../core/services/auto_continuation.py#L135) |
+| function | `glem_session_udfald` | `(session_id)` | Glem sessionens udfald — kaldes naar en NY tur starter. | [src](../../../core/services/auto_continuation.py#L162) |
+| function | `hent_udfald` | `(run_id, session_id=…)` | Udfaldet for et run — slaa op paa run-id, og fald tilbage paa sessionen. | [src](../../../core/services/auto_continuation.py#L179) |
+| function | `kaede_nr` | `(session_id)` | — | [src](../../../core/services/auto_continuation.py#L198) |
+| function | `saet_kaede` | `(session_id, nr)` | — | [src](../../../core/services/auto_continuation.py#L203) |
+| function | `noter_brugerbesked` | `(session_id)` | Brugeren skrev selv. Bruges til to ting: nulstille kæden, og afgøre om | [src](../../../core/services/auto_continuation.py#L216) |
+| function | `bruger_skrev_efter` | `(session_id, tidspunkt)` | Har brugeren skrevet efter `tidspunkt`? Så har han taget over, og en | [src](../../../core/services/auto_continuation.py#L228) |
 
 ## `core/services/auto_improvement_proposer.py`
 _Auto improvement proposer — close the self-improvement loop SAFELY._

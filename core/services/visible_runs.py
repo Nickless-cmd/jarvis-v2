@@ -2710,6 +2710,9 @@ async def _stream_visible_run(
                 _SYNTH_PAUSE_AFTER = 8
                 _synth_pause_fired_at = -100  # runde hvor vi sidst tvang en pause
                 _agentic_loop_exit_reason = "completed"
+                _forced_finalize_seen = False
+                _a_pending_tool_intent = False
+                _a_finish_reason = ""
                 # Batch-vink: maalt 13/9 kaldte 304 af 366 runder ÉT vaerktoej.
                 _forrige_runde_kald = 0
                 _batch_vink_vist = 0
@@ -3071,6 +3074,7 @@ async def _stream_visible_run(
                                 {"role": "user", "content": _vink},
                             ]
                     if _is_last_round:
+                        _forced_finalize_seen = True
                         _round_tool_definitions = None
                         _round_base_messages = list(_round_base_messages) + [{
                             "role": "user",
@@ -3119,6 +3123,8 @@ async def _stream_visible_run(
                         # med finish_reason='length' → svaret er afkortet, ikke rent.
                         # Resettes pr. attempt så en evt. retry får en frisk chance.
                         _a_truncated = False
+                        _a_pending_tool_intent = False
+                        _a_finish_reason = ""
                         # D11 fence: holder for the live provider generator of the
                         # CURRENT attempt, so a retry can force-close the failed
                         # attempt's stream (no orphaned concurrent provider stream when
@@ -3413,6 +3419,9 @@ async def _stream_visible_run(
                                     pass
                                 continue
                             if isinstance(_a_item, _vf.FollowupDone):
+                                _a_finish_reason = str(_a_item.finish_reason or "")
+                                _a_pending_tool_intent = bool(
+                                    getattr(_a_item, "pending_tool_intent", False))
                                 _rest = _skrub.skyl()
                                 if _rest:
                                     _turn.add_text(_rest)
@@ -4110,6 +4119,7 @@ async def _stream_visible_run(
                                 )
                             ):
                                 _run_degenerated = True
+                                _agentic_loop_exit_reason = "pending-tool-intent"
                                 _stop_note = (
                                     "\n\n_(Jeg stoppede her fordi løkken tvang en "
                                     "afslutning — ikke fordi jeg var færdig. Sig til, "
@@ -4220,6 +4230,7 @@ async def _stream_visible_run(
                     if _round_text_total == 0:
                         _consecutive_empty_text_rounds += 1
                         if _consecutive_empty_text_rounds >= _MAX_EMPTY_TEXT_ROUNDS:
+                            _agentic_loop_exit_reason = "early-exit-empty-text"
                             _update_visible_execution_trace(
                                 run,
                                 {
@@ -4363,6 +4374,7 @@ async def _stream_visible_run(
 
                     if _a_tool_calls and _round_text_total < _TOOL_ONLY_TEXT_THRESHOLD:
                         if _consecutive_tool_only_rounds >= _MAX_TOOL_ONLY_ROUNDS:
+                            _agentic_loop_exit_reason = "early-exit-tool-only"
                             logger.info(
                                 "tool-only-loop-guard run_id=%s rounds=%d threshold=%d — forcing text response",
                                 run.run_id, _consecutive_tool_only_rounds, _MAX_TOOL_ONLY_ROUNDS,
@@ -4950,6 +4962,28 @@ async def _stream_visible_run(
                 # men telemetri/incident viser truncation ærligt.
                 if _a_truncated and _agentic_loop_exit_reason == "completed":
                     _agentic_loop_exit_reason = "completed-truncated"
+                from core.services.visible_run_terminal_recovery import resolve_agentic_exit
+                try:
+                    from core.services.auto_continuation import kaede_nr as _recovery_kaede_nr
+                    _recovery_attempt = _recovery_kaede_nr(run.session_id)
+                except Exception:
+                    _recovery_attempt = 0
+                _terminal = resolve_agentic_exit(
+                    exit_reason=_agentic_loop_exit_reason,
+                    final_text="".join(_a_parts),
+                    finish_reason=_a_finish_reason,
+                    forced_finalize=_forced_finalize_seen,
+                    pending_tool_intent=_a_pending_tool_intent,
+                    recovery_attempt=_recovery_attempt,
+                )
+                _agentic_loop_exit_reason = _terminal.exit_reason
+                if _terminal.decision.should_continue:
+                    _outcome_state.mark("recovering")
+                elif _terminal.decision.state.value == "failed_terminal":
+                    _outcome_state.mark("failed", error=_terminal.exit_reason)
+                if _terminal.event_name:
+                    _terminal.event_payload["run_id"] = run.run_id
+                    yield _sse(_terminal.event_name, _terminal.event_payload)
                 try:
                     from core.services.auto_continuation import noter_udfald as _nu
                     _nu(run.run_id, _agentic_loop_exit_reason, run.session_id)

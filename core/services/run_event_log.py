@@ -77,7 +77,26 @@ def synthetic_terminal_frame(
         )
     except Exception:
         pass
-    return SYNTHETIC_MESSAGE_STOP
+    import json
+    from core.services.visible_terminal_policy import recovery_notice
+    payload = {
+        "type": "system_event",
+        "kind": "run_recovery",
+        "payload": recovery_notice(reason),
+    }
+    delta = {
+        "type": "message_delta",
+        "delta": {"stop_reason": "recovering"},
+        "usage": {
+            "input_tokens": 0, "output_tokens": 0,
+            "cache_hit_tokens": 0, "cache_miss_tokens": 0,
+        },
+    }
+    return (
+        f"event: system_event\ndata: {json.dumps(payload, ensure_ascii=False)}\n\n"
+        f"event: message_delta\ndata: {json.dumps(delta)}\n\n"
+        + SYNTHETIC_MESSAGE_STOP
+    )
 
 
 def create(run_id: str, session_id: str) -> None:

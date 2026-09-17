@@ -106,9 +106,12 @@ def test_synthetic_terminal_frame_shape_and_nerve(monkeypatch):
     )
 
     frame = rel.synthetic_terminal_frame("r1", "s1", reason="relay_subscriber_idle")
-    # Eksakt message_stop-form (klienterne forlader kun 'working' her).
-    assert frame.startswith("event: message_stop\n")
-    assert json.loads(frame.split("data: ", 1)[1].strip()) == {"type": "message_stop"}
+    # Et syntetisk stop maa foerst fortaelle at segmentet IKKE sluttede rent.
+    assert frame.startswith("event: system_event\n")
+    assert '"kind": "run_recovery"' in frame
+    assert 'event: message_delta\n' in frame
+    assert '"stop_reason": "recovering"' in frame
+    assert frame.rstrip().endswith('data: {"type": "message_stop"}')
     assert rel._is_terminal_frame(frame)
 
     # subscriber_timeout-nerven fyrede.

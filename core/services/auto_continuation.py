@@ -1,4 +1,4 @@
-"""Fortsæt automatisk når turen blev klippet af sit eget budget.
+"""Fortsæt automatisk når et synligt run-segment sluttede før opgaven.
 
 ## Hvorfor
 
@@ -24,9 +24,8 @@ noget han ikke bad om.
 - **Kæde-loft.** En tur der bliver ved med at opbruge sit budget ville ellers
   føde sig selv i det uendelige. Efter `MAKS_KAEDE` fortsættelser i træk
   stopper vi og lader mennesket bestemme.
-- **Kun opbrugt budget.** Afbrudt, fejlet, annulleret, nedlukning: alt andet
-  end «løb tør» betyder at nogen eller noget greb ind, og så skal vi ikke
-  fortsætte af os selv.
+- **Kun klassificeret recovery.** Den centrale terminal-policy afgør om et
+  udfald er resumérbart. Brugerstop og rene afslutninger er altid endelige.
 - **Aldrig autonome runs.** De har deres egen kadence og deres eget budget.
 - **Aldrig hvis brugeren selv har skrevet imens.** Han har taget over.
 - **Killswitch.** Én flag-værdi slår hele mekanikken fra uden en udrulning.
@@ -86,7 +85,8 @@ def beslut(
         return Beslutning(False, "slaaet fra")
     if autonom:
         return Beslutning(False, "autonomt run")
-    if str(exit_reason or "") != OPBRUGT:
+    from core.services.visible_terminal_policy import is_recoverable_exit_reason
+    if not is_recoverable_exit_reason(exit_reason):
         return Beslutning(False, f"udfald={exit_reason or 'ukendt'}")
     if bruger_skrev_imens:
         return Beslutning(False, "brugeren har selv skrevet videre")
@@ -97,15 +97,17 @@ def beslut(
         return Beslutning(False, "ugyldigt kaede-tal")
     if nr >= maks:
         return Beslutning(False, f"kaede-loft naaet ({nr}/{maks})")
-    return Beslutning(True, f"budget opbrugt, fortsaettelse {nr + 1}/{maks}")
+    return Beslutning(True, f"recovery, fortsaettelse {nr + 1}/{maks}")
 
 
-def fortsaettelses_besked(kaede_nr: int, maks_kaede: int = MAKS_KAEDE) -> str:
+def fortsaettelses_besked(
+    kaede_nr: int, maks_kaede: int = MAKS_KAEDE, *, reason: str = OPBRUGT,
+) -> str:
     """Teksten Jarvis får. Den siger hvor han er, og at han skal sige til når
     han er faerdig — ellers ved han ikke at der er en graense."""
     return (
-        "⏭️ Din forrige tur brugte hele sit rundebudget og blev afbrudt midt i "
-        f"arbejdet — dette er automatisk fortsættelse {kaede_nr}/{maks_kaede}. "
+        f"⏭️ Dit forrige run-segment sluttede før opgaven var færdig ({reason}). "
+        f"Dette er automatisk fortsættelse {kaede_nr}/{maks_kaede}. "
         "Fortsæt præcis hvor du slap. Er arbejdet færdigt, så sig det kort i "
         "stedet for at kalde flere værktøjer."
     )

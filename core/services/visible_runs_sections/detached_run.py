@@ -269,8 +269,8 @@ def _fortsaet_hvis_budgettet_loeb_toert(
     *, run_id: str, sid: str, startet: float,
     visible_args: dict, eff_model: str, eff_provider: str, lane: str,
 ) -> None:
-    """Start en fortsaettelse hvis — og kun hvis — turen blev klippet af sit
-    eget rundebudget.
+    """Start en fortsættelse når terminal-policyen klassificerede segmentet
+    som resumérbart.
 
     Beslutningen ligger i `auto_continuation.beslut`, som er ren og proevet fra
     alle kanter. Her er kun ledningen: hent kendsgerningerne, spoerg, og start.
@@ -286,8 +286,9 @@ def _fortsaet_hvis_budgettet_loeb_toert(
     except Exception:
         _slaaet_til = True
 
+    _exit_reason = ac.hent_udfald(run_id, sid)
     beslutning = ac.beslut(
-        exit_reason=ac.hent_udfald(run_id, sid),
+        exit_reason=_exit_reason,
         slaaet_til=_slaaet_til,
         # Denne sti er brugerens; autonome runs kommer aldrig herigennem.
         autonom=False,
@@ -298,12 +299,28 @@ def _fortsaet_hvis_budgettet_loeb_toert(
         logger.info("auto-fortsaettelse NEJ run_id=%s: %s", run_id, beslutning.grund)
         return
 
+    # A continuation spawned after SIGTERM inherits a process that is already
+    # being torn down. It can only be cut off again, consume the chain limit,
+    # and replace a useful checkpoint with noise. The durable checkpoint is
+    # instead surfaced by the boot/session recovery path after restart.
+    try:
+        from core.runtime.process_lifecycle import lukker_ned
+        if lukker_ned():
+            logger.info(
+                "auto-fortsaettelse UDSAT run_id=%s: processen lukker ned; "
+                "checkpointet bevares til genoptagelse",
+                run_id,
+            )
+            return
+    except Exception:
+        pass
+
     nr = ac.kaede_nr(sid) + 1
     ac.saet_kaede(sid, nr)
     logger.info("auto-fortsaettelse JA run_id=%s: %s", run_id, beslutning.grund)
 
     nye = dict(visible_args)
-    nye["message"] = ac.fortsaettelses_besked(nr)
+    nye["message"] = ac.fortsaettelses_besked(nr, reason=_exit_reason)
     nye.pop("session_id", None)
     start_user_run_detached(
         session_id=sid, eff_model=eff_model, eff_provider=eff_provider,

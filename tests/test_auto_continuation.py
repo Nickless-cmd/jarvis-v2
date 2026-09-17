@@ -27,11 +27,17 @@ def test_fortsaetter_naar_budgettet_loeb_toert():
 
 
 @pytest.mark.parametrize("udfald", [
-    "completed", "user-cancelled", "shutdown", "provider-not-supported",
-    "interrupted:tool-fejl", "user-steer-stop-mid-stream", "", None,
+    OPBRUGT, "shutdown", "provider-not-supported", "completed-truncated",
+    "interrupted:tool-fejl", "early-exit-empty-text", "pending-tool-intent",
 ])
-def test_fortsaetter_ALDRIG_paa_noget_andet_end_opbrugt_budget(udfald):
-    """Alt andet end «loeb toer» betyder at nogen eller noget greb ind."""
+def test_recoverable_runsegmenter_fortsaetter(udfald):
+    assert _b(exit_reason=udfald).fortsaet is True
+
+
+@pytest.mark.parametrize("udfald", [
+    "completed", "user-cancelled", "user-steer-stop-mid-stream", "", None,
+])
+def test_finale_udfald_fortsaetter_ikke(udfald):
     assert _b(exit_reason=udfald).fortsaet is False
 
 

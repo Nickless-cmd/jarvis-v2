@@ -256,6 +256,7 @@ async def translate_to_v2(
         "cache_hit_tokens": 0,
         "cache_miss_tokens": 0,
         "stop_reason": "end_turn",
+        "saw_done": False,
         "run_id": run_id,
         "model": model,
         "provider": provider,
@@ -529,6 +530,7 @@ async def translate_to_v2(
                     await _emit_tool_use(payload)
 
                 elif event_name == "done":
+                    _state["saw_done"] = True
                     await _emit_message_start_if_needed()
                     await _close_thinking_block_if_open()
                     await _close_text_block_if_open()
@@ -623,6 +625,13 @@ async def translate_to_v2(
                 try:
                     await _close_thinking_block_if_open()
                     await _close_text_block_if_open()
+                    if not _state["saw_done"]:
+                        from core.services.visible_terminal_policy import recovery_notice
+                        await queue.put(SystemEvent(
+                            kind="run_recovery",
+                            payload=recovery_notice("legacy_stream_ended_without_done"),
+                        ).to_sse_line())
+                        _state["stop_reason"] = "recovering"
                     await queue.put(MessageDelta(
                         stop_reason=str(_state.get("stop_reason") or "end_turn"),
                         input_tokens=int(_state["input_tokens"]),

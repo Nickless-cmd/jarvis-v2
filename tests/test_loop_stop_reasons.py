@@ -39,6 +39,7 @@ def test_hollow_promise_is_still_detected_on_the_forced_finalize_round():
     # Ingen puf (der er ingen runde tilbage) — men runnet skal markeres,
     # udfaldet persisteres og svaret sige det aerligt.
     assert "_run_degenerated = True" in block
+    assert '_agentic_loop_exit_reason = "pending-tool-intent"' in block
     assert "note_detected" in block
     assert "løkken tvang en" in block
 
@@ -56,3 +57,11 @@ def test_followup_rounds_resolve_their_own_thinking_mode():
     src = _source()
     assert "thinking_mode=_thinking_for_round(run, _followup_exchanges)" in src
     assert "thinking_mode=run.thinking_mode," in src, "foerste pas er uaendret"
+
+
+def test_forced_finalize_uses_pending_tool_intent_not_completed_default():
+    src = _source()
+    assert "_a_pending_tool_intent" in src
+    assert "resolve_agentic_exit(" in src
+    assert 'yield _sse(_terminal.event_name, _terminal.event_payload)' in src
+    assert "recovery_attempt=_recovery_attempt" in src

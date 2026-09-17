@@ -346,6 +346,11 @@ async def test_terminal_guarantee_stream_ends_without_done():
     names = [e[0] for e in _parse_v2_events(output)]
     assert "message_start" in names
     assert "message_stop" in names, "message_stop SKAL emitteres selv uden 'done'"
+    deltas = [payload for name, payload in _parse_v2_events(output) if name == "message_delta"]
+    assert deltas[-1]["delta"]["stop_reason"] == "recovering"
+    recoveries = [payload for name, payload in _parse_v2_events(output)
+                  if name == "system_event" and payload.get("kind") == "run_recovery"]
+    assert recoveries and recoveries[-1]["payload"]["reason"] == "legacy_stream_ended_without_done"
     # message_stop er sidste meningsfulde event (turen lukkes rent)
     assert names[-1] == "message_stop"
 

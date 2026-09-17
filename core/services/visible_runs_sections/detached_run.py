@@ -51,6 +51,13 @@ def start_user_run_detached(
     run_id: str | None = None,
     local_tool_exec: bool = False,
     research_mode: bool = False,
+    # Genoptagelse (opgave 4): hvilken OPGAVE denne kørsel fortsætter, og
+    # hvilken generation af kravet den hører til. Uden dem ville fortsættelsen
+    # være en ny, løsrevet kørsel, og journalen kunne ikke se at opgaven blev
+    # taget op igen.
+    recovery_task_id: str = "",
+    recovery_generation: int = 0,
+    recovery_attempt: int = 0,
 ) -> str:
     """Start et server-autoritativt run. Returnerer run_id (klienten abonnerer
     via run_event_log gennem /chat/stream/v2 eller /chat/runs/{id}/subscribe)."""
@@ -66,6 +73,9 @@ def start_user_run_detached(
         rel.create(run_id, sid)  # synkront FØR retur → straks synlig i live_run_ids
     # ellers: run_id er allerede claimet+oprettet atomisk af claim_or_create
 
+    if recovery_task_id:
+        logger.info("detached-run %s fortsaetter opgave %s (generation %d, forsoeg %d)",
+                    run_id, recovery_task_id, recovery_generation, recovery_attempt)
     visible_args = {
         "message": message,
         "session_id": session_id,
@@ -263,6 +273,22 @@ def start_or_attach_user_run(
     # ATOMISK claim (rod-fix mod rapid-resend-race): find-eller-opret under laas.
     claimed, is_new = rel.claim_or_create(sid)
     if not is_new:
+        # STYR, i stedet for kun at sige det til side (opgave 5). Turen kører
+        # stadig, og brugerens nye besked hører til DEN opgave. Kan den ikke
+        # leveres — fx fordi segmentet netop er ved at dø — lægges den i
+        # opgavens durable kø, så fortsættelsen får den med.
+        try:
+            from core.services.visible_runs import append_visible_run_steer
+            leveret = bool(append_visible_run_steer(claimed, (message or "").strip()))
+        except Exception:
+            leveret = False
+        if not leveret:
+            try:
+                from core.services.in_flight_runs import queue_steer
+                queue_steer(claimed, (message or "").strip())
+            except Exception:
+                logger.warning("kunne ikke koe brugerens besked for %s", claimed,
+                               exc_info=True)
         if nudge_enabled:
             try:
                 from core.services.outbound_nudges import push_nudge
@@ -340,8 +366,29 @@ def _fortsaet_hvis_budgettet_loeb_toert(
     ac.saet_kaede(sid, nr)
     logger.info("auto-fortsaettelse JA run_id=%s: %s", run_id, beslutning.grund)
 
+    # ÉN EJER AF FORTSÆTTELSEN (opgave 4). Her stod `start_user_run_detached`
+    # direkte — og så kunne den samme opgave startes to steder fra: her, og af
+    # dispatcheren der læser journalen. To veje til samme handling giver enten
+    # to kørsler eller ingen, afhængigt af hvem der nåede først.
+    #
+    # Nu skrives ønsket ned og dispatcheren vækkes. Den tager kravet atomisk,
+    # så præcis én fortsættelse starter. Kan journalen ikke skrives, falder vi
+    # tilbage til den direkte start: en fortsættelse der udebliver er værre end
+    # en der starter ad den gamle vej.
+    from core.services.in_flight_runs import settle_recovering
+    from core.services.visible_run_recovery_dispatcher import signal_recovery_dispatcher
+    _fortsaettelse = ac.fortsaettelses_besked(nr, reason=_exit_reason)
+    try:
+        settle_recovering(run_id, reason=_exit_reason or "budget-opbrugt",
+                          summary=_fortsaettelse)
+        signal_recovery_dispatcher()
+        return
+    except Exception:
+        logger.warning("auto-fortsaettelse: kunne ikke skrive kravet for %s — "
+                       "starter direkte", run_id, exc_info=True)
+
     nye = dict(visible_args)
-    nye["message"] = ac.fortsaettelses_besked(nr, reason=_exit_reason)
+    nye["message"] = _fortsaettelse
     nye.pop("session_id", None)
     start_user_run_detached(
         session_id=sid, eff_model=eff_model, eff_provider=eff_provider,

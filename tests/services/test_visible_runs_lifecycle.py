@@ -14,16 +14,8 @@ def test_recovering_run_remains_durable_for_restart(monkeypatch):
 
     calls = []
     monkeypatch.setattr(
-        "core.services.in_flight_runs.mark_interrupted",
-        lambda run_id, **kw: calls.append(("interrupted", run_id, kw)),
-    )
-    monkeypatch.setattr(
-        "core.services.in_flight_runs.mark_completed",
-        lambda run_id: calls.append(("completed", run_id)),
-    )
-    monkeypatch.setattr(
-        "core.services.in_flight_runs.clear_session",
-        lambda session_id: calls.append(("cleared", session_id)),
+        "core.services.in_flight_runs.settle_recovering",
+        lambda run_id, **kw: calls.append(("recovering", run_id, kw)) or {},
     )
 
     finalize_in_flight(
@@ -31,26 +23,18 @@ def test_recovering_run_remains_durable_for_restart(monkeypatch):
         status="recovering", error="budget-opbrugt",
     )
 
-    assert calls == [("interrupted", "run-recovering", {
+    assert calls == [("recovering", "run-recovering", {
         "reason": "budget-opbrugt", "summary": "budget-opbrugt",
     })]
 
 
-def test_completed_run_clears_durable_in_flight_state(monkeypatch):
+def test_completed_run_is_durably_settled(monkeypatch):
     from core.services.visible_runs_sections.run_finalization import finalize_in_flight
 
     calls = []
     monkeypatch.setattr(
-        "core.services.in_flight_runs.mark_interrupted",
-        lambda run_id, **kw: calls.append(("interrupted", run_id, kw)),
-    )
-    monkeypatch.setattr(
-        "core.services.in_flight_runs.mark_completed",
-        lambda run_id: calls.append(("completed", run_id)),
-    )
-    monkeypatch.setattr(
-        "core.services.in_flight_runs.clear_session",
-        lambda session_id: calls.append(("cleared", session_id)),
+        "core.services.in_flight_runs.settle_terminal",
+        lambda run_id, **kw: calls.append((run_id, kw)) or {},
     )
 
     finalize_in_flight(
@@ -58,4 +42,23 @@ def test_completed_run_clears_durable_in_flight_state(monkeypatch):
         status="completed", error="",
     )
 
-    assert calls == [("completed", "run-complete"), ("cleared", "session-2")]
+    assert calls == [("run-complete", {"status": "completed", "reason": "completed"})]
+
+
+def test_failed_run_is_preserved_as_terminal_not_erased(monkeypatch):
+    from core.services.visible_runs_sections.run_finalization import finalize_in_flight
+
+    calls = []
+    monkeypatch.setattr(
+        "core.services.in_flight_runs.settle_terminal",
+        lambda run_id, **kw: calls.append((run_id, kw)) or {},
+    )
+
+    finalize_in_flight(
+        run_id="run-failed", session_id="session-3",
+        status="failed_terminal", error="provider-auth-failed",
+    )
+
+    assert calls == [("run-failed", {
+        "status": "failed_terminal", "reason": "provider-auth-failed",
+    })]

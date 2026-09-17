@@ -62,6 +62,9 @@ def test_followup_rounds_resolve_their_own_thinking_mode():
 def test_forced_finalize_uses_pending_tool_intent_not_completed_default():
     src = _source()
     assert "_a_pending_tool_intent" in src
-    assert "resolve_agentic_exit(" in src
+    # Opgave 3 (17/9-2026): udgangen går gennem `settle_segment_exit`, som
+    # skriver den durable post før den terminale SSE og selv kalder
+    # klassifikationen bag `resolve_agentic_exit`.
+    assert "settle_segment_exit(" in src
     assert 'yield _sse(_terminal.event_name, _terminal.event_payload)' in src
     assert "recovery_attempt=_recovery_attempt" in src

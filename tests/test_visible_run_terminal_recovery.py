@@ -75,10 +75,13 @@ def test_exhausted_recovery_chain_never_promises_another_continuation():
 
 
 def test_visible_run_routes_exit_through_terminal_recovery():
+    """Opgave 3 (17/9-2026): udgangen går nu gennem `settle_segment_exit`, som
+    skriver den durable post FØR den terminale SSE. Klassifikationen er den
+    samme — `resolve_agentic_exit` er stadig den rene funktion bag den."""
     import inspect
     from core.services import visible_runs
     source = inspect.getsource(visible_runs)
-    assert "resolve_agentic_exit(" in source
+    assert "settle_segment_exit(" in source
     assert '_agentic_loop_exit_reason = "early-exit-empty-text"' in source
     assert '_agentic_loop_exit_reason = "early-exit-tool-only"' in source
     assert '_agentic_loop_exit_reason = "early-exit-loop-gate-skip"' in source

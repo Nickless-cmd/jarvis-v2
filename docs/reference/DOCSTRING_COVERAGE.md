@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7655/14837 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7681/14874 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,7 +8,7 @@ Generated from source. 7655/14837 functions/methods documented (51%). The list b
 |---|---|---|---|
 | `apps.api.jarvis_api` | 34 | 36 | 94% |
 | `apps.api.jarvis_api.middleware` | 8 | 19 | 42% |
-| `apps.api.jarvis_api.routes` | 652 | 853 | 76% |
+| `apps.api.jarvis_api.routes` | 654 | 855 | 76% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 69 | 171 | 40% |
 | `apps.desktop` | 6 | 7 | 85% |
@@ -24,8 +24,8 @@ Generated from source. 7655/14837 functions/methods documented (51%). The list b
 | `core.identity` | 67 | 160 | 41% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 650 | 1187 | 54% |
-| `core.services` | 5083 | 10190 | 49% |
+| `core.runtime` | 651 | 1188 | 54% |
+| `core.services` | 5106 | 10224 | 49% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 109 | 184 | 59% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -41,7 +41,7 @@ Generated from source. 7655/14837 functions/methods documented (51%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2111)
+## Undocumented public functions (2114)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L207)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1107,6 +1107,8 @@ Generated from source. 7655/14837 functions/methods documented (51%). The list b
 - `core/services/identity_mutation_log.py` :: `list_mutations` (L206)
 - `core/services/idle_consolidation.py` :: `build_idle_consolidation_surface` (L312)
 - `core/services/idle_thinking.py` :: `build_idle_thinking_surface` (L83)
+- `core/services/in_flight_runs.py` :: `release_recovery_claim` (L548)
+- `core/services/in_flight_runs.py` :: `renew_recovery_lease` (L519)
 - `core/services/infra_weather_daemon.py` :: `build_infra_weather_surface` (L290)
 - `core/services/infra_weather_daemon.py` :: `get_weather` (L268)
 - `core/services/initiative_queue.py` :: `abandon_long_term_intention` (L550)
@@ -1478,26 +1480,27 @@ Generated from source. 7655/14837 functions/methods documented (51%). The list b
 - `core/services/research_evidence_collector.py` :: `collecting_for` (L14)
 - `core/services/research_evidence_collector.py` :: `observe_web_result` (L38)
 - `core/services/research_ledger.py` :: `taellere` (L42)
-- `core/services/research_orchestrator.py` :: `research_enabled` (L949)
-- `core/services/research_orchestrator.py` :: `stream_research_run` (L646)
+- `core/services/research_orchestrator.py` :: `research_enabled` (L1042)
+- `core/services/research_orchestrator.py` :: `stream_research_run` (L649)
 - `core/services/research_prompt_context.py` :: `research_context` (L23)
 - `core/services/research_prompt_context.py` :: `research_prompt_section` (L36)
 - `core/services/research_quality.py` :: `evaluate_research_report` (L19)
 - `core/services/research_router.py` :: `classify_research` (L42)
-- `core/services/research_store.py` :: `active_for_session` (L257)
-- `core/services/research_store.py` :: `add_source` (L152)
-- `core/services/research_store.py` :: `add_steer` (L168)
+- `core/services/research_store.py` :: `active_for_session` (L334)
+- `core/services/research_store.py` :: `add_source` (L229)
+- `core/services/research_store.py` :: `add_steer` (L245)
 - `core/services/research_store.py` :: `bind_visible_run` (L106)
 - `core/services/research_store.py` :: `complete_task` (L138)
-- `core/services/research_store.py` :: `consume_pending_steers` (L176)
+- `core/services/research_store.py` :: `completed_task_count` (L224)
+- `core/services/research_store.py` :: `consume_pending_steers` (L253)
 - `core/services/research_store.py` :: `create_run` (L73)
 - `core/services/research_store.py` :: `create_tasks` (L112)
 - `core/services/research_store.py` :: `get_run` (L67)
-- `core/services/research_store.py` :: `list_sources` (L192)
-- `core/services/research_store.py` :: `mark_stale_interrupted` (L268)
-- `core/services/research_store.py` :: `source_count` (L202)
+- `core/services/research_store.py` :: `list_sources` (L269)
+- `core/services/research_store.py` :: `mark_stale_interrupted` (L345)
+- `core/services/research_store.py` :: `source_count` (L279)
 - `core/services/research_store.py` :: `start_task` (L126)
-- `core/services/research_store.py` :: `tool_call_count` (L250)
+- `core/services/research_store.py` :: `tool_call_count` (L327)
 - `core/services/research_store.py` :: `transition_run` (L85)
 - `core/services/resonance_decay.py` :: `build_resonance_decay_surface` (L410)
 - `core/services/retry_runtime.py` :: `Spent.plus_attempt` (L85)
@@ -1905,29 +1908,29 @@ Generated from source. 7655/14837 functions/methods documented (51%). The list b
 - `core/services/visible_runs.py` :: `VisibleRunController.cancel` (L466)
 - `core/services/visible_runs.py` :: `VisibleRunController.clear_stream` (L463)
 - `core/services/visible_runs.py` :: `VisibleRunController.is_cancelled` (L473)
-- `core/services/visible_runs.py` :: `cancel_visible_run` (L6967)
-- `core/services/visible_runs.py` :: `get_active_visible_run` (L6992)
-- `core/services/visible_runs.py` :: `get_last_visible_capability_use` (L7196)
-- `core/services/visible_runs.py` :: `get_last_visible_run_outcome` (L7192)
-- `core/services/visible_runs.py` :: `get_visible_run_controller` (L6963)
-- `core/services/visible_runs.py` :: `get_visible_selected_work_item` (L7105)
-- `core/services/visible_runs.py` :: `get_visible_selected_work_note` (L7157)
-- `core/services/visible_runs.py` :: `get_visible_selected_work_surface` (L7074)
-- `core/services/visible_runs.py` :: `get_visible_work` (L7015)
-- `core/services/visible_runs.py` :: `get_visible_work_surface` (L7047)
-- `core/services/visible_runs.py` :: `register_visible_run` (L6925)
-- `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L7213)
-- `core/services/visible_runs.py` :: `unregister_visible_run` (L6978)
+- `core/services/visible_runs.py` :: `cancel_visible_run` (L7010)
+- `core/services/visible_runs.py` :: `get_active_visible_run` (L7035)
+- `core/services/visible_runs.py` :: `get_last_visible_capability_use` (L7239)
+- `core/services/visible_runs.py` :: `get_last_visible_run_outcome` (L7235)
+- `core/services/visible_runs.py` :: `get_visible_run_controller` (L7006)
+- `core/services/visible_runs.py` :: `get_visible_selected_work_item` (L7148)
+- `core/services/visible_runs.py` :: `get_visible_selected_work_note` (L7200)
+- `core/services/visible_runs.py` :: `get_visible_selected_work_surface` (L7117)
+- `core/services/visible_runs.py` :: `get_visible_work` (L7058)
+- `core/services/visible_runs.py` :: `get_visible_work_surface` (L7090)
+- `core/services/visible_runs.py` :: `register_visible_run` (L6968)
+- `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L7256)
+- `core/services/visible_runs.py` :: `unregister_visible_run` (L7021)
 - `core/services/visible_runs_learning_signals.py` :: `record_visible_run_learning_signals` (L53)
 - `core/services/visible_runs_outcomes.py` :: `set_last_visible_run_outcome` (L566)
 - `core/services/visible_runs_sse_v2.py` :: `ToolEchoFilter.feed` (L102)
 - `core/services/visible_runs_sse_v2.py` :: `ToolEchoFilter.flush` (L151)
 - `core/services/visible_stream_gate.py` :: `enter_visible_stream` (L38)
 - `core/services/visible_stream_gate.py` :: `exit_visible_stream` (L44)
-- `core/services/visible_terminal_policy.py` :: `classify_terminal` (L70)
+- `core/services/visible_terminal_policy.py` :: `classify_terminal` (L82)
 - `core/services/visible_terminal_policy.py` :: `has_pending_tool_intent` (L51)
 - `core/services/visible_terminal_policy.py` :: `is_recoverable_exit_reason` (L55)
-- `core/services/visible_terminal_policy.py` :: `recovery_notice` (L106)
+- `core/services/visible_terminal_policy.py` :: `recovery_notice` (L118)
 - `core/services/visible_turn_accumulator.py` :: `TurnAccumulator.close_segment` (L72)
 - `core/services/visible_turn_accumulator.py` :: `TurnAccumulator.close_thinking` (L150)
 - `core/services/visible_turn_accumulator.py` :: `TurnAccumulator.note_text` (L76)

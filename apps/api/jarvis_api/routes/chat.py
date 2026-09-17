@@ -1027,6 +1027,27 @@ def chat_search_sessions(q: str = "", limit: int = 30) -> dict:
     return {"items": search_chat_sessions(q, user_id=uid, limit=limit)}
 
 
+@router.get("/sessions/{session_id}/recovery")
+def chat_session_recovery(session_id: str, response: Response) -> dict:
+    """Hvad er der at genoptage for denne samtale? 204 når der ikke er noget.
+
+    Opgave 7 (17/9-2026): efter en genstart er den proces-lokale hændelseslog
+    tom, og klienten læste «tom» som «færdig». Journalen på disken ved bedre.
+    """
+    from core.services.in_flight_runs import recovery_snapshot
+    try:
+        snapshot = recovery_snapshot(session_id)
+    except Exception:
+        import logging
+        logging.getLogger("uvicorn.error").warning(
+            "kunne ikke laese genoptagelses-tilstand for %s", session_id, exc_info=True)
+        snapshot = None
+    if not snapshot:
+        response.status_code = 204
+        return {}
+    return snapshot
+
+
 @router.get("/active-runs")
 def chat_active_runs() -> dict:
     """Sessioner med et aktivt visible-run lige nu (#8 — autonome/baggrunds-runs).
@@ -1086,6 +1107,7 @@ def chat_cancel_active(session_id: str) -> dict:
         if str(st.get("session_id") or "") == sid:
             rid = str(st.get("run_id") or "")
             if rid:
+                _settle_user_stop(rid, sid)
                 return {"cancelled": bool(cancel_visible_run(rid)), "run_id": rid}
     except Exception:
         pass
@@ -1796,10 +1818,23 @@ async def chat_deny_tool(approval_id: str) -> dict:
     return result
 
 
+def _settle_user_stop(run_id: str, session_id: str = "") -> None:
+    """Skriv stoppet ned FØR kørslen afbrydes — ellers ligner det en afbrudt
+    tur, og en afbrudt tur bliver genoptaget (opgave 5, 17/9-2026)."""
+    try:
+        from core.services.visible_run_segment_settlement import settle_user_stop
+        settle_user_stop(run_id=run_id, session_id=session_id)
+    except Exception:
+        import logging
+        logging.getLogger("uvicorn.error").warning(
+            "kunne ikke gøre brugerens stop durabelt for %s", run_id, exc_info=True)
+
+
 @router.post("/runs/{run_id}/cancel")
 def chat_cancel_run(run_id: str) -> dict:
     """Afbryd et aktivt visible-run via run_id. 404 hvis runnet ikke er aktivt;
     ellers {ok: True, run_id, status: "cancelled"}."""
+    _settle_user_stop(run_id)
     if not cancel_visible_run(run_id):
         raise HTTPException(status_code=404, detail="Visible run not active")
     return {

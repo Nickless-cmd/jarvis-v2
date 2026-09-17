@@ -15,6 +15,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import threading
 from pathlib import Path
 from typing import Any
 
@@ -49,11 +50,33 @@ def save_json(name: str, data: Any) -> None:
 
     Write-temp-then-rename so a crash mid-write can't leave a half-file.
     """
-    p = _path(name)
     try:
-        p.parent.mkdir(parents=True, exist_ok=True)
-        tmp = p.with_suffix(p.suffix + ".tmp")
-        tmp.write_text(json.dumps(data, ensure_ascii=False, default=str), encoding="utf-8")
-        os.replace(tmp, p)
+        save_json_strict(name, data)
     except Exception as exc:
         logger.debug("state_store: failed to save %s: %s", name, exc)
+
+
+def save_json_strict(name: str, data: Any) -> None:
+    """Atomically persist JSON and propagate failures to authoritative callers.
+
+    Most state-store users are optional daemons and deliberately use
+    :func:`save_json`, which is self-safe. Recovery ownership is different: a
+    caller must not announce a successful settlement if the durable write
+    failed. The unique temp name also prevents two threads from sharing one
+    ``.tmp`` file before an outer cross-process lock is acquired.
+    """
+    p = _path(name)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    tmp = p.with_suffix(
+        p.suffix + f".{os.getpid()}.{threading.get_ident()}.tmp"
+    )
+    try:
+        tmp.write_text(
+            json.dumps(data, ensure_ascii=False, default=str), encoding="utf-8"
+        )
+        os.replace(tmp, p)
+    finally:
+        try:
+            tmp.unlink(missing_ok=True)
+        except OSError:
+            pass

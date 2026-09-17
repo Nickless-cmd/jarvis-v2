@@ -5,12 +5,15 @@ from __future__ import annotations
 import asyncio
 import inspect
 import json
+import logging
 import re
 import time
 from dataclasses import asdict
 from typing import AsyncIterator, Callable
 
 from core.services import research_ledger, research_store as store
+
+logger = logging.getLogger("uvicorn.error")
 from core.services.research_contract import (
     ResearchDecision,
     ResearchFinding,
@@ -944,6 +947,96 @@ async def stream_research_run(
         yield _event("research_warning", {"research_run_id": run_id, "error": str(exc)})
         if not saw_done:
             yield _event("done", {})
+
+
+class ResearchRecoverableError(RuntimeError):
+    """Der er intet at syntetisere på — forælderen må tage sig af det.
+
+    Opgave 6. Et afbrudt research-run uden ét eneste færdigt spor kan ikke
+    levere en rapport. At lade som om er værre end at sige det: den synlige
+    kørsel får fejlen og afgør selv om den vil prøve igen.
+    """
+
+    def __init__(self, run_id: str, reason: str, evidence_count: int = 0) -> None:
+        super().__init__(f"{reason} (run={run_id}, evidens={evidence_count})")
+        self.run_id = run_id
+        self.reason = reason
+        self.evidence_count = evidence_count
+
+
+async def resume_research_run(run_id: str, *, visible_run_id: str,
+                              worker_factory=None):
+    """Tag et afbrudt research-run op igen — kun de UAFSLUTTEDE spor.
+
+    Opgave 6 (17/9-2026). Før startede en genoptagelse forfra: sporene der
+    allerede havde leveret evidens blev kørt igen, og deres kilder kom ind to
+    gange. Her køres kun det der mangler, og rapporten bygges på ALT der er
+    kommet ind — både før og efter afbrydelsen.
+
+    `worker_factory` er den der udfører ét spor. Uden den genoptages sporene
+    ikke; så syntetiseres der på det der allerede ligger, fordi et svar med
+    delvis evidens er bedre end intet svar. Er der slet ingen evidens og ingen
+    måde at hente den på, rejses `ResearchRecoverableError`.
+    """
+    run = store.get_run(run_id)
+    if not run:
+        raise ResearchRecoverableError(run_id, "ukendt research-run", 0)
+    if visible_run_id:
+        store.bind_visible_run(run_id, visible_run_id)
+
+    uafsluttede = store.unfinished_tasks(run_id)
+    evidens = store.completed_task_count(run_id)
+    if not evidens and (worker_factory is None or not uafsluttede):
+        raise ResearchRecoverableError(
+            run_id, "ingen evidens at syntetisere paa", evidens)
+
+    koert = 0
+    for task in uafsluttede:
+        if worker_factory is None:
+            break
+        try:
+            store.start_task(str(task["id"]))
+        except Exception:
+            # Sporet var ikke `pending` — en anden har taget det. Lad det være.
+            continue
+        try:
+            svar = await worker_factory(run_id=run_id, task=task)
+        except Exception as exc:
+            store.complete_task(str(task["id"]), {"error": str(exc)}, status="failed")
+            yield _event("research_warning", {
+                "research_run_id": run_id, "task": int(task["ordinal"]),
+                "error": str(exc)[:200],
+            })
+            continue
+        store.complete_task(str(task["id"]), dict(svar or {}))
+        koert += 1
+        yield _event("research_progress", {
+            "research_run_id": run_id, "phase": "recovering",
+            "completed_tasks": koert, "total_tasks": len(uafsluttede),
+            "sources": store.source_count(run_id),
+        })
+
+    evidens = store.completed_task_count(run_id)
+    if not evidens:
+        raise ResearchRecoverableError(
+            run_id, "alle genoptagne spor fejlede", 0)
+
+    try:
+        store.advance_to_completed(run_id, warning=str(run.get("warning") or ""))
+    except Exception:
+        # At lukke runnet er sidste skridt, ikke det der bærer svaret. Fejler
+        # det, står rapporten stadig — men vi siger det højt.
+        logger.warning("kunne ikke lukke research-run %s efter genoptagelse",
+                       run_id, exc_info=True)
+    yield _event("research_completed", {
+        "research_run_id": run_id,
+        "sources": store.source_count(run_id),
+        "findings": len(store.list_findings(run_id)),
+        "evidence_tasks": evidens,
+        "resumed_tasks": koert,
+        "skipped_tasks": max(0, len(uafsluttede) - koert),
+        "recovered": True,
+    })
 
 
 def research_enabled() -> bool:

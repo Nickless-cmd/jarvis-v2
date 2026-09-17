@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 14774 functions/methods, 51% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 14792 functions/methods, 51% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -14,6 +14,7 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 14774 functions/
 - [`apps.api.jarvis_api.schemas`](apps.api.jarvis_api.schemas.md)
 - [`apps.central_cli.central_cli`](apps.central_cli.central_cli.md)
 - [`apps.desktop`](apps.desktop.md)
+- [`apps.voice_agent`](apps.voice_agent.md)
 - [`core.auth`](core.auth.md)
 - [`core.browser`](core.browser.md)
 - [`core.channels`](core.channels.md)

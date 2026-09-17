@@ -83,6 +83,17 @@ _Owner-only user-administration (spec 2026-06-15 §4/§6). CRUD + GDPR-erasure._
 | function | `patch_one` | `(user_id, req, claims=…)` | — | [src](../../../apps/api/jarvis_api/routes/users.py#L48) |
 | function | `delete_one` | `(user_id, req, claims=…)` | — | [src](../../../apps/api/jarvis_api/routes/users.py#L75) |
 
+## `apps/api/jarvis_api/routes/voice_live.py`
+_POST /voice/samtale — åbn en ægte stemme-samtale med Jarvis (LiveKit/WebRTC)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `SamtaleRequest` | `` | — | [src](../../../apps/api/jarvis_api/routes/voice_live.py#L44) |
+| function | `_livekit_noegler` | `()` | — | [src](../../../apps/api/jarvis_api/routes/voice_live.py#L48) |
+| function | `livekit_billet` | `(api_key, api_secret, *, identitet, rum, navn=…, admin=…, ttl=…)` | LiveKit-adgangsbillet (JWT HS256, LiveKits eget format). | [src](../../../apps/api/jarvis_api/routes/voice_live.py#L56) |
+| function | `_send_agent` | `(api_key, api_secret, rum, metadata)` | Bed LiveKit sende voice-agenten ind i rummet med sin hemmelige metadata. | [src](../../../apps/api/jarvis_api/routes/voice_live.py#L70) |
+| function | `aabn_samtale` | `(body, request)` | — | [src](../../../apps/api/jarvis_api/routes/voice_live.py#L86) |
+
 ## `apps/api/jarvis_api/routes/workbench.py`
 _Ruter til de værktøjer der blev bygget 6/9 men aldrig kunne nås fra en app._
 

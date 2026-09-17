@@ -119,6 +119,7 @@ from apps.api.jarvis_api.routes.sensory import router as sensory_router
 from apps.api.jarvis_api.routes.live import router as live_router
 from apps.api.jarvis_api.routes.jarvisx_bridge import router as jarvisx_bridge_router
 from apps.api.jarvis_api.routes.tts import router as tts_router
+from apps.api.jarvis_api.routes.voice_live import router as voice_live_router
 from apps.api.jarvis_api.routes.mission_control import router as mc_router
 from apps.api.jarvis_api.routes.interlanguage_blind import router as interlanguage_blind_router
 from apps.api.jarvis_api.routes.cheap_balancer import router as cheap_balancer_router
@@ -860,6 +861,7 @@ def create_app() -> FastAPI:
     app.include_router(live_router)
     app.include_router(jarvisx_bridge_router)
     app.include_router(tts_router, prefix="/api/tts", tags=["tts"])
+    app.include_router(voice_live_router)
     app.include_router(system_health_router, prefix="/mc")
     app.include_router(openai_compat_router)
     app.include_router(agent_loop_router)

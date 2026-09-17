@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7624/14774 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7628/14792 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,10 +8,11 @@ Generated from source. 7624/14774 functions/methods documented (51%). The list b
 |---|---|---|---|
 | `apps.api.jarvis_api` | 34 | 36 | 94% |
 | `apps.api.jarvis_api.middleware` | 8 | 19 | 42% |
-| `apps.api.jarvis_api.routes` | 650 | 849 | 76% |
+| `apps.api.jarvis_api.routes` | 652 | 853 | 76% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 69 | 171 | 40% |
 | `apps.desktop` | 6 | 7 | 85% |
+| `apps.voice_agent` | 2 | 14 | 14% |
 | `core.auth` | 4 | 49 | 8% |
 | `core.browser` | 11 | 13 | 84% |
 | `core.channels` | 0 | 0 | 0% |
@@ -40,9 +41,9 @@ Generated from source. 7624/14774 functions/methods documented (51%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2089)
+## Undocumented public functions (2094)
 
-- `apps/api/jarvis_api/app.py` :: `create_app` (L206)
+- `apps/api/jarvis_api/app.py` :: `create_app` (L207)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
 - `apps/api/jarvis_api/middleware/api_connection_nerve.py` :: `ApiConnectionNerveMiddleware.dispatch` (L34)
 - `apps/api/jarvis_api/middleware/internal_discord.py` :: `dispatch` (L33)
@@ -108,6 +109,7 @@ Generated from source. 7624/14774 functions/methods documented (51%). The list b
 - `apps/api/jarvis_api/routes/users.py` :: `get_one` (L40)
 - `apps/api/jarvis_api/routes/users.py` :: `list_all` (L35)
 - `apps/api/jarvis_api/routes/users.py` :: `patch_one` (L48)
+- `apps/api/jarvis_api/routes/voice_live.py` :: `aabn_samtale` (L86)
 - `apps/api/jarvis_api/routes/workbench.py` :: `operator_channel_close` (L60)
 - `apps/central_cli/central_cli/client.py` :: `CentralClient.close` (L70)
 - `apps/central_cli/central_cli/client.py` :: `CentralClient.get_json` (L39)
@@ -129,6 +131,10 @@ Generated from source. 7624/14774 functions/methods documented (51%). The list b
 - `apps/central_cli/central_cli/tui.py` :: `CentralApp.on_input_submitted` (L52)
 - `apps/central_cli/central_cli/tui.py` :: `CentralApp.on_mount` (L34)
 - `apps/central_cli/central_cli/tui.py` :: `run_tui` (L74)
+- `apps/voice_agent/agent.py` :: `JarvisStemme.llm_node` (L152)
+- `apps/voice_agent/agent.py` :: `WhisperSTT.varm_op` (L82)
+- `apps/voice_agent/agent.py` :: `entrypoint` (L209)
+- `apps/voice_agent/agent.py` :: `main` (L253)
 - `core/auth/copilot_oauth.py` :: `get_copilot_oauth_credentials` (L75)
 - `core/auth/copilot_oauth.py` :: `get_copilot_oauth_truth` (L22)
 - `core/auth/copilot_oauth.py` :: `save_copilot_oauth_credentials` (L65)

@@ -1,6 +1,6 @@
 # API_REFERENCE
 
-> Generated 2026-09-17 from app.routes (live) — 570 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
+> Generated 2026-09-17 from app.routes (live) — 571 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
 
 | Method | Path | Response model | Source |
 |---|---|---|---|
@@ -566,6 +566,7 @@
 | POST | `/v1/tools/execute` |  | agent_loop |
 | GET | `/v1/tools/native` |  | agent_loop |
 | POST | `/v1/tools/native` |  | agent_loop |
+| POST | `/voice/samtale` | dict | voice_live |
 | GET | `/workbench/checkpoints` | dict | workbench |
 | POST | `/workbench/checkpoints/rollback` | dict | workbench |
 | GET | `/workbench/context` | dict | workbench |

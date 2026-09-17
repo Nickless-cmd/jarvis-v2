@@ -361,8 +361,17 @@ CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
         "cost_class": "free",
         "static_models": ["nvidia/nemotron-3-super-120b-a12b:free",
                           "nvidia/nemotron-3-ultra-550b-a55b:free",
-                          "cohere/north-mini-code:free", "openrouter/free"],
+                          "cohere/north-mini-code:free", "openrouter/free",
+                          # 17/9-2026: gratis + værktøjskald MÅLT (1,0-6,5 s).
+                          "nex-agi/nex-n2.5-mini:free", "nex-agi/nex-n2.5-pro:free",
+                          "dots-studio/dots-3-note-preview:free",
+                          "poolside/laguna-xs-2.1:free", "stepfun/step-3.7-flash:free",
+                          "inclusionai/ling-3.0-flash-fin:free",
+                          "nvidia/nemotron-3.5-lightning:free"],
         # tencent/hy3:free fjernet 17/9-2026: «does not exist» på gatewayen.
+        # Udeladt 17/9: kilo-auto/free (26,7 s), glm-5.2:free (ingen tool-endpoint),
+        # stealth/union-alpha (anonym udbyder bag «stealth» — ukendt hvem der får
+        # prompterne), inkling-small (dagsloft).
     },
     # Z.ai / Zhipu GLM (15. jul, Bjørn-nøgle, live-verificeret): OpenAI-compat på
     # /paas/v4. glm-4.5-flash = ÆGTE GRATIS (ikke i /models-katalog men svarer $0;

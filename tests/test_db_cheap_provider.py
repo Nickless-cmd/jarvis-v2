@@ -28,3 +28,13 @@ def test_count_filters_by_auth_profile(isolated_runtime):
     )
     # no filter => counts both (backward compat)
     assert count_cheap_provider_invocations(provider="groq", since=since) == 2
+
+
+def test_old_signature_gets_stable_public_identifiers(isolated_runtime):
+    from core.runtime.db_cheap_provider import record_cheap_provider_invocation
+
+    row = record_cheap_provider_invocation(provider="groq", status="ok")
+
+    assert row["invocation_id"]
+    assert row["correlation_id"]
+    assert row["attempt"] == 1

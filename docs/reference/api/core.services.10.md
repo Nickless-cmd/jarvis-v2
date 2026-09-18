@@ -2,6 +2,113 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/deep_analyzer.py`
+_Deep Analyzer — scoped kodebase-introspection._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `SelectedFile` | `` | — | [src](../../../core/services/deep_analyzer.py#L43) |
+| function | `_keywords` | `(chunks)` | — | [src](../../../core/services/deep_analyzer.py#L50) |
+| function | `_file_score` | `(path, keywords)` | Score a file by filename + path match against keywords. | [src](../../../core/services/deep_analyzer.py#L59) |
+| function | `_scan_repo` | `(*, root, paths, keywords, max_files, max_file_bytes, max_total_bytes)` | — | [src](../../../core/services/deep_analyzer.py#L68) |
+| function | `_is_ignored` | `(path, root)` | — | [src](../../../core/services/deep_analyzer.py#L133) |
+| function | `_find_first_keyword_line` | `(lines, keywords)` | — | [src](../../../core/services/deep_analyzer.py#L144) |
+| function | `_build_outline` | `(*, goal, question_set, max_sections)` | — | [src](../../../core/services/deep_analyzer.py#L154) |
+| function | `_build_findings` | `(*, scope, selected, keywords, max_findings=…)` | — | [src](../../../core/services/deep_analyzer.py#L169) |
+| function | `_build_risks` | `(findings)` | — | [src](../../../core/services/deep_analyzer.py#L221) |
+| function | `_build_next_steps` | `(*, findings, scope)` | — | [src](../../../core/services/deep_analyzer.py#L241) |
+| function | `run_deep_analysis` | `(*, goal, scope=…, paths=…, question_set=…, repo_root=…, max_files=…, max_file_bytes=…, max_total_bytes=…, max_sections=…)` | Run a scoped deep analysis. Returns {summary, findings, risks, next_steps, meta}. | [src](../../../core/services/deep_analyzer.py#L252) |
+| function | `build_deep_analyzer_surface` | `()` | MC surface — deep analyzer is stateless but advertises capability + recent runs. | [src](../../../core/services/deep_analyzer.py#L318) |
+| function | `evidence_paths_exist` | `(result, repo_root=…)` | Verify all evidence paths referenced in findings actually exist. | [src](../../../core/services/deep_analyzer.py#L334) |
+
+## `core/services/deep_reflection_slot.py`
+_Deep Reflection Slot — real think-time, not tick-to-tick alert._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_storage_path` | `()` | — | [src](../../../core/services/deep_reflection_slot.py#L36) |
+| function | `_reflection_dir` | `()` | — | [src](../../../core/services/deep_reflection_slot.py#L40) |
+| function | `_load` | `()` | — | [src](../../../core/services/deep_reflection_slot.py#L44) |
+| function | `_save` | `(data)` | — | [src](../../../core/services/deep_reflection_slot.py#L60) |
+| function | `_chronicle_summary` | `()` | Pull last-24h visible runs + inner thought fragments. | [src](../../../core/services/deep_reflection_slot.py#L74) |
+| function | `_active_dreams` | `()` | — | [src](../../../core/services/deep_reflection_slot.py#L112) |
+| function | `_shadow_patterns` | `()` | — | [src](../../../core/services/deep_reflection_slot.py#L125) |
+| function | `_signal_surfaces` | `()` | — | [src](../../../core/services/deep_reflection_slot.py#L138) |
+| function | `_compose_prompt` | `(chronicle, dreams, shadow, signals)` | — | [src](../../../core/services/deep_reflection_slot.py#L185) |
+| function | `_fallback_content` | `(chronicle, dreams, shadow, signals)` | Structural fallback if LLM is unavailable. | [src](../../../core/services/deep_reflection_slot.py#L213) |
+| function | `_write_reflection_md` | `(reflection_id, text, sources)` | — | [src](../../../core/services/deep_reflection_slot.py#L237) |
+| function | `run_reflection` | `()` | — | [src](../../../core/services/deep_reflection_slot.py#L260) |
+| function | `_should_run_now` | `()` | — | [src](../../../core/services/deep_reflection_slot.py#L328) |
+| function | `tick` | `(_seconds=…)` | — | [src](../../../core/services/deep_reflection_slot.py#L357) |
+| function | `list_recent` | `(*, limit=…)` | — | [src](../../../core/services/deep_reflection_slot.py#L364) |
+| function | `build_deep_reflection_surface` | `()` | — | [src](../../../core/services/deep_reflection_slot.py#L368) |
+| function | `_surface_summary` | `(latest, all_items)` | — | [src](../../../core/services/deep_reflection_slot.py#L384) |
+| function | `build_deep_reflection_prompt_section` | `()` | Surface newly completed deep reflection for 12h. | [src](../../../core/services/deep_reflection_slot.py#L393) |
+
+## `core/services/delegation_advisor.py`
+_Delegation advisor — inline vs which subagent role._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `advise` | `(task)` | — | [src](../../../core/services/delegation_advisor.py#L46) |
+| function | `_exec_delegation_advisor` | `(args)` | — | [src](../../../core/services/delegation_advisor.py#L114) |
+
+## `core/services/delete_policy.py`
+_Slette-model — hvem må slette hvad, og hvor hårdt (spec §4.3)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `resolve_delete_action` | `(*, role, is_own_workspace, gdpr_erasure=…)` | Afgør slette-mode for (rolle, om det er eget workspace). | [src](../../../core/services/delete_policy.py#L22) |
+| function | `is_delete_confirmed` | `(*, role, confirmations_received)` | True hvis sletningen må udføres givet antal modtagne bekræftelser. | [src](../../../core/services/delete_policy.py#L55) |
+
+## `core/services/desire_daemon.py`
+_Desire daemon — emergent appetites based on Jarvis' actual experiences._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_persist_appetites` | `()` | — | [src](../../../core/services/desire_daemon.py#L61) |
+| function | `tick_desire_daemon` | `(signals, skip_event_gate=…)` | Update appetites based on current signals. | [src](../../../core/services/desire_daemon.py#L69) |
+| function | `get_active_appetites` | `()` | Return active appetites sorted by intensity descending. | [src](../../../core/services/desire_daemon.py#L136) |
+| function | `build_desire_surface` | `()` | — | [src](../../../core/services/desire_daemon.py#L141) |
+| function | `_apply_decay` | `(now)` | — | [src](../../../core/services/desire_daemon.py#L155) |
+| function | `_prune_expired` | `()` | — | [src](../../../core/services/desire_daemon.py#L165) |
+| function | `_find_appetite_by_type` | `(appetite_type)` | — | [src](../../../core/services/desire_daemon.py#L171) |
+| function | `_appetite_intensity` | `(appetite_type)` | Current intensity of an appetite type (0.0 when absent). Non-LLM. | [src](../../../core/services/desire_daemon.py#L178) |
+| function | `_text_signal` | `(value)` | Deterministic 0..1 proxy of a short text state so the event-gate can | [src](../../../core/services/desire_daemon.py#L184) |
+| function | `_spawn_appetite` | `(label, appetite_type, now)` | — | [src](../../../core/services/desire_daemon.py#L192) |
+| function | `raw_signal_mode_enabled` | `()` | Kill-switch for rå-signal-mode. Default OFF — flip via runtime-state. | [src](../../../core/services/desire_daemon.py#L228) |
+| function | `_build_raw_appetite_label` | `(spawning_type)` | Byg label udelukkende fra rå intensiteter — ingen LLM. | [src](../../../core/services/desire_daemon.py#L242) |
+| function | `_generate_appetite_label` | `(signal_text, appetite_type)` | — | [src](../../../core/services/desire_daemon.py#L260) |
+
+## `core/services/desktop_notifications.py`
+_Per-bruger in-memory kø af proaktive desktop-notifikationer. Desktop poller_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `reset` | `()` | — | [src](../../../core/services/desktop_notifications.py#L15) |
+| function | `enqueue` | `(user_id, item)` | — | [src](../../../core/services/desktop_notifications.py#L20) |
+| function | `drain` | `(user_id)` | — | [src](../../../core/services/desktop_notifications.py#L30) |
+| function | `prune` | `()` | — | [src](../../../core/services/desktop_notifications.py#L37) |
+
+## `core/services/desperation_awareness.py`
+_Desperation Awareness — self-noticing safety signal._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_hardware_component` | `()` | 0..1 contribution from hardware pressure. | [src](../../../core/services/desperation_awareness.py#L28) |
+| function | `_tension_component` | `()` | 0..1 contribution from active layer tensions. | [src](../../../core/services/desperation_awareness.py#L42) |
+| function | `_isolation_component` | `()` | 0..1 contribution from time since last user interaction. | [src](../../../core/services/desperation_awareness.py#L58) |
+| function | `_error_component` | `()` | 0..1 contribution from recent error rate in heartbeat outcomes. | [src](../../../core/services/desperation_awareness.py#L81) |
+| function | `compute_desperation_score` | `()` | Compute current desperation composite score in [0, 1] with reasons. | [src](../../../core/services/desperation_awareness.py#L100) |
+| function | `tick` | `(_seconds=…)` | Evaluate desperation and emit inner-voice event on threshold crossing. | [src](../../../core/services/desperation_awareness.py#L138) |
+| function | `_emit_crossing_event` | `(state, *, direction)` | Publish an inner-voice event so the crossing lands in chronicle. | [src](../../../core/services/desperation_awareness.py#L159) |
+| function | `_narrative_for` | `(state, direction)` | — | [src](../../../core/services/desperation_awareness.py#L176) |
+| function | `is_currently_pressed` | `()` | — | [src](../../../core/services/desperation_awareness.py#L183) |
+| function | `build_desperation_awareness_surface` | `()` | — | [src](../../../core/services/desperation_awareness.py#L187) |
+| function | `_surface_summary` | `(state)` | — | [src](../../../core/services/desperation_awareness.py#L199) |
+| function | `build_desperation_awareness_prompt_section` | `()` | Surfaces only when pressed or desperate — silent when calm. | [src](../../../core/services/desperation_awareness.py#L210) |
+| function | `reset_desperation_awareness` | `()` | Reset state (for testing). | [src](../../../core/services/desperation_awareness.py#L222) |
+
 ## `core/services/development_focus_tracking.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -606,102 +713,4 @@ _Dream insight daemon — persists dream articulation output as private brain re
 | function | `tick_dream_insight_daemon` | `(*, signal_id, signal_summary)` | Persist a dream articulation result if it's new. | [src](../../../core/services/dream_insight_daemon.py#L37) |
 | function | `get_latest_dream_insight` | `()` | — | [src](../../../core/services/dream_insight_daemon.py#L85) |
 | function | `build_dream_insight_surface` | `()` | — | [src](../../../core/services/dream_insight_daemon.py#L89) |
-
-## `core/services/dream_motif_daemon.py`
-_Dream Motif daemon — periodisk clustering af tankestrøm-fragmenter._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `tick_dream_motif_daemon` | `()` | Run weekly dream motif clustering. Writes dream_language.md if motifs found. | [src](../../../core/services/dream_motif_daemon.py#L40) |
-| function | `_load_recent_fragments` | `()` | Load thought-stream fragments from the last 30 days via private_brain_records. | [src](../../../core/services/dream_motif_daemon.py#L78) |
-| function | `_extract_motifs` | `(fragments)` | Simple word-frequency motif extraction across all fragments. | [src](../../../core/services/dream_motif_daemon.py#L96) |
-| function | `_name_motifs_via_llm` | `(motifs, fragments)` | Use LLM to give each recurring word/theme a poetic name and brief description. | [src](../../../core/services/dream_motif_daemon.py#L110) |
-| function | `_write_dream_language_file` | `(motifs, now, fragment_count)` | Write dream_language.md to workspace. Never injected into prompts — read on demand. | [src](../../../core/services/dream_motif_daemon.py#L155) |
-| function | `build_dream_motif_surface` | `()` | — | [src](../../../core/services/dream_motif_daemon.py#L187) |
-| function | `_state` | `()` | — | [src](../../../core/services/dream_motif_daemon.py#L197) |
-| function | `_parse_iso` | `(s)` | — | [src](../../../core/services/dream_motif_daemon.py#L205) |
-
-## `core/services/dream_session_lessons.py`
-_Drømme-sessionerne skal blive til læring._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `Afsnit` | `` | — | [src](../../../core/services/dream_session_lessons.py#L68) |
-| method | `Afsnit.kilde_maerke` | `(self)` | Hvilken NOTE afsnittet kom fra. | [src](../../../core/services/dream_session_lessons.py#L73) |
-| method | `Afsnit.signatur` | `(self)` | Første sætning, kortet ned — nok til at genkende det samme igen. | [src](../../../core/services/dream_session_lessons.py#L85) |
-| function | `_afsnit_fra` | `(sti)` | — | [src](../../../core/services/dream_session_lessons.py#L107) |
-| function | `laes_noter` | `(mappe=…, *, antal=…)` | Afsnit fra de nyeste drømme-noter, nyeste først. | [src](../../../core/services/dream_session_lessons.py#L124) |
-| function | `er_en_lektie` | `(a)` | Fejler lukket: uden en dom er svaret nej. | [src](../../../core/services/dream_session_lessons.py#L144) |
-| function | `gem` | `(a)` | Skriv lektien. Returnerer udfaldet fra ``upsert_lesson`` ('' ved fejl). | [src](../../../core/services/dream_session_lessons.py#L154) |
-| function | `_allerede_hoestet` | `(a)` | Er dette afsnit hoestet fra den SAMME note foer? | [src](../../../core/services/dream_session_lessons.py#L178) |
-| function | `koer_hoest` | `(*, mappe=…, antal=…)` | Læs de nyeste drømme-noter og gem det der er lektier. | [src](../../../core/services/dream_session_lessons.py#L199) |
-
-## `core/services/dreaming_session.py`
-_D4 — Dreaming Session: dedicated full-model session during prolonged idle._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_storage_path` | `()` | — | [src](../../../core/services/dreaming_session.py#L32) |
-| function | `_load_state` | `()` | — | [src](../../../core/services/dreaming_session.py#L36) |
-| function | `_save_state` | `(data)` | — | [src](../../../core/services/dreaming_session.py#L51) |
-| function | `_check_triggers` | `()` | Check if the dreaming session should fire. | [src](../../../core/services/dreaming_session.py#L62) |
-| function | `_collect_dream_material` | `()` | Collect all dream infrastructure output for the prompt. | [src](../../../core/services/dreaming_session.py#L101) |
-| function | `_build_dream_prompt` | `(material)` | Build the full dream prompt from collected material. | [src](../../../core/services/dreaming_session.py#L200) |
-| function | `_record_session` | `(material, dream_prompt_preview)` | Record the dream session metadata and return the session identifier. | [src](../../../core/services/dreaming_session.py#L306) |
-| function | `trigger_dream_session` | `()` | Check triggers and fire a dream session if conditions are met. | [src](../../../core/services/dreaming_session.py#L332) |
-| function | `list_dream_sessions` | `(*, limit=…)` | List recent dream session records. | [src](../../../core/services/dreaming_session.py#L393) |
-| function | `build_dreaming_session_surface` | `()` | Build Mission Control surface for the dreaming session module. | [src](../../../core/services/dreaming_session.py#L399) |
-
-## `core/services/drive_arbitration_engine.py`
-_Desire/value arbitration as a compact drive system._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `arbitrate_drives` | `(*, user_message=…, context=…)` | — | [src](../../../core/services/drive_arbitration_engine.py#L14) |
-| function | `build_drive_arbitration_surface` | `()` | — | [src](../../../core/services/drive_arbitration_engine.py#L56) |
-| function | `build_drive_arbitration_prompt_section` | `()` | — | [src](../../../core/services/drive_arbitration_engine.py#L69) |
-| function | `_policy_for_top` | `(top)` | — | [src](../../../core/services/drive_arbitration_engine.py#L84) |
-
-## `core/services/edit_checkpoint.py`
-_Git-checkpoint pr. redigeringsrunde — en dårlig runde kan rulles tilbage samlet._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_load` | `()` | — | [src](../../../core/services/edit_checkpoint.py#L45) |
-| function | `_save` | `(state)` | — | [src](../../../core/services/edit_checkpoint.py#L54) |
-| function | `_git` | `(cwd, *args, timeout=…)` | — | [src](../../../core/services/edit_checkpoint.py#L62) |
-| function | `is_git_repo` | `(cwd)` | — | [src](../../../core/services/edit_checkpoint.py#L71) |
-| function | `_objekt_findes` | `(cwd, sha)` | Er stash-objektet der endnu, eller har `git gc` taget det? | [src](../../../core/services/edit_checkpoint.py#L76) |
-| function | `checkpoint` | `(cwd, session_id, *, note=…)` | Fotografér arbejdstræet. None hvis ikke et git-repo eller træet er rent. | [src](../../../core/services/edit_checkpoint.py#L82) |
-| function | `list_checkpoints` | `(session_id)` | — | [src](../../../core/services/edit_checkpoint.py#L100) |
-| function | `rollback_last` | `(session_id)` | Gendan filerne fra seneste checkpoint. Popper stakken. | [src](../../../core/services/edit_checkpoint.py#L105) |
-| function | `clear` | `(session_id)` | — | [src](../../../core/services/edit_checkpoint.py#L127) |
-
-## `core/services/effective_policy.py`
-_Hvad GJALDT der faktisk for denne koersel — Fase 9._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_tool_scope` | `()` | — | [src](../../../core/services/effective_policy.py#L36) |
-| function | `_autonom` | `()` | — | [src](../../../core/services/effective_policy.py#L44) |
-| function | `_sandkasse` | `()` | (slaaet_til, kraevet_for_denne_koersel) — anmodet vs faktisk. | [src](../../../core/services/effective_policy.py#L52) |
-| function | `_tillid` | `()` | — | [src](../../../core/services/effective_policy.py#L75) |
-| function | `_ejer_godkendt` | `()` | — | [src](../../../core/services/effective_policy.py#L83) |
-| function | `snapshot` | `(**ekstra)` | Tag et oejebliksbillede af den politik der gaelder LIGE NU. | [src](../../../core/services/effective_policy.py#L91) |
-| function | `_maal` | `()` | — | [src](../../../core/services/effective_policy.py#L115) |
-| function | `_hash` | `(felter)` | sha256 over de politik-baerende felter — uden tidsstempler og id'er, | [src](../../../core/services/effective_policy.py#L134) |
-| function | `afviger` | `(a, b)` | Hvilke politik-felter er forskellige? Til at forklare et hash-skift. | [src](../../../core/services/effective_policy.py#L147) |
-
-## `core/services/egress_guard.py`
-_SSRF-vaern for udgaaende hentninger — porteret fra jarvis-code._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_is_internal_ip` | `(ip_str)` | Loopback, link-local (inkl. 169.254.169.254), RFC1918, 0.0.0.0. Ren. | [src](../../../core/services/egress_guard.py#L36) |
-| function | `classify` | `(url)` | {"blocked": bool, "reason": str}. Self-safe: uparsbar URL → blokeret. | [src](../../../core/services/egress_guard.py#L47) |
-| function | `is_safe_destination` | `(url)` | {"safe": bool, "reason": str} — laesevenligt alias til `classify`. | [src](../../../core/services/egress_guard.py#L81) |
-| function | `check_redirect_hop` | `(url)` | Samme klassifikation, anvendt paa et OMDIRIGERINGS-maal. | [src](../../../core/services/egress_guard.py#L87) |
-| function | `classify_egress` | `(command)` | {"egress": bool, "tool": str, "reason": str} for en bash-kommando. Ren. | [src](../../../core/services/egress_guard.py#L119) |
-| function | `urls_in_command` | `(command)` | URL'er i en kommando, saa de kan klassificeres hver for sig. Ren. | [src](../../../core/services/egress_guard.py#L141) |
-| function | `internal_targets_in_command` | `(command)` | De URL'er i kommandoen der peger INDAD. Ren. | [src](../../../core/services/egress_guard.py#L149) |
 

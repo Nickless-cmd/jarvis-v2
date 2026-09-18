@@ -238,16 +238,39 @@ _Central-incidents — persistent log af det Den Intelligente Central GRIBER._
 | function | `count_unresolved` | `(*, min_severity=…, exclude_nerve=…)` | Antal uhåndterede incidents (til hurtig live-status). Selv-sikker → 0. | [src](../../../core/runtime/db_central_incidents.py#L245) |
 | function | `has_open_incident` | `(*, cluster, nerve)` | True hvis der allerede findes en uløst incident for (cluster, nerve). Selv-sikker. | [src](../../../core/runtime/db_central_incidents.py#L272) |
 
+## `core/runtime/db_cheap_lane_control.py`
+_Durable observability storage for the Cheap Lane control center._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_bounded_json` | `(value, *, max_bytes=…)` | — | [src](../../../core/runtime/db_cheap_lane_control.py#L18) |
+| function | `_decode_json` | `(value, fallback)` | — | [src](../../../core/runtime/db_cheap_lane_control.py#L25) |
+| function | `_ensure_control_schema` | `(conn)` | — | [src](../../../core/runtime/db_cheap_lane_control.py#L32) |
+| function | `record_route_decision` | `(*, correlation_id, task_kind, daemon, candidates, selected_slot_id, selection_reason)` | — | [src](../../../core/runtime/db_cheap_lane_control.py#L123) |
+| function | `get_route_decision` | `(route_decision_id)` | — | [src](../../../core/runtime/db_cheap_lane_control.py#L160) |
+| function | `record_quota_observation` | `(*, provider, auth_profile, period, unit, limit, remaining, reset_at, observed_at=…)` | — | [src](../../../core/runtime/db_cheap_lane_control.py#L174) |
+| function | `list_quota_observations` | `(*, provider=…, auth_profile=…, limit=…)` | — | [src](../../../core/runtime/db_cheap_lane_control.py#L209) |
+| function | `record_cheap_lane_audit` | `(*, actor, action, target, reason, before, after, result, correlation_id=…)` | — | [src](../../../core/runtime/db_cheap_lane_control.py#L238) |
+| function | `finalize_cheap_lane_audit` | `(audit_id, *, after, result, error_code=…)` | — | [src](../../../core/runtime/db_cheap_lane_control.py#L278) |
+| function | `list_cheap_lane_audit` | `(*, limit=…)` | — | [src](../../../core/runtime/db_cheap_lane_control.py#L308) |
+| function | `record_redacted_payload` | `(*, invocation_id, prompt, response, status, expires_at)` | — | [src](../../../core/runtime/db_cheap_lane_control.py#L326) |
+| function | `_encode_cursor` | `(created_at, row_id)` | — | [src](../../../core/runtime/db_cheap_lane_control.py#L365) |
+| function | `_decode_cursor` | `(cursor)` | — | [src](../../../core/runtime/db_cheap_lane_control.py#L370) |
+| function | `_invocation_row` | `(row)` | — | [src](../../../core/runtime/db_cheap_lane_control.py#L387) |
+| function | `list_cheap_lane_invocations` | `(*, since, until=…, provider=…, model=…, auth_profile=…, daemon=…, status=…, error_class=…, correlation_id=…, query=…, cursor=…, limit=…)` | — | [src](../../../core/runtime/db_cheap_lane_control.py#L391) |
+| function | `get_cheap_lane_invocation_detail` | `(invocation_id)` | — | [src](../../../core/runtime/db_cheap_lane_control.py#L456) |
+
 ## `core/runtime/db_cheap_provider.py`
 _Persistence for the cheap-provider runtime-state + invocation cluster._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `upsert_cheap_provider_runtime_state` | `(*, provider, model=…, lane=…, status=…, auth_ready=…, quota_limited=…, cooldown_until=…, last_error_code=…, last_error_message=…, last_success_at=…, last_failure_at=…, metadata_json=…)` | — | [src](../../../core/runtime/db_cheap_provider.py#L14) |
-| function | `get_cheap_provider_runtime_state` | `(*, provider, model=…, lane=…)` | — | [src](../../../core/runtime/db_cheap_provider.py#L106) |
-| function | `list_cheap_provider_runtime_states` | `(*, lane=…)` | — | [src](../../../core/runtime/db_cheap_provider.py#L162) |
-| function | `record_cheap_provider_invocation` | `(*, provider, model=…, lane=…, status, error_code=…, error_message=…, retry_after_seconds=…, latency_ms=…, input_tokens=…, output_tokens=…, cost_usd=…, auth_profile=…)` | — | [src](../../../core/runtime/db_cheap_provider.py#L214) |
-| function | `count_cheap_provider_invocations` | `(*, provider, lane=…, since, status=…, auth_profile=…)` | — | [src](../../../core/runtime/db_cheap_provider.py#L303) |
+| function | `_ensure_invocation_schema` | `(conn)` | — | [src](../../../core/runtime/db_cheap_provider.py#L34) |
+| function | `upsert_cheap_provider_runtime_state` | `(*, provider, model=…, lane=…, status=…, auth_ready=…, quota_limited=…, cooldown_until=…, last_error_code=…, last_error_message=…, last_success_at=…, last_failure_at=…, metadata_json=…)` | — | [src](../../../core/runtime/db_cheap_provider.py#L92) |
+| function | `get_cheap_provider_runtime_state` | `(*, provider, model=…, lane=…)` | — | [src](../../../core/runtime/db_cheap_provider.py#L184) |
+| function | `list_cheap_provider_runtime_states` | `(*, lane=…)` | — | [src](../../../core/runtime/db_cheap_provider.py#L240) |
+| function | `record_cheap_provider_invocation` | `(*, provider, model=…, lane=…, status, error_code=…, error_message=…, retry_after_seconds=…, latency_ms=…, input_tokens=…, output_tokens=…, cost_usd=…, auth_profile=…, invocation_id=…, correlation_id=…, daemon=…, task_kind=…, egress=…, error_class=…, payload_status=…, cache_hit_tokens=…, cache_miss_tokens=…, attempt=…, retry_parent_id=…, fallback_parent_id=…, route_decision_id=…)` | — | [src](../../../core/runtime/db_cheap_provider.py#L292) |
+| function | `count_cheap_provider_invocations` | `(*, provider, lane=…, since, status=…, auth_profile=…)` | — | [src](../../../core/runtime/db_cheap_provider.py#L400) |
 
 ## `core/runtime/db_claude_dispatch.py`
 _Schema for the claude_dispatch_* tables._
@@ -650,23 +673,4 @@ _Private brain records — Jarvis' EGNE private lag (private-carry-erindringer m
 | function | `get_salient_private_brain_records` | `(threshold=…, limit=…)` | Aktive records med salience >= threshold, salience-sorteret. | [src](../../../core/runtime/db_private_brain.py#L325) |
 | function | `decay_private_brain_records` | `(decay_rate=…, limit=…)` | Reducér salience på gamle aktive records. Returnerer antal opdaterede. | [src](../../../core/runtime/db_private_brain.py#L348) |
 | function | `decay_private_brain_records_by_domain` | `(domain_decay_rates, default_rate=…, limit=…)` | Per-domæne salience-decay på aktive records. Returnerer {domæne: antal}. | [src](../../../core/runtime/db_private_brain.py#L369) |
-
-## `core/runtime/db_private_notes.py`
-_Persistence for the private/protected inner-layer note tables._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `ensure_private_notes_tables` | `(conn)` | — | [src](../../../core/runtime/db_private_notes.py#L15) |
-| function | `_ensure_private_inner_note_columns` | `(conn)` | — | [src](../../../core/runtime/db_private_notes.py#L75) |
-| function | `_ensure_enriched_columns` | `(conn)` | Add enriched column to private layer tables if missing. | [src](../../../core/runtime/db_private_notes.py#L91) |
-| function | `record_private_inner_note` | `(*, note_id, source, run_id, work_id, status, note_kind, focus, uncertainty, identity_alignment, work_signal, private_summary, created_at)` | — | [src](../../../core/runtime/db_private_notes.py#L100) |
-| function | `update_private_inner_note_enriched` | `(*, run_id, enriched_summary)` | Replace template summary with LLM-enriched text. | [src](../../../core/runtime/db_private_notes.py#L154) |
-| function | `recent_private_inner_notes` | `(limit=…)` | — | [src](../../../core/runtime/db_private_notes.py#L164) |
-| function | `record_private_growth_note` | `(*, record_id, source, run_id, work_id, learning_kind, lesson, mistake_signal, helpful_signal, identity_signal, confidence, created_at)` | — | [src](../../../core/runtime/db_private_notes.py#L206) |
-| function | `update_private_growth_note_enriched` | `(*, run_id, enriched_lesson, enriched_helpful_signal)` | Replace template lesson and helpful_signal with LLM-enriched text. | [src](../../../core/runtime/db_private_notes.py#L257) |
-| function | `recent_private_growth_notes` | `(limit=…)` | — | [src](../../../core/runtime/db_private_notes.py#L269) |
-| function | `record_protected_inner_voice` | `(*, voice_id, source, run_id, work_id, mood_tone, self_position, current_concern, current_pull, voice_line, created_at)` | — | [src](../../../core/runtime/db_private_notes.py#L309) |
-| function | `update_protected_inner_voice_enriched` | `(*, run_id, enriched_voice_line)` | Replace template voice_line with LLM-enriched text. | [src](../../../core/runtime/db_private_notes.py#L357) |
-| function | `get_protected_inner_voice` | `(*, offset=…)` | Seneste beskyttede indre stemme. ``offset`` går et skridt længere tilbage. | [src](../../../core/runtime/db_private_notes.py#L367) |
-| function | `list_recent_protected_inner_voices` | `(*, limit=…)` | — | [src](../../../core/runtime/db_private_notes.py#L409) |
 

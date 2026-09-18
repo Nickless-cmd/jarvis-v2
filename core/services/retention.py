@@ -32,6 +32,15 @@ _TELEMETRY_POLICIES: list[tuple[str, int]] = [
 ]
 
 
+def _configured_days(key: str, default: int) -> int:
+    try:
+        from core.runtime.settings import load_settings
+
+        return max(1, int(load_settings().extra.get(key, default)))
+    except Exception:
+        return default
+
+
 def _should_run(last_run_iso: str | None, now: datetime) -> bool:
     if not last_run_iso:
         return True
@@ -95,9 +104,18 @@ def run_retention_sweep(*, force: bool = False, now: datetime | None = None) -> 
     # (b) Telemetri — ren age-prune.
     for table, age in _TELEMETRY_POLICIES:
         try:
+            if table == "cheap_provider_invocations":
+                age = _configured_days("cheap_lane_metadata_retention_days", age)
             removed[table] = _prune_telemetry(table, age, now)
         except Exception:
             logger.warning("retention: prune af %s fejlede", table, exc_info=True)
+
+    try:
+        from core.services.cheap_lane_payloads import purge_expired_payloads
+
+        removed["cheap_lane_redacted_payloads"] = purge_expired_payloads(now=now)
+    except Exception:
+        logger.warning("retention: payload-prune fejlede", exc_info=True)
 
     try:
         set_runtime_state_value(_LAST_RUN_KEY, now.isoformat())

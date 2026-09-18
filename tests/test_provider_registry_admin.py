@@ -78,6 +78,28 @@ def test_en_hel_udbyder_kan_slaas_fra(registret):
     assert _laes(registret)["models"][2]["enabled"] is False
 
 
+def test_kvote_politik_gemmes_paa_udbyderprofilen(registret):
+    ud = A.saet_kvote_politik(
+        provider="alfa", auth_profile="default",
+        windows=[{"period": "month", "unit": "tokens", "limit": 1234}],
+    )
+    provider = next(p for p in _laes(registret)["providers"] if p["provider"] == "alfa")
+    assert ud["status"] == "ok"
+    assert provider["quota_policy"][0]["limit"] == 1234
+    assert A.fuld_registrering()["udbydere"][0]["quota_policy"][0]["unit"] == "tokens"
+
+
+def test_kvote_politik_kraever_cheap_lane_og_gyldigt_vindue(registret):
+    assert A.saet_kvote_politik(
+        provider="beta", auth_profile="default",
+        windows=[{"period": "month", "unit": "tokens", "limit": 100}],
+    )["status"] == "error"
+    assert A.saet_kvote_politik(
+        provider="alfa", auth_profile="default",
+        windows=[{"period": "year", "unit": "tokens", "limit": 100}],
+    )["status"] == "error"
+
+
 def test_fjern_udbyder_tager_dens_modeller_med(registret):
     ud = A.fjern_udbyder(provider="alfa")
     assert ud["fjernede_modeller"] == 2 and ud["legitimation_bevaret"] is True

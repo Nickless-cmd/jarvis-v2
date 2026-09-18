@@ -35,6 +35,7 @@ import { StatusBar } from './components/shell/StatusBar'
 import './styles/tokens.css'
 import './styles/app.css'
 import './styles/environment-inspector.css'
+import './styles/cheap-lane.css'
 
 /** App = ren wiring. SettingsProvider er wrappet i main.tsx, så useSettings
  *  virker her. Ikke-konfigureret → SetupScreen. Ellers shell med aktiv flade. */

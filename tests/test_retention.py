@@ -58,3 +58,54 @@ def test_sweep_one_table_failure_does_not_stop_others(monkeypatch):
     assert res["ran"] is True
     assert "reasoning_conclusions" not in res["removed"]  # fejlede, men de andre kørte
     assert res["removed"]["generalized_policies"] == 2
+
+
+def test_metadata_retention_defaults_to_60_days_and_payload_to_7(
+    isolated_runtime, monkeypatch
+):
+    from core.runtime.db_core import connect
+    from core.runtime.db_cheap_provider import record_cheap_provider_invocation
+    from core.services.cheap_lane_payloads import capture_invocation_payload
+
+    now = datetime.now(UTC)
+    keep = record_cheap_provider_invocation(provider="groq", status="completed")
+    remove = record_cheap_provider_invocation(provider="groq", status="completed")
+    payload = record_cheap_provider_invocation(provider="groq", status="completed")
+    capture_invocation_payload(
+        invocation_id=str(payload["invocation_id"]), prompt="hello", response="world"
+    )
+    with connect() as conn:
+        conn.execute(
+            "UPDATE cheap_provider_invocations SET created_at=? WHERE invocation_id=?",
+            ((now - timedelta(days=59)).isoformat(), keep["invocation_id"]),
+        )
+        conn.execute(
+            "UPDATE cheap_provider_invocations SET created_at=? WHERE invocation_id=?",
+            ((now - timedelta(days=61)).isoformat(), remove["invocation_id"]),
+        )
+        conn.execute(
+            "UPDATE cheap_lane_redacted_payloads SET expires_at=? WHERE invocation_id=?",
+            ((now - timedelta(days=1)).isoformat(), payload["invocation_id"]),
+        )
+        conn.commit()
+
+    import core.runtime.db as db
+    monkeypatch.setattr(db, "get_runtime_state_value", lambda *_a, **_kw: None)
+    monkeypatch.setattr(db, "set_runtime_state_value", lambda *_a, **_kw: None)
+    monkeypatch.setattr("core.services.reasoning_store.compact_stale", lambda: 0)
+    result = ret.run_retention_sweep(force=True, now=now)
+
+    with connect() as conn:
+        ids = {
+            row["invocation_id"] for row in conn.execute(
+                "SELECT invocation_id FROM cheap_provider_invocations"
+            ).fetchall()
+        }
+        payload_count = conn.execute(
+            "SELECT COUNT(*) AS n FROM cheap_lane_redacted_payloads"
+        ).fetchone()["n"]
+    assert keep["invocation_id"] in ids
+    assert remove["invocation_id"] not in ids
+    assert payload["invocation_id"] in ids
+    assert payload_count == 0
+    assert result["removed"]["cheap_lane_redacted_payloads"] == 1

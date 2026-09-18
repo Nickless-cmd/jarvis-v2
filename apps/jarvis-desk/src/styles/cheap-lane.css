@@ -1,0 +1,324 @@
+/* Cheap lane-kontrolcentret.
+ *
+ * Egen fil, ikke app.css: den er 3.900 linjer og bærer hele appen, og et
+ * panel der kan skiftes ud alene skal kunne læses og fjernes alene. Alle
+ * farver kommer fra tokens.css — ingen literaler, så begge temaer følger med
+ * uden at nogen skal huske at rette to steder.
+ */
+
+.cl-kpi-gitter {
+  display: grid;
+  /* Faste minimumsbredder frem for viewport-skalering: tallene skal have
+     samme plads uanset hvor panelet står, ellers hopper de når en fane
+     skifter. */
+  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.cl-kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 62px;
+  padding: 9px 11px;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+}
+.cl-kpi-label { font-size: 11px; color: var(--fg-3); letter-spacing: 0.02em; }
+.cl-kpi-tal { font-size: 19px; color: var(--fg-1); font-variant-numeric: tabular-nums; }
+.cl-kpi-note { font-size: 11px; color: var(--fg-3); }
+
+.cl-maalt { font-size: 11px; color: var(--fg-3); margin: 0 0 10px; }
+.cl-dæmpet { color: var(--fg-3); }
+
+/* En sektion der svigtede er en LINJE, ikke en tom skærm. */
+.cl-sektionsfejl {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+  margin: 0 0 6px;
+  padding: 6px 9px;
+  font-size: 12px;
+  color: var(--fg-2);
+  background: color-mix(in srgb, var(--error-fg, #d9534f) 8%, var(--bg-2));
+  border: 1px solid color-mix(in srgb, var(--error-fg, #d9534f) 28%, var(--line));
+  border-radius: 8px;
+}
+.cl-sektionsfejl strong { color: var(--fg-1); font-weight: 500; }
+
+/* ── kvoter ─────────────────────────────────────────────────────────── */
+
+.cl-kvoter { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+
+.cl-kvote {
+  padding: 9px 11px;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+}
+.cl-kvote-hoved {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  font-size: 12px; margin-bottom: 6px;
+}
+.cl-kvote-navn { color: var(--fg-1); }
+.cl-kvote-periode { color: var(--fg-3); }
+
+.cl-kilde {
+  font-size: 10px; letter-spacing: 0.04em; padding: 1px 6px;
+  border: 1px solid var(--line); border-radius: 4px; color: var(--fg-3);
+}
+/* Kilden er ikke pynt: «provider» er målt hos udbyderen, «estimated» er vores
+   eget gæt. Den forskel skal kunne ses uden at læse hjælpeteksten. */
+.cl-kilde-provider { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+.cl-kilde-estimated { font-style: italic; }
+.cl-kilde-unknown { opacity: 0.7; }
+
+.cl-bar {
+  height: 7px; border-radius: 4px; background: var(--bg-3);
+  overflow: hidden; margin-bottom: 5px;
+}
+.cl-bar-fyld { height: 100%; background: var(--accent); }
+
+.cl-kvote-tal {
+  display: flex; gap: 12px; flex-wrap: wrap;
+  font-size: 12px; color: var(--fg-2); font-variant-numeric: tabular-nums;
+}
+.cl-kvote-reset { font-size: 11px; color: var(--fg-3); margin-top: 4px; }
+
+/* Ingen bjælke ved ukendt grænse — en tom bjælke ville læses som «næsten
+   intet brugt», og det er en påstand vi ikke har dækning for. */
+.cl-ukendt {
+  font-size: 12px; color: var(--fg-3); font-style: italic;
+  padding: 3px 0 5px;
+}
+
+.cl-tom { font-size: 12px; color: var(--fg-3); margin: 8px 0; }
+
+/* ── grafer ─────────────────────────────────────────────────────────── */
+
+.cl-graf { margin: 12px 0 0; }
+.cl-graf-titel { font-size: 12px; color: var(--fg-2); margin-bottom: 4px; }
+.cl-graf-flade { width: 100%; min-height: 180px; }
+
+.cl-graf-tabelknap {
+  margin-top: 4px; background: none; border: none; padding: 0;
+  font: inherit; font-size: 11px; color: var(--fg-3);
+  text-decoration: underline; cursor: pointer;
+}
+.cl-graf-tabelknap:hover { color: var(--fg-2); }
+
+/* Bredt indhold får sin egen vandrette rulning — siden må aldrig rulle sidelæns. */
+.cl-tabel-holder { overflow-x: auto; margin-top: 6px; }
+.cl-tabel-holder table { border-collapse: collapse; font-size: 11px; width: 100%; }
+.cl-tabel-holder th, .cl-tabel-holder td {
+  padding: 3px 8px; text-align: right; border-bottom: 1px solid var(--line);
+  font-variant-numeric: tabular-nums; color: var(--fg-2);
+}
+.cl-tabel-holder th[scope="row"] { text-align: left; color: var(--fg-3); font-weight: 400; }
+
+/* Tallene findes ALTID i tabellen — også når den er foldet sammen. Recharts'
+   tooltip lever kun under en markør, så uden det her var grafen tom for
+   enhver der ikke bruger mus. */
+.cl-kun-skaermlaeser {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+/* ── udbydere, handlinger og inspektør ──────────────────────────────── */
+
+.cl-soeg-raekke {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  margin-bottom: 8px; font-size: 12px;
+}
+.cl-soeg-raekke label { display: flex; align-items: center; gap: 6px; color: var(--fg-3); }
+.cl-soeg-raekke input {
+  background: var(--bg-2); border: 1px solid var(--line); border-radius: 6px;
+  padding: 4px 8px; color: var(--fg-1); font: inherit; font-size: 12px; min-width: 200px;
+}
+
+.cl-tabel { width: 100%; border-collapse: collapse; font-size: 12px; }
+.cl-tabel th, .cl-tabel td {
+  padding: 5px 9px; text-align: left; border-bottom: 1px solid var(--line);
+  color: var(--fg-2); vertical-align: middle;
+}
+.cl-tabel thead th { color: var(--fg-3); font-weight: 400; font-size: 11px; }
+
+.cl-linkknap {
+  background: none; border: none; padding: 0; font: inherit; color: var(--fg-1);
+  text-decoration: underline; text-underline-offset: 2px; cursor: pointer;
+}
+.cl-status-aktiv { color: var(--accent); }
+.cl-status-fra { color: var(--fg-3); }
+
+.cl-handlinger { display: flex; gap: 5px; flex-wrap: wrap; }
+.cl-handling {
+  background: var(--bg-3); border: 1px solid var(--line); border-radius: 6px;
+  padding: 2px 8px; font: inherit; font-size: 11px; color: var(--fg-2); cursor: pointer;
+}
+.cl-handling:hover:not(:disabled) { color: var(--fg-1); border-color: var(--fg-3); }
+.cl-handling:disabled { opacity: 0.5; cursor: wait; }
+/* Varigheden skal kunne SES: en pause og en sletning må ikke ligne hinanden. */
+.cl-handling-advarsel { color: var(--warn-fg, #d0a215); }
+.cl-handling-destruktiv { color: var(--error-fg, #d9534f); }
+
+/* Fejlen bliver stående — en besked der forsvinder, er en besked ingen læste. */
+.cl-handling-fejl { font-size: 11px; color: var(--error-fg, #d9534f); }
+
+.cl-dialog-baggrund {
+  position: fixed; inset: 0; z-index: 200; display: grid; place-items: center;
+  background: rgba(0, 0, 0, 0.45);
+}
+.cl-dialog {
+  width: min(420px, 90vw); padding: 16px; border-radius: 12px;
+  background: var(--bg-2); border: 1px solid var(--line);
+  display: flex; flex-direction: column; gap: 10px;
+}
+.cl-dialog h4 { margin: 0; font-size: 14px; color: var(--fg-1); }
+.cl-dialog-tekst, .cl-dialog-advarsel { margin: 0; font-size: 12px; color: var(--fg-2); }
+.cl-dialog-advarsel {
+  display: flex; align-items: flex-start; gap: 7px;
+  color: var(--error-fg, #d9534f);
+}
+.cl-dialog label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--fg-3); }
+.cl-dialog input {
+  background: var(--bg-3); border: 1px solid var(--line); border-radius: 6px;
+  padding: 6px 9px; color: var(--fg-1); font: inherit; font-size: 12px;
+}
+.cl-dialog-knapper { display: flex; justify-content: flex-end; gap: 8px; }
+.cl-dialog-knapper button {
+  background: var(--bg-3); border: 1px solid var(--line); border-radius: 6px;
+  padding: 5px 12px; font: inherit; font-size: 12px; color: var(--fg-2); cursor: pointer;
+}
+.cl-dialog-knapper .cl-primaer { background: var(--accent); color: var(--accent-text, #06130d); border-color: transparent; }
+.cl-dialog-knapper button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Tabellen og detaljen ved siden af hinanden — og under hinanden når der
+   ikke er plads. Ingen viewport-skalering: teksten skal have samme størrelse
+   uanset hvor bredt panelet står. */
+/* Ombrydning efter BEHOLDEREN, ikke efter vinduet.
+   Målt 18/9-2026: panelet sad i en cowork-rude på 948 px i et vindue på 980,
+   og en media-query på viewport ville derfor sige «bredt nok» selv når ruden
+   var smal. Bredden her bestemmes af ruden, ikke af skærmen — flex med en
+   min-bredde ombryder på det der faktisk er plads til. */
+.cl-med-inspektor {
+  display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start;
+}
+.cl-med-inspektor > :first-child { flex: 1 1 380px; min-width: 0; }
+.cl-med-inspektor > .cl-inspektor,
+.cl-med-inspektor > .cl-forklaring { flex: 0 1 300px; min-width: 260px; }
+
+.cl-inspektor {
+  background: var(--bg-2); border: 1px solid var(--line); border-radius: 10px;
+  padding: 12px; align-self: start;
+}
+.cl-inspektor:focus { outline: 1px solid var(--accent); outline-offset: 2px; }
+.cl-inspektor-hoved { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.cl-inspektor-hoved h4 { margin: 0; font-size: 13px; color: var(--fg-1); }
+.cl-inspektor-hoved p { margin: 2px 0 0; font-size: 11px; }
+.cl-inspektor-hoved button {
+  background: none; border: none; color: var(--fg-3); cursor: pointer; padding: 2px;
+}
+.cl-inspektor-felter { margin: 10px 0 0; display: grid; gap: 6px; font-size: 12px; }
+.cl-inspektor-felter div { display: flex; justify-content: space-between; gap: 10px; }
+.cl-inspektor-felter dt { color: var(--fg-3); }
+.cl-inspektor-felter dd { margin: 0; color: var(--fg-1); }
+
+/* ── balancerens forklaring ─────────────────────────────────────────── */
+
+.cl-forklaring {
+  background: var(--bg-2); border: 1px solid var(--line); border-radius: 10px;
+  padding: 12px; align-self: start;
+}
+.cl-forklaring h4 { margin: 0 0 2px; font-size: 13px; color: var(--fg-1); }
+.cl-vaegt { margin: 0 0 8px; font-size: 11px; color: var(--fg-3); }
+.cl-forklaring-overskrift { margin: 0 0 4px; font-size: 11px; color: var(--fg-3); letter-spacing: 0.03em; }
+
+/* Den hårde grund står først OG ser anderledes ud: er den der, er vægten 0
+   uanset hvad de bløde faktorer siger. */
+.cl-haarde { margin: 0 0 6px; padding-left: 16px; font-size: 12px; color: var(--error-fg, #d9534f); }
+.cl-lille { font-size: 11px; }
+
+.cl-faktorer { margin: 8px 0; display: grid; gap: 4px; font-size: 12px; }
+.cl-faktorer div { display: flex; justify-content: space-between; gap: 10px; }
+.cl-faktorer dt { color: var(--fg-3); }
+.cl-faktorer dd { margin: 0; color: var(--fg-1); font-variant-numeric: tabular-nums; }
+
+.cl-simulering {
+  margin: 8px 0; padding: 9px 11px; font-size: 12px;
+  background: var(--bg-2); border: 1px solid var(--line); border-radius: 9px;
+}
+.cl-simulering p { margin: 0 0 4px; color: var(--fg-2); }
+.cl-simulering ul { margin: 0; padding-left: 16px; color: var(--fg-3); }
+
+/* Revisionen fra serveren: uden den kan man ikke finde sin egen ændring i
+   sporet bagefter. */
+.cl-kvittering { margin: 6px 0; font-size: 12px; color: var(--accent); }
+.cl-kvittering code { font-size: 11px; }
+
+/* ── logs, fund og opbevaring ───────────────────────────────────────── */
+
+.cl-sider { display: flex; gap: 6px; margin-top: 8px; }
+
+/* Payloads: ren tekst, med sin egen rulning. En prompt kan være lang, og
+   siden må ikke rulle sidelæns af den grund. */
+.cl-payload {
+  margin: 4px 0; padding: 8px; max-height: 220px; overflow: auto;
+  background: var(--bg-3); border: 1px solid var(--line); border-radius: 7px;
+  font-family: "SF Mono", "JetBrains Mono", ui-monospace, Menlo, monospace;
+  font-size: 11px; color: var(--fg-2); white-space: pre-wrap; word-break: break-word;
+}
+
+.cl-fund-liste { list-style: none; margin: 0 0 14px; padding: 0; display: grid; gap: 7px; }
+.cl-fund {
+  padding: 8px 11px; border-radius: 9px;
+  background: var(--bg-2); border: 1px solid var(--line);
+}
+/* Alvorligheden skal ses før den læses — de høje står øverst OG markeret. */
+.cl-fund-high { border-left: 3px solid var(--error-fg, #d9534f); }
+.cl-fund-medium { border-left: 3px solid var(--warn-fg, #d0a215); }
+.cl-fund-low { border-left: 3px solid var(--line); }
+
+.cl-fund-hoved { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.cl-fund-kode { font-size: 12px; color: var(--fg-1); }
+.cl-fund-bevis {
+  margin: 6px 0 0; display: flex; gap: 14px; flex-wrap: wrap; font-size: 11px;
+}
+.cl-fund-bevis div { display: flex; gap: 5px; }
+.cl-fund-bevis dt { color: var(--fg-3); }
+.cl-fund-bevis dd { margin: 0; color: var(--fg-2); }
+
+.cl-indstillinger {
+  display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap;
+  margin-top: 8px; padding: 10px 12px;
+  background: var(--bg-2); border: 1px solid var(--line); border-radius: 9px;
+}
+.cl-indstillinger label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--fg-3); }
+.cl-indstillinger input {
+  width: 90px; background: var(--bg-3); border: 1px solid var(--line); border-radius: 6px;
+  padding: 5px 8px; color: var(--fg-1); font: inherit; font-size: 12px;
+}
+
+/* ── Central-hændelser og tilføj-formen ─────────────────────────────── */
+
+.cl-central { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 4px; }
+.cl-central li {
+  display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
+  font-size: 12px; color: var(--fg-2);
+}
+
+.cl-tilfoej {
+  margin-bottom: 10px; padding: 11px 13px;
+  background: var(--bg-2); border: 1px solid var(--line); border-radius: 9px;
+}
+.cl-tilfoej-felter {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 8px; margin: 8px 0;
+}
+.cl-tilfoej-felter label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--fg-3); }
+.cl-tilfoej-felter input {
+  background: var(--bg-3); border: 1px solid var(--line); border-radius: 6px;
+  padding: 5px 8px; color: var(--fg-1); font: inherit; font-size: 12px; min-width: 0;
+}

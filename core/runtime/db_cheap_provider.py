@@ -8,7 +8,85 @@ helper and no init_db coupling), so the cluster is fully self-contained.
 """
 from __future__ import annotations
 
+from uuid import uuid4
+
 from core.runtime.db_core import connect, _now_iso
+
+
+_INVOCATION_COLUMNS: dict[str, str] = {
+    "auth_profile": "TEXT NOT NULL DEFAULT ''",
+    "invocation_id": "TEXT NOT NULL DEFAULT ''",
+    "correlation_id": "TEXT NOT NULL DEFAULT ''",
+    "daemon": "TEXT NOT NULL DEFAULT ''",
+    "task_kind": "TEXT NOT NULL DEFAULT ''",
+    "egress": "TEXT NOT NULL DEFAULT ''",
+    "error_class": "TEXT NOT NULL DEFAULT ''",
+    "payload_status": "TEXT NOT NULL DEFAULT 'not_captured'",
+    "cache_hit_tokens": "INTEGER NOT NULL DEFAULT 0",
+    "cache_miss_tokens": "INTEGER NOT NULL DEFAULT 0",
+    "attempt": "INTEGER NOT NULL DEFAULT 1",
+    "retry_parent_id": "TEXT NOT NULL DEFAULT ''",
+    "fallback_parent_id": "TEXT NOT NULL DEFAULT ''",
+    "route_decision_id": "TEXT NOT NULL DEFAULT ''",
+}
+
+
+def _ensure_invocation_schema(conn) -> None:
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS cheap_provider_invocations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            lane TEXT NOT NULL DEFAULT 'cheap',
+            provider TEXT NOT NULL,
+            model TEXT NOT NULL DEFAULT '',
+            status TEXT NOT NULL,
+            error_code TEXT NOT NULL DEFAULT '',
+            error_message TEXT NOT NULL DEFAULT '',
+            retry_after_seconds INTEGER NOT NULL DEFAULT 0,
+            latency_ms INTEGER NOT NULL DEFAULT 0,
+            input_tokens INTEGER NOT NULL DEFAULT 0,
+            output_tokens INTEGER NOT NULL DEFAULT 0,
+            cost_usd REAL NOT NULL DEFAULT 0,
+            auth_profile TEXT NOT NULL DEFAULT '',
+            invocation_id TEXT NOT NULL DEFAULT '',
+            correlation_id TEXT NOT NULL DEFAULT '',
+            daemon TEXT NOT NULL DEFAULT '',
+            task_kind TEXT NOT NULL DEFAULT '',
+            egress TEXT NOT NULL DEFAULT '',
+            error_class TEXT NOT NULL DEFAULT '',
+            payload_status TEXT NOT NULL DEFAULT 'not_captured',
+            cache_hit_tokens INTEGER NOT NULL DEFAULT 0,
+            cache_miss_tokens INTEGER NOT NULL DEFAULT 0,
+            attempt INTEGER NOT NULL DEFAULT 1,
+            retry_parent_id TEXT NOT NULL DEFAULT '',
+            fallback_parent_id TEXT NOT NULL DEFAULT '',
+            route_decision_id TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL
+        )
+        """
+    )
+    existing = {
+        str(row["name"]) for row in conn.execute(
+            "PRAGMA table_info(cheap_provider_invocations)"
+        ).fetchall()
+    }
+    for name, declaration in _INVOCATION_COLUMNS.items():
+        if name not in existing:
+            conn.execute(
+                f"ALTER TABLE cheap_provider_invocations ADD COLUMN {name} {declaration}"
+            )
+    conn.execute(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_cheap_invocation_public_id "
+        "ON cheap_provider_invocations(invocation_id) WHERE invocation_id <> ''"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_cheap_invocation_created "
+        "ON cheap_provider_invocations(lane, created_at DESC, id DESC)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_cheap_invocation_correlation "
+        "ON cheap_provider_invocations(correlation_id, created_at DESC)"
+    )
 
 
 def upsert_cheap_provider_runtime_state(
@@ -225,44 +303,37 @@ def record_cheap_provider_invocation(
     output_tokens: int = 0,
     cost_usd: float = 0.0,
     auth_profile: str = "",
+    invocation_id: str = "",
+    correlation_id: str = "",
+    daemon: str = "",
+    task_kind: str = "",
+    egress: str = "",
+    error_class: str = "",
+    payload_status: str = "not_captured",
+    cache_hit_tokens: int = 0,
+    cache_miss_tokens: int = 0,
+    attempt: int = 1,
+    retry_parent_id: str = "",
+    fallback_parent_id: str = "",
+    route_decision_id: str = "",
 ) -> dict[str, object]:
     now = _now_iso()
+    public_id = (invocation_id or "").strip() or str(uuid4())
+    correlation = (correlation_id or "").strip() or public_id
     with connect() as conn:
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS cheap_provider_invocations (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                lane TEXT NOT NULL DEFAULT 'cheap',
-                provider TEXT NOT NULL,
-                model TEXT NOT NULL DEFAULT '',
-                status TEXT NOT NULL,
-                error_code TEXT NOT NULL DEFAULT '',
-                error_message TEXT NOT NULL DEFAULT '',
-                retry_after_seconds INTEGER NOT NULL DEFAULT 0,
-                latency_ms INTEGER NOT NULL DEFAULT 0,
-                input_tokens INTEGER NOT NULL DEFAULT 0,
-                output_tokens INTEGER NOT NULL DEFAULT 0,
-                cost_usd REAL NOT NULL DEFAULT 0,
-                auth_profile TEXT NOT NULL DEFAULT '',
-                created_at TEXT NOT NULL
-            )
-            """
-        )
-        try:
-            conn.execute(
-                "ALTER TABLE cheap_provider_invocations "
-                "ADD COLUMN auth_profile TEXT NOT NULL DEFAULT ''"
-            )
-        except Exception:
-            pass
+        _ensure_invocation_schema(conn)
         cursor = conn.execute(
             """
             INSERT INTO cheap_provider_invocations (
                 lane, provider, model, status, error_code, error_message,
                 retry_after_seconds, latency_ms, input_tokens, output_tokens,
-                cost_usd, auth_profile, created_at
+                cost_usd, auth_profile, invocation_id, correlation_id, daemon,
+                task_kind, egress, error_class, payload_status, cache_hit_tokens,
+                cache_miss_tokens, attempt, retry_parent_id, fallback_parent_id,
+                route_decision_id, created_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                    ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 lane,
@@ -277,6 +348,19 @@ def record_cheap_provider_invocation(
                 int(output_tokens),
                 float(cost_usd),
                 auth_profile,
+                public_id,
+                correlation,
+                daemon,
+                task_kind,
+                egress,
+                error_class,
+                payload_status,
+                int(cache_hit_tokens),
+                int(cache_miss_tokens),
+                max(1, int(attempt)),
+                retry_parent_id,
+                fallback_parent_id,
+                route_decision_id,
                 now,
             ),
         )
@@ -296,6 +380,19 @@ def record_cheap_provider_invocation(
         "output_tokens": int(output_tokens),
         "cost_usd": float(cost_usd),
         "auth_profile": auth_profile,
+        "invocation_id": public_id,
+        "correlation_id": correlation,
+        "daemon": daemon,
+        "task_kind": task_kind,
+        "egress": egress,
+        "error_class": error_class,
+        "payload_status": payload_status,
+        "cache_hit_tokens": int(cache_hit_tokens),
+        "cache_miss_tokens": int(cache_miss_tokens),
+        "attempt": max(1, int(attempt)),
+        "retry_parent_id": retry_parent_id,
+        "fallback_parent_id": fallback_parent_id,
+        "route_decision_id": route_decision_id,
         "created_at": now,
     }
 
@@ -320,33 +417,6 @@ def count_cheap_provider_invocations(
         query.append("AND auth_profile = ?")
         params.append(auth_profile)
     with connect() as conn:
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS cheap_provider_invocations (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                lane TEXT NOT NULL DEFAULT 'cheap',
-                provider TEXT NOT NULL,
-                model TEXT NOT NULL DEFAULT '',
-                status TEXT NOT NULL,
-                error_code TEXT NOT NULL DEFAULT '',
-                error_message TEXT NOT NULL DEFAULT '',
-                retry_after_seconds INTEGER NOT NULL DEFAULT 0,
-                latency_ms INTEGER NOT NULL DEFAULT 0,
-                input_tokens INTEGER NOT NULL DEFAULT 0,
-                output_tokens INTEGER NOT NULL DEFAULT 0,
-                cost_usd REAL NOT NULL DEFAULT 0,
-                auth_profile TEXT NOT NULL DEFAULT '',
-                created_at TEXT NOT NULL
-            )
-            """
-        )
-        try:
-            conn.execute(
-                "ALTER TABLE cheap_provider_invocations "
-                "ADD COLUMN auth_profile TEXT NOT NULL DEFAULT ''"
-            )
-        except Exception:
-            pass
+        _ensure_invocation_schema(conn)
         row = conn.execute("\n".join(query), tuple(params)).fetchone()
     return int(row["count"]) if row else 0
-

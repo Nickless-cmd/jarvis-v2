@@ -2,6 +2,19 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `apps/api/jarvis_api/routes/review_traeer.py`
+_Hvilket arbejdstræ kigger vi i — serverens eller Bjørns egen maskine?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `kommando_for` | `(rod)` | Én kommando, fire svar: gren, numstat, status, diff. | [src](../../../apps/api/jarvis_api/routes/review_traeer.py#L30) |
+| function | `parse_segmenter` | `(stdout)` | Del svaret op i (gren, numstat, status, diff). | [src](../../../apps/api/jarvis_api/routes/review_traeer.py#L47) |
+| function | `_er_binaer` | `(indhold)` | — | [src](../../../apps/api/jarvis_api/routes/review_traeer.py#L60) |
+| function | `utrackede_fra_status` | `(porcelain)` | Stierne bag `??` i `git status --porcelain`. | [src](../../../apps/api/jarvis_api/routes/review_traeer.py#L64) |
+| function | `numstat_til_filer` | `(numstat)` | — | [src](../../../apps/api/jarvis_api/routes/review_traeer.py#L82) |
+| function | `ny_fil_post` | `(sti, indhold)` | En utracket fil som en fil-post. | [src](../../../apps/api/jarvis_api/routes/review_traeer.py#L99) |
+| function | `ny_fil_diff` | `(sti, indhold)` | En diff-blok for en ny fil, i samme form som git selv skriver den. | [src](../../../apps/api/jarvis_api/routes/review_traeer.py#L114) |
+
 ## `apps/api/jarvis_api/routes/sensory.py`
 _Sansernes Arkiv HTTP endpoints._
 

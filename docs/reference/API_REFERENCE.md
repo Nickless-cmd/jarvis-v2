@@ -1,6 +1,6 @@
 # API_REFERENCE
 
-> Generated 2026-09-17 from app.routes (live) — 572 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
+> Generated 2026-09-18 from app.routes (live) — 582 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
 
 | Method | Path | Response model | Source |
 |---|---|---|---|
@@ -333,8 +333,18 @@
 | POST | `/mc/cheap-balancer/slot/{slot_id:path}/disable` | dict | cheap_balancer |
 | POST | `/mc/cheap-balancer/slot/{slot_id:path}/enable` | dict | cheap_balancer |
 | POST | `/mc/cheap-balancer/slot/{slot_id:path}/reset` | dict | cheap_balancer |
+| GET | `/mc/cheap-lane/audit` | dict | cheap_lane_control |
+| GET | `/mc/cheap-lane/capacity` | dict | cheap_lane_control |
+| POST | `/mc/cheap-lane/control` | dict | cheap_lane_control |
+| GET | `/mc/cheap-lane/dashboard` | dict | cheap_lane_control |
+| GET | `/mc/cheap-lane/diagnostics` | dict | cheap_lane_control |
+| GET | `/mc/cheap-lane/diagnostics/export` | dict | cheap_lane_control |
 | GET | `/mc/cheap-lane/errors` | dict | cheap_balancer |
 | GET | `/mc/cheap-lane/history` | dict | cheap_balancer |
+| GET | `/mc/cheap-lane/logs` | dict | cheap_lane_control |
+| GET | `/mc/cheap-lane/logs/export` |  | cheap_lane_control |
+| GET | `/mc/cheap-lane/logs/{invocation_id}` | dict | cheap_lane_control |
+| POST | `/mc/cheap-lane/simulate-route` | dict | cheap_lane_control |
 | GET | `/mc/cheap-lane/timeseries` | dict | cheap_balancer |
 | GET | `/mc/chronicle` | dict | mission_control_introspection |
 | GET | `/mc/code-aesthetic` | dict | mission_control_living_mind |

@@ -2,6 +2,95 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/communication_guard_daemon.py`
+_Communication guard daemon — vedligeholder TTL-rydning._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `tick_communication_guard_daemon` | `()` | Daemon tick: cleanup expired TTL triggers + log active count. | [src](../../../core/services/communication_guard_daemon.py#L18) |
+
+## `core/services/compaction_runtime.py`
+_`CompactionRuntime` — kontekst-pres lettes ved ERSTATNING, aldrig ved sletning._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `NotAdvancing` | `` | Kompakteringen frigav ingenting. Et genforsøg ville være en løkke. | [src](../../../core/services/compaction_runtime.py#L55) |
+| class | `Node` | `` | En knude i den overflade der kan erstattes. | [src](../../../core/services/compaction_runtime.py#L60) |
+| class | `Policy` | `` | — | [src](../../../core/services/compaction_runtime.py#L71) |
+| class | `Surface` | `` | — | [src](../../../core/services/compaction_runtime.py#L80) |
+| method | `Surface.tokens` | `(self)` | — | [src](../../../core/services/compaction_runtime.py#L84) |
+| class | `Result` | `` | — | [src](../../../core/services/compaction_runtime.py#L89) |
+| function | `_uafsluttede_par` | `(nodes)` | Værktøjskald hvis resultat mangler — og resultaterne selv. | [src](../../../core/services/compaction_runtime.py#L98) |
+| function | `protected_ids` | `(s, p, *, current_user_input=…)` | Alt der ikke må erstattes. | [src](../../../core/services/compaction_runtime.py#L116) |
+| function | `prune_tool_results` | `(s, p, *, current_user_input=…)` | Deterministisk beskæring. Ingen model, ingen risiko for at tage fejl. | [src](../../../core/services/compaction_runtime.py#L127) |
+| function | `replaceable_range` | `(s, p, *, current_user_input=…)` | Ét SAMMENHÆNGENDE spænd der må erstattes. `(0, 0)` hvis intet kan. | [src](../../../core/services/compaction_runtime.py#L150) |
+| function | `summarize` | `(s, p, *, summary_text, summary_tokens, current_user_input=…)` | Erstat ét spænd med en opsummering. Atomisk eller slet ikke. | [src](../../../core/services/compaction_runtime.py#L172) |
+| function | `failed` | `(s, error)` | En mislykket kompaktering. Generationen står UÆNDRET. | [src](../../../core/services/compaction_runtime.py#L200) |
+| function | `may_retry_after_overflow` | `(before, after)` | Må overløbet prøves igen? | [src](../../../core/services/compaction_runtime.py#L210) |
+| function | `require_advance` | `(before, after)` | Som ovenfor, men kaster. Til kaldesteder der ellers ville løkke. | [src](../../../core/services/compaction_runtime.py#L220) |
+
+## `core/services/companion_initiative.py`
+_Proaktivitet — Jarvis må dele en tanke uden at blive spurgt._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `Offer` | `` | — | [src](../../../core/services/companion_initiative.py#L44) |
+| method | `Offer.as_dict` | `(self)` | — | [src](../../../core/services/companion_initiative.py#L49) |
+| function | `_now` | `()` | — | [src](../../../core/services/companion_initiative.py#L54) |
+| function | `_parse` | `(ts)` | — | [src](../../../core/services/companion_initiative.py#L58) |
+| function | `_read_journal` | `()` | — | [src](../../../core/services/companion_initiative.py#L69) |
+| function | `_write_journal` | `(entries)` | — | [src](../../../core/services/companion_initiative.py#L86) |
+| function | `is_quiet_hour` | `(moment)` | Er det tidspunkt hvor en tanke ville vække frem for at nå frem? | [src](../../../core/services/companion_initiative.py#L94) |
+| function | `next_quiet_end` | `(moment)` | Hvornår må den stille periode brydes igen. | [src](../../../core/services/companion_initiative.py#L103) |
+| function | `_recent_for` | `(user_id, journal)` | — | [src](../../../core/services/companion_initiative.py#L113) |
+| function | `check_allowed` | `(user_id, *, now=…)` | Må en tanke sendes lige nu? Ren vurdering — sender ingenting. | [src](../../../core/services/companion_initiative.py#L117) |
+| function | `offer_thought` | `(user_id, text, *, title=…, now=…)` | Tilbyd en tanke. Sender kun hvis grænserne tillader det. | [src](../../../core/services/companion_initiative.py#L144) |
+| function | `recent_thoughts` | `(user_id, *, limit=…)` | Tankerne, nyeste først — også dem der blev holdt tilbage. | [src](../../../core/services/companion_initiative.py#L184) |
+
+## `core/services/companion_presence.py`
+_Livstegn — er Jarvis vågen lige nu, og hvad lavede han sidst?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_parse` | `(ts)` | — | [src](../../../core/services/companion_presence.py#L29) |
+| function | `_last_heartbeat` | `()` | Seneste hjerteslag: hvornår, og hvad det endte med at gøre. | [src](../../../core/services/companion_presence.py#L40) |
+| function | `_running_now` | `()` | Er en synlig kørsel i gang? Det er stærkere end et hjerteslag: det | [src](../../../core/services/companion_presence.py#L96) |
+| function | `_short` | `(text, limit=…)` | — | [src](../../../core/services/companion_presence.py#L107) |
+| function | `build_presence` | `(*, now=…)` | Det ærlige livstegn. Kaster aldrig — men lyver heller aldrig. | [src](../../../core/services/companion_presence.py#L112) |
+
+## `core/services/compass_engine.py`
+_Compass Engine — weekly strategic bearing based on open loops and priorities._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `maybe_update_compass` | `(*, open_loops=…, recent_decisions=…)` | Update compass if >3 days since last update. | [src](../../../core/services/compass_engine.py#L21) |
+| function | `build_compass_surface` | `()` | — | [src](../../../core/services/compass_engine.py#L65) |
+| function | `_parse_iso` | `(value)` | — | [src](../../../core/services/compass_engine.py#L74) |
+
+## `core/services/completion_satisfaction.py`
+_Completion Satisfaction — "det er nok, jeg er tilfreds."_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `detect_completion_satisfaction` | `(*, task_outcomes, repetition_on_same_topic=…, user_mood=…)` | — | [src](../../../core/services/completion_satisfaction.py#L8) |
+| function | `build_completion_satisfaction_surface` | `()` | — | [src](../../../core/services/completion_satisfaction.py#L45) |
+| function | `_publish_completion_satisfaction_transition` | `(payload=…)` | Publish a state-transition event. Called from real transition points | [src](../../../core/services/completion_satisfaction.py#L48) |
+
+## `core/services/composer_suggest.py`
+_Forslag i komponisten — hvad der kunne skrives videre, mens man skriver._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_base_url` | `()` | GPU-ollamaen. Aldrig en betalt vært — se modulets docstring. | [src](../../../core/services/composer_suggest.py#L60) |
+| function | `_model` | `()` | — | [src](../../../core/services/composer_suggest.py#L72) |
+| function | `_kald_model` | `(prompt)` | Ét kald til den lokale model. Kaster ved fejl; kalderen fanger. | [src](../../../core/services/composer_suggest.py#L91) |
+| function | `_afkort` | `(udkast, svar)` | Fjern den del af svaret der gentager udkastet. | [src](../../../core/services/composer_suggest.py#L110) |
+| function | `_ryd` | `(s)` | Én linje, uden omsluttende anførselstegn, afkortet ved et ordskel. | [src](../../../core/services/composer_suggest.py#L129) |
+| function | `foreslaa` | `(udkast)` | Fortsættelsen af `udkast`, eller `""`. | [src](../../../core/services/composer_suggest.py#L145) |
+| function | `_er_paastand` | `(s)` | Er forslaget en konstatering frem for noget man beder om? | [src](../../../core/services/composer_suggest.py#L240) |
+| function | `_samtale` | `(session_id)` | De seneste beskeder. Egen funktion, så testene kan sætte dem. | [src](../../../core/services/composer_suggest.py#L256) |
+| function | `foreslaa_naeste` | `(session_id)` | Et bud på brugerens næste besked, eller `""`. | [src](../../../core/services/composer_suggest.py#L262) |
+
 ## `core/services/composite_tools.py`
 _Composite tools — safe self-extension through composition only._
 
@@ -481,142 +570,4 @@ _Counterfactual self-simulation for post-run learning._
 | function | `_load_records` | `()` | — | [src](../../../core/services/counterfactual_self_simulation.py#L174) |
 | function | `_save_simulation` | `(sim)` | — | [src](../../../core/services/counterfactual_self_simulation.py#L179) |
 | function | `_feed_learning` | `(sim)` | — | [src](../../../core/services/counterfactual_self_simulation.py#L184) |
-
-## `core/services/counterfactual_triggers.py`
-_Trigger detection for counterfactual reflection._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `TriggerEvent` | `` | A regret-worthy event normalized for counterfactual processing. | [src](../../../core/services/counterfactual_triggers.py#L22) |
-| function | `_key_self_review` | `(payload)` | — | [src](../../../core/services/counterfactual_triggers.py#L33) |
-| function | `_key_conflict` | `(payload)` | Primary key for conflict.detected events. | [src](../../../core/services/counterfactual_triggers.py#L37) |
-| function | `_key_decision` | `(payload)` | — | [src](../../../core/services/counterfactual_triggers.py#L60) |
-| function | `_key_review` | `(payload)` | — | [src](../../../core/services/counterfactual_triggers.py#L64) |
-| function | `_key_goal` | `(payload)` | — | [src](../../../core/services/counterfactual_triggers.py#L68) |
-| function | `_key_decision_kept` | `(payload)` | — | [src](../../../core/services/counterfactual_triggers.py#L72) |
-| function | `_key_conflict_resolved` | `(payload)` | — | [src](../../../core/services/counterfactual_triggers.py#L76) |
-| function | `cf_key` | `(workspace_id, event_type, primary_key)` | First-pass dedup hash. Same workspace+type+key = same hash = skip. | [src](../../../core/services/counterfactual_triggers.py#L99) |
-| function | `_extract_summary` | `(payload)` | — | [src](../../../core/services/counterfactual_triggers.py#L105) |
-| function | `fetch_recent_aspiration_triggers` | `(*, workspace_id, lookback_minutes=…)` | Query events table for recent aspiration-worthy (positive) events. | [src](../../../core/services/counterfactual_triggers.py#L113) |
-| function | `fetch_recent_triggers` | `(*, workspace_id, lookback_minutes=…)` | Query events table for recent regret-worthy events. | [src](../../../core/services/counterfactual_triggers.py#L164) |
-
-## `core/services/cowork_dispatch.py`
-_Cowork dispatch — runtime→app instruktioner (spec §18.5)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `build_app_instruction` | `(*, action, target_user, channel=…, payload=…, requester=…)` | Byg en struktureret app-instruktion. Rejser ValueError ved ugyldig action | [src](../../../core/services/cowork_dispatch.py#L17) |
-| function | `dispatch_to_app` | `(*, action, target_user, channel=…, payload=…, requester=…)` | Byg + signalér en app-instruktion via eventbus. Appen udfører den lokalt. | [src](../../../core/services/cowork_dispatch.py#L38) |
-
-## `core/services/cowork_feed.py`
-_Cowork-feed: normaliserer items fra eksisterende kilder til én rolle-scopet_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_initiative_items` | `()` | Afventende initiativ-forslag fra initiative_queue. | [src](../../../core/services/cowork_feed.py#L13) |
-| function | `_capability_items` | `()` | Afventende capability-/tool-godkendelses-requests (Mission Control surface). | [src](../../../core/services/cowork_feed.py#L23) |
-| function | `_norm_initiative` | `(raw)` | — | [src](../../../core/services/cowork_feed.py#L34) |
-| function | `_norm_capability` | `(raw)` | — | [src](../../../core/services/cowork_feed.py#L45) |
-| function | `_proposal_items` | `()` | Afventende autonomy-proposals (prop-xxxxxx): commits, planer, prompt- | [src](../../../core/services/cowork_feed.py#L63) |
-| function | `_norm_proposal` | `(raw)` | — | [src](../../../core/services/cowork_feed.py#L73) |
-| function | `build_queue` | `(*, user_id, is_owner)` | Saml + normalisér + rolle-scope den fulde godkendelses-kø. | [src](../../../core/services/cowork_feed.py#L86) |
-| function | `_all_plans` | `()` | Alle planer fra plan_proposals (normaliseret med trin-progress). | [src](../../../core/services/cowork_feed.py#L99) |
-| function | `list_plans` | `(*, user_id, is_owner)` | — | [src](../../../core/services/cowork_feed.py#L121) |
-| function | `list_active_agents` | `(*, limit=…)` | Aktive dispatch-agenter til cowork command center (§19.5). Læser | [src](../../../core/services/cowork_feed.py#L134) |
-| function | `_all_todos` | `()` | Alle todos på tværs af sessioner (agent_todos er session-keyed). | [src](../../../core/services/cowork_feed.py#L157) |
-| function | `list_todos_feed` | `(*, user_id, is_owner)` | Todos til cowork. Owner ser alle; member får [] (todos er ikke user- | [src](../../../core/services/cowork_feed.py#L178) |
-| function | `_raw_channels` | `()` | Konfigurerede kanaler (online = konfigureret/aktiv). Live connection-state | [src](../../../core/services/cowork_feed.py#L186) |
-| function | `channel_status` | `()` | — | [src](../../../core/services/cowork_feed.py#L205) |
-
-## `core/services/creative_drift_daemon.py`
-_Creative drift daemon — generates spontaneous, unexpected ideas unrelated to current tasks._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `tick_creative_drift_daemon` | `(fragments, *, skip_event_gate=…)` | Maybe generate a spontaneous associative idea. | [src](../../../core/services/creative_drift_daemon.py#L38) |
-| function | `get_latest_drift` | `()` | — | [src](../../../core/services/creative_drift_daemon.py#L91) |
-| function | `build_creative_drift_surface` | `()` | — | [src](../../../core/services/creative_drift_daemon.py#L95) |
-| function | `_gather_concrete_anchor` | `()` | Returns (anchor_text, anchor_kind) — a single concrete thing to drift | [src](../../../core/services/creative_drift_daemon.py#L109) |
-| function | `_generate_drift_idea` | `(fragments)` | — | [src](../../../core/services/creative_drift_daemon.py#L143) |
-| function | `_store_drift` | `(idea, now)` | — | [src](../../../core/services/creative_drift_daemon.py#L197) |
-
-## `core/services/creative_impulse_daemon.py`
-_Creative Impulse — unasked-for creations._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_storage_path` | `()` | — | [src](../../../core/services/creative_impulse_daemon.py#L36) |
-| function | `_creative_dir` | `()` | — | [src](../../../core/services/creative_impulse_daemon.py#L40) |
-| function | `_load` | `()` | — | [src](../../../core/services/creative_impulse_daemon.py#L44) |
-| function | `_save` | `(data)` | — | [src](../../../core/services/creative_impulse_daemon.py#L62) |
-| function | `_dream_residue` | `()` | — | [src](../../../core/services/creative_impulse_daemon.py#L79) |
-| function | `_current_signals` | `()` | — | [src](../../../core/services/creative_impulse_daemon.py#L93) |
-| function | `_tokens_from` | `(text)` | — | [src](../../../core/services/creative_impulse_daemon.py#L117) |
-| function | `_compose_poem` | `(tokens, signals)` | Structural poem — not LLM. 4 lines composed from available tokens. | [src](../../../core/services/creative_impulse_daemon.py#L123) |
-| function | `_compose_essay_fragment` | `(residue, signals)` | A few sentences woven from residue phrases. | [src](../../../core/services/creative_impulse_daemon.py#L138) |
-| function | `_compose_concept` | `(tokens)` | A naming game — combine 2 tokens into a concept. | [src](../../../core/services/creative_impulse_daemon.py#L153) |
-| function | `_compose_snippet` | `(tokens)` | A tiny Python-like pseudo snippet from tokens. | [src](../../../core/services/creative_impulse_daemon.py#L162) |
-| function | `_compose` | `(form)` | — | [src](../../../core/services/creative_impulse_daemon.py#L175) |
-| function | `_compute_next_due` | `(now)` | — | [src](../../../core/services/creative_impulse_daemon.py#L196) |
-| function | `_write_creation` | `(creation)` | — | [src](../../../core/services/creative_impulse_daemon.py#L201) |
-| function | `create_now` | `()` | Force a creation (bypasses scheduling). | [src](../../../core/services/creative_impulse_daemon.py#L230) |
-| function | `tick` | `(_seconds=…)` | — | [src](../../../core/services/creative_impulse_daemon.py#L264) |
-| function | `list_creations` | `(*, limit=…)` | — | [src](../../../core/services/creative_impulse_daemon.py#L284) |
-| function | `build_creative_impulse_surface` | `()` | — | [src](../../../core/services/creative_impulse_daemon.py#L289) |
-| function | `_surface_summary` | `(creations, next_due)` | — | [src](../../../core/services/creative_impulse_daemon.py#L315) |
-| function | `build_creative_impulse_prompt_section` | `()` | — | [src](../../../core/services/creative_impulse_daemon.py#L322) |
-| function | `_seed_confidence` | `(creation)` | Score a creation as a 'seed worth showing' — higher = better. | [src](../../../core/services/creative_impulse_daemon.py#L342) |
-| function | `_select_best_unsurfaced` | `()` | Find the highest-confidence creation that hasn't been surfaced. | [src](../../../core/services/creative_impulse_daemon.py#L378) |
-| function | `surface_daily_seed` | `()` | Pick the best unsurfaced creation and mark it as surfaced. | [src](../../../core/services/creative_impulse_daemon.py#L392) |
-| function | `build_creative_seed_section` | `()` | Build a prompt-awareness section if there's an unsurfaced seed waiting. | [src](../../../core/services/creative_impulse_daemon.py#L428) |
-
-## `core/services/creative_instinct_daemon.py`
-_Creative Instinct — spontaneous idea-seeds written to INCUBATOR.md._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_storage_path` | `()` | — | [src](../../../core/services/creative_instinct_daemon.py#L39) |
-| function | `_incubator_path` | `()` | — | [src](../../../core/services/creative_instinct_daemon.py#L43) |
-| function | `_load` | `()` | — | [src](../../../core/services/creative_instinct_daemon.py#L47) |
-| function | `_save` | `(data)` | — | [src](../../../core/services/creative_instinct_daemon.py#L63) |
-| function | `_hours_since` | `(iso_str)` | — | [src](../../../core/services/creative_instinct_daemon.py#L75) |
-| function | `_recent_chat_topics` | `(limit=…)` | — | [src](../../../core/services/creative_instinct_daemon.py#L87) |
-| function | `_recent_dream_hypotheses` | `()` | — | [src](../../../core/services/creative_instinct_daemon.py#L101) |
-| function | `_recent_avoidances` | `()` | — | [src](../../../core/services/creative_instinct_daemon.py#L111) |
-| function | `_current_mood_label` | `()` | — | [src](../../../core/services/creative_instinct_daemon.py#L119) |
-| function | `_compose_spark` | `(source_phrases, mood)` | Combine two source phrases into a spark. | [src](../../../core/services/creative_instinct_daemon.py#L129) |
-| function | `_short_phrase` | `(text)` | — | [src](../../../core/services/creative_instinct_daemon.py#L150) |
-| function | `_generate_seeds` | `(*, max_new)` | — | [src](../../../core/services/creative_instinct_daemon.py#L157) |
-| function | `_write_incubator_md` | `(seeds)` | Overwrite INCUBATOR.md with current active seed list. | [src](../../../core/services/creative_instinct_daemon.py#L194) |
-| function | `_age_seeds` | `(seeds)` | Mature or wither seeds based on age. Returns True if any changed. | [src](../../../core/services/creative_instinct_daemon.py#L224) |
-| function | `tick` | `(_seconds=…)` | — | [src](../../../core/services/creative_instinct_daemon.py#L242) |
-| function | `list_seeds` | `(*, status=…)` | — | [src](../../../core/services/creative_instinct_daemon.py#L273) |
-| function | `mark_seed` | `(seed_id, *, status)` | — | [src](../../../core/services/creative_instinct_daemon.py#L280) |
-| function | `build_creative_instinct_surface` | `()` | — | [src](../../../core/services/creative_instinct_daemon.py#L295) |
-| function | `_surface_summary` | `(active, adopted, withered)` | — | [src](../../../core/services/creative_instinct_daemon.py#L325) |
-| function | `build_creative_instinct_prompt_section` | `()` | — | [src](../../../core/services/creative_instinct_daemon.py#L342) |
-
-## `core/services/creative_journal_runtime.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `run_creative_journal_cycle` | `(*, trigger=…, last_visible_at=…)` | — | [src](../../../core/services/creative_journal_runtime.py#L23) |
-| function | `build_creative_journal_surface` | `()` | — | [src](../../../core/services/creative_journal_runtime.py#L125) |
-| function | `creative_journal_dir` | `()` | — | [src](../../../core/services/creative_journal_runtime.py#L144) |
-| function | `list_creative_journal_entries` | `(*, limit=…)` | — | [src](../../../core/services/creative_journal_runtime.py#L149) |
-| function | `_build_journal_entry` | `(*, chronicle_entries, life_projects, broken_decisions, klangbraet, voice_anchor)` | — | [src](../../../core/services/creative_journal_runtime.py#L178) |
-| function | `_build_prompt` | `(*, chronicle_entries, life_projects, broken_decisions, klangbraet, voice_anchor)` | — | [src](../../../core/services/creative_journal_runtime.py#L210) |
-| function | `_sanitize_entry` | `(raw)` | — | [src](../../../core/services/creative_journal_runtime.py#L318) |
-| function | `_write_journal_entry` | `(*, created_at, text, frontmatter=…)` | — | [src](../../../core/services/creative_journal_runtime.py#L330) |
-| function | `_should_skip_week` | `(*, chronicle_count, broken_decisions_count, life_projects_count)` | Return (skip?, reason). Skip when ALL three signals are absent/thin. | [src](../../../core/services/creative_journal_runtime.py#L360) |
-| function | `_interval_days_for_state` | `(state)` | Return current cadence interval based on skip counter. | [src](../../../core/services/creative_journal_runtime.py#L378) |
-| function | `_fetch_broken_decisions` | `(*, days_back=…, limit=…)` | Pull recent broken-decision summaries from the events table. | [src](../../../core/services/creative_journal_runtime.py#L388) |
-| function | `_fetch_recent_top_motif` | `(*, days_back=…)` | Return the most-recent aesthetic motif from the last `days_back` days. | [src](../../../core/services/creative_journal_runtime.py#L440) |
-| function | `_fetch_dominant_taste` | `(*, evidence_floor=…)` | Return 'dimension_name (value)' for the taste-dimension with largest |val - 0.5|. | [src](../../../core/services/creative_journal_runtime.py#L467) |
-| function | `_fetch_affective_klangbraet` | `()` | Pull current affective signals — these shape tone, not content. | [src](../../../core/services/creative_journal_runtime.py#L512) |
-| function | `_format_yaml_frontmatter` | `(*, created_at, chronicle_count, broken_decisions_count, life_projects_count, klangbraet, trigger)` | Render a YAML frontmatter block for journal entries. | [src](../../../core/services/creative_journal_runtime.py#L613) |
-| function | `_quality_lane_enabled` | `()` | — | [src](../../../core/services/creative_journal_runtime.py#L662) |
-| function | `_creative_journal_enabled` | `()` | — | [src](../../../core/services/creative_journal_runtime.py#L669) |
-| function | `_state` | `()` | — | [src](../../../core/services/creative_journal_runtime.py#L674) |
-| function | `_parse_iso` | `(value)` | — | [src](../../../core/services/creative_journal_runtime.py#L679) |
 

@@ -259,3 +259,196 @@ export function getUdbyderHelbred(
 ): Promise<{ providers?: UdbyderHelbred[]; checked_at?: string; summary?: unknown }> {
   return apiFetch(config, '/central/providers')
 }
+
+// ── kontrolcentret (18/9-2026) ───────────────────────────────────────────
+//
+// Ét sammensat snapshot i stedet for fire uafhængige hentninger med hver sin
+// timer. Backenden pakker hver sektion i en konvolut med KILDE og FRISKHED,
+// så en flade kan sige «balanceren svarede ikke» uden at resten af skærmen
+// går i sort — og uden at klienten opfinder sin egen sandhed om hvad der er
+// aktuelt.
+
+export type Freskhed = 'live' | 'stale' | 'unknown'
+
+export interface ApiProblem { code?: string; message?: string; detail?: string }
+
+/** En sektion kan mangle uden at snapshotet er ugyldigt. Derfor `data: T | null`
+ *  OG `error` — hvis begge er tomme, blev sektionen aldrig forsøgt. */
+export interface Sektion<T> {
+  source: string
+  observed_at: string | null
+  freshness: Freskhed
+  data: T | null
+  error: ApiProblem | null
+}
+
+/** Ukendt kapacitet er `null`, aldrig 0 — og enheder blandes aldrig sammen.
+ *  «0 tilbage» og «vi ved det ikke» er to forskellige beskeder til en der
+ *  skal beslutte om han kan køre videre. */
+export interface KvoteVindue {
+  period: 'minute' | 'day' | 'week' | 'month' | string
+  unit: 'tokens' | 'requests' | 'credits_usd' | string
+  provider?: string
+  auth_profile?: string
+  limit: number | null
+  used: number
+  remaining: number | null
+  source: 'provider' | 'configured' | 'estimated' | 'unknown' | string
+  confidence: number | null
+  reset_at: string | null
+}
+
+export interface Kapacitet {
+  generated_at?: string
+  windows?: KvoteVindue[]
+  totals?: Record<string, { limit: number | null; used: number; remaining: number | null }>
+  unknown_members?: { provider?: string; auth_profile?: string; reason?: string }[]
+}
+
+export interface Fund {
+  code: string
+  severity: 'high' | 'medium' | 'low' | string
+  evidence?: Record<string, unknown>
+  first_observed_at?: string
+  last_observed_at?: string
+  provider?: string | null
+  slot_id?: string | null
+  central_incident_id?: string | null
+}
+
+export interface Diagnose {
+  generated_at?: string
+  status?: string
+  findings?: Fund[]
+}
+
+export interface Tendenser {
+  requests?: number
+  tokens?: number
+  errors?: number
+  cost_usd?: number
+  truncated?: boolean
+}
+
+export interface Noegletal {
+  requests?: number
+  tokens?: number
+  errors?: number
+  cost_usd?: number
+  eligible_slots?: number
+  active_findings?: number
+}
+
+export interface Snapshot {
+  schema_version: number
+  generated_at: string
+  window_hours: number
+  status: string
+  kpis: Noegletal
+  sections: {
+    capacity?: Sektion<Kapacitet>
+    providers?: Sektion<Registret>
+    balancer?: Sektion<BalancerState>
+    trends?: Sektion<Tendenser>
+    diagnostics?: Sektion<Diagnose>
+    central?: Sektion<{ id?: string; ts?: string; cluster?: string; nerve?: string; kind?: string; severity?: string; message?: string }[]>
+  }
+}
+
+export interface LogLinje {
+  invocation_id?: string
+  at?: string
+  provider?: string
+  model?: string
+  auth_profile?: string
+  daemon?: string
+  status?: string
+  error_class?: string
+  error?: string
+  latency_ms?: number
+  tokens_in?: number
+  tokens_out?: number
+  cost_usd?: number
+  correlation_id?: string
+  has_payload?: boolean
+}
+
+export interface LogSide {
+  items?: LogLinje[]
+  next_cursor?: string | null
+  count?: number
+  truncated?: boolean
+}
+
+export interface LogFilter {
+  hours?: number
+  provider?: string
+  model?: string
+  auth_profile?: string
+  daemon?: string
+  status?: string
+  error_class?: string
+  correlation_id?: string
+  query?: string
+  cursor?: string
+  limit?: number
+}
+
+export interface Revision {
+  at?: string
+  actor?: string
+  action?: string
+  target?: string
+  reason?: string
+  outcome?: string
+  revision?: string
+}
+
+export function getDashboard(config: ApiConfig, timer = 24): Promise<Snapshot> {
+  return apiFetch<Snapshot>(config, `/mc/cheap-lane/dashboard?hours=${timer}`)
+}
+
+export function getKapacitet(config: ApiConfig): Promise<Kapacitet> {
+  return apiFetch<Kapacitet>(config, '/mc/cheap-lane/capacity')
+}
+
+export function getLogs(config: ApiConfig, filter: LogFilter = {}): Promise<LogSide> {
+  const q = new URLSearchParams()
+  for (const [k, v] of Object.entries(filter)) {
+    if (v !== undefined && v !== null && String(v) !== '') q.set(k, String(v))
+  }
+  return apiFetch<LogSide>(config, `/mc/cheap-lane/logs?${q.toString()}`)
+}
+
+export function getLogDetalje(config: ApiConfig, invocationId: string): Promise<LogLinje & {
+  request_payload?: string | null; response_payload?: string | null; redacted?: boolean
+}> {
+  return apiFetch(config, `/mc/cheap-lane/logs/${encodeURIComponent(invocationId)}`)
+}
+
+export function getDiagnose(config: ApiConfig): Promise<Diagnose> {
+  return apiFetch<Diagnose>(config, '/mc/cheap-lane/diagnostics')
+}
+
+export function getRevisioner(config: ApiConfig, loft = 100): Promise<{ items?: Revision[] }> {
+  return apiFetch(config, `/mc/cheap-lane/audit?limit=${loft}`)
+}
+
+/** Ingen gentagelse i klienten: en kontrol-handling er IKKE idempotent, og en
+ *  stille genafsendelse ville kunne pause den samme udbyder to gange med to
+ *  revisioner i sporet. Fejler den, skal mennesket se det og vælge selv. */
+export function udfoerKontrol(
+  config: ApiConfig,
+  kommando: { action: string; target: string; reason?: string; expected_revision?: string;
+    parameters?: Record<string, unknown> },
+): Promise<{ status?: string; revision?: string; detail?: string }> {
+  return apiFetch(config, '/mc/cheap-lane/control', { method: 'POST', body: kommando })
+}
+
+export function simulerRute(
+  config: ApiConfig, taskKind = 'default', skipProviders: string[] = [],
+): Promise<{ candidates?: { provider?: string; model?: string; slot_id?: string; weight?: number;
+  eligible?: boolean; reason?: string }[]; chosen?: string | null }> {
+  return apiFetch(config, '/mc/cheap-lane/simulate-route',
+    { method: 'POST', body: { task_kind: taskKind, skip_providers: skipProviders } })
+}

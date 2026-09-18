@@ -6,6 +6,28 @@ import pytest
 from core.services.cheap_provider_runtime_adapters import CHEAP_PROVIDER_DEFAULTS
 
 
+def test_dispatch_persists_normalized_quota_observation(isolated_runtime, monkeypatch):
+    import core.services.cheap_provider_runtime as facade
+    import core.services.cheap_provider_runtime_adapters as adapters
+    from core.runtime.db_cheap_lane_control import list_quota_observations
+
+    monkeypatch.setattr(facade, "_execute_openai_compatible_chat", lambda **_kw: {
+        "text": "ok",
+        "quota_observation": {
+            "period": "day", "unit": "requests", "limit": 100,
+            "remaining": 87, "reset_at": "2026-09-19T00:00:00+00:00",
+        },
+    })
+    adapters._execute_provider_chat(
+        provider="groq", model="llama", auth_profile="default",
+        base_url="https://example.invalid", message="hello",
+    )
+
+    rows = list_quota_observations(provider="groq", auth_profile="default")
+    assert rows[0]["period"] == "day"
+    assert rows[0]["remaining"] == 87
+
+
 def test_new_verified_providers_present_and_well_formed():
     """De 4 live-verificerede providers (14. jul) skal være i CHEAP_PROVIDER_DEFAULTS
     med de felter selection/adapters kræver. En provider der IKKE er her kan ikke

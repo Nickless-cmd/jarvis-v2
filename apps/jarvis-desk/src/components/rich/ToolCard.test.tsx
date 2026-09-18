@@ -27,7 +27,9 @@ describe('ToolCard', () => {
     expect(screen.queryByText('web_search')).toBeNull()
   })
   it('shows +N −M diff-stat for an edit collapsed', () => {
-    render(<ToolCard block={block({ name: 'edit_file', input: { path: 'a.ts', old_string: 'a\nb', new_string: 'a\nc\nd' } })} density="compact" />)
+    // `old_text`/`new_text` — navnene vaerktoejet FAKTISK sender. Testen stod
+    // med `old_string`, som intet kald bruger, og beviste derfor ingenting.
+    render(<ToolCard block={block({ name: 'edit_file', input: { path: 'a.ts', old_text: 'a\nb', new_text: 'a\nc\nd' } })} density="compact" />)
     expect(screen.getByText(/\+\d+/)).toBeInTheDocument()
     expect(screen.getByText(/−\d+/)).toBeInTheDocument()
   })

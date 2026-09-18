@@ -1,25 +1,98 @@
-import { lineDiff } from './diff'
+/**
+ * Insertions/deletions for et fil-ændrende tool-kald — vises som +N −M i
+ * rundelinjen og i kortet. `null` for tools der ikke ændrer en fil.
+ *
+ * ## Hvorfor den blev skrevet om (Bjørn 18/9-2026: «tool result linje i
+ * chatview mangler +xx og −xx grøn/rød som mobil appen har»)
+ *
+ * Den ledte efter `old_string`/`new_string`. Værktøjet hedder dem `old_text`
+ * og `new_text`. Målt på CT105 over de seneste 400 svar med værktøjskald:
+ * 666 af 672 `edit_file`-kald bar `old_text`, 3 bar `old_string`. Den ramte
+ * altså under én procent, returnerede `null` resten af tiden, og så blev
+ * linjen slet ikke tegnet — ikke gråtonet, men fraværende. Det var derfor
+ * mobilen havde tal og desk ikke.
+ *
+ * ## Samme regnemåde som serveren
+ *
+ * Tallene tælles som HELE blokke — hele `new_text` tilføjet, hele `old_text`
+ * fjernet — ikke som en minimal diff. Det er ikke sjusk: det er hvad
+ * `core/tools/file_tools_exec.linjetal` gør, og dermed hvad `linjer_tilfoejet`
+ * i resultatet betyder. En minimal diff ville give PÆNERE tal, men så ville
+ * samme kald vise ét tal mens det kører og et andet når svaret er inde — og
+ * desk ville sige noget andet end mobilen om den samme handling.
+ */
+export function diffStat(name: string, args: unknown): { add: number; del: number } | null {
+  // `operator_edit_file` er samme værktøj på den anden side af broen.
+  const n = (name || '').toLowerCase().replace(/^operator_/, '')
+  const o = somArgumenter(args)
 
-/** Insertions/deletions for et fil-ændrende tool-kald — vises som +N −M i chip'en.
- *  Returnerer null for tools der ikke ændrer en fil (eller mangler args). */
-export function diffStat(name: string, args: Record<string, unknown>): { add: number; del: number } | null {
-  const n = name.toLowerCase()
-  if (n.includes('edit_file')) {
-    const oldS = String(args.old_string ?? args.old ?? '')
-    const newS = String(args.new_string ?? args.new ?? '')
-    if (!oldS && !newS) return null
-    const d = lineDiff(oldS, newS)
-    return {
-      add: d.filter((x) => x.type === 'add').length,
-      del: d.filter((x) => x.type === 'del').length,
+  if (n === 'edit_file') return fraPar(o.old_text ?? o.old_string, o.new_text ?? o.new_string)
+
+  if (n === 'multi_edit') {
+    // `edits` eller `items` — begge former findes i værktøjsdefinitionerne.
+    const raa = Array.isArray(o.edits) ? o.edits : Array.isArray(o.items) ? o.items : null
+    if (!raa) return null
+    let add = 0
+    let del = 0
+    let nogen = false
+    for (const e of raa) {
+      const r = (e ?? {}) as Record<string, unknown>
+      const d = fraPar(r.old_text ?? r.old_string, r.new_text ?? r.new_string)
+      if (d) { add += d.add; del += d.del; nogen = true }
+    }
+    return nogen ? { add, del } : null
+  }
+
+  if (n === 'write_file') {
+    const indhold = o.content ?? o.file_text
+    if (typeof indhold !== 'string' || !indhold) return null
+    // KUN tilføjet. Argumenterne siger ikke om filen fandtes i forvejen, og
+    // at kalde dens tidligere indhold «fjernet» ville være et gæt på et tal
+    // vi ikke har. Serverens målte tal dækker det tilfælde — se nedenfor.
+    return { add: linjer(indhold), del: 0 }
+  }
+
+  return null
+}
+
+/**
+ * Argumenterne, uanset om de er et objekt eller en streng under streaming.
+ *
+ * Et værktøjs argumenter lander i `partialJson` — en streng samlet af
+ * `input_json_delta` — før de findes som objekt. En HALV streng giver `{}`
+ * frem for at kaste: indtil argumenterne er hele er der intet at vise, og en
+ * linje der kaster ville tage hele tråden med sig.
+ */
+function somArgumenter(input: unknown): Record<string, unknown> {
+  if (input && typeof input === 'object') return input as Record<string, unknown>
+  if (typeof input === 'string' && input.trim()) {
+    try {
+      const p = JSON.parse(input)
+      if (p && typeof p === 'object') return p as Record<string, unknown>
+    } catch {
+      return {}
     }
   }
-  if (n.includes('write_file')) {
-    const content = String(args.content ?? '')
-    if (!content) return null
-    return { add: content.split('\n').length, del: 0 }
-  }
-  return null
+  return {}
+}
+
+function fraPar(gammel: unknown, ny: unknown): { add: number; del: number } | null {
+  const g = typeof gammel === 'string' ? gammel : null
+  const n = typeof ny === 'string' ? ny : null
+  if (g === null && n === null) return null
+  return { add: n ? linjer(n) : 0, del: g ? linjer(g) : 0 }
+}
+
+/**
+ * Linjer i et tekststykke — 1:1 med serverens `_linjer`.
+ *
+ * Tom streng er NUL linjer, ikke én: ellers ville en sletning se ud som «én
+ * tom linje tilføjet». En afsluttende newline AFSLUTTER den sidste linje, den
+ * starter ikke en ny — «a\n» er én linje.
+ */
+function linjer(s: string): number {
+  if (!s) return 0
+  return s.split('\n').length - (s.endsWith('\n') ? 1 : 0)
 }
 
 

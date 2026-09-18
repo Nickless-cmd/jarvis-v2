@@ -73,6 +73,26 @@ describe('ToolGroupCard', () => {
     expect(tal).toHaveTextContent('−5')
   })
 
+  // Den gemte historik bærer INTET resultat: et `tool_use` i `content_json`
+  // har kun id/input/name/type (målt paa CT105). Aabner man en gammel samtale,
+  // er argumenterne derfor den eneste kilde til tallene — og lige praecis den
+  // vej havde ingen daekning. Derfor stod chat-tråden uden +/− (Bjoern 18/9).
+  it('regner tallene ud af argumenterne naar historikken ingen resultater har', () => {
+    const block: ToolGroupBlock = {
+      type: 'tool_group', kind: 'round', count: 2,
+      tools: [
+        { type: 'tool_use', id: 'e1', name: 'edit_file', status: 'done',
+          input: { path: '/a', old_text: 'a\nb\nc', new_text: 'a\nX' } },
+        { type: 'tool_use', id: 'e2', name: 'write_file', status: 'done',
+          input: { path: '/b', content: 'x\ny\n' } },
+      ],
+    }
+    render(<ToolGroupCard block={block} density="compact" />)
+    const tal = screen.getByTestId('toolgroup-diffstat')
+    expect(tal).toHaveTextContent('+4')   // 2 nye + 2 skrevne
+    expect(tal).toHaveTextContent('−3')
+  })
+
   it('en runde der kun laeste har ingen tal — ikke to nuller', () => {
     render(<ToolGroupCard block={group(3)} density="compact" />)
     expect(screen.queryByTestId('toolgroup-diffstat')).toBeNull()

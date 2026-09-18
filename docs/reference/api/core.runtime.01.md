@@ -166,6 +166,17 @@ _Godkendelses-broen — én beslutning, bundet til ÉT kald, brugt ÉN gang._
 | function | `abandon_run` | `(run_id, *, detail=…)` | Opgiv ALLE uafklarede poster for et doedt run — K6. | [src](../../../core/runtime/db_approval_bridge.py#L385) |
 | function | `prior_unknown_outcome` | `(tool_name, arguments)` | Har PRAECIS dette kald allerede efterladt et ukendt udfald? | [src](../../../core/runtime/db_approval_bridge.py#L415) |
 
+## `core/runtime/db_artifact_index.py`
+_Artefakter: de filer Jarvis har skrevet og rettet i en mappe, paa tvaers af samtaler._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_linjer` | `(s)` | — | [src](../../../core/runtime/db_artifact_index.py#L39) |
+| function | `_diff` | `(navn, inp)` | (tilfoejet, fjernet) ud af kaldets argumenter — samme regel som desk. | [src](../../../core/runtime/db_artifact_index.py#L45) |
+| function | `_rod` | `(root)` | Navngivne server-roedder → sti. Alt andet bruges som det er. | [src](../../../core/runtime/db_artifact_index.py#L63) |
+| function | `_under` | `(sti, rod)` | — | [src](../../../core/runtime/db_artifact_index.py#L78) |
+| function | `list_artifacts` | `(root, *, limit=…)` | Filer Jarvis har rørt under `root`, nyeste først, én raekke pr. fil. | [src](../../../core/runtime/db_artifact_index.py#L82) |
+
 ## `core/runtime/db_autonomy.py`
 _Autonomy-proposals — niveau-2 autonomi: pending forslag fra Jarvis der afventer_
 
@@ -655,23 +666,4 @@ _`lessons` — the one store for what Jarvis learns from mistakes._
 | function | `record_repeat` | `(lesson_id, *, now=…)` | — | [src](../../../core/runtime/db_lessons.py#L249) |
 | function | `retire_stale` | `(*, days=…, min_evidence=…, now=…)` | Retire proposed/active lessons with evidence < min_evidence, no repeat, | [src](../../../core/runtime/db_lessons.py#L262) |
 | function | `set_lesson_status` | `(lesson_id, status)` | Saet en lektions status. Returnerer raekken bagefter, eller None. | [src](../../../core/runtime/db_lessons.py#L278) |
-
-## `core/runtime/db_private_brain.py`
-_Private brain records — Jarvis' EGNE private lag (private-carry-erindringer med_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_ensure_private_brain_records_table` | `(conn)` | — | [src](../../../core/runtime/db_private_brain.py#L22) |
-| function | `_private_brain_record_from_row` | `(row)` | — | [src](../../../core/runtime/db_private_brain.py#L67) |
-| function | `_is_boilerplate_carry` | `(summary, detail)` | True hvis en record er ren skabelon uden informationsindhold ud over det der allerede | [src](../../../core/runtime/db_private_brain.py#L109) |
-| function | `insert_private_brain_record` | `(*, record_id, record_type, layer, session_id, run_id, focus, summary, detail, source_signals, confidence, created_at, domain=…)` | — | [src](../../../core/runtime/db_private_brain.py#L122) |
-| function | `list_private_brain_records` | `(*, limit=…, session_id=…, status=…, record_type=…)` | — | [src](../../../core/runtime/db_private_brain.py#L162) |
-| function | `list_private_brain_records_older_than` | `(*, status, older_than_iso, limit=…, max_salience=…)` | Records i ``status`` med ``created_at < older_than_iso``, ÆLDSTE først. | [src](../../../core/runtime/db_private_brain.py#L195) |
-| function | `search_private_brain_records` | `(query, *, limit=…, exclude_status=…)` | Tekst-søgning (LIKE) over HELE private_brain_records — focus/summary/detail. | [src](../../../core/runtime/db_private_brain.py#L229) |
-| function | `update_private_brain_record_status` | `(record_id, *, status, updated_at)` | Lifecycle-overgang (active|settling|fading|released). Non-destruktiv. | [src](../../../core/runtime/db_private_brain.py#L276) |
-| function | `get_private_brain_record` | `(record_id)` | — | [src](../../../core/runtime/db_private_brain.py#L293) |
-| function | `update_private_brain_record_salience` | `(record_id, salience)` | Sæt salience (0.0–1.0) for en private-brain-record. | [src](../../../core/runtime/db_private_brain.py#L313) |
-| function | `get_salient_private_brain_records` | `(threshold=…, limit=…)` | Aktive records med salience >= threshold, salience-sorteret. | [src](../../../core/runtime/db_private_brain.py#L325) |
-| function | `decay_private_brain_records` | `(decay_rate=…, limit=…)` | Reducér salience på gamle aktive records. Returnerer antal opdaterede. | [src](../../../core/runtime/db_private_brain.py#L348) |
-| function | `decay_private_brain_records_by_domain` | `(domain_decay_rates, default_rate=…, limit=…)` | Per-domæne salience-decay på aktive records. Returnerer {domæne: antal}. | [src](../../../core/runtime/db_private_brain.py#L369) |
 

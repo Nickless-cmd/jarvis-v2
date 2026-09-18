@@ -1,6 +1,6 @@
 # API_REFERENCE
 
-> Generated 2026-09-18 from app.routes (live) — 586 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
+> Generated 2026-09-18 from app.routes (live) — 587 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
 
 | Method | Path | Response model | Source |
 |---|---|---|---|
@@ -217,6 +217,7 @@
 | GET | `/chat/active-runs` | dict | chat |
 | POST | `/chat/approvals/{approval_id}/approve` | dict | chat |
 | POST | `/chat/approvals/{approval_id}/deny` | dict | chat |
+| GET | `/chat/artifacts` | dict | chat_artifacts |
 | POST | `/chat/compact-now` | dict | chat |
 | GET | `/chat/context-info` | dict | chat |
 | GET | `/chat/context-usage` | dict | chat |

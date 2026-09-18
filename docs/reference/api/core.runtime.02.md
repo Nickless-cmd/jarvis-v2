@@ -2,6 +2,25 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/runtime/db_private_brain.py`
+_Private brain records — Jarvis' EGNE private lag (private-carry-erindringer med_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_ensure_private_brain_records_table` | `(conn)` | — | [src](../../../core/runtime/db_private_brain.py#L22) |
+| function | `_private_brain_record_from_row` | `(row)` | — | [src](../../../core/runtime/db_private_brain.py#L67) |
+| function | `_is_boilerplate_carry` | `(summary, detail)` | True hvis en record er ren skabelon uden informationsindhold ud over det der allerede | [src](../../../core/runtime/db_private_brain.py#L109) |
+| function | `insert_private_brain_record` | `(*, record_id, record_type, layer, session_id, run_id, focus, summary, detail, source_signals, confidence, created_at, domain=…)` | — | [src](../../../core/runtime/db_private_brain.py#L122) |
+| function | `list_private_brain_records` | `(*, limit=…, session_id=…, status=…, record_type=…)` | — | [src](../../../core/runtime/db_private_brain.py#L162) |
+| function | `list_private_brain_records_older_than` | `(*, status, older_than_iso, limit=…, max_salience=…)` | Records i ``status`` med ``created_at < older_than_iso``, ÆLDSTE først. | [src](../../../core/runtime/db_private_brain.py#L195) |
+| function | `search_private_brain_records` | `(query, *, limit=…, exclude_status=…)` | Tekst-søgning (LIKE) over HELE private_brain_records — focus/summary/detail. | [src](../../../core/runtime/db_private_brain.py#L229) |
+| function | `update_private_brain_record_status` | `(record_id, *, status, updated_at)` | Lifecycle-overgang (active|settling|fading|released). Non-destruktiv. | [src](../../../core/runtime/db_private_brain.py#L276) |
+| function | `get_private_brain_record` | `(record_id)` | — | [src](../../../core/runtime/db_private_brain.py#L293) |
+| function | `update_private_brain_record_salience` | `(record_id, salience)` | Sæt salience (0.0–1.0) for en private-brain-record. | [src](../../../core/runtime/db_private_brain.py#L313) |
+| function | `get_salient_private_brain_records` | `(threshold=…, limit=…)` | Aktive records med salience >= threshold, salience-sorteret. | [src](../../../core/runtime/db_private_brain.py#L325) |
+| function | `decay_private_brain_records` | `(decay_rate=…, limit=…)` | Reducér salience på gamle aktive records. Returnerer antal opdaterede. | [src](../../../core/runtime/db_private_brain.py#L348) |
+| function | `decay_private_brain_records_by_domain` | `(domain_decay_rates, default_rate=…, limit=…)` | Per-domæne salience-decay på aktive records. Returnerer {domæne: antal}. | [src](../../../core/runtime/db_private_brain.py#L369) |
+
 ## `core/runtime/db_private_notes.py`
 _Persistence for the private/protected inner-layer note tables._
 
@@ -915,12 +934,4 @@ _ANMODET vs FAKTISK — Fase 9, exit-kriterium 7._
 | function | `_maal_telemetri` | `()` | Findes der en gate på udgående telemetri? | [src](../../../core/runtime/profile_enforcement.py#L111) |
 | function | `maal` | `(anmodet=…)` | Anmodet vs faktisk for hver af de tre akser. | [src](../../../core/runtime/profile_enforcement.py#L132) |
 | function | `afvigelser` | `(maalt)` | Hvor holder virkeligheden ikke hvad profilen lover? | [src](../../../core/runtime/profile_enforcement.py#L170) |
-
-## `core/runtime/profiles.py`
-_De navngivne profiler — Fase 9 i DeepSeek-harness-spec'en._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `byg` | `(navn, *, overstyring=…)` | Den effektive profil for `navn`, eventuelt med en kørselsspecifik | [src](../../../core/runtime/profiles.py#L105) |
-| function | `kendte` | `()` | — | [src](../../../core/runtime/profiles.py#L122) |
 

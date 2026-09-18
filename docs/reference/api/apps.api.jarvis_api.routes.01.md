@@ -532,6 +532,13 @@ _Central 'users' route — hvornår var hver bruger sidst aktiv, og hvordan (own
 | function | `chat_steer_run` | `(run_id, body)` | Mid-flight steer: inject a user message into a running visible-run. | [src](../../../apps/api/jarvis_api/routes/chat.py#L1924) |
 | function | `chat_client_tool_result` | `(run_id, body)` | Fase 1 (jarvis-code↔v2 forening): klienten leverer resultatet af et | [src](../../../apps/api/jarvis_api/routes/chat.py#L1938) |
 
+## `apps/api/jarvis_api/routes/chat_artifacts.py`
+_`GET /chat/artifacts` — filerne Jarvis har rørt i en mappe, paa tvaers af samtaler._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `chat_artifacts` | `(root=…, limit=…)` | Filer skrevet/rettet under `root`, nyeste foerst. `root` er en sti eller | [src](../../../apps/api/jarvis_api/routes/chat_artifacts.py#L22) |
+
 ## `apps/api/jarvis_api/routes/chat_stream_v2.py`
 _POST /chat/stream/v2 — Anthropic-style SSE protokol._
 
@@ -638,13 +645,4 @@ _Cowork-dashboard routes. Tynde — al opsamling sker i core.services.cowork_fee
 | function | `cowork_ui_panel_ack` | `(request_id)` | Kvittér et UI-panel-kald som håndteret via ui_panel_store.ack_panel i to_thread. | [src](../../../apps/api/jarvis_api/routes/cowork.py#L221) |
 | function | `cowork_app_dispatch_pending` | `()` | Ventende runtime→app-instruktioner via app_dispatch_store.list_pending i | [src](../../../apps/api/jarvis_api/routes/cowork.py#L234) |
 | function | `cowork_app_dispatch_ack` | `(dispatch_id)` | Kvittér en app-dispatch som udført via app_dispatch_store.ack i to_thread. | [src](../../../apps/api/jarvis_api/routes/cowork.py#L243) |
-
-## `apps/api/jarvis_api/routes/files.py`
-_File download route — serves files Jarvis has published to ~/.jarvis-v2/files/._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `ensure_files_dir` | `()` | — | [src](../../../apps/api/jarvis_api/routes/files.py#L17) |
-| function | `download_file` | `(filename)` | — | [src](../../../apps/api/jarvis_api/routes/files.py#L23) |
-| function | `list_files` | `()` | — | [src](../../../apps/api/jarvis_api/routes/files.py#L43) |
 

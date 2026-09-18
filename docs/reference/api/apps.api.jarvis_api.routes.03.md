@@ -2,6 +2,23 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `apps/api/jarvis_api/routes/review.py`
+_Review: hvad er der faktisk ændret, og hvad bør man kigge efter?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_kun_ejer` | `()` | Ruten laeser repoets arbejdstrae og filstoerrelser paa vaerten. | [src](../../../apps/api/jarvis_api/routes/review.py#L20) |
+| function | `_repo_root` | `()` | — | [src](../../../apps/api/jarvis_api/routes/review.py#L44) |
+| function | `_kør` | `(rod, *args)` | — | [src](../../../apps/api/jarvis_api/routes/review.py#L48) |
+| function | `_linjer_i` | `(sti)` | — | [src](../../../apps/api/jarvis_api/routes/review.py#L59) |
+| function | `_risici` | `(rod, filer, test_koert)` | Flag udledt af repoets EGNE regler. Ingen regel → intet flag. | [src](../../../apps/api/jarvis_api/routes/review.py#L67) |
+| function | `review_changes` | `(test_koert=…, diff=…, kilde=…, rod=…)` | Hvad er ændret i arbejdstræet — pr. fil, med diff og regel-baserede flag. | [src](../../../apps/api/jarvis_api/routes/review.py#L109) |
+| function | `_saml` | `(rod_til_laesning, gren, numstat, porcelain, diff_tekst, test_koert, med_diff, laes_fil)` | Fælles opsamling for begge træer — så de to veje ikke kan svare i | [src](../../../apps/api/jarvis_api/routes/review.py#L136) |
+| function | `_aendringer_paa_serveren` | `(test_koert, med_diff)` | — | [src](../../../apps/api/jarvis_api/routes/review.py#L177) |
+| function | `_aendringer_paa_maskinen` | `(rod, test_koert, med_diff)` | Bjørns eget træ, læst over broen med ÉN compound-kommando. | [src](../../../apps/api/jarvis_api/routes/review.py#L201) |
+| function | `review_lessons` | `(limit=…)` | Lektier der venter paa en dom — og dem der allerede er i brug. | [src](../../../apps/api/jarvis_api/routes/review.py#L233) |
+| function | `review_lesson_set` | `(lesson_id, payload=…)` | Godkend (`active`), afvis (`rejected`) eller send tilbage (`proposed`). | [src](../../../apps/api/jarvis_api/routes/review.py#L257) |
+
 ## `apps/api/jarvis_api/routes/review_traeer.py`
 _Hvilket arbejdstræ kigger vi i — serverens eller Bjørns egen maskine?_
 

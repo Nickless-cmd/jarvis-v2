@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/runtime/profiles.py`
+_De navngivne profiler — Fase 9 i DeepSeek-harness-spec'en._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `byg` | `(navn, *, overstyring=…)` | Den effektive profil for `navn`, eventuelt med en kørselsspecifik | [src](../../../core/runtime/profiles.py#L105) |
+| function | `kendte` | `()` | — | [src](../../../core/runtime/profiles.py#L122) |
+
 ## `core/runtime/provider_router.py`
 
 | Kind | Name | Signature | Summary | Source |

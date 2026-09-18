@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 14989 functions/methods, 51% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 15001 functions/methods, 51% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -41,21 +41,21 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 14989 functions/
 - [`core.services.10`](core.services.10.md) — `deep_analyzer` … `dream_insight_daemon`
 - [`core.services.11`](core.services.11.md) — `dream_motif_daemon` … `experience_episodes`
 - [`core.services.12`](core.services.12.md) — `experience_substrate` … `gate_verdict_ledger`
-- [`core.services.13`](core.services.13.md) — `ghost_networks` … `identity_guard`
-- [`core.services.14`](core.services.14.md) — `identity_mutation_log` … `ledger_canary`
-- [`core.services.15`](core.services.15.md) — `ledger_recovery` … `memory_resurfacing`
-- [`core.services.16`](core.services.16.md) — `memory_search` … `notification_bridge`
-- [`core.services.17`](core.services.17.md) — `notification_router` … `plugin_ruleset_store`
-- [`core.services.18`](core.services.18.md) — `policy_abstraction` … `prompt_section_reevaluation`
-- [`core.services.19`](core.services.19.md) — `prompt_support_signals` … `relation_dynamics`
-- [`core.services.20`](core.services.20.md) — `relation_map` … `runtime_hooks`
-- [`core.services.21`](core.services.21.md) — `runtime_learning_signals` … `self_review_cadence_signal_tracking`
-- [`core.services.22`](core.services.22.md) — `self_review_outcome_tracking` … `signal_delta_trigger`
-- [`core.services.23`](core.services.23.md) — `signal_network_visualizer` … `system_cartographer`
-- [`core.services.24`](core.services.24.md) — `task_worker` … `tool_round_label`
-- [`core.services.25`](core.services.25.md) — `tool_router` … `visible_model_observe`
-- [`core.services.26`](core.services.26.md) — `visible_model_ollama` … `workspace_trust`
-- [`core.services.27`](core.services.27.md) — `world_facts` … `world_model_signal_tracking`
+- [`core.services.13`](core.services.13.md) — `ghost_networks` … `identity_drift_proposer`
+- [`core.services.14`](core.services.14.md) — `identity_guard` … `learning_policy_engine`
+- [`core.services.15`](core.services.15.md) — `ledger_canary` … `memory_recall_telemetry`
+- [`core.services.16`](core.services.16.md) — `memory_resurfacing` … `notes_connector`
+- [`core.services.17`](core.services.17.md) — `notification_bridge` … `plugin_ruleset`
+- [`core.services.18`](core.services.18.md) — `plugin_ruleset_store` … `prompt_section_impact`
+- [`core.services.19`](core.services.19.md) — `prompt_section_reevaluation` … `relation_continuity_signal_tracking`
+- [`core.services.20`](core.services.20.md) — `relation_dynamics` … `runtime_hook_runtime`
+- [`core.services.21`](core.services.21.md) — `runtime_hooks` … `self_repair_engine`
+- [`core.services.22`](core.services.22.md) — `self_review_cadence_signal_tracking` … `signal_decay_daemon`
+- [`core.services.23`](core.services.23.md) — `signal_delta_trigger` … `sustained_attention`
+- [`core.services.24`](core.services.24.md) — `system_cartographer` … `tool_result_store`
+- [`core.services.25`](core.services.25.md) — `tool_round_label` … `visible_model_adapters`
+- [`core.services.26`](core.services.26.md) — `visible_model_observe` … `workspace_crypto`
+- [`core.services.27`](core.services.27.md) — `workspace_trust` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

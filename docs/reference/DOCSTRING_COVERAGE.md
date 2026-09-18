@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7716/14989 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7726/15001 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,7 +8,7 @@ Generated from source. 7716/14989 functions/methods documented (51%). The list b
 |---|---|---|---|
 | `apps.api.jarvis_api` | 34 | 36 | 94% |
 | `apps.api.jarvis_api.middleware` | 8 | 19 | 42% |
-| `apps.api.jarvis_api.routes` | 654 | 871 | 75% |
+| `apps.api.jarvis_api.routes` | 658 | 875 | 75% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 70 | 172 | 40% |
 | `apps.desktop` | 6 | 7 | 85% |
@@ -25,7 +25,7 @@ Generated from source. 7716/14989 functions/methods documented (51%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 654 | 1207 | 54% |
-| `core.services` | 5137 | 10300 | 49% |
+| `core.services` | 5143 | 10308 | 49% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 109 | 184 | 59% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1976,9 +1976,9 @@ Generated from source. 7716/14989 functions/methods documented (51%). The list b
 - `core/services/witness_signal_tracking.py` :: `build_runtime_witness_signal_surface` (L120)
 - `core/services/witness_signal_tracking.py` :: `refresh_runtime_witness_signal_statuses` (L51)
 - `core/services/witness_signal_tracking.py` :: `track_runtime_witness_signals_for_visible_turn` (L29)
-- `core/services/workspace_trust.py` :: `clear_trust_context` (L84)
-- `core/services/workspace_trust.py` :: `current_trust_context` (L88)
-- `core/services/workspace_trust.py` :: `set_trust_context` (L80)
+- `core/services/workspace_trust.py` :: `clear_trust_context` (L114)
+- `core/services/workspace_trust.py` :: `current_trust_context` (L118)
+- `core/services/workspace_trust.py` :: `set_trust_context` (L110)
 - `core/services/world_facts.py` :: `build_world_fact_prompt_section` (L107)
 - `core/services/world_facts.py` :: `list_world_facts` (L98)
 - `core/services/world_facts.py` :: `record_world_fact` (L37)

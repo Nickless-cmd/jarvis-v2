@@ -33,6 +33,19 @@ _Rolle-aware git-eksekvering for code mode._
 | function | `_create_pr_gh` | `(ws, root, uid, base, branch, title, body)` | — | [src](../../../core/services/git_actions.py#L201) |
 | function | `_split_gh` | `(args)` | — | [src](../../../core/services/git_actions.py#L215) |
 
+## `core/services/git_workspace_actions.py`
+_Git-handlinger for code-mode's workspace-vaelgere._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_koer_lokalt` | `(root, args)` | — | [src](../../../core/services/git_workspace_actions.py#L34) |
+| function | `_koer_over_bro` | `(root, args, uid)` | — | [src](../../../core/services/git_workspace_actions.py#L50) |
+| function | `_koer` | `(kind, root, args, uid)` | Koer git og faa ét output pr. argument-liste. False = kunne ikke. | [src](../../../core/services/git_workspace_actions.py#L65) |
+| function | `_rens` | `(navne)` | Git-linjer → rene navne. Fjerner markoerer, HEAD-pilen og dubletter. | [src](../../../core/services/git_workspace_actions.py#L74) |
+| function | `list_branches` | `(*, kind, root, uid=…)` | Alle branches plus den aktuelle. Tomt resultat = ikke et repo. | [src](../../../core/services/git_workspace_actions.py#L87) |
+| function | `checkout_branch` | `(*, kind, root, navn, opret=…, uid=…)` | Skift til en branch, eller opret og skift til en ny. | [src](../../../core/services/git_workspace_actions.py#L110) |
+| function | `create_worktree` | `(*, kind, root, navn, sti=…, uid=…)` | Opret en ny lokal worktree med sin egen branch. | [src](../../../core/services/git_workspace_actions.py#L138) |
+
 ## `core/services/github_connector.py`
 _GitHub-connector — API-klient + tool-handlers (v1: issues + PRs)._
 
@@ -584,19 +597,4 @@ _Identity drift proposer — when drift is sustained, propose IDENTITY.md update
 | function | `_analyze_long_drift` | `(*, lookback_days=…)` | Compare last 7 days of snapshots against the rest of the lookback window. | [src](../../../core/services/identity_drift_proposer.py#L55) |
 | function | `propose_identity_update_if_drifted` | `()` | If sustained drift detected, file a plan_proposal to update IDENTITY.md. | [src](../../../core/services/identity_drift_proposer.py#L120) |
 | function | `_exec_propose_identity_drift` | `(args)` | — | [src](../../../core/services/identity_drift_proposer.py#L176) |
-
-## `core/services/identity_guard.py`
-_Identity-mismatch-detection + pushback (spec 2026-06-21 §3, §4)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `extract_claimed_name` | `(message)` | Returnér det erklærede navn (normaliseret, Title-case) eller None. | [src](../../../core/services/identity_guard.py#L37) |
-| function | `_known_user_names` | `()` | Map normaliseret display-navn → user_id, fra users.json (best-effort). | [src](../../../core/services/identity_guard.py#L49) |
-| function | `_pushback_count` | `(session_id)` | — | [src](../../../core/services/identity_guard.py#L64) |
-| function | `_bump_pushback` | `(session_id)` | — | [src](../../../core/services/identity_guard.py#L72) |
-| function | `reset_pushback` | `(session_id)` | — | [src](../../../core/services/identity_guard.py#L81) |
-| function | `_display_name_for` | `(user_id)` | — | [src](../../../core/services/identity_guard.py#L88) |
-| function | `guard_incoming` | `(message, *, session_id, user_id)` | Samlet gate FØR LLM-kald — Auth-cluster GENNEM Den Intelligente Central (observe). | [src](../../../core/services/identity_guard.py#L100) |
-| function | `_guard_incoming_impl` | `(message, *, session_id, user_id)` | Samlet gate FØR LLM-kald: (1) låst session/konto → mute, (2) identity-mismatch | [src](../../../core/services/identity_guard.py#L120) |
-| function | `check_identity` | `(message, *, session_id, session_user_id, session_display_name=…)` | Kør identity-guard på en indgående besked. | [src](../../../core/services/identity_guard.py#L150) |
 

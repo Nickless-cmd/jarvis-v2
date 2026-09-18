@@ -1,6 +1,6 @@
 # API_REFERENCE
 
-> Generated 2026-09-18 from app.routes (live) — 582 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
+> Generated 2026-09-18 from app.routes (live) — 586 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
 
 | Method | Path | Response model | Source |
 |---|---|---|---|
@@ -225,8 +225,11 @@
 | POST | `/chat/file/commit` | dict | chat |
 | POST | `/chat/file/commit-message` | dict | chat |
 | GET | `/chat/git-status` | dict | chat |
+| GET | `/chat/git/branches` | dict | chat |
+| POST | `/chat/git/checkout` | dict | chat |
 | POST | `/chat/git/commit-all` | dict | chat |
 | POST | `/chat/git/create-pr` | dict | chat |
+| POST | `/chat/git/worktree` | dict | chat |
 | POST | `/chat/messages/{message_id}/feedback` | dict | chat |
 | GET | `/chat/messages/{message_id}/reasoning` | dict | chat |
 | GET | `/chat/model-context` | dict | chat |
@@ -259,6 +262,7 @@
 | POST | `/chat/warm` | dict | chat_stream_v2 |
 | GET | `/chat/workspace-trust` | dict | chat |
 | POST | `/chat/workspace-trust` | dict | chat |
+| GET | `/chat/workspace-trust/list` | dict | chat |
 | GET | `/companion/presence` | dict | companion |
 | GET | `/companion/senses` | dict | companion |
 | GET | `/companion/thoughts` | dict | companion |

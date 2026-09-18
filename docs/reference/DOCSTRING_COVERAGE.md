@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7714/14985 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7715/14986 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 7714/14985 functions/methods documented (51%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 654 | 1207 | 54% |
-| `core.services` | 5135 | 10299 | 49% |
+| `core.services` | 5136 | 10300 | 49% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 109 | 184 | 59% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1336,10 +1336,10 @@ Generated from source. 7714/14985 functions/methods documented (51%). The list b
 - `core/services/pattern_counterfactual_daemon.py` :: `run_pattern_cf_cycle` (L105)
 - `core/services/pattern_counterfactual_daemon.py` :: `tick_pattern_counterfactual_daemon` (L145)
 - `core/services/pdf_connector.py` :: `read_pdf` (L58)
-- `core/services/perceptual_event_engine.py` :: `build_perception_prompt_section` (L238)
-- `core/services/perceptual_event_engine.py` :: `build_perception_surface` (L226)
-- `core/services/perceptual_event_engine.py` :: `classify_event_change` (L52)
-- `core/services/perceptual_event_engine.py` :: `record_perceptual_event` (L202)
+- `core/services/perceptual_event_engine.py` :: `build_perception_prompt_section` (L306)
+- `core/services/perceptual_event_engine.py` :: `build_perception_surface` (L294)
+- `core/services/perceptual_event_engine.py` :: `classify_event_change` (L120)
+- `core/services/perceptual_event_engine.py` :: `record_perceptual_event` (L270)
 - `core/services/permission_classifier.py` :: `is_mutating` (L47)
 - `core/services/personal_project.py` :: `build_personal_project_surface` (L633)
 - `core/services/personal_project.py` :: `complete_project` (L405)

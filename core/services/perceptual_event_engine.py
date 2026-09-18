@@ -18,6 +18,53 @@ _STATE_KEY = "perceptual_event_engine"
 _MAX_EVENTS = 80
 _SCAN_LIMIT = 120
 
+# Hvor længe det samme værktøj er «set», før det igen tæller som en ændring.
+_VAERKTOEJ_STILHED_MINUTTER = 60
+# Hvor mange værktøjsnavne vi bærer med os. Loft, så kortet ikke vokser.
+_VAERKTOEJ_HUSK = 80
+
+
+def _er_rutine_gentagelse(
+    percept: dict[str, object], set_foer: dict[str, str], now: datetime
+) -> bool:
+    """Er det her et værktøj der lige har kørt — altså ikke en ændring?
+
+    ## Hvorfor (målt 18/9-2026, besluttet af Bjørn)
+
+    Af de 3.000 nyeste perceptions var **1.624 rutine-værktøjsresultater** og
+    1.055 policy-opdateringer, mens `memory.sensory.recorded` — det han
+    faktisk sanser med øjne og ører — kun stod for **48**. Broen mellem det han
+    sanser og det han forstår bar 1,6 % af trafikken. Resten var hans egen
+    maskinstøj.
+
+    Modulets egen præmis er «Perception v1 is change detection». Et værktøj der
+    fuldfører for fyrretyvende gang på en time er ikke en ændring. Derfor:
+    første gang et værktøj ses inden for vinduet ER en perception; gentagelser
+    inden for `_VAERKTOEJ_STILHED_MINUTTER` er det ikke.
+
+    **Fejl er undtaget.** `tool-error` (20 af de 1.644) bærer information og
+    går uændret igennem — det er netop dem der skal mærkes.
+    """
+    if str(percept.get("change_type") or "") != "tool-result":
+        return False
+    evidence = percept.get("evidence")
+    navn = str((evidence or {}).get("tool") or "").strip() if isinstance(evidence, dict) else ""
+    if not navn:
+        # Uden navn kan vi ikke afgøre gentagelse — så lad den passere.
+        return False
+    sidst = set_foer.get(navn)
+    if sidst:
+        try:
+            da = datetime.fromisoformat(str(sidst).replace("Z", "+00:00"))
+            if da.tzinfo is None:
+                da = da.replace(tzinfo=UTC)
+            if (now - da.astimezone(UTC)).total_seconds() / 60 < _VAERKTOEJ_STILHED_MINUTTER:
+                return True
+        except ValueError:
+            pass
+    set_foer[navn] = now.isoformat()
+    return False
+
 
 def observe_recent_changes(*, limit: int = _SCAN_LIMIT) -> dict[str, object]:
     """Scan recent eventbus items and persist newly observed changes."""
@@ -30,20 +77,41 @@ def observe_recent_changes(*, limit: int = _SCAN_LIMIT) -> dict[str, object]:
 
     observed: list[dict[str, object]] = []
     max_seen = last_seen_id
+    now = datetime.now(UTC)
+    # Klassifikatoren bliver ved at vaere ren; daempningen sker her, hvor
+    # motoren i forvejen ejer sin tilstand. Ingen skjult side-effekt inde i
+    # classify_event_change.
+    set_foer: dict[str, str] = dict(state.get("seneste_vaerktoej") or {})
+    sprunget_rutine = 0
     for item in raw_events:
         event_id = int(item.get("id") or 0)
         max_seen = max(max_seen, event_id)
         percept = classify_event_change(item)
-        if percept:
-            observed.append(_record_perceptual_event(percept, state=state))
+        if not percept:
+            continue
+        if _er_rutine_gentagelse(percept, set_foer, now):
+            sprunget_rutine += 1
+            continue
+        observed.append(_record_perceptual_event(percept, state=state))
 
-    if max_seen > last_seen_id:
+    # Behold kun de nyeste navne, saa kortet ikke vokser i det uendelige.
+    if len(set_foer) > _VAERKTOEJ_HUSK:
+        set_foer = dict(
+            sorted(set_foer.items(), key=lambda kv: kv[1], reverse=True)[:_VAERKTOEJ_HUSK]
+        )
+
+    if max_seen > last_seen_id or sprunget_rutine or set_foer:
         state = _load_state()
-        state["last_seen_event_id"] = max_seen
+        state["last_seen_event_id"] = max(max_seen, int(state.get("last_seen_event_id") or 0))
+        state["seneste_vaerktoej"] = set_foer
+        # Taellingen skal vaere synlig. En daempning ingen kan se er en
+        # tavs degradering — og det er praecis den fejlklasse huset lider af.
+        state["sprunget_rutine_i_alt"] = int(state.get("sprunget_rutine_i_alt") or 0) + sprunget_rutine
         _save_state(state)
 
     return {
         "observed_count": len(observed),
+        "skipped_routine_tools": sprunget_rutine,
         "last_seen_event_id": max_seen,
         "events": observed,
     }

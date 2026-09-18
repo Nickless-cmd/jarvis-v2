@@ -77,3 +77,77 @@ def test_classify_self_repair_events_as_perception() -> None:
     assert failed is not None
     assert failed["change_type"] == "self-repair-failure"
     assert failed["salience"] == "high"
+
+
+def _vaerktoejs_event(nr: int, *, tool: str, status: str = "ok") -> dict:
+    return {
+        "id": nr,
+        "kind": "tool.completed",
+        "created_at": f"2026-09-18T12:{nr:02d}:00+00:00",
+        "payload": {"tool": tool, "status": status},
+    }
+
+
+def test_rutinemaessige_vaerktoejsresultater_daempes(isolated_runtime, monkeypatch) -> None:
+    """Målt 18/9: 1.624 af 3.000 perceptions var rutine-værktøjsresultater,
+    mens det han faktisk sansede fyldte 48. Et værktøj der fuldfører for
+    fyrretyvende gang på en time er ikke en ændring."""
+    from core.eventbus.bus import event_bus
+    from core.services import perceptual_event_engine as motor
+
+    events = [_vaerktoejs_event(n, tool="operator_bash") for n in range(1, 6)]
+    monkeypatch.setattr(event_bus, "recent", lambda limit=0: list(reversed(events)))
+    monkeypatch.setattr(event_bus, "recent_since_id", lambda i, limit=0: events)
+
+    svar = motor.observe_recent_changes()
+
+    assert svar["observed_count"] == 1, "kun første gang er en ændring"
+    assert svar["skipped_routine_tools"] == 4
+
+
+def test_forskellige_vaerktoejer_er_hver_sin_aendring(isolated_runtime, monkeypatch) -> None:
+    from core.eventbus.bus import event_bus
+    from core.services import perceptual_event_engine as motor
+
+    events = [
+        _vaerktoejs_event(1, tool="operator_bash"),
+        _vaerktoejs_event(2, tool="remember_this"),
+        _vaerktoejs_event(3, tool="web_search"),
+    ]
+    monkeypatch.setattr(event_bus, "recent", lambda limit=0: list(reversed(events)))
+    monkeypatch.setattr(event_bus, "recent_since_id", lambda i, limit=0: events)
+
+    svar = motor.observe_recent_changes()
+
+    assert svar["observed_count"] == 3
+    assert svar["skipped_routine_tools"] == 0
+
+
+def test_vaerktoejsfejl_daempes_aldrig(isolated_runtime, monkeypatch) -> None:
+    """De 20 fejl af 1.644 er præcis dem der skal mærkes."""
+    from core.eventbus.bus import event_bus
+    from core.services import perceptual_event_engine as motor
+
+    events = [_vaerktoejs_event(n, tool="operator_bash", status="error") for n in range(1, 5)]
+    monkeypatch.setattr(event_bus, "recent", lambda limit=0: list(reversed(events)))
+    monkeypatch.setattr(event_bus, "recent_since_id", lambda i, limit=0: events)
+
+    svar = motor.observe_recent_changes()
+
+    assert svar["observed_count"] == 4
+    assert svar["skipped_routine_tools"] == 0
+    assert all(e["change_type"] == "tool-error" for e in svar["events"])
+
+
+def test_daempningen_er_synlig_i_tilstanden(isolated_runtime, monkeypatch) -> None:
+    """En dæmpning ingen kan se er en tavs degradering."""
+    from core.eventbus.bus import event_bus
+    from core.services import perceptual_event_engine as motor
+
+    events = [_vaerktoejs_event(n, tool="operator_bash") for n in range(1, 4)]
+    monkeypatch.setattr(event_bus, "recent", lambda limit=0: list(reversed(events)))
+    monkeypatch.setattr(event_bus, "recent_since_id", lambda i, limit=0: events)
+
+    motor.observe_recent_changes()
+
+    assert motor._load_state()["sprunget_rutine_i_alt"] == 2

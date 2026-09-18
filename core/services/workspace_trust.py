@@ -54,6 +54,36 @@ def is_trusted(user_id: str | None, kind: str | None, root: str | None) -> bool:
     return row is not None
 
 
+def list_trusted(user_id: str | None, kind: str | None = None) -> list[dict[str, str]]:
+    """De mapper brugeren har betroet — nyeste foerst.
+
+    Tabellen har baaret svaret hele tiden; der var bare ingen der kunne spoerge
+    om det. `is_trusted` svarer paa én mappe ad gangen, saa en vaelger maatte
+    kende kandidaterne paa forhaand — og dermed kunne den ikke bygges.
+
+    `kind` filtrerer paa container/workstation. Uden filter kommer begge, saa
+    kalderen kan vise dem hver for sig uden to kald.
+    """
+    with connect() as conn:
+        _ensure_table(conn)
+        if kind:
+            raekker = conn.execute(
+                "SELECT kind, root, trusted_at FROM workspace_trust "
+                "WHERE user_id = ? AND kind = ? ORDER BY trusted_at DESC",
+                (user_id or "", kind),
+            ).fetchall()
+        else:
+            raekker = conn.execute(
+                "SELECT kind, root, trusted_at FROM workspace_trust "
+                "WHERE user_id = ? ORDER BY trusted_at DESC",
+                (user_id or "",),
+            ).fetchall()
+    return [
+        {"kind": str(r[0]), "root": str(r[1]), "trusted_at": str(r[2])}
+        for r in raekker
+    ]
+
+
 def set_trusted(
     user_id: str | None, kind: str, root: str, trusted: bool,
 ) -> bool:

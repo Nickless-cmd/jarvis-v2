@@ -704,6 +704,73 @@ def get_workspace_trust(kind: str = "container", root: str = "") -> dict:
     return {"kind": kind, "root": root, "trusted": is_trusted(uid, kind, root)}
 
 
+@router.get("/workspace-trust/list")
+def list_workspace_trust(kind: str = "") -> dict:
+    """De mapper brugeren har betroet — grundlaget for workstation-vaelgeren.
+
+    Uden den her kunne desk kun spoerge «er DENNE mappe betroet?», og en
+    vaelger skal kende kandidaterne foer den kan vise dem.
+    """
+    from core.identity.workspace_context import current_user_id
+    from core.services.workspace_trust import list_trusted
+    uid = current_user_id() or None
+    return {"folders": list_trusted(uid, kind or None)}
+
+
+@router.get("/git/branches")
+async def chat_git_branches(kind: str = "container", root: str = "") -> dict:
+    """Alle branches i workspacet. Blokerende git offloades til en traad."""
+    import asyncio
+    from core.identity.workspace_context import current_user_id
+    from core.services.git_workspace_actions import list_branches
+    uid = current_user_id() or ""
+    return await asyncio.to_thread(list_branches, kind=kind, root=root, uid=uid)
+
+
+class GitCheckoutRequest(BaseModel):
+    kind: str = "container"
+    root: str = ""
+    name: str = ""
+    create: bool = False
+
+
+@router.post("/git/checkout")
+async def chat_git_checkout(request: GitCheckoutRequest) -> dict:
+    """Skift branch, eller opret og skift til en ny."""
+    import asyncio
+    from core.identity.workspace_context import current_user_id
+    from core.services.git_workspace_actions import checkout_branch
+    if not request.name.strip():
+        raise HTTPException(status_code=400, detail="name må ikke være tom")
+    uid = current_user_id() or ""
+    return await asyncio.to_thread(
+        checkout_branch, kind=request.kind, root=request.root,
+        navn=request.name, opret=request.create, uid=uid,
+    )
+
+
+class GitWorktreeRequest(BaseModel):
+    kind: str = "container"
+    root: str = ""
+    name: str = ""
+    path: str = ""
+
+
+@router.post("/git/worktree")
+async def chat_git_worktree(request: GitWorktreeRequest) -> dict:
+    """Opret en ny lokal worktree med sin egen branch."""
+    import asyncio
+    from core.identity.workspace_context import current_user_id
+    from core.services.git_workspace_actions import create_worktree
+    if not request.name.strip():
+        raise HTTPException(status_code=400, detail="name må ikke være tom")
+    uid = current_user_id() or ""
+    return await asyncio.to_thread(
+        create_worktree, kind=request.kind, root=request.root,
+        navn=request.name, sti=request.path, uid=uid,
+    )
+
+
 class WorkspaceTrustRequest(BaseModel):
     kind: str = "container"
     root: str = ""

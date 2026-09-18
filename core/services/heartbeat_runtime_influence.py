@@ -1274,7 +1274,11 @@ def _build_influence_trace(
             _dr_result = _hb._daemon_tick_with_deadline(
                 "decision_review", _dr_tick, deadline_seconds=30.0,
             )
-            _dm.record_daemon_tick("decision_review", _dr_result or {})
+            if _dr_result is not None:
+                # None = deadlinen ramte og tråden blev orphandet. Daemonen
+                # skriver sit eget spor selv (decision_review_daemon), så vi må
+                # ikke overskrive det med en tom summary her.
+                _dm.record_daemon_tick("decision_review", _dr_result)
         except Exception:
             pass
 

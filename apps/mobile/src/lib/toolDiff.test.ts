@@ -149,3 +149,15 @@ describe('toolDiff med streamede argumenter', () => {
     expect(toolDiff('multi_edit', s)).toEqual({ tilfoejet: 2, fjernet: 3 })
   })
 })
+
+// Målt 19/9-2026 i Bjørns tråd: `operator_edit_file` sender old_string/new_string.
+describe('broens redigeringer', () => {
+  it('operator_edit_file med old_string/new_string giver tal', () => {
+    expect(toolDiff('operator_edit_file', { path: '/a.py', old_string: 'a\nb', new_string: 'a\nb\nc' }))
+      .toEqual({ tilfoejet: 3, fjernet: 2 })
+  })
+  it('også som JSON-streng, sådan som historikken bærer den', () => {
+    expect(toolDiff('operator_edit_file', JSON.stringify({ new_string: 'x', old_string: 'y\nz', path: '/b' })))
+      .toEqual({ tilfoejet: 1, fjernet: 2 })
+  })
+})

@@ -49,7 +49,10 @@ export function toolDiff(navn: string, input: unknown): ToolDiff | null {
   const t = (navn || '').replace(/^operator_/, '')
   const o = somArgumenter(input)
 
-  if (t === 'edit_file') return fraPar(o.old_text, o.new_text)
+  // `edit_file` sender old_text/new_text; `operator_edit_file` (broen til
+  // CheifOne) sender old_string/new_string — målt 19/9-2026 i Bjørns tråd, hvor
+  // de redigeringer derfor stod uden +/−. Desk'ens `diffStat` læser begge.
+  if (t === 'edit_file') return fraPar(o.old_text ?? o.old_string, o.new_text ?? o.new_string)
 
   if (t === 'multi_edit') {
     // `edits` eller `items` — begge former findes i værktøjsdefinitionerne.
@@ -59,7 +62,8 @@ export function toolDiff(navn: string, input: unknown): ToolDiff | null {
     let f = 0
     let nogen = false
     for (const e of raa) {
-      const d = fraPar((e as Record<string, unknown>)?.old_text, (e as Record<string, unknown>)?.new_text)
+      const r = (e ?? {}) as Record<string, unknown>
+      const d = fraPar(r.old_text ?? r.old_string, r.new_text ?? r.new_string)
       if (d) { t2 += d.tilfoejet; f += d.fjernet; nogen = true }
     }
     return nogen ? { tilfoejet: t2, fjernet: f } : null

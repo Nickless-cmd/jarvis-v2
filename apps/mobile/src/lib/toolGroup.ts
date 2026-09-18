@@ -40,9 +40,12 @@ export interface ToolItem {
   count?: number
 }
 
+import { grundnavn } from './toolSummary'
+
 /** Bøjninger for de sammenfattende linjer. */
 const PLURAL: Record<string, [string, string]> = {
   edit_file: ['Redigerer', 'Redigerede'],
+  multi_edit: ['Redigerer', 'Redigerede'],
   write_file: ['Skriver', 'Skrev'],
   read_file: ['Læser', 'Læste'],
   verify_file_contains: ['Verificerer', 'Verificerede'],
@@ -51,6 +54,7 @@ const PLURAL: Record<string, [string, string]> = {
 
 const UNIT: Record<string, [string, string]> = {
   edit_file: ['fil', 'filer'],
+  multi_edit: ['fil', 'filer'],
   write_file: ['fil', 'filer'],
   read_file: ['fil', 'filer'],
   verify_file_contains: ['tjek', 'tjek'],
@@ -70,11 +74,11 @@ export function summarizeRound(items: ToolItem[]): string {
   const running = items.some((i) => i.running)
   if (items.length === 1) return items[0]!.label
 
-  const tools = new Set(items.map((i) => i.tool))
+  const tools = new Set(items.map((i) => grundnavn(i.tool)))
   const counted = items.reduce((sum, i) => sum + (i.count ?? 0), 0)
 
   if (tools.size === 1) {
-    const tool = items[0]!.tool
+    const tool = grundnavn(items[0]!.tool)
     const [now, past] = PLURAL[tool] ?? ['Kører', 'Kørte']
     const [one, many] = UNIT[tool] ?? ['ting', 'ting']
     const n = counted > 0 ? counted : items.length
@@ -107,8 +111,10 @@ function blandetRunde(items: ToolItem[], running: boolean): string {
   const orden: string[] = []
   const antal = new Map<string, number>()
   for (const i of items) {
-    if (!antal.has(i.tool)) orden.push(i.tool)
-    antal.set(i.tool, (antal.get(i.tool) ?? 0) + 1)
+    // `operator_bash` og `bash` er samme handling — ét led, ikke «og kørte en ting».
+    const g = grundnavn(i.tool)
+    if (!antal.has(g)) orden.push(g)
+    antal.set(g, (antal.get(g) ?? 0) + 1)
   }
 
   const led = orden.map((tool, idx) => {

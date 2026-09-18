@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { describeTool, summarizeRound, countFromResult, subjectFromInput } from './toolRound'
+import { describeTool, summarizeRound, countFromResult, subjectFromInput, kommandoEmne } from './toolRound'
 import type { ContentBlock } from './sseProtocol'
 
 type ToolUse = Extract<ContentBlock, { type: 'tool_use' }>
@@ -149,5 +149,11 @@ describe('summarizeRound — blandede runder', () => {
     // kommando og kørte en kommando» staa der — to led om det samme.
     expect(summarizeRound([t('bash'), t('operator_bash')]))
       .toBe('Kørte 2 kommandoer')
+  })
+})
+
+describe('subshell', () => {
+  it('en kommando i parentes siger sin handling', () => {
+    expect(kommandoEmne('cd /media/projects/jarvis-v2/apps/mobile && (npx jest src/components)')).toBe('npx jest')
   })
 })

@@ -155,3 +155,14 @@ describe('summarizeRound — blandede runder', () => {
     expect(summarizeRound([kald('bash', 'Kørte agent.ts')])).toBe('Kørte agent.ts')
   })
 })
+
+describe('operator_-varianter er samme handling', () => {
+  it('bash og operator_bash tælles sammen — ikke «og kørte en ting»', () => {
+    const items = [
+      { label: 'Kørte git status', running: false, tool: 'bash' },
+      { label: 'Kørte ls', running: false, tool: 'bash' },
+      { label: 'Kørte df', running: false, tool: 'operator_bash' },
+    ]
+    expect(summarizeRound(items)).toBe('Kørte 3 kommandoer')
+  })
+})

@@ -6,7 +6,7 @@ describe('emnet trækkes ud af argumenterne', () => {
   })
 
   it('finder kommandoen', () => {
-    expect(subjectFromArgs('{"command":"df -h /"}')).toBe('df -h /')
+    expect(subjectFromArgs('{"command":"df -h /"}')).toBe('df')  // som desk: `/` er ingen genstand
   })
 
   it('virker MENS argumenterne streamer og JSON er ufuldstændig', () => {
@@ -55,5 +55,26 @@ describe('persisterede resultater', () => {
 
   it('ukendt form giver en ærlig, neutral linje', () => {
     expect(describeToolResult('ingen markør her')).toBe('Brugte et værktøj')
+  })
+})
+
+// Bjørn 19/9-2026, skærmbillede fra telefonen: «Kørte cd /media/projects/…»,
+// «Kørte jarvis-test.txt» og «Kørte 2 kommandoer og kørte en ting» — hvor desk
+// skrev hvad der faktisk skete. Argumenterne er målt i den tråd.
+describe('samme ord som desk', () => {
+  it('en kommando siger sin handling, ikke sit mappeskift', () => {
+    expect(describeTool('bash', JSON.stringify({ command: 'cd /media/projects/jarvis-v2/apps/mobile && (npx jest src/components)' }), false))
+      .toBe('Kørte npx jest')
+  })
+
+  it('også mens argumenterne stadig strømmer ind', () => {
+    expect(describeTool('bash', '{"command":"cd /media/projects/jarvis-v2 && git status', true)).toBe('Kører git status…')
+  })
+
+  it('operator_-værktøjer får deres rigtige verbum', () => {
+    expect(describeTool('operator_read_file', JSON.stringify({ path: '/home/bs/test-jarvis-bro/jarvis-test.txt' }), false))
+      .toBe('Læste jarvis-test.txt')
+    expect(describeTool('operator_bash', JSON.stringify({ command: 'echo "=== hvor er jeg ==="; hostname' }), false))
+      .toBe('Kørte echo ===')
   })
 })

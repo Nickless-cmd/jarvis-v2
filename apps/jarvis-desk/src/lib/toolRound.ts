@@ -78,7 +78,8 @@ const OPERATOR = /^(?:\d?[<>]{1,2}|&\d?|<<[-']?\w*)$/
 export function kommandoEmne(cmd: string): string {
   const s = (cmd || '').trim().replace(/\s+/g, ' ')
   if (!s) return ''
-  for (const led of s.split(/&&|\|\||;/).map((d) => d.trim()).filter(Boolean)) {
+  // En subshell `(npx jest …)` er stadig `npx jest` — parentesen er ikke handlingen.
+  for (const led of s.split(/&&|\|\||;/).map((d) => d.trim().replace(/^\(+|\)+$/g, '').trim()).filter(Boolean)) {
     let ord = led.split(' ')
     while (ord.length && ord[0]!.includes('=') && !ord[0]!.startsWith('-')) ord = ord.slice(1)
     if (!ord.length || SCENE_LED.has(ord[0]!)) continue

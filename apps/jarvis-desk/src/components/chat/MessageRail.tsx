@@ -1,4 +1,5 @@
 import { useEffect, useState, type RefObject } from 'react'
+import { Pin } from 'lucide-react'
 
 export interface RailAnchor {
   id: string
@@ -6,8 +7,9 @@ export interface RailAnchor {
   /** Turen endte i en fejl. Markeres i skinnen, så «hvor gik det galt» kan
    *  besvares uden at scrolle hele samtalen igennem. */
   fejl?: boolean
-  /** Kapitel (standard) eller komprimering — se `lib/railAnkre.ts`. */
-  slags?: 'kapitel' | 'komprimering'
+  /** Kapitel (standard), komprimering eller fastgjort — se `lib/railAnkre.ts`.
+   *  «fastgjort» er den ENESTE af de tre brugeren selv har sat. */
+  slags?: 'kapitel' | 'komprimering' | 'fastgjort'
 }
 
 /**
@@ -95,12 +97,15 @@ export function MessageRail({
             type="button"
             // `er-sidste`: den nederste streg er teal og længere end de andre
             // (Bjørn 16/9-2026) — så man i hvile kan se hvor samtalen slutter.
-            className={`msg-rail-row${a.id === aktivId ? ' is-active' : ''}${a.fejl ? ' har-fejl' : ''}${a.slags === 'komprimering' ? ' er-komprimering' : ''}${i === anchors.length - 1 ? ' er-sidste' : ''}`}
+            className={`msg-rail-row${a.id === aktivId ? ' is-active' : ''}${a.fejl ? ' har-fejl' : ''}${a.slags === 'komprimering' ? ' er-komprimering' : ''}${a.slags === 'fastgjort' ? ' er-fastgjort' : ''}${i === anchors.length - 1 ? ' er-sidste' : ''}`}
             aria-current={a.id === aktivId ? 'true' : undefined}
             onClick={() => jump(a.id)}
           >
             <span className="msg-rail-dash" aria-hidden />
-            <span className="msg-rail-text" title={a.label}>{a.label}</span>
+            <span className="msg-rail-text" title={a.slags === 'fastgjort' ? `Fastgjort: ${a.label}` : a.label}>
+              {a.slags === 'fastgjort' ? <Pin size={9} className="msg-rail-pin" aria-hidden /> : null}
+              {a.label}
+            </span>
           </button>
         ))}
       </div>

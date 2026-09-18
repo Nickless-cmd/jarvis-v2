@@ -1,4 +1,4 @@
-import { railAnchors as ankrePrTur, type RailAnchor } from '../components/chat/MessageRail'
+import { railAnchors as ankrePrTur, railLabel, type RailAnchor } from '../components/chat/MessageRail'
 
 /**
  * Hvad saved rail viser: KAPITLER og KOMPRIMERINGER — ikke én streg pr. besked.
@@ -26,7 +26,7 @@ import { railAnchors as ankrePrTur, type RailAnchor } from '../components/chat/M
  */
 export const KORT_SESSION = 6
 
-export type RailSlags = 'kapitel' | 'komprimering'
+export type RailSlags = 'kapitel' | 'komprimering' | 'fastgjort'
 export type RailAnker = RailAnchor & { slags: RailSlags }
 
 type Besked = { id: string; role: string; content: unknown; created_at?: string }
@@ -34,6 +34,15 @@ type Besked = { id: string; role: string; content: unknown; created_at?: string 
 export function bygRailAnkre(
   beskeder: Besked[],
   kapitler: { anchor_id: string; title: string }[],
+  /**
+   * Beskeder brugeren selv har fastgjort.
+   *
+   * De står ALTID på skinnen — også i en lang session hvor reglen ellers er
+   * «kun serverens kapitler». Et pin er den ene markering der ikke er gættet:
+   * han har peget på præcis den besked. At lade en generator overtrumfe det
+   * ville gøre knappen til pynt igen.
+   */
+  fastgjorte: string[] = [],
 ): RailAnker[] {
   const synlige = beskeder.filter((m) => m.role === 'user' || m.role === 'assistant')
   const prTur = ankrePrTur(synlige)
@@ -72,6 +81,26 @@ export function bygRailAnkre(
       _plads: (plads.get(naeste.id) ?? i) - 0.5,
     })
   })
+
+  // Fastgjorte til sidst, så de kan overtage en plads et kapitel allerede har:
+  // står begge på samme besked, er det brugerens egen markering der skal stå
+  // der. To streger på samme sted ville bare være støj.
+  const beskedPrId = new Map(beskeder.map((m) => [m.id, m]))
+  for (const id of fastgjorte) {
+    if (!synligeIds.has(id)) continue          // pin på en besked der er væk
+    const eksisterende = ud.find((a) => a.id === id && a.slags !== 'komprimering')
+    if (eksisterende) { eksisterende.slags = 'fastgjort'; continue }
+    // Etiketten laves af beskedens EGET indhold — også når den er Jarvis'.
+    // `prTur` dækker kun bruger-beskeder, så et pin på et svar ville ellers
+    // stå som «Fastgjort» og ikke sige hvad man fastgjorde.
+    ud.push({
+      id,
+      label: railLabel(beskedPrId.get(id)?.content) || 'Fastgjort',
+      fejl: fejlPrId.get(id),
+      slags: 'fastgjort',
+      _plads: plads.get(id) ?? 0,
+    })
+  }
 
   return ud
     .sort((a, b) => a._plads - b._plads)

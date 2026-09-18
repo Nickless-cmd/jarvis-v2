@@ -30,6 +30,7 @@ import { listProcesses } from '../lib/processesApi'
 import { SystemHealth } from '../components/shell/SystemHealth'
 import { MessageRail } from '../components/chat/MessageRail'
 import { useRailAnkre } from '../lib/useRailAnkre'
+import { useFastgjorte } from '../hooks/useFastgjorte'
 import { GreetingHero } from '../components/chat/GreetingHero'
 import { useResizableWidth } from '../components/panel/useResizableWidth'
 import { onHighlight } from '../lib/fileTreeHighlight'
@@ -714,9 +715,11 @@ export function CodeView({
   const visibleMessages = sessions.messages.filter((m) => m.role === 'user' || m.role === 'assistant')
   // Saved rail: kapitler + komprimeringer — samme regel som i Chat (lib/railAnkre.ts).
   // Før hentede Code slet ikke kapitler og viste én streg pr. besked.
+  // Samme kobling som i Chat: en pin bliver et anker paa skinnen.
+  const fastgjorte = useFastgjorte(sessionId)
   const railAnchors = useRailAnkre(
     settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : null,
-    sessionId, sessions.messages, stream.status === 'idle',
+    sessionId, sessions.messages, stream.status === 'idle', fastgjorte.pins,
   )
 
   let setPauseAsk: PauseAsk | null = null
@@ -952,7 +955,16 @@ export function CodeView({
         <div className={`transcript${atBottom ? ' is-at-bottom' : ''}`} ref={transcriptRef} onScroll={onScroll}>
           {visibleMessages.map((m) => (
             <div key={m.id} data-rail-id={m.id} className="msg-block">
-            <MessageRow role={m.role === 'user' ? 'user' : 'assistant'} blocks={withoutPauseAsk(m.content)} density="compact" streaming={false} createdAt={m.created_at} onResend={m.role === 'user' ? resend : undefined} />
+            <MessageRow
+              role={m.role === 'user' ? 'user' : 'assistant'}
+              blocks={withoutPauseAsk(m.content)}
+              density="compact"
+              streaming={false}
+              createdAt={m.created_at}
+              onResend={m.role === 'user' ? resend : undefined}
+              pinned={fastgjorte.pins.includes(m.id)}
+              onTogglePin={sessionId ? () => fastgjorte.skift(m.id) : undefined}
+            />
             </div>
           ))}
           {stream.status === 'working' && stream.blocks.length > 0 && (

@@ -79,3 +79,48 @@ describe('bygRailAnkre', () => {
     expect(bygRailAnkre(b, []).map((a) => a.slags)).toEqual(['kapitel', 'komprimering', 'kapitel'])
   })
 })
+
+// ── Fastgjorte beskeder (Bjørn 18/9-2026) ────────────────────────────────
+//
+// Pin-knappen var ren lokal state og førte ingen steder hen. Nu bliver et pin
+// et anker på skinnen — det er DET der gør knappen til «noget rigtigt».
+describe('fastgjorte på skinnen', () => {
+  it('et pin bliver et anker man kan springe til', () => {
+    const r = bygRailAnkre(ture(2), [], ['a1'])
+    const fast = r.filter((a) => a.slags === 'fastgjort')
+    expect(fast.map((a) => a.id)).toEqual(['a1'])
+  })
+
+  // Reglen for lange sessioner er «kun serverens kapitler». Et pin er ikke
+  // gættet — han har peget på præcis den besked — så det skal stå uanset.
+  it('står også i en lang session hvor kapitler ellers er eneste kilde', () => {
+    const r = bygRailAnkre(ture(40), [], ['u17'])
+    expect(r.map((a) => a.id)).toEqual(['u17'])
+    expect(r[0]!.slags).toBe('fastgjort')
+  })
+
+  it('står i samtalens rækkefølge, ikke i den rækkefølge de blev pinnet', () => {
+    const r = bygRailAnkre(ture(40), [], ['u20', 'u3'])
+    expect(r.map((a) => a.id)).toEqual(['u3', 'u20'])
+  })
+
+  // To streger samme sted er støj. Brugerens egen markering vinder.
+  it('overtager pladsen fra et kapitel på samme besked', () => {
+    const r = bygRailAnkre(ture(40), [{ anchor_id: 'u5', title: 'Sandbox fejl' }], ['u5'])
+    expect(r).toHaveLength(1)
+    expect(r[0]!.slags).toBe('fastgjort')
+    expect(r[0]!.label).toBe('Sandbox fejl')   // serverens titel bevares
+  })
+
+  it('et pin på en besked der ikke findes mere tegner ingen streg', () => {
+    expect(bygRailAnkre(ture(2), [], ['findes-ikke'])).toHaveLength(2)
+  })
+
+  // `railAnchors` dækker kun BRUGER-beskeder, så et pin på et svar ville uden
+  // videre stå som «Fastgjort» og ikke sige hvad man fastgjorde.
+  it('henter etiketten fra beskedens eget indhold — også Jarvis eget svar', () => {
+    const beskeder = [...ture(40), svar('a99', tekst('Rettede fejl i login'))]
+    const r = bygRailAnkre(beskeder, [], ['a99'])
+    expect(r[0]!.label).toContain('Rettede fejl i login')
+  })
+})

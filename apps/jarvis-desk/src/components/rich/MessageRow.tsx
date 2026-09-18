@@ -27,6 +27,8 @@ function MessageRowImpl({
   createdAt,
   onResend,
   config,
+  pinned,
+  onTogglePin,
 }: {
   role: 'user' | 'assistant'
   blocks: ContentBlock[]
@@ -42,6 +44,10 @@ function MessageRowImpl({
   onResend?: (text: string) => void
   /** Til lazy paste-reference-udfoldning (GET /paste/{id}). Uden config vises chip kompakt. */
   config?: ApiConfig
+  /** Om beskeden er fastgjort, og hvordan man slår det til/fra. Udeladt =
+   *  ingen pin-knap; se `MessageActions`. */
+  pinned?: boolean
+  onTogglePin?: () => void
 }) {
   // denseBlocks ÉN gang ved indgangen: state.blocks/content kan være SPARSOMT
   // (foldede tool_result-content-blok-indices → undefined-huller). ALLE nedstrøms-
@@ -79,6 +85,8 @@ function MessageRowImpl({
             text={text}
             createdAt={createdAt}
             onResend={onResend && text ? () => onResend(text) : undefined}
+            pinned={pinned}
+            onTogglePin={onTogglePin}
           />
         )}
       </div>
@@ -103,7 +111,14 @@ function MessageRowImpl({
           «Forløb»-linjen under dem er slået fra (Bjørn 17/9-2026) — runde-,
           tanke- og skill-linjerne i selve beskeden siger det samme. */}
       {!streaming && <Kilder blocks={blocks} />}
-      {!streaming && <MessageActions text={blocksToPlainText(blocks)} createdAt={createdAt} />}
+      {!streaming && (
+        <MessageActions
+          text={blocksToPlainText(blocks)}
+          createdAt={createdAt}
+          pinned={pinned}
+          onTogglePin={onTogglePin}
+        />
+      )}
     </div>
   )
 }

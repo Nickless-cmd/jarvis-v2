@@ -16,6 +16,8 @@ export function useRailAnkre(
   sessionId: string | null,
   beskeder: { id: string; role: string; content: unknown; created_at?: string }[],
   turErSlut: boolean,
+  /** Beskeder brugeren selv har fastgjort — se `railAnkre.bygRailAnkre`. */
+  fastgjorte: string[] = [],
 ): RailAnker[] {
   const [kapitler, setKapitler] = useState<{ anchor_id: string; title: string }[]>([])
   const base = cfg?.apiBaseUrl
@@ -38,5 +40,8 @@ export function useRailAnkre(
       .catch(() => {})
     return () => { levende = false }
   }, [turErSlut])  // eslint-disable-line react-hooks/exhaustive-deps
-  return useMemo(() => bygRailAnkre(beskeder, kapitler), [beskeder, kapitler])
+  return useMemo(
+    () => bygRailAnkre(beskeder, kapitler, fastgjorte),
+    [beskeder, kapitler, fastgjorte],
+  )
 }

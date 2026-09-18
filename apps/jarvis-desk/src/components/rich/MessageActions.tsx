@@ -1,17 +1,35 @@
 import { useState } from 'react'
-import { Copy, Pin, Volume2, Check, RotateCw } from 'lucide-react'
+import { Copy, Pin, PinOff, Volume2, Check, RotateCw } from 'lucide-react'
 import { formatRelativeTime } from '../../lib/formatTime'
 import { skrivTilUdklipsholder } from '../../lib/udklipsholder'
 
 /** Action-række under en besked (opacity 0, fader ind ved hover): tid + kopiér +
- *  pin som kapitel + læs op (+ gensend for bruger-beskeder). Kopiér tager RÅ
- *  tekst; læs op bruger Web Speech Synthesis (da-DK); pin er pt. en lokal
- *  markering (kapitel-feature kommer). onResend vises kun når den gives. */
+ *  fastgør + læs op (+ gensend for bruger-beskeder).
+ *
+ *  Kopiér tager RÅ tekst og kvitterer FØRST når udklipsholderen har taget
+ *  imod. Læs op bruger Web Speech Synthesis (da-DK) og siger til hvis der
+ *  ingen stemmer er. Fastgør gemmer i sessionens egen liste og bliver til et
+ *  anker på besked-skinnen — se `lib/fastgjorteBeskeder.ts`.
+ *
+ *  `onResend` og `onTogglePin` vises kun når de gives. */
 export function MessageActions({
-  text, createdAt, onResend,
-}: { text: string; createdAt?: string; onResend?: () => void }) {
+  text, createdAt, onResend, pinned = false, onTogglePin,
+}: {
+  text: string
+  createdAt?: string
+  onResend?: () => void
+  /**
+   * Om DENNE besked er fastgjort. Kommer udefra, fordi sandheden ligger i
+   * sessionens gemte liste — ikke i knappen.
+   *
+   * Før var det ren `useState` her: knappen farvede sig selv og glemte det ved
+   * næste tegning (Bjørn 18/9-2026: «pin skal kobles til noget rigtigt»).
+   */
+  pinned?: boolean
+  /** Udeladt = ingen pin-knap. En knap uden et sted at gemme er pynt. */
+  onTogglePin?: () => void
+}) {
   const [copied, setCopied] = useState(false)
-  const [pinned, setPinned] = useState(false)
   const [speaking, setSpeaking] = useState(false)
   const [fejl, setFejl] = useState('')
 
@@ -62,14 +80,17 @@ export function MessageActions({
       <button type="button" className="msg-action-btn" title="Kopiér" onClick={() => void copy()}>
         {copied ? <Check size={13} /> : <Copy size={13} />}
       </button>
-      <button
-        type="button"
-        className={`msg-action-btn ${pinned ? 'active' : ''}`}
-        title="Pin som kapitel"
-        onClick={() => setPinned((p) => !p)}
-      >
-        <Pin size={13} />
-      </button>
+      {onTogglePin && (
+        <button
+          type="button"
+          className={`msg-action-btn ${pinned ? 'active' : ''}`}
+          title={pinned ? 'Fjern fastgørelse' : 'Fastgør besked'}
+          aria-pressed={pinned}
+          onClick={onTogglePin}
+        >
+          {pinned ? <PinOff size={13} /> : <Pin size={13} />}
+        </button>
+      )}
       <button
         type="button"
         className={`msg-action-btn ${speaking ? 'active' : ''}`}

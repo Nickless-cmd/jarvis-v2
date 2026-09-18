@@ -74,6 +74,26 @@ describe('handlingsrækken under en besked', () => {
     expect(talte).toEqual([])
   })
 
+  // Pin var ren `useState`: den farvede sig selv og glemte det. Nu kommer
+  // sandheden udefra, og knappen findes kun når der ER et sted at gemme.
+  it('ingen pin-knap uden et sted at gemme', () => {
+    render(<MessageActions text="x" />)
+    expect(screen.queryByTitle('Fastgør besked')).toBeNull()
+    expect(screen.queryByTitle('Fjern fastgørelse')).toBeNull()
+  })
+
+  it('pin-knappen viser den tilstand den FÅR, ikke sin egen', () => {
+    const skift = vi.fn()
+    const { rerender } = render(<MessageActions text="x" onTogglePin={skift} />)
+    fireEvent.click(screen.getByTitle('Fastgør besked'))
+    expect(skift).toHaveBeenCalledTimes(1)
+    // Knappen skifter IKKE af sig selv — først når ejeren siger den er fastgjort.
+    expect(screen.getByTitle('Fastgør besked')).toBeTruthy()
+
+    rerender(<MessageActions text="x" pinned onTogglePin={skift} />)
+    expect(screen.getByTitle('Fjern fastgørelse').getAttribute('aria-pressed')).toBe('true')
+  })
+
   it('gensend vises kun når den er givet', () => {
     const { rerender } = render(<MessageActions text="x" />)
     expect(screen.queryByTitle('Send igen')).toBeNull()

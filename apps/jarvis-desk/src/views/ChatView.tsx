@@ -34,6 +34,7 @@ import { ErrorCard } from '../components/feedback/ErrorCard'
 import { GreetingHero } from '../components/chat/GreetingHero'
 import { MessageRail } from '../components/chat/MessageRail'
 import { useRailAnkre } from '../lib/useRailAnkre'
+import { useFastgjorte } from '../hooks/useFastgjorte'
 import { PauseAndAskCard } from '../components/rich/PauseAndAskCard'
 
 const NEAR_BOTTOM_PX = 120
@@ -515,9 +516,12 @@ export function ChatView({
     followText.length > 0 && lastVisibleAsstText.length > 0 &&
     (lastVisibleAsstText === followText || lastVisibleAsstText.startsWith(followText) || followText.startsWith(lastVisibleAsstText))
   // Saved rail: kapitler + komprimeringer, ikke én streg pr. besked — se lib/railAnkre.ts.
+  // Fastgjorte beskeder staar paa skinnen ved siden af kapitlerne — det er
+  // det pin-knappen er koblet til (Bjoern 18/9-2026).
+  const fastgjorte = useFastgjorte(sessionId)
   const railAnchors = useRailAnkre(
     settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : null,
-    sessionId, sessions.messages, stream.status === 'idle',
+    sessionId, sessions.messages, stream.status === 'idle', fastgjorte.pins,
   )
   const isEmpty =
     !sessionId ||
@@ -740,6 +744,8 @@ export function ChatView({
             createdAt={m.created_at}
             onResend={m.role === 'user' ? resend : undefined}
             config={settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined}
+            pinned={fastgjorte.pins.includes(m.id)}
+            onTogglePin={sessionId ? () => fastgjorte.skift(m.id) : undefined}
           />
           </div>
         ))}

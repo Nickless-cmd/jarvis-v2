@@ -10,7 +10,8 @@ import { GlidendeTekst } from './GlidendeTekst'
 interface Props {
   items: ToolItem[]
   /**
-   * Overskriften over runden — «Rettede fejl i login».
+   * Rundens sætning — «Rettede fejl i login». ERSTATTER den mekaniske tekst
+   * (Claude Desktop 1:1, 19/9-2026); før stod den som overskrift over linjen.
    *
    * Skrevet af en lille lokal model på serveren og slået op på kaldets id, så
    * den hæfter sig på DE kald den opsummerer. Udeladt = ingen overskrift; den
@@ -67,6 +68,10 @@ export function InlineToolGroup({ items, etiket }: Props) {
   }, [running, reduced, pulse])
 
   if (!summary) return null
+  // Claude Desktop 1:1 (19/9-2026, læst i deres `Tf`: `summary || … ||
+  // mekanisk`): rundens sætning ERSTATTER den mekaniske tekst, når den
+  // findes. Før stod den som overskrift over linjen. Samme regel som desk.
+  const tekst = etiket ? etiket : summary
 
   // Ét kald har ingen detalje at folde ud — så er chevronen et tomt løfte.
   const expandable = items.length > 1
@@ -81,25 +86,16 @@ export function InlineToolGroup({ items, etiket }: Props) {
     <View style={styles.wrap}>
       <Pressable
         accessibilityRole={expandable ? 'button' : 'text'}
-        accessibilityLabel={etiket ? `${etiket}. ${summary}` : summary}
+        accessibilityLabel={tekst}
         accessibilityState={expandable ? { expanded: open } : undefined}
         onPress={toggle}
         testID="tool-group"
       >
         {/* Samme lys som taenke-linjen. De to er soeskende; de skal ogsaa
             opfoere sig ens naar de arbejder. */}
-        {/* Bjoerns raekkefoelge: etiketten FOERST, det mekaniske efter.
-            Overskriften siger hvad runden UDRETTEDE; linjen under siger hvad
-            der SKETE. Den ene uden den anden er enten uden detalje eller uden
-            mening. */}
-        {etiket ? (
-          <Text testID="tool-group-etiket" style={styles.etiket} numberOfLines={1}>
-            {etiket}
-          </Text>
-        ) : null}
         <View style={styles.row}>
           <Code2 size={16} color={tokens.color.fg2} strokeWidth={1.8} />
-          <GlidendeTekst text={summary} aktiv={running} style={styles.summary} numberOfLines={1} />
+          <GlidendeTekst text={tekst} aktiv={running} style={styles.summary} numberOfLines={1} />
           {/* Gruppen er FOLDET som standard. Uden summen her ville tallene
               vaere usynlige det meste af tiden, og saa var de lige saa godt
               blevet i badgen. */}
@@ -151,14 +147,6 @@ export function InlineToolGroup({ items, etiket }: Props) {
 
 const makestyles = (tokens: Theme) => StyleSheet.create({
   wrap: { paddingHorizontal: tokens.spacing.lg },
-  // Overskriften staar STAERKERE end den mekaniske linje under. Oejet skal
-  // fange hvad der blev udrettet foerst; tallene er detaljen man gaar ned i.
-  etiket: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: tokens.color.fg1,
-    marginBottom: 2
-  },
   row: {
     flexDirection: 'row',
     alignItems: 'center',

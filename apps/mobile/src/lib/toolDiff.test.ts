@@ -17,9 +17,11 @@ it('en SLETNING er -N +0, ikke +1', () => {
     .toEqual({ tilfoejet: 0, fjernet: 2 })
 })
 
-it('afsluttende linjeskift taeller ikke som en ekstra linje', () => {
+// Claude Desktop 1:1 (19/9-2026): linjeskift + 1 — en afsluttende newline
+// taeller som en linje, som hos dem, i desk og paa serveren.
+it('taeller som Claude Desktop: linjeskift + 1', () => {
   expect(toolDiff('edit_file', { old_text: 'a\nb\n', new_text: 'a\n' }))
-    .toEqual({ tilfoejet: 1, fjernet: 2 })
+    .toEqual({ tilfoejet: 2, fjernet: 3 })
 })
 
 it('multi_edit laegger sine dele sammen — baade edits og items', () => {

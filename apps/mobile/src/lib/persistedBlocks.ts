@@ -32,6 +32,10 @@ export interface PersistedBlock {
    * gemt tur, og overskriften forsvandt i det øjeblik streamen sluttede.
    */
   id?: string
+  /** tool_use_summary: rundens sætning (Claude Desktops form, 19/9-2026). */
+  summary?: string
+  /** tool_use_summary: de kald sætningen dækker. */
+  preceding_tool_use_ids?: string[]
   /**
    * tool_use: værktøjets resultat, når serveren har lagt det ved.
    *
@@ -151,4 +155,28 @@ export function threadBlocks(blocks: PersistedBlock[]): PersistedBlock[] {
   return blocks.filter(
     (b) => b.type !== 'progress' && b.type !== 'image' && b.type !== 'file'
   )
+}
+
+
+/**
+ * Rundernes GEMTE sætninger, slået op på hvert kald de dækker.
+ *
+ * Før blev sætningen kun streamet, og i det øjeblik turen var gemt, var den
+ * væk. Nu gemmer serveren den som en `tool_use_summary`-blok — Claude
+ * Desktops egen form, `{summary, preceding_tool_use_ids}` — og den slås op på
+ * samme nøgle som den live: kaldets id.
+ */
+export function gemteEtiketter(messages: ChatMessage[]): Record<string, string> {
+  const ud: Record<string, string> = {}
+  for (const m of messages) {
+    const blokke = parseBlocks(m)
+    if (!blokke) continue
+    for (const b of blokke) {
+      if (b.type !== 'tool_use_summary' || typeof b.summary !== 'string' || !b.summary.trim()) continue
+      for (const id of Array.isArray(b.preceding_tool_use_ids) ? b.preceding_tool_use_ids : []) {
+        ud[String(id)] = b.summary
+      }
+    }
+  }
+  return ud
 }

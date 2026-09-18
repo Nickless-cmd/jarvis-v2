@@ -319,10 +319,14 @@ it('runde-etiketten naar hele vejen fra stream til skaerm', () => {
   expect(kilde('screens/ChatScreen.tsx')).toMatch(/rundeEtiketter=\{stream\.state\.rundeEtiketter\}/)
   // 4. listen slaar op og sender den ind i gruppen
   expect(kilde('components/MessageList.tsx')).toMatch(/etiket=\{etik\}/)
-  // 5. gruppen tegner den OVER den mekaniske linje
+  // 5. gruppen lader sætningen ERSTATTE den mekaniske tekst (Claude Desktop
+  //    1:1, 19/9-2026 — før stod den som overskrift over linjen)
   const g = kilde('components/InlineToolGroup.tsx')
-  expect(g).toMatch(/testID="tool-group-etiket"/)
-  expect(g.indexOf('tool-group-etiket')).toBeLessThan(g.indexOf('<GlidendeTekst'))
+  expect(g).toMatch(/const tekst = etiket \? etiket : summary/)
+  expect(g).toMatch(/<GlidendeTekst text=\{tekst\}/)
+  expect(g).not.toMatch(/tool-group-etiket/)
+  // 6. den GEMTE vej: listen slår også op i beskedernes tool_use_summary-blokke
+  expect(kilde('components/MessageList.tsx')).toMatch(/gemteEtiketter\(messages\)/)
 })
 
 // ─────────────────────────────────────────────────────────────────────────

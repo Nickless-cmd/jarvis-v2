@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { FlatList, StyleSheet, Text, View } from 'react-native'
 import type { ContentBlock } from '../lib/sseProtocol'
 import { denseBlocks } from '../lib/blockHelpers'
@@ -16,7 +16,7 @@ import { TRIN_MS } from '../lib/prikSekvens'
 import { useReducedMotion } from '../lib/useReducedMotion'
 import { describeTool, describeToolResult } from '../lib/toolSummary'
 import { countFromResult, type ToolItem } from '../lib/toolGroup'
-import { attachmentBlocks, hasOrdering, parseBlocks, thinkingBlock } from '../lib/persistedBlocks'
+import { attachmentBlocks, gemteEtiketter, hasOrdering, parseBlocks, thinkingBlock } from '../lib/persistedBlocks'
 import { threadBlocks } from '../lib/persistedBlocks'
 import { ThinkingSummary } from './ThinkingSummary'
 import { MessageAttachments } from './MessageAttachments'
@@ -410,6 +410,13 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
 
   // Inverteret liste: nyeste række sidder altid i bunden og er synlig fra start.
   const ordered = [...rows].reverse()
+  // Rundernes sætninger: de GEMTE (tool_use_summary i beskederne) plus de LIVE
+  // (streamens tool_round_label). Live vinder, hvis de er uenige — den er den
+  // nyeste. Før fandtes kun den live, og sætningen forsvandt når turen var gemt.
+  const etiketter = useMemo(
+    () => ({ ...gemteEtiketter(messages), ...(rundeEtiketter ?? {}) }),
+    [messages, rundeEtiketter],
+  )
   // I inverted liste: HØJERE index = ÆLDRE besked, LAVERE index = NYERE.
   const userFlags = ordered.map((r) => r.kind === 'msg' && r.message.role === 'user')
 
@@ -461,7 +468,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
           // rundens. Opslaget gaar paa kaldets id og ikke paa raekkefoelgen:
           // en sen etiket ville ellers saette sig over de forkerte kald.
           const etik = item.items
-            .map((i: ToolItem) => (i.id ? rundeEtiketter?.[i.id] : undefined))
+            .map((i: ToolItem) => (i.id ? etiketter[i.id] : undefined))
             .find(Boolean)
           return <InlineToolGroup items={item.items} etiket={etik} />
         }

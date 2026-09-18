@@ -63,3 +63,17 @@ it('en runde der kun LAESTE staar uden tal', async () => {
   expect(s.queryByText('+0')).toBeNull()
   expect(s.queryByText('−0')).toBeNull()
 })
+
+// Claude Desktop 1:1 (19/9-2026): rundens sætning ERSTATTER den mekaniske
+// tekst. Før stod den som overskrift over linjen — samme regel som desk nu.
+it('rundens sætning erstatter den mekaniske tekst', async () => {
+  const s = await render(<InlineToolGroup items={[item(), item(), item()]} etiket="Fandt fejlen i login" />)
+  expect(s.getByText('Fandt fejlen i login')).toBeTruthy()
+  expect(s.queryByText('Læste 3 filer')).toBeNull()
+  expect(s.queryByTestId('tool-group-etiket')).toBeNull()
+})
+
+it('uden sætning står den mekaniske tekst', async () => {
+  const s = await render(<InlineToolGroup items={[item(), item(), item()]} />)
+  expect(s.getByText('Læste 3 filer')).toBeTruthy()
+})

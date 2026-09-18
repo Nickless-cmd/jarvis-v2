@@ -90,9 +90,9 @@ function fraPar(gammel: unknown, ny: unknown): ToolDiff | null {
  * ingenting skal vise `-N +0` — ikke `-N +1` for en linje der ikke findes.
  */
 function linjer(s: string): number {
+  // Som Claude Desktop, desk og serveren (19/9-2026): linjeskift + 1.
   if (!s) return 0
-  const rent = s.endsWith('\n') ? s.slice(0, -1) : s
-  return rent.split('\n').length
+  return s.split('\n').length
 }
 
 

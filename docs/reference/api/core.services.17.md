@@ -118,10 +118,10 @@ _Opløs et bart ollama-modelnavn til det tag ollama faktisk serverer._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `serialize_ollama_visible_prompt` | `(items)` | — | [src](../../../core/services/ollama_visible_prompt.py#L14) |
-| function | `_collect_visible_text_parts` | `(items)` | — | [src](../../../core/services/ollama_visible_prompt.py#L26) |
-| function | `_serialize_system_block` | `(system_parts)` | — | [src](../../../core/services/ollama_visible_prompt.py#L56) |
-| function | `serialize_ollama_chat_messages` | `(items)` | Convert visible input items to Ollama /api/chat messages format. | [src](../../../core/services/ollama_visible_prompt.py#L68) |
-| function | `_serialize_conversation_block` | `(conversation_parts)` | — | [src](../../../core/services/ollama_visible_prompt.py#L87) |
+| function | `_collect_visible_text_parts` | `(items)` | Del elementerne i en ledende system-blok og selve samtalen. | [src](../../../core/services/ollama_visible_prompt.py#L26) |
+| function | `_serialize_system_block` | `(system_parts)` | — | [src](../../../core/services/ollama_visible_prompt.py#L63) |
+| function | `serialize_ollama_chat_messages` | `(items)` | Convert visible input items to Ollama /api/chat messages format. | [src](../../../core/services/ollama_visible_prompt.py#L75) |
+| function | `_serialize_conversation_block` | `(conversation_parts)` | — | [src](../../../core/services/ollama_visible_prompt.py#L132) |
 
 ## `core/services/open_loop_closure_proposal_tracking.py`
 

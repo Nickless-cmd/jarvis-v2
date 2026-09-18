@@ -39,12 +39,12 @@ _Git-handlinger for code-mode's workspace-vaelgere._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_koer_lokalt` | `(root, args)` | — | [src](../../../core/services/git_workspace_actions.py#L34) |
-| function | `_koer_over_bro` | `(root, args, uid)` | — | [src](../../../core/services/git_workspace_actions.py#L50) |
-| function | `_koer` | `(kind, root, args, uid)` | Koer git og faa ét output pr. argument-liste. False = kunne ikke. | [src](../../../core/services/git_workspace_actions.py#L65) |
-| function | `_rens` | `(navne)` | Git-linjer → rene navne. Fjerner markoerer, HEAD-pilen og dubletter. | [src](../../../core/services/git_workspace_actions.py#L74) |
-| function | `list_branches` | `(*, kind, root, uid=…)` | Alle branches plus den aktuelle. Tomt resultat = ikke et repo. | [src](../../../core/services/git_workspace_actions.py#L87) |
-| function | `checkout_branch` | `(*, kind, root, navn, opret=…, uid=…)` | Skift til en branch, eller opret og skift til en ny. | [src](../../../core/services/git_workspace_actions.py#L110) |
-| function | `create_worktree` | `(*, kind, root, navn, sti=…, uid=…)` | Opret en ny lokal worktree med sin egen branch. | [src](../../../core/services/git_workspace_actions.py#L138) |
+| function | `_koer_over_bro` | `(root, args, uid)` | — | [src](../../../core/services/git_workspace_actions.py#L52) |
+| function | `_koer` | `(kind, root, args, uid)` | Koer git og faa ét output pr. argument-liste. False = kunne ikke. | [src](../../../core/services/git_workspace_actions.py#L72) |
+| function | `_rens` | `(navne)` | Git-linjer → rene navne. Fjerner markoerer, HEAD-pilen og dubletter. | [src](../../../core/services/git_workspace_actions.py#L81) |
+| function | `list_branches` | `(*, kind, root, uid=…)` | Alle branches plus den aktuelle. Tomt resultat = ikke et repo. | [src](../../../core/services/git_workspace_actions.py#L94) |
+| function | `checkout_branch` | `(*, kind, root, navn, opret=…, uid=…)` | Skift til en branch, eller opret og skift til en ny. | [src](../../../core/services/git_workspace_actions.py#L122) |
+| function | `create_worktree` | `(*, kind, root, navn, sti=…, uid=…)` | Opret en ny lokal worktree med sin egen branch. | [src](../../../core/services/git_workspace_actions.py#L150) |
 
 ## `core/services/github_connector.py`
 _GitHub-connector — API-klient + tool-handlers (v1: issues + PRs)._

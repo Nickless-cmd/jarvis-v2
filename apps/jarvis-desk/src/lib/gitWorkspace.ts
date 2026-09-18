@@ -13,6 +13,8 @@ export interface BranchListe {
   current: string
   local: string[]
   remote: string[]
+  /** Serverens egen begrundelse når listen ikke kunne hentes. */
+  error?: string
 }
 
 export interface BetroetMappe {
@@ -33,6 +35,7 @@ export async function hentBranches(
     current: String(r?.current ?? ''),
     local: Array.isArray(r?.local) ? (r.local as unknown[]).map(String) : [],
     remote: Array.isArray(r?.remote) ? (r.remote as unknown[]).map(String) : [],
+    error: r?.error ? String(r.error) : undefined,
   }
 }
 

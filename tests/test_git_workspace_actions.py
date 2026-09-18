@@ -83,3 +83,48 @@ def test_tom_rod_giver_ikke_et_falsk_ja() -> None:
 
     assert svar["ok"] is False
     assert svar["local"] == []
+
+
+# ── En fejl skal sige HVAD der gik galt ──────────────────────────────────
+#
+# Bjørn 18/9-2026: «main dropdown fejler med kunne ikke indlæse branches».
+# Den besked var husets egen, ikke serverens, og den dækkede over tre helt
+# forskellige ting: broen nede, mappen findes ikke, mappen er ikke et repo.
+# Kun den ene af dem kan han selv rette — så beskeden skal skelne.
+
+
+def test_siger_hvorfor_naar_mappen_ikke_er_et_repo(tmp_path) -> None:
+    from core.services.git_workspace_actions import list_branches
+
+    tom = tmp_path / "ikke-et-repo"
+    tom.mkdir()
+
+    svar = list_branches(kind="container", root=str(tom))
+
+    assert svar["ok"] is False
+    # Git's egen formulering, ikke en vi har fundet på.
+    assert "repository" in svar["error"].lower()
+
+
+def test_tom_rod_siger_at_der_mangler_en_mappe() -> None:
+    from core.services.git_workspace_actions import list_branches
+
+    assert "ingen mappe" in list_branches(kind="container", root="")["error"].lower()
+
+
+def test_broens_egen_begrundelse_naar_helt_op(monkeypatch, tmp_path) -> None:
+    """Workstation-vejen svarede `ok:false` UDEN grund — den tavshed var fejlen."""
+    import core.services.git_workspace_actions as g
+    # `_koer_over_bro` importerer LOKALT fra chat-modulet (kreds-undgåelse), så
+    # patchen skal sidde på kilden — ikke på `g`, hvor navnet ikke findes.
+    import apps.api.jarvis_api.routes.chat as chat
+
+    monkeypatch.setattr(
+        chat, "_operator_exec",
+        lambda navn, args: {"status": "error", "error": "bridge_disconnected"},
+    )
+
+    svar = g.list_branches(kind="workstation", root=str(tmp_path), uid="u1")
+
+    assert svar["ok"] is False
+    assert "bridge_disconnected" in svar["error"]

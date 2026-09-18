@@ -47,8 +47,11 @@ export function BranchVaelger({
     if (!åben || !config) return
     setHenter(true); setFejl('')
     hentBranches(config, kind, root)
-      .then((r) => { setListe(r); if (!r.ok) setFejl('Kunne ikke læse branches') })
-      .catch(() => setFejl('Kunne ikke læse branches'))
+      // Serverens egen begrundelse frem for husets. «Kunne ikke læse branches»
+      // dækkede over bro nede, mappe der ikke findes og ikke-et-repo — og kun
+      // den ene af dem kan man selv rette.
+      .then((r) => { setListe(r); if (!r.ok) setFejl(r.error || 'Kunne ikke læse branches') })
+      .catch((e) => setFejl(e instanceof Error && e.message ? e.message : 'Kunne ikke læse branches'))
       .finally(() => { setHenter(false); søgeFelt.current?.focus() })
   }, [åben, config, kind, root])
 

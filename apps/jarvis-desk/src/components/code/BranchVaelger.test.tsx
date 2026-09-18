@@ -91,4 +91,28 @@ describe('branch-vælgeren', () => {
 
     expect(await screen.findByText('uncommitted changes')).toBeTruthy()
   })
+
+  // Bjørn 18/9-2026: «main dropdown fejler med kunne ikke indlæse branches».
+  // Den besked var husets egen. Den dækkede over broen nede, en mappe der ikke
+  // findes, og en mappe der ikke er et repo — og kun den ene af dem kan han
+  // selv rette. Serverens grund skal hele vejen op på skærmen.
+  it('viser serverens grund, ikke husets generiske besked', async () => {
+    hentBranches.mockResolvedValue({
+      ok: false, current: '', local: [], remote: [],
+      error: 'broen: bridge_disconnected',
+    })
+    vis()
+    fireEvent.click(screen.getByTitle('Skift branch'))
+
+    expect(await screen.findByText('broen: bridge_disconnected')).toBeTruthy()
+    expect(screen.queryByText('Kunne ikke læse branches')).toBeNull()
+  })
+
+  it('falder tilbage til den generiske besked når serveren intet siger', async () => {
+    hentBranches.mockResolvedValue({ ok: false, current: '', local: [], remote: [] })
+    vis()
+    fireEvent.click(screen.getByTitle('Skift branch'))
+
+    expect(await screen.findByText('Kunne ikke læse branches')).toBeTruthy()
+  })
 })

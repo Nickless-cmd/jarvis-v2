@@ -39,10 +39,12 @@ def _koer_lokalt(root: str, args: list[list[str]]) -> tuple[bool, list[str]]:
                 ["git", "-C", root, *a],
                 capture_output=True, text=True, timeout=_TIMEOUT,
             )
-        except Exception:
-            return False, ud
+        except Exception as e:
+            # Samme grund som i bro-vejen: en tavs False efterlader brugeren
+            # med «kunne ikke» og ingen vej videre.
+            return False, ud + [f"git kunne ikke koeres: {e}"]
         if r.returncode != 0 and not r.stdout.strip():
-            return False, ud + [str(r.stderr or "").strip()]
+            return False, ud + [str(r.stderr or "").strip() or f"git afsluttede med {r.returncode}"]
         ud.append(r.stdout)
     return True, ud
 
@@ -57,7 +59,12 @@ def _koer_over_bro(root: str, args: list[list[str]], uid: str) -> tuple[bool, li
     kommando = f' ; echo "{_SKILLER}" ; '.join(dele)
     svar = _operator_exec("operator_bash", {"command": kommando, "_user_id": uid})
     if svar.get("status") != "ok":
-        return False, []
+        # Broens egen begrundelse SKAL med op. Uden den stod desk med «Kunne
+        # ikke laese branches» uanset om broen var vaek, mappen ikke fandtes,
+        # eller git ikke var installeret derovre — tre helt forskellige
+        # problemer med én ubrugelig besked.
+        grund = str(svar.get("error") or svar.get("status") or "broen svarede ikke")
+        return False, [f"broen: {grund}"]
     stdout = str((svar.get("result") or {}).get("stdout") or "")
     return True, stdout.split(_SKILLER)
 
@@ -65,7 +72,7 @@ def _koer_over_bro(root: str, args: list[list[str]], uid: str) -> tuple[bool, li
 def _koer(kind: str, root: str, args: list[list[str]], uid: str) -> tuple[bool, list[str]]:
     """Koer git og faa ét output pr. argument-liste. False = kunne ikke."""
     if not root.strip():
-        return False, []
+        return False, ["ingen mappe valgt"]
     if kind == "workstation":
         return _koer_over_bro(root, args, uid)
     return _koer_lokalt(root, args)
@@ -92,7 +99,12 @@ def list_branches(*, kind: str, root: str, uid: str = "") -> dict[str, Any]:
         ["for-each-ref", "--format=%(refname:short)", "refs/remotes"],
     ], uid)
     if not ok or len(ud) < 2:
-        return {"ok": False, "current": "", "local": [], "remote": []}
+        # Grunden med op til klienten. «Kunne ikke laese branches» uden et
+        # hvorfor er en blindgyde: broen vaek, mappen findes ikke og «ikke et
+        # git-repo» ser ens ud, og kun den ene af dem kan brugeren selv rette.
+        grund = next((x.strip() for x in reversed(ud) if x.strip()), "")
+        return {"ok": False, "current": "", "local": [], "remote": [],
+                "error": grund or "kunne ikke naa git i den mappe"}
     aktuel = (ud[0] or "").strip().splitlines()
     lokale = _rens((ud[1] or "").splitlines())
     fjerne = _rens((ud[2] or "").splitlines()) if len(ud) > 2 else []

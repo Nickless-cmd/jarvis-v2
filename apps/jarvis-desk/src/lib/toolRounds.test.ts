@@ -43,6 +43,30 @@ describe('groupToolRounds', () => {
     expect(ud.map((b) => b.type)).toEqual(['tool_group', 'tool_use', 'tool_group'])
   })
 
+  it('en anomali står også alene — den er lige så meget noget man leder efter', () => {
+    const ukendt = { ...tool('b'), anomali: 'uden-resultat' } as ContentBlock
+    const ud = grupper([tool('a'), ukendt, tool('c')])
+    expect(ud.map((b) => b.type)).toEqual(['tool_group', 'tool_use', 'tool_group'])
+  })
+
+  // Hele kæden efter en genindlæsning: gemt blok → fold → gruppering. Før
+  // gemte serveren alle udfald som «done», og en fejl blev foldet ind i
+  // gruppen. Nu bærer den gemte blok status, og fejlen står alene.
+  it('efter genindlæsning står en gemt fejl stadig alene', async () => {
+    const { foldToolResults } = await import('./foldToolResults')
+    const gemt = [
+      { type: 'tool_use', id: 'a', name: 'read_file', input: {} },
+      { type: 'tool_result', tool_use_id: 'a', status: 'done', content: 'ok', is_error: false },
+      { type: 'tool_use', id: 'b', name: 'bash', input: {} },
+      { type: 'tool_result', tool_use_id: 'b', status: 'error', content: 'exit 1', is_error: true },
+      { type: 'tool_use', id: 'c', name: 'read_file', input: {} },
+      { type: 'tool_result', tool_use_id: 'c', status: 'done', content: 'ok', is_error: false },
+    ]
+    const ud = grupper(foldToolResults(gemt as any))
+    expect(ud.map((b) => b.type)).toEqual(['tool_group', 'tool_use', 'tool_group'])
+    expect(ud[1]).toMatchObject({ id: 'b', status: 'error' })
+  })
+
   it('lader tekst-only besked være helt urørt', () => {
     const ud = grupper([text('bare tekst')])
     expect(ud).toEqual([text('bare tekst')])

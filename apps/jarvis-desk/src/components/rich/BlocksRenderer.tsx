@@ -37,7 +37,10 @@ export function afslutForladteKald(blocks: ContentBlock[], streaming: boolean): 
     if (!b) continue
     if (b.type === 'text' || b.type === 'thinking') { senereOrd = true; continue }
     if (b.type === 'tool_use' && senereOrd && (b.status ?? 'running') === 'running') {
-      ud[i] = { ...b, status: 'done' }
+      // Beskeden er FÆRDIG og kaldet fik aldrig et resultat: udfaldet er
+      // ukendt. Før blev det vist som lykkedes (18/9-2026). Mens der streames
+      // kan resultatet stadig være på vej, så dér gælder den gamle regel.
+      ud[i] = streaming ? { ...b, status: 'done' } : { ...b, status: 'done', anomali: 'uden-resultat' }
     }
   }
   return ud

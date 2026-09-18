@@ -49,8 +49,17 @@ export function ToolCard({
             <span className="git-add">+{ds.add}</span> <span className="git-del">−{ds.del}</span>
           </span>
         )}
-        <StatusBadge status={status} />
+        <StatusBadge status={status} anomali={block.anomali} />
       </button>
+      {block.anomali && (
+        // Siges i klartekst, ikke kun med et ikon: det er netop den slags
+        // man ellers ikke ville opdage.
+        <div className="toolcard-anomali" role="note">
+          {block.anomali === 'uden-kald'
+            ? 'Et resultat uden det kald det hører til — kaldet findes ikke i beskeden.'
+            : 'Intet resultat blev gemt for dette kald — udfaldet er ukendt.'}
+        </div>
+      )}
       {/* Et spørgsmål er ikke tool-output man folder ud — det skal ses med
           det samme, også i kompakt tilstand. */}
       {ask
@@ -83,7 +92,9 @@ function parseArgs(block: Extract<ContentBlock, { type: 'tool_use' }>): Record<s
   try { return JSON.parse(block.partialJson || '{}') } catch { return {} }
 }
 
-function StatusBadge({ status }: { status: string }) {
+function StatusBadge({ status, anomali }: { status: string; anomali?: string }) {
+  // Et ukendt udfald må hverken ligne en succes (flueben) eller en fejl (kryds).
+  if (anomali === 'uden-resultat') return <span className="toolcard-status ukendt" title="Ukendt udfald">?</span>
   if (status === 'done') return <span className="toolcard-status ok"><Check size={11} /></span>
   if (status === 'error') return <span className="toolcard-status err"><X size={11} /></span>
   return <span className="toolcard-status run"><Loader size={11} /></span>

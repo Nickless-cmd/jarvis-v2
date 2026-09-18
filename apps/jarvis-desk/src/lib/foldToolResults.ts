@@ -2,7 +2,12 @@ import type { ContentBlock } from './sseProtocol'
 
 /** Folder kanoniske tool_result-blokke ind på deres tool_use (via tool_use_id) og
  *  fjerner tool_result-blokkene, så resultatet er den render-ContentBlock[] som
- *  MessageView allerede forstår. tool_result uden match droppes stille. */
+ *  MessageView allerede forstår.
+ *
+ *  Et tool_result UDEN match droppes ikke længere (18/9-2026). Det blev det
+ *  stille, og så var der ingen måde at se at noget i beskeden ikke hang
+ *  sammen. Nu bliver det sin egen blok, markeret `anomali: 'uden-kald'`, og
+ *  står alene i tråden. */
 export function foldToolResults(blocks: Array<Record<string, unknown>>): ContentBlock[] {
   const out: ContentBlock[] = []
   const idxById = new Map<string, number>()
@@ -12,7 +17,18 @@ export function foldToolResults(blocks: Array<Record<string, unknown>>): Content
       out.push({ type: 'tool_use', id: String(b.id), name: String(b.name ?? ''), input: (b.input as Record<string, unknown>) ?? {}, status: 'running' })
     } else if (b.type === 'tool_result') {
       const at = idxById.get(String(b.tool_use_id))
-      if (at === undefined) continue
+      if (at === undefined) {
+        out.push({
+          type: 'tool_use',
+          id: String(b.tool_use_id || `uden-kald-${out.length}`),
+          name: String(b.name || 'ukendt værktøj'),
+          input: {},
+          status: b.status === 'error' || b.is_error ? 'error' : 'done',
+          result: String(b.content ?? ''),
+          anomali: 'uden-kald',
+        })
+        continue
+      }
       const tu = out[at] as Extract<ContentBlock, { type: 'tool_use' }>
       const status = b.status === 'error' || b.is_error ? 'error' : 'done'
       out[at] = { ...tu, status, result: String(b.content ?? '') }

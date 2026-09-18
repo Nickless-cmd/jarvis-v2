@@ -135,6 +135,15 @@ export type ContentBlock =
       result?: string
       /** Klientens ur da kaldet startede — til live-tiden på runde-linjen. */
       startet?: number
+      /**
+       * Noget ved kaldet stemmer ikke, og det skal SES (18/9-2026):
+       *  - `uden-kald`: et resultat hvis kald ikke findes i beskeden. Det
+       *    blev før droppet stille.
+       *  - `uden-resultat`: en færdig besked hvor kaldet aldrig fik et
+       *    resultat. Det blev før vist som lykkedes.
+       * Et manglende resultat er et UKENDT udfald — hverken fejl eller succes.
+       */
+      anomali?: 'uden-kald' | 'uden-resultat'
     }
   | {
       // Billede. LIVE bærer det en `src` (data-URL fra streamen). PERSISTERET

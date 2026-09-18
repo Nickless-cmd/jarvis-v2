@@ -61,6 +61,13 @@ describe('kald der pulserede efter han var videre', () => {
   it('gemt besked: intet kører', () => {
     const ud = afslutForladteKald([kald('a', 'running')], false)
     expect(ud[0]).toMatchObject({ status: 'done' })
+    // Men den er IKKE vist som lykkedes: udfaldet er ukendt (18/9-2026).
+    expect(ud[0]).toMatchObject({ anomali: 'uden-resultat' })
+  })
+
+  it('live kan resultatet stadig være på vej — ingen anomali mens der streames', () => {
+    const ud = afslutForladteKald([kald('a', 'running'), { type: 'text', text: 'Så…' }], true)
+    expect((ud[0] as any).anomali).toBeUndefined()
   })
 
   it('live: tekst efter kaldet betyder at det er slut', () => {

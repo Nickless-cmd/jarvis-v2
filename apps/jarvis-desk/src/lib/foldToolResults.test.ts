@@ -18,9 +18,25 @@ describe('foldToolResults', () => {
     const blocks = [{ type: 'text', text: 'x' }]
     expect(foldToolResults(blocks as any)).toEqual(blocks)
   })
-  it('tool_result uden matchende tool_use droppes stille', () => {
-    const blocks = [{ type: 'tool_result', tool_use_id: 'ukendt', status: 'done', content: 'y' }]
-    expect(foldToolResults(blocks as any)).toEqual([])
+  // Testen her pinnede før at et resultat uden kald droppes STILLE. Det var
+  // selve fejlen (18/9-2026): man kunne ikke se at noget ikke hang sammen.
+  it('tool_result uden matchende tool_use bliver sin egen, markerede blok', () => {
+    const blocks = [{ type: 'tool_result', tool_use_id: 'ukendt', status: 'done', content: 'y', name: 'bash' }]
+    expect(foldToolResults(blocks as any)).toEqual([{
+      type: 'tool_use', id: 'ukendt', name: 'bash', input: {}, status: 'done', result: 'y', anomali: 'uden-kald',
+    }])
+  })
+  it('et uparret resultat bevarer sin fejl', () => {
+    const [b] = foldToolResults([{ type: 'tool_result', tool_use_id: 'x', is_error: true, content: 'boom' }] as any)
+    expect(b).toMatchObject({ status: 'error', anomali: 'uden-kald', name: 'ukendt værktøj' })
+  })
+  it('et parret resultat får ingen anomali', () => {
+    const ud = foldToolResults([
+      { type: 'tool_use', id: 'a', name: 'bash', input: {} },
+      { type: 'tool_result', tool_use_id: 'a', status: 'done', content: 'ok' },
+    ] as any)
+    expect(ud).toHaveLength(1)
+    expect((ud[0] as any).anomali).toBeUndefined()
   })
   it('bevarer progress-blokke (droppes ikke) med normaliseret status', () => {
     const blocks = [

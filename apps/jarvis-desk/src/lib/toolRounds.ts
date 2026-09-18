@@ -28,7 +28,10 @@ export type RenderBlock = ContentBlock | ToolGroupBlock
 function erSamlbar(b: RenderBlock): b is Extract<ContentBlock, { type: 'tool_use' }> {
   // Skill-kald står på deres egen linje (lib/skillLinje.ts) — i en runde ville
   // «hvilken skill, og blev den indlæst» forsvinde i «Kørte 3 ting».
-  return b.type === 'tool_use' && b.status !== 'error' && b.name !== 'pause_and_ask' && !SKILL_VAERKTOEJER.has(b.name)
+  // En anomali (resultat uden kald / kald uden resultat) står også alene: den
+  // er lige så meget noget man leder efter som en fejl.
+  return b.type === 'tool_use' && b.status !== 'error' && !b.anomali
+    && b.name !== 'pause_and_ask' && !SKILL_VAERKTOEJER.has(b.name)
 }
 
 export function groupToolRounds(blocks: RenderBlock[]): RenderBlock[] {

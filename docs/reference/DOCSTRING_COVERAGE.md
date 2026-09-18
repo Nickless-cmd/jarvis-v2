@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7698/14933 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7698/14947 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,7 +8,7 @@ Generated from source. 7698/14933 functions/methods documented (51%). The list b
 |---|---|---|---|
 | `apps.api.jarvis_api` | 34 | 36 | 94% |
 | `apps.api.jarvis_api.middleware` | 8 | 19 | 42% |
-| `apps.api.jarvis_api.routes` | 654 | 855 | 76% |
+| `apps.api.jarvis_api.routes` | 654 | 869 | 75% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 69 | 171 | 40% |
 | `apps.desktop` | 6 | 7 | 85% |
@@ -41,9 +41,9 @@ Generated from source. 7698/14933 functions/methods documented (51%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2134)
+## Undocumented public functions (2142)
 
-- `apps/api/jarvis_api/app.py` :: `create_app` (L207)
+- `apps/api/jarvis_api/app.py` :: `create_app` (L208)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
 - `apps/api/jarvis_api/middleware/api_connection_nerve.py` :: `ApiConnectionNerveMiddleware.dispatch` (L34)
 - `apps/api/jarvis_api/middleware/internal_discord.py` :: `dispatch` (L33)
@@ -62,6 +62,14 @@ Generated from source. 7698/14933 functions/methods documented (51%). The list b
 - `apps/api/jarvis_api/routes/central_healers.py` :: `get_healers` (L23)
 - `apps/api/jarvis_api/routes/central_healers.py` :: `set_healer` (L30)
 - `apps/api/jarvis_api/routes/central_profiles.py` :: `get_profiles` (L24)
+- `apps/api/jarvis_api/routes/cheap_lane_control.py` :: `audit` (L178)
+- `apps/api/jarvis_api/routes/cheap_lane_control.py` :: `capacity` (L109)
+- `apps/api/jarvis_api/routes/cheap_lane_control.py` :: `dashboard` (L103)
+- `apps/api/jarvis_api/routes/cheap_lane_control.py` :: `diagnostics` (L172)
+- `apps/api/jarvis_api/routes/cheap_lane_control.py` :: `export_diagnostics` (L184)
+- `apps/api/jarvis_api/routes/cheap_lane_control.py` :: `export_logs` (L141)
+- `apps/api/jarvis_api/routes/cheap_lane_control.py` :: `log_detail` (L163)
+- `apps/api/jarvis_api/routes/cheap_lane_control.py` :: `logs` (L115)
 - `apps/api/jarvis_api/routes/connectors.py` :: `delete_connector` (L46)
 - `apps/api/jarvis_api/routes/connectors.py` :: `get_connectors` (L27)
 - `apps/api/jarvis_api/routes/connectors.py` :: `post_enabled` (L35)

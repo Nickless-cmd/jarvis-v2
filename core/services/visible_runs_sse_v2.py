@@ -446,7 +446,9 @@ async def translate_to_v2(
         # ekstra event, system_event bærer stadig udfaldet (aldrig break stream).
         try:
             if structured_content_v2_enabled():
-                _is_error = str(status).strip().lower() in {"error", "failed", "denied"}
+                # Samme regel som den gemte tur — se er_fejlstatus.
+                from core.services.visible_followup_events import er_fejlstatus
+                _is_error = er_fejlstatus(status)
                 _tr_idx = _alloc_index()
                 await queue.put(_sse_format("content_block_start", {
                     "type": "content_block_start",

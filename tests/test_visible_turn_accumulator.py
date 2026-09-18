@@ -171,3 +171,44 @@ def test_aaben_tanke_uden_efterfoelger_beholder_sin_strømtid():
     tid[0] = 11.5
     a.add_thinking("b")
     assert a.thinking_seconds() == [1.5]
+
+
+# ── Udfaldet skal overleve lagringen (18/9-2026) ─────────────────────────
+#
+# Her stod «done»/False hardkodet. Maalt paa CT105: 4.885 af 4.885 gemte
+# resultater var succeser. Live stod en fejl alene i traaden (stroemmen bar
+# status); efter genindlaesning var den foldet ind i gruppen som en succes.
+
+def test_en_fejl_gemmes_som_en_fejl():
+    from core.services.visible_followup_events import ToolResult
+    a = TurnAccumulator()
+    a.add_tools([], [ToolResult("c1", "bash", "exit 1", status="error")])
+    assert a.tool_results == [
+        {"tool_use_id": "c1", "status": "error", "content": "exit 1", "is_error": True},
+    ]
+
+
+def test_samme_regel_som_stroemmen():
+    # Stroemmen afgoer fejl med er_fejlstatus. Var reglen skrevet to steder,
+    # kunne de to sider vaere uenige om samme kald.
+    from core.services.visible_followup_events import FEJL_STATUSSER, ToolResult
+    for s in FEJL_STATUSSER:
+        a = TurnAccumulator()
+        a.add_tools([], [ToolResult("c1", "x", "y", status=s.upper())])
+        assert a.tool_results[0]["is_error"] is True, s
+    a = TurnAccumulator()
+    a.add_tools([], [ToolResult("c1", "x", "y", status="ok")])
+    assert a.tool_results[0]["is_error"] is False
+
+
+def test_hele_kaeden_fra_runde_til_gemt_blok():
+    """Fra vaerktoejslagets runde-resultat til den blok der gemmes i content_json."""
+    from core.services.visible_followup_results import to_followup_results
+    kald = [{"id": "c1", "name": "bash", "input": {"command": "false"}},
+            {"id": "c2", "name": "read_file", "input": {"path": "x"}}]
+    runde = [{"tool_name": "bash", "status": "error", "result_text": "exit 1"},
+             {"tool_name": "read_file", "status": "ok", "result_text": "indhold"}]
+    a = TurnAccumulator()
+    a.add_tools(kald, to_followup_results(kald, runde, {}))
+    udfald = {r["tool_use_id"]: r["status"] for r in a.tool_results}
+    assert udfald == {"c1": "error", "c2": "done"}

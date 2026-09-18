@@ -117,12 +117,18 @@ class TurnAccumulator:
                         else (tc.get("input") if isinstance(tc, dict) else None)
                     ),
                 })
+            # Udfaldet foelger med — med SAMME regel som stroemmen, saa en fejl
+            # der stod alene live ogsaa staar alene efter genindlaesning. Her
+            # stod «done»/False hardkodet: 4.885 af 4.885 gemte resultater paa
+            # CT105 var succeser (maalt 18/9-2026).
+            from core.services.visible_followup_events import er_fejlstatus
             for r in (results or []):
+                fejl = er_fejlstatus(getattr(r, "status", ""))
                 self.tool_results.append({
                     "tool_use_id": str(getattr(r, "tool_call_id", "") or ""),
-                    "status": "done",
+                    "status": "error" if fejl else "done",
                     "content": str(getattr(r, "content", "") or ""),
-                    "is_error": False,
+                    "is_error": fejl,
                 })
         except Exception:
             pass

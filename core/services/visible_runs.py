@@ -2552,55 +2552,13 @@ async def _stream_visible_run(
                     decision-noter. _a_parts forbliver ren (persist + resolution-tjek)."""
                     return _dss.compose_exchange_text(_a_parts, _ds_active)
 
-                def _to_followup_results(
-                    tool_calls: list[dict],
-                    round_results: list[dict[str, object]],
-                    resolved_texts: dict[int, str],
-                ) -> list[_vf.ToolResult]:
-                    out: list[_vf.ToolResult] = []
-                    for _idx, _tc in enumerate(tool_calls):
-                        _sr = round_results[_idx] if _idx < len(round_results) else {}
-                        _content = str(
-                            resolved_texts.get(_idx, (_sr or {}).get("result_text", "")) or ""
-                        ).strip()
-                        _tc_name = str(
-                            (_sr or {}).get("tool_name")
-                            or ((_tc.get("function") or {}).get("name") or _tc.get("name") or "tool")
-                        )
-                        if not _content:
-                            if _idx >= len(round_results):
-                                _content = (
-                                    f"[{_tc_name}]: Tool call was not executed in this round "
-                                    "(bounded tool-execution limit reached)."
-                                )
-                            else:
-                                _content = f"[{_tc_name}]: Tool call completed with no output."
-                        out.append(
-                            _vf.ToolResult(
-                                tool_call_id=str(_tc.get("id") or ""),
-                                tool_name=_tc_name,
-                                content=_content,
-                                image_data_url=str(
-                                    ((_sr or {}).get("result") or {}).get("image_data_url") or ""
-                                ),
-                            )
-                        )
-                    # #2 Per-runde-nudge (ReAct "Observation → Thought"): append en KORT
-                    # statisk instruks til det SIDSTE tool-resultat, så modellen møder den
-                    # lige før den beslutter næste runde. Statisk + append-only → cache-
-                    # sikker; via _to_followup_results (delt af first-pass + ALLE agentiske
-                    # runder) rammer den alle providers ens. Reinforcer 🎬-kontrakten (#1).
-                    if out:
-                        _ln = out[-1]
-                        out[-1] = _vf.ToolResult(
-                            tool_call_id=_ln.tool_call_id,
-                            tool_name=_ln.tool_name,
-                            image_data_url=_ln.image_data_url,
-                            content=(_ln.content.rstrip() + "\n\n(⟳ Før du fortsætter: "
-                                     "skriv én kort sætning om hvad disse resultater "
-                                     "betyder og hvad du gør nu.)"),
-                        )
-                    return out
+                # Udskilt til visible_followup_results (Boy Scout, 18/9-2026) —
+                # og baerer nu kaldets status, saa en fejl ogsaa er en fejl i den
+                # gemte tur. Navnet bindes her, fordi begge kalde-steder nedenfor
+                # bruger det.
+                from core.services.visible_followup_results import (
+                    to_followup_results as _to_followup_results,
+                )
 
                 _fp_followup_results = _to_followup_results(
                     _collected_native_tool_calls,

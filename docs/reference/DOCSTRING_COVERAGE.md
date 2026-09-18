@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7735/15013 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7735/15016 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 7735/15013 functions/methods documented (51%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 657 | 1212 | 54% |
-| `core.services` | 5144 | 10309 | 49% |
+| `core.services` | 5144 | 10312 | 49% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 109 | 184 | 59% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -41,7 +41,7 @@ Generated from source. 7735/15013 functions/methods documented (51%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2150)
+## Undocumented public functions (2152)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L208)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1925,7 +1925,9 @@ Generated from source. 7735/15013 functions/methods documented (51%). The list b
 - `core/services/visible_followup_adapters.py` :: `CodexFollowupAdapter.stream_followup` (L1294)
 - `core/services/visible_followup_adapters.py` :: `OllamaFollowupAdapter.stream_followup` (L230)
 - `core/services/visible_followup_adapters.py` :: `OpenAICompatFollowupAdapter.stream_followup` (L796)
-- `core/services/visible_followup_events.py` :: `FollowupAdapter.stream_followup` (L172)
+- `core/services/visible_followup_events.py` :: `FollowupAdapter.stream_followup` (L197)
+- `core/services/visible_followup_events.py` :: `er_fejlstatus` (L166)
+- `core/services/visible_followup_results.py` :: `to_followup_results` (L35)
 - `core/services/visible_model.py` :: `available_ollama_models_for_visible_target` (L395)
 - `core/services/visible_model.py` :: `available_provider_models` (L172)
 - `core/services/visible_model.py` :: `execute_visible_model` (L264)
@@ -1943,19 +1945,19 @@ Generated from source. 7735/15013 functions/methods documented (51%). The list b
 - `core/services/visible_runs.py` :: `VisibleRunController.cancel` (L466)
 - `core/services/visible_runs.py` :: `VisibleRunController.clear_stream` (L463)
 - `core/services/visible_runs.py` :: `VisibleRunController.is_cancelled` (L473)
-- `core/services/visible_runs.py` :: `cancel_visible_run` (L7138)
-- `core/services/visible_runs.py` :: `get_active_visible_run` (L7163)
-- `core/services/visible_runs.py` :: `get_last_visible_capability_use` (L7367)
-- `core/services/visible_runs.py` :: `get_last_visible_run_outcome` (L7363)
-- `core/services/visible_runs.py` :: `get_visible_run_controller` (L7134)
-- `core/services/visible_runs.py` :: `get_visible_selected_work_item` (L7276)
-- `core/services/visible_runs.py` :: `get_visible_selected_work_note` (L7328)
-- `core/services/visible_runs.py` :: `get_visible_selected_work_surface` (L7245)
-- `core/services/visible_runs.py` :: `get_visible_work` (L7186)
-- `core/services/visible_runs.py` :: `get_visible_work_surface` (L7218)
-- `core/services/visible_runs.py` :: `register_visible_run` (L7096)
-- `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L7384)
-- `core/services/visible_runs.py` :: `unregister_visible_run` (L7149)
+- `core/services/visible_runs.py` :: `cancel_visible_run` (L7096)
+- `core/services/visible_runs.py` :: `get_active_visible_run` (L7121)
+- `core/services/visible_runs.py` :: `get_last_visible_capability_use` (L7325)
+- `core/services/visible_runs.py` :: `get_last_visible_run_outcome` (L7321)
+- `core/services/visible_runs.py` :: `get_visible_run_controller` (L7092)
+- `core/services/visible_runs.py` :: `get_visible_selected_work_item` (L7234)
+- `core/services/visible_runs.py` :: `get_visible_selected_work_note` (L7286)
+- `core/services/visible_runs.py` :: `get_visible_selected_work_surface` (L7203)
+- `core/services/visible_runs.py` :: `get_visible_work` (L7144)
+- `core/services/visible_runs.py` :: `get_visible_work_surface` (L7176)
+- `core/services/visible_runs.py` :: `register_visible_run` (L7054)
+- `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L7342)
+- `core/services/visible_runs.py` :: `unregister_visible_run` (L7107)
 - `core/services/visible_runs_learning_signals.py` :: `record_visible_run_learning_signals` (L53)
 - `core/services/visible_runs_outcomes.py` :: `set_last_visible_run_outcome` (L566)
 - `core/services/visible_runs_sse_v2.py` :: `ToolEchoFilter.feed` (L102)
@@ -1967,7 +1969,7 @@ Generated from source. 7735/15013 functions/methods documented (51%). The list b
 - `core/services/visible_terminal_policy.py` :: `is_recoverable_exit_reason` (L55)
 - `core/services/visible_terminal_policy.py` :: `recovery_notice` (L128)
 - `core/services/visible_turn_accumulator.py` :: `TurnAccumulator.close_segment` (L72)
-- `core/services/visible_turn_accumulator.py` :: `TurnAccumulator.close_thinking` (L150)
+- `core/services/visible_turn_accumulator.py` :: `TurnAccumulator.close_thinking` (L156)
 - `core/services/visible_turn_accumulator.py` :: `TurnAccumulator.note_text` (L76)
 - `core/services/visible_turn_accumulator.py` :: `TurnAccumulator.note_tool` (L80)
 - `core/services/vision_backend.py` :: `build_vision_backend_surface` (L237)

@@ -140,6 +140,31 @@ class ToolResult:
     # adapterne sender det som en efterfoelgende user-besked. Aldring rydder
     # feltet med vilje — gamle billeder skal falde ud af konteksten.
     image_data_url: str = ""
+    # Kaldets udfald som vaerktoejslaget meldte det («ok», «error», «blocked» …).
+    # Uden feltet kunne den gemte tur kun gaette, og den gaettede «done» for
+    # ALT: 4.885 af 4.885 gemte resultater paa CT105 18/9-2026. Live stod en
+    # fejl alene i traaden; efter genindlaesning var den en succes.
+    status: str = ""
+
+
+# Hvilke udfald er en FEJL. Ét sted paa serveren, fordi to steder afgoer det:
+# stroemmen (visible_runs_sse_v2) og den gemte tur (visible_turn_accumulator).
+# Var reglen skrevet to gange, kunne en fejl staa alene live og forsvinde ved
+# genindlaesning — det var praecis hvad der skete.
+#
+# Maengden er DESK' maengde (`FEJL_STATUS` i apps/jarvis-desk/src/lib/
+# streamReducer.ts), fordi det er den brugeren ser live. Serveren havde kun
+# {error, failed, denied}; desk regnede ogsaa blocked/timeout/… som fejl. En
+# blokeret skrivning stod altsaa alene live og blev en succes efter
+# genindlaesning. tests/test_fejlstatus_paritet.py laeser desk-filen og holder
+# de to ens.
+FEJL_STATUSSER = frozenset({
+    "error", "failed", "blocked", "denied", "rejected", "timeout", "cancelled", "canceled",
+})
+
+
+def er_fejlstatus(status: object) -> bool:
+    return str(status or "").strip().lower() in FEJL_STATUSSER
 
 
 @dataclass(frozen=True, slots=True)

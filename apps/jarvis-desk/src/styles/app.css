@@ -240,7 +240,7 @@
    raekke ud som fire ligestillede knapper. */
 .mode-bladrer { display: flex; align-items: center; gap: 0; }
 .mode-bladrer + .icon-btn { margin-left: 4px; padding-left: 6px;
-  border-left: 1px solid var(--line, #2a2a29); border-radius: 0 6px 6px 0; }
+  border-left: 1px solid var(--line); border-radius: 0 6px 6px 0; }
 
 .sidebar-top .icon-btn { flex: none; }
 
@@ -3647,3 +3647,58 @@ body.egen-ramme .main { padding-top: 34px; }
   background: var(--accent);
 }
 .sidebar-greb:focus-visible { outline: none; }
+
+/* ── Vælgere i miljø-panelet (Bjørn 18/9-2026) ────────────────────────────
+   Branch og arbejdsmappe var rene etiketter. Nu er de dropdowns, men de skal
+   stadig LIGNE etiketter i hvile — panelet er en statuslinje, ikke en
+   værktøjslinje. Derfor ingen ramme før hover. */
+.env-dd { position: relative; }
+.env-dd-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: none; border: 1px solid transparent; border-radius: 6px;
+  padding: 2px 6px; cursor: pointer; font: inherit; color: inherit;
+}
+.env-dd-btn:hover { border-color: var(--line); background: var(--bg-2); }
+.env-dd-caret { opacity: 0.5; font-size: 10px; margin-left: 1px; }
+
+.env-dd-menu {
+  position: absolute; z-index: 40; top: calc(100% + 4px); left: 0;
+  min-width: 260px; max-width: 380px;
+  background: var(--bg-2); border: 1px solid var(--line);
+  border-radius: 8px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  padding: 4px; display: flex; flex-direction: column; gap: 2px;
+}
+.env-dd-overskrift {
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em;
+  opacity: 0.55; padding: 6px 8px 2px;
+}
+.env-dd-soeg {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 8px; border-bottom: 1px solid var(--line);
+}
+.env-dd-soeg input {
+  flex: 1; background: none; border: none; outline: none;
+  color: inherit; font: inherit; font-size: 12px; min-width: 0;
+}
+/* Loftet er det der gør en liste til en liste: 40+ branches må ikke skubbe
+   opret-knappen ud af skærmen. */
+.env-dd-liste { max-height: 240px; overflow-y: auto; display: flex; flex-direction: column; }
+.env-dd-liste button {
+  display: flex; align-items: center; gap: 6px; text-align: left;
+  background: none; border: none; color: inherit; font: inherit; font-size: 12px;
+  padding: 5px 8px; border-radius: 5px; cursor: pointer; width: 100%;
+}
+.env-dd-liste button:hover:not(:disabled) { background: var(--bg-3); }
+.env-dd-liste button.active { color: var(--accent); }
+.env-dd-plads { width: 12px; display: inline-block; }
+.env-dd-sti { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: rtl; }
+.env-dd-tom { padding: 8px; font-size: 12px; opacity: 0.6; display: flex; gap: 6px; align-items: center; }
+.env-dd-opret {
+  display: flex; align-items: center; gap: 6px; width: 100%;
+  background: none; border: none; border-top: 1px solid var(--line);
+  color: inherit; font: inherit; font-size: 12px; padding: 7px 8px;
+  cursor: pointer; border-radius: 0 0 6px 6px; text-align: left;
+}
+.env-dd-opret:hover:not(:disabled) { background: var(--bg-3); }
+.env-dd-opret:disabled { opacity: 0.45; cursor: default; }
+.env-dd-fejl { padding: 6px 8px; font-size: 11px; color: var(--danger); }

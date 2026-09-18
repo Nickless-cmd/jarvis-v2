@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { GitBranch, Monitor, Server, Globe, Bot, Settings, Activity, GitCompare, GitCommitHorizontal, Github } from 'lucide-react'
+import { BranchVaelger } from './BranchVaelger'
+import { WorkspaceVaelger } from './WorkspaceVaelger'
+import { Globe, Bot, Settings, Activity, GitCompare, GitCommitHorizontal, Github } from 'lucide-react'
 import { RunHealth } from './RunHealth'
 import { getGitStatus, commitAllChanges, createPullRequest, type GitStatus, type ApiConfig } from '../../lib/api'
 import { lookupTool } from '../../lib/toolRegistry'
@@ -33,6 +35,7 @@ export function EnvironmentPanel({
   isOwner = false, onChanged,
   onOpenAgent, onOpenSource, onOpenTool,
   gitMissing = false, installingTool = '', onInstallTool, komprimerVed = 0, kontekstTokens,
+  onVaelgWorkspace,
 }: {
   config?: ApiConfig
   kind: 'container' | 'workstation'
@@ -46,6 +49,8 @@ export function EnvironmentPanel({
   sessionId?: string | null
   hasHistory?: boolean
   isOwner?: boolean
+  /** En anden arbejdsmappe blev valgt (betroet mappe eller ny worktree). */
+  onVaelgWorkspace?: (valg: { kind: string; root: string }) => void
   onChanged?: () => void
   onOpenAgent?: (agent: AgentReference) => void
   onOpenSource?: (source: SourceEvidence) => void
@@ -170,11 +175,18 @@ export function EnvironmentPanel({
               </li>
             )}
             <li className="env-row">
-              <span className="env-label">{kind === 'workstation' ? <Monitor size={13} /> : <Server size={13} />} {kind === 'workstation' ? 'Workstation' : 'Server'}</span>
+              {/* Var en ren etiket. Nu en vaelger: betroede mapper og ny lokal
+                  worktree (Bjoern 18/9-2026). */}
+              <WorkspaceVaelger config={config} kind={kind} root={root} onVaelg={onVaelgWorkspace} />
             </li>
             {git?.is_git && (
               <li className="env-row">
-                <span className="env-label"><GitBranch size={13} /> {git.branch}</span>
+                {/* Ligesaa: branchen kunne kun laeses, ikke skiftes. */}
+                <BranchVaelger
+                  config={config} kind={kind} root={root}
+                  aktuel={git.branch}
+                  onSkiftet={() => onChanged?.()}
+                />
               </li>
             )}
             {canGit && git?.is_git && (

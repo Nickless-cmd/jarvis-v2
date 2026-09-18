@@ -2,12 +2,15 @@ import { useCallback, useEffect, useState } from 'react'
 import type { ApiConfig } from '../../../lib/api'
 import {
   getBalancerState, getHistorik, getFejl, getTidsserie, getRegistret,
-  slotHandling, refreshPool, saetModel,
+  slotHandling, refreshPool,
   type BalancerState, type Historik, type FejlSvar, type TidsserieSpand, type Registret,
 } from '../../../lib/cheapLaneApi'
 import { useCheapLaneStore } from '../../../lib/cheapLaneStore'
 import { CheapLaneOverview } from './CheapLaneOverview'
 import { CheapLaneCapacity } from './CheapLaneCapacity'
+import { CheapLaneProviders } from './CheapLaneProviders'
+import { CheapLaneInspector } from './CheapLaneInspector'
+import { udfoerKontrol } from '../../../lib/cheapLaneApi'
 
 /**
  * Cheap Lane — hele lanen på én flade.
@@ -67,6 +70,11 @@ export function CheapLanePanel({ config }: { config?: ApiConfig }) {
   // Oversigt og kapacitet kommer fra ÉT snapshot med Centrals strøm som puls.
   // De øvrige faner henter stadig hver for sig indtil opgave 11-12 flytter dem.
   const butik = useCheapLaneStore(config, timer)
+  // Inspektøren er DELT: to åbne detaljer ville lade brugeren se to ting og
+  // tro det var den samme. `åbnetFra` bærer rækken fokus skal tilbage til.
+  const [valgt, setValgt] = useState<{ provider: string; model: string } | null>(null)
+  const [åbnetFra, setÅbnetFra] = useState<HTMLElement | null>(null)
+
 
   const hent = useCallback(async () => {
     if (!config) return
@@ -88,6 +96,17 @@ export function CheapLanePanel({ config }: { config?: ApiConfig }) {
   }, [config, timer])
 
   useEffect(() => { void hent() }, [hent])
+
+  // Hver kontrol-handling er en skrivning med revisionsspor. Efter den skal
+  // billedet hentes igen — ellers viser skærmen tilstanden FØR handlingen.
+  const kontrol = useCallback(async (k: { action: string; target: string; reason?: string;
+    expected_revision?: string; parameters?: Record<string, unknown> }) => {
+    if (!config) throw new Error('ingen forbindelse')
+    const svar = await udfoerKontrol(config, k)
+    butik.refresh()
+    void hent()
+    return svar
+  }, [config, butik, hent])
 
   const handling = async (fn: () => Promise<unknown>, hvad: string) => {
     try {
@@ -203,48 +222,38 @@ export function CheapLanePanel({ config }: { config?: ApiConfig }) {
       )}
 
       {fane === 'udbydere' && (
-        <div className="cl-udbydere">
-          <p className="cl-note">
-            Her ændres <strong>registret</strong>. En model slået fra bliver væk af puljen
-            ved næste opbygning — også efter en genstart. Hver ændring tager backup først.
-          </p>
-          <table className="mc-tabel">
-            <thead>
-              <tr><th>Udbyder</th><th>Model</th><th>Lane</th><th>Kald ({timer} t)</th>
-                <th>Succes</th><th>p50</th><th>Status</th><th></th></tr>
-            </thead>
-            <tbody>
-              {(registret?.modeller ?? [])
-                .filter((m) => (m.lane ?? '') === 'cheap')
-                .map((m) => {
-                  const brug = (historik?.udbydere ?? []).filter(
-                    (u) => u.provider === m.provider && u.model === m.model)
-                  const kald = brug.reduce((n, u) => n + u.kald, 0)
-                  const ok = brug.reduce((n, u) => n + u.ok, 0)
-                  return (
-                    <tr key={`${m.provider}/${m.model}`} className={m.enabled ? '' : 'cl-inaktiv'}>
-                      <td>{m.provider}</td>
-                      <td className="cl-model">{m.model}</td>
-                      <td>{m.lane}</td>
-                      <td>{kald}</td>
-                      <td>{kald ? pct(ok / kald) : '–'}</td>
-                      <td>{brug[0]?.latens_p50_ms ? `${brug[0].latens_p50_ms} ms` : '–'}</td>
-                      <td title={m.disabled_reason ?? ''}>
-                        {m.enabled ? 'aktiv' : `slået fra${m.disabled_reason ? ` — ${m.disabled_reason}` : ''}`}
-                      </td>
-                      <td className="cl-knapper">
-                        <button type="button" onClick={() => void handling(
-                          () => saetModel(config, String(m.provider), String(m.model), !m.enabled,
-                            m.enabled ? 'slået fra fra desk' : ''),
-                          m.enabled ? 'Model slået fra' : 'Model slået til')}>
-                          {m.enabled ? 'Slå fra' : 'Slå til'}
-                        </button>
-                      </td>
-                    </tr>
-                  )
-                })}
-            </tbody>
-          </table>
+        <div className="cl-med-inspektor">
+          <div>
+            <p className="cl-note">
+              Her ændres <strong>registret</strong>. «Pause» er balancerens egen tilstand og
+              er væk ved næste opbygning; «Deaktivér» overlever en genstart; «Fjern» kan ikke
+              fortrydes. Hver ændring skrives i revisionssporet.
+            </p>
+            <CheapLaneProviders
+              registret={registret}
+              udfoer={kontrol}
+              onInspicer={(provider, model) => {
+                setÅbnetFra(document.activeElement as HTMLElement | null)
+                setValgt({ provider, model })
+              }}
+            />
+          </div>
+          {valgt && (
+            <CheapLaneInspector
+              titel={valgt.provider}
+              undertitel={valgt.model}
+              tilbageTil={åbnetFra}
+              onLuk={() => setValgt(null)}
+              felter={[
+                { navn: 'Lane', vaerdi: 'cheap', maerkat: true },
+                { navn: 'Status', vaerdi: (registret?.modeller ?? []).find(
+                    (m) => m.provider === valgt.provider && m.model === valgt.model)?.enabled
+                    ? 'aktiv' : 'slået fra' },
+                { navn: 'Slots i puljen', vaerdi: String((state?.slots ?? []).filter(
+                    (x) => x.provider === valgt.provider && x.model === valgt.model).length) },
+              ]}
+            />
+          )}
         </div>
       )}
 

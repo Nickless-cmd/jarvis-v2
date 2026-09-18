@@ -126,3 +126,97 @@
   position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
   overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
 }
+
+/* ── udbydere, handlinger og inspektør ──────────────────────────────── */
+
+.cl-soeg-raekke {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  margin-bottom: 8px; font-size: 12px;
+}
+.cl-soeg-raekke label { display: flex; align-items: center; gap: 6px; color: var(--fg-3); }
+.cl-soeg-raekke input {
+  background: var(--bg-2); border: 1px solid var(--line); border-radius: 6px;
+  padding: 4px 8px; color: var(--fg-1); font: inherit; font-size: 12px; min-width: 200px;
+}
+
+.cl-tabel { width: 100%; border-collapse: collapse; font-size: 12px; }
+.cl-tabel th, .cl-tabel td {
+  padding: 5px 9px; text-align: left; border-bottom: 1px solid var(--line);
+  color: var(--fg-2); vertical-align: middle;
+}
+.cl-tabel thead th { color: var(--fg-3); font-weight: 400; font-size: 11px; }
+
+.cl-linkknap {
+  background: none; border: none; padding: 0; font: inherit; color: var(--fg-1);
+  text-decoration: underline; text-underline-offset: 2px; cursor: pointer;
+}
+.cl-status-aktiv { color: var(--accent); }
+.cl-status-fra { color: var(--fg-3); }
+
+.cl-handlinger { display: flex; gap: 5px; flex-wrap: wrap; }
+.cl-handling {
+  background: var(--bg-3); border: 1px solid var(--line); border-radius: 6px;
+  padding: 2px 8px; font: inherit; font-size: 11px; color: var(--fg-2); cursor: pointer;
+}
+.cl-handling:hover:not(:disabled) { color: var(--fg-1); border-color: var(--fg-3); }
+.cl-handling:disabled { opacity: 0.5; cursor: wait; }
+/* Varigheden skal kunne SES: en pause og en sletning må ikke ligne hinanden. */
+.cl-handling-advarsel { color: var(--warn-fg, #d0a215); }
+.cl-handling-destruktiv { color: var(--error-fg, #d9534f); }
+
+/* Fejlen bliver stående — en besked der forsvinder, er en besked ingen læste. */
+.cl-handling-fejl { font-size: 11px; color: var(--error-fg, #d9534f); }
+
+.cl-dialog-baggrund {
+  position: fixed; inset: 0; z-index: 200; display: grid; place-items: center;
+  background: rgba(0, 0, 0, 0.45);
+}
+.cl-dialog {
+  width: min(420px, 90vw); padding: 16px; border-radius: 12px;
+  background: var(--bg-2); border: 1px solid var(--line);
+  display: flex; flex-direction: column; gap: 10px;
+}
+.cl-dialog h4 { margin: 0; font-size: 14px; color: var(--fg-1); }
+.cl-dialog-tekst, .cl-dialog-advarsel { margin: 0; font-size: 12px; color: var(--fg-2); }
+.cl-dialog-advarsel {
+  display: flex; align-items: flex-start; gap: 7px;
+  color: var(--error-fg, #d9534f);
+}
+.cl-dialog label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--fg-3); }
+.cl-dialog input {
+  background: var(--bg-3); border: 1px solid var(--line); border-radius: 6px;
+  padding: 6px 9px; color: var(--fg-1); font: inherit; font-size: 12px;
+}
+.cl-dialog-knapper { display: flex; justify-content: flex-end; gap: 8px; }
+.cl-dialog-knapper button {
+  background: var(--bg-3); border: 1px solid var(--line); border-radius: 6px;
+  padding: 5px 12px; font: inherit; font-size: 12px; color: var(--fg-2); cursor: pointer;
+}
+.cl-dialog-knapper .cl-primaer { background: var(--accent); color: var(--accent-text, #06130d); border-color: transparent; }
+.cl-dialog-knapper button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Tabellen og detaljen ved siden af hinanden — og under hinanden når der
+   ikke er plads. Ingen viewport-skalering: teksten skal have samme størrelse
+   uanset hvor bredt panelet står. */
+.cl-med-inspektor {
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 300px); gap: 12px;
+}
+@media (max-width: 900px) {
+  .cl-med-inspektor { grid-template-columns: minmax(0, 1fr); }
+}
+
+.cl-inspektor {
+  background: var(--bg-2); border: 1px solid var(--line); border-radius: 10px;
+  padding: 12px; align-self: start;
+}
+.cl-inspektor:focus { outline: 1px solid var(--accent); outline-offset: 2px; }
+.cl-inspektor-hoved { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.cl-inspektor-hoved h4 { margin: 0; font-size: 13px; color: var(--fg-1); }
+.cl-inspektor-hoved p { margin: 2px 0 0; font-size: 11px; }
+.cl-inspektor-hoved button {
+  background: none; border: none; color: var(--fg-3); cursor: pointer; padding: 2px;
+}
+.cl-inspektor-felter { margin: 10px 0 0; display: grid; gap: 6px; font-size: 12px; }
+.cl-inspektor-felter div { display: flex; justify-content: space-between; gap: 10px; }
+.cl-inspektor-felter dt { color: var(--fg-3); }
+.cl-inspektor-felter dd { margin: 0; color: var(--fg-1); }

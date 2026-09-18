@@ -117,15 +117,21 @@ describe('CheapLanePanel', () => {
     expect(model).not.toHaveBeenCalled()
   })
 
-  it('«slå fra» på udbydere rammer REGISTRET, ikke slottet', async () => {
+  it('«deaktivér» på udbydere rammer REGISTRET, ikke slottet', async () => {
+    // Samme skel som før, men gennem den reviderede kontrol-rute (18/9-2026):
+    // handlingen skrives i revisionssporet og kræver en grund.
     const slot = vi.spyOn(api, 'slotHandling').mockResolvedValue({ status: 'ok' })
-    const model = vi.spyOn(api, 'saetModel').mockResolvedValue({ status: 'ok' })
+    const kontrol = vi.spyOn(api, 'udfoerKontrol').mockResolvedValue({ status: 'ok' })
     const bruger = userEvent.setup()
     render(<CheapLanePanel config={config} />)
     await waitFor(() => expect(screen.getByRole('button', { name: 'Udbydere' })).toBeInTheDocument())
     await bruger.click(screen.getByRole('button', { name: 'Udbydere' }))
-    await bruger.click(screen.getByRole('button', { name: 'Slå fra' }))
-    expect(model).toHaveBeenCalledWith(config, 'zai', 'glm-4', false, 'slået fra fra desk')
+    await bruger.click(screen.getByRole('button', { name: /^Deaktivér glm-4/ }))
+    await bruger.type(screen.getByLabelText(/grund/i), 'for dyr')
+    await bruger.click(screen.getByRole('button', { name: 'Bekræft' }))
+    expect(kontrol).toHaveBeenCalledWith(config, expect.objectContaining({
+      action: 'model.deactivate', target: 'zai/glm-4', reason: 'for dyr',
+    }))
     expect(slot).not.toHaveBeenCalled()
   })
 

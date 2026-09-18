@@ -1541,7 +1541,10 @@ async def _stream_visible_run(
     # Scout). De tre variable herunder er nu VISNINGER ind i den, så de mange
     # aflæsninger længere nede kan blive stående uændret — men beslutningen og
     # dens vagt kan ikke længere komme ud af trit.
-    from core.services.visible_run_outcome_state import RunOutcomeState as _ROS
+    from core.services.visible_run_outcome_state import (
+        CANCELLED as _CANCELLED_STATUS,
+        RunOutcomeState as _ROS,
+    )
     _outcome_state = _ROS()
     # RUNTIME-CUTOFF-ROD (Bjørn 4. jul): en run der når `finally` UDEN at have
     # passeret et finaliserings-punkt (agentisk done / non-agentisk done) blev
@@ -3336,7 +3339,16 @@ async def _stream_visible_run(
                                 # Check for controller cancellation (Cancel button)
                                 if controller.is_cancelled():
                                     _agentic_loop_exit_reason = "user-cancelled"
-                                    _outcome_state.mark("interrupted", finalized=False)
+                                    # «cancelled», IKKE «interrupted». Stop-endepunktet har
+                                    # allerede skrevet brugerens stop durabelt ned via
+                                    # settle_user_stop (explicit_user_cancel=True). Markerede vi
+                                    # her «interrupted», overskrev vi den beslutning — og en
+                                    # afbrudt tur er en genoptagelses-kandidat, mens en annulleret
+                                    # ikke er. Maalt 18/9-2026: tre ture stod som
+                                    # interrupted/user-cancelled-during-agentic-loop og blev
+                                    # tilbudt igen, mens de to stop der ramte uden for loekken
+                                    # korrekt stod som cancelled.
+                                    _outcome_state.mark(_CANCELLED_STATUS, finalized=False)
                                     _outcome_state.set_error("user-cancelled-during-agentic-loop")
                                     try:
                                         from core.services.agentic_checkpoints import save_checkpoint as _save_agentic_checkpoint
@@ -3972,7 +3984,9 @@ async def _stream_visible_run(
                     # ── Check for user cancellation (Cancel button) ──
                     if controller.is_cancelled():
                         _agentic_loop_exit_reason = "user-cancelled"
-                        _outcome_state.mark("interrupted", finalized=False)
+                        # Se noten ved den anden afbrydelses-kontrol: «cancelled» maa ikke
+                        # blive til «interrupted», ellers genoptages brugerens eget stop.
+                        _outcome_state.mark(_CANCELLED_STATUS, finalized=False)
                         _outcome_state.set_error("user-cancelled-during-agentic-loop")
                         try:
                             from core.services.agentic_checkpoints import save_checkpoint as _save_agentic_checkpoint

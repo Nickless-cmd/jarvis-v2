@@ -1,113 +1,92 @@
-"""Et synligt runs terminale beslutning, og vagten mod en optimistisk standard.
-
-Udskilt fra `visible_runs.py` efter Boy Scout-reglen. Adfærden er den samme som
-de tre lokale variable havde — testene her er den beskrivelse den aldrig fik.
-
-Roden: standarden er `completed`, så et run der bliver AFBRUDT undervejs arver
-«completed» hvis ingen når at sige noget andet. Bjørn sporede den 4. juli.
-"""
 from __future__ import annotations
 
-import pytest
-
-from core.services import visible_run_outcome_state as V
-from core.services.visible_run_outcome_state import RunOutcomeState
+import ast
+import pathlib
 
 
-def test_standarden_er_optimistisk():
-    """De fleste runs lykkes. Prisen for det valg er vagten nedenfor."""
-    s = RunOutcomeState()
-    assert s.status == V.COMPLETED and s.is_default and not s.finalized
+def _kilde() -> str:
+    return pathlib.Path("core/services/visible_runs.py").read_text(encoding="utf-8")
 
 
-# ── vagten ───────────────────────────────────────────────────────────────
+def test_brugerstop_markeres_cancelled_ikke_interrupted() -> None:
+    """Brugerens eget stop må ikke se ud som en afbrudt tur.
 
-def test_en_ALDRIG_NAAET_standard_nedgraderes():
-    """Klienten dropper forbindelsen, GeneratorExit rejses, eller en
-    BaseException river funktionen op midtvejs. Uden vagten står der
-    «completed» på en samtale der aldrig fik et svar."""
-    s = RunOutcomeState()
-    assert s.downgrade_if_abandoned("GeneratorExit") is True
-    assert s.status == V.INTERRUPTED
-    assert "GeneratorExit" in s.error
+    Stop-endepunktet skriver stoppet durabelt ned via `settle_user_stop`
+    (`explicit_user_cancel=True`) FØR kørslen afbrydes. Markerede den agentiske
+    løkke derefter «interrupted», overskrev den den beslutning — og en afbrudt
+    tur er en genoptagelses-kandidat, mens en annulleret ikke er.
 
+    Målt 18/9-2026: tre ture stod som `interrupted` med grunden
+    `user-cancelled-during-agentic-loop`, mens de to stop der ramte uden for
+    løkken korrekt stod som `cancelled`. Bjørn så sine egne stop starte igen.
+    """
+    kilde = _kilde()
+    linjer = kilde.splitlines()
 
-def test_et_EKSPLICIT_completed_roeres_ikke():
-    """Det NÅEDE sin beslutning."""
-    s = RunOutcomeState()
-    s.mark(V.COMPLETED)
-    assert s.downgrade_if_abandoned("GeneratorExit") is False
-    assert s.status == V.COMPLETED
+    afbrydelser = [
+        nr for nr, linje in enumerate(linjer)
+        if "controller.is_cancelled():" in linje
+    ]
+    assert afbrydelser, "fandt ingen afbrydelses-kontrol at pinne"
 
-
-@pytest.mark.parametrize("status", [V.FAILED, V.CANCELLED, V.INTERRUPTED])
-def test_en_anden_status_nedgraderes_ikke(status):
-    s = RunOutcomeState()
-    s.mark(status, error="noget gik galt")
-    assert s.downgrade_if_abandoned() is False
-    assert s.status == status
-
-
-def test_begge_betingelser_skal_holde():
-    """Standarden urørt OG intet terminalt punkt nået."""
-    a = RunOutcomeState(); a.reach_finalization()
-    assert a.downgrade_if_abandoned() is False      # nået, men standard
-
-    b = RunOutcomeState(); b.mark(V.FAILED, finalized=False)
-    assert b.downgrade_if_abandoned() is False      # ikke nået, men ikke standard
+    for nr in afbrydelser:
+        blok = "\n".join(linjer[nr:nr + 14])
+        if "_outcome_state.mark(" not in blok:
+            continue
+        assert '_outcome_state.mark("interrupted"' not in blok, (
+            f"linje {nr + 1}: et brugerstop markeres «interrupted» og bliver "
+            "dermed genoptaget"
+        )
+        assert "_outcome_state.mark(_CANCELLED_STATUS" in blok, (
+            f"linje {nr + 1}: brugerstop skal markeres med CANCELLED"
+        )
 
 
-def test_nedgraderingen_overskriver_ikke_en_eksisterende_fejltekst():
-    s = RunOutcomeState()
-    s.set_error("den ægte årsag")
-    s.downgrade_if_abandoned("CancelledError")
-    assert s.error == "den ægte årsag"
+def test_cancelled_konstanten_er_importeret_i_samme_funktion() -> None:
+    """`_CANCELLED_STATUS` bruges dybt inde i `_stream_visible_run`.
+
+    Ligger importen i en anden funktion, giver det NameError i præcis den sti
+    der skal stoppe kørslen — altså ville stop-knappen brække i stedet for at
+    virke. Testen pinner at brug og import deler funktion.
+    """
+    kilde = _kilde()
+    traeet = ast.parse(kilde)
+    linjer = kilde.splitlines()
+
+    brug = [nr + 1 for nr, l in enumerate(linjer) if "_CANCELLED_STATUS" in l]
+    assert len(brug) >= 3, "forventede importen plus mindst to brugssteder"
+
+    def indre_funktion(linjenr: int) -> str:
+        bedst = ""
+        start = -1
+        for node in ast.walk(traeet):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                if node.lineno <= linjenr <= (node.end_lineno or node.lineno):
+                    if node.lineno > start:
+                        start, bedst = node.lineno, node.name
+        return bedst
+
+    funktioner = {indre_funktion(nr) for nr in brug}
+    assert len(funktioner) == 1, (
+        f"import og brug ligger i forskellige funktioner: {funktioner}"
+    )
+    assert funktioner != {""}, "kunne ikke bestemme funktionen"
 
 
-def test_nedgraderingen_kan_ikke_ske_to_gange():
-    s = RunOutcomeState()
-    assert s.downgrade_if_abandoned() is True
-    assert s.downgrade_if_abandoned() is False
+def test_cancelled_er_ikke_en_genoptagelses_tilstand() -> None:
+    """Politikken må ikke behandle et brugerstop som noget der kan genoptages."""
+    from core.services.visible_terminal_policy import (
+        TerminalEvidence,
+        TerminalState,
+        classify_terminal,
+    )
 
+    dom = classify_terminal(TerminalEvidence(
+        exit_reason="user-cancelled-during-agentic-loop",
+        explicit_user_cancel=True,
+    ))
 
-# ── at træffe beslutningen ER at nå den ──────────────────────────────────
-
-def test_mark_saetter_vagten_som_standard():
-    """Tre løse variable kunne komme ud af trit: man kunne sætte status uden
-    at sætte vagten, og så var nedgraderingen forkert."""
-    s = RunOutcomeState()
-    s.mark(V.FAILED, error="x")
-    assert s.finalized is True
-
-
-def test_en_status_undervejs_kan_saette_vagten_FRA():
-    s = RunOutcomeState()
-    s.mark(V.INTERRUPTED, error="midt i løkken", finalized=False)
-    assert s.status == V.INTERRUPTED and s.finalized is False
-
-
-def test_reach_finalization_aendrer_ikke_status():
-    s = RunOutcomeState()
-    s.mark(V.FAILED, error="x", finalized=False)
-    s.reach_finalization()
-    assert s.status == V.FAILED and s.finalized is True
-
-
-def test_fejlteksten_kan_saettes_uden_at_aendre_status():
-    s = RunOutcomeState()
-    s.set_error("noget")
-    assert s.status == V.COMPLETED and s.error == "noget"
-
-
-def test_mark_uden_fejl_beholder_den_gamle():
-    s = RunOutcomeState()
-    s.set_error("første")
-    s.mark(V.FAILED)
-    assert s.error == "første"
-
-
-def test_repr_viser_hele_tilstanden():
-    s = RunOutcomeState()
-    s.mark(V.FAILED, error="x")
-    r = repr(s)
-    assert "failed" in r and "finalized=True" in r
+    assert dom.state is TerminalState.CANCELLED
+    # should_continue er feltet der afgoer om turen tages op igen.
+    assert dom.should_continue is False
+    assert dom.stop_reason == "cancelled"

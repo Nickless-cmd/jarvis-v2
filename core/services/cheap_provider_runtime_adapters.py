@@ -324,7 +324,7 @@ def _execute_provider_chat(
     # streaming submodule and is only reachable via the facade re-export.
     _f = _facade()
     if provider in _OPENAI_COMPATIBLE_PROVIDERS:
-        return _f._execute_openai_compatible_chat(
+        return _with_quota_observation(provider, auth_profile, _f._execute_openai_compatible_chat(
             provider=provider,
             model=model,
             auth_profile=auth_profile,
@@ -332,54 +332,80 @@ def _execute_provider_chat(
             message=message,
             messages=messages,
             tools=tools,
-        )
+        ))
     # Text-only adapters below don't accept messages/tools. Coerce a running
     # transcript down to a single string so a tool-carrying caller still
     # degrades gracefully (text-only) instead of crashing on message=None.
     if message is None:
         message = _flatten_messages_to_text(messages)
     if provider == "gemini":
-        return _f._execute_gemini_chat(
+        return _with_quota_observation(provider, auth_profile, _f._execute_gemini_chat(
             model=model,
             auth_profile=auth_profile,
             base_url=base_url,
             message=message,
-        )
+        ))
     if provider == "cloudflare":
-        return _f._execute_cloudflare_chat(
+        return _with_quota_observation(provider, auth_profile, _f._execute_cloudflare_chat(
             model=model,
             auth_profile=auth_profile,
             base_url=base_url,
             message=message,
-        )
+        ))
     if provider == "ollamafreeapi":
-        return _f._execute_ollamafreeapi_chat(
+        return _with_quota_observation(provider, auth_profile, _f._execute_ollamafreeapi_chat(
             model=model,
             message=message,
-        )
+        ))
     if provider in ("ollama", "ollama-a2"):
         # ollama-a2 = account2's separate ollama-cloud-konto på 10.0.0.45; samme
         # native /api/chat-sti, men base_url + provider-label kommer fra slot'et.
-        return _f._execute_local_ollama_chat(
+        return _with_quota_observation(provider, auth_profile, _f._execute_local_ollama_chat(
             model=model,
             base_url=base_url,
             message=message,
             provider=provider,
-        )
+        ))
     if provider == "arko":
-        return _f._execute_arko_chat(message=message)
+        return _with_quota_observation(
+            provider, auth_profile, _f._execute_arko_chat(message=message)
+        )
     if provider == _OPENAI_CODEX_PROVIDER:
-        return _f._execute_openai_codex_chat(
+        return _with_quota_observation(provider, auth_profile, _f._execute_openai_codex_chat(
             model=model,
             auth_profile=auth_profile,
             base_url=base_url,
             message=message,
-        )
+        ))
     raise CheapProviderError(
         provider=provider,
         code="unsupported-provider",
         message=f"cheap provider not supported: {provider}",
     )
+
+
+def _with_quota_observation(
+    provider: str,
+    auth_profile: str,
+    result: dict[str, object],
+) -> dict[str, object]:
+    """Persist only explicitly normalized quota data returned by an adapter."""
+    observation = result.get("quota_observation")
+    if not isinstance(observation, dict):
+        return result
+    try:
+        from core.services.cheap_lane_quotas import observe_provider_quota
+
+        observe_provider_quota(
+            provider=provider,
+            auth_profile=auth_profile or "default",
+            observation=observation,
+        )
+    except (TypeError, ValueError):
+        # A malformed optional observation must not turn a valid model response
+        # into a provider failure. It remains visible in the raw result for diagnosis.
+        pass
+    return result
 
 
 def _execute_openai_compatible_chat(

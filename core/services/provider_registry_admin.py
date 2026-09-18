@@ -134,6 +134,7 @@ def fuld_registrering() -> dict[str, Any]:
             "updated_at": p.get("updated_at"),
             "model_count": len(modeller),
             "enabled_model_count": sum(1 for m in modeller if bool(m.get("enabled", True))),
+            "quota_policy": list(p.get("quota_policy") or []),
         })
 
     modeller = [{
@@ -169,6 +170,88 @@ def fuld_registrering() -> dict[str, Any]:
 
 
 # ── skrivning ─────────────────────────────────────────────────────────────
+
+_KVOTE_PERIODER = {"minute", "day", "week", "month"}
+_KVOTE_ENHEDER = {"tokens", "requests", "credits_usd"}
+
+
+def _valider_kvote_vinduer(windows: list[dict[str, object]]) -> list[dict[str, object]]:
+    if not isinstance(windows, list):
+        raise ValueError("windows skal vaere en liste")
+    valideret: list[dict[str, object]] = []
+    set_nøgler: set[tuple[str, str]] = set()
+    for vindue in windows:
+        if not isinstance(vindue, dict):
+            raise ValueError("hvert kvotevindue skal vaere et objekt")
+        period = str(vindue.get("period") or "").strip().lower()
+        unit = str(vindue.get("unit") or "").strip().lower()
+        if period not in _KVOTE_PERIODER:
+            raise ValueError(f"ukendt kvoteperiode: {period or '-'}")
+        if unit not in _KVOTE_ENHEDER:
+            raise ValueError(f"ukendt kvoteenhed: {unit or '-'}")
+        try:
+            graense = float(vindue.get("limit") or 0)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("kvotegraensen skal vaere et tal") from exc
+        if graense <= 0:
+            raise ValueError("kvotegraensen skal vaere stoerre end nul")
+        noegle = (period, unit)
+        if noegle in set_nøgler:
+            raise ValueError(f"dobbelt kvotevindue: {period}/{unit}")
+        set_nøgler.add(noegle)
+        timezone = str(vindue.get("reset_timezone") or "UTC").strip()
+        if timezone != "UTC":
+            raise ValueError("kun UTC understøttes som reset_timezone")
+        normaliseret: dict[str, object] = {
+            "period": period,
+            "unit": unit,
+            "limit": graense,
+            "reset_timezone": "UTC",
+        }
+        if period == "month" and vindue.get("reset_day") is not None:
+            try:
+                reset_day = int(vindue["reset_day"])
+            except (TypeError, ValueError) as exc:
+                raise ValueError("reset_day skal vaere et heltal") from exc
+            if not 1 <= reset_day <= 31:
+                raise ValueError("reset_day skal vaere mellem 1 og 31")
+            normaliseret["reset_day"] = reset_day
+        valideret.append(normaliseret)
+    return valideret
+
+
+def saet_kvote_politik(*, provider: str, auth_profile: str,
+                       windows: list[dict[str, object]],
+                       expected_revision: str = "") -> dict[str, Any]:
+    """Gem deklarerede kvoter paa den konkrete provider-profil."""
+    del expected_revision  # Revisionskontrol tilfoejes med de auditerede kontroller.
+    p = (provider or "").strip()
+    profil = (auth_profile or "default").strip() or "default"
+    try:
+        valideret = _valider_kvote_vinduer(windows)
+    except ValueError as exc:
+        return {"status": "error", "fejl": str(exc)}
+    r = _laes()
+    for post in r["providers"]:
+        if str(post.get("provider") or "") != p:
+            continue
+        if str(post.get("auth_profile") or "default") != profil:
+            return {"status": "error", "fejl": f"ukendt auth_profile: {p}/{profil}"}
+        har_cheap_lane = any(
+            str(model.get("provider") or "") == p
+            and str(model.get("lane") or "") == "cheap"
+            for model in r["models"]
+        )
+        if not har_cheap_lane:
+            return {"status": "error", "fejl": f"udbyderen er ikke i cheap lane: {p}"}
+        post["quota_policy"] = valideret
+        post["updated_at"] = _nu()
+        backup = _skriv(r)
+        _sig_det_hoejt("kvote_politik", {
+            "provider": p, "auth_profile": profil, "vinduer": len(valideret),
+        })
+        return {"status": "ok", "provider": post, "backup": backup}
+    return {"status": "error", "fejl": f"ukendt udbyder: {p}"}
 
 def saet_model_aktiv(*, provider: str, model: str, aktiv: bool,
                      grund: str = "") -> dict[str, Any]:

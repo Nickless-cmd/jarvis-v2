@@ -35,7 +35,7 @@ export function EnvironmentPanel({
   isOwner = false, onChanged,
   onOpenAgent, onOpenSource, onOpenTool,
   gitMissing = false, installingTool = '', onInstallTool, komprimerVed = 0, kontekstTokens,
-  onVaelgWorkspace,
+  onVaelgWorkspace, onVaelgMappe,
 }: {
   config?: ApiConfig
   kind: 'container' | 'workstation'
@@ -51,6 +51,8 @@ export function EnvironmentPanel({
   isOwner?: boolean
   /** En anden arbejdsmappe blev valgt (betroet mappe eller ny worktree). */
   onVaelgWorkspace?: (valg: { kind: string; root: string }) => void
+  /** Aabner den native mappe-vaelger paa brugerens egen maskine. */
+  onVaelgMappe?: () => Promise<string | null>
   onChanged?: () => void
   onOpenAgent?: (agent: AgentReference) => void
   onOpenSource?: (source: SourceEvidence) => void
@@ -177,7 +179,10 @@ export function EnvironmentPanel({
             <li className="env-row">
               {/* Var en ren etiket. Nu en vaelger: betroede mapper og ny lokal
                   worktree (Bjoern 18/9-2026). */}
-              <WorkspaceVaelger config={config} kind={kind} root={root} onVaelg={onVaelgWorkspace} />
+              <WorkspaceVaelger
+                config={config} kind={kind} root={root}
+                onVaelg={onVaelgWorkspace} onVaelgMappe={onVaelgMappe}
+              />
             </li>
             {git?.is_git && (
               <li className="env-row">

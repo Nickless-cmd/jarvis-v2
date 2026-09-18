@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Check, GitBranch, Loader2, Plus, Search } from 'lucide-react'
 import type { ApiConfig } from '../../lib/api'
 import { hentBranches, skiftBranch, type BranchListe } from '../../lib/gitWorkspace'
+import { mappeNavn } from '../../lib/arbejdsmapper'
 
 /**
  * Branch-vælger (Bjørn 18/9-2026: «main skal osse være dropdown med søgefelt
@@ -91,6 +92,12 @@ export function BranchVaelger({
       </button>
       {åben && (
         <div className="env-dd-menu" role="listbox" aria-label="Branches">
+          {/* Hvilket repo lister vi? Uden det staar der bare en liste navne,
+              og med flere arbejdsmapper i spil ved man ikke hvis branches det
+              er (Bjoern 18/9-2026). */}
+          <div className="env-dd-overskrift" title={root}>
+            {root ? mappeNavn(root) : 'ukendt repo'}
+          </div>
           <div className="env-dd-soeg">
             <Search size={12} />
             <input

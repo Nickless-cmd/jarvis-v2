@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react'
+import { useVoiceConversation } from '../hooks/useVoiceConversation'
 import { FolderTree, PanelRight, Lock, ShieldCheck, FolderOpen, ArrowDown, Gauge, SquareStack, FileDiff } from 'lucide-react'
 import { onPauseSvar, pauseAskIn, withoutPauseAsk, type PauseAsk } from '../lib/pauseAsk'
 import { useStream } from '../hooks/useStream'
@@ -678,10 +679,21 @@ export function CodeView({
     </div>
   )
 
+  // Samtale-mode ogsaa i code-mode. Bjoern 18/9-2026: «send i composer mangler
+  // stadig wave ikon med samtale mode» — den var kun wiret i ChatView, saa i
+  // code-mode var der ingen boelge overhovedet.
+  const voice = useVoiceConversation(config, {
+    status: stream.status,
+    blocks: stream.blocks,
+    sendMessage: resend,
+  })
+
   const composer = (
     <Composer
       streaming={stream.status === 'working'}
       onSend={handleSend}
+      onVoice={voice.enter}
+      voiceSupported={voice.supported}
       onStop={() => void stream.abort()}
       model="deepseek-flash"
       config={config}
@@ -902,6 +914,8 @@ export function CodeView({
               config={config}
               kind={kind}
               root={effRoot}
+              onVaelgMappe={pickFolder}
+              onVaelgWorkspace={(v) => { setKind('workstation'); setWsPath(v.root) }}
               refreshKey={gitRefresh}
               working={stream.status === 'working' || bgWorking}
               workingStep={(bgWorking ? followState.workingStep : stream.workingStep) ?? undefined}

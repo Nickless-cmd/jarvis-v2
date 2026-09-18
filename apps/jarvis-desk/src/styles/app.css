@@ -737,12 +737,17 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 }
 .model-pill .caret { color: var(--fg-3); margin-left: 2px; font-size: 10px; }
 
+/* Send og bølge bærer husets teal (Bjørn 18/9-2026: «send/wave i composer skal
+   være samme teal som resten»). De to er composerens ENESTE positive handling;
+   stod de i --fg-1 var de bare endnu et hvidt element. Stop-varianten nedenfor
+   overtager stadig med sin egen farve — den er ikke en handling man inviterer
+   til, og teal ville sige det modsatte. */
 .composer-send {
   height: 30px;
   width: 30px;
   display: grid; place-items: center;
   border: none;
-  background: var(--fg-1);
+  background: var(--accent);
   color: var(--bg-0);
   border-radius: 50%;
   cursor: pointer;

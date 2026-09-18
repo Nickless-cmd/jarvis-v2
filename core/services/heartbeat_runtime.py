@@ -2130,6 +2130,23 @@ def _run_heartbeat_tick_locked(
             tick_broadcast_daemon()
     except Exception:
         pass
+    # Paamindelsen om modne skygge-eksperimenter (18/9-2026).
+    #
+    # Modulet findes ordret fordi «BAADE Bjoern og Claude glemmer at komme
+    # tilbage og evaluere dem». Det blev selv glemt: `tick_shadow_review_reminder`
+    # havde NUL kaldere, saa fire eksperimenter stod modne i 65-71 dage uden at
+    # én paamindelse fyrede (0 shadow_review-events i basen).
+    #
+    # Hver time er rigeligt — vinduerne maales i uger.
+    try:
+        if _HEARTBEAT_TICK_COUNTER % 60 == 0:
+            from core.services.shadow_experiment_registry import (
+                register_known_shadows, tick_shadow_review_reminder,
+            )
+            register_known_shadows()
+            tick_shadow_review_reminder()
+    except Exception:
+        pass
     try:
         if _HEARTBEAT_TICK_COUNTER % 10 == 0:
             from core.services.meta_cognition_daemon import tick_meta_cognition_daemon

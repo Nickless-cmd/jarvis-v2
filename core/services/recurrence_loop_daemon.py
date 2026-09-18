@@ -38,6 +38,24 @@ def tick_recurrence_loop_daemon() -> dict[str, object]:
     llm_output = _call_recurrence_llm(content)
     if not llm_output:
         return {"generated": False, "reason": "llm_unavailable"}
+    # EN UDBYDERS FEJLBESKED ER IKKE EN TANKE (18/9-2026).
+    #
+    # Maalt i tabellen: iteration 316 er «The API key used for this request has
+    # reached its budget. Please...» — gemt som indhold OG foert videre som
+    # udgangspunkt for 317. Loekken cirkulerede altsaa en API-fejl rundt som om
+    # den var en erkendelse, med stabilitet 0.0.
+    #
+    # Vaernet fandtes i forvejen (`provider_error_guard`) og var koblet paa to
+    # andre steder. Her manglede det. Samme klasse som da explore returnerede
+    # en kvote-fejl som «fund».
+    try:
+        from core.services.provider_error_guard import looks_like_provider_error
+        if looks_like_provider_error(llm_output):
+            logger.warning("recurrence: udbyder-fejl kasseret som indhold: %r",
+                           llm_output[:120])
+            return {"generated": False, "reason": "provider_error_text"}
+    except Exception:
+        pass
 
     from core.runtime.db import get_latest_recurrence_iteration, insert_recurrence_iteration
     prev = get_latest_recurrence_iteration()

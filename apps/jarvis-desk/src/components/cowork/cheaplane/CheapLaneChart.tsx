@@ -12,7 +12,7 @@
  */
 import { useId, useState } from 'react'
 import {
-  Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis,
+  Area, AreaChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts'
 
 export interface Punkt {
@@ -34,16 +34,26 @@ function klokke(s: string): string {
 }
 
 export function CheapLaneChart({
-  punkter, serier, titel, hoejde = 180,
+  punkter, serier, titel, hoejde = 180, henter = false, fejl = '',
 }: {
   punkter: Punkt[]
   serier: Serie[]
   titel: string
   hoejde?: number
+  /** Hentes der stadig? En tom graf og en graf der ikke er hentet endnu er
+   *  to forskellige beskeder. */
+  henter?: boolean
+  /** Kunne kilden ikke læses? Så er «ingen målinger» en løgn. */
+  fejl?: string
 }) {
   const [åben, setÅben] = useState(false)
   const id = useId()
 
+  if (fejl) {
+    // «Ingen målinger» ville være forkert: vi VED ikke om der var nogen.
+    return <p className="cl-handling-fejl" role="alert">{titel}: {fejl}</p>
+  }
+  if (henter) return <p className="cl-tom">Henter {titel.toLowerCase()}…</p>
   if (!punkter.length) {
     // Ingen tom ramme: en graf uden punkter ligner et nedbrud.
     return <p className="cl-tom">Ingen målinger i vinduet.</p>
@@ -60,6 +70,8 @@ export function CheapLaneChart({
                    stroke="var(--fg-3)" minTickGap={24} />
             <YAxis tick={{ fontSize: 11 }} stroke="var(--fg-3)" width={44}
                    tickFormatter={(v) => Number(v ?? 0).toLocaleString('da-DK')} />
+            <Legend verticalAlign="top" height={20}
+                    wrapperStyle={{ fontSize: 11, color: 'var(--fg-3)' }} />
             <Tooltip
               contentStyle={{ background: 'var(--bg-2)', border: '1px solid var(--line)',
                 borderRadius: 8, fontSize: 12 }}

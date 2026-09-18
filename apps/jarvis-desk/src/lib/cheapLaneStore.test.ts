@@ -179,3 +179,52 @@ describe('useCheapLaneStore', () => {
     expect(subscribe).toHaveBeenCalledTimes(1)
   })
 })
+
+// ── speccens to krav til hvad der sker når noget svigter (18/9-2026) ───────
+
+describe('bevarSidsteKendte', () => {
+  it('en sektion der svigtede beholder sine sidste tal — mærket forældede', async () => {
+    const { bevarSidsteKendte } = await import('./cheapLaneStore')
+    const gammelt = snapshot() as never as Parameters<typeof bevarSidsteKendte>[1]
+    const nyt = {
+      ...snapshot('2026-09-18T10:00:00Z'),
+      sections: { capacity: { source: 'quota', observed_at: null, freshness: 'unknown',
+                              data: null, error: { message: 'kilden svarede ikke' } } },
+    } as never as Parameters<typeof bevarSidsteKendte>[0]
+    const ud = bevarSidsteKendte(nyt, gammelt)
+    // Fem minutter gamle tal er stadig svaret paa de fleste spoergsmaal.
+    expect(ud.sections.capacity?.data).toBeTruthy()
+    expect(ud.sections.capacity?.freshness).toBe('stale')
+    // Og fejlen staar stadig, saa ingen tror de er friske.
+    expect(ud.sections.capacity?.error).toBeTruthy()
+  })
+
+  it('en sund sektion overskrives med de NYE tal', async () => {
+    const { bevarSidsteKendte } = await import('./cheapLaneStore')
+    const gammelt = snapshot() as never as Parameters<typeof bevarSidsteKendte>[1]
+    const nyt = snapshot('2026-09-18T10:00:00Z') as never as Parameters<typeof bevarSidsteKendte>[0]
+    const ud = bevarSidsteKendte(nyt, gammelt)
+    expect(ud.sections.capacity?.freshness).toBe('live')
+  })
+})
+
+describe('erGyldigt', () => {
+  it('afviser et svar der ikke er et snapshot', async () => {
+    const { erGyldigt } = await import('./cheapLaneStore')
+    expect(erGyldigt(snapshot())).toBe(true)
+    expect(erGyldigt(null)).toBe(false)
+    expect(erGyldigt({})).toBe(false)
+    expect(erGyldigt({ ...snapshot(), schema_version: 2 })).toBe(false)
+    expect(erGyldigt({ ...snapshot(), generated_at: 'ikke en dato' })).toBe(false)
+  })
+
+  it('et ugyldigt svar skubber IKKE de rigtige tal af skærmen', async () => {
+    const { result } = renderHook(() => useCheapLaneStore(config, 24))
+    await flush()
+    expect(result.current.snapshot).toBeTruthy()
+    getDashboard.mockResolvedValueOnce({ noget: 'helt andet' })
+    await act(async () => { result.current.refresh(); await vi.advanceTimersByTimeAsync(10) })
+    expect(result.current.snapshot?.schema_version).toBe(1)
+    expect(result.current.error).toMatch(/ikke er et snapshot/)
+  })
+})

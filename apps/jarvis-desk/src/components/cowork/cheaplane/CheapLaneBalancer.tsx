@@ -22,6 +22,7 @@
 import { useMemo, useState } from 'react'
 import type { BalancerSlot } from '../../../lib/cheapLaneApi'
 import { Handling, type Kommando, type Udfoer } from './CheapLaneControls'
+import { CheapLaneTabel, Status } from './CheapLaneTabel'
 
 type Simuler = (taskKind: string, skip: string[]) => Promise<{
   candidates?: { provider?: string; model?: string; slot_id?: string; weight?: number;
@@ -249,32 +250,26 @@ export function CheapLaneBalancer({
       ) : null}
 
       <div className="cl-med-inspektor">
-        <div className="cl-tabel-holder">
-          <table className="cl-tabel">
-            <thead>
-              <tr>
-                <th scope="col">Slot</th><th scope="col">Status</th>
-                <th scope="col">Vægt</th><th scope="col">Succes</th><th scope="col">Hovedrum</th>
-              </tr>
-            </thead>
-            <tbody>
-              {synlige.map((s) => (
-                <tr key={s.slot_id}>
-                  <th scope="row">
-                    <button type="button" className="cl-linkknap" onClick={() => setValgt(s.slot_id)}>
-                      {s.provider} / {s.model}
-                    </button>
-                  </th>
-                  <td>{s.status ?? '–'}</td>
-                  <td>{s.weight ?? 0}</td>
-                  <td>{pct(s.success_rate)}</td>
-                  <td>{pct(s.headroom_pct)}</td>
-                </tr>
-              ))}
-              {!synlige.length && <tr><td colSpan={5}>Ingen slots matcher.</td></tr>}
-            </tbody>
-          </table>
-        </div>
+        <CheapLaneTabel
+          raekker={synlige}
+          noegle={(s) => s.slot_id}
+          tom="Ingen slots matcher."
+          kolonner={[
+            { id: 'slot', navn: 'Slot', vaerdi: (s) => `${s.provider} ${s.model}`,
+              celle: (s) => (
+                <button type="button" className="cl-linkknap" onClick={() => setValgt(s.slot_id)}>
+                  {s.provider} / {s.model}
+                </button>) },
+            { id: 'status', navn: 'Status', vaerdi: (s) => s.status,
+              celle: (s) => <Status status={s.status} /> },
+            { id: 'vaegt', navn: 'Vægt', vaerdi: (s) => s.weight ?? 0,
+              celle: (s) => s.weight ?? 0 },
+            { id: 'succes', navn: 'Succes', vaerdi: (s) => s.success_rate ?? undefined,
+              celle: (s) => pct(s.success_rate) },
+            { id: 'hovedrum', navn: 'Hovedrum', vaerdi: (s) => s.headroom_pct ?? undefined,
+              celle: (s) => pct(s.headroom_pct) },
+          ]}
+        />
 
         {valgtSlot ? <Forklaring slot={valgtSlot} udfoer={medRevision} /> : null}
       </div>

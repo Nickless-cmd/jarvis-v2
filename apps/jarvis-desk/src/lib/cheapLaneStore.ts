@@ -28,7 +28,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ApiConfig } from './api'
-import { getDashboard, type Snapshot } from './cheapLaneApi'
+import { getDashboard, type Sektion, type Snapshot } from './cheapLaneApi'
 import { subscribeCentralStream } from './centralStream'
 
 /** Begivenheder inden for dette vindue bliver til én hentning. */
@@ -37,6 +37,49 @@ export const DEBOUNCE_MS = 300
 export const POLL_MS = 15_000
 
 export type LiveTilstand = 'indlæser' | 'live' | 'polling' | 'fejl'
+
+/**
+ * Et nyt snapshot erstatter kun det gamle hvis det ER et snapshot.
+ *
+ * Speccen: «A complete refresh replaces the snapshot only after its schema and
+ * timestamps are validated». Uden det kan et halvt svar — en proxy-fejlside,
+ * en tom krop, et felt der skiftede navn — skubbe rigtige tal af skærmen og
+ * efterlade en flade der ser tom ud frem for forkert.
+ */
+export function erGyldigt(s: unknown): s is Snapshot {
+  const x = s as Snapshot | null
+  if (!x || typeof x !== 'object') return false
+  if (x.schema_version !== 1) return false
+  if (!x.generated_at || Number.isNaN(new Date(x.generated_at).getTime())) return false
+  return typeof x.sections === 'object' && x.sections !== null
+}
+
+/**
+ * En sektion der svigtede beholder sine SIDSTE kendte data.
+ *
+ * Speccen: «If one backend source fails, the affected section retains its last
+ * known data with a stale timestamp while healthy sections continue updating».
+ * Alternativet — at lade sektionen gå tom — kaster tal væk der var rigtige for
+ * fem minutter siden, og fem minutter gamle tal er stadig svaret på de fleste
+ * spørgsmål. Fejlen står ved siden af, så ingen tror de er friske.
+ */
+export function bevarSidsteKendte(nyt: Snapshot, gammelt: Snapshot | null): Snapshot {
+  if (!gammelt?.sections) return nyt
+  const sektioner = { ...nyt.sections } as Record<string, Sektion<unknown> | undefined>
+  const gamle = gammelt.sections as Record<string, Sektion<unknown> | undefined>
+  for (const [navn, sektion] of Object.entries(sektioner)) {
+    const tidligere = gamle[navn]
+    if (sektion && sektion.data === null && tidligere?.data != null) {
+      sektioner[navn] = {
+        ...sektion,
+        data: tidligere.data,
+        freshness: 'stale',
+        observed_at: tidligere.observed_at,
+      }
+    }
+  }
+  return { ...nyt, sections: sektioner as Snapshot['sections'] }
+}
 
 export interface CheapLaneStore {
   snapshot: Snapshot | null
@@ -77,7 +120,13 @@ export function useCheapLaneStore(config: ApiConfig | undefined, windowHours = 2
     try {
       const s = await getDashboard({ apiBaseUrl: base, authToken: token }, windowHours)
       if (!levende.current) return
-      setSnapshot(s)
+      if (!erGyldigt(s)) {
+        // Et halvt svar må ikke skubbe rigtige tal af skærmen.
+        setError('serveren svarede med noget der ikke er et snapshot')
+        setLiveState((t) => (t === 'polling' ? 'polling' : 'fejl'))
+        return
+      }
+      setSnapshot((forrige) => bevarSidsteKendte(s, forrige))
       setError('')
       // Kommer et svar igennem, er forbindelsen i orden — men kun strømmen
       // afgør om vi er LIVE. En poll der lykkes er stadig en poll.

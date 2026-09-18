@@ -48,11 +48,13 @@ function Noegletal({ label, vaerdi, note }: { label: string; vaerdi: string; not
 }
 
 export function CheapLaneOverview({
-  snapshot, serie,
+  snapshot, serie, serieHenter = false, serieFejl = '',
 }: {
   snapshot: Snapshot
   /** Tidsserien hentes for sig: snapshotet bærer summer, ikke forløb. */
   serie: { start: string; kald: number; fejl: number; tokens: number }[]
+  serieHenter?: boolean
+  serieFejl?: string
 }) {
   const k = snapshot.kpis || {}
   const fejlpct = k.requests ? Math.round(((k.errors ?? 0) / k.requests) * 100) : null
@@ -102,6 +104,8 @@ export function CheapLaneOverview({
 
       <CheapLaneChart
         titel="Kald og fejl"
+        henter={serieHenter}
+        fejl={serieFejl}
         punkter={punkter}
         serier={[
           { key: 'Kald', navn: 'Kald', farve: 'var(--accent)' },

@@ -9,6 +9,7 @@
 import { useMemo, useState } from 'react'
 import type { Registret } from '../../../lib/cheapLaneApi'
 import { Handling, type Udfoer } from './CheapLaneControls'
+import { CheapLaneTabel, Status } from './CheapLaneTabel'
 
 export function CheapLaneProviders({
   registret, udfoer, onInspicer,
@@ -39,55 +40,36 @@ export function CheapLaneProviders({
         <span className="cl-dæmpet">{rækker.length} modeller i cheap lane</span>
       </div>
 
-      {rækker.length === 0 ? (
-        <p className="cl-tom">Ingen modeller i cheap lane matcher.</p>
-      ) : (
-        <div className="cl-tabel-holder">
-          <table className="cl-tabel">
-            <thead>
-              <tr>
-                <th scope="col">Udbyder</th>
-                <th scope="col">Model</th>
-                <th scope="col">Status</th>
-                <th scope="col">Handlinger</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rækker.map((m) => {
-                const mål = `${m.provider}/${m.model}`
-                return (
-                  <tr key={mål}>
-                    <th scope="row">
-                      <button type="button" className="cl-linkknap"
-                              onClick={() => onInspicer?.(String(m.provider), String(m.model))}>
-                        {m.provider}
-                      </button>
-                    </th>
-                    <td>{m.model}</td>
-                    <td>
-                      <span className={m.enabled ? 'cl-status-aktiv' : 'cl-status-fra'}>
-                        {m.enabled ? 'aktiv' : 'slået fra'}
-                      </span>
-                    </td>
-                    <td className="cl-handlinger">
-                      {/* Midlertidig: væk ved næste opbygning af puljen. */}
-                      <Handling etiket={`Pause ${m.model}`} udfoer={udfoer}
-                                kommando={{ action: 'model.pause', target: mål }} />
-                      {/* Varig: overlever en genstart, og kræver derfor en grund. */}
-                      <Handling etiket={`Deaktivér ${m.model}`} udfoer={udfoer} variant="advarsel"
-                                beskrivelse="Modellen bliver væk af puljen — også efter en genstart."
-                                kommando={{ action: 'model.deactivate', target: mål }} />
-                      <Handling etiket={`Fjern ${m.model}`} udfoer={udfoer} variant="destruktiv"
-                                beskrivelse="Modellen fjernes fra registret."
-                                kommando={{ action: 'model.delete', target: mål }} />
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <CheapLaneTabel
+        raekker={rækker}
+        noegle={(m) => `${m.provider}/${m.model}`}
+        tom="Ingen modeller i cheap lane matcher."
+        kolonner={[
+          { id: 'udbyder', navn: 'Udbyder', vaerdi: (m) => m.provider,
+            celle: (m) => (
+              <button type="button" className="cl-linkknap"
+                      onClick={() => onInspicer?.(String(m.provider), String(m.model))}>
+                {m.provider}
+              </button>) },
+          { id: 'model', navn: 'Model', vaerdi: (m) => m.model, celle: (m) => m.model },
+          { id: 'status', navn: 'Status', vaerdi: (m) => (m.enabled ? 'aktiv' : 'slået fra'),
+            celle: (m) => <Status status={m.enabled ? 'aktiv' : 'slået fra'} /> },
+          { id: 'handlinger', navn: 'Handlinger', fast: true, celle: (m) => {
+            const mål = `${m.provider}/${m.model}`
+            return (
+              <span className="cl-handlinger">
+                <Handling etiket={`Pause ${m.model}`} udfoer={udfoer}
+                          kommando={{ action: 'model.pause', target: mål }} />
+                <Handling etiket={`Deaktivér ${m.model}`} udfoer={udfoer} variant="advarsel"
+                          beskrivelse="Modellen bliver væk af puljen — også efter en genstart."
+                          kommando={{ action: 'model.deactivate', target: mål }} />
+                <Handling etiket={`Fjern ${m.model}`} udfoer={udfoer} variant="destruktiv"
+                          beskrivelse="Modellen fjernes fra registret."
+                          kommando={{ action: 'model.delete', target: mål }} />
+              </span>)
+          } },
+        ]}
+      />
     </div>
   )
 }

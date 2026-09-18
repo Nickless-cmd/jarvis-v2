@@ -54,7 +54,6 @@ export function CheapLanePanel({ config }: { config?: ApiConfig }) {
   const [timer, setTimer] = useState(24)
   const [serie, setSerie] = useState<TidsserieSpand[]>([])
   const [henter, setHenter] = useState(false)
-  const [besked, setBesked] = useState('')
   // Oversigt og kapacitet kommer fra ÉT snapshot med Centrals strøm som puls.
   // De øvrige faner henter stadig hver for sig indtil opgave 11-12 flytter dem.
   const butik = useCheapLaneStore(config, timer)
@@ -64,6 +63,9 @@ export function CheapLanePanel({ config }: { config?: ApiConfig }) {
   const [åbnetFra, setÅbnetFra] = useState<HTMLElement | null>(null)
   const [revisioner, setRevisioner] = useState<Revision[]>([])
   const [visIndstillinger, setVisIndstillinger] = useState(false)
+  // Tidsseriens fejl hoerer til GRAFEN, ikke til panelets banner: samme
+  // besked to steder er stoej, og banneret er til det der rammer hele fladen.
+  const [serieFejl, setSerieFejl] = useState('')
 
 
   // Kun tidsserien hentes ved siden af snapshotet: dashboardet baerer summer
@@ -76,9 +78,9 @@ export function CheapLanePanel({ config }: { config?: ApiConfig }) {
     try {
       const t = await getTidsserie(config, timer, timer <= 6 ? 15 : 60)
       setSerie(t.spand ?? [])
-      setBesked('')
+      setSerieFejl('')
     } catch {
-      setBesked('tidsserien kunne ikke hentes')
+      setSerieFejl('tidsserien kunne ikke hentes')
     } finally {
       setHenter(false)
     }
@@ -125,8 +127,6 @@ export function CheapLanePanel({ config }: { config?: ApiConfig }) {
         </div>
       </div>
 
-      {besked && <div className="mc-besked">{besked}</div>}
-
       <div className="mc-tabs">
         {FANER.map((f) => (
           <button key={f.id} type="button"
@@ -142,7 +142,9 @@ export function CheapLanePanel({ config }: { config?: ApiConfig }) {
         butik.snapshot
           ? <CheapLaneOverview snapshot={butik.snapshot} serie={serie.map((x) => ({
               start: x.tid, kald: x.kald, fejl: x.fejl, tokens: 0,
-            }))} />
+            }))}
+              serieHenter={henter && !serie.length}
+              serieFejl={serieFejl} />
           : <p className="cl-tom">{butik.error || 'Henter overblik…'}</p>
       )}
 

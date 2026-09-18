@@ -107,3 +107,70 @@ describe('CheapLaneDiagnostics — «Cheap Lane-related Central incidents … in
     expect(link.href).not.toMatch(/token|key|bearer/i)
   })
 })
+
+import { CheapLaneTabel, Status } from './CheapLaneTabel'
+import { CheapLaneChart } from './CheapLaneChart'
+
+describe('CheapLaneTabel — «sticky headers, stable column widths, sort controls»', () => {
+  const raekker = [
+    { id: 'a', navn: 'zulu', tal: 3 },
+    { id: 'b', navn: 'alfa', tal: 10 },
+    { id: 'c', navn: 'midt', tal: undefined as number | undefined },
+  ]
+  const kolonner = [
+    { id: 'navn', navn: 'Navn', vaerdi: (r: typeof raekker[0]) => r.navn, celle: (r: typeof raekker[0]) => r.navn },
+    { id: 'tal', navn: 'Tal', vaerdi: (r: typeof raekker[0]) => r.tal, celle: (r: typeof raekker[0]) => String(r.tal ?? '–') },
+  ]
+  const navne = () => [...document.querySelectorAll('tbody th')].map((n) => n.textContent)
+
+  it('sorterer på klik og vender ved andet klik', async () => {
+    const bruger = userEvent.setup()
+    render(<CheapLaneTabel raekker={raekker} kolonner={kolonner} noegle={(r) => r.id} />)
+    await bruger.click(screen.getByRole('button', { name: /Navn/ }))
+    expect(navne()).toEqual(['alfa', 'midt', 'zulu'])
+    await bruger.click(screen.getByRole('button', { name: /Navn/ }))
+    expect(navne()).toEqual(['zulu', 'midt', 'alfa'])
+  })
+
+  it('«ved ikke» er ikke den højeste værdi — den står nederst begge veje', async () => {
+    const bruger = userEvent.setup()
+    render(<CheapLaneTabel raekker={raekker} kolonner={kolonner} noegle={(r) => r.id} />)
+    await bruger.click(screen.getByRole('button', { name: /Tal/ }))
+    expect(navne().at(-1)).toBe('midt')
+    await bruger.click(screen.getByRole('button', { name: /Tal/ }))
+    expect(navne().at(-1)).toBe('midt')
+  })
+
+  it('melder sin sorteringsretning til skærmlæseren', async () => {
+    const bruger = userEvent.setup()
+    render(<CheapLaneTabel raekker={raekker} kolonner={kolonner} noegle={(r) => r.id} />)
+    await bruger.click(screen.getByRole('button', { name: /Navn/ }))
+    expect(screen.getByRole('columnheader', { name: /Navn/ }).getAttribute('aria-sort')).toBe('ascending')
+  })
+})
+
+describe('Status — «icon, label, and tone, never color alone»', () => {
+  it('bærer både tegn og ord', () => {
+    render(<Status status="cooldown" />)
+    const el = document.querySelector('.cl-status')!
+    expect(el.textContent).toContain('cooldown')
+    expect(el.textContent!.replace('cooldown', '').trim().length).toBeGreaterThan(0)
+  })
+})
+
+describe('CheapLaneChart — «empty/loading/error states»', () => {
+  const serier = [{ key: 'Kald', navn: 'Kald', farve: '#0f0' }]
+
+  it('skelner mellem «henter», «ingen målinger» og «kunne ikke læses»', () => {
+    const { rerender } = render(<CheapLaneChart titel="Kald" punkter={[]} serier={serier} henter />)
+    expect(screen.getByText(/henter/i)).toBeTruthy()
+
+    rerender(<CheapLaneChart titel="Kald" punkter={[]} serier={serier} />)
+    expect(screen.getByText(/ingen målinger/i)).toBeTruthy()
+
+    // «Ingen maalinger» ville vaere en loegn her: vi VED ikke om der var nogen.
+    rerender(<CheapLaneChart titel="Kald" punkter={[]} serier={serier} fejl="kilden svarede ikke" />)
+    expect(screen.getByRole('alert').textContent).toContain('kilden svarede ikke')
+    expect(screen.queryByText(/ingen målinger/i)).toBeNull()
+  })
+})

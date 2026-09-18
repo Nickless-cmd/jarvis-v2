@@ -322,3 +322,28 @@
   background: var(--bg-3); border: 1px solid var(--line); border-radius: 6px;
   padding: 5px 8px; color: var(--fg-1); font: inherit; font-size: 12px; min-width: 0;
 }
+
+/* ── sorterbar tabel med klæbende hoved ─────────────────────────────── */
+
+/* Hovedet bliver stående når man ruller i en lang liste. Uden det mister man
+   kolonnenavnene præcis når listen er lang nok til at man har brug for dem. */
+.cl-tabel-klaebende thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--bg-2);
+}
+
+.cl-sorter {
+  display: inline-flex; align-items: center; gap: 3px;
+  background: none; border: none; padding: 0;
+  font: inherit; font-size: 11px; color: var(--fg-3); cursor: pointer;
+}
+.cl-sorter:hover { color: var(--fg-1); }
+
+/* Status: tegn + ord + tone. Aldrig farve alene — en rød og en grøn prik
+   ligner hinanden for den der ikke ser forskel på dem. */
+.cl-status { display: inline-flex; align-items: center; gap: 5px; }
+.cl-status-healthy, .cl-status-ok, .cl-status-aktiv { color: var(--accent); }
+.cl-status-cooldown, .cl-status-recovering { color: var(--warn-fg, #d0a215); }
+.cl-status-disabled, .cl-status-stale, .cl-status-ukendt { color: var(--fg-3); }

@@ -9,6 +9,19 @@ import { useEffect, useRef, useState } from 'react'
  *  - Kun en linje der HAR været live har en tid. En gemt blok der monteres som
  *    færdig ville ellers få «0 s».
  */
+/**
+ * Klokken på en linje der KØRER vises først efter så mange sekunder.
+ *
+ * Claude Desktop gør det samme (målt til 5 i deres CSS). Et kald på to
+ * sekunder skal ikke nå at vise «0 s» og skifte til «1 s» — tallet er
+ * information, ikke støj. En linje der er FÆRDIG viser sit målte tal med det
+ * samme; der er ingen flimren at undgå.
+ *
+ * Gælder bevidst IKKE tanke- og skill-linjen: der bad Bjørn 17/9-2026 om at
+ * tallet står der med det samme (se ThinkingLine).
+ */
+export const KLOKKE_EFTER_S = 5
+
 export function useLoebendeTid(live: boolean, startet?: number): number | undefined {
   // `startet` fra blokken vinder: komponenten kan monteres om midt i en tanke
   // (runderne grupperes om), og så ville et ur født ved montering starte forfra.

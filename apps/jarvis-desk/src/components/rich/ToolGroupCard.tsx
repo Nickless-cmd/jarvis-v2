@@ -2,8 +2,9 @@ import { useState } from 'react'
 import { ChevronRight, ChevronDown, Code2 } from 'lucide-react'
 import type { ToolGroupBlock } from '../../lib/toolRounds'
 import { summarizeRound, summerDiff } from '../../lib/toolRound'
-import { useLoebendeTid } from '../../lib/useLoebendeTid'
-import { medPrikker, usePrikTrin } from '../../lib/prikSekvens'
+import { KLOKKE_EFTER_S, useLoebendeTid } from '../../lib/useLoebendeTid'
+import { Prikker, udenEllipse } from './Prikker'
+import { Fold } from './Fold'
 import { ToolCard } from './ToolCard'
 
 /**
@@ -15,7 +16,7 @@ import { ToolCard } from './ToolCard'
  *     fortælling
  *     </> Kørte 2 ting  ›
  *
- * Linjen ændrer sig mens runden kører («Læser 3 filer…») og lander på sin datid
+ * Linjen ændrer sig mens runden kører («Læser 3 filer») og lander på sin datid
  * når den er færdig. Trykker man, folder den ud.
  *
  * Én forskel fra mobilen, og den er bevidst: mobilen skjuler chevronen ved ét
@@ -50,7 +51,11 @@ export function ToolGroupCard({
     .filter((t) => (t.status ?? 'running') === 'running' && t.startet != null)
     .reduce<number | undefined>((min, t) => (min == null || t.startet! < min ? t.startet : min), undefined)
   const sek = useLoebendeTid(koerer && startet != null, startet)
-  const trin = usePrikTrin(koerer)
+  // Klokken venter mens linjen KØRER (se KLOKKE_EFTER_S): et kald på to
+  // sekunder skal ikke nå at vise «0 s» og skifte. Er runden færdig, vises det
+  // målte tal med det samme — der er ingen flimren at undgå, og tallet er
+  // information man vil have.
+  const visSek = sek == null || (koerer && sek < KLOKKE_EFTER_S) ? null : Math.floor(sek)
   if (!resume) return null
 
   return (
@@ -68,9 +73,9 @@ export function ToolGroupCard({
       >
         <Code2 size={15} className="toolgroup-icon" strokeWidth={1.8} />
         <span className="toolgroup-label">
-          <span className="linje-titel">{koerer ? medPrikker(resume, trin) : resume}</span>
-          {koerer && sek != null && sek >= 1
-            ? <span className="linje-meta" data-testid="runde-tid"> · {Math.floor(sek)} s</span>
+          <span className="linje-titel">{koerer ? udenEllipse(resume) : resume}</span>
+          {visSek != null
+            ? <span className="linje-meta" data-testid="runde-tid"> · {visSek} s</span>
             : null}
         </span>
         {/* Summen i selve linjen, 1:1 med mobilen: foldet som standard ville
@@ -82,15 +87,21 @@ export function ToolGroupCard({
             {sum.del ? <span className="git-del">−{sum.del}</span> : null}
           </span>
         ) : null}
-        <Chevron size={15} className="toolgroup-chevron" strokeWidth={1.8} />
+        {/* Prikkerne og chevronen deler celle. Mens runden kører står prikkerne
+            fremme; holder man musen over, toner de ud og chevronen glider ind
+            — så linjen ikke viser to ting på én gang (Claude Desktops greb). */}
+        <span className="toolgroup-celle">
+          <Prikker live={koerer} />
+          <Chevron size={15} className="toolgroup-chevron" strokeWidth={1.8} />
+        </span>
       </button>
-      {open && (
+      <Fold aaben={open}>
         <div className="toolgroup-body">
           {block.tools.map((t) => (
             <ToolCard key={t.id} block={t} density={density} />
           ))}
         </div>
-      )}
+      </Fold>
     </div>
   )
 }

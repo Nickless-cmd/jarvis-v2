@@ -11,7 +11,6 @@ import { afslutForladteKald } from '../components/rich/BlocksRenderer'
 import { ThinkingLine } from '../components/rich/ThinkingLine'
 import { ToolGroupCard } from '../components/rich/ToolGroupCard'
 import type { ContentBlock, StreamEvent } from './sseProtocol'
-import { prikker } from './prikSekvens'
 
 afterEach(() => { vi.useRealTimers() })
 
@@ -124,28 +123,51 @@ describe('live metadata i stedet for «Kører bash…»', () => {
 
 
 describe('prikker i enden af en linje der kører', () => {
-  it('runde-linjen: «…» bliver til løbende prikker, og de forsvinder når kaldet er færdigt', () => {
-    vi.useFakeTimers()
-    const blok = (status: 'running' | 'done') => ({ type: 'tool_group' as const, kind: 'round' as const, count: 1,
-      tools: [{ type: 'tool_use' as const, id: 't', name: 'bash', input: { command: 'npm test' }, status }] })
-    const { container, rerender } = render(<ToolGroupCard density="compact" block={blok('running')} />)
-    const titel = () => container.querySelector('.linje-titel')!.textContent!
-    expect(titel()).toBe('Kører npm test' + prikker(0))
-    act(() => { vi.advanceTimersByTime(420) })
-    expect(titel()).toBe('Kører npm test' + prikker(1))
-    act(() => { vi.advanceTimersByTime(420) })
-    expect(titel()).toBe('Kører npm test' + prikker(2))
-    rerender(<ToolGroupCard density="compact" block={blok('done')} />)
-    expect(titel()).toBe('Kørte npm test')
+  const blok = (status: 'running' | 'done') => ({
+    type: 'tool_group' as const, kind: 'round' as const, count: 1,
+    tools: [{ type: 'tool_use' as const, id: 't', name: 'bash', input: { command: 'npm test' }, status }],
   })
 
-  it('tanke-linjen: «Tænker» med løbende prikker', () => {
+  it('runde-linjen: prikkerne er tre rullende spans — og de forsvinder når kaldet er færdigt', () => {
+    // Foer var prikkerne TEKST («.» -> «..» -> «...») drevet af et interval i
+    // JS. Nu er de tre spans med CSS-bevægelse: teksten staar stille, og React
+    // roerer sig ikke mens de ruller.
+    const { container, rerender } = render(<ToolGroupCard density="compact" block={blok('running')} />)
+    expect(container.querySelector('.linje-titel')!.textContent).toBe('Kører npm test')
+    expect(container.querySelectorAll('.prikker > span')).toHaveLength(3)
+    rerender(<ToolGroupCard density="compact" block={blok('done')} />)
+    expect(container.querySelector('.prikker')).toBeNull()
+    expect(container.querySelector('.linje-titel')!.textContent).toBe('Kørte npm test')
+  })
+
+  it('tanke-linjen: prikker mens den tænker, ingen når den er færdig', () => {
+    const { container, rerender } = render(<ThinkingLine text="x" live />)
+    expect(container.querySelectorAll('.prikker > span')).toHaveLength(3)
+    rerender(<ThinkingLine text="x" live={false} seconds={9} />)
+    expect(container.querySelector('.prikker')).toBeNull()
+  })
+
+  it('klokken venter mens linjen kører — men en færdig runde viser sit målte tal', () => {
+    // Claude Desktop viser først klokken efter 5 s, saa et kort kald ikke naar
+    // at flimre «0 s» -> «1 s». Desk goer det samme mens runden KOERER; er den
+    // faerdig, er tallet information man vil have, og det vises med det samme.
     vi.useFakeTimers()
-    const { container } = render(<ThinkingLine text="x" live />)
-    const titel = () => container.querySelector('.linje-titel')!.textContent!
-    expect(titel()).toBe('Tænker' + prikker(0))
-    act(() => { vi.advanceTimersByTime(840) })
-    expect(titel()).toBe('Tænker' + prikker(2))
-    expect(prikker(2)).toBe('...')
+    const startet = Date.now() - 3_000
+    const med = (status: 'running' | 'done') => ({
+      type: 'tool_group' as const, kind: 'round' as const, count: 1,
+      tools: [{ type: 'tool_use' as const, id: 't', name: 'bash', input: { command: 'npm test' }, status, startet }],
+    })
+    const { rerender } = render(<ToolGroupCard density="compact" block={med('running')} />)
+    expect(screen.queryByTestId('runde-tid')).toBeNull()
+    rerender(<ToolGroupCard density="compact" block={med('done')} />)
+    expect(screen.getByTestId('runde-tid')).toHaveTextContent('3 s')
+  })
+
+  it('en runde man aldrig har aabnet baerer intet i DOM\'en', () => {
+    // Folden animerer hoejden, men indholdet bliver foerst monteret naar runden
+    // aabnes - og fjernet igen naar folden har lukket. En lang traad skal ikke
+    // baere hvert eneste uaabnede tool-kort.
+    const { container } = render(<ToolGroupCard density="compact" block={blok('done')} />)
+    expect(container.querySelector('.linje-fold-indre')!.childElementCount).toBe(0)
   })
 })

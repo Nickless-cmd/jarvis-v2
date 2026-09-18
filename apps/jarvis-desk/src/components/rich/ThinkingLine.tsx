@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useLoebendeTid } from '../../lib/useLoebendeTid'
 import { tankeFragment } from '../../lib/tankeFragment'
-import { prikker, usePrikTrin } from '../../lib/prikSekvens'
+import { Prikker } from './Prikker'
+import { Fold } from './Fold'
 import { Brain, ChevronDown, ChevronRight } from 'lucide-react'
 import { MarkdownRenderer } from './MarkdownRenderer'
 
@@ -25,6 +26,8 @@ import { MarkdownRenderer } from './MarkdownRenderer'
  * måling: 67 % af tankerne var så korte), men Bjørn 17/9-2026 så netop det som
  * at tiden «ikke var persistet» efter turen: live stod der «Tænker · 7 s», og
  * den gemte besked der overtog sagde bare «Tænkte».
+ *
+ * Derfor gælder KLOKKE_EFTER_S IKKE her — den venter kun på runde-linjen.
  */
 export const KORT_TAERSKEL_S = 0
 
@@ -44,13 +47,12 @@ export function ThinkingLine({
 }) {
   const [open, setOpen] = useState(false)
   const loebende = useLoebendeTid(live, startet)
-  const trin = usePrikTrin(live)
   const harTekst = text.trim().length > 0
   const sek = live ? loebende : seconds ?? loebende
   if (!live && !harTekst && sek == null) return null
 
   const label = live
-    ? `Tænker${prikker(trin)}`
+    ? 'Tænker'
     : sek != null && sek > KORT_TAERSKEL_S
       ? `Tænkte i ${formatSek(sek)}`
       : 'Tænkte'
@@ -76,13 +78,16 @@ export function ThinkingLine({
           <span className="linje-titel">{label}</span>
           {liveMeta.length ? <span className="linje-meta" data-testid="tanke-meta"> · {liveMeta.join(' · ')}</span> : null}
         </span>
-        {harTekst ? <Chevron size={15} className="toolgroup-chevron" strokeWidth={1.8} /> : null}
+        <span className="toolgroup-celle">
+          <Prikker live={live} />
+          {harTekst ? <Chevron size={15} className="toolgroup-chevron" strokeWidth={1.8} /> : null}
+        </span>
       </button>
-      {open && harTekst ? (
+      <Fold aaben={open && harTekst}>
         <div className="tanke-body">
           <MarkdownRenderer text={text} streaming={live} />
         </div>
-      ) : null}
+      </Fold>
     </div>
   )
 }

@@ -3,7 +3,8 @@ import { ChevronDown, ChevronRight, Sparkles } from 'lucide-react'
 import type { ContentBlock } from '../../lib/sseProtocol'
 import { scoreTekst, skillOversigt } from '../../lib/skillLinje'
 import { useLoebendeTid } from '../../lib/useLoebendeTid'
-import { medPrikker, usePrikTrin } from '../../lib/prikSekvens'
+import { Prikker, udenEllipse } from './Prikker'
+import { Fold } from './Fold'
 import { ToolCard } from './ToolCard'
 
 /**
@@ -24,7 +25,6 @@ export function SkillLine({
   const [open, setOpen] = useState(false)
   const o = skillOversigt(block)
   const sek = useLoebendeTid(o.koerer, block.startet)
-  const trin = usePrikTrin(o.koerer)
   const Chevron = open ? ChevronDown : ChevronRight
   const meta = o.koerer && sek != null && sek >= 1 ? [...o.meta, `${Math.floor(sek)} s`] : o.meta
 
@@ -38,12 +38,15 @@ export function SkillLine({
       >
         <Sparkles size={15} className="toolgroup-icon" strokeWidth={1.8} />
         <span className="toolgroup-label">
-          {o.koerer ? medPrikker(o.titel, trin) : o.titel}
+          {o.koerer ? udenEllipse(o.titel) : o.titel}
           {meta.length ? <span className="skill-meta">{meta.map((m) => ` · ${m}`).join('')}</span> : null}
         </span>
-        <Chevron size={15} className="toolgroup-chevron" strokeWidth={1.8} />
+        <span className="toolgroup-celle">
+          <Prikker live={o.koerer} />
+          <Chevron size={15} className="toolgroup-chevron" strokeWidth={1.8} />
+        </span>
       </button>
-      {open && (
+      <Fold aaben={open}>
         <div className="toolgroup-body skill-body">
           {o.beskrivelse ? <p className="skill-beskrivelse">{o.beskrivelse}</p> : null}
           {o.matches.length > 1 ? (
@@ -56,7 +59,7 @@ export function SkillLine({
           {/* Det rå kald står stadig til rådighed — linjen er et resumé, ikke et filter. */}
           <ToolCard block={block} density={density} />
         </div>
-      )}
+      </Fold>
     </div>
   )
 }
@@ -92,9 +95,11 @@ export function SkillSurfaceLine({ block }: { block: Extract<ContentBlock, { typ
           {titel}
           <span className="skill-meta">{meta.map((m) => ` · ${m}`).join('')}</span>
         </span>
-        <Chevron size={15} className="toolgroup-chevron" strokeWidth={1.8} />
+        <span className="toolgroup-celle">
+          <Chevron size={15} className="toolgroup-chevron" strokeWidth={1.8} />
+        </span>
       </button>
-      {open && (
+      <Fold aaben={open}>
         <div className="toolgroup-body skill-body">
           <p className="skill-beskrivelse">
             {staerke.length
@@ -107,7 +112,7 @@ export function SkillSurfaceLine({ block }: { block: Extract<ContentBlock, { typ
             ))}
           </ul>
         </div>
-      )}
+      </Fold>
     </div>
   )
 }

@@ -116,9 +116,18 @@ describe('runde-linjen', () => {
     expect(container.querySelector('.linje-titel')!.className).not.toMatch(/shimmer/)
   })
 
-  it('når runden er færdig, spiller sparken sin afgang', () => {
+  // Bjørn 19/9-2026: «</> i starten af tool result, må gerne komme tilbage».
+  // Glyfen står fast, så der er ingen spark at overlevere til.
+  it('</> står fast — også når runden er færdig, og uden spark-afgang', () => {
     const { container, rerender } = render(<ToolGroupCard density="compact" block={blok('running')} />)
     rerender(<ToolGroupCard density="compact" block={blok('done')} />)
+    expect(container.querySelector('.toolgroup-spark .toolgroup-icon')).not.toBeNull()
+    expect(container.querySelector('[data-testid="ls-spark"]')).toBeNull()
+  })
+
+  it('uden fast ikon spiller sparken stadig sin afgang', () => {
+    const { container, rerender } = render(<LabelSkift tekst="Læser a" arbejder />)
+    rerender(<LabelSkift tekst="Læste a" arbejder={false} />)
     expect(container.querySelector('[data-testid="ls-spark"]')).not.toBeNull()
   })
 })

@@ -48,7 +48,7 @@ it('prikkerne forsvinder og caret\'en står fremme når runden er færdig', asyn
   expect(s.getByTestId('tool-status-caret')).toBeTruthy()
 })
 
-it('spark-cellen er kun bred mens runden arbejder', async () => {
+it('</> står fast — også når runden er færdig (Bjørn 19/9-2026)', async () => {
   const bredde = (s: Awaited<ReturnType<typeof render>>) => {
     const st = s.getByTestId('tool-spark').props.style
     return Object.assign({}, ...(Array.isArray(st) ? st.filter(Boolean) : [st])).width
@@ -56,7 +56,13 @@ it('spark-cellen er kun bred mens runden arbejder', async () => {
   const koer = await render(<InlineToolGroup items={[item({ running: true }), item()]} />)
   expect(bredde(koer)).toBe(20)
   const faerdig = await render(<InlineToolGroup items={[item(), item()]} />)
-  expect(bredde(faerdig)).toBe(0)
+  expect(bredde(faerdig)).toBe(20)
+})
+
+it('med fast </> ingen spark ved afslutning — ellers stod glyfen der to gange', async () => {
+  const s = await render(<InlineToolGroup items={[item({ running: true }), item()]} />)
+  await s.rerender(<InlineToolGroup items={[item(), item()]} />)
+  expect(s.queryByTestId('ls-spark', { includeHiddenElements: true })).toBeNull()
 })
 
 it('en tom runde tegner ingenting', async () => {

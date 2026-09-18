@@ -22,13 +22,18 @@ import { GlidendeTekst } from './GlidendeTekst'
 type Label = { tekst: string; arbejder: boolean; id: number }
 
 export function LabelSkift({
-  tekst, arbejder, style, farve,
+  tekst, arbejder, style, farve, fastIkon = false,
 }: {
   tekst: string
   arbejder: boolean
   style?: StyleProp<TextStyle>
   /** Sparkens farve. */
   farve: string
+  /**
+   * Står `</>` fast foran linjen (Bjørn 19/9-2026: «må gerne komme tilbage»),
+   * bliver afslutningen et almindeligt tekstskift uden spark.
+   */
+  fastIkon?: boolean
 }) {
   const reduced = useReducedMotion()
   const [vist, setVist] = useState<Label>({ tekst, arbejder, id: 0 })
@@ -42,7 +47,7 @@ export function LabelSkift({
   const starter = !vist.arbejder && arbejder
   if (vist.tekst !== tekst || slutter || starter) {
     if (starter) { setGammel(null); setSpark(false); setEfterSpark(false) }
-    else { setGammel(vist); setSpark(slutter); setEfterSpark(slutter) }
+    else { setGammel(vist); setSpark(slutter && !fastIkon); setEfterSpark(slutter && !fastIkon) }
     setVist({ tekst, arbejder, id: vist.id + 1 })
   }
 

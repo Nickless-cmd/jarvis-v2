@@ -37,11 +37,18 @@ export function LabelSkift({
   tekst,
   arbejder,
   className = '',
+  fastIkon = false,
 }: {
   tekst: string
   arbejder: boolean
   /** Klasse på det aktuelle label — fx glitteret mens der arbejdes. */
   className?: string
+  /**
+   * Står `</>` fast foran linjen (Bjørn 19/9-2026: «må gerne komme tilbage»),
+   * er der intet at overlevere: afslutningen bliver et almindeligt tekstskift
+   * uden spark, ellers stod glyfen der to gange et øjeblik.
+   */
+  fastIkon?: boolean
 }) {
   const [vist, setVist] = useState<Label>({ tekst, arbejder, id: 0 })
   const [gammel, setGammel] = useState<Label | null>(null)
@@ -60,8 +67,8 @@ export function LabelSkift({
       setEfterSpark(false)
     } else {
       setGammel(vist)
-      setSpark(slutter)
-      setEfterSpark(slutter)
+      setSpark(slutter && !fastIkon)
+      setEfterSpark(slutter && !fastIkon)
     }
     setVist({ tekst, arbejder, id: vist.id + 1 })
   }

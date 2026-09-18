@@ -73,9 +73,9 @@ export function ToolGroupCard({
         aria-label={tekst}
         onClick={() => setOpen((o) => !o)}
       >
-        {/* Spark-cellen (Claude Desktop, 19/9-2026): 20 px bred mens runden
-            arbejder, ingenting bagefter. Når arbejdet slutter, overtager
-            label-skiftets spark-lag glyfen og lader den tone ud. */}
+        {/* `</>` står fast foran linjen — også når runden er færdig (Bjørn
+            19/9-2026: «må gerne komme tilbage»). Claude Desktop viser kun
+            glyfen mens der arbejdes; her er det et bevidst valg. */}
         <span className="toolgroup-spark" aria-hidden="true">
           <Code2 size={15} className="toolgroup-icon" strokeWidth={1.8} />
         </span>
@@ -84,6 +84,7 @@ export function ToolGroupCard({
             tekst={tekst}
             arbejder={koerer}
             className={koerer ? 'shimmer' : ''}
+            fastIkon
           />
         </span>
         {/* Klokken i kildens format («12s», «1m 5s») og med dens 65 % —

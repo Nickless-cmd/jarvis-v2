@@ -1412,14 +1412,12 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 /* --- Spark-cellen: 20 px mens der arbejdes, 0 bagefter (w-5 mr-0.5 / w-0 -mr-2)
    Glyfen toner ind over 150 ms. Når arbejdet slutter, overtager label-
    skiftets spark-lag den og lader den tone ud (se LabelSkift). */
+/* `</>` står fast — også på en færdig linje (Bjørn 19/9-2026). */
 .toolgroup-spark {
   position: relative; height: 20px; flex: 0 0 auto; overflow: hidden;
   display: flex; align-items: center; justify-content: center;
-  width: 0; margin-right: -8px;
+  width: 20px; margin-right: 2px;
 }
-.toolgroup-spark > .toolgroup-icon { opacity: 0; }
-.toolgroup.er-koerende .toolgroup-spark { width: 20px; margin-right: 2px; }
-.toolgroup.er-koerende .toolgroup-spark > .toolgroup-icon { opacity: 1; transition: opacity 150ms; }
 
 /* --- Label-skiftet: tre lag i én celle (GS) -------------------------------- */
 .ls-grid { display: inline-grid; min-width: 0; max-width: 100%; }

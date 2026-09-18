@@ -38,8 +38,8 @@ export function formatTid(sek: number): string {
  * sådan i mobil appen osse»). Tallene er læst i deres CSS/JS; se desk'
  * `LabelSkift.tsx` og ~/cc-tool-linje-prompt-til-claude.md.
  *
- * - **Spark-cellen**: Code2 i 20 dp mens runden arbejder, intet bagefter.
- *   Når arbejdet slutter, overtager label-skiftets spark-lag glyfen.
+ * - **`</>`** står fast foran linjen, også når runden er færdig (Bjørns
+ *   valg 19/9-2026 — Claude Desktop viser den kun mens der arbejdes).
  * - **Labelen** glitrer mens der arbejdes og skifter med kildens overgange.
  * - **Klokken** venter 5 s mens runden kører; en færdig runde viser sit tal.
  * - **Prikker og caret** deler én celle. Telefonen har ingen hover, så
@@ -116,10 +116,13 @@ export function InlineToolGroup({ items, etiket }: Props) {
         testID="tool-group"
       >
         <View style={styles.row}>
-          <View style={[styles.spark, running ? styles.sparkAktiv : null]} testID="tool-spark">
-            {running ? <Code2 size={16} color={tokens.color.fg2} strokeWidth={1.8} /> : null}
+          {/* `</>` står fast — også når runden er færdig (Bjørn 19/9-2026:
+              «må gerne komme tilbage»). Claude Desktop viser den kun mens der
+              arbejdes; her er det et bevidst valg, i desk og mobil. */}
+          <View style={styles.spark} testID="tool-spark">
+            <Code2 size={16} color={tokens.color.fg2} strokeWidth={1.8} />
           </View>
-          <LabelSkift tekst={tekst} arbejder={running} style={styles.summary} farve={tokens.color.fg2} />
+          <LabelSkift tekst={tekst} arbejder={running} style={styles.summary} farve={tokens.color.fg2} fastIkon />
           {visSek != null ? (
             <Text style={styles.tid} testID="runde-tid">{formatTid(visSek)}</Text>
           ) : null}
@@ -174,10 +177,7 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
     gap: tokens.spacing.sm,
     paddingVertical: tokens.spacing.sm
   },
-  // Kildens w-0 -mr-2 / w-5 mr-0.5: bredden nul OG en negativ margen der
-  // æder mellemrummet, så labelen ikke står indrykket når runden er færdig.
-  spark: { width: 0, height: 20, marginRight: -tokens.spacing.sm, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
-  sparkAktiv: { width: 20, marginRight: 2 },
+  spark: { width: 20, height: 20, marginRight: 2, alignItems: 'center', justifyContent: 'center' },
   summary: { color: tokens.color.fg2, fontSize: 15 },
   tid: { color: tokens.color.fg2, fontSize: 13, opacity: 0.65, fontVariant: ['tabular-nums'] },
   celle: { minWidth: 16, alignItems: 'center', justifyContent: 'center' },

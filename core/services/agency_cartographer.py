@@ -452,6 +452,7 @@ def _luk_loeste_reparationer(edges: list[dict[str, Any]]) -> list[str]:
                     f"({int(float(edge.get('confidence') or 0) * 100)}% bevis) — "
                     "lukket af kartografen selv"),
             )
+            _luk_brief(opgave_id, edge)
             lukkede.append(opgave_id)
             logger.info("agency-cartographer: lukkede loest reparation %s (%s)",
                         opgave_id, edge.get("title"))
@@ -459,6 +460,32 @@ def _luk_loeste_reparationer(edges: list[dict[str, Any]]) -> list[str]:
             logger.warning("agency-cartographer: kunne ikke lukke opgave %s",
                            opgave_id, exc_info=True)
     return lukkede
+
+
+def _luk_brief(opgave_id: str, edge: dict[str, Any]) -> None:
+    """Briefen skal ikke blive staaende med «awaiting» naar arbejdet er gjort.
+
+    Opgaven lukkes i databasen, men BRIEFEN lever i state-store og saa
+    `awaiting-visible-repair` ogsaa bagefter. To poster om samme sag, hvor kun
+    den ene bliver opdateret, er den samme forældelse ét lag laengere inde —
+    og briefen er den man laeser naar man vil vide hvad der skal goeres.
+    """
+    try:
+        from core.runtime.state_store import load_json, save_json
+
+        data = load_json("agency_bridge_repair_briefs", {})
+        if not isinstance(data, dict) or opgave_id not in data:
+            return
+        post = dict(data[opgave_id])
+        post["status"] = "resolved"
+        post["resolved_at"] = datetime.now(UTC).isoformat()
+        post["resolution"] = (
+            f"broen er forbundet ({int(float(edge.get('confidence') or 0) * 100)}% bevis)")
+        data[opgave_id] = post
+        save_json("agency_bridge_repair_briefs", data)
+    except Exception:
+        logger.warning("agency-cartographer: kunne ikke lukke brief %s", opgave_id,
+                       exc_info=True)
 
 
 def _runtime_task_priority(priority: str) -> str:

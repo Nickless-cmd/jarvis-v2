@@ -128,3 +128,20 @@ def test_en_opgave_uden_id_rapporteres_ikke_som_lukket(monkeypatch):
         {"status": "connected", "title": "t", "target": "t", "confidence": 1.0, "next_move": "x"},
     ])
     assert ud == [] and kaldt == []
+
+
+def test_briefen_lukkes_sammen_med_opgaven(monkeypatch, tmp_path):
+    """To poster om samme sag, hvor kun den ene opdateres, er den samme
+    foraeldelse ét lag laengere inde — og briefen er den man LAESER naar man
+    vil vide hvad der skal goeres."""
+    import core.services.agency_cartographer as ac
+    from core.runtime import state_store
+
+    monkeypatch.setattr(state_store, "_STATE_DIR", tmp_path)
+    state_store.save_json("agency_bridge_repair_briefs", {
+        "task-9": {"status": "awaiting-visible-repair", "scope": "x"}})
+    ac._luk_brief("task-9", {"confidence": 1.0})
+    post = state_store.load_json("agency_bridge_repair_briefs", {})["task-9"]
+    assert post["status"] == "resolved"
+    assert post["resolved_at"]
+    assert "100%" in post["resolution"]

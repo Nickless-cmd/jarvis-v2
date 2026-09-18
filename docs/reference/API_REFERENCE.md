@@ -46,7 +46,7 @@
 | GET | `/api/connectors` |  | connectors |
 | DELETE | `/api/connectors/{connector_id}` |  | connectors |
 | POST | `/api/connectors/{connector_id}/enabled` |  | connectors |
-| GET | `/api/dispatches` | str | jarvisx_dispatches |
+| GET | `/api/dispatches` | dict | jarvisx_dispatches |
 | GET | `/api/dispatches/budget` | dict | jarvisx_dispatches |
 | GET | `/api/dispatches/{task_id}` | dict | jarvisx_dispatches |
 | GET | `/api/dispatches/{task_id}/diff` | dict | jarvisx_dispatches |

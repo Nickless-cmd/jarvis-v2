@@ -25,7 +25,6 @@ router = APIRouter(prefix="/api", tags=["jarvisx"])
 # tool. This is observability, not control.
 
 
-@router.get("/dispatches", dependencies=[Depends(require_owner)])
 def _felt(row: Any, navn: str) -> str:
     """Et kolonne-opslag der taaler at kolonnen ikke findes endnu.
 
@@ -39,6 +38,11 @@ def _felt(row: Any, navn: str) -> str:
         return ""
 
 
+# Dekoratoren SKAL sidde lige her. 13/9-2026 blev `_felt` indsat mellem den
+# og funktionen, og saa bandt FastAPI ruten til kolonne-hjaelperen: `/dispatches`
+# svarede med en streng, mobilens artefakt-skaerm slugte fejlen og viste en tom
+# liste i fem dage. Test: tests/test_jarvisx_dispatches_route.py.
+@router.get("/dispatches", dependencies=[Depends(require_owner)])
 def list_dispatches(limit: int = Query(default=50, ge=1, le=200)) -> dict[str, Any]:
     """Recent dispatches, running first then by started_at desc.
 

@@ -120,11 +120,11 @@ _JarvisX Claude-Code dispatch dashboard route group._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_felt` | `(row, navn)` | Et kolonne-opslag der taaler at kolonnen ikke findes endnu. | [src](../../../apps/api/jarvis_api/routes/jarvisx_dispatches.py#L29) |
-| function | `list_dispatches` | `(limit=…)` | Recent dispatches, running first then by started_at desc. | [src](../../../apps/api/jarvis_api/routes/jarvisx_dispatches.py#L42) |
-| function | `dispatch_budget` | `()` | Current hour's dispatch budget — count + tokens vs caps. | [src](../../../apps/api/jarvis_api/routes/jarvisx_dispatches.py#L133) |
-| function | `get_dispatch` | `(task_id)` | Full audit row + parsed spec for a single dispatch. | [src](../../../apps/api/jarvis_api/routes/jarvisx_dispatches.py#L159) |
-| function | `get_dispatch_diff` | `(task_id)` | Live diff of a dispatch's worktree against main. | [src](../../../apps/api/jarvis_api/routes/jarvisx_dispatches.py#L176) |
+| function | `_felt` | `(row, navn)` | Et kolonne-opslag der taaler at kolonnen ikke findes endnu. | [src](../../../apps/api/jarvis_api/routes/jarvisx_dispatches.py#L28) |
+| function | `list_dispatches` | `(limit=…)` | Recent dispatches, running first then by started_at desc. | [src](../../../apps/api/jarvis_api/routes/jarvisx_dispatches.py#L46) |
+| function | `dispatch_budget` | `()` | Current hour's dispatch budget — count + tokens vs caps. | [src](../../../apps/api/jarvis_api/routes/jarvisx_dispatches.py#L137) |
+| function | `get_dispatch` | `(task_id)` | Full audit row + parsed spec for a single dispatch. | [src](../../../apps/api/jarvis_api/routes/jarvisx_dispatches.py#L163) |
+| function | `get_dispatch_diff` | `(task_id)` | Live diff of a dispatch's worktree against main. | [src](../../../apps/api/jarvis_api/routes/jarvisx_dispatches.py#L180) |
 
 ## `apps/api/jarvis_api/routes/jarvisx_processes.py`
 _JarvisX process-supervisor + trading + operator-wakeup route group._

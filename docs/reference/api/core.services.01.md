@@ -328,15 +328,16 @@ _Agency Cartographer daemon._
 | function | `_maybe_enqueue_recommended_task` | `(candidate)` | — | [src](../../../core/services/agency_cartographer.py#L343) |
 | function | `_find_existing_agency_task` | `(candidate)` | — | [src](../../../core/services/agency_cartographer.py#L394) |
 | function | `_luk_loeste_reparationer` | `(edges)` | Luk reparations-opgaver hvis bro er blevet forbundet. | [src](../../../core/services/agency_cartographer.py#L411) |
-| function | `_luk_brief` | `(opgave_id, edge)` | Briefen skal ikke blive staaende med «awaiting» naar arbejdet er gjort. | [src](../../../core/services/agency_cartographer.py#L465) |
-| function | `_runtime_task_priority` | `(priority)` | — | [src](../../../core/services/agency_cartographer.py#L491) |
-| function | `_publish_auto_task_event` | `(candidate, task)` | — | [src](../../../core/services/agency_cartographer.py#L500) |
-| function | `_priority_score` | `(*, status, confidence, importance, agency_axes)` | — | [src](../../../core/services/agency_cartographer.py#L521) |
-| function | `_priority_label` | `(score)` | — | [src](../../../core/services/agency_cartographer.py#L550) |
-| function | `_priority_reason` | `(*, status, confidence, importance, agency_axes)` | — | [src](../../../core/services/agency_cartographer.py#L562) |
-| function | `build_agency_cartographer_awareness_section` | `()` | Build a compact 'Agency Bridges' awareness section for the heartbeat prompt. | [src](../../../core/services/agency_cartographer.py#L582) |
-| function | `_record_awareness_history` | `(edges)` | Record current edge statuses into awareness history for stuck detection. | [src](../../../core/services/agency_cartographer.py#L637) |
-| function | `_compute_stuck_edges` | `(edges)` | Return edges whose status hasn't changed in >= 3 scans. | [src](../../../core/services/agency_cartographer.py#L658) |
+| function | `_luk_briefer_for_forbundne` | `(edges)` | Luk enhver aaben brief hvis bro er forbundet — uanset opgavens skaebne. | [src](../../../core/services/agency_cartographer.py#L471) |
+| function | `_luk_brief` | `(opgave_id, edge)` | Briefen skal ikke blive staaende med «awaiting» naar arbejdet er gjort. | [src](../../../core/services/agency_cartographer.py#L514) |
+| function | `_runtime_task_priority` | `(priority)` | — | [src](../../../core/services/agency_cartographer.py#L540) |
+| function | `_publish_auto_task_event` | `(candidate, task)` | — | [src](../../../core/services/agency_cartographer.py#L549) |
+| function | `_priority_score` | `(*, status, confidence, importance, agency_axes)` | — | [src](../../../core/services/agency_cartographer.py#L570) |
+| function | `_priority_label` | `(score)` | — | [src](../../../core/services/agency_cartographer.py#L599) |
+| function | `_priority_reason` | `(*, status, confidence, importance, agency_axes)` | — | [src](../../../core/services/agency_cartographer.py#L611) |
+| function | `build_agency_cartographer_awareness_section` | `()` | Build a compact 'Agency Bridges' awareness section for the heartbeat prompt. | [src](../../../core/services/agency_cartographer.py#L631) |
+| function | `_record_awareness_history` | `(edges)` | Record current edge statuses into awareness history for stuck detection. | [src](../../../core/services/agency_cartographer.py#L686) |
+| function | `_compute_stuck_edges` | `(edges)` | Return edges whose status hasn't changed in >= 3 scans. | [src](../../../core/services/agency_cartographer.py#L707) |
 
 ## `core/services/agency_map.py`
 _Agency Map surface for Mission Control._

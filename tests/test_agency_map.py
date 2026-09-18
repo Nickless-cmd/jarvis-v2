@@ -145,3 +145,27 @@ def test_briefen_lukkes_sammen_med_opgaven(monkeypatch, tmp_path):
     assert post["status"] == "resolved"
     assert post["resolved_at"]
     assert "100%" in post["resolution"]
+
+
+def test_en_foraeldreloes_brief_lukkes_ogsaa(monkeypatch, tmp_path):
+    """Briefen maa ikke kunne blive haengende fordi opgaven blev lukket paa
+    anden vis. Maalt 18/9-2026: task-ec34be0fcce7 var lukket, og briefen stod
+    stadig «awaiting-visible-repair» — mekanismen udloestes aldrig igen, fordi
+    den kun fyrede som sidegevinst af at lukke en opgave."""
+    import core.services.agency_cartographer as ac
+    from core.runtime import state_store
+
+    monkeypatch.setattr(state_store, "_STATE_DIR", tmp_path)
+    state_store.save_json("agency_bridge_repair_briefs", {
+        "task-9": {"status": "awaiting-visible-repair", "scope": "Hidden Runtime -> Mission Control"},
+        "task-8": {"status": "awaiting-visible-repair", "scope": "En anden bro"},
+    })
+    ud = ac._luk_briefer_for_forbundne([
+        {"status": "connected", "target": "Hidden Runtime -> Mission Control", "confidence": 1.0},
+        {"status": "partial", "target": "En anden bro", "confidence": 0.5},
+    ])
+    data = state_store.load_json("agency_bridge_repair_briefs", {})
+    assert ud == ["task-9"]
+    assert data["task-9"]["status"] == "resolved"
+    # Den anden bro er stadig partial — dens brief skal blive staaende.
+    assert data["task-8"]["status"] == "awaiting-visible-repair"

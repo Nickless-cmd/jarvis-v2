@@ -426,6 +426,12 @@ def _luk_loeste_reparationer(edges: list[dict[str, Any]]) -> list[str]:
     `partial` er ikke loest, og dens opgave skal blive staaende.
     """
     lukkede: list[str] = []
+    # Briefer lukkes for sig. Foerste udgave lukkede dem KUN som en sidegevinst
+    # af at lukke en opgave — og saa blev de foraeldreloese i det oejeblik
+    # opgaven var lukket paa anden vis: mekanismen udloeses aldrig igen, fordi
+    # der ikke er nogen aaben opgave at finde. Maalt 18/9-2026 paa netop
+    # task-ec34be0fcce7.
+    _luk_briefer_for_forbundne(edges)
     try:
         from core.services.runtime_tasks import update_task
     except Exception:
@@ -459,6 +465,49 @@ def _luk_loeste_reparationer(edges: list[dict[str, Any]]) -> list[str]:
         except Exception:
             logger.warning("agency-cartographer: kunne ikke lukke opgave %s",
                            opgave_id, exc_info=True)
+    return lukkede
+
+
+def _luk_briefer_for_forbundne(edges: list[dict[str, Any]]) -> list[str]:
+    """Luk enhver aaben brief hvis bro er forbundet — uanset opgavens skaebne.
+
+    Briefen er den man LAESER naar man vil vide hvad der skal goeres. Staar der
+    «awaiting» om noget der er loest, sender den nogen ud paa et arbejde der er
+    gjort.
+    """
+    forbundne = {
+        str(edge.get("target") or edge.get("title") or "").strip()
+        for edge in edges if str(edge.get("status") or "") == "connected"
+    }
+    if not forbundne:
+        return []
+    lukkede: list[str] = []
+    try:
+        from core.runtime.state_store import load_json, save_json
+
+        data = load_json("agency_bridge_repair_briefs", {})
+        if not isinstance(data, dict):
+            return []
+        aendret = False
+        for noegle, post in list(data.items()):
+            if not isinstance(post, dict):
+                continue
+            if str(post.get("status") or "") == "resolved":
+                continue
+            if str(post.get("scope") or "").strip() not in forbundne:
+                continue
+            post = dict(post)
+            post["status"] = "resolved"
+            post["resolved_at"] = datetime.now(UTC).isoformat()
+            post["resolution"] = "broen er forbundet ved en senere scanning"
+            data[noegle] = post
+            lukkede.append(str(noegle))
+            aendret = True
+        if aendret:
+            save_json("agency_bridge_repair_briefs", data)
+            logger.info("agency-cartographer: lukkede %d foraeldet brief(er)", len(lukkede))
+    except Exception:
+        logger.warning("agency-cartographer: kunne ikke feje briefer", exc_info=True)
     return lukkede
 
 

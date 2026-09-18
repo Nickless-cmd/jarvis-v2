@@ -54,6 +54,16 @@ beforeEach(() => {
   vi.spyOn(api, 'getTidsserie').mockResolvedValue({
     spand: [{ tid: '2026-09-16T17:00', kald: 10, fejl: 8, latens_ms: 900 }],
   })
+  vi.spyOn(api, 'getDashboard').mockResolvedValue({
+    schema_version: 1, generated_at: '2026-09-18T09:00:00Z', window_hours: 24,
+    status: 'complete',
+    kpis: { requests: 15, tokens: 4200, errors: 8, cost_usd: 0.0012,
+            eligible_slots: 1, active_findings: 0 },
+    sections: {
+      capacity: { source: 'quota', observed_at: '2026-09-18T09:00:00Z', freshness: 'live',
+                  data: { windows: [] }, error: null },
+    },
+  })
   vi.spyOn(api, 'getRegistret').mockResolvedValue({
     udbydere: [{ provider: 'zai', enabled: true, model_count: 1, enabled_model_count: 1 }],
     modeller: [{ provider: 'zai', model: 'glm-4', lane: 'cheap', enabled: true }],
@@ -61,20 +71,28 @@ beforeEach(() => {
 })
 
 describe('CheapLanePanel', () => {
-  it('viser puljens tilstand og vinduets tal på oversigten', async () => {
+  it('viser vinduets noegletal paa oversigten', async () => {
+    // Oversigten kommer fra ÉT snapshot siden 18/9-2026 — ikke fra fire
+    // hentninger med hver sit tidspunkt.
     render(<CheapLanePanel config={config} />)
-    await waitFor(() => expect(screen.getByText('46,7 %')).toBeInTheDocument())  // succesrate
-    expect(screen.getByText('15')).toBeInTheDocument()                            // kald
-    expect(screen.getByText('1 kan vælges nu')).toBeInTheDocument()
+    await waitFor(() => expect(document.querySelector('.cl-kpi')).toBeTruthy())
+    // Tallet laeses sammen med SIN etiket inde i KPI-kortet: baade «8» og
+    // «Kald» staar flere steder paa fladen (grafens tabel bruger de samme ord),
+    // saa en loesere soegning ville bestaa selv hvis tallet forsvandt.
+    const kpi = (etiket: string) => [...document.querySelectorAll('.cl-kpi')]
+      .find((k) => k.querySelector('.cl-kpi-label')?.textContent === etiket)
+      ?.querySelector('.cl-kpi-tal')?.textContent
+    expect(kpi('Kald')).toBe('15')
+    expect(kpi('Fejl')).toBe('8')
+    expect(kpi('Slots klar')).toBe('1')
   })
 
-  it('en udbyder UDEN kald står som «–», ikke som 0 %', async () => {
-    vi.spyOn(api, 'getHistorik').mockResolvedValue({
-      udbydere: [], opsummering: { kald: 0, ok: 0, fejl: 0, succesrate: null, pris_usd: 0, udbydere: 0 },
-    })
+  it('kapacitet uden kvoter siger det — den viser ikke 0 %', async () => {
+    const bruger = userEvent.setup()
     render(<CheapLanePanel config={config} />)
-    // «Ingen data» og «nul procent» er to forskellige beskeder.
-    await waitFor(() => expect(screen.getByText('–')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Kapacitet' })).toBeInTheDocument())
+    await bruger.click(screen.getByRole('button', { name: 'Kapacitet' }))
+    expect(screen.getByText(/ingen kvoter/i)).toBeInTheDocument()
     expect(screen.queryByText('0 %')).not.toBeInTheDocument()
   })
 
@@ -115,6 +133,6 @@ describe('CheapLanePanel', () => {
     vi.spyOn(api, 'getFejl').mockRejectedValue(new Error('nede'))
     render(<CheapLanePanel config={config} />)
     await waitFor(() => expect(screen.getByText('1 af 5 kilder svarede ikke')).toBeInTheDocument())
-    expect(screen.getByText('46,7 %')).toBeInTheDocument()   // historikken staar endnu
+    expect(screen.getByText('15')).toBeInTheDocument()   // snapshotet staar endnu
   })
 })

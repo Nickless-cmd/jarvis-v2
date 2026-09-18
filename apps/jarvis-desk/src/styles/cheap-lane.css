@@ -1,0 +1,128 @@
+/* Cheap lane-kontrolcentret.
+ *
+ * Egen fil, ikke app.css: den er 3.900 linjer og bærer hele appen, og et
+ * panel der kan skiftes ud alene skal kunne læses og fjernes alene. Alle
+ * farver kommer fra tokens.css — ingen literaler, så begge temaer følger med
+ * uden at nogen skal huske at rette to steder.
+ */
+
+.cl-kpi-gitter {
+  display: grid;
+  /* Faste minimumsbredder frem for viewport-skalering: tallene skal have
+     samme plads uanset hvor panelet står, ellers hopper de når en fane
+     skifter. */
+  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.cl-kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 62px;
+  padding: 9px 11px;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+}
+.cl-kpi-label { font-size: 11px; color: var(--fg-3); letter-spacing: 0.02em; }
+.cl-kpi-tal { font-size: 19px; color: var(--fg-1); font-variant-numeric: tabular-nums; }
+.cl-kpi-note { font-size: 11px; color: var(--fg-3); }
+
+.cl-maalt { font-size: 11px; color: var(--fg-3); margin: 0 0 10px; }
+.cl-dæmpet { color: var(--fg-3); }
+
+/* En sektion der svigtede er en LINJE, ikke en tom skærm. */
+.cl-sektionsfejl {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+  margin: 0 0 6px;
+  padding: 6px 9px;
+  font-size: 12px;
+  color: var(--fg-2);
+  background: color-mix(in srgb, var(--error-fg, #d9534f) 8%, var(--bg-2));
+  border: 1px solid color-mix(in srgb, var(--error-fg, #d9534f) 28%, var(--line));
+  border-radius: 8px;
+}
+.cl-sektionsfejl strong { color: var(--fg-1); font-weight: 500; }
+
+/* ── kvoter ─────────────────────────────────────────────────────────── */
+
+.cl-kvoter { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+
+.cl-kvote {
+  padding: 9px 11px;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+}
+.cl-kvote-hoved {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  font-size: 12px; margin-bottom: 6px;
+}
+.cl-kvote-navn { color: var(--fg-1); }
+.cl-kvote-periode { color: var(--fg-3); }
+
+.cl-kilde {
+  font-size: 10px; letter-spacing: 0.04em; padding: 1px 6px;
+  border: 1px solid var(--line); border-radius: 4px; color: var(--fg-3);
+}
+/* Kilden er ikke pynt: «provider» er målt hos udbyderen, «estimated» er vores
+   eget gæt. Den forskel skal kunne ses uden at læse hjælpeteksten. */
+.cl-kilde-provider { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+.cl-kilde-estimated { font-style: italic; }
+.cl-kilde-unknown { opacity: 0.7; }
+
+.cl-bar {
+  height: 7px; border-radius: 4px; background: var(--bg-3);
+  overflow: hidden; margin-bottom: 5px;
+}
+.cl-bar-fyld { height: 100%; background: var(--accent); }
+
+.cl-kvote-tal {
+  display: flex; gap: 12px; flex-wrap: wrap;
+  font-size: 12px; color: var(--fg-2); font-variant-numeric: tabular-nums;
+}
+.cl-kvote-reset { font-size: 11px; color: var(--fg-3); margin-top: 4px; }
+
+/* Ingen bjælke ved ukendt grænse — en tom bjælke ville læses som «næsten
+   intet brugt», og det er en påstand vi ikke har dækning for. */
+.cl-ukendt {
+  font-size: 12px; color: var(--fg-3); font-style: italic;
+  padding: 3px 0 5px;
+}
+
+.cl-tom { font-size: 12px; color: var(--fg-3); margin: 8px 0; }
+
+/* ── grafer ─────────────────────────────────────────────────────────── */
+
+.cl-graf { margin: 12px 0 0; }
+.cl-graf-titel { font-size: 12px; color: var(--fg-2); margin-bottom: 4px; }
+.cl-graf-flade { width: 100%; min-height: 180px; }
+
+.cl-graf-tabelknap {
+  margin-top: 4px; background: none; border: none; padding: 0;
+  font: inherit; font-size: 11px; color: var(--fg-3);
+  text-decoration: underline; cursor: pointer;
+}
+.cl-graf-tabelknap:hover { color: var(--fg-2); }
+
+/* Bredt indhold får sin egen vandrette rulning — siden må aldrig rulle sidelæns. */
+.cl-tabel-holder { overflow-x: auto; margin-top: 6px; }
+.cl-tabel-holder table { border-collapse: collapse; font-size: 11px; width: 100%; }
+.cl-tabel-holder th, .cl-tabel-holder td {
+  padding: 3px 8px; text-align: right; border-bottom: 1px solid var(--line);
+  font-variant-numeric: tabular-nums; color: var(--fg-2);
+}
+.cl-tabel-holder th[scope="row"] { text-align: left; color: var(--fg-3); font-weight: 400; }
+
+/* Tallene findes ALTID i tabellen — også når den er foldet sammen. Recharts'
+   tooltip lever kun under en markør, så uden det her var grafen tom for
+   enhver der ikke bruger mus. */
+.cl-kun-skaermlaeser {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}

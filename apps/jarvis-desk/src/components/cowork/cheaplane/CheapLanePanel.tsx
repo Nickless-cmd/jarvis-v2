@@ -5,6 +5,9 @@ import {
   slotHandling, refreshPool, saetModel,
   type BalancerState, type Historik, type FejlSvar, type TidsserieSpand, type Registret,
 } from '../../../lib/cheapLaneApi'
+import { useCheapLaneStore } from '../../../lib/cheapLaneStore'
+import { CheapLaneOverview } from './CheapLaneOverview'
+import { CheapLaneCapacity } from './CheapLaneCapacity'
 
 /**
  * Cheap Lane — hele lanen på én flade.
@@ -22,10 +25,11 @@ import {
  * knapperne: et slot «pauses» i balancerens egen tilstand, mens en model
  * slås fra i registret og derfor bliver væk efter en genstart.
  */
-type Fane = 'oversigt' | 'pulje' | 'udbydere' | 'fejl' | 'historik'
+type Fane = 'oversigt' | 'kapacitet' | 'pulje' | 'udbydere' | 'fejl' | 'historik'
 
 const FANER: { id: Fane; label: string }[] = [
   { id: 'oversigt', label: 'Oversigt' },
+  { id: 'kapacitet', label: 'Kapacitet' },
   { id: 'pulje', label: 'Puljen nu' },
   { id: 'udbydere', label: 'Udbydere' },
   { id: 'fejl', label: 'Fejl' },
@@ -60,6 +64,9 @@ export function CheapLanePanel({ config }: { config?: ApiConfig }) {
   const [registret, setRegistret] = useState<Registret | null>(null)
   const [henter, setHenter] = useState(false)
   const [besked, setBesked] = useState('')
+  // Oversigt og kapacitet kommer fra ÉT snapshot med Centrals strøm som puls.
+  // De øvrige faner henter stadig hver for sig indtil opgave 11-12 flytter dem.
+  const butik = useCheapLaneStore(config, timer)
 
   const hent = useCallback(async () => {
     if (!config) return
@@ -94,8 +101,6 @@ export function CheapLanePanel({ config }: { config?: ApiConfig }) {
 
   if (!config) return <div className="mc-tom">Ingen forbindelse til serveren.</div>
 
-  const h = state?.header ?? {}
-  const o = historik?.opsummering
 
   return (
     <div className="mc cheaplane">
@@ -108,7 +113,10 @@ export function CheapLanePanel({ config }: { config?: ApiConfig }) {
               <option key={v} value={v}>{v < 24 ? `${v} t` : `${v / 24} døgn`}</option>
             ))}
           </select>
-          <button type="button" onClick={() => void hent()} disabled={henter}>
+          <span className={`cl-live cl-live-${butik.liveState}`} title={`Datastrøm: ${butik.liveState}`}>
+            {butik.liveState === 'live' ? 'live' : butik.liveState === 'polling' ? 'poller' : butik.liveState}
+          </span>
+          <button type="button" onClick={() => { void hent(); butik.refresh() }} disabled={henter}>
             {henter ? 'Henter…' : 'Opdatér'}
           </button>
         </div>
@@ -129,51 +137,15 @@ export function CheapLanePanel({ config }: { config?: ApiConfig }) {
       </div>
 
       {fane === 'oversigt' && (
-        <div className="cl-oversigt">
-          <div className="cl-kort-raekke">
-            <Kort navn="Slots i puljen" vaerdi={h.total_slots ?? state?.pool_size ?? 0}
-                  under={`${state?.eligible_now ?? 0} kan vælges nu`} />
-            <Kort navn="Sunde" vaerdi={h.healthy ?? 0}
-                  under={`${h.cooldown ?? 0} i køling · ${h.disabled ?? 0} slået fra`} />
-            <Kort navn={`Kald (${timer} t)`} vaerdi={o?.kald ?? 0}
-                  under={`${o?.fejl ?? 0} fejlede`} />
-            <Kort navn="Succesrate" vaerdi={pct(o?.succesrate)}
-                  under={`${o?.udbydere ?? 0} udbydere i brug`} />
-            <Kort navn="Pris" vaerdi={`$${(o?.pris_usd ?? 0).toFixed(4)}`}
-                  under="i vinduet" />
-          </div>
+        butik.snapshot
+          ? <CheapLaneOverview snapshot={butik.snapshot} serie={serie.map((x) => ({
+              start: x.tid, kald: x.kald, fejl: x.fejl, tokens: 0,
+            }))} />
+          : <p className="cl-tom">{butik.error || 'Henter overblik…'}</p>
+      )}
 
-          {state?.enabled === false && (
-            <div className="cl-advarsel">
-              Balanceren er slået fra i runtime-indstillingerne. Puljen bruges ikke.
-            </div>
-          )}
-
-          <h3>Kald pr. periode</h3>
-          <Kurve spand={serie} />
-
-          <h3>Værst i vinduet</h3>
-          <table className="mc-tabel">
-            <thead><tr><th>Udbyder</th><th>Model</th><th>Kald</th><th>Succes</th><th>Hyppigste fejl</th></tr></thead>
-            <tbody>
-              {(historik?.udbydere ?? [])
-                .filter((u) => u.fejl > 0)
-                .sort((a, b) => b.fejl - a.fejl).slice(0, 8)
-                .map((u) => (
-                  <tr key={`${u.provider}/${u.model}/${u.auth_profile ?? ''}`}>
-                    <td>{u.provider}</td>
-                    <td className="cl-model">{u.model}</td>
-                    <td>{u.kald}</td>
-                    <td className={(u.succesrate ?? 1) < 0.5 ? 'cl-daarlig' : ''}>{pct(u.succesrate)}</td>
-                    <td>{u.fejlkoder[0] ? `${u.fejlkoder[0].kode} (${u.fejlkoder[0].antal})` : '–'}</td>
-                  </tr>
-                ))}
-              {!(historik?.udbydere ?? []).some((u) => u.fejl > 0) && (
-                <tr><td colSpan={5}>Ingen fejl i vinduet.</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+      {fane === 'kapacitet' && (
+        <CheapLaneCapacity vinduer={butik.snapshot?.sections?.capacity?.data?.windows ?? []} />
       )}
 
       {fane === 'pulje' && (
@@ -328,37 +300,6 @@ export function CheapLanePanel({ config }: { config?: ApiConfig }) {
           </table>
         </div>
       )}
-    </div>
-  )
-}
-
-function Kort({ navn, vaerdi, under }: { navn: string; vaerdi: number | string; under?: string }) {
-  return (
-    <div className="cl-kort">
-      <div className="cl-kort-navn">{navn}</div>
-      <div className="cl-kort-vaerdi">{vaerdi}</div>
-      {under && <div className="cl-kort-under">{under}</div>}
-    </div>
-  )
-}
-
-/** Søjler uden bibliotek: kald i højden, fejlandelen i rødt oven i.
- *  Et diagram-bibliotek ville koste mere end de 30 linjer her. */
-function Kurve({ spand }: { spand: TidsserieSpand[] }) {
-  if (!spand.length) return <div className="mc-tom">Ingen kald i vinduet.</div>
-  const top = Math.max(...spand.map((s) => s.kald), 1)
-  return (
-    <div className="cl-kurve" role="img"
-         aria-label={`Kald pr. periode, højeste ${top}`}>
-      {spand.map((s) => (
-        <div key={s.tid} className="cl-soejle"
-             title={`${s.tid}: ${s.kald} kald, ${s.fejl} fejl, ${s.latens_ms} ms`}>
-          <div className="cl-soejle-krop" style={{ height: `${(s.kald / top) * 100}%` }}>
-            <div className="cl-soejle-fejl"
-                 style={{ height: `${s.kald ? (s.fejl / s.kald) * 100 : 0}%` }} />
-          </div>
-        </div>
-      ))}
     </div>
   )
 }

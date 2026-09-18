@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7710/14981 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7714/14985 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 7710/14981 functions/methods documented (51%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 654 | 1207 | 54% |
-| `core.services` | 5131 | 10295 | 49% |
+| `core.services` | 5135 | 10299 | 49% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 109 | 184 | 59% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1718,14 +1718,14 @@ Generated from source. 7710/14981 functions/methods documented (51%). The list b
 - `core/services/semantic_indexer.py` :: `start_semantic_indexer` (L34)
 - `core/services/semantic_indexer.py` :: `stop_semantic_indexer` (L62)
 - `core/services/semantic_memory.py` :: `get_stats` (L531)
-- `core/services/sensory_archive.py` :: `count` (L209)
-- `core/services/sensory_archive.py` :: `get` (L205)
-- `core/services/sensory_archive.py` :: `list_recent` (L184)
-- `core/services/sensory_archive.py` :: `record_atmosphere` (L166)
-- `core/services/sensory_archive.py` :: `record_audio` (L157)
-- `core/services/sensory_archive.py` :: `record_mixed` (L175)
-- `core/services/sensory_archive.py` :: `record_visual` (L148)
-- `core/services/sensory_archive.py` :: `search` (L196)
+- `core/services/sensory_archive.py` :: `count` (L257)
+- `core/services/sensory_archive.py` :: `get` (L253)
+- `core/services/sensory_archive.py` :: `list_recent` (L232)
+- `core/services/sensory_archive.py` :: `record_atmosphere` (L214)
+- `core/services/sensory_archive.py` :: `record_audio` (L205)
+- `core/services/sensory_archive.py` :: `record_mixed` (L223)
+- `core/services/sensory_archive.py` :: `record_visual` (L196)
+- `core/services/sensory_archive.py` :: `search` (L244)
 - `core/services/session_continuity.py` :: `build_session_continuity_surface` (L560)
 - `core/services/session_continuity.py` :: `get_latest_morning_thread` (L438)
 - `core/services/session_inbox.py` :: `pending_count` (L237)

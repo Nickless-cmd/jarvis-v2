@@ -1,209 +1,150 @@
-"""Tests for the 2026-09-13 Sansernes-Arkiv fixes.
-
-Three fixes, all rooted in the same 31-hour silent archive outage
-(11. sep 23:00 → 13. sep ~08:00Z, 99 'database is locked' errors):
-
-1. ``_sense_audio`` never archived — it delegated to ambient_sound's tick and
-   relied on that daemon's side-effect. Now it captures its own metadata sample
-   and writes via ``record_audio``.
-2. Silent ``except Exception: pass`` in ``_sense_atmosphere`` / ``_sense_mixed``
-   (and ``logger.debug`` in ambient's ``_archive_sensory``) swallowed the real
-   failure. Now logged at WARNING so the next outage is visible.
-3. ``ambient_sound`` was not in the daemon registry → ``is_enabled`` returned
-   True for the unknown name, the tick-site ran ungated, and
-   ``record_daemon_tick`` was a no-op (so it looked like it never ran). Now
-   registered → gated, visible and toggleable.
-"""
 from __future__ import annotations
 
-import logging
 from datetime import UTC, datetime
 
-
-def _now() -> datetime:
-    return datetime.now(UTC)
+import pytest
 
 
-# ── Fix 1: _sense_audio archives its own impression ──────────────────────────
+def _fjern_maetning(monkeypatch) -> None:
+    """Gør trangen høj nok til at tick'et faktisk forsøger at sanse."""
+    from core.services import active_sensing_daemon as asd
+
+    monkeypatch.setattr(asd, "_enabled", lambda: True)
+    monkeypatch.setattr(asd, "_compute_desire", lambda state, now: 0.9)
 
 
-def test_sense_audio_archives_to_sensory_archive(monkeypatch):
-    import core.services.active_sensing_daemon as asd
-    import core.services.sensory_archive as sa
+def test_fejlet_sansning_nulstiller_ikke_maetningen(isolated_runtime, monkeypatch) -> None:
+    """Rodårsagen bag 42 → 2 → 25 → 1 pr. dag.
 
+    Før 18/9 satte tick'et `last_sensed_at` uanset udfald, så en fejlet
+    sansning kostede hele mætningen: trangen faldt under tærsklen, og der gik
+    30-90 min før næste forsøg. En ustabil formiddag blev til en tavs dag.
+    """
+    from core.services import active_sensing_daemon as asd
+
+    _fjern_maetning(monkeypatch)
+    monkeypatch.setattr(asd, "_choose_modality", lambda state, now: "visual")
     monkeypatch.setattr(
-        "core.services.ambient_sound_daemon._capture_sample",
-        lambda **kw: ("talk", 0.021, 0.011, None),
+        asd, "_perform_sensing",
+        lambda modality, state, now: {"ok": False, "reason": "capture_failed"},
     )
 
-    captured: dict = {}
+    svar = asd.tick_active_sensing_daemon()
+    tilstand = asd._load_state()
 
-    def fake_record_audio(content, **kw):
-        captured["content"] = content
-        captured["metadata"] = kw.get("metadata")
-        return {"id": "x", "modality": "audio"}
-
-    monkeypatch.setattr(sa, "record_audio", fake_record_audio)
-
-    result = asd._sense_audio({}, _now())
-
-    assert result["reason"] == "audio_talk"
-    assert captured["content"].startswith("Jeg lyttede til rummet")
-    assert captured["metadata"]["source"] == "active_sensing_daemon"
-    assert captured["metadata"]["category"] == "talk"
+    assert svar["sensed"] is False
+    assert "sensing_failed" in svar["reason"]
+    assert not tilstand.get("last_sensed_at"), "en fejl må ikke tælle som en sansning"
+    assert tilstand.get("total_sensing_events", 0) == 0
+    assert tilstand.get("total_failed_sensings") == 1
 
 
-def test_sense_audio_no_device_returns_cleanly(monkeypatch):
-    import core.services.active_sensing_daemon as asd
+def test_fejl_giver_kort_pause_ikke_fuld_maetning(isolated_runtime, monkeypatch) -> None:
+    """Et defekt kamera må ikke ramme hvert tick — men heller ikke æde dagen."""
+    from core.services import active_sensing_daemon as asd
 
+    _fjern_maetning(monkeypatch)
+    monkeypatch.setattr(asd, "_choose_modality", lambda state, now: "visual")
     monkeypatch.setattr(
-        "core.services.ambient_sound_daemon._capture_sample",
-        lambda **kw: (None, 0.0, 0.0, None),
+        asd, "_perform_sensing",
+        lambda modality, state, now: {"ok": False, "reason": "capture_failed"},
     )
-    result = asd._sense_audio({}, _now())
-    assert result["reason"] == "audio_no_device"
+    asd.tick_active_sensing_daemon()
+
+    # Straks efter: pausen holder igen.
+    assert "afventer_efter_fejl" in asd.tick_active_sensing_daemon()["reason"]
+
+    # Efter pausen: der prøves igen — uden at have mistet 30-90 minutter.
+    tilstand = asd._load_state()
+    tilstand["last_failed_at"] = "2020-01-01T00:00:00+00:00"
+    asd._save_state(tilstand)
+    assert "afventer_efter_fejl" not in asd.tick_active_sensing_daemon()["reason"]
 
 
-def test_sense_audio_archive_failure_is_logged_not_swallowed(monkeypatch, caplog):
-    """The sensing still succeeds, but the archive failure must be VISIBLE."""
-    import core.services.active_sensing_daemon as asd
-    import core.services.sensory_archive as sa
+def test_vellykket_sansning_taeller_som_foer(isolated_runtime, monkeypatch) -> None:
+    from core.services import active_sensing_daemon as asd
 
+    _fjern_maetning(monkeypatch)
+    monkeypatch.setattr(asd, "_choose_modality", lambda state, now: "audio")
     monkeypatch.setattr(
-        "core.services.ambient_sound_daemon._capture_sample",
-        lambda **kw: ("silence", 0.0, 0.0, None),
-    )
-
-    def boom(*_a, **_k):
-        raise RuntimeError("database is locked")
-
-    monkeypatch.setattr(sa, "record_audio", boom)
-
-    with caplog.at_level(logging.WARNING, logger="core.services.active_sensing_daemon"):
-        result = asd._sense_audio({}, _now())
-
-    assert result["reason"] == "audio_silence"
-    assert any("audio archive failed" in r.message for r in caplog.records)
-
-
-# ── Fix 2: silent excepts now warn ───────────────────────────────────────────
-
-
-def test_sense_atmosphere_archive_failure_is_logged(monkeypatch, caplog):
-    import core.services.active_sensing_daemon as asd
-    import core.services.sensory_archive as sa
-
-    monkeypatch.setattr(
-        "core.services.visual_memory.look_around_now",
-        lambda **kw: {"status": "captured", "description": "et roligt, køligt rum"},
+        asd, "_perform_sensing",
+        lambda modality, state, now: {
+            "ok": True, "preview": "category=silence", "reason": "audio_silence",
+        },
     )
 
-    def boom(*_a, **_k):
-        raise RuntimeError("database is locked")
+    svar = asd.tick_active_sensing_daemon()
+    tilstand = asd._load_state()
 
-    monkeypatch.setattr(sa, "record_atmosphere", boom)
-
-    with caplog.at_level(logging.WARNING, logger="core.services.active_sensing_daemon"):
-        result = asd._sense_atmosphere({}, _now())
-
-    assert result["reason"] == "atmosphere_captured"
-    assert any("atmosphere archive failed" in r.message for r in caplog.records)
+    assert svar["sensed"] is True
+    assert tilstand["total_sensing_events"] == 1
+    assert tilstand["last_sensed_at"]
+    assert tilstand["modality_history"][0]["modality"] == "audio"
 
 
-def test_sense_mixed_archive_failure_is_logged(monkeypatch, caplog):
-    import core.services.active_sensing_daemon as asd
-    import core.services.sensory_archive as sa
+def test_atmosfaeren_opdigtes_ikke_naar_kameraet_fejler(isolated_runtime, monkeypatch) -> None:
+    """«Atmosfæren var svær at fange» blev arkiveret som et ægte indtryk."""
+    from core.services import active_sensing_daemon as asd
 
+    skrevet: list[str] = []
+    import core.services.sensory_archive as arkiv
     monkeypatch.setattr(
-        "core.services.visual_memory.look_around_now",
-        lambda **kw: {"status": "captured", "description": "et roligt rum"},
+        arkiv, "record_atmosphere",
+        lambda content, **kw: skrevet.append(content) or {"id": "x"},
+    )
+    import core.services.visual_memory as vm
+    monkeypatch.setattr(
+        vm, "look_around_now",
+        lambda **kw: {"status": "vision_failed", "error": "provider 403"},
+    )
+
+    svar = asd._sense_atmosphere({}, datetime.now(UTC))
+
+    assert svar["ok"] is False
+    assert "403" in svar["reason"]
+    assert skrevet == [], "en fejl må ikke arkiveres som en stemning"
+
+
+def test_mixed_arkiverer_ikke_to_fejlkoder_som_indtryk(isolated_runtime, monkeypatch) -> None:
+    """Før i dag blev «Visuelt: capture_error | Lyd: audio_error» gemt som en
+    vellykket sansning."""
+    from core.services import active_sensing_daemon as asd
+
+    skrevet: list[str] = []
+    import core.services.sensory_archive as arkiv
+    monkeypatch.setattr(
+        arkiv, "record_mixed",
+        lambda content, **kw: skrevet.append(content) or {"id": "x"},
     )
     monkeypatch.setattr(
-        "core.services.ambient_sound_daemon._capture_sample",
-        lambda **kw: ("silence", 0.0, 0.0, None),
+        asd, "_sense_visual",
+        lambda state, now: {"ok": False, "preview": "capture_error", "reason": "kamera nede"},
+    )
+    monkeypatch.setattr(
+        asd, "_sense_audio",
+        lambda state, now: {"ok": False, "preview": "audio_error", "reason": "ingen enhed"},
     )
 
-    def boom(*_a, **_k):
-        raise RuntimeError("database is locked")
+    svar = asd._sense_mixed({}, datetime.now(UTC))
 
-    monkeypatch.setattr(sa, "record_mixed", boom)
-
-    with caplog.at_level(logging.WARNING, logger="core.services.active_sensing_daemon"):
-        result = asd._sense_mixed({}, _now())
-
-    assert result["reason"] == "mixed_captured"
-    assert any("mixed archive failed" in r.message for r in caplog.records)
+    assert svar["ok"] is False
+    assert skrevet == []
+    assert "kamera nede" in svar["reason"]
 
 
-# ── Fix 3: ambient_sound is a first-class registered daemon ──────────────────
+def test_fladen_viser_fejlene_ved_siden_af_taellingen(isolated_runtime, monkeypatch) -> None:
+    """799 sansninger lyder som 799 indtryk hvis fejlene ikke står ved siden af."""
+    from core.services import active_sensing_daemon as asd
 
+    monkeypatch.setattr(asd, "_enabled", lambda: True)
+    tilstand = asd._load_state()
+    tilstand["total_sensing_events"] = 799
+    tilstand["total_failed_sensings"] = 41
+    tilstand["last_fail_reason"] = "vision_failed"
+    asd._save_state(tilstand)
 
-def test_ambient_sound_is_registered(monkeypatch):
-    from core.services import daemon_manager as dm
+    flade = asd.build_active_sensing_surface()
 
-    assert "ambient_sound" in dm._REGISTRY
-    entry = dm._REGISTRY["ambient_sound"]
-    assert entry["module"] == "core.services.ambient_sound_daemon"
-    assert entry["default_enabled"] is True
-
-
-def test_ambient_sound_is_toggleable(monkeypatch, isolated_runtime):
-    """Before registration set_daemon_enabled('ambient_sound') raised
-    (unknown name) and is_enabled() fell back to True for any unknown name."""
-    from core.services import daemon_manager as dm
-
-    try:
-        dm.set_daemon_enabled("ambient_sound", False)
-        assert dm.is_enabled("ambient_sound") is False
-        dm.set_daemon_enabled("ambient_sound", True)
-        assert dm.is_enabled("ambient_sound") is True
-    finally:
-        dm.set_daemon_enabled("ambient_sound", True)
-
-
-def test_ambient_record_daemon_tick_now_persists(monkeypatch, isolated_runtime):
-    """record_daemon_tick was a no-op for the unregistered name; now it writes."""
-    from core.services import daemon_manager as dm
-
-    dm.record_daemon_tick("ambient_sound", {"generated": True, "category": "silence"})
-    entry = dm._get_daemon_state("ambient_sound")
-    assert entry.get("last_run_at")
-    assert "generated" in str(entry.get("last_result_summary", ""))
-
-
-# ── Fix 1 helper: save_wav=False skips the temp-WAV write ────────────────────
-
-
-def test_capture_sample_save_wav_false_skips_wav(monkeypatch):
-    import core.services.ambient_sound_daemon as asd
-
-    called = {"save": 0}
-
-    class _FakeSamples:
-        def flatten(self):
-            return self
-
-        def mean(self):
-            return 0.0
-
-        def std(self):
-            return 0.0
-
-        def max(self):
-            return 0.0
-
-    import sys
-    import types
-
-    fake_np = types.ModuleType("numpy")
-    fake_np.abs = lambda x: x  # type: ignore[attr-defined]
-    monkeypatch.setitem(sys.modules, "numpy", fake_np)
-
-    fake_sd = types.ModuleType("sounddevice")
-    fake_sd.rec = lambda *a, **k: _FakeSamples()  # type: ignore[attr-defined]
-    monkeypatch.setitem(sys.modules, "sounddevice", fake_sd)
-
-    monkeypatch.setattr(asd, "_save_wav", lambda s: called.__setitem__("save", called["save"] + 1) or "/tmp/x.wav")
-
-    asd._capture_sample(save_wav=False)
-    assert called["save"] == 0, "save_wav=False must not write a temp WAV"
+    assert flade["total_sensing_events"] == 799
+    assert flade["total_failed_sensings"] == 41
+    assert flade["last_fail_reason"] == "vision_failed"

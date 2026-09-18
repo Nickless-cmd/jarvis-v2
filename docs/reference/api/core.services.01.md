@@ -127,18 +127,19 @@ _Aktiv Sansning — Sansernes Arkiv får autonom sansetrang._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `tick_active_sensing_daemon` | `()` | Aktiv sansetrang: vurder om Jarvis har lyst til at sanse nu. | [src](../../../core/services/active_sensing_daemon.py#L43) |
-| function | `_compute_desire` | `(state, now)` | Beregn sansetrang (0.0-1.0) baseret på tid og kontekst. | [src](../../../core/services/active_sensing_daemon.py#L111) |
-| function | `_choose_modality` | `(state, now)` | Vælg hvilken sansemodalitet der tilfredsstilles nu. | [src](../../../core/services/active_sensing_daemon.py#L156) |
-| function | `_perform_sensing` | `(modality, state, now)` | Udfør sansningen og skriv til Sansernes Arkiv. | [src](../../../core/services/active_sensing_daemon.py#L199) |
-| function | `_sense_visual` | `(state, now)` | Se rummet på eget initiativ. | [src](../../../core/services/active_sensing_daemon.py#L219) |
-| function | `_sense_audio` | `(state, now)` | Lyt i rummet på eget initiativ — og arkivér indtrykket. | [src](../../../core/services/active_sensing_daemon.py#L243) |
-| function | `_sense_atmosphere` | `(state, now)` | Registrer rummets stemning — kombinerer tilgængelige data. | [src](../../../core/services/active_sensing_daemon.py#L291) |
-| function | `_sense_mixed` | `(state, now)` | Blandet sansning — både se og lyt i samme tur. | [src](../../../core/services/active_sensing_daemon.py#L329) |
-| function | `build_active_sensing_surface` | `()` | Observability surface til Mission Control. | [src](../../../core/services/active_sensing_daemon.py#L358) |
-| function | `_enabled` | `()` | — | [src](../../../core/services/active_sensing_daemon.py#L373) |
-| function | `_load_state` | `()` | — | [src](../../../core/services/active_sensing_daemon.py#L381) |
-| function | `_save_state` | `(state)` | — | [src](../../../core/services/active_sensing_daemon.py#L386) |
+| function | `_minutter_siden` | `(tidspunkt, now)` | Minutter siden et ISO-tidspunkt — None hvis det mangler eller er ulæseligt. | [src](../../../core/services/active_sensing_daemon.py#L45) |
+| function | `tick_active_sensing_daemon` | `()` | Aktiv sansetrang: vurder om Jarvis har lyst til at sanse nu. | [src](../../../core/services/active_sensing_daemon.py#L62) |
+| function | `_compute_desire` | `(state, now)` | Beregn sansetrang (0.0-1.0) baseret på tid og kontekst. | [src](../../../core/services/active_sensing_daemon.py#L167) |
+| function | `_choose_modality` | `(state, now)` | Vælg hvilken sansemodalitet der tilfredsstilles nu. | [src](../../../core/services/active_sensing_daemon.py#L212) |
+| function | `_perform_sensing` | `(modality, state, now)` | Udfør sansningen og skriv til Sansernes Arkiv. | [src](../../../core/services/active_sensing_daemon.py#L255) |
+| function | `_sense_visual` | `(state, now)` | Se rummet på eget initiativ. | [src](../../../core/services/active_sensing_daemon.py#L275) |
+| function | `_sense_audio` | `(state, now)` | Lyt i rummet på eget initiativ — og arkivér indtrykket. | [src](../../../core/services/active_sensing_daemon.py#L304) |
+| function | `_sense_atmosphere` | `(state, now)` | Registrer rummets stemning — kombinerer tilgængelige data. | [src](../../../core/services/active_sensing_daemon.py#L356) |
+| function | `_sense_mixed` | `(state, now)` | Blandet sansning — både se og lyt i samme tur. | [src](../../../core/services/active_sensing_daemon.py#L408) |
+| function | `build_active_sensing_surface` | `()` | Observability surface til Mission Control. | [src](../../../core/services/active_sensing_daemon.py#L460) |
+| function | `_enabled` | `()` | — | [src](../../../core/services/active_sensing_daemon.py#L481) |
+| function | `_load_state` | `()` | — | [src](../../../core/services/active_sensing_daemon.py#L489) |
+| function | `_save_state` | `(state)` | — | [src](../../../core/services/active_sensing_daemon.py#L494) |
 
 ## `core/services/adaptive_learning_runtime.py`
 

@@ -41,6 +41,10 @@ _STATE_KEY = "visual_memory.records"
 _MAX_RECORDS = 120           # 4/day × 30 days
 _RETENTION_DAYS = 30
 _MAX_DESC_CHARS = 300
+# Hvor langt tilbage prompt-vejen leder efter en mættet beskrivelse. Bevidst
+# endelig: findes ingen i vinduet, er sansningen tavs lige nu, og det er mere
+# ærligt at sige ingenting end at lade et gammelt indtryk stå som «rummet».
+_KIG_TILBAGE = 20
 _VISION_TIMEOUT = 90  # qwen2.5vl:3b lokalt bruger ~10-15s; 90s buffer
 
 # Roterende fokus-prompts — én per optagelse (cyklisk efter index).
@@ -207,11 +211,28 @@ def get_latest_visual_memory_for_prompt() -> str:
     records = _load_records()
     if not records:
         return ""
+
+    # Kadencen svarer «Intet mærkbart ændret.» naar den ikke ser noget nyt.
+    # Maalt 18/9-2026: 59 af 120 poster var netop den, og de FIRE nyeste var
+    # det — saa `records[-1]` gav Jarvis en sætning uden indhold om rummet,
+    # mens beskrivelsen fra 11:41 laa én raekke bagved og aldrig blev laest.
+    # Vi tager derfor den nyeste MAETTEDE post og siger dens rigtige alder.
+    from core.services.sensory_archive import er_maettet
+
     latest = records[-1]
-    desc = str(latest.get("description") or "").strip()
-    if not desc:
+    valgt = None
+    for kandidat in reversed(records[-_KIG_TILBAGE:]):
+        if er_maettet(kandidat.get("description")):
+            valgt = kandidat
+            break
+    if valgt is None:
+        # Ingen maettet beskrivelse i vinduet: sansningen er reelt tavs. Sig
+        # ingenting frem for at grave noget frem fra i forgaars.
         return ""
-    captured_at = str(latest.get("captured_at") or "")
+
+    desc = str(valgt.get("description") or "").strip()
+    uaendret_siden = valgt is not latest
+    captured_at = str(valgt.get("captured_at") or "")
     time_label = ""
     if captured_at:
         try:
@@ -220,7 +241,10 @@ def get_latest_visual_memory_for_prompt() -> str:
             time_label = " " + _coarse_age_label(minutes_ago)
         except Exception:
             pass
-    return f"[rum{time_label}]: {desc[:_MAX_DESC_CHARS]}"
+    # Uden dette led ville en to timer gammel beskrivelse laese som rummet NU.
+    # Halen «og uaendret siden» er sand: de nyere poster sagde netop det.
+    hale = ", uændret siden" if uaendret_siden else ""
+    return f"[rum{time_label}]: {desc[:_MAX_DESC_CHARS]}{hale}"
 
 
 def _coarse_age_label(minutes_ago: int) -> str:

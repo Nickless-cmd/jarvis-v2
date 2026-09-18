@@ -498,6 +498,14 @@ button.sidebar-group svg { flex: none; opacity: .7; }
   padding-left: 4px;
 }
 
+/* Kort besked når en handling i rækken ikke lykkedes. Den skal kunne læses
+   uden at flytte noget — rækken står i forvejen og fader ind ved hover. */
+.msg-action-fejl {
+  color: var(--error-fg);
+  font-size: 11px;
+  padding-left: 4px;
+}
+
 .msg-jarvis-wrap {
   display: flex;
   flex-direction: column;

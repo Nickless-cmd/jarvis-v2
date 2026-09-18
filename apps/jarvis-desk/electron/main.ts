@@ -64,6 +64,14 @@ app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion')
 // enhed). Tillad autoplay uden gestus, så hans stemme faktisk når brugeren.
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required')
 
+// «Læs op» under beskederne (Bjørn 18/9-2026: «læs op virker heller ikk»).
+// Chromium på Linux taler gennem speech-dispatcher, og den bro er SLÅET FRA
+// som standard — uden dette flag returnerer speechSynthesis.getVoices() en
+// tom liste, og speak() gør derfor ingenting og siger ingenting.
+// Maskinen har stemmerne i forvejen (espeak-ng + speech-dispatcher målt
+// 18/9); det var kun broen der manglede.
+app.commandLine.appendSwitch('enable-speech-dispatcher')
+
 // Suppress dev-only CSP warnings i renderer. Vi VED at vi har 'unsafe-eval'
 // i dev — det er for at Vite kan HMR'e. Prod-CSP er stram.
 if (isDev) {
@@ -823,13 +831,22 @@ app.whenReady().then(() => {
     } catch { /* dep/release-config mangler → no-op */ }
   })()
 
-  // Mikrofon-adgang til dikter-funktionen (getUserMedia i renderer). Vi
-  // grant'er KUN 'media' (mic) — alt andet afvises. Uden dette afviser
-  // Electron getUserMedia i den pakkede app.
+  // Hvad renderen må bede om. Alt udenfor listen afvises — men listen skal
+  // rumme det appen FAKTISK bruger.
+  //
+  // `media` er mikrofonen til dikter-funktionen; uden den afviser Electron
+  // getUserMedia i den pakkede app.
+  //
+  // `clipboard-sanitized-write` er kopiér-knappen under beskederne (Bjørn
+  // 18/9-2026: «kopi ikon under hans beskeder virker ikke»). Handleren sagde
+  // nej til alt andet end media, så `navigator.clipboard.writeText()` blev
+  // afvist hver gang. Fejlen var usynlig, fordi knappen satte sit flueben
+  // uden at se på svaret — se MessageActions, der nu venter på det.
+  const TILLADT = new Set(['media', 'clipboard-sanitized-write'])
   session.defaultSession.setPermissionRequestHandler((_wc, permission, callback) => {
-    callback(permission === 'media')
+    callback(TILLADT.has(permission))
   })
-  session.defaultSession.setPermissionCheckHandler((_wc, permission) => permission === 'media')
+  session.defaultSession.setPermissionCheckHandler((_wc, permission) => TILLADT.has(permission))
 
   // Dev mode: Vite skal kunne injecte inline scripts til HMR.
   // Prod mode: stram CSP — kun 'self', ingen inline/eval.

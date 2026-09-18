@@ -707,15 +707,31 @@ export function CodeView({
     sessionId, sessions.messages, stream.status === 'idle',
   )
 
-  let pendingPauseAsk: PauseAsk | null = null
+  let setPauseAsk: PauseAsk | null = null
   for (const message of visibleMessages) {
-    if (message.role === 'user') pendingPauseAsk = null
-    else pendingPauseAsk = pauseAskIn(message.content) ?? pendingPauseAsk
+    if (message.role === 'user') setPauseAsk = null
+    else setPauseAsk = pauseAskIn(message.content) ?? setPauseAsk
   }
-  if (stream.status === 'working') pendingPauseAsk = pauseAskIn(stream.blocks) ?? pendingPauseAsk
+  if (stream.status === 'working') setPauseAsk = pauseAskIn(stream.blocks) ?? setPauseAsk
   if (stream.status !== 'working' && bgActive && followState.status === 'working') {
-    pendingPauseAsk = pauseAskIn(followState.blocks) ?? pendingPauseAsk
+    setPauseAsk = pauseAskIn(followState.blocks) ?? setPauseAsk
   }
+
+  // Samme fastholdelse som i ChatView — se noten dér. Kortet var afledt og
+  // forsvandt naar stroemmen sluttede; nu holdes det til der kommer en NY
+  // bruger-besked, og svaret er selv en bruger-besked.
+  const brugerAntal = visibleMessages.reduce((n, m) => n + (m.role === 'user' ? 1 : 0), 0)
+  const [fastholdtPause, setFastholdtPause] = useState<
+    { ask: PauseAsk; vedBrugerAntal: number } | null
+  >(null)
+  const pauseNoegle = setPauseAsk ? `${setPauseAsk.question}|${setPauseAsk.options.join('|')}` : ''
+  useEffect(() => {
+    if (!setPauseAsk) return
+    setFastholdtPause({ ask: setPauseAsk, vedBrugerAntal: brugerAntal })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pauseNoegle, brugerAntal])
+  const pendingPauseAsk =
+    fastholdtPause && brugerAntal <= fastholdtPause.vedBrugerAntal ? fastholdtPause.ask : null
 
   // Autoscroll: ved nye beskeder/stream-tokens, hold bunden hvis vi er nær den.
   useEffect(() => {

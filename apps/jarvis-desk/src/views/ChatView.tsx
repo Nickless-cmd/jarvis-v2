@@ -458,15 +458,43 @@ export function ChatView({
   // pause_and_ask er aktivt indtil næste bruger-besked. Selve tool-blokken
   // bevares i sessionens sandhed, men kortet hostes uden for den scrollbare
   // transcript ligesom approvals og øvrige handlinger over composeren.
-  let pendingPauseAsk: PauseAsk | null = null
+  let setPauseAsk: PauseAsk | null = null
   for (const message of visibleMessages) {
-    if (message.role === 'user') pendingPauseAsk = null
-    else pendingPauseAsk = pauseAskIn(message.content) ?? pendingPauseAsk
+    if (message.role === 'user') setPauseAsk = null
+    else setPauseAsk = pauseAskIn(message.content) ?? setPauseAsk
   }
-  if (streaming) pendingPauseAsk = pauseAskIn(stream.blocks) ?? pendingPauseAsk
+  if (streaming) setPauseAsk = pauseAskIn(stream.blocks) ?? setPauseAsk
   if (!streaming && bgActive && followState.status === 'working') {
-    pendingPauseAsk = pauseAskIn(followState.blocks) ?? pendingPauseAsk
+    setPauseAsk = pauseAskIn(followState.blocks) ?? setPauseAsk
   }
+
+  // Kortet skal BLIVE STAAENDE til man har trykket (Bjoern 18/9-2026: «det
+  // forsvinder efter faa sekunder»).
+  //
+  // Vaerdien ovenfor er AFLEDT og genberegnes ved hver render. Under streaming
+  // kommer den fra `stream.blocks`; naar stroemmen slutter, konsulteres de ikke
+  // laengere. Ligger tool-blokken saa ikke i den persisterede besked, falder
+  // vaerdien til null og spoergsmaalet forsvinder for oejnene af én — praecis
+  // naar man skal svare paa det.
+  //
+  // Derfor holdes den i tilstand: vi fanger den naar vi ser den, og slipper den
+  // foerst naar der kommer en NY bruger-besked. Svaret bliver selv en
+  // bruger-besked (se pauseSvarRef -> resend), saa et klik rydder den af sig
+  // selv — uden at vi skal gaette paa hvornaar stroemmen er faerdig.
+  const brugerAntal = visibleMessages.reduce((n, m) => n + (m.role === 'user' ? 1 : 0), 0)
+  const [fastholdtPause, setFastholdtPause] = useState<
+    { ask: PauseAsk; vedBrugerAntal: number } | null
+  >(null)
+  const pauseNoegle = setPauseAsk ? `${setPauseAsk.question}|${setPauseAsk.options.join('|')}` : ''
+  useEffect(() => {
+    if (!setPauseAsk) return
+    setFastholdtPause({ ask: setPauseAsk, vedBrugerAntal: brugerAntal })
+    // Noeglen er indholdet, ikke objekt-identiteten: den afledte vaerdi er et
+    // nyt objekt ved hver render, og uden dette ville effekten loebe evigt.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pauseNoegle, brugerAntal])
+  const pendingPauseAsk =
+    fastholdtPause && brugerAntal <= fastholdtPause.vedBrugerAntal ? fastholdtPause.ask : null
 
   // ÉN kilde pr. run (Bjørn 2026-06-29, "3 svar"): når et fulgt run's svar
   // ALLEREDE står i transcript'en (serveren har persisteret det, eller bro-kopien

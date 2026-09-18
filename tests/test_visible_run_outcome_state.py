@@ -19,20 +19,25 @@ def test_brugerstop_markeres_cancelled_ikke_interrupted() -> None:
     Målt 18/9-2026: tre ture stod som `interrupted` med grunden
     `user-cancelled-during-agentic-loop`, mens de to stop der ramte uden for
     løkken korrekt stod som `cancelled`. Bjørn så sine egne stop starte igen.
+
+    Testen er bundet til den SEMANTISKE markør — hvert sted der sætter
+    exit_reason til «user-cancelled» — og ikke til nærhed til et bestemt kald.
+    Første udgave kiggede kun nær `controller.is_cancelled()` og overså et
+    tredje sted, hvor stoppet rammer mens værktøjerne kører.
     """
     kilde = _kilde()
     linjer = kilde.splitlines()
 
-    afbrydelser = [
+    stop_steder = [
         nr for nr, linje in enumerate(linjer)
-        if "controller.is_cancelled():" in linje
+        if '_agentic_loop_exit_reason = "user-cancelled"' in linje
     ]
-    assert afbrydelser, "fandt ingen afbrydelses-kontrol at pinne"
+    assert len(stop_steder) >= 3, (
+        f"forventede mindst tre brugerstop-steder, fandt {len(stop_steder)}"
+    )
 
-    for nr in afbrydelser:
-        blok = "\n".join(linjer[nr:nr + 14])
-        if "_outcome_state.mark(" not in blok:
-            continue
+    for nr in stop_steder:
+        blok = "\n".join(linjer[nr:nr + 12])
         assert '_outcome_state.mark("interrupted"' not in blok, (
             f"linje {nr + 1}: et brugerstop markeres «interrupted» og bliver "
             "dermed genoptaget"

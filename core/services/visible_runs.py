@@ -4515,7 +4515,10 @@ async def _stream_visible_run(
                         # Uden denne gren loeb runden faerdig foerst, og de
                         # naeste tjek ligger runder laengere fremme.
                         _agentic_loop_exit_reason = "user-cancelled"
-                        _outcome_state.mark("interrupted", finalized=False)
+                        # Se noten ved de andre afbrydelses-kontroller: «cancelled»,
+                        # ikke «interrupted». Det her er formentlig den hyppigste af
+                        # de tre — stop rammer oftest mens vaerktoejer koerer.
+                        _outcome_state.mark(_CANCELLED_STATUS, finalized=False)
                         _outcome_state.set_error("user-cancelled-during-tool-exec")
                         break
                     _forrige_runde_kald = len(_a_tool_calls or [])

@@ -90,7 +90,7 @@ def prune_table_by_age(
 # are DELIBERATELY excluded — they are pruned only on explicit owner decision.
 _TELEMETRY_RETENTION: tuple[tuple[str, str, int], ...] = (
     ("daemon_output_log", "created_at", 21),
-    ("cheap_provider_invocations", "created_at", 21),
+    ("cheap_provider_invocations", "created_at", 60),
     ("tool_router_decisions", "created_at", 45),
     ("reasoning_conclusions", "created_at", 45),
     # Recency-bounded readers (verified 2026-07-17): each reads only recent/by-id
@@ -107,9 +107,24 @@ def prune_telemetry_tables() -> dict[str, object]:
     out: dict[str, object] = {}
     for table, ts_col, days in _TELEMETRY_RETENTION:
         try:
+            if table == "cheap_provider_invocations":
+                try:
+                    from core.runtime.settings import load_settings
+
+                    days = max(1, int(load_settings().extra.get(
+                        "cheap_lane_metadata_retention_days", days
+                    )))
+                except Exception:
+                    pass
             out[table] = prune_table_by_age(table, ts_col, max_age_days=days).get("deleted", 0)
         except Exception as exc:
             out[table] = f"err:{str(exc)[:60]}"
+    try:
+        from core.services.cheap_lane_payloads import purge_expired_payloads
+
+        out["cheap_lane_redacted_payloads"] = purge_expired_payloads()
+    except Exception as exc:
+        out["cheap_lane_redacted_payloads"] = f"err:{str(exc)[:60]}"
     return out
 
 

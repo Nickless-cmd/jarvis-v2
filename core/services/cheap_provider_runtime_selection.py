@@ -716,6 +716,16 @@ def execute_cheap_lane_via_pool(
             route_decision_id=str(target.get("route_decision_id") or ""),
             egress=str(target.get("egress") or ""),
         )
+        try:
+            from core.services.cheap_lane_payloads import capture_invocation_payload
+
+            capture_invocation_payload(
+                invocation_id=failed_invocation_id,
+                prompt=message,
+                response={"status": "failed", "error": exc.message},
+            )
+        except Exception:
+            pass
         fallback = _fallback_after_failure(
             failed_provider=provider,
             failed_model=model,
@@ -755,7 +765,7 @@ def execute_cheap_lane_via_pool(
     latency_ms = int((datetime.now(UTC) - started_at).total_seconds() * 1000)
     _cache_hit = int(result.get("cache_hit_tokens") or result.get("prompt_cache_hit_tokens") or 0)
     _cache_miss = int(result.get("cache_miss_tokens") or result.get("prompt_cache_miss_tokens") or 0)
-    record_cheap_provider_invocation(
+    recorded = record_cheap_provider_invocation(
         provider=provider,
         model=model,
         auth_profile=profile,
@@ -775,6 +785,16 @@ def execute_cheap_lane_via_pool(
         fallback_parent_id=trace_context.fallback_parent_id,
         route_decision_id=str(target.get("route_decision_id") or ""),
     )
+    try:
+        from core.services.cheap_lane_payloads import capture_invocation_payload
+
+        capture_invocation_payload(
+            invocation_id=str(recorded.get("invocation_id") or ""),
+            prompt=message,
+            response=result,
+        )
+    except Exception:
+        pass
     _record_provider_success(
         provider=provider,
         model=model,
@@ -1409,7 +1429,6 @@ def _register_provider_failure(
             ensure_ascii=False,
         ),
     )
-    return str(recorded.get("invocation_id") or "")
     event_bus.publish(
         "runtime.cheap_lane_provider_failed",
         {
@@ -1420,6 +1439,7 @@ def _register_provider_failure(
             "status_code": error.status_code,
         },
     )
+    return str(recorded.get("invocation_id") or "")
 
 
 def _decode_state_metadata(state: dict[str, object]) -> dict[str, object]:

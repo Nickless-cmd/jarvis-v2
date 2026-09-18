@@ -77,3 +77,14 @@ def test_prune_telemetry_tables_self_safe(isolated_runtime):
     from core.services.events_retention import prune_telemetry_tables
     res = prune_telemetry_tables()
     assert isinstance(res, dict) and "daemon_output_log" in res
+    assert "cheap_lane_redacted_payloads" in res
+
+
+def test_cheap_invocation_retention_uses_60_day_default():
+    from core.services import events_retention
+
+    policy = next(
+        entry for entry in events_retention._TELEMETRY_RETENTION
+        if entry[0] == "cheap_provider_invocations"
+    )
+    assert policy == ("cheap_provider_invocations", "created_at", 60)

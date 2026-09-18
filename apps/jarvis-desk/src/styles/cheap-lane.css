@@ -252,3 +252,46 @@
    sporet bagefter. */
 .cl-kvittering { margin: 6px 0; font-size: 12px; color: var(--accent); }
 .cl-kvittering code { font-size: 11px; }
+
+/* ── logs, fund og opbevaring ───────────────────────────────────────── */
+
+.cl-sider { display: flex; gap: 6px; margin-top: 8px; }
+
+/* Payloads: ren tekst, med sin egen rulning. En prompt kan være lang, og
+   siden må ikke rulle sidelæns af den grund. */
+.cl-payload {
+  margin: 4px 0; padding: 8px; max-height: 220px; overflow: auto;
+  background: var(--bg-3); border: 1px solid var(--line); border-radius: 7px;
+  font-family: "SF Mono", "JetBrains Mono", ui-monospace, Menlo, monospace;
+  font-size: 11px; color: var(--fg-2); white-space: pre-wrap; word-break: break-word;
+}
+
+.cl-fund-liste { list-style: none; margin: 0 0 14px; padding: 0; display: grid; gap: 7px; }
+.cl-fund {
+  padding: 8px 11px; border-radius: 9px;
+  background: var(--bg-2); border: 1px solid var(--line);
+}
+/* Alvorligheden skal ses før den læses — de høje står øverst OG markeret. */
+.cl-fund-high { border-left: 3px solid var(--error-fg, #d9534f); }
+.cl-fund-medium { border-left: 3px solid var(--warn-fg, #d0a215); }
+.cl-fund-low { border-left: 3px solid var(--line); }
+
+.cl-fund-hoved { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.cl-fund-kode { font-size: 12px; color: var(--fg-1); }
+.cl-fund-bevis {
+  margin: 6px 0 0; display: flex; gap: 14px; flex-wrap: wrap; font-size: 11px;
+}
+.cl-fund-bevis div { display: flex; gap: 5px; }
+.cl-fund-bevis dt { color: var(--fg-3); }
+.cl-fund-bevis dd { margin: 0; color: var(--fg-2); }
+
+.cl-indstillinger {
+  display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap;
+  margin-top: 8px; padding: 10px 12px;
+  background: var(--bg-2); border: 1px solid var(--line); border-radius: 9px;
+}
+.cl-indstillinger label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--fg-3); }
+.cl-indstillinger input {
+  width: 90px; background: var(--bg-3); border: 1px solid var(--line); border-radius: 6px;
+  padding: 5px 8px; color: var(--fg-1); font: inherit; font-size: 12px;
+}

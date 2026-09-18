@@ -10,7 +10,13 @@ import { CheapLaneCapacity } from './CheapLaneCapacity'
 import { CheapLaneProviders } from './CheapLaneProviders'
 import { CheapLaneInspector } from './CheapLaneInspector'
 import { CheapLaneBalancer } from './CheapLaneBalancer'
-import { udfoerKontrol, simulerRute } from '../../../lib/cheapLaneApi'
+import { CheapLaneLogs } from './CheapLaneLogs'
+import { CheapLaneDiagnostics } from './CheapLaneDiagnostics'
+import { CheapLaneSettings } from './CheapLaneSettings'
+import {
+  udfoerKontrol, simulerRute, getLogs, getLogDetalje, getRevisioner,
+  type Revision,
+} from '../../../lib/cheapLaneApi'
 
 /**
  * Cheap Lane — hele lanen på én flade.
@@ -28,13 +34,15 @@ import { udfoerKontrol, simulerRute } from '../../../lib/cheapLaneApi'
  * knapperne: et slot «pauses» i balancerens egen tilstand, mens en model
  * slås fra i registret og derfor bliver væk efter en genstart.
  */
-type Fane = 'oversigt' | 'kapacitet' | 'pulje' | 'udbydere' | 'fejl' | 'historik'
+type Fane = 'oversigt' | 'kapacitet' | 'pulje' | 'udbydere' | 'logs' | 'diagnose' | 'fejl' | 'historik'
 
 const FANER: { id: Fane; label: string }[] = [
   { id: 'oversigt', label: 'Oversigt' },
   { id: 'kapacitet', label: 'Kapacitet' },
   { id: 'pulje', label: 'Puljen nu' },
   { id: 'udbydere', label: 'Udbydere' },
+  { id: 'logs', label: 'Kald' },
+  { id: 'diagnose', label: 'Diagnose' },
   { id: 'fejl', label: 'Fejl' },
   { id: 'historik', label: 'Historik' },
 ]
@@ -74,6 +82,8 @@ export function CheapLanePanel({ config }: { config?: ApiConfig }) {
   // tro det var den samme. `åbnetFra` bærer rækken fokus skal tilbage til.
   const [valgt, setValgt] = useState<{ provider: string; model: string } | null>(null)
   const [åbnetFra, setÅbnetFra] = useState<HTMLElement | null>(null)
+  const [revisioner, setRevisioner] = useState<Revision[]>([])
+  const [visIndstillinger, setVisIndstillinger] = useState(false)
 
 
   const hent = useCallback(async () => {
@@ -96,6 +106,10 @@ export function CheapLanePanel({ config }: { config?: ApiConfig }) {
   }, [config, timer])
 
   useEffect(() => { void hent() }, [hent])
+  useEffect(() => {
+    if (fane !== 'diagnose' || !config) return
+    getRevisioner(config, 100).then((r) => setRevisioner(r.items ?? [])).catch(() => setRevisioner([]))
+  }, [fane, config])
 
   // Hver kontrol-handling er en skrivning med revisionsspor. Efter den skal
   // billedet hentes igen — ellers viser skærmen tilstanden FØR handlingen.
@@ -209,6 +223,30 @@ export function CheapLanePanel({ config }: { config?: ApiConfig }) {
             />
           )}
         </div>
+      )}
+
+      {fane === 'logs' && config && (
+        <CheapLaneLogs
+          timer={timer}
+          hentLogs={(f) => getLogs(config, f)}
+          hentDetalje={(id) => getLogDetalje(config, id)}
+        />
+      )}
+
+      {fane === 'diagnose' && (
+        <>
+          <CheapLaneDiagnostics
+            diagnose={butik.snapshot?.sections?.diagnostics?.data ?? null}
+            revisioner={revisioner}
+          />
+          <button type="button" className="cl-handling"
+                  onClick={() => setVisIndstillinger((v) => !v)}>
+            {visIndstillinger ? 'Skjul opbevaring' : 'Opbevaring'}
+          </button>
+          {visIndstillinger && (
+            <CheapLaneSettings metadataDage={60} payloadDage={7} udfoer={kontrol} />
+          )}
+        </>
       )}
 
       {fane === 'fejl' && (

@@ -1256,7 +1256,13 @@ export function ChatScreen({
       </Modal>
 
       <Modal visible={isRouteOpen('artifacts')} animationType="slide" onRequestClose={closeTopRoute}>
-        <ArtifactsScreen onClose={closeTopRoute} />
+        {/* Mappen er den code står i — samme som desk' artefakt-menu. Et tryk
+            på en fil åbner samtalen hvor den sidst blev rørt. */}
+        <ArtifactsScreen
+          onClose={closeTopRoute}
+          root={ws.root}
+          onOpenSession={(sid) => { closeTopRoute(); handleSelectSession(sid) }}
+        />
       </Modal>
 
       {config ? (

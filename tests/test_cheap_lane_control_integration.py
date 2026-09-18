@@ -153,3 +153,50 @@ def test_sporet_skrives_uden_at_flytte_valget(isolated_runtime):
     uden = sel.select_cheap_lane_target(persist_trace=False)
     med = sel.select_cheap_lane_target(persist_trace=True)
     assert (uden["provider"], uden["model"]) == (med["provider"], med["model"])
+
+
+# ── et spor maa ALDRIG slaa det ihjel det observerer (18/9-2026) ──────────
+#
+# `record_route_decision` kastede ved over 100 kandidater. Puljen har 161
+# slots, saa enhver udvaelgelse der ville skrive et spor, kastede — og
+# undtagelsen forplantede sig hele vejen ud i kalderen.
+#
+# Fundet gennem Jarvis’ indre stemme: den faldt tilbage til skabelonen ved
+# hvert eneste forsoeg, med `llm_error: "candidate trace exceeds 100 items"` i
+# skygge-tabellen. Paa skaermen saa det bare ud som om den indre stemme var
+# blevet fattig. Det er den dyreste slags fejl: en observations-mekanisme der
+# degraderer det observerede, og goer det STILLE.
+
+def test_et_for_stort_spor_klippes_i_stedet_for_at_kaste(isolated_runtime):
+    from core.runtime.db_cheap_lane_control import (
+        _MAX_CANDIDATES, get_route_decision, record_route_decision,
+    )
+
+    mange = [{"slot_id": f"s{i}", "provider": "p", "eligible": True}
+             for i in range(_MAX_CANDIDATES + 61)]
+    route_id = record_route_decision(
+        correlation_id="corr-stort", task_kind="default", daemon="proeve",
+        candidates=mange, selected_slot_id="s0", selection_reason="healthy",
+    )
+    assert route_id, "sporet blev slet ikke skrevet"
+
+    post = get_route_decision(route_id) or {}
+    gemte = post.get("candidates") or post.get("candidates_json") or []
+    if isinstance(gemte, str):
+        import json
+        gemte = json.loads(gemte)
+    # Delvist bevis slaar intet bevis — men klipningen skal staa der, saa
+    # ingen tror de ser hele feltet.
+    assert len(gemte) <= _MAX_CANDIDATES + 1
+    assert any(isinstance(x, dict) and x.get("truncated") for x in gemte)
+
+
+def test_en_fejlet_sporskrivning_stopper_ikke_udvaelgelsen(monkeypatch, isolated_runtime):
+    """Baelte og seler. Selv hvis skrivningen fejler af en HELT anden grund,
+    skal turen fortsaette — sporet er en observation."""
+    from core.services import cheap_provider_runtime_selection as sel
+
+    def _boom(**_):
+        raise RuntimeError("disken er fuld")
+
+    assert sel._spor_uden_at_vaelte(_boom, x=1) == ""

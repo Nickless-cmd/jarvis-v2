@@ -77,7 +77,7 @@ def build_system_cartographer_surface(*, auto_enqueue: bool = False) -> dict[str
         theater=theater,
         recommended=recommended_observability_task,
     )
-    return {
+    surface = {
         "fetchedAt": datetime.now(UTC).isoformat(),
         "mode": "system-cartographer-v1",
         "summary": {
@@ -111,6 +111,7 @@ def build_system_cartographer_surface(*, auto_enqueue: bool = False) -> dict[str
         "coverage": coverage,
         "systemHealth": system_health,
         "theaterAudit": theater,
+        "resolvedTasks": [],
         "notes": [
             "Phase 1 is code/runtime inventory, not proof of causal influence.",
             "Phase 2 adds eventbus/causal_edges runtime evidence.",
@@ -118,6 +119,9 @@ def build_system_cartographer_surface(*, auto_enqueue: bool = False) -> dict[str
             "Next phase should persist deltas over time and rank missing witness surfaces.",
         ],
     }
+    if auto_enqueue:
+        surface["resolvedTasks"] = _luk_opgaver_scanningen_ikke_flager(surface)
+    return surface
 
 
 def start_system_cartographer_daemon() -> None:
@@ -611,6 +615,72 @@ def _priority_label(score: int) -> str:
     if score >= 75:
         return "medium"
     return "low"
+
+
+def _luk_opgaver_scanningen_ikke_flager(surface: dict[str, Any]) -> list[str]:
+    """Luk reparations-opgaver hvis mål ikke længere står i scanningen.
+
+    ## Hvorfor (målt 18/9-2026)
+
+    Ti opgaver stod `blocked`, den ældste fra 8. maj — fire en halv måned. Seks
+    af dem pegede på filer som scanningen **ikke flager længere**:
+    `narrative_summary_daemon`, `emotion_repair_bridge_daemon`,
+    `cognitive_state_assembly`, `runtime_self_model`, `chronicle_engine`,
+    `inner_voice_daemon`. De fire øvrige er stadig ægte.
+
+    Kartografen kunne rejse en opgave men aldrig lukke den — samme hul som i
+    Agency Cartographer samme dag. En kø hvor over halvdelen er løst, er en kø
+    man holder op med at kigge i, og så forsvinder de fire ægte sammen med
+    resten.
+
+    ## Hvad lukningen PÅSTÅR
+
+    Ikke at filen er repareret. Kun at scanningen ikke flager den længere —
+    kriterierne kan også have ændret sig. Det står i `result_summary`, så
+    forskellen ikke går tabt.
+    """
+    lukkede: list[str] = []
+    try:
+        from core.services.runtime_tasks import list_tasks, update_task
+    except Exception:
+        return lukkede
+
+    mørke = str([e.get("path") or e.get("service") for e in (surface.get("darkEdges") or [])])
+    teater = str((surface.get("theaterAudit") or {}).get("findings") or [])
+    flaget = {_AUTO_TASK_KIND: mørke, _THEATER_AUTO_TASK_KIND: teater}
+
+    for kind, tekst in flaget.items():
+        if not tekst or tekst == "[]":
+            # Tom scanning: sig intet. En scanning der ikke naaede at koere maa
+            # ikke lukke noget — det ville vaere at kalde tavshed for et svar.
+            continue
+        for status in ("queued", "blocked"):
+            try:
+                opgaver = list_tasks(status=status, kind=kind, limit=50)
+            except Exception:
+                continue
+            for opgave in opgaver:
+                scope = str(opgave.get("scope") or "").strip()
+                opgave_id = str(opgave.get("task_id") or opgave.get("id") or "")
+                if not scope or not opgave_id:
+                    continue
+                navn = scope.rsplit("/", 1)[-1].removesuffix(".py")
+                if navn and navn in tekst:
+                    continue          # stadig flaget — opgaven staar ved magt
+                try:
+                    update_task(
+                        opgave_id, status="succeeded", blocked_reason="",
+                        result_summary=(
+                            f"scanningen flager ikke laengere {scope} — "
+                            "lukket af kartografen (siger ikke at filen er repareret)"),
+                    )
+                    lukkede.append(opgave_id)
+                    logger.info("system-cartographer: lukkede foraeldet opgave %s (%s)",
+                                opgave_id, scope)
+                except Exception:
+                    logger.warning("system-cartographer: kunne ikke lukke %s", opgave_id,
+                                   exc_info=True)
+    return lukkede
 
 
 def _observability_task_from_dark_edge(edge: dict[str, Any]) -> dict[str, Any]:

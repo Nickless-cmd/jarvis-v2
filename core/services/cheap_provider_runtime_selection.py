@@ -633,7 +633,9 @@ def select_cheap_lane_target(
         route_id = ""
         if persist_trace:
             from core.runtime.db_cheap_lane_control import record_route_decision
-            route_id = record_route_decision(
+            # Baelte og seler: selv hvis skrivningen fejler af en helt anden
+            # grund, maa udvaelgelsen fortsaette. Sporet er en observation.
+            route_id = _spor_uden_at_vaelte(record_route_decision,
                 correlation_id=trace_context.correlation_id,
                 task_kind=kind,
                 daemon=trace_context.daemon,
@@ -1294,6 +1296,32 @@ def _candidate_quota_snapshot(candidate: dict[str, object]) -> dict[str, object]
     }
     _sc.set(_qkey, snapshot, ttl_seconds=_QUOTA_SNAPSHOT_TTL_SECONDS)
     return snapshot
+
+
+def _spor_uden_at_vaelte(skriv, **felter) -> str:
+    """Skriv sporet, men lad aldrig en fejl i det vaelte turen.
+
+    Maalt 18/9-2026: `record_route_decision` kastede ved over 100 kandidater,
+    puljen har 161, og undtagelsen forplantede sig hele vejen ud i kalderen.
+    Jarvis’ indre stemme faldt tilbage til skabelonen ved hvert forsoeg — og
+    paa skaermen saa det bare ud som om den var blevet fattig.
+
+    Et spor er en observation. En observation der kan slaa handlingen ihjel,
+    er ikke en observation laengere.
+    """
+    try:
+        return str(skriv(**felter) or "")
+    except Exception:
+        # Modulet har ingen logger — og en logning der selv kaster, ville
+        # forvandle et haandteret uheld til det nedbrud vi lige har fjernet.
+        # (Maalt: NameError inde i except-blokken, foerste forsoeg.)
+        try:
+            import logging
+            logging.getLogger(__name__).warning(
+                "cheap-lane: rute-sporet kunne ikke skrives", exc_info=True)
+        except Exception:
+            pass
+        return ""
 
 
 def _fallback_after_failure(*, failed_provider: str, failed_model: str) -> dict[str, object] | None:

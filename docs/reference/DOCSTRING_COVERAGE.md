@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7705/14976 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7707/14978 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 7705/14976 functions/methods documented (51%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 653 | 1206 | 54% |
-| `core.services` | 5128 | 10292 | 49% |
+| `core.services` | 5130 | 10294 | 49% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 109 | 184 | 59% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -349,15 +349,15 @@ Generated from source. 7705/14976 functions/methods documented (51%). The list b
 - `core/runtime/db_capability_approval.py` :: `list_approval_feedback` (L697)
 - `core/runtime/db_capability_approval.py` :: `recent_capability_approval_requests` (L85)
 - `core/runtime/db_capability_approval.py` :: `record_capability_approval_request_execution` (L247)
-- `core/runtime/db_cheap_lane_control.py` :: `finalize_cheap_lane_audit` (L278)
-- `core/runtime/db_cheap_lane_control.py` :: `get_cheap_lane_invocation_detail` (L456)
-- `core/runtime/db_cheap_lane_control.py` :: `get_route_decision` (L160)
-- `core/runtime/db_cheap_lane_control.py` :: `list_cheap_lane_audit` (L308)
-- `core/runtime/db_cheap_lane_control.py` :: `list_cheap_lane_invocations` (L391)
-- `core/runtime/db_cheap_lane_control.py` :: `list_quota_observations` (L209)
-- `core/runtime/db_cheap_lane_control.py` :: `record_cheap_lane_audit` (L238)
-- `core/runtime/db_cheap_lane_control.py` :: `record_quota_observation` (L174)
-- `core/runtime/db_cheap_lane_control.py` :: `record_redacted_payload` (L326)
+- `core/runtime/db_cheap_lane_control.py` :: `finalize_cheap_lane_audit` (L297)
+- `core/runtime/db_cheap_lane_control.py` :: `get_cheap_lane_invocation_detail` (L475)
+- `core/runtime/db_cheap_lane_control.py` :: `get_route_decision` (L179)
+- `core/runtime/db_cheap_lane_control.py` :: `list_cheap_lane_audit` (L327)
+- `core/runtime/db_cheap_lane_control.py` :: `list_cheap_lane_invocations` (L410)
+- `core/runtime/db_cheap_lane_control.py` :: `list_quota_observations` (L228)
+- `core/runtime/db_cheap_lane_control.py` :: `record_cheap_lane_audit` (L257)
+- `core/runtime/db_cheap_lane_control.py` :: `record_quota_observation` (L193)
+- `core/runtime/db_cheap_lane_control.py` :: `record_redacted_payload` (L345)
 - `core/runtime/db_cheap_lane_control.py` :: `record_route_decision` (L123)
 - `core/runtime/db_cheap_provider.py` :: `count_cheap_provider_invocations` (L400)
 - `core/runtime/db_cheap_provider.py` :: `get_cheap_provider_runtime_state` (L184)
@@ -838,8 +838,8 @@ Generated from source. 7705/14976 functions/methods documented (51%). The list b
 - `core/services/cheap_provider_runtime_adapters.py` :: `provider_runtime_defaults` (L106)
 - `core/services/cheap_provider_runtime_adapters.py` :: `supported_cheap_providers` (L96)
 - `core/services/cheap_provider_runtime_selection.py` :: `cheap_lane_status_surface` (L81)
-- `core/services/cheap_provider_runtime_selection.py` :: `execute_cheap_lane_via_pool` (L670)
-- `core/services/cheap_provider_runtime_selection.py` :: `execute_public_safe_cheap_lane` (L1028)
+- `core/services/cheap_provider_runtime_selection.py` :: `execute_cheap_lane_via_pool` (L672)
+- `core/services/cheap_provider_runtime_selection.py` :: `execute_public_safe_cheap_lane` (L1030)
 - `core/services/cheap_provider_runtime_selection.py` :: `provider_runtime_defaults` (L55)
 - `core/services/cheap_provider_runtime_selection.py` :: `record_cheap_provider_invocation` (L59)
 - `core/services/cheap_provider_runtime_selection.py` :: `smoke_cheap_lane` (L173)
@@ -1819,8 +1819,8 @@ Generated from source. 7705/14976 functions/methods documented (51%). The list b
 - `core/services/sustained_attention.py` :: `set_status` (L124)
 - `core/services/sustained_attention.py` :: `tick` (L187)
 - `core/services/system_cartographer.py` :: `build_system_cartographer_surface` (L42)
-- `core/services/system_cartographer.py` :: `start_system_cartographer_daemon` (L123)
-- `core/services/system_cartographer.py` :: `stop_system_cartographer_daemon` (L133)
+- `core/services/system_cartographer.py` :: `start_system_cartographer_daemon` (L127)
+- `core/services/system_cartographer.py` :: `stop_system_cartographer_daemon` (L137)
 - `core/services/taste_profile.py` :: `build_taste_profile_surface` (L155)
 - `core/services/taste_profile.py` :: `update_taste_async` (L125)
 - `core/services/telegram_gateway.py` :: `get_status` (L61)

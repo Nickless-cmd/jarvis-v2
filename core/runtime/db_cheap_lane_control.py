@@ -129,8 +129,27 @@ def record_route_decision(
     selected_slot_id: str,
     selection_reason: str,
 ) -> str:
-    if len(candidates) > _MAX_CANDIDATES:
-        raise ValueError(f"candidate trace exceeds {_MAX_CANDIDATES} items")
+    # ET SPOR MAA ALDRIG SLAA DET IHJEL DET OBSERVERER (18/9-2026).
+    #
+    # Foer kastede den her ved over 100 kandidater. Puljen har 161 slots, saa
+    # ENHVER udvaelgelse der ville skrive et spor, kastede — og undtagelsen
+    # forplantede sig op gennem `select_cheap_lane_target` og ud i kalderen.
+    #
+    # Maalt: Jarvis' indre stemme faldt tilbage til skabelonen ved hvert
+    # eneste forsoeg med `llm_error: "candidate trace exceeds 100 items"`.
+    # Fejlen stod i skygge-tabellen; paa skaermen saa det bare ud som om den
+    # indre stemme var blevet fattig.
+    #
+    # Delvist bevis slaar intet bevis. Listen klippes, og klipningen skrives
+    # ned, saa ingen tror de ser hele feltet.
+    afkortet = len(candidates) > _MAX_CANDIDATES
+    if afkortet:
+        candidates = list(candidates[:_MAX_CANDIDATES])
+        candidates.append({
+            "truncated": True,
+            "omitted": len(candidates) - _MAX_CANDIDATES,
+            "note": f"kun de foerste {_MAX_CANDIDATES} kandidater er gemt",
+        })
     route_id = str(uuid4())
     now = _now_iso()
     with connect() as conn:

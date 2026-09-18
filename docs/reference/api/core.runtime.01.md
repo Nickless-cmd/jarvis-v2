@@ -247,18 +247,18 @@ _Durable observability storage for the Cheap Lane control center._
 | function | `_decode_json` | `(value, fallback)` | — | [src](../../../core/runtime/db_cheap_lane_control.py#L25) |
 | function | `_ensure_control_schema` | `(conn)` | — | [src](../../../core/runtime/db_cheap_lane_control.py#L32) |
 | function | `record_route_decision` | `(*, correlation_id, task_kind, daemon, candidates, selected_slot_id, selection_reason)` | — | [src](../../../core/runtime/db_cheap_lane_control.py#L123) |
-| function | `get_route_decision` | `(route_decision_id)` | — | [src](../../../core/runtime/db_cheap_lane_control.py#L160) |
-| function | `record_quota_observation` | `(*, provider, auth_profile, period, unit, limit, remaining, reset_at, observed_at=…)` | — | [src](../../../core/runtime/db_cheap_lane_control.py#L174) |
-| function | `list_quota_observations` | `(*, provider=…, auth_profile=…, limit=…)` | — | [src](../../../core/runtime/db_cheap_lane_control.py#L209) |
-| function | `record_cheap_lane_audit` | `(*, actor, action, target, reason, before, after, result, correlation_id=…)` | — | [src](../../../core/runtime/db_cheap_lane_control.py#L238) |
-| function | `finalize_cheap_lane_audit` | `(audit_id, *, after, result, error_code=…)` | — | [src](../../../core/runtime/db_cheap_lane_control.py#L278) |
-| function | `list_cheap_lane_audit` | `(*, limit=…)` | — | [src](../../../core/runtime/db_cheap_lane_control.py#L308) |
-| function | `record_redacted_payload` | `(*, invocation_id, prompt, response, status, expires_at)` | — | [src](../../../core/runtime/db_cheap_lane_control.py#L326) |
-| function | `_encode_cursor` | `(created_at, row_id)` | — | [src](../../../core/runtime/db_cheap_lane_control.py#L365) |
-| function | `_decode_cursor` | `(cursor)` | — | [src](../../../core/runtime/db_cheap_lane_control.py#L370) |
-| function | `_invocation_row` | `(row)` | — | [src](../../../core/runtime/db_cheap_lane_control.py#L387) |
-| function | `list_cheap_lane_invocations` | `(*, since, until=…, provider=…, model=…, auth_profile=…, daemon=…, status=…, error_class=…, correlation_id=…, query=…, cursor=…, limit=…)` | — | [src](../../../core/runtime/db_cheap_lane_control.py#L391) |
-| function | `get_cheap_lane_invocation_detail` | `(invocation_id)` | — | [src](../../../core/runtime/db_cheap_lane_control.py#L456) |
+| function | `get_route_decision` | `(route_decision_id)` | — | [src](../../../core/runtime/db_cheap_lane_control.py#L179) |
+| function | `record_quota_observation` | `(*, provider, auth_profile, period, unit, limit, remaining, reset_at, observed_at=…)` | — | [src](../../../core/runtime/db_cheap_lane_control.py#L193) |
+| function | `list_quota_observations` | `(*, provider=…, auth_profile=…, limit=…)` | — | [src](../../../core/runtime/db_cheap_lane_control.py#L228) |
+| function | `record_cheap_lane_audit` | `(*, actor, action, target, reason, before, after, result, correlation_id=…)` | — | [src](../../../core/runtime/db_cheap_lane_control.py#L257) |
+| function | `finalize_cheap_lane_audit` | `(audit_id, *, after, result, error_code=…)` | — | [src](../../../core/runtime/db_cheap_lane_control.py#L297) |
+| function | `list_cheap_lane_audit` | `(*, limit=…)` | — | [src](../../../core/runtime/db_cheap_lane_control.py#L327) |
+| function | `record_redacted_payload` | `(*, invocation_id, prompt, response, status, expires_at)` | — | [src](../../../core/runtime/db_cheap_lane_control.py#L345) |
+| function | `_encode_cursor` | `(created_at, row_id)` | — | [src](../../../core/runtime/db_cheap_lane_control.py#L384) |
+| function | `_decode_cursor` | `(cursor)` | — | [src](../../../core/runtime/db_cheap_lane_control.py#L389) |
+| function | `_invocation_row` | `(row)` | — | [src](../../../core/runtime/db_cheap_lane_control.py#L406) |
+| function | `list_cheap_lane_invocations` | `(*, since, until=…, provider=…, model=…, auth_profile=…, daemon=…, status=…, error_class=…, correlation_id=…, query=…, cursor=…, limit=…)` | — | [src](../../../core/runtime/db_cheap_lane_control.py#L410) |
+| function | `get_cheap_lane_invocation_detail` | `(invocation_id)` | — | [src](../../../core/runtime/db_cheap_lane_control.py#L475) |
 
 ## `core/runtime/db_cheap_provider.py`
 _Persistence for the cheap-provider runtime-state + invocation cluster._

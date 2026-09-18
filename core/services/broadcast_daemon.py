@@ -44,13 +44,22 @@ def tick_broadcast_daemon() -> dict[str, object]:
         pass
 
     if not entries:
-        return {"generated": False, "reason": "empty_workspace", "broadcast_count": 0}
+        return {
+            "generated": False, "reason": "empty_workspace", "broadcast_count": 0,
+            "distinct_sources": 0, "best_cluster_sources": 0,
+            "threshold": _COHERENCE_THRESHOLD,
+            "silent_reason": (
+                "arbejdsrummet er tomt: ingen kortlagte events er naaet ind i "
+                "denne proces siden opstart"),
+        }
 
     clusters = _cluster_by_topic(entries)
 
     broadcast_count = 0
+    bedste_klynge = 0
     for cluster in clusters:
         unique_sources = list({e["source"] for e in cluster})
+        bedste_klynge = max(bedste_klynge, len(unique_sources))
         if len(unique_sources) >= _COHERENCE_THRESHOLD:
             topic_cluster = _representative_topic(cluster)
             _fire_broadcast(cluster, unique_sources, topic_cluster)
@@ -63,6 +72,30 @@ def tick_broadcast_daemon() -> dict[str, object]:
         "broadcast_count": broadcast_count,
         "workspace_coherence": coherence,
         "entries_analyzed": len(entries),
+        # HVORFOR der ikke blev sendt noget (18/9-2026).
+        #
+        # Eksperimentet har staaet `enabled` i fem maaneder med NUL udsendelser
+        # og saa sundt ud imens. Det var ikke en fejl i ledningerne: lytteren
+        # koerer i samme proces som udgiverne, event-navnene passer, og 172
+        # kortlagte events fyrede alene paa to dage.
+        #
+        # Det er aritmetik. En udsendelse kraever TRE forskellige kilder i
+        # SAMME emne-klynge, og kun fire kilde-typer udgiver overhovedet —
+        # med hvert sit ordforraad. At tre af dem skulle lande i én klynge er
+        # naesten udelukket.
+        #
+        # Taersklen er en HYPOTESE om hvad en bevidst udsendelse kraever, ikke
+        # en indstilling. Den aendrer jeg ikke. Men tavsheden skal kunne
+        # forklares, saa den ikke laeses som sundhed.
+        "distinct_sources": len({e["source"] for e in entries}),
+        "best_cluster_sources": bedste_klynge,
+        "threshold": _COHERENCE_THRESHOLD,
+        "silent_reason": (
+            "" if broadcast_count else
+            f"ingen klynge naaede {_COHERENCE_THRESHOLD} forskellige kilder "
+            f"(bedste: {bedste_klynge}; kilder i vinduet: "
+            f"{len({e['source'] for e in entries})})"
+        ),
     }
 
 
@@ -81,6 +114,9 @@ def build_workspace_surface() -> dict[str, object]:
         "active": enabled,
         "enabled": enabled,
         "buffer_size": len(snapshot),
+        # Tavshedens grund foelger med fladen: «tændt, 0 events» laeser som
+        # sundhed, «tændt, men ingen klynge naaede 3 kilder» er et svar.
+        "silent_reason": _silent_reason(snapshot),
         "active_topics": topics,
         "workspace_coherence": round(_compute_coherence(), 3),
         "recent_broadcasts": recent_broadcasts[:5],
@@ -91,6 +127,17 @@ def build_workspace_surface() -> dict[str, object]:
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
+
+def _silent_reason(snapshot: list[dict]) -> str:
+    """Hvorfor fladen er tom — uden at koere en ny analyse."""
+    if not snapshot:
+        return "arbejdsrummet er tomt: ingen kortlagte events er naaet ind"
+    kilder = {str(e.get("source") or "") for e in snapshot}
+    if len(kilder) < _COHERENCE_THRESHOLD:
+        return (f"kun {len(kilder)} forskellige kilder i rummet; en udsendelse "
+                f"kraever {_COHERENCE_THRESHOLD} i samme emne")
+    return ""
+
 
 def _cluster_by_topic(entries: list[dict]) -> list[list[dict]]:
     """Group entries into clusters where Jaccard similarity of topics >= threshold."""

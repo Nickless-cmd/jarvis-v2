@@ -331,11 +331,12 @@ _Broadcast Daemon — detects emergent coherence across daemons (Experiment 3: G
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `tick_broadcast_daemon` | `()` | Run one coherence analysis pass. Returns dict with broadcast_count/coherence. | [src](../../../core/services/broadcast_daemon.py#L23) |
-| function | `build_workspace_surface` | `()` | MC surface for global workspace experiment. | [src](../../../core/services/broadcast_daemon.py#L69) |
-| function | `_cluster_by_topic` | `(entries)` | Group entries into clusters where Jaccard similarity of topics >= threshold. | [src](../../../core/services/broadcast_daemon.py#L95) |
-| function | `_representative_topic` | `(cluster)` | Return the most common meaningful words across all topics in cluster. | [src](../../../core/services/broadcast_daemon.py#L112) |
-| function | `_fire_broadcast` | `(cluster, unique_sources, topic_cluster)` | Persist broadcast event and publish to eventbus. | [src](../../../core/services/broadcast_daemon.py#L122) |
-| function | `_compute_coherence` | `()` | workspace_coherence = broadcast events with 3+ sources / total events (rolling 24h). | [src](../../../core/services/broadcast_daemon.py#L152) |
+| function | `build_workspace_surface` | `()` | MC surface for global workspace experiment. | [src](../../../core/services/broadcast_daemon.py#L102) |
+| function | `_silent_reason` | `(snapshot)` | Hvorfor fladen er tom — uden at koere en ny analyse. | [src](../../../core/services/broadcast_daemon.py#L131) |
+| function | `_cluster_by_topic` | `(entries)` | Group entries into clusters where Jaccard similarity of topics >= threshold. | [src](../../../core/services/broadcast_daemon.py#L142) |
+| function | `_representative_topic` | `(cluster)` | Return the most common meaningful words across all topics in cluster. | [src](../../../core/services/broadcast_daemon.py#L159) |
+| function | `_fire_broadcast` | `(cluster, unique_sources, topic_cluster)` | Persist broadcast event and publish to eventbus. | [src](../../../core/services/broadcast_daemon.py#L169) |
+| function | `_compute_coherence` | `()` | workspace_coherence = broadcast events with 3+ sources / total events (rolling 24h). | [src](../../../core/services/broadcast_daemon.py#L199) |
 
 ## `core/services/cache_boundary_observer.py`
 _Cache-boundary drift observer (harness Part B, Mechanism A)._

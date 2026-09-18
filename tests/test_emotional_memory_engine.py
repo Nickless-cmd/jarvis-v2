@@ -533,3 +533,81 @@ def test_surface_returns_inactive_for_empty_context(isolated_runtime) -> None:
         anchor_type="cognitive_episode", context_features={}
     )
     assert surface["active"] is False
+
+
+def _anker(nr: int, *, type_: str = "perceptual_event", udfald=None) -> None:
+    from core.runtime.db import insert_emotional_memory_anchor
+
+    insert_emotional_memory_anchor(
+        anchor_type=type_,
+        anchor_id=f"a-{nr}",
+        captured_at=f"2026-09-{(nr % 28) + 1:02d}T10:00:00+00:00",
+        mood="neutral",
+        intensity=0.5,
+        confidence=None,
+        curiosity=None,
+        frustration=None,
+        fatigue=None,
+        trust=None,
+        outcome_score=udfald,
+        outcome_source="auto" if udfald is not None else None,
+        context_features_json="{}",
+        source="test",
+    )
+
+
+def test_oversigten_taeller_hele_tabellen_ikke_limit_vinduet(isolated_runtime) -> None:
+    """Regressionstest for `limit`-fælden.
+
+    Oversigten regnede sine tal over `limit=20` nyeste rækker ud af 200.675
+    og lignede et resumé af det hele. Tallene skal komme fra tabellen; de
+    nyeste rækker må kun optræde som en mærket stikprøve.
+    """
+    from core.services.emotional_memory_engine import build_emotional_memory_overview
+
+    for nr in range(50):
+        _anker(nr)
+
+    oversigt = build_emotional_memory_overview(limit=5)
+
+    assert oversigt["counts"]["total"] == 50
+    assert oversigt["counts"]["by_type"]["perceptual_event"] == 50
+    assert oversigt["sample"]["limit"] == 5
+    assert oversigt["sample"]["size"] == 5
+
+
+def test_oversigten_skiller_registreret_fra_afgjort(isolated_runtime) -> None:
+    """Et anker uden udfald er registreret, ikke afgjort.
+
+    Andelen med udfald er det tal der afgør om der overhovedet er et signal
+    — og `scored_by_type` siger hvilke typer der kan bære et.
+    """
+    from core.services.emotional_memory_engine import build_emotional_memory_overview
+
+    for nr in range(8):
+        _anker(nr)
+    _anker(100, type_="cognitive_episode", udfald=0.6)
+    _anker(101, type_="cognitive_episode", udfald=-0.7)
+
+    tal = build_emotional_memory_overview()["counts"]
+
+    assert tal["total"] == 10
+    assert tal["scored"] == 2
+    assert tal["unscored"] == 8
+    assert tal["scored_share"] == 0.2
+    assert tal["scored_by_type"] == {"cognitive_episode": 2}
+    assert tal["by_outcome"] == {"good": 1, "bad": 1, "neutral": 0}
+
+
+def test_direktivet_har_ikke_et_hengende_kolon(isolated_runtime) -> None:
+    """Linjen der lander i prompten lød «2 similar contexts:, mood ...»."""
+    from core.services.emotional_memory_engine import _compile_directive
+
+    linje = _compile_directive(
+        match_count=2,
+        mood_distribution={"neutral": 2},
+        outcome_distribution={"bad": 1},
+    )
+
+    assert ":," not in linje
+    assert linje.startswith("2 similar contexts, mood neutral 2/2")

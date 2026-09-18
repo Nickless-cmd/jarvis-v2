@@ -1303,6 +1303,45 @@ class _PopulateMixin:
                                 )
                                 shown += 1
 
+        # -- FØLELSESANKRE — hans hukommelse for hvordan noget gik.
+        # Fladen findes for ét tals skyld: andelen med udfald. 200.000 ankre
+        # lyder som en erfaring, men et anker uden udfald er registreret,
+        # ikke afgjort — og den type der fylder 97 % får aldrig et. Det skal
+        # stå fremme, ikke udledes af nogen bagefter.
+        try:
+            ank = datasource.emotional_anchors(self._client) if self._client else {}
+        except Exception:
+            ank = {}
+        if ank and int(ank.get("total") or 0) > 0:
+            _tot = int(ank.get("total") or 0)
+            _sc = int(ank.get("scored") or 0)
+            _andel = float(ank.get("scored_share") or 0.0) * 100
+            _tone = GREEN if _andel >= 20 else (AMBER if _andel >= 5 else DIM)
+            _typer = ank.get("by_type") or {}
+            _sc_typer = ank.get("scored_by_type") or {}
+            _ud = ank.get("by_outcome") or {}
+            lines += [
+                "",
+                f"[{CYAN} b]◈ FØLELSESANKRE[/]  [{FGDIM}]— hvordan det gik[/]",
+                f"[{FGDIM}]ankre[/]        [{FG}]{_esc(_tot)}[/]"
+                f"   [{FGDIM}]med udfald[/] [{_tone}]{_esc(_sc)}"
+                f" ({_andel:.1f} %)[/]",
+            ]
+            for _t, _n in list(sorted(_typer.items(), key=lambda kv: -kv[1]))[:4]:
+                _s = int(_sc_typer.get(_t) or 0)
+                _mrk = (f"[{FG}]{_s} m. udfald[/]" if _s
+                        else f"[{DIM}]aldrig afgjort[/]")
+                lines.append(
+                    f"  [{FGDIM}]{_esc(_t)}[/] [{FG}]{_esc(_n)}[/]  {_mrk}"
+                )
+            if _ud:
+                lines.append(
+                    f"[{FGDIM}]udfald[/]       "
+                    f"[{GREEN}]{_esc(_ud.get('good', 0))} godt[/]  "
+                    f"[{AMBER}]{_esc(_ud.get('neutral', 0))} neutralt[/]  "
+                    f"[{RED}]{_esc(_ud.get('bad', 0))} skidt[/]"
+                )
+
         # -- initiativ-stige (rådets #3) — hans initiativ observe→propose→
         # execute→learn med en gate før hvert løft. Kun skalarer/labels (§24.4).
         try:

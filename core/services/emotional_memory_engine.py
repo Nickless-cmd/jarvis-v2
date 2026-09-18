@@ -577,8 +577,10 @@ def _compile_directive(
         mood_distribution.items(), key=lambda kv: kv[1]
     )
     bad = outcome_distribution.get("bad", 0)
+    # Kolonnet efter «contexts» gav «2 similar contexts:, mood neutral 2/2»
+    # naar stykkerne senere samles med komma. Separatoren hoerer ét sted.
     pieces = [
-        f"{match_count} similar contexts:",
+        f"{match_count} similar contexts",
         f"mood {dominant_mood} {dominant_count}/{match_count}",
     ]
     if bad >= 1:
@@ -614,50 +616,70 @@ def build_emotional_memory_overview(*, limit: int = 20) -> dict[str, object]:
     cartographer registers it as observed.
 
     Returns aggregate stats + recent anchors. Read-only — never mutates.
-    """
-    from core.runtime.db_emotional_memory import list_emotional_memory_anchors
 
+    ## Rettet 18/9-2026: tællingerne kom fra `limit`-vinduet
+
+    Funktionen hed en oversigt og regnede `by_type`, `by_outcome` og
+    intensitet over de `limit=20` nyeste rækker ud af 200.675. Den sagde
+    altså noget om 0,01 % af tabellen og lignede et resumé — tredje gang
+    `limit` skjuler halen her i huset. Tællingerne kommer nu fra SQL over
+    hele tabellen, og de nyeste rækker står tilbage som det de er: en
+    stikprøve, mærket `sample`.
+
+    Det tal der afgør om ankrene overhovedet bærer et signal er
+    `scored_share`: et anker uden udfald er registreret, ikke afgjort.
+    """
+    from core.runtime.db_emotional_memory import (
+        aggregate_emotional_memory_anchors,
+        list_emotional_memory_anchors,
+    )
+
+    tal = aggregate_emotional_memory_anchors()
     recent = list_emotional_memory_anchors(limit=limit)
-    by_type: dict[str, int] = {}
-    by_outcome: dict[str, int] = {"good": 0, "bad": 0, "neutral": 0, "unscored": 0}
+
     intensity_sum = 0.0
     intensity_count = 0
     for r in recent:
-        t = str(r.get("anchor_type") or "?")
-        by_type[t] = by_type.get(t, 0) + 1
-        outcome = r.get("outcome_score")
-        if outcome is None:
-            by_outcome["unscored"] += 1
-        else:
-            try:
-                f = float(outcome)
-                if f > 0.2:
-                    by_outcome["good"] += 1
-                elif f < -0.2:
-                    by_outcome["bad"] += 1
-                else:
-                    by_outcome["neutral"] += 1
-            except (TypeError, ValueError):
-                by_outcome["unscored"] += 1
         try:
             intensity_sum += float(r.get("intensity") or 0)
             intensity_count += 1
         except (TypeError, ValueError):
             pass
-
     avg_intensity = (intensity_sum / intensity_count) if intensity_count else 0.0
 
+    total = int(tal.get("total") or 0)
+    scored = int(tal.get("scored") or 0)
+    andel = float(tal.get("scored_share") or 0.0)
+
     return {
-        "active": bool(recent),
+        "active": total > 0,
         "summary": (
-            f"{len(recent)} recent anchors; "
-            f"types={by_type}; outcomes={by_outcome}; "
-            f"avg_intensity={avg_intensity:.2f}"
+            f"{total} ankre i alt; "
+            f"{scored} med udfald ({andel * 100:.2f} %); "
+            f"typer={tal.get('by_type')}; "
+            f"scorede pr type={tal.get('scored_by_type')}; "
+            f"udfald blandt scorede={tal.get('by_outcome')}; "
+            f"spaend {tal.get('oldest_at')} .. {tal.get('newest_at')}"
         ),
         "counts": {
-            "by_type": by_type,
-            "by_outcome": by_outcome,
-            "total": len(recent),
+            "by_type": tal.get("by_type"),
+            "scored_by_type": tal.get("scored_by_type"),
+            "by_outcome": tal.get("by_outcome"),
+            "total": total,
+            "scored": scored,
+            "unscored": tal.get("unscored"),
+            "scored_share": andel,
+        },
+        "span": {
+            "oldest_at": tal.get("oldest_at"),
+            "newest_at": tal.get("newest_at"),
+        },
+        # Stikproeve, ikke grundlag. Navnet siger det, saa ingen laeser
+        # gennemsnittet som noget der gaelder alle 200.000.
+        "sample": {
+            "limit": limit,
+            "size": len(recent),
+            "avg_intensity": round(avg_intensity, 3),
         },
         "avg_intensity": round(avg_intensity, 3),
         "anchors": [
@@ -667,7 +689,9 @@ def build_emotional_memory_overview(*, limit: int = 20) -> dict[str, object]:
                 "captured_at": r.get("captured_at"),
                 "intensity": r.get("intensity"),
                 "outcome_score": r.get("outcome_score"),
-                "summary": str(r.get("summary") or "")[:200],
+                # Tabellen har ingen `summary`-kolonne; den gamle opslag gav
+                # strengen "None" paa hver eneste raekke.
+                "summary": str(r.get("notes") or "")[:200],
             }
             for r in recent[:10]
         ],

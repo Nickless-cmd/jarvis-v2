@@ -886,3 +886,43 @@ def execution(client: Any) -> dict:
         return s if isinstance(s, dict) else {}
     except Exception:
         return {}
+
+
+def emotional_anchors(client: Any) -> dict:
+    """Følelsesankrenes oversigt fra /mc/emotional-memory. Self-safe → nuller.
+
+    Fladen findes for at gøre ét tal synligt: hvor stor en andel af ankrene
+    der overhovedet har et udfald. Et anker uden udfald er registreret, ikke
+    afgjort — og 97 % af tabellen er af en type der aldrig får et. Det tal
+    skal stå fremme, ikke udledes af nogen bagefter.
+    """
+    tom = {
+        "total": 0,
+        "scored": 0,
+        "scored_share": 0.0,
+        "by_type": {},
+        "scored_by_type": {},
+        "by_outcome": {},
+        "newest_at": "",
+    }
+    try:
+        data = client.get_json("/mc/emotional-memory?limit=5")
+        if not isinstance(data, dict):
+            return dict(tom)
+        tal = data.get("counts")
+        if not isinstance(tal, dict):
+            return dict(tom)
+        spaend = data.get("span") if isinstance(data.get("span"), dict) else {}
+        return {
+            "total": int(tal.get("total") or 0),
+            "scored": int(tal.get("scored") or 0),
+            "scored_share": float(tal.get("scored_share") or 0.0),
+            "by_type": tal.get("by_type") if isinstance(tal.get("by_type"), dict) else {},
+            "scored_by_type": (tal.get("scored_by_type")
+                               if isinstance(tal.get("scored_by_type"), dict) else {}),
+            "by_outcome": (tal.get("by_outcome")
+                           if isinstance(tal.get("by_outcome"), dict) else {}),
+            "newest_at": str(spaend.get("newest_at") or ""),
+        }
+    except Exception:
+        return dict(tom)

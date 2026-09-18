@@ -260,3 +260,66 @@ def _row_to_dict(row: sqlite3.Row) -> dict[str, object]:
         "source": row["source"],
         "notes": row["notes"],
     }
+
+
+def aggregate_emotional_memory_anchors() -> dict[str, object]:
+    """Tællinger over HELE tabellen — ikke over de seneste N rækker.
+
+    ## Hvorfor den findes (18/9-2026)
+
+    `build_emotional_memory_overview` hed en oversigt og regnede på `limit=20`
+    rækker ud af 200.675. Den sagde altså noget om 0,01 % af data og så ud som
+    et resumé. Det er tredje gang i dette hus at `limit` skjuler halen og giver
+    en tavs forkert konklusion.
+
+    Aggregeringen hører i SQL, hvor den er billig og fuldstændig: fem
+    GROUP BY over en indekseret tabel, ikke 200.000 rækker gennem Python.
+    """
+    with connect() as conn:
+        _ensure_emotional_memory_anchors_table(conn)
+        total = int(conn.execute(
+            "SELECT COUNT(*) FROM emotional_memory_anchors").fetchone()[0] or 0)
+        by_type = {
+            str(r[0] or "ukendt"): int(r[1] or 0)
+            for r in conn.execute(
+                "SELECT anchor_type, COUNT(*) FROM emotional_memory_anchors "
+                "GROUP BY anchor_type ORDER BY 2 DESC").fetchall()
+        }
+        # Et anker uden udfald kan ikke laere nogen noget — det er registreret,
+        # ikke afgjort. Andelen er det tal der afgoer om der er et signal.
+        scored = int(conn.execute(
+            "SELECT COUNT(*) FROM emotional_memory_anchors "
+            "WHERE outcome_score IS NOT NULL").fetchone()[0] or 0)
+        # Hvilke typer der overhovedet KAN afgoeres. Maalt 18/9-2026 baerer
+        # kun cognitive_episode og self_repair_attempt et udfald — de 97 %
+        # perceptual_event er registreringer der aldrig kan laere nogen noget.
+        scored_by_type = {
+            str(r[0] or "ukendt"): int(r[1] or 0)
+            for r in conn.execute(
+                "SELECT anchor_type, COUNT(*) FROM emotional_memory_anchors "
+                "WHERE outcome_score IS NOT NULL GROUP BY anchor_type "
+                "ORDER BY 2 DESC").fetchall()
+        }
+        udfald = {"good": 0, "bad": 0, "neutral": 0}
+        for r in conn.execute(
+            "SELECT CASE WHEN outcome_score > 0.2 THEN 'good' "
+            "            WHEN outcome_score < -0.2 THEN 'bad' ELSE 'neutral' END, "
+            "       COUNT(*) FROM emotional_memory_anchors "
+            "WHERE outcome_score IS NOT NULL GROUP BY 1"
+        ).fetchall():
+            udfald[str(r[0])] = int(r[1] or 0)
+        spaend = conn.execute(
+            "SELECT MIN(captured_at), MAX(captured_at) "
+            "FROM emotional_memory_anchors").fetchone()
+
+    return {
+        "total": total,
+        "by_type": by_type,
+        "scored": scored,
+        "scored_by_type": scored_by_type,
+        "unscored": max(0, total - scored),
+        "scored_share": round(scored / total, 4) if total else 0.0,
+        "by_outcome": udfald,
+        "oldest_at": str(spaend[0] or "") if spaend else "",
+        "newest_at": str(spaend[1] or "") if spaend else "",
+    }

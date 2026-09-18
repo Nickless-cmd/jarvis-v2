@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 
 /** Foldens varighed i ms. Skal stemme med transitionen i `app.css` (`.linje-fold`). */
-export const FOLD_MS = 220
+export const FOLD_MS = 200
 
 /**
  * Folder sit indhold ud og ind med højde-animation — og holder det UDE af

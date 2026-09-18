@@ -115,9 +115,11 @@ describe('live metadata i stedet for «Kører bash…»', () => {
     vi.setSystemTime(5_012_000)
     render(<ToolGroupCard density="compact" block={{ type: 'tool_group', kind: 'round', count: 1,
       tools: [{ type: 'tool_use', id: 't', name: 'bash', input: { command: 'npm test' }, status: 'running', startet }] }} />)
-    expect(screen.getByTestId('runde-tid')).toHaveTextContent('12 s')
+    // Kildens format (`BS` i Claude Desktop, 19/9-2026): «12s», uden
+    // mellemrum og uden «·» foran — tallet står for sig med 65 % opacitet.
+    expect(screen.getByTestId('runde-tid')).toHaveTextContent(/^12s$/)
     act(() => { vi.advanceTimersByTime(3000) })
-    expect(screen.getByTestId('runde-tid')).toHaveTextContent('15 s')
+    expect(screen.getByTestId('runde-tid')).toHaveTextContent(/^15s$/)
   })
 })
 
@@ -160,7 +162,7 @@ describe('prikker i enden af en linje der kører', () => {
     const { rerender } = render(<ToolGroupCard density="compact" block={med('running')} />)
     expect(screen.queryByTestId('runde-tid')).toBeNull()
     rerender(<ToolGroupCard density="compact" block={med('done')} />)
-    expect(screen.getByTestId('runde-tid')).toHaveTextContent('3 s')
+    expect(screen.getByTestId('runde-tid')).toHaveTextContent(/^3s$/)
   })
 
   it('en runde man aldrig har aabnet baerer intet i DOM\'en', () => {

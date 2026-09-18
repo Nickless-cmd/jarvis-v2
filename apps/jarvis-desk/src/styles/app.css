@@ -1242,7 +1242,7 @@ button.sidebar-group svg { flex: none; opacity: .7; }
   background-size: 220% 100%;
   -webkit-background-clip: text; background-clip: text;
   -webkit-text-fill-color: transparent; color: transparent;
-  animation: shimmer-sweep 1.8s linear infinite;
+  animation: shimmer-sweep 2.25s linear infinite; /* Claude Desktops SHIMMER: 2.25 */
 }
 @keyframes shimmer-sweep { 0% { background-position: 120% 0; } 100% { background-position: -120% 0; } }
 .live-dots { display: inline-flex; align-items: flex-end; gap: 2px; margin-left: 3px; padding-bottom: 1px; }
@@ -1408,83 +1408,135 @@ button.sidebar-group svg { flex: none; opacity: .7; }
   padding: 2px 2px 0; overflow: hidden; text-overflow: ellipsis;
   white-space: nowrap;
 }
-/* Mens runden koerer, aander linjen; naar den er faerdig, staar den stille.
-   Bevaegelse betyder «i gang» — en linje der pulser bagefter lyver. Mobilen
-   gaar 1 → 0,4 over 800 ms hver vej. */
-.toolgroup.er-koerende .toolgroup-head { animation: toolgroup-aande 1.6s ease-in-out infinite; }
-@keyframes toolgroup-aande { 0%, 100% { opacity: 1 } 50% { opacity: .4 } }
-@media (prefers-reduced-motion: reduce) {
-  .toolgroup.er-koerende .toolgroup-head { animation: none; }
+/* ═══ Tool-linjens bevægelse — Claude Desktop 1:1 (19/9-2026) ══════════════
+   Kilde: claude-desktop-unofficial v2.110.0, ion-dist/assets/v1/
+   c7e6c37f6-DBAD18hv.css + c3e2391e3-CyTSz9uV.js. Værdierne er deres,
+   klassenavnene vores. Spec: ~/cc-tool-linje-prompt-til-claude.md.
+
+   Der «åndede» linjen før (opacitet 1 → .4) mens den kørte. Det gør Claude
+   Desktop ikke: dér glitrer LABELEN, og resten af linjen står stille. */
+
+/* --- Spark-cellen: 20 px mens der arbejdes, 0 bagefter (w-5 mr-0.5 / w-0 -mr-2)
+   Glyfen toner ind over 150 ms. Når arbejdet slutter, overtager label-
+   skiftets spark-lag den og lader den tone ud (se LabelSkift). */
+.toolgroup-spark {
+  position: relative; height: 20px; flex: 0 0 auto; overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+  width: 0; margin-right: -8px;
+}
+.toolgroup-spark > .toolgroup-icon { opacity: 0; }
+.toolgroup.er-koerende .toolgroup-spark { width: 20px; margin-right: 2px; }
+.toolgroup.er-koerende .toolgroup-spark > .toolgroup-icon { opacity: 1; transition: opacity 150ms; }
+
+/* --- Label-skiftet: tre lag i én celle (GS) -------------------------------- */
+.ls-grid { display: inline-grid; min-width: 0; max-width: 100%; }
+.ls-lag {
+  grid-area: 1 / 1; display: inline-flex; align-items: center; gap: .25rem; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+@keyframes ls-fade-ind { from { opacity: 0 } to { opacity: 1 } }
+@keyframes ls-fade-ud  { from { opacity: 1 } to { opacity: 0 } }
+@keyframes ls-spark-afgang { 0%, 50% { opacity: 1 } to { opacity: 0 } }
+.ls-ind { animation: .25s ease-in-out ls-fade-ind; }                      /* timeline-status-enter */
+.ls-ud  { animation: .15s ease-out forwards ls-fade-ud; }                 /* timeline-status-exit */
+.ls-ind-efter-spark { animation: .25s ease-in-out .21s both ls-fade-ind; } /* …-enter-after-spark */
+.ls-spark-afgang { animation: .42s linear forwards ls-spark-afgang; }     /* timeline-spark-depart */
+.ls-plads-til-spark { padding-left: 30px; }                               /* ps-7.5 */
+.ls-spark {
+  display: flex; height: 20px; width: 20px; flex: 0 0 auto;
+  align-items: center; justify-content: center; padding-top: 4px;        /* h-5 w-5 pt-1 */
+  color: var(--fg-2);
 }
 
-/* --- Prikkerne -------------------------------------------------------------
-   Tre prikker der ruller. Tallene er Claude Desktops, maalt i deres CSS:
-   3 px, 150 ms forskudt, 1,9 s pr. runde. Farven er vores egen (currentColor),
-   saa prikkerne skifter med linjen de staar paa - ogsaa naar den er roed.
-   Bevægelsen er ren CSS: foer gentegnede komponenten sig hvert 420. ms for at
-   skrive et nyt punktum; nu roerer React sig ikke mens de ruller. */
-.prikker { display: inline-flex; align-items: center; gap: 2px; flex: 0 0 auto; height: 1em; transition: opacity 160ms ease; }
+/* --- Klokken: kildens format og 65 % ----------------------------------------- */
+.linje-tid { flex: 0 0 auto; font-variant-numeric: tabular-nums; opacity: .65; }
+
+/* --- Prikkerne (timeline-quiet-dots) ----------------------------------------
+   Kildens tal ordret. Farven er vores egen (currentColor) i stedet for deres
+   clay — Bjørns beslutning i spec'en. */
+.prikker { display: inline-flex; gap: 3.5px; position: relative; top: .26em; flex: 0 0 auto; }
 .prikker > span {
   width: 3px; height: 3px; border-radius: 50%;
   background: currentColor; opacity: 0;
-  animation: prikke-boelge 1.9s ease-in-out infinite;
+  animation: 1.9s cubic-bezier(.4, 0, .2, 1) infinite prikke-boelge;
 }
 .prikker > span:nth-child(2) { animation-delay: .15s; }
 .prikker > span:nth-child(3) { animation-delay: .3s; }
 @keyframes prikke-boelge {
-  0%   { opacity: 0;   transform: translateY(2px); }
-  8%   { opacity: .22; transform: translateY(2px); }
-  22%  { opacity: 1;   transform: translateY(-2.5px); }
-  36%  { opacity: 1;   transform: translateY(0); }
-  70%  { opacity: 1;   transform: translateY(0); }
-  90%  { opacity: 0;   transform: translateY(0); }
-  100% { opacity: 0;   transform: translateY(0); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .prikker > span { animation: none; opacity: .55; }
+  0%, 8%   { opacity: 0; transform: translateY(2px); }
+  22%      { opacity: 1; transform: translateY(-2.5px); }
+  36%, 70% { opacity: 1; transform: translateY(0); }
+  90%, to  { opacity: 0; transform: translateY(0); }
 }
 
-/* --- Prikker og chevron i samme celle -------------------------------------
-   Linjen skal ikke vise to ting paa én gang. Mens runden koerer staar prikkerne
-   fremme og chevronen er væk (roteret skraa); holder man musen over - eller
-   rammer den med tastaturet - bytter de. Samme greb som Claude Desktop. */
-.toolgroup-celle { display: inline-grid; place-items: center; flex: 0 0 auto; min-width: 15px; min-height: 15px; }
+/* --- Prikker og caret i samme celle (tool-status-caret / tool-row-caret) ----
+   Mens der arbejdes: prikkerne fremme, careten skjult; hover eller tastatur-
+   fokus krydsfader dem (200 ms). Er runden færdig og foldet, er careten
+   skjult indtil hover — og ALTID synlig på en skærm uden mus, hvor hover
+   ikke findes ([@media(hover:none)]). Foldet = drejet -90°, åben = lige; selve
+   drejningen tager 150 ms. */
+.toolgroup-celle { display: inline-grid; place-items: center; flex: 0 0 auto; }
 .toolgroup-celle > * { grid-area: 1 / 1; }
-.toolgroup-chevron { transition: opacity 160ms ease, transform 200ms ease; }
-.toolgroup.er-koerende .toolgroup-chevron { opacity: 0; transform: rotate(-90deg); }
-.toolgroup.er-koerende .toolgroup-head:hover .toolgroup-chevron,
-.toolgroup.er-koerende .toolgroup-head:focus-visible .toolgroup-chevron { opacity: 1; transform: none; }
-.toolgroup.er-koerende .toolgroup-head:hover .prikker,
-.toolgroup.er-koerende .toolgroup-head:focus-visible .prikker { opacity: 0; }
+.toolgroup-celle .prikker { transition: opacity 200ms; }
+.toolgroup-chevron {
+  color: var(--fg-2); opacity: 0; transform: rotate(-90deg);
+  transition: opacity 200ms, transform 150ms;
+}
+.toolgroup.er-aaben .toolgroup-chevron { opacity: 1; transform: none; }
+.toolgroup-head:hover .toolgroup-chevron,
+.toolgroup-head:focus-visible .toolgroup-chevron { opacity: 1; }
+.toolgroup-head:hover .prikker,
+.toolgroup-head:focus-visible .prikker { opacity: 0; }
+@media (hover: none) {
+  .toolgroup:not(.er-koerende) .toolgroup-chevron { opacity: 1; }
+}
 
-/* --- Linjen lander --------------------------------------------------------
-   Naar en linje BEGYNDER at arbejde falder den ind: fra uklarhed og 0,9 skala,
-   voksende ud fra venstre. Kun mens den koerer - en genindlaest traad skal ikke
-   sende hver eneste linje gennem en entre-animation. */
-.toolgroup.er-koerende { animation: toolgroup-ind 430ms cubic-bezier(.2, .7, .3, 1) both; transform-origin: left center; }
+/* --- Entréen (timeline-block-enter, 430 ms backwards) -----------------------
+   To-faset i selve keyframen: de første 30 % sker usynligt (blur, opacity 0),
+   så toner den skarpt ind. Derfor læses den som «lander» og ikke «toner frem».
+   Kun mens linjen kører — en genindlæst tråd skal ikke sende hver linje
+   gennem entréen. */
+.toolgroup.er-koerende { animation: toolgroup-ind 430ms backwards; transform-origin: left center; }
 @keyframes toolgroup-ind {
-  from { opacity: 0; filter: blur(4px); transform: translateY(5px) scale(.9); }
-  to   { opacity: 1; filter: blur(0);   transform: none; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .toolgroup.er-koerende { animation: none; }
+  0%  { opacity: 0; filter: blur(4px); transform: translateY(5px) scale(.9);
+        animation-timing-function: cubic-bezier(.22, 1, .36, 1); }
+  30% { opacity: 0; filter: blur(4px); transform: none; animation-timing-function: ease-out; }
+  to  { opacity: 1; filter: none; transform: none; }
 }
 
-/* --- Folden ---------------------------------------------------------------
-   `grid-template-rows: 0fr -> 1fr` animerer hoejden uden at maale indholdet i
-   JS - samme greb som Claude Desktop. `min-height: 0` paa begge led er det der
-   goer at 0fr faktisk bliver nul. Varigheden skal stemme med FOLD_MS i Fold.tsx.
-   Indholdet bliver monteret ved foerste aabning og fjernet igen naar folden har
-   lukket (se Fold.tsx), saa en uaabnet runde koster ingenting. */
-.linje-fold { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 220ms cubic-bezier(.2, .7, .3, 1); }
-.linje-fold.aaben { grid-template-rows: 1fr; }
-.linje-fold-indre { overflow: hidden; min-height: 0; }
+/* --- Folden (timeline-expand) -----------------------------------------------
+   .2 s cubic-bezier(.19,1,.22,1) — højde via grid-template-rows OG opacitet.
+   Claude Desktop animerer kun ind; Bjørn ville have «folden begge veje», så
+   lukningen bruger samme kurve baglæns. Indholdet monteres ved første åbning
+   og fjernes når folden har lukket (Fold.tsx) — «foldet = intet i DOM'en» er
+   en kontrakt tre steder. Varigheden skal stemme med FOLD_MS. */
+.linje-fold {
+  display: grid; grid-template-rows: 0fr; opacity: 0;
+  transition: grid-template-rows .2s cubic-bezier(.19, 1, .22, 1), opacity .2s cubic-bezier(.19, 1, .22, 1);
+}
+.linje-fold.aaben { grid-template-rows: 1fr; opacity: 1; }
+.linje-fold-indre { overflow: hidden; min-height: 0; min-width: 0; align-self: start; }
+
+/* Indholdets ramme (desktop): ½ px kant, 8 px hjørner, 10 px ind, højst
+   200 px — så scroller indholdet selv. Fold ud er IKKE fri højde. */
+.toolgroup-body {
+  border: .5px solid var(--line); border-radius: 8px;
+  margin: 4px 10px 8px; max-height: 200px; overflow-y: auto;
+  background: color-mix(in srgb, var(--bg-0) 50%, transparent);
+}
+
+/* --- Reduced motion -----------------------------------------------------------
+   Kildens regel: entréen bliver en ren fade, skift-lagene og sparken står
+   ikke og animerer (de udgående skjules helt), prikkerne står stille og fulde.
+   Kilden har også en `:root[data-reduce-motion=true]`-vagt; desk har ingen
+   sådan indstilling, så den regel ville ramme et attribut ingen sætter. */
 @media (prefers-reduced-motion: reduce) {
+  @keyframes toolgroup-ind { from { opacity: 0 } to { opacity: 1 } }
+  .ls-ind, .ls-ind-efter-spark { animation: none; }
+  .ls-lag.ls-ud, .ls-lag.ls-spark-afgang { display: none; }
+  .prikker > span { opacity: 1; animation: none; }
   .linje-fold { transition: none; }
 }
-/* Foldet ud: mobilen rykker 24px ind. Desk viser sine egne tool-kort dér —
-   det er stedet hvor den ekstra metadata bor. */
-.toolgroup-body { padding: 2px 0 6px; margin-left: 24px; }
 /* Progress-spor ("Forløb") — persisteret working-step-narration (spec 2026-07-09) */
 .progress-trail { border: 1px solid var(--line); border-radius: var(--radius-sm); margin: 6px 0; overflow: hidden; }
 .progress-trail-head {

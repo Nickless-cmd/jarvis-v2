@@ -1,10 +1,11 @@
 import { useState } from 'react'
-import { ChevronRight, ChevronDown, Code2 } from 'lucide-react'
+import { ChevronDown, Code2 } from 'lucide-react'
 import type { ToolGroupBlock } from '../../lib/toolRounds'
 import { summarizeRound, summerDiff } from '../../lib/toolRound'
 import { KLOKKE_EFTER_S, useLoebendeTid } from '../../lib/useLoebendeTid'
 import { Prikker, udenEllipse } from './Prikker'
 import { Fold } from './Fold'
+import { LabelSkift, formatTid } from './LabelSkift'
 import { ToolCard } from './ToolCard'
 
 /**
@@ -41,7 +42,6 @@ export function ToolGroupCard({
   etiket?: string
 }) {
   const [open, setOpen] = useState(false)
-  const Chevron = open ? ChevronDown : ChevronRight
   const resume = summarizeRound(block.tools)
   const sum = summerDiff(block.tools)
   const koerer = block.tools.some((t) => (t.status ?? 'running') === 'running')
@@ -59,7 +59,7 @@ export function ToolGroupCard({
   if (!resume) return null
 
   return (
-    <div className={`toolgroup${koerer ? ' er-koerende' : ''}`}>
+    <div className={`toolgroup${koerer ? ' er-koerende' : ''}${open ? ' er-aaben' : ''}`}>
       {/* Bjoerns raekkefoelge: etiketten FOERST, det mekaniske efter.
           Overskriften siger hvad runden UDRETTEDE; linjen under hvad der
           SKETE. */}
@@ -71,13 +71,24 @@ export function ToolGroupCard({
         aria-label={etiket ? `${etiket}. ${resume}` : resume}
         onClick={() => setOpen((o) => !o)}
       >
-        <Code2 size={15} className="toolgroup-icon" strokeWidth={1.8} />
-        <span className="toolgroup-label">
-          <span className="linje-titel">{koerer ? udenEllipse(resume) : resume}</span>
-          {visSek != null
-            ? <span className="linje-meta" data-testid="runde-tid"> · {visSek} s</span>
-            : null}
+        {/* Spark-cellen (Claude Desktop, 19/9-2026): 20 px bred mens runden
+            arbejder, ingenting bagefter. Når arbejdet slutter, overtager
+            label-skiftets spark-lag glyfen og lader den tone ud. */}
+        <span className="toolgroup-spark" aria-hidden="true">
+          <Code2 size={15} className="toolgroup-icon" strokeWidth={1.8} />
         </span>
+        <span className="toolgroup-label">
+          <LabelSkift
+            tekst={koerer ? udenEllipse(resume) : resume}
+            arbejder={koerer}
+            className={koerer ? 'shimmer' : ''}
+          />
+        </span>
+        {/* Klokken i kildens format («12s», «1m 5s») og med dens 65 % —
+            tallet må ikke konkurrere med labelen. */}
+        {visSek != null
+          ? <span className="linje-tid" data-testid="runde-tid">{formatTid(visSek)}</span>
+          : null}
         {/* Summen i selve linjen, 1:1 med mobilen: foldet som standard ville
             tallene ellers kun ses af den der folder ud. Et nul vises ikke. */}
         {sum ? (
@@ -87,12 +98,13 @@ export function ToolGroupCard({
             {sum.del ? <span className="git-del">−{sum.del}</span> : null}
           </span>
         ) : null}
-        {/* Prikkerne og chevronen deler celle. Mens runden kører står prikkerne
-            fremme; holder man musen over, toner de ud og chevronen glider ind
-            — så linjen ikke viser to ting på én gang (Claude Desktops greb). */}
-        <span className="toolgroup-celle">
+        {/* Prikker og caret i SAMME celle. Mens runden kører står prikkerne
+            fremme; ved hover eller tastaturfokus krydsfader de til careten
+            (200 ms). Careten er én glyf der drejes -90° når runden er foldet,
+            så åbn/luk er en drejning og ikke et ikon-bytte. */}
+        <span className="toolgroup-celle" data-testid="tool-status-caret">
           <Prikker live={koerer} />
-          <Chevron size={15} className="toolgroup-chevron" strokeWidth={1.8} />
+          <ChevronDown size={15} className="toolgroup-chevron" strokeWidth={1.8} />
         </span>
       </button>
       <Fold aaben={open}>

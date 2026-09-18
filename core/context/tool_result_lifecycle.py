@@ -4,6 +4,47 @@ cold_floor = persisted integer message-id. Tool-results with id < cold_floor
 render as byte-stable stubs. cold_floor advances ONLY at run-end, in discrete
 batches with hysteresis (hybrid: last N user-turns OR T warm-tokens). Pure
 computation here; DB storage below. NO recency-relative logic (breaks the cache).
+
+## Mekanismen er INAKTIV I DRIFT — og det er med vilje (målt 18/9-2026)
+
+Hvis du sidder og undrer dig over at cold_floor står stille, at der aldrig
+renderes stubs, og at `tool_result_round_collapse` (som er slået TIL siden
+20/8) ikke producerer et eneste rundesummary: det er ikke i stykker.
+
+Målt på en levende session 18/9:
+
+    cold_floor                       128.287   (den ER rykket)
+    kolde tool-beskeder i sessionen       73
+    promptvinduets ældste besked     129.268   (981 id'er OVER floor)
+    stubs i den byggede prompt             0
+    varme tool-tokens                  4.373   mod et blødt loft på 40.000
+
+To ting holder den i ro, og begge er rigtige:
+
+1. `only_on_compact` (sat 30/8) venter med at rykke gulvet til komprimeringen
+   alligevel omskriver prefixen. Uden den bremse kostede hver avancering
+   52-95 % af det cachede prefix.
+2. Komprimeringen klipper vinduets start LÆNGERE FREM end gulvet nogensinde
+   når. Betingelsen `id <= cold_floor` er derfor aldrig sand for noget i
+   vinduet.
+
+## Hvorfor det ikke skal «repareres»
+
+Fristelsen er at synkronisere gulv og komprimering, så stubbingen får noget at
+arbejde med. Regnestykket siger nej — med de målte enhedspriser
+($0,0043/M for cache-hit mod $0,1444/M for miss, altså 34x):
+
+    sparet:  4.373 stubbede tokens, som i dag er CACHEDE   ~ $0,00002 pr. kald
+    kostet:  ~70 % af et 130k cache-prefix bliver miss     ~ $0,0131  pr. kald
+
+Cirka 700 gange dyrere end det sparer. Noten fra august om «3.641 tokens sparet
+i HVER efterfølgende prompt» tæller **tokens**, ikke **kroner** — og et cachet
+token er nærmest gratis. At fjerne cachede tokens sparer ingenting; at brække
+cachen for at fjerne dem er dyrt.
+
+Lad den stå. Den er en ventil mod runaway-vækst af varme tool-resultater, og
+den skal kun udløse hvis `tool_warm_token_ceiling` faktisk bliver bindende —
+målt var den på 11 % af sin tærskel.
 """
 from __future__ import annotations
 

@@ -110,19 +110,19 @@ _Tool-result lifecycle (visible-lane). Spec 2026-07-16._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `user_message_ids` | `(messages)` | Ids for role=='user' messages, ascending (= run boundaries). | [src](../../../core/context/tool_result_lifecycle.py#L11) |
-| function | `estimate_tool_tokens` | `(messages)` | Sum of tool-result tokens (heuristic len//4). Only role=='tool'. | [src](../../../core/context/tool_result_lifecycle.py#L23) |
-| function | `_candidate_by_runs` | `(user_ids, run_window)` | Floor so exactly the last `run_window` user-turns stay warm. | [src](../../../core/context/tool_result_lifecycle.py#L32) |
-| function | `_candidate_by_tokens` | `(messages, token_ceiling)` | Floor so warm tool-tokens <= ceiling. Walks newest->oldest. | [src](../../../core/context/tool_result_lifecycle.py#L40) |
-| function | `compute_new_floor` | `(messages, *, current_floor, run_window, token_ceiling, hysteresis)` | New cold_floor. Monotonic (>= current_floor). 0 = nothing cold yet. | [src](../../../core/context/tool_result_lifecycle.py#L53) |
-| function | `as_bool` | `(value, default=…)` | Robust bool-tolkning. ``bool("off")`` er True — den fælde har kostet os før. | [src](../../../core/context/tool_result_lifecycle.py#L99) |
-| function | `should_advance` | `(*, warm_tool_tokens, current_epoch, recorded_epoch, hard_ceiling, only_on_compact=…)` | Må gulvet rykke nu? Ren beslutning. Returnerer (ja/nej, grund). | [src](../../../core/context/tool_result_lifecycle.py#L119) |
-| function | `_ensure_table` | `(conn)` | — | [src](../../../core/context/tool_result_lifecycle.py#L158) |
-| function | `latest_compact_marker_id` | `(session_id)` | Id på sessionens nyeste compact_marker, 0 hvis den aldrig er komprimeret. | [src](../../../core/context/tool_result_lifecycle.py#L175) |
-| function | `get_cold_floor` | `(session_id)` | — | [src](../../../core/context/tool_result_lifecycle.py#L202) |
-| function | `get_compact_epoch` | `(session_id)` | Compact-markør-id fra sidste gang gulvet rykkede (0 = aldrig). | [src](../../../core/context/tool_result_lifecycle.py#L219) |
-| function | `set_cold_floor` | `(session_id, floor_id, compact_epoch=…)` | Monotonic: writes only if floor_id > existing. | [src](../../../core/context/tool_result_lifecycle.py#L240) |
-| function | `_load_session_messages` | `(session_id)` | Growing-window messages WITH id (a later task adds id to the return dict). | [src](../../../core/context/tool_result_lifecycle.py#L263) |
-| function | `_load_settings` | `()` | — | [src](../../../core/context/tool_result_lifecycle.py#L269) |
-| function | `evaluate_and_advance` | `(session_id, *, settings=…)` | Called at RUN-END (sole writer). Returns new cold_floor (0=none). | [src](../../../core/context/tool_result_lifecycle.py#L274) |
+| function | `user_message_ids` | `(messages)` | Ids for role=='user' messages, ascending (= run boundaries). | [src](../../../core/context/tool_result_lifecycle.py#L52) |
+| function | `estimate_tool_tokens` | `(messages)` | Sum of tool-result tokens (heuristic len//4). Only role=='tool'. | [src](../../../core/context/tool_result_lifecycle.py#L64) |
+| function | `_candidate_by_runs` | `(user_ids, run_window)` | Floor so exactly the last `run_window` user-turns stay warm. | [src](../../../core/context/tool_result_lifecycle.py#L73) |
+| function | `_candidate_by_tokens` | `(messages, token_ceiling)` | Floor so warm tool-tokens <= ceiling. Walks newest->oldest. | [src](../../../core/context/tool_result_lifecycle.py#L81) |
+| function | `compute_new_floor` | `(messages, *, current_floor, run_window, token_ceiling, hysteresis)` | New cold_floor. Monotonic (>= current_floor). 0 = nothing cold yet. | [src](../../../core/context/tool_result_lifecycle.py#L94) |
+| function | `as_bool` | `(value, default=…)` | Robust bool-tolkning. ``bool("off")`` er True — den fælde har kostet os før. | [src](../../../core/context/tool_result_lifecycle.py#L140) |
+| function | `should_advance` | `(*, warm_tool_tokens, current_epoch, recorded_epoch, hard_ceiling, only_on_compact=…)` | Må gulvet rykke nu? Ren beslutning. Returnerer (ja/nej, grund). | [src](../../../core/context/tool_result_lifecycle.py#L160) |
+| function | `_ensure_table` | `(conn)` | — | [src](../../../core/context/tool_result_lifecycle.py#L199) |
+| function | `latest_compact_marker_id` | `(session_id)` | Id på sessionens nyeste compact_marker, 0 hvis den aldrig er komprimeret. | [src](../../../core/context/tool_result_lifecycle.py#L216) |
+| function | `get_cold_floor` | `(session_id)` | — | [src](../../../core/context/tool_result_lifecycle.py#L243) |
+| function | `get_compact_epoch` | `(session_id)` | Compact-markør-id fra sidste gang gulvet rykkede (0 = aldrig). | [src](../../../core/context/tool_result_lifecycle.py#L260) |
+| function | `set_cold_floor` | `(session_id, floor_id, compact_epoch=…)` | Monotonic: writes only if floor_id > existing. | [src](../../../core/context/tool_result_lifecycle.py#L281) |
+| function | `_load_session_messages` | `(session_id)` | Growing-window messages WITH id (a later task adds id to the return dict). | [src](../../../core/context/tool_result_lifecycle.py#L304) |
+| function | `_load_settings` | `()` | — | [src](../../../core/context/tool_result_lifecycle.py#L310) |
+| function | `evaluate_and_advance` | `(session_id, *, settings=…)` | Called at RUN-END (sole writer). Returns new cold_floor (0=none). | [src](../../../core/context/tool_result_lifecycle.py#L315) |
 

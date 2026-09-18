@@ -65,6 +65,14 @@ function Forklaring({ slot, udfoer }: { slot: BalancerSlot; udfoer: Udfoer }) {
     { etiket: 'Pause slot', kommando: { action: 'slot.pause', target: slot.slot_id } },
     { etiket: 'Dræn slot', kommando: { action: 'slot.drain', target: slot.slot_id } },
   ]
+  // Bias er BUNDET i serveren (-0,9 til 2,0). Fladen tilbyder de tre trin der
+  // betyder noget — «vælg oftere», «neutral», «vælg sjældnere» — frem for et
+  // frit tal ingen kan kalibrere i hovedet.
+  const bias: { etiket: string; vaerdi: number }[] = [
+    { etiket: 'Vælg oftere', vaerdi: 0.5 },
+    { etiket: 'Neutral', vaerdi: 0 },
+    { etiket: 'Vælg sjældnere', vaerdi: -0.5 },
+  ]
 
   return (
     <section className="cl-forklaring" role="region"
@@ -95,26 +103,59 @@ function Forklaring({ slot, udfoer }: { slot: BalancerSlot; udfoer: Udfoer }) {
           <Handling key={h.etiket} etiket={h.etiket} kommando={h.kommando} udfoer={udfoer} />
         ))}
       </div>
+
+      <p className="cl-forklaring-overskrift">Routing-vægt</p>
+      <div className="cl-handlinger">
+        {bias.map((b) => (
+          <Handling key={b.etiket} etiket={b.etiket} udfoer={udfoer}
+                    kommando={{ action: 'routing-bias.set',
+                                target: `${slot.provider}/${slot.model}`,
+                                parameters: { routing_bias: b.vaerdi } }} />
+        ))}
+      </div>
+      <p className="cl-dæmpet cl-lille">
+        Vægten flytter slottet inden for sin egen gruppe. En anonym proxy
+        bliver ikke valgt før en udbyder med legitimation, uanset vægt.
+      </p>
     </section>
   )
 }
 
 export function CheapLaneBalancer({
-  slots, udfoer, simuler,
+  slots, udfoer, simuler, genopbyg,
 }: {
   slots: BalancerSlot[]
   udfoer: Udfoer
   simuler: Simuler
+  /** Bygger puljen op igen fra registret. Egen knap, fordi den rammer HELE
+   *  puljen og ikke ét slot. */
+  genopbyg?: () => Promise<unknown>
 }) {
   const [status, setStatus] = useState('')
+  const [udbyder, setUdbyder] = useState('')
+  const [profil, setProfil] = useState('')
+  const [egress, setEgress] = useState('')
+  const [helbred, setHelbred] = useState('')
   const [valgt, setValgt] = useState<string>('')
   const [sim, setSim] = useState<Awaited<ReturnType<Simuler>> | null>(null)
   const [simKører, setSimKører] = useState(false)
   const [revision, setRevision] = useState('')
 
-  const synlige = useMemo(
-    () => (status ? slots.filter((s) => (s.status ?? '') === status) : slots),
-    [slots, status])
+  const værdier = (nøgle: keyof BalancerSlot) =>
+    [...new Set(slots.map((s) => String(s[nøgle] ?? '')).filter(Boolean))].sort()
+
+  const synlige = useMemo(() => slots.filter((s) => {
+    if (status && (s.status ?? '') !== status) return false
+    if (udbyder && (s.provider ?? '') !== udbyder) return false
+    if (profil && (s.auth_profile ?? '') !== profil) return false
+    if (egress && (s.egress ?? '') !== egress) return false
+    // «Helbred» er ikke det samme som status: et slot kan staa som healthy og
+    // stadig have en aaben breaker eller nul vaegt. Det er DET spoergsmaal man
+    // stiller naar man leder efter noget der ikke virker.
+    if (helbred === 'i-spil' && (haardeGrunde(s).length > 0 || (s.weight ?? 0) <= 0)) return false
+    if (helbred === 'blokeret' && haardeGrunde(s).length === 0) return false
+    return true
+  }), [slots, status, udbyder, profil, egress, helbred])
 
   const valgtSlot = slots.find((s) => s.slot_id === valgt) ?? null
 
@@ -133,10 +174,36 @@ export function CheapLaneBalancer({
           Status
           <select value={status} onChange={(e) => setStatus(e.target.value)}>
             <option value="">alle</option>
-            <option value="healthy">healthy</option>
-            <option value="cooldown">cooldown</option>
-            <option value="disabled">disabled</option>
-            <option value="stale">stale</option>
+            {værdier('status').map((v) => <option key={v} value={v}>{v}</option>)}
+          </select>
+        </label>
+        <label>
+          Udbyder
+          <select value={udbyder} onChange={(e) => setUdbyder(e.target.value)}>
+            <option value="">alle</option>
+            {værdier('provider').map((v) => <option key={v} value={v}>{v}</option>)}
+          </select>
+        </label>
+        <label>
+          Profil
+          <select value={profil} onChange={(e) => setProfil(e.target.value)}>
+            <option value="">alle</option>
+            {værdier('auth_profile').map((v) => <option key={v} value={v}>{v}</option>)}
+          </select>
+        </label>
+        <label>
+          Egress
+          <select value={egress} onChange={(e) => setEgress(e.target.value)}>
+            <option value="">alle</option>
+            {værdier('egress').map((v) => <option key={v} value={v}>{v}</option>)}
+          </select>
+        </label>
+        <label>
+          Helbred
+          <select value={helbred} onChange={(e) => setHelbred(e.target.value)}>
+            <option value="">alle</option>
+            <option value="i-spil">kan vælges nu</option>
+            <option value="blokeret">blokeret</option>
           </select>
         </label>
         <button type="button" className="cl-handling" disabled={simKører}
@@ -149,6 +216,11 @@ export function CheapLaneBalancer({
         <span className="cl-dæmpet cl-lille">
           Simuleringen er en læsning: der sendes intet provider-kald.
         </span>
+        {genopbyg ? (
+          <button type="button" className="cl-handling" onClick={() => void genopbyg()}>
+            Genopbyg puljen
+          </button>
+        ) : null}
       </div>
 
       {revision ? (

@@ -37,11 +37,14 @@ function tid(s?: string | null): string {
 }
 
 export function CheapLaneLogs({
-  hentLogs, hentDetalje, timer,
+  hentLogs, hentDetalje, timer, eksportUrl,
 }: {
   hentLogs: (f: LogFilter) => Promise<LogSide>
   hentDetalje: (id: string) => Promise<Detalje>
   timer: number
+  /** Bygger en hentbar URL for det AKTUELLE vindue. Eksporten gaar gennem
+   *  serveren, som allerede har redigeret payloads vaek. */
+  eksportUrl?: (format: 'json' | 'csv') => string
 }) {
   const [søg, setSøg] = useState('')
   const [status, setStatus] = useState('')
@@ -128,6 +131,15 @@ export function CheapLaneLogs({
               </table>
             </div>
           )}
+
+          {eksportUrl ? (
+            <p className="cl-dæmpet cl-lille">
+              Eksportér vinduet:{' '}
+              <a href={eksportUrl('json')} download>JSON</a>{' · '}
+              <a href={eksportUrl('csv')} download>CSV</a>
+              {' — uden legitimation og uden payloads.'}
+            </p>
+          ) : null}
 
           <div className="cl-sider">
             <button type="button" className="cl-handling" disabled={!cursor}

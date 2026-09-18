@@ -83,6 +83,23 @@ export function CheapLaneOverview({
       <SektionsFejl navn="Forløb" sektion={snapshot.sections?.trends} />
       <SektionsFejl navn="Diagnose" sektion={snapshot.sections?.diagnostics} />
 
+      {/* Centrals egne haendelser: speccen vil have dem PAA oversigten, fordi
+          «er lanen rask» ofte besvares af noget Central saa foer os. */}
+      {(snapshot.sections?.central?.data ?? []).length ? (
+        <>
+          <p className="cl-forklaring-overskrift">Fra Central</p>
+          <ul className="cl-central">
+            {(snapshot.sections?.central?.data ?? []).slice(0, 5).map((h, i) => (
+              <li key={`${h.id ?? i}`}>
+                <span className="cl-kilde">{h.severity ?? 'info'}</span>
+                <span className="cl-dæmpet cl-lille">{tid(h.ts)}</span>
+                <span className="cl-besked">{h.message ?? h.kind ?? '—'}</span>
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : null}
+
       <CheapLaneChart
         titel="Kald og fejl"
         punkter={punkter}

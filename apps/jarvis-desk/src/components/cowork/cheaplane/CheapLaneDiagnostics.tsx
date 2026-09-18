@@ -22,10 +22,16 @@ function tid(s?: string | null): string {
 }
 
 export function CheapLaneDiagnostics({
-  diagnose, revisioner,
+  diagnose, revisioner, central = [], pakkeUrl,
 }: {
   diagnose: Diagnose | null
   revisioner: Revision[]
+  /** Centrals egne haendelser for lanen — samme tidslinje som fundene, fordi
+   *  et fund og en Central-haendelse ofte er to sider af samme sag. */
+  central?: { id?: string; ts?: string; kind?: string; severity?: string; message?: string }[]
+  /** Hele diagnose-pakken som fil: tidsrum, snapshot, fund, logs og
+   *  konfigurations-fingeraftryk — uden hemmeligheder. */
+  pakkeUrl?: string
 }) {
   const fund = [...(diagnose?.findings ?? [])].sort(
     (a, b) => (RANG[a.severity] ?? 9) - (RANG[b.severity] ?? 9))
@@ -54,6 +60,28 @@ export function CheapLaneDiagnostics({
           ))}
         </ul>
       )}
+
+      {central.length ? (
+        <>
+          <h4 className="cl-forklaring-overskrift">Fra Central</h4>
+          <ul className="cl-central">
+            {central.slice(0, 8).map((h, i) => (
+              <li key={`${h.id ?? i}`}>
+                <span className="cl-kilde">{h.severity ?? 'info'}</span>
+                <span className="cl-dæmpet cl-lille">{tid(h.ts)}</span>
+                <span className="cl-besked">{h.message ?? h.kind ?? '—'}</span>
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : null}
+
+      {pakkeUrl ? (
+        <p className="cl-dæmpet cl-lille">
+          <a href={pakkeUrl} download>Hent diagnose-pakken</a> — snapshot, fund,
+          logs og konfigurations-fingeraftryk, uden hemmeligheder.
+        </p>
+      ) : null}
 
       <h4 className="cl-forklaring-overskrift">Revisionsspor</h4>
       {revisioner.length === 0 ? (

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { ApiConfig } from '../../../lib/api'
 import {
-  getTidsserie, type TidsserieSpand,
+  getTidsserie, refreshPool, type TidsserieSpand,
 } from '../../../lib/cheapLaneApi'
 import { useCheapLaneStore } from '../../../lib/cheapLaneStore'
 import { CheapLaneOverview } from './CheapLaneOverview'
@@ -12,6 +12,7 @@ import { CheapLaneBalancer } from './CheapLaneBalancer'
 import { CheapLaneLogs } from './CheapLaneLogs'
 import { CheapLaneDiagnostics } from './CheapLaneDiagnostics'
 import { CheapLaneSettings } from './CheapLaneSettings'
+import { CheapLaneTilfoej } from './CheapLaneTilfoej'
 import {
   udfoerKontrol, simulerRute, getLogs, getLogDetalje, getRevisioner,
   type Revision,
@@ -162,6 +163,12 @@ export function CheapLanePanel({ config }: { config?: ApiConfig }) {
               if (!config) throw new Error('ingen forbindelse')
               return simulerRute(config, taskKind, skip)
             }}
+            genopbyg={async () => {
+              if (!config) throw new Error('ingen forbindelse')
+              const svar = await refreshPool(config)
+              butik.refresh()
+              return svar
+            }}
           />
         </>
       )}
@@ -174,6 +181,7 @@ export function CheapLanePanel({ config }: { config?: ApiConfig }) {
               er væk ved næste opbygning; «Deaktivér» overlever en genstart; «Fjern» kan ikke
               fortrydes. Hver ændring skrives i revisionssporet.
             </p>
+            <CheapLaneTilfoej udfoer={kontrol} />
             <CheapLaneProviders
               registret={butik.snapshot?.sections?.providers?.data ?? null}
               udfoer={kontrol}
@@ -207,6 +215,8 @@ export function CheapLanePanel({ config }: { config?: ApiConfig }) {
           timer={timer}
           hentLogs={(f) => getLogs(config, f)}
           hentDetalje={(id) => getLogDetalje(config, id)}
+          eksportUrl={(format) =>
+            `${config.apiBaseUrl}/mc/cheap-lane/logs/export?format=${format}&hours=${timer}`}
         />
       )}
 
@@ -215,6 +225,10 @@ export function CheapLanePanel({ config }: { config?: ApiConfig }) {
           <CheapLaneDiagnostics
             diagnose={butik.snapshot?.sections?.diagnostics?.data ?? null}
             revisioner={revisioner}
+            central={butik.snapshot?.sections?.central?.data ?? []}
+            pakkeUrl={config
+              ? `${config.apiBaseUrl}/mc/cheap-lane/diagnostics/export?hours=${timer}`
+              : undefined}
           />
           <button type="button" className="cl-handling"
                   onClick={() => setVisIndstillinger((v) => !v)}>

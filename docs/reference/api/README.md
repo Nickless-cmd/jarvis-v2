@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 14901 functions/methods, 51% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 14904 functions/methods, 51% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -35,26 +35,26 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 14901 functions/
 - [`core.services.04`](core.services.04.md) — `central_analyst` … `central_hypothesis_generator`
 - [`core.services.05`](core.services.05.md) — `central_hypothesis_governance` … `central_realtime`
 - [`core.services.06`](core.services.06.md) — `central_red_dress` … `cheap_lane_history`
-- [`core.services.07`](core.services.07.md) — `cheap_lane_selfheal` … `composer_suggest`
-- [`core.services.08`](core.services.08.md) — `composite_tools` … `creative_journal_runtime`
-- [`core.services.09`](core.services.09.md) — `creative_projects` … `desperation_awareness`
-- [`core.services.10`](core.services.10.md) — `development_focus_tracking` … `egress_guard`
-- [`core.services.11`](core.services.11.md) — `egress_routing` … `fabricated_tool_result_gate`
-- [`core.services.12`](core.services.12.md) — `fact_gate` … `goal_signal_tracking`
-- [`core.services.13`](core.services.13.md) — `good_enough_gate` … `infra_sense`
-- [`core.services.14`](core.services.14.md) — `infra_weather_daemon` … `liveness_registry`
-- [`core.services.15`](core.services.15.md) — `living_executive` … `meta_learning_aggregator`
-- [`core.services.16`](core.services.16.md) — `meta_learning_hypotheses` … `ollama_model_names`
-- [`core.services.17`](core.services.17.md) — `ollama_visible_prompt` … `private_initiative_tension_signal_tracking`
-- [`core.services.18`](core.services.18.md) — `private_inner_interplay_signal_tracking` … `provider_circuit_breaker`
-- [`core.services.19`](core.services.19.md) — `provider_error_guard` … `repeated_requests`
-- [`core.services.20`](core.services.20.md) — `report_claim_guard` … `runtime_self_model_boundary`
-- [`core.services.21`](core.services.21.md) — `runtime_self_model_builder` … `self_surprise_expectation`
-- [`core.services.22`](core.services.22.md) — `self_system_code_awareness` … `silence_detector`
-- [`core.services.23`](core.services.23.md) — `silence_listener` … `temporal_context`
-- [`core.services.24`](core.services.24.md) — `temporal_depth` … `truth_gate_v2`
-- [`core.services.25`](core.services.25.md) — `turn_changelog` … `visible_run_outcome_state`
-- [`core.services.26`](core.services.26.md) — `visible_run_recovery_coordinator` … `world_model_signal_tracking`
+- [`core.services.07`](core.services.07.md) — `cheap_lane_selfheal` … `completion_satisfaction`
+- [`core.services.08`](core.services.08.md) — `composer_suggest` … `creative_instinct_daemon`
+- [`core.services.09`](core.services.09.md) — `creative_journal_runtime` … `desktop_notifications`
+- [`core.services.10`](core.services.10.md) — `desperation_awareness` … `effective_policy`
+- [`core.services.11`](core.services.11.md) — `egress_guard` … `explore_claim_check`
+- [`core.services.12`](core.services.12.md) — `fabricated_tool_result_gate` … `goal_signal_synthesizer`
+- [`core.services.13`](core.services.13.md) — `goal_signal_tracking` … `in_flight_runs`
+- [`core.services.14`](core.services.14.md) — `infra_sense` … `lifecycle_hooks`
+- [`core.services.15`](core.services.15.md) — `liveness_registry` … `meta_cognition_daemon`
+- [`core.services.16`](core.services.16.md) — `meta_learning_aggregator` … `offline_recomposition_engine`
+- [`core.services.17`](core.services.17.md) — `ollama_model_names` … `priors_feedback`
+- [`core.services.18`](core.services.18.md) — `private_initiative_tension_signal_tracking` … `provider_autodiscovery`
+- [`core.services.19`](core.services.19.md) — `provider_circuit_breaker` … `remembered_fact_signal_tracking`
+- [`core.services.20`](core.services.20.md) — `repeated_requests` … `runtime_self_model_affect`
+- [`core.services.21`](core.services.21.md) — `runtime_self_model_boundary` … `self_surprise_detection`
+- [`core.services.22`](core.services.22.md) — `self_surprise_expectation` … `signal_tracking_framework`
+- [`core.services.23`](core.services.23.md) — `silence_detector` … `temporal_body`
+- [`core.services.24`](core.services.24.md) — `temporal_context` … `totp_verifier`
+- [`core.services.25`](core.services.25.md) — `truth_gate_v2` … `visible_run_firstpass`
+- [`core.services.26`](core.services.26.md) — `visible_run_outcome_state` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

@@ -166,28 +166,50 @@ def update_scheduled_task(task_id: str, *, focus: str | None = None, run_at: str
     return get_scheduled_task(task_id)
 
 
-def list_scheduled_tasks(limit: int = 20) -> list[dict[str, Any]]:
+def list_scheduled_tasks(limit: int = 20, status: str | None = None) -> list[dict[str, Any]]:
+    """List scheduled tasks — nyeste ``run_at`` først.
+
+    ``status`` filtrerer valgfrit på 'pending'|'fired'|'cancelled'; None = alle.
+
+    Sorteringen er bevidst ``run_at DESC``: med ``ASC`` + LIMIT ramte vinduet de
+    AELDSTE raekker, saa en nyplanlagt task kunne falde uden for limit bag
+    hundredvis af afsluttede raekker og blive usynlig for list-tool'et. Bug
+    fundet 2026-09-18: 101 gamle fired/cancelled-rows skjulte en ny pending task.
+    """
     # PRIVATLIVS-GUARD: scope til brugerens egne tasks (+ NULL/'' = generel/owner),
     # så list-tool'et ikke afslører en anden brugers schedulede opgaver. RUNNEREN
     # (get_due_scheduled_tasks) er bevidst U-scopet — den skal fyre ALLE forfaldne.
     from core.identity.workspace_context import current_user_id as _uid
     _current_uid = _uid()
+    where: list[str] = []
+    params: list[object] = []
+    if status:
+        where.append("status = ?")
+        params.append(status)
+    if _current_uid:
+        where.append(
+            "(scheduled_for_user_id = ? OR scheduled_for_user_id IS NULL "
+            "OR scheduled_for_user_id = '')"
+        )
+        params.append(_current_uid)
+    clause = f"WHERE {' AND '.join(where)} " if where else ""
     with connect() as conn:
         _ensure_scheduled_tasks_table(conn)
-        if _current_uid:
-            rows = conn.execute(
-                """
-                SELECT * FROM scheduled_tasks
-                WHERE scheduled_for_user_id = ?
-                   OR scheduled_for_user_id IS NULL OR scheduled_for_user_id = ''
-                ORDER BY run_at ASC
-                LIMIT ?
-                """,
-                (_current_uid, limit),
-            ).fetchall()
-        else:
-            rows = conn.execute(
-                "SELECT * FROM scheduled_tasks ORDER BY run_at ASC LIMIT ?",
-                (limit,),
-            ).fetchall()
+        rows = conn.execute(
+            f"SELECT * FROM scheduled_tasks {clause}ORDER BY run_at DESC LIMIT ?",
+            (*params, limit),
+        ).fetchall()
     return [_scheduled_task_from_row(r) for r in rows]
+
+
+def count_scheduled_tasks(status: str | None = None) -> int:
+    """Count scheduled tasks, optionally filtered by status. Observability helper."""
+    with connect() as conn:
+        _ensure_scheduled_tasks_table(conn)
+        if status:
+            row = conn.execute(
+                "SELECT COUNT(*) FROM scheduled_tasks WHERE status = ?", (status,)
+            ).fetchone()
+        else:
+            row = conn.execute("SELECT COUNT(*) FROM scheduled_tasks").fetchone()
+    return int(row[0]) if row else 0

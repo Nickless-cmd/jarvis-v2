@@ -346,6 +346,7 @@ from core.runtime.db_scheduled_tasks import (  # noqa: E402,F401
     mark_scheduled_task_cancelled,
     update_scheduled_task,
     list_scheduled_tasks,
+    count_scheduled_tasks,
 )
 
 

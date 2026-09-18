@@ -120,7 +120,12 @@ RECURRING_TOOL_DEFINITIONS: list[dict[str, Any]] = [
                     },
                     "delay_minutes": {
                         "type": "integer",
-                        "description": "Optional: extra delay before the FIRST fire (in minutes). Default 0.",
+                        "description": (
+                            "Minutes until the FIRST fire. 0 (default) = one full "
+                            "interval from now. Set it to start later than the "
+                            "interval — e.g. interval 365 days + delay 13 days "
+                            "starts in 13 days."
+                        ),
                     },
                 },
                 "required": ["focus", "interval"],

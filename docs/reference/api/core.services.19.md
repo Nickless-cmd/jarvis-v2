@@ -340,15 +340,15 @@ _Recurring tasks service — lets Jarvis schedule repeating reminders/actions._
 | function | `_list` | `(limit=…)` | — | [src](../../../core/services/recurring_tasks.py#L197) |
 | function | `_get_one` | `(task_id)` | — | [src](../../../core/services/recurring_tasks.py#L213) |
 | function | `create_recurring_task` | `(*, focus, interval_minutes, source=…, delay_minutes=…)` | Schedule a recurring task. Returns task info dict. | [src](../../../core/services/recurring_tasks.py#L230) |
-| function | `cancel_recurring_task` | `(task_id)` | — | [src](../../../core/services/recurring_tasks.py#L261) |
-| function | `list_recurring_tasks` | `()` | — | [src](../../../core/services/recurring_tasks.py#L269) |
-| function | `get_recurring_tasks_state` | `()` | Summary for observability / Mission Control. | [src](../../../core/services/recurring_tasks.py#L274) |
-| function | `_fire_due` | `()` | — | [src](../../../core/services/recurring_tasks.py#L289) |
-| function | `_enter_owner_context` | `(user_id)` | Sæt workspace-konteksten til task-ejeren for affyringen. Returnerer en | [src](../../../core/services/recurring_tasks.py#L334) |
-| function | `_exit_owner_context` | `(token)` | — | [src](../../../core/services/recurring_tasks.py#L348) |
-| function | `_poller_loop` | `()` | — | [src](../../../core/services/recurring_tasks.py#L358) |
-| function | `start_recurring_tasks_service` | `()` | — | [src](../../../core/services/recurring_tasks.py#L377) |
-| function | `stop_recurring_tasks_service` | `()` | — | [src](../../../core/services/recurring_tasks.py#L386) |
+| function | `cancel_recurring_task` | `(task_id)` | — | [src](../../../core/services/recurring_tasks.py#L276) |
+| function | `list_recurring_tasks` | `()` | — | [src](../../../core/services/recurring_tasks.py#L284) |
+| function | `get_recurring_tasks_state` | `()` | Summary for observability / Mission Control. | [src](../../../core/services/recurring_tasks.py#L289) |
+| function | `_fire_due` | `()` | — | [src](../../../core/services/recurring_tasks.py#L304) |
+| function | `_enter_owner_context` | `(user_id)` | Sæt workspace-konteksten til task-ejeren for affyringen. Returnerer en | [src](../../../core/services/recurring_tasks.py#L349) |
+| function | `_exit_owner_context` | `(token)` | — | [src](../../../core/services/recurring_tasks.py#L363) |
+| function | `_poller_loop` | `()` | — | [src](../../../core/services/recurring_tasks.py#L373) |
+| function | `start_recurring_tasks_service` | `()` | — | [src](../../../core/services/recurring_tasks.py#L392) |
+| function | `stop_recurring_tasks_service` | `()` | — | [src](../../../core/services/recurring_tasks.py#L401) |
 
 ## `core/services/recursion_guard.py`
 _Recursion guard for autonomous agent dispatch._

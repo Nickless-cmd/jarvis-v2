@@ -579,7 +579,17 @@ def select_cheap_lane_target(
         })
         evaluated.append((candidate, trace))
 
-    selected = next((pair for pair in evaluated if pair[1]["eligible"]), None)
+    eligible = [pair for pair in evaluated if pair[1]["eligible"]]
+    for _candidate, trace in eligible:
+        bias = max(-0.9, min(float(trace.get("manual_bias") or 0.0), 2.0))
+        trace["final_weight"] = round(
+            float(trace.get("effective_priority") or 9999) / (1.0 + bias), 4
+        )
+    selected = min(
+        eligible,
+        key=lambda pair: float(pair[1].get("final_weight") or 9999),
+        default=None,
+    )
     if selected is not None:
         candidate, selected_trace = selected
         _target = {
@@ -697,6 +707,24 @@ def execute_cheap_lane_via_pool(
     profile = str(target.get("auth_profile") or "").strip()
     started_at = datetime.now(UTC)
     input_tokens = _estimate_tokens(message)
+    from core.services.cheap_lane_admission import (
+        AdmissionRejected,
+        acquire_admission,
+        release_admission,
+    )
+    try:
+        lease = acquire_admission(
+            correlation_id=trace_context.correlation_id,
+            provider=provider,
+            slot_id=candidate_slot_id(target),
+        )
+    except AdmissionRejected as exc:
+        event_bus.publish("runtime.cheap_lane_admission_rejected", {
+            "correlation_id": trace_context.correlation_id,
+            "scope": exc.scope, "target": exc.target, "mode": exc.mode,
+        })
+        raise RuntimeError(str(exc)) from exc
+    lease_id = lease.lease_id
     try:
         result = _execute_provider_chat(
             provider=provider,
@@ -706,6 +734,8 @@ def execute_cheap_lane_via_pool(
             message=message,
         )
     except CheapProviderError as exc:
+        release_admission(lease_id)
+        lease_id = ""
         failed_invocation_id = _register_provider_failure(
             provider=provider,
             model=model,
@@ -760,6 +790,8 @@ def execute_cheap_lane_via_pool(
              "resolution": "raise"},
         )
         raise RuntimeError(f"{provider} cheap lane failed: {exc.code}: {exc.message}")
+    finally:
+        release_admission(lease_id)
 
     output_tokens = int(result.get("output_tokens") or _estimate_tokens(result["text"]))
     latency_ms = int((datetime.now(UTC) - started_at).total_seconds() * 1000)
@@ -1108,6 +1140,7 @@ def _configured_cheap_candidates(
                     "rpm_limit": defaults.get("rpm_limit"),
                     "daily_limit": defaults.get("daily_limit"),
                     "daily_neurons": defaults.get("daily_neurons"),
+                    "routing_bias": float(item.get("routing_bias") or 0.0),
                     "source": "provider-router-registry",
                     "updated_at": str(item.get("updated_at") or ""),
                 }

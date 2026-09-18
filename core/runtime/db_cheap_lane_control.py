@@ -88,8 +88,36 @@ def _ensure_control_schema(conn) -> None:
         );
         CREATE INDEX IF NOT EXISTS idx_cheap_payload_expiry
             ON cheap_lane_redacted_payloads(expires_at);
+
+        CREATE TABLE IF NOT EXISTS cheap_lane_admission_state (
+            scope TEXT NOT NULL,
+            target TEXT NOT NULL,
+            mode TEXT NOT NULL DEFAULT 'active',
+            revision INTEGER NOT NULL DEFAULT 1,
+            updated_at TEXT NOT NULL,
+            PRIMARY KEY (scope, target)
+        );
+        CREATE TABLE IF NOT EXISTS cheap_lane_admission_leases (
+            lease_id TEXT PRIMARY KEY,
+            correlation_id TEXT NOT NULL,
+            provider TEXT NOT NULL,
+            slot_id TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            expires_at TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_cheap_admission_lease_expiry
+            ON cheap_lane_admission_leases(expires_at);
         """
     )
+    audit_columns = {
+        str(row["name"]) for row in conn.execute(
+            "PRAGMA table_info(cheap_lane_audit)"
+        ).fetchall()
+    }
+    if "correlation_id" not in audit_columns:
+        conn.execute(
+            "ALTER TABLE cheap_lane_audit ADD COLUMN correlation_id TEXT NOT NULL DEFAULT ''"
+        )
 
 
 def record_route_decision(
@@ -216,6 +244,7 @@ def record_cheap_lane_audit(
     before: dict[str, object],
     after: dict[str, object],
     result: str,
+    correlation_id: str = "",
 ) -> str:
     audit_id = str(uuid4())
     now = _now_iso()
@@ -225,8 +254,8 @@ def record_cheap_lane_audit(
             """
             INSERT INTO cheap_lane_audit (
                 audit_id, actor, action, target, reason, before_json,
-                after_json, result, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                after_json, result, correlation_id, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 audit_id,
@@ -237,6 +266,7 @@ def record_cheap_lane_audit(
                 _bounded_json(before),
                 _bounded_json(after),
                 result,
+                correlation_id,
                 now,
                 now,
             ),

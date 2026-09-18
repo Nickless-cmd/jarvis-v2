@@ -35,7 +35,7 @@ def observe_provider_quota(*, provider: str, auth_profile: str,
     if not required <= observation.keys():
         missing = ", ".join(sorted(required - observation.keys()))
         raise ValueError(f"quota observation mangler: {missing}")
-    return record_quota_observation(
+    observation_id = record_quota_observation(
         provider=provider,
         auth_profile=auth_profile or "default",
         period=str(observation["period"]),
@@ -48,6 +48,18 @@ def observe_provider_quota(*, provider: str, auth_profile: str,
         observed_at=(str(observation["observed_at"])
                      if observation.get("observed_at") is not None else None),
     )
+    try:
+        from core.eventbus.bus import event_bus
+
+        event_bus.publish("runtime.cheap_lane_quota_observed", {
+            "provider": provider,
+            "auth_profile": auth_profile or "default",
+            "period": str(observation["period"]),
+            "unit": str(observation["unit"]),
+        })
+    except Exception:
+        pass
+    return observation_id
 
 
 def _utc(value: datetime) -> datetime:

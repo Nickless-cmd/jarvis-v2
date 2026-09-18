@@ -147,6 +147,7 @@ def fuld_registrering() -> dict[str, Any]:
         "updated_at": m.get("updated_at"),
         "disabled_at": m.get("disabled_at"),
         "disabled_reason": m.get("disabled_reason"),
+        "routing_bias": float(m.get("routing_bias") or 0.0),
     } for m in r["models"]]
 
     lanes: dict[str, dict[str, int]] = {}
@@ -433,3 +434,21 @@ def saet_lane(*, provider: str, model: str, lane: str) -> dict[str, Any]:
                                             "fra": foer, "til": l})
             return {"status": "ok", "fra": foer, "til": l, "backup": backup}
     return {"status": "error", "fejl": f"ukendt model: {p_navn}/{m_navn}"}
+
+
+def saet_routing_bias(*, provider: str, model: str, bias: float) -> dict[str, Any]:
+    """Set a bounded, explicit soft routing factor on one Cheap Lane model."""
+    if not -0.9 <= float(bias) <= 2.0:
+        return {"status": "error", "fejl": "routing bias skal vaere mellem -0.9 og 2.0"}
+    p, m = (provider or "").strip(), (model or "").strip()
+    r = _laes()
+    for post in r["models"]:
+        if str(post.get("provider") or "") == p and str(post.get("model") or "") == m:
+            if str(post.get("lane") or "") != "cheap":
+                return {"status": "error", "fejl": f"modellen er ikke i cheap lane: {p}/{m}"}
+            post["routing_bias"] = float(bias)
+            post["updated_at"] = _nu()
+            backup = _skriv(r)
+            _sig_det_hoejt("routing_bias", {"provider": p, "model": m, "bias": float(bias)})
+            return {"status": "ok", "model": post, "backup": backup}
+    return {"status": "error", "fejl": f"ukendt model: {p}/{m}"}

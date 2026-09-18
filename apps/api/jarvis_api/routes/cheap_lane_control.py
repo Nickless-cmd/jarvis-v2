@@ -11,6 +11,7 @@ from typing import Literal
 
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import JSONResponse, StreamingResponse
+from pydantic import BaseModel, Field
 
 from core.runtime.db_cheap_lane_control import (
     get_cheap_lane_invocation_detail,
@@ -31,6 +32,19 @@ _EXPORT_FIELDS = (
     "cache_hit_tokens", "cache_miss_tokens", "attempt", "retry_parent_id",
     "fallback_parent_id", "route_decision_id", "payload_status",
 )
+
+
+class _ControlBody(BaseModel):
+    action: str
+    target: str
+    reason: str = ""
+    expected_revision: str = ""
+    parameters: dict[str, object] = Field(default_factory=dict)
+
+
+class _SimulationBody(BaseModel):
+    task_kind: str = "default"
+    skip_providers: list[str] = Field(default_factory=list)
 
 
 def _require_owner() -> None:
@@ -198,3 +212,43 @@ async def export_diagnostics(hours: int = Query(24, ge=1, le=1440)) -> dict:
         "config_fingerprints": fingerprints,
         "schema_versions": {"cheap_lane_dashboard": 1, "diagnostic_package": 1},
     }
+
+
+@router.post("/control")
+async def control(body: _ControlBody) -> dict:
+    _require_owner()
+    from core.services.cheap_lane_control import (
+        CheapLaneCommand,
+        ControlAuditError,
+        ControlRevisionConflict,
+        ControlScopeError,
+        ControlTargetNotFound,
+        apply_control,
+    )
+
+    command = CheapLaneCommand(
+        action=body.action, target=body.target, reason=body.reason,
+        expected_revision=body.expected_revision, parameters=body.parameters,
+    )
+    try:
+        return await asyncio.to_thread(apply_control, command, "owner")
+    except ControlRevisionConflict as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except ControlScopeError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except ControlTargetNotFound as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ControlAuditError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+@router.post("/simulate-route")
+async def simulate(body: _SimulationBody) -> dict:
+    _require_owner()
+    from core.services.cheap_lane_control import simulate_route
+
+    return await asyncio.to_thread(
+        simulate_route,
+        task_kind=body.task_kind,
+        skip_providers=frozenset(body.skip_providers),
+    )

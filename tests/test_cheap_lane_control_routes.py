@@ -117,3 +117,39 @@ def test_bounds_and_format_are_validated(owner_client):
     assert owner_client.get(
         "/mc/cheap-lane/logs/export?hours=24&format=xml"
     ).status_code == 422
+
+
+def test_control_maps_conflict_and_returns_audit(owner_client, monkeypatch):
+    import apps.api.jarvis_api.routes.cheap_lane_control as routes
+    import core.services.cheap_lane_control as control
+
+    monkeypatch.setattr(control, "apply_control", lambda *_a, **_kw: {
+        "audit_id": "audit-1", "status": "ok", "resulting_state": {"mode": "paused"},
+        "pool_refresh": None,
+    })
+    response = owner_client.post("/mc/cheap-lane/control", json={
+        "action": "provider.pause", "target": "groq", "reason": "maintenance",
+    })
+    assert response.status_code == 200
+    assert response.json()["audit_id"] == "audit-1"
+
+    monkeypatch.setattr(
+        control, "apply_control",
+        lambda *_a, **_kw: (_ for _ in ()).throw(control.ControlRevisionConflict("stale")),
+    )
+    assert owner_client.post("/mc/cheap-lane/control", json={
+        "action": "provider.pause", "target": "groq", "reason": "maintenance",
+    }).status_code == 409
+
+
+def test_simulation_is_owner_gated_and_read_only(owner_client, monkeypatch):
+    import core.services.cheap_lane_control as control
+
+    monkeypatch.setattr(control, "simulate_route", lambda **_kw: {
+        "active": True, "provider": "groq", "route_decision_id": "",
+    })
+    response = owner_client.post("/mc/cheap-lane/simulate-route", json={
+        "task_kind": "background", "skip_providers": [],
+    })
+    assert response.status_code == 200
+    assert response.json()["route_decision_id"] == ""

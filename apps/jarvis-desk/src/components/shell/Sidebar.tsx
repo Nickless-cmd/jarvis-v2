@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, Fragment } from 'react'
 import {
-  Plus, MoreHorizontal, Pencil, Download, Trash2, Search, Images, Code, Activity,
+  Plus, MoreHorizontal, Pencil, Download, Trash2, Search, Images, Code, Activity, FileCode2,
   ChevronRight, ChevronDown,
   LayoutDashboard, Blocks, Settings, Brain, Cpu,
   User, ShieldCheck, Bell, Palette, Languages, MapPin, Database, Folder, Plug, Bot, Info,
@@ -22,7 +22,20 @@ const ZONE_ICONS: Record<string, LucideIcon> = {
   User, ShieldCheck, Bell, Palette, Languages, MapPin, Database, Folder, Plug, Bot, Info,
 }
 
-export type Surface = Mode | SecondarySurface | 'gallery'
+export type Surface = Mode | SecondarySurface | 'gallery' | 'artifacts'
+
+/**
+ * Hvilken mode en flade hører til.
+ *
+ * Artefakt-fladen er en del af code mode (18/9-2026). Uden denne regel faldt
+ * begge mode-vælgere tilbage til «chat» for en ukendt flade, og sessionslisten
+ * skiftede til chat-grupper i samme øjeblik man åbnede artefakterne — man
+ * forlod code uden at have bedt om det.
+ */
+export function modeFor(surface: Surface): Mode {
+  if (surface === 'artifacts') return 'code'
+  return (['chat', 'cowork', 'code'] as const).includes(surface as Mode) ? (surface as Mode) : 'chat'
+}
 
 /** Sidebar: app-navn, mode-slider, session-liste, sekundær-nav + bruger-fod. */
 export function Sidebar({
@@ -49,7 +62,7 @@ export function Sidebar({
   // regnes som chat — hukommelse, planlagt og galleriet har ingen egne
   // sessioner, og dér er hans samtaler det rigtige at have ved hånden.
   const grupper = useMemo(() => {
-    const tilladte = GRUPPER_I_MODE[surface === 'code' ? 'code' : 'chat']
+    const tilladte = GRUPPER_I_MODE[modeFor(surface) === 'code' ? 'code' : 'chat']
     return alleGrupper.filter((g) => tilladte.includes(g.gruppe))
   }, [alleGrupper, surface])
   const [foldedeGrupper, setFoldedeGrupper] =
@@ -85,14 +98,14 @@ export function Sidebar({
           plads ved siden af. */}
       <div className="sidebar-top">
         <ModeDropdown
-          active={(['chat', 'cowork', 'code'] as const).includes(surface as Mode) ? (surface as Mode) : 'chat'}
+          active={modeFor(surface)}
           onChange={(m) => onSurface(m)}
         />
         {/* Egen gruppe i hoejre side: mode-vaelgeren siger HVOR man er,
             ikonerne er ting man GOER. To slags, hver sin ende. */}
         <div className="sidebar-top-actions">
           <ModeBladrer
-            active={(['chat', 'cowork', 'code'] as const).includes(surface as Mode) ? (surface as Mode) : 'chat'}
+            active={modeFor(surface)}
             onChange={(m) => onSurface(m)}
           />
           <button
@@ -131,6 +144,20 @@ export function Sidebar({
         >
           <Images size={14} /> Billeder
         </button>
+
+        {/* Artefakter — kun i code mode, hvor de hører hjemme: de filer Jarvis
+            har skrevet og rettet i den valgte mappe, på tværs af samtaler
+            (Bjørn 18/9-2026). Samme mønster som Billeder: en destination der
+            ikke er en session. */}
+        {modeFor(surface) === 'code' && (
+          <button
+            type="button"
+            className={`sidebar-nav-row ${surface === 'artifacts' ? 'active' : ''}`}
+            onClick={() => onSurface('artifacts')}
+          >
+            <FileCode2 size={14} /> Artefakter
+          </button>
+        )}
 
         {/* Søgefeltet er væk 8/9-2026. Det gjorde nøjagtig det samme som
             Ctrl+K-paletten — samme `searchSessions`, samme uddrag — og

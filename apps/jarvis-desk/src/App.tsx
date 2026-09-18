@@ -29,6 +29,7 @@ import { CodeView } from './views/CodeView'
 import { MemoryView } from './views/MemoryView'
 import { SchedulingView } from './views/SchedulingView'
 import { ImageGalleryView } from './views/ImageGalleryView'
+import { ArtifactsView } from './views/ArtifactsView'
 import { Sidebar, type Surface } from './components/shell/Sidebar'
 import { DESK_CHROME } from './lib/deskChrome'
 import { StatusBar } from './components/shell/StatusBar'
@@ -271,6 +272,7 @@ function Shell({
           )}
           {surface === 'memory' && <MemoryView role={role} />}
           {surface === 'gallery' && <ImageGalleryView onOpenChat={() => setSurface('chat')} />}
+          {surface === 'artifacts' && <ArtifactsView onOpenCode={() => setSurface('code')} />}
           {surface === 'scheduling' && <SchedulingView role={role} />}
         </ShellWithPanel>
         {DESK_CHROME.statusbar && <StatusBar model={model} sessionId={activeId} />}

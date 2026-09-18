@@ -24,8 +24,12 @@ export const PALETTE_HANDLINGER: PaletteHandling[] = [
     ord: ['work', 'cowork', 'queue', 'kø', 'godkend', 'runs'] },
   { id: 'surface:memory', navn: 'Hukommelse', hvad: 'Det han husker',
     ord: ['memory', 'huske', 'minder'] },
-  { id: 'surface:gallery', navn: 'Galleri', hvad: 'Billeder og artifacts',
-    ord: ['gallery', 'billeder', 'artifacts', 'images'] },
+  // «og artifacts» stod her, men galleriet har aldrig vist andet end billeder
+  // (det henter kun `listImages`). Artefakterne har deres egen flade nu.
+  { id: 'surface:gallery', navn: 'Galleri', hvad: 'Billeder',
+    ord: ['gallery', 'billeder', 'images'] },
+  { id: 'surface:artifacts', navn: 'Artefakter', hvad: 'Filer Jarvis har skrevet og rettet i mappen',
+    ord: ['artifacts', 'artefakter', 'filer', 'ændringer', 'diff'] },
   { id: 'surface:scheduling', navn: 'Planlagt', hvad: 'Opgaver på klokken',
     ord: ['scheduling', 'planlagt', 'cron', 'schedule', 'wakeup'] },
   { id: 'zone:workspace', navn: 'Arbejdsbænk', hvad: 'Operator-kanal, fortryd, kontakter',

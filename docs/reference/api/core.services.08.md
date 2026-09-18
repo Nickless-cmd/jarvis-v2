@@ -2,6 +2,35 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/companion_initiative.py`
+_Proaktivitet — Jarvis må dele en tanke uden at blive spurgt._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `Offer` | `` | — | [src](../../../core/services/companion_initiative.py#L44) |
+| method | `Offer.as_dict` | `(self)` | — | [src](../../../core/services/companion_initiative.py#L49) |
+| function | `_now` | `()` | — | [src](../../../core/services/companion_initiative.py#L54) |
+| function | `_parse` | `(ts)` | — | [src](../../../core/services/companion_initiative.py#L58) |
+| function | `_read_journal` | `()` | — | [src](../../../core/services/companion_initiative.py#L69) |
+| function | `_write_journal` | `(entries)` | — | [src](../../../core/services/companion_initiative.py#L86) |
+| function | `is_quiet_hour` | `(moment)` | Er det tidspunkt hvor en tanke ville vække frem for at nå frem? | [src](../../../core/services/companion_initiative.py#L94) |
+| function | `next_quiet_end` | `(moment)` | Hvornår må den stille periode brydes igen. | [src](../../../core/services/companion_initiative.py#L103) |
+| function | `_recent_for` | `(user_id, journal)` | — | [src](../../../core/services/companion_initiative.py#L113) |
+| function | `check_allowed` | `(user_id, *, now=…)` | Må en tanke sendes lige nu? Ren vurdering — sender ingenting. | [src](../../../core/services/companion_initiative.py#L117) |
+| function | `offer_thought` | `(user_id, text, *, title=…, now=…)` | Tilbyd en tanke. Sender kun hvis grænserne tillader det. | [src](../../../core/services/companion_initiative.py#L144) |
+| function | `recent_thoughts` | `(user_id, *, limit=…)` | Tankerne, nyeste først — også dem der blev holdt tilbage. | [src](../../../core/services/companion_initiative.py#L184) |
+
+## `core/services/companion_presence.py`
+_Livstegn — er Jarvis vågen lige nu, og hvad lavede han sidst?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_parse` | `(ts)` | — | [src](../../../core/services/companion_presence.py#L29) |
+| function | `_last_heartbeat` | `()` | Seneste hjerteslag: hvornår, og hvad det endte med at gøre. | [src](../../../core/services/companion_presence.py#L40) |
+| function | `_running_now` | `()` | Er en synlig kørsel i gang? Det er stærkere end et hjerteslag: det | [src](../../../core/services/companion_presence.py#L96) |
+| function | `_short` | `(text, limit=…)` | — | [src](../../../core/services/companion_presence.py#L107) |
+| function | `build_presence` | `(*, now=…)` | Det ærlige livstegn. Kaster aldrig — men lyver heller aldrig. | [src](../../../core/services/companion_presence.py#L112) |
+
 ## `core/services/compass_engine.py`
 _Compass Engine — weekly strategic bearing based on open loops and priorities._
 
@@ -540,36 +569,4 @@ _Cowork dispatch — runtime→app instruktioner (spec §18.5)._
 |---|---|---|---|---|
 | function | `build_app_instruction` | `(*, action, target_user, channel=…, payload=…, requester=…)` | Byg en struktureret app-instruktion. Rejser ValueError ved ugyldig action | [src](../../../core/services/cowork_dispatch.py#L17) |
 | function | `dispatch_to_app` | `(*, action, target_user, channel=…, payload=…, requester=…)` | Byg + signalér en app-instruktion via eventbus. Appen udfører den lokalt. | [src](../../../core/services/cowork_dispatch.py#L38) |
-
-## `core/services/cowork_feed.py`
-_Cowork-feed: normaliserer items fra eksisterende kilder til én rolle-scopet_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_initiative_items` | `()` | Afventende initiativ-forslag fra initiative_queue. | [src](../../../core/services/cowork_feed.py#L13) |
-| function | `_capability_items` | `()` | Afventende capability-/tool-godkendelses-requests (Mission Control surface). | [src](../../../core/services/cowork_feed.py#L23) |
-| function | `_norm_initiative` | `(raw)` | — | [src](../../../core/services/cowork_feed.py#L34) |
-| function | `_norm_capability` | `(raw)` | — | [src](../../../core/services/cowork_feed.py#L45) |
-| function | `_proposal_items` | `()` | Afventende autonomy-proposals (prop-xxxxxx): commits, planer, prompt- | [src](../../../core/services/cowork_feed.py#L63) |
-| function | `_norm_proposal` | `(raw)` | — | [src](../../../core/services/cowork_feed.py#L73) |
-| function | `build_queue` | `(*, user_id, is_owner)` | Saml + normalisér + rolle-scope den fulde godkendelses-kø. | [src](../../../core/services/cowork_feed.py#L86) |
-| function | `_all_plans` | `()` | Alle planer fra plan_proposals (normaliseret med trin-progress). | [src](../../../core/services/cowork_feed.py#L99) |
-| function | `list_plans` | `(*, user_id, is_owner)` | — | [src](../../../core/services/cowork_feed.py#L121) |
-| function | `list_active_agents` | `(*, limit=…)` | Aktive dispatch-agenter til cowork command center (§19.5). Læser | [src](../../../core/services/cowork_feed.py#L134) |
-| function | `_all_todos` | `()` | Alle todos på tværs af sessioner (agent_todos er session-keyed). | [src](../../../core/services/cowork_feed.py#L157) |
-| function | `list_todos_feed` | `(*, user_id, is_owner)` | Todos til cowork. Owner ser alle; member får [] (todos er ikke user- | [src](../../../core/services/cowork_feed.py#L178) |
-| function | `_raw_channels` | `()` | Konfigurerede kanaler (online = konfigureret/aktiv). Live connection-state | [src](../../../core/services/cowork_feed.py#L186) |
-| function | `channel_status` | `()` | — | [src](../../../core/services/cowork_feed.py#L205) |
-
-## `core/services/creative_drift_daemon.py`
-_Creative drift daemon — generates spontaneous, unexpected ideas unrelated to current tasks._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `tick_creative_drift_daemon` | `(fragments, *, skip_event_gate=…)` | Maybe generate a spontaneous associative idea. | [src](../../../core/services/creative_drift_daemon.py#L38) |
-| function | `get_latest_drift` | `()` | — | [src](../../../core/services/creative_drift_daemon.py#L91) |
-| function | `build_creative_drift_surface` | `()` | — | [src](../../../core/services/creative_drift_daemon.py#L95) |
-| function | `_gather_concrete_anchor` | `()` | Returns (anchor_text, anchor_kind) — a single concrete thing to drift | [src](../../../core/services/creative_drift_daemon.py#L109) |
-| function | `_generate_drift_idea` | `(fragments)` | — | [src](../../../core/services/creative_drift_daemon.py#L143) |
-| function | `_store_drift` | `(idea, now)` | — | [src](../../../core/services/creative_drift_daemon.py#L197) |
 

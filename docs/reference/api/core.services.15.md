@@ -2,6 +2,35 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/lessons.py`
+_Lessons service — from mistake to next conversation (memory repair 2026-09-04, R4)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_today` | `()` | — | [src](../../../core/services/lessons.py#L29) |
+| function | `_topic_from` | `(text)` | — | [src](../../../core/services/lessons.py#L33) |
+| function | `_clip` | `(text, n)` | — | [src](../../../core/services/lessons.py#L38) |
+| function | `record_correction` | `(*, session_id, user_words, jarvis_words=…, topic=…)` | Bjørn corrected the previous turn. Active immediately — his word is authoritative. | [src](../../../core/services/lessons.py#L43) |
+| function | `record_self_acknowledged_correction` | `(*, session_id, user_words, jarvis_words=…)` | Jarvis indroemmede selv at han tog fejl — brug Bjoerns foregaaende ord. | [src](../../../core/services/lessons.py#L65) |
+| function | `record_tool_error` | `(*, tool_name, error_text, context=…)` | A tool call failed. Proposed until it happens twice, then active. | [src](../../../core/services/lessons.py#L108) |
+| function | `record_review_lessons` | `(lessons, source)` | Self-review / regret / arc-rule lessons → proposed (active at evidence ≥ 2). | [src](../../../core/services/lessons.py#L125) |
+| function | `_format` | `(lesson)` | — | [src](../../../core/services/lessons.py#L139) |
+| function | `build_lessons_section` | `(user_message, *, limit_similar=…, limit_strong=…)` | Render the lessons block for the prompt, or "" when nothing is active. | [src](../../../core/services/lessons.py#L149) |
+
+## `core/services/life_milestones.py`
+_Life milestones — identity-defining moments surfaced in the prompt._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_milestones_file` | `()` | — | [src](../../../core/services/life_milestones.py#L17) |
+| function | `_manifest_file` | `()` | — | [src](../../../core/services/life_milestones.py#L21) |
+| function | `get_milestones_for_prompt` | `(max_chars=…)` | Return a formatted milestones block for prompt injection, or None. | [src](../../../core/services/life_milestones.py#L25) |
+| function | `get_manifest_excerpt` | `(max_chars=…)` | Return first ~600 chars of MANIFEST.md as a first-principles reminder. | [src](../../../core/services/life_milestones.py#L47) |
+| function | `build_life_history_prompt_section` | `()` | Combine milestones + manifest excerpt into a prompt section. | [src](../../../core/services/life_milestones.py#L63) |
+| function | `append_milestone` | `(text)` | Append a new milestone entry to MILESTONES.md. Returns True on success. | [src](../../../core/services/life_milestones.py#L71) |
+| function | `build_life_milestones_surface` | `()` | — | [src](../../../core/services/life_milestones.py#L88) |
+| function | `_emit_life_milestones_event` | `(kind, payload=…)` | Emit a scoped event for cartographer observability. | [src](../../../core/services/life_milestones.py#L103) |
+
 ## `core/services/life_projects.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -590,44 +619,4 @@ _Memory Tattoos — emotional marks._
 | function | `format_tattoo_for_prompt` | `()` | — | [src](../../../core/services/memory_tattoos.py#L25) |
 | function | `reset_memory_tattoos` | `()` | — | [src](../../../core/services/memory_tattoos.py#L31) |
 | function | `build_memory_tattoos_surface` | `()` | — | [src](../../../core/services/memory_tattoos.py#L35) |
-
-## `core/services/memory_write_policy.py`
-_Memory Write Policy — gating + review queue for inferred memory writes._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_storage_path` | `()` | — | [src](../../../core/services/memory_write_policy.py#L34) |
-| function | `_load_queue` | `()` | — | [src](../../../core/services/memory_write_policy.py#L39) |
-| function | `_save_queue` | `(queue)` | — | [src](../../../core/services/memory_write_policy.py#L53) |
-| function | `_prune_rate_window` | `()` | — | [src](../../../core/services/memory_write_policy.py#L70) |
-| function | `_rate_limit_block` | `()` | — | [src](../../../core/services/memory_write_policy.py#L77) |
-| function | `_cooldown_block` | `(key)` | — | [src](../../../core/services/memory_write_policy.py#L84) |
-| class | `PolicyDecision` | `` | — | [src](../../../core/services/memory_write_policy.py#L95) |
-| function | `evaluate_write` | `(*, key, content, confidence=…, write_reason=…, metadata=…)` | Decide whether to allow, block, or queue this memory candidate. | [src](../../../core/services/memory_write_policy.py#L102) |
-| function | `_enqueue_for_review` | `(*, key, content, confidence, write_reason, metadata)` | — | [src](../../../core/services/memory_write_policy.py#L150) |
-| function | `list_pending_reviews` | `(*, limit=…)` | — | [src](../../../core/services/memory_write_policy.py#L176) |
-| function | `approve_review` | `(item_id, *, decided_by=…)` | — | [src](../../../core/services/memory_write_policy.py#L182) |
-| function | `reject_review` | `(item_id, *, decided_by=…)` | — | [src](../../../core/services/memory_write_policy.py#L194) |
-| function | `build_memory_write_policy_surface` | `()` | — | [src](../../../core/services/memory_write_policy.py#L206) |
-| function | `build_memory_write_policy_prompt_section` | `()` | — | [src](../../../core/services/memory_write_policy.py#L230) |
-| function | `_emit_memory_write_policy_event` | `(kind, payload=…)` | Emit a scoped event for cartographer observability. | [src](../../../core/services/memory_write_policy.py#L241) |
-
-## `core/services/memory_write_queue.py`
-_Memory Write Queue — async write queue for sensory/brain memories._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_ensure_table` | `(conn)` | — | [src](../../../core/services/memory_write_queue.py#L52) |
-| function | `enqueue_write` | `(queue_type, payload, priority=…)` | Enqueue a memory write for async processing. | [src](../../../core/services/memory_write_queue.py#L77) |
-| function | `process_queue` | `(batch_size=…)` | Process pending write queue items. Called by the daemon tick. | [src](../../../core/services/memory_write_queue.py#L119) |
-| function | `queue_size` | `()` | Return counts by status. | [src](../../../core/services/memory_write_queue.py#L218) |
-| function | `build_memory_write_queue_surface` | `()` | Mission Control surface. | [src](../../../core/services/memory_write_queue.py#L240) |
-| function | `tick_memory_write_queue_daemon` | `(now=…)` | Daemon tick: process pending writes every 120s. | [src](../../../core/services/memory_write_queue.py#L263) |
-| function | `_max_retries_for` | `(queue_type)` | — | [src](../../../core/services/memory_write_queue.py#L303) |
-| function | `_process_item` | `(queue_type, payload, retry_count)` | Execute one write. Returns (ok, error_message). | [src](../../../core/services/memory_write_queue.py#L311) |
-| function | `_process_sensory` | `(payload, retry_count)` | Process a sensory memory write. | [src](../../../core/services/memory_write_queue.py#L333) |
-| function | `_process_brain` | `(payload, retry_count)` | Process a brain entry write. | [src](../../../core/services/memory_write_queue.py#L352) |
-| function | `_process_sidecar` | `(payload, retry_count)` | Process a MEMORY.md sidecar: mood capture + graph ingestion. | [src](../../../core/services/memory_write_queue.py#L385) |
-| function | `retry_failed` | `(limit=…)` | Reset failed items back to pending for retry. | [src](../../../core/services/memory_write_queue.py#L422) |
-| function | `clean_old_done` | `(hours=…)` | Delete 'done' items older than N hours. | [src](../../../core/services/memory_write_queue.py#L446) |
 

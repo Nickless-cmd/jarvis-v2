@@ -2,6 +2,35 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/precision_bias.py`
+_Precision Bias — emotional color-mapping for action style._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `PrecisionProfile` | `` | Computed precision bias for one turn. | [src](../../../core/services/precision_bias.py#L129) |
+| function | `compute_precision_bias` | `()` | Compute the current precision bias from pressure state. | [src](../../../core/services/precision_bias.py#L144) |
+| function | `format_precision_for_prompt` | `(profile)` | Format a precision profile for prompt injection. | [src](../../../core/services/precision_bias.py#L203) |
+| function | `get_precision_line` | `()` | Convenience: compute + format in one call. Returns None on any failure. | [src](../../../core/services/precision_bias.py#L223) |
+| function | `_autonomy_enabled` | `()` | Check the generative autonomy killswitch. | [src](../../../core/services/precision_bias.py#L235) |
+| function | `_find_style_dominant_signal` | `(dominant_pressures)` | Find which signal family should drive style when multiple pressures exist. | [src](../../../core/services/precision_bias.py#L246) |
+| function | `build_precision_bias_surface` | `()` | — | [src](../../../core/services/precision_bias.py#L285) |
+| function | `_emit_bias_event` | `(class_id, bias)` | — | [src](../../../core/services/precision_bias.py#L294) |
+
+## `core/services/prepared_request.py`
+_`PreparedRequest` — det der skal til for at bygge NØJAGTIG samme anmodning igen._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `IncompleteRequest` | `` | En komponent findes kun som hash. Anmodningen kan ikke genskabes. | [src](../../../core/services/prepared_request.py#L45) |
+| function | `digest` | `(v)` | Stabil digest. Nøgler sorteres, så to ens objekter altid giver samme svar. | [src](../../../core/services/prepared_request.py#L49) |
+| class | `Component` | `` | En del af anmodningen: enten indholdet, eller en hentbar reference. | [src](../../../core/services/prepared_request.py#L56) |
+| method | `Component.resolve` | `(self, hent=…)` | — | [src](../../../core/services/prepared_request.py#L70) |
+| class | `PreparedRequest` | `` | Alt der skal til for at bygge anmodningen igen — ikke for at genkende den. | [src](../../../core/services/prepared_request.py#L90) |
+| method | `PreparedRequest.body_digest` | `(self, hent=…)` | Digest over det der faktisk sendes — rækkefølge inkluderet. | [src](../../../core/services/prepared_request.py#L111) |
+| method | `PreparedRequest.reconstruct` | `(self, hent=…)` | Byg anmodningen igen. Kaster hvis en komponent kun findes som hash. | [src](../../../core/services/prepared_request.py#L123) |
+| method | `PreparedRequest.same_series_as` | `(self, other)` | Er det stadig SAMME anmodningsserie? | [src](../../../core/services/prepared_request.py#L139) |
+| function | `forget_content` | `(p)` | Efterlign at indholdet er væk og kun digesten er tilbage. | [src](../../../core/services/prepared_request.py#L153) |
+
 ## `core/services/pressure_threshold_gate.py`
 _Pressure Threshold Gate — konverterer presning til impuls._
 
@@ -736,27 +765,4 @@ _Prompt variant tracker — log per-variant performance for self-improvement._
 | function | `winning_variant` | `(scope, *, min_samples=…)` | Return the best-performing variant for a scope, or None if not enough data. | [src](../../../core/services/prompt_variant_tracker.py#L119) |
 | function | `_exec_log_variant_outcome` | `(args)` | — | [src](../../../core/services/prompt_variant_tracker.py#L128) |
 | function | `_exec_variant_performance` | `(args)` | — | [src](../../../core/services/prompt_variant_tracker.py#L137) |
-
-## `core/services/proposal_classifier.py`
-_Proposal classifier — detects action impulses in thought fragments and scores destructiveness._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `classify_fragment` | `(fragment)` | Classify a thought fragment for action impulses. | [src](../../../core/services/proposal_classifier.py#L59) |
-
-## `core/services/proprioception_metrics.py`
-_Proprioception Metrics — process-level body sense._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_psutil` | `()` | — | [src](../../../core/services/proprioception_metrics.py#L38) |
-| function | `_current_snapshot` | `()` | Sample current process stats. | [src](../../../core/services/proprioception_metrics.py#L46) |
-| function | `_measure_self_latency_ms` | `()` | Measure trivial self-dispatch as a crude latency proxy. | [src](../../../core/services/proprioception_metrics.py#L76) |
-| function | `_emit` | `(kind, payload)` | — | [src](../../../core/services/proprioception_metrics.py#L89) |
-| function | `tick` | `(_seconds=…)` | — | [src](../../../core/services/proprioception_metrics.py#L100) |
-| function | `recent_snapshots` | `(*, limit=…)` | — | [src](../../../core/services/proprioception_metrics.py#L143) |
-| function | `build_proprioception_metrics_surface` | `()` | — | [src](../../../core/services/proprioception_metrics.py#L147) |
-| function | `_surface_summary` | `(current, rss_trend)` | — | [src](../../../core/services/proprioception_metrics.py#L180) |
-| function | `build_proprioception_metrics_prompt_section` | `()` | Only surfaces when something is actively worth noticing. | [src](../../../core/services/proprioception_metrics.py#L196) |
-| function | `reset_proprioception_metrics` | `()` | — | [src](../../../core/services/proprioception_metrics.py#L216) |
 

@@ -2,6 +2,22 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/delegation_advisor.py`
+_Delegation advisor — inline vs which subagent role._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `advise` | `(task)` | — | [src](../../../core/services/delegation_advisor.py#L46) |
+| function | `_exec_delegation_advisor` | `(args)` | — | [src](../../../core/services/delegation_advisor.py#L114) |
+
+## `core/services/delete_policy.py`
+_Slette-model — hvem må slette hvad, og hvor hårdt (spec §4.3)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `resolve_delete_action` | `(*, role, is_own_workspace, gdpr_erasure=…)` | Afgør slette-mode for (rolle, om det er eget workspace). | [src](../../../core/services/delete_policy.py#L22) |
+| function | `is_delete_confirmed` | `(*, role, confirmations_received)` | True hvis sletningen må udføres givet antal modtagne bekræftelser. | [src](../../../core/services/delete_policy.py#L55) |
+
 ## `core/services/desire_daemon.py`
 _Desire daemon — emergent appetites based on Jarvis' actual experiences._
 
@@ -683,30 +699,4 @@ _Drømme-sessionerne skal blive til læring._
 | function | `gem` | `(a)` | Skriv lektien. Returnerer udfaldet fra ``upsert_lesson`` ('' ved fejl). | [src](../../../core/services/dream_session_lessons.py#L154) |
 | function | `_allerede_hoestet` | `(a)` | Er dette afsnit hoestet fra den SAMME note foer? | [src](../../../core/services/dream_session_lessons.py#L178) |
 | function | `koer_hoest` | `(*, mappe=…, antal=…)` | Læs de nyeste drømme-noter og gem det der er lektier. | [src](../../../core/services/dream_session_lessons.py#L199) |
-
-## `core/services/dreaming_session.py`
-_D4 — Dreaming Session: dedicated full-model session during prolonged idle._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_storage_path` | `()` | — | [src](../../../core/services/dreaming_session.py#L32) |
-| function | `_load_state` | `()` | — | [src](../../../core/services/dreaming_session.py#L36) |
-| function | `_save_state` | `(data)` | — | [src](../../../core/services/dreaming_session.py#L51) |
-| function | `_check_triggers` | `()` | Check if the dreaming session should fire. | [src](../../../core/services/dreaming_session.py#L62) |
-| function | `_collect_dream_material` | `()` | Collect all dream infrastructure output for the prompt. | [src](../../../core/services/dreaming_session.py#L101) |
-| function | `_build_dream_prompt` | `(material)` | Build the full dream prompt from collected material. | [src](../../../core/services/dreaming_session.py#L200) |
-| function | `_record_session` | `(material, dream_prompt_preview)` | Record the dream session metadata and return the session identifier. | [src](../../../core/services/dreaming_session.py#L306) |
-| function | `trigger_dream_session` | `()` | Check triggers and fire a dream session if conditions are met. | [src](../../../core/services/dreaming_session.py#L332) |
-| function | `list_dream_sessions` | `(*, limit=…)` | List recent dream session records. | [src](../../../core/services/dreaming_session.py#L393) |
-| function | `build_dreaming_session_surface` | `()` | Build Mission Control surface for the dreaming session module. | [src](../../../core/services/dreaming_session.py#L399) |
-
-## `core/services/drive_arbitration_engine.py`
-_Desire/value arbitration as a compact drive system._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `arbitrate_drives` | `(*, user_message=…, context=…)` | — | [src](../../../core/services/drive_arbitration_engine.py#L14) |
-| function | `build_drive_arbitration_surface` | `()` | — | [src](../../../core/services/drive_arbitration_engine.py#L56) |
-| function | `build_drive_arbitration_prompt_section` | `()` | — | [src](../../../core/services/drive_arbitration_engine.py#L69) |
-| function | `_policy_for_top` | `(top)` | — | [src](../../../core/services/drive_arbitration_engine.py#L84) |
 

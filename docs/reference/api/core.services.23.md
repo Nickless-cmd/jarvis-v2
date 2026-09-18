@@ -2,6 +2,29 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/signal_pressure_accumulator.py`
+_Signal Pressure Accumulator — generativ autonomi: fra signal til presning._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `PressureVector` | `` | En akkumuleret presningsvektor — retning + styrke over tid. | [src](../../../core/services/signal_pressure_accumulator.py#L68) |
+| function | `_make_id` | `(direction, topic)` | Stable key for a pressure vector based on direction+topic. | [src](../../../core/services/signal_pressure_accumulator.py#L91) |
+| function | `ingest_signal` | `(signal_family, signal_data)` | Ingest a single signal into the pressure accumulator. | [src](../../../core/services/signal_pressure_accumulator.py#L100) |
+| function | `decay_all` | `()` | Apply decay to all pressure vectors. Called once per tick. | [src](../../../core/services/signal_pressure_accumulator.py#L161) |
+| function | `get_all_pressures` | `()` | Return all active pressure vectors, sorted by accumulated (strongest first). | [src](../../../core/services/signal_pressure_accumulator.py#L187) |
+| function | `get_pressure` | `(direction, topic)` | Get a specific pressure vector. | [src](../../../core/services/signal_pressure_accumulator.py#L192) |
+| function | `get_dominant_pressures` | `(min_accumulated=…)` | Return pressures above a minimum threshold — these are the ones that matter. | [src](../../../core/services/signal_pressure_accumulator.py#L197) |
+| function | `snapshot` | `()` | Return a serializable snapshot of current pressure state. | [src](../../../core/services/signal_pressure_accumulator.py#L202) |
+| function | `run_pressure_accumulator_tick` | `()` | Run one tick of the pressure accumulator. | [src](../../../core/services/signal_pressure_accumulator.py#L219) |
+
+## `core/services/signal_surface_gc.py`
+_Garbage collector for runtime signal-surface trackers._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_force_archive` | `(*, items, id_field, update_fn, label)` | — | [src](../../../core/services/signal_surface_gc.py#L33) |
+| function | `collect` | `()` | Run a full GC pass across the three signal-surface trackers. | [src](../../../core/services/signal_surface_gc.py#L75) |
+
 ## `core/services/signal_surface_router.py`
 _Signal Surface Router — maps surface names to build functions._
 
@@ -607,41 +630,4 @@ _Taste Profile — accumulating aesthetic preferences for code, design, and comm
 | function | `build_taste_profile_surface` | `()` | — | [src](../../../core/services/taste_profile.py#L155) |
 | function | `_safe` | `(fn, **kwargs)` | — | [src](../../../core/services/taste_profile.py#L167) |
 | function | `_safe_json` | `(value, default)` | — | [src](../../../core/services/taste_profile.py#L174) |
-
-## `core/services/telegram_gateway.py`
-_Telegram gateway — bidirectional messaging via Telegram Bot API._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_load_config` | `()` | — | [src](../../../core/services/telegram_gateway.py#L43) |
-| function | `is_configured` | `()` | — | [src](../../../core/services/telegram_gateway.py#L57) |
-| function | `get_status` | `()` | — | [src](../../../core/services/telegram_gateway.py#L61) |
-| function | `_api` | `(token, method, payload)` | — | [src](../../../core/services/telegram_gateway.py#L67) |
-| function | `_api_get` | `(token, method, payload)` | HTTP GET to Telegram Bot API (used for getFile). | [src](../../../core/services/telegram_gateway.py#L77) |
-| function | `_api_post_file` | `(token, method, data, files)` | HTTP POST multipart/form-data to Telegram Bot API (sendPhoto etc.). | [src](../../../core/services/telegram_gateway.py#L87) |
-| function | `_resolve_telegram_file_url` | `(*, token, file_id)` | Call getFile to get a download URL for a Telegram file_id. | [src](../../../core/services/telegram_gateway.py#L120) |
-| function | `_extract_telegram_media` | `(msg)` | Extract media items from a Telegram message dict. | [src](../../../core/services/telegram_gateway.py#L135) |
-| function | `_download_tg_attachment` | `(url, filename, mime, size, session_id)` | — | [src](../../../core/services/telegram_gateway.py#L179) |
-| function | `_build_telegram_attachment_prefix` | `(media_items, *, token, session_id)` | — | [src](../../../core/services/telegram_gateway.py#L193) |
-| function | `_validate_send_path` | `(path)` | — | [src](../../../core/services/telegram_gateway.py#L220) |
-| function | `send_telegram_file` | `(text, file_path, chat_id=…)` | Send a file to owner (or chat_id) via Telegram. | [src](../../../core/services/telegram_gateway.py#L225) |
-| function | `send_message` | `(text, chat_id=…, parse_mode=…)` | Send a message to owner (or specific chat_id). Returns status dict. | [src](../../../core/services/telegram_gateway.py#L267) |
-| function | `_get_or_create_session` | `(chat_id)` | — | [src](../../../core/services/telegram_gateway.py#L302) |
-| function | `_poll_loop` | `(token, owner_chat_id)` | — | [src](../../../core/services/telegram_gateway.py#L313) |
-| function | `_eventbus_subscriber_loop` | `()` | Buffer assistant responses per session, flush when run completes. | [src](../../../core/services/telegram_gateway.py#L408) |
-| function | `start_telegram_gateway` | `()` | — | [src](../../../core/services/telegram_gateway.py#L464) |
-| function | `stop_telegram_gateway` | `()` | — | [src](../../../core/services/telegram_gateway.py#L495) |
-
-## `core/services/telemetry_gate.py`
-_Telemetri er ikke sandhed — Fase 10, kriterium 2._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `gaeldende_niveau` | `()` | `full` | `redacted` | `none` | `ubestemt` for den kørsel vi er i nu. | [src](../../../core/services/telemetry_gate.py#L88) |
-| function | `maa_afgoere` | `()` | Må telemetri autorisere eller afgøre arbejde? **Nej. Altid nej.** | [src](../../../core/services/telemetry_gate.py#L111) |
-| function | `er_kanonisk` | `(tabel)` | Hører `tabel` til den kanoniske sandhed? | [src](../../../core/services/telemetry_gate.py#L124) |
-| function | `beskaer` | `(poster, maks, *, navn)` | Behold de nyeste `maks` — og **tæl** det der ryger. | [src](../../../core/services/telemetry_gate.py#L134) |
-| function | `tabt` | `(navn=…)` | Hvor mange poster er kastet væk? Uden navn: hele regnskabet. | [src](../../../core/services/telemetry_gate.py#L157) |
-| function | `nulstil_tab` | `()` | Kun til tests. Produktionen skal aldrig glemme hvad den tabte. | [src](../../../core/services/telemetry_gate.py#L165) |
-| function | `redigér_til_eksport` | `(vaerdi)` | Rens en **kopi** til eksport. Originalen røres aldrig. | [src](../../../core/services/telemetry_gate.py#L171) |
 

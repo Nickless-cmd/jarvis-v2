@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7698/14924 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7698/14933 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 7698/14924 functions/methods documented (51%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 651 | 1205 | 54% |
-| `core.services` | 5123 | 10257 | 49% |
+| `core.services` | 5123 | 10266 | 49% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 109 | 184 | 59% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -41,7 +41,7 @@ Generated from source. 7698/14924 functions/methods documented (51%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2128)
+## Undocumented public functions (2134)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L207)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -808,6 +808,12 @@ Generated from source. 7698/14924 functions/methods documented (51%). The list b
 - `core/services/chat_sessions.py` :: `recent_chat_tool_messages` (L1264)
 - `core/services/chat_sessions.py` :: `rename_chat_session` (L1289)
 - `core/services/cheap_lane_balancer.py` :: `BalancerSlot.slot_id` (L33)
+- `core/services/cheap_lane_dashboard.py` :: `build_cheap_lane_dashboard` (L49)
+- `core/services/cheap_lane_dashboard.py` :: `invocation_trends` (L13)
+- `core/services/cheap_lane_diagnostics.py` :: `central_evidence` (L28)
+- `core/services/cheap_lane_diagnostics.py` :: `diagnose_cheap_lane` (L92)
+- `core/services/cheap_lane_diagnostics.py` :: `recent_invocations` (L20)
+- `core/services/cheap_lane_diagnostics.py` :: `route_integrity` (L41)
 - `core/services/cheap_lane_quotas.py` :: `set_quota_policy` (L18)
 - `core/services/cheap_lane_trace_context.py` :: `CheapLaneTraceContext.create` (L18)
 - `core/services/cheap_lane_trace_context.py` :: `CheapLaneTraceContext.next_fallback` (L37)

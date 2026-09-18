@@ -648,6 +648,27 @@ _Cheap Lane Balancer — weighted-random load balancing for daemon LLM calls._
 | function | `orphan_slot_ids` | `(slot_ids, *, is_account_profile)` | Slot-ider hvis auth-profil ikke er en ægte konto. Ren udvælgelse. | [src](../../../core/services/cheap_lane_balancer.py#L1340) |
 | function | `prune_orphan_slots` | `()` | Fjern state-poster for profiler balanceren aldrig vælger. Self-safe. | [src](../../../core/services/cheap_lane_balancer.py#L1360) |
 
+## `core/services/cheap_lane_dashboard.py`
+_Composite, partial-safe snapshot for the Cheap Lane control center._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `invocation_trends` | `(*, window_hours)` | — | [src](../../../core/services/cheap_lane_dashboard.py#L13) |
+| function | `_section` | `(source, loader)` | — | [src](../../../core/services/cheap_lane_dashboard.py#L28) |
+| function | `build_cheap_lane_dashboard` | `(window_hours=…)` | — | [src](../../../core/services/cheap_lane_dashboard.py#L49) |
+
+## `core/services/cheap_lane_diagnostics.py`
+_Read-only, deterministic diagnostics over Cheap Lane source-of-truth data._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_parse_time` | `(value)` | — | [src](../../../core/services/cheap_lane_diagnostics.py#L12) |
+| function | `recent_invocations` | `(*, since, limit=…)` | — | [src](../../../core/services/cheap_lane_diagnostics.py#L20) |
+| function | `central_evidence` | `(*, limit=…)` | — | [src](../../../core/services/cheap_lane_diagnostics.py#L28) |
+| function | `route_integrity` | `(*, since)` | — | [src](../../../core/services/cheap_lane_diagnostics.py#L41) |
+| function | `_finding` | `(code, severity, now, evidence, *, provider=…, slot_id=…)` | — | [src](../../../core/services/cheap_lane_diagnostics.py#L71) |
+| function | `diagnose_cheap_lane` | `(now=…)` | — | [src](../../../core/services/cheap_lane_diagnostics.py#L92) |
+
 ## `core/services/cheap_lane_failure_policy.py`
 _Hvor længe skal et cheap-lane-slot i karantæne? Afhænger af HVORFOR det fejlede._
 
@@ -656,28 +677,4 @@ _Hvor længe skal et cheap-lane-slot i karantæne? Afhænger af HVORFOR det fejl
 | function | `classify` | `(error_kind, message=…)` | ``'permanent'`` | ``'depleted'`` | ``'transient'``. | [src](../../../core/services/cheap_lane_failure_policy.py#L79) |
 | function | `model_retired` | `(error_kind, message=…)` | Er selve MODELLEN væk — for alle konti? (Til den pr.-model-tilstand.) | [src](../../../core/services/cheap_lane_failure_policy.py#L108) |
 | function | `quarantine_seconds` | `(error_kind, *, retry_after_s=…, message=…)` | Karantæne-længde, eller ``0`` når slottet skal følge den normale breaker-trappe. | [src](../../../core/services/cheap_lane_failure_policy.py#L126) |
-
-## `core/services/cheap_lane_floor.py`
-_Aldrig-tør-bund for cheap lane (spec §5.5 Fund 4)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `floor_targets` | `()` | Bund-kæden, config-overstyrbar. Self-safe → default ved fejl. | [src](../../../core/services/cheap_lane_floor.py#L46) |
-| function | `floor_result` | `(*, lane, reason, provider=…, model=…, text=…, status=…, extra=…)` | Typet resultat der matcher pool-outputtets form. status='degraded' = tom bund. | [src](../../../core/services/cheap_lane_floor.py#L60) |
-| function | `_execute_floor_target` | `(*, provider, model, message, lane)` | Kør ét bund-target gennem den eksisterende adapter. Kan rejse — indkapsles | [src](../../../core/services/cheap_lane_floor.py#L74) |
-| function | `attempt_floor` | `(*, message, lane, reason)` | Prøv bund-kæden i rækkefølge. Første ikke-tomme svar vinder. Hvis ALT | [src](../../../core/services/cheap_lane_floor.py#L94) |
-
-## `core/services/cheap_lane_history.py`
-_Hvordan klarer cheap lane sig? — historikken bag de 90.000 kald._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_siden` | `(timer)` | — | [src](../../../core/services/cheap_lane_history.py#L46) |
-| function | `_sikr_skema` | `(conn)` | Tabellen og dens `auth_profile`-kolonne skal findes, ogsaa foer foerste kald. | [src](../../../core/services/cheap_lane_history.py#L50) |
-| function | `_rows` | `(sql, params)` | — | [src](../../../core/services/cheap_lane_history.py#L74) |
-| function | `_percentil` | `(vaerdier, p)` | p50/p95 uden numpy. Tom liste → 0. | [src](../../../core/services/cheap_lane_history.py#L82) |
-| function | `udbyder_historik` | `(timer=…, lane=…)` | Én raekke pr. (udbyder, model) i vinduet: kald, fejl, latens, pris. | [src](../../../core/services/cheap_lane_history.py#L91) |
-| function | `_fejlkoder_pr_udbyder` | `(lane, siden)` | De hyppigste fejlkoder pr. (udbyder, model). Tomt ved fejl. | [src](../../../core/services/cheap_lane_history.py#L177) |
-| function | `seneste_fejl` | `(timer=…, lane=…, loft=…)` | De nyeste fejl med besked — halen man skal laese naar noget er galt. | [src](../../../core/services/cheap_lane_history.py#L197) |
-| function | `tidsserie` | `(timer=…, lane=…, spand_minutter=…)` | Kald og fejl pr. tidsspand — kurven bag «klarer den sig bedre i dag?». | [src](../../../core/services/cheap_lane_history.py#L231) |
 

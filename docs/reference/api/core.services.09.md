@@ -2,6 +2,38 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/cowork_feed.py`
+_Cowork-feed: normaliserer items fra eksisterende kilder til én rolle-scopet_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_initiative_items` | `()` | Afventende initiativ-forslag fra initiative_queue. | [src](../../../core/services/cowork_feed.py#L13) |
+| function | `_capability_items` | `()` | Afventende capability-/tool-godkendelses-requests (Mission Control surface). | [src](../../../core/services/cowork_feed.py#L23) |
+| function | `_norm_initiative` | `(raw)` | — | [src](../../../core/services/cowork_feed.py#L34) |
+| function | `_norm_capability` | `(raw)` | — | [src](../../../core/services/cowork_feed.py#L45) |
+| function | `_proposal_items` | `()` | Afventende autonomy-proposals (prop-xxxxxx): commits, planer, prompt- | [src](../../../core/services/cowork_feed.py#L63) |
+| function | `_norm_proposal` | `(raw)` | — | [src](../../../core/services/cowork_feed.py#L73) |
+| function | `build_queue` | `(*, user_id, is_owner)` | Saml + normalisér + rolle-scope den fulde godkendelses-kø. | [src](../../../core/services/cowork_feed.py#L86) |
+| function | `_all_plans` | `()` | Alle planer fra plan_proposals (normaliseret med trin-progress). | [src](../../../core/services/cowork_feed.py#L99) |
+| function | `list_plans` | `(*, user_id, is_owner)` | — | [src](../../../core/services/cowork_feed.py#L121) |
+| function | `list_active_agents` | `(*, limit=…)` | Aktive dispatch-agenter til cowork command center (§19.5). Læser | [src](../../../core/services/cowork_feed.py#L134) |
+| function | `_all_todos` | `()` | Alle todos på tværs af sessioner (agent_todos er session-keyed). | [src](../../../core/services/cowork_feed.py#L157) |
+| function | `list_todos_feed` | `(*, user_id, is_owner)` | Todos til cowork. Owner ser alle; member får [] (todos er ikke user- | [src](../../../core/services/cowork_feed.py#L178) |
+| function | `_raw_channels` | `()` | Konfigurerede kanaler (online = konfigureret/aktiv). Live connection-state | [src](../../../core/services/cowork_feed.py#L186) |
+| function | `channel_status` | `()` | — | [src](../../../core/services/cowork_feed.py#L205) |
+
+## `core/services/creative_drift_daemon.py`
+_Creative drift daemon — generates spontaneous, unexpected ideas unrelated to current tasks._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `tick_creative_drift_daemon` | `(fragments, *, skip_event_gate=…)` | Maybe generate a spontaneous associative idea. | [src](../../../core/services/creative_drift_daemon.py#L38) |
+| function | `get_latest_drift` | `()` | — | [src](../../../core/services/creative_drift_daemon.py#L91) |
+| function | `build_creative_drift_surface` | `()` | — | [src](../../../core/services/creative_drift_daemon.py#L95) |
+| function | `_gather_concrete_anchor` | `()` | Returns (anchor_text, anchor_kind) — a single concrete thing to drift | [src](../../../core/services/creative_drift_daemon.py#L109) |
+| function | `_generate_drift_idea` | `(fragments)` | — | [src](../../../core/services/creative_drift_daemon.py#L143) |
+| function | `_store_drift` | `(idea, now)` | — | [src](../../../core/services/creative_drift_daemon.py#L197) |
+
 ## `core/services/creative_impulse_daemon.py`
 _Creative Impulse — unasked-for creations._
 
@@ -559,20 +591,4 @@ _Deep Reflection Slot — real think-time, not tick-to-tick alert._
 | function | `build_deep_reflection_surface` | `()` | — | [src](../../../core/services/deep_reflection_slot.py#L368) |
 | function | `_surface_summary` | `(latest, all_items)` | — | [src](../../../core/services/deep_reflection_slot.py#L384) |
 | function | `build_deep_reflection_prompt_section` | `()` | Surface newly completed deep reflection for 12h. | [src](../../../core/services/deep_reflection_slot.py#L393) |
-
-## `core/services/delegation_advisor.py`
-_Delegation advisor — inline vs which subagent role._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `advise` | `(task)` | — | [src](../../../core/services/delegation_advisor.py#L46) |
-| function | `_exec_delegation_advisor` | `(args)` | — | [src](../../../core/services/delegation_advisor.py#L114) |
-
-## `core/services/delete_policy.py`
-_Slette-model — hvem må slette hvad, og hvor hårdt (spec §4.3)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `resolve_delete_action` | `(*, role, is_own_workspace, gdpr_erasure=…)` | Afgør slette-mode for (rolle, om det er eget workspace). | [src](../../../core/services/delete_policy.py#L22) |
-| function | `is_delete_confirmed` | `(*, role, confirmations_received)` | True hvis sletningen må udføres givet antal modtagne bekræftelser. | [src](../../../core/services/delete_policy.py#L55) |
 

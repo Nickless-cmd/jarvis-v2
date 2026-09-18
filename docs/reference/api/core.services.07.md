@@ -2,6 +2,30 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/cheap_lane_floor.py`
+_Aldrig-tør-bund for cheap lane (spec §5.5 Fund 4)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `floor_targets` | `()` | Bund-kæden, config-overstyrbar. Self-safe → default ved fejl. | [src](../../../core/services/cheap_lane_floor.py#L46) |
+| function | `floor_result` | `(*, lane, reason, provider=…, model=…, text=…, status=…, extra=…)` | Typet resultat der matcher pool-outputtets form. status='degraded' = tom bund. | [src](../../../core/services/cheap_lane_floor.py#L60) |
+| function | `_execute_floor_target` | `(*, provider, model, message, lane)` | Kør ét bund-target gennem den eksisterende adapter. Kan rejse — indkapsles | [src](../../../core/services/cheap_lane_floor.py#L74) |
+| function | `attempt_floor` | `(*, message, lane, reason)` | Prøv bund-kæden i rækkefølge. Første ikke-tomme svar vinder. Hvis ALT | [src](../../../core/services/cheap_lane_floor.py#L94) |
+
+## `core/services/cheap_lane_history.py`
+_Hvordan klarer cheap lane sig? — historikken bag de 90.000 kald._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_siden` | `(timer)` | — | [src](../../../core/services/cheap_lane_history.py#L46) |
+| function | `_sikr_skema` | `(conn)` | Tabellen og dens `auth_profile`-kolonne skal findes, ogsaa foer foerste kald. | [src](../../../core/services/cheap_lane_history.py#L50) |
+| function | `_rows` | `(sql, params)` | — | [src](../../../core/services/cheap_lane_history.py#L74) |
+| function | `_percentil` | `(vaerdier, p)` | p50/p95 uden numpy. Tom liste → 0. | [src](../../../core/services/cheap_lane_history.py#L82) |
+| function | `udbyder_historik` | `(timer=…, lane=…)` | Én raekke pr. (udbyder, model) i vinduet: kald, fejl, latens, pris. | [src](../../../core/services/cheap_lane_history.py#L91) |
+| function | `_fejlkoder_pr_udbyder` | `(lane, siden)` | De hyppigste fejlkoder pr. (udbyder, model). Tomt ved fejl. | [src](../../../core/services/cheap_lane_history.py#L177) |
+| function | `seneste_fejl` | `(timer=…, lane=…, loft=…)` | De nyeste fejl med besked — halen man skal laese naar noget er galt. | [src](../../../core/services/cheap_lane_history.py#L197) |
+| function | `tidsserie` | `(timer=…, lane=…, spand_minutter=…)` | Kald og fejl pr. tidsspand — kurven bag «klarer den sig bedre i dag?». | [src](../../../core/services/cheap_lane_history.py#L231) |
+
 ## `core/services/cheap_lane_payloads.py`
 _Bounded, redacted payload capture for Cheap Lane invocations._
 
@@ -724,33 +748,4 @@ _`CompactionRuntime` — kontekst-pres lettes ved ERSTATNING, aldrig ved sletnin
 | function | `failed` | `(s, error)` | En mislykket kompaktering. Generationen står UÆNDRET. | [src](../../../core/services/compaction_runtime.py#L200) |
 | function | `may_retry_after_overflow` | `(before, after)` | Må overløbet prøves igen? | [src](../../../core/services/compaction_runtime.py#L210) |
 | function | `require_advance` | `(before, after)` | Som ovenfor, men kaster. Til kaldesteder der ellers ville løkke. | [src](../../../core/services/compaction_runtime.py#L220) |
-
-## `core/services/companion_initiative.py`
-_Proaktivitet — Jarvis må dele en tanke uden at blive spurgt._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `Offer` | `` | — | [src](../../../core/services/companion_initiative.py#L44) |
-| method | `Offer.as_dict` | `(self)` | — | [src](../../../core/services/companion_initiative.py#L49) |
-| function | `_now` | `()` | — | [src](../../../core/services/companion_initiative.py#L54) |
-| function | `_parse` | `(ts)` | — | [src](../../../core/services/companion_initiative.py#L58) |
-| function | `_read_journal` | `()` | — | [src](../../../core/services/companion_initiative.py#L69) |
-| function | `_write_journal` | `(entries)` | — | [src](../../../core/services/companion_initiative.py#L86) |
-| function | `is_quiet_hour` | `(moment)` | Er det tidspunkt hvor en tanke ville vække frem for at nå frem? | [src](../../../core/services/companion_initiative.py#L94) |
-| function | `next_quiet_end` | `(moment)` | Hvornår må den stille periode brydes igen. | [src](../../../core/services/companion_initiative.py#L103) |
-| function | `_recent_for` | `(user_id, journal)` | — | [src](../../../core/services/companion_initiative.py#L113) |
-| function | `check_allowed` | `(user_id, *, now=…)` | Må en tanke sendes lige nu? Ren vurdering — sender ingenting. | [src](../../../core/services/companion_initiative.py#L117) |
-| function | `offer_thought` | `(user_id, text, *, title=…, now=…)` | Tilbyd en tanke. Sender kun hvis grænserne tillader det. | [src](../../../core/services/companion_initiative.py#L144) |
-| function | `recent_thoughts` | `(user_id, *, limit=…)` | Tankerne, nyeste først — også dem der blev holdt tilbage. | [src](../../../core/services/companion_initiative.py#L184) |
-
-## `core/services/companion_presence.py`
-_Livstegn — er Jarvis vågen lige nu, og hvad lavede han sidst?_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_parse` | `(ts)` | — | [src](../../../core/services/companion_presence.py#L29) |
-| function | `_last_heartbeat` | `()` | Seneste hjerteslag: hvornår, og hvad det endte med at gøre. | [src](../../../core/services/companion_presence.py#L40) |
-| function | `_running_now` | `()` | Er en synlig kørsel i gang? Det er stærkere end et hjerteslag: det | [src](../../../core/services/companion_presence.py#L96) |
-| function | `_short` | `(text, limit=…)` | — | [src](../../../core/services/companion_presence.py#L107) |
-| function | `build_presence` | `(*, now=…)` | Det ærlige livstegn. Kaster aldrig — men lyver heller aldrig. | [src](../../../core/services/companion_presence.py#L112) |
 

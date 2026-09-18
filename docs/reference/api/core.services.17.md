@@ -2,6 +2,40 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/nudge_broend.py`
+_Nudge-broend — daemons drop nudges, Jarvis inspects and decides._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_load` | `()` | — | [src](../../../core/services/nudge_broend.py#L24) |
+| function | `_save` | `(nudges)` | — | [src](../../../core/services/nudge_broend.py#L37) |
+| function | `_cleanup` | `(nudges)` | Remove oldest non-pending nudges if over max. | [src](../../../core/services/nudge_broend.py#L48) |
+| function | `push` | `(*, source=…, kind=…, message=…, importance=…, raw_payload=…)` | Deposit a nudge in the broend. Returns nudge_id. | [src](../../../core/services/nudge_broend.py#L62) |
+| function | `list_pending` | `(limit=…)` | List pending nudges, newest first. | [src](../../../core/services/nudge_broend.py#L105) |
+| function | `count_pending` | `()` | Return count of pending nudges. | [src](../../../core/services/nudge_broend.py#L113) |
+| function | `get` | `(nudge_id)` | Get a single nudge by ID. | [src](../../../core/services/nudge_broend.py#L119) |
+| function | `mark_sent` | `(nudge_id)` | Mark a nudge as sent. | [src](../../../core/services/nudge_broend.py#L128) |
+| function | `mark_dismissed` | `(nudge_id, reason=…)` | Mark a single nudge as dismissed. | [src](../../../core/services/nudge_broend.py#L140) |
+| function | `dismiss_all` | `(reason=…)` | Dismiss all pending nudges. Returns count. | [src](../../../core/services/nudge_broend.py#L154) |
+
+## `core/services/oauth_flow.py`
+_OAuth-flow-helper for plugin-connectors (16. jun 2026)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `is_known_provider` | `(provider)` | — | [src](../../../core/services/oauth_flow.py#L46) |
+| function | `redirect_uri` | `(provider)` | — | [src](../../../core/services/oauth_flow.py#L50) |
+| function | `_secret` | `(key, default=…)` | — | [src](../../../core/services/oauth_flow.py#L54) |
+| function | `_state_key` | `()` | — | [src](../../../core/services/oauth_flow.py#L62) |
+| function | `sign_state` | `(user_id, provider, *, now=…)` | Signeret, selvstændigt state — binder bruger+provider, udløber, anti-CSRF. | [src](../../../core/services/oauth_flow.py#L67) |
+| function | `verify_state` | `(state, *, now=…)` | Auth-cluster GENNEM Centralen (observe): anti-CSRF state-validering synlig — en fejlet | [src](../../../core/services/oauth_flow.py#L79) |
+| function | `_verify_state_impl` | `(state, *, now=…)` | → (user_id, provider) hvis gyldig+ikke-udløbet, ellers None. | [src](../../../core/services/oauth_flow.py#L94) |
+| function | `build_authorize_url` | `(provider, user_id, *, scopes=…, now=…)` | Authorize-URL til at åbne i brugerens browser. None hvis ukendt/ukonfigureret. | [src](../../../core/services/oauth_flow.py#L112) |
+| function | `revoke_remote` | `(provider, token)` | Tilbagekald token hos provideren (best-effort). True hvis bekræftet revokeret. | [src](../../../core/services/oauth_flow.py#L134) |
+| function | `refresh_token` | `(provider, refresh, *, now=…)` | Forny adgangstoken via grant_type=refresh_token. None ved fejl/ukendt provider. | [src](../../../core/services/oauth_flow.py#L165) |
+| function | `exchange_code` | `(provider, code, *, now=…)` | Byt authorization code for token (BLOKERENDE netværk — kør i tråd). None ved fejl. | [src](../../../core/services/oauth_flow.py#L193) |
+| function | `fetch_google_email` | `(token)` | Hent den verificerede Google-email via userinfo (BLOKERENDE — kør i tråd). | [src](../../../core/services/oauth_flow.py#L220) |
+
 ## `core/services/oauth_store.py`
 _Per-bruger krypteret OAuth-token-hvælv — plugin-fundamentets privatlivs-spine._
 
@@ -564,33 +598,4 @@ _Guards for tool turns that end in hollow final prose._
 | function | `tool_call_count` | `(exchanges)` | — | [src](../../../core/services/post_tool_answer_guard.py#L13) |
 | function | `is_hollow_post_tool_answer` | `(answer_text, exchanges)` | — | [src](../../../core/services/post_tool_answer_guard.py#L17) |
 | function | `should_replace_with_synthesis` | `(current_text, candidate_text)` | — | [src](../../../core/services/post_tool_answer_guard.py#L26) |
-
-## `core/services/precision_bias.py`
-_Precision Bias — emotional color-mapping for action style._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `PrecisionProfile` | `` | Computed precision bias for one turn. | [src](../../../core/services/precision_bias.py#L129) |
-| function | `compute_precision_bias` | `()` | Compute the current precision bias from pressure state. | [src](../../../core/services/precision_bias.py#L144) |
-| function | `format_precision_for_prompt` | `(profile)` | Format a precision profile for prompt injection. | [src](../../../core/services/precision_bias.py#L203) |
-| function | `get_precision_line` | `()` | Convenience: compute + format in one call. Returns None on any failure. | [src](../../../core/services/precision_bias.py#L223) |
-| function | `_autonomy_enabled` | `()` | Check the generative autonomy killswitch. | [src](../../../core/services/precision_bias.py#L235) |
-| function | `_find_style_dominant_signal` | `(dominant_pressures)` | Find which signal family should drive style when multiple pressures exist. | [src](../../../core/services/precision_bias.py#L246) |
-| function | `build_precision_bias_surface` | `()` | — | [src](../../../core/services/precision_bias.py#L285) |
-| function | `_emit_bias_event` | `(class_id, bias)` | — | [src](../../../core/services/precision_bias.py#L294) |
-
-## `core/services/prepared_request.py`
-_`PreparedRequest` — det der skal til for at bygge NØJAGTIG samme anmodning igen._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `IncompleteRequest` | `` | En komponent findes kun som hash. Anmodningen kan ikke genskabes. | [src](../../../core/services/prepared_request.py#L45) |
-| function | `digest` | `(v)` | Stabil digest. Nøgler sorteres, så to ens objekter altid giver samme svar. | [src](../../../core/services/prepared_request.py#L49) |
-| class | `Component` | `` | En del af anmodningen: enten indholdet, eller en hentbar reference. | [src](../../../core/services/prepared_request.py#L56) |
-| method | `Component.resolve` | `(self, hent=…)` | — | [src](../../../core/services/prepared_request.py#L70) |
-| class | `PreparedRequest` | `` | Alt der skal til for at bygge anmodningen igen — ikke for at genkende den. | [src](../../../core/services/prepared_request.py#L90) |
-| method | `PreparedRequest.body_digest` | `(self, hent=…)` | Digest over det der faktisk sendes — rækkefølge inkluderet. | [src](../../../core/services/prepared_request.py#L111) |
-| method | `PreparedRequest.reconstruct` | `(self, hent=…)` | Byg anmodningen igen. Kaster hvis en komponent kun findes som hash. | [src](../../../core/services/prepared_request.py#L123) |
-| method | `PreparedRequest.same_series_as` | `(self, other)` | Er det stadig SAMME anmodningsserie? | [src](../../../core/services/prepared_request.py#L139) |
-| function | `forget_content` | `(p)` | Efterlign at indholdet er væk og kun digesten er tilbage. | [src](../../../core/services/prepared_request.py#L153) |
 

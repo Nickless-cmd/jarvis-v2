@@ -151,3 +151,60 @@ def test_daempningen_er_synlig_i_tilstanden(isolated_runtime, monkeypatch) -> No
     motor.observe_recent_changes()
 
     assert motor._load_state()["sprunget_rutine_i_alt"] == 2
+
+
+def _policy_event(nr: int, *, rule: str) -> dict:
+    return {
+        "id": nr,
+        "kind": "cognitive_state.learning_policy_updated",
+        "created_at": f"2026-09-18T14:{nr:02d}:00+00:00",
+        "payload": {"rule_key": rule},
+    }
+
+
+def test_gentagne_policy_opdateringer_daempes(isolated_runtime, monkeypatch) -> None:
+    """At en regel forstærkes igen er ikke en ændring; en NY regel er."""
+    from core.eventbus.bus import event_bus
+    from core.services import perceptual_event_engine as motor
+
+    events = [_policy_event(n, rule="synthesize-after-tool-burst") for n in range(1, 5)]
+    monkeypatch.setattr(event_bus, "recent", lambda limit=0: list(reversed(events)))
+    monkeypatch.setattr(event_bus, "recent_since_id", lambda i, limit=0: events)
+
+    svar = motor.observe_recent_changes()
+
+    assert svar["observed_count"] == 1
+    assert svar["skipped_routine_tools"] == 3
+
+
+def test_forskellige_regler_er_hver_sin_aendring(isolated_runtime, monkeypatch) -> None:
+    from core.eventbus.bus import event_bus
+    from core.services import perceptual_event_engine as motor
+
+    events = [
+        _policy_event(1, rule="synthesize-after-tool-burst"),
+        _policy_event(2, rule="offline-recomposition-policy"),
+        _policy_event(3, rule="perceive-tool-error-before-retry"),
+    ]
+    monkeypatch.setattr(event_bus, "recent", lambda limit=0: list(reversed(events)))
+    monkeypatch.setattr(event_bus, "recent_since_id", lambda i, limit=0: events)
+
+    assert motor.observe_recent_changes()["observed_count"] == 3
+
+
+def test_vaerktoej_og_regel_med_samme_navn_skygger_ikke(isolated_runtime, monkeypatch) -> None:
+    """Navnerummene skal være adskilt, ellers kan en regel dæmpe et værktøj."""
+    from core.eventbus.bus import event_bus
+    from core.services import perceptual_event_engine as motor
+
+    events = [
+        _vaerktoejs_event(1, tool="synthesize"),
+        _policy_event(2, rule="synthesize"),
+    ]
+    monkeypatch.setattr(event_bus, "recent", lambda limit=0: list(reversed(events)))
+    monkeypatch.setattr(event_bus, "recent_since_id", lambda i, limit=0: events)
+
+    svar = motor.observe_recent_changes()
+
+    assert svar["observed_count"] == 2
+    assert svar["skipped_routine_tools"] == 0

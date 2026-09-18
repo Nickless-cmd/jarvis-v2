@@ -18,10 +18,20 @@ _STATE_KEY = "perceptual_event_engine"
 _MAX_EVENTS = 80
 _SCAN_LIMIT = 120
 
-# Hvor længe det samme værktøj er «set», før det igen tæller som en ændring.
+# Hvor længe det samme gentagne signal er «set», før det igen tæller som en
+# ændring.
 _VAERKTOEJ_STILHED_MINUTTER = 60
-# Hvor mange værktøjsnavne vi bærer med os. Loft, så kortet ikke vokser.
+# Hvor mange navne vi bærer med os. Loft, så kortet ikke vokser.
 _VAERKTOEJ_HUSK = 80
+
+# Hvilke perceptions der kan gentage sig selv, og hvilket felt der gør en
+# gentagelse genkendelig. Et værktøj identificeres ved sit navn, en
+# læringsregel ved sin nøgle. Alt andet slipper uberørt igennem — og
+# `tool-error` staar med vilje IKKE her.
+_GENTAGENDE = {
+    "tool-result": "tool",
+    "learned-policy-change": "rule_key",
+}
 
 
 def _er_rutine_gentagelse(
@@ -42,16 +52,32 @@ def _er_rutine_gentagelse(
     første gang et værktøj ses inden for vinduet ER en perception; gentagelser
     inden for `_VAERKTOEJ_STILHED_MINUTTER` er det ikke.
 
-    **Fejl er undtaget.** `tool-error` (20 af de 1.644) bærer information og
-    går uændret igennem — det er netop dem der skal mærkes.
+    **Fejl er undtaget.** `tool-error` bærer information og går uændret
+    igennem — det er netop dem der skal mærkes.
+
+    ## Udvidet til læringsregler (18/9, efter en rettet måling)
+
+    Den første måling sagde at policy-opdateringer fyldte 35 %. Det tal var
+    forkert: det kom af at tælle på de 3.000 nyeste RÆKKER i stedet for på et
+    tidsvindue, og de 3.000 dækkede tilfældigvis en periode hvor policy fyldte
+    meget. Målt over rigtige døgn er andelen 7-8,5 % — men det er stadig
+    ~3.785 perceptions i døgnet, og de kommer fra få gentagne `rule_key`.
+
+    Samme regel gælder derfor her: at en regel forstærkes igen er ikke en
+    ændring; at en NY regel bliver opdateret er. Nøglen er `rule_key` i
+    stedet for `tool` — se `_GENTAGENDE`.
     """
-    if str(percept.get("change_type") or "") != "tool-result":
+    felt = _GENTAGENDE.get(str(percept.get("change_type") or ""))
+    if not felt:
         return False
     evidence = percept.get("evidence")
-    navn = str((evidence or {}).get("tool") or "").strip() if isinstance(evidence, dict) else ""
+    navn = str((evidence or {}).get(felt) or "").strip() if isinstance(evidence, dict) else ""
     if not navn:
         # Uden navn kan vi ikke afgøre gentagelse — så lad den passere.
         return False
+    # Adskil navnerummene, saa et vaerktoej og en regel med samme navn ikke
+    # kan skygge for hinanden.
+    navn = f"{felt}:{navn}"
     sidst = set_foer.get(navn)
     if sidst:
         try:

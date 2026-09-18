@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/desktop_notifications.py`
+_Per-bruger in-memory kø af proaktive desktop-notifikationer. Desktop poller_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `reset` | `()` | — | [src](../../../core/services/desktop_notifications.py#L15) |
+| function | `enqueue` | `(user_id, item)` | — | [src](../../../core/services/desktop_notifications.py#L20) |
+| function | `drain` | `(user_id)` | — | [src](../../../core/services/desktop_notifications.py#L30) |
+| function | `prune` | `()` | — | [src](../../../core/services/desktop_notifications.py#L37) |
+
 ## `core/services/desperation_awareness.py`
 _Desperation Awareness — self-noticing safety signal._
 
@@ -695,19 +705,4 @@ _Git-checkpoint pr. redigeringsrunde — en dårlig runde kan rulles tilbage sam
 | function | `list_checkpoints` | `(session_id)` | — | [src](../../../core/services/edit_checkpoint.py#L100) |
 | function | `rollback_last` | `(session_id)` | Gendan filerne fra seneste checkpoint. Popper stakken. | [src](../../../core/services/edit_checkpoint.py#L105) |
 | function | `clear` | `(session_id)` | — | [src](../../../core/services/edit_checkpoint.py#L127) |
-
-## `core/services/effective_policy.py`
-_Hvad GJALDT der faktisk for denne koersel — Fase 9._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_tool_scope` | `()` | — | [src](../../../core/services/effective_policy.py#L36) |
-| function | `_autonom` | `()` | — | [src](../../../core/services/effective_policy.py#L44) |
-| function | `_sandkasse` | `()` | (slaaet_til, kraevet_for_denne_koersel) — anmodet vs faktisk. | [src](../../../core/services/effective_policy.py#L52) |
-| function | `_tillid` | `()` | — | [src](../../../core/services/effective_policy.py#L75) |
-| function | `_ejer_godkendt` | `()` | — | [src](../../../core/services/effective_policy.py#L83) |
-| function | `snapshot` | `(**ekstra)` | Tag et oejebliksbillede af den politik der gaelder LIGE NU. | [src](../../../core/services/effective_policy.py#L91) |
-| function | `_maal` | `()` | — | [src](../../../core/services/effective_policy.py#L115) |
-| function | `_hash` | `(felter)` | sha256 over de politik-baerende felter — uden tidsstempler og id'er, | [src](../../../core/services/effective_policy.py#L134) |
-| function | `afviger` | `(a, b)` | Hvilke politik-felter er forskellige? Til at forklare et hash-skift. | [src](../../../core/services/effective_policy.py#L147) |
 

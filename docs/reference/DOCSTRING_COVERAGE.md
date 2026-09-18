@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7690/14904 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7695/14916 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 7690/14904 functions/methods documented (51%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 651 | 1205 | 54% |
-| `core.services` | 5115 | 10237 | 49% |
+| `core.services` | 5120 | 10249 | 49% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 109 | 184 | 59% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -41,7 +41,7 @@ Generated from source. 7690/14904 functions/methods documented (51%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2127)
+## Undocumented public functions (2128)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L207)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -808,6 +808,7 @@ Generated from source. 7690/14904 functions/methods documented (51%). The list b
 - `core/services/chat_sessions.py` :: `recent_chat_tool_messages` (L1264)
 - `core/services/chat_sessions.py` :: `rename_chat_session` (L1289)
 - `core/services/cheap_lane_balancer.py` :: `BalancerSlot.slot_id` (L33)
+- `core/services/cheap_lane_quotas.py` :: `set_quota_policy` (L18)
 - `core/services/cheap_lane_trace_context.py` :: `CheapLaneTraceContext.create` (L18)
 - `core/services/cheap_lane_trace_context.py` :: `CheapLaneTraceContext.next_fallback` (L37)
 - `core/services/cheap_lane_trace_context.py` :: `candidate_slot_id` (L46)

@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { ApiConfig } from '../../../lib/api'
 import {
-  getBalancerState, getHistorik, getFejl, getTidsserie, getRegistret,
-  type BalancerState, type Historik, type FejlSvar, type TidsserieSpand, type Registret,
+  getTidsserie, type TidsserieSpand,
 } from '../../../lib/cheapLaneApi'
 import { useCheapLaneStore } from '../../../lib/cheapLaneStore'
 import { CheapLaneOverview } from './CheapLaneOverview'
@@ -34,7 +33,7 @@ import {
  * knapperne: et slot «pauses» i balancerens egen tilstand, mens en model
  * slås fra i registret og derfor bliver væk efter en genstart.
  */
-type Fane = 'oversigt' | 'kapacitet' | 'pulje' | 'udbydere' | 'logs' | 'diagnose' | 'fejl' | 'historik'
+type Fane = 'oversigt' | 'kapacitet' | 'pulje' | 'udbydere' | 'logs' | 'diagnose'
 
 const FANER: { id: Fane; label: string }[] = [
   { id: 'oversigt', label: 'Oversigt' },
@@ -43,36 +42,16 @@ const FANER: { id: Fane; label: string }[] = [
   { id: 'udbydere', label: 'Udbydere' },
   { id: 'logs', label: 'Kald' },
   { id: 'diagnose', label: 'Diagnose' },
-  { id: 'fejl', label: 'Fejl' },
-  { id: 'historik', label: 'Historik' },
 ]
 
 const VINDUER = [1, 6, 24, 72, 168]
 
-function pct(v: number | null | undefined): string {
-  // «Ingen data» og «nul procent» er to forskellige beskeder.
-  if (v === null || v === undefined) return '–'
-  // Dansk komma. Foerste udgave skrev «46.7 %» — engelsk punktum midt i en
-  // dansk flade; fanget af render-testen.
-  return `${(Math.round(v * 1000) / 10).toLocaleString('da-DK')} %`
-}
 
-function tid(s?: string | null): string {
-  if (!s) return '–'
-  const d = new Date(s)
-  return Number.isNaN(d.getTime()) ? String(s).slice(0, 16) : d.toLocaleString('da-DK', {
-    day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
-  })
-}
 
 export function CheapLanePanel({ config }: { config?: ApiConfig }) {
   const [fane, setFane] = useState<Fane>('oversigt')
   const [timer, setTimer] = useState(24)
-  const [state, setState] = useState<BalancerState | null>(null)
-  const [historik, setHistorik] = useState<Historik | null>(null)
-  const [fejl, setFejl] = useState<FejlSvar | null>(null)
   const [serie, setSerie] = useState<TidsserieSpand[]>([])
-  const [registret, setRegistret] = useState<Registret | null>(null)
   const [henter, setHenter] = useState(false)
   const [besked, setBesked] = useState('')
   // Oversigt og kapacitet kommer fra ÉT snapshot med Centrals strøm som puls.
@@ -86,23 +65,22 @@ export function CheapLanePanel({ config }: { config?: ApiConfig }) {
   const [visIndstillinger, setVisIndstillinger] = useState(false)
 
 
+  // Kun tidsserien hentes ved siden af snapshotet: dashboardet baerer summer
+  // (kald, tokens, fejl), ikke FORLOEBET, og grafen skal vise et forloeb.
+  // Alt andet — balancer, udbydere, kapacitet, diagnose — kommer fra det ene
+  // snapshot, saa fladen ikke igen viser fire kilder fra fire tidspunkter.
   const hent = useCallback(async () => {
     if (!config) return
     setHenter(true)
-    // Hver kilde for sig: én der fejler må ikke tømme fladen for de andre.
-    const [s, h, f, t, r] = await Promise.allSettled([
-      getBalancerState(config), getHistorik(config, timer),
-      getFejl(config, timer, 100), getTidsserie(config, timer, timer <= 6 ? 15 : 60),
-      getRegistret(config),
-    ])
-    if (s.status === 'fulfilled') setState(s.value)
-    if (h.status === 'fulfilled') setHistorik(h.value)
-    if (f.status === 'fulfilled') setFejl(f.value)
-    if (t.status === 'fulfilled') setSerie(t.value.spand ?? [])
-    if (r.status === 'fulfilled') setRegistret(r.value)
-    const døde = [s, h, f, t, r].filter((x) => x.status === 'rejected').length
-    setBesked(døde ? `${døde} af 5 kilder svarede ikke` : '')
-    setHenter(false)
+    try {
+      const t = await getTidsserie(config, timer, timer <= 6 ? 15 : 60)
+      setSerie(t.spand ?? [])
+      setBesked('')
+    } catch {
+      setBesked('tidsserien kunne ikke hentes')
+    } finally {
+      setHenter(false)
+    }
   }, [config, timer])
 
   useEffect(() => { void hent() }, [hent])
@@ -155,7 +133,6 @@ export function CheapLanePanel({ config }: { config?: ApiConfig }) {
                   aria-pressed={f.id === fane}
                   onClick={() => setFane(f.id)}>
             {f.label}
-            {f.id === 'fejl' && fejl?.antal_i_vinduet ? ` (${fejl.antal_i_vinduet})` : ''}
           </button>
         ))}
       </div>
@@ -179,7 +156,7 @@ export function CheapLanePanel({ config }: { config?: ApiConfig }) {
             opbygning. Klik på et slot for at se hvorfor det får den vægt det får.
           </p>
           <CheapLaneBalancer
-            slots={butik.snapshot?.sections?.balancer?.data?.slots ?? state?.slots ?? []}
+            slots={butik.snapshot?.sections?.balancer?.data?.slots ?? []}
             udfoer={kontrol}
             simuler={async (taskKind, skip) => {
               if (!config) throw new Error('ingen forbindelse')
@@ -198,7 +175,7 @@ export function CheapLanePanel({ config }: { config?: ApiConfig }) {
               fortrydes. Hver ændring skrives i revisionssporet.
             </p>
             <CheapLaneProviders
-              registret={registret}
+              registret={butik.snapshot?.sections?.providers?.data ?? null}
               udfoer={kontrol}
               onInspicer={(provider, model) => {
                 setÅbnetFra(document.activeElement as HTMLElement | null)
@@ -214,10 +191,10 @@ export function CheapLanePanel({ config }: { config?: ApiConfig }) {
               onLuk={() => setValgt(null)}
               felter={[
                 { navn: 'Lane', vaerdi: 'cheap', maerkat: true },
-                { navn: 'Status', vaerdi: (registret?.modeller ?? []).find(
+                { navn: 'Status', vaerdi: (butik.snapshot?.sections?.providers?.data?.modeller ?? []).find(
                     (m) => m.provider === valgt.provider && m.model === valgt.model)?.enabled
                     ? 'aktiv' : 'slået fra' },
-                { navn: 'Slots i puljen', vaerdi: String((state?.slots ?? []).filter(
+                { navn: 'Slots i puljen', vaerdi: String((butik.snapshot?.sections?.balancer?.data?.slots ?? []).filter(
                     (x) => x.provider === valgt.provider && x.model === valgt.model).length) },
               ]}
             />
@@ -249,58 +226,6 @@ export function CheapLanePanel({ config }: { config?: ApiConfig }) {
         </>
       )}
 
-      {fane === 'fejl' && (
-        <div className="cl-fejl">
-          <p className="cl-note">
-            {fejl?.antal_i_vinduet ?? 0} fejl i vinduet. Viser de {fejl?.vist ?? 0} nyeste.
-          </p>
-          <table className="mc-tabel">
-            <thead><tr><th>Tid</th><th>Udbyder</th><th>Model</th><th>Kode</th><th>Besked</th></tr></thead>
-            <tbody>
-              {(fejl?.raekker ?? []).map((r, i) => (
-                <tr key={`${r.created_at}-${i}`}>
-                  <td>{tid(r.created_at)}</td>
-                  <td>{r.provider}</td>
-                  <td className="cl-model">{r.model}</td>
-                  <td>{r.error_code || '–'}</td>
-                  <td className="cl-besked">{r.error_message || '–'}</td>
-                </tr>
-              ))}
-              {!(fejl?.raekker ?? []).length && <tr><td colSpan={5}>Ingen fejl i vinduet.</td></tr>}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {fane === 'historik' && (
-        <div className="cl-historik">
-          <table className="mc-tabel">
-            <thead>
-              <tr><th>Udbyder</th><th>Model</th><th>Profil</th><th>Kald</th><th>Fejl</th>
-                <th>Succes</th><th>p50</th><th>p95</th><th>Pris</th><th>Sidst OK</th></tr>
-            </thead>
-            <tbody>
-              {(historik?.udbydere ?? []).map((u) => (
-                <tr key={`${u.provider}/${u.model}/${u.auth_profile ?? ''}`}>
-                  <td>{u.provider}</td>
-                  <td className="cl-model">{u.model}</td>
-                  <td>{u.auth_profile || 'default'}</td>
-                  <td>{u.kald}</td>
-                  <td>{u.fejl}</td>
-                  <td className={(u.succesrate ?? 1) < 0.5 ? 'cl-daarlig' : ''}>{pct(u.succesrate)}</td>
-                  <td>{u.latens_p50_ms || '–'}</td>
-                  <td>{u.latens_p95_ms || '–'}</td>
-                  <td>{u.pris_usd ? `$${u.pris_usd.toFixed(4)}` : '–'}</td>
-                  <td>{tid(u.sidste_ok)}</td>
-                </tr>
-              ))}
-              {!(historik?.udbydere ?? []).length && (
-                <tr><td colSpan={10}>Ingen kald i vinduet.</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
     </div>
   )
 }

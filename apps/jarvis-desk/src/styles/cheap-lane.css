@@ -198,12 +198,17 @@
 /* Tabellen og detaljen ved siden af hinanden — og under hinanden når der
    ikke er plads. Ingen viewport-skalering: teksten skal have samme størrelse
    uanset hvor bredt panelet står. */
+/* Ombrydning efter BEHOLDEREN, ikke efter vinduet.
+   Målt 18/9-2026: panelet sad i en cowork-rude på 948 px i et vindue på 980,
+   og en media-query på viewport ville derfor sige «bredt nok» selv når ruden
+   var smal. Bredden her bestemmes af ruden, ikke af skærmen — flex med en
+   min-bredde ombryder på det der faktisk er plads til. */
 .cl-med-inspektor {
-  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 300px); gap: 12px;
+  display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start;
 }
-@media (max-width: 900px) {
-  .cl-med-inspektor { grid-template-columns: minmax(0, 1fr); }
-}
+.cl-med-inspektor > :first-child { flex: 1 1 380px; min-width: 0; }
+.cl-med-inspektor > .cl-inspektor,
+.cl-med-inspektor > .cl-forklaring { flex: 0 1 300px; min-width: 260px; }
 
 .cl-inspektor {
   background: var(--bg-2); border: 1px solid var(--line); border-radius: 10px;

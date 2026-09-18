@@ -585,9 +585,36 @@ def select_cheap_lane_target(
         trace["final_weight"] = round(
             float(trace.get("effective_priority") or 9999) / (1.0 + bias), 4
         )
+    # RAEKKEFOELGEN OVENFOR ER EN BESLUTNING, IKKE EN TILFAELDIGHED (18/9-2026).
+    #
+    # Listen er allerede sorteret: betalte er filtreret fra, «default» laegger
+    # legitimerede udbydere FOER de anonyme offentlige proxyer, og «background»
+    # roterer bevidst mellem proxyerne. Et rent `min()` over vaegten kasserede
+    # alt det arbejde og valgte kun paa tal.
+    #
+    # Maalt: efter at mistral fejlede, valgte den `kilo` — en noegleloes proxy —
+    # frem for `groq`, som havde legitimation og stod foerst.
+    # test_execute_cheap_lane_fails_over_to_next_provider fangede det.
+    #
+    # Derfor: gruppen (legitimeret foer proxy, i den raekkefoelge listen ER
+    # bygget i) er det foerste kriterium, vaegten det andet, og pladsen i
+    # listen det tredje. Bias kan flytte en kandidat inden for sin gruppe —
+    # det er dens formaal — men den kan ikke ophaeve kontrakten om at en
+    # anonym proxy er sidste udvej.
+    plads = {id(pair[0]): nr for nr, pair in enumerate(evaluated)}
+    gruppe = {id(pair[0]): (1 if _is_public_proxy(pair[0].get("provider", "")) else 0)
+              for pair in evaluated}
+    if kind == "background":
+        # Her ER proxyerne det foretrukne — rotationen har allerede lagt dem
+        # forrest, saa gruppen maa ikke skubbe dem bagud igen.
+        gruppe = {n: 0 for n in gruppe}
     selected = min(
         eligible,
-        key=lambda pair: float(pair[1].get("final_weight") or 9999),
+        key=lambda pair: (
+            gruppe[id(pair[0])],
+            float(pair[1].get("final_weight") or 9999),
+            plads[id(pair[0])],
+        ),
         default=None,
     )
     if selected is not None:

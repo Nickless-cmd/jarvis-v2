@@ -299,13 +299,16 @@ def _build_structured_transcript_messages(
     except Exception:
         pass
 
-    # CC-style time-gap microcompact: after a quiet gap, provider caches are
-    # already cold enough that carrying full old tool payloads is wasteful.
-    # Apply before rendering so old tool rows become deterministic short stubs,
-    # while the newest tool results stay intact for local continuity.
+    # Cache-bevidst microcompact (19/9-2026): gamle tool-resultater stubbes bag
+    # en KLAEBENDE graense, der kun rykker naar cachen maalt er kold (≥ 3 t).
+    # Den gamle regel stubbede efter 60 min — midt i en varm cache — og slap
+    # stubbene igen ved naeste tur: to cache-brud pr. pause. Se microcompact.
+    # Kun en rigtig prompt-bygning maa flytte graensen; ring-pollen maaler.
     try:
-        from core.context.microcompact import apply_time_gap_microcompact
-        history, _microcompact_stats = apply_time_gap_microcompact(history)
+        from core.context.microcompact import apply_cache_aware_microcompact
+        history, _microcompact_stats = apply_cache_aware_microcompact(
+            history, session_id=str(session_id or ""), persist=bivirkninger,
+        )
     except Exception:
         pass
 

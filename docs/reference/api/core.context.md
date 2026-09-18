@@ -97,17 +97,22 @@ _Kontekst-komprimering: ÉN sti, med de garantier den manglede._
 | function | `komprimer_session` | `(session_id, *, udloeser, focus=…, low_water_tokens=…)` | Komprimér sessionen. Returnerer `CompactResult`, eller None hvis der | [src](../../../core/context/kompaktering.py#L274) |
 
 ## `core/context/microcompact.py`
-_Time-gap microcompaction for visible transcript tool results._
+_Cache-bevidst microcompact af gamle tool-resultater i det synlige transcript._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_now_utc` | `()` | — | [src](../../../core/context/microcompact.py#L18) |
-| function | `_enabled` | `()` | — | [src](../../../core/context/microcompact.py#L22) |
-| function | `_parse_dt` | `(value)` | — | [src](../../../core/context/microcompact.py#L30) |
-| function | `_latest_assistant_at` | `(messages)` | — | [src](../../../core/context/microcompact.py#L43) |
-| function | `_is_stubbed` | `(content)` | — | [src](../../../core/context/microcompact.py#L52) |
-| function | `_stub_tool_result` | `(message)` | — | [src](../../../core/context/microcompact.py#L56) |
-| function | `apply_time_gap_microcompact` | `(messages, *, now=…, gap_minutes=…, keep_recent_tools=…)` | Stub old tool results after a long quiet gap. | [src](../../../core/context/microcompact.py#L63) |
+| function | `_now_utc` | `()` | — | [src](../../../core/context/microcompact.py#L55) |
+| function | `_enabled` | `()` | — | [src](../../../core/context/microcompact.py#L59) |
+| function | `_parse_dt` | `(value)` | — | [src](../../../core/context/microcompact.py#L67) |
+| function | `_latest_assistant_at` | `(messages)` | — | [src](../../../core/context/microcompact.py#L80) |
+| function | `_is_stubbed` | `(content)` | — | [src](../../../core/context/microcompact.py#L89) |
+| function | `_stub_tool_result` | `(message)` | — | [src](../../../core/context/microcompact.py#L93) |
+| function | `_id` | `(message)` | — | [src](../../../core/context/microcompact.py#L100) |
+| function | `_sikr_tabel` | `(conn)` | — | [src](../../../core/context/microcompact.py#L109) |
+| function | `_epoke` | `(conn, session_id)` | Seneste komprimerings-markoer. En ny markoer aendrer praefikset alligevel. | [src](../../../core/context/microcompact.py#L120) |
+| function | `laes_graense` | `(session_id)` | Den gaeldende graense for sessionen i den aktuelle epoke (0 = ingen). | [src](../../../core/context/microcompact.py#L129) |
+| function | `_gem_graense` | `(session_id, cutoff_id)` | — | [src](../../../core/context/microcompact.py#L146) |
+| function | `apply_cache_aware_microcompact` | `(messages, *, session_id, now=…, gap_minutes=…, keep_recent_tools=…, persist=…)` | Stub gamle tool-resultater bag en klaebende, cache-bevidst graense. | [src](../../../core/context/microcompact.py#L162) |
 
 ## `core/context/session_compact.py`
 _Session-level context compaction._

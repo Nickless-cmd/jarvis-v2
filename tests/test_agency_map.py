@@ -82,13 +82,16 @@ def test_en_forbundet_bro_lukker_sin_reparations_opgave(monkeypatch):
 
     opdateringer: list[dict] = []
     monkeypatch.setattr(ac, "_find_existing_agency_task",
-                        lambda kandidat: {"id": "task-1", "scope": kandidat["scope"]})
+                        lambda kandidat: {"task_id": "task-1", "scope": kandidat["scope"]})
     monkeypatch.setattr(runtime_tasks, "update_task",
                         lambda tid, **kw: opdateringer.append({"id": tid, **kw}))
     ud = ac._luk_loeste_reparationer([
         {"status": "connected", "title": "Hidden Runtime -> Mission Control",
          "target": "Hidden Runtime -> Mission Control", "confidence": 1.0, "next_move": "x"},
     ])
+    # Posten baerer `task_id`, ikke `id`. Maalt live 18/9: lukningen ramte en
+    # TOM streng, gjorde ingenting — og rapporterede alligevel at have lukket
+    # noget. En stille nul-handling der melder succes er vaerre end en fejl.
     assert ud == ["task-1"]
     assert opdateringer[0]["status"] == "succeeded"
     assert opdateringer[0]["blocked_reason"] == ""
@@ -100,7 +103,28 @@ def test_en_bro_der_stadig_er_partial_lukker_INTET(monkeypatch):
     import core.services.agency_cartographer as ac
 
     monkeypatch.setattr(ac, "_find_existing_agency_task",
-                        lambda kandidat: {"id": "task-2", "scope": "x"})
+                        lambda kandidat: {"task_id": "task-2", "scope": "x"})
     assert ac._luk_loeste_reparationer([
         {"status": "partial", "title": "t", "target": "t", "confidence": 0.67, "next_move": "x"},
     ]) == []
+
+
+def test_en_opgave_uden_id_rapporteres_ikke_som_lukket(monkeypatch):
+    """Den fejl der faktisk skete (maalt live 18/9-2026).
+
+    Posten baerer `task_id`; koden laeste `id`. Resultatet var en tom streng
+    til `update_task`, som ikke gjorde noget — mens scanningen rapporterede
+    `resolvedTasks: ['']`, altsaa at den HAVDE lukket noget. En stille
+    nul-handling der melder succes er vaerre end en fejl, fordi den fjerner
+    grunden til at kigge efter.
+    """
+    import core.services.agency_cartographer as ac
+    from core.services import runtime_tasks
+
+    kaldt: list = []
+    monkeypatch.setattr(ac, "_find_existing_agency_task", lambda k: {"scope": "x"})
+    monkeypatch.setattr(runtime_tasks, "update_task", lambda tid, **kw: kaldt.append(tid))
+    ud = ac._luk_loeste_reparationer([
+        {"status": "connected", "title": "t", "target": "t", "confidence": 1.0, "next_move": "x"},
+    ])
+    assert ud == [] and kaldt == []

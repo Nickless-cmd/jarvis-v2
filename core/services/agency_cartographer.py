@@ -439,9 +439,12 @@ def _luk_loeste_reparationer(edges: list[dict[str, Any]]) -> list[str]:
         })
         if not opgave:
             continue
+        opgave_id = str(opgave.get("task_id") or opgave.get("id") or "")
+        if not opgave_id:
+            continue
         try:
             update_task(
-                str(opgave.get("id") or ""),
+                opgave_id,
                 status="succeeded",
                 blocked_reason="",
                 result_summary=(
@@ -449,12 +452,12 @@ def _luk_loeste_reparationer(edges: list[dict[str, Any]]) -> list[str]:
                     f"({int(float(edge.get('confidence') or 0) * 100)}% bevis) — "
                     "lukket af kartografen selv"),
             )
-            lukkede.append(str(opgave.get("id") or ""))
+            lukkede.append(opgave_id)
             logger.info("agency-cartographer: lukkede loest reparation %s (%s)",
-                        opgave.get("id"), edge.get("title"))
+                        opgave_id, edge.get("title"))
         except Exception:
             logger.warning("agency-cartographer: kunne ikke lukke opgave %s",
-                           opgave.get("id"), exc_info=True)
+                           opgave_id, exc_info=True)
     return lukkede
 
 

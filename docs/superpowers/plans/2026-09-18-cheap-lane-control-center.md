@@ -1,6 +1,6 @@
 # Cheap Lane Control Center Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Replace Jarvis Desk's current Cheap Lane admin table with an owner-only control center for capacity, providers, routing, logs, diagnostics, and audited controls.
 
@@ -67,7 +67,7 @@
 - Produces: `record_route_decision(*, correlation_id: str, task_kind: str, daemon: str, candidates: list[dict[str, object]], selected_slot_id: str, selection_reason: str) -> str`, `record_quota_observation(*, provider: str, auth_profile: str, period: str, unit: str, limit: float | None, remaining: float | None, reset_at: str | None, observed_at: str | None = None) -> int`, `record_cheap_lane_audit(*, actor: str, action: str, target: str, reason: str, before: dict[str, object], after: dict[str, object], result: str) -> str`, `finalize_cheap_lane_audit(audit_id: str, *, after: dict[str, object], result: str, error_code: str = "") -> dict[str, object]`, `record_redacted_payload(*, invocation_id: str, prompt: str | None, response: str | None, status: str, expires_at: str) -> int`, `list_cheap_lane_invocations(*, since: str, until: str | None = None, provider: str = "", model: str = "", auth_profile: str = "", daemon: str = "", status: str = "", error_class: str = "", correlation_id: str = "", query: str = "", cursor: str = "", limit: int = 100) -> dict[str, object]`, and `get_cheap_lane_invocation_detail(invocation_id: str) -> dict | None`.
 - Extends: `record_cheap_provider_invocation` with optional `invocation_id`, `correlation_id`, `daemon`, `task_kind`, `egress`, `error_class`, `payload_status`, cache-token, attempt, parent, and route-decision arguments while preserving all existing callers.
 
-- [ ] **Step 1: Write failing schema and compatibility tests**
+- [x] **Step 1: Write failing schema and compatibility tests**
 
 ```python
 def test_extended_invocation_defaults_preserve_old_callers(isolated_runtime):
@@ -91,13 +91,13 @@ def test_route_trace_and_audit_are_durable(isolated_runtime):
     assert list_cheap_lane_audit(limit=10)["items"][0]["audit_id"] == audit_id
 ```
 
-- [ ] **Step 2: Run the focused tests and verify failure**
+- [x] **Step 2: Run the focused tests and verify failure**
 
 Run: `pytest -q tests/test_db_cheap_lane_control.py tests/test_db_cheap_provider.py`
 
 Expected: FAIL because the new module, fields, and query functions do not exist.
 
-- [ ] **Step 3: Add idempotent schemas and CRUD**
+- [x] **Step 3: Add idempotent schemas and CRUD**
 
 Add nullable/defaulted columns to `cheap_provider_invocations`: `invocation_id`, `correlation_id`, `daemon`, `task_kind`, `egress`, `error_class`, `payload_status`, `cache_hit_tokens`, `cache_miss_tokens`, `attempt`, `retry_parent_id`, `fallback_parent_id`, and `route_decision_id`. Generate UUID identifiers when omitted.
 
@@ -110,13 +110,13 @@ and API mapping is added in Task 6.
 
 Serialize bounded JSON with `ensure_ascii=False`; cap candidates at 100, audit before/after JSON at 64 KiB each, and page size at 500. Never interpolate filters into SQL.
 
-- [ ] **Step 4: Run focused DB tests**
+- [x] **Step 4: Run focused DB tests**
 
 Run: `pytest -q tests/test_db_cheap_lane_control.py tests/test_db_cheap_provider.py tests/test_cheap_lane_history.py`
 
 Expected: PASS, including old rows and old call signatures.
 
-- [ ] **Step 5: Commit the storage layer**
+- [x] **Step 5: Commit the storage layer**
 
 ```bash
 git add -- core/runtime/db_cheap_provider.py core/runtime/db_cheap_lane_control.py tests/test_db_cheap_lane_control.py tests/test_db_cheap_provider.py
@@ -137,7 +137,7 @@ python scripts/commit_with_attribution.py --repo . --actor codex --origin intera
 - Consumes: Task 1 `record_route_decision` and extended invocation recorder.
 - Produces: `CheapLaneTraceContext`, `build_candidate_trace(candidate: dict[str, object], *, now: datetime) -> dict[str, object]`, and optional `correlation_id`, `daemon`, `attempt`, `retry_parent_id`, and `fallback_parent_id` arguments on `execute_cheap_lane_via_pool`.
 
-- [ ] **Step 1: Write failing routing-evidence tests**
+- [x] **Step 1: Write failing routing-evidence tests**
 
 ```python
 def test_selection_records_selected_and_rejected_candidates(monkeypatch, isolated_runtime):
@@ -159,13 +159,13 @@ def test_fallback_keeps_correlation_and_links_attempts(
     assert rows[1]["fallback_parent_id"] == rows[0]["invocation_id"]
 ```
 
-- [ ] **Step 2: Run focused selection tests and verify failure**
+- [x] **Step 2: Run focused selection tests and verify failure**
 
 Run: `pytest -q tests/test_cheap_lane_route_trace.py tests/test_cheap_provider_runtime_selection.py`
 
 Expected: FAIL on unknown arguments and absent trace records.
 
-- [ ] **Step 3: Implement context propagation and complete candidate evidence**
+- [x] **Step 3: Implement context propagation and complete candidate evidence**
 
 Use a frozen dataclass so recursive fallback calls retain identity without global mutable state:
 
@@ -188,13 +188,13 @@ Evaluate and record every bounded candidate once per selection. Include base pri
 
 Record failed invocations before recursing to fallback. Parse cache token fields and standardized quota metadata from adapter results and pass them to the recorder.
 
-- [ ] **Step 4: Run selection, balancer, and adapter tests**
+- [x] **Step 4: Run selection, balancer, and adapter tests**
 
 Run: `pytest -q tests/test_cheap_lane_route_trace.py tests/test_cheap_provider_runtime_selection.py tests/test_cheap_lane_balancer.py tests/test_cheap_provider_runtime_adapters.py`
 
 Expected: PASS with one correlation chain and no duplicate route decision per attempt.
 
-- [ ] **Step 5: Commit runtime tracing**
+- [x] **Step 5: Commit runtime tracing**
 
 ```bash
 git add -- core/services/cheap_lane_trace_context.py core/services/cheap_provider_runtime_selection.py core/services/cheap_provider_runtime_adapters.py core/services/cheap_lane_balancer.py tests/test_cheap_lane_route_trace.py tests/test_cheap_provider_runtime_selection.py
@@ -214,7 +214,7 @@ python scripts/commit_with_attribution.py --repo . --actor codex --origin intera
 - Consumes: Task 1 quota observations and invocation token history.
 - Produces: `QuotaWindow`, `capacity_snapshot(now: datetime | None = None) -> dict`, `set_quota_policy(*, provider: str, auth_profile: str, windows: list[dict[str, object]], expected_revision: str = "") -> dict`, and `observe_provider_quota(*, provider: str, auth_profile: str, observation: dict[str, object]) -> int`.
 
-- [ ] **Step 1: Write failing precedence and aggregation tests**
+- [x] **Step 1: Write failing precedence and aggregation tests**
 
 ```python
 def test_provider_report_beats_config_and_estimate(isolated_runtime, cheap_registry):
@@ -238,13 +238,13 @@ def test_aggregate_never_mixes_units(isolated_runtime, cheap_registry_with_unkno
 
 Also test ISO week boundaries, calendar month boundaries, reset timestamps, stale observations, configured fallback, estimate confidence/sample size, auth-profile isolation, and unknown versus zero.
 
-- [ ] **Step 2: Run quota tests and verify failure**
+- [x] **Step 2: Run quota tests and verify failure**
 
 Run: `pytest -q tests/test_cheap_lane_quotas.py tests/test_provider_registry_admin.py`
 
 Expected: FAIL because quota policy and normalized windows do not exist.
 
-- [ ] **Step 3: Implement validated quota policy and normalized windows**
+- [x] **Step 3: Implement validated quota policy and normalized windows**
 
 Store provider/auth-profile policies under a backward-compatible `quota_policy` array in the provider registry:
 
@@ -256,13 +256,13 @@ Validate `limit > 0`, allowed periods/units, UTC-safe reset calculation, and Che
 
 Calculate usage directly from invocation history. Aggregate only windows with the same period and unit; return `complete=false` and `limit=null` when any participating capacity is unknown, while also returning `known_limit` and `unknown_members`.
 
-- [ ] **Step 4: Run quota, registry, and history tests**
+- [x] **Step 4: Run quota, registry, and history tests**
 
 Run: `pytest -q tests/test_cheap_lane_quotas.py tests/test_provider_registry_admin.py tests/test_cheap_lane_history.py tests/test_cheap_provider_runtime_adapters.py`
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit quota support**
+- [x] **Step 5: Commit quota support**
 
 ```bash
 git add -- core/services/cheap_lane_quotas.py core/services/provider_registry_admin.py core/services/cheap_provider_runtime_adapters.py tests/test_cheap_lane_quotas.py tests/test_provider_registry_admin.py
@@ -283,7 +283,7 @@ python scripts/commit_with_attribution.py --repo . --actor codex --origin intera
 - Consumes: Task 1 payload persistence and Task 2 invocation identifiers.
 - Produces: `redact_payload(value: object) -> RedactionResult`, `capture_invocation_payload(*, invocation_id: str, prompt: object, response: object) -> str`, and `purge_expired_payloads(now: datetime | None = None) -> int`.
 
-- [ ] **Step 1: Write failing redaction and expiry tests**
+- [x] **Step 1: Write failing redaction and expiry tests**
 
 ```python
 def test_redaction_removes_headers_keys_and_secret_fields():
@@ -298,13 +298,13 @@ def test_failed_redaction_stores_status_not_payload(isolated_runtime, monkeypatc
     assert get_redacted_payload("inv-1")["prompt"] is None
 ```
 
-- [ ] **Step 2: Run payload tests and verify failure**
+- [x] **Step 2: Run payload tests and verify failure**
 
 Run: `pytest -q tests/test_cheap_lane_payloads.py tests/test_retention.py`
 
 Expected: FAIL because the redaction service is absent.
 
-- [ ] **Step 3: Implement bounded capture**
+- [x] **Step 3: Implement bounded capture**
 
 Redact case-insensitive secret field names, authorization/cookie headers, known key prefixes, and runtime-configured patterns. Replace values with `[REDACTED]`; do not log rejected raw input. Bound prompt and response to 64 KiB each after redaction and store `expires_at = captured_at + 7 days` unless runtime configuration supplies another positive value.
 
@@ -316,13 +316,13 @@ its invocation metadata. Runtime overrides are read from
 
 Capture payload only after an invocation identifier exists. A capture failure must never fail the provider call; it records `payload_status` on the invocation and emits a redacted observability event.
 
-- [ ] **Step 4: Run payload, runtime, and retention tests**
+- [x] **Step 4: Run payload, runtime, and retention tests**
 
 Run: `pytest -q tests/test_cheap_lane_payloads.py tests/test_retention.py tests/services/test_events_retention.py tests/test_cheap_provider_runtime_selection.py`
 
 Expected: PASS and no raw secret in test output or DB rows.
 
-- [ ] **Step 5: Commit payload lifecycle**
+- [x] **Step 5: Commit payload lifecycle**
 
 ```bash
 git add -- core/services/cheap_lane_payloads.py core/services/cheap_provider_runtime_selection.py core/services/retention.py core/services/events_retention.py tests/test_cheap_lane_payloads.py tests/test_retention.py
@@ -341,7 +341,7 @@ python scripts/commit_with_attribution.py --repo . --actor codex --origin intera
 - Consumes: `balancer_snapshot()`, `fuld_registrering()`, `capacity_snapshot()`, history queries, and Central incident readers.
 - Produces: `diagnose_cheap_lane(now: datetime | None = None) -> dict` and `build_cheap_lane_dashboard(window_hours: int = 24) -> dict`.
 
-- [ ] **Step 1: Write failing finding and partial-snapshot tests**
+- [x] **Step 1: Write failing finding and partial-snapshot tests**
 
 ```python
 def test_diagnostics_detects_starvation_and_stale_quota(monkeypatch):
@@ -356,13 +356,13 @@ def test_dashboard_keeps_healthy_sections_when_central_fails(monkeypatch):
     assert snap["sections"]["central"]["error"]["code"] == "source-unavailable"
 ```
 
-- [ ] **Step 2: Run diagnostics/dashboard tests and verify failure**
+- [x] **Step 2: Run diagnostics/dashboard tests and verify failure**
 
 Run: `pytest -q tests/test_cheap_lane_diagnostics.py tests/test_cheap_lane_dashboard.py`
 
 Expected: FAIL because both services are absent.
 
-- [ ] **Step 3: Implement deterministic findings and section envelopes**
+- [x] **Step 3: Implement deterministic findings and section envelopes**
 
 Every section uses:
 
@@ -375,13 +375,13 @@ Implement the ten diagnostic classes from the spec with stable codes, severity, 
 
 The top-level snapshot returns schema version, generated time, selected window, complete/partial/stale status, KPI summary, and sections for capacity, providers, balancer, trends, diagnostics, and Central evidence.
 
-- [ ] **Step 4: Run service tests with existing sources**
+- [x] **Step 4: Run service tests with existing sources**
 
 Run: `pytest -q tests/test_cheap_lane_diagnostics.py tests/test_cheap_lane_dashboard.py tests/test_cheap_lane_history.py tests/test_cheap_lane_balancer.py tests/test_provider_registry_admin.py`
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit dashboard services**
+- [x] **Step 5: Commit dashboard services**
 
 ```bash
 git add -- core/services/cheap_lane_diagnostics.py core/services/cheap_lane_dashboard.py tests/test_cheap_lane_diagnostics.py tests/test_cheap_lane_dashboard.py
@@ -399,7 +399,7 @@ python scripts/commit_with_attribution.py --repo . --actor codex --origin intera
 - Consumes: Tasks 1, 3, 4, and 5 service functions.
 - Produces: dashboard, capacity, logs, log detail, diagnostics, audit, filtered log exports, and a secret-free diagnostic-package export under `/mc/cheap-lane`.
 
-- [ ] **Step 1: Write failing route and authorization tests**
+- [x] **Step 1: Write failing route and authorization tests**
 
 ```python
 def test_dashboard_requires_owner(non_owner_client):
@@ -421,25 +421,25 @@ def test_diagnostic_package_links_sources_without_secrets(owner_client, seeded_c
     assert "api_key" not in json.dumps(data).lower()
 ```
 
-- [ ] **Step 2: Run route tests and verify failure**
+- [x] **Step 2: Run route tests and verify failure**
 
 Run: `pytest -q tests/test_cheap_lane_control_routes.py`
 
 Expected: FAIL with 404.
 
-- [ ] **Step 3: Implement the read routes and bounds**
+- [x] **Step 3: Implement the read routes and bounds**
 
 Use `_require_owner()` before invoking services. Validate `hours` to `1..1440`, page size to `1..500`, export range to at most 60 days, and export rows to a documented hard maximum. Return `422` for invalid units/periods and `404` for missing invocation identifiers.
 
 CSV uses Python's `csv` module and a streaming response. JSON export omits payloads. The diagnostic package contains the bounded snapshot, findings, matching metadata logs, configuration fingerprints, and schema versions, never raw configuration or credentials.
 
-- [ ] **Step 4: Run API and service tests**
+- [x] **Step 4: Run API and service tests**
 
 Run: `pytest -q tests/test_cheap_lane_control_routes.py tests/test_cheap_balancer_routes.py tests/test_cheap_lane_dashboard.py tests/test_cheap_lane_quotas.py`
 
 Expected: PASS and legacy routes remain green.
 
-- [ ] **Step 5: Commit read API**
+- [x] **Step 5: Commit read API**
 
 ```bash
 git add -- apps/api/jarvis_api/routes/cheap_lane_control.py apps/api/jarvis_api/app.py tests/test_cheap_lane_control_routes.py
@@ -464,7 +464,7 @@ python scripts/commit_with_attribution.py --repo . --actor codex --origin intera
 - Consumes: existing provider registry and balancer public functions plus Task 1 audit storage.
 - Produces: `acquire_admission(*, correlation_id: str, provider: str, slot_id: str, lease_seconds: int = 120) -> AdmissionLease`, `release_admission(lease_id: str) -> None`, `apply_control(command: CheapLaneCommand, actor: str) -> dict`, and `simulate_route(task_kind: str, skip_providers: frozenset[str]) -> dict`.
 
-- [ ] **Step 1: Write failing semantic and audit tests**
+- [x] **Step 1: Write failing semantic and audit tests**
 
 ```python
 def test_pause_is_temporary_but_deactivate_is_persistent(isolated_runtime, cheap_registry):
@@ -495,13 +495,13 @@ lease, set provider drain, verify a second acquisition is rejected, verify the
 first lease remains active, release it, and assert the drain reports zero
 active calls. Expired leases are pruned on read and cannot hold a drain open.
 
-- [ ] **Step 2: Run focused control tests and verify failure**
+- [x] **Step 2: Run focused control tests and verify failure**
 
 Run: `pytest -q tests/test_cheap_lane_control.py tests/test_cheap_lane_control_routes.py`
 
 Expected: FAIL because the command service and write routes do not exist.
 
-- [ ] **Step 3: Implement command validation, authoritative read-back, and audit**
+- [x] **Step 3: Implement command validation, authoritative read-back, and audit**
 
 Define a discriminated command model with `action`, `target`, `reason`, `expected_revision`, and action-specific `parameters`. Require a non-empty reason for destructive/persistent actions. Record an intent audit before mutation and finalize it with result/after state; if finalization fails, return infrastructure failure rather than success.
 
@@ -525,13 +525,13 @@ The `retention.set` action writes the canonical runtime settings
 payloads to `1..30` days, and payload retention not greater than metadata
 retention.
 
-- [ ] **Step 4: Run control, registry, balancer, and route tests**
+- [x] **Step 4: Run control, registry, balancer, and route tests**
 
 Run: `pytest -q tests/test_cheap_lane_control.py tests/test_cheap_lane_admission.py tests/test_cheap_lane_control_routes.py tests/test_provider_registry_admin.py tests/test_cheap_lane_balancer.py tests/test_cheap_provider_runtime_selection.py tests/test_cheap_balancer_routes.py`
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit controls**
+- [x] **Step 5: Commit controls**
 
 ```bash
 git add -- core/runtime/db_cheap_lane_control.py core/services/cheap_lane_admission.py core/services/cheap_lane_control.py apps/api/jarvis_api/routes/cheap_lane_control.py core/services/provider_registry_admin.py core/services/cheap_lane_balancer.py core/services/cheap_provider_runtime_selection.py tests/test_cheap_lane_control.py tests/test_cheap_lane_admission.py tests/test_cheap_lane_control_routes.py
@@ -550,7 +550,7 @@ python scripts/commit_with_attribution.py --repo . --actor codex --origin intera
 - Consumes: Tasks 6 and 7 API contracts plus `subscribeCentralStream`.
 - Produces: TypeScript types, fetch functions, `useCheapLaneStore(config, windowHours)`, targeted refresh, polling fallback, mutation helper, and inspector selection state.
 
-- [ ] **Step 1: Write failing store tests with fake timers**
+- [x] **Step 1: Write failing store tests with fake timers**
 
 ```tsx
 it('loads one snapshot and refreshes after a cheap-lane event', async () => {
@@ -569,13 +569,13 @@ it('marks data stale and polls after stream failure', async () => {
 })
 ```
 
-- [ ] **Step 2: Run the Desk tests and verify failure**
+- [x] **Step 2: Run the Desk tests and verify failure**
 
 Run: `cd apps/jarvis-desk && npm test -- --run src/lib/cheapLaneStore.test.ts src/components/cowork/cheaplane/CheapLanePanel.test.tsx`
 
 Expected: FAIL because the normalized API and hook do not exist.
 
-- [ ] **Step 3: Implement strict public types and resilient store behavior**
+- [x] **Step 3: Implement strict public types and resilient store behavior**
 
 Model section envelopes and quota unknowns explicitly:
 
@@ -587,13 +587,13 @@ export interface QuotaWindow { period: 'minute'|'day'|'week'|'month'; unit: 'tok
 
 Debounce matching Central events to one refresh per 300 ms. Maintain at most one shared Central stream via the existing singleton. After stream error, poll every 15 seconds; stop polling when live events resume. Abort in-flight reads on unmount or time-window change. Never retry unary mutations in the client.
 
-- [ ] **Step 4: Run API/store tests and typecheck**
+- [x] **Step 4: Run API/store tests and typecheck**
 
 Run: `cd apps/jarvis-desk && npm test -- --run src/lib/cheapLaneStore.test.ts src/components/cowork/cheaplane/CheapLanePanel.test.tsx && npx tsc -b --pretty false`
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit Desk data layer**
+- [x] **Step 5: Commit Desk data layer**
 
 ```bash
 git add -- apps/jarvis-desk/src/lib/cheapLaneApi.ts apps/jarvis-desk/src/lib/cheapLaneStore.ts apps/jarvis-desk/src/lib/cheapLaneStore.test.ts apps/jarvis-desk/src/components/cowork/cheaplane/CheapLanePanel.test.tsx
@@ -618,7 +618,7 @@ python scripts/commit_with_attribution.py --repo . --actor codex --origin intera
 - Consumes: Task 8 store and snapshot types.
 - Produces: stable header/KPI shell, Overview and Capacity tabs, shared accessible chart components, time-window control, and section-error rendering.
 
-- [ ] **Step 1: Install chart dependency and write failing rendering tests**
+- [x] **Step 1: Install chart dependency and write failing rendering tests**
 
 Run: `cd apps/jarvis-desk && npm install recharts`
 
@@ -637,25 +637,25 @@ it('exposes chart values without pointer hover', () => {
 })
 ```
 
-- [ ] **Step 2: Run focused component tests and verify failure**
+- [x] **Step 2: Run focused component tests and verify failure**
 
 Run: `cd apps/jarvis-desk && npm test -- --run src/components/cowork/cheaplane/CheapLaneOverview.test.tsx src/components/cowork/cheaplane/CheapLaneCapacity.test.tsx`
 
 Expected: FAIL because the components do not exist.
 
-- [ ] **Step 3: Build the shell and first two tabs**
+- [x] **Step 3: Build the shell and first two tabs**
 
 Use Lucide icons for refresh, settings, pause, warning, and info. Keep KPI cells in a CSS grid with fixed minimum dimensions. Recharts tooltips show exact value, source, and timestamp; every chart has a visually hidden or collapsible data table for keyboard/screen-reader access. Progress bars include exact `used / limit`, remaining value, source badge, and reset time.
 
 Import `./styles/cheap-lane.css` from `App.tsx`. Do not append styles to `app.css`. Implement responsive tracks and horizontal table containment without viewport-scaled fonts.
 
-- [ ] **Step 4: Run component tests, legacy panel test, and renderer build**
+- [x] **Step 4: Run component tests, legacy panel test, and renderer build**
 
 Run: `cd apps/jarvis-desk && npm test -- --run src/components/cowork/cheaplane && npm run build:renderer`
 
 Expected: PASS; no chart container warning and no TypeScript errors.
 
-- [ ] **Step 5: Commit overview and capacity UI**
+- [x] **Step 5: Commit overview and capacity UI**
 
 ```bash
 git add -- apps/jarvis-desk/package.json apps/jarvis-desk/package-lock.json apps/jarvis-desk/src/App.tsx apps/jarvis-desk/src/components/cowork/cheaplane/CheapLanePanel.tsx apps/jarvis-desk/src/components/cowork/cheaplane/CheapLaneOverview.tsx apps/jarvis-desk/src/components/cowork/cheaplane/CheapLaneCapacity.tsx apps/jarvis-desk/src/components/cowork/cheaplane/CheapLaneChart.tsx apps/jarvis-desk/src/styles/cheap-lane.css apps/jarvis-desk/src/components/cowork/cheaplane/CheapLaneOverview.test.tsx apps/jarvis-desk/src/components/cowork/cheaplane/CheapLaneCapacity.test.tsx
@@ -676,7 +676,7 @@ python scripts/commit_with_attribution.py --repo . --actor codex --origin intera
 - Consumes: Task 8 control mutation helper and Task 9 shell.
 - Produces: searchable Cheap Lane-only provider/model table, shared inspector, add/edit/quota forms, and pause/deactivate/delete/probe controls.
 
-- [ ] **Step 1: Write failing scope and control tests**
+- [x] **Step 1: Write failing scope and control tests**
 
 ```tsx
 it('shows only cheap-lane providers', () => {
@@ -695,25 +695,25 @@ it('requires confirmation for delete and explains credential retention', async (
 
 Test pause versus deactivate labels, pending state, server error preservation, API-key non-reflection, quota validation, and inspector keyboard focus return.
 
-- [ ] **Step 2: Run provider tests and verify failure**
+- [x] **Step 2: Run provider tests and verify failure**
 
 Run: `cd apps/jarvis-desk && npm test -- --run src/components/cowork/cheaplane/CheapLaneProviders.test.tsx`
 
 Expected: FAIL because the provider components do not exist.
 
-- [ ] **Step 3: Implement master/detail provider operations**
+- [x] **Step 3: Implement master/detail provider operations**
 
 Add a search field with provider/model/profile filtering. Adding a provider always sends `lane: 'cheap'`; there is no lane selector. Separate temporary `Pause` from persistent `Deaktivér`, and isolate destructive `Fjern` in a confirmation dialog. Use password input for optional credentials and clear it immediately after submit.
 
 Open provider/model detail in the shared right inspector, showing credentials readiness, health, quota windows, routing share, recent errors, and actions. Preserve table scroll and return focus to the originating row when the inspector closes.
 
-- [ ] **Step 4: Run provider, shell, and accessibility-focused tests**
+- [x] **Step 4: Run provider, shell, and accessibility-focused tests**
 
 Run: `cd apps/jarvis-desk && npm test -- --run src/components/cowork/cheaplane/CheapLaneProviders.test.tsx src/components/cowork/cheaplane/CheapLanePanel.test.tsx && npm run build:renderer`
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit provider administration**
+- [x] **Step 5: Commit provider administration**
 
 ```bash
 git add -- apps/jarvis-desk/src/components/cowork/cheaplane/CheapLaneProviders.tsx apps/jarvis-desk/src/components/cowork/cheaplane/CheapLaneControls.tsx apps/jarvis-desk/src/components/cowork/cheaplane/CheapLaneInspector.tsx apps/jarvis-desk/src/components/cowork/cheaplane/CheapLaneProviders.test.tsx apps/jarvis-desk/src/components/cowork/cheaplane/CheapLanePanel.tsx apps/jarvis-desk/src/styles/cheap-lane.css
@@ -733,7 +733,7 @@ python scripts/commit_with_attribution.py --repo . --actor codex --origin intera
 - Consumes: snapshot slot factors and Task 7 simulation/control endpoints.
 - Produces: sortable/filterable slot table, factor explanation, simulation form, pool/lane controls, and pause/drain/reset/probe/bias actions.
 
-- [ ] **Step 1: Write failing explanation and no-mutation tests**
+- [x] **Step 1: Write failing explanation and no-mutation tests**
 
 ```tsx
 it('explains zero weight with the hard rejection reason', async () => {
@@ -750,25 +750,25 @@ it('labels simulation as read-only', async () => {
 })
 ```
 
-- [ ] **Step 2: Run balancer tests and verify failure**
+- [x] **Step 2: Run balancer tests and verify failure**
 
 Run: `cd apps/jarvis-desk && npm test -- --run src/components/cowork/cheaplane/CheapLaneBalancer.test.tsx`
 
 Expected: FAIL because the component does not exist.
 
-- [ ] **Step 3: Implement balancer table and controls**
+- [x] **Step 3: Implement balancer table and controls**
 
 Show current weight, eligibility, base/effective priority, quota headroom, success, p95, breaker, cooldown, profile, and egress. Expanded factors must sum or otherwise explain the displayed final weight; hard gates appear before soft factors. Provide filters for provider, status, profile, egress, and health.
 
 Use explicit controls for rebuild pool, lane pause/drain, slot pause/drain, breaker reset, cooldown release, probe, and bounded routing bias. Display returned audit ID in the success notice and refresh authoritative state before clearing pending status.
 
-- [ ] **Step 4: Run balancer tab and renderer checks**
+- [x] **Step 4: Run balancer tab and renderer checks**
 
 Run: `cd apps/jarvis-desk && npm test -- --run src/components/cowork/cheaplane/CheapLaneBalancer.test.tsx src/components/cowork/cheaplane/CheapLanePanel.test.tsx && npm run build:renderer`
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit balancer UI**
+- [x] **Step 5: Commit balancer UI**
 
 ```bash
 git add -- apps/jarvis-desk/src/components/cowork/cheaplane/CheapLaneBalancer.tsx apps/jarvis-desk/src/components/cowork/cheaplane/CheapLaneBalancer.test.tsx apps/jarvis-desk/src/components/cowork/cheaplane/CheapLanePanel.tsx apps/jarvis-desk/src/components/cowork/cheaplane/CheapLaneInspector.tsx apps/jarvis-desk/src/styles/cheap-lane.css
@@ -792,7 +792,7 @@ python scripts/commit_with_attribution.py --repo . --actor codex --origin intera
 - Consumes: Task 6 paginated log/detail/diagnostic/audit/export APIs.
 - Produces: server-driven search, cursor pagination, invocation timeline, redacted payload view, diagnostic timeline, audit view, and exports.
 
-- [ ] **Step 1: Write failing pagination, privacy, and diagnostic tests**
+- [x] **Step 1: Write failing pagination, privacy, and diagnostic tests**
 
 ```tsx
 it('sends filters to the server and follows next_cursor', async () => {
@@ -813,13 +813,13 @@ Add settings tests that open the header settings icon, render the effective
 metadata/payload retention values, reject payload retention longer than
 metadata retention, and send `retention.set` only after explicit save.
 
-- [ ] **Step 2: Run log and diagnostic tests and verify failure**
+- [x] **Step 2: Run log and diagnostic tests and verify failure**
 
 Run: `cd apps/jarvis-desk && npm test -- --run src/components/cowork/cheaplane/CheapLaneLogs.test.tsx src/components/cowork/cheaplane/CheapLaneDiagnostics.test.tsx`
 
 Expected: FAIL because both tabs are absent.
 
-- [ ] **Step 3: Implement server-driven log and diagnostic views**
+- [x] **Step 3: Implement server-driven log and diagnostic views**
 
 Debounce free-text search by 250 ms and reset cursor on filter change. Do not retain all pages in memory. Detail inspector groups route decision, invocation attempts, fallback edges, tokens, price, latency, errors, and payload status. Payload content uses plain preformatted text, never `dangerouslySetInnerHTML`.
 
@@ -830,13 +830,13 @@ metadata retention and redacted-payload retention. It shows their consequences
 in field descriptions, uses numeric inputs with server-matching bounds, and
 renders the returned audit identifier after save.
 
-- [ ] **Step 4: Run all Cheap Lane React tests and renderer build**
+- [x] **Step 4: Run all Cheap Lane React tests and renderer build**
 
 Run: `cd apps/jarvis-desk && npm test -- --run src/lib/cheapLaneStore.test.ts src/components/cowork/cheaplane && npm run build:renderer`
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit logs and diagnostics**
+- [x] **Step 5: Commit logs and diagnostics**
 
 ```bash
 git add -- apps/jarvis-desk/src/components/cowork/cheaplane/CheapLaneLogs.tsx apps/jarvis-desk/src/components/cowork/cheaplane/CheapLaneDiagnostics.tsx apps/jarvis-desk/src/components/cowork/cheaplane/CheapLaneSettings.tsx apps/jarvis-desk/src/components/cowork/cheaplane/CheapLaneLogs.test.tsx apps/jarvis-desk/src/components/cowork/cheaplane/CheapLaneDiagnostics.test.tsx apps/jarvis-desk/src/components/cowork/cheaplane/CheapLaneSettings.test.tsx apps/jarvis-desk/src/components/cowork/cheaplane/CheapLaneInspector.tsx apps/jarvis-desk/src/components/cowork/cheaplane/CheapLanePanel.tsx apps/jarvis-desk/src/styles/cheap-lane.css
@@ -855,7 +855,7 @@ python scripts/commit_with_attribution.py --repo . --actor codex --origin intera
 - Consumes: all previous tasks.
 - Produces: one production Cheap Lane route with no legacy client-side five-request assembly and verified rollback-compatible backend routes.
 
-- [ ] **Step 1: Add the final integration/fault matrix**
+- [x] **Step 1: Add the final integration/fault matrix**
 
 Extend the panel test to cover:
 
@@ -875,7 +875,7 @@ it.each([
 
 Add an API integration test seeded with registry, balancer, DB, quota, route trace, payload, audit, and Central fixtures; assert one dashboard response links the same correlation identifier across log and detail.
 
-- [ ] **Step 2: Remove legacy browser aggregation and run the focused matrix**
+- [x] **Step 2: Remove legacy browser aggregation and run the focused matrix**
 
 Remove unused `getHistorik`, `getFejl`, `getTidsserie`, and direct registry assembly from `CheapLanePanel`; retain exported legacy API helpers only if another live consumer still imports them, verified with `rg`.
 
@@ -888,7 +888,7 @@ cd apps/jarvis-desk && npm test -- --run src/lib/cheapLaneStore.test.ts src/comp
 
 Expected: all focused tests and the full Desk production build PASS.
 
-- [ ] **Step 3: Run visual verification at supported widths**
+- [x] **Step 3: Run visual verification at supported widths**
 
 Start the renderer on an unused local port:
 
@@ -898,7 +898,7 @@ cd apps/jarvis-desk && npm run dev -- --host 127.0.0.1 --port 5187
 
 Using the repository's browser/Playwright workflow, capture at least `1440x900`, `1024x768`, and `720x900` for Overview, Capacity, Providers, Load Balancer, Log detail, and Diagnostics. Verify charts are nonblank, tooltips remain inside the viewport, tables scroll rather than overlap, inspector does not cover controls incoherently, longest provider/model names wrap or ellipsize with a tooltip, and all icon buttons expose accessible names.
 
-- [ ] **Step 4: Inspect scope, secrets, and generated-doc drift**
+- [x] **Step 4: Inspect scope, secrets, and generated-doc drift**
 
 Run:
 
@@ -911,7 +911,7 @@ python -m compileall core/services core/runtime apps/api/jarvis_api/routes
 
 Expected: no literal credential, no whitespace error, and no syntax failure. If hooks request generated docs, run the documented generator and include only its required output.
 
-- [ ] **Step 5: Commit final integration**
+- [x] **Step 5: Commit final integration**
 
 ```bash
 git add -- apps/jarvis-desk/src/components/cowork/cheaplane/CheapLanePanel.tsx apps/jarvis-desk/src/components/cowork/cheaplane/CheapLanePanel.test.tsx apps/jarvis-desk/src/lib/cheapLaneApi.ts tests/test_cheap_lane_control_integration.py
@@ -933,3 +933,32 @@ Before merge or deployment, perform a code review focused on:
 - regressions in legacy Cheap Lane routes and non-cheap provider administration.
 
 Merge, push, release, deployment to Jarvis' container, and local Desk installation are separate explicit operations after this implementation plan passes its focused verification.
+
+---
+
+## Status 18/9-2026
+
+Opgave 1-7 (backend) er Codex'. Opgave 8-13 (hele Desk-siden) er taget af Opus
+efter at Codex ramte sin kvote.
+
+**To bevidste afvigelser fra planen, begge maalt:**
+
+1. **Tidsserien hentes stadig for sig.** Planen ville fjerne `getTidsserie`
+   sammen med den oevrige klient-side-sammensaetning, men dashboardets
+   `trends`-sektion baerer SUMMER (kald, tokens, fejl), ikke et forloeb — og
+   grafen skal vise et forloeb. Ét fokuseret endpoint ved siden af snapshotet
+   er en mindre pris end at aendre backendens kontrakt sent i forloebet.
+
+2. **Ombrydningen er beholder-baseret, ikke viewport-baseret.** Planen sagde
+   responsive tracks; foerste udgave brugte `@media (max-width: 900px)`. Den
+   visuelle verifikation viste hvorfor det var forkert: panelet sad i en
+   cowork-rude paa 948 px i et vindue paa 980, saa vinduets bredde siger intet
+   om panelets. `flex-wrap` med min-bredde ombryder paa den plads der faktisk
+   er, og er efterproevet ved 1440, 1024, 900, 720 og 560 px.
+
+**Et fund der ikke var en UI-opgave:** opgave 2-3 havde aendret selve
+routingen. Udvaelgelsen blev skrevet om til et rent `min()` over en ny vaegt,
+hvilket kasserede raekkefoelgen «legitimerede udbydere foer anonyme proxyer».
+Maalt: efter et failover valgte lanen `kilo` (noegleloes) frem for `groq` (med
+legitimation). Rettet i opgave 13 og pinnet med to tests — bias havde ingen
+test overhovedet foer.

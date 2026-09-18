@@ -3,7 +3,7 @@ import { Animated, Easing, StyleSheet, Text, View, type TextStyle, type StylePro
 import { useReducedMotion } from '../lib/useReducedMotion'
 
 /** Hvor længe lyset er om at rejse hen over linjen. */
-const VARIGHED_MS = 1600
+const VARIGHED_MS = 2250 // Claude Desktops SHIMMER: 2,25 s (desk bruger samme)
 /** Båndets bredde i dp. Bredere = blødere stryg. */
 const BAAND = 90
 

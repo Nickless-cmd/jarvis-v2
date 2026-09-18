@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
-import { Animated, Easing, LayoutAnimation, Pressable, StyleSheet, Text, View } from 'react-native'
-import { ChevronDown, ChevronRight, Code2 } from 'lucide-react-native'
-import { tokens } from '../theme/tokens'
+import { Animated, Easing, LayoutAnimation, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { ChevronDown, Code2 } from 'lucide-react-native'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 import { useReducedMotion } from '../lib/useReducedMotion'
 import { summarizeRound, summerDiff, type ToolItem } from '../lib/toolGroup'
-import { GlidendeTekst } from './GlidendeTekst'
+import { LabelSkift } from './LabelSkift'
+import { Prikker } from './Prikker'
 
 interface Props {
   items: ToolItem[]
@@ -14,76 +14,100 @@ interface Props {
    * (Claude Desktop 1:1, 19/9-2026); før stod den som overskrift over linjen.
    *
    * Skrevet af en lille lokal model på serveren og slået op på kaldets id, så
-   * den hæfter sig på DE kald den opsummerer. Udeladt = ingen overskrift; den
-   * kommer først når runden er talt op, og linjen skal kunne stå uden.
+   * den hæfter sig på DE kald den opsummerer. Kommer live fra streamen og
+   * gemt fra beskedens tool_use_summary-blok. Udeladt = den mekaniske tekst.
    */
   etiket?: string
 }
 
+/** Klokken vises først efter 5 s mens runden kører (kildens `zS`). */
+export const KLOKKE_EFTER_S = 5
+
+/** Kildens format (`BS`): «12s», «1m 5s», «1h 2m 3s». */
+export function formatTid(sek: number): string {
+  const s = Math.max(0, Math.floor(sek))
+  const t = Math.floor(s / 3600)
+  const m = Math.floor((s % 3600) / 60)
+  const r = s % 60
+  return t > 0 ? `${t}h ${m}m ${r}s` : m > 0 ? `${m}m ${r}s` : `${r}s`
+}
+
 /**
- * Én sammenfoldet linje for en HEL runde værktøjsarbejde.
+ * Én sammenfoldet linje for en HEL runde værktøjsarbejde — med Claude
+ * Desktops bevægelse, 1:1 med desk (Bjørn 19/9-2026: «det skal være præcis
+ * sådan i mobil appen osse»). Tallene er læst i deres CSS/JS; se desk'
+ * `LabelSkift.tsx` og ~/cc-tool-linje-prompt-til-claude.md.
  *
- * Codex-appen viser fortælling → én linje → fortælling. Ikke ti linjer i træk.
- * Linjen ændrer sig mens runden kører («Læser 3 filer…») og lander på sin
- * datid når den er færdig («Læste 3 filer»). Trykker man, folder den ud og
- * viser hvert enkelt kald — detaljen er der, den fylder bare ikke tråden.
- *
- * Mens runden kører, ånder linjen; når den er færdig, står den stille.
- * Bevægelse betyder «i gang». En linje der pulser efter den er færdig, lyver.
+ * - **Spark-cellen**: Code2 i 20 dp mens runden arbejder, intet bagefter.
+ *   Når arbejdet slutter, overtager label-skiftets spark-lag glyfen.
+ * - **Labelen** glitrer mens der arbejdes og skifter med kildens overgange.
+ * - **Klokken** venter 5 s mens runden kører; en færdig runde viser sit tal.
+ * - **Prikker og caret** deler én celle. Telefonen har ingen hover, så
+ *   caret'en står altid fremme på en færdig linje — kildens
+ *   `[@media(hover:none)]`. Foldet = drejet -90°, åben = lige (150 ms).
+ * - **Entréen**: kildens 430 ms, hvor de første 30 % er usynlige. Blur og
+ *   skala sker i den usynlige del, så det der ses er en forsinket fade — og
+ *   den er med. (RN har ingen blur; den ville ikke ses alligevel.)
+ * - **Folden**: 200 ms med opacitet; indholdet i en ramme på højst 200 dp,
+ *   der selv scroller.
  */
 export function InlineToolGroup({ items, etiket }: Props) {
   const tokens = useTheme()
   const styles = useStyles(makestyles)
-  const [open, setOpen] = useState(false)
-  const pulse = useRef(new Animated.Value(1)).current
   const reduced = useReducedMotion()
+  const [open, setOpen] = useState(false)
   const running = items.some((i) => i.running)
   const summary = summarizeRound(items)
   const sum = summerDiff(items)
 
+  // Klokken: fra det øjeblik linjen stod der og arbejdede. Strømmen bærer
+  // ikke kaldets starttid på mobilen; linjen dukker op når kaldet starter.
+  const startet = useRef<number | null>(running ? Date.now() : null)
+  const [slut, setSlut] = useState<number | null>(null)
+  const [nu, setNu] = useState(Date.now())
   useEffect(() => {
-    if (!running || reduced) {
-      pulse.stopAnimation()
-      pulse.setValue(1)
-      return
+    if (running) {
+      if (startet.current == null) startet.current = Date.now()
+      setSlut(null)
+      const iv = setInterval(() => setNu(Date.now()), 250)
+      return () => clearInterval(iv)
     }
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulse, {
-          toValue: 0.4,
-          duration: 800,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true
-        }),
-        Animated.timing(pulse, {
-          toValue: 1,
-          duration: 800,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true
-        })
-      ])
-    )
-    loop.start()
-    return () => loop.stop()
-  }, [running, reduced, pulse])
+    if (startet.current != null && slut == null) setSlut(Date.now())
+  }, [running]) // eslint-disable-line react-hooks/exhaustive-deps
+  const sek = startet.current == null ? null : ((slut ?? nu) - startet.current) / 1000
+  const visSek = sek == null || (running && sek < KLOKKE_EFTER_S) ? null : Math.floor(sek)
+
+  // Entréen — kun når linjen BEGYNDER at arbejde; en genindlæst tråd skal
+  // ikke sende hver linje gennem den.
+  const entre = useRef(new Animated.Value(running && !reduced ? 0 : 1)).current
+  useEffect(() => {
+    if (!running || reduced) return
+    Animated.sequence([
+      Animated.delay(129),                     // 30 % af 430 ms: usynlig
+      Animated.timing(entre, { toValue: 1, duration: 301, easing: Easing.out(Easing.ease), useNativeDriver: true }),
+    ]).start()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Caret: drejes -90° når foldet, lige når åben (150 ms).
+  const drej = useRef(new Animated.Value(0)).current
+  useEffect(() => {
+    Animated.timing(drej, { toValue: open ? 1 : 0, duration: reduced ? 0 : 150, useNativeDriver: true }).start()
+  }, [open, reduced, drej])
 
   if (!summary) return null
-  // Claude Desktop 1:1 (19/9-2026, læst i deres `Tf`: `summary || … ||
-  // mekanisk`): rundens sætning ERSTATTER den mekaniske tekst, når den
-  // findes. Før stod den som overskrift over linjen. Samme regel som desk.
-  const tekst = etiket ? etiket : summary
-
-  // Ét kald har ingen detalje at folde ud — så er chevronen et tomt løfte.
+  // Claude Desktop 1:1 (læst i deres `Tf`: `summary || … || mekanisk`).
+  const tekst = etiket ? etiket : summary.replace(/…$/, '')
+  // Ét kald har ingen detalje at folde ud — så er caret'en et tomt løfte.
   const expandable = items.length > 1
 
   const toggle = () => {
     if (!expandable) return
-    if (!reduced) LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut)
+    if (!reduced) LayoutAnimation.configureNext(LayoutAnimation.create(200, 'easeOut', 'opacity'))
     setOpen((v) => !v)
   }
 
   return (
-    <View style={styles.wrap}>
+    <Animated.View style={[styles.wrap, { opacity: entre }]}>
       <Pressable
         accessibilityRole={expandable ? 'button' : 'text'}
         accessibilityLabel={tekst}
@@ -91,57 +115,54 @@ export function InlineToolGroup({ items, etiket }: Props) {
         onPress={toggle}
         testID="tool-group"
       >
-        {/* Samme lys som taenke-linjen. De to er soeskende; de skal ogsaa
-            opfoere sig ens naar de arbejder. */}
         <View style={styles.row}>
-          <Code2 size={16} color={tokens.color.fg2} strokeWidth={1.8} />
-          <GlidendeTekst text={tekst} aktiv={running} style={styles.summary} numberOfLines={1} />
-          {/* Gruppen er FOLDET som standard. Uden summen her ville tallene
-              vaere usynlige det meste af tiden, og saa var de lige saa godt
-              blevet i badgen. */}
+          <View style={[styles.spark, running ? styles.sparkAktiv : null]} testID="tool-spark">
+            {running ? <Code2 size={16} color={tokens.color.fg2} strokeWidth={1.8} /> : null}
+          </View>
+          <LabelSkift tekst={tekst} arbejder={running} style={styles.summary} farve={tokens.color.fg2} />
+          {visSek != null ? (
+            <Text style={styles.tid} testID="runde-tid">{formatTid(visSek)}</Text>
+          ) : null}
+          {/* Summen i selve linjen — foldet som standard ville tallene ellers
+              kun ses af den der folder ud. Et nul vises ikke. */}
           {sum ? (
             <View style={styles.tal}>
-              {sum.tilfoejet ? (
-                <Text style={[styles.talTekst, styles.plus]}>+{sum.tilfoejet}</Text>
-              ) : null}
-              {sum.fjernet ? (
-                <Text style={[styles.talTekst, styles.minus]}>−{sum.fjernet}</Text>
-              ) : null}
+              {sum.tilfoejet ? <Text style={[styles.talTekst, styles.plus]}>+{sum.tilfoejet}</Text> : null}
+              {sum.fjernet ? <Text style={[styles.talTekst, styles.minus]}>−{sum.fjernet}</Text> : null}
             </View>
           ) : null}
-          {expandable ? (
-            open ? (
-              <ChevronDown size={16} color={tokens.color.fg2} strokeWidth={1.8} />
-            ) : (
-              <ChevronRight size={16} color={tokens.color.fg2} strokeWidth={1.8} />
-            )
+          {running || expandable ? (
+            <View style={styles.celle} testID="tool-status-caret">
+              {running ? <Prikker farve={tokens.color.fg2} /> : null}
+              {!running && expandable ? (
+                <Animated.View style={{ transform: [{ rotate: drej.interpolate({ inputRange: [0, 1], outputRange: ['-90deg', '0deg'] }) }] }}>
+                  <ChevronDown size={16} color={tokens.color.fg2} strokeWidth={1.8} />
+                </Animated.View>
+              ) : null}
+            </View>
           ) : null}
         </View>
       </Pressable>
 
       {open ? (
-        <View style={styles.details} testID="tool-group-details">
-          {items.map((item, i) => (
-            <View key={`${item.label}-${i}`} style={styles.detailRaekke}>
-              <Text style={styles.detail} numberOfLines={1}>{item.label}</Text>
-              {item.diff ? (
-                // Groen/roed pr. kald. Samme semantik som diff-badgen: `ok` og
-                // `error`, ikke accent — en diff maa ikke skifte betydning
-                // fordi nogen vaelger en anden accentfarve.
-                <View style={styles.tal}>
-                  {item.diff.tilfoejet ? (
-                    <Text style={[styles.talTekst, styles.plus]}>+{item.diff.tilfoejet}</Text>
-                  ) : null}
-                  {item.diff.fjernet ? (
-                    <Text style={[styles.talTekst, styles.minus]}>−{item.diff.fjernet}</Text>
-                  ) : null}
-                </View>
-              ) : null}
-            </View>
-          ))}
+        <View style={styles.ramme} testID="tool-group-details">
+          <ScrollView nestedScrollEnabled style={styles.rammeScroll} contentContainerStyle={styles.details}>
+            {items.map((item, i) => (
+              <View key={`${item.label}-${i}`} style={styles.detailRaekke}>
+                <Text style={styles.detail} numberOfLines={1}>{item.label}</Text>
+                {item.diff ? (
+                  // Grøn/rød pr. kald: `ok` og `error`, ikke accent.
+                  <View style={styles.tal}>
+                    {item.diff.tilfoejet ? <Text style={[styles.talTekst, styles.plus]}>+{item.diff.tilfoejet}</Text> : null}
+                    {item.diff.fjernet ? <Text style={[styles.talTekst, styles.minus]}>−{item.diff.fjernet}</Text> : null}
+                  </View>
+                ) : null}
+              </View>
+            ))}
+          </ScrollView>
         </View>
       ) : null}
-    </View>
+    </Animated.View>
   )
 }
 
@@ -153,20 +174,25 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
     gap: tokens.spacing.sm,
     paddingVertical: tokens.spacing.sm
   },
-  summary: { color: tokens.color.fg2, fontSize: 15, flexShrink: 1 },
-  details: {
-    paddingLeft: 24,
-    paddingBottom: tokens.spacing.sm,
-    gap: 6
+  // Kildens w-0 -mr-2 / w-5 mr-0.5: bredden nul OG en negativ margen der
+  // æder mellemrummet, så labelen ikke står indrykket når runden er færdig.
+  spark: { width: 0, height: 20, marginRight: -tokens.spacing.sm, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
+  sparkAktiv: { width: 20, marginRight: 2 },
+  summary: { color: tokens.color.fg2, fontSize: 15 },
+  tid: { color: tokens.color.fg2, fontSize: 13, opacity: 0.65, fontVariant: ['tabular-nums'] },
+  celle: { minWidth: 16, alignItems: 'center', justifyContent: 'center' },
+  // Kildens ramme: ½ dp kant, 8 dp hjørner, 4/10/8 dp margen, højst 200 dp.
+  ramme: {
+    borderWidth: StyleSheet.hairlineWidth, borderColor: tokens.color.line, borderRadius: 8,
+    marginTop: 4, marginHorizontal: 10, marginBottom: 8, maxHeight: 200, overflow: 'hidden',
+    backgroundColor: 'rgba(0,0,0,0.25)'
   },
+  rammeScroll: { maxHeight: 200 },
+  details: { padding: 10, gap: 6 },
   detail: { color: tokens.color.fg3, fontSize: 14, flexShrink: 1 },
-  // `gap: 6` og ingen flex-straekning: tallene staar LIGE efter teksten,
-  // ikke ude ved kanten. Bjoern bad om «lige efter meta dataen», og et tal
-  // i den anden ende af skaermen laeses ikke som en del af den linje.
+  // Tallene står LIGE efter teksten, ikke ude ved kanten.
   detailRaekke: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   tal: { flexDirection: 'row', gap: 6 },
-  // Tabular-nums: tallene staar under hinanden i en liste, og uden dem
-  // danser kolonnen naar cifrene skifter bredde.
   talTekst: { fontSize: 12.5, fontWeight: '600', fontVariant: ['tabular-nums'] },
   plus: { color: tokens.color.ok },
   minus: { color: tokens.color.error }

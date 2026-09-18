@@ -296,8 +296,12 @@ it('kun den SIDSTE tankeraekke er i gang', () => {
 })
 
 it('lyset glider i BEGGE linjer — de er soeskende', () => {
+  // Tool-linjen glitrer gennem LabelSkift (19/9-2026: Claude Desktops label-
+  // skift), der selv bruger GlidendeTekst mens der arbejdes.
+  expect(kilde('components/ThinkingSummary.tsx')).toMatch(/<GlidendeTekst/)
+  expect(kilde('components/InlineToolGroup.tsx')).toMatch(/<LabelSkift/)
+  expect(kilde('components/LabelSkift.tsx')).toMatch(/<GlidendeTekst/)
   for (const f of ['components/ThinkingSummary.tsx', 'components/InlineToolGroup.tsx']) {
-    expect(kilde(f)).toMatch(/<GlidendeTekst/)
     // ... og aandedrag-opaciteten er vaek.
     expect(kilde(f)).not.toMatch(/opacity: pulse/)
   }
@@ -323,7 +327,7 @@ it('runde-etiketten naar hele vejen fra stream til skaerm', () => {
   //    1:1, 19/9-2026 — før stod den som overskrift over linjen)
   const g = kilde('components/InlineToolGroup.tsx')
   expect(g).toMatch(/const tekst = etiket \? etiket : summary/)
-  expect(g).toMatch(/<GlidendeTekst text=\{tekst\}/)
+  expect(g).toMatch(/<LabelSkift tekst=\{tekst\}/)
   expect(g).not.toMatch(/tool-group-etiket/)
   // 6. den GEMTE vej: listen slår også op i beskedernes tool_use_summary-blokke
   expect(kilde('components/MessageList.tsx')).toMatch(/gemteEtiketter\(messages\)/)

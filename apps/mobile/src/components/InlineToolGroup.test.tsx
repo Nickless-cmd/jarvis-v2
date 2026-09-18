@@ -33,9 +33,30 @@ it('ét kald har ingen chevron — den ville være et tomt løfte', async () => 
   expect(s.queryByTestId('tool-group-details')).toBeNull()
 })
 
-it('linjen er i nutid mens runden kører', async () => {
+it('linjen er i nutid mens runden kører — og prikkerne ruller i stedet for «…»', async () => {
+  // Som desk og Claude Desktop: prikkerne er tre bevægelige prikker, ikke tegn
+  // i teksten, så en ellipse i enden ville stå dobbelt.
   const s = await render(<InlineToolGroup items={[item({ running: true }), item()]} />)
-  expect(s.getByText('Læser 2 filer…')).toBeTruthy()
+  expect(s.getByText('Læser 2 filer')).toBeTruthy()
+  // Skjult for skærmlæsere med vilje (kildens aria-hidden).
+  expect(s.getByTestId('prikker', { includeHiddenElements: true })).toBeTruthy()
+})
+
+it('prikkerne forsvinder og caret\'en står fremme når runden er færdig', async () => {
+  const s = await render(<InlineToolGroup items={[item(), item()]} />)
+  expect(s.queryByTestId('prikker', { includeHiddenElements: true })).toBeNull()
+  expect(s.getByTestId('tool-status-caret')).toBeTruthy()
+})
+
+it('spark-cellen er kun bred mens runden arbejder', async () => {
+  const bredde = (s: Awaited<ReturnType<typeof render>>) => {
+    const st = s.getByTestId('tool-spark').props.style
+    return Object.assign({}, ...(Array.isArray(st) ? st.filter(Boolean) : [st])).width
+  }
+  const koer = await render(<InlineToolGroup items={[item({ running: true }), item()]} />)
+  expect(bredde(koer)).toBe(20)
+  const faerdig = await render(<InlineToolGroup items={[item(), item()]} />)
+  expect(bredde(faerdig)).toBe(0)
 })
 
 it('en tom runde tegner ingenting', async () => {

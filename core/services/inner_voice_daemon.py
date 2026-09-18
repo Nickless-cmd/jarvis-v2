@@ -233,8 +233,25 @@ def run_inner_voice_daemon(
             work_id="",
             mood_tone=note.get("mode", "thinking"),
             self_position=note.get("focus", "")[:100],
-            current_concern=str(note.get("initiative") or "")[:200],
-            current_pull=note.get("focus", "")[:200],
+            # FELTERNE BAR HINANDENS INDHOLD (rettet 18/9-2026).
+            #
+            # `current_concern` fik `initiative`, saa der stod «stability:high»
+            # hvor der skulle staa en bekymring — og `current_pull` fik SAMME
+            # `focus` som `self_position`, saa to af de fire felter var
+            # dubletter. Af fire tilstands-felter bar altsaa ét noget forkert
+            # og ét en kopi.
+            #
+            # Noten har hverken en «concern» eller en «pull»: den baerer mode,
+            # focus, summary, detail, confidence og initiative. Et initiativ er
+            # semantisk et TRAEK — det der draget ham mod handling — saa det
+            # hoerer i `current_pull`.
+            #
+            # Og bekymringen har ingen kilde. Den staar derfor TOM frem for at
+            # blive udfyldt med noget andet: en forkert vaerdi lukker
+            # spoergsmaalet, en tom siger at vi ikke ved det. Samme regel som
+            # ukendt kapacitet ikke maa staa som nul.
+            current_concern="",
+            current_pull=str(note.get("initiative") or "")[:200],
             voice_line=_ren_stemme(note.get("summary", ""))[:400],
             created_at=now_iso,
         )

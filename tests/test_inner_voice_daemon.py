@@ -841,3 +841,27 @@ def test_ekko_gemmes_ikke_som_stemme():
     aegte = "Der ligger en uro i at koden virker men jeg ikke forstår hvorfor."
     assert _ren_stemme(aegte) == aegte
     assert _ren_stemme(None) == ""
+
+
+def test_de_fire_tilstands_felter_baerer_hver_sit():
+    """Felterne bar hinandens indhold indtil 18/9-2026.
+
+    `current_concern` fik `initiative` — derfor stod der «stability:high» hvor
+    der skulle staa en bekymring — og `current_pull` fik SAMME `focus` som
+    `self_position`, saa to af fire felter var dubletter.
+
+    Noten baerer hverken en concern eller en pull: den har mode, focus,
+    summary, detail, confidence, initiative. Et initiativ er semantisk et
+    TRAEK. Bekymringen har ingen kilde og staar derfor tom — en forkert vaerdi
+    lukker spoergsmaalet, en tom siger at vi ikke ved det.
+    """
+    import inspect
+
+    from core.services import inner_voice_daemon
+
+    kilde = inspect.getsource(inner_voice_daemon)
+    afsnit = kilde[kilde.index("record_protected_inner_voice("):][:2400]
+    assert 'current_pull=str(note.get("initiative")' in afsnit
+    assert 'current_concern=""' in afsnit
+    # self_position og current_pull maa ikke laengere vaere samme udtryk.
+    assert afsnit.count('note.get("focus", "")') == 1

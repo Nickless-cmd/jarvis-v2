@@ -2,6 +2,25 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/runtime/db_private_notes.py`
+_Persistence for the private/protected inner-layer note tables._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `ensure_private_notes_tables` | `(conn)` | — | [src](../../../core/runtime/db_private_notes.py#L15) |
+| function | `_ensure_private_inner_note_columns` | `(conn)` | — | [src](../../../core/runtime/db_private_notes.py#L75) |
+| function | `_ensure_enriched_columns` | `(conn)` | Add enriched column to private layer tables if missing. | [src](../../../core/runtime/db_private_notes.py#L91) |
+| function | `record_private_inner_note` | `(*, note_id, source, run_id, work_id, status, note_kind, focus, uncertainty, identity_alignment, work_signal, private_summary, created_at)` | — | [src](../../../core/runtime/db_private_notes.py#L100) |
+| function | `update_private_inner_note_enriched` | `(*, run_id, enriched_summary)` | Replace template summary with LLM-enriched text. | [src](../../../core/runtime/db_private_notes.py#L154) |
+| function | `recent_private_inner_notes` | `(limit=…)` | — | [src](../../../core/runtime/db_private_notes.py#L164) |
+| function | `record_private_growth_note` | `(*, record_id, source, run_id, work_id, learning_kind, lesson, mistake_signal, helpful_signal, identity_signal, confidence, created_at)` | — | [src](../../../core/runtime/db_private_notes.py#L206) |
+| function | `update_private_growth_note_enriched` | `(*, run_id, enriched_lesson, enriched_helpful_signal)` | Replace template lesson and helpful_signal with LLM-enriched text. | [src](../../../core/runtime/db_private_notes.py#L257) |
+| function | `recent_private_growth_notes` | `(limit=…)` | — | [src](../../../core/runtime/db_private_notes.py#L269) |
+| function | `record_protected_inner_voice` | `(*, voice_id, source, run_id, work_id, mood_tone, self_position, current_concern, current_pull, voice_line, created_at)` | — | [src](../../../core/runtime/db_private_notes.py#L309) |
+| function | `update_protected_inner_voice_enriched` | `(*, run_id, enriched_voice_line)` | Replace template voice_line with LLM-enriched text. | [src](../../../core/runtime/db_private_notes.py#L357) |
+| function | `get_protected_inner_voice` | `(*, offset=…)` | Seneste beskyttede indre stemme. ``offset`` går et skridt længere tilbage. | [src](../../../core/runtime/db_private_notes.py#L367) |
+| function | `list_recent_protected_inner_voices` | `(*, limit=…)` | — | [src](../../../core/runtime/db_private_notes.py#L409) |
+
 ## `core/runtime/db_private_signals.py`
 _Persistence for the private inner-life signal tables._
 
@@ -903,37 +922,4 @@ _De navngivne profiler — Fase 9 i DeepSeek-harness-spec'en._
 |---|---|---|---|---|
 | function | `byg` | `(navn, *, overstyring=…)` | Den effektive profil for `navn`, eventuelt med en kørselsspecifik | [src](../../../core/runtime/profiles.py#L105) |
 | function | `kendte` | `()` | — | [src](../../../core/runtime/profiles.py#L122) |
-
-## `core/runtime/provider_router.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `load_provider_router_registry` | `()` | — | [src](../../../core/runtime/provider_router.py#L18) |
-| function | `configure_provider_router_entry` | `(*, provider, model, auth_mode, auth_profile, base_url, api_key, lane, set_visible)` | — | [src](../../../core/runtime/provider_router.py#L30) |
-| function | `provider_router_summary` | `()` | — | [src](../../../core/runtime/provider_router.py#L125) |
-| function | `main_agent_target` | `()` | — | [src](../../../core/runtime/provider_router.py#L162) |
-| function | `main_agent_selection` | `()` | — | [src](../../../core/runtime/provider_router.py#L183) |
-| function | `select_main_agent_target` | `(*, provider, model, auth_profile=…)` | — | [src](../../../core/runtime/provider_router.py#L200) |
-| function | `resolve_provider_router_target` | `(*, lane)` | — | [src](../../../core/runtime/provider_router.py#L254) |
-| function | `provider_router_lane_targets` | `()` | — | [src](../../../core/runtime/provider_router.py#L320) |
-| function | `list_provider_router_targets` | `(*, lane)` | — | [src](../../../core/runtime/provider_router.py#L325) |
-| function | `_provider_surface` | `(item)` | — | [src](../../../core/runtime/provider_router.py#L360) |
-| function | `_model_surface` | `(item)` | — | [src](../../../core/runtime/provider_router.py#L378) |
-| function | `_latest_model_for_lane` | `(*, registry, lane)` | — | [src](../../../core/runtime/provider_router.py#L388) |
-| function | `_configured_main_agent_targets` | `(*, registry)` | — | [src](../../../core/runtime/provider_router.py#L405) |
-| function | `_configured_target_match` | `(*, registry, provider, model)` | — | [src](../../../core/runtime/provider_router.py#L447) |
-| function | `_readiness_hint` | `(*, provider, auth_mode, auth_profile)` | — | [src](../../../core/runtime/provider_router.py#L459) |
-| function | `_provider_entry` | `(*, registry, provider)` | — | [src](../../../core/runtime/provider_router.py#L472) |
-| function | `_provider_auth_mode` | `(*, provider, registry)` | — | [src](../../../core/runtime/provider_router.py#L483) |
-| function | `_provider_base_url` | `(*, provider, registry)` | — | [src](../../../core/runtime/provider_router.py#L490) |
-| function | `_credentials_ready` | `(*, provider, auth_profile)` | — | [src](../../../core/runtime/provider_router.py#L497) |
-| function | `_upsert_provider` | `(items, entry)` | — | [src](../../../core/runtime/provider_router.py#L514) |
-| function | `_upsert_model` | `(items, entry)` | — | [src](../../../core/runtime/provider_router.py#L523) |
-| function | `_default_registry` | `()` | — | [src](../../../core/runtime/provider_router.py#L536) |
-| function | `_normalize_simple_id` | `(value, *, label)` | — | [src](../../../core/runtime/provider_router.py#L543) |
-| function | `_normalize_auth_mode` | `(value)` | — | [src](../../../core/runtime/provider_router.py#L550) |
-| function | `_ollama_model_exists` | `(*, registry, model)` | Return True if *model* is available in the live Ollama instance. | [src](../../../core/runtime/provider_router.py#L557) |
-| function | `_normalize_profile` | `(value)` | — | [src](../../../core/runtime/provider_router.py#L572) |
-| function | `_normalize_lane` | `(value)` | — | [src](../../../core/runtime/provider_router.py#L579) |
-| function | `_now` | `()` | — | [src](../../../core/runtime/provider_router.py#L586) |
 

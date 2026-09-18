@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7690/14884 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7690/14901 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 7690/14884 functions/methods documented (51%). The list b
 | `core.identity` | 67 | 160 | 41% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 651 | 1188 | 54% |
+| `core.runtime` | 651 | 1205 | 54% |
 | `core.services` | 5115 | 10234 | 49% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 109 | 184 | 59% |
@@ -41,7 +41,7 @@ Generated from source. 7690/14884 functions/methods documented (51%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2114)
+## Undocumented public functions (2124)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L207)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -339,11 +339,21 @@ Generated from source. 7690/14884 functions/methods documented (51%). The list b
 - `core/runtime/db_capability_approval.py` :: `list_approval_feedback` (L697)
 - `core/runtime/db_capability_approval.py` :: `recent_capability_approval_requests` (L85)
 - `core/runtime/db_capability_approval.py` :: `record_capability_approval_request_execution` (L247)
-- `core/runtime/db_cheap_provider.py` :: `count_cheap_provider_invocations` (L303)
-- `core/runtime/db_cheap_provider.py` :: `get_cheap_provider_runtime_state` (L106)
-- `core/runtime/db_cheap_provider.py` :: `list_cheap_provider_runtime_states` (L162)
-- `core/runtime/db_cheap_provider.py` :: `record_cheap_provider_invocation` (L214)
-- `core/runtime/db_cheap_provider.py` :: `upsert_cheap_provider_runtime_state` (L14)
+- `core/runtime/db_cheap_lane_control.py` :: `finalize_cheap_lane_audit` (L248)
+- `core/runtime/db_cheap_lane_control.py` :: `get_cheap_lane_invocation_detail` (L426)
+- `core/runtime/db_cheap_lane_control.py` :: `get_route_decision` (L132)
+- `core/runtime/db_cheap_lane_control.py` :: `list_cheap_lane_audit` (L278)
+- `core/runtime/db_cheap_lane_control.py` :: `list_cheap_lane_invocations` (L361)
+- `core/runtime/db_cheap_lane_control.py` :: `list_quota_observations` (L181)
+- `core/runtime/db_cheap_lane_control.py` :: `record_cheap_lane_audit` (L210)
+- `core/runtime/db_cheap_lane_control.py` :: `record_quota_observation` (L146)
+- `core/runtime/db_cheap_lane_control.py` :: `record_redacted_payload` (L296)
+- `core/runtime/db_cheap_lane_control.py` :: `record_route_decision` (L95)
+- `core/runtime/db_cheap_provider.py` :: `count_cheap_provider_invocations` (L400)
+- `core/runtime/db_cheap_provider.py` :: `get_cheap_provider_runtime_state` (L184)
+- `core/runtime/db_cheap_provider.py` :: `list_cheap_provider_runtime_states` (L240)
+- `core/runtime/db_cheap_provider.py` :: `record_cheap_provider_invocation` (L292)
+- `core/runtime/db_cheap_provider.py` :: `upsert_cheap_provider_runtime_state` (L92)
 - `core/runtime/db_claude_dispatch.py` :: `ensure_claude_dispatch_tables` (L11)
 - `core/runtime/db_cognitive_utility.py` :: `daemon_output_log_cleanup` (L302)
 - `core/runtime/db_cognitive_utility.py` :: `daemon_output_log_insert` (L248)

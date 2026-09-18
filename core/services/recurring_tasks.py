@@ -234,10 +234,25 @@ def create_recurring_task(
     source: str = "jarvis-tool",
     delay_minutes: int = 0,
 ) -> dict:
-    """Schedule a recurring task. Returns task info dict."""
+    """Schedule a recurring task. Returns task info dict.
+
+    Foerste affyring (fix 18/9-2026): en EKSPLICIT ``delay_minutes`` vinder over
+    intervallet. Foer stod der ``max(delay_minutes, interval_minutes)``, saa et
+    stort interval slugte en lille forsinkelse: en engangs-paamindelse med
+    ``delay=13 dage`` + ``interval=365 dage`` fyrede foerst om ET AAR (maalt
+    18/9-2026). ``delay_minutes=0`` betyder uaendret "foerste affyring efter ét
+    interval" — alle eksisterende tasks har delay 0 og er derfor upaavirkede.
+
+    Den absolute forsinkelse spiller sammen med ``_naeste_tid``: efter foerste
+    affyring holdes tidspunktet PAA DAGEN, saa en daglig opgave med delay starter
+    paa det valgte klokkeslaet og bliver der.
+    """
     _ensure_table()
     now = datetime.now(UTC)
-    first_fire = now + timedelta(minutes=max(delay_minutes, interval_minutes))
+    if delay_minutes > 0:
+        first_fire = now + timedelta(minutes=max(delay_minutes, 1))
+    else:
+        first_fire = now + timedelta(minutes=max(interval_minutes, 1))
     task_id = f"rec-{uuid4().hex[:10]}"
     focus = focus[:300].strip() or "Recurring reminder"
     _create(

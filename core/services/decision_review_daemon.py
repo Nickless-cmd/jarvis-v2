@@ -31,6 +31,27 @@ logger = logging.getLogger(__name__)
 _MAX_REVIEW_PER_TICK = 5
 
 
+def _record_own_state(result: dict[str, Any]) -> None:
+    """Skriv tick'ets eget spor til DAEMON_STATE — uafhængigt af returvejen.
+
+    Hvorfor: heartbeat kalder denne tick gennem `_daemon_tick_with_deadline(...,
+    deadline_seconds=30.0)`. Fem LLM-domsafgørelser tager ~45s, så deadlinen
+    rammer HVER gang: tråden orphandes, wrapperen returnerer None, og kaldevejen
+    skriver `_dr_result or {}` → `last_result_summary` bliver tom. Status var
+    derfor strukturelt uopnåelig (målt 18/9-2026: journal-warning, deadline-event
+    og tom summary i samme millisekund).
+
+    Daemonen ejer sit eget spor: den skriver resultatet selv, så det overlever at
+    returværdien kasseres. Kaldevejen skriver kun videre når den FAKTISK fik et
+    resultat (se heartbeat_runtime_influence).
+    """
+    try:
+        from core.services.daemon_manager import record_daemon_tick
+        record_daemon_tick("decision_review", result)
+    except Exception as exc:  # observability må aldrig vælte tick'en
+        logger.debug("decision_review: kunne ikke skrive eget spor: %s", exc)
+
+
 def tick_decision_review_daemon() -> dict[str, Any]:
     """Daemon tick: review overdue behavioral decisions.
 
@@ -45,16 +66,18 @@ def tick_decision_review_daemon() -> dict[str, Any]:
         from core.services.decision_review_prompter import review_pending_decisions
     except ImportError as exc:
         logger.error("decision_review: import failed: %s", exc)
-        return {"status": "error", "error": f"import failed: {exc}"}
+        result: dict[str, Any] = {"status": "error", "error": f"import failed: {exc}"}
+    else:
+        try:
+            result = review_pending_decisions(max_reviews=_MAX_REVIEW_PER_TICK)
+            if not isinstance(result, dict):
+                result = {"status": "error", "error": f"unexpected return type: {type(result)}"}
+        except Exception as exc:
+            logger.error("decision_review: tick failed: %s", exc)
+            result = {"status": "error", "error": str(exc)}
 
-    try:
-        result = review_pending_decisions(max_reviews=_MAX_REVIEW_PER_TICK)
-        if not isinstance(result, dict):
-            return {"status": "error", "error": f"unexpected return type: {type(result)}"}
-        return result
-    except Exception as exc:
-        logger.error("decision_review: tick failed: %s", exc)
-        return {"status": "error", "error": str(exc)}
+    _record_own_state(result)
+    return result
 
 
 # Alias for consistent daemon import pattern:

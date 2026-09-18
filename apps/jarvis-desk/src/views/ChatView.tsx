@@ -514,6 +514,8 @@ export function ChatView({
       <Composer
         streaming={streaming}
         onSend={handleSend}
+        onVoice={voice.enter}
+        voiceSupported={voice.supported}
         onStop={() => void stream.abort()}
         model="deepseek-flash"
         config={settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined}

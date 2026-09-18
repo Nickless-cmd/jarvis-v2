@@ -38,7 +38,12 @@ function _extractText(blocks: ContentBlock[]): string {
 
 export function useVoiceConversation(config: ApiConfig | undefined, deps: VoiceStreamDeps) {
   const [state, setState] = useState<VoiceState>('idle')
-  const [mode, setMode] = useState<VoiceMode>('push')
+  // Haenderfri er standard — det er den ENESTE tilstand mobilen har
+  // («Haenderfri samtale. hvile→lyt→transskriber→taenk→tal→(loop)»), og Bjoern
+  // bad om at desk bruger samme samtale-mode. Vaelgeren i overlayet bliver:
+  // en maskine med tastatur maa gerne kunne holde en knap inde, men den skal
+  // ikke vaere det man moeder foerst.
+  const [mode, setMode] = useState<VoiceMode>('hands-free')
   const [active, setActive] = useState(false)
   const [lastProvider, setLastProvider] = useState<string>('')
 

@@ -1,9 +1,6 @@
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import { ContextDrawer } from './ContextDrawer'
-import {
-  ArrowUp, Square, Plus, Paperclip, ListChecks, Puzzle, ChevronRight,
-  ChevronDown, Mic, ShieldCheck, FileText, X, Loader2,
-} from 'lucide-react'
+import { ArrowUp, AudioLines, ChevronDown, ChevronRight, FileText, ListChecks, Loader2, Mic, Paperclip, Plus, Puzzle, ShieldCheck, Square, X } from 'lucide-react'
 import { emojify } from '../../lib/emojify'
 import { useDictation } from '../../hooks/useDictation'
 import { ContextRing } from './ContextRing'
@@ -142,6 +139,8 @@ export function Composer({
   isOwner = false,
   onOpenPrivacy,
   sessionId = null,
+  onVoice,
+  voiceSupported = false,
 }: {
   streaming: boolean
   onSend: (text: string, opts: ComposerSendOpts) => void
@@ -153,6 +152,10 @@ export function Composer({
    *  samtalen. Bevidst adskilt fra `getSessionId`, der OPRETTER en session
    *  hvis der ingen er: et forslag må aldrig føde en tom samtale. */
   sessionId?: string | null
+  /** Start samtale-mode. Knappen til hoejre er en boelge naar feltet er tomt
+   *  — som i mobilappen. Uden denne er den bare en doed send-knap. */
+  onVoice?: () => void
+  voiceSupported?: boolean
   /** Åbner Data & privatliv (Settings) fra disclaimer-linjen. */
   onOpenPrivacy?: () => void
   /** Permissions-dropdown vises kun hvor værktøjs-godkendelse er relevant
@@ -189,6 +192,9 @@ export function Composer({
   const [planMode, setPlanMode] = useState(false)
   const { permission, setPermission } = usePermission()
   const [attachments, setAttachments] = useState<PendingAttachment[]>([])
+  // Mobilen bruger `text || att.length`; det samme her, saa en vedhaeftning
+  // uden tekst stadig er «noget at sende» og ikke en boelge-knap.
+  const tomt = !text.trim() && attachments.length === 0
   const [dragOver, setDragOver] = useState(false)
   // Paste-store (spec 2026-07-09): store pastes eksternaliseres — holdes lokalt her
   // og vises som fjernelig reference-chip i stedet for en tekst-væg. GUARDRAIL: hele
@@ -818,11 +824,25 @@ export function Composer({
             >
               <Loader2 size={14} strokeWidth={2.5} className="spin" />
             </button>
+          ) : tomt && voiceSupported && onVoice ? (
+            /* Tomt felt → boelge, som i mobilappen: «I hvile er hoejre knap en
+               voice-knap; saa snart der er tekst, bliver den send». Foer laa
+               samtale-mode bag en 🎙️-emoji oppe i panel-raekken, hvor den var
+               svaer at faa oeje paa og ikke lignede mobilens. */
+            <button
+              type="button"
+              className="composer-send composer-voice"
+              onClick={onVoice}
+              aria-label="Start samtale"
+              title="Start samtale med stemmen"
+            >
+              <AudioLines size={15} strokeWidth={2.5} />
+            </button>
           ) : (
             <button
               type="button"
               className="composer-send"
-              disabled={!text.trim()}
+              disabled={tomt}
               onClick={send}
               aria-label="Send"
             >

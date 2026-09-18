@@ -30,6 +30,7 @@ import { listProcesses } from '../lib/processesApi'
 import { SystemHealth } from '../components/shell/SystemHealth'
 import { MessageRail } from '../components/chat/MessageRail'
 import { useRailAnkre } from '../lib/useRailAnkre'
+import { skalGenhente } from '../lib/komprimeringsVagt'
 import { useFastgjorte } from '../hooks/useFastgjorte'
 import { GreetingHero } from '../components/chat/GreetingHero'
 import { useResizableWidth } from '../components/panel/useResizableWidth'
@@ -95,6 +96,7 @@ export function CodeView({
   const [contextTokens, setContextTokens] = useState(0)
   const [overheadTokens, setOverheadTokens] = useState(0)
   const [compacting, setCompacting] = useState(false)
+  const komprRef = useRef<{ sid: string | null; v: string | null }>({ sid: null, v: null })
   // Ringens tal, meldt op fra Composer. Miljoe-feltet skal vise DET SAMME —
   // ellers staar der to «Kontekst»-procenter der er uenige (Bjoern 8/9-2026).
   const [gauge, setGauge] = useState<{ tokens: number; denominator: number }>({ tokens: 0, denominator: 0 })
@@ -343,7 +345,20 @@ export function CodeView({
     if (!config || !sessionId) { setContextTokens(0); setOverheadTokens(0); setCompacting(false); return }
     let alive = true
     const poll = () => getContextUsage(config, sessionId)
-      .then((r) => { if (alive) { setContextTokens(r.tokens || 0); setOverheadTokens(r.overhead_tokens || 0); setCompacting(!!r.compacting) } })
+      .then((r) => {
+        if (!alive) return
+        setContextTokens(r.tokens || 0); setOverheadTokens(r.overhead_tokens || 0); setCompacting(!!r.compacting)
+          // En ny komprimerings-markoer er landet: hent beskederne, saa den
+          // staar paa skaermen uden manuel opdatering (Bjoern 18/9-2026).
+          // Ref'en er pr. session og overlever at effekten genstarter — det
+          // goer den netop naar `compacting` slaar om, dvs. i det oejeblik
+          // markoeren lander.
+          if (komprRef.current.sid !== sessionId) komprRef.current = { sid: sessionId, v: null }
+          if (r.last_compact_at !== undefined) {
+            if (skalGenhente(komprRef.current.v, r.last_compact_at)) void sessions.refresh()
+            komprRef.current.v = r.last_compact_at
+          }
+      })
       .catch(() => { /* behold sidste kendte */ })
     poll()
     const id = setInterval(poll, compacting ? 1200 : 6000)

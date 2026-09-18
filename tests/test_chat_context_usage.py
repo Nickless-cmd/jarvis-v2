@@ -21,6 +21,10 @@ def _call(**kw):
 _DESK_CONTRACT = {
     "tokens", "compact_at", "effective", "model_window",
     "overhead_tokens", "compacting", "compacted",
+    # 18/9-2026: tidspunktet for seneste komprimerings-markoer. Desk henter
+    # beskederne igen naar det skifter — ellers stod markoeren foerst paa
+    # skaermen efter en manuel opdatering.
+    "last_compact_at",
 }
 
 

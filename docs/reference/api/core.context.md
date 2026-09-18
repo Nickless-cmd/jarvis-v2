@@ -74,6 +74,17 @@ _Model-aware, round-atomic compaction policy (PURE — no DB, no clock, no LLM).
 | function | `extract_summary` | `(raw)` | Pull the usable summary out of a raw model response: drop any <thinking> scratchpad, | [src](../../../core/context/compaction_policy.py#L298) |
 | function | `summary_looks_valid` | `(summary_text, *, min_chars=…)` | Quality gate on the EXTRACTED summary. Rejects empty/too-short, the mechanical-fallback | [src](../../../core/context/compaction_policy.py#L309) |
 
+## `core/context/compaction_signal.py`
+_Er sessionen ved at blive komprimeret — og hvornaar blev den det sidst?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_noegle` | `(session_id)` | — | [src](../../../core/context/compaction_signal.py#L41) |
+| function | `marker_start` | `(session_id)` | Komprimering startet for sessionen. Kaster aldrig. | [src](../../../core/context/compaction_signal.py#L45) |
+| function | `marker_slut` | `(session_id)` | Komprimering faerdig — ogsaa naar den fejlede. Kaster aldrig. | [src](../../../core/context/compaction_signal.py#L61) |
+| function | `er_i_gang` | `(session_id)` | Koerer der en komprimering for sessionen i NOGEN proces? | [src](../../../core/context/compaction_signal.py#L73) |
+| function | `seneste_komprimering` | `(session_id)` | Tidspunktet for sessionens seneste komprimerings-markoer, ellers "". | [src](../../../core/context/compaction_signal.py#L85) |
+
 ## `core/context/microcompact.py`
 _Time-gap microcompaction for visible transcript tool results._
 

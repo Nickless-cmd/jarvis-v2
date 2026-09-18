@@ -1432,6 +1432,14 @@ async def chat_context_usage(
         compacting = bool(session_id) and session_id in getattr(_pc, "_compact_inflight", set())
     except Exception:
         compacting = False
+    # Det lokale set ser kun DENNE proces. Komprimeringen kan vaere startet i den
+    # anden — se compaction_signal. `last_compact_at` lader klienten hente
+    # beskederne igen naar en ny markoer er landet.
+    last_compact_at = ""
+    if session_id:
+        from core.context import compaction_signal as _cs
+        compacting = compacting or await asyncio.to_thread(_cs.er_i_gang, session_id)
+        last_compact_at = await asyncio.to_thread(_cs.seneste_komprimering, session_id)
 
     return {
         "tokens": tokens,
@@ -1440,6 +1448,7 @@ async def chat_context_usage(
         "model_window": model_window,
         "overhead_tokens": overhead_tokens,
         "compacting": compacting,
+        "last_compact_at": last_compact_at,
         "compacted": compacted,
     }
 

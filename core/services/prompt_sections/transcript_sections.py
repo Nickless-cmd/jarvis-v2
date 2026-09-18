@@ -765,6 +765,10 @@ def _run_session_compaction(
     finally:
         with _compact_inflight_lock:
             _compact_inflight.discard(session_id)
+        # Det delte flag skal ogsaa ned — ellers lyser indikatoren i den ANDEN
+        # proces til TTL'en udloeber. Se compaction_signal.
+        from core.context import compaction_signal as _cs
+        _cs.marker_slut(session_id)
 
 def _maybe_auto_compact_session(
     session_id: str,
@@ -805,6 +809,11 @@ def _maybe_auto_compact_session(
         if session_id in _compact_inflight:
             return
         _compact_inflight.add(session_id)
+    # Spejl flaget til det delte lager. `_compact_inflight` er pr. proces, og
+    # prompten bygges baade i jarvis-api og jarvis-runtime — desk spoerger kun
+    # den ene. Se compaction_signal for maalingen der viste det.
+    from core.context import compaction_signal as _cs
+    _cs.marker_start(session_id)
     try:
         # Facade-opslag (monkeypatch-søm): tests patcher
         # prompt_contract._run_session_compaction og forventer at baggrundstråden
@@ -819,3 +828,4 @@ def _maybe_auto_compact_session(
     except Exception:
         with _compact_inflight_lock:
             _compact_inflight.discard(session_id)
+        _cs.marker_slut(session_id)

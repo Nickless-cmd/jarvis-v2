@@ -315,26 +315,27 @@ _Agency Cartographer daemon._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `build_cartographer_snapshot` | `(*, auto_enqueue=…)` | Scan code markers and persist a fresh Agency Cartographer snapshot. | [src](../../../core/services/agency_cartographer.py#L137) |
-| function | `get_cartographer_snapshot` | `(*, refresh=…)` | — | [src](../../../core/services/agency_cartographer.py#L179) |
-| function | `start_agency_cartographer_daemon` | `()` | — | [src](../../../core/services/agency_cartographer.py#L196) |
-| function | `stop_agency_cartographer_daemon` | `()` | — | [src](../../../core/services/agency_cartographer.py#L206) |
-| function | `_loop` | `()` | — | [src](../../../core/services/agency_cartographer.py#L210) |
-| function | `_candidate_files` | `()` | — | [src](../../../core/services/agency_cartographer.py#L225) |
-| function | `_scan_edge` | `(edge, files)` | — | [src](../../../core/services/agency_cartographer.py#L243) |
-| function | `_find_marker` | `(marker, files)` | — | [src](../../../core/services/agency_cartographer.py#L285) |
-| function | `_next_move_from_edge` | `(edge)` | — | [src](../../../core/services/agency_cartographer.py#L292) |
-| function | `_rank_task_candidates` | `(edges)` | — | [src](../../../core/services/agency_cartographer.py#L305) |
-| function | `_task_candidate_from_edge` | `(edge)` | — | [src](../../../core/services/agency_cartographer.py#L320) |
-| function | `_maybe_enqueue_recommended_task` | `(candidate)` | — | [src](../../../core/services/agency_cartographer.py#L339) |
-| function | `_find_existing_agency_task` | `(candidate)` | — | [src](../../../core/services/agency_cartographer.py#L390) |
-| function | `_runtime_task_priority` | `(priority)` | — | [src](../../../core/services/agency_cartographer.py#L407) |
-| function | `_publish_auto_task_event` | `(candidate, task)` | — | [src](../../../core/services/agency_cartographer.py#L416) |
-| function | `_priority_score` | `(*, status, confidence, importance, agency_axes)` | — | [src](../../../core/services/agency_cartographer.py#L437) |
-| function | `_priority_label` | `(score)` | — | [src](../../../core/services/agency_cartographer.py#L466) |
-| function | `_priority_reason` | `(*, status, confidence, importance, agency_axes)` | — | [src](../../../core/services/agency_cartographer.py#L478) |
-| function | `build_agency_cartographer_awareness_section` | `()` | Build a compact 'Agency Bridges' awareness section for the heartbeat prompt. | [src](../../../core/services/agency_cartographer.py#L498) |
-| function | `_record_awareness_history` | `(edges)` | Record current edge statuses into awareness history for stuck detection. | [src](../../../core/services/agency_cartographer.py#L553) |
-| function | `_compute_stuck_edges` | `(edges)` | Return edges whose status hasn't changed in >= 3 scans. | [src](../../../core/services/agency_cartographer.py#L574) |
+| function | `get_cartographer_snapshot` | `(*, refresh=…)` | — | [src](../../../core/services/agency_cartographer.py#L183) |
+| function | `start_agency_cartographer_daemon` | `()` | — | [src](../../../core/services/agency_cartographer.py#L200) |
+| function | `stop_agency_cartographer_daemon` | `()` | — | [src](../../../core/services/agency_cartographer.py#L210) |
+| function | `_loop` | `()` | — | [src](../../../core/services/agency_cartographer.py#L214) |
+| function | `_candidate_files` | `()` | — | [src](../../../core/services/agency_cartographer.py#L229) |
+| function | `_scan_edge` | `(edge, files)` | — | [src](../../../core/services/agency_cartographer.py#L247) |
+| function | `_find_marker` | `(marker, files)` | — | [src](../../../core/services/agency_cartographer.py#L289) |
+| function | `_next_move_from_edge` | `(edge)` | — | [src](../../../core/services/agency_cartographer.py#L296) |
+| function | `_rank_task_candidates` | `(edges)` | — | [src](../../../core/services/agency_cartographer.py#L309) |
+| function | `_task_candidate_from_edge` | `(edge)` | — | [src](../../../core/services/agency_cartographer.py#L324) |
+| function | `_maybe_enqueue_recommended_task` | `(candidate)` | — | [src](../../../core/services/agency_cartographer.py#L343) |
+| function | `_find_existing_agency_task` | `(candidate)` | — | [src](../../../core/services/agency_cartographer.py#L394) |
+| function | `_luk_loeste_reparationer` | `(edges)` | Luk reparations-opgaver hvis bro er blevet forbundet. | [src](../../../core/services/agency_cartographer.py#L411) |
+| function | `_runtime_task_priority` | `(priority)` | — | [src](../../../core/services/agency_cartographer.py#L461) |
+| function | `_publish_auto_task_event` | `(candidate, task)` | — | [src](../../../core/services/agency_cartographer.py#L470) |
+| function | `_priority_score` | `(*, status, confidence, importance, agency_axes)` | — | [src](../../../core/services/agency_cartographer.py#L491) |
+| function | `_priority_label` | `(score)` | — | [src](../../../core/services/agency_cartographer.py#L520) |
+| function | `_priority_reason` | `(*, status, confidence, importance, agency_axes)` | — | [src](../../../core/services/agency_cartographer.py#L532) |
+| function | `build_agency_cartographer_awareness_section` | `()` | Build a compact 'Agency Bridges' awareness section for the heartbeat prompt. | [src](../../../core/services/agency_cartographer.py#L552) |
+| function | `_record_awareness_history` | `(edges)` | Record current edge statuses into awareness history for stuck detection. | [src](../../../core/services/agency_cartographer.py#L607) |
+| function | `_compute_stuck_edges` | `(edges)` | Return edges whose status hasn't changed in >= 3 scans. | [src](../../../core/services/agency_cartographer.py#L628) |
 
 ## `core/services/agency_map.py`
 _Agency Map surface for Mission Control._
@@ -342,16 +343,19 @@ _Agency Map surface for Mission Control._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `build_agency_map_surface` | `()` | — | [src](../../../core/services/agency_map.py#L15) |
-| function | `_nodes` | `()` | — | [src](../../../core/services/agency_map.py#L51) |
-| function | `_bridges` | `()` | — | [src](../../../core/services/agency_map.py#L128) |
-| function | `_bridge` | `(source, target, status, summary)` | — | [src](../../../core/services/agency_map.py#L146) |
-| function | `_questions` | `(bridges)` | — | [src](../../../core/services/agency_map.py#L155) |
-| function | `_dark_edges` | `()` | — | [src](../../../core/services/agency_map.py#L181) |
-| function | `_cartographer_snapshot` | `()` | — | [src](../../../core/services/agency_map.py#L235) |
-| function | `_next_moves` | `(cartographer)` | — | [src](../../../core/services/agency_map.py#L250) |
-| function | `_repair_briefs` | `(limit=…)` | — | [src](../../../core/services/agency_map.py#L265) |
-| function | `_theater_refactor_briefs` | `(limit=…)` | — | [src](../../../core/services/agency_map.py#L274) |
-| function | `_system_cartographer_snapshot` | `()` | — | [src](../../../core/services/agency_map.py#L283) |
+| function | `_nodes` | `()` | — | [src](../../../core/services/agency_map.py#L58) |
+| function | `_bridges` | `()` | — | [src](../../../core/services/agency_map.py#L135) |
+| function | `_bridge` | `(source, target, status, summary)` | — | [src](../../../core/services/agency_map.py#L153) |
+| function | `_questions` | `(bridges)` | — | [src](../../../core/services/agency_map.py#L162) |
+| function | `_udled_synlighed` | `(kant)` | Synligheden udledes af kantens EGET bevis — den skrives ikke i hånden. | [src](../../../core/services/agency_map.py#L192) |
+| function | `_dark_edges` | `()` | — | [src](../../../core/services/agency_map.py#L228) |
+| function | `_med_udledt_synlighed` | `(kant)` | — | [src](../../../core/services/agency_map.py#L232) |
+| function | `_dark_edge_kilder` | `()` | — | [src](../../../core/services/agency_map.py#L242) |
+| function | `_cartographer_snapshot` | `()` | — | [src](../../../core/services/agency_map.py#L296) |
+| function | `_next_moves` | `(cartographer)` | — | [src](../../../core/services/agency_map.py#L311) |
+| function | `_repair_briefs` | `(limit=…)` | — | [src](../../../core/services/agency_map.py#L326) |
+| function | `_theater_refactor_briefs` | `(limit=…)` | — | [src](../../../core/services/agency_map.py#L335) |
+| function | `_system_cartographer_snapshot` | `()` | — | [src](../../../core/services/agency_map.py#L344) |
 
 ## `core/services/agent_dispatch.py`
 _Agent dispatch orchestrator for code mode (spec §19)._

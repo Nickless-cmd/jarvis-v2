@@ -208,7 +208,15 @@ def test_agency_map_exposes_dark_edges_and_completed_next_moves():
     assert result["nextMoves"]
     by_source = {edge["source"]: edge for edge in result["darkEdges"]}
     for source in ("affect_modulation", "prompt_contract", "cheap_lane_balancer"):
-        assert by_source[source]["visibility"] == "visible-surface"
+        # Testen kraevede «visible-surface» indtil 18/9-2026 — samtidig med at
+        # den kraevede at kanten havde et `remaining_gap`. De to krav kan ikke
+        # begge vaere rigtige: en indflydelse med et indroemmet hul er ikke
+        # fuldt synlig. Agency Cartographer havde staaet med den bro `partial`
+        # i tolv scans, og det var praecis dén modsigelse den pegede paa.
+        assert by_source[source]["visibility"] == "partial-surface"
+        # Den paastaaede etiket bevares, saa forskellen kan SES frem for at
+        # blive rettet i stilhed.
+        assert by_source[source]["claimed_visibility"] == "visible-surface"
         assert by_source[source]["evidence"]
         assert by_source[source]["remaining_gap"]
 

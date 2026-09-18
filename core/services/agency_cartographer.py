@@ -151,9 +151,13 @@ def build_cartographer_snapshot(*, auto_enqueue: bool = False) -> dict[str, Any]
         "enabled": False,
         "status": "not-requested",
     }
+    # Samme scanning der REJSER en opgave, skal ogsaa kunne lukke den. Ellers
+    # staar en loest reparation blocked for evigt — se `_luk_loeste_reparationer`.
+    lukkede_opgaver = _luk_loeste_reparationer(edges) if auto_enqueue else []
     snapshot = {
         "scannedAt": datetime.now(UTC).isoformat(),
         "mode": "agency-cartographer",
+        "resolvedTasks": lukkede_opgaver,
         "summary": {
             "vision_edges": len(edges),
             "connected": sum(1 for edge in edges if edge["status"] == "connected"),
@@ -402,6 +406,56 @@ def _find_existing_agency_task(candidate: dict[str, Any]) -> dict[str, Any] | No
     except Exception:
         return None
     return None
+
+
+def _luk_loeste_reparationer(edges: list[dict[str, Any]]) -> list[str]:
+    """Luk reparations-opgaver hvis bro er blevet forbundet.
+
+    ## Hvorfor den skulle skrives (18/9-2026)
+
+    Kartografen fandt kun eksisterende opgaver for at undgaa dubletter — den
+    lukkede dem aldrig. `task-ec34be0fcce7` stod derfor `blocked` fra 6. juli,
+    og ville have staaet der ogsaa efter at broen var repareret, fordi ingen
+    spurgte om den var det.
+
+    Det er samme moenster som genoptagelses-journalen samme dag: arbejdet
+    bliver gjort, posten bliver aldrig lukket, og koeen vokser med sager der
+    er loest. En koe man ikke kan stole paa, holder man op med at kigge i.
+
+    Kun `connected` lukker noget. En bro der er gaaet fra `missing` til
+    `partial` er ikke loest, og dens opgave skal blive staaende.
+    """
+    lukkede: list[str] = []
+    try:
+        from core.services.runtime_tasks import update_task
+    except Exception:
+        return lukkede
+    for edge in edges:
+        if str(edge.get("status") or "") != "connected":
+            continue
+        opgave = _find_existing_agency_task({
+            "scope": edge.get("target") or edge.get("title") or "",
+            "goal": edge.get("next_move") or "",
+        })
+        if not opgave:
+            continue
+        try:
+            update_task(
+                str(opgave.get("id") or ""),
+                status="succeeded",
+                blocked_reason="",
+                result_summary=(
+                    f"broen «{edge.get('title')}» er forbundet "
+                    f"({int(float(edge.get('confidence') or 0) * 100)}% bevis) — "
+                    "lukket af kartografen selv"),
+            )
+            lukkede.append(str(opgave.get("id") or ""))
+            logger.info("agency-cartographer: lukkede loest reparation %s (%s)",
+                        opgave.get("id"), edge.get("title"))
+        except Exception:
+            logger.warning("agency-cartographer: kunne ikke lukke opgave %s",
+                           opgave.get("id"), exc_info=True)
+    return lukkede
 
 
 def _runtime_task_priority(priority: str) -> str:

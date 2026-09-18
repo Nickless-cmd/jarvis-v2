@@ -26,6 +26,13 @@ def build_agency_map_surface() -> dict[str, Any]:
         "missing": sum(1 for item in bridges if item["status"] == "missing"),
         "experimental": sum(1 for item in bridges if item["status"] == "experimental"),
         "dark_edges": len(dark_edges),
+        # Tallene skal kunne skelnes paa fladen: en indflydelse der er HALVT
+        # synlig, er ikke det samme som en der er synlig. Uden de to tal ville
+        # «4 dark edges» laese som fire loeste sager.
+        "dark_edges_partial": sum(
+            1 for item in dark_edges if item.get("visibility") == PARTIAL_SURFACE),
+        "dark_edges_visible": sum(
+            1 for item in dark_edges if item.get("visibility") == "visible-surface"),
     }
     return {
         "fetchedAt": datetime.now(UTC).isoformat(),
@@ -178,7 +185,61 @@ def _questions(bridges: list[dict[str, str]]) -> list[dict[str, str]]:
     ]
 
 
+#: Et indflydelses-spor der KUN er delvist synligt. Se `_dark_edges`.
+PARTIAL_SURFACE = "partial-surface"
+
+
+def _udled_synlighed(kant: dict[str, Any]) -> str:
+    """Synligheden udledes af kantens EGET bevis — den skrives ikke i hånden.
+
+    ## Hvad målingen viste (18/9-2026)
+
+    Agency Cartographer har haft broen «Hidden Runtime → Mission Control»
+    stående `partial` i tolv scans i træk, og opgaven `task-ec34be0fcce7` har
+    ventet på en implementerings-lane siden 6. juli. Den manglende markør hed
+    `partial-surface`, og det så ud som en streng der bare skulle skrives et
+    sted.
+
+    Det var det ikke. Klassifikationen modsagde sit eget bevis: TRE kanter stod
+    som `visible-surface` og indrømmede hver især et hul i samme post —
+    «per-turn override history … not yet charted», «full final prompt assembly
+    is still not rendered», «direct per-choice causal links … still emerging».
+    En indflydelse der ændrer adfærd, og som kun er halvt synlig, stod altså på
+    fladen som fuldt synlig.
+
+    Broen ligger på akserne `witness`, `integrity` og `governance`, og det er
+    præcis dét den handler om: det usynlige der virker, skal kunne ses — og en
+    etiket der overdriver synligheden er værre end ingen etiket, fordi den
+    lukker spørgsmålet.
+
+    ## Hvorfor udledning og ikke en rettet etiket
+
+    En håndskrevet etiket kan glide fra sit bevis igen i morgen. Udledningen
+    kan kun NEDGRADERE: indrømmer kanten et hul, er den delvis. Den kan aldrig
+    opfinde synlighed, for fraværet af et indrømmet hul er ikke bevis for at
+    der ikke er et — derfor beholder en kant uden hul den etiket den selv
+    bærer.
+    """
+    if str(kant.get("remaining_gap") or "").strip():
+        return PARTIAL_SURFACE
+    return str(kant.get("visibility") or "emerging-surface")
+
+
 def _dark_edges() -> list[dict[str, str]]:
+    return [_med_udledt_synlighed(kant) for kant in _dark_edge_kilder()]
+
+
+def _med_udledt_synlighed(kant: dict[str, Any]) -> dict[str, Any]:
+    ud = dict(kant)
+    ud["visibility"] = _udled_synlighed(kant)
+    # Den paastaaede etiket bevares ved siden af, saa forskellen kan SES frem
+    # for bare at blive rettet i stilhed.
+    if ud["visibility"] != kant.get("visibility"):
+        ud["claimed_visibility"] = kant.get("visibility")
+    return ud
+
+
+def _dark_edge_kilder() -> list[dict[str, str]]:
     return [
         {
             "source": "affect_modulation",

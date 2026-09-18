@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7701/14970 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7703/14974 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 7701/14970 functions/methods documented (51%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 653 | 1206 | 54% |
-| `core.services` | 5124 | 10286 | 49% |
+| `core.services` | 5126 | 10290 | 49% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 109 | 184 | 59% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -585,9 +585,9 @@ Generated from source. 7701/14970 functions/methods documented (51%). The list b
 - `core/services/aesthetic_taste_daemon.py` :: `tick_taste_daemon` (L56)
 - `core/services/affective_meta_state.py` :: `build_affective_meta_prompt_section` (L299)
 - `core/services/affective_meta_state.py` :: `build_affective_meta_state_from_sources` (L38)
-- `core/services/agency_cartographer.py` :: `get_cartographer_snapshot` (L179)
-- `core/services/agency_cartographer.py` :: `start_agency_cartographer_daemon` (L196)
-- `core/services/agency_cartographer.py` :: `stop_agency_cartographer_daemon` (L206)
+- `core/services/agency_cartographer.py` :: `get_cartographer_snapshot` (L183)
+- `core/services/agency_cartographer.py` :: `start_agency_cartographer_daemon` (L200)
+- `core/services/agency_cartographer.py` :: `stop_agency_cartographer_daemon` (L210)
 - `core/services/agency_map.py` :: `build_agency_map_surface` (L15)
 - `core/services/agent_observation_compressor.py` :: `get_agent_observation` (L168)
 - `core/services/agent_observation_compressor.py` :: `list_agent_observations` (L133)

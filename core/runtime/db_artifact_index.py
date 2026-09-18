@@ -37,9 +37,10 @@ _FIL_VAERKTOEJER = ("edit_file", "write_file", "multi_edit")
 
 
 def _linjer(s: str) -> int:
+    # Som Claude Desktop og file_tools_exec.linjetal: linjeskift + 1.
     if not s:
         return 0
-    return s.count("\n") + (0 if s.endswith("\n") else 1)
+    return s.count("\n") + 1
 
 
 def _diff(navn: str, inp: dict[str, Any]) -> tuple[int, int]:

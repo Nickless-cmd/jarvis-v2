@@ -272,6 +272,25 @@ def haent_ventende(run_id: str) -> list[dict[str, Any]]:
         return _VENTENDE.pop(run_id, [])
 
 
+def hoest_etiketter(run_id: str, tur: Any = None, frist_s: float | None = None) -> list[dict[str, Any]]:
+    """Hent faerdige runde-etiketter — og laeg dem i turen, saa de GEMMES.
+
+    Foer blev etiketterne kun streamet. Den sidste rundes etiket kom endda
+    foerst EFTER at svaret var gemt, saa den forsvandt ved hver genindlaesning
+    — og den er ofte den mest interessante. Hoesten sker nu ét sted og goer
+    begge dele: returnerer etiketterne til streamen og giver dem til turens
+    akkumulator som `tool_use_summary`-blokke (Claude Desktops egen form).
+    """
+    ud = haent_ventende_med_frist(run_id, frist_s) if frist_s else haent_ventende(run_id)
+    if tur is not None:
+        for e in ud:
+            try:
+                tur.add_round_label(e)
+            except Exception:
+                pass
+    return ud
+
+
 def ryd_ventende(run_id: str) -> None:
     """Smid en kørsels kø OG dens tråd-bogholderi væk.
 

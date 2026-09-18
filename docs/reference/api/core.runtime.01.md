@@ -172,10 +172,10 @@ _Artefakter: de filer Jarvis har skrevet og rettet i en mappe, paa tvaers af sam
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_linjer` | `(s)` | — | [src](../../../core/runtime/db_artifact_index.py#L39) |
-| function | `_diff` | `(navn, inp)` | (tilfoejet, fjernet) ud af kaldets argumenter — samme regel som desk. | [src](../../../core/runtime/db_artifact_index.py#L45) |
-| function | `_rod` | `(root)` | Navngivne server-roedder → sti. Alt andet bruges som det er. | [src](../../../core/runtime/db_artifact_index.py#L63) |
-| function | `_under` | `(sti, rod)` | — | [src](../../../core/runtime/db_artifact_index.py#L78) |
-| function | `list_artifacts` | `(root, *, limit=…)` | Filer Jarvis har rørt under `root`, nyeste først, én raekke pr. fil. | [src](../../../core/runtime/db_artifact_index.py#L82) |
+| function | `_diff` | `(navn, inp)` | (tilfoejet, fjernet) ud af kaldets argumenter — samme regel som desk. | [src](../../../core/runtime/db_artifact_index.py#L46) |
+| function | `_rod` | `(root)` | Navngivne server-roedder → sti. Alt andet bruges som det er. | [src](../../../core/runtime/db_artifact_index.py#L64) |
+| function | `_under` | `(sti, rod)` | — | [src](../../../core/runtime/db_artifact_index.py#L79) |
+| function | `list_artifacts` | `(root, *, limit=…)` | Filer Jarvis har rørt under `root`, nyeste først, én raekke pr. fil. | [src](../../../core/runtime/db_artifact_index.py#L83) |
 
 ## `core/runtime/db_autonomy.py`
 _Autonomy-proposals — niveau-2 autonomi: pending forslag fra Jarvis der afventer_

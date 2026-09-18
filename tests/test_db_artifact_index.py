@@ -42,8 +42,8 @@ def test_filer_i_mappen_nyeste_foerst(isolated_runtime) -> None:
     assert [a["rel"] for a in r["artifacts"]] == ["docs/b.md", "core/a.py"]
     b, a = r["artifacts"]
     assert (a["add"], a["del"]) == (2, 1)
-    # write_file: kun tilfoejet, og den afsluttende newline er ikke en linje.
-    assert (b["add"], b["del"]) == (3, 0)
+    # write_file: kun tilfoejet; linjeskift + 1 som Claude Desktop.
+    assert (b["add"], b["del"]) == (4, 0)
 
 
 def test_filer_uden_for_mappen_er_ikke_med(isolated_runtime) -> None:

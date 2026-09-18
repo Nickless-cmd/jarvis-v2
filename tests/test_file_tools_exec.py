@@ -255,10 +255,13 @@ def test_nul_erstatninger_roerer_intet():
     assert linjetal("a", "b", 0) == (0, 0)
 
 
-def test_afsluttende_newline_giver_ikke_en_fantomlinje():
-    """«a\\n» er ÉN linje, ikke to. Ellers ville hvert eneste tal vaere for
-    hoejt, og en linje der altid lyver lidt er vaerre end ingen linje."""
-    assert linjetal("a\n", "b\n", 1) == (1, 1)
+def test_taeller_som_claude_desktop():
+    """Claude Desktop 1:1 (Bjoern 19/9-2026): linjeskift + 1, saa «a\\n» er
+    TO linjer hos dem (c980da984-…js). Testen stod foer paa det modsatte —
+    «en afsluttende newline er ikke en linje» — og samme redigering viste ét
+    tal her og et andet i Claude Desktop."""
+    assert linjetal("a\n", "b\n", 1) == (2, 2)
+    assert linjetal("", "", 1) == (0, 0)
 
 
 def test_edit_resultatet_BAERER_linjetallene(tmp_path) -> None:
@@ -282,7 +285,8 @@ def test_write_resultatet_BAERER_linjetallene(tmp_path) -> None:
     p = tmp_path / "ny.txt"
     res = fx._exec_write_file({"path": str(p), "content": "en\nto\ntre\n"})
     assert res["status"] == "ok"
-    assert res["linjer_tilfoejet"] == 3
+    # Claude Desktops regel: linjeskift + 1 — den afsluttende newline taeller.
+    assert res["linjer_tilfoejet"] == 4
     assert res["linjer_fjernet"] == 0
 
 
@@ -294,8 +298,9 @@ def test_write_OVER_en_fil_fjerner_den_gamle(tmp_path) -> None:
     p.write_text("1\n2\n3\n4\n5\n", encoding="utf-8")
     res = fx._exec_write_file({"path": str(p), "content": "en\nto\n"})
     assert res["status"] == "ok"
-    assert res["linjer_tilfoejet"] == 2
-    assert res["linjer_fjernet"] == 5
+    # Claude Desktops regel: linjeskift + 1 (se test_taeller_som_claude_desktop).
+    assert res["linjer_tilfoejet"] == 3
+    assert res["linjer_fjernet"] == 6
 
 
 def test_en_FEJLET_edit_baerer_ingen_tal(tmp_path) -> None:

@@ -212,3 +212,36 @@ def test_hele_kaeden_fra_runde_til_gemt_blok():
     a.add_tools(kald, to_followup_results(kald, runde, {}))
     udfald = {r["tool_use_id"]: r["status"] for r in a.tool_results}
     assert udfald == {"c1": "error", "c2": "done"}
+
+
+# ── Runde-etiketter gemmes (19/9-2026) ────────────────────────────────────
+#
+# Før blev etiketten kun streamet; efter en genindlæsning var den væk. Nu
+# gemmes den som Claude Desktops egen blok: {type, summary,
+# preceding_tool_use_ids}.
+
+def test_etiketten_gemmes_som_tool_use_summary():
+    a = TurnAccumulator()
+    a.add_tools([{"id": "c1", "name": "read_file", "input": {"path": "x"}}], [])
+    a.add_round_label({"run_id": "r", "round": 1, "etiket": "Fandt fejlen", "tool_use_ids": ["c1"]})
+    blokke = a.build_blocks("svar")
+    assert blokke[-1] == {"type": "tool_use_summary", "summary": "Fandt fejlen",
+                          "preceding_tool_use_ids": ["c1"]}
+
+
+def test_samme_etiket_to_gange_gemmes_een_gang():
+    # Den kan komme ved næste rundes start OG ved turens sidste høst.
+    a = TurnAccumulator()
+    e = {"etiket": "Fandt fejlen", "tool_use_ids": ["c1", "c2"]}
+    a.add_round_label(e)
+    a.add_round_label(dict(e))
+    assert len(a.round_labels) == 1
+
+
+def test_etiket_uden_kald_eller_tekst_gemmes_ikke():
+    # Uden ids kan den ikke hæfte sig på sin runde.
+    a = TurnAccumulator()
+    a.add_round_label({"etiket": "x y", "tool_use_ids": []})
+    a.add_round_label({"etiket": "  ", "tool_use_ids": ["c1"]})
+    a.add_round_label(None)  # type: ignore[arg-type]
+    assert a.round_labels == []

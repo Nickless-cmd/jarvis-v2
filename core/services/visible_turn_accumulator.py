@@ -49,6 +49,10 @@ class TurnAccumulator:
     #: skill_flade_event). Staar FOERST i blokkene: opslaget skete foer modellen
     #: skrev et ord.
     skill_surface: dict | None = None
+    #: Rundernes etiketter som `tool_use_summary`-blokke — Claude Desktops
+    #: egen form: `{type, summary, preceding_tool_use_ids}` (19/9-2026). Foer
+    #: blev etiketten kun streamet, saa den var vaek efter en genindlaesning.
+    round_labels: list[dict] = field(default_factory=list)
     #: Uret. Injicerbart, så en test kan måle uden at vente.
     ur: object = None
     _segment_open: bool = False
@@ -174,6 +178,29 @@ class TurnAccumulator:
             ud.append(d if d > 0 else None)
         return ud
 
+    # ── runde-etiketter ─────────────────────────────────────────────────
+    def add_round_label(self, etik: dict) -> None:
+        """Gem en runde-etiket som den blok Claude Desktop selv gemmer.
+
+        Samme etiket kan komme to gange (streamet ved naeste rundes start, og
+        hoestet igen ved turens slutning) — den gemmes én gang. Uden kald-ids
+        kan den ikke haefte sig paa sin runde, og saa gemmes den slet ikke.
+        """
+        try:
+            summary = str((etik or {}).get("etiket") or "").strip()
+            ids = [str(i) for i in ((etik or {}).get("tool_use_ids") or []) if str(i).strip()]
+            if not summary or not ids:
+                return
+            if any(b["preceding_tool_use_ids"] == ids for b in self.round_labels):
+                return
+            self.round_labels.append({
+                "type": "tool_use_summary",
+                "summary": summary,
+                "preceding_tool_use_ids": ids,
+            })
+        except Exception:
+            pass
+
     # ── udtag ────────────────────────────────────────────────────────────
     def build_blocks(self, text: str) -> list[dict]:
         """Den kanoniske blok-liste for turen."""
@@ -187,9 +214,12 @@ class TurnAccumulator:
             thinking_segments=self.thinking_segments,
             thinking_seconds=self.thinking_seconds(),
         )
+        # Etiketterne til sidst: de hæfter sig på deres kald via ids, ikke på
+        # en plads i listen — og midt i blokkene ville de dele en runde op.
+        etiketter = [dict(b) for b in self.round_labels]
         if self.skill_surface:
-            return [dict(self.skill_surface), *blokke]
-        return blokke
+            return [dict(self.skill_surface), *blokke, *etiketter]
+        return [*blokke, *etiketter]
 
 
 def coerce_tool_input(raw: object) -> dict:

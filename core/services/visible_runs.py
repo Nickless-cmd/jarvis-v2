@@ -2800,7 +2800,7 @@ async def _stream_visible_run(
                     # grund som faar Claude Code til at levere sin naeste TUR —
                     # vi har bare flere runder pr. tur, saa ventetiden er
                     # kortere. En koe ingen toemmer er en etiket ingen ser.
-                    for _etik in _haent_ventende_etiketter(run.run_id):
+                    for _etik in _hoest_etiketter(run.run_id, _turn):
                         yield _sse("tool_round_label", {
                             "type": "tool_round_label",
                             **_etik,
@@ -5281,6 +5281,23 @@ async def _stream_visible_run(
                 except Exception:
                     pass
 
+                # ── Sidste chance for rundernes etiketter ───────────────
+                # Koeen fyldes ved rundens SLUTNING og toemmes ved NAESTE
+                # rundes start. Den sidste tool-runde har ingen naeste, saa
+                # her ventes KORT paa en der stadig regnes; fristen er et loft.
+                # Hoesten ligger FOER svaret gemmes (19/9-2026): foer kom den
+                # efter, og den sidste rundes etiket — ofte den mest
+                # interessante — var derfor vaek ved hver genindlaesning.
+                # `done` kommer stadig efter begge dele.
+                try:
+                    for _etik in _hoest_etiketter(run.run_id, _turn, 1.2):
+                        yield _sse("tool_round_label", {
+                            "type": "tool_round_label",
+                            **_etik,
+                        })
+                except Exception:
+                    logger.debug("sidste runde-etiket fejlede", exc_info=True)
+
                 # Persist the assistant message BEFORE done so loadSession()
                 # finds it immediately (avoids "message disappears" race).
                 # reasoning_content threaded through so thinking-mode-models
@@ -5351,21 +5368,8 @@ async def _stream_visible_run(
                     _hale.slut(run.run_id or "")
                 except Exception:
                     pass
-                # ── Sidste chance for rundernes etiketter ───────────────
-                # Koeen fyldes ved rundens SLUTNING og toemmes ved NAESTE
-                # rundes start. Den sidste tool-runde har ingen naeste, saa
-                # dens etiket ville gaa tabt — og det er ofte den mest
-                # interessante runde. Her ventes KORT paa en der stadig regnes;
-                # turen er alligevel forbi. Fristen er et loft: haenger den,
-                # lukker turen uden den.
-                try:
-                    for _etik in _haent_etiketter_med_frist(run.run_id, 1.2):
-                        yield _sse("tool_round_label", {
-                            "type": "tool_round_label",
-                            **_etik,
-                        })
-                except Exception:
-                    logger.debug("sidste runde-etiket fejlede", exc_info=True)
+                # (Sidste rundes etiket hoestes nu FOER svaret gemmes — se
+                # «Sidste chance for rundernes etiketter» ovenfor.)
 
                 yield _sse("done", {
                     "type": "done",
@@ -7695,6 +7699,7 @@ from core.services.visible_run_trace import (  # noqa: E402,F401
     _publish_agentic_round_start,
     haent_ventende as _haent_ventende_etiketter,
     haent_ventende_med_frist as _haent_etiketter_med_frist,
+    hoest_etiketter as _hoest_etiketter,
     udsend_runde_etiket as _publish_runde_etiket,
     _set_last_visible_execution_trace,
     _start_visible_execution_trace,

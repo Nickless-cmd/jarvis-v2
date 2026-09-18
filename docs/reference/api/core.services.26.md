@@ -169,8 +169,9 @@ _Sporet gennem én synlig kørsel — og runde-grænserne i den._
 | function | `_etiket` | `(vaerktoejer, hensigt)` | Indirektion så tråden kan byttes ud i en test uden at røre modellen. | [src](../../../core/services/visible_run_trace.py#L190) |
 | function | `udsend_runde_etiket` | `(*, run_id, round_num, vaerktoejer, hensigt=…)` | Skriv én kort etiket for runden og udsend den. Blokerer ALDRIG. | [src](../../../core/services/visible_run_trace.py#L196) |
 | function | `haent_ventende` | `(run_id)` | Tøm køen af færdige etiketter for en kørsel. | [src](../../../core/services/visible_run_trace.py#L264) |
-| function | `ryd_ventende` | `(run_id)` | Smid en kørsels kø OG dens tråd-bogholderi væk. | [src](../../../core/services/visible_run_trace.py#L275) |
-| function | `haent_ventende_med_frist` | `(run_id, frist_s)` | Tøm køen — men vent KORT på en etiket der stadig regnes. | [src](../../../core/services/visible_run_trace.py#L285) |
+| function | `hoest_etiketter` | `(run_id, tur=…, frist_s=…)` | Hent faerdige runde-etiketter — og laeg dem i turen, saa de GEMMES. | [src](../../../core/services/visible_run_trace.py#L275) |
+| function | `ryd_ventende` | `(run_id)` | Smid en kørsels kø OG dens tråd-bogholderi væk. | [src](../../../core/services/visible_run_trace.py#L294) |
+| function | `haent_ventende_med_frist` | `(run_id, frist_s)` | Tøm køen — men vent KORT på en etiket der stadig regnes. | [src](../../../core/services/visible_run_trace.py#L304) |
 
 ## `core/services/visible_runs.py`
 
@@ -196,34 +197,34 @@ _Sporet gennem én synlig kørsel — og runde-grænserne i den._
 | function | `_compact_llm_for_run` | `(prompt)` | Call the compact LLM for run-level summarisation (monkeypatchable). | [src](../../../core/services/visible_runs.py#L1219) |
 | function | `_handle_compact_command` | `(run)` | /compact: komprimér nu og giv Jarvis en besked at svare paa. | [src](../../../core/services/visible_runs.py#L1225) |
 | function | `_stream_visible_run` | `(run, *, force_user_id=…, tool_scope=…)` | — | [src](../../../core/services/visible_runs.py#L1246) |
-| function | `_native_tool_calls_to_capabilities` | `(tool_calls)` | Convert Ollama native tool_calls to capability-plan entries (legacy compat). | [src](../../../core/services/visible_runs.py#L6410) |
-| function | `_finalize_second_pass_visible_text` | `(text, *, fallback)` | — | [src](../../../core/services/visible_runs.py#L6482) |
-| function | `_bounded_error` | `(error_message, limit=…)` | — | [src](../../../core/services/visible_runs.py#L6515) |
-| function | `_sse` | `(event, data)` | — | [src](../../../core/services/visible_runs.py#L6522) |
-| class | `PresentationInvariantError` | `` | Raised when user-visible text contains internal runtime markers. | [src](../../../core/services/visible_runs.py#L6526) |
-| function | `_assert_presentation_invariant` | `(text)` | — | [src](../../../core/services/visible_runs.py#L6552) |
-| function | `_bash_hint` | `(cmd)` | Hvad kommandoen egentlig GØR — ikke dens første ord. | [src](../../../core/services/visible_runs.py#L6703) |
-| function | `_hoved_og_genstand` | `(ord_)` | «grep tool_calls» — kommandoen og det den blev kørt på. | [src](../../../core/services/visible_runs.py#L6736) |
-| function | `_tool_label` | `(tool_name, arguments=…)` | — | [src](../../../core/services/visible_runs.py#L6752) |
-| function | `_parse_tc_args` | `(tc)` | Extract arguments dict from a tool call (handles both string and dict forms). | [src](../../../core/services/visible_runs.py#L6789) |
-| function | `_maybe_fallback_for_autonomous` | `(run, exc)` | Task 10-beslutningsseam: skal en fejlet model-stream faldes til poolen? | [src](../../../core/services/visible_runs.py#L6801) |
-| function | `_complete_visible_run_from_fallback` | `(run, fallback)` | Terminal completion for et AUTONOMT run hvis model-stream fejlede og blev | [src](../../../core/services/visible_runs.py#L6845) |
-| function | `_fail_visible_run` | `(run, error_message, *, partial_text=…)` | — | [src](../../../core/services/visible_runs.py#L6903) |
-| function | `_cancel_visible_run` | `(run)` | — | [src](../../../core/services/visible_runs.py#L6977) |
-| function | `register_visible_run` | `(run)` | — | [src](../../../core/services/visible_runs.py#L7030) |
-| function | `get_visible_run_controller` | `(run_id)` | — | [src](../../../core/services/visible_runs.py#L7068) |
-| function | `cancel_visible_run` | `(run_id)` | — | [src](../../../core/services/visible_runs.py#L7072) |
-| function | `unregister_visible_run` | `(run_id)` | — | [src](../../../core/services/visible_runs.py#L7083) |
-| function | `get_active_visible_run` | `()` | — | [src](../../../core/services/visible_runs.py#L7097) |
-| function | `get_visible_work` | `()` | — | [src](../../../core/services/visible_runs.py#L7120) |
-| function | `get_visible_work_surface` | `()` | — | [src](../../../core/services/visible_runs.py#L7152) |
-| function | `get_visible_selected_work_surface` | `()` | — | [src](../../../core/services/visible_runs.py#L7179) |
-| function | `get_visible_selected_work_item` | `()` | — | [src](../../../core/services/visible_runs.py#L7210) |
-| function | `get_visible_selected_work_note` | `()` | — | [src](../../../core/services/visible_runs.py#L7262) |
-| function | `get_last_visible_run_outcome` | `()` | — | [src](../../../core/services/visible_runs.py#L7297) |
-| function | `get_last_visible_capability_use` | `()` | — | [src](../../../core/services/visible_runs.py#L7301) |
-| function | `set_last_visible_capability_use` | `(run, *, capability_id, invocation, capability_arguments=…, argument_source=…)` | — | [src](../../../core/services/visible_runs.py#L7318) |
-| function | `_update_cognitive_systems_async` | `(*, run_id, session_id, model, user_message, assistant_response, outcome_status)` | Fire-and-forget updates to all cognitive accumulation systems. | [src](../../../core/services/visible_runs.py#L7368) |
+| function | `_native_tool_calls_to_capabilities` | `(tool_calls)` | Convert Ollama native tool_calls to capability-plan entries (legacy compat). | [src](../../../core/services/visible_runs.py#L6414) |
+| function | `_finalize_second_pass_visible_text` | `(text, *, fallback)` | — | [src](../../../core/services/visible_runs.py#L6486) |
+| function | `_bounded_error` | `(error_message, limit=…)` | — | [src](../../../core/services/visible_runs.py#L6519) |
+| function | `_sse` | `(event, data)` | — | [src](../../../core/services/visible_runs.py#L6526) |
+| class | `PresentationInvariantError` | `` | Raised when user-visible text contains internal runtime markers. | [src](../../../core/services/visible_runs.py#L6530) |
+| function | `_assert_presentation_invariant` | `(text)` | — | [src](../../../core/services/visible_runs.py#L6556) |
+| function | `_bash_hint` | `(cmd)` | Hvad kommandoen egentlig GØR — ikke dens første ord. | [src](../../../core/services/visible_runs.py#L6707) |
+| function | `_hoved_og_genstand` | `(ord_)` | «grep tool_calls» — kommandoen og det den blev kørt på. | [src](../../../core/services/visible_runs.py#L6740) |
+| function | `_tool_label` | `(tool_name, arguments=…)` | — | [src](../../../core/services/visible_runs.py#L6756) |
+| function | `_parse_tc_args` | `(tc)` | Extract arguments dict from a tool call (handles both string and dict forms). | [src](../../../core/services/visible_runs.py#L6793) |
+| function | `_maybe_fallback_for_autonomous` | `(run, exc)` | Task 10-beslutningsseam: skal en fejlet model-stream faldes til poolen? | [src](../../../core/services/visible_runs.py#L6805) |
+| function | `_complete_visible_run_from_fallback` | `(run, fallback)` | Terminal completion for et AUTONOMT run hvis model-stream fejlede og blev | [src](../../../core/services/visible_runs.py#L6849) |
+| function | `_fail_visible_run` | `(run, error_message, *, partial_text=…)` | — | [src](../../../core/services/visible_runs.py#L6907) |
+| function | `_cancel_visible_run` | `(run)` | — | [src](../../../core/services/visible_runs.py#L6981) |
+| function | `register_visible_run` | `(run)` | — | [src](../../../core/services/visible_runs.py#L7034) |
+| function | `get_visible_run_controller` | `(run_id)` | — | [src](../../../core/services/visible_runs.py#L7072) |
+| function | `cancel_visible_run` | `(run_id)` | — | [src](../../../core/services/visible_runs.py#L7076) |
+| function | `unregister_visible_run` | `(run_id)` | — | [src](../../../core/services/visible_runs.py#L7087) |
+| function | `get_active_visible_run` | `()` | — | [src](../../../core/services/visible_runs.py#L7101) |
+| function | `get_visible_work` | `()` | — | [src](../../../core/services/visible_runs.py#L7124) |
+| function | `get_visible_work_surface` | `()` | — | [src](../../../core/services/visible_runs.py#L7156) |
+| function | `get_visible_selected_work_surface` | `()` | — | [src](../../../core/services/visible_runs.py#L7183) |
+| function | `get_visible_selected_work_item` | `()` | — | [src](../../../core/services/visible_runs.py#L7214) |
+| function | `get_visible_selected_work_note` | `()` | — | [src](../../../core/services/visible_runs.py#L7266) |
+| function | `get_last_visible_run_outcome` | `()` | — | [src](../../../core/services/visible_runs.py#L7301) |
+| function | `get_last_visible_capability_use` | `()` | — | [src](../../../core/services/visible_runs.py#L7305) |
+| function | `set_last_visible_capability_use` | `(run, *, capability_id, invocation, capability_arguments=…, argument_source=…)` | — | [src](../../../core/services/visible_runs.py#L7322) |
+| function | `_update_cognitive_systems_async` | `(*, run_id, session_id, model, user_message, assistant_response, outcome_status)` | Fire-and-forget updates to all cognitive accumulation systems. | [src](../../../core/services/visible_runs.py#L7372) |
 
 ## `core/services/visible_runs_approvals.py`
 _Pending tool-approval resolution for visible runs._
@@ -408,18 +409,19 @@ _Turens content-blokke, samlet i den rækkefølge de faktisk opstod._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | class | `TurnAccumulator` | `` | Samler tekst-segmenter, værktøjskald og deres rækkefølge for én tur. | [src](../../../core/services/visible_turn_accumulator.py#L30) |
-| method | `TurnAccumulator.add_text` | `(self, chunk)` | Læg tekst i det ÅBNE segment, eller åbn et nyt. | [src](../../../core/services/visible_turn_accumulator.py#L58) |
-| method | `TurnAccumulator.close_segment` | `(self)` | — | [src](../../../core/services/visible_turn_accumulator.py#L72) |
-| method | `TurnAccumulator.note_text` | `(self)` | — | [src](../../../core/services/visible_turn_accumulator.py#L76) |
-| method | `TurnAccumulator.note_tool` | `(self)` | — | [src](../../../core/services/visible_turn_accumulator.py#L80) |
-| method | `TurnAccumulator._luk_tanketid` | `(self)` | En tanke varer til det NÆSTE begynder — ikke til dens sidste token. | [src](../../../core/services/visible_turn_accumulator.py#L84) |
-| method | `TurnAccumulator.add_tools` | `(self, tool_calls, results)` | Optag et batch af kald og deres resultater. Kaster ALDRIG. | [src](../../../core/services/visible_turn_accumulator.py#L98) |
-| method | `TurnAccumulator.add_thinking` | `(self, chunk)` | Læg reasoning i det ÅBNE tanke-segment, eller åbn et nyt. | [src](../../../core/services/visible_turn_accumulator.py#L137) |
-| method | `TurnAccumulator.close_thinking` | `(self)` | — | [src](../../../core/services/visible_turn_accumulator.py#L156) |
-| method | `TurnAccumulator._nu` | `(self)` | — | [src](../../../core/services/visible_turn_accumulator.py#L159) |
-| method | `TurnAccumulator.thinking_seconds` | `(self)` | Sekunder pr. tanke-segment; None hvor der ikke blev maalt noget. | [src](../../../core/services/visible_turn_accumulator.py#L165) |
-| method | `TurnAccumulator.build_blocks` | `(self, text)` | Den kanoniske blok-liste for turen. | [src](../../../core/services/visible_turn_accumulator.py#L178) |
-| function | `coerce_tool_input` | `(raw)` | Normalisér tool-input til et DICT. | [src](../../../core/services/visible_turn_accumulator.py#L195) |
+| method | `TurnAccumulator.add_text` | `(self, chunk)` | Læg tekst i det ÅBNE segment, eller åbn et nyt. | [src](../../../core/services/visible_turn_accumulator.py#L62) |
+| method | `TurnAccumulator.close_segment` | `(self)` | — | [src](../../../core/services/visible_turn_accumulator.py#L76) |
+| method | `TurnAccumulator.note_text` | `(self)` | — | [src](../../../core/services/visible_turn_accumulator.py#L80) |
+| method | `TurnAccumulator.note_tool` | `(self)` | — | [src](../../../core/services/visible_turn_accumulator.py#L84) |
+| method | `TurnAccumulator._luk_tanketid` | `(self)` | En tanke varer til det NÆSTE begynder — ikke til dens sidste token. | [src](../../../core/services/visible_turn_accumulator.py#L88) |
+| method | `TurnAccumulator.add_tools` | `(self, tool_calls, results)` | Optag et batch af kald og deres resultater. Kaster ALDRIG. | [src](../../../core/services/visible_turn_accumulator.py#L102) |
+| method | `TurnAccumulator.add_thinking` | `(self, chunk)` | Læg reasoning i det ÅBNE tanke-segment, eller åbn et nyt. | [src](../../../core/services/visible_turn_accumulator.py#L141) |
+| method | `TurnAccumulator.close_thinking` | `(self)` | — | [src](../../../core/services/visible_turn_accumulator.py#L160) |
+| method | `TurnAccumulator._nu` | `(self)` | — | [src](../../../core/services/visible_turn_accumulator.py#L163) |
+| method | `TurnAccumulator.thinking_seconds` | `(self)` | Sekunder pr. tanke-segment; None hvor der ikke blev maalt noget. | [src](../../../core/services/visible_turn_accumulator.py#L169) |
+| method | `TurnAccumulator.add_round_label` | `(self, etik)` | Gem en runde-etiket som den blok Claude Desktop selv gemmer. | [src](../../../core/services/visible_turn_accumulator.py#L182) |
+| method | `TurnAccumulator.build_blocks` | `(self, text)` | Den kanoniske blok-liste for turen. | [src](../../../core/services/visible_turn_accumulator.py#L205) |
+| function | `coerce_tool_input` | `(raw)` | Normalisér tool-input til et DICT. | [src](../../../core/services/visible_turn_accumulator.py#L225) |
 
 ## `core/services/visible_turn_blocks.py`
 _Den kanoniske content-blok-array for en assistent-tur (spec §4)._

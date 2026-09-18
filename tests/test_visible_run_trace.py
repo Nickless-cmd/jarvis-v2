@@ -298,7 +298,9 @@ def test_loekken_TOEMMER_koeen_og_sender_den():
                and n.name == "_stream_visible_run"), None)
     assert fn is not None
     kaldt = {getattr(k.func, "id", "") for k in ast.walk(fn) if isinstance(k, ast.Call)}
-    assert "_haent_ventende_etiketter" in kaldt, "koeen toemmes aldrig"
+    # 19/9-2026: begge hoeste gaar gennem `_hoest_etiketter`, der baade
+    # returnerer etiketterne til streamen og GEMMER dem i turen.
+    assert "_hoest_etiketter" in kaldt, "koeen toemmes aldrig"
     assert '_sse("tool_round_label"' in kilde, "etiketten sendes ikke paa streamen"
 
 
@@ -378,4 +380,7 @@ def test_loekken_toemmer_koeen_FOER_turen_lukker():
                and n.name == "_stream_visible_run"), None)
     assert fn is not None
     kaldt = {getattr(k.func, "id", "") for k in ast.walk(fn) if isinstance(k, ast.Call)}
-    assert "_haent_etiketter_med_frist" in kaldt, "den sidste etiket hentes aldrig"
+    # Den sidste hoest er `_hoest_etiketter` MED en frist (tredje argument).
+    med_frist = [k for k in ast.walk(fn) if isinstance(k, ast.Call)
+                 and getattr(k.func, "id", "") == "_hoest_etiketter" and len(k.args) == 3]
+    assert med_frist, "den sidste etiket hentes aldrig"

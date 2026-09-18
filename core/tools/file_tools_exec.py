@@ -291,6 +291,11 @@ def linjetal(gammel: str, ny: str, erstatninger: int) -> tuple[int, int]:
     Tom tekst er nul linjer, ikke én. Ellers ville en sletning se ud som «én
     tom linje tilføjet», og hvert eneste tal ville være for højt — en linje
     der altid lyver lidt er værre end ingen linje.
+
+    Ellers tælles som Claude Desktop (19/9-2026, Bjørn: 1:1): antal
+    linjeskift + 1 (`c980da984-…js`). «a\n» er altså TO linjer hos dem, og nu
+    også her — før trak vi den afsluttende newline fra, og samme redigering
+    viste ét tal hos os og et andet hos dem.
     """
     n = max(0, int(erstatninger or 0))
     if not n:
@@ -299,9 +304,7 @@ def linjetal(gammel: str, ny: str, erstatninger: int) -> tuple[int, int]:
     def _linjer(s: str) -> int:
         if not s:
             return 0
-        # En afsluttende newline afslutter den sidste linje; den starter ikke
-        # en ny. «a\n» er ÉN linje.
-        return s.count("\n") + (0 if s.endswith("\n") else 1)
+        return s.count("\n") + 1
 
     return (_linjer(ny) * n, _linjer(gammel) * n)
 

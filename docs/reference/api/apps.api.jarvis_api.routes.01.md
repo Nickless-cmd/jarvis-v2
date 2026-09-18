@@ -561,20 +561,24 @@ _Owner-only read surface for the Cheap Lane control center._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_require_owner` | `()` | — | [src](../../../apps/api/jarvis_api/routes/cheap_lane_control.py#L36) |
-| function | `_since` | `(hours)` | — | [src](../../../apps/api/jarvis_api/routes/cheap_lane_control.py#L42) |
-| function | `_safe_row` | `(row)` | — | [src](../../../apps/api/jarvis_api/routes/cheap_lane_control.py#L46) |
-| function | `_filtered_logs` | `(*, hours, provider=…, model=…, auth_profile=…, daemon=…, status=…, error_class=…, correlation_id=…, query=…, cursor=…, limit=…)` | — | [src](../../../apps/api/jarvis_api/routes/cheap_lane_control.py#L55) |
-| function | `_export_rows` | `(*, hours)` | — | [src](../../../apps/api/jarvis_api/routes/cheap_lane_control.py#L79) |
-| function | `_config_fingerprints` | `()` | — | [src](../../../apps/api/jarvis_api/routes/cheap_lane_control.py#L94) |
-| function | `dashboard` | `(hours=…)` | — | [src](../../../apps/api/jarvis_api/routes/cheap_lane_control.py#L103) |
-| function | `capacity` | `()` | — | [src](../../../apps/api/jarvis_api/routes/cheap_lane_control.py#L109) |
-| function | `logs` | `(hours=…, provider=…, model=…, auth_profile=…, daemon=…, status=…, error_class=…, correlation_id=…, query=…, cursor=…, limit=…)` | — | [src](../../../apps/api/jarvis_api/routes/cheap_lane_control.py#L115) |
-| function | `export_logs` | `(format=…, hours=…)` | — | [src](../../../apps/api/jarvis_api/routes/cheap_lane_control.py#L141) |
-| function | `log_detail` | `(invocation_id)` | — | [src](../../../apps/api/jarvis_api/routes/cheap_lane_control.py#L163) |
-| function | `diagnostics` | `()` | — | [src](../../../apps/api/jarvis_api/routes/cheap_lane_control.py#L172) |
-| function | `audit` | `(limit=…)` | — | [src](../../../apps/api/jarvis_api/routes/cheap_lane_control.py#L178) |
-| function | `export_diagnostics` | `(hours=…)` | — | [src](../../../apps/api/jarvis_api/routes/cheap_lane_control.py#L184) |
+| class | `_ControlBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/cheap_lane_control.py#L37) |
+| class | `_SimulationBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/cheap_lane_control.py#L45) |
+| function | `_require_owner` | `()` | — | [src](../../../apps/api/jarvis_api/routes/cheap_lane_control.py#L50) |
+| function | `_since` | `(hours)` | — | [src](../../../apps/api/jarvis_api/routes/cheap_lane_control.py#L56) |
+| function | `_safe_row` | `(row)` | — | [src](../../../apps/api/jarvis_api/routes/cheap_lane_control.py#L60) |
+| function | `_filtered_logs` | `(*, hours, provider=…, model=…, auth_profile=…, daemon=…, status=…, error_class=…, correlation_id=…, query=…, cursor=…, limit=…)` | — | [src](../../../apps/api/jarvis_api/routes/cheap_lane_control.py#L69) |
+| function | `_export_rows` | `(*, hours)` | — | [src](../../../apps/api/jarvis_api/routes/cheap_lane_control.py#L93) |
+| function | `_config_fingerprints` | `()` | — | [src](../../../apps/api/jarvis_api/routes/cheap_lane_control.py#L108) |
+| function | `dashboard` | `(hours=…)` | — | [src](../../../apps/api/jarvis_api/routes/cheap_lane_control.py#L117) |
+| function | `capacity` | `()` | — | [src](../../../apps/api/jarvis_api/routes/cheap_lane_control.py#L123) |
+| function | `logs` | `(hours=…, provider=…, model=…, auth_profile=…, daemon=…, status=…, error_class=…, correlation_id=…, query=…, cursor=…, limit=…)` | — | [src](../../../apps/api/jarvis_api/routes/cheap_lane_control.py#L129) |
+| function | `export_logs` | `(format=…, hours=…)` | — | [src](../../../apps/api/jarvis_api/routes/cheap_lane_control.py#L155) |
+| function | `log_detail` | `(invocation_id)` | — | [src](../../../apps/api/jarvis_api/routes/cheap_lane_control.py#L177) |
+| function | `diagnostics` | `()` | — | [src](../../../apps/api/jarvis_api/routes/cheap_lane_control.py#L186) |
+| function | `audit` | `(limit=…)` | — | [src](../../../apps/api/jarvis_api/routes/cheap_lane_control.py#L192) |
+| function | `export_diagnostics` | `(hours=…)` | — | [src](../../../apps/api/jarvis_api/routes/cheap_lane_control.py#L198) |
+| function | `control` | `(body)` | — | [src](../../../apps/api/jarvis_api/routes/cheap_lane_control.py#L218) |
+| function | `simulate` | `(body)` | — | [src](../../../apps/api/jarvis_api/routes/cheap_lane_control.py#L246) |
 
 ## `apps/api/jarvis_api/routes/companion.py`
 _Companion-endpoints — Jarvis' tre ønsker til mobil-appen._

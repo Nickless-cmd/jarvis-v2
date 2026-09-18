@@ -2,6 +2,33 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/communication_guard_daemon.py`
+_Communication guard daemon — vedligeholder TTL-rydning._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `tick_communication_guard_daemon` | `()` | Daemon tick: cleanup expired TTL triggers + log active count. | [src](../../../core/services/communication_guard_daemon.py#L18) |
+
+## `core/services/compaction_runtime.py`
+_`CompactionRuntime` — kontekst-pres lettes ved ERSTATNING, aldrig ved sletning._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `NotAdvancing` | `` | Kompakteringen frigav ingenting. Et genforsøg ville være en løkke. | [src](../../../core/services/compaction_runtime.py#L55) |
+| class | `Node` | `` | En knude i den overflade der kan erstattes. | [src](../../../core/services/compaction_runtime.py#L60) |
+| class | `Policy` | `` | — | [src](../../../core/services/compaction_runtime.py#L71) |
+| class | `Surface` | `` | — | [src](../../../core/services/compaction_runtime.py#L80) |
+| method | `Surface.tokens` | `(self)` | — | [src](../../../core/services/compaction_runtime.py#L84) |
+| class | `Result` | `` | — | [src](../../../core/services/compaction_runtime.py#L89) |
+| function | `_uafsluttede_par` | `(nodes)` | Værktøjskald hvis resultat mangler — og resultaterne selv. | [src](../../../core/services/compaction_runtime.py#L98) |
+| function | `protected_ids` | `(s, p, *, current_user_input=…)` | Alt der ikke må erstattes. | [src](../../../core/services/compaction_runtime.py#L116) |
+| function | `prune_tool_results` | `(s, p, *, current_user_input=…)` | Deterministisk beskæring. Ingen model, ingen risiko for at tage fejl. | [src](../../../core/services/compaction_runtime.py#L127) |
+| function | `replaceable_range` | `(s, p, *, current_user_input=…)` | Ét SAMMENHÆNGENDE spænd der må erstattes. `(0, 0)` hvis intet kan. | [src](../../../core/services/compaction_runtime.py#L150) |
+| function | `summarize` | `(s, p, *, summary_text, summary_tokens, current_user_input=…)` | Erstat ét spænd med en opsummering. Atomisk eller slet ikke. | [src](../../../core/services/compaction_runtime.py#L172) |
+| function | `failed` | `(s, error)` | En mislykket kompaktering. Generationen står UÆNDRET. | [src](../../../core/services/compaction_runtime.py#L200) |
+| function | `may_retry_after_overflow` | `(before, after)` | Må overløbet prøves igen? | [src](../../../core/services/compaction_runtime.py#L210) |
+| function | `require_advance` | `(before, after)` | Som ovenfor, men kaster. Til kaldesteder der ellers ville løkke. | [src](../../../core/services/compaction_runtime.py#L220) |
+
 ## `core/services/companion_initiative.py`
 _Proaktivitet — Jarvis må dele en tanke uden at blive spurgt._
 
@@ -543,30 +570,4 @@ _Counterfactual self-simulation for post-run learning._
 | function | `_load_records` | `()` | — | [src](../../../core/services/counterfactual_self_simulation.py#L174) |
 | function | `_save_simulation` | `(sim)` | — | [src](../../../core/services/counterfactual_self_simulation.py#L179) |
 | function | `_feed_learning` | `(sim)` | — | [src](../../../core/services/counterfactual_self_simulation.py#L184) |
-
-## `core/services/counterfactual_triggers.py`
-_Trigger detection for counterfactual reflection._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `TriggerEvent` | `` | A regret-worthy event normalized for counterfactual processing. | [src](../../../core/services/counterfactual_triggers.py#L22) |
-| function | `_key_self_review` | `(payload)` | — | [src](../../../core/services/counterfactual_triggers.py#L33) |
-| function | `_key_conflict` | `(payload)` | Primary key for conflict.detected events. | [src](../../../core/services/counterfactual_triggers.py#L37) |
-| function | `_key_decision` | `(payload)` | — | [src](../../../core/services/counterfactual_triggers.py#L60) |
-| function | `_key_review` | `(payload)` | — | [src](../../../core/services/counterfactual_triggers.py#L64) |
-| function | `_key_goal` | `(payload)` | — | [src](../../../core/services/counterfactual_triggers.py#L68) |
-| function | `_key_decision_kept` | `(payload)` | — | [src](../../../core/services/counterfactual_triggers.py#L72) |
-| function | `_key_conflict_resolved` | `(payload)` | — | [src](../../../core/services/counterfactual_triggers.py#L76) |
-| function | `cf_key` | `(workspace_id, event_type, primary_key)` | First-pass dedup hash. Same workspace+type+key = same hash = skip. | [src](../../../core/services/counterfactual_triggers.py#L99) |
-| function | `_extract_summary` | `(payload)` | — | [src](../../../core/services/counterfactual_triggers.py#L105) |
-| function | `fetch_recent_aspiration_triggers` | `(*, workspace_id, lookback_minutes=…)` | Query events table for recent aspiration-worthy (positive) events. | [src](../../../core/services/counterfactual_triggers.py#L113) |
-| function | `fetch_recent_triggers` | `(*, workspace_id, lookback_minutes=…)` | Query events table for recent regret-worthy events. | [src](../../../core/services/counterfactual_triggers.py#L164) |
-
-## `core/services/cowork_dispatch.py`
-_Cowork dispatch — runtime→app instruktioner (spec §18.5)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `build_app_instruction` | `(*, action, target_user, channel=…, payload=…, requester=…)` | Byg en struktureret app-instruktion. Rejser ValueError ved ugyldig action | [src](../../../core/services/cowork_dispatch.py#L17) |
-| function | `dispatch_to_app` | `(*, action, target_user, channel=…, payload=…, requester=…)` | Byg + signalér en app-instruktion via eventbus. Appen udfører den lokalt. | [src](../../../core/services/cowork_dispatch.py#L38) |
 

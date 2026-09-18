@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7698/14947 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7699/14969 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,7 +8,7 @@ Generated from source. 7698/14947 functions/methods documented (51%). The list b
 |---|---|---|---|
 | `apps.api.jarvis_api` | 34 | 36 | 94% |
 | `apps.api.jarvis_api.middleware` | 8 | 19 | 42% |
-| `apps.api.jarvis_api.routes` | 654 | 869 | 75% |
+| `apps.api.jarvis_api.routes` | 654 | 871 | 75% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 69 | 171 | 40% |
 | `apps.desktop` | 6 | 7 | 85% |
@@ -25,7 +25,7 @@ Generated from source. 7698/14947 functions/methods documented (51%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 651 | 1205 | 54% |
-| `core.services` | 5123 | 10266 | 49% |
+| `core.services` | 5124 | 10286 | 49% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 109 | 184 | 59% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -41,7 +41,7 @@ Generated from source. 7698/14947 functions/methods documented (51%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2142)
+## Undocumented public functions (2150)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L208)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -62,14 +62,16 @@ Generated from source. 7698/14947 functions/methods documented (51%). The list b
 - `apps/api/jarvis_api/routes/central_healers.py` :: `get_healers` (L23)
 - `apps/api/jarvis_api/routes/central_healers.py` :: `set_healer` (L30)
 - `apps/api/jarvis_api/routes/central_profiles.py` :: `get_profiles` (L24)
-- `apps/api/jarvis_api/routes/cheap_lane_control.py` :: `audit` (L178)
-- `apps/api/jarvis_api/routes/cheap_lane_control.py` :: `capacity` (L109)
-- `apps/api/jarvis_api/routes/cheap_lane_control.py` :: `dashboard` (L103)
-- `apps/api/jarvis_api/routes/cheap_lane_control.py` :: `diagnostics` (L172)
-- `apps/api/jarvis_api/routes/cheap_lane_control.py` :: `export_diagnostics` (L184)
-- `apps/api/jarvis_api/routes/cheap_lane_control.py` :: `export_logs` (L141)
-- `apps/api/jarvis_api/routes/cheap_lane_control.py` :: `log_detail` (L163)
-- `apps/api/jarvis_api/routes/cheap_lane_control.py` :: `logs` (L115)
+- `apps/api/jarvis_api/routes/cheap_lane_control.py` :: `audit` (L192)
+- `apps/api/jarvis_api/routes/cheap_lane_control.py` :: `capacity` (L123)
+- `apps/api/jarvis_api/routes/cheap_lane_control.py` :: `control` (L218)
+- `apps/api/jarvis_api/routes/cheap_lane_control.py` :: `dashboard` (L117)
+- `apps/api/jarvis_api/routes/cheap_lane_control.py` :: `diagnostics` (L186)
+- `apps/api/jarvis_api/routes/cheap_lane_control.py` :: `export_diagnostics` (L198)
+- `apps/api/jarvis_api/routes/cheap_lane_control.py` :: `export_logs` (L155)
+- `apps/api/jarvis_api/routes/cheap_lane_control.py` :: `log_detail` (L177)
+- `apps/api/jarvis_api/routes/cheap_lane_control.py` :: `logs` (L129)
+- `apps/api/jarvis_api/routes/cheap_lane_control.py` :: `simulate` (L246)
 - `apps/api/jarvis_api/routes/connectors.py` :: `delete_connector` (L46)
 - `apps/api/jarvis_api/routes/connectors.py` :: `get_connectors` (L27)
 - `apps/api/jarvis_api/routes/connectors.py` :: `post_enabled` (L35)
@@ -347,16 +349,16 @@ Generated from source. 7698/14947 functions/methods documented (51%). The list b
 - `core/runtime/db_capability_approval.py` :: `list_approval_feedback` (L697)
 - `core/runtime/db_capability_approval.py` :: `recent_capability_approval_requests` (L85)
 - `core/runtime/db_capability_approval.py` :: `record_capability_approval_request_execution` (L247)
-- `core/runtime/db_cheap_lane_control.py` :: `finalize_cheap_lane_audit` (L248)
-- `core/runtime/db_cheap_lane_control.py` :: `get_cheap_lane_invocation_detail` (L426)
-- `core/runtime/db_cheap_lane_control.py` :: `get_route_decision` (L132)
-- `core/runtime/db_cheap_lane_control.py` :: `list_cheap_lane_audit` (L278)
-- `core/runtime/db_cheap_lane_control.py` :: `list_cheap_lane_invocations` (L361)
-- `core/runtime/db_cheap_lane_control.py` :: `list_quota_observations` (L181)
-- `core/runtime/db_cheap_lane_control.py` :: `record_cheap_lane_audit` (L210)
-- `core/runtime/db_cheap_lane_control.py` :: `record_quota_observation` (L146)
-- `core/runtime/db_cheap_lane_control.py` :: `record_redacted_payload` (L296)
-- `core/runtime/db_cheap_lane_control.py` :: `record_route_decision` (L95)
+- `core/runtime/db_cheap_lane_control.py` :: `finalize_cheap_lane_audit` (L278)
+- `core/runtime/db_cheap_lane_control.py` :: `get_cheap_lane_invocation_detail` (L456)
+- `core/runtime/db_cheap_lane_control.py` :: `get_route_decision` (L160)
+- `core/runtime/db_cheap_lane_control.py` :: `list_cheap_lane_audit` (L308)
+- `core/runtime/db_cheap_lane_control.py` :: `list_cheap_lane_invocations` (L391)
+- `core/runtime/db_cheap_lane_control.py` :: `list_quota_observations` (L209)
+- `core/runtime/db_cheap_lane_control.py` :: `record_cheap_lane_audit` (L238)
+- `core/runtime/db_cheap_lane_control.py` :: `record_quota_observation` (L174)
+- `core/runtime/db_cheap_lane_control.py` :: `record_redacted_payload` (L326)
+- `core/runtime/db_cheap_lane_control.py` :: `record_route_decision` (L123)
 - `core/runtime/db_cheap_provider.py` :: `count_cheap_provider_invocations` (L400)
 - `core/runtime/db_cheap_provider.py` :: `get_cheap_provider_runtime_state` (L184)
 - `core/runtime/db_cheap_provider.py` :: `list_cheap_provider_runtime_states` (L240)
@@ -815,7 +817,13 @@ Generated from source. 7698/14947 functions/methods documented (51%). The list b
 - `core/services/chat_sessions.py` :: `recent_chat_session_messages` (L983)
 - `core/services/chat_sessions.py` :: `recent_chat_tool_messages` (L1264)
 - `core/services/chat_sessions.py` :: `rename_chat_session` (L1289)
+- `core/services/cheap_lane_admission.py` :: `acquire_admission` (L123)
+- `core/services/cheap_lane_admission.py` :: `admission_snapshot` (L102)
+- `core/services/cheap_lane_admission.py` :: `release_admission` (L155)
+- `core/services/cheap_lane_admission.py` :: `set_admission_mode` (L60)
 - `core/services/cheap_lane_balancer.py` :: `BalancerSlot.slot_id` (L33)
+- `core/services/cheap_lane_control.py` :: `apply_control` (L262)
+- `core/services/cheap_lane_control.py` :: `simulate_route` (L313)
 - `core/services/cheap_lane_dashboard.py` :: `build_cheap_lane_dashboard` (L49)
 - `core/services/cheap_lane_dashboard.py` :: `invocation_trends` (L13)
 - `core/services/cheap_lane_diagnostics.py` :: `central_evidence` (L28)
@@ -831,8 +839,8 @@ Generated from source. 7698/14947 functions/methods documented (51%). The list b
 - `core/services/cheap_provider_runtime_adapters.py` :: `provider_runtime_defaults` (L106)
 - `core/services/cheap_provider_runtime_adapters.py` :: `supported_cheap_providers` (L96)
 - `core/services/cheap_provider_runtime_selection.py` :: `cheap_lane_status_surface` (L81)
-- `core/services/cheap_provider_runtime_selection.py` :: `execute_cheap_lane_via_pool` (L633)
-- `core/services/cheap_provider_runtime_selection.py` :: `execute_public_safe_cheap_lane` (L969)
+- `core/services/cheap_provider_runtime_selection.py` :: `execute_cheap_lane_via_pool` (L643)
+- `core/services/cheap_provider_runtime_selection.py` :: `execute_public_safe_cheap_lane` (L1001)
 - `core/services/cheap_provider_runtime_selection.py` :: `provider_runtime_defaults` (L55)
 - `core/services/cheap_provider_runtime_selection.py` :: `record_cheap_provider_invocation` (L59)
 - `core/services/cheap_provider_runtime_selection.py` :: `smoke_cheap_lane` (L173)

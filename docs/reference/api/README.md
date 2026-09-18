@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 14947 functions/methods, 51% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 14969 functions/methods, 51% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -34,28 +34,28 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 14947 functions/
 - [`core.services.03`](core.services.03.md) — `autonomous_sessions` … `central_agents_surface`
 - [`core.services.04`](core.services.04.md) — `central_analyst` … `central_hypothesis_generator`
 - [`core.services.05`](core.services.05.md) — `central_hypothesis_governance` … `central_realtime`
-- [`core.services.06`](core.services.06.md) — `central_red_dress` … `cheap_lane_failure_policy`
-- [`core.services.07`](core.services.07.md) — `cheap_lane_floor` … `compaction_runtime`
-- [`core.services.08`](core.services.08.md) — `companion_initiative` … `cowork_dispatch`
-- [`core.services.09`](core.services.09.md) — `cowork_feed` … `deep_reflection_slot`
-- [`core.services.10`](core.services.10.md) — `delegation_advisor` … `dream_session_lessons`
-- [`core.services.11`](core.services.11.md) — `dreaming_session` … `experienced_time_daemon`
-- [`core.services.12`](core.services.12.md) — `experiential_memory` … `git_actions`
-- [`core.services.13`](core.services.13.md) — `github_connector` … `identity_sketch`
-- [`core.services.14`](core.services.14.md) — `idle_consolidation` … `ledger_write_path`
-- [`core.services.15`](core.services.15.md) — `lessons` … `memory_tattoos`
-- [`core.services.16`](core.services.16.md) — `memory_write_policy` … `ntfy_gateway`
-- [`core.services.17`](core.services.17.md) — `nudge_broend` … `post_tool_answer_guard`
-- [`core.services.18`](core.services.18.md) — `precision_bias` … `prompt_variant_tracker`
-- [`core.services.19`](core.services.19.md) — `proposal_classifier` … `relation_state_signal_tracking`
-- [`core.services.20`](core.services.20.md) — `relational_warmth` … `runtime_operational_memory`
-- [`core.services.21`](core.services.21.md) — `runtime_resource_signal` … `self_review_record_tracking`
-- [`core.services.22`](core.services.22.md) — `self_review_run_tracking` … `signal_noise_guard`
-- [`core.services.23`](core.services.23.md) — `signal_pressure_accumulator` … `taste_profile`
-- [`core.services.24`](core.services.24.md) — `telegram_gateway` … `tool_router_runtime`
-- [`core.services.25`](core.services.25.md) — `tool_tagger` … `visible_model_prompt`
-- [`core.services.26`](core.services.26.md) — `visible_model_sse` … `world_model_auto_extraction`
-- [`core.services.27`](core.services.27.md) — `world_model_signal_tracking` … `world_model_signal_tracking`
+- [`core.services.06`](core.services.06.md) — `central_red_dress` … `cheap_lane_dashboard`
+- [`core.services.07`](core.services.07.md) — `cheap_lane_diagnostics` … `communication_guard`
+- [`core.services.08`](core.services.08.md) — `communication_guard_daemon` … `counterfactual_self_simulation`
+- [`core.services.09`](core.services.09.md) — `counterfactual_triggers` … `decisions_journal`
+- [`core.services.10`](core.services.10.md) — `deep_analyzer` … `dream_insight_daemon`
+- [`core.services.11`](core.services.11.md) — `dream_motif_daemon` … `experience_episodes`
+- [`core.services.12`](core.services.12.md) — `experience_substrate` … `gate_verdict_ledger`
+- [`core.services.13`](core.services.13.md) — `ghost_networks` … `identity_guard`
+- [`core.services.14`](core.services.14.md) — `identity_mutation_log` … `ledger_canary`
+- [`core.services.15`](core.services.15.md) — `ledger_recovery` … `memory_resurfacing`
+- [`core.services.16`](core.services.16.md) — `memory_search` … `notification_bridge`
+- [`core.services.17`](core.services.17.md) — `notification_router` … `plugin_ruleset_store`
+- [`core.services.18`](core.services.18.md) — `policy_abstraction` … `prompt_section_reevaluation`
+- [`core.services.19`](core.services.19.md) — `prompt_support_signals` … `relation_dynamics`
+- [`core.services.20`](core.services.20.md) — `relation_map` … `runtime_hooks`
+- [`core.services.21`](core.services.21.md) — `runtime_learning_signals` … `self_review_cadence_signal_tracking`
+- [`core.services.22`](core.services.22.md) — `self_review_outcome_tracking` … `signal_delta_trigger`
+- [`core.services.23`](core.services.23.md) — `signal_network_visualizer` … `system_cartographer`
+- [`core.services.24`](core.services.24.md) — `task_worker` … `tool_round_label`
+- [`core.services.25`](core.services.25.md) — `tool_router` … `visible_model_observe`
+- [`core.services.26`](core.services.26.md) — `visible_model_ollama` … `workspace_trust`
+- [`core.services.27`](core.services.27.md) — `world_facts` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

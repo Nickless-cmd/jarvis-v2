@@ -1401,13 +1401,6 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 }
 .toolgroup-chevron { flex: 0 0 auto; color: var(--fg-2); }
 .toolgroup-diffstat { flex: 0 0 auto; font-size: 13px; font-variant-numeric: tabular-nums; }
-/* Overskriften staar STAERKERE end den mekaniske linje under. Oejet skal fange
-   hvad der blev udrettet foerst; tallene er detaljen man gaar ned i. */
-.toolgroup-etiket {
-  color: var(--fg-1); font-size: 14px; font-weight: 600;
-  padding: 2px 2px 0; overflow: hidden; text-overflow: ellipsis;
-  white-space: nowrap;
-}
 /* ═══ Tool-linjens bevægelse — Claude Desktop 1:1 (19/9-2026) ══════════════
    Kilde: claude-desktop-unofficial v2.110.0, ion-dist/assets/v1/
    c7e6c37f6-DBAD18hv.css + c3e2391e3-CyTSz9uV.js. Værdierne er deres,

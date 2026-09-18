@@ -126,6 +126,13 @@ export type ContentBlock =
   | { type: 'thinking'; thinking: string; seconds?: number; startet?: number }
   | { type: 'skill_surface'; matches: SkillMatchInfo[]; primary: boolean }
   | {
+      // Rundens sætning, gemt i beskeden — Claude Desktops egen form
+      // (19/9-2026). Hæfter sig på sine kald via ids, ikke på en plads.
+      type: 'tool_use_summary'
+      summary: string
+      preceding_tool_use_ids: string[]
+    }
+  | {
       type: 'tool_use'
       id: string
       name: string

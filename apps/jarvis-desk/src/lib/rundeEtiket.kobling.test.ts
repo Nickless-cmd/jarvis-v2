@@ -43,16 +43,20 @@ describe('runde-etiketten når fra stream til skærm', () => {
       .toMatch(/rundeEtiketter\?\.\[t\.id\]/)
   })
 
-  it('kortet tegner etiketten OVER den mekaniske linje', () => {
-    // Bjørns rækkefølge: overskriften først, tallene efter. At begge findes er
-    // ikke nok — rækkefølgen ER beslutningen.
+  it('sætningen ERSTATTER den mekaniske tekst', () => {
+    // Claude Desktop 1:1 (19/9-2026, læst i deres `Tf`: `summary || … ||
+    // mekanisk`). Før stod den som overskrift over linjen — Bjørns beslutning
+    // dengang, afløst af «1:1 med Claude Desktop».
     const c = kilde('components/rich/ToolGroupCard.tsx')
-    expect(c).toMatch(/toolgroup-etiket/)
-    expect(c.indexOf('toolgroup-etiket')).toBeLessThan(c.indexOf('toolgroup-label'))
+    expect(c).toMatch(/const tekst = etiket \? etiket :/)
+    expect(c).not.toMatch(/toolgroup-etiket/)
   })
 
-  it('etiketten har en stil — ellers er den usynlig', () => {
-    expect(kilde('styles/app.css')).toMatch(/\.toolgroup-etiket/)
+  it('den GEMTE vej: blokken overlever normaliseringen og fødes ind i opslaget', () => {
+    // Før blev etiketten kun streamet; efter en genindlæsning var den væk.
+    expect(kilde('lib/foldToolResults.ts')).toMatch(/b\.type === 'tool_use_summary'/)
+    const r = kilde('components/rich/BlocksRenderer.tsx')
+    expect(r).toMatch(/etiketterFraBlokke\(taet\)/)
   })
 })
 

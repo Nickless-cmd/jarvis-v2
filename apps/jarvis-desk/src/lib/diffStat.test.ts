@@ -44,10 +44,11 @@ describe('diffStat', () => {
     expect(diffStat('write_file', { content: 'l1\nl2\nl3' })).toEqual({ add: 3, del: 0 })
   })
 
-  // En afsluttende newline AFSLUTTER den sidste linje — den starter ikke en ny.
-  // Uden det ville hvert eneste tal være én for højt.
-  it('tæller ikke en afsluttende newline som en ekstra linje', () => {
-    expect(diffStat('write_file', { content: 'l1\nl2\n' })).toEqual({ add: 2, del: 0 })
+  // Claude Desktop 1:1 (19/9-2026): linjeskift + 1, så en afsluttende newline
+  // tæller som en linje — «l1\nl2\n» er 3 hos dem. Før trak vi den fra, og
+  // samme redigering viste ét tal hos os og et andet hos dem.
+  it('tæller som Claude Desktop: linjeskift + 1', () => {
+    expect(diffStat('write_file', { content: 'l1\nl2\n' })).toEqual({ add: 3, del: 0 })
   })
 
   // En sletning skal vise «−N +0». Talte tom streng som én linje, ville den

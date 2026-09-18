@@ -33,11 +33,12 @@ export function ToolGroupCard({
   block: ToolGroupBlock
   density: 'compact' | 'full'
   /**
-   * Overskriften over runden — «Rettede fejl i login».
+   * Rundens sætning — «Rettede fejl i login».
    *
    * Skrevet af en lille lokal model på serveren og slået op på kaldets id.
-   * Udeladt = ingen overskrift; kortet skal kunne stå uden, for den kommer
-   * først når runden er talt op. 1:1 med mobilen.
+   * Den ERSTATTER den mekaniske tekst (Claude Desktop 1:1, 19/9-2026); før
+   * stod den som overskrift over linjen. Udeladt = den mekaniske tekst.
+   * Kommer live fra streamen og gemt fra beskedens tool_use_summary-blokke.
    */
   etiket?: string
 }) {
@@ -57,18 +58,19 @@ export function ToolGroupCard({
   // information man vil have.
   const visSek = sek == null || (koerer && sek < KLOKKE_EFTER_S) ? null : Math.floor(sek)
   if (!resume) return null
+  // Claude Desktop 1:1 (19/9-2026, læst i `Tf`: `summary || … || mekanisk`):
+  // modellens sætning ERSTATTER den mekaniske tekst, når den findes. Før stod
+  // den som overskrift OVER linjen. Den kommer først når runden er talt op,
+  // så skiftet går gennem label-skiftet som et almindeligt tekstskift.
+  const tekst = etiket ? etiket : koerer ? udenEllipse(resume) : resume
 
   return (
     <div className={`toolgroup${koerer ? ' er-koerende' : ''}${open ? ' er-aaben' : ''}`}>
-      {/* Bjoerns raekkefoelge: etiketten FOERST, det mekaniske efter.
-          Overskriften siger hvad runden UDRETTEDE; linjen under hvad der
-          SKETE. */}
-      {etiket ? <div className="toolgroup-etiket">{etiket}</div> : null}
       <button
         type="button"
         className="toolgroup-head"
         aria-expanded={open}
-        aria-label={etiket ? `${etiket}. ${resume}` : resume}
+        aria-label={tekst}
         onClick={() => setOpen((o) => !o)}
       >
         {/* Spark-cellen (Claude Desktop, 19/9-2026): 20 px bred mens runden
@@ -79,7 +81,7 @@ export function ToolGroupCard({
         </span>
         <span className="toolgroup-label">
           <LabelSkift
-            tekst={koerer ? udenEllipse(resume) : resume}
+            tekst={tekst}
             arbejder={koerer}
             className={koerer ? 'shimmer' : ''}
           />

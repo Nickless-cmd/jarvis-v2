@@ -84,15 +84,15 @@ function fraPar(gammel: unknown, ny: unknown): { add: number; del: number } | nu
 }
 
 /**
- * Linjer i et tekststykke — 1:1 med serverens `_linjer`.
+ * Linjer i et tekststykke — som Claude Desktop (19/9-2026) og serverens
+ * `_linjer`: antal linjeskift + 1. «a\n» er to linjer, som hos dem.
  *
- * Tom streng er NUL linjer, ikke én: ellers ville en sletning se ud som «én
- * tom linje tilføjet». En afsluttende newline AFSLUTTER den sidste linje, den
- * starter ikke en ny — «a\n» er én linje.
+ * Tom streng er stadig NUL linjer, ikke én: ellers ville en sletning se ud som
+ * «én tom linje tilføjet». Det gør Claude Desktop også (`new_str ? … : 0`).
  */
 function linjer(s: string): number {
   if (!s) return 0
-  return s.split('\n').length - (s.endsWith('\n') ? 1 : 0)
+  return s.split('\n').length
 }
 
 

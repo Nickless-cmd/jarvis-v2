@@ -77,6 +77,17 @@ function coalesceProgress(blocks: RenderBlock[]): (RenderBlock | ProgressTrailBl
  *  Ren render-lags-transform: groupToolRounds folder en HEL runde vaerktoejs-
  *  kald til ét foldbart tool_group — som mobilen. Ingen wire/persist-aendring;
  *  transformen koerer her, efter fold, lige foer dispatch. */
+/** Gemte runde-sætninger slået op på hvert kald de dækker. */
+export function etiketterFraBlokke(blocks: ContentBlock[]): Record<string, string> {
+  const ud: Record<string, string> = {}
+  for (const b of blocks) {
+    if (b && b.type === 'tool_use_summary') {
+      for (const id of b.preceding_tool_use_ids) ud[id] = b.summary
+    }
+  }
+  return ud
+}
+
 export function BlocksRenderer({
   blocks,
   density,
@@ -97,7 +108,13 @@ export function BlocksRenderer({
   // denseBlocks FØRST: fjern sparsomme huller (foldede tool_result-indices) FØR
   // groupToolRounds/coalesceProgress itererer med for..of — ellers crash på et
   // undefined-hul (sort skærm, Bjørn 9. jul).
-  const rendered = coalesceProgress(groupToolRounds(afslutForladteKald(denseBlocks(blocks), streaming)))
+  // Rundernes sætninger: de GEMTE (tool_use_summary-blokke i beskeden) plus
+  // de LIVE (streamens tool_round_label). Blokkene tages ud før grupperingen —
+  // midt i blokkene ville de dele en runde op.
+  const taet = denseBlocks(blocks)
+  const etiketter = { ...etiketterFraBlokke(taet), ...(rundeEtiketter ?? {}) }
+  const udenEtiketter = taet.filter((b) => b.type !== 'tool_use_summary')
+  const rendered = coalesceProgress(groupToolRounds(afslutForladteKald(udenEtiketter, streaming)))
   const lastIdx = rendered.length - 1
   // Filerne Jarvis redigerede i DENNE besked. Kortet staar nederst — som i CC
   // — og kun naar der faktisk er redigeret noget.
@@ -106,7 +123,7 @@ export function BlocksRenderer({
   return (
     <>
       {rendered.map((b, i) => (
-        <BlockView key={i} block={b} density={density} streaming={streaming} isLast={i === lastIdx} rundeEtiketter={rundeEtiketter} />
+        <BlockView key={i} block={b} density={density} streaming={streaming} isLast={i === lastIdx} rundeEtiketter={etiketter} />
       ))}
       <EditedFilesCard filer={redigerede} onAabn={visAendring} />
     </>

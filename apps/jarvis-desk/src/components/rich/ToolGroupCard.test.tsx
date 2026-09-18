@@ -89,12 +89,26 @@ describe('ToolGroupCard', () => {
     }
     render(<ToolGroupCard block={block} density="compact" />)
     const tal = screen.getByTestId('toolgroup-diffstat')
-    expect(tal).toHaveTextContent('+4')   // 2 nye + 2 skrevne
+    // 2 nye + 3 skrevne («x\ny\n» er 3 linjer, som i Claude Desktop).
+    expect(tal).toHaveTextContent('+5')
     expect(tal).toHaveTextContent('−3')
   })
 
   it('en runde der kun laeste har ingen tal — ikke to nuller', () => {
     render(<ToolGroupCard block={group(3)} density="compact" />)
     expect(screen.queryByTestId('toolgroup-diffstat')).toBeNull()
+  })
+
+  // Claude Desktop 1:1 (19/9-2026): modellens sætning ERSTATTER linjens tekst.
+  it('rundens sætning erstatter den mekaniske tekst', () => {
+    const { container } = render(<ToolGroupCard block={group(3)} density="compact" etiket="Rettede fejl i login" />)
+    expect(container.querySelector('.linje-titel')!.textContent).toBe('Rettede fejl i login')
+    expect(screen.queryByText('Læste 3 filer')).toBeNull()
+    expect(container.querySelector('.toolgroup-etiket')).toBeNull()
+  })
+
+  it('uden sætning står den mekaniske tekst', () => {
+    const { container } = render(<ToolGroupCard block={group(3)} density="compact" />)
+    expect(container.querySelector('.linje-titel')!.textContent).toBe('Læste 3 filer')
   })
 })

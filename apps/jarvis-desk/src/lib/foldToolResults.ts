@@ -32,6 +32,16 @@ export function foldToolResults(blocks: Array<Record<string, unknown>>): Content
       const tu = out[at] as Extract<ContentBlock, { type: 'tool_use' }>
       const status = b.status === 'error' || b.is_error ? 'error' : 'done'
       out[at] = { ...tu, status, result: String(b.content ?? '') }
+    } else if (b.type === 'tool_use_summary' && typeof b.summary === 'string' && b.summary.trim()) {
+      // Rundens sætning (19/9-2026). Før blev den kun streamet og var væk
+      // efter en genindlæsning; nu gemmer serveren den, og den må ikke falde
+      // ud her som en ukendt type.
+      out.push({
+        type: 'tool_use_summary',
+        summary: b.summary,
+        preceding_tool_use_ids: Array.isArray(b.preceding_tool_use_ids)
+          ? (b.preceding_tool_use_ids as unknown[]).map(String) : [],
+      })
     } else if (b.type === 'text') {
       out.push({ type: 'text', text: String(b.text ?? '') })
     } else if (b.type === 'thinking') {

@@ -227,6 +227,7 @@ def test_kun_den_faelles_indgang_kalder_compact_session_history() -> None:
 
 
 def test_de_doede_komprimatorer_er_vaek() -> None:
+    assert not (_REPO / "core/services/compaction_runtime.py").exists()
     assert not (_REPO / "core/context/auto_compact.py").exists()
 
 

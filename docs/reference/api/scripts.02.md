@@ -205,6 +205,15 @@ _Peer practice runner — kører kontinuerligt i ~7 dage per peer._
 | function | `run_one_tick` | `(*, peer_id, mood_trace, use_seed=…)` | Generér og persistér én expression for peer. Returnér expression eller None ved fejl. | [src](../../../scripts/peer_practice_runner.py#L69) |
 | function | `main` | `()` | — | [src](../../../scripts/peer_practice_runner.py#L106) |
 
+## `scripts/perception_mix.py`
+_Hvad består Jarvis' perception af — og hvor meget af den er hans egen støj?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_hent` | `(siden)` | — | [src](../../../scripts/perception_mix.py#L35) |
+| function | `_tabel` | `(navn, taelling, i_alt)` | — | [src](../../../scripts/perception_mix.py#L57) |
+| function | `main` | `()` | — | [src](../../../scripts/perception_mix.py#L65) |
+
 ## `scripts/phase5_analyze.py`
 _Fase 5 «Bor der nogen?» — analyse._
 
@@ -411,18 +420,4 @@ _Flyt USER.md «## Durable Preferences» ind i «## Lært» (lærings-sløjfe, b
 | function | `_user_md_path` | `(workspace)` | — | [src](../../../scripts/user_md_learned_migration.py#L40) |
 | function | `migrate` | `(*, workspace, apply)` | — | [src](../../../scripts/user_md_learned_migration.py#L48) |
 | function | `main` | `()` | — | [src](../../../scripts/user_md_learned_migration.py#L118) |
-
-## `scripts/validate_commit_attribution.py`
-_Validate commit attribution for commit-msg and pre-push hooks._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_git` | `(repo, *args)` | — | [src](../../../scripts/validate_commit_attribution.py#L20) |
-| function | `validate_message_file` | `(path)` | Validate one COMMIT_EDITMSG-style file. | [src](../../../scripts/validate_commit_attribution.py#L29) |
-| function | `_rev_list` | `(repo, revision)` | — | [src](../../../scripts/validate_commit_attribution.py#L39) |
-| function | `commits_in_enforced_range` | `(repo, baseline, from_ref, to_ref)` | Return pushed commits that are also newer than the activation baseline. | [src](../../../scripts/validate_commit_attribution.py#L47) |
-| function | `validate_range` | `(repo, commits)` | Return validation failures keyed by commit hash. | [src](../../../scripts/validate_commit_attribution.py#L68) |
-| function | `_print_failures` | `(failures)` | — | [src](../../../scripts/validate_commit_attribution.py#L88) |
-| function | `_pre_push` | `(repo)` | — | [src](../../../scripts/validate_commit_attribution.py#L95) |
-| function | `main` | `(argv=…)` | — | [src](../../../scripts/validate_commit_attribution.py#L122) |
 

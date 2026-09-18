@@ -338,6 +338,38 @@ def _er_kommandolinje(s: str) -> bool:
     return False
 
 
+#: Verber der påstår at runden ÆNDREDE noget.
+_SKRIVE_VERBER: Final[frozenset[str]] = frozenset({
+    "redigerede", "rettede", "ændrede", "opdaterede", "tilføjede", "skrev",
+    "omskrev", "oprettede", "erstattede", "fjernede", "slettede", "flyttede",
+    "omdøbte", "fiksede", "gemte",
+})
+
+#: Værktøjer der kun ser — de kan ikke have ændret noget.
+_KUN_LAESENDE: Final[frozenset[str]] = frozenset({
+    "read_file", "list_dir", "grep", "glob", "search", "find_files",
+    "web_search", "web_fetch", "get_weather", "daemon_status",
+    "read_model_config", "recall", "memory_search", "search_memory", "explore",
+    "verify_file_contains", "central_query", "bash_output", "search_sessions",
+    "analyze_image", "scout_agent",
+})
+
+
+def _verbum_lyver(tekst: str, kald: list[dict[str, Any]]) -> bool:
+    """Påstår etiketten en ændring i en runde der kun læste?
+
+    Målt 19/9-2026 i Bjørns tråd: modellen skrev «Redigerede rediger-mig.txt»
+    over en runde med ÉN `operator_read_file` — to gange. Navne-værnet
+    (`_opdigtet`) lod den passere, for filen stod jo i kaldet. Det var
+    verbet der løj; filnavnet «rediger-mig» havde lokket det frem.
+    """
+    ord0 = ((tekst or "").strip().split() or [""])[0].lower().strip(".,;:!?«»\"'")
+    if ord0 not in _SKRIVE_VERBER:
+        return False
+    navne = [_navn_og_input(v)[0].strip().removeprefix("operator_") for v in kald]
+    return bool(navne) and all(n in _KUN_LAESENDE for n in navne)
+
+
 def etiket(vaerktoejer: list[dict[str, Any]], hensigt: str = "") -> str:
     """Én kort etiket for runden, eller `""`.
 
@@ -362,6 +394,9 @@ def etiket(vaerktoejer: list[dict[str, Any]], hensigt: str = "") -> str:
         return ""
     if _er_kommandolinje(ud):
         logger.info("runde-etiket kasseret — den gentager bare kommandoen: %r", ud)
+        return ""
+    if _verbum_lyver(ud, kald):
+        logger.info("runde-etiket kasseret — skrive-verbum over en runde der kun laeste: %r", ud)
         return ""
     fundet = _opdigtet(ud, billede)
     if fundet:

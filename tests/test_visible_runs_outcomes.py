@@ -114,3 +114,14 @@ def test_persisted_outcome_passes_real_session_to_cognitive_updates(monkeypatch)
     )
 
     assert captured["session_id"] == "chat-session-real"
+
+
+def test_tekstbloggene_normaliseres_ogsaa():
+    """Klienterne tegner en gemt tur ud fra content_json — ikke content."""
+    from core.services.visible_runs_outcomes import _normaliser_tekstblokke
+    ud = _normaliser_tekstblokke([
+        {"type": "text", "text": "Kørt. ## Runderne | A | B | |---|---| | a | b | | c | d |"},
+        {"type": "tool_use", "id": "t1", "name": "bash", "input": {}},
+    ])
+    assert "\n| a | b |\n| c | d |" in ud[0]["text"]
+    assert ud[1] == {"type": "tool_use", "id": "t1", "name": "bash", "input": {}}

@@ -102,6 +102,17 @@ def _reflow_line_table(line: str) -> str | None:
     n = sep_len
     header = [c.strip() for c in cells[:sep_start]]
     data = [c.strip() for c in cells[sep_start + sep_len:]]
+    # Rækker skrevet HELE, blot uden linjeskift — `| a | b | | c | d |` — giver
+    # en tom celle mellem hver række (`|` `|` støder sammen). Målt 19/9-2026 i
+    # Bjørns tråd: uden dette blev tabellen forskudt én celle pr. række.
+    # Kun når mønstret holder HELE vejen, ellers kunne en ægte tom celle
+    # forveksles med en rækkegrænse.
+    if len(header) == n + 1 and header[-1] == "":
+        header = header[:-1]
+        if data and data[0] == "":
+            data = data[1:]
+        if all(data[k] == "" for k in range(n, len(data), n + 1)):
+            data = [c for k, c in enumerate(data) if (k % (n + 1)) != n]
     rows = ["| " + " | ".join(header) + " |", "| " + " | ".join(["---"] * n) + " |"]
     for k in range(0, len(data), n):
         rows.append("| " + " | ".join(data[k:k + n]) + " |")

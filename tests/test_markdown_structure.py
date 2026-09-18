@@ -129,3 +129,14 @@ def test_csharp_not_broken():
 
 def test_issue_hash_not_broken():
     assert normalize_markdown_structure("Se issue #5 for det") == "Se issue #5 for det"
+
+
+def test_tabel_med_hele_raekker_uden_linjeskift():
+    """Maalt 19/9-2026 i Bjoerns traad: raekkerne stod hele, blot uden
+    linjeskift — `| a | b | | c | d |`. Den tomme celle mellem raekkerne
+    forskoed tabellen én celle pr. raekke."""
+    t = ("Kørt. ## Runderne | Værktøj | Udfald | |---|---| | `bash` | skrev filen | "
+         "| `get_weather` | Taastrup | | `search` | fundet |")
+    ud = normalize_markdown_structure(t)
+    assert "| Værktøj | Udfald |\n| --- | --- |\n| `bash` | skrev filen |\n" in ud
+    assert "| `get_weather` | Taastrup |\n| `search` | fundet |" in ud

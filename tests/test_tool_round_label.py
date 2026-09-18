@@ -374,3 +374,25 @@ def test_et_forholdsord_til_sidst_ryger_ogsaa_UDEN_klipning(monkeypatch):
     blev klippet. Loekken koerer derfor altid."""
     monkeypatch.setattr(trl, "_kald_model", lambda p: "Skrev den nye fil til disken som")
     assert trl.etiket([_v("write_file", {"path": "a.py"})]) == "Skrev den nye fil til disken"
+
+
+# ─────────────────────────────────────────── verbet må ikke lyve (19/9-2026)
+
+def test_skrive_verbum_over_en_ren_laesning_kasseres(monkeypatch):
+    """Maalt i Bjoerns traad: «Redigerede rediger-mig.txt» over ÉN
+    `operator_read_file`. Navnet stod i kaldet, saa navne-vagten lod den gaa."""
+    monkeypatch.setattr(trl, "_kald_model", lambda p: "Redigerede rediger-mig.txt")
+    v = _v("operator_read_file", {"path": "/home/bs/test-jarvis-bro/rediger-mig.txt"})
+    assert trl.etiket([v]) == ""
+
+
+def test_skrive_verbum_over_en_rigtig_redigering_bestaar(monkeypatch):
+    monkeypatch.setattr(trl, "_kald_model", lambda p: "Redigerede rediger-mig.txt")
+    v = _v("operator_edit_file", {"path": "/home/bs/rediger-mig.txt", "old_string": "a", "new_string": "b"})
+    assert trl.etiket([v, _v("search", {"pattern": "x"})]) == "Redigerede rediger-mig.txt"
+
+
+def test_laese_verbum_over_en_laesning_bestaar(monkeypatch):
+    monkeypatch.setattr(trl, "_kald_model", lambda p: "Læste rediger-mig.txt")
+    v = _v("operator_read_file", {"path": "/home/bs/rediger-mig.txt"})
+    assert trl.etiket([v]) == "Læste rediger-mig.txt"

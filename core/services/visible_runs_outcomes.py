@@ -85,6 +85,26 @@ def _origin_of_session(session_id: str) -> str:
     return dele[1] if len(dele) >= 2 else ""
 
 
+def _normaliser_tekstblokke(blocks: list[dict]) -> list[dict]:
+    """Samme blokstruktur-rettelse på tekstblokkene som på `content`.
+
+    `normalize_markdown_structure` kørte kun på `content`, men klienterne
+    tegner en gemt tur ud fra `content_json`. Målt 19/9-2026 i Bjørns tråd:
+    en tabel skrevet på én linje stod som rå `| a | b | | c |` på telefonen,
+    mens den samme tekst i `content` var rettet. Kaster aldrig — en blok der
+    ikke kan rettes, gemmes som den er.
+    """
+    ud: list[dict] = []
+    for b in blocks or []:
+        if isinstance(b, dict) and b.get("type") == "text" and isinstance(b.get("text"), str):
+            try:
+                b = {**b, "text": normalize_markdown_structure(b["text"])}
+            except Exception:
+                pass
+        ud.append(b)
+    return ud
+
+
 def _med_udgivne_filer(blocks: list[dict], run: "_vr.VisibleRun") -> list[dict]:
     """Laeg turens udgivne filer BAGEST i blok-arrayet.
 
@@ -390,6 +410,7 @@ def _persist_session_assistant_message(
                 import json as _json
                 _blokke = _with_thinking_block(blocks, run, str(reasoning_content or ""))
                 _blokke = _med_udgivne_filer(_blokke, run)
+                _blokke = _normaliser_tekstblokke(_blokke)
                 content_json = _json.dumps(_blokke, ensure_ascii=False)
         except Exception:
             content_json = None

@@ -577,6 +577,7 @@ _Én kort etiket for en afsluttet værktøjs-runde — «Rettede NPE i UserServi
 | function | `_ryd` | `(s)` | Én linje, uden instruktion, uden anførselstegn, uden punktum, klippet | [src](../../../core/services/tool_round_label.py#L257) |
 | function | `_opdigtet` | `(tekst, billede)` | Hvilket navn i etiketten står IKKE i kaldene? `""` når alt er dækket. | [src](../../../core/services/tool_round_label.py#L282) |
 | function | `_er_kommandolinje` | `(s)` | Er etiketten bare kommandoen igen? | [src](../../../core/services/tool_round_label.py#L325) |
-| function | `etiket` | `(vaerktoejer, hensigt=…)` | Én kort etiket for runden, eller `""`. | [src](../../../core/services/tool_round_label.py#L341) |
-| function | `tool_use_ids` | `(vaerktoejer)` | Hvilke kald etiketten dækker. | [src](../../../core/services/tool_round_label.py#L373) |
+| function | `_verbum_lyver` | `(tekst, kald)` | Påstår etiketten en ændring i en runde der kun læste? | [src](../../../core/services/tool_round_label.py#L358) |
+| function | `etiket` | `(vaerktoejer, hensigt=…)` | Én kort etiket for runden, eller `""`. | [src](../../../core/services/tool_round_label.py#L373) |
+| function | `tool_use_ids` | `(vaerktoejer)` | Hvilke kald etiketten dækker. | [src](../../../core/services/tool_round_label.py#L408) |
 

@@ -105,16 +105,23 @@ describe('CheapLanePanel', () => {
     expect(screen.getByText('The read operation timed out')).toBeInTheDocument()
   })
 
-  it('pause rammer SLOTTET, ikke registret', async () => {
-    const slot = vi.spyOn(api, 'slotHandling').mockResolvedValue({ status: 'ok' })
-    const model = vi.spyOn(api, 'saetModel').mockResolvedValue({ status: 'ok' })
+  it('pause i puljen rammer SLOTTET, ikke registret', async () => {
+    // Samme skel som før, nu gennem kontrol-ruten: `slot.pause` er
+    // balancerens egen tilstand og forsvinder ved næste opbygning, mens
+    // `model.deactivate` skriver i registret og overlever en genstart.
+    const kontrol = vi.spyOn(api, 'udfoerKontrol').mockResolvedValue({ status: 'ok' })
     const bruger = userEvent.setup()
     render(<CheapLanePanel config={config} />)
     await waitFor(() => expect(screen.getByRole('button', { name: 'Puljen nu' })).toBeInTheDocument())
     await bruger.click(screen.getByRole('button', { name: 'Puljen nu' }))
-    await bruger.click(screen.getByRole('button', { name: 'Pause' }))
-    expect(slot).toHaveBeenCalledWith(config, 'zai::glm-4::default', 'disable')
-    expect(model).not.toHaveBeenCalled()
+    await bruger.click(screen.getByRole('button', { name: /zai \/ glm-4/ }))
+    await bruger.click(screen.getByRole('button', { name: 'Pause slot' }))
+    expect(kontrol).toHaveBeenCalledWith(config, expect.objectContaining({
+      action: 'slot.pause', target: 'zai::glm-4::default',
+    }))
+    expect(kontrol).not.toHaveBeenCalledWith(config, expect.objectContaining({
+      action: 'model.deactivate',
+    }))
   })
 
   it('«deaktivér» på udbydere rammer REGISTRET, ikke slottet', async () => {

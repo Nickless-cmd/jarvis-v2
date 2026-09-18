@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from 'react'
 import type { ApiConfig } from '../../../lib/api'
 import {
   getBalancerState, getHistorik, getFejl, getTidsserie, getRegistret,
-  slotHandling, refreshPool,
   type BalancerState, type Historik, type FejlSvar, type TidsserieSpand, type Registret,
 } from '../../../lib/cheapLaneApi'
 import { useCheapLaneStore } from '../../../lib/cheapLaneStore'
@@ -10,7 +9,8 @@ import { CheapLaneOverview } from './CheapLaneOverview'
 import { CheapLaneCapacity } from './CheapLaneCapacity'
 import { CheapLaneProviders } from './CheapLaneProviders'
 import { CheapLaneInspector } from './CheapLaneInspector'
-import { udfoerKontrol } from '../../../lib/cheapLaneApi'
+import { CheapLaneBalancer } from './CheapLaneBalancer'
+import { udfoerKontrol, simulerRute } from '../../../lib/cheapLaneApi'
 
 /**
  * Cheap Lane — hele lanen på én flade.
@@ -108,15 +108,6 @@ export function CheapLanePanel({ config }: { config?: ApiConfig }) {
     return svar
   }, [config, butik, hent])
 
-  const handling = async (fn: () => Promise<unknown>, hvad: string) => {
-    try {
-      await fn()
-      setBesked(hvad)
-      await hent()
-    } catch (e) {
-      setBesked(e instanceof Error ? e.message : 'handlingen fejlede')
-    }
-  }
 
   if (!config) return <div className="mc-tom">Ingen forbindelse til serveren.</div>
 
@@ -168,57 +159,20 @@ export function CheapLanePanel({ config }: { config?: ApiConfig }) {
       )}
 
       {fane === 'pulje' && (
-        <div className="cl-pulje">
-          <div className="cl-handlinger">
-            <button type="button"
-                    onClick={() => void handling(() => refreshPool(config), 'Puljen er bygget op igen')}>
-              Genopbyg puljen
-            </button>
-            <span className="cl-note">
-              Bygger slots op fra registret. Slots slået fra i hånden bliver liggende.
-            </span>
-          </div>
-          <table className="mc-tabel">
-            <thead>
-              <tr>
-                <th>Slot</th><th>Status</th><th>Vægt</th><th>RPM</th><th>I dag</th>
-                <th>Succes</th><th>Breaker</th><th>Køling til</th><th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {(state?.slots ?? []).map((s) => (
-                <tr key={s.slot_id} className={`cl-status-${s.status ?? 'ukendt'}`}>
-                  <td title={s.slot_id}>
-                    <strong>{s.provider}</strong>
-                    <span className="cl-model"> {s.model}</span>
-                    {s.auth_profile && s.auth_profile !== 'default' && (
-                      <span className="cl-profil"> · {s.auth_profile}</span>
-                    )}
-                  </td>
-                  <td>{s.status}</td>
-                  <td>{typeof s.weight === 'number' ? s.weight.toFixed(2) : '–'}</td>
-                  <td>{s.rpm_used ?? 0}{s.rpm_limit ? ` / ${s.rpm_limit}` : ''}</td>
-                  <td>{s.daily_used ?? 0}{s.daily_limit ? ` / ${s.daily_limit}` : ''}</td>
-                  <td>{pct(s.success_rate)}</td>
-                  <td>{s.breaker_level ? `niveau ${s.breaker_level}` : '–'}</td>
-                  <td title={s.cooldown_reason ?? ''}>{tid(s.cooldown_until)}</td>
-                  <td className="cl-knapper">
-                    <button type="button" onClick={() => void handling(
-                      () => slotHandling(config, s.slot_id, s.manually_disabled ? 'enable' : 'disable'),
-                      s.manually_disabled ? 'Slot slået til' : 'Slot sat på pause')}>
-                      {s.manually_disabled ? 'Slå til' : 'Pause'}
-                    </button>
-                    <button type="button" onClick={() => void handling(
-                      () => slotHandling(config, s.slot_id, 'reset'), 'Slot nulstillet')}>
-                      Nulstil
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {!(state?.slots ?? []).length && <tr><td colSpan={9}>Puljen er tom.</td></tr>}
-            </tbody>
-          </table>
-        </div>
+        <>
+          <p className="cl-note">
+            Puljen er balancerens EGEN tilstand: en pause her er væk ved næste
+            opbygning. Klik på et slot for at se hvorfor det får den vægt det får.
+          </p>
+          <CheapLaneBalancer
+            slots={butik.snapshot?.sections?.balancer?.data?.slots ?? state?.slots ?? []}
+            udfoer={kontrol}
+            simuler={async (taskKind, skip) => {
+              if (!config) throw new Error('ingen forbindelse')
+              return simulerRute(config, taskKind, skip)
+            }}
+          />
+        </>
       )}
 
       {fane === 'udbydere' && (

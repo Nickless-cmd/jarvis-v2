@@ -220,3 +220,35 @@
 .cl-inspektor-felter div { display: flex; justify-content: space-between; gap: 10px; }
 .cl-inspektor-felter dt { color: var(--fg-3); }
 .cl-inspektor-felter dd { margin: 0; color: var(--fg-1); }
+
+/* ── balancerens forklaring ─────────────────────────────────────────── */
+
+.cl-forklaring {
+  background: var(--bg-2); border: 1px solid var(--line); border-radius: 10px;
+  padding: 12px; align-self: start;
+}
+.cl-forklaring h4 { margin: 0 0 2px; font-size: 13px; color: var(--fg-1); }
+.cl-vaegt { margin: 0 0 8px; font-size: 11px; color: var(--fg-3); }
+.cl-forklaring-overskrift { margin: 0 0 4px; font-size: 11px; color: var(--fg-3); letter-spacing: 0.03em; }
+
+/* Den hårde grund står først OG ser anderledes ud: er den der, er vægten 0
+   uanset hvad de bløde faktorer siger. */
+.cl-haarde { margin: 0 0 6px; padding-left: 16px; font-size: 12px; color: var(--error-fg, #d9534f); }
+.cl-lille { font-size: 11px; }
+
+.cl-faktorer { margin: 8px 0; display: grid; gap: 4px; font-size: 12px; }
+.cl-faktorer div { display: flex; justify-content: space-between; gap: 10px; }
+.cl-faktorer dt { color: var(--fg-3); }
+.cl-faktorer dd { margin: 0; color: var(--fg-1); font-variant-numeric: tabular-nums; }
+
+.cl-simulering {
+  margin: 8px 0; padding: 9px 11px; font-size: 12px;
+  background: var(--bg-2); border: 1px solid var(--line); border-radius: 9px;
+}
+.cl-simulering p { margin: 0 0 4px; color: var(--fg-2); }
+.cl-simulering ul { margin: 0; padding-left: 16px; color: var(--fg-3); }
+
+/* Revisionen fra serveren: uden den kan man ikke finde sin egen ændring i
+   sporet bagefter. */
+.cl-kvittering { margin: 6px 0; font-size: 12px; color: var(--accent); }
+.cl-kvittering code { font-size: 11px; }

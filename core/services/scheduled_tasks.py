@@ -118,16 +118,20 @@ def list_pending_for_current_user() -> list[dict]:
 
 
 def get_scheduled_tasks_state() -> dict[str, object]:
-    """Return all scheduled tasks for observability."""
-    tasks = runtime_db.list_scheduled_tasks(limit=50)
-    pending = [t for t in tasks if t["status"] == "pending"]
-    fired = [t for t in tasks if t["status"] == "fired"]
-    cancelled = [t for t in tasks if t["status"] == "cancelled"]
+    """Return scheduled tasks for observability.
+
+    Henter pending og fired hver for sig (fix 2026-09-18): et faelles
+    limit-vindue over alle statusser kunne skjule pending tasks bag hundredvis
+    af gamle afsluttede raekker — list-tool'et svarede "No pending scheduled
+    tasks" sekunder efter en ny task var oprettet.
+    """
+    pending = runtime_db.list_scheduled_tasks(limit=200, status="pending")
+    fired = runtime_db.list_scheduled_tasks(limit=5, status="fired")
     return {
         "pending": pending,
         "recently_fired": fired[:5],
-        "cancelled_count": len(cancelled),
-        "total": len(tasks),
+        "cancelled_count": runtime_db.count_scheduled_tasks(status="cancelled"),
+        "total": runtime_db.count_scheduled_tasks(),
     }
 
 

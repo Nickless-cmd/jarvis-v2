@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7690/14884 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7692/14885 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 7690/14884 functions/methods documented (51%). The list b
 | `core.identity` | 67 | 160 | 41% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 651 | 1188 | 54% |
+| `core.runtime` | 653 | 1189 | 54% |
 | `core.services` | 5115 | 10234 | 49% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 109 | 184 | 59% |
@@ -41,7 +41,7 @@ Generated from source. 7690/14884 functions/methods documented (51%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2114)
+## Undocumented public functions (2113)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L207)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -472,7 +472,6 @@ Generated from source. 7690/14884 functions/methods documented (51%). The list b
 - `core/runtime/db_scheduled_tasks.py` :: `create_scheduled_task` (L70)
 - `core/runtime/db_scheduled_tasks.py` :: `get_due_scheduled_tasks` (L101)
 - `core/runtime/db_scheduled_tasks.py` :: `get_scheduled_task` (L92)
-- `core/runtime/db_scheduled_tasks.py` :: `list_scheduled_tasks` (L169)
 - `core/runtime/db_scheduled_tasks.py` :: `mark_scheduled_task_cancelled` (L129)
 - `core/runtime/db_scheduled_tasks.py` :: `mark_scheduled_task_fired` (L115)
 - `core/runtime/db_schema.py` :: `init_db` (L314)
@@ -1623,8 +1622,8 @@ Generated from source. 7690/14884 functions/methods documented (51%). The list b
 - `core/services/scheduled_job_windows.py` :: `build_scheduled_job_windows_surface` (L204)
 - `core/services/scheduled_job_windows.py` :: `list_windows` (L194)
 - `core/services/scheduled_job_windows.py` :: `set_window_active` (L103)
-- `core/services/scheduled_tasks.py` :: `start_scheduled_tasks_service` (L318)
-- `core/services/scheduled_tasks.py` :: `stop_scheduled_tasks_service` (L327)
+- `core/services/scheduled_tasks.py` :: `start_scheduled_tasks_service` (L322)
+- `core/services/scheduled_tasks.py` :: `stop_scheduled_tasks_service` (L331)
 - `core/services/security_guard.py` :: `is_session_locked` (L123)
 - `core/services/security_guard.py` :: `lock_session` (L93)
 - `core/services/security_guard.py` :: `unlock_session` (L108)

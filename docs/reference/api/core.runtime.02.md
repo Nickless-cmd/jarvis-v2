@@ -605,7 +605,8 @@ _Scheduled tasks — engangs-planlagte opgaver Jarvis skal udføre på et tidspu
 | function | `mark_scheduled_task_fired` | `(task_id, fired_at, updated_at)` | — | [src](../../../core/runtime/db_scheduled_tasks.py#L115) |
 | function | `mark_scheduled_task_cancelled` | `(task_id, cancelled_at, updated_at)` | — | [src](../../../core/runtime/db_scheduled_tasks.py#L129) |
 | function | `update_scheduled_task` | `(task_id, *, focus=…, run_at=…, updated_at)` | Opdater focus og/eller run_at på en pending task. Returnerer den opdaterede | [src](../../../core/runtime/db_scheduled_tasks.py#L143) |
-| function | `list_scheduled_tasks` | `(limit=…)` | — | [src](../../../core/runtime/db_scheduled_tasks.py#L169) |
+| function | `list_scheduled_tasks` | `(limit=…, status=…)` | List scheduled tasks — nyeste ``run_at`` først. | [src](../../../core/runtime/db_scheduled_tasks.py#L169) |
+| function | `count_scheduled_tasks` | `(status=…)` | Count scheduled tasks, optionally filtered by status. Observability helper. | [src](../../../core/runtime/db_scheduled_tasks.py#L205) |
 
 ## `core/runtime/db_schema.py`
 _Schema layer for core.runtime.db — init_db + all _ensure_*/_migrate_* helpers._

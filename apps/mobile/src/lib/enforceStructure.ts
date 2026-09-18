@@ -1,3 +1,4 @@
+// Spejl af apps/jarvis-desk/src/lib/enforceStructure.ts (1:1, 19/9-2026) — ret begge.
 /** Strukturel håndhævelse af Jarvis' output-format.
  *
  *  Baggrund: Jarvis følger ikke konsekvent markdown-konventioner — han skriver

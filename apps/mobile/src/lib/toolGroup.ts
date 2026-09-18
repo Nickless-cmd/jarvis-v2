@@ -79,7 +79,8 @@ export function summarizeRound(items: ToolItem[]): string {
 
   if (tools.size === 1) {
     const tool = grundnavn(items[0]!.tool)
-    const [now, past] = PLURAL[tool] ?? ['Kører', 'Kørte']
+    if (!PLURAL[tool]) return brugte(items.length, running) + (running ? '…' : '')
+    const [now, past] = PLURAL[tool]!
     const [one, many] = UNIT[tool] ?? ['ting', 'ting']
     const n = counted > 0 ? counted : items.length
     return `${running ? now : past} ${n} ${n === 1 ? one : many}${running ? '…' : ''}`
@@ -94,43 +95,51 @@ function antalOrd(n: number): string {
 }
 
 /**
- * Led pr. værktøj, i den rækkefølge kaldene skete.
+ * Led pr. slags værktøj — Claude Desktops regel (`Cf`, læst i deres kilde
+ * 19/9-2026), 1:1 i desk og mobil:
  *
- * Den gamle linje sagde «Kørte 5 værktøjer» — en optælling af noget der ikke
- * interesserer nogen: hvor mange funktionskald der var. Hvad der SKETE stod
- * der ikke. Nu står der «Kørte en kommando, redigerede 3 filer».
+ * - kendte slags får hver sit led: «Kørte 2 kommandoer»
+ * - alle ukendte samles i ÉT led: «brugte et værktøj» (deres «used a tool»)
+ * - sorteret efter antal, højst tre led, adskilt af komma
+ * - er der flere end tre, vises to plus «og N værktøjer mere»
  *
- * Rækkefølgen er kaldenes egen. En sortering (fx efter antal) ville bytte om
- * på årsag og virkning i en linje der læses som en fortælling om turen.
- *
- * Et ukendt værktøj får sit eget led frem for at blive tiet ihjel — ellers
- * ville et nyt værktøj forsvinde ud af sætningen, og linjen ville lyve om
- * hvad turen gjorde.
+ * Før stod der «Kørte 2 kommandoer og kørte en ting» (Bjørn 19/9-2026: «Kørte
+ * en ting?»). Den gamle regel om kaldenes rækkefølge er droppet: forlægget
+ * sorterer, og «1:1» betyder 1:1.
  */
 function blandetRunde(items: ToolItem[], running: boolean): string {
   const orden: string[] = []
   const antal = new Map<string, number>()
+  let ukendte = 0
   for (const i of items) {
-    // `operator_bash` og `bash` er samme handling — ét led, ikke «og kørte en ting».
     const g = grundnavn(i.tool)
+    if (!PLURAL[g]) { ukendte++; continue }
     if (!antal.has(g)) orden.push(g)
     antal.set(g, (antal.get(g) ?? 0) + 1)
   }
 
-  const led = orden.map((tool, idx) => {
+  const grupper: { tekst: string; n: number }[] = orden.map((tool) => {
     const n = antal.get(tool) ?? 0
-    const [nu, da] = PLURAL[tool] ?? ['Kører', 'Kørte']
+    const [nu, da] = PLURAL[tool]!
     const [en, flere] = UNIT[tool] ?? ['ting', 'ting']
-    const verbum = running ? nu : da
-    // Kun det første led bærer stort begyndelsesbogstav — resten er led i
-    // samme sætning, ikke selvstændige overskrifter.
-    const v = idx === 0 ? verbum : verbum.charAt(0).toLowerCase() + verbum.slice(1)
-    return `${v} ${antalOrd(n)} ${n === 1 ? en : flere}`
+    return { tekst: `${running ? nu : da} ${antalOrd(n)} ${n === 1 ? en : flere}`, n }
   })
-
+  // Ukendte værktøjer samles i ÉT led, som Claude Desktop («used a tool»),
+  // frem for «kørte en ting» pr. navn.
+  if (ukendte > 0) grupper.push({ tekst: brugte(ukendte, running), n: ukendte })
+  // Claude Desktop sorterer efter antal (stabilt) og viser højst tre led.
+  grupper.sort((a, b) => b.n - a.n)
+  const vis = grupper.length > 3 ? 2 : 3
+  const led = grupper.slice(0, vis).map((g, idx) => (idx === 0 ? g.tekst : g.tekst.charAt(0).toLowerCase() + g.tekst.slice(1)))
+  const rest = grupper.slice(vis).reduce((s, g) => s + g.n, 0)
   const hale = running ? '…' : ''
-  if (led.length === 1) return led[0]! + hale
-  return `${led.slice(0, -1).join(', ')} og ${led[led.length - 1]}${hale}`
+  if (rest > 0) return `${led.join(', ')} og ${rest} værktøjer mere${hale}`
+  return led.join(', ') + hale
+}
+
+/** «Brugte et værktøj» / «Brugte 3 værktøjer» — Claude Desktops `Used a tool`. */
+function brugte(n: number, running: boolean): string {
+  return `${running ? 'Bruger' : 'Brugte'} ${n === 1 ? 'et værktøj' : `${n} værktøjer`}`
 }
 
 /**

@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from '@jest/globals'
 import { enforceStructure } from './enforceStructure'
 
 // Spejler core/services/markdown_structure.py — Jarvis emitterer ~50% af svar

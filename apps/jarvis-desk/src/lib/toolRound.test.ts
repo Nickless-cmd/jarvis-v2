@@ -66,7 +66,7 @@ describe('én linje for hele runden', () => {
     // af en tur.
     expect(summarizeRound([
       t('read_file', { path: 'a.ts' }), t('bash', { command: 'ls' }),
-    ])).toBe('Læste en fil og kørte en kommando')
+    ])).toBe('Læste en fil, kørte en kommando')
   })
 
   it('resultatets EGEN optælling slår antallet af kald', () => {
@@ -109,34 +109,34 @@ describe('summarizeRound — blandede runder', () => {
   const t = (name: string, status: 'running' | 'done' = 'done') =>
     ({ type: 'tool_use', name, input: {}, status }) as never
 
-  it('samler pr. vaerktoej i den raekkefoelge de skete', () => {
+  it('samler pr. vaerktoej, flest foerst (Claude Desktop sorterer)', () => {
     expect(summarizeRound([t('bash'), t('edit_file'), t('edit_file')]))
-      .toBe('Kørte en kommando og redigerede 2 filer')
+      .toBe('Redigerede 2 filer, kørte en kommando')
   })
 
-  it('tre slags led bindes med komma og «og»', () => {
+  it('tre slags led bindes med komma, som i Claude Desktop', () => {
     expect(summarizeRound([t('bash'), t('read_file'), t('edit_file')]))
-      .toBe('Kørte en kommando, læste en fil og redigerede en fil')
+      .toBe('Kørte en kommando, læste en fil, redigerede en fil')
   })
 
   it('kun det FOERSTE led har stort begyndelsesbogstav', () => {
     expect(summarizeRound([t('read_file'), t('bash')]))
-      .toBe('Læste en fil og kørte en kommando')
+      .toBe('Læste en fil, kørte en kommando')
   })
 
   it('«en» frem for «1» — det er en saetning, ikke en tabel', () => {
     expect(summarizeRound([t('bash'), t('edit_file')]))
-      .toBe('Kørte en kommando og redigerede en fil')
+      .toBe('Kørte en kommando, redigerede en fil')
   })
 
-  it('et ukendt vaerktoej faar sit eget led og ikke en tavshed', () => {
+  it('ukendte vaerktoejer samles i «brugte et vaerktoej»', () => {
     expect(summarizeRound([t('bash'), t('et_nyt_vaerktoej')]))
-      .toBe('Kørte en kommando og kørte en ting')
+      .toBe('Kørte en kommando, brugte et værktøj')
   })
 
   it('en runde der koerer bruger NUTID og slutter med prikker', () => {
     expect(summarizeRound([t('bash', 'running'), t('edit_file', 'running')]))
-      .toBe('Kører en kommando og redigerer en fil…')
+      .toBe('Kører en kommando, redigerer en fil…')
   })
 
   it('ensartede runder er UROERTE', () => {

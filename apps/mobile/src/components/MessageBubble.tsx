@@ -2,6 +2,7 @@ import { Brain, Check, Copy, MoreHorizontal, Pin, PinOff, RotateCw, Share2, Squa
 import { useEffect, useRef, useState } from 'react'
 import Markdown from 'react-native-markdown-display'
 import MarkdownIt from 'markdown-it'
+import { enforceStructure } from '../lib/enforceStructure'
 import * as Clipboard from 'expo-clipboard'
 import { readAloud as readAloudText, stopReading } from '../lib/readAloud'
 import { useAuthOptional } from '../state/AuthContext'
@@ -202,8 +203,10 @@ export function MessageBubble({
           delayLongPress={350}
           accessibilityLabel="Hold inde for at markere hele svaret"
         >
+          {/* Samme blokstruktur-rettelse som desk: modellen skriver tit tabeller
+              og overskrifter på én linje (19/9-2026, Bjørns tråd). */}
           <Markdown markdownit={markdownItInstance} style={markdownStyles} rules={markdownRules}>
-            {message.content}
+            {enforceStructure(message.content)}
           </Markdown>
         </Pressable>
       )}

@@ -1,15 +1,22 @@
 #!/usr/bin/env python
 """Hvad består Jarvis' perception af — og hvor meget af den er hans egen støj?
 
-Baggrund (18/9-2026): af de 3.000 nyeste perceptions var 1.644
-værktøjsresultater og 1.055 policy-opdateringer, mens `memory.sensory.recorded`
-— det han faktisk ser og hører — stod for 48. Broen mellem det han sanser og
-det han forstår bar 1,6 % af trafikken.
+Baggrund (18/9-2026): Jarvis' perception var næsten udelukkende hans egen
+maskinstøj — ~44.000 perceptions i døgnet, cirka 31 i minuttet, hvoraf 81 % var
+hans egne værktøjskald og 0,6 % det han faktisk ser og hører.
 
-`tool.completed` blev dæmpet i `b9713e1eb`: første gang et værktøj ses inden
-for 60 minutter tæller som en ændring, gentagelser gør ikke, fejl er undtaget.
-Dette script måler om dæmpningen holdt på ægte data over et helt døgn — ikke
-på en stikprøve fra ring-bufferen, som kun dækker de seneste minutter.
+Gentagne signaler dæmpes nu i to trin: `b9713e1eb` tog værktøjsresultaterne,
+`cbb769396` tog læringsreglerne. Reglen er den samme for begge — første gang et
+værktøj eller en regel ses inden for 60 minutter tæller som en ændring,
+gentagelser gør ikke, og `tool-error` er undtaget.
+
+Dette script måler om dæmpningen holdt, på ægte data over et helt døgn.
+
+**Tæl altid over et TIDSVINDUE, aldrig over et rækkeantal.** Den første
+opgørelse her i huset talte på de 3.000 nyeste rækker og gav «tool 54,8 %,
+policy 35,2 %, sanset 1,6 %». Alle tre tal var forkerte, fordi de 3.000 rækker
+tilfældigvis dækkede en atypisk periode — og et af dem blev brugt som grundlag
+for en beslutning. Derfor tager scriptet `--timer`/`--siden` og ikke `--limit`.
 
     python scripts/perception_mix.py               # sidste 24 timer
     python scripts/perception_mix.py --timer 48    # andet vindue
@@ -89,9 +96,20 @@ def main() -> int:
         f"\n  Sanset (øjne/ører): {sanset} ({sanset / i_alt * 100:.1f} %)"
         f"   ·   værktøjsstøj: {vaerktoej} ({vaerktoej / i_alt * 100:.1f} %)"
     )
-    print("\n  Nulpunkt før dæmpningen (3.000 nyeste, 18/9 kl. ~13):")
-    print("    tool.completed 1644 (54,8 %) · learning_policy 1055 (35,2 %)")
-    print("    chat_message 168 (5,6 %) · memory.sensory.recorded 48 (1,6 %)\n")
+    print("\n  Nulpunkt før dæmpningen — målt over TIDSVINDUER 18/9 kl. ~15:")
+    print(f"    {'vindue':<10}{'perceptions':>12}{'policy':>16}{'tool':>17}{'sanset':>14}")
+    for navn, i, pol, to, sa in (
+        ("24 timer", "44.434", "3.785 (8,5 %)", "36.175 (81,4 %)", "245 (0,6 %)"),
+        ("7 dage", "62.707", "4.424 (7,1 %)", "51.248 (81,7 %)", "634 (1,0 %)"),
+        ("30 dage", "88.076", "6.924 (7,9 %)", "66.857 (75,9 %)", "1.475 (1,7 %)"),
+    ):
+        print(f"    {navn:<10}{i:>12}{pol:>16}{to:>17}{sa:>14}")
+    print("    Dæmpet: værktøjer b9713e1eb 13:31 UTC · regler cbb769396 ~15:30 UTC")
+    print(
+        "\n  Bemærk: andelen kan stige uden at noget er blevet bedre — falder\n"
+        "  totalvolumen, stiger procenten af sig selv. Læs det absolutte antal\n"
+        "  sanseindtryk ved siden af andelen.\n"
+    )
     return 0
 
 

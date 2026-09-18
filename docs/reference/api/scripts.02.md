@@ -210,9 +210,9 @@ _Hvad består Jarvis' perception af — og hvor meget af den er hans egen støj?
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_hent` | `(siden)` | — | [src](../../../scripts/perception_mix.py#L35) |
-| function | `_tabel` | `(navn, taelling, i_alt)` | — | [src](../../../scripts/perception_mix.py#L57) |
-| function | `main` | `()` | — | [src](../../../scripts/perception_mix.py#L65) |
+| function | `_hent` | `(siden)` | — | [src](../../../scripts/perception_mix.py#L42) |
+| function | `_tabel` | `(navn, taelling, i_alt)` | — | [src](../../../scripts/perception_mix.py#L64) |
+| function | `main` | `()` | — | [src](../../../scripts/perception_mix.py#L72) |
 
 ## `scripts/phase5_analyze.py`
 _Fase 5 «Bor der nogen?» — analyse._

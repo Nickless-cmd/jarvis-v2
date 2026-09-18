@@ -2153,7 +2153,7 @@ Generated from source. 7715/14989 functions/methods documented (51%). The list b
 - `scripts/nudge_well_cleanup.py` :: `clean_outbound` (L24)
 - `scripts/nudge_well_cleanup.py` :: `main` (L85)
 - `scripts/peer_practice_runner.py` :: `main` (L106)
-- `scripts/perception_mix.py` :: `main` (L65)
+- `scripts/perception_mix.py` :: `main` (L72)
 - `scripts/phase5_analyze.py` :: `choice_of` (L58)
 - `scripts/phase5_analyze.py` :: `cos` (L50)
 - `scripts/phase5_analyze.py` :: `embed` (L36)

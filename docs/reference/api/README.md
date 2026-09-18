@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 14916 functions/methods, 51% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 14924 functions/methods, 51% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -35,26 +35,26 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 14916 functions/
 - [`core.services.04`](core.services.04.md) — `central_analyst` … `central_hypothesis_generator`
 - [`core.services.05`](core.services.05.md) — `central_hypothesis_governance` … `central_realtime`
 - [`core.services.06`](core.services.06.md) — `central_red_dress` … `cheap_lane_history`
-- [`core.services.07`](core.services.07.md) — `cheap_lane_quotas` … `compass_engine`
-- [`core.services.08`](core.services.08.md) — `completion_satisfaction` … `creative_impulse_daemon`
-- [`core.services.09`](core.services.09.md) — `creative_instinct_daemon` … `desire_daemon`
-- [`core.services.10`](core.services.10.md) — `desktop_notifications` … `edit_checkpoint`
-- [`core.services.11`](core.services.11.md) — `effective_policy` … `experiment_runner`
-- [`core.services.12`](core.services.12.md) — `explore_claim_check` … `gmail_connector`
-- [`core.services.13`](core.services.13.md) — `goal_signal_synthesizer` … `impulse_executor`
-- [`core.services.14`](core.services.14.md) — `in_flight_runs` … `life_projects`
-- [`core.services.15`](core.services.15.md) — `lifecycle_hooks` … `message_feedback`
-- [`core.services.16`](core.services.16.md) — `meta_cognition_daemon` … `oauth_store`
-- [`core.services.17`](core.services.17.md) — `offline_recomposition_engine` … `pressure_threshold_gate`
-- [`core.services.18`](core.services.18.md) — `priors_feedback` … `prose_tool_calls`
-- [`core.services.19`](core.services.19.md) — `provider_autodiscovery` … `release_marker_signal_tracking`
-- [`core.services.20`](core.services.20.md) — `remembered_fact_signal_tracking` … `runtime_self_model`
-- [`core.services.21`](core.services.21.md) — `runtime_self_model_affect` … `self_review_unified`
-- [`core.services.22`](core.services.22.md) — `self_surprise_detection` … `signal_surface_router`
-- [`core.services.23`](core.services.23.md) — `signal_tracking_framework` … `temperament_tendency_signal_tracking`
-- [`core.services.24`](core.services.24.md) — `temporal_body` … `tool_world_change`
-- [`core.services.25`](core.services.25.md) — `totp_verifier` … `visible_run_abandonment`
-- [`core.services.26`](core.services.26.md) — `visible_run_firstpass` … `world_model_signal_tracking`
+- [`core.services.07`](core.services.07.md) — `cheap_lane_payloads` … `companion_presence`
+- [`core.services.08`](core.services.08.md) — `compass_engine` … `creative_drift_daemon`
+- [`core.services.09`](core.services.09.md) — `creative_impulse_daemon` … `delete_policy`
+- [`core.services.10`](core.services.10.md) — `desire_daemon` … `drive_arbitration_engine`
+- [`core.services.11`](core.services.11.md) — `edit_checkpoint` … `experiential_runtime_context`
+- [`core.services.12`](core.services.12.md) — `experiment_runner` … `global_workspace`
+- [`core.services.13`](core.services.13.md) — `gmail_connector` … `idle_thinking`
+- [`core.services.14`](core.services.14.md) — `impulse_executor` … `life_milestones`
+- [`core.services.15`](core.services.15.md) — `life_projects` … `memory_write_queue`
+- [`core.services.16`](core.services.16.md) — `message_feedback` … `oauth_flow`
+- [`core.services.17`](core.services.17.md) — `oauth_store` … `prepared_request`
+- [`core.services.18`](core.services.18.md) — `pressure_threshold_gate` … `proprioception_metrics`
+- [`core.services.19`](core.services.19.md) — `prose_tool_calls` … `relationship_texture`
+- [`core.services.20`](core.services.20.md) — `release_marker_signal_tracking` … `runtime_self_knowledge`
+- [`core.services.21`](core.services.21.md) — `runtime_self_model` … `self_review_signal_tracking`
+- [`core.services.22`](core.services.22.md) — `self_review_unified` … `signal_surface_gc`
+- [`core.services.23`](core.services.23.md) — `signal_surface_router` … `telemetry_gate`
+- [`core.services.24`](core.services.24.md) — `temperament_tendency_signal_tracking` … `tool_usage_store`
+- [`core.services.25`](core.services.25.md) — `tool_world_change` … `visible_model_types`
+- [`core.services.26`](core.services.26.md) — `visible_run_abandonment` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

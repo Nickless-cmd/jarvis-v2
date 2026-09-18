@@ -35,6 +35,10 @@ from core.services.cheap_provider_runtime_adapters import (
     _execute_public_safe_local_ollama,
     provider_auth_ready,
 )
+from core.services.cheap_lane_trace_context import (
+    CheapLaneTraceContext,
+    candidate_slot_id,
+)
 
 
 def _facade():
@@ -87,7 +91,7 @@ def cheap_lane_status_surface() -> dict[str, object]:
         (str(item["provider"]), str(item["model"])): item
         for item in list_cheap_provider_runtime_states(lane="cheap")
     }
-    selected = select_cheap_lane_target()
+    selected = select_cheap_lane_target(persist_trace=False)
     items: list[dict[str, object]] = []
     for candidate in candidates:
         provider = str(candidate["provider"])
@@ -479,6 +483,9 @@ def select_cheap_lane_target(
     *,
     skip_providers: frozenset[str] = frozenset(),
     task_kind: str = "default",
+    correlation_id: str = "",
+    daemon: str = "",
+    persist_trace: bool = True,
 ) -> dict[str, object]:
     """Pick a cheap-lane provider. See task_kind notes above for routing.
 
@@ -529,51 +536,98 @@ def select_cheap_lane_target(
         ))
         candidates = public + paid
 
+    trace_context = CheapLaneTraceContext.create(
+        correlation_id=correlation_id, daemon=daemon, task_kind=kind
+    )
+    evaluated: list[tuple[dict[str, object], dict[str, object]]] = []
     blocked: list[dict[str, object]] = []
     for candidate in candidates:
+        trace: dict[str, object] = {
+            "slot_id": candidate_slot_id(candidate),
+            "provider": str(candidate.get("provider") or ""),
+            "model": str(candidate.get("model") or ""),
+            "auth_profile": str(candidate.get("auth_profile") or "default"),
+            "egress": str(candidate.get("egress") or ""),
+            "base_priority": int(candidate.get("priority") or 9999),
+            "manual_bias": float(candidate.get("routing_bias") or 0.0),
+        }
         if not bool(candidate.get("credentials_ready")):
-            blocked.append(
-                {
-                    "provider": candidate["provider"],
-                    "model": candidate["model"],
-                    "reason": "auth-not-ready",
-                }
-            )
+            trace.update({"eligible": False, "eligibility_reason": "auth-not-ready"})
+            evaluated.append((candidate, trace))
+            blocked.append({
+                "provider": candidate["provider"], "model": candidate["model"],
+                "reason": "auth-not-ready",
+            })
             continue
         quota = _candidate_quota_snapshot(candidate)
+        trace["quota"] = dict(quota)
         if quota["blocked"]:
-            blocked.append(
-                {
-                    "provider": candidate["provider"],
-                    "model": candidate["model"],
-                    "reason": quota["status"],
-                }
-            )
+            reason = str(quota["status"])
+            trace.update({"eligible": False, "eligibility_reason": reason})
+            evaluated.append((candidate, trace))
+            blocked.append({
+                "provider": candidate["provider"], "model": candidate["model"],
+                "reason": reason,
+            })
             continue
         adaptive = _candidate_adaptive_snapshot(candidate)
-        _target = {
-            **candidate,
+        trace.update({
+            "eligible": True,
+            "eligibility_reason": "eligible",
             "effective_priority": adaptive["effective_priority"],
             "adaptive_penalty": adaptive["adaptive_penalty"],
+        })
+        evaluated.append((candidate, trace))
+
+    selected = next((pair for pair in evaluated if pair[1]["eligible"]), None)
+    if selected is not None:
+        candidate, selected_trace = selected
+        _target = {
+            **candidate,
+            "effective_priority": selected_trace["effective_priority"],
+            "adaptive_penalty": selected_trace["adaptive_penalty"],
             "selection_reason": f"healthy-headroom:{kind}",
             "task_kind": kind,
             "blocked_candidates": blocked,
+            "correlation_id": trace_context.correlation_id,
         }
-        _maybe_shadow_compare(_target)  # Task 9: shadow-sammenligning (OFF → no-op)
-        # Task 9 live: lad central_route vælge blandt de samme kandidater når live er ON.
+        _maybe_shadow_compare(_target)
         final = _maybe_central_route_live(_target, candidates, kind, skip_providers)
-        # A (2026-07-24): advance the profile round-robin ONCE per pick, for the
-        # provider that actually won, so its default/account2 split is ~50/50.
+        route_id = ""
+        if persist_trace:
+            from core.runtime.db_cheap_lane_control import record_route_decision
+            route_id = record_route_decision(
+                correlation_id=trace_context.correlation_id,
+                task_kind=kind,
+                daemon=trace_context.daemon,
+                candidates=[trace for _, trace in evaluated],
+                selected_slot_id=candidate_slot_id(final),
+                selection_reason=str(final.get("selection_reason") or ""),
+            )
+        final = {**final, "route_decision_id": route_id,
+                 "correlation_id": trace_context.correlation_id}
         if _flag_profile_roundrobin():
             _advance_profile_rr(str(final.get("provider") or ""))
         return final
-    return {
+    result = {
         "active": False,
         "lane": "cheap",
         "status": "no-healthy-provider",
         "task_kind": kind,
         "blocked_candidates": blocked,
+        "correlation_id": trace_context.correlation_id,
     }
+    if persist_trace:
+        from core.runtime.db_cheap_lane_control import record_route_decision
+        result["route_decision_id"] = record_route_decision(
+            correlation_id=trace_context.correlation_id,
+            task_kind=kind,
+            daemon=trace_context.daemon,
+            candidates=[trace for _, trace in evaluated],
+            selected_slot_id="",
+            selection_reason="no-healthy-provider",
+        )
+    return result
 
 
 def execute_cheap_lane_via_pool(
@@ -582,7 +636,20 @@ def execute_cheap_lane_via_pool(
     skip_providers: frozenset[str] = frozenset(),
     task_kind: str = "default",
     lane: str = "cheap",
+    correlation_id: str = "",
+    daemon: str = "",
+    attempt: int = 1,
+    retry_parent_id: str = "",
+    fallback_parent_id: str = "",
 ) -> dict[str, object]:
+    trace_context = CheapLaneTraceContext.create(
+        correlation_id=correlation_id,
+        daemon=daemon,
+        task_kind=task_kind,
+        attempt=attempt,
+        retry_parent_id=retry_parent_id,
+        fallback_parent_id=fallback_parent_id,
+    )
     # KERNE-FORRANG (2026-07-22, bevist rod): dette er den NON-VISIBLE/baggrunds-lane.
     # Mens en SYNLIG tur assembler/streamer, venter baggrunds-LLM-arbejde her — ellers
     # sulter dets tråde den synlige turs SSE-læser via GIL-contention (målt: DeepSeek
@@ -609,6 +676,8 @@ def execute_cheap_lane_via_pool(
     target = select_cheap_lane_target(
         skip_providers=skip_providers,
         task_kind=task_kind,
+        correlation_id=trace_context.correlation_id,
+        daemon=trace_context.daemon,
     )
     if not bool(target.get("active", True)) or not str(target.get("provider") or "").strip():
         # Spec Fund 4: aldrig rejse ved tom pool — fald til garanteret bund.
@@ -637,12 +706,15 @@ def execute_cheap_lane_via_pool(
             message=message,
         )
     except CheapProviderError as exc:
-        _register_provider_failure(
+        failed_invocation_id = _register_provider_failure(
             provider=provider,
             model=model,
             auth_profile=profile,
             error=exc,
             smoke_test=False,
+            trace_context=trace_context,
+            route_decision_id=str(target.get("route_decision_id") or ""),
+            egress=str(target.get("egress") or ""),
         )
         fallback = _fallback_after_failure(
             failed_provider=provider,
@@ -659,8 +731,17 @@ def execute_cheap_lane_via_pool(
                     "reason": exc.code,
                 },
             )
+            next_context = trace_context.next_fallback(failed_invocation_id)
             return execute_cheap_lane_via_pool(
-                message=message, skip_providers=skip_providers | {provider}, lane=lane,
+                message=message,
+                skip_providers=skip_providers | {provider},
+                task_kind=task_kind,
+                lane=lane,
+                correlation_id=next_context.correlation_id,
+                daemon=next_context.daemon,
+                attempt=next_context.attempt,
+                retry_parent_id=next_context.retry_parent_id,
+                fallback_parent_id=next_context.fallback_parent_id,
             )
         # Ingen gratis-fallback tilbage → poolen er UDTØMT (ægte degraderings-signal).
         event_bus.publish(
@@ -672,6 +753,8 @@ def execute_cheap_lane_via_pool(
 
     output_tokens = int(result.get("output_tokens") or _estimate_tokens(result["text"]))
     latency_ms = int((datetime.now(UTC) - started_at).total_seconds() * 1000)
+    _cache_hit = int(result.get("cache_hit_tokens") or result.get("prompt_cache_hit_tokens") or 0)
+    _cache_miss = int(result.get("cache_miss_tokens") or result.get("prompt_cache_miss_tokens") or 0)
     record_cheap_provider_invocation(
         provider=provider,
         model=model,
@@ -681,6 +764,16 @@ def execute_cheap_lane_via_pool(
         input_tokens=input_tokens,
         output_tokens=output_tokens,
         cost_usd=float(result.get("cost_usd") or 0.0),
+        correlation_id=trace_context.correlation_id,
+        daemon=trace_context.daemon,
+        task_kind=trace_context.task_kind,
+        egress=str(target.get("egress") or ""),
+        cache_hit_tokens=_cache_hit,
+        cache_miss_tokens=_cache_miss,
+        attempt=trace_context.attempt,
+        retry_parent_id=trace_context.retry_parent_id,
+        fallback_parent_id=trace_context.fallback_parent_id,
+        route_decision_id=str(target.get("route_decision_id") or ""),
     )
     _record_provider_success(
         provider=provider,
@@ -691,8 +784,6 @@ def execute_cheap_lane_via_pool(
     )
     # 2026-06-09: extract cache hit/miss from result if provider surfaced them
     # (DeepSeek does via prompt_cache_hit_tokens/prompt_cache_miss_tokens).
-    _cache_hit = int(result.get("cache_hit_tokens") or result.get("prompt_cache_hit_tokens") or 0)
-    _cache_miss = int(result.get("cache_miss_tokens") or result.get("prompt_cache_miss_tokens") or 0)
     record_cost(
         lane=lane,
         provider=provider,
@@ -1134,7 +1225,9 @@ def _fallback_after_failure(*, failed_provider: str, failed_model: str) -> dict[
     # → failover is defeated and the caller raises instead of falling over.
     # Skipping by provider makes the "is there ANOTHER provider" query correct
     # regardless of cache freshness.
-    target = select_cheap_lane_target(skip_providers=frozenset({failed_provider}))
+    target = select_cheap_lane_target(
+        skip_providers=frozenset({failed_provider}), persist_trace=False
+    )
     provider = str(target.get("provider") or "")
     model = str(target.get("model") or "")
     if provider and model and (provider, model) != (failed_provider, failed_model):
@@ -1241,7 +1334,10 @@ def _register_provider_failure(
     auth_profile: str,
     error: CheapProviderError,
     smoke_test: bool = False,
-) -> None:
+    trace_context: CheapLaneTraceContext | None = None,
+    route_decision_id: str = "",
+    egress: str = "",
+) -> str:
     now = datetime.now(UTC)
     cooldown_until = None
     quota_limited = False
@@ -1273,14 +1369,23 @@ def _register_provider_failure(
         _gulv = now + timedelta(seconds=_mindst)
         if cooldown_until is None or datetime.fromisoformat(cooldown_until) < _gulv:
             cooldown_until = _gulv.isoformat()
-    record_cheap_provider_invocation(
+    recorded = record_cheap_provider_invocation(
         provider=provider,
         model=model,
         auth_profile=auth_profile,
         status="failed",
         error_code=error.code,
+        error_class=error.code,
         error_message=error.message,
         retry_after_seconds=error.retry_after_seconds,
+        correlation_id=trace_context.correlation_id if trace_context else "",
+        daemon=trace_context.daemon if trace_context else "",
+        task_kind=trace_context.task_kind if trace_context else "",
+        egress=egress,
+        attempt=trace_context.attempt if trace_context else 1,
+        retry_parent_id=trace_context.retry_parent_id if trace_context else "",
+        fallback_parent_id=trace_context.fallback_parent_id if trace_context else "",
+        route_decision_id=route_decision_id,
     )
     upsert_cheap_provider_runtime_state(
         provider=provider,
@@ -1304,6 +1409,7 @@ def _register_provider_failure(
             ensure_ascii=False,
         ),
     )
+    return str(recorded.get("invocation_id") or "")
     event_bus.publish(
         "runtime.cheap_lane_provider_failed",
         {

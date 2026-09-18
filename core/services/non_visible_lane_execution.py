@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 
 def cheap_lane_execution_truth() -> dict[str, object]:
     lane = "cheap"
-    target = select_cheap_lane_target()
+    target = select_cheap_lane_target(persist_trace=False)
     status_surface = cheap_lane_status_surface()
     selected_provider = str(target.get("provider") or "").strip()
     selected_model = str(target.get("model") or "").strip()
@@ -1328,5 +1328,4 @@ def _estimate_tokens(text: str) -> int:
     if not normalized:
         return 1
     return max(1, len(normalized) // 4)
-
 

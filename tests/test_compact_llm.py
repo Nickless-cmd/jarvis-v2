@@ -159,9 +159,13 @@ def test_komprimerings_kaldestederne_melder_sig_TIL(monkeypatch):
     fordi et helt samtaleforløb så blev til 200-tegns-stubbe i hans hukommelse.
     """
     import pathlib
-    for fil, antal in [("core/context/auto_compact.py", 1),
+    # 18/9-2026: auto_compact.py (slukket komprimator) er slettet; den faelles
+    # indgang kompaktering.py baerer opt-in'et — og det er FOERSTE gang den
+    # komprimering der faktisk koerer, har det. /compact gaar nu gennem den,
+    # saa visible_runs har ét opt-in tilbage (_compact_llm_for_run).
+    for fil, antal in [("core/context/kompaktering.py", 1),
                        ("core/context/compact_ground_truth.py", 1),
-                       ("core/services/visible_runs.py", 2)]:
+                       ("core/services/visible_runs.py", 1)]:
         n = pathlib.Path(fil).read_text().count("tillad_betalt=True")
         assert n == antal, f"{fil}: {n} opt-ins, ventede {antal}"
 
@@ -170,7 +174,7 @@ def test_INGEN_andre_end_komprimering_melder_sig_til():
     """Vagten mod at opt-in'et spreder sig. De elleve baggrundskaldere skal
     BLIVE paa den gratis vej — ellers er standard-skiftet uden virkning."""
     import pathlib
-    tilladt = {"core/context/auto_compact.py", "core/context/compact_ground_truth.py",
+    tilladt = {"core/context/kompaktering.py", "core/context/compact_ground_truth.py",
                "core/services/visible_runs.py", "core/context/compact_llm.py"}
     fundet = set()
     for p in pathlib.Path(".").rglob("*.py"):

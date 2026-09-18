@@ -20,6 +20,14 @@ class CompactResult:
     summary_text: str
     marker_id: str
     validation: dict | None = None  # Lag C: post-compact validation report
+    # Overfladen foer og efter: hvad Jarvis saa (forrige markoer + beskederne
+    # efter den) mod den nye markoer. Fremdrifts-vaernet i
+    # core.context.kompaktering bygger paa dem.
+    tokens_foer: int = 0
+    tokens_efter: int = 0
+    #: 'llm' eller 'mekanisk' — hvilken vej opsummeringen tog. Saettes af
+    #: kompaktering.komprimer_session.
+    vej: str = ""
 
 
 def compact_session_history(
@@ -29,6 +37,7 @@ def compact_session_history(
     keep_recent_tokens: int | None = None,
     summarise_fn: Callable[[list[dict]], str],
     git_sha: str = "",
+    kraev_fremdrift: bool = False,
 ) -> CompactResult | None:
     """Compact old session history for session_id.
 
@@ -47,6 +56,11 @@ def compact_session_history(
 
     Lag D: On entry, attempts to resolve any stale/unresolved compact markers
     for this session. This is the boot-time self-healing hook.
+
+    `kraev_fremdrift=True`: er den nye markoer ikke mindre end overfladen den
+    afloeser — eller er der intet NYT at opsummere, kun den forrige markoer —
+    kastes `kompaktering.NotAdvancing`, og INTET gemmes. Se
+    core/context/kompaktering.py.
     """
 
     # ── PreCompact-hook ──────────────────────────────────────────────────
@@ -92,6 +106,17 @@ def compact_session_history(
         )
         if not old_messages:
             return None
+        if kraev_fremdrift:
+            from core.context.kompaktering import TIDLIGERE_RESUME, NotAdvancing
+            # Kun den forrige opsummering er gammel nok: intet NYT at
+            # komprimere. At opsummere en opsummering igen ville skrumpe den
+            # hver gang og ikke flytte noget andet — en loekke der langsomt
+            # sletter historikken.
+            if all(m.get("role") == TIDLIGERE_RESUME for m in old_messages):
+                _tom = sum(_estimer(m) for m in messages)
+                exc = NotAdvancing("intet nyt at komprimere — kun den forrige opsummering")
+                exc.tokens = (_tom, _tom)  # type: ignore[attr-defined]
+                raise exc
     else:
         if len(messages) <= keep_recent:
             return None
@@ -126,6 +151,15 @@ def compact_session_history(
                 )
         except Exception as exc:
             logger.debug("session_compact: tail-embed skipped (%s)", exc)
+
+    # Fremdrift: overfladen Jarvis saa (alt i `messages`) mod den nye markoer.
+    tokens_foer = sum(_estimer(m) for m in messages)
+    tokens_efter = estimate_tokens(marker_content)
+    if kraev_fremdrift and tokens_efter >= tokens_foer:
+        from core.context.kompaktering import NotAdvancing
+        exc = NotAdvancing(f"markoeren ({tokens_efter}) er ikke mindre end overfladen ({tokens_foer})")
+        exc.tokens = (tokens_foer, tokens_efter)  # type: ignore[attr-defined]
+        raise exc
 
     marker_id = _store_marker(session_id, marker_content, git_sha=git_sha)
 
@@ -168,14 +202,40 @@ def compact_session_history(
         summary_text=summary_text,
         marker_id=marker_id,
         validation=validation,
+        tokens_foer=tokens_foer,
+        tokens_efter=tokens_efter,
     )
 
 
 # ── Internal helpers (monkeypatched in tests) ──────────────────────────────
 
+def _estimer(m: dict) -> int:
+    return estimate_tokens(str(m.get("content") or ""))
+
+
 def _get_all_session_messages(session_id: str) -> list[dict]:
-    from core.services.chat_sessions import recent_chat_session_messages
-    return recent_chat_session_messages(session_id, limit=500)
+    """Det Jarvis SER: den forrige markoer + alle beskeder efter den.
+
+    Foer: `recent_chat_session_messages(limit=500)` — de seneste 500 raekker
+    uden markoerer. Den forrige opsummering var ALDRIG input, og den nye
+    markoer afloeste den. Alt aeldre end ~500 raekker (mest tool-raekker)
+    forsvandt fra hans kontekst ved hver komprimering. Maalt paa CT105
+    18/9-2026: sessioner paa 8.344 raekker/29 markoerer, 3.848/18, 3.601/13.
+    Femte udgave af limit-vindue-faelden.
+
+    Nu samme kilde som transcriptet (`chat_session_messages_since_last_compact`),
+    med den forrige markoer forrest i sin egen rolle.
+    """
+    from core.context.kompaktering import TIDLIGERE_RESUME
+    from core.services.chat_sessions import (
+        chat_session_messages_since_last_compact,
+        get_compact_marker,
+    )
+    efter = chat_session_messages_since_last_compact(session_id, max_total=4000)
+    forrige = get_compact_marker(session_id)
+    if forrige and str(forrige).strip():
+        return [{"role": TIDLIGERE_RESUME, "content": str(forrige)}] + list(efter)
+    return list(efter)
 
 
 def _store_marker(session_id: str, summary_text: str, git_sha: str = "") -> str:

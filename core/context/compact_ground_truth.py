@@ -46,7 +46,7 @@ KEY_FILES: list[str] = [
     "core/services/chat_sessions.py",
     "core/services/heartbeat_runtime.py",
     "core/services/identity_composer.py",
-    "core/context/auto_compact.py",
+    "core/context/kompaktering.py",
     "core/context/session_compact.py",
     "core/context/compact_llm.py",
     "core/tools/wake_word_tool.py",

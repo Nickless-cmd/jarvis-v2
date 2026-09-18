@@ -103,8 +103,8 @@ def test_failed_compaction_then_next_request_has_no_duplicate_or_user_role_promp
         {"role": "user", "content": "Vi jagter prompt-lækagen."},
         {"role": "assistant", "content": "Jeg følger request-pipelinen."},
     ]
-    with patch("core.context.compact_llm.call_compact_llm", return_value=provider_error), patch.object(
-        transcript_sections, "_ground_truth_for", return_value=""
+    with patch("core.context.compact_llm.call_compact_llm", return_value=provider_error), patch(
+        "core.context.kompaktering._ground_truth_for", return_value=""
     ):
         summarise = transcript_sections._make_structured_summariser(session_id="chat-test")
         compact_summary = summarise(old_messages)

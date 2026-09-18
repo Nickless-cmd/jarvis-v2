@@ -19,7 +19,7 @@ def _fallback_summary(old_msgs):
          patch("core.context.compaction_policy.extract_summary", return_value=""), \
          patch("core.context.compaction_policy.fold_old_tool_results", side_effect=lambda m, keep=0: (m, [])), \
          patch("core.context.compaction_policy.build_structured_summary_prompt", return_value="x"), \
-         patch.object(ts, "_ground_truth_for", return_value=""):
+         patch("core.context.kompaktering._ground_truth_for", return_value=""):
         fn = ts._make_structured_summariser(None, session_id="s1")
         return fn(old_msgs)
 

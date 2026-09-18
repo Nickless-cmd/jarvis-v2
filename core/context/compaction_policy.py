@@ -223,7 +223,14 @@ def render_transcript_for_summary(messages: list[dict[str, Any]]) -> str:
                 for tc in tcs
             )
             content = (content + f" [kalder værktøj: {names}]").strip()
-        speaker = {"user": "Bjørn", "assistant": "Jarvis"}.get(role, role)
+        # Den forrige opsummering er INPUT her (18/9-2026) — ellers erstattede
+        # hver komprimering den, og alt aeldre gik tabt. Navnet siger til
+        # opsummereren at den skal baeres videre, ikke behandles som en replik.
+        speaker = {
+            "user": "Bjørn",
+            "assistant": "Jarvis",
+            "tidligere_resume": "Tidligere resumé — bær alt væsentligt herfra videre",
+        }.get(role, role)
         lines.append(f"[{speaker}] {content}")
     return "\n".join(lines)
 

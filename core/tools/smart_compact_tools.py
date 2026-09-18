@@ -74,23 +74,21 @@ def _exec_smart_compact(args: dict[str, Any]) -> dict[str, Any]:
         }
 
     try:
+        from core.context.kompaktering import komprimer_session
         from core.services.chat_sessions import most_recent_session_id
-        from core.context.session_compact import compact_session_history
-        from core.context.compact_llm import call_compact_llm
 
-        session_id = most_recent_session_id()  # was list_chat_sessions()[0]["session_id"] (renamed to "id" → None bug)
+        # Kalderens egen session foerst; ellers den senest opdaterede.
+        session_id = str(args.get("_runtime_session_id") or args.get("_session_id") or "") \
+            or most_recent_session_id()
         if not session_id:
             return {"status": "ok", "freed_tokens": 0, "message": "Ingen aktiv session."}
 
-        result = compact_session_history(
-            session_id,
-            keep_recent=keep_recent,
-            summarise_fn=lambda msgs: call_compact_llm(
-                _smart_compact_prompt()
-                + "\n".join(f"{m['role']}: {m.get('content', '')[:800]}" for m in msgs),
-                max_tokens=800,
-            ),
-        )
+        # Den faelles indgang (18/9-2026): struktureret opsummering med
+        # kvalitets-gate og mekanisk fallback, rullende oven paa den forrige,
+        # og fremdrifts-vaern. `keep_recent` (antal beskeder) er afloest af en
+        # token-baseret hale og bruges ikke laengere.
+        _ = keep_recent
+        result = komprimer_session(session_id, udloeser="vaerktoej")
 
         if result is None:
             return {

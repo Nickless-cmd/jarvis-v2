@@ -2591,33 +2591,26 @@ def _exec_db_query(args: dict[str, Any]) -> dict[str, Any]:
 
 
 def _exec_compact_context_session(session_id: str | None) -> Any:
-    """Run session compact for session_id. Returns CompactResult or None (monkeypatchable)."""
-    target_session = session_id
+    """Komprimér sessionen. Returnerer CompactResult eller None (monkeypatchable).
+
+    Gaar gennem den faelles indgang (core.context.kompaktering, 18/9-2026). Foer
+    havde vaerktoejet sin egen opsummering uden kvalitets-gate og uden mekanisk
+    fallback: fejlede udbyderen, gemtes en markoer uden indhold. Og faldbakken
+    laeste `sessions[0]["session_id"]` — feltet hedder `id` nu, saa den fik altid
+    None og komprimerede aldrig noget.
+    """
+    target_session = (session_id or "").strip()
     if not target_session:
-        # Fall back to most recently updated session
         try:
-            from core.services.chat_sessions import list_chat_sessions
-            sessions = list_chat_sessions()
-            if sessions:
-                target_session = str(sessions[0].get("session_id") or "")
+            from core.services.chat_sessions import most_recent_session_id
+            target_session = most_recent_session_id() or ""
         except Exception:
             return None
     if not target_session:
         return None
     try:
-        from core.context.session_compact import compact_session_history
-        from core.context.compact_llm import call_compact_llm
-        from core.runtime.settings import load_settings as _ls
-        settings = _ls()
-        return compact_session_history(
-            target_session,
-            keep_recent=settings.context_keep_recent,
-            summarise_fn=lambda msgs: call_compact_llm(
-                "Komprimér denne dialog til max 400 ord. Bevar fakta, beslutninger og kontekst:\n\n"
-                + "\n".join(f"{m['role']}: {m.get('content', '')}" for m in msgs),
-                max_tokens=500,
-            ),
-        )
+        from core.context.kompaktering import komprimer_session
+        return komprimer_session(target_session, udloeser="vaerktoej")
     except Exception:
         return None
 
@@ -2626,7 +2619,10 @@ def _exec_compact_context(args: dict[str, Any]) -> dict[str, Any]:
     # Facade-søm: slå _exec_compact_context_session op via simple_tools, så
     # test-patch (monkeypatch på facaden) honoreres — som før split levede
     # begge funktioner i samme modul-globals.
-    cr = _st()._exec_compact_context_session(None)
+    # Kalderens EGEN session foerst — ellers ramte vaerktoejet bare den senest
+    # opdaterede, som ikke noedvendigvis er den Jarvis sidder i.
+    _egen = str(args.get("_runtime_session_id") or args.get("_session_id") or "")
+    cr = _st()._exec_compact_context_session(_egen or None)
     if cr is None:
         return {
             "status": "ok",

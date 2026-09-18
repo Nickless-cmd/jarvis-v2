@@ -640,90 +640,15 @@ _compact_inflight: set[str] = set()
 
 _compact_inflight_lock = _threading_mod.Lock()
 
-def _ground_truth_for(session_id: str) -> str:
-    """Best-effort VERIFIED-facts block (git HEAD, recent commits, key files) for the session,
-    anchoring the summariser against invention. Self-safe → '' on any error."""
-    try:
-        from core.context.compact_ground_truth import (
-            collect_compact_ground_truth, format_ground_truth_block,
-        )
-        return format_ground_truth_block(collect_compact_ground_truth(session_id))
-    except Exception:
-        return ""
-
+# ── Komprimering: flyttet til core.context.kompaktering (18/9-2026) ────────
+#
+# Navnene staar her som tynde soem, fordi tests patcher dem via
+# prompt_contract (`_pc._run_session_compaction`) og kalder
+# `_make_structured_summariser` direkte.
 
 def _make_structured_summariser(focus: str | None = None, *, session_id: str | None = None):
-    """Build a summarise_fn(old_messages)->str for compact_session_history.
-
-    2-stage + fault-tolerant (2026-07-18 live-compaction spec):
-      Stage-A: fold OLD tool-results to stubs so the (cheap) summariser sees prose, not raw
-               tool dumps — mitigates cheap-model degradation on tool-heavy history.
-      Stage-B: structured, thread-preserving 9-section summary via the cheap lane
-               (call_compact_llm — non-Groq cheap providers first).
-      Quality gate: if the LLM summary is empty/too-short/broken, fall back to a
-               deterministic mechanical join so compaction NEVER produces an empty marker
-               (store_compact_marker rejects empty) and never hard-fails the turn."""
-    from core.context.compact_llm import call_compact_llm
-    from core.context.compaction_policy import (
-        build_structured_summary_prompt,
-        extract_summary,
-        fold_old_tool_results,
-        summary_looks_valid,
-    )
-
-    _gt = _ground_truth_for(session_id) if session_id else ""
-
-    def _summarise(old_msgs: list[dict]) -> str:
-        folded, _ = fold_old_tool_results(old_msgs, keep=0)  # prose for the summariser
-        # Cap input (head+tail) so a free/cheap model isn't handed ~69k tokens → hangs.
-        prompt = build_structured_summary_prompt(
-            folded, focus=focus, ground_truth=_gt, max_transcript_chars=60_000,
-        )
-        # HARD timeout (2026-07-18 hang-fix): the cheap-lane call has no internal timeout,
-        # so a slow/dead free provider could hang compaction for MINUTES. Bound it in a
-        # worker future; on timeout → deterministic mechanical fallback below. Zombie provider
-        # thread may linger, but the user-visible compaction is bounded.
-        import concurrent.futures as _cf
-        raw = ""
-        try:
-            with _cf.ThreadPoolExecutor(max_workers=1) as _ex:
-                _fut = _ex.submit(call_compact_llm, prompt, max_tokens=2500)
-                raw = str(_fut.result(timeout=45) or "")
-        except _cf.TimeoutError:
-            import logging as _lg
-            _lg.getLogger(__name__).warning(
-                "compaction summary timed out (>45s, slow cheap-lane) — mechanical fallback"
-            )
-            raw = ""
-        except Exception as _exc:
-            import logging as _lg
-            _lg.getLogger(__name__).warning("compaction summary raised (%s) — fallback", _exc)
-            raw = ""
-        text = extract_summary(raw)  # strip <thinking>, pull <summary>…</summary>
-        if summary_looks_valid(text):
-            return text
-        # Deterministic fallback — mechanical, never empty (thread still traceable via
-        # the raw messages kept under the marker in the DB). Improved 2026-07-23:
-        # the old version truncated EVERY message to 200 chars, so a failed summariser
-        # collapsed the whole arc into stubs (the "200-char fake summary"). Now:
-        #  - USER turns kept much fuller (up to 800 chars) — they carry the intent/asks
-        #    that must survive; the assistant can be reconstructed from them.
-        #  - assistant turns kept to 400 chars (the gist), tool noise already folded.
-        #  - larger total budget so the fallback is a real (if rough) record, not stubs.
-        def _clip(role: str, content: str) -> str:
-            c = " ".join(str(content or "").split())
-            cap = 800 if role == "user" else 400
-            return f"[{role}] {c[:cap]}{'…' if len(c) > cap else ''}"
-        parts = [_clip(str(m.get("role", "?")), m.get("content") or "") for m in old_msgs]
-        joined = "\n".join(p for p in parts if p.strip())
-        return (
-            "<summary>[Mechanical fallback — the summariser model returned nothing usable, "
-            "so this is a truncated but faithful record of the arc (user turns kept fuller). "
-            "Full raw messages remain in the session DB under the compact marker.]\n"
-            + joined[:18000] + "</summary>"
-        )
-
-    return _summarise
+    from core.context.kompaktering import StruktureretOpsummering
+    return StruktureretOpsummering(focus, session_id=session_id)
 
 
 def _run_session_compaction(
@@ -733,21 +658,13 @@ def _run_session_compaction(
     low_water_tokens: int = 15_000,
     focus: str | None = None,
 ) -> None:
-    """Selve summariserings-arbejdet (baggrundstråd). Skriver compact_marker via det
-    eksisterende session_compact-system. Round-atomisk + struktureret 2-trins. Self-safe."""
+    """Baggrundstraaden. Selve arbejdet sker i kompaktering.komprimer_session;
+    her ryddes flagene op, hvordan det end gaar."""
+    _ = keep_recent  # afloest af en token-baseret hale; beholdt for kalderne
     try:
-        from core.context.session_compact import compact_session_history
-        import logging as _log
-        _log.getLogger(__name__).info(
-            "prompt_contract: auto-compact (baggrund) for session %s (low_water=%d)",
-            session_id, low_water_tokens,
-        )
-        # Kept tail budget: lidt under low-water så summary + tail ≈ low-water.
-        _tail_budget = max(int(low_water_tokens * 0.8), 4_000)
-        result = compact_session_history(
-            session_id,
-            keep_recent_tokens=_tail_budget,
-            summarise_fn=_make_structured_summariser(focus, session_id=session_id),
+        from core.context.kompaktering import komprimer_session
+        result = komprimer_session(
+            session_id, udloeser="auto", focus=focus, low_water_tokens=low_water_tokens,
         )
         if result is not None:
             try:
@@ -804,6 +721,11 @@ def _maybe_auto_compact_session(
         model_window_fn=model_context_window,
     )
     if not decision.should_compact:
+        return
+    # Sidste forsoeg gav ingen fremdrift, og intet nyt er kommet: et nyt
+    # forsoeg er samme kald med samme udfald. Start ikke engang en traad.
+    from core.context.kompaktering import staar_fast
+    if staar_fast(session_id):
         return
     with _compact_inflight_lock:
         if session_id in _compact_inflight:

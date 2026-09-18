@@ -1223,22 +1223,16 @@ def _compact_llm_for_run(prompt: str) -> str:
 
 
 def _handle_compact_command(run: "VisibleRun") -> str:
-    """Run session compact and return a message for Jarvis to respond to."""
+    """/compact: komprimér nu og giv Jarvis en besked at svare paa.
+
+    Gaar gennem den faelles indgang (core.context.kompaktering, 18/9-2026) —
+    samme opsummering, samme fremdrifts-vaern og samme spor som den automatiske.
+    Foer havde kommandoen sin egen prompt uden kvalitets-gate og uden mekanisk
+    fallback.
+    """
     try:
-        from core.context.session_compact import compact_session_history
-        from core.context.compact_llm import call_compact_llm
-        from core.runtime.settings import load_settings as _ls
-        settings = _ls()
-        cr = compact_session_history(
-            run.session_id or "",
-            keep_recent=settings.context_keep_recent,
-            summarise_fn=lambda msgs: call_compact_llm(
-                "Komprimér denne dialog til max 400 ord. Bevar fakta, beslutninger og kontekst:\n\n"
-                + "\n".join(f"{m['role']}: {m.get('content', '')}" for m in msgs),
-                max_tokens=500,
-                tillad_betalt=True,  # komprimering: Bjoerns valg 19/8 — resumeet ER hans hukommelse
-            ),
-        )
+        from core.context.kompaktering import komprimer_session
+        cr = komprimer_session(run.session_id or "", udloeser="kommando")
         if cr:
             return (
                 f"Jeg har netop komprimeret vores samtalehistorik. "
@@ -1601,28 +1595,10 @@ async def _stream_visible_run(
             },
         )
 
-        # Auto-compact chat history if approaching context limit
-        try:
-            from core.context.auto_compact import maybe_auto_compact_session
-            _did_compact = maybe_auto_compact_session(
-                run.session_id,
-                provider=getattr(run, "provider", "") or "",
-                model=getattr(run, "model", "") or "",
-            )
-        except Exception:
-            _did_compact = False
-        # ── Transparent compaction (harness Part B, Mechanism C) ──
-        # The compaction already fired (session-level, stores a dedicated DB marker).
-        # Make it client-visible + record cadence. No model-facing change.
-        if _did_compact:
-            yield _sse("compaction", {"type": "compaction", "run_id": run.run_id,
-                                      "session_id": run.session_id})
-            try:
-                from core.services import central_timeseries as _cts_cmp
-                _cts_cmp.record("context", "run_compaction", 1.0,
-                                meta={"run_id": run.run_id, "session_id": run.session_id})
-            except Exception:
-                pass
+        # Her kaldte turen `auto_compact.maybe_auto_compact_session`, der har
+        # returneret False siden 18/7 — en slukket anden komprimator. Fjernet
+        # 18/9-2026: der er én komprimerings-sti (core.context.kompaktering),
+        # og den maaler selv til Centralen.
         try:
             # Run the synchronous model stream in a thread so SSE
             # frames are flushed to the client as each token arrives.

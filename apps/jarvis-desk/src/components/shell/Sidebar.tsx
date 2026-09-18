@@ -14,6 +14,7 @@ import { COWORK_ZONES, emitZone, onZone, normalizeZone, type Zone } from '../../
 import { grupperSessioner, GRUPPER_I_MODE, grupperEfterProjekt, type SessionGruppe } from '../../lib/sessionGroups'
 import { SidebarGreb } from './SidebarGreb'
 import { ModeDropdown, type Mode } from './ModeDropdown'
+import { ModeBladrer } from './ModeBladrer'
 import { SecondaryNav, type SecondarySurface } from './SecondaryNav'
 
 const ZONE_ICONS: Record<string, LucideIcon> = {
@@ -90,6 +91,10 @@ export function Sidebar({
         {/* Egen gruppe i hoejre side: mode-vaelgeren siger HVOR man er,
             ikonerne er ting man GOER. To slags, hver sin ende. */}
         <div className="sidebar-top-actions">
+          <ModeBladrer
+            active={(['chat', 'cowork', 'code'] as const).includes(surface as Mode) ? (surface as Mode) : 'chat'}
+            onChange={(m) => onSurface(m)}
+          />
           <button
             type="button"
             className="icon-btn"

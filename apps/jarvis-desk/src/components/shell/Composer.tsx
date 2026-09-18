@@ -8,6 +8,9 @@ import { emojify } from '../../lib/emojify'
 import { useDictation } from '../../hooks/useDictation'
 import { ContextRing } from './ContextRing'
 import { uploadAttachment, type ApiConfig } from '../../lib/api'
+import {
+  readThinkingMode, writeThinkingMode, type ThinkingMode,
+} from '../../lib/composerPrefs'
 import { PROV_KEY, MODEL_KEY } from '../../lib/composerPrefs'
 import {
   pasteLineCount, pasteStoreEnabled, savePaste, shouldExternalizePaste,
@@ -18,6 +21,18 @@ import { useForslag } from '../../hooks/useForslag'
 
 export interface SentAttachment { id: string; src?: string; name: string; isImage: boolean }
 
+/** Navnene siger hvad man FAAR, ikke hvad flaget hedder. «Automatisk» er
+ *  serverens adaptive valg (flaget hedder 'think'); de to andre er
+ *  overstyringer den altid respekterer. */
+const THINK_NAVN: Record<ThinkingMode, string> = {
+  fast: 'Hurtig', think: 'Automatisk', deep: 'Dyb',
+}
+const THINK_HJAELP: Record<ThinkingMode, string> = {
+  fast: 'Svar uden at taenke foerst — hurtigst.',
+  think: 'Serveren vaelger selv ud fra hvad du spoerger om.',
+  deep: 'Taenk grundigt igennem foer svaret — langsomst.',
+}
+
 export interface ComposerSendOpts {
   planMode: boolean
   permission: 'ask' | 'trust'
@@ -25,6 +40,9 @@ export interface ComposerSendOpts {
   /** Rolle-bevidst routing: konkret model-id + provider-valg (owner-only). */
   model: string
   providerChoice: string
+  /** Taenknings-effekt. 'think' = lad serveren vaelge; 'fast'/'deep' er
+   *  eksplicitte overstyringer den ALTID respekterer. */
+  thinkingMode: ThinkingMode
 }
 
 interface PendingAttachment {
@@ -112,7 +130,6 @@ export function Composer({
   streaming,
   onSend,
   onStop,
-  thinking,
   config,
   getSessionId,
   showPermissions = true,
@@ -130,7 +147,6 @@ export function Composer({
   onSend: (text: string, opts: ComposerSendOpts) => void
   onStop: () => void
   model: string
-  thinking: string
   config?: ApiConfig
   getSessionId: () => Promise<string>
   /** Den session der VISES lige nu — til auto-forslaget, som bygger på
@@ -194,6 +210,8 @@ export function Composer({
   // Alle visible-klare providers + modeller (owner). Hentes fra /chat/visible-providers.
   const [providers, setProviders] = useState<Array<{ id: string; models: string[] }>>([])
   const [modelOpen, setModelOpen] = useState(false)
+  const [thinkOpen, setThinkOpen] = useState(false)
+  const [thinkMode, setThinkMode] = useState<ThinkingMode>(() => readThinkingMode())
   const [provOpen, setProvOpen] = useState(false)
   const ref = useRef<HTMLTextAreaElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -336,11 +354,11 @@ export function Composer({
 
   // Luk popovers ved klik udenfor.
   useEffect(() => {
-    if (!menuOpen && !permOpen && !modelOpen && !provOpen) return
-    const close = () => { setMenuOpen(false); setPermOpen(false); setModelOpen(false); setProvOpen(false) }
+    if (!menuOpen && !permOpen && !modelOpen && !provOpen && !thinkOpen) return
+    const close = () => { setMenuOpen(false); setPermOpen(false); setModelOpen(false); setProvOpen(false); setThinkOpen(false) }
     window.addEventListener('click', close)
     return () => window.removeEventListener('click', close)
-  }, [menuOpen, permOpen, modelOpen, provOpen])
+  }, [menuOpen, permOpen, modelOpen, provOpen, thinkOpen])
 
   // Enter sender altid (også under streaming — ChatView lægger den i kø).
   // useCallback så identiteten er stabil mellem stream-tickets (deps ændrer sig
@@ -365,6 +383,7 @@ export function Composer({
         attachments: readyAttachments,
         model: sendModel,
         providerChoice: sendProvider,
+        thinkingMode: thinkMode,
       })
       setText('')
       setAttachments([])
@@ -733,9 +752,40 @@ export function Composer({
               </div>
             )}
           </div>
-          <button type="button" className="model-pill">
-            {thinking}<span className="caret">▾</span>
-          </button>
+          {/* Taenknings-effekt. Pillen tegnede en pil og havde INGEN onClick —
+              den lovede en menu der aldrig fandtes (Bjoern 18/9-2026). Vaerdien
+              var samtidig hardkodet til "think" i baade ChatView og CodeView.
+              Ledningen ud til serveren fandtes hele tiden: streamClient sender
+              thinking_mode, og API'et tager imod. Kun valget manglede. */}
+          <div className="composer-popover-anchor" onClick={stop}>
+            <button
+              type="button"
+              className="model-pill"
+              aria-haspopup="listbox"
+              aria-expanded={thinkOpen}
+              title="Tænknings-effekt"
+              onClick={() => { setThinkOpen((o) => !o); setModelOpen(false); setProvOpen(false) }}
+            >
+              {THINK_NAVN[thinkMode]}<span className="caret">▾</span>
+            </button>
+            {thinkOpen && (
+              <div className="composer-menu model-menu" role="listbox">
+                {(['fast', 'think', 'deep'] as const).map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    role="option"
+                    aria-selected={thinkMode === m}
+                    className={thinkMode === m ? 'active' : ''}
+                    title={THINK_HJAELP[m]}
+                    onClick={() => { setThinkMode(m); writeThinkingMode(m); setThinkOpen(false) }}
+                  >
+                    {THINK_NAVN[m]}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           {dictation.supported && (
             <button
               type="button"

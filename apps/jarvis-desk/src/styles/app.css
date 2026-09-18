@@ -234,6 +234,14 @@
 .mode-dd-item:hover { background: var(--bg-3); color: var(--fg-1); }
 .mode-dd-item.active { color: var(--fg-1); }
 .sidebar-top-actions { display: flex; align-items: center; gap: 2px; margin-left: auto; }
+/* Bladre-pilene hoerer sammen som ét greb og skal laeses som ét — derfor
+   ingen mellemrum mellem dem, og en tynd skillelinje ud mod de handlinger
+   der staar ved siden af (soeg, aktivitet). Uden den ser fire ikoner i
+   raekke ud som fire ligestillede knapper. */
+.mode-bladrer { display: flex; align-items: center; gap: 0; }
+.mode-bladrer + .icon-btn { margin-left: 4px; padding-left: 6px;
+  border-left: 1px solid var(--line, #2a2a29); border-radius: 0 6px 6px 0; }
+
 .sidebar-top .icon-btn { flex: none; }
 
 .sidebar-label {

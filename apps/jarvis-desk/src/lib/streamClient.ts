@@ -142,7 +142,7 @@ export interface StreamRequest {
   sessionId: string
   message: string
   approvalMode?: 'ask' | 'trust'
-  thinkingMode?: 'think' | 'fast'
+  thinkingMode?: 'think' | 'fast' | 'deep'
   attachmentIds?: string[]
   /** UI-mode → backend tool-scope. 'chat' begrænser til samtale-værktøjer.
    *  Default 'chat' (appen er chat-only pt.; cowork/code sender egen mode). */

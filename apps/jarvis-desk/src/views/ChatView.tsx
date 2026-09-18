@@ -18,7 +18,7 @@ import { useVoiceConversation } from '../hooks/useVoiceConversation'
 import { VoiceConversation } from '../components/chat/VoiceConversation'
 import { usePermission } from '../hooks/usePermission'
 import { useOnline } from '../hooks/useOnline'
-import { readModelPrefs } from '../lib/composerPrefs'
+import { readModelPrefs, readThinkingMode } from '../lib/composerPrefs'
 import { getContextInfo, getContextUsage, getActiveRuns, followRun, compactNow, warmSession } from '../lib/api'
 import { markInteraction } from '../lib/presenceSignal'
 import { PresenceDot } from '../components/shell/PresenceDot'
@@ -367,6 +367,7 @@ export function ChatView({
       attachmentIds: opts.attachments.map((a) => a.id),
       model: opts.model,
       providerChoice: opts.providerChoice,
+      thinkingMode: opts.thinkingMode,
     })
   }
 
@@ -380,6 +381,9 @@ export function ChatView({
       attachments: [],
       model: modelOverride ?? prefs.model,
       providerChoice: prefs.providerChoice,
+      // Gensend arver det VALGTE, ikke en hardkodet vaerdi: trykker man «igen»
+      // efter at have sat Dyb, skal den taenke dybt igen.
+      thinkingMode: readThinkingMode(),
     })
   }
 
@@ -512,7 +516,6 @@ export function ChatView({
         onSend={handleSend}
         onStop={() => void stream.abort()}
         model="deepseek-flash"
-        thinking="think"
         config={settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined}
         getSessionId={ensureSessionId}
         sessionId={sessionId}

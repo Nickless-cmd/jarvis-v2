@@ -6,7 +6,7 @@ import { usePermission } from '../hooks/usePermission'
 import { useSettings } from '../hooks/useSettings'
 import { useSessions } from '../hooks/useSessions'
 import { usePanel } from '../hooks/usePanel'
-import { readModelPrefs } from '../lib/composerPrefs'
+import { readModelPrefs, readThinkingMode } from '../lib/composerPrefs'
 import { MessageRow } from '../components/rich/MessageRow'
 import { Composer, type ComposerSendOpts } from '../components/shell/Composer'
 import { LivenessIndicator } from '../components/feedback/LivenessIndicator'
@@ -591,6 +591,7 @@ export function CodeView({
       workspaceRoot: effRoot,
       model: opts.model,
       providerChoice: opts.providerChoice,
+      thinkingMode: opts.thinkingMode,
     })
   }
 
@@ -618,6 +619,7 @@ export function CodeView({
       attachments: [],
       model: sendModel,
       providerChoice: sendProvider,
+      thinkingMode: readThinkingMode(),
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stream.autoContinue, ready, stream.status])
@@ -631,6 +633,7 @@ export function CodeView({
     void doSend(text, {
       planMode: false, permission, attachments: [],
       model: sendModel, providerChoice: sendProvider,
+      thinkingMode: readThinkingMode(),
     })
   }
 
@@ -681,7 +684,6 @@ export function CodeView({
       onSend={handleSend}
       onStop={() => void stream.abort()}
       model="deepseek-flash"
-      thinking="think"
       config={config}
       getSessionId={async () => sessionId ?? (await sessions.create('Kode-session', 'code')).id}
       sessionId={sessionId}

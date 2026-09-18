@@ -67,7 +67,7 @@ function deskRunBridge(): DeskRunBridge | undefined {
 export interface SendOpts {
   sessionId: string
   approvalMode?: 'ask' | 'trust'
-  thinkingMode?: 'think' | 'fast'
+  thinkingMode?: 'think' | 'fast' | 'deep'
   attachmentIds?: string[]
   mode?: 'chat' | 'cowork' | 'code'
   workspaceKind?: 'container' | 'workstation'

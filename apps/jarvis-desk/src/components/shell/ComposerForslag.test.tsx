@@ -27,7 +27,7 @@ const opsæt = (props: Record<string, unknown> = {}) => {
   render(
     <PermissionProvider>
       <Composer
-        streaming={false} onSend={onSend} onStop={vi.fn()} model="m" thinking="t"
+        streaming={false} onSend={onSend} onStop={vi.fn()} model="m"
         config={cfg} showPermissions={false} getSessionId={async () => 's1'}
         sessionId="s1" {...props}
       />

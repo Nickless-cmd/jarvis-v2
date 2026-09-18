@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { ChevronDown, MessageSquare, LayoutGrid, Code2 } from 'lucide-react'
 
-const MODES = ['chat', 'cowork', 'code'] as const
+export const MODES = ['chat', 'cowork', 'code'] as const
 export type Mode = (typeof MODES)[number]
 
-const NAVN: Record<Mode, string> = { chat: 'Chat', cowork: 'Arbejde', code: 'Code' }
+export const NAVN: Record<Mode, string> = { chat: 'Chat', cowork: 'Arbejde', code: 'Code' }
 const IKON = { chat: MessageSquare, cowork: LayoutGrid, code: Code2 } as const
 
 /**

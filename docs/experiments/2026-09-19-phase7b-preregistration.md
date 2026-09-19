@@ -64,3 +64,19 @@ K1, K2, H-holdning, V2–V4 og genmålingens G1.
 
 Fejler 7b også V1, er svaret at arkivet ikke kan bære forsøget endnu — og det
 står som resultat. Der kommer ikke et 7c med løsnede krav.
+
+---
+
+## Tillæg 1 — 2026-09-19: probe-sættet låst, FØR første svar
+
+Bygget 2026-09-19T15:54:34Z, byggeren afsluttede med kode 0 (V1 opfyldt).
+
+    probe-fil SHA-256: 5b01fc33bdf314f6e49eb20d4db647a6e1ea76c1c22ede08f5312cc962780c59
+    spand A (2–21 d):   20 prober  (132 forsøg)
+    spand B (22–60 d):  20 prober  ( 74 forsøg)
+    spand C (61–120 d): 18 prober  (120 forsøg — spandens samtale-døgn opbrugt)
+    i alt: 58           typer: fakta 30 · tilsagn 17 · holdning 11
+    afvist: i identitetsfilerne 71 · typeloft 64 · røber svaret 47 ·
+            ufuldstændig 47 · intet egnet punkt 38 · kaldfejl 1
+
+Indsamleren nægter at køre på en probe-fil hvis hash ikke står her.

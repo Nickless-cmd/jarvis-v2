@@ -246,6 +246,12 @@ def _scan(events: list[dict[str, Any]]) -> dict[str, Any]:
             # sætter "mutating" på payloaden; default True (gamle events +
             # sikkerhed). Skærer read-only støj (grep/cat/git status/...).
             if tool in _MUTATION_TOOLS_SHELL and not payload.get("mutating", True):
+                # Et read-only shell-kald (systemctl status, git status, ps,
+                # ls ...) ER et kig tilbage — det er præcis hvad R2.5's
+                # næste-move-tekst beder om efter en bash. Før talte det som
+                # ingenting, så han kunne følge rådet og stå lige så blokeret
+                # (19/9-2026, da R2.5 begyndte at håndhæve).
+                light_verifies.append(item)
                 continue
             # Fil-mutationer der SELV bærer et readback fra disken er
             # verificeret i samme kald. Siden cf2f6b3f8 (10/9-2026) læser

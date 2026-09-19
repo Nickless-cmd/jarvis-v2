@@ -265,11 +265,27 @@ _R2.5 — conditional blocking gate._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_live_thresholds` | `()` | Settings-backed tærskler (config uden deploy, 2026-06-22); modul-konstanterne | [src](../../../core/services/r2_5_blocking_gate.py#L67) |
-| function | `_heed_rate_24h` | `()` | — | [src](../../../core/services/r2_5_blocking_gate.py#L88) |
-| function | `_publish_evaluation` | `(*, tier, threshold, unverified_effective, failed, heed_rate, blocked, reason)` | Gør gatens beslutning synlig OGSÅ når den siger nej. | [src](../../../core/services/r2_5_blocking_gate.py#L100) |
-| function | `should_block_for_verification` | `(*, reasoning_tier)` | Decide whether to inject a 'stop and look back' block. | [src](../../../core/services/r2_5_blocking_gate.py#L133) |
-| function | `r2_5_block_section` | `(reasoning_tier)` | Render the block as a high-priority awareness section, or None. | [src](../../../core/services/r2_5_blocking_gate.py#L296) |
+| function | `_live_thresholds` | `()` | Settings-backed tærskler (config uden deploy, 2026-06-22); modul-konstanterne | [src](../../../core/services/r2_5_blocking_gate.py#L71) |
+| function | `_heed_rate_24h` | `()` | — | [src](../../../core/services/r2_5_blocking_gate.py#L92) |
+| function | `_publish_evaluation` | `(*, tier, threshold, unverified_effective, failed, heed_rate, blocked, reason)` | Gør gatens beslutning synlig OGSÅ når den siger nej. | [src](../../../core/services/r2_5_blocking_gate.py#L104) |
+| function | `should_block_for_verification` | `(*, reasoning_tier)` | Decide whether to inject a 'stop and look back' block. | [src](../../../core/services/r2_5_blocking_gate.py#L137) |
+| function | `r2_5_block_section` | `(reasoning_tier)` | Render the block as a high-priority awareness section, or None. | [src](../../../core/services/r2_5_blocking_gate.py#L308) |
+
+## `core/services/r2_5_haandhaevelse.py`
+_R2.5-håndhævelse — en blok der ikke kan ignoreres._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_nu` | `()` | — | [src](../../../core/services/r2_5_haandhaevelse.py#L58) |
+| function | `aktiver` | `(blok, *, nu=…)` | Åbn håndhævelsen. Kaldes af R2.5, når den beslutter at blokere. | [src](../../../core/services/r2_5_haandhaevelse.py#L62) |
+| function | `nulstil` | `()` | Luk håndhævelsen (tests og kill-switch). | [src](../../../core/services/r2_5_haandhaevelse.py#L76) |
+| function | `er_bagdoer` | `(navn)` | — | [src](../../../core/services/r2_5_haandhaevelse.py#L84) |
+| function | `er_mutation` | `(navn, argumenter=…)` | Samme klassifikation som verification_gate tæller efter. | [src](../../../core/services/r2_5_haandhaevelse.py#L88) |
+| function | `_kiggede_tilbage_efter` | `(siden)` | Er der kommet et kig tilbage siden blokken blev sat? | [src](../../../core/services/r2_5_haandhaevelse.py#L103) |
+| function | `_publicer` | `(kind, data)` | — | [src](../../../core/services/r2_5_haandhaevelse.py#L118) |
+| function | `_aaben_blok` | `(nu)` | Den åbne blok, eller None. Løfter den hvis den er udløbet eller besvaret. | [src](../../../core/services/r2_5_haandhaevelse.py#L126) |
+| function | `afvis_mutation` | `(navn, argumenter=…, *, run_id=…, session_id=…, nu=…)` | Afvisningsteksten hvis værktøjet ikke må køre nu, ellers None. | [src](../../../core/services/r2_5_haandhaevelse.py#L154) |
+| function | `_rapporter_gentagelse` | `(navn, antal, *, run_id, session_id)` | Han prøver igen uden at kigge: gør det synligt (dedup = eskalerende tæller). | [src](../../../core/services/r2_5_haandhaevelse.py#L194) |
 
 ## `core/services/read_before_write_guard.py`
 _Read-before-write guard — prevents overwrite of existing files without prior read._
@@ -634,26 +650,4 @@ _Relation-continuity signal tracking — migrated onto signal_tracking_framework
 | function | `_value` | `(*values, default)` | — | [src](../../../core/services/relation_continuity_signal_tracking.py#L397) |
 | function | `_grounding_mode_from_support_summary` | `(value)` | — | [src](../../../core/services/relation_continuity_signal_tracking.py#L405) |
 | function | `_source_anchor_from_support_summary` | `(value)` | — | [src](../../../core/services/relation_continuity_signal_tracking.py#L413) |
-
-## `core/services/relation_dynamics.py`
-_Relation Dynamics — pattern-recognition on people, not just facts._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_storage_path` | `()` | — | [src](../../../core/services/relation_dynamics.py#L32) |
-| function | `_load` | `()` | — | [src](../../../core/services/relation_dynamics.py#L37) |
-| function | `_save` | `(data)` | — | [src](../../../core/services/relation_dynamics.py#L51) |
-| function | `_recent_runs` | `(days=…, limit=…)` | — | [src](../../../core/services/relation_dynamics.py#L63) |
-| function | `_time_patterns` | `(runs)` | — | [src](../../../core/services/relation_dynamics.py#L84) |
-| function | `_topic_patterns` | `(runs)` | — | [src](../../../core/services/relation_dynamics.py#L120) |
-| function | `_message_length_stats` | `(runs)` | — | [src](../../../core/services/relation_dynamics.py#L130) |
-| function | `_engagement_trend` | `(runs)` | Compare last-week run count vs previous-week. | [src](../../../core/services/relation_dynamics.py#L144) |
-| function | `_warmth_from_sources` | `()` | Pull trust-trajectory tail from relationship_texture as warmth proxy. | [src](../../../core/services/relation_dynamics.py#L174) |
-| function | `_vibe_from_recent` | `(runs)` | — | [src](../../../core/services/relation_dynamics.py#L189) |
-| function | `_recompute` | `()` | — | [src](../../../core/services/relation_dynamics.py#L206) |
-| function | `get_relation_dynamics` | `()` | — | [src](../../../core/services/relation_dynamics.py#L223) |
-| function | `tick` | `(_seconds=…)` | — | [src](../../../core/services/relation_dynamics.py#L236) |
-| function | `build_relation_dynamics_surface` | `()` | — | [src](../../../core/services/relation_dynamics.py#L244) |
-| function | `_surface_summary` | `(r)` | — | [src](../../../core/services/relation_dynamics.py#L265) |
-| function | `build_relation_dynamics_prompt_section` | `()` | Surface only when trend is noteworthy (rising, cooling, dormant). | [src](../../../core/services/relation_dynamics.py#L286) |
 

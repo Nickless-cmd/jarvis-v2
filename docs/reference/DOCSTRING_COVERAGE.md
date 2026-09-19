@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7793/15125 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7800/15135 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 7793/15125 functions/methods documented (51%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 677 | 1254 | 53% |
-| `core.services` | 5150 | 10323 | 49% |
+| `core.services` | 5157 | 10333 | 49% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 107 | 183 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -41,7 +41,7 @@ Generated from source. 7793/15125 functions/methods documented (51%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2163)
+## Undocumented public functions (2164)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L208)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1465,6 +1465,7 @@ Generated from source. 7793/15125 functions/methods documented (51%). The list b
 - `core/services/push_dispatcher.py` :: `on_approval_requested` (L143)
 - `core/services/push_dispatcher.py` :: `on_initiative` (L131)
 - `core/services/push_dispatcher.py` :: `on_reminder` (L137)
+- `core/services/r2_5_haandhaevelse.py` :: `er_bagdoer` (L84)
 - `core/services/reasoning_classifier.py` :: `build_reasoning_classifier_surface` (L275)
 - `core/services/reasoning_escalation.py` :: `build_reasoning_escalation_surface` (L223)
 - `core/services/reasoning_interceptor.py` :: `intercept_round` (L161)

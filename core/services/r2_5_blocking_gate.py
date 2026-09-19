@@ -27,6 +27,10 @@ soft blocking is enough — when telemetry shows even this is ignored,
 we can escalate to actual output gating (refuse to stream further
 deltas until a verify_* completes), but that's a separate decision.
 
+19/9-2026: den beslutning er truffet. Blokken håndhæves nu også i
+værktøjsløkken — næste mutation afvises indtil et kig tilbage
+(core/services/r2_5_haandhaevelse.py). Prompt-teksten bliver stående.
+
 Returns None when no block is needed.
 """
 from __future__ import annotations
@@ -276,7 +280,7 @@ def should_block_for_verification(*, reasoning_tier: str) -> dict[str, Any] | No
                 "på det du lige ændrede."
             )
 
-    return {
+    blok = {
         "reason": (
             f"R2.5 conditional block (tier={tier}, threshold={threshold}): "
             f"{failed} fejlede verifies, {unverified_effective} mutation(er) "
@@ -291,6 +295,14 @@ def should_block_for_verification(*, reasoning_tier: str) -> dict[str, Any] | No
         "unverified_effective": unverified_effective,
         "action_line": action_line,
     }
+    # Fra prompt-tekst til håndhævelse (19/9-2026): mens blokken står åben,
+    # afvises næste mutation i selve værktøjsløkken — se r2_5_haandhaevelse.
+    try:
+        from core.services.r2_5_haandhaevelse import aktiver
+        aktiver(blok)
+    except Exception:
+        logger.warning("R2.5: kunne ikke åbne håndhævelsen", exc_info=True)
+    return blok
 
 
 def r2_5_block_section(reasoning_tier: str) -> str | None:

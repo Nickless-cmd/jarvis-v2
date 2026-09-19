@@ -403,6 +403,20 @@ def _restore_visible_runs_anchor_classes():
 
 
 @pytest.fixture(autouse=True)
+def _luk_r2_5_haandhaevelsen():
+    """Ingen test må arve en åben R2.5-blok (19/9-2026).
+
+    Håndhævelsen er modul-tilstand i processen: en test der får R2.5 til at
+    blokere, ville ellers få en senere tests edit_file/bash afvist."""
+    yield
+    try:
+        from core.services.r2_5_haandhaevelse import nulstil
+        nulstil()
+    except Exception:
+        pass
+
+
+@pytest.fixture(autouse=True)
 def _ensure_current_event_loop():
     """Guarantee ``asyncio.get_event_loop()`` works in every (sync) test.
 

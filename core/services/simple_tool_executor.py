@@ -110,6 +110,15 @@ def _prepare_call(tc, *, force, run_id, session_id, user_message, controller, ro
             "tool_name": name, "arguments": arguments,
             "result": {"status": "gate_blocked", "gate_type": _gate_type, "message": _gate_reason},
             "result_text": f"[{_gate_type}] {_gate_reason}", "status": "gate_blocked"})
+    # R2.5 i løkken (19/9-2026): en åben verifikations-blok afviser næste
+    # mutation med et svar modellen kan handle på. Læsning slipper altid.
+    from core.services.r2_5_haandhaevelse import afvis_mutation
+    _r25 = afvis_mutation(name, arguments, run_id=run_id or "", session_id=session_id or "")
+    if _r25:
+        return ("result", {
+            "tool_name": name, "arguments": arguments,
+            "result": {"status": "gate_blocked", "gate_type": "r2_5_gate", "message": _r25},
+            "result_text": f"[r2_5_gate] {_r25}", "status": "gate_blocked"})
     # Reserve the signature for within-round dedup (parallel: success unknown yet;
     # a same-round exact duplicate read is suppressed — benign for idempotent reads).
     round_seen.add(signature)

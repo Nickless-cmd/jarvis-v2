@@ -91,3 +91,31 @@ prøve-rettelse (tag gribbetaget ved start når der ER to fingre, så enkelt-try
 stadig når knapperne) er bygget, men **ikke målt** — telefonen havde ingen
 samtale med et billede tilgængelig efter geninstallationen. Den måling er det
 næste skridt, og harnesset kan afgøre den.
+
+## Løst 19/9-2026 — og hvad harnesset fandt undervejs
+
+**Knibet.** `onStartShouldSetPanResponder: () => true` på SCENEN, plus
+`onPanResponderTerminationRequest: () => false`. Med `false` tog chattens
+FlatList bag Modal'en gribbetaget, og et ægte to-finger-knib nåede aldrig
+frem (0,00 % i al målt tid). Med rettelsen viste appens egen log jævn
+skalering (1,00 → 2,6-3,1) i hver kørsel hvor billedet var indlæst.
+
+**Lukkeknappen var en SELVSTÆNDIG fejl.** Den lå på y=50-150 — under
+statuslinjen, fordi Modal'en tegner kant-til-kant og topbjælken kun havde et
+fast indryk. Et tryk ramte systemet, ikke appen. Fundet med en kontrol-test
+(`lukkeknappen_virker_uden_knib`), der fejlede lige så meget som testen
+efter et knib: det var aldrig knibet. Rettet med statuslinjens højde
+(`SafeAreaInsetsContext`, fald tilbage til `StatusBar.currentHeight`).
+
+**Fejlkilder i harnesset selv, rettet:**
+
+- Et billede under den svævende header blev «fundet», og testens tryk ramte
+  headeren. Et fund tæller nu kun når billedets midte ligger mellem 20 % og
+  70 % af skærmen.
+- Listen ruller videre efter et swipe; et fund midt i bevægelsen havde
+  forældede grænser. Der ventes på ro og slås op igen før trykket.
+- Et «før»-billede taget mens billedet indlæste gav 7-29 % pixelforskel UDEN
+  zoom (skala 1,00 i appens log). Der ventes nu 2,5 s efter åbning.
+
+**Tilbage:** find-og-åbn fejler stadig af og til i en lang samtale, der vokser
+mens der testes (Jarvis skrev i den samme). Brug en samtale ingen skriver i.

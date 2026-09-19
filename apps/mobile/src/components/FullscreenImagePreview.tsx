@@ -1,13 +1,15 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useContext, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Animated,
   Modal,
   PanResponder,
   Pressable,
+  StatusBar,
   StyleSheet,
   Text,
   View
 } from 'react-native'
+import { SafeAreaInsetsContext } from 'react-native-safe-area-context'
 import { AuthImage, hentTilCache } from './AuthImage'
 import { useAuth } from '../state/AuthContext'
 import { Download, X } from 'lucide-react-native'
@@ -50,6 +52,10 @@ export function FullscreenImagePreview({
 }) {
   const tokens = useTheme()
   const styles = useStyles(makes)
+  // Konteksten frem for useSafeAreaInsets(): hooken KASTER uden en provider
+  // over sig. Uden en provider bruges statuslinjens egen højde.
+  const safe = useContext(SafeAreaInsetsContext)
+  const insets = { top: safe?.top ?? StatusBar.currentHeight ?? 0 }
   // Token'et hentes HER frem for at komme ind som `headers`: den prop gik til
   // en <Image> der tabte den. Se AuthImage.
   const { config } = useAuth()
@@ -99,10 +105,17 @@ export function FullscreenImagePreview({
   const pan = useMemo(
     () =>
       PanResponder.create({
-        // IKKE `true`. Et gribbetag her ville stjæle trykket fra luk- og
-        // gem-knapperne, og de ville holde op med at virke — den slags fejl
-        // man først finder på en telefon.
-        onStartShouldSetPanResponder: () => false,
+        // `true`, og det er SCENEN der siger det (19/9-2026, hypotese 2 fra
+        // knib-harnesset). Med `false` fik en React-forfader — chattens
+        // FlatList bag Modal'en — gribbetaget, og målt på en rigtig telefon
+        // blev onMoveShouldSetPanResponder aldrig kaldt: knibet nåede ikke
+        // frem, og lukkeknappen døde efter et knib. Luk- og gem-knapperne
+        // ligger i topbjælken VED SIDEN AF scenen, ikke i den, så et
+        // gribbetag her stjæler ikke deres tryk.
+        onStartShouldSetPanResponder: () => true,
+        // Og vi giver det ikke fra os midt i et knib: ellers kan forfaderen
+        // bede om det tilbage ved den første bevægelse.
+        onPanResponderTerminationRequest: () => false,
         // To fingre: altid vores. Én finger: kun når der ER zoomet — ellers
         // skal et swipe kunne lukke/scrolles videre til det der ligger bag.
         onMoveShouldSetPanResponder: (_e, g) =>
@@ -197,9 +210,14 @@ export function FullscreenImagePreview({
   }
 
   return (
-    <Modal visible={visible} transparent={false} animationType="fade" onRequestClose={onClose}>
+    <Modal visible={visible} transparent={false} animationType="fade" onRequestClose={onClose} statusBarTranslucent>
       <View style={styles.root}>
-        <View style={styles.top}>
+        {/* Statuslinjens højde OVEN I topbjælkens egen luft (19/9-2026). Modal'en
+            tegner kant-til-kant, og med et fast indryk lå luk-knappen på
+            y=50-150 — UNDER statuslinjen. Et tryk ramte systemet, ikke appen,
+            og kunne trække notifikations-panelet ned i stedet: knappen var død
+            for fingre, med eller uden knib. Målt på moto g15 med adb. */}
+        <View style={[styles.top, { paddingTop: insets.top + tokens.spacing.lg }]}>
           <Text style={styles.title} numberOfLines={1}>{title || 'Billede'}</Text>
           <View style={styles.knapper}>
             <Pressable

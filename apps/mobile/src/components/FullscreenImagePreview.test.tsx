@@ -110,6 +110,37 @@ it('knib og panorering er koblet PAA scenen, ikke bare skrevet', () => {
   const kilde = readFileSync(join(__dirname, 'FullscreenImagePreview.tsx'), 'utf8')
   expect(kilde).toMatch(/PanResponder\.create/)
   expect(kilde).toMatch(/\{\.\.\.pan\.panHandlers\}/)
-  // Gribbetaget maa ikke tage trykket fra knapperne.
-  expect(kilde).toMatch(/onStartShouldSetPanResponder: \(\) => false/)
+  // SCENEN tager gribbetaget ved start og slipper det ikke midt i et knib
+  // (19/9-2026, målt på moto g15 med instrumenterings-harnesset). Med
+  // `false` tog chattens FlatList bag Modal'en gribbetaget, og et ægte
+  // to-finger-knib naaede aldrig frem: 0,00 % pixelforskel. Med `true` gav
+  // samme knib skala 2,74-3,07. Knapperne ligger i topbjælken VED SIDEN AF
+  // scenen, saa de mister ikke deres tryk.
+  expect(kilde).toMatch(/onStartShouldSetPanResponder: \(\) => true/)
+  expect(kilde).toMatch(/onPanResponderTerminationRequest: \(\) => false/)
+})
+
+/**
+ * Luk-knappen skal ligge UNDER statuslinjen, ikke bag den. Maalt 19/9-2026:
+ * Modal'en tegner kant-til-kant, og med et fast indryk laa knappen paa
+ * y=50-150 — et tryk ramte statuslinjen, og knappen var doed for fingre.
+ */
+it('topbjaelken faar statuslinjens hoejde oven i sin egen luft', async () => {
+  const { SafeAreaInsetsContext } = require('react-native-safe-area-context')
+  const screen = await render(
+    <SafeAreaInsetsContext.Provider value={{ top: 48, bottom: 0, left: 0, right: 0 }}>
+      <FullscreenImagePreview visible uri="https://api.srvlab.dk/attachments/image/x"
+        title="x.png" filnavn="x.png" mime="image/png" onClose={() => undefined} />
+    </SafeAreaInsetsContext.Provider>
+  )
+  await act(async () => {})
+  // Gaa op fra luk-knappen til topbjaelken og find indrykket.
+  let node = screen.getByTestId('attachment-close').parent
+  let fundet = false
+  while (node && !fundet) {
+    const stil = [node.props?.style].flat(3) as Array<{ paddingTop?: number } | undefined>
+    fundet = stil.some((st) => typeof st?.paddingTop === 'number' && st.paddingTop >= 48)
+    node = node.parent
+  }
+  expect(fundet).toBe(true)
 })

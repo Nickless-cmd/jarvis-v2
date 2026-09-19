@@ -101,13 +101,38 @@ class KnibZoomTest {
      * Bevægelsen er en swipe NEDAD, som ruller indholdet OP (bagud i tiden).
      */
     private fun rulTilVedhaeftning(maksRul: Int = 25): UiObject2? {
-        enhed.wait(Until.findObject(vedhaeftning), 2_000L)?.let { return it }
         val x = enhed.displayWidth / 2
-        for (i in 0 until maksRul) {
-            enhed.swipe(x, (enhed.displayHeight * 0.3).toInt(),
-                x, (enhed.displayHeight * 0.85).toInt(), 8)
+        // Et billede tæller først som fundet når dets MIDTE ligger i det frie
+        // felt mellem den svævende header og skrivefeltet. Målt 19/9-2026: et
+        // billede med top ved y=103 lå under headeren, testens tryk ramte
+        // headeren i stedet, og testen fejlede med «skærmen er en anden» —
+        // om den ramte, afhang af hvor rulningen tilfældigvis stoppede.
+        fun iFrieFelt(o: UiObject2): Boolean {
+            val midt = o.visibleBounds.centerY()
+            return midt > enhed.displayHeight * 0.2 && midt < enhed.displayHeight * 0.7
+        }
+        // Listen ruller videre et øjeblik efter et swipe. Et fund midt i den
+        // bevægelse har bounds der er forældede når der trykkes (målt 19/9-2026:
+        // «fandt ikke fuldskærms-scenen» i 3 af 4 kørsler). Vent på ro, og slå
+        // op igen, så trykket rammer hvor billedet ER.
+        fun synlig(): UiObject2? {
+            if (enhed.findObjects(vedhaeftning).none(::iFrieFelt)) return null
+            Thread.sleep(700)
             enhed.waitForIdle()
-            enhed.wait(Until.findObject(vedhaeftning), 800L)?.let { return it }
+            return enhed.findObjects(vedhaeftning).firstOrNull(::iFrieFelt)
+        }
+        enhed.wait(Until.findObject(vedhaeftning), 2_000L)
+        synlig()?.let { return it }
+        for (i in 0 until maksRul) {
+            // Findes et billede allerede, men for højt oppe, rulles et kort
+            // stykke så det glider ned i det frie felt; ellers et helt rul.
+            val taet = enhed.findObject(vedhaeftning) != null
+            val slut = if (taet) 0.5 else 0.85
+            enhed.swipe(x, (enhed.displayHeight * 0.3).toInt(),
+                x, (enhed.displayHeight * slut).toInt(), 8)
+            enhed.waitForIdle()
+            enhed.wait(Until.findObject(vedhaeftning), 800L)
+            synlig()?.let { return it }
         }
         return null
     }
@@ -130,6 +155,11 @@ class KnibZoomTest {
 
         val scene = findMedTaal(res("attachment-scene"), "fuldskaerms-scenen")
         val billede = findMedTaal(res("attachment-fullscreen-image"), "fuldskaerms-billedet")
+        // Billedet hentes asynkront. Et «før»-billede taget mens det indlæses,
+        // gav 7-29 % pixelforskel UDEN zoom (skala 1,00 i appens egen log,
+        // 19/9-2026) — en forskel fra indlæsningen, ikke fra knibet.
+        Thread.sleep(2500)
+        enhed.waitForIdle()
 
         val foer: Rect = billede.visibleBounds
         val sceneRamme: Rect = scene.visibleBounds
@@ -179,6 +209,16 @@ class KnibZoomTest {
                 "$mappe paa enheden)",
             graenserVoksede || skaermenAendredeSig
         )
+
+        // Og lukkeknappen skal virke EFTER et rigtigt zoom. Testen nedenfor
+        // når ikke altid at zoome (knibet afbrydes tidligt) — her er billedet
+        // beviseligt forstørret, og kan dække topbjælken hvis scenen ikke
+        // klipper sine børns tryk. Målt 19/9-2026: én fejl netop i en runde
+        // med 53 % pixelforskel.
+        val luk = findMedTaal(res("attachment-close"), "lukkeknappen efter zoom")
+        luk.click()
+        val vaek = enhed.wait(Until.gone(res("attachment-scene")), vent)
+        assertTrue("fuldskaermen lukkede ikke efter et rigtigt zoom — $besked", vaek)
     }
 
     /** Hvor mappen med bevismateriale ligger — nævnt i enhver fejlbesked. */
@@ -221,6 +261,21 @@ class KnibZoomTest {
     }
 
     @Test
+    fun lukkeknappen_virker_uden_knib() {
+        // KONTROL for testen nedenfor: virker lukkeknappen overhovedet når
+        // testen klikker den? Uden den kan en rød knib-test lige så godt
+        // betyde at klikket aldrig rammer som at knibet dræber knappen.
+        val aabn = rulTilVedhaeftning() ?: return
+        aabn.click()
+        findMedTaal(res("attachment-scene"), "fuldskaerms-scenen")
+        Thread.sleep(800)  // Modal'ens fade-in (animationType="fade") skal være færdig
+        val luk = findMedTaal(res("attachment-close"), "lukkeknappen")
+        luk.click()
+        val vaek = enhed.wait(Until.gone(res("attachment-scene")), vent)
+        assertTrue("fuldskaermen lukkede ikke — heller ikke UDEN et knib", vaek)
+    }
+
+    @Test
     fun lukkeknappen_virker_stadig_efter_et_knib() {
         // Gribbetaget saetter `onStartShouldSetPanResponder` til FALSE netop for
         // ikke at stjaele tryk fra knapperne. Den beslutning staar i en
@@ -228,6 +283,9 @@ class KnibZoomTest {
         val aabn = rulTilVedhaeftning() ?: return
         aabn.click()
         val scene = findMedTaal(res("attachment-scene"), "fuldskaerms-scenen")
+        // Samme ro som knib-testen før knibet: et knib midt i Modal'ens
+        // fade-in blev afbrudt efter én bevægelse (målt 19/9-2026).
+        Thread.sleep(800)
         scene.pinchOpen(0.7f)
         Thread.sleep(500)
         val luk = findMedTaal(res("attachment-close"), "lukkeknappen")

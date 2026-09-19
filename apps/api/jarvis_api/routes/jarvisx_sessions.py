@@ -26,11 +26,10 @@ def preferences_get() -> dict[str, Any]:
     Stored in JARVIS_HOME/config/jarvisx_prefs.json so they survive
     runtime restarts and apply across sessions.
     """
-    # Svarstilen er PR. BRUGER (19/9-2026) — se core.context.output_style.
-    from core.context.output_style import hent_stil
-    from core.identity.workspace_context import current_user_id
+    # Svarstilen er PR. ARBEJDSRUM (19/9-2026) — se core.context.output_style.
+    from core.context.output_style import hent_stil, rum_for_anmodning
     from core.runtime.config import CONFIG_DIR
-    stil = hent_stil(current_user_id() or "")
+    stil = hent_stil(rum_for_anmodning())
     p = Path(CONFIG_DIR) / "jarvisx_prefs.json"
     if not p.is_file():
         return {"output_style": stil, "tool_permissions": {}}
@@ -65,10 +64,9 @@ def preferences_set(payload: PreferencesUpdate) -> dict[str, Any]:
     if payload.output_style is not None:
         # Pr. bruger, ikke i den globale fil (19/9-2026): ellers styrede én
         # brugers valg alles svar.
-        from core.context.output_style import saet_stil
-        from core.identity.workspace_context import current_user_id
+        from core.context.output_style import rum_for_anmodning, saet_stil
         try:
-            current["output_style"] = saet_stil(current_user_id() or "", payload.output_style)
+            current["output_style"] = saet_stil(rum_for_anmodning(), payload.output_style)
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
     if payload.tool_permissions is not None:

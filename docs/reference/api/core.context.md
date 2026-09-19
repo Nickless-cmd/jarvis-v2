@@ -119,11 +119,13 @@ _Svarstil pr. bruger — og påmindelsen der følger med hver tur._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_noegle` | `(uid)` | — | [src](../../../core/context/output_style.py#L39) |
-| function | `_gammel_fil` | `()` | Den globale fil fra den pensionerede jarvisx-app — kun som faldback. | [src](../../../core/context/output_style.py#L43) |
-| function | `hent_stil` | `(uid)` | Brugerens stil; standarden hvis intet er valgt. | [src](../../../core/context/output_style.py#L57) |
-| function | `saet_stil` | `(uid, stil)` | — | [src](../../../core/context/output_style.py#L71) |
-| function | `hint_for_bruger` | `(uid)` | Påmindelsen til denne tur — tom for standarden. | [src](../../../core/context/output_style.py#L83) |
+| function | `_noegle` | `(rum)` | — | [src](../../../core/context/output_style.py#L50) |
+| function | `rum_for_anmodning` | `()` | Arbejdsrummet for den der kalder API'et. | [src](../../../core/context/output_style.py#L54) |
+| function | `rum_for_tur` | `(session_id=…)` | Arbejdsrummet for den tur der bygges: samtalens ejer først. | [src](../../../core/context/output_style.py#L60) |
+| function | `_gammel_fil` | `()` | Den globale fil fra den pensionerede jarvisx-app — kun som faldback. | [src](../../../core/context/output_style.py#L75) |
+| function | `hent_stil` | `(rum)` | Arbejdsrummets stil; standarden hvis intet er valgt. | [src](../../../core/context/output_style.py#L89) |
+| function | `saet_stil` | `(rum, stil)` | — | [src](../../../core/context/output_style.py#L103) |
+| function | `hint_for_bruger` | `(rum)` | Påmindelsen til denne tur — tom for standarden. | [src](../../../core/context/output_style.py#L115) |
 
 ## `core/context/session_compact.py`
 _Session-level context compaction._

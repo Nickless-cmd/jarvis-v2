@@ -62,3 +62,20 @@ def test_prompt_contract_bruger_modulet():
     navne = {n.id for n in ast.walk(ast.parse(kilde)) if isinstance(n, ast.Name)}
     assert "hint_for_bruger" in navne
     assert "jarvisx_prefs.json" not in kilde
+
+
+def test_tur_bruger_samtalens_ejers_arbejdsrum(kv, monkeypatch):
+    """Valget gemmes under arbejdsrummet og findes igen, selv når turens
+    kontekst er tom — ejerens stempel slås op til hans arbejdsrum."""
+    monkeypatch.setattr("core.services.chat_sessions.get_session_owner", lambda sid: "id-123")
+    monkeypatch.setattr("core.identity.session_access.arbejdsrum_for",
+                        lambda u: {"id-123": "rum-a"}.get(u, u))
+    os_.saet_stil("rum-a", "technical")
+    assert os_.rum_for_tur("sess-1") == "rum-a"
+    assert os_.hint_for_bruger(os_.rum_for_tur("sess-1")).startswith("Output style: TECHNICAL")
+
+
+def test_tur_uden_ejer_falder_tilbage_til_anmodningens_rum(kv, monkeypatch):
+    monkeypatch.setattr("core.services.chat_sessions.get_session_owner", lambda sid: "")
+    from core.identity.workspace_context import current_workspace_name
+    assert os_.rum_for_tur("sess-x") == current_workspace_name()

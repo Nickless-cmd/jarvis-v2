@@ -1459,9 +1459,8 @@ def _build_visible_chat_prompt_assembly_impl(
     # output styles. Logikken bor i core.context.output_style (19/9-2026: før
     # læste denne blok en global fil ingen klient skrev).
     try:
-        from core.context.output_style import hint_for_bruger
-        from core.identity.workspace_context import current_user_id
-        _hint = hint_for_bruger(current_user_id() or "")
+        from core.context.output_style import hint_for_bruger, rum_for_tur
+        _hint = hint_for_bruger(rum_for_tur(session_id or ""))
         if _hint:
             _awareness_add(7, "output style preference", _hint)
     except Exception as _e:

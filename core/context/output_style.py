@@ -8,9 +8,19 @@ læste `config/jarvisx_prefs.json`, som ingen desk- eller mobil-vælger
 skrev — målt 19/9-2026: filen fandtes ikke på CT105. Og den var GLOBAL: én
 brugers valg ville have styret alles svar, med teksten «Bjørn prefers …».
 
-Nu: stilen gemmes pr. bruger (runtime_state_kv), og påmindelsen siger
+Nu: stilen gemmes pr. ARBEJDSRUM (runtime_state_kv), og påmindelsen siger
 «the user», ikke et navn. Den gamle fil læses stadig som faldback, så et
 valg der blev gemt dér, ikke forsvinder.
+
+## Hvorfor arbejdsrum og ikke user_id
+
+`current_user_id()` er ofte TOM for ejeren inde i run-generatoren (se
+enheds-linjen i prompt_contract), og ejerens samtaler bærer tre stempler
+(Discord-id, `bjorn`, `system`). Et valg gemt under ét id ville aldrig blive
+fundet under et andet. Arbejdsrummet er det samme på begge sider:
+`rum_for_anmodning()` når valget gemmes, `rum_for_tur()` når turen bygges —
+den sidste spørger samtalens ejer først, så en tabt kontekst ikke giver en
+anden brugers tur ejerens stil.
 """
 from __future__ import annotations
 
@@ -20,7 +30,8 @@ from typing import Final
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["STILE", "STANDARD", "hent_stil", "saet_stil", "hint_for_bruger"]
+__all__ = ["STILE", "STANDARD", "hent_stil", "saet_stil", "hint_for_bruger",
+           "rum_for_anmodning", "rum_for_tur"]
 
 STILE: Final[tuple[str, ...]] = ("balanced", "concise", "detailed", "technical")
 STANDARD: Final[str] = "balanced"
@@ -36,8 +47,29 @@ _HINTS: Final[dict[str, str]] = {
 }
 
 
-def _noegle(uid: str) -> str:
-    return f"output_style:{uid}"
+def _noegle(rum: str) -> str:
+    return f"output_style:{rum}"
+
+
+def rum_for_anmodning() -> str:
+    """Arbejdsrummet for den der kalder API'et."""
+    from core.identity.workspace_context import current_workspace_name
+    return (current_workspace_name() or "").strip()
+
+
+def rum_for_tur(session_id: str = "") -> str:
+    """Arbejdsrummet for den tur der bygges: samtalens ejer først."""
+    sid = (session_id or "").strip()
+    if sid:
+        try:
+            from core.services.chat_sessions import get_session_owner
+            from core.identity.session_access import arbejdsrum_for
+            ejer = (get_session_owner(sid) or "").strip()
+            if ejer:
+                return arbejdsrum_for(ejer)
+        except Exception:
+            logger.debug("output_style: ejer af %s kunne ikke slås op", sid, exc_info=True)
+    return rum_for_anmodning()
 
 
 def _gammel_fil() -> str:
@@ -54,9 +86,9 @@ def _gammel_fil() -> str:
     return ""
 
 
-def hent_stil(uid: str) -> str:
-    """Brugerens stil; standarden hvis intet er valgt."""
-    u = (uid or "").strip()
+def hent_stil(rum: str) -> str:
+    """Arbejdsrummets stil; standarden hvis intet er valgt."""
+    u = (rum or "").strip()
     if u:
         try:
             from core.runtime.db_core import get_runtime_state_value
@@ -68,11 +100,11 @@ def hent_stil(uid: str) -> str:
     return _gammel_fil() or STANDARD
 
 
-def saet_stil(uid: str, stil: str) -> str:
-    u = (uid or "").strip()
+def saet_stil(rum: str, stil: str) -> str:
+    u = (rum or "").strip()
     s = (stil or "").strip()
     if not u:
-        raise ValueError("ingen bruger")
+        raise ValueError("intet arbejdsrum")
     if s not in STILE:
         raise ValueError(f"ukendt stil {s!r} (gyldige: {', '.join(STILE)})")
     from core.runtime.db_core import set_runtime_state_value
@@ -80,6 +112,6 @@ def saet_stil(uid: str, stil: str) -> str:
     return s
 
 
-def hint_for_bruger(uid: str) -> str:
+def hint_for_bruger(rum: str) -> str:
     """Påmindelsen til denne tur — tom for standarden."""
-    return _HINTS.get(hent_stil(uid), "")
+    return _HINTS.get(hent_stil(rum), "")

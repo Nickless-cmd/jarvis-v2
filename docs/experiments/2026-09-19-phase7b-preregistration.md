@@ -122,3 +122,21 @@ læst, og analysen er ikke kørt.
 Konsekvens der står her, ikke skjult: svarene blev indsamlet 19/9 og
 bedømmes fra 1/10. Svarene ændrer sig ikke af at vente — de er gemt — men
 dommerens model kan være opdateret af udbyderen i mellemtiden.
+
+---
+
+## Tillæg 4 — 2026-09-19, FØR bedømmelsen: 28 svar mangler og indsamles 1. oktober
+
+Jarvis' fund samme aften, efterprøvet: 28 af de 348 svar er tomme — alle
+`copilot-free/gpt-4.1` (CPL) i spand B, fordelt på FULL 11 · FILES 9 · BARE 8,
+alle med samme fejl: Copilots «rate limit for utility models». Samme kvote
+som dommerens (tillæg 3).
+
+Indsamleren kan genoptages og tager kun de tomme om. De indsamles 1. oktober
+FØR dommeren kører. Det der skal læses med: for de 28 bygges FULL-prompten
+den dag, ikke 19/9, så runtime-tilstanden bag dem er 12 dage nyere end bag de
+øvrige 320. Det rammer kun CPL i spand B — altså CPL-halvdelen af K3. Det
+står her, og K3 for CPL skal læses med det forbehold.
+
+Kan de 28 heller ikke indsamles 1. oktober, analyseres forsøget på de svar der
+findes, og det står i resultatet hvor mange der mangler og hvor.

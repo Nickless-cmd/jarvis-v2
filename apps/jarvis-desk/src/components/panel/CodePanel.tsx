@@ -10,7 +10,7 @@ import {
   getFile, writeFile, openExternal, getActiveFile, commitMessage, commitFile, type ApiConfig,
 } from '../../lib/api'
 
-type PanelTab = 'files' | 'terminal'
+export type PanelTab = 'files' | 'terminal'
 
 /** Sprog der vises som ren tekst (ingen kode-highlight). */
 const _PLAIN = new Set(['', 'text', 'plaintext', 'txt', 'log'])
@@ -21,18 +21,28 @@ const ACTIVE_POLL_MS = 1500
  *  fetch er tunge). highlightPath = Jarvis pegede; activePath = live fil Jarvis
  *  læser/skriver nu. Editor: redigér + find/erstat + Gem / Gem & commit. */
 export function CodePanel({
-  config, kind, root, highlightPath,
+  config, kind, root, highlightPath, aabenFane, onFane,
 }: {
   config: ApiConfig
   kind: 'container' | 'workstation'
   root: string
   highlightPath?: string
+  /** Åbn en fane udefra — Jarvis' `desk_show_pane` («terminal»). `n` skifter pr. gang. */
+  aabenFane?: { fane: PanelTab; n: number } | null
+  /** Meld den aktuelle fane op — til `desk_get_layout`. */
+  onFane?: (fane: PanelTab) => void
 }) {
   const [openPath, setOpenPath] = useState<string | null>(null)
   const [content, setContent] = useState('')
   const [lang, setLang] = useState('')
   const [tab, setTab] = useState<PanelTab>('files')
   const [termMounted, setTermMounted] = useState(false)
+  useEffect(() => {
+    if (!aabenFane) return
+    if (aabenFane.fane === 'terminal') setTermMounted(true)
+    setTab(aabenFane.fane)
+  }, [aabenFane?.n]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { onFane?.(tab) }, [tab]) // eslint-disable-line react-hooks/exhaustive-deps
   const canTerminal = true
   const tree = useResizableWidth({
     initial: 190, min: 120, max: 420, side: 'right', storageKey: 'jarvis-desk:code-tree-w2',

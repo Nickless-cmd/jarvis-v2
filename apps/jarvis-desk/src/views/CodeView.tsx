@@ -26,7 +26,8 @@ import { EnvironmentPanel } from '../components/code/EnvironmentPanel'
 import { CentralBadge } from '../components/shell/CentralBadge'
 import { JobsPanel } from '../components/shell/JobsPanel'
 import { ChangesPanel } from '../components/shell/ChangesPanel'
-import { paaAendringsFokus } from '../lib/aendringsFokus'
+import { paaAendringsFokus, visAendring } from '../lib/aendringsFokus'
+import { IKKE_I_DESK, registrerSkaerm } from '../lib/skaermRegister'
 import { listProcesses } from '../lib/processesApi'
 import { SystemHealth } from '../components/shell/SystemHealth'
 import { MessageRail } from '../components/chat/MessageRail'
@@ -41,6 +42,7 @@ import { streamReducer, initialStreamState, liveBlokke } from '../lib/streamRedu
 import { useOnline } from '../hooks/useOnline'
 import { useSendeKoe } from '../hooks/useSendeKoe'
 import { KoeChip } from '../components/transcript/KoeChip'
+import type { PanelTab } from '../components/panel/CodePanel'
 import { TilbagespolBanner } from '../components/transcript/TilbagespolBanner'
 import { useTilbagespol } from '../hooks/useTilbagespol'
 import { VisningVaelger } from '../components/transcript/VisningVaelger'
@@ -331,6 +333,46 @@ export function CodeView({
     setFokusFil(sti)
     setChangesOpen(true)
   }), [])
+
+  // Jarvis' desk-værktøjer (Claude Desktops ccd_view, 19/9-2026) — som
+  // ChatView, plus kode-fladens fil-panel og terminal (CodePanel-fanerne).
+  const [codeFane, setCodeFane] = useState<PanelTab>('files')
+  const [aabenFane, setAabenFane] = useState<{ fane: PanelTab; n: number } | null>(null)
+  const skaermNu = useRef({ changesOpen, jobsOpen, filesOpen, codeFane })
+  skaermNu.current = { changesOpen, jobsOpen, filesOpen, codeFane }
+  useEffect(() => {
+    if (!sessionId) return
+    return registrerSkaerm({
+      sessionId,
+      flade: 'code',
+      aabne: () => {
+        const t = skaermNu.current
+        return [
+          t.changesOpen && 'diff', t.jobsOpen && 'tasks',
+          t.filesOpen && (t.codeFane === 'terminal' ? 'terminal' : 'file'),
+        ].filter(Boolean) as string[]
+      },
+      vis: (p, a) => {
+        if (p === 'diff') { setChangesOpen(true); if (a.path) visAendring(a.path); return null }
+        if (p === 'tasks') { setJobsOpen(true); return null }
+        if (p === 'file') {
+          if (!a.path) return '`path` er påkrævet for fil-panelet.'
+          setFilesOpen(true)
+          setHighlightPath(' ')
+          requestAnimationFrame(() => setHighlightPath(a.path!))
+          return null
+        }
+        if (p === 'terminal') { setFilesOpen(true); setAabenFane({ fane: 'terminal', n: Date.now() }); return null }
+        return IKKE_I_DESK[p as keyof typeof IKKE_I_DESK] ?? `Ukendt panel: ${p}`
+      },
+      luk: (p) => {
+        if (p === 'diff') setChangesOpen(false)
+        else if (p === 'tasks') setJobsOpen(false)
+        else if (p === 'file' || p === 'terminal') setFilesOpen(false)
+        return null
+      },
+    })
+  }, [sessionId]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!config) return
     let levende = true
@@ -1082,7 +1124,7 @@ export function CodeView({
             onMouseDown={codePanelW.startDrag}
           />
           <div className="codeview-panel" ref={codePanelW.ref} style={{ width: codePanelW.width }}>
-            <CodePanel config={config} kind={kind} root={effRoot} highlightPath={highlightPath || undefined} />
+            <CodePanel config={config} kind={kind} root={effRoot} highlightPath={highlightPath || undefined} aabenFane={aabenFane} onFane={setCodeFane} />
           </div>
         </>
       )}

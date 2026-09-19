@@ -5,6 +5,7 @@ import { PanelRight, Loader2, SquareStack, FileDiff } from 'lucide-react'
 import { JobsPanel } from '../components/shell/JobsPanel'
 import { ChangesPanel } from '../components/shell/ChangesPanel'
 import { paaAendringsFokus } from '../lib/aendringsFokus'
+import { IKKE_I_DESK, registrerSkaerm } from '../lib/skaermRegister'
 import { onPauseSvar, pauseAskIn, withoutPauseAsk, type PauseAsk } from '../lib/pauseAsk'
 import { useRedning } from '../hooks/useRedning'
 import { streamReducer, initialStreamState, liveBlokke } from '../lib/streamReducer'
@@ -627,6 +628,41 @@ export function ChatView({
     setFokusFil(sti)
     setChangesOpen(true)
   }), [])
+
+  // Jarvis' desk-værktøjer (Claude Desktops ccd_view, 19/9-2026): hvad står på
+  // skærmen for denne samtale, og hvordan åbnes/lukkes panelerne. Tilstanden
+  // læses gennem en ref, så opslaget ser NU — ikke hvad der gjaldt ved
+  // registreringen.
+  const skaermNu = useRef({ changesOpen, jobsOpen, preview: panel.open })
+  skaermNu.current = { changesOpen, jobsOpen, preview: panel.open }
+  useEffect(() => {
+    if (!sessionId) return
+    return registrerSkaerm({
+      sessionId,
+      flade: 'chat',
+      aabne: () => {
+        const t = skaermNu.current
+        return [t.changesOpen && 'diff', t.jobsOpen && 'tasks', t.preview && 'preview'].filter(Boolean) as string[]
+      },
+      vis: (p, a) => {
+        if (p === 'diff') { setChangesOpen(true); if (a.path) setFokusFil(a.path); return null }
+        if (p === 'tasks') { setJobsOpen(true); return null }
+        if (p === 'file') {
+          if (!a.path) return '`path` er påkrævet for fil-panelet.'
+          panel.open_({ kind: 'file', title: a.path.split('/').pop() || a.path, filePath: a.path })
+          return null
+        }
+        if (p === 'terminal') return 'Terminalen findes kun i kode-tilstand.'
+        return IKKE_I_DESK[p as keyof typeof IKKE_I_DESK] ?? `Ukendt panel: ${p}`
+      },
+      luk: (p) => {
+        if (p === 'diff') setChangesOpen(false)
+        else if (p === 'tasks') setJobsOpen(false)
+        else if (p === 'file') panel.close()
+        return null
+      },
+    })
+  }, [sessionId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const activeSession = sessions.sessions.find((s) => s.id === sessionId)
   const chatTitle = activeSession?.title || (isEmpty ? 'Ny samtale' : 'Samtale')

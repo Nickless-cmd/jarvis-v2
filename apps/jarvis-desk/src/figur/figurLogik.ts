@@ -17,6 +17,29 @@ export const HANDLING_FOR: Record<OpmTilstand, Handling> = {
   review: 'faerdig',
 }
 
+export type Udtryk = 'rolig' | 'fokus' | 'venter' | 'noed' | 'glad'
+
+/**
+ * Ansigtets udtryk pr. handling.
+ *
+ * Kroppen viser HVAD han gør — ansigtet viser HVORDAN det føles. Uden den
+ * skelnen kunne en kerne med to prikker ikke vise forskel på at arbejde og at
+ * vente; kun farven bar det. Nu bærer øjnene og munden det også.
+ */
+export const UDTRYK_FOR: Record<Handling, Udtryk> = {
+  hvile: 'rolig',
+  vinker: 'glad',
+  arbejder: 'fokus',
+  venter: 'venter',
+  fejlede: 'noed',
+  faerdig: 'glad',
+  hopper: 'glad',
+}
+
+export function udtryk(h: Handling): Udtryk {
+  return UDTRYK_FOR[h] ?? 'rolig'
+}
+
 export interface Boble {
   noegle: string
   etiket: string

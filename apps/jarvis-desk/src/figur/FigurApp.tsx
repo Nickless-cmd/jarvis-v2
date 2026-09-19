@@ -46,6 +46,7 @@ export function FigurApp() {
   const [hilsen, setHilsen] = useState(true)
   const [afvist, setAfvist] = useState<string | null>(null)
   const [laener, setLaener] = useState<'venstre' | 'hoejre' | null>(null)
+  const [blik, setBlik] = useState({ x: 0, y: 0 })
   const [pakket, setPakket] = useState(false)
   const [skriver, setSkriver] = useState(false)
   const [udkast, setUdkast] = useState('')
@@ -142,9 +143,30 @@ export function FigurApp() {
     setHandling('hopper')
     setAfvist(null)
   }
+  /**
+   * Blikket. Vinduet er lille, så markøren kan kun ses mens den er over
+   * figuren — det er altså når man nærmer sig for at klikke at han ser op.
+   * Forskydningen mættes ved 40 px, så øjnene ikke står og dirrer på midten.
+   */
+  const kig = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (traek.current?.flytter) return
+    const r = e.currentTarget.getBoundingClientRect()
+    const dx = e.clientX - (r.left + r.width / 2)
+    const dy = e.clientY - (r.top + r.height * 0.42)
+    const d = Math.hypot(dx, dy)
+    if (d < 0.5) { setBlik({ x: 0, y: 0 }); return }
+    const n = Math.min(1, d / 40) * 2.4
+    setBlik({ x: (dx / d) * n, y: (dy / d) * n })
+  }
 
   return (
-    <div className="figur-rod" ref={rodRef} data-tilstand={o?.tilstand ?? 'idle'}>
+    <div
+      className="figur-rod"
+      ref={rodRef}
+      data-tilstand={o?.tilstand ?? 'idle'}
+      onPointerMove={kig}
+      onPointerLeave={() => setBlik({ x: 0, y: 0 })}
+    >
       {vis ? (
         <div className={`figur-boble b-${vis.tilstand}`} role="status" data-testid="figur-boble">
           <button type="button" className="figur-boble-indhold" onClick={() => void bro()?.figur.aabnSamtale(vis.sessionId)}>
@@ -171,7 +193,7 @@ export function FigurApp() {
         onDoubleClick={() => void bro()?.figur.aabnSamtale(null)}
       >
         <div onAnimationEnd={(e) => { if (e.target === e.currentTarget.firstElementChild && handling !== 'hvile') setHandling('hvile') }}>
-          <FigurKrop handling={handling} ring={o?.tilstand === 'running' ? 'hurtig' : 'rolig'} laener={laener} />
+          <FigurKrop handling={handling} ring={o?.tilstand === 'running' ? 'hurtig' : 'rolig'} laener={laener} blik={blik} />
         </div>
       </div>
       {/* Codex' tre ikoner under figuren. Vist når der er noget at vise —

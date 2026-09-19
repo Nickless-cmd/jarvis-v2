@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
-import { boble, boblensNoegle, HANDLING_FOR } from './figurLogik'
+import { boble, boblensNoegle, HANDLING_FOR, UDTRYK_FOR, udtryk } from './figurLogik'
 import type { Opmaerksomhed } from '../lib/opmaerksomhed'
 
 const apiFetch = vi.fn()
@@ -29,6 +29,23 @@ const o = (tilstand: Opmaerksomhed['tilstand'], fokus: Partial<Opmaerksomhed['pu
 describe('figurens regler', () => {
   it('hver tilstand har en handling — Codex-kortlaegningen', () => {
     expect(HANDLING_FOR).toEqual({ idle: 'hvile', running: 'arbejder', waiting: 'venter', failed: 'fejlede', review: 'faerdig' })
+  })
+
+  it('hver handling har et ansigtsudtryk — tilstanden er ikke kun en farve', () => {
+    // Fejler hvis nogen tilfoejer en handling uden at give den et ansigt.
+    expect(Object.keys(UDTRYK_FOR).sort()).toEqual(
+      ['arbejder', 'faerdig', 'fejlede', 'hopper', 'hvile', 'venter', 'vinker'])
+    expect(UDTRYK_FOR.hvile).toBe('rolig')
+    expect(UDTRYK_FOR.arbejder).toBe('fokus')
+    expect(UDTRYK_FOR.venter).toBe('venter')
+    expect(UDTRYK_FOR.fejlede).toBe('noed')
+    expect(UDTRYK_FOR.faerdig).toBe('glad')
+  })
+
+  it('udtryk() svarer til tabellen', () => {
+    for (const h of Object.keys(UDTRYK_FOR) as (keyof typeof UDTRYK_FOR)[]) {
+      expect(udtryk(h)).toBe(UDTRYK_FOR[h])
+    }
   })
 
   it('ingen boble naar intet kraever dig', () => {

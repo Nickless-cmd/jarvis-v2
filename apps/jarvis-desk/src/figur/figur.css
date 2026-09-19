@@ -5,8 +5,19 @@ html.figur-flade, html.figur-flade body, html.figur-flade #root {
   margin: 0; overflow: hidden; user-select: none;
 }
 
+/* Farven glider i stedet for at skifte hårdt: tilstanden er en stemning, ikke
+   et signalement. @property registrerer custom-propertyen SOM en farve, så
+   browseren kan interpolere den — uden registreringen skifter `var()` i et
+   spring, uanset hvor meget man sætter transition på. */
+@property --figur-farve {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #3fc7b4;
+}
+
 .figur-rod {
   --figur-farve: #3fc7b4;
+  transition: --figur-farve 420ms ease;
   width: 300px;
   display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
   gap: 6px; padding: 8px 10px 4px; box-sizing: border-box;
@@ -51,7 +62,10 @@ html.figur-flade, html.figur-flade body, html.figur-flade #root {
 .figur-greb:active { cursor: grabbing; }
 .figur-krop { position: relative; width: 112px; height: 124px; transform-origin: 50% 90%; }
 .figur-krop svg { display: block; overflow: visible; }
-.figur-glød { fill: var(--figur-farve); opacity: 0.22; filter: blur(9px); }
+.figur-glød {
+  fill: var(--figur-farve); opacity: 0.22; filter: blur(9px);
+  animation: figur-gloed 4.6s ease-in-out infinite;
+}
 .figur-skygge {
   position: absolute; left: 30px; right: 30px; bottom: 2px; height: 8px; border-radius: 50%;
   background: rgba(0, 0, 0, 0.28); filter: blur(3px);
@@ -59,6 +73,15 @@ html.figur-flade, html.figur-flade body, html.figur-flade #root {
 .figur-ring { transform-origin: 60px 60px; animation: figur-drej 14s linear infinite; }
 .figur-ring.ring-hurtig { animation-duration: 1.4s; }
 .figur-oejne { transform-origin: 60px 58px; animation: figur-blink 5.2s infinite; }
+.figur-mund { opacity: 0.92; }
+
+/* Gløden ånder i takt med arbejdet: hurtigere og dybere når han er i gang,
+   langsomt når han hviler. Det er den eneste bevægelse der viser at der sker
+   noget INDENI — kroppen viser hvad han gør udadtil. */
+.h-arbejder .figur-glød { animation-duration: 1.5s; }
+.h-venter .figur-glød { animation-duration: 2.8s; }
+.h-fejlede .figur-glød { animation-duration: 2.2s; }
+.h-faerdig .figur-glød { animation-duration: 2.4s; }
 
 /* Hvile: Codex lader idle løbe seks gange langsommere end handlingerne. */
 .h-hvile { animation: figur-aande 4.2s ease-in-out infinite; }
@@ -74,6 +97,7 @@ html.figur-flade, html.figur-flade body, html.figur-flade #root {
 
 @keyframes figur-drej { to { transform: rotate(360deg); } }
 @keyframes figur-blink { 0%, 94%, 100% { transform: scaleY(1); } 96% { transform: scaleY(0.1); } }
+@keyframes figur-gloed { 0%, 100% { opacity: 0.16; } 50% { opacity: 0.34; } }
 @keyframes figur-aande { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-2px) scale(1.025); } }
 @keyframes figur-vink { 0%, 100% { transform: rotate(0); } 30% { transform: rotate(-10deg); } 70% { transform: rotate(10deg); } }
 @keyframes figur-nik { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(3px) scale(0.98); } }
@@ -83,7 +107,8 @@ html.figur-flade, html.figur-flade body, html.figur-flade #root {
 
 /* Codex: `prefers-reduced-motion` giver én stillestående ramme. */
 @media (prefers-reduced-motion: reduce) {
-  .figur-krop, .figur-ring, .figur-oejne { animation: none !important; }
+  .figur-krop, .figur-ring, .figur-oejne, .figur-glød { animation: none !important; }
+  .figur-rod { transition: none; }
 }
 
 /* ── Codex' tre ikoner under figuren + «Start ny chat» ──────────────── */

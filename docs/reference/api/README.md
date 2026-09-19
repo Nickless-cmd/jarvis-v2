@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 15160 functions/methods, 51% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 15198 functions/methods, 51% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -50,12 +50,12 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 15160 functions/
 - [`core.services.19`](core.services.19.md) — `prompt_support_signals` … `relation_continuity_signal_tracking`
 - [`core.services.20`](core.services.20.md) — `relation_dynamics` … `runtime_hook_runtime`
 - [`core.services.21`](core.services.21.md) — `runtime_hooks` … `self_repair_engine`
-- [`core.services.22`](core.services.22.md) — `self_review_cadence_signal_tracking` … `signal_baseline`
-- [`core.services.23`](core.services.23.md) — `signal_decay_daemon` … `surprise_detector`
-- [`core.services.24`](core.services.24.md) — `sustained_attention` … `tool_pattern_miner`
-- [`core.services.25`](core.services.25.md) — `tool_result_aging` … `visible_followup_results`
-- [`core.services.26`](core.services.26.md) — `visible_inner_life` … `voice_daemon`
-- [`core.services.27`](core.services.27.md) — `wakeup_dispatcher` … `world_model_signal_tracking`
+- [`core.services.22`](core.services.22.md) — `self_review_cadence_signal_tracking` … `shutdown_window_daemon`
+- [`core.services.23`](core.services.23.md) — `side_tasks` … `subjective_time`
+- [`core.services.24`](core.services.24.md) — `surprise_daemon` … `tool_observer`
+- [`core.services.25`](core.services.25.md) — `tool_outcome_memory` … `visible_followup_events`
+- [`core.services.26`](core.services.26.md) — `visible_followup_lean` … `voice_anchor`
+- [`core.services.27`](core.services.27.md) — `voice_curator` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

@@ -1264,6 +1264,13 @@ def _build_visible_chat_prompt_assembly_impl(
         _awareness_add(1, "indre liv", build_inner_life_section())
     except Exception as _e:
         _sec_err("indre liv", _e)
+    # Levende selvmodel (2026-09-19): hans træk med dato og kilde. Bag flaget
+    # selvmodel_enabled og kun for ejeren; dynamisk → halen, ikke cache-præfikset.
+    try:
+        from core.services.selvmodel_kobling import selvmodel_sektion
+        _awareness_add(1, "levende selvmodel", selvmodel_sektion())
+    except Exception as _e:
+        _sec_err("levende selvmodel", _e)
     try:
         from core.services.continuity import build_conversation_continuity
         _awareness_add(2, "conversation continuity (always-on)",

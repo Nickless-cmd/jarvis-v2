@@ -42,6 +42,10 @@ class RuntimeSettings:
     # tilfældene (mod 51% på deep). En høj mutationsbyrde ER dybt arbejde.
     # Loftet strammer tærsklen; det løsner den aldrig (deep beholder sin 3'er).
     r2_5_activity_ceiling: int = 5
+    # Levende selvmodel (2026-09-19, spec levende-selvmodel-design). SLUKKET
+    # indtil fase 7's nulpunkt er indsamlet — ellers kan genmålingen ikke
+    # skelne før fra efter. Tænder nominering fra hans svar + prompt-sektionen.
+    selvmodel_enabled: bool = False
     # Proaktivitets-cap: max uopfordrede beskeder pr. dag + min timer mellem dem.
     max_proactive_per_day: int = 3
     proactive_cooldown_hours: int = 2
@@ -652,6 +656,7 @@ class RuntimeSettings:
             "agent_live_broadcast_enabled": self.agent_live_broadcast_enabled,
             "agent_live_follow_tokens_enabled": self.agent_live_follow_tokens_enabled,
             "agent_step_harness_contract_enabled": self.agent_step_harness_contract_enabled,
+            "selvmodel_enabled": self.selvmodel_enabled,
         }
         return {**self.extra, **typed}
 
@@ -719,6 +724,12 @@ def load_settings() -> RuntimeSettings:
         ),
         r2_5_activity_ceiling=int(
             data.get("r2_5_activity_ceiling", defaults.r2_5_activity_ceiling)
+        ),
+        # Streng: bool("false") er True, og et flag der tænder hans selvmodel
+        # ved et uheld er ikke en fejl man opdager.
+        selvmodel_enabled=(
+            data.get("selvmodel_enabled") is True
+            or str(data.get("selvmodel_enabled", "")).strip().lower() in ("1", "true", "ja", "on")
         ),
         max_proactive_per_day=int(
             data.get("max_proactive_per_day", defaults.max_proactive_per_day)

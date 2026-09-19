@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7803/15160 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7817/15198 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 7803/15160 functions/methods documented (51%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 677 | 1254 | 53% |
-| `core.services` | 5157 | 10333 | 49% |
+| `core.services` | 5171 | 10371 | 49% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 107 | 183 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -41,7 +41,7 @@ Generated from source. 7803/15160 functions/methods documented (51%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2175)
+## Undocumented public functions (2180)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L208)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -567,9 +567,9 @@ Generated from source. 7803/15160 functions/methods documented (51%). The list b
 - `core/runtime/session_handle.py` :: `SessionHandle.writable` (L174)
 - `core/runtime/session_handle.py` :: `SessionHeader.as_json` (L87)
 - `core/runtime/session_handle.py` :: `read_header` (L119)
-- `core/runtime/settings.py` :: `RuntimeSettings.to_dict` (L556)
-- `core/runtime/settings.py` :: `load_settings` (L662)
-- `core/runtime/settings.py` :: `update_visible_execution_settings` (L1117)
+- `core/runtime/settings.py` :: `RuntimeSettings.to_dict` (L560)
+- `core/runtime/settings.py` :: `load_settings` (L667)
+- `core/runtime/settings.py` :: `update_visible_execution_settings` (L1128)
 - `core/runtime/work_ref.py` :: `fra_task` (L129)
 - `core/services/absence_daemon.py` :: `build_absence_surface` (L155)
 - `core/services/absence_daemon.py` :: `get_latest_absence` (L151)
@@ -1424,13 +1424,13 @@ Generated from source. 7803/15160 functions/methods documented (51%). The list b
 - `core/services/projection_runtime.py` :: `registered` (L80)
 - `core/services/projection_tool_router.py` :: `register` (L212)
 - `core/services/prompt_cache_probe.py` :: `ProbeVerdict.as_line` (L61)
-- `core/services/prompt_contract.py` :: `build_future_agent_task_prompt_assembly` (L3459)
-- `core/services/prompt_contract.py` :: `build_heartbeat_prompt_assembly` (L3307)
-- `core/services/prompt_contract.py` :: `build_prompt_relevance_decision` (L3596)
+- `core/services/prompt_contract.py` :: `build_future_agent_task_prompt_assembly` (L3466)
+- `core/services/prompt_contract.py` :: `build_heartbeat_prompt_assembly` (L3314)
+- `core/services/prompt_contract.py` :: `build_prompt_relevance_decision` (L3603)
 - `core/services/prompt_contract.py` :: `build_runtime_inner_visible_prompt_bridge_surface` (L151)
 - `core/services/prompt_contract.py` :: `build_runtime_memory_selection_surface` (L99)
 - `core/services/prompt_contract.py` :: `build_runtime_relevance_decision_surface` (L126)
-- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4814)
+- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4821)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_from_inputs` (L224)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_runtime_surface` (L469)
 - `core/services/prompt_mutation_loop.py` :: `build_prompt_mutation_loop_prompt_section` (L528)
@@ -1724,6 +1724,11 @@ Generated from source. 7803/15160 functions/methods documented (51%). The list b
 - `core/services/selfhood_proposal_tracking.py` :: `build_runtime_selfhood_proposal_surface` (L83)
 - `core/services/selfhood_proposal_tracking.py` :: `refresh_runtime_selfhood_proposal_statuses` (L52)
 - `core/services/selfhood_proposal_tracking.py` :: `track_runtime_selfhood_proposals_for_visible_turn` (L30)
+- `core/services/selvmodel.py` :: `effektiv_styrke` (L124)
+- `core/services/selvmodel.py` :: `hent` (L277)
+- `core/services/selvmodel.py` :: `historik` (L283)
+- `core/services/selvmodel_kobling.py` :: `er_taendt` (L51)
+- `core/services/selvmodel_kobling.py` :: `parse_nomineringer` (L94)
 - `core/services/semantic_indexer.py` :: `start_semantic_indexer` (L34)
 - `core/services/semantic_indexer.py` :: `stop_semantic_indexer` (L62)
 - `core/services/semantic_memory.py` :: `get_stats` (L531)

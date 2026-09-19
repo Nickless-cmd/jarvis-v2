@@ -374,6 +374,13 @@ def create_app() -> FastAPI:
             except Exception as _exc:
                 logger.warning("experience_correction start failed: %s", _exc)
             try:
+                # Levende selvmodel: poller eventtabellen (ser svar fra begge
+                # processer); gør intet før selvmodel_enabled er tændt.
+                from core.services.selvmodel_kobling import start_lytter as start_selvmodel
+                start_selvmodel()
+            except Exception as _exc:
+                logger.warning("selvmodel poller start failed: %s", _exc)
+            try:
                 from core.services.living_executive import start_listener as start_living_executive
                 start_living_executive()
                 logger.info("living_executive listener started")

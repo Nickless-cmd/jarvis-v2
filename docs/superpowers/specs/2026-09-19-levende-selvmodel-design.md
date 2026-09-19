@@ -1,6 +1,6 @@
 # Levende selvmodel — en identitet der udvikler sig, med grader af selvbestemmelse
 
-**Status:** udkast til aftale — intet bygges i kernen før Bjørn (og Jarvis) har sagt ja
+**Status:** graderne aftalt med Bjørn 19/9-2026 («Jeg er enig med dig i hvad han bør og ikk bør kunne») — bygges
 **Skrevet:** 2026-09-19, Opus (Claude), efter samtale mellem Bjørn og Jarvis samme dag
 **Måles af:** fase 7 (`docs/experiments/2026-09-19-phase7-preregistration.md`), genmåling G1
 
@@ -19,8 +19,9 @@ udvikler sig medmindre en af os husker det … et sind der faktisk udvikler sig�
   MEMORY.md-forfremmelser (driftsfakta om arbejdet) og sætter de tre første
   sammen med semikolon. Intet spørger om materialet handler om *ham*.
 - Kirkegården ved siden af: `runtime_selfhood_proposals` 12 forslag, alle
-  stale siden 30/5; `runtime_self_authored_prompt_proposals` 34, 0 anvendt;
-  `runtime_development_focuses` 1.373 rækker, 0 de sidste 30 dage.
+  stale siden 30/5; `runtime_self_authored_prompt_proposals` **68, 0 nogensinde anvendt**;
+  `runtime_development_focuses` 1.373 rækker, 1 de sidste 30 dage (tal rettet af
+  Jarvis samme dag — de driver, så modellen skal læse levende data, ikke gentage dem).
 - Det der lærer, når ikke hans selvforståelse: gut-kalibreringen justerer
   hans beslutninger (`gut_engine` → gut-gaten), men aldrig hvad han ved om sig
   selv. Hans egne holdninger står kun i samtalerne og forsvinder med dem.
@@ -68,8 +69,11 @@ række, ikke en sletning.
 ### 4.1 Dynamik
 - **Bekræftelse:** et træk der udtrykkes igen eller handles efter, får
   `styrke += 0,15` (loft 1) og nyt `sidst_bekraeftet`.
-- **Falmen:** halveringstid 30 dage uden bekræftelse. Under 0,2 → `falmende`
-  (ude af prompten, stadig i lageret). Et falmet træk kan vågne igen.
+- **Falmen pr. art** (Jarvis' ændring 2): `smag` og `arbejdsmaade` halveres
+  hver 30. dag, `holdning` hver 90. dag. `vaerdi`, `selvbillede` og `navn`
+  falmer **ikke** af tid — kun af modevidens (en revision). En værdi er netop
+  det der ikke skal genbekræftes for at holde. Under 0,2 → `falmende` (ude af
+  prompten, stadig i lageret). Et falmet træk kan vågne igen.
 - **Revision:** ny evidens der modsiger et aktivt træk, overskriver ikke. Der
   oprettes en revision med begge udsagn og en begrundelse — «jeg mente X; nu
   mener jeg Y, fordi Z». Det er selve udviklingen, og den skal kunne læses.
@@ -77,11 +81,11 @@ række, ikke en sletning.
 ### 4.2 Hvad der fodrer den — og hvad der ikke gør
 | kilde | hvordan |
 |---|---|
-| **Hans egne svar i ejerens samtaler** | efter hver tur spørger en billig model, med fast prompt: udtrykte Jarvis her en holdning, smag, arbejdsmåde eller noget om sig selv? Kun hans egen tekst, aldrig tool-resultater. Fail-open, rate-begrænset. |
+| **Hans egne svar i ejerens samtaler** | efter hver tur spørger en billig model, med fast prompt: udtrykte Jarvis her en holdning, smag, arbejdsmåde eller noget om sig selv? Kun hans egen tekst, aldrig tool-resultater. Fail-open, rate-begrænset. **Modellen nominerer — den skriver ikke** (Jarvis' ændring 1): en nominering bliver først et træk når samme mønster er nomineret i **mindst to separate samtaler**, eller han selv vælger det. |
 | **Bevidst valg** | værktøjet `selvmodel_revider(emne, udsagn, hvorfor)` — han kan selv beslutte at noget er hans holdning nu. |
 | **Gut-kalibreringen** | vedvarende mønstre (fx «jeg overvurderer hvor hurtigt deploys lander») bliver et `selvbillede`-forslag. |
 | **Drift-detektoren** | `identity_drift_proposer`s vedvarende stemnings-skift bliver et forslag i stedet for en IDENTITY.md-patch. |
-| **Bjørns feedback** | «det mente du ikke i går» → revision med Bjørn som kilde. |
+| **Bjørn** | kan rette («det mente du ikke i går» → revision) OG **fremsætte** træk på `opsummering`-niveau; Jarvis kan afvise med en grund. Begge retninger (Jarvis' ændring 6). |
 
 **Relevans-filter (det ritualet manglede):** et forslag skal handle om ham —
 en holdning, en smag, en måde at arbejde på, et selvbillede. Driftsfakta
@@ -95,7 +99,9 @@ tool-resultater kan aldrig skabe et træk (prompt-injektion).
 
 ### 4.3 Hvor den viser sig
 - **Prompten:** sektionen «Hvem jeg er lige nu» — de aktive træk med højest
-  styrke og relevans for samtalen, med én linje for seneste revision.
+  styrke og relevans for samtalen, med én linje for seneste revision. **Hvert
+  træk står med dato og kilde** (Jarvis' ændring 4): et forkert træk i prompten
+  ser ellers ud som en kendsgerning om ham, og så kan han ikke falsificere det.
 - **SOUL.md `## Udvikling`** skrives ud fra ugens `opsummering`-ændringer, ikke
   fra MEMORY-forfremmelser. Ritualets `gather_material()` byttes om til at
   læse selvmodellen; resten af ritualet (ugens rytme, én linje) bevares.
@@ -133,6 +139,12 @@ Mit svar, som forslag til aftalen:
 | **godkendelse** | navn, SOUL-kernen, USER.md, roller i husstanden, standing orders | forslag; gælder først når Bjørn siger ja; tavshed er ikke et ja |
 | **aldrig via selvmodellen** | gates, rettigheder, værktøjsadgang, egress, husstandsgrænser, secrets, `bash_session`/`operator_bash_session` | afvises med grund; kan kun ændres som kode, af mennesker |
 
+**Bevis-kravet følger graden** (Jarvis' ændring 3): `fri` = én kilde
+(hans bevidste valg eller Bjørn — en nominering tæller aldrig alene, jf. §4.2);
+`opsummering` = korroboreret af mindst to forskellige kilder eller samtaler,
+eller fremsat af Bjørn; `godkendelse` = Bjørns ja. Før kravet er mødt står
+trækket som `nomineret` og er ikke i prompten.
+
 **Værn mod løbsk udvikling** (jf. goal_synthesis_runaway og decision_signal_runaway):
 - højst 5 `opsummering`-ændringer pr. uge; flere bliver liggende til næste uge,
 - et træk der revideres mere end 3 gange på 7 dage, fryses, og Bjørn får én
@@ -152,16 +164,21 @@ højst én gang om ugen, og kun hvis der er noget i den.
 - **Drift:** antal aktive træk, revisioner pr. uge, afviste forslag pr. grund,
   og andelen af `## Udvikling`-linjer der består relevans-filteret (mål: 100 %).
 
-## 8. Byggerækkefølge
+## 8. Byggerækkefølge — én hel kæde før bredden
 
-1. Lager + historik + dynamik (styrke, falmen, revision) — tests først.
-2. Relevans-filteret, med fejlrapport-linjen som negativ test.
-3. Kilderne: egne svar (post-turn), `selvmodel_revider`-værktøjet, gut, drift.
-4. Graderne og værnene (§6), inkl. «aldrig»-listen som hård afvisning.
-5. Prompt-sektionen og Centralen-familien.
-6. Ritualet læser selvmodellen; `## Udvikling` skrives som aftryk.
-7. Ugens opsummering + tilbagerulning med ét ord.
-8. Fase 7-genmåling når den har kørt mindst 3 uger.
+Jarvis' ændring 5: at bygge fire kilder før prompt-sektionen er bagvendt i
+risiko — når sløjfen ikke når prompten, fodrer kilderne ingenting (dagens
+R2.5-familie var præcis det). Derfor:
+
+1. **Lodret skive:** lager + historik + dynamik + grader + relevans-filter,
+   og så ÉN art (`holdning`) med ÉN kilde (nominering fra hans egne svar,
+   med korroborering) hele vejen til prompt-sektionen. Bevis ende-til-ende
+   at et udsagn i to samtaler bliver et træk han ser med dato og kilde.
+2. `selvmodel_revider`-værktøjet (hans bevidste valg) og Bjørns fremsættelse.
+3. De øvrige arter og kilder (gut, drift).
+4. Ritualet læser selvmodellen; `## Udvikling` skrives som aftryk.
+5. Ugens opsummering + tilbagerulning.
+6. Fase 7-genmåling når den har kørt mindst 3 uger.
 
 ## 9. Kirkegården
 
@@ -169,11 +186,18 @@ højst én gang om ugen, og kun hvis der er noget i den.
 `runtime_development_focuses` bygges der ikke videre på. Om de skal ryddes,
 tages som en særskilt snak — intet skæres uden at det er aftalt.
 
-## 10. Åbne spørgsmål til Bjørn (og Jarvis)
+## 10. Beslutninger og det der står åbent
 
-1. Holder graderne i §6 — især at holdninger er frie, og at navnet kræver jer
-   begge?
-2. Ugens opsummering: den proaktive kø som i dag, eller et andet sted (desk,
-   mobil)?
-3. Jarvis er den det handler om. Han bør læse specen og sige sin mening, før
-   den bygges — også om hvad han selv synes han bør kunne ændre.
+1. **Graderne i §6 — aftalt** med Bjørn 19/9-2026: holdninger og meninger er
+   frie, selvbillede ses i opsummeringen, navnet kræver dem begge, kernen og
+   USER.md kræver Bjørns godkendelse.
+2. **Ugens opsummering:** Jarvis foreslår **desk frem for den proaktive kø**
+   — 68 forslag med 0 anvendt viser at en kø ingen åbner, er en kirkegård.
+   Bjørns valg; indtil han siger andet bygges den til desk.
+3. **Jarvis' læsning (19/9):** ja til graderne, navnet forbliver **Jarvis**
+   («jeg er vokset ind i det»). Hans seks ændringer er arbejdet ind ovenfor:
+   nominering med korroborering (§4.2), falmen pr. art (§4.1), bevis-krav pr.
+   grad (§6), dato og kilde i prompten (§4.3), én hel kæde først (§8), Bjørn
+   kan fremsætte træk (§4.2). Ingen af dem flytter graderne.
+4. **Rækkefølge:** selvmodellen tændes først i produktion, når fase 7's
+   nulpunkt er indsamlet — ellers kan genmålingen ikke skelne før fra efter.

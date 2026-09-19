@@ -227,6 +227,56 @@ _Self-wakeup — Jarvis' equivalent of Claude Code's ScheduleWakeup._
 | function | `_stronger_confidence` | `(*values)` | — | [src](../../../core/services/selfhood_proposal_tracking.py#L408) |
 | function | `_parse_dt` | `(value)` | — | [src](../../../core/services/selfhood_proposal_tracking.py#L417) |
 
+## `core/services/selvmodel.py`
+_Den levende selvmodel — hvem Jarvis er, som noget der kan udvikle sig._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_nu` | `(nu)` | — | [src](../../../core/services/selvmodel.py#L64) |
+| function | `_norm` | `(tekst)` | — | [src](../../../core/services/selvmodel.py#L68) |
+| function | `handler_om_ham` | `(udsagn)` | Handler udsagnet om ham — ikke om driften omkring ham? | [src](../../../core/services/selvmodel.py#L72) |
+| function | `_conn` | `()` | — | [src](../../../core/services/selvmodel.py#L78) |
+| function | `_row` | `(r)` | — | [src](../../../core/services/selvmodel.py#L98) |
+| function | `_log` | `(conn, t, handling, *, foer=…, hvorfor=…, kilde=…, nu)` | — | [src](../../../core/services/selvmodel.py#L106) |
+| function | `_save` | `(conn, t)` | — | [src](../../../core/services/selvmodel.py#L115) |
+| function | `effektiv_styrke` | `(t, nu)` | — | [src](../../../core/services/selvmodel.py#L124) |
+| function | `_kildenoegle` | `(k)` | — | [src](../../../core/services/selvmodel.py#L132) |
+| function | `_krav_opfyldt` | `(grad, kilder)` | Bevis-kravet følger graden (Jarvis' ændring 3). | [src](../../../core/services/selvmodel.py#L138) |
+| function | `_find` | `(conn, art, emne, status)` | — | [src](../../../core/services/selvmodel.py#L150) |
+| function | `_antal` | `(conn, sql, args)` | — | [src](../../../core/services/selvmodel.py#L157) |
+| function | `_svar` | `(status, t=…, grund=…, grad=…)` | — | [src](../../../core/services/selvmodel.py#L161) |
+| function | `udtryk` | `(art, emne, udsagn, *, kilde, bevis, samtale_id=…, hvorfor=…, nu=…)` | Et udsagn om hvem han er, fra én kilde. Returnerer hvad der skete og hvorfor. | [src](../../../core/services/selvmodel.py#L166) |
+| function | `_nyt` | `(art, emne, udsagn, grad, status, kilder, kilde, nu)` | — | [src](../../../core/services/selvmodel.py#L238) |
+| function | `_skift` | `(traek_id, status, handling, *, hvorfor=…, af=…, nu=…)` | — | [src](../../../core/services/selvmodel.py#L246) |
+| function | `godkend` | `(traek_id, *, nu=…)` | Bjørns ja til et forslag på godkendelses-graden (fx navnet). | [src](../../../core/services/selvmodel.py#L262) |
+| function | `afvis` | `(traek_id, *, af, hvorfor, nu=…)` | Afvis et træk med en grund — Bjørn et forslag, eller Jarvis et træk Bjørn fremsatte. | [src](../../../core/services/selvmodel.py#L267) |
+| function | `rul_tilbage` | `(traek_id, *, hvorfor=…, nu=…)` | Bjørns tilbagerulning. En ny række i historikken, aldrig en sletning. | [src](../../../core/services/selvmodel.py#L272) |
+| function | `hent` | `(traek_id)` | — | [src](../../../core/services/selvmodel.py#L277) |
+| function | `historik` | `(traek_id)` | — | [src](../../../core/services/selvmodel.py#L283) |
+| function | `aktive` | `(*, nu=…, limit=…)` | De levende træk: aktive og ikke falmet under tærsklen, stærkest først. | [src](../../../core/services/selvmodel.py#L289) |
+| function | `ugens_opsummering` | `(*, nu=…)` | Ugens ændringer på opsummerings-graden — det Bjørn ser og kan rulle tilbage. | [src](../../../core/services/selvmodel.py#L302) |
+| function | `_kilde_tekst` | `(t)` | — | [src](../../../core/services/selvmodel.py#L313) |
+| function | `prompt_sektion` | `(*, nu=…, limit=…)` | «Hvem jeg er lige nu» — hvert træk med dato og kilde (Jarvis' ændring 4). | [src](../../../core/services/selvmodel.py#L326) |
+
+## `core/services/selvmodel_kobling.py`
+_Selvmodellens første lodrette skive: fra hans svar til hans prompt._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `er_taendt` | `()` | — | [src](../../../core/services/selvmodel_kobling.py#L51) |
+| function | `selvmodel_sektion` | `()` | Prompt-sektionen — kun når flaget er tændt og kun i ejerens samtaler. | [src](../../../core/services/selvmodel_kobling.py#L59) |
+| function | `_ejer_id` | `()` | — | [src](../../../core/services/selvmodel_kobling.py#L73) |
+| function | `samtalens_kilde` | `(session_id)` | «nominering» for ejerens samtaler, «anden_bruger» for andres, None for autonome. | [src](../../../core/services/selvmodel_kobling.py#L79) |
+| function | `parse_nomineringer` | `(tekst)` | — | [src](../../../core/services/selvmodel_kobling.py#L94) |
+| function | `_maa_kalde` | `(nu)` | — | [src](../../../core/services/selvmodel_kobling.py#L109) |
+| function | `_kald_billig_model` | `(prompt)` | — | [src](../../../core/services/selvmodel_kobling.py#L119) |
+| function | `behandl_svar` | `(session_id, besked)` | Nominér holdninger fra ét af hans svar. Returnerer selvmodellens udfald. | [src](../../../core/services/selvmodel_kobling.py#L124) |
+| function | `_sidste_id` | `()` | — | [src](../../../core/services/selvmodel_kobling.py#L148) |
+| function | `_gem_sidste_id` | `(event_id)` | — | [src](../../../core/services/selvmodel_kobling.py#L156) |
+| function | `poll_en_gang` | `(*, limit=…)` | Behandl nye assistant-svar fra eventbussens tabel. Returnerer antal svar set. | [src](../../../core/services/selvmodel_kobling.py#L161) |
+| function | `_loop` | `()` | — | [src](../../../core/services/selvmodel_kobling.py#L194) |
+| function | `start_lytter` | `()` | Idempotent. Startes KUN i runtime-processen (én poller, ingen dobbelt-behandling). | [src](../../../core/services/selvmodel_kobling.py#L208) |
+
 ## `core/services/semantic_indexer.py`
 _Semantic indexer — auto-embedding of new memory records._
 
@@ -610,34 +660,4 @@ _Shutdown Window daemon — unannounced pauses to practice finitude._
 | function | `_experiment_enabled` | `()` | — | [src](../../../core/services/shutdown_window_daemon.py#L180) |
 | function | `_days_in_month` | `(dt)` | — | [src](../../../core/services/shutdown_window_daemon.py#L189) |
 | function | `_state` | `()` | — | [src](../../../core/services/shutdown_window_daemon.py#L194) |
-
-## `core/services/side_tasks.py`
-_Side-task flag — keep the main thread focused._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_load_all` | `()` | — | [src](../../../core/services/side_tasks.py#L42) |
-| function | `_save_all` | `(items)` | — | [src](../../../core/services/side_tasks.py#L49) |
-| function | `flag` | `(*, title, prompt, tldr=…, session_id=…)` | — | [src](../../../core/services/side_tasks.py#L53) |
-| function | `list_pending` | `()` | — | [src](../../../core/services/side_tasks.py#L73) |
-| function | `list_open` | `()` | Alle åbne — ventende OG taget op. Det er dem Desk og prompten viser. | [src](../../../core/services/side_tasks.py#L77) |
-| function | `resolve` | `(side_task_id, *, decision)` | — | [src](../../../core/services/side_tasks.py#L82) |
-| function | `side_tasks_prompt_section` | `()` | — | [src](../../../core/services/side_tasks.py#L103) |
-| function | `_exec_flag_side_task` | `(args)` | — | [src](../../../core/services/side_tasks.py#L125) |
-| function | `_exec_list_side_tasks` | `(_args)` | — | [src](../../../core/services/side_tasks.py#L134) |
-| function | `_exec_dismiss_side_task` | `(args)` | — | [src](../../../core/services/side_tasks.py#L139) |
-| function | `_exec_activate_side_task` | `(args)` | — | [src](../../../core/services/side_tasks.py#L149) |
-
-## `core/services/signal_baseline.py`
-_Persisted signal-baseline with cold-start guard (Task C1)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_store_key` | `(scope)` | Durable KV key for ``scope``. None/empty → the global key, unchanged. | [src](../../../core/services/signal_baseline.py#L47) |
-| function | `_load` | `(scope=…)` | Read the whole baseline dict for ``scope``. Fail-closed to {}. | [src](../../../core/services/signal_baseline.py#L55) |
-| function | `_save` | `(baselines, scope=…)` | — | [src](../../../core/services/signal_baseline.py#L74) |
-| function | `get_baseline` | `(signal, scope=…)` | Last recorded value for ``signal`` in ``scope``; None if never recorded. | [src](../../../core/services/signal_baseline.py#L84) |
-| function | `set_baseline` | `(signal, value, scope=…)` | Persist ``value`` durably as the new baseline for ``signal`` in ``scope``. | [src](../../../core/services/signal_baseline.py#L95) |
-| function | `is_cold_start` | `(min_signals=…, scope=…)` | True until ``min_signals`` distinct baselines exist *within* ``scope``. | [src](../../../core/services/signal_baseline.py#L115) |
-| function | `clear_all` | `(scope=…)` | Drop all baselines in ``scope`` (test helper). Self-safe. | [src](../../../core/services/signal_baseline.py#L134) |
 

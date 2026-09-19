@@ -255,3 +255,66 @@ def test_serveren_vaelger_INGEN_protokol_naar_klienten_ikke_bad_om_én(monkeypat
         asyncio.get_event_loop_policy().new_event_loop().run_until_complete(
             live.websocket_stream(_Ws()))
     assert valgt == [None], valgt
+
+
+# ─────────────────────────────────────────── hvad en ikke-ejer må se (19/9-2026)
+#
+# Legitimationen lukkede for fremmede, men ruten tjekkede aldrig ROLLEN: enhver
+# gyldig bruger i husstanden fik hans indre liv og andres chat-beskeder.
+
+_PRIVAT = {"id": 1, "kind": "inner_voice.line", "family": "inner_voice",
+           "payload": {"text": "hemmelig tanke"}, "created_at": "t"}
+_DRIFT = {"id": 2, "kind": "channel.chat_message_appended", "family": "channel",
+          "payload": {"message": {"content": "Bjørns besked"}}, "created_at": "t"}
+
+
+def test_ejeren_faar_alt_uaendret():
+    assert ws_auth.til_klient(_PRIVAT, ejer=True) is _PRIVAT
+    assert ws_auth.til_klient(_DRIFT, ejer=True) is _DRIFT
+
+
+def test_en_member_faar_aldrig_private_familier():
+    assert ws_auth.til_klient(_PRIVAT, ejer=False) is None
+
+
+def test_en_member_faar_kun_metadata_aldrig_payload():
+    ud = ws_auth.til_klient(_DRIFT, ejer=False)
+    assert ud == {"id": 2, "kind": "channel.chat_message_appended", "family": "channel",
+                  "created_at": "t"}
+
+
+def test_member_filteret_er_fail_closed(monkeypatch):
+    """Kan de private familier ikke slås op, sendes intet — en tom liste må
+    aldrig betyde «alt er offentligt»."""
+    monkeypatch.setattr(ws_auth, "_private_familier", lambda: frozenset())
+    assert ws_auth.til_klient(_DRIFT, ejer=False) is None
+
+
+@pytest.mark.parametrize("krav,ejer", [
+    ({"role": "owner"}, True), ({"role": "member"}, False), ({"role": "guest"}, False),
+    ({}, False), (None, True),
+])
+def test_rollen_afgoer_ejerskab(krav, ejer):
+    assert ws_auth.er_ejer(krav) is ejer
+
+
+def _bus_med(monkeypatch, items):
+    from apps.api.jarvis_api.routes import live
+    monkeypatch.setattr(live.event_bus, "recent", lambda limit=20: list(items))
+    monkeypatch.setattr(live.event_bus, "recent_since_id", lambda *a, **k: [])
+
+
+@pytest.mark.parametrize("rolle,forventet", [
+    ("owner", [_PRIVAT, _DRIFT]),
+    ("member", [{"id": 2, "kind": "channel.chat_message_appended",
+                 "family": "channel", "created_at": "t"}]),
+])
+def test_ruten_sender_efter_rolle(klient, monkeypatch, rolle, forventet):
+    """Gennem selve ruten: det er dér et glemt filter ville lække."""
+    import core.runtime.jarvisx_auth as ja
+    _kraev_auth(monkeypatch, True)
+    monkeypatch.setattr(ja, "verify_token", lambda raw: {"sub": "u1", "role": rolle})
+    _bus_med(monkeypatch, [_PRIVAT, _DRIFT])
+    with klient.websocket_connect("/ws", subprotocols=[ws_auth.SUBPROTOKOL, "t"]) as ws:
+        modtaget = [ws.receive_json() for _ in forventet]
+    assert modtaget == forventet

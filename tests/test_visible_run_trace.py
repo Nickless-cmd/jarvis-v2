@@ -165,8 +165,14 @@ def test_en_TOM_etiket_udsendes_ikke(monkeypatch):
     """En tom overskrift ville få klienten til at rydde plads til ingenting."""
     sendt: list = []
     monkeypatch.setattr(vrt, "_etiket", lambda *a, **k: "")
-    monkeypatch.setattr(vrt.event_bus, "publish", lambda *a, **k: sendt.append(1))
-    t = vrt.udsend_runde_etiket(run_id="a", round_num=1,
+    # Tæl kun DETTE runs udsendelser. Køen er delt, og test_koeen_har_et_LOFT
+    # efterlader etiketter for «visible-loft», som arbejderen kan nå at sende
+    # mens denne test kører — i fuld kørsel fejlede testen på en fremmed
+    # etiket (19/9-2026), ikke på sin egen.
+    monkeypatch.setattr(vrt.event_bus, "publish",
+                        lambda kind, payload=None, *a, **k: sendt.append(1)
+                        if (payload or {}).get("run_id") == "tom-etiket" else None)
+    t = vrt.udsend_runde_etiket(run_id="tom-etiket", round_num=1,
                                 vaerktoejer=[{"name": "bash", "input": {}}])
     t.join(timeout=5)
     assert sendt == []

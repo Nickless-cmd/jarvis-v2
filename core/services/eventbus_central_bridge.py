@@ -113,21 +113,6 @@ FAMILY_ROUTES: dict[str, tuple[str, str]] = {
     "infra_weather": ("infra", "infra_weather"),                # infrastrukturens helbred
     "pollinations": ("providers", "pollinations"),              # billed-udbyder
     "shadow_scan": ("runtime", "shadow_scan"),                  # skygge-koersler af gates
-    # ── 19/9-2026: drift-familierne blandt de 16 uregistrerede der ingen rute
-    # havde. Samme regel som ovenfor; kun metadata forwardes, så agent- og
-    # watcher-uddrag i payloaden forlader aldrig events-tabellen. `cache`
-    # routes IKKE: cache_telemetry kalder allerede central().observe selv, og
-    # central_watch laeser familien direkte — en rute her ville taelle dobbelt.
-    "agent": ("agents", "agent"),                                # agent-runder og relay
-    "agent_skill": ("agents", "agent_skill"),                    # skill-biblioteket
-    "watcher": ("agents", "watcher"),                            # watcher-agenters signaler
-    "bro_broker": ("system", "bro_broker"),                      # brugerskift-anmodninger
-    "cache_maintenance": ("system", "cache_maintenance"),        # oprydning af cache
-    "memory_pruning": ("system", "memory_pruning"),              # beskaerings-cyklus (antal)
-    "signal_decay": ("system", "signal_decay"),                  # signal-oprydning (antal)
-    "rule_engine": ("system", "rule_engine"),                    # regler der fyrer
-    "oauth": ("system", "oauth"),                                # forbundne udbydere
-    "operator": ("tools", "operator"),                           # operator-allowlist
 }
 
 # ── PRIVATE_NO_EGRESS (§24.4 keystone, 2026-07-01): privat inner-life observeres EGRESS-FRIT ──
@@ -436,6 +421,23 @@ PRIVATE_NO_EGRESS_ROUTES: dict[str, tuple[str, str]] = {
     # (trace + tidsserie). absence_trace = hvad selvkritikken savnede;
     # shutdown_window bærer en finitude-note; memory_safeguard og
     # workspace_memory bærer uddrag af hans egne ord. ──
+    # Drift-familierne blandt de 16 (19/9-2026) routes OGSÅ egress-frit, som
+    # context/cowork/hardware_body/r2_5_gate før dem. I FAMILY_ROUTES blev de
+    # taksonomi-navne Centralens sprog ikke har ord for (dækning 0,707 → 0,603,
+    # test_central_taxonomy_binding), og nye ord navngives ved Bjørns
+    # ceremoni — de opfindes ikke her. Egress-frit er den strengeste vej, og
+    # Centralen ser dem stadig via trace + tidsserie. Kun metadata. `cache`
+    # routes slet ikke: cache_telemetry kalder central().observe selv.
+    "agent": ("system", "agent"),
+    "agent_skill": ("system", "agent_skill"),
+    "watcher": ("system", "watcher"),
+    "bro_broker": ("system", "bro_broker"),
+    "cache_maintenance": ("system", "cache_maintenance"),
+    "memory_pruning": ("system", "memory_pruning"),
+    "signal_decay": ("system", "signal_decay"),
+    "rule_engine": ("system", "rule_engine"),
+    "oauth": ("system", "oauth"),
+    "operator": ("system", "operator"),
     "absence_trace": ("cognition", "absence_trace"),
     "resonance_decay": ("cognition", "resonance_decay"),
     "shutdown_window": ("cognition", "shutdown_window"),
@@ -550,6 +552,8 @@ PRIVATE_FAMILIES_EXCLUDED_M0: frozenset[str] = frozenset({
     # ── 19/9-2026: spejl af de fem nye egress-fri ruter ──
     "absence_trace", "resonance_decay", "shutdown_window",
     "memory_safeguard", "workspace_memory",
+    "agent", "agent_skill", "watcher", "bro_broker", "cache_maintenance",
+    "memory_pruning", "signal_decay", "rule_engine", "oauth", "operator",
 })
 
 _BRIDGE_NERVE = "eventbus_bridge"

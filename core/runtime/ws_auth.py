@@ -101,3 +101,51 @@ def kraeves_auth() -> bool:
         return bool(auth_required())
     except Exception:
         return False
+
+
+# ── Hvad en ikke-ejer må se (19/9-2026) ─────────────────────────────────────
+#
+# Legitimationen ovenfor (15/9) lukkede for fremmede — men ruten tjekkede
+# aldrig ROLLEN. Enhver gyldig bruger i husstanden fik hele strømmen: indre
+# stemme, private_brain, andres chat-beskeder. Desk'ens cowork-visning bruger
+# socketen hos members også, men kun som en «hent igen»-trigger
+# (`ws.onmessage = () => refresh()`) — den læser aldrig indholdet. Kun
+# EventStream viser indholdet, og den er allerede kun for ejeren.
+#
+# Derfor: ejeren får strømmen som før. Alle andre får kun events fra
+# ikke-private familier, og kun metadata — aldrig payload.
+
+def _private_familier() -> frozenset[str]:
+    try:
+        from core.services.eventbus_central_bridge import (
+            PRIVATE_FAMILIES_EXCLUDED_M0, PRIVATE_NO_EGRESS_ROUTES,
+        )
+        return frozenset(PRIVATE_FAMILIES_EXCLUDED_M0) | frozenset(PRIVATE_NO_EGRESS_ROUTES) | {"central"}
+    except Exception:
+        return frozenset()
+
+
+def er_ejer(krav: dict[str, Any] | None) -> bool:
+    """Ejer = rollen «owner» i et verificeret token. Uden token (auth slået fra,
+    enkeltbruger-localhost) er man ejeren — samme udvej som adgangen."""
+    if krav is None:
+        return True
+    return str(krav.get("role") or "").lower() == "owner"
+
+
+def til_klient(item: dict[str, Any], *, ejer: bool) -> dict[str, Any] | None:
+    """Hvad der må sendes til denne klient, eller None.
+
+    Fail-closed for ikke-ejere: kan de private familier ikke slås op, sendes
+    intet — en tom liste må aldrig betyde «alt er offentligt»."""
+    if ejer:
+        return item
+    private = _private_familier()
+    if not private:
+        return None
+    kind = str(item.get("kind") or "")
+    familie = str(item.get("family") or kind.split(".", 1)[0])
+    if not familie or familie in private:
+        return None
+    return {"id": item.get("id"), "kind": kind, "family": familie,
+            "created_at": item.get("created_at")}

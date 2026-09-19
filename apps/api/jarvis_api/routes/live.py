@@ -47,6 +47,9 @@ async def websocket_stream(ws: WebSocket) -> None:
         await ws.accept(subprotocol=bad_om_sub)
     else:
         await ws.accept()
+    # Rollen afgør indholdet (19/9-2026): ejeren får strømmen, alle andre kun
+    # metadata fra ikke-private familier. Se ws_auth.til_klient.
+    ejer = ws_auth.er_ejer(krav)
     items = sorted(event_bus.recent(limit=20), key=lambda x: x["id"])
     last_seen_id = 0
     logger.info(
@@ -61,8 +64,10 @@ async def websocket_stream(ws: WebSocket) -> None:
         pass
 
     for item in items:
-        await ws.send_json(item)
         last_seen_id = max(last_seen_id, item["id"])
+        ud = ws_auth.til_klient(item, ejer=ejer)
+        if ud is not None:
+            await ws.send_json(ud)
 
     async def _forward_events() -> None:
         """Poll persisted events so delivery works across multiple API workers."""
@@ -79,8 +84,11 @@ async def websocket_stream(ws: WebSocket) -> None:
             for item in items:
                 if item["id"] <= last_seen_id:
                     continue
-                await ws.send_json(item)
                 last_seen_id = item["id"]
+                ud = ws_auth.til_klient(item, ejer=ejer)
+                if ud is None:
+                    continue
+                await ws.send_json(ud)
                 logger.debug(
                     "mission-control websocket forwarded event client=%s event_id=%s family=%s kind=%s",
                     client_label,

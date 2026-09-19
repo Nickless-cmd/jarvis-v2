@@ -558,110 +558,53 @@ class RuntimeSettings:
     extra: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
-        typed = {
-            "app_name": self.app_name,
-            "environment": self.environment,
-            "host": self.host,
-            "port": self.port,
-            "database_url": self.database_url,
-            "primary_model_lane": self.primary_model_lane,
-            "cheap_model_lane": self.cheap_model_lane,
-            "visible_model_provider": self.visible_model_provider,
-            "visible_model_name": self.visible_model_name,
-            "visible_auth_profile": self.visible_auth_profile,
-            "heartbeat_model_provider": self.heartbeat_model_provider,
-            "heartbeat_model_name": self.heartbeat_model_name,
-            "autonomous_model_provider": self.autonomous_model_provider,
-            "autonomous_model_name": self.autonomous_model_name,
-            "heartbeat_auth_profile": self.heartbeat_auth_profile,
-            "heartbeat_local_only": self.heartbeat_local_only,
-            "relevance_model_name": self.relevance_model_name,
-            "recall_strong_threshold": self.recall_strong_threshold,
-            "recall_weak_threshold": self.recall_weak_threshold,
-            "recall_max_active": self.recall_max_active,
-            "recall_repetition_multiplier": self.recall_repetition_multiplier,
-            "cognitive_state_assembly_enabled": self.cognitive_state_assembly_enabled,
-            "emotion_decay_factor": self.emotion_decay_factor,
-            "visible_ollama_num_ctx": self.visible_ollama_num_ctx,
-            "visible_ollama_num_predict": self.visible_ollama_num_predict,
-            "visible_context_headroom_tokens": self.visible_context_headroom_tokens,
-            "context_compact_threshold_tokens": self.context_compact_threshold_tokens,
-            "context_run_compact_threshold_tokens": self.context_run_compact_threshold_tokens,
-            "context_keep_recent": self.context_keep_recent,
-            "context_attention_budget_tokens": self.context_attention_budget_tokens,
-            "context_attention_low_water_tokens": self.context_attention_low_water_tokens,
-            "context_compact_safety_fraction": self.context_compact_safety_fraction,
-            "server_authoritative_runs": self.server_authoritative_runs,
-            "device_awareness_enabled": self.device_awareness_enabled,
-            "context_keep_recent_pairs": self.context_keep_recent_pairs,
-            "jarvis_brain_enabled": self.jarvis_brain_enabled,
-            "jarvis_brain_summary_token_budget": self.jarvis_brain_summary_token_budget,
-            "jarvis_brain_auto_inject_top_k": self.jarvis_brain_auto_inject_top_k,
-            "jarvis_brain_auto_inject_threshold": self.jarvis_brain_auto_inject_threshold,
-            "jarvis_brain_remember_per_turn_cap": self.jarvis_brain_remember_per_turn_cap,
-            "jarvis_brain_remember_per_day_cap": self.jarvis_brain_remember_per_day_cap,
-            "jarvis_brain_auto_archive_salience_threshold": self.jarvis_brain_auto_archive_salience_threshold,
-            "jarvis_brain_auto_archive_days": self.jarvis_brain_auto_archive_days,
-            "jarvis_brain_theme_consolidation_enabled": self.jarvis_brain_theme_consolidation_enabled,
-            "daemon_balancer_enabled": self.daemon_balancer_enabled,
-            "my_projects_enabled": self.my_projects_enabled,
-            "emotional_memory_min_anchors": self.emotional_memory_min_anchors,
-            "emotional_memory_retention_recent_days": self.emotional_memory_retention_recent_days,
-            "emotional_memory_retention_aging_days": self.emotional_memory_retention_aging_days,
-            "emotional_memory_significance_intensity": self.emotional_memory_significance_intensity,
-            "emotional_memory_significance_outcome": self.emotional_memory_significance_outcome,
-            "sensory_perception_bridge_enabled": self.sensory_perception_bridge_enabled,
-            "sensory_perception_jaccard_high_threshold": self.sensory_perception_jaccard_high_threshold,
-            "sensory_perception_jaccard_medium_threshold": self.sensory_perception_jaccard_medium_threshold,
-            "sensory_perception_jaccard_change_threshold": self.sensory_perception_jaccard_change_threshold,
-            "sensory_perception_time_window_hours": self.sensory_perception_time_window_hours,
-            "sensory_perception_time_window_days": self.sensory_perception_time_window_days,
-            "sensory_perception_min_baseline_records": self.sensory_perception_min_baseline_records,
-            "sensory_perception_recent_baseline_size": self.sensory_perception_recent_baseline_size,
-            "self_repair_engine_enabled": self.self_repair_engine_enabled,
-            "self_repair_default_cooldown_seconds": self.self_repair_default_cooldown_seconds,
-            "self_repair_default_max_attempts_per_window": self.self_repair_default_max_attempts_per_window,
-            "self_repair_default_window_seconds": self.self_repair_default_window_seconds,
-            "self_repair_default_auto_disable_after_escalations": self.self_repair_default_auto_disable_after_escalations,
-            "self_repair_default_auto_disable_window_hours": self.self_repair_default_auto_disable_window_hours,
-            "prompt_affect_substrate_enabled": self.prompt_affect_substrate_enabled,
-            "prompt_affect_tone_hints_enabled": self.prompt_affect_tone_hints_enabled,
-            "prompt_agreement_streak_enabled": self.prompt_agreement_streak_enabled,
-            "prompt_emotion_signal_section_enabled": self.prompt_emotion_signal_section_enabled,
-            "prompt_experience_substrate_enabled": self.prompt_experience_substrate_enabled,
-            "prompt_proactive_outbound_substrate_enabled": self.prompt_proactive_outbound_substrate_enabled,
-            "heartbeat_active_chat_gate_enabled": self.heartbeat_active_chat_gate_enabled,
-            "heartbeat_active_chat_gate_minutes": self.heartbeat_active_chat_gate_minutes,
-            "emotion_concepts_tone_injection_enabled": self.emotion_concepts_tone_injection_enabled,
-            "emotion_concepts_perception_focus_enabled": self.emotion_concepts_perception_focus_enabled,
-            "concept_baseline_tracker_enabled": self.concept_baseline_tracker_enabled,
-            "emotion_concepts_tone_intensity_threshold": self.emotion_concepts_tone_intensity_threshold,
-            "emotion_concepts_tone_max_hints": self.emotion_concepts_tone_max_hints,
-            "emotion_concepts_perception_max_foci": self.emotion_concepts_perception_max_foci,
-            "concept_baseline_drift_min_sustained_days": self.concept_baseline_drift_min_sustained_days,
-            "concept_baseline_drift_min_confidence": self.concept_baseline_drift_min_confidence,
-            "emotion_concepts_default_trigger_cooldown_seconds": self.emotion_concepts_default_trigger_cooldown_seconds,
-            "counterfactual_engine_enabled": self.counterfactual_engine_enabled,
-            "counterfactual_engine_interval_seconds": self.counterfactual_engine_interval_seconds,
-            "counterfactual_engine_lookback_minutes": self.counterfactual_engine_lookback_minutes,
-            "counterfactual_engine_promotion_threshold": self.counterfactual_engine_promotion_threshold,
-            "counterfactual_engine_phase2_llm_enabled": self.counterfactual_engine_phase2_llm_enabled,
-            "counterfactual_engine_phase2_max_per_cycle": self.counterfactual_engine_phase2_max_per_cycle,
-            "agent_step_reasoning_replay_enabled": self.agent_step_reasoning_replay_enabled,
-            "agent_step_env_block_enabled": self.agent_step_env_block_enabled,
-            "agent_step_cache_contract_enabled": self.agent_step_cache_contract_enabled,
-            "agent_step_cache_split_enabled": self.agent_step_cache_split_enabled,
-            "agent_step_volatile_prepend_enabled": self.agent_step_volatile_prepend_enabled,
-            "agent_turn_absorb_enabled": self.agent_turn_absorb_enabled,
-            "agent_live_broadcast_enabled": self.agent_live_broadcast_enabled,
-            "agent_live_follow_tokens_enabled": self.agent_live_follow_tokens_enabled,
-            "agent_step_harness_contract_enabled": self.agent_step_harness_contract_enabled,
-            "selvmodel_enabled": self.selvmodel_enabled,
-        }
+        # Bygget af dataklassens felter (19/9-2026). Den håndskrevne liste her
+        # manglede 102 af felterne, og update_setting validerer nøglen mod
+        # to_dict() — så Jarvis kunne ikke ændre fx R2.5's tærskler, der ellers
+        # var gjort konfigurerbare «uden deploy», og Mission Control viste dem ikke.
+        typed = {f.name: getattr(self, f.name) for f in fields(self) if f.name != "extra"}
         return {**self.extra, **typed}
 
 
 KNOWN_FIELDS = {runtime_field.name for runtime_field in fields(RuntimeSettings) if runtime_field.name != "extra"}
+
+
+def _som_bool(v: Any) -> bool:
+    """Streng bool. bool("false") er True — og et flag i runtime.json skrevet
+    som tekst (update_setting skriver værdien som den kommer) tændte derfor i
+    stilhed det modsatte af det der stod."""
+    if isinstance(v, bool):
+        return v
+    if isinstance(v, (int, float)):
+        return v != 0
+    return str(v).strip().lower() in ("1", "true", "ja", "yes", "on")
+
+
+def _som_felt(data: dict[str, Any], defaults: "RuntimeSettings", navn: str) -> Any:
+    """Læs ét felt med typen fra standardværdien."""
+    std = getattr(defaults, navn)
+    v = data.get(navn, std)
+    if isinstance(std, bool):
+        return _som_bool(v)
+    if isinstance(std, int):
+        return int(v)
+    if isinstance(std, float):
+        return float(v)
+    if isinstance(std, str):
+        return str(v)
+    return v
+
+
+_TIDLIGERE_UINDLAESTE = (
+    "cognitive_state_cache_ttl", "cognitive_state_cache_enabled",
+    "agentic_followup_temperature", "agentic_followup_top_p",
+    "context_compact_threshold_fraction", "session_tool_pin_enabled",
+    "legacy_regex_learning_detectors_enabled", "tool_result_history_max_chars",
+    "tool_router_enabled", "tool_router_threshold", "tool_router_always_core_size",
+    "tool_router_k_embeddings", "tool_router_embedding_model",
+    "tool_router_embedding_provider", "anthropic_compat_enabled",
+    "anthropic_compat_dev_mode_open", "decision_signals_enabled",
+)
 
 
 def load_settings() -> RuntimeSettings:
@@ -695,7 +638,7 @@ def load_settings() -> RuntimeSettings:
         tool_result_render_chars_older=int(
             data.get("tool_result_render_chars_older", defaults.tool_result_render_chars_older)
         ),
-        tool_result_lifecycle_enabled=bool(
+        tool_result_lifecycle_enabled=_som_bool(
             data.get("tool_result_lifecycle_enabled", defaults.tool_result_lifecycle_enabled)
         ),
         tool_warm_run_window=int(
@@ -727,9 +670,8 @@ def load_settings() -> RuntimeSettings:
         ),
         # Streng: bool("false") er True, og et flag der tænder hans selvmodel
         # ved et uheld er ikke en fejl man opdager.
-        selvmodel_enabled=(
-            data.get("selvmodel_enabled") is True
-            or str(data.get("selvmodel_enabled", "")).strip().lower() in ("1", "true", "ja", "on")
+        selvmodel_enabled=_som_bool(
+            data.get("selvmodel_enabled", defaults.selvmodel_enabled)
         ),
         max_proactive_per_day=int(
             data.get("max_proactive_per_day", defaults.max_proactive_per_day)
@@ -746,7 +688,7 @@ def load_settings() -> RuntimeSettings:
         heartbeat_auth_profile=str(
             data.get("heartbeat_auth_profile", defaults.heartbeat_auth_profile)
         ),
-        heartbeat_local_only=bool(
+        heartbeat_local_only=_som_bool(
             data.get("heartbeat_local_only", defaults.heartbeat_local_only)
         ),
         autonomous_model_provider=str(
@@ -785,20 +727,20 @@ def load_settings() -> RuntimeSettings:
         memory_scoring_ollama_timeout=int(
             data.get("memory_scoring_ollama_timeout", defaults.memory_scoring_ollama_timeout)
         ),
-        generative_autonomy_enabled=bool(
+        generative_autonomy_enabled=_som_bool(
             data.get("generative_autonomy_enabled", defaults.generative_autonomy_enabled)
         ),
-        generative_autonomy_cognitive_enabled=bool(
+        generative_autonomy_cognitive_enabled=_som_bool(
             data.get("generative_autonomy_cognitive_enabled",
                      defaults.generative_autonomy_cognitive_enabled)
         ),
-        skill_gate_enabled=bool(
+        skill_gate_enabled=_som_bool(
             data.get("skill_gate_enabled", defaults.skill_gate_enabled)
         ),
-        skill_autosurface_enabled=bool(
+        skill_autosurface_enabled=_som_bool(
             data.get("skill_autosurface_enabled", defaults.skill_autosurface_enabled)
         ),
-        forgetting_enabled=bool(
+        forgetting_enabled=_som_bool(
             data.get("forgetting_enabled", defaults.forgetting_enabled)
         ),
         forgetting_auto_cadence_hours=int(
@@ -819,7 +761,7 @@ def load_settings() -> RuntimeSettings:
         forgetting_self_cooldown_days=int(
             data.get("forgetting_self_cooldown_days", defaults.forgetting_self_cooldown_days)
         ),
-        dream_bias_enabled=bool(
+        dream_bias_enabled=_som_bool(
             data.get("dream_bias_enabled", defaults.dream_bias_enabled)
         ),
         dream_bias_min_content_events=int(
@@ -840,7 +782,7 @@ def load_settings() -> RuntimeSettings:
         dream_bias_max_response_tokens=int(
             data.get("dream_bias_max_response_tokens", defaults.dream_bias_max_response_tokens)
         ),
-        user_temperature_enabled=bool(
+        user_temperature_enabled=_som_bool(
             data.get("user_temperature_enabled", defaults.user_temperature_enabled)
         ),
         user_temperature_llm_cadence_hours=int(
@@ -864,22 +806,22 @@ def load_settings() -> RuntimeSettings:
         user_temperature_llm_max_response_tokens=int(
             data.get("user_temperature_llm_max_response_tokens", defaults.user_temperature_llm_max_response_tokens)
         ),
-        skill_chain_enabled=bool(
+        skill_chain_enabled=_som_bool(
             data.get("skill_chain_enabled", defaults.skill_chain_enabled)
         ),
-        creative_voice_quality_lane_enabled=bool(
+        creative_voice_quality_lane_enabled=_som_bool(
             data.get(
                 "creative_voice_quality_lane_enabled",
                 defaults.creative_voice_quality_lane_enabled,
             )
         ),
-        finitude_quality_lane_enabled=bool(
+        finitude_quality_lane_enabled=_som_bool(
             data.get(
                 "finitude_quality_lane_enabled",
                 defaults.finitude_quality_lane_enabled,
             )
         ),
-        current_pull_staleness_check_enabled=bool(
+        current_pull_staleness_check_enabled=_som_bool(
             data.get(
                 "current_pull_staleness_check_enabled",
                 defaults.current_pull_staleness_check_enabled,
@@ -915,13 +857,13 @@ def load_settings() -> RuntimeSettings:
                 defaults.music_accumulator_ratio_threshold,
             )
         ),
-        plan_todo_auto_create_enabled=bool(
+        plan_todo_auto_create_enabled=_som_bool(
             data.get(
                 "plan_todo_auto_create_enabled",
                 defaults.plan_todo_auto_create_enabled,
             )
         ),
-        unconscious_modulation_enabled=bool(
+        unconscious_modulation_enabled=_som_bool(
             data.get(
                 "unconscious_modulation_enabled",
                 defaults.unconscious_modulation_enabled,
@@ -963,43 +905,43 @@ def load_settings() -> RuntimeSettings:
                 defaults.unconscious_modulation_top_p_ceiling,
             )
         ),
-        tool_invention_enabled=bool(
+        tool_invention_enabled=_som_bool(
             data.get(
                 "tool_invention_enabled",
                 defaults.tool_invention_enabled,
             )
         ),
-        world_model_loop_enabled=bool(
+        world_model_loop_enabled=_som_bool(
             data.get(
                 "world_model_loop_enabled",
                 defaults.world_model_loop_enabled,
             )
         ),
-        plan_revision_enabled=bool(
+        plan_revision_enabled=_som_bool(
             data.get(
                 "plan_revision_enabled",
                 defaults.plan_revision_enabled,
             )
         ),
-        curiosity_budget_enabled=bool(
+        curiosity_budget_enabled=_som_bool(
             data.get(
                 "curiosity_budget_enabled",
                 defaults.curiosity_budget_enabled,
             )
         ),
-        skill_chain_phase2_enabled=bool(
+        skill_chain_phase2_enabled=_som_bool(
             data.get(
                 "skill_chain_phase2_enabled",
                 defaults.skill_chain_phase2_enabled,
             )
         ),
-        meta_learning_enabled=bool(
+        meta_learning_enabled=_som_bool(
             data.get(
                 "meta_learning_enabled",
                 defaults.meta_learning_enabled,
             )
         ),
-        nudge_system_enabled=bool(
+        nudge_system_enabled=_som_bool(
             data.get(
                 "nudge_system_enabled",
                 defaults.nudge_system_enabled,
@@ -1045,7 +987,7 @@ def load_settings() -> RuntimeSettings:
         recall_weak_threshold=float(data.get("recall_weak_threshold", defaults.recall_weak_threshold)),
         recall_max_active=int(data.get("recall_max_active", defaults.recall_max_active)),
         recall_repetition_multiplier=float(data.get("recall_repetition_multiplier", defaults.recall_repetition_multiplier)),
-        cognitive_state_assembly_enabled=bool(data.get("cognitive_state_assembly_enabled", defaults.cognitive_state_assembly_enabled)),
+        cognitive_state_assembly_enabled=_som_bool(data.get("cognitive_state_assembly_enabled", defaults.cognitive_state_assembly_enabled)),
         emotion_decay_factor=float(data.get("emotion_decay_factor", defaults.emotion_decay_factor)),
         visible_ollama_num_ctx=int(data.get("visible_ollama_num_ctx", defaults.visible_ollama_num_ctx)),
         visible_ollama_num_predict=int(data.get("visible_ollama_num_predict", defaults.visible_ollama_num_predict)),
@@ -1056,10 +998,10 @@ def load_settings() -> RuntimeSettings:
         context_attention_budget_tokens=int(data.get("context_attention_budget_tokens", defaults.context_attention_budget_tokens)),
         context_attention_low_water_tokens=int(data.get("context_attention_low_water_tokens", defaults.context_attention_low_water_tokens)),
         context_compact_safety_fraction=float(data.get("context_compact_safety_fraction", defaults.context_compact_safety_fraction)),
-        server_authoritative_runs=bool(data.get("server_authoritative_runs", defaults.server_authoritative_runs)),
-        device_awareness_enabled=bool(data.get("device_awareness_enabled", defaults.device_awareness_enabled)),
+        server_authoritative_runs=_som_bool(data.get("server_authoritative_runs", defaults.server_authoritative_runs)),
+        device_awareness_enabled=_som_bool(data.get("device_awareness_enabled", defaults.device_awareness_enabled)),
         context_keep_recent_pairs=int(data.get("context_keep_recent_pairs", defaults.context_keep_recent_pairs)),
-        jarvis_brain_enabled=bool(data.get("jarvis_brain_enabled", defaults.jarvis_brain_enabled)),
+        jarvis_brain_enabled=_som_bool(data.get("jarvis_brain_enabled", defaults.jarvis_brain_enabled)),
         jarvis_brain_summary_token_budget=int(data.get("jarvis_brain_summary_token_budget", defaults.jarvis_brain_summary_token_budget)),
         jarvis_brain_auto_inject_top_k=int(data.get("jarvis_brain_auto_inject_top_k", defaults.jarvis_brain_auto_inject_top_k)),
         jarvis_brain_auto_inject_threshold=float(data.get("jarvis_brain_auto_inject_threshold", defaults.jarvis_brain_auto_inject_threshold)),
@@ -1067,15 +1009,15 @@ def load_settings() -> RuntimeSettings:
         jarvis_brain_remember_per_day_cap=int(data.get("jarvis_brain_remember_per_day_cap", defaults.jarvis_brain_remember_per_day_cap)),
         jarvis_brain_auto_archive_salience_threshold=float(data.get("jarvis_brain_auto_archive_salience_threshold", defaults.jarvis_brain_auto_archive_salience_threshold)),
         jarvis_brain_auto_archive_days=int(data.get("jarvis_brain_auto_archive_days", defaults.jarvis_brain_auto_archive_days)),
-        jarvis_brain_theme_consolidation_enabled=bool(data.get("jarvis_brain_theme_consolidation_enabled", defaults.jarvis_brain_theme_consolidation_enabled)),
-        daemon_balancer_enabled=bool(data.get("daemon_balancer_enabled", defaults.daemon_balancer_enabled)),
-        my_projects_enabled=bool(data.get("my_projects_enabled", defaults.my_projects_enabled)),
+        jarvis_brain_theme_consolidation_enabled=_som_bool(data.get("jarvis_brain_theme_consolidation_enabled", defaults.jarvis_brain_theme_consolidation_enabled)),
+        daemon_balancer_enabled=_som_bool(data.get("daemon_balancer_enabled", defaults.daemon_balancer_enabled)),
+        my_projects_enabled=_som_bool(data.get("my_projects_enabled", defaults.my_projects_enabled)),
         emotional_memory_min_anchors=int(data.get("emotional_memory_min_anchors", defaults.emotional_memory_min_anchors)),
         emotional_memory_retention_recent_days=int(data.get("emotional_memory_retention_recent_days", defaults.emotional_memory_retention_recent_days)),
         emotional_memory_retention_aging_days=int(data.get("emotional_memory_retention_aging_days", defaults.emotional_memory_retention_aging_days)),
         emotional_memory_significance_intensity=float(data.get("emotional_memory_significance_intensity", defaults.emotional_memory_significance_intensity)),
         emotional_memory_significance_outcome=float(data.get("emotional_memory_significance_outcome", defaults.emotional_memory_significance_outcome)),
-        sensory_perception_bridge_enabled=bool(data.get("sensory_perception_bridge_enabled", defaults.sensory_perception_bridge_enabled)),
+        sensory_perception_bridge_enabled=_som_bool(data.get("sensory_perception_bridge_enabled", defaults.sensory_perception_bridge_enabled)),
         sensory_perception_jaccard_high_threshold=float(data.get("sensory_perception_jaccard_high_threshold", defaults.sensory_perception_jaccard_high_threshold)),
         sensory_perception_jaccard_medium_threshold=float(data.get("sensory_perception_jaccard_medium_threshold", defaults.sensory_perception_jaccard_medium_threshold)),
         sensory_perception_jaccard_change_threshold=float(data.get("sensory_perception_jaccard_change_threshold", defaults.sensory_perception_jaccard_change_threshold)),
@@ -1083,44 +1025,48 @@ def load_settings() -> RuntimeSettings:
         sensory_perception_time_window_days=int(data.get("sensory_perception_time_window_days", defaults.sensory_perception_time_window_days)),
         sensory_perception_min_baseline_records=int(data.get("sensory_perception_min_baseline_records", defaults.sensory_perception_min_baseline_records)),
         sensory_perception_recent_baseline_size=int(data.get("sensory_perception_recent_baseline_size", defaults.sensory_perception_recent_baseline_size)),
-        self_repair_engine_enabled=bool(data.get("self_repair_engine_enabled", defaults.self_repair_engine_enabled)),
+        self_repair_engine_enabled=_som_bool(data.get("self_repair_engine_enabled", defaults.self_repair_engine_enabled)),
         self_repair_default_cooldown_seconds=int(data.get("self_repair_default_cooldown_seconds", defaults.self_repair_default_cooldown_seconds)),
         self_repair_default_max_attempts_per_window=int(data.get("self_repair_default_max_attempts_per_window", defaults.self_repair_default_max_attempts_per_window)),
         self_repair_default_window_seconds=int(data.get("self_repair_default_window_seconds", defaults.self_repair_default_window_seconds)),
         self_repair_default_auto_disable_after_escalations=int(data.get("self_repair_default_auto_disable_after_escalations", defaults.self_repair_default_auto_disable_after_escalations)),
         self_repair_default_auto_disable_window_hours=int(data.get("self_repair_default_auto_disable_window_hours", defaults.self_repair_default_auto_disable_window_hours)),
-        prompt_affect_substrate_enabled=bool(data.get("prompt_affect_substrate_enabled", defaults.prompt_affect_substrate_enabled)),
-        prompt_affect_tone_hints_enabled=bool(data.get("prompt_affect_tone_hints_enabled", defaults.prompt_affect_tone_hints_enabled)),
-        prompt_agreement_streak_enabled=bool(data.get("prompt_agreement_streak_enabled", defaults.prompt_agreement_streak_enabled)),
-        prompt_emotion_signal_section_enabled=bool(data.get("prompt_emotion_signal_section_enabled", defaults.prompt_emotion_signal_section_enabled)),
-        prompt_experience_substrate_enabled=bool(data.get("prompt_experience_substrate_enabled", defaults.prompt_experience_substrate_enabled)),
-        prompt_proactive_outbound_substrate_enabled=bool(data.get("prompt_proactive_outbound_substrate_enabled", defaults.prompt_proactive_outbound_substrate_enabled)),
-        heartbeat_active_chat_gate_enabled=bool(data.get("heartbeat_active_chat_gate_enabled", defaults.heartbeat_active_chat_gate_enabled)),
+        prompt_affect_substrate_enabled=_som_bool(data.get("prompt_affect_substrate_enabled", defaults.prompt_affect_substrate_enabled)),
+        prompt_affect_tone_hints_enabled=_som_bool(data.get("prompt_affect_tone_hints_enabled", defaults.prompt_affect_tone_hints_enabled)),
+        prompt_agreement_streak_enabled=_som_bool(data.get("prompt_agreement_streak_enabled", defaults.prompt_agreement_streak_enabled)),
+        prompt_emotion_signal_section_enabled=_som_bool(data.get("prompt_emotion_signal_section_enabled", defaults.prompt_emotion_signal_section_enabled)),
+        prompt_experience_substrate_enabled=_som_bool(data.get("prompt_experience_substrate_enabled", defaults.prompt_experience_substrate_enabled)),
+        prompt_proactive_outbound_substrate_enabled=_som_bool(data.get("prompt_proactive_outbound_substrate_enabled", defaults.prompt_proactive_outbound_substrate_enabled)),
+        heartbeat_active_chat_gate_enabled=_som_bool(data.get("heartbeat_active_chat_gate_enabled", defaults.heartbeat_active_chat_gate_enabled)),
         heartbeat_active_chat_gate_minutes=int(data.get("heartbeat_active_chat_gate_minutes", defaults.heartbeat_active_chat_gate_minutes)),
-        emotion_concepts_tone_injection_enabled=bool(data.get("emotion_concepts_tone_injection_enabled", defaults.emotion_concepts_tone_injection_enabled)),
-        emotion_concepts_perception_focus_enabled=bool(data.get("emotion_concepts_perception_focus_enabled", defaults.emotion_concepts_perception_focus_enabled)),
-        concept_baseline_tracker_enabled=bool(data.get("concept_baseline_tracker_enabled", defaults.concept_baseline_tracker_enabled)),
+        emotion_concepts_tone_injection_enabled=_som_bool(data.get("emotion_concepts_tone_injection_enabled", defaults.emotion_concepts_tone_injection_enabled)),
+        emotion_concepts_perception_focus_enabled=_som_bool(data.get("emotion_concepts_perception_focus_enabled", defaults.emotion_concepts_perception_focus_enabled)),
+        concept_baseline_tracker_enabled=_som_bool(data.get("concept_baseline_tracker_enabled", defaults.concept_baseline_tracker_enabled)),
         emotion_concepts_tone_intensity_threshold=float(data.get("emotion_concepts_tone_intensity_threshold", defaults.emotion_concepts_tone_intensity_threshold)),
         emotion_concepts_tone_max_hints=int(data.get("emotion_concepts_tone_max_hints", defaults.emotion_concepts_tone_max_hints)),
         emotion_concepts_perception_max_foci=int(data.get("emotion_concepts_perception_max_foci", defaults.emotion_concepts_perception_max_foci)),
         concept_baseline_drift_min_sustained_days=int(data.get("concept_baseline_drift_min_sustained_days", defaults.concept_baseline_drift_min_sustained_days)),
         concept_baseline_drift_min_confidence=float(data.get("concept_baseline_drift_min_confidence", defaults.concept_baseline_drift_min_confidence)),
         emotion_concepts_default_trigger_cooldown_seconds=int(data.get("emotion_concepts_default_trigger_cooldown_seconds", defaults.emotion_concepts_default_trigger_cooldown_seconds)),
-        counterfactual_engine_enabled=bool(data.get("counterfactual_engine_enabled", defaults.counterfactual_engine_enabled)),
+        counterfactual_engine_enabled=_som_bool(data.get("counterfactual_engine_enabled", defaults.counterfactual_engine_enabled)),
         counterfactual_engine_interval_seconds=int(data.get("counterfactual_engine_interval_seconds", defaults.counterfactual_engine_interval_seconds)),
         counterfactual_engine_lookback_minutes=int(data.get("counterfactual_engine_lookback_minutes", defaults.counterfactual_engine_lookback_minutes)),
         counterfactual_engine_promotion_threshold=float(data.get("counterfactual_engine_promotion_threshold", defaults.counterfactual_engine_promotion_threshold)),
-        counterfactual_engine_phase2_llm_enabled=bool(data.get("counterfactual_engine_phase2_llm_enabled", defaults.counterfactual_engine_phase2_llm_enabled)),
+        counterfactual_engine_phase2_llm_enabled=_som_bool(data.get("counterfactual_engine_phase2_llm_enabled", defaults.counterfactual_engine_phase2_llm_enabled)),
         counterfactual_engine_phase2_max_per_cycle=int(data.get("counterfactual_engine_phase2_max_per_cycle", defaults.counterfactual_engine_phase2_max_per_cycle)),
-        agent_step_reasoning_replay_enabled=bool(data.get("agent_step_reasoning_replay_enabled", defaults.agent_step_reasoning_replay_enabled)),
-        agent_step_env_block_enabled=bool(data.get("agent_step_env_block_enabled", defaults.agent_step_env_block_enabled)),
-        agent_step_cache_contract_enabled=bool(data.get("agent_step_cache_contract_enabled", defaults.agent_step_cache_contract_enabled)),
-        agent_step_cache_split_enabled=bool(data.get("agent_step_cache_split_enabled", defaults.agent_step_cache_split_enabled)),
-        agent_step_volatile_prepend_enabled=bool(data.get("agent_step_volatile_prepend_enabled", defaults.agent_step_volatile_prepend_enabled)),
-        agent_turn_absorb_enabled=bool(data.get("agent_turn_absorb_enabled", defaults.agent_turn_absorb_enabled)),
-        agent_live_broadcast_enabled=bool(data.get("agent_live_broadcast_enabled", defaults.agent_live_broadcast_enabled)),
-        agent_live_follow_tokens_enabled=bool(data.get("agent_live_follow_tokens_enabled", defaults.agent_live_follow_tokens_enabled)),
-        agent_step_harness_contract_enabled=bool(data.get("agent_step_harness_contract_enabled", defaults.agent_step_harness_contract_enabled)),
+        agent_step_reasoning_replay_enabled=_som_bool(data.get("agent_step_reasoning_replay_enabled", defaults.agent_step_reasoning_replay_enabled)),
+        agent_step_env_block_enabled=_som_bool(data.get("agent_step_env_block_enabled", defaults.agent_step_env_block_enabled)),
+        agent_step_cache_contract_enabled=_som_bool(data.get("agent_step_cache_contract_enabled", defaults.agent_step_cache_contract_enabled)),
+        agent_step_cache_split_enabled=_som_bool(data.get("agent_step_cache_split_enabled", defaults.agent_step_cache_split_enabled)),
+        agent_step_volatile_prepend_enabled=_som_bool(data.get("agent_step_volatile_prepend_enabled", defaults.agent_step_volatile_prepend_enabled)),
+        agent_turn_absorb_enabled=_som_bool(data.get("agent_turn_absorb_enabled", defaults.agent_turn_absorb_enabled)),
+        agent_live_broadcast_enabled=_som_bool(data.get("agent_live_broadcast_enabled", defaults.agent_live_broadcast_enabled)),
+        agent_live_follow_tokens_enabled=_som_bool(data.get("agent_live_follow_tokens_enabled", defaults.agent_live_follow_tokens_enabled)),
+        agent_step_harness_contract_enabled=_som_bool(data.get("agent_step_harness_contract_enabled", defaults.agent_step_harness_contract_enabled)),
+        # 17 felter blev aldrig indlæst (19/9-2026): en værdi i runtime.json for
+        # fx kill-switchen decision_signals_enabled havde ingen virkning. De
+        # læses nu med typen fra deres standardværdi.
+        **{navn: _som_felt(data, defaults, navn) for navn in _TIDLIGERE_UINDLAESTE},
         extra={key: value for key, value in data.items() if key not in KNOWN_FIELDS},
     )
 

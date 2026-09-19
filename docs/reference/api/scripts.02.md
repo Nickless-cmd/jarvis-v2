@@ -296,12 +296,12 @@ _Fase 7 — blind bedømmelse af svarene._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_call` | `(prompt)` | — | [src](../../../scripts/phase7_judge.py#L68) |
-| function | `parse_verdict` | `(text)` | — | [src](../../../scripts/phase7_judge.py#L77) |
-| function | `_jsonl` | `(path)` | — | [src](../../../scripts/phase7_judge.py#L90) |
-| function | `key` | `(r)` | — | [src](../../../scripts/phase7_judge.py#L96) |
-| function | `main` | `()` | — | [src](../../../scripts/phase7_judge.py#L100) |
-| function | `_calibration` | `(probes, items)` | 30 svar til Bjørns blinde bedømmelse — trukket én gang, aldrig igen. | [src](../../../scripts/phase7_judge.py#L137) |
+| function | `_call` | `(prompt)` | — | [src](../../../scripts/phase7_judge.py#L71) |
+| function | `parse_verdict` | `(text)` | — | [src](../../../scripts/phase7_judge.py#L80) |
+| function | `_jsonl` | `(path)` | — | [src](../../../scripts/phase7_judge.py#L93) |
+| function | `key` | `(r)` | — | [src](../../../scripts/phase7_judge.py#L99) |
+| function | `main` | `()` | — | [src](../../../scripts/phase7_judge.py#L103) |
+| function | `_calibration` | `(probes, items)` | 30 svar til Bjørns blinde bedømmelse — trukket én gang, aldrig igen. | [src](../../../scripts/phase7_judge.py#L148) |
 
 ## `scripts/phone_home_auto.py`
 _phone_home_auto — hold phone_adb_address i runtime.json opdateret._

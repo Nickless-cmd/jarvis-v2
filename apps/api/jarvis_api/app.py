@@ -304,6 +304,14 @@ def create_app() -> FastAPI:
         except Exception:
             logger.warning("kunne ikke starte recovery-dispatcheren", exc_info=True)
         if runtime_services_enabled:
+            try:
+                # Lytterne bor her, men desk'ens chat kører i API-processen.
+                # Relæet leverer den anden proces' events til lokale lyttere
+                # (core/eventbus/krydsproces.py, målt 19/9-2026).
+                from core.eventbus.krydsproces import start_relae
+                start_relae()
+            except Exception:
+                logger.warning("krydsproces-relæ kunne ikke starte", exc_info=True)
             start_runtime_hook_runtime()
             start_approval_feedback_subscriber()
             start_inner_voice_notifier()

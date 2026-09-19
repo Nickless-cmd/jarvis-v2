@@ -104,3 +104,21 @@ anden (`gpt-4o`). De to er forskellige modeller fra forskellige udbydere, men
 de kan dele blinde vinkler, som et menneske ikke ville have. Grænsen på 80 %
 enighed er uændret. Et gyldigt resultat skal læses med det forbehold, og
 Bjørn kan til enhver tid bedømme de samme 30 selv og erstatte tallet.
+
+---
+
+## Tillæg 3 — 2026-09-19: bedømmelsen pauser til 1. oktober (dommerens kvote)
+
+Indsamlingen er færdig: 348 af 348 svar. Dommeren (`copilot-free/gpt-4o`,
+låst ovenfor) ramte Copilots «rate limit for utility models» efter 54
+bedømmelser, hvoraf 13 blev tomme. Kvoten nulstilles først 1. oktober, og
+Bjørn bad om at pause frem for at bruge ressourcer.
+
+Dommeren skiftes IKKE ud — det ville ændre instrumentet midt i forsøget.
+Bedømmelsen genoptages 1. oktober med samme dommer og rubrik; de tomme
+rækker tages om, og de allerede bedømte springes over. Ingen bedømmelser er
+læst, og analysen er ikke kørt.
+
+Konsekvens der står her, ikke skjult: svarene blev indsamlet 19/9 og
+bedømmes fra 1/10. Svarene ændrer sig ikke af at vente — de er gemt — men
+dommerens model kan være opdateret af udbyderen i mellemtiden.

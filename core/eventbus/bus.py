@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import collections
 import json
 import logging
 import queue
@@ -14,6 +15,9 @@ from core.runtime.db import connect
 logger = logging.getLogger(__name__)
 
 _WRITER_QUEUE_MAXSIZE = 10_000
+# Hvor mange egne event-id'er der huskes. Relæet poller hvert sekund, så
+# vinduet skal kun dække det relæet ikke har nået endnu — rigeligt.
+_EGNE_IDS_MAX = 50_000
 # Batch up to this many already-queued events into ONE SQLite transaction. Under a
 # burst (heartbeat storm / busy agentic loop) this collapses hundreds of per-event
 # commits into a handful → far fewer WAL write-lock acquisitions → API chat/cost
@@ -53,6 +57,14 @@ class EventBus:
         self._seq_lock = threading.Lock()
         self._publish_seq: int = 0  # incremented per publish (next seq to hand out)
         self._write_seq: int = 0  # seq of the last committed event
+
+        # Id'er på events DENNE proces har skrevet. Krydsproces-relæet
+        # (core/eventbus/krydsproces.py) springer dem over, så en lokal
+        # abonnent aldrig får samme event to gange. Noteres FØR commit —
+        # en anden forbindelse kan ikke se rækken før den er committed.
+        self._egne_ids: collections.deque[int] = collections.deque(maxlen=_EGNE_IDS_MAX)
+        self._egne_set: set[int] = set()
+        self._egne_lock = threading.Lock()
 
         self._writer_shutdown = threading.Event()
         self._writer_thread = threading.Thread(
@@ -300,6 +312,7 @@ class EventBus:
                     (item["kind"], item["payload_json"], item["created_at"]),
                 )
                 event_id = int(cursor.lastrowid)
+                self._noter_egen(event_id)
 
                 # Write causal edges. Best-effort — never let edge-write
                 # break event publication.
@@ -333,6 +346,20 @@ class EventBus:
                 created_at=item["created_at"],
             )
             self._notify_subscribers(serialized)
+
+    # ---- Krydsproces --------------------------------------------------
+
+    def _noter_egen(self, event_id: int) -> None:
+        with self._egne_lock:
+            if len(self._egne_ids) == self._egne_ids.maxlen:
+                self._egne_set.discard(self._egne_ids[0])
+            self._egne_ids.append(event_id)
+            self._egne_set.add(event_id)
+
+    def er_egen(self, event_id: int) -> bool:
+        """Skrev denne proces eventet? (Så har lokale abonnenter allerede fået det.)"""
+        with self._egne_lock:
+            return event_id in self._egne_set
 
     # ---- Internal helpers ---------------------------------------------
 

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7817/15198 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7824/15209 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -20,11 +20,11 @@ Generated from source. 7817/15198 functions/methods documented (51%). The list b
 | `core.coding_lane` | 9 | 10 | 90% |
 | `core.context` | 70 | 97 | 72% |
 | `core.costing` | 6 | 8 | 75% |
-| `core.eventbus` | 12 | 26 | 46% |
+| `core.eventbus` | 15 | 32 | 46% |
 | `core.identity` | 70 | 164 | 42% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 677 | 1254 | 53% |
+| `core.runtime` | 681 | 1259 | 54% |
 | `core.services` | 5171 | 10371 | 49% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 107 | 183 | 58% |
@@ -254,11 +254,11 @@ Generated from source. 7817/15198 functions/methods documented (51%). The list b
 - `core/context/tool_result_lifecycle.py` :: `get_cold_floor` (L243)
 - `core/costing/ledger.py` :: `recent_costs` (L135)
 - `core/costing/ledger.py` :: `telemetry_summary` (L115)
-- `core/eventbus/bus.py` :: `EventBus.recent` (L149)
-- `core/eventbus/bus.py` :: `EventBus.recent_by_family` (L170)
-- `core/eventbus/bus.py` :: `EventBus.recent_since_id` (L195)
-- `core/eventbus/bus.py` :: `EventBus.subscribe` (L217)
-- `core/eventbus/bus.py` :: `EventBus.unsubscribe` (L223)
+- `core/eventbus/bus.py` :: `EventBus.recent` (L161)
+- `core/eventbus/bus.py` :: `EventBus.recent_by_family` (L182)
+- `core/eventbus/bus.py` :: `EventBus.recent_since_id` (L207)
+- `core/eventbus/bus.py` :: `EventBus.subscribe` (L229)
+- `core/eventbus/bus.py` :: `EventBus.unsubscribe` (L235)
 - `core/eventbus/events.py` :: `Event.create` (L256)
 - `core/eventbus/events.py` :: `Event.family` (L252)
 - `core/eventbus/events.py` :: `Event.from_record` (L262)
@@ -568,8 +568,8 @@ Generated from source. 7817/15198 functions/methods documented (51%). The list b
 - `core/runtime/session_handle.py` :: `SessionHeader.as_json` (L87)
 - `core/runtime/session_handle.py` :: `read_header` (L119)
 - `core/runtime/settings.py` :: `RuntimeSettings.to_dict` (L560)
-- `core/runtime/settings.py` :: `load_settings` (L667)
-- `core/runtime/settings.py` :: `update_visible_execution_settings` (L1128)
+- `core/runtime/settings.py` :: `load_settings` (L610)
+- `core/runtime/settings.py` :: `update_visible_execution_settings` (L1074)
 - `core/runtime/work_ref.py` :: `fra_task` (L129)
 - `core/services/absence_daemon.py` :: `build_absence_surface` (L155)
 - `core/services/absence_daemon.py` :: `get_latest_absence` (L151)
@@ -2191,9 +2191,9 @@ Generated from source. 7817/15198 functions/methods documented (51%). The list b
 - `scripts/phase7_build_probes.py` :: `preceding_user` (L142)
 - `scripts/phase7_build_probes.py` :: `reject_reason` (L149)
 - `scripts/phase7_collect.py` :: `main` (L104)
-- `scripts/phase7_judge.py` :: `key` (L96)
-- `scripts/phase7_judge.py` :: `main` (L100)
-- `scripts/phase7_judge.py` :: `parse_verdict` (L77)
+- `scripts/phase7_judge.py` :: `key` (L99)
+- `scripts/phase7_judge.py` :: `main` (L103)
+- `scripts/phase7_judge.py` :: `parse_verdict` (L80)
 - `scripts/phone_home_auto.py` :: `main` (L190)
 - `scripts/pipelines/jarvis_pollinations_pipeline.py` :: `main` (L802)
 - `scripts/pipelines/tiktok_analytics.py` :: `main` (L246)

@@ -182,6 +182,16 @@ _ORIG_CONNECT = _socket.socket.connect
 _ORIG_CONNECT_EX = _socket.socket.connect_ex
 
 
+# Model-GENERERING på den lokale Ollama (127.0.0.1:11434). Målt 19/9-2026:
+# efterarbejde, indre berigelse og recall hang i sekunder på den, mens den
+# indlæste en model, og skrev derefter i den NÆSTE tests database. Blokeres i
+# transport-vagten nedenfor — men KUN generering: skill- og tool-routing-
+# testene bruger bevidst Ollamas embeddings (hurtige, deterministiske), og de
+# faldt da hele porten blev lukket.
+_OLLAMA_PORT = 11434
+_OLLAMA_GENERERING = ("/api/chat", "/api/generate", "/v1/chat/completions")
+
+
 def _er_lokal(adresse) -> bool:
     if not isinstance(adresse, tuple) or not adresse:
         return True  # unix-socket (str/bytes) eller ukendt form — ikke nettet
@@ -239,6 +249,89 @@ _socket.socket.connect = _vagt_connect
 _socket.socket.connect_ex = _vagt_connect_ex
 
 
+# ── Transport-vagten (19/9-2026) ───────────────────────────────────────────
+# Socket-vagten ovenfor stopper forbindelsen, men først EFTER DNS-opslaget, og
+# den talte 112 tests / 2.791 forsøg i fuld kørsel. Næsten alle gik gennem
+# urllib (cheap-lanens _http_json, heartbeat-fallback, arko, ollama, infra,
+# Copilot) og resten gennem httpx. Her stoppes de i transportlaget — ingen
+# DNS, ingen socket — med SAMME fejl som en afvist forbindelse (URLError /
+# httpx.ConnectError), så kaldernes fallback-veje opfører sig som i dag.
+#
+# Lokale adresser går igennem (tests mod egne test-servere). Tests der selv
+# stubber urlopen eller bruger en MockTransport, vinder stadig: deres stub
+# kalder aldrig de metoder der patches her. Det der stoppes, rapporteres i
+# sin egen sektion — så det stadig er synligt HVILKE tests der prøver.
+_TRANSPORT_STOPPET: list[tuple[str, str]] = []
+
+
+def _vaert_er_lokal(vaert: str, port: int | None = None, sti: str = "") -> bool:
+    if port == _OLLAMA_PORT and sti.rstrip("/").endswith(_OLLAMA_GENERERING):
+        return False
+    return _er_lokal((vaert or "localhost", port or 0))
+
+
+def _noter_transport(vaert: str) -> None:
+    linje = (_hvem(), vaert)
+    _TRANSPORT_STOPPET.append(linje)
+    fil = _net_fil()
+    if fil is not None:
+        try:
+            with open(str(fil) + ".transport", "a", encoding="utf-8") as f:
+                f.write(f"{linje[0]}\t{linje[1]}\n")
+        except Exception:
+            pass
+
+
+import urllib.error as _urllib_error  # noqa: E402
+import urllib.request as _urllib_request  # noqa: E402
+from urllib.parse import urlsplit as _urlsplit  # noqa: E402
+
+_ORIG_OPENER_OPEN = _urllib_request.OpenerDirector.open
+
+
+def _vagt_opener_open(self, fullurl, data=None, timeout=_socket._GLOBAL_DEFAULT_TIMEOUT):
+    url = fullurl.full_url if isinstance(fullurl, _urllib_request.Request) else str(fullurl)
+    _dele = _urlsplit(url)
+    vaert = _dele.hostname or ""
+    try:
+        _port = _dele.port
+    except ValueError:
+        _port = None
+    if url.startswith(("http://", "https://")) and not _vaert_er_lokal(vaert, _port, _dele.path):
+        _noter_transport(vaert)
+        raise _urllib_error.URLError(
+            ConnectionRefusedError(f"test-vagt: ingen test maa naa {vaert}"))
+    return _ORIG_OPENER_OPEN(self, fullurl, data, timeout)
+
+
+_urllib_request.OpenerDirector.open = _vagt_opener_open
+
+try:
+    import httpx as _httpx
+
+    _ORIG_HTTPX = _httpx.HTTPTransport.handle_request
+    _ORIG_HTTPX_ASYNC = _httpx.AsyncHTTPTransport.handle_async_request
+
+    def _vagt_httpx(self, request):
+        if not _vaert_er_lokal(request.url.host, request.url.port, request.url.path):
+            _noter_transport(request.url.host)
+            raise _httpx.ConnectError(f"test-vagt: ingen test maa naa {request.url.host}",
+                                      request=request)
+        return _ORIG_HTTPX(self, request)
+
+    async def _vagt_httpx_async(self, request):
+        if not _vaert_er_lokal(request.url.host, request.url.port, request.url.path):
+            _noter_transport(request.url.host)
+            raise _httpx.ConnectError(f"test-vagt: ingen test maa naa {request.url.host}",
+                                      request=request)
+        return await _ORIG_HTTPX_ASYNC(self, request)
+
+    _httpx.HTTPTransport.handle_request = _vagt_httpx
+    _httpx.AsyncHTTPTransport.handle_async_request = _vagt_httpx_async
+except ImportError:  # pragma: no cover
+    pass
+
+
 def pytest_terminal_summary(terminalreporter, config):
     if hasattr(config, "workerinput"):
         return  # kun hovedprocessen samler; en worker ville slette filen foerst
@@ -249,6 +342,23 @@ def pytest_terminal_summary(terminalreporter, config):
             if "\t" in raekke:
                 forsoeg.append(tuple(raekke.split("\t", 1)))
         fil.unlink(missing_ok=True)
+    stoppet = list(_TRANSPORT_STOPPET)
+    if fil is not None:
+        tfil = Path(str(fil) + ".transport")
+        if tfil.exists():
+            for raekke in tfil.read_text(encoding="utf-8").splitlines():
+                if "\t" in raekke:
+                    stoppet.append(tuple(raekke.split("\t", 1)))
+            tfil.unlink(missing_ok=True)
+    if stoppet:
+        pr_stop: dict[str, set[str]] = {}
+        for node, maal in stoppet:
+            pr_stop.setdefault(node, set()).add(maal)
+        terminalreporter.section(
+            f"test-vagt: {len(pr_stop)} test(s) ville kalde nettet — stoppet i transportlaget "
+            "(ingen DNS, ingen socket)")
+        for node, maal in sorted(pr_stop.items()):
+            terminalreporter.write_line(f"{node} -> {', '.join(sorted(maal))[:200]}")
     if not forsoeg:
         return
     pr_test: dict[str, set[str]] = {}
@@ -400,6 +510,57 @@ def _restore_visible_runs_anchor_classes():
                 setattr(_vr_mod, _cls_name, _obj)
         except Exception:
             pass
+
+
+import time as _time_modul  # noqa: E402
+
+_ECHTE_MONOTONIC = _time_modul.monotonic
+
+
+@pytest.fixture(autouse=True)
+def _vent_paa_testens_egne_traade():
+    """Lad testens egne baggrundstråde skrive færdigt i testens EGEN database.
+
+    Forbindelses-poolen (db_core.connect) peger automatisk om når DB_PATH
+    skifter — det er det der gør isolated_runtime mulig. Men det betyder også
+    at en fire-and-forget-tråd der overlever sin test, skriver i den NÆSTE
+    tests database. Målt 19/9-2026 i fuld kørsel: test_ledger_canary fik
+    «database is locked», og test_visible_runs_open_loop_materialization fandt
+    2 open-loop-signaler hvor den selv skrev 1 — begge grønne alene.
+
+    Her ventes op til 3 s (samlet) på tråde testen selv startede. Langlivede
+    løkker der aldrig slutter, springes over når budgettet er brugt; de er
+    dæmoner og dør med processen. Transport-vagten ovenfor får LLM-kald til
+    at fejle med det samme, så de fleste tråde er færdige på millisekunder.
+    """
+    import threading
+    foer = set(threading.enumerate())
+    yield
+    # _ECHTE_MONOTONIC, ikke time.monotonic: tests patcher den (fx
+    # test_turn_tail_timing med en endelig iterator), og denne oprydning kan
+    # køre før deres patch er fjernet.
+    frist = _ECHTE_MONOTONIC() + float(os.environ.get("JARVIS_TEST_TRAADVENT_S", "3.0"))
+    for t in threading.enumerate():
+        if t in foer or t is threading.current_thread() or not t.is_alive():
+            continue
+        rest = frist - _ECHTE_MONOTONIC()
+        if rest <= 0:
+            break
+        t.join(timeout=rest)
+    _log = os.environ.get("JARVIS_TEST_TRAADLOG")
+    if _log:
+        with open(_log + ".tid", "a", encoding="utf-8") as f:
+            f.write(f"{3.0 - max(0.0, frist - _ECHTE_MONOTONIC()):.2f}\t{_hvem()}\n")
+        with open(_log, "a", encoding="utf-8") as f:
+            for t in threading.enumerate():
+                if t not in foer and t.is_alive() and t is not threading.current_thread():
+                    f.write(f"{t.name}\t{getattr(getattr(t, '_target', None), '__qualname__', '?')}\n")
+                    if os.environ.get("JARVIS_TEST_TRAADSTAK"):
+                        import sys as _sys
+                        import traceback as _tb
+                        fr = _sys._current_frames().get(t.ident)
+                        if fr is not None:
+                            f.write("".join(_tb.format_stack(fr)[-22:-8]) + "\n")
 
 
 @pytest.fixture(autouse=True)

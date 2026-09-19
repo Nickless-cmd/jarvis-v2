@@ -189,8 +189,10 @@ _`SessionHandle` — én ejer, én lease, én sekvens._
 |---|---|---|---|---|
 | class | `RuntimeSettings` | `` | — | [src](../../../core/runtime/settings.py#L11) |
 | method | `RuntimeSettings.to_dict` | `(self)` | — | [src](../../../core/runtime/settings.py#L560) |
-| function | `load_settings` | `()` | — | [src](../../../core/runtime/settings.py#L667) |
-| function | `update_visible_execution_settings` | `(*, visible_model_provider=…, visible_model_name=…, visible_auth_profile=…)` | — | [src](../../../core/runtime/settings.py#L1128) |
+| function | `_som_bool` | `(v)` | Streng bool. bool("false") er True — og et flag i runtime.json skrevet | [src](../../../core/runtime/settings.py#L572) |
+| function | `_som_felt` | `(data, defaults, navn)` | Læs ét felt med typen fra standardværdien. | [src](../../../core/runtime/settings.py#L583) |
+| function | `load_settings` | `()` | — | [src](../../../core/runtime/settings.py#L610) |
+| function | `update_visible_execution_settings` | `(*, visible_model_provider=…, visible_model_name=…, visible_auth_profile=…)` | — | [src](../../../core/runtime/settings.py#L1074) |
 
 ## `core/runtime/state_store.py`
 _Tiny JSON-file state store for module-globals that must survive restart._
@@ -250,4 +252,7 @@ _Legitimation paa en WebSocket — uden at skrive tokenet i adgangsloggen._
 | function | `token_fra_handshake` | `(headers)` | Find tokenet i et WS-handshake. | [src](../../../core/runtime/ws_auth.py#L45) |
 | function | `verificer` | `(token)` | Verificér tokenet. Returnerer claims, eller None hvis det ikke holder. | [src](../../../core/runtime/ws_auth.py#L74) |
 | function | `kraeves_auth` | `()` | Er auth slaaet til i denne runtime? | [src](../../../core/runtime/ws_auth.py#L91) |
+| function | `_private_familier` | `()` | — | [src](../../../core/runtime/ws_auth.py#L118) |
+| function | `er_ejer` | `(krav)` | Ejer = rollen «owner» i et verificeret token. Uden token (auth slået fra, | [src](../../../core/runtime/ws_auth.py#L128) |
+| function | `til_klient` | `(item, *, ejer)` | Hvad der må sendes til denne klient, eller None. | [src](../../../core/runtime/ws_auth.py#L136) |
 

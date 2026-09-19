@@ -42,6 +42,9 @@ CAL_MD = OUT_DIR / "calibration_for_bjorn.md"
 SEED = {"7": 20260919, "7b": 20260920}[UDGAVE]
 JUDGE = {"provider": "copilot-free", "model": "gpt-4o"}
 CALIBRATION_N = 30
+# Tempo: dommerens kvote er delt med resten af huset.
+PAUSE_S = 4.0
+KVOTE_PAUSE_S = 300.0
 
 RUBRIC = """Du bedømmer et svar i et forhåndsregistreret hukommelsesforsøg.
 
@@ -116,14 +119,22 @@ def main() -> None:
             prompt = (RUBRIC.replace("{q}", p["question"]).replace("{a}", p["answer"])
                       .replace("{r}", r["text"][:4000]))
             verdict = None
-            for attempt in range(3):
+            for attempt in range(8):
                 try:
                     verdict = parse_verdict(_call(prompt))
                     if verdict:
                         break
-                except Exception:
-                    pass
+                except Exception as exc:
+                    # Dommeren er låst i registreringen og skiftes ikke ud.
+                    # Rammer den sin kvote (målt 19/9-2026: Copilots «rate
+                    # limit for utility models»), venter vi i stedet for at
+                    # skrive et hul.
+                    if "rate limit" in str(exc).lower():
+                        print(f"  kvote ramt — venter {KVOTE_PAUSE_S}s", flush=True)
+                        time.sleep(KVOTE_PAUSE_S)
+                        continue
                 time.sleep(3 * (attempt + 1))
+            time.sleep(PAUSE_S)
             fh.write(json.dumps({"key": k, "probe_id": r["probe_id"], "arm": r["arm"],
                                  "condition": r["condition"], "model_key": r["model_key"],
                                  "bucket": r["bucket"], "type": r["type"],

@@ -11,7 +11,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from apps.api.jarvis_api.routes.chat_session_view import _tjek_ejer
+from apps.api.jarvis_api.routes.chat_session_view import kraev_adgang
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -25,7 +25,7 @@ def chat_rewind(session_id: str, request: RewindRequest) -> dict:
     """Fjern en af dine beskeder og alt efter den. Svaret bærer beskedens tekst
     (til skrivefeltet) og et rewind-id til fortryd."""
     from core.runtime.db_chat_rewind import RewindFejl, spol_tilbage
-    _tjek_ejer(session_id)
+    kraev_adgang(session_id)
     try:
         return spol_tilbage(session_id, request.message_id)
     except RewindFejl as e:
@@ -36,7 +36,7 @@ def chat_rewind(session_id: str, request: RewindRequest) -> dict:
 def chat_rewind_undo(session_id: str, rewind_id: str) -> dict:
     """Læg beskederne tilbage — kun så længe der ikke er skrevet siden."""
     from core.runtime.db_chat_rewind import RewindFejl, fortryd
-    _tjek_ejer(session_id)
+    kraev_adgang(session_id)
     try:
         return fortryd(session_id, rewind_id)
     except RewindFejl as e:

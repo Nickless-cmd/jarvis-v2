@@ -3,9 +3,8 @@
 Egen fil fordi `routes/chat.py` allerede er på ~1950 linjer. Logikken bor i
 `core.services.session_view`.
 
-Ejer-tjek: kun den bruger samtalen tilhører må læse eller skifte dens
-visning. (De ældre samtale-ruter — omdøb, flag, slet — har intet sådant
-tjek; det er et kendt hul, ikke et forbillede.)
+Adgang: `kraev_adgang` — samme regel som alle samtale-ruterne
+(`core.identity.session_access`).
 """
 from __future__ import annotations
 
@@ -19,13 +18,14 @@ class SessionViewRequest(BaseModel):
     view: str
 
 
-def _tjek_ejer(session_id: str) -> None:
-    from core.identity.workspace_context import current_user_id
-    from core.services.chat_sessions import get_session_owner
-    ejer = get_session_owner(session_id)
-    bruger = current_user_id()
-    # Ustemplede (legacy) samtaler har ingen ejer at tjekke imod.
-    if ejer and bruger and ejer != bruger:
+def kraev_adgang(session_id: str) -> None:
+    """403 hvis den nuværende bruger ikke må røre samtalen.
+
+    Reglen bor i `core.identity.session_access` — fælles for alle
+    samtale-ruterne (Bjørn 19/9-2026: «luk hullet i de gamle»).
+    """
+    from core.identity.session_access import maa_tilgaa_session
+    if not maa_tilgaa_session(session_id):
         raise HTTPException(status_code=403, detail="Ikke din samtale")
 
 
@@ -33,7 +33,7 @@ def _tjek_ejer(session_id: str) -> None:
 def chat_session_view(session_id: str) -> dict:
     """Samtalens visningstilstand: normal, thinking eller verbose."""
     from core.services.session_view import hent_visning
-    _tjek_ejer(session_id)
+    kraev_adgang(session_id)
     return {"id": session_id, "view": hent_visning(session_id)}
 
 
@@ -41,7 +41,7 @@ def chat_session_view(session_id: str) -> dict:
 def chat_set_session_view(session_id: str, request: SessionViewRequest) -> dict:
     """Skift samtalens visningstilstand. Gælder fra næste runde, også midt i et svar."""
     from core.services.session_view import saet_visning
-    _tjek_ejer(session_id)
+    kraev_adgang(session_id)
     svar = saet_visning(session_id, request.view)
     if svar.get("status") != "ok":
         fejl = str(svar.get("error") or "")

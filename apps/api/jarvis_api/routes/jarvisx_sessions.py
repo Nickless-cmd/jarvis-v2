@@ -332,6 +332,9 @@ def fork_session(payload: _ForkPayload) -> dict[str, Any]:
         create_chat_session,
         append_chat_message,
     )
+    # En fork LÆSER kilden — samme adgangsregel som at åbne den (19/9-2026).
+    from apps.api.jarvis_api.routes.chat_session_view import kraev_adgang
+    kraev_adgang(payload.source_session_id)
     src = get_chat_session(payload.source_session_id)
     if src is None:
         raise HTTPException(status_code=404, detail="source session not found")

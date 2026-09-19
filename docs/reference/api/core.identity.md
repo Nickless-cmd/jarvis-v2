@@ -125,6 +125,14 @@ _Project context — current "where am I working" as set by JarvisX._
 | function | `_file_summary` | `(name, role, present, loaded_by_default)` | — | [src](../../../core/identity/runtime_contract.py#L344) |
 | function | `_capability_contract_state` | `(capability_truth)` | — | [src](../../../core/identity/runtime_contract.py#L354) |
 
+## `core/identity/session_access.py`
+_Må den der spørger, røre DENNE samtale?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `arbejdsrum_for` | `(uid)` | Det arbejdsrum et bruger-stempel hører til. | [src](../../../core/identity/session_access.py#L34) |
+| function | `maa_tilgaa_session` | `(session_id)` | Må den nuværende bruger læse eller ændre samtalen? | [src](../../../core/identity/session_access.py#L54) |
+
 ## `core/identity/user_attribution_migrations.py`
 _User attribution migrations — add user_id/workspace_name columns._
 

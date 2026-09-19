@@ -76,6 +76,12 @@ def _resolve_role(uid: str) -> str:
         return "guest"
 
 
+
+def _kraev_adgang(session_id: str) -> None:
+    """403 hvis brugeren ikke må røre samtalen — se `core.identity.session_access`."""
+    from apps.api.jarvis_api.routes.chat_session_view import kraev_adgang
+    kraev_adgang(session_id)
+
 @router.get("/file")
 async def chat_read_file(
     path: str = Query(...), root: str = "", kind: str = "container",
@@ -463,6 +469,13 @@ def chat_message_reasoning(message_id: str) -> dict:
     Bjørns valg (12/9-2026): standarden er ChatGPT-agtig — kun halen — og
     hele strømmen er et tilvalg i indstillingerne.
     """
+    # Tjekket går via beskedens EGEN samtale — ellers kunne man læse en
+    # andens fulde tankestrøm alene med et besked-id (19/9-2026).
+    from core.runtime.db import connect
+    with connect() as _c:
+        _r = _c.execute("SELECT session_id FROM chat_messages WHERE message_id = ?", (message_id,)).fetchone()
+    if _r:
+        _kraev_adgang(str(_r[0]))
     text = get_message_reasoning(message_id)
     if text is None:
         raise HTTPException(status_code=404, detail="beskeden findes ikke")
@@ -494,6 +507,7 @@ def chat_set_session_workspace(session_id: str, req: SessionWorkspaceRequest) ->
     får det derfor først når man har skrevet noget. Telefonen skal kunne sætte
     det DIREKTE, så headeren kan vise hvor arbejdet foregår før første besked.
     """
+    _kraev_adgang(session_id)  # 19/9-2026: «luk hullet i de gamle»
     art = (req.kind or "").strip().lower()
     if art not in ("container", "workstation"):
         raise HTTPException(status_code=400, detail="kind skal være container eller workstation")
@@ -1101,6 +1115,7 @@ def chat_session_recovery(session_id: str, response: Response) -> dict:
     Opgave 7 (17/9-2026): efter en genstart er den proces-lokale hændelseslog
     tom, og klienten læste «tom» som «færdig». Journalen på disken ved bedre.
     """
+    _kraev_adgang(session_id)  # 19/9-2026: «luk hullet i de gamle»
     from core.services.in_flight_runs import recovery_snapshot
     try:
         snapshot = recovery_snapshot(session_id)
@@ -1164,6 +1179,7 @@ def chat_active_runs() -> dict:
 def chat_cancel_active(session_id: str) -> dict:
     """Afbryd det run der kører for sessionen (mobil/desk stop-knap naar klienten
     ikke selv streamer runnet — fx efter baggrund hvor serveren stadig arbejder)."""
+    _kraev_adgang(session_id)  # 19/9-2026: «luk hullet i de gamle»
     from core.services.visible_runs import (
         _get_active_visible_run_state,
         cancel_visible_run,
@@ -1249,6 +1265,7 @@ async def chat_run_subscribe(run_id: str, from_idx: int = 0):
 async def chat_session_live(session_id: str):
     """Attach til sessionens aktive run fra offset 0 (cross-device + foreground-
     attach). 204 hvis intet aktivt run."""
+    _kraev_adgang(session_id)  # 19/9-2026: «luk hullet i de gamle»
     import asyncio
     from fastapi import Response
     from fastapi.responses import StreamingResponse
@@ -1313,6 +1330,7 @@ async def chat_session_follow(session_id: str):
     (så en sen attach stadig får hele svaret) + live-tail indtil done. Desk'en
     fodrer dem ind i SAMME streamReducer → renderer token-for-token i stedet for
     at "dumpe" den færdige besked ind (Bjørn 2026-06-13)."""
+    _kraev_adgang(session_id)  # 19/9-2026: «luk hullet i de gamle»
     import asyncio
 
     from fastapi.responses import StreamingResponse
@@ -1595,6 +1613,7 @@ def chat_session(session_id: str, request: Request, response: Response):
     derfor ikke ændres; `fetch()` ser stadig et almindeligt 200-svar med data.
     (React Native har ikke den HTTP-cache, så mobil får kun server-gevinsten.)
     """
+    _kraev_adgang(session_id)  # 19/9-2026: «luk hullet i de gamle»
     version = session_version(session_id)
     if version is None:
         raise HTTPException(status_code=404, detail="Chat session not found")
@@ -1643,6 +1662,7 @@ def chat_session(session_id: str, request: Request, response: Response):
 def chat_rename_session(session_id: str, request: ChatSessionRenameRequest) -> dict:
     """Omdøb en chat-session til request.title. 404 hvis sessionen ikke findes;
     ellers {session: ...}."""
+    _kraev_adgang(session_id)  # 19/9-2026: «luk hullet i de gamle»
     session = rename_chat_session(session_id, title=request.title)
     if session is None:
         raise HTTPException(status_code=404, detail="Chat session not found")
@@ -1665,6 +1685,7 @@ def chat_set_session_flags(session_id: str, request: ChatSessionFlagsRequest) ->
     hentes med `inkluder_arkiverede`). De to udelukker hinanden: en samtale man
     har lagt vaek skal ikke staa oeverst, saa arkivering frigoer fastgoerelsen.
     """
+    _kraev_adgang(session_id)  # 19/9-2026: «luk hullet i de gamle»
     from core.services.chat_sessions import set_session_flags
     svar = set_session_flags(
         session_id, pinned=request.pinned, archived=request.archived,
@@ -1678,6 +1699,7 @@ def chat_set_session_flags(session_id: str, request: ChatSessionFlagsRequest) ->
 @router.delete("/sessions/{session_id}")
 def chat_delete_session(session_id: str) -> dict:
     """Slet en chat-session. 404 hvis den ikke findes; ellers {ok: True, session_id}."""
+    _kraev_adgang(session_id)  # 19/9-2026: «luk hullet i de gamle»
     if not delete_chat_session(session_id):
         raise HTTPException(status_code=404, detail="Chat session not found")
     return {"ok": True, "session_id": session_id}

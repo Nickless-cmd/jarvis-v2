@@ -461,6 +461,14 @@ _Single source of truth for what jarvis-code (jc) presents as tools._
 | function | `_all_native_defs` | `(role)` | Full native tool defs for a role. Wrapped as a module function for test injection. | [src](../../../core/tools/jc_tool_catalog.py#L124) |
 | function | `build_jc_catalog` | `(*, role, unlocked)` | Native-side tool defs jc should present (WITHOUT the 8 local client tools — | [src](../../../core/tools/jc_tool_catalog.py#L130) |
 
+## `core/tools/kommando_beskrivelse.py`
+_Jarvis' egen beskrivelse af en kommando — linjen i klienterne._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_norm` | `(s)` | — | [src](../../../core/tools/kommando_beskrivelse.py#L46) |
+| function | `brugbar_beskrivelse` | `(beskrivelse, kommando=…)` | Beskrivelsen hvis den kan stå som linjen, ellers `""`. | [src](../../../core/tools/kommando_beskrivelse.py#L50) |
+
 ## `core/tools/load_more_tools.py`
 _Lazy tool schema loader for visible-lane tool pruning._
 
@@ -509,16 +517,4 @@ _Kuraterede memory-topic-tools (spec 2026-07-10 Spec B)._
 |---|---|---|---|---|
 | function | `_exec_read_memory_topic` | `(args)` | Læs en kurateret memory-topic-fil (pull, LLM-led). Scoped til aktuel bruger. | [src](../../../core/tools/memory_topic_tools.py#L12) |
 | function | `_exec_write_memory_topic` | `(args)` | Skriv/opdatér en kurateret memory-topic (streng bekraeftelse). Scoped til bruger. | [src](../../../core/tools/memory_topic_tools.py#L22) |
-
-## `core/tools/meta_learning_tools.py`
-_Meta-læring tools — Phase 1 (AGI track #3)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_phase1_enabled` | `()` | — | [src](../../../core/tools/meta_learning_tools.py#L23) |
-| function | `_safe_publish` | `(family_event, payload)` | — | [src](../../../core/tools/meta_learning_tools.py#L30) |
-| function | `_exec_read_learning_memo` | `(args)` | Read full memo and acknowledge it. | [src](../../../core/tools/meta_learning_tools.py#L38) |
-| function | `_exec_list_learning_memos` | `(args)` | — | [src](../../../core/tools/meta_learning_tools.py#L73) |
-| function | `_exec_register_hypothesis` | `(args)` | Promote a memo hypothesis_candidate to an active tracked hypothesis. | [src](../../../core/tools/meta_learning_tools.py#L136) |
-| function | `_exec_record_hypothesis_sample` | `(args)` | — | [src](../../../core/tools/meta_learning_tools.py#L154) |
 

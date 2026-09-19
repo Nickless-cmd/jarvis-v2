@@ -396,3 +396,33 @@ def test_laese_verbum_over_en_laesning_bestaar(monkeypatch):
     monkeypatch.setattr(trl, "_kald_model", lambda p: "Læste rediger-mig.txt")
     v = _v("operator_read_file", {"path": "/home/bs/rediger-mig.txt"})
     assert trl.etiket([v]) == "Læste rediger-mig.txt"
+
+
+# ─────────────────────────────── Jarvis' egen beskrivelse vinder (19/9-2026)
+
+def test_et_kald_med_egen_beskrivelse_faar_ingen_etiket(monkeypatch):
+    kaldt = []
+    monkeypatch.setattr(trl, "_kald_model", lambda p: kaldt.append(p) or "Tjekkede status")
+    v = _v("bash", {"command": "git status", "description": "Vis arbejdstræets status"})
+    assert trl.etiket([v]) == ""
+    assert kaldt == [], "modellen skal slet ikke kaldes"
+
+
+def test_ogsaa_i_openai_form_med_arguments_som_streng(monkeypatch):
+    monkeypatch.setattr(trl, "_kald_model", lambda p: "Tjekkede status")
+    v = {"id": "c1", "type": "function", "function": {"name": "bash",
+         "arguments": '{"command": "git status", "description": "Vis status"}'}}
+    assert trl.etiket([v]) == ""
+
+
+def test_en_beskrivelse_der_bare_er_kommandoen_taeller_ikke(monkeypatch):
+    monkeypatch.setattr(trl, "_kald_model", lambda p: "Tjekkede arbejdstræet")
+    v = _v("bash", {"command": "git status", "description": "git status"})
+    assert trl.etiket([v]) == "Tjekkede arbejdstræet"
+
+
+def test_flere_kald_faar_stadig_etiket(monkeypatch):
+    monkeypatch.setattr(trl, "_kald_model", lambda p: "Tjekkede repoet")
+    a = _v("bash", {"command": "git status", "description": "Vis status"})
+    b = _v("bash", {"command": "git log", "description": "Vis historik"})
+    assert trl.etiket([a, b]) == "Tjekkede repoet"

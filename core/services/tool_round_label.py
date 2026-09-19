@@ -370,6 +370,26 @@ def _verbum_lyver(tekst: str, kald: list[dict[str, Any]]) -> bool:
     return bool(navne) and all(n in _KUN_LAESENDE for n in navne)
 
 
+def _har_egen_beskrivelse(kald: list[dict[str, Any]]) -> bool:
+    """Er runden ÉT kald der bærer en brugbar `description`?
+
+    Kun ét: over flere kald tegner klienterne den mekaniske gruppelinje
+    (Claude Desktops `Cf`), og dér har etiketten stadig noget at sige.
+    """
+    if len(kald) != 1:
+        return False
+    from core.tools.kommando_beskrivelse import brugbar_beskrivelse
+    raa = _navn_og_input(kald[0])[1]
+    if isinstance(raa, str):
+        try:
+            raa = json.loads(raa)
+        except ValueError:
+            return False
+    if not isinstance(raa, dict):
+        return False
+    return bool(brugbar_beskrivelse(raa.get("description"), raa.get("command")))
+
+
 def etiket(vaerktoejer: list[dict[str, Any]], hensigt: str = "") -> str:
     """Én kort etiket for runden, eller `""`.
 
@@ -378,6 +398,10 @@ def etiket(vaerktoejer: list[dict[str, Any]], hensigt: str = "") -> str:
     """
     kald = [v for v in (vaerktoejer or []) if _navn_og_input(v)[0]]
     if not kald:
+        return ""
+    if _har_egen_beskrivelse(kald):
+        # Jarvis skrev selv linjen i kaldet — Claude Desktops vej. En etiket
+        # oven på ville overdøve den, og kaldet til modellen er spildt.
         return ""
     billede = byg_prompt(kald, hensigt)
     try:

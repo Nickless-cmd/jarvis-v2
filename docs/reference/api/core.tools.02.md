@@ -2,6 +2,18 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/tools/meta_learning_tools.py`
+_Meta-læring tools — Phase 1 (AGI track #3)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_phase1_enabled` | `()` | — | [src](../../../core/tools/meta_learning_tools.py#L23) |
+| function | `_safe_publish` | `(family_event, payload)` | — | [src](../../../core/tools/meta_learning_tools.py#L30) |
+| function | `_exec_read_learning_memo` | `(args)` | Read full memo and acknowledge it. | [src](../../../core/tools/meta_learning_tools.py#L38) |
+| function | `_exec_list_learning_memos` | `(args)` | — | [src](../../../core/tools/meta_learning_tools.py#L73) |
+| function | `_exec_register_hypothesis` | `(args)` | Promote a memo hypothesis_candidate to an active tracked hypothesis. | [src](../../../core/tools/meta_learning_tools.py#L136) |
+| function | `_exec_record_hypothesis_sample` | `(args)` | — | [src](../../../core/tools/meta_learning_tools.py#L154) |
+
 ## `core/tools/mic_listen_tool.py`
 _Mic listen tool — Jarvis hears the room when he actively chooses to._
 
@@ -467,8 +479,8 @@ _Tool definitions catalog for Jarvis' visible-lane tools._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_til_openai_form` | `(td)` | Anthropic-formet definition → OpenAI-formet. Andet passerer urørt. | [src](../../../core/tools/simple_tools_definitions.py#L3620) |
-| function | `_ensret_tool_definitions` | `(defs)` | — | [src](../../../core/tools/simple_tools_definitions.py#L3637) |
+| function | `_til_openai_form` | `(td)` | Anthropic-formet definition → OpenAI-formet. Andet passerer urørt. | [src](../../../core/tools/simple_tools_definitions.py#L3625) |
+| function | `_ensret_tool_definitions` | `(defs)` | — | [src](../../../core/tools/simple_tools_definitions.py#L3642) |
 
 ## `core/tools/simple_tools_enforcement.py`
 _Commit-enforcement (repo-state attachment) for Jarvis' tool results._
@@ -702,16 +714,4 @@ _Web/search/system-info tool executors for Jarvis' native lane._
 | function | `_exec_analyze_image` | `(args)` | Analyze an image using a vision-capable model via Ollama. | [src](../../../core/tools/simple_tools_web.py#L1091) |
 | function | `_exec_read_archive` | `(args)` | List or extract a zip / tar / rar archive. | [src](../../../core/tools/simple_tools_web.py#L1211) |
 | function | `_exec_wolfram_query` | `(args)` | Precise answers via Wolfram Alpha Short Answers API. | [src](../../../core/tools/simple_tools_web.py#L1281) |
-
-## `core/tools/skill_chain_propose_tool.py`
-_propose_skill_chain tool — Skill Chain Phase 2 (AGI track #10)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_phase2_enabled` | `()` | — | [src](../../../core/tools/skill_chain_propose_tool.py#L36) |
-| function | `_exec_propose_skill_chain` | `(args)` | Tool handler for propose_skill_chain. | [src](../../../core/tools/skill_chain_propose_tool.py#L43) |
-| function | `_publish_propose_event` | `(*, plan, confidence, rationale_length, model_used, provider_used, task_excerpt)` | Defensively publish cognitive_skill_chain.proposed. Never blocks. | [src](../../../core/tools/skill_chain_propose_tool.py#L152) |
-| function | `_build_propose_prompt` | `(*, task_description, catalog)` | Build the cheap-lane prompt. Compact — ~2-3k tokens for 50 skills. | [src](../../../core/tools/skill_chain_propose_tool.py#L220) |
-| function | `_extract_json_blob` | `(text)` | Tolerate markdown fences and prose around JSON. | [src](../../../core/tools/skill_chain_propose_tool.py#L262) |
-| function | `_parse_propose_response` | `(text)` | Parse cheap-lane response. Returns {status, plan, rationale, confidence} | [src](../../../core/tools/skill_chain_propose_tool.py#L275) |
 

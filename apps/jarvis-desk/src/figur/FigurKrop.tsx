@@ -67,7 +67,7 @@ const OEJE_Y = 57.8
 const OEJE_SKALA = 0.72
 const OEJE_FARVE = 'rgba(12, 44, 40, 0.78)'
 
-export function FigurKrop({ handling, ring, laener, blik }: {
+export function FigurKrop({ handling, ring, laener, blik, grimasse }: {
   handling: Handling
   /** Ringen drejer hurtigt mens der arbejdes — uafhængigt af kroppens tre gennemløb. */
   ring: 'rolig' | 'hurtig'
@@ -75,9 +75,13 @@ export function FigurKrop({ handling, ring, laener, blik }: {
   /** Hvor han kigger hen, i px fra øjenroen. Musen kan kun ses mens den er
    *  over vinduet — så det er når man nærmer sig at han ser op. */
   blik?: { x: number; y: number }
+  grimasse?: 'smil' | 'undren' | null
 }) {
   const u = udtryk(handling)
   const a = ANSIGT[u]
+  const mund = handling === 'hvile' && grimasse
+    ? grimasse === 'smil' ? 'M54 72.8 Q60 79.8 66 72.8' : 'M58 73.5 a2 2.7 0 1 0 4 0 a2 2.7 0 1 0 -4 0'
+    : a.mund
   const b = blik ?? { x: 0, y: 0 }
   const oeje = (s: 'venstre' | 'hoejre') =>
     `translate(${OEJE_X[s] + b.x} ${OEJE_Y + b.y}) rotate(${a.rot * (s === 'venstre' ? -1 : 1)}) scale(${OEJE_SKALA})`
@@ -106,7 +110,7 @@ export function FigurKrop({ handling, ring, laener, blik }: {
               </g>
             ))}
           </g>
-          <path className="figur-mund" d={a.mund} fill="none" stroke={OEJE_FARVE}
+          <path className="figur-mund" d={mund} fill="none" stroke={OEJE_FARVE}
                 strokeWidth="1.6" strokeLinecap="round" />
         </g>
       </svg>

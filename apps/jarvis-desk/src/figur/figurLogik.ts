@@ -19,6 +19,18 @@ export const HANDLING_FOR: Record<OpmTilstand, Handling> = {
 
 export type Udtryk = 'rolig' | 'fokus' | 'venter' | 'noed' | 'glad'
 
+export interface Punkt { x: number; y: number }
+
+/** En lille øjenforskydning mod skærmens musemarkør, også uden for vinduet. */
+export function blikFraMus(mouse: Punkt, eyes: Punkt): Punkt {
+  const dx = mouse.x - eyes.x
+  const dy = mouse.y - eyes.y
+  const distance = Math.hypot(dx, dy)
+  if (distance < 1) return { x: 0, y: 0 }
+  const strength = Math.min(2, distance / 70)
+  return { x: dx / distance * strength, y: dy / distance * strength }
+}
+
 /**
  * Ansigtets udtryk pr. handling.
  *

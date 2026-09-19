@@ -38,7 +38,9 @@ export interface JarvisDeskBridge {
     traekStart: (mx: number, my: number) => Promise<void>
     traek: (mx: number, my: number) => Promise<void>
     traekSlut: () => Promise<void>
-    hoejde: (h: number) => Promise<void>
+    hoejde: (h: number, contentHeight?: number, figureCenter?: number, side?: 'over' | 'under', currentCenter?: number) => Promise<void>
+    snapshot: () => Promise<{ cursor: { x: number; y: number }; bounds: { x: number; y: number }; side: 'over' | 'under' }>
+    menu: () => Promise<void>
     aabnSamtale: (sessionId: string | null) => Promise<void>
     vist: () => Promise<boolean>
     saetVist: (vist: boolean) => Promise<boolean>
@@ -176,7 +178,10 @@ const bridge: JarvisDeskBridge = {
     traekStart: (mx: number, my: number) => ipcRenderer.invoke('figur:traekStart', mx, my),
     traek: (mx: number, my: number) => ipcRenderer.invoke('figur:traek', mx, my),
     traekSlut: () => ipcRenderer.invoke('figur:traekSlut'),
-    hoejde: (h: number) => ipcRenderer.invoke('figur:hoejde', h),
+    hoejde: (h: number, contentHeight?: number, figureCenter?: number, side?: 'over' | 'under', currentCenter?: number) =>
+      ipcRenderer.invoke('figur:hoejde', h, contentHeight, figureCenter, side, currentCenter),
+    snapshot: () => ipcRenderer.invoke('figur:snapshot'),
+    menu: () => ipcRenderer.invoke('figur:menu'),
     aabnSamtale: (sessionId: string | null) => ipcRenderer.invoke('figur:aabnSamtale', sessionId),
     vist: () => ipcRenderer.invoke('figur:vist'),
     saetVist: (vist: boolean) => ipcRenderer.invoke('figur:saetVist', vist),

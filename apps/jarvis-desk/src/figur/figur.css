@@ -18,11 +18,17 @@ html.figur-flade, html.figur-flade body, html.figur-flade #root {
 .figur-rod {
   --figur-farve: #3fc7b4;
   transition: --figur-farve 420ms ease;
+  position: absolute; left: 0; bottom: 0;
   width: 300px;
   display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
   gap: 6px; padding: 8px 10px 4px; box-sizing: border-box;
   font: 13px/1.35 system-ui, -apple-system, 'Segoe UI', sans-serif;
 }
+.figur-rod.boble-under { top: 0; bottom: auto; }
+.figur-rod.boble-under .figur-greb { order: 1; }
+.figur-rod.boble-under .figur-boble { order: 2; }
+.figur-rod.boble-under .figur-ikoner { order: 3; }
+.figur-rod.boble-under .figur-hurtig { order: 4; }
 .figur-rod[data-tilstand='waiting'] { --figur-farve: #e8b04a; }
 .figur-rod[data-tilstand='failed'] { --figur-farve: #e0645c; }
 .figur-rod[data-tilstand='review'] { --figur-farve: #7cc49b; }
@@ -39,6 +45,10 @@ html.figur-flade, html.figur-flade body, html.figur-flade #root {
   content: ''; position: absolute; bottom: -6px; left: 50%; width: 10px; height: 10px;
   background: inherit; border-right: inherit; border-bottom: inherit;
   transform: translateX(-50%) rotate(45deg);
+}
+.figur-rod.boble-under .figur-boble::after {
+  top: -6px; bottom: auto; border: 0;
+  border-left: inherit; border-top: inherit;
 }
 .figur-boble-indhold {
   all: unset; cursor: pointer; display: flex; flex-direction: column; gap: 2px;

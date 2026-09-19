@@ -1,12 +1,13 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
-import { boble, boblensNoegle, HANDLING_FOR, UDTRYK_FOR, udtryk } from './figurLogik'
+import { boble, boblensNoegle, HANDLING_FOR, UDTRYK_FOR, udtryk, blikFraMus } from './figurLogik'
 import type { Opmaerksomhed } from '../lib/opmaerksomhed'
 
 const apiFetch = vi.fn()
 vi.mock('../lib/api', () => ({ apiFetch: (...a: unknown[]) => apiFetch(...a) }))
 
 import { FigurApp } from './FigurApp'
+import { FigurKrop } from './FigurKrop'
 
 // jsdom har ingen PointerEvent: uden den bliver pointerDown et nøgent Event
 // uden `button` og `screenX`, og testen måler så ingenting. MouseEvent bærer
@@ -27,6 +28,19 @@ const o = (tilstand: Opmaerksomhed['tilstand'], fokus: Partial<Opmaerksomhed['pu
 })
 
 describe('figurens regler', () => {
+  it('en kort grimasse ændrer munden uden at ændre arbejdsudtrykket', () => {
+    const { container, rerender } = render(<FigurKrop handling="hvile" ring="rolig" laener={null} />)
+    const normal = container.querySelector('.figur-mund')?.getAttribute('d')
+    rerender(<FigurKrop handling="hvile" ring="rolig" laener={null} grimasse="smil" />)
+    expect(container.querySelector('.figur-mund')?.getAttribute('d')).not.toBe(normal)
+    rerender(<FigurKrop handling="arbejder" ring="rolig" laener={null} grimasse="smil" />)
+    expect(container.querySelector('.figur-ansigt.a-fokus')).not.toBeNull()
+  })
+  it('øjnene følger musen diskret, også når den er langt væk', () => {
+    expect(blikFraMus({ x: 900, y: 500 }, { x: 100, y: 500 }).x).toBeGreaterThan(0)
+    expect(blikFraMus({ x: 900, y: 500 }, { x: 100, y: 500 }).x).toBeLessThanOrEqual(2)
+    expect(blikFraMus({ x: 100, y: 100 }, { x: 100, y: 100 })).toEqual({ x: 0, y: 0 })
+  })
   it('hver tilstand har en handling — Codex-kortlaegningen', () => {
     expect(HANDLING_FOR).toEqual({ idle: 'hvile', running: 'arbejder', waiting: 'venter', failed: 'fejlede', review: 'faerdig' })
   })
@@ -73,6 +87,8 @@ describe('FigurApp', () => {
       traekStart: vi.fn().mockResolvedValue(undefined), traek: vi.fn().mockResolvedValue(undefined),
       traekSlut: vi.fn().mockResolvedValue(undefined), hoejde: vi.fn().mockResolvedValue(undefined),
       aabnSamtale: vi.fn().mockResolvedValue(undefined),
+      menu: vi.fn().mockResolvedValue(undefined),
+      snapshot: vi.fn().mockResolvedValue({ cursor: { x: 900, y: 500 }, bounds: { x: 0, y: 0 }, side: 'under' }),
     },
   }
   beforeEach(() => {
@@ -114,6 +130,14 @@ describe('FigurApp', () => {
     await screen.findByText('Svaret er klar')
     fireEvent.click(screen.getByLabelText('Skjul boblen'))
     await waitFor(() => expect(screen.queryByText('Svaret er klar')).toBeNull())
+  })
+
+  it('højreklik åbner figurens menu, og boblen vender under figuren nær skærmens top', async () => {
+    apiFetch.mockResolvedValue(o('review', { tekst: 'Svaret er klar' }))
+    const { container } = render(<FigurApp />)
+    await waitFor(() => expect(container.querySelector('.figur-rod.boble-under')).not.toBeNull())
+    fireEvent.contextMenu(screen.getByTestId('figur'))
+    expect(bro.figur.menu).toHaveBeenCalledOnce()
   })
 
   it('hilser naar den vaagner (Codex: first-awake → waving)', async () => {

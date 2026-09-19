@@ -3,7 +3,7 @@ import { AudioLines, ChevronDown, ChevronUp, SendHorizontal, SquarePen } from 'l
 import { apiFetch, type ApiConfig } from '../lib/api'
 import type { Opmaerksomhed } from '../lib/opmaerksomhed'
 import { FigurKrop } from './FigurKrop'
-import { HANDLING_FOR, boble, maalHoejde, type Handling } from './figurLogik'
+import { HANDLING_FOR, blikFraMus, boble, maalHoejde, type Handling } from './figurLogik'
 import { sendHurtigt } from './hurtigChat'
 import './figur.css'
 
@@ -13,7 +13,9 @@ interface FigurBro {
     traekStart: (mx: number, my: number) => Promise<void>
     traek: (mx: number, my: number) => Promise<void>
     traekSlut: () => Promise<void>
-    hoejde: (h: number) => Promise<void>
+    hoejde: (h: number, contentHeight?: number, figureCenter?: number, side?: 'over' | 'under', currentCenter?: number) => Promise<void>
+    snapshot?: () => Promise<{ cursor: { x: number; y: number }; bounds: { x: number; y: number }; side: 'over' | 'under' }>
+    menu?: () => Promise<void>
     aabnSamtale: (sessionId: string | null) => Promise<void>
     stemme: () => Promise<void>
   }
@@ -49,6 +51,8 @@ export function FigurApp() {
   const [afvist, setAfvist] = useState<string | null>(null)
   const [laener, setLaener] = useState<'venstre' | 'hoejre' | null>(null)
   const [blik, setBlik] = useState({ x: 0, y: 0 })
+  const [side, setSide] = useState<'over' | 'under'>('over')
+  const [grimasse, setGrimasse] = useState<'smil' | 'undren' | null>(null)
   const [pakket, setPakket] = useState(false)
   const [skriver, setSkriver] = useState(false)
   const [udkast, setUdkast] = useState('')
@@ -56,8 +60,11 @@ export function FigurApp() {
   const [kvittering, setKvittering] = useState<string | null>(null)
   const [sendFejl, setSendFejl] = useState<string | null>(null)
   const rodRef = useRef<HTMLDivElement>(null)
+  const grebRef = useRef<HTMLDivElement>(null)
   const traek = useRef<{ x: number; y: number; sidstX: number; flytter: boolean } | null>(null)
   const forrigeTilstand = useRef<string>('idle')
+  const sidstMus = useRef<{ x: number; y: number; tid: number } | null>(null)
+  const hvileBlik = useRef<{ x: number; y: number } | null>(null)
 
   useEffect(() => {
     document.documentElement.classList.add('figur-flade')
@@ -88,6 +95,52 @@ export function FigurApp() {
     setHandling(HANDLING_FOR[t])
   }, [o?.tilstand])
 
+  // Cursorens skærmposition kommer fra Electron: DOM-events ser kun markøren
+  // inde i det lille transparente figurvindue.
+  useEffect(() => {
+    const snapshot = bro()?.figur.snapshot
+    if (!snapshot) return
+    let aktiv = true
+    const tick = async () => {
+      try {
+        const s = await snapshot()
+        if (!aktiv) return
+        setSide((prev) => prev === s.side ? prev : s.side)
+        const old = sidstMus.current
+        if (!old || Math.hypot(s.cursor.x - old.x, s.cursor.y - old.y) > 2) {
+          sidstMus.current = { ...s.cursor, tid: Date.now() }
+          hvileBlik.current = null
+        }
+        const rect = grebRef.current?.getBoundingClientRect()
+        if (!rect) return
+        const eyeCenter = { x: s.bounds.x + rect.left + rect.width / 2, y: s.bounds.y + rect.top + rect.height * 0.42 }
+        const next = hvileBlik.current ?? blikFraMus(s.cursor, eyeCenter)
+        setBlik((prev) => Math.hypot(prev.x - next.x, prev.y - next.y) < 0.05 ? prev : next)
+      } catch { /* figuren kan være ved at lukke */ }
+    }
+    void tick()
+    const id = setInterval(() => { void tick() }, 140)
+    return () => { aktiv = false; clearInterval(id) }
+  }, [])
+
+  // Små spontane udtryk kun i hvile, og kun når systemet tillader animation.
+  useEffect(() => {
+    if (o?.tilstand && o.tilstand !== 'idle') { setGrimasse(null); return }
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return
+    let pause: ReturnType<typeof setTimeout>
+    let nulstil: ReturnType<typeof setTimeout>
+    const naeste = () => {
+      if (sidstMus.current && Date.now() - sidstMus.current.tid > 6000) {
+        hvileBlik.current = { x: (Math.random() - 0.5) * 2.5, y: (Math.random() - 0.5) * 1.8 }
+        setGrimasse(Math.random() < 0.7 ? 'smil' : 'undren')
+        nulstil = setTimeout(() => { hvileBlik.current = null; setGrimasse(null) }, 1100)
+      }
+      pause = setTimeout(naeste, 7500 + Math.random() * 6500)
+    }
+    pause = setTimeout(naeste, 7500 + Math.random() * 6500)
+    return () => { clearTimeout(pause); clearTimeout(nulstil); hvileBlik.current = null }
+  }, [o?.tilstand])
+
   // Vinduet skal være så lille som indholdet (Linux kan ikke lade klik gå
   // igennem gennemsigtige områder) — men i FASTE trin (figurLogik.maalHoejde),
   // og det krymper først når det har været mindre et stykke tid. Ellers
@@ -101,6 +154,7 @@ export function FigurApp() {
     return () => ro.disconnect()
   }, [])
   const meldt = useRef(0)
+  const meldtLayout = useRef('')
   const krymp = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const b = boble(o, afvist)
@@ -114,14 +168,26 @@ export function FigurApp() {
   useEffect(() => {
     if (!maal) return
     if (krymp.current) { clearTimeout(krymp.current); krymp.current = null }
+    const meld = (h: number) => {
+      const root = rodRef.current?.getBoundingClientRect()
+      const figure = grebRef.current?.getBoundingClientRect()
+      if (!root || !figure) return
+      const center = figure.top - root.top + figure.height / 2
+      const currentCenter = figure.top + figure.height / 2
+      const key = `${h}|${side}|${Math.round(root.height)}|${Math.round(center)}`
+      if (key === meldtLayout.current) return
+      meldtLayout.current = key
+      meldt.current = h
+      void bro()?.figur.hoejde(h, root.height, center, side, currentCenter)
+    }
     if (maal >= meldt.current) {
-      if (maal !== meldt.current) { meldt.current = maal; void bro()?.figur.hoejde(maal) }
+      meld(maal)
       return
     }
     // Mindre: vent — kommer boblen tilbage lige om lidt, skal vinduet ikke
     // have skrumpet og vokset imens.
-    krymp.current = setTimeout(() => { meldt.current = maal; void bro()?.figur.hoejde(maal) }, KRYMP_EFTER_MS)
-  }, [maal])
+    krymp.current = setTimeout(() => meld(maal), KRYMP_EFTER_MS)
+  }, [maal, side, maalt])
   useEffect(() => () => { if (krymp.current) clearTimeout(krymp.current) }, [])
 
   const send = async () => {
@@ -164,30 +230,22 @@ export function FigurApp() {
     setHandling('hopper')
     setAfvist(null)
   }
-  /**
-   * Blikket. Vinduet er lille, så markøren kan kun ses mens den er over
-   * figuren — det er altså når man nærmer sig for at klikke at han ser op.
-   * Forskydningen mættes ved 40 px, så øjnene ikke står og dirrer på midten.
-   */
+  /** Browser-preview uden Electron kan stadig reagere lokalt på markøren. */
   const kig = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (bro()?.figur.snapshot) return
     if (traek.current?.flytter) return
     const r = e.currentTarget.getBoundingClientRect()
-    const dx = e.clientX - (r.left + r.width / 2)
-    const dy = e.clientY - (r.top + r.height * 0.42)
-    const d = Math.hypot(dx, dy)
-    if (d < 0.5) { setBlik({ x: 0, y: 0 }); return }
-    // Et lille, roligt blik — et stort der fulgte markøren virkede overvågende.
-    const n = Math.min(1, d / 60) * 1
-    setBlik({ x: (dx / d) * n, y: (dy / d) * n })
+    setBlik(blikFraMus({ x: e.clientX, y: e.clientY }, { x: r.left + r.width / 2, y: r.top + r.height * 0.42 }))
   }
 
   return (
     <div
-      className="figur-rod"
+      className={`figur-rod${side === 'under' ? ' boble-under' : ''}`}
       ref={rodRef}
       data-tilstand={o?.tilstand ?? 'idle'}
       onPointerMove={kig}
-      onPointerLeave={() => setBlik({ x: 0, y: 0 })}
+      onPointerLeave={() => { if (!bro()?.figur.snapshot) setBlik({ x: 0, y: 0 }) }}
+      onContextMenu={(e) => { e.preventDefault(); void bro()?.figur.menu?.() }}
     >
       {vis ? (
         <div className={`figur-boble b-${vis.tilstand}`} role="status" data-testid="figur-boble">
@@ -206,6 +264,7 @@ export function FigurApp() {
       ) : null}
       <div
         className="figur-greb"
+        ref={grebRef}
         data-testid="figur"
         title="Klik for at hoppe · træk for at flytte · dobbeltklik åbner Jarvis"
         onPointerDown={ned}
@@ -215,7 +274,7 @@ export function FigurApp() {
         onDoubleClick={() => void bro()?.figur.aabnSamtale(null)}
       >
         <div onAnimationEnd={(e) => { if (e.target === e.currentTarget.firstElementChild && handling !== 'hvile') setHandling('hvile') }}>
-          <FigurKrop handling={handling} ring={o?.tilstand === 'running' ? 'hurtig' : 'rolig'} laener={laener} blik={blik} />
+          <FigurKrop handling={handling} ring={o?.tilstand === 'running' ? 'hurtig' : 'rolig'} laener={laener} blik={blik} grimasse={grimasse} />
         </div>
       </div>
       {/* Codex' tre ikoner under figuren. Vist når der er noget at vise —

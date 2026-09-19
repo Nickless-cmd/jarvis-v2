@@ -16,29 +16,39 @@
  * Vinduet er så lille som indholdet: på Linux kan Electron ikke lade tryk gå
  * igennem gennemsigtige områder og samtidig se musen (`forward` findes kun på
  * macOS/Windows), så et stort gennemsigtigt vindue ville stjæle klik fra
- * skrivebordet under det. Renderer'en melder sin størrelse, og vinduet vokser
- * OPAD fra figurens fødder, så figuren står stille når taleboblen kommer.
+ * skrivebordet under det. Renderer'en melder størrelse og figurens midtpunkt;
+ * vinduet flyttes omkring det punkt, når taleboblen vokser eller skifter side.
  */
-import { app, BrowserWindow, ipcMain, screen } from 'electron'
+import { app, BrowserWindow, ipcMain, Menu, screen } from 'electron'
 import fs from 'node:fs'
 import path from 'node:path'
+import { bobleSide, vindueTop, type BobleSide } from './figurPlacering'
 
 const BREDDE = 300
 const MIN_HOEJDE = 150
 const MARGEN = 24
 
-interface FigurTilstand { vist: boolean; x?: number; y?: number }
+interface FigurTilstand {
+  vist: boolean; x?: number; y?: number
+  /** Nye positioner gemmer figurens midte; ældre positioner gemte vinduets bund. */
+  anker?: 'figur'
+  hoejde?: number
+  offsetY?: number
+}
 
 let figur: BrowserWindow | null = null
 let tilstand: FigurTilstand = { vist: true }
 let hoejde = MIN_HOEJDE
+let indholdHoejde = MIN_HOEJDE
+let figurMidte = 72
+let side: BobleSide = 'over'
 
 const fil = () => path.join(app.getPath('userData'), 'figur.json')
 
 function laes(): FigurTilstand {
   try {
     const d = JSON.parse(fs.readFileSync(fil(), 'utf8')) as Partial<FigurTilstand>
-    return { vist: d.vist !== false, x: d.x, y: d.y }
+    return { vist: d.vist !== false, x: d.x, y: d.y, anker: d.anker, hoejde: d.hoejde, offsetY: d.offsetY }
   } catch {
     return { vist: true }
   }
@@ -51,7 +61,7 @@ function gem(): void {
   } catch { /* ikke kritisk — pladsen er en bekvemmelighed */ }
 }
 
-/** Fødderne: nederste midtpunkt. Figuren står der, uanset vinduets højde. */
+/** Gemt anker: figurens midte (nyere) eller vinduets bund (ældre data). */
 function fodpunkt(): { x: number; y: number } {
   const wa = screen.getPrimaryDisplay().workArea
   const standard = { x: wa.x + wa.width - MARGEN - BREDDE / 2, y: wa.y + wa.height - MARGEN }
@@ -68,13 +78,17 @@ function fodpunkt(): { x: number; y: number } {
 function placer(): void {
   if (!figur) return
   const f = fodpunkt()
-  figur.setBounds({ x: Math.round(f.x - BREDDE / 2), y: Math.round(f.y - hoejde), width: BREDDE, height: hoejde })
+  const y = tilstand.anker === 'figur'
+    ? (tilstand.offsetY == null ? vindueTop(f.y, hoejde, indholdHoejde, figurMidte, side) : Math.round(f.y - tilstand.offsetY))
+    : Math.round(f.y - hoejde)
+  figur.setBounds({ x: Math.round(f.x - BREDDE / 2), y, width: BREDDE, height: hoejde })
 }
 
 export function opretFigur(preload: string, indlaes: (w: BrowserWindow, hash: string) => void): void {
   if (figur) return
   tilstand = laes()
   if (!tilstand.vist) return
+  hoejde = tilstand.hoejde ?? MIN_HOEJDE
   figur = new BrowserWindow({
     width: BREDDE,
     height: hoejde,
@@ -155,11 +169,44 @@ export function registrerFigurIpc(opts: {
     start = null
     gem()
   })
-  ipcMain.handle('figur:hoejde', (_e, h: number) => {
+  ipcMain.handle('figur:hoejde', (_e, h: number, contentH?: number, center?: number, nextSide?: BobleSide, currentCenter?: number) => {
     const ny = Math.max(MIN_HOEJDE, Math.min(560, Math.round(h)))
-    if (ny === hoejde) return
+    if (typeof contentH !== 'number' || typeof center !== 'number' || !nextSide || typeof currentCenter !== 'number' || !figur) {
+      if (ny !== hoejde) { hoejde = ny; placer() }
+      return
+    }
+    if (tilstand.anker !== 'figur') {
+      const bounds = figur.getBounds()
+      tilstand = { ...tilstand, x: bounds.x + BREDDE / 2, y: bounds.y + currentCenter, anker: 'figur' }
+    }
     hoejde = ny
+    indholdHoejde = Math.max(1, Math.round(contentH))
+    figurMidte = center
+    side = nextSide
+    const anchorY = tilstand.y!
+    tilstand = { ...tilstand, hoejde: ny, offsetY: anchorY - vindueTop(anchorY, ny, indholdHoejde, figurMidte, side) }
     placer()
+    gem()
+  })
+  ipcMain.handle('figur:snapshot', () => {
+    const f = fodpunkt()
+    const display = screen.getDisplayNearestPoint({ x: Math.round(f.x), y: Math.round(f.y) })
+    return {
+      cursor: screen.getCursorScreenPoint(),
+      bounds: figur?.getBounds() ?? { x: 0, y: 0 },
+      side: bobleSide(f.y, display.workArea),
+    }
+  })
+  ipcMain.handle('figur:menu', (event) => {
+    const target = BrowserWindow.fromWebContents(event.sender) ?? figur
+    if (!target) return
+    Menu.buildFromTemplate([{
+      label: 'Skjul figur',
+      click: () => {
+        saetFigurVist(false, opts.preload, opts.indlaes)
+        opts.onVistAendret?.(false)
+      },
+    }]).popup({ window: target })
   })
   ipcMain.handle('figur:aabnSamtale', (_e, sessionId: string | null) => opts.aabnSamtale(sessionId))
   ipcMain.handle('figur:stemme', () => opts.stemme())

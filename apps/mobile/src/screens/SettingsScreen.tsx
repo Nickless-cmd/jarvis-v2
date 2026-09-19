@@ -34,6 +34,7 @@ import { loadOutbox } from '../lib/offlineOutbox'
 import { NotificationsSection } from '../components/NotificationsSection'
 import { AppearanceSection } from '../components/AppearanceSection'
 import { LanguageSection } from '../components/LanguageSection'
+import { SvarstilSection } from '../components/SvarstilSection'
 import { useI18n } from '../i18n/I18nContext'
 
 const CONN_LABEL: Record<string, string> = {
@@ -290,6 +291,7 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
         {/* Plugins / connectors */}
         <AppearanceSection />
         <LanguageSection config={config ?? null} currentLanguage={profile?.language} />
+        <SvarstilSection config={config ?? null} />
 
         <Text style={styles.sectionTitle}>Tilsluttede tjenester</Text>
         <View style={styles.card}>

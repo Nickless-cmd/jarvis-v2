@@ -35,7 +35,7 @@ export const COWORK_ZONES: ReadonlyArray<{
   { id: 'notifications', label: 'Notifikationer', icon: 'Bell', group: 'Konto' },
 
   { id: 'appearance', label: 'Udseende', icon: 'Palette', group: 'Tilpasning' },
-  { id: 'sprog', label: 'Sprog', icon: 'Languages', group: 'Tilpasning' },
+  { id: 'sprog', label: 'Sprog og svarstil', icon: 'Languages', group: 'Tilpasning' },
   { id: 'location', label: 'Placering', icon: 'MapPin', group: 'Tilpasning' },
   { id: 'presence', label: 'Tilstedeværelse', icon: 'Sparkles', group: 'Tilpasning', ownerOnly: true },
 

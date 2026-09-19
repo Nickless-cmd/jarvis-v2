@@ -14,6 +14,7 @@ import { AccountSection } from '../components/settings/AccountSection'
 import { KvoteSection } from '../components/settings/KvoteSection'
 import { ThemeSection } from '../components/settings/ThemeSection'
 import { SprogSection } from '../components/settings/SprogSection'
+import { SvarstilSection } from '../components/settings/SvarstilSection'
 import { WorkspaceSection } from '../components/settings/WorkspaceSection'
 import { MemorySection } from '../components/settings/MemorySection'
 import { PermissionsSection } from '../components/settings/PermissionsSection'
@@ -99,7 +100,10 @@ export function CoworkView(
       case 'notifications': return wrap(<NotificationsSection config={config} />)
 
       case 'appearance': return wrap(<ThemeSection />)
-      case 'sprog': return wrap(<SprogSection config={config} />)
+      case 'sprog': return wrap(<>
+        <SprogSection config={config} />
+        <SvarstilSection config={config} />
+      </>)
       case 'location': return wrap(<LocationSection />)
       case 'presence': return wrap(<PresenceSection />)
 

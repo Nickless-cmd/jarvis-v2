@@ -2,6 +2,53 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/system_cartographer.py`
+_System Cartographer — broad map of Jarvis' runtime and inner layers._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `build_system_cartographer_surface` | `(*, auto_enqueue=…)` | — | [src](../../../core/services/system_cartographer.py#L42) |
+| function | `start_system_cartographer_daemon` | `()` | — | [src](../../../core/services/system_cartographer.py#L127) |
+| function | `stop_system_cartographer_daemon` | `()` | — | [src](../../../core/services/system_cartographer.py#L137) |
+| function | `_observe_to_central` | `(surface)` | System-cluster: MELD kartografens kort til Den Intelligente Central (self-safe). | [src](../../../core/services/system_cartographer.py#L141) |
+| function | `_observe_gaps_to_central` | `(surface)` | Jarvis' handlingsordre (docs/notes/2026-07-01-cartographer-to-central.md, P1): meld | [src](../../../core/services/system_cartographer.py#L174) |
+| function | `_loop` | `()` | — | [src](../../../core/services/system_cartographer.py#L231) |
+| function | `_service_files` | `()` | — | [src](../../../core/services/system_cartographer.py#L245) |
+| function | `_service_node` | `(path, text)` | — | [src](../../../core/services/system_cartographer.py#L261) |
+| function | `_daemon_nodes` | `()` | — | [src](../../../core/services/system_cartographer.py#L288) |
+| function | `_surface_nodes` | `(services)` | — | [src](../../../core/services/system_cartographer.py#L311) |
+| function | `_event_family_nodes` | `(services)` | — | [src](../../../core/services/system_cartographer.py#L323) |
+| function | `_edges` | `(*, services, daemons, surfaces, event_families, causal)` | — | [src](../../../core/services/system_cartographer.py#L335) |
+| function | `_causal_runtime_evidence` | `(limit=…)` | — | [src](../../../core/services/system_cartographer.py#L366) |
+| function | `_dark_edges` | `(services)` | — | [src](../../../core/services/system_cartographer.py#L425) |
+| function | `_rank_dark_edges` | `(dark_edges, *, causal, daemons)` | — | [src](../../../core/services/system_cartographer.py#L439) |
+| function | `_coverage_summary` | `(services)` | — | [src](../../../core/services/system_cartographer.py#L479) |
+| function | `_is_pure_utility` | `(service)` | Detect services that are pure helpers — no observable state, no IO, | [src](../../../core/services/system_cartographer.py#L502) |
+| function | `_coverage_score` | `(service)` | — | [src](../../../core/services/system_cartographer.py#L528) |
+| function | `_system_health_from_jarvis_perspective` | `(*, dark_edges, coverage, theater, recommended)` | — | [src](../../../core/services/system_cartographer.py#L558) |
+| function | `_dark_edge_score` | `(*, service, kind, is_daemon, has_causal_family)` | — | [src](../../../core/services/system_cartographer.py#L588) |
+| function | `_priority_label` | `(score)` | — | [src](../../../core/services/system_cartographer.py#L612) |
+| function | `_luk_opgaver_scanningen_ikke_flager` | `(surface)` | Luk reparations-opgaver hvis mål ikke længere står i scanningen. | [src](../../../core/services/system_cartographer.py#L620) |
+| function | `_observability_task_from_dark_edge` | `(edge)` | — | [src](../../../core/services/system_cartographer.py#L686) |
+| function | `_maybe_enqueue_observability_task` | `(candidate)` | — | [src](../../../core/services/system_cartographer.py#L704) |
+| function | `_find_existing_observability_task` | `(candidate)` | — | [src](../../../core/services/system_cartographer.py#L751) |
+| function | `_maybe_enqueue_theater_task` | `(candidate)` | — | [src](../../../core/services/system_cartographer.py#L768) |
+| function | `_find_existing_theater_task` | `(candidate)` | — | [src](../../../core/services/system_cartographer.py#L815) |
+| function | `_runtime_task_priority` | `(priority)` | — | [src](../../../core/services/system_cartographer.py#L833) |
+| function | `_theater_audit_surface` | `()` | — | [src](../../../core/services/system_cartographer.py#L840) |
+| function | `_tool_count` | `()` | — | [src](../../../core/services/system_cartographer.py#L853) |
+| function | `_classify_service` | `(*, name, text)` | — | [src](../../../core/services/system_cartographer.py#L862) |
+
+## `core/services/tanke_resume.py`
+_Én linje om hvad Jarvis TÆNKTE i en runde — til visningstilstanden «Tænkning»._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_klip` | `(s, n)` | — | [src](../../../core/services/tanke_resume.py#L45) |
+| function | `byg_prompt` | `(tanke, hensigt=…)` | — | [src](../../../core/services/tanke_resume.py#L50) |
+| function | `_ryd` | `(s)` | — | [src](../../../core/services/tanke_resume.py#L61) |
+| function | `tanke_resume` | `(tanke, hensigt=…)` | Én linje om rundens tænkning, eller `""`. | [src](../../../core/services/tanke_resume.py#L75) |
+
 ## `core/services/task_worker.py`
 _Task worker — consumes queued runtime_tasks in heartbeat tick cadence._
 
@@ -540,45 +587,4 @@ _Provider-agnostic tool-result aging for the visible agentic loop._
 | function | `_clear_placeholder` | `(n)` | — | [src](../../../core/services/tool_result_aging.py#L66) |
 | function | `_is_already_aged` | `(content)` | — | [src](../../../core/services/tool_result_aging.py#L70) |
 | function | `age_tool_results` | `(exchanges, *, keep_full=…, mode, strength, round_index, compress_fn=…, trigger_tokens=…)` | Age tool-result content on exchanges older than the ``keep_full`` most recent. | [src](../../../core/services/tool_result_aging.py#L74) |
-
-## `core/services/tool_result_store.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `summarize_result` | `(content, max_length=…)` | — | [src](../../../core/services/tool_result_store.py#L26) |
-| function | `save_tool_result` | `(tool_name, arguments, result_content, *, created_at=…)` | — | [src](../../../core/services/tool_result_store.py#L33) |
-| function | `get_tool_result` | `(result_id, *, user_id=…)` | Hent en gemt handle. | [src](../../../core/services/tool_result_store.py#L95) |
-| function | `cleanup_old_results` | `(max_age_days=…)` | — | [src](../../../core/services/tool_result_store.py#L157) |
-| function | `build_tool_result_reference` | `(result_id, *, tool_name, summary)` | — | [src](../../../core/services/tool_result_store.py#L184) |
-| function | `parse_tool_result_reference` | `(content)` | — | [src](../../../core/services/tool_result_store.py#L196) |
-| function | `render_tool_result_for_prompt` | `(content, *, expand, max_chars=…, stub=…)` | — | [src](../../../core/services/tool_result_store.py#L217) |
-| function | `_redact` | `(tekst)` | Maskér hemmeligheder i METADATA. Kaster aldrig. | [src](../../../core/services/tool_result_store.py#L267) |
-| function | `_redigeret` | `(args)` | Argumenterne som de skal LIGGE PAA DISKEN. | [src](../../../core/services/tool_result_store.py#L276) |
-| function | `_digest` | `(text)` | sha256 over indholdet. Handlen kan dermed VERIFICERES, ikke kun slås op. | [src](../../../core/services/tool_result_store.py#L299) |
-| function | `_sikr_privat_rod` | `()` | Roden er 0700 — kun ejeren. Værktøjsresultater indeholder alt hvad et | [src](../../../core/services/tool_result_store.py#L304) |
-| class | `UnsafeResultId` | `` | `result_id` peger uden for storen — eller kunne gøre det. | [src](../../../core/services/tool_result_store.py#L320) |
-| function | `_result_path` | `(result_id)` | Stien til ét resultat. Afviser alt der kan pege ud af roden. | [src](../../../core/services/tool_result_store.py#L324) |
-| function | `_prefixed_tool_text` | `(tool_name, text)` | — | [src](../../../core/services/tool_result_store.py#L347) |
-| function | `_parse_dt` | `(value)` | — | [src](../../../core/services/tool_result_store.py#L355) |
-| function | `repair_permissions` | `()` | Saet 0600 paa gamle handles der blev skrevet foer O_EXCL-stien fandtes. | [src](../../../core/services/tool_result_store.py#L370) |
-
-## `core/services/tool_round_label.py`
-_Én kort etiket for en afsluttet værktøjs-runde — «Rettede NPE i UserService»._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_model` | `()` | — | [src](../../../core/services/tool_round_label.py#L123) |
-| function | `_base_url` | `()` | — | [src](../../../core/services/tool_round_label.py#L134) |
-| function | `_klip` | `(v, maks)` | Kort, én linje, og aldrig `None` som teksten «None». | [src](../../../core/services/tool_round_label.py#L145) |
-| function | `_navn_og_input` | `(v)` | Navn og argumenter, uanset hvilken form kaldet har. | [src](../../../core/services/tool_round_label.py#L154) |
-| function | `byg_prompt` | `(vaerktoejer, hensigt=…)` | Det kompakte billede af runden som modellen får. | [src](../../../core/services/tool_round_label.py#L168) |
-| function | `_kald_model` | `(prompt)` | — | [src](../../../core/services/tool_round_label.py#L196) |
-| function | `_klip_haengende` | `(s, blev_klippet)` | Få en klippet etiket til at slutte hvor et led slutter. | [src](../../../core/services/tool_round_label.py#L233) |
-| function | `_ryd` | `(s)` | Én linje, uden instruktion, uden anførselstegn, uden punktum, klippet | [src](../../../core/services/tool_round_label.py#L257) |
-| function | `_opdigtet` | `(tekst, billede)` | Hvilket navn i etiketten står IKKE i kaldene? `""` når alt er dækket. | [src](../../../core/services/tool_round_label.py#L282) |
-| function | `_er_kommandolinje` | `(s)` | Er etiketten bare kommandoen igen? | [src](../../../core/services/tool_round_label.py#L325) |
-| function | `_verbum_lyver` | `(tekst, kald)` | Påstår etiketten en ændring i en runde der kun læste? | [src](../../../core/services/tool_round_label.py#L358) |
-| function | `_har_egen_beskrivelse` | `(kald)` | Er runden ÉT kald der bærer en brugbar `description`? | [src](../../../core/services/tool_round_label.py#L373) |
-| function | `etiket` | `(vaerktoejer, hensigt=…)` | Én kort etiket for runden, eller `""`. | [src](../../../core/services/tool_round_label.py#L393) |
-| function | `tool_use_ids` | `(vaerktoejer)` | Hvilke kald etiketten dækker. | [src](../../../core/services/tool_round_label.py#L432) |
 

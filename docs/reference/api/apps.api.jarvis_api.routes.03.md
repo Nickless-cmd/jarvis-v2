@@ -2,6 +2,17 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `apps/api/jarvis_api/routes/push.py`
+_Push token-registrering. Scoper til den auth'ede bruger._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `RegisterBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/push.py#L12) |
+| class | `UnregisterBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/push.py#L17) |
+| function | `_current_user` | `()` | — | [src](../../../apps/api/jarvis_api/routes/push.py#L21) |
+| function | `register` | `(body)` | — | [src](../../../apps/api/jarvis_api/routes/push.py#L27) |
+| function | `unregister` | `(body)` | — | [src](../../../apps/api/jarvis_api/routes/push.py#L36) |
+
 ## `apps/api/jarvis_api/routes/review.py`
 _Review: hvad er der faktisk ændret, og hvad bør man kigge efter?_
 

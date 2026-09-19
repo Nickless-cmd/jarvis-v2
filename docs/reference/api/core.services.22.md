@@ -426,6 +426,16 @@ _Session topic tracker — real-time topic extraction and accumulation._
 | function | `build_session_topics_prompt_section` | `(session_id=…)` | Build a compact section showing active topics for this session. | [src](../../../core/services/session_topic_tracker.py#L316) |
 | function | `clear_session_topics` | `(session_id)` | Clear in-memory topics for a session. Called at session end. | [src](../../../core/services/session_topic_tracker.py#L354) |
 
+## `core/services/session_view.py`
+_Samtalens visningstilstand — Claude Desktops tre (cc-desktop-chatview.md §1)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_sikr_kolonne` | `(conn)` | — | [src](../../../core/services/session_view.py#L33) |
+| function | `hent_visning` | `(session_id)` | Samtalens tilstand; `normal` for en ukendt samtale eller værdi. | [src](../../../core/services/session_view.py#L40) |
+| function | `saet_visning` | `(session_id, visning)` | — | [src](../../../core/services/session_view.py#L58) |
+| function | `vil_have_tanke_resume` | `(session_id)` | Skal kørslen lave tænke-resuméer for denne samtale? Kaster aldrig. | [src](../../../core/services/session_view.py#L75) |
+
 ## `core/services/session_wakeup.py`
 _Eventbus → visible-prompt wake-up digest._
 
@@ -616,23 +626,4 @@ _Signal decay daemon — archive and delete stale signals across all signal tabl
 | function | `tick_signal_decay_daemon` | `()` | Run signal decay if cadence elapsed. Returns stats dict. | [src](../../../core/services/signal_decay_daemon.py#L35) |
 | function | `get_signal_decay_stats` | `()` | — | [src](../../../core/services/signal_decay_daemon.py#L91) |
 | function | `build_signal_decay_surface` | `()` | — | [src](../../../core/services/signal_decay_daemon.py#L98) |
-
-## `core/services/signal_delta_trigger.py`
-_Signal-delta trigger (C2) — pure, NON-LLM event-driven dispatch decision._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_scoped_key` | `(base, scope)` | Namespace a durable key by ``scope``. None → the global key, unchanged. | [src](../../../core/services/signal_delta_trigger.py#L43) |
-| function | `_db` | `()` | Lazy import so this module is importable/pure without a live DB, and so | [src](../../../core/services/signal_delta_trigger.py#L57) |
-| function | `_baseline` | `()` | Lazy import of C1's baseline module (built in parallel). | [src](../../../core/services/signal_delta_trigger.py#L65) |
-| function | `_bl_is_cold_start` | `(baseline, scope)` | — | [src](../../../core/services/signal_delta_trigger.py#L76) |
-| function | `_bl_get` | `(baseline, name, scope)` | — | [src](../../../core/services/signal_delta_trigger.py#L82) |
-| function | `_bl_set` | `(baseline, name, val, scope)` | — | [src](../../../core/services/signal_delta_trigger.py#L88) |
-| function | `_cfg_float` | `(db, name, default)` | — | [src](../../../core/services/signal_delta_trigger.py#L95) |
-| function | `_load_float` | `(db, key, default)` | — | [src](../../../core/services/signal_delta_trigger.py#L102) |
-| function | `_store_float` | `(db, key, value)` | — | [src](../../../core/services/signal_delta_trigger.py#L109) |
-| function | `_load_hot` | `(db, key=…)` | — | [src](../../../core/services/signal_delta_trigger.py#L116) |
-| function | `_store_hot` | `(db, hot, key=…)` | — | [src](../../../core/services/signal_delta_trigger.py#L126) |
-| function | `_reason` | `(crossed, movements, theta_abs)` | — | [src](../../../core/services/signal_delta_trigger.py#L133) |
-| function | `evaluate` | `(signals, scope=…)` | Decide whether a real change warrants a dispatch. | [src](../../../core/services/signal_delta_trigger.py#L141) |
 

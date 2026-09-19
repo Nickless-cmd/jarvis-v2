@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 15029 functions/methods, 51% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 15040 functions/methods, 51% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -8,9 +8,9 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 15029 functions/
 
 - [`apps.api.jarvis_api`](apps.api.jarvis_api.md)
 - [`apps.api.jarvis_api.middleware`](apps.api.jarvis_api.middleware.md)
-- [`apps.api.jarvis_api.routes.01`](apps.api.jarvis_api.routes.01.md) — `__init__` … `cowork`
-- [`apps.api.jarvis_api.routes.02`](apps.api.jarvis_api.routes.02.md) — `files` … `push`
-- [`apps.api.jarvis_api.routes.03`](apps.api.jarvis_api.routes.03.md) — `review` … `workbench`
+- [`apps.api.jarvis_api.routes.01`](apps.api.jarvis_api.routes.01.md) — `__init__` … `connectors`
+- [`apps.api.jarvis_api.routes.02`](apps.api.jarvis_api.routes.02.md) — `cowork` … `provider_registry`
+- [`apps.api.jarvis_api.routes.03`](apps.api.jarvis_api.routes.03.md) — `push` … `workbench`
 - [`apps.api.jarvis_api.schemas`](apps.api.jarvis_api.schemas.md)
 - [`apps.central_cli.central_cli`](apps.central_cli.central_cli.md)
 - [`apps.desktop`](apps.desktop.md)
@@ -50,12 +50,12 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 15029 functions/
 - [`core.services.19`](core.services.19.md) — `prompt_support_signals` … `relation_dynamics`
 - [`core.services.20`](core.services.20.md) — `relation_map` … `runtime_hooks`
 - [`core.services.21`](core.services.21.md) — `runtime_learning_signals` … `self_review_cadence_signal_tracking`
-- [`core.services.22`](core.services.22.md) — `self_review_outcome_tracking` … `signal_delta_trigger`
-- [`core.services.23`](core.services.23.md) — `signal_network_visualizer` … `system_cartographer`
-- [`core.services.24`](core.services.24.md) — `task_worker` … `tool_round_label`
-- [`core.services.25`](core.services.25.md) — `tool_router` … `visible_model_adapters`
-- [`core.services.26`](core.services.26.md) — `visible_model_observe` … `workspace_crypto`
-- [`core.services.27`](core.services.27.md) — `workspace_trust` … `world_model_signal_tracking`
+- [`core.services.22`](core.services.22.md) — `self_review_outcome_tracking` … `signal_decay_daemon`
+- [`core.services.23`](core.services.23.md) — `signal_delta_trigger` … `sustained_attention`
+- [`core.services.24`](core.services.24.md) — `system_cartographer` … `tool_result_aging`
+- [`core.services.25`](core.services.25.md) — `tool_result_store` … `visible_inner_life`
+- [`core.services.26`](core.services.26.md) — `visible_model` … `weekly_manifest`
+- [`core.services.27`](core.services.27.md) — `witness_signal_tracking` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

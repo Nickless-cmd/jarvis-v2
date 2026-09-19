@@ -539,6 +539,16 @@ _`GET /chat/artifacts` — filerne Jarvis har rørt i en mappe, paa tvaers af sa
 |---|---|---|---|---|
 | function | `chat_artifacts` | `(root=…, limit=…)` | Filer skrevet/rettet under `root`, nyeste foerst. `root` er en sti eller | [src](../../../apps/api/jarvis_api/routes/chat_artifacts.py#L22) |
 
+## `apps/api/jarvis_api/routes/chat_session_view.py`
+_`GET/PUT /chat/sessions/{id}/view` — samtalens visningstilstand._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `SessionViewRequest` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat_session_view.py#L18) |
+| function | `_tjek_ejer` | `(session_id)` | — | [src](../../../apps/api/jarvis_api/routes/chat_session_view.py#L22) |
+| function | `chat_session_view` | `(session_id)` | Samtalens visningstilstand: normal, thinking eller verbose. | [src](../../../apps/api/jarvis_api/routes/chat_session_view.py#L33) |
+| function | `chat_set_session_view` | `(session_id, request)` | Skift samtalens visningstilstand. Gælder fra næste runde, også midt i et svar. | [src](../../../apps/api/jarvis_api/routes/chat_session_view.py#L41) |
+
 ## `apps/api/jarvis_api/routes/chat_stream_v2.py`
 _POST /chat/stream/v2 — Anthropic-style SSE protokol._
 
@@ -620,29 +630,4 @@ _Connectors-API til jarvis-desk Marketplace (16. jun 2026)._
 | function | `get_connectors` | `()` | — | [src](../../../apps/api/jarvis_api/routes/connectors.py#L27) |
 | function | `post_enabled` | `(connector_id, body)` | — | [src](../../../apps/api/jarvis_api/routes/connectors.py#L35) |
 | function | `delete_connector` | `(connector_id)` | — | [src](../../../apps/api/jarvis_api/routes/connectors.py#L46) |
-
-## `apps/api/jarvis_api/routes/cowork.py`
-_Cowork-dashboard routes. Tynde — al opsamling sker i core.services.cowork_feed,_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_role_owner` | `()` | (is_owner, user_id) for den indloggede bruger. Owner afgøres af bruger- | [src](../../../apps/api/jarvis_api/routes/cowork.py#L15) |
-| function | `_resolve_item` | `(item_id, decision)` | Router en godkendelses-beslutning til den rette eksisterende resolver. | [src](../../../apps/api/jarvis_api/routes/cowork.py#L31) |
-| function | `cowork_queue` | `()` | Godkendelses-kø for den indloggede bruger (owner ser alt). Bygges via | [src](../../../apps/api/jarvis_api/routes/cowork.py#L67) |
-| function | `cowork_plans` | `()` | Planer for den indloggede bruger (owner ser alt) via cowork_feed.list_plans | [src](../../../apps/api/jarvis_api/routes/cowork.py#L76) |
-| function | `cowork_todos` | `()` | Todo-feed for den indloggede bruger (owner ser alt) via | [src](../../../apps/api/jarvis_api/routes/cowork.py#L85) |
-| function | `cowork_create_todo` | `(payload=…)` | Opret en cowork-todo fra payload["content"]. Owner-only (403 ellers); | [src](../../../apps/api/jarvis_api/routes/cowork.py#L97) |
-| function | `cowork_set_todo_status` | `(todo_id, payload=…)` | Sæt status på en todo. Owner-only (403 ellers); status skal være en af | [src](../../../apps/api/jarvis_api/routes/cowork.py#L111) |
-| function | `cowork_delete_todo` | `(todo_id)` | Slet en todo. Owner-only (403 ellers). Kalder remove_todo_anywhere i to_thread. | [src](../../../apps/api/jarvis_api/routes/cowork.py#L125) |
-| function | `cowork_set_todo_expiry` | `(todo_id, payload=…)` | Sæt (eller ryd) udløbstidspunkt på en todo fra payload["expires_at"] — tom | [src](../../../apps/api/jarvis_api/routes/cowork.py#L135) |
-| function | `cowork_channels` | `()` | Kanal-status via cowork_feed.channel_status i to_thread. Owner-only (403 | [src](../../../apps/api/jarvis_api/routes/cowork.py#L148) |
-| function | `cowork_agents` | `()` | Aktive dispatch-agenter (§19.5 command center). Owner-only. | [src](../../../apps/api/jarvis_api/routes/cowork.py#L159) |
-| function | `cowork_approve` | `(item_id)` | Godkend et kø-item (proposal/initiative/capability) via _resolve_item i to_thread. | [src](../../../apps/api/jarvis_api/routes/cowork.py#L169) |
-| function | `cowork_reject` | `(item_id)` | Afvis et kø-item (proposal/initiative/capability) via _resolve_item i to_thread. | [src](../../../apps/api/jarvis_api/routes/cowork.py#L175) |
-| function | `cowork_share_guard` | `()` | Ventende "privat eller del?"-beslutninger via share_guard_store.list_pending | [src](../../../apps/api/jarvis_api/routes/cowork.py#L184) |
-| function | `cowork_share_guard_resolve` | `(decision_id, shared)` | Afgør en share-beslutning. shared=true → okay at dele; false → hold privat. | [src](../../../apps/api/jarvis_api/routes/cowork.py#L196) |
-| function | `cowork_ui_panel_pending` | `()` | Ventende UI-panel-åbnings-kald via ui_panel_store.list_pending i to_thread; | [src](../../../apps/api/jarvis_api/routes/cowork.py#L212) |
-| function | `cowork_ui_panel_ack` | `(request_id)` | Kvittér et UI-panel-kald som håndteret via ui_panel_store.ack_panel i to_thread. | [src](../../../apps/api/jarvis_api/routes/cowork.py#L221) |
-| function | `cowork_app_dispatch_pending` | `()` | Ventende runtime→app-instruktioner via app_dispatch_store.list_pending i | [src](../../../apps/api/jarvis_api/routes/cowork.py#L234) |
-| function | `cowork_app_dispatch_ack` | `(dispatch_id)` | Kvittér en app-dispatch som udført via app_dispatch_store.ack i to_thread. | [src](../../../apps/api/jarvis_api/routes/cowork.py#L243) |
 

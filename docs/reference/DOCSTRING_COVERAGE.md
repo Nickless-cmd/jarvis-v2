@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7737/15029 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7742/15040 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,7 +8,7 @@ Generated from source. 7737/15029 functions/methods documented (51%). The list b
 |---|---|---|---|
 | `apps.api.jarvis_api` | 34 | 36 | 94% |
 | `apps.api.jarvis_api.middleware` | 8 | 19 | 42% |
-| `apps.api.jarvis_api.routes` | 659 | 876 | 75% |
+| `apps.api.jarvis_api.routes` | 661 | 879 | 75% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 70 | 172 | 40% |
 | `apps.desktop` | 6 | 7 | 85% |
@@ -25,7 +25,7 @@ Generated from source. 7737/15029 functions/methods documented (51%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 657 | 1212 | 54% |
-| `core.services` | 5141 | 10308 | 49% |
+| `core.services` | 5144 | 10316 | 49% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 107 | 183 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -41,7 +41,7 @@ Generated from source. 7737/15029 functions/methods documented (51%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2153)
+## Undocumented public functions (2155)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L208)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1733,6 +1733,7 @@ Generated from source. 7737/15029 functions/methods documented (51%). The list b
 - `core/services/session_inbox.py` :: `stop_session_inbox` (L363)
 - `core/services/session_tool_pin.py` :: `build_session_tool_pin_surface` (L145)
 - `core/services/session_tool_pin.py` :: `clear` (L120)
+- `core/services/session_view.py` :: `saet_visning` (L58)
 - `core/services/session_wakeup.py` :: `last_seen_event_id` (L88)
 - `core/services/session_wakeup.py` :: `mark_seen` (L92)
 - `core/services/settlement_shadow.py` :: `taellere` (L60)
@@ -1822,6 +1823,7 @@ Generated from source. 7737/15029 functions/methods documented (51%). The list b
 - `core/services/system_cartographer.py` :: `build_system_cartographer_surface` (L42)
 - `core/services/system_cartographer.py` :: `start_system_cartographer_daemon` (L127)
 - `core/services/system_cartographer.py` :: `stop_system_cartographer_daemon` (L137)
+- `core/services/tanke_resume.py` :: `byg_prompt` (L50)
 - `core/services/taste_profile.py` :: `build_taste_profile_surface` (L155)
 - `core/services/taste_profile.py` :: `update_taste_async` (L125)
 - `core/services/telegram_gateway.py` :: `get_status` (L61)

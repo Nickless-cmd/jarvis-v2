@@ -208,3 +208,34 @@ ikke set.
 tydelig melding når en spand ligger under 15; analysen rapporterer V1 pr.
 spand. Når en spand ikke kan nå 15, er forsøget ugyldigt — kriteriet
 tilpasses ikke til hvad arkivet kan bære.
+
+---
+
+## Tillæg 3 — 2026-09-19: udfald — ugyldigt ved V1, før ét svar blev indsamlet
+
+Anden bygning (efter tillæg 1, probe-fil SHA-256
+`294909a0a1c70087d880b86b095fa8997ece5a0d620869c4f62ac63d023bd292`):
+
+    spand A:  9 prober  (18 forsøg — alle samtale-døgn i vinduet 2–7 dage)
+    spand B: 17 prober  (120 forsøg — loftet)
+    spand C: 18 prober  (120 forsøg — loftet)
+    i alt:   44         typer: fakta 24 · holdning 12 · tilsagn 8
+    afvist:  typefordeling 63 · i identitetsfilerne 61 · røber svaret 37 ·
+             ufuldstændig 29 · intet egnet punkt 23 · kaldfejl 1
+
+**V1 fejler** (tillæg 2: A < 15, og i alt < 45). Forsøget er **ugyldigt** som
+registreret. Der er ikke indsamlet ét eneste svar, og der indsamles ikke nogen
+på dette probe-sæt — kriteriet tilpasses ikke bagefter.
+
+Hvad udfaldet viser om designet, ikke om Jarvis:
+
+- **Spand A kan ikke nå 15 med dette arkiv.** 2–7 dage rummer kun 18
+  samtale-døgn i alt, og kun en del af dem bærer et efterprøvbart punkt.
+  Det er en egenskab ved spand-grænserne, ikke ved forsøgsloftet.
+- **B og C ramte forsøgsloftet**, og typefordelingen alene kasserede 63
+  ellers brugbare prober.
+
+Et nyt forsøg (fase 7b) kræver sin egen forhåndsregistrering, hvor spandene
+lægges efter arkivets målte kapacitet i samtale-døgn og forsøgsloftet sættes
+ud fra den — besluttet før nye prober bygges. Den levende selvmodel forbliver
+slukket indtil der findes et gyldigt nulpunkt.

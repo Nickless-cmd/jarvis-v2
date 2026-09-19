@@ -210,6 +210,35 @@ def _drive(monkeypatch, shape: str, *, run_id: str,
     # → LLM-fallback-kæder) mockes → hermetisk + hurtigt. De er fire-and-forget
     # daemon-tråde der kører EFTER assertions; her gøres de til no-ops.
     monkeypatch.setattr(vr, "_run_memory_postprocess", lambda *a, **k: None)
+    # Baggrundstråde må ikke overleve testen. Målt 19/9-2026: efterarbejdet
+    # (_post_process → hukommelse/distillation), de private lag (via
+    # visible_runs_outcomes, en udskillelse — patchen på vr ramte den ikke) og
+    # deres LLM-berigelse kørte videre EFTER testens monkeypatches var fjernet,
+    # og ramte så den ægte cheap lane: over 9.000 forbindelsesforsøg fordelt på
+    # 15 tests. Så de startes slet ikke her.
+    # vr importerer `threading` INDE i funktionerne, så der er intet
+    # vr.threading at patche. I stedet en underklasse af Thread, kun under
+    # testen (monkeypatch rydder op): den starter alt som normalt — undtagen
+    # netop efterarbejdets to funktioner. Underklasse, så isinstance holder.
+    import threading as _threading
+
+    class _TraadUdenEfterarbejde(_threading.Thread):
+        _SPRING_OVER = {"_post_process", "_drain_post_process"}
+
+        def start(self):  # noqa: D401
+            if getattr(getattr(self, "_target", None), "__name__", "") in self._SPRING_OVER:
+                return
+            super().start()
+
+    monkeypatch.setattr(_threading, "Thread", _TraadUdenEfterarbejde)
+    monkeypatch.setattr("core.services.visible_runs_outcomes.write_private_terminal_layers",
+                        lambda *a, **k: None)
+    # private_layer_pipeline har sin EGEN reference (from-import) — patch begge.
+    for _sted in ("core.memory.inner_llm_enrichment", "core.memory.private_layer_pipeline"):
+        monkeypatch.setattr(f"{_sted}.enrich_private_layers_async", lambda *a, **k: None)
+    # Efter-run-kognitionen (personlighed, oplevelse, smag, relation, recall)
+    # starter hver sin tråd der kalder cheap lane. Ikke det testene måler.
+    monkeypatch.setattr(vr, "_update_cognitive_systems_async", lambda *a, **k: None)
     monkeypatch.setattr(vr, "_track_runtime_candidates", lambda *a, **k: None)
     # set_last_visible_run_outcome → _persist_visible_run_outcome →
     # write_private_terminal_layers udløser et SYNKRONT inner-voice-LLM-kald

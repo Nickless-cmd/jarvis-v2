@@ -54,6 +54,8 @@ oprindelige besked → Jarvis fortsætter sømløst i den nye tilstand.
 Fravalgte alternativer:
 - **B) Store + polling** (spejl `ui_panel_store`): mere afkoblet, men kortet er
   ikke inline med samtalen, og det tilføjer polling-infrastruktur vi ikke behøver.
+  *(Fravalget gælder mutations-retningen. 19/9 blev B alligevel valgt for den
+  læsende retning — se opdateringen nederst.)*
 - **C) Ren prompt-instruktion** (Jarvis skriver "skift til code mode?" som tekst,
   desk tekst-matcher): skrøbeligt, ingen struktureret kontrakt. Afvist.
 
@@ -206,3 +208,43 @@ infrastruktur: `open_ui_panel` (findes allerede separat), `dispatch_agent`,
 - Ikke i scope: silent auto-switch (eksplicit afvist af Bjørn — altid spørg).
 - Ikke i scope: nye permission-niveauer udover `ask`/`trust`.
 - Ikke i scope: cross-device/remote app-styring (kun den lokale desk-session).
+
+## Opdatering 19/9-2026 — B blev alligevel valgt, for den læsende retning
+
+Fravalget af B ovenfor gælder stadig **mutations-retningen**: et mode- eller
+permission-skift kræver brugerens klik, og kortet skal stå inline i samtalen.
+Men da Jarvis skulle kunne *se* og *navigere* appen indefra, blev B valgt — og
+det var et valg, ikke en glidning, af to grunde:
+
+1. **Svaret bærer indhold.** `ui_panel_store` er fire-and-forget: den kan kun
+   kvittere «åbnet». De nye værktøjer skal vide *hvad der står på skærmen* og
+   *hvilke paneler der er åbne* — og når noget ikke kan lade sig gøre, give en
+   fejltekst der siger hvad der mangler. Det kræver en returvej.
+2. **Der er intet at give samtykke til.** Værktøjerne ændrer hvad der *vises*,
+   ikke hvad Jarvis *må*. Den ukrænkelige grænse ovenfor — at Jarvis aldrig selv
+   skifter mode eller permission — er urørt.
+
+Bygget som:
+
+| Del | Fil |
+|---|---|
+| Forespørgsels-protokollen (DB-backed, korreleret på request-id) | `core/runtime/db_view_requests.py` |
+| Værktøjerne: `desk_get_layout` · `desk_show_pane` · `desk_close_pane` | `core/tools/desk_view_tools.py` |
+| API-ruterne | `apps/api/jarvis_api/routes/ui_view_requests.py` |
+| Desk's svarer (`POLL_MS = 1500`) | `apps/jarvis-desk/src/components/ViewRequestWatcher.tsx` |
+
+Tre detaljer der er værd at kende:
+
+- **Den der spørger, venter.** `vent_paa_svar` poller i op til 5 s. En
+  forespørgsel ældre end 30 s regnes som forældet, så desk ikke udfører et
+  «vis diff» Jarvis for længst har opgivet.
+- **Et vindue der ikke viser samtalen, svarer ikke.** Med desk åben på to
+  maskiner kunne det forkerte vindue ellers melde «ikke åben» først. Værktøjets
+  frist siger så ærligt at samtalen ikke er på skærmen.
+- **Pollen kører kun når vinduet er synligt** (`document.visibilityState`), og
+  et tick kan ikke overlappe det næste — ét kald pr. 1,5 s i praksis, ikke i
+  teorien.
+
+Den polling-infrastruktur vi i juni kaldte «ikke nødvendig» er altså kommet til.
+Den er afgrænset til desk og koster ét kald pr. 1,5 s — og den købte os evnen
+til at svare med *indhold* i stedet for et kvitterings-flag.

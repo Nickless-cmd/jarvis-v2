@@ -1100,6 +1100,21 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 .queued-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .queued-cancel { background: none; border: none; color: var(--fg-3); cursor: pointer; font-size: 16px; line-height: 1; flex: 0 0 auto; }
 .queued-cancel:hover { color: var(--fg-1); }
+/* Tilbagespoling (Claude Desktop §8): over skrivefeltet, med Fortryd. */
+.tilbagespol-banner {
+  display: flex; align-items: center; gap: 10px; margin: 0 0 8px;
+  padding: 8px 10px; border-radius: 8px; font-size: 13px;
+  background: var(--bg-2); border: 1px solid var(--line); color: var(--fg-2);
+}
+.tilbagespol-tekst { flex: 1; min-width: 0; }
+.tilbagespol-hint { color: var(--fg-3); }
+.tilbagespol-fortryd {
+  flex: 0 0 auto; border: 1px solid var(--accent); background: none; color: var(--accent-text);
+  border-radius: 6px; padding: 3px 10px; font: inherit; font-weight: 600; cursor: pointer;
+}
+.tilbagespol-fortryd:hover { background: color-mix(in srgb, var(--accent) 15%, transparent); }
+.tilbagespol-fejl { color: var(--error-fg); }
+.tilbagespol-luk { background: none; border: none; color: var(--fg-3); cursor: pointer; font-size: 16px; line-height: 1; }
 .artifact-affordance {
   display: inline-flex; align-items: center; gap: 5px; margin: 6px 8px 0 0;
   background: var(--bg-2); border: 1px solid var(--line); color: var(--fg-2);

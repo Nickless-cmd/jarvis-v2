@@ -30,6 +30,7 @@ import { GreetingHero } from '../components/GreetingHero'
 import { MessageList, type MessageListHandle } from '../components/MessageList'
 import { ScrollToBottom } from '../components/ScrollToBottom'
 import { KoeChip } from '../components/KoeChip'
+import { TilbagespolBanner } from '../components/TilbagespolBanner'
 import { useNyeBeskeder } from '../lib/useNyeBeskeder'
 import { useVisning, type Visning } from '../lib/visning'
 import { ModelPicker, type ModelChoice } from '../components/ModelPicker'
@@ -50,24 +51,7 @@ import { WorkspacePicker } from '../components/WorkspacePicker'
 import { JobsPanel } from '../components/JobsPanel'
 import { saetSessionWorkspace } from '../lib/workspaceApi'
 import { ActivityCenterScreen } from './ActivityCenterScreen'
-import {
-  cancelActiveRun,
-  cancelRunById,
-  compactNow,
-  deleteSession,
-  denyTool,
-  getActiveRunSnapshot,
-  getContextUsage,
-  getGitStatus,
-  getActiveRuns,
-  getModelOptions,
-  renameSession,
-  setSessionFlags,
-  uploadAttachment,
-  whoami,
-  type ContextUsage,
-  type GitStatus,
-} from '../lib/apiClient'
+import { cancelActiveRun, cancelRunById, compactNow, deleteSession, denyTool, getActiveRunSnapshot, getContextUsage, getGitStatus, getActiveRuns, getModelOptions, renameSession, setSessionFlags, uploadAttachment, whoami, type ContextUsage, type GitStatus, spolTilbage, fortrydTilbagespoling } from '../lib/apiClient'
 import { computeUnread } from '../lib/sessionStatus'
 import { loadLastSeen, markSeen } from '../lib/lastSeen'
 import { loadLastSession, saveLastSession } from '../lib/sessionStore'
@@ -294,6 +278,34 @@ export function ChatScreen({
   const { visning, skift: skiftVisning } = useVisning(config, sessions.activeId)
   useEffect(() => { onVisning?.(visning) }, [visning]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (visningOenske) void skiftVisning(visningOenske.v) }, [visningOenske?.n]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Spol tilbage + fortryd (Claude Desktop §8). Beskederne arkiveres på
+  // serveren; fortryd lukker ved næste besked og ved samtaleskift.
+  const [tilbagespolet, setTilbagespolet] = useState<{ rewindId: string; fjernet: number } | null>(null)
+  const [spolFejl, setSpolFejl] = useState('')
+  useEffect(() => { setTilbagespolet(null); setSpolFejl('') }, [sessions.activeId])
+  const spolTilbageHertil = async (messageId: string) => {
+    if (!config || !sessions.activeId) return
+    setSpolFejl('')
+    try {
+      const r = await spolTilbage(config, sessions.activeId, messageId)
+      setTilbagespolet({ rewindId: r.rewind_id, fjernet: r.fjernet })
+      setIndsaet((p) => ({ tekst: r.tekst, n: p.n + 1, erstat: true }))
+      await sessions.select(config, sessions.activeId)
+    } catch (e) {
+      setSpolFejl(e instanceof Error ? e.message : 'Kunne ikke spole tilbage')
+    }
+  }
+  const fortrydSpol = async () => {
+    if (!config || !sessions.activeId || !tilbagespolet) return
+    try {
+      await fortrydTilbagespoling(config, sessions.activeId, tilbagespolet.rewindId)
+      setTilbagespolet(null)
+      setIndsaet((p) => ({ tekst: '', n: p.n + 1, erstat: true }))
+      await sessions.select(config, sessions.activeId)
+    } catch (e) {
+      setSpolFejl(e instanceof Error ? e.message : 'Kunne ikke fortryde')
+    }
+  }
   // «Nye beskeder»: første besked man ikke har set (Claude Desktop §10).
   const nyeFra = useNyeBeskeder(sessions.activeId ?? null, sessions.messages.map((m) => String(m.id)), !scrolledUp)
   const [modalStack, setModalStack] = useState<MobileRoute[]>([])
@@ -379,7 +391,7 @@ export function ChatScreen({
   // baggrunds-poll af udklipsholderen ville være at lytte uopfordret.
   const [ctxPraecision, setCtxPraecision] = useState<LocationPrecision>('off')
   const [ctxUdklip, setCtxUdklip] = useState(false)
-  const [indsaet, setIndsaet] = useState<{ tekst: string; n: number }>({ tekst: '', n: 0 })
+  const [indsaet, setIndsaet] = useState<{ tekst: string; n: number; erstat?: boolean }>({ tekst: '', n: 0 })
   const [enhedsNavn, setEnhedsNavn] = useState('')
   const connectivity = useConnectivity(config ?? null)
   // Server-side run-status for den aktive session (delt sandhed via /chat/active-
@@ -702,6 +714,8 @@ export function ChatScreen({
 
   const ensureSessionAndSend = async (text: string) => {
     if (!config) return
+    setTilbagespolet(null) // fortryd lukker ved næste besked (Claude Desktop §8)
+    setSpolFejl('')
     if (pendingAttachments.some((a) => a.status === 'uploading')) return
     if (connectivity === 'offline') {
       if (!sessions.activeId) {
@@ -988,6 +1002,7 @@ export function ChatScreen({
               rundeEtiketter={stream.state.rundeEtiketter}
               skillFlade={stream.state.skillFlade}
               nyeFra={nyeFra}
+              onRewind={stream.state.status === 'working' || serverBusy ? undefined : (id) => void spolTilbageHertil(id)}
               visning={visning}
               tankeResumeer={stream.state.tankeResumeer}
               onResend={(text) => void ensureSessionAndSend(text)}
@@ -1083,6 +1098,12 @@ export function ChatScreen({
           }}
         >
         <ResearchStatus research={stream.state.research} />
+        <TilbagespolBanner
+          fjernet={tilbagespolet?.fjernet ?? null}
+          fejl={spolFejl}
+          onFortryd={() => void fortrydSpol()}
+          onLuk={() => { setTilbagespolet(null); setSpolFejl('') }}
+        />
         <KoeChip tekst={koet?.text ?? null} onAnnuller={() => setKoet(null)} />
         <Composer
         config={config}

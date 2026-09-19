@@ -30,6 +30,7 @@ function MessageRowImpl({
   config,
   pinned,
   onTogglePin,
+  onRewind,
 }: {
   role: 'user' | 'assistant'
   blocks: ContentBlock[]
@@ -51,6 +52,8 @@ function MessageRowImpl({
    *  ingen pin-knap; se `MessageActions`. */
   pinned?: boolean
   onTogglePin?: () => void
+  /** Kun bruger-beskeder: spol tilbage hertil (Claude Desktop §8). */
+  onRewind?: () => void
 }) {
   // denseBlocks ÉN gang ved indgangen: state.blocks/content kan være SPARSOMT
   // (foldede tool_result-content-blok-indices → undefined-huller). ALLE nedstrøms-
@@ -90,6 +93,7 @@ function MessageRowImpl({
             onResend={onResend && text ? () => onResend(text) : undefined}
             pinned={pinned}
             onTogglePin={onTogglePin}
+            onRewind={onRewind}
           />
         )}
       </div>

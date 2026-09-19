@@ -1,4 +1,4 @@
-import { Brain, Check, Copy, MoreHorizontal, Pin, PinOff, RotateCw, Share2, Square, TextCursorInput, ThumbsDown, ThumbsUp, Volume2 } from 'lucide-react-native'
+import { Brain, Check, Copy, MoreHorizontal, Pin, PinOff, RotateCw, Share2, Square, TextCursorInput, ThumbsDown, ThumbsUp, Volume2, History } from 'lucide-react-native'
 import { useEffect, useRef, useState } from 'react'
 import Markdown from 'react-native-markdown-display'
 import MarkdownIt from 'markdown-it'
@@ -34,6 +34,7 @@ export function MessageBubble({
   message,
   kildeBlokke,
   onResend,
+  onRewind,
   onRegenerate,
   hideActions,
   pinned,
@@ -45,6 +46,8 @@ export function MessageBubble({
    *  slog op i stedet for af hvad der tilfældigvis står i svarteksten. */
   kildeBlokke?: KildeBlok[] | null
   onResend?: (text: string) => void
+  /** Kun dine beskeder: spol samtalen tilbage hertil (Claude Desktop §8). */
+  onRewind?: () => void
   /** Menu-ikonet i handlingsrækken. Uden handler er det blot inaktivt. */
   onRegenerate?: () => void
   /** Er beskeden fastgjort? Styrer kun ikonet i menuen. */
@@ -364,15 +367,27 @@ export function MessageBubble({
           </View>
         </Modal>
       ) : null}
-      {!streaming && isUser && onResend ? (
+      {!streaming && isUser && (onResend || onRewind) ? (
         <View style={styles.userActions}>
-          <Pressable
-            accessibilityLabel="Send igen"
-            hitSlop={10}
-            onPress={() => onResend(message.content)}
-          >
-            <RotateCw size={ICON} color={tokens.color.fg2} strokeWidth={1.8} />
-          </Pressable>
+          {onRewind ? (
+            <Pressable
+              testID="msg-rewind"
+              accessibilityLabel="Spol tilbage hertil"
+              hitSlop={10}
+              onPress={onRewind}
+            >
+              <History size={ICON} color={tokens.color.fg2} strokeWidth={1.8} />
+            </Pressable>
+          ) : null}
+          {onResend ? (
+            <Pressable
+              accessibilityLabel="Send igen"
+              hitSlop={10}
+              onPress={() => onResend(message.content)}
+            >
+              <RotateCw size={ICON} color={tokens.color.fg2} strokeWidth={1.8} />
+            </Pressable>
+          ) : null}
         </View>
       ) : null}
     </Animated.View>

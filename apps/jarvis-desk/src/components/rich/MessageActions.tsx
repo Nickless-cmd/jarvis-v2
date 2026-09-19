@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Copy, Pin, PinOff, Volume2, Check, RotateCw } from 'lucide-react'
+import { Copy, Pin, PinOff, Volume2, Check, RotateCw, History } from 'lucide-react'
 import { formatRelativeTime } from '../../lib/formatTime'
 import { skrivTilUdklipsholder } from '../../lib/udklipsholder'
 
@@ -13,7 +13,7 @@ import { skrivTilUdklipsholder } from '../../lib/udklipsholder'
  *
  *  `onResend` og `onTogglePin` vises kun når de gives. */
 export function MessageActions({
-  text, createdAt, onResend, pinned = false, onTogglePin,
+  text, createdAt, onResend, pinned = false, onTogglePin, onRewind,
 }: {
   text: string
   createdAt?: string
@@ -28,6 +28,12 @@ export function MessageActions({
   pinned?: boolean
   /** Udeladt = ingen pin-knap. En knap uden et sted at gemme er pynt. */
   onTogglePin?: () => void
+  /**
+   * Kun bruger-beskeder: spol samtalen tilbage hertil (Claude Desktop §8).
+   * Beskeden og alt efter den fjernes, teksten lægges i skrivefeltet, og det
+   * kan fortrydes indtil næste besked.
+   */
+  onRewind?: () => void
 }) {
   const [copied, setCopied] = useState(false)
   const [speaking, setSpeaking] = useState(false)
@@ -75,6 +81,11 @@ export function MessageActions({
       {onResend && (
         <button type="button" className="msg-action-btn" title="Send igen" onClick={onResend}>
           <RotateCw size={13} />
+        </button>
+      )}
+      {onRewind && (
+        <button type="button" className="msg-action-btn" title="Spol tilbage hertil" aria-label="Spol tilbage hertil" onClick={onRewind}>
+          <History size={13} />
         </button>
       )}
       <button type="button" className="msg-action-btn" title="Kopiér" onClick={() => void copy()}>

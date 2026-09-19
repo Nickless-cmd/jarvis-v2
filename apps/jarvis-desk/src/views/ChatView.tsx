@@ -21,6 +21,8 @@ import { usePermission } from '../hooks/usePermission'
 import { useOnline } from '../hooks/useOnline'
 import { useSendeKoe } from '../hooks/useSendeKoe'
 import { KoeChip } from '../components/transcript/KoeChip'
+import { TilbagespolBanner } from '../components/transcript/TilbagespolBanner'
+import { useTilbagespol } from '../hooks/useTilbagespol'
 import { JumpToLatest } from '../components/transcript/JumpToLatest'
 import { usePinVedStart } from '../hooks/usePinVedStart'
 import { useNyeBeskeder } from '../hooks/useNyeBeskeder'
@@ -363,6 +365,7 @@ export function ChatView({
   }, [atBottom])
 
   const doSend = async (text: string, opts: ComposerSendOpts) => {
+    tilbage.glem() // fortryd lukker ved næste besked (Claude Desktop §8)
     markInteraction()  // device-presence: markér aktiv interaktion på denne enhed
     let sid = sessionId
     if (!sid) {
@@ -466,7 +469,10 @@ export function ChatView({
   // Visningen (normal/Tænkning/Alt) — Claude Desktops tre, pr. samtale på serveren.
   const { visning, skift: skiftVisning } = useVisning(
     settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined, sessionId,
-  )
+  )  // Spol tilbage + fortryd (Claude Desktop §8). Fortryd lukker ved næste besked.
+  const tilbage = useTilbagespol({ config: settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined, sessionId, genindlaes: () => sessions.refresh() })
+  useEffect(() => { tilbage.glem() }, [sessionId]) // eslint-disable-line react-hooks/exhaustive-deps
+
 
   const handleSend = (text: string, opts: ComposerSendOpts) => {
     const t = text.trim()
@@ -587,6 +593,7 @@ export function ChatView({
         onManualCompact={() => void triggerManualCompact('')}
         isOwner={auth?.role === 'owner'}
         onOpenPrivacy={onOpenPrivacy}
+        indsaet={tilbage.indsaet}
       />
       <VoiceConversation
         active={voice.active}
@@ -777,6 +784,7 @@ export function ChatView({
             config={settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined}
             pinned={fastgjorte.pins.includes(m.id)}
             onTogglePin={sessionId ? () => fastgjorte.skift(m.id) : undefined}
+            onRewind={m.role === 'user' && sessionId && !m.id.startsWith('u-') && stream.status !== 'working' ? () => void tilbage.spol(m.id) : undefined}
           />
           </div>
           </Fragment>
@@ -861,6 +869,7 @@ export function ChatView({
           )}
         </div>
         <JumpToLatest synlig={!atBottom} live={streaming || (bgActive && followState.status === 'working')} ulaeste={unread} onClick={scrollToBottom} />
+        <TilbagespolBanner fjernet={tilbage.tilbagespolet?.fjernet ?? null} fejl={tilbage.fejl} onFortryd={() => void tilbage.fortryd()} onLuk={tilbage.glem} />
         <KoeChip koet={koe.koet} online={online} onAnnuller={koe.annuller} />
         {composer}
       </div>

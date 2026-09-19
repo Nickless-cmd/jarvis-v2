@@ -41,6 +41,8 @@ import { streamReducer, initialStreamState, liveBlokke } from '../lib/streamRedu
 import { useOnline } from '../hooks/useOnline'
 import { useSendeKoe } from '../hooks/useSendeKoe'
 import { KoeChip } from '../components/transcript/KoeChip'
+import { TilbagespolBanner } from '../components/transcript/TilbagespolBanner'
+import { useTilbagespol } from '../hooks/useTilbagespol'
 import { VisningVaelger } from '../components/transcript/VisningVaelger'
 import { useVisning, VisningContext } from '../lib/visning'
 import { JumpToLatest } from '../components/transcript/JumpToLatest'
@@ -389,7 +391,10 @@ export function CodeView({
   // Visningen (normal/Tænkning/Alt) — Claude Desktops tre, pr. samtale på serveren.
   const { visning, skift: skiftVisning } = useVisning(
     settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined, sessionId,
-  )
+  )  // Spol tilbage + fortryd (Claude Desktop §8). Fortryd lukker ved næste besked.
+  const tilbage = useTilbagespol({ config: config, sessionId, genindlaes: () => sessions.refresh() })
+  useEffect(() => { tilbage.glem() }, [sessionId]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const koe = useSendeKoe({ arbejder: stream.status === 'working', online, send: (t, o) => doSend(t, o) })
 
   const handleSend = (text: string, opts: ComposerSendOpts) => {
@@ -611,6 +616,7 @@ export function CodeView({
   }
 
   const doSend = async (text: string, opts: ComposerSendOpts) => {
+    tilbage.glem() // fortryd lukker ved næste besked (Claude Desktop §8)
     if (!ready) return
     let sid = sessionId
     if (!sid) sid = (await sessions.create('Kode-session', 'code')).id
@@ -747,6 +753,7 @@ export function CodeView({
       onManualCompact={() => void triggerManualCompact('')}
       isOwner={isOwner}
       onOpenPrivacy={onOpenPrivacy}
+      indsaet={tilbage.indsaet}
     />
   )
 
@@ -1009,6 +1016,7 @@ export function CodeView({
               onResend={m.role === 'user' ? resend : undefined}
               pinned={fastgjorte.pins.includes(m.id)}
               onTogglePin={sessionId ? () => fastgjorte.skift(m.id) : undefined}
+              onRewind={m.role === 'user' && sessionId && !m.id.startsWith('u-') && stream.status !== 'working' ? () => void tilbage.spol(m.id) : undefined}
             />
             </div>
             </Fragment>
@@ -1060,6 +1068,7 @@ export function CodeView({
             )}
           </div>
           <JumpToLatest synlig={!atBottom} live={stream.status === 'working' || (bgActive && followState.status === 'working')} ulaeste={unread} onClick={scrollToBottom} />
+          <TilbagespolBanner fjernet={tilbage.tilbagespolet?.fjernet ?? null} fejl={tilbage.fejl} onFortryd={() => void tilbage.fortryd()} onLuk={tilbage.glem} />
           <KoeChip koet={koe.koet} online={online} onAnnuller={koe.annuller} />
           {composer}
         </div>

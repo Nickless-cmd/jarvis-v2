@@ -141,6 +141,7 @@ export function Composer({
   sessionId = null,
   onVoice,
   voiceSupported = false,
+  indsaet,
 }: {
   streaming: boolean
   onSend: (text: string, opts: ComposerSendOpts) => void
@@ -185,8 +186,17 @@ export function Composer({
   onManualCompact?: () => void
   /** Owner ser provider-vælger + dynamisk model-liste; member ser kun Standard/Pro. */
   isOwner?: boolean
+  /**
+   * Læg en tekst i feltet udefra — fx den besked man lige spolede tilbage
+   * fra (Claude Desktops «Cancel and edit message»). `n` skifter pr. gang,
+   * så den samme tekst to gange også virker.
+   */
+  indsaet?: { tekst: string; n: number } | null
 }) {
   const [text, setText] = useState('')
+  useEffect(() => {
+    if (indsaet) setText(indsaet.tekst)
+  }, [indsaet?.n]) // eslint-disable-line react-hooks/exhaustive-deps
   const [menuOpen, setMenuOpen] = useState(false)
   const [permOpen, setPermOpen] = useState(false)
   const [planMode, setPlanMode] = useState(false)

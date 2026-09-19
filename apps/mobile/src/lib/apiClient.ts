@@ -223,6 +223,25 @@ export async function setSessionFlags(
   })
 }
 
+/**
+ * Spol samtalen tilbage til en af dine beskeder (Claude Desktop §8): den og
+ * alt efter den fjernes — men arkiveres, ikke slettes — og teksten kommer
+ * tilbage til skrivefeltet. Fortryd virker indtil næste besked.
+ */
+export async function spolTilbage(
+  config: ApiConfig, sessionId: string, messageId: string,
+): Promise<{ rewind_id: string; fjernet: number; tekst: string }> {
+  return apiFetch(config, `/chat/sessions/${encodeURIComponent(sessionId)}/rewind`, {
+    method: 'POST', body: { message_id: messageId },
+  })
+}
+
+export async function fortrydTilbagespoling(config: ApiConfig, sessionId: string, rewindId: string): Promise<void> {
+  await apiFetch(config, `/chat/sessions/${encodeURIComponent(sessionId)}/rewind/${encodeURIComponent(rewindId)}/undo`, {
+    method: 'POST',
+  })
+}
+
 export async function getActiveRuns(config: ApiConfig): Promise<string[]> {
   const data = await apiFetch<{ session_ids?: string[] }>(config, '/chat/active-runs')
   return data.session_ids ?? []

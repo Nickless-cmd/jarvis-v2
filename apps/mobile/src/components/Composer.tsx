@@ -79,7 +79,7 @@ export function Composer({
    *  Signalet er en TÆLLER og ikke bare strengen: indsætter man den samme
    *  tekst to gange, ændrer strengen sig ikke, og en effekt på strengen alene
    *  ville tie anden gang. */
-  indsaet?: { tekst: string; n: number }
+  indsaet?: { tekst: string; n: number; erstat?: boolean }
   dictationState?: DictationState
   dictationElapsedMs?: number
   dictationError?: string
@@ -165,6 +165,9 @@ export function Composer({
     if (!indsaet || indsaet.n === sidsteIndsaet.current) return
     sidsteIndsaet.current = indsaet.n
     const t = String(indsaet.tekst || '')
+    // `erstat`: teksten ER feltet — fx beskeden man spolede tilbage fra, og
+    // tom igen når tilbagespolingen fortrydes (Claude Desktop §8).
+    if (indsaet.erstat) { setText(t); if (t) setWantFocus(true); return }
     if (!t) return
     setText((prev) => (prev ? `${prev}\n${t}` : t))
     setWantFocus(true)

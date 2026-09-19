@@ -60,6 +60,8 @@ interface MessageListProps {
   skillFlade?: { matches: SkillFladeMatch[] }
   /** Id på den første besked man ikke har set — tegnes med en skillelinje over. */
   nyeFra?: string | null
+  /** Spol tilbage til en af dine beskeder (Claude Desktop §8). */
+  onRewind?: (messageId: string) => void
   /** Samtalens visning (Claude Desktop §1): normal, thinking eller verbose. */
   visning?: Visning
   /** Live tænke-resuméer fra streamen (visningen «thinking»). */
@@ -158,6 +160,11 @@ export function stickyIndex(userFlags: boolean[], synlige: [number, number] | nu
   if (userFlags.slice(lav, hoej + 1).some(Boolean)) return null
   const i = userFlags.findIndex((u, j) => u && j > hoej)
   return i >= 0 ? i : null
+}
+
+/** Et id serveren kender — ikke en lokal/optimistisk besked. */
+function erServerId(id: string): boolean {
+  return !/^(local-|u-|opt-|tmp-|outbox-)/.test(id)
 }
 
 function groupToolRounds(rows: Row[]): Row[] {
@@ -333,7 +340,7 @@ function taenketid(start?: number, slut?: number): number | undefined {
 }
 
 export const MessageList = forwardRef<MessageListHandle, MessageListProps>(function MessageList(
-  { messages, blocks, onResend, onScrollOffset, thinking, bottomInset = 0, pins, onTogglePin, onSaveMemory, rundeEtiketter, skillFlade, nyeFra, visning = 'normal', tankeResumeer },
+  { messages, blocks, onResend, onScrollOffset, thinking, bottomInset = 0, pins, onTogglePin, onSaveMemory, rundeEtiketter, skillFlade, nyeFra, visning = 'normal', tankeResumeer, onRewind },
   ref
 ) {
   const tokens = useTheme()
@@ -619,6 +626,10 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
             message={item.message}
             kildeBlokke={item.kildeBlokke}
             onResend={item.message.role === 'user' ? onResend : undefined}
+            // Kun en besked serveren kender (ikke en lokal/optimistisk), og kun
+            // hele beskeder — et afsnit af en tur har id'et `<id>-b<n>`.
+            onRewind={item.message.role === 'user' && onRewind && erServerId(String(item.message.id))
+              ? () => onRewind(String(item.message.id)) : undefined}
             pinned={pins?.includes(String(item.message.id))}
             onTogglePin={onTogglePin ? () => onTogglePin(String(item.message.id)) : undefined}
             onSaveMemory={

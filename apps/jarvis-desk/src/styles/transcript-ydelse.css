@@ -12,6 +12,14 @@
 .transcript > .msg-block {
   content-visibility: auto;
   contain-intrinsic-size: auto 240px;
+  /* ALDRIG krympe. .transcript er en flex-kolonne med fast højde, og et
+     flex-item må som standard krympe ned til sin minimumshøjde. Når
+     content-visibility springer en besked over, er der intet indhold der
+     holder den minimumshøjde — Chromium klemte dem til 0 px. Målt
+     19/9-2026: 296 af 298 beskeder var 0 høje, samtalen svingede mellem
+     8.771, 10.176 og 172.373 px, og rullen røg til toppen og låste
+     (Bjørn: «den scroller til rewind og låser der, og ikonet glitcher»). */
+  flex-shrink: 0;
 }
 
 /* Hold bunden (19/9-2026): browserens egen scroll-forankring, med et anker

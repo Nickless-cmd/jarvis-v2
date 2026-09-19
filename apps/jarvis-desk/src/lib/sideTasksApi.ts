@@ -15,7 +15,7 @@ export interface SideTask {
   created_at: string
 }
 
-export type SideTaskAfslutning = 'completed' | 'dismissed'
+export type SideTaskAfslutning = 'activated' | 'completed' | 'dismissed'
 
 export async function getSideTasks(config: ApiConfig): Promise<SideTask[]> {
   const d = await apiFetch<{ side_tasks?: SideTask[] }>(config, '/cowork/side-tasks', { retries: 0 })

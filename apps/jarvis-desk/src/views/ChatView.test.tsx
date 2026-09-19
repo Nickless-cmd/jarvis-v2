@@ -276,12 +276,13 @@ describe('ChatView — flaggede sideopgaver', () => {
   )
   const opgave = { side_task_id: 'side-1', title: 'Ryd op i docs', prompt: 'p', tldr: 'kort', status: 'pending', session_id: 's', created_at: 'x' }
 
-  it('staar under headeren i en TOM chat', async () => {
+  it('flyder over inputfeltet i en TOM chat', async () => {
     sideopgaver.liste = [opgave]
-    const { container } = render(skal(null))
+    render(skal(null))
     expect(await screen.findByText('Ryd op i docs')).toBeInTheDocument()
-    const head = container.querySelector('.chatview-head')!
-    expect(head.nextElementSibling?.getAttribute('data-testid')).toBe('side-tasks')
+    // Kortet sidder i ankeret om composeren — samme sted i tom og aktiv chat.
+    const kort = screen.getByTestId('side-tasks')
+    expect(kort.closest('.sok-anker')?.querySelector('textarea, [role="textbox"]')).not.toBeNull()
     sideopgaver.liste = []
   })
 

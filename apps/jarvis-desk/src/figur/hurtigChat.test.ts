@@ -4,6 +4,7 @@ const createSession = vi.fn()
 const startStream = vi.fn()
 vi.mock('../lib/api', () => ({ createSession: (...a: unknown[]) => createSession(...a) }))
 vi.mock('../lib/streamClient', () => ({ startStream: (...a: unknown[]) => startStream(...a) }))
+// sendLoesrevet laeser composer-valget herfra.
 vi.mock('../lib/composerPrefs', () => ({ readModelPrefs: () => ({ model: 'deepseek-flash', providerChoice: 'ollama' }) }))
 
 import { sendHurtigt } from './hurtigChat'

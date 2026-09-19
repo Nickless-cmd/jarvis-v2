@@ -52,6 +52,8 @@ import { usePinVedStart } from '../hooks/usePinVedStart'
 import { useNyeBeskeder } from '../hooks/useNyeBeskeder'
 import { NyeBeskederLinje } from '../components/transcript/NyeBeskederLinje'
 import { FigurKnap } from '../components/FigurKnap'
+import { SideOpgaveKort, type SideOpgaveHandlinger } from '../components/chat/SideOpgaveKort'
+import { startSideOpgave, worktreeTilOpgave } from '../lib/sideOpgaveStart'
 import { StickyPrompt } from '../components/transcript/StickyPrompt'
 import { buildEnvironmentEvidence, mergeEnvironmentEvidence } from '../lib/environmentEvidence'
 
@@ -776,7 +778,44 @@ export function CodeView({
     sendMessage: resend,
   })
 
+  // Sideopgave-kortet (CC's «Suggested task»). Worktree kun når der er en
+  // mappe at lave den i (Min computer) — serverens arbejdsområder er ikke stier.
+  const sideCfg = config ?? null
+  const sideWs = { workspaceKind: kind, workspaceRoot: effRoot }
+  const sideHandlinger: SideOpgaveHandlinger = {
+    startLokalt: async (t) => {
+      if (!sideCfg) return
+      const sid = await startSideOpgave(sideCfg, t, { kind: 'code', ...sideWs })
+      await sessions.refresh()
+      sessions.select(sid)
+    },
+    baggrund: async (t) => {
+      if (!sideCfg) return
+      await startSideOpgave(sideCfg, t, { kind: 'code', ...sideWs })
+      void sessions.refresh()
+    },
+    loesHer: (t) => {
+      const prefs = readModelPrefs()
+      return doSend(t.prompt, {
+        planMode: false, permission, attachments: [],
+        model: prefs.model, providerChoice: prefs.providerChoice, thinkingMode: readThinkingMode(),
+      })
+    },
+    ...(kind === 'workstation' && effRoot ? {
+      worktree: async (t) => {
+        if (!sideCfg) return
+        const sti = await worktreeTilOpgave(sideCfg, effRoot, t)
+        setWsPath(sti)
+        const sid = await startSideOpgave(sideCfg, t, { kind: 'code', workspaceKind: 'workstation', workspaceRoot: sti })
+        await sessions.refresh()
+        sessions.select(sid)
+      },
+    } : {}),
+  }
+
   const composer = (
+    <div className="sok-anker">
+    <SideOpgaveKort config={sideCfg} handlinger={sideHandlinger} />
     <Composer
       streaming={stream.status === 'working'}
       onSend={handleSend}
@@ -798,6 +837,7 @@ export function CodeView({
       onOpenPrivacy={onOpenPrivacy}
       indsaet={tilbage.indsaet}
     />
+    </div>
   )
 
   const visibleMessages = sessions.messages.filter((m) => m.role === 'user' || m.role === 'assistant')

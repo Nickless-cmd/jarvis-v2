@@ -1,45 +1,70 @@
-/* Jarvis' flaggede sideopgaver under chatheaderen (spec desk-sideopgaver,
-   19/9-2026). Egen fil: app.css er over Boy Scout-grænsen.
-   Kompakt og med egen rulning — listen må ikke skubbe samtalen væk. */
-.side-tasks {
-  flex: 0 0 auto; margin: 0 24px 6px; padding: 6px 10px 6px 12px;
-  border: 1px solid var(--line); border-radius: 10px; background: var(--bg-1);
-  font-size: 13px; color: var(--fg-2);
+/* Jarvis' flaggede sideopgaver som Claude Desktops «Suggested task»-kort
+   (19/9-2026). Egen fil: app.css er over Boy Scout-grænsen.
+   Kortet flyder oven over inputfeltet i højre side — det skubber ikke
+   samtalen, det ligger over den, som i CC. */
+.sok-anker { position: relative; }
+.sok-dok {
+  position: absolute; right: 0; bottom: calc(100% + 10px); z-index: 30;
+  width: min(360px, 100%);
 }
-.har-skinne .side-tasks { margin-right: calc(var(--skinne-bredde) + 16px); }
-.side-tasks-head { display: flex; align-items: center; gap: 6px; color: var(--fg-3); font-size: 12px; margin-bottom: 2px; }
-.side-tasks-antal {
-  min-width: 16px; padding: 0 5px; border-radius: 8px; text-align: center;
-  background: var(--bg-3); color: var(--fg-2); font-size: 11px; font-variant-numeric: tabular-nums;
+.sok {
+  position: relative; box-sizing: border-box;
+  padding: 12px 14px 10px; border-radius: 14px;
+  background: var(--overlay-bg, var(--bg-2)); border: 1px solid var(--overlay-line, var(--line));
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+  color: var(--fg-2); font-size: 13px;
 }
-.side-tasks-liste { list-style: none; margin: 0; padding: 0; max-height: 168px; overflow-y: auto; }
-.side-task { padding: 4px 0; border-top: 1px solid var(--line); }
-.side-task:first-child { border-top: 0; }
-.side-task-linje { display: flex; align-items: flex-start; gap: 6px; }
-.side-task-fold {
-  all: unset; cursor: pointer; margin-top: 2px; color: var(--fg-3); display: grid; place-items: center;
-  width: 18px; height: 18px; border-radius: 4px;
+/* Stablen: to kort «bag» det forreste, som i CC, når der er flere. */
+.sok-stak::before, .sok-stak::after {
+  content: ''; position: absolute; left: 8px; right: 8px; z-index: -1;
+  border-radius: 14px; border: 1px solid var(--overlay-line, var(--line));
+  background: var(--overlay-bg, var(--bg-2));
 }
-.side-task-fold:hover { color: var(--fg-1); background: var(--bg-2); }
-.side-task-fold:focus-visible { outline: 1px solid var(--accent); }
-.side-task-tekst { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
-.side-task-titel { color: var(--fg-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.side-task-igang {
-  margin-left: 6px; padding: 0 5px; border-radius: 6px; font-size: 11px;
-  color: var(--accent); border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+.sok-stak::before { bottom: -5px; }
+.sok-stak::after { bottom: -10px; left: 16px; right: 16px; }
+.sok-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+.sok-overskrift { color: var(--fg-3); font-size: 12px; display: flex; align-items: center; gap: 6px; }
+.sok-igang {
+  padding: 0 6px; border-radius: 6px; font-size: 11px; color: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
 }
-.side-task-tldr { color: var(--fg-3); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.side-task-knapper { display: flex; gap: 4px; flex: 0 0 auto; }
-.side-task-knapper button {
-  all: unset; cursor: pointer; padding: 2px 8px; border-radius: 6px; font-size: 12px;
-  color: var(--fg-2); border: 1px solid var(--line);
+.sok-luk, .sok-blad button {
+  all: unset; cursor: pointer; display: grid; place-items: center;
+  width: 24px; height: 24px; border-radius: 6px; color: var(--fg-3);
 }
-.side-task-knapper button:hover { color: var(--fg-1); background: var(--bg-2); }
-.side-task-knapper button:disabled { opacity: .45; cursor: default; }
-.side-task-knapper button:focus-visible { outline: 1px solid var(--accent); }
-.side-task-knapper .side-task-fjern:hover { color: var(--error-fg); }
-.side-task-prompt {
-  margin: 4px 0 2px 24px; padding: 6px 8px; border-radius: 6px; background: var(--bg-2);
-  color: var(--fg-2); font: 12px/1.45 var(--font-mono, ui-monospace, monospace); white-space: pre-wrap;
+.sok-luk:hover, .sok-blad button:not(:disabled):hover { color: var(--fg-1); background: var(--bg-3); }
+.sok-blad button:disabled { opacity: .35; cursor: default; }
+.sok-titel { margin: 0 0 4px; color: var(--fg-1); font-size: 14.5px; font-weight: 600; line-height: 1.35; }
+.sok-tekst {
+  margin: 0; line-height: 1.45; color: var(--fg-2);
+  display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden;
 }
-.side-task-fejl { margin: 2px 0 0 24px; color: var(--error-fg); font-size: 12px; }
+.sok-fejl { margin: 6px 0 0; color: var(--error-fg); font-size: 12px; }
+.sok-fod { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px; }
+.sok-blad { display: flex; align-items: center; gap: 2px; color: var(--fg-3); font-size: 12px; font-variant-numeric: tabular-nums; }
+.sok-delt {
+  position: relative; display: flex; align-items: stretch;
+  border: 1px solid var(--line); border-radius: 8px; overflow: visible;
+}
+.sok-start, .sok-pil {
+  all: unset; cursor: pointer; padding: 5px 12px; font-size: 13px; color: var(--fg-1);
+}
+.sok-pil { padding: 5px 8px; border-left: 1px solid var(--line); display: grid; place-items: center; color: var(--fg-2); }
+.sok-start:hover, .sok-pil:hover { background: var(--bg-3); }
+.sok-start:disabled, .sok-pil:disabled { opacity: .5; cursor: default; }
+.sok-luk:focus-visible, .sok-blad button:focus-visible, .sok-start:focus-visible, .sok-pil:focus-visible,
+.sok-menu button:focus-visible { outline: 1px solid var(--accent); outline-offset: -1px; }
+.sok-menu {
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: 40; min-width: 210px;
+  padding: 5px; border-radius: 10px;
+  background: var(--overlay-bg, var(--bg-2)); border: 1px solid var(--overlay-line, var(--line));
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.4);
+  display: flex; flex-direction: column;
+}
+.sok-menu button {
+  all: unset; cursor: pointer; display: flex; justify-content: space-between; gap: 12px;
+  padding: 7px 10px; border-radius: 6px; color: var(--fg-1); font-size: 13px;
+}
+.sok-menu button:hover { background: var(--bg-3); }
+.sok-standard { color: var(--fg-3); font-size: 12px; }
+.sok-skille { height: 1px; background: var(--line); margin: 4px 6px; }

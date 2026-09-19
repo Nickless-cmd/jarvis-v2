@@ -32,6 +32,23 @@ export interface JarvisDeskBridge {
   notifyTaskDone: (title: string, body: string) => Promise<void>
   /** Proaktiv device-awareness-notifikation (vises altid, også i fokus). */
   notifyShow: (kind: string, title: string, body: string) => Promise<void>
+  /** Jarvis-figuren på skrivebordet (electron/figur.ts). Findes ikke i en
+   *  browser-fane — alt der bruger den skal tåle at den mangler. */
+  figur: {
+    traekStart: (mx: number, my: number) => Promise<void>
+    traek: (mx: number, my: number) => Promise<void>
+    traekSlut: () => Promise<void>
+    hoejde: (h: number) => Promise<void>
+    aabnSamtale: (sessionId: string | null) => Promise<void>
+    vist: () => Promise<boolean>
+    saetVist: (vist: boolean) => Promise<boolean>
+    /** Stemme-ikonet under figuren. */
+    stemme: () => Promise<void>
+    /** Hovedvinduet: figuren bad om samtale-mode. */
+    paaStemme: (cb: () => void) => () => void
+    /** Hovedvinduet: figuren bad om at åbne en samtale. */
+    paaAabnSamtale: (cb: (sessionId: string) => void) => () => void
+  }
   /** Vinduesstyring til vores egen ramme. Findes ikke i en browser-fane —
    *  knapperne skal derfor SKJULES naar den mangler, ikke fejle. */
   vindue: {
@@ -155,6 +172,26 @@ const bridge: JarvisDeskBridge = {
     install: (tool) => ipcRenderer.invoke('dep:install', tool),
   },
   platform: process.platform,
+  figur: {
+    traekStart: (mx: number, my: number) => ipcRenderer.invoke('figur:traekStart', mx, my),
+    traek: (mx: number, my: number) => ipcRenderer.invoke('figur:traek', mx, my),
+    traekSlut: () => ipcRenderer.invoke('figur:traekSlut'),
+    hoejde: (h: number) => ipcRenderer.invoke('figur:hoejde', h),
+    aabnSamtale: (sessionId: string | null) => ipcRenderer.invoke('figur:aabnSamtale', sessionId),
+    vist: () => ipcRenderer.invoke('figur:vist'),
+    saetVist: (vist: boolean) => ipcRenderer.invoke('figur:saetVist', vist),
+    stemme: () => ipcRenderer.invoke('figur:stemme'),
+    paaStemme: (cb: () => void) => {
+      const handler = () => cb()
+      ipcRenderer.on('figur:stemme', handler)
+      return () => ipcRenderer.removeListener('figur:stemme', handler)
+    },
+    paaAabnSamtale: (cb: (sessionId: string) => void) => {
+      const handler = (_e: unknown, sessionId: string) => cb(sessionId)
+      ipcRenderer.on('figur:aabnSamtale', handler)
+      return () => ipcRenderer.removeListener('figur:aabnSamtale', handler)
+    },
+  },
   vindue: {
     minimer: () => ipcRenderer.invoke('vindue:minimer'),
     vekselMaksimer: () => ipcRenderer.invoke('vindue:vekselMaksimer'),

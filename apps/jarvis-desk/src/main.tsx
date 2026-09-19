@@ -5,6 +5,7 @@ import { SettingsProvider } from './contexts/SettingsContext'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { Vinduesknapper } from './components/shell/Vinduesknapper'
 import { loadTheme, applyTheme } from './lib/themeStore'
+import { FigurApp } from './figur/FigurApp'
 
 // Anvend gemt tema før render — undgår flash af forkert tema (§4.11).
 applyTheme(loadTheme())
@@ -23,7 +24,12 @@ window.addEventListener('unhandledrejection', (e) => {
 const root = document.getElementById('root')
 if (!root) throw new Error('Root element #root not found')
 
+// Jarvis-figuren (electron/figur.ts) indlæser SAMME bundle med #figur og får
+// kun figuren — ingen skal, ingen vinduesknapper, ingen indstillinger.
+const erFigur = window.location.hash === '#figur'
+
 createRoot(root).render(
+  erFigur ? <StrictMode><FigurApp /></StrictMode> :
   <StrictMode>
     {/* Vinduesknapperne staar UDEN FOR App og uden for ErrorBoundary med
         vilje. Vinduet har ingen OS-ramme, saa de er dens eneste knapper —

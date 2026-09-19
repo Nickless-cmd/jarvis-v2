@@ -28,6 +28,7 @@ import { JumpToLatest } from '../components/transcript/JumpToLatest'
 import { usePinVedStart } from '../hooks/usePinVedStart'
 import { useNyeBeskeder } from '../hooks/useNyeBeskeder'
 import { NyeBeskederLinje } from '../components/transcript/NyeBeskederLinje'
+import { onStemmeBud, tagStemmeBud } from '../lib/figurBud'
 import { StickyPrompt } from '../components/transcript/StickyPrompt'
 import { VisningVaelger } from '../components/transcript/VisningVaelger'
 import { useVisning, VisningContext } from '../lib/visning'
@@ -573,6 +574,14 @@ export function ChatView({
     blocks: stream.blocks,
     sendMessage: resend,
   })
+
+  // Jarvis-figurens stemme-ikon (lib/figurBud): buddet kan være kommet før
+  // denne flade blev monteret, så det tages både nu og når det bestilles.
+  const voiceEnter = voice.enter
+  useEffect(() => {
+    if (tagStemmeBud()) voiceEnter()
+    return onStemmeBud(() => { if (tagStemmeBud()) voiceEnter() })
+  }, [voiceEnter])
 
   const composer = (
     <>

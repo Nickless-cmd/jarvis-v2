@@ -35,6 +35,13 @@ class RuntimeSettings:
     r2_5_unverified_threshold_deep: int = 3
     r2_5_unverified_threshold_reasoning: int = 5
     r2_5_unverified_threshold_fast: int = 8
+    # Aktivitets-loft (2026-09-19): tier klassificerer BESKEDEN, ikke arbejdet.
+    # Målt: alle rigtige brugerbeskeder lander på 'fast' (tærskel 8) — også de
+    # der starter det tungeste arbejde. Uden et loft beskyttede gaten derfor
+    # dybt arbejde med den mest eftergivende tærskel og fyrede i 9% af
+    # tilfældene (mod 51% på deep). En høj mutationsbyrde ER dybt arbejde.
+    # Loftet strammer tærsklen; det løsner den aldrig (deep beholder sin 3'er).
+    r2_5_activity_ceiling: int = 5
     # Proaktivitets-cap: max uopfordrede beskeder pr. dag + min timer mellem dem.
     max_proactive_per_day: int = 3
     proactive_cooldown_hours: int = 2
@@ -709,6 +716,9 @@ def load_settings() -> RuntimeSettings:
         ),
         r2_5_unverified_threshold_fast=int(
             data.get("r2_5_unverified_threshold_fast", defaults.r2_5_unverified_threshold_fast)
+        ),
+        r2_5_activity_ceiling=int(
+            data.get("r2_5_activity_ceiling", defaults.r2_5_activity_ceiling)
         ),
         max_proactive_per_day=int(
             data.get("max_proactive_per_day", defaults.max_proactive_per_day)

@@ -1129,6 +1129,7 @@ export function CodeView({
             density="compact"
             workingStep={bgActive && stream.status !== 'working' ? (followState.workingStep ?? 'vågner') : stream.workingStep}
             tokens={bgActive && stream.status !== 'working' ? followState.usage.output : stream.usage.output}
+            blocks={stream.blocks}
           />
           <div className="composer-notices">
             {stream.pendingApproval && (

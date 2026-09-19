@@ -1300,9 +1300,16 @@ button.sidebar-group svg { flex: none; opacity: .7; }
   /* Match composeren (max-width 820, centreret) så ringen står lige OVER
      composeren — ikke ude i venstre skærmkant (Bjørn 2026-06-13). */
   width: 100%; max-width: 820px; margin: 0 auto; box-sizing: border-box;
+  /* Linjen bærer nu også arbejds-sektionerne («læste 3 filer, kørte 2 …») —
+     den kan blive lang, og så skal den ombryde frem for at flyde ud over
+     kanten. Tilføjet 19/9-2026 sammen med sektionerne. */
+  flex-wrap: wrap;
 }
 .liveness.is-idle { opacity: 0.7; }
 .liveness-label { color: var(--fg-3); }
+/* Arbejds-sektionerne — én sætning i samme dæmpede vægt som resten af linjen.
+   nowrap pr. sektion så et tal ikke skilles fra sin enhed. */
+.liveness-arbjede { color: var(--fg-3); white-space: nowrap; }
 /* Tænke-tiden («Thought for 2s»). Gennemstreget når tanken er SLUT — samme
    signal som Claude Code bruger: linjen er en afsluttet tanke, ikke en kørende. */
 .liveness-thought { white-space: nowrap; }

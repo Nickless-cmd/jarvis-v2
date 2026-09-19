@@ -954,6 +954,7 @@ export function ChatView({
             thoughtMs={thoughtMs}
             thoughtAfsluttet={thoughtAfsluttet}
             runningJobs={runningJobs}
+            blocks={stream.blocks}
           />
         )}
         {/* Compaction-pause (som Claude Code): mens sessionen komprimeres pauses composeren

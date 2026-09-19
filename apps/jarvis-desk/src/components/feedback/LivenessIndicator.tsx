@@ -1,7 +1,9 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { JarvisRing } from '../shell/JarvisRing'
 import { LiveVerb } from '../shell/LiveVerb'
 import { varighed } from '../../lib/jobsApi'
+import { sektioner, type Sektion } from '../../lib/livenessSektioner'
+import type { ContentBlock } from '../../lib/sseProtocol'
 
 /** Skiftende status-verber i Jarvis' stemme (når der ikke er en konkret tool-
  *  handling). Roterer hvert par sekunder så det føles levende. */
@@ -14,14 +16,19 @@ function fmtTokens(n: number): string {
 
 /** Vedvarende liveness-linje — Jarvis' svar på Claude Codes linje over composeren.
  *
- *  Samme fire oplysninger, samme rækkefølge: varighed · tokens · tænke-tid ·
- *  baggrundsjob — og så hvad han laver lige nu. To forskelle er bevidste:
+ *  Samme oplysninger, samme rækkefølge: varighed · tokens · tænke-tid ·
+ *  hvad der blev lavet (talt sammen pr. familie) · baggrundsjob — og så hvad
+ *  han laver lige nu. Formen er lånt fra Claude Code 2.1.271 (se
+ *  `lib/livenessSektioner.ts` for kilden); to forskelle er bevidste:
  *
  *  1. Ikonet er Jarvis' egen ring, ikke et stjernemotiv. Vi viser de samme
  *     ting som CC; vi klæder os ikke ud som CC.
  *  2. Tidsformatet kommer fra `varighed()` i jobsApi — samme funktion panelet
  *     bruger, så linjen og panelet aldrig viser to forskellige tal for samme
  *     job. (Bjørn 19/9-2026: «vi for den 1:1 og viser de samme ting».)
+ *
+ *  Bjørn 19/9-2026, senere samme aften: «Der var mere end 4 ting i den første
+ *  liste du viste mig.» Han havde ret — sektionerne manglede. Nu er de med.
  */
 export function LivenessIndicator({
   status,
@@ -32,6 +39,7 @@ export function LivenessIndicator({
   thoughtMs = null,
   thoughtAfsluttet = false,
   runningJobs = 0,
+  blocks,
 }: {
   status: string
   elapsedMs: number
@@ -45,6 +53,8 @@ export function LivenessIndicator({
   thoughtAfsluttet?: boolean
   /** Antal kørende baggrundsjobs (server + Bjørns maskine + agenter). */
   runningJobs?: number
+  /** Runnets blokke — grundlaget for sektionerne («Læste 3 filer, kørte 2 …»). */
+  blocks?: ContentBlock[]
 }) {
   const working = status === 'working'
   const tone = working ? 'working' : status === 'error' || status === 'interrupted' ? 'error' : 'idle'
@@ -57,8 +67,13 @@ export function LivenessIndicator({
     return () => clearInterval(id)
   }, [working])
 
-  // Sektionerne i CC's rækkefølge. Hver vises kun hvis den har indhold —
-  // ingen tomme skilletegn.
+  // Sektionerne: nutid mens han arbejder, datid når turen er slut — CC's
+  // én-boolean-greb. Memoiseret på blokkene så vi ikke tæller for hver tick.
+  const arbejde = useMemo(() => sektioner(blocks, working), [blocks, working])
+
+  // Sektionerne i CC's rækkefølge. Tænke-tiden er den FØRSTE af dem, derefter
+  // arbejdet — hver vises kun hvis den har indhold, så der ikke står tomme
+  // skilletegn.
   const dele: ReactNode[] = []
   if (working) {
     const sek = Math.floor(elapsedMs / 1000)
@@ -74,6 +89,9 @@ export function LivenessIndicator({
         Thought for {varighed(Math.floor(thoughtMs / 1000))}{thoughtAfsluttet ? '.' : ''}
       </span>,
     )
+  }
+  for (const s of arbejde as Sektion[]) {
+    dele.push(<span key={s.key} className="liveness-arbjede">{s.tekst}</span>)
   }
   if (runningJobs > 0) {
     dele.push(runningJobs === 1 ? '1 job kører' : `${runningJobs} jobs kører`)

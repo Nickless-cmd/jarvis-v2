@@ -228,22 +228,22 @@ _JarvisX chat-session support route group._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `preferences_get` | `()` | User-level UI preferences (output style, tool permissions, etc). | [src](../../../apps/api/jarvis_api/routes/jarvisx_sessions.py#L23) |
-| class | `PreferencesUpdate` | `` | — | [src](../../../apps/api/jarvis_api/routes/jarvisx_sessions.py#L44) |
-| function | `preferences_set` | `(payload)` | — | [src](../../../apps/api/jarvis_api/routes/jarvisx_sessions.py#L50) |
-| function | `tools_inventory` | `()` | Return the full tool catalog with name + description + required params. | [src](../../../apps/api/jarvis_api/routes/jarvisx_sessions.py#L76) |
-| function | `todos_list` | `(session_id=…)` | List todos for a session — used by JarvisX's TodoPanel UI. | [src](../../../apps/api/jarvis_api/routes/jarvisx_sessions.py#L103) |
-| class | `TodoStatusUpdate` | `` | — | [src](../../../apps/api/jarvis_api/routes/jarvisx_sessions.py#L110) |
-| function | `todos_status` | `(payload)` | — | [src](../../../apps/api/jarvis_api/routes/jarvisx_sessions.py#L117) |
-| function | `chat_search` | `(q=…, limit=…, scope=…)` | Full-text search across chat_messages. | [src](../../../apps/api/jarvis_api/routes/jarvisx_sessions.py#L123) |
-| function | `staged_edits` | `(session_id=…)` | List staged edits for a session, including full diffs. | [src](../../../apps/api/jarvis_api/routes/jarvisx_sessions.py#L209) |
-| function | `staged_edits_commit` | `(session_id=…, stage_ids=…)` | Apply staged edits. Same as the commit_staged_edits tool, but | [src](../../../apps/api/jarvis_api/routes/jarvisx_sessions.py#L220) |
-| function | `staged_edits_discard` | `(session_id=…, stage_ids=…)` | Drop staged edits without applying. | [src](../../../apps/api/jarvis_api/routes/jarvisx_sessions.py#L231) |
-| function | `get_tool_result` | `(result_id)` | Fetch the full body of a stored tool_result. | [src](../../../apps/api/jarvis_api/routes/jarvisx_sessions.py#L241) |
-| function | `list_plans` | `(session_id=…, include_resolved=…)` | Pending plan proposals for a session (optionally including resolved). | [src](../../../apps/api/jarvis_api/routes/jarvisx_sessions.py#L276) |
-| function | `approve_plan` | `(plan_id)` | Mark a plan as approved. Owner-only. | [src](../../../apps/api/jarvis_api/routes/jarvisx_sessions.py#L289) |
-| function | `dismiss_plan` | `(plan_id)` | Mark a plan as dismissed. Owner-only. | [src](../../../apps/api/jarvis_api/routes/jarvisx_sessions.py#L300) |
-| class | `_ForkPayload` | `` | — | [src](../../../apps/api/jarvis_api/routes/jarvisx_sessions.py#L316) |
-| function | `fork_session` | `(payload)` | Clone a session up to a specific message_id. | [src](../../../apps/api/jarvis_api/routes/jarvisx_sessions.py#L323) |
+| class | `PreferencesUpdate` | `` | — | [src](../../../apps/api/jarvis_api/routes/jarvisx_sessions.py#L48) |
+| function | `preferences_set` | `(payload)` | — | [src](../../../apps/api/jarvis_api/routes/jarvisx_sessions.py#L54) |
+| function | `tools_inventory` | `()` | Return the full tool catalog with name + description + required params. | [src](../../../apps/api/jarvis_api/routes/jarvisx_sessions.py#L89) |
+| function | `todos_list` | `(session_id=…)` | List todos for a session — used by JarvisX's TodoPanel UI. | [src](../../../apps/api/jarvis_api/routes/jarvisx_sessions.py#L116) |
+| class | `TodoStatusUpdate` | `` | — | [src](../../../apps/api/jarvis_api/routes/jarvisx_sessions.py#L123) |
+| function | `todos_status` | `(payload)` | — | [src](../../../apps/api/jarvis_api/routes/jarvisx_sessions.py#L130) |
+| function | `chat_search` | `(q=…, limit=…, scope=…)` | Full-text search across chat_messages. | [src](../../../apps/api/jarvis_api/routes/jarvisx_sessions.py#L136) |
+| function | `staged_edits` | `(session_id=…)` | List staged edits for a session, including full diffs. | [src](../../../apps/api/jarvis_api/routes/jarvisx_sessions.py#L222) |
+| function | `staged_edits_commit` | `(session_id=…, stage_ids=…)` | Apply staged edits. Same as the commit_staged_edits tool, but | [src](../../../apps/api/jarvis_api/routes/jarvisx_sessions.py#L233) |
+| function | `staged_edits_discard` | `(session_id=…, stage_ids=…)` | Drop staged edits without applying. | [src](../../../apps/api/jarvis_api/routes/jarvisx_sessions.py#L244) |
+| function | `get_tool_result` | `(result_id)` | Fetch the full body of a stored tool_result. | [src](../../../apps/api/jarvis_api/routes/jarvisx_sessions.py#L254) |
+| function | `list_plans` | `(session_id=…, include_resolved=…)` | Pending plan proposals for a session (optionally including resolved). | [src](../../../apps/api/jarvis_api/routes/jarvisx_sessions.py#L289) |
+| function | `approve_plan` | `(plan_id)` | Mark a plan as approved. Owner-only. | [src](../../../apps/api/jarvis_api/routes/jarvisx_sessions.py#L302) |
+| function | `dismiss_plan` | `(plan_id)` | Mark a plan as dismissed. Owner-only. | [src](../../../apps/api/jarvis_api/routes/jarvisx_sessions.py#L313) |
+| class | `_ForkPayload` | `` | — | [src](../../../apps/api/jarvis_api/routes/jarvisx_sessions.py#L329) |
+| function | `fork_session` | `(payload)` | Clone a session up to a specific message_id. | [src](../../../apps/api/jarvis_api/routes/jarvisx_sessions.py#L336) |
 
 ## `apps/api/jarvis_api/routes/jarvisx_workspace.py`
 _JarvisX workspace + identity/mind route group._

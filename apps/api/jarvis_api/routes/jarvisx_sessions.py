@@ -26,19 +26,23 @@ def preferences_get() -> dict[str, Any]:
     Stored in JARVIS_HOME/config/jarvisx_prefs.json so they survive
     runtime restarts and apply across sessions.
     """
+    # Svarstilen er PR. BRUGER (19/9-2026) — se core.context.output_style.
+    from core.context.output_style import hent_stil
+    from core.identity.workspace_context import current_user_id
     from core.runtime.config import CONFIG_DIR
+    stil = hent_stil(current_user_id() or "")
     p = Path(CONFIG_DIR) / "jarvisx_prefs.json"
     if not p.is_file():
-        return {"output_style": "balanced", "tool_permissions": {}}
+        return {"output_style": stil, "tool_permissions": {}}
     import json as _json
     try:
         data = _json.loads(p.read_text(encoding="utf-8"))
         return {
-            "output_style": str(data.get("output_style") or "balanced"),
+            "output_style": stil,
             "tool_permissions": data.get("tool_permissions") if isinstance(data.get("tool_permissions"), dict) else {},
         }
     except Exception:
-        return {"output_style": "balanced", "tool_permissions": {}}
+        return {"output_style": stil, "tool_permissions": {}}
 
 
 class PreferencesUpdate(BaseModel):
@@ -59,8 +63,14 @@ def preferences_set(payload: PreferencesUpdate) -> dict[str, Any]:
         except Exception:
             current = {}
     if payload.output_style is not None:
-        if payload.output_style in {"concise", "balanced", "detailed", "technical"}:
-            current["output_style"] = payload.output_style
+        # Pr. bruger, ikke i den globale fil (19/9-2026): ellers styrede én
+        # brugers valg alles svar.
+        from core.context.output_style import saet_stil
+        from core.identity.workspace_context import current_user_id
+        try:
+            current["output_style"] = saet_stil(current_user_id() or "", payload.output_style)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
     if payload.tool_permissions is not None:
         # Validate values
         valid = {}
@@ -68,7 +78,10 @@ def preferences_set(payload: PreferencesUpdate) -> dict[str, Any]:
             if v in {"allow", "deny", "ask"}:
                 valid[str(k)] = v
         current["tool_permissions"] = valid
+    stil = current.pop("output_style", None)
     p.write_text(_json.dumps(current, indent=2, ensure_ascii=False), encoding="utf-8")
+    if stil:
+        current["output_style"] = stil
     return {"status": "ok", "preferences": current}
 
 

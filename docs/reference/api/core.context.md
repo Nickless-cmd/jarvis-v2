@@ -114,6 +114,17 @@ _Cache-bevidst microcompact af gamle tool-resultater i det synlige transcript._
 | function | `_gem_graense` | `(session_id, cutoff_id)` | — | [src](../../../core/context/microcompact.py#L146) |
 | function | `apply_cache_aware_microcompact` | `(messages, *, session_id, now=…, gap_minutes=…, keep_recent_tools=…, persist=…)` | Stub gamle tool-resultater bag en klaebende, cache-bevidst graense. | [src](../../../core/context/microcompact.py#L162) |
 
+## `core/context/output_style.py`
+_Svarstil pr. bruger — og påmindelsen der følger med hver tur._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_noegle` | `(uid)` | — | [src](../../../core/context/output_style.py#L39) |
+| function | `_gammel_fil` | `()` | Den globale fil fra den pensionerede jarvisx-app — kun som faldback. | [src](../../../core/context/output_style.py#L43) |
+| function | `hent_stil` | `(uid)` | Brugerens stil; standarden hvis intet er valgt. | [src](../../../core/context/output_style.py#L57) |
+| function | `saet_stil` | `(uid, stil)` | — | [src](../../../core/context/output_style.py#L71) |
+| function | `hint_for_bruger` | `(uid)` | Påmindelsen til denne tur — tom for standarden. | [src](../../../core/context/output_style.py#L83) |
+
 ## `core/context/session_compact.py`
 _Session-level context compaction._
 

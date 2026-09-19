@@ -1455,26 +1455,15 @@ def _build_visible_chat_prompt_assembly_impl(
     # ovenfor eller i de senere inline-sektioner. Pinpoint → cap som recall.
     _mark("seg_brain_dream_done")
 
-    # Output style hint — comes from JarvisX preferences. Concise =
-    # short, dense replies; detailed = longer explanations; technical =
-    # more code/structure, less prose.
+    # Svarstil pr. bruger — påmindelsen gentages HVER tur, som Claude Codes
+    # output styles. Logikken bor i core.context.output_style (19/9-2026: før
+    # læste denne blok en global fil ingen klient skrev).
     try:
-        from pathlib import Path as _PP
-        from core.runtime.config import CONFIG_DIR as _CD
-        import json as _json
-        _prefs_path = _PP(_CD) / "jarvisx_prefs.json"
-        if _prefs_path.is_file():
-            _prefs = _json.loads(_prefs_path.read_text(encoding="utf-8"))
-            _style = str(_prefs.get("output_style") or "balanced")
-            _style_hints = {
-                "concise": "Output style: CONCISE. Bjørn prefers short, dense answers right now. Skip preamble. One paragraph max where possible. Code blocks fine, prose around them minimal.",
-                "balanced": "",  # default — no hint needed
-                "detailed": "Output style: DETAILED. Bjørn wants thorough explanations. Walk through the reasoning, mention edge cases, give examples.",
-                "technical": "Output style: TECHNICAL. Lean into code, types, exact paths, file:line references. Less narrative prose, more concrete artifacts.",
-            }
-            _hint = _style_hints.get(_style)
-            if _hint:
-                _awareness_add(7, "output style preference", _hint)
+        from core.context.output_style import hint_for_bruger
+        from core.identity.workspace_context import current_user_id
+        _hint = hint_for_bruger(current_user_id() or "")
+        if _hint:
+            _awareness_add(7, "output style preference", _hint)
     except Exception as _e:
         _sec_err("output style preference", _e)
 

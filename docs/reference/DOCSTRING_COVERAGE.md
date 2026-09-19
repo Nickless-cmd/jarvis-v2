@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7772/15091 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7775/15096 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -18,7 +18,7 @@ Generated from source. 7772/15091 functions/methods documented (51%). The list b
 | `core.channels` | 0 | 0 | 0% |
 | `core.cli` | 0 | 72 | 0% |
 | `core.coding_lane` | 9 | 10 | 90% |
-| `core.context` | 65 | 90 | 72% |
+| `core.context` | 68 | 95 | 71% |
 | `core.costing` | 6 | 8 | 75% |
 | `core.eventbus` | 12 | 26 | 46% |
 | `core.identity` | 70 | 164 | 42% |
@@ -41,7 +41,7 @@ Generated from source. 7772/15091 functions/methods documented (51%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2161)
+## Undocumented public functions (2162)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L208)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -84,8 +84,8 @@ Generated from source. 7772/15091 functions/methods documented (51%). The list b
 - `apps/api/jarvis_api/routes/interlanguage_blind.py` :: `progress` (L222)
 - `apps/api/jarvis_api/routes/interlanguage_blind.py` :: `serve_ui` (L269)
 - `apps/api/jarvis_api/routes/internal_discord.py` :: `dispatch` (L33)
-- `apps/api/jarvis_api/routes/jarvisx_sessions.py` :: `preferences_set` (L50)
-- `apps/api/jarvis_api/routes/jarvisx_sessions.py` :: `todos_status` (L117)
+- `apps/api/jarvis_api/routes/jarvisx_sessions.py` :: `preferences_set` (L54)
+- `apps/api/jarvis_api/routes/jarvisx_sessions.py` :: `todos_status` (L130)
 - `apps/api/jarvis_api/routes/live.py` :: `websocket_stream` (L20)
 - `apps/api/jarvis_api/routes/mission_control_jarvis_state.py` :: `mc_cognitive_frame` (L305)
 - `apps/api/jarvis_api/routes/mission_control_jarvis_state.py` :: `mc_jarvis` (L14)
@@ -250,6 +250,7 @@ Generated from source. 7772/15091 functions/methods documented (51%). The list b
 - `core/cli/visible_output.py` :: `visible_run_section` (L37)
 - `core/context/kompaktering.py` :: `log_komprimering` (L201)
 - `core/context/kompaktering.py` :: `seneste_log` (L255)
+- `core/context/output_style.py` :: `saet_stil` (L71)
 - `core/context/tool_result_lifecycle.py` :: `get_cold_floor` (L243)
 - `core/costing/ledger.py` :: `recent_costs` (L135)
 - `core/costing/ledger.py` :: `telemetry_summary` (L115)
@@ -1423,13 +1424,13 @@ Generated from source. 7772/15091 functions/methods documented (51%). The list b
 - `core/services/projection_runtime.py` :: `registered` (L80)
 - `core/services/projection_tool_router.py` :: `register` (L212)
 - `core/services/prompt_cache_probe.py` :: `ProbeVerdict.as_line` (L61)
-- `core/services/prompt_contract.py` :: `build_future_agent_task_prompt_assembly` (L3471)
-- `core/services/prompt_contract.py` :: `build_heartbeat_prompt_assembly` (L3319)
-- `core/services/prompt_contract.py` :: `build_prompt_relevance_decision` (L3608)
+- `core/services/prompt_contract.py` :: `build_future_agent_task_prompt_assembly` (L3460)
+- `core/services/prompt_contract.py` :: `build_heartbeat_prompt_assembly` (L3308)
+- `core/services/prompt_contract.py` :: `build_prompt_relevance_decision` (L3597)
 - `core/services/prompt_contract.py` :: `build_runtime_inner_visible_prompt_bridge_surface` (L151)
 - `core/services/prompt_contract.py` :: `build_runtime_memory_selection_surface` (L99)
 - `core/services/prompt_contract.py` :: `build_runtime_relevance_decision_surface` (L126)
-- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4826)
+- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4815)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_from_inputs` (L224)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_runtime_surface` (L469)
 - `core/services/prompt_mutation_loop.py` :: `build_prompt_mutation_loop_prompt_section` (L528)

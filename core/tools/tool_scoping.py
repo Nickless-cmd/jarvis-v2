@@ -138,6 +138,8 @@ CHAT_MODE_TOOLS_BASE: frozenset[str] = frozenset({
     "read_model_config",
     # UI-panel-kald (desk) — fremvis noget i preview/højre-panel (§8.2)
     "open_ui_panel",
+    # Desk-vinduet indefra (Claude Desktops ccd_view, 19/9-2026)
+    "desk_get_layout", "desk_show_pane", "desk_close_pane",
     # App-self-control (desk) — foreslå skift chat→code mode (brugeren godkender)
     "request_app_action",
     # Companion-push — naa brugeren proaktivt paa deres egne enheder (device-routet)
@@ -154,6 +156,9 @@ CHAT_MODE_OWNER_EXTRA: frozenset[str] = frozenset({
 CODE_MODE_TOOLS_BASE: frozenset[str] = frozenset({
     # Et skaermbillede af en fejl er ofte den korteste vej til at forstaa den.
     "read_attachment",
+    # Desk-vinduet indefra (Claude Desktops ccd_view, 19/9-2026): vis diff'en
+    # efter en redigering — det er NETOP her det betyder mest.
+    "desk_get_layout", "desk_show_pane", "desk_close_pane",
     "operator_channel",
     "mcp",
     "checkpoint",

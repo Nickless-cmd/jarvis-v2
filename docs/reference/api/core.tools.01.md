@@ -184,14 +184,14 @@ _Contextual tool pruning for GitHub Copilot / OpenAI-compatible providers._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `record_tool_usage` | `(tool_name)` | Record a tool call timestamp for recent-usage boost. Best-effort. | [src](../../../core/tools/copilot_tool_pruning.py#L208) |
-| function | `_recent_tool_counts` | `()` | — | [src](../../../core/tools/copilot_tool_pruning.py#L214) |
-| function | `_keyword_score_for_categories` | `(user_message)` | Return {tool_name: keyword_score} based on category keyword hits. | [src](../../../core/tools/copilot_tool_pruning.py#L224) |
-| function | `select_tools_for_copilot` | `(tools, *, user_message=…, session_id=…, max_tools=…, stable_only=…)` | Return at most ``max_tools`` tool definitions, prioritised for this call. | [src](../../../core/tools/copilot_tool_pruning.py#L240) |
-| function | `_faestn_kraevede` | `(selected_names, seen, by_name, max_tools, user_message)` | Saet de vaerktoejer ind der SKAL overleve kappen, og skaer resten. | [src](../../../core/tools/copilot_tool_pruning.py#L335) |
-| function | `_betinget_kraevede` | `(user_message)` | Vaerktoejer der SKAL med netop denne tur, fordi prompten naevner dem. | [src](../../../core/tools/copilot_tool_pruning.py#L362) |
-| function | `_stable_idx` | `(name)` | Deterministic tiebreak — lexicographic by name. | [src](../../../core/tools/copilot_tool_pruning.py#L409) |
-| function | `select_tools_for_visible` | `(tools, *, user_message=…, session_id=…, max_tools=…)` | Provider-neutral pruning wrapper for the visible lane. | [src](../../../core/tools/copilot_tool_pruning.py#L414) |
+| function | `record_tool_usage` | `(tool_name)` | Record a tool call timestamp for recent-usage boost. Best-effort. | [src](../../../core/tools/copilot_tool_pruning.py#L209) |
+| function | `_recent_tool_counts` | `()` | — | [src](../../../core/tools/copilot_tool_pruning.py#L215) |
+| function | `_keyword_score_for_categories` | `(user_message)` | Return {tool_name: keyword_score} based on category keyword hits. | [src](../../../core/tools/copilot_tool_pruning.py#L225) |
+| function | `select_tools_for_copilot` | `(tools, *, user_message=…, session_id=…, max_tools=…, stable_only=…)` | Return at most ``max_tools`` tool definitions, prioritised for this call. | [src](../../../core/tools/copilot_tool_pruning.py#L241) |
+| function | `_faestn_kraevede` | `(selected_names, seen, by_name, max_tools, user_message)` | Saet de vaerktoejer ind der SKAL overleve kappen, og skaer resten. | [src](../../../core/tools/copilot_tool_pruning.py#L336) |
+| function | `_betinget_kraevede` | `(user_message)` | Vaerktoejer der SKAL med netop denne tur, fordi prompten naevner dem. | [src](../../../core/tools/copilot_tool_pruning.py#L363) |
+| function | `_stable_idx` | `(name)` | Deterministic tiebreak — lexicographic by name. | [src](../../../core/tools/copilot_tool_pruning.py#L410) |
+| function | `select_tools_for_visible` | `(tools, *, user_message=…, session_id=…, max_tools=…)` | Provider-neutral pruning wrapper for the visible lane. | [src](../../../core/tools/copilot_tool_pruning.py#L415) |
 
 ## `core/tools/counterfactual_tools.py`
 _Counterfactual reflection tools — read-only exposition._
@@ -246,6 +246,18 @@ _Behavioral decisions tools — Jarvis-facing closure of reflection→behavior._
 | function | `_exec_decision_get` | `(args)` | — | [src](../../../core/tools/decisions_tools.py#L85) |
 | function | `_exec_decision_update` | `(args)` | — | [src](../../../core/tools/decisions_tools.py#L102) |
 | function | `_exec_decision_revoke` | `(args)` | — | [src](../../../core/tools/decisions_tools.py#L135) |
+
+## `core/tools/desk_view_tools.py`
+_Jarvis styrer desk-vinduet indefra — Claude Desktops `ccd_view`-værktøjer._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_session` | `()` | — | [src](../../../core/tools/desk_view_tools.py#L31) |
+| function | `_spoerg` | `(op, args)` | — | [src](../../../core/tools/desk_view_tools.py#L39) |
+| function | `_runtime` | `(args)` | De `_`-nøgler runtime sprøjter ind (samtalens id) — skal med videre. | [src](../../../core/tools/desk_view_tools.py#L58) |
+| function | `_exec_get_layout` | `(args)` | — | [src](../../../core/tools/desk_view_tools.py#L63) |
+| function | `_exec_show_pane` | `(args)` | — | [src](../../../core/tools/desk_view_tools.py#L67) |
+| function | `_exec_close_pane` | `(args)` | — | [src](../../../core/tools/desk_view_tools.py#L81) |
 
 ## `core/tools/file_tools_exec.py`
 _Fil-tool executors (read_file / write_file / edit_file / read_tool_result /_
@@ -509,12 +521,4 @@ _Memory duplicate-check and safe-write tools for MEMORY.md._
 | function | `_exec_memory_upsert_section` | `(args)` | Write or update a section in MEMORY.md. Replaces existing section if heading matches. | [src](../../../core/tools/memory_tools.py#L121) |
 | function | `_exec_memory_list_headings` | `(args)` | — | [src](../../../core/tools/memory_tools.py#L186) |
 | function | `_exec_memory_consolidate` | `(args)` | Find fuzzy-overlapping sections in MEMORY.md and propose/execute merges. | [src](../../../core/tools/memory_tools.py#L196) |
-
-## `core/tools/memory_topic_tools.py`
-_Kuraterede memory-topic-tools (spec 2026-07-10 Spec B)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_exec_read_memory_topic` | `(args)` | Læs en kurateret memory-topic-fil (pull, LLM-led). Scoped til aktuel bruger. | [src](../../../core/tools/memory_topic_tools.py#L12) |
-| function | `_exec_write_memory_topic` | `(args)` | Skriv/opdatér en kurateret memory-topic (streng bekraeftelse). Scoped til bruger. | [src](../../../core/tools/memory_topic_tools.py#L22) |
 

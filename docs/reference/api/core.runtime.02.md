@@ -794,6 +794,19 @@ _DB helpers for users-tabellen (spec 2026-06-15)._
 | function | `hard_delete_user_row` | `(user_id)` | — | [src](../../../core/runtime/db_users.py#L208) |
 | function | `list_user_rows` | `(*, include_deleted=…)` | — | [src](../../../core/runtime/db_users.py#L216) |
 
+## `core/runtime/db_view_requests.py`
+_Visnings-forespørgsler: Jarvis spørger desk, desk SVARER._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_laes` | `()` | — | [src](../../../core/runtime/db_view_requests.py#L36) |
+| function | `_gem` | `(tilstand)` | — | [src](../../../core/runtime/db_view_requests.py#L44) |
+| function | `opret` | `(op, args, *, session_id)` | — | [src](../../../core/runtime/db_view_requests.py#L48) |
+| function | `ventende` | `()` | Ubesvarede, ikke-forældede forespørgsler. | [src](../../../core/runtime/db_view_requests.py#L66) |
+| function | `hent` | `(request_id)` | — | [src](../../../core/runtime/db_view_requests.py#L73) |
+| function | `svar` | `(request_id, resultat)` | Desk svarer. Kun én gang: et andet vindue må ikke overskrive svaret. | [src](../../../core/runtime/db_view_requests.py#L80) |
+| function | `vent_paa_svar` | `(request_id, *, frist_s, interval_s=…)` | — | [src](../../../core/runtime/db_view_requests.py#L94) |
+
 ## `core/runtime/db_visible.py`
 _Persistence for the visible-lane projection tables._
 
@@ -929,17 +942,4 @@ _Lukker processen ned? Ét sted der ejer svaret._
 | function | `grund` | `()` | — | [src](../../../core/runtime/process_lifecycle.py#L63) |
 | function | `installer_signalvagt` | `()` | Sæt flaget når SIGNALET ankommer — ikke når lifespan når sin shutdown. | [src](../../../core/runtime/process_lifecycle.py#L68) |
 | function | `nulstil_til_test` | `()` | Kun til tests — en proces vender ikke tilbage fra nedlukning. | [src](../../../core/runtime/process_lifecycle.py#L115) |
-
-## `core/runtime/profile_composer.py`
-_Profil-komponisten — Fase 9 i DeepSeek-harness-spec'en._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `EffektivProfil` | `` | Resultatet af en komposition — og det en kørsel gemmer om sig selv. | [src](../../../core/runtime/profile_composer.py#L66) |
-| method | `EffektivProfil.hash` | `(self)` | Hash over det EFFEKTIVE resultat, ikke over navnet. | [src](../../../core/runtime/profile_composer.py#L75) |
-| method | `EffektivProfil.forklar` | `(self)` | Hvad Mission Control skal kunne vise. Exit-kriteriet kræver at | [src](../../../core/runtime/profile_composer.py#L87) |
-| method | `EffektivProfil.haandhaevelse` | `(self)` | Maalt virkelighed for de tre akser i kriterium 7. Selv-sikker. | [src](../../../core/runtime/profile_composer.py#L108) |
-| method | `EffektivProfil.afvigelser` | `(self)` | Hvor holder virkeligheden ikke hvad profilen lover? | [src](../../../core/runtime/profile_composer.py#L116) |
-| function | `_er_indsnaevring` | `(akse, fra, til)` | Bevæger `til` sig væk fra «mest tilladt» i forhold til `fra`? | [src](../../../core/runtime/profile_composer.py#L125) |
-| function | `komponer` | `(lag, *, navn=…)` | Sæt lagene sammen i rækkefølge. Senere lag vinder — undtagen sikkerhed, | [src](../../../core/runtime/profile_composer.py#L140) |
 

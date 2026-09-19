@@ -821,6 +821,9 @@ def create_app() -> FastAPI:
     # Spol tilbage + fortryd (Claude Desktop §8).
     from apps.api.jarvis_api.routes.chat_rewind import router as chat_rewind_router
     app.include_router(chat_rewind_router)
+    # Visnings-forespørgsler: Jarvis spørger desk, desk svarer (CC's ccd_view).
+    from apps.api.jarvis_api.routes.ui_view_requests import router as ui_view_requests_router
+    app.include_router(ui_view_requests_router)
     app.include_router(files_router)
     app.include_router(chat_router)
     app.include_router(review_router)

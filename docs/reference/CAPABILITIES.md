@@ -1,6 +1,6 @@
 # CAPABILITIES
 
-> Generated 2026-09-17 — 472 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
+> Generated 2026-09-19 — 475 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
 
 | Tool | Kind | Mutating |
 |---|---|---|
@@ -92,6 +92,9 @@
 | `deep_analyze` | native | no |
 | `delegation_advisor` | native | no |
 | `delete_event` | native | no |
+| `desk_close_pane` | native | no |
+| `desk_get_layout` | native | no |
+| `desk_show_pane` | native | no |
 | `detect_stale_goals` | native | no |
 | `discard_brain_proposal` | native | no |
 | `discard_staged_edits` | native | no |

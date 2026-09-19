@@ -133,6 +133,16 @@ _TTS synthesis route — ElevenLabs primær (Jarvis' egen stemme, Mads),_
 | function | `synthesize` | `(req)` | Synthesize text → MP3 bytes via edge-tts. | [src](../../../apps/api/jarvis_api/routes/tts.py#L97) |
 | function | `list_voices` | `(lang=…)` | List available Edge-TTS voices, optionally filtered by language tag. | [src](../../../apps/api/jarvis_api/routes/tts.py#L167) |
 
+## `apps/api/jarvis_api/routes/ui_view_requests.py`
+_`GET /ui/view-requests/pending` og `POST /ui/view-requests/{id}/svar`._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `ViewSvar` | `` | — | [src](../../../apps/api/jarvis_api/routes/ui_view_requests.py#L22) |
+| function | `_ventende` | `()` | — | [src](../../../apps/api/jarvis_api/routes/ui_view_requests.py#L26) |
+| function | `view_requests_pending` | `()` | Ubesvarede visnings-forespørgsler for samtaler brugeren må røre. | [src](../../../apps/api/jarvis_api/routes/ui_view_requests.py#L36) |
+| function | `view_request_svar` | `(request_id, body)` | Desk's svar. Kun det første svar tæller. | [src](../../../apps/api/jarvis_api/routes/ui_view_requests.py#L42) |
+
 ## `apps/api/jarvis_api/routes/users.py`
 _Owner-only user-administration (spec 2026-06-15 §4/§6). CRUD + GDPR-erasure._
 

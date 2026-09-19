@@ -88,6 +88,7 @@ TIER_1_ALWAYS_ON: frozenset[str] = frozenset({
     # App-self-control: Jarvis styrer jarvis-desk indefra (skift mode, åbn paneler).
     # Kernede kontrol-værktøjer = altid native, så han aldrig skal loade+gætte schema.
     "request_app_action", "open_ui_panel",
+    "desk_get_layout", "desk_show_pane", "desk_close_pane",
     "mark_wakeup_consumed", "memory_check_duplicate", "memory_list_headings", "memory_upsert_section",
     "my_project_journal_write", "my_project_status", "notify_user", "propose_git_commit",
     "propose_source_edit", "publish_file", "push_initiative", "quick_council_check",

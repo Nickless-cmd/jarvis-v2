@@ -54,6 +54,7 @@ from core.tools.ui_panel_tools import (UI_PANEL_TOOL_DEFINITIONS)
 from core.tools.state_flag_tools import (STATE_FLAG_TOOL_DEFINITIONS)
 from core.tools.gate_override_tools import (GATE_OVERRIDE_TOOL_DEFINITIONS)
 from core.tools.app_control_tool import (APP_CONTROL_TOOL_DEFINITIONS)
+from core.tools.desk_view_tools import (DESK_VIEW_TOOL_DEFINITIONS)
 from core.tools.agent_todo_tools import (AGENT_TODO_TOOL_DEFINITIONS)
 from core.tools.monitor_tools import (MONITOR_TOOL_DEFINITIONS)
 from core.tools.verify_tools import (VERIFY_TOOL_DEFINITIONS)
@@ -3441,6 +3442,8 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     *STATE_FLAG_TOOL_DEFINITIONS,
     *GATE_OVERRIDE_TOOL_DEFINITIONS,
     *APP_CONTROL_TOOL_DEFINITIONS,
+    # Jarvis styrer desk-vinduet indefra — Claude Desktops ccd_view (19/9-2026).
+    *DESK_VIEW_TOOL_DEFINITIONS,
     *AGENT_TODO_TOOL_DEFINITIONS,
     *MONITOR_TOOL_DEFINITIONS,
     *VERIFY_TOOL_DEFINITIONS,

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7753/15052 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7758/15068 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,7 +8,7 @@ Generated from source. 7753/15052 functions/methods documented (51%). The list b
 |---|---|---|---|
 | `apps.api.jarvis_api` | 34 | 36 | 94% |
 | `apps.api.jarvis_api.middleware` | 8 | 19 | 42% |
-| `apps.api.jarvis_api.routes` | 665 | 882 | 75% |
+| `apps.api.jarvis_api.routes` | 667 | 885 | 75% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 70 | 172 | 40% |
 | `apps.desktop` | 6 | 7 | 85% |
@@ -24,7 +24,7 @@ Generated from source. 7753/15052 functions/methods documented (51%). The list b
 | `core.identity` | 69 | 162 | 42% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 661 | 1218 | 54% |
+| `core.runtime` | 663 | 1225 | 54% |
 | `core.services` | 5145 | 10317 | 49% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 107 | 183 | 58% |
@@ -32,7 +32,7 @@ Generated from source. 7753/15052 functions/methods documented (51%). The list b
 | `core.services.visible_runs_sections` | 18 | 30 | 60% |
 | `core.skills` | 0 | 0 | 0% |
 | `core.skills.voice` | 39 | 49 | 79% |
-| `core.tools` | 478 | 982 | 48% |
+| `core.tools` | 479 | 988 | 48% |
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.util` | 9 | 10 | 90% |
@@ -41,7 +41,7 @@ Generated from source. 7753/15052 functions/methods documented (51%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2155)
+## Undocumented public functions (2158)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L208)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -517,6 +517,9 @@ Generated from source. 7753/15052 functions/methods documented (51%). The list b
 - `core/runtime/db_users.py` :: `set_google_link` (L91)
 - `core/runtime/db_users.py` :: `soft_delete_user_row` (L204)
 - `core/runtime/db_users.py` :: `update_user_row` (L191)
+- `core/runtime/db_view_requests.py` :: `hent` (L73)
+- `core/runtime/db_view_requests.py` :: `opret` (L48)
+- `core/runtime/db_view_requests.py` :: `vent_paa_svar` (L94)
 - `core/runtime/db_visible.py` :: `ensure_visible_tables` (L15)
 - `core/runtime/db_visible.py` :: `recent_visible_work_notes` (L155)
 - `core/runtime/db_visible.py` :: `recent_visible_work_units` (L199)
@@ -2049,10 +2052,10 @@ Generated from source. 7753/15052 functions/methods documented (51%). The list b
 - `core/tools/tool_definition_v2.py` :: `all_definitions` (L211)
 - `core/tools/tool_schema_contract.py` :: `Brud.haard` (L72)
 - `core/tools/tool_schema_contract.py` :: `haarde` (L177)
-- `core/tools/tool_scoping.py` :: `reset_tool_scope` (L225)
-- `core/tools/tool_scoping.py` :: `set_local_exec` (L243)
-- `core/tools/tool_scoping.py` :: `set_tool_scope` (L221)
-- `core/tools/tool_scoping.py` :: `tool_scope` (L248)
+- `core/tools/tool_scoping.py` :: `reset_tool_scope` (L230)
+- `core/tools/tool_scoping.py` :: `set_local_exec` (L248)
+- `core/tools/tool_scoping.py` :: `set_tool_scope` (L226)
+- `core/tools/tool_scoping.py` :: `tool_scope` (L253)
 - `core/tools/wake_word_tool.py` :: `wake_word_status` (L217)
 - `core/tools/workspace_capabilities.py` :: `classify_workspace_execution_mode` (L1870)
 - `core/tools/workspace_capabilities.py` :: `get_capability_invocation_truth` (L555)

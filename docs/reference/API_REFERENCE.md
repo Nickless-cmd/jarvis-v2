@@ -1,6 +1,6 @@
 # API_REFERENCE
 
-> Generated 2026-09-19 from app.routes (live) — 591 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
+> Generated 2026-09-19 from app.routes (live) — 593 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
 
 | Method | Path | Response model | Source |
 |---|---|---|---|
@@ -575,6 +575,8 @@
 | POST | `/review/lessons/{lesson_id}` | dict | review |
 | GET | `/status` | dict | status |
 | POST | `/transcribe` | dict | transcribe |
+| GET | `/ui/view-requests/pending` | dict | ui_view_requests |
+| POST | `/ui/view-requests/{request_id}/svar` | dict | ui_view_requests |
 | GET | `/v1/agent/audit` | dict | agent_audit |
 | POST | `/v1/agent/step` |  | agent_loop |
 | POST | `/v1/agent/turn-absorb` |  | agent_loop |

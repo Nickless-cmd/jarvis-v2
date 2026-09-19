@@ -504,7 +504,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
                         "description": "Command timeout in seconds (default 30, max 300)",
                     },
                 },
-                "required": ["command"],
+                "required": ["command", "description"],
             },
         },
     },
@@ -1571,7 +1571,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
                     # Jarvis' egen linje i klienterne — se kommando_beskrivelse.
                     "description": BESKRIVELSE_PARAM,
                 },
-                "required": ["command"],
+                "required": ["command", "description"],
             },
         },
     },

@@ -466,8 +466,8 @@ _Jarvis' egen beskrivelse af en kommando — linjen i klienterne._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_norm` | `(s)` | — | [src](../../../core/tools/kommando_beskrivelse.py#L46) |
-| function | `brugbar_beskrivelse` | `(beskrivelse, kommando=…)` | Beskrivelsen hvis den kan stå som linjen, ellers `""`. | [src](../../../core/tools/kommando_beskrivelse.py#L50) |
+| function | `_norm` | `(s)` | — | [src](../../../core/tools/kommando_beskrivelse.py#L55) |
+| function | `brugbar_beskrivelse` | `(beskrivelse, kommando=…)` | Beskrivelsen hvis den kan stå som linjen, ellers `""`. | [src](../../../core/tools/kommando_beskrivelse.py#L59) |
 
 ## `core/tools/load_more_tools.py`
 _Lazy tool schema loader for visible-lane tool pruning._

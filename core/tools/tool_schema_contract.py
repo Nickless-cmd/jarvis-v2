@@ -142,6 +142,13 @@ def _validator(tool_name: str):
     return _validatorer[navn]
 
 
+def _kun_bloedt(tool_name: str, besked: str) -> bool:
+    """Er det manglende felt et af dem der kun er krævet for modellens skyld?"""
+    from core.tools.kommando_beskrivelse import BLOEDT_PAAKRAEVET
+    felter = BLOEDT_PAAKRAEVET.get(str(tool_name or ""), frozenset())
+    return any(besked.startswith(f"'{felt}' is a required property") for felt in felter)
+
+
 def violations(tool_name: str, arguments: dict[str, Any] | None) -> list[Brud]:
     """Hvilke skema-brud har dette kald? Tom liste = ingen."""
     v = _validator(tool_name)
@@ -151,7 +158,13 @@ def violations(tool_name: str, arguments: dict[str, Any] | None) -> list[Brud]:
     ud: list[Brud] = []
     try:
         for f in sorted(v.iter_errors(args), key=lambda e: str(list(e.path))):
-            ud.append(Brud(art=str(f.validator),
+            art = str(f.validator)
+            # Et felt skemaet kræver for at MODELLEN udfylder det — ikke fordi
+            # værktøjet har brug for det. Mangler det, er kaldet stadig gyldigt;
+            # bruddet måles, men afviser aldrig. Se `kommando_beskrivelse`.
+            if art == "required" and _kun_bloedt(tool_name, str(f.message)):
+                art = "anbefalet"
+            ud.append(Brud(art=art,
                            sti="/".join(str(p) for p in f.path),
                            besked=str(f.message)[:300]))
     except Exception:

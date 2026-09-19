@@ -18,7 +18,7 @@ from __future__ import annotations
 import re
 from typing import Any, Final
 
-__all__ = ["BESKRIVELSE_PARAM", "brugbar_beskrivelse"]
+__all__ = ["BESKRIVELSE_PARAM", "BLOEDT_PAAKRAEVET", "brugbar_beskrivelse"]
 
 BESKRIVELSE_PARAM: Final[dict[str, Any]] = {
     "type": "string",
@@ -38,6 +38,15 @@ BESKRIVELSE_PARAM: Final[dict[str, Any]] = {
         "- git reset --hard origin/main → \"Kassér lokale ændringer og match origin/main\"\n"
         "- curl -s url | jq '.data[]' → \"Hent JSON og træk data-elementerne ud\""
     ),
+}
+
+#: Felter skemaet KRÆVER, men kun så modellen udfylder dem. Valgfrit fik
+#: DeepSeek til at springe feltet over: 0 af 108 bash-kald havde det, målt på
+#: CT105 19/9-2026 efter udrulningen. Kontrakt-værnet (`tool_schema_contract`)
+#: må derfor aldrig afvise et kald der mangler det — kommandoen er gyldig uden.
+BLOEDT_PAAKRAEVET: Final[dict[str, frozenset[str]]] = {
+    "bash": frozenset({"description"}),
+    "operator_bash": frozenset({"description"}),
 }
 
 _MELLEMRUM = re.compile(r"\s+")

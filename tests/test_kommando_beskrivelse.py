@@ -29,7 +29,8 @@ def test_feltet_er_valgfrit_tekst_og_beder_om_dansk():
     assert "Danish" in BESKRIVELSE_PARAM["description"]
 
 
-def test_begge_kommandovaerktoejer_har_feltet_og_det_er_ikke_paakraevet():
+def test_begge_kommandovaerktoejer_kraever_feltet_i_skemaet():
+    """Valgfrit fik DeepSeek til at springe det over: 0 af 108 kald (19/9-2026)."""
     import core.tools.simple_tools_definitions as d
     fundet = {}
     for v in vars(d).values():
@@ -40,4 +41,19 @@ def test_begge_kommandovaerktoejer_har_feltet_og_det_er_ikke_paakraevet():
     assert set(fundet) == {"bash", "operator_bash"}
     for p in fundet.values():
         assert p["properties"]["description"] is BESKRIVELSE_PARAM
-        assert "description" not in p["required"]
+        assert p["required"] == ["command", "description"]
+
+
+def test_et_kald_uden_beskrivelse_er_aldrig_et_haardt_brud():
+    """Kontrakt-vaernet maa ikke afvise en kommando fordi linjen mangler."""
+    from core.tools.tool_schema_contract import violations, haarde
+    for navn in ("bash", "operator_bash"):
+        brud = violations(navn, {"command": "ls"})
+        assert [b.art for b in brud] == ["anbefalet"]
+        assert haarde(brud) == []
+
+
+def test_en_manglende_kommando_er_stadig_haard():
+    from core.tools.tool_schema_contract import violations, haarde
+    brud = violations("bash", {"description": "Vis filer"})
+    assert [b.art for b in haarde(brud)] == ["required"]

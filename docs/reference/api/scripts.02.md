@@ -254,6 +254,17 @@ _Fase 6 «Bæres han på tværs af tid?» — indsamler._
 | function | `collect_timepoint` | `(tp, rnd)` | Ét tidspunkt: alle betingelser × modeller × prober. | [src](../../../scripts/phase6_collect.py#L86) |
 | function | `run` | `(timepoints, gap_minutes)` | — | [src](../../../scripts/phase6_collect.py#L133) |
 
+## `scripts/phase7_analyze.py`
+_Fase 7 — analyse, præcis som forhåndsregistreret._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_jsonl` | `(path)` | — | [src](../../../scripts/phase7_analyze.py#L35) |
+| function | `paired_diffs` | `(scores, model, a, b, probe_ids)` | — | [src](../../../scripts/phase7_analyze.py#L41) |
+| function | `bootstrap_low` | `(diffs, rnd)` | — | [src](../../../scripts/phase7_analyze.py#L50) |
+| function | `analyze` | `(out_dir=…)` | — | [src](../../../scripts/phase7_analyze.py#L58) |
+| function | `_v4` | `(out_dir, scores)` | — | [src](../../../scripts/phase7_analyze.py#L109) |
+
 ## `scripts/phase7_build_probes.py`
 _Fase 7 — bygger proberne af arkivet._
 
@@ -267,6 +278,30 @@ _Fase 7 — bygger proberne af arkivet._
 | function | `preceding_user` | `(conn, session_id, msg_id)` | — | [src](../../../scripts/phase7_build_probes.py#L126) |
 | function | `reject_reason` | `(p, ident_lower, used_sessions, session_id, type_counts)` | — | [src](../../../scripts/phase7_build_probes.py#L133) |
 | function | `main` | `()` | — | [src](../../../scripts/phase7_build_probes.py#L155) |
+
+## `scripts/phase7_collect.py`
+_Fase 7 — indsamler svarene._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_load_builder` | `()` | — | [src](../../../scripts/phase7_collect.py#L51) |
+| function | `_check_locked` | `()` | Proberne SKAL være låst i registreringen før første svar. | [src](../../../scripts/phase7_collect.py#L59) |
+| function | `_full_system_prompt` | `(question)` | — | [src](../../../scripts/phase7_collect.py#L67) |
+| function | `_call` | `(provider, model, system, user)` | — | [src](../../../scripts/phase7_collect.py#L76) |
+| function | `_done` | `()` | — | [src](../../../scripts/phase7_collect.py#L88) |
+| function | `main` | `()` | — | [src](../../../scripts/phase7_collect.py#L100) |
+
+## `scripts/phase7_judge.py`
+_Fase 7 — blind bedømmelse af svarene._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_call` | `(prompt)` | — | [src](../../../scripts/phase7_judge.py#L65) |
+| function | `parse_verdict` | `(text)` | — | [src](../../../scripts/phase7_judge.py#L74) |
+| function | `_jsonl` | `(path)` | — | [src](../../../scripts/phase7_judge.py#L87) |
+| function | `key` | `(r)` | — | [src](../../../scripts/phase7_judge.py#L93) |
+| function | `main` | `()` | — | [src](../../../scripts/phase7_judge.py#L97) |
+| function | `_calibration` | `(probes, items)` | 30 svar til Bjørns blinde bedømmelse — trukket én gang, aldrig igen. | [src](../../../scripts/phase7_judge.py#L134) |
 
 ## `scripts/phone_home_auto.py`
 _phone_home_auto — hold phone_adb_address i runtime.json opdateret._
@@ -403,26 +438,4 @@ _Smoke-test the jarvis-runtime startup path WITHOUT serving traffic._
 |---|---|---|---|---|
 | function | `_run_lifespan` | `()` | Import app + drive lifespan context to completion. | [src](../../../scripts/smoke_test_startup.py#L42) |
 | function | `main` | `()` | — | [src](../../../scripts/smoke_test_startup.py#L450) |
-
-## `scripts/tag_untagged_skills.py`
-_Batch-tag untagged skills for C2 — Skills meta-tags._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `infer_tags` | `(name, description, use_when)` | Infer domain/context tags from skill metadata. | [src](../../../scripts/tag_untagged_skills.py#L81) |
-| function | `update_skill_md` | `(path)` | Add tags to SKILL.md frontmatter. Returns True if changed. | [src](../../../scripts/tag_untagged_skills.py#L101) |
-| function | `main` | `()` | — | [src](../../../scripts/tag_untagged_skills.py#L155) |
-
-## `scripts/tool_result_cleanup.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `main` | `()` | — | [src](../../../scripts/tool_result_cleanup.py#L6) |
-
-## `scripts/tool_router_bootstrap.py`
-_One-shot bootstrap: generate tool tags via cheap LLM and warm embedding cache._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `main` | `()` | — | [src](../../../scripts/tool_router_bootstrap.py#L22) |
 

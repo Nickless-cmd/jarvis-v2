@@ -19,22 +19,26 @@ existential_wonder_daemon = importlib.import_module(
 )
 
 
-def _stub_modules():
+@pytest.fixture(autouse=True)
+def _stub_modules(monkeypatch):
     """Isolate the daemon's dependency bindings without touching shared
     ``core.*`` modules. See tests/test_absence_daemon.py for rationale — the
     old sys.modules stub/pop dance leaked global state and poisoned unrelated
     tests in the full suite (AttributeError / sqlite3.OperationalError).
+
+    Pr. test, ikke ved import (19/9-2026): stubbene blev sat én gang under
+    opsamlingen. tests/services/test_existential_wonder_event_gate.py
+    genindlæser modulet og nulstiller dermed attributterne til de ægte
+    funktioner — i fuld kørsel var mocken væk, og test_store_called_on_generation
+    fejlede med «'function' object has no attribute 'reset_mock'».
     """
     global BUS_MOD, DB_MOD
     mock_bus = MagicMock()
     mock_bus.publish = MagicMock()
-    existential_wonder_daemon.event_bus = mock_bus
-    existential_wonder_daemon.insert_private_brain_record = MagicMock()
+    monkeypatch.setattr(existential_wonder_daemon, "event_bus", mock_bus)
+    monkeypatch.setattr(existential_wonder_daemon, "insert_private_brain_record", MagicMock())
     BUS_MOD = existential_wonder_daemon
     DB_MOD = existential_wonder_daemon
-
-
-_stub_modules()
 
 
 def _reset():

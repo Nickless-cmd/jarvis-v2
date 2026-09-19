@@ -270,7 +270,7 @@ def test_begge_grene_spoerger_SAMME_bro(monkeypatch):
     assert set_af["grep_session"] == "sess-abc"
 
 
-def test_bro_kontrol_domsformer():
+def test_bro_kontrol_domsformer(monkeypatch):
     """Tre udfald, og de skal holdes adskilt: `None` = kan ikke afgoere,
     `False` = fragmentet findes ikke (opdigtet citat), `True` = rigtig linje.
     En bro-fejl maa ALDRIG blive til en anklage."""
@@ -298,12 +298,14 @@ def test_bro_kontrol_domsformer():
          "rigtig linje"),
         ({"status": "ok", "result": "ikke-en-liste"}, None, "ukendt form"),
     ]:
-        sys.modules["core.tools.simple_tools_operator"] = _byg(svar)
-        try:
-            _, linje = ex._bro_kontrol({"_runtime_user_id": "u"})
-            assert linje("/a/b.py", 42, "x") is ventet, hvorfor
-        finally:
-            del sys.modules["core.tools.simple_tools_operator"]
+        # setitem, ikke `del sys.modules[...]`: del fjernede også det ÆGTE
+        # modul, så næste import byggede et nyt modulobjekt. Test der havde
+        # importeret en funktion ved opsamlingen, pegede derefter på det gamle
+        # moduls globaler, og deres monkeypatch ramte ved siden af
+        # (test_simple_tools_operator: KeyError 'tool' i fuld kørsel, 19/9-2026).
+        monkeypatch.setitem(sys.modules, "core.tools.simple_tools_operator", _byg(svar))
+        _, linje = ex._bro_kontrol({"_runtime_user_id": "u"})
+        assert linje("/a/b.py", 42, "x") is ventet, hvorfor
 
 
 # ── «vi doemte intet» maa ikke laese som «vi verificerede alt» ──────────

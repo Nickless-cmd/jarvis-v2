@@ -18,15 +18,22 @@ def test_claim_atomic_single_create_under_concurrency():
     assert len(rids) == 1, f"alle skal dele samme run_id, fik {rids}"
 
 
-def test_claim_stale_cap_starts_fresh():
+def test_et_gammelt_run_erstattes_ikke_paa_alder_alene():
+    """Et langt run er normalt. Siden 6642a5dea (17/9-2026) må et run aldrig
+    erstattes ud fra alder alene — den detached ejer markerer det færdigt ved
+    ren afslutning eller crash. stale_cap_s er kun kaldskompatibilitet.
+
+    Testen stod tilbage på den gamle adfærd (nyt run efter stale_cap) og
+    fejlede i hver kørsel; den pinner nu det der er meningen."""
     rel._RUNS.clear()
     rid, new = rel.claim_or_create("sess-stale")
     assert new is True
-    # gør kørslen "gammel" (ældre end stale_cap)
-    rel._RUNS[rid]["created_at"] = rel.time.monotonic() - 999
+    rel._RUNS[rid]["created_at"] = rel.time.monotonic() - 999  # ældre end stale_cap
     rid2, new2 = rel.claim_or_create("sess-stale")
-    assert new2 is True, "stale run skal IKKE claimes — frisk run forventet"
-    assert rid2 != rid
+    assert (rid2, new2) == (rid, False), "et gammelt, ikke-færdigt run claimes stadig"
+    rel.mark_done(rid)
+    rid3, new3 = rel.claim_or_create("sess-stale")
+    assert new3 is True and rid3 != rid, "først mark_done giver et nyt run"
 
 
 def test_claim_attaches_to_live_run():

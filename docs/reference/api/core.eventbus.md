@@ -40,11 +40,11 @@ _EventContext — ContextVar holding the current parent event_id._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| class | `Event` | `` | — | [src](../../../core/eventbus/events.py#L223) |
-| method | `Event.family` | `(self)` | — | [src](../../../core/eventbus/events.py#L229) |
-| method | `Event.create` | `(cls, kind, payload=…)` | — | [src](../../../core/eventbus/events.py#L233) |
-| method | `Event.from_record` | `(cls, *, kind, payload, created_at)` | — | [src](../../../core/eventbus/events.py#L239) |
-| method | `Event.validate` | `(self)` | — | [src](../../../core/eventbus/events.py#L250) |
+| class | `Event` | `` | — | [src](../../../core/eventbus/events.py#L246) |
+| method | `Event.family` | `(self)` | — | [src](../../../core/eventbus/events.py#L252) |
+| method | `Event.create` | `(cls, kind, payload=…)` | — | [src](../../../core/eventbus/events.py#L256) |
+| method | `Event.from_record` | `(cls, *, kind, payload, created_at)` | — | [src](../../../core/eventbus/events.py#L262) |
+| method | `Event.validate` | `(self)` | — | [src](../../../core/eventbus/events.py#L273) |
 
 ## `core/eventbus/publish_scan.py`
 _Find hvert publish-kald med en familie.navn-literal — statisk, uden at koere noget._

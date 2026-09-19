@@ -216,6 +216,29 @@ ALLOWED_EVENT_FAMILIES = {
     #    var et ugyldigt familienavn, så blokerings-signalet kunne aldrig ses.
     #    (Samme mønster som tool_discovery 6/9 og dict-formen 13/9.) ──
     "r2_5_gate",
+    # ── 19. sep 2026: resten af gælden. 61 af de 62 familier i publish_scan-
+    #    baselinen (Jarvis' fund samme dag). 44 af dem HAVDE en færdig egress-
+    #    fri rute i eventbus_central_bridge — routingen var bygget, men
+    #    familien aldrig registreret, så hvert publish raisede og blev slugt.
+    #    `central` er IKKE med: den holdes ude med vilje som egress-membran
+    #    (test_central_egress_invariant). Routing af de 16 der ingen rute
+    #    havde, står i broen. ──
+    "absence_awareness", "absence_trace", "agency_cartographer", "agent",
+    "agent_observation", "agent_skill", "auto_improvement", "autonomy_proposal",
+    "bro_broker", "cache", "cache_maintenance", "calm_anchor",
+    "clarification_classifier", "cognitive_epistemic", "cognitive_morning_thread",
+    "cognitive_self_review", "cognitive_trade", "communication", "concept_baseline",
+    "conflict_resolution", "context", "counterfactual_predictions", "cowork",
+    "crisis_marker", "decision", "dreaming_session", "embodied_presence",
+    "emotion_tagging", "emotional", "emotional_memory", "hardware_body",
+    "identity_composer", "identity_drift", "identity_mutation",
+    "initiative_accumulator", "inner_voice_notifier", "layer_tension", "long_arc",
+    "memory_pruning", "memory_safeguard", "metacognitive_integration", "nudge",
+    "oauth", "operator", "precision_bias", "promise", "pushback",
+    "reasoning_classifier", "reasoning_escalation", "relation_map",
+    "resonance_decay", "rule_engine", "selective_attention",
+    "selective_consolidation", "shutdown_window", "signal_decay", "surprise",
+    "valence_trajectory", "watcher", "workspace", "workspace_memory",
 }
 
 

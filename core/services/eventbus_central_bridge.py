@@ -113,6 +113,21 @@ FAMILY_ROUTES: dict[str, tuple[str, str]] = {
     "infra_weather": ("infra", "infra_weather"),                # infrastrukturens helbred
     "pollinations": ("providers", "pollinations"),              # billed-udbyder
     "shadow_scan": ("runtime", "shadow_scan"),                  # skygge-koersler af gates
+    # ── 19/9-2026: drift-familierne blandt de 16 uregistrerede der ingen rute
+    # havde. Samme regel som ovenfor; kun metadata forwardes, så agent- og
+    # watcher-uddrag i payloaden forlader aldrig events-tabellen. `cache`
+    # routes IKKE: cache_telemetry kalder allerede central().observe selv, og
+    # central_watch laeser familien direkte — en rute her ville taelle dobbelt.
+    "agent": ("agents", "agent"),                                # agent-runder og relay
+    "agent_skill": ("agents", "agent_skill"),                    # skill-biblioteket
+    "watcher": ("agents", "watcher"),                            # watcher-agenters signaler
+    "bro_broker": ("system", "bro_broker"),                      # brugerskift-anmodninger
+    "cache_maintenance": ("system", "cache_maintenance"),        # oprydning af cache
+    "memory_pruning": ("system", "memory_pruning"),              # beskaerings-cyklus (antal)
+    "signal_decay": ("system", "signal_decay"),                  # signal-oprydning (antal)
+    "rule_engine": ("system", "rule_engine"),                    # regler der fyrer
+    "oauth": ("system", "oauth"),                                # forbundne udbydere
+    "operator": ("tools", "operator"),                           # operator-allowlist
 }
 
 # ── PRIVATE_NO_EGRESS (§24.4 keystone, 2026-07-01): privat inner-life observeres EGRESS-FRIT ──
@@ -417,6 +432,15 @@ PRIVATE_NO_EGRESS_ROUTES: dict[str, tuple[str, str]] = {
     "session_distillation": ("memory", "session_distillation"),
     "user_model": ("cognition", "user_model"),
     "cognitive_temperature": ("cognition", "temperature"),
+    # ── 19/9-2026: indre liv blandt de 16 uregistrerede uden rute. Egress-frit
+    # (trace + tidsserie). absence_trace = hvad selvkritikken savnede;
+    # shutdown_window bærer en finitude-note; memory_safeguard og
+    # workspace_memory bærer uddrag af hans egne ord. ──
+    "absence_trace": ("cognition", "absence_trace"),
+    "resonance_decay": ("cognition", "resonance_decay"),
+    "shutdown_window": ("cognition", "shutdown_window"),
+    "memory_safeguard": ("memory", "memory_safeguard"),
+    "workspace_memory": ("memory", "workspace_memory"),
 }
 
 # Dokumenteret liste over families der BEVIDST holdes dark i M0 (privatlags-isolation,
@@ -523,6 +547,9 @@ PRIVATE_FAMILIES_EXCLUDED_M0: frozenset[str] = frozenset({
     "identity", "irony", "long_arc", "memory_graph", "meta_reflection", "reflection",
     "runtime_awareness_signal", "runtime_learning_signals", "runtime_self_knowledge",
     "session_distillation", "user_model", "cognitive_temperature",
+    # ── 19/9-2026: spejl af de fem nye egress-fri ruter ──
+    "absence_trace", "resonance_decay", "shutdown_window",
+    "memory_safeguard", "workspace_memory",
 })
 
 _BRIDGE_NERVE = "eventbus_bridge"

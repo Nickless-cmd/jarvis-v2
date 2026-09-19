@@ -58,6 +58,14 @@ def test_baselinen_kan_kun_skrumpe():
     )
 
 
+def test_hver_undtagelse_har_en_grund():
+    """Baselinen er ikke længere gæld (19/9-2026): alt der står der, står der
+    med vilje. En post uden grund er gæld der er sneget ind igen."""
+    data = json.loads(_BASELINE.read_text(encoding="utf-8"))
+    uden_grund = set(data["familier"]) - set(data.get("_grunde", {}))
+    assert not uden_grund, f"Undtagelser uden grund i baselinen: {sorted(uden_grund)}"
+
+
 def test_scanneren_finder_faktisk_noget():
     """En scanner der returnerer tomt ville få testene til at bestå på ingenting
     — samme fælde som den tomme logfil der næsten gav «ingen nye fejl»."""

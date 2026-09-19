@@ -144,7 +144,38 @@ export function subjectFromArgs(raw: string): string {
   return ''
 }
 
+/**
+ * Jarvis' egen linje for kaldet — `description`-feltet, Claude Desktops vej
+ * (`zu`, læst 19/9-2026). Kun på kommando-værktøjerne, og kun når den er
+ * brugbar: én linje, ikke bare kommandoen igen. Mens argumenterne strømmer,
+ * tæller den først når feltet er LUKKET — ellers skiftede linjen pr. tegn.
+ */
+export function egenBeskrivelse(tool: string, input: Record<string, unknown> | undefined, partialJson?: string): string {
+  if (grundnavn(tool) !== 'bash') return ''
+  let d: unknown = input?.['description']
+  let cmd: unknown = input?.['command']
+  if (typeof d !== 'string' && partialJson) {
+    const m = /"description"\s*:\s*"((?:[^"\\]|\\.)*)"/.exec(partialJson)
+    if (m) {
+      try { d = JSON.parse(`"${m[1]}"`) } catch { d = undefined }
+    }
+    const c = /"command"\s*:\s*"((?:[^"\\]|\\.)*)"/.exec(partialJson)
+    if (c) {
+      try { cmd = JSON.parse(`"${c[1]}"`) } catch { cmd = undefined }
+    }
+  }
+  if (typeof d !== 'string') return ''
+  const b = d.trim()
+  if (!b || /[\n\r]/.test(b)) return ''
+  const norm = (s: string) => s.replace(/\s+/g, ' ').trim().toLowerCase()
+  if (typeof cmd === 'string' && norm(b) === norm(cmd)) return ''
+  return b
+}
+
 export function describeTool(name: string, args: string, running: boolean): string {
+  // `args` er en (evt. ufuldstændig) JSON-streng på mobilen.
+  const egen = egenBeskrivelse(name, undefined, args)
+  if (egen) return egen
   const tool = grundnavn(name) || 'værktøj'
   const [now, past] = VERBS[tool] ?? ['Kører', 'Kørte']
   const verb = running ? now : past

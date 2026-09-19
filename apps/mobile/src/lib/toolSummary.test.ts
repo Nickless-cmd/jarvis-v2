@@ -78,3 +78,24 @@ describe('samme ord som desk', () => {
       .toBe('Kørte echo ===')
   })
 })
+
+// Bjørn 19/9-2026 sagde ja: Jarvis skriver linjen selv i `description`,
+// som Claude Desktop tegner Bash-kaldets egen beskrivelse.
+describe('Jarvis\' egen beskrivelse', () => {
+  it('står som linjen — uændret, både mens den kører og bagefter', () => {
+    const a = JSON.stringify({ command: 'git status', description: 'Vis arbejdstræets status' })
+    expect(describeTool('bash', a, true)).toBe('Vis arbejdstræets status')
+    expect(describeTool('operator_bash', a, false)).toBe('Vis arbejdstræets status')
+  })
+  it('tæller først når feltet er lukket i strømmen', () => {
+    expect(describeTool('bash', '{"command":"git status","description":"Vis arbe', true)).toBe('Kører git status…')
+    expect(describeTool('bash', '{"command":"git status","description":"Vis status"', true)).toBe('Vis status')
+  })
+  it('bare kommandoen igen, eller flere linjer, falder tilbage', () => {
+    expect(describeTool('bash', JSON.stringify({ command: 'git status', description: 'git status' }), false)).toBe('Kørte git status')
+    expect(describeTool('bash', JSON.stringify({ command: 'ls', description: 'a\nb' }), false)).toBe('Kørte ls')
+  })
+  it('kun kommando-værktøjerne', () => {
+    expect(describeTool('read_file', JSON.stringify({ path: '/a.py', description: 'Noget' }), false)).toBe('Læste a.py')
+  })
+})

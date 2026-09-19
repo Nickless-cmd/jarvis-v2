@@ -157,3 +157,17 @@ describe('subshell', () => {
     expect(kommandoEmne('cd /media/projects/jarvis-v2/apps/mobile && (npx jest src/components)')).toBe('npx jest')
   })
 })
+
+describe("Jarvis' egen beskrivelse (19/9-2026)", () => {
+  it('står som linjen — uændret', () => {
+    expect(describeTool('bash', { command: 'git status', description: 'Vis arbejdstræets status' }, true)).toBe('Vis arbejdstræets status')
+    expect(describeTool('operator_bash', { command: 'ls', description: 'Vis filer i mappen' }, false)).toBe('Vis filer i mappen')
+  })
+  it('i strømmen først når feltet er lukket', () => {
+    expect(describeTool('bash', undefined, true, '{"command":"git status","description":"Vis arb')).toBe('Kører git status…')
+    expect(describeTool('bash', undefined, true, '{"command":"git status","description":"Vis status"')).toBe('Vis status')
+  })
+  it('kommandoen igen falder tilbage', () => {
+    expect(describeTool('bash', { command: 'git status', description: 'git  status' }, false)).toBe('Kørte git status')
+  })
+})

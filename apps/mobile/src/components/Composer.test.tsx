@@ -69,26 +69,32 @@ describe('Composer', () => {
     expect(screen.getByTestId('composer-input').props.value).toBe('Hej Jarvis')
   })
 
-  it('shows stop while working and calls onStop instead of sending', async () => {
+  it('under et svar: tomt felt = stop', async () => {
     const onSend = jest.fn()
     const onStop = jest.fn()
     // `working` holder arbejdsformen åben af sig selv — man skal kunne afbryde
     // uden først at røre komponisten.
     const screen = await render(<Composer working onSend={onSend} onStop={onStop} />)
-
     await waitFor(() => expect(screen.getByTestId('composer-input')).toBeTruthy())
     expect(screen.queryByTestId('composer-rest')).toBeNull()
-
-    await act(async () => {
-      screen.getByTestId('composer-input').props.onChangeText('Hej')
-    })
-    await waitFor(() => expect(screen.getByTestId('composer-input').props.value).toBe('Hej'))
-    await act(async () => {
-      fireEvent.press(screen.getByTestId('composer-button'))
-    })
-
-    expect(onSend).not.toHaveBeenCalled()
+    expect(screen.getByTestId('composer-button').props.accessibilityLabel).toBe('Stop svar')
+    await act(async () => { fireEvent.press(screen.getByTestId('composer-button')) })
     expect(onStop).toHaveBeenCalledTimes(1)
+    expect(onSend).not.toHaveBeenCalled()
+  })
+
+  // 19/9-2026 (Claude Desktop §6, som desk): man kan skrive videre mens han
+  // svarer — beskeden lægges i kø af ChatScreen og sendes bagefter.
+  it('under et svar: står der tekst, lægger knappen den i kø i stedet for at stoppe', async () => {
+    const onSend = jest.fn()
+    const onStop = jest.fn()
+    const screen = await render(<Composer working onSend={onSend} onStop={onStop} />)
+    await waitFor(() => expect(screen.getByTestId('composer-input')).toBeTruthy())
+    await act(async () => { screen.getByTestId('composer-input').props.onChangeText('Hej') })
+    await waitFor(() => expect(screen.getByTestId('composer-button').props.accessibilityLabel).toBe('Læg i kø'))
+    await act(async () => { fireEvent.press(screen.getByTestId('composer-button')) })
+    expect(onSend).toHaveBeenCalledWith('Hej')
+    expect(onStop).not.toHaveBeenCalled()
   })
 
   it('does not send blank or disabled input', async () => {

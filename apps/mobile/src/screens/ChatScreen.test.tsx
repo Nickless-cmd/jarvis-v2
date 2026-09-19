@@ -333,3 +333,43 @@ it('samtaleskift beder stroemmen slippe den forrige samtale', async () => {
   await waitFor(() => expect(forladSession).toHaveBeenLastCalledWith('session-2'))
   spy.mockRestore()
 })
+
+// Claude Desktop §6 (19/9-2026): en besked skrevet mens han svarer lægges i
+// kø og sendes bagefter — og at fjerne den afbryder ALDRIG turen.
+describe('køen', () => {
+  // Som testene ovenfor: i jest giver AppState.addEventListener intet
+  // abonnement tilbage, og rerender kører effektens oprydning.
+  let spy: jest.SpyInstance
+  beforeEach(() => {
+    const { AppState } = require('react-native')
+    spy = jest.spyOn(AppState, 'addEventListener').mockImplementation(() => ({ remove: jest.fn() }))
+  })
+  afterEach(() => spy.mockRestore())
+
+  it('under et svar sendes intet — beskeden står i kø og går afsted bagefter', async () => {
+    mockStream = { ...mockStream, state: { status: 'working', blocks: [] } }
+    const screen = await render(<ChatScreen />)
+    await act(async () => { fireEvent.press(screen.getByText('Send mocked composer')) })
+    expect(mockSend).not.toHaveBeenCalled()
+    expect(screen.getByTestId('koe-chip')).toBeTruthy()
+    expect(screen.getByText('ret remote delen')).toBeTruthy()
+
+    mockStream = { ...mockStream, state: { status: 'done', blocks: [] } }
+    await screen.rerender(<ChatScreen />)
+    await waitFor(() => expect(mockSend).toHaveBeenCalled())
+    expect(mockSend.mock.calls[0][2]).toBe('ret remote delen')
+    expect(screen.queryByTestId('koe-chip')).toBeNull()
+  })
+
+  it('at fjerne den fra køen hverken sender den eller stopper svaret', async () => {
+    mockStream = { ...mockStream, state: { status: 'working', blocks: [] } }
+    const screen = await render(<ChatScreen />)
+    await act(async () => { fireEvent.press(screen.getByText('Send mocked composer')) })
+    await act(async () => { fireEvent.press(screen.getByLabelText('Fjern fra kø')) })
+    expect(screen.queryByTestId('koe-chip')).toBeNull()
+    expect(mockStop).not.toHaveBeenCalled()
+    mockStream = { ...mockStream, state: { status: 'done', blocks: [] } }
+    await screen.rerender(<ChatScreen />)
+    expect(mockSend).not.toHaveBeenCalled()
+  })
+})

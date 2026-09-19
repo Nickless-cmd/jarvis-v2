@@ -14,8 +14,10 @@ import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
  * der ikke er noget at hoppe til. Den her kommer kun frem når den har et svar
  * på et spørgsmål man faktisk kan have («hvor er det nyeste?»).
  */
-export function ScrollToBottom({ visible, bottom, onPress }: {
+export function ScrollToBottom({ visible, bottom, onPress, live = false }: {
   visible: boolean
+  /** Svaret strømmer: accent-kant — der KOMMER noget (Claude Desktop §10). */
+  live?: boolean
   /** Afstand fra bunden — sættes så knappen står lige over komponisten. */
   bottom: number
   onPress: () => void
@@ -27,7 +29,7 @@ export function ScrollToBottom({ visible, bottom, onPress }: {
   useEffect(() => {
     Animated.timing(fade, {
       toValue: visible ? 1 : 0,
-      duration: 160,
+      duration: 200, // Claude Desktops jump-to-latest: 200 ms
       useNativeDriver: true
     }).start()
   }, [visible, fade])
@@ -35,6 +37,9 @@ export function ScrollToBottom({ visible, bottom, onPress }: {
   return (
     <Animated.View
       pointerEvents={visible ? 'box-none' : 'none'}
+      // Skjult = heller ikke til at nå med skærmlæser (deres `inert`).
+      accessibilityElementsHidden={!visible}
+      importantForAccessibility={visible ? 'auto' : 'no-hide-descendants'}
       style={[styles.wrap, { bottom, opacity: fade }]}
     >
       <Pressable
@@ -43,7 +48,7 @@ export function ScrollToBottom({ visible, bottom, onPress }: {
         accessibilityLabel="Rul til nyeste"
         onPress={onPress}
         hitSlop={8}
-        style={({ pressed }) => [styles.circle, pressed && styles.pressed]}
+        style={({ pressed }) => [styles.circle, live && { borderColor: tokens.color.accent, borderWidth: 1 }, pressed && styles.pressed]}
       >
         <ChevronDown size={20} color={tokens.color.fg1} strokeWidth={2.2} />
       </Pressable>

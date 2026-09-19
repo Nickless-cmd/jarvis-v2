@@ -1,6 +1,7 @@
+import { Fragment } from 'react'
 import { useEffect, useReducer, useRef, useState } from 'react'
 import { useFastholdBund } from '../lib/useFastholdBund'
-import { ArrowDown, PanelRight, Loader2, SquareStack, FileDiff } from 'lucide-react'
+import { PanelRight, Loader2, SquareStack, FileDiff } from 'lucide-react'
 import { JobsPanel } from '../components/shell/JobsPanel'
 import { ChangesPanel } from '../components/shell/ChangesPanel'
 import { paaAendringsFokus } from '../lib/aendringsFokus'
@@ -18,6 +19,13 @@ import { useVoiceConversation } from '../hooks/useVoiceConversation'
 import { VoiceConversation } from '../components/chat/VoiceConversation'
 import { usePermission } from '../hooks/usePermission'
 import { useOnline } from '../hooks/useOnline'
+import { useSendeKoe } from '../hooks/useSendeKoe'
+import { KoeChip } from '../components/transcript/KoeChip'
+import { JumpToLatest } from '../components/transcript/JumpToLatest'
+import { usePinVedStart } from '../hooks/usePinVedStart'
+import { useNyeBeskeder } from '../hooks/useNyeBeskeder'
+import { NyeBeskederLinje } from '../components/transcript/NyeBeskederLinje'
+import { StickyPrompt } from '../components/transcript/StickyPrompt'
 import { readModelPrefs, readThinkingMode } from '../lib/composerPrefs'
 import { getContextInfo, getContextUsage, getActiveRuns, followRun, compactNow, warmSession } from '../lib/api'
 import { markInteraction } from '../lib/presenceSignal'
@@ -327,6 +335,9 @@ export function ChatView({
   // Effekterne ovenfor kender kun stream-blokke, follow-blokke og ANTALLET af
   // beskeder; et svar der lander som en erstattet besked (samme antal) eller
   // ved refresh efter et autonomt run voksede indholdet usynligt for dem.
+  // Dit eget svar starter → til bund og bliv der (Claude Desktops pin, §10).
+  usePinVedStart(transcriptRef, stream.status === 'working', () => { setAtBottom(true); setUnread(0) })
+
   useFastholdBund(
     transcriptRef,
     stream.status === 'working' || bgActive || followState.status === 'working',
@@ -439,7 +450,6 @@ export function ChatView({
   // i kø og sendes automatisk når turen er færdig / forbindelsen er tilbage (§14.1).
   // Deterministisk — ikke nudge.
   const online = useOnline()
-  const [queued, setQueued] = useState<{ text: string; opts: ComposerSendOpts } | null>(null)
   // Manuel compaction (Claude-Code-stil /compact). Udløser samme motor NU. Valgfri fokus:
   // "/compact behold API-kontrakten vi lige lavede".
   const triggerManualCompact = async (focus: string) => {
@@ -450,6 +460,8 @@ export function ChatView({
     } catch { /* pollen forliger tilstanden */ }
   }
 
+  const koe = useSendeKoe({ arbejder: streaming, online, send: doSend })
+
   const handleSend = (text: string, opts: ComposerSendOpts) => {
     const t = text.trim()
     if (/^\/compact(\s|$)/i.test(t)) {
@@ -457,19 +469,12 @@ export function ChatView({
       void triggerManualCompact(focus)
       return  // kommando, ikke en chat-besked
     }
-    if (streaming || !online) setQueued({ text, opts })
-    else void doSend(text, opts)
+    koe.sendEllerKoe(text, opts)
   }
-  useEffect(() => {
-    // Flush når der hverken streames eller er offline (dækker både færdig-tur og reconnect).
-    if (queued && stream.status !== 'working' && online) {
-      const q = queued
-      setQueued(null)
-      void doSend(q.text, q.opts)
-    }
-  }, [stream.status, queued, online])
 
   const visibleMessages = sessions.messages.filter((m) => m.role === 'user' || m.role === 'assistant')
+  // «Nye beskeder»-skillelinjen: første besked man ikke har set (Claude Desktop §10).
+  const nyeFra = useNyeBeskeder(sessionId ?? null, visibleMessages.map((m) => m.id), atBottom)
 
   // pause_and_ask er aktivt indtil næste bruger-besked. Selve tool-blokken
   // bevares i sessionens sandhed, men kortet hostes uden for den scrollbare
@@ -540,7 +545,7 @@ export function ChatView({
   )
   const isEmpty =
     !sessionId ||
-    (visibleMessages.length === 0 && stream.status === 'idle' && stream.blocks.length === 0 && !queued && !bgActive)
+    (visibleMessages.length === 0 && stream.status === 'idle' && stream.blocks.length === 0 && !koe.koet && !bgActive)
 
   const ensureSessionId = async () => {
     if (sessionId) return sessionId
@@ -745,12 +750,15 @@ export function ChatView({
         containerRef={transcriptRef}
         anchors={railAnchors}
       />
+      <StickyPrompt containerRef={transcriptRef} beskeder={visibleMessages} />
       {/* is-at-bottom slukker bund-fade'en naar man ER i bunden (Bjørn 17/9):
           der er intet nedenfor at tone ud, og masken aad ellers den sidste
           linje. Toppen beholder sin — der ER altid mere ovenfor. */}
       <div className={`transcript${atBottom ? ' is-at-bottom' : ''}`} ref={transcriptRef} onScroll={onScroll}>
         {visibleMessages.map((m) => (
-          <div key={m.id} data-rail-id={m.id} className="msg-block">
+          <Fragment key={m.id}>
+          {m.id === nyeFra && <NyeBeskederLinje />}
+          <div data-rail-id={m.id} className="msg-block">
           <MessageRow
             role={m.role === 'user' ? 'user' : 'assistant'}
             blocks={withoutPauseAsk(m.content)}
@@ -763,6 +771,7 @@ export function ChatView({
             onTogglePin={sessionId ? () => fastgjorte.skift(m.id) : undefined}
           />
           </div>
+          </Fragment>
         ))}
         {streaming && stream.blocks.length > 0 && (
           <MessageRow role="assistant" blocks={withoutPauseAsk(liveBlokke(stream))} density="compact" streaming rundeEtiketter={stream.rundeEtiketter} />
@@ -843,19 +852,8 @@ export function ChatView({
             />
           )}
         </div>
-        {!atBottom && (
-          <button type="button" className="scroll-bottom-btn" onClick={scrollToBottom} aria-label="Til bund">
-            <ArrowDown size={16} />
-            {unread > 0 && <span className="scroll-badge">{unread} ny{unread > 1 ? 'e' : ''}</span>}
-          </button>
-        )}
-        {queued && (
-          <div className={`queued-chip ${!online ? 'is-offline' : ''}`}>
-            <span className="queued-label">{!online ? 'Offline — sendes når forbindelsen er tilbage' : 'I kø'}</span>
-            <span className="queued-text">{queued.text}</span>
-            <button type="button" className="queued-cancel" onClick={() => setQueued(null)} aria-label="Fjern fra kø">×</button>
-          </div>
-        )}
+        <JumpToLatest synlig={!atBottom} live={streaming || (bgActive && followState.status === 'working')} ulaeste={unread} onClick={scrollToBottom} />
+        <KoeChip koet={koe.koet} online={online} onAnnuller={koe.annuller} />
         {composer}
       </div>
     </div>

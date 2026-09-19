@@ -1852,6 +1852,13 @@ button.sidebar-group svg { flex: none; opacity: .7; }
   box-shadow: 0 4px 12px rgba(0,0,0,0.35); z-index: 10;
 }
 .scroll-bottom-btn:hover { background: var(--bg-4); }
+/* Claude Desktops jump-to-latest: altid i DOM'en, toner på 200 ms, accent-kant
+   mens svaret strømmer. `inert` (sat i komponenten) gør den utabbar i bund. */
+.jump-to-latest { opacity: 0; pointer-events: none; transition: opacity 200ms, box-shadow 200ms, border-color 200ms; }
+.jump-to-latest.er-synlig { opacity: 1; pointer-events: auto; }
+.jump-to-latest.er-live { border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
+.jump-to-latest:hover { box-shadow: 0 6px 16px rgba(0,0,0,0.45); }
+@media (prefers-reduced-motion: reduce) { .jump-to-latest { transition: none; } }
 .scroll-badge {
   background: var(--accent); color: var(--bg-0); border-radius: 8px;
   padding: 0 6px; font-size: 11px; font-weight: 600;
@@ -2832,6 +2839,28 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 .central-detail-reason { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--fg-2, var(--fg)); font-size: 10.5px; }
 /* ── Besked-rail (venstre kant, hop til besked — chat + code) ── */
 .transcript-wrap { position: relative; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+/* Sticky prompt (Claude Desktop §10): din besked fast i toppen mens du læser
+   svaret. Klippet til 85 % og to linjer; klik ruller tilbage til den. */
+.sticky-prompt-clip {
+  position: absolute; top: 0; left: 0; right: 0; z-index: 12;
+  display: flex; justify-content: flex-end; padding: 8px 24px 0; pointer-events: none;
+}
+.sticky-prompt {
+  pointer-events: auto; max-width: 85%; text-align: left; cursor: pointer;
+  background: color-mix(in srgb, var(--bg-2) 92%, transparent); backdrop-filter: blur(6px);
+  border: .5px solid var(--line); border-radius: 12px; padding: 6px 12px;
+  color: var(--fg-2); font: inherit; font-size: 13px; line-height: 1.4;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+}
+.sticky-prompt:hover { color: var(--fg-1); }
+.sticky-prompt:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* «Nye beskeder» (Claude Desktop §10). */
+.nye-beskeder {
+  display: flex; align-items: center; gap: 10px; margin: 10px 0;
+  color: var(--accent-text); font-size: 12px; font-weight: 600; letter-spacing: .02em;
+}
+.nye-beskeder::before, .nye-beskeder::after { content: ''; flex: 1; height: 1px; background: color-mix(in srgb, var(--accent) 45%, transparent); }
 /* 1:1 med Claudes navigations-rail: en lodret indholdsfortegnelse i venstre
  * kant. I hvile vises kun korte dashes (ét pr. anker). Føres musen over rail-
  * zonen folder hele titel-listen ud i et panel (bg + ramme + skygge); rækken

@@ -1,5 +1,5 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
-import { FlatList, StyleSheet, Text, View } from 'react-native'
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native'
 import type { ContentBlock } from '../lib/sseProtocol'
 import { denseBlocks } from '../lib/blockHelpers'
 import type { ChatMessage } from '../lib/types'
@@ -56,6 +56,8 @@ interface MessageListProps {
   rundeEtiketter?: Record<string, string>
   /** Den levende turs `skill_surface` (streamReducerens `skillFlade`). */
   skillFlade?: { matches: SkillFladeMatch[] }
+  /** Id på den første besked man ikke har set — tegnes med en skillelinje over. */
+  nyeFra?: string | null
   onResend?: (text: string) => void
   /** Id'er på fastgjorte beskeder. Styrer ikonet i besked-menuen. */
   pins?: string[]
@@ -102,6 +104,8 @@ type Row =
    * serialiserede transcript (målt 111k tegn).
    */
   | { kind: 'compact-marker'; key: string; content: string }
+  /** «Nye beskeder» — over den første besked man ikke har set (Claude Desktop §10). */
+  | { kind: 'nye-beskeder'; key: string }
 
 /**
  * Fold sammenhængende værktøjsrækker sammen til én pr. runde.
@@ -120,6 +124,34 @@ function skillFladeMatches(v: unknown): SkillFladeMatch[] {
         : []
     })
     : []
+}
+
+/**
+ * Skillelinjen over den FØRSTE række der hører til den første nye besked.
+ * En besked kan blive til flere rækker (afsnit, runder, tanker), og en
+ * runde-række bærer nøglen `group-<første kalds nøgle>`. Står den nye besked
+ * øverst (intet ældre), er der ingen linje — alt er jo nyt.
+ */
+export function medNyeLinje<R extends { key: string }>(rows: R[], nyeFra: string | null | undefined): Array<R | { kind: 'nye-beskeder'; key: string }> {
+  if (!nyeFra) return rows
+  const i = rows.findIndex((r) => {
+    const k = r.key.startsWith('group-') ? r.key.slice(6) : r.key
+    return k === nyeFra || k.startsWith(`${nyeFra}-`)
+  })
+  return i > 0 ? [...rows.slice(0, i), { kind: 'nye-beskeder', key: `nye-${nyeFra}` }, ...rows.slice(i)] : rows
+}
+
+/**
+ * Hvilken af dine beskeder skal stå fast i toppen? (Inverteret liste: højere
+ * index = ældre.) Er INGEN af dine beskeder i syne, er det den nærmeste
+ * ovenover — den svaret handler om. Er én i syne, står intet fast.
+ */
+export function stickyIndex(userFlags: boolean[], synlige: [number, number] | null): number | null {
+  if (!synlige) return null
+  const [lav, hoej] = synlige
+  if (userFlags.slice(lav, hoej + 1).some(Boolean)) return null
+  const i = userFlags.findIndex((u, j) => u && j > hoej)
+  return i >= 0 ? i : null
 }
 
 function groupToolRounds(rows: Row[]): Row[] {
@@ -295,7 +327,7 @@ function taenketid(start?: number, slut?: number): number | undefined {
 }
 
 export const MessageList = forwardRef<MessageListHandle, MessageListProps>(function MessageList(
-  { messages, blocks, onResend, onScrollOffset, thinking, bottomInset = 0, pins, onTogglePin, onSaveMemory, rundeEtiketter, skillFlade },
+  { messages, blocks, onResend, onScrollOffset, thinking, bottomInset = 0, pins, onTogglePin, onSaveMemory, rundeEtiketter, skillFlade, nyeFra },
   ref
 ) {
   const tokens = useTheme()
@@ -304,9 +336,13 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
   const visibleRef = useRef(0)   // ordered-index øverst i viewport (inverted)
   const contentLenRef = useRef(0)
   // Stabil callback — RN kaster hvis onViewableItemsChanged ændrer identitet on-the-fly.
+  // Hele det synlige spænd — sticky prompt skal vide om DIN besked er i syne.
+  const [synlige, setSynlige] = useState<[number, number] | null>(null)
   const onViewable = useRef(({ viewableItems }: { viewableItems: Array<{ index: number | null }> }) => {
     const first = viewableItems[0]
     if (first && first.index != null) visibleRef.current = first.index
+    const idx = viewableItems.map((v) => v.index).filter((i): i is number => i != null)
+    setSynlige(idx.length ? [Math.min(...idx), Math.max(...idx)] : null)
   }).current
 
   /**
@@ -454,7 +490,11 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
   const flade = skillFlade?.matches?.length && levende.length
     ? [{ kind: 'skill-flade' as const, key: 'stream-skill-flade', matches: skillFlade.matches }]
     : []
-  const rows: Row[] = groupToolRounds([...persisted, ...flade, ...levende])
+  const grupperet: Row[] = groupToolRounds([...persisted, ...flade, ...levende])
+  // Skillelinjen over den FØRSTE række der hører til den første nye besked.
+  // En besked kan blive til flere rækker (afsnit, runder, tanker), og en
+  // runde-række bærer nøglen `group-<første kalds nøgle>`.
+  const rows: Row[] = medNyeLinje(grupperet, nyeFra)
 
   // Inverteret liste: nyeste række sidder altid i bunden og er synlig fra start.
   const ordered = [...rows].reverse()
@@ -489,8 +529,29 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
     },
   }), [userFlags, ordered])
 
+  // Sticky prompt (Claude Desktop §10): er INGEN af dine beskeder i syne, står
+  // den nærmeste ovenover fast i toppen — det er den svaret handler om. Et tryk
+  // ruller tilbage til den. (Inverteret liste: højere index = ældre.)
+  let sticky: { i: number; tekst: string } | null = null
+  const si = stickyIndex(userFlags, synlige)
+  const sr = si != null ? ordered[si] : undefined
+  if (si != null && sr && sr.kind === 'msg') sticky = { i: si, tekst: String(sr.message.content ?? '').replace(/\s+/g, ' ').trim() }
 
   return (
+    <View style={styles.listeWrap}>
+    {sticky && sticky.tekst ? (
+      <View style={styles.stickyClip} pointerEvents="box-none">
+        <Pressable
+          testID="sticky-prompt"
+          accessibilityRole="button"
+          accessibilityLabel="Rul til din besked"
+          onPress={() => flatRef.current?.scrollToIndex({ index: sticky!.i, animated: true, viewPosition: 0 })}
+          style={styles.sticky}
+        >
+          <Text style={styles.stickyTekst} numberOfLines={2}>{sticky.tekst}</Text>
+        </Pressable>
+      </View>
+    ) : null}
     <FlatList
       ref={flatRef}
       inverted
@@ -530,6 +591,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
             />
           )
         }
+        if (item.kind === 'nye-beskeder') return <NyeBeskederRow />
         if (item.kind === 'skill') return <SkillLinje kald={item.kald} />
         if (item.kind === 'skill-flade') return <SkillFladeLinje matches={item.matches} />
         if (item.kind === 'attachments') {
@@ -559,8 +621,21 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
       contentContainerStyle={[styles.content, { paddingTop: BOTTOM_CLEARANCE + bottomInset }]}
       keyboardShouldPersistTaps="handled"
     />
+    </View>
   )
 })
+
+/** «Nye beskeder» — tynd accentlinje med ordet i midten, som desk. */
+function NyeBeskederRow() {
+  const styles = useStyles(makestyles)
+  return (
+    <View style={styles.nyeRow} accessibilityRole="text" accessibilityLabel="Nye beskeder" testID="nye-beskeder">
+      <View style={styles.nyeStreg} />
+      <Text style={styles.nyeTekst}>Nye beskeder</Text>
+      <View style={styles.nyeStreg} />
+    </View>
+  )
+}
 
 /**
  * Linjen lige over skrivefeltet — den der siger hvad han laver NU.
@@ -637,6 +712,17 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
     color: tokens.color.warn,
     opacity: 0.8
   },
+  listeWrap: { flex: 1 },
+  // Under den svævende header (TOP_CLEARANCE), højrestillet som dine bobler.
+  stickyClip: { position: 'absolute', top: TOP_CLEARANCE - 8, left: 0, right: 0, zIndex: 5, alignItems: 'flex-end', paddingHorizontal: tokens.spacing.lg },
+  sticky: {
+    maxWidth: '85%', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12,
+    backgroundColor: tokens.color.bg2, borderWidth: StyleSheet.hairlineWidth, borderColor: tokens.color.line,
+  },
+  stickyTekst: { color: tokens.color.fg2, fontSize: 13, lineHeight: 18 },
+  nyeRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginHorizontal: tokens.spacing.lg, marginVertical: 10 },
+  nyeStreg: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: tokens.color.accent, opacity: 0.6 },
+  nyeTekst: { color: tokens.color.accent, fontSize: 12, fontWeight: '600', letterSpacing: 0.3 },
   content: {
     // paddingTop sættes dynamisk (BOTTOM_CLEARANCE + tastaturhøjde) — se
     // contentContainerStyle. Kun den øverste er konstant.

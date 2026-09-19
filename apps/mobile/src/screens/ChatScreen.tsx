@@ -29,6 +29,8 @@ import { OfflineNotice } from '../components/OfflineNotice'
 import { GreetingHero } from '../components/GreetingHero'
 import { MessageList, type MessageListHandle } from '../components/MessageList'
 import { ScrollToBottom } from '../components/ScrollToBottom'
+import { KoeChip } from '../components/KoeChip'
+import { useNyeBeskeder } from '../lib/useNyeBeskeder'
 import { ModelPicker, type ModelChoice } from '../components/ModelPicker'
 import { PermissionPicker, type ApprovalMode } from '../components/PermissionPicker'
 import { SidePanel } from '../components/SidePanel'
@@ -275,6 +277,16 @@ export function ChatScreen({
     listRef.current?.jumpBottom()
     setScrolledUp(false)
   }, [])
+  // Dit eget svar starter → til bund (Claude Desktops pin, §10). Kun ved
+  // overgangen: har man scrollet op MENS det kører, respekteres det.
+  const arbejdedeFoer = useRef(false)
+  useEffect(() => {
+    const nu = stream.state.status === 'working'
+    if (nu && !arbejdedeFoer.current) jumpToBottom()
+    arbejdedeFoer.current = nu
+  }, [stream.state.status, jumpToBottom])
+  // «Nye beskeder»: første besked man ikke har set (Claude Desktop §10).
+  const nyeFra = useNyeBeskeder(sessions.activeId ?? null, sessions.messages.map((m) => String(m.id)), !scrolledUp)
   const [modalStack, setModalStack] = useState<MobileRoute[]>([])
   const [isOwner, setIsOwner] = useState(false)
   const [inHousehold, setInHousehold] = useState(false)
@@ -698,19 +710,40 @@ export function ChatScreen({
       setPendingAttachments([])
       return
     }
-    const sessionId = sessions.activeId ?? (await sessions.create(config)).id
-    if (!sessions.activeId) void gemIndstillinger(sessionId, chatCfg)
     const readyAttachments = pendingAttachments.filter((a) => a.status !== 'error' && a.status !== 'uploading')
     const attachmentIds = readyAttachments.length
       ? readyAttachments.map((a) => a.uploadId ?? a.id)
       : undefined
+    setPendingAttachments([])
+    // Svarer han allerede, lægges beskeden i KØ og sendes når svaret er
+    // færdigt (19/9-2026, som desk). Før kunne man slet ikke sende imens.
+    if (stream.state.status === 'working' || serverBusy) {
+      setKoet({ text, attachmentIds })
+      return
+    }
+    await sendNu(text, attachmentIds)
+  }
+
+  const sendNu = async (text: string, attachmentIds?: string[]) => {
+    if (!config) return
+    const sessionId = sessions.activeId ?? (await sessions.create(config)).id
+    if (!sessions.activeId) void gemIndstillinger(sessionId, chatCfg)
     const cfg = tilStreamFelter(chatCfg)
     stream.send(config, sessionId, text, {
       ...cfg,
       attachmentIds,
     })
-    setPendingAttachments([])
   }
+
+  // Køen: én besked der venter på at svaret bliver færdigt. At fjerne den
+  // (KoeChip ×) rører KUN køen — aldrig turen der kører (Claude Desktop §6).
+  const [koet, setKoet] = useState<{ text: string; attachmentIds?: string[] } | null>(null)
+  useEffect(() => {
+    if (!koet || stream.state.status === 'working' || serverBusy || connectivity === 'offline') return
+    const k = koet
+    setKoet(null)
+    void sendNu(k.text, k.attachmentIds)
+  }, [koet, stream.state.status, serverBusy, connectivity]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Samtale-mode (Trin 3): voice-hook. sendMessage=ensureSessionAndSend, text fra text-blocks.
   const _voiceExtract = (blocks: ContentBlock[]) =>
@@ -945,6 +978,7 @@ export function ChatScreen({
               // nogensinde at naa skaermen: husets hyppigste fejl.
               rundeEtiketter={stream.state.rundeEtiketter}
               skillFlade={stream.state.skillFlade}
+              nyeFra={nyeFra}
               onResend={(text) => void ensureSessionAndSend(text)}
               pins={pins}
               onTogglePin={sessions.activeId ? handleTogglePin : undefined}
@@ -960,6 +994,7 @@ export function ChatScreen({
             visible={scrolledUp && !composerFocused && sessions.messages.length >= 2}
             bottom={liftPadding + 84}
             onPress={jumpToBottom}
+            live={stream.state.status === 'working' || serverBusy}
           />
         ) : null}
         {/* Kortene skal stå OVER den svævende komponist, ikke bag den.
@@ -1037,6 +1072,7 @@ export function ChatScreen({
           }}
         >
         <ResearchStatus research={stream.state.research} />
+        <KoeChip tekst={koet?.text ?? null} onAnnuller={() => setKoet(null)} />
         <Composer
         config={config}
           indsaet={indsaet}

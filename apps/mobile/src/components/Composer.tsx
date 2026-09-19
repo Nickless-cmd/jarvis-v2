@@ -177,10 +177,16 @@ export function Composer({
     onFocusChange?.(!resting)
   }, [resting, onFocusChange])
 
+  // Under et svar: står der noget i feltet, lægger knappen det i kø; er feltet
+  // tomt, er den stop. Så kan man både skrive videre og afbryde.
+  const koeer = !!working && (!!text.trim() || att.length > 0)
+  const stopper = !!working && !koeer
+
   const submit = async () => {
     const value = text.trim()
     // Tillad send når der er en vedhæftning, selv uden tekst.
-    if ((!value && att.length === 0) || disabled || working || submitting) return
+    // Under et svar er send tilladt: ChatScreen lægger beskeden i kø.
+    if ((!value && att.length === 0) || disabled || submitting) return
 
     setSubmitting(true)
     // Kvitteringen kommer FØR kaldet: den skal mærkes i det øjeblik man
@@ -385,17 +391,17 @@ export function Composer({
             <Pressable
               testID="composer-button"
               accessibilityRole="button"
-              disabled={(disabled && !working) || submitting}
-              accessibilityLabel={working ? 'Stop svar' : text || att.length ? 'Send' : 'Start samtale'}
-              onPress={working ? () => { void haptik('stop'); onStop() } : text || att.length ? submit : onConversation}
+              disabled={(disabled && !stopper) || submitting}
+              accessibilityLabel={stopper ? 'Stop svar' : koeer ? 'Læg i kø' : text || att.length ? 'Send' : 'Start samtale'}
+              onPress={stopper ? () => { void haptik('stop'); onStop() } : text || att.length ? submit : onConversation}
               style={({ pressed }) => [
                 styles.sendBtn,
-                working ? styles.stopBtn : null,
-                (disabled && !working) || submitting ? styles.disabled : null,
+                stopper ? styles.stopBtn : null,
+                (disabled && !stopper) || submitting ? styles.disabled : null,
                 pressed ? styles.pressed : null
               ]}
             >
-              {working ? (
+              {stopper ? (
                 <Square size={15} color={tokens.color.bg0} fill={tokens.color.bg0} strokeWidth={2} />
               ) : text || att.length ? (
                 <ArrowUp size={20} color={tokens.color.bg0} strokeWidth={2.5} />

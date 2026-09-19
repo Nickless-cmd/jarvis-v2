@@ -1,6 +1,7 @@
+import { Fragment } from 'react'
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { useVoiceConversation } from '../hooks/useVoiceConversation'
-import { FolderTree, PanelRight, Lock, ShieldCheck, FolderOpen, ArrowDown, Gauge, SquareStack, FileDiff } from 'lucide-react'
+import { FolderTree, PanelRight, Lock, ShieldCheck, FolderOpen, Gauge, SquareStack, FileDiff } from 'lucide-react'
 import { onPauseSvar, pauseAskIn, withoutPauseAsk, type PauseAsk } from '../lib/pauseAsk'
 import { useStream } from '../hooks/useStream'
 import { usePermission } from '../hooks/usePermission'
@@ -37,6 +38,14 @@ import { useResizableWidth } from '../components/panel/useResizableWidth'
 import { onHighlight } from '../lib/fileTreeHighlight'
 import { getWorkspaceTrust, setWorkspaceTrust, getContextInfo, getContextUsage, compactNow, getActiveRuns, followRun, warmSession } from '../lib/api'
 import { streamReducer, initialStreamState, liveBlokke } from '../lib/streamReducer'
+import { useOnline } from '../hooks/useOnline'
+import { useSendeKoe } from '../hooks/useSendeKoe'
+import { KoeChip } from '../components/transcript/KoeChip'
+import { JumpToLatest } from '../components/transcript/JumpToLatest'
+import { usePinVedStart } from '../hooks/usePinVedStart'
+import { useNyeBeskeder } from '../hooks/useNyeBeskeder'
+import { NyeBeskederLinje } from '../components/transcript/NyeBeskederLinje'
+import { StickyPrompt } from '../components/transcript/StickyPrompt'
 import { buildEnvironmentEvidence, mergeEnvironmentEvidence } from '../lib/environmentEvidence'
 
 // Navngivne server-roots (matcher backend _allowed_roots). Owner: hele kodebasen
@@ -374,13 +383,18 @@ export function CodeView({
   }
 
   // Opfang /compact FØR den sendes som en normal besked (ellers "tænker" modellen bare).
+  const online = useOnline()
+  const koe = useSendeKoe({ arbejder: stream.status === 'working', online, send: (t, o) => doSend(t, o) })
+
   const handleSend = (text: string, opts: ComposerSendOpts) => {
     const t = text.trim()
     if (/^\/compact(\s|$)/i.test(t)) {
       void triggerManualCompact(t.replace(/^\/compact\s*/i, '').trim())
       return
     }
-    void doSend(text, opts)
+    // Under et svar (eller offline) lægges beskeden i kø — som ChatView.
+    // Før startede den en ny kørsel oven i den der kørte (19/9-2026).
+    koe.sendEllerKoe(text, opts)
   }
 
   // Persistér workspace-valget ved enhver ændring.
@@ -512,6 +526,9 @@ export function CodeView({
     if (el) el.scrollTop = el.scrollHeight
     setUnread(0)
   }
+  // Dit eget svar starter → til bund og bliv der (Claude Desktops pin, §10).
+  usePinVedStart(transcriptRef, stream.status === 'working', () => { setAtBottom(true); setUnread(0) })
+
   const onScroll = () => {
     const el = transcriptRef.current
     if (!el) return
@@ -728,6 +745,8 @@ export function CodeView({
   )
 
   const visibleMessages = sessions.messages.filter((m) => m.role === 'user' || m.role === 'assistant')
+  // «Nye beskeder»-skillelinjen: første besked man ikke har set (Claude Desktop §10).
+  const nyeFra = useNyeBeskeder(sessionId ?? null, visibleMessages.map((m) => m.id), atBottom)
   // Saved rail: kapitler + komprimeringer — samme regel som i Chat (lib/railAnkre.ts).
   // Før hentede Code slet ikke kapitler og viste én streg pr. besked.
   // Samme kobling som i Chat: en pin bliver et anker paa skinnen.
@@ -966,10 +985,13 @@ export function CodeView({
           containerRef={transcriptRef}
           anchors={railAnchors}
         />
+        <StickyPrompt containerRef={transcriptRef} beskeder={visibleMessages} />
         {/* Samme som ChatView: bund-fade'en slukkes naar man ER i bunden. */}
         <div className={`transcript${atBottom ? ' is-at-bottom' : ''}`} ref={transcriptRef} onScroll={onScroll}>
           {visibleMessages.map((m) => (
-            <div key={m.id} data-rail-id={m.id} className="msg-block">
+            <Fragment key={m.id}>
+            {m.id === nyeFra && <NyeBeskederLinje />}
+            <div data-rail-id={m.id} className="msg-block">
             <MessageRow
               role={m.role === 'user' ? 'user' : 'assistant'}
               blocks={withoutPauseAsk(m.content)}
@@ -981,6 +1003,7 @@ export function CodeView({
               onTogglePin={sessionId ? () => fastgjorte.skift(m.id) : undefined}
             />
             </div>
+            </Fragment>
           ))}
           {stream.status === 'working' && stream.blocks.length > 0 && (
             <MessageRow role="assistant" blocks={withoutPauseAsk(liveBlokke(stream))} density="compact" streaming />
@@ -1028,12 +1051,8 @@ export function CodeView({
               <ErrorBanner message={stream.error.message} onDismiss={() => { /* ryddes ved næste send */ }} />
             )}
           </div>
-          {!atBottom && (
-            <button type="button" className="scroll-bottom-btn" onClick={scrollToBottom} aria-label="Til bund">
-              <ArrowDown size={16} />
-              {unread > 0 && <span className="scroll-badge">{unread} ny{unread > 1 ? 'e' : ''}</span>}
-            </button>
-          )}
+          <JumpToLatest synlig={!atBottom} live={stream.status === 'working' || (bgActive && followState.status === 'working')} ulaeste={unread} onClick={scrollToBottom} />
+          <KoeChip koet={koe.koet} online={online} onAnnuller={koe.annuller} />
           {composer}
         </div>
       </div>

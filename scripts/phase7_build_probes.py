@@ -7,7 +7,7 @@ Forhåndsregistrering: docs/experiments/2026-09-19-phase7-preregistration.md
 Følger registreringens procedure punkt for punkt: ejerens egne samtaler, tre
 aldersspande (A 2-7 d, B 8-30 d, C 31-120 d), fast seed, ét efterprøvbart
 punkt pr. udvalgt svar (fakta / tilsagn / holdning), filtre mod
-identitetsfilerne, højst én probe pr. samtale, 20 pr. spand.
+identitetsfilerne, højst én probe pr. samtale pr. døgn (tillæg 1), 20 pr. spand.
 
 Probe-filen indeholder private samtaler: den skrives KUN til
 ~/.jarvis-v2/files/phase7/probes.jsonl på CT105 og må aldrig i repoet. Dens
@@ -141,7 +141,7 @@ def reject_reason(p: dict, ident_lower: str, used_sessions: set[str], session_id
     if typ not in TYPES or not q or not facit or not keys:
         return "ufuldstaendig"
     if session_id in used_sessions:
-        return "samme_samtale"
+        return "samme_samtale_samme_doegn"
     if any(k in ident_lower for k in keys):
         return "i_identitetsfilerne"
     if any(k in q.lower() for k in keys):
@@ -164,7 +164,9 @@ def main() -> None:
     rnd = random.Random(SEED)
     probes: list[dict] = []
     grunde: Counter = Counter()
-    used: set[str] = set()  # én probe pr. samtale — på tværs af spande
+    # Én probe pr. samtale pr. døgn, på tværs af spande (tillæg 1: Bjørns
+    # samtaler er få og lange — 45 samtaler, men 115 samtale-døgn).
+    used: set[str] = set()
     with LOG.open("w", encoding="utf-8") as log:
         for bucket, (lo, hi) in BUCKETS.items():
             rows = candidates(conn, uid, now, lo, hi)
@@ -174,7 +176,8 @@ def main() -> None:
             for row in rows:
                 if accepted >= PER_BUCKET or tries >= MAX_TRIES_PER_BUCKET:
                     break
-                if row["session_id"] in used:
+                dag_noegle = f"{row['session_id']}|{str(row['created_at'])[:10]}"
+                if dag_noegle in used:
                     continue
                 tries += 1
                 uddrag = ("BJØRN: " + preceding_user(conn, row["session_id"], row["id"])[:1500]
@@ -186,13 +189,13 @@ def main() -> None:
                     grunde["kaldfejl"] += 1
                     log.write(json.dumps({"bucket": bucket, "msg": row["id"], "fejl": str(exc)[:120]}) + "\n")
                     continue
-                grund = reject_reason(p, ident_lower, used, row["session_id"], types)
+                grund = reject_reason(p, ident_lower, used, dag_noegle, types)
                 log.write(json.dumps({"bucket": bucket, "msg": row["id"], "grund": grund or "accepteret"},
                                      ensure_ascii=False) + "\n")
                 if grund:
                     grunde[grund] += 1
                     continue
-                used.add(row["session_id"])
+                used.add(dag_noegle)
                 types[p["type"]] += 1
                 accepted += 1
                 probes.append({

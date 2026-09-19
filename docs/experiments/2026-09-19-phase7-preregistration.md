@@ -162,3 +162,27 @@ Fejler K1–K3, står det som resultat. Scripts: `scripts/phase7_build_probes.py
 `scripts/phase7_collect.py`, `scripts/phase7_judge.py`,
 `scripts/phase7_analyze.py`. Rå svar, bedømmelser og prompts gemmes på CT105
 under `~/.jarvis-v2/files/phase7/`.
+
+---
+
+## Tillæg 1 — 2026-09-19, FØR første svar: én probe pr. samtale pr. døgn
+
+Første bygning (probe-fil SHA-256
+`f56a6641feafa3bdb010cde732d92212e34619a11cab1d9a5cda238597be5150`) gav **40
+prober** — under V1's 45. Ingen svar var indsamlet.
+
+Årsagen er arkivets form, ikke proberne: i vinduet 2–120 dage findes kun
+**45 forskellige samtaler**, men **115 samtale-døgn**. Bjørns samtaler er få
+og meget lange (den aktuelle har over 2.000 beskeder over flere dage), så
+«højst én probe pr. samtale» udtømte spand A efter 8 forsøg på 276
+kandidater.
+
+**Ændring:** «højst én probe pr. samtale» bliver «højst én probe pr. samtale
+pr. døgn». FULL-armen ser aldrig selve samtalen (`session_id=None`), så to
+prober fra samme lange samtale på forskellige dage er to uafhængige
+kontinuitets-spørgsmål. Alt andet er uændret: seed, spande, filtre,
+typefordeling, modeller, prædiktioner og validitetstjek. Den forkastede
+probe-fil gemmes som `probes_v1_forkastet.jsonl` på CT105.
+
+Det eneste der var set før ændringen, er probe-sættets sammensætning
+(antal pr. spand og type) — ingen svar og ingen bedømmelser.

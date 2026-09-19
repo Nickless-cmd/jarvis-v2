@@ -824,6 +824,9 @@ def create_app() -> FastAPI:
     # Visnings-forespørgsler: Jarvis spørger desk, desk svarer (CC's ccd_view).
     from apps.api.jarvis_api.routes.ui_view_requests import router as ui_view_requests_router
     app.include_router(ui_view_requests_router)
+    # Enheder: list/fjern/registrér + reglen «code mode kræver tilføjet enhed».
+    from apps.api.jarvis_api.routes.auth_enheder import router as auth_enheder_router
+    app.include_router(auth_enheder_router)
     app.include_router(files_router)
     app.include_router(chat_router)
     app.include_router(review_router)

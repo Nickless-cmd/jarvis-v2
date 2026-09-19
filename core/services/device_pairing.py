@@ -1,5 +1,9 @@
 """QR-device-pairing (mobile companion ↔ desktop). Kort-levende engangs-koder.
 
+19/9-2026 (Codex' fjernstyring): koden oprettes først EFTER at brugeren på
+computeren har sagt «Tillad» og givet en totrinskode (`kraev_totp`), og den
+indløste telefon registreres som enhed (se `redeem`).
+
 Desktop (autentificeret) beder om en pairing-kode → QR med {url, code}. Mobilen
 scanner → redeem'er koden → får et friskt Jarvis-token bundet til samme bruger.
 Mirror af google_login-mønstret: in-memory, kort TTL, engangs.
@@ -38,17 +42,30 @@ def create_pairing(user_id: str, role: str = "member", *, now: float | None = No
     return {"status": "ok", "code": code, "expires_in": int(_TTL)}
 
 
-def redeem(code: str, *, now: float | None = None) -> dict | None:
-    """Indløs en pairing-kode (engangs) → udsted friskt token. None hvis ukendt/udløbet."""
+def redeem(code: str, *, navn: str = "", platform: str = "", now: float | None = None) -> dict | None:
+    """Indløs en pairing-kode (engangs) → udsted friskt token. None hvis ukendt/udløbet.
+
+    19/9-2026: telefonen bliver en ENHED (core.runtime.db_devices). Dens id står
+    i tokenet som `enhed` — det er dét der gør den synlig i desk's enhedsliste,
+    lader den fjernes for sig, og åbner code mode når enheds-reglen er tændt.
+    Tokenet får også et `jti`, som ethvert fornyet token har.
+    """
     t = now if now is not None else time.time()
     _gc(t)
     rec = _CODES.pop(code, None)  # engangs
     if not rec or rec.get("exp", 0) < t:
         return None
+    import uuid
+    from core.runtime.db_devices import registrer_telefon
     from core.runtime.jarvisx_auth import issue_token
-    tok = issue_token(user_id=rec["user_id"], role=rec.get("role", "member"))
-    _REDEEMED[code] = {"at": t, "user_id": rec["user_id"]}
-    return {"status": "ok", "token": tok["token"], "user_id": rec["user_id"], "role": rec.get("role", "member")}
+    enhed = registrer_telefon(rec["user_id"], navn=navn, platform=platform)
+    tok = issue_token(
+        user_id=rec["user_id"], role=rec.get("role", "member"),
+        extra_claims={"jti": uuid.uuid4().hex, "enhed": enhed["id"]},
+    )
+    _REDEEMED[code] = {"at": t, "user_id": rec["user_id"], "navn": enhed["navn"]}
+    return {"status": "ok", "token": tok["token"], "user_id": rec["user_id"],
+            "role": rec.get("role", "member"), "enhed": enhed["id"]}
 
 
 def status(code: str, *, now: float | None = None) -> dict:
@@ -58,8 +75,33 @@ def status(code: str, *, now: float | None = None) -> dict:
     _gc(t)
     code = (code or "").strip()
     if code in _REDEEMED:
-        return {"state": "redeemed"}
+        return {"state": "redeemed", "navn": _REDEEMED[code].get("navn", "")}
     rec = _CODES.get(code)
     if rec and rec.get("exp", 0) >= t:
         return {"state": "pending"}
     return {"state": "expired"}
+
+
+class TotpFejl(Exception):
+    """Parring afvist: ingen totrinsbekræftelse sat op, forkert kode eller for mange forsøg."""
+
+    def __init__(self, besked: str, kode: int) -> None:
+        super().__init__(besked)
+        self.kode = kode
+
+
+def kraev_totp(user_id: str, kode: str) -> None:
+    """Codex kræver MFA for at forbinde en enhed; vi kræver brugerens TOTP.
+
+    Uden en TOTP-nøgle kan der ikke parres — «slå totrinsbekræftelse til
+    først», som Codex' «Fortsæt på chatgpt.com». Tre forsøg pr. 5 min.
+    """
+    from core.identity.users import get_totp_seed
+    from core.services.totp_verifier import record_attempt, verify
+    seed = get_totp_seed(discord_id=user_id)
+    if not seed:
+        raise TotpFejl("Slå totrinsbekræftelse til først (Indstillinger → Konto), så kan du tilføje enheder.", 412)
+    if not record_attempt(f"enhed:{user_id}"):
+        raise TotpFejl("For mange forsøg — vent fem minutter.", 429)
+    if not verify(kode, seed=seed):
+        raise TotpFejl("Forkert totrinskode.", 403)

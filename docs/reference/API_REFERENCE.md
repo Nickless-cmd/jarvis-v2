@@ -1,6 +1,6 @@
 # API_REFERENCE
 
-> Generated 2026-09-19 from app.routes (live) — 593 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
+> Generated 2026-09-19 from app.routes (live) — 597 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
 
 | Method | Path | Response model | Source |
 |---|---|---|---|
@@ -27,6 +27,10 @@
 | GET | `/account/workspace` | dict | account |
 | POST | `/anthropic/v1/messages` |  | anthropic_compat |
 | GET | `/anthropic/v1/models` |  | anthropic_compat |
+| GET | `/api/auth/enheder` | dict | auth_enheder |
+| POST | `/api/auth/enheder/denne-computer` | dict | auth_enheder |
+| DELETE | `/api/auth/enheder/{enheds_id}` | dict | auth_enheder |
+| PUT | `/api/auth/enheds-krav` | dict | auth_enheder |
 | GET | `/api/auth/google/link/start` |  | auth |
 | GET | `/api/auth/google/result` |  | auth |
 | GET | `/api/auth/google/start` |  | auth |

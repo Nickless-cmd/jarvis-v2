@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `apps/api/jarvis_api/routes/composer_suggest_routes.py`
+_`/composer/suggest` — hvad der kunne skrives videre i komponisten._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `Udkast` | `` | — | [src](../../../apps/api/jarvis_api/routes/composer_suggest_routes.py#L34) |
+| function | `suggest` | `(krop)` | Et forslag, eller tom streng. Fejler aldrig. | [src](../../../apps/api/jarvis_api/routes/composer_suggest_routes.py#L42) |
+
 ## `apps/api/jarvis_api/routes/connectors.py`
 _Connectors-API til jarvis-desk Marketplace (16. jun 2026)._
 
@@ -694,20 +702,4 @@ _Plugins & Kanaler routes (spec §5.4, Fase 6 #2). Tynde — blokerende arbejde_
 | function | `channel_response` | `(plugin_id, session_id, after_ts=…)` | Gateway poller: seneste assistant-svar i sessionen nyere end after_ts. | [src](../../../apps/api/jarvis_api/routes/plugins.py#L88) |
 | function | `get_plugin_ruleset` | `(plugin_id)` | — | [src](../../../apps/api/jarvis_api/routes/plugins.py#L110) |
 | function | `put_plugin_ruleset` | `(plugin_id, ruleset)` | Gem regelsæt for et kanal-plugin. Hardblock for ALLE inkl. owner (§5.3). | [src](../../../apps/api/jarvis_api/routes/plugins.py#L118) |
-
-## `apps/api/jarvis_api/routes/presence.py`
-_Device-presence + proaktive desktop-notifikationer. Scoper til auth'et bruger._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `PingBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/presence.py#L14) |
-| class | `AckBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/presence.py#L30) |
-| function | `_current_user` | `()` | — | [src](../../../apps/api/jarvis_api/routes/presence.py#L34) |
-| function | `presence_ping` | `(body)` | — | [src](../../../apps/api/jarvis_api/routes/presence.py#L40) |
-| function | `notifications_pending` | `()` | — | [src](../../../apps/api/jarvis_api/routes/presence.py#L65) |
-| function | `notifications_ack` | `(body)` | — | [src](../../../apps/api/jarvis_api/routes/presence.py#L73) |
-| function | `notification_preferences_get` | `()` | Notif-routing §6: app-UI læser brugerens kanal-præferencer. | [src](../../../apps/api/jarvis_api/routes/presence.py#L80) |
-| function | `notification_preferences_set` | `(body)` | app-UI sætter kanal-præferencer (global + per-type + quiet hours). | [src](../../../apps/api/jarvis_api/routes/presence.py#L90) |
-| function | `presence_debug` | `()` | — | [src](../../../apps/api/jarvis_api/routes/presence.py#L106) |
-| function | `presence_state` | `()` | Spec E / E0 — TILSTANDS-KONTRAKTEN: Centralens ægte valens + selv-tilstand → jarvis-desk kan | [src](../../../apps/api/jarvis_api/routes/presence.py#L136) |
 

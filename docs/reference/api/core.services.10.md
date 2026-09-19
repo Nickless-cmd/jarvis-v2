@@ -188,10 +188,13 @@ _QR-device-pairing (mobile companion ↔ desktop). Kort-levende engangs-koder._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_gc` | `(now)` | — | [src](../../../core/services/device_pairing.py#L22) |
-| function | `create_pairing` | `(user_id, role=…, *, now=…)` | Opret en pairing-kode for en (autentificeret) bruger. Returnerer {code, expires_in}. | [src](../../../core/services/device_pairing.py#L30) |
-| function | `redeem` | `(code, *, now=…)` | Indløs en pairing-kode (engangs) → udsted friskt token. None hvis ukendt/udløbet. | [src](../../../core/services/device_pairing.py#L41) |
-| function | `status` | `(code, *, now=…)` | Status på en pairing-kode (til desktop-poll): redeemed | pending | expired. | [src](../../../core/services/device_pairing.py#L54) |
+| function | `_gc` | `(now)` | — | [src](../../../core/services/device_pairing.py#L26) |
+| function | `create_pairing` | `(user_id, role=…, *, now=…)` | Opret en pairing-kode for en (autentificeret) bruger. Returnerer {code, expires_in}. | [src](../../../core/services/device_pairing.py#L34) |
+| function | `redeem` | `(code, *, navn=…, platform=…, now=…)` | Indløs en pairing-kode (engangs) → udsted friskt token. None hvis ukendt/udløbet. | [src](../../../core/services/device_pairing.py#L45) |
+| function | `status` | `(code, *, now=…)` | Status på en pairing-kode (til desktop-poll): redeemed | pending | expired. | [src](../../../core/services/device_pairing.py#L71) |
+| class | `TotpFejl` | `` | Parring afvist: ingen totrinsbekræftelse sat op, forkert kode eller for mange forsøg. | [src](../../../core/services/device_pairing.py#L85) |
+| method | `TotpFejl.__init__` | `(self, besked, kode)` | — | [src](../../../core/services/device_pairing.py#L88) |
+| function | `kraev_totp` | `(user_id, kode)` | Codex kræver MFA for at forbinde en enhed; vi kræver brugerens TOTP. | [src](../../../core/services/device_pairing.py#L93) |
 
 ## `core/services/device_presence.py`
 _In-memory device-presence pr. bruger. Efemær — genopbygges af klient-pings._

@@ -1,0 +1,95 @@
+"""Ruterne for enheder og reglen — og at kode-panelet afviser (19/9-2026)."""
+from __future__ import annotations
+
+import asyncio
+
+import pytest
+from fastapi import HTTPException
+
+import core.identity.users as users
+import core.identity.workspace_context as wc
+from apps.api.jarvis_api.routes import auth_enheder as ae
+from core.runtime import db_devices as dd
+from core.services import totp_verifier as tv
+
+
+@pytest.fixture
+def ejer(isolated_runtime, monkeypatch):
+    s = tv.generate_seed()
+    monkeypatch.setattr(users, "get_totp_seed", lambda discord_id: s)
+    tv._ATTEMPTS.clear()
+
+    def som(uid="u1", rolle="owner", enhed="", app_id="desk-uuid-1"):
+        monkeypatch.setattr(wc, "current_user_id", lambda: uid)
+        monkeypatch.setattr(wc, "current_role", lambda: rolle)
+        monkeypatch.setattr(wc, "current_token_enhed", lambda: (enhed, app_id))
+    som()
+    return s, som
+
+
+def test_ejeren_taender_reglen_og_desken_tilfoejes_selv(ejer):
+    seed, _ = ejer
+    ae.saet_enheds_krav(ae.KravReq(aktiv=True, totp=tv.generate_code(seed), navn="CheifOne"))
+    assert dd.kraev_aktivt() is True
+    svar = ae.enheder()
+    assert [e["navn"] for e in svar["enheder"]] == ["CheifOne"]
+    assert svar["denne"] == {"type": "computer", "tilfoejet": True, "kode_tilladt": True}
+
+
+def test_kun_ejeren_og_kun_med_kode(ejer):
+    seed, som = ejer
+    som(rolle="member")
+    with pytest.raises(HTTPException) as e:
+        ae.saet_enheds_krav(ae.KravReq(aktiv=True, totp=tv.generate_code(seed)))
+    assert e.value.status_code == 403
+    som()
+    with pytest.raises(HTTPException) as e:
+        ae.saet_enheds_krav(ae.KravReq(aktiv=True, totp="000000"))
+    assert e.value.status_code == 403
+    assert dd.kraev_aktivt() is False
+
+
+def test_reglen_kan_ikke_taendes_fra_en_telefon(ejer):
+    """Så ville ejeren låse sig ude af code mode på sin computer."""
+    seed, som = ejer
+    som(app_id=dd.TELEFON_APP_ID)
+    with pytest.raises(HTTPException) as e:
+        ae.saet_enheds_krav(ae.KravReq(aktiv=True, totp=tv.generate_code(seed)))
+    assert e.value.status_code == 400
+    assert dd.kraev_aktivt() is False
+
+
+def test_fjern_kun_min_egen(ejer):
+    t = dd.registrer_telefon("u2")
+    with pytest.raises(HTTPException) as e:
+        ae.fjern_enhed(t["id"])
+    assert e.value.status_code == 404
+    mine = dd.registrer_telefon("u1")
+    assert ae.fjern_enhed(mine["id"]) == {"ok": True}
+
+
+def test_kode_panelet_afviser_en_ikke_tilfoejet_enhed(ejer):
+    from apps.api.jarvis_api.routes import chat as rute
+    _, som = ejer
+    dd.saet_kraev(True, af="u1")
+    som(app_id="uregistreret")
+    with pytest.raises(HTTPException) as e:
+        asyncio.run(rute.chat_tree())
+    assert e.value.status_code == 403 and "tilføjet i desk" in e.value.detail
+
+
+def test_v2_streamen_afviser_code_mode_foer_noget_koerer(ejer, monkeypatch):
+    """Code mode fra en ikke-tilføjet enhed stopper med 403 FØR en kørsel startes."""
+    from apps.api.jarvis_api.routes import chat_stream_v2 as mod
+    from apps.api.jarvis_api.routes.chat import ChatStreamRequest
+    _, som = ejer
+    dd.saet_kraev(True, af="u1")
+    som(app_id="uregistreret")
+    startet: list = []
+    monkeypatch.setattr(mod, "start_or_attach_user_run", lambda **k: startet.append(k) or ("r", False), raising=False)
+    with pytest.raises(HTTPException) as e:
+        from core.services.chat_sessions import create_chat_session
+        sid = create_chat_session(title="kode")["id"]
+        asyncio.run(mod.chat_stream_v2(ChatStreamRequest(message="ret login.py", mode="code", session_id=sid)))
+    assert e.value.status_code == 403
+    assert startet == []

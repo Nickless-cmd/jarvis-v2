@@ -112,15 +112,24 @@ def google_link_start() -> JSONResponse:
 
 # ── QR device-pairing (mobile companion) ───────────────────────────────────
 
+class PairCreateReq(BaseModel):
+    totp: str = ""
+
+
 @router.post("/pair/create")
-def pair_create() -> JSONResponse:
+def pair_create(req: PairCreateReq | None = None) -> JSONResponse:
     """Opret en kort-levende pairing-kode for den INDLOGGEDE bruger. Desktop viser
-    den som QR; mobilen scanner + redeem'er. Kræver auth."""
+    den som QR; mobilen scanner + redeem'er. Kræver auth — og (19/9-2026, Codex'
+    rækkefølge: tillad først, par bagefter) brugerens totrinskode."""
     from core.identity.workspace_context import current_user_id
     from core.services import device_pairing
     uid = current_user_id() or ""
     if not uid:
         return JSONResponse({"error": "not_authenticated"}, status_code=401)
+    try:
+        device_pairing.kraev_totp(uid, (req.totp if req else "") or "")
+    except device_pairing.TotpFejl as e:
+        return JSONResponse({"error": str(e)}, status_code=e.kode)
     role = "owner"
     try:
         from core.identity.users import find_user_by_discord_id
@@ -133,13 +142,16 @@ def pair_create() -> JSONResponse:
 
 class PairRedeemReq(BaseModel):
     code: str
+    #: Telefonens navn og platform — vises i desk's enhedsliste (19/9-2026).
+    navn: str = ""
+    platform: str = ""
 
 
 @router.post("/pair/redeem")
 def pair_redeem(req: PairRedeemReq) -> JSONResponse:
     """Indløs en pairing-kode → friskt Jarvis-token. PUBLIC (mobilen har intet token endnu)."""
     from core.services import device_pairing
-    res = device_pairing.redeem((req.code or "").strip())
+    res = device_pairing.redeem((req.code or "").strip(), navn=req.navn or "", platform=req.platform or "")
     if not res:
         return JSONResponse({"status": "error", "error": "invalid_or_expired"}, status_code=404)
     return JSONResponse(res)

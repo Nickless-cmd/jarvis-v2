@@ -350,6 +350,16 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
     # (rolle-filter gælder stadig).
     _m = (request.mode or "").strip().lower()
     _tool_scope = "chat" if _m == "chat" else "code" if _m == "code" else ""
+    # Enheds-reglen (19/9-2026, Codex' fjernstyring): er den tændt og er denne
+    # enhed ikke tilføjet i desk, afvises code mode med en forklaring — og en
+    # TOM mode (= ubegrænset, altså også kode-værktøjerne) bliver til chat.
+    # Ellers kunne en klient bare udelade mode og få det hele.
+    if _tool_scope != "chat":
+        from core.identity.kode_adgang import KODE_NAEGTET, kode_tilladt
+        if not kode_tilladt():
+            if _tool_scope == "code":
+                raise HTTPException(status_code=403, detail=KODE_NAEGTET)
+            _tool_scope = "chat"
     # Path B (server-owned transcript, LOCAL tool execution): only honoured in code
     # scope — the jarvis-code client is the one that runs the tools locally. Default
     # OFF everywhere → existing clients are byte-identical.

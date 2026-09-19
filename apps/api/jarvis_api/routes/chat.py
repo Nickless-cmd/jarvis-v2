@@ -77,6 +77,18 @@ def _resolve_role(uid: str) -> str:
 
 
 
+def _kode_tilladt() -> bool:
+    from core.identity.kode_adgang import kode_tilladt
+    return kode_tilladt()
+
+
+def _kraev_kode() -> None:
+    """403 hvis enheds-reglen er tændt og enheden ikke er tilføjet i desk."""
+    from core.identity.kode_adgang import KODE_NAEGTET
+    if not _kode_tilladt():
+        raise HTTPException(status_code=403, detail=KODE_NAEGTET)
+
+
 def _kraev_adgang(session_id: str) -> None:
     """403 hvis brugeren ikke må røre samtalen — se `core.identity.session_access`."""
     from apps.api.jarvis_api.routes.chat_session_view import kraev_adgang
@@ -101,6 +113,7 @@ def _read_file_sync(
     path: str, root: str, kind: str, role: str = "owner", uid: str = "",
 ) -> dict:
     """Container: navngivne rolle-scopede roots, path-jailed. Workstation: via broen."""
+    _kraev_kode()  # enheds-reglen: kode-panelet er code mode (19/9-2026)
     if kind == "workstation":
         full = (root.rstrip("/") + "/" + path) if root else path
         res = _operator_exec("operator_read_file", {"path": full, "_user_id": uid})
@@ -137,6 +150,7 @@ async def chat_write_file(body: _FileWriteBody) -> dict:
     """Gem en redigeret fil fra in-app editoren (code mode). Rolle-scopet + jailet
     som GET; container skriver direkte (owner: repo/jarvis-v2/workspace, member:
     workspace), workstation via operator-broen. Blokerende I/O → to_thread."""
+    _kraev_kode()  # enheds-reglen: kode-panelet er code mode (19/9-2026)
     import asyncio
     from core.identity.workspace_context import current_user_id
     uid = current_user_id() or ""
@@ -245,6 +259,7 @@ async def chat_commit_message(body: _CommitMsgBody) -> dict:
     """Auto-genereret (redigerbar) commit-besked til "Gem & commit". Bruger lokal
     ollama (privat-sikker — repo-kode må ALDRIG til fri/cloud-model) med en
     diff-template som fallback. Blokerende → to_thread."""
+    _kraev_kode()  # enheds-reglen: kode-panelet er code mode (19/9-2026)
     import asyncio
     from core.identity.workspace_context import current_user_id
     uid = current_user_id() or ""
@@ -294,6 +309,7 @@ class _CommitBody(BaseModel):
 async def chat_commit_file(body: _CommitBody) -> dict:
     """"Gem & commit": skriv filen + git add/commit på den AKTUELLE branch (ingen
     push). KUN repo-root (git findes kun der) og OWNER. Blokerende → to_thread."""
+    _kraev_kode()  # enheds-reglen: kode-panelet er code mode (19/9-2026)
     import asyncio
     from core.identity.workspace_context import current_user_id
     uid = current_user_id() or ""
@@ -507,6 +523,7 @@ def chat_set_session_workspace(session_id: str, req: SessionWorkspaceRequest) ->
     får det derfor først når man har skrevet noget. Telefonen skal kunne sætte
     det DIREKTE, så headeren kan vise hvor arbejdet foregår før første besked.
     """
+    _kraev_kode()  # enheds-reglen: kode-panelet er code mode (19/9-2026)
     _kraev_adgang(session_id)  # 19/9-2026: «luk hullet i de gamle»
     art = (req.kind or "").strip().lower()
     if art not in ("container", "workstation"):
@@ -532,6 +549,7 @@ async def chat_tree(kind: str = "container", root: str = "", path: str = "") -> 
     """Mappe-listing til Code-mode fil-træ. Blokerende fs/bro-kald offloades til tråd
     (--workers 1 frys-fælde: ellers fryser hele API'et og tree timer ud for BEGGE
     modes — observeret 2026-06-15). Server-roots er rolle-scopede."""
+    _kraev_kode()  # enheds-reglen: kode-panelet er code mode (19/9-2026)
     import asyncio
     from core.identity.workspace_context import current_user_id
     uid = current_user_id() or ""
@@ -1864,6 +1882,10 @@ async def chat_stream(request: ChatStreamRequest) -> StreamingResponse:
             # Without this, operator_* tools dispatch to owner via
             # _operator_user_id fallback. See 2026-05-28 bug investigation.
             force_user_id=_uid,
+            # Den ældre rute giver ingen mode og kører derfor UBEGRÆNSET. Er
+            # enheds-reglen tændt og enheden ikke tilføjet, bliver den til chat
+            # (19/9-2026) — ellers var den en bagdør udenom reglen.
+            tool_scope="" if _kode_tilladt() else "chat",
         ),
         media_type="text/event-stream",
         headers={

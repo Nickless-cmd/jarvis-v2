@@ -27,7 +27,7 @@ def test_fortsaetter_naar_budgettet_loeb_toert():
 
 
 @pytest.mark.parametrize("udfald", [
-    OPBRUGT, "shutdown", "provider-not-supported", "completed-truncated",
+    OPBRUGT, "shutdown", "completed-truncated",
     "interrupted:tool-fejl", "early-exit-empty-text", "pending-tool-intent",
 ])
 def test_recoverable_runsegmenter_fortsaetter(udfald):
@@ -36,6 +36,10 @@ def test_recoverable_runsegmenter_fortsaetter(udfald):
 
 @pytest.mark.parametrize("udfald", [
     "completed", "user-cancelled", "user-steer-stop-mid-stream", "", None,
+    # En model uden followup-adapter får den ikke af at prøve igen — samme tur
+    # ville ramme samme mur tre gange (visible_terminal_policy, cf6b437db
+    # 17/9-2026). Testen stod tilbage på den gamle liste.
+    "provider-not-supported",
 ])
 def test_finale_udfald_fortsaetter_ikke(udfald):
     assert _b(exit_reason=udfald).fortsaet is False

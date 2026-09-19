@@ -54,8 +54,8 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 15125 functions/
 - [`core.services.23`](core.services.23.md) — `signal_delta_trigger` … `sustained_attention`
 - [`core.services.24`](core.services.24.md) — `system_cartographer` … `tool_result_aging`
 - [`core.services.25`](core.services.25.md) — `tool_result_store` … `visible_inner_life`
-- [`core.services.26`](core.services.26.md) — `visible_model` … `weekly_manifest`
-- [`core.services.27`](core.services.27.md) — `witness_signal_tracking` … `world_model_signal_tracking`
+- [`core.services.26`](core.services.26.md) — `visible_model` … `wakeup_dispatcher`
+- [`core.services.27`](core.services.27.md) — `weekly_manifest` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

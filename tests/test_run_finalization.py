@@ -92,13 +92,18 @@ class TestBagudkompatibilitet:
         # Det er ikke nok at kaldet ligger i EN finally — hele run-funktionen er
         # pakket ind i en ydre try/finally, så selv et kald inde i en gren ville
         # teknisk være "i en finally". Kravet er at det deler finally med
-        # in-flight-oprydningen (`_mark_run_completed`), for DEN blok er
+        # in-flight-oprydningen (`_finalize_in_flight`, før `_mark_run_completed`), for DEN blok er
         # beviseligt den der køres for hvert eneste run.
         sammen = False
         for node in ast.walk(tree):
             if isinstance(node, ast.Try) and node.finalbody:
                 names = _calls_in(node.finalbody)
-                if "_finalize_run" in names and "_mark_run_completed" in names:
+                # In-flight-oprydningen hedder `_finalize_in_flight` siden 17/9-
+                # 2026 (Codex, «preserve recoverable task exits»: færdige runs
+                # ryddes, genoptagelige beholdes). Før var det `_mark_run_completed`
+                # direkte. Kravet er det samme: SAMME finally som _finalize_run.
+                if "_finalize_run" in names and (
+                        "_finalize_in_flight" in names or "_mark_run_completed" in names):
                     sammen = True
         assert sammen, (
             "_finalize_run deler ikke finally-blok med in-flight-oprydningen. "

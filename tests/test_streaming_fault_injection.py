@@ -67,6 +67,15 @@ def _reset_provider_circuit_breaker():
 # ── Test-harness: driv det ÆGTE _stream_visible_run-spor hermetisk ───────────
 
 
+# Et run der ender på en GENOPTAGELIG fejl (provider-*, round-*, interrupted:*)
+# er ikke «interrupted» længere, men «recovering»: det genoptages — højst tre
+# gange, så failed_terminal (core/services/visible_terminal_policy.py,
+# is_recoverable_exit_reason; Codex 17/9-2026 «preserve recoverable task
+# exits»). Testene her vogter stadig det samme: turen er IKKE completed, og en
+# terminal-frame når klienten. Kun navnet på udfaldet er skiftet.
+AFBRUDT_GENOPTAGES = "recovering"
+
+
 class _DriveResult:
     """Opsamlet udfald af ét drevet run (til assertions)."""
 
@@ -109,6 +118,21 @@ class _DriveResult:
             ("event: done" in c) or ("event: error" in c) or ("event: failed" in c)
             for c in self.chunks
         )
+
+    def event_data(self, event: str) -> list[dict]:
+        """Alle payloads for én SSE-event-type (fx «run_recovery», «error»)."""
+        import json
+        ud = []
+        for c in self.chunks:
+            if f"event: {event}" not in c:
+                continue
+            for line in c.splitlines():
+                if line.startswith("data: "):
+                    try:
+                        ud.append(json.loads(line[6:]))
+                    except Exception:
+                        pass
+        return ud
 
     def nerve_names(self) -> list[str]:
         return [n for n, _ in self.nerves]
@@ -156,7 +180,19 @@ def _drive(monkeypatch, shape: str, *, run_id: str,
         }]
 
     monkeypatch.setattr(vr, "stream_visible_model", _fake_stream_model)
+    # Hermetisk (som filens docstring lover): injektionen er fire-once, og
+    # bagefter kaldte slut-syntesen (round 901, synthesize_final_answer) og dens
+    # to søskende den RIGTIGE udbyder — test-vagten stoppede den, men testen
+    # rakte ud efter nettet (fundet 19/9-2026). De returnerer tomt, så den
+    # deterministiske floor tager over, præcis som ved et fejlet syntese-kald.
+    monkeypatch.setattr(vf, "synthesize_final_answer", lambda *a, **k: "")
+    monkeypatch.setattr(vf, "synthesize_continuation", lambda *a, **k: "")
+    monkeypatch.setattr(vf, "synthesize_nonthinking_rescue", lambda *a, **k: "")
     monkeypatch.setattr(vr, "_execute_simple_tool_calls", _fake_exec_tools)
+    # Værktøjerne køres i dag via visible_tool_exec, der importerer funktionen
+    # direkte fra simple_tool_executor — patchen på vr ramte intet, og det ÆGTE
+    # read_file kørte («File not found: x», fundet 19/9-2026). Patch ved kilden.
+    monkeypatch.setattr("core.services.simple_tool_executor._execute_simple_tool_calls", _fake_exec_tools)
     monkeypatch.setattr(vr, "_build_visible_input",
                         lambda *a, **k: [{"role": "user", "content": "hej"}])
     monkeypatch.setattr(vr, "_visible_run_cancelled", lambda _rid: False)
@@ -298,12 +334,18 @@ def test_clean_fail_before_delta_ends_interrupted_no_retry(monkeypatch) -> None:
     res = _drive(monkeypatch, vf.FAULT_CLEAN_FAIL_BEFORE_DELTA,
                  run_id="clean-fail")
 
-    assert res.done_status == "interrupted", \
+    assert res.done_status == AFBRUDT_GENOPTAGES, \
         "BASELINE: clean fail dræber turen (interrupted, intet retry)"
     assert res.has_terminal_frame(), "I2: en terminal-frame skal altid nå klienten"
-    # Ingen partiel tekst → persisteret svar er KUN resume-noten (intet model-svar).
     assert "[search_memory]" not in res.persisted_text
-    assert "afbrudt i agentic loopet" in res.persisted_text
+    # Genoptages turen, skrives der ingen «afbrudt»-note (den kom kun ved
+    # «interrupted»); årsagen når i stedet klienten i run_recovery-eventet.
+    genopt = res.event_data("run_recovery")
+    assert genopt and "HTTP 502" in str(genopt[0].get("reason")), genopt
+    # Og fejlen hedder hvad den ER: en udbyder-fejl, ikke «intern fejl»
+    # (visible_run_interruption, 19/9-2026).
+    fejl = res.event_data("error")
+    assert fejl and fejl[0].get("code") == "provider_error", fejl
 
 
 def test_clean_fail_fires_followup_failed_nerve(monkeypatch) -> None:
@@ -345,7 +387,7 @@ def test_partial_then_drop_C11_partial_text_persists(monkeypatch) -> None:
     assert len(delta_chunks) >= len(partials), \
         "BASELINE C11: partielle deltas blev streamet live til klienten"
     # Turen DØR stadig (intet retry i baseline).
-    assert res.done_status == "interrupted"
+    assert res.done_status == AFBRUDT_GENOPTAGES
 
 
 def test_partial_then_drop_raised_no_longer_centrally_silent(monkeypatch) -> None:
@@ -373,7 +415,7 @@ def test_partial_then_drop_raised_no_longer_centrally_silent(monkeypatch) -> Non
         "turen afsluttes observerbart på loop-niveau (note_loop_complete)"
     # … og en terminal-frame når stadig klienten (I2).
     assert res.has_terminal_frame()
-    assert res.done_status == "interrupted"
+    assert res.done_status == AFBRUDT_GENOPTAGES
 
 
 def test_partial_then_drop_yielded_DOES_fire_nerve(monkeypatch) -> None:
@@ -404,10 +446,14 @@ def test_http_400_overflow_surfaces_as_failure_not_completed(monkeypatch) -> Non
 
     assert res.done_status != "completed", \
         "overløb må ALDRIG ende tavst 'completed'"
-    assert res.done_status == "interrupted"
+    assert res.done_status == AFBRUDT_GENOPTAGES
     assert res.has_terminal_frame()
-    # HTTP 400-konteksten er bevaret i det persisterede svar (sporbarhed).
-    assert "HTTP 400" in res.persisted_text or "context_length" in res.persisted_text
+    # HTTP 400-konteksten er bevaret (sporbarhed) — nu i run_recovery-eventet,
+    # da turen genoptages i stedet for at få en «afbrudt»-note.
+    genopt = res.event_data("run_recovery")
+    assert genopt and ("HTTP 400" in str(genopt[0].get("reason")) or "context_length" in str(genopt[0].get("reason"))), genopt
+    fejl = res.event_data("error")
+    assert fejl and fejl[0].get("code") == "provider_error", fejl
 
 
 def test_http_400_overflow_fires_followup_failed_nerve(monkeypatch) -> None:
@@ -584,7 +630,7 @@ def test_raised_drop_now_fires_followup_failed_nerve(monkeypatch) -> None:
         for d in failed_payloads
     ), f"nerve skal bære transient_drop + raised=True; fik {failed_payloads}"
     # Break/retry-adfærd er UÆNDRET: turen dør stadig (ingen retry-loop endnu).
-    assert res.done_status == "interrupted"
+    assert res.done_status == AFBRUDT_GENOPTAGES
     assert res.has_terminal_frame()
 
 
@@ -737,7 +783,7 @@ def test_exhaustion_emits_partial_and_interrupts_never_blank(monkeypatch, _retry
                  fire_once=False, fail_times=99, recover_text="(uopnåelig)")
 
     # Udmattelse → interruption (ikke completed).
-    assert res.done_status == "interrupted", \
+    assert res.done_status == AFBRUDT_GENOPTAGES, \
         "udmattet retry-budget → interruption (de eksisterende semantikker)"
     # exhausted-nerven fyrede.
     exhausted = [d for d in res.round_retry_nerves() if d.get("outcome") == "exhausted"]
@@ -781,7 +827,7 @@ def test_provider_stall_is_not_retried(monkeypatch, _retry_on) -> None:
                  run_id="f1-stall")
 
     # Stall → interruption, og INGEN retry-nerve (provider_stall retries aldrig).
-    assert res.done_status == "interrupted"
+    assert res.done_status == AFBRUDT_GENOPTAGES
     assert not res.round_retry_nerves(), \
         "D11: provider_stall må ALDRIG udløse en round_retry"
     assert not res.events_of("retry"), \
@@ -801,7 +847,7 @@ def test_flag_off_partial_then_drop_identical_to_baseline(monkeypatch) -> None:
                  run_id="f1-flag-off",
                  partial_deltas=partials, drop_as_exception=True)
 
-    assert res.done_status == "interrupted", "flag OFF → turen dør (baseline)"
+    assert res.done_status == AFBRUDT_GENOPTAGES, "flag OFF → turen dør (baseline)"
     assert "".join(partials) in res.persisted_text, \
         "flag OFF → partiel tekst persisteres (baseline C11)"
     assert not res.round_retry_nerves(), "flag OFF → INGEN round_retry-nerve"
@@ -918,7 +964,7 @@ def test_breaker_opens_and_no_retry_storm(monkeypatch, _failover_on, _breaker_cl
 
     # Aldrig blankt: turen ender med en terminal-frame.
     assert res.has_terminal_frame()
-    assert res.done_status == "interrupted"
+    assert res.done_status == AFBRUDT_GENOPTAGES
 
 
 def test_failover_picks_ollama_when_primary_breaker_open(

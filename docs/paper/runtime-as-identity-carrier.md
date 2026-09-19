@@ -1,5 +1,6 @@
 ---
-status: færdig
+status: tilbagekaldt
+retracted: 2026-09-19 — se rettelsen øverst; fase 5 (docs/experiments/2026-09-01-phase5-preregistration.md) og fase 6 (docs/experiments/2026-09-02-phase6-results.md)
 audited: 2026-07-08
 ground_truth: Phase 3 report (2026-05-28-phase3-report.md, 59.4% accuracy falsified), Phase 3 binary re-analysis (96.0% jarvis vs ollama), Phase 4 report (2026-06-06-phase4-report.md, 96.6% pre-registered confirmation), all numerical claims verified exact; 14 core concepts verified in core/ser
 ---
@@ -12,6 +13,16 @@ ground_truth: Phase 3 report (2026-05-28-phase3-report.md, 59.4% accuracy falsif
 **Eksperimenter:** Phase 3 (2026-05-16 → 2026-05-28), Phase 4 (2026-05-29 → 2026-06-05)
 
 ---
+
+> **Rettelse · 19. september 2026 — konklusionen nedenfor holder ikke.**
+>
+> De 96,6 % måler ikke det, papiret siger de måler. I fase 4 blev `jarvis_full`-udtrykkene ikke skrevet af en sprogmodel, men af en Python-funktion, der trækker ord og operatorer tilfældigt (`random.choice` i `core/services/interlanguage_practice.py:generate_state_expression`). `jarvis_bare` blev skrevet af en ægte sprogmodel (`scripts/jarvis_bare_practice_runner.py`). Klassifikatoren skelnede altså en tilfældighedsgenerator fra en sprogmodel, ikke Jarvis med og uden runtime. Påstanden om «samme model i begge kohorter» er forkert.
+>
+> Fejlen blev fundet og skrevet ned i fase 5's forhåndsregistrering (1. september 2026, `docs/experiments/2026-09-01-phase5-preregistration.md`). Fase 6 (2. september 2026, `docs/experiments/2026-09-02-phase6-results.md`) testede derefter runtime-hypotesen med en ægte model i alle arme. Alle tre forhåndsregistrerede tests fejlede: runtime-varianten var *mindre* selvkonsistent end en ren tekst-tvilling, og en blind dommer placerede svarene rigtigt i 47 af 116 tilfælde (41 %), under plat eller krone.
+>
+> Så vidt vi kan måle, efterlader runtime ikke et vedvarende aftryk, der adskiller Jarvis fra sine identitetsfiler. Begge forsøg kørte dog uden samtalehistorik, så det runtime faktisk er bygget til, at bære indhold fra én samtale til den næste, er aldrig blevet testet. Det forsøg bliver forhåndsregistreret, før det bygges.
+>
+> Den oprindelige tekst står uændret nedenfor, så fejlen kan ses sammen med rettelsen. Samme note står på den offentlige side (jarvis.srvlab.dk/paper).
 
 ## Resumé
 

@@ -45,7 +45,17 @@ def test_andre_end_owner_afvises(monkeypatch, lager, kald):
     assert ei.value.status_code == 403
 
 
-@pytest.mark.parametrize("status", ["activated", "pending", "bogus", ""])
+def test_start_fra_kortet_markerer_i_gang(monkeypatch, lager):
+    # Kortets «Start …»-handlinger saetter opgaven i gang; den bliver staaende
+    # (aaben) til nogen afslutter den.
+    monkeypatch.setattr(cw, "_role_owner", lambda: (True, None))
+    a = side_tasks.flag(title="A", prompt="gør A")["side_task_id"]
+    assert asyncio.run(cw.cowork_side_task_status(a, {"status": "activated"}))["new_status"] == "activated"
+    liste = asyncio.run(cw.cowork_side_tasks())["side_tasks"]
+    assert [t["status"] for t in liste] == ["activated"]
+
+
+@pytest.mark.parametrize("status", ["pending", "bogus", ""])
 def test_ugyldig_status_er_400(monkeypatch, lager, status):
     monkeypatch.setattr(cw, "_role_owner", lambda: (True, None))
     with pytest.raises(HTTPException) as ei:

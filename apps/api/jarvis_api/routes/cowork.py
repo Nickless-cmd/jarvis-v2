@@ -110,14 +110,15 @@ async def cowork_side_tasks() -> dict:
 
 @router.post("/side-tasks/{side_task_id}/status")
 async def cowork_side_task_status(side_task_id: str, payload: dict = Body(default={})) -> dict:
-    """Afslut en sideopgave fra Desk: `completed` (lavet) eller `dismissed`
-    (fjernet). Genåbning findes ikke her — terminale opgaver bliver terminale."""
+    """Skift en sideopgaves status fra Desk: `activated` (startet fra kortet —
+    «i gang»), `completed` (lavet) eller `dismissed` (fjernet). Genåbning
+    findes ikke — terminale opgaver bliver terminale (service-reglen)."""
     is_owner, _uid = _role_owner()
     if not is_owner:
         raise HTTPException(status_code=403, detail="Kun ejeren kan ændre sideopgaverne")
     status = str((payload or {}).get("status") or "").strip().lower()
-    if status not in ("completed", "dismissed"):
-        raise HTTPException(status_code=400, detail="status skal være 'completed' eller 'dismissed'")
+    if status not in ("activated", "completed", "dismissed"):
+        raise HTTPException(status_code=400, detail="status skal være 'activated', 'completed' eller 'dismissed'")
     from core.services.side_tasks import resolve
     return await asyncio.to_thread(resolve, side_task_id, decision=status)
 

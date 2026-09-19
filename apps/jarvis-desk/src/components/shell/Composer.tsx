@@ -1,5 +1,4 @@
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
-import { ContextDrawer } from './ContextDrawer'
 import { ArrowUp, AudioLines, ChevronDown, ChevronRight, FileText, ListChecks, Loader2, Mic, Paperclip, Plus, Puzzle, ShieldCheck, Square, X } from 'lucide-react'
 import { emojify } from '../../lib/emojify'
 import { useDictation } from '../../hooks/useDictation'
@@ -572,11 +571,8 @@ export function Composer({
 
   return (
     <div className="composer-shell">
-    {/* Kontekst-drawer (6/9-2026): «hvad bruger Jarvis lige nu» — filer,
-        kilder, størrelse. Tallene er MÅLT paa sidste tur, ikke estimeret.
-        Placeret OVER komponisten, saa man ser den foer man skriver, uden at
-        den stjaeler plads fra selve feltet. */}
-    <ContextDrawer config={config} />
+    {/* Kontekst-detaljerne («hvad brugte Jarvis i sidste tur») bor nu i
+        Miljø-feltet under Kontekst-rækken (19/9-2026), ikke som en løs linje her. */}
     <div className={`composer ${dragOver ? 'drag-over' : ''}`}>
       {dragOver && <div className="composer-drop-overlay">Slip filer og billeder her</div>}
       {ringDenominator > 0 && (

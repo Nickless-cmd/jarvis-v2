@@ -3209,13 +3209,8 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 @keyframes wq-rot { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .wq-spin { animation: none; } }
 
-/* ── Kontekst-drawer (6/9-2026): hvad Jarvis brugte sidste tur ───────────── */
-/* Lukket er den én linje. Den skal kunne overses naar man bare vil skrive. */
-.ctx-drawer { display: flex; flex-direction: column; }
-.ctx-head { display: flex; align-items: center; gap: 6px; background: none;
-  border: none; padding: 4px 10px; cursor: pointer; color: var(--fg-3);
-  font-size: 11px; align-self: flex-start; }
-.ctx-head:hover { color: var(--fg-2); }
+/* ── Kontekst-detaljer (6/9-2026): hvad Jarvis brugte sidste tur ───────────
+   Bor i Miljø-feltet under Kontekst-rækken siden 19/9-2026. */
 .ctx-krop { padding: 6px 10px 10px; display: flex; flex-direction: column; gap: 8px;
   border-top: 1px solid var(--border); }
 .ctx-note { margin: 0; font-size: 10.5px; color: var(--fg-3); font-style: italic; }

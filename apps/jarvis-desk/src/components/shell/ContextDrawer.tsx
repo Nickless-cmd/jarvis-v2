@@ -1,65 +1,47 @@
 import { useEffect, useState } from 'react'
-import { ChevronDown, ChevronUp, Layers } from 'lucide-react'
 import type { ApiConfig } from '../../lib/api'
 import { getKontekst, type KontekstResume } from '../../lib/coworkApi'
 
 /**
- * Kontekst-drawer ved komponisten — «hvad bruger Jarvis lige nu».
+ * «Hvad Jarvis brugte i sidste tur» — filer, kilder, størrelse.
  *
- * Codex' punkt 3: brugeren skulle kunne se hvilke filer, memories og regler
- * der er i spil, uden at grave i indstillinger.
+ * Codex' punkt 3 (6/9-2026): brugeren skulle kunne se hvilke filer, memories
+ * og regler der er i spil, uden at grave i indstillinger. Tallene er MÅLTE, ikke
+ * estimerede: de kommer fra sidste turs faktiske prompt-sammensætning. Derfor
+ * står der «sidste tur» og ikke «denne tur».
  *
- * Tallene er MÅLTE, ikke estimerede. De kommer fra sidste turs faktiske
- * prompt-sammensætning, som gemmes når turen bygges. Et estimat før
- * afsendelse ville være et gæt præsenteret som en måling — og at bygge
- * prompten for at vise den koster sekunder.
- *
- * Derfor siger overskriften «sidste tur» og ikke «denne tur». Forskellen er
- * lille i praksis og stor i ærlighed.
+ * Bor i Miljø-feltet under Kontekst-rækken (19/9-2026). Den lå som en egen
+ * linje mellem liveness-linjen og skrivefeltet, helt ude til venstre — Bjørn:
+ * «det ser dumt ud … burde den ikke ligge i miljøfeltet?». Den hentede også
+ * uden session, så den viste sidste tur i ENHVER samtale, ikke den man stod i.
+ * Hentes først når rækken foldes ud.
  */
-export function ContextDrawer({
+export function KontekstDetaljer({
   config, sessionId,
-}: { config: ApiConfig | undefined; sessionId?: string }) {
-  const [data, setData] = useState<KontekstResume | null>(null)
-  const [åben, setÅben] = useState(false)
+}: { config: ApiConfig | undefined; sessionId?: string | null }) {
+  const [data, setData] = useState<KontekstResume | null | undefined>(undefined)
 
   useEffect(() => {
     if (!config) return
     let levende = true
-    getKontekst(config, sessionId)
+    getKontekst(config, sessionId ?? undefined)
       .then((d) => { if (levende) setData(d) })
       .catch(() => { if (levende) setData(null) })
     return () => { levende = false }
-  }, [config?.apiBaseUrl, config?.authToken, sessionId, åben])
+  }, [config?.apiBaseUrl, config?.authToken, sessionId])
 
-  if (!data?.har_data) return null
+  if (data === undefined) return <p className="ctx-note">Henter…</p>
+  if (!data?.har_data) return <p className="ctx-note">Ingen målt tur i denne samtale endnu.</p>
 
   const kTokens = Math.round(data.tegn / 4 / 100) / 10
-
   return (
-    <div className={åben ? 'ctx-drawer aaben' : 'ctx-drawer'}>
-      <button
-        type="button"
-        className="ctx-head"
-        aria-expanded={åben}
-        onClick={() => setÅben((v) => !v)}
-        title="Hvad Jarvis brugte i sidste tur"
-      >
-        <Layers size={12} />
-        <span>{data.filer.length} filer · {data.kilder.length} kilder · ~{kTokens}k tokens</span>
-        {åben ? <ChevronDown size={12} /> : <ChevronUp size={12} />}
-      </button>
-
-      {åben && (
-        <div className="ctx-krop">
-          <p className="ctx-note">Målt på sidste tur — ikke et estimat.</p>
-          <Gruppe titel="Filer" ting={data.filer} />
-          <Gruppe titel="Kilder" ting={data.kilder} maks={18} />
-          {data.udeladt.length > 0 && (
-            <Gruppe titel="Udeladt (plads)" ting={data.udeladt} maks={8} />
-          )}
-        </div>
-      )}
+    <div className="ctx-krop">
+      <p className="ctx-note">
+        {data.filer.length} filer · {data.kilder.length} kilder · ~{kTokens}k tokens — målt på sidste tur.
+      </p>
+      <Gruppe titel="Filer" ting={data.filer} />
+      <Gruppe titel="Kilder" ting={data.kilder} maks={18} />
+      {data.udeladt.length > 0 && <Gruppe titel="Udeladt (plads)" ting={data.udeladt} maks={8} />}
     </div>
   )
 }

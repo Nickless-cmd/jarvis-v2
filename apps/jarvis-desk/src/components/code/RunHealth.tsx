@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import { Activity, Cpu, HardDrive, Zap } from 'lucide-react'
+import { Activity, ChevronDown, ChevronRight, Cpu, HardDrive, Zap } from 'lucide-react'
 import { getKrop, type Krop } from '../../lib/coworkApi'
 import type { ApiConfig } from '../../lib/api'
 import { DESK_CHROME } from '../../lib/deskChrome'
+import { KontekstDetaljer } from '../shell/ContextDrawer'
 
 /** Maskinstatus i miljø-feltet — læsbar uden at åbne en log.
  *
@@ -22,13 +23,16 @@ function vindue(n: number): string {
 }
 
 export function RunHealth({
-  config, tokens = 0, komprimerVed = 0,
+  config, tokens = 0, komprimerVed = 0, sessionId,
 }: {
   config?: ApiConfig
   tokens?: number
   komprimerVed?: number
+  /** Samtalen kontekst-detaljerne skal vise sidste tur for. */
+  sessionId?: string | null
 }) {
   const [krop, setKrop] = useState<Krop | null>(null)
+  const [kontekstAaben, setKontekstAaben] = useState(false)
 
   useEffect(() => {
     // Poll'en henter KUN maskin-tallene. Er de slået fra, er der intet at
@@ -83,8 +87,14 @@ export function RunHealth({
       </li>
       )}
       {komprimerVed > 0 && (
-        <li className="env-row">
-          <span className="env-label"><Activity size={13} /> Kontekst</span>
+        <li className="env-row rh-kontekst">
+          <button type="button" className="env-row-button rh-kontekst-knap"
+            aria-expanded={kontekstAaben} title="Hvad Jarvis brugte i sidste tur"
+            onClick={() => setKontekstAaben((v) => !v)}>
+          <span className="env-label">
+            {kontekstAaben ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+            <Activity size={13} /> Kontekst
+          </span>
           <span className="env-val">
             {/* Samme zoner som ringen i skrivefeltet: <60 blaa, <85 gul, ellers
                 roed. Tallet og ringen maaler nu ogsaa det samme — foer havde de
@@ -94,6 +104,12 @@ export function RunHealth({
             </span>
             {' af '}{vindue(komprimerVed)}
           </span>
+          </button>
+        </li>
+      )}
+      {komprimerVed > 0 && kontekstAaben && (
+        <li className="env-row rh-kontekst-detaljer">
+          <KontekstDetaljer config={config} sessionId={sessionId} />
         </li>
       )}
     </ul>

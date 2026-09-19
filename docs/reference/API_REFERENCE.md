@@ -1,6 +1,6 @@
 # API_REFERENCE
 
-> Generated 2026-09-19 from app.routes (live) — 599 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
+> Generated 2026-09-19 from app.routes (live) — 601 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
 
 | Method | Path | Response model | Source |
 |---|---|---|---|
@@ -288,6 +288,8 @@
 | POST | `/cowork/queue/{item_id}/reject` | dict | cowork |
 | GET | `/cowork/share-guard` | dict | cowork |
 | POST | `/cowork/share-guard/{decision_id}/resolve` | dict | cowork |
+| GET | `/cowork/side-tasks` | dict | cowork |
+| POST | `/cowork/side-tasks/{side_task_id}/status` | dict | cowork |
 | GET | `/cowork/todos` | dict | cowork |
 | POST | `/cowork/todos` | dict | cowork |
 | DELETE | `/cowork/todos/{todo_id}` | dict | cowork |

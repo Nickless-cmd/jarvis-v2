@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7788/15120 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7791/15123 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,7 +8,7 @@ Generated from source. 7788/15120 functions/methods documented (51%). The list b
 |---|---|---|---|
 | `apps.api.jarvis_api` | 34 | 36 | 94% |
 | `apps.api.jarvis_api.middleware` | 8 | 19 | 42% |
-| `apps.api.jarvis_api.routes` | 675 | 896 | 75% |
+| `apps.api.jarvis_api.routes` | 677 | 898 | 75% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 70 | 172 | 40% |
 | `apps.desktop` | 6 | 7 | 85% |
@@ -25,7 +25,7 @@ Generated from source. 7788/15120 functions/methods documented (51%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 677 | 1254 | 53% |
-| `core.services` | 5147 | 10320 | 49% |
+| `core.services` | 5148 | 10321 | 49% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 107 | 183 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1752,10 +1752,10 @@ Generated from source. 7788/15120 functions/methods documented (51%). The list b
 - `core/services/shared_language_extended.py` :: `build_shared_language_extended_surface` (L265)
 - `core/services/shared_language_extended.py` :: `list_shorthand_terms` (L210)
 - `core/services/shutdown_window_daemon.py` :: `build_shutdown_window_surface` (L168)
-- `core/services/side_tasks.py` :: `flag` (L44)
-- `core/services/side_tasks.py` :: `list_pending` (L64)
-- `core/services/side_tasks.py` :: `resolve` (L68)
-- `core/services/side_tasks.py` :: `side_tasks_prompt_section` (L86)
+- `core/services/side_tasks.py` :: `flag` (L53)
+- `core/services/side_tasks.py` :: `list_pending` (L73)
+- `core/services/side_tasks.py` :: `resolve` (L82)
+- `core/services/side_tasks.py` :: `side_tasks_prompt_section` (L103)
 - `core/services/signal_decay_daemon.py` :: `build_signal_decay_surface` (L98)
 - `core/services/signal_decay_daemon.py` :: `get_signal_decay_stats` (L91)
 - `core/services/signal_noise_guard.py` :: `build_bounded_hypothesis_text` (L185)

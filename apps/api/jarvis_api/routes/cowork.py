@@ -93,6 +93,35 @@ async def cowork_opmaerksomhed_set(session_id: str) -> dict:
     return {"fjernet": await asyncio.to_thread(_set, session_id)}
 
 
+@router.get("/side-tasks")
+async def cowork_side_tasks() -> dict:
+    """Jarvis' flaggede sideopgaver der stadig er åbne (pending + activated).
+
+    Kun ejeren: en opgaves prompt er selvstændige instruktioner og kan rumme
+    privat kontekst fra den samtale den blev flagget i."""
+    is_owner, _uid = _role_owner()
+    if not is_owner:
+        raise HTTPException(status_code=403, detail="Kun ejeren kan se sideopgaverne")
+    from core.services.side_tasks import list_open
+    items = await asyncio.to_thread(list_open)
+    items.sort(key=lambda r: str(r.get("created_at", "")), reverse=True)
+    return {"side_tasks": items, "count": len(items)}
+
+
+@router.post("/side-tasks/{side_task_id}/status")
+async def cowork_side_task_status(side_task_id: str, payload: dict = Body(default={})) -> dict:
+    """Afslut en sideopgave fra Desk: `completed` (lavet) eller `dismissed`
+    (fjernet). Genåbning findes ikke her — terminale opgaver bliver terminale."""
+    is_owner, _uid = _role_owner()
+    if not is_owner:
+        raise HTTPException(status_code=403, detail="Kun ejeren kan ændre sideopgaverne")
+    status = str((payload or {}).get("status") or "").strip().lower()
+    if status not in ("completed", "dismissed"):
+        raise HTTPException(status_code=400, detail="status skal være 'completed' eller 'dismissed'")
+    from core.services.side_tasks import resolve
+    return await asyncio.to_thread(resolve, side_task_id, decision=status)
+
+
 @router.get("/plans")
 async def cowork_plans() -> dict:
     """Planer for den indloggede bruger (owner ser alt) via cowork_feed.list_plans

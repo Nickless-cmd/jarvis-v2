@@ -594,16 +594,17 @@ _Side-task flag — keep the main thread focused._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_load_all` | `()` | — | [src](../../../core/services/side_tasks.py#L33) |
-| function | `_save_all` | `(items)` | — | [src](../../../core/services/side_tasks.py#L40) |
-| function | `flag` | `(*, title, prompt, tldr=…, session_id=…)` | — | [src](../../../core/services/side_tasks.py#L44) |
-| function | `list_pending` | `()` | — | [src](../../../core/services/side_tasks.py#L64) |
-| function | `resolve` | `(side_task_id, *, decision)` | — | [src](../../../core/services/side_tasks.py#L68) |
-| function | `side_tasks_prompt_section` | `()` | — | [src](../../../core/services/side_tasks.py#L86) |
-| function | `_exec_flag_side_task` | `(args)` | — | [src](../../../core/services/side_tasks.py#L105) |
-| function | `_exec_list_side_tasks` | `(_args)` | — | [src](../../../core/services/side_tasks.py#L114) |
-| function | `_exec_dismiss_side_task` | `(args)` | — | [src](../../../core/services/side_tasks.py#L119) |
-| function | `_exec_activate_side_task` | `(args)` | — | [src](../../../core/services/side_tasks.py#L123) |
+| function | `_load_all` | `()` | — | [src](../../../core/services/side_tasks.py#L42) |
+| function | `_save_all` | `(items)` | — | [src](../../../core/services/side_tasks.py#L49) |
+| function | `flag` | `(*, title, prompt, tldr=…, session_id=…)` | — | [src](../../../core/services/side_tasks.py#L53) |
+| function | `list_pending` | `()` | — | [src](../../../core/services/side_tasks.py#L73) |
+| function | `list_open` | `()` | Alle åbne — ventende OG taget op. Det er dem Desk og prompten viser. | [src](../../../core/services/side_tasks.py#L77) |
+| function | `resolve` | `(side_task_id, *, decision)` | — | [src](../../../core/services/side_tasks.py#L82) |
+| function | `side_tasks_prompt_section` | `()` | — | [src](../../../core/services/side_tasks.py#L103) |
+| function | `_exec_flag_side_task` | `(args)` | — | [src](../../../core/services/side_tasks.py#L125) |
+| function | `_exec_list_side_tasks` | `(_args)` | — | [src](../../../core/services/side_tasks.py#L134) |
+| function | `_exec_dismiss_side_task` | `(args)` | — | [src](../../../core/services/side_tasks.py#L139) |
+| function | `_exec_activate_side_task` | `(args)` | — | [src](../../../core/services/side_tasks.py#L149) |
 
 ## `core/services/signal_baseline.py`
 _Persisted signal-baseline with cold-start guard (Task C1)._

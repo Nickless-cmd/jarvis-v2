@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { memo, useMemo, useState } from 'react'
 import { ChevronDown, Code2 } from 'lucide-react'
 import type { ToolGroupBlock } from '../../lib/toolRounds'
 import { summarizeRound, summerDiff } from '../../lib/toolRound'
@@ -25,7 +25,7 @@ import { ToolCard } from './ToolCard'
  * argumenter — så chevronen står der. Reglen er den samme (chevron hvis der er
  * noget bag den); det er kun svaret der er forskelligt, fordi funktionen er.
  */
-export function ToolGroupCard({
+function ToolGroupCardImpl({
   block,
   density,
   etiket,
@@ -43,8 +43,9 @@ export function ToolGroupCard({
   etiket?: string
 }) {
   const [open, setOpen] = useState(false)
-  const resume = summarizeRound(block.tools)
-  const sum = summerDiff(block.tools)
+  // Beregnes kun når rundens værktøjer faktisk ændrer sig (se memo nederst).
+  const resume = useMemo(() => summarizeRound(block.tools), [block.tools])
+  const sum = useMemo(() => summerDiff(block.tools), [block.tools])
   const koerer = block.tools.some((t) => (t.status ?? 'running') === 'running')
   // Live tid for runden, fra det første kald der stadig kører (Bjørn 17/9-2026:
   // live metadata i stedet for en linje der står stille til kaldet er færdigt).
@@ -120,3 +121,17 @@ export function ToolGroupCard({
     </div>
   )
 }
+
+/**
+ * Memoiseret på værktøjernes IDENTITET (profileret 19/9-2026): under streaming
+ * bygger groupToolRounds nye rund-objekter ved hver delta, men selve
+ * tool_use-blokkene er de samme — reduceren udskifter kun den blok der
+ * ændrer sig. Uden memo genberegnede HVER runde i svaret sin opsummering og
+ * diff-sum (summarizeRound/summerDiff) ved hver delta: 4,5 % af en streaming
+ * i profilen, og en del af de 34 ms-renders der tabte frames.
+ */
+export const ToolGroupCard = memo(ToolGroupCardImpl, (a, b) =>
+  a.density === b.density
+  && a.etiket === b.etiket
+  && a.block.tools.length === b.block.tools.length
+  && a.block.tools.every((t, i) => t === b.block.tools[i]))

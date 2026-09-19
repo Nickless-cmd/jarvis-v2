@@ -1,5 +1,5 @@
 import { Fragment } from 'react'
-import { useEffect, useReducer, useRef, useState } from 'react'
+import { useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { useFastholdBund } from '../lib/useFastholdBund'
 import { PanelRight, Loader2, SquareStack, FileDiff } from 'lucide-react'
 import { JobsPanel } from '../components/shell/JobsPanel'
@@ -30,6 +30,8 @@ import { useNyeBeskeder } from '../hooks/useNyeBeskeder'
 import { NyeBeskederLinje } from '../components/transcript/NyeBeskederLinje'
 import { onStemmeBud, tagStemmeBud } from '../lib/figurBud'
 import { FigurKnap } from '../components/FigurKnap'
+import '../styles/transcript-ydelse.css'
+import { useRaekkeFn, useSenesteFn } from '../lib/stabileHandlinger'
 import { SideOpgaveKort } from '../components/chat/SideOpgaveKort'
 import type { SideTask } from '../lib/sideTasksApi'
 import { startSideOpgave } from '../lib/sideOpgaveStart'
@@ -612,6 +614,16 @@ export function ChatView({
     </div>
   )
 
+  // Stabile props til rækkerne — ellers holder MessageRow's memo aldrig,
+  // og hele samtalen renderes om ved hver stream-opdatering (lib/stabileHandlinger).
+  const resendStabil = useSenesteFn(resend)
+  const pinFor = useRaekkeFn((id) => fastgjorte.skift(id))
+  const rewindFor = useRaekkeFn((id) => void tilbage.spol(id))
+  const raekkeConfig = useMemo(
+    () => (settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined),
+    [settings?.apiBaseUrl, settings?.authToken], // eslint-disable-line react-hooks/exhaustive-deps
+  )
+
   const composer = (
     <>
       <Composer
@@ -857,11 +869,11 @@ export function ChatView({
             density="compact"
             streaming={false}
             createdAt={m.created_at}
-            onResend={m.role === 'user' ? resend : undefined}
-            config={settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined}
+            onResend={m.role === 'user' ? resendStabil : undefined}
+            config={raekkeConfig}
             pinned={fastgjorte.pins.includes(m.id)}
-            onTogglePin={sessionId ? () => fastgjorte.skift(m.id) : undefined}
-            onRewind={m.role === 'user' && sessionId && !m.id.startsWith('u-') && stream.status !== 'working' ? () => void tilbage.spol(m.id) : undefined}
+            onTogglePin={sessionId ? pinFor(m.id) : undefined}
+            onRewind={m.role === 'user' && sessionId && !m.id.startsWith('u-') && stream.status !== 'working' ? rewindFor(m.id) : undefined}
           />
           </div>
           </Fragment>

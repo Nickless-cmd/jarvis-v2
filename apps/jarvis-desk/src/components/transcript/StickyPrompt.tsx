@@ -35,18 +35,28 @@ export function StickyPrompt({ containerRef, beskeder }: {
     const maal = () => {
       ramme = 0
       const top = el.getBoundingClientRect().top
+      // ÉN søgning i DOM'en, ikke én pr. bruger-besked (profileret 19/9-2026:
+      // under streaming rulles der ved hver delta, og 130 querySelector'er i
+      // en DOM på 57.000 elementer var 3,5 % af render-tråden).
+      const noder = new Map<string, Element>()
+      for (const n of el.querySelectorAll('[data-rail-id]')) noder.set(n.getAttribute('data-rail-id') ?? '', n)
+      // Bagfra: svaret er den NYESTE bruger-besked der er helt over toppen.
+      // Beskederne står i dokument-rækkefølge, så den første bagfra der er over
+      // toppen, er den samme som den sidste forfra — men man står næsten
+      // altid nær bunden, så det er et par skridt i stedet for alle.
       let fundet: ChatMessage | null = null
-      for (const m of brugere) {
-        const node = el.querySelector(`[data-rail-id="${CSS.escape(m.id)}"]`)
+      for (let i = brugere.length - 1; i >= 0; i--) {
+        const m = brugere[i]!
+        const node = noder.get(m.id)
         if (!node) continue
         const r = node.getBoundingClientRect()
         // Uden højde er den ikke lagt ud endnu — et nul-mål er ikke «rullet væk».
         if (r.bottom === r.top) continue
-        // Helt ude af syne OVER toppen → kandidat. Den seneste af dem vinder.
-        if (r.bottom < top + 4) fundet = m
-        else break
+        if (r.bottom < top + 4) { fundet = m; break }
       }
-      setVist(fundet ? { id: fundet.id, tekst: tekstAf(fundet) } : null)
+      // Samme besked som før = samme tilstand; ellers renderede kortet om ved
+      // hver rulle-frame.
+      setVist((f) => (fundet ? (f?.id === fundet.id ? f : { id: fundet.id, tekst: tekstAf(fundet) }) : null))
     }
     const planlaeg = () => { if (!ramme) ramme = requestAnimationFrame(maal) }
     maal()

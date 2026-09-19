@@ -1,0 +1,15 @@
+/* Lange samtaler (profileret 19/9-2026 på Bjørns code-session: 253 beskeder,
+   57.063 elementer i DOM). Under streaming tegnede Chromium ~42 frames i
+   sekundet, og hver frame malede, style-beregnede og hit-testede HELE
+   samtalen: `(program)` = 36 % af render-tråden, 8 ms pr. musebevægelse.
+
+   content-visibility: auto lader browseren springe styling, layout, maling
+   og hit-test over for beskeder der ikke er på skærmen. Den sidste besked —
+   den der streames — er undtaget, så den aldrig venter på at blive vist.
+   contain-intrinsic-size: auto husker hver beskeds VIRKELIGE højde fra sidst
+   den blev vist, så rullebjælken ikke hopper; 240 px er kun gættet for en
+   besked der aldrig har været på skærmen. */
+.transcript > .msg-block:not(:last-child) {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 240px;
+}

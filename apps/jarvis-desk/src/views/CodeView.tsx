@@ -52,6 +52,8 @@ import { usePinVedStart } from '../hooks/usePinVedStart'
 import { useNyeBeskeder } from '../hooks/useNyeBeskeder'
 import { NyeBeskederLinje } from '../components/transcript/NyeBeskederLinje'
 import { FigurKnap } from '../components/FigurKnap'
+import '../styles/transcript-ydelse.css'
+import { useRaekkeFn, useSenesteFn } from '../lib/stabileHandlinger'
 import { SideOpgaveKort, type SideOpgaveHandlinger } from '../components/chat/SideOpgaveKort'
 import { startSideOpgave, worktreeTilOpgave } from '../lib/sideOpgaveStart'
 import { StickyPrompt } from '../components/transcript/StickyPrompt'
@@ -844,6 +846,12 @@ export function CodeView({
     />
   )
 
+  // Stabile handlinger til rækkerne — ellers holder MessageRow's memo aldrig,
+  // og hele samtalen renderes om ved hver stream-opdatering (lib/stabileHandlinger).
+  const resendStabil = useSenesteFn(resend)
+  const pinFor = useRaekkeFn((id) => fastgjorte.skift(id))
+  const rewindFor = useRaekkeFn((id) => void tilbage.spol(id))
+
   const visibleMessages = sessions.messages.filter((m) => m.role === 'user' || m.role === 'assistant')
   // «Nye beskeder»-skillelinjen: første besked man ikke har set (Claude Desktop §10).
   const nyeFra = useNyeBeskeder(sessionId ?? null, visibleMessages.map((m) => m.id), atBottom)
@@ -1103,10 +1111,10 @@ export function CodeView({
               density="compact"
               streaming={false}
               createdAt={m.created_at}
-              onResend={m.role === 'user' ? resend : undefined}
+              onResend={m.role === 'user' ? resendStabil : undefined}
               pinned={fastgjorte.pins.includes(m.id)}
-              onTogglePin={sessionId ? () => fastgjorte.skift(m.id) : undefined}
-              onRewind={m.role === 'user' && sessionId && !m.id.startsWith('u-') && stream.status !== 'working' ? () => void tilbage.spol(m.id) : undefined}
+              onTogglePin={sessionId ? pinFor(m.id) : undefined}
+              onRewind={m.role === 'user' && sessionId && !m.id.startsWith('u-') && stream.status !== 'working' ? rewindFor(m.id) : undefined}
             />
             </div>
             </Fragment>

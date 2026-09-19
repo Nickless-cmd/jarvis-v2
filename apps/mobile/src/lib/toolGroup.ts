@@ -38,6 +38,8 @@ export interface ToolItem {
   id?: string
   /** Antal ting kaldet rørte, hvis resultatet siger det (fx «16 filer»). */
   count?: number
+  /** Kaldets egen ændring — åbnes i diff-arket (Claude Desktop §9). */
+  aendring?: { sti: string; gammel: string; ny: string } | null
 }
 
 import { grundnavn } from './toolSummary'

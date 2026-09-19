@@ -5,6 +5,7 @@ import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 import { useReducedMotion } from '../lib/useReducedMotion'
 import { summarizeRound, summerDiff, type ToolItem } from '../lib/toolGroup'
 import { LabelSkift } from './LabelSkift'
+import { DiffArk } from './DiffArk'
 import { Prikker } from './Prikker'
 
 interface Props {
@@ -58,6 +59,7 @@ export function InlineToolGroup({ items, etiket, aabenFraStart }: Props) {
   const styles = useStyles(makestyles)
   const reduced = useReducedMotion()
   const [open, setOpen] = useState(!!aabenFraStart && items.length > 1)
+  const [vistAendring, setVistAendring] = useState<ToolItem['aendring']>(null)
   const running = items.some((i) => i.running)
   const summary = summarizeRound(items)
   const sum = summerDiff(items)
@@ -153,8 +155,19 @@ export function InlineToolGroup({ items, etiket, aabenFraStart }: Props) {
         <View style={styles.ramme} testID="tool-group-details">
           <ScrollView nestedScrollEnabled style={styles.rammeScroll} contentContainerStyle={styles.details}>
             {items.map((item, i) => (
-              <View key={`${item.label}-${i}`} style={styles.detailRaekke}>
-                <Text style={styles.detail} numberOfLines={1}>{item.label}</Text>
+              // En række der redigerede eller skrev en fil kan trykkes: ændringen
+              // åbner i diff-arket (Claude Desktop §9: «Click a filename on an
+              // Edited or Wrote row»).
+              <Pressable
+                key={`${item.label}-${i}`}
+                style={styles.detailRaekke}
+                disabled={!item.aendring}
+                onPress={() => item.aendring && setVistAendring(item.aendring)}
+                accessibilityRole={item.aendring ? 'button' : 'text'}
+                accessibilityLabel={item.aendring ? `${item.label} — vis ændringen` : item.label}
+                testID={item.aendring ? `aendring-${i}` : undefined}
+              >
+                <Text style={[styles.detail, item.aendring ? styles.detailLink : null]} numberOfLines={1}>{item.label}</Text>
                 {item.diff ? (
                   // Grøn/rød pr. kald: `ok` og `error`, ikke accent.
                   <View style={styles.tal}>
@@ -162,11 +175,12 @@ export function InlineToolGroup({ items, etiket, aabenFraStart }: Props) {
                     {item.diff.fjernet ? <Text style={[styles.talTekst, styles.minus]}>−{item.diff.fjernet}</Text> : null}
                   </View>
                 ) : null}
-              </View>
+              </Pressable>
             ))}
           </ScrollView>
         </View>
       ) : null}
+      <DiffArk aendring={vistAendring ?? null} onClose={() => setVistAendring(null)} />
     </Animated.View>
   )
 }
@@ -192,6 +206,8 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
   rammeScroll: { maxHeight: 200 },
   details: { padding: 10, gap: 6 },
   detail: { color: tokens.color.fg3, fontSize: 14, flexShrink: 1 },
+  // Trykbar: filen åbner i diff-arket. Understreget svagt — ikke en knap-form.
+  detailLink: { color: tokens.color.fg2, textDecorationLine: 'underline', textDecorationColor: tokens.color.line },
   // Tallene står LIGE efter teksten, ikke ude ved kanten.
   detailRaekke: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   tal: { flexDirection: 'row', gap: 6 },

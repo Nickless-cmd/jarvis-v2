@@ -161,3 +161,19 @@ describe('broens redigeringer', () => {
       .toEqual({ tilfoejet: 1, fjernet: 2 })
   })
 })
+
+describe('aendringAf — til diff-arket (19/9-2026)', () => {
+  const { aendringAf } = jest.requireActual('./toolDiff') as typeof import('./toolDiff')
+  it('edit_file med old_text/new_text', () => {
+    expect(aendringAf('edit_file', { path: '/a.py', old_text: 'x', new_text: 'y' })).toEqual({ sti: '/a.py', gammel: 'x', ny: 'y' })
+  })
+  it('broens operator_edit_file med old_string/new_string, som JSON-streng', () => {
+    expect(aendringAf('operator_edit_file', JSON.stringify({ path: '/b.py', old_string: 'x', new_string: 'y' }))).toEqual({ sti: '/b.py', gammel: 'x', ny: 'y' })
+  })
+  it('write_file: alt er nyt', () => {
+    expect(aendringAf('write_file', { path: '/c.md', content: 'hej' })).toEqual({ sti: '/c.md', gammel: '', ny: 'hej' })
+  })
+  it('en læsning har ingen ændring', () => {
+    expect(aendringAf('read_file', { path: '/d.md' })).toBeNull()
+  })
+})

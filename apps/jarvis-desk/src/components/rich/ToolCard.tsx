@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { Check, X, Loader } from 'lucide-react'
+import { Check, X, Loader, FileDiff } from 'lucide-react'
 import type { ContentBlock } from '../../lib/sseProtocol'
 import { lookupTool } from '../../lib/toolRegistry'
+import { visAendring } from '../../lib/aendringsFokus'
 import { diffFraResultat, diffStat } from '../../lib/diffStat'
 import { DiffView } from './DiffView'
 import { PauseAndAskCard } from './PauseAndAskCard'
@@ -39,6 +40,7 @@ export function ToolCard({
 
   return (
     <div className={`toolcard fam-${fam} status-${status}`}>
+      <div className="toolcard-headrow">
       <button
         type="button"
         className="toolcard-head"
@@ -54,6 +56,21 @@ export function ToolCard({
         )}
         <StatusBadge status={status} anomali={block.anomali} />
       </button>
+      {/* Claude Desktop §9: «Click a filename on an Edited or Wrote row to open
+          that file in the diff pane». Sin egen knap — en knap i en knap er
+          ugyldig og kan ikke nås med tastaturet. */}
+      {(fam === 'edit' || fam === 'write') && filSti(args) ? (
+        <button
+          type="button"
+          className="toolcard-aabn"
+          title={`Vis ${filSti(args)} i Ændringer`}
+          aria-label={`Vis ${filSti(args)} i Ændringer`}
+          onClick={() => visAendring(filSti(args)!)}
+        >
+          <FileDiff size={13} />
+        </button>
+      ) : null}
+      </div>
       {block.anomali && (
         // Siges i klartekst, ikke kun med et ikon: det er netop den slags
         // man ellers ikke ville opdage.
@@ -74,6 +91,12 @@ export function ToolCard({
       )}
     </div>
   )
+}
+
+/** Stien et redigerings-/skrive-kald rørte. */
+function filSti(args: Record<string, unknown>): string | undefined {
+  const v = args.file_path ?? args.path
+  return typeof v === 'string' && v.trim() ? v : undefined
 }
 
 type Fam = 'bash' | 'write' | 'edit' | 'read' | 'glob' | 'grep' | 'list' | 'other'
@@ -113,8 +136,11 @@ function renderBody(fam: Fam, args: Record<string, unknown>, result?: string) {
     )
   }
   if (fam === 'edit') {
-    const oldS = String(args.old_string ?? args.old ?? '')
-    const newS = String(args.new_string ?? args.new ?? '')
+    // `edit_file` sender old_text/new_text (målt 18/9-2026 — samme fejl som
+    // diffStat havde): med kun *_string faldt HVER redigering igennem til den
+    // rå resultat-visning, og diff'en blev aldrig vist (19/9-2026).
+    const oldS = String(args.old_text ?? args.old_string ?? args.old ?? '')
+    const newS = String(args.new_text ?? args.new_string ?? args.new ?? '')
     if (oldS || newS) {
       const file = String(args.file_path ?? args.path ?? '') || undefined
       return <DiffView oldText={oldS} newText={newS} filename={file} />

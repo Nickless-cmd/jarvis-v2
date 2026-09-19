@@ -80,6 +80,29 @@ export function toolDiff(navn: string, input: unknown): ToolDiff | null {
   return null
 }
 
+/**
+ * Selve ændringen i et kald — til diff-arket (Claude Desktop §9, 19/9-2026).
+ * Samme feltnavne som `toolDiff` ovenfor (old_text/old_string, content/
+ * file_text). `null` for et kald der ikke redigerer eller skriver en fil.
+ */
+export function aendringAf(navn: string, input: unknown): { sti: string; gammel: string; ny: string } | null {
+  const t = (navn || '').replace(/^operator_/, '')
+  const o = somArgumenter(input)
+  const sti = typeof o.path === 'string' ? o.path : typeof o.file_path === 'string' ? o.file_path : ''
+  if (!sti) return null
+  if (t === 'edit_file') {
+    const g = o.old_text ?? o.old_string
+    const n = o.new_text ?? o.new_string
+    if (typeof g !== 'string' && typeof n !== 'string') return null
+    return { sti, gammel: typeof g === 'string' ? g : '', ny: typeof n === 'string' ? n : '' }
+  }
+  if (t === 'write_file') {
+    const indhold = o.content ?? o.file_text
+    return typeof indhold === 'string' ? { sti, gammel: '', ny: indhold } : null
+  }
+  return null
+}
+
 function fraPar(gammel: unknown, ny: unknown): ToolDiff | null {
   const g = typeof gammel === 'string' ? gammel : null
   const n = typeof ny === 'string' ? ny : null

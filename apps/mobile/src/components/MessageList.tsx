@@ -10,7 +10,7 @@ import { nextUserRow } from '../lib/messageNav'
 import { MessageBubble } from './MessageBubble'
 import { InlineToolGroup } from './InlineToolGroup'
 import { ThinkingLabel } from './ThinkingLabel'
-import { diffFraResultat, toolDiff } from '../lib/toolDiff'
+import { aendringAf, diffFraResultat, toolDiff } from '../lib/toolDiff'
 import { arbejdsLinje } from '../lib/arbejdsLinje'
 import { TRIN_MS } from '../lib/prikSekvens'
 import { useReducedMotion } from '../lib/useReducedMotion'
@@ -167,7 +167,7 @@ function groupToolRounds(rows: Row[]): Row[] {
     if (buf.length === 0) return
     const items: ToolItem[] = buf.map((r) =>
       r.kind === 'live-tool'
-        ? { label: r.etiket || describeTool(r.name, r.body, r.running), running: r.running, tool: r.name, id: r.id, diff: r.diff ?? null }
+        ? { label: r.etiket || describeTool(r.name, r.body, r.running), running: r.running, tool: r.name, id: r.id, diff: r.diff ?? null, aendring: aendringAf(r.name, r.body) }
         : {
             label: describeToolResult((r as { content: string }).content),
             running: false,

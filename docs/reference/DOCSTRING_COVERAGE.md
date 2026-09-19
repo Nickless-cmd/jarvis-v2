@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7758/15068 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7765/15080 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -21,10 +21,10 @@ Generated from source. 7758/15068 functions/methods documented (51%). The list b
 | `core.context` | 65 | 90 | 72% |
 | `core.costing` | 6 | 8 | 75% |
 | `core.eventbus` | 12 | 26 | 46% |
-| `core.identity` | 69 | 162 | 42% |
+| `core.identity` | 70 | 164 | 42% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 663 | 1225 | 54% |
+| `core.runtime` | 669 | 1235 | 54% |
 | `core.services` | 5145 | 10317 | 49% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 107 | 183 | 58% |
@@ -41,7 +41,7 @@ Generated from source. 7758/15068 functions/methods documented (51%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2158)
+## Undocumented public functions (2161)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L208)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -271,6 +271,7 @@ Generated from source. 7758/15068 functions/methods documented (51%). The list b
 - `core/identity/email_verify.py` :: `create_token` (L37)
 - `core/identity/email_verify.py` :: `send_verification_email` (L79)
 - `core/identity/household.py` :: `is_valid_role` (L50)
+- `core/identity/kode_adgang.py` :: `kode_tilladt` (L25)
 - `core/identity/project_context.py` :: `reset_project_root` (L38)
 - `core/identity/runtime_candidates.py` :: `build_runtime_candidate_workflows` (L134)
 - `core/identity/runtime_candidates.py` :: `build_runtime_candidate_write_history` (L264)
@@ -300,9 +301,9 @@ Generated from source. 7758/15068 functions/methods documented (51%). The list b
 - `core/identity/workspace_bootstrap.py` :: `ensure_default_workspace` (L66)
 - `core/identity/workspace_bootstrap.py` :: `ensure_layered_memory_dirs` (L71)
 - `core/identity/workspace_bootstrap.py` :: `workspace_memory_paths` (L88)
-- `core/identity/workspace_context.py` :: `current_context_snapshot` (L74)
-- `core/identity/workspace_context.py` :: `current_user_display_name` (L70)
-- `core/identity/workspace_context.py` :: `reset_context` (L185)
+- `core/identity/workspace_context.py` :: `current_context_snapshot` (L79)
+- `core/identity/workspace_context.py` :: `current_user_display_name` (L75)
+- `core/identity/workspace_context.py` :: `reset_context` (L202)
 - `core/memory/memory_md_writer.py` :: `find_section` (L73)
 - `core/memory/private_development_state.py` :: `build_private_development_state_payload` (L25)
 - `core/memory/private_growth_note.py` :: `build_private_growth_note_payload` (L27)
@@ -393,6 +394,8 @@ Generated from source. 7758/15068 functions/methods documented (51%). The list b
 - `core/runtime/db_decisions.py` :: `list_decisions` (L278)
 - `core/runtime/db_decisions.py` :: `list_reviews` (L299)
 - `core/runtime/db_decisions.py` :: `set_status` (L249)
+- `core/runtime/db_devices.py` :: `kraev_aktivt` (L169)
+- `core/runtime/db_devices.py` :: `saet_kraev` (L178)
 - `core/runtime/db_embeddings.py` :: `count_embeddings` (L133)
 - `core/runtime/db_embeddings.py` :: `delete_embedding` (L93)
 - `core/runtime/db_embeddings.py` :: `get_embedding` (L78)

@@ -69,6 +69,13 @@ _Hvem BOR i huset — og hvem gør ikke._
 | function | `is_member_like` | `(role)` | Har denne rolle medlems-rettigheder? (member eller partner) | [src](../../../core/identity/household.py#L45) |
 | function | `is_valid_role` | `(role)` | — | [src](../../../core/identity/household.py#L50) |
 
+## `core/identity/kode_adgang.py`
+_Må den der spørger, bruge code mode? — reglen fra Codex' fjernstyring._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `kode_tilladt` | `()` | — | [src](../../../core/identity/kode_adgang.py#L25) |
+
 ## `core/identity/owner_resolver.py`
 _Owner-identity resolution for autonomous dispatch._
 
@@ -241,19 +248,20 @@ _Workspace Context — thread-local/async-safe current-user binding._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | class | `_ContextState` | `` | — | [src](../../../core/identity/workspace_context.py#L36) |
-| function | `current_workspace_name` | `()` | Return current workspace name. Default 'default' if unset. | [src](../../../core/identity/workspace_context.py#L60) |
-| function | `current_user_id` | `()` | Return current user_id (discord_id). Empty string if none set. | [src](../../../core/identity/workspace_context.py#L65) |
-| function | `current_user_display_name` | `()` | — | [src](../../../core/identity/workspace_context.py#L70) |
-| function | `current_context_snapshot` | `()` | — | [src](../../../core/identity/workspace_context.py#L74) |
-| function | `set_context` | `(*, workspace_name, user_id=…, user_display_name=…, role=…, channel=…, session_id=…)` | Set workspace context explicitly. Returns Token for reset. | [src](../../../core/identity/workspace_context.py#L83) |
-| function | `current_session_id` | `()` | Aktuel session-id ("" hvis ikke sat). | [src](../../../core/identity/workspace_context.py#L108) |
-| function | `set_session_id` | `(session_id)` | Opdatér KUN session_id på den nuværende kontekst (bevar role/user/workspace). | [src](../../../core/identity/workspace_context.py#L113) |
-| function | `effective_role` | `()` | Rollen efter TOTP-override-elevering (§6.0). | [src](../../../core/identity/workspace_context.py#L132) |
-| function | `is_override_active` | `()` | True hvis sessionen er TOTP-override-elevet (IKKE en native owner-session). | [src](../../../core/identity/workspace_context.py#L154) |
-| function | `privacy_scoped_user_id` | `()` | user_id til PRIVATLIVS-scopede data-læsninger (session-søgning, chat-historik). | [src](../../../core/identity/workspace_context.py#L173) |
-| function | `reset_context` | `(token)` | — | [src](../../../core/identity/workspace_context.py#L185) |
-| function | `user_context` | `(*, discord_id=…, workspace_override=…, user_display_name_override=…)` | Set workspace context for the duration of a block. | [src](../../../core/identity/workspace_context.py#L190) |
-| function | `bind_context_if_unset` | `(*, workspace_name=…, user_id=…, user_display_name=…)` | Bind context only if still on default — useful for late-binding | [src](../../../core/identity/workspace_context.py#L237) |
-| function | `current_role` | `()` | Return current bearer-token role ("owner"|"member"|"guest"|""). | [src](../../../core/identity/workspace_context.py#L256) |
-| function | `current_channel` | `()` | Return the transport channel the current request came in on. | [src](../../../core/identity/workspace_context.py#L263) |
+| function | `current_workspace_name` | `()` | Return current workspace name. Default 'default' if unset. | [src](../../../core/identity/workspace_context.py#L65) |
+| function | `current_user_id` | `()` | Return current user_id (discord_id). Empty string if none set. | [src](../../../core/identity/workspace_context.py#L70) |
+| function | `current_user_display_name` | `()` | — | [src](../../../core/identity/workspace_context.py#L75) |
+| function | `current_context_snapshot` | `()` | — | [src](../../../core/identity/workspace_context.py#L79) |
+| function | `set_context` | `(*, workspace_name, user_id=…, user_display_name=…, role=…, channel=…, session_id=…, enhed=…, app_id=…)` | Set workspace context explicitly. Returns Token for reset. | [src](../../../core/identity/workspace_context.py#L88) |
+| function | `current_token_enhed` | `()` | (enhed, app_id) fra den aktuelle anmodnings token — tomme hvis ingen. | [src](../../../core/identity/workspace_context.py#L117) |
+| function | `current_session_id` | `()` | Aktuel session-id ("" hvis ikke sat). | [src](../../../core/identity/workspace_context.py#L123) |
+| function | `set_session_id` | `(session_id)` | Opdatér KUN session_id på den nuværende kontekst (bevar role/user/workspace). | [src](../../../core/identity/workspace_context.py#L128) |
+| function | `effective_role` | `()` | Rollen efter TOTP-override-elevering (§6.0). | [src](../../../core/identity/workspace_context.py#L149) |
+| function | `is_override_active` | `()` | True hvis sessionen er TOTP-override-elevet (IKKE en native owner-session). | [src](../../../core/identity/workspace_context.py#L171) |
+| function | `privacy_scoped_user_id` | `()` | user_id til PRIVATLIVS-scopede data-læsninger (session-søgning, chat-historik). | [src](../../../core/identity/workspace_context.py#L190) |
+| function | `reset_context` | `(token)` | — | [src](../../../core/identity/workspace_context.py#L202) |
+| function | `user_context` | `(*, discord_id=…, workspace_override=…, user_display_name_override=…)` | Set workspace context for the duration of a block. | [src](../../../core/identity/workspace_context.py#L207) |
+| function | `bind_context_if_unset` | `(*, workspace_name=…, user_id=…, user_display_name=…)` | Bind context only if still on default — useful for late-binding | [src](../../../core/identity/workspace_context.py#L254) |
+| function | `current_role` | `()` | Return current bearer-token role ("owner"|"member"|"guest"|""). | [src](../../../core/identity/workspace_context.py#L273) |
+| function | `current_channel` | `()` | Return the transport channel the current request came in on. | [src](../../../core/identity/workspace_context.py#L280) |
 

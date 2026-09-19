@@ -40,6 +40,11 @@ class _ContextState:
     role: str = ""  # bearer-token role: owner|member|guest, "" = unbound (legacy)
     channel: str = ""  # transport channel: jarvisx-electron|webchat|discord|telegram|...
     session_id: str = ""  # aktuel session — bruges af effective_role til override-elevering
+    # Tokenets enheds-identitet (19/9-2026): `enhed` = en parret telefon,
+    # `app_id` = en desk-installation. Code mode-reglen slår dem op i
+    # enhedsregistret (core.runtime.db_devices).
+    enhed: str = ""
+    app_id: str = ""
 
 
 # Default: workspace="bjorn" (renamed from "default" in Task 5), user_id="" (owner implicit)
@@ -88,6 +93,8 @@ def set_context(
     role: str = "",
     channel: str = "",
     session_id: str = "",
+    enhed: str = "",
+    app_id: str = "",
 ) -> contextvars.Token:
     """Set workspace context explicitly. Returns Token for reset.
 
@@ -101,8 +108,16 @@ def set_context(
         role=str(role or "").strip().lower(),
         channel=str(channel or "").strip().lower(),
         session_id=str(session_id or "").strip(),
+        enhed=str(enhed or "").strip(),
+        app_id=str(app_id or "").strip(),
     )
     return _current_state.set(state)
+
+
+def current_token_enhed() -> tuple[str, str]:
+    """(enhed, app_id) fra den aktuelle anmodnings token — tomme hvis ingen."""
+    st = _current_state.get()
+    return st.enhed, st.app_id
 
 
 def current_session_id() -> str:
@@ -125,6 +140,8 @@ def set_session_id(session_id: str) -> contextvars.Token:
         role=cur.role,
         channel=cur.channel,
         session_id=str(session_id or "").strip(),
+        enhed=cur.enhed,
+        app_id=cur.app_id,
     )
     return _current_state.set(new)
 

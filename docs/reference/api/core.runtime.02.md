@@ -2,6 +2,20 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/runtime/db_interlanguage_blind.py`
+_DB layer for interlanguage validation blind-dommer UI._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_ensure_interlanguage_blind_trials_table` | `(conn)` | Idempotently create blind-trials tabel + index. | [src](../../../core/runtime/db_interlanguage_blind.py#L22) |
+| function | `create_alpha_trial` | `(*, session_id, trial_index, expression_id, expression_text, true_peer_id, mode=…)` | Opret en α-trial (expression vist, brugeren skal vælge forfatter). | [src](../../../core/runtime/db_interlanguage_blind.py#L73) |
+| function | `create_delta_trial` | `(*, session_id, trial_index, anchor_id, anchor_text, candidate_a_id, candidate_a_text, candidate_a_peer_id, candidate_b_id, candidate_b_text, candidate_b_peer_id, jp_position, mode=…)` | Opret en δ-trial (anchor + 2 candidates, pair-comparison). | [src](../../../core/runtime/db_interlanguage_blind.py#L106) |
+| function | `submit_answer` | `(*, trial_id, user_answer)` | Gem Bjørn's svar + beregn correctness. | [src](../../../core/runtime/db_interlanguage_blind.py#L150) |
+| function | `get_progress` | `(*, session_id)` | Returnér antal besvarede + total + accuracy per type. | [src](../../../core/runtime/db_interlanguage_blind.py#L196) |
+| function | `get_next_unanswered` | `(*, session_id)` | Returnér næste ubevarede trial i sessions trial_index-orden, eller None hvis færdig. | [src](../../../core/runtime/db_interlanguage_blind.py#L221) |
+| function | `store_free_text_observations` | `(*, session_id, text)` | Gem free-text noter ved slutningen af session. | [src](../../../core/runtime/db_interlanguage_blind.py#L237) |
+| function | `get_confusion_matrix` | `(*, session_id)` | Confusion-matrix for α-trials: true_peer × user_answer counts. | [src](../../../core/runtime/db_interlanguage_blind.py#L257) |
+
 ## `core/runtime/db_lessons.py`
 _`lessons` — the one store for what Jarvis learns from mistakes._
 
@@ -866,10 +880,10 @@ _JarvisX bearer-token authentication._
 | function | `_read_secret` | `()` | Read the auth secret, generating one on first use. | [src](../../../core/runtime/jarvisx_auth.py#L80) |
 | function | `issue_token` | `(*, user_id, role=…, ttl_days=…, ttl_seconds=…, app_id=…, extra_claims=…)` | Mint a signed bearer token for a user. | [src](../../../core/runtime/jarvisx_auth.py#L117) |
 | function | `verify_token` | `(token)` | Verify signature + expiry, return the parsed claims. | [src](../../../core/runtime/jarvisx_auth.py#L176) |
-| function | `session_needs_override` | `(claims, *, owner_app_id, session_id, now=…)` | True hvis owner-autoritet i denne session KRÆVER en TOTP-override (§6.1). | [src](../../../core/runtime/jarvisx_auth.py#L228) |
-| function | `auth_required` | `()` | Should the API reject requests without a valid bearer token? | [src](../../../core/runtime/jarvisx_auth.py#L258) |
-| function | `require_owner` | `(request)` | Raise 401/403 unless the caller carries an owner bearer token. | [src](../../../core/runtime/jarvisx_auth.py#L289) |
-| function | `require_household` | `(request)` | Raise 401/403 unless the caller lives in the household (owner|partner). | [src](../../../core/runtime/jarvisx_auth.py#L322) |
+| function | `session_needs_override` | `(claims, *, owner_app_id, session_id, now=…)` | True hvis owner-autoritet i denne session KRÆVER en TOTP-override (§6.1). | [src](../../../core/runtime/jarvisx_auth.py#L243) |
+| function | `auth_required` | `()` | Should the API reject requests without a valid bearer token? | [src](../../../core/runtime/jarvisx_auth.py#L273) |
+| function | `require_owner` | `(request)` | Raise 401/403 unless the caller carries an owner bearer token. | [src](../../../core/runtime/jarvisx_auth.py#L304) |
+| function | `require_household` | `(request)` | Raise 401/403 unless the caller lives in the household (owner|partner). | [src](../../../core/runtime/jarvisx_auth.py#L337) |
 
 ## `core/runtime/ollamafreeapi_provider.py`
 _OllamaFreeAPI adapter for PUBLIC-SAFE cheap-lane calls._
@@ -931,15 +945,4 @@ _Ejerskab over registreringer — Fase 9, `RuntimePluginLifecycle`._
 | method | `Registret.navne` | `(self)` | — | [src](../../../core/runtime/plugin_lifecycle.py#L327) |
 | method | `Registret.status` | `(self)` | Hvad Centralen skal kunne vise. | [src](../../../core/runtime/plugin_lifecycle.py#L331) |
 | function | `koer_nedlukning` | `(trin, *, navn=…)` | Kør en håndholdt nedluknings-liste i DEN GIVNE orden, og rapportér. | [src](../../../core/runtime/plugin_lifecycle.py#L345) |
-
-## `core/runtime/process_lifecycle.py`
-_Lukker processen ned? Ét sted der ejer svaret._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `markér_nedlukning` | `(grund=…)` | Sig at processen er på vej ned. Idempotent. | [src](../../../core/runtime/process_lifecycle.py#L46) |
-| function | `lukker_ned` | `()` | Er processen på vej ned? Spørg ved en naturlig grænse, ikke midt i noget. | [src](../../../core/runtime/process_lifecycle.py#L57) |
-| function | `grund` | `()` | — | [src](../../../core/runtime/process_lifecycle.py#L63) |
-| function | `installer_signalvagt` | `()` | Sæt flaget når SIGNALET ankommer — ikke når lifespan når sin shutdown. | [src](../../../core/runtime/process_lifecycle.py#L68) |
-| function | `nulstil_til_test` | `()` | Kun til tests — en proces vender ikke tilbage fra nedlukning. | [src](../../../core/runtime/process_lifecycle.py#L115) |
 

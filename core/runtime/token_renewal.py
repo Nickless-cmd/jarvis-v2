@@ -240,6 +240,14 @@ def renew(raw_token: str, *, now: datetime | None = None) -> dict[str, Any]:
         # Desk'ens TOTP-binding hænger på app_id. Tabes den, begynder Bjørns
         # egen app at bede om TOTP i sin egen session.
         ekstra["app_id"] = str(claims["app_id"])
+    if claims.get("enhed"):
+        # Telefonens enhed (19/9-2026). Tabes den, mister telefonen sin plads i
+        # enhedsregistret ved første fornyelse — og code mode med den. Og en
+        # FJERNET telefon fornyes ikke: ellers kunne den genopstå.
+        from core.runtime.db_devices import telefon_status
+        if telefon_status(str(claims["enhed"])) == "fjernet":
+            return {"ok": False, "reason": "device removed"}
+        ekstra["enhed"] = str(claims["enhed"])
     minted = issue_token(user_id=user_id, role=rolle, ttl_days=ttl_dage, extra_claims=ekstra)
     _husk_jti(user_id, ny_jti)
 

@@ -505,6 +505,22 @@ _Behavioral decisions store — commitments Jarvis makes to himself._
 | function | `delete_decision` | `(decision_id)` | — | [src](../../../core/runtime/db_decisions.py#L310) |
 | function | `count_decisions` | `(*, status=…)` | — | [src](../../../core/runtime/db_decisions.py#L325) |
 
+## `core/runtime/db_devices.py`
+_Enheder — hvem må styre denne computer, og hvem må bruge code mode._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_sikr` | `(conn)` | — | [src](../../../core/runtime/db_devices.py#L47) |
+| function | `_raekke` | `(r)` | — | [src](../../../core/runtime/db_devices.py#L59) |
+| function | `registrer_telefon` | `(user_id, *, navn=…, platform=…)` | En ny telefon. Id'et bliver tokenets `enhed`-claim. | [src](../../../core/runtime/db_devices.py#L64) |
+| function | `registrer_computer` | `(user_id, app_id, *, navn=…)` | En desk-installation. Idempotent pr. bruger og app_id (genaktiverer en fjernet). | [src](../../../core/runtime/db_devices.py#L81) |
+| function | `liste` | `(user_id)` | Brugerens aktive enheder, nyeste først. | [src](../../../core/runtime/db_devices.py#L107) |
+| function | `fjern` | `(enheds_id, user_id)` | Fjern én enhed — kun brugerens egen. En telefons tokens dør med det samme. | [src](../../../core/runtime/db_devices.py#L119) |
+| function | `telefon_status` | `(enheds_id)` | 'aktiv' / 'fjernet' for en telefon-post, None hvis ukendt. | [src](../../../core/runtime/db_devices.py#L130) |
+| function | `maa_bruge_kode` | `(user_id, *, enhed=…, app_id=…)` | Matcher tokenet en AKTIV post for brugeren? | [src](../../../core/runtime/db_devices.py#L143) |
+| function | `kraev_aktivt` | `()` | — | [src](../../../core/runtime/db_devices.py#L169) |
+| function | `saet_kraev` | `(aktiv, *, af=…)` | — | [src](../../../core/runtime/db_devices.py#L178) |
+
 ## `core/runtime/db_dream_bias.py`
 _DB helpers for dream_bias_active (Lag 2 dream-bias)._
 
@@ -645,18 +661,4 @@ _Persistens for central_instrument — selv-instrumenterings-motorens fund + sca
 | function | `replace_file_findings` | `(file, findings)` | Erstat ALLE åbne fund for én fil (idempotent pr. scan). Bevarer status (fx 'dismissed') | [src](../../../core/runtime/db_instrument.py#L84) |
 | function | `list_findings` | `(*, status=…, min_score=…, limit=…)` | Fund (højeste score først). Self-safe → []. | [src](../../../core/runtime/db_instrument.py#L120) |
 | function | `summary` | `()` | Hurtig optælling pr. severity + total (til observe/central_query). Self-safe. | [src](../../../core/runtime/db_instrument.py#L135) |
-
-## `core/runtime/db_interlanguage_blind.py`
-_DB layer for interlanguage validation blind-dommer UI._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_ensure_interlanguage_blind_trials_table` | `(conn)` | Idempotently create blind-trials tabel + index. | [src](../../../core/runtime/db_interlanguage_blind.py#L22) |
-| function | `create_alpha_trial` | `(*, session_id, trial_index, expression_id, expression_text, true_peer_id, mode=…)` | Opret en α-trial (expression vist, brugeren skal vælge forfatter). | [src](../../../core/runtime/db_interlanguage_blind.py#L73) |
-| function | `create_delta_trial` | `(*, session_id, trial_index, anchor_id, anchor_text, candidate_a_id, candidate_a_text, candidate_a_peer_id, candidate_b_id, candidate_b_text, candidate_b_peer_id, jp_position, mode=…)` | Opret en δ-trial (anchor + 2 candidates, pair-comparison). | [src](../../../core/runtime/db_interlanguage_blind.py#L106) |
-| function | `submit_answer` | `(*, trial_id, user_answer)` | Gem Bjørn's svar + beregn correctness. | [src](../../../core/runtime/db_interlanguage_blind.py#L150) |
-| function | `get_progress` | `(*, session_id)` | Returnér antal besvarede + total + accuracy per type. | [src](../../../core/runtime/db_interlanguage_blind.py#L196) |
-| function | `get_next_unanswered` | `(*, session_id)` | Returnér næste ubevarede trial i sessions trial_index-orden, eller None hvis færdig. | [src](../../../core/runtime/db_interlanguage_blind.py#L221) |
-| function | `store_free_text_observations` | `(*, session_id, text)` | Gem free-text noter ved slutningen af session. | [src](../../../core/runtime/db_interlanguage_blind.py#L237) |
-| function | `get_confusion_matrix` | `(*, session_id)` | Confusion-matrix for α-trials: true_peer × user_answer counts. | [src](../../../core/runtime/db_interlanguage_blind.py#L257) |
 

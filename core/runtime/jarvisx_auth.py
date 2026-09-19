@@ -216,12 +216,27 @@ def verify_token(token: str) -> dict[str, Any]:
             raise
         except Exception:
             pass  # bloklist utilgængelig → fail-open (verificeret token bevares)
+    # En telefon fjernet i desk (19/9-2026, Codex' «Revoke access»): dens tokens
+    # dør med det samme — også dem fornyelsen har udstedt siden, for claim'et
+    # `enhed` bæres videre. Ukendt enhed/utilgængeligt register → fail-open som
+    # bloklisten; kun en EKSPLICIT fjernet post afviser.
+    enhed = str(claims.get("enhed") or "")
+    if enhed:
+        try:
+            from core.runtime.db_devices import telefon_status
+            if telefon_status(enhed) == "fjernet":
+                raise AuthError("device removed")
+        except AuthError:
+            raise
+        except Exception:
+            pass
     role = str(claims.get("role") or "member").lower()
     from core.identity.household import is_valid_role
     if not is_valid_role(role):
         raise AuthError(f"invalid role in token: {role!r}")
     claims["role"] = role
     claims["app_id"] = str(claims.get("app_id") or "")
+    claims["enhed"] = enhed
     return claims
 
 

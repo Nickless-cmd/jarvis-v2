@@ -2,6 +2,17 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/runtime/process_lifecycle.py`
+_Lukker processen ned? Ét sted der ejer svaret._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `markér_nedlukning` | `(grund=…)` | Sig at processen er på vej ned. Idempotent. | [src](../../../core/runtime/process_lifecycle.py#L46) |
+| function | `lukker_ned` | `()` | Er processen på vej ned? Spørg ved en naturlig grænse, ikke midt i noget. | [src](../../../core/runtime/process_lifecycle.py#L57) |
+| function | `grund` | `()` | — | [src](../../../core/runtime/process_lifecycle.py#L63) |
+| function | `installer_signalvagt` | `()` | Sæt flaget når SIGNALET ankommer — ikke når lifespan når sin shutdown. | [src](../../../core/runtime/process_lifecycle.py#L68) |
+| function | `nulstil_til_test` | `()` | Kun til tests — en proces vender ikke tilbage fra nedlukning. | [src](../../../core/runtime/process_lifecycle.py#L115) |
+
 ## `core/runtime/profile_composer.py`
 _Profil-komponisten — Fase 9 i DeepSeek-harness-spec'en._
 
@@ -174,7 +185,7 @@ _Fornyelse af bearer-tokens — så en klient ikke låses ude af tiden alene._
 | function | `_husk_jti` | `(user_id, jti)` | Skriv jti'en i brugerens liste, så den kan sortlistes senere. | [src](../../../core/runtime/token_renewal.py#L145) |
 | function | `udloebs_alder_dage` | `(raw_token)` | Hvor mange dage er tokenet udløbet? Kun til LOGNING. | [src](../../../core/runtime/token_renewal.py#L163) |
 | function | `renew` | `(raw_token, *, now=…)` | Veksl et bearer-token til et friskt et. | [src](../../../core/runtime/token_renewal.py#L189) |
-| function | `revoke_user_tokens` | `(user_id)` | Sortlist alle fornyede tokens for én bruger. Returnerer antallet. | [src](../../../core/runtime/token_renewal.py#L260) |
+| function | `revoke_user_tokens` | `(user_id)` | Sortlist alle fornyede tokens for én bruger. Returnerer antallet. | [src](../../../core/runtime/token_renewal.py#L268) |
 
 ## `core/runtime/work_ref.py`
 _Én præfikset reference til et stykke arbejde — og ét sted at opløse den._

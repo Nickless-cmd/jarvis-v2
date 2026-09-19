@@ -208,6 +208,14 @@ ALLOWED_EVENT_FAMILIES = {
     "file_watch", "hf_inference", "infra_weather", "memory_density", "mic",
     "pollinations", "prompt_mutation", "proprioception", "shadow_scan",
     "voice_journal", "wake_word",
+    # ── 19. sep 2026: R2.5-gatens telemetri var tavs fra fødslen. Familien
+    #    `r2_5_gate` stod i publish_scan-baselinen (kendt gæld) men ALDRIG i
+    #    denne liste → hvert publish kastede ValueError, og gatens egen
+    #    `except Exception: pass` slugte den. Målt: 0 rækker for familien i
+    #    events-tabellen over 14 dage. Det var ikke «gaten fyrede ikke» — det
+    #    var et ugyldigt familienavn, så blokerings-signalet kunne aldrig ses.
+    #    (Samme mønster som tool_discovery 6/9 og dict-formen 13/9.) ──
+    "r2_5_gate",
 }
 
 

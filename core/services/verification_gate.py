@@ -47,6 +47,13 @@ _RO_CMDS: frozenset[str] = frozenset({
     "sha1sum", "cksum", "test", "true", "false", "seq", "nvidia-smi", "netstat",
     "ss", "ping", "dig", "host", "man", "history", "tldr", "hexdump", "xxd",
     "strings", "od", "tac", "rev", "expr", "bc", "wc",
+    # Shell-builtins: muterer kun shellens EGEN tilstand (cwd/env/alias),
+    # aldrig filsystemet. `cd` er den vigtigste — den indleder næsten hvert
+    # komposit kald, og uden den blev hvert `cd X && grep …` talt som en
+    # mutation. Målt 19/9-2026: 5 af 7 kald i én research-tur var read-only
+    # bag et indledende `cd`, og de gjorde R2.5's mutations-tal til støj.
+    "cd", "pushd", "popd", "export", "unset", "alias", "unalias",
+    "sleep", "wait", "jobs", "clear", "reset", "umask",
 })
 # Kontekst-følsomme: KUN read-only for disse subkommandoer (None = altid RO).
 _RO_SUBCMD: dict[str, frozenset[str] | None] = {
@@ -240,6 +247,19 @@ def _scan(events: list[dict[str, Any]]) -> dict[str, Any]:
             # sikkerhed). Skærer read-only støj (grep/cat/git status/...).
             if tool in _MUTATION_TOOLS_SHELL and not payload.get("mutating", True):
                 continue
+            # Fil-mutationer der SELV bærer et readback fra disken er
+            # verificeret i samme kald. Siden cf2f6b3f8 (10/9-2026) læser
+            # edit_file/write_file filen tilbage og lægger resultatet i sit
+            # eget svar — beviset ligger altså allerede i hånden, men uden
+            # denne gren blev mutationen alligevel talt som uverificeret,
+            # fordi gaten kun kiggede efter SEPARATE verify_*-kald. Det var
+            # den vigtigste grund til at heed-raten stod stille: metrikken
+            # målte en adfærd vi med vilje havde fjernet (målt 19/9-2026).
+            if tool in _MUTATION_TOOLS_FILE:
+                _res = payload.get("result")
+                if isinstance(_res, dict) and _res.get("readback") is True:
+                    light_verifies.append(item)
+                    continue
             mutations.append(item)
 
     return {

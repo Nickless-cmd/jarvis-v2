@@ -11,12 +11,13 @@ This module provides one function:
 
 It returns a block-instruction dict when ALL of the following hold:
 
-1. Reasoning tier is 'deep' or 'reasoning' (not 'fast')
-2. There are >= _MIN_FAILED_VERIFIES failed verifications in the last
-   10 minutes, OR >= _MIN_UNVERIFIED unverified mutations
-3. The R2 heed_rate over the last 24h is below _HEED_RATE_THRESHOLD
+1. There are >= _MIN_FAILED_VERIFIES failed verifications in the last
+   10 minutes, OR >= the tier's unverified-mutation threshold — which is
+   itself capped by _ACTIVITY_CEILING, so a high mutation burden blocks
+   regardless of how short the user's message was.
+2. The R2 heed_rate over the last 24h is below _HEED_RATE_THRESHOLD
    (i.e. the model has a track record of ignoring warnings)
-4. We haven't blocked too recently (don't ping-pong; cooldown)
+3. We haven't blocked too recently (don't ping-pong; cooldown)
 
 The gate is INJECTED INTO THE PROMPT as a high-priority awareness
 section saying: "Du bliver bedt om at stoppe og verificere. Kør
@@ -50,11 +51,20 @@ _UNVERIFIED_THRESHOLD_BY_TIER: dict[str, int] = {
     "fast": 8,
 }
 
+# Aktivitets-loft (2026-09-19). Tier-klassifikatoren læser BESKEDEN, ikke
+# arbejdet: "1->2->3" og "tag den nu" giver nul point og lander på 'fast' —
+# samtidig med at de starter det tungeste arbejde. Målt over 500 surfaces:
+# deep-tærsklen ville fyre i 51% af tilfældene, reasoning i 27%, men den
+# tærskel der faktisk blev brugt ('fast') i 9%. Gaten beskyttede altså dybt
+# arbejde med den mest eftergivende tærskel. Loftet strammer tærsklen når
+# mutationsbyrden er høj; det løsner den aldrig (deep beholder sin 3'er).
+_ACTIVITY_CEILING = 5
+
 _HEED_RATE_THRESHOLD = 0.4
 _BLOCK_COOLDOWN_SECONDS = 60
 
 
-def _live_thresholds() -> tuple[dict[str, int], float]:
+def _live_thresholds() -> tuple[dict[str, int], float, int]:
     """Settings-backed tærskler (config uden deploy, 2026-06-22); modul-konstanterne
     ovenfor er fallback hvis settings ikke kan læses."""
     try:
@@ -65,9 +75,11 @@ def _live_thresholds() -> tuple[dict[str, int], float]:
             "reasoning": int(s.r2_5_unverified_threshold_reasoning),
             "fast": int(s.r2_5_unverified_threshold_fast),
         }
-        return tiers, float(s.r2_5_heed_rate_threshold)
+        return (tiers, float(s.r2_5_heed_rate_threshold),
+                int(s.r2_5_activity_ceiling))
     except Exception:
-        return dict(_UNVERIFIED_THRESHOLD_BY_TIER), _HEED_RATE_THRESHOLD
+        return (dict(_UNVERIFIED_THRESHOLD_BY_TIER), _HEED_RATE_THRESHOLD,
+                _ACTIVITY_CEILING)
 
 
 _last_block_at: datetime | None = None
@@ -83,6 +95,39 @@ def _heed_rate_24h() -> float | None:
         return s.get("heed_rate")
     except Exception:
         return None
+
+
+def _publish_evaluation(
+    *,
+    tier: str,
+    threshold: int | None,
+    unverified_effective: int | None,
+    failed: int | None,
+    heed_rate: float | None,
+    blocked: bool,
+    reason: str,
+) -> None:
+    """Gør gatens beslutning synlig OGSÅ når den siger nej.
+
+    Uden dette findes der kun `r2_5_gate.blocked` — så et 0-tal kan ikke
+    skelnes fra "gaten kiggede og sagde nej". Målt 19/9-2026: gaten så 7
+    uverificerede mod tærsklen 8 for tier=fast, og fyrede derfor aldrig,
+    men hvorfor var usynligt (0 blocked-events, tom Centralen-trace).
+    Fail-open: telemetri må aldrig vælte en beslutning.
+    """
+    try:
+        from core.eventbus.bus import event_bus
+        event_bus.publish("r2_5_gate.evaluated", {
+            "tier": tier,
+            "threshold": threshold,
+            "unverified_effective": unverified_effective,
+            "failed_verify_count": failed,
+            "heed_rate": heed_rate,
+            "blocked": blocked,
+            "reason": reason,
+        })
+    except Exception:
+        pass
 
 
 def should_block_for_verification(*, reasoning_tier: str) -> dict[str, Any] | None:
@@ -101,12 +146,20 @@ def should_block_for_verification(*, reasoning_tier: str) -> dict[str, Any] | No
     # Cooldown — don't re-block within a minute of the last block
     now = datetime.now(UTC)
     if _last_block_at is not None and (now - _last_block_at).total_seconds() < _BLOCK_COOLDOWN_SECONDS:
+        _publish_evaluation(
+            tier=tier, threshold=None, unverified_effective=None, failed=None,
+            heed_rate=None, blocked=False, reason="cooldown (<60s siden sidste blok)",
+        )
         return None
 
     try:
         from core.services.verification_gate import evaluate_verification_gate
         gate = evaluate_verification_gate()
-    except Exception:
+    except Exception as _e:
+        _publish_evaluation(
+            tier=tier, threshold=None, unverified_effective=None, failed=None,
+            heed_rate=None, blocked=False, reason=f"gate_fejl: {type(_e).__name__}",
+        )
         return None
 
     failed = int(gate.get("failed_verify_count") or 0)
@@ -116,15 +169,32 @@ def should_block_for_verification(*, reasoning_tier: str) -> dict[str, Any] | No
     unverified_effective = int(
         gate.get("unverified_effective", gate.get("unverified_count")) or 0
     )
-    _tier_thresholds, _heed_threshold = _live_thresholds()
-    threshold = _tier_thresholds[tier]
+    _tier_thresholds, _heed_threshold, _ceiling = _live_thresholds()
+    # Aktivitets-loftet (2026-09-19): se _ACTIVITY_CEILING. Tier strammer
+    # tærsklen, men en kort besked må ikke kunne løsne den — mutationerne er
+    # arbejdet, og en høj byrde ER dybt arbejde. max(1, …) så en fejlkonfig
+    # (0) ikke blokerer hver eneste tur.
+    threshold = min(_tier_thresholds[tier], max(1, _ceiling))
     if failed < _MIN_FAILED_VERIFIES and unverified_effective < threshold:
+        _publish_evaluation(
+            tier=tier, threshold=threshold,
+            unverified_effective=unverified_effective, failed=failed,
+            heed_rate=None, blocked=False,
+            reason=f"under tærskel: {unverified_effective} < {threshold} (tier={tier})",
+        )
         return None
 
     heed_rate = _heed_rate_24h()
     # Only escalate to block when we have evidence the model ignores warnings.
     # If heed_rate is None (insufficient data) we don't block — soft R2 surfaces.
     if heed_rate is None or heed_rate >= _heed_threshold:
+        _publish_evaluation(
+            tier=tier, threshold=threshold,
+            unverified_effective=unverified_effective, failed=failed,
+            heed_rate=heed_rate, blocked=False,
+            reason=("heed_rate utilstrækkelig (None)" if heed_rate is None
+                    else f"heed_rate ok: {int(heed_rate*100)}% >= {int(_heed_threshold*100)}%"),
+        )
         return None
 
     suggestions = list(gate.get("suggestions") or [])
@@ -132,6 +202,14 @@ def should_block_for_verification(*, reasoning_tier: str) -> dict[str, Any] | No
 
     # Mark cooldown
     _last_block_at = now
+
+    _publish_evaluation(
+        tier=tier, threshold=threshold,
+        unverified_effective=unverified_effective, failed=failed,
+        heed_rate=heed_rate, blocked=True,
+        reason=f"BLOK: {unverified_effective} >= {threshold} (tier={tier}), "
+               f"heed_rate {int(heed_rate*100)}% < {int(_heed_threshold*100)}%",
+    )
 
     try:
         from core.eventbus.bus import event_bus

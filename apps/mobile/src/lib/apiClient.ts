@@ -242,6 +242,19 @@ export async function fortrydTilbagespoling(config: ApiConfig, sessionId: string
   })
 }
 
+/**
+ * Må DENNE telefon bruge code mode? (enheds-reglen, 19/9-2026). Læst fra
+ * /api/auth/enheder. Kaster ikke — et svar der ikke kom, er «ved ikke».
+ */
+export async function hentKodeAdgang(config: ApiConfig): Promise<{ kraevAktivt: boolean; kodeTilladt: boolean } | null> {
+  try {
+    const r = await apiFetch<{ kraev_aktivt?: boolean; denne?: { kode_tilladt?: boolean } }>(config, '/api/auth/enheder')
+    return { kraevAktivt: !!r.kraev_aktivt, kodeTilladt: r.denne?.kode_tilladt !== false }
+  } catch {
+    return null
+  }
+}
+
 export async function getActiveRuns(config: ApiConfig): Promise<string[]> {
   const data = await apiFetch<{ session_ids?: string[] }>(config, '/chat/active-runs')
   return data.session_ids ?? []
@@ -444,12 +457,16 @@ export interface PairRedeemResult {
 }
 
 /** Indløs en QR-pairing-kode → friskt token. PUBLIC (mobilen har intet token endnu). */
-export async function redeemPairingCode(apiBaseUrl: string, code: string): Promise<PairRedeemResult> {
+export async function redeemPairingCode(
+  apiBaseUrl: string, code: string, enhed: { navn?: string; platform?: string } = {},
+): Promise<PairRedeemResult> {
   const url = new URL('/api/auth/pair/redeem', apiBaseUrl).toString()
+  // Telefonens navn og platform vises i desk's enhedsliste, hvor den kan
+  // fjernes for sig (19/9-2026, Codex' fjernstyring).
   const response = await fetch(url, {
     method: 'POST',
     headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
-    body: JSON.stringify({ code })
+    body: JSON.stringify({ code, navn: enhed.navn ?? '', platform: enhed.platform ?? '' })
   })
   return (await response.json()) as PairRedeemResult
 }

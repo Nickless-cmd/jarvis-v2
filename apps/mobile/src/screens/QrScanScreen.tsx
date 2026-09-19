@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, Text, View, Platform } from 'react-native'
 import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'expo-camera'
 import { redeemPairingCode } from '../lib/apiClient'
 import { parsePairingPayload } from '../lib/pairing'
@@ -12,6 +12,14 @@ import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
  * (Phase 4: mobil↔desktop-pairing — fundamentet for at Jarvis kan køre tools
  * på brugerens egen maskine via operator-broen.)
  */
+/** Et navn der kan genkendes i desk's enhedsliste — «Pixel 9 (Android)». */
+function enhedsNavn(): { navn: string; platform: string } {
+  const c = (Platform.constants ?? {}) as { Model?: string; Brand?: string }
+  const model = (c.Model || '').trim()
+  const os = Platform.OS === 'android' ? 'Android' : Platform.OS === 'ios' ? 'iPhone' : Platform.OS
+  return { navn: model ? `${model} (${os})` : os, platform: Platform.OS }
+}
+
 export function QrScanScreen({
   onPaired,
   onClose
@@ -37,7 +45,7 @@ export function QrScanScreen({
     setBusy(true)
     setStatus('Forbinder…')
     try {
-      const res = await redeemPairingCode(parsed.url, parsed.code)
+      const res = await redeemPairingCode(parsed.url, parsed.code, enhedsNavn())
       if (res.status === 'ok' && res.token) {
         await onPaired(parsed.url, res.token)
         return

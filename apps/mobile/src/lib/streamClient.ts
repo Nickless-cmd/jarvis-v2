@@ -34,13 +34,22 @@ export interface StreamHandlers {
   onComplete?: () => void
 }
 
-function errorDetail(event: unknown): string {
+export function errorDetail(event: unknown): string {
   const e = event as {
     type?: string
     message?: string
     xhrStatus?: number
     xhrState?: number
     error?: { message?: string }
+  }
+  // En 403 MED en forklaring er et nej til handlingen, ikke et udløbet token —
+  // fx «Code mode kræver at denne enhed er tilføjet i desk» (19/9-2026). Så er
+  // forklaringen hele beskeden.
+  if (e.xhrStatus === 403 && e.message) {
+    try {
+      const d = (JSON.parse(e.message) as { detail?: unknown }).detail
+      if (typeof d === 'string' && d) return d
+    } catch { /* ikke JSON — falder igennem */ }
   }
   const parts: string[] = []
   if (e.type) parts.push(e.type)

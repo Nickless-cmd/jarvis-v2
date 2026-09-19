@@ -559,7 +559,7 @@ export async function createPairing(
 /** Poll pairing-status: pending=QR vist, redeemed=mobil tilsluttet, expired=udløbet. */
 export async function getPairStatus(
   config: ApiConfig, code: string,
-): Promise<{ state?: 'pending' | 'redeemed' | 'expired' }> {
+): Promise<{ state?: 'pending' | 'redeemed' | 'expired'; navn?: string }> {
   return apiFetch(config, `/api/auth/pair/status?code=${encodeURIComponent(code)}`)
 }
 

@@ -143,6 +143,8 @@ jest.mock('../lib/useConnectivity', () => ({
 // uden at have noget med den at goere - det er praecis hvad der skete da
 // kontekst-ringen kom til.
 jest.mock('../lib/apiClient', () => ({
+  // Enheds-reglen (19/9-2026): «ved ikke» — code mode låses ikke i testene.
+  hentKodeAdgang: jest.fn().mockResolvedValue(null),
   whoami: jest.fn().mockResolvedValue({ user_id: 'u', display_name: 'Bjørn', role: 'owner' }),
   getModelOptions: jest.fn().mockResolvedValue([]),
   getContextUsage: jest.fn().mockResolvedValue(null),

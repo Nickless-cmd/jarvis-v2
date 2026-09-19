@@ -3942,3 +3942,20 @@ body.egen-ramme .main { padding-top: 34px; }
    resultat. Står i advarsels-farven — ikke fejl, ikke succes: ukendt. */
 .toolcard-anomali { padding: 4px 10px 6px; font-size: 11.5px; color: var(--warn-fg); }
 .toolcard-status.ukendt { color: var(--warn-fg); font-size: 11px; font-weight: 600; }
+
+/* Enheder (Indstillinger → Konto), efter Codex' fjernstyring (19/9-2026). */
+.enheder-titel { margin: 0 0 6px; font-size: 14px; color: var(--fg-1); }
+.enheder-liste { list-style: none; margin: 0 0 10px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.enheder-raekke { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 13px; }
+.enheder-navn { color: var(--fg-1); font-weight: 600; }
+.enheder-meta { color: var(--fg-3); flex: 1; min-width: 0; }
+.enheder-fjern, .enheder-fortryd { background: none; border: 1px solid var(--line); color: var(--fg-2); border-radius: 6px; padding: 3px 10px; font: inherit; font-size: 12.5px; cursor: pointer; }
+.enheder-fjern:hover, .enheder-fortryd:hover { color: var(--fg-1); border-color: var(--fg-3); }
+.enheder-fjern-ja { background: none; border: 1px solid var(--error-fg); color: var(--error-fg); border-radius: 6px; padding: 3px 10px; font: inherit; font-size: 12.5px; cursor: pointer; margin-right: 6px; }
+.enheder-bekraeft { color: var(--fg-2); font-size: 12.5px; }
+.enheder-advarsel { border-left: 3px solid #e0843a; padding: 6px 10px; margin: 6px 0; color: var(--fg-2); font-size: 13px; background: color-mix(in srgb, #e0843a 8%, transparent); border-radius: 0 6px 6px 0; }
+.enheder-totp { width: 140px; padding: 5px 8px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg-1); color: var(--fg-1); font: inherit; letter-spacing: .2em; font-variant-numeric: tabular-nums; margin-right: 8px; }
+.enheder-totp::placeholder { letter-spacing: normal; }
+.enheder-knapper { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+.enheder-krav, .enheder-denne { border-top: 1px solid var(--line); margin-top: 12px; padding-top: 10px; }
+.enheder-fejl { color: var(--error-fg); }

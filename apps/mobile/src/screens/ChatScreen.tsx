@@ -31,6 +31,7 @@ import { MessageList, type MessageListHandle } from '../components/MessageList'
 import { ScrollToBottom } from '../components/ScrollToBottom'
 import { KoeChip } from '../components/KoeChip'
 import { TilbagespolBanner } from '../components/TilbagespolBanner'
+import { KodeLaastBanner } from '../components/KodeLaastBanner'
 import { useNyeBeskeder } from '../lib/useNyeBeskeder'
 import { useVisning, type Visning } from '../lib/visning'
 import { ModelPicker, type ModelChoice } from '../components/ModelPicker'
@@ -51,7 +52,7 @@ import { WorkspacePicker } from '../components/WorkspacePicker'
 import { JobsPanel } from '../components/JobsPanel'
 import { saetSessionWorkspace } from '../lib/workspaceApi'
 import { ActivityCenterScreen } from './ActivityCenterScreen'
-import { cancelActiveRun, cancelRunById, compactNow, deleteSession, denyTool, getActiveRunSnapshot, getContextUsage, getGitStatus, getActiveRuns, getModelOptions, renameSession, setSessionFlags, uploadAttachment, whoami, type ContextUsage, type GitStatus, spolTilbage, fortrydTilbagespoling } from '../lib/apiClient'
+import { cancelActiveRun, cancelRunById, compactNow, deleteSession, denyTool, getActiveRunSnapshot, getContextUsage, getGitStatus, getActiveRuns, getModelOptions, renameSession, setSessionFlags, uploadAttachment, whoami, type ContextUsage, type GitStatus, spolTilbage, fortrydTilbagespoling, hentKodeAdgang } from '../lib/apiClient'
 import { computeUnread } from '../lib/sessionStatus'
 import { loadLastSeen, markSeen } from '../lib/lastSeen'
 import { loadLastSession, saveLastSession } from '../lib/sessionStore'
@@ -278,6 +279,17 @@ export function ChatScreen({
   const { visning, skift: skiftVisning } = useVisning(config, sessions.activeId)
   useEffect(() => { onVisning?.(visning) }, [visning]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (visningOenske) void skiftVisning(visningOenske.v) }, [visningOenske?.n]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Enheds-reglen (19/9-2026): må DENNE telefon bruge code mode? Spørges når
+  // code mode åbnes — så beskeden står der FØR man prøver, ikke først som en
+  // fejl efter første besked.
+  const [kodeLaast, setKodeLaast] = useState(false)
+  useEffect(() => {
+    if (!kodeTilstand || !config) { setKodeLaast(false); return }
+    let aktiv = true
+    void hentKodeAdgang(config).then((r) => { if (aktiv) setKodeLaast(!!r && r.kraevAktivt && !r.kodeTilladt) })
+    return () => { aktiv = false }
+  }, [kodeTilstand, config?.apiBaseUrl, config?.authToken]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // Spol tilbage + fortryd (Claude Desktop §8). Beskederne arkiveres på
   // serveren; fortryd lukker ved næste besked og ved samtaleskift.
   const [tilbagespolet, setTilbagespolet] = useState<{ rewindId: string; fjernet: number } | null>(null)
@@ -1098,6 +1110,7 @@ export function ChatScreen({
           }}
         >
         <ResearchStatus research={stream.state.research} />
+        <KodeLaastBanner vis={kodeLaast} />
         <TilbagespolBanner
           fjernet={tilbagespolet?.fjernet ?? null}
           fejl={spolFejl}

@@ -53,6 +53,9 @@ import { optag } from './streamCapture'
 export type ErrorCategory =
   | 'network'
   | 'auth'
+  /** 403 MED en forklaring fra serveren — fx enheds-reglen (19/9-2026).
+   *  Tokenet er fint; det er handlingen der ikke er tilladt her. */
+  | 'forbidden'
   | 'rate_limit'
   | 'server'
   | 'protocol'
@@ -98,6 +101,7 @@ export class StreamError extends Error {
     switch (this.category) {
       case 'network': return 'network.unreachable'
       case 'auth': return 'auth.token_expired'
+      case 'forbidden': return 'auth.forbidden'
       case 'rate_limit': return 'model.rate_limited'
       case 'server': return 'server.error'
       case 'protocol': return 'protocol.malformed'
@@ -113,6 +117,8 @@ export class StreamError extends Error {
         return 'Kunne ikke forbinde til Jarvis. Tjek netværk eller server-adresse.'
       case 'auth':
         return 'Adgangstoken er udløbet eller ugyldig. Log ind igen.'
+      case 'forbidden':
+        return this.message
       case 'rate_limit':
         return 'For mange forespørgsler. Prøver igen om lidt.'
       case 'server':
@@ -491,6 +497,17 @@ export function startStream(
       userAborted = true
       handlers.onComplete?.()
       return
+    }
+    // En 403 MED en forklaring er et nej til handlingen, ikke et udløbet token
+    // (fx «Code mode kræver at denne enhed er tilføjet i desk»). Før blev enhver
+    // 403 til «log ind igen» — forkert besked, og den sendte folk den forkerte vej.
+    if (response.status === 403) {
+      const forklaring = await response.text().then((t) => {
+        try { const d = (JSON.parse(t) as { detail?: unknown }).detail; return typeof d === 'string' ? d : '' } catch { return '' }
+      }).catch(() => '')
+      if (forklaring && !/token|udløbet|expired/i.test(forklaring)) {
+        throw new StreamError('forbidden', forklaring, { retryable: false, statusCode: 403 })
+      }
     }
     if (response.status === 401 || response.status === 403) {
       throw new StreamError('auth', `HTTP ${response.status}`, {

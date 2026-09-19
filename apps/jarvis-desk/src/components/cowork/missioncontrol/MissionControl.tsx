@@ -21,15 +21,15 @@ type Tab = 'oversigt' | 'runs' | 'agenter' | 'godkendelser' | 'opgaver' | 'planl
 
 const TABS: { id: Tab; label: string; ownerOnly?: boolean }[] = [
   { id: 'oversigt', label: 'Oversigt' },
-  { id: 'runs', label: 'Runs' },
+  { id: 'runs', label: 'Kørsler' },
   { id: 'agenter', label: 'Agenter', ownerOnly: true },
   { id: 'godkendelser', label: 'Godkendelser' },
   { id: 'opgaver', label: 'Opgaver' },
   // Lektier + arbejdstraeet er begge /review/* og havde intet modstykke i MC.
   // De laa foer loest ovenover fladen (Bjoern 15/9: «kastet ind i toppen»).
-  { id: 'review', label: 'Review', ownerOnly: true },
+  { id: 'review', label: 'Gennemgang', ownerOnly: true },
   { id: 'planlagt', label: 'Planlagt' },
-  { id: 'cost', label: 'Cost', ownerOnly: true },
+  { id: 'cost', label: 'Forbrug', ownerOnly: true },
   { id: 'haendelser', label: 'Hændelser', ownerOnly: true },
 ]
 
@@ -90,6 +90,9 @@ export function MissionControl({
     </>
   )
 
+  const previewQueue = queue.slice(0, 3)
+  const previewShare = isOwner ? extras.shareGuard.slice(0, Math.max(0, 3 - previewQueue.length)) : []
+
   const liveNow = running > 0
   return (
     <div className="mc">
@@ -122,7 +125,17 @@ export function MissionControl({
           <div className="mc-overview">
             <section className="cowork-pane">
               <div className="cowork-pane-head">Afventer dig <span className="cowork-count">{counts.pendingApprovals}</span></div>
-              {approvalsPane}
+              {previewQueue.length > 0 || previewShare.length === 0
+                ? <ApprovalQueue items={previewQueue} onResolve={onResolveQueue} compact />
+                : null}
+              {previewShare.length > 0 && (
+                <ShareGuardPane items={previewShare} onResolve={extras.onResolveShare} />
+              )}
+              {counts.pendingApprovals > 3 && (
+                <button type="button" className="mc-see-all" onClick={() => setTab('godkendelser')}>
+                  Se alle godkendelser ({counts.pendingApprovals})
+                </button>
+              )}
             </section>
             <section className="cowork-pane">
               <div className="cowork-pane-head">Seneste kørsler</div>

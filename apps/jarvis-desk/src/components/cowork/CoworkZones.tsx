@@ -1,5 +1,5 @@
 import { useState, useEffect, type ReactNode } from 'react'
-import { onZone, type Zone } from '../../lib/coworkZone'
+import { getCurrentZone, onZone, type Zone } from '../../lib/coworkZone'
 
 /** Cowork command center — ÉT panel. Zone-valget bor i Sidebar (cowork-menu);
  *  her abonnerer vi blot på den aktive zone via emitZone/onZone og giver den til
@@ -9,7 +9,7 @@ export function CoworkZones({
 }: {
   children: (zone: Zone) => ReactNode
 }) {
-  const [zone, setZone] = useState<Zone>('mc')
+  const [zone, setZone] = useState<Zone>(getCurrentZone)
   useEffect(() => onZone(setZone), [])
   return (
     <div className="cowork-zones">

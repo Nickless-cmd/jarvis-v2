@@ -44,6 +44,12 @@ beforeEach(() => {
 })
 
 describe('ProvidersPanel', () => {
+  it('bruger de fælles fanestile i stedet for browserens standardknapper', async () => {
+    render(<ProvidersPanel config={config} />)
+    await waitFor(() => expect(screen.getByRole('button', { name: /Udbydere \(2\)/ })).toBeInTheDocument())
+    expect(screen.getByRole('button', { name: /Udbydere \(2\)/ })).toHaveClass('mc-tab', 'active')
+  })
+
   it('viser HELE registret, ikke de første otte', async () => {
     render(<ProvidersPanel config={config} />)
     await waitFor(() => expect(screen.getByRole('button', { name: /Udbydere \(2\)/ })).toBeInTheDocument())

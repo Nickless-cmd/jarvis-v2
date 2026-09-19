@@ -24,4 +24,11 @@ describe('ApprovalQueue', () => {
     render(<ApprovalQueue items={[]} onResolve={vi.fn()} />)
     expect(screen.getByText(/ingen afventende/i)).toBeInTheDocument()
   })
+  it('holder lange tekniske detaljer korte i oversigten, men kan vise dem', () => {
+    const detail = `Teknisk fejl: ${'x'.repeat(200)} slut`
+    render(<ApprovalQueue items={[{ ...items[0]!, detail }]} onResolve={vi.fn()} compact />)
+    expect(screen.queryByText(detail)).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Vis detaljer' }))
+    expect(screen.getByText(detail)).toBeInTheDocument()
+  })
 })

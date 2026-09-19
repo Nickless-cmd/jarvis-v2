@@ -1,0 +1,244 @@
+/* Shared page structure for every destination under Arbejde. */
+.category-page {
+  width: min(100%, 840px);
+  margin: 48px auto 96px;
+  color: var(--fg-1);
+}
+
+.category-page--wide { width: min(100%, 1120px); }
+
+.category-page-head { margin-bottom: 38px; }
+.category-page-head h1 {
+  margin: 0 0 7px;
+  font-size: 25px;
+  line-height: 1.25;
+  font-weight: 650;
+  letter-spacing: -.025em;
+}
+.category-page-head p {
+  max-width: 720px;
+  margin: 0;
+  color: var(--fg-2);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.category-page-content { display: grid; gap: 34px; }
+.category-section { min-width: 0; scroll-margin-top: 24px; }
+.category-section-head { margin-bottom: 12px; }
+.category-section-head h2 {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.35;
+  font-weight: 620;
+}
+.category-section-head p {
+  margin: 4px 0 0;
+  color: var(--fg-3);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+.category-section-body {
+  min-width: 0;
+  padding: 8px 20px;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.category-section-body > .settings-section {
+  padding: 17px 0;
+  border-bottom: 1px solid var(--line);
+}
+.category-section-body > .settings-section:last-child { border-bottom: 0; }
+.category-section-body > .settings-section > h3:first-child { margin-bottom: 12px; }
+.category-section[data-section="location"] .settings-section > h3:first-child,
+.category-section[data-section="notifications"] .settings-section > h3:first-child { display: none; }
+.category-page .account-fields {
+  grid-template-columns: minmax(130px, 1fr) auto;
+  gap: 0 18px;
+  width: 100%;
+}
+.category-page .account-fields > dt,
+.category-page .account-fields > dd {
+  min-width: 0;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+}
+.category-page .account-fields > dd { text-align: right; overflow-wrap: anywhere; }
+.category-page .notif-section .notif-row {
+  min-height: 44px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+}
+.category-page .notif-section .notif-row:last-of-type { border-bottom: 0; }
+.category-page .location-section .loc-options { margin: 16px 0; }
+.category-page .location-section .loc-btn { min-height: 36px; }
+.category-page .location-section .loc-btn.active {
+  color: #111;
+  font-weight: 600;
+}
+.category-page .settings-hint { color: var(--fg-3); font-size: 12.5px; line-height: 1.5; }
+.category-page .settings-section button:focus-visible,
+.category-page .settings-section select:focus-visible,
+.category-page .settings-section input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.category-page .about-panel,
+.category-page .kbd-help {
+  max-width: none;
+  margin: 0;
+  padding: 12px 0;
+  border: 0;
+}
+.category-page .about-panel h3,
+.category-page .kbd-help h3 { display: none; }
+
+/* Operational views have their own panels. Keep their page headers and section
+ * rhythm, without stacking an additional card behind every dashboard. */
+.category-page--wide .category-section-body {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.category-page--wide .category-section-body > .settings-section { padding: 14px 0; }
+.category-page--wide .mc-tom {
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg-2);
+}
+.category-page .marketplace { max-width: none; margin: 0; }
+.category-page .marketplace-head h2 { display: none; }
+.category-page .mc-top { display: flex; align-items: center; margin-bottom: 15px; }
+.category-page .mc-top h2 { display: none; }
+.category-page .mc-top-right { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.category-page .mc-top-right button,
+.category-page .mc-top-right select {
+  padding: 7px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg-2);
+  color: var(--fg-1);
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.category-page .mc-top-right button:hover { background: var(--bg-3); }
+.category-page .mc-top-right button:disabled { opacity: .55; cursor: default; }
+.category-page--wide .providers .cl-kort-raekke {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 10px;
+  margin: 0 0 20px;
+}
+.category-page--wide .agentpool .cl-kort-raekke {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 10px;
+  margin: 0 0 24px;
+}
+.category-page--wide .agentpool .cl-kort { min-width: 0; }
+.category-page--wide .agentpool .cl-kort-vaerdi { font-size: 22px; }
+.category-page--wide .ap-fordeling > div { min-width: 0; }
+.category-page--wide .ap-fordeling ul { max-height: 320px; overflow-y: auto; }
+.category-page--wide .ap-fordeling li { gap: 12px; }
+.category-page--wide .ap-fordeling li span {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.category-page--wide .ap-fordeling li strong { flex: none; }
+.mc-control-btn {
+  padding: 7px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg-2);
+  color: var(--fg-1);
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.mc-control-btn:hover { background: var(--bg-3); }
+.mc-control-btn:disabled { opacity: .55; cursor: default; }
+
+/* Mission Control shares the same calm surfaces and reading scale as the
+ * grouped pages. Keep status colors for meaning, not decoration. */
+.cowork-zone-body > .mc { margin-top: 48px; }
+.cowork-zone-body > .mc::before,
+.category-page .mc::before { display: none; }
+.cowork-zone-body > .mc .mc-header { margin-bottom: 26px; }
+.cowork-zone-body > .mc .mc-header-title h2 {
+  background: none;
+  -webkit-background-clip: initial;
+  background-clip: initial;
+  -webkit-text-fill-color: var(--fg-1);
+  color: var(--fg-1);
+  font-size: 25px;
+  letter-spacing: -.025em;
+}
+.mc .mc-summary { gap: 8px; margin-bottom: 22px; }
+.mc .mc-summary-cell {
+  background: var(--bg-2);
+  border-radius: 10px;
+  box-shadow: none;
+}
+.mc .mc-summary-cell:not(:disabled):hover { transform: none; box-shadow: none; }
+.mc .mc-tabs {
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  padding: 0 0 7px;
+  margin-bottom: 24px;
+}
+.mc .mc-tab.active {
+  background: var(--bg-4);
+  color: var(--fg-1);
+  box-shadow: none;
+}
+.mc .cowork-pane,
+.mc .mc-row,
+.mc .mc-agent-card,
+.mc .mc-schedule-row,
+.mc .mc-rundetail {
+  background: var(--bg-2);
+  border-radius: 10px;
+  box-shadow: none;
+}
+.mc .mc-row:hover,
+.mc .mc-agent-card:hover { transform: none; box-shadow: none; }
+.mc .mc-overview { grid-template-columns: minmax(0, 1fr); }
+.mc .cowork-pane { padding: 18px 20px; min-height: 0; }
+.mc .cowork-pane-head { font-size: 15px; letter-spacing: 0; margin-bottom: 14px; }
+.mc .cowork-item {
+  padding: 13px 14px;
+  border-radius: 9px;
+  background: var(--bg-1);
+}
+.mc .cowork-item-title { font-size: 13.5px; font-weight: 600; line-height: 1.4; }
+.mc .cowork-item-detail {
+  margin: 7px 0 10px;
+  color: var(--fg-2);
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.mc .cowork-item-actions { flex-wrap: wrap; }
+.mc .cowork-item-actions button { padding: 5px 10px; }
+.mc-see-all {
+  margin-top: 8px;
+  border: 0;
+  background: transparent;
+  color: var(--accent-text);
+  font-size: 13px;
+  cursor: pointer;
+}
+.mc-see-all:hover { text-decoration: underline; }
+
+@media (max-width: 800px) {
+  .category-page { margin-top: 22px; }
+  .category-page-head { margin-bottom: 26px; }
+  .category-section-body { padding-inline: 14px; }
+  .cowork-zone-body > .mc { margin-top: 22px; }
+}

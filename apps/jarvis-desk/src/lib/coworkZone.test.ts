@@ -1,9 +1,24 @@
 import { describe, it, expect } from 'vitest'
-import { COWORK_ZONES, emitZone, onZone } from './coworkZone'
+import { COWORK_ZONES, emitZone, normalizeZone, onZone } from './coworkZone'
 
 describe('coworkZone', () => {
-  it('har marketplace-zone i COWORK_ZONES', () => {
-    expect(COWORK_ZONES.map((z) => z.id)).toContain('marketplace')
+  it('viser samlede destinationer uden enkeltsider for indstillinger', () => {
+    expect(COWORK_ZONES.map((z) => z.id)).toEqual([
+      'mc', 'agentPool', 'capacity', 'integrations',
+      'general', 'account', 'workspace', 'jarvis', 'system', 'about',
+    ])
+    expect(COWORK_ZONES.filter((z) => z.group === 'Indstillinger')).toHaveLength(4)
+  })
+
+  it('bevarer gamle zonekald ved at sende dem til den relevante kategori', () => {
+    expect(normalizeZone('marketplace')).toBe('integrations')
+    expect(normalizeZone('providers')).toBe('capacity')
+    expect(normalizeZone('location')).toBe('general')
+    expect(normalizeZone('notifications')).toBe('general')
+    expect(normalizeZone('privacy')).toBe('account')
+    expect(normalizeZone('memory')).toBe('jarvis')
+    expect(normalizeZone('central')).toBe('system')
+    expect(normalizeZone('settings')).toBe('account')
   })
 
   it('hver zone har label + icon', () => {

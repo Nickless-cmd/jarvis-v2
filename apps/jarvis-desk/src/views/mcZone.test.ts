@@ -60,7 +60,7 @@ describe('Mission Control er hele Arbejde-fladen', () => {
 
   it('Lektier og arbejdstraeet har deres egen fane', () => {
     const mc = læs('components/cowork/missioncontrol/MissionControl.tsx')
-    expect(mc).toMatch(/\{ id: 'review', label: 'Review'/)
+    expect(mc).toMatch(/\{ id: 'review', label: 'Gennemgang'/)
     const fane = mc.slice(mc.indexOf("tab === 'review'"))
     expect(fane.slice(0, 700)).toContain('<Lektier')
     expect(fane.slice(0, 700)).toContain('<ReviewPanel')

@@ -4,6 +4,7 @@ import { useSettings } from '../hooks/useSettings'
 import { useCoworkData } from '../hooks/useCoworkData'
 import { MissionControl } from '../components/cowork/missioncontrol/MissionControl'
 import { CoworkZones } from '../components/cowork/CoworkZones'
+import { CategoryPage, CategorySection } from '../components/cowork/CategoryPage'
 import { JarvisMind } from '../components/cowork/JarvisMind'
 import { CentralBadge } from '../components/shell/CentralBadge'
 import { MarketplacePane } from '../components/cowork/MarketplacePane'
@@ -32,16 +33,16 @@ import { DataPrivacyPanel } from '../components/DataPrivacyPanel'
 import { KeyboardHelpPanel } from '../components/KeyboardHelpPanel'
 import { AboutPanel } from '../components/AboutPanel'
 
-/** Cowork command center. 'mc'-zonen = det rigtige Mission Control-kontrolcenter;
- *  de øvrige zoner = én settings-sektion hver (flad simpel navigation, Bjørn 2026-07-01). */
-export function CoworkView(
-  { role = 'owner', sessionId }: { role?: 'owner' | 'member' | 'guest'; sessionId?: string | null },
-) {
+/** Arbejde pages reuse the existing feature components and their backend truth.
+ * Zone aliases keep older open_ui_panel and command-palette calls working. */
+export function CoworkView({
+  role = 'owner', sessionId,
+}: { role?: 'owner' | 'member' | 'guest'; sessionId?: string | null }) {
   const { settings, auth } = useSettings()
   const isOwner = role === 'owner'
   const config = settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined
   const { queue, plans, todos, channels, shareGuard, agents, resolve, resolveShare, refresh } = useCoworkData(config, isOwner)
-  void agents  // dispatch-agenter vises nu via MC's /mc/agents-roster (rigere data)
+  void agents
 
   const missionControl = (
     <MissionControl
@@ -53,98 +54,113 @@ export function CoworkView(
     />
   )
 
-  const ownerAuth = auth?.role === 'owner'
-  const wrap = (children: ReactNode) => <div className="cowork-settings">{children}</div>
-
-  // Hver zone = ÉN klar destination (flad simpel navigation, Bjørn 2026-07-01). Sektions-
-  // komponenterne genbruges uændret — de er blot flyttet til hver sin zone i stedet for én
-  // samlet scroll. 'settings' (legacy-alias) og ukendte → Konto.
-  const zoneContent = (raw: Zone): ReactNode => {
-    switch (normalizeZone(raw)) {
-      // Work Queue oeverst paa 'mc'-zonen (6/9-2026): det er den flade man
-      // lander paa, og det foerste spoergsmaal er altid «hvad venter paa mig».
-      // Mission Control bliver staaende nedenunder — den er stadig
-      // kontrolpanelet, koeen er bare det man ser foerst.
-      // Mission Control ER fladen (Bjoern 15/9-2026). De fire sektioner laa
-      // foer LOEST ovenover den — «kastet ind i toppen og ikk som det andet» —
-      // og tre af dem var dobbelt sandhed:
-      //
-      //   «Arbejde»        /cowork/queue  → samme som MC's «Afventer dig»,
-      //                    plus koersler som MC viser i «Seneste koersler».
-      //   «Hans arbejdere» /central/agents/work → hoerer til Agenter-fanen,
-      //                    som viser /central/agents. Roster = hvem der findes,
-      //                    arbejde = hvad der koerte.
-      //   Lektier + arbejdstraeet → begge /review/*, nu deres egen fane.
-      //
-      // WorkQueue's ene unikke funktion — prompt-sammensaetningen — flyttede
-      // med til RunDetail, hvor man i forvejen er inde i ÉN koersel.
+  const page = (zone: Zone): ReactNode => {
+    switch (normalizeZone(zone)) {
       case 'mc': return missionControl
 
-      case 'marketplace': return <MarketplacePane config={config} />
+      case 'agentPool': return isOwner ? (
+        <CategoryPage title="Agent pool" description="Se hvilke agenter der findes, hvad de arbejder på, og hvad deres kørsler koster." wide>
+          <AgentPoolPanel config={config} />
+        </CategoryPage>
+      ) : null
 
-      // Owner-only (16/9-2026). Zonerne er allerede filtreret i sidebaren, men
-      // fladen spoerger ogsaa selv: en zone kan naas via open_ui_panel.
-      case 'cheapLane': return isOwner ? <CheapLanePanel config={config} /> : wrap(<div>Kun for ejeren.</div>)
-      case 'agentPool': return isOwner ? <AgentPoolPanel config={config} /> : wrap(<div>Kun for ejeren.</div>)
-      case 'providers': return isOwner ? <ProvidersPanel config={config} /> : wrap(<div>Kun for ejeren.</div>)
+      case 'capacity': return isOwner ? (
+        <CategoryPage title="Modeller og kapacitet" description="Følg modeltrafik, ledig kapacitet og de udbydere Jarvis bruger." focusSection={zone} wide>
+          <CategorySection id="cheapLane" title="Cheap Lane" description="Fordeling, kapacitet og styring af de billige modelkørsler.">
+            <CheapLanePanel config={config} />
+          </CategorySection>
+          <CategorySection id="providers" title="Udbydere" description="Tilgængelige modeller og forbindelser til dem.">
+            <ProvidersPanel config={config} />
+          </CategorySection>
+        </CategoryPage>
+      ) : null
 
-      case 'konto': return wrap(<>
-        <AccountSection config={config} />
-        <KvoteSection config={config} />
-        {ownerAuth && <TotpSetup config={config} />}
-      </>)
-      case 'privacy': return wrap(<>
-        <DataPrivacyPanel config={config} />
-        <PermissionsSection config={config} />
-      </>)
-      case 'notifications': return wrap(<NotificationsSection config={config} />)
-
-      case 'appearance': return wrap(<ThemeSection />)
-      case 'sprog': return wrap(<>
-        <SprogSection config={config} />
-        <SvarstilSection config={config} />
-      </>)
-      case 'location': return wrap(<LocationSection />)
-      case 'presence': return wrap(<PresenceSection />)
-
-      case 'memory': return wrap(<MemorySection config={config} />)
-      case 'workspace': return wrap(<>
-        <WorkspaceSection config={config} />
-        {/* Operator-kanal, fortryd-runde og runtime-kontakter (6/9-2026).
-            Hoerer til arbejdsomraadet: de handler alle om HVOR og HVORDAN
-            arbejdet udfoeres, ikke om hvem han er. */}
-        {ownerAuth && <WorkbenchSection config={config} sessionId={sessionId} />}
-      </>)
-      case 'connections': return wrap(<>
-        {ownerAuth && <McpSection config={config} />}
-        <AppsSection config={config} />
-        {ownerAuth && <PluginsPanel config={config} />}
-      </>)
-
-      case 'central': return (
-        <div className="central-zone">
-          <CentralBadge config={config} isOwner={isOwner} />
-          <div className="central-zone-cap">Central-status — klik for fuld CLI (kun owner)</div>
-        </div>
+      case 'integrations': return (
+        <CategoryPage title="Værktøjer og forbindelser" description="Find nye værktøjer og administrer de apps, MCP-servere og plugins Jarvis kan bruge." focusSection={zone} wide>
+          <CategorySection id="marketplace" title="Find værktøjer">
+            <MarketplacePane config={config} />
+          </CategorySection>
+          <CategorySection id="connections" title="Apps, MCP og plugins">
+            {isOwner && <McpSection config={config} />}
+            <AppsSection config={config} />
+            {isOwner && <PluginsPanel config={config} />}
+          </CategorySection>
+        </CategoryPage>
       )
-      case 'jarvisMind': return isOwner ? <JarvisMind config={config} /> : missionControl
-      case 'jarvis': return ownerAuth ? wrap(<JarvisSection config={config} />) : missionControl
 
-      case 'about': return wrap(<>
-        <AboutPanel apiBaseUrl={settings?.apiBaseUrl} role={auth?.role} model={settings?.defaultModel} />
-        <KeyboardHelpPanel />
-        <ConnectionSection />
-      </>)
+      case 'general': return (
+        <CategoryPage title="Generelt" description="Tilpas hvordan Desk ser ud, svarer og giver dig besked." focusSection={zone}>
+          <CategorySection id="appearance" title="Udseende"><ThemeSection /></CategorySection>
+          <CategorySection id="sprog" title="Sprog og svarstil">
+            <SprogSection config={config} />
+            <SvarstilSection config={config} />
+          </CategorySection>
+          <CategorySection id="notifications" title="Notifikationer"><NotificationsSection config={config} /></CategorySection>
+          <CategorySection id="location" title="Lokation" description="Vælg om Jarvis må kende din omtrentlige eller præcise placering.">
+            <LocationSection />
+          </CategorySection>
+        </CategoryPage>
+      )
 
-      default: return wrap(<AccountSection config={config} />)
+      case 'account': return (
+        <CategoryPage title="Konto og sikkerhed" description="Din profil, adgang, enheder og grænser for kontoen." focusSection={zone}>
+          <CategorySection id="konto" title="Profil og enheder">
+            <AccountSection config={config} />
+          </CategorySection>
+          <CategorySection title="Kvote"><KvoteSection config={config} /></CategorySection>
+          {isOwner && <CategorySection title="Ekstra bekræftelse"><TotpSetup config={config} /></CategorySection>}
+          <CategorySection id="privacy" title="Privatliv og tilladelser">
+            <DataPrivacyPanel config={config} />
+            <PermissionsSection config={config} />
+          </CategorySection>
+        </CategoryPage>
+      )
+
+      case 'workspace': return (
+        <CategoryPage title="Arbejdsområde" description="Vælg hvor Jarvis arbejder, og hvordan arbejdet kan styres.">
+          <CategorySection id="workspace" title="Mapper og filer"><WorkspaceSection config={config} /></CategorySection>
+          {isOwner && (
+            <CategorySection title="Arbejdskontrol">
+              <WorkbenchSection config={config} sessionId={sessionId} />
+            </CategorySection>
+          )}
+        </CategoryPage>
+      )
+
+      case 'jarvis': return (
+        <CategoryPage title="Jarvis og hukommelse" description="Styr hvad Jarvis husker, og hvordan han er til stede." focusSection={zone === 'jarvis' ? undefined : zone}>
+          <CategorySection id="memory" title="Hukommelse"><MemorySection config={config} /></CategorySection>
+          {isOwner && (
+            <>
+              <CategorySection id="presence" title="Tilstedeværelse"><PresenceSection /></CategorySection>
+              <CategorySection id="jarvis" title="Jarvis"><JarvisSection config={config} /></CategorySection>
+            </>
+          )}
+        </CategoryPage>
+      )
+
+      case 'system': return isOwner ? (
+        <CategoryPage title="Systemstatus" description="Teknisk tilstand og avanceret indsigt i Jarvis' drift." focusSection={zone} wide>
+          <CategorySection id="central" title="Central"><CentralBadge config={config} isOwner={isOwner} /></CategorySection>
+          <CategorySection id="jarvisMind" title="Jarvis Mind"><JarvisMind config={config} /></CategorySection>
+        </CategoryPage>
+      ) : null
+
+      case 'about': return (
+        <CategoryPage title="Om og hjælp" description="Version, tastaturgenveje og oplysninger om forbindelsen." focusSection={zone}>
+          <CategorySection title="Om Desk"><AboutPanel apiBaseUrl={settings?.apiBaseUrl} role={auth?.role} model={settings?.defaultModel} /></CategorySection>
+          <CategorySection title="Tastaturgenveje"><KeyboardHelpPanel /></CategorySection>
+          <CategorySection title="Forbindelse"><ConnectionSection /></CategorySection>
+        </CategoryPage>
+      )
+
+      default: return missionControl
     }
   }
 
   return (
     <div className="coworkview">
-      <CoworkZones>
-        {(zone) => zoneContent(zone)}
-      </CoworkZones>
+      <CoworkZones>{page}</CoworkZones>
     </div>
   )
 }

@@ -1,10 +1,11 @@
-import { describe, it, expect } from 'vitest'
+import { beforeEach, describe, it, expect } from 'vitest'
 import { render } from '@testing-library/react'
 import { act } from 'react'
 import { CoworkZones } from './CoworkZones'
 import { emitZone } from '../../lib/coworkZone'
 
 describe('CoworkZones', () => {
+  beforeEach(() => emitZone('mc'))
   it('har ingen intern rail (ét panel — zone styres fra Sidebar)', () => {
     const { container } = render(<CoworkZones>{(z) => <div>{z}</div>}</CoworkZones>)
     expect(container.querySelector('.cowork-rail')).toBeNull()
@@ -19,5 +20,11 @@ describe('CoworkZones', () => {
     const { getByText } = render(<CoworkZones>{(z) => <div>zone:{z}</div>}</CoworkZones>)
     act(() => emitZone('marketplace'))
     expect(getByText('zone:marketplace')).toBeInTheDocument()
+  })
+
+  it('husker en navigation der sker før fladen monteres', () => {
+    emitZone('general')
+    const { getByText } = render(<CoworkZones>{(z) => <div>zone:{z}</div>}</CoworkZones>)
+    expect(getByText('zone:general')).toBeInTheDocument()
   })
 })

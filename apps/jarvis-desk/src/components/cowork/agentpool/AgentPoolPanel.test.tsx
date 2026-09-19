@@ -45,12 +45,20 @@ beforeEach(() => {
 })
 
 describe('AgentPoolPanel', () => {
+  it('bruger de fælles fanestile i stedet for browserens standardknapper', async () => {
+    render(<AgentPoolPanel config={config} />)
+    await waitFor(() => expect(screen.getByText('306')).toBeInTheDocument())
+    expect(screen.getByRole('button', { name: 'Oversigt' })).toHaveClass('mc-tab', 'active')
+  })
+
   it('oversigten viser puljen og grænserne', async () => {
     render(<AgentPoolPanel config={config} />)
     await waitFor(() => expect(screen.getByText('306')).toBeInTheDocument())
     expect(screen.getByText('1 aktive nu')).toBeInTheDocument()
     expect(screen.getByText('20 %')).toBeInTheDocument()                 // fejlrate
     expect(screen.getByText('samtidige · dybde 4')).toBeInTheDocument()
+    expect(screen.getAllByText('Gennemført').length).toBeGreaterThan(0)
+    expect(screen.getByText('Annulleret')).toBeInTheDocument()
   })
 
   it('listen siger hvor mange der ER, ikke hvor mange der vises', async () => {

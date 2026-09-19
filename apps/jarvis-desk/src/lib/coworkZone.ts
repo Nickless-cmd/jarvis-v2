@@ -1,65 +1,49 @@
-/** Lille pub/sub for Jarvis-styret cowork-zone-skift (§5).
- *
- *  Når Jarvis kalder open_ui_panel(panel="settings") poller UiPanelWatcher det,
- *  skifter surface til cowork og kalder emitZone("settings"). CoworkZones
- *  abonnerer og viser indstillingszonen. Modul-niveau fordi watcher (i App) og
- *  CoworkZones (i CoworkView) ikke deler en fælles provider-gren.
- */
+/** Navigation for Arbejde. Old zone names remain accepted because Jarvis,
+ * command search and older clients can still open a specific panel. */
 export type Zone =
-  | 'mc' | 'marketplace' | 'cheapLane' | 'agentPool' | 'providers'
-  | 'konto' | 'privacy' | 'notifications'
-  | 'appearance' | 'sprog' | 'location' | 'presence'
-  | 'memory' | 'workspace' | 'connections'
-  | 'central' | 'jarvisMind' | 'jarvis'
-  | 'about'
-  | 'settings' // legacy-alias (open_ui_panel(panel="settings")) → 'konto'
+  | 'mc' | 'agentPool' | 'capacity' | 'integrations'
+  | 'general' | 'account' | 'workspace' | 'jarvis' | 'system' | 'about'
+  | 'marketplace' | 'cheapLane' | 'providers'
+  | 'konto' | 'privacy' | 'notifications' | 'appearance' | 'sprog'
+  | 'location' | 'presence' | 'memory' | 'connections'
+  | 'central' | 'jarvisMind' | 'settings'
 
-/** Cowork-menupunkterne i rækkefølge — vist i Sidebar (cowork-surface) med ikoner.
- *  Bjørn 2026-07-01: SIMPELHED SLÅR KOMPAKTHED. Hver indstillings-sektion er sit EGET
- *  klare punkt (ingen nesting/undermenuer) — grupperet med scanbare overskrifter, så en
- *  almindelig bruger (Mikkel) bæres igennem i stedet for at lede. `icon` = lucide-react-navn.
- *  `group` = ikke-klikbar sidebar-overskrift. `ownerOnly` skjuler punktet for ikke-ejere. */
 export const COWORK_ZONES: ReadonlyArray<{
   id: Zone; label: string; icon: string; group: string; ownerOnly?: boolean
 }> = [
   { id: 'mc', label: 'Mission Control', icon: 'LayoutDashboard', group: 'Arbejde' },
-  { id: 'marketplace', label: 'Marketplace', icon: 'Blocks', group: 'Arbejde' },
-  // Bjoern 16/9-2026: tre owner-flader under Arbejde. Cheap Lane foerst — «jeg
-  // ander intet om hvordan cheap lane eller load_balanceren klarer sig».
-  { id: 'cheapLane', label: 'Cheap Lane', icon: 'Gauge', group: 'Arbejde', ownerOnly: true },
   { id: 'agentPool', label: 'Agent pool', icon: 'Users', group: 'Arbejde', ownerOnly: true },
-  { id: 'providers', label: 'Udbydere', icon: 'Server', group: 'Arbejde', ownerOnly: true },
-
-  { id: 'konto', label: 'Konto', icon: 'User', group: 'Konto' },
-  { id: 'privacy', label: 'Privatliv & Data', icon: 'ShieldCheck', group: 'Konto' },
-  { id: 'notifications', label: 'Notifikationer', icon: 'Bell', group: 'Konto' },
-
-  { id: 'appearance', label: 'Udseende', icon: 'Palette', group: 'Tilpasning' },
-  { id: 'sprog', label: 'Sprog og svarstil', icon: 'Languages', group: 'Tilpasning' },
-  { id: 'location', label: 'Placering', icon: 'MapPin', group: 'Tilpasning' },
-  { id: 'presence', label: 'Tilstedeværelse', icon: 'Sparkles', group: 'Tilpasning', ownerOnly: true },
-
-  { id: 'memory', label: 'Hukommelse', icon: 'Database', group: 'Data & værktøjer' },
-  { id: 'workspace', label: 'Workspace', icon: 'Folder', group: 'Data & værktøjer' },
-  { id: 'connections', label: 'Forbindelser', icon: 'Plug', group: 'Data & værktøjer' },
-
-  { id: 'central', label: 'Central', icon: 'Cpu', group: 'System', ownerOnly: true },
-  { id: 'jarvisMind', label: 'Jarvis Mind', icon: 'Brain', group: 'System', ownerOnly: true },
-  { id: 'jarvis', label: 'Jarvis', icon: 'Bot', group: 'System', ownerOnly: true },
-
-  { id: 'about', label: 'Om & hjælp', icon: 'Info', group: 'Om' },
+  { id: 'capacity', label: 'Modeller og kapacitet', icon: 'Gauge', group: 'Arbejde', ownerOnly: true },
+  { id: 'integrations', label: 'Værktøjer og forbindelser', icon: 'Blocks', group: 'Arbejde' },
+  { id: 'general', label: 'Generelt', icon: 'Settings', group: 'Indstillinger' },
+  { id: 'account', label: 'Konto og sikkerhed', icon: 'ShieldCheck', group: 'Indstillinger' },
+  { id: 'workspace', label: 'Arbejdsområde', icon: 'Folder', group: 'Indstillinger' },
+  { id: 'jarvis', label: 'Jarvis og hukommelse', icon: 'Brain', group: 'Indstillinger' },
+  { id: 'system', label: 'Systemstatus', icon: 'Cpu', group: 'System', ownerOnly: true },
+  { id: 'about', label: 'Om og hjælp', icon: 'Info', group: 'Om' },
 ]
 
-/** Legacy-alias → kanonisk zone. 'settings' (Jarvis' open_ui_panel + tandhjul) lander på Konto. */
+const ALIAS: Partial<Record<Zone, Zone>> = {
+  marketplace: 'integrations', connections: 'integrations',
+  cheapLane: 'capacity', providers: 'capacity',
+  konto: 'account', privacy: 'account', settings: 'account',
+  notifications: 'general', appearance: 'general', sprog: 'general', location: 'general',
+  memory: 'jarvis', presence: 'jarvis',
+  central: 'system', jarvisMind: 'system',
+}
+
 export function normalizeZone(zone: Zone): Zone {
-  return zone === 'settings' ? 'konto' : zone
+  return ALIAS[zone] ?? zone
 }
 
 type Listener = (zone: Zone) => void
-
 let listeners: Listener[] = []
+let currentZone: Zone = 'mc'
+
+export function getCurrentZone(): Zone { return currentZone }
 
 export function emitZone(zone: Zone): void {
+  currentZone = zone
   for (const l of listeners) {
     try { l(zone) } catch { /* en lytter må ikke vælte de andre */ }
   }

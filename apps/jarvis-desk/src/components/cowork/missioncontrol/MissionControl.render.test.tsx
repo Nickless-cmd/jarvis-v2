@@ -12,7 +12,7 @@ import { MissionControl } from './MissionControl'
 vi.mock('../../../hooks/useMissionControl', () => ({
   useMissionControl: () => ({
     runs: [], activeRun: null, failedCount: 0,
-    agents: [{ id: 'a1', name: 'explore', status: 'active' }],
+    agents: [{ agent_id: 'a1', name: 'explore', status: 'active' }],
     scheduled: [], overview: null, refresh: () => {},
   }),
 }))
@@ -33,12 +33,30 @@ const props = {
 beforeEach(() => { vi.clearAllMocks() })
 
 describe('Mission Control bærer de fire sektioner', () => {
-  it('Review-fanen kan vælges', async () => {
+  it('oversigten viser kun de første tre afventende og åbner resten ved behov', async () => {
+    const { default: userEvent } = await import('@testing-library/user-event')
+    const queue = Array.from({ length: 5 }, (_, i) => ({
+      id: `a${i}`, title: `Godkendelse ${i + 1}`, kind: 'proposal' as const, detail: '', source: 'test',
+    }))
+    render(<MissionControl {...props} queue={queue} />)
+    expect(screen.getByText('Godkendelse 1')).toBeInTheDocument()
+    expect(screen.queryByText('Godkendelse 4')).not.toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Se alle godkendelser (5)' }))
+    expect(screen.getByText('Godkendelse 4')).toBeInTheDocument()
+  })
+
+  it('Gennemgang-fanen kan vælges', async () => {
     const { default: userEvent } = await import('@testing-library/user-event')
     render(<MissionControl {...props} />)
-    await userEvent.click(screen.getByRole('button', { name: /^Review/ }))
+    await userEvent.click(screen.getByRole('button', { name: /^Gennemgang/ }))
     expect(screen.getByTestId('lektier')).toBeTruthy()
     expect(screen.getByTestId('review')).toBeTruthy()
+  })
+
+  it('viser læsbare danske navne på driftsfanerne', () => {
+    render(<MissionControl {...props} />)
+    expect(screen.getByRole('button', { name: 'Kørsler' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Forbrug' })).toBeInTheDocument()
   })
 
   it('Agenter-fanen viser BÅDE rosteret og arbejdet', async () => {

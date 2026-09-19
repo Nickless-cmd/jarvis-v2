@@ -104,7 +104,7 @@ export function ProvidersPanel({ config }: { config?: ApiConfig }) {
 
       <div className="mc-tabs">
         {FANER.map((f) => (
-          <button key={f.id} type="button" className={f.id === fane ? 'aktiv' : ''}
+          <button key={f.id} type="button" className={`mc-tab ${f.id === fane ? 'active' : ''}`}
                   aria-pressed={f.id === fane} onClick={() => setFane(f.id)}>
             {f.label}
             {f.id === 'udbydere' && reg?.opsummering ? ` (${reg.opsummering.udbydere})` : ''}

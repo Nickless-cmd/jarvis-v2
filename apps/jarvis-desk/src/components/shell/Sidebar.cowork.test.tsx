@@ -21,8 +21,10 @@ import { Sidebar } from './Sidebar'
 describe('Sidebar mode-bevidst', () => {
   it('viser cowork-menu i cowork-surface', () => {
     render(<Sidebar surface="cowork" onSurface={() => {}} userName="Bjørn" />)
-    expect(screen.getByText('Marketplace')).toBeInTheDocument()
+    expect(screen.getByText('Værktøjer og forbindelser')).toBeInTheDocument()
     expect(screen.getByText('Mission Control')).toBeInTheDocument()
+    expect(screen.getByText('Generelt')).toBeInTheDocument()
+    expect(screen.queryByText('Placering')).not.toBeInTheDocument()
     expect(screen.queryByText('Ny samtale')).not.toBeInTheDocument()
   })
 

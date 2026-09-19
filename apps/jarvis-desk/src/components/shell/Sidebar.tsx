@@ -4,6 +4,7 @@ import {
   ChevronRight, ChevronDown,
   LayoutDashboard, Blocks, Settings, Brain, Cpu,
   User, ShieldCheck, Bell, Palette, Languages, MapPin, Database, Folder, Plug, Bot, Info,
+  Gauge, Users,
   type LucideIcon,
 } from 'lucide-react'
 import { useSessions } from '../../hooks/useSessions'
@@ -11,7 +12,7 @@ import { useSettings } from '../../hooks/useSettings'
 import { useStream } from '../../hooks/useStream'
 import { getActiveRuns } from '../../lib/api'
 import { OpmaerksomhedsLinje } from './OpmaerksomhedsLinje'
-import { COWORK_ZONES, emitZone, onZone, normalizeZone, type Zone } from '../../lib/coworkZone'
+import { COWORK_ZONES, emitZone, getCurrentZone, onZone, normalizeZone, type Zone } from '../../lib/coworkZone'
 import { grupperSessioner, GRUPPER_I_MODE, grupperEfterProjekt, type SessionGruppe } from '../../lib/sessionGroups'
 import { SidebarGreb } from './SidebarGreb'
 import { ModeDropdown, type Mode } from './ModeDropdown'
@@ -21,6 +22,7 @@ import { SecondaryNav, type SecondarySurface } from './SecondaryNav'
 const ZONE_ICONS: Record<string, LucideIcon> = {
   LayoutDashboard, Blocks, Settings, Brain, Cpu,
   User, ShieldCheck, Bell, Palette, Languages, MapPin, Database, Folder, Plug, Bot, Info,
+  Gauge, Users,
 }
 
 export type Surface = Mode | SecondarySurface | 'gallery' | 'artifacts'
@@ -255,7 +257,7 @@ export function Sidebar({
  *  hver indstillings-sektion sit eget punkt, grupperet med scanbare overskrifter (Bjørn
  *  2026-07-01: simpelhed slår kompakthed; Mikkel skal bæres igennem). Zone-skift via emitZone. */
 function CoworkMenu() {
-  const [zone, setZone] = useState<Zone>('mc')
+  const [zone, setZone] = useState<Zone>(getCurrentZone)
   const { auth } = useSettings()
   const isOwner = auth?.role === 'owner'
   // Hold lokal markering i sync med Jarvis-styret zone-skift (open_ui_panel); 'settings' → 'konto'.
@@ -273,7 +275,7 @@ function CoworkMenu() {
             {header && <div className="sidebar-label">{header}</div>}
             <button
               type="button"
-              className={`sidebar-nav-row ${zone === z.id ? 'active' : ''}`}
+              className={`sidebar-nav-row ${normalizeZone(zone) === z.id ? 'active' : ''}`}
               onClick={() => { setZone(z.id); emitZone(z.id) }}
             >
               <Icon size={14} /> {z.label}

@@ -39,6 +39,14 @@ const STATUSFILTRE = [
   { v: 'expired', label: 'Udløbet' },
 ]
 
+const STATUS_NAVN: Record<string, string> = {
+  active: 'Aktiv', running: 'Kører', planned: 'Planlagt',
+  completed: 'Gennemført', failed: 'Fejlet', cancelled: 'Annulleret',
+  expired: 'Udløbet', closed: 'Afsluttet',
+}
+
+function statusNavn(status?: string): string { return status ? STATUS_NAVN[status] ?? status : 'Ukendt' }
+
 function pct(v: number | null | undefined): string {
   if (v === null || v === undefined) return '–'
   return `${(Math.round(v * 1000) / 10).toLocaleString('da-DK')} %`
@@ -99,7 +107,7 @@ export function AgentPoolPanel({ config }: { config?: ApiConfig }) {
       <div className="mc-top">
         <h2>Agent pool</h2>
         <div className="mc-top-right">
-          <button type="button" onClick={() => void hent()} disabled={henter}>
+          <button type="button" className="mc-control-btn" onClick={() => void hent()} disabled={henter}>
             {henter ? 'Henter…' : 'Opdatér'}
           </button>
         </div>
@@ -109,7 +117,7 @@ export function AgentPoolPanel({ config }: { config?: ApiConfig }) {
 
       <div className="mc-tabs">
         {FANER.map((f) => (
-          <button key={f.id} type="button" className={f.id === fane ? 'aktiv' : ''}
+          <button key={f.id} type="button" className={`mc-tab ${f.id === fane ? 'active' : ''}`}
                   aria-pressed={f.id === fane} onClick={() => setFane(f.id)}>
             {f.label}
             {f.id === 'agenter' && opsum?.agenter_i_alt ? ` (${opsum.agenter_i_alt})` : ''}
@@ -138,14 +146,14 @@ export function AgentPoolPanel({ config }: { config?: ApiConfig }) {
               <ul>
                 {Object.entries(opsum?.pr_status ?? {})
                   .sort((a, b) => b[1] - a[1])
-                  .map(([s, n]) => <li key={s}><span>{s}</span><strong>{n}</strong></li>)}
+                  .map(([s, n]) => <li key={s}><span title={s}>{statusNavn(s)}</span><strong>{n}</strong></li>)}
               </ul>
             </div>
             <div>
               <h4>Roller</h4>
               <ul>
                 {(opsum?.pr_rolle ?? []).map((r) => (
-                  <li key={r.rolle}><span>{r.rolle}</span><strong>{r.antal}</strong></li>
+                  <li key={r.rolle}><span title={r.rolle}>{r.rolle}</span><strong>{r.antal}</strong></li>
                 ))}
               </ul>
             </div>
@@ -153,7 +161,7 @@ export function AgentPoolPanel({ config }: { config?: ApiConfig }) {
               <h4>Råd</h4>
               <ul>
                 {Object.entries(opsum?.raad ?? {}).map(([s, n]) => (
-                  <li key={s}><span>{s}</span><strong>{n}</strong></li>
+                  <li key={s}><span title={s}>{statusNavn(s)}</span><strong>{n}</strong></li>
                 ))}
                 {!Object.keys(opsum?.raad ?? {}).length && <li><span>ingen</span></li>}
               </ul>
@@ -190,7 +198,7 @@ export function AgentPoolPanel({ config }: { config?: ApiConfig }) {
                     title={a.agent_id}>
                   <td>{a.role || a.kind}</td>
                   <td className="ap-maal">{a.goal || '–'}</td>
-                  <td className={a.status === 'failed' ? 'cl-daarlig' : ''}>{a.status}</td>
+                  <td className={a.status === 'failed' ? 'cl-daarlig' : ''}>{statusNavn(a.status)}</td>
                   <td>{a.koersler}</td>
                   <td>{a.tokens.toLocaleString('da-DK')}</td>
                   <td>{a.pris_usd ? `$${a.pris_usd.toFixed(4)}` : '–'}</td>
@@ -231,7 +239,7 @@ export function AgentPoolPanel({ config }: { config?: ApiConfig }) {
                   <td>{tid(k.started_at)}</td>
                   <td>{k.role || '–'}</td>
                   <td className="cl-model">{k.model || '–'}</td>
-                  <td className={k.status === 'failed' ? 'cl-daarlig' : ''}>{k.status}</td>
+                  <td className={k.status === 'failed' ? 'cl-daarlig' : ''}>{statusNavn(k.status)}</td>
                   <td>{varighed(k.varighed_s)}</td>
                   <td className="cl-besked" title={k.output_summary || k.failure_reason || ''}>
                     {k.output_summary || k.failure_reason || '–'}

@@ -107,13 +107,13 @@ export function MarketplacePane({ config }: { config?: ApiConfig }) {
         </>
       )}
 
-      <div className="marketplace-label">Alle connectors</div>
+      <div className="marketplace-label">Alle forbindelser</div>
       <div className="marketplace-grid">
         {rest.map((c) => (
           <ConnectorCard key={c.id} c={c} busy={busy === c.id} onConnect={onConnect} onToggle={onToggle} onDelete={onDelete} />
         ))}
         {rest.length === 0 && connected.length === 0 && soon.length === 0 && (
-          <div className="marketplace-empty">Ingen connectors matcher.</div>
+          <div className="marketplace-empty">Ingen forbindelser matcher søgningen.</div>
         )}
       </div>
 

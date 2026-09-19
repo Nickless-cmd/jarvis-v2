@@ -63,6 +63,12 @@ const kpi = (etiket: string) => [...document.querySelectorAll('.cl-kpi')]
   ?.querySelector('.cl-kpi-tal')?.textContent
 
 describe('CheapLanePanel', () => {
+  it('bruger de fælles fanestile i stedet for browserens standardknapper', async () => {
+    render(<CheapLanePanel config={config} />)
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Oversigt' })).toBeInTheDocument())
+    expect(screen.getByRole('button', { name: 'Oversigt' })).toHaveClass('mc-tab', 'active')
+  })
+
   it('viser vinduets nøgletal fra ét snapshot', async () => {
     render(<CheapLanePanel config={config} />)
     await waitFor(() => expect(document.querySelector('.cl-kpi')).toBeTruthy())

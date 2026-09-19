@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { beforeEach, describe, it, expect, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import { act } from 'react'
 import { emitZone } from '../lib/coworkZone'
@@ -28,6 +28,7 @@ vi.mock('../components/settings/PluginsPanel', () => ({ PluginsPanel: () => <div
 import { CoworkView } from './CoworkView'
 
 describe('CoworkView command center', () => {
+  beforeEach(() => emitZone('mc'))
   it('owner: Mission Control viser kontrolcenter med faner (inkl. Agenter)', () => {
     render(<CoworkView role="owner" />)
     expect(screen.getByText('Oversigt')).toBeTruthy()
@@ -45,5 +46,33 @@ describe('CoworkView command center', () => {
     // Zone-skift kommer nu fra Sidebar via emitZone — ikke en intern rail-knap.
     act(() => emitZone('settings'))
     await waitFor(() => expect(screen.getByText('bjorn@x.dk')).toBeTruthy())
+  })
+
+  it('samler de små personlige indstillinger på Generelt', async () => {
+    render(<CoworkView role="owner" />)
+    act(() => emitZone('location'))
+    expect(screen.getByRole('heading', { name: 'Generelt', level: 1 })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Udseende', level: 2 })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Lokation', level: 2 })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Notifikationer', level: 2 })).toBeInTheDocument()
+    await act(async () => {})
+  })
+
+  it('samler konto, enheder og privatliv på Konto og sikkerhed', async () => {
+    render(<CoworkView role="owner" />)
+    act(() => emitZone('privacy'))
+    expect(screen.getByRole('heading', { name: 'Konto og sikkerhed', level: 1 })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Privatliv og tilladelser' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Profil og enheder' })).toBeInTheDocument()
+    await act(async () => {})
+  })
+
+  it('samler marketplace og forbindelser på én side', async () => {
+    render(<CoworkView role="owner" />)
+    act(() => emitZone('marketplace'))
+    expect(screen.getByRole('heading', { name: 'Værktøjer og forbindelser', level: 1 })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Marketplace', level: 2 })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Apps, MCP og plugins', level: 2 })).toBeInTheDocument()
+    await act(async () => {})
   })
 })

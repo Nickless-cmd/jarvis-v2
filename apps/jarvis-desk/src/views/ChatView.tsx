@@ -30,6 +30,7 @@ import { useNyeBeskeder } from '../hooks/useNyeBeskeder'
 import { NyeBeskederLinje } from '../components/transcript/NyeBeskederLinje'
 import { onStemmeBud, tagStemmeBud } from '../lib/figurBud'
 import { FigurKnap } from '../components/FigurKnap'
+import { SideTasksBar } from '../components/chat/SideTasksBar'
 import { StickyPrompt } from '../components/transcript/StickyPrompt'
 import { VisningVaelger } from '../components/transcript/VisningVaelger'
 import { useVisning, VisningContext } from '../lib/visning'
@@ -772,6 +773,7 @@ export function ChatView({
     return (
       <div className={`chatview empty${skinneAaben ? ' har-skinne' : ''}`}>
         {header}
+        <SideTasksBar config={settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : null} />
         {jobsRude}
         <div className="chat-empty">
           <GreetingHero
@@ -794,6 +796,7 @@ export function ChatView({
     <VisningContext.Provider value={visning}>
     <div className={`chatview${skinneAaben ? ' har-skinne' : ''}`}>
       {header}
+      <SideTasksBar config={settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : null} />
       {jobsRude}
       {showTakeover && (
         <div className="takeover-banner" role="status">

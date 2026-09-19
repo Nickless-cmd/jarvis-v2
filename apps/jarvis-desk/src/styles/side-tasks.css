@@ -1,0 +1,45 @@
+/* Jarvis' flaggede sideopgaver under chatheaderen (spec desk-sideopgaver,
+   19/9-2026). Egen fil: app.css er over Boy Scout-grænsen.
+   Kompakt og med egen rulning — listen må ikke skubbe samtalen væk. */
+.side-tasks {
+  flex: 0 0 auto; margin: 0 24px 6px; padding: 6px 10px 6px 12px;
+  border: 1px solid var(--line); border-radius: 10px; background: var(--bg-1);
+  font-size: 13px; color: var(--fg-2);
+}
+.har-skinne .side-tasks { margin-right: calc(var(--skinne-bredde) + 16px); }
+.side-tasks-head { display: flex; align-items: center; gap: 6px; color: var(--fg-3); font-size: 12px; margin-bottom: 2px; }
+.side-tasks-antal {
+  min-width: 16px; padding: 0 5px; border-radius: 8px; text-align: center;
+  background: var(--bg-3); color: var(--fg-2); font-size: 11px; font-variant-numeric: tabular-nums;
+}
+.side-tasks-liste { list-style: none; margin: 0; padding: 0; max-height: 168px; overflow-y: auto; }
+.side-task { padding: 4px 0; border-top: 1px solid var(--line); }
+.side-task:first-child { border-top: 0; }
+.side-task-linje { display: flex; align-items: flex-start; gap: 6px; }
+.side-task-fold {
+  all: unset; cursor: pointer; margin-top: 2px; color: var(--fg-3); display: grid; place-items: center;
+  width: 18px; height: 18px; border-radius: 4px;
+}
+.side-task-fold:hover { color: var(--fg-1); background: var(--bg-2); }
+.side-task-fold:focus-visible { outline: 1px solid var(--accent); }
+.side-task-tekst { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.side-task-titel { color: var(--fg-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.side-task-igang {
+  margin-left: 6px; padding: 0 5px; border-radius: 6px; font-size: 11px;
+  color: var(--accent); border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+}
+.side-task-tldr { color: var(--fg-3); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.side-task-knapper { display: flex; gap: 4px; flex: 0 0 auto; }
+.side-task-knapper button {
+  all: unset; cursor: pointer; padding: 2px 8px; border-radius: 6px; font-size: 12px;
+  color: var(--fg-2); border: 1px solid var(--line);
+}
+.side-task-knapper button:hover { color: var(--fg-1); background: var(--bg-2); }
+.side-task-knapper button:disabled { opacity: .45; cursor: default; }
+.side-task-knapper button:focus-visible { outline: 1px solid var(--accent); }
+.side-task-knapper .side-task-fjern:hover { color: var(--error-fg); }
+.side-task-prompt {
+  margin: 4px 0 2px 24px; padding: 6px 8px; border-radius: 6px; background: var(--bg-2);
+  color: var(--fg-2); font: 12px/1.45 var(--font-mono, ui-monospace, monospace); white-space: pre-wrap;
+}
+.side-task-fejl { margin: 2px 0 0 24px; color: var(--error-fg); font-size: 12px; }

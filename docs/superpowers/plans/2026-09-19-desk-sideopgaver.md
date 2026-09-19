@@ -26,10 +26,10 @@
 
 **Interfaces:** `list_open() -> list[dict]` viser `pending|activated`; `resolve(side_task_id, decision='completed'|'dismissed'|'activated')` styrer status. `_exec_dismiss_side_task` tager valgfri `decision`, med `dismissed` som standard.
 
-- [ ] Skriv tests for `list_open()` med `pending`, `activated`, `completed`, `dismissed`; terminal genåbning; og `_exec_dismiss_side_task` med både gammel standard og `completed`.
-- [ ] Kør `pytest tests/test_side_tasks.py -q` og se forventet fejl i manglende adfærd.
-- [ ] Indfør `completed`, `list_open()` og opdater værktøjsbeskrivelsen i `side_tasks.py`.
-- [ ] Kør samme test og den eksisterende `tests/test_turn_side_text_gc_surfaces.py` grønt.
+- [x] Skriv tests for `list_open()` med `pending`, `activated`, `completed`, `dismissed`; terminal genåbning; og `_exec_dismiss_side_task` med både gammel standard og `completed`.
+- [x] Kør `pytest tests/test_side_tasks.py -q` og se forventet fejl i manglende adfærd.
+- [x] Indfør `completed`, `list_open()` og opdater værktøjsbeskrivelsen i `side_tasks.py`.
+- [x] Kør samme test og den eksisterende `tests/test_turn_side_text_gc_surfaces.py` grønt.
 
 ### Task 2: Owner-beskyttet API
 
@@ -37,10 +37,10 @@
 
 **Interfaces:** `GET /cowork/side-tasks` returnerer `{side_tasks, count}`; `POST /cowork/side-tasks/{id}/status` accepterer `{status: completed|dismissed}`.
 
-- [ ] Skriv route-tests for owner-liste, owner-status, member-403 og ugyldig status.
-- [ ] Kør `pytest tests/test_cowork_side_task_routes.py -q` og se forventet fejl.
-- [ ] Tilføj ruter med `_role_owner()` og `asyncio.to_thread`.
-- [ ] Kør route-tests grønt.
+- [x] Skriv route-tests for owner-liste, owner-status, member-403 og ugyldig status.
+- [x] Kør `pytest tests/test_cowork_side_task_routes.py -q` og se forventet fejl.
+- [x] Tilføj ruter med `_role_owner()` og `asyncio.to_thread`.
+- [x] Kør route-tests grønt.
 
 ### Task 3: Desk API og chatliste
 
@@ -48,16 +48,16 @@
 
 **Interfaces:** `getSideTasks(config)` returnerer `SideTask[]`; `setSideTaskStatus(config,id,status)` accepterer `completed|dismissed`; `<SideTasksBar config={config} />` viser feedet og håndterer mutationer.
 
-- [ ] Skriv failing API-tests for GET og status-POST samt komponenttests for titel, beskrivelse, detaljer, Færdig, Fjern og fejl.
-- [ ] Kør målrettet Vitest og se forventet fejl.
-- [ ] Implementér API, polling-komponent og scoped CSS; placér komponenten efter ChatView-headeren i både tom og aktiv chat.
-- [ ] Kør målrettet Vitest grønt; byg renderer.
+- [x] Skriv failing API-tests for GET og status-POST samt komponenttests for titel, beskrivelse, detaljer, Færdig, Fjern og fejl.
+- [x] Kør målrettet Vitest og se forventet fejl. *(Afvigelse 19/9, Claude: desk-testene blev skrevet lige EFTER komponenten, så den røde fase blev ikke set. De dækker samme adfærd som planen kræver.)*
+- [x] Implementér API, polling-komponent og scoped CSS; placér komponenten efter ChatView-headeren i både tom og aktiv chat.
+- [x] Kør målrettet Vitest grønt; byg renderer.
 
 ### Task 4: Samlet kontrol
 
 **Files:** Ovenstående.
 
-- [ ] Kør `pytest tests/test_side_tasks.py tests/test_cowork_side_task_routes.py tests/test_turn_side_text_gc_surfaces.py -q`.
-- [ ] Kør `npm test` og `npm run build:renderer` i `apps/jarvis-desk`.
-- [ ] Inspicér chatlisten visuelt ved tom og aktiv chat samt smalt vindue; kontrollér `git diff --check`.
-- [ ] Commit kun disse filer med `scripts/commit_with_attribution.py`.
+- [x] Kør `pytest tests/test_side_tasks.py tests/test_cowork_side_task_routes.py tests/test_turn_side_text_gc_surfaces.py -q`.
+- [x] Kør `npm test` og `npm run build:renderer` i `apps/jarvis-desk`.
+- [x] Inspicér chatlisten visuelt ved tom og aktiv chat samt smalt vindue; kontrollér `git diff --check`. *(19/9, Claude: set i en demo-side med lokale testdata under en chatview-header, foldet ud og ved 420 px — ingen overløb, knapperne inden for, lange titler afkortet med tooltip. Placeringen under headeren i tom OG aktiv chat er holdt af ChatView-testene, ikke set i det kørende vindue.)*
+- [x] Commit kun disse filer med `scripts/commit_with_attribution.py`.

@@ -40,6 +40,14 @@ vi.mock('../lib/api', () => ({
   ackNotification: vi.fn().mockResolvedValue(undefined),
 }))
 
+// Sideopgaverne (spec desk-sideopgaver): tom liste som standard, saa de
+// oevrige tests ser den chat de altid har set.
+const sideopgaver = vi.hoisted(() => ({ liste: [] as unknown[] }))
+vi.mock('../lib/sideTasksApi', () => ({
+  getSideTasks: vi.fn(async () => sideopgaver.liste),
+  setSideTaskStatus: vi.fn(),
+}))
+
 const cfg = { apiBaseUrl: 'http://t', authToken: 't' }
 
 describe('ChatView integration', () => {
@@ -249,5 +257,40 @@ describe('ChatView — bund-fade', () => {
     // 50px fra bunden → inden for graensen
     maal(t, 1000, 300, 650)
     expect(t.className).toContain('is-at-bottom')
+  })
+})
+
+describe('ChatView — flaggede sideopgaver', () => {
+  const skal = (sessionId: string | null) => (
+    <SettingsProvider initialConfig={cfg}>
+      <SessionProvider config={cfg}>
+        <StreamProvider config={cfg}>
+          <PermissionProvider>
+            <PanelProvider defaultWidth={400}>
+              <ChatView sessionId={sessionId} />
+            </PanelProvider>
+          </PermissionProvider>
+        </StreamProvider>
+      </SessionProvider>
+    </SettingsProvider>
+  )
+  const opgave = { side_task_id: 'side-1', title: 'Ryd op i docs', prompt: 'p', tldr: 'kort', status: 'pending', session_id: 's', created_at: 'x' }
+
+  it('staar under headeren i en TOM chat', async () => {
+    sideopgaver.liste = [opgave]
+    const { container } = render(skal(null))
+    expect(await screen.findByText('Ryd op i docs')).toBeInTheDocument()
+    const head = container.querySelector('.chatview-head')!
+    expect(head.nextElementSibling?.getAttribute('data-testid')).toBe('side-tasks')
+    sideopgaver.liste = []
+  })
+
+  it('og i en AKTIV chat', async () => {
+    sideopgaver.liste = [opgave]
+    render(skal('s1'))
+    await userEvent.type(screen.getByRole('textbox'), 'hej{Enter}')
+    expect(await screen.findByText('Ryd op i docs')).toBeInTheDocument()
+    expect(document.querySelector('.chatview:not(.empty)')).not.toBeNull()
+    sideopgaver.liste = []
   })
 })

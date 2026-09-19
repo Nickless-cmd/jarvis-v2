@@ -19,13 +19,21 @@ vi.mock('./TerminalPane', () => ({
 
 const cfg = { apiBaseUrl: 'http://t', authToken: 't' }
 
+// Filvisningen viser først den rå tekst og skifter så til Shiki's farvning,
+// der deler koden i små spans («print», «(», «1», «)»). findByText kigger kun
+// på et elements EGEN tekst, så den fandt «print(1)» kun hvis Shiki ikke nåede
+// først — testen fejlede tilfældigt ~1 af 3 (19/9-2026). Mål det brugeren ser:
+// visningens samlede tekst, uanset farvning.
+const visningViser = (container: HTMLElement, tekst: string) =>
+  waitFor(() => expect(container.querySelector('.codepanel-view')?.textContent ?? '').toContain(tekst))
+
 describe('CodePanel', () => {
   beforeEach(() => clearTreeCache())
 
   it('åbner en fil i visningen ved klik i træet', async () => {
-    render(<CodePanel config={cfg} kind="container" root="core" />)
+    const { container } = render(<CodePanel config={cfg} kind="container" root="core" />)
     fireEvent.click(await screen.findByText('x.py'))
-    expect(await screen.findByText(/print\(1\)/)).toBeInTheDocument()
+    await visningViser(container, 'print(1)')
   })
 
   it('viser terminal-fanen for container (server-side exec) og skifter ved klik', async () => {
@@ -58,8 +66,8 @@ describe('CodePanel', () => {
   })
 
   it('Jarvis-highlight åbner filen i preview', async () => {
-    render(<CodePanel config={cfg} kind="container" root="repo" highlightPath="x.py" />)
-    expect(await screen.findByText(/print\(1\)/)).toBeInTheDocument()
+    const { container } = render(<CodePanel config={cfg} kind="container" root="repo" highlightPath="x.py" />)
+    await visningViser(container, 'print(1)')
   })
 
   it('Gem & commit henter auto-besked og committer', async () => {

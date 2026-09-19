@@ -26,6 +26,8 @@ import { usePinVedStart } from '../hooks/usePinVedStart'
 import { useNyeBeskeder } from '../hooks/useNyeBeskeder'
 import { NyeBeskederLinje } from '../components/transcript/NyeBeskederLinje'
 import { StickyPrompt } from '../components/transcript/StickyPrompt'
+import { VisningVaelger } from '../components/transcript/VisningVaelger'
+import { useVisning, VisningContext } from '../lib/visning'
 import { readModelPrefs, readThinkingMode } from '../lib/composerPrefs'
 import { getContextInfo, getContextUsage, getActiveRuns, followRun, compactNow, warmSession } from '../lib/api'
 import { markInteraction } from '../lib/presenceSignal'
@@ -461,6 +463,10 @@ export function ChatView({
   }
 
   const koe = useSendeKoe({ arbejder: streaming, online, send: doSend })
+  // Visningen (normal/Tænkning/Alt) — Claude Desktops tre, pr. samtale på serveren.
+  const { visning, skift: skiftVisning } = useVisning(
+    settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined, sessionId,
+  )
 
   const handleSend = (text: string, opts: ComposerSendOpts) => {
     const t = text.trim()
@@ -674,6 +680,7 @@ export function ChatView({
             🎙️
           </button>
         )}
+        <VisningVaelger visning={visning} onSkift={(v) => void skiftVisning(v)} />
         <button
           type="button"
           className={`panel-toggle ${changesOpen ? 'active' : ''}`}
@@ -729,6 +736,7 @@ export function ChatView({
   // ── Aktiv samtale ──
   const showTakeover = bgActive && stream.status !== 'working' && !takeoverDismissed
   return (
+    <VisningContext.Provider value={visning}>
     <div className={`chatview${skinneAaben ? ' har-skinne' : ''}`}>
       {header}
       {jobsRude}
@@ -774,14 +782,14 @@ export function ChatView({
           </Fragment>
         ))}
         {streaming && stream.blocks.length > 0 && (
-          <MessageRow role="assistant" blocks={withoutPauseAsk(liveBlokke(stream))} density="compact" streaming rundeEtiketter={stream.rundeEtiketter} />
+          <MessageRow role="assistant" blocks={withoutPauseAsk(liveBlokke(stream))} density="compact" streaming rundeEtiketter={stream.rundeEtiketter} tankeResumeer={stream.tankeResumeer} />
         )}
         {/* Autonomt wakeup-run: token-stream live mens det kører. Når det er
             færdigt (status≠working) overtager serverens persisterede besked via
             refresh — så vi undgår dobbelt-render. ÉN kilde pr. run: undertryk
             follow-renderen hvis svaret allerede står i transcript'en (server/bro). */}
         {!streaming && bgActive && followState.status === 'working' && followState.blocks.length > 0 && !followAlreadyInTranscript && (
-          <MessageRow role="assistant" blocks={withoutPauseAsk(liveBlokke(followState))} density="compact" streaming rundeEtiketter={followState.rundeEtiketter} />
+          <MessageRow role="assistant" blocks={withoutPauseAsk(liveBlokke(followState))} density="compact" streaming rundeEtiketter={followState.rundeEtiketter} tankeResumeer={followState.tankeResumeer} />
         )}
       </div>
       </div>
@@ -857,5 +865,6 @@ export function ChatView({
         {composer}
       </div>
     </div>
+    </VisningContext.Provider>
   )
 }

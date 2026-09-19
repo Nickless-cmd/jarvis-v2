@@ -36,6 +36,8 @@ export interface PersistedBlock {
   summary?: string
   /** tool_use_summary: de kald sætningen dækker. */
   preceding_tool_use_ids?: string[]
+  /** tool_use_summary: tænke-resuméet for gruppen (visningen «thinking»). */
+  thinking_summary?: string
   /**
    * tool_use: værktøjets resultat, når serveren har lagt det ved.
    *
@@ -178,6 +180,23 @@ export function gemteEtiketter(messages: ChatMessage[]): Record<string, string> 
       if (b.type !== 'tool_use_summary' || typeof b.summary !== 'string' || !b.summary.trim()) continue
       for (const id of Array.isArray(b.preceding_tool_use_ids) ? b.preceding_tool_use_ids : []) {
         ud[String(id)] = b.summary
+      }
+    }
+  }
+  return ud
+}
+
+
+/** Gemte tænke-resuméer slået op på hvert kald de dækker (visningen «thinking»). */
+export function gemteResumeer(messages: ChatMessage[]): Record<string, string> {
+  const ud: Record<string, string> = {}
+  for (const m of messages) {
+    const blokke = parseBlocks(m)
+    if (!blokke) continue
+    for (const b of blokke) {
+      if (b.type !== 'tool_use_summary' || typeof b.thinking_summary !== 'string' || !b.thinking_summary.trim()) continue
+      for (const id of Array.isArray(b.preceding_tool_use_ids) ? b.preceding_tool_use_ids : []) {
+        ud[String(id)] = b.thinking_summary
       }
     }
   }

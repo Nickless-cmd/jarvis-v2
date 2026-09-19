@@ -12,6 +12,8 @@ import { visAendring } from '../../lib/aendringsFokus'
 import { ThinkingLine } from './ThinkingLine'
 import { SkillLine, SkillSurfaceLine } from './SkillLine'
 import { SKILL_VAERKTOEJER } from '../../lib/skillLinje'
+import { useVisningen, type Visning } from '../../lib/visning'
+import { TankeResumeLinje } from './TankeResumeLinje'
 
 type ProgressBlock = Extract<ContentBlock, { type: 'progress' }>
 
@@ -88,11 +90,23 @@ export function etiketterFraBlokke(blocks: ContentBlock[]): Record<string, strin
   return ud
 }
 
+/** Gemte tænke-resuméer slået op på hvert kald de dækker (visningen «thinking»). */
+export function resumeerFraBlokke(blocks: ContentBlock[]): Record<string, string> {
+  const ud: Record<string, string> = {}
+  for (const b of blocks) {
+    if (b && b.type === 'tool_use_summary' && b.thinking_summary) {
+      for (const id of b.preceding_tool_use_ids) ud[id] = b.thinking_summary
+    }
+  }
+  return ud
+}
+
 export function BlocksRenderer({
   blocks,
   density,
   streaming,
   rundeEtiketter,
+  tankeResumeer,
 }: {
   blocks: ContentBlock[]
   density: 'compact' | 'full'
@@ -104,7 +118,10 @@ export function BlocksRenderer({
    * tråden ser ud som før.
    */
   rundeEtiketter?: Record<string, string>
+  /** Live tænke-resuméer fra streamen (visningen «thinking»). */
+  tankeResumeer?: Record<string, string>
 }) {
+  const visning = useVisningen()
   // denseBlocks FØRST: fjern sparsomme huller (foldede tool_result-indices) FØR
   // groupToolRounds/coalesceProgress itererer med for..of — ellers crash på et
   // undefined-hul (sort skærm, Bjørn 9. jul).
@@ -114,7 +131,10 @@ export function BlocksRenderer({
   const taet = denseBlocks(blocks)
   const etiketter = { ...etiketterFraBlokke(taet), ...(rundeEtiketter ?? {}) }
   const udenEtiketter = taet.filter((b) => b.type !== 'tool_use_summary')
-  const rendered = coalesceProgress(groupToolRounds(afslutForladteKald(udenEtiketter, streaming)))
+  const resumeer = { ...resumeerFraBlokke(taet), ...(tankeResumeer ?? {}) }
+  // «Alt» (verbose): ingen gruppering — hvert kald står for sig og åbent.
+  const afsluttet = afslutForladteKald(udenEtiketter, streaming)
+  const rendered = coalesceProgress(visning === 'verbose' ? afsluttet : groupToolRounds(afsluttet))
   const lastIdx = rendered.length - 1
   // Filerne Jarvis redigerede i DENNE besked. Kortet staar nederst — som i CC
   // — og kun naar der faktisk er redigeret noget.
@@ -123,7 +143,7 @@ export function BlocksRenderer({
   return (
     <>
       {rendered.map((b, i) => (
-        <BlockView key={i} block={b} density={density} streaming={streaming} isLast={i === lastIdx} rundeEtiketter={etiketter} />
+        <BlockView key={i} block={b} density={density} streaming={streaming} isLast={i === lastIdx} rundeEtiketter={etiketter} tankeResumeer={resumeer} visning={visning} />
       ))}
       <EditedFilesCard filer={redigerede} onAabn={visAendring} />
     </>
@@ -136,6 +156,8 @@ function BlockView({
   streaming,
   isLast,
   rundeEtiketter,
+  tankeResumeer,
+  visning,
 }: {
   block: RenderBlock | ProgressTrailBlock
   density: 'compact' | 'full'
@@ -143,6 +165,8 @@ function BlockView({
   isLast: boolean
   /** Rundens overskrift, slået op på kaldets id. Se `BlocksRenderer`. */
   rundeEtiketter?: Record<string, string>
+  tankeResumeer?: Record<string, string>
+  visning: Visning
 }) {
   switch (block.type) {
     // Narrationen vises KUN mens der streames. Når turen er slut, staar den i
@@ -164,12 +188,19 @@ function BlockView({
         // rundens. Opslaget gaar paa kaldets id og ikke paa raekkefoelgen: en
         // sen etiket ville ellers saette sig over de forkerte kald.
         const etik = block.tools.map((t) => rundeEtiketter?.[t.id]).find(Boolean)
-        return <ToolGroupCard block={block} density={density} etiket={etik} />
+        // «Tænkning»: resuméet af tænkningen står OVER gruppen (Claude Desktop §2).
+        const resume = visning === 'thinking' ? block.tools.map((t) => tankeResumeer?.[t.id]).find(Boolean) : undefined
+        return (
+          <>
+            {resume ? <TankeResumeLinje tekst={resume} /> : null}
+            <ToolGroupCard block={block} density={density} etiket={etik} />
+          </>
+        )
       }
     case 'tool_use':
       return SKILL_VAERKTOEJER.has(block.name)
         ? <SkillLine block={block} density={density} />
-        : <ToolCard block={block} density={density} />
+        : <ToolCard block={block} density={density} aabenFraStart={visning === 'verbose'} />
     case 'image':
       // LIVE billede bærer en `src` (data-URL fra streamen) og kan tegnes med
       // det samme. PERSISTERET bærer kun en reference og skal hentes med token
@@ -188,7 +219,7 @@ function BlockView({
       // Én linje med live-tid og fold-ud — som mobilen og runde-linjen (Bjørn
       // 16/9-2026). Før strømmede hele monologen ind i tråden og forsvandt
       // bagefter. «Live» = sidste blok mens der streames.
-      return <ThinkingLine text={block.thinking} seconds={block.seconds} startet={block.startet} live={streaming && isLast && block.seconds == null} />
+      return <ThinkingLine text={block.thinking} seconds={block.seconds} startet={block.startet} live={streaming && isLast && block.seconds == null} aabenFraStart={visning === 'verbose'} />
     default:
       return null
   }

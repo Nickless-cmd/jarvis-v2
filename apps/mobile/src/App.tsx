@@ -31,6 +31,7 @@ import { ErrorBoundary } from './components/ErrorBoundary'
 import { startBro } from './lib/broOpstart'
 import { AuthProvider, useAuth } from './state/AuthContext'
 import { SessionProvider } from './state/SessionContext'
+import type { Visning } from './lib/visning'
 import { StreamProvider } from './state/StreamContext'
 import { tokens } from './theme/tokens'
 import { ThemeProvider } from './theme/ThemeContext'
@@ -67,6 +68,10 @@ function AppBody() {
   const [compactSignal, setCompactSignal] = useState(0)
   const [workspaceSignal, setWorkspaceSignal] = useState(0)
   const [jobsSignal, setJobsSignal] = useState(0)
+  // Samtalens visning: ChatScreen ejer den (pr. samtale på serveren) og
+  // melder den op; menuens valg sendes ned som et ønske — som komprimér/jobs.
+  const [visning, setVisning] = useState<Visning>('normal')
+  const [visningOenske, setVisningOenske] = useState<{ v: Visning; n: number } | null>(null)
   // Code-fladen. Den er IKKE porten fra en QR: målt 12/9-2026 udsteder
   // `/auth/pair/*` et login-token og binder ikke telefonen til en bestemt
   // desk-instans. Der findes intet led mellem de to enheder at hænge den på,
@@ -254,6 +259,8 @@ function AppBody() {
           kodeTilstand={kodeTilstand}
           onJobs={() => setJobsSignal((n) => n + 1)}
           onTilbageTilChat={() => setKodeTilstand(false)}
+          visning={mode === 'snak' ? visning : undefined}
+          onVisning={(v) => setVisningOenske({ v, n: Date.now() })}
         />
         {/* Begge skærme holdes monteret: Snak må ikke miste stream-tilstand
             fordi Bjørn kigger på Arbejde. Skjult frem for unmountet. */}
@@ -270,6 +277,8 @@ function AppBody() {
               onKodeKontekst={setKodeKontekst}
               workspaceSignal={workspaceSignal}
               jobsSignal={jobsSignal}
+              onVisning={setVisning}
+              visningOenske={visningOenske}
             />
           </ErrorBoundary>
         </View>

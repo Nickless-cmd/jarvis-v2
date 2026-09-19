@@ -192,7 +192,9 @@ export async function renameSession(
 ): Promise<void> {
   await apiFetch(config, `/chat/sessions/${encodeURIComponent(sessionId)}/rename`, {
     method: 'PUT',
-    body: JSON.stringify({ title }),
+    // `apiFetch` stringifyer selv. Med JSON.stringify her fik serveren en
+    // STRENG og svarede 422 — omdøb virkede aldrig (målt 19/9-2026).
+    body: { title },
   })
 }
 
@@ -216,7 +218,8 @@ export async function setSessionFlags(
 ): Promise<void> {
   await apiFetch(config, `/chat/sessions/${encodeURIComponent(sessionId)}/flags`, {
     method: 'PATCH',
-    body: JSON.stringify(flags),
+    // Samme fejl som omdøb: dobbelt-kodet → 422, fastgør/arkivér virkede aldrig.
+    body: flags,
   })
 }
 

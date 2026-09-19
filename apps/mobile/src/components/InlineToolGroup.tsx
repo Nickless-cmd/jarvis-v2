@@ -18,6 +18,8 @@ interface Props {
    * gemt fra beskedens tool_use_summary-blok. Udeladt = den mekaniske tekst.
    */
   etiket?: string
+  /** Visningen «Alt»: runden står åben fra start (kan stadig foldes). */
+  aabenFraStart?: boolean
 }
 
 /** Klokken vises først efter 5 s mens runden kører (kildens `zS`). */
@@ -51,11 +53,11 @@ export function formatTid(sek: number): string {
  * - **Folden**: 200 ms med opacitet; indholdet i en ramme på højst 200 dp,
  *   der selv scroller.
  */
-export function InlineToolGroup({ items, etiket }: Props) {
+export function InlineToolGroup({ items, etiket, aabenFraStart }: Props) {
   const tokens = useTheme()
   const styles = useStyles(makestyles)
   const reduced = useReducedMotion()
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(!!aabenFraStart && items.length > 1)
   const running = items.some((i) => i.running)
   const summary = summarizeRound(items)
   const sum = summerDiff(items)

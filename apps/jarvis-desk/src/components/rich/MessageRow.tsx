@@ -24,6 +24,7 @@ function MessageRowImpl({
   density,
   streaming,
   rundeEtiketter,
+  tankeResumeer,
   createdAt,
   onResend,
   config,
@@ -39,6 +40,8 @@ function MessageRowImpl({
    * Udeladt = ingen overskrifter; tråden ser ud som før.
    */
   rundeEtiketter?: Record<string, string>
+  /** Live tænke-resuméer (visningen «thinking»). */
+  tankeResumeer?: Record<string, string>
   createdAt?: string
   /** Kun bruger-beskeder: send samme tekst igen (sparer copy-paste). */
   onResend?: (text: string) => void
@@ -100,7 +103,7 @@ function MessageRowImpl({
               tool-blok under streaming) isoleres i stedet for at nuke hele appen
               til sort skærm. Fejlen logges (localStorage jarvis-desk:lastCrash). */}
           <InlineErrorBoundary label="assistant-blocks">
-            <BlocksRenderer blocks={blocks} density={density} streaming={streaming} rundeEtiketter={rundeEtiketter} />
+            <BlocksRenderer blocks={blocks} density={density} streaming={streaming} rundeEtiketter={rundeEtiketter} tankeResumeer={tankeResumeer} />
             {!streaming && detectArtifacts(blocks).map((a, i) => (
               <ArtifactAffordance key={`${a.kind}-${i}`} artifact={a} />
             ))}

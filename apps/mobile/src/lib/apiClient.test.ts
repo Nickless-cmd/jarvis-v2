@@ -10,6 +10,8 @@ import {
   googleLoginStart,
   health,
   listSessions,
+  renameSession,
+  setSessionFlags,
   cancelRunById,
   getActiveRunSnapshot,
   steerRun,
@@ -274,5 +276,22 @@ describe('serverens forklaring når et kald fejler', () => {
   it('tom detail giver stadig en brugbar besked', async () => {
     svar(409, { detail: '   ' })
     await expect(apiFetch(cfg, '/x')).rejects.toThrow(/HTTP 409/)
+  })
+})
+
+// Målt 19/9-2026: omdøb og fastgør/arkivér sendte JSON.stringify(...) gennem
+// `apiFetch`, der stringifyer selv. Serveren fik en STRENG og svarede 422 —
+// de tre punkter i samtalemenuen har aldrig virket på telefonen.
+describe('samtale-handlingerne sender et OBJEKT, ikke en streng', () => {
+  const svar = { ok: true, status: 200, json: async () => ({}) }
+  it('omdøb', async () => {
+    ;(global.fetch as jest.Mock).mockResolvedValue(svar)
+    await renameSession(config, 's1', 'Nyt navn')
+    expect(JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body)).toEqual({ title: 'Nyt navn' })
+  })
+  it('fastgør/arkivér', async () => {
+    ;(global.fetch as jest.Mock).mockResolvedValue(svar)
+    await setSessionFlags(config, 's1', { pinned: true })
+    expect(JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body)).toEqual({ pinned: true })
   })
 })

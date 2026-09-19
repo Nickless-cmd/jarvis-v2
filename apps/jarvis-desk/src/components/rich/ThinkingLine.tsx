@@ -37,6 +37,7 @@ export function ThinkingLine({
   seconds,
   live,
   startet,
+  aabenFraStart,
 }: {
   text: string
   /** Målt varighed: serverens (gemt) eller reducerens (live, når tanken sluttede). */
@@ -45,8 +46,10 @@ export function ThinkingLine({
   live: boolean
   /** Klientens ur da tanken startede. */
   startet?: number
+  /** Visningen «Alt»: tanken står åben fra start. */
+  aabenFraStart?: boolean
 }) {
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(!!aabenFraStart)
   const loebende = useLoebendeTid(live, startet)
   const harTekst = text.trim().length > 0
   const sek = live ? loebende : seconds ?? loebende

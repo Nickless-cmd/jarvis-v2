@@ -31,6 +31,7 @@ import { MessageList, type MessageListHandle } from '../components/MessageList'
 import { ScrollToBottom } from '../components/ScrollToBottom'
 import { KoeChip } from '../components/KoeChip'
 import { useNyeBeskeder } from '../lib/useNyeBeskeder'
+import { useVisning, type Visning } from '../lib/visning'
 import { ModelPicker, type ModelChoice } from '../components/ModelPicker'
 import { PermissionPicker, type ApprovalMode } from '../components/PermissionPicker'
 import { SidePanel } from '../components/SidePanel'
@@ -118,11 +119,15 @@ interface ChatScreenProps {
   workspaceSignal?: number
   /** Stiger når «Baggrundsjobs» vælges i tre-prik menuen. */
   jobsSignal?: number
+  /** Samtalens visning meldes op til topbjælkens menu. */
+  onVisning?: (v: Visning) => void
+  /** Menuens valg — et ønske med løbenummer, så samme valg to gange også virker. */
+  visningOenske?: { v: Visning; n: number } | null
 }
 
 export function ChatScreen({
   openPanelSignal = 0, syncSignal = 0, onSyncDone, onKontekst, compactSignal = 0,
-  kodeTilstand = false, onSkiftFlade, onKodeKontekst, workspaceSignal = 0, jobsSignal = 0,
+  kodeTilstand = false, onSkiftFlade, onKodeKontekst, workspaceSignal = 0, jobsSignal = 0, onVisning, visningOenske,
 }: ChatScreenProps) {
   const tokens = useTheme()
   const styles = useStyles(makestyles)
@@ -285,6 +290,10 @@ export function ChatScreen({
     if (nu && !arbejdedeFoer.current) jumpToBottom()
     arbejdedeFoer.current = nu
   }, [stream.state.status, jumpToBottom])
+  // Visningen (normal/Tænkning/Alt) — pr. samtale på serveren (Claude Desktop §1).
+  const { visning, skift: skiftVisning } = useVisning(config, sessions.activeId)
+  useEffect(() => { onVisning?.(visning) }, [visning]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (visningOenske) void skiftVisning(visningOenske.v) }, [visningOenske?.n]) // eslint-disable-line react-hooks/exhaustive-deps
   // «Nye beskeder»: første besked man ikke har set (Claude Desktop §10).
   const nyeFra = useNyeBeskeder(sessions.activeId ?? null, sessions.messages.map((m) => String(m.id)), !scrolledUp)
   const [modalStack, setModalStack] = useState<MobileRoute[]>([])
@@ -979,6 +988,8 @@ export function ChatScreen({
               rundeEtiketter={stream.state.rundeEtiketter}
               skillFlade={stream.state.skillFlade}
               nyeFra={nyeFra}
+              visning={visning}
+              tankeResumeer={stream.state.tankeResumeer}
               onResend={(text) => void ensureSessionAndSend(text)}
               pins={pins}
               onTogglePin={sessions.activeId ? handleTogglePin : undefined}

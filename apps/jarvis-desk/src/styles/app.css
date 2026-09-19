@@ -233,6 +233,19 @@
 }
 .mode-dd-item:hover { background: var(--bg-3); color: var(--fg-1); }
 .mode-dd-item.active { color: var(--fg-1); }
+/* Visnings-vælgeren (Claude Desktops «Transcript view»). Menuen åbner mod
+   venstre — knappen sidder i højre side af headeren. */
+.visning-vaelger { position: relative; display: inline-flex; align-items: center; }
+.visning-menu { left: auto; right: 0; min-width: 260px; }
+.visning-check { width: 14px; flex: 0 0 14px; display: inline-flex; color: var(--accent-text); }
+.visning-tekst { display: flex; flex-direction: column; gap: 1px; }
+.visning-forklaring { color: var(--fg-3); font-size: 12px; }
+.visning-standard { border-top: 1px solid var(--line); border-radius: 0 0 5px 5px; margin-top: 4px; padding-top: 8px; color: var(--fg-3); }
+.visning-besked {
+  position: absolute; top: calc(100% + 6px); right: 0; z-index: 21; white-space: nowrap;
+  background: var(--bg-3); border: 1px solid var(--line); border-radius: 6px;
+  padding: 4px 8px; font-size: 12px; color: var(--fg-1); box-shadow: 0 4px 12px rgba(0,0,0,.3);
+}
 .sidebar-top-actions { display: flex; align-items: center; gap: 2px; margin-left: auto; }
 /* Bladre-pilene hoerer sammen som ét greb og skal laeses som ét — derfor
    ingen mellemrum mellem dem, og en tynd skillelinje ud mod de handlinger
@@ -1624,6 +1637,11 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 .tanke-linje .toolgroup-head:disabled:hover { background: none; }
 .tanke-body { padding: 8px 12px; color: var(--fg-3); font-size: 13.5px; }
 .skill-body { padding: 8px 12px; }
+/* Visningen «Tænkning»: resuméet af tænkningen over hver gruppe. Samme celle
+   og indrykning som linjen under — dæmpet og kursiv, det er optakten. */
+.tanke-resume { display: flex; align-items: center; gap: 8px; padding: 4px 2px 0; color: var(--fg-3); font-size: 13.5px; font-style: italic; }
+.tanke-resume .toolgroup-icon { color: var(--fg-3); }
+.tanke-resume-tekst { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tanke-body :is(p, li) { color: var(--fg-3); }
 /* Image */
 .image-blocked { color: var(--fg-3); font-size: 12.5px; font-style: italic; }

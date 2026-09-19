@@ -18,7 +18,9 @@ import { describeTool, describeToolResult } from '../lib/toolSummary'
 import { countFromResult, type ToolItem } from '../lib/toolGroup'
 import { SKILL_VAERKTOEJER, type SkillKald } from '../lib/skillLinje'
 import { SkillFladeLinje, SkillLinje, type SkillFladeMatch } from './SkillLinje'
-import { attachmentBlocks, gemteEtiketter, hasOrdering, parseBlocks, thinkingBlock } from '../lib/persistedBlocks'
+import { TankeResumeLinje } from './TankeResumeLinje'
+import type { Visning } from '../lib/visning'
+import { attachmentBlocks, gemteEtiketter, hasOrdering, parseBlocks, thinkingBlock, gemteResumeer } from '../lib/persistedBlocks'
 import { threadBlocks } from '../lib/persistedBlocks'
 import { ThinkingSummary } from './ThinkingSummary'
 import { MessageAttachments } from './MessageAttachments'
@@ -58,6 +60,10 @@ interface MessageListProps {
   skillFlade?: { matches: SkillFladeMatch[] }
   /** Id på den første besked man ikke har set — tegnes med en skillelinje over. */
   nyeFra?: string | null
+  /** Samtalens visning (Claude Desktop §1): normal, thinking eller verbose. */
+  visning?: Visning
+  /** Live tænke-resuméer fra streamen (visningen «thinking»). */
+  tankeResumeer?: Record<string, string>
   onResend?: (text: string) => void
   /** Id'er på fastgjorte beskeder. Styrer ikonet i besked-menuen. */
   pins?: string[]
@@ -327,7 +333,7 @@ function taenketid(start?: number, slut?: number): number | undefined {
 }
 
 export const MessageList = forwardRef<MessageListHandle, MessageListProps>(function MessageList(
-  { messages, blocks, onResend, onScrollOffset, thinking, bottomInset = 0, pins, onTogglePin, onSaveMemory, rundeEtiketter, skillFlade, nyeFra },
+  { messages, blocks, onResend, onScrollOffset, thinking, bottomInset = 0, pins, onTogglePin, onSaveMemory, rundeEtiketter, skillFlade, nyeFra, visning = 'normal', tankeResumeer },
   ref
 ) {
   const tokens = useTheme()
@@ -505,6 +511,10 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
     () => ({ ...gemteEtiketter(messages), ...(rundeEtiketter ?? {}) }),
     [messages, rundeEtiketter],
   )
+  const resumeer = useMemo(
+    () => (visning === 'thinking' ? { ...gemteResumeer(messages), ...(tankeResumeer ?? {}) } : {}),
+    [messages, tankeResumeer, visning],
+  )
   // I inverted liste: HØJERE index = ÆLDRE besked, LAVERE index = NYERE.
   const userFlags = ordered.map((r) => r.kind === 'msg' && r.message.role === 'user')
 
@@ -579,7 +589,12 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
           const etik = item.items
             .map((i: ToolItem) => (i.id ? etiketter[i.id] : undefined))
             .find(Boolean)
-          return <InlineToolGroup items={item.items} etiket={etik} />
+          // «Tænkning»: resuméet af tænkningen står OVER gruppen (Claude Desktop §2).
+          const resume = visning === 'thinking'
+            ? item.items.map((i: ToolItem) => (i.id ? resumeer[i.id] : undefined)).find(Boolean)
+            : undefined
+          const gruppe = <InlineToolGroup items={item.items} etiket={etik} aabenFraStart={visning === 'verbose'} />
+          return resume ? <View><TankeResumeLinje tekst={resume} />{gruppe}</View> : gruppe
         }
         if (item.kind === 'thinking') {
           return (
@@ -588,6 +603,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
               text={item.text}
               live={item.live}
               messageId={item.messageId}
+              aabenFraStart={visning === 'verbose'}
             />
           )
         }

@@ -49,17 +49,20 @@ export function ThinkingSummary({
   seconds,
   text,
   live,
-  messageId
+  messageId,
+  aabenFraStart
 }: {
   seconds?: number
   text?: string
   live?: boolean
   /** Beskedens id — nøglen til at hente den FULDE strøm, hvis tilvalget er til. */
   messageId?: string
+  /** Visningen «Alt»: tanken står åben fra start. */
+  aabenFraStart?: boolean
 }) {
   const tokens = useTheme()
   const styles = useStyles(makestyles)
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(!!aabenFraStart)
   const [fullText, setFullText] = useState<string | null>(null)
   const { config } = useAuthOptional()
   const hasText = !!(text ?? '').trim()

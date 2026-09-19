@@ -21,6 +21,8 @@ export interface StreamState {
    * over de forkerte kald. 1:1 med mobilen.
    */
   rundeEtiketter?: Record<string, string>
+  /** Tænke-resuméer slået op på kald-id — visningen «thinking» (19/9-2026). */
+  tankeResumeer?: Record<string, string>
   /**
    * Skills runtimen lagde i prompten for dette run. Holdes UDEN FOR `blocks`:
    * de er indekseret af serverens content-block-index, og en blok lagt på
@@ -63,14 +65,27 @@ function estimateOutputTokens(blocks: ContentBlock[]): number {
 function medEtiket(
   state: StreamState,
   etiket: string | undefined,
-  ids: string[] | undefined
+  ids: string[] | undefined,
+  tankeResume?: string,
 ): StreamState {
   const tekst = (etiket ?? '').trim()
+  const resume = (tankeResume ?? '').trim()
   const liste = ids ?? []
-  if (!tekst || liste.length === 0) return state
-  const kort = { ...(state.rundeEtiketter ?? {}) }
-  for (const id of liste) kort[id] = tekst
-  return { ...state, rundeEtiketter: kort }
+  if (liste.length === 0 || (!tekst && !resume)) return state
+  let ud = state
+  if (tekst) {
+    const kort = { ...(state.rundeEtiketter ?? {}) }
+    for (const id of liste) kort[id] = tekst
+    ud = { ...ud, rundeEtiketter: kort }
+  }
+  // Tænke-resuméet rider med i samme event (visningen «thinking»); det kan
+  // stå alene, når Jarvis selv skrev linjen og der ingen etiket blev lavet.
+  if (resume) {
+    const kort = { ...(state.tankeResumeer ?? {}) }
+    for (const id of liste) kort[id] = resume
+    ud = { ...ud, tankeResumeer: kort }
+  }
+  return ud
 }
 
 /** Læg skill-fladen ind, uanset om den kom direkte eller pakket (se medEtiket). */
@@ -198,8 +213,8 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
         return medSkillFlade(state, (event.payload ?? {}) as { matches?: unknown; primary?: unknown })
       }
       if (event.kind === 'tool_round_label') {
-        const p = (event.payload ?? {}) as { etiket?: string; tool_use_ids?: string[] }
-        return medEtiket(state, p.etiket, p.tool_use_ids)
+        const p = (event.payload ?? {}) as { etiket?: string; tool_use_ids?: string[]; tanke_resume?: string }
+        return medEtiket(state, p.etiket, p.tool_use_ids, p.tanke_resume)
       }
       // run-event bærer det rigtige run_id (message_start har det tomt).
       if (event.kind === 'run') {
@@ -276,7 +291,7 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
     case 'tool_round_label':
       // Den DIREKTE form (SSE-v1). Den indpakkede kommer som `system_event` —
       // se `medEtiket`.
-      return medEtiket(state, event.etiket, event.tool_use_ids)
+      return medEtiket(state, event.etiket, event.tool_use_ids, event.tanke_resume)
 
     case 'skill_surface':
       return medSkillFlade(state, event)

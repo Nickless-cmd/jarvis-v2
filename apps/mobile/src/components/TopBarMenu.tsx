@@ -1,6 +1,7 @@
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { ArrowLeftRight, Activity, Minimize2, RefreshCw } from 'lucide-react-native'
+import { ArrowLeftRight, Activity, Check, Minimize2, RefreshCw } from 'lucide-react-native'
+import { VISNINGER, VISNING_NAVN, type Visning } from '../lib/visning'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 import { useI18n } from '../i18n/I18nContext'
 
@@ -23,7 +24,7 @@ import { useI18n } from '../i18n/I18nContext'
  * så den ligger et tryk inde.
  */
 export function TopBarMenu({
-  aaben, onClose, onSync, onCompact, onTilbageTilChat, onJobs, kodeTilstand,
+  aaben, onClose, onSync, onCompact, onTilbageTilChat, onJobs, kodeTilstand, visning, onVisning,
 }: {
   aaben: boolean
   onClose: () => void
@@ -33,6 +34,13 @@ export function TopBarMenu({
   /** Baggrundsjobs. Kun i code-fladen — se punktet nedenfor. */
   onJobs?: () => void
   kodeTilstand?: boolean
+  /**
+   * Samtalens visning — Claude Desktops «Transcript view» (cc-desktop-chatview
+   * §1): tre radio-punkter; et skift gælder KUN denne samtale. Udeladt = ingen
+   * sektion (der er ingen samtale at vise).
+   */
+  visning?: Visning
+  onVisning?: (v: Visning) => void
 }) {
   const tokens = useTheme()
   const styles = useStyles(makestyles)
@@ -74,6 +82,25 @@ export function TopBarMenu({
               onPress={() => { onTilbageTilChat(); onClose() }}
             />
           ) : null}
+          {visning && onVisning ? (
+            <View style={styles.sektion} accessibilityRole="radiogroup" accessibilityLabel="Visning">
+              <Text style={styles.sektionTitel}>Visning</Text>
+              {VISNINGER.map((v) => (
+                <Pressable
+                  key={v}
+                  testID={`visning-${v}`}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: v === visning }}
+                  accessibilityLabel={VISNING_NAVN[v]}
+                  onPress={() => { onVisning(v); onClose() }}
+                  style={({ pressed }) => [styles.punkt, pressed ? styles.trykket : null]}
+                >
+                  <View style={styles.check}>{v === visning ? <Check size={16} color={tokens.color.accent} strokeWidth={2.2} /> : null}</View>
+                  <Text style={styles.punktTekst}>{VISNING_NAVN[v]}</Text>
+                </Pressable>
+              ))}
+            </View>
+          ) : null}
         </Pressable>
       </Pressable>
     </Modal>
@@ -112,4 +139,7 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
   },
   punktTekst: { color: tokens.color.fg1, fontSize: 15 },
   trykket: { opacity: 0.6 },
+  sektion: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: tokens.color.line, marginTop: 4, paddingTop: 4 },
+  sektionTitel: { color: tokens.color.fg3, fontSize: 12, paddingHorizontal: 14, paddingTop: 8, paddingBottom: 2, letterSpacing: 0.3 },
+  check: { width: 17, alignItems: 'center' },
 })

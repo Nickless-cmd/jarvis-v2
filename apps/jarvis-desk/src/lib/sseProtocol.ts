@@ -83,6 +83,8 @@ export interface ToolRoundLabelEvent {
   round: number
   etiket: string
   tool_use_ids: string[]
+  /** Tænke-resuméet — kun når samtalen står i visningen «thinking». */
+  tanke_resume?: string
 }
 
 /**
@@ -131,6 +133,8 @@ export type ContentBlock =
       type: 'tool_use_summary'
       summary: string
       preceding_tool_use_ids: string[]
+      /** Tænke-resuméet for gruppen (visningen «thinking», 19/9-2026). */
+      thinking_summary?: string
     }
   | {
       type: 'tool_use'

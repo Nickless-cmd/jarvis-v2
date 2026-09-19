@@ -41,6 +41,8 @@ import { streamReducer, initialStreamState, liveBlokke } from '../lib/streamRedu
 import { useOnline } from '../hooks/useOnline'
 import { useSendeKoe } from '../hooks/useSendeKoe'
 import { KoeChip } from '../components/transcript/KoeChip'
+import { VisningVaelger } from '../components/transcript/VisningVaelger'
+import { useVisning, VisningContext } from '../lib/visning'
 import { JumpToLatest } from '../components/transcript/JumpToLatest'
 import { usePinVedStart } from '../hooks/usePinVedStart'
 import { useNyeBeskeder } from '../hooks/useNyeBeskeder'
@@ -384,6 +386,10 @@ export function CodeView({
 
   // Opfang /compact FØR den sendes som en normal besked (ellers "tænker" modellen bare).
   const online = useOnline()
+  // Visningen (normal/Tænkning/Alt) — Claude Desktops tre, pr. samtale på serveren.
+  const { visning, skift: skiftVisning } = useVisning(
+    settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined, sessionId,
+  )
   const koe = useSendeKoe({ arbejder: stream.status === 'working', online, send: (t, o) => doSend(t, o) })
 
   const handleSend = (text: string, opts: ComposerSendOpts) => {
@@ -807,6 +813,7 @@ export function CodeView({
       {/* Alle fire panel-knapper i SAMME vaegt og stoerrelse som ikonerne i
           sidebaren (15 / 1,8). De stod paa 16 og standard-streg og var derfor
           tydeligt tungere end resten (Bjoern 8/9-2026). */}
+      <VisningVaelger visning={visning} onSkift={(v) => void skiftVisning(v)} />
       <button
         type="button"
         className={`panel-toggle ${changesOpen ? 'active' : ''}`}
@@ -906,6 +913,7 @@ export function CodeView({
 
   // ── Aktiv samtale ──
   return (
+    <VisningContext.Provider value={visning}>
     <div className={`codeview${(jobsOpen || changesOpen) ? ' har-skinne' : ''}`}>
       <div className="codeview-main">
         {headerActive}
@@ -1006,12 +1014,12 @@ export function CodeView({
             </Fragment>
           ))}
           {stream.status === 'working' && stream.blocks.length > 0 && (
-            <MessageRow role="assistant" blocks={withoutPauseAsk(liveBlokke(stream))} density="compact" streaming />
+            <MessageRow role="assistant" blocks={withoutPauseAsk(liveBlokke(stream))} density="compact" streaming rundeEtiketter={stream.rundeEtiketter} tankeResumeer={stream.tankeResumeer} />
           )}
           {/* Cross-device: live-stream fra et run startet på en anden enhed (mobil).
               Kun når VI ikke selv streamer, så ingen dobbelt-render. */}
           {!(stream.status === 'working' && stream.blocks.length > 0) && bgActive && followState.status === 'working' && followState.blocks.length > 0 && (
-            <MessageRow role="assistant" blocks={withoutPauseAsk(liveBlokke(followState))} density="compact" streaming />
+            <MessageRow role="assistant" blocks={withoutPauseAsk(liveBlokke(followState))} density="compact" streaming rundeEtiketter={followState.rundeEtiketter} tankeResumeer={followState.tankeResumeer} />
           )}
         </div>
         </div>
@@ -1070,5 +1078,6 @@ export function CodeView({
         </>
       )}
     </div>
+    </VisningContext.Provider>
   )
 }

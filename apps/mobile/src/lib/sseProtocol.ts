@@ -101,6 +101,8 @@ export interface ToolRoundLabelEvent {
   round: number
   etiket: string
   tool_use_ids: string[]
+  /** Tænke-resuméet — kun når samtalen står i visningen «thinking». */
+  tanke_resume?: string
 }
 
 export interface RoundRestartDiscardPartialEvent {

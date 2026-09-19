@@ -106,6 +106,8 @@ export interface StreamContextValue {
    * Skrevet af en lille lokal model på serveren, leveret ved næste rundes start.
    */
   rundeEtiketter?: Record<string, string>
+  /** Tænke-resuméer slået op på kald-id (visningen «thinking»). */
+  tankeResumeer?: Record<string, string>
   activeRunId: string | null
   elapsedMs: number
   workingStep: string | null
@@ -461,6 +463,7 @@ export function StreamProvider({
       activeLane: state.lane,
       blocks: state.blocks,
       rundeEtiketter: state.rundeEtiketter,
+      tankeResumeer: state.tankeResumeer,
       activeRunId: state.activeRunId,
       workingSessionId: status === 'working' ? workingSessionId : null,
       usage: state.usage,
@@ -485,7 +488,7 @@ export function StreamProvider({
       armAutoContinue,
       consumeAutoContinue,
     }),
-    [status, state.model, state.provider, state.lane, state.blocks, state.rundeEtiketter, state.activeRunId, workingSessionId, state.usage, elapsedMs, state.workingStep, state.recoveryNotice, error, streamError, canonical.errors, canonical.current, clearError, needsAttention, send, abort, continueFromPartial, pendingApproval, approve, deny, pendingAppAction, clearAppAction, autoContinue, armAutoContinue, consumeAutoContinue],
+    [status, state.model, state.provider, state.lane, state.blocks, state.rundeEtiketter, state.tankeResumeer, state.activeRunId, workingSessionId, state.usage, elapsedMs, state.workingStep, state.recoveryNotice, error, streamError, canonical.errors, canonical.current, clearError, needsAttention, send, abort, continueFromPartial, pendingApproval, approve, deny, pendingAppAction, clearAppAction, autoContinue, armAutoContinue, consumeAutoContinue],
   )
   return <StreamContext.Provider value={value}>{children}</StreamContext.Provider>
 }

@@ -14,11 +14,14 @@ import { parsePauseAsk } from '../../lib/pauseAsk'
 export function ToolCard({
   block,
   density,
+  aabenFraStart = false,
 }: {
   block: Extract<ContentBlock, { type: 'tool_use' }>
   density: 'compact' | 'full'
+  /** Visningen «Alt»: åbent fra start, men kan stadig foldes. */
+  aabenFraStart?: boolean
 }) {
-  const [open, setOpen] = useState(density === 'full')
+  const [open, setOpen] = useState(density === 'full' || aabenFraStart)
   const expanded = density === 'full' || open
 
   const args = parseArgs(block)

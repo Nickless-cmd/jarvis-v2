@@ -1,33 +1,50 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { JarvisRing } from '../shell/JarvisRing'
 import { LiveVerb } from '../shell/LiveVerb'
+import { varighed } from '../../lib/jobsApi'
 
 /** Skiftende status-verber i Jarvis' stemme (når der ikke er en konkret tool-
  *  handling). Roterer hvert par sekunder så det føles levende. */
 const VERBS = ['tænker', 'grunder', 'samler trådene', 'regner den ud', 'vejer mulighederne', 'kigger nærmere']
 
-/** Vedvarende liveness-linje (som Claude): Jarvis' ring står ALTID nederst i
- *  transcript'en — drejer + viser hvad han laver mens han arbejder, og bliver
- *  stående stille med "klar" når turen er slut. "Thinking via <model>"-boilerplate
- *  filtreres væk; uden konkret handling vises et skiftende verbum. */
 /** Kort token-tal: 1234 → "1.2k". */
 function fmtTokens(n: number): string {
   return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n)
 }
 
+/** Vedvarende liveness-linje — Jarvis' svar på Claude Codes linje over composeren.
+ *
+ *  Samme fire oplysninger, samme rækkefølge: varighed · tokens · tænke-tid ·
+ *  baggrundsjob — og så hvad han laver lige nu. To forskelle er bevidste:
+ *
+ *  1. Ikonet er Jarvis' egen ring, ikke et stjernemotiv. Vi viser de samme
+ *     ting som CC; vi klæder os ikke ud som CC.
+ *  2. Tidsformatet kommer fra `varighed()` i jobsApi — samme funktion panelet
+ *     bruger, så linjen og panelet aldrig viser to forskellige tal for samme
+ *     job. (Bjørn 19/9-2026: «vi for den 1:1 og viser de samme ting».)
+ */
 export function LivenessIndicator({
   status,
   elapsedMs,
   density,
   workingStep,
   tokens = 0,
+  thoughtMs = null,
+  thoughtAfsluttet = false,
+  runningJobs = 0,
 }: {
   status: string
   elapsedMs: number
   density: 'compact' | 'full'
   workingStep?: string | null
-  /** Estimerede output-tokens indtil videre (live tæller mens han svarer). */
+  /** Kontekst-størrelsen: input + cacheHit + cacheMiss + output. */
   tokens?: number
+  /** Tænke-tid i ms for den seneste/aktive tanke — «Thought for 2s». */
+  thoughtMs?: number | null
+  /** true = tanken er afsluttet → teksten gennemstreges, som hos CC. */
+  thoughtAfsluttet?: boolean
+  /** Antal kørende baggrundsjobs (server + Bjørns maskine + agenter). */
+  runningJobs?: number
 }) {
   const working = status === 'working'
   const tone = working ? 'working' : status === 'error' || status === 'interrupted' ? 'error' : 'idle'
@@ -40,8 +57,27 @@ export function LivenessIndicator({
     return () => clearInterval(id)
   }, [working])
 
-  const s = Math.floor(elapsedMs / 1000)
-  const t = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
+  // Sektionerne i CC's rækkefølge. Hver vises kun hvis den har indhold —
+  // ingen tomme skilletegn.
+  const dele: ReactNode[] = []
+  if (working) {
+    const sek = Math.floor(elapsedMs / 1000)
+    if (sek > 0) dele.push(varighed(sek))
+  }
+  if (tokens > 0) dele.push(`${fmtTokens(tokens)} tokens`)
+  if (thoughtMs != null && thoughtMs > 0) {
+    dele.push(
+      <span
+        key="tanke"
+        className={`liveness-thought${thoughtAfsluttet ? ' afsluttet' : ''}`}
+      >
+        Thought for {varighed(Math.floor(thoughtMs / 1000))}{thoughtAfsluttet ? '.' : ''}
+      </span>,
+    )
+  }
+  if (runningJobs > 0) {
+    dele.push(runningJobs === 1 ? '1 job kører' : `${runningJobs} jobs kører`)
+  }
 
   // Konkret tool-handling beholdes; model-boilerplate ("Thinking via …") droppes
   // til fordel for et skiftende verbum.
@@ -49,23 +85,19 @@ export function LivenessIndicator({
   const isBoilerplate = !step || /^thinking via/i.test(step) || /^arbejder$/i.test(step)
   const action = working ? (isBoilerplate ? (VERBS[verbIdx] ?? 'tænker') : step) : tone === 'error' ? 'afbrudt' : 'klar'
 
-  // Rækkefølge: tokens → tid → verbum. tokens er live-estimat under
-  // streaming (chars/4 fra text+thinking-deltas) og bliver erstattet
-  // af det rigtige tal når message_delta lander til sidst.
-  const tokenPart = tokens > 0 ? `${fmtTokens(tokens)} tokens` : ''
-  const prefix = working ? [tokenPart, t].filter(Boolean).join(' · ') : tokenPart
   return (
     <div className={`liveness liveness-${density} ${working ? 'is-working' : 'is-idle'}`}>
       <JarvisRing size={14} spinning={working} tone={tone} />
       <span className="liveness-label">
-        {working ? (
+        {dele.length > 0 && (
           <>
-            {prefix && <span className="liveness-time">{prefix} · </span>}
-            <LiveVerb text={action} />
+            {dele.map((d, i) => (
+              <span key={i}>{i > 0 ? ' · ' : ''}{d}</span>
+            ))}
+            {' · '}
           </>
-        ) : (
-          <>{prefix && <span className="liveness-time">{prefix} · </span>}{action}</>
         )}
+        {working ? <LiveVerb text={action} /> : action}
       </span>
     </div>
   )

@@ -1303,6 +1303,10 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 }
 .liveness.is-idle { opacity: 0.7; }
 .liveness-label { color: var(--fg-3); }
+/* Tænke-tiden («Thought for 2s»). Gennemstreget når tanken er SLUT — samme
+   signal som Claude Code bruger: linjen er en afsluttet tanke, ikke en kørende. */
+.liveness-thought { white-space: nowrap; }
+.liveness-thought.afsluttet { text-decoration: line-through; opacity: 0.75; }
 .liveness-dot {
   width: 7px; height: 7px; border-radius: 50%; background: var(--warn-fg);
   animation: liveness-pulse 1.4s ease-in-out infinite;

@@ -254,6 +254,20 @@ _Fase 6 «Bæres han på tværs af tid?» — indsamler._
 | function | `collect_timepoint` | `(tp, rnd)` | Ét tidspunkt: alle betingelser × modeller × prober. | [src](../../../scripts/phase6_collect.py#L86) |
 | function | `run` | `(timepoints, gap_minutes)` | — | [src](../../../scripts/phase6_collect.py#L133) |
 
+## `scripts/phase7_build_probes.py`
+_Fase 7 — bygger proberne af arkivet._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_owner` | `()` | — | [src](../../../scripts/phase7_build_probes.py#L69) |
+| function | `identity_text` | `(ws)` | — | [src](../../../scripts/phase7_build_probes.py#L82) |
+| function | `_call` | `(system_user)` | — | [src](../../../scripts/phase7_build_probes.py#L90) |
+| function | `_parse` | `(text)` | — | [src](../../../scripts/phase7_build_probes.py#L99) |
+| function | `candidates` | `(conn, uid, now, lo, hi)` | Jarvis' svar i ejerens egne (ikke-autonome) samtaler, i spandens vindue. | [src](../../../scripts/phase7_build_probes.py#L109) |
+| function | `preceding_user` | `(conn, session_id, msg_id)` | — | [src](../../../scripts/phase7_build_probes.py#L126) |
+| function | `reject_reason` | `(p, ident_lower, used_sessions, session_id, type_counts)` | — | [src](../../../scripts/phase7_build_probes.py#L133) |
+| function | `main` | `()` | — | [src](../../../scripts/phase7_build_probes.py#L155) |
+
 ## `scripts/phone_home_auto.py`
 _phone_home_auto — hold phone_adb_address i runtime.json opdateret._
 
@@ -411,13 +425,4 @@ _One-shot bootstrap: generate tool tags via cheap LLM and warm embedding cache._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `main` | `()` | — | [src](../../../scripts/tool_router_bootstrap.py#L22) |
-
-## `scripts/user_md_learned_migration.py`
-_Flyt USER.md «## Durable Preferences» ind i «## Lært» (lærings-sløjfe, blok A)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_user_md_path` | `(workspace)` | — | [src](../../../scripts/user_md_learned_migration.py#L40) |
-| function | `migrate` | `(*, workspace, apply)` | — | [src](../../../scripts/user_md_learned_migration.py#L48) |
-| function | `main` | `()` | — | [src](../../../scripts/user_md_learned_migration.py#L118) |
 

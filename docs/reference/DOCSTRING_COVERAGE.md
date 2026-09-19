@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7800/15135 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7801/15143 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -36,12 +36,12 @@ Generated from source. 7800/15135 functions/methods documented (51%). The list b
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.util` | 9 | 10 | 90% |
-| `scripts` | 195 | 400 | 48% |
+| `scripts` | 196 | 408 | 48% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2164)
+## Undocumented public functions (2168)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L208)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -2178,6 +2178,10 @@ Generated from source. 7800/15135 functions/methods documented (51%). The list b
 - `scripts/phase6_analyze.py` :: `embed` (L39)
 - `scripts/phase6_analyze.py` :: `main` (L69)
 - `scripts/phase6_collect.py` :: `run` (L133)
+- `scripts/phase7_build_probes.py` :: `identity_text` (L82)
+- `scripts/phase7_build_probes.py` :: `main` (L155)
+- `scripts/phase7_build_probes.py` :: `preceding_user` (L126)
+- `scripts/phase7_build_probes.py` :: `reject_reason` (L133)
 - `scripts/phone_home_auto.py` :: `main` (L190)
 - `scripts/pipelines/jarvis_pollinations_pipeline.py` :: `main` (L802)
 - `scripts/pipelines/tiktok_analytics.py` :: `main` (L246)

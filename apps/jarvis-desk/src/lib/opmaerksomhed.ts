@@ -22,6 +22,8 @@ export interface Opmaerksomhed {
   etiket: string
   antal: { waiting: number; failed: number; review: number; running: number }
   baggrund: number
+  /** Forslag og initiativer — venter, men blokerer intet. */
+  indbakke: number
   fokus: OpmPunkt | null
   punkter: OpmPunkt[]
 }

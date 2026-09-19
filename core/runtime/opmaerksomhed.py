@@ -13,8 +13,14 @@ svar slår et der stadig arbejder. Samme rækkefølge her.
 
 ## Hvor tilstandene kommer fra
 
-- **waiting** — godkendelses-køen (`cowork_feed.build_queue`, samme kø som
-  Mission Controls «Afventer dig»). Ingen ny sandhed.
+- **waiting** — de godkendelser i køen (`cowork_feed.build_queue`, samme kø
+  som Mission Controls «Afventer dig») der HOLDER en samtale: kilden
+  `capability`, et run der står og venter på dit ja. Forslag og initiativer
+  (`proposal`/`initiative`) er en indbakke, ikke en blokering — de tælles i
+  `indbakke` og driver ikke tilstanden. Målt ved første udrulning 19/9: 20
+  forslag og 4 initiativer, 0 blokerende. Med dem som «waiting» havde
+  tilstanden stået på «Venter på dig» altid — og så betyder den intet.
+  Codex' `waiting` er netop en tråd der er gået i stå til du svarer.
 - **running** — levende runs i `run_event_log`, filtreret til samtaler i
   dette arbejdsrum. Autonome kørsler tælles for sig (`baggrund`) og driver
   IKKE tilstanden: målt 112 på tre døgn — de ville holde figuren i «arbejder»
@@ -229,19 +235,28 @@ def _baggrund() -> int:
         return 0
 
 
-def _venter(user_id: str | None, is_owner: bool) -> list[dict[str, Any]]:
+_BLOKERENDE_KILDER: Final[frozenset[str]] = frozenset({"capability"})
+
+
+def _koe(user_id: str | None, is_owner: bool) -> tuple[list[dict[str, Any]], int]:
+    """(blokerende punkter, antal i indbakken)."""
     try:
         from core.services import cowork_feed
         items = cowork_feed.build_queue(user_id=user_id, is_owner=is_owner)
     except Exception:
         logger.warning("opmaerksomhed: godkendelses-køen kunne ikke læses", exc_info=True)
-        return []
+        return [], 0
+    blok = [i for i in items if str(i.get("source") or "") in _BLOKERENDE_KILDER]
+    return _venter(blok), len(items) - len(blok)
+
+
+def _venter(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
     ud = []
     for i in items:
         ud.append({"session_id": str(i.get("session_id") or ""), "run_id": "", "tilstand": "waiting",
                    "titel": str(i.get("title") or i.get("kind") or "Godkendelse")[:80],
                    "tekst": str(i.get("summary") or i.get("detail") or "")[:200],
-                   "tid": float(i.get("created_at_ts") or time.time()), "id": str(i.get("id") or "")})
+                   "tid": time.time(), "id": str(i.get("id") or "")})
     return ud
 
 
@@ -256,7 +271,8 @@ def tilstand_for(*, rum: str | None = None, user_id: str | None = None,
     # En samtale der kører IGEN er ikke længere «færdig» eller «fejlet».
     koerende_sid = {k["session_id"] for k in koerer}
     gemte = [p for p in gemte if p.get("session_id") not in koerende_sid]
-    punkter = _venter(user_id, is_owner) + gemte + koerer
+    venter, indbakke = _koe(user_id, is_owner)
+    punkter = venter + gemte + koerer
     punkter.sort(key=lambda p: (PRIORITET.get(str(p.get("tilstand")), 9), -float(p.get("tid") or 0)))
     tilstand = str(punkter[0]["tilstand"]) if punkter else "idle"
     antal = {k: sum(1 for p in punkter if p.get("tilstand") == k) for k in ("waiting", "failed", "review", "running")}
@@ -265,6 +281,7 @@ def tilstand_for(*, rum: str | None = None, user_id: str | None = None,
         "etiket": ETIKET[tilstand],
         "antal": antal,
         "baggrund": _baggrund(),
+        "indbakke": indbakke,
         "fokus": punkter[0] if punkter else None,
         "punkter": punkter[:20],
     }

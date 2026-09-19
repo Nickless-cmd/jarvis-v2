@@ -38,7 +38,7 @@ def test_codex_prioritet_venter_slaar_alt(miljoe):
     t = om.tilstand_for(rum="rum-a")
     assert t["tilstand"] == "review"
     assert t["antal"] == {"waiting": 0, "failed": 0, "review": 1, "running": 1}
-    state["koe"] = [{"id": "ap-1", "title": "Må jeg køre rm?", "kind": "exec"}]
+    state["koe"] = [{"id": "ap-1", "title": "Må jeg køre rm?", "kind": "exec", "source": "capability"}]
     t = om.tilstand_for(rum="rum-a")
     assert t["tilstand"] == "waiting" and t["fokus"]["titel"] == "Må jeg køre rm?"
 
@@ -109,3 +109,13 @@ def test_detached_run_kalder_hjernen():
     navne = {n.name for n in ast.walk(ast.parse(inspect.getsource(detached_run)))
              if isinstance(n, ast.alias)}
     assert {"noter_afsluttet", "glem_session"} <= navne
+
+
+def test_forslag_er_indbakke_ikke_venter(miljoe):
+    """Maalt 19/9: 20 forslag + 4 initiativer, 0 blokerende. De maa ikke holde
+    tilstanden paa «Venter paa dig» — saa betyder den intet."""
+    _, state = miljoe
+    state["koe"] = ([{"id": f"p{i}", "title": "Forslag", "source": "proposal"} for i in range(20)]
+                    + [{"id": f"i{i}", "title": "Initiativ", "source": "initiative"} for i in range(4)])
+    t = om.tilstand_for(rum="rum-a")
+    assert t["tilstand"] == "idle" and t["indbakke"] == 24 and t["antal"]["waiting"] == 0

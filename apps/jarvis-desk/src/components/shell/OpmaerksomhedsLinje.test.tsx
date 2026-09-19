@@ -19,7 +19,7 @@ describe('OpmaerksomhedsLinje', () => {
   beforeEach(() => { hent.mockReset(); marker.mockClear() })
 
   it('er tavs naar intet kraever dig', async () => {
-    hent.mockResolvedValue({ tilstand: 'idle', etiket: 'Intet kræver dig', antal: { waiting: 0, failed: 0, review: 0, running: 0 }, baggrund: 3, fokus: null, punkter: [] })
+    hent.mockResolvedValue({ tilstand: 'idle', etiket: 'Intet kræver dig', antal: { waiting: 0, failed: 0, review: 0, running: 0 }, baggrund: 3, indbakke: 0, fokus: null, punkter: [] })
     render(<OpmaerksomhedsLinje config={cfg} aktivId={null} onAabn={() => {}} />)
     await waitFor(() => expect(hent).toHaveBeenCalled())
     expect(screen.queryByTestId('opmaerksomhed')).toBeNull()
@@ -27,7 +27,7 @@ describe('OpmaerksomhedsLinje', () => {
 
   it('viser den vindende tilstand med antal og aabner fokus-samtalen', async () => {
     const p = punkt('s-1', 'review', 'Kæledyret')
-    hent.mockResolvedValue({ tilstand: 'review', etiket: 'Færdig — se svaret', antal: { waiting: 0, failed: 0, review: 2, running: 1 }, baggrund: 0, fokus: p, punkter: [p, punkt('s-2', 'review')] })
+    hent.mockResolvedValue({ tilstand: 'review', etiket: 'Færdig — se svaret', antal: { waiting: 0, failed: 0, review: 2, running: 1 }, baggrund: 0, indbakke: 0, fokus: p, punkter: [p, punkt('s-2', 'review')] })
     const aabn = vi.fn()
     render(<OpmaerksomhedsLinje config={cfg} aktivId={null} onAabn={aabn} />)
     const knap = await screen.findByTestId('opmaerksomhed')
@@ -40,7 +40,7 @@ describe('OpmaerksomhedsLinje', () => {
 
   it('kvitterer paa serveren naar den aabne samtale har et faerdigt svar', async () => {
     const p = punkt('s-1', 'failed')
-    hent.mockResolvedValue({ tilstand: 'failed', etiket: 'Noget gik galt', antal: { waiting: 0, failed: 1, review: 0, running: 0 }, baggrund: 0, fokus: p, punkter: [p] })
+    hent.mockResolvedValue({ tilstand: 'failed', etiket: 'Noget gik galt', antal: { waiting: 0, failed: 1, review: 0, running: 0 }, baggrund: 0, indbakke: 0, fokus: p, punkter: [p] })
     render(<OpmaerksomhedsLinje config={cfg} aktivId="s-1" onAabn={() => {}} />)
     await waitFor(() => expect(marker).toHaveBeenCalledWith(cfg, 's-1'))
   })

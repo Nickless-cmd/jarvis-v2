@@ -6,12 +6,13 @@ import { useLoebendeTid } from '../../lib/useLoebendeTid'
 import { Prikker, udenEllipse } from './Prikker'
 import { Fold } from './Fold'
 import { ToolCard } from './ToolCard'
+import { formatTid } from './LabelSkift'
 
 /**
  * Én linje når skill-gaten fyrer eller en skill indlæses — søskende til
  * runde-linjen og tanke-linjen. Se `lib/skillLinje.ts` for hvorfor.
  *
- *     ✦ Tjekker skills for «lav et regneark» · 2 s
+ *     ✦ Tjekker skills for «lav et regneark» · 2s
  *     ✦ Skill-gate: xlsx · 0,82 · indlæst · 4,2k tegn  ›
  *     ✦ Indlæste skill git-advanced · 6,1k tegn  ›
  */
@@ -25,7 +26,7 @@ export function SkillLine({
   const [open, setOpen] = useState(false)
   const o = skillOversigt(block)
   const sek = useLoebendeTid(o.koerer, block.startet)
-  const meta = o.koerer && sek != null && sek >= 1 ? [...o.meta, `${Math.floor(sek)} s`] : o.meta
+  const meta = o.koerer && sek != null && sek >= 1 ? [...o.meta, formatTid(sek)] : o.meta
 
   return (
     <div className={`toolgroup skill-linje${o.koerer ? ' er-koerende' : ''}${o.fejl ? ' har-fejl' : ''}${open ? ' er-aaben' : ''}`}>

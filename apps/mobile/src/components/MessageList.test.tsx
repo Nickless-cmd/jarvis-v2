@@ -128,6 +128,6 @@ it('en gemt tur med flere tanker beholder dem alle, på deres plads', async () =
   const taenkte = s.queryAllByText(/Tænkte/)
   expect(taenkte.length).toBe(2)
   // Og de baerer hver sin maalte tid — ikke den foerstes for dem begge.
-  expect(s.queryAllByText(/Tænkte i 3 s/).length).toBe(1)
-  expect(s.queryAllByText(/Tænkte i 9 s/).length).toBe(1)
+  expect(s.queryAllByText(/Tænkte i 3s/).length).toBe(1)
+  expect(s.queryAllByText(/Tænkte i 9s/).length).toBe(1)
 })

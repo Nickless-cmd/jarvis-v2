@@ -13,12 +13,12 @@ describe('ThinkingLine', () => {
     // Monologen står ikke som tekst i tråden — kun dens sidste linje, dæmpet, som metadata.
     expect(screen.queryByText('intern monolog')).not.toBeInTheDocument()
     act(() => { vi.advanceTimersByTime(4200) })
-    expect(screen.getByTestId('tanke-meta')).toHaveTextContent('· 4 s · intern monolog')
+    expect(screen.getByTestId('tanke-meta')).toHaveTextContent('· 4s · intern monolog')
   })
 
   it('færdig: «Tænkte i X s» og klik folder tanken ud', () => {
     render(<ThinkingLine text="intern monolog" seconds={12.4} live={false} />)
-    const knap = screen.getByRole('button', { name: /Tænkte i 12 s/ })
+    const knap = screen.getByRole('button', { name: /Tænkte i 12s/ })
     expect(screen.queryByText('intern monolog')).not.toBeInTheDocument()
     fireEvent.click(knap)
     expect(screen.getByText('intern monolog')).toBeInTheDocument()
@@ -26,7 +26,7 @@ describe('ThinkingLine', () => {
 
   it('kort tanke BEHOLDER sit tal (Bjørn 17/9-2026: tiden «var ikke persistet»)', () => {
     render(<ThinkingLine text="kort" seconds={1.1} live={false} />)
-    expect(screen.getByRole('button', { name: 'Tænkte i 1,1 s' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Tænkte i 1s' })).toBeInTheDocument()
   })
 
   it('live → færdig fryser tiden', () => {
@@ -35,7 +35,7 @@ describe('ThinkingLine', () => {
     act(() => { vi.advanceTimersByTime(5000) })
     rerender(<ThinkingLine text="x" live={false} />)
     act(() => { vi.advanceTimersByTime(60000) })
-    expect(screen.getByText('Tænkte i 5 s')).toBeInTheDocument()
+    expect(screen.getByText('Tænkte i 5s')).toBeInTheDocument()
   })
 
   it('gemt blok uden tekst og tid: intet', () => {
@@ -44,9 +44,9 @@ describe('ThinkingLine', () => {
   })
 
   it('formatSek', () => {
-    expect(formatSek(3.44)).toBe('3,4 s')
-    expect(formatSek(12.4)).toBe('12 s')
-    expect(formatSek(75)).toBe('1 min 15 s')
+    expect(formatSek(3.44)).toBe('3s')  // «12s», som Claude Desktop — ingen decimaler
+    expect(formatSek(12.4)).toBe('12s')
+    expect(formatSek(75)).toBe('1m 15s')
   })
 })
 

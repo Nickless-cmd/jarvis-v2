@@ -130,7 +130,10 @@ export function parseBlocks(message: ChatMessage): PersistedBlock[] | null {
  */
 export function hasOrdering(blocks: PersistedBlock[] | null): boolean {
   if (!blocks) return false
-  const tools = blocks.filter((b) => b.type === 'tool_use').length
+  // `skill_surface` tæller som et kald: uden den gik en tur hvor runtimen
+  // lagde en skill i prompten, men Jarvis ikke kaldte noget, den gamle
+  // tekst-vej — og skill-linjen nåede aldrig skærmen (19/9-2026).
+  const tools = blocks.filter((b) => b.type === 'tool_use' || b.type === 'skill_surface').length
   const texts = blocks.filter((b) => b.type === 'text' && (b.text ?? '').trim()).length
   return tools > 0 && texts > 0
 }

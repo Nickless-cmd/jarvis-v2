@@ -4,17 +4,17 @@ import { KORT_TAERSKEL_S, ThinkingSummary } from './ThinkingSummary'
 describe('ThinkingSummary', () => {
   it('viser varigheden', async () => {
     const screen = await render(<ThinkingSummary seconds={14} text="hm" />)
-    expect(screen.getByText('Tænkte i 14 s')).toBeTruthy()
+    expect(screen.getByText('Tænkte i 14s')).toBeTruthy()
   })
 
-  it('bruger dansk komma og skjuler tom decimal', async () => {
+  it('hele sekunder, «3s» — som Claude Desktop', async () => {
     const a = await render(<ThinkingSummary seconds={3.4} text="x" />)
-    expect(a.getByText('Tænkte i 3,4 s')).toBeTruthy()
+    expect(a.getByText('Tænkte i 3s')).toBeTruthy()
   })
 
   it('skifter til minutter over 60 s', async () => {
     const screen = await render(<ThinkingSummary seconds={95} text="x" />)
-    expect(screen.getByText('Tænkte i 1 min 35 s')).toBeTruthy()
+    expect(screen.getByText('Tænkte i 1m 35s')).toBeTruthy()
   })
 
   // Uden en måling skriver vi ikke «Tænkte» — det ville være en paastand vi
@@ -136,12 +136,12 @@ describe('korte tanker', () => {
 
   it('PAA taersklen vises tallet', async () => {
     const s = await render(<ThinkingSummary seconds={3} text="x" />)
-    expect(s.getByText('Tænkte i 3 s')).toBeTruthy()
+    expect(s.getByText('Tænkte i 3s')).toBeTruthy()
   })
 
   it('over taersklen vises tallet', async () => {
     const s = await render(<ThinkingSummary seconds={8.3} text="x" />)
-    expect(s.getByText('Tænkte i 8,3 s')).toBeTruthy()
+    expect(s.getByText('Tænkte i 8s')).toBeTruthy()
   })
 
   it('en LIVE tanke er uroert — den siger «her arbejdes»', async () => {

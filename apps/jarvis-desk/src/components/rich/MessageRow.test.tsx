@@ -15,7 +15,7 @@ describe('MessageRow', () => {
     expect(screen.getByText(/Tænker/)).toBeInTheDocument()
     expect(screen.queryByText('intern')).not.toBeInTheDocument()
     rerender(<MessageRow role="assistant" blocks={[{ type: 'thinking', thinking: 'intern', seconds: 8 }]} density="compact" streaming={false} />)
-    fireEvent.click(screen.getByRole('button', { name: /Tænkte i 8 s/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Tænkte i 8s/ }))
     expect(screen.getByText('intern')).toBeInTheDocument()
   })
   it('en tanke FØR et værktøjskald er færdig, selv mens turen streamer', () => {

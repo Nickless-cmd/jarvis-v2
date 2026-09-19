@@ -12,7 +12,7 @@ describe('SkillLine i tråden', () => {
     ]} />)
     expect(screen.getByText(/Tjekker skills for «regneark»/)).toBeInTheDocument()
     act(() => { vi.advanceTimersByTime(3100) })
-    expect(screen.getByText(/· 3 s/)).toBeInTheDocument()
+    expect(screen.getByText(/· 3s/)).toBeInTheDocument()
   })
 
   it('færdig: metadata i linjen, matches og rå kald bag chevronen', () => {

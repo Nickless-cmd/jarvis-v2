@@ -8,6 +8,7 @@ import { getMessageReasoning } from '../lib/apiClient'
 import { loadFullThinking } from '../lib/fullThinking'
 import { GlidendeTekst } from './GlidendeTekst'
 import { Prikker } from './Prikker'
+import { formatTid } from './InlineToolGroup'
 
 /**
  * «🧠 Tænker…» mens den tænker. «🧠 Tænkte i 14 s ›» når den er færdig.
@@ -135,9 +136,10 @@ export function ThinkingSummary({
   const label = isLive
     ? 'Tænker'
     : hasSeconds && !kort
-      ? seconds! < 60
-        ? `Tænkte i ${formatSeconds(seconds!)} s`
-        : `Tænkte i ${Math.floor(seconds! / 60)} min ${Math.round(seconds! % 60)} s`
+      // «12s», «1m 5s» — samme format som runde-linjens klokke og Claude
+      // Desktop («Thought for {seconds}s»). Bjørn 19/9-2026: «tiden skal være
+      // 12s og ikk 12 s».
+      ? `Tænkte i ${formatTid(seconds!)}`
       : 'Tænkte'
 
   // Fold-ud er kun relevant når der er tekst at vise.
@@ -220,11 +222,6 @@ export function ThinkingSummary({
   )
 }
 
-/** 12.0 → «12», 3.4 → «3,4». Dansk komma, og ingen tom decimal. */
-function formatSeconds(s: number): string {
-  const rounded = Math.round(s * 10) / 10
-  return Number.isInteger(rounded) ? String(rounded) : String(rounded).replace('.', ',')
-}
 
 const makestyles = (tokens: Theme) => StyleSheet.create({
   wrap: { paddingHorizontal: tokens.spacing.lg },

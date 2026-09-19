@@ -33,6 +33,27 @@ export interface StreamState {
    * genopbygget i en anden rækkefølge, ville ellers sætte sig over de forkerte.
    */
   rundeEtiketter?: Record<string, string>
+
+  /**
+   * Skills runtimen lagde i prompten for DENNE kørsel — `skill_surface`.
+   * Tegnes øverst i den levende tur som en skill-linje (desk'ens
+   * `skillFlade`, portet 19/9-2026). Nulstilles når en ny kørsel starter.
+   */
+  skillFlade?: { matches: { name: string; score: number; primary: boolean }[]; primary: boolean }
+}
+
+/** Læg skill-fladen ind, uanset om den kom direkte eller pakket — som desk. */
+function medSkillFlade(state: StreamState, p: { matches?: unknown; primary?: unknown }): StreamState {
+  const matches = Array.isArray(p.matches)
+    ? (p.matches as unknown[]).flatMap((m) => {
+      const mm = m as { name?: unknown; score?: unknown; primary?: unknown }
+      return typeof mm?.name === 'string' && typeof mm.score === 'number'
+        ? [{ name: mm.name, score: mm.score, primary: !!mm.primary }]
+        : []
+    })
+    : []
+  if (matches.length === 0) return state
+  return { ...state, skillFlade: { matches, primary: !!p.primary || matches.some((m) => m.primary) } }
 }
 
 export function initialStreamState(): StreamState {
@@ -94,6 +115,8 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
         provider: event.message.provider,
         lane: event.message.lane,
         blocks: [],
+        // En NY kørsel har sin egen skill-flade; samme kørsel beholder sin.
+        skillFlade: event.message.id === state.activeRunId ? state.skillFlade : undefined,
         workingStep: null,
         research: null,
         usage: { ...state.usage, input: event.message.usage.input_tokens, output: 0 }
@@ -189,6 +212,9 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
       if (event.kind === 'tool_round_label') {
         const p = (event.payload ?? {}) as { etiket?: string; tool_use_ids?: string[] }
         return medEtiket(state, p.etiket, p.tool_use_ids)
+      }
+      if (event.kind === 'skill_surface') {
+        return medSkillFlade(state, (event.payload ?? {}) as { matches?: unknown; primary?: unknown })
       }
       if (event.kind === 'research_started') {
         return {
@@ -364,6 +390,11 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
       return { ...state, status: 'working', blocks: [] }
 
     default:
+      // Den DIREKTE form af `skill_surface` (SSE-v1) står ikke i typen; den
+      // indpakkede kommer som `system_event` ovenfor.
+      if ((event as { type?: string }).type === 'skill_surface') {
+        return medSkillFlade(state, event as unknown as { matches?: unknown; primary?: unknown })
+      }
       return state
   }
 }

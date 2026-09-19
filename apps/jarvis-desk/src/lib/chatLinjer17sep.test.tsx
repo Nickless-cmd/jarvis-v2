@@ -41,7 +41,7 @@ describe('tænketid ligger på blokken', () => {
     const startet = Date.now()
     vi.setSystemTime(2_007_000)
     render(<ThinkingLine text="x" live startet={startet} />)
-    expect(screen.getByTestId('tanke-meta')).toHaveTextContent('· 7 s')
+    expect(screen.getByTestId('tanke-meta')).toHaveTextContent('· 7s')
   })
 
   it('live viser hvad han tænker på, og det forsvinder når tanken er slut', () => {
@@ -49,7 +49,7 @@ describe('tænketid ligger på blokken', () => {
     expect(screen.getByTestId('tanke-meta')).toHaveTextContent('Lad mig se hvor værnet sidder')
     rerender(<ThinkingLine text={'Første tanke\nLad mig se hvor værnet sidder'} live={false} seconds={9} />)
     expect(screen.queryByTestId('tanke-meta')).toBeNull()
-    expect(screen.getByText('Tænkte i 9 s')).toBeInTheDocument()
+    expect(screen.getByText('Tænkte i 9s')).toBeInTheDocument()
   })
 })
 

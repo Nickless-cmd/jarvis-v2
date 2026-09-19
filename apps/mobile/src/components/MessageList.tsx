@@ -16,6 +16,8 @@ import { TRIN_MS } from '../lib/prikSekvens'
 import { useReducedMotion } from '../lib/useReducedMotion'
 import { describeTool, describeToolResult } from '../lib/toolSummary'
 import { countFromResult, type ToolItem } from '../lib/toolGroup'
+import { SKILL_VAERKTOEJER, type SkillKald } from '../lib/skillLinje'
+import { SkillFladeLinje, SkillLinje, type SkillFladeMatch } from './SkillLinje'
 import { attachmentBlocks, gemteEtiketter, hasOrdering, parseBlocks, thinkingBlock } from '../lib/persistedBlocks'
 import { threadBlocks } from '../lib/persistedBlocks'
 import { ThinkingSummary } from './ThinkingSummary'
@@ -52,6 +54,8 @@ interface MessageListProps {
    * tråden ser ud som før.
    */
   rundeEtiketter?: Record<string, string>
+  /** Den levende turs `skill_surface` (streamReducerens `skillFlade`). */
+  skillFlade?: { matches: SkillFladeMatch[] }
   onResend?: (text: string) => void
   /** Id'er på fastgjorte beskeder. Styrer ikonet i besked-menuen. */
   pins?: string[]
@@ -87,6 +91,10 @@ type Row =
   | { kind: 'live-tool'; key: string; id?: string; name: string; body: string; running: boolean; etiket?: string; diff?: { tilfoejet: number; fjernet: number } | null }
   /** Én RUNDE værktøjsarbejde, foldet sammen til én linje. */
   | { kind: 'tool-group'; key: string; items: ToolItem[] }
+  /** Et skill-kald (skill_gate/skill_invoke) — sin EGEN linje, ikke i runden. */
+  | { kind: 'skill'; key: string; kald: SkillKald }
+  /** Skills runtimen lagde i prompten (`skill_surface`) — uden et kald. */
+  | { kind: 'skill-flade'; key: string; matches: SkillFladeMatch[] }
   /**
    * Kompakteringens markør — intern bogholderi, ikke en samtale-besked.
    * Tegnes som én diskret linje. Serveren trimmer dens indhold; uden denne gren
@@ -102,6 +110,18 @@ type Row =
  * vi fire «Kører verify_file_contains…» oven på hinanden — samme information
  * fire gange, og tråden mistede sin ro. En tekstbesked afslutter runden.
  */
+/** `skill_surface`-matches, kun dem der har navn og tal. */
+function skillFladeMatches(v: unknown): SkillFladeMatch[] {
+  return Array.isArray(v)
+    ? v.flatMap((m) => {
+      const mm = m as { name?: unknown; score?: unknown; primary?: unknown }
+      return typeof mm?.name === 'string' && typeof mm.score === 'number'
+        ? [{ name: mm.name, score: mm.score, primary: !!mm.primary }]
+        : []
+    })
+    : []
+}
+
 function groupToolRounds(rows: Row[]): Row[] {
   const out: Row[] = []
   let buf: Row[] = []
@@ -216,6 +236,15 @@ function buildStreamingRows(blocks: ContentBlock[]): Row[] {
       if (b.startet != null) tankeStart = Math.min(tankeStart ?? b.startet, b.startet)
       if (b.sidst != null) tankeSlut = Math.max(tankeSlut ?? b.sidst, b.sidst)
     }
+    else if (b.type === 'tool_use' && SKILL_VAERKTOEJER.has(b.name)) {
+      // Skill-kald står på deres EGEN linje (som desk): i runden ville
+      // «hvilken skill, og blev den indlæst» forsvinde i «Brugte et værktøj».
+      flush()
+      rows.push({
+        kind: 'skill', key: `stream-skill-${b.id || i}`,
+        kald: { name: b.name, input: b.input, result: b.result, status: b.status ?? 'running' },
+      })
+    }
     else if (b.type === 'tool_use') {
       flush()
       rows.push({
@@ -266,7 +295,7 @@ function taenketid(start?: number, slut?: number): number | undefined {
 }
 
 export const MessageList = forwardRef<MessageListHandle, MessageListProps>(function MessageList(
-  { messages, blocks, onResend, onScrollOffset, thinking, bottomInset = 0, pins, onTogglePin, onSaveMemory, rundeEtiketter },
+  { messages, blocks, onResend, onScrollOffset, thinking, bottomInset = 0, pins, onTogglePin, onSaveMemory, rundeEtiketter, skillFlade },
   ref
 ) {
   const tokens = useTheme()
@@ -331,6 +360,20 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
               hideActions: bi !== lastTextIdx,
               kildeBlokke: bi === lastTextIdx ? blocks : null
             })
+          } else if (b.type === 'tool_use' && SKILL_VAERKTOEJER.has(String(b.name ?? ''))) {
+            // Resultatet ligger i den tilhørende `tool_result`-blok, ikke i kaldet.
+            const res = thread.find((r) => r.type === 'tool_result' && r.tool_use_id === b.id)
+            expanded.push({
+              kind: 'skill', key: `${m.id}-sk${bi}`,
+              kald: {
+                name: String(b.name), input: b.input,
+                result: typeof res?.content === 'string' ? res.content : undefined,
+                status: res?.status === 'error' ? 'error' : 'done',
+              },
+            })
+          } else if (b.type === 'skill_surface' && Array.isArray((b as { matches?: unknown }).matches)) {
+            const matches = skillFladeMatches((b as { matches?: unknown }).matches)
+            if (matches.length) expanded.push({ kind: 'skill-flade', key: `${m.id}-sf${bi}`, matches })
           } else if (b.type === 'tool_use') {
             expanded.push({
               kind: 'live-tool',
@@ -406,7 +449,12 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
     persisted.unshift({ kind: 'msg', key: m.id, message: m })
   }
 
-  const rows: Row[] = groupToolRounds([...persisted, ...buildStreamingRows(blocks)])
+  // Den levende turs skill-flade står øverst i turen, før strømmen — som desk.
+  const levende = buildStreamingRows(blocks)
+  const flade = skillFlade?.matches?.length && levende.length
+    ? [{ kind: 'skill-flade' as const, key: 'stream-skill-flade', matches: skillFlade.matches }]
+    : []
+  const rows: Row[] = groupToolRounds([...persisted, ...flade, ...levende])
 
   // Inverteret liste: nyeste række sidder altid i bunden og er synlig fra start.
   const ordered = [...rows].reverse()
@@ -482,6 +530,8 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
             />
           )
         }
+        if (item.kind === 'skill') return <SkillLinje kald={item.kald} />
+        if (item.kind === 'skill-flade') return <SkillFladeLinje matches={item.matches} />
         if (item.kind === 'attachments') {
           return <MessageAttachments items={item.items} side={item.side} />
         }

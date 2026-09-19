@@ -5,6 +5,7 @@ import { Prikker } from './Prikker'
 import { Fold } from './Fold'
 import { Brain, ChevronDown } from 'lucide-react'
 import { MarkdownRenderer } from './MarkdownRenderer'
+import { formatTid } from './LabelSkift'
 
 /**
  * Tænkningen som ÉN linje — søskende til runde-linjen, 1:1 med mobilens
@@ -53,13 +54,13 @@ export function ThinkingLine({
 
   const label = live
     ? 'Tænker'
-    : sek != null && sek > KORT_TAERSKEL_S
+    : sek != null && sek >= 1 && sek > KORT_TAERSKEL_S
       ? `Tænkte i ${formatSek(sek)}`
       : 'Tænkte'
   // Live: tiden og hvad han tænker på, dæmpet efter ordet. Hele sekunder:
   // «1,2 s … 1,3 s» ville flimre hvert tick.
   const liveMeta = live
-    ? [sek != null && sek >= 1 ? `${Math.floor(sek)} s` : '', tankeFragment(text)].filter(Boolean)
+    ? [sek != null && sek >= 1 ? formatSek(sek) : '', tankeFragment(text)].filter(Boolean)
     : []
   const aaben = open && harTekst
 
@@ -98,9 +99,11 @@ export function ThinkingLine({
   )
 }
 
-/** 12 → «12 s», 3,4 → «3,4 s», 75 → «1 min 15 s». Dansk komma. */
+/**
+ * «12s», «1m 5s», «1h 2m 3s» — samme format som runde-linjens klokke og som
+ * Claude Desktop («Thought for {seconds}s»). Bjørn 19/9-2026: «tiden skal være
+ * 12s og ikk 12 s». Hele sekunder: Claude Desktop viser ingen decimaler.
+ */
 export function formatSek(s: number): string {
-  if (s >= 60) return `${Math.floor(s / 60)} min ${Math.round(s % 60)} s`
-  const r = s >= 10 ? Math.round(s) : Math.round(s * 10) / 10
-  return `${String(r).replace('.', ',')} s`
+  return formatTid(s)
 }

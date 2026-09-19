@@ -944,6 +944,7 @@ export function ChatScreen({
               // ville etiketten blive regnet, sendt og gemt i tilstanden uden
               // nogensinde at naa skaermen: husets hyppigste fejl.
               rundeEtiketter={stream.state.rundeEtiketter}
+              skillFlade={stream.state.skillFlade}
               onResend={(text) => void ensureSessionAndSend(text)}
               pins={pins}
               onTogglePin={sessions.activeId ? handleTogglePin : undefined}

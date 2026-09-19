@@ -71,3 +71,23 @@ export function boble(o: Opmaerksomhed | null, afvist: string | null): Boble | n
     tilstand: o.tilstand,
   }
 }
+
+/**
+ * Vinduets højde — i FASTE trin, ikke efter indholdet.
+ *
+ * Målt 19/9-2026 under et svar: figurvinduet skiftede størrelse 6 gange på
+ * 30 s (174 → 237 → 256 → 290 → 174 px), hver gang taleboblens tekst fik en
+ * linje mere eller mindre. Et gennemsigtigt X11-vindue der skifter størrelse,
+ * kan vise et glimt — det var figurens «glitch med mellemrum».
+ *
+ * Nu: med boble reserveres plads til dens maksimum (etiket, titel og tre
+ * linjer tekst), så teksten kan skifte uden at vinduet gør det. Højden
+ * ændrer sig kun når boblen eller hurtig-chatten kommer eller går.
+ */
+export const HOEJDE_MED_BOBLE = 300
+export const HOEJDE_HURTIGCHAT = 46
+
+export function maalHoejde(maalt: number, boble: boolean, hurtigchat: boolean): number {
+  const min = (boble ? HOEJDE_MED_BOBLE : 0) + (hurtigchat ? HOEJDE_HURTIGCHAT : 0)
+  return Math.max(Math.ceil(maalt), min)
+}

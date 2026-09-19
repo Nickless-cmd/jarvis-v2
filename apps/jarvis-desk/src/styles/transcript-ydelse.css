@@ -4,12 +4,28 @@
    samtalen: `(program)` = 36 % af render-tråden, 8 ms pr. musebevægelse.
 
    content-visibility: auto lader browseren springe styling, layout, maling
-   og hit-test over for beskeder der ikke er på skærmen. Den sidste besked —
-   den der streames — er undtaget, så den aldrig venter på at blive vist.
+   og hit-test over for beskeder der ikke er på skærmen. Den levende besked
+   (den der streames) er ikke en .msg-block og berøres ikke.
    contain-intrinsic-size: auto husker hver beskeds VIRKELIGE højde fra sidst
    den blev vist, så rullebjælken ikke hopper; 240 px er kun gættet for en
    besked der aldrig har været på skærmen. */
-.transcript > .msg-block:not(:last-child) {
+.transcript > .msg-block {
   content-visibility: auto;
   contain-intrinsic-size: auto 240px;
 }
+
+/* Hold bunden (19/9-2026): browserens egen scroll-forankring, med et anker
+   nederst som det ENESTE der må forankres til. Står man i bund, er ankeret på
+   skærmen, og alt der vokser ovenover — stream-blokke, skiftet fra levende
+   række til gemt besked når svaret stopper, kilder og knapper bagefter,
+   content-visibility's gæt der bliver til rigtige højder — skubber rullen med,
+   så ankeret bliver hvor det er. Er man rullet op, er ankeret ude af syne, og
+   intet flytter sig. Ingen JavaScript, ingen scrollHeight-læsning pr. opdatering. */
+.transcript * { overflow-anchor: none; }
+.transcript > .bund-anker { overflow-anchor: auto; height: 1px; flex: none; }
+
+/* Headerens «flere»-menu (HeaderMere, 19/9-2026). */
+.header-mere-overskrift { padding: 6px 10px 2px; color: var(--fg-3); font-size: 11.5px; text-transform: uppercase; letter-spacing: .04em; }
+.header-mere-skille { height: 1px; background: var(--line); margin: 5px 6px; }
+.header-mere-ikon { display: inline-flex; color: var(--fg-3); margin-right: 2px; }
+.header-mere-standard { color: var(--fg-3); }

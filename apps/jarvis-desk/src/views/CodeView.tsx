@@ -2,7 +2,7 @@ import { Fragment } from 'react'
 import { useRammeReducer } from '../lib/useRammeReducer'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useVoiceConversation } from '../hooks/useVoiceConversation'
-import { FolderTree, PanelRight, Lock, ShieldCheck, FolderOpen, Gauge, SquareStack, FileDiff } from 'lucide-react'
+import { FolderTree, PanelRight, Lock, ShieldCheck, FolderOpen, Gauge, SquareStack, FileDiff, Bot } from 'lucide-react'
 import { onPauseSvar, pauseAskIn, withoutPauseAsk, type PauseAsk } from '../lib/pauseAsk'
 import { useStream } from '../hooks/useStream'
 import { usePermission } from '../hooks/usePermission'
@@ -46,13 +46,13 @@ import { KoeChip } from '../components/transcript/KoeChip'
 import type { PanelTab } from '../components/panel/CodePanel'
 import { TilbagespolBanner } from '../components/transcript/TilbagespolBanner'
 import { useTilbagespol } from '../hooks/useTilbagespol'
-import { VisningVaelger } from '../components/transcript/VisningVaelger'
 import { useVisning, VisningContext } from '../lib/visning'
 import { JumpToLatest } from '../components/transcript/JumpToLatest'
 import { usePinVedStart } from '../hooks/usePinVedStart'
 import { useNyeBeskeder } from '../hooks/useNyeBeskeder'
 import { NyeBeskederLinje } from '../components/transcript/NyeBeskederLinje'
-import { FigurKnap } from '../components/FigurKnap'
+import { HeaderMere } from '../components/shell/HeaderMere'
+import { useFigurVist } from '../lib/figurVist'
 import '../styles/transcript-ydelse.css'
 import { useRaekkeFn, useSenesteFn } from '../lib/stabileHandlinger'
 import { SideOpgaveKort, type SideOpgaveHandlinger } from '../components/chat/SideOpgaveKort'
@@ -287,23 +287,8 @@ export function CodeView({
   // Live (igangværende run) lægges oven i session-totalerne så tallene er "live".
   // Både vores eget lokale run OG et fulgt cross-device run (mobil).
   const bgWorking = bgActive && stream.status !== 'working'
-  // Lokale tools fra vores egen stream (kun nuværende tur — lokal sti folder pr. tur).
-  const localLiveTools = stream.status === 'working'
-    ? stream.blocks.filter((b) => b.type === 'tool_use')
-        .map((b) => ({
-          name: (b as { name?: string }).name || '',
-          input: ((b as { input?: Record<string, unknown> }).input) || {},
-          // Status baeres med: uden den kan miljoe-feltet ikke vide hvilke
-          // agenter der KOERER — og «aktive agenter» var praecis det Bjoern
-          // bad om at se (8/9-2026).
-          status: (b as { status?: 'running' | 'done' | 'error' }).status,
-        }))
-    : []
-  // Cross-device tools = event-akkumulatoren (alle ture), vist mens runnet kører.
-  const crossLiveTools = bgActive ? bgTools : []
   const liveUsageOut = stream.status === 'working' ? (stream.usage.output || 0) : (bgWorking ? (followState.usage.output || 0) : 0)
   const envTotalTokens = sessTokens + liveUsageOut
-  const envTotalToolCalls = sessToolCalls + localLiveTools.length + crossLiveTools.length
   const historicalEvidence = useMemo(() => buildEnvironmentEvidence(
     sessions.messages.filter((message) => message.role === 'assistant').map((message) => message.content),
   ), [sessions.messages])
@@ -847,6 +832,8 @@ export function CodeView({
     />
   )
 
+  const [figurVist, saetFigur] = useFigurVist()
+
   // Stabile handlinger til rækkerne — ellers holder MessageRow's memo aldrig,
   // og hele samtalen renderes om ved hver stream-opdatering (lib/stabileHandlinger).
   const resendStabil = useSenesteFn(resend)
@@ -898,10 +885,12 @@ export function CodeView({
     else if (!atBottom) setUnread((u) => u + 1)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visibleMessages.length, sessionId])
-  useEffect(() => {
-    const el = transcriptRef.current
-    if (el && atBottom) el.scrollTop = el.scrollHeight
-  }, [stream.blocks, atBottom])
+  // Alt der vokser mens man står i bund — stream-blokke, skiftet fra den
+  // levende række til den gemte besked når svaret stopper, kilder og knapper
+  // der dukker op bagefter — holdes i bund af browserens scroll-anker
+  // (.bund-anker, styles/transcript-ydelse.css). Før læste en effekt
+  // scrollHeight ved hver stream-opdatering, og intet pinnede EFTER streamen:
+  // svaret stoppede halvt nede (Bjørn 19/9-2026).
 
   const isEmpty =
     !sessionId ||
@@ -916,9 +905,7 @@ export function CodeView({
       {/* Alle fire panel-knapper i SAMME vaegt og stoerrelse som ikonerne i
           sidebaren (15 / 1,8). De stod paa 16 og standard-streg og var derfor
           tydeligt tungere end resten (Bjoern 8/9-2026). */}
-      <FigurKnap />
       <StickyPrompt containerRef={transcriptRef} beskeder={visibleMessages} />
-      <VisningVaelger visning={visning} onSkift={(v) => void skiftVisning(v)} />
       <button
         type="button"
         className={`panel-toggle ${changesOpen ? 'active' : ''}`}
@@ -945,22 +932,16 @@ export function CodeView({
       >
         <Gauge size={15} />
       </button>
-      <button
-        type="button"
-        className={`panel-toggle ${filesOpen ? 'active' : ''}`}
-        aria-label="Vis/skjul fil-træ" title="Filer"
-        onClick={() => setFilesOpen((o) => !o)}
-      >
-        <FolderTree size={15} />
-      </button>
-      <button
-        type="button"
-        className={`panel-toggle ${panel.open ? 'active' : ''}`}
-        aria-label="Vis/skjul preview-panel" title="Preview"
-        onClick={panel.toggle}
-      >
-        <PanelRight size={15} />
-      </button>
+      {/* Resten i «flere»-menuen (Bjørn 19/9-2026: for mange ikoner). */}
+      <HeaderMere
+        visning={visning}
+        onVisning={(v) => void skiftVisning(v)}
+        valg={[
+          ...(figurVist !== null ? [{ id: 'figur', navn: 'Jarvis-figuren på skrivebordet', ikon: <Bot size={14} />, aktiv: figurVist, onClick: () => saetFigur(!figurVist) }] : []),
+          { id: 'filer', navn: 'Filer', ikon: <FolderTree size={14} />, aktiv: filesOpen, onClick: () => setFilesOpen((o) => !o) },
+          { id: 'preview', navn: 'Preview', ikon: <PanelRight size={14} />, aktiv: panel.open, onClick: panel.toggle },
+        ]}
+      />
     </div>
   )
 
@@ -1070,10 +1051,8 @@ export function CodeView({
               onVaelgWorkspace={(v) => { setKind('workstation'); setWsPath(v.root) }}
               refreshKey={gitRefresh}
               working={stream.status === 'working' || bgWorking}
-              workingStep={(bgWorking ? followState.workingStep : stream.workingStep) ?? undefined}
               kontekstTokens={gauge.tokens}
               totalTokens={envTotalTokens}
-              totalToolCalls={envTotalToolCalls}
               evidence={environmentEvidence}
               onOpenAgent={(agent) => panel.openTarget({ type: 'agent', agent, canMessage: isOwner })}
               onOpenSource={(source) => {
@@ -1128,6 +1107,11 @@ export function CodeView({
           {!(stream.status === 'working' && stream.blocks.length > 0) && bgActive && followState.status === 'working' && followState.blocks.length > 0 && (
             <MessageRow role="assistant" blocks={withoutPauseAsk(liveBlokke(followState))} density="compact" streaming rundeEtiketter={followState.rundeEtiketter} tankeResumeer={followState.tankeResumeer} />
           )}
+          {/* Scroll-ankeret: det ENESTE browseren må forankre til (overflow-anchor,
+              styles/transcript-ydelse.css). Står man i bund, holdes det i bund —
+              uanset hvad der vokser ovenover. Er man rullet op, er det ude af syne,
+              og intet flytter sig. */}
+          <div className="bund-anker" aria-hidden="true" />
         </div>
         </div>
         <div className="composer-area">

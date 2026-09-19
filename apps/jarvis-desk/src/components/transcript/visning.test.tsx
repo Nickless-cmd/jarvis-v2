@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { BlocksRenderer } from '../rich/BlocksRenderer'
 import { VisningContext, type Visning } from '../../lib/visning'
-import { VisningVaelger } from './VisningVaelger'
+import { HeaderMere } from '../shell/HeaderMere'
 import { streamReducer, initialStreamState } from '../../lib/streamReducer'
 import type { ContentBlock, StreamEvent } from '../../lib/sseProtocol'
 
@@ -62,21 +62,20 @@ describe('reduceren bærer resuméet', () => {
   })
 })
 
-describe('vælgeren', () => {
+describe('vælgeren (nu i headerens flere-menu, 19/9-2026)', () => {
   beforeEach(() => localStorage.clear())
-  it('tre radiopunkter; et skift kaldes og vises kort', () => {
+  it('tre radiopunkter; et skift kaldes', () => {
     const onSkift = vi.fn()
-    render(<VisningVaelger visning="normal" onSkift={onSkift} />)
-    fireEvent.click(screen.getByRole('button', { name: 'Visning: Normal' }))
+    render(<HeaderMere visning="normal" onVisning={onSkift} valg={[]} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Flere valg' }))
     const punkter = screen.getAllByRole('menuitemradio')
     expect(punkter.map((p) => p.getAttribute('aria-checked'))).toEqual(['true', 'false', 'false'])
     fireEvent.click(punkter[1]!)
     expect(onSkift).toHaveBeenCalledWith('thinking')
-    expect(screen.getByRole('status')).toHaveTextContent('Visning: Tænkning')
   })
   it('«Gør til standard» husker den lokalt', () => {
-    render(<VisningVaelger visning="verbose" onSkift={() => {}} />)
-    fireEvent.click(screen.getByRole('button', { name: 'Visning: Alt' }))
+    render(<HeaderMere visning="verbose" onVisning={() => {}} valg={[]} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Flere valg' }))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Gør Alt til standard' }))
     expect(localStorage.getItem('jarvis-desk:visning-standard')).toBe('verbose')
   })

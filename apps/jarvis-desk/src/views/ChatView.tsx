@@ -2,7 +2,7 @@ import { Fragment } from 'react'
 import { useRammeReducer } from '../lib/useRammeReducer'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFastholdBund } from '../lib/useFastholdBund'
-import { PanelRight, Loader2, SquareStack, FileDiff } from 'lucide-react'
+import { PanelRight, Loader2, SquareStack, FileDiff, AudioLines, Bot } from 'lucide-react'
 import { JobsPanel } from '../components/shell/JobsPanel'
 import { ChangesPanel } from '../components/shell/ChangesPanel'
 import { paaAendringsFokus } from '../lib/aendringsFokus'
@@ -30,14 +30,14 @@ import { usePinVedStart } from '../hooks/usePinVedStart'
 import { useNyeBeskeder } from '../hooks/useNyeBeskeder'
 import { NyeBeskederLinje } from '../components/transcript/NyeBeskederLinje'
 import { onStemmeBud, tagStemmeBud } from '../lib/figurBud'
-import { FigurKnap } from '../components/FigurKnap'
+import { HeaderMere } from '../components/shell/HeaderMere'
+import { useFigurVist } from '../lib/figurVist'
 import '../styles/transcript-ydelse.css'
 import { useRaekkeFn, useSenesteFn } from '../lib/stabileHandlinger'
 import { SideOpgaveKort } from '../components/chat/SideOpgaveKort'
 import type { SideTask } from '../lib/sideTasksApi'
 import { startSideOpgave } from '../lib/sideOpgaveStart'
 import { StickyPrompt } from '../components/transcript/StickyPrompt'
-import { VisningVaelger } from '../components/transcript/VisningVaelger'
 import { useVisning, VisningContext } from '../lib/visning'
 import { readModelPrefs, readThinkingMode } from '../lib/composerPrefs'
 import { getContextInfo, getContextUsage, getActiveRuns, followRun, compactNow, warmSession } from '../lib/api'
@@ -339,10 +339,9 @@ export function ChatView({
     else setUnread((u) => u + 1)
   }, [sessions.messages.length, sessionId])
 
-  useEffect(() => {
-    const el = transcriptRef.current
-    if (el && atBottom) el.scrollTop = el.scrollHeight
-  }, [stream.blocks, followState.blocks, atBottom])
+  // Stream-blokke der vokser, holdes i bund af browserens scroll-anker
+  // (.bund-anker nederst i transcriptet, styles/transcript-ydelse.css) — ikke
+  // af en effekt der læste scrollHeight ved hver opdatering (19/9-2026).
 
   // Mens der arbejdes: hold ruden i bund uanset hvor indholdet kommer fra.
   // Effekterne ovenfor kender kun stream-blokke, follow-blokke og ANTALLET af
@@ -615,6 +614,8 @@ export function ChatView({
     </div>
   )
 
+  const [figurVist, saetFigur] = useFigurVist()
+
   // Stabile props til rækkerne — ellers holder MessageRow's memo aldrig,
   // og hele samtalen renderes om ved hver stream-opdatering (lib/stabileHandlinger).
   const resendStabil = useSenesteFn(resend)
@@ -763,20 +764,7 @@ export function ChatView({
         {DESK_CHROME.headerConnection && settings && (
           <ConnectionPill config={{ apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }} />
         )}
-        {voice.supported && (
-          <button
-            type="button"
-            className="panel-toggle"
-            aria-label="Samtale-mode"
-            title="Samtale med Jarvis (stemme)"
-            onClick={voice.enter}
-          >
-            🎙️
-          </button>
-        )}
-        <FigurKnap />
         <StickyPrompt containerRef={transcriptRef} beskeder={visibleMessages} />
-        <VisningVaelger visning={visning} onSkift={(v) => void skiftVisning(v)} />
         <button
           type="button"
           className={`panel-toggle ${changesOpen ? 'active' : ''}`}
@@ -795,15 +783,16 @@ export function ChatView({
           <SquareStack size={15} />
           {koerendeJobs > 0 && <span className="panel-toggle-taeller">{koerendeJobs}</span>}
         </button>
-        <button
-          type="button"
-          className={`panel-toggle ${panel.open ? 'active' : ''}`}
-          aria-label="Vis/skjul panel"
-          title="Panel"
-          onClick={panel.toggle}
-        >
-          <PanelRight size={15} />
-        </button>
+        {/* Resten i «flere»-menuen (Bjørn 19/9-2026: for mange ikoner). */}
+        <HeaderMere
+          visning={visning}
+          onVisning={(v) => void skiftVisning(v)}
+          valg={[
+            ...(voice.supported ? [{ id: 'stemme', navn: 'Samtale med Jarvis (stemme)', ikon: <AudioLines size={14} />, onClick: voice.enter }] : []),
+            ...(figurVist !== null ? [{ id: 'figur', navn: 'Jarvis-figuren på skrivebordet', ikon: <Bot size={14} />, aktiv: figurVist, onClick: () => saetFigur(!figurVist) }] : []),
+            { id: 'panel', navn: 'Panel', ikon: <PanelRight size={14} />, aktiv: panel.open, onClick: panel.toggle },
+          ]}
+        />
       </div>
     </div>
   )
@@ -889,6 +878,11 @@ export function ChatView({
         {!streaming && bgActive && followState.status === 'working' && followState.blocks.length > 0 && !followAlreadyInTranscript && (
           <MessageRow role="assistant" blocks={withoutPauseAsk(liveBlokke(followState))} density="compact" streaming rundeEtiketter={followState.rundeEtiketter} tankeResumeer={followState.tankeResumeer} />
         )}
+        {/* Scroll-ankeret: det ENESTE browseren må forankre til (overflow-anchor,
+            styles/transcript-ydelse.css). Står man i bund, holdes det i bund —
+            uanset hvad der vokser ovenover. Er man rullet op, er det ude af syne,
+            og intet flytter sig. */}
+        <div className="bund-anker" aria-hidden="true" />
       </div>
       </div>
 

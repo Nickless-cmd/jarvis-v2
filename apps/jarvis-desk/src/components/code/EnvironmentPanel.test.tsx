@@ -16,22 +16,24 @@ describe('EnvironmentPanel', () => {
     expect(container.firstChild).toBeNull()
   })
 
-  it('vises under run med branch + ændringer + session-totaler', async () => {
+  it('vises under run med branch + ændringer — uden Tool-kald og uden status-linjen', async () => {
+    // Bjørn 19/9-2026: «i miljøfeltet lad os fjerne tool-kald og linjen under
+    // der viser færdig · N kald · N tokens».
     getGitStatus.mockResolvedValue({ is_git: true, branch: 'main', dirty: 3, added: 12, removed: 4 })
-    render(<EnvironmentPanel config={cfg} kind="container" root="/r" working workingStep="redigerer fil"
-      totalTokens={420} totalToolCalls={7}
+    const { container } = render(<EnvironmentPanel config={cfg} kind="container" root="/r" working
+      totalTokens={420}
       evidence={{
         tools: [{ id: 't1', name: 'operator_bash', input: { command: 'git status' }, status: 'done' }],
         sources: [], agents: [],
       }} />)
     expect(screen.getByText('Miljø')).toBeInTheDocument()
-    expect(screen.getByText('redigerer fil')).toBeInTheDocument()
-    expect(screen.getByText(/420 tokens/)).toBeInTheDocument()
-    expect(screen.getByText(/7 kald/)).toBeInTheDocument()
-    // operator_bash formateres som "Terminal: git status" (ikke rå navn)
-    expect(screen.getByText('Terminal: git status')).toBeInTheDocument()
     await waitFor(() => expect(screen.getByText('main')).toBeInTheDocument())
     expect(screen.getByText('+12')).toBeInTheDocument()
+    expect(screen.queryByText('Tool-kald')).toBeNull()
+    expect(screen.queryByText('Terminal: git status')).toBeNull()
+    expect(screen.queryByText(/kald ·/)).toBeNull()
+    expect(screen.queryByText('færdig')).toBeNull()
+    expect(container.querySelector('.env-live')).toBeNull()
   })
 
   it('viser en ren workspace som Ingen ændringer', async () => {

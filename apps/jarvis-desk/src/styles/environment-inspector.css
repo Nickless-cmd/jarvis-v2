@@ -46,20 +46,6 @@
   text-align: left; cursor: pointer; font: inherit; }
 .env-row-button:hover { color: var(--fg-0); }
 .env-row-button > span { min-width: 0; }
-.env-live { display: flex; align-items: center; gap: 6px; padding-top: 8px; border-top: 1px solid var(--line); color: var(--fg-2, var(--fg)); }
-.env-live-icon { color: var(--accent-text); flex: none; }
-.env-step { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.env-tokens { font-size: 11px; color: var(--fg-3, var(--fg)); }
-.env-idle { color: var(--fg-3, var(--fg)); opacity: .8; }
-.env-tools { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
-.env-tool-chip { display: inline-flex; align-items: center; gap: 4px; font-size: 11px;
-  padding: 2px 7px; border-radius: 999px; background: var(--bg-2, var(--bg)); border: 1px solid var(--line);
-  color: var(--fg-2, var(--fg)); max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
-  cursor: pointer; font-family: inherit; }
-.env-tool-chip:hover { color: var(--fg-0); border-color: var(--fg-3); }
-.env-tool-chip svg { flex: none; color: var(--fg-3, var(--fg)); }
-.env-tool-chip.is-agent { border-color: var(--accent); color: var(--accent-text); }
-.env-tool-chip.is-agent svg { color: var(--accent-text); }
 
 .git-add { color: var(--ok); }
 .git-del { color: var(--error-fg); }
@@ -156,7 +142,7 @@
    ligner slutningen — den siger «her er mere» uden at bruge en linje på det.
    Masken sidder KUN når der faktisk er klippet: en komplet liste skal ikke
    have sin sidste række dæmpet. */
-.env-rows.er-klippet, .env-tools.er-klippet {
+.env-rows.er-klippet {
   -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 22px), transparent);
   mask-image: linear-gradient(to bottom, #000 calc(100% - 22px), transparent);
 }

@@ -32,10 +32,33 @@ describe('ToolGroupCard memo (profileret 19/9-2026)', () => {
 })
 
 describe('lange samtaler: beskeder uden for skærmen springes over', () => {
-  it('CSS-reglen findes og undtager den sidste (levende) besked', async () => {
+  it('CSS-reglen findes (den levende besked er ikke en .msg-block)', async () => {
     const fs = await import('node:fs'); const path = await import('node:path')
     const css = fs.readFileSync(path.resolve(__dirname, '../../styles/transcript-ydelse.css'), 'utf8')
-    expect(css).toMatch(/\.transcript > \.msg-block:not\(:last-child\) \{\s*content-visibility: auto;\s*contain-intrinsic-size: auto 240px;/)
+    expect(css).toMatch(/\.transcript > \.msg-block \{\s*content-visibility: auto;\s*contain-intrinsic-size: auto 240px;/)
+  })
+
+  it('scroll-ankeret er det ENESTE der må forankres til', async () => {
+    const fs = await import('node:fs'); const path = await import('node:path')
+    const css = fs.readFileSync(path.resolve(__dirname, '../../styles/transcript-ydelse.css'), 'utf8')
+    expect(css).toMatch(/\.transcript \* \{ overflow-anchor: none; \}/)
+    expect(css).toMatch(/\.transcript > \.bund-anker \{ overflow-anchor: auto;/)
+  })
+
+  it.each(['ChatView', 'CodeView'])('%s har ankeret som SIDSTE barn af transcriptet', async (vis) => {
+    const fs = await import('node:fs'); const path = await import('node:path'); const ts = await import('typescript')
+    const kilde = fs.readFileSync(path.resolve(__dirname, `../../views/${vis}.tsx`), 'utf8')
+    const sf = ts.createSourceFile(`${vis}.tsx`, kilde, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
+    let sidste = ''
+    const besoeg = (n: import('typescript').Node) => {
+      if (ts.isJsxElement(n) && n.openingElement.attributes.properties.some((a) => ts.isJsxAttribute(a) && a.name.getText(sf) === 'ref' && a.initializer?.getText(sf) === '{transcriptRef}')) {
+        const boern = n.children.filter((c) => ts.isJsxElement(c) || ts.isJsxSelfClosingElement(c))
+        sidste = boern.at(-1)?.getText(sf) ?? ''
+      }
+      ts.forEachChild(n, besoeg)
+    }
+    besoeg(sf)
+    expect(sidste).toContain('bund-anker')
   })
 
   it.each(['ChatView', 'CodeView'])('%s importerer den', async (vis) => {

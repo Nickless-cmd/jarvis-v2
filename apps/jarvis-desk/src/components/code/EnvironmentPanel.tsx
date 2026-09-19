@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { BranchVaelger } from './BranchVaelger'
 import { WorkspaceVaelger } from './WorkspaceVaelger'
-import { Globe, Bot, Settings, Activity, GitCompare, GitCommitHorizontal, Github } from 'lucide-react'
+import { Globe, Bot, Settings, GitCompare, GitCommitHorizontal, Github } from 'lucide-react'
 import { RunHealth } from './RunHealth'
 import { getGitStatus, commitAllChanges, createPullRequest, type GitStatus, type ApiConfig } from '../../lib/api'
-import { lookupTool } from '../../lib/toolRegistry'
 import type { AgentReference, EnvironmentEvidence, SourceEvidence, ToolEvidence } from '../../lib/environmentEvidence'
 import { agentSkalStaaFremme } from '../../lib/agentSynlighed'
 const SYNLIGE_LINJER = 4
@@ -17,21 +16,12 @@ function stabiltIndeks(noegle: string): number {
   return sum
 }
 
-/** Pænt tool-label som i chatview: label + opsummering (kommando/sti). For
- *  operator_bash bliver det fx "Terminal: git status" — IKKE bare "operator_bash". */
-function formatTool(t: ToolEvidence): string {
-  const meta = lookupTool(t.name)
-  const summary = meta.summarize(t.input || {})
-  const short = summary.length > 38 ? summary.slice(0, 37) + '…' : summary
-  return short ? `${meta.label}: ${short}` : meta.label
-}
-
 /** Miljø-felt (code mode): workspace-status og struktureret session-evidence.
  *  Kilder, agenter og tool-kald åbner den fælles inspector; tokens og antal kald
  *  er fortsat session-totaler. */
 export function EnvironmentPanel({
   config, kind, root, refreshKey = 0,
-  working, workingStep, totalTokens = 0, totalToolCalls = 0, evidence, sessionId, hasHistory = false,
+  working, totalTokens = 0, evidence, sessionId, hasHistory = false,
   isOwner = false, onChanged,
   onOpenAgent, onOpenSource, onOpenTool,
   gitMissing = false, installingTool = '', onInstallTool, komprimerVed = 0, kontekstTokens,
@@ -42,9 +32,7 @@ export function EnvironmentPanel({
   root: string
   refreshKey?: number
   working: boolean
-  workingStep?: string
   totalTokens?: number
-  totalToolCalls?: number
   evidence?: EnvironmentEvidence
   sessionId?: string | null
   hasHistory?: boolean
@@ -67,7 +55,6 @@ export function EnvironmentPanel({
   onInstallTool?: (tool: string) => void
 }) {
   const [visAlleKilder, setVisAlleKilder] = useState(false)
-  const [visAlleTools, setVisAlleTools] = useState(false)
   const [git, setGit] = useState<GitStatus | null>(null)
   const [collapsed, setCollapsed] = useState(false)
   const [busy, setBusy] = useState<'' | 'commit' | 'pr'>('')
@@ -129,9 +116,7 @@ export function EnvironmentPanel({
   // Fire linjer, resten bag «Vis alle». Tallet staar PAA knappen, saa halen
   // aldrig er skjult uden at nogen kan se at den findes.
   const sources = visAlleKilder ? alleSources : alleSources.slice(-SYNLIGE_LINJER)
-  const recentTools = visAlleTools ? alleTools : alleTools.slice(-SYNLIGE_LINJER)
   const flereKilder = alleSources.length > sources.length
-  const flereTools = alleTools.length > recentTools.length
 
   return (
     <aside className="env-panel" aria-label="Miljø">
@@ -277,39 +262,9 @@ export function EnvironmentPanel({
             </>
           )}
 
-          {recentTools.length > 0 && (
-            <>
-              <div className="env-divider" />
-              <div className="env-section-head">Tool-kald</div>
-              <div className={`env-tools${flereTools ? ' er-klippet' : ''}`}>
-                {recentTools.map((tool) => {
-                  const label = formatTool(tool)
-                  return (
-                    <button type="button" key={tool.id} className="env-tool-chip" title={label} onClick={() => onOpenTool?.(tool)}>
-                      {label}
-                    </button>
-                  )
-                })}
-              </div>
-              {(flereTools || visAlleTools) && (
-                <button type="button" className="env-vis-alle" onClick={() => setVisAlleTools((v) => !v)}>
-                  {visAlleTools ? 'Vis færre' : `Vis alle ${alleTools.length}`}
-                </button>
-              )}
-            </>
-          )}
         </>
       )}
 
-      <div className="env-live">
-        {working
-          ? <><Activity size={13} className="env-live-icon" /><span className="env-step">{workingStep || 'arbejder…'}</span></>
-          : <span className="env-step env-idle">færdig</span>}
-        <span className="env-tokens">
-          {totalToolCalls > 0 && <>{totalToolCalls} kald · </>}
-          {totalTokens > 0 ? `${totalTokens} tokens` : ''}
-        </span>
-      </div>
     </aside>
   )
 }

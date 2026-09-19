@@ -18,8 +18,9 @@ import { udtryk, type Handling, type Udtryk } from './figurLogik'
  * og så blikket kan flytte dem uden at regne to former ud.
  *
  * `rot` vippes spejlet på de to øjne: ved tristhed hænger det YDRE hjørne, og
- * det kan man kun se hvis de vipper hver sin vej. `prik` er catchlight — den
- * lille lyse prik der gør et mørkt øje levende; den udelades på de buede
+ * det kan man kun se hvis de vipper hver sin vej. `prik` var et catchlight —
+ * det tegnes ikke længere (19/9-2026, se OEJE_SKALA); feltet står til Jarvis'
+ * udtryk hvis det skal tilbage. Det udelodes allerede på de buede
  * glade øjne, hvor der ikke er plads til den.
  */
 const ANSIGT: Record<Udtryk, { oeje: string; mund: string; rot: number; prik: boolean }> = {
@@ -57,6 +58,14 @@ const ANSIGT: Record<Udtryk, { oeje: string; mund: string; rot: number; prik: bo
 
 const OEJE_X = { venstre: 49.6, hoejre: 70.4 }
 const OEJE_Y = 57.8
+/**
+ * Bjørn 19/9-2026: «de øjne den har er lidt creepy». Store, sorte øjne med
+ * et hvidt lysglimt — det lignede solbriller der stirrede. Nu mindre, i en
+ * blød mørk teal i stedet for sort, uden lysglimt, og blikket flytter sig
+ * kun lidt (FigurApp). Udtrykkene pr. tilstand er Jarvis' egne og står.
+ */
+const OEJE_SKALA = 0.72
+const OEJE_FARVE = 'rgba(12, 44, 40, 0.78)'
 
 export function FigurKrop({ handling, ring, laener, blik }: {
   handling: Handling
@@ -71,7 +80,7 @@ export function FigurKrop({ handling, ring, laener, blik }: {
   const a = ANSIGT[u]
   const b = blik ?? { x: 0, y: 0 }
   const oeje = (s: 'venstre' | 'hoejre') =>
-    `translate(${OEJE_X[s] + b.x} ${OEJE_Y + b.y}) rotate(${a.rot * (s === 'venstre' ? -1 : 1)})`
+    `translate(${OEJE_X[s] + b.x} ${OEJE_Y + b.y}) rotate(${a.rot * (s === 'venstre' ? -1 : 1)}) scale(${OEJE_SKALA})`
 
   return (
     <div className={`figur-krop h-${handling}${laener ? ` laener-${laener}` : ''}`} aria-hidden>
@@ -90,16 +99,15 @@ export function FigurKrop({ handling, ring, laener, blik }: {
         </g>
         <circle cx="60" cy="60" r="34" fill="url(#figur-kerne)" />
         <g className={`figur-ansigt a-${u}`}>
-          <g className="figur-oejne" fill="#0d1413">
+          <g className="figur-oejne" fill={OEJE_FARVE}>
             {(['venstre', 'hoejre'] as const).map((s) => (
               <g key={s} transform={oeje(s)}>
                 <path d={a.oeje} />
-                {a.prik ? <circle className="figur-prik" cx="0" cy="-2.6" r="1.5" fill="#ffffff" opacity="0.5" /> : null}
               </g>
             ))}
           </g>
-          <path className="figur-mund" d={a.mund} fill="none" stroke="#0d1413"
-                strokeWidth="2" strokeLinecap="round" />
+          <path className="figur-mund" d={a.mund} fill="none" stroke={OEJE_FARVE}
+                strokeWidth="1.6" strokeLinecap="round" />
         </g>
       </svg>
       <div className="figur-skygge" />

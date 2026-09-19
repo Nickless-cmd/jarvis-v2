@@ -42,7 +42,9 @@ describe('underagenter i miljø-feltet', () => {
       tools: [{ id: 'task-1', name: 'task', input: { prompt: 'ryd op' }, status: 'done' }],
     }} />)
     expect(screen.queryByText('Underagenter')).not.toBeInTheDocument()
-    expect(screen.getByText(/ryd op/)).toBeInTheDocument()
+    // Før stod kaldet som en tool-chip; Tool-kald-sektionen er fjernet
+    // (Bjørn 19/9-2026), så nu vises det slet ikke i miljø-feltet.
+    expect(screen.queryByText(/ryd op/)).not.toBeInTheDocument()
   })
 
   it('to parallelle explore-agenter er TO agenter', () => {

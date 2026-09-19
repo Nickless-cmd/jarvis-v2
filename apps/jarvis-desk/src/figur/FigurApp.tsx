@@ -3,7 +3,7 @@ import { AudioLines, ChevronDown, ChevronUp, SendHorizontal, SquarePen } from 'l
 import { apiFetch, type ApiConfig } from '../lib/api'
 import type { Opmaerksomhed } from '../lib/opmaerksomhed'
 import { FigurKrop } from './FigurKrop'
-import { HANDLING_FOR, boble, type Handling } from './figurLogik'
+import { HANDLING_FOR, boble, maalHoejde, type Handling } from './figurLogik'
 import { sendHurtigt } from './hurtigChat'
 import './figur.css'
 
@@ -24,6 +24,8 @@ const bro = () => (window as unknown as { jarvisDesk?: FigurBro }).jarvisDesk
 /** Hvor ofte figuren spørger. Taleboblen viser hvad han laver LIGE NU, så
  *  den skal være hurtigere end sidepanelets linje (5 s). */
 export const POLL_MS = 2500
+/** Så længe skal vinduet have været for stort før det krymper. */
+export const KRYMP_EFTER_MS = 6000
 const TRAEK_TAERSKEL = 4
 
 /**
@@ -87,14 +89,19 @@ export function FigurApp() {
   }, [o?.tilstand])
 
   // Vinduet skal være så lille som indholdet (Linux kan ikke lade klik gå
-  // igennem gennemsigtige områder) — meld højden hver gang den ændrer sig.
+  // igennem gennemsigtige områder) — men i FASTE trin (figurLogik.maalHoejde),
+  // og det krymper først når det har været mindre et stykke tid. Ellers
+  // skiftede det størrelse ved hver ny linje i boblen og glimtede.
+  const [maalt, setMaalt] = useState(0)
   useEffect(() => {
     const el = rodRef.current
     if (!el || typeof ResizeObserver === 'undefined') return
-    const ro = new ResizeObserver(() => { void bro()?.figur.hoejde(el.getBoundingClientRect().height) })
+    const ro = new ResizeObserver(() => setMaalt(el.getBoundingClientRect().height))
     ro.observe(el)
     return () => ro.disconnect()
   }, [])
+  const meldt = useRef(0)
+  const krymp = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const b = boble(o, afvist)
   const vis = pakket ? null : (
@@ -102,6 +109,20 @@ export function FigurApp() {
     ?? b
     ?? (kvittering ? { noegle: 'sendt', etiket: 'Sendt', titel: kvittering, tekst: 'Jeg går i gang.', sessionId: null, tilstand: 'running' as const } : null)
     ?? (hilsen ? { noegle: 'hilsen', etiket: 'Her er jeg', titel: '', tekst: 'Jeg siger til, når noget kræver dig.', sessionId: null, tilstand: 'idle' as const } : null))
+
+  const maal = maalHoejde(maalt, vis !== null, skriver)
+  useEffect(() => {
+    if (!maal) return
+    if (krymp.current) { clearTimeout(krymp.current); krymp.current = null }
+    if (maal >= meldt.current) {
+      if (maal !== meldt.current) { meldt.current = maal; void bro()?.figur.hoejde(maal) }
+      return
+    }
+    // Mindre: vent — kommer boblen tilbage lige om lidt, skal vinduet ikke
+    // have skrumpet og vokset imens.
+    krymp.current = setTimeout(() => { meldt.current = maal; void bro()?.figur.hoejde(maal) }, KRYMP_EFTER_MS)
+  }, [maal])
+  useEffect(() => () => { if (krymp.current) clearTimeout(krymp.current) }, [])
 
   const send = async () => {
     if (!config || !udkast.trim() || sender) return
@@ -155,7 +176,8 @@ export function FigurApp() {
     const dy = e.clientY - (r.top + r.height * 0.42)
     const d = Math.hypot(dx, dy)
     if (d < 0.5) { setBlik({ x: 0, y: 0 }); return }
-    const n = Math.min(1, d / 40) * 2.4
+    // Et lille, roligt blik — et stort der fulgte markøren virkede overvågende.
+    const n = Math.min(1, d / 60) * 1
     setBlik({ x: (dx / d) * n, y: (dy / d) * n })
   }
 

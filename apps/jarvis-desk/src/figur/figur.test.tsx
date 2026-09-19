@@ -164,3 +164,15 @@ describe('figurens tre ikoner (Codex)', () => {
     expect(screen.queryByPlaceholderText('Start ny chat')).toBeNull()
   })
 })
+
+describe('vinduets højde i faste trin (glitch 19/9-2026)', () => {
+  it('med boble reserveres plads til dens maksimum — teksten kan skifte uden at vinduet gør', async () => {
+    const { maalHoejde, HOEJDE_MED_BOBLE, HOEJDE_HURTIGCHAT } = await import('./figurLogik')
+    // 237, 256 og 290 px (målt) giver alle SAMME vindue.
+    expect(new Set([237, 256, 290].map((h) => maalHoejde(h, true, false)))).toEqual(new Set([HOEJDE_MED_BOBLE]))
+    expect(maalHoejde(174, false, false)).toBe(174)
+    expect(maalHoejde(200, true, true)).toBe(HOEJDE_MED_BOBLE + HOEJDE_HURTIGCHAT)
+    // Et indhold der ER højere end reserven, får sin højde — intet klippes.
+    expect(maalHoejde(333.2, true, false)).toBe(334)
+  })
+})

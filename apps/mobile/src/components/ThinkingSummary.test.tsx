@@ -40,13 +40,28 @@ describe('ThinkingSummary', () => {
     // mens han taenker, og monolog der flimrer i den goer den ulaeselig.
     const screen = await render(<ThinkingSummary text={'foerst\njeg tænker nu'} live />)
     expect(screen.queryByText('jeg tænker nu')).toBeNull()
-    expect(screen.getByText(/^Tænker\.+\s*$/)).toBeTruthy()
+    expect(screen.getByText('Tænker')).toBeTruthy()
   })
 
-  it('prikkerne holder FAST bredde — etiketten maa ikke hoppe', async () => {
+  // Bjørn 19/9-2026: tanke-linjen skal ligne runde-linjen. Prikkerne står
+  // derfor i cellen ude til højre (de rullende), ikke som tegn i teksten —
+  // så kan etiketten heller ikke hoppe.
+  it('prikkerne står i cellen, som på runde-linjen', async () => {
     const screen = await render(<ThinkingSummary text="noget" live />)
-    const t = screen.getByText(/^Tænker/)
-    expect(String(t.props.children)).toHaveLength('Tænker'.length + 3)
+    expect(screen.getByText('Tænker')).toBeTruthy()
+    expect(screen.getByTestId('prikker', { includeHiddenElements: true })).toBeTruthy()
+  })
+
+  it('færdig: én caret i cellen, ikonet i sin faste celle', async () => {
+    const screen = await render(<ThinkingSummary seconds={9} text="x" />)
+    expect(screen.queryByTestId('prikker', { includeHiddenElements: true })).toBeNull()
+    expect(screen.getByTestId('thinking-caret')).toBeTruthy()
+  })
+
+  it('går fra tom til live uden at vælte (hooks før return)', async () => {
+    const screen = await render(<ThinkingSummary />)
+    await screen.rerender(<ThinkingSummary live text="a" />)
+    expect(screen.getByText('Tænker')).toBeTruthy()
   })
 
   it('folder teksten ud og sammen igen', async () => {

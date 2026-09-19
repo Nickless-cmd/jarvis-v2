@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
-import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native'
-import { Brain, ChevronDown, ChevronRight } from 'lucide-react-native'
+import { Animated, Easing, LayoutAnimation, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { Brain, ChevronDown } from 'lucide-react-native'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 import { useReducedMotion } from '../lib/useReducedMotion'
 import { useAuthOptional } from '../state/AuthContext'
 import { getMessageReasoning } from '../lib/apiClient'
 import { loadFullThinking } from '../lib/fullThinking'
 import { GlidendeTekst } from './GlidendeTekst'
-import { prikker, TRIN_MS } from '../lib/prikSekvens'
+import { Prikker } from './Prikker'
 
 /**
  * «🧠 Tænker…» mens den tænker. «🧠 Tænkte i 14 s ›» når den er færdig.
@@ -72,8 +72,6 @@ export function ThinkingSummary({
   // 0 s» fordi tanken var lynhurtig. Uden tal siger etiketten bare «Tænkte».
   const hasSeconds = seconds != null && Math.round(seconds * 10) / 10 >= 0.1
 
-  // Intet at vise: ikke live, ingen tekst, ingen målt varighed.
-  if (!isLive && !hasText && !hasSeconds) return null
 
   useEffect(() => {
     if (!isLive || reduced) {
@@ -101,14 +99,16 @@ export function ThinkingSummary({
     return () => loop.stop()
   }, [isLive, reduced, pulse])
 
-  // Prik-tælleren løber kun mens den tænker; ellers ville en færdig besked
-  // holde en timer i live resten af sessionen.
-  const [trin, setTrin] = useState(0)
+  // Caret'en drejes -90° foldet, lige åben (150 ms) — som runde-linjen.
+  const drej = useRef(new Animated.Value(0)).current
   useEffect(() => {
-    if (!isLive || reduced) return
-    const t = setInterval(() => setTrin((n) => n + 1), TRIN_MS)
-    return () => clearInterval(t)
-  }, [isLive, reduced])
+    Animated.timing(drej, { toValue: open ? 1 : 0, duration: reduced ? 0 : 150, useNativeDriver: true }).start()
+  }, [open, reduced, drej])
+
+  // Intet at vise: ikke live, ingen tekst, ingen målt varighed. EFTER alle
+  // hooks — et betinget return før dem ændrer hook-rækkefølgen i det øjeblik
+  // linjen går fra tom til noget, og så vælter hele tråden.
+  if (!isLive && !hasText && !hasSeconds) return null
 
   // ROLIG FORM I TRÅDEN. Selve tankestrømmen står i linjen over komponisten;
   // her er det ikon + «Tænker» + prikker der løber. Tråden skal kunne læses
@@ -131,8 +131,9 @@ export function ThinkingSummary({
   // var støjen; døren er ikke.
   const kort = !isLive && hasSeconds && seconds! < KORT_TAERSKEL_S
 
+  // Prikkerne står i cellen ude til højre, som på runde-linjen — ikke i teksten.
   const label = isLive
-    ? `Tænker${prikker(trin)}`
+    ? 'Tænker'
     : hasSeconds && !kort
       ? seconds! < 60
         ? `Tænkte i ${formatSeconds(seconds!)} s`
@@ -145,6 +146,7 @@ export function ThinkingSummary({
   const toggle = () => {
     if (!expandable) return
     const naeste = !open
+    if (!reduced) LayoutAnimation.configureNext(LayoutAnimation.create(200, 'easeOut', 'opacity'))
     setOpen(naeste)
     // Kun når man ÅBNER, tilvalget er slået til, og vi har noget at hente fra.
     // Er halen allerede det hele (en kort ræsonnering), sker der ingenting —
@@ -186,19 +188,34 @@ export function ThinkingSummary({
             Et aandedrag siger «noget er i gang»; et lys der vandrer siger det
             samme uden at goere teksten svaer at laese i halvdelen af tiden.
             Man kan laese med mens den koerer. */}
+        {/* SAMME opbygning som runde-linjen (Bjørn 19/9-2026: «tænker linje og
+            skill linje bør have det samme tema/design/udseende»): ikonet i en
+            fast 20 dp celle, glitter mens den tænker, prikker og ÉN caret der
+            drejes i samme celle, og tanken i samme ramme som runde-detaljerne. */}
         <View style={styles.row}>
-          <Brain size={16} color={tokens.color.fg2} strokeWidth={1.8} />
+          <View style={styles.ikon}>
+            <Brain size={16} color={tokens.color.fg2} strokeWidth={1.8} />
+          </View>
           <GlidendeTekst text={label} aktiv={!!isLive} style={styles.label} numberOfLines={1} />
-          {expandable ? (
-            open ? (
-              <ChevronDown size={16} color={tokens.color.fg2} strokeWidth={1.8} />
-            ) : (
-              <ChevronRight size={16} color={tokens.color.fg2} strokeWidth={1.8} />
-            )
+          {isLive || expandable ? (
+            <View style={styles.celle} testID="thinking-caret">
+              {isLive ? <Prikker farve={tokens.color.fg2} /> : null}
+              {!isLive && expandable ? (
+                <Animated.View style={{ transform: [{ rotate: drej.interpolate({ inputRange: [0, 1], outputRange: ['-90deg', '0deg'] }) }] }}>
+                  <ChevronDown size={16} color={tokens.color.fg2} strokeWidth={1.8} />
+                </Animated.View>
+              ) : null}
+            </View>
           ) : null}
         </View>
       </Pressable>
-      {open && vist ? <Text selectable style={styles.body}>{vist}</Text> : null}
+      {open && vist ? (
+        <View style={styles.ramme}>
+          <ScrollView nestedScrollEnabled style={styles.rammeScroll} contentContainerStyle={styles.rammeIndhold}>
+            <Text selectable style={styles.body}>{vist}</Text>
+          </ScrollView>
+        </View>
+      ) : null}
     </View>
   )
 }
@@ -218,14 +235,15 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
     paddingVertical: tokens.spacing.sm
   },
   label: { color: tokens.color.fg2, fontSize: 15, flexShrink: 1 },
-  body: {
-    color: tokens.color.fg3,
-    fontSize: 14,
-    lineHeight: 21,
-    marginTop: tokens.spacing.xs,
-    paddingLeft: 24,
-    paddingBottom: tokens.spacing.sm,
-    borderLeftWidth: 2,
-    borderLeftColor: tokens.color.line
-  }
+  // Samme mål som runde-linjens celler (InlineToolGroup).
+  ikon: { width: 20, height: 20, marginRight: 2, alignItems: 'center', justifyContent: 'center' },
+  celle: { minWidth: 16, alignItems: 'center', justifyContent: 'center' },
+  ramme: {
+    borderWidth: StyleSheet.hairlineWidth, borderColor: tokens.color.line, borderRadius: 8,
+    marginTop: 4, marginHorizontal: 10, marginBottom: 8, maxHeight: 200, overflow: 'hidden',
+    backgroundColor: 'rgba(0,0,0,0.25)'
+  },
+  rammeScroll: { maxHeight: 200 },
+  rammeIndhold: { padding: 10 },
+  body: { color: tokens.color.fg3, fontSize: 14, lineHeight: 21 }
 })

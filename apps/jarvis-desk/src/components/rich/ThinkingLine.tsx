@@ -3,7 +3,7 @@ import { useLoebendeTid } from '../../lib/useLoebendeTid'
 import { tankeFragment } from '../../lib/tankeFragment'
 import { Prikker } from './Prikker'
 import { Fold } from './Fold'
-import { Brain, ChevronDown, ChevronRight } from 'lucide-react'
+import { Brain, ChevronDown } from 'lucide-react'
 import { MarkdownRenderer } from './MarkdownRenderer'
 
 /**
@@ -61,10 +61,14 @@ export function ThinkingLine({
   const liveMeta = live
     ? [sek != null && sek >= 1 ? `${Math.floor(sek)} s` : '', tankeFragment(text)].filter(Boolean)
     : []
-  const Chevron = open ? ChevronDown : ChevronRight
+  const aaben = open && harTekst
 
+  // SAMME opbygning som runde-linjen (Bjørn 19/9-2026: «tænker linje og skill
+  // linje bør have det samme tema/design/udseende»): ikonet i en fast 20 px
+  // celle, glitter på titlen mens den arbejder, prikker og ÉN caret der
+  // drejes i samme celle, og indholdet i samme ramme.
   return (
-    <div className={`toolgroup tanke-linje${live ? ' er-koerende' : ''}`}>
+    <div className={`toolgroup tanke-linje${live ? ' er-koerende' : ''}${aaben ? ' er-aaben' : ''}`}>
       <button
         type="button"
         className="toolgroup-head"
@@ -73,18 +77,20 @@ export function ThinkingLine({
         disabled={!harTekst}
         onClick={() => setOpen((o) => !o)}
       >
-        <Brain size={15} className="toolgroup-icon" strokeWidth={1.8} />
+        <span className="toolgroup-spark" aria-hidden="true">
+          <Brain size={15} className="toolgroup-icon" strokeWidth={1.8} />
+        </span>
         <span className="toolgroup-label">
-          <span className="linje-titel">{label}</span>
+          <span className={`linje-titel${live ? ' shimmer' : ''}`}>{label}</span>
           {liveMeta.length ? <span className="linje-meta" data-testid="tanke-meta"> · {liveMeta.join(' · ')}</span> : null}
         </span>
         <span className="toolgroup-celle">
           <Prikker live={live} />
-          {harTekst ? <Chevron size={15} className="toolgroup-chevron" strokeWidth={1.8} /> : null}
+          {harTekst ? <ChevronDown size={15} className="toolgroup-chevron" strokeWidth={1.8} /> : null}
         </span>
       </button>
-      <Fold aaben={open && harTekst}>
-        <div className="tanke-body">
+      <Fold aaben={aaben}>
+        <div className="toolgroup-body tanke-body">
           <MarkdownRenderer text={text} streaming={live} />
         </div>
       </Fold>

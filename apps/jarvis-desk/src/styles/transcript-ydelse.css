@@ -29,3 +29,10 @@
 .header-mere-skille { height: 1px; background: var(--line); margin: 5px 6px; }
 .header-mere-ikon { display: inline-flex; color: var(--fg-3); margin-right: 2px; }
 .header-mere-standard { color: var(--fg-3); }
+/* Menuer der åbner fra headeren skal ligge OVER de ruder de åbner hen over:
+   Miljø-feltet og højre stak (z 50) og sideopgave-kortet (z 30). Headeren
+   selv skaber ingen stacking context, så det er menuens egen z-index der
+   tæller — og den var 20 (Bjørn 19/9-2026: «3 priks menu bliver vist under
+   miljøfeltet»). Kun menuerne løftes, ikke headeren: en løftet header ville
+   dække toppen af højre-rudernes egne knapper. */
+.chatview-head .mode-dd-menu { z-index: 80; }

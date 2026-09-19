@@ -513,3 +513,14 @@ describe('animationer under streaming maler ikke hele samtalen (19/9-2026)', () 
     expect(r).toContain('shimmer-sweep 2.25s linear infinite')
   })
 })
+
+describe('headerens menuer ligger over højre-ruderne (19/9-2026)', () => {
+  it('z-index over Miljø-stakken (50) og sideopgave-kortet (30)', async () => {
+    const fs = await import('node:fs'); const path = await import('node:path')
+    const css = fs.readFileSync(path.resolve(__dirname, 'transcript-ydelse.css'), 'utf8')
+    const z = Number(css.match(/\.chatview-head \.mode-dd-menu \{ z-index: (\d+); \}/)?.[1] ?? 0)
+    const stak = Number(app.match(/\.code-right-stack \{[\s\S]*?z-index: (\d+);/)?.[1] ?? 999)
+    expect(z).toBeGreaterThan(stak)
+    expect(z).toBeGreaterThan(30)
+  })
+})

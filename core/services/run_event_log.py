@@ -339,6 +339,14 @@ def live_run_ids() -> list[str]:
         ]
 
 
+def hale(run_id: str, n: int = 80) -> list[str]:
+    """De seneste `n` frames for et run (tom liste hvis ukendt). Til
+    tilstands-hjernens «hvad laver han lige nu» — læser kun, ændrer intet."""
+    with _lock:
+        st = _hent(run_id)
+        return list(st["frames"][-n:]) if st else []
+
+
 def session_for_run(run_id: str) -> str | None:
     with _lock:
         st = _hent(run_id)

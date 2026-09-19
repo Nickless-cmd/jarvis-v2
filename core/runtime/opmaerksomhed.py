@@ -50,7 +50,7 @@ logger = logging.getLogger(__name__)
 
 __all__ = [
     "PRIORITET", "tilstand_for", "noter_afsluttet", "set", "glem_session",
-    "rum_for_session",
+    "rum_for_session", "aktivitet",
 ]
 
 # Codex' `Gd`, ordret. Lavest vinder.
@@ -206,6 +206,61 @@ def glem_session(session_id: str) -> None:
 
 # ── læsning ───────────────────────────────────────────────────────────────
 
+def _pynt_navn(navn: str) -> str:
+    n = (navn or "").strip()
+    for praefiks in ("operator_", "mcp__"):
+        if n.startswith(praefiks):
+            n = n[len(praefiks):]
+    return n.replace("_", " ").strip().capitalize() or "Arbejder"
+
+
+def aktivitet(frames: list[str]) -> str:
+    """Hvad laver han LIGE NU — læst bagfra i runnets egen strøm.
+
+    Codex' taleboble viser aktiviteten (værktøj, spørgsmål, plan). Her: den
+    seneste blok. Et værktøj vises med Jarvis' EGEN beskrivelse af kaldet
+    (`description`, samme felt som værktøjslinjen i desk og på mobilen), og
+    ellers kommandoen eller stien; tænkning og tekst får hver sin linje.
+    """
+    import json as _json
+    deltaer: dict[int, str] = {}
+    for f in reversed(frames):
+        linje = next((l for l in f.split("\n") if l.startswith("data: ")), "")
+        if not linje:
+            continue
+        try:
+            d = _json.loads(linje[6:])
+        except Exception:
+            continue
+        typ = d.get("type")
+        if typ == "content_block_delta":
+            delta = d.get("delta") or {}
+            if delta.get("type") == "input_json_delta":
+                deltaer[int(d.get("index", -1))] = str(delta.get("partial_json") or "") + deltaer.get(int(d.get("index", -1)), "")
+            continue
+        if typ != "content_block_start":
+            continue
+        blok = d.get("content_block") or {}
+        art = blok.get("type")
+        if art == "thinking":
+            return "Tænker…"
+        if art == "text":
+            return "Skriver svaret…"
+        if art == "tool_use":
+            args: dict[str, Any] = {}
+            try:
+                args = _json.loads(deltaer.get(int(d.get("index", -1)), "") or "{}")
+            except Exception:
+                args = {}
+            for felt in ("description", "command", "command_text", "path", "target_path", "query", "url"):
+                v = args.get(felt) if isinstance(args, dict) else None
+                if isinstance(v, str) and v.strip():
+                    tekst = " ".join(v.split())
+                    return tekst[:140] if felt == "description" else f"{_pynt_navn(str(blok.get('name') or ''))}: {tekst[:120]}"
+            return _pynt_navn(str(blok.get("name") or ""))
+    return ""
+
+
 def _koerende(rum: str) -> list[dict[str, Any]]:
     try:
         from core.services import run_event_log as rel
@@ -214,7 +269,8 @@ def _koerende(rum: str) -> list[dict[str, Any]]:
             sid = rel.session_for_run(rid) or ""
             if sid and rum_for_session(sid) == rum:
                 ud.append({"session_id": sid, "run_id": rid, "tilstand": "running",
-                           "titel": _titel(sid), "tekst": "", "tid": time.time()})
+                           "titel": _titel(sid), "tekst": aktivitet(rel.hale(rid)),
+                           "tid": time.time()})
         return ud
     except Exception:
         logger.warning("opmaerksomhed: levende runs kunne ikke læses", exc_info=True)

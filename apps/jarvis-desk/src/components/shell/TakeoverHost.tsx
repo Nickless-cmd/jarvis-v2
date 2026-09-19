@@ -4,6 +4,7 @@ import { streamReducer, initialStreamState } from '../../lib/streamReducer'
 import { MessageRow } from '../rich/MessageRow'
 import { LivenessIndicator } from '../feedback/LivenessIndicator'
 import { useSessions } from '../../hooks/useSessions'
+import { bestilStemme } from '../../lib/figurBud'
 import { useSettings } from '../../hooks/useSettings'
 import type { ChatMessage } from '../../lib/api'
 
@@ -40,6 +41,20 @@ export function TakeoverHost({
   const [msgs, setMsgs] = useState<ChatMessage[]>([])
   const [elapsedMs, setElapsedMs] = useState(0)
   const startedAt = useRef(0)
+
+  // Jarvis-figuren på skrivebordet (electron/figur.ts): et klik på dens
+  // taleboble viser hovedvinduet — og her åbnes samtalen den talte om. Samme
+  // handling som at tage en samtale over fra telefonen: vælg den, gå til chat.
+  useEffect(() => {
+    const bro = (window as unknown as { jarvisDesk?: { figur?: {
+      paaAabnSamtale: (cb: (sid: string) => void) => () => void
+      paaStemme: (cb: () => void) => () => void
+    } } }).jarvisDesk
+    const af1 = bro?.figur?.paaAabnSamtale((sid) => { select(sid); if (surface !== 'code') setSurface('chat') })
+    // Stemme-ikonet: til chat, og buddet venter på ChatView (lib/figurBud).
+    const af2 = bro?.figur?.paaStemme(() => { if (surface !== 'code') setSurface('chat'); bestilStemme() })
+    return () => { af1?.(); af2?.() }
+  }, [select, setSurface, surface])
 
   // 1) Find en cross-device-aktiv session — med 6s-latch (som ChatView) så korte
   //    runs ikke forsvinder mellem to polls.

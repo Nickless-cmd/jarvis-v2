@@ -119,3 +119,35 @@ def test_forslag_er_indbakke_ikke_venter(miljoe):
                     + [{"id": f"i{i}", "title": "Initiativ", "source": "initiative"} for i in range(4)])
     t = om.tilstand_for(rum="rum-a")
     assert t["tilstand"] == "idle" and t["indbakke"] == 24 and t["antal"]["waiting"] == 0
+
+
+def _f(d: dict) -> str:
+    import json
+    return f"event: {d['type']}\ndata: {json.dumps(d, ensure_ascii=False)}\n\n"
+
+
+def test_aktivitet_viser_jarvis_egen_beskrivelse_af_vaerktoejet():
+    frames = [
+        _f({"type": "content_block_start", "index": 0, "content_block": {"type": "thinking", "thinking": ""}}),
+        _f({"type": "content_block_start", "index": 1, "content_block": {"type": "tool_use", "id": "t", "name": "operator_bash", "input": {}}}),
+        _f({"type": "content_block_delta", "index": 1, "delta": {"type": "input_json_delta",
+            "partial_json": '{"command": "git status", "description": "Tjekker om træet er rent"}'}}),
+        _f({"type": "content_block_stop", "index": 1}),
+    ]
+    assert om.aktivitet(frames) == "Tjekker om træet er rent"
+
+
+def test_aktivitet_uden_beskrivelse_falder_tilbage_til_kommandoen():
+    frames = [
+        _f({"type": "content_block_start", "index": 3, "content_block": {"type": "tool_use", "id": "t", "name": "operator_bash", "input": {}}}),
+        _f({"type": "content_block_delta", "index": 3, "delta": {"type": "input_json_delta", "partial_json": '{"command": "ls -la"}'}}),
+    ]
+    assert om.aktivitet(frames) == "Bash: ls -la"
+
+
+def test_aktivitet_taenker_og_skriver():
+    t = _f({"type": "content_block_start", "index": 0, "content_block": {"type": "thinking", "thinking": ""}})
+    x = _f({"type": "content_block_start", "index": 1, "content_block": {"type": "text", "text": ""}})
+    assert om.aktivitet([t]) == "Tænker…"
+    assert om.aktivitet([t, x]) == "Skriver svaret…"
+    assert om.aktivitet([]) == ""

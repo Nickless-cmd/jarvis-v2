@@ -24,6 +24,7 @@ import {
   dialog,
   powerMonitor,
 } from 'electron'
+import { opretFigur, registrerFigurIpc, laesFigurVist, saetFigurVist } from './figur'
 import * as path from 'node:path'
 import * as fs from 'node:fs'
 import * as os from 'node:os'
@@ -42,6 +43,10 @@ const APP_NAME = 'J.A.R.V.I.S.'
 // Hvis den crasher igen: sæt app.disableHardwareAcceleration() tilbage som
 // første linje og fjern de to ignore/blocklist-switches.
 app.commandLine.appendSwitch('disable-gpu-sandbox')
+// Jarvis-figuren (electron/figur.ts) er et gennemsigtigt vindue. På Linux
+// kræver ægte gennemsigtighed at Chromium vælger et ARGB-visual; uden
+// switchen tegnes den gennemsigtige baggrund sort.
+if (process.platform === 'linux') app.commandLine.appendSwitch('enable-transparent-visuals')
 app.commandLine.appendSwitch('ignore-gpu-blocklist')
 // KRITISK for cross-device realtime (Bjørn 2026-06-20): Chromium throttler
 // renderer-timere (setInterval) i ufokuserede/okkluderede vinduer → active-runs-
@@ -268,6 +273,13 @@ function createTray(): void {
         label: 'Skjul vindue',
         click: () => mainWindow?.hide(),
       },
+      {
+        // Figuren på skrivebordet (Codex' «Vis eller skjul virtuelt kæledyr»).
+        label: 'Vis Jarvis-figuren',
+        type: 'checkbox',
+        checked: laesFigurVist(),
+        click: (item) => { saetFigurVist(item.checked, figurPreload(), indlaesFlade) },
+      },
       { type: 'separator' },
       {
         label: 'Genåbn ved login',
@@ -334,6 +346,16 @@ function setupEditMenuAndContextMenu(win: BrowserWindow): void {
   })
 }
 
+/** Samme bundle, en anden flade: `#figur` monterer kun figuren. */
+function indlaesFlade(w: BrowserWindow, hash: string): void {
+  if (isDev) void w.loadURL(`http://localhost:5174/#${hash}`)
+  else void w.loadFile(path.join(__dirname, '../dist/index.html'), { hash })
+}
+
+function figurPreload(): string {
+  return path.join(__dirname, 'preload.js')
+}
+
 function createMainWindow(): void {
   // Pladsen fra sidst — position, stoerrelse og maksimeret (Bjoern 16/9-2026:
   // «husk at appen skal huske position efter restart»). Efterproevet mod de
@@ -359,7 +381,13 @@ function createMainWindow(): void {
     // beholder den ægte lyskurv og fjerner kun titelbjaelken.
     ...(process.platform === 'darwin'
       ? { titleBarStyle: 'hiddenInset' as const, trafficLightPosition: { x: 12, y: 14 } }
-      : { frame: false }),
+      // Linux/Windows: skjult titelbjaelke, header og vinduesknapper paa SAMME
+      // linje som i CC Desktop (maalt 2.110.0 19/9-2026: _MOTIF_WM_HINTS
+      // 0x2,0,0,0,0 · Border 0 · Override Redirect no). Paa Linux goer
+      // 'hidden' det samme som frame:false — Electron fjerner rammen for
+      // enhver stil der ikke er 'default'. titleBarOverlay (kun win32) og
+      // trafficLightPosition (kun darwin) er no-ops her og saettes derfor ikke.
+      : { titleBarStyle: 'hidden' as const }),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -947,6 +975,23 @@ app.whenReady().then(() => {
 
   createMainWindow()
   createTray()
+  // Jarvis-figuren. Et klik på dens taleboble viser hovedvinduet på den
+  // samtale den taler om — også når hovedvinduet var lukket (skjult).
+  registrerFigurIpc({
+    preload: figurPreload(),
+    indlaes: indlaesFlade,
+    aabnSamtale: (sessionId) => {
+      showWindow()
+      if (sessionId) mainWindow?.webContents.send('figur:aabnSamtale', sessionId)
+    },
+    stemme: () => {
+      showWindow()
+      mainWindow?.webContents.send('figur:stemme')
+    },
+    // Slået til/fra fra indstillingerne: tray-menuens flueben skal følge med.
+    onVistAendret: () => { try { tray?.destroy() } catch { /* */ } tray = null; createTray() },
+  })
+  opretFigur(figurPreload(), indlaesFlade)
   void bootstrapBridge()
   void bootstrapLocalDiscord()
   void bootstrapAppDispatch()

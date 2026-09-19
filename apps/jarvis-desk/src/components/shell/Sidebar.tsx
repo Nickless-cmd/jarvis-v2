@@ -10,6 +10,7 @@ import { useSessions } from '../../hooks/useSessions'
 import { useSettings } from '../../hooks/useSettings'
 import { useStream } from '../../hooks/useStream'
 import { getActiveRuns } from '../../lib/api'
+import { OpmaerksomhedsLinje } from './OpmaerksomhedsLinje'
 import { COWORK_ZONES, emitZone, onZone, normalizeZone, type Zone } from '../../lib/coworkZone'
 import { grupperSessioner, GRUPPER_I_MODE, grupperEfterProjekt, type SessionGruppe } from '../../lib/sessionGroups'
 import { SidebarGreb } from './SidebarGreb'
@@ -234,6 +235,11 @@ export function Sidebar({
       </div>
       )}
 
+      <OpmaerksomhedsLinje
+        config={settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : null}
+        aktivId={activeId}
+        onAabn={(id) => { select(id); if (modeFor(surface) !== 'code') onSurface('chat') }}
+      />
       <div className="sidebar-foot">
         <div className="who">
           <span className="avatar">{userName.charAt(0).toUpperCase()}</span>

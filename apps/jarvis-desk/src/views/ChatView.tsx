@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFastholdBund } from '../lib/useFastholdBund'
 import { PanelRight, Loader2, SquareStack, FileDiff, AudioLines, Bot } from 'lucide-react'
 import { JobsPanel } from '../components/shell/JobsPanel'
+import { listJobs } from '../lib/jobsApi'
 import { ChangesPanel } from '../components/shell/ChangesPanel'
 import { paaAendringsFokus } from '../lib/aendringsFokus'
 import { IKKE_I_DESK, registrerSkaerm } from '../lib/skaermRegister'
@@ -88,6 +89,48 @@ export function ChatView({
   // klienten ikke selv driver. Når det opdages, vis at Jarvis arbejder + hent
   // nye beskeder ind, så han "kalder op" i appen (Bjørn 2026-06-13).
   const [bgActive, setBgActive] = useState(false)
+  // Baggrundsjob til liveness-linjen («1 job kører»). Vi viser ANTALLET —
+  // panelet viser detaljerne. Sjælden poll + pause når fanen er skjult: desk'ens
+  // egne baggrundspolls sulter SSE-læseren (se StreamContext), og dette er
+  // oplysning, ikke noget der må koste et run.
+  const [runningJobs, setRunningJobs] = useState(0)
+  useEffect(() => {
+    if (!settings) return
+    let cancelled = false
+    const hent = () => {
+      if (typeof document !== 'undefined' && document.hidden) return
+      void listJobs({ apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken })
+        .then((s) => { if (!cancelled) setRunningJobs(s.jobs.filter((j) => j.status === 'running').length) })
+        .catch(() => { /* behold sidste — ingen flicker ved netværks-blip */ })
+    }
+    hent()
+    const id = setInterval(hent, 10000)
+    return () => { cancelled = true; clearInterval(id) }
+  }, [settings])
+  // Liveness-linjens tal, i CC's form. Tænke-tiden: reduceren sætter `seconds`
+  // når en tanke LUKKES og `startet` (ms) mens den kører — så vi kan vise både
+  // den løbende og den afsluttede, og streg'e den over når den er slut.
+  //
+  // `stream.elapsedMs` ER en afhængighed med vilje, selv om den ikke læses her:
+  // den tikker i StreamContext (~500 ms), og uden den ville en KØRENDE tankes
+  // tal fryse på 0 fordi `blocks` ikke ændrer sig imens. CC's tæller opdaterer
+  // hvert sekund — det gør vores nu også.
+  const { thoughtMs, thoughtAfsluttet } = useMemo(() => {
+    for (let i = stream.blocks.length - 1; i >= 0; i--) {
+      const b = stream.blocks[i]
+      if (b && b.type === 'thinking') {
+        return {
+          thoughtMs: b.seconds != null ? b.seconds * 1000 : b.startet != null ? Date.now() - b.startet : null,
+          thoughtAfsluttet: b.seconds != null,
+        }
+      }
+    }
+    return { thoughtMs: null as number | null, thoughtAfsluttet: false }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- elapsedMs er uret, se kommentaren ovenfor
+  }, [stream.blocks, stream.elapsedMs])
+  // CC's «12.8k tokens» er kontekst-størrelsen: hele input-siden + output.
+  const tokensTotal =
+    stream.usage.input + stream.usage.cacheHit + stream.usage.cacheMiss + stream.usage.output
   // Takeover-banner: når den ÅBNE session får cross-device-aktivitet (du tager
   // over fra mobilen) vises en lille notits "følger med live", så du ved
   // transcript'en opdaterer sig her — uden at hoppe ud og ind. Nulstilles når
@@ -902,7 +945,16 @@ export function ChatView({
         {/* Liveness fast lige over composer (ikke i transcript — den scrollede
             væk / sad i toppen ved ny chat). Vises kun når der faktisk sker noget. */}
         {(stream.status !== 'idle' || bgActive) && (
-          <LivenessIndicator status={bgActive && stream.status !== 'working' ? 'working' : stream.status} elapsedMs={stream.elapsedMs} density="compact" workingStep={bgActive && stream.status !== 'working' ? 'vågner' : stream.workingStep} tokens={stream.usage.output} />
+          <LivenessIndicator
+            status={bgActive && stream.status !== 'working' ? 'working' : stream.status}
+            elapsedMs={stream.elapsedMs}
+            density="compact"
+            workingStep={bgActive && stream.status !== 'working' ? 'vågner' : stream.workingStep}
+            tokens={tokensTotal}
+            thoughtMs={thoughtMs}
+            thoughtAfsluttet={thoughtAfsluttet}
+            runningJobs={runningJobs}
+          />
         )}
         {/* Compaction-pause (som Claude Code): mens sessionen komprimeres pauses composeren
             og en linje viser status. En besked skrevet imens sendes automatisk bagefter. */}

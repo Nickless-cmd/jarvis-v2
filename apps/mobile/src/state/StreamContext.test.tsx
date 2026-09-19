@@ -567,3 +567,57 @@ describe('generations-hegn paa follow', () => {
     expect(gen[1]!.abort).toHaveBeenCalled()
   })
 })
+
+/**
+ * Én render pr. frame (19/9-2026, samme rettelse som desk). Hver delta gav
+ * før en render af hele chatten; deltaer kommer hurtigere end skærmen kan
+ * vise dem. Tekst-deltaer samles til næste frame — og teksten er komplet
+ * bagefter, så intet går tabt i samlingen.
+ */
+it('mange deltaer i samme frame giver én render, og hele teksten', async () => {
+  let handlers: StreamHandlers | undefined
+  mockStartStream.mockImplementation((_request: unknown, nextHandlers: StreamHandlers) => {
+    handlers = nextHandlers
+    return { abort: jest.fn(), getRunId: () => 'run-123', getOffset: () => 0 }
+  })
+  let renders = 0
+  function Taeller() {
+    const { state } = useStream()
+    renders += 1
+    const tekst = state.blocks.map((b) => ('text' in b ? String(b.text ?? '') : '')).join('')
+    return <Text testID="tekst">{tekst}</Text>
+  }
+  const screen = await render(<StreamProvider><Probe /><Taeller /></StreamProvider>)
+  await act(async () => { screen.getByText('send').props.onPress() })
+  await act(async () => {
+    handlers?.onEvent({
+      type: 'message_start',
+      message: { id: 'run-123', model: 'm', provider: 'p', lane: 'primary', session_id: 'session-1',
+        usage: { input_tokens: 1, output_tokens: 0 } }
+    } satisfies StreamEvent)
+    handlers?.onEvent({ type: 'content_block_start', index: 0, content_block: { type: 'text', text: '' } } satisfies StreamEvent)
+  })
+  // Framen styres af testen: i jest kører requestAnimationFrame næsten med
+  // det samme, og så kunne testen ikke skelne samling fra ingen samling
+  // (modprøvet: den bestod også uden). Hver delta får sin EGEN act — som
+  // separate netværks-callbacks — og framen udløses først bagefter.
+  const rammer: Array<(t: number) => void> = []
+  const raf = jest.spyOn(global, 'requestAnimationFrame').mockImplementation((cb) => {
+    rammer.push(cb as (t: number) => void)
+    return rammer.length
+  })
+  const foer = renders
+  for (let i = 0; i < 50; i++) {
+    await act(async () => {
+      handlers?.onEvent({ type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: 'x' } } satisfies StreamEvent)
+    })
+  }
+  // Højst én før framen: reserve-timeren (100 ms) må fyre, hvis 50 separate
+  // act-kald tager længere end det — det er den der sikrer fremdrift når
+  // frames udebliver. Uden samling: 50 (modprøvet).
+  expect(renders - foer).toBeLessThanOrEqual(1)
+  await act(async () => { rammer.splice(0).forEach((f) => f(0)) })
+  expect(renders - foer).toBeLessThanOrEqual(2)
+  expect(screen.getByTestId('tekst').props.children).toBe('x'.repeat(50))
+  raf.mockRestore()
+})

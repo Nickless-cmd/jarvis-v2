@@ -1,4 +1,5 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
+import { useRaekkeFn, useSenesteFn } from '../lib/stabileHandlinger'
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native'
 import { saetStickyPrompt } from '../lib/stickyPrompt'
 import type { ContentBlock } from '../lib/sseProtocol'
@@ -368,136 +369,156 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
    * De løse `tool`-beskeder i samme tur er de SAMME resultater; de springes
    * over, så de ikke tælles to gange.
    */
-  const persisted: Row[] = []
-  let skipToolRows = false
-  for (let i = messages.length - 1; i >= 0; i--) {
-    const m = messages[i]!
-    if (m.role === 'assistant') {
-      const blocks = parseBlocks(m)
-      const think = thinkingBlock(blocks)
-      // UDGIVNE FILER, lagt fra sig FOER grenene nedenfor. Foerste forsoeg lagde
-      // dem i en egen gren til sidst — men baade ordre-grenen og taenke-grenen
-      // `continue`r foer den, altsaa paa de fleste ture, og filen forsvandt.
-      //
-      // `unshift` saetter forrest, og listen bygges bagfra: den SIDST
-      // unshiftede staar oeverst. Filerne laegges derfor foerst, saa turens
-      // tekst ender OVER dem. En fil er et resultat og hoerer under det den
-      // handler om — modsat brugerens billeder, der ligger over boblen fordi
-      // billedet dér ofte ER beskeden.
-      const afiler = attachmentBlocks(blocks)
-      if (afiler.length) {
-        // `side: 'left'`: assistenten skriver fra venstre. Uden den landede et
-        // billede Jarvis havde lavet i brugerens side og så ud som om brugeren
-        // havde sendt det — målt 13/9-2026 på telefonen.
-        persisted.unshift({ kind: 'attachments', key: `${m.id}-pub`, items: afiler, side: 'left' })
-      }
-      if (hasOrdering(blocks)) {
-        const expanded: Row[] = []
-        const thread = threadBlocks(blocks!)
-        const lastTextIdx = thread.reduce(
-          (acc, b, i) => (b.type === 'text' && (b.text ?? '').trim() ? i : acc),
-          -1
-        )
-        thread.forEach((b, bi) => {
-          if (b.type === 'text' && (b.text ?? '').trim()) {
-            expanded.push({
-              kind: 'msg',
-              key: `${m.id}-b${bi}`,
-              message: { ...m, id: `${m.id}-b${bi}`, content: (b.text ?? '').trim() },
-              // Kun turens sidste afsnit bærer kopiér/oplæs — ellers gentages
-              // rækken efter hvert afsnit og tråden bliver støjende. Samme
-              // sted hører kilderne hjemme: én gang pr. tur, i bunden.
-              hideActions: bi !== lastTextIdx,
-              kildeBlokke: bi === lastTextIdx ? blocks : null
-            })
-          } else if (b.type === 'tool_use' && SKILL_VAERKTOEJER.has(String(b.name ?? ''))) {
-            // Resultatet ligger i den tilhørende `tool_result`-blok, ikke i kaldet.
-            const res = thread.find((r) => r.type === 'tool_result' && r.tool_use_id === b.id)
-            expanded.push({
-              kind: 'skill', key: `${m.id}-sk${bi}`,
-              kald: {
-                name: String(b.name), input: b.input,
-                result: typeof res?.content === 'string' ? res.content : undefined,
-                status: res?.status === 'error' ? 'error' : 'done',
-              },
-            })
-          } else if (b.type === 'skill_surface' && Array.isArray((b as { matches?: unknown }).matches)) {
-            const matches = skillFladeMatches((b as { matches?: unknown }).matches)
-            if (matches.length) expanded.push({ kind: 'skill-flade', key: `${m.id}-sf${bi}`, matches })
-          } else if (b.type === 'tool_use') {
-            expanded.push({
-              kind: 'live-tool',
-              key: `${m.id}-t${bi}`,
-              // `id` og `diff` skal MED, ellers doer baade linjetallene og
-              // runde-etiketten i det oejeblik turen er faerdig: uden id'et
-              // kan etiketten ikke slaas op, og uden diff'en er der intet at
-              // summere. Blokkene HAR begge dele — `types.ts` siger det selv:
-              // «Har beskeden blokke, er de sandheden.»
-              id: b.id,
-              name: String(b.name ?? ''),
-              body: JSON.stringify(b.input ?? {}),
-              diff: diffFraResultat(b.result) ?? toolDiff(String(b.name ?? ''), b.input),
-              running: false
-            })
-          } else if (b.type === 'thinking' && (b.text ?? '').trim()) {
-            // PAA SIN PLADS, ikke hejst op over turen. En tanke hoerer til dér
-            // hvor den blev taenkt — mellem de to vaerktoejer den forbinder.
-            expanded.push({
-              kind: 'thinking', key: `${m.id}-tk${bi}`,
-              seconds: b.seconds, text: b.text, messageId: m.id
+  // Memoiseret på beskederne (19/9-2026): løkken parsede ALLE beskeders
+  // blokke forfra ved hver stream-delta, selv om de gemte beskeder ikke
+  // ændrer sig mens et svar streames.
+  const persisted = useMemo(() => {
+    const persisted: Row[] = []
+    let skipToolRows = false
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const m = messages[i]!
+      if (m.role === 'assistant') {
+        const blocks = parseBlocks(m)
+        const think = thinkingBlock(blocks)
+        // UDGIVNE FILER, lagt fra sig FOER grenene nedenfor. Foerste forsoeg lagde
+        // dem i en egen gren til sidst — men baade ordre-grenen og taenke-grenen
+        // `continue`r foer den, altsaa paa de fleste ture, og filen forsvandt.
+        //
+        // `unshift` saetter forrest, og listen bygges bagfra: den SIDST
+        // unshiftede staar oeverst. Filerne laegges derfor foerst, saa turens
+        // tekst ender OVER dem. En fil er et resultat og hoerer under det den
+        // handler om — modsat brugerens billeder, der ligger over boblen fordi
+        // billedet dér ofte ER beskeden.
+        const afiler = attachmentBlocks(blocks)
+        if (afiler.length) {
+          // `side: 'left'`: assistenten skriver fra venstre. Uden den landede et
+          // billede Jarvis havde lavet i brugerens side og så ud som om brugeren
+          // havde sendt det — målt 13/9-2026 på telefonen.
+          persisted.unshift({ kind: 'attachments', key: `${m.id}-pub`, items: afiler, side: 'left' })
+        }
+        if (hasOrdering(blocks)) {
+          const expanded: Row[] = []
+          const thread = threadBlocks(blocks!)
+          const lastTextIdx = thread.reduce(
+            (acc, b, i) => (b.type === 'text' && (b.text ?? '').trim() ? i : acc),
+            -1
+          )
+          thread.forEach((b, bi) => {
+            if (b.type === 'text' && (b.text ?? '').trim()) {
+              expanded.push({
+                kind: 'msg',
+                key: `${m.id}-b${bi}`,
+                message: { ...m, id: `${m.id}-b${bi}`, content: (b.text ?? '').trim() },
+                // Kun turens sidste afsnit bærer kopiér/oplæs — ellers gentages
+                // rækken efter hvert afsnit og tråden bliver støjende. Samme
+                // sted hører kilderne hjemme: én gang pr. tur, i bunden.
+                hideActions: bi !== lastTextIdx,
+                kildeBlokke: bi === lastTextIdx ? blocks : null
+              })
+            } else if (b.type === 'tool_use' && SKILL_VAERKTOEJER.has(String(b.name ?? ''))) {
+              // Resultatet ligger i den tilhørende `tool_result`-blok, ikke i kaldet.
+              const res = thread.find((r) => r.type === 'tool_result' && r.tool_use_id === b.id)
+              expanded.push({
+                kind: 'skill', key: `${m.id}-sk${bi}`,
+                kald: {
+                  name: String(b.name), input: b.input,
+                  result: typeof res?.content === 'string' ? res.content : undefined,
+                  status: res?.status === 'error' ? 'error' : 'done',
+                },
+              })
+            } else if (b.type === 'skill_surface' && Array.isArray((b as { matches?: unknown }).matches)) {
+              const matches = skillFladeMatches((b as { matches?: unknown }).matches)
+              if (matches.length) expanded.push({ kind: 'skill-flade', key: `${m.id}-sf${bi}`, matches })
+            } else if (b.type === 'tool_use') {
+              expanded.push({
+                kind: 'live-tool',
+                key: `${m.id}-t${bi}`,
+                // `id` og `diff` skal MED, ellers doer baade linjetallene og
+                // runde-etiketten i det oejeblik turen er faerdig: uden id'et
+                // kan etiketten ikke slaas op, og uden diff'en er der intet at
+                // summere. Blokkene HAR begge dele — `types.ts` siger det selv:
+                // «Har beskeden blokke, er de sandheden.»
+                id: b.id,
+                name: String(b.name ?? ''),
+                body: JSON.stringify(b.input ?? {}),
+                diff: diffFraResultat(b.result) ?? toolDiff(String(b.name ?? ''), b.input),
+                running: false
+              })
+            } else if (b.type === 'thinking' && (b.text ?? '').trim()) {
+              // PAA SIN PLADS, ikke hejst op over turen. En tanke hoerer til dér
+              // hvor den blev taenkt — mellem de to vaerktoejer den forbinder.
+              expanded.push({
+                kind: 'thinking', key: `${m.id}-tk${bi}`,
+                seconds: b.seconds, text: b.text, messageId: m.id
+              })
+            }
+          })
+          persisted.unshift(...expanded)
+          skipToolRows = true
+          continue
+        }
+        skipToolRows = false
+        // En tur uden værktøjer har ingen «rækkefølge» at udfolde, men han kan
+        // sagtens have tænkt. Uden dette forsvandt linjen på netop de turer hvor
+        // tænkningen ofte er mest interessant: de rene svar.
+        if (think) {
+          persisted.unshift({ kind: 'msg', key: m.id, message: m, kildeBlokke: blocks })
+          // ALLE turens tanker, i raekkefoelge. `unshift` saetter forrest, saa
+          // listen vendes for at bevare den.
+          const tanker = (blocks ?? []).filter(
+            (b) => b.type === 'thinking' && (b.text ?? '').trim())
+          for (let ti = tanker.length - 1; ti >= 0; ti--) {
+            persisted.unshift({
+              kind: 'thinking', key: `${m.id}-tk${ti}`,
+              seconds: tanker[ti]!.seconds, text: tanker[ti]!.text,
+              messageId: m.id
             })
           }
-        })
-        persisted.unshift(...expanded)
-        skipToolRows = true
-        continue
-      }
-      skipToolRows = false
-      // En tur uden værktøjer har ingen «rækkefølge» at udfolde, men han kan
-      // sagtens have tænkt. Uden dette forsvandt linjen på netop de turer hvor
-      // tænkningen ofte er mest interessant: de rene svar.
-      if (think) {
-        persisted.unshift({ kind: 'msg', key: m.id, message: m, kildeBlokke: blocks })
-        // ALLE turens tanker, i raekkefoelge. `unshift` saetter forrest, saa
-        // listen vendes for at bevare den.
-        const tanker = (blocks ?? []).filter(
-          (b) => b.type === 'thinking' && (b.text ?? '').trim())
-        for (let ti = tanker.length - 1; ti >= 0; ti--) {
-          persisted.unshift({
-            kind: 'thinking', key: `${m.id}-tk${ti}`,
-            seconds: tanker[ti]!.seconds, text: tanker[ti]!.text,
-            messageId: m.id
-          })
+          continue
         }
+      }
+      if (m.role === 'user') {
+        skipToolRows = false
+        const ublocks = attachmentBlocks(parseBlocks(m))
+        if (ublocks.length) {
+          persisted.unshift({ kind: 'msg', key: m.id, message: m, kildeBlokke: blocks })
+          // Billederne ligger OVER boblen, som i referencen — ikke inde i den.
+          persisted.unshift({ kind: 'attachments', key: `${m.id}-att`, items: ublocks, side: 'right' })
+          continue
+        }
+      }
+      if (m.role === 'tool') {
+        if (skipToolRows) continue
+        persisted.unshift({ kind: 'tool', key: m.id, content: m.content })
         continue
       }
-    }
-    if (m.role === 'user') {
-      skipToolRows = false
-      const ublocks = attachmentBlocks(parseBlocks(m))
-      if (ublocks.length) {
-        persisted.unshift({ kind: 'msg', key: m.id, message: m, kildeBlokke: blocks })
-        // Billederne ligger OVER boblen, som i referencen — ikke inde i den.
-        persisted.unshift({ kind: 'attachments', key: `${m.id}-att`, items: ublocks, side: 'right' })
+      if (m.role === 'compact_marker') {
+        // Intern bogholderi, ikke en samtale-besked. Uden denne gren faldt rollen
+        // i default nedenfor og blev tegnet som en almindelig boble — med hele den
+        // serialiserede transcript som indhold (målt 111k tegn: `[Bjørn] …`,
+        // `[tool:tool] …`, «Use read_tool_result with result_id=…»).
+        skipToolRows = false
+        persisted.unshift({ kind: 'compact-marker', key: m.id, content: m.content })
         continue
       }
+      persisted.unshift({ kind: 'msg', key: m.id, message: m })
     }
-    if (m.role === 'tool') {
-      if (skipToolRows) continue
-      persisted.unshift({ kind: 'tool', key: m.id, content: m.content })
-      continue
-    }
-    if (m.role === 'compact_marker') {
-      // Intern bogholderi, ikke en samtale-besked. Uden denne gren faldt rollen
-      // i default nedenfor og blev tegnet som en almindelig boble — med hele den
-      // serialiserede transcript som indhold (målt 111k tegn: `[Bjørn] …`,
-      // `[tool:tool] …`, «Use read_tool_result with result_id=…»).
-      skipToolRows = false
-      persisted.unshift({ kind: 'compact-marker', key: m.id, content: m.content })
-      continue
-    }
-    persisted.unshift({ kind: 'msg', key: m.id, message: m })
-  }
+    return persisted
+  }, [messages])
+
+  // Stabile funktioner pr. række: MessageBubble er memo, og en ny inline-
+  // funktion ved hver render ville få ALLE synlige bobler til at rendere om
+  // ved hver stream-delta (samme fund som desk, 19/9-2026).
+  const genSend = useSenesteFn((...a: Parameters<NonNullable<typeof onResend>>) => onResend?.(...a))
+  const rewindFor = useRaekkeFn((id) => onRewind?.(id))
+  const pinFor = useRaekkeFn((id) => onTogglePin?.(id))
+  // Rækkens EGEN besked — et afsnit af en tur har id'et `<id>-b<n>` og findes
+  // ikke i `messages`. Kortet opdateres ved hver render (se nedenfor).
+  const beskedForRaekke = useRef(new Map<string, ChatMessage>())
+  const gemFor = useRaekkeFn((id) => {
+    const m = beskedForRaekke.current.get(id)
+    if (m) onSaveMemory?.(m)
+  })
 
   // Den levende turs skill-flade står øverst i turen, før strømmen — som desk.
   const levende = buildStreamingRows(blocks)
@@ -512,6 +533,9 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
 
   // Inverteret liste: nyeste række sidder altid i bunden og er synlig fra start.
   const ordered = [...rows].reverse()
+  beskedForRaekke.current = new Map(
+    ordered.flatMap((r) => (r.kind === 'msg' ? [[String(r.message.id), r.message] as const] : []))
+  )
   // Rundernes sætninger: de GEMTE (tool_use_summary i beskederne) plus de LIVE
   // (streamens tool_round_label). Live vinder, hvis de er uenige — den er den
   // nyeste. Før fandtes kun den live, og sætningen forsvandt når turen var gemt.
@@ -624,18 +648,18 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
           <MessageBubble
             message={item.message}
             kildeBlokke={item.kildeBlokke}
-            onResend={item.message.role === 'user' ? onResend : undefined}
+            onResend={item.message.role === 'user' && onResend ? genSend : undefined}
             // Kun en besked serveren kender (ikke en lokal/optimistisk), og kun
             // hele beskeder — et afsnit af en tur har id'et `<id>-b<n>`.
             onRewind={item.message.role === 'user' && onRewind && erServerId(String(item.message.id))
-              ? () => onRewind(String(item.message.id)) : undefined}
+              ? rewindFor(String(item.message.id)) : undefined}
             pinned={pins?.includes(String(item.message.id))}
-            onTogglePin={onTogglePin ? () => onTogglePin(String(item.message.id)) : undefined}
+            onTogglePin={onTogglePin ? pinFor(String(item.message.id)) : undefined}
             onSaveMemory={
               // Kun hans egne svar. En hukommelse af Bjørns egen besked er
               // bare et ekko — det er svaret der er værd at gemme.
               onSaveMemory && item.message.role === 'assistant'
-                ? () => onSaveMemory(item.message)
+                ? gemFor(String(item.message.id))
                 : undefined
             }
             hideActions={item.hideActions}

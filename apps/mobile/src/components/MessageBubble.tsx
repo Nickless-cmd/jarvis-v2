@@ -1,8 +1,9 @@
 import { Brain, Check, Copy, MoreHorizontal, Pin, PinOff, RotateCw, Share2, Square, TextCursorInput, ThumbsDown, ThumbsUp, Volume2, History } from 'lucide-react-native'
-import { useEffect, useRef, useState } from 'react'
+import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import Markdown from 'react-native-markdown-display'
 import MarkdownIt from 'markdown-it'
 import { enforceStructure } from '../lib/enforceStructure'
+import { delIBlokke } from '../lib/markdownBlokke'
 import * as Clipboard from 'expo-clipboard'
 import { readAloud as readAloudText, stopReading } from '../lib/readAloud'
 import { useAuthOptional } from '../state/AuthContext'
@@ -21,6 +22,49 @@ const markdownItInstance = MarkdownIt({ typographer: true, linkify: true, breaks
 const MONO = Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' })
 const SOURCE_RE = /https?:\/\/([^\s/)\]]+)/gi
 
+// Modul-niveau (19/9-2026): reglerne blev bygget som et NYT objekt ved hver
+// render, og så kunne ingen markdown-blok memoiseres — alt blev parset forfra.
+// Kodeblokke tegnes af CodeBlock (afrundet flade, syntaksfarver, kopiér-knap)
+// i stedet for markdown-bibliotekets flade <Text>. Reglerne ligger her frem
+// for i `style`, fordi det ikke er en STIL-forskel men en anden komponent.
+const MARKDOWN_REGLER = {
+  fence: (node: { key: string; content: string; sourceInfo?: string }) => (
+    <CodeBlock key={node.key} code={node.content} language={node.sourceInfo} />
+  ),
+  code_block: (node: { key: string; content: string; sourceInfo?: string }) => (
+    <CodeBlock key={node.key} code={node.content} language={node.sourceInfo} />
+  ),
+  // `textgroup` er den blok biblioteket tegner AL løbende tekst med.
+  //
+  // Den er med VILJE ikke `selectable`: Androids egen markering kan ikke
+  // krydse søskende-elementer, og markdown tegner overskrift, liste og hvert
+  // afsnit hver for sig. Var den selectable, fangede hold-inde ét afsnit og
+  // nægtede at trække videre — målt hos Bjørn 7/9, og præcis dét der var
+  // frustrerende. Hold-inde giver nu i stedet hele beskeden som ét felt.
+  textgroup: (
+    node: { key: string },
+    children: React.ReactNode,
+    _parent: unknown,
+    mdStyles: Record<string, unknown>
+  ) => (
+    <Text key={node.key} style={mdStyles.textgroup as never}>
+      {children}
+    </Text>
+  )
+}
+
+
+/** Én markdown-blok. En færdig blok er en uforanderlig streng og parses aldrig
+ *  igen; under streaming er det kun den sidste blok der ændrer sig (se
+ *  lib/markdownBlokke — samme opdeling som desk). */
+const MarkdownBlok = memo(function MarkdownBlok({ tekst, stil }: { tekst: string; stil: StyleSheet.NamedStyles<any> }) {
+  return (
+    <Markdown markdownit={markdownItInstance} style={stil} rules={MARKDOWN_REGLER}>
+      {tekst}
+    </Markdown>
+  )
+})
+
 export function sourceDomains(text: string): string[] {
   const seen = new Set<string>()
   for (const match of text.matchAll(SOURCE_RE)) {
@@ -30,7 +74,7 @@ export function sourceDomains(text: string): string[] {
   return [...seen].slice(0, 4)
 }
 
-export function MessageBubble({
+export const MessageBubble = memo(function MessageBubble({
   message,
   kildeBlokke,
   onResend,
@@ -68,6 +112,9 @@ export function MessageBubble({
   const tokens = useTheme()
   const styles = useStyles(makestyles)
   const markdownStyles = useStyles(makemarkdownStyles)
+  // Blokke frem for én stor markdown: under streaming parses kun den sidste
+  // blok igen (målt 19/9-2026: 6 parses og ~1.260 tegn pr. delta før).
+  const blokke = useMemo(() => delIBlokke(enforceStructure(message.content)), [message.content])
   const { config } = useAuthOptional()
   const isUser = message.role === 'user'
   const [speaking, setSpeaking] = useState(false)
@@ -122,35 +169,6 @@ export function MessageBubble({
     await Clipboard.setStringAsync(message.content)
     setCopied(true)
     setTimeout(() => setCopied(false), 1500)
-  }
-
-  // Kodeblokke tegnes af CodeBlock (afrundet flade, syntaksfarver, kopiér-knap)
-  // i stedet for markdown-bibliotekets flade <Text>. Reglerne ligger her frem
-  // for i `style`, fordi det ikke er en STIL-forskel men en anden komponent.
-  const markdownRules = {
-    fence: (node: { key: string; content: string; sourceInfo?: string }) => (
-      <CodeBlock key={node.key} code={node.content} language={node.sourceInfo} />
-    ),
-    code_block: (node: { key: string; content: string; sourceInfo?: string }) => (
-      <CodeBlock key={node.key} code={node.content} language={node.sourceInfo} />
-    ),
-    // `textgroup` er den blok biblioteket tegner AL løbende tekst med.
-    //
-    // Den er med VILJE ikke `selectable`: Androids egen markering kan ikke
-    // krydse søskende-elementer, og markdown tegner overskrift, liste og hvert
-    // afsnit hver for sig. Var den selectable, fangede hold-inde ét afsnit og
-    // nægtede at trække videre — målt hos Bjørn 7/9, og præcis dét der var
-    // frustrerende. Hold-inde giver nu i stedet hele beskeden som ét felt.
-    textgroup: (
-      node: { key: string },
-      children: React.ReactNode,
-      _parent: unknown,
-      mdStyles: Record<string, unknown>
-    ) => (
-      <Text key={node.key} style={mdStyles.textgroup as never}>
-        {children}
-      </Text>
-    )
   }
 
   const share = async () => {
@@ -208,9 +226,9 @@ export function MessageBubble({
         >
           {/* Samme blokstruktur-rettelse som desk: modellen skriver tit tabeller
               og overskrifter på én linje (19/9-2026, Bjørns tråd). */}
-          <Markdown markdownit={markdownItInstance} style={markdownStyles} rules={markdownRules}>
-            {enforceStructure(message.content)}
-          </Markdown>
+          <View>
+            {blokke.map((b, i) => <MarkdownBlok key={i} tekst={b} stil={markdownStyles} />)}
+          </View>
         </Pressable>
       )}
 
@@ -392,7 +410,7 @@ export function MessageBubble({
       ) : null}
     </Animated.View>
   )
-}
+})
 
 /**
  * Boble-geometrien er målt i ChatGPT-appen på enheden 2026-09-02.

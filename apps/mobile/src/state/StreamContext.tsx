@@ -172,10 +172,33 @@ export function StreamProvider({ children }: { children: ReactNode }) {
   const [ejerSession, setEjerSession] = useState<string | null>(null)
   const saetEjer = (sid: string | null) => { ejerRef.current = sid; setEjerSession(sid) }
 
+  // Én render pr. frame (19/9-2026, samme rettelse som desk). Deltaer kommer
+  // hurtigere end skærmen kan vise dem, og HVER af dem gav før en render af
+  // hele chatten. stateRef er altid den nyeste tilstand — logikken læser
+  // den — så kun selve renderen venter. Et statusskift (arbejder → færdig,
+  // fejl …) sendes med det samme; kun tekst-deltaer samles. Timeren
+  // dækker, hvis en frame udebliver (appen i baggrunden).
+  const planlagtRender = useRef<{ raf: number; timer: ReturnType<typeof setTimeout> } | null>(null)
+  const toemRender = () => {
+    const p = planlagtRender.current
+    if (p) { cancelAnimationFrame(p.raf); clearTimeout(p.timer); planlagtRender.current = null }
+    setState(stateRef.current)
+  }
   const updateState = (next: StreamState | ((current: StreamState) => StreamState)) => {
-    const resolved = typeof next === 'function' ? next(stateRef.current) : next
+    const forrige = stateRef.current
+    const resolved = typeof next === 'function' ? next(forrige) : next
     stateRef.current = resolved
-    setState(resolved)
+    // Kun tekst-deltaer samles: de ændrer `blocks` og intet andet af betydning.
+    // Alt andet — statusskift, gendannet research, fejl — vises med det samme.
+    const kunDelta = resolved.status === forrige.status && resolved.research === forrige.research
+      && resolved.blocks !== forrige.blocks
+    if (!kunDelta) {
+      toemRender()
+      return
+    }
+    if (!planlagtRender.current) {
+      planlagtRender.current = { raf: requestAnimationFrame(toemRender), timer: setTimeout(toemRender, 100) }
+    }
   }
 
   const persistAssistantSnapshot = (status: StreamStatus) => {

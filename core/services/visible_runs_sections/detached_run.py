@@ -108,6 +108,13 @@ def start_user_run_detached(
         glem_session_udfald(sid)
     except Exception:
         pass
+    # Og i tilstands-hjernen: den forrige turs «færdig»/«fejlede» er ikke
+    # længere nyheden, når der tales videre i samtalen.
+    try:
+        from core.runtime.opmaerksomhed import glem_session
+        glem_session(sid)
+    except Exception:
+        pass
 
     def _in_thread() -> None:
         import asyncio as _asyncio
@@ -214,6 +221,14 @@ def start_user_run_detached(
                     on_run_done(run_id)
                 except Exception:
                     pass
+                # Tilstands-hjernen: et svar ingen så til ende er «færdig — se
+                # svaret»; en tur der fejlede er «noget gik galt». Samme grace
+                # og samme «så nogen det?»-tjek som pushet ovenfor.
+                try:
+                    from core.runtime.opmaerksomhed import noter_afsluttet
+                    noter_afsluttet(run_id, indre_run_id, sid)
+                except Exception:
+                    logger.warning("opmaerksomhed: kunne ikke notere %s", run_id, exc_info=True)
                 try:
                     rel.prune()
                 except Exception:

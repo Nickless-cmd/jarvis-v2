@@ -1,6 +1,6 @@
 # API_REFERENCE
 
-> Generated 2026-09-19 from app.routes (live) — 597 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
+> Generated 2026-09-19 from app.routes (live) — 599 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
 
 | Method | Path | Response model | Source |
 |---|---|---|---|
@@ -280,6 +280,8 @@
 | GET | `/cowork/app-dispatch/pending` | dict | cowork |
 | POST | `/cowork/app-dispatch/{dispatch_id}/ack` | dict | cowork |
 | GET | `/cowork/channels` | dict | cowork |
+| GET | `/cowork/opmaerksomhed` | dict | cowork |
+| POST | `/cowork/opmaerksomhed/set/{session_id}` | dict | cowork |
 | GET | `/cowork/plans` | dict | cowork |
 | GET | `/cowork/queue` | dict | cowork |
 | POST | `/cowork/queue/{item_id}/approve` | dict | cowork |

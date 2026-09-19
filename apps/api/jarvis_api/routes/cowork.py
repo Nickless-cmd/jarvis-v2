@@ -72,6 +72,27 @@ async def cowork_queue() -> dict:
     return {"items": items}
 
 
+@router.get("/opmaerksomhed")
+async def cowork_opmaerksomhed() -> dict:
+    """Tilstands-hjernen: ÉN samlet tilstand for den indloggede brugers
+    arbejdsrum — waiting › failed › review › running › idle (Codex' prioritet).
+    Se core.runtime.opmaerksomhed."""
+    from core.runtime.opmaerksomhed import tilstand_for
+    is_owner, uid = _role_owner()
+    return await asyncio.to_thread(tilstand_for, user_id=uid, is_owner=is_owner)
+
+
+@router.post("/opmaerksomhed/set/{session_id}")
+async def cowork_opmaerksomhed_set(session_id: str) -> dict:
+    """Brugeren har åbnet samtalen — dens «færdig»/«fejlede» forsvinder.
+    Kun egne samtaler (samme regel som samtale-ruterne)."""
+    from core.identity.session_access import maa_tilgaa_session
+    from core.runtime.opmaerksomhed import set as _set
+    if not maa_tilgaa_session(session_id):
+        raise HTTPException(status_code=403, detail="Ikke din samtale")
+    return {"fjernet": await asyncio.to_thread(_set, session_id)}
+
+
 @router.get("/plans")
 async def cowork_plans() -> dict:
     """Planer for den indloggede bruger (owner ser alt) via cowork_feed.list_plans

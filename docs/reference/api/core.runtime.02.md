@@ -904,6 +904,28 @@ _OllamaFreeAPI adapter for PUBLIC-SAFE cheap-lane calls._
 | function | `_mismatch_reason` | `(*, preferred_lane, preferred_target)` | — | [src](../../../core/runtime/operational_preference_alignment.py#L61) |
 | function | `_recommended_action` | `(*, preferred_lane, preferred_target)` | — | [src](../../../core/runtime/operational_preference_alignment.py#L73) |
 
+## `core/runtime/opmaerksomhed.py`
+_Tilstands-hjernen — ÉN samlet opmærksomhedstilstand pr. arbejdsrum._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_standard_rum` | `()` | — | [src](../../../core/runtime/opmaerksomhed.py#L69) |
+| function | `rum_for_session` | `(session_id)` | Samtalens arbejdsrum. Ustemplede (legacy) samtaler hører til | [src](../../../core/runtime/opmaerksomhed.py#L74) |
+| function | `_noegle` | `(rum)` | — | [src](../../../core/runtime/opmaerksomhed.py#L93) |
+| function | `_laes` | `(rum)` | — | [src](../../../core/runtime/opmaerksomhed.py#L97) |
+| function | `_skriv` | `(rum, punkter)` | — | [src](../../../core/runtime/opmaerksomhed.py#L107) |
+| function | `_friske` | `(punkter, nu)` | — | [src](../../../core/runtime/opmaerksomhed.py#L112) |
+| function | `_titel` | `(session_id)` | — | [src](../../../core/runtime/opmaerksomhed.py#L118) |
+| function | `_noter` | `(*, session_id, run_id, tilstand, tekst=…)` | — | [src](../../../core/runtime/opmaerksomhed.py#L127) |
+| function | `_vurder_afsluttet` | `(log_run_id, indre_run_id, session_id)` | — | [src](../../../core/runtime/opmaerksomhed.py#L139) |
+| function | `noter_afsluttet` | `(log_run_id, indre_run_id, session_id)` | Kaldes fra detached_run når en tur slutter. Vurderes efter samme grace | [src](../../../core/runtime/opmaerksomhed.py#L165) |
+| function | `set` | `(session_id, rum=…)` | Brugeren har åbnet samtalen — dens punkt forsvinder. | [src](../../../core/runtime/opmaerksomhed.py#L178) |
+| function | `glem_session` | `(session_id)` | En ny tur starter — den forrige turs udfald er ikke længere nyheden. | [src](../../../core/runtime/opmaerksomhed.py#L193) |
+| function | `_koerende` | `(rum)` | — | [src](../../../core/runtime/opmaerksomhed.py#L203) |
+| function | `_baggrund` | `()` | Autonome kørsler i gang (sidste halve time — friskheds-vagt mod zombier). | [src](../../../core/runtime/opmaerksomhed.py#L218) |
+| function | `_venter` | `(user_id, is_owner)` | — | [src](../../../core/runtime/opmaerksomhed.py#L232) |
+| function | `tilstand_for` | `(*, rum=…, user_id=…, is_owner=…)` | Den samlede tilstand. Rækkefølge: prioritet, så nyeste først. | [src](../../../core/runtime/opmaerksomhed.py#L248) |
+
 ## `core/runtime/plugin_graph.py`
 _Afhængighedsgrafen — Fase 9: «plugin boot rejects missing/cyclic dependencies»._
 
@@ -916,33 +938,4 @@ _Afhængighedsgrafen — Fase 9: «plugin boot rejects missing/cyclic dependenci
 | function | `valider` | `(graf, *, streng=…)` | Find manglende udbydere og cykler, og læg knuderne i en gyldig orden. | [src](../../../core/runtime/plugin_graph.py#L79) |
 | function | `_find_cykler` | `(knuder)` | Dybde-først med tre farver. Hver fundet cyklus returneres som sin sti. | [src](../../../core/runtime/plugin_graph.py#L115) |
 | function | `_toposorter` | `(knuder)` | Kahn. Afhængigheder først, og navne-sorteret inden for hvert lag. | [src](../../../core/runtime/plugin_graph.py#L155) |
-
-## `core/runtime/plugin_lifecycle.py`
-_Ejerskab over registreringer — Fase 9, `RuntimePluginLifecycle`._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `Post` | `` | Én registrering og vejen tilbage. | [src](../../../core/runtime/plugin_lifecycle.py#L82) |
-| class | `Rapport` | `` | Hvad en afhændelse efterlod. Det er den her der gør nedlukningen ærlig. | [src](../../../core/runtime/plugin_lifecycle.py#L96) |
-| method | `Rapport.ren` | `(self)` | — | [src](../../../core/runtime/plugin_lifecycle.py#L111) |
-| method | `Rapport.forklar` | `(self)` | — | [src](../../../core/runtime/plugin_lifecycle.py#L114) |
-| class | `Omfang` | `` | Ejer af et sæt registreringer. Alt lagt heri forsvinder sammen. | [src](../../../core/runtime/plugin_lifecycle.py#L124) |
-| method | `Omfang.__init__` | `(self, navn)` | — | [src](../../../core/runtime/plugin_lifecycle.py#L127) |
-| method | `Omfang.registrer` | `(self, navn, afhaend)` | Læg en post i omfanget. Returnerer dens EGEN afhændelses-vej. | [src](../../../core/runtime/plugin_lifecycle.py#L136) |
-| method | `Omfang._afhaend_en` | `(self, post)` | — | [src](../../../core/runtime/plugin_lifecycle.py#L161) |
-| method | `Omfang.arbejde_startet` | `(self)` | Meld at omfanget har arbejde i gang. Afhændelsen venter på det. | [src](../../../core/runtime/plugin_lifecycle.py#L180) |
-| method | `Omfang.arbejde_slut` | `(self)` | — | [src](../../../core/runtime/plugin_lifecycle.py#L185) |
-| method | `Omfang.arbejde_i_gang` | `(self)` | — | [src](../../../core/runtime/plugin_lifecycle.py#L192) |
-| method | `Omfang.antal` | `(self)` | — | [src](../../../core/runtime/plugin_lifecycle.py#L197) |
-| method | `Omfang.tom` | `(self)` | — | [src](../../../core/runtime/plugin_lifecycle.py#L202) |
-| method | `Omfang.afhaend` | `(self, frist_s=…)` | Stop tilgang, tøm til fristen, afregistrér i modsat orden. | [src](../../../core/runtime/plugin_lifecycle.py#L207) |
-| class | `Registret` | `` | De levende omfang. Tomme lag ryddes, så registret ikke samler lig. | [src](../../../core/runtime/plugin_lifecycle.py#L284) |
-| method | `Registret.__init__` | `(self)` | — | [src](../../../core/runtime/plugin_lifecycle.py#L287) |
-| method | `Registret.aabn` | `(self, navn)` | — | [src](../../../core/runtime/plugin_lifecycle.py#L291) |
-| method | `Registret.afhaend` | `(self, navn, frist_s=…)` | — | [src](../../../core/runtime/plugin_lifecycle.py#L299) |
-| method | `Registret.afhaend_alle` | `(self, frist_s=…)` | Luk alt. Nyeste omfang først — samme modsatte orden som inden i ét. | [src](../../../core/runtime/plugin_lifecycle.py#L312) |
-| method | `Registret.ryd_tomme` | `(self)` | Fjern omfang uden poster. Returnerer antallet der blev ryddet. | [src](../../../core/runtime/plugin_lifecycle.py#L318) |
-| method | `Registret.navne` | `(self)` | — | [src](../../../core/runtime/plugin_lifecycle.py#L327) |
-| method | `Registret.status` | `(self)` | Hvad Centralen skal kunne vise. | [src](../../../core/runtime/plugin_lifecycle.py#L331) |
-| function | `koer_nedlukning` | `(trin, *, navn=…)` | Kør en håndholdt nedluknings-liste i DEN GIVNE orden, og rapportér. | [src](../../../core/runtime/plugin_lifecycle.py#L345) |
 

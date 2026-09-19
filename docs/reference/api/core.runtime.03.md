@@ -2,6 +2,35 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/runtime/plugin_lifecycle.py`
+_Ejerskab over registreringer — Fase 9, `RuntimePluginLifecycle`._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `Post` | `` | Én registrering og vejen tilbage. | [src](../../../core/runtime/plugin_lifecycle.py#L82) |
+| class | `Rapport` | `` | Hvad en afhændelse efterlod. Det er den her der gør nedlukningen ærlig. | [src](../../../core/runtime/plugin_lifecycle.py#L96) |
+| method | `Rapport.ren` | `(self)` | — | [src](../../../core/runtime/plugin_lifecycle.py#L111) |
+| method | `Rapport.forklar` | `(self)` | — | [src](../../../core/runtime/plugin_lifecycle.py#L114) |
+| class | `Omfang` | `` | Ejer af et sæt registreringer. Alt lagt heri forsvinder sammen. | [src](../../../core/runtime/plugin_lifecycle.py#L124) |
+| method | `Omfang.__init__` | `(self, navn)` | — | [src](../../../core/runtime/plugin_lifecycle.py#L127) |
+| method | `Omfang.registrer` | `(self, navn, afhaend)` | Læg en post i omfanget. Returnerer dens EGEN afhændelses-vej. | [src](../../../core/runtime/plugin_lifecycle.py#L136) |
+| method | `Omfang._afhaend_en` | `(self, post)` | — | [src](../../../core/runtime/plugin_lifecycle.py#L161) |
+| method | `Omfang.arbejde_startet` | `(self)` | Meld at omfanget har arbejde i gang. Afhændelsen venter på det. | [src](../../../core/runtime/plugin_lifecycle.py#L180) |
+| method | `Omfang.arbejde_slut` | `(self)` | — | [src](../../../core/runtime/plugin_lifecycle.py#L185) |
+| method | `Omfang.arbejde_i_gang` | `(self)` | — | [src](../../../core/runtime/plugin_lifecycle.py#L192) |
+| method | `Omfang.antal` | `(self)` | — | [src](../../../core/runtime/plugin_lifecycle.py#L197) |
+| method | `Omfang.tom` | `(self)` | — | [src](../../../core/runtime/plugin_lifecycle.py#L202) |
+| method | `Omfang.afhaend` | `(self, frist_s=…)` | Stop tilgang, tøm til fristen, afregistrér i modsat orden. | [src](../../../core/runtime/plugin_lifecycle.py#L207) |
+| class | `Registret` | `` | De levende omfang. Tomme lag ryddes, så registret ikke samler lig. | [src](../../../core/runtime/plugin_lifecycle.py#L284) |
+| method | `Registret.__init__` | `(self)` | — | [src](../../../core/runtime/plugin_lifecycle.py#L287) |
+| method | `Registret.aabn` | `(self, navn)` | — | [src](../../../core/runtime/plugin_lifecycle.py#L291) |
+| method | `Registret.afhaend` | `(self, navn, frist_s=…)` | — | [src](../../../core/runtime/plugin_lifecycle.py#L299) |
+| method | `Registret.afhaend_alle` | `(self, frist_s=…)` | Luk alt. Nyeste omfang først — samme modsatte orden som inden i ét. | [src](../../../core/runtime/plugin_lifecycle.py#L312) |
+| method | `Registret.ryd_tomme` | `(self)` | Fjern omfang uden poster. Returnerer antallet der blev ryddet. | [src](../../../core/runtime/plugin_lifecycle.py#L318) |
+| method | `Registret.navne` | `(self)` | — | [src](../../../core/runtime/plugin_lifecycle.py#L327) |
+| method | `Registret.status` | `(self)` | Hvad Centralen skal kunne vise. | [src](../../../core/runtime/plugin_lifecycle.py#L331) |
+| function | `koer_nedlukning` | `(trin, *, navn=…)` | Kør en håndholdt nedluknings-liste i DEN GIVNE orden, og rapportér. | [src](../../../core/runtime/plugin_lifecycle.py#L345) |
+
 ## `core/runtime/process_lifecycle.py`
 _Lukker processen ned? Ét sted der ejer svaret._
 

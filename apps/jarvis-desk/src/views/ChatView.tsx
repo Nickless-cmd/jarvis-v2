@@ -29,6 +29,7 @@ import { usePinVedStart } from '../hooks/usePinVedStart'
 import { useNyeBeskeder } from '../hooks/useNyeBeskeder'
 import { NyeBeskederLinje } from '../components/transcript/NyeBeskederLinje'
 import { onStemmeBud, tagStemmeBud } from '../lib/figurBud'
+import { FigurKnap } from '../components/FigurKnap'
 import { StickyPrompt } from '../components/transcript/StickyPrompt'
 import { VisningVaelger } from '../components/transcript/VisningVaelger'
 import { useVisning, VisningContext } from '../lib/visning'
@@ -732,6 +733,7 @@ export function ChatView({
             🎙️
           </button>
         )}
+        <FigurKnap />
         <StickyPrompt containerRef={transcriptRef} beskeder={visibleMessages} />
         <VisningVaelger visning={visning} onSkift={(v) => void skiftVisning(v)} />
         <button

@@ -51,6 +51,7 @@ import { JumpToLatest } from '../components/transcript/JumpToLatest'
 import { usePinVedStart } from '../hooks/usePinVedStart'
 import { useNyeBeskeder } from '../hooks/useNyeBeskeder'
 import { NyeBeskederLinje } from '../components/transcript/NyeBeskederLinje'
+import { FigurKnap } from '../components/FigurKnap'
 import { StickyPrompt } from '../components/transcript/StickyPrompt'
 import { buildEnvironmentEvidence, mergeEnvironmentEvidence } from '../lib/environmentEvidence'
 
@@ -862,6 +863,7 @@ export function CodeView({
       {/* Alle fire panel-knapper i SAMME vaegt og stoerrelse som ikonerne i
           sidebaren (15 / 1,8). De stod paa 16 og standard-streg og var derfor
           tydeligt tungere end resten (Bjoern 8/9-2026). */}
+      <FigurKnap />
       <StickyPrompt containerRef={transcriptRef} beskeder={visibleMessages} />
       <VisningVaelger visning={visning} onSkift={(v) => void skiftVisning(v)} />
       <button

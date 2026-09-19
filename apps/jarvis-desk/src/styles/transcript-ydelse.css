@@ -47,7 +47,13 @@
 
 /* Kontekst-rækken i Miljø folder ud til «hvad Jarvis brugte i sidste tur»
    (19/9-2026) — før en løs linje over skrivefeltet, helt ude til venstre. */
-.rh-kontekst-knap { width: 100%; display: flex; align-items: center; justify-content: space-between; }
-.rh-kontekst-knap .env-label { display: inline-flex; align-items: center; gap: 4px; }
+/* To klasser: .env-row-button er et 4-kolonne-gitter (16px ikon først), og
+   med kun én klasse vandt gitteret — etiketten blev klemt ind i ikon-
+   kolonnen og løb ind over procenttallet («Kon­tekst af 130k» oveni hinanden). */
+.env-row-button.rh-kontekst-knap { width: 100%; display: flex; align-items: center;
+  justify-content: space-between; gap: 8px; }
+.env-row-button.rh-kontekst-knap .env-label { display: inline-flex; align-items: center; gap: 4px;
+  white-space: nowrap; }
+.env-row-button.rh-kontekst-knap .env-val { white-space: nowrap; }
 .rh-kontekst-detaljer { display: block; padding: 0; }
 .rh-kontekst-detaljer .ctx-krop { border-top: none; padding: 2px 0 6px 18px; }

@@ -1,5 +1,6 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native'
+import { saetStickyPrompt } from '../lib/stickyPrompt'
 import type { ContentBlock } from '../lib/sseProtocol'
 import { denseBlocks } from '../lib/blockHelpers'
 import type { ChatMessage } from '../lib/types'
@@ -554,21 +555,19 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
   const sr = si != null ? ordered[si] : undefined
   if (si != null && sr && sr.kind === 'msg') sticky = { i: si, tekst: String(sr.message.content ?? '').replace(/\s+/g, ' ').trim() }
 
+  // Ikonet i topbjælken (lib/stickyPrompt) — ikke længere en strimmel her.
+  const stickyI = sticky && sticky.tekst ? sticky.i : null
+  const stickyTekst = sticky?.tekst ?? ''
+  useEffect(() => {
+    saetStickyPrompt(stickyI != null ? {
+      tekst: stickyTekst,
+      hop: () => flatRef.current?.scrollToIndex({ index: stickyI, animated: true, viewPosition: 0 }),
+    } : null)
+  }, [stickyI, stickyTekst])
+  useEffect(() => () => saetStickyPrompt(null), [])
+
   return (
     <View style={styles.listeWrap}>
-    {sticky && sticky.tekst ? (
-      <View style={styles.stickyClip} pointerEvents="box-none">
-        <Pressable
-          testID="sticky-prompt"
-          accessibilityRole="button"
-          accessibilityLabel="Rul til din besked"
-          onPress={() => flatRef.current?.scrollToIndex({ index: sticky!.i, animated: true, viewPosition: 0 })}
-          style={styles.sticky}
-        >
-          <Text style={styles.stickyTekst} numberOfLines={2}>{sticky.tekst}</Text>
-        </Pressable>
-      </View>
-    ) : null}
     <FlatList
       ref={flatRef}
       inverted
@@ -741,12 +740,6 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
   },
   listeWrap: { flex: 1 },
   // Under den svævende header (TOP_CLEARANCE), højrestillet som dine bobler.
-  stickyClip: { position: 'absolute', top: TOP_CLEARANCE - 8, left: 0, right: 0, zIndex: 5, alignItems: 'flex-end', paddingHorizontal: tokens.spacing.lg },
-  sticky: {
-    maxWidth: '85%', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12,
-    backgroundColor: tokens.color.bg2, borderWidth: StyleSheet.hairlineWidth, borderColor: tokens.color.line,
-  },
-  stickyTekst: { color: tokens.color.fg2, fontSize: 13, lineHeight: 18 },
   nyeRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginHorizontal: tokens.spacing.lg, marginVertical: 10 },
   nyeStreg: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: tokens.color.accent, opacity: 0.6 },
   nyeTekst: { color: tokens.color.accent, fontSize: 12, fontWeight: '600', letterSpacing: 0.3 },

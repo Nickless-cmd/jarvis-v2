@@ -862,6 +862,7 @@ export function CodeView({
       {/* Alle fire panel-knapper i SAMME vaegt og stoerrelse som ikonerne i
           sidebaren (15 / 1,8). De stod paa 16 og standard-streg og var derfor
           tydeligt tungere end resten (Bjoern 8/9-2026). */}
+      <StickyPrompt containerRef={transcriptRef} beskeder={visibleMessages} />
       <VisningVaelger visning={visning} onSkift={(v) => void skiftVisning(v)} />
       <button
         type="button"
@@ -1042,7 +1043,6 @@ export function CodeView({
           containerRef={transcriptRef}
           anchors={railAnchors}
         />
-        <StickyPrompt containerRef={transcriptRef} beskeder={visibleMessages} />
         {/* Samme som ChatView: bund-fade'en slukkes naar man ER i bunden. */}
         <div className={`transcript${atBottom ? ' is-at-bottom' : ''}`} ref={transcriptRef} onScroll={onScroll}>
           {visibleMessages.map((m) => (

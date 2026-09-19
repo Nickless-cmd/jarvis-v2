@@ -97,7 +97,9 @@ describe('sticky prompt (§14 punkt 2)', () => {
     // Containeren står ved top=0; u1 og u2 er rullet over toppen, a2 fylder skærmen.
     const r = render(<Harness beskeder={beskeder} bunde={{ u1: -500, a1: -300, u2: -100, a2: 600 }} />)
     const knap = r.getByTestId('sticky-prompt')
-    expect(knap).toHaveTextContent('Hvor sidder værnet?')
+    expect(knap).toHaveAccessibleName('Rul til din besked: Hvor sidder værnet?')
+    // Et ikon i headeren — ikke en tekst-strimmel over samtalen.
+    expect(knap).not.toHaveTextContent('Hvor sidder værnet?')
     const node = r.container.querySelector('[data-rail-id="u2"]') as HTMLElement
     node.scrollIntoView = vi.fn()
     fireEvent.click(knap)

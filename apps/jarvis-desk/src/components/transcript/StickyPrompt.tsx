@@ -1,4 +1,5 @@
 import { useEffect, useState, type RefObject } from 'react'
+import { CornerLeftUp } from 'lucide-react'
 import type { ChatMessage } from '../../lib/api'
 
 function tekstAf(m: ChatMessage): string {
@@ -6,9 +7,15 @@ function tekstAf(m: ChatMessage): string {
 }
 
 /**
- * Din egen besked holdt fast i toppen, mens du læser svaret på den — Claude
- * Desktops sticky prompt (cc-desktop-chatview.md §10). Et klik ruller blødt
- * tilbage til beskeden: det er navigation, ikke pynt.
+ * Tilbage til din egen besked, mens du læser svaret på den — Claude Desktops
+ * sticky prompt (cc-desktop-chatview.md §10). Et klik ruller blødt tilbage
+ * til beskeden: det er navigation, ikke pynt.
+ *
+ * ET IKON I HEADEREN, ikke en strimmel over samtalen (Bjørn 19/9-2026: «den
+ * står i toppen af chatview og det er lidt træls»). Den lå som en boble
+ * ovenpå de øverste linjer af svaret — netop dem man læste. Nu står den ved
+ * siden af Visning-øjet, kun når din besked er rullet ud af syne, og teksten
+ * står i tooltip'en og i knappens navn.
  *
  * Vises når den seneste af DINE beskeder over læsefeltet er scrollet helt ud
  * af syne. Beskederne findes via `data-rail-id`, som begge visninger allerede
@@ -50,20 +57,20 @@ export function StickyPrompt({ containerRef, beskeder }: {
   }, [containerRef, brugere.length, brugere[brugere.length - 1]?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!vist || !vist.tekst) return null
+  const kort = vist.tekst.length > 140 ? `${vist.tekst.slice(0, 140)}…` : vist.tekst
   return (
-    <div className="sticky-prompt-clip">
-      <button
-        type="button"
-        className="sticky-prompt"
-        data-testid="sticky-prompt"
-        aria-label="Rul til din besked"
-        onClick={() => {
-          const node = containerRef.current?.querySelector(`[data-rail-id="${CSS.escape(vist.id)}"]`)
-          node?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-        }}
-      >
-        {vist.tekst}
-      </button>
-    </div>
+    <button
+      type="button"
+      className="panel-toggle sticky-prompt"
+      data-testid="sticky-prompt"
+      aria-label={`Rul til din besked: ${kort}`}
+      title={`Rul til din besked:\n${kort}`}
+      onClick={() => {
+        const node = containerRef.current?.querySelector(`[data-rail-id="${CSS.escape(vist.id)}"]`)
+        node?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }}
+    >
+      <CornerLeftUp size={15} strokeWidth={1.8} />
+    </button>
   )
 }

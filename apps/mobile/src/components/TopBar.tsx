@@ -1,5 +1,5 @@
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native'
-import { ArrowLeft, MoreVertical } from 'lucide-react-native'
+import { ArrowLeft, CornerLeftUp, MoreVertical } from 'lucide-react-native'
 import { SegmentedControl } from './SegmentedControl'
 import { ContextRing } from './ContextRing'
 import { CodeTitle } from './CodeTitle'
@@ -8,6 +8,7 @@ import { tokens } from '../theme/tokens'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 import type { ContextUsage, GitStatus } from '../lib/apiClient'
 import { useI18n } from '../i18n/I18nContext'
+import { useStickyPrompt } from '../lib/stickyPrompt'
 
 export type AppMode = 'snak' | 'arbejde'
 
@@ -64,6 +65,7 @@ export function TopBar({
   const tokens = useTheme()
   const styles = useStyles(makestyles)
   const { t } = useI18n()
+  const sticky = useStickyPrompt()
   return (
     <View style={styles.bar}>
       {/* Pilen og titlen hoerer SAMMEN, i ét spor til venstre. Titlen laa
@@ -113,6 +115,22 @@ export function TopBar({
       {/* Hoejre felt: ringen FOERST, saa prikkerne - i samme felt. Ringen er
           det man laeser, prikkerne er det man trykker. Star de hver for sig
           bliver bjaelken til tre knapper der ligner hinanden. */}
+      <View style={styles.hoejre}>
+      {/* Sticky prompt som ikon (19/9-2026): tilbage til din besked, når den
+          er rullet ud af syne. Den stod før som en tekst-strimmel over selve
+          samtalen og dækkede de linjer man læste. */}
+      {sticky ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Rul til din besked: ${sticky.tekst.slice(0, 140)}`}
+          onPress={sticky.hop}
+          hitSlop={8}
+          style={styles.circle}
+          testID="sticky-prompt"
+        >
+          <CornerLeftUp size={19} color={tokens.color.fg1} strokeWidth={2} />
+        </Pressable>
+      ) : null}
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={t('common.more')}
@@ -135,6 +153,7 @@ export function TopBar({
           </>
         )}
       </Pressable>
+      </View>
     </View>
   )
 }
@@ -192,6 +211,8 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
     gap: 7,
     paddingHorizontal: 13,
   },
+  // Højre felt: sticky-ikonet (når det er der) og så mere-knappen.
+  hoejre: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   circle: {
     width: CIRCLE,
     height: CIRCLE,

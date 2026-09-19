@@ -723,6 +723,7 @@ export function ChatView({
             🎙️
           </button>
         )}
+        <StickyPrompt containerRef={transcriptRef} beskeder={visibleMessages} />
         <VisningVaelger visning={visning} onSkift={(v) => void skiftVisning(v)} />
         <button
           type="button"
@@ -801,7 +802,6 @@ export function ChatView({
         containerRef={transcriptRef}
         anchors={railAnchors}
       />
-      <StickyPrompt containerRef={transcriptRef} beskeder={visibleMessages} />
       {/* is-at-bottom slukker bund-fade'en naar man ER i bunden (Bjørn 17/9):
           der er intet nedenfor at tone ud, og masken aad ellers den sidste
           linje. Toppen beholder sin — der ER altid mere ovenfor. */}

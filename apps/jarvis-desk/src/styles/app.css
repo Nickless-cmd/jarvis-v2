@@ -2882,22 +2882,8 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 .central-detail-reason { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--fg-2, var(--fg)); font-size: 10.5px; }
 /* ── Besked-rail (venstre kant, hop til besked — chat + code) ── */
 .transcript-wrap { position: relative; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
-/* Sticky prompt (Claude Desktop §10): din besked fast i toppen mens du læser
-   svaret. Klippet til 85 % og to linjer; klik ruller tilbage til den. */
-.sticky-prompt-clip {
-  position: absolute; top: 0; left: 0; right: 0; z-index: 12;
-  display: flex; justify-content: flex-end; padding: 8px 24px 0; pointer-events: none;
-}
-.sticky-prompt {
-  pointer-events: auto; max-width: 85%; text-align: left; cursor: pointer;
-  background: color-mix(in srgb, var(--bg-2) 92%, transparent); backdrop-filter: blur(6px);
-  border: .5px solid var(--line); border-radius: 12px; padding: 6px 12px;
-  color: var(--fg-2); font: inherit; font-size: 13px; line-height: 1.4;
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
-}
-.sticky-prompt:hover { color: var(--fg-1); }
-.sticky-prompt:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* Sticky prompt (Claude Desktop §10) — nu et ikon i headeren ved siden af
+   Visning-øjet (19/9-2026); stilen er panel-toggle'ens. */
 /* «Nye beskeder» (Claude Desktop §10). */
 .nye-beskeder {
   display: flex; align-items: center; gap: 10px; margin: 10px 0;

@@ -50,6 +50,19 @@ def test_klar_forskel_bestaar_k1_k3(tmp_path):
     assert r["gyldigt"] is False
 
 
+def test_v1_fejler_naar_en_spand_er_halv(tmp_path):
+    """Tillæg 2 (Jarvis' fund): 48 i alt må ikke skjule en halv spand."""
+    a = _load("phase7_analyze")
+    d = _forsoeg(tmp_path, full=2, files=0, bare=0)
+    probes = [json.loads(x) for x in (d / "probes.jsonl").read_text().splitlines()]
+    for p in probes:
+        p["bucket"] = "A" if int(p["probe_id"][1:]) < 10 else ("B" if int(p["probe_id"][1:]) < 29 else "C")
+    _skriv(d / "probes.jsonl", probes)
+    r = a.analyze(d)
+    assert r["V1"]["pr_spand"] == {"A": 10, "B": 19, "C": 19}
+    assert r["V1"]["bestaaet"] is False
+
+
 def test_ingen_forskel_fejler_k1(tmp_path):
     a = _load("phase7_analyze")
     r = a.analyze(_forsoeg(tmp_path, full=1, files=1, bare=0))

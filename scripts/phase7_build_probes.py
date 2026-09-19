@@ -44,6 +44,9 @@ PER_BUCKET = 20
 MAX_TRIES_PER_BUCKET = 120
 TYPES = ("fakta", "tilsagn", "holdning")
 MIN_ASSISTANT_CHARS = 400
+# Tillæg 2: V1 gælder pr. spand — under dette er forsøget ugyldigt.
+MIN_PER_BUCKET = 15
+MIN_TOTAL = 45
 
 EXTRACT_PROMPT = """Du hjælper med et forhåndsregistreret forsøg om hukommelse.
 
@@ -210,6 +213,8 @@ def main() -> None:
         for p in probes:
             fh.write(json.dumps(p, ensure_ascii=False) + "\n")
     sha = hashlib.sha256(PROBES.read_bytes()).hexdigest()
+    pr_spand = Counter(p["bucket"] for p in probes)
+    under = {b: pr_spand.get(b, 0) for b in BUCKETS if pr_spand.get(b, 0) < MIN_PER_BUCKET}
     print(json.dumps({
         "probes": len(probes),
         "pr_spand": dict(Counter(p["bucket"] for p in probes)),
@@ -218,6 +223,11 @@ def main() -> None:
         "sha256": sha,
         "bygget": now.isoformat(),
     }, ensure_ascii=False, indent=1))
+    # Tillæg 2: fejl HØJT. Et tal og exit 0 var samme tavshed som R2.5-familien.
+    if under or len(probes) < MIN_TOTAL:
+        print(f"V1 FEJLER: spande under {MIN_PER_BUCKET}: {under}; i alt {len(probes)} "
+              f"(krav {MIN_TOTAL}). Forsøget er ugyldigt med dette arkiv.", file=sys.stderr)
+        raise SystemExit(2)
 
 
 if __name__ == "__main__":

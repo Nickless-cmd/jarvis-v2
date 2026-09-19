@@ -4,7 +4,7 @@
 Forhåndsregistrering: docs/experiments/2026-09-19-phase7-preregistration.md.
 
 Validitet FØR prædiktioner:
-  V1  ≥ 45 prober overlevede filtrene
+  V1  ≥ 15 prober i hver spand og ≥ 45 i alt (tillæg 2)
   V2  score(BARE) ≤ 0,30 i begge modeller
   V3  FULL-prompten har en hukommelses-sektion for ≥ 90 % af proberne
   V4  Bjørns blinde kalibrering: enighed ≥ 80 % på «rigtigt (≥1) vs. ikke»
@@ -70,7 +70,10 @@ def analyze(out_dir: Path = OUT_DIR) -> dict:
         return round(mean(float(v) for v in vals), 3) if vals else None
 
     # Validitet
-    res["V1"] = {"prober": len(probes), "bestaaet": len(probes) >= 45}
+    # Tillæg 2: V1 gælder pr. spand (≥ 15) OG i alt (≥ 45).
+    pr_spand = {b: sum(1 for p in probes.values() if p.get("bucket") == b) for b in ("A", "B", "C")}
+    res["V1"] = {"prober": len(probes), "pr_spand": pr_spand,
+                 "bestaaet": len(probes) >= 45 and all(n >= 15 for n in pr_spand.values())}
     bare = {m: arm_mean(scores, "BARE", m) for m in MODELS}
     res["V2"] = {"score_BARE": bare, "bestaaet": all(v is not None and v <= 0.30 for v in bare.values())}
     mem = [bool(p.get("has_memory")) for p in prompts.values()]

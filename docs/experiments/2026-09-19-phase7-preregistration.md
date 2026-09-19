@@ -186,3 +186,25 @@ probe-fil gemmes som `probes_v1_forkastet.jsonl` på CT105.
 
 Det eneste der var set før ændringen, er probe-sættets sammensætning
 (antal pr. spand og type) — ingen svar og ingen bedømmelser.
+
+---
+
+## Tillæg 2 — 2026-09-19, FØR tillæg 1's probe-sæt kendes: V1 gælder pr. spand
+
+Jarvis efterprøvede designet samme dag og fandt to huller:
+
+1. **V1 talte en total.** Registreringen lover 20 prober pr. spand, men V1
+   krævede kun 45 i alt. En spand kunne køre på det halve, mens forsøget
+   stadig blev erklæret gyldigt — og K1 er samlet over alle spande, så intet
+   ville have navngivet det.
+2. **Byggeren fejlede ikke højt.** Nåede den ikke målet, printede den et tal og
+   afsluttede med 0.
+
+Skrevet mens anden bygning (tillæg 1) stadig kører — dens tal pr. spand er
+ikke set.
+
+**Ændring:** V1 kræver **mindst 15 prober i hver spand** (samme 75 % som
+45/60) **og** mindst 45 i alt. Byggeren afslutter med en fejl-kode og en
+tydelig melding når en spand ligger under 15; analysen rapporterer V1 pr.
+spand. Når en spand ikke kan nå 15, er forsøget ugyldigt — kriteriet
+tilpasses ikke til hvad arkivet kan bære.

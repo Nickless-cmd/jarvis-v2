@@ -263,21 +263,21 @@ _Fase 7 — analyse, præcis som forhåndsregistreret._
 | function | `paired_diffs` | `(scores, model, a, b, probe_ids)` | — | [src](../../../scripts/phase7_analyze.py#L41) |
 | function | `bootstrap_low` | `(diffs, rnd)` | — | [src](../../../scripts/phase7_analyze.py#L50) |
 | function | `analyze` | `(out_dir=…)` | — | [src](../../../scripts/phase7_analyze.py#L58) |
-| function | `_v4` | `(out_dir, scores)` | — | [src](../../../scripts/phase7_analyze.py#L109) |
+| function | `_v4` | `(out_dir, scores)` | — | [src](../../../scripts/phase7_analyze.py#L112) |
 
 ## `scripts/phase7_build_probes.py`
 _Fase 7 — bygger proberne af arkivet._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_owner` | `()` | — | [src](../../../scripts/phase7_build_probes.py#L69) |
-| function | `identity_text` | `(ws)` | — | [src](../../../scripts/phase7_build_probes.py#L82) |
-| function | `_call` | `(system_user)` | — | [src](../../../scripts/phase7_build_probes.py#L90) |
-| function | `_parse` | `(text)` | — | [src](../../../scripts/phase7_build_probes.py#L99) |
-| function | `candidates` | `(conn, uid, now, lo, hi)` | Jarvis' svar i ejerens egne (ikke-autonome) samtaler, i spandens vindue. | [src](../../../scripts/phase7_build_probes.py#L109) |
-| function | `preceding_user` | `(conn, session_id, msg_id)` | — | [src](../../../scripts/phase7_build_probes.py#L126) |
-| function | `reject_reason` | `(p, ident_lower, used_sessions, session_id, type_counts)` | — | [src](../../../scripts/phase7_build_probes.py#L133) |
-| function | `main` | `()` | — | [src](../../../scripts/phase7_build_probes.py#L155) |
+| function | `_owner` | `()` | — | [src](../../../scripts/phase7_build_probes.py#L72) |
+| function | `identity_text` | `(ws)` | — | [src](../../../scripts/phase7_build_probes.py#L85) |
+| function | `_call` | `(system_user)` | — | [src](../../../scripts/phase7_build_probes.py#L93) |
+| function | `_parse` | `(text)` | — | [src](../../../scripts/phase7_build_probes.py#L102) |
+| function | `candidates` | `(conn, uid, now, lo, hi)` | Jarvis' svar i ejerens egne (ikke-autonome) samtaler, i spandens vindue. | [src](../../../scripts/phase7_build_probes.py#L112) |
+| function | `preceding_user` | `(conn, session_id, msg_id)` | — | [src](../../../scripts/phase7_build_probes.py#L129) |
+| function | `reject_reason` | `(p, ident_lower, used_sessions, session_id, type_counts)` | — | [src](../../../scripts/phase7_build_probes.py#L136) |
+| function | `main` | `()` | — | [src](../../../scripts/phase7_build_probes.py#L158) |
 
 ## `scripts/phase7_collect.py`
 _Fase 7 — indsamler svarene._

@@ -347,6 +347,22 @@ def hale(run_id: str, n: int = 80) -> list[str]:
         return list(st["frames"][-n:]) if st else []
 
 
+def aabne_run_ids(max_alder_s: float = 1800.0) -> list[str]:
+    """Runs der stadig er ÅBNE (ikke markeret færdige), og yngre end
+    `max_alder_s`.
+
+    Til tilstands-hjernens «arbejder». `live_run_ids` kræver en frame inden
+    for _LIVE_IDLE_S, og under et langt værktøjskald kommer der ingen — så
+    røg et run ud midt i svaret og kom igen bagefter (målt 19/9-2026: Jarvis-
+    figurens taleboble forsvandt og kom tilbage midt i et svar). Et run er i
+    gang til det er FÆRDIGT, ikke til det holder en pause. Alders-loftet er
+    værnet mod en zombie der aldrig blev markeret færdig."""
+    nu = time.monotonic()
+    with _lock:
+        return [rid for rid, st in _RUNS.items()
+                if not st["done"] and (nu - st["created_at"]) < max_alder_s]
+
+
 def session_for_run(run_id: str) -> str | None:
     with _lock:
         st = _hent(run_id)

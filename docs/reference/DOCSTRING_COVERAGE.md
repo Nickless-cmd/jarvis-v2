@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7791/15123 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7792/15124 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 7791/15123 functions/methods documented (51%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 677 | 1254 | 53% |
-| `core.services` | 5148 | 10321 | 49% |
+| `core.services` | 5149 | 10322 | 49% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 107 | 183 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1565,9 +1565,9 @@ Generated from source. 7791/15123 functions/methods documented (51%). The list b
 - `core/services/run_event_log.py` :: `is_live` (L307)
 - `core/services/run_event_log.py` :: `live_run_ids` (L330)
 - `core/services/run_event_log.py` :: `mark_done` (L227)
-- `core/services/run_event_log.py` :: `session_for_run` (L350)
-- `core/services/run_event_log.py` :: `subscriber_closed` (L382)
-- `core/services/run_event_log.py` :: `subscriber_opened` (L375)
+- `core/services/run_event_log.py` :: `session_for_run` (L366)
+- `core/services/run_event_log.py` :: `subscriber_closed` (L398)
+- `core/services/run_event_log.py` :: `subscriber_opened` (L391)
 - `core/services/runtime_action_executor.py` :: `execute_bounded_self_check` (L417)
 - `core/services/runtime_action_executor.py` :: `execute_follow_open_loop` (L259)
 - `core/services/runtime_action_executor.py` :: `execute_inspect_repo_context` (L307)

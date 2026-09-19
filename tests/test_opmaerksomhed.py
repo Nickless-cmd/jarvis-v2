@@ -18,7 +18,7 @@ def miljoe(monkeypatch):
     monkeypatch.setattr(om, "_titel", lambda sid: f"titel {sid}")
     monkeypatch.setattr(om, "_baggrund", lambda: 0)
     state = {"live": [], "koe": []}
-    monkeypatch.setattr("core.services.run_event_log.live_run_ids", lambda: [r for r, _ in state["live"]])
+    monkeypatch.setattr("core.services.run_event_log.aabne_run_ids", lambda: [r for r, _ in state["live"]])
     monkeypatch.setattr("core.services.run_event_log.session_for_run", lambda rid: dict(state["live"]).get(rid))
     monkeypatch.setattr("core.services.cowork_feed.build_queue", lambda **kw: list(state["koe"]))
     return lager, state
@@ -151,3 +151,23 @@ def test_aktivitet_taenker_og_skriver():
     assert om.aktivitet([t]) == "Tænker…"
     assert om.aktivitet([t, x]) == "Skriver svaret…"
     assert om.aktivitet([]) == ""
+
+
+
+def test_aabne_runs_taeller_under_lange_vaerktoejskald(monkeypatch):
+    """Et run uden frames i lang tid (et langt værktøjskald) er stadig i gang
+    — til det er markeret færdigt. Og en zombie ældre end loftet tæller ikke."""
+    from core.services import run_event_log as rel
+    monkeypatch.setattr(rel, "_RUNS", {})
+    rel.create("r-lang", "s-a")
+    with rel._lock:
+        rel._RUNS["r-lang"]["last_append_at"] -= 600   # 10 min uden frames
+        rel._RUNS["r-lang"]["created_at"] -= 600
+    assert "r-lang" not in rel.live_run_ids()           # den gamle regel tabte den
+    assert "r-lang" in rel.aabne_run_ids()               # den nye holder fast
+    rel.mark_done("r-lang")
+    assert "r-lang" not in rel.aabne_run_ids()
+    rel.create("r-zombie", "s-a")
+    with rel._lock:
+        rel._RUNS["r-zombie"]["created_at"] -= 4000
+    assert "r-zombie" not in rel.aabne_run_ids()

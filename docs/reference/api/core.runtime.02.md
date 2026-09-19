@@ -924,10 +924,10 @@ _Tilstands-hjernen — ÉN samlet opmærksomhedstilstand pr. arbejdsrum._
 | function | `_pynt_navn` | `(navn)` | — | [src](../../../core/runtime/opmaerksomhed.py#L209) |
 | function | `aktivitet` | `(frames)` | Hvad laver han LIGE NU — læst bagfra i runnets egen strøm. | [src](../../../core/runtime/opmaerksomhed.py#L217) |
 | function | `_koerende` | `(rum)` | — | [src](../../../core/runtime/opmaerksomhed.py#L264) |
-| function | `_baggrund` | `()` | Autonome kørsler i gang (sidste halve time — friskheds-vagt mod zombier). | [src](../../../core/runtime/opmaerksomhed.py#L280) |
-| function | `_koe` | `(user_id, is_owner)` | (blokerende punkter, antal i indbakken). | [src](../../../core/runtime/opmaerksomhed.py#L297) |
-| function | `_venter` | `(items)` | — | [src](../../../core/runtime/opmaerksomhed.py#L309) |
-| function | `tilstand_for` | `(*, rum=…, user_id=…, is_owner=…)` | Den samlede tilstand. Rækkefølge: prioritet, så nyeste først. | [src](../../../core/runtime/opmaerksomhed.py#L319) |
+| function | `_baggrund` | `()` | Autonome kørsler i gang (sidste halve time — friskheds-vagt mod zombier). | [src](../../../core/runtime/opmaerksomhed.py#L282) |
+| function | `_koe` | `(user_id, is_owner)` | (blokerende punkter, antal i indbakken). | [src](../../../core/runtime/opmaerksomhed.py#L299) |
+| function | `_venter` | `(items)` | — | [src](../../../core/runtime/opmaerksomhed.py#L311) |
+| function | `tilstand_for` | `(*, rum=…, user_id=…, is_owner=…)` | Den samlede tilstand. Rækkefølge: prioritet, så nyeste først. | [src](../../../core/runtime/opmaerksomhed.py#L321) |
 
 ## `core/runtime/plugin_graph.py`
 _Afhængighedsgrafen — Fase 9: «plugin boot rejects missing/cyclic dependencies»._

@@ -21,7 +21,7 @@ svar slår et der stadig arbejder. Samme rækkefølge her.
   forslag og 4 initiativer, 0 blokerende. Med dem som «waiting» havde
   tilstanden stået på «Venter på dig» altid — og så betyder den intet.
   Codex' `waiting` er netop en tråd der er gået i stå til du svarer.
-- **running** — levende runs i `run_event_log`, filtreret til samtaler i
+- **running** — åbne (ufærdige) runs i `run_event_log`, filtreret til samtaler i
   dette arbejdsrum. Autonome kørsler tælles for sig (`baggrund`) og driver
   IKKE tilstanden: målt 112 på tre døgn — de ville holde figuren i «arbejder»
   hele tiden uden at noget angik brugeren.
@@ -265,7 +265,9 @@ def _koerende(rum: str) -> list[dict[str, Any]]:
     try:
         from core.services import run_event_log as rel
         ud = []
-        for rid in rel.live_run_ids():
+        # ÅBNE runs, ikke «har sendt noget for nylig» — ellers faldt et svar
+        # ud af «arbejder» under hvert langt værktøjskald (run_event_log.aabne_run_ids).
+        for rid in rel.aabne_run_ids():
             sid = rel.session_for_run(rid) or ""
             if sid and rum_for_session(sid) == rum:
                 ud.append({"session_id": sid, "run_id": rid, "tilstand": "running",

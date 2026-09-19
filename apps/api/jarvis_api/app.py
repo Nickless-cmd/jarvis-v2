@@ -818,6 +818,9 @@ def create_app() -> FastAPI:
     # Samtalens visningstilstand (normal/thinking/verbose) — Claude Desktop §1.
     from apps.api.jarvis_api.routes.chat_session_view import router as chat_session_view_router
     app.include_router(chat_session_view_router)
+    # Spol tilbage + fortryd (Claude Desktop §8).
+    from apps.api.jarvis_api.routes.chat_rewind import router as chat_rewind_router
+    app.include_router(chat_rewind_router)
     app.include_router(files_router)
     app.include_router(chat_router)
     app.include_router(review_router)

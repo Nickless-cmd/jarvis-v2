@@ -2,6 +2,18 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/runtime/profile_enforcement.py`
+_ANMODET vs FAKTISK — Fase 9, exit-kriterium 7._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `_Skygge` | `` | Håndhæveren findes, men er slået fra. Hverken «mangler» eller «fejlet». | [src](../../../core/runtime/profile_enforcement.py#L52) |
+| function | `_maal_sandkasse` | `()` | Sandkassen har en ægte håndhæver — samme kilde som exec-stien. | [src](../../../core/runtime/profile_enforcement.py#L65) |
+| function | `_maal_kryds_session` | `()` | Findes der en gate på kontekst fra andre sessioner? | [src](../../../core/runtime/profile_enforcement.py#L94) |
+| function | `_maal_telemetri` | `()` | Findes der en gate på udgående telemetri? | [src](../../../core/runtime/profile_enforcement.py#L111) |
+| function | `maal` | `(anmodet=…)` | Anmodet vs faktisk for hver af de tre akser. | [src](../../../core/runtime/profile_enforcement.py#L132) |
+| function | `afvigelser` | `(maalt)` | Hvor holder virkeligheden ikke hvad profilen lover? | [src](../../../core/runtime/profile_enforcement.py#L170) |
+
 ## `core/runtime/profiles.py`
 _De navngivne profiler — Fase 9 i DeepSeek-harness-spec'en._
 

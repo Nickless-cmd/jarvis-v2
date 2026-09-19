@@ -539,6 +539,15 @@ _`GET /chat/artifacts` — filerne Jarvis har rørt i en mappe, paa tvaers af sa
 |---|---|---|---|---|
 | function | `chat_artifacts` | `(root=…, limit=…)` | Filer skrevet/rettet under `root`, nyeste foerst. `root` er en sti eller | [src](../../../apps/api/jarvis_api/routes/chat_artifacts.py#L22) |
 
+## `apps/api/jarvis_api/routes/chat_rewind.py`
+_`POST /chat/sessions/{id}/rewind` og `…/rewind/{rewind_id}/undo`._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `RewindRequest` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat_rewind.py#L19) |
+| function | `chat_rewind` | `(session_id, request)` | Fjern en af dine beskeder og alt efter den. Svaret bærer beskedens tekst | [src](../../../apps/api/jarvis_api/routes/chat_rewind.py#L24) |
+| function | `chat_rewind_undo` | `(session_id, rewind_id)` | Læg beskederne tilbage — kun så længe der ikke er skrevet siden. | [src](../../../apps/api/jarvis_api/routes/chat_rewind.py#L36) |
+
 ## `apps/api/jarvis_api/routes/chat_session_view.py`
 _`GET/PUT /chat/sessions/{id}/view` — samtalens visningstilstand._
 
@@ -619,15 +628,4 @@ _`/composer/suggest` — hvad der kunne skrives videre i komponisten._
 |---|---|---|---|---|
 | class | `Udkast` | `` | — | [src](../../../apps/api/jarvis_api/routes/composer_suggest_routes.py#L34) |
 | function | `suggest` | `(krop)` | Et forslag, eller tom streng. Fejler aldrig. | [src](../../../apps/api/jarvis_api/routes/composer_suggest_routes.py#L42) |
-
-## `apps/api/jarvis_api/routes/connectors.py`
-_Connectors-API til jarvis-desk Marketplace (16. jun 2026)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_uid` | `()` | — | [src](../../../apps/api/jarvis_api/routes/connectors.py#L17) |
-| class | `_EnabledBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/connectors.py#L22) |
-| function | `get_connectors` | `()` | — | [src](../../../apps/api/jarvis_api/routes/connectors.py#L27) |
-| function | `post_enabled` | `(connector_id, body)` | — | [src](../../../apps/api/jarvis_api/routes/connectors.py#L35) |
-| function | `delete_connector` | `(connector_id)` | — | [src](../../../apps/api/jarvis_api/routes/connectors.py#L46) |
 

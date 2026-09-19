@@ -249,6 +249,19 @@ _Central-incidents — persistent log af det Den Intelligente Central GRIBER._
 | function | `count_unresolved` | `(*, min_severity=…, exclude_nerve=…)` | Antal uhåndterede incidents (til hurtig live-status). Selv-sikker → 0. | [src](../../../core/runtime/db_central_incidents.py#L245) |
 | function | `has_open_incident` | `(*, cluster, nerve)` | True hvis der allerede findes en uløst incident for (cluster, nerve). Selv-sikker. | [src](../../../core/runtime/db_central_incidents.py#L272) |
 
+## `core/runtime/db_chat_rewind.py`
+_Spol en samtale tilbage — og fortryd det, indtil næste besked._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `RewindFejl` | `` | En tilbagespoling eller fortrydelse der ikke kan lade sig gøre — med en | [src](../../../core/runtime/db_chat_rewind.py#L43) |
+| method | `RewindFejl.__init__` | `(self, besked, kode=…)` | — | [src](../../../core/runtime/db_chat_rewind.py#L47) |
+| function | `_kolonner` | `(conn, tabel)` | — | [src](../../../core/runtime/db_chat_rewind.py#L52) |
+| function | `_sikr_arkiv` | `(conn)` | Arkivet har chat_messages' kolonner plus rewind_id/rewound_at. | [src](../../../core/runtime/db_chat_rewind.py#L56) |
+| function | `_koerer` | `(session_id)` | Kører der et svar i samtalen lige nu? Samme kilder som /chat/active-runs. | [src](../../../core/runtime/db_chat_rewind.py#L77) |
+| function | `spol_tilbage` | `(session_id, message_id)` | Fjern `message_id` (en bruger-besked) og alt efter den fra samtalen. | [src](../../../core/runtime/db_chat_rewind.py#L93) |
+| function | `fortryd` | `(session_id, rewind_id)` | Læg beskederne fra en tilbagespoling tilbage — hvis der ikke er skrevet siden. | [src](../../../core/runtime/db_chat_rewind.py#L132) |
+
 ## `core/runtime/db_cheap_lane_control.py`
 _Durable observability storage for the Cheap Lane control center._
 
@@ -646,24 +659,4 @@ _DB layer for interlanguage validation blind-dommer UI._
 | function | `get_next_unanswered` | `(*, session_id)` | Returnér næste ubevarede trial i sessions trial_index-orden, eller None hvis færdig. | [src](../../../core/runtime/db_interlanguage_blind.py#L221) |
 | function | `store_free_text_observations` | `(*, session_id, text)` | Gem free-text noter ved slutningen af session. | [src](../../../core/runtime/db_interlanguage_blind.py#L237) |
 | function | `get_confusion_matrix` | `(*, session_id)` | Confusion-matrix for α-trials: true_peer × user_answer counts. | [src](../../../core/runtime/db_interlanguage_blind.py#L257) |
-
-## `core/runtime/db_lessons.py`
-_`lessons` — the one store for what Jarvis learns from mistakes._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_now_iso` | `()` | — | [src](../../../core/runtime/db_lessons.py#L62) |
-| function | `signature_key` | `(signature)` | Lowercase, punctuation-free, stopword-free, first 12 tokens. | [src](../../../core/runtime/db_lessons.py#L66) |
-| function | `ensure_lessons_table` | `(conn)` | — | [src](../../../core/runtime/db_lessons.py#L72) |
-| function | `_row` | `(r)` | — | [src](../../../core/runtime/db_lessons.py#L95) |
-| function | `_jaccard` | `(a, b)` | — | [src](../../../core/runtime/db_lessons.py#L105) |
-| function | `_find_match` | `(conn, key)` | — | [src](../../../core/runtime/db_lessons.py#L112) |
-| function | `upsert_lesson` | `(*, signature, lesson, source, user_words=…, jarvis_words=…, activate=…, now=…)` | Insert or reinforce a lesson. Returns the stored row plus ``outcome``: | [src](../../../core/runtime/db_lessons.py#L128) |
-| function | `get_lesson` | `(lesson_id)` | — | [src](../../../core/runtime/db_lessons.py#L185) |
-| function | `list_lessons` | `(*, status=…, limit=…, source=…)` | — | [src](../../../core/runtime/db_lessons.py#L192) |
-| function | `count_lessons` | `(*, status=…)` | — | [src](../../../core/runtime/db_lessons.py#L212) |
-| function | `find_similar_lessons` | `(text, *, limit=…, status=…)` | Active lessons most similar to ``text`` (BM25 over signature + lesson). | [src](../../../core/runtime/db_lessons.py#L222) |
-| function | `record_repeat` | `(lesson_id, *, now=…)` | — | [src](../../../core/runtime/db_lessons.py#L249) |
-| function | `retire_stale` | `(*, days=…, min_evidence=…, now=…)` | Retire proposed/active lessons with evidence < min_evidence, no repeat, | [src](../../../core/runtime/db_lessons.py#L262) |
-| function | `set_lesson_status` | `(lesson_id, status)` | Saet en lektions status. Returnerer raekken bagefter, eller None. | [src](../../../core/runtime/db_lessons.py#L278) |
 

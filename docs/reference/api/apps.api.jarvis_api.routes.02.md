@@ -2,6 +2,17 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `apps/api/jarvis_api/routes/connectors.py`
+_Connectors-API til jarvis-desk Marketplace (16. jun 2026)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_uid` | `()` | — | [src](../../../apps/api/jarvis_api/routes/connectors.py#L17) |
+| class | `_EnabledBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/connectors.py#L22) |
+| function | `get_connectors` | `()` | — | [src](../../../apps/api/jarvis_api/routes/connectors.py#L27) |
+| function | `post_enabled` | `(connector_id, body)` | — | [src](../../../apps/api/jarvis_api/routes/connectors.py#L35) |
+| function | `delete_connector` | `(connector_id)` | — | [src](../../../apps/api/jarvis_api/routes/connectors.py#L46) |
+
 ## `apps/api/jarvis_api/routes/cowork.py`
 _Cowork-dashboard routes. Tynde — al opsamling sker i core.services.cowork_feed,_
 
@@ -699,25 +710,4 @@ _Device-presence + proaktive desktop-notifikationer. Scoper til auth'et bruger._
 | function | `notification_preferences_set` | `(body)` | app-UI sætter kanal-præferencer (global + per-type + quiet hours). | [src](../../../apps/api/jarvis_api/routes/presence.py#L90) |
 | function | `presence_debug` | `()` | — | [src](../../../apps/api/jarvis_api/routes/presence.py#L106) |
 | function | `presence_state` | `()` | Spec E / E0 — TILSTANDS-KONTRAKTEN: Centralens ægte valens + selv-tilstand → jarvis-desk kan | [src](../../../apps/api/jarvis_api/routes/presence.py#L136) |
-
-## `apps/api/jarvis_api/routes/provider_registry.py`
-_Registret over udbydere og modeller — laesning OG skrivning. Owner-only._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_require_owner` | `()` | — | [src](../../../apps/api/jarvis_api/routes/provider_registry.py#L21) |
-| class | `_ModelBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/provider_registry.py#L26) |
-| class | `_ProviderBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/provider_registry.py#L33) |
-| class | `_GendanBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/provider_registry.py#L39) |
-| class | `_TilfoejBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/provider_registry.py#L43) |
-| class | `_LaneBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/provider_registry.py#L55) |
-| function | `registret` | `()` | HELE registret: alle udbydere, alle modeller, pr. lane. | [src](../../../apps/api/jarvis_api/routes/provider_registry.py#L62) |
-| function | `saet_model` | `(body)` | Slaa én model til eller fra. | [src](../../../apps/api/jarvis_api/routes/provider_registry.py#L70) |
-| function | `saet_provider` | `(body)` | Slaa en hel udbyder til eller fra. | [src](../../../apps/api/jarvis_api/routes/provider_registry.py#L80) |
-| function | `fjern_model_route` | `(provider, model)` | Fjern én model fra registret. Legitimationen roeres ikke. | [src](../../../apps/api/jarvis_api/routes/provider_registry.py#L89) |
-| function | `fjern_provider_route` | `(provider)` | Fjern en udbyder og dens modeller. Legitimationen roeres ikke. | [src](../../../apps/api/jarvis_api/routes/provider_registry.py#L97) |
-| function | `liste_backups` | `()` | Hvilke tilbagerulninger kan vaelges. | [src](../../../apps/api/jarvis_api/routes/provider_registry.py#L105) |
-| function | `gendan` | `(body)` | Rul registret tilbage. Tom sti = nyeste backup. | [src](../../../apps/api/jarvis_api/routes/provider_registry.py#L113) |
-| function | `tilfoej_route` | `(body)` | Tilfoej en udbyder + model. `api_key` er valgfri og returneres aldrig. | [src](../../../apps/api/jarvis_api/routes/provider_registry.py#L121) |
-| function | `lane_route` | `(body)` | Flyt en model til en anden lane. Flytning er ikke en slukning. | [src](../../../apps/api/jarvis_api/routes/provider_registry.py#L132) |
 

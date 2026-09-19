@@ -2,6 +2,26 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/runtime/db_lessons.py`
+_`lessons` — the one store for what Jarvis learns from mistakes._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_now_iso` | `()` | — | [src](../../../core/runtime/db_lessons.py#L62) |
+| function | `signature_key` | `(signature)` | Lowercase, punctuation-free, stopword-free, first 12 tokens. | [src](../../../core/runtime/db_lessons.py#L66) |
+| function | `ensure_lessons_table` | `(conn)` | — | [src](../../../core/runtime/db_lessons.py#L72) |
+| function | `_row` | `(r)` | — | [src](../../../core/runtime/db_lessons.py#L95) |
+| function | `_jaccard` | `(a, b)` | — | [src](../../../core/runtime/db_lessons.py#L105) |
+| function | `_find_match` | `(conn, key)` | — | [src](../../../core/runtime/db_lessons.py#L112) |
+| function | `upsert_lesson` | `(*, signature, lesson, source, user_words=…, jarvis_words=…, activate=…, now=…)` | Insert or reinforce a lesson. Returns the stored row plus ``outcome``: | [src](../../../core/runtime/db_lessons.py#L128) |
+| function | `get_lesson` | `(lesson_id)` | — | [src](../../../core/runtime/db_lessons.py#L185) |
+| function | `list_lessons` | `(*, status=…, limit=…, source=…)` | — | [src](../../../core/runtime/db_lessons.py#L192) |
+| function | `count_lessons` | `(*, status=…)` | — | [src](../../../core/runtime/db_lessons.py#L212) |
+| function | `find_similar_lessons` | `(text, *, limit=…, status=…)` | Active lessons most similar to ``text`` (BM25 over signature + lesson). | [src](../../../core/runtime/db_lessons.py#L222) |
+| function | `record_repeat` | `(lesson_id, *, now=…)` | — | [src](../../../core/runtime/db_lessons.py#L249) |
+| function | `retire_stale` | `(*, days=…, min_evidence=…, now=…)` | Retire proposed/active lessons with evidence < min_evidence, no repeat, | [src](../../../core/runtime/db_lessons.py#L262) |
+| function | `set_lesson_status` | `(lesson_id, status)` | Saet en lektions status. Returnerer raekken bagefter, eller None. | [src](../../../core/runtime/db_lessons.py#L278) |
+
 ## `core/runtime/db_private_brain.py`
 _Private brain records — Jarvis' EGNE private lag (private-carry-erindringer med_
 
@@ -922,16 +942,4 @@ _Profil-komponisten — Fase 9 i DeepSeek-harness-spec'en._
 | method | `EffektivProfil.afvigelser` | `(self)` | Hvor holder virkeligheden ikke hvad profilen lover? | [src](../../../core/runtime/profile_composer.py#L116) |
 | function | `_er_indsnaevring` | `(akse, fra, til)` | Bevæger `til` sig væk fra «mest tilladt» i forhold til `fra`? | [src](../../../core/runtime/profile_composer.py#L125) |
 | function | `komponer` | `(lag, *, navn=…)` | Sæt lagene sammen i rækkefølge. Senere lag vinder — undtagen sikkerhed, | [src](../../../core/runtime/profile_composer.py#L140) |
-
-## `core/runtime/profile_enforcement.py`
-_ANMODET vs FAKTISK — Fase 9, exit-kriterium 7._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `_Skygge` | `` | Håndhæveren findes, men er slået fra. Hverken «mangler» eller «fejlet». | [src](../../../core/runtime/profile_enforcement.py#L52) |
-| function | `_maal_sandkasse` | `()` | Sandkassen har en ægte håndhæver — samme kilde som exec-stien. | [src](../../../core/runtime/profile_enforcement.py#L65) |
-| function | `_maal_kryds_session` | `()` | Findes der en gate på kontekst fra andre sessioner? | [src](../../../core/runtime/profile_enforcement.py#L94) |
-| function | `_maal_telemetri` | `()` | Findes der en gate på udgående telemetri? | [src](../../../core/runtime/profile_enforcement.py#L111) |
-| function | `maal` | `(anmodet=…)` | Anmodet vs faktisk for hver af de tre akser. | [src](../../../core/runtime/profile_enforcement.py#L132) |
-| function | `afvigelser` | `(maalt)` | Hvor holder virkeligheden ikke hvad profilen lover? | [src](../../../core/runtime/profile_enforcement.py#L170) |
 

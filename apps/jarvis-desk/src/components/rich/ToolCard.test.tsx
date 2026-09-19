@@ -37,4 +37,23 @@ describe('ToolCard', () => {
     render(<ToolCard block={block({ name: 'some_weird_tool', input: {} })} density="compact" />)
     expect(screen.getByText('Some Weird Tool')).toBeInTheDocument()
   })
+
+  it('remember_this viser kun titlen og markerer fejl fra resultatet', () => {
+    render(<ToolCard block={block({
+      name: 'remember_this',
+      input: { title: 'Korte svar', content: 'Privat fuld tekst, som ikke er en overskrift' },
+      result: '{"status":"error","written":false}',
+    })} density="compact" />)
+    expect(screen.getByText('Minde')).toBeInTheDocument()
+    expect(screen.getByText('Korte svar')).toBeInTheDocument()
+    expect(screen.queryByText(/Privat fuld tekst/)).toBeNull()
+    expect(document.querySelector('.toolcard-status.err')).toBeInTheDocument()
+  })
+
+  it('remember_this uden resultat viser ukendt udfald', () => {
+    const block = { type: 'tool_use' as const, id: 'm2', name: 'remember_this',
+      input: { title: 'Korte svar', content: 'Privat fuld tekst' }, status: 'done' as const }
+    const { container } = render(<ToolCard block={block} density="compact" />)
+    expect(container.querySelector('.toolcard-status.ukendt')).toHaveAttribute('title', 'Ukendt udfald')
+  })
 })

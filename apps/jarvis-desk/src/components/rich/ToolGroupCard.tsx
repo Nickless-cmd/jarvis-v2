@@ -63,7 +63,14 @@ function ToolGroupCardImpl({
   // modellens sætning ERSTATTER den mekaniske tekst, når den findes. Før stod
   // den som overskrift OVER linjen. Den kommer først når runden er talt op,
   // så skiftet går gennem label-skiftet som et almindeligt tekstskift.
-  const tekst = etiket ? etiket : koerer ? udenEllipse(resume) : resume
+  // Hukommelsesskrivning skal følge det faktiske resultat. En genereret
+  // rundetekst kan stadig sige "Huskede remember_this" eller påstå succes ved fejl.
+  const erMinde = block.tools.length === 1 && block.tools[0]?.name.replace(/^operator_/, '') === 'remember_this'
+  const tekniskEtiket = block.tools.some((tool) => {
+    const escaped = tool.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    return etiket && new RegExp(`(^|\\W)${escaped}(?=\\W|$)`).test(etiket)
+  })
+  const tekst = !erMinde && etiket && !tekniskEtiket ? etiket : koerer ? udenEllipse(resume) : resume
 
   return (
     <div className={`toolgroup${koerer ? ' er-koerende' : ''}${open ? ' er-aaben' : ''}`}>

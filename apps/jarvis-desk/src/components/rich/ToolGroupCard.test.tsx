@@ -111,4 +111,25 @@ describe('ToolGroupCard', () => {
     const { container } = render(<ToolGroupCard block={group(3)} density="compact" />)
     expect(container.querySelector('.linje-titel')!.textContent).toBe('Læste 3 filer')
   })
+
+  it('hukommelseskald bruger bekræftet udfald, selv hvis serverens rundetekst er misvisende', () => {
+    const block: ToolGroupBlock = {
+      type: 'tool_group', kind: 'round', count: 1,
+      tools: [{ type: 'tool_use', id: 'm1', name: 'remember_this',
+        input: { title: 'Korte svar', content: 'Privat fuld tekst' }, status: 'done',
+        result: '{"status":"error","written":false}' }],
+    }
+    render(<ToolGroupCard block={block} density="compact" etiket="Huskede remember_this" />)
+    expect(screen.getByRole('button', { name: 'Kunne ikke gemme “Korte svar” som minde' })).toBeInTheDocument()
+    expect(screen.queryByText(/Huskede remember_this/)).toBeNull()
+  })
+
+  it('rå værktøjsnavne i serverens rundetekst erstattes af læsbar tekst', () => {
+    const block: ToolGroupBlock = {
+      type: 'tool_group', kind: 'round', count: 1,
+      tools: [{ type: 'tool_use', id: 's1', name: 'list_side_tasks', input: {}, status: 'done' }],
+    }
+    render(<ToolGroupCard block={block} density="compact" etiket="Kørte list_side_tasks" />)
+    expect(screen.getByRole('button', { name: 'Viste flaggede opgaver' })).toBeInTheDocument()
+  })
 })

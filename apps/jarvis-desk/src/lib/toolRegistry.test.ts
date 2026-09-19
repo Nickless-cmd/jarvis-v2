@@ -24,4 +24,17 @@ describe('toolRegistry', () => {
     const m = lookupTool('operator_read_file')
     expect(m.label).toBe('Læs fil')
   })
+
+  it('remember_this opsummerer titlen frem for privat indhold', () => {
+    const meta = lookupTool('remember_this')
+    expect(meta.label).toBe('Minde')
+    expect(meta.summarize({ title: 'Korte svar', content: 'Lang privat tekst' })).toBe('Korte svar')
+  })
+
+  it('hyppige opgave- og hukommelsesværktøjer har danske navne', () => {
+    expect(lookupTool('list_side_tasks').label).toBe('Flaggede opgaver')
+    expect(lookupTool('flag_side_task').label).toBe('Flag til senere')
+    expect(lookupTool('search_jarvis_brain').label).toBe('Søg i hukommelsen')
+    expect(lookupTool('read_brain_entry').label).toBe('Læs minde')
+  })
 })

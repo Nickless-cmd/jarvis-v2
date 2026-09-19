@@ -7,6 +7,7 @@ import { diffFraResultat, diffStat } from '../../lib/diffStat'
 import { DiffView } from './DiffView'
 import { PauseAndAskCard } from './PauseAndAskCard'
 import { parsePauseAsk } from '../../lib/pauseAsk'
+import { memoryWriteOutcome } from '../../lib/toolRound'
 
 /** Density-aware, værktøjs-specifik tool-kald-visning (Claude Desktop-stil).
  *  bash → terminal-blok, write/edit → fil-header + diff, read/glob/grep → kompakt.
@@ -34,7 +35,10 @@ export function ToolCard({
   // klienten umuligt kan vide af argumenterne alene. Gaettet bliver som
   // faldback, fordi et kald der stadig koerer ikke HAR et resultat endnu.
   const ds = diffFraResultat(block.result) ?? diffStat(block.name, args)
-  const status = block.status ?? 'running'
+  const memoryOutcome = block.name.replace(/^operator_/, '') === 'remember_this'
+    ? memoryWriteOutcome(block.status, block.result) : undefined
+  const status = memoryOutcome === 'error' ? 'error' : block.status ?? 'running'
+  const anomali = block.anomali ?? (memoryOutcome === 'unknown' ? 'uden-resultat' : undefined)
   const ask = parsePauseAsk(block.result)
   const Icon = meta.Icon
 
@@ -54,7 +58,7 @@ export function ToolCard({
             <span className="git-add">+{ds.add}</span> <span className="git-del">−{ds.del}</span>
           </span>
         )}
-        <StatusBadge status={status} anomali={block.anomali} />
+        <StatusBadge status={status} anomali={anomali} />
       </button>
       {/* Claude Desktop §9: «Click a filename on an Edited or Wrote row to open
           that file in the diff pane». Sin egen knap — en knap i en knap er
@@ -71,11 +75,11 @@ export function ToolCard({
         </button>
       ) : null}
       </div>
-      {block.anomali && (
+      {anomali && (
         // Siges i klartekst, ikke kun med et ikon: det er netop den slags
         // man ellers ikke ville opdage.
         <div className="toolcard-anomali" role="note">
-          {block.anomali === 'uden-kald'
+          {anomali === 'uden-kald'
             ? 'Et resultat uden det kald det hører til — kaldet findes ikke i beskeden.'
             : 'Intet resultat blev gemt for dette kald — udfaldet er ukendt.'}
         </div>

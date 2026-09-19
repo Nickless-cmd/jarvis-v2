@@ -48,7 +48,7 @@ describe('runde-etiketten når fra stream til skærm', () => {
     // mekanisk`). Før stod den som overskrift over linjen — Bjørns beslutning
     // dengang, afløst af «1:1 med Claude Desktop».
     const c = kilde('components/rich/ToolGroupCard.tsx')
-    expect(c).toMatch(/const tekst = etiket \? etiket :/)
+    expect(c).toMatch(/etiket && !tekniskEtiket \? etiket :/)
     expect(c).not.toMatch(/toolgroup-etiket/)
   })
 

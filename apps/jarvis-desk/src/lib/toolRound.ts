@@ -1,5 +1,5 @@
 /**
- * Værktøjsarbejde som ÉN linje pr. runde — 1:1 med mobil-appen.
+ * Værktøjsarbejde som én linje pr. runde, bygget på mobil-appens model.
  *
  * Bjørn 8/9-2026: «tool result til at ligne dem i mobil appen … det skal lige
  * 1:1». Første forsøg byggede efter mobilens `ToolResultCard` — kort med
@@ -12,10 +12,9 @@
  *     fortælling
  *     </> Kørte 2 ting  ›
  *
- * Denne fil er mobilens `toolSummary.ts` + `toolGroup.ts` porteret. Én forskel,
- * og den er strukturel: desk får `input` som et objekt, mobilen som en (evt.
- * ufuldstændig) JSON-streng. Derfor ingen regex-fiskeri her — der er intet at
- * fiske i.
+ * Denne fil begyndte som en port af mobilens `toolSummary.ts` + `toolGroup.ts`.
+ * Desk får `input` som et objekt og bruger titler og bekræftede resultater til
+ * at beskrive visse handlinger mere præcist.
  */
 import type { ContentBlock } from './sseProtocol'
 import { diffFraResultat, diffStat } from './diffStat'
@@ -38,12 +37,14 @@ const VERBS: Record<string, [string, string]> = {
   web_fetch: ['Henter', 'Hentede'],
   memory_search: ['Søger i hukommelsen efter', 'Søgte i hukommelsen efter'],
   memory_write: ['Husker', 'Huskede'],
-  // De hyppigste der MANGLEDE — målt 17/9-2026 på to ugers tool.invoked.
-  // Bjørn: «mange kommandoer har navne remember_this eller operator_bash og
-  // det ser sku ikke særlig godt ud». Uden et verbum faldt linjen tilbage på
-  // det rå funktionsnavn: «Kører remember_this».
-  remember_this: ['Husker', 'Huskede'],
+  // Hukommelsesskrivning har sin egen resultatstyrede tekst nedenfor.
   archive_brain_entry: ['Arkiverer', 'Arkiverede'],
+  search_jarvis_brain: ['Søger i hukommelsen efter', 'Søgte i hukommelsen efter'],
+  list_side_tasks: ['Viser flaggede opgaver', 'Viste flaggede opgaver'],
+  flag_side_task: ['Flagger', 'Flaggede'],
+  notify: ['Sender notifikation om', 'Sendte notifikation om'],
+  schedule_task: ['Planlægger', 'Planlagde'],
+  open_ui_panel: ['Åbner', 'Åbnede'],
   bash_session_run: ['Kører', 'Kørte'],
   search: ['Søger efter', 'Søgte efter'],
   find_files: ['Finder', 'Fandt'],
@@ -100,7 +101,7 @@ export function kommandoEmne(cmd: string): string {
 /** Argument-nøgler der plejer at bære emnet, i prioriteret rækkefølge. */
 const SUBJECT_KEYS = [
   'path', 'file_path', 'filepath', 'file', 'target', 'target_path',
-  'command', 'cmd', 'query', 'q', 'pattern', 'text', 'name',
+  'command', 'cmd', 'query', 'q', 'pattern', 'title', 'text', 'name', 'goal', 'focus',
 ]
 
 /** `operator_read_file` og `read_file` er samme handling for læseren. */
@@ -193,17 +194,74 @@ export function egenBeskrivelse(tool: string, input: Record<string, unknown> | u
   return b
 }
 
-/** «Kørte agent.ts» frem for «Kørte bash». Kan intet emne findes, falder vi
- *  tilbage på værktøjsnavnet frem for at finde på noget. */
-export function describeTool(name: string, input: Record<string, unknown> | undefined, running: boolean, partialJson?: string): string {
+/** `remember_this` returnerer et id ved succes. Et afsluttet kald uden resultat
+ * er ukendt, og en tool-fejl kan være pakket ind i tekst i stedet for JSON. */
+export function memoryWriteOutcome(status: ToolUse['status'], result?: string): 'running' | 'saved' | 'error' | 'unknown' {
+  if (status === 'running' || !status) return 'running'
+  if (status === 'error') return 'error'
+  const raw = (result || '').trim()
+  if (!raw) return 'unknown'
+  if (/^\[Tool remember_this (?:error|blocked)/i.test(raw)) return 'error'
+  try {
+    const value = JSON.parse(raw) as Record<string, unknown>
+    if (value.status === 'error' || value.status === 'blocked' || value.written === false) return 'error'
+    if (value.status === 'ok' || value.written === true || (typeof value.id === 'string' && value.id)) return 'saved'
+  } catch {
+    // En formatteret tool-besked kan have tekst efter JSON-resultatet.
+    if (/"status"\s*:\s*"error"|"written"\s*:\s*false/.test(raw)) return 'error'
+    if (/"id"\s*:\s*"[^"]+"/.test(raw)) return 'saved'
+  }
+  return 'unknown'
+}
+
+function describeMemory(input: Record<string, unknown> | undefined, partialJson: string | undefined, status: ToolUse['status'], result?: string): string {
+  // Mindeindholdet må ikke blive vist som en tilfældig uddragstekst i chatten.
+  // Titlen er den korte, brugerrettede beskrivelse af det gemte.
+  let rawTitle = input?.title
+  if (typeof rawTitle !== 'string' && partialJson) {
+    try { rawTitle = (JSON.parse(partialJson) as Record<string, unknown>).title } catch {
+      const match = /"title"\s*:\s*"((?:[^"\\]|\\.)*)"/.exec(partialJson)
+      if (match) {
+        try { rawTitle = JSON.parse(`"${match[1]}"`) } catch { rawTitle = undefined }
+      }
+    }
+  }
+  const title = typeof rawTitle === 'string' ? shorten(rawTitle) : ''
+  const what = title ? `“${title}” som minde` : 'et minde'
+  switch (memoryWriteOutcome(status, result)) {
+    case 'running': return `Gemmer ${what}…`
+    case 'saved': return `Gemte ${what}`
+    case 'error': return `Kunne ikke gemme ${what}`
+    case 'unknown': return `Forsøgte at gemme ${what}`
+  }
+}
+
+const NO_SUBJECT: Record<string, [string, string]> = {
+  read_file: ['Læser en fil', 'Læste en fil'],
+  write_file: ['Skriver en fil', 'Skrev en fil'],
+  edit_file: ['Redigerer en fil', 'Redigerede en fil'],
+  archive_brain_entry: ['Arkiverer et minde', 'Arkiverede et minde'],
+  search_jarvis_brain: ['Søger i hukommelsen', 'Søgte i hukommelsen'],
+  list_side_tasks: ['Viser flaggede opgaver', 'Viste flaggede opgaver'],
+  flag_side_task: ['Flagger en opgave til senere', 'Flaggede en opgave til senere'],
+  notify: ['Sender en notifikation', 'Sendte en notifikation'],
+  schedule_task: ['Planlægger en opgave', 'Planlagde en opgave'],
+  open_ui_panel: ['Åbner et panel', 'Åbnede et panel'],
+}
+
+export function describeTool(name: string, input: Record<string, unknown> | undefined, running: boolean, partialJson?: string, result?: string, status?: ToolUse['status']): string {
   const egen = egenBeskrivelse(name, input, partialJson)
   if (egen) return egen
   const tool = grundnavn(name) || 'værktøj'
-  const [now, past] = VERBS[tool] ?? ['Kører', 'Kørte']
+  if (tool === 'remember_this') return describeMemory(input, partialJson, status ?? (running ? 'running' : 'done'), result)
+  const verbs = VERBS[tool]
+  if (!verbs) return running ? 'Bruger et værktøj…' : 'Brugte et værktøj'
+  const [now, past] = verbs
   const verb = running ? now : past
   const subject = subjectFromInput(input, partialJson)
   if (subject) return `${verb} ${subject}${running ? '…' : ''}`
-  return `${verb} ${tool}${running ? '…' : ''}`
+  const fallback = NO_SUBJECT[tool]?.[running ? 0 : 1]
+  return fallback ? `${fallback}${running ? '…' : ''}` : running ? 'Bruger et værktøj…' : 'Brugte et værktøj'
 }
 
 const PLURAL: Record<string, [string, string]> = {
@@ -251,7 +309,7 @@ export function summarizeRound(tools: ToolUse[]): string {
   const running = tools.some((t) => (t.status ?? 'running') === 'running')
   if (tools.length === 1) {
     const t = tools[0]!
-    return describeTool(t.name, t.input, (t.status ?? 'running') === 'running', t.partialJson)
+    return describeTool(t.name, t.input, (t.status ?? 'running') === 'running', t.partialJson, t.result, t.status)
   }
 
   const navne = new Set(tools.map((t) => grundnavn(t.name)))

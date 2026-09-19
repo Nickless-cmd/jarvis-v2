@@ -20,8 +20,30 @@ describe('linjen siger hvad der laves, ikke hvilket værktøj', () => {
     expect(describeTool('read_file', { path: 'x.ts' }, true)).toBe('Læser x.ts…')
   })
 
-  it('falder tilbage på værktøjsnavnet frem for at finde på noget', () => {
-    expect(describeTool('mystisk_ting', {}, false)).toBe('Kørte mystisk_ting')
+  it('viser en neutral tekst for ukendte værktøjer', () => {
+    expect(describeTool('mystisk_ting', {}, false)).toBe('Brugte et værktøj')
+  })
+
+  it('viser mindets korte titel og kun bekræftet lagring som gemt', () => {
+    const input = { title: 'Korte svar', content: 'Et meget langt privat minde, som ikke skal stå i linjen.' }
+    expect(summarizeRound([t('remember_this', input, 'running')]))
+      .toBe('Gemmer “Korte svar” som minde…')
+    expect(summarizeRound([t('remember_this', input, 'done', '{"status":"ok","id":"br-1"}')]))
+      .toBe('Gemte “Korte svar” som minde')
+    expect(summarizeRound([t('remember_this', input, 'done', '{"id":"br-1"}')]))
+      .toBe('Gemte “Korte svar” som minde')
+    expect(summarizeRound([t('remember_this', input, 'done', '{"status":"error","written":false}')]))
+      .toBe('Kunne ikke gemme “Korte svar” som minde')
+    expect(summarizeRound([t('remember_this', input, 'done')]))
+      .toBe('Forsøgte at gemme “Korte svar” som minde')
+    expect(summarizeRound([t('remember_this', { content: 'Privat fuld tekst' }, 'done')]))
+      .toBe('Forsøgte at gemme et minde')
+  })
+
+  it('viser læsbare handlinger for almindelige Jarvis-tools', () => {
+    expect(describeTool('list_side_tasks', {}, false)).toBe('Viste flaggede opgaver')
+    expect(describeTool('search_jarvis_brain', { query: 'projekter' }, false))
+      .toBe('Søgte i hukommelsen efter projekter')
   })
 
   it('operator-varianten er samme handling for læseren', () => {

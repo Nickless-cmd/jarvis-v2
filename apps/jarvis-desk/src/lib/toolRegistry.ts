@@ -48,9 +48,11 @@ export const TOOL_REGISTRY: Record<string, ToolMeta> = {
   request_app_action: { label: 'App-handling', Icon: PanelRight, summarize: (a) => String(a.action ?? '') },
   // Hukommelse / brain
   search_memory: { label: 'Søg i hukommelse', Icon: Brain, summarize: (a) => firstStr(a, ['query', 'q', 'text']) },
-  search_jarvis_brain: { label: 'Søg i brain', Icon: Brain, summarize: (a) => firstStr(a, ['query', 'q']) },
-  remember_this: { label: 'Husk', Icon: Brain, summarize: (a) => firstStr(a, ['text', 'content', 'note']) },
-  read_brain_entry: { label: 'Læs brain-entry', Icon: Brain, summarize: (a) => firstStr(a, ['id', 'key']) },
+  search_jarvis_brain: { label: 'Søg i hukommelsen', Icon: Brain, summarize: (a) => firstStr(a, ['query', 'q']) },
+  remember_this: { label: 'Minde', Icon: Brain, summarize: (a) => firstStr(a, ['title']) },
+  read_brain_entry: { label: 'Læs minde', Icon: Brain, summarize: (a) => firstStr(a, ['title', 'id', 'key']) },
+  list_side_tasks: { label: 'Flaggede opgaver', Icon: Calendar, summarize: () => '' },
+  flag_side_task: { label: 'Flag til senere', Icon: Calendar, summarize: (a) => firstStr(a, ['title', 'task', 'goal']) },
   // Kanaler / besked
   discord_channel: { label: 'Discord', Icon: MessageSquare, summarize: (a) => firstStr(a, ['action', 'query', 'channel']) },
   // Billede / medie

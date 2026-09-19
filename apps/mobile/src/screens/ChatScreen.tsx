@@ -34,6 +34,7 @@ import { TilbagespolBanner } from '../components/TilbagespolBanner'
 import { KodeLaastBanner } from '../components/KodeLaastBanner'
 import { useNyeBeskeder } from '../lib/useNyeBeskeder'
 import { useVisning, type Visning } from '../lib/visning'
+import { useOpmaerksomhedsPoll } from '../lib/opmaerksomhed'
 import { ModelPicker, type ModelChoice } from '../components/ModelPicker'
 import { PermissionPicker, type ApprovalMode } from '../components/PermissionPicker'
 import { SidePanel } from '../components/SidePanel'
@@ -277,6 +278,8 @@ export function ChatScreen({
   }, [stream.state.status, jumpToBottom])
   // Visningen (normal/Tænkning/Alt) — pr. samtale på serveren (Claude Desktop §1).
   const { visning, skift: skiftVisning } = useVisning(config, sessions.activeId)
+  // Tilstands-hjernen: én poller for topbjælkens prik og sidepanelets linje.
+  useOpmaerksomhedsPoll(config ?? null, sessions.activeId ?? null)
   useEffect(() => { onVisning?.(visning) }, [visning]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (visningOenske) void skiftVisning(visningOenske.v) }, [visningOenske?.n]) // eslint-disable-line react-hooks/exhaustive-deps
   // Enheds-reglen (19/9-2026): må DENNE telefon bruge code mode? Spørges når

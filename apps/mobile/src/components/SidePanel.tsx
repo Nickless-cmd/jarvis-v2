@@ -7,6 +7,7 @@ import { HeartbeatDot } from './HeartbeatDot'
 import type { ChatSession } from '../lib/types'
 import { tokens } from '../theme/tokens'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
+import { OpmaerksomhedsLinje } from './OpmaerksomhedsLinje'
 import { SessionMenu } from './SessionMenu'
 import { TeamsPanel } from './TeamsPanel'
 import { useI18n } from '../i18n/I18nContext'
@@ -201,6 +202,8 @@ export function SidePanel({
           {/* De fem som FELTER. Som ikoner sagde de ikke hvad de var — en oejenpaere
               og en kasse er ikke selvforklarende, og man skulle trykke for at finde
               ud af det. Et felt baerer sit eget navn. */}
+          {/* Tilstands-hjernen (19/9-2026): hvad kræver dig — tavs når intet gør. */}
+          <OpmaerksomhedsLinje onAabn={onSelectSession} />
           <View style={styles.felter}>
             {bubbleSupported && activeId ? (
               <Felt ikon={<MessageCircle size={17} color={tokens.color.fg2} strokeWidth={1.8} />}

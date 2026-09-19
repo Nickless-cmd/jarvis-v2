@@ -197,7 +197,9 @@ it('alle tre laeser hoejden fra SAMME konstant', () => {
 describe('sticky prompt som ikon (19/9-2026)', () => {
   const { act } = require('@testing-library/react-native')
   const { saetStickyPrompt } = require('../lib/stickyPrompt')
-  afterEach(() => act(() => saetStickyPrompt(null)))
+  // Nulstil FØR hver test, ikke efter: der er intet monteret endnu, saa der
+  // er ingen act() der kan overlappe RNTL's egen oprydning.
+  beforeEach(() => saetStickyPrompt(null))
 
   it('intet ikon naar din besked er i syne', async () => {
     const screen = await render(<TopBar {...base} />)
@@ -210,9 +212,24 @@ describe('sticky prompt som ikon (19/9-2026)', () => {
     await act(async () => saetStickyPrompt({ tekst: 'Hvor sidder værnet?', hop }))
     const knap = screen.getByTestId('sticky-prompt')
     expect(knap.props.accessibilityLabel).toBe('Rul til din besked: Hvor sidder værnet?')
-    fireEvent.press(knap)
+    await fireEvent.press(knap)
     expect(hop).toHaveBeenCalled()
     await act(async () => saetStickyPrompt(null))
     expect(screen.queryByTestId('sticky-prompt')).toBeNull()
+  })
+})
+
+describe('tilstands-hjernens prik (19/9-2026)', () => {
+  const { act } = require('@testing-library/react-native')
+  const { udgiv } = require('../lib/opmaerksomhed')
+  beforeEach(() => udgiv(null))
+
+  it('ingen prik naar intet kraever dig, prik naar noget goer', async () => {
+    const screen = await render(<TopBar {...base} />)
+    expect(screen.queryByTestId('opm-prik')).toBeNull()
+    await act(async () => udgiv({ tilstand: 'waiting', etiket: 'Venter på dig', antal: { waiting: 1, failed: 0, review: 0, running: 0 }, baggrund: 0, indbakke: 0, fokus: null, punkter: [] }))
+    expect(screen.getByTestId('opm-prik', { includeHiddenElements: true })).toBeTruthy()
+    // Prikken er kun farve — tilstanden staar ogsaa i knappens navn.
+    expect(screen.getByTestId('topbar-venstre').props.accessibilityLabel).toMatch(/Venter på dig$/)
   })
 })

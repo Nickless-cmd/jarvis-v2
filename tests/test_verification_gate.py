@@ -246,3 +246,42 @@ def test_section_records_when_injected(monkeypatch):
         assert verification_gate_section(record=True) is not None
     assert len(calls) == 1
     assert calls[0]["unverified_count"] == 2
+
+
+# ── Mutations-tælling: støj vs. ægte mutationer (19. sep 2026) ──────────────
+# Målt: R2.5's tærskel (fast=8) blev aldrig nået i praksis, og en del af
+# grunden var at read-only kald bag et indledende `cd` blev talt som
+# mutationer. Samme tur havde 7 "mutationer" hvoraf 5 var `cd X && grep …`.
+
+def test_cd_praefiks_er_read_only():
+    """`cd` muterer kun shellens cwd — den må ikke tælle som mutation."""
+    from core.services.verification_gate import shell_command_is_mutating
+    assert not shell_command_is_mutating("cd /media/projects/jarvis-v2 && grep -rn x core/")
+    assert not shell_command_is_mutating("cd /tmp && echo hej && cat fil.py")
+    assert not shell_command_is_mutating("cd /tmp && sed -n '1,10p' f")
+
+
+def test_redirect_og_ukendt_kommando_er_stadig_mutation():
+    """Vigtigt: `cd`-reglen må IKKE svække gaten. Ægte skrivninger fanges."""
+    from core.services.verification_gate import shell_command_is_mutating
+    assert shell_command_is_mutating("cd /x && echo y > fil")
+    assert shell_command_is_mutating("cd /x && systemctl restart foo")
+    assert shell_command_is_mutating("rm -rf /tmp/x")
+    assert shell_command_is_mutating("cd /x && sqlite3 db 'UPDATE t SET a=1'")
+
+
+def test_fil_mutation_med_indbygget_readback_taeller_som_verify():
+    """edit_file/write_file bærer siden cf2f6b3f8 selv filstumpen fra disken.
+    Beviset ligger i samme kald — mutationen må ikke tælle som uverificeret."""
+    events = [_evt("write_file", extra_payload={"result": {"readback": True}})]
+    s = _scan(events)
+    assert len(s["mutations"]) == 0
+    assert len(s["light_verifies"]) == 1
+
+
+def test_fil_mutation_uden_readback_taeller_som_mutation():
+    """Readback der AFVIGER (eller mangler) er ingen verifikation."""
+    for payload in ({"result": {"readback": False}}, {}):
+        s = _scan([_evt("write_file", extra_payload=payload)])
+        assert len(s["mutations"]) == 1, payload
+        assert len(s["light_verifies"]) == 0, payload

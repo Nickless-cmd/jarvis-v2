@@ -85,6 +85,39 @@ def _heed_rate_24h() -> float | None:
         return None
 
 
+def _publish_evaluation(
+    *,
+    tier: str,
+    threshold: int | None,
+    unverified_effective: int | None,
+    failed: int | None,
+    heed_rate: float | None,
+    blocked: bool,
+    reason: str,
+) -> None:
+    """Gør gatens beslutning synlig OGSÅ når den siger nej.
+
+    Uden dette findes der kun `r2_5_gate.blocked` — så et 0-tal kan ikke
+    skelnes fra "gaten kiggede og sagde nej". Målt 19/9-2026: gaten så 7
+    uverificerede mod tærsklen 8 for tier=fast, og fyrede derfor aldrig,
+    men hvorfor var usynligt (0 blocked-events, tom Centralen-trace).
+    Fail-open: telemetri må aldrig vælte en beslutning.
+    """
+    try:
+        from core.eventbus.bus import event_bus
+        event_bus.publish("r2_5_gate.evaluated", {
+            "tier": tier,
+            "threshold": threshold,
+            "unverified_effective": unverified_effective,
+            "failed_verify_count": failed,
+            "heed_rate": heed_rate,
+            "blocked": blocked,
+            "reason": reason,
+        })
+    except Exception:
+        pass
+
+
 def should_block_for_verification(*, reasoning_tier: str) -> dict[str, Any] | None:
     """Decide whether to inject a 'stop and look back' block.
 
@@ -101,12 +134,20 @@ def should_block_for_verification(*, reasoning_tier: str) -> dict[str, Any] | No
     # Cooldown — don't re-block within a minute of the last block
     now = datetime.now(UTC)
     if _last_block_at is not None and (now - _last_block_at).total_seconds() < _BLOCK_COOLDOWN_SECONDS:
+        _publish_evaluation(
+            tier=tier, threshold=None, unverified_effective=None, failed=None,
+            heed_rate=None, blocked=False, reason="cooldown (<60s siden sidste blok)",
+        )
         return None
 
     try:
         from core.services.verification_gate import evaluate_verification_gate
         gate = evaluate_verification_gate()
-    except Exception:
+    except Exception as _e:
+        _publish_evaluation(
+            tier=tier, threshold=None, unverified_effective=None, failed=None,
+            heed_rate=None, blocked=False, reason=f"gate_fejl: {type(_e).__name__}",
+        )
         return None
 
     failed = int(gate.get("failed_verify_count") or 0)
@@ -119,12 +160,25 @@ def should_block_for_verification(*, reasoning_tier: str) -> dict[str, Any] | No
     _tier_thresholds, _heed_threshold = _live_thresholds()
     threshold = _tier_thresholds[tier]
     if failed < _MIN_FAILED_VERIFIES and unverified_effective < threshold:
+        _publish_evaluation(
+            tier=tier, threshold=threshold,
+            unverified_effective=unverified_effective, failed=failed,
+            heed_rate=None, blocked=False,
+            reason=f"under tærskel: {unverified_effective} < {threshold} (tier={tier})",
+        )
         return None
 
     heed_rate = _heed_rate_24h()
     # Only escalate to block when we have evidence the model ignores warnings.
     # If heed_rate is None (insufficient data) we don't block — soft R2 surfaces.
     if heed_rate is None or heed_rate >= _heed_threshold:
+        _publish_evaluation(
+            tier=tier, threshold=threshold,
+            unverified_effective=unverified_effective, failed=failed,
+            heed_rate=heed_rate, blocked=False,
+            reason=("heed_rate utilstrækkelig (None)" if heed_rate is None
+                    else f"heed_rate ok: {int(heed_rate*100)}% >= {int(_heed_threshold*100)}%"),
+        )
         return None
 
     suggestions = list(gate.get("suggestions") or [])
@@ -132,6 +186,14 @@ def should_block_for_verification(*, reasoning_tier: str) -> dict[str, Any] | No
 
     # Mark cooldown
     _last_block_at = now
+
+    _publish_evaluation(
+        tier=tier, threshold=threshold,
+        unverified_effective=unverified_effective, failed=failed,
+        heed_rate=heed_rate, blocked=True,
+        reason=f"BLOK: {unverified_effective} >= {threshold} (tier={tier}), "
+               f"heed_rate {int(heed_rate*100)}% < {int(_heed_threshold*100)}%",
+    )
 
     try:
         from core.eventbus.bus import event_bus

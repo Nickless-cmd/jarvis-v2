@@ -1,8 +1,10 @@
-import ReactMarkdown from 'react-markdown'
+import { memo, useMemo } from 'react'
+import ReactMarkdown, { type Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { stabilizeStreamingMarkdown } from '../../lib/streamingMarkdown'
 import { enforceStructure } from '../../lib/enforceStructure'
 import { stripToolEchoes } from '../../lib/stripToolEchoes'
+import { delIBlokke } from '../../lib/markdownBlokke'
 import { safeLinkHref } from '../../lib/sanitize'
 
 /** Render markdown sikkert. INGEN rehype-raw → rå HTML renderes aldrig
@@ -19,33 +21,47 @@ import { safeLinkHref } from '../../lib/sanitize'
  *  de sjældne 0-newline-tilfælde — så remarkBreaks er nu overflødig og skadelig.
  *  (Den var et band-aid mod deepseeks single-\n-afsnit; rod-årsagen løses
  *  server-side i stedet.) */
+// Stabile referencer: et nyt `components`-objekt eller plugin-array ved hver
+// render ville få react-markdown til at bygge alt om, også uændrede blokke.
+const PLUGINS = [remarkGfm]
+const KOMPONENTER: Components = {
+  a: ({ href, children }) => {
+    const safe = href ? safeLinkHref(href) : null
+    if (!safe) return <span>{children}</span>
+    return (
+      <a
+        href={safe}
+        rel="noopener noreferrer"
+        onClick={(e) => {
+          e.preventDefault()
+          openExternal(safe)
+        }}
+      >
+        {children}
+      </a>
+    )
+  },
+}
+
+/** Én blok markdown. Memoiseret på strengen: en færdig blok parses én gang. */
+export const MarkdownBlok = memo(function MarkdownBlok({ md }: { md: string }) {
+  return <ReactMarkdown remarkPlugins={PLUGINS} components={KOMPONENTER}>{md}</ReactMarkdown>
+})
+
 export function MarkdownRenderer({ text, streaming }: { text: string; streaming: boolean }) {
-  const stabilized = streaming ? stabilizeStreamingMarkdown(text) : text
-  const md = enforceStructure(stripToolEchoes(stabilized))
+  const md = useMemo(() => {
+    const stabilized = streaming ? stabilizeStreamingMarkdown(text) : text
+    return enforceStructure(stripToolEchoes(stabilized))
+  }, [text, streaming])
+  // Under streaming: blokke, så kun den sidste (levende) parses ved hver
+  // delta (lib/markdownBlokke). Færdig tekst: ét samlet parse — det er den
+  // endelige gengivelse, og blokdelingen skal aldrig kunne ændre den.
+  const blokke = useMemo(() => (streaming ? delIBlokke(md) : null), [md, streaming])
+  if (!blokke) return <MarkdownBlok md={md} />
   return (
-    <ReactMarkdown
-      remarkPlugins={[remarkGfm]}
-      components={{
-        a: ({ href, children }) => {
-          const safe = href ? safeLinkHref(href) : null
-          if (!safe) return <span>{children}</span>
-          return (
-            <a
-              href={safe}
-              rel="noopener noreferrer"
-              onClick={(e) => {
-                e.preventDefault()
-                openExternal(safe)
-              }}
-            >
-              {children}
-            </a>
-          )
-        },
-      }}
-    >
-      {md}
-    </ReactMarkdown>
+    <>
+      {blokke.map((b, i) => <MarkdownBlok key={i} md={b} />)}
+    </>
   )
 }
 

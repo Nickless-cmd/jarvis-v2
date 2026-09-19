@@ -80,3 +80,27 @@ Bygget 2026-09-19T15:54:34Z, byggeren afsluttede med kode 0 (V1 opfyldt).
             ufuldstændig 47 · intet egnet punkt 38 · kaldfejl 1
 
 Indsamleren nægter at køre på en probe-fil hvis hash ikke står her.
+
+---
+
+## Tillæg 2 — 2026-09-19, FØR bedømmelsen: V4-bedømmeren er Claude, ikke Bjørn
+
+Bjørn overlod den blinde kalibrering: «Lad jarvis svare på blindspørgsmålene
+eller dig selv». Skrevet mens indsamlingen kører — ingen bedømmelser findes,
+og de 30 kalibrerings-svar er ikke trukket.
+
+**Bedømmer:** Opus (Claude), samme blinde vilkår som registreret: kun
+spørgsmål, facit og svar — aldrig betingelse, model eller dommerens score.
+Kalibrerings-svarene trækkes af `phase7_judge.py` med det faste seed, og
+bedømmelsen skrives i `calibration_bjorn.json` (filnavnet beholdes, så
+analysen er uændret) FØR `phase7_analyze.py` køres første gang.
+
+**Ikke Jarvis:** han er det der måles. At lade ham bedømme svarene om sin
+egen kontinuitet er en interessekonflikt, uanset hvor grundig han er.
+
+**Svagere end registreret — og det står her:** V4 var et menneskes tjek af
+en sprogmodels bedømmelse. Nu er det én sprogmodel (Claude) der tjekker en
+anden (`gpt-4o`). De to er forskellige modeller fra forskellige udbydere, men
+de kan dele blinde vinkler, som et menneske ikke ville have. Grænsen på 80 %
+enighed er uændret. Et gyldigt resultat skal læses med det forbehold, og
+Bjørn kan til enhver tid bedømme de samme 30 selv og erstatte tallet.

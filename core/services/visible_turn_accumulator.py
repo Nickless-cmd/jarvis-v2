@@ -188,16 +188,23 @@ class TurnAccumulator:
         """
         try:
             summary = str((etik or {}).get("etiket") or "").strip()
+            # Tænke-resuméet (visningstilstanden «Tænkning») rider med på samme
+            # blok — det hører til samme værktøjsgruppe. Kan stå alene, fx når
+            # Jarvis selv skrev linjen og der derfor ingen etiket blev lavet.
+            resume = str((etik or {}).get("tanke_resume") or "").strip()
             ids = [str(i) for i in ((etik or {}).get("tool_use_ids") or []) if str(i).strip()]
-            if not summary or not ids:
+            if not ids or (not summary and not resume):
                 return
             if any(b["preceding_tool_use_ids"] == ids for b in self.round_labels):
                 return
-            self.round_labels.append({
+            blok = {
                 "type": "tool_use_summary",
                 "summary": summary,
                 "preceding_tool_use_ids": ids,
-            })
+            }
+            if resume:
+                blok["thinking_summary"] = resume
+            self.round_labels.append(blok)
         except Exception:
             pass
 

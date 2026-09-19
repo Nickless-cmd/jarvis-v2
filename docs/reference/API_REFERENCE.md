@@ -1,6 +1,6 @@
 # API_REFERENCE
 
-> Generated 2026-09-19 from app.routes (live) — 587 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
+> Generated 2026-09-19 from app.routes (live) — 589 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
 
 | Method | Path | Response model | Source |
 |---|---|---|---|
@@ -253,6 +253,8 @@
 | GET | `/chat/sessions/{session_id}/live` |  | chat |
 | GET | `/chat/sessions/{session_id}/recovery` | dict | chat |
 | PUT | `/chat/sessions/{session_id}/rename` | dict | chat |
+| GET | `/chat/sessions/{session_id}/view` | dict | chat_session_view |
+| PUT | `/chat/sessions/{session_id}/view` | dict | chat_session_view |
 | POST | `/chat/sessions/{session_id}/workspace` | dict | chat |
 | POST | `/chat/stream` |  | chat |
 | POST | `/chat/stream/v2` |  | chat_stream_v2 |

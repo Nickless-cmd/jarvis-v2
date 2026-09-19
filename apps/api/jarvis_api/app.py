@@ -815,6 +815,9 @@ def create_app() -> FastAPI:
     # Artefakt-menuen i desk' code mode (18/9-2026). Se core.runtime.db_artifact_index.
     from apps.api.jarvis_api.routes.chat_artifacts import router as chat_artifacts_router
     app.include_router(chat_artifacts_router)
+    # Samtalens visningstilstand (normal/thinking/verbose) — Claude Desktop §1.
+    from apps.api.jarvis_api.routes.chat_session_view import router as chat_session_view_router
+    app.include_router(chat_session_view_router)
     app.include_router(files_router)
     app.include_router(chat_router)
     app.include_router(review_router)

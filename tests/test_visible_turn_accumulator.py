@@ -245,3 +245,16 @@ def test_etiket_uden_kald_eller_tekst_gemmes_ikke():
     a.add_round_label({"etiket": "  ", "tool_use_ids": ["c1"]})
     a.add_round_label(None)  # type: ignore[arg-type]
     assert a.round_labels == []
+
+
+def test_taenke_resumeet_gemmes_paa_gruppens_blok():
+    """Visningen «thinking»: resuméet skal overleve en genindlæsning."""
+    from core.services.visible_turn_accumulator import TurnAccumulator
+    t = TurnAccumulator()
+    t.add_round_label({"etiket": "Rettede login", "tool_use_ids": ["t1"], "tanke_resume": "Ville tjekke ruten"})
+    t.add_round_label({"etiket": "", "tool_use_ids": ["t2"], "tanke_resume": "Læste testen først"})
+    t.add_round_label({"etiket": "", "tool_use_ids": ["t3"]})
+    assert t.round_labels == [
+        {"type": "tool_use_summary", "summary": "Rettede login", "preceding_tool_use_ids": ["t1"], "thinking_summary": "Ville tjekke ruten"},
+        {"type": "tool_use_summary", "summary": "", "preceding_tool_use_ids": ["t2"], "thinking_summary": "Læste testen først"},
+    ]

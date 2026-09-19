@@ -193,9 +193,16 @@ def _etiket(vaerktoejer: list[dict[str, Any]], hensigt: str) -> str:
     return etiket(vaerktoejer, hensigt)
 
 
+def _tanke_resume(tanke: str, hensigt: str) -> str:
+    """Indirektion så tråden kan testes uden at røre modellen."""
+    from core.services.tanke_resume import tanke_resume
+    return tanke_resume(tanke, hensigt)
+
+
 def udsend_runde_etiket(
     *, run_id: str, round_num: int,
     vaerktoejer: list[dict[str, Any]], hensigt: str = "",
+    tanke: str = "",
 ) -> threading.Thread | None:
     """Skriv én kort etiket for runden og udsend den. Blokerer ALDRIG.
 
@@ -234,7 +241,10 @@ def udsend_runde_etiket(
         try:
             from core.services.tool_round_label import tool_use_ids
             tekst = _etiket(vaerktoejer, hensigt)
-            if not (tekst or "").strip():
+            # Tænke-resuméet (visningstilstanden «Tænkning», 19/9-2026): kun
+            # når kalderen gav tænkningen med — dvs. når klienten bad om det.
+            resume = _tanke_resume(tanke, hensigt) if (tanke or "").strip() else ""
+            if not (tekst or "").strip() and not resume:
                 return
             nyttelast = {
                 "run_id": run_id,
@@ -242,6 +252,8 @@ def udsend_runde_etiket(
                 "etiket": tekst,
                 "tool_use_ids": tool_use_ids(vaerktoejer),
             }
+            if resume:
+                nyttelast["tanke_resume"] = resume
             event_bus.publish("runtime.tool_round_label", nyttelast)
             with _VENTENDE_LAAS:
                 koe = _VENTENDE.setdefault(run_id, [])

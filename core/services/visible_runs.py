@@ -4247,6 +4247,8 @@ async def _stream_visible_run(
                             run_id=run.run_id, round_num=_agentic_round + 1,
                             vaerktoejer=list(_a_tool_calls),
                             hensigt=str(run.user_message or ""),
+                            # Tænke-resumé kun i visningen «thinking» (session_view).
+                            tanke=_a_round_reasoning if _vil_have_tanke_resume(run.session_id) else "",
                         )
 
                     if _a_tool_calls and _round_text_total < _TOOL_ONLY_TEXT_THRESHOLD:
@@ -7707,3 +7709,4 @@ from core.services.visible_run_trace import (  # noqa: E402,F401
     _visible_trace_payload,
     get_last_visible_execution_trace,
 )
+from core.services.session_view import vil_have_tanke_resume as _vil_have_tanke_resume  # noqa: E402

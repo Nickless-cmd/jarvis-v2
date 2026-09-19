@@ -384,3 +384,38 @@ def test_loekken_toemmer_koeen_FOER_turen_lukker():
     med_frist = [k for k in ast.walk(fn) if isinstance(k, ast.Call)
                  and getattr(k.func, "id", "") == "_hoest_etiketter" and len(k.args) == 3]
     assert med_frist, "den sidste etiket hentes aldrig"
+
+
+# ───────────────────── tænke-resuméet rider med (visningen «thinking», 19/9-2026)
+
+def test_taenke_resumeet_rider_med_naar_taenkningen_gives(monkeypatch):
+    sendt: list[dict] = []
+    monkeypatch.setattr(vrt, "_etiket", lambda *a, **k: "Rettede fejl i login")
+    monkeypatch.setattr(vrt, "_tanke_resume", lambda t, h: "Ville tjekke ruten først")
+    monkeypatch.setattr(vrt.event_bus, "publish", lambda navn, nyttelast=None, **k: sendt.append(nyttelast or {}))
+    vrt.udsend_runde_etiket(run_id="r1", round_num=1, vaerktoejer=[{"name": "bash", "input": {}, "id": "t1"}],
+                            tanke="hmm, måske ruten").join(timeout=5)
+    assert sendt[0]["tanke_resume"] == "Ville tjekke ruten først"
+
+
+def test_uden_taenkning_intet_resume_og_intet_kald(monkeypatch):
+    kaldt: list = []
+    sendt: list[dict] = []
+    monkeypatch.setattr(vrt, "_etiket", lambda *a, **k: "Rettede fejl i login")
+    monkeypatch.setattr(vrt, "_tanke_resume", lambda t, h: kaldt.append(1) or "x y")
+    monkeypatch.setattr(vrt.event_bus, "publish", lambda navn, nyttelast=None, **k: sendt.append(nyttelast or {}))
+    vrt.udsend_runde_etiket(run_id="r2", round_num=1, vaerktoejer=[{"name": "bash", "input": {}, "id": "t1"}]).join(timeout=5)
+    assert kaldt == []
+    assert "tanke_resume" not in sendt[0]
+
+
+def test_resumeet_udsendes_ogsaa_uden_etiket(monkeypatch):
+    """Skrev Jarvis selv linjen (description), laves ingen etiket — men
+    tænke-resuméet hører stadig til gruppen."""
+    sendt: list[dict] = []
+    monkeypatch.setattr(vrt, "_etiket", lambda *a, **k: "")
+    monkeypatch.setattr(vrt, "_tanke_resume", lambda t, h: "Besluttede at læse testen først")
+    monkeypatch.setattr(vrt.event_bus, "publish", lambda navn, nyttelast=None, **k: sendt.append(nyttelast or {}))
+    vrt.udsend_runde_etiket(run_id="r3", round_num=1, vaerktoejer=[{"name": "bash", "input": {}, "id": "t1"}],
+                            tanke="...").join(timeout=5)
+    assert sendt and sendt[0]["etiket"] == "" and sendt[0]["tanke_resume"]

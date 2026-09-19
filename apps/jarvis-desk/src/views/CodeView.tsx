@@ -813,9 +813,14 @@ export function CodeView({
     } : {}),
   }
 
+  // Øverst i fladen, højrestillet over samtalen — som CC's «Suggested task».
+  const sideKort = (
+    <div className="sok-top-anker">
+      <SideOpgaveKort config={sideCfg} handlinger={sideHandlinger} />
+    </div>
+  )
+
   const composer = (
-    <div className="sok-anker">
-    <SideOpgaveKort config={sideCfg} handlinger={sideHandlinger} />
     <Composer
       streaming={stream.status === 'working'}
       onSend={handleSend}
@@ -837,7 +842,6 @@ export function CodeView({
       onOpenPrivacy={onOpenPrivacy}
       indsaet={tilbage.indsaet}
     />
-    </div>
   )
 
   const visibleMessages = sessions.messages.filter((m) => m.role === 'user' || m.role === 'assistant')
@@ -985,6 +989,7 @@ export function CodeView({
     return (
       <div className="codeview empty">
         {header}
+        {sideKort}
         {trustBanner}
         <div className="chat-empty">
           <GreetingHero
@@ -1009,6 +1014,7 @@ export function CodeView({
     <div className={`codeview${(jobsOpen || changesOpen) ? ' har-skinne' : ''}`}>
       <div className="codeview-main">
         {headerActive}
+        {sideKort}
         {bgActive && stream.status !== 'working' && !takeoverDismissed && (
           <div className="takeover-banner" role="status">
             <span className="takeover-text">📱→🖥 Aktiv på en anden enhed — følger med her live</span>

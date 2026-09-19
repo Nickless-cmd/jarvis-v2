@@ -2,9 +2,16 @@
    (19/9-2026). Egen fil: app.css er over Boy Scout-grænsen.
    Kortet flyder oven over inputfeltet i højre side — det skubber ikke
    samtalen, det ligger over den, som i CC. */
-.sok-anker { position: relative; }
+.sok-top-anker {
+  /* ØVERST i chatten, højrestillet i samme 820 px-kolonne som samtalen
+     (Bjørn 19/9-2026, efter CC's eget kort). Ankeret har ingen højde: kortet
+     flyder OVER samtalen og skubber intet. */
+  position: relative; z-index: 30; height: 0;
+  width: 100%; max-width: 820px; margin: 0 auto; box-sizing: border-box;
+}
+.har-skinne .sok-top-anker { max-width: min(820px, calc(100% - var(--skinne-bredde) - 16px)); margin-left: auto; margin-right: calc(var(--skinne-bredde) + 16px); }
 .sok-dok {
-  position: absolute; right: 0; bottom: calc(100% + 10px); z-index: 30;
+  position: absolute; right: 0; top: 6px;
   width: min(360px, 100%);
 }
 .sok {

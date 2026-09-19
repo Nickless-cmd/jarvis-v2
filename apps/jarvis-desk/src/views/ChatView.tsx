@@ -604,9 +604,16 @@ export function ChatView({
     loesHer: (t: SideTask) => resend(t.prompt),
   }
 
-  const composer = (
-    <div className="sok-anker">
+  // Øverst i chatten, højrestillet over samtalen — som CC's «Suggested task»
+  // (Bjørn 19/9-2026: «kan du lægge den i toppen af chatview i stedet?»).
+  const sideKort = (
+    <div className="sok-top-anker">
       <SideOpgaveKort config={sideCfg} handlinger={sideHandlinger} />
+    </div>
+  )
+
+  const composer = (
+    <>
       <Composer
         streaming={streaming}
         onSend={handleSend}
@@ -638,7 +645,7 @@ export function ChatView({
         stopListening={voice.stopListening}
         exit={voice.exit}
       />
-    </div>
+    </>
   )
 
   // Baggrundsjob i CHATTEN ogsaa. Panelet fandtes kun i Code-visningen, saa
@@ -793,6 +800,7 @@ export function ChatView({
     return (
       <div className={`chatview empty${skinneAaben ? ' har-skinne' : ''}`}>
         {header}
+        {sideKort}
         {jobsRude}
         <div className="chat-empty">
           <GreetingHero
@@ -815,6 +823,7 @@ export function ChatView({
     <VisningContext.Provider value={visning}>
     <div className={`chatview${skinneAaben ? ' har-skinne' : ''}`}>
       {header}
+      {sideKort}
       {jobsRude}
       {showTakeover && (
         <div className="takeover-banner" role="status">

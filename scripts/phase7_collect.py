@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import random
 import sys
 import time
@@ -33,13 +34,16 @@ REPO = Path(__file__).resolve().parent.parent
 if str(REPO) not in sys.path:
     sys.path.insert(0, str(REPO))
 
-OUT_DIR = Path.home() / ".jarvis-v2" / "files" / "phase7"
+# Udgave "7" eller "7b" (JARVIS_FASE7_UDGAVE) — samme valg som byggeren.
+UDGAVE = os.environ.get("JARVIS_FASE7_UDGAVE", "7")
+OUT_DIR = Path.home() / ".jarvis-v2" / "files" / {"7": "phase7", "7b": "phase7b"}[UDGAVE]
 PROBES = OUT_DIR / "probes.jsonl"
 RESPONSES = OUT_DIR / "responses.jsonl"
 PROMPTS = OUT_DIR / "prompts.jsonl"
-PREREG = REPO / "docs" / "experiments" / "2026-09-19-phase7-preregistration.md"
+PREREG = REPO / "docs" / "experiments" / {"7": "2026-09-19-phase7-preregistration.md",
+                                         "7b": "2026-09-19-phase7b-preregistration.md"}[UDGAVE]
 
-SEED = 20260919
+SEED = {"7": 20260919, "7b": 20260920}[UDGAVE]
 MODELS = {
     "QWN": {"provider": "alibaba", "model": "qwen-plus"},
     "CPL": {"provider": "copilot-free", "model": "gpt-4.1"},

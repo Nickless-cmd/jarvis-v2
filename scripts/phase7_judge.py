@@ -19,6 +19,7 @@ Skriver til ~/.jarvis-v2/files/phase7/ på CT105:
 from __future__ import annotations
 
 import json
+import os
 import random
 import re
 import sys
@@ -29,14 +30,16 @@ REPO = Path(__file__).resolve().parent.parent
 if str(REPO) not in sys.path:
     sys.path.insert(0, str(REPO))
 
-OUT_DIR = Path.home() / ".jarvis-v2" / "files" / "phase7"
+# Udgave "7" eller "7b" (JARVIS_FASE7_UDGAVE) — samme valg som byggeren.
+UDGAVE = os.environ.get("JARVIS_FASE7_UDGAVE", "7")
+OUT_DIR = Path.home() / ".jarvis-v2" / "files" / {"7": "phase7", "7b": "phase7b"}[UDGAVE]
 PROBES = OUT_DIR / "probes.jsonl"
 RESPONSES = OUT_DIR / "responses.jsonl"
 JUDGMENTS = OUT_DIR / "judgments.jsonl"
 CAL_ITEMS = OUT_DIR / "calibration_items.jsonl"
 CAL_MD = OUT_DIR / "calibration_for_bjorn.md"
 
-SEED = 20260919
+SEED = {"7": 20260919, "7b": 20260920}[UDGAVE]
 JUDGE = {"provider": "copilot-free", "model": "gpt-4o"}
 CALIBRATION_N = 30
 

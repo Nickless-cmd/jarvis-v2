@@ -20,16 +20,19 @@ Prædiktioner (pr. model, parret pr. probe):
 from __future__ import annotations
 
 import json
+import os
 import random
 import sys
 from collections import defaultdict
 from pathlib import Path
 from statistics import mean
 
-OUT_DIR = Path.home() / ".jarvis-v2" / "files" / "phase7"
+# Udgave "7" eller "7b" (JARVIS_FASE7_UDGAVE) — samme valg som byggeren.
+UDGAVE = os.environ.get("JARVIS_FASE7_UDGAVE", "7")
+OUT_DIR = Path.home() / ".jarvis-v2" / "files" / {"7": "phase7", "7b": "phase7b"}[UDGAVE]
 MODELS = ("QWN", "CPL")
 BOOT = 10_000
-SEED = 20260919
+SEED = {"7": 20260919, "7b": 20260920}[UDGAVE]
 
 
 def _jsonl(path: Path) -> list[dict]:

@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import random
 import re
 import sqlite3
@@ -32,16 +33,28 @@ REPO = Path(__file__).resolve().parent.parent
 if str(REPO) not in sys.path:
     sys.path.insert(0, str(REPO))
 
-SEED = 20260919
-OUT_DIR = Path.home() / ".jarvis-v2" / "files" / "phase7"
+# Udgave: "7" (låst i 2026-09-19-phase7-preregistration.md, ugyldig ved V1)
+# eller "7b" (2026-09-19-phase7b-preregistration.md). Vælges med
+# JARVIS_FASE7_UDGAVE, så 7's låste værdier står urørte.
+UDGAVE = os.environ.get("JARVIS_FASE7_UDGAVE", "7")
+_UDGAVER = {
+    "7": {"seed": 20260919, "dir": "phase7", "type_loft": 8, "forsoeg": 120,
+          "spande": {"A": (2, 7), "B": (8, 30), "C": (31, 120)}},
+    "7b": {"seed": 20260920, "dir": "phase7b", "type_loft": 10, "forsoeg": 250,
+           "spande": {"A": (2, 21), "B": (22, 60), "C": (61, 120)}},
+}
+_U = _UDGAVER[UDGAVE]
+SEED = _U["seed"]
+OUT_DIR = Path.home() / ".jarvis-v2" / "files" / _U["dir"]
 PROBES = OUT_DIR / "probes.jsonl"
 LOG = OUT_DIR / "build_log.jsonl"
 DB = Path.home() / ".jarvis-v2" / "state" / "jarvis.db"
 
 EXTRACTOR = {"provider": "alibaba", "model": "qwen-max"}
-BUCKETS = {"A": (2, 7), "B": (8, 30), "C": (31, 120)}
+BUCKETS = _U["spande"]
 PER_BUCKET = 20
-MAX_TRIES_PER_BUCKET = 120
+MAX_TRIES_PER_BUCKET = _U["forsoeg"]
+TYPE_LOFT = _U["type_loft"]
 TYPES = ("fakta", "tilsagn", "holdning")
 MIN_ASSISTANT_CHARS = 400
 # Tillæg 2: V1 gælder pr. spand — under dette er forsøget ugyldigt.
@@ -149,8 +162,8 @@ def reject_reason(p: dict, ident_lower: str, used_sessions: set[str], session_id
         return "i_identitetsfilerne"
     if any(k in q.lower() for k in keys):
         return "roeber_svaret"
-    # Jævn fordeling: højst 8 af én type pr. spand (20 / 3 rundet op + 1).
-    if type_counts[typ] >= 8:
+    # Jævn fordeling: typeloft pr. spand (7: 8, 7b: 10).
+    if type_counts[typ] >= TYPE_LOFT:
         return "type_fyldt"
     return None
 

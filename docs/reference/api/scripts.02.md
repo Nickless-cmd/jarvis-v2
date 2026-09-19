@@ -259,49 +259,49 @@ _Fase 7 — analyse, præcis som forhåndsregistreret._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_jsonl` | `(path)` | — | [src](../../../scripts/phase7_analyze.py#L35) |
-| function | `paired_diffs` | `(scores, model, a, b, probe_ids)` | — | [src](../../../scripts/phase7_analyze.py#L41) |
-| function | `bootstrap_low` | `(diffs, rnd)` | — | [src](../../../scripts/phase7_analyze.py#L50) |
-| function | `analyze` | `(out_dir=…)` | — | [src](../../../scripts/phase7_analyze.py#L58) |
-| function | `_v4` | `(out_dir, scores)` | — | [src](../../../scripts/phase7_analyze.py#L112) |
+| function | `_jsonl` | `(path)` | — | [src](../../../scripts/phase7_analyze.py#L38) |
+| function | `paired_diffs` | `(scores, model, a, b, probe_ids)` | — | [src](../../../scripts/phase7_analyze.py#L44) |
+| function | `bootstrap_low` | `(diffs, rnd)` | — | [src](../../../scripts/phase7_analyze.py#L53) |
+| function | `analyze` | `(out_dir=…)` | — | [src](../../../scripts/phase7_analyze.py#L61) |
+| function | `_v4` | `(out_dir, scores)` | — | [src](../../../scripts/phase7_analyze.py#L115) |
 
 ## `scripts/phase7_build_probes.py`
 _Fase 7 — bygger proberne af arkivet._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_owner` | `()` | — | [src](../../../scripts/phase7_build_probes.py#L72) |
-| function | `identity_text` | `(ws)` | — | [src](../../../scripts/phase7_build_probes.py#L85) |
-| function | `_call` | `(system_user)` | — | [src](../../../scripts/phase7_build_probes.py#L93) |
-| function | `_parse` | `(text)` | — | [src](../../../scripts/phase7_build_probes.py#L102) |
-| function | `candidates` | `(conn, uid, now, lo, hi)` | Jarvis' svar i ejerens egne (ikke-autonome) samtaler, i spandens vindue. | [src](../../../scripts/phase7_build_probes.py#L112) |
-| function | `preceding_user` | `(conn, session_id, msg_id)` | — | [src](../../../scripts/phase7_build_probes.py#L129) |
-| function | `reject_reason` | `(p, ident_lower, used_sessions, session_id, type_counts)` | — | [src](../../../scripts/phase7_build_probes.py#L136) |
-| function | `main` | `()` | — | [src](../../../scripts/phase7_build_probes.py#L158) |
+| function | `_owner` | `()` | — | [src](../../../scripts/phase7_build_probes.py#L85) |
+| function | `identity_text` | `(ws)` | — | [src](../../../scripts/phase7_build_probes.py#L98) |
+| function | `_call` | `(system_user)` | — | [src](../../../scripts/phase7_build_probes.py#L106) |
+| function | `_parse` | `(text)` | — | [src](../../../scripts/phase7_build_probes.py#L115) |
+| function | `candidates` | `(conn, uid, now, lo, hi)` | Jarvis' svar i ejerens egne (ikke-autonome) samtaler, i spandens vindue. | [src](../../../scripts/phase7_build_probes.py#L125) |
+| function | `preceding_user` | `(conn, session_id, msg_id)` | — | [src](../../../scripts/phase7_build_probes.py#L142) |
+| function | `reject_reason` | `(p, ident_lower, used_sessions, session_id, type_counts)` | — | [src](../../../scripts/phase7_build_probes.py#L149) |
+| function | `main` | `()` | — | [src](../../../scripts/phase7_build_probes.py#L171) |
 
 ## `scripts/phase7_collect.py`
 _Fase 7 — indsamler svarene._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_load_builder` | `()` | — | [src](../../../scripts/phase7_collect.py#L51) |
-| function | `_check_locked` | `()` | Proberne SKAL være låst i registreringen før første svar. | [src](../../../scripts/phase7_collect.py#L59) |
-| function | `_full_system_prompt` | `(question)` | — | [src](../../../scripts/phase7_collect.py#L67) |
-| function | `_call` | `(provider, model, system, user)` | — | [src](../../../scripts/phase7_collect.py#L76) |
-| function | `_done` | `()` | — | [src](../../../scripts/phase7_collect.py#L88) |
-| function | `main` | `()` | — | [src](../../../scripts/phase7_collect.py#L100) |
+| function | `_load_builder` | `()` | — | [src](../../../scripts/phase7_collect.py#L55) |
+| function | `_check_locked` | `()` | Proberne SKAL være låst i registreringen før første svar. | [src](../../../scripts/phase7_collect.py#L63) |
+| function | `_full_system_prompt` | `(question)` | — | [src](../../../scripts/phase7_collect.py#L71) |
+| function | `_call` | `(provider, model, system, user)` | — | [src](../../../scripts/phase7_collect.py#L80) |
+| function | `_done` | `()` | — | [src](../../../scripts/phase7_collect.py#L92) |
+| function | `main` | `()` | — | [src](../../../scripts/phase7_collect.py#L104) |
 
 ## `scripts/phase7_judge.py`
 _Fase 7 — blind bedømmelse af svarene._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_call` | `(prompt)` | — | [src](../../../scripts/phase7_judge.py#L65) |
-| function | `parse_verdict` | `(text)` | — | [src](../../../scripts/phase7_judge.py#L74) |
-| function | `_jsonl` | `(path)` | — | [src](../../../scripts/phase7_judge.py#L87) |
-| function | `key` | `(r)` | — | [src](../../../scripts/phase7_judge.py#L93) |
-| function | `main` | `()` | — | [src](../../../scripts/phase7_judge.py#L97) |
-| function | `_calibration` | `(probes, items)` | 30 svar til Bjørns blinde bedømmelse — trukket én gang, aldrig igen. | [src](../../../scripts/phase7_judge.py#L134) |
+| function | `_call` | `(prompt)` | — | [src](../../../scripts/phase7_judge.py#L68) |
+| function | `parse_verdict` | `(text)` | — | [src](../../../scripts/phase7_judge.py#L77) |
+| function | `_jsonl` | `(path)` | — | [src](../../../scripts/phase7_judge.py#L90) |
+| function | `key` | `(r)` | — | [src](../../../scripts/phase7_judge.py#L96) |
+| function | `main` | `()` | — | [src](../../../scripts/phase7_judge.py#L100) |
+| function | `_calibration` | `(probes, items)` | 30 svar til Bjørns blinde bedømmelse — trukket én gang, aldrig igen. | [src](../../../scripts/phase7_judge.py#L137) |
 
 ## `scripts/phone_home_auto.py`
 _phone_home_auto — hold phone_adb_address i runtime.json opdateret._

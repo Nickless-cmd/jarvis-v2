@@ -44,7 +44,10 @@ export async function skiftBranch(
   body: { kind: string; root: string; name: string; create?: boolean },
 ): Promise<{ ok: boolean; current?: string; error?: string }> {
   const r = await apiFetch<Record<string, unknown>>(config, '/chat/git/checkout', {
-    method: 'POST', body: JSON.stringify({ create: false, ...body }),
+    // Et OBJEKT: apiFetch stringifier selv. Med JSON.stringify her fik
+    // serveren en JSON-streng i JSON og svarede 422 — branch-skift og
+    // «Opret worktree» virkede aldrig fra desk (fundet 19/9-2026).
+    method: 'POST', body: { create: false, ...body },
   })
   return { ok: !!r?.ok, current: r?.current ? String(r.current) : undefined,
            error: r?.error ? String(r.error) : undefined }
@@ -55,7 +58,7 @@ export async function opretWorktree(
   body: { kind: string; root: string; name: string; path?: string },
 ): Promise<{ ok: boolean; path?: string; error?: string }> {
   const r = await apiFetch<Record<string, unknown>>(config, '/chat/git/worktree', {
-    method: 'POST', body: JSON.stringify(body),
+    method: 'POST', body,
   })
   return { ok: !!r?.ok, path: r?.path ? String(r.path) : undefined,
            error: r?.error ? String(r.error) : undefined }

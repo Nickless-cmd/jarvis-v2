@@ -327,11 +327,37 @@ describe('vinduets egen titelbjælke', () => {
     }
   })
 
-  it('headeren reserverer ikke længere plads i højre side', () => {
-    // Den gamle løsning var en usynlig aftale mellem to regler: knapperne lå
-    // oven i headeren, og headeren holdt 152 px fri. Rykkede den ene sig,
-    // overlappede de uden at nogen kunne se hvorfor.
-    expect(app).not.toMatch(/body\.egen-ramme \.chatview-head \{[^}]*padding-right/)
+  it('headeren ER titellinjen — pladsen til knapperne regnes ÉT sted', () => {
+    // 16/9: knapperne fik deres egen linje over headeren. 19/9 (Jarvis' maaling
+    // af CC Desktop 2.110.0, Bjoern: «byg den som cc desktop»): header og
+    // knapper paa SAMME linje. Den gamle fejl var 152 px skrevet i headeren
+    // som en usynlig aftale med knappernes stoerrelse. Nu regnes pladsen af
+    // de samme variabler knapperne selv bruger.
+    // Alle regler med præcis den selektor — der er to (træk + plads).
+    const head = [...app.matchAll(/body\.egen-ramme \.chatview-head \{([^}]*)\}/g)].map((m) => m[1]).join(' ')
+    expect(head).toContain('padding-right: var(--vk-plads)')
+    expect(app).toMatch(/--vk-plads:\s*calc\(3 \* var\(--vk-str\) \+ 2 \* var\(--vk-mellemrum\) \+ var\(--vk-hoejre\)/)
+    const knapper = app.match(/^\.vinduesknapper \{([^}]*)\}/m)?.[1] ?? ''
+    expect(knapper).toContain('right: var(--vk-hoejre)')
+    expect(knapper).toContain('gap: var(--vk-mellemrum)')
+  })
+
+  it('CC-maalene: 24 px cirkler, 13 px imellem, 10 px til kanten', () => {
+    expect(app).toMatch(/--vk-str:\s*24px/)
+    expect(app).toMatch(/--vk-mellemrum:\s*13px/)
+    expect(app).toMatch(/--vk-hoejre:\s*10px/)
+    const knap = app.match(/^\.vinduesknapper button \{([^}]*)\}/m)?.[1] ?? ''
+    expect(knap).toContain('border-radius: 50%')
+  })
+
+  it('med aaben skinne goer headeren plads til BAADE knapper og skinne', () => {
+    const r = app.match(/body\.egen-ramme \.har-skinne \.chatview-head \{([^}]*)\}/)?.[1] ?? ''
+    expect(r).toContain('max(var(--vk-plads), calc(var(--skinne-bredde) + 16px))')
+  })
+
+  it('en flade med header har ingen ekstra bjaelke og intet skub', () => {
+    expect(app).toMatch(/body\.egen-ramme:has\(\.main \.chatview-head\) \.vinduesbjaelke \{ display: none; \}/)
+    expect(app).toMatch(/body\.egen-ramme \.main:has\(\.chatview-head\) \{ padding-top: 0; \}/)
   })
 })
 

@@ -381,7 +381,13 @@ function createMainWindow(): void {
     // beholder den ægte lyskurv og fjerner kun titelbjaelken.
     ...(process.platform === 'darwin'
       ? { titleBarStyle: 'hiddenInset' as const, trafficLightPosition: { x: 12, y: 14 } }
-      : { frame: false }),
+      // Linux/Windows: skjult titelbjaelke, header og vinduesknapper paa SAMME
+      // linje som i CC Desktop (maalt 2.110.0 19/9-2026: _MOTIF_WM_HINTS
+      // 0x2,0,0,0,0 · Border 0 · Override Redirect no). Paa Linux goer
+      // 'hidden' det samme som frame:false — Electron fjerner rammen for
+      // enhver stil der ikke er 'default'. titleBarOverlay (kun win32) og
+      // trafficLightPosition (kun darwin) er no-ops her og saettes derfor ikke.
+      : { titleBarStyle: 'hidden' as const }),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,

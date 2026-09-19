@@ -3641,57 +3641,77 @@ button.sidebar-group svg { flex: none; opacity: .7; }
    klikbart i dem skal have no-drag — ellers spiser traek-omraadet klikket,
    og knapperne ser ud til at vaere gaaet i staa. */
 .vinduesknapper {
-  position: fixed; top: 0; right: 0; z-index: 200;
-  display: flex; -webkit-app-region: no-drag;
+  position: fixed; top: var(--vk-top); right: var(--vk-hoejre); z-index: 200;
+  display: flex; gap: var(--vk-mellemrum); -webkit-app-region: no-drag;
 }
+/* CC Desktops knapper (maalt 19/9-2026 paa det koerende vindue): runde, 24 px,
+   13 px imellem, 10 px til kanten, centreret i en 36 px linje. Cirklen er et
+   trin fra baggrunden — synlig, men ikke en knap der raaber. */
 .vinduesknapper button {
-  width: 46px; height: 34px; display: grid; place-items: center;
-  background: none; border: 0; color: var(--fg-3); cursor: pointer;
+  width: var(--vk-str); height: var(--vk-str); border-radius: 50%;
+  display: grid; place-items: center; padding: 0;
+  background: color-mix(in srgb, var(--fg-1) 8%, transparent);
+  border: 0; color: var(--fg-2); cursor: pointer; -webkit-app-region: no-drag;
 }
-.vinduesknapper button:hover { background: var(--bg-3); color: var(--fg-1); }
+.vinduesknapper button:hover { background: color-mix(in srgb, var(--fg-1) 16%, transparent); color: var(--fg-1); }
 /* Roedt paa luk er en konvention, ikke en maaling — den er den eneste af de
    tre der ikke kan fortrydes. */
 .vinduesknapper .er-luk:hover { background: #c4372f; color: #ffffff; }
-.vinduesknapper button:focus-visible { outline: 1px solid var(--accent); outline-offset: -2px; }
+.vinduesknapper button:focus-visible { outline: 1px solid var(--accent); outline-offset: 1px; }
+
+body.egen-ramme {
+  --vk-str: 24px;
+  --vk-mellemrum: 13px;
+  --vk-hoejre: 10px;
+  --vk-top: 6px;
+  /* Hvad headeren skal holde fri til hoejre: tre knapper, to mellemrum,
+     kanten — og luft til headerens egne ikoner. */
+  --vk-plads: calc(3 * var(--vk-str) + 2 * var(--vk-mellemrum) + var(--vk-hoejre) + 16px);
+}
 
 body.egen-ramme .sidebar-top,
 body.egen-ramme .chatview-head { -webkit-app-region: drag; }
 body.egen-ramme .sidebar-top button,
 body.egen-ramme .sidebar-top input,
 body.egen-ramme .sidebar-top a,
+body.egen-ramme .sidebar-top [role='button'],
 body.egen-ramme .chatview-head button,
 body.egen-ramme .chatview-head input,
 body.egen-ramme .chatview-head select,
-body.egen-ramme .chatview-head a { -webkit-app-region: no-drag; }
-/* Ingen reservering i headeren laengere: knapperne har deres egen linje. */
+body.egen-ramme .chatview-head a,
+body.egen-ramme .chatview-head [role='button'],
+body.egen-ramme .chatview-head [role='menu'] { -webkit-app-region: no-drag; }
 
-/* Titelbjaelken har sin EGEN linje (Bjoern 16/9-2026: «header linjen skal
-   rykkes ned saadan minimere og forstoer og exit er paa sin egen linje»).
-   Foer laa knapperne oven i appens egen header, og den maatte holde 152 px fri
-   i hoejre side — en usynlig aftale mellem to regler der ikke vidste om
-   hinanden. Nu er bjaelken en raekke for sig: alt andet starter under den.
+/* HEADER OG VINDUESKNAPPER PAA SAMME LINJE (19/9-2026, som CC Desktop).
+   Den 16/9 fik knapperne deres egen linje over headeren. Nu er headeren
+   selv titellinjen: 36 px hoej, traekbar i sit tomme omraade, og med plads
+   til knapperne i hoejre side. */
+body.egen-ramme .chatview-head {
+  min-height: 36px; padding-top: 0; padding-bottom: 0;
+  padding-right: var(--vk-plads);
+}
+/* Med hoejre skinne aaben skal headeren gore plads til BEGGE — den regel
+   ovenfor er mere specifik end .har-skinne og ville ellers vinde over den. */
+body.egen-ramme .har-skinne .chatview-head {
+  padding-right: max(var(--vk-plads), calc(var(--skinne-bredde) + 16px));
+}
 
-   Den er ALTID der, ogsaa paa setup- og fejlskaerme. Uden OS-ramme er den den
-   eneste maade at flytte vinduet paa. */
+/* Flader UDEN header (setup, fejlskaerm, Arbejde): en tynd traekbjaelke, saa
+   vinduet altid kan flyttes, og saa indholdet ikke ligger under knapperne. */
 .vinduesbjaelke { display: none; }
-/* Bjaelken starter hvor sidebaren slutter (Bjoern 16/9-2026: «venstre panel
-   skal gaa helt op»). Foer laa den henover hele bredden, og sidebaren
-   begyndte 34 px nede — den saa afskaaret ud i toppen.
-
-   Paa setup- og fejlskaermen findes sidebaren ikke; der daekker bjaelken hele
-   bredden, ellers ville de foerste 260 px ikke kunne traekkes. :has() afgoer
-   det, samme mekanik som resten af skallen bruger. */
 body.egen-ramme .vinduesbjaelke {
-  display: block; position: fixed; top: 0; right: 0; height: 34px;
+  display: block; position: fixed; top: 0; right: 0; height: 36px;
   left: var(--sidebar-bredde);
   z-index: 190; -webkit-app-region: drag;
 }
 body.egen-ramme:not(:has(.window)) .vinduesbjaelke {
   left: 0; background: var(--bg-0); border-bottom: 1px solid var(--line);
 }
-/* Sidebaren gaar HELT op; kun hovedfladen skubbes ned under bjaelken. */
 body.egen-ramme .window { height: 100vh; margin-top: 0; }
-body.egen-ramme .main { padding-top: 34px; }
+body.egen-ramme .main { padding-top: 36px; }
+/* Har fladen en header, ER den titellinjen: ingen ekstra bjaelke, intet skub. */
+body.egen-ramme:has(.main .chatview-head) .vinduesbjaelke { display: none; }
+body.egen-ramme .main:has(.chatview-head) { padding-top: 0; }
 
 /* ── Ændringer (diff-ruden) ──────────────────────────────────────────────
    Bjørn 16/9-2026: «et changes icon der åbner dette panel … der kan jeg

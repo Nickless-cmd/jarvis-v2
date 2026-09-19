@@ -1,5 +1,6 @@
 import { Fragment } from 'react'
-import { useEffect, useMemo, useReducer, useRef, useState } from 'react'
+import { useRammeReducer } from '../lib/useRammeReducer'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useVoiceConversation } from '../hooks/useVoiceConversation'
 import { FolderTree, PanelRight, Lock, ShieldCheck, FolderOpen, Gauge, SquareStack, FileDiff } from 'lucide-react'
 import { onPauseSvar, pauseAskIn, withoutPauseAsk, type PauseAsk } from '../lib/pauseAsk'
@@ -165,7 +166,7 @@ export function CodeView({
   // Cross-device live-state (effekter wires længere nede): bruges allerede her i
   // miljø-felt-beregningen, så deklarationen skal stå før den.
   const [bgActive, setBgActive] = useState(false)
-  const [followState, followDispatch] = useReducer(streamReducer, undefined, initialStreamState)
+  const [followState, followDispatch] = useRammeReducer(streamReducer, initialStreamState)
   const followCtrlRef = useRef<{ abort: () => void } | null>(null)
 
   // Hjælper: indlæs gemte session-stats fra localStorage.

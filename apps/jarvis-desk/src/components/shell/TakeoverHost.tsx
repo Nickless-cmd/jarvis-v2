@@ -1,4 +1,5 @@
-import { useEffect, useReducer, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useRammeReducer } from '../../lib/useRammeReducer'
 import { getActiveRuns, followRun, getSession } from '../../lib/api'
 import { streamReducer, initialStreamState } from '../../lib/streamReducer'
 import { MessageRow } from '../rich/MessageRow'
@@ -36,7 +37,7 @@ export function TakeoverHost({
   const { settings } = useSettings()
   const [activeSid, setActiveSid] = useState<string | null>(null)
   const dismissed = useRef<Set<string>>(new Set())
-  const [followState, followDispatch] = useReducer(streamReducer, undefined, initialStreamState)
+  const [followState, followDispatch] = useRammeReducer(streamReducer, initialStreamState)
   const followCtl = useRef<{ abort: () => void } | null>(null)
   const [msgs, setMsgs] = useState<ChatMessage[]>([])
   const [elapsedMs, setElapsedMs] = useState(0)

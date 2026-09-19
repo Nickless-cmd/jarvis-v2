@@ -42,15 +42,20 @@ const wrapper = ({ children }: { children: ReactNode }) => (
 )
 
 describe('StreamContext', () => {
-  it('send → working, message_stop → done', () => {
+  // Stream-events anvendes én gang pr. frame (lib/useRammeReducer) — vent på den.
+  const ventRamme = () => act(() => new Promise<void>((r) => setTimeout(r, 120)))
+
+  it('send → working, message_stop → done', async () => {
     const { result } = renderHook(() => useStream(), { wrapper })
     act(() => { result.current.send('hej', { sessionId: 's' }) })
     act(() => {
       handlersRef.current?.onRunId('visible-1')
       handlersRef.current?.onEvent({ type: 'message_start', message: { id: 'visible-1', model: 'm', provider: 'p', lane: 'l', session_id: 's', usage: { input_tokens: 0, output_tokens: 0 } } })
     })
+    await ventRamme()
     expect(result.current.status).toBe('working')
     act(() => { handlersRef.current?.onEvent({ type: 'message_stop' }) })
+    await ventRamme()
     expect(result.current.status).toBe('done')
   })
 

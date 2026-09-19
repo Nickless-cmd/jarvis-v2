@@ -1,4 +1,6 @@
-import { createContext, useCallback, useEffect, useMemo, useReducer, useRef, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { lavVaerdiLager, type VaerdiLager } from '../lib/vaerdiLager'
+import { useRammeReducer } from '../lib/useRammeReducer'
 import { startStream, type StreamControl, type StreamError } from '../lib/streamClient'
 import { cancelRun, approveTool, denyTool, followRun } from '../lib/api'
 import { streamReducer, initialStreamState, type StreamStatus } from '../lib/streamReducer'
@@ -143,7 +145,8 @@ export interface StreamContextValue {
   consumeAutoContinue: () => string | null
 }
 
-export const StreamContext = createContext<StreamContextValue | null>(null)
+// Konteksten bærer et LAGER, ikke selve værdien — se lib/vaerdiLager.
+export const StreamContext = createContext<VaerdiLager<StreamContextValue> | null>(null)
 
 export function StreamProvider({
   children,
@@ -152,7 +155,8 @@ export function StreamProvider({
   children: ReactNode
   config: { apiBaseUrl: string; authToken: string | null }
 }) {
-  const [state, dispatch] = useReducer(streamReducer, undefined, initialStreamState)
+  // Én opdatering pr. frame, ikke pr. delta (lib/useRammeReducer).
+  const [state, dispatch] = useRammeReducer(streamReducer, initialStreamState)
   const [error, setError] = useState<Error | null>(null)
   const [streamError, setStreamError] = useState<StreamErrorInfo | null>(null)
   const canonical = useCanonicalError()  // Fase 2: canonical fejl-lag (parallelt m. streamError)
@@ -492,5 +496,10 @@ export function StreamProvider({
     }),
     [status, state.model, state.provider, state.lane, state.blocks, state.rundeEtiketter, state.tankeResumeer, state.activeRunId, workingSessionId, state.usage, elapsedMs, state.workingStep, state.recoveryNotice, error, streamError, canonical.errors, canonical.current, clearError, needsAttention, send, abort, continueFromPartial, pendingApproval, approve, deny, pendingAppAction, clearAppAction, autoContinue, armAutoContinue, consumeAutoContinue],
   )
-  return <StreamContext.Provider value={value}>{children}</StreamContext.Provider>
+  // Lageret oprettes én gang med den første værdi og opdateres efter hver
+  // commit. Konteksten selv ændrer sig aldrig (lib/vaerdiLager).
+  const lager = useRef<VaerdiLager<StreamContextValue> | null>(null)
+  if (lager.current === null) lager.current = lavVaerdiLager(value)
+  useLayoutEffect(() => { lager.current!.saet(value) }, [value])
+  return <StreamContext.Provider value={lager.current}>{children}</StreamContext.Provider>
 }

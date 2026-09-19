@@ -73,7 +73,7 @@ describe('ChatView integration', () => {
       handlersRef.current?.onEvent({ type: 'content_block_start', index: 0, content_block: { type: 'text', text: '' } })
       handlersRef.current?.onEvent({ type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: 'svar' } })
     })
-    expect(screen.getByText('svar')).toBeInTheDocument()
+    expect(await screen.findByText('svar')).toBeInTheDocument()
   })
 
   it('viser pause_and_ask over chatten i stedet for inde i den scrollbare transcript', async () => {
@@ -102,6 +102,8 @@ describe('ChatView integration', () => {
       handlersRef.current?.onEvent({ type: 'content_block_start', index: 0, content_block: { type: 'tool_use', id: 'ask-1', name: 'pause_and_ask', input: {} } })
       handlersRef.current?.onEvent({ type: 'content_block_start', index: 1, content_block: { type: 'tool_result', tool_use_id: 'ask-1', status: 'done', content: result } })
     })
+    // Stream-events anvendes én gang pr. frame (lib/useRammeReducer).
+    await act(() => new Promise<void>((r) => setTimeout(r, 120)))
 
     const pauseCard = container.querySelector('.composer-notices .pauseask')
     const liveness = container.querySelector('.liveness')

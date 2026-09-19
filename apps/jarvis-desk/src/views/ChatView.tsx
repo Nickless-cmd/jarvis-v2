@@ -1,5 +1,6 @@
 import { Fragment } from 'react'
-import { useEffect, useMemo, useReducer, useRef, useState } from 'react'
+import { useRammeReducer } from '../lib/useRammeReducer'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFastholdBund } from '../lib/useFastholdBund'
 import { PanelRight, Loader2, SquareStack, FileDiff } from 'lucide-react'
 import { JobsPanel } from '../components/shell/JobsPanel'
@@ -97,7 +98,7 @@ export function ChatView({
   }, [bgActive])
   // Follow-stream: token-stream et autonomt wakeup-runs svar live (i stedet for
   // at "dumpe" det ind når det er færdigt). Egen reducer fodret af /follow-SSE'en.
-  const [followState, followDispatch] = useReducer(streamReducer, undefined, initialStreamState)
+  const [followState, followDispatch] = useRammeReducer(streamReducer, initialStreamState)
   const followCtrlRef = useRef<{ abort: () => void } | null>(null)
 
   // Debounced refresh (Bjørn 2026-06-29): vi havde FIRE stablede sessions.refresh()-

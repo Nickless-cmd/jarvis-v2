@@ -499,3 +499,17 @@ describe('skinnen fanger ikke klik hvor den er tom', () => {
     expect(boern).toMatch(/pointer-events:\s*auto/)
   })
 })
+
+describe('animationer under streaming maler ikke hele samtalen (19/9-2026)', () => {
+  it('dot-wave animerer kun opacity — ikke box-shadow', () => {
+    const kf = app.match(/@keyframes dot-wave \{([\s\S]*?)\n\}/)?.[1] ?? ''
+    expect(kf).toContain('opacity')
+    expect(kf).not.toMatch(/box-shadow|background|width|height|filter/)
+  })
+  it('shimmer har sit eget lag, og sweepet er uændret (2.25s)', () => {
+    const r = app.match(/^\.shimmer \{([^}]*)\}/m)?.[1] ?? ''
+    expect(r).toContain('will-change: transform')
+    expect(r).toContain('contain: paint')
+    expect(r).toContain('shimmer-sweep 2.25s linear infinite')
+  })
+})

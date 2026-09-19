@@ -5,6 +5,7 @@ import {
   createSession,
   denyTool,
   getSession,
+  _nulstilSessionCache,
   googleLinkStart,
   googleLoginResult,
   googleLoginStart,
@@ -113,8 +114,33 @@ it('reads a session with messages', async () => {
       updated_at: 'now',
       messages: [{ id: 'm1', role: 'user', content: 'Hej', created_at: 'now' }]
     },
-    messages: [{ id: 'm1', role: 'user', content: 'Hej', created_at: 'now' }]
+    messages: [{ id: 'm1', role: 'user', content: 'Hej', created_at: 'now' }],
+    uaendret: false
   })
+})
+
+/** 19/9-2026: sessionen var 21,5 MB, og telefonen hentede den HELE ved hver
+ *  poll — RN har ingen HTTP-cache. Nu sendes ETag'en tilbage, og et 304
+ *  genbruger det vi har. */
+it('revaliderer sessionen med ETag og genbruger svaret ved 304', async () => {
+  _nulstilSessionCache()
+  const krop = { session: { id: 's3', title: 'T', updated_at: 'now', messages: [{ id: 'm1', role: 'user', content: 'Hej', created_at: 'now' }] } }
+  const f = global.fetch as jest.Mock
+  f.mockResolvedValueOnce({ ok: true, status: 200, headers: { get: (h: string) => (h === 'etag' ? 'W/"v1"' : null) }, json: async () => krop })
+  const foerste = await getSession(config, 's3')
+  expect(foerste.uaendret).toBe(false)
+  expect(f.mock.calls.at(-1)[1].headers['If-None-Match']).toBeUndefined()
+
+  f.mockResolvedValueOnce({ ok: false, status: 304, headers: { get: () => 'W/"v1"' }, json: async () => { throw new Error('tom') } })
+  const anden = await getSession(config, 's3')
+  expect(f.mock.calls.at(-1)[1].headers['If-None-Match']).toBe('W/"v1"')
+  expect(anden.uaendret).toBe(true)
+  expect(anden.messages).toBe(foerste.messages)
+
+  // En ANDEN session får ikke s3's ETag med.
+  f.mockResolvedValueOnce({ ok: true, status: 200, headers: { get: () => null }, json: async () => ({ session: { id: 's4', messages: [] } }) })
+  await getSession(config, 's4')
+  expect(f.mock.calls.at(-1)[1].headers['If-None-Match']).toBeUndefined()
 })
 
 it('classifies auth errors', async () => {

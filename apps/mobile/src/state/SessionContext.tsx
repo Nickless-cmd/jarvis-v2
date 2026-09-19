@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from 'react'
+import { createContext, useContext, useMemo, useRef, useState, type ReactNode } from 'react'
 import { createSession, getSession, listSessions } from '../lib/apiClient'
 import type { ApiConfig, ChatMessage, ChatSession } from '../lib/types'
 
@@ -40,6 +40,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [activeId, setActiveId] = useState<string | null>(null)
   const [messages, setMessages] = useState<LocalMessage[]>([])
   const [loading, setLoading] = useState(false)
+  // Den server-liste der sidst blev flettet ind — se select().
+  const sidstFlettet = useRef<ChatMessage[] | null>(null)
 
   const value = useMemo<SessionContextValue>(
     () => ({
@@ -62,6 +64,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         try {
           const result = await getSession(config, sessionId)
           setActiveId(result.session.id)
+          // 304: intet nyt fra serveren — lad listen være, så 2.672 beskeder
+          // ikke flettes og tegnes forfra ved hver poll. KUN hvis det netop er
+          // DEN liste vi sidst flettede ind; er listen skiftet siden (ny
+          // samtale, replaceMessages), skal den bygges igen.
+          if (result.uaendret && sidstFlettet.current === result.messages) return result.session
+          sidstFlettet.current = result.messages
           // G1: flet i stedet for at wholesale-replace, så et endnu-ikke-
           // persisteret local-assistant-snapshot ikke blank-forsvinder når en
           // resync/poll-select rammer midt i svar-halen.
@@ -78,6 +86,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         const session = await createSession(config, titel ?? 'Ny samtale', art ?? 'chat')
         setSessions((current) => [session, ...current.filter((item) => item.id !== session.id)])
         setActiveId(session.id)
+        sidstFlettet.current = null
         setMessages([])
         return session
       },
@@ -91,6 +100,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         setMessages((current) => [...current, { ...message, clientStatus }])
       },
       replaceMessages: (nextMessages) => {
+        sidstFlettet.current = null
         setMessages(nextMessages)
       }
     }),

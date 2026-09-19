@@ -16,7 +16,14 @@ export class ApiError extends Error {
 interface FetchOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
   body?: unknown
+  /** Sendes som If-None-Match. Svarer serveren 304, returneres IKKE_AENDRET. */
+  ifNoneMatch?: string
+  /** Kaldes med svarets ETag (eller null) ved et 2xx-svar. */
+  paaEtag?: (etag: string | null) => void
 }
+
+/** apiFetch' svar på et 304 — kun muligt når kalderen selv sendte ifNoneMatch. */
+export const IKKE_AENDRET = Symbol('ikke-aendret')
 
 /** Serverens egen forklaring, ellers statuskoden. Kaster aldrig. */
 async function _forklaring(response: Response): Promise<string> {
@@ -44,6 +51,7 @@ export async function apiFetch<T>(
       headers: {
         Accept: 'application/json',
         ...(options.body === undefined ? {} : { 'Content-Type': 'application/json' }),
+        ...(options.ifNoneMatch ? { 'If-None-Match': options.ifNoneMatch } : {}),
         Authorization: `Bearer ${config.authToken}`
       },
       body: options.body === undefined ? undefined : JSON.stringify(options.body)
@@ -55,6 +63,10 @@ export async function apiFetch<T>(
 
     if (response.status === 429) {
       throw new ApiError('rate_limit', 'Rate-limited', response.status)
+    }
+
+    if (response.status === 304 && options.ifNoneMatch) {
+      return IKKE_AENDRET as unknown as T
     }
 
     if (response.status >= 500) {
@@ -70,6 +82,7 @@ export async function apiFetch<T>(
       throw new ApiError('unknown', await _forklaring(response), response.status)
     }
 
+    options.paaEtag?.(response.headers?.get?.('etag') ?? null)
     return (await response.json()) as T
   } catch (error) {
     if (error instanceof ApiError) {
@@ -135,18 +148,43 @@ export async function createSession(
   return raw as ChatSession
 }
 
+type SessionSvar = { session: ChatSession & { messages?: ChatMessage[] } }
+
+/** Seneste hentede session og dens ETag — kun ÉN, den der er åben.
+ *
+ *  Målt 19/9-2026: Bjørns session var 21,5 MB JSON (2.672 beskeder), og
+ *  telefonen hentede den HELE ved hver poll-resync — 67 gange på 10 minutter.
+ *  Desk slipper, fordi browseren selv revaliderer med ETag'en og får 304.
+ *  React Native har ingen HTTP-cache, så det gør vi her: send ETag'en tilbage,
+ *  og svarer serveren 304, genbruges det vi allerede har. */
+let sidsteSession: { id: string; etag: string; svar: SessionSvar } | null = null
+
+export function _nulstilSessionCache(): void {
+  sidsteSession = null
+}
+
 export async function getSession(
   config: ApiConfig,
   sessionId: string
-): Promise<{ session: ChatSession; messages: ChatMessage[] }> {
-  const raw = await apiFetch<{ session: ChatSession & { messages?: ChatMessage[] } }>(
+): Promise<{ session: ChatSession; messages: ChatMessage[]; uaendret: boolean }> {
+  const kendt = sidsteSession?.id === sessionId ? sidsteSession : null
+  let etag: string | null = null
+  const raw = await apiFetch<SessionSvar | typeof IKKE_AENDRET>(
     config,
-    `/chat/sessions/${encodeURIComponent(sessionId)}`
+    `/chat/sessions/${encodeURIComponent(sessionId)}`,
+    { ifNoneMatch: kendt?.etag, paaEtag: (e) => { etag = e } }
   )
 
+  if (raw === IKKE_AENDRET && kendt) {
+    return { session: kendt.svar.session, messages: kendt.svar.session.messages ?? [], uaendret: true }
+  }
+  const svar = raw as SessionSvar
+  sidsteSession = etag ? { id: sessionId, etag, svar } : null
+
   return {
-    session: raw.session,
-    messages: raw.session.messages ?? []
+    session: svar.session,
+    messages: svar.session.messages ?? [],
+    uaendret: false
   }
 }
 

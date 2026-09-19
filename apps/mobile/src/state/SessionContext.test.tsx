@@ -304,3 +304,24 @@ it('select() bevarer local-assistant-snapshot når serveren endnu ikke har indhe
   // Snapshottet må IKKE være wiped — broen overlever (serveren har ikke indhentet).
   await waitFor(() => expect(screen.getByText(/local-assistant/)).toBeTruthy())
 })
+
+/** 19/9-2026: ved 304 flettes serverlisten ikke igen — men KUN hvis det er den
+ *  liste vi sidst flettede. Er den lokale liste skiftet (ny samtale), og vender
+ *  man tilbage til en uændret session, skal beskederne komme igen. */
+it('et 304 efter en ny samtale bringer den gamle samtales beskeder tilbage', async () => {
+  const beskeder = [{ id: 'g1', role: 'user', content: 'gammel', created_at: 'now' }]
+  const session = { id: 's2', title: 'T', updated_at: 'now', messages: beskeder }
+  mockGetSession.mockResolvedValueOnce({ session, messages: beskeder, uaendret: false })
+  mockCreateSession.mockResolvedValueOnce({ id: 'ny', title: 'Ny', updated_at: 'now' })
+  mockGetSession.mockResolvedValueOnce({ session, messages: beskeder, uaendret: true })
+
+  const screen = await render(<SessionProvider><Probe /></SessionProvider>)
+  await act(async () => { await screen.getByText('select').props.onPress() })
+  await waitFor(() => expect(screen.getByText('g1')).toBeTruthy())
+
+  await act(async () => { await screen.getByText('create').props.onPress() })
+  await waitFor(() => expect(screen.getByText('empty')).toBeTruthy())
+
+  await act(async () => { await screen.getByText('select').props.onPress() })
+  await waitFor(() => expect(screen.getByText('g1')).toBeTruthy())
+})

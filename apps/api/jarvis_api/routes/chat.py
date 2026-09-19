@@ -1667,13 +1667,16 @@ def chat_session(session_id: str, request: Request, response: Response):
             "ETag": etag, "Cache-Control": "no-cache"})
 
     from core.services.central_projection_cache import cached_by_version
+    from core.services.versioneret_json_svar import versioneret_json_svar
     session, _hit = cached_by_version(
         f"chat:session:{session_id}", version, lambda: get_chat_session(session_id))
     if session is None:
         raise HTTPException(status_code=404, detail="Chat session not found")
-    response.headers["ETag"] = etag
-    response.headers["Cache-Control"] = "no-cache"
-    return {"session": session}
+    # 19/9-2026: serialiseret én gang pr. version, gzip når klienten beder om det.
+    return versioneret_json_svar(
+        noegle=f"chat:session:{session_id}", version=version, etag=etag,
+        accept_encoding=request.headers.get("accept-encoding"),
+        indhold=lambda: {"session": session})
 
 
 @router.put("/sessions/{session_id}/rename")

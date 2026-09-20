@@ -85,6 +85,29 @@ html.figur-flade, html.figur-flade body, html.figur-flade #root {
 .figur-oejne { transform-origin: 60px 58px; animation: figur-blink 5.2s infinite; }
 .figur-mund { opacity: 0.92; }
 
+/* ── Puls-skinnet (20/9-2026) ─────────────────────────────────────────
+   Mærket fra ikonet: tre bjælker, samme form som favicon, app-ikon og
+   systray — figuren bærer nu samme mærke som resten af fladerne.
+   Bjælkerne slår langsomt i hvile og hurtigt mens han arbejder, ligesom
+   gløden ånder: det er den samme tilstand, vist som signal i stedet for
+   som ansigt. */
+.skin-puls .figur-puls-bjaelker rect {
+  fill: var(--figur-farve);
+  transform-box: view-box;
+  transform-origin: 60px 60px;
+  animation: figur-puls-slag 4.2s ease-in-out infinite;
+}
+/* Forskydningen er 13,5 % og 27 % af omløbet — samme bølge gennem mærket som
+   i UI'ets JarvisPulse, så de to steder ikke slår i utakt. */
+.skin-puls .figur-puls-bjaelker rect:nth-child(2) { animation-delay: -0.57s; }
+.skin-puls .figur-puls-bjaelker rect:nth-child(3) { animation-delay: -1.13s; }
+.skin-puls .figur-puls-bjaelker.slaa-hurtigt rect { animation-duration: 1.6s; }
+
+@keyframes figur-puls-slag {
+  0%, 100% { transform: scaleY(.72); }
+  50% { transform: scaleY(1.28); }
+}
+
 /* Gløden ånder i takt med arbejdet: hurtigere og dybere når han er i gang,
    langsomt når han hviler. Det er den eneste bevægelse der viser at der sker
    noget INDENI — kroppen viser hvad han gør udadtil. */
@@ -117,7 +140,7 @@ html.figur-flade, html.figur-flade body, html.figur-flade #root {
 
 /* Codex: `prefers-reduced-motion` giver én stillestående ramme. */
 @media (prefers-reduced-motion: reduce) {
-  .figur-krop, .figur-ring, .figur-oejne, .figur-glød { animation: none !important; }
+  .figur-krop, .figur-ring, .figur-oejne, .figur-glød, .figur-puls-bjaelker rect { animation: none !important; }
   .figur-rod { transition: none; }
 }
 

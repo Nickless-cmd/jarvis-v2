@@ -1,4 +1,5 @@
 import { udtryk, type Handling, type Udtryk } from './figurLogik'
+import type { FigurSkin } from '../lib/figurSkin'
 
 /**
  * Jarvis' krop: en lysende kerne med en segmenteret ring — J.A.R.V.I.S.,
@@ -67,7 +68,7 @@ const OEJE_Y = 57.8
 const OEJE_SKALA = 0.72
 const OEJE_FARVE = 'rgba(12, 44, 40, 0.78)'
 
-export function FigurKrop({ handling, ring, laener, blik, grimasse }: {
+export function FigurKrop({ handling, ring, laener, blik, grimasse, skin = 'ansigt' }: {
   handling: Handling
   /** Ringen drejer hurtigt mens der arbejdes — uafhængigt af kroppens tre gennemløb. */
   ring: 'rolig' | 'hurtig'
@@ -76,6 +77,10 @@ export function FigurKrop({ handling, ring, laener, blik, grimasse }: {
    *  over vinduet — så det er når man nærmer sig at han ser op. */
   blik?: { x: number; y: number }
   grimasse?: 'smil' | 'undren' | null
+  /** Kroppen (20/9-2026). `ansigt` er den oprindelige; `puls` er ikonets mærke.
+   *  Rammen om figuren — animationerne, gløden, skyggen, grebet — er fælles,
+   *  så et skin skifter kun det der tegnes INDE i den. */
+  skin?: FigurSkin
 }) {
   const u = udtryk(handling)
   const a = ANSIGT[u]
@@ -87,34 +92,66 @@ export function FigurKrop({ handling, ring, laener, blik, grimasse }: {
     `translate(${OEJE_X[s] + b.x} ${OEJE_Y + b.y}) rotate(${a.rot * (s === 'venstre' ? -1 : 1)}) scale(${OEJE_SKALA})`
 
   return (
-    <div className={`figur-krop h-${handling}${laener ? ` laener-${laener}` : ''}`} aria-hidden>
-      <svg viewBox="0 0 120 120" width="112" height="112">
-        <defs>
-          <radialGradient id="figur-kerne" cx="50%" cy="42%" r="60%">
-            <stop offset="0%" stopColor="#ffffff" stopOpacity="0.95" />
-            <stop offset="35%" stopColor="var(--figur-farve)" stopOpacity="0.95" />
-            <stop offset="100%" stopColor="var(--figur-farve)" stopOpacity="0.15" />
-          </radialGradient>
-        </defs>
-        <circle className="figur-glød" cx="60" cy="60" r="44" />
-        <g className={`figur-ring ring-${ring}`}>
-          <circle cx="60" cy="60" r="50" fill="none" stroke="var(--figur-farve)" strokeWidth="3"
-                  strokeDasharray="22 9" strokeLinecap="round" opacity="0.85" />
-        </g>
-        <circle cx="60" cy="60" r="34" fill="url(#figur-kerne)" />
-        <g className={`figur-ansigt a-${u}`}>
-          <g className="figur-oejne" fill={OEJE_FARVE}>
-            {(['venstre', 'hoejre'] as const).map((s) => (
-              <g key={s} transform={oeje(s)}>
-                <path d={a.oeje} />
-              </g>
-            ))}
+    <div className={`figur-krop skin-${skin} h-${handling}${laener ? ` laener-${laener}` : ''}`} aria-hidden>
+      {skin === 'puls' ? <FigurPuls hurtig={ring === 'hurtig'} /> : (
+        <svg viewBox="0 0 120 120" width="112" height="112">
+          <defs>
+            <radialGradient id="figur-kerne" cx="50%" cy="42%" r="60%">
+              <stop offset="0%" stopColor="#ffffff" stopOpacity="0.95" />
+              <stop offset="35%" stopColor="var(--figur-farve)" stopOpacity="0.95" />
+              <stop offset="100%" stopColor="var(--figur-farve)" stopOpacity="0.15" />
+            </radialGradient>
+          </defs>
+          <circle className="figur-glød" cx="60" cy="60" r="44" />
+          <g className={`figur-ring ring-${ring}`}>
+            <circle cx="60" cy="60" r="50" fill="none" stroke="var(--figur-farve)" strokeWidth="3"
+                    strokeDasharray="22 9" strokeLinecap="round" opacity="0.85" />
           </g>
-          <path className="figur-mund" d={mund} fill="none" stroke={OEJE_FARVE}
-                strokeWidth="1.6" strokeLinecap="round" />
-        </g>
-      </svg>
+          <circle cx="60" cy="60" r="34" fill="url(#figur-kerne)" />
+          <g className={`figur-ansigt a-${u}`}>
+            <g className="figur-oejne" fill={OEJE_FARVE}>
+              {(['venstre', 'hoejre'] as const).map((s) => (
+                <g key={s} transform={oeje(s)}>
+                  <path d={a.oeje} />
+                </g>
+              ))}
+            </g>
+            <path className="figur-mund" d={mund} fill="none" stroke={OEJE_FARVE}
+                  strokeWidth="1.6" strokeLinecap="round" />
+          </g>
+        </svg>
+      )}
       <div className="figur-skygge" />
     </div>
+  )
+}
+
+/**
+ * Puls-skinnet (20/9-2026): mærket fra ikonet — tre bjælker der slår.
+ *
+ * Formerne er faviconets, flyttet fra 100- til 120-rummet (samme viewBox som
+ * ansigtet, så begge skins fylder ens): x' = 60 + (x − 50,5) · 1,2 og
+ * y' = 60 + (y − 50) · 1,2. Skrevet ud i tal i stedet for som en `<g transform>`,
+ * fordi CSS-animationen regner sin omdrejning fra viewBox'en — en
+ * forældre-transform ville flytte det punkt, bjælkerne vokser omkring.
+ *
+ * Gløden bag er figurens egen, den samme `.figur-glød` som ansigtet bruger:
+ * den ånder i takt med arbejdet, mens bjælkerne slår. Mærket viser HVAD han
+ * laver; gløden at der sker noget indeni. Begge skins deler det sprog.
+ *
+ * Ansigtet har ingen afløser her: blik og grimasse hører til øjne og mund, og
+ * de findes ikke i et mærke. Det er hele forskellen — ansigtet viser en
+ * sindsstemning, Puls viser et signal.
+ */
+function FigurPuls({ hurtig }: { hurtig: boolean }) {
+  return (
+    <svg viewBox="0 0 120 120" width="112" height="112">
+      <circle className="figur-glød" cx="60" cy="60" r="44" />
+      <g className={`figur-puls-bjaelker${hurtig ? ' slaa-hurtigt' : ''}`}>
+        <rect x="17.4" y="38.4" width="22.8" height="43.2" rx="11.4" />
+        <rect x="48.6" y="23.4" width="22.8" height="73.2" rx="11.4" />
+        <rect x="79.8" y="36.6" width="22.8" height="46.8" rx="11.4" />
+      </g>
+    </svg>
   )
 }

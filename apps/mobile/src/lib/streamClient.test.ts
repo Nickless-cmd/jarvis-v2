@@ -162,6 +162,10 @@ it('sends the expected request payload and auth header', () => {
         message: 'Hej',
         session_id: 's1',
         approval_mode: 'trust',
+        // Fladen følger med i kroppen (streamClient.ts:284). Assertionen blev
+        // skrevet før feltet kom til, og stod derfor og fejlede på HEAD —
+        // uskyldigt for eftertiden, men rødt for enhver der kørte suiten.
+        surface: 'mobil',
         thinking_mode: 'fast',
         mode: 'code',
         model: 'deepseek-r1',

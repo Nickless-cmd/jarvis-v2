@@ -12,6 +12,7 @@ import * as Clipboard from 'expo-clipboard'
 import { getOrCreateDeviceIdentity } from '../lib/deviceIdentity'
 import { haptik } from '../lib/haptics'
 import { laesIndstillinger, gemIndstillinger, tilStreamFelter, STANDARD, type ChatIndstillinger } from '../lib/chatSettings'
+import { hentSessionPermission, saetSessionPermission } from '../lib/sessionPermission'
 import { ChatSearchBar } from '../components/ChatSearchBar'
 import { ChatSettingsSheet } from '../components/ChatSettingsSheet'
 import { useKeyboardHeight } from '../lib/useKeyboardHeight'
@@ -724,8 +725,29 @@ export function ChatScreen({
     laesIndstillinger(sid)
       .then((c) => { if (levende) setChatCfg(c) })
       .catch(() => { if (levende) setChatCfg(STANDARD) })
+    // SERVEREN ER KILDEN til tilladelses-niveauet (Bjørn 20/9-2026).
+    //
+    // Før havde telefonen sit eget svar i SecureStore og desk sit i
+    // localStorage, pr. samtale — så to klienter kunne vise hver sin sandhed,
+    // mens runnet kørte med den ene. Stod desk på fuld adgang og telefonen på
+    // «spørg først», svarede serveren ud fra hvad den ene havde sendt med.
+    //
+    // Nu arver telefonen samtalens niveau. Er serveren tavs (offline), bliver
+    // det lokale valg stående — vi nulstiller ikke til «spørg først» i utide,
+    // for det ville se ud som et valg brugeren ikke traf.
+    if (config) {
+      hentSessionPermission(config, sid)
+        .then((mode) => {
+          if (!levende) return
+          const spoergFoerst = mode === 'ask'
+          setChatCfg((current) => ({ ...current, spoergFoerst }))
+          // Spejl serverens svar lokalt, så offline-visning er den samme.
+          void gemIndstillinger(sid, { spoergFoerst }).catch(() => undefined)
+        })
+        .catch(() => undefined)
+    }
     return () => { levende = false }
-  }, [sessions.activeId])
+  }, [sessions.activeId, config?.apiBaseUrl]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const ensureSessionAndSend = async (text: string) => {
     if (!config) return
@@ -1213,7 +1235,13 @@ export function ChatScreen({
           const next = { spoergFoerst: mode === 'ask' }
           const sid = sessions.activeId
           setChatCfg((current) => ({ ...current, ...next }))
-          if (sid) void gemIndstillinger(sid, next).then(setChatCfg).catch(() => undefined)
+          if (sid) {
+            void gemIndstillinger(sid, next).then(setChatCfg).catch(() => undefined)
+            // Skriv til serveren så desk — og telefonens andre samtaler — arver
+            // valget. Fejler det, står valget stadig lokalt, og næste
+            // samtale-åbning forsøger igen.
+            if (config) void saetSessionPermission(config, sid, mode).catch(() => undefined)
+          }
         }}
         onClose={() => setPermissionPickerOpen(false)}
       />

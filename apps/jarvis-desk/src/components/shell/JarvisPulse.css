@@ -1,9 +1,12 @@
 .jarvis-pulse { display: inline-flex; align-items: center; line-height: 0; flex: none; color: #49c9b8; }
 .jarvis-pulse svg { display: block; }
 .jarvis-pulse rect { transform-box: view-box; transform-origin: 50px 50px; }
-.jarvis-pulse.is-working rect { animation: jarvis-puls 4s ease-in-out infinite; }
-.jarvis-pulse.is-working rect:nth-child(2) { animation-delay: -0.54s; }
-.jarvis-pulse.is-working rect:nth-child(3) { animation-delay: -1.08s; }
+/* 1,6s, ikke 4s (Bjørn 20/9-2026: «bevæger sig meget langsomt»). Forskydningen
+   mellem de tre bjælker er skaleret med, så bølgen gennem mærket ser ens ud —
+   den var 13,5 % og 27 % af omløbet, og er det stadig. */
+.jarvis-pulse.is-working rect { animation: jarvis-puls 1.6s ease-in-out infinite; }
+.jarvis-pulse.is-working rect:nth-child(2) { animation-delay: -0.22s; }
+.jarvis-pulse.is-working rect:nth-child(3) { animation-delay: -0.43s; }
 .jarvis-pulse.is-error { color: var(--error-fg, #e2777a); }
 @keyframes jarvis-puls { 0%, 100% { transform: scaleY(.72); } 50% { transform: scaleY(1.28); } }
 @media (prefers-reduced-motion: reduce) { .jarvis-pulse.is-working rect { animation: none; } }

@@ -249,7 +249,11 @@ function refreshTrayState(): void {
   // Pulsér mærket mens 'working' og IKKE attention; ellers står den stille.
   const shouldSpin = trayState === 'working' && !trayAttention
   if (shouldSpin && !traySpinTimer) {
-    traySpinTimer = setInterval(() => { traySpinFrame = (traySpinFrame + 1) % TRAY_ROT_FRAMES; applyTrayImage() }, 100)
+    // 40 ms = 1,6 s pr. omløb, samme takt som mærket på skærmen (JarvisPulse.css).
+    // Før: 100 ms = 4 s, og Bjørn 20/9-2026: «bevæger sig meget langsomt».
+    // Timeren kører KUN mens noget arbejder, så de 25 billeder i sekundet
+    // koster ikke noget i hvile.
+    traySpinTimer = setInterval(() => { traySpinFrame = (traySpinFrame + 1) % TRAY_ROT_FRAMES; applyTrayImage() }, 40)
   } else if (!shouldSpin && traySpinTimer) {
     clearInterval(traySpinTimer); traySpinTimer = null; traySpinFrame = 0
   }

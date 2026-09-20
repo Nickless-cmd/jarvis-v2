@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-10T12:26:34.489570+00:00",
+  "generated_at": "2026-09-20T17:29:37.018472+00:00",
   "hard": [],
   "soft": [
     {
@@ -23,36 +23,6 @@
       "target": "apps/api/jarvis_api/services/visible_runs.py"
     },
     {
-      "doc": "docs/capability_matrix.md",
-      "kind": "prose_path",
-      "target": "core/services/prospective_memory.py"
-    },
-    {
-      "doc": "docs/capability_matrix.md",
-      "kind": "prose_path",
-      "target": "core/services/team_mentions.py"
-    },
-    {
-      "doc": "docs/capability_matrix.md",
-      "kind": "prose_path",
-      "target": "core/services/teams.py"
-    },
-    {
-      "doc": "docs/capability_matrix.md",
-      "kind": "prose_path",
-      "target": "core/services/tiktok_content_daemon.py"
-    },
-    {
-      "doc": "docs/capability_matrix.md",
-      "kind": "prose_path",
-      "target": "core/services/tiktok_research_daemon.py"
-    },
-    {
-      "doc": "docs/capability_matrix.md",
-      "kind": "prose_path",
-      "target": "core/services/unified_recall.py"
-    },
-    {
       "doc": "docs/llm_privacy_tier_audit.md",
       "kind": "prose_path",
       "target": "core/services/tiktok_content_daemon.py"
@@ -61,6 +31,11 @@
       "doc": "docs/llm_privacy_tier_audit.md",
       "kind": "prose_path",
       "target": "core/services/tiktok_research_daemon.py"
+    },
+    {
+      "doc": "docs/notes/2026-07-07-chatview-sse-analysis.md",
+      "kind": "prose_path",
+      "target": "core/context/auto_compact.py"
     },
     {
       "doc": "docs/notes/2026-07-09-central-council-sweep.md",
@@ -76,6 +51,11 @@
       "doc": "docs/specs/2026-09-08-deepseek-harness-lessons-for-jarvis.md",
       "kind": "prose_path",
       "target": "core/agent-loop/README.md"
+    },
+    {
+      "doc": "docs/specs/2026-09-08-deepseek-harness-lessons-for-jarvis.md",
+      "kind": "prose_path",
+      "target": "core/services/compaction_runtime.py"
     },
     {
       "doc": "docs/specs/2026-09-08-deepseek-harness-lessons-for-jarvis.md",
@@ -116,6 +96,10 @@
     {
       "kind": "requirement_missing",
       "module": "TestMac"
+    },
+    {
+      "kind": "requirement_missing",
+      "module": "aiohttp"
     },
     {
       "kind": "requirement_missing",
@@ -211,6 +195,10 @@
     },
     {
       "kind": "requirement_missing",
+      "module": "livekit"
+    },
+    {
+      "kind": "requirement_missing",
       "module": "mac_alias"
     },
     {
@@ -260,6 +248,6 @@
   ],
   "counts": {
     "hard": 0,
-    "soft": 59
+    "soft": 57
   }
 }

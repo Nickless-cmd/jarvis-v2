@@ -2,6 +2,19 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `apps/api/jarvis_api/routes/plugins.py`
+_Plugins & Kanaler routes (spec §5.4, Fase 6 #2). Tynde — blokerende arbejde_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_require_owner` | `()` | — | [src](../../../apps/api/jarvis_api/routes/plugins.py#L14) |
+| function | `plugins_overview` | `()` | Oversigt: tilgængelige plugins (manifester) + status + regelsæt. | [src](../../../apps/api/jarvis_api/routes/plugins.py#L29) |
+| function | `channel_status` | `(plugin_id, status, detail=…)` | Lokal gateway rapporterer sin forbindelses-status (connected|failed|offline). | [src](../../../apps/api/jarvis_api/routes/plugins.py#L49) |
+| function | `channel_inbound_ep` | `(plugin_id, body)` | Lokal gateway ruter en indkommende besked hertil. Serveren HÅNDHÆVER | [src](../../../apps/api/jarvis_api/routes/plugins.py#L58) |
+| function | `channel_response` | `(plugin_id, session_id, after_ts=…)` | Gateway poller: seneste assistant-svar i sessionen nyere end after_ts. | [src](../../../apps/api/jarvis_api/routes/plugins.py#L88) |
+| function | `get_plugin_ruleset` | `(plugin_id)` | — | [src](../../../apps/api/jarvis_api/routes/plugins.py#L110) |
+| function | `put_plugin_ruleset` | `(plugin_id, ruleset)` | Gem regelsæt for et kanal-plugin. Hardblock for ALLE inkl. owner (§5.3). | [src](../../../apps/api/jarvis_api/routes/plugins.py#L118) |
+
 ## `apps/api/jarvis_api/routes/presence.py`
 _Device-presence + proaktive desktop-notifikationer. Scoper til auth'et bruger._
 

@@ -145,12 +145,12 @@ describe('værdierne i app.css er Claude Desktops', () => {
   it('prikkerne: 3,5 px, .26em, 1,9 s cubic-bezier(.4,0,.2,1), 0-8 % usynlige', () => {
     expect(css).toMatch(/\.prikker \{ display: inline-flex; gap: 3\.5px; position: relative; top: \.26em;/)
     expect(css).toMatch(/1\.9s cubic-bezier\(\.4, 0, \.2, 1\) infinite prikke-boelge/)
-    expect(css).toMatch(/0%, 8%   \{ opacity: 0; transform: translateY\(2px\); \}/)
+    expect(css).toMatch(/0%, 8% {3}\{ opacity: 0; transform: translateY\(2px\); \}/)
   })
 
   it('label-skiftet: .25 s ind, .15 s ud, .21 s efter sparken, .42 s spark', () => {
     expect(css).toMatch(/\.ls-ind \{ animation: \.25s ease-in-out ls-fade-ind; \}/)
-    expect(css).toMatch(/\.ls-ud  \{ animation: \.15s ease-out forwards ls-fade-ud; \}/)
+    expect(css).toMatch(/\.ls-ud {2}\{ animation: \.15s ease-out forwards ls-fade-ud; \}/)
     expect(css).toMatch(/\.ls-ind-efter-spark \{ animation: \.25s ease-in-out \.21s both ls-fade-ind; \}/)
     expect(css).toMatch(/\.ls-spark-afgang \{ animation: \.42s linear forwards ls-spark-afgang; \}/)
     expect(css).toMatch(/@keyframes ls-spark-afgang \{ 0%, 50% \{ opacity: 1 \} to \{ opacity: 0 \} \}/)

@@ -25,6 +25,7 @@ import {
   powerMonitor,
 } from 'electron'
 import { opretFigur, registrerFigurIpc, laesFigurVist, saetFigurVist } from './figur'
+import { startReleaseLytter } from './appRelease'
 import * as path from 'node:path'
 import * as fs from 'node:fs'
 import * as os from 'node:os'
@@ -855,11 +856,20 @@ app.whenReady().then(() => {
       const api = wireUpdater(up, (ch, p) => mainWindow?.webContents.send(ch, p))
       ipcMain.handle('update:download', () => api.download())
       ipcMain.handle('update:install', () => api.installNow())
+      // Push-vejen (20/9-2026). Serveren opdager selv releasen
+      // (apps/api/jarvis_api/routes/app_release.py), lægger den på event-bussen,
+      // og /ws bærer den hertil — så vi tjekker i sekunder i stedet for at vente
+      // på næste tik. Poll'en nedenfor er kun et sikkerhedsnet hvis forbindelsen
+      // er nede: push er primær, poll er backup.
+      const releaseLytter = startReleaseLytter({
+        apiBaseUrl: cfg.apiBaseUrl,
+        authToken: cfg.authToken,
+        onRelease: () => { void api.check() },
+        log: (m) => console.log(`[release] ${m}`),
+      })
+      app.on('before-quit', () => releaseLytter.luk())
       api.check()
-      // Poll hver 15. min så en ny release dukker op LIVE i appen (UpdateCard) mens den
-      // kører — ikke kun ved opstart (Bjørn 2026-06-23). checkForUpdates henter blot latest.yml
-      // fra GitHub-releasen (få KB) → billigt. autoDownload er stadig FRA; brugeren beslutter.
-      setInterval(() => api.check(), 15 * 60_000)
+      setInterval(() => api.check(), 5 * 60_000)
     } catch { /* dep/release-config mangler → no-op */ }
   })()
 

@@ -219,11 +219,14 @@ def test_uden_fejl_i_svaret_siges_der_intet():
 # ── R6: tredje skema-gæt ───────────────────────────────────────────────────
 
 def test_tredje_skema_gaet_peger_paa_at_slaa_skemaet_op():
+    # Argumenterne VARIERER, som de gør i virkeligheden: et skema-gæt-burst
+    # er forskellige tabelnavne, ikke det samme kald igen. Med ens argumenter
+    # ville R10's løkke-påmindelse (3/5/8) fyre først og måle noget andet.
     fejl = "Error: no such table: heartbeat_ticks"
-    for _ in range(n.SKEMA_GRAENSE - 1):
-        assert n.note(navn="bash", argumenter={"command": "sqlite3 x"},
+    for i in range(n.SKEMA_GRAENSE - 1):
+        assert n.note(navn="bash", argumenter={"command": f"sqlite3 x t{i}"},
                       run_id="s1", resultat_tekst=fejl) == ""
-    note = n.note(navn="bash", argumenter={"command": "sqlite3 x"},
+    note = n.note(navn="bash", argumenter={"command": "sqlite3 x sidste"},
                   run_id="s1", resultat_tekst=fejl)
     assert "db_query" in note and "sqlite_master" in note
 
@@ -246,8 +249,10 @@ def test_anden_tomme_soegning_foreslaar_at_han_spoerger():
 
 
 def test_en_soegning_MED_traef_taeller_ikke():
-    for _ in range(5):
-        assert n.note(navn="search", argumenter={"pattern": "x"}, run_id="q2",
+    # Fem FORSKELLIGE søgninger, som når han arbejder. Fem ENS ville være en
+    # løkke, og dér har R10 ret i at sige fra — se stige-testene nedenfor.
+    for i in range(5):
+        assert n.note(navn="search", argumenter={"pattern": f"x{i}"}, run_id="q2",
                       resultat_tekst="core/x.py:12: fundet") == ""
 
 
@@ -287,3 +292,86 @@ def test_har_han_ALLEREDE_sat_en_wakeup_siges_der_intet():
 
 def test_et_almindeligt_kald_udloeser_den_ikke():
     assert n.note(navn="bash", argumenter={"command": "pytest -q"}, run_id="v3") == ""
+
+
+# ── R10: gentagelses-stigen (fra DeepSeek-harness' repeat-tool-reminder) ─────
+def _ryd():
+    n._GENTAGELSER.clear()
+    n._GRAVNINGER.clear()
+    n._SAGT.clear()
+    n._UDESTAAENDE.clear()
+
+
+def _kald(navn="bash", argumenter=None, run_id="r-gentag", svar="ok"):
+    return n.note(navn=navn, argumenter=argumenter if argumenter is not None
+                  else {"command": "ls"}, run_id=run_id, resultat_tekst=svar)
+
+
+def test_stigen_fyrer_ved_tre_fem_og_otte():
+    """En stige, ikke ét råb — og hvert trin fyrer præcis én gang."""
+    _ryd()
+    noter = [_kald() for _ in range(1, 10)]
+    fyret = [i + 1 for i, t in enumerate(noter) if t]
+    assert fyret == list(n.GENTAGELSE_TAERSKLER)
+
+
+def test_foerste_trin_er_kort_og_de_naeste_naevner_kaldet():
+    """Eskaleringen er mere DETALJE, ikke mere tvang."""
+    _ryd()
+    noter = [_kald(argumenter={"command": "sqlite3 x .tables"}) for _ in range(8)]
+    kort, lang = noter[2], noter[4]
+    assert "bash" not in kort and "sqlite3" not in kort
+    assert "`bash`" in lang and "sqlite3" in lang
+
+
+def test_noejagtig_gentagelse_kraeves_men_ikke_noeglernes_orden():
+    """Samme kald skrevet i en anden rækkefølge ER det samme kald."""
+    _ryd()
+    for _ in range(2):
+        _kald(argumenter={"a": 1, "b": 2})
+    assert _kald(argumenter={"b": 2, "a": 1})  # tredje → påmindelse
+
+
+def test_et_andet_kald_bryder_stimen():
+    """To ens kald med arbejde imellem er ikke en løkke."""
+    _ryd()
+    _kald(); _kald()
+    _kald(argumenter={"command": "pwd"})       # noget andet
+    assert not _kald()                          # tælleren startede forfra
+    assert not _kald()
+
+
+def test_bjoerns_bagdoer_faar_ingen_paamindelser():
+    """bash_session og operator_bash_session er hans vej uden om systemet."""
+    _ryd()
+    for _ in range(9):
+        assert not _kald(navn="bash_session", argumenter={"command": "ls"})
+    _ryd()
+    for _ in range(9):
+        assert not _kald(navn="operator_bash_session", argumenter={"command": "ls"})
+
+
+def test_taelleren_loeber_ogsaa_naar_en_anden_regel_vinder():
+    """En tæller der kun løber når den bliver hørt, måler sig selv."""
+    _ryd()
+    # R8 (tom søgning) vinder de to første gange; stimen tæller alligevel.
+    for _ in range(2):
+        n.note(navn="grep_files", argumenter={"pattern": "x"}, run_id="r-gentag",
+               resultat_tekst="[no matches]")
+    assert n._GENTAGELSER["r-gentag"]["antal"] == 2
+
+
+def test_turens_afslutning_rydder_stimen():
+    _ryd()
+    _kald(); _kald()
+    n.ryd_tur("r-gentag")
+    assert "r-gentag" not in n._GENTAGELSER
+
+
+def test_uberegnelige_argumenter_taelles_aldrig_som_ens():
+    """Kan aftrykket ikke beregnes, må to kald ikke se ens ud."""
+    _ryd()
+    class Umulig:
+        def __repr__(self): raise RuntimeError("nej")
+    for _ in range(9):
+        _kald(argumenter={"x": Umulig()})  # må ikke kaste, må ikke fyre falsk

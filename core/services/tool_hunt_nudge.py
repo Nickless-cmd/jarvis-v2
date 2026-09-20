@@ -90,6 +90,7 @@ arbejde, ikke en aflevering.
 """
 from __future__ import annotations
 
+import json
 import logging
 import re
 import shlex
@@ -130,6 +131,45 @@ GRAVE_GRAENSE: Final[int] = 3
 #: Højst ét nudge af hver slags pr. tur. To noter i samme tur er ikke en
 #: påmindelse, det er en afbrydelse.
 MAKS_PR_TUR: Final[int] = 1
+
+# ── R10: han kalder det samme igen og igen ─────────────────────────────────
+#
+# Taget fra DeepSeek-harness' `dsh-repeat-tool-reminder` (læst 20/9-2026).
+# Deres form er værd at kopiere præcist, fordi hver detalje er et valg:
+#
+#   * Tærskler ved 3, 5 og 8 — en STIGE, ikke ét råb. Kort påmindelse ved 3;
+#     ved 5 og 8 nævnes værktøjet og argumenterne, så han kan se HVAD han
+#     gentager. Bjørn spurgte i formiddags om et forslag skulle kunne
+#     eskalere. Det her er deres svar: eskaleringen er mere DETALJE, ikke
+#     mere tvang.
+#   * Rådgivende. Den blokerer aldrig et lovligt gentaget kald.
+#   * Kun NØJAGTIGE gentagelser (samme værktøj, samme argumenter uanset
+#     nøglerækkefølge). Næsten-ens varianter fanges ikke — det er en bevidst
+#     grænse, ikke en mangel.
+#   * Stimen brydes af et andet kald. To ens kald med arbejde imellem er
+#     ikke en løkke.
+GENTAGELSE_TAERSKLER: Final[tuple[int, ...]] = (3, 5, 8)
+#: Hvor meget af argumenterne den detaljerede påmindelse viser.
+GENTAGELSE_ARG_TEGN: Final[int] = 500
+#: Værktøjer hvor en nøjagtig gentagelse er normal og ikke skal kommenteres.
+#: `bash_session` og `operator_bash_session` er Bjørns vej uden om systemet
+#: («de 2 er den eneste måde jeg kan få ham til at gøre noget uden om
+#: systemet») — de får ingen påmindelser hæftet på deres svar.
+GENTAGELSE_UNDTAGET: Final[frozenset[str]] = frozenset({
+    "bash_session", "operator_bash_session", "todo_write", "update_todos",
+})
+
+_NOTE_GENTAGELSE_KORT = (
+    "Du har nu kaldt det samme værktøj med de samme argumenter {antal} gange "
+    "i træk. Læs det forrige resultat igennem før du kalder igen — enten "
+    "siger det allerede hvad du mangler, eller også skal du prøve en anden vej."
+)
+_NOTE_GENTAGELSE_LANG = (
+    "{antal}. gang i træk med samme kald: `{vaerktoej}` med argumenterne "
+    "{argumenter}. Resultatet har ikke ændret sig og gør det formentlig "
+    "heller ikke næste gang. Vælg én: skift fremgangsmåde, hent nyt at gå "
+    "efter, eller afslut med det du har — og sig hvad der mangler."
+)
 
 _NOTE_SPOERG = (
     "⚠ Det er {antal}. søgning uden træf i denne tur. Kan du ikke finde det, "
@@ -259,6 +299,60 @@ def _leverbar_fil(navn: str, argumenter: dict[str, Any] | None) -> str:
 #: aldrig ryddes op efter, koster et par heltal.
 _GRAVNINGER: dict[str, dict[str, int]] = {}
 _SAGT: dict[str, set[str]] = {}
+#: run_id -> {"aftryk": str, "antal": int, "sagt": set[int]}. Én stime ad
+#: gangen: et andet kald erstatter aftrykket og nulstiller tælleren.
+_GENTAGELSER: dict[str, dict[str, Any]] = {}
+
+
+def _aftryk(navn: str, argumenter: dict[str, Any] | None) -> str:
+    """Identiteten af ét kald: værktøj + argumenter, uanset nøglerækkefølge.
+
+    `sort_keys` er hele pointen — to kald der kun adskiller sig ved i hvilken
+    orden modellen skrev nøglerne, ER det samme kald.
+    """
+    try:
+        return navn + "\u0000" + json.dumps(argumenter or {}, sort_keys=True,
+                                             ensure_ascii=False, default=str)
+    except Exception as exc:  # userialiserbare argumenter: tæl dem aldrig som ens
+        logger.debug("tool_hunt_nudge: aftryk fejlede for %s: %s", navn, exc)
+        return navn + "\u0000<uberegneligt>"
+
+
+def _noter_gentagelse(noegle: str, navn: str,
+                      argumenter: dict[str, Any] | None) -> int:
+    """Hvor mange gange i træk er PRÆCIS dette kald nu set? 1 = nyt."""
+    if navn in GENTAGELSE_UNDTAGET:
+        _GENTAGELSER.pop(noegle, None)  # undtagne kald bryder også stimen
+        return 0
+    stime = _GENTAGELSER.get(noegle)
+    nu = _aftryk(navn, argumenter)
+    if stime is None or stime.get("aftryk") != nu:
+        _GENTAGELSER[noegle] = {"aftryk": nu, "antal": 1, "sagt": set()}
+        return 1
+    stime["antal"] = int(stime.get("antal") or 0) + 1
+    return int(stime["antal"])
+
+
+def _gentagelses_note(noegle: str, navn: str, argumenter: dict[str, Any] | None,
+                      antal: int) -> str:
+    """Påmindelsen for denne stime, eller "". Hver tærskel fyrer én gang."""
+    if antal not in GENTAGELSE_TAERSKLER:
+        return ""
+    stime = _GENTAGELSER.get(noegle) or {}
+    sagt = stime.setdefault("sagt", set())
+    if antal in sagt:
+        return ""
+    sagt.add(antal)
+    if antal == GENTAGELSE_TAERSKLER[0]:
+        return _NOTE_GENTAGELSE_KORT.format(antal=antal)
+    try:
+        vist = json.dumps(argumenter or {}, sort_keys=True, ensure_ascii=False,
+                          default=str)[:GENTAGELSE_ARG_TEGN]
+    except Exception as exc:  # vis hellere intet end at vælte påmindelsen
+        logger.debug("tool_hunt_nudge: kunne ikke vise argumenter: %s", exc)
+        vist = "(kunne ikke vises)"
+    return _NOTE_GENTAGELSE_LANG.format(antal=antal, vaerktoej=navn,
+                                        argumenter=vist)
 
 
 def _taeller(noegle: str, hvad: str) -> int:
@@ -373,6 +467,7 @@ def ryd_tur(run_id: str | None) -> None:
         _log_svar("miss", noegle, sag)
     _GRAVNINGER.pop(noegle, None)
     _SAGT.pop(noegle, None)
+    _GENTAGELSER.pop(noegle, None)
 
 
 def note(
@@ -391,6 +486,9 @@ def note(
             return ""
         noegle = str(run_id or "")
         _afgoer_udestaaende(noegle, navn)
+        # Tælles på HVERT kald, også når en anden regel vinder noten nedenfor:
+        # en tæller der kun løber når den bliver hørt, måler sig selv.
+        gentaget = _noter_gentagelse(noegle, navn, argumenter)
         svar = resultat_tekst or ""
 
         # Har han selv gjort det, skal han ikke mindes om det.
@@ -467,6 +565,17 @@ def note(
                 _log("pause_and_ask", run_id, 0.0, f"{antal} tomme søgninger")
                 _husk_udestaaende(noegle, "pause_and_ask", "spoerg")
                 return _NOTE_SPOERG.format(antal=antal)
+
+        # ── R10: samme kald igen og igen ─────────────────────────────────────
+        # Til SIDST med vilje. De øvrige regler peger på noget konkret han kan
+        # gøre; løkke-påmindelsen siger kun «stands op og kig». Har en af dem
+        # noget at sige, er den bedre. Tælleren løber uanset hvem der vandt.
+        # Egen kvote: stigen SKAL kunne fyre tre gange i samme tur, og
+        # MAKS_PR_TUR er skruet til opdagelses-noterne.
+        gentagelse = _gentagelses_note(noegle, navn, argumenter, gentaget)
+        if gentagelse:
+            _log("gentagelse", run_id, 0.0, f"{gentaget}x {navn}")
+            return gentagelse
         return ""
     except Exception:
         logger.debug("tool_hunt_nudge: note fejlede", exc_info=True)

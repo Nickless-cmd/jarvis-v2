@@ -150,11 +150,47 @@ def _save(records: dict[str, dict[str, Any]]) -> None:
     state_store.save_json_strict(_STATE_KEY, records)
 
 
+#: Hvor længe en AFSLUTTET post bliver liggende. Journalen havde ingen
+#: oprydning overhovedet, og det kostede: målt 20/9-2026 lå der 460 poster,
+#: og 456 af dem var `completed`/`cancelled` — arbejde der for længst var
+#: færdigt. Ingen læser dem: `claim_due_recovery` og `recovery_snapshot`
+#: ser KUN på `recovering`/`running`. Filen var vokset til 521 KB på fire
+#: dage, og hver eneste mutation læste og skrev den HELT.
+#:
+#: Et døgn er ikke et gæt: `session_boot_reconciler` bruger posterne til at
+#: kende et run efter en genstart, og dens egen drift-grænse er seks timer.
+#: Et døgn giver den fire gange den margin.
+AFSLUTTET_OPBEVARING_S = 86400.0
+_AFSLUTTEDE = ("completed", "cancelled", "failed_terminal")
+
+
+def _ryd_afsluttede(records: dict[str, dict[str, Any]]) -> int:
+    """Fjern afsluttede poster ældre end opbevaringen. Giver antallet fjernet.
+
+    Kører inde i `_mutate`, altså under låsen og på den ordbog der er ved at
+    blive skrevet — så oprydningen aldrig kan tabe en samtidig ændring.
+    """
+    graense = datetime.now(UTC) - timedelta(seconds=AFSLUTTET_OPBEVARING_S)
+    doede = []
+    for noegle, rec in records.items():
+        if str(rec.get("status") or "") not in _AFSLUTTEDE:
+            continue
+        t = _parsed(rec.get("settled_at")) or _parsed(rec.get("started_at"))
+        if t is not None and t < graense:
+            doede.append(noegle)
+    for noegle in doede:
+        records.pop(noegle, None)
+    return len(doede)
+
+
 def _mutate(fn):
     with _med_laas():
         records = _load()
         result = fn(records)
+        fjernet = _ryd_afsluttede(records)
         _save(records)
+        if fjernet:
+            logger.info("in_flight_runs: ryddede %d afsluttede poster", fjernet)
         return result
 
 

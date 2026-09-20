@@ -205,3 +205,55 @@ def test_afsluttede_poster_roeres_aldrig(_isoleret_lager, _proctab):
     _running(_isoleret_lager, "r1", owner=ifr.current_owner(), alder_s=1.0)
     _isoleret_lager["r1"]["status"] = "interrupted"
     assert ifr.list_running_orphans(0.0, dying_owner=ifr.current_owner()) == []
+
+
+# ── Journalen skal rydde op efter sig (Bjørn 20/9-2026) ─────────────────────
+def test_afsluttede_poster_ryddes_efter_et_doegn(monkeypatch, tmp_path):
+    """Der var INGEN oprydning. Målt: 460 poster, 456 af dem færdige.
+
+    Ingen læser dem — `claim_due_recovery` og `recovery_snapshot` ser kun på
+    `recovering`/`running`. Filen var vokset til 521 KB på fire dage, og hver
+    eneste mutation læste og skrev den helt.
+    """
+    from datetime import UTC, datetime, timedelta
+
+    import core.services.in_flight_runs as ifr
+
+    poster: dict[str, dict] = {}
+    monkeypatch.setattr(ifr, "_load", lambda: {k: dict(v) for k, v in poster.items()})
+    monkeypatch.setattr(ifr, "_save", lambda v: (poster.clear(),
+                                                 poster.update({k: dict(x) for k, x in v.items()})))
+    gammel = (datetime.now(UTC) - timedelta(seconds=ifr.AFSLUTTET_OPBEVARING_S + 60)).isoformat()
+    frisk = datetime.now(UTC).isoformat()
+    start = {
+        "gammel-faerdig": {"status": "completed", "settled_at": gammel},
+        "frisk-faerdig": {"status": "completed", "settled_at": frisk},
+        "gammel-genoptages": {"status": "recovering", "settled_at": gammel},
+        "gammel-koerende": {"status": "running", "started_at": gammel},
+    }
+    poster.update({k: dict(v) for k, v in start.items()})
+
+    ifr._mutate(lambda r: None)      # en hvilken som helst mutation rydder op
+
+    assert "gammel-faerdig" not in poster        # væk
+    assert "frisk-faerdig" in poster             # inden for døgnet
+    assert "gammel-genoptages" in poster         # SKAL genoptages — røres aldrig
+    assert "gammel-koerende" in poster           # kører stadig
+
+
+def test_en_post_uden_tidsstempel_roeres_ikke(monkeypatch):
+    """Uden en dato kan vi ikke vide om den er gammel — så lader vi den være."""
+    import core.services.in_flight_runs as ifr
+
+    poster = {"uden-dato": {"status": "completed"}}
+    monkeypatch.setattr(ifr, "_load", lambda: {k: dict(v) for k, v in poster.items()})
+    monkeypatch.setattr(ifr, "_save", lambda v: (poster.clear(),
+                                                 poster.update({k: dict(x) for k, x in v.items()})))
+    ifr._mutate(lambda r: None)
+    assert "uden-dato" in poster
+
+
+def test_opbevaringen_er_et_doegn():
+    """Reconcilerens egen drift-grænse er seks timer; et døgn giver margin."""
+    import core.services.in_flight_runs as ifr
+    assert ifr.AFSLUTTET_OPBEVARING_S == 86400.0

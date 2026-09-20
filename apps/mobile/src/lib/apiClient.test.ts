@@ -6,6 +6,7 @@ import {
   denyTool,
   getSession,
   _nulstilSessionCache,
+  _nulstilWhoamiCache,
   googleLinkStart,
   googleLoginResult,
   googleLoginStart,
@@ -141,6 +142,40 @@ it('revaliderer sessionen med ETag og genbruger svaret ved 304', async () => {
   f.mockResolvedValueOnce({ ok: true, status: 200, headers: { get: () => null }, json: async () => ({ session: { id: 's4', messages: [] } }) })
   await getSession(config, 's4')
   expect(f.mock.calls.at(-1)[1].headers['If-None-Match']).toBeUndefined()
+})
+
+/** 20/9-2026: fem samtidige kopier af forbindelses-tjekket gav 1.192
+ *  whoami-kald i timen. De deler nu svaret i 10 sekunder. */
+describe('whoami deles', () => {
+  const svar = { user_id: 'u1', display_name: 'Bjørn', role: 'owner' }
+
+  beforeEach(() => { _nulstilWhoamiCache() })
+  afterEach(() => { _nulstilWhoamiCache() })
+
+  it('fem samtidige kald bliver til ÉT', async () => {
+    const f = global.fetch as jest.Mock
+    f.mockResolvedValue({ ok: true, status: 200, headers: { get: () => null }, json: async () => svar })
+    const alle = await Promise.all(Array.from({ length: 5 }, () => whoami(config)))
+    expect(f).toHaveBeenCalledTimes(1)
+    expect(alle.every((r) => r.user_id === 'u1')).toBe(true)
+  })
+
+  it('en FEJL caches ikke — næste kald spørger igen', async () => {
+    const f = global.fetch as jest.Mock
+    f.mockRejectedValueOnce(new Error('net nede'))
+    await expect(whoami(config)).rejects.toBeInstanceOf(ApiError)
+    f.mockResolvedValueOnce({ ok: true, status: 200, headers: { get: () => null }, json: async () => svar })
+    await expect(whoami(config)).resolves.toMatchObject({ user_id: 'u1' })
+    expect(f).toHaveBeenCalledTimes(2)
+  })
+
+  it('et ANDET token deler ikke svaret', async () => {
+    const f = global.fetch as jest.Mock
+    f.mockResolvedValue({ ok: true, status: 200, headers: { get: () => null }, json: async () => svar })
+    await whoami(config)
+    await whoami({ ...config, authToken: 'et-andet-token' })
+    expect(f).toHaveBeenCalledTimes(2)
+  })
 })
 
 it('classifies auth errors', async () => {

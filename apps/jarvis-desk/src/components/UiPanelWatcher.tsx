@@ -1,3 +1,4 @@
+import { maaPolle } from '../lib/ro'
 import { useEffect, useRef } from 'react'
 import type { ApiConfig } from '../lib/api'
 import type { Surface } from './shell/Sidebar'
@@ -43,6 +44,7 @@ export function UiPanelWatcher({
     if (!config) return
 
     const tick = async () => {
+      if (!maaPolle('ui-panel', POLL_MS)) return  // ro.ts
       if (busy.current) return
       busy.current = true
       try {

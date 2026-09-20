@@ -16,6 +16,8 @@
  *  Fejl caches ALDRIG (en enkelt netværksfejl må ikke fastfryse en død værdi i TTL-vinduet).
  */
 
+import { LOFT_MS, roFaktor } from './ro'
+
 interface CacheEntry {
   value: unknown
   at: number
@@ -45,7 +47,9 @@ function effectiveTtl(opts: SharedReadOptions): number {
   if (_streamActive && typeof opts.streamingTtlMs === 'number') {
     return Math.max(opts.ttlMs, opts.streamingTtlMs)
   }
-  return opts.ttlMs
+  // Ingen kigger → længere TTL, så komponenternes uændrede intervaller
+  // rammer cachen i stedet for nettet (se ro.ts). 1x mens noget streamer.
+  return Math.min(opts.ttlMs * roFaktor(_streamActive), LOFT_MS)
 }
 
 /** Læs via delt cache + in-flight dedup. Samme `key` = samme svar indenfor TTL. */

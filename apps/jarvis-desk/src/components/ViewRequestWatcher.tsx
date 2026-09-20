@@ -1,3 +1,4 @@
+import { maaPolle } from '../lib/ro'
 import { useEffect, useRef } from 'react'
 import { apiFetch, type ApiConfig } from '../lib/api'
 import { skaermFor, type Panel } from '../lib/skaermRegister'
@@ -22,6 +23,7 @@ export function ViewRequestWatcher({ config }: { config: ApiConfig | null }) {
     if (!config) return
     const tick = async () => {
       if (optaget.current || document.visibilityState !== 'visible') return
+      if (!maaPolle('view-requests', POLL_MS)) return  // ingen kigger → sjældnere (ro.ts)
       optaget.current = true
       try {
         const { requests } = await apiFetch<{ requests: ViewRequest[] }>(config, '/ui/view-requests/pending')

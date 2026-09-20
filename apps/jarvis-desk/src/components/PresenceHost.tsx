@@ -1,3 +1,4 @@
+import { maaPolle } from '../lib/ro'
 import { useEffect, useRef } from 'react'
 import { useSettings } from '../hooks/useSettings'
 import { presencePing, fetchPendingNotifications, ackNotification } from '../lib/api'
@@ -65,6 +66,9 @@ export function PresenceHost() {
 
     const ping = async (): Promise<void> => {
       if (cancelled) return
+      // Ingen kigger → sjældnere. Ved første tegn på liv pinges der straks
+      // igen, så tilstedeværelsen ikke halter når han vender tilbage (ro.ts).
+      if (!maaPolle('presence-ping', 5000)) return
       const key = await ensureKey()
       let awake = true
       try { awake = (await bridge?.isAwake?.()) ?? true } catch { /* default vågen */ }
@@ -82,6 +86,9 @@ export function PresenceHost() {
 
     const pollNotifs = async (): Promise<void> => {
       if (cancelled) return
+      // Et minimeret vindue tæller IKKE som væk her: en notifikation betyder
+      // mest netop når vinduet er nede. Loft på 15 s (ro.ts).
+      if (!maaPolle('notifikationer', 3000, { ignorerSkjult: true, loftMs: 15_000 })) return
       const items = await fetchPendingNotifications(cfg)
       if (cancelled || items.length === 0) return
       for (const it of items) {

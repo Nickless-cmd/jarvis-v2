@@ -1,3 +1,4 @@
+import { maaPolle } from '../lib/ro'
 import { Fragment } from 'react'
 import { useRammeReducer } from '../lib/useRammeReducer'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -369,6 +370,7 @@ export function CodeView({
     let levende = true
     const tik = () => {
       if (document.hidden) return
+      if (!maaPolle('kode-jobs', 15_000)) return  // ro.ts
       listProcesses(config)
         .then((p) => { if (levende) setKoerendeJobs(p.filter((x) => x.status === 'running').length) })
         .catch(() => { /* stille — et tal der mangler er bedre end en fejl i headeren */ })
@@ -407,7 +409,10 @@ export function CodeView({
       })
       .catch(() => { /* behold sidste kendte */ })
     poll()
-    const id = setInterval(poll, compacting ? 1200 : 6000)
+    const id = setInterval(() => {
+      if (!maaPolle('kode-kontekst', 6000, compacting)) return  // ro.ts
+      poll()
+    }, compacting ? 1200 : 6000)
     return () => { alive = false; clearInterval(id) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [config?.apiBaseUrl, config?.authToken, sessionId, stream.status, compacting])
@@ -522,6 +527,9 @@ export function CodeView({
     let cooldown = 0
     let bgUntil = 0
     const tick = () => {
+      // Ingen kigger → sjældnere (ro.ts). Fuld fart mens vi streamer eller
+      // lige har set et baggrunds-run.
+      if (!maaPolle('kode-aktive-runs', 1500, stream.status === 'working' || Date.now() < bgUntil)) return
       void getActiveRuns(cfg)
         .then((ids) => {
           if (cancelled) return

@@ -1,3 +1,4 @@
+import { maaPolle } from '../lib/ro'
 import { Fragment } from 'react'
 import { useRammeReducer } from '../lib/useRammeReducer'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -99,6 +100,7 @@ export function ChatView({
     let cancelled = false
     const hent = () => {
       if (typeof document !== 'undefined' && document.hidden) return
+      if (!maaPolle('chat-jobs', 10000)) return  // ro.ts
       void listJobs({ apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken })
         .then((s) => { if (!cancelled) setRunningJobs(s.jobs.filter((j) => j.status === 'running').length) })
         .catch(() => { /* behold sidste — ingen flicker ved netværks-blip */ })
@@ -202,7 +204,11 @@ export function ChatView({
       })
       .catch(() => { /* behold sidste kendte ved netværksfejl */ })
     poll()
-    const id = setInterval(poll, compacting ? 1200 : 6000)
+    const id = setInterval(() => {
+      // Komprimering kører videre i fuld fart; ellers sjældnere i ro (ro.ts).
+      if (!maaPolle('chat-kontekst', 6000, compacting)) return
+      poll()
+    }, compacting ? 1200 : 6000)
     return () => { alive = false; clearInterval(id) }
   }, [settings, sessionId, stream.status, compacting])
 
@@ -249,6 +255,9 @@ export function ChatView({
     // indikatorerne reagerer synligt (Bjørn 2026-06-13).
     let bgUntil = 0
     const tick = () => {
+      // Ingen kigger → sjældnere (ro.ts). Fuld fart mens vi selv streamer, og
+      // så længe der sidst blev set et baggrunds-run.
+      if (!maaPolle('chat-aktive-runs', 1500, stream.status === 'working' || Date.now() < bgUntil)) return
       void getActiveRuns(cfg)
         .then((ids) => {
           if (cancelled) return

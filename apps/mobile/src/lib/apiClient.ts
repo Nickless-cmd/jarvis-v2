@@ -93,7 +93,44 @@ export async function apiFetch<T>(
   }
 }
 
+/** Kort fælles svar på whoami — og ÉT kald når flere spørger samtidig.
+ *
+ *  Målt 20/9-2026: telefonen hentede `/api/whoami` 1.192 gange i timen, cirka
+ *  hvert 3. sekund. Ikke fordi nogen poller så hurtigt — `useConnectivity`
+ *  pinger hvert 15. s — men fordi fem kopier af den kørte samtidig (ChatScreen,
+ *  SettingsScreen, forbindelses-tjek). Identiteten skifter ikke på tre
+ *  sekunder, så de deler nu svaret. Forbindelses-tjekket mærker det ikke: et
+ *  netværkstab kommer fra NetInfo med det samme, og en fejl caches ALDRIG. */
+const WHOAMI_TTL_MS = 10_000
+let whoamiSvar: { ved: number; noegle: string; svar: WhoAmI } | null = null
+let whoamiUndervejs: { noegle: string; p: Promise<WhoAmI> } | null = null
+
+export function _nulstilWhoamiCache(): void {
+  whoamiSvar = null
+  whoamiUndervejs = null
+}
+
 export async function whoami(config: ApiConfig): Promise<WhoAmI> {
+  const noegle = `${config.apiBaseUrl}|${config.authToken}`
+  const nu = Date.now()
+  if (whoamiSvar && whoamiSvar.noegle === noegle && nu - whoamiSvar.ved < WHOAMI_TTL_MS) {
+    return whoamiSvar.svar
+  }
+  if (whoamiUndervejs && whoamiUndervejs.noegle === noegle) return whoamiUndervejs.p
+
+  const p = _hentWhoami(config)
+    .then((svar) => {
+      whoamiSvar = { ved: Date.now(), noegle, svar }
+      return svar
+    })
+    .finally(() => {
+      if (whoamiUndervejs?.p === p) whoamiUndervejs = null
+    })
+  whoamiUndervejs = { noegle, p }
+  return p
+}
+
+async function _hentWhoami(config: ApiConfig): Promise<WhoAmI> {
   const raw = await apiFetch<{
     user_id?: string
     user_display_name?: string

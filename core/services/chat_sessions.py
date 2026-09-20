@@ -616,6 +616,26 @@ def get_message_tool_result(message_id: str, tool_use_id: str) -> str | None:
 
 
 def get_chat_session(session_id: str) -> dict[str, object] | None:
+    """HELE samtalens historik i ét synkront kald. UDFASET for nye kaldere.
+
+    Det var den her der gjorde Bjørns samtale til en nyttelast på 21,5 MB, og
+    formen inviterer til det: man beder om «samtalen» og får alt hvad der
+    nogensinde er sagt. Målt 20/9-2026: 45 kaldesteder, og 14 af dem læser
+    hele historikken for at bruge ÉT metadata-felt.
+
+    Eksisterende kaldere må blive. Nye er forbudt, og `verify_history_reads`
+    håndhæver det. Brug i stedet:
+
+    * ``get_session_owner(sid)`` — ejeren
+    * ``session_version(sid)`` — versionen uden beskederne
+    * ``recent_chat_session_messages(sid, limit=N)`` — et BUNDET vindue
+    * ``chat_session_messages_since_last_compact(...)`` — kun det nye
+
+    Nye domæner designer deres felter og deres projektion SAMMEN, så
+    tilstanden kan genskabes uden at læse historikken igennem. Skal noget
+    ægte bruge hele historikken — en fork, en eksport — er det stadig
+    lovligt, men så skal det stå i grundlinjen som et bevidst valg.
+    """
     normalized = (session_id or "").strip()
     if not normalized:
         return None

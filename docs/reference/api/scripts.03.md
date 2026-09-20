@@ -74,6 +74,16 @@ _Vagt over vagterne: hver hook skal have en test der ser den sige nej._
 | function | `mangler` | `()` | (vagt, årsag) for hver vagt uden en test der ser den afvise. | [src](../../../scripts/verify_guard_tests.py#L56) |
 | function | `main` | `(argv=…)` | — | [src](../../../scripts/verify_guard_tests.py#L69) |
 
+## `scripts/verify_history_reads.py`
+_Vagt: ingen NYE kaldere der læser en hel samtale-historik synkront._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_navn` | `(node)` | — | [src](../../../scripts/verify_history_reads.py#L49) |
+| function | `fund_i_fil` | `(sti)` | — | [src](../../../scripts/verify_history_reads.py#L54) |
+| function | `_filer` | `(a)` | — | [src](../../../scripts/verify_history_reads.py#L76) |
+| function | `main` | `(argv=…)` | — | [src](../../../scripts/verify_history_reads.py#L92) |
+
 ## `scripts/verify_notes.py`
 _Vagt: en note skal have en status, en slags, og sine fire overskrifter._
 

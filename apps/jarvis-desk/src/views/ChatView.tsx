@@ -3,7 +3,7 @@ import { Fragment } from 'react'
 import { useRammeReducer } from '../lib/useRammeReducer'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFastholdBund } from '../lib/useFastholdBund'
-import { PanelRight, Loader2, SquareStack, FileDiff, AudioWaveform, Bot } from 'lucide-react'
+import { PanelRight, SquareStack, FileDiff, AudioWaveform, Bot } from 'lucide-react'
 import { JobsPanel } from '../components/shell/JobsPanel'
 import { listJobs } from '../lib/jobsApi'
 import { ChangesPanel } from '../components/shell/ChangesPanel'
@@ -953,8 +953,10 @@ export function ChatView({
           </div>
         )}
         {/* Liveness fast lige over composer (ikke i transcript — den scrollede
-            væk / sad i toppen ved ny chat). Vises kun når der faktisk sker noget. */}
-        {(stream.status !== 'idle' || bgActive) && (
+            væk / sad i toppen ved ny chat). Vises når der sker noget — eller
+            når baggrundsjob kører, også i hvile (Bjørn 20/9-2026): så bærer
+            linjen KUN job-tallet, og den forsvinder når jobbene lukker. */}
+        {(stream.status !== 'idle' || bgActive || runningJobs > 0) && (
           <LivenessIndicator
             status={bgActive && stream.status !== 'working' ? 'working' : stream.status}
             elapsedMs={stream.elapsedMs}
@@ -964,16 +966,9 @@ export function ChatView({
             thoughtMs={thoughtMs}
             thoughtAfsluttet={thoughtAfsluttet}
             runningJobs={runningJobs}
+            compacting={compacting}
             blocks={stream.blocks}
           />
-        )}
-        {/* Compaction-pause (som Claude Code): mens sessionen komprimeres pauses composeren
-            og en linje viser status. En besked skrevet imens sendes automatisk bagefter. */}
-        {compacting && (
-          <div className="liveness liveness-compact is-working" role="status" aria-live="polite">
-            <Loader2 size={14} className="spin" />
-            <span className="liveness-label">Komprimerer kontekst — sessionen er pauset et øjeblik…</span>
-          </div>
         )}
         <div className="composer-notices">
           {stream.status === 'interrupted' && <InterruptedBanner onResume={() => stream.continueFromPartial()} />}

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { AlertCircle, FileText, Loader2 } from 'lucide-react'
 import { useSettings } from '../../hooks/useSettings'
 import { downloadBlob, fetchBlobWithAuth, type ApiConfig } from '../../lib/api'
+import { KlikbartBillede } from './BilledLightbox'
 
 /**
  * En fil Jarvis har lagt ud — eller et gemt billede.
@@ -102,7 +103,10 @@ export function AttachmentBlock({ block }: { block: VedhaefningsBlok }) {
   if (block.type === 'image') {
     if (fejl) return <span className="attachment-fejl"><AlertCircle size={14} /> {navn} kunne ikke hentes</span>
     if (!billedeUrl) return <span className="attachment-fejl">{henter ? <Loader2 size={14} className="spin" /> : null} {navn}</span>
-    return <img className="attachment-image" src={billedeUrl} alt={navn} loading="lazy" />
+    // Klik åbner fuld størrelse (Bjørn 20/9-2026). Formen kommer fra
+    // `.attachment-image` — men uden `object-fit: cover`, som KLIPPEDE
+    // kanterne af ens eget billede.
+    return <KlikbartBillede className="attachment-image" src={billedeUrl} alt={navn} />
   }
 
   const stoerrelse = formatSize(block.size_bytes)

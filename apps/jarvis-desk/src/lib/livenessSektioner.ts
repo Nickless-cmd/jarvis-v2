@@ -180,3 +180,30 @@ export function sektioner(blocks: ContentBlock[] | undefined | null, working: bo
 export function sektionerTekst(blokke: Sektion[]): string {
   return blokke.map((s) => s.tekst).join(', ')
 }
+
+/**
+ * Hvor mange sektioner linjen viser, før resten samles i «og N andre».
+ *
+ * Bjørn 20/9-2026: «under et langt run kan den godt udvide sig meget».
+ * Målt i den rigtige CSS: et run med otte familier gjorde linjen 69px høj —
+ * tre linjer i stedet for én. Sektionerne akkumulerer gennem HELE runnet
+ * (der er 15 familier + «andet»), så længden vokser med arbejdet.
+ *
+ * Tre er valgt efter måling, ikke smag: med varighed + tokens + tænke-tid
+ * foran holder linjen sig på én linje ved 820px. Resten samles i ét tal —
+ * samme greb som «andet»-familien bruger for værktøjer uden familie.
+ *
+ * MÅLT 20/9-2026 i den rigtige CSS: med de fire tal foran ombryder linjen ved
+ * TRE sektioner (50px = to linjer). Ved to holder den 31px = én linje. Tallet
+ * er derfor 2 — det er den bredde linjen faktisk har, ikke den jeg gættede på.
+ */
+export const MAKS_SEKTIONER = 2
+
+/** Klip sektionerne til det linjen kan bære. `rest` er antallet der blev skjult. */
+export function klippSektioner(
+  blokke: Sektion[],
+  maks: number = MAKS_SEKTIONER,
+): { viste: Sektion[]; rest: number } {
+  if (blokke.length <= maks) return { viste: blokke, rest: 0 }
+  return { viste: blokke.slice(0, maks), rest: blokke.length - maks }
+}

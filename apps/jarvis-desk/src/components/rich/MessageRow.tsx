@@ -11,6 +11,7 @@ import { PasteReferenceChip } from './PasteReferenceChip'
 import type { ApiConfig } from '../../lib/api'
 import { InlineErrorBoundary } from '../ErrorBoundary'
 import { denseBlocks } from '../../lib/blockHelpers'
+import { KlikbartBillede } from './BilledLightbox'
 
 /** Besked-række med locked boble-layout: bruger højre (boble), Jarvis venstre
  *  (avatar + tekst, ingen boble). Density videregives til rich-blocks.
@@ -73,7 +74,7 @@ function MessageRowImpl({
           <div className="msg-user-images">
             {/* Bruger-egne billeder (blob: preview eller server-attachment) renderes
                 direkte — sanitering er forbeholdt Jarvis' (utrusted) indhold. */}
-            {images.map((img, i) => <img key={i} src={img.src} alt={img.alt ?? ''} />)}
+            {images.map((img, i) => <KlikbartBillede key={i} src={img.src ?? ''} alt={img.alt ?? ''} />)}
           </div>
         )}
         {text && (

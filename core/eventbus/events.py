@@ -239,6 +239,14 @@ ALLOWED_EVENT_FAMILIES = {
     "resonance_decay", "rule_engine", "selective_attention",
     "selective_consolidation", "shutdown_window", "signal_decay", "surprise",
     "valence_trajectory", "watcher", "workspace", "workspace_memory",
+    # ── 20. sep 2026: push-vejen meldte aldrig en ny release. Familien `app`
+    #    blev publiceret af app_release-vagten (`app.release.available`) men
+    #    stod ikke her → hvert publish kastede ValueError, og vagtens egen
+    #    `_udsend` slugte den i en except. State-filen avancerede alligevel,
+    #    så vagten SAA releasen — den kunne bare ikke sige det. Maalt: nul
+    #    release-events i bussen. (Fjerde gang samme moenster: prompt 4/9,
+    #    tool_discovery 6/9, r2_5_gate 19/9.) ──
+    "app",
 }
 
 

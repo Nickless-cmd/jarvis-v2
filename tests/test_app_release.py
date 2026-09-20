@@ -79,6 +79,30 @@ def test_udsend_lægger_eventet_på_bussen_med_klientens_navn(monkeypatch):
     assert payload["version"] == "0.6.59"
 
 
+def test_release_eventet_gaar_gennem_den_rigtige_validering():
+    """Regression 20/9-2026: push-vejen meldte aldrig en ny release.
+
+    Testen ovenfor mocker ``event_bus.publish`` — og mockede dermed praecis det
+    der var i stykker: ``Event.validate`` afviste familien ``app``, saa hvert
+    publish kastede ValueError, og vagtens ``_udsend`` slugte den i en except.
+    En mock af publish kan pr. konstruktion ikke se den fejl; den svarer bare
+    «ja» til et kald der i virkeligheden ville raise.
+
+    Familien stod heller ikke i ALLOWED_EVENT_FAMILIES, og state-filen blev
+    skrevet alligevel — saa vagten SAa releasen, den kunne bare ikke sige det.
+
+    Derfor denne: den roerer den aegte validering, uden mock.
+    """
+    from core.eventbus.events import ALLOWED_EVENT_FAMILIES, Event
+
+    assert "app" in ALLOWED_EVENT_FAMILIES, (
+        "familien `app` mangler i ALLOWED_EVENT_FAMILIES — publish() raiser og "
+        "fejlen sluges, saa klienterne faar aldrig besked om en ny release"
+    )
+    ev = Event.create("app.release.available", {"version": "0.6.61"})
+    assert ev.family == "app"
+
+
 def test_udsend_kaster_ikke_naar_bussen_er_nede(monkeypatch):
     from core.eventbus import bus as bus_mod
 

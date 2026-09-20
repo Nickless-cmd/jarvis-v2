@@ -174,8 +174,13 @@ def _udsend(data: dict[str, Any]) -> None:
             },
         )
         logger.info("app-release: udsendte app.release.available version=%s", data.get("version"))
-    except Exception:  # noqa: BLE001
-        logger.debug("app-release: kunne ikke udsende event", exc_info=True)
+    except Exception as e:  # noqa: BLE001
+        # Tavs fejl her betyder at klienterne ALDRIG faar besked om en ny
+        # release — og vagten skriver state alligevel, saa den ser ud til at
+        # virke. Det var praecis hvad der skete 20/9: familien `app` var ikke
+        # registreret, publish kastede, og debug-linjen blev aldrig laest.
+        # Derfor warning — en fejl her er en fejl i push-vejen, ikke stoj.
+        logger.warning("app-release: kunne ikke udsende event: %s", e, exc_info=True)
 
 
 async def _vagt_loop() -> None:

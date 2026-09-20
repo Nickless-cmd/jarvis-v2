@@ -51,6 +51,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
@@ -62,7 +64,7 @@ jobs:
           pip install -r requirements.txt
           pip install pytest pytest-timeout
       - name: Koer vagterne
-        run: grep -v '^[[:space:]]*#' tests/vagter.txt | xargs pytest -q
+        run: grep -v '^[[:space:]]*#' tests/vagter.txt | xargs pytest -q --tb=short
 
   secrets-scan:
     name: secrets-scan

@@ -2,7 +2,7 @@ import { createContext, useCallback, useEffect, useLayoutEffect, useMemo, useRef
 import { lavVaerdiLager, type VaerdiLager } from '../lib/vaerdiLager'
 import { useRammeReducer } from '../lib/useRammeReducer'
 import { startStream, type StreamControl, type StreamError } from '../lib/streamClient'
-import { cancelRun, approveTool, denyTool, followRun } from '../lib/api'
+import { cancelRun, approveTool, denyTool, followRun, hentVentendeGodkendelse } from '../lib/api'
 import { streamReducer, initialStreamState, type StreamStatus } from '../lib/streamReducer'
 import type { StreamEvent, ContentBlock } from '../lib/sseProtocol'
 import { lastTextBlock } from '../lib/blockHelpers'
@@ -424,6 +424,28 @@ export function StreamProvider({
   // (active-runs/central-realtime/costs-daily fra ~9 komponenter) sultede vores EGEN
   // SSE-læser → forbindelsen døde → serveren cancellerede runet midt-flugt og Jarvis'
   // arbejde blev kasseret. Mens et run kører skruer vi baggrundsstøjen ned.
+  // Opsamling af et kort vi aldrig så (20/9-2026). Kortet kommer som et
+  // live-event; er streamen ikke forbundet i det øjeblik — genforbindelse,
+  // nyåbnet vindue, et svar der kørte videre efter en afbrydelse — ser vi det
+  // aldrig, og Jarvis står bare og hænger mens kortet ligger på telefonen.
+  //
+  // Derfor spørger vi selv, men KUN mens en tur arbejder og vi ikke allerede
+  // har et kort. Er der intet at hente, koster det ét lille svar hvert
+  // fjerde sekund i netop det vindue hvor han venter.
+  useEffect(() => {
+    if (status !== 'working' || pendingApproval || !config.apiBaseUrl || !workingSessionId) return
+    const cfg = { apiBaseUrl: config.apiBaseUrl, authToken: config.authToken }
+    let levende = true
+    const spoerg = () => {
+      void hentVentendeGodkendelse(cfg, workingSessionId).then((k: { approvalId: string; tool: string; action: string } | null) => {
+        if (levende && k) setPendingApproval({ approvalId: k.approvalId, tool: k.tool, action: k.action })
+      })
+    }
+    const id = window.setInterval(spoerg, 4000)
+    spoerg()
+    return () => { levende = false; window.clearInterval(id) }
+  }, [status, pendingApproval, config.apiBaseUrl, config.authToken, workingSessionId])
+
   useEffect(() => {
     setStreamActive(status === 'working')
     return () => setStreamActive(false)

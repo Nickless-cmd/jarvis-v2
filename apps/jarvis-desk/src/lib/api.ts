@@ -1015,6 +1015,32 @@ export interface PendingNotification {
   session_id: string
 }
 
+/** Venter der et godkendelses-kort i denne samtale?
+ *
+ *  Desk får kortet som et live-event i streamen. Er streamen ikke forbundet
+ *  netop da — en genforbindelse, et nyåbnet vindue, et svar der kørte videre
+ *  efter en afbrydelse — ser den det aldrig, og Jarvis ser ud til at hænge
+ *  mens kortet ligger på telefonen (Bjørn 20/9-2026). Den her spørger selv.
+ *
+ *  `null` ved enhver fejl: et manglende svar må ikke kunne vælte komponisten. */
+export async function hentVentendeGodkendelse(
+  config: ApiConfig, sessionId: string,
+): Promise<{ approvalId: string; tool: string; action: string } | null> {
+  if (!sessionId) return null
+  try {
+    const r = await apiFetch<{ approval?: { approval_id?: string; tool?: string; arguments?: Record<string, unknown> } | null }>(
+      config, `/chat/sessions/${encodeURIComponent(sessionId)}/pending-approval`,
+    )
+    const a = r?.approval
+    if (!a?.approval_id) return null
+    const arg = a.arguments || {}
+    const linje = String(arg.command ?? arg.path ?? arg.file_path ?? '').slice(0, 140)
+    return { approvalId: a.approval_id, tool: a.tool || 'tool', action: linje }
+  } catch {
+    return null
+  }
+}
+
 /** Det FULDE værktøjs-resultat bag ét kald — kun når nogen folder linjen ud.
  *
  *  Samtalen bærer de første 2.000 tegn af et langt resultat (serveren

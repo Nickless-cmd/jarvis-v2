@@ -39,6 +39,9 @@ vi.mock('../lib/api', () => ({
   getContextUsage: vi.fn().mockResolvedValue({ tokens: 0, compact_at: 130000, effective: 130000, compacting: false, compacted: false }),
   getActiveRuns: vi.fn().mockResolvedValue([]),
   followRun: vi.fn(() => ({ abort: vi.fn() })),
+  // Opsamlingen af et ventende godkendelses-kort (20/9-2026): uden den
+  // i mocken falder hele viewet, fordi StreamContext kalder den.
+  hentVentendeGodkendelse: vi.fn(async () => null),
   warmSession: vi.fn().mockResolvedValue(undefined),
   getGitStatus: vi.fn().mockResolvedValue({ branch: 'main', dirty: 0, added: 0, removed: 0, is_git: true }),
 }))

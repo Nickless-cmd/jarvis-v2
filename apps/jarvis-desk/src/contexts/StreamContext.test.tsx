@@ -34,6 +34,9 @@ vi.mock('../lib/api', () => ({
   approveTool: vi.fn(),
   denyTool: vi.fn(),
   followRun: (...a: unknown[]) => followRunMock(...a),
+  // Opsamlingen af et ventende godkendelses-kort (20/9-2026). Den kaldes kun
+  // mens en tur arbejder OG der ikke allerede er et kort.
+  hentVentendeGodkendelse: vi.fn(async () => null),
 }))
 
 const cfg = { apiBaseUrl: 'http://t', authToken: 't' }
@@ -286,5 +289,24 @@ describe('generations-hegn paa reattach', () => {
     })
     expect(JSON.stringify(result.current.streamError ?? {}))
       .toContain('aegte reattach-fejl')
+  })
+})
+
+/**
+ * Opsamling af et kort vi aldrig så (Bjørn 20/9-2026): «jeg sidder og laver
+ * noget med ham i desk og så står han bare og hænger, indtil jeg kigger på min
+ * telefon og så ligger der et approval card».
+ *
+ * Kortet kommer som et live-event. Er streamen ikke forbundet netop da, ser
+ * desk det aldrig — og Jarvis ser ud til at stalle. Derfor spørger vi selv,
+ * men kun i præcis det vindue hvor han venter.
+ */
+describe('StreamContext · opsamling af ventende godkendelse', () => {
+  it('spørger IKKE når der ikke kører en tur', async () => {
+    const { hentVentendeGodkendelse } = await import('../lib/api')
+    ;(hentVentendeGodkendelse as unknown as { mockClear: () => void }).mockClear()
+    renderHook(() => useStream(), { wrapper })
+    await act(async () => { await new Promise((r) => setTimeout(r, 50)) })
+    expect(hentVentendeGodkendelse).not.toHaveBeenCalled()
   })
 })

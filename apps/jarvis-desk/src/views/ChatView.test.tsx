@@ -35,6 +35,9 @@ vi.mock('../lib/api', () => ({
   // naeste der ER aegte.
   warmSession: vi.fn().mockResolvedValue(undefined),
   followRun: vi.fn(() => ({ abort: vi.fn() })),
+  // Opsamlingen af et ventende godkendelses-kort (20/9-2026): uden den
+  // i mocken falder hele viewet, fordi StreamContext kalder den.
+  hentVentendeGodkendelse: vi.fn(async () => null),
   presencePing: vi.fn().mockResolvedValue(undefined),
   fetchPendingNotifications: vi.fn().mockResolvedValue([]),
   ackNotification: vi.fn().mockResolvedValue(undefined),

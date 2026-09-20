@@ -65,6 +65,39 @@ def build_request(*, tool_name: str, arguments: dict[str, Any],
     }
 
 
+def pending_for_session(session_id: str) -> dict[str, Any] | None:
+    """Det ventende godkendelses-kort for ÉN samtale — eller ``None``.
+
+    ## Hvorfor den findes (20/9-2026)
+
+    Desk får kortet som et LIVE-event i streamen; mobilen finder det ved at
+    polle. Er streamen ikke forbundet i det øjeblik kortet laves — en
+    genforbindelse, et vindue der lige er åbnet, et svar der kom videre efter
+    en afbrydelse — ser desk det ALDRIG. Bjørn 20/9-2026: «jeg sidder og laver
+    noget med ham i desk og så står han bare og hænger, indtil jeg kigger på
+    min telefon og så ligger der et approval card».
+
+    Kortet har hele tiden vidst hvilken samtale det hørte til
+    (`build_request` sætter `session_id`); der var bare ingen der kunne spørge.
+
+    Nyeste først, så et gammelt kort ikke skygger for det han venter på.
+    """
+    sid = str(session_id or "").strip()
+    if not sid:
+        return None
+    import core.services.visible_runs as _vr
+
+    kandidater = [
+        {**kort, "approval_id": aid}
+        for aid, kort in list(_vr._PENDING_APPROVALS.items())
+        if str((kort or {}).get("session_id") or "") == sid
+    ]
+    if not kandidater:
+        return None
+    kandidater.sort(key=lambda k: str(k.get("created_at") or ""), reverse=True)
+    return kandidater[0]
+
+
 def decide(approval_id: str, *, approved: bool,
            answered_by: str | None = None) -> dict[str, Any]:
     """Svar paa en godkendelse. Den ENE vej ind for enhver svarer.

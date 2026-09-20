@@ -473,6 +473,36 @@ def chat_message_feedback(message_id: str, req: MessageFeedbackRequest) -> dict:
     return ud
 
 
+@router.get("/sessions/{session_id}/pending-approval")
+def chat_pending_approval(session_id: str) -> dict:
+    """Venter der et godkendelses-kort i DENNE samtale?
+
+    Desk får kortet som et live-event i streamen. Er streamen ikke forbundet
+    netop da — en genforbindelse, et nyåbnet vindue, et svar der kørte videre
+    efter en afbrydelse — ser den det aldrig, og Jarvis ser ud til at hænge
+    mens kortet ligger på telefonen. Den her lader klienten spørge selv.
+
+    Tomt svar er et gyldigt svar. Kaster aldrig.
+    """
+    _kraev_adgang(session_id)
+    try:
+        from core.services.approval_runtime import pending_for_session
+        kort = pending_for_session(session_id)
+    except Exception:
+        # chat.py har ingen modul-logger; en opsamling der fejler skal under
+        # alle omstændigheder svare tomt frem for at vælte samtalen.
+        kort = None
+    if not kort:
+        return {"approval": None}
+    return {"approval": {
+        "approval_id": str(kort.get("approval_id") or ""),
+        "tool": str(kort.get("tool_name") or ""),
+        "arguments": kort.get("arguments") or {},
+        "run_id": str(kort.get("run_id") or ""),
+        "created_at": str(kort.get("created_at") or ""),
+    }}
+
+
 @router.get("/messages/{message_id}/tool-result/{tool_use_id}")
 def chat_message_tool_result(message_id: str, tool_use_id: str) -> dict:
     """Ét FULDT værktøjs-resultat — dovent, kun når nogen folder linjen ud.

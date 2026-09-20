@@ -66,7 +66,9 @@ def test_tabet_SIGES_i_loggen(caplog):
 def test_decision_telemetry_BRUGER_den_taellende_beskaering():
     """Kilde-vagt. En taeller ingen kalder taeller ingenting.
 
-    AST, ikke tekstsoegning: `beskaer` kunne staa i en kommentar.
+    AST, ikke tekstsoegning: `beskaer` kunne staa i en kommentar. 20/9-2026 blev
+    `beskaer` skiftet til `beskaer_efter_alder` (horisonten er en tid, ikke et
+    antal) — begge er taellende, og begge maa staa her.
     """
     import ast
     import pathlib
@@ -76,7 +78,7 @@ def test_decision_telemetry_BRUGER_den_taellende_beskaering():
                and n.name == "_save"), None)
     assert fn is not None, "_save er flyttet"
     kaldt = {getattr(k.func, "id", "") for k in ast.walk(fn) if isinstance(k, ast.Call)}
-    assert "beskaer" in kaldt, "_save beskaerer stadig i tavshed"
+    assert kaldt & {"beskaer", "beskaer_efter_alder"}, "_save beskaerer stadig i tavshed"
 
 
 # ------------------------------------- adskilt fra kanonisk sandhed

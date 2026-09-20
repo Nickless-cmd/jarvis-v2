@@ -26,6 +26,11 @@ Promotion path mirrors R2 → R2.5: when heed-rate stays low over a
 meaningful window AND signals keep firing, we have data to make the
 signals more visible or blocking.
 
+Retention (20/9-2026): the measuring window is a *time*
+(``_RETENTION_DAYS``), not a record count. A count moves with activity —
+500 records covered 79 days at ~6.3/day, but would have covered 1 day at
+500/day, and the number would have looked just as right.
+
 Added 2026-05-14.
 """
 from __future__ import annotations
@@ -44,7 +49,20 @@ logger = logging.getLogger(__name__)
 _TELEMETRY_KEY = "decision_signal_telemetry"
 _REACTION_WINDOW_SECONDS = 90
 _GRACE_SECONDS = 30
-_MAX_RECORDS = 500
+#: Fast målevindue. Horisonten skal være en *tid*, ikke et *antal*: et antal
+#: flytter målevinduet når aktiviteten gør. Målt 20/9-2026 dækkede de 500 poster
+#: 79 døgn (3/7 → 20/9, ~6,3/døgn) — ved 500/døgn ville «7d» reelt være 1 døgn,
+#: og tallet ville se lige så rigtigt ud.
+#:
+#: Bevidst længere end søstermodulet `verification_gate_telemetry` (30 dage).
+#: Modulet beskriver selv sin pointe som et *langt* forløb («289 fires siden
+#: 7. maj»), og ved ~6,3/døgn koster et kvartal kun ~570 poster. Et 30-dages
+#: vindue ville kaste 49 døgn af den eneste langtidshistorik vi har, uden at
+#: vinde noget: filen er 238 KB ved 500 poster.
+_RETENTION_DAYS = 90
+#: Sikkerhedsnet mod vækst, IKKE den effektive horisont. Ved ~6,3 poster/døgn
+#: binder loftet først ved ~222/døgn — aldersvinduet rammer længe før.
+_MAX_RECORDS = 20000
 _POLL_INTERVAL_SECONDS = 5.0
 
 
@@ -62,19 +80,26 @@ def _load() -> dict[str, Any]:
 
 def _save(data: dict[str, Any]) -> None:
     try:
-        # Beskaering der TAELLER. Foer stod her `list(...)[-_MAX_RECORDS:]`, og
-        # maalt 13/9-2026 stod begge ringe praecis paa 500/500 — altsaa havde de
-        # kastet vaek, og der fandtes ikke ét tal for hvor meget.
+        # Beskaering der TAELLER, paa et fast tidsvindue.
+        #
+        # Foer stod her `list(...)[-_MAX_RECORDS:]`. 13/9-2026 fik tabet et tal
+        # (`beskaer`), men loftet var stadig et *antal* — saa maalevinduet
+        # flyttede sig naar aktiviteten gjorde. Maalt 20/9-2026: 500 poster
+        # daekkede 79 doegn ved ~6,3/dogn; ved 500/dogn ville «7d» vaere 1
+        # doegn, og tallet ville se lige saa rigtigt ud. Soestermodulet
+        # `verification_gate_telemetry` fik samme rettelse samme dag.
         #
         # Fase 10, kriterium 2: «tolerate loss honestly». Ikke «undgaa tab» —
         # tab er i orden for telemetri, det er netop forskellen paa telemetri og
         # sandhed. Usynligt tab er ikke.
         try:
-            from core.services.telemetry_gate import beskaer
-            data["surfaces"] = beskaer(data.get("surfaces", []), _MAX_RECORDS,
-                                       navn="decision_signal_telemetry.surfaces")
-            data["reactions"] = beskaer(data.get("reactions", []), _MAX_RECORDS,
-                                        navn="decision_signal_telemetry.reactions")
+            from core.services.telemetry_gate import beskaer_efter_alder
+            data["surfaces"] = beskaer_efter_alder(
+                data.get("surfaces", []), _RETENTION_DAYS,
+                navn="decision_signal_telemetry.surfaces", maks=_MAX_RECORDS)
+            data["reactions"] = beskaer_efter_alder(
+                data.get("reactions", []), _RETENTION_DAYS,
+                navn="decision_signal_telemetry.reactions", maks=_MAX_RECORDS)
         except Exception:
             # Regnskabet maa aldrig koste os selve beskaeringen — en ring uden
             # loft ville vokse til den spiste state-filen.

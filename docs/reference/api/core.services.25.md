@@ -2,6 +2,17 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/tool_intent_runtime.py`
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `build_tool_intent_runtime_surface` | `()` | — | [src](../../../core/services/tool_intent_runtime.py#L27) |
+| function | `_build_tool_intent_runtime_surface` | `()` | — | [src](../../../core/services/tool_intent_runtime.py#L43) |
+| function | `_build_mutating_exec_proposal_surface` | `()` | — | [src](../../../core/services/tool_intent_runtime.py#L486) |
+| function | `_build_sudo_exec_proposal_surface` | `(mutating_exec_surface)` | — | [src](../../../core/services/tool_intent_runtime.py#L669) |
+| function | `_derive_intent_from_awareness` | `(*, awareness, repo_observation)` | — | [src](../../../core/services/tool_intent_runtime.py#L725) |
+| function | `_emit_tool_intent_runtime_event` | `(kind, payload=…)` | Emit a scoped event for cartographer observability. | [src](../../../core/services/tool_intent_runtime.py#L836) |
+
 ## `core/services/tool_lexical_match.py`
 _Leksikalsk vaerktoejs-opslag: saerkende ord slaar semantisk lighed._
 
@@ -569,15 +580,4 @@ _Adaptive veto gate — pre-execution hook that pauses tool calls when pushback 
 | function | `record_override` | `(tool_name, feeling)` | Record that the user overrode a veto for this (tool, feeling) pair. | [src](../../../core/services/veto_gate.py#L867) |
 | function | `record_jarvis_override` | `(tool_name, feeling)` | Registrér at JARVIS — ikke brugeren — overstyrede en gate for dette (tool, feeling). | [src](../../../core/services/veto_gate.py#L899) |
 | function | `_emit_veto_gate_event` | `(kind, payload=…)` | Emit a scoped event — defensive, never blocks caller. | [src](../../../core/services/veto_gate.py#L929) |
-
-## `core/services/visible_first_pass_text.py`
-_Akkumuleret first-pass-tekst med indbygget degenerations-vagt._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `FirstPassText` | `` | Samler first-pass-tekst og siger til når den degenererer. | [src](../../../core/services/visible_first_pass_text.py#L31) |
-| method | `FirstPassText.text` | `(self)` | — | [src](../../../core/services/visible_first_pass_text.py#L39) |
-| method | `FirstPassText.__len__` | `(self)` | — | [src](../../../core/services/visible_first_pass_text.py#L42) |
-| method | `FirstPassText.__bool__` | `(self)` | — | [src](../../../core/services/visible_first_pass_text.py#L45) |
-| method | `FirstPassText.feed` | `(self, delta)` | Tilføj en delta. Returnér (degenereret, årsag). | [src](../../../core/services/visible_first_pass_text.py#L48) |
 

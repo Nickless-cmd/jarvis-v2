@@ -19,6 +19,7 @@ from typing import Iterator
 from urllib import error as urllib_error
 from urllib import request as urllib_request
 
+from core.services import spild as _spild
 from core.services.stream_failure_kind import (
     FailureKind,
     MalformedStreamPayload,
@@ -159,11 +160,23 @@ class OllamaFollowupAdapter:
             for tr in exch.results:
                 content = str(tr.content or "")
                 if len(content) > _OLLAMA_MAX_TOOL_RESULT_CHARS:
-                    omitted = len(content) - _OLLAMA_MAX_TOOL_RESULT_CHARS
-                    content = (
-                        content[:_OLLAMA_MAX_TOOL_RESULT_CHARS]
-                        + f"\n\n[tool result truncated for follow-up context; {omitted} chars omitted]"
-                    )
+                    # SPILD frem for klip (20/9-2026). Før stod her kun «N
+                    # chars omitted», og halen var reelt væk — kaldte han om,
+                    # fik han samme klip igen. Nu ligger hele resultatet i en
+                    # privat fil, og modellen får stien med. Lykkes skrivningen
+                    # ikke, klipper vi som før: et resultat må ikke gå tabt
+                    # fordi disken sagde nej.
+                    i_alt = len(content)
+                    hoved = content[:_OLLAMA_MAX_TOOL_RESULT_CHARS]
+                    sti = _spild.gem(content, vaerktoej=str(tr.tool_name or ""))
+                    if sti:
+                        content = hoved + _spild.henvisning(
+                            sti, vist=_OLLAMA_MAX_TOOL_RESULT_CHARS, i_alt=i_alt)
+                    else:
+                        content = hoved + (
+                            f"\n\n[tool result truncated for follow-up context; "
+                            f"{i_alt - _OLLAMA_MAX_TOOL_RESULT_CHARS} chars omitted]"
+                        )
                 results.append(
                     ToolResult(
                         tool_call_id=tr.tool_call_id,

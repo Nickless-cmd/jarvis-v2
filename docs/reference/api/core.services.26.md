@@ -2,6 +2,17 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/visible_first_pass_text.py`
+_Akkumuleret first-pass-tekst med indbygget degenerations-vagt._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `FirstPassText` | `` | Samler first-pass-tekst og siger til når den degenererer. | [src](../../../core/services/visible_first_pass_text.py#L31) |
+| method | `FirstPassText.text` | `(self)` | — | [src](../../../core/services/visible_first_pass_text.py#L39) |
+| method | `FirstPassText.__len__` | `(self)` | — | [src](../../../core/services/visible_first_pass_text.py#L42) |
+| method | `FirstPassText.__bool__` | `(self)` | — | [src](../../../core/services/visible_first_pass_text.py#L45) |
+| method | `FirstPassText.feed` | `(self, delta)` | Tilføj en delta. Returnér (degenereret, årsag). | [src](../../../core/services/visible_first_pass_text.py#L48) |
+
 ## `core/services/visible_followup.py`
 _Provider-neutral agentic follow-up dispatcher._
 
@@ -29,22 +40,22 @@ _Per-provider follow-up adapters (split from ``visible_followup.py``)._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_append_image_message` | `(messages, tr)` | Læg pixels ind efter et tool-resultat der bar et billede (2026-09-06). | [src](../../../core/services/visible_followup_adapters.py#L52) |
-| class | `OllamaFollowupAdapter` | `` | Follow-up via Ollama's ``/api/chat`` streaming NDJSON endpoint. | [src](../../../core/services/visible_followup_adapters.py#L72) |
-| method | `OllamaFollowupAdapter._normalize_tool_calls` | `(self, tool_calls)` | Replay tool_calls — men REPARÉR afkortede/malformede argument-strenge først. | [src](../../../core/services/visible_followup_adapters.py#L95) |
-| method | `OllamaFollowupAdapter._repair_arguments` | `(container)` | Hvis container['arguments'] er en STRENG der ikke er gyldig JSON → erstat med {}. | [src](../../../core/services/visible_followup_adapters.py#L121) |
-| method | `OllamaFollowupAdapter._compact_exchanges` | `(self, exchanges)` | Bound Ollama follow-up replay so long tool loops do not 400. | [src](../../../core/services/visible_followup_adapters.py#L146) |
-| method | `OllamaFollowupAdapter._serialize_exchanges` | `(self, exchanges)` | Replay exchanges as structured assistant + role=tool messages. | [src](../../../core/services/visible_followup_adapters.py#L185) |
-| method | `OllamaFollowupAdapter.stream_followup` | `(self, *, model, base_messages, exchanges, tool_definitions=…, round_index=…, thinking_mode=…, temperature=…, top_p=…)` | — | [src](../../../core/services/visible_followup_adapters.py#L230) |
-| class | `OpenAICompatFollowupAdapter` | `` | Follow-up via OpenAI-compatible ``/chat/completions`` SSE streams. | [src](../../../core/services/visible_followup_adapters.py#L544) |
-| method | `OpenAICompatFollowupAdapter.__init__` | `(self, *, provider_id)` | — | [src](../../../core/services/visible_followup_adapters.py#L554) |
-| method | `OpenAICompatFollowupAdapter._normalize_assistant_tool_calls` | `(self, tool_calls)` | Normalize assistant tool_calls to match the OpenAI chat-completions | [src](../../../core/services/visible_followup_adapters.py#L557) |
-| method | `OpenAICompatFollowupAdapter._build_request` | `(self, *, model, messages, tool_definitions, temperature=…, top_p=…, tool_choice=…, extra_body=…, spor=…)` | — | [src](../../../core/services/visible_followup_adapters.py#L592) |
-| method | `OpenAICompatFollowupAdapter._serialize_exchanges` | `(self, exchanges)` | Turn accumulated exchanges into OpenAI-compat tool messages. | [src](../../../core/services/visible_followup_adapters.py#L750) |
-| method | `OpenAICompatFollowupAdapter.stream_followup` | `(self, *, model, base_messages, exchanges, tool_definitions=…, round_index=…, thinking_mode=…, temperature=…, top_p=…, tool_choice=…, run_id=…, autonomous=…, _length_retry=…)` | — | [src](../../../core/services/visible_followup_adapters.py#L796) |
-| class | `CodexFollowupAdapter` | `` | Follow-up via the OpenAI Codex Responses API (chatgpt.com/backend-api). | [src](../../../core/services/visible_followup_adapters.py#L1247) |
-| method | `CodexFollowupAdapter._build_input` | `(self, base_messages, exchanges)` | — | [src](../../../core/services/visible_followup_adapters.py#L1261) |
-| method | `CodexFollowupAdapter.stream_followup` | `(self, *, model, base_messages, exchanges, tool_definitions=…, round_index=…, thinking_mode=…)` | — | [src](../../../core/services/visible_followup_adapters.py#L1294) |
+| function | `_append_image_message` | `(messages, tr)` | Læg pixels ind efter et tool-resultat der bar et billede (2026-09-06). | [src](../../../core/services/visible_followup_adapters.py#L53) |
+| class | `OllamaFollowupAdapter` | `` | Follow-up via Ollama's ``/api/chat`` streaming NDJSON endpoint. | [src](../../../core/services/visible_followup_adapters.py#L73) |
+| method | `OllamaFollowupAdapter._normalize_tool_calls` | `(self, tool_calls)` | Replay tool_calls — men REPARÉR afkortede/malformede argument-strenge først. | [src](../../../core/services/visible_followup_adapters.py#L96) |
+| method | `OllamaFollowupAdapter._repair_arguments` | `(container)` | Hvis container['arguments'] er en STRENG der ikke er gyldig JSON → erstat med {}. | [src](../../../core/services/visible_followup_adapters.py#L122) |
+| method | `OllamaFollowupAdapter._compact_exchanges` | `(self, exchanges)` | Bound Ollama follow-up replay so long tool loops do not 400. | [src](../../../core/services/visible_followup_adapters.py#L147) |
+| method | `OllamaFollowupAdapter._serialize_exchanges` | `(self, exchanges)` | Replay exchanges as structured assistant + role=tool messages. | [src](../../../core/services/visible_followup_adapters.py#L198) |
+| method | `OllamaFollowupAdapter.stream_followup` | `(self, *, model, base_messages, exchanges, tool_definitions=…, round_index=…, thinking_mode=…, temperature=…, top_p=…)` | — | [src](../../../core/services/visible_followup_adapters.py#L243) |
+| class | `OpenAICompatFollowupAdapter` | `` | Follow-up via OpenAI-compatible ``/chat/completions`` SSE streams. | [src](../../../core/services/visible_followup_adapters.py#L557) |
+| method | `OpenAICompatFollowupAdapter.__init__` | `(self, *, provider_id)` | — | [src](../../../core/services/visible_followup_adapters.py#L567) |
+| method | `OpenAICompatFollowupAdapter._normalize_assistant_tool_calls` | `(self, tool_calls)` | Normalize assistant tool_calls to match the OpenAI chat-completions | [src](../../../core/services/visible_followup_adapters.py#L570) |
+| method | `OpenAICompatFollowupAdapter._build_request` | `(self, *, model, messages, tool_definitions, temperature=…, top_p=…, tool_choice=…, extra_body=…, spor=…)` | — | [src](../../../core/services/visible_followup_adapters.py#L605) |
+| method | `OpenAICompatFollowupAdapter._serialize_exchanges` | `(self, exchanges)` | Turn accumulated exchanges into OpenAI-compat tool messages. | [src](../../../core/services/visible_followup_adapters.py#L763) |
+| method | `OpenAICompatFollowupAdapter.stream_followup` | `(self, *, model, base_messages, exchanges, tool_definitions=…, round_index=…, thinking_mode=…, temperature=…, top_p=…, tool_choice=…, run_id=…, autonomous=…, _length_retry=…)` | — | [src](../../../core/services/visible_followup_adapters.py#L809) |
+| class | `CodexFollowupAdapter` | `` | Follow-up via the OpenAI Codex Responses API (chatgpt.com/backend-api). | [src](../../../core/services/visible_followup_adapters.py#L1260) |
+| method | `CodexFollowupAdapter._build_input` | `(self, base_messages, exchanges)` | — | [src](../../../core/services/visible_followup_adapters.py#L1274) |
+| method | `CodexFollowupAdapter.stream_followup` | `(self, *, model, base_messages, exchanges, tool_definitions=…, round_index=…, thinking_mode=…)` | — | [src](../../../core/services/visible_followup_adapters.py#L1307) |
 
 ## `core/services/visible_followup_events.py`
 _Follow-up event/carrier types + the adapter protocol (split from_
@@ -603,14 +614,4 @@ _Turens content-blokke, samlet i den rækkefølge de faktisk opstod._
 | method | `TurnAccumulator.add_round_label` | `(self, etik)` | Gem en runde-etiket som den blok Claude Desktop selv gemmer. | [src](../../../core/services/visible_turn_accumulator.py#L182) |
 | method | `TurnAccumulator.build_blocks` | `(self, text)` | Den kanoniske blok-liste for turen. | [src](../../../core/services/visible_turn_accumulator.py#L212) |
 | function | `coerce_tool_input` | `(raw)` | Normalisér tool-input til et DICT. | [src](../../../core/services/visible_turn_accumulator.py#L232) |
-
-## `core/services/visible_turn_blocks.py`
-_Den kanoniske content-blok-array for en assistent-tur (spec §4)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_tool_label` | `(tool_name, arguments=…)` | Narrationen for ét værktøjskald — samme tekst som live-visningen brugte. | [src](../../../core/services/visible_turn_blocks.py#L31) |
-| function | `_build_progress_blocks` | `(tool_calls, tool_results)` | Byg det FLADE progress-spor for en tur (spec §5). | [src](../../../core/services/visible_turn_blocks.py#L42) |
-| function | `_tanke_blok` | `(par)` | Én tanke-blok. Halen er nok: klienten viser den foldet ud, og en hel | [src](../../../core/services/visible_turn_blocks.py#L88) |
-| function | `_build_turn_blocks` | `(*, text, tool_calls, tool_results, interleave=…, text_segments=…, thinking_segments=…, thinking_seconds=…)` | Byg den kanoniske content-blok-array for en assistant-tur (spec §4). | [src](../../../core/services/visible_turn_blocks.py#L104) |
 

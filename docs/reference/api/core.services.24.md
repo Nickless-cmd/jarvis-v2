@@ -2,6 +2,28 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/subagent_ecology.py`
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `build_subagent_ecology_surface` | `()` | — | [src](../../../core/services/subagent_ecology.py#L13) |
+| function | `_build_subagent_ecology_surface_uncached` | `()` | — | [src](../../../core/services/subagent_ecology.py#L21) |
+| function | `build_subagent_ecology_from_sources` | `(*, affective_meta_state, epistemic_runtime_state, conflict_trace, loop_runtime, prompt_evolution, quiet_initiative)` | — | [src](../../../core/services/subagent_ecology.py#L32) |
+| function | `build_subagent_ecology_prompt_section` | `(surface=…)` | — | [src](../../../core/services/subagent_ecology.py#L119) |
+| function | `_build_critic_role` | `(*, epistemic, conflict, built_at)` | — | [src](../../../core/services/subagent_ecology.py#L153) |
+| function | `_build_witness_helper_role` | `(*, affective, quiet, built_at)` | — | [src](../../../core/services/subagent_ecology.py#L182) |
+| function | `_build_planner_helper_role` | `(*, loop_summary, prompt_summary, latest_prompt, built_at)` | — | [src](../../../core/services/subagent_ecology.py#L212) |
+| function | `_role` | `(*, role_name, role_kind, current_status, activation_reason, last_activation_at)` | — | [src](../../../core/services/subagent_ecology.py#L246) |
+| function | `_source_contributors` | `(*, affective, epistemic, conflict, loop_summary, prompt_summary, quiet)` | — | [src](../../../core/services/subagent_ecology.py#L266) |
+| function | `_summary_text` | `(active_roles, cooling_roles, blocked_roles)` | — | [src](../../../core/services/subagent_ecology.py#L338) |
+| function | `_guidance_for_ecology` | `(*, active_roles, roles)` | — | [src](../../../core/services/subagent_ecology.py#L352) |
+| function | `_safe_affective_meta_state` | `()` | — | [src](../../../core/services/subagent_ecology.py#L371) |
+| function | `_safe_epistemic_runtime_state` | `()` | — | [src](../../../core/services/subagent_ecology.py#L381) |
+| function | `_safe_conflict_trace` | `()` | — | [src](../../../core/services/subagent_ecology.py#L391) |
+| function | `_safe_loop_runtime` | `()` | — | [src](../../../core/services/subagent_ecology.py#L401) |
+| function | `_safe_prompt_evolution` | `()` | — | [src](../../../core/services/subagent_ecology.py#L411) |
+| function | `_safe_quiet_initiative` | `()` | — | [src](../../../core/services/subagent_ecology.py#L421) |
+
 ## `core/services/subjective_time.py`
 _Subjective Time — how time FEELS, not just passes._
 
@@ -607,15 +629,4 @@ _Han leder efter et værktøj med bash — og værktøjet findes allerede._
 | function | `_normalize` | `(value)` | — | [src](../../../core/services/tool_intent_approval_runtime.py#L611) |
 | function | `_parse_iso` | `(value)` | — | [src](../../../core/services/tool_intent_approval_runtime.py#L623) |
 | function | `sweep_expired_intents` | `()` | Luk udloebne intentioner der ALDRIG blev spurgt til igen — fase 11. | [src](../../../core/services/tool_intent_approval_runtime.py#L636) |
-
-## `core/services/tool_intent_runtime.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `build_tool_intent_runtime_surface` | `()` | — | [src](../../../core/services/tool_intent_runtime.py#L27) |
-| function | `_build_tool_intent_runtime_surface` | `()` | — | [src](../../../core/services/tool_intent_runtime.py#L43) |
-| function | `_build_mutating_exec_proposal_surface` | `()` | — | [src](../../../core/services/tool_intent_runtime.py#L486) |
-| function | `_build_sudo_exec_proposal_surface` | `(mutating_exec_surface)` | — | [src](../../../core/services/tool_intent_runtime.py#L669) |
-| function | `_derive_intent_from_awareness` | `(*, awareness, repo_observation)` | — | [src](../../../core/services/tool_intent_runtime.py#L725) |
-| function | `_emit_tool_intent_runtime_event` | `(kind, payload=…)` | Emit a scoped event for cartographer observability. | [src](../../../core/services/tool_intent_runtime.py#L836) |
 

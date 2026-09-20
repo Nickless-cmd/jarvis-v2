@@ -433,6 +433,17 @@ _Spatial entity ledger — Step D.v1 of meta-evne stack._
 | function | `stop_spatial_entity_ledger` | `()` | — | [src](../../../core/services/spatial_entity_ledger.py#L371) |
 | function | `backfill_from_existing` | `()` | Process all historical visual sensory_memories once. Useful first | [src](../../../core/services/spatial_entity_ledger.py#L379) |
 
+## `core/services/spild.py`
+_Overstort værktøjs-output gemmes i en fil i stedet for at blive klippet væk._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_rod` | `()` | Under `state_store`s mappe — ikke `Path.home()` direkte. | [src](../../../core/services/spild.py#L47) |
+| function | `_mappe` | `(session_id)` | Sessionens egen mappe, oprettet med 0700. Navnet renses. | [src](../../../core/services/spild.py#L59) |
+| function | `gem` | `(tekst, *, session_id=…, vaerktoej=…)` | Skriv teksten til en privat fil og giv stien. "" hvis det ikke lykkes. | [src](../../../core/services/spild.py#L72) |
+| function | `henvisning` | `(sti, *, vist, i_alt)` | Den tekst der erstatter halen. Siger hvad der mangler OG hvor det er. | [src](../../../core/services/spild.py#L91) |
+| function | `ryd` | `(*, dage=…)` | Slet spildfiler ældre end `dage`. Giver antallet der blev slettet. | [src](../../../core/services/spild.py#L101) |
+
 ## `core/services/staged_edits.py`
 _Staged edits — compose multi-file changes, review, then commit atomically._
 
@@ -568,26 +579,4 @@ _Surface recently-completed subagents into the visible prompt._
 | function | `_last_seen` | `(session_id)` | — | [src](../../../core/services/subagent_digest.py#L41) |
 | function | `_mark_seen` | `(session_id, when_iso)` | — | [src](../../../core/services/subagent_digest.py#L45) |
 | function | `subagent_digest_section` | `(session_id)` | Format completed subagents (since this session last looked) as a block. | [src](../../../core/services/subagent_digest.py#L52) |
-
-## `core/services/subagent_ecology.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `build_subagent_ecology_surface` | `()` | — | [src](../../../core/services/subagent_ecology.py#L13) |
-| function | `_build_subagent_ecology_surface_uncached` | `()` | — | [src](../../../core/services/subagent_ecology.py#L21) |
-| function | `build_subagent_ecology_from_sources` | `(*, affective_meta_state, epistemic_runtime_state, conflict_trace, loop_runtime, prompt_evolution, quiet_initiative)` | — | [src](../../../core/services/subagent_ecology.py#L32) |
-| function | `build_subagent_ecology_prompt_section` | `(surface=…)` | — | [src](../../../core/services/subagent_ecology.py#L119) |
-| function | `_build_critic_role` | `(*, epistemic, conflict, built_at)` | — | [src](../../../core/services/subagent_ecology.py#L153) |
-| function | `_build_witness_helper_role` | `(*, affective, quiet, built_at)` | — | [src](../../../core/services/subagent_ecology.py#L182) |
-| function | `_build_planner_helper_role` | `(*, loop_summary, prompt_summary, latest_prompt, built_at)` | — | [src](../../../core/services/subagent_ecology.py#L212) |
-| function | `_role` | `(*, role_name, role_kind, current_status, activation_reason, last_activation_at)` | — | [src](../../../core/services/subagent_ecology.py#L246) |
-| function | `_source_contributors` | `(*, affective, epistemic, conflict, loop_summary, prompt_summary, quiet)` | — | [src](../../../core/services/subagent_ecology.py#L266) |
-| function | `_summary_text` | `(active_roles, cooling_roles, blocked_roles)` | — | [src](../../../core/services/subagent_ecology.py#L338) |
-| function | `_guidance_for_ecology` | `(*, active_roles, roles)` | — | [src](../../../core/services/subagent_ecology.py#L352) |
-| function | `_safe_affective_meta_state` | `()` | — | [src](../../../core/services/subagent_ecology.py#L371) |
-| function | `_safe_epistemic_runtime_state` | `()` | — | [src](../../../core/services/subagent_ecology.py#L381) |
-| function | `_safe_conflict_trace` | `()` | — | [src](../../../core/services/subagent_ecology.py#L391) |
-| function | `_safe_loop_runtime` | `()` | — | [src](../../../core/services/subagent_ecology.py#L401) |
-| function | `_safe_prompt_evolution` | `()` | — | [src](../../../core/services/subagent_ecology.py#L411) |
-| function | `_safe_quiet_initiative` | `()` | — | [src](../../../core/services/subagent_ecology.py#L421) |
 

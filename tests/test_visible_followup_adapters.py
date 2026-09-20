@@ -321,8 +321,13 @@ def test_ollama_adapter_bounds_followup_exchange_payload(
     assert len(assistant_messages) == 10
     assert assistant_messages[0]["content"] == "round-2"
     assert len(tool_messages) == 10
-    assert len(str(tool_messages[-1]["content"])) < 8200  # 8000 cap + trunkerings-markør
-    assert "truncated for follow-up context" in str(tool_messages[-1]["content"])
+    # 8000-cap + spild-henvisning (20/9-2026). Halen bliver IKKE klippet væk
+    # længere: den ligger i en fil, og henvisningen bærer stien. Payloaden er
+    # stadig bundet — det er dét denne test findes for.
+    sidste = str(tool_messages[-1]["content"])
+    assert len(sidste) < 8400
+    assert "truncated for follow-up context" not in sidste
+    assert "IKKE væk" in sidste and "/spild/" in sidste
     assert all(
         "Continue." not in str(m.get("content", "")) for m in body["messages"]
     )

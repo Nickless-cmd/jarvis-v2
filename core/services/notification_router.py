@@ -303,6 +303,36 @@ def _arm_timer(notif_id: str) -> None:
     t.start()
 
 
+# Fladen en tur blev skrevet fra → den enheds-platform den hoerer hjemme paa.
+_FLADE_PLATFORM = {"desk": "desktop", "desktop": "desktop",
+                   "mobil": "mobile", "mobile": "mobile"}
+
+
+def _ordn_efter_flade(ranked: list, surface: str) -> list:
+    """Saet enhederne paa DEN flade turen blev skrevet fra forrest.
+
+    ## Hvorfor (Bjoern 20/9-2026)
+
+    «jeg sidder og laver noget med ham i desk og saa staar han bare og haenger,
+    indtil jeg kigger paa min telefon og saa ligger der et approval card».
+    Ranglisten kender kun hvor brugeren var SIDST og hvor frisk et ping var —
+    ikke hvor turen kom fra. Sad telefonen med et friskere ping (den pinger i
+    baggrunden), vandt den, og kortet landede et sted han ikke kiggede.
+
+    Fladen er den eneste kilde der VED hvor han skrev fra. Den flytter kun
+    raekkefoelgen: findes der ingen naabar enhed paa fladen, staar ranglisten
+    uroert, og eskaleringen naar stadig de oevrige. Et signal tabes aldrig.
+    """
+    plat = _FLADE_PLATFORM.get(str(surface or "").strip().lower(), "")
+    if not plat:
+        return ranked
+    traf = [i for i, r in enumerate(ranked) if r.platform == plat and r.score > 0.0]
+    if not traf:
+        return ranked
+    valgt = set(traf)
+    return [ranked[i] for i in traf] + [r for i, r in enumerate(ranked) if i not in valgt]
+
+
 def route_device_aware(user_id: str, payload: dict, kind: str) -> None:
     """Lever en notifikation til brugerens bedste enhed + arm eskalering."""
     uid = (user_id or "").strip()
@@ -320,6 +350,7 @@ def route_device_aware(user_id: str, payload: dict, kind: str) -> None:
                      ranked[0].score)
         _fallback_blast(uid, payload)
         return
+    ranked = _ordn_efter_flade(ranked, str(payload.get("surface") or ""))
     notif_id = _new_id()
     with _deliv_lock:
         _PENDING[notif_id] = {"user_id": uid, "payload": payload, "kind": kind,
@@ -362,10 +393,16 @@ def _discord_connected() -> bool:
 
 
 def _app_device_live(uid: str) -> bool:
-    """Er en app-enhed AKTIVT online (frisk ping), ikke bare en registreret token?"""
+    """Er en app-enhed AKTIVT online (frisk ping), ikke bare en registreret token?
+
+    Navnet `_REGISTERED_FCM_SCORE` stod ubundet her (fundet 20/9-2026 med
+    ruff F821): NameError'en blev slugt af den bare except, saa funktionen
+    svarede ALTID nej, og en proaktiv besked gik til Discord selv naar han
+    sad med appen aaben. Konstanten bor i `device_presence`.
+    """
     try:
         for r in _device_presence.rank(uid):
-            if r.score > _REGISTERED_FCM_SCORE:  # aktivt ping slår en bar registreret token
+            if r.score > _device_presence._REGISTERED_FCM_SCORE:  # aktivt ping slår en bar token
                 return True
     except Exception:
         pass

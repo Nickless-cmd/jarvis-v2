@@ -99,9 +99,25 @@ def _persist_capability_approval_request(
                     "target": proposal_content.get("target") or "",
                     "fingerprint": proposal_content.get("fingerprint") or "",
                     "envelope_fingerprint": envelope_fingerprint,
+                    # Fladen turen blev skrevet fra. Kendes kun gennem kørslen,
+                    # og pushet har siden kun request_id at gå efter.
+                    "surface": _flade_for_run(run_id),
                 },
             )
         conn.commit()
+
+
+def _flade_for_run(run_id: str) -> str:
+    """Fladen kørslen blev skrevet fra ("desk" | "mobil"), eller "".
+
+    Self-safe: en notifikation må aldrig falde fordi herkomsten ikke kunne
+    slås op — uden flade rangerer routeren som før.
+    """
+    try:
+        from core.services.run_event_log import surface_for_run
+        return surface_for_run(str(run_id or ""))
+    except Exception:
+        return ""
 
 
 def _workspace_write_proposal_content(

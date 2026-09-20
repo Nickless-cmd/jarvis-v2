@@ -167,3 +167,74 @@ def test_deliver_message_explicit_pref_overrides_auto(tmp_path, monkeypatch):
     monkeypatch.setattr(nr, "_deliver_content", lambda uid, ch, text: posted.update(ch=ch) or {"sent": True, "channel": ch})
     nr.deliver_message("bjorn", "brief")
     assert posted["ch"] == "discord"  # præference vinder over auto
+
+
+# ── Fladen turen kom fra styrer hvem der får kortet (Bjørn 20/9-2026) ──────────
+def test_route_device_aware_follows_surface_to_desk(monkeypatch):
+    """Telefonen vinder ranglisten — men turen blev skrevet fra desk.
+
+    Præcis Bjørns symptom: han arbejder i desk, telefonen ligger i lommen med
+    appen i forgrunden (+1000 i foreground-bonus), og godkendelses-kortet
+    landede dér. Med fladen med går det til desk.
+    """
+    monkeypatch.setattr(dp, "_now", lambda: 1000.0)
+    dp.reset()
+    dp.record_ping("bjorn", "desk", "desktop", foreground=False, awake=True, network="home")
+    dp.record_ping("bjorn", "mob", "mobile", foreground=True, awake=True, network="home",
+                   interaction=True)
+    sent = _setup_delivery(monkeypatch)
+    # Uden flade: telefonen vinder (det gamle svar).
+    nr.route_device_aware("bjorn", {"kind": "approval_requested"}, "approval_requested")
+    assert len(sent["fcm"]) == 1 and sent["desk"] == []
+    nr.reset_delivery()
+    sent["fcm"].clear()
+    # Med flade: desk får kortet, telefonen bliver til eskalering.
+    nr.route_device_aware("bjorn", {"kind": "approval_requested", "surface": "desk"},
+                          "approval_requested")
+    assert len(sent["desk"]) == 1 and sent["fcm"] == []
+    nr._escalate("nid-1")
+    assert len(sent["fcm"]) == 1  # signalet er ikke tabt — telefonen er næste trin
+
+
+def test_route_device_aware_surface_without_reachable_device_falls_back(monkeypatch):
+    """Skrev han fra desk, men desk er slukket: kortet skal STADIG frem."""
+    monkeypatch.setattr(dp, "_now", lambda: 1000.0)
+    dp.reset()
+    dp.record_ping("bjorn", "mob", "mobile", foreground=True, awake=True, network="home",
+                   interaction=True)
+    sent = _setup_delivery(monkeypatch)
+    nr.route_device_aware("bjorn", {"kind": "approval_requested", "surface": "desk"},
+                          "approval_requested")
+    assert len(sent["fcm"]) == 1 and sent["desk"] == []
+
+
+def test_route_device_aware_follows_surface_to_mobile(monkeypatch):
+    """Skrev han fra telefonen, skal svaret ikke dukke op på desk."""
+    monkeypatch.setattr(dp, "_now", lambda: 1000.0)
+    dp.reset()
+    dp.record_ping("bjorn", "desk", "desktop", foreground=True, awake=True, network="home",
+                   interaction=True)
+    dp.record_ping("bjorn", "mob", "mobile", foreground=False, awake=True, network="home")
+    sent = _setup_delivery(monkeypatch)
+    nr.route_device_aware("bjorn", {"kind": "answer_ready", "surface": "mobil"}, "answer_ready")
+    assert len(sent["fcm"]) == 1 and sent["desk"] == []
+
+
+def test_ordn_efter_flade_er_en_no_op_uden_flade():
+    """Ukendt eller tom flade må aldrig røre ranglisten."""
+    ranked = [dp.RankedDevice("mob", "mobile", 1100.0, "fcm"),
+              dp.RankedDevice("desk", "desktop", 90.0, "desktop_queue")]
+    for flade in ("", "   ", "web", "ukendt"):
+        assert nr._ordn_efter_flade(ranked, flade) == ranked
+
+
+def test_app_device_live_ser_et_frisk_ping(monkeypatch):
+    """Navnet stod ubundet, og NameError'en blev slugt → svaret var ALTID nej."""
+    monkeypatch.setattr(dp, "_now", lambda: 1000.0)
+    dp.reset()
+    import core.services.device_tokens as dt
+    monkeypatch.setattr(dt, "list_for_user", lambda uid: [])
+    assert nr._app_device_live("bjorn") is False        # ingen enheder
+    dp.record_ping("bjorn", "mob", "mobile", foreground=True, awake=True,
+                   network="home", interaction=True)
+    assert nr._app_device_live("bjorn") is True         # frisk ping i forgrunden

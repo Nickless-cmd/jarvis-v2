@@ -99,6 +99,8 @@ def test_approval_requested_push_carries_navigation_identity(monkeypatch):
                 "request_id": "request-1",
                 "title": "Godkendelse kræves",
                 "preview": "Skriv MEMORY.md",
+                # Fladen turen kom fra; tom her fordi konvolutten ikke bar en.
+                "surface": "",
             },
             "approval_requested",
         )

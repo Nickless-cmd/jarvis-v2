@@ -39,13 +39,14 @@ _Unified proactive notification routing (spec docs/specs/2026-06-20-...)._
 | function | `_fallback_blast` | `(user_id, data)` | — | [src](../../../core/services/notification_router.py#L279) |
 | function | `_deliver` | `(user_id, target, notif_id, payload)` | — | [src](../../../core/services/notification_router.py#L284) |
 | function | `_arm_timer` | `(notif_id)` | — | [src](../../../core/services/notification_router.py#L297) |
-| function | `route_device_aware` | `(user_id, payload, kind)` | Lever en notifikation til brugerens bedste enhed + arm eskalering. | [src](../../../core/services/notification_router.py#L306) |
-| function | `_escalate` | `(notif_id)` | — | [src](../../../core/services/notification_router.py#L331) |
-| function | `ack` | `(notif_id)` | Annullér eskalering for en leveret notifikation (kaldt af /notifications/ack). | [src](../../../core/services/notification_router.py#L343) |
-| function | `_discord_connected` | `()` | — | [src](../../../core/services/notification_router.py#L356) |
-| function | `_app_device_live` | `(uid)` | Er en app-enhed AKTIVT online (frisk ping), ikke bare en registreret token? | [src](../../../core/services/notification_router.py#L364) |
-| function | `_deliver_content` | `(uid, channel, text)` | — | [src](../../../core/services/notification_router.py#L375) |
-| function | `deliver_message` | `(user_id, text, ntype=…, importance=…)` | Lever proaktivt INDHOLD efter brugerens kanal-præference. | [src](../../../core/services/notification_router.py#L405) |
+| function | `_ordn_efter_flade` | `(ranked, surface)` | Saet enhederne paa DEN flade turen blev skrevet fra forrest. | [src](../../../core/services/notification_router.py#L311) |
+| function | `route_device_aware` | `(user_id, payload, kind)` | Lever en notifikation til brugerens bedste enhed + arm eskalering. | [src](../../../core/services/notification_router.py#L336) |
+| function | `_escalate` | `(notif_id)` | — | [src](../../../core/services/notification_router.py#L362) |
+| function | `ack` | `(notif_id)` | Annullér eskalering for en leveret notifikation (kaldt af /notifications/ack). | [src](../../../core/services/notification_router.py#L374) |
+| function | `_discord_connected` | `()` | — | [src](../../../core/services/notification_router.py#L387) |
+| function | `_app_device_live` | `(uid)` | Er en app-enhed AKTIVT online (frisk ping), ikke bare en registreret token? | [src](../../../core/services/notification_router.py#L395) |
+| function | `_deliver_content` | `(uid, channel, text)` | — | [src](../../../core/services/notification_router.py#L412) |
+| function | `deliver_message` | `(user_id, text, ntype=…, importance=…)` | Lever proaktivt INDHOLD efter brugerens kanal-præference. | [src](../../../core/services/notification_router.py#L442) |
 
 ## `core/services/ntfy_gateway.py`
 _Ntfy gateway — send push notifications via ntfy.sh or self-hosted server._

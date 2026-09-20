@@ -233,11 +233,11 @@ _Beslutter HVORNAAR og HVEM der skal pushes. Bygger paa run_event_log-suppressio
 | function | `_route_or_blast` | `(user_id, data, kind)` | Flag ON → intelligent device-routing; OFF → gammel FCM-blast (bagudkompat). | [src](../../../core/services/push_dispatcher.py#L38) |
 | function | `_last_assistant_preview` | `(session_id, *, width=…)` | Sidste assistant-beskeds tekst (trunkeret) til notifikations-preview. "" hvis ingen. | [src](../../../core/services/push_dispatcher.py#L62) |
 | function | `_dispatch_run_done` | `(run_id)` | — | [src](../../../core/services/push_dispatcher.py#L80) |
-| function | `on_run_done` | `(run_id)` | Kaldes fra detached_run finally. Planlaegger suppression-tjek efter grace. | [src](../../../core/services/push_dispatcher.py#L110) |
-| function | `send_companion_push` | `(user_id, message, title=…)` | Proaktiv push til brugerens companion-enheder (mobil + desktop) via | [src](../../../core/services/push_dispatcher.py#L118) |
-| function | `on_initiative` | `(user_id, text)` | — | [src](../../../core/services/push_dispatcher.py#L131) |
-| function | `on_reminder` | `(user_id, text)` | — | [src](../../../core/services/push_dispatcher.py#L137) |
-| function | `on_approval_requested` | `(user_id, envelope)` | — | [src](../../../core/services/push_dispatcher.py#L143) |
+| function | `on_run_done` | `(run_id)` | Kaldes fra detached_run finally. Planlaegger suppression-tjek efter grace. | [src](../../../core/services/push_dispatcher.py#L113) |
+| function | `send_companion_push` | `(user_id, message, title=…)` | Proaktiv push til brugerens companion-enheder (mobil + desktop) via | [src](../../../core/services/push_dispatcher.py#L121) |
+| function | `on_initiative` | `(user_id, text)` | — | [src](../../../core/services/push_dispatcher.py#L134) |
+| function | `on_reminder` | `(user_id, text)` | — | [src](../../../core/services/push_dispatcher.py#L140) |
+| function | `on_approval_requested` | `(user_id, envelope)` | — | [src](../../../core/services/push_dispatcher.py#L146) |
 
 ## `core/services/pushback.py`
 _Pushback — three prompt-level mechanisms that give Jarvis a real voice_

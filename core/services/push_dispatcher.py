@@ -104,7 +104,10 @@ def _dispatch_run_done(run_id: str) -> None:
     # 'title' → fcm_gateway bygger IKKE en notification-blok → forbliver data-only → notifee
     # tap-nav + Direct Reply bevaret. (title+preview = system-notifikation der bryder notifee.)
     _route_or_blast(owner, {"kind": "answer_ready", "session_id": sid or "", "run_id": run_id,
-                            "preview": preview}, "answer_ready")
+                            "preview": preview,
+                            # Fladen turen blev skrevet fra — routeren bruger den
+                            # til at sende svaret tilbage til DEN enhed han sad ved.
+                            "surface": rel.surface_for_run(run_id)}, "answer_ready")
 
 
 def on_run_done(run_id: str) -> None:
@@ -152,6 +155,10 @@ def on_approval_requested(user_id: str, envelope: dict[str, object]) -> bool:
             "request_id": request_id,
             "title": "Godkendelse kræves",
             "preview": capability_name,
+            # Kortet hoerer til den flade turen blev skrevet fra. Uden den faldt
+            # det ned paa ranglisten og kunne lande paa telefonen mens han sad
+            # i desk og saa Jarvis «haenge» (Bjoern 20/9-2026).
+            "surface": str(envelope.get("surface") or ""),
         },
         "approval_requested",
     )

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7862/15258 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7864/15260 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,14 +25,14 @@ Generated from source. 7862/15258 functions/methods documented (51%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 686 | 1265 | 54% |
-| `core.services` | 5200 | 10407 | 49% |
+| `core.services` | 5201 | 10408 | 49% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 107 | 183 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
 | `core.services.visible_runs_sections` | 18 | 30 | 60% |
 | `core.skills` | 0 | 0 | 0% |
 | `core.skills.voice` | 39 | 49 | 79% |
-| `core.tools` | 479 | 988 | 48% |
+| `core.tools` | 480 | 989 | 48% |
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.util` | 9 | 10 | 90% |
@@ -1462,9 +1462,9 @@ Generated from source. 7862/15258 functions/methods documented (51%). The list b
 - `core/services/proprioception_metrics.py` :: `recent_snapshots` (L143)
 - `core/services/proprioception_metrics.py` :: `reset_proprioception_metrics` (L216)
 - `core/services/proprioception_metrics.py` :: `tick` (L100)
-- `core/services/push_dispatcher.py` :: `on_approval_requested` (L143)
-- `core/services/push_dispatcher.py` :: `on_initiative` (L131)
-- `core/services/push_dispatcher.py` :: `on_reminder` (L137)
+- `core/services/push_dispatcher.py` :: `on_approval_requested` (L146)
+- `core/services/push_dispatcher.py` :: `on_initiative` (L134)
+- `core/services/push_dispatcher.py` :: `on_reminder` (L140)
 - `core/services/r2_5_haandhaevelse.py` :: `er_bagdoer` (L84)
 - `core/services/reasoning_classifier.py` :: `build_reasoning_classifier_surface` (L275)
 - `core/services/reasoning_escalation.py` :: `build_reasoning_escalation_surface` (L223)

@@ -56,6 +56,21 @@ function meldteValg(kald: ReturnType<typeof serverForeslaar>): string[] {
     .map((c) => JSON.parse(String((c[1] as RequestInit).body)).valg as string)
 }
 
+/** De meldte valg som et SÆT — rækkefølgen er ikke en kontrakt.
+ *
+ *  «vist» meldes fra en `useEffect` på `ghostAktiv`; «afvist»/«eget»/
+ *  «accepteret» meldes synkront fra tastetrykket. Begge er fire-and-forget.
+ *  Lokalt har effekten altid nået at køre først, men på CI (20/9-2026) kom
+ *  `['afvist','vist']` — vinduet mellem at teksten står i DOM'en og at den
+ *  passive effekt er flushet, er bredere under belastning.
+ *
+ *  Koden lover ikke en rækkefølge: serveren stempler hvert valg for sig. Så
+ *  testen skal måle HVAD der blev meldt, ikke i hvilken orden de to ramte
+ *  mock'en. Antallet holdes fast, så et dobbelt-meldt valg stadig falder. */
+function meldteSaet(kald: ReturnType<typeof serverForeslaar>): string[] {
+  return [...meldteValg(kald)].sort()
+}
+
 /** Kroppen af det FØRSTE valg-kald. */
 function foersteValgKrop(kald: ReturnType<typeof serverForeslaar>): Record<string, unknown> {
   const c = kald.mock.calls.find((k) => String(k[0]).includes('/composer/choice'))
@@ -160,7 +175,7 @@ describe('Composer · auto-forslag', () => {
     const { felt } = opsæt()
     await screen.findByText('kør testene igen')
     fireEvent.keyDown(felt, { key: 'Tab' })
-    await waitFor(() => expect(meldteValg(kald)).toEqual(['vist', 'accepteret']))
+    await waitFor(() => expect(meldteSaet(kald)).toEqual(['accepteret', 'vist']))
   })
 
   it('Escape melder AFVIST', async () => {
@@ -168,7 +183,7 @@ describe('Composer · auto-forslag', () => {
     const { felt } = opsæt()
     await screen.findByText('deploy det til ct105')
     fireEvent.keyDown(felt, { key: 'Escape' })
-    await waitFor(() => expect(meldteValg(kald)).toEqual(['vist', 'afvist']))
+    await waitFor(() => expect(meldteSaet(kald)).toEqual(['afvist', 'vist']))
   })
 
   it('skriver han sin EGEN besked, meldes eget — og teksten følger ikke med', async () => {
@@ -179,7 +194,7 @@ describe('Composer · auto-forslag', () => {
     fireEvent.change(felt, { target: { value: 'nej, vent med testene' } })
     fireEvent.keyDown(felt, { key: 'Enter' })
 
-    await waitFor(() => expect(meldteValg(kald)).toEqual(['vist', 'eget']))
+    await waitFor(() => expect(meldteSaet(kald)).toEqual(['eget', 'vist']))
     // Hele trafikken gennemsøges: hans sætning må ikke stå i NOGEN krop.
     const alt = JSON.stringify(kald.mock.calls.filter((c) => String(c[0]).includes('/composer/')))
     expect(alt).not.toContain('nej, vent med testene')
@@ -193,7 +208,7 @@ describe('Composer · auto-forslag', () => {
     await waitFor(() => expect(meldteValg(kald)).toContain('accepteret'))
     fireEvent.keyDown(felt, { key: 'Enter' })
     await act(async () => { await Promise.resolve() })
-    expect(meldteValg(kald)).toEqual(['vist', 'accepteret'])
+    expect(meldteSaet(kald)).toEqual(['accepteret', 'vist'])
   })
 
   it('et forslag der ALDRIG blev vist, meldes ikke', async () => {

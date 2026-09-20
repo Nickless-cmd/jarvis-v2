@@ -307,9 +307,9 @@ _Render Jarvis Puls assets. Requires rsvg-convert and Pillow; run from any cwd._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `svg` | `(*, background=…, scale=…, phase=…, attention=…, rounded=…, radius=…)` | — | [src](../../../scripts/generate_puls_icons.py#L27) |
-| function | `render` | `(dest, size, source)` | — | [src](../../../scripts/generate_puls_icons.py#L44) |
-| function | `main` | `()` | — | [src](../../../scripts/generate_puls_icons.py#L55) |
+| function | `svg` | `(*, background=…, scale=…, phase=…, attention=…, rounded=…, radius=…)` | — | [src](../../../scripts/generate_puls_icons.py#L29) |
+| function | `render` | `(dest, size, source)` | — | [src](../../../scripts/generate_puls_icons.py#L46) |
+| function | `main` | `()` | — | [src](../../../scripts/generate_puls_icons.py#L57) |
 
 ## `scripts/god_file_map.py`
 _Read-only god-fil-kort: alle egne .py-filer ≥1500 linjer, karakteriseret (linjer, funktioner,_

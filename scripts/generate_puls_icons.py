@@ -22,6 +22,8 @@ BG = '#0d1117'
 #: 20/9-2026: «selv desktop ikonet mangler runde hjørner». `rounded=True`
 #: (rx=50) er Androids RUNDE launcher og er noget andet end det her.
 APP_RADIUS = 22
+#: Hvor meget af bakkens flade mærket fylder. 1,0 lod for meget luft stå.
+TRAY_SCALE = 1.18
 
 
 def svg(*, background=False, scale=1.0, phase=None, attention=False, rounded=False,
@@ -62,13 +64,16 @@ def main():
     for size in [16, 48, 128, 256, 512]:
         render(f'{desk}/icon-{size}.png', size, svg(background=True))
     render(f'{desk}/icon.png', 512, svg(background=True))
+    # Mærket fylder mere af bakkens flade (Bjørn 20/9-2026: «en takt større»).
+    # Bakke-ikonet skaleres af systemet til 22-24 px, så det er ANDELEN af
+    # fladen der afgør hvor stort det ser ud — ikke pixeltallet.
     for name in ['idle', 'bright', 'attention']:
-        source = svg(attention=name == 'attention')
+        source = svg(attention=name == 'attention', scale=TRAY_SCALE)
         (ROOT / desk / f'tray-{name}.svg').write_text(source)
         render(f'{desk}/tray-{name}.png', 44, source)
     # Keep existing frame filenames; their content now pulses, never rotates.
     for frame in range(40):
-        render(f'{desk}/tray-rot-{frame:02}.png', 44, svg(phase=2*math.pi*frame/40))
+        render(f'{desk}/tray-rot-{frame:02}.png', 44, svg(phase=2*math.pi*frame/40, scale=TRAY_SCALE))
     mobile = 'apps/mobile/assets'
     render(f'{mobile}/icon.png', 1024, svg(background=True, radius=APP_RADIUS))
     render(f'{mobile}/adaptive-icon.png', 1024, svg(scale=.65))

@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import logging
 import re
+import shlex
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -78,6 +79,68 @@ _RO_SUBCMD: dict[str, frozenset[str] | None] = {
     "pip3": frozenset({"list", "show", "freeze"}),
     "conda": frozenset({"list", "info", "env"}),
 }
+
+# ── sqlite3: hvad er en læsning, og hvad er en skrivning ────────────────────
+#
+# 20/9-2026: `sqlite3` blev kontekst-følsom (d83e787d8) fordi læsende queries
+# blev talt som mutationer. Den første udgave sagde «starter den med SELECT,
+# PRAGMA eller et punktum, er det en læsning» — og det er for løst tre steder:
+#
+#   .import data.csv t   skriver rækker          → blev talt som læsning
+#   .read migrering.sql  kører VILKÅRLIG SQL     → blev talt som læsning
+#   sqlite3 db "select 1" "delete from t"        → første ord afgjorde alt
+#   PRAGMA journal_mode=WAL                      → sætter, ændrer basen
+#
+# Det er ikke kun et tal: `r2_5_haandhaevelse.er_mutation` klassificerer med
+# samme funktion, og den BLOKERER. En skrivning der ser ud som en læsning,
+# slipper forbi en aktiv blok.
+#
+# Nu: en allowlist, og ALLE sætninger i kaldet skal bestå. Tvivl er en mutation.
+
+#: Punkt-kommandoer der kun LÆSER. Alt udenfor listen er en mutation — blandt
+#: andet `.import`, `.read`, `.restore`, `.clone`, `.backup`, `.save`,
+#: `.output`, `.once`, `.log` (skriver filer) og `.shell`, `.system`, `.excel`
+#: (kører kommandoer udenfor basen).
+_SQLITE_RO_DOT: frozenset[str] = frozenset({
+    ".schema", ".tables", ".databases", ".indexes", ".indices", ".fullschema",
+    ".dump", ".show", ".headers", ".mode", ".stats", ".help", ".changes",
+    ".width", ".echo", ".eqp", ".nullvalue", ".separator", ".timer", ".version",
+})
+#: Læsende SQL. `WITH` står bevidst IKKE her: SQLite tillader
+#: `WITH x AS (...) DELETE FROM ...`, så et ja på første ord ville være et ja
+#: til en sletning.
+_SQLITE_RO_SQL = re.compile(r"(?i)^(SELECT|EXPLAIN|VALUES)\b")
+#: `PRAGMA foo` og `PRAGMA foo(bar)` læser. `PRAGMA foo = bar` SÆTTER.
+_SQLITE_PRAGMA = re.compile(r"(?i)^PRAGMA\b")
+
+
+def sqlite_kald_er_laesning(sql: str) -> bool:
+    """Er hele `sqlite3`-kaldets SQL en ren læsning?
+
+    Konservativ: tom streng, ukendt punkt-kommando, en sættende PRAGMA eller
+    bare ÉN skrivende sætning blandt flere gør hele kaldet til en mutation.
+    """
+    tekst = (sql or "").strip()
+    if not tekst:
+        return False
+    for saetning in tekst.split(";"):
+        s = saetning.strip().strip("\"'").strip()
+        if not s:
+            continue
+        if s.startswith("."):
+            if s.split()[0].lower() not in _SQLITE_RO_DOT:
+                return False
+            continue
+        if _SQLITE_PRAGMA.match(s):
+            # En sætter har et lighedstegn: «PRAGMA journal_mode = WAL».
+            if "=" in s:
+                return False
+            continue
+        if not _SQLITE_RO_SQL.match(s):
+            return False
+    return True
+
+
 # Write-redirect til en rigtig fil (ikke /dev/null eller fd-dup) → mutation.
 _WRITE_REDIRECT = re.compile(r">>?\s*(?!/dev/null|&)\S")
 _SEG_SPLIT = re.compile(r"&&|\|\||;|\|")
@@ -119,12 +182,26 @@ def shell_command_is_mutating(command: str) -> bool:
             # Kontekst-følsom som `sed` (19/9-mønsteret): en læsende SQL er et
             # kig tilbage — den må ikke tælle som mutation. En skrivende SQL er
             # en ægte mutation. Konservativt: alt der ikke tydeligt ER en
-            # læsning tælles som mutation. Målt 20/9-2026: mine egne
-            # DB-research-queries (SELECT ...) blev talt som mutationer og
-            # forurenede netop den heed-rate vi brugte til at dømme R2.5.
-            args = [a for a in toks[i + 1:] if not a.startswith("-")]
-            sql = " ".join(args[1:]).strip().lstrip("\"'").strip()
-            if sql.startswith(".") or re.match(r"(?i)^(SELECT|PRAGMA|EXPLAIN)\b", sql):
+            # læsning tælles som mutation. Målt 20/9-2026: DB-research-queries
+            # (SELECT ...) blev talt som mutationer og forurenede netop den
+            # heed-rate vi brugte til at dømme R2.5.
+            #
+            # Hver SQL-argument tæller: `sqlite3 db "select 1" "delete from t"`
+            # er en sletning, uanset hvad det første argument siger.
+            # shlex, ikke split(): «sqlite3 db "SELECT 1"» bliver til fire
+            # tokens med en naiv opdeling, og så falder SQL'en fra hinanden
+            # midt i en anførselstegns-gruppe.
+            try:
+                stykker = shlex.split(seg)
+            except ValueError:
+                return True  # uafbalancerede anførselstegn → tvivl er mutation
+            if "sqlite3" in [t.rsplit("/", 1)[-1] for t in stykker]:
+                efter = stykker[[t.rsplit("/", 1)[-1] for t in stykker].index("sqlite3") + 1:]
+            else:
+                return True
+            argumenter = [a for a in efter if not a.startswith("-")]
+            if len(argumenter) > 1 and all(
+                    sqlite_kald_er_laesning(a) for a in argumenter[1:]):
                 continue
             return True
         if cmd in _RO_CMDS:

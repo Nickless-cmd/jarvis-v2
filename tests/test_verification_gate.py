@@ -270,6 +270,68 @@ def test_redirect_og_ukendt_kommando_er_stadig_mutation():
     assert shell_command_is_mutating("cd /x && sqlite3 db 'UPDATE t SET a=1'")
 
 
+def test_sqlite3_SKRIVENDE_punkt_kommandoer_er_mutationer():
+    """Strammet 20/9-2026. Første udgave sagde «starter den med et punktum, er
+    det en læsning» — men `.import` skriver rækker, `.read` kører vilkårlig SQL
+    fra en fil, og `.shell` kører kommandoer helt udenfor basen. De blev talt
+    som kig tilbage.
+
+    Det er ikke kun et telemetri-tal: `r2_5_haandhaevelse.er_mutation` bruger
+    samme klassifikation, og den BLOKERER. En skrivning der ser ud som en
+    læsning, ville slippe forbi en aktiv blok."""
+    from core.services.verification_gate import shell_command_is_mutating
+    assert shell_command_is_mutating('sqlite3 db ".import data.csv t"')
+    assert shell_command_is_mutating('sqlite3 db ".read migrering.sql"')
+    assert shell_command_is_mutating('sqlite3 db ".shell rm -rf /tmp/x"')
+    assert shell_command_is_mutating('sqlite3 db ".restore sikkerhedskopi.db"')
+    assert shell_command_is_mutating('sqlite3 db ".output ud.txt"')
+    # De læsende punkt-kommandoer skal stadig slippe igennem.
+    assert not shell_command_is_mutating('sqlite3 db ".schema events"')
+    assert not shell_command_is_mutating('sqlite3 db ".tables"')
+
+
+def test_sqlite3_ALLE_saetninger_skal_vaere_laesninger():
+    """Første ord afgjorde hele kaldet. `sqlite3 db "select 1" "delete from t"`
+    er en sletning, uanset hvad det første argument siger."""
+    from core.services.verification_gate import shell_command_is_mutating
+    assert shell_command_is_mutating('sqlite3 db "select 1" "delete from t"')
+    assert shell_command_is_mutating('sqlite3 db "SELECT 1" ".import x.csv t"')
+    assert not shell_command_is_mutating('sqlite3 db "SELECT 1" "SELECT 2"')
+
+
+def test_sqlite3_PRAGMA_der_saetter_er_en_mutation():
+    """`PRAGMA table_info(...)` læser. `PRAGMA journal_mode = WAL` ændrer
+    basen — lighedstegnet er forskellen."""
+    from core.services.verification_gate import shell_command_is_mutating
+    assert shell_command_is_mutating('sqlite3 db "PRAGMA journal_mode=WAL"')
+    assert shell_command_is_mutating('sqlite3 db "PRAGMA user_version = 5"')
+    assert not shell_command_is_mutating('sqlite3 db "PRAGMA table_info(events)"')
+    assert not shell_command_is_mutating('sqlite3 db "PRAGMA database_list"')
+
+
+def test_sqlite3_WITH_kan_skjule_en_sletning():
+    """SQLite tillader `WITH x AS (...) DELETE FROM ...`. Derfor står WITH ikke
+    på listen over læsende sætninger — et ja på første ord ville være et ja til
+    en sletning."""
+    from core.services.verification_gate import shell_command_is_mutating
+    assert shell_command_is_mutating('sqlite3 db "WITH x AS (SELECT 1) DELETE FROM t"')
+
+
+def test_sqlite3_anfoerselstegn_overlever_tokeniseringen():
+    """Med en naiv `split()` blev «sqlite3 db "SELECT 1"» til fire tokens, og
+    SQL'en faldt fra hinanden midt i sin egen anførselstegns-gruppe."""
+    from core.services.verification_gate import shell_command_is_mutating
+    assert not shell_command_is_mutating(
+        'cd /home/bs/.jarvis-v2/state && sqlite3 jarvis.db "SELECT kind FROM events"')
+    assert not shell_command_is_mutating('sqlite3 -readonly db "select count(*) from t"')
+    # Uafbalanceret: tvivl er en mutation.
+    assert shell_command_is_mutating('sqlite3 db "SELECT 1')
+    # Uden SQL overhovedet (interaktiv) — konservativt en mutation.
+    assert shell_command_is_mutating("sqlite3 db")
+    # Input fra en fil kan indeholde hvad som helst.
+    assert shell_command_is_mutating("sqlite3 db < migrering.sql")
+
+
 def test_sqlite3_er_kontekst_foelsom():
     """sqlite3 som `sed`: læsende SQL er et kig tilbage, skrivende er en
     mutation. Målt 20/9-2026: DB-research-queries blev talt som mutationer

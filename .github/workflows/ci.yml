@@ -33,6 +33,37 @@ jobs:
           python-version: "3.11"
       - run: python -m compileall core apps/api scripts
 
+  # Struktur-vagterne: de pytest-tests der haandhaever husets egne regler.
+  #
+  # Tilfoejet 20/9-2026, efter at push-vejen havde vaeret tavs: vagten fandtes
+  # (tests/test_publish_scan.py), og testen der fangede fejlen fandtes — men
+  # INTET job koerte den. pre-commit koerer 16 script-vagter, ingen af dem
+  # pytest, og pre-commit kan springes over med `git commit --no-verify`.
+  # Det kan dette job ikke. Som kommentaren paa desk-jobbet siger: en vagt der
+  # kun koerer naar nogen husker at koere den er ingen vagt.
+  #
+  # Hele tests/ kan IKKE koere her: maalt 20/9-2026 naaede den 1% paa 18
+  # minutter (1540 testfiler). Listen over de statiske vagter bor i
+  # tests/vagter.txt og tager ~35 s. Peger en linje paa en fil der ikke
+  # findes, fejler pytest med exit 4 — listen kan ikke raadne tavst.
+  python-vagter:
+    name: python-vagter (struktur-vagterne)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: requirements.txt
+      - name: Installer afhaengigheder
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-timeout
+      - name: Koer vagterne
+        run: grep -v '^[[:space:]]*#' tests/vagter.txt | xargs pytest -q
+
   secrets-scan:
     name: secrets-scan
     runs-on: ubuntu-latest

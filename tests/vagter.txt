@@ -1,0 +1,48 @@
+# Struktur-vagterne — de pytest-tests der håndhæver husets egne regler.
+#
+# Kilden er denne fil. CI læser den (.github/workflows/ci.yml → python-vagter),
+# og peger en linje på en fil der ikke findes, fejler pytest med exit 4 — så
+# listen kan ikke rådne tavst.
+#
+# HVORFOR IKKE HELE tests/:
+#   Målt 20/9-2026: hele suiten (1540 testfiler) nåede 1% på 18 minutter. Den
+#   kan ikke køre i CI. Disse filer er de statiske vagter: ingen DB, intet
+#   netværk, ~35 sekunder tilsammen.
+#
+# HVORFOR HER OG IKKE KUN I PRE-COMMIT:
+#   pre-commit kører 16 script-vagter (scripts/verify_*.py) — men ikke én af
+#   dem er pytest. Og pre-commit kan springes over med `git commit --no-verify`.
+#   Det kan dette job ikke. Det var præcis derfor push-vejen kunne ligge død i
+#   uger: vagten fandtes, og testen der fangede fejlen fandtes — ingen kørte den.
+#
+# HVORFOR test_docs_drift_check.py IKKE ER MED:
+#   Målt 20/9-2026 i et rent venv med requirements.txt installeret: appen
+#   importeres fint, men monterer kun 77 routes mod 612 i det fulde miljø —
+#   router-sættet afhænger af hvad der er tilgængeligt. Generatoren falder
+#   derfor tilbage til AST (600 routes) og sammenligner mod en doc skabt med
+#   608. Testen er miljø-følsom og ville være rød fra dag ét i CI.
+#   Den er ikke ubevogtet af den grund: pre-commit-hooket «Docs drift» kører
+#   samme check lokalt, hvor det fulde miljø findes.
+#
+# Føj en vagt til ved at skrive dens sti her. Testene skal være statiske:
+# ingen database, ingen netværkskald, ingen tunge fixtures.
+
+tests/test_publish_scan.py
+tests/test_central_egress_invariant.py
+tests/test_verify_silent_except.py
+tests/test_verify_history_reads.py
+tests/test_verify_notes.py
+tests/test_verify_persistens.py
+tests/test_verify_vagt_graenser.py
+tests/test_verify_guard_tests.py
+tests/test_enforce_commit_hygiene.py
+tests/test_block_jvs_keys.py
+tests/test_block_literal_credentials.py
+tests/test_block_unattributed_rebase.py
+tests/test_block_unattributed_ref_rewrite.py
+tests/test_attributed_git_commit.py
+tests/test_commit_attribution_hooks.py
+tests/test_commit_with_attribution.py
+tests/test_smoke_test_startup.py
+tests/test_migration_gate.py
+tests/test_bash_sandbox_kan_koere.py

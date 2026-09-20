@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7849/15237 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7849/15240 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -36,12 +36,12 @@ Generated from source. 7849/15237 functions/methods documented (51%). The list b
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.util` | 9 | 10 | 90% |
-| `scripts` | 198 | 425 | 46% |
+| `scripts` | 198 | 428 | 46% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2180)
+## Undocumented public functions (2183)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L208)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -2112,6 +2112,9 @@ Generated from source. 7849/15237 functions/methods documented (51%). The list b
 - `scripts/enforce_commit_hygiene.py` :: `main` (L80)
 - `scripts/eval_research_lane.py` :: `evaluate_cases` (L16)
 - `scripts/forced_tool_choice_report.py` :: `main` (L65)
+- `scripts/generate_puls_icons.py` :: `main` (L45)
+- `scripts/generate_puls_icons.py` :: `render` (L34)
+- `scripts/generate_puls_icons.py` :: `svg` (L19)
 - `scripts/god_file_map.py` :: `blast` (L24)
 - `scripts/god_file_map.py` :: `own_py_files` (L14)
 - `scripts/honesty_metrics.py` :: `main` (L45)

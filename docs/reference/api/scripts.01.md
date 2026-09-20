@@ -302,6 +302,15 @@ _Aflæs sonden: honorerer providerne ``tool_choice="required"``?_
 | function | `_rows` | `()` | — | [src](../../../scripts/forced_tool_choice_report.py#L42) |
 | function | `main` | `()` | — | [src](../../../scripts/forced_tool_choice_report.py#L65) |
 
+## `scripts/generate_puls_icons.py`
+_Render Jarvis Puls assets. Requires rsvg-convert and Pillow; run from any cwd._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `svg` | `(*, background=…, scale=…, phase=…, attention=…, rounded=…)` | — | [src](../../../scripts/generate_puls_icons.py#L19) |
+| function | `render` | `(dest, size, source)` | — | [src](../../../scripts/generate_puls_icons.py#L34) |
+| function | `main` | `()` | — | [src](../../../scripts/generate_puls_icons.py#L45) |
+
 ## `scripts/god_file_map.py`
 _Read-only god-fil-kort: alle egne .py-filer ≥1500 linjer, karakteriseret (linjer, funktioner,_
 
@@ -425,26 +434,4 @@ _Structural-feature classifier for interlanguage expressions._
 | function | `is_standalone_negation` | `(clause)` | A clause like '!lys' with no operator after the negated word. | [src](../../../scripts/interlanguage_structural_classifier.py#L105) |
 | function | `extract_features` | `(text)` | Engineered features per Bjørn's heuristics. | [src](../../../scripts/interlanguage_structural_classifier.py#L112) |
 | function | `main` | `()` | — | [src](../../../scripts/interlanguage_structural_classifier.py#L174) |
-
-## `scripts/jarvis.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `cmd_bootstrap` | `(_)` | Ensure runtime dirs, init the DB, create the default workspace, and print its path. | [src](../../../scripts/jarvis.py#L98) |
-| function | `cmd_events` | `(args)` | Print the most recent eventbus events as JSON, up to args.limit. | [src](../../../scripts/jarvis.py#L107) |
-| function | `cmd_health` | `(_)` | Print a health JSON with ok, app name and environment from loaded settings. | [src](../../../scripts/jarvis.py#L113) |
-| function | `cmd_overview` | `(_)` | Print a JSON overview: visible execution/run truth, event count, cost telemetry | [src](../../../scripts/jarvis.py#L130) |
-| function | `cmd_config` | `(_)` | Print the current config as JSON: visible execution truth, workspace capabilities, | [src](../../../scripts/jarvis.py#L168) |
-| function | `cmd_coding_lane_status` | `(_)` | Print the coding lane execution truth as JSON. | [src](../../../scripts/jarvis.py#L205) |
-| function | `cmd_local_lane_status` | `(_)` | Print the local lane execution truth as JSON. | [src](../../../scripts/jarvis.py#L218) |
-| function | `cmd_workspace` | `(args)` | Ensure the workspace named args.name exists and print its path, existence and file list as JSON. | [src](../../../scripts/jarvis.py#L231) |
-| function | `cmd_cancel_visible_run` | `(args)` | Cancel a visible run and print the result as JSON. | [src](../../../scripts/jarvis.py#L249) |
-| function | `cmd_discord_setup` | `(_)` | Interactive wizard to configure the Discord gateway. | [src](../../../scripts/jarvis.py#L333) |
-| function | `cmd_discord_status` | `(_)` | Show Discord gateway config and connection status. | [src](../../../scripts/jarvis.py#L414) |
-| function | `build_parser` | `()` | Build and return the argparse parser wiring every jarvis subcommand to its handler. | [src](../../../scripts/jarvis.py#L434) |
-| function | `_event_count` | `()` | — | [src](../../../scripts/jarvis.py#L679) |
-| function | `_visible_run_truth` | `()` | — | [src](../../../scripts/jarvis.py#L684) |
-| function | `_visible_execution_truth` | `()` | — | [src](../../../scripts/jarvis.py#L702) |
-| function | `_capability_invocation_truth` | `()` | — | [src](../../../scripts/jarvis.py#L751) |
-| function | `main` | `()` | CLI entry point: parse arguments and dispatch to the selected subcommand handler. | [src](../../../scripts/jarvis.py#L766) |
 

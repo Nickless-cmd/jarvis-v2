@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `scripts/smoke_test_startup.py`
+_Smoke-test the jarvis-runtime startup path WITHOUT serving traffic._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_run_lifespan` | `()` | Import app + drive lifespan context to completion. | [src](../../../scripts/smoke_test_startup.py#L42) |
+| function | `main` | `()` | — | [src](../../../scripts/smoke_test_startup.py#L450) |
+
 ## `scripts/tag_untagged_skills.py`
 _Batch-tag untagged skills for C2 — Skills meta-tags._
 

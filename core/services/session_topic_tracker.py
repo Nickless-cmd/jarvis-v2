@@ -184,9 +184,17 @@ _session_turn_counts: dict[str, int] = defaultdict(int)
 
 
 def _increment_turn(session_id: str) -> int:
-    """Increment turn counter for session. Returns new count."""
-    _session_turn_counts[session_id] += 1
-    return _session_turn_counts[session_id]
+    """Increment turn counter for session. Returns new count.
+
+    Under låsen: `d[k] += 1` er læs-ret-skriv, og to tråde kan læse samme tal
+    og skrive samme sum — så en tur forsvinder, og emne-udtrækket kommer for
+    sent. Samme klasse som racen i `_persist_session_topics` (20/9-2026);
+    denne blev ikke lukket dengang, og den står på free-threading-listen som
+    en compound-operation.
+    """
+    with _STATE_LOCK:
+        _session_turn_counts[session_id] += 1
+        return _session_turn_counts[session_id]
 
 
 def _should_extract(session_id: str) -> bool:
@@ -259,7 +267,16 @@ def _persist_session_topics(session_id: str) -> None:
         if not store:
             return
         snapshot = list(store.items())
+    _skriv_topics(session_id, snapshot)
 
+
+def _skriv_topics(session_id: str, snapshot: list[tuple[str, dict]]) -> None:
+    """Skriv ét snapshot til DB'en. Kaldes ALDRIG med låsen i hånden: en
+    DB-skrivning kan vente i sekunder på en optaget base (målt 20/9-2026:
+    «database is locked» under to samtidige ture), og så ville hver anden
+    tråd der rører topic-state stå og vente på den."""
+    if not snapshot:
+        return
     try:
         from core.runtime.db import session_topic_accumulate
         for key, info in snapshot:
@@ -370,11 +387,25 @@ def build_session_topics_prompt_section(session_id: str | None = None) -> str | 
 
 
 def clear_session_topics(session_id: str | None) -> None:
-    """Clear in-memory topics for a session. Called at session end."""
+    """Clear in-memory topics for a session. Called at session end.
+
+    Rækkefølgen er med vilje: staten tages UD under låsen, og den sidste
+    skrivning sker bagefter — uden låsen. Omvendt (20/9-2026) holdt vi låsen
+    henover en DB-skrivning, der kan vente i sekunder på en optaget base.
+
+    At pope først er også det sikre: et emne der lander midt i oprydningen
+    havner i en frisk store i stedet for at blive slettet umærkeligt sammen
+    med den gamle.
+    """
+    if not session_id:
+        return
     with _STATE_LOCK:
-        if session_id and session_id in _session_topics:
-            # Persist one last time before clearing
-            _persist_session_topics(session_id)
-            del _session_topics[session_id]
-            _session_turn_counts.pop(session_id, None)
-            _TOPICS_DB_PERSISTED.discard(session_id)
+        store = _session_topics.pop(session_id, None)
+        _session_turn_counts.pop(session_id, None)
+    if store:
+        _skriv_topics(session_id, list(store.items()))
+    # EFTER skrivningen: `_skriv_topics` føjer selv sessionen til sættet når
+    # den lykkes, så en oprydning før skrivningen ville efterlade en død
+    # nøgle der aldrig blev fjernet igen (fanget af testen, 20/9-2026).
+    with _STATE_LOCK:
+        _TOPICS_DB_PERSISTED.discard(session_id)

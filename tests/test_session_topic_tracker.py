@@ -189,3 +189,83 @@ class TestPersistRace:
         stt._accumulate_topics("race-2", ["Gamma"])
         stt.clear_session_topics("race-2")  # må ikke hænge
         assert "race-2" not in stt._session_topics
+
+
+class TestLaasensResterende:
+    """Efterslæb fra 69369f170 (20/9-2026). Låsen lukkede nedbrudsstedet i
+    `_persist_session_topics`, men to ting stod tilbage: tælleren blev talt op
+    uden lås, og `clear_session_topics` holdt låsen henover en DB-skrivning."""
+
+    def _reset(self):
+        from core.services import session_topic_tracker as stt
+        stt._session_topics.clear()
+        stt._session_turn_counts.clear()
+        stt._TOPICS_DB_PERSISTED.clear()
+
+    def test_tur_taelleren_taelles_op_UNDER_laasen(self):
+        """AST, ikke tekstsøgning: `_STATE_LOCK` kunne stå i en kommentar.
+
+        `d[k] += 1` er læs-ret-skriv. To tråde kan læse samme tal og skrive
+        samme sum — så en tur forsvinder, og emne-udtrækket kommer for sent."""
+        import ast
+        import pathlib
+
+        træ = ast.parse(pathlib.Path(
+            "core/services/session_topic_tracker.py").read_text())
+        fn = next((n for n in ast.walk(træ) if isinstance(n, ast.FunctionDef)
+                   and n.name == "_increment_turn"), None)
+        assert fn is not None, "_increment_turn er flyttet"
+        # Hver berøring af tælleren skal ligge inde i et `with`.
+        i_with = {id(n) for w in ast.walk(fn) if isinstance(w, ast.With)
+                  for n in ast.walk(w)}
+        beroeringer = [n for n in ast.walk(fn) if isinstance(n, ast.Subscript)
+                       and getattr(n.value, "id", "") == "_session_turn_counts"]
+        assert beroeringer, "tælleren røres ikke længere her — er den flyttet?"
+        assert all(id(n) in i_with for n in beroeringer), \
+            "tælleren tælles op uden låsen"
+
+    def test_mange_traade_taber_ikke_en_tur(self):
+        from core.services import session_topic_tracker as stt
+        import threading
+
+        self._reset()
+        traade = [threading.Thread(target=lambda: [stt._increment_turn("s") for _ in range(500)])
+                  for _ in range(8)]
+        for t in traade:
+            t.start()
+        for t in traade:
+            t.join()
+        assert stt._session_turn_counts["s"] == 4000
+
+    def test_clear_skriver_til_DB_UDEN_laasen_i_haanden(self, monkeypatch):
+        """En DB-skrivning kan vente i sekunder på en optaget base (målt
+        20/9-2026). Holdt vi låsen imens, ville hver anden tråd der rører
+        topic-state stå og vente på den."""
+        from core.services import session_topic_tracker as stt
+        import core.runtime.db as db
+
+        self._reset()
+        stt._accumulate_topics("ryd-1", ["Alpha"])
+        laast_under_skrivning: list[bool] = []
+
+        def _maal(**kw):
+            laast_under_skrivning.append(stt._STATE_LOCK._is_owned())
+
+        monkeypatch.setattr(db, "session_topic_accumulate", _maal)
+        stt.clear_session_topics("ryd-1")
+
+        assert laast_under_skrivning, "der blev ikke skrevet til DB'en"
+        assert not any(laast_under_skrivning), "låsen blev holdt henover DB-skrivningen"
+        assert "ryd-1" not in stt._session_topics
+
+    def test_clear_rydder_ALT_op(self):
+        from core.services import session_topic_tracker as stt
+
+        self._reset()
+        stt._accumulate_topics("ryd-2", ["Beta"])
+        stt._increment_turn("ryd-2")
+        stt._TOPICS_DB_PERSISTED.add("ryd-2")
+        stt.clear_session_topics("ryd-2")
+        assert "ryd-2" not in stt._session_topics
+        assert "ryd-2" not in stt._session_turn_counts
+        assert "ryd-2" not in stt._TOPICS_DB_PERSISTED

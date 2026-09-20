@@ -175,7 +175,12 @@ def _samtale(*par):
     return [{"role": r, "content": c} for r, c in par]
 
 
-def test_naeste_forslag_bygger_paa_SAMTALEN(monkeypatch):
+def test_naeste_forslag_bygger_paa_ASSISTENTENS_SIDSTE_BESKED(monkeypatch):
+    """AENDRET 20/9-2026. Foer stod de seks seneste beskeder fra BEGGE sider i
+    prompten. Bjoern: «hvis den ska virke rigtigt, skal den kun udlede kontekst
+    fra din sidste besked, og hvad naeste step kan vaere». Hans egne tidligere
+    formuleringer er stoej for en 4b-model — naeste skridt ligger i svaret,
+    ikke i spoergsmaalet der foerte til det."""
     monkeypatch.setattr(cs, "_samtale", lambda sid: _samtale(
         ("user", "hvordan ser cheap lane ud?"),
         ("assistant", "81% succes, 34 udbydere. To staar i karantaene."),
@@ -184,8 +189,53 @@ def test_naeste_forslag_bygger_paa_SAMTALEN(monkeypatch):
     monkeypatch.setattr(cs, "_kald_model",
                         lambda p: sendt.append(p) or "vis de to i karantaene")
     assert cs.foreslaa_naeste("s1") == "vis de to i karantaene"
-    # Samtalen skal FAKTISK med — ellers gaetter modellen i blinde.
-    assert "karantaene" in sendt[0] and "cheap lane" in sendt[0]
+    # Svaret skal FAKTISK med — ellers gaetter modellen i blinde.
+    assert "karantaene" in sendt[0]
+    # ... og hans eget spoergsmaal skal IKKE.
+    assert "cheap lane" not in sendt[0], "brugerens egne beskeder er stoej her"
+
+
+def test_ANBEFALINGEN_loeftes_ud_saa_modellen_ikke_vaelger_selv(monkeypatch):
+    """Bjoern 20/9-2026: «hvis du feks. har skrevet 3 veje hvor du anbefaler en
+    boer den gaa med den». En 4b-model laeser en lang besked som en liste af
+    muligheder og griber den foerste. Staar anbefalingen ALENE under sin egen
+    overskrift, er der ikke noget at vaelge imellem."""
+    monkeypatch.setattr(cs, "_samtale", lambda sid: _samtale(("assistant",
+        "Tre veje: (a) rydde op i worktrees, (b) genstarte ollama, "
+        "(c) lade den ligge til i morgen. Jeg ville tage (b) foerst — "
+        "(a) kan vente til der er ro paa.")))
+    sendt: list[str] = []
+    monkeypatch.setattr(cs, "_kald_model",
+                        lambda p: sendt.append(p) or "genstart ollama og se om den kommer op")
+    assert cs.foreslaa_naeste("s1") == "genstart ollama og se om den kommer op"
+    assert "Assistenten anbefaler: Jeg ville tage (b) foerst" in sendt[0]
+
+
+def test_den_SIDSTE_anbefaling_vinder():
+    """Staar der «jeg ville tage (b)» EFTER «jeg foreslaar tre veje», er det
+    (b) der er dommen — ikke den foerste vending der lignede en anbefaling."""
+    t = ("Jeg foreslaar vi ser paa tre ting. Jeg ville starte med logfilen.")
+    assert cs._anbefaling(t) == "Jeg ville starte med logfilen."
+
+
+def test_uden_en_anbefaling_staar_beskeden_ALENE(monkeypatch):
+    """En besked uden valg skal ikke faa en tom overskrift paahaeftet."""
+    monkeypatch.setattr(cs, "_samtale", lambda sid: _samtale(
+        ("assistant", "Led Lys er taendt — standerlampen staar stadig off.")))
+    sendt: list[str] = []
+    monkeypatch.setattr(cs, "_kald_model", lambda p: sendt.append(p) or "taend standerlampen ogsaa")
+    cs.foreslaa_naeste("s1")
+    assert "anbefaler" not in sendt[0]
+
+
+def test_en_lang_besked_beholder_BEGGE_ender():
+    """En ren `[:maks]` ville tage begyndelsen — og netop dér staar
+    anbefalingen ikke. Den staar til sidst, efter mulighederne."""
+    lang = "START " + "fyld " * 1000 + "SLUT jeg ville tage (b)."
+    ud = cs._klip_kontekst(lang)
+    assert ud.startswith("START")
+    assert ud.endswith("jeg ville tage (b).")
+    assert len(ud) <= cs.MAKS_KONTEKST_TEGN + 10
 
 
 def test_naeste_forslag_er_en_HEL_besked_uden_hoeftende_mellemrum(monkeypatch):

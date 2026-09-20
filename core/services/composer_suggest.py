@@ -183,12 +183,15 @@ def foreslaa(udkast: str) -> str:
 # hvad han kunne sige nu. Derfor er kilden samtalen og ikke udkastet — der er
 # jo ikke noget udkast.
 
-#: Hvor langt tilbage der kigges. Nok til at vide hvad der foregår, kort nok
-#: til at prompten er lille på en lokal lille model.
+#: Hvor mange rækker der HENTES. Kun den sidste bruges i prompten (se
+#: `_kontekst`); de øvrige afgør om turen er i gang.
 MAKS_HISTORIK: Final[int] = 6
-#: Hver besked klippes. Ét langt værktøjs-svar ville ellers fylde hele
-#: prompten og skubbe det der faktisk blev sagt ud.
-MAKS_BESKED_TEGN: Final[int] = 400
+
+#: Budgettet for den ENE besked der bærer konteksten. Afløste
+#: `MAKS_BESKED_TEGN = 400` 20/9-2026: dengang skulle seks beskeder deles om
+#: prompten, nu er der kun én — men den skal stadig kunne holdes i hovedet af
+#: en 4b-model.
+MAKS_KONTEKST_TEGN: Final[int] = 900
 
 #: Under det er assistentens sidste besked en stump — «4.», «Generation
 #: cancelled.», «OK» — og der er intet at bygge et næste skridt på. Målt
@@ -198,8 +201,8 @@ MIN_SVAR_TEGN: Final[int] = 40
 
 _PROMPT_NAESTE = (
     "Du hjælper en bruger med at skrive sin næste besked til sin assistent.\n"
-    "Herunder står de seneste beskeder. Foreslå ÉN besked brugeren kunne "
-    "sende nu.\n\n"
+    "Herunder står assistentens SENESTE besked. Foreslå ÉN besked brugeren "
+    "kunne sende nu — det næste skridt der følger af netop den besked.\n\n"
     "Krav:\n"
     # Målt 17/9-2026: modellen svarede assistenten i stedet for at bede om
     # noget — «Fire. Det er nemt.», «Ja, det kan vi lave i morgen!». Et svar
@@ -209,8 +212,13 @@ _PROMPT_NAESTE = (
     "brugeren beder om. Aldrig et svar, en kommentar eller en høflighed.\n"
     # Målt samme dag: «Så kan vi gå videre til næste trin» — sandt om enhver
     # samtale, og derfor ubrugeligt i denne.
-    "- Det skal nævne noget KONKRET fra samtalen: en fil, et navn, et tal, en "
+    "- Det skal nævne noget KONKRET fra beskeden: en fil, et navn, et tal, en "
     "opgave. Et forslag der passer på enhver samtale, er ikke et forslag.\n"
+    # Bjørn 20/9-2026: «hvis du feks. har skrevet 3 veje hvor du anbefaler en
+    # bør den gå med den». Peger beskeden selv på en vej, er valget truffet —
+    # et forslag der spørger om noget der allerede er anbefalet, er spild.
+    "- Peger beskeden på en anbefalet vej blandt flere, skal forslaget følge "
+    "DEN vej — ikke de fravalgte.\n"
     "- Dansk. Højst ti ord. Ingen indledning som «Så nu» eller «Okay».\n"
     "- Svar KUN med beskeden: ingen anførselstegn, intet rollenavn, ingen "
     "forklaring.\n\n"
@@ -218,7 +226,7 @@ _PROMPT_NAESTE = (
     "«Deploy det og hold øje med journalen» · «Vis mig de to der står i "
     "karantæne» · «Hvorfor fejler den kun på ct105?» · «Ret det og kør "
     "testene igen»\n\n"
-    "Samtalen:\n"
+    "Assistentens sidste besked:\n"
 )
 
 #: Åbninger der afslører en REPLIK frem for en ordre. Kun begyndelser, og kun
@@ -251,6 +259,72 @@ def _er_paastand(s: str) -> bool:
         return False
     ord0 = t.split()[0].lower().strip(".,;:!«»\"'")
     return len(ord0) > 4 and (ord0.endswith("ede") or ord0.endswith("te"))
+
+
+#: Vendinger hvor beskeden selv peger på en vej. Målt på Jarvis' egne svar
+#: 20/9-2026: anbefalingen står næsten altid til SIDST, efter mulighederne —
+#: «Tre veje: (a) … (b) … (c) … Jeg ville tage (b) først».
+_ANBEFALING: Final[tuple[str, ...]] = (
+    "jeg ville", "jeg anbefaler", "min anbefaling", "jeg foreslår",
+    "jeg foreslaar", "mit forslag", "jeg vil anbefale", "bedst at",
+    "det rigtige er", "start med", "tag den", "vælg", "vaelg",
+)
+
+
+def _anbefaling(tekst: str) -> str:
+    """Den sætning hvor beskeden peger på ÉN vej — eller `""`.
+
+    Hvorfor den skal løftes ud og ikke bare stå i teksten: en 4b-model læser
+    en lang besked som en liste af muligheder og griber den første. Bjørn
+    20/9-2026: «hvis du feks. har skrevet 3 veje hvor du anbefaler en bør den
+    gå med den». Står anbefalingen ALENE i prompten under sin egen overskrift,
+    er der ikke noget at vælge imellem.
+
+    Den SIDSTE der matcher vinder: står der «jeg ville tage (b)» efter
+    «jeg foreslår tre veje», er det (b) der er dommen.
+    """
+    t = " ".join((tekst or "").split())
+    if not t:
+        return ""
+    fundet = ""
+    for saetning in re.split(r"(?<=[.!?])\s+", t):
+        lav = saetning.lower()
+        if any(v in lav for v in _ANBEFALING):
+            fundet = saetning.strip()
+    return fundet
+
+
+def _klip_kontekst(tekst: str, maks: int = MAKS_KONTEKST_TEGN) -> str:
+    """Klip en lang besked, men behold BEGGE ender.
+
+    En ren `[:maks]` ville tage begyndelsen — og netop dér står anbefalingen
+    ikke. Den står til sidst, efter mulighederne. En ren hale ville omvendt
+    tabe hvad beskeden handler om. Derfor en tredjedel fra starten og resten
+    fra slutningen, med et synligt spring imellem, så modellen ikke læser det
+    som én sammenhængende sætning.
+    """
+    t = " ".join((tekst or "").split())
+    if len(t) <= maks:
+        return t
+    hoved = maks // 3
+    hale = maks - hoved
+    return t[:hoved].rstrip() + " […] " + t[-hale:].lstrip()
+
+
+def _kontekst(besked: str) -> str:
+    """Prompt-konteksten: assistentens sidste besked, og dens anbefaling.
+
+    Før 20/9-2026 stod her de seks seneste beskeder fra BEGGE sider. Bjørn:
+    «hvis den ska virke rigtigt, skal den kun udlede kontekst fra din sidste
+    besked, og hvad næste step kan være». Hans egne tidligere formuleringer er
+    støj for en lille model — næste skridt ligger i svaret, ikke i spørgsmålet
+    der førte til det.
+    """
+    krop = _klip_kontekst(besked)
+    anb = _anbefaling(krop)
+    if anb and anb != krop:
+        return f"{krop}\n\nAssistenten anbefaler: {anb}"
+    return krop
 
 
 def _samtale(session_id: str) -> list[dict[str, str]]:
@@ -289,13 +363,8 @@ def foreslaa_naeste(session_id: str) -> str:
     if len(" ".join(str(beskeder[-1].get("content") or "").split())) < MIN_SVAR_TEGN:
         return ""
 
-    linjer = [
-        f"{'Bruger' if b['role'] == 'user' else 'Assistent'}: "
-        f"{' '.join(str(b.get('content') or '').split())[:MAKS_BESKED_TEGN]}"
-        for b in beskeder
-    ]
     try:
-        raa = _kald_model(_PROMPT_NAESTE + "\n".join(linjer))
+        raa = _kald_model(_PROMPT_NAESTE + _kontekst(str(beskeder[-1].get("content") or "")))
     except Exception:
         logger.debug("composer_suggest: næste-kald fejlede", exc_info=True)
         return ""

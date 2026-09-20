@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { AudioLines, ChevronDown, ChevronUp, SendHorizontal, SquarePen } from 'lucide-react'
+import { AudioWaveform, ChevronDown, ChevronUp, SendHorizontal, SquarePen } from 'lucide-react'
 import { apiFetch, type ApiConfig } from '../lib/api'
 import type { Opmaerksomhed } from '../lib/opmaerksomhed'
 import { FigurKrop } from './FigurKrop'
@@ -290,7 +290,7 @@ export function FigurApp() {
           <SquarePen size={15} strokeWidth={1.8} />
         </button>
         <button type="button" aria-label="Tal med Jarvis" title="Tal med Jarvis" onClick={() => void bro()?.figur.stemme()}>
-          <AudioLines size={15} strokeWidth={1.8} />
+          <AudioWaveform size={15} strokeWidth={1.8} />
         </button>
         <button type="button" aria-label={pakket ? 'Vis taleboblen' : 'Pak taleboblen væk'} title={pakket ? 'Vis taleboblen' : 'Pak taleboblen væk'}
                 onClick={() => setPakket((p) => !p)}>

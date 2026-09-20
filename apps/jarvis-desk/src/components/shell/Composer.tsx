@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
-import { ArrowUp, AudioLines, ChevronDown, ChevronRight, FileText, ListChecks, Loader2, Mic, Paperclip, Plus, Puzzle, ShieldCheck, Square, X } from 'lucide-react'
+import { ArrowUp, AudioWaveform, ChevronDown, ChevronRight, FileText, ListChecks, Loader2, Mic, Paperclip, Plus, Puzzle, ShieldCheck, Square, X } from 'lucide-react'
 import { emojify } from '../../lib/emojify'
 import { useDictation } from '../../hooks/useDictation'
 import { ContextRing } from './ContextRing'
@@ -891,7 +891,7 @@ export function Composer({
               aria-label="Start samtale"
               title="Start samtale med stemmen"
             >
-              <AudioLines size={15} strokeWidth={2.5} />
+              <AudioWaveform size={15} strokeWidth={2.5} />
             </button>
           ) : (
             <button

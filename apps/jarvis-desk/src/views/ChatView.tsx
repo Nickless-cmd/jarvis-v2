@@ -3,7 +3,7 @@ import { Fragment } from 'react'
 import { useRammeReducer } from '../lib/useRammeReducer'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFastholdBund } from '../lib/useFastholdBund'
-import { PanelRight, Loader2, SquareStack, FileDiff, AudioLines, Bot } from 'lucide-react'
+import { PanelRight, Loader2, SquareStack, FileDiff, AudioWaveform, Bot } from 'lucide-react'
 import { JobsPanel } from '../components/shell/JobsPanel'
 import { listJobs } from '../lib/jobsApi'
 import { ChangesPanel } from '../components/shell/ChangesPanel'
@@ -840,7 +840,7 @@ export function ChatView({
           visning={visning}
           onVisning={(v) => void skiftVisning(v)}
           valg={[
-            ...(voice.supported ? [{ id: 'stemme', navn: 'Samtale med Jarvis (stemme)', ikon: <AudioLines size={14} />, onClick: voice.enter }] : []),
+            ...(voice.supported ? [{ id: 'stemme', navn: 'Samtale med Jarvis (stemme)', ikon: <AudioWaveform size={14} />, onClick: voice.enter }] : []),
             ...(figurVist !== null ? [{ id: 'figur', navn: 'Jarvis-figuren på skrivebordet', ikon: <Bot size={14} />, aktiv: figurVist, onClick: () => saetFigur(!figurVist) }] : []),
             { id: 'panel', navn: 'Panel', ikon: <PanelRight size={14} />, aktiv: panel.open, onClick: panel.toggle },
           ]}

@@ -101,6 +101,39 @@ def pending_for_session(session_id: str) -> dict[str, Any] | None:
     return kandidater[0]
 
 
+def pending_for_owner(user_id: str) -> dict[str, Any] | None:
+    """Det ventende kort for en EJER — uanset hvilken samtale det hører til.
+
+    ## Hvorfor den findes (20/9-2026, samme aften som `pending_for_session`)
+
+    Session-udgaven lukkede kun det halve hul. Bjørn 20/9: «der ligger en jeg
+    ikke kan få lov at se som skal godkendes, den holder hans run».
+
+    Målt i det øjeblik: FIRE kort ventede, alle i session
+    `chat-ceb50330…` — en samtale desk ikke selv streamede. Desk spurgte kun
+    om sin EGEN arbejdende session, og kun mens dens egen stream kørte. To
+    gates, og kortene lå uden for dem begge.
+
+    Et kort hører til en ejer, ikke til det vindue der tilfældigvis er åbent.
+    Nyeste først, og `session_id` følger med, så klienten kan sige HVOR det
+    kom fra i stedet for at vise et kort uden ophav.
+    """
+    uid = str(user_id or "").strip()
+    if not uid:
+        return None
+    import core.services.visible_runs as _vr
+
+    kandidater = [
+        {**kort, "approval_id": aid}
+        for aid, kort in list(_vr._PENDING_APPROVALS.items())
+        if str((kort or {}).get("owner_user_id") or "") == uid
+    ]
+    if not kandidater:
+        return None
+    kandidater.sort(key=lambda k: str(k.get("created_at") or ""), reverse=True)
+    return kandidater[0]
+
+
 def decide(approval_id: str, *, approved: bool,
            answered_by: str | None = None) -> dict[str, Any]:
     """Svar paa en godkendelse. Den ENE vej ind for enhver svarer.

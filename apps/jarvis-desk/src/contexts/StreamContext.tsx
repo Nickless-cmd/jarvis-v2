@@ -2,13 +2,14 @@ import { createContext, useCallback, useEffect, useLayoutEffect, useMemo, useRef
 import { lavVaerdiLager, type VaerdiLager } from '../lib/vaerdiLager'
 import { useRammeReducer } from '../lib/useRammeReducer'
 import { startStream, type StreamControl, type StreamError } from '../lib/streamClient'
-import { cancelRun, approveTool, denyTool, followRun, hentVentendeGodkendelse } from '../lib/api'
+import { cancelRun, approveTool, denyTool, followRun, hentVentendeGodkendelseOveralt } from '../lib/api'
 import { streamReducer, initialStreamState, type StreamStatus } from '../lib/streamReducer'
 import type { StreamEvent, ContentBlock } from '../lib/sseProtocol'
 import { lastTextBlock } from '../lib/blockHelpers'
 import { useCanonicalError } from '../hooks/useCanonicalError'
 import type { CanonicalError } from '../lib/canonicalError'
 import { setStreamActive } from '../lib/sharedRead'
+import { maaPolle } from '../lib/ro'
 
 /** Struktureret bruger-vendt fejl (unified fejl-system, central_error_envelope).
  *  Kommer fra backendens `error`-system_event ELLER klient-side StreamError. */
@@ -429,22 +430,34 @@ export function StreamProvider({
   // nyåbnet vindue, et svar der kørte videre efter en afbrydelse — ser vi det
   // aldrig, og Jarvis står bare og hænger mens kortet ligger på telefonen.
   //
-  // Derfor spørger vi selv, men KUN mens en tur arbejder og vi ikke allerede
-  // har et kort. Er der intet at hente, koster det ét lille svar hvert
-  // fjerde sekund i netop det vindue hvor han venter.
+  // Derfor spørger vi selv — og vi spørger PÅ TVÆRS AF SAMTALER.
+  //
+  // Første udgave (samme dag) havde to gates: desks egen stream skulle være
+  // 'working', og kortet skulle høre til netop den session. Bjørn samme
+  // aften: «der ligger en jeg ikke kan få lov at se som skal godkendes, den
+  // holder hans run». Målt i det øjeblik: FIRE kort ventede, alle i en
+  // samtale desk ikke streamede. Begge gates lukkede dem ude.
+  //
+  // Et kort hører til en EJER, ikke til det vindue der er åbent. Vi spørger
+  // derfor altid — men gennem `maaPolle`, så et skjult vindue falder til ro
+  // i stedet for at banke løs. Har vi allerede et kort, holder vi op.
   useEffect(() => {
-    if (status !== 'working' || pendingApproval || !config.apiBaseUrl || !workingSessionId) return
+    if (pendingApproval || !config.apiBaseUrl) return
     const cfg = { apiBaseUrl: config.apiBaseUrl, authToken: config.authToken }
     let levende = true
     const spoerg = () => {
-      void hentVentendeGodkendelse(cfg, workingSessionId).then((k: { approvalId: string; tool: string; action: string } | null) => {
+      // Kun rolige intervaller når vinduet er skjult eller han er gået fra
+      // det — men ALDRIG helt slukket: et kort der venter, venter uanset om
+      // desk selv har en tur i gang.
+      if (!maaPolle('ventende-godkendelse', 4000, { ignorerSkjult: true, loftMs: 20_000 })) return
+      void hentVentendeGodkendelseOveralt(cfg).then((k) => {
         if (levende && k) setPendingApproval({ approvalId: k.approvalId, tool: k.tool, action: k.action })
       })
     }
-    const id = window.setInterval(spoerg, 4000)
+    const id = window.setInterval(spoerg, 2000)
     spoerg()
     return () => { levende = false; window.clearInterval(id) }
-  }, [status, pendingApproval, config.apiBaseUrl, config.authToken, workingSessionId])
+  }, [pendingApproval, config.apiBaseUrl, config.authToken])
 
   useEffect(() => {
     setStreamActive(status === 'working')

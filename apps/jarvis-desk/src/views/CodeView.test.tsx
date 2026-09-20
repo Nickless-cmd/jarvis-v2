@@ -42,6 +42,7 @@ vi.mock('../lib/api', () => ({
   // Opsamlingen af et ventende godkendelses-kort (20/9-2026): uden den
   // i mocken falder hele viewet, fordi StreamContext kalder den.
   hentVentendeGodkendelse: vi.fn(async () => null),
+  hentVentendeGodkendelseOveralt: vi.fn(async () => null),
   warmSession: vi.fn().mockResolvedValue(undefined),
   getGitStatus: vi.fn().mockResolvedValue({ branch: 'main', dirty: 0, added: 0, removed: 0, is_git: true }),
 }))

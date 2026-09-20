@@ -1050,6 +1050,34 @@ export interface PendingNotification {
  *  mens kortet ligger på telefonen (Bjørn 20/9-2026). Den her spørger selv.
  *
  *  `null` ved enhver fejl: et manglende svar må ikke kunne vælte komponisten. */
+/** Et ventende godkendelses-kort for MIG — uanset hvilken samtale det hører til.
+ *
+ *  Session-udgaven nedenfor spurgte kun om ÉN samtale, og kalderen spurgte kun
+ *  mens desks egen stream arbejdede. Bjørn 20/9-2026: «der ligger en jeg ikke
+ *  kan få lov at se som skal godkendes, den holder hans run» — fire kort
+ *  ventede i en samtale desk ikke selv streamede, og begge gates lukkede dem
+ *  ude. Et kort hører til en ejer, ikke til det vindue der er åbent.
+ */
+export async function hentVentendeGodkendelseOveralt(
+  config: ApiConfig,
+): Promise<{ approvalId: string; tool: string; action: string; sessionId: string } | null> {
+  try {
+    const r = await apiFetch<{ approval?: { approval_id?: string; tool?: string; arguments?: Record<string, unknown>; session_id?: string } | null }>(
+      config, '/chat/approvals/pending', { retries: 0 },
+    )
+    const a = r?.approval
+    if (!a?.approval_id) return null
+    const arg = a.arguments || {}
+    const linje = String(arg.command ?? arg.path ?? arg.file_path ?? '').slice(0, 140)
+    return {
+      approvalId: a.approval_id, tool: a.tool || 'tool', action: linje,
+      sessionId: String(a.session_id || ''),
+    }
+  } catch {
+    return null   // intet kort er et gyldigt svar; en fejl må ikke vise et falsk kort
+  }
+}
+
 export async function hentVentendeGodkendelse(
   config: ApiConfig, sessionId: string,
 ): Promise<{ approvalId: string; tool: string; action: string } | null> {

@@ -37,6 +37,7 @@ vi.mock('../lib/api', () => ({
   // Opsamlingen af et ventende godkendelses-kort (20/9-2026). Den kaldes kun
   // mens en tur arbejder OG der ikke allerede er et kort.
   hentVentendeGodkendelse: vi.fn(async () => null),
+  hentVentendeGodkendelseOveralt: vi.fn(async () => null),
 }))
 
 const cfg = { apiBaseUrl: 'http://t', authToken: 't' }

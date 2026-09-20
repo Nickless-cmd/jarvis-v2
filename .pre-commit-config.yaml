@@ -34,6 +34,18 @@ repos:
         always_run: true
         stages: [pre-commit]
 
+      # Pre-commit: et nyt varigt format skal stå i registret med en ejer,
+      # en beskrivelse og en dato. Jeg indførte selv `device_presence.json`
+      # 20/9-2026 uden at registrere det — der var intet sted at gøre det.
+      # Se docs/persistens/README.md, inkl. hvad registret IKKE kan.
+      - id: verify-persistens
+        name: Varige formater skal stå i registret
+        entry: /opt/conda/envs/ai/bin/python scripts/verify_persistens.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
       # Pre-commit: ingen NYE kaldere der læser en hel samtale-historik
       # synkront. `get_chat_session` gjorde Bjørns samtale til 21,5 MB, og
       # 14 af dens 45 kaldesteder læser alt for at bruge ét metadata-felt.

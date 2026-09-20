@@ -93,6 +93,18 @@ _Vagt: en note skal have en status, en slags, og sine fire overskrifter._
 | function | `fejl_i` | `(sti)` | — | [src](../../../scripts/verify_notes.py#L50) |
 | function | `main` | `(argv=…)` | — | [src](../../../scripts/verify_notes.py#L67) |
 
+## `scripts/verify_persistens.py`
+_Vagt: et nyt varigt format skal skrives ind i registret med en dato._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_strengkonstanter` | `(traeet)` | Modul-globale strenge, så `save_json(_NAVN, …)` kan slås op. | [src](../../../scripts/verify_persistens.py#L44) |
+| function | `noegler_i_traeet` | `()` | nøgle -> filer der skriver eller læser den. | [src](../../../scripts/verify_persistens.py#L56) |
+| function | `_modulbeskrivelse` | `(rel_sti)` | Første linje af ejerens modul-docstring, eller en UDFYLD-plads. | [src](../../../scripts/verify_persistens.py#L90) |
+| function | `_register` | `()` | — | [src](../../../scripts/verify_persistens.py#L102) |
+| function | `afvigelser` | `()` | (uregistrerede nøgler, registrerede nøgler ingen rører længere). | [src](../../../scripts/verify_persistens.py#L109) |
+| function | `main` | `(argv=…)` | — | [src](../../../scripts/verify_persistens.py#L118) |
+
 ## `scripts/verify_silent_except.py`
 _Vagt: en slugt undtagelse skal navngives, og dens `try` skal være kort._
 

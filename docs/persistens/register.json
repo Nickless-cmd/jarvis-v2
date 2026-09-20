@@ -1,0 +1,240 @@
+{
+  "_forklaring": "Varige formater under state_store. Et nyt format skal stå her med ejer, beskrivelse og dato. Registret fanger nye NØGLER, ikke ændrede felter.",
+  "formater": {
+    "agency_bridge_repair_briefs": {
+      "ejer": "core/services/agency_cartographer.py",
+      "beskrivelse": "Agency Cartographer daemon.",
+      "registreret": "2026-09-20"
+    },
+    "agency_cartographer": {
+      "ejer": "core/services/agency_cartographer.py",
+      "beskrivelse": "Agency Cartographer daemon.",
+      "registreret": "2026-09-20"
+    },
+    "agency_cartographer_awareness": {
+      "ejer": "core/services/agency_cartographer.py",
+      "beskrivelse": "Agency Cartographer daemon.",
+      "registreret": "2026-09-20"
+    },
+    "agent_observations": {
+      "ejer": "core/services/agent_observation_compressor.py",
+      "beskrivelse": "Agent observation compressor — Mastra-style intra-session compression.",
+      "registreret": "2026-09-20"
+    },
+    "agent_skill_mutations": {
+      "ejer": "core/services/agent_skill_library.py",
+      "beskrivelse": "Agent Skill Library — per-role learned patterns + workflows.",
+      "registreret": "2026-09-20"
+    },
+    "agent_todos": {
+      "ejer": "core/services/agent_todos.py",
+      "beskrivelse": "Per-session todo tracker — Jarvis' working memory for \"what am I doing right now\".",
+      "registreret": "2026-09-20"
+    },
+    "agentic_run_checkpoints": {
+      "ejer": "core/services/agentic_checkpoints.py",
+      "beskrivelse": "Durable checkpoints for visible agentic loops.",
+      "registreret": "2026-09-20"
+    },
+    "agentic_tool_result_cache": {
+      "ejer": "core/services/agentic_tool_cache.py",
+      "beskrivelse": "Small durable cache for read-only agentic tool results.",
+      "registreret": "2026-09-20"
+    },
+    "agentic_working_conclusions": {
+      "ejer": "core/services/agentic_working_conclusions.py",
+      "beskrivelse": "Durable working conclusions for interrupted agentic runs.",
+      "registreret": "2026-09-20"
+    },
+    "arc_rules_processed": {
+      "ejer": "core/services/arc_rule_extractor.py",
+      "beskrivelse": "Arc rule extractor — turns narrative arcs into actionable rules.",
+      "registreret": "2026-09-20"
+    },
+    "autonomous_goals": {
+      "ejer": "core/services/autonomous_goals.py",
+      "beskrivelse": "Autonomous goals — persistent top-level goals with decomposition.",
+      "registreret": "2026-09-20"
+    },
+    "computer_use_policy": {
+      "ejer": "core/services/computer_use_policy.py",
+      "beskrivelse": "Computer-use-politik (§4.7) — per-bruger on/off for operator/computer-tools.",
+      "registreret": "2026-09-20"
+    },
+    "context_versions": {
+      "ejer": "core/services/proactive_context_governor.py",
+      "beskrivelse": "Proactive context governor — auto-trigger compaction + sub-agent slicing.",
+      "registreret": "2026-09-20"
+    },
+    "crisis_markers": {
+      "ejer": "core/services/crisis_marker_detector.py",
+      "beskrivelse": "Crisis marker detector — flag identity-forming friction moments.",
+      "registreret": "2026-09-20"
+    },
+    "decision_breach_recent": {
+      "ejer": "core/services/decision_enforcement.py",
+      "beskrivelse": "Decision enforcement — close the loop between commitment and behavior.",
+      "registreret": "2026-09-20"
+    },
+    "decision_signal_telemetry": {
+      "ejer": "core/services/decision_signal_telemetry.py",
+      "beskrivelse": "Decision-signal telemetry — track whether decision signals get heeded.",
+      "registreret": "2026-09-20"
+    },
+    "device_presence": {
+      "ejer": "core/services/device_presence.py",
+      "beskrivelse": "Device-presence pr. bruger. Lever i hukommelsen — og OVERLEVER en genstart.",
+      "registreret": "2026-09-20"
+    },
+    "identity_mutation_log": {
+      "ejer": "core/services/identity_mutation_log.py",
+      "beskrivelse": "Identity mutation log — full audit trail for Tier 3 auto-mutations.",
+      "registreret": "2026-09-20"
+    },
+    "identity_sketch": {
+      "ejer": "core/services/identity_sketch.py",
+      "beskrivelse": "Persistent Identity Sketch — dynamic \"who am I right now\" document.",
+      "registreret": "2026-09-20"
+    },
+    "in_flight_runs": {
+      "ejer": "core/services/in_flight_runs.py",
+      "beskrivelse": "In-flight run tracker for resume-after-interrupt.",
+      "registreret": "2026-09-20"
+    },
+    "living_executive": {
+      "ejer": "core/services/living_executive.py",
+      "beskrivelse": "Living Executive — Jarvis' active impulse/choice/action loop.",
+      "registreret": "2026-09-20"
+    },
+    "mcp_servers": {
+      "ejer": "core/services/mcp_registry.py",
+      "beskrivelse": "MCP-server-registry (§4.6) — brugerens konfigurerede MCP-endpoints.",
+      "registreret": "2026-09-20"
+    },
+    "mcp_trust": {
+      "ejer": "core/services/mcp_trust.py",
+      "beskrivelse": "MCP-tillid: allowliste + TOFU-pinning.",
+      "registreret": "2026-09-20"
+    },
+    "monitor_streams": {
+      "ejer": "core/services/monitor_streams.py",
+      "beskrivelse": "Pinned monitors — Jarvis' equivalent of Claude Code's Monitor tool.",
+      "registreret": "2026-09-20"
+    },
+    "observability_bridge_repair_briefs": {
+      "ejer": "core/services/task_worker.py",
+      "beskrivelse": "Task worker — consumes queued runtime_tasks in heartbeat tick cadence.",
+      "registreret": "2026-09-20"
+    },
+    "pending_approvals": {
+      "ejer": "core/services/surprise_detector.py",
+      "beskrivelse": "Surprise detector — anomaly signals for the proactive/autonomous lane.",
+      "registreret": "2026-09-20"
+    },
+    "personality_drift_snapshots": {
+      "ejer": "core/services/personality_drift.py",
+      "beskrivelse": "Personality drift detection — has Jarvis' baseline shifted?",
+      "registreret": "2026-09-20"
+    },
+    "plan_proposals": {
+      "ejer": "core/services/plan_proposals.py",
+      "beskrivelse": "Plan mode — propose, wait for approval, then execute.",
+      "registreret": "2026-09-20"
+    },
+    "prompt_experiments": {
+      "ejer": "core/services/experiment_runner.py",
+      "beskrivelse": "Experiment runner — controlled A/B trials of prompt variants.",
+      "registreret": "2026-09-20"
+    },
+    "prompt_variant_records": {
+      "ejer": "core/services/prompt_variant_tracker.py",
+      "beskrivelse": "Prompt variant tracker — log per-variant performance for self-improvement.",
+      "registreret": "2026-09-20"
+    },
+    "provider_health": {
+      "ejer": "core/services/provider_health_check.py",
+      "beskrivelse": "Provider health check — periodic ping to detect outages early.",
+      "registreret": "2026-09-20"
+    },
+    "r2_verification_gate_telemetry": {
+      "ejer": "core/services/verification_gate_telemetry.py",
+      "beskrivelse": "R2 verification gate telemetry — track whether warnings get heeded.",
+      "registreret": "2026-09-20"
+    },
+    "recent_ticks": {
+      "ejer": "core/services/self_model_predictive.py",
+      "beskrivelse": "Predictive self-model — frequencies, not aspirations.",
+      "registreret": "2026-09-20"
+    },
+    "runtime_curiosity_budget": {
+      "ejer": "core/services/curiosity_budget.py",
+      "beskrivelse": "Curiosity-budget service — Phase 1 (AGI track #6 Åben udforskning).",
+      "registreret": "2026-09-20"
+    },
+    "runtime_curiosity_window": {
+      "ejer": "core/services/curiosity_budget.py",
+      "beskrivelse": "Curiosity-budget service — Phase 1 (AGI track #6 Åben udforskning).",
+      "registreret": "2026-09-20"
+    },
+    "runtime_world_model_auto_extraction_rate": {
+      "ejer": "core/services/world_model_auto_extraction.py",
+      "beskrivelse": "World Model Phase 2: auto-extract structured predictions from Jarvis' replies.",
+      "registreret": "2026-09-20"
+    },
+    "runtime_world_model_milestones": {
+      "ejer": "core/services/world_model_signal_tracking.py",
+      "beskrivelse": "UDFYLD: core/services/world_model_signal_tracking.py har ingen docstring",
+      "registreret": "2026-09-20"
+    },
+    "runtime_world_model_nudges": {
+      "ejer": "core/services/world_model_signal_tracking.py",
+      "beskrivelse": "UDFYLD: core/services/world_model_signal_tracking.py har ingen docstring",
+      "registreret": "2026-09-20"
+    },
+    "runtime_world_model_predictions": {
+      "ejer": "core/services/world_model_signal_tracking.py",
+      "beskrivelse": "UDFYLD: core/services/world_model_signal_tracking.py har ingen docstring",
+      "registreret": "2026-09-20"
+    },
+    "self_model_predictions": {
+      "ejer": "core/services/self_model_predictive.py",
+      "beskrivelse": "Predictive self-model — frequencies, not aspirations.",
+      "registreret": "2026-09-20"
+    },
+    "self_wakeups": {
+      "ejer": "core/services/self_wakeup.py",
+      "beskrivelse": "Self-wakeup — Jarvis' equivalent of Claude Code's ScheduleWakeup.",
+      "registreret": "2026-09-20"
+    },
+    "session_wakeup_marks": {
+      "ejer": "core/services/session_wakeup.py",
+      "beskrivelse": "Eventbus → visible-prompt wake-up digest.",
+      "registreret": "2026-09-20"
+    },
+    "side_tasks": {
+      "ejer": "core/services/side_tasks.py",
+      "beskrivelse": "Side-task flag — keep the main thread focused.",
+      "registreret": "2026-09-20"
+    },
+    "subagent_digest_marks": {
+      "ejer": "core/services/subagent_digest.py",
+      "beskrivelse": "Surface recently-completed subagents into the visible prompt.",
+      "registreret": "2026-09-20"
+    },
+    "surprise_detector": {
+      "ejer": "core/services/surprise_detector.py",
+      "beskrivelse": "Surprise detector — anomaly signals for the proactive/autonomous lane.",
+      "registreret": "2026-09-20"
+    },
+    "theater_refactor_briefs": {
+      "ejer": "core/services/agency_map.py",
+      "beskrivelse": "Agency Map surface for Mission Control.",
+      "registreret": "2026-09-20"
+    },
+    "tick_quality_evaluations": {
+      "ejer": "core/services/agent_self_evaluation.py",
+      "beskrivelse": "Agent self-evaluation — track quality, adherence, goal progress (READ-ONLY).",
+      "registreret": "2026-09-20"
+    }
+  }
+}

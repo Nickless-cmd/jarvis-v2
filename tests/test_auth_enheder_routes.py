@@ -93,3 +93,62 @@ def test_v2_streamen_afviser_code_mode_foer_noget_koerer(ejer, monkeypatch):
         asyncio.run(mod.chat_stream_v2(ChatStreamRequest(message="ret login.py", mode="code", session_id=sid)))
     assert e.value.status_code == 403
     assert startet == []
+
+
+# ── Desk uden app_id-claim i tokenet (Bjørn 20/9-2026) ──────────────────────
+def test_desk_uden_claim_kan_taende_reglen_med_sit_eget_app_id(ejer):
+    """Han sad i desk på sin computer og kunne ikke tænde reglen.
+
+    Svaret var «Denne klient er ikke en desk-installation (intet app_id) —
+    tænd reglen fra desk på din computer, så den selv bliver tilføjet.» Han
+    VAR i desk på sin computer. Målt på hans token: claims er
+    `exp, iat, iss, role, sub` — claim'en sættes kun af Google-login-flowet,
+    og hans token er ældre. Uden en fallback var reglen permanent utændelig.
+    """
+    seed, som = ejer
+    som(app_id="")                                   # tokenet bærer INTET app_id
+    ae.saet_enheds_krav(ae.KravReq(
+        aktiv=True, totp=tv.generate_code(seed), navn="CheifOne",
+        app_id="desk-uuid-fra-broen",
+    ))
+    assert dd.kraev_aktivt() is True
+    assert [e["navn"] for e in ae.enheder()["enheder"]] == ["CheifOne"]
+
+
+def test_uden_baade_claim_og_krop_siger_den_stadig_fra(ejer):
+    """Fallbacken må ikke gøre reglen tændelig fra hvad som helst."""
+    seed, som = ejer
+    som(app_id="")
+    with pytest.raises(HTTPException) as e:
+        ae.saet_enheds_krav(ae.KravReq(aktiv=True, totp=tv.generate_code(seed)))
+    assert e.value.status_code == 400
+    assert dd.kraev_aktivt() is False                 # og reglen blev IKKE tændt
+
+
+def test_claimen_vinder_over_kroppen(ejer):
+    """Et token-bundet desk må ikke kunne omskrive sin egen identitet.
+
+    Registret nøgles på app_id'et (`noegle`), så påstanden kan måles direkte:
+    efter en registrering hvor tokenet siger ét og kroppen noget andet, skal
+    rækken bære TOKENETS værdi.
+    """
+    seed, som = ejer
+    som(app_id="fra-token")
+    ae.registrer_denne_computer(ae.TotpReq(
+        totp=tv.generate_code(seed), navn="X", app_id="paastaaet-af-klienten"))
+    # `liste()` viser ikke nøglen (den er app_id'et), så vi spørger registret
+    # direkte — det er dér påstanden kan efterprøves.
+    with dd.connect() as conn:
+        noegler = [r[0] for r in conn.execute(
+            "SELECT noegle FROM enheder WHERE user_id = 'u1'").fetchall()]
+    assert noegler == ["fra-token"]
+
+
+def test_koden_kraeves_FOER_app_id_overhovedet_laeses(ejer):
+    """Fallbacken hviler på at totrinskoden er den anden faktor."""
+    seed, som = ejer
+    som(app_id="")
+    with pytest.raises(HTTPException) as e:
+        ae.registrer_denne_computer(ae.TotpReq(totp="000000", app_id="hvad-som-helst"))
+    assert e.value.status_code in (400, 401, 403, 429)
+    assert ae.enheder()["enheder"] == []

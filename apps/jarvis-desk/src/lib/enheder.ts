@@ -34,11 +34,34 @@ async function kald<T>(config: ApiConfig, sti: string, init: { method?: 'GET' | 
   }
 }
 
+/** Desk-installationens eget app-id, fra Electron-broen. "" i en browser.
+ *
+ *  Serveren læser normalt id'et ud af tokenets `app_id`-claim. Bjørns token
+ *  har den ikke — claim'en sættes kun af Google-login-flowet, og hans token er
+ *  ældre. Uden det her kunne han ikke tænde reglen fra den computer han sad
+ *  ved, og beskeden bad ham om netop dét. */
+async function appId(): Promise<string> {
+  try {
+    // `config`, ikke `settings` — navnet står i electron/preload.ts.
+    // Et forkert navn ville give en tavst tom streng, og fejlen ville se ud
+    // som om serveren stadig manglede app-id'et.
+    const bro = (window as unknown as {
+      jarvisDesk?: { config?: { get?: () => Promise<{ appId?: string }> } }
+    }).jarvisDesk
+    const s = await bro?.config?.get?.()
+    return String(s?.appId ?? '')
+  } catch {
+    return ''   // ingen bro (browser/test) — serveren falder tilbage på claim'en
+  }
+}
+
 export const hentEnheder = (c: ApiConfig) => kald<EnhedsOverblik>(c, '/api/auth/enheder')
 export const fjernEnhed = (c: ApiConfig, id: string) => kald<{ ok: boolean }>(c, `/api/auth/enheder/${encodeURIComponent(id)}`, { method: 'DELETE' })
-export const tilfoejDenneComputer = (c: ApiConfig, totp: string, navn: string) =>
-  kald<Enhed>(c, '/api/auth/enheder/denne-computer', { method: 'POST', body: { totp, navn } })
-export const saetEnhedsKrav = (c: ApiConfig, aktiv: boolean, totp: string, navn: string) =>
-  kald<{ ok: boolean }>(c, '/api/auth/enheds-krav', { method: 'PUT', body: { aktiv, totp, navn } })
+export const tilfoejDenneComputer = async (c: ApiConfig, totp: string, navn: string) =>
+  kald<Enhed>(c, '/api/auth/enheder/denne-computer',
+    { method: 'POST', body: { totp, navn, app_id: await appId() } })
+export const saetEnhedsKrav = async (c: ApiConfig, aktiv: boolean, totp: string, navn: string) =>
+  kald<{ ok: boolean }>(c, '/api/auth/enheds-krav',
+    { method: 'PUT', body: { aktiv, totp, navn, app_id: await appId() } })
 export const opretParring = (c: ApiConfig, totp: string) =>
   kald<{ code: string; expires_in: number }>(c, '/api/auth/pair/create', { method: 'POST', body: { totp } })

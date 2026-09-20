@@ -35,7 +35,8 @@ describe('afkortet værktøjs-resultat', () => {
   it('folder man ud, hentes resten og vises', async () => {
     render(<ToolCard block={blok()} density="full" beskedId="m1" config={config} />)
     await waitFor(() => expect(screen.getByText(/RESTEN-AF-OUTPUTTET/)).toBeTruthy())
-    const kaldt = String((global.fetch as unknown as { mock: { calls: unknown[][] } }).mock.calls[0][0])
+    const kald = (global.fetch as unknown as { mock: { calls: unknown[][] } }).mock.calls
+    const kaldt = String(kald[0]?.[0] ?? '')
     expect(kaldt).toContain('/chat/messages/m1/tool-result/call_1')
   })
 

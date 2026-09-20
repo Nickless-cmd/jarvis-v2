@@ -178,3 +178,93 @@ def test_provider_titel_stabil_paa_tvaers_af_antal(monkeypatch):
     a, b = with_n(1), with_n(2)
     assert a is not None and b is not None
     assert a["title"] == b["title"]
+
+
+# ── Regression 2026-09-20: ingen demotion-plan for en ALREADY-disabled provider ──
+# Problemet: health-checken pinger hvert endpoint i _PING_ENDPOINTS uanset
+# enabled-status. En provider der har været `enabled: false` i uger (sambanova,
+# 21/6) lander derfor i `unreachable`, og proposeren filede en demotion-plan
+# hvis trin 1 var en no-op. Målt: plan-1472fb6460 (19/9), dismissed 20/9.
+
+
+def _fresh_snap_with(monkeypatch, providers):
+    from datetime import UTC, datetime
+
+    import core.services.provider_health_check as phc
+
+    monkeypatch.setattr(
+        phc,
+        "latest_health_snapshot",
+        lambda: {
+            "checked_at": datetime.now(UTC).isoformat(),
+            "unreachable": list(providers),
+        },
+    )
+
+
+def test_provider_health_chronic_skips_already_disabled(monkeypatch):
+    from core.services import auto_improvement_proposer as aip
+
+    _fresh_snap_with(monkeypatch, ["sambanova"])
+    monkeypatch.setattr(aip, "_already_disabled_providers", lambda: {"sambanova"})
+    assert aip._check_provider_health_chronic() is None
+
+
+def test_provider_health_chronic_keeps_enabled_provider(monkeypatch):
+    from core.services import auto_improvement_proposer as aip
+
+    _fresh_snap_with(monkeypatch, ["groq", "sambanova"])
+    monkeypatch.setattr(aip, "_already_disabled_providers", lambda: {"sambanova"})
+    res = aip._check_provider_health_chronic()
+    assert res is not None
+    assert "groq" in res["why"]
+    # den fra-slåede provider må ikke nævnes i indgrebet
+    assert "sambanova" not in res["why"]
+    assert "sambanova" not in res["steps"][0]
+
+
+def test_provider_health_chronic_keeps_unknown_provider(monkeypatch):
+    """Ukendte navne (slet ikke i registret) filtreres ikke — vi kan ikke
+    hævde de er slået fra, så et reelt signal må gerne fyre."""
+    from core.services import auto_improvement_proposer as aip
+
+    _fresh_snap_with(monkeypatch, ["p0"])
+    monkeypatch.setattr(aip, "_already_disabled_providers", lambda: set())
+    res = aip._check_provider_health_chronic()
+    assert res is not None
+    assert "p0" in res["why"]
+
+
+def test_already_disabled_providers_reads_registry(monkeypatch):
+    import core.runtime.provider_router as pr
+    from core.services import auto_improvement_proposer as aip
+
+    monkeypatch.setattr(
+        pr,
+        "load_provider_router_registry",
+        lambda: {
+            "providers": [
+                {"provider": "groq", "enabled": True},
+                {"provider": "sambanova", "enabled": False},
+                {"provider": "opencode", "enabled": False},
+                {"provider": "cerebras", "enabled": True},
+                "ikke-en-dict",
+                {"provider": "", "enabled": False},
+            ],
+            "models": [],
+        },
+    )
+    assert aip._already_disabled_providers() == {"sambanova", "opencode"}
+
+
+def test_already_disabled_providers_empty_on_failure(monkeypatch):
+    """Kan registret ikke læses, filtrerer vi intet — hellere en plan for
+    meget end et reelt signal vi ikke ser."""
+    import core.runtime.provider_router as pr
+    from core.services import auto_improvement_proposer as aip
+
+    def boom():
+        raise RuntimeError("registry unavailable")
+
+    monkeypatch.setattr(pr, "load_provider_router_registry", boom)
+    assert aip._already_disabled_providers() == set()

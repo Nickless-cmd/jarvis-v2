@@ -454,9 +454,10 @@ _Auto improvement proposer — close the self-improvement loop SAFELY._
 | function | `_check_tick_quality_degraded` | `()` | Returns proposal payload if tick quality is degrading. | [src](../../../core/services/auto_improvement_proposer.py#L69) |
 | function | `_check_stale_goals` | `()` | Returns proposal payload if stale goals exist. | [src](../../../core/services/auto_improvement_proposer.py#L101) |
 | function | `_check_decision_adherence` | `()` | — | [src](../../../core/services/auto_improvement_proposer.py#L131) |
-| function | `_check_provider_health_chronic` | `()` | If a provider is chronically down (>30 min), propose explicit demotion. | [src](../../../core/services/auto_improvement_proposer.py#L160) |
-| function | `generate_improvement_proposals` | `(*, session_id=…)` | Run all checks, file plans for any that fire. | [src](../../../core/services/auto_improvement_proposer.py#L202) |
-| function | `_exec_generate_improvement_proposals` | `(args)` | — | [src](../../../core/services/auto_improvement_proposer.py#L265) |
+| function | `_already_disabled_providers` | `()` | Providers der eksplicit er slaaet fra paa provider-niveau. | [src](../../../core/services/auto_improvement_proposer.py#L160) |
+| function | `_check_provider_health_chronic` | `()` | If a provider is chronically down (>30 min), propose explicit demotion. | [src](../../../core/services/auto_improvement_proposer.py#L184) |
+| function | `generate_improvement_proposals` | `(*, session_id=…)` | Run all checks, file plans for any that fire. | [src](../../../core/services/auto_improvement_proposer.py#L239) |
+| function | `_exec_generate_improvement_proposals` | `(args)` | — | [src](../../../core/services/auto_improvement_proposer.py#L302) |
 
 ## `core/services/auto_remember_subscriber.py`
 _Auto-remember subscriber — closes cross-session memory loop._

@@ -34,6 +34,19 @@ repos:
         always_run: true
         stages: [pre-commit]
 
+      # Pre-commit: en note skal have status, slags og sine fire
+      # overskrifter — «Overvejede alternativer» især. En note uden fravalg
+      # er en annoncering, ikke en beslutning. Og `forenkling` er en slags
+      # på lige fod med `funktion`: at fjerne noget igen skal være
+      # dokumenteret arbejde. Se docs/notes/README.md.
+      - id: verify-notes
+        name: Noter skal have status, slags og fravalg
+        entry: /opt/conda/envs/ai/bin/python scripts/verify_notes.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
       # Pre-commit: hver vagt skal have en test der ser den sige nej.
       # DeepSeek-harness har 60 verify-scripts og en .spec til hvert et. Vi
       # havde fire vagter uden — og en kilde-vagt der greppede efter en

@@ -74,6 +74,15 @@ _Vagt over vagterne: hver hook skal have en test der ser den sige nej._
 | function | `mangler` | `()` | (vagt, årsag) for hver vagt uden en test der ser den afvise. | [src](../../../scripts/verify_guard_tests.py#L56) |
 | function | `main` | `(argv=…)` | — | [src](../../../scripts/verify_guard_tests.py#L69) |
 
+## `scripts/verify_notes.py`
+_Vagt: en note skal have en status, en slags, og sine fire overskrifter._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `noter` | `()` | Kun noter i den NYE form. Den flade bunke er frosset og røres ikke. | [src](../../../scripts/verify_notes.py#L39) |
+| function | `fejl_i` | `(sti)` | — | [src](../../../scripts/verify_notes.py#L50) |
+| function | `main` | `(argv=…)` | — | [src](../../../scripts/verify_notes.py#L67) |
+
 ## `scripts/verify_silent_except.py`
 _Vagt: en slugt undtagelse skal navngives, og dens `try` skal være kort._
 

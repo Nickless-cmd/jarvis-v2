@@ -479,6 +479,40 @@ def chat_message_feedback(message_id: str, req: MessageFeedbackRequest) -> dict:
     return ud
 
 
+@router.get("/approvals/pending")
+def chat_pending_approval_any() -> dict:
+    """Venter der et godkendelses-kort for MIG — uanset hvilken samtale?
+
+    Session-udgaven nedenfor lukkede kun det halve hul. Bjørn 20/9-2026: «der
+    ligger en jeg ikke kan få lov at se som skal godkendes, den holder hans
+    run». Målt i det øjeblik: fire kort ventede, alle i en samtale desk ikke
+    selv streamede — og desk spurgte kun om sin egen arbejdende session.
+
+    Et kort hører til en EJER, ikke til det vindue der tilfældigvis er åbent.
+    `session_id` følger med, så klienten kan sige hvor det kom fra.
+
+    Tomt svar er et gyldigt svar. Kaster aldrig.
+    """
+    from core.identity.workspace_context import current_user_id
+    try:
+        from core.services.approval_runtime import pending_for_owner
+        kort = pending_for_owner(current_user_id() or "")
+    except Exception:
+        # chat.py har ingen modul-logger; en opsamling der fejler skal svare
+        # tomt frem for at vælte den samtale brugeren står i.
+        kort = None
+    if not kort:
+        return {"approval": None}
+    return {"approval": {
+        "approval_id": str(kort.get("approval_id") or ""),
+        "tool": str(kort.get("tool_name") or ""),
+        "arguments": kort.get("arguments") or {},
+        "run_id": str(kort.get("run_id") or ""),
+        "session_id": str(kort.get("session_id") or ""),
+        "created_at": str(kort.get("created_at") or ""),
+    }}
+
+
 @router.get("/sessions/{session_id}/pending-approval")
 def chat_pending_approval(session_id: str) -> dict:
     """Venter der et godkendelses-kort i DENNE samtale?

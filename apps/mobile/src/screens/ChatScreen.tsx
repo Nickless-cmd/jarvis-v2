@@ -197,6 +197,26 @@ export function ChatScreen({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [config, kodeTilstand, arbejder, ws.kind, ws.root])
 
+  // OPSAMLING AF VENTENDE GODKENDELSER (20/9-2026).
+  //
+  // Kortet kom før kun ud af streamen, så det fandtes udelukkende på den enhed
+  // der tilfældigvis streamede kørslen. Bjørn samme aften: «jeg måtte tænde
+  // testtelefonen for at få det kort som hverken desk eller min egen mobil
+  // viste». Testtelefonen var hægtet på den samtale; hans egen var ikke, og så
+  // fandtes kortet ikke for den.
+  //
+  // Hurtigt mens en tur arbejder, roligt ellers — et kort kan opstå i en helt
+  // anden samtale end den han står i, så der skal spørges uanset.
+  useEffect(() => {
+    if (!config) return
+    let stoppet = false
+    const hent = () => { if (!stoppet) void stream.opsamlVentende(config) }
+    hent()
+    const t = setInterval(hent, arbejder ? 4_000 : 15_000)
+    return () => { stoppet = true; clearInterval(t) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [config, arbejder])
+
   const aktivTitel = (sessions.sessions ?? []).find((x) => x.id === sessions.activeId)?.title || ''
   useEffect(() => {
     onKodeKontekst?.({ titel: aktivTitel, git })

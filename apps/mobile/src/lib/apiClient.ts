@@ -330,6 +330,38 @@ export async function hentKodeAdgang(config: ApiConfig): Promise<{ kraevAktivt: 
   }
 }
 
+/** Et ventende godkendelses-kort for MIG — uanset hvilken samtale.
+ *
+ *  ## Hvorfor mobilen spørger selv nu (20/9-2026)
+ *
+ *  Kortet nåede KUN den enhed der tilfældigvis streamede kørslen i det
+ *  øjeblik det blev lavet: mobilen læste `approval_request` ud af streamen og
+ *  havde ingen anden vej. Bjørn samme aften: «jeg måtte tænde testtelefonen
+ *  for at få det kort som hverken desk eller min egen mobil viste».
+ *
+ *  Testtelefonen var den enhed der var hægtet på den samtale. Hans egen var
+ *  det ikke, og så fandtes kortet ikke for den. Et kort hører til en EJER.
+ */
+export async function hentVentendeGodkendelse(
+  config: ApiConfig,
+): Promise<{ approvalId: string; tool: string; detail: string; sessionId: string } | null> {
+  try {
+    const r = await apiFetch<{ approval?: { approval_id?: string; tool?: string; arguments?: Record<string, unknown>; session_id?: string } | null }>(
+      config, '/chat/approvals/pending',
+    )
+    const a = r?.approval
+    if (!a?.approval_id) return null
+    const arg = a.arguments || {}
+    const detail = String(arg.command ?? arg.path ?? arg.file_path ?? '').slice(0, 140)
+    return {
+      approvalId: a.approval_id, tool: a.tool || 'tool', detail,
+      sessionId: String(a.session_id || ''),
+    }
+  } catch {
+    return null   // intet kort er et gyldigt svar; en fejl må ikke vise et falsk
+  }
+}
+
 export async function getActiveRuns(config: ApiConfig): Promise<string[]> {
   const data = await apiFetch<{ session_ids?: string[] }>(config, '/chat/active-runs')
   return data.session_ids ?? []

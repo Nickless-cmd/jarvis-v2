@@ -1,5 +1,5 @@
 import { createContext, useContext, useMemo, useRef, useState, type ReactNode } from 'react'
-import { approveTool, cancelRun, denyTool } from '../lib/apiClient'
+import { approveTool, cancelRun, denyTool, hentVentendeGodkendelse } from '../lib/apiClient'
 import { blocksToPersisted } from '../lib/blocksToPersisted'
 import type { ApprovalViewModel } from '../components/ApprovalCard'
 import type { ContentBlock } from '../lib/sseProtocol'
@@ -37,6 +37,8 @@ interface StreamContextValue {
       researchMode?: boolean
     }
   ) => void
+  /** Saml et ventende godkendelses-kort op på tværs af samtaler. */
+  opsamlVentende: (config: ApiConfig) => Promise<void>
   stop: (config: ApiConfig) => Promise<void>
   approve: (config: ApiConfig) => Promise<void>
   deny: (config: ApiConfig) => Promise<void>
@@ -274,6 +276,25 @@ export function StreamProvider({ children }: { children: ReactNode }) {
     () => ({
       state,
       approval,
+      /** Saml et ventende kort op — uanset hvilken samtale det hører til.
+       *
+       *  Kortet kom før KUN ud af streamen, så det fandtes udelukkende på den
+       *  enhed der tilfældigvis streamede kørslen. Bjørn 20/9-2026: «jeg måtte
+       *  tænde testtelefonen for at få det kort som hverken desk eller min egen
+       *  mobil viste». Testtelefonen var hægtet på samtalen; hans egen var ikke.
+       *
+       *  Har vi allerede et kort, rører vi det ikke: det er dét han står med. */
+      opsamlVentende: async (config: ApiConfig) => {
+        if (approval) return
+        const k = await hentVentendeGodkendelse(config)
+        if (!k) return
+        setApproval({
+          approvalId: k.approvalId,
+          tool: k.tool,
+          message: 'Jarvis beder om tilladelse.',
+          detail: k.detail || undefined,
+        })
+      },
       lastError,
       streamError,
       clearError: () => { setStreamError(null); setLastError(null) },

@@ -112,3 +112,104 @@ def test_udsend_kaster_ikke_naar_bussen_er_nede(monkeypatch):
     monkeypatch.setattr(bus_mod.event_bus, "publish", braender)
     # En fejl her maa ikke dræbe vagt-loekken — den skal bare logge og koere videre.
     mod._udsend({"version": "0.6.59"})
+
+
+def test_udsend_siger_til_naar_eventet_ikke_kom_afsted(monkeypatch):
+    """Returvaerdien er det loopet rykker sin baseline efter."""
+    from core.eventbus import bus as bus_mod
+
+    monkeypatch.setattr(bus_mod.event_bus, "publish", lambda *a, **kw: None)
+    assert mod._udsend({"version": "0.6.61"}) is True
+
+    def braender(*_a, **_kw):
+        raise RuntimeError("bussen er nede")
+
+    monkeypatch.setattr(bus_mod.event_bus, "publish", braender)
+    assert mod._udsend({"version": "0.6.61"}) is False
+
+
+def test_baselinen_rykker_ikke_naar_udsendelsen_fejler(monkeypatch, tmp_path):
+    """Regression 20/9-2026, anden halvdel: 0.6.61 blev tabt for evigt.
+
+    Foerste halvdel var at familien `app` ikke var registreret. Denne er hvad
+    der gjorde tabet permanent: loopet skrev state-filen videre til 0.6.61
+    UANSET at udsendelsen fejlede. Fra da af saa det ud som om releasen var
+    meldt — og naeste genstart sammenlignede 0.6.61 med 0.6.61 og tav.
+
+    En baseline der rykker paa et mislykket udsend er vaerre end ingen
+    baseline: den skjuler at signalet aldrig kom frem.
+    """
+    import asyncio
+
+    import pytest
+
+    from core.eventbus import bus as bus_mod
+
+    monkeypatch.setenv("JARVIS_HOME", str(tmp_path))
+    mod._skriv_sidste_tag("jarvis-desktop-v0.6.60")
+    monkeypatch.setattr(
+        mod,
+        "hent_seneste",
+        lambda: {
+            "tag": "jarvis-desktop-v0.6.61",
+            "version": "0.6.61",
+            "url": None,
+            "published_at": None,
+        },
+    )
+
+    def braender(*_a, **_kw):
+        raise RuntimeError("bussen er nede")
+
+    monkeypatch.setattr(bus_mod.event_bus, "publish", braender)
+
+    class Stop(Exception):
+        pass
+
+    async def stop(_sekunder):
+        raise Stop()
+
+    # sleep ligger UDEN for loopets try — en raise her standser vagten efter
+    # praecis ét gennemloeb, saa testen ikke loeber i det uendelige.
+    monkeypatch.setattr(asyncio, "sleep", stop)
+    with pytest.raises(Stop):
+        asyncio.run(mod._vagt_loop())
+
+    assert mod._laes_sidste_tag() == "jarvis-desktop-v0.6.60", (
+        "baselinen rykkede videre selvom eventet ikke kom afsted — saa ville "
+        "releasen aldrig blive meldt igen"
+    )
+
+
+def test_baselinen_rykker_naar_udsendelsen_lykkes(monkeypatch, tmp_path):
+    import asyncio
+
+    import pytest
+
+    from core.eventbus import bus as bus_mod
+
+    monkeypatch.setenv("JARVIS_HOME", str(tmp_path))
+    mod._skriv_sidste_tag("jarvis-desktop-v0.6.60")
+    monkeypatch.setattr(
+        mod,
+        "hent_seneste",
+        lambda: {"tag": "jarvis-desktop-v0.6.61", "version": "0.6.61"},
+    )
+
+    udsendte: list[dict] = []
+    monkeypatch.setattr(
+        bus_mod.event_bus, "publish", lambda kind, payload=None, **kw: udsendte.append(payload or {})
+    )
+
+    class Stop(Exception):
+        pass
+
+    async def stop(_sekunder):
+        raise Stop()
+
+    monkeypatch.setattr(asyncio, "sleep", stop)
+    with pytest.raises(Stop):
+        asyncio.run(mod._vagt_loop())
+
+    assert [p.get("version") for p in udsendte] == ["0.6.61"]
+    assert mod._laes_sidste_tag() == "jarvis-desktop-v0.6.61"

@@ -8,6 +8,8 @@ Hermetisk: monkeypatcher state-persistens væk, så testen ikke rører runtime-s
 """
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
+
 import pytest
 
 from core.services import central_timeseries
@@ -73,7 +75,17 @@ def test_binding_is_self_safe(monkeypatch):
 def test_legacy_conversation_topics_are_excluded_before_quarantine(monkeypatch, tmp_path):
     db_core.close_pooled_connection()
     monkeypatch.setattr(db_core, "DB_PATH", tmp_path / "world-signals.db")
-    now = "2026-09-10T10:00:00+00:00"
+    # RELATIV dato, ikke en fast. Her stod «2026-09-10T10:00:00+00:00», og
+    # `build_runtime_world_model_signal_surface` kalder først
+    # `refresh_runtime_world_model_signal_statuses`, som markerer et signal
+    # «stale» efter `_STALE_AFTER_DAYS` (10). Den 20/9-2026 kl. 10:00 UTC blev
+    # fixturen præcis 10 døgn gammel, og testen skiftede fra grøn til rød midt
+    # på dagen — uden at en linje kode var ændret. To fulde kørsler samme
+    # formiddag lå på hver sin side af grænsen.
+    #
+    # Halvdelen af vinduet: rigeligt inde i det, og den knækker ikke hvis
+    # grænsen sættes lidt ned.
+    now = (datetime.now(UTC) - timedelta(days=max(wm._STALE_AFTER_DAYS // 2, 1))).isoformat()
 
     def add(signal_id: str, signal_type: str) -> None:
         upsert_runtime_world_model_signal(
@@ -101,7 +113,9 @@ def test_legacy_conversation_topics_are_excluded_before_quarantine(monkeypatch, 
     surface = wm.build_runtime_world_model_signal_surface(limit=1)
 
     assert [item["signal_id"] for item in surface["items"]] == ["real-world-signal"]
-    assert surface["summary"]["active_count"] == 1
+    assert surface["summary"]["active_count"] == 1, (
+        "signalet blev markeret stale — er fixturens dato faldet ud af "
+        f"vinduet på {wm._STALE_AFTER_DAYS} dage?")
     db_core.close_pooled_connection()
 
 

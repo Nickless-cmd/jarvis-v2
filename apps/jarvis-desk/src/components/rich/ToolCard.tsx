@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Check, X, Loader, FileDiff } from 'lucide-react'
 import type { ContentBlock } from '../../lib/sseProtocol'
 import { lookupTool } from '../../lib/toolRegistry'
@@ -8,6 +8,7 @@ import { DiffView } from './DiffView'
 import { PauseAndAskCard } from './PauseAndAskCard'
 import { parsePauseAsk } from '../../lib/pauseAsk'
 import { memoryWriteOutcome } from '../../lib/toolRound'
+import { hentVaerktoejsResultat, type ApiConfig } from '../../lib/api'
 
 /** Density-aware, værktøjs-specifik tool-kald-visning (Claude Desktop-stil).
  *  bash → terminal-blok, write/edit → fil-header + diff, read/glob/grep → kompakt.
@@ -17,14 +18,36 @@ export function ToolCard({
   block,
   density,
   aabenFraStart = false,
+  beskedId,
+  config,
 }: {
   block: Extract<ContentBlock, { type: 'tool_use' }>
   density: 'compact' | 'full'
   /** Visningen «Alt»: åbent fra start, men kan stadig foldes. */
   aabenFraStart?: boolean
+  /** Beskeden kaldet hører til — nødvendig for at hente et afkortet resultat. */
+  beskedId?: string
+  config?: ApiConfig
 }) {
   const [open, setOpen] = useState(density === 'full' || aabenFraStart)
   const expanded = density === 'full' || open
+
+  // Et langt resultat sendes afkortet med samtalen (serveren: de første 2.000
+  // tegn). Resten hentes FØRST når linjen foldes ud — samme greb som
+  // tænke-blokkens hale. Uden config eller besked-id viser vi det vi har.
+  const [resten, setResten] = useState<string | null>(null)
+  const [henter, setHenter] = useState(false)
+  useEffect(() => {
+    if (!expanded || !block.resultAfkortet || resten || henter) return
+    if (!config || !beskedId) return
+    setHenter(true)
+    hentVaerktoejsResultat(config, beskedId, block.id)
+      .then((fuldt) => setResten(fuldt))
+      .catch(() => { /* behold det afkortede — bedre end en tom linje */ })
+      .finally(() => setHenter(false))
+  }, [expanded, block.resultAfkortet, block.id, beskedId, config, resten, henter])
+
+  const resultat = resten ?? block.result
 
   const args = parseArgs(block)
   const fam = toolFamily(block.name)
@@ -90,7 +113,14 @@ export function ToolCard({
         ? <div className="toolcard-body"><PauseAndAskCard ask={ask} /></div>
         : expanded && (
         <div className="toolcard-body">
-          {renderBody(fam, args, block.result)}
+          {renderBody(fam, args, resultat)}
+          {block.resultAfkortet && !resten && (
+            <div className="toolcard-afkortet">
+              {henter
+                ? 'henter resten …'
+                : `viser de første ${(block.result?.length ?? 0).toLocaleString('da-DK')} af ${(block.resultTegnIAlt ?? 0).toLocaleString('da-DK')} tegn`}
+            </div>
+          )}
         </div>
       )}
     </div>

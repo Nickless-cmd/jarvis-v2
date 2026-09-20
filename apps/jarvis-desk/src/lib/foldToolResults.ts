@@ -31,7 +31,12 @@ export function foldToolResults(blocks: Array<Record<string, unknown>>): Content
       }
       const tu = out[at] as Extract<ContentBlock, { type: 'tool_use' }>
       const status = b.status === 'error' || b.is_error ? 'error' : 'done'
-      out[at] = { ...tu, status, result: String(b.content ?? '') }
+      // Serveren sender kun begyndelsen af et langt resultat (20/9-2026);
+      // markeringen skal med, ellers tror kortet at det har det hele.
+      out[at] = {
+        ...tu, status, result: String(b.content ?? ''),
+        ...(b.truncated ? { resultAfkortet: true, resultTegnIAlt: Number(b.total_chars) || undefined } : {}),
+      }
     } else if (b.type === 'tool_use_summary' && typeof b.summary === 'string' && b.summary.trim()) {
       // Rundens sætning (19/9-2026). Før blev den kun streamet og var væk
       // efter en genindlæsning; nu gemmer serveren den, og den må ikke falde

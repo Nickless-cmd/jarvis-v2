@@ -538,6 +538,82 @@ def get_message_reasoning(message_id: str) -> str | None:
     return str(row["reasoning_content"] or "")
 
 
+
+# Hvor meget af et værktøjs-resultat der følger med samtalen. Resten hentes
+# når nogen folder linjen ud — samme greb som tænke-blokkens hale.
+TOOL_RESULT_GRAENSE = 2000
+
+
+def _er_json(tekst: str) -> bool:
+    try:
+        json.loads(tekst)
+    except Exception:
+        return False
+    return True
+
+
+def _afkort_tool_resultater(blokke: list[dict]) -> list[dict]:
+    """Lange værktøjs-resultater bærer kun deres begyndelse ud til klienten.
+
+    Målt 20/9-2026 på Bjørns samtale: 2.309 resultater på 5,7 MB, hvoraf
+    2,5 MB ligger efter de første 2.000 tegn. Det er hele filer og lange
+    bash-output, som ingen læser uden at folde linjen ud.
+
+    To ting røres IKKE:
+      - **JSON-resultater** (0,33 MB i alt). Klienten parser dem for at tegne
+        «+N −M» og sammendraget; et afkortet JSON-dokument ville ikke kunne
+        parses, og tallene ville forsvinde fra linjen.
+      - Alt under grænsen — langt de fleste linjer står derfor helt som før.
+
+    Den afkortede blok bærer `truncated` og `total_chars`, så klienten kan
+    sige det ærligt og hente resten via
+    `GET /chat/messages/{id}/tool-result/{tool_use_id}`.
+    """
+    ud: list[dict] = []
+    for b in blokke:
+        if (
+            isinstance(b, dict)
+            and b.get("type") == "tool_result"
+            and isinstance(b.get("content"), str)
+            and len(b["content"]) > TOOL_RESULT_GRAENSE
+            and not _er_json(b["content"])
+        ):
+            ud.append({
+                **b,
+                "content": b["content"][:TOOL_RESULT_GRAENSE],
+                "truncated": True,
+                "total_chars": len(b["content"]),
+            })
+        else:
+            ud.append(b)
+    return ud
+
+
+def get_message_tool_result(message_id: str, tool_use_id: str) -> str | None:
+    """Ét fuldt værktøjs-resultat — dovent, kun når nogen folder linjen ud.
+
+    ``None`` = beskeden eller kaldet findes ikke (kalderen svarer 404).
+    """
+    mid = (message_id or "").strip()
+    tid = (tool_use_id or "").strip()
+    if not mid or not tid:
+        return None
+    with connect() as conn:
+        row = conn.execute(
+            "SELECT content_json FROM chat_messages WHERE message_id = ?", (mid,)
+        ).fetchone()
+    if row is None or not row["content_json"]:
+        return None
+    try:
+        blokke = json.loads(str(row["content_json"]))
+    except Exception:
+        return None
+    for b in blokke if isinstance(blokke, list) else []:
+        if isinstance(b, dict) and b.get("type") == "tool_result" and b.get("tool_use_id") == tid:
+            return str(b.get("content") or "")
+    return None
+
+
 def get_chat_session(session_id: str) -> dict[str, object] | None:
     normalized = (session_id or "").strip()
     if not normalized:
@@ -584,13 +660,20 @@ def get_chat_session(session_id: str) -> dict[str, object] | None:
         # Værktøjslinjerne på skærmen kommer fra assistent-beskedens egne
         # blokke. Referencen følger med, så en klient der VIL have outputtet
         # kan hente det.
-        blocks = (
-            []
-            if role == "compact_marker" and content != raw_content
-            else _content_json_for_row(
-                role, content, row["content_json"], hent_resultat=(role != "tool")
+        if role == "compact_marker" and content != raw_content:
+            blocks = []
+        elif role == "tool" and not row["content_json"]:
+            # Rækkens tekst sendes allerede i `content`, og blokken ville være
+            # en ORDRET kopi af den — 1,3 MB dobbelt pr. hentning. Mobilen
+            # tegner `content`, desk filtrerer rollen fra, eksporten springer
+            # den over. Har en række FAKTISK gemte blokke, sendes de som de er.
+            blocks = []
+        else:
+            blocks = _afkort_tool_resultater(
+                _content_json_for_row(
+                    role, content, row["content_json"], hent_resultat=(role != "tool")
+                )
             )
-        )
         message_items.append({
             "id": str(row["message_id"]),
             "role": role,

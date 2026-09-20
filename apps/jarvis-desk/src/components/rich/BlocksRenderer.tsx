@@ -1,4 +1,5 @@
 import type { ContentBlock } from '../../lib/sseProtocol'
+import type { ApiConfig } from '../../lib/api'
 import { groupToolRounds, type RenderBlock } from '../../lib/toolRounds'
 import { denseBlocks } from '../../lib/blockHelpers'
 import { MarkdownRenderer } from './MarkdownRenderer'
@@ -107,10 +108,15 @@ export function BlocksRenderer({
   streaming,
   rundeEtiketter,
   tankeResumeer,
+  beskedId,
+  config,
 }: {
   blocks: ContentBlock[]
   density: 'compact' | 'full'
   streaming: boolean
+  /** Beskeden blokkene hører til — så et afkortet værktøjs-resultat kan hentes. */
+  beskedId?: string
+  config?: ApiConfig
   /**
    * Runde-etiketter slået op på tool-id — «Rettede fejl i login».
    *
@@ -143,7 +149,7 @@ export function BlocksRenderer({
   return (
     <>
       {rendered.map((b, i) => (
-        <BlockView key={i} block={b} density={density} streaming={streaming} isLast={i === lastIdx} rundeEtiketter={etiketter} tankeResumeer={resumeer} visning={visning} />
+        <BlockView key={i} block={b} density={density} streaming={streaming} isLast={i === lastIdx} rundeEtiketter={etiketter} tankeResumeer={resumeer} visning={visning} beskedId={beskedId} config={config} />
       ))}
       <EditedFilesCard filer={redigerede} onAabn={visAendring} />
     </>
@@ -158,11 +164,16 @@ function BlockView({
   rundeEtiketter,
   tankeResumeer,
   visning,
+  beskedId,
+  config,
 }: {
   block: RenderBlock | ProgressTrailBlock
   density: 'compact' | 'full'
   streaming: boolean
   isLast: boolean
+  /** Se `BlocksRenderer` — til at hente et afkortet værktøjs-resultat. */
+  beskedId?: string
+  config?: ApiConfig
   /** Rundens overskrift, slået op på kaldets id. Se `BlocksRenderer`. */
   rundeEtiketter?: Record<string, string>
   tankeResumeer?: Record<string, string>
@@ -200,7 +211,8 @@ function BlockView({
     case 'tool_use':
       return SKILL_VAERKTOEJER.has(block.name)
         ? <SkillLine block={block} density={density} />
-        : <ToolCard block={block} density={density} aabenFraStart={visning === 'verbose'} />
+        : <ToolCard block={block} density={density} aabenFraStart={visning === 'verbose'}
+            beskedId={beskedId} config={config} />
     case 'image':
       // LIVE billede bærer en `src` (data-URL fra streamen) og kan tegnes med
       // det samme. PERSISTERET bærer kun en reference og skal hentes med token

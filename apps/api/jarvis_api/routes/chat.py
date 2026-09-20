@@ -12,6 +12,7 @@ from core.services.chat_sessions import (
     delete_chat_session,
     get_chat_session,
     get_message_reasoning,
+    get_message_tool_result,
     list_chat_sessions,
     rename_chat_session,
     session_version,
@@ -470,6 +471,32 @@ def chat_message_feedback(message_id: str, req: MessageFeedbackRequest) -> dict:
     if ud.get("status") == "error":
         raise HTTPException(status_code=400, detail=ud.get("error") or "ugyldig stemme")
     return ud
+
+
+@router.get("/messages/{message_id}/tool-result/{tool_use_id}")
+def chat_message_tool_result(message_id: str, tool_use_id: str) -> dict:
+    """Ét FULDT værktøjs-resultat — dovent, kun når nogen folder linjen ud.
+
+    Blokken i samtalen bærer kun de første 2.000 tegn af et langt resultat
+    (`_afkort_tool_resultater`), fordi hele samtalen sendes ved hver hentning:
+    2.309 resultater vejede 5,7 MB, hvoraf 2,5 MB lå efter de første 2.000
+    tegn. JSON-resultater afkortes aldrig, så «+N −M» og sammendraget står
+    urørt.
+
+    Adgangen går via beskedens EGEN samtale — ellers kunne man læse en andens
+    værktøjs-output alene med et besked-id.
+    """
+    from core.runtime.db import connect
+    with connect() as _c:
+        _r = _c.execute(
+            "SELECT session_id FROM chat_messages WHERE message_id = ?", (message_id,)
+        ).fetchone()
+    if _r:
+        _kraev_adgang(str(_r[0]))
+    indhold = get_message_tool_result(message_id, tool_use_id)
+    if indhold is None:
+        raise HTTPException(status_code=404, detail="kaldet findes ikke")
+    return {"id": message_id, "tool_use_id": tool_use_id, "content": indhold, "chars": len(indhold)}
 
 
 @router.get("/messages/{message_id}/reasoning")

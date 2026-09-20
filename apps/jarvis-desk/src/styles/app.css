@@ -1437,6 +1437,11 @@ button.sidebar-group svg { flex: none; opacity: .7; }
   background: var(--bg-1); border-left: 1px solid var(--line);
   border-radius: 0 var(--radius-sm, 6px) var(--radius-sm, 6px) 0;
 }
+/* «viser de første 2.000 af 9.412 tegn» — resten hentes ved udfoldning
+   (20/9-2026). Dæmpet: det er en oplysning om visningen, ikke om resultatet. */
+.toolcard-afkortet {
+  margin-top: 6px; font-size: 11px; color: var(--fg-3); opacity: 0.8;
+}
 /* Sammenfoldet read/søge-gruppe: én kompakt linje m. tæller, foldbar */
 /* Runde-linjen, 1:1 med mobilens InlineToolGroup: ingen ramme, ingen baggrund,
    ingen skygge. `</>` + én saetning + chevron. Mobilen bruger 15px i fg2 og

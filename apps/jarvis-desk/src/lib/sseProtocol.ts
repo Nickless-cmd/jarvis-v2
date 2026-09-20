@@ -144,6 +144,11 @@ export type ContentBlock =
       partialJson?: string
       status?: 'running' | 'done' | 'error'
       result?: string
+      /** Serveren sendte kun begyndelsen af et langt resultat; resten hentes
+       *  med GET /chat/messages/{id}/tool-result/{tool_use_id}. */
+      resultAfkortet?: boolean
+      /** Hele resultatets længde i tegn — så linjen kan sige det ærligt. */
+      resultTegnIAlt?: number
       /** Klientens ur da kaldet startede — til live-tiden på runde-linjen. */
       startet?: number
       /**

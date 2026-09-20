@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7827/15213 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7830/15217 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,7 +8,7 @@ Generated from source. 7827/15213 functions/methods documented (51%). The list b
 |---|---|---|---|
 | `apps.api.jarvis_api` | 34 | 36 | 94% |
 | `apps.api.jarvis_api.middleware` | 8 | 19 | 42% |
-| `apps.api.jarvis_api.routes` | 677 | 898 | 75% |
+| `apps.api.jarvis_api.routes` | 678 | 899 | 75% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 70 | 172 | 40% |
 | `apps.desktop` | 6 | 7 | 85% |
@@ -25,7 +25,7 @@ Generated from source. 7827/15213 functions/methods documented (51%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 682 | 1260 | 54% |
-| `core.services` | 5173 | 10374 | 49% |
+| `core.services` | 5175 | 10377 | 49% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 107 | 183 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -818,13 +818,13 @@ Generated from source. 7827/15213 functions/methods documented (51%). The list b
 - `core/services/central_trace.py` :: `sink` (L96)
 - `core/services/central_white_rabbit.py` :: `build_white_rabbit_surface` (L58)
 - `core/services/central_white_rabbit.py` :: `record_white_rabbit` (L62)
-- `core/services/chat_sessions.py` :: `append_chat_message` (L632)
+- `core/services/chat_sessions.py` :: `append_chat_message` (L715)
 - `core/services/chat_sessions.py` :: `create_chat_session` (L63)
-- `core/services/chat_sessions.py` :: `delete_chat_session` (L1324)
-- `core/services/chat_sessions.py` :: `get_chat_session` (L541)
-- `core/services/chat_sessions.py` :: `recent_chat_session_messages` (L1004)
-- `core/services/chat_sessions.py` :: `recent_chat_tool_messages` (L1285)
-- `core/services/chat_sessions.py` :: `rename_chat_session` (L1310)
+- `core/services/chat_sessions.py` :: `delete_chat_session` (L1407)
+- `core/services/chat_sessions.py` :: `get_chat_session` (L617)
+- `core/services/chat_sessions.py` :: `recent_chat_session_messages` (L1087)
+- `core/services/chat_sessions.py` :: `recent_chat_tool_messages` (L1368)
+- `core/services/chat_sessions.py` :: `rename_chat_session` (L1393)
 - `core/services/cheap_lane_admission.py` :: `acquire_admission` (L123)
 - `core/services/cheap_lane_admission.py` :: `admission_snapshot` (L102)
 - `core/services/cheap_lane_admission.py` :: `release_admission` (L155)

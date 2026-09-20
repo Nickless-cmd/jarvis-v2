@@ -1099,6 +1099,8 @@ export function CodeView({
               density="compact"
               streaming={false}
               createdAt={m.created_at}
+              beskedId={m.id}
+              config={config}
               onResend={m.role === 'user' ? resendStabil : undefined}
               pinned={fastgjorte.pins.includes(m.id)}
               onTogglePin={sessionId ? pinFor(m.id) : undefined}

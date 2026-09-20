@@ -911,6 +911,7 @@ export function ChatView({
             density="compact"
             streaming={false}
             createdAt={m.created_at}
+            beskedId={m.id}
             onResend={m.role === 'user' ? resendStabil : undefined}
             config={raekkeConfig}
             pinned={fastgjorte.pins.includes(m.id)}

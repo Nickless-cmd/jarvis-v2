@@ -31,6 +31,7 @@ function MessageRowImpl({
   pinned,
   onTogglePin,
   onRewind,
+  beskedId,
 }: {
   role: 'user' | 'assistant'
   blocks: ContentBlock[]
@@ -54,6 +55,8 @@ function MessageRowImpl({
   onTogglePin?: () => void
   /** Kun bruger-beskeder: spol tilbage hertil (Claude Desktop §8). */
   onRewind?: () => void
+  /** Beskedens id — så et afkortet værktøjs-resultat kan hentes ved udfoldning. */
+  beskedId?: string
 }) {
   // denseBlocks ÉN gang ved indgangen: state.blocks/content kan være SPARSOMT
   // (foldede tool_result-content-blok-indices → undefined-huller). ALLE nedstrøms-
@@ -107,7 +110,7 @@ function MessageRowImpl({
               tool-blok under streaming) isoleres i stedet for at nuke hele appen
               til sort skærm. Fejlen logges (localStorage jarvis-desk:lastCrash). */}
           <InlineErrorBoundary label="assistant-blocks">
-            <BlocksRenderer blocks={blocks} density={density} streaming={streaming} rundeEtiketter={rundeEtiketter} tankeResumeer={tankeResumeer} />
+            <BlocksRenderer blocks={blocks} density={density} streaming={streaming} rundeEtiketter={rundeEtiketter} tankeResumeer={tankeResumeer} beskedId={beskedId} config={config} />
             {!streaming && detectArtifacts(blocks).map((a, i) => (
               <ArtifactAffordance key={`${a.kind}-${i}`} artifact={a} />
             ))}

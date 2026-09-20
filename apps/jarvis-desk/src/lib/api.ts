@@ -1015,6 +1015,21 @@ export interface PendingNotification {
   session_id: string
 }
 
+/** Det FULDE værktøjs-resultat bag ét kald — kun når nogen folder linjen ud.
+ *
+ *  Samtalen bærer de første 2.000 tegn af et langt resultat (serveren
+ *  afkorter; JSON-resultater aldrig, så «+N −M» står urørt). Resten ligger
+ *  her, ét kald ad gangen. */
+export async function hentVaerktoejsResultat(
+  config: ApiConfig, beskedId: string, toolUseId: string,
+): Promise<string> {
+  const r = await apiFetch<{ content?: string }>(
+    config,
+    `/chat/messages/${encodeURIComponent(beskedId)}/tool-result/${encodeURIComponent(toolUseId)}`,
+  )
+  return String(r.content ?? '')
+}
+
 /** Hent ventende proaktive desktop-notifikationer (drainer server-køen). */
 export async function fetchPendingNotifications(config: ApiConfig): Promise<PendingNotification[]> {
   try {

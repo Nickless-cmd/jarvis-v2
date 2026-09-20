@@ -31,16 +31,21 @@ def test_legacy_text_message_reconstructs_to_text_block():
     assert msg["content_json"] == [{"type": "text", "text": "gammel prosa"}]
 
 
-def test_legacy_tool_message_reconstructs_to_tool_result_block():
+def test_vaerktoejsraekke_sender_kvittering_ikke_output():
+    """ÆNDRET 20/9-2026. Før byggede vi en tool_result-blok med HELE outputtet,
+    slået op i tool_result_store. Målt på Bjørns samtale: 1,3 MB kvitteringer
+    blev til 8,4 MB output — ved hver hentning, 2.303 opslag pr. gang — og det
+    blev læst af ingen (desk filtrerer rollen fra, mobilen tegner rækkens
+    tekst, eksporten springer den over).
+
+    Kontrakten nu: rækken bærer sin reference i `content`, og blokken udelades
+    frem for at gentage den ordret. Se test_chat_session_vaerktoejsraekker.py."""
     sid = _sid()
-    # Gem et ægte tool-resultat og persistér en role="tool" besked der refererer det.
     result_id = save_tool_result("bash", {"cmd": "ls"}, "file1\nfile2")
     ref = build_tool_result_reference(result_id, tool_name="bash", summary="file1\nfile2")
     append_chat_message(session_id=sid, role="tool", content=ref)
     out = get_chat_session(sid)
     tool_msg = [m for m in out["messages"] if m["role"] == "tool"][-1]
-    blocks = tool_msg["content_json"]
-    assert len(blocks) == 1
-    assert blocks[0]["type"] == "tool_result"
-    assert blocks[0]["content"] == "file1\nfile2"
-    assert blocks[0]["name"] == "bash"
+    assert tool_msg["content_json"] == []
+    assert result_id in tool_msg["content"], "referencen skal kunne følges"
+    assert "file1" in tool_msg["content"], "mobilen tegner netop denne tekst"

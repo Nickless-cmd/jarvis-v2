@@ -1,6 +1,6 @@
 # API_REFERENCE
 
-> Generated 2026-09-20 from app.routes (live) — 601 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
+> Generated 2026-09-20 from app.routes (live) — 602 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
 
 | Method | Path | Response model | Source |
 |---|---|---|---|
@@ -237,6 +237,7 @@
 | POST | `/chat/git/worktree` | dict | chat |
 | POST | `/chat/messages/{message_id}/feedback` | dict | chat |
 | GET | `/chat/messages/{message_id}/reasoning` | dict | chat |
+| GET | `/chat/messages/{message_id}/tool-result/{tool_use_id}` | dict | chat |
 | GET | `/chat/model-context` | dict | chat |
 | GET | `/chat/ollama-models` | dict | chat |
 | POST | `/chat/open-external` | dict | chat |

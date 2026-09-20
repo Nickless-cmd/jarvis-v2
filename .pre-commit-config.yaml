@@ -34,6 +34,18 @@ repos:
         always_run: true
         stages: [pre-commit]
 
+      # Pre-commit: hver vagt skal have en test der ser den sige nej.
+      # DeepSeek-harness har 60 verify-scripts og en .spec til hvert et. Vi
+      # havde fire vagter uden — og en kilde-vagt der greppede efter en
+      # streng målte engang næsten ingenting, uden at nogen opdagede det.
+      - id: verify-guard-tests
+        name: Hver vagt skal have en test der ser den afvise
+        entry: /opt/conda/envs/ai/bin/python scripts/verify_guard_tests.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
       # Pre-commit: en slugt undtagelse skal kunne forklares.
       # DeepSeek-harness' regel (20/9-2026): «An empty catch names the error
       # and why; keep its try to one statement.» Samme dag slugte en bar

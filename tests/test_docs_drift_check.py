@@ -31,3 +31,35 @@ def test_real_repo_has_no_hard_drift():
     # Guards the committed tree: generated docs match their generators and no links dangle.
     rep = d.run_check()
     assert rep["counts"]["hard"] == 0, rep["hard"][:20]
+
+
+# ── Vagten skal kunne ses SIGE NEJ (20/9-2026) ──────────────────────────────
+def test_gate_afviser_naar_der_er_haard_drift(monkeypatch, capsys):
+    """Testfilen dækkede opdagelsen, men aldrig afvisningen.
+
+    En vagt hvis nej ingen har set, er en vagt man ikke ved virker. Den her
+    blokerede fire af mine commits i dag — men det vidste vi kun fordi jeg
+    tilfældigvis ramte den.
+    """
+    import sys
+
+    import scripts.docs_drift_check as d
+    monkeypatch.setattr(d, "staged_paths", lambda: ["core/x.py"])
+    monkeypatch.setattr(d, "hard_drift", lambda staged: [
+        {"generator": "api_docs_gen", "kind": "stale", "path": "docs/reference/api/x.md"}])
+    monkeypatch.setattr(sys, "argv", ["docs_drift_check.py", "--check"])
+    assert d.main() == 1
+    ud = capsys.readouterr().out
+    assert "1 HARD drift" in ud
+    assert "api_docs_gen" in ud          # den skal sige HVILKEN generator
+
+
+def test_gate_gaar_igennem_uden_drift(monkeypatch, capsys):
+    import sys
+
+    import scripts.docs_drift_check as d
+    monkeypatch.setattr(d, "staged_paths", lambda: [])
+    monkeypatch.setattr(d, "hard_drift", lambda staged: [])
+    monkeypatch.setattr(sys, "argv", ["docs_drift_check.py", "--check"])
+    assert d.main() == 0
+    assert "clean" in capsys.readouterr().out

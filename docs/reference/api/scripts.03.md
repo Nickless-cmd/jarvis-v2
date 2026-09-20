@@ -64,6 +64,16 @@ _Fase A acceptance (kør på containeren). Beviser aldrig-tør-bunden:_
 | function | `check_balancer_floor_no_raise` | `()` | — | [src](../../../scripts/verify_fase_a.py#L21) |
 | function | `check_central_visibility` | `()` | — | [src](../../../scripts/verify_fase_a.py#L33) |
 
+## `scripts/verify_guard_tests.py`
+_Vagt over vagterne: hver hook skal have en test der ser den sige nej._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `vagter` | `()` | Modulnavne på de scripts hookene kører. | [src](../../../scripts/verify_guard_tests.py#L38) |
+| function | `_tester_der_naevner` | `(modul)` | — | [src](../../../scripts/verify_guard_tests.py#L45) |
+| function | `mangler` | `()` | (vagt, årsag) for hver vagt uden en test der ser den afvise. | [src](../../../scripts/verify_guard_tests.py#L56) |
+| function | `main` | `(argv=…)` | — | [src](../../../scripts/verify_guard_tests.py#L69) |
+
 ## `scripts/verify_silent_except.py`
 _Vagt: en slugt undtagelse skal navngives, og dens `try` skal være kort._
 

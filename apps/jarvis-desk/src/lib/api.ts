@@ -598,6 +598,33 @@ export async function setWorkspaceTrust(
   return !!data.trusted
 }
 
+/** Samtalens tilladelses-niveau — serveren er kilden, klienterne spejler.
+ *
+ *  Desk havde sit valg i localStorage og telefonen sit eget i SecureStore, så
+ *  en tur startet fra den ene klient kørte med DENS valg mens den anden viste
+ *  sit eget. Telefonen læser dette når samtalen åbnes, så dens composer-ikon
+ *  arver desk'ens valg i stedet for at holde på sit eget (Bjørn 20/9-2026). */
+export async function getSessionPermission(
+  config: ApiConfig, sessionId: string,
+): Promise<'ask' | 'trust'> {
+  const data = await apiFetch<{ approval_mode: string }>(
+    config, `/chat/sessions/${encodeURIComponent(sessionId)}/permission`,
+  )
+  return data.approval_mode === 'trust' ? 'trust' : 'ask'
+}
+
+/** Sæt samtalens tilladelses-niveau på serveren. Et kørende run beholder sin
+ *  mode — skiftet gælder fra næste tur. */
+export async function setSessionPermission(
+  config: ApiConfig, sessionId: string, mode: 'ask' | 'trust',
+): Promise<'ask' | 'trust'> {
+  const data = await apiFetch<{ approval_mode: string }>(
+    config, `/chat/sessions/${encodeURIComponent(sessionId)}/permission`,
+    { method: 'POST', body: { approval_mode: mode } },
+  )
+  return data.approval_mode === 'trust' ? 'trust' : 'ask'
+}
+
 /** Godkend et afventende tool-kald (code/cowork approval). */
 export async function approveTool(config: ApiConfig, approvalId: string): Promise<void> {
   await apiFetch(config, `/chat/approvals/${encodeURIComponent(approvalId)}/approve`, { method: 'POST' })

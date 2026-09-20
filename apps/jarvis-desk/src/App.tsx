@@ -83,7 +83,7 @@ export function App() {
   return (
     <SessionProvider config={cfg} onRestore={(s) => setSurface(s)}>
       <StreamProvider config={cfg}>
-        <PermissionProvider>
+        <PermissionProvider config={cfg}>
           <PanelProvider defaultWidth={480}>
             <Shell
               surface={surface}

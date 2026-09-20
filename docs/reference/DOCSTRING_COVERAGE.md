@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7892/15308 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7895/15313 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,7 +8,7 @@ Generated from source. 7892/15308 functions/methods documented (51%). The list b
 |---|---|---|---|
 | `apps.api.jarvis_api` | 34 | 36 | 94% |
 | `apps.api.jarvis_api.middleware` | 8 | 19 | 42% |
-| `apps.api.jarvis_api.routes` | 688 | 913 | 75% |
+| `apps.api.jarvis_api.routes` | 690 | 915 | 75% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 70 | 172 | 40% |
 | `apps.desktop` | 6 | 7 | 85% |
@@ -25,7 +25,7 @@ Generated from source. 7892/15308 functions/methods documented (51%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 686 | 1265 | 54% |
-| `core.services` | 5212 | 10418 | 50% |
+| `core.services` | 5213 | 10421 | 50% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 107 | 183 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -41,7 +41,7 @@ Generated from source. 7892/15308 functions/methods documented (51%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2192)
+## Undocumented public functions (2193)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L208)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1744,6 +1744,7 @@ Generated from source. 7892/15308 functions/methods documented (51%). The list b
 - `core/services/session_continuity.py` :: `get_latest_morning_thread` (L438)
 - `core/services/session_inbox.py` :: `pending_count` (L237)
 - `core/services/session_inbox.py` :: `stop_session_inbox` (L363)
+- `core/services/session_permission.py` :: `saet_permission` (L79)
 - `core/services/session_tool_pin.py` :: `build_session_tool_pin_surface` (L145)
 - `core/services/session_tool_pin.py` :: `clear` (L120)
 - `core/services/session_view.py` :: `saet_visning` (L58)

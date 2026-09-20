@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/shell_confinement_report.py`
+_Hver shell-sti skal SIGE om den er indespaerret — Fase 3, K10._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `rapport` | `(grund)` | Byg rapporten — eller None naar der ikke er noget at sige. | [src](../../../core/services/shell_confinement_report.py#L38) |
+| function | `vedhaeft` | `(svar, grund)` | Saet rapporten paa et svar. Roerer intet andet, kaster aldrig. | [src](../../../core/services/shell_confinement_report.py#L60) |
+
 ## `core/services/shutdown_window_daemon.py`
 _Shutdown Window daemon — unannounced pauses to practice finitude._
 
@@ -568,15 +576,4 @@ _Governed kill-switch for struktureret content-persist + wire. Default ON._
 |---|---|---|---|---|
 | function | `_read_flag` | `()` | Læs rå flag-værdi fra runtime-state. None = usat. | [src](../../../core/services/structured_content_flag.py#L12) |
 | function | `structured_content_v2_enabled` | `()` | True medmindre eksplicit slået fra ('off'/'0'/'false'/'no'). Læse-fejl → True | [src](../../../core/services/structured_content_flag.py#L18) |
-
-## `core/services/subagent_digest.py`
-_Surface recently-completed subagents into the visible prompt._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_load_marks` | `()` | — | [src](../../../core/services/subagent_digest.py#L30) |
-| function | `_save_marks` | `(marks)` | — | [src](../../../core/services/subagent_digest.py#L37) |
-| function | `_last_seen` | `(session_id)` | — | [src](../../../core/services/subagent_digest.py#L41) |
-| function | `_mark_seen` | `(session_id, when_iso)` | — | [src](../../../core/services/subagent_digest.py#L45) |
-| function | `subagent_digest_section` | `(session_id)` | Format completed subagents (since this session last looked) as a block. | [src](../../../core/services/subagent_digest.py#L52) |
 

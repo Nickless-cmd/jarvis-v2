@@ -445,6 +445,12 @@ class SessionWorkspaceRequest(BaseModel):
     root: str = ""
 
 
+class SessionPermissionRequest(BaseModel):
+    # "ask" = spørg før et værktøj muterer (godkendelses-kort),
+    # "trust" = fuld adgang. Serveren er kilden; klienterne spejler.
+    approval_mode: str = "ask"
+
+
 class MessageFeedbackRequest(BaseModel):
     # "" fortryder. Se message_feedback for hvorfor det SLETTER frem for at
     # gemme en tom streng.
@@ -599,6 +605,40 @@ def chat_set_session_workspace(session_id: str, req: SessionWorkspaceRequest) ->
     from core.services.chat_sessions import set_session_workspace
     set_session_workspace(session_id, kind=art, root=rod)
     return {"ok": True, "kind": art, "root": rod}
+
+
+@router.get("/sessions/{session_id}/permission")
+def chat_get_session_permission(session_id: str) -> dict:
+    """Samtalens tilladelses-niveau — den ene sandhed begge klienter læser.
+
+    Desk havde sit i localStorage og telefonen sit eget i SecureStore, så en
+    tur startet fra den ene klient kørte med DENS valg mens den anden klient
+    viste sit eget. Ingen af dem kunne se hvad der faktisk gjaldt — og et
+    godkendelses-kort kunne ligge og vente uden at nogen ventede på det.
+
+    Telefonen læser dette når samtalen åbnes, så dens composer-ikon arver
+    desk'ens valg i stedet for at holde på sit eget.
+    """
+    _kraev_adgang(session_id)  # 19/9-2026: «luk hullet i de gamle»
+    from core.services.session_permission import hent_permission
+    return {"approval_mode": hent_permission(session_id)}
+
+
+@router.post("/sessions/{session_id}/permission")
+def chat_set_session_permission(session_id: str, req: SessionPermissionRequest) -> dict:
+    """Sæt samtalens tilladelses-niveau. Skriver til serveren, ikke lokalt.
+
+    Et kørende run beholder sin mode — `trust_all` låses ved run-start
+    (`visible_runs.py`). Et skift gælder derfor fra NÆSTE tur, hvilket er det
+    sikre: en tur må ikke kunne eskalere privilegier midtvejs.
+    """
+    _kraev_kode()  # enheds-reglen: fuld adgang er code mode (19/9-2026)
+    _kraev_adgang(session_id)  # 19/9-2026: «luk hullet i de gamle»
+    from core.services.session_permission import saet_permission
+    ud = saet_permission(session_id, req.approval_mode)
+    if ud.get("status") == "error":
+        raise HTTPException(status_code=400, detail=ud.get("error") or "ugyldigt niveau")
+    return ud
 
 
 @router.get("/tree")

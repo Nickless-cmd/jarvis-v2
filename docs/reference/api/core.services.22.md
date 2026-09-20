@@ -480,6 +480,15 @@ _Session-milepæle (kapitler) til navigations-rail'en — som Claude Code's mark
 | function | `_generate` | `(turns)` | — | [src](../../../core/services/session_milestones.py#L104) |
 | function | `get_session_milestones` | `(session_id)` | Milepæle for rail'en: [{anchor_id, title}]. Cached pr. session+turn-antal; regenereres | [src](../../../core/services/session_milestones.py#L110) |
 
+## `core/services/session_permission.py`
+_Samtalens tilladelses-niveau — én sandhed, på serveren (Bjørn 20/9-2026)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_sikr_kolonne` | `(conn)` | — | [src](../../../core/services/session_permission.py#L52) |
+| function | `hent_permission` | `(session_id)` | Samtalens niveau; `ask` for en ukendt samtale eller værdi. | [src](../../../core/services/session_permission.py#L61) |
+| function | `saet_permission` | `(session_id, mode)` | — | [src](../../../core/services/session_permission.py#L79) |
+
 ## `core/services/session_persistence_flag.py`
 _Governed kill-switch for session-persistence boot-reconciler. Default OFF (shadow)._
 
@@ -674,12 +683,4 @@ _Shared Language Extended — shorthand-udvikling og -resolution._
 | function | `list_shorthand_terms` | `(*, limit=…)` | — | [src](../../../core/services/shared_language_extended.py#L210) |
 | function | `resolve_shorthand_text` | `(text)` | Expand shorthand in text. Returns {resolved_text, matched_terms}. | [src](../../../core/services/shared_language_extended.py#L229) |
 | function | `build_shared_language_extended_surface` | `()` | — | [src](../../../core/services/shared_language_extended.py#L265) |
-
-## `core/services/shell_confinement_report.py`
-_Hver shell-sti skal SIGE om den er indespaerret — Fase 3, K10._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `rapport` | `(grund)` | Byg rapporten — eller None naar der ikke er noget at sige. | [src](../../../core/services/shell_confinement_report.py#L38) |
-| function | `vedhaeft` | `(svar, grund)` | Saet rapporten paa et svar. Roerer intet andet, kaster aldrig. | [src](../../../core/services/shell_confinement_report.py#L60) |
 

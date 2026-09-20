@@ -34,6 +34,18 @@ repos:
         always_run: true
         stages: [pre-commit]
 
+      # Pre-commit: en vagt må NÆVNE et delsystems værktøj som en streng,
+      # aldrig importere delsystemet. Bjørns spørgsmål 20/9-2026 om hvorvidt
+      # plans/todos/goals/wakeup hørte til i tool-nudgen; svaret er nej, og
+      # her står grænsen. Se docs/notes/implementeret/arkitektur/.
+      - id: verify-vagt-graenser
+        name: En vagt må nævne et delsystem, ikke importere det
+        entry: /opt/conda/envs/ai/bin/python scripts/verify_vagt_graenser.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
       # Pre-commit: et nyt varigt format skal stå i registret med en ejer,
       # en beskrivelse og en dato. Jeg indførte selv `device_presence.json`
       # 20/9-2026 uden at registrere det — der var intet sted at gøre det.

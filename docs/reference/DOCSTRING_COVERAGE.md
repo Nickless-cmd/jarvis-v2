@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7885/15294 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7885/15297 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -36,12 +36,12 @@ Generated from source. 7885/15294 functions/methods documented (51%). The list b
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.util` | 9 | 10 | 90% |
-| `scripts` | 208 | 452 | 46% |
+| `scripts` | 208 | 455 | 45% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2189)
+## Undocumented public functions (2191)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L208)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -2232,3 +2232,5 @@ Generated from source. 7885/15294 functions/methods documented (51%). The list b
 - `scripts/verify_notes.py` :: `main` (L67)
 - `scripts/verify_persistens.py` :: `main` (L118)
 - `scripts/verify_silent_except.py` :: `main` (L125)
+- `scripts/verify_vagt_graenser.py` :: `brud` (L55)
+- `scripts/verify_vagt_graenser.py` :: `main` (L74)

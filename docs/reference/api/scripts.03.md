@@ -118,3 +118,12 @@ _Vagt: en slugt undtagelse skal navngives, og dens `try` skal være kort._
 | function | `_laes_grundlinje` | `()` | — | [src](../../../scripts/verify_silent_except.py#L118) |
 | function | `main` | `(argv=…)` | — | [src](../../../scripts/verify_silent_except.py#L125) |
 
+## `scripts/verify_vagt_graenser.py`
+_Vagt: vagt-laget må NÆVNE et delsystem, aldrig importere det._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_importerede_moduler` | `(traeet)` | — | [src](../../../scripts/verify_vagt_graenser.py#L44) |
+| function | `brud` | `()` | — | [src](../../../scripts/verify_vagt_graenser.py#L55) |
+| function | `main` | `(argv=…)` | — | [src](../../../scripts/verify_vagt_graenser.py#L74) |
+

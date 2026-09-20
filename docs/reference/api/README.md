@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 15240 functions/methods, 51% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 15254 functions/methods, 51% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -52,10 +52,10 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 15240 functions/
 - [`core.services.21`](core.services.21.md) — `runtime_hook_runtime` … `self_narrative_self_model_review_bridge`
 - [`core.services.22`](core.services.22.md) — `self_repair_engine` … `shell_confinement_report`
 - [`core.services.23`](core.services.23.md) — `shutdown_window_daemon` … `subagent_ecology`
-- [`core.services.24`](core.services.24.md) — `subjective_time` … `tool_lexical_match`
-- [`core.services.25`](core.services.25.md) — `tool_observer` … `visible_followup`
-- [`core.services.26`](core.services.26.md) — `visible_followup_adapters` … `vision_backend`
-- [`core.services.27`](core.services.27.md) — `visual_memory` … `world_model_signal_tracking`
+- [`core.services.24`](core.services.24.md) — `subjective_time` … `tool_intent_runtime`
+- [`core.services.25`](core.services.25.md) — `tool_lexical_match` … `visible_first_pass_text`
+- [`core.services.26`](core.services.26.md) — `visible_followup` … `visible_turn_blocks`
+- [`core.services.27`](core.services.27.md) — `vision_backend` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

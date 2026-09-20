@@ -51,6 +51,10 @@ class RuntimeSettings:
     # af serverens egne forslag — hans beskeder indgår ikke. Kontakten findes
     # alligevel: et mønster der peger galt skal kunne tages ud uden et deploy.
     composer_moenster_enabled: bool = True
+    # Nudge i KØRSLEN når han leder efter et værktøj der findes (2026-09-20).
+    # Den halvdel Bjørn bad om 6/9 — «nudgeder dig i runet» — og som aldrig
+    # blev bygget. Tændt: den er non-blocking og tier næsten altid.
+    tool_hunt_nudge_enabled: bool = True
     # Proaktivitets-cap: max uopfordrede beskeder pr. dag + min timer mellem dem.
     max_proactive_per_day: int = 3
     proactive_cooldown_hours: int = 2
@@ -680,6 +684,9 @@ def load_settings() -> RuntimeSettings:
         ),
         composer_moenster_enabled=_som_bool(
             data.get("composer_moenster_enabled", defaults.composer_moenster_enabled)
+        ),
+        tool_hunt_nudge_enabled=_som_bool(
+            data.get("tool_hunt_nudge_enabled", defaults.tool_hunt_nudge_enabled)
         ),
         max_proactive_per_day=int(
             data.get("max_proactive_per_day", defaults.max_proactive_per_day)

@@ -123,7 +123,10 @@ def _prepare_call(tc, *, force, run_id, session_id, user_message, controller, ro
     # a same-round exact duplicate read is suppressed — benign for idempotent reads).
     round_seen.add(signature)
     return ("run", {"name": name, "arguments": arguments,
-                    "signature": signature, "soft_warn": _cg.soft_warn})
+                    "signature": signature, "soft_warn": _cg.soft_warn,
+                    # Turen følger med: jagt-noten tæller pr. tur, og uden
+                    # id'et ville to samtidige ture dele tæller.
+                    "run_id": run_id or ""})
 
 
 def _finalize_call(token, raw_result, *, controller, exec_fmt):
@@ -210,6 +213,23 @@ def _finalize_call(token, raw_result, *, controller, exec_fmt):
                      status=str(raw_result.get("status", "ok")))
     except Exception:
         pass
+    # ── «Du ledte efter noget der findes» (20/9-2026) ────────────────────────
+    # Bjørn bad 6/9 om et nudge «i runet»; det der blev bygget læste hans egen
+    # besked før turen. Her er den anden halvdel: den ser HANS kald, efter de
+    # er kørt. Samme form som soft-warn ovenfor — en note hæftet på resultatet.
+    #
+    # EFTER `store_result` med vilje: cachen skal gemme det værktøjet svarede,
+    # ikke en påmindelse. Ellers ville et cache-hit genafspille noten i en tur
+    # hvor han ikke ledte efter noget.
+    try:
+        from core.services.tool_hunt_nudge import note as _jagt_note
+        _note = _jagt_note(navn=name, argumenter=arguments,
+                           run_id=str((token or {}).get("run_id") or ""),
+                           resultat_tekst=result_text)
+        if _note:
+            result_text = f"{_note}\n\n{result_text}"
+    except Exception:
+        logger.debug("tool_hunt_nudge sprunget over", exc_info=True)
     return {"tool_name": name, "arguments": arguments, "result": raw_result,
             "result_text": result_text, "result_text_full": result_text_full,
             "status": raw_result.get("status", "ok")}

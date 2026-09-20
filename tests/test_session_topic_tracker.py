@@ -119,3 +119,73 @@ class TestCleanup:
         deleted = session_topic_cleanup(max_age_days=0)
         topics = session_topics_for_session("session-old")
         assert len(topics) == 0
+
+
+class TestPersistRace:
+    """Målt 20/9-2026 ved genstart: «session_topics: DB persist failed:
+    dictionary changed size during iteration» (WARNING — topics tabt).
+
+    Kaldestederne er flertrådede: `visible_runs` starter daemon-tråde til
+    post-process, og `procedure_bank_pipeline` kalder `load_session_topics`,
+    som *skriver* til samme store som et samtidigt run persisterer fra.
+    Modul-staten havde ingen lås. `_persist_session_topics` tager nu et
+    snapshot under `_STATE_LOCK`, så en samtidig skrivning ikke kan sprænge
+    iterationen.
+    """
+
+    def _reset(self):
+        from core.services import session_topic_tracker as stt
+
+        stt._session_topics.clear()
+        stt._session_turn_counts.clear()
+        stt._TOPICS_DB_PERSISTED.clear()
+
+    def test_samtidig_mutation_spraenger_ikke_persist(self, monkeypatch, caplog):
+        """Den anden tråd skriver nye topics midt i iterationen — før kastede
+        det RuntimeError, som `except Exception` slugte til en WARNING."""
+        from core.services import session_topic_tracker as stt
+        import core.runtime.db as db
+
+        self._reset()
+        stt._accumulate_topics("race-1", ["Alpha", "Beta"])
+
+        calls: list[dict] = []
+
+        def _mutating_accumulate(**kw):
+            calls.append(kw)
+            # Efterligner den samtidige skrivning: et nyt topic lander i
+            # store mens persist-løkken kører.
+            stt._session_topics["race-1"][f"ny-{len(calls)}"] = {
+                "label": "Ny",
+                "count": 1,
+                "first_seen": "",
+                "last_seen": "",
+            }
+
+        monkeypatch.setattr(db, "session_topic_accumulate", _mutating_accumulate)
+
+        with caplog.at_level("WARNING"):
+            stt._persist_session_topics("race-1")  # må ikke kaste
+
+        # Snapshot: de to poster der fandtes da vi tog det — ikke de nye.
+        assert len(calls) == 2
+        assert not any(
+            "DB persist failed" in r.getMessage() for r in caplog.records
+        ), [r.getMessage() for r in caplog.records]
+
+    def test_laasen_er_reentrant(self):
+        """`clear_session_topics` kalder `_persist_session_topics` under låsen.
+        En almindelig Lock ville dørlåse; RLock gør det lovligt."""
+        from core.services import session_topic_tracker as stt
+
+        with stt._STATE_LOCK:
+            with stt._STATE_LOCK:
+                pass
+
+    def test_clear_doer_ikke_doerlaase(self):
+        from core.services import session_topic_tracker as stt
+
+        self._reset()
+        stt._accumulate_topics("race-2", ["Gamma"])
+        stt.clear_session_topics("race-2")  # må ikke hænge
+        assert "race-2" not in stt._session_topics

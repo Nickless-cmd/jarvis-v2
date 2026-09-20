@@ -48,6 +48,7 @@ from __future__ import annotations
 import logging
 import re
 import threading
+from datetime import UTC, datetime, timedelta
 from typing import Any, Sequence
 
 logger = logging.getLogger(__name__)
@@ -152,6 +153,67 @@ def beskaer(poster: Sequence[Any], maks: int, *, navn: str) -> list[Any]:
     logger.info("telemetri: %s beskaaret til %d, kastede %d vaek (%d i alt)",
                 navn, maks, tabt, i_alt)
     return alle[-maks:]
+
+
+def beskaer_efter_alder(
+    poster: Sequence[Any],
+    dage: int,
+    *,
+    navn: str,
+    maks: int = 0,
+    nu: datetime | None = None,
+) -> list[Any]:
+    """Behold poster nyere end `dage` — og tæl **alt** der ryger.
+
+    Hvorfor ikke bare et antal. `beskaer()` løser at tabet er *usynligt*; den
+    løser ikke at vinduet er *aktivitets-afhængigt*. Målt 20/9-2026 stod
+    `verification_gate_telemetry` præcis på 500/500 poster, hvilket dækkede
+    9,7 døgn ved ~52 poster/døgn. Ved 500/døgn ville «7d» reelt være 1 døgn —
+    og tallet ville se lige så rigtigt ud. Horisonten skal være en *tid*, ikke
+    et *antal*, ellers flytter målevinduet sig når aktiviteten gør.
+
+    To tab, ét regnskab:
+      * **alderstab** — poster ældre end vinduet. Det er horisonten der virker.
+      * **loftstab** — poster ud over `maks`. Rent sikkerhedsnet mod vækst, så
+        en løbsk løkke ikke spiser state-filen. Ikke den effektive horisont.
+
+    Poster uden læsbar tidsstempel **beholdes** — alderen kan ikke afgøres, og
+    et gæt ville kaste rigtige poster væk. De er stadig omfattet af loftet.
+    """
+    alle = list(poster or [])
+    if dage <= 0:
+        return beskaer(alle, maks, navn=navn) if maks > 0 else alle
+
+    graense = (nu or datetime.now(UTC)) - timedelta(days=dage)
+    beholdt: list[Any] = []
+    alderstab = 0
+    for p in alle:
+        ts: datetime | None = None
+        if isinstance(p, dict):
+            try:
+                ts = datetime.fromisoformat(str(p.get("at", "")))
+            except (ValueError, TypeError):
+                ts = None
+        if ts is None:
+            beholdt.append(p)          # alder ukendt → behold (konservativt)
+            continue
+        if ts.tzinfo is None:          # naiv → antag UTC frem for at kaste
+            ts = ts.replace(tzinfo=UTC)
+        if ts >= graense:
+            beholdt.append(p)
+        else:
+            alderstab += 1
+
+    if alderstab:
+        with _laas:
+            _TABT[str(navn)] = _TABT.get(str(navn), 0) + alderstab
+            i_alt = _TABT[str(navn)]
+        logger.info("telemetri: %s aldersbeskaaret til %d dage, kastede %d "
+                    "gamle poster (%d i alt)", navn, dage, alderstab, i_alt)
+
+    if maks > 0:
+        beholdt = beskaer(beholdt, maks, navn=navn)
+    return beholdt
 
 
 def tabt(navn: str = "") -> int | dict[str, int]:

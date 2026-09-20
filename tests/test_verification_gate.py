@@ -270,6 +270,23 @@ def test_redirect_og_ukendt_kommando_er_stadig_mutation():
     assert shell_command_is_mutating("cd /x && sqlite3 db 'UPDATE t SET a=1'")
 
 
+def test_sqlite3_er_kontekst_foelsom():
+    """sqlite3 som `sed`: læsende SQL er et kig tilbage, skrivende er en
+    mutation. Målt 20/9-2026: DB-research-queries blev talt som mutationer
+    og forurenede heed-raten. Konservativt — tvivl tæller som mutation."""
+    from core.services.verification_gate import shell_command_is_mutating
+    assert not shell_command_is_mutating(
+        "cd /home/bs/.jarvis-v2/state && sqlite3 jarvis.db \"SELECT kind FROM events\"")
+    assert not shell_command_is_mutating("sqlite3 db 'PRAGMA table_info(events)'")
+    assert not shell_command_is_mutating("sqlite3 db '.schema events'")
+    # Skrivende SQL — stadig mutation.
+    assert shell_command_is_mutating("sqlite3 db 'UPDATE t SET a=1'")
+    assert shell_command_is_mutating("sqlite3 db 'DELETE FROM events'")
+    assert shell_command_is_mutating("sqlite3 db 'DROP TABLE events'")
+    # Uden genkendelig SQL: konservativt mutation.
+    assert shell_command_is_mutating("sqlite3 db")
+
+
 def test_fil_mutation_med_indbygget_readback_taeller_som_verify():
     """edit_file/write_file bærer siden cf2f6b3f8 selv filstumpen fra disken.
     Beviset ligger i samme kald — mutationen må ikke tælle som uverificeret."""

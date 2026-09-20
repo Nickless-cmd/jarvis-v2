@@ -23,11 +23,22 @@ from __future__ import annotations
 
 import logging
 import re
+import threading
 from collections import defaultdict
 from datetime import UTC, datetime
 from typing import Sequence
 
 logger = logging.getLogger(__name__)
+
+#: Beskytter det modul-globale topic-state (`_session_topics`,
+#: `_session_turn_counts`). Uden den kan `_persist_session_topics` iterere over
+#: en dict mens en anden tråd skriver til den — målt 20/9-2026 ved genstart:
+#: «dictionary changed size during iteration» (WARNING, topics tabt).
+#: Kaldestederne er ægte flertrådede: `visible_runs` starter daemon-tråde til
+#: post-process, og `procedure_bank_pipeline` kalder `load_session_topics`,
+#: som skriver til samme store som et samtidigt run persisterer fra.
+#: RLock fordi `clear_session_topics` kalder `_persist_session_topics`.
+_STATE_LOCK = threading.RLock()
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -187,21 +198,22 @@ def _should_extract(session_id: str) -> bool:
 def _accumulate_topics(session_id: str, topics: list[str]) -> None:
     """Merge extracted topics into the session's topic store."""
     now = datetime.now(UTC).isoformat()
-    store = _session_topics[session_id]
-    for topic in topics:
-        key = topic.lower().strip()
-        if not key:
-            continue
-        if key in store:
-            store[key]["count"] += 1
-            store[key]["last_seen"] = now
-        else:
-            store[key] = {
-                "label": topic,
-                "count": 1,
-                "first_seen": now,
-                "last_seen": now,
-            }
+    with _STATE_LOCK:
+        store = _session_topics[session_id]
+        for topic in topics:
+            key = topic.lower().strip()
+            if not key:
+                continue
+            if key in store:
+                store[key]["count"] += 1
+                store[key]["last_seen"] = now
+            else:
+                store[key] = {
+                    "label": topic,
+                    "count": 1,
+                    "first_seen": now,
+                    "last_seen": now,
+                }
 
 
 def track_session_topics(
@@ -240,13 +252,17 @@ _TOPICS_DB_PERSISTED: set[str] = set()  # track which sessions we've written
 
 def _persist_session_topics(session_id: str) -> None:
     """Write current in-memory topics to the session_topics DB table."""
-    store = _session_topics.get(session_id)
-    if not store:
-        return
+    # Snapshot under lås — så DB-kaldet nedenfor sker udenfor låsen, og en
+    # samtidig skrivning til store ikke længere kan sprænge iterationen.
+    with _STATE_LOCK:
+        store = _session_topics.get(session_id)
+        if not store:
+            return
+        snapshot = list(store.items())
 
     try:
         from core.runtime.db import session_topic_accumulate
-        for key, info in store.items():
+        for key, info in snapshot:
             session_topic_accumulate(
                 session_id=session_id,
                 topic_label=str(info.get("label", key)),
@@ -267,8 +283,9 @@ def load_session_topics(session_id: str | None) -> list[dict]:
     if not session_id:
         return []
     # Prefer in-memory if we have it (fresher)
-    if session_id in _session_topics:
-        return _format_topics_for_prompt(_session_topics[session_id])
+    with _STATE_LOCK:
+        if session_id in _session_topics:
+            return _format_topics_for_prompt(_session_topics[session_id])
 
     # Fall back to DB
     try:
@@ -276,17 +293,18 @@ def load_session_topics(session_id: str | None) -> list[dict]:
         rows = session_topics_for_session(session_id)
         if rows:
             # Restore into memory
-            store = _session_topics[session_id]
-            for row in rows:
-                label = str(row.get("topic_label", ""))
-                key = label.lower().strip()
-                if key:
-                    store[key] = {
-                        "label": label,
-                        "count": int(row.get("mention_count", 1)),
-                        "first_seen": str(row.get("first_seen", "")),
-                        "last_seen": str(row.get("last_seen", "")),
-                    }
+            with _STATE_LOCK:
+                store = _session_topics[session_id]
+                for row in rows:
+                    label = str(row.get("topic_label", ""))
+                    key = label.lower().strip()
+                    if key:
+                        store[key] = {
+                            "label": label,
+                            "count": int(row.get("mention_count", 1)),
+                            "first_seen": str(row.get("first_seen", "")),
+                            "last_seen": str(row.get("last_seen", "")),
+                        }
             return _format_topics_for_prompt(store)
     except Exception as exc:
         logger.warning("session_topics: DB load failed: %s", exc)
@@ -353,9 +371,10 @@ def build_session_topics_prompt_section(session_id: str | None = None) -> str | 
 
 def clear_session_topics(session_id: str | None) -> None:
     """Clear in-memory topics for a session. Called at session end."""
-    if session_id and session_id in _session_topics:
-        # Persist one last time before clearing
-        _persist_session_topics(session_id)
-        del _session_topics[session_id]
-        _session_turn_counts.pop(session_id, None)
-        _TOPICS_DB_PERSISTED.discard(session_id)
+    with _STATE_LOCK:
+        if session_id and session_id in _session_topics:
+            # Persist one last time before clearing
+            _persist_session_topics(session_id)
+            del _session_topics[session_id]
+            _session_turn_counts.pop(session_id, None)
+            _TOPICS_DB_PERSISTED.discard(session_id)

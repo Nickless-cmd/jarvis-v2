@@ -115,6 +115,18 @@ def shell_command_is_mutating(command: str) -> bool:
             if "-i" in toks:
                 return True
             continue
+        if cmd == "sqlite3":
+            # Kontekst-følsom som `sed` (19/9-mønsteret): en læsende SQL er et
+            # kig tilbage — den må ikke tælle som mutation. En skrivende SQL er
+            # en ægte mutation. Konservativt: alt der ikke tydeligt ER en
+            # læsning tælles som mutation. Målt 20/9-2026: mine egne
+            # DB-research-queries (SELECT ...) blev talt som mutationer og
+            # forurenede netop den heed-rate vi brugte til at dømme R2.5.
+            args = [a for a in toks[i + 1:] if not a.startswith("-")]
+            sql = " ".join(args[1:]).strip().lstrip("\"'").strip()
+            if sql.startswith(".") or re.match(r"(?i)^(SELECT|PRAGMA|EXPLAIN)\b", sql):
+                continue
+            return True
         if cmd in _RO_CMDS:
             continue
         return True  # ukendt kommando → konservativt en mutation

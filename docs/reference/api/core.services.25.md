@@ -482,28 +482,28 @@ _Verification gate — advisory check on destructive/mutation actions._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `shell_command_is_mutating` | `(command)` | True hvis et shell-kald reelt ændrer state; False for read-only. | [src](../../../core/services/verification_gate.py#L86) |
-| function | `_suggested_verify` | `(tool)` | — | [src](../../../core/services/verification_gate.py#L194) |
-| function | `_recent_events` | `(minutes=…)` | — | [src](../../../core/services/verification_gate.py#L202) |
-| function | `_scan` | `(events)` | Classify events into mutations / strict-verifies / light-verifies. | [src](../../../core/services/verification_gate.py#L216) |
-| function | `evaluate_verification_gate` | `(*, minutes=…)` | Return verification-gate signals for the recent window. | [src](../../../core/services/verification_gate.py#L280) |
-| function | `_observe_verification_decision` | `(*, passed, failed, unverified)` | Egress-frit Central-observe af verifikations-gatens beslutning (§7.2). | [src](../../../core/services/verification_gate.py#L332) |
-| function | `verification_gate_section` | `(*, record=…)` | Format gate signals as a prompt-awareness section, or None. | [src](../../../core/services/verification_gate.py#L358) |
-| function | `_exec_verification_status` | `(args)` | — | [src](../../../core/services/verification_gate.py#L440) |
+| function | `_suggested_verify` | `(tool)` | — | [src](../../../core/services/verification_gate.py#L206) |
+| function | `_recent_events` | `(minutes=…)` | — | [src](../../../core/services/verification_gate.py#L214) |
+| function | `_scan` | `(events)` | Classify events into mutations / strict-verifies / light-verifies. | [src](../../../core/services/verification_gate.py#L228) |
+| function | `evaluate_verification_gate` | `(*, minutes=…)` | Return verification-gate signals for the recent window. | [src](../../../core/services/verification_gate.py#L292) |
+| function | `_observe_verification_decision` | `(*, passed, failed, unverified)` | Egress-frit Central-observe af verifikations-gatens beslutning (§7.2). | [src](../../../core/services/verification_gate.py#L344) |
+| function | `verification_gate_section` | `(*, record=…)` | Format gate signals as a prompt-awareness section, or None. | [src](../../../core/services/verification_gate.py#L370) |
+| function | `_exec_verification_status` | `(args)` | — | [src](../../../core/services/verification_gate.py#L452) |
 
 ## `core/services/verification_gate_telemetry.py`
 _R2 verification gate telemetry — track whether warnings get heeded._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_load` | `()` | — | [src](../../../core/services/verification_gate_telemetry.py#L44) |
-| function | `_save` | `(data)` | — | [src](../../../core/services/verification_gate_telemetry.py#L56) |
-| function | `record_surface` | `(*, failed_verify_count, unverified_count, mutation_count, verify_count)` | Called by verification_gate_section when it returns a non-None section. | [src](../../../core/services/verification_gate_telemetry.py#L69) |
-| function | `record_verify_event` | `(*, tool, status, at=…, verify_kind=…)` | Called by the telemetry listener for tool.completed events. If a recent | [src](../../../core/services/verification_gate_telemetry.py#L106) |
-| function | `sweep_expired_surfaces` | `()` | Mark surfaces as 'ignored' once they're past the reaction window with | [src](../../../core/services/verification_gate_telemetry.py#L152) |
-| function | `get_telemetry_summary` | `(*, hours=…)` | Aggregate counts + heed rates over the lookback window. | [src](../../../core/services/verification_gate_telemetry.py#L183) |
-| function | `telemetry_section` | `()` | Render telemetry as a prompt-awareness section. Only shows when there's | [src](../../../core/services/verification_gate_telemetry.py#L238) |
-| function | `_poll_db_for_verify_events` | `()` | Poll the events table for new tool.completed verify_* events. | [src](../../../core/services/verification_gate_telemetry.py#L276) |
-| function | `subscribe` | `()` | Start the DB-polling telemetry listener. Idempotent per process. | [src](../../../core/services/verification_gate_telemetry.py#L356) |
+| function | `_load` | `()` | — | [src](../../../core/services/verification_gate_telemetry.py#L52) |
+| function | `_save` | `(data)` | — | [src](../../../core/services/verification_gate_telemetry.py#L64) |
+| function | `record_surface` | `(*, failed_verify_count, unverified_count, mutation_count, verify_count)` | Called by verification_gate_section when it returns a non-None section. | [src](../../../core/services/verification_gate_telemetry.py#L97) |
+| function | `record_verify_event` | `(*, tool, status, at=…, verify_kind=…)` | Called by the telemetry listener for tool.completed events. If a recent | [src](../../../core/services/verification_gate_telemetry.py#L134) |
+| function | `sweep_expired_surfaces` | `()` | Mark surfaces as 'ignored' once they're past the reaction window with | [src](../../../core/services/verification_gate_telemetry.py#L180) |
+| function | `get_telemetry_summary` | `(*, hours=…)` | Aggregate counts + heed rates over the lookback window. | [src](../../../core/services/verification_gate_telemetry.py#L211) |
+| function | `telemetry_section` | `()` | Render telemetry as a prompt-awareness section. Only shows when there's | [src](../../../core/services/verification_gate_telemetry.py#L266) |
+| function | `_poll_db_for_verify_events` | `()` | Poll the events table for new tool.completed verify_* events. | [src](../../../core/services/verification_gate_telemetry.py#L304) |
+| function | `subscribe` | `()` | Start the DB-polling telemetry listener. Idempotent per process. | [src](../../../core/services/verification_gate_telemetry.py#L384) |
 
 ## `core/services/versioneret_json_svar.py`
 _Et færdigt HTTP-svar pr. version — serialiseret og komprimeret ÉN gang._

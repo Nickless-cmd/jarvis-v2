@@ -38,7 +38,15 @@ logger = logging.getLogger(__name__)
 
 _TELEMETRY_KEY = "r2_verification_gate_telemetry"
 _REACTION_WINDOW_SECONDS = 60
-_MAX_RECORDS = 500
+#: Fast målevindue. Horisonten skal være en *tid*, ikke et *antal*: et antal
+#: flytter målevinduet når aktiviteten gør (målt 20/9-2026: 500 poster dækkede
+#: 9,7 døgn ved ~52/døgn — ved 500/døgn ville «7d» være 1 døgn, og tallet ville
+#: se lige så rigtigt ud). 30 dage er husets etablerede horisont (jf.
+#: `visual_memory`: «4/day × 30 days»).
+_RETENTION_DAYS = 30
+#: Sikkerhedsnet mod vækst, IKKE den effektive horisont. Ved ~52 poster/døgn
+#: binder loftet først ved ~667/døgn — aldersvinduet rammer længe før.
+_MAX_RECORDS = 20000
 
 
 def _load() -> dict[str, Any]:
@@ -55,9 +63,29 @@ def _load() -> dict[str, Any]:
 
 def _save(data: dict[str, Any]) -> None:
     try:
-        # Keep bounded
-        data["surfaces"] = list(data.get("surfaces", []))[-_MAX_RECORDS:]
-        data["reactions"] = list(data.get("reactions", []))[-_MAX_RECORDS:]
+        # Beskaering der TAELLER, paa et fast tidsvindue.
+        #
+        # Foer stod her `list(...)[-_MAX_RECORDS:]` — maalt 20/9-2026 stod begge
+        # ringe praecis paa 500/500, altsaa havde de kastet vaek, og der fandtes
+        # ikke ét tal for hvor meget (samme symptom som `decision_signal_telemetry`
+        # fik fixet 13/9; denne tvilling blev aldrig migreret).
+        #
+        # Fase 10, kriterium 2: «tolerate loss honestly». Tab er i orden for
+        # telemetri — det er netop forskellen paa telemetri og sandhed. Usynligt
+        # tab er ikke.
+        try:
+            from core.services.telemetry_gate import beskaer_efter_alder
+            data["surfaces"] = beskaer_efter_alder(
+                data.get("surfaces", []), _RETENTION_DAYS,
+                navn="verification_gate_telemetry.surfaces", maks=_MAX_RECORDS)
+            data["reactions"] = beskaer_efter_alder(
+                data.get("reactions", []), _RETENTION_DAYS,
+                navn="verification_gate_telemetry.reactions", maks=_MAX_RECORDS)
+        except Exception:
+            # Regnskabet maa aldrig koste os selve beskaeringen — en ring uden
+            # loft ville vokse til den spiste state-filen.
+            data["surfaces"] = list(data.get("surfaces", []))[-_MAX_RECORDS:]
+            data["reactions"] = list(data.get("reactions", []))[-_MAX_RECORDS:]
         save_json(_TELEMETRY_KEY, data)
     except Exception as exc:
         logger.debug("r2_telemetry: persist failed: %s", exc)

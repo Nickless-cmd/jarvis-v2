@@ -9,6 +9,8 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import pytest
+from core.services import telemetry_gate as tg
+from core.services import verification_gate_telemetry as vgt
 from core.services.verification_gate_telemetry import (
     get_telemetry_summary,
     record_surface,
@@ -425,3 +427,79 @@ class TestTelemetrySection:
         section = telemetry_section()
         assert section is not None
         assert "⚠" not in section
+
+
+# ── _save: alders-beskæring + ærligt tab (20/9-2026) ────────────────────────
+
+
+class TestSaveAldersBeskaering:
+    """Loftet var et *antal* (500), ikke en *tid*.
+
+    Målt 20/9-2026 stod begge ringe præcis på 500/500, hvilket dækkede 9,7 døgn
+    ved ~52 poster/døgn. Ved 500/døgn ville «7d» reelt være 1 døgn — og tallet
+    ville se lige så rigtigt ud. Disse tests holder horisonten fast som *tid*,
+    og tabet som *talt*.
+    """
+
+    @staticmethod
+    def _s(dage: float, **extra) -> dict:
+        return {
+            "at": (datetime.now(UTC) - timedelta(days=dage)).isoformat(),
+            "kind": "unverified",
+            "resolved": False,
+            **extra,
+        }
+
+    def test_gamle_poster_ryger_nye_bliver(self, _fake_state_store):
+        tg.nulstil_tab()
+        vgt._save({"surfaces": [self._s(40), self._s(20), self._s(1)],
+                   "reactions": []})
+        gemt = _fake_state_store[vgt._TELEMETRY_KEY]
+        assert len(gemt["surfaces"]) == 2  # 40 dage ude; 20 og 1 inde
+
+    def test_alderstab_taelles(self, _fake_state_store):
+        """Kriterium 2: usynligt tab er ikke i orden. Alders-tabet skal tælles."""
+        tg.nulstil_tab()
+        vgt._save({"surfaces": [self._s(40), self._s(50), self._s(1)],
+                   "reactions": []})
+        assert tg.tabt("verification_gate_telemetry.surfaces") == 2
+
+    def test_30d_horisont_er_maalbar(self, _fake_state_store):
+        """Kernen i fixet: en post 20 dage gammel overlever, så «30d» er et
+        ægte tal og ikke et loft der hed 500."""
+        tg.nulstil_tab()
+        vgt._save({"surfaces": [self._s(20), self._s(8), self._s(2)],
+                   "reactions": []})
+        gemt = _fake_state_store[vgt._TELEMETRY_KEY]
+        assert len(gemt["surfaces"]) == 3
+        assert vgt._RETENTION_DAYS == 30
+
+    def test_uden_tidsstempel_beholdes(self, _fake_state_store):
+        """Alder ukendt → behold. Et gæt ville kaste rigtige poster væk."""
+        tg.nulstil_tab()
+        vgt._save({"surfaces": [{"kind": "x"}, self._s(1)], "reactions": []})
+        gemt = _fake_state_store[vgt._TELEMETRY_KEY]
+        assert len(gemt["surfaces"]) == 2
+
+    def test_loftet_holder_selv_om_taelleren_braekker(
+        self, _fake_state_store, monkeypatch
+    ):
+        """Regnskabet må aldrig koste os selve beskæringen — en ring uden loft
+        ville vokse til den spiste state-filen."""
+        monkeypatch.setattr(
+            tg, "beskaer_efter_alder",
+            lambda *a, **k: (_ for _ in ()).throw(RuntimeError("nede")),
+        )
+        vgt._save({"surfaces": list(range(vgt._MAX_RECORDS + 500)),
+                   "reactions": []})
+        gemt = _fake_state_store[vgt._TELEMETRY_KEY]
+        assert len(gemt["surfaces"]) == vgt._MAX_RECORDS, "loftet forsvandt med tælleren"
+
+    def test_naiv_tidsstempel_kaster_ikke(self, _fake_state_store):
+        """Et naivt tidsstempel (uden tz) må ikke vælte sammenligningen."""
+        tg.nulstil_tab()
+        naiv = (datetime.now(UTC).replace(tzinfo=None)).isoformat()
+        vgt._save({"surfaces": [{"at": naiv, "kind": "unverified"}],
+                   "reactions": []})
+        gemt = _fake_state_store[vgt._TELEMETRY_KEY]
+        assert len(gemt["surfaces"]) == 1

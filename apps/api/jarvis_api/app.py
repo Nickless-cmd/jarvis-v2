@@ -579,12 +579,16 @@ def create_app() -> FastAPI:
         # appen ventede op til 15 min (desktop, electron/main.ts) eller til man
         # gik ind og ud af appen (mobil). Vagten opdager releasen selv og laegger
         # den paa event-bussen; /ws sender den videre, og klienten tjekker straks.
-        # UDENFOR runtime-gaten: den skal koere i API-processen, hvor /ws bor.
-        try:
-            from apps.api.jarvis_api.routes.app_release import start_release_vagt
-            start_release_vagt()
-        except Exception as _exc:
-            logger.warning("release-vagt kunne ikke startes: %s", _exc)
+        # KUN i API-processen (JARVIS_ENABLE_RUNTIME_SERVICES=0): baade API og
+        # runtime koerer denne lifespan, og to vagter ville udsende to ens
+        # events pr. release. /ws bor her, og bussen skriver til DB — én
+        # udgiver er nok. stop_release_vagt() er no-op naar den ikke startede.
+        if not runtime_services_enabled:
+            try:
+                from apps.api.jarvis_api.routes.app_release import start_release_vagt
+                start_release_vagt()
+            except Exception as _exc:
+                logger.warning("release-vagt kunne ikke startes: %s", _exc)
 
         logger.info("jarvis api startup complete")
         async with mcp_app.lifespan(app):

@@ -105,7 +105,7 @@ export function LivenessIndicator({
 
   return (
     <div className={`liveness liveness-${density} ${working ? 'is-working' : 'is-idle'}`}>
-      <JarvisRing size={14} spinning={working} tone={tone} />
+      <JarvisRing size={20} spinning={working} tone={tone} />
       <span className="liveness-label">
         {dele.length > 0 && (
           <>

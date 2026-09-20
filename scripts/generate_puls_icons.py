@@ -16,7 +16,16 @@ COLOR = ET.parse(SOURCE).getroot().attrib['fill']
 BG = '#0d1117'
 
 
-def svg(*, background=False, scale=1.0, phase=None, attention=False, rounded=False):
+#: Hjørneradius på app-ikonets baggrund, i viewBox-enheder (0-100).
+#: 22 er skrivebordets konvention — macOS' squircle ligger på 22,4 %, og
+#: GNOME/KDE tegner selv runde hjørner på alt andet end app-ikoner. Bjørn
+#: 20/9-2026: «selv desktop ikonet mangler runde hjørner». `rounded=True`
+#: (rx=50) er Androids RUNDE launcher og er noget andet end det her.
+APP_RADIUS = 22
+
+
+def svg(*, background=False, scale=1.0, phase=None, attention=False, rounded=False,
+        radius=None):
     tree = ET.parse(SOURCE)
     root = tree.getroot()
     bars = root.findall('{http://www.w3.org/2000/svg}rect')
@@ -26,7 +35,8 @@ def svg(*, background=False, scale=1.0, phase=None, attention=False, rounded=Fal
         if phase is not None:
             h *= 1 - .28 * math.cos(phase + i * .85)
         shapes.append(f'<rect x="{bar.attrib["x"]}" y="{(100-h)/2}" width="19" height="{h}" rx="9.5"/>')
-    backdrop = f'<rect width="100" height="100" rx="{50 if rounded else 0}" fill="{BG}"/>' if background else ''
+    rx = 50 if rounded else (APP_RADIUS if radius is None else radius)
+    backdrop = f'<rect width="100" height="100" rx="{rx}" fill="{BG}"/>' if background else ''
     badge = '<circle cx="87" cy="16" r="8" fill="#e9b567"/>' if attention else ''
     return f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">{backdrop}<g fill="{COLOR}" transform="translate({50*(1-scale)} {50*(1-scale)}) scale({scale})">{"".join(shapes)}</g>{badge}</svg>'
 
@@ -60,14 +70,16 @@ def main():
     for frame in range(40):
         render(f'{desk}/tray-rot-{frame:02}.png', 44, svg(phase=2*math.pi*frame/40))
     mobile = 'apps/mobile/assets'
-    render(f'{mobile}/icon.png', 1024, svg(background=True))
+    render(f'{mobile}/icon.png', 1024, svg(background=True, radius=APP_RADIUS))
     render(f'{mobile}/adaptive-icon.png', 1024, svg(scale=.65))
     render(f'{mobile}/splash-icon.png', 1024, svg(scale=.65))
     res = ROOT / 'apps/mobile/android/app/src/main/res'
     for path in res.glob('mipmap-*/ic_launcher*.webp'):
         size = Image.open(path).width
         foreground = 'foreground' in path.name
-        source = svg(background=not foreground, scale=.65 if foreground else 1, rounded='round' in path.name)
+        # Android maskerer SELV: en radius her ville klippe hjørnerne to gange.
+        source = svg(background=not foreground, scale=.65 if foreground else 1,
+                     rounded='round' in path.name, radius=0)
         render(path, size, source)
     for path in res.glob('drawable-*/splashscreen_logo.png'):
         render(path, Image.open(path).width, svg(scale=.65))

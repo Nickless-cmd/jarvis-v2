@@ -10,7 +10,8 @@ _`/composer/suggest` — hvad der kunne skrives videre i komponisten._
 | class | `Udkast` | `` | — | [src](../../../apps/api/jarvis_api/routes/composer_suggest_routes.py#L34) |
 | class | `Valg` | `` | Hvad der skete med et forslag. Se `core.runtime.db_composer_choice`. | [src](../../../apps/api/jarvis_api/routes/composer_suggest_routes.py#L41) |
 | function | `suggest` | `(krop)` | Et forslag, eller tom streng. Fejler aldrig. | [src](../../../apps/api/jarvis_api/routes/composer_suggest_routes.py#L54) |
-| function | `choice` | `(krop)` | Registrér hvad der skete med et forslag. Fejler aldrig. | [src](../../../apps/api/jarvis_api/routes/composer_suggest_routes.py#L79) |
+| function | `moenster` | `()` | Hvad forslaget har lært af hans valg — i klartekst. | [src](../../../apps/api/jarvis_api/routes/composer_suggest_routes.py#L79) |
+| function | `choice` | `(krop)` | Registrér hvad der skete med et forslag. Fejler aldrig. | [src](../../../apps/api/jarvis_api/routes/composer_suggest_routes.py#L106) |
 
 ## `apps/api/jarvis_api/routes/connectors.py`
 _Connectors-API til jarvis-desk Marketplace (16. jun 2026)._

@@ -1,6 +1,6 @@
 # API_REFERENCE
 
-> Generated 2026-09-20 from app.routes (live) — 603 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
+> Generated 2026-09-20 from app.routes (live) — 604 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
 
 | Method | Path | Response model | Source |
 |---|---|---|---|
@@ -277,6 +277,7 @@
 | GET | `/companion/senses` | dict | companion |
 | GET | `/companion/thoughts` | dict | companion |
 | POST | `/composer/choice` | dict | composer_suggest_routes |
+| GET | `/composer/moenster` | dict | composer_suggest_routes |
 | POST | `/composer/suggest` | dict | composer_suggest_routes |
 | GET | `/cowork/agents` | dict | cowork |
 | GET | `/cowork/app-dispatch/pending` | dict | cowork |

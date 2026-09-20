@@ -56,6 +56,17 @@ _Completion Satisfaction — "det er nok, jeg er tilfreds."_
 | function | `build_completion_satisfaction_surface` | `()` | — | [src](../../../core/services/completion_satisfaction.py#L45) |
 | function | `_publish_completion_satisfaction_transition` | `(payload=…)` | Publish a state-transition event. Called from real transition points | [src](../../../core/services/completion_satisfaction.py#L48) |
 
+## `core/services/composer_moenster.py`
+_Hvad Bjørn plejer at bede om — udledt af hans valg, ikke af hans ord._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `art` | `(forslag)` | Hvad et forslag beder om. Altid ét ord-par, aldrig tomt. | [src](../../../core/services/composer_moenster.py#L77) |
+| function | `_valg_i_vinduet` | `()` | De terminale valg indenfor vinduet. Egen funktion, så testene kan sætte dem. | [src](../../../core/services/composer_moenster.py#L94) |
+| function | `moenster` | `()` | Én linje til prompten — eller `""` når der ikke er noget at sige. | [src](../../../core/services/composer_moenster.py#L111) |
+| function | `er_taendt` | `()` | Kontakten. Et mønster der peger galt skal kunne tages ud uden et deploy. | [src](../../../core/services/composer_moenster.py#L151) |
+| function | `prompt_linje` | `()` | Mønstret som det ser ud i prompten — tom streng når det er slukket. | [src](../../../core/services/composer_moenster.py#L160) |
+
 ## `core/services/composer_suggest.py`
 _Forslag i komponisten — hvad der kunne skrives videre, mens man skriver._
 
@@ -555,22 +566,4 @@ _Counterfactual self-simulation for post-run learning._
 | function | `_load_records` | `()` | — | [src](../../../core/services/counterfactual_self_simulation.py#L174) |
 | function | `_save_simulation` | `(sim)` | — | [src](../../../core/services/counterfactual_self_simulation.py#L179) |
 | function | `_feed_learning` | `(sim)` | — | [src](../../../core/services/counterfactual_self_simulation.py#L184) |
-
-## `core/services/counterfactual_triggers.py`
-_Trigger detection for counterfactual reflection._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `TriggerEvent` | `` | A regret-worthy event normalized for counterfactual processing. | [src](../../../core/services/counterfactual_triggers.py#L22) |
-| function | `_key_self_review` | `(payload)` | — | [src](../../../core/services/counterfactual_triggers.py#L33) |
-| function | `_key_conflict` | `(payload)` | Primary key for conflict.detected events. | [src](../../../core/services/counterfactual_triggers.py#L37) |
-| function | `_key_decision` | `(payload)` | — | [src](../../../core/services/counterfactual_triggers.py#L60) |
-| function | `_key_review` | `(payload)` | — | [src](../../../core/services/counterfactual_triggers.py#L64) |
-| function | `_key_goal` | `(payload)` | — | [src](../../../core/services/counterfactual_triggers.py#L68) |
-| function | `_key_decision_kept` | `(payload)` | — | [src](../../../core/services/counterfactual_triggers.py#L72) |
-| function | `_key_conflict_resolved` | `(payload)` | — | [src](../../../core/services/counterfactual_triggers.py#L76) |
-| function | `cf_key` | `(workspace_id, event_type, primary_key)` | First-pass dedup hash. Same workspace+type+key = same hash = skip. | [src](../../../core/services/counterfactual_triggers.py#L99) |
-| function | `_extract_summary` | `(payload)` | — | [src](../../../core/services/counterfactual_triggers.py#L105) |
-| function | `fetch_recent_aspiration_triggers` | `(*, workspace_id, lookback_minutes=…)` | Query events table for recent aspiration-worthy (positive) events. | [src](../../../core/services/counterfactual_triggers.py#L113) |
-| function | `fetch_recent_triggers` | `(*, workspace_id, lookback_minutes=…)` | Query events table for recent regret-worthy events. | [src](../../../core/services/counterfactual_triggers.py#L164) |
 

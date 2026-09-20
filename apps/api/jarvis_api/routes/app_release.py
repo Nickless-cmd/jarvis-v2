@@ -159,8 +159,12 @@ async def app_release_latest() -> dict[str, Any]:
 # ── vagten ──────────────────────────────────────────────────────────────
 
 
-def _udsend(data: dict[str, Any]) -> None:
-    """Laeg release-eventet paa bussen. /ws sender det videre til klienterne."""
+def _udsend(data: dict[str, Any]) -> bool:
+    """Laeg release-eventet paa bussen. /ws sender det videre til klienterne.
+
+    Returnerer True naar eventet faktisk kom afsted. Kalderen maa IKKE rykke
+    sin baseline videre paa et False — se kommentaren i _vagt_loop.
+    """
     try:
         from core.eventbus.bus import event_bus
 
@@ -174,8 +178,15 @@ def _udsend(data: dict[str, Any]) -> None:
             },
         )
         logger.info("app-release: udsendte app.release.available version=%s", data.get("version"))
-    except Exception:  # noqa: BLE001
-        logger.debug("app-release: kunne ikke udsende event", exc_info=True)
+        return True
+    except Exception as e:  # noqa: BLE001
+        # Tavs fejl her betyder at klienterne ALDRIG faar besked om en ny
+        # release — og vagten skriver state alligevel, saa den ser ud til at
+        # virke. Det var praecis hvad der skete 20/9: familien `app` var ikke
+        # registreret, publish kastede, og debug-linjen blev aldrig laest.
+        # Derfor warning — en fejl her er en fejl i push-vejen, ikke stoj.
+        logger.warning("app-release: kunne ikke udsende event: %s", e, exc_info=True)
+        return False
 
 
 async def _vagt_loop() -> None:
@@ -204,13 +215,19 @@ async def _vagt_loop() -> None:
                     elif tag != sidste:
                         # Der kom et release mens vi var nede — det er praecis
                         # det event klienten har ventet paa.
-                        _udsend(data)
+                        if _udsend(data):
+                            sidste = tag
+                            _skriv_sidste_tag(tag)
+                elif tag != sidste:
+                    # Baselines rykkes KUN naar eventet faktisk kom afsted.
+                    # Ellers skriver vi «melding sendt» for et event ingen fik,
+                    # og naeste genstart tror releasen allerede er meldt.
+                    # Det var saadan 0.6.61 blev tabt 20/9: udsendelsen fejlede
+                    # (familien `app` var ikke registreret), state gik videre til
+                    # 0.6.61, og vagten kunne ikke raabe op igen.
+                    if _udsend(data):
                         sidste = tag
                         _skriv_sidste_tag(tag)
-                elif tag != sidste:
-                    _udsend(data)
-                    sidste = tag
-                    _skriv_sidste_tag(tag)
         except Exception:  # noqa: BLE001
             logger.debug("app-release: vagt-gennemloeb fejlede", exc_info=True)
         await asyncio.sleep(_VAGT_INTERVAL_S)

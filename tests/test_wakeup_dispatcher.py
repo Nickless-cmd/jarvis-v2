@@ -4,7 +4,33 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
+import pytest
+
 from core.services.wakeup_dispatcher import dispatch_due_wakeups
+
+
+@pytest.fixture(autouse=True)
+def _samtalen_er_fri(monkeypatch):
+    """Forudsætningen disse tests HAR, men ikke sagde højt.
+
+    20/9-2026 fik dispatcheren to nye betingelser: et wakeup startes ikke hvis
+    samtalen har et levende run, og heller ikke inden for ti minutter efter
+    brugerens sidste besked (Bjørn: «hvis han selv er i gang må en autonom
+    session ikke kunne starte i samme session»).
+
+    Wakeup-posterne her bærer ingen `session_id`, så måltavlen resolves — og i
+    en FULD suite lander den på en samtale hvor andre tests har efterladt en
+    frisk brugerbesked i den delte test-DB. Så blokerede vagten, og tre tests
+    faldt. De passerede hver for sig, hvilket er den værste slags rød.
+
+    Emnet her er «et fyret wakeup dispatches og markeres» — ikke vagten. Den
+    har sine egne tests i `test_wakeup_aktiv_samtale_guard.py`. Så siger vi
+    forudsætningen højt i stedet for at lade den afhænge af hvad naboen
+    efterlod.
+    """
+    from core.services import chat_sessions, run_event_log
+    monkeypatch.setattr(run_event_log, "active_run_for_session", lambda sid: None)
+    monkeypatch.setattr(chat_sessions, "recent_chat_session_messages", lambda sid, **k: [])
 
 
 def test_dispatch_no_fired_returns_zero():

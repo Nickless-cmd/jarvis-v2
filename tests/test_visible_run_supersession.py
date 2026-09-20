@@ -22,6 +22,15 @@ def _isolerede_poster(monkeypatch):
                                                  poster.update({k: dict(x) for k, x in v.items()})))
     monkeypatch.setattr(ifr, "owner_still_alive", lambda owner: False)
     monkeypatch.delenv("JARVIS_ENABLE_RUNTIME_SERVICES", raising=False)
+    # Samtalen er FRI. Fra 20/9-2026 starter dispatcheren ikke en fortsættelse
+    # hvis samtalen allerede har et levende run (Bjørn: «i en session med en
+    # bruger må han aldrig kunne køre flere sideløbende runs»). Run-loggen er
+    # proces-global, så i en fuld suite kan en nabo have efterladt et run på
+    # `s1` — og så faldt testen her, mens den bestod alene. Emnet er hvad der
+    # FØLGER MED ind i fortsættelsen, ikke hvornår den må starte; den regel
+    # har sine egne tests i `test_visible_run_recovery_dispatcher.py`.
+    from core.services import run_event_log
+    monkeypatch.setattr(run_event_log, "active_run_for_session", lambda sid: None)
     return poster
 
 

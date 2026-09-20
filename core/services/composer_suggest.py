@@ -32,6 +32,7 @@ import json
 import logging
 import re
 import urllib.request
+from uuid import uuid4
 from typing import Final
 
 logger = logging.getLogger(__name__)
@@ -333,41 +334,59 @@ def _samtale(session_id: str) -> list[dict[str, str]]:
     return recent_chat_session_messages(session_id, limit=MAKS_HISTORIK)
 
 
+def _tomt() -> dict[str, str]:
+    """Intet forslag — og dermed intet at melde tilbage om."""
+    return {"forslag": "", "forslag_id": "", "kilde_besked_id": ""}
+
+
 def foreslaa_naeste(session_id: str) -> str:
     """Et bud på brugerens næste besked, eller `""`.
 
     Kaster aldrig — samme regel som `foreslaa`: komponisten skal virke uanset
     hvad der sker med modellen.
     """
+    return foreslaa_naeste_detaljer(session_id)["forslag"]
+
+
+def foreslaa_naeste_detaljer(session_id: str) -> dict[str, str]:
+    """Forslaget OG det klienten skal bruge for at kunne melde valget tilbage.
+
+    Tre felter: `forslag`, `forslag_id` og `kilde_besked_id`. Id'et fødes her
+    og gemmes IKKE — serveren husker ingenting om et forslag der måske aldrig
+    kommer på skærmen (se `db_composer_choice`). Klienten sender de to id'er
+    tilbage når forslaget vises og når det bliver valgt eller vraget.
+
+    Tomt forslag → tomme id'er. Der er ikke noget at melde tilbage om.
+    """
     sid = (session_id or "").strip()
     if not sid:
-        return ""
+        return _tomt()
     try:
         raekker = _samtale(sid)
     except Exception:
         logger.debug("composer_suggest: kunne ikke læse samtalen", exc_info=True)
-        return ""
+        return _tomt()
     beskeder = [
         b for b in raekker
         if str(b.get("role") or "") in ("user", "assistant")
         and str(b.get("content") or "").strip()
     ]
     if not beskeder:
-        return ""
+        return _tomt()
     # Står der en ubesvaret besked fra ham, er turen i gang. At foreslå en ny
     # besked dér er at tale i munden på et svar der er på vej.
     if str(beskeder[-1].get("role") or "") != "assistant":
-        return ""
+        return _tomt()
     # En stump til sidst («4.», «Generation cancelled.») er ikke et svar der
     # peger nogen steder hen. Målt: dér begyndte modellen at føre samtalen.
     if len(" ".join(str(beskeder[-1].get("content") or "").split())) < MIN_SVAR_TEGN:
-        return ""
+        return _tomt()
 
     try:
         raa = _kald_model(_PROMPT_NAESTE + _kontekst(str(beskeder[-1].get("content") or "")))
     except Exception:
         logger.debug("composer_suggest: næste-kald fejlede", exc_info=True)
-        return ""
+        return _tomt()
 
     ud = _ryd(raa)
     for praefiks in _ROLLE_PRAEFIKS:
@@ -380,10 +399,14 @@ def foreslaa_naeste(session_id: str) -> str:
     # det står og fylder pladsholderens plads.
     if ud.lower().startswith(_REPLIK_START):
         logger.debug("composer_suggest: kasseret som replik: %r", ud)
-        return ""
+        return _tomt()
     if _er_paastand(ud):
         logger.debug("composer_suggest: kasseret som påstand: %r", ud)
-        return ""
+        return _tomt()
     # Ingen hæftning med mellemrum her: det er en hel besked, ikke en
     # fortsættelse af noget.
-    return ud
+    return {
+        "forslag": ud,
+        "forslag_id": f"cs-{uuid4().hex[:16]}",
+        "kilde_besked_id": str(beskeder[-1].get("message_id") or ""),
+    }

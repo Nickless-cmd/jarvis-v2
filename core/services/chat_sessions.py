@@ -1104,7 +1104,7 @@ def recent_chat_session_messages(session_id: str, *, limit: int = 12) -> list[di
     with connect() as conn:
         rows = conn.execute(
             """
-            SELECT role, content, created_at, user_id, reasoning_content
+            SELECT message_id, role, content, created_at, user_id, reasoning_content
             FROM chat_messages
             WHERE session_id = ? AND role != 'compact_marker'
             ORDER BY id DESC
@@ -1114,6 +1114,10 @@ def recent_chat_session_messages(session_id: str, *, limit: int = 12) -> list[di
         ).fetchall()
     return [
         {
+            # `message_id` kom til 20/9-2026: komponistens forslag skal kunne
+            # pege på DEN besked det blev udledt af, når valget registreres.
+            # Et ekstra felt bryder ingen læser — de plukker de nøgler de bruger.
+            "message_id": str(row["message_id"] or ""),
             "role": str(row["role"]),
             "content": str(row["content"]),
             "created_at": str(row["created_at"]),

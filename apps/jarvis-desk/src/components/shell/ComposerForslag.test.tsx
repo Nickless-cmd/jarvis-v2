@@ -36,12 +36,30 @@ const opsæt = (props: Record<string, unknown> = {}) => {
   return { onSend, felt: screen.getByRole('textbox') as HTMLTextAreaElement }
 }
 
-/** Serveren svarer med ét forslag; alt andet svarer tomt. */
+/** Serveren svarer med ét forslag; alt andet svarer tomt. Returnerer
+ *  fetch-spionen, så valgene (fase 2) kan aflæses i de kald der blev sendt. */
 function serverForeslaar(forslag: string) {
-  vi.stubGlobal('fetch', vi.fn(async (url: string) => ({
+  const kald = vi.fn(async (url: string, _init?: RequestInit) => ({
     ok: true,
-    json: async () => (String(url).includes('/composer/suggest') ? { forslag } : {}),
-  } as unknown as Response)))
+    json: async () => (String(url).includes('/composer/suggest')
+      ? { forslag, forslag_id: forslag ? 'cs-42' : '', kilde_besked_id: 'message-7' }
+      : {}),
+  } as unknown as Response))
+  vi.stubGlobal('fetch', kald)
+  return kald
+}
+
+/** De valg der faktisk blev meldt til serveren, i rækkefølge. */
+function meldteValg(kald: ReturnType<typeof serverForeslaar>): string[] {
+  return kald.mock.calls
+    .filter((c) => String(c[0]).includes('/composer/choice'))
+    .map((c) => JSON.parse(String((c[1] as RequestInit).body)).valg as string)
+}
+
+/** Kroppen af det FØRSTE valg-kald. */
+function foersteValgKrop(kald: ReturnType<typeof serverForeslaar>): Record<string, unknown> {
+  const c = kald.mock.calls.find((k) => String(k[0]).includes('/composer/choice'))
+  return JSON.parse(String((c?.[1] as RequestInit).body))
 }
 
 describe('Composer · auto-forslag', () => {
@@ -114,5 +132,76 @@ describe('Composer · auto-forslag', () => {
     await new Promise((r) => setTimeout(r, 900))
     const suggest = f.mock.calls.filter((c) => String(c[0] ?? '').includes('/composer/suggest'))
     expect(suggest).toHaveLength(0)
+  })
+
+  // ── valget (fase 2, 20/9-2026) ─────────────────────────────────────────
+  //
+  // Bjørn: «vi skal gemme brugerens valg, dvs. om de brugte den suggested
+  // (tab) i composer eller skrev der egen besked så næste forslag bliver mere
+  // mig/målrettet». Det farligste her er ikke et tabt valg — det er at hans
+  // egen tekst skulle snige sig med i kaldet.
+
+  it('et vist forslag meldes som VIST, med beskeden det kom af', async () => {
+    const kald = serverForeslaar('kør testene igen')
+    opsæt()
+    await screen.findByText('kør testene igen')
+    await waitFor(() => expect(meldteValg(kald)).toEqual(['vist']))
+    expect(foersteValgKrop(kald)).toMatchObject({
+      forslag_id: 'cs-42',
+      session_id: 's1',
+      forslag: 'kør testene igen',
+      kilde_besked_id: 'message-7',
+      valg: 'vist',
+    })
+  })
+
+  it('Tab melder ACCEPTERET', async () => {
+    const kald = serverForeslaar('kør testene igen')
+    const { felt } = opsæt()
+    await screen.findByText('kør testene igen')
+    fireEvent.keyDown(felt, { key: 'Tab' })
+    await waitFor(() => expect(meldteValg(kald)).toEqual(['vist', 'accepteret']))
+  })
+
+  it('Escape melder AFVIST', async () => {
+    const kald = serverForeslaar('deploy det til ct105')
+    const { felt } = opsæt()
+    await screen.findByText('deploy det til ct105')
+    fireEvent.keyDown(felt, { key: 'Escape' })
+    await waitFor(() => expect(meldteValg(kald)).toEqual(['vist', 'afvist']))
+  })
+
+  it('skriver han sin EGEN besked, meldes eget — og teksten følger ikke med', async () => {
+    const kald = serverForeslaar('kør testene igen')
+    const { felt } = opsæt()
+    await screen.findByText('kør testene igen')
+
+    fireEvent.change(felt, { target: { value: 'nej, vent med testene' } })
+    fireEvent.keyDown(felt, { key: 'Enter' })
+
+    await waitFor(() => expect(meldteValg(kald)).toEqual(['vist', 'eget']))
+    // Hele trafikken gennemsøges: hans sætning må ikke stå i NOGEN krop.
+    const alt = JSON.stringify(kald.mock.calls.filter((c) => String(c[0]).includes('/composer/')))
+    expect(alt).not.toContain('nej, vent med testene')
+  })
+
+  it('tog han forslaget, kan en senere afsendelse ikke skrive det om til EGET', async () => {
+    const kald = serverForeslaar('kør testene igen')
+    const { felt } = opsæt()
+    await screen.findByText('kør testene igen')
+    fireEvent.keyDown(felt, { key: 'Tab' })
+    await waitFor(() => expect(meldteValg(kald)).toContain('accepteret'))
+    fireEvent.keyDown(felt, { key: 'Enter' })
+    await act(async () => { await Promise.resolve() })
+    expect(meldteValg(kald)).toEqual(['vist', 'accepteret'])
+  })
+
+  it('et forslag der ALDRIG blev vist, meldes ikke', async () => {
+    const kald = serverForeslaar('kør testene igen')
+    const { felt } = opsæt()
+    // Han skriver FØR forslaget nåede frem — så står det aldrig på skærmen.
+    fireEvent.change(felt, { target: { value: 'jeg skriver selv' } })
+    await act(async () => { await new Promise((r) => setTimeout(r, 900)) })
+    expect(meldteValg(kald)).toEqual([])
   })
 })

@@ -2,6 +2,19 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/runtime/plugin_graph.py`
+_Afhængighedsgrafen — Fase 9: «plugin boot rejects missing/cyclic dependencies»._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `GrafFejl` | `` | Grafen kan ikke bære arbejde. Rejses kun i streng tilstand. | [src](../../../core/runtime/plugin_graph.py#L48) |
+| class | `Rapport` | `` | Hvad grafen fejler — og hvad den kan, hvis noget. | [src](../../../core/runtime/plugin_graph.py#L53) |
+| method | `Rapport.rask` | `(self)` | — | [src](../../../core/runtime/plugin_graph.py#L66) |
+| method | `Rapport.forklar` | `(self)` | Menneskelæsbart. Hver linje skal kunne handles på uden opslag. | [src](../../../core/runtime/plugin_graph.py#L69) |
+| function | `valider` | `(graf, *, streng=…)` | Find manglende udbydere og cykler, og læg knuderne i en gyldig orden. | [src](../../../core/runtime/plugin_graph.py#L79) |
+| function | `_find_cykler` | `(knuder)` | Dybde-først med tre farver. Hver fundet cyklus returneres som sin sti. | [src](../../../core/runtime/plugin_graph.py#L115) |
+| function | `_toposorter` | `(knuder)` | Kahn. Afhængigheder først, og navne-sorteret inden for hvert lag. | [src](../../../core/runtime/plugin_graph.py#L155) |
+
 ## `core/runtime/plugin_lifecycle.py`
 _Ejerskab over registreringer — Fase 9, `RuntimePluginLifecycle`._
 

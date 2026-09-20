@@ -413,6 +413,17 @@ _Persistence for the cognitive-domain utility caches._
 | function | `daemon_output_log_recent` | `(daemon_name=…, limit=…)` | — | [src](../../../core/runtime/db_cognitive_utility.py#L275) |
 | function | `daemon_output_log_cleanup` | `(max_age_days=…)` | — | [src](../../../core/runtime/db_cognitive_utility.py#L302) |
 
+## `core/runtime/db_composer_choice.py`
+_Hvad Bjørn gjorde ved komponistens forslag — tog han det, eller skrev han selv?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_sikr_tabel` | `(conn)` | — | [src](../../../core/runtime/db_composer_choice.py#L53) |
+| function | `noter_vist` | `(*, forslag_id, session_id, forslag, kilde_besked_id=…, nu=…)` | Forslaget kom på skærmen. Returnerer False hvis kaldet var ubrugeligt. | [src](../../../core/runtime/db_composer_choice.py#L72) |
+| function | `noter_valg` | `(*, forslag_id, valg, nu=…)` | Hvad der skete med forslaget. Returnerer False ved et ukendt valg. | [src](../../../core/runtime/db_composer_choice.py#L109) |
+| function | `seneste_valg` | `(*, session_id=…, limit=…)` | De seneste forslag og hvad der skete med dem. Til fase 3 og til at kigge. | [src](../../../core/runtime/db_composer_choice.py#L135) |
+| function | `optaelling` | `(*, session_id=…)` | Hvor mange forslag endte hvor. Grundlaget for «virker det?». | [src](../../../core/runtime/db_composer_choice.py#L153) |
+
 ## `core/runtime/db_composites.py`
 _Composite tools store — Jarvis proposals of new tool sequences._
 
@@ -650,16 +661,4 @@ _Persistence for the heartbeat runtime tables — Jarvis' tick rhythm._
 | function | `record_heartbeat_runtime_tick` | `(*, tick_id, trigger, tick_status, decision_type, decision_summary, decision_reason, blocked_reason, provider, model, lane, model_source, resolution_status, fallback_used, execution_status, parse_status, budget_status, ping_eligible, ping_result, action_status, action_summary, action_type, action_artifact, raw_response, input_tokens, output_tokens, cost_usd, started_at, finished_at)` | — | [src](../../../core/runtime/db_heartbeat.py#L598) |
 | function | `get_heartbeat_runtime_tick` | `(tick_id)` | — | [src](../../../core/runtime/db_heartbeat.py#L702) |
 | function | `recent_heartbeat_runtime_ticks` | `(limit=…)` | — | [src](../../../core/runtime/db_heartbeat.py#L746) |
-
-## `core/runtime/db_instrument.py`
-_Persistens for central_instrument — selv-instrumenterings-motorens fund + scan-cache._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_ensure_tables` | `(conn)` | — | [src](../../../core/runtime/db_instrument.py#L20) |
-| function | `get_file_hash` | `(file)` | Sidst-scannede indholds-hash for en fil (til incremental skip). Self-safe → None. | [src](../../../core/runtime/db_instrument.py#L54) |
-| function | `set_file_hash` | `(file, content_hash, n_findings)` | — | [src](../../../core/runtime/db_instrument.py#L68) |
-| function | `replace_file_findings` | `(file, findings)` | Erstat ALLE åbne fund for én fil (idempotent pr. scan). Bevarer status (fx 'dismissed') | [src](../../../core/runtime/db_instrument.py#L84) |
-| function | `list_findings` | `(*, status=…, min_score=…, limit=…)` | Fund (højeste score først). Self-safe → []. | [src](../../../core/runtime/db_instrument.py#L120) |
-| function | `summary` | `()` | Hurtig optælling pr. severity + total (til observe/central_query). Self-safe. | [src](../../../core/runtime/db_instrument.py#L135) |
 

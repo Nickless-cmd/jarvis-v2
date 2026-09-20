@@ -374,10 +374,13 @@ def test_ruten_vaelger_tilstand_efter_om_der_ER_et_udkast(monkeypatch):
     faa fortsaettelsen; desk sender et tomt felt og skal have naeste besked."""
     from apps.api.jarvis_api.routes import composer_suggest_routes as r
     monkeypatch.setattr(cs, "foreslaa", lambda u: " tjekke det")
-    monkeypatch.setattr(cs, "foreslaa_naeste", lambda s: f"naeste til {s}")
-    assert r.suggest(r.Udkast(udkast="kan du lige", session_id="s1")) == {"forslag": " tjekke det"}
-    assert r.suggest(r.Udkast(udkast="   ", session_id="s1")) == {"forslag": "naeste til s1"}
-    assert r.suggest(r.Udkast(session_id="s1")) == {"forslag": "naeste til s1"}
+    # Naeste-formen gaar siden 20/9-2026 gennem `foreslaa_naeste_detaljer`,
+    # fordi klienten skal have et id at melde sit valg tilbage paa.
+    monkeypatch.setattr(cs, "foreslaa_naeste_detaljer", lambda s: {
+        "forslag": f"naeste til {s}", "forslag_id": "cs-x", "kilde_besked_id": "m1"})
+    assert r.suggest(r.Udkast(udkast="kan du lige", session_id="s1"))["forslag"] == " tjekke det"
+    assert r.suggest(r.Udkast(udkast="   ", session_id="s1"))["forslag"] == "naeste til s1"
+    assert r.suggest(r.Udkast(session_id="s1"))["forslag"] == "naeste til s1"
 
 
 # ─────────────────────────────────────────────────── fladen skal kunne NAAS
@@ -397,15 +400,111 @@ def test_ruten_svarer_TOMT_frem_for_at_fejle(monkeypatch):
     from apps.api.jarvis_api.routes import composer_suggest_routes as r
     monkeypatch.setattr(cs, "foreslaa",
                         lambda *a, **k: (_ for _ in ()).throw(RuntimeError("nede")))
-    assert r.suggest(r.Udkast(udkast="kan du lige tjekke")) == {"forslag": ""}
+    # Svaret bærer siden 20/9-2026 også `forslag_id` og `kilde_besked_id`
+    # (fase 2), men tomme her: der er intet forslag at melde et valg om.
+    assert r.suggest(r.Udkast(udkast="kan du lige tjekke")) == {
+        "forslag": "", "forslag_id": "", "kilde_besked_id": ""}
 
 
 def test_ruten_baerer_forslaget_igennem(monkeypatch):
     from apps.api.jarvis_api.routes import composer_suggest_routes as r
     monkeypatch.setattr(cs, "foreslaa", lambda u: " tjekke det")
-    assert r.suggest(r.Udkast(udkast="kan du lige")) == {"forslag": " tjekke det"}
+    assert r.suggest(r.Udkast(udkast="kan du lige"))["forslag"] == " tjekke det"
 
 
 def test_ruten_taaler_en_tom_krop():
     from apps.api.jarvis_api.routes import composer_suggest_routes as r
-    assert r.suggest(r.Udkast()) == {"forslag": ""}
+    assert r.suggest(r.Udkast()) == {
+        "forslag": "", "forslag_id": "", "kilde_besked_id": ""}
+
+
+# ─────────────────────────────────────────────── valget (fase 2, 20/9-2026)
+#
+# Bjoern: «vi skal gemme brugerens valg, dvs. om de brugte den suggested (tab)
+# i composer eller skrev der egen besked saa naeste forslag bliver mere
+# mig/maalrettet». Forslaget skal derfor baere et id ud til klienten, saa
+# klienten kan melde tilbage hvad der skete med netop DET forslag.
+
+
+def test_forslaget_baerer_et_ID_og_beskeden_det_kom_af(monkeypatch):
+    monkeypatch.setattr(cs, "_samtale", lambda sid: [{
+        "role": "assistant", "message_id": "message-42",
+        "content": "Det er rettet og verificeret — testene er groenne igen."}])
+    monkeypatch.setattr(cs, "_kald_model", lambda p: "deploy det til ct105")
+    d = cs.foreslaa_naeste_detaljer("s1")
+    assert d["forslag"] == "deploy det til ct105"
+    assert d["forslag_id"].startswith("cs-") and len(d["forslag_id"]) > 8
+    assert d["kilde_besked_id"] == "message-42"
+
+
+def test_to_forslag_faar_FORSKELLIGE_id(monkeypatch):
+    """Ellers ville to valg skrive oven i hinanden."""
+    monkeypatch.setattr(cs, "_samtale", lambda sid: [{
+        "role": "assistant", "message_id": "m1",
+        "content": "Det er rettet og verificeret — testene er groenne igen."}])
+    monkeypatch.setattr(cs, "_kald_model", lambda p: "deploy det")
+    assert cs.foreslaa_naeste_detaljer("s1")["forslag_id"] != \
+        cs.foreslaa_naeste_detaljer("s1")["forslag_id"]
+
+
+def test_INTET_forslag_giver_tomme_id(monkeypatch):
+    """Der er ikke noget at melde tilbage om — og en klient der fik et id uden
+    et forslag, ville oprette en raekke for noget der aldrig blev vist."""
+    monkeypatch.setattr(cs, "_samtale", lambda sid: [])
+    d = cs.foreslaa_naeste_detaljer("s1")
+    assert d == {"forslag": "", "forslag_id": "", "kilde_besked_id": ""}
+
+
+def test_den_GAMLE_form_svarer_stadig_med_en_streng(monkeypatch):
+    """Mobilen og enhver anden kalder maa ikke braekke af at der kom felter til."""
+    monkeypatch.setattr(cs, "_samtale", lambda sid: [{
+        "role": "assistant", "message_id": "m1",
+        "content": "Det er rettet og verificeret — testene er groenne igen."}])
+    monkeypatch.setattr(cs, "_kald_model", lambda p: "deploy det")
+    assert cs.foreslaa_naeste("s1") == "deploy det"
+
+
+def test_ruten_registrerer_VIST_og_derefter_valget(isolated_runtime, monkeypatch):
+    from apps.api.jarvis_api.routes import composer_suggest_routes as rute
+    from core.runtime import db_composer_choice as dc
+
+    rute.choice(rute.Valg(forslag_id="cs-9", session_id="s1",
+                          forslag="Ret det og koer testene igen",
+                          kilde_besked_id="message-3", valg="vist"))
+    assert dc.seneste_valg()[0]["valg"] == "vist"
+    rute.choice(rute.Valg(forslag_id="cs-9", valg="accepteret"))
+    assert dc.seneste_valg()[0]["valg"] == "accepteret"
+
+
+def test_ruten_fejler_ALDRIG(isolated_runtime, monkeypatch):
+    """Komponisten maa ikke kunne gaa i stykker af en telemetri-skrivning."""
+    from apps.api.jarvis_api.routes import composer_suggest_routes as rute
+    from core.runtime import db_composer_choice as dc
+
+    monkeypatch.setattr(dc, "noter_vist",
+                        lambda **k: (_ for _ in ()).throw(RuntimeError("basen er nede")))
+    assert rute.choice(rute.Valg(forslag_id="cs-1", session_id="s1",
+                                 forslag="x", valg="vist")) == {"ok": True}
+
+
+def test_ruten_svarer_med_id_saa_klienten_kan_melde_tilbage(monkeypatch):
+    from apps.api.jarvis_api.routes import composer_suggest_routes as rute
+
+    monkeypatch.setattr(cs, "_samtale", lambda sid: [{
+        "role": "assistant", "message_id": "m5",
+        "content": "Det er rettet og verificeret — testene er groenne igen."}])
+    monkeypatch.setattr(cs, "_kald_model", lambda p: "deploy det")
+    svar = rute.suggest(rute.Udkast(udkast="", session_id="s1"))
+    assert svar["forslag"] == "deploy det"
+    assert svar["kilde_besked_id"] == "m5" and svar["forslag_id"]
+
+
+def test_MOBILENS_form_har_intet_valg_at_registrere(monkeypatch):
+    """Fortsaettelses-formen har ingen Tab-tast at trykke paa i et felt man
+    skriver i. Tomme id'er, saa der ikke opstaar raekker uden et valg."""
+    from apps.api.jarvis_api.routes import composer_suggest_routes as rute
+
+    monkeypatch.setattr(cs, "_kald_model", lambda p: "tjekke det")
+    svar = rute.suggest(rute.Udkast(udkast="kan du lige", session_id="s1"))
+    assert svar["forslag"].strip() == "tjekke det"
+    assert svar["forslag_id"] == "" and svar["kilde_besked_id"] == ""

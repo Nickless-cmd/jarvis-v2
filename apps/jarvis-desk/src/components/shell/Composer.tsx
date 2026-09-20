@@ -14,6 +14,7 @@ import {
 import { usePermission } from '../../hooks/usePermission'
 import { useFileMention } from '../../hooks/useFileMention'
 import { useForslag } from '../../hooks/useForslag'
+import { meldValg, type Forslag, type Valg } from '../../lib/forslag'
 
 export interface SentAttachment { id: string; src?: string; name: string; isImage: boolean }
 
@@ -429,7 +430,15 @@ export function Composer({
   // Pause under compaction (som Claude Code): mens sessionen komprimeres holdes en send i kø
   // og afsendes AUTOMATISK når compaction er overstået. Teksten bevares imens.
   const [queuedDuringCompact, setQueuedDuringCompact] = useState(false)
+  /** Sættes af forslags-blokken nedenfor; kaldes fra `send`. */
+  const meldEget = useRef<() => void>(() => { /* intet forslag endnu */ })
   const send = useCallback(() => {
+    // Sender han sin EGEN besked mens et forslag stod der, er forslaget
+    // vraget. Kun ét bit: at det ikke blev brugt. Hans tekst følger aldrig
+    // med (se `meldValg`). Gennem en ref, fordi `meld` hører til
+    // forslags-blokken længere nede — og den hører hjemme dér, sammen med
+    // resten af forslaget.
+    meldEget.current()
     if (compacting) {
       if (text.trim() || attachments.some((a) => a.id && !a.error)) setQueuedDuringCompact(true)
       return
@@ -464,7 +473,46 @@ export function Composer({
   // Escape afviser forslaget — men kun DET forslag. Kommer der et nyt efter
   // næste svar, er det velkomment.
   const [afvistFor, setAfvistFor] = useState('')
-  const ghostAktiv = forslag !== '' && tomtFelt && !filnavne.åben && afvistFor !== forslag
+  const ghostAktiv = forslag.tekst !== '' && tomtFelt && !filnavne.åben && afvistFor !== forslag.tekst
+
+  // Valget (fase 2, 20/9-2026). Bjørn: «vi skal gemme brugerens valg, dvs. om
+  // de brugte den suggested (tab) i composer eller skrev der egen besked».
+  //
+  // ÉT terminalt valg pr. forslag: tager han det med Tab og retter i det, er
+  // svaret stadig at han tog det. Vagten står her OG i basen — klienten kan
+  // sende dobbelt (en genrender), og basen kan få et valg fra en klient der
+  // ikke husker at den allerede har meldt.
+  const meldt = useRef<{ vist: string; valgt: string }>({ vist: '', valgt: '' })
+  // Det SIDST viste forslag, gemt hver for sig. `useForslag` rydder sit
+  // forslag i samme øjeblik han taster — feltet er jo ikke længere tomt — og
+  // uden den her ville «eget» aldrig kunne meldes: på afsendelses-tidspunktet
+  // er der intet forslag tilbage at pege på.
+  const sidstVist = useRef<{ forslag: Forslag; sid: string } | null>(null)
+  const meld = useCallback((valg: Valg, hvad?: { forslag: Forslag; sid: string }) => {
+    const f = hvad?.forslag ?? forslag
+    const sid = hvad?.sid ?? sessionId
+    if (!config || !sid || !f.id) return
+    if (valg === 'vist') {
+      if (meldt.current.vist === f.id) return
+      meldt.current.vist = f.id
+      sidstVist.current = { forslag: f, sid }
+    } else {
+      if (meldt.current.valgt === f.id) return
+      meldt.current.valgt = f.id
+    }
+    meldValg(config, f, valg, sid)
+  }, [config, sessionId, forslag])
+  meldEget.current = () => {
+    const vist = sidstVist.current
+    if (vist && meldt.current.valgt !== vist.forslag.id) meld('eget', vist)
+  }
+
+  // «Vist» er dét der opfylder kravet om at et forslag der ALDRIG kom på
+  // skærmen ikke tælles med: blev det hentet og kasseret — feltet var ikke
+  // tomt, @-listen var åben, sessionen skiftede — når vi aldrig hertil.
+  useEffect(() => {
+    if (ghostAktiv) meld('vist')
+  }, [ghostAktiv, meld])
 
   // Stabile handlers til den memo'd textarea (ellers re-renderer den hvert tick).
   // Bruger-input nulstiller historik-navigationen (man redigerer draften igen).
@@ -499,16 +547,17 @@ export function Composer({
     // ud af feltet, og Escape ville gøre ingenting.
     if (ghostAktiv) {
       if (e.key === 'Escape') {
-        e.preventDefault(); setAfvistFor(forslag); return
+        e.preventDefault(); meld('afvist'); setAfvistFor(forslag.tekst); return
       }
       if (e.key === 'Tab') {
         e.preventDefault()
         // Grå bliver til rigtig tekst i feltet — derefter er det hans egen
         // besked, som kan rettes i eller sendes med Enter.
         const ta = e.currentTarget
-        setText(forslag)
+        meld('accepteret')
+        setText(forslag.tekst)
         requestAnimationFrame(() => {
-          try { ta.selectionStart = ta.selectionEnd = forslag.length } catch { /* noop */ }
+          try { ta.selectionStart = ta.selectionEnd = forslag.tekst.length } catch { /* noop */ }
         })
         return
       }
@@ -650,7 +699,7 @@ export function Composer({
         />
         {ghostAktiv && (
           <div className="composer-ghost" aria-hidden="true">
-            <span className="ghost-forslag">{forslag}</span>
+            <span className="ghost-forslag">{forslag.tekst}</span>
             <span className="ghost-tast">Tab</span>
           </div>
         )}

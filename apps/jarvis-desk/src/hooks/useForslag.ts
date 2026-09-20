@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { ApiConfig } from '../lib/api'
-import { hentNaesteForslag } from '../lib/forslag'
+import { hentNaesteForslag, INTET_FORSLAG, type Forslag } from '../lib/forslag'
 
 /**
  * Auto-forslag til komponisten — et bud på den NÆSTE besked.
@@ -30,8 +30,11 @@ export function useForslag(
   config: ApiConfig | undefined,
   sessionId: string | null | undefined,
   aktiv: boolean,
-): string {
-  const [forslag, setForslag] = useState('')
+): Forslag {
+  // Siden 20/9-2026 bærer forslaget sit eget id med (fase 2): komponisten
+  // skal kunne melde tilbage hvad der skete med NETOP dette forslag — Tab,
+  // Escape, eller at han skrev sin egen besked.
+  const [forslag, setForslag] = useState<Forslag>(INTET_FORSLAG)
   const base = config?.apiBaseUrl
   const token = config?.authToken ?? null
   const sid = sessionId ?? ''
@@ -39,7 +42,7 @@ export function useForslag(
   useEffect(() => {
     // Ryd straks: et forslag hentet til en anden samtale — eller før det
     // seneste svar — er ikke længere et bud på hvad der kunne skrives nu.
-    setForslag('')
+    setForslag(INTET_FORSLAG)
     if (!aktiv || !base || !sid) return
 
     const ctrl = new AbortController()

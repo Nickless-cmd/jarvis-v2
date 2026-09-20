@@ -2,6 +2,18 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/runtime/db_instrument.py`
+_Persistens for central_instrument — selv-instrumenterings-motorens fund + scan-cache._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_ensure_tables` | `(conn)` | — | [src](../../../core/runtime/db_instrument.py#L20) |
+| function | `get_file_hash` | `(file)` | Sidst-scannede indholds-hash for en fil (til incremental skip). Self-safe → None. | [src](../../../core/runtime/db_instrument.py#L54) |
+| function | `set_file_hash` | `(file, content_hash, n_findings)` | — | [src](../../../core/runtime/db_instrument.py#L68) |
+| function | `replace_file_findings` | `(file, findings)` | Erstat ALLE åbne fund for én fil (idempotent pr. scan). Bevarer status (fx 'dismissed') | [src](../../../core/runtime/db_instrument.py#L84) |
+| function | `list_findings` | `(*, status=…, min_score=…, limit=…)` | Fund (højeste score først). Self-safe → []. | [src](../../../core/runtime/db_instrument.py#L120) |
+| function | `summary` | `()` | Hurtig optælling pr. severity + total (til observe/central_query). Self-safe. | [src](../../../core/runtime/db_instrument.py#L135) |
+
 ## `core/runtime/db_interlanguage_blind.py`
 _DB layer for interlanguage validation blind-dommer UI._
 
@@ -928,17 +940,4 @@ _Tilstands-hjernen — ÉN samlet opmærksomhedstilstand pr. arbejdsrum._
 | function | `_koe` | `(user_id, is_owner)` | (blokerende punkter, antal i indbakken). | [src](../../../core/runtime/opmaerksomhed.py#L299) |
 | function | `_venter` | `(items)` | — | [src](../../../core/runtime/opmaerksomhed.py#L311) |
 | function | `tilstand_for` | `(*, rum=…, user_id=…, is_owner=…)` | Den samlede tilstand. Rækkefølge: prioritet, så nyeste først. | [src](../../../core/runtime/opmaerksomhed.py#L321) |
-
-## `core/runtime/plugin_graph.py`
-_Afhængighedsgrafen — Fase 9: «plugin boot rejects missing/cyclic dependencies»._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `GrafFejl` | `` | Grafen kan ikke bære arbejde. Rejses kun i streng tilstand. | [src](../../../core/runtime/plugin_graph.py#L48) |
-| class | `Rapport` | `` | Hvad grafen fejler — og hvad den kan, hvis noget. | [src](../../../core/runtime/plugin_graph.py#L53) |
-| method | `Rapport.rask` | `(self)` | — | [src](../../../core/runtime/plugin_graph.py#L66) |
-| method | `Rapport.forklar` | `(self)` | Menneskelæsbart. Hver linje skal kunne handles på uden opslag. | [src](../../../core/runtime/plugin_graph.py#L69) |
-| function | `valider` | `(graf, *, streng=…)` | Find manglende udbydere og cykler, og læg knuderne i en gyldig orden. | [src](../../../core/runtime/plugin_graph.py#L79) |
-| function | `_find_cykler` | `(knuder)` | Dybde-først med tre farver. Hver fundet cyklus returneres som sin sti. | [src](../../../core/runtime/plugin_graph.py#L115) |
-| function | `_toposorter` | `(knuder)` | Kahn. Afhængigheder først, og navne-sorteret inden for hvert lag. | [src](../../../core/runtime/plugin_graph.py#L155) |
 

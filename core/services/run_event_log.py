@@ -99,13 +99,16 @@ def synthetic_terminal_frame(
     )
 
 
-def create(run_id: str, session_id: str) -> None:
+def create(run_id: str, session_id: str, surface: str = "") -> None:
     rid = (run_id or "").strip()
     if not rid:
         return
     with _lock:
         _RUNS[rid] = {
             "session_id": (session_id or "").strip(),
+            # Fladen turen blev skrevet fra ("desk" | "mobil" | ""). Loggen er
+            # det ENESTE sted et push kender til et run — den har kun run_id.
+            "surface": str(surface or "").strip().lower(),
             "frames": [],
             "base": 0,
             "done": False,
@@ -363,6 +366,29 @@ def aabne_run_ids(max_alder_s: float = 1800.0) -> list[str]:
                 if not st["done"] and (nu - st["created_at"]) < max_alder_s]
 
 
+def set_surface(run_id: str, surface: str) -> None:
+    """Notér hvilken flade turen blev skrevet fra. Tom streng roerer intet.
+
+    `claim_or_create` opretter loggen foer kalderen kender fladen, saa den
+    saettes bagefter. Tomt ind maa ALDRIG slette en flade der allerede staar
+    der — en fortsaettelse uden flade ville ellers goere turen hjemloes.
+    """
+    val = str(surface or "").strip().lower()
+    if not val:
+        return
+    with _lock:
+        st = _hent(run_id)
+        if st is not None:
+            st["surface"] = val
+
+
+def surface_for_run(run_id: str) -> str:
+    """Fladen turen blev skrevet fra, eller "" naar den ikke er kendt."""
+    with _lock:
+        st = _hent(run_id)
+        return str((st or {}).get("surface") or "")
+
+
 def session_for_run(run_id: str) -> str | None:
     with _lock:
         st = _hent(run_id)
@@ -441,6 +467,7 @@ def claim_or_create(session_id: str, stale_cap_s: float = 150.0) -> tuple[str, b
         rid = f"visible-{uuid4().hex}"
         _RUNS[rid] = {
             "session_id": sid,
+            "surface": "",
             "frames": [],
             "base": 0,
             "done": False,

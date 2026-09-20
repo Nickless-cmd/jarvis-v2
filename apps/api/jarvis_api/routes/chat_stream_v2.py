@@ -447,6 +447,7 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
             lane=settings.primary_model_lane,
             local_tool_exec=_local_exec,
             research_mode=bool(request.research_mode),
+            surface=getattr(request, "surface", "") or "",
         )
         if _attached:
             print(
@@ -561,6 +562,7 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
         "provider_override": _prov_override,
         "model_override": _model_override,
         "local_tool_exec": _local_exec,
+        "surface": getattr(request, "surface", "") or "",
     }
     if request.research_mode:
         from core.services.research_orchestrator import research_enabled, stream_research_run

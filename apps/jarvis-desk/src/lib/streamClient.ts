@@ -462,6 +462,10 @@ export function startStream(
           message: request.message,
           attachment_ids: request.attachmentIds ?? [],
           approval_mode: request.approvalMode ?? 'ask',
+          // Hvilken flade beskeden kommer fra. Serveren bruger den til at
+          // sende et godkendelses-kort tilbage til DEN skærm han sidder ved,
+          // i stedet for til en vilkårlig registreret telefon (20/9-2026).
+          surface: 'desk',
           thinking_mode: request.thinkingMode ?? 'think',
           mode: request.mode ?? 'chat',
           workspace_kind: request.workspaceKind ?? '',

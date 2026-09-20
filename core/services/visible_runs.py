@@ -438,6 +438,16 @@ class VisibleRun:
     # Den dag én ikke goer, vender kategorifejlen tilbage: 105 blokerede
     # raekker hvor «brugerens besked» var «Du er i en droemmetilstand…».
     origin: str = ""
+    # HVOR FRA turen blev skrevet: "desk", "mobil", "discord", "telegram" —
+    # tom når klienten ikke siger det. `origin` ovenfor siger HVEM der startede
+    # (dream, council, heartbeat …); den her siger hvilken FLADE Bjørn sad ved.
+    #
+    # Findes fordi et godkendelses-kort ellers ikke kan finde vej hjem. Bjørn
+    # 20/9-2026: «jeg sidder og laver noget med ham i desk og så står han bare
+    # og hænger, indtil jeg kigger på min telefon og så ligger der et approval
+    # card». Routeren valgte enhed efter en rangliste; nu kan den i stedet
+    # følge turen tilbage til den flade den kom fra.
+    surface: str = ""
 
 
 @dataclass(slots=True)
@@ -585,10 +595,14 @@ def start_visible_run(
     provider_override: str = "",
     model_override: str = "",
     local_tool_exec: bool = False,
+    surface: str = "",
 ) -> AsyncIterator[str]:
     """Begin a visible run.
 
     Args:
+        surface: hvilken flade turen blev skrevet fra ("desk" | "mobil").
+            Baeres med paa kørslen, saa en notifikation om den kan finde
+            tilbage til den enhed han faktisk sad ved. Tom = ukendt.
         force_user_id: discord_id captured at request-time by the route
             handler (chat.py /chat/stream). Passed through to the async
             streaming generator so it can rebind workspace_context inside
@@ -862,6 +876,7 @@ def start_visible_run(
         thinking_adaptive=_thinking_was_adaptive,
         local_tool_exec=bool(local_tool_exec),
         user_id=str(force_user_id or ""),
+        surface=str(surface or "").strip().lower(),
     )
     # KERNE-FORRANG (2026-07-22): markér den synlige tur som aktiv i HELE dens levetid
     # (assembly + streaming) via en in-proces gate, så private baggrunds-LLM-lag

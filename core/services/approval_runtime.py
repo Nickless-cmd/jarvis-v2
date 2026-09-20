@@ -59,6 +59,9 @@ def build_request(*, tool_name: str, arguments: dict[str, Any],
         "result": result,
         "run_id": getattr(run, "run_id", "") or "",
         "session_id": getattr(run, "session_id", "") or "",
+        # Fladen turen blev skrevet fra. Uden den ved notifikationen ikke
+        # hvor den skal hen, og falder tilbage på en rangliste over enheder.
+        "surface": getattr(run, "surface", "") or "",
         "created_at": created_at or datetime.now(UTC).isoformat(),
         "owner_user_id": _vr._godkendelses_ejer(run),
         "invocation_digest": _vr._kald_digest(tool_name, arguments),

@@ -279,6 +279,9 @@ export function startStream(request: StreamRequest, handlers: StreamHandlers): S
       message: request.message,
       session_id: request.sessionId,
       approval_mode: request.approvalMode ?? 'ask',
+      // Se desk'ens tilsvarende linje: fladen følger med, så en godkendelse
+      // finder tilbage hertil og ikke til skrivebordet.
+      surface: 'mobil',
       thinking_mode: request.thinkingMode ?? 'think',
       mode: request.mode ?? 'chat',
       model: request.model ?? '',

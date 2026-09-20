@@ -58,6 +58,9 @@ def start_user_run_detached(
     recovery_task_id: str = "",
     recovery_generation: int = 0,
     recovery_attempt: int = 0,
+    # Fladen turen blev skrevet fra ("desk" | "mobil"). Baeres med saa en
+    # notifikation om turen kan finde tilbage til den enhed han sad ved.
+    surface: str = "",
 ) -> str:
     """Start et server-autoritativt run. Returnerer run_id (klienten abonnerer
     via run_event_log gennem /chat/stream/v2 eller /chat/runs/{id}/subscribe)."""
@@ -72,6 +75,8 @@ def start_user_run_detached(
         run_id = f"visible-{uuid4().hex}"
         rel.create(run_id, sid)  # synkront FØR retur → straks synlig i live_run_ids
     # ellers: run_id er allerede claimet+oprettet atomisk af claim_or_create
+    # Fladen saettes EFTER begge veje, saa den ogsaa haenger paa et claimet run.
+    rel.set_surface(run_id, surface)
 
     if recovery_task_id:
         logger.info("detached-run %s fortsaetter opgave %s (generation %d, forsoeg %d)",
@@ -86,6 +91,7 @@ def start_user_run_detached(
         "provider_override": provider_override,
         "model_override": model_override,
         "local_tool_exec": local_tool_exec,
+        "surface": surface,
     }
     if research_mode:
         from core.services.research_orchestrator import research_enabled, stream_research_run

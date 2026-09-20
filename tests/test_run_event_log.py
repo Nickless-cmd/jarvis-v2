@@ -319,3 +319,29 @@ def test_subscribe_med_runnets_eget_id_svarer_ikke_404():
     rel.mark_done(log_id)
     svar = asyncio.run(chat_run_subscribe("visible-klientens", from_idx=0))
     assert svar.status_code == 200
+
+
+# ── Fladen turen blev skrevet fra (Bjørn 20/9-2026) ──────────────────────────
+def test_surface_roundtrip_and_empty_never_clears():
+    rel.create("r-flade", "s1", surface="desk")
+    assert rel.surface_for_run("r-flade") == "desk"
+    rel.set_surface("r-flade", "")          # tomt må ALDRIG slette en kendt flade
+    assert rel.surface_for_run("r-flade") == "desk"
+    rel.set_surface("r-flade", "MOBIL")     # normaliseres
+    assert rel.surface_for_run("r-flade") == "mobil"
+    assert rel.surface_for_run("findes-ikke") == ""
+
+
+def test_claimed_run_can_be_given_a_surface_afterwards():
+    """`claim_or_create` opretter loggen før kalderen kender fladen."""
+    rid, is_new = rel.claim_or_create("s-claim")
+    assert is_new and rel.surface_for_run(rid) == ""
+    rel.set_surface(rid, "desk")
+    assert rel.surface_for_run(rid) == "desk"
+
+
+def test_surface_follows_an_alias():
+    """Runnet har sit eget id; loggen har et andet. Fladen skal findes via begge."""
+    rel.create("log-1", "s2", surface="desk")
+    rel.alias("visible-extern", "log-1")
+    assert rel.surface_for_run("visible-extern") == "desk"

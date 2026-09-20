@@ -891,6 +891,10 @@ class ChatStreamRequest(BaseModel):
     thinking_mode: str = "think"
     # Additive explicit research lane. The original message remains untouched.
     research_mode: bool = False
+    #: Hvilken flade beskeden kom fra: "desk", "mobil", "discord". Tom =
+    #: ukendt, og så opfører alt sig som før. Bruges til at sende et
+    #: godkendelses-kort tilbage til DEN skærm han sidder ved.
+    surface: str = ""
     # UI-mode: "chat" begrænser værktøjer til en samtale-allowlist; "code"
     # låser kode-tools op (tool_scope="code"). "" = ubegrænset (rolle-filter
     # gælder stadig). Sættes af jarvis-desk pr. mode.

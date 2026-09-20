@@ -1480,7 +1480,11 @@ async def _stream_visible_run(
             model=run.model,
         )
     except Exception:
-        pass
+        # Samme grund som i `autonomous_stream_run` (20/9-2026): uden posten
+        # her kan boot-reconcileren ikke spørge om ejerens pid, og rækken i
+        # `visible_runs` bliver stående `running` i timevis.
+        logger.warning("visible-run %s: kunne ikke skrive in-flight-sporet",
+                       run.run_id, exc_info=True)
     event_bus.publish(
         "runtime.visible_run_started",
         {

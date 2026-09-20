@@ -257,6 +257,17 @@ def _ryd_visible_drift(enforced: bool) -> int:
     if enforced:
         for rid in drift:
             try:
+                # `visible_runs` FØRST. Importen af `visible_runs_outcomes` er
+                # cirkulær: outcomes importerer visible_runs, og visible_runs
+                # importerer navne TILBAGE fra outcomes i bunden af filen.
+                # Rammer man outcomes først, kaster den
+                # «cannot import name … from partially initialized module» —
+                # målt i hånden 20/9-2026 da jeg selv ryddede to rækker.
+                # I API-processen er visible_runs som regel importeret i
+                # forvejen, så fejlen viser sig kun nogle gange. Det er den
+                # værste slags: oprydningen holdt op med at virke UDEN at
+                # nogen kunne se hvornår.
+                import core.services.visible_runs  # noqa: F401
                 from core.services.visible_runs_outcomes import (
                     stamp_visible_run_interrupted,
                 )

@@ -1,6 +1,10 @@
 """Server-authoritative streaming lifecycle for autonomous visible runs."""
 from __future__ import annotations
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 def start_autonomous_stream_run(
     message: str,
@@ -64,12 +68,28 @@ def start_autonomous_stream_run(
             model=run.model,
         )
     except Exception:
-        pass
+        # SPORET MÅ IKKE FORSVINDE I TAVSHED (20/9-2026). To autonome kørsler
+        # fra 20:43 stod `running` i `visible_runs` men fandtes IKKE i
+        # journalen — og så kan reconcilerens præcise ejer-regel
+        # (`list_running_orphans`, som spørger om ejerens pid) aldrig se dem.
+        # Tilbage er kun den svage «fravær»-regel, der først slår til efter
+        # seks timer. Rækkerne lå og løj om at være i live imens.
+        #
+        # Hvorfor den fejlede er sandsynligvis målbart: journalen var vokset
+        # til 521 KB, hver mutation skriver HELE filen under en flock, og kl.
+        # 20:43 lå iowait på 51 % fordi der blev installeret 5,9 GB pakker.
+        # Men det er en formodning — det eneste vi VED er at ingen fik det at
+        # vide. Det er der rettet.
+        logger.warning("autonomous-run %s: kunne ikke skrive in-flight-sporet",
+                       run.run_id, exc_info=True)
     try:
         from core.services.visible_runs_outcomes import persist_visible_run_start
         persist_visible_run_start(run)
     except Exception:
-        pass
+        # Den anden halvdel af sporet. Falder DEN, står kørslen omvendt kun i
+        # journalen — og så ved Mission Control intet om den.
+        logger.warning("autonomous-run %s: kunne ikke skrive visible_runs-raekken",
+                       run.run_id, exc_info=True)
 
     from core.services.run_follow import begin_follow
 

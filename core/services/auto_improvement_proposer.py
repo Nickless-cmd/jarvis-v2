@@ -157,6 +157,30 @@ def _check_decision_adherence() -> dict[str, Any] | None:
     }
 
 
+def _already_disabled_providers() -> set[str]:
+    """Providers der eksplicit er slaaet fra paa provider-niveau.
+
+    Laeser `providers[]` i provider_router.json og returnerer navnene med
+    ``enabled: false``. Ukendte navne (slet ikke i registret) udelades med
+    vilje — vi kan ikke haevde at de er slaaet fra, saa et reelt signal maa
+    gerne fyre for dem.
+    """
+    try:
+        from core.runtime.provider_router import load_provider_router_registry
+        registry = load_provider_router_registry()
+    except Exception as exc:
+        logger.debug("auto_improver: kunne ikke laese provider-registret: %s", exc)
+        return set()
+    disabled: set[str] = set()
+    for entry in registry.get("providers") or []:
+        if not isinstance(entry, dict):
+            continue
+        name = str(entry.get("provider") or "").strip()
+        if name and entry.get("enabled") is False:
+            disabled.add(name)
+    return disabled
+
+
 def _check_provider_health_chronic() -> dict[str, Any] | None:
     """If a provider is chronically down (>30 min), propose explicit demotion.
 
@@ -164,6 +188,12 @@ def _check_provider_health_chronic() -> dict[str, Any] | None:
     old (e.g. from the night before a restart), and proposing demotion on
     stale data re-creates the same plan on every restart even after the
     provider recovered. A stale snapshot means "unknown", not "down".
+
+    2026-09-20: skip providers that are ALREADY disabled in the registry.
+    The health check pings every endpoint in ``_PING_ENDPOINTS`` regardless
+    of enabled-state, so an already-demoted provider (e.g. sambanova,
+    ``enabled: false`` since 21/6) keeps landing in ``unreachable`` — and
+    the proposer filed a demotion plan whose step 1 was a no-op.
     """
     try:
         from core.services.provider_health_check import latest_health_snapshot
@@ -174,6 +204,13 @@ def _check_provider_health_chronic() -> dict[str, Any] | None:
     if checked_at is None or checked_at < datetime.now(UTC) - timedelta(hours=2):
         return None
     unreachable = snap.get("unreachable") or []
+    if not unreachable:
+        return None
+    # 2026-09-20: fjern providers der allerede er slaaet fra i registret.
+    # Uden dette fyrer planen paa en no-op (trin 1 er allerede gjort) og
+    # genopstaar ved hver forbigaaende blip paa en doed provider.
+    already_disabled = _already_disabled_providers()
+    unreachable = [p for p in unreachable if p not in already_disabled]
     if not unreachable:
         return None
     return {

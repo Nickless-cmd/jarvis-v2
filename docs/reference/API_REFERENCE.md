@@ -1,6 +1,6 @@
 # API_REFERENCE
 
-> Generated 2026-09-19 from app.routes (live) — 601 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
+> Generated 2026-09-20 from app.routes (live) — 601 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
 
 | Method | Path | Response model | Source |
 |---|---|---|---|

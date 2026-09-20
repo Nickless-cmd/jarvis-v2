@@ -271,18 +271,18 @@ _Durable observability storage for the Cheap Lane control center._
 | function | `_decode_json` | `(value, fallback)` | — | [src](../../../core/runtime/db_cheap_lane_control.py#L25) |
 | function | `_ensure_control_schema` | `(conn)` | — | [src](../../../core/runtime/db_cheap_lane_control.py#L32) |
 | function | `record_route_decision` | `(*, correlation_id, task_kind, daemon, candidates, selected_slot_id, selection_reason)` | — | [src](../../../core/runtime/db_cheap_lane_control.py#L123) |
-| function | `get_route_decision` | `(route_decision_id)` | — | [src](../../../core/runtime/db_cheap_lane_control.py#L179) |
-| function | `record_quota_observation` | `(*, provider, auth_profile, period, unit, limit, remaining, reset_at, observed_at=…)` | — | [src](../../../core/runtime/db_cheap_lane_control.py#L193) |
-| function | `list_quota_observations` | `(*, provider=…, auth_profile=…, limit=…)` | — | [src](../../../core/runtime/db_cheap_lane_control.py#L228) |
-| function | `record_cheap_lane_audit` | `(*, actor, action, target, reason, before, after, result, correlation_id=…)` | — | [src](../../../core/runtime/db_cheap_lane_control.py#L257) |
-| function | `finalize_cheap_lane_audit` | `(audit_id, *, after, result, error_code=…)` | — | [src](../../../core/runtime/db_cheap_lane_control.py#L297) |
-| function | `list_cheap_lane_audit` | `(*, limit=…)` | — | [src](../../../core/runtime/db_cheap_lane_control.py#L327) |
-| function | `record_redacted_payload` | `(*, invocation_id, prompt, response, status, expires_at)` | — | [src](../../../core/runtime/db_cheap_lane_control.py#L345) |
-| function | `_encode_cursor` | `(created_at, row_id)` | — | [src](../../../core/runtime/db_cheap_lane_control.py#L384) |
-| function | `_decode_cursor` | `(cursor)` | — | [src](../../../core/runtime/db_cheap_lane_control.py#L389) |
-| function | `_invocation_row` | `(row)` | — | [src](../../../core/runtime/db_cheap_lane_control.py#L406) |
-| function | `list_cheap_lane_invocations` | `(*, since, until=…, provider=…, model=…, auth_profile=…, daemon=…, status=…, error_class=…, correlation_id=…, query=…, cursor=…, limit=…)` | — | [src](../../../core/runtime/db_cheap_lane_control.py#L410) |
-| function | `get_cheap_lane_invocation_detail` | `(invocation_id)` | — | [src](../../../core/runtime/db_cheap_lane_control.py#L475) |
+| function | `get_route_decision` | `(route_decision_id)` | — | [src](../../../core/runtime/db_cheap_lane_control.py#L185) |
+| function | `record_quota_observation` | `(*, provider, auth_profile, period, unit, limit, remaining, reset_at, observed_at=…)` | — | [src](../../../core/runtime/db_cheap_lane_control.py#L199) |
+| function | `list_quota_observations` | `(*, provider=…, auth_profile=…, limit=…)` | — | [src](../../../core/runtime/db_cheap_lane_control.py#L234) |
+| function | `record_cheap_lane_audit` | `(*, actor, action, target, reason, before, after, result, correlation_id=…)` | — | [src](../../../core/runtime/db_cheap_lane_control.py#L263) |
+| function | `finalize_cheap_lane_audit` | `(audit_id, *, after, result, error_code=…)` | — | [src](../../../core/runtime/db_cheap_lane_control.py#L303) |
+| function | `list_cheap_lane_audit` | `(*, limit=…)` | — | [src](../../../core/runtime/db_cheap_lane_control.py#L333) |
+| function | `record_redacted_payload` | `(*, invocation_id, prompt, response, status, expires_at)` | — | [src](../../../core/runtime/db_cheap_lane_control.py#L351) |
+| function | `_encode_cursor` | `(created_at, row_id)` | — | [src](../../../core/runtime/db_cheap_lane_control.py#L390) |
+| function | `_decode_cursor` | `(cursor)` | — | [src](../../../core/runtime/db_cheap_lane_control.py#L395) |
+| function | `_invocation_row` | `(row)` | — | [src](../../../core/runtime/db_cheap_lane_control.py#L412) |
+| function | `list_cheap_lane_invocations` | `(*, since, until=…, provider=…, model=…, auth_profile=…, daemon=…, status=…, error_class=…, correlation_id=…, query=…, cursor=…, limit=…)` | — | [src](../../../core/runtime/db_cheap_lane_control.py#L416) |
+| function | `get_cheap_lane_invocation_detail` | `(invocation_id)` | — | [src](../../../core/runtime/db_cheap_lane_control.py#L481) |
 
 ## `core/runtime/db_cheap_provider.py`
 _Persistence for the cheap-provider runtime-state + invocation cluster._
@@ -447,28 +447,29 @@ _Core infrastructure for core.runtime.db modulet._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| class | `ClosingConnection` | `` | — | [src](../../../core/runtime/db_core.py#L61) |
-| method | `ClosingConnection.__exit__` | `(self, exc_type, exc_value, traceback)` | — | [src](../../../core/runtime/db_core.py#L62) |
-| class | `PooledConnection` | `` | Som ClosingConnection men LUKKER IKKE ved __exit__/close() — poolen ejer | [src](../../../core/runtime/db_core.py#L69) |
-| method | `PooledConnection.__exit__` | `(self, exc_type, exc_value, traceback)` | — | [src](../../../core/runtime/db_core.py#L72) |
-| method | `PooledConnection.close` | `(self)` | — | [src](../../../core/runtime/db_core.py#L76) |
-| function | `_make_connection` | `(_factory)` | Åbn ÉN ny sqlite-forbindelse + sæt PRAGMAs (busy_timeout, WAL-once, synchronous). | [src](../../../core/runtime/db_core.py#L87) |
-| function | `close_pooled_connection` | `()` | Luk DENNE tråds pooled forbindelse rigtigt (shutdown/tests). Self-safe. | [src](../../../core/runtime/db_core.py#L112) |
-| function | `connect` | `()` | DEL 1 — connection pooling (2026-07-12): genbrug ÉN thread-local forbindelse i | [src](../../../core/runtime/db_core.py#L123) |
-| function | `_rank_for` | `(ranks, value)` | — | [src](../../../core/runtime/db_core.py#L164) |
-| function | `_stronger_ranked_value` | `(current, proposed, ranks)` | — | [src](../../../core/runtime/db_core.py#L168) |
-| function | `_merge_text_fragments` | `(current, proposed, *, limit=…)` | — | [src](../../../core/runtime/db_core.py#L174) |
-| function | `_upsert_signal` | `(*, conn, table, id_col, type_col, id_val, type_val, canonical_key, lookup_statuses, overwrite_cols, rank_cols, merge_text_cols, accumulate_cols, created_at, updated_at)` | Generic merge-forward upsert for the runtime_*_signal families. | [src](../../../core/runtime/db_core.py#L189) |
-| function | `_rs_cache_put` | `(key, value)` | — | [src](../../../core/runtime/db_core.py#L360) |
-| function | `clear_runtime_state_cache` | `()` | Ryd hele read-cachen (til tests / tvungen frisk læsning). Self-safe. | [src](../../../core/runtime/db_core.py#L365) |
-| function | `set_runtime_state_value` | `(key, value, *, updated_at=…)` | — | [src](../../../core/runtime/db_core.py#L371) |
-| function | `get_runtime_state_value` | `(key, default=…)` | — | [src](../../../core/runtime/db_core.py#L391) |
-| function | `get_runtime_state_bool` | `(key, default=…)` | Read a runtime-state flag and coerce it to bool ROBUSTLY. | [src](../../../core/runtime/db_core.py#L424) |
-| function | `_now_iso` | `()` | — | [src](../../../core/runtime/db_core.py#L444) |
-| function | `_conn_db_id` | `(conn)` | Stable identifier for a sqlite connection's underlying database. | [src](../../../core/runtime/db_core.py#L493) |
-| function | `_install_ensure_once_cache` | `()` | Bagudkompat-shim: wrapper _ensure_*_table funcs på core.runtime.db | [src](../../../core/runtime/db_core.py#L517) |
-| function | `invalidate_ensure_once_cache` | `(table_name=…)` | Force re-run of `_ensure_*_table` on next call. | [src](../../../core/runtime/db_core.py#L527) |
-| function | `_install_ensure_once_cache_for` | `(module_name)` | Wrap _ensure_*_table funcs i target-modul med once-cache. | [src](../../../core/runtime/db_core.py#L545) |
+| class | `ClosingConnection` | `` | — | [src](../../../core/runtime/db_core.py#L62) |
+| method | `ClosingConnection.__exit__` | `(self, exc_type, exc_value, traceback)` | — | [src](../../../core/runtime/db_core.py#L63) |
+| class | `PooledConnection` | `` | Som ClosingConnection men LUKKER IKKE ved __exit__/close() — poolen ejer | [src](../../../core/runtime/db_core.py#L70) |
+| method | `PooledConnection.__exit__` | `(self, exc_type, exc_value, traceback)` | — | [src](../../../core/runtime/db_core.py#L73) |
+| method | `PooledConnection.close` | `(self)` | — | [src](../../../core/runtime/db_core.py#L77) |
+| function | `_make_connection` | `(_factory)` | Åbn ÉN ny sqlite-forbindelse + sæt PRAGMAs (busy_timeout, WAL-once, synchronous). | [src](../../../core/runtime/db_core.py#L88) |
+| function | `close_pooled_connection` | `()` | Luk DENNE tråds pooled forbindelse rigtigt (shutdown/tests). Self-safe. | [src](../../../core/runtime/db_core.py#L113) |
+| function | `connect` | `()` | DEL 1 — connection pooling (2026-07-12): genbrug ÉN thread-local forbindelse i | [src](../../../core/runtime/db_core.py#L124) |
+| function | `_rank_for` | `(ranks, value)` | — | [src](../../../core/runtime/db_core.py#L165) |
+| function | `_stronger_ranked_value` | `(current, proposed, ranks)` | — | [src](../../../core/runtime/db_core.py#L169) |
+| function | `_merge_text_fragments` | `(current, proposed, *, limit=…)` | — | [src](../../../core/runtime/db_core.py#L175) |
+| function | `_upsert_signal` | `(*, conn, table, id_col, type_col, id_val, type_val, canonical_key, lookup_statuses, overwrite_cols, rank_cols, merge_text_cols, accumulate_cols, created_at, updated_at)` | Generic merge-forward upsert for the runtime_*_signal families. | [src](../../../core/runtime/db_core.py#L190) |
+| function | `_rs_cache_put` | `(key, value)` | — | [src](../../../core/runtime/db_core.py#L361) |
+| function | `clear_runtime_state_cache` | `()` | Ryd hele read-cachen (til tests / tvungen frisk læsning). Self-safe. | [src](../../../core/runtime/db_core.py#L366) |
+| function | `set_runtime_state_value` | `(key, value, *, updated_at=…)` | — | [src](../../../core/runtime/db_core.py#L372) |
+| function | `get_runtime_state_value` | `(key, default=…)` | — | [src](../../../core/runtime/db_core.py#L392) |
+| function | `get_runtime_state_bool` | `(key, default=…)` | Read a runtime-state flag and coerce it to bool ROBUSTLY. | [src](../../../core/runtime/db_core.py#L425) |
+| function | `skriv_med_genforsoeg` | `(skriv, *, forsoeg=…, pause=…)` | Kør `skriv()`; ved «database is locked/busy» prøv igen med voksende pause. | [src](../../../core/runtime/db_core.py#L457) |
+| function | `_now_iso` | `()` | — | [src](../../../core/runtime/db_core.py#L476) |
+| function | `_conn_db_id` | `(conn)` | Stable identifier for a sqlite connection's underlying database. | [src](../../../core/runtime/db_core.py#L525) |
+| function | `_install_ensure_once_cache` | `()` | Bagudkompat-shim: wrapper _ensure_*_table funcs på core.runtime.db | [src](../../../core/runtime/db_core.py#L549) |
+| function | `invalidate_ensure_once_cache` | `(table_name=…)` | Force re-run of `_ensure_*_table` on next call. | [src](../../../core/runtime/db_core.py#L559) |
+| function | `_install_ensure_once_cache_for` | `(module_name)` | Wrap _ensure_*_table funcs i target-modul med once-cache. | [src](../../../core/runtime/db_core.py#L577) |
 
 ## `core/runtime/db_credit_assignment.py`
 _Credit assignment — schema migration, choice recording, and outcome querying._

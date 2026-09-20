@@ -35,6 +35,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal, Mapping
 
+from core.runtime.db_core import skriv_med_genforsoeg
+
 logger = logging.getLogger(__name__)
 
 JARVIS_HOME = Path(os.environ.get("HOME", "/root")) / ".jarvis-v2"
@@ -169,6 +171,9 @@ def _ensure_table(conn: sqlite3.Connection) -> None:
 def _connect() -> sqlite3.Connection:
     conn = sqlite3.connect(str(DB_PATH))
     conn.row_factory = sqlite3.Row
+    # Eksplicit: uden den venter forbindelsen kun Pythons standard, og skygge-
+    # skrivningen døde på en optaget base 20/9-2026.
+    conn.execute("PRAGMA busy_timeout = 5000")
     _ensure_table(conn)
     return conn
 
@@ -189,7 +194,7 @@ def _persist(
     allowed_effects: tuple[str, ...] | None = None,
     generated_at: str | None = None,
 ) -> None:
-    try:
+    def _skriv() -> None:
         with _connect() as conn:
             conn.execute(
                 """INSERT INTO inner_voice_shadow
@@ -218,6 +223,11 @@ def _persist(
                 ),
             )
             conn.commit()
+
+    # Genforsøg ved kortvarig lås (20/9-2026): skrivningen døde på en optaget
+    # base mens to autonome ture kørte samtidig.
+    try:
+        skriv_med_genforsoeg(_skriv)
     except Exception:
         logger.exception("inner_voice_shadow: persist failed for %s", function_name)
 

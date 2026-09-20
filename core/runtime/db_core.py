@@ -24,6 +24,7 @@ import json as _json
 import logging as _logging
 import sqlite3
 import sys as _sys
+import time as _time_rs
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -438,6 +439,37 @@ def get_runtime_state_bool(key: str, default: bool = False) -> bool:
     if isinstance(val, str):
         return val.strip().lower() not in _FALSEY_FLAG_STRINGS
     return bool(val)
+
+
+# === Genforsøg ved kortvarig skrivelås (20/9-2026) ===
+#
+# busy_timeout er 5 s, og det rækker i ro: målt 20/9 var ventetiden på
+# skrivelåsen 0,000 s i median og max over 12 forsøg. Men når to autonome
+# ture kører samtidig (05:40:38 samme morgen fyrede to daglige opgaver i
+# SAMME sekund), holdt låsen over 5 s, og tre skrivninger døde med
+# «database is locked»: cheap-lane's rute-spor, inner_voice_shadow og en
+# inner_note-berigelse. Otte tabte skrivninger på tre døgn.
+#
+# De tre er alle spor- og berigelses-skrivninger: ingen af dem må vælte en
+# tur, men de skal heller ikke bare forsvinde. Eventbussens skriver løste
+# det samme problem med ét genforsøg (bus.py); dette er den delte udgave,
+# med voksende pause så et langt checkpoint også nås.
+def skriv_med_genforsoeg(skriv, *, forsoeg: int = 4, pause: float = 0.15):
+    """Kør `skriv()`; ved «database is locked/busy» prøv igen med voksende pause.
+
+    Kun låse-fejl genforsøges — enhver anden fejl kastes videre med det samme,
+    så en ægte fejl ikke gemmer sig bag fire stille forsøg.
+    """
+    for forsoeg_nr in range(forsoeg):
+        try:
+            return skriv()
+        except sqlite3.OperationalError as exc:
+            besked = str(exc).lower()
+            if "locked" not in besked and "busy" not in besked:
+                raise
+            if forsoeg_nr == forsoeg - 1:
+                raise
+            _time_rs.sleep(pause * (2 ** forsoeg_nr))
 
 
 # === _now_iso helper (verbatim from db.py L29797-29799) ===

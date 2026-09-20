@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import sqlite3
 
-from core.runtime.db_core import connect
+from core.runtime.db_core import connect, skriv_med_genforsoeg
 
 
 def ensure_private_notes_tables(conn: sqlite3.Connection) -> None:
@@ -152,13 +152,20 @@ def record_private_inner_note(
 
 
 def update_private_inner_note_enriched(*, run_id: str, enriched_summary: str) -> None:
-    """Replace template summary with LLM-enriched text."""
-    with connect() as conn:
-        conn.execute(
-            "UPDATE private_inner_notes SET private_summary = ?, enriched = 1 WHERE run_id = ?",
-            (enriched_summary, run_id),
-        )
-        conn.commit()
+    """Replace template summary with LLM-enriched text.
+
+    Genforsøg ved kortvarig lås: berigelsen døde med «database is locked»
+    20/9-2026, og så stod noten tilbage med sin skabelon-tekst for altid —
+    den beriges kun én gang."""
+    def _skriv() -> None:
+        with connect() as conn:
+            conn.execute(
+                "UPDATE private_inner_notes SET private_summary = ?, enriched = 1 WHERE run_id = ?",
+                (enriched_summary, run_id),
+            )
+            conn.commit()
+
+    skriv_med_genforsoeg(_skriv)
 
 
 def recent_private_inner_notes(limit: int = 5) -> list[dict[str, object]]:

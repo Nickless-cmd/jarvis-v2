@@ -8,7 +8,7 @@ from typing import Any
 from uuid import uuid4
 
 from core.runtime.db_cheap_provider import _ensure_invocation_schema
-from core.runtime.db_core import _now_iso, connect
+from core.runtime.db_core import _now_iso, connect, skriv_med_genforsoeg
 
 _MAX_JSON_BYTES = 64 * 1024
 _MAX_CANDIDATES = 100
@@ -152,27 +152,33 @@ def record_route_decision(
         })
     route_id = str(uuid4())
     now = _now_iso()
-    with connect() as conn:
-        _ensure_control_schema(conn)
-        conn.execute(
-            """
-            INSERT INTO cheap_lane_route_decisions (
-                route_decision_id, correlation_id, task_kind, daemon,
-                candidates_json, selected_slot_id, selection_reason, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                route_id,
-                correlation_id,
-                task_kind,
-                daemon,
-                _bounded_json(candidates),
-                selected_slot_id,
-                selection_reason,
-                now,
-            ),
-        )
-        conn.commit()
+
+    # Genforsøg: sporet døde på «database is locked» under to samtidige
+    # autonome ture (20/9-2026). Se skriv_med_genforsoeg i db_core.
+    def _skriv() -> None:
+        with connect() as conn:
+            _ensure_control_schema(conn)
+            conn.execute(
+                """
+                INSERT INTO cheap_lane_route_decisions (
+                    route_decision_id, correlation_id, task_kind, daemon,
+                    candidates_json, selected_slot_id, selection_reason, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    route_id,
+                    correlation_id,
+                    task_kind,
+                    daemon,
+                    _bounded_json(candidates),
+                    selected_slot_id,
+                    selection_reason,
+                    now,
+                ),
+            )
+            conn.commit()
+
+    skriv_med_genforsoeg(_skriv)
     return route_id
 
 

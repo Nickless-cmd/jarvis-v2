@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7825/15211 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7826/15212 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 7825/15211 functions/methods documented (51%). The list b
 | `core.identity` | 70 | 164 | 42% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 681 | 1259 | 54% |
+| `core.runtime` | 682 | 1260 | 54% |
 | `core.services` | 5172 | 10373 | 49% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 107 | 183 | 58% |
@@ -353,15 +353,15 @@ Generated from source. 7825/15211 functions/methods documented (51%). The list b
 - `core/runtime/db_capability_approval.py` :: `list_approval_feedback` (L697)
 - `core/runtime/db_capability_approval.py` :: `recent_capability_approval_requests` (L85)
 - `core/runtime/db_capability_approval.py` :: `record_capability_approval_request_execution` (L247)
-- `core/runtime/db_cheap_lane_control.py` :: `finalize_cheap_lane_audit` (L297)
-- `core/runtime/db_cheap_lane_control.py` :: `get_cheap_lane_invocation_detail` (L475)
-- `core/runtime/db_cheap_lane_control.py` :: `get_route_decision` (L179)
-- `core/runtime/db_cheap_lane_control.py` :: `list_cheap_lane_audit` (L327)
-- `core/runtime/db_cheap_lane_control.py` :: `list_cheap_lane_invocations` (L410)
-- `core/runtime/db_cheap_lane_control.py` :: `list_quota_observations` (L228)
-- `core/runtime/db_cheap_lane_control.py` :: `record_cheap_lane_audit` (L257)
-- `core/runtime/db_cheap_lane_control.py` :: `record_quota_observation` (L193)
-- `core/runtime/db_cheap_lane_control.py` :: `record_redacted_payload` (L345)
+- `core/runtime/db_cheap_lane_control.py` :: `finalize_cheap_lane_audit` (L303)
+- `core/runtime/db_cheap_lane_control.py` :: `get_cheap_lane_invocation_detail` (L481)
+- `core/runtime/db_cheap_lane_control.py` :: `get_route_decision` (L185)
+- `core/runtime/db_cheap_lane_control.py` :: `list_cheap_lane_audit` (L333)
+- `core/runtime/db_cheap_lane_control.py` :: `list_cheap_lane_invocations` (L416)
+- `core/runtime/db_cheap_lane_control.py` :: `list_quota_observations` (L234)
+- `core/runtime/db_cheap_lane_control.py` :: `record_cheap_lane_audit` (L263)
+- `core/runtime/db_cheap_lane_control.py` :: `record_quota_observation` (L199)
+- `core/runtime/db_cheap_lane_control.py` :: `record_redacted_payload` (L351)
 - `core/runtime/db_cheap_lane_control.py` :: `record_route_decision` (L123)
 - `core/runtime/db_cheap_provider.py` :: `count_cheap_provider_invocations` (L400)
 - `core/runtime/db_cheap_provider.py` :: `get_cheap_provider_runtime_state` (L184)
@@ -385,9 +385,9 @@ Generated from source. 7825/15211 functions/methods documented (51%). The list b
 - `core/runtime/db_concept_baseline.py` :: `get_concept_baseline_stat` (L99)
 - `core/runtime/db_concept_baseline.py` :: `list_concept_baseline_stats` (L110)
 - `core/runtime/db_concept_baseline.py` :: `upsert_concept_baseline_stat` (L29)
-- `core/runtime/db_core.py` :: `PooledConnection.close` (L76)
-- `core/runtime/db_core.py` :: `get_runtime_state_value` (L391)
-- `core/runtime/db_core.py` :: `set_runtime_state_value` (L371)
+- `core/runtime/db_core.py` :: `PooledConnection.close` (L77)
+- `core/runtime/db_core.py` :: `get_runtime_state_value` (L392)
+- `core/runtime/db_core.py` :: `set_runtime_state_value` (L372)
 - `core/runtime/db_decisions.py` :: `count_decisions` (L325)
 - `core/runtime/db_decisions.py` :: `create_decision` (L80)
 - `core/runtime/db_decisions.py` :: `delete_decision` (L310)
@@ -438,12 +438,12 @@ Generated from source. 7825/15211 functions/methods documented (51%). The list b
 - `core/runtime/db_private_brain.py` :: `insert_private_brain_record` (L122)
 - `core/runtime/db_private_brain.py` :: `list_private_brain_records` (L162)
 - `core/runtime/db_private_notes.py` :: `ensure_private_notes_tables` (L15)
-- `core/runtime/db_private_notes.py` :: `list_recent_protected_inner_voices` (L409)
-- `core/runtime/db_private_notes.py` :: `recent_private_growth_notes` (L269)
-- `core/runtime/db_private_notes.py` :: `recent_private_inner_notes` (L164)
-- `core/runtime/db_private_notes.py` :: `record_private_growth_note` (L206)
+- `core/runtime/db_private_notes.py` :: `list_recent_protected_inner_voices` (L416)
+- `core/runtime/db_private_notes.py` :: `recent_private_growth_notes` (L276)
+- `core/runtime/db_private_notes.py` :: `recent_private_inner_notes` (L171)
+- `core/runtime/db_private_notes.py` :: `record_private_growth_note` (L213)
 - `core/runtime/db_private_notes.py` :: `record_private_inner_note` (L100)
-- `core/runtime/db_private_notes.py` :: `record_protected_inner_voice` (L309)
+- `core/runtime/db_private_notes.py` :: `record_protected_inner_voice` (L316)
 - `core/runtime/db_private_signals.py` :: `ensure_private_signals_tables` (L16)
 - `core/runtime/db_private_signals.py` :: `get_private_development_state` (L237)
 - `core/runtime/db_private_signals.py` :: `get_private_reflective_selection` (L271)
@@ -1165,8 +1165,8 @@ Generated from source. 7825/15211 functions/methods documented (51%). The list b
 - `core/services/inner_voice_notifier.py` :: `get_inner_voice_notifier_state` (L276)
 - `core/services/inner_voice_notifier.py` :: `start_inner_voice_notifier` (L41)
 - `core/services/inner_voice_notifier.py` :: `stop_inner_voice_notifier` (L59)
-- `core/services/inner_voice_shadow.py` :: `AppraisalRecord.to_dict` (L114)
-- `core/services/inner_voice_shadow.py` :: `shadow_helpful_signal` (L417)
+- `core/services/inner_voice_shadow.py` :: `AppraisalRecord.to_dict` (L116)
+- `core/services/inner_voice_shadow.py` :: `shadow_helpful_signal` (L427)
 - `core/services/internal_opposition_signal_tracking.py` :: `build_runtime_internal_opposition_signal_surface` (L53)
 - `core/services/internal_opposition_signal_tracking.py` :: `refresh_runtime_internal_opposition_signal_statuses` (L49)
 - `core/services/internal_opposition_signal_tracking.py` :: `track_runtime_internal_opposition_signals_for_visible_turn` (L41)

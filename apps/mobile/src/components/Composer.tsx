@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { hentForslag, PAUSE_MS, saetSammen } from '../lib/forslag'
 import { Animated, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { haptik } from '../lib/haptics'
-import { ArrowUp, AudioLines, ChevronDown, Cpu, FileText, Mic, Plus, SearchCheck, ShieldCheck, Square } from 'lucide-react-native'
+import { ArrowUp, ChevronDown, Cpu, FileText, Mic, Plus, SearchCheck, ShieldCheck, Square } from 'lucide-react-native'
+import { PulsIkon } from './PulsIkon'
 import type { ApprovalMode } from './PermissionPicker'
 import type { DictationState } from '../lib/useComposerDictation'
 import { DictationBar } from './DictationBar'
@@ -245,7 +246,7 @@ export function Composer({
               onPress={onConversation}
               style={({ pressed }) => [styles.sendBtn, pressed ? styles.pressed : null]}
             >
-              <AudioLines size={19} color={tokens.color.bg0} strokeWidth={2} />
+              <PulsIkon size={21} color={tokens.color.bg0} />
             </Pressable>
           )}
         </Pressable>
@@ -409,7 +410,7 @@ export function Composer({
               ) : text || att.length ? (
                 <ArrowUp size={20} color={tokens.color.bg0} strokeWidth={2.5} />
               ) : (
-                <AudioLines size={19} color={tokens.color.bg0} strokeWidth={2} />
+                <PulsIkon size={21} color={tokens.color.bg0} />
               )}
             </Pressable>
           </View>

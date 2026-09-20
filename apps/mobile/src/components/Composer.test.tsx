@@ -36,6 +36,32 @@ describe('Composer', () => {
     expect(screen.queryByTestId('composer-rest')).toBeNull()
   })
 
+  it('bærer Puls-mærket i hvileformen — ikke de gamle streger', async () => {
+    // Bjørn 20/9-2026: «dit ikon i stedet for stregerne i composer».
+    // Værd at låse: et ikon-bytte er ellers kun synligt hvis man åbner appen
+    // og kigger, så en tilbagerulning ville kunne ske uden at nogen opdagede
+    // det. Testen fanger formen — ikke om den er pæn.
+    const screen = await render(<Composer onSend={jest.fn()} onStop={jest.fn()} />)
+
+    expect(screen.getByTestId('puls-ikon')).toBeTruthy()
+  })
+
+  it('viser mærket naar feltet er tomt, og pilen naar der er tekst', async () => {
+    const screen = await render(<Composer onSend={jest.fn()} onStop={jest.fn()} />)
+    await openComposer(screen)
+
+    // Tomt felt: knappen er «start samtale» — mærket staar der.
+    expect(screen.getByTestId('puls-ikon')).toBeTruthy()
+
+    await act(async () => {
+      screen.getByTestId('composer-input').props.onChangeText('Hej')
+    })
+
+    // Tekst: handlingen er nu «send», og pilen afløser mærket. Mærket er ikke
+    // et send-ikon — det er samtale-ikonet, og de to må ikke blandes sammen.
+    await waitFor(() => expect(screen.queryByTestId('puls-ikon')).toBeNull())
+  })
+
   it('trims input, sends it, and clears the field', async () => {
     const onSend = jest.fn()
     const screen = await render(<Composer onSend={onSend} onStop={jest.fn()} />)

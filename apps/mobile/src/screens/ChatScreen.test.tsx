@@ -31,6 +31,8 @@ type MockStream = {
   deny: typeof mockDeny
   send: typeof mockSend
   stop: typeof mockStop
+  /** Opsamling af et ventende kort på tværs af samtaler (20/9-2026). */
+  opsamlVentende: () => Promise<void>
   follow: () => void
   stopFollow: () => void
   forladSession?: (sid: string | null) => void
@@ -62,6 +64,7 @@ let mockStream: MockStream = {
   deny: mockDeny,
   send: mockSend,
   stop: mockStop,
+  opsamlVentende: jest.fn(async () => {}),
   follow: jest.fn(),
   stopFollow: jest.fn()
 }
@@ -179,6 +182,7 @@ beforeEach(() => {
     deny: mockDeny,
     send: mockSend,
     stop: mockStop,
+    opsamlVentende: jest.fn(async () => {}),
     follow: jest.fn(),
     stopFollow: jest.fn(),
     forladSession: jest.fn()

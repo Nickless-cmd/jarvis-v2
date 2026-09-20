@@ -34,6 +34,21 @@ repos:
         always_run: true
         stages: [pre-commit]
 
+      # Pre-commit: en slugt undtagelse skal kunne forklares.
+      # DeepSeek-harness' regel (20/9-2026): «An empty catch names the error
+      # and why; keep its try to one statement.» Samme dag slugte en bar
+      # except en NameError i _app_device_live, så funktionen ALTID svarede
+      # nej og en proaktiv besked gik til Discord i stedet for appen.
+      # Skraldespærre mod docs/guards/silent_except_baseline.json: flere end
+      # grundlinjen er en fejl, færre skrives ind med --skriv-grundlinje.
+      - id: verify-silent-except
+        name: Slugte undtagelser skal navngives (skraldespærre)
+        entry: /opt/conda/envs/ai/bin/python scripts/verify_silent_except.py --staged
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
       # Pre-commit: block kitchen-sink commits (mix of code + scaffolding,
       # or >20 files across multiple top-level domains). Catches the
       # 2026-05-25 anti-pattern where Jarvis bundled 8400+ lines of

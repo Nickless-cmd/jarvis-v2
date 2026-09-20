@@ -64,3 +64,16 @@ _Fase A acceptance (kør på containeren). Beviser aldrig-tør-bunden:_
 | function | `check_balancer_floor_no_raise` | `()` | — | [src](../../../scripts/verify_fase_a.py#L21) |
 | function | `check_central_visibility` | `()` | — | [src](../../../scripts/verify_fase_a.py#L33) |
 
+## `scripts/verify_silent_except.py`
+_Vagt: en slugt undtagelse skal navngives, og dens `try` skal være kort._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_er_tavs` | `(handler)` | Sluger denne handler fejlen uden at sige noget? | [src](../../../scripts/verify_silent_except.py#L51) |
+| function | `_naevner_fejlen` | `(handler, kommentarlinjer)` | Er der en forklaring? En kommentar på `except`-linjen eller i kroppen. | [src](../../../scripts/verify_silent_except.py#L59) |
+| function | `_kommentarlinjer` | `(sti)` | — | [src](../../../scripts/verify_silent_except.py#L70) |
+| function | `fund_i_fil` | `(sti)` | (linje, årsag) for hver tavs handler uden forklaring. | [src](../../../scripts/verify_silent_except.py#L81) |
+| function | `_filer` | `(argumenter)` | — | [src](../../../scripts/verify_silent_except.py#L102) |
+| function | `_laes_grundlinje` | `()` | — | [src](../../../scripts/verify_silent_except.py#L118) |
+| function | `main` | `(argv=…)` | — | [src](../../../scripts/verify_silent_except.py#L125) |
+

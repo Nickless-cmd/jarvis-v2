@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7866/15262 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7869/15269 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -36,12 +36,12 @@ Generated from source. 7866/15262 functions/methods documented (51%). The list b
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.util` | 9 | 10 | 90% |
-| `scripts` | 198 | 428 | 46% |
+| `scripts` | 201 | 435 | 46% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2183)
+## Undocumented public functions (2184)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L208)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -2226,3 +2226,4 @@ Generated from source. 7866/15262 functions/methods documented (51%). The list b
 - `scripts/verify_fase_a.py` :: `check_balancer_floor_no_raise` (L21)
 - `scripts/verify_fase_a.py` :: `check_central_visibility` (L33)
 - `scripts/verify_fase_a.py` :: `check_selection_floor_no_raise` (L9)
+- `scripts/verify_silent_except.py` :: `main` (L125)

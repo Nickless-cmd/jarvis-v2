@@ -53,7 +53,7 @@ Generated from source. 7895/15313 functions/methods documented (51%). The list b
 - `apps/api/jarvis_api/middleware/security_headers.py` :: `SimpleRateLimitMiddleware.dispatch` (L110)
 - `apps/api/jarvis_api/routes/anthropic_compat.py` :: `list_models` (L98)
 - `apps/api/jarvis_api/routes/anthropic_compat.py` :: `messages` (L113)
-- `apps/api/jarvis_api/routes/app_release.py` :: `stop_release_vagt` (L237)
+- `apps/api/jarvis_api/routes/app_release.py` :: `stop_release_vagt` (L249)
 - `apps/api/jarvis_api/routes/auth.py` :: `login` (L56)
 - `apps/api/jarvis_api/routes/auth.py` :: `register` (L34)
 - `apps/api/jarvis_api/routes/auth.py` :: `verify_email` (L46)

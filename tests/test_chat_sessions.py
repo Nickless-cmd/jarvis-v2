@@ -365,3 +365,52 @@ def test_navngivningen_kan_ikke_braekke_en_besked():
 
     _navngiv_fra_foerste_besked("session-der-ikke-findes", "hej")
     _navngiv_fra_foerste_besked("", "hej")
+
+
+def test_beskeden_overlever_en_KORTVARIGT_optaget_base(isolated_runtime, monkeypatch):
+    """Fanget i en testkørsel 20/9-2026: «sqlite3.OperationalError: database is
+    locked» på selve INSERT'en i `append_chat_message`. I drift ville samme
+    fejl koste Bjørn hans besked — funktionen siger selv, at det er det værste
+    udfald, værre end en manglende projektions-række.
+
+    Låsen rammer præcis dén sætning der fejlede i virkeligheden, og kun første
+    gang. Uden genforsøget er beskeden væk.
+    """
+    import sqlite3
+    from core.services import chat_sessions as cs
+
+    sess = cs.create_chat_session(title="laast")
+    sid = str(sess.get("session_id") or sess.get("id"))
+
+    aegte_connect = cs.connect
+    ramt = {"n": 0}
+
+    class _Laast:
+        def __init__(self, conn):
+            self._conn = conn
+
+        def execute(self, sql, *a, **kw):
+            if "INSERT INTO chat_messages" in str(sql) and ramt["n"] == 0:
+                ramt["n"] += 1
+                raise sqlite3.OperationalError("database is locked")
+            return self._conn.execute(sql, *a, **kw)
+
+        def __getattr__(self, navn):
+            return getattr(self._conn, navn)
+
+    class _Forbindelse:
+        def __enter__(self):
+            self._ydre = aegte_connect()
+            return _Laast(self._ydre.__enter__())
+
+        def __exit__(self, *a):
+            return self._ydre.__exit__(*a)
+
+    monkeypatch.setattr(cs, "connect", lambda: _Forbindelse())
+    besked = cs.append_chat_message(session_id=sid, role="user", content="vigtig besked")
+
+    assert ramt["n"] == 1, "låsen ramte ikke INSERT'en"
+    assert besked["content"] == "vigtig besked"
+    gemt = cs.get_chat_session(sid)
+    assert [m["content"] for m in gemt["messages"]] == ["vigtig besked"], \
+        "beskeden gik tabt på en kortvarigt optaget base"

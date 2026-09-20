@@ -14,6 +14,7 @@ from core.services.tool_result_store import (
     save_tool_result,
 )
 from core.runtime.db import connect
+from core.runtime.db_core import skriv_med_genforsoeg
 
 logger = logging.getLogger(__name__)
 
@@ -808,84 +809,96 @@ def append_chat_message(
             summary=normalized_content,
         )
     message_id = f"message-{uuid4().hex}"
-    with connect() as conn:
-        exists = conn.execute(
-            "SELECT session_id, title FROM chat_sessions WHERE session_id = ?",
-            (normalized_session,),
-        ).fetchone()
-        if exists is None:
-            raise ValueError("chat session not found")
+    # Genforsøg ved kortvarig skrivelås (20/9-2026). Blokken herunder er ÉN
+    # transaktion: fejler en sætning, ruller den poolede forbindelse tilbage,
+    # og intet er skrevet — derfor er et nyt forsøg sikkert.
+    #
+    # Hvorfor det betyder noget her og ikke kun for telemetri: fanget i en
+    # testkørsel 20/9-2026 som «sqlite3.OperationalError: database is locked»
+    # på netop denne INSERT. Samme fejl i drift ville koste Bjørn hans besked —
+    # og funktionen siger selv nedenfor, at det er det værste udfald.
+    def _skriv_raekken() -> tuple[bool, str, str]:
+        with connect() as conn:
+            exists = conn.execute(
+                "SELECT session_id, title FROM chat_sessions WHERE session_id = ?",
+                (normalized_session,),
+            ).fetchone()
+            if exists is None:
+                raise ValueError("chat session not found")
 
-        # Resolve user_id + workspace_name in this priority order:
-        # 1. Explicit caller-provided values (used by discord_gateway when
-        #    persisting the inbound user message *before* the worker thread
-        #    sets the workspace_context — without this, user-authored rows
-        #    end up with empty user_id and the model can't tell speakers apart).
-        # 2. Current ContextVar (set by start_autonomous_run for assistant turns).
-        # 3. Empty fallback.
-        _user_id = (user_id or "").strip()
-        _workspace_name = (workspace_name or "").strip()
-        if not _user_id or not _workspace_name:
+            # Resolve user_id + workspace_name in this priority order:
+            # 1. Explicit caller-provided values (used by discord_gateway when
+            #    persisting the inbound user message *before* the worker thread
+            #    sets the workspace_context — without this, user-authored rows
+            #    end up with empty user_id and the model can't tell speakers apart).
+            # 2. Current ContextVar (set by start_autonomous_run for assistant turns).
+            # 3. Empty fallback.
+            _user_id = (user_id or "").strip()
+            _workspace_name = (workspace_name or "").strip()
+            if not _user_id or not _workspace_name:
+                try:
+                    from core.identity.workspace_context import (
+                        current_user_id as _cuid,
+                        current_workspace_name as _cwn,
+                    )
+                    if not _user_id:
+                        _user_id = _cuid() or ""
+                    if not _workspace_name:
+                        _workspace_name = _cwn() or ""
+                except Exception:
+                    pass
+
+            # For en ledger-session er `chat_messages` en PROJEKTION: hændelsen
+            # skrives i ledgeren, og RÆKKEN er noget projektoren laver bagefter.
+            # Det er hele forskellen på en tabel man skriver i, og en tabel man
+            # udleder.
+            from core.runtime.db_session_ledger import storage_mode as _tilstand
             try:
-                from core.identity.workspace_context import (
-                    current_user_id as _cuid,
-                    current_workspace_name as _cwn,
-                )
-                if not _user_id:
-                    _user_id = _cuid() or ""
-                if not _workspace_name:
-                    _workspace_name = _cwn() or ""
+                _kanonisk = _tilstand(normalized_session, conn=conn) == "ledger"
             except Exception:
-                pass
+                # Kan tilstanden ikke læses, skrives rækken som altid. Retningen er
+                # valgt bevidst: alternativet er at brugeren MISTER sin besked fordi
+                # et opslag fejlede, og det er værre end en række projektoren ikke
+                # har lavet. Logges højt, fordi det for en kanonisk session ville
+                # give en række der ikke kan genskabes.
+                logger.warning("chat_sessions: kunne ikke laese storage_mode for %s — "
+                               "skriver som legacy", normalized_session, exc_info=True)
+                _kanonisk = False
 
-        # For en ledger-session er `chat_messages` en PROJEKTION: hændelsen
-        # skrives i ledgeren, og RÆKKEN er noget projektoren laver bagefter.
-        # Det er hele forskellen på en tabel man skriver i, og en tabel man
-        # udleder.
-        from core.runtime.db_session_ledger import storage_mode as _tilstand
-        try:
-            _kanonisk = _tilstand(normalized_session, conn=conn) == "ledger"
-        except Exception:
-            # Kan tilstanden ikke læses, skrives rækken som altid. Retningen er
-            # valgt bevidst: alternativet er at brugeren MISTER sin besked fordi
-            # et opslag fejlede, og det er værre end en række projektoren ikke
-            # har lavet. Logges højt, fordi det for en kanonisk session ville
-            # give en række der ikke kan genskabes.
-            logger.warning("chat_sessions: kunne ikke laese storage_mode for %s — "
-                           "skriver som legacy", normalized_session, exc_info=True)
-            _kanonisk = False
+            if not _kanonisk:
+                # Vagten bliver stående som sikkerhedsnet: enhver ANDEN skriver der
+                # måtte finde vej hertil for en ledger-session, skal stoppes.
+                from core.services.projection_chat_messages import guard_direct_write
+                guard_direct_write(normalized_session, conn=conn)
 
-        if not _kanonisk:
-            # Vagten bliver stående som sikkerhedsnet: enhver ANDEN skriver der
-            # måtte finde vej hertil for en ledger-session, skal stoppes.
-            from core.services.projection_chat_messages import guard_direct_write
-            guard_direct_write(normalized_session, conn=conn)
+                conn.execute(
+                    """
+                    INSERT INTO chat_messages (message_id, session_id, role, content,
+                                                user_id, workspace_name,
+                                                reasoning_content, content_json, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (message_id, normalized_session, normalized_role, normalized_content,
+                     _user_id, _workspace_name, str(reasoning_content or ""),
+                     content_json, timestamp),
+                )
+
+            next_title = str(exists["title"])
+            if normalized_role == "user" and next_title == "New chat":
+                next_title = _normalize_title(normalized_content) or next_title
 
             conn.execute(
                 """
-                INSERT INTO chat_messages (message_id, session_id, role, content,
-                                            user_id, workspace_name,
-                                            reasoning_content, content_json, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                UPDATE chat_sessions
+                SET title = ?, updated_at = ?
+                WHERE session_id = ?
                 """,
-                (message_id, normalized_session, normalized_role, normalized_content,
-                 _user_id, _workspace_name, str(reasoning_content or ""),
-                 content_json, timestamp),
+                (next_title, timestamp, normalized_session),
             )
 
-        next_title = str(exists["title"])
-        if normalized_role == "user" and next_title == "New chat":
-            next_title = _normalize_title(normalized_content) or next_title
+        return _kanonisk, _user_id, _workspace_name
 
-        conn.execute(
-            """
-            UPDATE chat_sessions
-            SET title = ?, updated_at = ?
-            WHERE session_id = ?
-            """,
-            (next_title, timestamp, normalized_session),
-        )
-
+    _kanonisk, _user_id, _workspace_name = skriv_med_genforsoeg(_skriv_raekken)
     if _kanonisk:
         # Ledgeren er sandheden: skriv gennem handlet (lease + fencing), og lad
         # DET køre projektoren. Kalderen får først sin besked tilbage når rækken

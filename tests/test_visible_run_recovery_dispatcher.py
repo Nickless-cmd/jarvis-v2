@@ -158,3 +158,55 @@ def test_den_detachede_koersel_lukker_opgaven_naar_turen_ER_terminal():
     # KUN naar turen faktisk blev faerdig: fejlede fortsaettelsen, skal
     # opgaven blive liggende og tages igen — det er hele formaalet.
     assert kilde.index("run_er_terminal(") < kilde.index("mark_completed(recovery_task_id)")
+
+
+# ── Én kørsel ad gangen i en samtale (Bjørn 20/9-2026) ──────────────────────
+def test_en_forts_starter_IKKE_naar_samtalen_har_et_levende_run(spawn, monkeypatch):
+    """«I en session med en bruger må han aldrig køre flere sideløbende runs.»
+
+    Single-flight bor i `start_or_attach_user_run`; dispatcheren gik uden om
+    den. Målt 20/9-2026: 456 afbrudte kørsler i køen, 189 af dem i ÉN samtale,
+    og fire fortsættelser spawnet på to sekunder efter en genstart.
+    """
+    from core.services import run_event_log as rel
+    monkeypatch.setattr(rel, "active_run_for_session",
+                        lambda sid: "visible-koerer-allerede" if sid == "chat-1" else None)
+    _forladt_opgave()
+    r = D.recover_due_once()
+    assert r["started"] == 0 and r["released"] == 1
+    assert r["error"] == "session-optaget"
+    assert spawn == []                      # der blev IKKE startet noget
+
+
+def test_kravet_er_ikke_tabt_men_tages_naar_samtalen_er_fri(spawn, monkeypatch):
+    """Køen er durabel: en udskudt fortsættelse skal komme igen."""
+    from core.services import run_event_log as rel
+    optaget = {"ja": True}
+    monkeypatch.setattr(rel, "active_run_for_session",
+                        lambda sid: "visible-x" if optaget["ja"] else None)
+    monkeypatch.setattr(D, "BACKOFF_SECONDS", 0)
+    _forladt_opgave()
+    assert D.recover_due_once()["started"] == 0
+    optaget["ja"] = False                   # turen er slut
+    assert D.recover_due_once()["started"] == 1
+    assert spawn[0]["session_id"] == "chat-1"
+
+
+def test_en_anden_samtale_blokerer_ikke(spawn, monkeypatch):
+    """Reglen er pr. samtale — ikke en global kø."""
+    from core.services import run_event_log as rel
+    monkeypatch.setattr(rel, "active_run_for_session",
+                        lambda sid: "visible-y" if sid == "en-anden" else None)
+    _forladt_opgave()
+    assert D.recover_due_once()["started"] == 1
+
+
+def test_en_ulaeselig_runlog_blokerer_ikke_genoptagelsen(spawn, monkeypatch):
+    """Self-safe: kan vi ikke se efter, må arbejdet ikke gå i stå."""
+    from core.services import run_event_log as rel
+
+    def _braekker(_sid):
+        raise RuntimeError("loggen er væk")
+    monkeypatch.setattr(rel, "active_run_for_session", _braekker)
+    _forladt_opgave()
+    assert D.recover_due_once()["started"] == 1

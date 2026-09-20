@@ -101,6 +101,36 @@ def recover_due_once(*, owner: str | None = None) -> dict[str, object]:
     koe = [str(x).strip() for x in (krav.get("pending_steers") or []) if str(x).strip()]
     if koe:
         besked = besked + "\n\nBrugeren tilføjede imens:\n- " + "\n- ".join(koe)
+    # ÉN KØRSEL AD GANGEN I EN SAMTALE (Bjørn 20/9-2026).
+    #
+    # «I hans og mine sessioner sker det ofte at han har 3 eller flere runs
+    # kørende samtidig … i en session med en bruger må han aldrig kunne køre
+    # flere sideløbende runs.»
+    #
+    # Single-flight bor i `start_or_attach_user_run`, og dispatcheren her går
+    # uden om den — den kalder `start_user_run_detached` direkte. Det stod
+    # endda skrevet i detached_run som en bemærkning, uden at nogen så hvad
+    # det kostede: målt 20/9 lå der 456 afbrudte kørsler i køen, 189 af dem i
+    # ÉN samtale. Efter en genstart spawnede fire fortsættelser på to
+    # sekunder, og to af dem lavede prompt-assembly i samme sekund i samme
+    # session — hver med sit eget godkendelses-kort han ikke kunne se.
+    #
+    # Kravet er durabelt: giver vi det tilbage, er fortsættelsen ikke tabt.
+    # Den tages næste gang samtalen er fri. Dispatcheren kører i API-processen
+    # — samme proces som brugerens egne ture — så opslaget er pålideligt.
+    try:
+        from core.services import run_event_log as _rel
+        levende = _rel.active_run_for_session(session_id)
+    except Exception:
+        levende = None   # kan vi ikke se efter, blokerer vi ikke
+    if levende:
+        in_flight_runs.release_recovery_claim(
+            task_id, generation, owner=ejer, reason="samtalen har et levende run",
+            retry_after_s=BACKOFF_SECONDS)
+        logger.info("recovery-dispatcher: %s udskudt — %s kører stadig i %s",
+                    task_id[:24], str(levende)[:24], session_id[:28])
+        return {"started": 0, "released": 1, "claimed": task_id, "error": "session-optaget"}
+
     try:
         from core.services.visible_runs_sections.detached_run import start_user_run_detached
         run_id = start_user_run_detached(

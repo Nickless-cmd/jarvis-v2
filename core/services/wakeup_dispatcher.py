@@ -39,6 +39,42 @@ _dispatch_lock = threading.Lock()
 # Samme tærskel som visible_runs bruger for «same-session stale» (120 s): et
 # run der ikke har rørt sig i to minutter er ikke længere «nogen taler nu».
 _ACTIVE_TURN_FRESH_S = 120.0
+#: Karantæne efter brugerens SIDSTE besked i samtalen (Bjørn 20/9-2026).
+#: Et levende run er ikke hele historien: mellem hans beskeder er der ingen
+#: kørsel, og dér smuttede en autonom ind mens han sad og læste svaret og var
+#: ved at skrive videre. Ti minutter er hans eget valg.
+_BRUGER_KARANTAENE_S = 600.0
+#: Hvor mange beskeder vi ser tilbage for at finde hans seneste. Et BUNDET
+#: vindue — se `verify_history_reads`: ingen nye fulde historik-læsninger.
+_KARANTAENE_VINDUE = 8
+
+
+def _bruger_skrev_for_nylig(session_id: str) -> bool:
+    """Skrev brugeren inden for karantænen? Self-safe → False ved enhver fejl."""
+    try:
+        from core.services.chat_sessions import recent_chat_session_messages
+        beskeder = recent_chat_session_messages(session_id, limit=_KARANTAENE_VINDUE) or []
+    except Exception as exc:
+        logger.debug("wakeup: kunne ikke læse seneste beskeder i %s: %s",
+                     session_id[:28], exc)
+        return False
+    nu = datetime.now(UTC)
+    for m in beskeder:                      # nyeste først
+        if str(m.get("role") or "") != "user":
+            continue
+        raa = str(m.get("created_at") or "")
+        if not raa:
+            return False                    # uden et tidspunkt gætter vi ikke
+        try:
+            t = datetime.fromisoformat(raa.replace("Z", "+00:00"))
+        except ValueError:
+            # Et ulæseligt tidsstempel må ikke blokere et wakeup for evigt —
+            # så hellere lade det køre end at tie det ihjel på et gæt.
+            return False
+        if t.tzinfo is None:
+            t = t.replace(tzinfo=UTC)
+        return (nu - t).total_seconds() < _BRUGER_KARANTAENE_S
+    return False
 
 
 def _active_turn_blocks(session_id: str) -> str:
@@ -57,6 +93,35 @@ def _active_turn_blocks(session_id: str) -> str:
     Self-safe: enhver fejl → "" (ingen blokering). Et wakeup må aldrig
     forsvinde fordi aktiv-tilstanden ikke kunne læses.
     """
+    # 1) KØRER DER NOGET I SAMTALEN OVERHOVEDET? (Bjørn 20/9-2026)
+    #
+    # «Hvis han selv er i gang må en autonom session ikke kunne starte og køre
+    # i baggrunden i samme session.» Den gamle vej spurgte kun den GLOBALE
+    # aktiv-plads, og den holder kun ét run. Et run der venter på et
+    # godkendelses-kort kan stå i minutter uden at være færdigt — og efter
+    # 120 s regnede vagten ham for gået.
+    #
+    # Run-loggen ved det præcist og pr. samtale. Den bor i API-processen, som
+    # også er dér brugerens ture kører.
+    if session_id:
+        try:
+            from core.services import run_event_log as _rel
+            if _rel.active_run_for_session(session_id):
+                return "session_har_levende_run"
+        except Exception as exc:
+            # Self-safe: et wakeup må aldrig forsvinde fordi loggen ikke
+            # kunne læses. Men sig hvilken, så tavsheden kan efterprøves.
+            logger.debug("wakeup: kunne ikke læse run-loggen for %s: %s",
+                         session_id[:28], exc)
+
+    # 2) KARANTÆNE EFTER HANS SIDSTE BESKED.
+    #
+    # Mellem to af hans beskeder kører der ingenting, og dér smuttede en
+    # autonom ind mens han læste svaret. Vinduet er BUNDET (8 beskeder), så
+    # det her ikke bliver en ny fuld historik-læsning.
+    if session_id and _bruger_skrev_for_nylig(session_id):
+        return "bruger_skrev_for_nylig"
+
     try:
         from core.services.visible_runs import _get_active_visible_run_state
 

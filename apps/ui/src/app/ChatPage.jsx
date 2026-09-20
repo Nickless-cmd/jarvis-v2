@@ -56,6 +56,7 @@ export function ChatPage({
           onRename={onRename}
           onDelete={onDelete}
           isRefreshing={isRefreshing}
+          isStreaming={isStreaming}
           messages={activeSession?.messages || []}
         />
 

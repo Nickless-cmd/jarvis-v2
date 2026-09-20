@@ -206,13 +206,13 @@ function toggleWindow(): void {
  * en tray-udvidelse (AppIndicator etc.). Funktionen returnerer pænt
  * hvis tray ikke kan oprettes (logger advarsel, fortsætter uden tray).
  */
-// ─── Ring-only systray med tilstande (idle / pulsing / attention) ───
+// ─── Puls systray med tilstande (idle / pulsing / attention) ───
 type TrayState = 'idle' | 'working'
 let trayState: TrayState = 'idle'
 let trayAttention = false
 let traySpinTimer: ReturnType<typeof setInterval> | null = null
 let traySpinFrame = 0
-const TRAY_ROT_FRAMES = 12
+const TRAY_ROT_FRAMES = 40
 
 // Menulinje-/tray-ikon-størrelse pr. platform. Kilde-PNG er 44×44 (HiDPI). macOS-
 // menulinjen vil have ~18pt (ellers fylder ikonet alt for meget — Bjørn 2026-06-21);
@@ -246,10 +246,10 @@ function applyTrayImage(): void {
 
 function refreshTrayState(): void {
   if (!tray) return
-  // Drej ringen mens 'working' og IKKE attention; ellers står den stille.
+  // Pulsér mærket mens 'working' og IKKE attention; ellers står den stille.
   const shouldSpin = trayState === 'working' && !trayAttention
   if (shouldSpin && !traySpinTimer) {
-    traySpinTimer = setInterval(() => { traySpinFrame = (traySpinFrame + 1) % TRAY_ROT_FRAMES; applyTrayImage() }, 90)
+    traySpinTimer = setInterval(() => { traySpinFrame = (traySpinFrame + 1) % TRAY_ROT_FRAMES; applyTrayImage() }, 100)
   } else if (!shouldSpin && traySpinTimer) {
     clearInterval(traySpinTimer); traySpinTimer = null; traySpinFrame = 0
   }

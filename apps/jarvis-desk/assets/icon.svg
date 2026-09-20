@@ -1,7 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="112" fill="#0d1117"/>
-  <circle cx="256" cy="256" r="150" fill="none" stroke="#6ee7a8" stroke-width="22"
-          stroke-linecap="round" stroke-dasharray="800 142" transform="rotate(-58 256 256)"/>
-  <text x="262" y="338" text-anchor="middle" font-family="'Inter','SF Pro Display',system-ui,sans-serif"
-        font-size="240" font-weight="500" fill="#ffffff">j</text>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="0" fill="#0d1117"/><g fill="#49c9b8" transform="translate(0.0 0.0) scale(1.0)"><rect x="15" y="32.0" width="19" height="36.0" rx="9.5"/><rect x="41" y="19.5" width="19" height="61.0" rx="9.5"/><rect x="67" y="30.5" width="19" height="39.0" rx="9.5"/></g></svg>

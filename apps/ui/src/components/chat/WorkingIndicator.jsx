@@ -1,4 +1,5 @@
-import { Loader2, CheckCircle2 } from 'lucide-react'
+import { JarvisPulse } from '../shared/JarvisPulse'
+import { CheckCircle2 } from 'lucide-react'
 
 export function WorkingIndicator({ steps }) {
   if (!steps || steps.length === 0) return null
@@ -10,9 +11,7 @@ export function WorkingIndicator({ steps }) {
 
   return (
     <div className="working-indicator">
-      <div className="working-indicator-spinner">
-        <Loader2 size={13} />
-      </div>
+      <JarvisPulse working={Boolean(currentStep)} size={18} />
       <div className="working-indicator-steps">
         {doneSteps.map((step, i) => (
           <div key={i} className="working-step done">

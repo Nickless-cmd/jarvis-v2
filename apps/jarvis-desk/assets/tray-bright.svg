@@ -1,4 +1,1 @@
-<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-  <circle cx="50" cy="50" r="34" fill="none" stroke="#b6ffd9" stroke-width="13"
-    stroke-linecap="round" stroke-dasharray="158 56" transform="rotate(-58 50 50)"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><g fill="#49c9b8" transform="translate(0.0 0.0) scale(1.0)"><rect x="15" y="32.0" width="19" height="36.0" rx="9.5"/><rect x="41" y="19.5" width="19" height="61.0" rx="9.5"/><rect x="67" y="30.5" width="19" height="39.0" rx="9.5"/></g></svg>

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { MoreVertical, Search, RefreshCw, X } from 'lucide-react'
+import { JarvisPulse } from '../shared/JarvisPulse'
 import { Chip } from '../shared/Chip'
 import { backend } from '../../lib/adapters'
 
@@ -9,6 +10,7 @@ export function ChatHeader({
   onRename,
   onDelete,
   isRefreshing,
+  isStreaming,
   messages,
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
@@ -62,6 +64,7 @@ export function ChatHeader({
     <>
       <section className="chat-header-bar">
         <div className="chat-header-left">
+          <JarvisPulse working={isStreaming} />
           <span className="chat-header-session-title">{session?.title || 'Ny chat'}</span>
           <div className="chat-header-chips">
             <Chip color="#3d8f7c">L3</Chip>

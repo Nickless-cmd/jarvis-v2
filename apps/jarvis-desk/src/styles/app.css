@@ -4030,3 +4030,8 @@ body.egen-ramme .main:has(.chatview-head) { padding-top: 0; }
 .figur-indstilling { display: flex; align-items: flex-start; gap: 10px; margin-top: 14px; cursor: pointer; font-size: 13px; }
 .figur-indstilling > span { display: flex; flex-direction: column; gap: 2px; }
 .figur-indstilling input { margin-top: 3px; accent-color: var(--accent); }
+/* Figurens udseende (20/9-2026): et valg ved siden af til/fra. Knapperne er
+   de samme som temaets (.theme-options/.theme-btn), så sektionen taler ét
+   sprog — kun labelen er ny. */
+.figur-skin { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
+.figur-skin-label { font-size: 12px; color: var(--fg-3, var(--fg)); }

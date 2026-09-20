@@ -5,6 +5,7 @@ import type { Opmaerksomhed } from '../lib/opmaerksomhed'
 import { FigurKrop } from './FigurKrop'
 import { HANDLING_FOR, blikFraMus, boble, maalHoejde, type Handling } from './figurLogik'
 import { sendHurtigt } from './hurtigChat'
+import { useFigurSkin } from '../lib/figurSkin'
 import './figur.css'
 
 interface FigurBro {
@@ -59,6 +60,10 @@ export function FigurApp() {
   const [sender, setSender] = useState(false)
   const [kvittering, setKvittering] = useState<string | null>(null)
   const [sendFejl, setSendFejl] = useState<string | null>(null)
+  // Kroppen (20/9-2026). Skinnet bor i figur.json via main-processen, så
+  // indstillingerne og dette vindue altid ser det samme — og et skift kommer
+  // som IPC-besked, fordi de to er forskellige renderers.
+  const [skin] = useFigurSkin()
   const rodRef = useRef<HTMLDivElement>(null)
   const grebRef = useRef<HTMLDivElement>(null)
   const traek = useRef<{ x: number; y: number; sidstX: number; flytter: boolean } | null>(null)
@@ -274,7 +279,7 @@ export function FigurApp() {
         onDoubleClick={() => void bro()?.figur.aabnSamtale(null)}
       >
         <div onAnimationEnd={(e) => { if (e.target === e.currentTarget.firstElementChild && handling !== 'hvile') setHandling('hvile') }}>
-          <FigurKrop handling={handling} ring={o?.tilstand === 'running' ? 'hurtig' : 'rolig'} laener={laener} blik={blik} grimasse={grimasse} />
+          <FigurKrop handling={handling} ring={o?.tilstand === 'running' ? 'hurtig' : 'rolig'} laener={laener} blik={blik} grimasse={grimasse} skin={skin ?? 'ansigt'} />
         </div>
       </div>
       {/* Codex' tre ikoner under figuren. Vist når der er noget at vise —

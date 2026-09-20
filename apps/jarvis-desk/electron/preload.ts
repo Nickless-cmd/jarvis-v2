@@ -44,6 +44,11 @@ export interface JarvisDeskBridge {
     aabnSamtale: (sessionId: string | null) => Promise<void>
     vist: () => Promise<boolean>
     saetVist: (vist: boolean) => Promise<boolean>
+    /** Figurens udseende: 'ansigt' (den oprindelige krop) eller 'puls' (mærket). */
+    skin: () => Promise<'ansigt' | 'puls'>
+    saetSkin: (skin: 'ansigt' | 'puls') => Promise<'ansigt' | 'puls'>
+    /** Figur-vinduet: udseendet blev skiftet et andet sted (indstillingerne). */
+    paaSkin: (cb: (skin: 'ansigt' | 'puls') => void) => () => void
     /** Stemme-ikonet under figuren. */
     stemme: () => Promise<void>
     /** Hovedvinduet: figuren bad om samtale-mode. */
@@ -185,6 +190,13 @@ const bridge: JarvisDeskBridge = {
     aabnSamtale: (sessionId: string | null) => ipcRenderer.invoke('figur:aabnSamtale', sessionId),
     vist: () => ipcRenderer.invoke('figur:vist'),
     saetVist: (vist: boolean) => ipcRenderer.invoke('figur:saetVist', vist),
+    skin: () => ipcRenderer.invoke('figur:skin'),
+    saetSkin: (skin: 'ansigt' | 'puls') => ipcRenderer.invoke('figur:saetSkin', skin),
+    paaSkin: (cb: (skin: 'ansigt' | 'puls') => void) => {
+      const handler = (_e: unknown, skin: 'ansigt' | 'puls') => cb(skin)
+      ipcRenderer.on('figur:skin', handler)
+      return () => ipcRenderer.removeListener('figur:skin', handler)
+    },
     stemme: () => ipcRenderer.invoke('figur:stemme'),
     paaStemme: (cb: () => void) => {
       const handler = () => cb()

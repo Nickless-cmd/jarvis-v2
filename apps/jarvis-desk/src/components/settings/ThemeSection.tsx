@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { loadTheme, saveTheme, applyTheme, type Theme } from '../../lib/themeStore'
 import { useFigurVist } from '../../lib/figurVist'
+import { useFigurSkin, SKIN_VALG } from '../../lib/figurSkin'
 
 const OPTIONS: { key: Theme; label: string }[] = [
   { key: 'dark', label: 'Mørkt' },
@@ -14,6 +15,9 @@ export function ThemeSection() {
   const [theme, setTheme] = useState<Theme>(loadTheme())
   const pick = (t: Theme) => { setTheme(t); saveTheme(t); applyTheme(t) }
   const [figur, saetFigur] = useFigurVist()
+  // Skinnet bor samme sted som til/fra (figur.json i main-processen), så
+  // indstillingerne og figur-vinduet altid ser det samme.
+  const [skin, saetSkin] = useFigurSkin()
 
   return (
     <div className="settings-section theme-section">
@@ -38,6 +42,25 @@ export function ThemeSection() {
             <span className="account-google-hint">Viser hvad han laver, også når vinduet er lukket. Klik for at hoppe, træk for at flytte.</span>
           </span>
         </label>
+      ) : null}
+      {/* Udseendet (20/9-2026). Vælgeren står også mens figuren er slukket,
+          så man kan bestemme sig før man tænker på at tænde den. Skiftet slår
+          straks igennem uden genstart: main-processen gemmer valget og sender
+          det videre til figur-vinduet, som er en anden renderer. */}
+      {skin !== null ? (
+        <div className="figur-skin">
+          <span className="figur-skin-label">Figurens udseende</span>
+          <div className="theme-options">
+            {SKIN_VALG.map((s) => (
+              <button
+                key={s.key}
+                type="button"
+                className={skin === s.key ? 'theme-btn active' : 'theme-btn'}
+                onClick={() => saetSkin(s.key)}
+              >{s.label}</button>
+            ))}
+          </div>
+        </div>
       ) : null}
     </div>
   )

@@ -28,12 +28,18 @@ const BREDDE = 300
 const MIN_HOEJDE = 150
 const MARGEN = 24
 
+/** Figurens udseende (20/9-2026). `ansigt` er den oprindelige krop. */
+export type FigurSkin = 'ansigt' | 'puls'
+
 interface FigurTilstand {
   vist: boolean; x?: number; y?: number
   /** Nye positioner gemmer figurens midte; ældre positioner gemte vinduets bund. */
   anker?: 'figur'
   hoejde?: number
   offsetY?: number
+  /** Ukendte værdier falder til `ansigt` — en gammel fil må ikke give en
+   *  figur uden krop. */
+  skin?: FigurSkin
 }
 
 let figur: BrowserWindow | null = null
@@ -48,9 +54,12 @@ const fil = () => path.join(app.getPath('userData'), 'figur.json')
 function laes(): FigurTilstand {
   try {
     const d = JSON.parse(fs.readFileSync(fil(), 'utf8')) as Partial<FigurTilstand>
-    return { vist: d.vist !== false, x: d.x, y: d.y, anker: d.anker, hoejde: d.hoejde, offsetY: d.offsetY }
+    return {
+      vist: d.vist !== false, x: d.x, y: d.y, anker: d.anker, hoejde: d.hoejde, offsetY: d.offsetY,
+      skin: d.skin === 'puls' ? 'puls' : 'ansigt',
+    }
   } catch {
-    return { vist: true }
+    return { vist: true, skin: 'ansigt' }
   }
 }
 
@@ -129,6 +138,11 @@ export function lukFigur(): void {
 /** Den gemte indstilling — til tray-menuens flueben, før vinduet findes. */
 export function laesFigurVist(): boolean {
   return laes().vist
+}
+
+/** Figurens udseende — til indstillings-vinduet, før figuren findes. */
+export function laesFigurSkin(): FigurSkin {
+  return laes().skin ?? 'ansigt'
 }
 
 export function figurVist(): boolean {
@@ -215,5 +229,15 @@ export function registrerFigurIpc(opts: {
     saetFigurVist(vist, opts.preload, opts.indlaes)
     opts.onVistAendret?.(vist)
     return figurVist()
+  })
+  ipcMain.handle('figur:skin', () => laes().skin ?? 'ansigt')
+  ipcMain.handle('figur:saetSkin', (_e, skin: unknown) => {
+    const ny: FigurSkin = skin === 'puls' ? 'puls' : 'ansigt'
+    tilstand = { ...laes(), skin: ny }
+    gem()
+    // Figur-vinduet er en ANDEN renderer end indstillingerne, så det ser ikke
+    // DOM'en ændre sig — det skal have skiftet som besked.
+    figur?.webContents.send('figur:skin', ny)
+    return ny
   })
 }

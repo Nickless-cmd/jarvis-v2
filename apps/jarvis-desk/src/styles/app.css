@@ -3716,6 +3716,25 @@ body.egen-ramme .har-skinne .chatview-head {
   padding-right: max(var(--vk-plads), calc(var(--skinne-bredde) + 16px));
 }
 
+/* PANELERNE I HOEJRE SIDE SKAL OGSAA HOLDE FRI (Bjoern 20/9-2026, fire
+   skaermbilleder: «ikoner der overlapper» i alle paneler i hoejre side).
+   Samme fejl fire steder: panelets eget kryds laa oven i vinduets.
+
+   Chat-headeren fik sin plads 19/9 (`--vk-plads` ovenfor), men skinnen og
+   de hoejre ruder gaar HELT op — det var med vilje (Bjoern 16/9: «baggrundjob
+   og changes paneler skal gaa laengere op») — og deres hoveder endte dermed
+   under de faste vinduesknapper.
+
+   Kun den OEVERSTE rude i skinnen kolliderer; de nedenunder har knapperne
+   langt over sig. Derfor `:first-child`, ikke alle ruder — ellers stod der
+   et tomt hul i hvert eneste panelhoved. */
+body.egen-ramme .code-right-stack > *:first-child > .changes-head,
+body.egen-ramme .code-right-stack > *:first-child > .jobs-head,
+body.egen-ramme .artifact-head,
+body.egen-ramme .codepanel-head {
+  padding-right: var(--vk-plads);
+}
+
 /* Flader UDEN header (setup, fejlskaerm, Arbejde): en tynd traekbjaelke, saa
    vinduet altid kan flyttes, og saa indholdet ikke ligger under knapperne. */
 .vinduesbjaelke { display: none; }

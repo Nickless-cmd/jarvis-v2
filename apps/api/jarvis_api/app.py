@@ -575,6 +575,17 @@ def create_app() -> FastAPI:
         except Exception as _exc:
             logger.warning("assembly prewarm loop dispatch failed: %s", _exc)
 
+        # Release-vagten (20/9-2026). GitHub kan ikke skubbe til en klient, saa
+        # appen ventede op til 15 min (desktop, electron/main.ts) eller til man
+        # gik ind og ud af appen (mobil). Vagten opdager releasen selv og laegger
+        # den paa event-bussen; /ws sender den videre, og klienten tjekker straks.
+        # UDENFOR runtime-gaten: den skal koere i API-processen, hvor /ws bor.
+        try:
+            from apps.api.jarvis_api.routes.app_release import start_release_vagt
+            start_release_vagt()
+        except Exception as _exc:
+            logger.warning("release-vagt kunne ikke startes: %s", _exc)
+
         logger.info("jarvis api startup complete")
         async with mcp_app.lifespan(app):
             yield
@@ -594,6 +605,11 @@ def create_app() -> FastAPI:
             stop_recovery_dispatcher()
         except Exception:
             logger.warning("kunne ikke stoppe recovery-dispatcheren", exc_info=True)
+        try:
+            from apps.api.jarvis_api.routes.app_release import stop_release_vagt
+            stop_release_vagt()
+        except Exception:
+            logger.warning("kunne ikke stoppe release-vagten", exc_info=True)
         try:
             from core.runtime.process_lifecycle import markér_nedlukning
             markér_nedlukning("lifespan-shutdown")
@@ -853,6 +869,8 @@ def create_app() -> FastAPI:
     app.include_router(presence_router)
     from apps.api.jarvis_api.routes.mobile_update import router as mobile_update_router
     app.include_router(mobile_update_router)
+    from apps.api.jarvis_api.routes.app_release import router as app_release_router
+    app.include_router(app_release_router)
     app.include_router(cowork_router)
     app.include_router(plugins_router)
     from apps.api.jarvis_api.routes.central import router as central_router

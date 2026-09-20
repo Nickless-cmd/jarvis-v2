@@ -132,6 +132,23 @@ _Anthropic Messages API compatible endpoint._
 | function | `messages` | `(request)` | — | [src](../../../apps/api/jarvis_api/routes/anthropic_compat.py#L113) |
 | function | `_stream_response` | `(*, payload, message_id, model)` | Drive the AnthropicSSEEmitter from Ollama stream chunks. | [src](../../../apps/api/jarvis_api/routes/anthropic_compat.py#L203) |
 
+## `apps/api/jarvis_api/routes/app_release.py`
+_App-release-vagt — push i stedet for poll._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_state_fil` | `()` | — | [src](../../../apps/api/jarvis_api/routes/app_release.py#L69) |
+| function | `_laes_sidste_tag` | `()` | — | [src](../../../apps/api/jarvis_api/routes/app_release.py#L74) |
+| function | `_skriv_sidste_tag` | `(tag)` | — | [src](../../../apps/api/jarvis_api/routes/app_release.py#L83) |
+| function | `_parse_atom` | `(tekst)` | Nyeste desk-release ud af atom-feedet. None hvis feedet er tomt/ukendt. | [src](../../../apps/api/jarvis_api/routes/app_release.py#L96) |
+| function | `hent_seneste` | `()` | Sidste desk-release fra GitHub. Blokerende — kaldes i en traad. | [src](../../../apps/api/jarvis_api/routes/app_release.py#L116) |
+| function | `seneste_cached` | `(*, tving=…)` | Seneste release med kort cache, saa /latest ikke rammer GitHub pr. kald. | [src](../../../apps/api/jarvis_api/routes/app_release.py#L135) |
+| function | `app_release_latest` | `()` | Nyeste desk-release. Auth haandteres af middlewaren, som for alle ruter. | [src](../../../apps/api/jarvis_api/routes/app_release.py#L151) |
+| function | `_udsend` | `(data)` | Laeg release-eventet paa bussen. /ws sender det videre til klienterne. | [src](../../../apps/api/jarvis_api/routes/app_release.py#L162) |
+| function | `_vagt_loop` | `()` | Foerste gennemloeb saetter baseline. Derefter udsender vi KUN ved aendring. | [src](../../../apps/api/jarvis_api/routes/app_release.py#L181) |
+| function | `start_release_vagt` | `()` | Idempotent — gentagne kald (fx flere workers i samme proces) goer intet. | [src](../../../apps/api/jarvis_api/routes/app_release.py#L219) |
+| function | `stop_release_vagt` | `()` | — | [src](../../../apps/api/jarvis_api/routes/app_release.py#L232) |
+
 ## `apps/api/jarvis_api/routes/attachments.py`
 _Attachment upload and serve endpoints._
 
@@ -632,13 +649,4 @@ _Owner-only read surface for the Cheap Lane control center._
 | function | `export_diagnostics` | `(hours=…)` | — | [src](../../../apps/api/jarvis_api/routes/cheap_lane_control.py#L198) |
 | function | `control` | `(body)` | — | [src](../../../apps/api/jarvis_api/routes/cheap_lane_control.py#L218) |
 | function | `simulate` | `(body)` | — | [src](../../../apps/api/jarvis_api/routes/cheap_lane_control.py#L246) |
-
-## `apps/api/jarvis_api/routes/companion.py`
-_Companion-endpoints — Jarvis' tre ønsker til mobil-appen._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `companion_presence` | `()` | Er han vågen — og hvad lavede han sidst? | [src](../../../apps/api/jarvis_api/routes/companion.py#L35) |
-| function | `companion_senses` | `(limit=…)` | Sansernes Arkiv — hvad Jarvis har set i hjemmet. Kun husstanden. | [src](../../../apps/api/jarvis_api/routes/companion.py#L46) |
-| function | `companion_thoughts` | `(limit=…)` | Jarvis' initiativer — også dem der blev holdt tilbage. | [src](../../../apps/api/jarvis_api/routes/companion.py#L66) |
 

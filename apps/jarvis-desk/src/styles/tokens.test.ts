@@ -121,8 +121,11 @@ describe('design-tokens', () => {
   // sessioner der begge hedder «Check system status and connecti…» er ikke til
   // at skelne. Fade'en lader tegnene stå.
   it('sessionstitlen fader i enden i stedet for at ende i «…»', () => {
-    const regel = app.match(/^\.session-item-label \{([\s\S]*?)\n\}/m)?.[1] ?? ''
-    expect(regel, '.session-item-label findes ikke').toBeTruthy()
+    // Masken bor paa TITLEN, ikke paa knappen (20/9-2026). Flyttet fordi
+    // aktivitets-maerket til hoejre sidder i praecis den zone fade'en rammer:
+    // laa masken paa knappen, blev maerket klippet vaek.
+    const regel = app.match(/^\.session-titel \{([\s\S]*?)\n\}/m)?.[1] ?? ''
+    expect(regel, '.session-titel findes ikke').toBeTruthy()
     expect(regel).not.toContain('text-overflow: ellipsis')
     expect(regel).toMatch(/mask-image:\s*linear-gradient\(to right/)
     // Uden -webkit-praefiks fader den ikke i Electrons Chromium-udgave.
@@ -130,6 +133,11 @@ describe('design-tokens', () => {
     // Overflow skal stadig klippes — ellers flyder titlen ud over kanten og
     // fade'en maskerer noget der alligevel ikke var klippet.
     expect(regel).toContain('overflow: hidden')
+
+    // Og knappen maa IKKE baere masken — saa ville aktivitets-maerket forsvinde.
+    const knap = app.match(/^\.session-item-label \{([\s\S]*?)\n\}/m)?.[1] ?? ''
+    expect(knap, '.session-item-label findes ikke').toBeTruthy()
+    expect(knap).not.toContain('mask-image')
   })
 
   // En menu der svæver over fladen i FLADENS egen farve har intet at løfte sig

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, Fragment } from 'react'
 import {
   Plus, MoreHorizontal, Pencil, Download, Trash2, Search, Images, Code, Activity, FileCode2,
-  ChevronRight, ChevronDown,
+  ChevronRight, ChevronDown, MessageSquare,
   LayoutDashboard, Blocks, Settings, Brain, Cpu,
   User, ShieldCheck, Bell, Palette, Languages, MapPin, Database, Folder, Plug, Bot, Info,
   Gauge, Users,
@@ -17,6 +17,7 @@ import { grupperSessioner, GRUPPER_I_MODE, grupperEfterProjekt, type SessionGrup
 import { SidebarGreb } from './SidebarGreb'
 import { ModeDropdown, type Mode } from './ModeDropdown'
 import { ModeBladrer } from './ModeBladrer'
+import { JarvisRing } from './JarvisRing'
 import { SecondaryNav, type SecondarySurface } from './SecondaryNav'
 
 const ZONE_ICONS: Record<string, LucideIcon> = {
@@ -359,13 +360,21 @@ function SessionItem({
         />
       ) : (
         <button type="button" className="session-item-label" onClick={onSelect}>
+          {/* Typen staar FAST til venstre (20/9-2026). Foer havde chat intet tag
+              — raekken saa tom ud — og de tre prikker kom og gik FORAN titlen,
+              saa den rykkede hver gang en session begyndte at arbejde. */}
+          {workspaceKind
+            ? <Code size={12} className="session-mode-icon" />
+            : <MessageSquare size={12} className="session-mode-icon" />}
+          <span className="session-titel">{title}</span>
+          {/* Aktiviteten har sin EGEN plads til hoejre, hvor der er raad til at
+              maerket kan laeses. Ved 12px — prikkernes gamle plads — er de tre
+              bjaelker 2,3px med 0,84px luft og smelter sammen til én klat. */}
           {working && (
-            <span className="session-working" aria-label="Jarvis arbejder" title="Jarvis arbejder her">
-              <span></span><span></span><span></span>
+            <span className="session-aktiv" aria-label="Jarvis arbejder" title="Jarvis arbejder her">
+              <JarvisRing size={14} spinning tone="working" />
             </span>
           )}
-          {workspaceKind && <Code size={12} className="session-mode-icon" />}
-          {title}
         </button>
       )}
       <div className="session-menu-anchor" onClick={(e) => e.stopPropagation()}>

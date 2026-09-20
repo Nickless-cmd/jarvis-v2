@@ -1,13 +1,29 @@
-"""In-memory device-presence pr. bruger. Efemær — genopbygges af klient-pings.
+"""Device-presence pr. bruger. Lever i hukommelsen — og OVERLEVER en genstart.
 
 Hybrid scoring: aktivitets-recency primær; foreground/desktop-sleep/mobil-netværk
 er hints. Reachability: desktop kun online via frisk ping; mobil altid FCM-nåbar.
+
+## Hvorfor den også ligger på disken (20/9-2026)
+
+Tilstanden var rent efemær, og vi genstarter API'en mange gange om dagen. Hver
+genstart nulstillede hvem der var til stede: desk er kun «online» med et ping
+under 12 sekunder gammelt, så i vinduet mellem genstarten og desks næste ping
+havde `rank()` kun de registrerede FCM-tokens tilbage — og alt gik til
+telefonen. Det er den samme irritation Bjørn beskrev: han sidder i desk, og
+kortet lander et sted han ikke kigger.
+
+Pingene er sekundgamle, så snapshottet skrives med VÆGURSTID og oversættes
+tilbage til monotont ur ved indlæsning; poster ældre end `_PRESENCE_TTL_S`
+smides væk. Et gammelt snapshot kan altså aldrig holde en død enhed i live.
 """
 from __future__ import annotations
 
+import logging
 import threading
 import time
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass, fields
+
+logger = logging.getLogger(__name__)
 
 _now = time.monotonic  # injicerbart i tests
 
@@ -35,6 +51,13 @@ _TELEGRAM_SCORE = 30.0         # altid-tilgængelig, lav prioritet (async)
 _lock = threading.Lock()
 _PRESENCE: dict[str, dict[str, "DeviceState"]] = {}
 
+_STATE_NAVN = "device_presence"
+# Desktop pinger hvert 5. sekund, mobilen hvert 30. Uden en spærre ville hver
+# ping koste en fil-skrivning; 5 sekunder holder snapshottet friskt nok til at
+# dække en genstart uden at skrive unødigt.
+_GEM_INTERVAL_S = 5.0
+_sidst_gemt = 0.0
+
 
 @dataclass
 class DeviceState:
@@ -54,10 +77,68 @@ class DeviceState:
     location: dict | None = None
 
 
+def _gem(*, tving: bool = False) -> None:
+    """Skriv et snapshot med vægurstid. Self-safe — må aldrig vælte et ping."""
+    global _sidst_gemt
+    now = _now()
+    if not tving and (now - _sidst_gemt) < _GEM_INTERVAL_S:
+        return
+    _sidst_gemt = now
+    try:
+        vaeg = time.time()
+        with _lock:
+            data = {
+                uid: {
+                    key: {
+                        **asdict(st),
+                        # Monotone tal betyder intet efter en genstart. Vi gemmer
+                        # ALDEREN oversat til vægursstempler i stedet.
+                        "last_ping_wall": vaeg - (now - st.last_ping_at),
+                        "last_interaction_wall": vaeg - (now - st.last_interaction_at),
+                    }
+                    for key, st in devices.items()
+                }
+                for uid, devices in _PRESENCE.items()
+            }
+        from core.runtime.state_store import save_json
+        save_json(_STATE_NAVN, data)
+    except Exception:
+        logger.debug("device_presence: kunne ikke gemme snapshot", exc_info=True)
+
+
+def _indlaes() -> None:
+    """Genskab tilstanden fra disken ved import. Forældede poster droppes."""
+    try:
+        from core.runtime.state_store import load_json
+        data = load_json(_STATE_NAVN, {}) or {}
+        if not isinstance(data, dict):
+            return
+        now, vaeg = _now(), time.time()
+        felter = {f.name for f in fields(DeviceState)}
+        with _lock:
+            for uid, devices in data.items():
+                if not isinstance(devices, dict):
+                    continue
+                for key, raw in devices.items():
+                    if not isinstance(raw, dict):
+                        continue
+                    alder = vaeg - float(raw.get("last_ping_wall") or 0.0)
+                    if alder < 0 or alder > _PRESENCE_TTL_S:
+                        continue  # for gammel (eller et ur der er gået baglæns)
+                    i_alder = vaeg - float(raw.get("last_interaction_wall") or 0.0)
+                    st = DeviceState(**{k: v for k, v in raw.items() if k in felter})
+                    st.last_ping_at = now - alder
+                    st.last_interaction_at = now - max(0.0, i_alder)
+                    _PRESENCE.setdefault(str(uid), {})[str(key)] = st
+    except Exception:
+        logger.debug("device_presence: kunne ikke indlæse snapshot", exc_info=True)
+
+
 def reset() -> None:
     """Kun til tests."""
     with _lock:
         _PRESENCE.clear()
+    _gem(tving=True)
 
 
 def record_ping(
@@ -83,6 +164,7 @@ def record_ping(
     with _lock:
         devices = _PRESENCE.setdefault(uid, {})
         st = devices.get(key)
+        ny_enhed = st is None
         if st is None:
             st = DeviceState(
                 device_key=key, platform=platform,
@@ -115,6 +197,9 @@ def record_ping(
             st.location = loc or None
         if interaction:
             st.last_interaction_at = now
+    # Uden for låsen (_gem tager den selv). En NY enhed skrives med det samme:
+    # det er præcis den besked et push ville mangle lige efter en genstart.
+    _gem(tving=ny_enhed)
 
 
 def _sanitize_location(location: dict | None) -> dict | None:
@@ -304,3 +389,8 @@ def debug_snapshot(user_id: str) -> dict:
         for r in rank(uid)
     ]
     return {"devices": devices, "ranked": ranked, "summary": summary(uid)}
+
+
+# Genskab tilstanden ved import — se modulets docstring. Sker én gang pr.
+# proces, før nogen når at spørge `rank()` hvem der er til stede.
+_indlaes()

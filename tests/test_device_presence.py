@@ -231,3 +231,82 @@ def test_prune_i_rank_giver_ikke_deadlock():
     threading.Thread(target=lambda: (dp.rank("u1"), dp.debug_snapshot("u1"), faerdig.set()),
                      daemon=True).start()
     assert faerdig.wait(timeout=5), "rank/debug_snapshot hang — deadlock paa _lock"
+
+
+# ── Tilstedeværelsen overlever en genstart (Bjørn 20/9-2026) ──────────────────
+def test_presence_survives_a_restart(monkeypatch):
+    """Desk er kun «online» med et ping under 12s gammelt.
+
+    Vi genstarter API'en mange gange om dagen, og tilstanden lå kun i
+    hukommelsen: i vinduet mellem genstarten og desks næste ping havde rank()
+    ingen desktop at pege på, og alt gik til telefonen. Snapshottet lukker det
+    vindue.
+    """
+    box = {"t": 1000.0, "vaeg": 50_000.0}
+    monkeypatch.setattr(dp, "_now", lambda: box["t"])
+    # Væguret styres også: det er DET snapshottet måler alderen med, og uden
+    # kontrol over det kunne testen ikke se om alderen blev bevaret.
+    monkeypatch.setattr(dp, "time", type("Ur", (), {"time": staticmethod(lambda: box["vaeg"])}))
+    dp._PRESENCE.clear()
+    dp.record_ping("bjorn", "dev-A", "desktop", foreground=True, awake=True,
+                   network="home", interaction=True)
+    dp._gem(tving=True)
+
+    # Genstart: hukommelsen er væk, begge ure er løbet 3 sekunder videre.
+    dp._PRESENCE.clear()
+    box["t"] = 1003.0
+    box["vaeg"] = 50_003.0
+    assert dp.rank("bjorn") == [] or all(r.platform != "desktop" for r in dp.rank("bjorn"))
+    dp._indlaes()
+
+    st = dp._PRESENCE["bjorn"]["dev-A"]
+    assert st.platform == "desktop" and st.foreground is True
+    # Alderen er bevaret (ca. 3s), ikke nulstillet — ellers ville et dødt
+    # snapshot kunne holde en slukket maskine kunstigt i live.
+    assert 2.0 <= (box["t"] - st.last_ping_at) <= 4.0
+    ranked = dp.rank("bjorn")
+    assert ranked and ranked[0].platform == "desktop"
+    assert ranked[0].reachable_via == "desktop_queue"
+
+
+def test_stale_snapshot_is_dropped(monkeypatch):
+    """Et gammelt snapshot må ALDRIG holde en slukket enhed i live."""
+    import json
+    import time as _t
+
+    from core.runtime import state_store
+    box = {"t": 1000.0}
+    monkeypatch.setattr(dp, "_now", lambda: box["t"])
+    dp._PRESENCE.clear()
+    gammel = _t.time() - (dp._PRESENCE_TTL_S + 60.0)
+    (state_store._STATE_DIR / f"{dp._STATE_NAVN}.json").write_text(json.dumps({
+        "bjorn": {"dev-A": {
+            "device_key": "dev-A", "platform": "desktop",
+            "last_ping_at": 0.0, "last_interaction_at": 0.0,
+            "last_ping_wall": gammel, "last_interaction_wall": gammel,
+        }}
+    }), encoding="utf-8")
+    dp._indlaes()
+    assert dp._PRESENCE.get("bjorn") in (None, {})
+
+
+def test_snapshot_ignores_unknown_fields(monkeypatch):
+    """Et snapshot fra en ældre/nyere udgave må ikke vælte indlæsningen."""
+    import json
+    import time as _t
+
+    from core.runtime import state_store
+    box = {"t": 1000.0}
+    monkeypatch.setattr(dp, "_now", lambda: box["t"])
+    dp._PRESENCE.clear()
+    nu = _t.time()
+    (state_store._STATE_DIR / f"{dp._STATE_NAVN}.json").write_text(json.dumps({
+        "bjorn": {"dev-A": {
+            "device_key": "dev-A", "platform": "mobile",
+            "last_ping_at": 0.0, "last_interaction_at": 0.0,
+            "et_felt_vi_ikke_kender": 42,
+            "last_ping_wall": nu, "last_interaction_wall": nu,
+        }}
+    }), encoding="utf-8")
+    dp._indlaes()
+    assert dp._PRESENCE["bjorn"]["dev-A"].platform == "mobile"

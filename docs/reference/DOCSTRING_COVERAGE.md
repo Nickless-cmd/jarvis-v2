@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7864/15260 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7866/15262 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 7864/15260 functions/methods documented (51%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 686 | 1265 | 54% |
-| `core.services` | 5201 | 10408 | 49% |
+| `core.services` | 5203 | 10410 | 49% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 107 | 183 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -992,10 +992,10 @@ Generated from source. 7864/15260 functions/methods documented (51%). The list b
 - `core/services/development_narrative_daemon.py` :: `get_latest_development_narrative` (L100)
 - `core/services/development_ritual.py` :: `build_development_ritual_surface` (L214)
 - `core/services/developmental_valence.py` :: `build_developmental_valence_surface` (L257)
-- `core/services/device_presence.py` :: `prune` (L222)
-- `core/services/device_presence.py` :: `rank` (L152)
-- `core/services/device_presence.py` :: `record_ping` (L63)
-- `core/services/device_presence.py` :: `summary` (L235)
+- `core/services/device_presence.py` :: `prune` (L307)
+- `core/services/device_presence.py` :: `rank` (L237)
+- `core/services/device_presence.py` :: `record_ping` (L144)
+- `core/services/device_presence.py` :: `summary` (L320)
 - `core/services/device_tokens.py` :: `delete` (L57)
 - `core/services/device_tokens.py` :: `list_for_user` (L45)
 - `core/services/device_tokens.py` :: `register` (L28)

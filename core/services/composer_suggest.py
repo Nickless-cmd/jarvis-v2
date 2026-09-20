@@ -382,8 +382,21 @@ def foreslaa_naeste_detaljer(session_id: str) -> dict[str, str]:
     if len(" ".join(str(beskeder[-1].get("content") or "").split())) < MIN_SVAR_TEGN:
         return _tomt()
 
+    # Mønstret fra hans tidligere valg (fase 3, 20/9-2026). Står SIDST, som
+    # en erfaring modellen vægter — ikke som et krav den adlyder. Et forslag
+    # der altid beder om det samme, er en vane og ikke et tilbud.
     try:
-        raa = _kald_model(_PROMPT_NAESTE + _kontekst(str(beskeder[-1].get("content") or "")))
+        from core.services.composer_moenster import prompt_linje
+        erfaring = prompt_linje()
+    except Exception:
+        logger.debug("composer_suggest: mønsteret kunne ikke læses", exc_info=True)
+        erfaring = ""
+
+    prompt = _PROMPT_NAESTE + _kontekst(str(beskeder[-1].get("content") or ""))
+    if erfaring:
+        prompt = f"{prompt}\n\n{erfaring}"
+    try:
+        raa = _kald_model(prompt)
     except Exception:
         logger.debug("composer_suggest: næste-kald fejlede", exc_info=True)
         return _tomt()

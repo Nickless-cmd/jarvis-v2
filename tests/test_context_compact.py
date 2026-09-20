@@ -96,15 +96,16 @@ def test_recent_session_messages_excludes_compact_markers(monkeypatch):
     from core.services import chat_sessions
 
     # Production schema includes user_id + reasoning_content fields
-    # (added 2026-04-x for user-attribution + reasoning content support);
-    # fixture rows must mirror the schema so the production code's
-    # row["user_id"] lookup doesn't KeyError.
+    # (added 2026-04-x for user-attribution + reasoning content support) og
+    # message_id (20/9-2026, saa komponistens forslag kan pege paa den besked
+    # det blev udledt af); fixture rows must mirror the schema so the
+    # production code's row["user_id"] lookup doesn't KeyError.
     all_rows = [
-        {"role": "user", "content": "hello", "created_at": "2026-01-01",
+        {"message_id": "m1", "role": "user", "content": "hello", "created_at": "2026-01-01",
          "user_id": "u1", "reasoning_content": ""},
-        {"role": "compact_marker", "content": "old summary", "created_at": "2026-01-01",
-         "user_id": "u1", "reasoning_content": ""},
-        {"role": "assistant", "content": "hi", "created_at": "2026-01-01",
+        {"message_id": "m2", "role": "compact_marker", "content": "old summary",
+         "created_at": "2026-01-01", "user_id": "u1", "reasoning_content": ""},
+        {"message_id": "m3", "role": "assistant", "content": "hi", "created_at": "2026-01-01",
          "user_id": "u1", "reasoning_content": ""},
     ]
 

@@ -75,6 +75,33 @@ def suggest(krop: Udkast) -> dict[str, str]:
         return {"forslag": "", "forslag_id": "", "kilde_besked_id": ""}
 
 
+@router.get("/moenster")
+def moenster() -> dict[str, object]:
+    """Hvad forslaget har lært af hans valg — i klartekst.
+
+    Et mønster der former hans forslag, skal han kunne SE. Ruten svarer med
+    den linje der faktisk står i prompten, hvor mange valg den bygger på, og
+    om kontakten er tændt. Er der intet mønster endnu, er linjen tom — det er
+    et gyldigt svar, ikke en fejl.
+    """
+    try:
+        from core.services.composer_moenster import (
+            MIN_VALG, VINDUE_DAGE, _valg_i_vinduet, er_taendt, moenster as byg,
+        )
+        valg = _valg_i_vinduet()
+        return {
+            "linje": byg() if er_taendt() else "",
+            "taendt": er_taendt(),
+            "valg_i_vinduet": len(valg),
+            "kraever_mindst": MIN_VALG,
+            "vindue_dage": VINDUE_DAGE,
+        }
+    except Exception:
+        logger.debug("composer/moenster fejlede", exc_info=True)
+        return {"linje": "", "taendt": True, "valg_i_vinduet": 0,
+                "kraever_mindst": 0, "vindue_dage": 0}
+
+
 @router.post("/choice")
 def choice(krop: Valg) -> dict[str, bool]:
     """Registrér hvad der skete med et forslag. Fejler aldrig.

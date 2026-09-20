@@ -46,6 +46,11 @@ class RuntimeSettings:
     # indtil fase 7's nulpunkt er indsamlet — ellers kan genmålingen ikke
     # skelne før fra efter. Tænder nominering fra hans svar + prompt-sektionen.
     selvmodel_enabled: bool = False
+    # Komponistens mønster (2026-09-20, fase 3): vægter forslaget efter hvad
+    # han plejer at TAGE IMOD. Tændt, fordi signalet udelukkende er hans valg
+    # af serverens egne forslag — hans beskeder indgår ikke. Kontakten findes
+    # alligevel: et mønster der peger galt skal kunne tages ud uden et deploy.
+    composer_moenster_enabled: bool = True
     # Proaktivitets-cap: max uopfordrede beskeder pr. dag + min timer mellem dem.
     max_proactive_per_day: int = 3
     proactive_cooldown_hours: int = 2
@@ -672,6 +677,9 @@ def load_settings() -> RuntimeSettings:
         # ved et uheld er ikke en fejl man opdager.
         selvmodel_enabled=_som_bool(
             data.get("selvmodel_enabled", defaults.selvmodel_enabled)
+        ),
+        composer_moenster_enabled=_som_bool(
+            data.get("composer_moenster_enabled", defaults.composer_moenster_enabled)
         ),
         max_proactive_per_day=int(
             data.get("max_proactive_per_day", defaults.max_proactive_per_day)

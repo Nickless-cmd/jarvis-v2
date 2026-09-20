@@ -36,9 +36,16 @@ def _load_tool_result_for_reconstruct(result_id: str) -> dict | None:
     }
 
 
-def _content_json_for_row(role: str, content: str, raw_json: object) -> list[dict]:
+def _content_json_for_row(
+    role: str, content: str, raw_json: object, *, hent_resultat: bool = True
+) -> list[dict]:
     """Adapter: gemt content_json parses; ellers rekonstruér fra tekst (best-effort,
-    serve-on-read for gamle beskeder uden content_json)."""
+    serve-on-read for gamle beskeder uden content_json).
+
+    `hent_resultat=False` springer opslaget i tool_result_store over, så blokken
+    bærer sin REFERENCE i stedet for hele værktøjs-outputtet. Se
+    `get_chat_session`, hvor sessionens værktøjs-rækker bruger det.
+    """
     if raw_json:
         try:
             parsed = json.loads(str(raw_json))
@@ -47,7 +54,9 @@ def _content_json_for_row(role: str, content: str, raw_json: object) -> list[dic
         except Exception:
             pass
     return reconstruct_blocks_from_legacy(
-        role, content, load_result=_load_tool_result_for_reconstruct
+        role,
+        content,
+        load_result=(_load_tool_result_for_reconstruct if hent_resultat else lambda _id: None),
     )
 
 
@@ -565,10 +574,22 @@ def get_chat_session(session_id: str) -> dict[str, object] | None:
         content = _client_message_content(role, raw_content)
         # Blokke bygget af den RÅ tekst må ikke følge med ud, når teksten blev
         # trimmet — så ville transcripten lække ad bagdøren i stedet.
+        # Værktøjs-rækker bærer kun en KVITTERING i deres tekst
+        # («[tool_result:<id>]»), og det fulde output ligger i
+        # tool_result_store. Slog vi det op her, ville 1,3 MB kvitteringer
+        # blive til 8,4 MB output — ved HVER hentning af samtalen (målt
+        # 20/9-2026 på Bjørns session). Og det bliver læst af INGEN: desk
+        # filtrerer rollen fra (`role === 'user' || 'assistant'`), mobilen
+        # tegner kun rækkens korte tekst, og eksporten springer den over.
+        # Værktøjslinjerne på skærmen kommer fra assistent-beskedens egne
+        # blokke. Referencen følger med, så en klient der VIL have outputtet
+        # kan hente det.
         blocks = (
             []
             if role == "compact_marker" and content != raw_content
-            else _content_json_for_row(role, content, row["content_json"])
+            else _content_json_for_row(
+                role, content, row["content_json"], hent_resultat=(role != "tool")
+            )
         )
         message_items.append({
             "id": str(row["message_id"]),

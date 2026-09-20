@@ -48,6 +48,7 @@ import { PresenceDot } from '../components/shell/PresenceDot'
 import { DESK_CHROME } from '../lib/deskChrome'
 import { ConnectionPill } from '../components/shell/ConnectionPill'
 import { CentralBadge } from '../components/shell/CentralBadge'
+import { AndenEnhedMaerke } from '../components/shell/AndenEnhedMaerke'
 import { SystemHealth } from '../components/shell/SystemHealth'
 import { LivenessIndicator } from '../components/feedback/LivenessIndicator'
 import { InterruptedBanner } from '../components/feedback/InterruptedBanner'
@@ -137,10 +138,6 @@ export function ChatView({
   // over fra mobilen) vises en lille notits "følger med live", så du ved
   // transcript'en opdaterer sig her — uden at hoppe ud og ind. Nulstilles når
   // aktiviteten stopper, så næste overtagelse vises igen.
-  const [takeoverDismissed, setTakeoverDismissed] = useState(false)
-  useEffect(() => {
-    if (!bgActive) setTakeoverDismissed(false)
-  }, [bgActive])
   // Follow-stream: token-stream et autonomt wakeup-runs svar live (i stedet for
   // at "dumpe" det ind når det er færdigt). Egen reducer fodret af /follow-SSE'en.
   const [followState, followDispatch] = useRammeReducer(streamReducer, initialStreamState)
@@ -803,6 +800,11 @@ export function ChatView({
     </div>
   ) : null
 
+  // Beregnes FØR `header`, som læser den. Lå den nedenfor, ville `header`s
+  // initialisering ramme den i dens temporale dødzone — en ReferenceError der
+  // først viser sig når headeren faktisk tegnes.
+  const showTakeover = bgActive && stream.status !== 'working'
+
   const header = (
     <div className="chatview-head">
       <div className="chatview-head-left">
@@ -810,6 +812,9 @@ export function ChatView({
       </div>
       <div className="chatview-head-right">
         {DESK_CHROME.headerHealth && <SystemHealth errors={stream.canonicalErrors} />}
+        {/* «Aktiv på en anden enhed» bor HER nu, ikke som et banner over
+            samtalen — ved siden af de andre tilstands-signaler. */}
+        <AndenEnhedMaerke aktiv={showTakeover} />
         {settings && (
           <CentralBadge config={{ apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }} isOwner={auth?.role === 'owner'} />
         )}
@@ -872,26 +877,12 @@ export function ChatView({
   }
 
   // ── Aktiv samtale ──
-  const showTakeover = bgActive && stream.status !== 'working' && !takeoverDismissed
   return (
     <VisningContext.Provider value={visning}>
     <div className={`chatview${skinneAaben ? ' har-skinne' : ''}`}>
       {header}
       {sideKort}
       {jobsRude}
-      {showTakeover && (
-        <div className="takeover-banner" role="status">
-          <span className="takeover-text">📱→🖥 Aktiv på en anden enhed — følger med her live</span>
-          <button
-            type="button"
-            className="takeover-dismiss"
-            aria-label="Skjul"
-            onClick={() => setTakeoverDismissed(true)}
-          >
-            ×
-          </button>
-        </div>
-      )}
       <div className="transcript-wrap">
       <MessageRail
         containerRef={transcriptRef}

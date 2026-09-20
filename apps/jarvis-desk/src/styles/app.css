@@ -1275,7 +1275,11 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 .live-dots { display: inline-flex; align-items: flex-end; gap: 2px; margin-left: 3px; padding-bottom: 1px; }
 .live-dots span {
   width: 3px; height: 3px; border-radius: 50%; background: var(--accent);
-  opacity: 0.25; animation: dot-wave 1.1s ease-in-out infinite;
+  /* HOPPER nu som prikkerne i enden af tool-results (Bjørn 20/9-2026).
+     `dot-wave` var ren opacitet — de blinkede på stedet. `prikke-boelge` er
+     den bevægelse han allerede kender fra chatview, og de to steder betyder
+     det samme: «her arbejdes der». Samme kurve, samme forskydninger. */
+  opacity: 0; animation: 1.9s cubic-bezier(.4, 0, .2, 1) infinite prikke-boelge;
   /* Gløden står fast og følger opaciteten. Før animerede den box-shadow,
      som ikke kan køre på compositoren — tre prikker tvang en maling af
      render-tråden ved hver frame (19/9-2026). Nu kun opacity: compositoren. */
@@ -1284,8 +1288,8 @@ button.sidebar-group svg { flex: none; opacity: .7; }
      prikkerne betyder «Jarvis arbejder her» — samme sprog som ringen i samme
      linje, og som Puls-mærket i sidebaren. */
 }
-.live-dots span:nth-child(2) { animation-delay: 0.18s; }
-.live-dots span:nth-child(3) { animation-delay: 0.36s; }
+.live-dots span:nth-child(2) { animation-delay: .15s; }
+.live-dots span:nth-child(3) { animation-delay: .3s; }
 @keyframes dot-wave {
   0%, 100% { opacity: 0.2; }
   50% { opacity: 1; }
@@ -1323,13 +1327,37 @@ button.sidebar-group svg { flex: none; opacity: .7; }
    labelen, så lyset går fra første tal til sidste ord i ét strøg.
    Børnene må ikke bære egen farve eller baggrund — så bryder klippet. Prikkerne
    undtages: de er form, ikke tekst. */
+/* BØLGEN MÅ IKKE KUNNE SLUKKE TEKSTEN (Bjørn 20/9-2026: «den sidste del før
+   prikkerne sort, og jeg kører i sort tema»).
+
+   `background-clip: text` + `text-fill-color: transparent` er en skrøbelig
+   konstruktion: teksten er USYNLIG, og det eneste der gør den læselig, er at
+   forælderens baggrund males oven i bogstaverne. Kan den ikke det — en
+   compositor-grænse, et lag der males for sig, en anden Chromium-version —
+   står der ingenting tilbage. På et mørkt tema ser det ud som sort tekst.
+
+   Jeg kunne ikke genskabe det i browserpanelets Chromium; hans desk kører
+   Electron 33 med sin egen compositor. Derfor er fejlen ikke jagtet videre,
+   men gjort UMULIG: farven sættes først, klippet lægges ovenpå. Falder
+   klippet bort, står teksten i `--fg-3` — præcis som før bølgen fandtes.
+
+   `will-change`/`contain` er væk af samme grund: de er netop de hints der
+   skaber det separate lag hvor klippet kan svigte. Prisen er en maling mere
+   pr. frame på én linje tekst. */
 .liveness.is-working .liveness-label {
+  color: var(--fg-3);
+  -webkit-text-fill-color: var(--fg-3);
   background: linear-gradient(100deg, var(--fg-3) 30%, #eafff3 50%, var(--fg-3) 70%);
   background-size: 220% 100%;
-  -webkit-background-clip: text; background-clip: text;
-  -webkit-text-fill-color: transparent;
   animation: shimmer-sweep 2.25s linear infinite;
-  will-change: transform; contain: paint;
+}
+/* Klippet står for sig, så et manglende `background-clip: text` ikke river
+   synligheden med sig: uden reglen er teksten stadig `--fg-3`. */
+@supports ((-webkit-background-clip: text) or (background-clip: text)) {
+  .liveness.is-working .liveness-label {
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
 }
 .liveness.is-working .liveness-label .liveness-arbjede,
 .liveness.is-working .liveness-label .liveness-thought { color: inherit; }
@@ -1339,6 +1367,10 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 .liveness.is-working .liveness-label .shimmer {
   background: none; animation: none;
   -webkit-text-fill-color: inherit; color: inherit;
+  /* Uden de to her er verbet sit EGET malelag midt inde i forælderens klip —
+     den nærmeste mistænkte for at netop «den sidste del før prikkerne»
+     forsvandt. Forælderen bærer allerede bølgen; barnet skal bare male med. */
+  will-change: auto; contain: none;
 }
 /* Arbejds-sektionerne — én sætning i samme dæmpede vægt som resten af linjen.
    nowrap pr. sektion så et tal ikke skilles fra sin enhed. */
@@ -2153,7 +2185,16 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 /* Daempet i hvile (20/9-2026). Var accent-farvet, men accenten betyder nu
    «Jarvis arbejder her» (Puls-maerket til hoejre) — to ting i samme farve
    gjorde signalet utydeligt. Typen er tilstand, ikke aktivitet. */
-.session-mode-icon { color: var(--fg-3); margin-right: 4px; flex: 0 0 auto; }
+/* Tagget bærer composerens grønlige kant (Bjørn 20/9-2026: «den grønnelige
+   farve der er rundt om composer skal osse være i de tags»). SAMME udtryk som
+   `.composer:focus-within`, ikke et øjemål — ændrer vi accenten ét sted,
+   følger begge med. */
+.session-mode-icon {
+  color: color-mix(in srgb, var(--accent) 60%, var(--line));
+  margin-right: 5px; flex: 0 0 auto;
+}
+/* Den aktive række må gerne løfte tagget helt op i accenten. */
+.session-item.active .session-mode-icon { color: var(--accent); }
 
 /* Code-mode empty + header layout */
 .codeview.empty { display: flex; flex-direction: column; flex: 1; min-height: 0; }
@@ -3104,6 +3145,42 @@ button.sidebar-group svg { flex: none; opacity: .7; }
   padding: 0 4px;
 }
 .takeover-dismiss:hover { color: var(--fg); }
+
+/* Diskret enheds-mærke i headeren (Bjørn 20/9-2026). Banneret var en HEL
+   linje med tekst og et kryds, og det skubbede samtalen ned hver gang et run
+   startede på telefonen. Oplysningen er et ikon værd, ikke en linje.
+
+   Det står ved siden af Central-mærket, som han foreslog, og bruger dets mål
+   (24px høj, 1px kant, samme radius) så de to læses som samme slags signal.
+   «Lyser op når der er forbindelse»: ikonet ånder i accenten frem for at
+   blinke — et blink i en ellers stille header trækker øjet hvert sekund. */
+.anden-enhed {
+  display: inline-flex; align-items: center; justify-content: center;
+  flex: 0 0 auto;
+  /* 24px er Central-mærkets målte højde (23-24 afhængigt af afrunding: dets
+     4px polstring om en 11,5px monolinje). Den SAMME polstring her gav kun
+     19px, fordi et ikon er lavere end tekst — derfor et fast tal i stedet for
+     et der «ligner». Radius som Central, så de to læses som samme slags. */
+  width: 24px; height: 24px; border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  animation: anden-enhed-ind 260ms ease-out, anden-enhed-aande 2.6s ease-in-out 260ms infinite;
+}
+@keyframes anden-enhed-ind {
+  from { opacity: 0; transform: scale(.82); }
+  to   { opacity: 1; transform: none; }
+}
+/* Kun opacitet — den kan køre på compositoren. Samme grund som prikkerne:
+   en box-shadow-animation tvang en maling af render-tråden ved hver frame. */
+@keyframes anden-enhed-aande { 0%, 100% { opacity: .5; } 50% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .anden-enhed { animation: none; opacity: 1; }
+}
+.kun-skaermlaeser {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
 
 /* App-niveau takeover-notits (cross-device-aktivitet mens man er i Code/Cowork). */
 .takeover-toast {

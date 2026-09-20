@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, Fragment } from 'react'
 import {
-  Plus, MoreHorizontal, Pencil, Download, Trash2, Search, Images, Code, Activity, FileCode2,
+  Plus, MoreVertical, Pencil, Download, Trash2, Search, Images, Code, Activity, FileCode2,
   ChevronRight, ChevronDown, MessageSquare,
   LayoutDashboard, Blocks, Settings, Brain, Cpu,
   User, ShieldCheck, Bell, Palette, Languages, MapPin, Database, Folder, Plug, Bot, Info,
@@ -379,7 +379,10 @@ function SessionItem({
       )}
       <div className="session-menu-anchor" onClick={(e) => e.stopPropagation()}>
         <button type="button" className="session-more" aria-label="Mere" onClick={() => { setOpen((o) => !o); setConfirmDelete(false) }}>
-          <MoreHorizontal size={15} />
+          {/* Oprejst, ikke liggende (Bjørn 20/9-2026). Den liggende form er
+              den samme glyf lagt ned; den oprejste er konventionen for en
+              menu der folder NEDAD, og den fylder mindre i en smal række. */}
+          <MoreVertical size={15} />
         </button>
         {open && (
           <div className="session-menu">

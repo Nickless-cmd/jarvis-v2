@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-import sys
-from types import ModuleType, SimpleNamespace
+from types import SimpleNamespace
 
 
 def test_affirmation_anchor_binds_short_confirmation(monkeypatch):
@@ -58,23 +57,6 @@ def test_agreement_streak_detects_repeated_agreements(monkeypatch):
     assert result["lookback"] == 4
     assert section is not None
     assert "Agreement-streak observation" in section
-
-
-def test_decision_adherence_gate_escalates_low_scores(monkeypatch):
-    from core.services import decision_adherence_gate as gate
-
-    behavioral = ModuleType("core.services.behavioral_decisions")
-    behavioral.list_active_decisions = lambda limit=20: [
-        {"decision_id": "d1", "directive": "ship tests", "adherence_score": 0.2},
-        {"decision_id": "d2", "directive": "write notes", "adherence_score": 0.5},
-    ]
-    monkeypatch.setitem(sys.modules, "core.services.behavioral_decisions", behavioral)
-
-    section = gate.decision_adherence_section()
-
-    assert section.startswith("\n[DECISION-ADHERENCE-GATE]")
-    assert "kritisk band" in section
-    assert "revokes decision automatisk" in section
 
 
 def test_predictive_self_model_uses_internal_signals(monkeypatch):

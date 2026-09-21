@@ -29,7 +29,7 @@ describe('SvarstilSection', () => {
     const sel = await screen.findByLabelText(/hvordan jarvis svarer/i)
     await waitFor(() => expect((sel as HTMLSelectElement).disabled).toBe(false))
     fireEvent.change(sel, { target: { value: 'detailed' } })
-    expect(await screen.findByRole('alert')).toHaveTextContent('ukendt stil')
+    expect(await screen.findByRole('alert')).toHaveTextContent('Svarstilen kunne ikke gemmes')
     expect((sel as HTMLSelectElement).value).toBe('balanced')
   })
 })

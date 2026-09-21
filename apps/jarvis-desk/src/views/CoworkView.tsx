@@ -1,3 +1,4 @@
+import { IntroductionButton } from '../components/help/DeskIntroduction'
 import { type ReactNode } from 'react'
 import { normalizeZone, type Zone } from '../lib/coworkZone'
 import { useSettings } from '../hooks/useSettings'
@@ -148,6 +149,7 @@ export function CoworkView({
 
       case 'about': return (
         <CategoryPage title="Om og hjælp" description="Version, tastaturgenveje og oplysninger om forbindelsen." focusSection={zone}>
+          <CategorySection title="Kom godt i gang"><p className="settings-hint">En kort guide til Chat, Code og Arbejde.</p><IntroductionButton /></CategorySection>
           <CategorySection title="Om Desk"><AboutPanel apiBaseUrl={settings?.apiBaseUrl} role={auth?.role} model={settings?.defaultModel} /></CategorySection>
           <CategorySection title="Tastaturgenveje"><KeyboardHelpPanel /></CategorySection>
           <CategorySection title="Forbindelse"><ConnectionSection /></CategorySection>

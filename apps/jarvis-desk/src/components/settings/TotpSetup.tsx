@@ -1,3 +1,5 @@
+import { useSettingsResource } from '../../hooks/useSettingsResource'
+import { SettingsState, SettingsActionError } from './SettingsState'
 import { useEffect, useState } from 'react'
 import QRCode from 'qrcode'
 import type { ApiConfig } from '../../lib/api'
@@ -13,22 +15,13 @@ import {
  * `!override <kode>` fra fremmede sessioner. Bagdøren = kill-switch (§6.0).
  */
 export function TotpSetup({ config }: { config: ApiConfig | undefined }) {
-  const [configured, setConfigured] = useState<boolean | null>(null)
-  const [account, setAccount] = useState<string | null>(null)
+  const resource = useSettingsResource(config, getTotpStatus)
+  const configured = resource.data?.configured
+  const account = resource.data?.account
+  const [error, setError] = useState('')
   const [setup, setSetup] = useState<TotpSetupResult | null>(null)
   const [qrDataUrl, setQrDataUrl] = useState('')
   const [busy, setBusy] = useState(false)
-
-  const loadStatus = async () => {
-    if (!config) return
-    try {
-      const s = await getTotpStatus(config)
-      setConfigured(s.configured)
-      setAccount(s.account)
-    } catch { setConfigured(null) }
-  }
-
-  useEffect(() => { void loadStatus() }, [config?.apiBaseUrl, config?.authToken])
 
   // Render QR lokalt når et nyt setup-resultat kommer.
   useEffect(() => {
@@ -40,35 +33,37 @@ export function TotpSetup({ config }: { config: ApiConfig | undefined }) {
 
   const doSetup = async () => {
     if (!config) return
-    setBusy(true)
+    setBusy(true); setError('')
     try {
       const res = await setupTotp(config)
       setSetup(res)
-      setConfigured(true)
-    } finally { setBusy(false) }
+      resource.retry()
+    } catch { setError('Totrinsbekræftelsen kunne ikke ændres. Prøv igen.') } finally { setBusy(false) }
   }
 
   const doRevoke = async () => {
     if (!config) return
-    setBusy(true)
+    setBusy(true); setError('')
     try {
       await revokeTotp(config)
       setSetup(null)
-      setConfigured(false)
-    } finally { setBusy(false) }
+      resource.retry()
+    } catch { setError('Totrinsbekræftelsen kunne ikke ændres. Prøv igen.') } finally { setBusy(false) }
   }
 
   return (
     <div className="totp-setup">
-      <h3>Owner-override (2FA)</h3>
+      <h3>Totrinsbekræftelse for ejeren</h3>
+      <SettingsState status={resource.status} label="totrinsbekræftelse" onRetry={resource.retry} />
+      <SettingsActionError message={error} />
       <p className="totp-note">
-        Din kryptografiske bagdør: hvis du sidder i en fremmed session (Mikkels Discord,
-        din mors maskine) og skal bruge fuld kontrol, skriver du <code>!override &lt;kode&gt;</code>.
-        Koden kommer fra din authenticator. Det er den ENESTE måde nogen kan bevise det er dig.
+        Brug en engangskode fra din godkendelsesapp, når du skal bekræfte
+        ejeradgang fra en anden session. Skriv <code>!override &lt;kode&gt;</code> i den session.
+        Behandl opsætningsnøglen som en adgangskode.
       </p>
 
       <div className="totp-status">
-        Status: {configured === null ? '…' : configured
+        Status: {configured === undefined ? '…' : configured
           ? <strong className="totp-on">aktiveret{account ? ` (${account})` : ''} ✓</strong>
           : <strong className="totp-off">ikke opsat</strong>}
       </div>
@@ -83,11 +78,11 @@ export function TotpSetup({ config }: { config: ApiConfig | undefined }) {
       )}
 
       <div className="totp-actions">
-        <button type="button" disabled={busy} onClick={() => void doSetup()}>
+        <button type="button" disabled={busy || resource.status !== 'ready'} onClick={() => void doSetup()}>
           {configured ? 'Generér ny nøgle' : 'Opsæt 2FA'}
         </button>
         {configured && (
-          <button type="button" className="totp-revoke" disabled={busy} onClick={() => void doRevoke()}>
+          <button type="button" className="totp-revoke" disabled={busy || resource.status !== 'ready'} onClick={() => void doRevoke()}>
             Fjern
           </button>
         )}

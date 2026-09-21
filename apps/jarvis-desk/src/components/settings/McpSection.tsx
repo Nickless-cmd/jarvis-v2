@@ -1,4 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useSettingsResource } from '../../hooks/useSettingsResource'
+import { SettingsState, SettingsActionError } from './SettingsState'
+import { useState } from 'react'
 import { ShieldCheck, ShieldOff, Trash2 } from 'lucide-react'
 import type { ApiConfig } from '../../lib/api'
 import {
@@ -8,8 +10,6 @@ import {
   getMcpTrust,
   removeMcpServer,
   revokeMcpServer,
-  type McpServer,
-  type McpTrustRow,
 } from '../../lib/coworkApi'
 
 /** MCP-sektion (owner-only).
@@ -21,48 +21,26 @@ import {
  *  står på listen kan ingenting.
  */
 export function McpSection({ config }: { config: ApiConfig | undefined }) {
-  const [servers, setServers] = useState<McpServer[] | null>(null)
-  const [trust, setTrust] = useState<Record<string, McpTrustRow>>({})
-  const [error, setError] = useState(false)
+  const resource = useSettingsResource(config, async cfg => {
+    const [servers, trust] = await Promise.all([getAccountMcp(cfg), getMcpTrust(cfg)])
+    return { servers, trust: Object.fromEntries((trust.servere ?? []).map(row => [row.navn, row])) }
+  })
   const [name, setName] = useState('')
   const [url, setUrl] = useState('')
   const [travl, setTravl] = useState('')
-
-  const load = () => {
-    if (!config) return
-    getAccountMcp(config).then(setServers).catch(() => setError(true))
-    getMcpTrust(config)
-      .then((d) => {
-        const kort: Record<string, McpTrustRow> = {}
-        for (const r of d.servere ?? []) kort[r.navn] = r
-        setTrust(kort)
-      })
-      .catch(() => setTrust({}))
-  }
-  useEffect(load, [config?.apiBaseUrl, config?.authToken])
-
-  const add = async () => {
-    if (!config || !name.trim() || !url.trim()) return
-    await addMcpServer(config, name.trim(), url.trim())
-    setName(''); setUrl(''); load()
-  }
-  const remove = async (id: string) => {
-    if (!config) return
-    await removeMcpServer(config, id); load()
-  }
-  const skiftTillid = async (navn: string, godkend: boolean) => {
-    if (!config) return
-    setTravl(navn)
+  const [actionError, setActionError] = useState('')
+  const change = async (id: string, action: () => Promise<unknown>, added = false) => {
+    if (travl) return
+    setTravl(id); setActionError('')
     try {
-      await (godkend ? allowMcpServer(config, navn) : revokeMcpServer(config, navn))
-      load()
-    } finally {
-      setTravl('')
-    }
+      await action()
+      if (added) { setName(''); setUrl('') }
+      resource.retry()
+    } catch { setActionError('Ændringen kunne ikke gemmes. Prøv handlingen igen.') }
+    finally { setTravl('') }
   }
-
-  if (error) return <div className="settings-section">Kunne ikke hente MCP-servere.</div>
-  if (!servers) return <div className="settings-section">Indlæser MCP…</div>
+  if (!resource.data) return <SettingsState status={resource.status} label="MCP-servere og godkendelser" onRetry={resource.retry} />
+  const { servers, trust } = resource.data
 
   return (
     <div className="settings-section mcp-section">
@@ -73,10 +51,11 @@ export function McpSection({ config }: { config: ApiConfig | undefined }) {
         låses til serverens identitet — skifter den bagefter, blokeres den indtil
         du godkender på ny.
       </p>
+      <SettingsActionError message={actionError} />
       <div className="mcp-add">
-        <input placeholder="Navn" value={name} onChange={(e) => setName(e.target.value)} />
-        <input placeholder="URL (https://…)" value={url} onChange={(e) => setUrl(e.target.value)} />
-        <button type="button" onClick={() => void add()}>Tilføj</button>
+        <input aria-label="Serverens navn" placeholder="Navn" value={name} onChange={(e) => setName(e.target.value)} />
+        <input aria-label="Serverens adresse" placeholder="URL (https://…)" value={url} onChange={(e) => setUrl(e.target.value)} />
+        <button type="button" disabled={!!travl || !name.trim() || !/^https?:\/\//i.test(url.trim())} onClick={() => config && void change('add', () => addMcpServer(config, name.trim(), url.trim()), true)}>Tilføj</button>
       </div>
       {servers.length === 0 && <div className="cowork-empty">Ingen MCP-servere konfigureret.</div>}
       <div className="mcp-list">
@@ -97,16 +76,16 @@ export function McpSection({ config }: { config: ApiConfig | undefined }) {
               <button
                 type="button"
                 className="mcp-trust-btn"
-                disabled={travl === s.name}
+                disabled={!!travl}
                 aria-label={godkendt ? 'Tilbagekald' : 'Godkend'}
                 title={godkendt
                   ? 'Tilbagekald godkendelsen og glem serverens identitet'
                   : 'Godkend, så Jarvis må forbinde og bruge serverens værktøjer'}
-                onClick={() => void skiftTillid(s.name, !godkendt)}
+                onClick={() => config && void change(s.id, () => godkendt ? revokeMcpServer(config, s.name) : allowMcpServer(config, s.name))}
               >
                 {godkendt ? <ShieldOff size={13} /> : <ShieldCheck size={13} />}
               </button>
-              <button type="button" aria-label="Fjern" className="todo-del-btn" onClick={() => void remove(s.id)}>
+              <button type="button" aria-label="Fjern" className="todo-del-btn" disabled={!!travl} onClick={() => config && void change(s.id, () => removeMcpServer(config, s.id))}>
                 <Trash2 size={13} />
               </button>
             </div>

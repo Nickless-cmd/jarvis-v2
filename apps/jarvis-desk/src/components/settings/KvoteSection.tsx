@@ -1,29 +1,20 @@
-import { useEffect, useState } from 'react'
+import { useSettingsResource } from '../../hooks/useSettingsResource'
+import { SettingsState } from './SettingsState'
 import type { ApiConfig } from '../../lib/api'
-import { getAccountQuota, type QuotaOverview, type QuotaItem } from '../../lib/coworkApi'
+import { getAccountQuota, type QuotaItem } from '../../lib/coworkApi'
 
 const LABELS: Record<QuotaItem['kind'], string> = {
   chat: 'Chat-beskeder',
   code: 'Code-minutter',
-  cowork: 'Cowork-godkendelser',
-  agent: 'Agent-dispatches',
+  cowork: 'Godkendelser i Arbejde',
+  agent: 'Agentopgaver',
 }
 
 export function KvoteSection({ config }: { config: ApiConfig | undefined }) {
-  const [data, setData] = useState<QuotaOverview | null>(null)
-  const [error, setError] = useState(false)
+  const resource = useSettingsResource(config, getAccountQuota)
+  const data = resource.data
 
-  useEffect(() => {
-    if (!config) return
-    let alive = true
-    getAccountQuota(config)
-      .then((d) => { if (alive) setData(d) })
-      .catch(() => { if (alive) setError(true) })
-    return () => { alive = false }
-  }, [config?.apiBaseUrl, config?.authToken])
-
-  if (error) return <div className="settings-section">Kunne ikke hente kvoten.</div>
-  if (!data) return <div className="settings-section">Indlæser kvote…</div>
+  if (!data) return <SettingsState status={resource.status} label="kvoten" onRetry={resource.retry} />
 
   return (
     <div className="settings-section kvote-section">

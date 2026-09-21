@@ -1,3 +1,4 @@
+import { DeskIntroduction, INTRO_EVENT, type IntroSurface } from './help/DeskIntroduction'
 import { useEffect, useState } from 'react'
 
 /** EU AI Act Art. 50(1): brugeren skal vide de interagerer med AI.
@@ -14,14 +15,21 @@ function alreadyAcked(): boolean {
   }
 }
 
-export function AiTransparencyNotice() {
+export function AiTransparencyNotice({ onNavigate }: { onNavigate?: (surface: IntroSurface) => void }) {
+  const [introduction, setIntroduction] = useState(false)
   const [show, setShow] = useState(false)
 
   useEffect(() => {
     if (!alreadyAcked()) setShow(true)
   }, [])
 
-  if (!show) return null
+  useEffect(() => {
+    const open = () => setIntroduction(true)
+    window.addEventListener(INTRO_EVENT, open)
+    return () => window.removeEventListener(INTRO_EVENT, open)
+  }, [])
+
+  if (!show) return introduction ? <DeskIntroduction onNavigate={onNavigate} onClose={() => setIntroduction(false)} /> : null
 
   const ack = () => {
     try {
@@ -30,6 +38,7 @@ export function AiTransparencyNotice() {
       /* ignore — vis bare ikke igen i denne session */
     }
     setShow(false)
+    setIntroduction(true)
   }
 
   return (
@@ -42,9 +51,9 @@ export function AiTransparencyNotice() {
           indeholde fejl — vurdér selv vigtige beslutninger.
         </p>
         <ul className="ai-notice-points">
-          <li>Du godkender selv enhver handling der rører dine data eller sender noget.</li>
+          <li>Samtalens tilladelsesniveau bestemmer, hvilke handlinger der kræver din godkendelse.</li>
           <li>Du kan altid stoppe et svar undervejs.</li>
-          <li>Data behandles lokalt hvor muligt; cloud-modeller bruges kun når du vælger dem.</li>
+          <li>Dine beskeder og filer behandles af de tjenester og modeller, Jarvis er konfigureret til at bruge.</li>
         </ul>
         <button type="button" className="ai-notice-ok" onClick={ack}>
           Forstået

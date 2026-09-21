@@ -1,43 +1,39 @@
-import { useEffect, useState } from 'react'
+import { useSettingsResource } from '../../hooks/useSettingsResource'
+import { SettingsState, SettingsActionError } from './SettingsState'
+import { useState } from 'react'
 import type { ApiConfig } from '../../lib/api'
-import { getAccountPermissions, setComputerUse, type PermissionsOverview } from '../../lib/coworkApi'
+import { getAccountPermissions, setComputerUse } from '../../lib/coworkApi'
 
 // Etiketten er «Work»; identifikatoren er fortsat `cowork` — den er et
 // tool-scope i 22 backend-filer og i API-ruter, og et ord er ikke nok
 // grund til at røre styringssystemet (6/9-2026).
-const MODE_LABEL: Record<string, string> = { chat: 'Chat', code: 'Code', cowork: 'Work' }
+const MODE_LABEL: Record<string, string> = { chat: 'Chat', code: 'Code', cowork: 'Arbejde' }
 
 /** Permissions-sektion (§4.7). Viser tool-adgangs-matrix pr. mode (read-only) +
  *  håndhævet computer-use-toggle. */
 export function PermissionsSection({ config }: { config: ApiConfig | undefined }) {
-  const [data, setData] = useState<PermissionsOverview | null>(null)
-  const [error, setError] = useState(false)
-
-  useEffect(() => {
-    if (!config) return
-    let alive = true
-    getAccountPermissions(config)
-      .then((d) => { if (alive) setData(d) })
-      .catch(() => { if (alive) setError(true) })
-    return () => { alive = false }
-  }, [config?.apiBaseUrl, config?.authToken])
-
+  const resource = useSettingsResource(config, getAccountPermissions)
+  const data = resource.data
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
   const toggleCu = async () => {
-    if (!config || !data) return
-    const next = !data.computer_use_enabled
-    setData({ ...data, computer_use_enabled: next })
-    await setComputerUse(config, next)
+    if (!config || !data || busy) return
+    setBusy(true); setError('')
+    try {
+      await setComputerUse(config, !data.computer_use_enabled)
+      resource.setData({ ...data, computer_use_enabled: !data.computer_use_enabled })
+    } catch { setError('Tilladelsen kunne ikke ændres. Prøv igen.') }
+    finally { setBusy(false) }
   }
-
-  if (error) return <div className="settings-section">Kunne ikke hente tilladelser.</div>
-  if (!data) return <div className="settings-section">Indlæser tilladelser…</div>
+  if (!data) return <SettingsState status={resource.status} label="tilladelser" onRetry={resource.retry} />
 
   return (
     <div className="settings-section permissions-section">
       <h3>Tilladelser <span className="badge badge-ok">{data.role}</span></h3>
 
+      <SettingsActionError message={error} />
       <label className="cu-toggle">
-        <input type="checkbox" aria-label="Computer-use" checked={data.computer_use_enabled} onChange={() => void toggleCu()} />
+        <input type="checkbox" aria-label="Computer-use" disabled={busy} checked={data.computer_use_enabled} onChange={() => void toggleCu()} />
         <span>Computer-use (operator/skærm/bash på maskinen)</span>
       </label>
 

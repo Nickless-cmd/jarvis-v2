@@ -28,7 +28,7 @@ describe('JarvisSection', () => {
     })
     render(<JarvisSection config={cfg} />)
     await waitFor(() => expect(screen.getAllByText(/glm-5.1/).length).toBeGreaterThanOrEqual(1))
-    const sel = screen.getByLabelText(/synlig model/i)
+    const sel = screen.getByLabelText(/model til dine samtaler/i)
     fireEvent.change(sel, { target: { value: 'deepseek|v4-flash' } })
     await waitFor(() => expect(setVisibleModel).toHaveBeenCalledWith(cfg, 'deepseek', 'v4-flash'))
   })

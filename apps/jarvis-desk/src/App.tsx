@@ -39,6 +39,7 @@ import './styles/app.css'
 import './styles/environment-inspector.css'
 import './styles/cheap-lane.css'
 import './styles/cowork-categories.css'
+import './styles/desk-settings.css'
 
 /** App = ren wiring. SettingsProvider er wrappet i main.tsx, så useSettings
  *  virker her. Ikke-konfigureret → SetupScreen. Ellers shell med aktiv flade. */
@@ -94,7 +95,7 @@ export function App() {
             />
             <UiPanelWatcher config={cfg} setSurface={setSurface} />
             <ViewRequestWatcher config={cfg} />
-            <AiTransparencyNotice />
+            <AiTransparencyNotice onNavigate={setSurface} />
             <UpdateHost />
             <DependencyHost />
           </PanelProvider>

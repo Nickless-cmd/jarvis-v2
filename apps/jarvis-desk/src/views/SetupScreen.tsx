@@ -53,21 +53,24 @@ export function SetupScreen({ onSave }: { onSave: (cfg: { apiBaseUrl: string; au
 
   return (
     <div className="setup">
-      <h1>Log ind på J.A.R.V.I.S.</h1>
+      <h1>Velkommen til Desk</h1>
+      <p>Tal med Jarvis, arbejd med kode, og følg dine opgaver ét sted.</p>
+      <p className="settings-hint">Log ind for at hente dine samtaler og indstillinger. Bagefter får du en kort introduktion.</p>
 
       <button type="button" className="setup-google" onClick={loginWithGoogle} disabled={googleBusy}>
         {googleBusy ? 'Forbinder…' : 'Log ind med Google'}
       </button>
       {googleMsg && <p className="setup-google-msg">{googleMsg}</p>}
 
-      <div className="setup-or">eller med token</div>
+      <details className="settings-details"><summary>Log ind med et adgangstoken</summary>
       <label>
         Token
-        <input aria-label="token" type="password" value={token} onChange={(e) => setToken(e.target.value)} />
+        <input autoComplete="off" aria-label="token" type="password" value={token} onChange={(e) => setToken(e.target.value)} />
       </label>
-      <button type="button" onClick={() => onSave({ apiBaseUrl: API_URL, authToken: token.trim() })}>
+      <button type="button" disabled={!token.trim()} onClick={() => onSave({ apiBaseUrl: API_URL, authToken: token.trim() })}>
         Forbind
       </button>
+      </details>
     </div>
   )
 }

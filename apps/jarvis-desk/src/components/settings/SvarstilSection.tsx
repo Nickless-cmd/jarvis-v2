@@ -1,4 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useSettingsResource } from '../../hooks/useSettingsResource'
+import { SettingsState } from './SettingsState'
+import { useState } from 'react'
 import type { ApiConfig } from '../../lib/api'
 import { SVARSTILE, hentSvarstil, saetSvarstil, type Svarstil } from '../../lib/svarstil'
 
@@ -8,32 +10,19 @@ import { SVARSTILE, hentSvarstil, saetSvarstil, type Svarstil } from '../../lib/
  * så det holder hele samtalen i stedet for at glide.
  */
 export function SvarstilSection({ config }: { config: ApiConfig | undefined }) {
-  const [stil, setStil] = useState<Svarstil | null>(null)
+  const resource = useSettingsResource(config, hentSvarstil)
+  const stil = resource.data
   const [gemt, setGemt] = useState(false)
   const [fejl, setFejl] = useState('')
-
-  useEffect(() => {
-    if (!config) return
-    let alive = true
-    hentSvarstil(config)
-      .then((s) => { if (alive) setStil(s) })
-      .catch(() => { if (alive) setStil('balanced') })
-    return () => { alive = false }
-  }, [config?.apiBaseUrl, config?.authToken]) // eslint-disable-line react-hooks/exhaustive-deps
-
+  const [busy, setBusy] = useState(false)
   const skift = async (v: Svarstil) => {
-    if (!config || v === stil) return
-    const foer = stil
-    setStil(v); setFejl('')
-    try {
-      await saetSvarstil(config, v)
-      setGemt(true)
-      setTimeout(() => setGemt(false), 1600)
-    } catch (e) {
-      setStil(foer)
-      setFejl(e instanceof Error ? e.message : 'Kunne ikke gemme svarstilen')
-    }
+    if (!config || v === stil || busy) return
+    setBusy(true); setFejl(''); setGemt(false)
+    try { await saetSvarstil(config, v); resource.setData(v); setGemt(true) }
+    catch { setFejl('Svarstilen kunne ikke gemmes. Prøv igen.') }
+    finally { setBusy(false) }
   }
+  if (!stil) return <SettingsState status={resource.status} label="svarstilen" onRetry={resource.retry} />
 
   const valgt = SVARSTILE.find((s) => s.value === stil)
   return (
@@ -41,7 +30,7 @@ export function SvarstilSection({ config }: { config: ApiConfig | undefined }) {
       <h3>Svarstil</h3>
       <label className="sprog-field">
         <span>Hvordan Jarvis svarer</span>
-        <select value={stil ?? 'balanced'} disabled={stil === null} onChange={(e) => void skift(e.target.value as Svarstil)}>
+        <select value={stil ?? 'balanced'} disabled={busy} onChange={(e) => void skift(e.target.value as Svarstil)}>
           {SVARSTILE.map((s) => <option key={s.value} value={s.value}>{s.navn}</option>)}
         </select>
       </label>

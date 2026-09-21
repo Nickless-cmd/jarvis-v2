@@ -1,8 +1,10 @@
+import { useSettingsResource } from '../../hooks/useSettingsResource'
+import { SettingsState } from './SettingsState'
 import { useEffect, useRef, useState } from 'react'
 import type { ApiConfig } from '../../lib/api'
 import { googleLinkStart, googleLoginResult } from '../../lib/api'
 import { EnhederSection } from './EnhederSection'
-import { getAccountMe, type AccountProfile } from '../../lib/coworkApi'
+import { getAccountMe } from '../../lib/coworkApi'
 
 function openBrowser(url: string): void {
   const b = (window as unknown as { jarvisDesk?: { openExternal?: (u: string) => Promise<void> } }).jarvisDesk
@@ -12,17 +14,8 @@ function openBrowser(url: string): void {
 /** Account-sektion (cowork command center §4.1). Viser den aktuelle brugers
  *  egen profil — henter via /account/me (self-scope, ikke owner-only). */
 export function AccountSection({ config }: { config: ApiConfig | undefined }) {
-  const [profile, setProfile] = useState<AccountProfile | null>(null)
-  const [error, setError] = useState(false)
-
-  useEffect(() => {
-    if (!config) return
-    let alive = true
-    getAccountMe(config)
-      .then((p) => { if (alive) setProfile(p) })
-      .catch(() => { if (alive) setError(true) })
-    return () => { alive = false }
-  }, [config?.apiBaseUrl, config?.authToken])
+  const resource = useSettingsResource(config, getAccountMe)
+  const profile = resource.data
 
   const [gBusy, setGBusy] = useState(false)
   const [gMsg, setGMsg] = useState('')
@@ -51,8 +44,7 @@ export function AccountSection({ config }: { config: ApiConfig | undefined }) {
     } catch { setGMsg('Kunne ikke nå serveren.'); setGBusy(false) }
   }
 
-  if (error) return <div className="settings-section">Kunne ikke hente kontoen.</div>
-  if (!profile) return <div className="settings-section">Indlæser konto…</div>
+  if (!profile) return <SettingsState status={resource.status} label="kontoen" onRetry={resource.retry} />
 
   return (
     <div className="settings-section account-section">
@@ -67,9 +59,9 @@ export function AccountSection({ config }: { config: ApiConfig | undefined }) {
                 : <span className="badge badge-warn">ikke verificeret</span>)
             : null}
         </dd>
-        <dt>Sprog</dt><dd>{profile.language}</dd>
-        <dt>Rolle</dt><dd>{profile.role}</dd>
-        <dt>Tier</dt><dd>{profile.tier}</dd>
+        <dt>Sprog</dt><dd>{{ da: 'Dansk', en: 'Engelsk' }[profile.language] ?? profile.language}</dd>
+        <dt>Rolle</dt><dd>{{ owner: 'Ejer', member: 'Medlem', guest: 'Gæst' }[profile.role] ?? profile.role}</dd>
+        <dt>Kontotype</dt><dd>{profile.tier}</dd>
       </dl>
       <div className="account-google">
         {linked ? (

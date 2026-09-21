@@ -31,12 +31,12 @@ describe('AppsSection', () => {
     getAccountApps.mockResolvedValue([{ plugin_id: 'gmail', name: 'Gmail', status: 'connected', detail: '' }])
     render(<AppsSection config={cfg} />)
     await waitFor(() => expect(screen.getByText('Gmail')).toBeTruthy())
-    expect(screen.getByText('connected')).toBeTruthy()
+    expect(screen.getByText('Tilsluttet')).toBeTruthy()
   })
   it('viser tom-tilstand', async () => {
     getAccountApps.mockResolvedValue([])
     render(<AppsSection config={cfg} />)
-    await waitFor(() => expect(screen.getByText(/ingen connectede apps/i)).toBeTruthy())
+    await waitFor(() => expect(screen.getByText(/ingen tilsluttede apps/i)).toBeTruthy())
   })
 })
 

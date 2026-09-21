@@ -724,7 +724,7 @@ export function ChatView({
   const [changesOpen, setChangesOpen] = useState(false)
   const [aendredeFiler, setAendredeFiler] = useState(0)
   const [fokusFil, setFokusFil] = useState('')
-  const [fuldRude, setFuldRude] = useState<'' | 'changes' | 'jobs'>('')
+  const [fuldRude, setFuldRude] = useState<'' | 'changes' | 'jobs' | 'browser'>('')
 
   // Klik paa en fil i «Redigerede N filer» aabner ruden PAA den fil.
   useEffect(() => paaAendringsFokus((sti) => {
@@ -780,8 +780,11 @@ export function ChatView({
   // Jarvis' browser bor i samme højre-stak som ændringer og baggrundsjob
   // (Bjørn 21/9-2026: «eget panel som baggrundsjobs»). Den er en RIGTIG
   // webvisning som Electron lægger oven på vinduet — se JarvisBrowserPanel.
-  const visChanges = changesOpen && fuldRude !== 'jobs'
-  const visJobs = jobsOpen && fuldRude !== 'changes'
+  // Er ÉN rude i fuld visning, staar kun den. Browseren er nu med i den
+  // regel paa lige fod — foer kunne den hverken udvides eller vige.
+  const visChanges = changesOpen && (!fuldRude || fuldRude === 'changes')
+  const visJobs = jobsOpen && (!fuldRude || fuldRude === 'jobs')
+  const visBrowser = browserOpen && (!fuldRude || fuldRude === 'browser')
   const jobsRude = skinneAaben ? (
     <div className={`code-right-stack${fuldRude ? ' er-fuld' : ''}`}>
       {visChanges && cfgSkinne && (
@@ -795,8 +798,13 @@ export function ChatView({
           onClose={() => { setChangesOpen(false); setFuldRude((v) => v === 'changes' ? '' : v) }}
         />
       )}
-      {browserOpen && (
-        <JarvisBrowserPanel aaben={browserOpen} />
+      {visBrowser && (
+        <JarvisBrowserPanel
+          aaben={visBrowser}
+          fuld={fuldRude === 'browser'}
+          onFuld={(f) => setFuldRude(f ? 'browser' : '')}
+          onClose={() => { setBrowserOpen(false); setFuldRude((v) => v === 'browser' ? '' : v) }}
+        />
       )}
       {visJobs && cfgSkinne && (
         <JobsPanel

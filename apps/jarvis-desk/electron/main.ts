@@ -500,6 +500,9 @@ ipcMain.handle('browser:vaelg', (_e, id: number) => { jb.vaelg(id); return true 
 ipcMain.handle('browser:luk', (_e, id: number) => { jb.luk(id); return true })
 ipcMain.handle('browser:aabn', (_e, url: string) => jb.aabnFane(String(url)))
 ipcMain.handle('browser:naviger', (_e, url: string) => { jb.naviger(String(url)); return true })
+ipcMain.handle('browser:tilbage', () => { jb.tilbage(); return true })
+ipcMain.handle('browser:frem', () => { jb.frem(); return true })
+ipcMain.handle('browser:genindlaes', () => { jb.genindlaes(); return true })
 
 ipcMain.handle('config:get', () => loadConfig())
 ipcMain.handle('config:set', (_event, cfg: Partial<AppConfig>) => {

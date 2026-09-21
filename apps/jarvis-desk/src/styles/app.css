@@ -2915,7 +2915,14 @@ button.sidebar-group svg { flex: none; opacity: .7; }
      (Bjoern 16/9-2026: «baggrundjob og changes paneler skal gaa laengere
      op»). Miljoe-feltet har sin egen margen og bliver dermed staaende
      under headeren. */
-  position: absolute; top: 0; right: 12px; bottom: 12px; z-index: 50;
+  /* top: 36px, ikke 0. Den stod paa 0 efter «baggrundjob og changes paneler
+     skal gaa laengere op» (Bjoern 16/9-2026), og ruderne loeb dermed helt op
+     under vinduets egne knapper. Det blev lappet med en padding-right i
+     panelhovedet, men hovedet laa stadig i samme linje som lukkekrydset.
+     36 px er traekbjaelkens hoejde — knapperne slutter ved 30 px — saa hele
+     stakken begynder fri af dem (Bjoern 21/9-2026: «skal sænkes lidt så de
+     bliver under luk x knappen»). */
+  position: absolute; top: 36px; right: 12px; bottom: 12px; z-index: 50;
   width: var(--skinne-bredde);
   display: flex; flex-direction: column; gap: 10px;
   overflow: hidden;
@@ -3912,8 +3919,10 @@ body.egen-ramme .har-skinne .chatview-head {
    Kun den OEVERSTE rude i skinnen kolliderer; de nedenunder har knapperne
    langt over sig. Derfor `:first-child`, ikke alle ruder — ellers stod der
    et tomt hul i hvert eneste panelhoved. */
-body.egen-ramme .code-right-stack > *:first-child > .changes-head,
-body.egen-ramme .code-right-stack > *:first-child > .jobs-head,
+/* De to rude-hoveder stod her ogsaa, med en padding-right der skubbede deres
+   egne knapper ind til venstre for vinduets. Den lap er vaek: stakken ligger
+   nu under knapperne, og hovederne faar hele bredden igen. Artefakt- og
+   kodepanelets hoveder ligger stadig hoejt og beholder deres. */
 body.egen-ramme .artifact-head,
 body.egen-ramme .codepanel-head {
   padding-right: var(--vk-plads);
@@ -4224,8 +4233,16 @@ body.egen-ramme .main:has(.chatview-head) { padding-top: 0; }
    Panelet tegner KUN fanerækken og et hul. Siden er en WebContentsView som
    Electron komponerer oven på vinduet — derfor har hullet ingen baggrund og
    ingen kant: alt hvad man ser dér, er browseren selv. */
-.jbrowser { display: flex; flex-direction: column; height: 100%; min-height: 0; }
-.jbrowser-tom { padding: 16px; color: var(--fg-3); font-size: 13px; }
+/* NOEJAGTIG samme kort som .jobs-panel og .changes-panel — de tre staar i
+   samme stak, og ruden saa laant ud med sin egen bare flade (Bjørn 21/9-2026:
+   «panelet skal osse se sådan ud så det matcher ændringer og baggrundsjob»).
+   Selve browser-kanten sidder indeni; kun hullet er uden baggrund. */
+.jbrowser {
+  display: flex; flex-direction: column; min-height: 0;
+  padding: 10px 12px; font-size: 13.5px; color: var(--fg-2);
+  background: var(--bg-2); border: 1px solid var(--line); border-radius: 12px;
+}
+.jbrowser-tom { margin: 0; padding: 6px 2px 10px; color: var(--fg-3); font-size: 13px; }
 .jbrowser-faner {
   display: flex; align-items: center; gap: 4px; padding: 6px 8px;
   border-bottom: 1px solid var(--line); overflow-x: auto; flex: 0 0 auto;
@@ -4251,7 +4268,36 @@ body.egen-ramme .main:has(.chatview-head) { padding-top: 0; }
   font-size: 12px; border-radius: 7px;
 }
 .jbrowser-fane-luk:hover, .jbrowser-genindlaes:hover { color: var(--fg-1); background: rgba(255,255,255,.06); }
-.jbrowser-ny { border: 1px dashed var(--line); }
+.jbrowser-ny { border: 1px dashed var(--line); padding: 5px 6px; }
+
+/* Navigations-raekken: pile, genindlaes og adresselinjen. Den ligger UNDER
+   fanerne, som i enhver anden browser — faner hoerer til vinduet, adressen
+   hoerer til den fane man staar i. */
+.jbrowser-nav {
+  display: flex; align-items: center; gap: 3px; flex: 0 0 auto;
+  padding: 6px 8px; border-bottom: 1px solid var(--line);
+}
+.jbrowser-nav button {
+  background: none; border: none; color: var(--fg-3); cursor: pointer;
+  display: inline-flex; align-items: center; padding: 5px; border-radius: 7px;
+}
+.jbrowser-nav button:hover:not(:disabled) { color: var(--fg-1); background: rgba(255,255,255,.06); }
+/* En pil der ikke foerer nogen steder skal SE doed ud — ellers tror man at
+   klikket blev tabt. */
+.jbrowser-nav button:disabled { opacity: .3; cursor: default; }
+.jbrowser-adresse {
+  flex: 1; min-width: 0; margin-left: 4px;
+  background: var(--bg-1); border: 1px solid var(--line); border-radius: 8px;
+  color: var(--fg-1); font-size: 12px; padding: 6px 10px;
+}
+.jbrowser-adresse::placeholder { color: var(--fg-3); opacity: .7; }
+.jbrowser-adresse:focus { outline: none; border-color: var(--accent); }
+.jbrowser-fejl {
+  margin: 0; padding: 7px 10px; font-size: 12px; line-height: 1.4;
+  background: color-mix(in srgb, var(--error-fg, #ff6b6b) 10%, transparent);
+  color: var(--error-fg, #ff8e8e);
+}
+.jbrowser-intet { margin: 0; padding: 18px 14px; color: var(--fg-3); font-size: 12.5px; }
 /* Ingen baggrund: her ligger webvisningen. En farve her ville blinke frem
    i det øjeblik panelet ændrer størrelse, før main når at flytte visningen. */
 .jbrowser-hul { flex: 1; min-height: 0; }

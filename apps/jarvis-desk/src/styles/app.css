@@ -403,6 +403,23 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 }
 .icon-btn:hover { background: var(--bg-2); color: var(--fg-1); }
 
+/* Klokken baerer sin taeller i hjoernet. `position: relative` paa knappen, saa
+   prikken foelger ikonet og ikke sidepanelets kant. */
+.klokke { position: relative; }
+.klokke-taeller {
+  position: absolute; top: 1px; right: 0;
+  min-width: 14px; height: 14px; padding: 0 3px;
+  border-radius: 7px; background: var(--accent); color: var(--bg-0);
+  font-size: 9.5px; line-height: 14px; text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+/* En brudt klokke og en tom klokke maa ikke ligne hinanden. */
+.klokke-fejl {
+  position: absolute; bottom: 2px; right: 2px;
+  width: 5px; height: 5px; border-radius: 50%;
+  background: var(--error-fg, #ff6b6b);
+}
+
 /* ─── Main ────────────────────────────────────────── */
 .main {
   background: var(--bg-1);

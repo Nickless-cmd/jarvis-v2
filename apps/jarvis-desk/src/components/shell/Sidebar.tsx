@@ -18,6 +18,7 @@ import { ModeDropdown, type Mode } from './ModeDropdown'
 import { ModeBladrer } from './ModeBladrer'
 import { JarvisRing } from './JarvisRing'
 import { SecondaryNav, type SecondarySurface } from './SecondaryNav'
+import { Klokke } from './Klokke'
 
 const ZONE_ICONS: Record<string, LucideIcon> = {
   LayoutDashboard, Blocks, Settings, Brain, Cpu,
@@ -71,6 +72,11 @@ export function Sidebar({
   const [foldedeGrupper, setFoldedeGrupper] =
     useState<Partial<Record<SessionGruppe, boolean>>>({})
 
+  // Feed-ruden selv kommer i naeste opgave — her aabnes kun tilstanden (klokken
+  // saetter den). Kun setteren bruges endnu, saa laeseren udelades bevidst
+  // (ellers TS6133 — `noUnusedLocals`).
+  const [, setFeedAaben] = useState(false)
+
   // #8: poll backend for sessioner med aktivt run (også autonome baggrunds-runs
   // som klienten ikke selv driver). Union'es med workingSessionId fra streamen.
   const [activeRunSessions, setActiveRunSessions] = useState<Set<string>>(new Set())
@@ -120,15 +126,10 @@ export function Sidebar({
           >
             <Search size={15} />
           </button>
-          <button
-            type="button"
-            className="icon-btn"
-            title="Notifikationer"
-            aria-label="Notifikationer"
-            onClick={() => { onSurface('cowork'); emitZone('mc') }}
-          >
-            <Bell size={15} />
-          </button>
+          <Klokke
+            config={settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : null}
+            onAaben={() => setFeedAaben(true)}
+          />
         </div>
       </div>
 

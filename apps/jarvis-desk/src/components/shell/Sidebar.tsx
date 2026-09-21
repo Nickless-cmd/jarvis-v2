@@ -19,6 +19,7 @@ import { ModeBladrer } from './ModeBladrer'
 import { JarvisRing } from './JarvisRing'
 import { SecondaryNav, type SecondarySurface } from './SecondaryNav'
 import { Klokke } from './Klokke'
+import { NotifikationsFeed } from './NotifikationsFeed'
 
 const ZONE_ICONS: Record<string, LucideIcon> = {
   LayoutDashboard, Blocks, Settings, Brain, Cpu,
@@ -75,7 +76,7 @@ export function Sidebar({
   // Feed-ruden selv kommer i naeste opgave — her aabnes kun tilstanden (klokken
   // saetter den). Kun setteren bruges endnu, saa laeseren udelades bevidst
   // (ellers TS6133 — `noUnusedLocals`).
-  const [, setFeedAaben] = useState(false)
+  const [feedAaben, setFeedAaben] = useState(false)
 
   // #8: poll backend for sessioner med aktivt run (også autonome baggrunds-runs
   // som klienten ikke selv driver). Union'es med workingSessionId fra streamen.
@@ -132,6 +133,14 @@ export function Sidebar({
           />
         </div>
       </div>
+
+      {feedAaben && (
+        <NotifikationsFeed
+          config={settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : null}
+          onLuk={() => setFeedAaben(false)}
+          onAabnSession={(id) => { select(id); setFeedAaben(false); onSurface('chat') }}
+        />
+      )}
 
       {surface === 'cowork' ? (
         <CoworkMenu />

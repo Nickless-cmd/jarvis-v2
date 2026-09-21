@@ -212,6 +212,7 @@ from core.tools.app_control_tool import (
     APP_CONTROL_TOOL_HANDLERS,
 )
 from core.tools.desk_view_tools import DESK_VIEW_TOOL_HANDLERS
+from core.tools.desk_browser_tools import DESK_BROWSER_TOOL_HANDLERS
 from core.tools.agent_todo_tools import (
     AGENT_TODO_TOOL_DEFINITIONS,
     _exec_todo_list,
@@ -1692,6 +1693,7 @@ _TOOL_HANDLERS: dict[str, Any] = {
     **GATE_OVERRIDE_TOOL_HANDLERS,
     **APP_CONTROL_TOOL_HANDLERS,
     **DESK_VIEW_TOOL_HANDLERS,
+    **DESK_BROWSER_TOOL_HANDLERS,
     "todo_list": _exec_todo_list,
     "todo_set": _exec_todo_set,
     "todo_add": _exec_todo_add,

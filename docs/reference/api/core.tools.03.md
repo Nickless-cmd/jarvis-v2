@@ -2,6 +2,77 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/tools/simple_tools_operator.py`
+_Operator-bridge tool executors for Jarvis (desktop operator lane)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_st` | `()` | Lazy accessor til simple_tools-modulet (facade-søm, §4 monkeypatch). | [src](../../../core/tools/simple_tools_operator.py#L30) |
+| function | `_operator_user_id` | `(args)` | Facade → simple_tools._operator_user_id (honorér test-patch-søm). | [src](../../../core/tools/simple_tools_operator.py#L44) |
+| function | `_run_operator_async` | `(coro_fn, *, tool_name, timeout_s=…)` | Facade → simple_tools._run_operator_async (honorér test-patch-søm). | [src](../../../core/tools/simple_tools_operator.py#L49) |
+| function | `_operator_user_id_impl` | `(args)` | Resolve operator's user_id for bridge routing. | [src](../../../core/tools/simple_tools_operator.py#L54) |
+| function | `_record_active_file` | `(path, op, args)` | Live-highlight: notér at Jarvis (i brugerens kontekst) rører `path` på sin | [src](../../../core/tools/simple_tools_operator.py#L103) |
+| function | `_run_operator_async_impl` | `(coro_fn, *, tool_name, timeout_s=…)` | Bridge sync tool-handler → async dispatcher. | [src](../../../core/tools/simple_tools_operator.py#L113) |
+| function | `_rapporter_gate_svigt` | `(vaerktoej, path, exc)` | Sig højt at et gate-kald svigtede, og lad handlingen fortsætte. | [src](../../../core/tools/simple_tools_operator.py#L198) |
+| function | `_exec_operator_read_file` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L223) |
+| function | `_operator_file_exists` | `(path, user_id)` | Best-effort: does `path` exist on the operator's machine? | [src](../../../core/tools/simple_tools_operator.py#L254) |
+| function | `_sti_gate_operator` | `(path, args, *, kind, tool, forhaandsvisning=…)` | Sti-gate for operator-fil-skrivning. ``None`` = maa fortsaette. | [src](../../../core/tools/simple_tools_operator.py#L293) |
+| function | `_exec_operator_write_file` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L331) |
+| function | `_exec_operator_edit_file` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L416) |
+| function | `_exec_operator_run_in_background` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L500) |
+| function | `_exec_operator_bash_output` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L525) |
+| function | `_exec_operator_kill_shell` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L538) |
+| function | `_exec_operator_multi_edit` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L550) |
+| function | `_exec_operator_glob` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L599) |
+| function | `_exec_operator_grep` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L618) |
+| function | `_exec_operator_list_dir` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L640) |
+| function | `_exec_operator_webfetch` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L654) |
+| function | `_exec_operator_bash` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L675) |
+| function | `_exec_operator_screenshot` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L704) |
+| function | `_exec_operator_open_url` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L725) |
+| function | `_exec_operator_launch_app` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L756) |
+| function | `_exec_operator_mouse_move` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L801) |
+| function | `_exec_operator_mouse_click` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L817) |
+| function | `_exec_operator_mouse_position` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L838) |
+| function | `_exec_operator_keyboard_type` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L848) |
+| function | `_exec_operator_keyboard_press` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L867) |
+| function | `_exec_operator_screen_size` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L884) |
+| function | `_exec_operator_clipboard_read` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L894) |
+| function | `_exec_operator_clipboard_write` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L904) |
+| function | `_exec_operator_list_windows` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L917) |
+| function | `_exec_operator_focus_window` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L927) |
+| function | `_exec_operator_mouse_scroll` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L953) |
+| function | `_exec_operator_mouse_drag` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L969) |
+| function | `_exec_operator_list_processes` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L990) |
+| function | `_exec_operator_kill_process` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L1005) |
+| function | `_exec_operator_speak` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L1040) |
+| function | `_exec_operator_screenshot_window` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L1060) |
+| function | `_exec_operator_find_image` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L1081) |
+| function | `_exec_operator_ocr_region` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L1099) |
+| function | `_exec_operator_reminder` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L1125) |
+| function | `_exec_operator_wakeup` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L1145) |
+| function | `_exec_operator_scheduled_list` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L1163) |
+| function | `_exec_operator_scheduled_cancel` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L1178) |
+| function | `_exec_operator_process_spawn` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L1191) |
+| function | `_exec_operator_process_status` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L1209) |
+| function | `_exec_operator_process_output` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L1222) |
+| function | `_exec_operator_process_kill` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L1240) |
+| function | `_exec_operator_process_list` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L1257) |
+| function | `_exec_operator_notify` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L1271) |
+| function | `_exec_operator_watch_folder` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L1292) |
+| function | `_exec_operator_unwatch_folder` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L1311) |
+| function | `_exec_operator_watch_events` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L1326) |
+| function | `_exec_operator_record_audio` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L1343) |
+| function | `_exec_operator_browser_open` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L1384) |
+| function | `_exec_operator_browser_get_text` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L1402) |
+| function | `_exec_operator_browser_get_links` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L1419) |
+| function | `_exec_operator_browser_click` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L1429) |
+| function | `_exec_operator_browser_type` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L1448) |
+| function | `_exec_operator_browser_screenshot` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L1469) |
+| function | `_exec_operator_browser_evaluate` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L1485) |
+| function | `_exec_operator_browser_status` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L1515) |
+| function | `_exec_operator_browser_close` | `(args)` | — | [src](../../../core/tools/simple_tools_operator.py#L1525) |
+
 ## `core/tools/simple_tools_web.py`
 _Web/search/system-info tool executors for Jarvis' native lane._
 
@@ -235,26 +306,26 @@ _Tool-scoping policy — hvilke værktøjer er tilgængelige pr. rolle og mode._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `is_local_execution_tool` | `(name)` | True hvis værktøjet kører lokalt i code mode (resultat forlader ikke maskinen). | [src](../../../core/tools/tool_scoping.py#L210) |
-| function | `current_tool_scope` | `()` | Nuværende tool-scope ("chat" eller "" for ubegrænset). | [src](../../../core/tools/tool_scoping.py#L221) |
-| function | `set_tool_scope` | `(scope)` | — | [src](../../../core/tools/tool_scoping.py#L226) |
-| function | `reset_tool_scope` | `(token)` | — | [src](../../../core/tools/tool_scoping.py#L230) |
-| function | `current_local_exec` | `()` | True når det aktive run er en jarvis-code Path B lokal-exec-tur. | [src](../../../core/tools/tool_scoping.py#L243) |
-| function | `set_local_exec` | `(on)` | — | [src](../../../core/tools/tool_scoping.py#L248) |
-| function | `tool_scope` | `(scope)` | — | [src](../../../core/tools/tool_scoping.py#L253) |
-| function | `_owner_has_live_bridge` | `()` | True hvis der findes en levende desk-bro for nuværende bruger (presence, cross-proces). | [src](../../../core/tools/tool_scoping.py#L261) |
-| function | `_phone_tool_names` | `()` | Telefonens vaerktoejer — hentet fra ét sted, ikke gentaget her. | [src](../../../core/tools/tool_scoping.py#L275) |
-| function | `_owner_has_live_phone` | `()` | True hvis en TELEFON er forbundet for nuvaerende bruger. | [src](../../../core/tools/tool_scoping.py#L293) |
-| function | `_phone_adb_tool_names` | `()` | ADB-vaerktoejernes navne — ét sted, ikke gentaget her. | [src](../../../core/tools/tool_scoping.py#L327) |
-| function | `_adb_er_opsat` | `()` | Er der overhovedet en telefon at pege adb paa? | [src](../../../core/tools/tool_scoping.py#L340) |
-| function | `_forbundne_connector_vaerktoejer` | `()` | Vaerktoejer fra apps brugeren FAKTISK har forbundet. | [src](../../../core/tools/tool_scoping.py#L359) |
-| function | `allowed_tool_names` | `(*, role, scope, all_names)` | Beregn det tilladte sæt tool-navne for (role, scope). | [src](../../../core/tools/tool_scoping.py#L393) |
-| function | `preferred_tools_for_user_message` | `(user_message)` | Order hint for tool choice; does not grant or revoke permissions. | [src](../../../core/tools/tool_scoping.py#L464) |
-| function | `tool_routing_hint` | `(user_message)` | Prompt hint for personal/internal vs external lookup intent. | [src](../../../core/tools/tool_scoping.py#L474) |
-| function | `is_tool_allowed` | `(*, role, scope, name)` | Må (role, scope) eksekvere værktøjet `name`? (Spor A — serverside håndhævelse.) | [src](../../../core/tools/tool_scoping.py#L491) |
-| function | `_apply_computer_use_policy` | `(result)` | Computer-use-toggle (§4.7): fjern operator/computer-tools hvis brugeren har | [src](../../../core/tools/tool_scoping.py#L504) |
-| function | `_fn_name` | `(td)` | — | [src](../../../core/tools/tool_scoping.py#L528) |
-| function | `filter_tool_definitions` | `(defs, *, role, scope)` | Filtrér Ollama-tool-definitioner ned til det tilladte sæt for (role, scope). | [src](../../../core/tools/tool_scoping.py#L532) |
+| function | `is_local_execution_tool` | `(name)` | True hvis værktøjet kører lokalt i code mode (resultat forlader ikke maskinen). | [src](../../../core/tools/tool_scoping.py#L219) |
+| function | `current_tool_scope` | `()` | Nuværende tool-scope ("chat" eller "" for ubegrænset). | [src](../../../core/tools/tool_scoping.py#L230) |
+| function | `set_tool_scope` | `(scope)` | — | [src](../../../core/tools/tool_scoping.py#L235) |
+| function | `reset_tool_scope` | `(token)` | — | [src](../../../core/tools/tool_scoping.py#L239) |
+| function | `current_local_exec` | `()` | True når det aktive run er en jarvis-code Path B lokal-exec-tur. | [src](../../../core/tools/tool_scoping.py#L252) |
+| function | `set_local_exec` | `(on)` | — | [src](../../../core/tools/tool_scoping.py#L257) |
+| function | `tool_scope` | `(scope)` | — | [src](../../../core/tools/tool_scoping.py#L262) |
+| function | `_owner_has_live_bridge` | `()` | True hvis der findes en levende desk-bro for nuværende bruger (presence, cross-proces). | [src](../../../core/tools/tool_scoping.py#L270) |
+| function | `_phone_tool_names` | `()` | Telefonens vaerktoejer — hentet fra ét sted, ikke gentaget her. | [src](../../../core/tools/tool_scoping.py#L284) |
+| function | `_owner_has_live_phone` | `()` | True hvis en TELEFON er forbundet for nuvaerende bruger. | [src](../../../core/tools/tool_scoping.py#L302) |
+| function | `_phone_adb_tool_names` | `()` | ADB-vaerktoejernes navne — ét sted, ikke gentaget her. | [src](../../../core/tools/tool_scoping.py#L336) |
+| function | `_adb_er_opsat` | `()` | Er der overhovedet en telefon at pege adb paa? | [src](../../../core/tools/tool_scoping.py#L349) |
+| function | `_forbundne_connector_vaerktoejer` | `()` | Vaerktoejer fra apps brugeren FAKTISK har forbundet. | [src](../../../core/tools/tool_scoping.py#L368) |
+| function | `allowed_tool_names` | `(*, role, scope, all_names)` | Beregn det tilladte sæt tool-navne for (role, scope). | [src](../../../core/tools/tool_scoping.py#L402) |
+| function | `preferred_tools_for_user_message` | `(user_message)` | Order hint for tool choice; does not grant or revoke permissions. | [src](../../../core/tools/tool_scoping.py#L473) |
+| function | `tool_routing_hint` | `(user_message)` | Prompt hint for personal/internal vs external lookup intent. | [src](../../../core/tools/tool_scoping.py#L483) |
+| function | `is_tool_allowed` | `(*, role, scope, name)` | Må (role, scope) eksekvere værktøjet `name`? (Spor A — serverside håndhævelse.) | [src](../../../core/tools/tool_scoping.py#L500) |
+| function | `_apply_computer_use_policy` | `(result)` | Computer-use-toggle (§4.7): fjern operator/computer-tools hvis brugeren har | [src](../../../core/tools/tool_scoping.py#L513) |
+| function | `_fn_name` | `(td)` | — | [src](../../../core/tools/tool_scoping.py#L537) |
+| function | `filter_tool_definitions` | `(defs, *, role, scope)` | Filtrér Ollama-tool-definitioner ned til det tilladte sæt for (role, scope). | [src](../../../core/tools/tool_scoping.py#L541) |
 
 ## `core/tools/tool_text_render.py`
 _Læsbar `text`-form for strukturerede tool-resultater._
@@ -498,12 +569,4 @@ _Git worktree primitive — let Jarvis experiment in isolation._
 | function | `_exec_worktree_list` | `(_args)` | — | [src](../../../core/tools/worktree_tools.py#L110) |
 | function | `_exec_worktree_merge` | `(args)` | — | [src](../../../core/tools/worktree_tools.py#L146) |
 | function | `_exec_worktree_discard` | `(args)` | — | [src](../../../core/tools/worktree_tools.py#L192) |
-
-## `core/tools/world_model_tools.py`
-_World Model tools — predict_outcome + resolve_prediction._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_exec_predict_outcome` | `(args)` | Record a falsifiable prediction. | [src](../../../core/tools/world_model_tools.py#L25) |
-| function | `_exec_resolve_prediction` | `(args)` | Resolve an open prediction with a later observation. | [src](../../../core/tools/world_model_tools.py#L85) |
 

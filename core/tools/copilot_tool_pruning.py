@@ -89,6 +89,10 @@ TIER_1_ALWAYS_ON: frozenset[str] = frozenset({
     # Kernede kontrol-værktøjer = altid native, så han aldrig skal loade+gætte schema.
     "request_app_action", "open_ui_panel",
     "desk_get_layout", "desk_show_pane", "desk_close_pane",
+    # Jarvis' egen browser i desk (21/9-2026) — kernet, saa schema'et altid er native.
+    "jarvis_browser_open", "jarvis_browser_navigate", "jarvis_browser_read",
+    "jarvis_browser_click", "jarvis_browser_type", "jarvis_browser_screenshot",
+    "jarvis_browser_tabs", "jarvis_browser_close",
     "mark_wakeup_consumed", "memory_check_duplicate", "memory_list_headings", "memory_upsert_section",
     "my_project_journal_write", "my_project_status", "notify_user", "propose_git_commit",
     "propose_source_edit", "publish_file", "push_initiative", "quick_council_check",

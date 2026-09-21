@@ -140,6 +140,10 @@ CHAT_MODE_TOOLS_BASE: frozenset[str] = frozenset({
     "open_ui_panel",
     # Desk-vinduet indefra (Claude Desktops ccd_view, 19/9-2026)
     "desk_get_layout", "desk_show_pane", "desk_close_pane",
+    # Jarvis' EGEN browser inde i desk (21/9-2026) — en flade han og Bjørn deler.
+    "jarvis_browser_open", "jarvis_browser_navigate", "jarvis_browser_read",
+    "jarvis_browser_click", "jarvis_browser_type", "jarvis_browser_screenshot",
+    "jarvis_browser_tabs", "jarvis_browser_close",
     # App-self-control (desk) — foreslå skift chat→code mode (brugeren godkender)
     "request_app_action",
     # Companion-push — naa brugeren proaktivt paa deres egne enheder (device-routet)
@@ -159,6 +163,11 @@ CODE_MODE_TOOLS_BASE: frozenset[str] = frozenset({
     # Desk-vinduet indefra (Claude Desktops ccd_view, 19/9-2026): vis diff'en
     # efter en redigering — det er NETOP her det betyder mest.
     "desk_get_layout", "desk_show_pane", "desk_close_pane",
+    # Jarvis' EGEN browser inde i desk (21/9-2026): han kan se en side OG vise
+    # den til Bjørn samtidig — den ene flade hvor begge kan pege.
+    "jarvis_browser_open", "jarvis_browser_navigate", "jarvis_browser_read",
+    "jarvis_browser_click", "jarvis_browser_type", "jarvis_browser_screenshot",
+    "jarvis_browser_tabs", "jarvis_browser_close",
     "operator_channel",
     "mcp",
     "checkpoint",

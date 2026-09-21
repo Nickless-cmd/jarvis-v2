@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7904/15324 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7907/15336 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -32,7 +32,7 @@ Generated from source. 7904/15324 functions/methods documented (51%). The list b
 | `core.services.visible_runs_sections` | 18 | 30 | 60% |
 | `core.skills` | 0 | 0 | 0% |
 | `core.skills.voice` | 39 | 49 | 79% |
-| `core.tools` | 480 | 990 | 48% |
+| `core.tools` | 483 | 1002 | 48% |
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.util` | 9 | 10 | 90% |
@@ -2065,10 +2065,10 @@ Generated from source. 7904/15324 functions/methods documented (51%). The list b
 - `core/tools/tool_definition_v2.py` :: `all_definitions` (L211)
 - `core/tools/tool_schema_contract.py` :: `Brud.haard` (L72)
 - `core/tools/tool_schema_contract.py` :: `haarde` (L177)
-- `core/tools/tool_scoping.py` :: `reset_tool_scope` (L230)
-- `core/tools/tool_scoping.py` :: `set_local_exec` (L248)
-- `core/tools/tool_scoping.py` :: `set_tool_scope` (L226)
-- `core/tools/tool_scoping.py` :: `tool_scope` (L253)
+- `core/tools/tool_scoping.py` :: `reset_tool_scope` (L239)
+- `core/tools/tool_scoping.py` :: `set_local_exec` (L257)
+- `core/tools/tool_scoping.py` :: `set_tool_scope` (L235)
+- `core/tools/tool_scoping.py` :: `tool_scope` (L262)
 - `core/tools/wake_word_tool.py` :: `wake_word_status` (L217)
 - `core/tools/workspace_capabilities.py` :: `classify_workspace_execution_mode` (L1870)
 - `core/tools/workspace_capabilities.py` :: `get_capability_invocation_truth` (L555)

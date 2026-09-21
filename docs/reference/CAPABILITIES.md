@@ -1,6 +1,6 @@
 # CAPABILITIES
 
-> Generated 2026-09-20 — 475 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
+> Generated 2026-09-21 — 483 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
 
 | Tool | Kind | Mutating |
 |---|---|---|
@@ -165,6 +165,14 @@
 | `identity_mutation_status` | native | no |
 | `interlanguage_protocol` | native | no |
 | `internal_api` | native | no |
+| `jarvis_browser_click` | native | no |
+| `jarvis_browser_close` | native | no |
+| `jarvis_browser_navigate` | native | no |
+| `jarvis_browser_open` | native | no |
+| `jarvis_browser_read` | native | no |
+| `jarvis_browser_screenshot` | native | no |
+| `jarvis_browser_tabs` | native | no |
+| `jarvis_browser_type` | native | no |
 | `list_agent_observations` | native | no |
 | `list_agent_roles` | native | no |
 | `list_agents` | native | no |

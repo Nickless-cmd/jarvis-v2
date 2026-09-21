@@ -1,6 +1,6 @@
 # API_REFERENCE
 
-> Generated 2026-09-21 from app.routes (live) — 609 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
+> Generated 2026-09-21 from app.routes (live) — 612 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
 
 | Method | Path | Response model | Source |
 |---|---|---|---|
@@ -573,6 +573,9 @@
 | GET | `/notifications/pending` | dict | presence |
 | GET | `/notifications/preferences` | dict | presence |
 | POST | `/notifications/preferences` | dict | presence |
+| GET | `/notifikationer` | dict | notifikationer |
+| POST | `/notifikationer/{notif_id}/afgoer` | dict | notifikationer |
+| POST | `/notifikationer/{notif_id}/set` | dict | notifikationer |
 | POST | `/paste` | dict | paste |
 | GET | `/paste/{paste_id}` | dict | paste |
 | GET | `/plugins` | dict | plugins |

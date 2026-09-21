@@ -666,6 +666,18 @@ _Mobil auto-updater: manifest + APK-download. Auth-scopet til en bruger._
 | function | `mobile_latest` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mobile_update.py#L29) |
 | function | `mobile_download` | `()` | — | [src](../../../apps/api/jarvis_api/routes/mobile_update.py#L45) |
 
+## `apps/api/jarvis_api/routes/notifikationer.py`
+_Notifikations-feeden. Scoper til den auth'ede bruger._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `AfgoerBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/notifikationer.py#L20) |
+| function | `_nuvaerende_bruger` | `()` | (user_id, er_owner). | [src](../../../apps/api/jarvis_api/routes/notifikationer.py#L24) |
+| function | `_min_raekke` | `(notif_id, user_id)` | Raekken — kun hvis den er brugerens egen. Et gaettet id fra en anden | [src](../../../apps/api/jarvis_api/routes/notifikationer.py#L46) |
+| function | `feed` | `()` | — | [src](../../../apps/api/jarvis_api/routes/notifikationer.py#L56) |
+| function | `afgoer` | `(notif_id, body)` | — | [src](../../../apps/api/jarvis_api/routes/notifikationer.py#L65) |
+| function | `set_` | `(notif_id)` | — | [src](../../../apps/api/jarvis_api/routes/notifikationer.py#L90) |
+
 ## `apps/api/jarvis_api/routes/oauth.py`
 _OAuth connect-flow til plugin-connectors (16. jun 2026)._
 
@@ -696,13 +708,4 @@ _OpenAI-compatible proxy: /v1/chat/completions wrapping Jarvis visible lane._
 | function | `_build_completion_response` | `(*, run_id, model, content, input_tokens, output_tokens)` | Build a standard OpenAI chat.completion response. | [src](../../../apps/api/jarvis_api/routes/openai_compat.py#L259) |
 | function | `_build_stream_chunk` | `(*, run_id, model, delta_content)` | Build a standard OpenAI chat.completion.chunk for streaming. | [src](../../../apps/api/jarvis_api/routes/openai_compat.py#L288) |
 | function | `_get_or_create_proxy_session` | `()` | Return the shared proxy chat session id. | [src](../../../apps/api/jarvis_api/routes/openai_compat.py#L317) |
-
-## `apps/api/jarvis_api/routes/paste.py`
-_Paste-store endpoints: eksternalisér store bruger-pastes + lazy resolve._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `PasteSaveRequest` | `` | — | [src](../../../apps/api/jarvis_api/routes/paste.py#L22) |
-| function | `save_paste_endpoint` | `(request)` | Gem en paste og returnér id + kompakt reference-streng. | [src](../../../apps/api/jarvis_api/routes/paste.py#L27) |
-| function | `get_paste_endpoint` | `(paste_id)` | Slå fuld paste-tekst op (lazy resolve). 404 på ukendt id. | [src](../../../apps/api/jarvis_api/routes/paste.py#L43) |
 

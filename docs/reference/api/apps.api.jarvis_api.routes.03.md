@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `apps/api/jarvis_api/routes/paste.py`
+_Paste-store endpoints: eksternalisér store bruger-pastes + lazy resolve._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `PasteSaveRequest` | `` | — | [src](../../../apps/api/jarvis_api/routes/paste.py#L22) |
+| function | `save_paste_endpoint` | `(request)` | Gem en paste og returnér id + kompakt reference-streng. | [src](../../../apps/api/jarvis_api/routes/paste.py#L27) |
+| function | `get_paste_endpoint` | `(paste_id)` | Slå fuld paste-tekst op (lazy resolve). 404 på ukendt id. | [src](../../../apps/api/jarvis_api/routes/paste.py#L43) |
+
 ## `apps/api/jarvis_api/routes/plugins.py`
 _Plugins & Kanaler routes (spec §5.4, Fase 6 #2). Tynde — blokerende arbejde_
 

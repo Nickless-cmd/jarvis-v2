@@ -879,6 +879,8 @@ def create_app() -> FastAPI:
     app.include_router(plugins_router)
     from apps.api.jarvis_api.routes.notifikationer import router as notifikationer_router
     app.include_router(notifikationer_router)
+    from apps.api.jarvis_api.routes.notifikations_valg import router as notifikations_valg_router
+    app.include_router(notifikations_valg_router)
     from apps.api.jarvis_api.routes.central import router as central_router
     app.include_router(central_router)
     from apps.api.jarvis_api.routes import central_governance as _central_governance

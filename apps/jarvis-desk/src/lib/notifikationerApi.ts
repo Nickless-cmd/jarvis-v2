@@ -38,3 +38,18 @@ export async function afgoerNotifikation(
 export async function setNotifikation(config: ApiConfig, id: string): Promise<void> {
   await apiFetch(config, `/notifikationer/${encodeURIComponent(id)}/set`, { method: 'POST' })
 }
+
+export async function hentNotifikationsValg(config: ApiConfig): Promise<{ valg: Record<string, string> }> {
+  return apiFetch(config, '/notifikations-valg')
+}
+
+export async function saetNotifikationsValg(
+  config: ApiConfig, slags: string, kanal: string,
+): Promise<{ ok: boolean; fejl: string }> {
+  // `apiFetch` JSON.stringify'er selv `body` — en raa objekt her, ikke en
+  // fortstrenget en (se afgoerNotifikation ovenfor for samme moenster).
+  return apiFetch(config, '/notifikations-valg', {
+    method: 'POST',
+    body: { slags, kanal },
+  })
+}

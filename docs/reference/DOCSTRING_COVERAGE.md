@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7928/15369 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7928/15372 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,7 +8,7 @@ Generated from source. 7928/15369 functions/methods documented (51%). The list b
 |---|---|---|---|
 | `apps.api.jarvis_api` | 34 | 36 | 94% |
 | `apps.api.jarvis_api.middleware` | 8 | 19 | 42% |
-| `apps.api.jarvis_api.routes` | 695 | 923 | 75% |
+| `apps.api.jarvis_api.routes` | 695 | 926 | 75% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 70 | 172 | 40% |
 | `apps.desktop` | 6 | 7 | 85% |
@@ -41,7 +41,7 @@ Generated from source. 7928/15369 functions/methods documented (51%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2203)
+## Undocumented public functions (2205)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L208)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -99,6 +99,8 @@ Generated from source. 7928/15369 functions/methods documented (51%). The list b
 - `apps/api/jarvis_api/routes/notifikationer.py` :: `afgoer` (L88)
 - `apps/api/jarvis_api/routes/notifikationer.py` :: `feed` (L79)
 - `apps/api/jarvis_api/routes/notifikationer.py` :: `set_` (L123)
+- `apps/api/jarvis_api/routes/notifikations_valg.py` :: `hent` (L24)
+- `apps/api/jarvis_api/routes/notifikations_valg.py` :: `saet` (L30)
 - `apps/api/jarvis_api/routes/openai_auth.py` :: `openai_oauth_callback` (L29)
 - `apps/api/jarvis_api/routes/openai_auth.py` :: `openai_oauth_launch` (L14)
 - `apps/api/jarvis_api/routes/plugins.py` :: `get_plugin_ruleset` (L110)

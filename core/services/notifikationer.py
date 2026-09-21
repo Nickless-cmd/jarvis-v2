@@ -22,6 +22,20 @@ from core.runtime.db import connect
 
 _log = logging.getLogger(__name__)
 
+
+def _udsend(slags_haendelse: str, nid: str, user_id: str, slags: str) -> None:
+    """Live-vejen til klokken. Fejler den, skal FEEDEN stadig virke — men den
+    skal siges hoejt, ikke sluges: en tavs bus er praecis den fejl der har
+    ramt dette repo fem gange."""
+    try:
+        from core.eventbus.bus import event_bus
+        event_bus.publish(f"notifikation.{slags_haendelse}",
+                          {"id": nid, "user_id": user_id, "slags": slags})
+    except Exception:
+        _log.warning("notifikation.%s kunne ikke udsendes for %s",
+                     slags_haendelse, nid, exc_info=True)
+
+
 #: Systemraekker hoerer til ejeren — de handler om maskinen, ikke om en samtale.
 SYSTEM_SLAGS = {"release", "incident", "quota"}
 
@@ -76,7 +90,8 @@ def opret(*, user_id: str, slags: str, kilde: str, titel: str,
             # GREN "ny raekke": vores INSERT vandt (eller var alene om det).
             # Det er HER en senere haendelses-udsendelse skal sidde.
             conn.commit()
-            return nid
+    _udsend("ny", nid, user_id, slags)
+    return nid
 
 
 def aabne(user_id: str, *, er_owner: bool) -> list[dict[str, Any]]:
@@ -109,6 +124,10 @@ def luk(notif_id: str, udfald: str) -> None:
             "UPDATE notifikationer SET klaret=?, udfald=? WHERE id=? AND klaret IS NULL",
             (_nu(), udfald, notif_id))
         conn.commit()
+        raekke = conn.execute(
+            "SELECT user_id, slags FROM notifikationer WHERE id=?", (notif_id,)).fetchone()
+    if raekke:
+        _udsend("klaret", notif_id, str(raekke[0]), str(raekke[1]))
 
 
 def ryd_gamle(dage: int = 7) -> int:

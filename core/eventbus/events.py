@@ -37,6 +37,10 @@ ALLOWED_EVENT_FAMILIES = {
     "prompt",            # prompt.section_answer_impact (Codex' impact-telemetri) + prompt.assembly_size
                          # (prompt_contract) — publish RAISEDE stille, 0 events nogensinde
     "composite",         # composite.{invoked,revoked,deleted} — capability-overflade-mutation
+    # ── 21. sep 2026: notifikations-feeden (spec 2026-09-21). Femte gang samme
+    #    moenster ville have ramt: uden denne linje kaster hvert publish, og
+    #    kaldestedet sluger det — klokken ville staa stille uden at noget fejlede.
+    "notifikation",      # notifikation.{ny,klaret} — feedens live-vej til desk og mobil
     # ── 6. sep 2026: samme moenster igen. tool_discovery.nudge blev afvist af
     #    netop denne liste, og kaldstedets except slugte fejlen til en debug-
     #    linje — skygge-maalingen ville have vist 0 events i ugevis, og vi

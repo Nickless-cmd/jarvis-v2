@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7915/15345 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7916/15346 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 7915/15345 functions/methods documented (51%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 686 | 1265 | 54% |
-| `core.services` | 5227 | 10437 | 50% |
+| `core.services` | 5228 | 10438 | 50% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 107 | 183 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -260,10 +260,10 @@ Generated from source. 7915/15345 functions/methods documented (51%). The list b
 - `core/eventbus/bus.py` :: `EventBus.recent_since_id` (L207)
 - `core/eventbus/bus.py` :: `EventBus.subscribe` (L229)
 - `core/eventbus/bus.py` :: `EventBus.unsubscribe` (L235)
-- `core/eventbus/events.py` :: `Event.create` (L264)
-- `core/eventbus/events.py` :: `Event.family` (L260)
-- `core/eventbus/events.py` :: `Event.from_record` (L270)
-- `core/eventbus/events.py` :: `Event.validate` (L281)
+- `core/eventbus/events.py` :: `Event.create` (L268)
+- `core/eventbus/events.py` :: `Event.family` (L264)
+- `core/eventbus/events.py` :: `Event.from_record` (L274)
+- `core/eventbus/events.py` :: `Event.validate` (L285)
 - `core/identity/candidate_workflow.py` :: `apply_approved_runtime_contract_candidates` (L318)
 - `core/identity/candidate_workflow.py` :: `apply_runtime_contract_candidate` (L119)
 - `core/identity/candidate_workflow.py` :: `approve_runtime_contract_candidate` (L51)

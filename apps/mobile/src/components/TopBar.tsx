@@ -11,6 +11,7 @@ import { useI18n } from '../i18n/I18nContext'
 import { useStickyPrompt } from '../lib/stickyPrompt'
 import { useOpmaerksomhed } from '../lib/opmaerksomhed'
 import { farveFor } from './OpmaerksomhedsLinje'
+import { PulsVedPil } from './AnimeretPuls'
 
 export type AppMode = 'snak' | 'arbejde'
 
@@ -94,12 +95,15 @@ export function TopBar({
           testID="topbar-venstre"
         >
           <ArrowLeft size={21} color={tokens.color.fg1} strokeWidth={2} />
-          {/* Tilstands-hjernens prik: noget i sidepanelet kræver dig. Farven
-              er tilstanden (gul venter, rød fejlede, grøn færdig, accent
-              arbejder); linjen i panelet siger hvad. */}
-          {opm && opm.tilstand !== 'idle' ? (
-            <View testID="opm-prik" style={[styles.opmPrik, { backgroundColor: farveFor(tokens, opm.tilstand) }]} />
-          ) : null}
+          {/* Tilstands-hjernens puls: noget kræver dig. Farven er tilstanden
+              (gul venter, rød fejlede, grøn færdig, accent arbejder); linjen
+              i panelet siger hvad. Bjørn 21/9-2026: den statiske prik blev
+              mærket i bevægelse — den dukker op når der sker noget, og
+              forsvinder når intet kræver dig. */}
+          <PulsVedPil
+            synlig={Boolean(opm && opm.tilstand !== 'idle')}
+            farve={farveFor(tokens, opm?.tilstand ?? 'idle')}
+          />
         </Pressable>
         {kodeTilstand ? <CodeTitle titel={kodeTitel} git={git} onPress={onTrykTitel} /> : null}
       </View>
@@ -126,21 +130,6 @@ export function TopBar({
           det man laeser, prikkerne er det man trykker. Star de hver for sig
           bliver bjaelken til tre knapper der ligner hinanden. */}
       <View style={styles.hoejre}>
-      {/* Sticky prompt som ikon (19/9-2026): tilbage til din besked, når den
-          er rullet ud af syne. Den stod før som en tekst-strimmel over selve
-          samtalen og dækkede de linjer man læste. */}
-      {sticky ? (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`Rul til din besked: ${sticky.tekst.slice(0, 140)}`}
-          onPress={sticky.hop}
-          hitSlop={8}
-          style={styles.circle}
-          testID="sticky-prompt"
-        >
-          <CornerLeftUp size={19} color={tokens.color.fg1} strokeWidth={2} />
-        </Pressable>
-      ) : null}
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={t('common.more')}
@@ -159,6 +148,26 @@ export function TopBar({
         ) : (
           <>
             <ContextRing brug={kontekst ?? null} />
+            {/* Sticky prompt som ikon (19/9-2026): tilbage til din besked, når
+                den er rullet ud af syne. Den stod før som en tekst-strimmel over
+                selve samtalen og dækkede de linjer man læste.
+
+                Bjørn 21/9-2026: den laa i sin EGEN cirkel ved siden af feltet,
+                saa bjaelken blev tre knapper der ligner hinanden. Nu staar den
+                MELLEM ringen og prikkerne — det man laeser, det man hopper
+                efter, og det man trykker, i ét felt. */}
+            {sticky ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Rul til din besked: ${sticky.tekst.slice(0, 140)}`}
+                onPress={sticky.hop}
+                hitSlop={8}
+                style={styles.stickyIkon}
+                testID="sticky-prompt"
+              >
+                <CornerLeftUp size={19} color={tokens.color.fg1} strokeWidth={2} />
+              </Pressable>
+            ) : null}
             <MoreVertical size={20} color={tokens.color.fg1} strokeWidth={2} />
           </>
         )}
@@ -221,11 +230,16 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
     gap: 7,
     paddingHorizontal: 13,
   },
-  opmPrik: {
-    position: 'absolute', top: 5, right: 5, width: 9, height: 9, borderRadius: 4.5,
-    borderWidth: 1.5, borderColor: tokens.color.bgFloat,
+  // Sticky-hoppet bor INDE i feltet nu — ikke i sin egen cirkel. Derfor er det
+  // en trykflade uden baggrund: baggrunden er feltets.
+  stickyIkon: {
+    width: 24,
+    height: CIRCLE,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  // Højre felt: sticky-ikonet (når det er der) og så mere-knappen.
+  // Højre felt er ÉT felt nu: ringen, sticky-hoppet og prikkerne ligger alle
+  // i pillen. Her er kun pillen tilbage at holde.
   hoejre: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   circle: {
     width: CIRCLE,

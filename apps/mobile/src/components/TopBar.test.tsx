@@ -121,6 +121,23 @@ it('ringen staar i SAMME felt som prikkerne', async () => {
   expect(within(felt).getByTestId('context-ring')).toBeTruthy()
 })
 
+it('sticky-hoppet staar MELLEM ringen og prikkerne — i samme felt', async () => {
+  // Bjoern 21/9-2026: «læg den over i samme felt som kontekt ringen mellem
+  // ringen og 3 pris menu'en». Foer laa den i sin EGEN cirkel ved siden af,
+  // og bjaelken blev tre knapper der ligner hinanden.
+  const { act } = require('@testing-library/react-native')
+  const { saetStickyPrompt } = require('../lib/stickyPrompt')
+  saetStickyPrompt(null)
+  const screen = await render(
+    <TopBar {...base} kontekst={{ tokens: 65_000, compactAt: 130_000, compacting: false }} />,
+  )
+  await act(async () => saetStickyPrompt({ tekst: 'Hvor sidder værnet?', hop: jest.fn() }))
+  const felt = screen.getByTestId('topbar-mere')
+  expect(within(felt).getByTestId('sticky-prompt')).toBeTruthy()
+  expect(within(felt).getByTestId('context-ring')).toBeTruthy()
+  await act(async () => saetStickyPrompt(null))
+})
+
 it('uden kontekst er der ingen ring', async () => {
   const screen = await render(<TopBar {...base} />)
   expect(screen.queryByTestId('context-ring')).toBeNull()
@@ -219,17 +236,21 @@ describe('sticky prompt som ikon (19/9-2026)', () => {
   })
 })
 
-describe('tilstands-hjernens prik (19/9-2026)', () => {
+describe('tilstands-hjernens puls (21/9-2026)', () => {
   const { act } = require('@testing-library/react-native')
   const { udgiv } = require('../lib/opmaerksomhed')
   beforeEach(() => udgiv(null))
 
-  it('ingen prik naar intet kraever dig, prik naar noget goer', async () => {
+  it('ingen puls naar intet kraever dig, puls naar noget goer', async () => {
+    // Prikken var statisk og 9 px. Bjørn bad om mærket i bevægelse i stedet:
+    // «animeret puls kan vi lave så den dukker op og forsvinder ved siden af
+    // tilbage pilen». Den vises naar noget kraever dig, og forsvinder naar
+    // intet goer — den er ikke et permanent dekoration.
     const screen = await render(<TopBar {...base} />)
-    expect(screen.queryByTestId('opm-prik')).toBeNull()
+    expect(screen.queryByTestId('opm-puls')).toBeNull()
     await act(async () => udgiv({ tilstand: 'waiting', etiket: 'Venter på dig', antal: { waiting: 1, failed: 0, review: 0, running: 0 }, baggrund: 0, indbakke: 0, fokus: null, punkter: [] }))
-    expect(screen.getByTestId('opm-prik', { includeHiddenElements: true })).toBeTruthy()
-    // Prikken er kun farve — tilstanden staar ogsaa i knappens navn.
+    expect(screen.getByTestId('opm-puls', { includeHiddenElements: true })).toBeTruthy()
+    // Farven er tilstanden — og tilstanden staar ogsaa i knappens navn.
     expect(screen.getByTestId('topbar-venstre').props.accessibilityLabel).toMatch(/Venter på dig$/)
   })
 })

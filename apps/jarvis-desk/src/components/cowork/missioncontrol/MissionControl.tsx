@@ -60,7 +60,9 @@ export function MissionControl({
   extras: CoworkExtras
 }) {
   const [tab, setTab] = useState<Tab>('oversigt')
-  const { runs, failedCount, agents, scheduled, overview } = useMissionControl(config, isOwner)
+  const { runs, failedCount, agents, scheduled, overview, udfald, refresh } =
+    useMissionControl(config, isOwner)
+  const ingenKontakt = udfald.length > 0
 
   const running = runs.filter((r) => {
     const s = String(r.status || '').toLowerCase()
@@ -93,18 +95,37 @@ export function MissionControl({
   const previewQueue = queue.slice(0, 3)
   const previewShare = isOwner ? extras.shareGuard.slice(0, Math.max(0, 3 - previewQueue.length)) : []
 
-  const liveNow = running > 0
+  const liveNow = running > 0 && !ingenKontakt
   return (
     <div className="mc">
       <div className="mc-header">
         <div className="mc-header-title">
           <span className={`mc-live-dot ${liveNow ? 'on' : ''}`} />
           <h2>Mission Control</h2>
-          <span className="mc-header-sub">{liveNow ? `${running} kører nu` : 'alt roligt'}</span>
+          <span className="mc-header-sub">
+            {ingenKontakt ? 'ingen kontakt' : liveNow ? `${running} kører nu` : 'alt roligt'}
+          </span>
         </div>
       </div>
 
-      <SummaryBar counts={counts} onPick={(t) => setTab(t)} />
+      {/* «alt roligt» over fem nuller var det stik modsatte af sandheden naar
+          intet kunne hentes (Codex' punkt 2, 21/9-2026). */}
+      {ingenKontakt && (
+        <div className="mc-udfald" role="alert">
+          <span>Der er ikke kontakt til {udfald.join(' og ')}. Det viste er ikke hele billedet.</span>
+          <button type="button" onClick={() => void refresh()}>Prøv igen</button>
+        </div>
+      )}
+
+      <SummaryBar
+        counts={counts}
+        onPick={(t) => setTab(t)}
+        ukendt={[
+          ...(udfald.includes('kørslerne') ? ['running' as const, 'failed' as const] : []),
+          ...(udfald.includes('agenterne') ? ['agents' as const] : []),
+          ...(udfald.includes('de planlagte opgaver') ? ['scheduled' as const] : []),
+        ]}
+      />
 
       <div className="mc-tabs">
         {tabs.map((t) => (
@@ -139,22 +160,22 @@ export function MissionControl({
             </section>
             <section className="cowork-pane">
               <div className="cowork-pane-head">Seneste kørsler</div>
-              <RunsTable config={config} runs={runs.slice(0, 8)} />
+              <RunsTable config={config} runs={runs.slice(0, 8)} ukendt={udfald.includes('kørslerne')} />
             </section>
             {isOwner && (
               <section className="cowork-pane">
                 <div className="cowork-pane-head">Agenter <span className="cowork-count">{agents.length}</span></div>
-                <AgentRoster agents={agents} />
+                <AgentRoster agents={agents} ukendt={udfald.includes('agenterne')} />
               </section>
             )}
           </div>
         )}
-        {tab === 'runs' && <RunsTable config={config} runs={runs} />}
+        {tab === 'runs' && <RunsTable config={config} runs={runs} ukendt={udfald.includes('kørslerne')} />}
         {tab === 'agenter' && isOwner && (
           <div className="mc-overview">
             <section className="cowork-pane">
               <div className="cowork-pane-head">Agenter <span className="cowork-count">{agents.length}</span></div>
-              <AgentRoster agents={agents} />
+              <AgentRoster agents={agents} ukendt={udfald.includes('agenterne')} />
             </section>
             {/* Rosteret er HVEM der findes; arbejdet er HVAD der koerte. To lag
                 af samme sandhed — de laa foer paa hver sin flade, og det var

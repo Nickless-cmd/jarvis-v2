@@ -421,6 +421,14 @@ button.sidebar-group svg { flex: none; opacity: .7; }
   border-bottom: 1px solid var(--line);
 }
 
+.mc-udfald { display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin: 0 0 12px; padding: 9px 12px; border-radius: 10px; font-size: 13px; line-height: 1.45;
+  background: color-mix(in srgb, var(--error-fg, #ff6b6b) 10%, transparent);
+  color: var(--error-fg, #ff8e8e); }
+.mc-udfald button { background: none; cursor: pointer; font-size: 12px;
+  padding: 3px 10px; border-radius: 7px; color: inherit;
+  border: 1px solid color-mix(in srgb, currentColor 40%, transparent); }
+.mc-udfald button:hover { background: color-mix(in srgb, currentColor 12%, transparent); }
 .transcript-loadfejl { display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
   margin: 0 0 14px; padding: 10px 12px; border-radius: 10px; font-size: 13px; line-height: 1.45;
   background: color-mix(in srgb, var(--error-fg, #ff6b6b) 10%, transparent);

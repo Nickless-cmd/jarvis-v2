@@ -3,8 +3,11 @@ import { StatusChip } from './StatusChip'
 
 /** Agent-roster: hvert kort = én agent med status + mål + token-forbrug. "Opfører mine
  *  baggrunds-agenter sig?" i ét blik. Owner-only (kaldes kun for owner i MC-containeren). */
-export function AgentRoster({ agents }: { agents: McAgent[] }) {
+export function AgentRoster({ agents, ukendt = false }: { agents: McAgent[]; ukendt?: boolean }) {
   if (agents.length === 0) {
+    // «Ingen aktive agenter» er en paastand. Kunne listen ikke hentes, ved vi
+    // det ikke (Codex' punkt 2, 21/9-2026).
+    if (ukendt) return <div className="cowork-empty">Listen kunne ikke hentes — vi ved ikke om der kører agenter.</div>
     return <div className="cowork-empty">Ingen aktive agenter</div>
   }
   return (

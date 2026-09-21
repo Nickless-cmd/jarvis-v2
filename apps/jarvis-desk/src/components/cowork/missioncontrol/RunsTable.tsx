@@ -35,7 +35,9 @@ const SPAND_FOR_FILTER: Record<Exclude<Filter, 'alle'>, KoeSpand> = {
 
 /** Runs-tabel: filtrerbar liste over kørsler; klik en række → drill-down (RunDetail).
  *  Landingsfladen for "hvad sker der". */
-export function RunsTable({ config, runs }: { config: ApiConfig | undefined; runs: McRun[] }) {
+export function RunsTable({ config, runs, ukendt = false }: {
+  config: ApiConfig | undefined; runs: McRun[]; ukendt?: boolean
+}) {
   const [filter, setFilter] = useState<Filter>('alle')
   const [selected, setSelected] = useState<string | null>(null)
 
@@ -67,7 +69,11 @@ export function RunsTable({ config, runs }: { config: ApiConfig | undefined; run
       </div>
 
       {shown.length === 0 ? (
-        <div className="cowork-empty">Ingen kørsler</div>
+        <div className="cowork-empty">
+          {ukendt
+            ? 'Kørslerne kunne ikke hentes — vi ved ikke om der kører noget.'
+            : 'Ingen kørsler'}
+        </div>
       ) : (
         <div className="mc-table">
           {shown.map((r) => (

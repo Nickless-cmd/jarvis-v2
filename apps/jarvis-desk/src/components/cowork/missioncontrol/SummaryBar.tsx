@@ -13,10 +13,16 @@ export interface SummaryCounts {
 export function SummaryBar({
   counts,
   onPick,
+  ukendt = [],
 }: {
   counts: SummaryCounts
   onPick?: (tab: 'runs' | 'godkendelser' | 'planlagt' | 'agenter') => void
+  /** De taellere vi IKKE kunne hente. De viser «—», ikke 0 — et tal vi ikke
+   *  har er ikke det samme som ingenting (Codex' punkt 2, 21/9-2026). */
+  ukendt?: ('running' | 'failed' | 'scheduled' | 'agents')[]
 }) {
+  const vis = (n: keyof SummaryCounts, v: string | number) =>
+    ukendt.includes(n as 'running' | 'failed' | 'scheduled' | 'agents') ? '—' : v
   const cell = (
     label: string, value: string | number, tone: string,
     tab?: 'runs' | 'godkendelser' | 'planlagt' | 'agenter',
@@ -33,11 +39,12 @@ export function SummaryBar({
   )
   return (
     <div className="mc-summary">
-      {cell('kører', counts.running, 'blue', 'runs')}
-      {cell('fejlet', counts.failed, counts.failed > 0 ? 'red' : 'gray', 'runs')}
+      {cell('kører', vis('running', counts.running), 'blue', 'runs')}
+      {cell('fejlet', vis('failed', counts.failed),
+        counts.failed > 0 && !ukendt.includes('failed') ? 'red' : 'gray', 'runs')}
       {cell('afventer', counts.pendingApprovals, counts.pendingApprovals > 0 ? 'amber' : 'gray', 'godkendelser')}
-      {cell('planlagt', counts.scheduled, 'gray', 'planlagt')}
-      {cell('agenter', counts.agents, 'gray', 'agenter')}
+      {cell('planlagt', vis('scheduled', counts.scheduled), 'gray', 'planlagt')}
+      {cell('agenter', vis('agents', counts.agents), 'gray', 'agenter')}
       {counts.costUsd !== undefined && cell('pris', `$${counts.costUsd.toFixed(2)}`, 'gray')}
     </div>
   )

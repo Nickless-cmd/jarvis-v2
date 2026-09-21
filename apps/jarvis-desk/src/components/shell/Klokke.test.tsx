@@ -1,5 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
+import { _saetUr, _nulstil, vaagn, maaPolle, ROLIG_EFTER_MS } from '../../lib/ro'
 
 const hent = vi.fn()
 vi.mock('../../lib/notifikationerApi', () => ({
@@ -33,6 +34,16 @@ describe('Klokke', () => {
     hent.mockReset()
     hent.mockResolvedValue({ poster: [], antal: 0 })
     sockets.length = 0
+  })
+
+  // `ro.ts` bruger et modul-globalt ur (`_saetUr`) og modul-global
+  // ro-tilstand (`sidsteLivstegn`, `sidstePoll`). En test der laaner uret til
+  // at simulere et roligt vindue SKAL lave det om igen bagefter — ellers
+  // arver naeste test (i denne fil, ELLER en anden fil der koerer i samme
+  // worker) et fastfrosset ur og en falsk "roligt siden altid"-tilstand.
+  afterEach(() => {
+    _saetUr(() => Date.now())
+    _nulstil()
   })
 
   it('viser ingen taeller naar der intet er', async () => {
@@ -118,6 +129,47 @@ describe('Klokke', () => {
     await waitFor(() => expect(hent).toHaveBeenCalledTimes(1))
     expect(screen.queryByTestId('klokke-taeller')).toBeNull()
 
+    const s = sockets[sockets.length - 1]!
+    s.onmessage?.({ data: JSON.stringify({ kind: 'notifikation.ny' }) })
+
+    expect(await screen.findByTestId('klokke-taeller')).toHaveTextContent('3')
+  })
+
+  // Selve hullet i opgave 10: kommentaren i Klokke.tsx paastaar at `hentNu`
+  // (udloest af WS'en) gaar UDENOM ro-loftet (`maaPolle`). Men i jsdom er
+  // `document.visibilityState` altid "visible" og `sidsteLivstegn` altid
+  // frisk, saa `roFaktor()` er altid 1 — og ved faktor 1 siger `maaPolle`
+  // ALTID ja med det samme. Loftet er dermed aldrig reelt i kraft i denne
+  // testfil, og testen ovenfor ("opdaterer taelleren...") kan ikke skelne
+  // "gik udenom loftet" fra "gik igennem et loft der alligevel sagde ja" —
+  // paakket man `hentNu()` ind i `if (maaPolle(...)) hentNu()` i Klokke.tsx,
+  // bestaar den testen stadig.
+  //
+  // Denne test tvinger loftet reelt i kraft med modulets egen test-krog
+  // (`_saetUr` — "Kunstigt ur i test.") frem for at pille ved
+  // `document.visibilityState`: det sidste er en anden kodesti (erSkjult)
+  // end den denne kommentar i Klokke.tsx handler om, og kraever at overskrive
+  // en read-only DOM-getter i jsdom, hvilket er skroebeligt at rydde op
+  // efter. `_saetUr` + `vaagn()` rammer praecis den gren `maaPolle` selv
+  // bruger (tid siden sidste livstegn), og ryddes op igen i `afterEach`.
+  it('haendelsen gaar UDENOM ro-loftet — et poll i samme oejeblik ville vaere blokeret', async () => {
+    let ur = 1_000_000_000
+    _saetUr(() => ur)
+    vaagn() // sidsteLivstegn = ur (frisk), sidstePoll ryddet
+    ur += ROLIG_EFTER_MS + 1_000 // roFaktor() er fra nu af FAKTOR_RO — loftet er reelt i kraft
+
+    hent.mockResolvedValueOnce({ poster: [], antal: 0 })
+       .mockResolvedValue({ poster: [], antal: 3 })
+    render(<Klokke config={cfg} onAaben={() => {}} />)
+    await waitFor(() => expect(hent).toHaveBeenCalledTimes(1))
+    expect(screen.queryByTestId('klokke-taeller')).toBeNull()
+
+    // Bevis at loftet reelt blokerer NU — ikke kun at vi haaber det: et
+    // almindeligt poll-kald for samme noegle, i samme oejeblik, er blokeret
+    // (forlaenget interval 60s, 0ms gaaet siden mount-kaldet ovenfor).
+    expect(maaPolle('notifikationer', 8000)).toBe(false)
+
+    // Alligevel skal WS-haendelsen komme igennem.
     const s = sockets[sockets.length - 1]!
     s.onmessage?.({ data: JSON.stringify({ kind: 'notifikation.ny' }) })
 

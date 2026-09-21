@@ -1562,15 +1562,53 @@ def test_feeden_afstemmer_selv(isolated_runtime, monkeypatch) -> None:
     assert poster[0]["kan_afgoere"] is True
 
 
-def test_koerslens_udfald_kalder_emitteren() -> None:
-    import core.services.visible_runs_sections.run_finalization as m
-    kilde = inspect.getsource(m)
-    assert "notifikations_emittere" in kilde
-    assert "paa_koersel_fejlet" in kilde
-    assert "paa_koersel_faerdig" in kilde
+def test_en_fejlet_koersel_giver_en_raekke(isolated_runtime, monkeypatch) -> None:
+    """KALDER finalize_in_flight rigtigt. En kilde-vagt der greber efter en
+    streng maaler naesten ingenting — den ville vaere groen ogsaa hvis kaldet
+    stod i en gren der aldrig naas."""
+    from core.runtime.db import connect
+    from core.services import notification_router
+    from core.services import notifikationer as n
+    from core.services.visible_runs_sections.run_finalization import finalize_in_flight
+
+    monkeypatch.setattr(notification_router, "route_proactive_notification",
+                        lambda *a, **kw: {"delivered": True, "channel": "push",
+                                          "target": "bjorn", "fallback_used": False})
+    with connect() as conn:
+        conn.execute("INSERT INTO chat_sessions (id, user_id, title) VALUES (?,?,?)",
+                     ("s-1", "bjorn", "Kæledyret"))
+        conn.commit()
+
+    finalize_in_flight(run_id="r-1", session_id="s-1", status="failed_terminal",
+                       error="noget braekkede")
+
+    raekker = n.aabne("bjorn", er_owner=True)
+    assert [r["slags"] for r in raekker] == ["run_failed"]
+    assert "Kæledyret" in raekker[0]["titel"]
+
+
+def test_en_faerdig_koersel_giver_den_anden_slags(isolated_runtime, monkeypatch) -> None:
+    from core.runtime.db import connect
+    from core.services import notification_router
+    from core.services import notifikationer as n
+    from core.services.visible_runs_sections.run_finalization import finalize_in_flight
+
+    monkeypatch.setattr(notification_router, "route_proactive_notification",
+                        lambda *a, **kw: {"delivered": False, "channel": "none",
+                                          "target": "", "fallback_used": False})
+    with connect() as conn:
+        conn.execute("INSERT INTO chat_sessions (id, user_id, title) VALUES (?,?,?)",
+                     ("s-1", "bjorn", "Kæledyret"))
+        conn.commit()
+
+    finalize_in_flight(run_id="r-2", session_id="s-1", status="completed")
+    assert [r["slags"] for r in n.aabne("bjorn", er_owner=True)] == ["run_done"]
 
 
 def test_release_vagten_kalder_emitteren() -> None:
+    """Denne ENE er en kilde-vagt med vilje: at koere vagten rigtigt kraever et
+    kald ud af huset til GitHub. Den maaler kun at ledningen findes — selve
+    adfaerden er daekket af emitter-testene."""
     import apps.api.jarvis_api.routes.app_release as m
     assert "notifikations_emittere" in inspect.getsource(m)
 ```
@@ -1692,7 +1730,7 @@ Brug det variabelnavn versionen har på stedet — find det med
 - [ ] **Step 7: Run test to verify it passes**
 
 Run: `/opt/conda/envs/ai/bin/python -m pytest tests/test_notifikations_kobling.py -q`
-Expected: PASS, 6 tests
+Expected: PASS, 7 tests
 
 - [ ] **Step 8: Kør HELE suiten — `finalize_in_flight` er en meget varm sti**
 

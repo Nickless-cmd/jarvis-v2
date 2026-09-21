@@ -7,7 +7,9 @@ Phase 1 (denne fil): basic text-flow translation
 - done → content_block_stop + message_delta + message_stop
 - heartbeat → skip (v2 har sin egen ping)
 
-Phase 2 (senere): tool_use blocks, thinking_delta, partial input_json_delta.
+Phase 2 er LEVERET: tool_use-blokke, thinking_delta (se `thinking_delta`
+nedenfor) og partial input_json_delta oversættes alle. Linjen her sagde
+«senere» indtil 21/9-2026, hvor den blev efterprøvet mod koden.
 
 Forbruger output fra core.services.visible_runs.start_visible_run() der
 yielder SSE-formaterede strenge i legacy-format. Parser dem, oversætter

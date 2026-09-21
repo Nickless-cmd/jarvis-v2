@@ -104,7 +104,8 @@ export function JarvisBrowserPanel({ aaben }: { aaben: boolean }) {
       <div className="jbrowser-faner" role="tablist" aria-label="Jarvis faner">
         <ListeTilstand
           henter={henter}
-          fejl={fejl}
+          fejl={Boolean(fejl)}
+          navn="fanerne"
           antal={faner.length}
           tomTekst=""
           onIgen={fejl ? hentFaner : null}

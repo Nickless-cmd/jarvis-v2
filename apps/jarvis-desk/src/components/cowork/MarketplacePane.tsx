@@ -112,7 +112,8 @@ export function MarketplacePane({ config }: { config?: ApiConfig }) {
 
       <ListeTilstand
         henter={henter}
-        fejl={fejl}
+        fejl={Boolean(fejl)}
+          navn="listen"
         antal={visible.length}
         tomTekst={q ? 'Ingen apps matcher din søgning.' : 'Ingen apps tilgængelige endnu.'}
         onIgen={fejl ? () => { setHenter(true); void refresh() } : null}

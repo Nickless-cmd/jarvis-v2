@@ -1,57 +1,45 @@
-# jarvis-desk — Stub- & TODO-log
+# jarvis-desk — hvad der stadig mangler
 
-Steder hvor foundation-buildet bevidst efterlod en stub eller delvis
-implementation. Skal færdiggøres i de relevante mode-specs (Chat/Cowork/Code/
-Memory/Scheduling) eller egne opgaver. Opdateres løbende.
+Steder hvor der bevidst blev efterladt en stub. **Afstemt mod koden
+21/9-2026** efter Codex' punkt 5: listen kaldte fem ting for mangler som
+for længst var leveret, og det gør en huskeliste værre end ingen.
 
-## Composer
-- ✅ **Attachment-vision LØST 2026-06-11:** v2-stream prepender nu samme
-  `analyze_image`-direktiv som v1 (delt `apply_attachment_context` i
-  `routes/attachments.py`). Jarvis kalder analyze_image(image_path=server_path) og
-  ser billedet via vision-modellen. Deployet til containeren.
-  - Resterende: billed-thumbnails i bruger-boblen bruger blob:-object-URL (kun i
-    denne session); efter reload loades de fra serveren via `/attachments/{id}`.
-    Verificér at getSession returnerer image-blocks for historiske beskeder.
-- **Plugins** (`[+]`-menu): ren placeholder, lukker bare menuen. → senere.
-- **Planlægningstilstand** (`[+]`-menu toggle): gemmer kun lokal state; backend
-  plan-mode-flag findes ikke endnu. → Chat-spec / backend.
+Hver linje herunder er efterprøvet i koden, ikke husket. Står der noget her
+om et halvt år som er lavet, er det denne fils skyld — ikke læserens.
 
-## Beskeder
-- **Pin som kapitel** (`MessageActions.tsx`): lokal visuel markering (toggle).
-  Kræver et kapitel/bookmark-koncept i backend for at være rigtigt brugbart.
-  → senere.
+## Stadig ikke lavet
 
-## Sessioner
-- **Session "..."-menu** (`Sidebar`): omdøb/slet kræver server-endpoints
-  (kun createSession findes pt.). Eksport er klient-side. → afklar API.
+- **Plugins i `[+]`-menuen** (`Composer.tsx:730`) er en ren attrap:
+  `onClick={() => setMenuOpen(false)}`. Knappen lukker menuen og gør intet
+  andet.
+- **Planlægningstilstand** (`[+]`-menuen) lever kun i klienten. `planMode`
+  sendes ikke med i `streamClient.ts`, og serveren kender ikke feltet — målt
+  21/9-2026: nul forekomster i `routes/chat.py`.
+- **Pin som kapitel** (`MessageActions.tsx`) er en lokal visuel markering.
+  Der findes intet kapitel-begreb i backenden at hænge den op på.
+- **Virtualisering af transcript**: ikke implementeret. Store samtaler
+  renderer alle beskeder på én gang. Målt: intet windowing-bibliotek og
+  ingen egen implementering i chat-komponenterne.
+- **Rolle-skopet indhold** i Memory/Scheduling håndhæves ikke server-side —
+  kun klientens rolle er eksponeret.
+- **Proaktiv outreach fra desk**: appen er request-scoped og kan ikke nås når
+  den er minimeret. (Push-vejen dækker mobilen, ikke desk-vinduet.)
+- **Fejl-tilstand i de resterende lister** (Codex' punkt 2, 21/9-2026): målt
+  18 datahentende lister, 14 uden fejl-tilstand. `ListeTilstand` findes nu og
+  er taget i brug to steder; de øvrige tolv mangler.
 
-## Performance
-- **Virtualisering** af transcript: ikke implementeret. Store sessioner renderer
-  alle beskeder på én gang (tungt ved load). memo + tool-filter afhjælper, men
-  ægte fix er windowing. → constraint noteret i foundation-spec.
+## Leveret — stod fejlagtigt som mangler
 
-## Rolle-skopering (server-kontrakt)
-- **Memory/Scheduling**: rolle-skopet INDHOLD (member vs owner) håndhæves ikke
-  server-side endnu — kun klient-rolle eksponeret. → Memory-spec + Scheduling-spec.
+Efterprøvet 21/9-2026, hver med sit bevis:
 
-## Proaktiv outreach
-- jarvis-desk er request-scoped; Jarvis kan ikke nå brugeren proaktivt når appen
-  er minimeret. → egen spec (Q1 i foundation-planen).
+| Påstand i den gamle liste | Virkeligheden |
+|---|---|
+| «Mac + Windows builds» mangler | Release 0.6.64 har `.dmg`, universal-mac `.zip` OG to Windows-artefakter |
+| «Ring-only systray» mangler | Puls-mærket i bakken, 40 animationsbilleder |
+| Omdøb/slet af sessioner mangler endpoints | `PUT /sessions/{id}/rename` og `DELETE /sessions/{id}` findes |
+| `thinking_delta` er «stadig Phase 1» | Oversættes i `visible_runs_sse_v2.py:553` |
+| Attachment-vision «resterende» | Løst 11/6-2026, deployet |
 
-## v2-stream Phase 2 — ✅ LØST 2026-06-12
-- **Tool-leak:** Rod-årsag var IKKE ustrukturerede tool-events (capability-events
-  bærer ingen tekst) — det var **modellen der selv ekkoede** rå tool-format i svaret.
-  Fix: (A1) prompt-instruks mod ekko + (A2) `ToolEchoFilter` i translatoren der dropper
-  `[<kendt_tool>]:`-linjer i streamen. Begge live på containeren.
-- **Phase 2 tool_use-blokke:** `visible_runs_sse_v2.translate_to_v2` oversætter nu
-  capability tool_result/capability → `tool_use` content-blocks (start + input_json_delta
-  + stop) + system_event(tool_result) m. status. ToolCard renderer dem (var allerede wiret).
-- **Preview-panel fil-detektion:** `detectArtifacts` binder nu fil-artifacts til FAKTISKE
-  tool_use-kald (target_path/file_path/path) i stedet for tekst-regex → ingen ophobning
-  af tilfældige prosa-stier.
-  - Spec: docs/superpowers/specs/2026-06-12-v2-stream-phase2-toolblocks-design.md
-
-## v2-stream — resterende (senere)
-- thinking_delta-oversættelse (reasoning-blokke) i translatoren er stadig Phase 1.
-- Mac + Windows builds af jarvis-desk.
-- Ring-only systray (pulsing/dot — Jarvis' ønske).
+De afsluttede v2-stream-afsnit er fjernet helt. En log over hvad der ER
+lavet, hører til i commit-historikken; den her fil skal kunne læses som «hvad
+mangler», ellers bliver den ikke læst.

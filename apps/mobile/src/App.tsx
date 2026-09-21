@@ -25,6 +25,7 @@ import {
 import { startPresenceReporting } from './lib/presence'
 import { loadBatterySaver } from './lib/batteryPrefs'
 import { checkForUpdate, type UpdateManifest } from './lib/appUpdate'
+import { startReleaseLytter } from './lib/releaseLytter'
 import { downloadAndInstall } from './lib/installApk'
 import { UpdateBanner } from './components/UpdateBanner'
 import { ErrorBoundary } from './components/ErrorBoundary'
@@ -161,7 +162,14 @@ function AppBody() {
     })()
   }, [config?.authToken])
 
-  // Auto-updater: check ved opstart + når app vender tilbage til forgrunden.
+  // Auto-updater: check ved opstart, når app vender tilbage til forgrunden —
+  // og når serveren SIGER der er en ny (Bjørn 21/9-2026).
+  //
+  // De to første var alt der fandtes, og derfor skulle man ud og ind af appen
+  // før en ny version overhovedet blev opdaget. Serveren har hele tiden lagt
+  // `app.release.available` på event-bussen; desk lyttede med siden 20/9,
+  // mobilen gjorde ikke. Nu gør den. Opstart og forgrund bliver stående som
+  // sikkerhedsnet hvis forbindelsen er nede.
   useEffect(() => {
     if (!config?.authToken) return
     const installedVc = Number(Application.nativeBuildVersion ?? '0') || 0
@@ -174,7 +182,12 @@ function AppBody() {
     const sub = AppState.addEventListener('change', (s) => {
       if (s === 'active') run()
     })
-    return () => sub.remove()
+    const lytter = startReleaseLytter({
+      apiBaseUrl: config.apiBaseUrl,
+      authToken: config.authToken,
+      onRelease: run,
+    })
+    return () => { sub.remove(); lytter.stop() }
   }, [config?.authToken])
 
   const onUpdate = () => {

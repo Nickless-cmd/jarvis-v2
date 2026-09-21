@@ -88,8 +88,20 @@ def test_exec_stien_pakker_STADIG_ind_naar_bwrap_virker(monkeypatch):
 
 
 def test_kan_koere_caches(monkeypatch):
-    """En exec pr. opslag er for dyrt — maaleren kaldes fra bogfoeringen."""
+    """En exec pr. opslag er for dyrt — maaleren kaldes fra bogfoeringen.
+
+    Forudsaetningen skal siges hoejt: testen maaler at opslaget RAMMER
+    subprocess og bagefter caches. Er bwrap ikke installeret, vender
+    `kan_koere()` tilbage foer exec'en, og testen maaler 0 kald i stedet for
+    1. Det skete paa GitHub-runnere, hvor bwrap ikke findes — jobbet
+    `python-vagter` var roedt fra 20/9 til 21/9-2026 uden at nogen test i
+    virkeligheden var i stykker.
+
+    Derfor simuleres en maskine MED bwrap gennem `shutil.which` — det er
+    modulets eget seam, og `is_available()` bygger paa det samme opslag.
+    """
     bs._KAN_KOERE_CACHE = None
+    monkeypatch.setattr("shutil.which", lambda navn: "/bin/true" if navn == "bwrap" else None)
     kald = []
     ægte = __import__("subprocess").run
 
@@ -106,8 +118,16 @@ def test_kan_koere_caches(monkeypatch):
 
 
 def test_kan_koere_giver_grunden_med(monkeypatch):
-    """En rapport uden grund sender nogen paa jagt i det forkerte lag."""
+    """En rapport uden grund sender nogen paa jagt i det forkerte lag.
+
+    Samme forudsaetning som cachen-testen: uden bwrap paa maskinen kommer
+    grunden fra den tidlige retur («bwrap findes ikke paa PATH») og aldrig fra
+    det subprocess-svar denne test vil undersoege — saa maaler man noget
+    andet end man tror. Derfor simuleres en maskine MED bwrap gennem
+    `shutil.which`, som cachen-testen.
+    """
     bs._KAN_KOERE_CACHE = None
+    monkeypatch.setattr("shutil.which", lambda navn: "/usr/bin/bwrap" if navn == "bwrap" else None)
 
     class Svar:
         returncode = 1

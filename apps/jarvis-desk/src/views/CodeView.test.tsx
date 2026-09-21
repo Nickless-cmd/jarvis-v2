@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { render, screen, fireEvent, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { CodeView } from './CodeView'
+import { skaermFor } from '../lib/skaermRegister'
 import { StreamProvider } from '../contexts/StreamContext'
 import { SettingsProvider } from '../contexts/SettingsContext'
 import { SessionProvider } from '../contexts/SessionContext'
@@ -148,5 +149,28 @@ describe('CodeView', () => {
     expect(document.querySelector('.jbrowser')).not.toBeInTheDocument()
     await userEvent.click(knap)
     expect(document.querySelector('.jbrowser')).toBeInTheDocument()
+  })
+
+  // Fejlen opstod i fletningen 21/9: Jarvis byggede view-request-kanalen og
+  // jeg byggede den fulde visning, samme aften, hver for sig. Begge var
+  // rigtige alene. Sammen kunne kanalen lukke en rude uden at slippe dens
+  // fulde visning — og saa stod skinnen TOM, fordi de to andre ruder var
+  // gemt bag en rude der ikke fandtes mere.
+  it('slipper den fulde visning naar kanalen lukker ruden — ellers staar skinnen tom', async () => {
+    wrap(<CodeView sessionId="s1" userName="B" role="owner" />)
+    const knap = await screen.findByRole('button', { name: "Vis/skjul Jarvis' browser" })
+    await userEvent.click(knap)
+    await userEvent.click(await screen.findByRole('button', { name: 'Fuld visning' }))
+    expect(document.querySelector('.code-right-stack.er-fuld')).toBeInTheDocument()
+
+    // Jarvis lukker den gennem kanalen, ikke med krydset.
+    const reg = skaermFor('s1')
+    expect(reg).toBeDefined()
+    act(() => { reg!.luk('browser') })
+
+    expect(document.querySelector('.jbrowser')).not.toBeInTheDocument()
+    // Aabner vi baggrundsjob nu, SKAL den kunne ses.
+    await userEvent.click(screen.getByRole('button', { name: 'Vis/skjul baggrundsjob' }))
+    expect(await screen.findByRole('complementary', { name: 'Baggrundsjob' })).toBeInTheDocument()
   })
 })

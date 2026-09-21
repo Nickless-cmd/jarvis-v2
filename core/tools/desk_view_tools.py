@@ -23,7 +23,7 @@ from typing import Any
 
 from core.runtime.db_view_requests import opret, vent_paa_svar
 
-PANELER = ("diff", "file", "terminal", "tasks", "artifact", "pr", "plan")
+PANELER = ("diff", "file", "terminal", "tasks", "browser", "artifact", "pr", "plan")
 #: Desk poller hvert ~1,5 s; to omgange plus luft.
 FRIST_S = 5.0
 
@@ -108,7 +108,8 @@ DESK_VIEW_TOOL_DEFINITIONS: list[dict[str, Any]] = [
                 "Show one of this conversation's side panes in the user's jarvis-desk window, beside "
                 "the conversation. Panes: \"diff\" (the changes; optional `path` scrolls to that "
                 "file), \"file\" (`path` opens that file in the file pane — code mode, or preview in "
-                "chat), \"terminal\" (code mode only), \"tasks\" (background jobs). \"artifact\", "
+                "chat), \"terminal\" (code mode only), \"tasks\" (background jobs), \"browser\" "
+                "(Jarvis' own web view — see the `jarvis_browser_*` tools). \"artifact\", "
                 "\"pr\" and \"plan\" are not panes in desk; the answer says so.\n\n"
                 "Prefer showing over describing: after finishing a set of edits, show the diff; when "
                 "pointing the user at code, open the file. It only changes what is on screen for "

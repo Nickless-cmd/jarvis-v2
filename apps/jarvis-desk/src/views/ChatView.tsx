@@ -736,8 +736,8 @@ export function ChatView({
   // skærmen for denne samtale, og hvordan åbnes/lukkes panelerne. Tilstanden
   // læses gennem en ref, så opslaget ser NU — ikke hvad der gjaldt ved
   // registreringen.
-  const skaermNu = useRef({ changesOpen, jobsOpen, preview: panel.open })
-  skaermNu.current = { changesOpen, jobsOpen, preview: panel.open }
+  const skaermNu = useRef({ changesOpen, jobsOpen, preview: panel.open, browserOpen })
+  skaermNu.current = { changesOpen, jobsOpen, preview: panel.open, browserOpen }
   useEffect(() => {
     if (!sessionId) return
     return registrerSkaerm({
@@ -745,7 +745,7 @@ export function ChatView({
       flade: 'chat',
       aabne: () => {
         const t = skaermNu.current
-        return [t.changesOpen && 'diff', t.jobsOpen && 'tasks', t.preview && 'preview'].filter(Boolean) as string[]
+        return [t.changesOpen && 'diff', t.jobsOpen && 'tasks', t.preview && 'preview', t.browserOpen && 'browser'].filter(Boolean) as string[]
       },
       vis: (p, a) => {
         if (p === 'diff') { setChangesOpen(true); if (a.path) setFokusFil(a.path); return null }
@@ -755,13 +755,22 @@ export function ChatView({
           panel.open_({ kind: 'file', title: a.path.split('/').pop() || a.path, filePath: a.path })
           return null
         }
+        if (p === 'browser') { setBrowserOpen(true); return null }
         if (p === 'terminal') return 'Terminalen findes kun i kode-tilstand.'
         return IKKE_I_DESK[p as keyof typeof IKKE_I_DESK] ?? `Ukendt panel: ${p}`
       },
+      // Lukker Jarvis en rude gennem kanalen, skal dens FULDE visning også
+      // slippe. Uden det blev `fuldRude` stående på en rude der var væk, og
+      // de to andre var stadig gemt bag den — skinnen stod tom. Fejlen
+      // opstod i fletningen 21/9: view-request-kanalen og den fulde visning
+      // blev bygget hver for sig og var begge rigtige alene.
       luk: (p) => {
+        const rude = p === 'diff' ? 'changes' : p === 'tasks' ? 'jobs' : p === 'browser' ? 'browser' : ''
+        if (rude) setFuldRude((v) => (v === rude ? '' : v))
         if (p === 'diff') setChangesOpen(false)
         else if (p === 'tasks') setJobsOpen(false)
         else if (p === 'file') panel.close()
+        else if (p === 'browser') setBrowserOpen(false)
         return null
       },
     })

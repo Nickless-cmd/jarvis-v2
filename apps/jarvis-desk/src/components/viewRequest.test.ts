@@ -37,6 +37,22 @@ describe('udfoer', () => {
     const s = skaerm({ aabne: () => ['diff', 'tasks'] })
     expect(udfoer({ id: 'v4', op: 'close_pane', args: { pane: 'diff' }, session_id: 's1' }, s).open_panes).toEqual(['tasks'])
   })
+
+  // Jarvis' egen browser (21/9-2026). Den var ikke et panel i kanalen, saa
+  // `jarvis_browser_open` oprettede en fane INGEN kunne se: `synlig: false`,
+  // nul bounds. Maalt samme aften — fanen fandtes, panelet gjorde ikke.
+  it('show_pane «browser»: webvisningen er et panel som de andre', () => {
+    const s = skaerm({ aabne: () => [] })
+    const ud = udfoer({ id: 'v5', op: 'show_pane', args: { pane: 'browser' }, session_id: 's1' }, s)
+    expect(s.vis).toHaveBeenCalledWith('browser', { path: undefined, line: undefined })
+    expect(ud.open_panes).toEqual(['browser'])
+    expect(ud.error).toBeUndefined()
+  })
+
+  it('close_pane «browser»: panelet lukkes igen', () => {
+    const s = skaerm({ aabne: () => ['browser'] })
+    expect(udfoer({ id: 'v6', op: 'close_pane', args: { pane: 'browser' }, session_id: 's1' }, s).open_panes).toEqual([])
+  })
 })
 
 describe('registret', () => {

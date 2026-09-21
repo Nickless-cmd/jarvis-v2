@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Animated, Dimensions, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Activity, Boxes, Eye, Image as ImageIcon, MessageCircle, MessagesSquare, MoreVertical, Pin, Search, Settings, SlidersHorizontal, SquarePen, Terminal } from 'lucide-react-native'
+import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg'
+import { Activity, Boxes, Code2, Eye, Image as ImageIcon, MessageCircle, MessageSquare, MessagesSquare, MoreVertical, Pin, Search, Settings, SlidersHorizontal, SquarePen, Terminal } from 'lucide-react-native'
 import { formatRelativeDate } from '../lib/relativeDate'
-import { HeartbeatDot } from './HeartbeatDot'
+import { AnimeretPuls } from './AnimeretPuls'
 import { PulsIkon } from './PulsIkon'
 import type { ChatSession } from '../lib/types'
 import { tokens } from '../theme/tokens'
@@ -41,6 +42,40 @@ function Felt({
   )
 }
 
+/**
+ * Fade i enden af en session-titel (Bjørn 21/9-2026: «enden af sessions
+ * navnet skal have fade som i desk»).
+ *
+ * Desk løser det med `mask-image: linear-gradient(to right, #000 calc(100% -
+ * 30px), transparent)` på titlen. Den regel har ingen pendant her: hverken
+ * `@react-native-masked-view/masked-view` eller `expo-linear-gradient` er
+ * installeret. `react-native-svg` ER — og en gradient fra transparent til
+ * rækkens EGEN baggrund giver samme virkning: teksten glider ud i fladen
+ * frem for at blive klippet med en hård kant.
+ *
+ * `farve` er derfor BAGGRUNDEN, ikke tekstfarven. Rækken skifter mellem bg0
+ * og bg3 (aktiv), og et overlay i den forkerte af dem ville ses som en plet.
+ */
+function FadeKant({ farve, bredde = 28 }: { farve: string; bredde?: number }) {
+  const styles = useStyles(makestyles)
+  return (
+    <Svg
+      testID="session-fade"
+      pointerEvents="none"
+      width={bredde}
+      height="100%"
+      style={styles.fadeKant}
+    >
+      <Defs>
+        <LinearGradient id="titelFade" x1="0" y1="0" x2="1" y2="0">
+          <Stop offset="0" stopColor={farve} stopOpacity="0" />
+          <Stop offset="1" stopColor={farve} stopOpacity="1" />
+        </LinearGradient>
+      </Defs>
+      <Rect x="0" y="0" width="100%" height="100%" fill="url(#titelFade)" />
+    </Svg>
+  )
+}
 
 export function SidePanel({
   open,
@@ -264,49 +299,76 @@ export function SidePanel({
             {filtered.length === 0 ? (
               <Text style={styles.empty}>{query ? t('side.noMatches') : t('side.noConversations')}</Text>
             ) : (
-              filtered.map((session) => (
-                <Pressable
-                  key={session.id}
-                  accessibilityRole="button"
-                  onPress={() => onSelectSession(session.id)}
-                  style={({ pressed }) => [
-                    styles.sessionRow,
-                    session.id === activeId ? styles.sessionActive : null,
-                    pressed ? styles.pressed : null
-                  ]}
-                >
-                  <Text style={styles.sessionTitle} numberOfLines={1}>
-                    {session.title || t('side.newConversation')}
-                  </Text>
-                  <Text style={styles.sessionMeta}>
-                    {formatRelativeDate(session.updated_at, now)} · {t('side.messageCount', { count: session.message_count ?? 0 })}
-                  </Text>
-                  <View style={styles.sessionIndicator}>
-                    {session.pinned ? (
-                      <Pin size={11} color={tokens.color.fg3} strokeWidth={2} />
-                    ) : null}
-                    {workingIds.includes(session.id) ? (
-                      <HeartbeatDot size={8} />
-                    ) : unreadIds[session.id] ? (
-                      <View style={styles.unreadDot} />
-                    ) : null}
-                    {onSessionAction ? (
-                      // Egen Pressable OVENPAA raekken, ikke inde i dens onPress:
-                      // et tryk paa prikkerne maa ikke ogsaa aabne samtalen.
-                      <Pressable
-                        testID={`session-menu-${session.id}`}
-                        accessibilityRole="button"
-                        accessibilityLabel={t('side.sessionActions', { title: session.title || t('side.newConversation') })}
-                        hitSlop={10}
-                        onPress={() => setMenuFor(session)}
-                        style={styles.prikker}
-                      >
-                        <MoreVertical size={16} color={tokens.color.fg3} strokeWidth={2} />
-                      </Pressable>
-                    ) : null}
-                  </View>
-                </Pressable>
-              ))
+              filtered.map((session) => {
+                const aktiv = session.id === activeId
+                const arbejder = workingIds.includes(session.id)
+                const ulaest = Boolean(unreadIds[session.id])
+                // Taggets farve foelger desk's trappe: daempet i ro, fuld
+                // accent paa den aktive raekke (desk: color-mix 60% -> accent).
+                const tagFarve = aktiv ? tokens.color.accent : tokens.color.accentDim
+                return (
+                  <Pressable
+                    key={session.id}
+                    accessibilityRole="button"
+                    onPress={() => onSelectSession(session.id)}
+                    style={({ pressed }) => [
+                      styles.sessionRow,
+                      aktiv ? styles.sessionActive : null,
+                      pressed ? styles.pressed : null
+                    ]}
+                  >
+                    <View style={styles.sessionHoved}>
+                      {/* 1. Typen staar FAST til venstre (desk 20/9-2026).
+                          Foer havde raekken intet tag, saa en code-session laa
+                          i samme liste som en chat uden at nogen kunne se
+                          hvilken der var hvilken. */}
+                      <View testID={`session-tag-${session.kind === 'code' ? 'code' : 'chat'}`}>
+                        {session.kind === 'code'
+                          ? <Code2 size={13} color={tagFarve} strokeWidth={2.2} />
+                          : <MessageSquare size={13} color={tagFarve} strokeWidth={2.2} />}
+                      </View>
+                      {/* 2. Titlen fader ud i fladen i stedet for at blive
+                          klippet med en haard kant (desk: mask-image). */}
+                      <View style={styles.titelRamme}>
+                        <Text style={styles.sessionTitle} numberOfLines={1}>
+                          {session.title || t('side.newConversation')}
+                        </Text>
+                        <FadeKant farve={aktiv ? tokens.color.bg3 : tokens.color.bg0} />
+                      </View>
+                      {/* 3. Pulsen, ikke prikken — og paa sin EGEN plads FOER
+                          menuen. Foer laa prikken absolut OVEN over de tre
+                          prikker, saa de to signaler stod oven paa hinanden. */}
+                      {arbejder || ulaest ? (
+                        <View testID={arbejder ? 'session-puls-arbejder' : 'session-puls-ulaest'}>
+                          {arbejder
+                            ? <AnimeretPuls size={14} farve={tokens.color.accent} />
+                            : <PulsIkon size={14} color={tokens.color.accent} />}
+                        </View>
+                      ) : null}
+                      {session.pinned ? (
+                        <Pin size={11} color={tokens.color.fg3} strokeWidth={2} />
+                      ) : null}
+                      {onSessionAction ? (
+                        // Egen Pressable OVENPAA raekken, ikke inde i dens onPress:
+                        // et tryk paa prikkerne maa ikke ogsaa aabne samtalen.
+                        <Pressable
+                          testID={`session-menu-${session.id}`}
+                          accessibilityRole="button"
+                          accessibilityLabel={t('side.sessionActions', { title: session.title || t('side.newConversation') })}
+                          hitSlop={10}
+                          onPress={() => setMenuFor(session)}
+                          style={styles.prikker}
+                        >
+                          <MoreVertical size={16} color={tokens.color.fg3} strokeWidth={2} />
+                        </Pressable>
+                      ) : null}
+                    </View>
+                    <Text style={styles.sessionMeta}>
+                      {formatRelativeDate(session.updated_at, now)} · {t('side.messageCount', { count: session.message_count ?? 0 })}
+                    </Text>
+                  </Pressable>
+                )
+              })
             )}
             <TeamsPanel config={config} onSelectSession={onSelectSession} />
           </ScrollView>
@@ -447,8 +509,14 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
     borderBottomWidth: 1
   },
   sessionActive: { backgroundColor: tokens.color.bg3 },
-  sessionIndicator: { position: 'absolute', right: tokens.spacing.sm, top: tokens.spacing.md, alignItems: 'center', justifyContent: 'center' },
-  unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: tokens.color.accent },
+  // Raekkens hovedlinje: tag, titel, puls, menu — samme raekkefoelge som desk.
+  // Meta-linjen (dato · antal) staar under den.
+  sessionHoved: { flexDirection: 'row', alignItems: 'center', gap: tokens.spacing.sm },
+  // Titlen ejer den ledige plads, saa fade-kanten kan laegge sig i dens
+  // hoejre side. Uden `flex: 1` ville rammen krympe til teksten og fade'en
+  // sidde midt i titlen.
+  titelRamme: { flex: 1, justifyContent: 'center' },
+  fadeKant: { position: 'absolute', right: 0, top: 0, bottom: 0 },
   sessionTitle: { color: tokens.color.fg1, fontWeight: '700' },
   sessionMeta: { color: tokens.color.fg3, marginTop: tokens.spacing.xs, fontSize: 12 },
   pressed: { opacity: 0.7 }

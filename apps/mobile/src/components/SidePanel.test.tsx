@@ -190,3 +190,59 @@ it('den gamle rings form findes ikke laengere i panelet', () => {
   expect(kilde).not.toContain('ringInner')
   expect(kilde).not.toMatch(/styles\.ring\b/)
 })
+
+// ── session-raekken: tag, fade og puls (21/9-2026) ────────────────────────
+//
+// Bjoern: «chat og kode sessioner mangler samme start tag som i desk ... og
+// enden af sessions navnet skal have fade som i desk og istedet for den
+// groenne prik over de 3 prikker som er menu ... dit eget animeret ikon».
+//
+// Raekken er nu desk's: [tag] [titel med fade] [puls] [menu].
+
+const fladeSessions = [
+  { id: 'c1', title: 'En chat', updated_at: '2026-06-18T10:00:00', message_count: 2, kind: 'chat' as const },
+  { id: 'k1', title: 'En kode-samtale', updated_at: '2026-06-17T10:00:00', message_count: 4, kind: 'code' as const },
+]
+
+it('hver session baerer sin flades tag — besked for chat, <> for kode', async () => {
+  const screen = await wrap(<SidePanel open {...base} sessions={fladeSessions} activeId={null} />)
+  // Tagget er FAST: uden det laa en code-session i samme liste som en chat
+  // uden at nogen kunne se hvilken der var hvilken.
+  expect(screen.getByTestId('session-tag-chat')).toBeTruthy()
+  expect(screen.getByTestId('session-tag-code')).toBeTruthy()
+})
+
+it('titel-enden fader ud i fladen', async () => {
+  const screen = await wrap(<SidePanel open {...base} />)
+  // Én fade pr. raekke — `base` har to sessioner, altsaa to kanter.
+  expect(screen.getAllByTestId('session-fade')).toHaveLength(sessions.length)
+})
+
+it('en arbejdende session baerer den ANIMEREDE puls', async () => {
+  const screen = await wrap(<SidePanel open {...base} workingIds={['s2']} />)
+  expect(screen.getByTestId('session-puls-arbejder')).toBeTruthy()
+  expect(screen.queryByTestId('session-puls-ulaest')).toBeNull()
+})
+
+it('en ulaest session baerer maerket i ro — ikke prikken', async () => {
+  const screen = await wrap(<SidePanel open {...base} unreadIds={{ s2: true }} />)
+  expect(screen.getByTestId('session-puls-ulaest')).toBeTruthy()
+  expect(screen.queryByTestId('session-puls-arbejder')).toBeNull()
+})
+
+it('ingen aktivitet giver ingen puls', async () => {
+  const screen = await wrap(<SidePanel open {...base} />)
+  expect(screen.queryByTestId('session-puls-arbejder')).toBeNull()
+  expect(screen.queryByTestId('session-puls-ulaest')).toBeNull()
+})
+
+it('prikken findes ikke laengere i raekken', () => {
+  // Kontrolarm: «den groenne prik» (unreadDot) og hjerte-prikken
+  // (HeartbeatDot) skal vaere VAEK. Stod begge, ville to tegn betyde det
+  // samme — og prikken laa oven paa de tre prikker, som Bjoern bad om at
+  // slippe for.
+  const kilde = readFileSync(join(__dirname, 'SidePanel.tsx'), 'utf8')
+  expect(kilde).not.toContain('unreadDot')
+  expect(kilde).not.toContain('HeartbeatDot')
+  expect(kilde).toContain('AnimeretPuls')
+})

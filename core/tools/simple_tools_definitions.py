@@ -952,7 +952,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
                     },
                     "save_path": {
                         "type": "string",
-                        "description": "File path to save the PNG to. If omitted, returns base64-encoded PNG.",
+                        "description": "File path to save the PNG to. If omitted, the PNG is written to a temp file and its path returned.",
                     },
                 },
             },

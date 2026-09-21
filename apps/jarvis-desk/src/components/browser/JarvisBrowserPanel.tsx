@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Globe, X, RotateCw } from 'lucide-react'
+import { ListeTilstand } from '../feedback/ListeTilstand'
 
 interface Fane { id: number; url: string; titel: string; aktiv: boolean }
 
@@ -36,6 +37,10 @@ const bro = (): Bro | undefined =>
  */
 export function JarvisBrowserPanel({ aaben }: { aaben: boolean }) {
   const [faner, setFaner] = useState<Fane[]>([])
+  // Codex' punkt 2 (21/9-2026): en fejl må ikke se ud som en tom kasse. Den
+  // her rude var selv én af de fjorten der intet sagde — skrevet samme aften.
+  const [fejl, setFejl] = useState('')
+  const [henter, setHenter] = useState(true)
   const holder = useRef<HTMLDivElement | null>(null)
 
   const meldRect = useCallback(() => {
@@ -69,7 +74,13 @@ export function JarvisBrowserPanel({ aaben }: { aaben: boolean }) {
   const hentFaner = useCallback(() => {
     const b = bro()
     if (!b) return
-    void b.faner().then(setFaner).catch(() => undefined)
+    void b.faner()
+      .then((f) => { setFaner(f); setFejl('') })
+      .catch((e: unknown) => setFejl(
+        e instanceof Error && e.message
+          ? `Kunne ikke hente fanerne: ${e.message}`
+          : 'Kunne ikke hente fanerne.'))
+      .finally(() => setHenter(false))
   }, [])
 
   useEffect(() => {
@@ -91,7 +102,16 @@ export function JarvisBrowserPanel({ aaben }: { aaben: boolean }) {
   return (
     <div className="jbrowser">
       <div className="jbrowser-faner" role="tablist" aria-label="Jarvis faner">
-        {faner.length === 0 && (
+        <ListeTilstand
+          henter={henter}
+          fejl={fejl}
+          antal={faner.length}
+          tomTekst=""
+          onIgen={fejl ? hentFaner : null}
+        >
+          <></>
+        </ListeTilstand>
+        {!fejl && !henter && faner.length === 0 && (
           <button
             type="button"
             className="jbrowser-ny"
@@ -100,7 +120,7 @@ export function JarvisBrowserPanel({ aaben }: { aaben: boolean }) {
             <Globe size={13} /> Aabn en fane
           </button>
         )}
-        {faner.map((f) => (
+        {!fejl && faner.map((f) => (
           <div key={f.id} className={`jbrowser-fane${f.aktiv ? ' aktiv' : ''}`} role="tab"
                aria-selected={f.aktiv}>
             <button type="button" className="jbrowser-fane-titel"

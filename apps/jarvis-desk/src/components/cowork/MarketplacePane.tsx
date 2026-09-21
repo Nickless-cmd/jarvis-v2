@@ -6,6 +6,7 @@ import {
 } from '../../lib/connectorsApi'
 import { connectorIcon, connectorBrandColor } from '../../lib/connectorIcon'
 import { setPendingHint } from '../../lib/postConnect'
+import { ListeTilstand } from '../feedback/ListeTilstand'
 
 function openBrowser(url: string): void {
   const b = (window as unknown as { jarvisDesk?: { openExternal?: (u: string) => Promise<void> } }).jarvisDesk
@@ -19,11 +20,24 @@ export function MarketplacePane({ config }: { config?: ApiConfig }) {
   const [query, setQuery] = useState('')
   const [busy, setBusy] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
+  // Codex' punkt 2: «behold sidste» skjulte at hentningen slog fejl — listen
+  // så tom ud, og man ledte efter noget man selv havde gjort forkert.
+  const [fejl, setFejl] = useState('')
+  const [henter, setHenter] = useState(true)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const refresh = useCallback(async () => {
     if (!config) return
-    try { setItems(await getConnectors(config)) } catch { /* behold sidste */ }
+    try {
+      setItems(await getConnectors(config))
+      setFejl('')
+    } catch (e) {
+      setFejl(e instanceof Error && e.message
+        ? `Listen kunne ikke hentes: ${e.message}`
+        : 'Listen kunne ikke hentes.')
+    } finally {
+      setHenter(false)
+    }
   }, [config])
 
   useEffect(() => { void refresh() }, [refresh])
@@ -95,6 +109,16 @@ export function MarketplacePane({ config }: { config?: ApiConfig }) {
           )}
         </div>
       </div>
+
+      <ListeTilstand
+        henter={henter}
+        fejl={fejl}
+        antal={visible.length}
+        tomTekst={q ? 'Ingen apps matcher din søgning.' : 'Ingen apps tilgængelige endnu.'}
+        onIgen={fejl ? () => { setHenter(true); void refresh() } : null}
+      >
+        <></>
+      </ListeTilstand>
 
       {connected.length > 0 && (
         <>

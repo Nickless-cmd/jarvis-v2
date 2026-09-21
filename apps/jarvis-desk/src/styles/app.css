@@ -4233,3 +4233,22 @@ body.egen-ramme .main:has(.chatview-head) { padding-top: 0; }
 /* Ingen baggrund: her ligger webvisningen. En farve her ville blinke frem
    i det øjeblik panelet ændrer størrelse, før main når at flytte visningen. */
 .jbrowser-hul { flex: 1; min-height: 0; }
+
+/* ── Listens tre tilstande (Codex' punkt 2, 21/9-2026) ──────────────────────
+   Én form for «tom», «henter» og «kunne ikke hentes», så de 14 rum der intet
+   sagde, siger det samme. Dæmpet, fordi de tre er oplysninger — ikke alarmer. */
+.liste-tilstand {
+  display: flex; align-items: center; gap: 8px;
+  padding: 14px 12px; font-size: 13px; color: var(--fg-3);
+}
+.liste-tilstand.fejl { color: var(--warn-fg, #e9b567); }
+.liste-tilstand-tekst { flex: 1; min-width: 0; }
+.liste-tilstand-igen {
+  background: none; border: 1px solid var(--line); color: inherit;
+  border-radius: 7px; padding: 4px 10px; font-size: 12px; cursor: pointer;
+  flex: 0 0 auto;
+}
+.liste-tilstand-igen:hover { background: rgba(255,255,255,.06); }
+.liste-tilstand-spin { animation: liste-tilstand-drej 1s linear infinite; }
+@keyframes liste-tilstand-drej { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .liste-tilstand-spin { animation: none; } }

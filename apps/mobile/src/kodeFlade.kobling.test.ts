@@ -68,7 +68,31 @@ it('en ny samtale i code-fladen faar BAADE desk\'s navn og arten', () => {
   // Navnet, saa den ser ens ud paa begge enheder. Arten, saa den ogsaa
   // HAVNER i code-listen - et navn alene er ikke en markoer.
   const cs = kilde('screens/ChatScreen.tsx')
-  expect(cs).toMatch(/sessions\.create\(config, kodeTilstand \? 'Kode-session' : 'Ny samtale', art\)/)
+  expect(cs).toMatch(/sessions\.create\(config!, kodeTilstand \? 'Kode-session' : 'Ny samtale', art\)/)
+})
+
+it('ALLE veje til en ny samtale gaar gennem ÉN funktion der baerer arten', () => {
+  // Bjørn 21/9-2026: «kode mode skal kun oprette ny samtale i kode mode og
+  // chat i chat mode». Der var TRE veje: panelets knap, den FOERSTE besked og
+  // en VEDHAEFTNING. Kun knappen sendte arten; de to stille veje faldt tilbage
+  // til kind='chat' - saa en samtale startet fra kode-fladen havnede i
+  // chat-listen uden at nogen havde valgt det. Nu er der én doer, og den
+  // husker fladen.
+  const cs = kilde('screens/ChatScreen.tsx')
+  expect(cs).toMatch(/const opretSession = \(\) =>\s*\n\s*sessions\.create\(config!, kodeTilstand \? 'Kode-session' : 'Ny samtale', art\)/)
+  // De tre kaldesteder maa ikke oprette direkte laengere - de skal gennem doen.
+  const direkte = cs.match(/sessions\.create\(config\)/g) || []
+  expect(direkte.length).toBe(0)
+  const gennemDoeren = cs.match(/opretSession\(\)/g) || []
+  expect(gennemDoeren.length).toBeGreaterThanOrEqual(3)
+})
+
+it('en kode-opgave i WorkScreen opretter en CODE-samtale', () => {
+  // Foer blev sessionen ALTID oprettet som chat - ogsaa naar man valgte Code.
+  // Saa opgaven koerte som kode, men laa i chat-listen.
+  const ws = kilde('screens/WorkScreen.tsx')
+  expect(ws).toMatch(/const erKode = task\.mode === 'code'/)
+  expect(ws).toMatch(/erKode \? 'code' : 'chat'/)
 })
 
 it('ALLE fire hentninger spoerger om samme flade', () => {

@@ -219,7 +219,16 @@ export function WorkScreen({ topInset = 72, syncSignal = 0, focusTab, focusSigna
     if (!config) return
     setStartingTask(true)
     try {
-      const session = await sessions.create(config)
+      // Opgaven baerer sin egen flade. Foer blev sessionen ALTID oprettet som
+      // chat, ogsaa naar man valgte Code — saa en kode-opgave endte i
+      // chat-listen, mens den koerte som kode. Bjørn 21/9-2026: «kode mode
+      // skal kun oprette ny samtale i kode mode og chat i chat mode».
+      const erKode = task.mode === 'code'
+      const session = await sessions.create(
+        config,
+        erKode ? 'Kode-session' : 'Ny opgave',
+        erKode ? 'code' : 'chat',
+      )
       stream.send(config, session.id, task.prompt, { mode: task.mode })
       setTab('tasks')
       await load()

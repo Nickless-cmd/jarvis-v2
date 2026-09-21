@@ -128,6 +128,16 @@ export function ChatScreen({
   // hente chat-listen tilbage og se ud som om samtalen forsvandt.
   const art: 'chat' | 'code' = kodeTilstand ? 'code' : 'chat'
 
+  // ÉN vej til at oprette en samtale. Der var tre, og to af dem glemte arten:
+  // blev en samtale oprettet af den FØRSTE BESKED eller af en VEDHÆFTNING mens
+  // man stod i kode-fladen, fik den kind='chat' og havnede i chat-listen —
+  // uden at nogen havde valgt det. Panelets knap sendte arten rigtigt hele
+  // tiden; det var de stille veje ved siden af der løb med den.
+  // Bjørn 21/9-2026: «kode mode skal kun oprette ny samtale i kode mode og
+  // chat i chat mode».
+  const opretSession = () =>
+    sessions.create(config!, kodeTilstand ? 'Kode-session' : 'Ny samtale', art)
+
 
   // TopBar ejer toppen (ChatGPT-paritet): ChatScreens egen header er fjernet.
   // Den bar LivenessRing + ConnectionPill, men ventetegnet står nu INLINE i
@@ -806,7 +816,7 @@ export function ChatScreen({
 
   const sendNu = async (text: string, attachmentIds?: string[]) => {
     if (!config) return
-    const sessionId = sessions.activeId ?? (await sessions.create(config)).id
+    const sessionId = sessions.activeId ?? (await opretSession()).id
     if (!sessions.activeId) void gemIndstillinger(sessionId, chatCfg)
     const cfg = tilStreamFelter(chatCfg)
     stream.send(config, sessionId, text, {
@@ -876,7 +886,7 @@ export function ChatScreen({
    */
   const stageAttachments = async (files: CapturedPhoto[]) => {
     if (!config || !files.length) return
-    const sessionId = sessions.activeId ?? (await sessions.create(config)).id
+    const sessionId = sessions.activeId ?? (await opretSession()).id
     const failed: string[] = []
     for (const f of files) {
       const localId = `local-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`
@@ -1018,7 +1028,7 @@ export function ChatScreen({
     // listen ikke filtreres aerligt (et omdoebt navn ville forsvinde, og en
     // chat med samme titel ville dukke op), men EN NY kan godt hedde det samme
     // paa begge enheder.
-    if (config) sessions.create(config, kodeTilstand ? 'Kode-session' : 'Ny samtale', art).catch(() => undefined)
+    if (config) opretSession().catch(() => undefined)
   }
 
   const lastUserMessage = [...sessions.messages].reverse().find((message) => message.role === 'user')

@@ -18,6 +18,17 @@ export interface JarvisDeskBridge {
     get: () => Promise<{ apiBaseUrl: string; authToken: string | null; appId?: string; channelPlugins?: ChannelPluginConfig[] }>
     set: (cfg: { apiBaseUrl?: string; authToken?: string | null; channelPlugins?: ChannelPluginConfig[] }) => Promise<boolean>
   }
+  /** Jarvis' egen browser i panelet. Rendereren melder sit rektangel; main
+   *  ejer visningen. Se electron/jarvisBrowser.ts. */
+  browser: {
+    saetRect: (r: { x: number; y: number; width: number; height: number }) => Promise<boolean>
+    saetSynlig: (v: boolean) => Promise<boolean>
+    faner: () => Promise<{ id: number; url: string; titel: string; aktiv: boolean }[]>
+    vaelg: (id: number) => Promise<boolean>
+    luk: (id: number) => Promise<boolean>
+    aabn: (url: string) => Promise<{ id: number; url: string; titel: string; aktiv: boolean }>
+    naviger: (url: string) => Promise<boolean>
+  }
   /** Åbn et eksternt link i system-browseren (main filtrerer til http/https/mailto). */
   openExternal: (url: string) => Promise<void>
   /** Registrér aktivt run_id i main-process så det kan cancelles ved quit (R3). */
@@ -119,6 +130,15 @@ const bridge: JarvisDeskBridge = {
   config: {
     get: () => ipcRenderer.invoke('config:get'),
     set: (cfg) => ipcRenderer.invoke('config:set', cfg),
+  },
+  browser: {
+    saetRect: (r) => ipcRenderer.invoke('browser:rect', r),
+    saetSynlig: (v) => ipcRenderer.invoke('browser:synlig', v),
+    faner: () => ipcRenderer.invoke('browser:faner'),
+    vaelg: (id) => ipcRenderer.invoke('browser:vaelg', id),
+    luk: (id) => ipcRenderer.invoke('browser:luk', id),
+    aabn: (url) => ipcRenderer.invoke('browser:aabn', url),
+    naviger: (url) => ipcRenderer.invoke('browser:naviger', url),
   },
   openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url),
   setActiveRun: (runId) => ipcRenderer.invoke('run:setActive', runId),

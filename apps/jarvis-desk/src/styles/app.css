@@ -4197,3 +4197,39 @@ body.egen-ramme .main:has(.chatview-head) { padding-top: 0; }
    sprog — kun labelen er ny. */
 .figur-skin { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
 .figur-skin-label { font-size: 12px; color: var(--fg-3, var(--fg)); }
+
+/* ── Jarvis' browser i desk (Bjørn 21/9-2026) ───────────────────────────────
+   Panelet tegner KUN fanerækken og et hul. Siden er en WebContentsView som
+   Electron komponerer oven på vinduet — derfor har hullet ingen baggrund og
+   ingen kant: alt hvad man ser dér, er browseren selv. */
+.jbrowser { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.jbrowser-tom { padding: 16px; color: var(--fg-3); font-size: 13px; }
+.jbrowser-faner {
+  display: flex; align-items: center; gap: 4px; padding: 6px 8px;
+  border-bottom: 1px solid var(--line); overflow-x: auto; flex: 0 0 auto;
+}
+.jbrowser-fane {
+  display: inline-flex; align-items: center; gap: 2px; flex: 0 0 auto;
+  max-width: 210px; border: 1px solid var(--line); border-radius: 8px;
+  background: var(--bg-1);
+}
+.jbrowser-fane.aktiv {
+  border-color: color-mix(in srgb, var(--accent) 60%, var(--line));
+  background: color-mix(in srgb, var(--accent) 8%, var(--bg-1));
+}
+.jbrowser-fane-titel {
+  display: inline-flex; align-items: center; gap: 6px; min-width: 0;
+  background: none; border: none; color: var(--fg-2); cursor: pointer;
+  padding: 5px 4px 5px 9px; font-size: 12px;
+}
+.jbrowser-fane-titel span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jbrowser-fane-luk, .jbrowser-ny, .jbrowser-genindlaes {
+  background: none; border: none; color: var(--fg-3); cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px; padding: 5px 7px;
+  font-size: 12px; border-radius: 7px;
+}
+.jbrowser-fane-luk:hover, .jbrowser-genindlaes:hover { color: var(--fg-1); background: rgba(255,255,255,.06); }
+.jbrowser-ny { border: 1px dashed var(--line); }
+/* Ingen baggrund: her ligger webvisningen. En farve her ville blinke frem
+   i det øjeblik panelet ændrer størrelse, før main når at flytte visningen. */
+.jbrowser-hul { flex: 1; min-height: 0; }

@@ -3,8 +3,9 @@ import { Fragment } from 'react'
 import { useRammeReducer } from '../lib/useRammeReducer'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFastholdBund } from '../lib/useFastholdBund'
-import { PanelRight, SquareStack, FileDiff, AudioWaveform, Bot } from 'lucide-react'
+import { PanelRight, SquareStack, FileDiff, AudioWaveform, Bot, Globe } from 'lucide-react'
 import { JobsPanel } from '../components/shell/JobsPanel'
+import { JarvisBrowserPanel } from '../components/browser/JarvisBrowserPanel'
 import { listJobs } from '../lib/jobsApi'
 import { ChangesPanel } from '../components/shell/ChangesPanel'
 import { paaAendringsFokus } from '../lib/aendringsFokus'
@@ -716,6 +717,7 @@ export function ChatView({
   // (16/9-2026: «hvorfor de ikk bliver vist overhovede … alt du naesten laver
   // bliver vist der i».)
   const [jobsOpen, setJobsOpen] = useState(false)
+  const [browserOpen, setBrowserOpen] = useState(false)
   const [koerendeJobs, setKoerendeJobs] = useState(0)
   // Aendringer: diff'en mens turen koerer. Samme skinne som jobs — de to kan
   // staa hver for sig i fuld hoejde eller ovenpaa hinanden.
@@ -772,6 +774,9 @@ export function ChatView({
     ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined
   // Aendringer oeverst, jobs nederst — samme raekkefoelge som i CC.
   // Er én rude i fuld visning, staar KUN den — det er hele pointen med ⤢.
+  // Jarvis' browser bor i samme højre-stak som ændringer og baggrundsjob
+  // (Bjørn 21/9-2026: «eget panel som baggrundsjobs»). Den er en RIGTIG
+  // webvisning som Electron lægger oven på vinduet — se JarvisBrowserPanel.
   const visChanges = changesOpen && fuldRude !== 'jobs'
   const visJobs = jobsOpen && fuldRude !== 'changes'
   const jobsRude = skinneAaben ? (
@@ -786,6 +791,9 @@ export function ChatView({
           onFuld={(f) => setFuldRude(f ? 'changes' : '')}
           onClose={() => { setChangesOpen(false); setFuldRude((v) => v === 'changes' ? '' : v) }}
         />
+      )}
+      {browserOpen && (
+        <JarvisBrowserPanel aaben={browserOpen} />
       )}
       {visJobs && cfgSkinne && (
         <JobsPanel
@@ -839,6 +847,14 @@ export function ChatView({
         >
           <SquareStack size={15} />
           {koerendeJobs > 0 && <span className="panel-toggle-taeller">{koerendeJobs}</span>}
+        </button>
+        <button
+          type="button"
+          className={`panel-toggle ${browserOpen ? 'active' : ''}`}
+          aria-label="Vis/skjul Jarvis' browser" title="Jarvis' browser"
+          onClick={() => setBrowserOpen((o) => !o)}
+        >
+          <Globe size={15} />
         </button>
         {/* Resten i «flere»-menuen (Bjørn 19/9-2026: for mange ikoner). */}
         <HeaderMere

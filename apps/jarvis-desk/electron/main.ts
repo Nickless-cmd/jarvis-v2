@@ -33,6 +33,7 @@ import { spawn, type ChildProcess } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
 import * as geo from './geo'
 import { brugbarPlads, husk } from './vinduesplads'
+import * as jb from './jarvisBrowser'
 
 const isDev = process.env.NODE_ENV === 'development'
 const APP_NAME = 'J.A.R.V.I.S.'
@@ -444,6 +445,9 @@ function createMainWindow(): void {
   const fortaelTilstand = () => {
     mainWindow?.webContents.send('vindue:maksimeretAendret', mainWindow.isMaximized())
   }
+  // Browserpanelet skal kende sit vindue før nogen kan åbne en fane i det.
+  jb.saetVaert(mainWindow)
+
   mainWindow.on('maximize', fortaelTilstand)
   mainWindow.on('unmaximize', fortaelTilstand)
 
@@ -484,6 +488,18 @@ ipcMain.handle('vindue:vekselMaksimer', () => {
 })
 ipcMain.handle('vindue:luk', () => { mainWindow?.close() })
 ipcMain.handle('vindue:erMaksimeret', () => mainWindow?.isMaximized() ?? false)
+
+// ── Jarvis' browser: rendereren ejer layoutet, main ejer visningen ─────
+// Rendereren melder rektanglet for sin pladsholder; main sætter bounds efter
+// det. To lag der hver især regnede målet ud ville skride fra hinanden ved
+// første ændring af panelbredden.
+ipcMain.handle('browser:rect', (_e, r) => { jb.saetRect(r); return true })
+ipcMain.handle('browser:synlig', (_e, v: boolean) => { jb.saetSynlig(v); return true })
+ipcMain.handle('browser:faner', () => jb.fanebladeliste())
+ipcMain.handle('browser:vaelg', (_e, id: number) => { jb.vaelg(id); return true })
+ipcMain.handle('browser:luk', (_e, id: number) => { jb.luk(id); return true })
+ipcMain.handle('browser:aabn', (_e, url: string) => jb.aabnFane(String(url)))
+ipcMain.handle('browser:naviger', (_e, url: string) => { jb.naviger(String(url)); return true })
 
 ipcMain.handle('config:get', () => loadConfig())
 ipcMain.handle('config:set', (_event, cfg: Partial<AppConfig>) => {

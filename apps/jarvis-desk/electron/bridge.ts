@@ -980,6 +980,73 @@ const handlers: Record<string, ToolHandler> = {
     return { width, height }
   },
 
+  // ── Jarvis' EGEN browser i desk-panelet (21/9-2026) ──────────────────
+  //
+  // Disse er ikke puppeteer. De styrer den `WebContentsView` der ligger i
+  // desk-vinduet, så Bjørn kan SE hvad der sker og selv gribe ind med musen
+  // midt i det. Puppeteer-vejen nedenfor driver en fremmed Chrome, som ingen
+  // kan se — og den har oven i købet aldrig virket: `puppeteer-core` står
+  // ikke i package.json, præcis som nut.js ikke gjorde.
+
+  jarvis_browser_open: async (args) => {
+    const url = String(args.url ?? '').trim()
+    if (!url) throw new Error('url is required')
+    const jb = await import('./jarvisBrowser')
+    return jb.aabnFane(url)
+  },
+
+  jarvis_browser_navigate: async (args) => {
+    const url = String(args.url ?? '').trim()
+    if (!url) throw new Error('url is required')
+    const jb = await import('./jarvisBrowser')
+    jb.naviger(url, args.tab_id != null ? Number(args.tab_id) : undefined)
+    return { navigated: true, url }
+  },
+
+  jarvis_browser_read: async (args) => {
+    const jb = await import('./jarvisBrowser')
+    const tekst = await jb.laes(
+      args.tab_id != null ? Number(args.tab_id) : undefined,
+      Number(args.max_chars ?? 24000),
+    )
+    return { text: tekst, chars: tekst.length }
+  },
+
+  jarvis_browser_click: async (args) => {
+    const x = Number(args.x), y = Number(args.y)
+    if (!Number.isFinite(x) || !Number.isFinite(y)) {
+      throw new Error('x and y are required numeric coordinates')
+    }
+    const jb = await import('./jarvisBrowser')
+    jb.klik(x, y, args.tab_id != null ? Number(args.tab_id) : undefined)
+    return { clicked: true, x, y }
+  },
+
+  jarvis_browser_type: async (args) => {
+    const text = String(args.text ?? '')
+    if (!text) throw new Error('text is required')
+    const jb = await import('./jarvisBrowser')
+    jb.skriv(text, args.tab_id != null ? Number(args.tab_id) : undefined)
+    return { typed: true, length: text.length }
+  },
+
+  jarvis_browser_screenshot: async (args) => {
+    const jb = await import('./jarvisBrowser')
+    const b64 = await jb.billede(args.tab_id != null ? Number(args.tab_id) : undefined)
+    return { image_base64: b64, format: 'png' }
+  },
+
+  jarvis_browser_tabs: async () => {
+    const jb = await import('./jarvisBrowser')
+    return { tabs: jb.fanebladeliste(), ...jb.status() }
+  },
+
+  jarvis_browser_close: async (args) => {
+    const jb = await import('./jarvisBrowser')
+    jb.luk(Number(args.tab_id))
+    return { closed: true }
+  },
+
   // ── Browser automation via puppeteer-core ─────────────────────────────
   // One persistent browser session per JarvisX run, lazily created on
   // first browser tool call. Auto-closes after BROWSER_IDLE_MS of

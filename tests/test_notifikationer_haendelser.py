@@ -38,6 +38,23 @@ def test_luk_lander_paa_bussen(isolated_runtime) -> None:
     assert any(nid in r[0] for r in raekker)
 
 
+def test_luk_dublet_udsender_ikke_igen(isolated_runtime) -> None:
+    """Samme faelde som opret(): kald luk() to gange paa samme raekke maa
+    ikke faa klokken til at blinke to gange for det samme."""
+    from core.eventbus.bus import event_bus
+    from core.runtime.db import connect
+    from core.services import notifikationer as n
+
+    nid = n.opret(user_id="bjorn", slags="reminder", kilde="egen", titel="X")
+    n.luk(nid, "seen")
+    n.luk(nid, "seen")
+    event_bus.flush()
+    with connect() as conn:
+        antal = conn.execute(
+            "SELECT COUNT(*) FROM events WHERE kind=?", ("notifikation.klaret",)).fetchone()[0]
+    assert antal == 1
+
+
 def test_dublet_udsender_ikke_igen(isolated_runtime) -> None:
     """Ellers ville en gen-udsendt haendelse faa klokken til at blinke igen."""
     from core.eventbus.bus import event_bus

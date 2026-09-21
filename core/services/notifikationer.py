@@ -120,12 +120,17 @@ def aabne(user_id: str, *, er_owner: bool) -> list[dict[str, Any]]:
 def luk(notif_id: str, udfald: str) -> None:
     """Klaret — vaek fra fladen. Raekken bliver liggende til `ryd_gamle`."""
     with connect() as conn:
-        conn.execute(
+        markoer = conn.execute(
             "UPDATE notifikationer SET klaret=?, udfald=? WHERE id=? AND klaret IS NULL",
             (_nu(), udfald, notif_id))
         conn.commit()
-        raekke = conn.execute(
-            "SELECT user_id, slags FROM notifikationer WHERE id=?", (notif_id,)).fetchone()
+        raekke = None
+        if markoer.rowcount:
+            # Kun naar VI lukkede raekken skal haendelsen fyre — ellers ville
+            # et gentaget kald paa en allerede-klaret raekke faa klokken til
+            # at blinke igen for noget gammelt (samme faelde som i opret()).
+            raekke = conn.execute(
+                "SELECT user_id, slags FROM notifikationer WHERE id=?", (notif_id,)).fetchone()
     if raekke:
         _udsend("klaret", notif_id, str(raekke[0]), str(raekke[1]))
 

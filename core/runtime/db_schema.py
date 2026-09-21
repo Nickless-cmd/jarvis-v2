@@ -287,6 +287,15 @@ def _ensure_notification_tables(conn) -> None:
     conn.execute(
         "CREATE UNIQUE INDEX IF NOT EXISTS ux_notif_ref "
         "ON notifikationer(slags, ref) WHERE ref IS NOT NULL")
+    # Push-valg PER SLAGS. notification_preferences har én kolonne pr. type og
+    # kan ikke baere en ny slags uden en ny kolonne hver gang.
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS notifikations_valg (
+            user_id TEXT NOT NULL,
+            slags   TEXT NOT NULL,
+            kanal   TEXT NOT NULL,
+            PRIMARY KEY (user_id, slags)
+        )""")
 
 
 def _ensure_security_guard_tables(conn) -> None:

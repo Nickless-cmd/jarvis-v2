@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7919/15352 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7921/15356 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 7919/15352 functions/methods documented (51%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 686 | 1265 | 54% |
-| `core.services` | 5228 | 10438 | 50% |
+| `core.services` | 5230 | 10442 | 50% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 107 | 183 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -41,7 +41,7 @@ Generated from source. 7919/15352 functions/methods documented (51%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2197)
+## Undocumented public functions (2199)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L208)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -504,7 +504,7 @@ Generated from source. 7919/15352 functions/methods documented (51%). The list b
 - `core/runtime/db_scheduled_tasks.py` :: `get_scheduled_task` (L92)
 - `core/runtime/db_scheduled_tasks.py` :: `mark_scheduled_task_cancelled` (L129)
 - `core/runtime/db_scheduled_tasks.py` :: `mark_scheduled_task_fired` (L115)
-- `core/runtime/db_schema.py` :: `init_db` (L339)
+- `core/runtime/db_schema.py` :: `init_db` (L348)
 - `core/runtime/db_self_repair.py` :: `count_recent_attempts` (L287)
 - `core/runtime/db_self_repair.py` :: `delete_self_repair_pattern` (L247)
 - `core/runtime/db_self_repair.py` :: `get_self_repair_pattern` (L173)
@@ -1307,7 +1307,9 @@ Generated from source. 7919/15352 functions/methods documented (51%). The list b
 - `core/services/notes_connector.py` :: `delete_note` (L114)
 - `core/services/notes_connector.py` :: `list_notes` (L96)
 - `core/services/notes_connector.py` :: `search_notes` (L105)
-- `core/services/notification_router.py` :: `reset_delivery` (L256)
+- `core/services/notification_router.py` :: `reset_delivery` (L266)
+- `core/services/notifikations_valg.py` :: `kanal_for` (L46)
+- `core/services/notifikations_valg.py` :: `saet` (L56)
 - `core/services/ntfy_gateway.py` :: `is_configured` (L26)
 - `core/services/oauth_flow.py` :: `is_known_provider` (L46)
 - `core/services/oauth_flow.py` :: `redirect_uri` (L50)

@@ -54,7 +54,10 @@ def test_route_queues_during_quiet_hours(tmp_path, monkeypatch):
     nr.set_preferences("u1", **{"quiet_start": "00:00", "quiet_end": "23:59"})  # ~altid stille
     delivered = []
     monkeypatch.setattr(nr, "_deliver_to_channel", lambda *a, **k: delivered.append(a) or True)
-    res = nr.route_proactive_notification("u1", "briefing", {"preview": "morgen"})
+    # "approval": tester quiet-hours-mekanikken, ikke push-per-slags-valget
+    # (task 5) — "briefing" er nu tavs som standard og ville stoppe FØR quiet
+    # hours overhovedet bliver tjekket.
+    res = nr.route_proactive_notification("u1", "approval", {"preview": "morgen"})
     assert res["channel"] == "queued"
     assert delivered == []  # IKKE leveret — sat i kø
 
@@ -63,7 +66,10 @@ def test_route_critical_bypasses_quiet_hours(tmp_path, monkeypatch):
     _fresh_db(tmp_path, monkeypatch)
     nr.set_preferences("u1", **{"quiet_start": "00:00", "quiet_end": "23:59"})
     monkeypatch.setattr(nr, "_deliver_to_channel", lambda *a, **k: True)
-    res = nr.route_proactive_notification("u1", "reminder", {"preview": "BRAND"}, importance="critical")
+    # "run_failed": tester critical-bypass af quiet hours, ikke push-per-slags
+    # (task 5) — "reminder" er nu tavs som standard og ville stoppe FØR
+    # importance overhovedet bliver læst.
+    res = nr.route_proactive_notification("u1", "run_failed", {"preview": "BRAND"}, importance="critical")
     assert res["delivered"] is True
     assert res["channel"] != "queued"
 
@@ -75,7 +81,9 @@ def test_route_delivers_to_resolved_channel(tmp_path, monkeypatch):
     calls = []
     monkeypatch.setattr(nr, "_deliver_to_channel",
                         lambda uid, ch, p, t: calls.append((uid, ch)) or True)
-    res = nr.route_proactive_notification("u1", "briefing", {"preview": "x"})
+    # "question": tester global-fallback i resolve_channel, ikke push-per-slags
+    # (task 5) — "briefing" er nu tavs som standard.
+    res = nr.route_proactive_notification("u1", "question", {"preview": "x"})
     assert res["delivered"] is True
     assert res["channel"] == "desktop"
     assert calls and calls[0][1] == "desktop"

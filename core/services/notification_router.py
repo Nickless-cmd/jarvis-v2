@@ -221,7 +221,17 @@ def _route_proactive_notification_impl(
     if not uid:
         return {"delivered": False, "channel": "none", "target": "", "fallback_used": False}
     prefs = get_preferences(uid)
-    channel = resolve_channel(prefs, notification_type)
+    # Raekker foerst, kolonner som fald-tilbage. En halvvejs migreret base maa
+    # ikke tabe nogens valg (spec 2026-09-21).
+    from core.services.notifikations_valg import kanal_for as _kanal_for
+    valgt = _kanal_for(uid, notification_type)
+    if valgt == "ingen":
+        # Brugeren har selv slaaet den slags fra. Returformen er den samme som
+        # alle andre udgange — kalderne laeser `delivered` og `channel`, og en
+        # ny form her ville braekke dem.
+        return {"delivered": False, "channel": "fravalgt", "target": uid,
+                "fallback_used": False}
+    channel = valgt if valgt != "auto" else resolve_channel(prefs, notification_type)
 
     # Quiet hours (kø, medmindre critical eller allerede afkøet)
     if not _skip_quiet and importance != "critical" and is_quiet_hours(prefs):

@@ -51,7 +51,8 @@ En *slags* er enheden for både visning og push-valg.
 
 | Gruppe | Slags | Ejer af sandheden |
 |---|---|---|
-| Kræver dig | `approval`, `question` | `approval_runtime` |
+| Kræver dig | `approval` | `approval_runtime` |
+| Kræver dig | `question` | `visible_runs` (svares i samtalen) |
 | Fejl | `run_failed` | `visible_runs` |
 | Færdig | `run_done` | `visible_runs` |
 | Jarvis selv | `briefing`, `reminder`, `reach_out`, `initiative` | ingen — rækken ER sandheden |
@@ -148,11 +149,15 @@ Standard: `approval`, `question` og `run_failed` pusher. Resten er tavse.
 ## Levering
 
 - `GET /notifikationer` — åbne poster for kalderen, hydreret.
-- `POST /notifikationer/{id}/afgoer` — `{approved: bool}` for handlingsrækker.
-  Ruten vælger vej efter slags: `approval` → `approval_runtime.decide()`,
-  `question` → pause_and_ask' eget svar-kald. De to ligner hinanden i fladen,
-  men er IKKE samme mekanisme, og en rute der kaldte `decide()` for begge ville
-  svare det forkerte sted.
+- `POST /notifikationer/{id}/afgoer` — `{approved: bool}`. **Kun `approval`.**
+
+  Rettet 21/9 EFTER godkendelsen, fordi koden sagde noget andet end specen:
+  `pause_and_ask` besvares ikke med ja/nej. Svaret er en tekst eller et af
+  Jarvis' egne valg, og det sendes som en BESKED i samtalen
+  (`emitPauseSvar` → composeren). Der findes ingen server-side afgørelse at
+  kalde. Et spørgsmål kan derfor ikke klares i feeden — rækken fører dig hen
+  til samtalen, og du svarer dér. Havde planen ikke tjekket kaldestedet, var
+  der blevet bygget to knapper der ikke kunne svare noget.
 
   Feed-rækken lukkes af hydreringen, ikke af ruten. Ét sted der bestemmer —
   ellers kunne ruten lukke en række hvis ejer stadig venter.

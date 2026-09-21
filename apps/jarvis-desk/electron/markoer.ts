@@ -27,7 +27,8 @@
  *   men det er ligegyldigt — positionen kommer fra broen, ikke fra vinduet.
  */
 import { BrowserWindow, ipcMain, screen } from 'electron'
-import { unionAf } from './markoerOmraade'
+import { lokaleSkærme, unionAf } from './markoerOmraade'
+import { erHandlende } from './markoerTools'
 
 let markoer: BrowserWindow | null = null
 
@@ -79,6 +80,10 @@ export function opretMarkoer(preload: string, indlaes: (w: BrowserWindow, hash: 
   screen.on('display-metrics-changed', opdaterMarkoerOmraade)
   indlaes(markoer, 'markoer')
   markoer.once('ready-to-show', () => markoer?.showInactive())
+  // Renderer'en kan ikke selv spørge Electron om skærm-layoutet, og den skal
+  // bruge det til at lægge én halo-kant pr. skærm. Vi sender det, så snart
+  // fladen er indlæst — og igen hvis opsætningen ændrer sig.
+  markoer.webContents.on('did-finish-load', sendSkærme)
   markoer.on('closed', () => { markoer = null })
 }
 
@@ -86,6 +91,8 @@ export function opretMarkoer(preload: string, indlaes: (w: BrowserWindow, hash: 
 export function opdaterMarkoerOmraade(): void {
   if (!markoer || markoer.isDestroyed()) return
   markoer.setBounds(samletOmraade())
+  // Kanten skal følge med: en ny opløsning flytter skærmenes rektangler.
+  sendSkærme()
 }
 
 export function lukMarkoer(): void {
@@ -114,7 +121,37 @@ export function pegMarkoer(x: number, y: number): void {
   })
 }
 
+/** Skærm-layoutet i vinduets lokale rum — én kant pr. skærm. Renderer'en
+ *  henter det ved mount, så den ikke afhænger af at have været klar til at
+ *  lytte på det rigtige tidspunkt. */
+export function hentLokaleSkærme(): Array<{ x: number; y: number; width: number; height: number }> {
+  if (!markoer || markoer.isDestroyed()) return []
+  return lokaleSkærme(screen.getAllDisplays().map((d) => d.bounds), markoer.getBounds())
+}
+
+/** Skub skærm-layoutet til renderer'en (ved indlæsning og ved ændringer). */
+export function sendSkærme(): void {
+  if (!markoer || markoer.isDestroyed()) return
+  markoer.webContents.send('markoer:skaerme', hentLokaleSkærme())
+}
+
+/**
+ * Jarvis rører mus, tastatur, udklipsholder eller vinduets fokus — så tænder
+ * halo'en langs skærmkanten og bliver stående et stykke tid efter sidste
+ * handling (se `OVERTAG_MS` i renderer'en).
+ *
+ * Kaldes fra broens dispatch (bridge.ts) og ikke fra hver handler: ét sted kan
+ * ikke glemmes, så en ny handlende værktøj er dækket i samme øjeblik den
+ * skrives. Læsning tæller ikke — at kigge er ikke at overtage.
+ */
+export function visOvertagelse(tool: string): void {
+  if (!markoer || markoer.isDestroyed()) return
+  if (!erHandlende(tool)) return
+  markoer.webContents.send('markoer:overtag')
+}
+
 /** Kaldt fra main ved opstart: hold laget over det aktuelle skrivebord. */
 export function registrerMarkoerIpc(): void {
   ipcMain.handle('markoer:findes', () => markoerFindes())
+  ipcMain.handle('markoer:skaerme', () => hentLokaleSkærme())
 }

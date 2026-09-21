@@ -38,3 +38,21 @@ export function unionAf(skaerme: Skærm[]): Skærm {
   const bund = Math.max(...skaerme.map((s) => s.y + s.height))
   return { x: venstre, y: top, width: hoejre - venstre, height: bund - top }
 }
+
+/** Oversæt skærm-bounds til vinduets LOKALE rum.
+ *
+ *  Vinduet ligger i unionens øverste venstre hjørne (main sætter dets bounds
+ *  til `unionAf`). Renderer'en kender derfor kun sit eget rum og skal ikke
+ *  vide hvor på skrivebordet laget ligger — den tegner bare de rektangler den
+ *  får. Det er den samme oversættelse `pegMarkoer` gør for markøren.
+ *
+ *  Halo'en bruger den til at lægge én kant pr. SKÆRM: på et tre-skærms
+ *  skrivebord skal hver skærm lyse op, ikke bare den ydre ramme af unionen. */
+export function lokaleSkærme(skaerme: Skærm[], vindue: Skærm): Skærm[] {
+  return skaerme.map((s) => ({
+    x: s.x - vindue.x,
+    y: s.y - vindue.y,
+    width: s.width,
+    height: s.height,
+  }))
+}

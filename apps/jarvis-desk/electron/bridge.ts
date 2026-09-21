@@ -49,7 +49,7 @@ import { resolveOperatorPath } from './operatorPathPolicy.js'
 // Markør-laget: hvert sted vi flytter musen, viser vi hvor. Kaldet er en
 // no-op naar laget ikke findes (ældre app-version, eller figuren slået fra),
 // saa det kan staa uden vagt omkring.
-import { pegMarkoer } from './markoer.js'
+import { pegMarkoer, visOvertagelse } from './markoer.js'
 
 /**
  * Race a native confirmation dialog against an auto-reject timer.
@@ -2650,6 +2650,11 @@ export class JarvisXBridge {
         this.log(`  → replied unknown_tool`)
         return
       }
+      // Halo'en (21/9-2026): rører dette værktøj skærmen — mus, tastatur,
+      // udklipsholder eller fokus — lyser kanten op, så Bjørn kan se at Jarvis
+      // har overtaget. Ligger HER og ikke i hver handler, så en ny handlende
+      // værktøj er dækket i samme øjeblik den skrives. Læsning tæller ikke.
+      visOvertagelse(tool)
       try {
         // Per-handler timeout. Without this, a hung handler (browser
         // session stuck, bash command waiting forever) blocks the whole

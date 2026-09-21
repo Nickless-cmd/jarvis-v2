@@ -29,6 +29,48 @@ body,
   overflow: hidden;
 }
 
+/* Halo'en: en glød langs kanten af HVER skærm, så man kan se at Jarvis har
+   overtaget skrivebordet — ikke bare hvor han peger. Den bor i samme lag som
+   markøren, så den koster intet ekstra vindue og tager ingen klik.
+
+   Gløden vender INDAD (inset), fordi kanten ligger ud mod skærmens fysiske
+   ramme: en udadvendt skygge ville blive klippet væk af vinduets kant. */
+.markoer-kant {
+  position: absolute;
+  pointer-events: none;
+  box-shadow:
+    inset 0 0 0 2px rgba(63, 199, 180, 0.6),
+    inset 0 0 44px rgba(63, 199, 180, 0.4);
+  animation-name: markoer-kant-aande;
+  animation-duration: 2600ms;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
+/* Uden skærm-layout: én kant over hele laget. */
+.markoer-kant--alt {
+  inset: 0;
+}
+
+@keyframes markoer-kant-aande {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Nogle mennesker bliver dårlige af bevægelse i periferien — og en pulsende
+   kant er præcis periferi. Gløden bliver stående, men holder op med at ånde. */
+@media (prefers-reduced-motion: reduce) {
+  .markoer-kant {
+    animation: none;
+    opacity: 0.75;
+  }
+}
+
 .markoer-prik {
   position: absolute;
   border-radius: 50%;

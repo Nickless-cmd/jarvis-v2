@@ -7,6 +7,14 @@
  * det er Jarvis der styrer og ikke Bjørn.
  */
 
+/** Så længe halo'en bliver stående efter sidste handlende kald.
+ *
+ *  Uden en rummelig frist ville den blinke af og på midt i en sekvens af klik.
+ *  Ti sekunder dækker en typisk arbejdsgang — klik, skriv, klik — som ÉN
+ *  synlig overtagelse, og slukker alligevel af sig selv, så skærmen ikke står
+ *  tændt og lyser om natten. */
+export const OVERTAG_MS = 10000
+
 /** Så længe lever et spor-punkt, fra det sættes til det er væk. */
 export const FADE_MS = 1500
 

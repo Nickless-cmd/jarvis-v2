@@ -179,7 +179,19 @@ it('feltet siger ikke Code naar man allerede ER i code', async () => {
 
 it('navnet baerer Puls-maerket, ikke den gamle ring', async () => {
   const screen = await wrap(<SidePanel open {...base} />)
-  expect(screen.getByTestId('puls-ikon')).toBeTruthy()
+  // Ankeret er navnets EGET. «puls-ikon» er den statiske form og findes ogsaa
+  // i session-raekken, saa den ville svare selv om navnets maerke var vendt
+  // tilbage til den gamle ring.
+  expect(screen.getByTestId('navn-puls')).toBeTruthy()
+})
+
+it('navnets maerke animerer, og er storre end den statiske form', () => {
+  // Maerket ved navnet staar uden en tilstand at foelge — det er navnet, ikke
+  // en session — saa det animerer altid. Bjoern bad ogsaa om at det blev en
+  // smule storre (26 -> 32). PulsIkon er den statiske form; stod den her,
+  // ville maerket staa stille mens raekkens loeb.
+  const kilde = readFileSync(join(__dirname, 'SidePanel.tsx'), 'utf8')
+  expect(kilde).toMatch(/<AnimeretPuls size=\{32\}/)
 })
 
 it('den gamle rings form findes ikke laengere i panelet', () => {

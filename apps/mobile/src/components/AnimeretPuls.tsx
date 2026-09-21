@@ -85,10 +85,10 @@ function Bjaelke({ bredde, hoejde, farve, forsinkelse, ro }: {
 }
 
 /** Selve mærket. Statisk i sin form, levende i sin bevægelse. */
-export function AnimeretPuls({ size = 16, farve }: { size?: number; farve: string }) {
+export function AnimeretPuls({ size = 16, farve, testID }: { size?: number; farve: string; testID?: string }) {
   const ro = useRoerIKkePaaSig()
   return (
-    <View style={[stil.raekke, { height: size * BJAELKER[1].hoejde, gap: size * GAP }]}>
+    <View testID={testID} style={[stil.raekke, { height: size * BJAELKER[1].hoejde, gap: size * GAP }]}>
       {BJAELKER.map((b, i) => (
         <Bjaelke
           key={i}

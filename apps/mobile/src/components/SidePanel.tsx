@@ -201,8 +201,15 @@ export function SidePanel({
                   i toppen lige før mit navn er det gamle ring ikon stadigvæk»).
                   Ringen var en cirkel med en prik i — den form hører til før
                   Puls-mærket. Desk har allerede mærket her (JarvisRing), så
-                  telefonens navn og skrivebordets står nu som samme tegn. */}
-              <PulsIkon size={26} color={tokens.color.accent} />
+                  telefonens navn og skrivebordets står nu som samme tegn.
+
+                  OG DET SKAL LEVE (Bjørn, samme dag: «bør være animeret og en
+                  smule større»). Her staar maerket uden en tilstand at foelge —
+                  det er navnet, ikke en session — saa det animerer altid. Det
+                  er den samme rytme som desk's JarvisRing bruger, og som
+                  session-raekkens maerke bruger: tre bjaelker i boelge, 1,6 s.
+                  Roen for bevægelsesfølsomme kommer fra AnimeretPuls selv. */}
+              <AnimeretPuls size={32} farve={tokens.color.accent} testID="navn-puls" />
               <Text style={styles.name} numberOfLines={1}>
                 {displayName || 'Jarvis'}
               </Text>

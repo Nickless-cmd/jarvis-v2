@@ -1,6 +1,43 @@
 # tests/test_notifikations_valg.py
 from __future__ import annotations
 
+import re
+from pathlib import Path
+
+_NAVN_TSX = (
+    Path(__file__).resolve().parents[1]
+    / "apps/jarvis-desk/src/components/settings/NotifikationsValg.tsx"
+)
+
+
+def _navn_noegler() -> set[str]:
+    """Traekker noeglerne ud af `NAVN`-tabellen i NotifikationsValg.tsx.
+
+    Kun en regex over det konkrete objekt-literal — ikke en fuld TS-parser —
+    men formatet er snaevert (én `slags: 'Navn',` pr. linje), saa den maaler
+    praecis det den skal, og fejler hoejt hvis nogen aendrer formen."""
+    tekst = _NAVN_TSX.read_text(encoding="utf-8")
+    m = re.search(r"const NAVN: Record<string, string> = \{(.*?)\n\}", tekst, re.DOTALL)
+    assert m, "NAVN-tabellen blev ikke fundet i NotifikationsValg.tsx — har filen flyttet sig?"
+    noegler = re.findall(r"^\s*(\w+):\s*'", m.group(1), re.MULTILINE)
+    assert noegler, "NAVN-tabellen er tom eller regex'en matcher ikke laengere — se _navn_noegler()"
+    return set(noegler)
+
+
+def test_navn_og_standard_daekker_de_samme_slags() -> None:
+    """`NAVN` (TS, brugerens ord for hver slags) og `STANDARD` (Python, feedens
+    politik) skal daekke praecis de samme slags. Komponenten renderer via
+    `Object.keys(NAVN)` filtreret til det serveren sendte — mangler en slags i
+    NAVN, forsvinder den TAVST fra indstillingerne uden fejl eller indikation."""
+    from core.services.notifikations_valg import STANDARD
+
+    navn = _navn_noegler()
+    standard = set(STANDARD.keys())
+    assert navn == standard, (
+        f"NAVN og STANDARD er skredet fra hinanden — kun i NAVN: {navn - standard or '—'}, "
+        f"kun i STANDARD: {standard - navn or '—'}"
+    )
+
 
 def test_standard_er_tavs_undtagen_det_der_haster(isolated_runtime) -> None:
     from core.services import notifikations_valg as v

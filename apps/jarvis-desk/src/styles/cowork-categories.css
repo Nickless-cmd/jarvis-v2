@@ -65,12 +65,14 @@
   font-size: 13px;
 }
 .category-page .account-fields > dd { text-align: right; overflow-wrap: anywhere; }
-.category-page .notif-section .notif-row {
+.category-page .notif-section .notif-row,
+.category-page .settings-section .settings-row {
   min-height: 44px;
   padding: 8px 0;
   border-bottom: 1px solid var(--line);
 }
-.category-page .notif-section .notif-row:last-of-type { border-bottom: 0; }
+.category-page .notif-section .notif-row:last-of-type,
+.category-page .settings-section .settings-row:last-of-type { border-bottom: 0; }
 .category-page .location-section .loc-options { margin: 16px 0; }
 .category-page .location-section .loc-btn { min-height: 36px; }
 .category-page .location-section .loc-btn.active {

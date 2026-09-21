@@ -27,8 +27,8 @@
 .category-page :is(.mcp-row, .apps-row, .jarvis-lane) { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--line); }
 .category-page :is(.mcp-url, .jarvis-lane-model, .plugins-server-item, .memory-reading, .memory-sensory) { overflow-wrap: anywhere; min-width: 0; }
 .category-page :is(.mcp-name, .apps-name, .jarvis-lane-name) { font-weight: 550; }
-.category-page :is(.sprog-field, .jarvis-model-field, .notif-row) { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
-.category-page :is(.sprog-field, .jarvis-model-field, .notif-row) select { max-width: min(100%, 340px); }
+.category-page :is(.sprog-field, .jarvis-model-field, .notif-row, .settings-row) { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+.category-page :is(.sprog-field, .jarvis-model-field, .notif-row, .settings-row) select { max-width: min(100%, 340px); }
 .category-page .wb-channel { flex-wrap: wrap; gap: 12px; }
 .category-page .wb-channel-text { flex: 1 1 240px; }
 .category-page .wb-switches label { display: flex; flex-wrap: wrap; align-items: center; gap: 9px; padding-block: 10px; }

@@ -38,4 +38,17 @@ describe('NotifikationsValg', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Kunne ikke gemmes.')
     await waitFor(() => expect(felt.value).toBe('ingen'))
   })
+
+  it('ruller valget tilbage og siger det naar kaldet kaster', async () => {
+    // Den anden fejlvej i skift(): saetNotifikationsValg KASTER (fx netvaerksfejl),
+    // i modsaetning til testen ovenfor hvor den svarer { ok: false }. Begge grene
+    // ruller tilbage i kildekoden, men kun den foerste var testet.
+    hent.mockResolvedValue({ valg: { release: 'ingen' } })
+    saet.mockRejectedValue(new Error('netvaerksfejl'))
+    render(<NotifikationsValg config={cfg} />)
+    const felt = await screen.findByLabelText('Ny app-version') as HTMLSelectElement
+    fireEvent.change(felt, { target: { value: 'push' } })
+    expect(await screen.findByRole('alert')).toHaveTextContent('Valget kunne ikke gemmes. Prøv igen.')
+    await waitFor(() => expect(felt.value).toBe('ingen'))
+  })
 })

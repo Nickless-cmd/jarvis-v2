@@ -334,8 +334,8 @@ export function CodeView({
   // ChatView, plus kode-fladens fil-panel og terminal (CodePanel-fanerne).
   const [codeFane, setCodeFane] = useState<PanelTab>('files')
   const [aabenFane, setAabenFane] = useState<{ fane: PanelTab; n: number } | null>(null)
-  const skaermNu = useRef({ changesOpen, jobsOpen, filesOpen, codeFane })
-  skaermNu.current = { changesOpen, jobsOpen, filesOpen, codeFane }
+  const skaermNu = useRef({ changesOpen, jobsOpen, filesOpen, codeFane, browserOpen })
+  skaermNu.current = { changesOpen, jobsOpen, filesOpen, codeFane, browserOpen }
   useEffect(() => {
     if (!sessionId) return
     return registrerSkaerm({
@@ -346,6 +346,7 @@ export function CodeView({
         return [
           t.changesOpen && 'diff', t.jobsOpen && 'tasks',
           t.filesOpen && (t.codeFane === 'terminal' ? 'terminal' : 'file'),
+          t.browserOpen && 'browser',
         ].filter(Boolean) as string[]
       },
       vis: (p, a) => {
@@ -358,6 +359,7 @@ export function CodeView({
           requestAnimationFrame(() => setHighlightPath(a.path!))
           return null
         }
+        if (p === 'browser') { setBrowserOpen(true); return null }
         if (p === 'terminal') { setFilesOpen(true); setAabenFane({ fane: 'terminal', n: Date.now() }); return null }
         return IKKE_I_DESK[p as keyof typeof IKKE_I_DESK] ?? `Ukendt panel: ${p}`
       },
@@ -365,6 +367,7 @@ export function CodeView({
         if (p === 'diff') setChangesOpen(false)
         else if (p === 'tasks') setJobsOpen(false)
         else if (p === 'file' || p === 'terminal') setFilesOpen(false)
+        else if (p === 'browser') setBrowserOpen(false)
         return null
       },
     })

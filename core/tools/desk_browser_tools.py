@@ -22,6 +22,12 @@ desk poller, taler disse gennem JarvisX-broen, ligesom `operator_*`.
 Et værktøj er ikke færdigt når det er skrevet: det skal ogsaa staa i
 `tool_scoping.py`, ellers annonceres det ikke for modellen og findes reelt ikke.
 Se noten dér (6/9-2026) om netop det.
+
+Og et aabne-kald er ikke færdigt naar fanen findes: panelet skal VISES. Fanen
+ligger i desk'ens main-proces, men tegnes kun naar React-state'en `browserOpen`
+er sand — ellers staar `synlig` paa false og visningen faar nul bounds. Derfor
+laegger `open` ogsaa en view-request om `pane="browser"` (se `_vis_panelet`),
+saa Bjørn faktisk ser den side der aabnes.
 """
 from __future__ import annotations
 
@@ -74,6 +80,29 @@ def _tab_id(args: dict[str, Any]) -> dict[str, Any]:
         return {}
 
 
+def _vis_panelet(runtime_args: dict[str, Any]) -> None:
+    """Bed desk om at vise browser-panelet — uden at vente på svaret.
+
+    Fanen lever i desk'ens main-proces, men panelet tegnes kun når React-state'en
+    `browserOpen` er sand. Uden dette kald åbner `jarvis_browser_open` en side
+    INGEN kan se: `synlig` står på false og visningen får nul bounds. Målt
+    21/9-2026 — fanen fandtes med titel og det hele, men `synlig: false`, og
+    Bjørn kunne ikke se den.
+
+    Vi venter IKKE: desk poller hvert ~1,5 s, og et åbne-kald skal ikke hænge på
+    at et panel bliver tegnet. Fejler det, står siden stadig i panelet næste gang
+    nogen åbner det.
+    """
+    sid = str(runtime_args.get("_runtime_session_id") or "").strip()
+    if not sid:
+        return
+    try:
+        from core.runtime.db_view_requests import opret
+        opret("show_pane", {"pane": "browser"}, session_id=sid)
+    except Exception as exc:  # best-effort: panelet er en bekvemmelighed, ikke svaret
+        logger.debug("kunne ikke bede desk vise browser-panelet: %s", exc)
+
+
 # ── de otte handlinger ──────────────────────────────────────────────────
 
 
@@ -81,7 +110,10 @@ def _exec_jarvis_browser_open(args: dict[str, Any]) -> dict[str, Any]:
     url = str(args.get("url") or "").strip()
     if not url:
         return {"status": "error", "error": "url er påkrævet"}
-    return _koer("jarvis_browser_open", {"url": url}, args, timeout_s=_TIMEOUT_TUNG)
+    svar = _koer("jarvis_browser_open", {"url": url}, args, timeout_s=_TIMEOUT_TUNG)
+    if svar.get("status") == "ok":
+        _vis_panelet(args)
+    return svar
 
 
 def _exec_jarvis_browser_navigate(args: dict[str, Any]) -> dict[str, Any]:

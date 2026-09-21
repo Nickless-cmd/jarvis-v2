@@ -7,7 +7,7 @@
  * slår op her når serveren spørger. Modul-niveau af samme grund som
  * `aendringsFokus`: afsender og modtager deler ingen provider-gren.
  */
-export type Panel = 'diff' | 'file' | 'terminal' | 'tasks' | 'artifact' | 'pr' | 'plan'
+export type Panel = 'diff' | 'file' | 'terminal' | 'tasks' | 'browser' | 'artifact' | 'pr' | 'plan'
 
 export interface Skaerm {
   sessionId: string

@@ -252,18 +252,19 @@ _Jarvis' EGEN browser inde i desk — otte værktøjer over broen._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_bro` | `(*, tool, args, user_id, timeout_s)` | Kald desk-broen. Returnerer den UDPAKKEDE resultat-værdi. | [src](../../../core/tools/desk_browser_tools.py#L39) |
-| function | `_koer` | `(tool, args, runtime_args, *, timeout_s)` | Fælles vej: find brugeren, kald broen i hoved-loopet, svar ærligt. | [src](../../../core/tools/desk_browser_tools.py#L48) |
-| function | `_tab_id` | `(args)` | `tab_id` er valgfri; udelades den, rammer broen den AKTIVE fane. | [src](../../../core/tools/desk_browser_tools.py#L66) |
-| function | `_exec_jarvis_browser_open` | `(args)` | — | [src](../../../core/tools/desk_browser_tools.py#L80) |
-| function | `_exec_jarvis_browser_navigate` | `(args)` | — | [src](../../../core/tools/desk_browser_tools.py#L87) |
-| function | `_exec_jarvis_browser_read` | `(args)` | — | [src](../../../core/tools/desk_browser_tools.py#L95) |
-| function | `_exec_jarvis_browser_click` | `(args)` | — | [src](../../../core/tools/desk_browser_tools.py#L105) |
-| function | `_exec_jarvis_browser_type` | `(args)` | — | [src](../../../core/tools/desk_browser_tools.py#L114) |
-| function | `_exec_jarvis_browser_screenshot` | `(args)` | — | [src](../../../core/tools/desk_browser_tools.py#L122) |
-| function | `_exec_jarvis_browser_tabs` | `(args)` | — | [src](../../../core/tools/desk_browser_tools.py#L127) |
-| function | `_exec_jarvis_browser_close` | `(args)` | — | [src](../../../core/tools/desk_browser_tools.py#L131) |
-| function | `_nr` | `(desc)` | — | [src](../../../core/tools/desk_browser_tools.py#L142) |
+| function | `_bro` | `(*, tool, args, user_id, timeout_s)` | Kald desk-broen. Returnerer den UDPAKKEDE resultat-værdi. | [src](../../../core/tools/desk_browser_tools.py#L45) |
+| function | `_koer` | `(tool, args, runtime_args, *, timeout_s)` | Fælles vej: find brugeren, kald broen i hoved-loopet, svar ærligt. | [src](../../../core/tools/desk_browser_tools.py#L54) |
+| function | `_tab_id` | `(args)` | `tab_id` er valgfri; udelades den, rammer broen den AKTIVE fane. | [src](../../../core/tools/desk_browser_tools.py#L72) |
+| function | `_vis_panelet` | `(runtime_args)` | Bed desk om at vise browser-panelet — uden at vente på svaret. | [src](../../../core/tools/desk_browser_tools.py#L83) |
+| function | `_exec_jarvis_browser_open` | `(args)` | — | [src](../../../core/tools/desk_browser_tools.py#L109) |
+| function | `_exec_jarvis_browser_navigate` | `(args)` | — | [src](../../../core/tools/desk_browser_tools.py#L119) |
+| function | `_exec_jarvis_browser_read` | `(args)` | — | [src](../../../core/tools/desk_browser_tools.py#L127) |
+| function | `_exec_jarvis_browser_click` | `(args)` | — | [src](../../../core/tools/desk_browser_tools.py#L137) |
+| function | `_exec_jarvis_browser_type` | `(args)` | — | [src](../../../core/tools/desk_browser_tools.py#L146) |
+| function | `_exec_jarvis_browser_screenshot` | `(args)` | — | [src](../../../core/tools/desk_browser_tools.py#L154) |
+| function | `_exec_jarvis_browser_tabs` | `(args)` | — | [src](../../../core/tools/desk_browser_tools.py#L159) |
+| function | `_exec_jarvis_browser_close` | `(args)` | — | [src](../../../core/tools/desk_browser_tools.py#L163) |
+| function | `_nr` | `(desc)` | — | [src](../../../core/tools/desk_browser_tools.py#L174) |
 
 ## `core/tools/desk_view_tools.py`
 _Jarvis styrer desk-vinduet indefra — Claude Desktops `ccd_view`-værktøjer._

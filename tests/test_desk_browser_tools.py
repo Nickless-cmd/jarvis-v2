@@ -150,3 +150,54 @@ def test_broens_fejl_videreformidles_uaendret(monkeypatch):
     monkeypatch.setattr(sto, "_operator_user_id", lambda a: "bjorn")
     ud = db._exec_jarvis_browser_tabs({})
     assert ud["status"] == "error" and ud["error"] == "bridge_not_connected"
+
+
+# ── panelet: en aaben fane ingen kan se, er ikke aabnet ─────────────────
+
+
+class TestPaneletVises:
+    """Fanen lever i desk'ens main-proces, men tegnes kun naar React-state'en
+    `browserOpen` er sand. Maalt 21/9-2026: `open` oprettede fanen — titel og
+    alt — men `synlig: false`, og Bjørn kunne ikke se den. Derfor skal `open`
+    ogsaa bede desk om at vise panelet."""
+
+    @pytest.fixture
+    def view_requests(self, monkeypatch):
+        kaldt: list = []
+        import core.runtime.db_view_requests as vr
+        monkeypatch.setattr(
+            vr, "opret",
+            lambda op, args, *, session_id: kaldt.append((op, args, session_id)),
+        )
+        return kaldt
+
+    def test_open_beder_desk_vise_panelet(self, bro, view_requests):
+        db._exec_jarvis_browser_open(
+            {"url": "https://jarvis.srvlab.dk", "_runtime_session_id": "s1"},
+        )
+        assert view_requests == [("show_pane", {"pane": "browser"}, "s1")]
+
+    def test_uden_samtale_roeres_db_ikke(self, bro, view_requests):
+        """Uden en samtale at vise det i er der ingen at bede — og ingen fejl."""
+        db._exec_jarvis_browser_open({"url": "https://x.dk"})
+        assert view_requests == []
+
+    def test_navigate_tvinger_ikke_panelet_op(self, bro, view_requests):
+        """Kun `open` viser panelet. Har man selv lukket det, skal en navigering
+        i en fane man ikke ser, ikke rive panelet op igen."""
+        db._exec_jarvis_browser_navigate(
+            {"url": "https://x.dk", "_runtime_session_id": "s1"},
+        )
+        assert view_requests == []
+
+    def test_bro_fejl_viser_intet_panel(self, monkeypatch, view_requests):
+        """Fejler broen, findes der ingen fane at vise."""
+        def _fejl(coro_fn, *, tool_name, timeout_s=35.0):
+            return {"status": "error", "error": "bridge_not_connected"}
+
+        monkeypatch.setattr(sto, "_run_operator_async", _fejl)
+        monkeypatch.setattr(sto, "_operator_user_id", lambda a: "bjorn")
+        db._exec_jarvis_browser_open(
+            {"url": "https://x.dk", "_runtime_session_id": "s1"},
+        )
+        assert view_requests == []

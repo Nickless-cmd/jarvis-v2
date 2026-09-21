@@ -1,5 +1,5 @@
 import { StyleSheet } from 'react-native'
-import { fireEvent, render } from '@testing-library/react-native'
+import { fireEvent, render, within } from '@testing-library/react-native'
 import { GlidendeTekst } from './GlidendeTekst'
 
 jest.mock('../lib/useReducedMotion', () => ({ useReducedMotion: () => mockReduced }))
@@ -58,4 +58,24 @@ it('lyset kan ikke trykkes paa og laeses ikke op', async () => {
   const lys = s.getByTestId('glidende-lys', { includeHiddenElements: true })
   expect(lys.props.pointerEvents).toBe('none')
   expect(lys.props.accessibilityElementsHidden).toBe(true)
+})
+
+it('lyset er lavet af TEKSTEN selv — ikke et baand oven paa den', async () => {
+  // Foerste udgave lagde tre halvgennemsigtige hvide flader oven paa teksten.
+  // Det lyser baade bogstaver OG mellemrum, og laeses som en graa streg der
+  // glider forbi — ikke som lys gennem ordet. Desk maler gradienten INDE i
+  // bogstaverne, og her goeres det samme: en LYS KOPI af teksten, klippet af
+  // vinduet. Denne test holder mekanismen fast.
+  const s = await render(<GlidendeTekst text="Kører bash…" aktiv />)
+  await fireEvent(s.getByTestId('glidende-tekst'), 'layout',
+    { nativeEvent: { layout: { width: 200, height: 20 } } })
+
+  const lys = s.getByTestId('glidende-lys', { includeHiddenElements: true })
+  // Kopien af teksten ligger inde i lyset ...
+  expect(within(lys).getAllByText('Kører bash…', { includeHiddenElements: true }).length)
+    .toBeGreaterThan(0)
+  // ... og de skjulte kopier tæller IKKE med i et almindeligt tekstoplysning.
+  // `getByText` kaster hvis der er flere træf, så at den ikke gør, ER beviset
+  // for at skjulningen virker — og dermed for at skærmlæseren hører ét ord.
+  expect(s.getByText('Kører bash…')).toBeTruthy()
 })

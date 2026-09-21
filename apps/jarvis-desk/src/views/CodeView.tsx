@@ -323,7 +323,7 @@ export function CodeView({
   const [browserOpen, setBrowserOpen] = useState(false)
   const [aendredeFiler, setAendredeFiler] = useState(0)
   const [fokusFil, setFokusFil] = useState('')
-  const [fuldRude, setFuldRude] = useState<'' | 'changes' | 'jobs'>('')
+  const [fuldRude, setFuldRude] = useState<'' | 'changes' | 'jobs' | 'browser'>('')
 
   useEffect(() => paaAendringsFokus((sti) => {
     setFokusFil(sti)
@@ -1001,7 +1001,7 @@ export function CodeView({
   // steder. Nu gør code det samme (Bjørn 21/9-2026).
   const skinne = config && skinneAaben ? (
       <div className={`code-right-stack${fuldRude ? ' er-fuld' : ''}`}>
-        {changesOpen && fuldRude !== 'jobs' && (
+        {changesOpen && (!fuldRude || fuldRude === 'changes') && (
           <ChangesPanel
             config={config}
             onCount={setAendredeFiler}
@@ -1017,8 +1017,15 @@ export function CodeView({
             onClose={() => { setChangesOpen(false); setFuldRude((v) => v === 'changes' ? '' : v) }}
           />
         )}
-        {browserOpen && <JarvisBrowserPanel aaben={browserOpen} />}
-        {jobsOpen && fuldRude !== 'changes' && (
+        {browserOpen && (!fuldRude || fuldRude === 'browser') && (
+          <JarvisBrowserPanel
+            aaben={browserOpen}
+            fuld={fuldRude === 'browser'}
+            onFuld={(f) => setFuldRude(f ? 'browser' : '')}
+            onClose={() => { setBrowserOpen(false); setFuldRude((v) => v === 'browser' ? '' : v) }}
+          />
+        )}
+        {jobsOpen && (!fuldRude || fuldRude === 'jobs') && (
           <JobsPanel
             config={config}
             isOwner={isOwner}

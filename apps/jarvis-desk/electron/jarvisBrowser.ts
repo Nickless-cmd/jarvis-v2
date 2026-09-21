@@ -29,6 +29,11 @@ export interface Faneblad {
   url: string
   titel: string
   aktiv: boolean
+  /** Historik-tilstand, så pilene kan være grå når de ikke fører nogen steder. */
+  kanTilbage: boolean
+  kanFrem: boolean
+  /** Siden henter stadig — genindlæs-knappen bliver til en stop-knap. */
+  henter: boolean
 }
 
 interface Fane {
@@ -83,15 +88,84 @@ export function aabnFane(url: string): Faneblad {
     else { void shell.openExternal(ny) }
     return { action: 'deny' }
   })
-  void view.webContents.loadURL(url)
+  void view.webContents.loadURL(tydUrl(url))
   anvendBounds()
-  return { id, url, titel: '', aktiv: true }
+  return { id, url, titel: '', aktiv: true, kanTilbage: false, kanFrem: false, henter: true }
+}
+
+/**
+ * Gør det man taster i adresselinjen til noget der kan hentes.
+ *
+ * En adresselinje får sjældent en hel URL. «github.com» skal blive til
+ * https, og «hvad er en webcontentsview» skal blive til en søgning — ellers
+ * står man med en fejlside og tror browseren er i stykker.
+ *
+ * Søgningen går til DuckDuckGo, fordi den ikke bygger en profil på det der
+ * tastes. Det ER en udgående forespørgsel: taster man noget der ikke ligner
+ * et værtsnavn, forlader teksten maskinen — nøjagtig som i enhver anden
+ * browsers adresselinje.
+ */
+export function tydUrl(raa: string): string {
+  const t = String(raa).trim()
+  if (!t) return 'about:blank'
+  // Skema kraever «://». Uden den regel blev «localhost:5174» laest som
+  // skemaet «localhost» med stien «5174», og udvikling herinde var umulig.
+  // De faa skemaer UDEN skraastreger staar navngivet; alt andet, herunder
+  // «javascript:», ender som en soegning frem for at blive kaldt.
+  if (/^[a-z][a-z0-9+.-]*:\/\//i.test(t)) return t
+  if (/^(about|mailto|data|blob|tel|file):/i.test(t)) return t
+  const etOrd = !/\s/.test(t)
+  const lignerVaert = etOrd && (/^[^/]+\.[a-z]{2,}(?::\d+)?(?:[/?#]|$)/i.test(t) || /^localhost(?::\d+)?(?:[/?#]|$)/i.test(t))
+  if (lignerVaert) return `https://${t}`
+  return `https://duckduckgo.com/?q=${encodeURIComponent(t)}`
 }
 
 export function naviger(url: string, id = aktivId): void {
   const f = faner.find((x) => x.id === id)
   if (!f) throw new Error(`ukendt fane ${id}`)
-  void f.view.webContents.loadURL(url)
+  void f.view.webContents.loadURL(tydUrl(url))
+}
+
+/** Electron 33 flyttede historikken til `navigationHistory`; de gamle
+ *  `canGoBack()`/`goBack()` på webContents er på vej ud. Vi går efter den nye
+ *  og falder tilbage, så panelet ikke brækker på nogen af dem. */
+function historik(f: Fane) {
+  const wc = f.view.webContents as unknown as {
+    navigationHistory?: { canGoBack(): boolean; canGoForward(): boolean; goBack(): void; goForward(): void }
+    canGoBack?: () => boolean
+    canGoForward?: () => boolean
+    goBack?: () => void
+    goForward?: () => void
+  }
+  return {
+    kanTilbage: wc.navigationHistory?.canGoBack() ?? wc.canGoBack?.() ?? false,
+    kanFrem: wc.navigationHistory?.canGoForward() ?? wc.canGoForward?.() ?? false,
+    tilbage: () => { if (wc.navigationHistory) wc.navigationHistory.goBack(); else wc.goBack?.() },
+    frem: () => { if (wc.navigationHistory) wc.navigationHistory.goForward(); else wc.goForward?.() },
+  }
+}
+
+export function tilbage(id = aktivId): void {
+  const f = faner.find((x) => x.id === id)
+  if (!f) return
+  const h = historik(f)
+  if (h.kanTilbage) h.tilbage()
+}
+
+export function frem(id = aktivId): void {
+  const f = faner.find((x) => x.id === id)
+  if (!f) return
+  const h = historik(f)
+  if (h.kanFrem) h.frem()
+}
+
+/** Genindlæs — eller afbryd, hvis siden stadig henter. Samme knap, som i en
+ *  rigtig browser: der er ingen grund til to. */
+export function genindlaes(id = aktivId): void {
+  const f = faner.find((x) => x.id === id)
+  if (!f) return
+  if (f.view.webContents.isLoading()) f.view.webContents.stop()
+  else f.view.webContents.reload()
 }
 
 export async function laes(id = aktivId, maxTegn = 24_000): Promise<string> {
@@ -162,12 +236,18 @@ export function saetSynlig(v: boolean): void {
 }
 
 export function fanebladeliste(): Faneblad[] {
-  return faner.map((f) => ({
-    id: f.id,
-    url: f.view.webContents.getURL(),
-    titel: f.view.webContents.getTitle(),
-    aktiv: f.id === aktivId,
-  }))
+  return faner.map((f) => {
+    const h = historik(f)
+    return {
+      id: f.id,
+      url: f.view.webContents.getURL(),
+      titel: f.view.webContents.getTitle(),
+      aktiv: f.id === aktivId,
+      kanTilbage: h.kanTilbage,
+      kanFrem: h.kanFrem,
+      henter: f.view.webContents.isLoading(),
+    }
+  })
 }
 
 export function status(): { aktiv: number; antal: number; synlig: boolean } {

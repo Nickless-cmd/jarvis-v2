@@ -23,11 +23,14 @@ export interface JarvisDeskBridge {
   browser: {
     saetRect: (r: { x: number; y: number; width: number; height: number }) => Promise<boolean>
     saetSynlig: (v: boolean) => Promise<boolean>
-    faner: () => Promise<{ id: number; url: string; titel: string; aktiv: boolean }[]>
+    faner: () => Promise<{ id: number; url: string; titel: string; aktiv: boolean; kanTilbage: boolean; kanFrem: boolean; henter: boolean }[]>
     vaelg: (id: number) => Promise<boolean>
     luk: (id: number) => Promise<boolean>
-    aabn: (url: string) => Promise<{ id: number; url: string; titel: string; aktiv: boolean }>
+    aabn: (url: string) => Promise<{ id: number; url: string; titel: string; aktiv: boolean; kanTilbage: boolean; kanFrem: boolean; henter: boolean }>
     naviger: (url: string) => Promise<boolean>
+    tilbage: () => Promise<boolean>
+    frem: () => Promise<boolean>
+    genindlaes: () => Promise<boolean>
   }
   /** Åbn et eksternt link i system-browseren (main filtrerer til http/https/mailto). */
   openExternal: (url: string) => Promise<void>
@@ -139,6 +142,9 @@ const bridge: JarvisDeskBridge = {
     luk: (id) => ipcRenderer.invoke('browser:luk', id),
     aabn: (url) => ipcRenderer.invoke('browser:aabn', url),
     naviger: (url) => ipcRenderer.invoke('browser:naviger', url),
+    tilbage: () => ipcRenderer.invoke('browser:tilbage'),
+    frem: () => ipcRenderer.invoke('browser:frem'),
+    genindlaes: () => ipcRenderer.invoke('browser:genindlaes'),
   },
   openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url),
   setActiveRun: (runId) => ipcRenderer.invoke('run:setActive', runId),

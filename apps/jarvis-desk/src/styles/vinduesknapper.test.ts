@@ -7,13 +7,23 @@
  *
  * Roden er to ting der begge er ønskede: vinduesknapperne er `position: fixed`
  * i hjørnet (16/9: de er vinduets ENESTE knapper, så de må ikke forsvinde med
- * en header), og de højre ruder går helt op til kanten (16/9: «baggrundjob og
- * changes paneler skal gaa laengere op»). Chat-headeren fik sin plads
- * reserveret 19/9; panelerne fik den aldrig.
+ * en header), og de højre ruder gik helt op til kanten (16/9: «baggrundjob og
+ * changes paneler skal gaa laengere op»).
  *
- * Testen vogter to ting, og det er dem der kan rådne: at reglen bruger SAMME
- * mål som knapperne (ændrer nogen knap-størrelsen, følger pladsen med), og at
- * hver klasse i den faktisk RENDERES af en komponent. En CSS-regel mod en
+ * ## To forskellige svar, fordi der er to forskellige tilfælde (21/9-2026)
+ *
+ * Skinnens ruder er SÆNKET: `.code-right-stack` starter under trækbjælken, så
+ * hele stakken begynder fri af knapperne («de skal sænkes lidt så de bliver
+ * under luk x knappen»). Deres hoveder har dermed ingen padding — de får hele
+ * bredden igen, hvilket er hele pointen med at sænke frem for at lappe.
+ *
+ * Artefakt- og kodepanelet ligger stadig højt og kan ikke sænkes uden at tabe
+ * plads. De beholder `--vk-plads`.
+ *
+ * Testen vogter derfor tre ting, og det er dem der kan rådne: at skinnen
+ * faktisk ligger lavt nok, at de to høje hoveder bruger SAMME mål som
+ * knapperne (ændrer nogen knap-størrelsen, følger pladsen med), og at hver
+ * klasse i reglen faktisk RENDERES af en komponent. En CSS-regel mod en
  * klasse ingen skriver, er en rettelse der ser ud til at virke.
  */
 import { describe, expect, it } from 'vitest'
@@ -23,16 +33,31 @@ import { join } from 'node:path'
 
 const app = readFileSync(join(__dirname, 'app.css'), 'utf8')
 
-/** Reglen der holder panel-hovederne fri af knapperne. */
-const regel = app.slice(
-  app.indexOf('body.egen-ramme .code-right-stack > *:first-child > .changes-head'),
-).split('}')[0]
+/** Reglen der holder de to HØJE panel-hoveder fri af knapperne. */
+const regel = app.slice(app.indexOf('body.egen-ramme .artifact-head')).split('}')[0] ?? ''
 
-const KLASSER = ['changes-head', 'jobs-head', 'artifact-head', 'codepanel-head']
+/** Skinnen selv — den løser sit eget tilfælde ved at ligge lavere. */
+const skinne = app.slice(app.indexOf('.code-right-stack {')).split('}')[0] ?? ''
+
+const HOEJE = ['artifact-head', 'codepanel-head']
+const I_SKINNEN = ['changes-head', 'jobs-head']
 
 describe('vinduesknapperne og panel-hovederne', () => {
-  it('reserverer plads i hvert af de fire hoveder der ligger øverst til højre', () => {
-    for (const k of KLASSER) expect(regel).toContain(`.${k}`)
+  it('sænker skinnen fri af knapperne i stedet for at lappe dens hoveder', () => {
+    // Knapperne: top 6 px, 24 px høje → slutter ved 30. Trækbjælken er 36.
+    const top = /top:\s*(\d+)px/.exec(skinne)
+    expect(top).not.toBeNull()
+    expect(Number(top![1])).toBeGreaterThanOrEqual(30)
+  })
+
+  it('giver IKKE skinnens hoveder padding — de skal have hele bredden', () => {
+    // Lappen stod her indtil 21/9. Kommer den igen, har nogen sat `top`
+    // tilbage til 0 uden at sige det.
+    for (const k of I_SKINNEN) expect(regel).not.toContain(`.${k}`)
+  })
+
+  it('reserverer plads i de to hoveder der stadig ligger øverst til højre', () => {
+    for (const k of HOEJE) expect(regel).toContain(`.${k}`)
   })
 
   it('bruger SAMME mål som knapperne — ikke et nyt tal ved siden af', () => {
@@ -42,19 +67,13 @@ describe('vinduesknapperne og panel-hovederne', () => {
     expect(app).toMatch(/--vk-plads:\s*calc\(/)
   })
 
-  it('rammer kun den ØVERSTE rude i skinnen', () => {
-    // De nedenunder har knapperne langt over sig; padding dér ville bare
-    // efterlade et tomt hul i hvert panelhoved.
-    expect(regel).toContain('> *:first-child >')
-  })
-
   it('hver klasse renderes FAKTISK af en komponent', () => {
     // Den fælde huset kender: en CSS-regel mod en klasse ingen skriver.
     const kilde = execFileSync('grep', ['-rl', '--include=*.tsx', '-e', 'className', 'src'],
                                { cwd: join(__dirname, '..', '..'), encoding: 'utf8' })
     const filer = kilde.trim().split('\n')
     const alt = filer.map((f) => readFileSync(join(__dirname, '..', '..', f), 'utf8')).join('\n')
-    for (const k of KLASSER) {
+    for (const k of [...HOEJE, ...I_SKINNEN]) {
       expect(alt).toContain(`"${k}"`)
     }
   })

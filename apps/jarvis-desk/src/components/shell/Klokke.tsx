@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Bell } from 'lucide-react'
 import type { ApiConfig } from '../../lib/api'
+import { openEventSocket } from '../../lib/api'
 import { hentNotifikationer } from '../../lib/notifikationerApi'
 import { maaPolle } from '../../lib/ro'
 
@@ -28,9 +29,11 @@ export function Klokke({ config, onAaben }: {
   // komponent.
   const alive = useRef(true)
 
-  const hent = useCallback(() => {
+  // `hentNu` gaar UDEN OM ro-loftet (`maaPolle`) — den bruges baade af pollet
+  // selv (efter loftet har sagt ja) og af WS-lytteren nedenfor, hvor en
+  // haendelse ER signalet og derfor aldrig maa sluges af ro-mekanismen.
+  const hentNu = useCallback(() => {
     if (!config) return
-    if (!maaPolle('notifikationer', 8000)) return
     hentNotifikationer(config)
       .then((f) => {
         if (!alive.current) return
@@ -43,12 +46,37 @@ export function Klokke({ config, onAaben }: {
       })
   }, [config])
 
+  const hent = useCallback(() => {
+    if (!config) return
+    if (!maaPolle('notifikationer', 8000)) return
+    hentNu()
+  }, [config, hentNu])
+
   useEffect(() => {
     alive.current = true
     hent()
     const id = window.setInterval(hent, 8000)
     return () => { alive.current = false; window.clearInterval(id) }
   }, [hent])
+
+  // Live-vejen. Pollet er sikkerhedsnettet; DETTE er grunden til at man ikke
+  // skal ud og ind af appen for at se en ny godkendelse. `hentNu` gaar uden om
+  // `maaPolle`: en haendelse ER signalet, og et ro-loft ville sluge den.
+  useEffect(() => {
+    if (!config) return
+    let ws: WebSocket | null = null
+    try {
+      ws = openEventSocket(config)
+      ws.onmessage = (e) => {
+        try {
+          const kind = String(JSON.parse(String(e.data))?.kind || '')
+          if (kind.startsWith('notifikation.')) hentNu()
+        } catch { /* ikke-JSON paa bussen er ikke vores */ }
+      }
+      ws.onerror = () => { /* pollet daekker */ }
+    } catch { /* pollet daekker */ }
+    return () => { try { ws?.close() } catch { /* noop */ } }
+  }, [config, hentNu])
 
   const titel = fejl
     ? 'Notifikationer — listen kunne ikke hentes'

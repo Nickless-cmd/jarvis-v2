@@ -6,6 +6,18 @@ vi.mock('../../lib/notifikationerApi', () => ({
   hentNotifikationer: (...a: unknown[]) => hent(...a),
 }))
 
+// Stub-sockets til WS-lytte-testerne nedenfor. Hver kaldt openEventSocket()
+// laegger sin stub i `sockets`, saa en test kan finde den senest oprettede
+// og udloese `onmessage` selv.
+const sockets: { onmessage: ((e: { data: string }) => void) | null; close: () => void }[] = []
+vi.mock('../../lib/api', () => ({
+  openEventSocket: () => {
+    const s = { onmessage: null, onerror: null, close: vi.fn() }
+    sockets.push(s as never)
+    return s
+  },
+}))
+
 import { Klokke } from './Klokke'
 
 const cfg = { apiBaseUrl: 'http://x', authToken: 't' }
@@ -20,6 +32,7 @@ describe('Klokke', () => {
   beforeEach(() => {
     hent.mockReset()
     hent.mockResolvedValue({ poster: [], antal: 0 })
+    sockets.length = 0
   })
 
   it('viser ingen taeller naar der intet er', async () => {
@@ -93,5 +106,34 @@ describe('Klokke', () => {
 
     expect(await screen.findByTestId('klokke-fejl')).toBeInTheDocument()
     expect(screen.getByTestId('klokke-taeller')).toHaveTextContent('1')
+  })
+
+  // Selve pointen med opgave 10: klokken skal opdatere sig UDEN at man gaar
+  // ud og ind af appen. `hentNu` (udloest af WS'en) gaar uden om ro-loftet —
+  // ellers ville en haendelse kunne blive slugt af `maaPolle`.
+  it('opdaterer taelleren paa en haendelse — uden at man gaar ud og ind', async () => {
+    hent.mockResolvedValueOnce({ poster: [], antal: 0 })
+       .mockResolvedValue({ poster: [], antal: 3 })
+    render(<Klokke config={cfg} onAaben={() => {}} />)
+    await waitFor(() => expect(hent).toHaveBeenCalledTimes(1))
+    expect(screen.queryByTestId('klokke-taeller')).toBeNull()
+
+    const s = sockets[sockets.length - 1]!
+    s.onmessage?.({ data: JSON.stringify({ kind: 'notifikation.ny' }) })
+
+    expect(await screen.findByTestId('klokke-taeller')).toHaveTextContent('3')
+  })
+
+  // Bussen paa /ws baerer ALT — indre stemme, raesonnement, hvad som helst.
+  // En fremmed haendelse maa ALDRIG udloese en hentning; ellers lytter vi
+  // reelt til hele bussen i stedet for kun `notifikation.*`.
+  it('ignorerer haendelser der ikke er vores', async () => {
+    hent.mockResolvedValue({ poster: [], antal: 0 })
+    render(<Klokke config={cfg} onAaben={() => {}} />)
+    await waitFor(() => expect(hent).toHaveBeenCalledTimes(1))
+    const s = sockets[sockets.length - 1]!
+    s.onmessage?.({ data: JSON.stringify({ kind: 'runtime.tick' }) })
+    await new Promise((r) => setTimeout(r, 30))
+    expect(hent).toHaveBeenCalledTimes(1)
   })
 })

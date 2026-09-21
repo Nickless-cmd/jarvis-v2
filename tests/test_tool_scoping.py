@@ -8,6 +8,7 @@ from core.tools.tool_scoping import (
     current_tool_scope,
     CHAT_MODE_TOOLS_BASE,
     CHAT_MODE_OWNER_EXTRA,
+    COMPUTER_USE_TOOLS,
     OWNER_ONLY_TOOLS,
 )
 
@@ -323,3 +324,51 @@ def test_scout_agent_og_dispatch_er_i_den_faste_flade_og_explore_er_kun_alias():
     assert st._TOOL_HANDLERS["explore"] is st._TOOL_HANDLERS["scout_agent"]
     assert "scout_agent" in REQUIRED_LAZY_TOOL_NAMES
     assert "dispatch_code_mode_task" in REQUIRED_LAZY_TOOL_NAMES
+
+
+# ── Computer-use: mus, tastatur, skaermbillede — KUN code mode (21/9-2026) ──
+# Værktøjerne FANDTES, `@nut-tree-fork/nut-js` var installeret, og samtykke-porten
+# var bygget — men de stod i INGEN scope-liste. Målt 21/9: chat 0/17, code 0/17.
+# Et værktøj uden for listen findes reelt ikke for modellen (samme lektie som
+# `explore`, 6/9-2026). Bjørn: «Det skal kun være i code mode, så alle 17».
+
+class TestComputerUseKunICodeMode:
+    ALLE = sorted(COMPUTER_USE_TOOLS)
+
+    def test_der_er_sytten(self):
+        """9 handlende (mus, tastatur, clipboard-write, fokus, launch) + 8 læsende
+        (skærmbillede, position, skærmstørrelse, vinduer, OCR, find_image,
+        clipboard-read). Tallet er kontrakten Bjørn nævnte."""
+        assert len(COMPUTER_USE_TOOLS) == 17
+
+    def test_alle_sytten_annonceres_i_code(self):
+        allow = allowed_tool_names(role="owner", scope="code", all_names=self.ALLE)
+        assert set(self.ALLE) <= allow
+
+    def test_ingen_i_chat_selv_med_bro_paret(self, monkeypatch):
+        """Chat-grenen arver CODE_MODE_TOOLS_BASE når en desk-bro er paret. Den arv
+        må ikke omfatte musen: i chat kan man ikke se den skærm man peger på."""
+        import core.tools.tool_scoping as ts
+        monkeypatch.setattr(ts, "_owner_has_live_bridge", lambda: True)
+        allow = allowed_tool_names(role="owner", scope="chat", all_names=self.ALLE)
+        assert allow == set()
+
+    def test_de_staar_ikke_i_base_listerne(self):
+        """Havde de ligget i CODE_MODE_TOOLS_BASE, var de lækket til chat via arven."""
+        from core.tools.tool_scoping import CODE_MODE_TOOLS_BASE
+        assert not (COMPUTER_USE_TOOLS & CODE_MODE_TOOLS_BASE)
+        assert not (COMPUTER_USE_TOOLS & CHAT_MODE_TOOLS_BASE)
+
+    def test_de_er_lokalt_eksekverende(self):
+        """Semantik: de kører på hans maskine i code mode — broen skal kende dem,
+        så surface-taggen og mode-routingen bliver rigtig."""
+        from core.tools.tool_scoping import is_local_execution_tool
+        for t in self.ALLE:
+            assert is_local_execution_tool(t) is True
+
+    def test_handlende_og_laesende_udgoer_tilsammen_familien(self):
+        """Listen er ikke skrevet af her — den er samtykke-modulens to sæt. Driver
+        de fra hinanden, fanger den her."""
+        from core.services.computer_use_samtykke import HANDLENDE, LAESENDE
+        assert COMPUTER_USE_TOOLS == (HANDLENDE | LAESENDE)
+        assert not (HANDLENDE & LAESENDE)

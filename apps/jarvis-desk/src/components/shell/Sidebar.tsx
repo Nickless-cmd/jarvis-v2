@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, Fragment } from 'react'
 import {
-  Plus, MoreVertical, Pencil, Download, Trash2, Search, Images, Code, Activity, FileCode2,
+  Plus, MoreVertical, Pencil, Download, Trash2, Search, Images, Code, FileCode2,
   ChevronRight, ChevronDown, MessageSquare,
   LayoutDashboard, Blocks, Settings, Brain, Cpu,
   User, ShieldCheck, Bell, Palette, Languages, MapPin, Database, Folder, Plug, Bot, Info,
@@ -11,7 +11,6 @@ import { useSessions } from '../../hooks/useSessions'
 import { useSettings } from '../../hooks/useSettings'
 import { useStream } from '../../hooks/useStream'
 import { getActiveRuns } from '../../lib/api'
-import { OpmaerksomhedsLinje } from './OpmaerksomhedsLinje'
 import { COWORK_ZONES, emitZone, getCurrentZone, onZone, normalizeZone, type Zone } from '../../lib/coworkZone'
 import { grupperSessioner, GRUPPER_I_MODE, grupperEfterProjekt, type SessionGruppe } from '../../lib/sessionGroups'
 import { SidebarGreb } from './SidebarGreb'
@@ -124,11 +123,11 @@ export function Sidebar({
           <button
             type="button"
             className="icon-btn"
-            title="Aktivitet — hvad der foregår lige nu"
-            aria-label="Aktivitet"
+            title="Notifikationer"
+            aria-label="Notifikationer"
             onClick={() => { onSurface('cowork'); emitZone('mc') }}
           >
-            <Activity size={15} />
+            <Bell size={15} />
           </button>
         </div>
       </div>
@@ -238,11 +237,8 @@ export function Sidebar({
       </div>
       )}
 
-      <OpmaerksomhedsLinje
-        config={settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : null}
-        aktivId={activeId}
-        onAabn={(id) => { select(id); if (modeFor(surface) !== 'code') onSurface('chat') }}
-      />
+      {/* Opmaerksomhedslinjen bor nu nederst til HOEJRE i vinduet — se
+          OpmaerksomhedsVaert i App.tsx (Bjørn 21/9-2026). */}
       <div className="sidebar-foot">
         <div className="who">
           <span className="avatar">{userName.charAt(0).toUpperCase()}</span>

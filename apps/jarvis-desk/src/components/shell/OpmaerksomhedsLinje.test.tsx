@@ -44,4 +44,26 @@ describe('OpmaerksomhedsLinje', () => {
     render(<OpmaerksomhedsLinje config={cfg} aktivId="s-1" onAabn={() => {}} />)
     await waitFor(() => expect(marker).toHaveBeenCalledWith(cfg, 's-1'))
   })
+
+  // Bjørn 21/9-2026: «den grønne prik i feltet erstattes med hans eget ikon
+  // animeret». JarvisRing er det maerke der allerede staar i headeren og ved
+  // composeren — det er HAM der er i gang, ikke en farvet cirkel.
+  it('baerer Jarvis eget maerke, ikke en prik — og det bevaeger sig naar han arbejder', async () => {
+    const p = punkt('s-1', 'running', 'Kæledyret')
+    hent.mockResolvedValue({ tilstand: 'running', etiket: 'Jarvis arbejder', antal: { waiting: 0, failed: 0, review: 0, running: 1 }, baggrund: 0, indbakke: 0, fokus: p, punkter: [p] })
+    const { container } = render(<OpmaerksomhedsLinje config={cfg} aktivId={null} onAabn={() => {}} />)
+    await screen.findByTestId('opmaerksomhed')
+    expect(container.querySelector('.opm-prik')).toBeNull()
+    const ring = container.querySelector('.jarvis-ring')
+    expect(ring).not.toBeNull()
+    expect(ring!.className).toContain('is-working')
+  })
+
+  it('staar stille naar han ikke arbejder', async () => {
+    const p = punkt('s-1', 'review')
+    hent.mockResolvedValue({ tilstand: 'review', etiket: 'Færdig', antal: { waiting: 0, failed: 0, review: 1, running: 0 }, baggrund: 0, indbakke: 0, fokus: p, punkter: [p] })
+    const { container } = render(<OpmaerksomhedsLinje config={cfg} aktivId={null} onAabn={() => {}} />)
+    await screen.findByTestId('opmaerksomhed')
+    expect(container.querySelector('.jarvis-ring')!.className).not.toContain('is-working')
+  })
 })

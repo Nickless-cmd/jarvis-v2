@@ -32,6 +32,7 @@ import { SchedulingView } from './views/SchedulingView'
 import { ImageGalleryView } from './views/ImageGalleryView'
 import { ArtifactsView } from './views/ArtifactsView'
 import { Sidebar, type Surface } from './components/shell/Sidebar'
+import { OpmaerksomhedsVaert } from './components/shell/OpmaerksomhedsVaert'
 import { DESK_CHROME } from './lib/deskChrome'
 import { StatusBar } from './components/shell/StatusBar'
 import './styles/tokens.css'
@@ -95,6 +96,7 @@ export function App() {
             />
             <UiPanelWatcher config={cfg} setSurface={setSurface} />
             <ViewRequestWatcher config={cfg} />
+            <OpmaerksomhedsVaert setSurface={setSurface} />
             <AiTransparencyNotice onNavigate={setSurface} />
             <UpdateHost />
             <DependencyHost />

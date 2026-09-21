@@ -1,14 +1,27 @@
 import { useEffect, useState } from 'react'
 import type { ApiConfig } from '../../lib/api'
 import { hentOpmaerksomhed, markerSet, skalKvittere, type Opmaerksomhed } from '../../lib/opmaerksomhed'
+import { JarvisRing } from './JarvisRing'
 
 /**
- * Tilstands-hjernens stemme i desk: én linje nederst i sidepanelet.
+ * Tilstands-hjernens stemme i desk: én linje der kommer og går.
  *
  * Tavs når intet kræver dig — den skal ikke være endnu en ting at kigge på.
  * Klik åbner den samtale der vinder prioriteten. Åbner du en samtale med et
  * «færdig»/«fejlede», kvitteres det på serveren, så det også forsvinder på
  * telefonen.
+ *
+ * ## Hvor den bor (Bjørn 21/9-2026)
+ *
+ * Den lå nederst i VENSTRE panel, klemt mellem samtalelisten og hans navn.
+ * Den hører til nederst til HØJRE i vinduet: «det vil jeg gerne have flyttet
+ * til højre side og nede i bunden af siden». Derfor er den nu fast placeret i
+ * vinduet frem for at ligge i sidepanelets flow — den skal kunne komme og gå
+ * uden at skubbe til noget.
+ *
+ * Prikken var en farvet cirkel. Nu er det Jarvis' eget mærke, og det
+ * bevæger sig når han arbejder: det er HAM der er i gang, og mærket er det
+ * samme som i headeren og ved composeren.
  */
 export function OpmaerksomhedsLinje({ config, aktivId, onAabn }: {
   config: ApiConfig | null
@@ -49,7 +62,8 @@ export function OpmaerksomhedsLinje({ config, aktivId, onAabn }: {
       title={fokus?.tekst || fokus?.titel || o.etiket}
       onClick={() => { if (fokus?.session_id) onAabn(fokus.session_id) }}
     >
-      <span className="opm-prik" aria-hidden />
+      <JarvisRing size={15} spinning={o.tilstand === 'running'}
+                  tone={o.tilstand === 'failed' ? 'error' : o.tilstand === 'running' ? 'working' : 'idle'} />
       <span className="opm-etiket">{o.etiket}{antal > 1 ? ` · ${antal}` : ''}</span>
       {fokus?.titel ? <span className="opm-titel">{fokus.titel}</span> : null}
     </button>

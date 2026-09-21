@@ -769,7 +769,10 @@ export function ChatView({
 
   const activeSession = sessions.sessions.find((s) => s.id === sessionId)
   const chatTitle = activeSession?.title || (isEmpty ? 'Ny samtale' : 'Samtale')
-  const skinneAaben = !!settings && (jobsOpen || changesOpen)
+  // browserOpen SKAL være med: uden den åbnede skinnen kun hvis ændringer
+  // eller baggrundsjob i forvejen stod åbne, og kloden var en død knap når man
+  // trykkede på den alene. Den fejl fandtes fra dag ét (Bjørn 21/9-2026).
+  const skinneAaben = !!settings && (jobsOpen || changesOpen || browserOpen)
   const cfgSkinne = settings
     ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined
   // Aendringer oeverst, jobs nederst — samme raekkefoelge som i CC.

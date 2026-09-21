@@ -7,17 +7,7 @@ import { JarvisBrowserPanel } from './JarvisBrowserPanel'
  * oven på vinduet. Det panelet skal kunne, er at MELDE hvor hullet er, og at
  * vise fanerne. Derfor måles netop de to ting her.
  */
-// jsdom har ingen ResizeObserver. Komponenten bruger den til at melde
-// hullets rektangel ved ENHVER ændring — et window-resize-lytteord ville
-// misse et sidepanel der folder ud. Manglen er testmiljøets, så den stubbes
-// her frem for at svække komponenten.
-class _ResizeObserverStub {
-  constructor(private cb: () => void) {}
-  observe() { this.cb() }
-  disconnect() {}
-  unobserve() {}
-}
-;(globalThis as unknown as { ResizeObserver: unknown }).ResizeObserver = _ResizeObserverStub
+// ResizeObserver-stubben bor i src/test/setup.ts — se hvorfor der.
 
 const saetRect = vi.fn(async () => true)
 const saetSynlig = vi.fn(async () => true)

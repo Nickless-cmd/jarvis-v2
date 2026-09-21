@@ -138,4 +138,15 @@ describe('CodeView', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'docs.example.com' }))
     expect(screen.getByTestId('panel-target')).toHaveTextContent('source')
   })
+
+  // Browseren kom i chat-fladen 21/9 og blev glemt her. Ingen af de to flader
+  // havde en test paa knappen — derfor saa ingen at de skiltes ad. Denne
+  // pinner den i code; chat har faaet sin egen.
+  it('har Jarvis\' browser i headeren, og knappen aabner ruden', async () => {
+    wrap(<CodeView sessionId="s1" userName="B" role="owner" />)
+    const knap = await screen.findByRole('button', { name: "Vis/skjul Jarvis' browser" })
+    expect(document.querySelector('.jbrowser')).not.toBeInTheDocument()
+    await userEvent.click(knap)
+    expect(document.querySelector('.jbrowser')).toBeInTheDocument()
+  })
 })

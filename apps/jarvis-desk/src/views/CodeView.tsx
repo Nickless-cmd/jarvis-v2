@@ -3,7 +3,7 @@ import { Fragment } from 'react'
 import { useRammeReducer } from '../lib/useRammeReducer'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useVoiceConversation } from '../hooks/useVoiceConversation'
-import { FolderTree, PanelRight, Lock, ShieldCheck, FolderOpen, Gauge, SquareStack, FileDiff, Bot } from 'lucide-react'
+import { FolderTree, PanelRight, Lock, ShieldCheck, FolderOpen, Gauge, SquareStack, FileDiff, Bot, Globe } from 'lucide-react'
 import { onPauseSvar, pauseAskIn, withoutPauseAsk, type PauseAsk } from '../lib/pauseAsk'
 import { useStream } from '../hooks/useStream'
 import { usePermission } from '../hooks/usePermission'
@@ -28,6 +28,7 @@ import { EnvironmentPanel } from '../components/code/EnvironmentPanel'
 import { CentralBadge } from '../components/shell/CentralBadge'
 import { JobsPanel } from '../components/shell/JobsPanel'
 import { ChangesPanel } from '../components/shell/ChangesPanel'
+import { JarvisBrowserPanel } from '../components/browser/JarvisBrowserPanel'
 import { paaAendringsFokus, visAendring } from '../lib/aendringsFokus'
 import { IKKE_I_DESK, registrerSkaerm } from '../lib/skaermRegister'
 import { listProcesses } from '../lib/processesApi'
@@ -317,6 +318,9 @@ export function CodeView({
   const [jobsOpen, setJobsOpen] = useState(false)
   const [koerendeJobs, setKoerendeJobs] = useState(0)
   const [changesOpen, setChangesOpen] = useState(false)
+  // Jarvis' browser. Den kom med i chat-fladen 21/9 og blev glemt her —
+  // samme hoejre-stak, samme plads i raekken, saa de to flader ikke skilles ad.
+  const [browserOpen, setBrowserOpen] = useState(false)
   const [aendredeFiler, setAendredeFiler] = useState(0)
   const [fokusFil, setFokusFil] = useState('')
   const [fuldRude, setFuldRude] = useState<'' | 'changes' | 'jobs'>('')
@@ -934,6 +938,14 @@ export function CodeView({
       </button>
       <button
         type="button"
+        className={`panel-toggle ${browserOpen ? 'active' : ''}`}
+        aria-label="Vis/skjul Jarvis' browser" title="Jarvis' browser"
+        onClick={() => setBrowserOpen((o) => !o)}
+      >
+        <Globe size={15} />
+      </button>
+      <button
+        type="button"
         className={`panel-toggle ${envOpen ? 'active' : ''}`}
         aria-label="Vis/skjul miljø-felt" title="Miljø"
         onClick={() => setEnvManual(!(envManual ?? envWide))}
@@ -982,12 +994,50 @@ export function CodeView({
     </div>
   )
 
+  const skinneAaben = jobsOpen || changesOpen || browserOpen
+  // Skinnen lå før INDE i den aktive samtales JSX. Det betød at de tre
+  // knapper i headeren var levende at se på og fuldstændig døde at trykke på,
+  // så længe samtalen var tom — chat-fladen har altid tegnet sin skinne begge
+  // steder. Nu gør code det samme (Bjørn 21/9-2026).
+  const skinne = config && skinneAaben ? (
+      <div className={`code-right-stack${fuldRude ? ' er-fuld' : ''}`}>
+        {changesOpen && fuldRude !== 'jobs' && (
+          <ChangesPanel
+            config={config}
+            onCount={setAendredeFiler}
+            fokusFil={fokusFil}
+            fuld={fuldRude === 'changes'}
+            onFuld={(f) => setFuldRude(f ? 'changes' : '')}
+            {...(kind === 'workstation' && wsPath
+              // Arbejder han i SIT eget workspace, er det dét trae diff'en
+              // skal laese. Serverens repo ville staa tomt uden at det var
+              // sandt.
+              ? { kilde: 'maskine' as const, rod: wsPath }
+              : {})}
+            onClose={() => { setChangesOpen(false); setFuldRude((v) => v === 'changes' ? '' : v) }}
+          />
+        )}
+        {browserOpen && <JarvisBrowserPanel aaben={browserOpen} />}
+        {jobsOpen && fuldRude !== 'changes' && (
+          <JobsPanel
+            config={config}
+            isOwner={isOwner}
+            onCount={setKoerendeJobs}
+            fuld={fuldRude === 'jobs'}
+            onFuld={(f) => setFuldRude(f ? 'jobs' : '')}
+            onClose={() => { setJobsOpen(false); setFuldRude((v) => v === 'jobs' ? '' : v) }}
+          />
+        )}
+      </div>
+  ) : null
+
   // ── Tom/ny samtale: header øverst, composer centreret midt på skærmen (som chat) ──
   if (isEmpty) {
     return (
-      <div className="codeview empty">
+      <div className={`codeview empty${skinneAaben ? ' har-skinne' : ''}`}>
         {header}
         {sideKort}
+        {skinne}
         {trustBanner}
         <div className="chat-empty">
           <GreetingHero
@@ -1009,7 +1059,7 @@ export function CodeView({
   // ── Aktiv samtale ──
   return (
     <VisningContext.Provider value={visning}>
-    <div className={`codeview${(jobsOpen || changesOpen) ? ' har-skinne' : ''}`}>
+    <div className={`codeview${skinneAaben ? ' har-skinne' : ''}`}>
       <div className="codeview-main">
         {headerActive}
         {sideKort}
@@ -1019,37 +1069,8 @@ export function CodeView({
             <button type="button" className="takeover-dismiss" aria-label="Skjul" onClick={() => setTakeoverDismissed(true)}>×</button>
           </div>
         )}
-        {config && (jobsOpen || changesOpen) && (
-          <div className={`code-right-stack${fuldRude ? ' er-fuld' : ''}`}>
-            {changesOpen && fuldRude !== 'jobs' && (
-              <ChangesPanel
-                config={config}
-                onCount={setAendredeFiler}
-                fokusFil={fokusFil}
-                fuld={fuldRude === 'changes'}
-                onFuld={(f) => setFuldRude(f ? 'changes' : '')}
-                {...(kind === 'workstation' && wsPath
-                  // Arbejder han i SIT eget workspace, er det dét trae diff'en
-                  // skal laese. Serverens repo ville staa tomt uden at det var
-                  // sandt.
-                  ? { kilde: 'maskine' as const, rod: wsPath }
-                  : {})}
-                onClose={() => { setChangesOpen(false); setFuldRude((v) => v === 'changes' ? '' : v) }}
-              />
-            )}
-            {jobsOpen && fuldRude !== 'changes' && (
-              <JobsPanel
-                config={config}
-                isOwner={isOwner}
-                onCount={setKoerendeJobs}
-                fuld={fuldRude === 'jobs'}
-                onFuld={(f) => setFuldRude(f ? 'jobs' : '')}
-                onClose={() => { setJobsOpen(false); setFuldRude((v) => v === 'jobs' ? '' : v) }}
-              />
-            )}
-          </div>
-        )}
-        {config && envOpen && !jobsOpen && !changesOpen && !filesOpen && !panel.open && (
+        {skinne}
+        {config && envOpen && !jobsOpen && !changesOpen && !browserOpen && !filesOpen && !panel.open && (
           <div className="code-right-stack">
             <EnvironmentPanel
               config={config}

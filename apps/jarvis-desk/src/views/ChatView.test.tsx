@@ -301,3 +301,34 @@ describe('ChatView — flaggede sideopgaver', () => {
     sideopgaver.liste = []
   })
 })
+
+/**
+ * Jarvis' browser i chat-headeren.
+ *
+ * Knappen kom 21/9-2026 og havde ingen test — og netop derfor opdagede ingen
+ * at code-fladen slet ikke fik den. Denne og dens tvilling i CodeView.test
+ * holder de to flader sammen: glider den ene, falder den anden.
+ */
+describe('ChatView — Jarvis\' browser', () => {
+  const vis = () => render(
+    <SettingsProvider initialConfig={cfg}>
+      <SessionProvider config={cfg}>
+        <StreamProvider config={cfg}>
+          <PermissionProvider>
+            <PanelProvider defaultWidth={400}>
+              <ChatView sessionId="s1" />
+            </PanelProvider>
+          </PermissionProvider>
+        </StreamProvider>
+      </SessionProvider>
+    </SettingsProvider>,
+  )
+
+  it('har knappen i headeren, og den åbner ruden', async () => {
+    vis()
+    const knap = screen.getByRole('button', { name: "Vis/skjul Jarvis' browser" })
+    expect(document.querySelector('.jbrowser')).not.toBeInTheDocument()
+    await userEvent.click(knap)
+    expect(document.querySelector('.jbrowser')).toBeInTheDocument()
+  })
+})

@@ -25,19 +25,23 @@ const PANEL_WIDTH = Math.min(360, Math.round(Dimensions.get('window').width * 0.
  *  en oejenpaere og en kasse siger ikke hvad de goer, og man skulle trykke for
  *  at finde ud af det. */
 function Felt({
-  ikon, navn, onPress, testID,
-}: { ikon: React.ReactNode; navn: string; onPress?: () => void; testID?: string }) {
+  ikon, navn, onPress, testID, badge,
+}: { ikon: React.ReactNode; navn: string; onPress?: () => void; testID?: string; badge?: number }) {
   const styles = useStyles(makestyles)
   return (
     <Pressable
       testID={testID}
       accessibilityRole="button"
-      accessibilityLabel={navn}
+      accessibilityLabel={badge ? `${navn} (${badge})` : navn}
       onPress={onPress}
       style={({ pressed }) => [styles.felt, pressed ? styles.pressed : null]}
     >
       {ikon}
       <Text style={styles.feltTekst} numberOfLines={1}>{navn}</Text>
+      {/* Samme stil som badgen i Aktivitet-skærmen selv (accentText, 12/800) —
+          tælleren skal ikke se anderledes ud fordi den bor på knappen der
+          fører derhen. */}
+      {badge ? <Text style={styles.badge}>{badge > 9 ? '9+' : badge}</Text> : null}
     </Pressable>
   )
 }
@@ -91,6 +95,7 @@ export function SidePanel({
   onOpenArtifacts,
   onOpenBilleder,
   onOpenActivity,
+  activityAntal = 0,
   isOwner: inHousehold = false,
   workingIds = [],
   onSessionAction,
@@ -117,6 +122,9 @@ export function SidePanel({
   /** Billederne i DENNE samtale. Uden en aktiv samtale er der intet at vise. */
   onOpenBilleder?: () => void
   onOpenActivity?: () => void
+  /** Antal åbne notifikationer — vises som en lille tæller på Aktivitet-feltet.
+   *  0 tegner ingen badge (samme regel som outboxCount's «i kø»-tal). */
+  activityAntal?: number
   /** Bor brugeren i hjemmet (owner eller partner)? Skjuler kun indgangen. */
   isOwner?: boolean
   /** Står vi i code-fladen? Afgør om feltet fører IND eller UD. */
@@ -279,7 +287,7 @@ export function SidePanel({
             {onOpenActivity ? (
               <Felt testID="open-activity"
                     ikon={<Activity size={17} color={tokens.color.fg2} strokeWidth={1.8} />}
-                    navn={t('side.activity')} onPress={onOpenActivity} />
+                    navn={t('side.activity')} onPress={onOpenActivity} badge={activityAntal} />
             ) : null}
             {onOpenChatSettings ? (
               <Felt testID="open-chat-settings"
@@ -466,6 +474,10 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
     borderRadius: 0, paddingTop: 12,
   },
   feltTekst: { color: tokens.color.fg1, fontSize: 14, flexShrink: 1 },
+  // Samme vaerdier som ActivityCenterScreen's egen `styles.badge` — tallet
+  // maa ikke se anderledes ud fordi det staar paa knappen i stedet for i
+  // skaermen den fører til.
+  badge: { color: tokens.color.accentText, fontSize: 12, fontWeight: '800' },
   searchWrap: {
     flexDirection: 'row',
     alignItems: 'center',

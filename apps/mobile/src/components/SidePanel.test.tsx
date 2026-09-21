@@ -248,6 +248,20 @@ it('ingen aktivitet giver ingen puls', async () => {
   expect(screen.queryByTestId('session-puls-ulaest')).toBeNull()
 })
 
+it('taeller notifikationer paa Aktivitet-feltet', async () => {
+  const screen = await wrap(
+    <SidePanel open {...base} onOpenActivity={jest.fn()} activityAntal={3} />,
+  )
+  expect(screen.getByText('3')).toBeTruthy()
+})
+
+it('ingen aabne notifikationer giver ingen taeller', async () => {
+  const screen = await wrap(
+    <SidePanel open {...base} onOpenActivity={jest.fn()} activityAntal={0} />,
+  )
+  expect(screen.queryByText('0')).toBeNull()
+})
+
 it('prikken findes ikke laengere i raekken', () => {
   // Kontrolarm: «den groenne prik» (unreadDot) og hjerte-prikken
   // (HeartbeatDot) skal vaere VAEK. Stod begge, ville to tegn betyde det

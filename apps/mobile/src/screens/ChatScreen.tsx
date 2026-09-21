@@ -54,7 +54,7 @@ import { WorkspacePicker } from '../components/WorkspacePicker'
 import { JobsPanel } from '../components/JobsPanel'
 import { saetSessionWorkspace } from '../lib/workspaceApi'
 import { ActivityCenterScreen } from './ActivityCenterScreen'
-import { cancelActiveRun, cancelRunById, compactNow, deleteSession, denyTool, getActiveRunSnapshot, getContextUsage, getGitStatus, getActiveRuns, getModelOptions, renameSession, setSessionFlags, uploadAttachment, whoami, type ContextUsage, type GitStatus, spolTilbage, fortrydTilbagespoling, hentKodeAdgang } from '../lib/apiClient'
+import { cancelActiveRun, cancelRunById, compactNow, deleteSession, denyTool, getActiveRunSnapshot, getContextUsage, getGitStatus, getActiveRuns, getModelOptions, renameSession, setSessionFlags, uploadAttachment, whoami, type ContextUsage, type GitStatus, spolTilbage, fortrydTilbagespoling, hentKodeAdgang, hentNotifikationer, afgoerNotifikation, type Notifikation } from '../lib/apiClient'
 import { computeUnread } from '../lib/sessionStatus'
 import { loadLastSeen, markSeen } from '../lib/lastSeen'
 import { loadLastSession, saveLastSession } from '../lib/sessionStore'
@@ -359,6 +359,12 @@ export function ChatScreen({
   const [inHousehold, setInHousehold] = useState(false)
   const [activityRuns, setActivityRuns] = useState<import('../lib/apiClient').ActiveRunSnapshot[]>([])
   const [outboxCount, setOutboxCount] = useState(0)
+  // Notifikations-feeden i Aktivitet-skærmen. `null` = endnu ikke hentet —
+  // adskilt fra `[]` (hentet og tom, en god nyhed) og fra `notifFejl` (hentet
+  // MISLYKKEDES — må aldrig ligne en tom liste). Samme tre tilstande som
+  // desk's NotifikationsFeed.
+  const [notifikationer, setNotifikationer] = useState<Notifikation[] | null>(null)
+  const [notifFejl, setNotifFejl] = useState(false)
   const openRoute = useCallback((name: MobileRouteName) => {
     setModalStack((stack) => pushRoute(stack, { name }))
   }, [])
@@ -387,6 +393,31 @@ export function ChatScreen({
     tick()
     const id = setInterval(tick, 60_000)
     return () => { cancelled = true; clearInterval(id) }
+  }, [config])
+
+  // Notifikations-feeden — POLL, ikke en levende WS-forbindelse (den fik desk
+  // i forrige opgave; mobilen får sit eget signal i en senere opgave, se
+  // releaseLytter.ts for mønsteret). Samme 8-sekunders kadence som desk's
+  // klokke, så de to flader ikke driver fra hinanden.
+  const hentNotifikationerNu = useCallback(() => {
+    if (!config) return
+    void hentNotifikationer(config)
+      .then((f) => { setNotifikationer(f.poster); setNotifFejl(false) })
+      .catch(() => setNotifFejl(true))
+  }, [config])
+  useEffect(() => {
+    if (!config) return
+    hentNotifikationerNu()
+    const id = setInterval(hentNotifikationerNu, 8000)
+    return () => clearInterval(id)
+  }, [config, hentNotifikationerNu])
+
+  // `svar.ok` — ikke kun catch. Serveren KASTER ikke ved en almindelig fejl
+  // (kortet allerede besvaret); den svarer {ok: false, fejl: "..."}, og
+  // posten skal blive stående så brugeren kan se hvorfor.
+  const afgoerNotif = useCallback((id: string, approved: boolean) => {
+    if (!config) return Promise.resolve({ ok: false, fejl: 'Ikke forbundet.' })
+    return afgoerNotifikation(config, id, approved)
   }, [config])
 
   const routeIntent = useCallback((intent: MobileIntent | null) => {
@@ -1282,6 +1313,11 @@ export function ChatScreen({
           displayName={displayName}
           config={config}
           kodeTilstand={kodeTilstand}
+          // Tælleren på «Aktivitet»-feltet. Samme regel som desk's klokke: en
+          // fejlet hentning nulstiller IKKE tallet — `notifikationer` rører
+          // ikke ved en fejl (kun `notifFejl` sættes), så badgen viser sidste
+          // kendte antal frem for at springe til 0 og lyve om at alt er klart.
+          activityAntal={notifikationer?.length ?? 0}
           onSkiftFlade={onSkiftFlade
             ? (tilKode) => { onSkiftFlade(tilKode); setPanelOpen(false) }
             : undefined}
@@ -1443,6 +1479,10 @@ export function ChatScreen({
           runs={activityRuns}
           outboxCount={outboxCount}
           presenceSummary={presence.state}
+          notifikationer={notifikationer}
+          notifFejl={notifFejl}
+          onAfgoer={afgoerNotif}
+          onGenhent={hentNotifikationerNu}
         />
       </Modal>
 

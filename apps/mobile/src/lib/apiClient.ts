@@ -739,3 +739,39 @@ export async function sendMessageFeedback(
     body: { vote, session_id: sessionId },
   })
 }
+
+/** Notifikations-feeden — samme kontrakt som desk (notifikationerApi.ts).
+ *
+ *     GET /notifikationer → {"poster": [...], "antal": number}
+ *
+ * `antal` er antal AABNE poster — alle slags, ikke kun dem der kraever et
+ * svar.
+ */
+export interface Notifikation {
+  id: string
+  slags: string
+  titel: string
+  tekst: string
+  session_id: string | null
+  oprettet: string
+  kan_afgoere: boolean
+  foraeldet: boolean
+}
+
+export async function hentNotifikationer(
+  config: ApiConfig,
+): Promise<{ poster: Notifikation[]; antal: number }> {
+  return apiFetch(config, '/notifikationer')
+}
+
+export async function afgoerNotifikation(
+  config: ApiConfig, id: string, approved: boolean,
+): Promise<{ ok: boolean; fejl: string }> {
+  // `apiFetch` stringifyer selv `body` — send et raat objekt, ikke en
+  // forstrenget en (dobbelt-kodning var en fejl i planen som desk allerede
+  // har rettet).
+  return apiFetch(config, `/notifikationer/${encodeURIComponent(id)}/afgoer`, {
+    method: 'POST',
+    body: { approved },
+  })
+}

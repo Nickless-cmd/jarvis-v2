@@ -152,7 +152,9 @@ jest.mock('../lib/apiClient', () => ({
   getModelOptions: jest.fn().mockResolvedValue([]),
   getContextUsage: jest.fn().mockResolvedValue(null),
   compactNow: jest.fn().mockResolvedValue({ started: true }),
-  getGitStatus: jest.fn().mockResolvedValue(null)
+  getGitStatus: jest.fn().mockResolvedValue(null),
+  hentNotifikationer: jest.fn().mockResolvedValue({ poster: [], antal: 0 }),
+  afgoerNotifikation: jest.fn().mockResolvedValue({ ok: true, fejl: '' })
 }))
 
 beforeEach(() => {

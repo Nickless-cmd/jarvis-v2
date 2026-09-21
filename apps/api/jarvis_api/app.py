@@ -234,6 +234,16 @@ def create_app() -> FastAPI:
             "jarvis api startup mode runtime_services_enabled=%s",
             runtime_services_enabled,
         )
+        # Notifikations-feeden: migrér gamle kolonne-valg og ryd klarede
+        # raekker aeldre end 7 dage. DB-skemaet er sikret i create_app()
+        # (init_db(), foer lifespan overhovedet koeres). Begge dele er
+        # idempotente og pakket ind i koer_ved_opstart() saa de aldrig kan
+        # vaelte opstarten.
+        try:
+            from core.services.notifikations_opstart import koer_ved_opstart
+            koer_ved_opstart()
+        except Exception:
+            logger.warning("notifikations-opstart fejlede", exc_info=True)
         # Register the main asyncio loop so sync tool-handlers can submit
         # bridge-dispatch coroutines via run_coroutine_threadsafe instead
         # of spawning their own loops (which broke cross-loop semantics).

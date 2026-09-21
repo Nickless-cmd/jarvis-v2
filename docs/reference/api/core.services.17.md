@@ -98,6 +98,13 @@ _Hvor notifikationer foedes (spec 2026-09-21)._
 | function | `system` | `(slags, titel, tekst=…)` | — | [src](../../../core/services/notifikations_emittere.py#L79) |
 | function | `afstem_godkendelser` | `(user_id)` | Laeg raekker for ventende godkendelser der mangler. Returnerer antal nye. | [src](../../../core/services/notifikations_emittere.py#L86) |
 
+## `core/services/notifikations_opstart.py`
+_Det notifikations-feeden skal have gjort ved hver opstart (spec 2026-09-21)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `koer_ved_opstart` | `()` | — | [src](../../../core/services/notifikations_opstart.py#L13) |
+
 ## `core/services/notifikations_valg.py`
 _Push-valg per slags (spec 2026-09-21)._
 
@@ -581,18 +588,4 @@ _Personal Project — noget der er hans._
 | function | `list_projects` | `(*, status=…, limit=…)` | — | [src](../../../core/services/personal_project.py#L603) |
 | function | `get_project_prompt_hint` | `()` | Quiet one-liner for prompt injection: what his current sag is. | [src](../../../core/services/personal_project.py#L622) |
 | function | `build_personal_project_surface` | `()` | — | [src](../../../core/services/personal_project.py#L633) |
-
-## `core/services/personality_drift.py`
-_Personality drift detection — has Jarvis' baseline shifted?_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_load_snapshots` | `()` | — | [src](../../../core/services/personality_drift.py#L32) |
-| function | `_save_snapshots` | `(snapshots)` | — | [src](../../../core/services/personality_drift.py#L39) |
-| function | `take_snapshot` | `()` | Capture current mood — call from heartbeat or daemon periodically. | [src](../../../core/services/personality_drift.py#L45) |
-| function | `compute_baseline` | `(*, lookback_days=…)` | Mean + stddev for each mood dimension over the lookback window. | [src](../../../core/services/personality_drift.py#L67) |
-| function | `detect_drift` | `(*, lookback_days=…, recent_window=…)` | Compare recent snapshot mean vs long-term baseline. | [src](../../../core/services/personality_drift.py#L93) |
-| function | `personality_drift_section` | `()` | Awareness section when drift detected — surfaces in prompt. | [src](../../../core/services/personality_drift.py#L143) |
-| function | `_exec_personality_drift_check` | `(args)` | — | [src](../../../core/services/personality_drift.py#L159) |
-| function | `_exec_personality_drift_snapshot` | `(args)` | — | [src](../../../core/services/personality_drift.py#L167) |
 

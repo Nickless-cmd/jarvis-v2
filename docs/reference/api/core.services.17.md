@@ -96,6 +96,7 @@ _Hvor notifikationer foedes (spec 2026-09-21)._
 | function | `paa_koersel_faerdig` | `(run_id, *, user_id, session_id, titel)` | — | [src](../../../core/services/notifikations_emittere.py#L68) |
 | function | `fra_jarvis` | `(user_id, slags, titel, tekst=…)` | Det Jarvis selv sender. Har ingen ejer — raekken ER sandheden. | [src](../../../core/services/notifikations_emittere.py#L74) |
 | function | `system` | `(slags, titel, tekst=…)` | — | [src](../../../core/services/notifikations_emittere.py#L79) |
+| function | `afstem_godkendelser` | `(user_id)` | Laeg raekker for ventende godkendelser der mangler. Returnerer antal nye. | [src](../../../core/services/notifikations_emittere.py#L86) |
 
 ## `core/services/notifikations_valg.py`
 _Push-valg per slags (spec 2026-09-21)._

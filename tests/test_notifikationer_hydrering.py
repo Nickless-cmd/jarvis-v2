@@ -25,6 +25,11 @@ def test_ventende_godkendelse_bliver_staaende_og_kan_afgoeres(isolated_runtime, 
     n.opret(user_id="bjorn", slags="approval", kilde="approval", ref="a-1", titel="Gammel titel")
     monkeypatch.setattr(approval_runtime, "state",
                         lambda aid: {"status": "pending", "tool_name": "bash_session"})
+    # `feed()` afstemmer nu ogsaa (spec 2026-09-21). Denne test maaler KUN
+    # hydreringen af raekken over — den forudsaetning var uudtalt foer
+    # afstemningen fandtes, og skal vaere eksplicit nu: ingen ANDEN ventende
+    # godkendelse for ejeren.
+    monkeypatch.setattr(approval_runtime, "pending_for_owner", lambda uid: None)
 
     poster = h.feed("bjorn", er_owner=True)
     assert len(poster) == 1
@@ -52,6 +57,11 @@ def test_hydrering_der_fejler_lukker_IKKE_raekken(isolated_runtime, monkeypatch)
     def sprang(_aid):
         raise RuntimeError("basen er væk")
     monkeypatch.setattr(approval_runtime, "state", sprang)
+    # `feed()` afstemmer nu ogsaa (spec 2026-09-21). Denne test maaler KUN
+    # hydreringen af raekken over — den forudsaetning var uudtalt foer
+    # afstemningen fandtes, og skal vaere eksplicit nu: ingen ANDEN ventende
+    # godkendelse for ejeren.
+    monkeypatch.setattr(approval_runtime, "pending_for_owner", lambda uid: None)
 
     poster = h.feed("bjorn", er_owner=True)
     assert len(poster) == 1

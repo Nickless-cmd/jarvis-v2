@@ -76,6 +76,14 @@ def _hydrer(raekke: dict[str, Any]) -> tuple[dict[str, Any] | None, bool]:
 
 def feed(user_id: str, *, er_owner: bool) -> list[dict[str, Any]]:
     """Aabne notifikationer, hydreret hos deres ejere."""
+    # Afstemningen foerst: en ventende godkendelse uden raekke skal med i
+    # SAMME laesning, ellers ville den foerst dukke op naeste gang.
+    try:
+        from core.services.notifikations_emittere import afstem_godkendelser
+        afstem_godkendelser(user_id)
+    except Exception:
+        # En afstemning der fejler maa ikke tomme feeden for alt det andet.
+        _log.warning("godkendelser kunne ikke afstemmes for %s", user_id, exc_info=True)
     ud: list[dict[str, Any]] = []
     for raekke in _lager.aabne(user_id, er_owner=er_owner):
         felter, foraeldet = _hydrer(raekke)

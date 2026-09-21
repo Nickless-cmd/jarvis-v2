@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7925/15366 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7927/15368 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,11 +25,11 @@ Generated from source. 7925/15366 functions/methods documented (51%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 686 | 1265 | 54% |
-| `core.services` | 5233 | 10451 | 50% |
+| `core.services` | 5234 | 10452 | 50% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 107 | 183 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
-| `core.services.visible_runs_sections` | 19 | 31 | 61% |
+| `core.services.visible_runs_sections` | 20 | 32 | 62% |
 | `core.skills` | 0 | 0 | 0% |
 | `core.skills.voice` | 39 | 49 | 79% |
 | `core.tools` | 484 | 1003 | 48% |
@@ -53,7 +53,7 @@ Generated from source. 7925/15366 functions/methods documented (51%). The list b
 - `apps/api/jarvis_api/middleware/security_headers.py` :: `SimpleRateLimitMiddleware.dispatch` (L110)
 - `apps/api/jarvis_api/routes/anthropic_compat.py` :: `list_models` (L98)
 - `apps/api/jarvis_api/routes/anthropic_compat.py` :: `messages` (L113)
-- `apps/api/jarvis_api/routes/app_release.py` :: `stop_release_vagt` (L249)
+- `apps/api/jarvis_api/routes/app_release.py` :: `stop_release_vagt` (L254)
 - `apps/api/jarvis_api/routes/auth.py` :: `login` (L56)
 - `apps/api/jarvis_api/routes/auth.py` :: `register` (L34)
 - `apps/api/jarvis_api/routes/auth.py` :: `verify_email` (L46)

@@ -81,3 +81,29 @@ def system(slags: str, titel: str, tekst: str = "") -> None:
     if not uid:
         return
     _foed(user_id=uid, slags=slags, kilde="egen", titel=titel, tekst=tekst)
+
+
+def afstem_godkendelser(user_id: str) -> int:
+    """Laeg raekker for ventende godkendelser der mangler. Returnerer antal nye.
+
+    Afstemning frem for en krog ved foedslen: kortet foedes to steder i
+    visible_runs.py, og en overset krog ville betyde en notifikation der ALDRIG
+    fandtes — uden at nogen opdagede det. Den her kan ikke glemme noget, og den
+    virker ogsaa for godkendelser der fandtes foer feeden blev bygget.
+
+    `opret()` afdublerer paa (slags, ref), saa den er idempotent af sig selv.
+    """
+    from core.services import approval_runtime
+    kort = approval_runtime.pending_for_owner(user_id)
+    if not kort:
+        return 0
+    aid = str(kort.get("approval_id") or "")
+    if not aid:
+        return 0
+    foer = {str(r["ref"]) for r in _lager.aabne(user_id, er_owner=False)}
+    if aid in foer:
+        return 0
+    paa_godkendelse(aid, user_id=user_id,
+                    session_id=str(kort.get("session_id") or ""),
+                    vaerktoej=str(kort.get("tool_name") or "et værktøj"))
+    return 1

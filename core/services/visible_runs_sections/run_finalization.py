@@ -29,6 +29,10 @@ inkrementelt), så et ekstra kald fra den gamle gren er harmløst.
 """
 from __future__ import annotations
 
+import logging
+
+_log = logging.getLogger(__name__)
+
 
 def advance_tool_lifecycle(session_id: str) -> None:
     """Ryk tool-result cold_floor frem (spec 2026-07-16). Self-safe.
@@ -89,6 +93,47 @@ def finalize_in_flight(
     if status in {"interrupted", "recovering"}:
         reason = error or status
         settle_recovering(run_id, reason=reason, summary=reason)
-        return
-    terminal = status if status in {"completed", "cancelled", "failed_terminal"} else "failed_terminal"
-    settle_terminal(run_id, status=terminal, reason=error or terminal)
+    else:
+        terminal = status if status in {"completed", "cancelled", "failed_terminal"} else "failed_terminal"
+        settle_terminal(run_id, status=terminal, reason=error or terminal)
+
+    # Feeden (spec 2026-09-21). Fejler den, skal koerslen stadig afsluttes:
+    # afslutningen er den vigtige del.
+    try:
+        from core.services import notifikations_emittere
+        from core.services.visible_runs_sections.run_finalization import _ejer_og_titel
+        ejer, titel = _ejer_og_titel(session_id)
+        if ejer:
+            if status in ("failed", "failed_terminal", "interrupted"):
+                notifikations_emittere.paa_koersel_fejlet(
+                    run_id, user_id=ejer, session_id=session_id, titel=titel)
+            elif status == "completed":
+                notifikations_emittere.paa_koersel_faerdig(
+                    run_id, user_id=ejer, session_id=session_id, titel=titel)
+    except Exception:
+        _log.warning("koersel %s naaede ikke feeden", run_id, exc_info=True)
+
+
+def _ejer_og_titel(session_id: str) -> tuple[str, str]:
+    """(ejer, samtale-titel).
+
+    To ting maalt paa skemaet 21/9-2026, som planens foerste udkast tog fejl af:
+    noeglen hedder `session_id` (`id` er et autoincrement-HELTAL), og der findes
+    INGEN `user_id`-kolonne — samtaler er ikke bruger-scopede. Ejeren afgoeres
+    derfor som i godkendelses-stien (`visible_runs._godkendelses_ejer`): den
+    kaldende brugers id hvis der er et, ellers husets ejer.
+
+    Fanger IKKE DB-fejl. Kalderen har sit eget net og logger — men en fejl her
+    betyder at DEN notifikation er tabt for altid, for run-raekker har ingen
+    afstemning som godkendelser har. Kendt graense, ikke en overset.
+    """
+    from core.identity.workspace_context import current_user_id
+    from core.runtime.db import connect
+    from core.services.notifikations_emittere import _owner_id
+
+    uid = str(current_user_id() or "").strip() or (_owner_id() or "")
+    with connect() as conn:
+        raekke = conn.execute(
+            "SELECT title FROM chat_sessions WHERE session_id = ?",
+            (session_id,)).fetchone()
+    return uid, (str(raekke[0]) if raekke and raekke[0] else "samtalen")

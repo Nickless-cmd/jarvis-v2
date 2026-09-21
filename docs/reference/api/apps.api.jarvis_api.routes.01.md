@@ -145,9 +145,9 @@ _App-release-vagt — push i stedet for poll._
 | function | `seneste_cached` | `(*, tving=…)` | Seneste release med kort cache, saa /latest ikke rammer GitHub pr. kald. | [src](../../../apps/api/jarvis_api/routes/app_release.py#L135) |
 | function | `app_release_latest` | `()` | Nyeste desk-release. Auth haandteres af middlewaren, som for alle ruter. | [src](../../../apps/api/jarvis_api/routes/app_release.py#L151) |
 | function | `_udsend` | `(data)` | Laeg release-eventet paa bussen. /ws sender det videre til klienterne. | [src](../../../apps/api/jarvis_api/routes/app_release.py#L162) |
-| function | `_vagt_loop` | `()` | Foerste gennemloeb saetter baseline. Derefter udsender vi KUN ved aendring. | [src](../../../apps/api/jarvis_api/routes/app_release.py#L192) |
-| function | `start_release_vagt` | `()` | Idempotent — gentagne kald (fx flere workers i samme proces) goer intet. | [src](../../../apps/api/jarvis_api/routes/app_release.py#L236) |
-| function | `stop_release_vagt` | `()` | — | [src](../../../apps/api/jarvis_api/routes/app_release.py#L249) |
+| function | `_vagt_loop` | `()` | Foerste gennemloeb saetter baseline. Derefter udsender vi KUN ved aendring. | [src](../../../apps/api/jarvis_api/routes/app_release.py#L197) |
+| function | `start_release_vagt` | `()` | Idempotent — gentagne kald (fx flere workers i samme proces) goer intet. | [src](../../../apps/api/jarvis_api/routes/app_release.py#L241) |
+| function | `stop_release_vagt` | `()` | — | [src](../../../apps/api/jarvis_api/routes/app_release.py#L254) |
 
 ## `apps/api/jarvis_api/routes/attachments.py`
 _Attachment upload and serve endpoints._

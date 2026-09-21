@@ -178,6 +178,11 @@ def _udsend(data: dict[str, Any]) -> bool:
             },
         )
         logger.info("app-release: udsendte app.release.available version=%s", data.get("version"))
+        try:
+            from core.services import notifikations_emittere
+            notifikations_emittere.system("release", f"Ny version {data.get('version')} er klar")
+        except Exception:
+            logger.warning("release %s naaede ikke feeden", data.get("version"), exc_info=True)
         return True
     except Exception as e:  # noqa: BLE001
         # Tavs fejl her betyder at klienterne ALDRIG faar besked om en ny

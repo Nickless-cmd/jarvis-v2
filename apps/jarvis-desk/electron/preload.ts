@@ -84,8 +84,10 @@ export interface JarvisDeskBridge {
    *  positionen og overtagelsen kommer fra broen, ikke fra renderer'en. */
   markoer: {
     paaPeg: (cb: (p: { x: number; y: number }) => void) => () => void
-    /** Halo'en: Jarvis rørte netop mus, tastatur, udklipsholder eller fokus. */
-    paaOvertag: (cb: () => void) => () => void
+    /** Halo'en: Jarvis rørte netop mus, tastatur, udklipsholder eller fokus.
+     *  Positionen følger med, så kanten kan lyse på den skærm han står på —
+     *  `null` hvis den ikke kunne læses, og så lyser alle skærme. */
+    paaOvertag: (cb: (p: { x: number; y: number } | null) => void) => () => void
     /** Skærm-layoutet i vinduets lokale rum — én kant pr. skærm. */
     skærme: () => Promise<SkærmRektangel[]>
     paaSkærme: (cb: (s: SkærmRektangel[]) => void) => () => void
@@ -261,8 +263,8 @@ const bridge: JarvisDeskBridge = {
       ipcRenderer.on('markoer:peg', handler)
       return () => ipcRenderer.removeListener('markoer:peg', handler)
     },
-    paaOvertag: (cb: () => void) => {
-      const handler = () => cb()
+    paaOvertag: (cb: (p: { x: number; y: number } | null) => void) => {
+      const handler = (_e: unknown, p: { x: number; y: number } | null) => cb(p ?? null)
       ipcRenderer.on('markoer:overtag', handler)
       return () => ipcRenderer.removeListener('markoer:overtag', handler)
     },

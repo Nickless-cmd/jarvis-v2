@@ -28,14 +28,17 @@
  */
 import { BrowserWindow, ipcMain, screen } from 'electron'
 import { lokaleSkærme, unionAf } from './markoerOmraade'
+import { laesSkaerme } from './skaermeHost'
 import { erHandlende } from './markoerTools'
 
 let markoer: BrowserWindow | null = null
 
 /** Hele det virtuelle skrivebord — unionen af alle tilsluttede skærme.
- *  Selve beregningen bor i markoerOmraade.ts, så den kan testes uden skærm. */
+ *  Selve beregningen bor i markoerOmraade.ts, så den kan testes uden skærm.
+ *  Skærmene læses gennem `skaermeHost`, så halo'en og Jarvis' egen
+ *  skærm-oversigt (`operator_screen_size`) deler ÉN kortlægning. */
 export function samletOmraade(): { x: number; y: number; width: number; height: number } {
-  return unionAf(screen.getAllDisplays().map((d) => d.bounds))
+  return unionAf(laesSkaerme())
 }
 
 export function opretMarkoer(preload: string, indlaes: (w: BrowserWindow, hash: string) => void): void {
@@ -126,7 +129,7 @@ export function pegMarkoer(x: number, y: number): void {
  *  lytte på det rigtige tidspunkt. */
 export function hentLokaleSkærme(): Array<{ x: number; y: number; width: number; height: number }> {
   if (!markoer || markoer.isDestroyed()) return []
-  return lokaleSkærme(screen.getAllDisplays().map((d) => d.bounds), markoer.getBounds())
+  return lokaleSkærme(laesSkaerme(), markoer.getBounds())
 }
 
 /** Skub skærm-layoutet til renderer'en (ved indlæsning og ved ændringer). */
@@ -147,7 +150,21 @@ export function sendSkærme(): void {
 export function visOvertagelse(tool: string): void {
   if (!markoer || markoer.isDestroyed()) return
   if (!erHandlende(tool)) return
-  markoer.webContents.send('markoer:overtag')
+  // Halo'en skal lyse på den skærm Jarvis FAKTISK står på — ikke på alle tre.
+  // Bjørn 21/9-2026: «halo og markør følges ikke lige nu». Positionen læses
+  // her og ikke i renderer'en, fordi et tastatur- eller udklipsholder-kald
+  // ikke selv bærer nogen museposition med. `getCursorScreenPoint` er
+  // synkron, så den koster intet i dispatch-stien.
+  let pos: { x: number; y: number } | null = null
+  try {
+    const p = screen.getCursorScreenPoint()
+    const b = markoer.getBounds()
+    pos = { x: Math.round(p.x - b.x), y: Math.round(p.y - b.y) }
+  } catch {
+    // Uden position tegner renderer'en kanten rundt om alle skærme — den
+    // gamle adfærd, som er et ærligt svar når vi ikke ved hvor vi er.
+  }
+  markoer.webContents.send('markoer:overtag', pos)
 }
 
 /** Kaldt fra main ved opstart: hold laget over det aktuelle skrivebord. */

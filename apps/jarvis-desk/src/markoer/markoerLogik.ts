@@ -66,3 +66,35 @@ export function sporStoerrelse(placering: number, antal: number): number {
   const andel = placering / (antal - 1) // 0 = ældste, 1 = nyeste
   return 3 + andel * 4
 }
+
+/** Et rektangel i vinduets lokale koordinater — én skærm. */
+export interface Rektangel {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+/**
+ * Hvilken skærm et punkt ligger på — eller -1 hvis det ligger uden for dem alle.
+ *
+ * Bjørn 21/9-2026: «halo og markør følges ikke lige nu». Halo'en tegnede en kant
+ * pr. skærm, ALLE på én gang: den viste AT Jarvis havde overtaget, men ikke
+ * HVOR. Med dette kan den lyse på den skærm han faktisk står på.
+ *
+ * -1 frem for et gæt: hellere ingen kant end en kant på den forkerte skærm. Et
+ * punkt i et mellemrum mellem to skærme hører ikke til nogen af dem, og en
+ * halo der peger på den forkerte skærm er værre end ingen halo — den lyver om
+ * hvor Jarvis er.
+ *
+ * Intervallerne er halvåbne ([x, x+width[), så et punkt på den præcise grænse
+ * mellem to skærme hører til den højre og ikke til begge.
+ */
+export function aktivSkærm(skaerme: Rektangel[], x: number, y: number): number {
+  for (let i = 0; i < skaerme.length; i++) {
+    const s = skaerme[i]
+    if (!s) continue
+    if (x >= s.x && x < s.x + s.width && y >= s.y && y < s.y + s.height) return i
+  }
+  return -1
+}

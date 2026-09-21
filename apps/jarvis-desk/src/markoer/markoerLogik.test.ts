@@ -3,11 +3,13 @@ import {
   FADE_MS,
   MIN_AFSTAND,
   TRAIL_MAKS,
+  aktivSkærm,
   fjernAeldre,
   opacitet,
   sporStoerrelse,
   tilfoejPeg,
   type Peg,
+  type Rektangel,
 } from './markoerLogik'
 
 const peg = (id: number, x: number, y: number, t = 0): Peg => ({ id, x, y, t })
@@ -85,5 +87,46 @@ describe('sporStoerrelse', () => {
 
   it('giver en brugbar stoerrelse for et enkelt punkt', () => {
     expect(sporStoerrelse(0, 1)).toBeGreaterThan(0)
+  })
+})
+
+/** Bjørns tre skærme i vinduets lokale rum (vinduet ligger i unionens hjørne). */
+const BJOERNS_TRE: Rektangel[] = [
+  { x: 0, y: 0, width: 1920, height: 1080 },
+  { x: 1920, y: 0, width: 1920, height: 1080 },
+  { x: 3840, y: 0, width: 1920, height: 1080 },
+]
+
+describe('aktivSkærm', () => {
+  it('peger paa den venstre skaerm for et punkt i dens midte', () => {
+    expect(aktivSkærm(BJOERNS_TRE, 960, 540)).toBe(0)
+  })
+
+  it('peger paa den midterste skaerm — der hvor desk staar', () => {
+    expect(aktivSkærm(BJOERNS_TRE, 2880, 540)).toBe(1)
+  })
+
+  it('peger paa den hoejre skaerm helt ude ved kanten', () => {
+    expect(aktivSkærm(BJOERNS_TRE, 5759, 1079)).toBe(2)
+  })
+
+  it('giver -1 for et punkt uden for alle skaerme', () => {
+    expect(aktivSkærm(BJOERNS_TRE, -5, 540)).toBe(-1)
+    expect(aktivSkærm(BJOERNS_TRE, 5760, 540)).toBe(-1)
+    expect(aktivSkærm(BJOERNS_TRE, 960, 1080)).toBe(-1)
+  })
+
+  it('lader graensen hoere til den hoejre skaerm og ikke til begge', () => {
+    // x = 1920 er både slutningen på skærm 0 og starten på skærm 1.
+    expect(aktivSkærm(BJOERNS_TRE, 1920, 540)).toBe(1)
+  })
+
+  it('taaler tomme lister og et layout med et mellemrum', () => {
+    expect(aktivSkærm([], 100, 100)).toBe(-1)
+    const medHul: Rektangel[] = [
+      { x: 0, y: 0, width: 1000, height: 1000 },
+      { x: 2000, y: 0, width: 1000, height: 1000 },
+    ]
+    expect(aktivSkærm(medHul, 1500, 500)).toBe(-1)
   })
 })

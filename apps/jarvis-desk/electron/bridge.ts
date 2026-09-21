@@ -983,7 +983,18 @@ const handlers: Record<string, ToolHandler> = {
     const { screen: nutScreen } = await import('@nut-tree-fork/nut-js')
     const width = await nutScreen.width()
     const height = await nutScreen.height()
-    return { width, height }
+    // Bjørn 21/9-2026: «det skal bygges sammen med din skærm info ting til dig
+    // selv». width/height er ÉT fladt rum — på en tre-skærms opsætning kan
+    // Jarvis ikke se hvor han lander, og det var netop hvad der gik galt da
+    // han først flyttede musen: x=960 ramte den venstre skærm, x=4800 ville
+    // have ramt den højre, uden at han kunne vide det.
+    //
+    // `skaerme` giver opdelingen: nummereret fra venstre, med et midtpunkt pr.
+    // skærm at sigte efter. width/height står uændret, så ældre kaldere ikke
+    // brækker. Det er den SAMME kortlægning halo'en tegner efter.
+    const { laesSkaerme } = await import('./skaermeHost')
+    const { skærmOversigt } = await import('./skaerme')
+    return { width, height, skaerme: skærmOversigt(laesSkaerme()) }
   },
 
   // ── Jarvis' EGEN browser i desk-panelet (21/9-2026) ──────────────────

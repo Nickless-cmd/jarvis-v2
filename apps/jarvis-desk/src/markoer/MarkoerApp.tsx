@@ -15,20 +15,22 @@
  * præcis én timer — den der slukker den.
  */
 import { useEffect, useRef, useState } from 'react'
-import { FADE_MS, OVERTAG_MS, fjernAeldre, sporStoerrelse, tilfoejPeg, type Peg } from './markoerLogik'
+import {
+  FADE_MS,
+  OVERTAG_MS,
+  aktivSkærm,
+  fjernAeldre,
+  sporStoerrelse,
+  tilfoejPeg,
+  type Peg,
+  type Rektangel,
+} from './markoerLogik'
 import './markoer.css'
-
-interface Rektangel {
-  x: number
-  y: number
-  width: number
-  height: number
-}
 
 interface MarkoerBro {
   markoer?: {
     paaPeg: (cb: (p: { x: number; y: number }) => void) => () => void
-    paaOvertag?: (cb: () => void) => () => void
+    paaOvertag?: (cb: (p: { x: number; y: number } | null) => void) => () => void
     skærme?: () => Promise<Rektangel[]>
     paaSkærme?: (cb: (s: Rektangel[]) => void) => () => void
   }
@@ -42,6 +44,8 @@ export const RYD_MS = 150
 export function MarkoerApp() {
   const [spor, setSpor] = useState<Peg[]>([])
   const [overtag, setOvertag] = useState(false)
+  // Hvor Jarvis stod da han overtog. `null` = ukendt, og så lyser alle skærme.
+  const [overtagPos, setOvertagPos] = useState<{ x: number; y: number } | null>(null)
   const [skaerme, setSkaerme] = useState<Rektangel[]>([])
   const naesteId = useRef(1)
   const liste = useRef<Peg[]>([])
@@ -86,7 +90,8 @@ export function MarkoerApp() {
   useEffect(() => {
     const b = bro()
     if (!b?.markoer?.paaOvertag) return
-    const af = b.markoer.paaOvertag(() => {
+    const af = b.markoer.paaOvertag((p) => {
+      setOvertagPos(p)
       setOvertag(true)
       if (slukTimer.current !== null) window.clearTimeout(slukTimer.current)
       slukTimer.current = window.setTimeout(() => {
@@ -114,17 +119,29 @@ export function MarkoerApp() {
 
   const sidste = spor[spor.length - 1]
 
+  // Hvilken skærm halo'en skal lyse på. -1 betyder «ved det ikke» — enten
+  // fordi positionen ikke kunne læses, eller fordi han står uden for alle
+  // skærme. Begge tegner kanten rundt om alle, som er et ærligt svar frem for
+  // at gætte på én.
+  const aktiv = overtagPos ? aktivSkærm(skaerme, overtagPos.x, overtagPos.y) : -1
+
   return (
     <div className="markoer-lag" aria-hidden="true">
       {/* Halo'en ligger UNDER sporet og markøren, så ringen altid er skarpest.
-          Har vi ikke fået skærm-layoutet endnu, tegnes én kant over hele laget
-          — hellere en grov indikation end ingen. */}
+          Den lyser på den skærm Jarvis står på — ikke på alle tre, som den
+          gjorde før 21/9. Alle kanterne bliver i DOM'en og slukkes med en
+          klasse i stedet for at blive fjernet: så bliver et skift mellem
+          skærme en overgang i stedet for et blink. Har vi ikke fået
+          skærm-layoutet endnu, tegnes én kant over hele laget — hellere en
+          grov indikation end ingen. */}
       {overtag &&
-        (skaerme.length > 0 ? (
+        (skaerme.length === 0 ? (
+          <span className="markoer-kant markoer-kant--alt" />
+        ) : (
           skaerme.map((s, i) => (
             <span
-              key={`kant-${i}`}
-              className="markoer-kant"
+              key={`kant-${s.x}-${s.y}-${s.width}`}
+              className={`markoer-kant${aktiv === i || aktiv < 0 ? '' : ' markoer-kant--slukket'}`}
               style={{
                 left: `${s.x}px`,
                 top: `${s.y}px`,
@@ -133,8 +150,6 @@ export function MarkoerApp() {
               }}
             />
           ))
-        ) : (
-          <span className="markoer-kant markoer-kant--alt" />
         ))}
 
       {/* Sporet: hver position bliver en prik der falmer, så man kan se ruten

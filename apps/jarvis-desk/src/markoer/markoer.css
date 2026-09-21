@@ -52,6 +52,18 @@ body,
   inset: 0;
 }
 
+/* Den skærm Jarvis IKKE står på. Kanten bliver siddende i DOM'en og slukkes
+   her, så et skift mellem skærme bliver en overgang i stedet for et blink.
+
+   Dobbelt klasse med vilje: `prefers-reduced-motion` nedenfor sætter opacity
+   på `.markoer-kant`, og uden den ekstra vægt ville en slukket kant kunne
+   tænde igen for en bruger der har bedt om mindre bevægelse. */
+.markoer-kant.markoer-kant--slukket {
+  opacity: 0;
+  animation: none;
+  transition: opacity 180ms ease-out;
+}
+
 @keyframes markoer-kant-aande {
   0%,
   100% {

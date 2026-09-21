@@ -46,6 +46,10 @@ import {
   BrowserWindow,
 } from 'electron'
 import { resolveOperatorPath } from './operatorPathPolicy.js'
+// Markør-laget: hvert sted vi flytter musen, viser vi hvor. Kaldet er en
+// no-op naar laget ikke findes (ældre app-version, eller figuren slået fra),
+// saa det kan staa uden vagt omkring.
+import { pegMarkoer } from './markoer.js'
 
 /**
  * Race a native confirmation dialog against an auto-reject timer.
@@ -898,6 +902,7 @@ const handlers: Record<string, ToolHandler> = {
     } else {
       await mouse.setPosition(new Point(x, y))
     }
+    pegMarkoer(x, y)
     return { moved: true, x, y, smooth: Boolean(args.smooth) }
   },
 
@@ -908,6 +913,7 @@ const handlers: Record<string, ToolHandler> = {
       const x = Number(args.x), y = Number(args.y)
       if (Number.isFinite(x) && Number.isFinite(y)) {
         await mouse.setPosition(new Point(x, y))
+        pegMarkoer(x, y)
       }
     }
     const btnName = String(args.button ?? 'left').toLowerCase()
@@ -1375,8 +1381,10 @@ const handlers: Record<string, ToolHandler> = {
     const btn = btnName === 'right' ? Button.RIGHT : Button.LEFT
     // Move to start → press → move to end → release.
     await mouse.setPosition(new Point(fromX, fromY))
+    pegMarkoer(fromX, fromY)
     await mouse.pressButton(btn)
     await mouse.setPosition(new Point(toX, toY))
+    pegMarkoer(toX, toY)
     await mouse.releaseButton(btn)
     return { dragged: true, from_x: fromX, from_y: fromY, to_x: toX, to_y: toY, button: btnName }
   },

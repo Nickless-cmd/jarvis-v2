@@ -25,6 +25,7 @@ import {
   powerMonitor,
 } from 'electron'
 import { opretFigur, registrerFigurIpc, laesFigurVist, saetFigurVist } from './figur'
+import { opretMarkoer, registrerMarkoerIpc } from './markoer'
 import { startReleaseLytter } from './appRelease'
 import * as path from 'node:path'
 import * as fs from 'node:fs'
@@ -1025,6 +1026,11 @@ app.whenReady().then(() => {
     onVistAendret: () => { try { tray?.destroy() } catch { /* */ } tray = null; createTray() },
   })
   opretFigur(figurPreload(), indlaesFlade)
+  // Markør-laget (21/9-2026): viser hvor Jarvis peger, mens han styrer musen.
+  // Det ligger ALTID oppe og ignorerer mus, så det koster ingen klik — det
+  // tegner kun mens der faktisk peges. Se electron/markoer.ts.
+  registrerMarkoerIpc()
+  opretMarkoer(figurPreload(), indlaesFlade)
   void bootstrapBridge()
   void bootstrapLocalDiscord()
   void bootstrapAppDispatch()

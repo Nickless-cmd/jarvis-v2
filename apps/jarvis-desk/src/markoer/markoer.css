@@ -1,0 +1,83 @@
+/*
+ * Markør-laget. Fladen deler index.html med resten af appen, men importerer
+ * KUN denne fil — ingen skal, ingen tema-variabler. Derfor står farven her og
+ * ikke i temaet: laget skal kunne tegne selv hvis temaet ikke er indlæst endnu.
+ *
+ * Farven er husets accent (#3fc7b4), den samme som figuren og knapperne
+ * bruger, så det er til at se at det er Jarvis og ikke en fremmed app.
+ */
+
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  overflow: hidden;
+}
+
+/* Hele laget ignorerer mus — også selvom Electron allerede slipper klik
+   igennem. Uden dette kunne en fremtidig ændring i main-processen gøre
+   laget til en usynlig væg over Bjørns skrivebord. */
+.markoer-lag {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  user-select: none;
+  overflow: hidden;
+}
+
+.markoer-prik {
+  position: absolute;
+  border-radius: 50%;
+  background: #3fc7b4;
+  box-shadow: 0 0 6px rgba(63, 199, 180, 0.8);
+  transform: translate(-50%, -50%);
+  animation-name: markoer-prik-fade;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+
+@keyframes markoer-prik-fade {
+  0% { opacity: 0.85; }
+  35% { opacity: 0.55; }
+  100% { opacity: 0; }
+}
+
+.markoer-ring {
+  position: absolute;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 2px solid #3fc7b4;
+  /* To ringe: en mørk udenom, så mærket også ses på en hvid baggrund, og en
+     blød glød, så det læses som lys og ikke som en UI-ramme. */
+  box-shadow:
+    0 0 0 1.5px rgba(0, 0, 0, 0.55),
+    0 0 14px rgba(63, 199, 180, 0.75),
+    inset 0 0 10px rgba(63, 199, 180, 0.35);
+  animation-name: markoer-ring-fade;
+  animation-timing-function: cubic-bezier(0.2, 0, 0.8, 1);
+  animation-fill-mode: forwards;
+}
+
+@keyframes markoer-ring-fade {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.65); }
+  12% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  60% { opacity: 0.9; transform: translate(-50%, -50%) scale(1.04); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.18); }
+}
+
+.markoer-kerne {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  margin: -3px 0 0 -3px;
+  border-radius: 50%;
+  background: #eafffb;
+  box-shadow: 0 0 6px rgba(63, 199, 180, 0.9);
+}

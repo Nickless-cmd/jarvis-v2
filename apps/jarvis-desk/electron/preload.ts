@@ -70,6 +70,11 @@ export interface JarvisDeskBridge {
     /** Hovedvinduet: figuren bad om at åbne en samtale. */
     paaAabnSamtale: (cb: (sessionId: string) => void) => () => void
   }
+  /** Markør-laget (electron/markoer.ts): hvor Jarvis peger lige nu. Kun
+   *  lytte-siden — positionen kommer fra broen, ikke fra renderer'en. */
+  markoer: {
+    paaPeg: (cb: (p: { x: number; y: number }) => void) => () => void
+  }
   /** Vinduesstyring til vores egen ramme. Findes ikke i en browser-fane —
    *  knapperne skal derfor SKJULES naar den mangler, ikke fejle. */
   vindue: {
@@ -233,6 +238,13 @@ const bridge: JarvisDeskBridge = {
       const handler = (_e: unknown, sessionId: string) => cb(sessionId)
       ipcRenderer.on('figur:aabnSamtale', handler)
       return () => ipcRenderer.removeListener('figur:aabnSamtale', handler)
+    },
+  },
+  markoer: {
+    paaPeg: (cb: (p: { x: number; y: number }) => void) => {
+      const handler = (_e: unknown, p: { x: number; y: number }) => cb(p)
+      ipcRenderer.on('markoer:peg', handler)
+      return () => ipcRenderer.removeListener('markoer:peg', handler)
     },
   },
   vindue: {

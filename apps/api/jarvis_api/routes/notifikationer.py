@@ -21,13 +21,36 @@ class AfgoerBody(BaseModel):
     approved: bool
 
 
+# De to udgange fra resolve_pending_approval() der endnu er paa engelsk —
+# resten af funktionens fejltekster er allerede dansk og sendes uaendret.
+_ENGELSK_TIL_DANSK = {
+    "Approval not found or expired": "Kortet findes ikke laengere, eller det er udloebet.",
+    "Approval already resolved": "Kortet er allerede besvaret.",
+}
+
+
+def _oversaet_fejl(raa_fejl: str) -> str:
+    """Oversaet en teknisk/engelsk fejltekst til noget en almindelig bruger
+    forstaar. Ukendte tekster (allerede dansk, eller nye udgange vi ikke
+    har set endnu) sendes uaendret videre frem for at blive tavse."""
+    return _ENGELSK_TIL_DANSK.get(raa_fejl.strip(), raa_fejl)
+
+
 def _nuvaerende_bruger() -> tuple[str | None, bool]:
     """(user_id, er_owner).
 
     Owner afgoeres af bruger-ROLLEN (find_user_by_discord_id().role ==
     "owner"), IKKE en streng-sammenligning mod user_id — Bjoerns user_id er
-    hans Discord-ID, ikke "owner". Samme moenster som cowork.py:_role_owner().
-    Ubundet (no-auth) = owner.
+    hans Discord-ID, ikke "owner".
+
+    Ubundet (no-auth) giver uid=None og er_owner=True i returvaerdien — MEN
+    det andet felt bruges aldrig i praksis: alle tre handlere nedenfor har
+    `if not uid: return ...` FOER er_owner laeses, saa en ubundet kalder
+    faar et tomt feed uanset hvad feltet siger. Det er med vilje, ikke en
+    kopieret fejl fra cowork.py's tilsvarende funktion (som RENT FAKTISK
+    behandler ubundet som owner): denne flade kan GODKENDE vaerktoejskald,
+    og at fejle lukket er sikrere end at give en uautentificeret kalder
+    ejerens feed.
     """
     from core.identity.workspace_context import current_user_id
     uid = current_user_id() or None
@@ -77,11 +100,21 @@ async def afgoer(notif_id: str, body: AfgoerBody) -> dict:
     ref = str(raekke["ref"] or "")
     from core.services import approval_runtime
     try:
-        approval_runtime.decide(ref, approved=body.approved, answered_by=uid)
+        resultat = approval_runtime.decide(ref, approved=body.approved, answered_by=uid)
     except Exception as fejl:
         # decide() kan fejle af mange grunde (kortet vaek, netvaerk, forkert
         # tilstand) — vis fejlen til brugeren i stedet for et 500 uden hoved eller hale.
         return {"ok": False, "fejl": f"Svaret kunne ikke sendes: {fejl}"}
+    # decide() REJSER ikke ved de almindelige fejl (kortet vaek, allerede
+    # besvaret, forkert ejer, udloebet, kaldet aendret, broen sagde nej) —
+    # den returnerer roligt {"status": "error", "error": ...}. Ignoreres
+    # returvaerdien, faar klienten {"ok": true} for et svar der ALDRIG blev
+    # sendt. Tjek paa "status", ikke en bestemt fejltekst, saa alle disse
+    # udgange fra resolve_pending_approval() daekkes ens.
+    if isinstance(resultat, dict) and resultat.get("status") == "error":
+        raa_fejl = str(resultat.get("error") or resultat.get("result_text")
+                       or "Ukendt fejl.")
+        return {"ok": False, "fejl": _oversaet_fejl(raa_fejl)}
     # Raekken lukkes af hydreringen ved naeste laesning — ikke her.
     return {"ok": True, "fejl": ""}
 

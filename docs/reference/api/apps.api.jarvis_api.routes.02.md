@@ -672,11 +672,12 @@ _Notifikations-feeden. Scoper til den auth'ede bruger._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | class | `AfgoerBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/notifikationer.py#L20) |
-| function | `_nuvaerende_bruger` | `()` | (user_id, er_owner). | [src](../../../apps/api/jarvis_api/routes/notifikationer.py#L24) |
-| function | `_min_raekke` | `(notif_id, user_id)` | Raekken — kun hvis den er brugerens egen. Et gaettet id fra en anden | [src](../../../apps/api/jarvis_api/routes/notifikationer.py#L46) |
-| function | `feed` | `()` | — | [src](../../../apps/api/jarvis_api/routes/notifikationer.py#L56) |
-| function | `afgoer` | `(notif_id, body)` | — | [src](../../../apps/api/jarvis_api/routes/notifikationer.py#L65) |
-| function | `set_` | `(notif_id)` | — | [src](../../../apps/api/jarvis_api/routes/notifikationer.py#L90) |
+| function | `_oversaet_fejl` | `(raa_fejl)` | Oversaet en teknisk/engelsk fejltekst til noget en almindelig bruger | [src](../../../apps/api/jarvis_api/routes/notifikationer.py#L32) |
+| function | `_nuvaerende_bruger` | `()` | (user_id, er_owner). | [src](../../../apps/api/jarvis_api/routes/notifikationer.py#L39) |
+| function | `_min_raekke` | `(notif_id, user_id)` | Raekken — kun hvis den er brugerens egen. Et gaettet id fra en anden | [src](../../../apps/api/jarvis_api/routes/notifikationer.py#L69) |
+| function | `feed` | `()` | — | [src](../../../apps/api/jarvis_api/routes/notifikationer.py#L79) |
+| function | `afgoer` | `(notif_id, body)` | — | [src](../../../apps/api/jarvis_api/routes/notifikationer.py#L88) |
+| function | `set_` | `(notif_id)` | — | [src](../../../apps/api/jarvis_api/routes/notifikationer.py#L123) |
 
 ## `apps/api/jarvis_api/routes/oauth.py`
 _OAuth connect-flow til plugin-connectors (16. jun 2026)._

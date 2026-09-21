@@ -50,7 +50,14 @@ def kanal_for(user_id: str, slags: str) -> str:
             (user_id, slags)).fetchone()
     if raekke:
         return str(raekke[0])
-    return STANDARD.get(slags, "ingen")
+    # STANDARD er feedens politik, ikke systemets. route_proactive_notification()
+    # kaldes ogsaa med slags der aldrig hoerer til feeden (fx membrane_breach,
+    # infra_security, keymaker_key_earned, moltbook_mention, central_flag) —
+    # de staar ikke i STANDARD fordi de ikke er feedens bord, IKKE fordi de er
+    # fravalgt. Fald-tilbage for dem skal vaere "auto", saa notification_router
+    # falder igennem til sin egen resolve_channel() (gammel opfoersel), ikke
+    # "ingen" som stopper leveringen i routerens tidlige udgang.
+    return STANDARD.get(slags, "auto")
 
 
 def saet(user_id: str, slags: str, kanal: str) -> None:

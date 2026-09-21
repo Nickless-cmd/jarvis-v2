@@ -1309,7 +1309,7 @@ Generated from source. 7921/15356 functions/methods documented (51%). The list b
 - `core/services/notes_connector.py` :: `search_notes` (L105)
 - `core/services/notification_router.py` :: `reset_delivery` (L266)
 - `core/services/notifikations_valg.py` :: `kanal_for` (L46)
-- `core/services/notifikations_valg.py` :: `saet` (L56)
+- `core/services/notifikations_valg.py` :: `saet` (L63)
 - `core/services/ntfy_gateway.py` :: `is_configured` (L26)
 - `core/services/oauth_flow.py` :: `is_known_provider` (L46)
 - `core/services/oauth_flow.py` :: `redirect_uri` (L50)

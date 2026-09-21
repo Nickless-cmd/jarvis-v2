@@ -379,3 +379,52 @@ describe('køen', () => {
     expect(mockSend).not.toHaveBeenCalled()
   })
 })
+
+// ── Fladen skal følge med ind i den nye samtale (21/9-2026) ──────────────────
+//
+// Bjørn: «ny samtale kan ikke skelne mellem om den er i kode mode eller chat
+// mode og opretter alle sessioner i chat mode». Rettelsen samlede de tre veje
+// bag én dør, og det var rigtigt.
+//
+// Men vagten der blev sat op om den, matcher på KILDETEKST — regexer mod
+// `ChatScreen.tsx`. Efterprøvet: vender man `art` om til
+// `kodeTilstand ? 'chat' : 'code'` — altså præcis hans fejl, spejlvendt —
+// består alle 38 tests. Vagten kan ikke se den fejl den findes for.
+//
+// De to her kalder skærmen i stedet for at læse den.
+function _appStateSpion() {
+  // Uden den her vaelter `return () => sub.remove()` i ChatScreen naar
+  // effekten koerer om (dens deps indeholder `sessions.activeId`, som disse
+  // tests aendrer). Det er samme spion som «retur fra baggrund» bruger.
+  const { AppState } = require('react-native')
+  return jest.spyOn(AppState, 'addEventListener')
+    .mockImplementation(() => ({ remove: jest.fn() }) as never)
+}
+
+it('en ny samtale i KODE-fladen oprettes som code', async () => {
+  const spion = _appStateSpion()
+  mockSessions = { ...mockSessions, activeId: null } as never   // ingen aktiv samtale endnu
+  mockStream = { ...mockStream, state: { status: 'idle', blocks: [] } }
+  mockCreate.mockResolvedValue({ id: 'ny-1' })
+
+  const screen = await render(<ChatScreen kodeTilstand />)
+  fireEvent.press(screen.getByText('Send mocked composer'))
+
+  await waitFor(() => expect(mockCreate).toHaveBeenCalled())
+  expect(mockCreate).toHaveBeenCalledWith(config, 'Kode-session', 'code')
+  spion.mockRestore()
+})
+
+it('en ny samtale i CHAT-fladen oprettes som chat', async () => {
+  const spion = _appStateSpion()
+  mockSessions = { ...mockSessions, activeId: null } as never   // ingen aktiv samtale endnu
+  mockStream = { ...mockStream, state: { status: 'idle', blocks: [] } }
+  mockCreate.mockResolvedValue({ id: 'ny-2' })
+
+  const screen = await render(<ChatScreen />)
+  fireEvent.press(screen.getByText('Send mocked composer'))
+
+  await waitFor(() => expect(mockCreate).toHaveBeenCalled())
+  expect(mockCreate).toHaveBeenCalledWith(config, 'Ny samtale', 'chat')
+  spion.mockRestore()
+})

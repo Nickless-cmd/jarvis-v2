@@ -1381,6 +1381,15 @@ et opslag hvor statussen SKRIVES, så læsning og skrivning bor sammen, i
 def status_for_run(run_id: str) -> str:
     """Koerslens status, eller "" hvis den ikke findes.
 
+    MAA IKKE fange DB-fejl. Task 2 blev ramt af praecis dét: `approval_runtime.
+    state()` havde en indre `except Exception: return None`, saa en utilgaengelig
+    database blev til en VAERDI der ikke kunne skelnes fra «kortet er afgjort» —
+    og hydreringen lukkede raekken. En kort nedetid tommede hele feeden, tavst.
+
+    Reglen der foelger: en hydrerings-hjaelper returnerer kun en vaerdi naar den
+    VED noget. Kan den ikke spoerge, skal undtagelsen forplante sig op til
+    `_hydrer`s eget net, som markerer raekken foraeldet i stedet for at lukke den.
+
     Laesningen laa foer inline i opmaerksomhed.py. Feeden skal ogsaa bruge
     den, og to steder der laeser samme tabel paa hver sin maade er den slags
     der skrider fra hinanden.
@@ -1575,9 +1584,14 @@ def test_en_fejlet_koersel_giver_en_raekke(isolated_runtime, monkeypatch) -> Non
                         lambda *a, **kw: {"delivered": True, "channel": "push",
                                           "target": "bjorn", "fallback_used": False})
     with connect() as conn:
-        conn.execute("INSERT INTO chat_sessions (id, user_id, title) VALUES (?,?,?)",
-                     ("s-1", "bjorn", "Kæledyret"))
+        # Noeglen hedder `session_id`; `id` er et autoincrement-heltal, og der
+        # findes INGEN user_id-kolonne (maalt 21/9-2026).
+        conn.execute(
+            "INSERT INTO chat_sessions (session_id, title, created_at, updated_at)"
+            " VALUES (?,?,?,?)", ("s-1", "Kæledyret", "nu", "nu"))
         conn.commit()
+    monkeypatch.setattr(
+        "core.identity.workspace_context.current_user_id", lambda: "bjorn")
 
     finalize_in_flight(run_id="r-1", session_id="s-1", status="failed_terminal",
                        error="noget braekkede")
@@ -1597,9 +1611,14 @@ def test_en_faerdig_koersel_giver_den_anden_slags(isolated_runtime, monkeypatch)
                         lambda *a, **kw: {"delivered": False, "channel": "none",
                                           "target": "", "fallback_used": False})
     with connect() as conn:
-        conn.execute("INSERT INTO chat_sessions (id, user_id, title) VALUES (?,?,?)",
-                     ("s-1", "bjorn", "Kæledyret"))
+        # Noeglen hedder `session_id`; `id` er et autoincrement-heltal, og der
+        # findes INGEN user_id-kolonne (maalt 21/9-2026).
+        conn.execute(
+            "INSERT INTO chat_sessions (session_id, title, created_at, updated_at)"
+            " VALUES (?,?,?,?)", ("s-1", "Kæledyret", "nu", "nu"))
         conn.commit()
+    monkeypatch.setattr(
+        "core.identity.workspace_context.current_user_id", lambda: "bjorn")
 
     finalize_in_flight(run_id="r-2", session_id="s-1", status="completed")
     assert [r["slags"] for r in n.aabne("bjorn", er_owner=True)] == ["run_done"]
@@ -1694,18 +1713,28 @@ og hjælperen i samme fil:
 
 ```python
 def _ejer_og_titel(session_id: str) -> tuple[str, str]:
-    """(ejer, samtale-titel). Tomme strenge hvis samtalen ikke kan laeses."""
+    """(ejer, samtale-titel).
+
+    To ting maalt paa skemaet 21/9-2026, som planens foerste udkast tog fejl af:
+    noeglen hedder `session_id` (`id` er et autoincrement-HELTAL), og der findes
+    INGEN `user_id`-kolonne — samtaler er ikke bruger-scopede. Ejeren afgoeres
+    derfor som i godkendelses-stien (`visible_runs._godkendelses_ejer`): den
+    kaldende brugers id hvis der er et, ellers husets ejer.
+
+    Fanger IKKE DB-fejl. Kalderen har sit eget net og logger — men en fejl her
+    betyder at DEN notifikation er tabt for altid, for run-raekker har ingen
+    afstemning som godkendelser har. Kendt graense, ikke en overset.
+    """
+    from core.identity.workspace_context import current_user_id
     from core.runtime.db import connect
-    try:
-        with connect() as conn:
-            raekke = conn.execute(
-                "SELECT user_id, title FROM chat_sessions WHERE id = ?",
-                (session_id,)).fetchone()
-    except Exception:
-        return "", ""
-    if not raekke:
-        return "", ""
-    return str(raekke[0] or ""), str(raekke[1] or "samtalen")
+    from core.services.notifikations_emittere import _owner_id
+
+    uid = str(current_user_id() or "").strip() or (_owner_id() or "")
+    with connect() as conn:
+        raekke = conn.execute(
+            "SELECT title FROM chat_sessions WHERE session_id = ?",
+            (session_id,)).fetchone()
+    return uid, (str(raekke[0]) if raekke and raekke[0] else "samtalen")
 ```
 
 Har filen ikke en `_log` i forvejen, så tilføj `import logging` og
@@ -3016,6 +3045,7 @@ git add -- apps/api/jarvis_api/routes/notifikations_valg.py apps/api/jarvis_api/
 ### Task 13: Oprydning og migrering ved opstart
 
 **Files:**
+- Create: `core/services/notifikations_opstart.py`
 - Modify: `apps/api/jarvis_api/app.py` — lifespan
 - Test: `tests/test_notifikations_opstart.py`
 
@@ -3032,13 +3062,42 @@ from __future__ import annotations
 import inspect
 
 
-def test_opstarten_migrerer_og_rydder_op() -> None:
-    """Migreringen skal koere, ellers taber den foerste bruger sine valg.
-    Oprydningen skal koere, ellers vokser tabellen i det uendelige."""
+def test_opstartsarbejdet_goer_begge_dele(isolated_runtime, monkeypatch) -> None:
+    """KALDER opstartsfunktionen rigtigt. En kilde-vagt der greber efter navnet
+    ville vaere groen ogsaa hvis kaldet stod i en gren der aldrig naas — og
+    praecis dét hul lod `migrer_kolonner()` ligge ukaldt gennem en hel
+    gennemgang (fundet 21/9-2026)."""
+    from core.runtime.db import connect
+    from core.services import notifikations_opstart, notifikations_valg
+
+    with connect() as conn:
+        conn.execute(
+            "INSERT INTO notification_preferences (user_id, pref_global, reminder)"
+            " VALUES (?,?,?)", ("bjorn", "auto", "mobile"))
+        conn.commit()
+
+    notifikations_opstart.koer_ved_opstart()
+
+    assert notifikations_valg.kanal_for("bjorn", "reminder") == "mobile"
+
+
+def test_opstartsarbejdet_vaelter_aldrig_opstarten(isolated_runtime, monkeypatch) -> None:
+    """En feed der ikke kan rydde op er stadig bedre end en API der ikke starter."""
+    from core.services import notifikations_opstart, notifikations_valg
+
+    def sprang() -> int:
+        raise RuntimeError("basen er væk")
+    monkeypatch.setattr(notifikations_valg, "migrer_kolonner", sprang)
+
+    notifikations_opstart.koer_ved_opstart()   # maa ikke kaste
+
+
+def test_app_kalder_opstartsarbejdet() -> None:
+    """Vagt over selve ledningen. Funktionens ADFAERD er daekket ovenfor; det
+    her er det ene der ikke kan koeres i en test uden at starte hele API'ets
+    lifespan med alle dens daemoner."""
     import apps.api.jarvis_api.app as m
-    kilde = inspect.getsource(m)
-    assert "migrer_kolonner" in kilde
-    assert "ryd_gamle" in kilde
+    assert "koer_ved_opstart" in inspect.getsource(m)
 
 
 def test_migreringen_er_idempotent(isolated_runtime) -> None:
@@ -3061,33 +3120,52 @@ def test_migreringen_er_idempotent(isolated_runtime) -> None:
 Run: `/opt/conda/envs/ai/bin/python -m pytest tests/test_notifikations_opstart.py -q`
 Expected: FAIL på `test_opstarten_migrerer_og_rydder_op`
 
-- [ ] **Step 3: Kør begge ved opstart**
+- [ ] **Step 3: Saml opstartsarbejdet ét sted**
 
-Find lifespan-funktionen: `grep -n "async def lifespan" apps/api/jarvis_api/app.py`
-
-Tilføj i opstarts-grenen, efter at DB-skemaet er sikret:
+Opret `core/services/notifikations_opstart.py`. Grunden til at det er en
+funktion og ikke to `try`-blokke inde i lifespan: så kan ADFÆRDEN testes
+rigtigt. Lå den inline, kunne kun en kilde-vagt nå den — og en kilde-vagt lod
+netop `migrer_kolonner()` ligge ukaldt gennem en hel gennemgang.
 
 ```python
-    # Notifikations-feeden (spec 2026-09-21). Begge er idempotente og maa
-    # aldrig kunne vaelte opstarten: en feed der ikke kan rydde op er stadig
-    # bedre end en API der ikke starter.
+"""Det notifikations-feeden skal have gjort ved hver opstart (spec 2026-09-21).
+
+Begge dele er idempotente og maa ALDRIG kunne vaelte opstarten: en feed der
+ikke kan rydde op er stadig bedre end en API der ikke starter.
+"""
+from __future__ import annotations
+
+import logging
+
+_log = logging.getLogger(__name__)
+
+
+def koer_ved_opstart() -> None:
+    from core.services.notifikations_valg import migrer_kolonner
+    from core.services.notifikationer import ryd_gamle
     try:
-        from core.services.notifikations_valg import migrer_kolonner
         flyttet = migrer_kolonner()
-        if flyttet:
-            _log.info("notifikations-valg: %d valg migreret fra kolonner", flyttet)
     except Exception:
         _log.warning("notifikations-valg kunne ikke migreres", exc_info=True)
+    else:
+        if flyttet:
+            _log.info("notifikations-valg: %d valg migreret fra kolonner", flyttet)
     try:
-        from core.services.notifikationer import ryd_gamle
         fjernet = ryd_gamle()
-        if fjernet:
-            _log.info("notifikationer: %d klarede raekker ryddet", fjernet)
     except Exception:
         _log.warning("notifikationer kunne ikke ryddes", exc_info=True)
+    else:
+        if fjernet:
+            _log.info("notifikationer: %d klarede raekker ryddet", fjernet)
 ```
 
-Brug det logger-navn filen allerede har — slå det op med `grep -n "^_log\|getLogger" apps/api/jarvis_api/app.py | head -3`.
+Find så lifespan-funktionen (`grep -n "async def lifespan" apps/api/jarvis_api/app.py`)
+og kald den i opstarts-grenen, efter at DB-skemaet er sikret:
+
+```python
+    from core.services.notifikations_opstart import koer_ved_opstart
+    koer_ved_opstart()
+```
 
 - [ ] **Step 4: Run test to verify it passes**
 

@@ -216,7 +216,8 @@ class BridgeConnection:
         # lokalt i code mode. Tom scope → broen behandler det som legacy (tillader).
         try:
             from core.tools.tool_scoping import (
-                current_tool_scope, LOCAL_EXECUTION_TOOLS, _owner_has_live_bridge,
+                current_tool_scope, COMPUTER_USE_TOOLS, LOCAL_EXECUTION_TOOLS,
+                _owner_has_live_bridge,
             )
             mode = current_tool_scope() or ""
             # Bjørn 2026-07-10 (chat-mode operator-fix, Option B): tool_scoping:212 har ALLEREDE
@@ -225,7 +226,18 @@ class BridgeConnection:
             # chat→"code" for et sådant tool NÅR bro fortsat er live — så broens grænse bevares
             # uændret, og serveren asserter den allerede-verificerede autorisation. Falder bro'en
             # væk mellem scoping og dispatch → mode='chat' → broen afviser (sikker fejl).
-            if mode == "chat" and tool in LOCAL_EXECUTION_TOOLS and _owner_has_live_bridge():
+            #
+            # UNDTAGELSE (21/9-2026): computer-use (mus, tastatur, skaermbillede) maa IKKE
+            # loeftes. Loftet hviler paa at scoping ALLEREDE har godkendt tool'et for chat;
+            # computer-use er pr. design kun i code-scope, saa den praemis er falsk her.
+            # Bjoern: «Det skal kun vaere i code mode, saa alle 17». Uden det her ville en
+            # chat-dispatch af operator_mouse_click blive laesset som code af broen.
+            if (
+                mode == "chat"
+                and tool in LOCAL_EXECUTION_TOOLS
+                and tool not in COMPUTER_USE_TOOLS
+                and _owner_has_live_bridge()
+            ):
                 mode = "code"
         except Exception:
             mode = ""

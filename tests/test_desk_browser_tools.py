@@ -12,6 +12,8 @@ sender man dem som tekst i stedet for tal, fejler broen laengere ude end noedven
 from __future__ import annotations
 
 import asyncio
+import base64
+from pathlib import Path
 
 import pytest
 
@@ -131,14 +133,31 @@ class TestBroKaldet:
         db._exec_jarvis_browser_close({"tab_id": 2})
         assert bro["args"] == {"tab_id": 2}
 
-    def test_screenshot_videresender_broens_svar(self, bro, monkeypatch):
+    def test_screenshot_skriver_til_fil_og_svarer_med_stien(self, bro, monkeypatch):
+        """Raa base64 kan jeg ikke SE — strengen blev trunkeret i mit vindue
+        (maalt 21/9-2026), og jeg maatte hente billedet ad bagvejen for at se
+        det. Vi skriver den til en fil og svarer med stien, saa `analyze_image`
+        kan aabne den med ét kald. Samme moenster som `operator_screenshot`."""
         async def _png(*, tool, args, user_id, timeout_s):
             return {"image_base64": "iVBORw0KGgo=", "format": "png"}
 
         monkeypatch.setattr(db, "_bro", _png)
         ud = db._exec_jarvis_browser_screenshot({})
         assert ud["status"] == "ok"
-        assert ud["result"]["image_base64"] == "iVBORw0KGgo="
+        sti = Path(ud["result"]["path"])
+        assert sti.exists() and sti.suffix == ".png"
+        assert sti.read_bytes() == base64.b64decode("iVBORw0KGgo=")
+        assert ud["result"]["bytes"] == 8
+        assert "image_base64" not in ud["result"], "raa base64 hoerer ikke i svaret"
+        sti.unlink()
+
+    def test_screenshot_uden_billeddata_svarer_aerligt(self, bro, monkeypatch):
+        async def _tom(*, tool, args, user_id, timeout_s):
+            return {"format": "png"}
+
+        monkeypatch.setattr(db, "_bro", _tom)
+        ud = db._exec_jarvis_browser_screenshot({})
+        assert ud["status"] == "error" and "billeddata" in ud["error"]
 
 
 def test_broens_fejl_videreformidles_uaendret(monkeypatch):

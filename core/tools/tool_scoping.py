@@ -208,11 +208,41 @@ CODE_MODE_OWNER_EXTRA: frozenset[str] = frozenset({
 # værktøj serveren ikke kan udføre. Annoncering gates på current_local_exec() nedenfor.
 LOCAL_EXEC_ONLY_TOOLS: frozenset[str] = frozenset({"task"})
 
+# Computer-use: mus, tastatur, skaermbillede, OCR (21/9-2026).
+#
+# Bjørn 21/9-2026: «Det skal kun være i code mode, så alle 17». De står derfor i
+# deres EGET sæt og IKKE i `CODE_MODE_TOOLS_BASE`: chat-scope arver base-listen
+# når en desk-bro er paret (se `allowed_tool_names`), og den arv må ikke omfatte
+# musen og tastaturet — i chat kan man ikke se den skærm man peger på.
+#
+# Kæden er: annonceres kun i code → broen sender mode="code" → bridge.ts'
+# `_LOCAL_EXECUTION_MODES` slipper dem igennem. Både scoping og broen håndhæver
+# det, så et enkelt lags fejl ikke åbner musen.
+#
+# Listen er ikke skrevet af her: `computer_use_samtykke` deler dem allerede i
+# HANDLENDE (kræver samtykke) og LÆSENDE (frit) — samme familie, og to lister
+# ville drive fra hinanden. Ni handlende + otte læsende = 17.
+try:
+    from core.services.computer_use_samtykke import HANDLENDE as _CU_HANDLENDE
+    from core.services.computer_use_samtykke import LAESENDE as _CU_LAESENDE
+
+    COMPUTER_USE_TOOLS: frozenset[str] = _CU_HANDLENDE | _CU_LAESENDE
+except Exception:  # pragma: no cover — defensiv: scoping må ikke dø ved import
+    # Fejler den, bliver computer-use usynligt (fail-closed for en rettighed der
+    # rører hans mus) — men det SKAL siges højt, ikke ske stille.
+    logger.warning(
+        "computer_use_samtykke kunne ikke importeres — mus/tastatur forbliver usynlige"
+    )
+    COMPUTER_USE_TOOLS = frozenset()
+
 # §17: værktøjer der eksekverer LOKALT på brugerens maskine i code mode. Deres rå
 # resultat bliver på maskinen; kun summary krydser via bro_broker. bridge.ts bruger
 # dette til mode-aware routing (§17.6.1).
 LOCAL_EXECUTION_TOOLS: frozenset[str] = (
-    CODE_MODE_TOOLS_BASE | CODE_MODE_OWNER_EXTRA | LOCAL_EXEC_ONLY_TOOLS
+    CODE_MODE_TOOLS_BASE
+    | CODE_MODE_OWNER_EXTRA
+    | LOCAL_EXEC_ONLY_TOOLS
+    | COMPUTER_USE_TOOLS
 )
 
 
@@ -427,6 +457,11 @@ def allowed_tool_names(
             result = (
                 set(CODE_MODE_TOOLS_BASE) | CODE_MODE_OWNER_EXTRA | LOCAL_EXEC_ONLY_TOOLS
             ) & names
+            # Computer-use (21/9-2026) — KUN her. Bjørn: «Det skal kun være i code
+            # mode, så alle 17». Bevidst IKKE i chat-grenen nedenfor: den arver
+            # CODE_MODE_TOOLS_BASE når broen er paret, og mus/tastatur hører ikke
+            # til i en samtale hvor man ikke kan se skærmen man peger på.
+            result |= COMPUTER_USE_TOOLS & names
             if _owner_has_live_phone():
                 result |= _phone_tool_names() & names
             if _adb_er_opsat():

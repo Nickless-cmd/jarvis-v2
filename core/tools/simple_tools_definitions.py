@@ -935,7 +935,8 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
             "description": (
                 "Capture a specific window on the OPERATOR'S desktop (not full screen). "
                 "Pass title_substring to match by window title, or handle (X11 hex / Windows HWND). "
-                "Returns {captured, width, height, path, base64?}. "
+                "Returns {captured, path, bytes?} — the PNG is written to a file and you get the "
+                "PATH, so pass it straight to analyze_image to actually LOOK at the window. "
                 "Requires ImageMagick (Linux: apt install imagemagick) or wmctrl."
             ),
             "parameters": {
@@ -951,7 +952,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
                     },
                     "save_path": {
                         "type": "string",
-                        "description": "File path to save the PNG to. If omitted, returns base64-encoded PNG.",
+                        "description": "File path to save the PNG to. If omitted, the PNG is written to a temp file and its path returned.",
                     },
                 },
             },

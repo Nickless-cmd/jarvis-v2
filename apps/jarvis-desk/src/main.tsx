@@ -6,6 +6,7 @@ import { ErrorBoundary } from './components/ErrorBoundary'
 import { Vinduesknapper } from './components/shell/Vinduesknapper'
 import { loadTheme, applyTheme } from './lib/themeStore'
 import { FigurApp } from './figur/FigurApp'
+import { MarkoerApp } from './markoer/MarkoerApp'
 
 // Anvend gemt tema før render — undgår flash af forkert tema (§4.11).
 applyTheme(loadTheme())
@@ -28,7 +29,13 @@ if (!root) throw new Error('Root element #root not found')
 // kun figuren — ingen skal, ingen vinduesknapper, ingen indstillinger.
 const erFigur = window.location.hash === '#figur'
 
+// Markør-laget (electron/markoer.ts) er en TREDJE flade i samme bundle: et
+// gennemsigtigt fuldskærms-vindue der tegner hvor Jarvis peger. Den har ingen
+// skal og intet indhold ud over sporet.
+const erMarkoer = window.location.hash === '#markoer'
+
 createRoot(root).render(
+  erMarkoer ? <StrictMode><MarkoerApp /></StrictMode> :
   erFigur ? <StrictMode><FigurApp /></StrictMode> :
   <StrictMode>
     {/* Vinduesknapperne staar UDEN FOR App og uden for ErrorBoundary med

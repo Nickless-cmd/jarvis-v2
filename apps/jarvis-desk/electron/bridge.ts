@@ -46,6 +46,10 @@ import {
   BrowserWindow,
 } from 'electron'
 import { resolveOperatorPath } from './operatorPathPolicy.js'
+// Markør-laget: hvert sted vi flytter musen, viser vi hvor. Kaldet er en
+// no-op naar laget ikke findes (ældre app-version, eller figuren slået fra),
+// saa det kan staa uden vagt omkring.
+import { pegMarkoer, visOvertagelse } from './markoer.js'
 
 /**
  * Race a native confirmation dialog against an auto-reject timer.
@@ -898,6 +902,7 @@ const handlers: Record<string, ToolHandler> = {
     } else {
       await mouse.setPosition(new Point(x, y))
     }
+    pegMarkoer(x, y)
     return { moved: true, x, y, smooth: Boolean(args.smooth) }
   },
 
@@ -908,6 +913,7 @@ const handlers: Record<string, ToolHandler> = {
       const x = Number(args.x), y = Number(args.y)
       if (Number.isFinite(x) && Number.isFinite(y)) {
         await mouse.setPosition(new Point(x, y))
+        pegMarkoer(x, y)
       }
     }
     const btnName = String(args.button ?? 'left').toLowerCase()
@@ -977,7 +983,18 @@ const handlers: Record<string, ToolHandler> = {
     const { screen: nutScreen } = await import('@nut-tree-fork/nut-js')
     const width = await nutScreen.width()
     const height = await nutScreen.height()
-    return { width, height }
+    // Bjørn 21/9-2026: «det skal bygges sammen med din skærm info ting til dig
+    // selv». width/height er ÉT fladt rum — på en tre-skærms opsætning kan
+    // Jarvis ikke se hvor han lander, og det var netop hvad der gik galt da
+    // han først flyttede musen: x=960 ramte den venstre skærm, x=4800 ville
+    // have ramt den højre, uden at han kunne vide det.
+    //
+    // `skaerme` giver opdelingen: nummereret fra venstre, med et midtpunkt pr.
+    // skærm at sigte efter. width/height står uændret, så ældre kaldere ikke
+    // brækker. Det er den SAMME kortlægning halo'en tegner efter.
+    const { laesSkaerme } = await import('./skaermeHost')
+    const { skærmOversigt } = await import('./skaerme')
+    return { width, height, skaerme: skærmOversigt(laesSkaerme()) }
   },
 
   // ── Jarvis' EGEN browser i desk-panelet (21/9-2026) ──────────────────
@@ -1375,8 +1392,10 @@ const handlers: Record<string, ToolHandler> = {
     const btn = btnName === 'right' ? Button.RIGHT : Button.LEFT
     // Move to start → press → move to end → release.
     await mouse.setPosition(new Point(fromX, fromY))
+    pegMarkoer(fromX, fromY)
     await mouse.pressButton(btn)
     await mouse.setPosition(new Point(toX, toY))
+    pegMarkoer(toX, toY)
     await mouse.releaseButton(btn)
     return { dragged: true, from_x: fromX, from_y: fromY, to_x: toX, to_y: toY, button: btnName }
   },
@@ -2642,6 +2661,11 @@ export class JarvisXBridge {
         this.log(`  → replied unknown_tool`)
         return
       }
+      // Halo'en (21/9-2026): rører dette værktøj skærmen — mus, tastatur,
+      // udklipsholder eller fokus — lyser kanten op, så Bjørn kan se at Jarvis
+      // har overtaget. Ligger HER og ikke i hver handler, så en ny handlende
+      // værktøj er dækket i samme øjeblik den skrives. Læsning tæller ikke.
+      visOvertagelse(tool)
       try {
         // Per-handler timeout. Without this, a hung handler (browser
         // session stuck, bash command waiting forever) blocks the whole

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7927/15368 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7928/15369 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -32,7 +32,7 @@ Generated from source. 7927/15368 functions/methods documented (51%). The list b
 | `core.services.visible_runs_sections` | 20 | 32 | 62% |
 | `core.skills` | 0 | 0 | 0% |
 | `core.skills.voice` | 39 | 49 | 79% |
-| `core.tools` | 484 | 1003 | 48% |
+| `core.tools` | 485 | 1004 | 48% |
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.util` | 9 | 10 | 90% |
@@ -1181,7 +1181,7 @@ Generated from source. 7927/15368 functions/methods documented (51%). The list b
 - `core/services/jarvis_brain.py` :: `connect_index` (L376)
 - `core/services/jarvis_brain.py` :: `index_db_path` (L314)
 - `core/services/jarvis_brain_daemon.py` :: `is_theme_consolidation_paused` (L330)
-- `core/services/jarvisx_bridge.py` :: `BridgeRegistry.register` (L340)
+- `core/services/jarvisx_bridge.py` :: `BridgeRegistry.register` (L352)
 - `core/services/jobs_engine.py` :: `build_jobs_engine_surface` (L558)
 - `core/services/jobs_engine.py` :: `list_jobs` (L551)
 - `core/services/layer_tension_daemon.py` :: `build_layer_tension_surface` (L194)
@@ -2058,26 +2058,26 @@ Generated from source. 7927/15368 functions/methods documented (51%). The list b
 - `core/tools/operator_tools.py` :: `operator_browser_status_async` (L740)
 - `core/tools/operator_tools.py` :: `operator_browser_type_async` (L676)
 - `core/tools/operator_tools.py` :: `operator_multi_edit` (L205)
-- `core/tools/operator_tools.py` :: `operator_process_kill_async` (L1233)
-- `core/tools/operator_tools.py` :: `operator_process_list_async` (L1243)
-- `core/tools/operator_tools.py` :: `operator_process_output_async` (L1221)
-- `core/tools/operator_tools.py` :: `operator_process_spawn_async` (L1196)
-- `core/tools/operator_tools.py` :: `operator_process_status_async` (L1211)
+- `core/tools/operator_tools.py` :: `operator_process_kill_async` (L1272)
+- `core/tools/operator_tools.py` :: `operator_process_list_async` (L1282)
+- `core/tools/operator_tools.py` :: `operator_process_output_async` (L1260)
+- `core/tools/operator_tools.py` :: `operator_process_spawn_async` (L1235)
+- `core/tools/operator_tools.py` :: `operator_process_status_async` (L1250)
 - `core/tools/operator_tools.py` :: `operator_read_file` (L67)
-- `core/tools/operator_tools.py` :: `operator_reminder_async` (L1142)
-- `core/tools/operator_tools.py` :: `operator_scheduled_cancel_async` (L1183)
-- `core/tools/operator_tools.py` :: `operator_scheduled_list_async` (L1170)
-- `core/tools/operator_tools.py` :: `operator_wakeup_async` (L1155)
+- `core/tools/operator_tools.py` :: `operator_reminder_async` (L1181)
+- `core/tools/operator_tools.py` :: `operator_scheduled_cancel_async` (L1222)
+- `core/tools/operator_tools.py` :: `operator_scheduled_list_async` (L1209)
+- `core/tools/operator_tools.py` :: `operator_wakeup_async` (L1194)
 - `core/tools/security_predicates.py` :: `all_predicates` (L86)
 - `core/tools/session_search.py` :: `exec_search_sessions` (L254)
 - `core/tools/tool_definition_v2.py` :: `ToolDefinitionV2.annonceret_uden_executor` (L86)
 - `core/tools/tool_definition_v2.py` :: `all_definitions` (L211)
 - `core/tools/tool_schema_contract.py` :: `Brud.haard` (L72)
 - `core/tools/tool_schema_contract.py` :: `haarde` (L177)
-- `core/tools/tool_scoping.py` :: `reset_tool_scope` (L239)
-- `core/tools/tool_scoping.py` :: `set_local_exec` (L257)
-- `core/tools/tool_scoping.py` :: `set_tool_scope` (L235)
-- `core/tools/tool_scoping.py` :: `tool_scope` (L262)
+- `core/tools/tool_scoping.py` :: `reset_tool_scope` (L269)
+- `core/tools/tool_scoping.py` :: `set_local_exec` (L287)
+- `core/tools/tool_scoping.py` :: `set_tool_scope` (L265)
+- `core/tools/tool_scoping.py` :: `tool_scope` (L292)
 - `core/tools/wake_word_tool.py` :: `wake_word_status` (L217)
 - `core/tools/workspace_capabilities.py` :: `classify_workspace_execution_mode` (L1870)
 - `core/tools/workspace_capabilities.py` :: `get_capability_invocation_truth` (L555)

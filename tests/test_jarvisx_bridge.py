@@ -390,6 +390,39 @@ def test_send_invoke_includes_mode():
     assert captured["tool"] == "operator_bash"
 
 
+def test_send_invoke_loefter_ikke_computer_use_til_code(monkeypatch):
+    """Bjørn 21/9-2026: «Det skal kun være i code mode, så alle 17».
+
+    Broens chat→code-løft (§17.6.1) findes for værktøjer som scoping ALLEREDE har
+    godkendt for chat med live bro. Computer-use er pr. design kun i code-scope,
+    så præmissen er falsk: et chat-dispatch af musen må ikke læses som code.
+    `operator_bash`, som ER chat-godkendt med live bro, skal fortsat løftes.
+    """
+    import asyncio
+    from core.services.jarvisx_bridge import BridgeConnection
+    import core.tools.tool_scoping as ts
+
+    monkeypatch.setattr(ts, "current_tool_scope", lambda: "chat")
+    monkeypatch.setattr(ts, "_owner_has_live_bridge", lambda: True)
+
+    async def _mode_for(tool: str) -> str:
+        conn = BridgeConnection(user_id="user-x", client="test")
+        captured: dict = {}
+
+        async def _fake_send_raw(data, *, timeout_s=10.0):
+            captured.update(data)
+
+        conn.send_raw = _fake_send_raw  # type: ignore[assignment]
+        await conn.send_invoke(correlation_id="c1", tool=tool, args={}, timeout_ms=1000)
+        return str(captured["mode"])
+
+    # Handlende OG læsende computer-use forbliver i chat → broen afviser (sikker fejl).
+    assert asyncio.run(_mode_for("operator_mouse_click")) == "chat"
+    assert asyncio.run(_mode_for("operator_screenshot")) == "chat"
+    # Kontrol: den chat-godkendte operator-vej er uændret.
+    assert asyncio.run(_mode_for("operator_bash")) == "code"
+
+
 # ── Bro-diagnose: HVORFOR bridge_not_connected (mobil-bro-fix, 2026-07-01) ──
 
 

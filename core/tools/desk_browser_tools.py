@@ -103,6 +103,32 @@ def _vis_panelet(runtime_args: dict[str, Any]) -> None:
         logger.debug("kunne ikke bede desk vise browser-panelet: %s", exc)
 
 
+def _gem_billede(resultat: dict[str, Any]) -> dict[str, Any]:
+    """Skriv broens base64-billede til en fil og svar med STIEN.
+
+    Broen giver `{image_base64, format}`. Rå base64 er ubrugelig for mig: jeg kan
+    ikke SE den, og et skærmbillede jeg ikke kan se er ikke et skærmbillede — det
+    er data. Målt 21/9-2026: strengen blev trunkeret i mit vindue, og jeg måtte
+    hente billedet ad bagvejen for at se det. Vi gør som `operator_screenshot`:
+    dekod, skriv til en temp-fil, og svar med stien, så `analyze_image` kan åbne
+    den med ét kald.
+    """
+    import base64
+    import tempfile
+    import time
+    from pathlib import Path
+
+    data = str(resultat.get("image_base64") or "")
+    if not data:
+        raise RuntimeError("broen gav ingen billeddata")
+    raa = base64.b64decode(data)
+    fmt = str(resultat.get("format") or "png").lower()
+    ext = "jpg" if fmt in ("jpeg", "jpg") else "png"
+    sti = Path(tempfile.gettempdir()) / f"jarvis-browser-{int(time.time() * 1000)}.{ext}"
+    sti.write_bytes(raa)
+    return {"path": str(sti), "format": fmt, "bytes": len(raa)}
+
+
 # ── de otte handlinger ──────────────────────────────────────────────────
 
 
@@ -152,8 +178,15 @@ def _exec_jarvis_browser_type(args: dict[str, Any]) -> dict[str, Any]:
 
 
 def _exec_jarvis_browser_screenshot(args: dict[str, Any]) -> dict[str, Any]:
-    return _koer("jarvis_browser_screenshot", _tab_id(args), args,
+    svar = _koer("jarvis_browser_screenshot", _tab_id(args), args,
                  timeout_s=_TIMEOUT_TUNG)
+    if svar.get("status") != "ok":
+        return svar
+    try:
+        billede = _gem_billede(svar.get("result") or {})
+    except Exception as exc:  # ingen data eller ugyldig base64 → svar ærligt
+        return {"status": "error", "error": f"kunne ikke gemme skærmbilledet: {exc}"}
+    return {"status": "ok", "result": billede}
 
 
 def _exec_jarvis_browser_tabs(args: dict[str, Any]) -> dict[str, Any]:
@@ -273,10 +306,11 @@ DESK_BROWSER_TOOL_DEFINITIONS: list[dict[str, Any]] = [
         "function": {
             "name": "jarvis_browser_screenshot",
             "description": (
-                "Take a PNG screenshot of the page in Jarvis' desk browser. Returns "
-                "{image_base64, format}. Use it to actually LOOK at the page — for layout, "
-                "images and anything `jarvis_browser_read` cannot express — and to find the "
-                "coordinates for `jarvis_browser_click`."
+                "Take a PNG screenshot of the page in Jarvis' desk browser and SAVE it to a "
+                "file, returning {path, format, bytes}. Pass `path` straight to `analyze_image` "
+                "to actually LOOK at the page — for layout, images and anything "
+                "`jarvis_browser_read` cannot express — and to find the coordinates for "
+                "`jarvis_browser_click`."
             ),
             "parameters": {"type": "object", "properties": {"tab_id": _TAB}},
         },

@@ -13,6 +13,15 @@ export interface ChannelPluginConfig {
   serverId: string
 }
 
+/** Et rektangel i vinduets lokale koordinater. Markør-laget bruger det til at
+ *  lægge én halo-kant pr. skærm (se electron/markoer.ts). */
+export interface SkærmRektangel {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
 export interface JarvisDeskBridge {
   config: {
     get: () => Promise<{ apiBaseUrl: string; authToken: string | null; appId?: string; channelPlugins?: ChannelPluginConfig[] }>
@@ -69,6 +78,19 @@ export interface JarvisDeskBridge {
     paaStemme: (cb: () => void) => () => void
     /** Hovedvinduet: figuren bad om at åbne en samtale. */
     paaAabnSamtale: (cb: (sessionId: string) => void) => () => void
+  }
+  /** Markør-laget (electron/markoer.ts): hvor Jarvis peger lige nu, og
+   *  hvornår han har overtaget skrivebordet. Kun lytte-siden — både
+   *  positionen og overtagelsen kommer fra broen, ikke fra renderer'en. */
+  markoer: {
+    paaPeg: (cb: (p: { x: number; y: number }) => void) => () => void
+    /** Halo'en: Jarvis rørte netop mus, tastatur, udklipsholder eller fokus.
+     *  Positionen følger med, så kanten kan lyse på den skærm han står på —
+     *  `null` hvis den ikke kunne læses, og så lyser alle skærme. */
+    paaOvertag: (cb: (p: { x: number; y: number } | null) => void) => () => void
+    /** Skærm-layoutet i vinduets lokale rum — én kant pr. skærm. */
+    skærme: () => Promise<SkærmRektangel[]>
+    paaSkærme: (cb: (s: SkærmRektangel[]) => void) => () => void
   }
   /** Vinduesstyring til vores egen ramme. Findes ikke i en browser-fane —
    *  knapperne skal derfor SKJULES naar den mangler, ikke fejle. */
@@ -233,6 +255,26 @@ const bridge: JarvisDeskBridge = {
       const handler = (_e: unknown, sessionId: string) => cb(sessionId)
       ipcRenderer.on('figur:aabnSamtale', handler)
       return () => ipcRenderer.removeListener('figur:aabnSamtale', handler)
+    },
+  },
+  markoer: {
+    paaPeg: (cb: (p: { x: number; y: number }) => void) => {
+      const handler = (_e: unknown, p: { x: number; y: number }) => cb(p)
+      ipcRenderer.on('markoer:peg', handler)
+      return () => ipcRenderer.removeListener('markoer:peg', handler)
+    },
+    paaOvertag: (cb: (p: { x: number; y: number } | null) => void) => {
+      const handler = (_e: unknown, p: { x: number; y: number } | null) => cb(p ?? null)
+      ipcRenderer.on('markoer:overtag', handler)
+      return () => ipcRenderer.removeListener('markoer:overtag', handler)
+    },
+    // Hentes ved mount frem for at vente på et push: så afhænger halo'en ikke
+    // af, at renderer'en tilfældigvis var klar da main sendte layoutet.
+    skærme: () => ipcRenderer.invoke('markoer:skaerme'),
+    paaSkærme: (cb: (s: SkærmRektangel[]) => void) => {
+      const handler = (_e: unknown, s: SkærmRektangel[]) => cb(s)
+      ipcRenderer.on('markoer:skaerme', handler)
+      return () => ipcRenderer.removeListener('markoer:skaerme', handler)
     },
   },
   vindue: {

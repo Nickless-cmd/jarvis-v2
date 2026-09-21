@@ -5,6 +5,7 @@ Full E2E tests require a running JarvisX Electron with espeak-ng / tesseract / i
 """
 
 from unittest.mock import AsyncMock, patch
+import base64
 import pytest
 
 
@@ -236,7 +237,7 @@ async def test_speak_async_passes_args():
 @pytest.mark.asyncio
 async def test_screenshot_window_async_passes_args():
     from core.tools.operator_tools import operator_screenshot_window_async
-    with _patch_bridge({"captured": True, "base64": "xyz"}) as mock:
+    with _patch_bridge({"captured": True, "path": "/tmp/out.png"}) as mock:
         result = await operator_screenshot_window_async(
             user_id="test-user", title_substring="Chrome", save_path="/tmp/out.png"
         )
@@ -246,6 +247,48 @@ async def test_screenshot_window_async_passes_args():
         assert kwargs.get("args", {}).get("title_substring") == "Chrome"
         assert kwargs.get("args", {}).get("save_path") == "/tmp/out.png"
     assert result.get("captured") is True
+    # Broen har selv gemt til stien — den returneres urørt.
+    assert result.get("path") == "/tmp/out.png"
+
+
+@pytest.mark.asyncio
+async def test_screenshot_window_async_skriver_base64_til_fil():
+    """Raa base64 kan modellen ikke SE — strengen blev trunkeret i dens
+    vindue (maalt 21/9-2026). Vi skriver den til en fil og svarer med
+    STIEN, saa `analyze_image` kan aabne den med ét kald."""
+    from core.tools.operator_tools import operator_screenshot_window_async
+
+    raa = b"\x89PNG\r\n\x1a\nfake-window-bytes"
+    b64 = base64.b64encode(raa).decode()
+    with _patch_bridge({"captured": True, "base64": b64}):
+        result = await operator_screenshot_window_async(
+            user_id="test-user", title_substring="Firefox"
+        )
+
+    assert result.get("captured") is True
+    assert result.get("bytes") == len(raa)
+    # base64 maa IKKE komme med tilbage — det er hele pointen.
+    assert "base64" not in result
+    from pathlib import Path
+
+    fil = Path(result["path"])
+    assert fil.is_file()
+    assert fil.read_bytes() == raa
+    fil.unlink()
+
+
+@pytest.mark.asyncio
+async def test_screenshot_window_async_ugyldig_base64_giver_aerlig_fejl():
+    """Afkortet/ugyldig base64 skal svare med fejlen frem for at kaste."""
+    from core.tools.operator_tools import operator_screenshot_window_async
+
+    with _patch_bridge({"captured": True, "base64": "ikke base64!!"}):
+        result = await operator_screenshot_window_async(
+            user_id="test-user", handle="0x00400003"
+        )
+
+    assert "error" in result
+    assert "base64" not in result
 
 
 @pytest.mark.asyncio

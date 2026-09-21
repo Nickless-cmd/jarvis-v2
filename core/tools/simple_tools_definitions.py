@@ -935,7 +935,8 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
             "description": (
                 "Capture a specific window on the OPERATOR'S desktop (not full screen). "
                 "Pass title_substring to match by window title, or handle (X11 hex / Windows HWND). "
-                "Returns {captured, width, height, path, base64?}. "
+                "Returns {captured, path, bytes?} — the PNG is written to a file and you get the "
+                "PATH, so pass it straight to analyze_image to actually LOOK at the window. "
                 "Requires ImageMagick (Linux: apt install imagemagick) or wmctrl."
             ),
             "parameters": {

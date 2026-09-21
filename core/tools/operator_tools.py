@@ -961,7 +961,20 @@ async def operator_screenshot_window_async(
     save_path: str | None = None,
     timeout_s: float = _DEFAULT_TIMEOUT_S,
 ) -> dict[str, Any]:
-    """Capture a specific window on the operator's desktop. Returns base64 PNG or saves to path."""
+    """Capture a specific window on the operator's desktop.
+
+    Calls the JarvisX bridge (wmctrl + ImageMagick on Linux; focus +
+    nut.js capture on Windows). With ``save_path`` the bridge writes the
+    PNG itself and returns that path. Without it the bridge hands back
+    base64 — which the model cannot *see*: the string gets truncated in
+    its context window (measured 21/9-2026, the same trap as the desk
+    browser screenshot), and reading it means going around the tool.
+    So we decode it here and write a Jarvis-side temp file instead, and
+    the answer carries the PATH. The raw base64 is dropped from the
+    reply for exactly that reason.
+
+    Returns {captured, path, bytes?, ...}.
+    """
     args: dict[str, Any] = {}
     if title_substring is not None:
         args["title_substring"] = str(title_substring)
@@ -975,7 +988,33 @@ async def operator_screenshot_window_async(
         user_id=user_id,
         timeout_s=timeout_s,
     )
-    return result or {}
+    result = result or {}
+
+    data_b64 = result.get("base64")
+    # Broen har allerede gemt til en sti — eller der er intet billede at
+    # dekode. Begge dele returneres som de er; intet at skrive.
+    if not data_b64 or result.get("path"):
+        return result
+
+    import base64
+    import tempfile
+    import time
+    from pathlib import Path
+
+    try:
+        img_bytes = base64.b64decode(data_b64)
+    except Exception as exc:  # ugyldig/afkortet base64 → svar ærligt frem for at kaste
+        logger.debug("operator_screenshot_window: kunne ikke dekode base64: %s", exc)
+        return {**{k: v for k, v in result.items() if k != "base64"},
+                "error": "broen returnerede base64 der ikke kunne dekodes"}
+
+    tmp = Path(tempfile.gettempdir()) / f"jarvisx-window-{int(time.time() * 1000)}.png"
+    tmp.write_bytes(img_bytes)
+
+    ud = {k: v for k, v in result.items() if k != "base64"}
+    ud["path"] = str(tmp)
+    ud["bytes"] = len(img_bytes)
+    return ud
 
 
 # ── operator_find_image ─────────────────────────────────────────────────

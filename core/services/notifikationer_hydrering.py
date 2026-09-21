@@ -43,6 +43,18 @@ def _hydrer_approval(raekke: dict[str, Any]) -> dict[str, Any] | None:
             "tekst": str(raekke["tekst"] or "")}
 
 
+def _hydrer_run(raekke: dict[str, Any]) -> dict[str, Any] | None:
+    """None = koerslen er ikke laengere i den tilstand der skabte raekken."""
+    from core.services.visible_runs_sections.run_finalization import status_for_run
+    tilstand = status_for_run(str(raekke["ref"] or ""))
+    slags = str(raekke["slags"])
+    if slags == "run_failed" and tilstand not in ("failed", "interrupted"):
+        return None
+    if slags == "run_done" and tilstand not in ("completed", "done"):
+        return None
+    return {"titel": raekke["titel"], "tekst": raekke["tekst"]}
+
+
 def _hydrer(raekke: dict[str, Any]) -> tuple[dict[str, Any] | None, bool]:
     """(felter, foraeldet). felter=None betyder «luk raekken»."""
     kilde = str(raekke["kilde"])
@@ -51,8 +63,10 @@ def _hydrer(raekke: dict[str, Any]) -> tuple[dict[str, Any] | None, bool]:
     try:
         if kilde == "approval":
             return _hydrer_approval(raekke), False
-        # `run` og `event` hydreres i Task 6, hvor deres emittere bygges. Indtil
-        # da staar de paa deres gemte tekst frem for at forsvinde.
+        if kilde == "run":
+            return _hydrer_run(raekke), False
+        # `event` hydreres senere. Indtil da staar den paa sin gemte tekst
+        # frem for at forsvinde.
         return {"titel": raekke["titel"], "tekst": raekke["tekst"]}, False
     except Exception:
         _log.warning("notifikation %s: ejeren (%s) kunne ikke naas",

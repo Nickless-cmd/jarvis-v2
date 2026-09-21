@@ -2,6 +2,13 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/stream_degeneration.py`
+_Degenerations-guard — fang model-repetitions-løkker i streaming-laget._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `check_degeneration` | `(text)` | → (er_degenereret, menneskelæsbar_grund). Self-safe → (False, '') ved enhver fejl. | [src](../../../core/services/stream_degeneration.py#L29) |
+
 ## `core/services/stream_failure_kind.py`
 _Struktureret failure-taksonomi for streaming/followup (spec §11.1 B11, I5)._
 
@@ -602,12 +609,4 @@ _Compact tool catalog for system prompt._
 | function | `build_catalog_text` | `()` | Return cached catalog text; rebuild only if tool registry changed. | [src](../../../core/services/tool_catalog.py#L129) |
 | function | `catalog_token_estimate` | `()` | Rough char/4 token estimate of the current catalog. | [src](../../../core/services/tool_catalog.py#L165) |
 | function | `invalidate_cache` | `()` | Force next call to rebuild. Useful in tests. | [src](../../../core/services/tool_catalog.py#L170) |
-
-## `core/services/tool_chip_payload.py`
-_Bygger data-payloaden for et tool-kald til jarvis-desk-chip'en (spec 2026-06-15)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `trim_arguments` | `(arguments=…, *, arg_value_cap=…)` | Argumenter uden interne nøgler og uden tekstvægge. | [src](../../../core/services/tool_chip_payload.py#L14) |
-| function | `build_tool_capability_payload` | `(*, tool, status, arguments=…, result_text=…, arg_value_cap=…, result_cap=…, call_id=…)` | — | [src](../../../core/services/tool_chip_payload.py#L34) |
 

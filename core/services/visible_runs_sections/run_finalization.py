@@ -46,6 +46,29 @@ def advance_tool_lifecycle(session_id: str) -> None:
         pass
 
 
+def status_for_run(run_id: str) -> str:
+    """Koerslens status, eller "" hvis den ikke findes.
+
+    MAA IKKE fange DB-fejl. Task 2 blev ramt af praecis dét: `approval_runtime.
+    state()` havde en indre `except Exception: return None`, saa en utilgaengelig
+    database blev til en VAERDI der ikke kunne skelnes fra «kortet er afgjort» —
+    og hydreringen lukkede raekken. En kort nedetid tommede hele feeden, tavst.
+
+    Reglen der foelger: en hydrerings-hjaelper returnerer kun en vaerdi naar den
+    VED noget. Kan den ikke spoerge, skal undtagelsen forplante sig op til
+    `_hydrer`s eget net, som markerer raekken foraeldet i stedet for at lukke den.
+
+    Laesningen laa foer inline i opmaerksomhed.py. Feeden skal ogsaa bruge
+    den, og to steder der laeser samme tabel paa hver sin maade er den slags
+    der skrider fra hinanden.
+    """
+    from core.runtime.db import connect
+    with connect() as conn:
+        raekke = conn.execute(
+            "SELECT status FROM visible_runs WHERE run_id = ?", (run_id,)).fetchone()
+    return str(raekke[0] or "") if raekke else ""
+
+
 def finalize_run(session_id: str, *, status: str) -> None:
     """Kaldes fra run-afslutningens finally — uanset hvordan runnet endte.
 

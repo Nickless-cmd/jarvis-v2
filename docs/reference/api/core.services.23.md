@@ -2,6 +2,28 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/shadow_scan_daemon.py`
+_Shadow Scan — my blindspots as visible signals._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_storage_path` | `()` | — | [src](../../../core/services/shadow_scan_daemon.py#L34) |
+| function | `_shadow_log_path` | `()` | — | [src](../../../core/services/shadow_scan_daemon.py#L38) |
+| function | `_load` | `()` | — | [src](../../../core/services/shadow_scan_daemon.py#L42) |
+| function | `_save` | `(data)` | — | [src](../../../core/services/shadow_scan_daemon.py#L58) |
+| function | `_detect_apologize_then_repeat` | `()` | If conflict_memory has multiple similar pushback patterns. | [src](../../../core/services/shadow_scan_daemon.py#L72) |
+| function | `_detect_avoid_topic` | `()` | Pull from existing avoidance_detector. | [src](../../../core/services/shadow_scan_daemon.py#L101) |
+| function | `_detect_overclaim_then_retract` | `()` | Self-mutation followed by rollback within a short window. | [src](../../../core/services/shadow_scan_daemon.py#L122) |
+| function | `_detect_intent_behavior_gap` | `()` | Stale goals while related tools keep running. | [src](../../../core/services/shadow_scan_daemon.py#L146) |
+| function | `_run_all_detectors` | `()` | — | [src](../../../core/services/shadow_scan_daemon.py#L175) |
+| function | `_append_shadow_log` | `(scan)` | — | [src](../../../core/services/shadow_scan_daemon.py#L195) |
+| function | `run_scan` | `()` | — | [src](../../../core/services/shadow_scan_daemon.py#L230) |
+| function | `tick` | `(_seconds=…)` | — | [src](../../../core/services/shadow_scan_daemon.py#L260) |
+| function | `build_shadow_scan_surface` | `()` | — | [src](../../../core/services/shadow_scan_daemon.py#L273) |
+| function | `_surface_summary` | `(last)` | — | [src](../../../core/services/shadow_scan_daemon.py#L287) |
+| function | `build_shadow_scan_prompt_section` | `()` | Surface strongest pattern if the last scan was within 48h. | [src](../../../core/services/shadow_scan_daemon.py#L297) |
+| function | `build_shadow_feedback_section` | `()` | Generate behavioral correction if shadow scan shows elevated avoidance. | [src](../../../core/services/shadow_scan_daemon.py#L321) |
+
 ## `core/services/share_guard_store.py`
 _Pending cross-user share-beslutninger — DB-backed kø (spec §4.4, Fase 6 #1)._
 
@@ -564,11 +586,4 @@ _State-flag store (leak-kandidat #1, 2026-07-10)._
 | function | `get_flag` | `(key, *, user_id=…)` | Læs et flag (prune udløbne først). None hvis ukendt/udløbet. | [src](../../../core/services/state_flag_store.py#L70) |
 | function | `clear_flag` | `(key, *, user_id=…)` | Fjern et flag. True hvis det fandtes. | [src](../../../core/services/state_flag_store.py#L81) |
 | function | `list_flags` | `(*, user_id=…)` | Alle aktive (ikke-udløbne) flag. | [src](../../../core/services/state_flag_store.py#L94) |
-
-## `core/services/stream_degeneration.py`
-_Degenerations-guard — fang model-repetitions-løkker i streaming-laget._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `check_degeneration` | `(text)` | → (er_degenereret, menneskelæsbar_grund). Self-safe → (False, '') ved enhver fejl. | [src](../../../core/services/stream_degeneration.py#L29) |
 

@@ -79,8 +79,23 @@ _Feedens laesning — den slaar op hos EJEREN, ikke i sin egen kopi._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_hydrer_approval` | `(raekke)` | None = ejeren er faerdig, luk raekken. Kaster = ejeren er utilgaengelig. | [src](../../../core/services/notifikationer_hydrering.py#L29) |
-| function | `_hydrer` | `(raekke)` | (felter, foraeldet). felter=None betyder «luk raekken». | [src](../../../core/services/notifikationer_hydrering.py#L46) |
-| function | `feed` | `(user_id, *, er_owner)` | Aabne notifikationer, hydreret hos deres ejere. | [src](../../../core/services/notifikationer_hydrering.py#L63) |
+| function | `_hydrer_run` | `(raekke)` | None = koerslen er ikke laengere i den tilstand der skabte raekken. | [src](../../../core/services/notifikationer_hydrering.py#L46) |
+| function | `_hydrer` | `(raekke)` | (felter, foraeldet). felter=None betyder «luk raekken». | [src](../../../core/services/notifikationer_hydrering.py#L58) |
+| function | `feed` | `(user_id, *, er_owner)` | Aabne notifikationer, hydreret hos deres ejere. | [src](../../../core/services/notifikationer_hydrering.py#L77) |
+
+## `core/services/notifikations_emittere.py`
+_Hvor notifikationer foedes (spec 2026-09-21)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_owner_id` | `()` | Ejeren. Systemraekker hoerer til ham — de handler om maskinen. | [src](../../../core/services/notifikations_emittere.py#L21) |
+| function | `_maaske_push` | `(user_id, slags, titel, tekst)` | — | [src](../../../core/services/notifikations_emittere.py#L34) |
+| function | `_foed` | `(*, user_id, slags, kilde, titel, tekst=…, ref=…, session_id=…)` | — | [src](../../../core/services/notifikations_emittere.py#L48) |
+| function | `paa_godkendelse` | `(approval_id, *, user_id, session_id, vaerktoej)` | — | [src](../../../core/services/notifikations_emittere.py#L56) |
+| function | `paa_koersel_fejlet` | `(run_id, *, user_id, session_id, titel)` | — | [src](../../../core/services/notifikations_emittere.py#L62) |
+| function | `paa_koersel_faerdig` | `(run_id, *, user_id, session_id, titel)` | — | [src](../../../core/services/notifikations_emittere.py#L68) |
+| function | `fra_jarvis` | `(user_id, slags, titel, tekst=…)` | Det Jarvis selv sender. Har ingen ejer — raekken ER sandheden. | [src](../../../core/services/notifikations_emittere.py#L74) |
+| function | `system` | `(slags, titel, tekst=…)` | — | [src](../../../core/services/notifikations_emittere.py#L79) |
 
 ## `core/services/notifikations_valg.py`
 _Push-valg per slags (spec 2026-09-21)._
@@ -579,26 +594,4 @@ _Personality drift detection — has Jarvis' baseline shifted?_
 | function | `personality_drift_section` | `()` | Awareness section when drift detected — surfaces in prompt. | [src](../../../core/services/personality_drift.py#L143) |
 | function | `_exec_personality_drift_check` | `(args)` | — | [src](../../../core/services/personality_drift.py#L159) |
 | function | `_exec_personality_drift_snapshot` | `(args)` | — | [src](../../../core/services/personality_drift.py#L167) |
-
-## `core/services/personality_vector.py`
-_Personality Vector — cumulative personality that grows over time._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_should_apply_decay` | `()` | Return True if enough time has passed since the last decay application. | [src](../../../core/services/personality_vector.py#L34) |
-| function | `_get_evolved_baseline` | `()` | Compute long-term baseline targets from accumulated snapshots. | [src](../../../core/services/personality_vector.py#L43) |
-| function | `_record_decay_timestamp` | `()` | Record that decay was just applied. | [src](../../../core/services/personality_vector.py#L73) |
-| function | `_build_update_prompt` | `()` | — | [src](../../../core/services/personality_vector.py#L81) |
-| function | `update_personality_vector_from_run` | `(*, run_id, user_message, assistant_response, outcome_status)` | Update the personality vector based on a visible run. | [src](../../../core/services/personality_vector.py#L105) |
-| function | `update_personality_vector_async` | `(*, run_id, user_message, assistant_response, outcome_status)` | Fire-and-forget async wrapper. | [src](../../../core/services/personality_vector.py#L189) |
-| function | `tick_personality_drift` | `(*, outcome_signal=…)` | Heartbeat-triggered passive drift af personality_vector. | [src](../../../core/services/personality_vector.py#L210) |
-| function | `_safe_update` | `(**kwargs)` | — | [src](../../../core/services/personality_vector.py#L242) |
-| function | `build_personality_vector_surface` | `()` | MC surface for personality vector. | [src](../../../core/services/personality_vector.py#L249) |
-| function | `_deterministic_update` | `(outcome_status, current)` | Fallback: small deterministic adjustments without LLM. | [src](../../../core/services/personality_vector.py#L270) |
-| function | `_merge_vector` | `(current, updates)` | Deep merge updates into current vector. | [src](../../../core/services/personality_vector.py#L399) |
-| function | `_baseline_changed` | `(old, new_baseline)` | Fix 5 helper: return True if emotional_baseline values differ by > 0.001. | [src](../../../core/services/personality_vector.py#L442) |
-| function | `_safe_json_field` | `(value, default)` | — | [src](../../../core/services/personality_vector.py#L456) |
-| function | `_resolve_local_llm_target` | `()` | — | [src](../../../core/services/personality_vector.py#L469) |
-| function | `_call_llm` | `(target, system_prompt, user_prompt)` | Minimal LLM call via provider router target. | [src](../../../core/services/personality_vector.py#L480) |
-| function | `_parse_json_response` | `(text)` | — | [src](../../../core/services/personality_vector.py#L504) |
 

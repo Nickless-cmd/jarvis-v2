@@ -2,6 +2,26 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/reflection_signal_tracking.py`
+_Reflection signal tracking — migrated onto signal_tracking_framework._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `track_runtime_reflection_signals_for_visible_turn` | `(*, session_id, run_id, user_message)` | — | [src](../../../core/services/reflection_signal_tracking.py#L36) |
+| function | `refresh_runtime_reflection_signal_statuses` | `()` | — | [src](../../../core/services/reflection_signal_tracking.py#L47) |
+| function | `build_runtime_reflection_signal_surface` | `(*, limit=…)` | — | [src](../../../core/services/reflection_signal_tracking.py#L51) |
+| function | `_extract_reflection_candidates` | `(*_args, **_kwargs)` | — | [src](../../../core/services/reflection_signal_tracking.py#L56) |
+| function | `_build_candidate` | `(*, domain_key, signal_type, status, title, summary, rationale, status_reason, source_items)` | — | [src](../../../core/services/reflection_signal_tracking.py#L157) |
+| function | `_history_item_from_signal` | `(item)` | — | [src](../../../core/services/reflection_signal_tracking.py#L186) |
+| function | `_reflection_early_retire` | `(item)` | — | [src](../../../core/services/reflection_signal_tracking.py#L205) |
+| function | `_reflection_track_summary` | `(items, message)` | — | [src](../../../core/services/reflection_signal_tracking.py#L213) |
+| function | `_domain_key_from_focus` | `(canonical_key)` | — | [src](../../../core/services/reflection_signal_tracking.py#L254) |
+| function | `_domain_key_from_critic` | `(canonical_key)` | — | [src](../../../core/services/reflection_signal_tracking.py#L265) |
+| function | `_domain_key_from_self_model` | `(canonical_key)` | — | [src](../../../core/services/reflection_signal_tracking.py#L277) |
+| function | `_goal_domain_key` | `(canonical_key)` | — | [src](../../../core/services/reflection_signal_tracking.py#L286) |
+| function | `_domain_title` | `(domain_key)` | — | [src](../../../core/services/reflection_signal_tracking.py#L290) |
+| function | `_history_transition_label` | `(*, signal_type, status)` | — | [src](../../../core/services/reflection_signal_tracking.py#L298) |
+
 ## `core/services/reflection_to_plan.py`
 _Reflection → Plan — konvertér reflection/tanke til eksekverbar plan._
 
@@ -692,27 +712,4 @@ _Follow-stream for runs → klienter kan token-streame dem live + liveness-kilde
 | class | `RuntimeActionSpec` | `` | — | [src](../../../core/services/runtime_action_registry.py#L12) |
 | function | `list_runtime_action_specs` | `()` | — | [src](../../../core/services/runtime_action_registry.py#L109) |
 | function | `get_runtime_action_spec` | `(action_id)` | — | [src](../../../core/services/runtime_action_registry.py#L113) |
-
-## `core/services/runtime_awareness_signal_tracking.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `track_runtime_awareness_signals_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/runtime_awareness_signal_tracking.py#L42) |
-| function | `refresh_runtime_awareness_signal_statuses` | `()` | — | [src](../../../core/services/runtime_awareness_signal_tracking.py#L66) |
-| function | `build_runtime_awareness_signal_surface` | `(*, limit=…)` | — | [src](../../../core/services/runtime_awareness_signal_tracking.py#L95) |
-| function | `_machine_available_signal` | `(*, heartbeat)` | — | [src](../../../core/services/runtime_awareness_signal_tracking.py#L137) |
-| function | `_extract_runtime_awareness_candidates` | `()` | — | [src](../../../core/services/runtime_awareness_signal_tracking.py#L157) |
-| function | `_visible_runtime_signal` | `(*, readiness)` | — | [src](../../../core/services/runtime_awareness_signal_tracking.py#L202) |
-| function | `_local_lane_signal` | `(*, local_lane)` | — | [src](../../../core/services/runtime_awareness_signal_tracking.py#L267) |
-| function | `_heartbeat_runtime_signal` | `(*, heartbeat, readiness)` | — | [src](../../../core/services/runtime_awareness_signal_tracking.py#L308) |
-| function | `_runtime_task_signal` | `()` | — | [src](../../../core/services/runtime_awareness_signal_tracking.py#L335) |
-| function | `_runtime_flow_signal` | `()` | — | [src](../../../core/services/runtime_awareness_signal_tracking.py#L375) |
-| function | `_runtime_hook_signal` | `()` | — | [src](../../../core/services/runtime_awareness_signal_tracking.py#L415) |
-| function | `_browser_body_signal` | `()` | — | [src](../../../core/services/runtime_awareness_signal_tracking.py#L464) |
-| function | `_layered_memory_signal` | `()` | — | [src](../../../core/services/runtime_awareness_signal_tracking.py#L504) |
-| function | `_persist_runtime_awareness_signals` | `(*, signals, session_id, run_id)` | — | [src](../../../core/services/runtime_awareness_signal_tracking.py#L556) |
-| function | `_latest_runtime_awareness_signal` | `(canonical_key)` | — | [src](../../../core/services/runtime_awareness_signal_tracking.py#L635) |
-| function | `_history_item_from_signal` | `(item)` | — | [src](../../../core/services/runtime_awareness_signal_tracking.py#L642) |
-| function | `_machine_state_summary` | `(*, constrained, active, recovered)` | — | [src](../../../core/services/runtime_awareness_signal_tracking.py#L656) |
-| function | `_parse_dt` | `(value)` | — | [src](../../../core/services/runtime_awareness_signal_tracking.py#L687) |
 

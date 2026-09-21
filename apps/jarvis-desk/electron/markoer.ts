@@ -27,22 +27,14 @@
  *   men det er ligegyldigt — positionen kommer fra broen, ikke fra vinduet.
  */
 import { BrowserWindow, ipcMain, screen } from 'electron'
+import { unionAf } from './markoerOmraade'
 
 let markoer: BrowserWindow | null = null
 
 /** Hele det virtuelle skrivebord — unionen af alle tilsluttede skærme.
- *  Negativ x/y er gyldigt (en skærm kan stå til venstre for den primære). */
+ *  Selve beregningen bor i markoerOmraade.ts, så den kan testes uden skærm. */
 export function samletOmraade(): { x: number; y: number; width: number; height: number } {
-  const skaerme = screen.getAllDisplays()
-  if (skaerme.length === 0) {
-    const a = screen.getPrimaryDisplay().bounds
-    return { x: a.x, y: a.y, width: a.width, height: a.height }
-  }
-  const venstre = Math.min(...skaerme.map((s) => s.bounds.x))
-  const top = Math.min(...skaerme.map((s) => s.bounds.y))
-  const hoejre = Math.max(...skaerme.map((s) => s.bounds.x + s.bounds.width))
-  const bund = Math.max(...skaerme.map((s) => s.bounds.y + s.bounds.height))
-  return { x: venstre, y: top, width: hoejre - venstre, height: bund - top }
+  return unionAf(screen.getAllDisplays().map((d) => d.bounds))
 }
 
 export function opretMarkoer(preload: string, indlaes: (w: BrowserWindow, hash: string) => void): void {

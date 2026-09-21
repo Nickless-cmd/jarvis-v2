@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 15337 functions/methods, 51% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 15342 functions/methods, 51% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -45,17 +45,17 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 15337 functions/
 - [`core.services.14`](core.services.14.md) — `identity_drift_proposer` … `learning_pipeline_orchestrator`
 - [`core.services.15`](core.services.15.md) — `learning_policy_engine` … `memory_recall_engine`
 - [`core.services.16`](core.services.16.md) — `memory_recall_telemetry` … `non_visible_rate_cap`
-- [`core.services.17`](core.services.17.md) — `notes_connector` … `plan_proposals`
-- [`core.services.18`](core.services.18.md) — `plugin_ruleset` … `prompt_relevance_backend`
-- [`core.services.19`](core.services.19.md) — `prompt_section_impact` … `regret_engine`
-- [`core.services.20`](core.services.20.md) — `regulation_homeostasis_signal_tracking` … `runtime_decision_engine`
-- [`core.services.21`](core.services.21.md) — `runtime_flows` … `self_narrative_continuity_signal_tracking`
-- [`core.services.22`](core.services.22.md) — `self_narrative_self_model_review_bridge` … `shared_language`
-- [`core.services.23`](core.services.23.md) — `shared_language_extended` … `stream_settlement`
-- [`core.services.24`](core.services.24.md) — `structured_content_flag` … `tool_embeddings`
-- [`core.services.25`](core.services.25.md) — `tool_hunt_nudge` … `verification_gate_telemetry`
-- [`core.services.26`](core.services.26.md) — `versioneret_json_svar` … `visible_thinking_trace`
-- [`core.services.27`](core.services.27.md) — `visible_tool_exec` … `world_model_signal_tracking`
+- [`core.services.17`](core.services.17.md) — `notes_connector` … `phone_wake`
+- [`core.services.18`](core.services.18.md) — `plan_proposals` … `prompt_observer`
+- [`core.services.19`](core.services.19.md) — `prompt_relevance_backend` … `reflective_critic_tracking`
+- [`core.services.20`](core.services.20.md) — `regret_engine` … `runtime_cognitive_conductor`
+- [`core.services.21`](core.services.21.md) — `runtime_decision_engine` … `self_mutation_lineage`
+- [`core.services.22`](core.services.22.md) — `self_narrative_continuity_signal_tracking` … `shared_cache`
+- [`core.services.23`](core.services.23.md) — `shared_language` … `stream_sentinel`
+- [`core.services.24`](core.services.24.md) — `stream_settlement` … `tool_contract_shadow`
+- [`core.services.25`](core.services.25.md) — `tool_embeddings` … `verification_gate`
+- [`core.services.26`](core.services.26.md) — `verification_gate_telemetry` … `visible_text_scrub`
+- [`core.services.27`](core.services.27.md) — `visible_thinking_trace` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

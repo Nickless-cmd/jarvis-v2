@@ -150,6 +150,10 @@ KNOWN_MAPPINGS: dict[str, str] = {
     # tests/test_dispatch_activation.py.
     "core/services/agent_runtime_base.py": "tests/test_dispatch_activation.py",
     "core/services/agent_runtime_spawn.py": "tests/test_dispatch_activation.py",
+    # Notifikations-feed Task 1 (2026-09-21) — testfilnavnet er aftalt i
+    # implementeringsplanen (tests/test_notifikationer_lager.py) fordi senere
+    # opgaver (hydrering, ruter) lægger flere tests i samme fil-familie.
+    "core/services/notifikationer.py": "tests/test_notifikationer_lager.py",
 }
 
 

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7908/15337 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7912/15342 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 7908/15337 functions/methods documented (51%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 686 | 1265 | 54% |
-| `core.services` | 5220 | 10429 | 50% |
+| `core.services` | 5224 | 10434 | 50% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 107 | 183 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -501,7 +501,7 @@ Generated from source. 7908/15337 functions/methods documented (51%). The list b
 - `core/runtime/db_scheduled_tasks.py` :: `get_scheduled_task` (L92)
 - `core/runtime/db_scheduled_tasks.py` :: `mark_scheduled_task_cancelled` (L129)
 - `core/runtime/db_scheduled_tasks.py` :: `mark_scheduled_task_fired` (L115)
-- `core/runtime/db_schema.py` :: `init_db` (L314)
+- `core/runtime/db_schema.py` :: `init_db` (L339)
 - `core/runtime/db_self_repair.py` :: `count_recent_attempts` (L287)
 - `core/runtime/db_self_repair.py` :: `delete_self_repair_pattern` (L247)
 - `core/runtime/db_self_repair.py` :: `get_self_repair_pattern` (L173)

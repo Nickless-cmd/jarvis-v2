@@ -2,6 +2,26 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/stream_settlement.py`
+_`StreamSettlement` — ét sted der afgør hvad et udbyder-forsøg BLEV til._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `Attempt` | `` | Hvad udbyderen faktisk gjorde. Ren beskrivelse, ingen fortolkning. | [src](../../../core/services/stream_settlement.py#L76) |
+| class | `Settlement` | `` | Nøjagtig ÉN pr. forsøg. | [src](../../../core/services/stream_settlement.py#L106) |
+| function | `har_indhold` | `(a)` | Findes der overhovedet noget der kunne være et svar? | [src](../../../core/services/stream_settlement.py#L122) |
+| function | `classify` | `(a)` | Afgør hvad forsøget blev til. Ren funktion — rører ingenting. | [src](../../../core/services/stream_settlement.py#L127) |
+| class | `AlreadySettled` | `` | Forsøget er afregnet. En anden afregning ville være en anden historik. | [src](../../../core/services/stream_settlement.py#L219) |
+| class | `StaleAttempt` | `` | En forsinket pumpe forsøgte at skrive efter afregningen. | [src](../../../core/services/stream_settlement.py#L223) |
+| class | `AttemptLedger` | `` | Holder styr på hvilke forsøg der er afregnet, og lukker dem for skrivning. | [src](../../../core/services/stream_settlement.py#L227) |
+| method | `AttemptLedger.__init__` | `(self)` | — | [src](../../../core/services/stream_settlement.py#L254) |
+| method | `AttemptLedger.next_frame` | `(self, attempt_id)` | Næste rammesekvens. Kaster hvis forsøget er afregnet. | [src](../../../core/services/stream_settlement.py#L259) |
+| method | `AttemptLedger.frames` | `(self, attempt_id)` | — | [src](../../../core/services/stream_settlement.py#L271) |
+| method | `AttemptLedger.settle` | `(self, attempt_id, settlement)` | Afregn ÉN gang. Et andet forsøg er en fejl, ikke en opdatering. | [src](../../../core/services/stream_settlement.py#L275) |
+| method | `AttemptLedger.settled` | `(self, attempt_id)` | — | [src](../../../core/services/stream_settlement.py#L286) |
+| method | `AttemptLedger.is_settled` | `(self, attempt_id)` | — | [src](../../../core/services/stream_settlement.py#L289) |
+| method | `AttemptLedger.guard` | `(self, attempt_id)` | Kaster hvis forsøget er afregnet. Til pumper der vil skrive. | [src](../../../core/services/stream_settlement.py#L292) |
+
 ## `core/services/structured_content_flag.py`
 _Governed kill-switch for struktureret content-persist + wire. Default ON._
 
@@ -585,20 +605,4 @@ _Skygge for skema-kontrakten — ville den have afvist noget den ikke burde?_
 | function | `live` | `()` | Eksplicit opt-in. Husets `is_enabled` er fail-open og ville taende en | [src](../../../core/services/tool_contract_shadow.py#L76) |
 | function | `haandhaever` | `()` | Skal HAARDE brud faktisk afvise kaldet? | [src](../../../core/services/tool_contract_shadow.py#L87) |
 | function | `observe` | `(tool_name, arguments)` | Maal ét kald. Returnerer bruddene — men afgoer intet selv. | [src](../../../core/services/tool_contract_shadow.py#L101) |
-
-## `core/services/tool_embeddings.py`
-_Tool description embedding cache._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_connect` | `()` | — | [src](../../../core/services/tool_embeddings.py#L28) |
-| function | `_pack` | `(vec)` | — | [src](../../../core/services/tool_embeddings.py#L42) |
-| function | `_unpack` | `(blob)` | — | [src](../../../core/services/tool_embeddings.py#L46) |
-| function | `_hash_desc` | `(desc)` | — | [src](../../../core/services/tool_embeddings.py#L51) |
-| function | `_compute_embedding` | `(text)` | Call Ollama embedding endpoint. Override in tests. | [src](../../../core/services/tool_embeddings.py#L55) |
-| function | `get_embedding` | `(name, description)` | — | [src](../../../core/services/tool_embeddings.py#L71) |
-| function | `invalidate` | `(name)` | — | [src](../../../core/services/tool_embeddings.py#L91) |
-| function | `_cosine` | `(a, b)` | — | [src](../../../core/services/tool_embeddings.py#L97) |
-| function | `top_k_similar` | `(query, k=…)` | Return (tool_name, similarity) sorted desc by cosine similarity. | [src](../../../core/services/tool_embeddings.py#L108) |
-| function | `warmup_all` | `()` | Compute embeddings for every registered tool. Returns count computed. | [src](../../../core/services/tool_embeddings.py#L121) |
 

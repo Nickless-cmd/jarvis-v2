@@ -262,6 +262,31 @@ def _ensure_notification_tables(conn) -> None:
             created_at    TEXT NOT NULL,
             delivered     INTEGER NOT NULL DEFAULT 0
         )""")
+    # Notifikations-feeden (spec 2026-09-21). Raekken PEGER paa sin ejer gennem
+    # kilde+ref og kopierer ham ikke: en godkendelse har sin egen livscyklus, og
+    # en kopi her ville kunne staa og lyve om at noget stadig venter.
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS notifikationer (
+            id          TEXT PRIMARY KEY,
+            user_id     TEXT NOT NULL,
+            slags       TEXT NOT NULL,
+            kilde       TEXT NOT NULL,
+            ref         TEXT,
+            session_id  TEXT,
+            titel       TEXT NOT NULL,
+            tekst       TEXT NOT NULL DEFAULT '',
+            oprettet    TEXT NOT NULL,
+            klaret      TEXT,
+            udfald      TEXT
+        )""")
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS ix_notif_aaben "
+        "ON notifikationer(user_id, klaret, oprettet)")
+    # Delvist indeks: kun raekker MED en ejer afdubleres. To paamindelser uden
+    # ref er to paamindelser.
+    conn.execute(
+        "CREATE UNIQUE INDEX IF NOT EXISTS ux_notif_ref "
+        "ON notifikationer(slags, ref) WHERE ref IS NOT NULL")
 
 
 def _ensure_security_guard_tables(conn) -> None:

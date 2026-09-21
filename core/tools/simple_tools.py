@@ -1884,6 +1884,60 @@ _TOOL_HANDLERS: dict[str, Any] = {
 }
 
 
+# ── Samtykke til at røre hans mus og tastatur (21/9-2026) ───────────────────
+#
+# Porten ligger HER og ikke i de ni exec-funktioner. Ét sted kan ikke glemmes:
+# en ny handlende operator-tool bliver dækket i samme øjeblik den skrives ind i
+# `computer_use_samtykke.HANDLENDE`. Ni spredte tjek ville før eller siden få
+# den tiende til at smutte forbi.
+#
+# Bjørns valg 21/9-2026: ét kort første gang i en samtale, derefter frit i den
+# samtale. At LÆSE — skærmbillede, musens position, vindueslisten — er frit;
+# uden dem kan modellen ikke se hvor den skal pege, og de ændrer ingenting.
+def _med_samtykke(navn: str, fn):
+    def _indpakket(args: dict[str, Any]) -> dict[str, Any]:
+        try:
+            from core.services import computer_use_samtykke as cs
+            sid = str(args.get("_runtime_session_id") or "")
+            # `_runtime_trust_all` er den samme vej godkendelsen kommer tilbage
+            # ad som for phone_adb: kortet besvares, kaldet køres igen med
+            # flaget sat. Da noterer vi samtykket for resten af samtalen.
+            if bool(args.get("_runtime_trust_all")):
+                cs.giv_samtykke(sid)
+            elif not cs.har_samtykke(sid):
+                return {
+                    "status": "approval_needed",
+                    "tool_name": navn,
+                    "message": (
+                        "Jarvis vil styre din mus og dit tastatur. "
+                        "Siger du ja, gælder det resten af denne samtale — "
+                        "du kan altid afbryde i desk."
+                    ),
+                    "command": f"{navn} {args.get('x', '')} {args.get('y', '')}".strip(),
+                }
+        except Exception:
+            logger.warning("computer-use-samtykke kunne ikke afgøres for %s — "
+                           "kaldet slippes IKKE igennem", navn, exc_info=True)
+            return {"status": "error", "error": "samtykke kunne ikke afgøres"}
+        return fn(args)
+    return _indpakket
+
+
+try:
+    from core.services.computer_use_samtykke import HANDLENDE as _HANDLENDE
+    for _navn in _HANDLENDE:
+        if _navn in _TOOL_HANDLERS:
+            _TOOL_HANDLERS[_navn] = _med_samtykke(_navn, _TOOL_HANDLERS[_navn])
+except Exception:
+    # Kan porten ikke sættes op, må værktøjerne ikke bare stå åbne.
+    logger.error("computer-use-porten kunne ikke sættes op — fjerner de "
+                 "handlende operator-tools", exc_info=True)
+    for _navn in ("operator_mouse_click", "operator_mouse_move", "operator_mouse_drag",
+                  "operator_mouse_scroll", "operator_keyboard_type",
+                  "operator_keyboard_press"):
+        _TOOL_HANDLERS.pop(_navn, None)
+
+
 
 
 # Owner-only tools (RBAC deny-list).

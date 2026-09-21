@@ -1,5 +1,6 @@
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
-import { ArrowUp, AudioWaveform, ChevronDown, ChevronRight, FileText, ListChecks, Loader2, Mic, Paperclip, Plus, Puzzle, ShieldCheck, Square, X } from 'lucide-react'
+import { ArrowUp, ChevronDown, ChevronRight, FileText, ListChecks, Loader2, Mic, Paperclip, Plus, Puzzle, ShieldCheck, Square, X } from 'lucide-react'
+import { JarvisRing } from './JarvisRing'
 import { emojify } from '../../lib/emojify'
 import { useDictation } from '../../hooks/useDictation'
 import { ContextRing } from './ContextRing'
@@ -880,10 +881,13 @@ export function Composer({
               <Loader2 size={14} strokeWidth={2.5} className="spin" />
             </button>
           ) : tomt && voiceSupported && onVoice ? (
-            /* Tomt felt → boelge, som i mobilappen: «I hvile er hoejre knap en
-               voice-knap; saa snart der er tekst, bliver den send». Foer laa
+            /* Tomt felt → Puls-mærket, som i mobilappen: «I hvile er hoejre knap
+               en voice-knap; saa snart der er tekst, bliver den send». Foer laa
                samtale-mode bag en 🎙️-emoji oppe i panel-raekken, hvor den var
-               svaer at faa oeje paa og ikke lignede mobilens. */
+               svaer at faa oeje paa og ikke lignede mobilens.
+               Bjørn 21/9-2026: «Vi skal have samme i desk» — derfor husets
+               delte mærke (JarvisRing) og ikke lucides AudioWaveform. Mærket er
+               samtale-ikonet; pilen og firkanten er handlinger. */
             <button
               type="button"
               className="composer-send composer-voice"
@@ -891,7 +895,7 @@ export function Composer({
               aria-label="Start samtale"
               title="Start samtale med stemmen"
             >
-              <AudioWaveform size={15} strokeWidth={2.5} />
+              <JarvisRing size={15} />
             </button>
           ) : (
             <button

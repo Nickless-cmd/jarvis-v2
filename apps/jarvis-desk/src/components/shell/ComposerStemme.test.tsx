@@ -23,7 +23,7 @@ const cfg = { apiBaseUrl: 'http://x', authToken: 't' }
 const opsæt = (props: Record<string, unknown> = {}) => {
   const onSend = vi.fn()
   const onVoice = vi.fn()
-  render(
+  const res = render(
     <PermissionProvider>
       <Composer
         streaming={false} onSend={onSend} onStop={vi.fn()} model="m"
@@ -32,7 +32,7 @@ const opsæt = (props: Record<string, unknown> = {}) => {
       />
     </PermissionProvider>,
   )
-  return { onSend, onVoice }
+  return { onSend, onVoice, ...res }
 }
 
 describe('højre knap i komponisten', () => {
@@ -45,6 +45,19 @@ describe('højre knap i komponisten', () => {
 
     fireEvent.click(knap)
     expect(onVoice).toHaveBeenCalledTimes(1)
+  })
+
+  it('hvileknappen bærer Puls-mærket — ikke den gamle lucide-bølge', () => {
+    // Bjørn 21/9-2026: «Vi skal have samme i desk». Mobilen byttede
+    // AudioLines ud med mærket den 20/9; dette låser at desk gør det samme,
+    // så de to klienter ikke glider fra hinanden igen. Mærkets EGEN form er
+    // tre bjælker — derfor tælles de, ikke blot klassen. En tilfældig SVG
+    // ville kunne bære klassen uden at være mærket.
+    opsæt()
+    const knap = screen.getByLabelText('Start samtale')
+
+    expect(knap.querySelector('.jarvis-pulse')).toBeTruthy()
+    expect(knap.querySelectorAll('rect').length).toBe(3)
   })
 
   it('tekst i feltet → knappen bliver send', () => {

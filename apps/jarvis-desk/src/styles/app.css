@@ -782,6 +782,13 @@ button.sidebar-group svg { flex: none; opacity: .7; }
   box-shadow: none;
 }
 
+/* Composerens hvileknap bærer Puls-mærket (Bjørn 21/9-2026: «Vi skal have
+   samme i desk»). Mærket har sin egen turkise farve i JarvisPulse.css, men
+   knappen ER turkis (--accent #3fc7b4) — to næsten ens grønne oven på
+   hinanden. Derfor arver mærket knappens ikonfarve (--bg-0), præcis som pilen
+   og firkanten gør. Det er FORMEN der er mærket, ikke farven. */
+.composer-send .jarvis-pulse { color: currentColor; }
+
 /* ─── Statusbar ────────────────────────────────────── */
 .statusbar {
   border-top: 1px solid var(--line);

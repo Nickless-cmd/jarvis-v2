@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7900/15318 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7904/15324 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,14 +25,14 @@ Generated from source. 7900/15318 functions/methods documented (51%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 686 | 1265 | 54% |
-| `core.services` | 5216 | 10424 | 50% |
+| `core.services` | 5220 | 10429 | 50% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 107 | 183 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
 | `core.services.visible_runs_sections` | 18 | 30 | 60% |
 | `core.skills` | 0 | 0 | 0% |
 | `core.skills.voice` | 39 | 49 | 79% |
-| `core.tools` | 480 | 989 | 48% |
+| `core.tools` | 480 | 990 | 48% |
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.util` | 9 | 10 | 90% |
@@ -41,7 +41,7 @@ Generated from source. 7900/15318 functions/methods documented (51%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2193)
+## Undocumented public functions (2194)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L208)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -897,6 +897,7 @@ Generated from source. 7900/15318 functions/methods documented (51%). The list b
 - `core/services/composite_tools.py` :: `revoke` (L128)
 - `core/services/computer_use_policy.py` :: `is_computer_use_tool` (L25)
 - `core/services/computer_use_policy.py` :: `set_computer_use` (L42)
+- `core/services/computer_use_samtykke.py` :: `har_samtykke` (L61)
 - `core/services/conflict_daemon.py` :: `build_conflict_surface` (L231)
 - `core/services/conflict_daemon.py` :: `get_latest_conflict` (L227)
 - `core/services/conflict_prompt_service.py` :: `build_conflict_memory_surface` (L37)

@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/dream_insight_daemon.py`
+_Dream insight daemon — persists dream articulation output as private brain records._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `tick_dream_insight_daemon` | `(*, signal_id, signal_summary)` | Persist a dream articulation result if it's new. | [src](../../../core/services/dream_insight_daemon.py#L37) |
+| function | `get_latest_dream_insight` | `()` | — | [src](../../../core/services/dream_insight_daemon.py#L85) |
+| function | `build_dream_insight_surface` | `()` | — | [src](../../../core/services/dream_insight_daemon.py#L89) |
+
 ## `core/services/dream_motif_daemon.py`
 _Dream Motif daemon — periodisk clustering af tankestrøm-fragmenter._
 
@@ -625,18 +634,4 @@ _Experience-episode correction enrichment — closes the negative-signal loop._
 | function | `_listener_loop` | `(q)` | — | [src](../../../core/services/experience_correction_listener.py#L298) |
 | function | `start_listener` | `()` | Idempotent — safe to call multiple times. | [src](../../../core/services/experience_correction_listener.py#L336) |
 | function | `stop_listener` | `()` | — | [src](../../../core/services/experience_correction_listener.py#L358) |
-
-## `core/services/experience_episodes.py`
-_Experience-episode collector + retrieval — embedding-based learning substrate._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_embed_one` | `(text)` | Embed one text via the shared ollama-nomic embedder → 768-dim list[float]. | [src](../../../core/services/experience_episodes.py#L59) |
-| function | `_get_chroma_path` | `()` | — | [src](../../../core/services/experience_episodes.py#L67) |
-| function | `_get_collection` | `()` | — | [src](../../../core/services/experience_episodes.py#L76) |
-| function | `build_context_text` | `(*, intent, active_loops=…, last_tools=…, session_phase=…)` | Render the structured situation into the text we embed. | [src](../../../core/services/experience_episodes.py#L96) |
-| function | `record_episode` | `(*, session_id, turn_id, intent, active_loops=…, last_tools=…, session_phase=…, tool_sequence=…, outcome_signals=…, user_corrected=…)` | Persist one episode to DB + chroma. Returns episode_id on success. | [src](../../../core/services/experience_episodes.py#L126) |
-| function | `retrieve_similar` | `(*, intent, active_loops=…, last_tools=…, session_phase=…, k=…)` | Return up to K nearest-neighbour past episodes for the current shape. | [src](../../../core/services/experience_episodes.py#L215) |
-| function | `format_episode_for_prompt` | `(ep, *, max_chars=…)` | Compact substrate line describing one retrieved episode. | [src](../../../core/services/experience_episodes.py#L339) |
-| function | `reindex_experience_chroma` | `(*, batch=…)` | Drop + rebuild the chroma collection from the experience_episodes DB rows, | [src](../../../core/services/experience_episodes.py#L384) |
 

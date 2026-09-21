@@ -114,6 +114,17 @@ _Computer-use-politik (§4.7) — per-bruger on/off for operator/computer-tools.
 | function | `computer_use_enabled` | `(user_id)` | Default TIL — kun eksplicit fravalg slår fra. | [src](../../../core/services/computer_use_policy.py#L37) |
 | function | `set_computer_use` | `(user_id, enabled)` | — | [src](../../../core/services/computer_use_policy.py#L42) |
 
+## `core/services/computer_use_samtykke.py`
+_Samtykke til at røre Bjørns mus og tastatur — én gang pr. samtale._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `kraever_samtykke` | `(vaerktoej)` | Er dette et værktøj der rører hans maskine? | [src](../../../core/services/computer_use_samtykke.py#L56) |
+| function | `har_samtykke` | `(session_id)` | — | [src](../../../core/services/computer_use_samtykke.py#L61) |
+| function | `giv_samtykke` | `(session_id)` | Kaldes når han har sagt ja. Gælder resten af samtalen i denne proces. | [src](../../../core/services/computer_use_samtykke.py#L66) |
+| function | `traek_tilbage` | `(session_id=…)` | Stop-knappen. Tom session_id trækker ALT tilbage — nødbremsen. | [src](../../../core/services/computer_use_samtykke.py#L75) |
+| function | `aktive_samtaler` | `()` | Hvilke samtaler har adgang lige nu? Desk viser mærket ud fra den her. | [src](../../../core/services/computer_use_samtykke.py#L85) |
+
 ## `core/services/concept_baseline_tracker.py`
 _Concept baseline tracker — Layer 3 of emotion concepts integration._
 
@@ -548,22 +559,4 @@ _Counterfactual → world-model prediction binding._
 | function | `sweep_expired_counterfactual_predictions` | `(*, now=…)` | Auto-resolve counterfactual predictions whose horizon has expired. | [src](../../../core/services/counterfactual_predictions.py#L265) |
 | function | `build_counterfactual_predictions_surface` | `()` | Mission Control surface — read-only meta-projection. | [src](../../../core/services/counterfactual_predictions.py#L354) |
 | function | `_emit_counterfactual_predictions_event` | `(kind, payload=…)` | Defensive scoped event emitter. | [src](../../../core/services/counterfactual_predictions.py#L369) |
-
-## `core/services/counterfactual_self_simulation.py`
-_Counterfactual self-simulation for post-run learning._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `simulate_from_latest_episode` | `()` | — | [src](../../../core/services/counterfactual_self_simulation.py#L21) |
-| function | `simulate_from_episode` | `(episode)` | — | [src](../../../core/services/counterfactual_self_simulation.py#L28) |
-| function | `build_counterfactual_surface` | `(*, limit=…)` | — | [src](../../../core/services/counterfactual_self_simulation.py#L71) |
-| function | `build_counterfactual_prompt_section` | `(*, limit=…)` | — | [src](../../../core/services/counterfactual_self_simulation.py#L84) |
-| function | `_decode_episode` | `(row)` | — | [src](../../../core/services/counterfactual_self_simulation.py#L101) |
-| function | `_actual_action` | `(episode)` | — | [src](../../../core/services/counterfactual_self_simulation.py#L111) |
-| function | `_alternatives_for_episode` | `(episode)` | — | [src](../../../core/services/counterfactual_self_simulation.py#L119) |
-| function | `_preferred_policy` | `(episode, alternatives)` | — | [src](../../../core/services/counterfactual_self_simulation.py#L157) |
-| function | `_confidence` | `(episode, alternatives)` | — | [src](../../../core/services/counterfactual_self_simulation.py#L166) |
-| function | `_load_records` | `()` | — | [src](../../../core/services/counterfactual_self_simulation.py#L174) |
-| function | `_save_simulation` | `(sim)` | — | [src](../../../core/services/counterfactual_self_simulation.py#L179) |
-| function | `_feed_learning` | `(sim)` | — | [src](../../../core/services/counterfactual_self_simulation.py#L184) |
 

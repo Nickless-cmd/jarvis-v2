@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/versioneret_json_svar.py`
+_Et færdigt HTTP-svar pr. version — serialiseret og komprimeret ÉN gang._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_vil_have_gzip` | `(accept_encoding)` | — | [src](../../../core/services/versioneret_json_svar.py#L35) |
+| function | `versioneret_json_svar` | `(*, noegle, version, etag, accept_encoding, indhold)` | Byg (eller genbrug) svaret for `version`. `indhold` kaldes kun ved ny version. | [src](../../../core/services/versioneret_json_svar.py#L44) |
+
 ## `core/services/veto_gate.py`
 _Adaptive veto gate — pre-execution hook that pauses tool calls when pushback is firm._
 
@@ -619,12 +627,4 @@ _Hvor længe tænkte han? — målt ét sted, læst ét sted._
 | function | `mark_end` | `(run_id)` | Seneste tænke-blok lukkede. Sidste lukning vinder — se mark_start. | [src](../../../core/services/visible_thinking_trace.py#L54) |
 | function | `take_seconds` | `(run_id)` | Varigheden i sekunder, og RYD posten. None hvis der ikke blev tænkt. | [src](../../../core/services/visible_thinking_trace.py#L66) |
 | function | `peek_seconds` | `(run_id)` | Som take_seconds, men uden at rydde. Til observation/test. | [src](../../../core/services/visible_thinking_trace.py#L90) |
-
-## `core/services/visible_tool_exec.py`
-_Shared tool-exec pump for the visible run (Boy-Scout extraction, 2026-07-19)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_bruger_til_stede` | `(run)` | Er der et menneske i den anden ende af den her tur? | [src](../../../core/services/visible_tool_exec.py#L36) |
-| function | `run_tool_batch` | `(tool_calls, *, run, loop, tool_scope, step_counter, heartbeat_interval_s, heartbeat_phase, out, heartbeat_extra=…, exec_start=…, er_afbrudt=…)` | Announce → execute → heartbeat pump for one tool batch. | [src](../../../core/services/visible_tool_exec.py#L66) |
 

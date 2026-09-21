@@ -1,6 +1,23 @@
 from __future__ import annotations
 
 
+#: Scannings-vindue i testene. Produktionens `_SCAN_LIMIT` er 120 hændelser,
+#: og bussen er PROCES-GLOBAL: i en fuld suite lander naboernes hændelser
+#: imellem vores og scanningen. Skrivningerne er oven i købet asynkrone, så
+#: rækkefølgen inde i vinduet er ikke vores at bestemme.
+#:
+#: Målt 21/9-2026: med 200 nabo-hændelser imellem bliver der NUL ankre — det
+#: gav én rød kørsel ud af fire, uden sammenhæng med rækkefølgen. Altså den
+#: slags flake man tror er en regression.
+#:
+#: Vinduet er ikke det disse tests handler om. De handler om at en
+#: atmosfære-hændelse bliver til et anker. Så scanner de bredt nok til at
+#: intet kan gemme sig. Produktionens eget vindue er efterprøvet på CT105:
+#: motoren var 6 hændelser bagud ved 2.630 hændelser/minut — det er rigeligt i
+#: drift, og derfor er der ikke rørt ved `_SCAN_LIMIT`.
+_VINDUE_I_TEST = 10_000
+
+
 def test_engine_classifies_memory_sensory_recorded_event(isolated_runtime) -> None:
     """Engine's classify_event_change delegates memory.sensory.recorded events
     to sensory_perception_bridge.classify_sensory_change."""
@@ -78,7 +95,7 @@ def test_observe_recent_changes_persists_sensory_perception(isolated_runtime) ->
     # before observe_recent_changes() scans the bus (else a race drops it).
     event_bus.flush()
 
-    result = observe_recent_changes()
+    result = observe_recent_changes(limit=_VINDUE_I_TEST)
     assert result["observed_count"] >= 1
 
     surface = build_perception_surface(scan=False)
@@ -117,7 +134,7 @@ def test_sensory_perception_creates_emotional_memory_anchor(
     )
     # eventbus writes are async — flush before observe scans the bus.
     event_bus.flush()
-    observe_recent_changes()
+    observe_recent_changes(limit=_VINDUE_I_TEST)
 
     anchors = list_emotional_memory_anchors(anchor_type="perceptual_event")
     assert len(anchors) >= 1

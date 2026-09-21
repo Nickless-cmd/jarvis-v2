@@ -50,6 +50,55 @@ def test_luk_fjerner_fra_feeden_men_beholder_raekken(isolated_runtime) -> None:
     assert n.aabne("bjorn", er_owner=True) == []
 
 
+def test_kaploeb_om_samme_ref_returnerer_konkurrentens_id(isolated_runtime) -> None:
+    """To samtidige opret()-kald for samme (slags, ref) maa ALDRIG give
+    sqlite3.IntegrityError — det unikke indeks ux_notif_ref rammer den ene.
+
+    Simuleres deterministisk uden traade (ingen flaky timing): en RAA,
+    separat forbindelse skriver og committer den konkurrerende raekke
+    PRAESIS i det oejeblik opret() selv er ved at skrive sin — det er
+    kaploebsvinduet, uanset om opret() spoerger foerst eller indsaetter
+    foerst.
+    """
+    import sqlite3
+
+    from core.runtime import db as db_module
+    from core.services import notifikationer as n
+
+    konkurrent_id = "konkurrent-vandt-kaploebet"
+
+    conn = db_module.connect()
+    orig_execute = conn.execute
+
+    def wrapper(sql, *args, **kwargs):
+        if isinstance(sql, str) and sql.strip().startswith("INSERT INTO notifikationer"):
+            # Fjern wrapperen foerst, saa den raa forbindelses eget INSERT
+            # (nedenfor) ikke selv trigger denne gren igen.
+            conn.execute = orig_execute
+            raa = sqlite3.connect(db_module.DB_PATH)
+            try:
+                raa.execute(
+                    "INSERT INTO notifikationer"
+                    " (id, user_id, slags, kilde, ref, session_id, titel, tekst, oprettet)"
+                    " VALUES (?,?,?,?,?,?,?,?,?)",
+                    (konkurrent_id, "bjorn", "approval", "approval", "a-1", None,
+                     "Konkurrentens titel", "", n._nu()))
+                raa.commit()
+            finally:
+                raa.close()
+        return orig_execute(sql, *args, **kwargs)
+
+    conn.execute = wrapper
+    try:
+        resultat_id = n.opret(user_id="bjorn", slags="approval", kilde="approval",
+                               ref="a-1", titel="Vores titel")
+    finally:
+        conn.execute = orig_execute
+
+    assert resultat_id == konkurrent_id
+    assert len(n.aabne("bjorn", er_owner=True)) == 1
+
+
 def test_ryd_gamle_fjerner_kun_klarede(isolated_runtime) -> None:
     from datetime import UTC, datetime, timedelta
     from core.services import notifikationer as n

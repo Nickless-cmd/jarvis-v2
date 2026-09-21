@@ -13,6 +13,7 @@ der lige er klaret. `ryd_gamle()` fjerner dem efter en uge.
 from __future__ import annotations
 
 import logging
+import sqlite3
 import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -37,22 +38,45 @@ def opret(*, user_id: str, slags: str, kilde: str, titel: str,
     Findes samme (slags, ref) i forvejen — ogsaa en KLARET — returneres den
     eksisterende raekkes id uden at skrive. Det er hele grunden til at klarede
     raekker bliver liggende.
+
+    Kaploebssikker (2026-09-21): to samtidige kald med samme (slags, ref) saa
+    tidligere begge et "findes ikke" foer nogen af dem havde naaet at skrive
+    (SELECT foer INSERT, uden faelles transaktion) — det unikke indeks
+    `ux_notif_ref` fangede saa kun den ene, og den anden fik en raa
+    sqlite3.IntegrityError. Vi lader derfor DATABASEN afgoere det i stedet
+    for at spoerge foerst: indsaet, og fang fejlen fra det unikke indeks.
+    Det kraever ingen laas paa tvaers af forbindelser og virker uanset hvem
+    af de to der vinder kaploebet.
     """
+    nid = str(uuid.uuid4())
     with connect() as conn:
-        if ref is not None:
+        try:
+            conn.execute(
+                "INSERT INTO notifikationer"
+                " (id, user_id, slags, kilde, ref, session_id, titel, tekst, oprettet)"
+                " VALUES (?,?,?,?,?,?,?,?,?)",
+                (nid, user_id, slags, kilde, ref, session_id, titel, tekst, _nu()))
+        except sqlite3.IntegrityError:
+            # GREN "fandtes i forvejen": vores INSERT tabte kaploebet (eller
+            # raekken laa der bare i forvejen, klaret eller ej). Dette er
+            # IKKE en ny raekke — en senere haendelses-udsendelse for
+            # "notifikation oprettet" maa derfor ALDRIG fyre herfra.
+            conn.rollback()
+            if ref is None:
+                # Uden ref rammer intet unikt indeks — skulle ikke kunne
+                # ske. Fail loud i stedet for at gaette paa hvad der skete.
+                raise
             fundet = conn.execute(
                 "SELECT id FROM notifikationer WHERE slags=? AND ref=?",
                 (slags, ref)).fetchone()
-            if fundet:
-                return str(fundet[0])
-        nid = str(uuid.uuid4())
-        conn.execute(
-            "INSERT INTO notifikationer"
-            " (id, user_id, slags, kilde, ref, session_id, titel, tekst, oprettet)"
-            " VALUES (?,?,?,?,?,?,?,?,?)",
-            (nid, user_id, slags, kilde, ref, session_id, titel, tekst, _nu()))
-        conn.commit()
-        return nid
+            if fundet is None:
+                raise
+            return str(fundet[0])
+        else:
+            # GREN "ny raekke": vores INSERT vandt (eller var alene om det).
+            # Det er HER en senere haendelses-udsendelse skal sidde.
+            conn.commit()
+            return nid
 
 
 def aabne(user_id: str, *, er_owner: bool) -> list[dict[str, Any]]:

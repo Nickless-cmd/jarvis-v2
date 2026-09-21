@@ -1,3 +1,5 @@
+import { readFileSync } from 'fs'
+import { join } from 'path'
 import { fireEvent, render, waitFor } from '@testing-library/react-native'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { SidePanel } from './SidePanel'
@@ -167,4 +169,24 @@ it('i CODE hedder SAMME felt Tilbage til chat og foerer UD', async () => {
 it('feltet siger ikke Code naar man allerede ER i code', async () => {
   const screen = await wrap(<SidePanel open {...base} kodeTilstand onSkiftFlade={jest.fn()} />)
   expect(screen.queryByText('Code')).toBeNull()
+})
+
+// ── navnets mærke (21/9-2026) ─────────────────────────────────────────────
+//
+// Foer stod der en accent-farvet cirkel med en prik i midten — «det gamle ring
+// ikon» (Bjørn). Den form hoerer til foer Puls-maerket. Desk har maerket her, og
+// nu ogsaa telefonen: samme tegn paa begge enheder.
+
+it('navnet baerer Puls-maerket, ikke den gamle ring', async () => {
+  const screen = await wrap(<SidePanel open {...base} />)
+  expect(screen.getByTestId('puls-ikon')).toBeTruthy()
+})
+
+it('den gamle rings form findes ikke laengere i panelet', () => {
+  // Kontrolarm: en render-test kan ikke se FRAVAERET af et View uden testID,
+  // saa den gamle form laases i kilden — som kodeFlade.kobling.test.ts goer.
+  // Uden den kunne nogen saette cirklen tilbage uden at en test sagde fra.
+  const kilde = readFileSync(join(__dirname, 'SidePanel.tsx'), 'utf8')
+  expect(kilde).not.toContain('ringInner')
+  expect(kilde).not.toMatch(/styles\.ring\b/)
 })

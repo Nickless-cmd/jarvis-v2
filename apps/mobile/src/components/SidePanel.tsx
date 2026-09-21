@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Activity, Boxes, Eye, Image as ImageIcon, MessageCircle, MessagesSquare, MoreVertical, Pin, Search, Settings, SlidersHorizontal, SquarePen, Terminal } from 'lucide-react-native'
 import { formatRelativeDate } from '../lib/relativeDate'
 import { HeartbeatDot } from './HeartbeatDot'
+import { PulsIkon } from './PulsIkon'
 import type { ChatSession } from '../lib/types'
 import { tokens } from '../theme/tokens'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
@@ -161,9 +162,12 @@ export function SidePanel({
               hitSlop={8}
               style={styles.identity}
             >
-              <View style={styles.ring}>
-                <View style={styles.ringInner} />
-              </View>
+              {/* Mærket, ikke den gamle ring (Bjørn 21/9-2026: «i venstre panel
+                  i toppen lige før mit navn er det gamle ring ikon stadigvæk»).
+                  Ringen var en cirkel med en prik i — den form hører til før
+                  Puls-mærket. Desk har allerede mærket her (JarvisRing), så
+                  telefonens navn og skrivebordets står nu som samme tegn. */}
+              <PulsIkon size={26} color={tokens.color.accent} />
               <Text style={styles.name} numberOfLines={1}>
                 {displayName || 'Jarvis'}
               </Text>
@@ -379,16 +383,6 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
     paddingBottom: tokens.spacing.lg
   },
   identity: { flexDirection: 'row', alignItems: 'center', gap: tokens.spacing.sm, flexShrink: 1 },
-  ring: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    borderWidth: 2,
-    borderColor: tokens.color.accent,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  ringInner: { width: 10, height: 10, borderRadius: 5, backgroundColor: tokens.color.accent },
   name: { color: tokens.color.fg1, fontSize: 24, fontWeight: '700', flexShrink: 1 },
   gear: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 20, backgroundColor: tokens.color.bg2 },
   prikker: { paddingLeft: 2, paddingVertical: 2 },

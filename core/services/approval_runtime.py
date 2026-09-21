@@ -149,15 +149,21 @@ def decide(approval_id: str, *, approved: bool,
 
 
 def state(approval_id: str) -> dict[str, Any] | None:
-    """Hvad ved vi om dette kort? None hvis det ikke findes."""
+    """Hvad ved vi om dette kort? None hvis det ikke findes.
+
+    Kaster videre hvis DB-opslaget bag `_get_visible_approval_state` fejler —
+    fanges IKKE her. Eneste kalder (2026-09-21, `grep -rn
+    "approval_runtime.state("`) er `notifikationer_hydrering._hydrer_approval`,
+    hvis eget `except Exception` i `_hydrer` skal se fejlen for at kunne
+    skelne «kortet findes ikke» fra «ejeren kunne ikke naas». Et internt net
+    her ville goere de to umulige at skelne igen (se
+    docs/superpowers/specs/2026-09-21-notifikations-feed-design.md).
+    """
     import core.services.visible_runs as _vr
     kort = _vr._PENDING_APPROVALS.get(approval_id)
     if kort is not None:
         return dict(kort)
-    try:
-        delt = _vr._get_visible_approval_state(approval_id)
-    except Exception:
-        return None
+    delt = _vr._get_visible_approval_state(approval_id)
     return dict(delt) if delt else None
 
 

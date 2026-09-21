@@ -78,8 +78,8 @@ _Feedens laesning — den slaar op hos EJEREN, ikke i sin egen kopi._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_hydrer_approval` | `(raekke)` | None = ejeren er faerdig, luk raekken. Kaster = ejeren er utilgaengelig. | [src](../../../core/services/notifikationer_hydrering.py#L29) |
-| function | `_hydrer` | `(raekke)` | (felter, foraeldet). felter=None betyder «luk raekken». | [src](../../../core/services/notifikationer_hydrering.py#L42) |
-| function | `feed` | `(user_id, *, er_owner)` | Aabne notifikationer, hydreret hos deres ejere. | [src](../../../core/services/notifikationer_hydrering.py#L59) |
+| function | `_hydrer` | `(raekke)` | (felter, foraeldet). felter=None betyder «luk raekken». | [src](../../../core/services/notifikationer_hydrering.py#L46) |
+| function | `feed` | `(user_id, *, er_owner)` | Aabne notifikationer, hydreret hos deres ejere. | [src](../../../core/services/notifikationer_hydrering.py#L63) |
 
 ## `core/services/ntfy_gateway.py`
 _Ntfy gateway — send push notifications via ntfy.sh or self-hosted server._

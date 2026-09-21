@@ -35,8 +35,12 @@ def _hydrer_approval(raekke: dict[str, Any]) -> dict[str, Any] | None:
     if str(kort.get("status") or "") != "pending":
         return None
     vaerktoej = str(kort.get("tool_name") or "et værktøj")
+    # Kortet (approval_runtime.build_request) baerer INGEN beskrivelses-tekst —
+    # kun tool_name, arguments, run_id/session_id, ejer og digest (se
+    # PAAKRAEVEDE i approval_runtime.py). Der er derfor intet at hente hos
+    # ejeren udover titlen; teksten bliver ved den gemte kopi.
     return {"titel": f"Vil du tillade {vaerktoej}?",
-            "tekst": str(kort.get("summary") or raekke["tekst"] or "")}
+            "tekst": str(raekke["tekst"] or "")}
 
 
 def _hydrer(raekke: dict[str, Any]) -> tuple[dict[str, Any] | None, bool]:

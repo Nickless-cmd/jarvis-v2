@@ -25,18 +25,45 @@ const PANEL_WIDTH = Math.min(360, Math.round(Dimensions.get('window').width * 0.
  *  en oejenpaere og en kasse siger ikke hvad de goer, og man skulle trykke for
  *  at finde ud af det. */
 function Felt({
-  ikon, navn, onPress, testID, badge,
-}: { ikon: React.ReactNode; navn: string; onPress?: () => void; testID?: string; badge?: number }) {
+  ikon, navn, onPress, testID, badge, fejl,
+}: {
+  ikon: React.ReactNode
+  navn: string
+  onPress?: () => void
+  testID?: string
+  badge?: number
+  /** Listen bag feltet kunne ikke hentes — samme skelnen som desk's
+   *  Klokke.tsx: en tom liste og en brudt liste maa ikke ligne hinanden.
+   *  UAFHAENGIG af `badge`: et gammelt tal kan staa samtidig med markoeren,
+   *  fordi en fejlet hentning ikke nulstiller det sidst kendte tal. */
+  fejl?: boolean
+}) {
   const styles = useStyles(makestyles)
+  const { t } = useI18n()
+  const label = fejl ? t('side.fieldError', { navn }) : badge ? `${navn} (${badge})` : navn
   return (
     <Pressable
       testID={testID}
       accessibilityRole="button"
-      accessibilityLabel={badge ? `${navn} (${badge})` : navn}
+      accessibilityLabel={label}
       onPress={onPress}
       style={({ pressed }) => [styles.felt, pressed ? styles.pressed : null]}
     >
-      {ikon}
+      <View style={styles.feltIkon}>
+        {ikon}
+        {/* Prikken sidder OVEN PAA ikonet, ligesom `.klokke-fejl` i desk —
+            og er, ligesom der, en ren visuel markoer (aria-hidden): teksten
+            for skaermlaesere kommer fra `accessibilityLabel` ovenfor, ikke
+            fra prikken selv. */}
+        {fejl && (
+          <View
+            testID={testID ? `${testID}-fejl` : undefined}
+            style={styles.feltFejl}
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+          />
+        )}
+      </View>
       <Text style={styles.feltTekst} numberOfLines={1}>{navn}</Text>
       {/* Samme stil som badgen i Aktivitet-skærmen selv (accentText, 12/800) —
           tælleren skal ikke se anderledes ud fordi den bor på knappen der
@@ -96,6 +123,7 @@ export function SidePanel({
   onOpenBilleder,
   onOpenActivity,
   activityAntal = 0,
+  activityFejl = false,
   isOwner: inHousehold = false,
   workingIds = [],
   onSessionAction,
@@ -125,6 +153,11 @@ export function SidePanel({
   /** Antal åbne notifikationer — vises som en lille tæller på Aktivitet-feltet.
    *  0 tegner ingen badge (samme regel som outboxCount's «i kø»-tal). */
   activityAntal?: number
+  /** Notifikations-hentningen fejlede — en synlig markoer paa feltet,
+   *  UAFHAENGIG af `activityAntal` (det sidst kendte tal bliver staaende).
+   *  Samme skelnen som desk's Klokke.tsx mellem «ingen» og «kunne ikke
+   *  hentes»; se ChatScreen.tsx's `notifFejl`. */
+  activityFejl?: boolean
   /** Bor brugeren i hjemmet (owner eller partner)? Skjuler kun indgangen. */
   isOwner?: boolean
   /** Står vi i code-fladen? Afgør om feltet fører IND eller UD. */
@@ -287,7 +320,8 @@ export function SidePanel({
             {onOpenActivity ? (
               <Felt testID="open-activity"
                     ikon={<Activity size={17} color={tokens.color.fg2} strokeWidth={1.8} />}
-                    navn={t('side.activity')} onPress={onOpenActivity} badge={activityAntal} />
+                    navn={t('side.activity')} onPress={onOpenActivity} badge={activityAntal}
+                    fejl={activityFejl} />
             ) : null}
             {onOpenChatSettings ? (
               <Felt testID="open-chat-settings"
@@ -478,6 +512,17 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
   // maa ikke se anderledes ud fordi det staar paa knappen i stedet for i
   // skaermen den fører til.
   badge: { color: tokens.color.accentText, fontSize: 12, fontWeight: '800' },
+  // `position: relative` alene for at give `feltFejl` noget at vaere
+  // absolut i forhold til — ikonet selv fylder ikke mere end foer.
+  feltIkon: { position: 'relative' },
+  // Samme rødt som DictationBar's `liveDot` (tokens.color.error) — 8px,
+  // oeverst til hoejre paa ikonet. Uafhaengig af `badge`-tallet, som
+  // Klokke.tsx's `.klokke-fejl` i desk.
+  feltFejl: {
+    position: 'absolute', top: -2, right: -2,
+    width: 8, height: 8, borderRadius: 4,
+    backgroundColor: tokens.color.error,
+  },
   searchWrap: {
     flexDirection: 'row',
     alignItems: 'center',

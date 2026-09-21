@@ -1318,6 +1318,11 @@ export function ChatScreen({
           // ikke ved en fejl (kun `notifFejl` sættes), så badgen viser sidste
           // kendte antal frem for at springe til 0 og lyve om at alt er klart.
           activityAntal={notifikationer?.length ?? 0}
+          // Den synlige markør, uafhængig af tallet ovenfor — ellers kunne
+          // «3» stå på feltet mens hentningen reelt fejler, uden noget der
+          // sagde det før man trykkede ind. Samme hul som desk lukkede med
+          // `.klokke-fejl` i Klokke.tsx.
+          activityFejl={notifFejl}
           onSkiftFlade={onSkiftFlade
             ? (tilKode) => { onSkiftFlade(tilKode); setPanelOpen(false) }
             : undefined}

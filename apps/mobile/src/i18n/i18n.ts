@@ -31,6 +31,11 @@ const DA: Dict = {
   'side.artifacts': 'Artifacts',
   'side.images': 'Billeder',
   'side.activity': 'Aktivitet',
+  // Samme moenster som desk's Klokke.tsx: fejler hentningen, siger label'en
+  // det fremfor at bare vise et gammelt tal der ser levende ud. `{navn}` er
+  // feltets eget navn, saa teksten holder hvis Felt faar flere brugere end
+  // Aktivitet.
+  'side.fieldError': '{navn} — listen kunne ikke hentes',
   'side.thisConversation': 'Denne samtale',
   'side.noMatches': 'Ingen match',
   'side.noConversations': 'Ingen samtaler endnu',
@@ -128,6 +133,7 @@ const EN: Dict = {
   'side.artifacts': 'Artifacts',
   'side.images': 'Images',
   'side.activity': 'Activity',
+  'side.fieldError': '{navn} — the list could not be loaded',
   'side.thisConversation': 'This conversation',
   'side.noMatches': 'No matches',
   'side.noConversations': 'No conversations yet',

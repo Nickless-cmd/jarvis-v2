@@ -262,6 +262,47 @@ it('ingen aabne notifikationer giver ingen taeller', async () => {
   expect(screen.queryByText('0')).toBeNull()
 })
 
+// Opgave 11: mobilens Aktivitet-felt foerte kun `activityAntal` igennem —
+// `notifFejl` fra ChatScreen naaede aldrig SidePanel, saa et gammelt tal
+// stod uden noget der sagde det var forældet. Disse tre tests laaser
+// mønsteret fra desk's Klokke.tsx fast: en synlig markoer, UAFHAENGIG af
+// tallet, plus en accessibility-label der siger fra.
+it('fejl-markoeren paa Aktivitet er synlig naar hentningen fejler', async () => {
+  const screen = await wrap(
+    <SidePanel open {...base} onOpenActivity={jest.fn()} activityFejl />,
+  )
+  expect(screen.getByTestId('open-activity-fejl', { includeHiddenElements: true })).toBeTruthy()
+})
+
+it('fejl-markoeren er der ikke naar hentningen lykkes', async () => {
+  const screen = await wrap(
+    <SidePanel open {...base} onOpenActivity={jest.fn()} activityFejl={false} />,
+  )
+  expect(screen.queryByTestId('open-activity-fejl')).toBeNull()
+})
+
+it('fejl-markoer og taeller kan staa SAMTIDIG — listen fejler nu, men sidste kendte tal huskes', async () => {
+  const screen = await wrap(
+    <SidePanel open {...base} onOpenActivity={jest.fn()} activityAntal={3} activityFejl />,
+  )
+  expect(screen.getByTestId('open-activity-fejl', { includeHiddenElements: true })).toBeTruthy()
+  expect(screen.getByText('3')).toBeTruthy()
+})
+
+it('accessibility-label paa Aktivitet siger fra naar listen ikke kunne hentes', async () => {
+  const screen = await wrap(
+    <SidePanel open {...base} onOpenActivity={jest.fn()} activityAntal={3} activityFejl />,
+  )
+  expect(screen.getByLabelText(/Aktivitet.*kunne ikke hentes/)).toBeTruthy()
+})
+
+it('accessibility-label paa engelsk foelger locale naar hentningen fejler', async () => {
+  const screen = await wrapEn(
+    <SidePanel open {...base} onOpenActivity={jest.fn()} activityFejl />,
+  )
+  expect(screen.getByLabelText(/Activity.*could not be loaded/)).toBeTruthy()
+})
+
 it('prikken findes ikke laengere i raekken', () => {
   // Kontrolarm: «den groenne prik» (unreadDot) og hjerte-prikken
   // (HeartbeatDot) skal vaere VAEK. Stod begge, ville to tegn betyde det

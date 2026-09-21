@@ -4,12 +4,16 @@ import inspect
 
 
 def test_opstartsarbejdet_goer_begge_dele(isolated_runtime, monkeypatch) -> None:
-    """KALDER opstartsfunktionen rigtigt. En kilde-vagt der greber efter navnet
-    ville vaere groen ogsaa hvis kaldet stod i en gren der aldrig naas — og
-    praecis dét hul lod `migrer_kolonner()` ligge ukaldt gennem en hel
-    gennemgang (fundet 21/9-2026)."""
+    """KALDER opstartsfunktionen rigtigt og bekraefter EFFEKTEN af begge
+    handlinger — ikke bare at de er kaldt. En kilde-vagt der greber efter
+    navnet ville vaere groen ogsaa hvis kaldet stod i en gren der aldrig
+    naas — og praecis dét hul lod `migrer_kolonner()` ligge ukaldt gennem
+    en hel gennemgang (fundet 21/9-2026). Samme hul stod aabent for
+    `ryd_gamle()`: en gennemgang fjernede kaldet og alle fire tests i denne
+    fil forblev groenne (bevist ved mutation 21/9-2026)."""
+    from datetime import UTC, datetime, timedelta
     from core.runtime.db import connect
-    from core.services import notifikations_opstart, notifikations_valg
+    from core.services import notifikations_opstart, notifikations_valg, notifikationer
 
     with connect() as conn:
         conn.execute(
@@ -17,18 +21,44 @@ def test_opstartsarbejdet_goer_begge_dele(isolated_runtime, monkeypatch) -> None
             " VALUES (?,?,?)", ("bjorn", "auto", "mobile"))
         conn.commit()
 
+    aaben = notifikationer.opret(user_id="bjorn", slags="reminder", kilde="egen", titel="Aaben")
+    gammel = notifikationer.opret(user_id="bjorn", slags="reminder", kilde="egen", titel="Gammel")
+    notifikationer.luk(gammel, "seen")
+    for_laenge_siden = (datetime.now(UTC) - timedelta(days=9)).isoformat()
+    with connect() as conn:
+        conn.execute("UPDATE notifikationer SET klaret=? WHERE id=?", (for_laenge_siden, gammel))
+        conn.commit()
+
     notifikations_opstart.koer_ved_opstart()
 
+    # migreringen: det gamle kolonne-valg kan laeses fra den nye tabel
     assert notifikations_valg.kanal_for("bjorn", "reminder") == "mobile"
 
+    # oprydningen: den klarede, gamle raekke er vaek — den aabne staar
+    with connect() as conn:
+        tilbage = [r[0] for r in conn.execute("SELECT id FROM notifikationer").fetchall()]
+    assert tilbage == [aaben]
 
-def test_opstartsarbejdet_vaelter_aldrig_opstarten(isolated_runtime, monkeypatch) -> None:
-    """En feed der ikke kan rydde op er stadig bedre end en API der ikke starter."""
+
+def test_opstartsarbejdet_vaelter_aldrig_ved_migreringsfejl(isolated_runtime, monkeypatch) -> None:
+    """En feed der ikke kan migrere er stadig bedre end en API der ikke starter."""
     from core.services import notifikations_opstart, notifikations_valg
 
     def sprang() -> int:
         raise RuntimeError("basen er væk")
     monkeypatch.setattr(notifikations_valg, "migrer_kolonner", sprang)
+
+    notifikations_opstart.koer_ved_opstart()   # maa ikke kaste
+
+
+def test_opstartsarbejdet_vaelter_aldrig_ved_oprydningsfejl(isolated_runtime, monkeypatch) -> None:
+    """Samme garanti den anden vej: en fejlende `ryd_gamle` maa heller ikke
+    vaelte opstarten."""
+    from core.services import notifikations_opstart, notifikationer
+
+    def sprang() -> int:
+        raise RuntimeError("basen er væk")
+    monkeypatch.setattr(notifikationer, "ryd_gamle", sprang)
 
     notifikations_opstart.koer_ved_opstart()   # maa ikke kaste
 

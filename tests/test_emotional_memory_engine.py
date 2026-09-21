@@ -293,13 +293,16 @@ def test_prune_keeps_old_anchors_with_strongly_negative_outcome(
 
 def test_find_similar_tier1_structured_match_episode(isolated_runtime) -> None:
     import json
+    from datetime import UTC, datetime, timedelta
+
+    now = datetime.now(UTC)
     from core.runtime.db import insert_emotional_memory_anchor
     from core.services.emotional_memory_engine import find_similar_anchors
 
     insert_emotional_memory_anchor(
         anchor_type="cognitive_episode",
         anchor_id="ce-1",
-        captured_at="2026-05-04T12:00:00+00:00",
+        captured_at=(now - timedelta(days=5, minutes=5)).isoformat(),
         mood="frustrated",
         intensity=0.6,
         context_features_json=json.dumps({
@@ -313,7 +316,7 @@ def test_find_similar_tier1_structured_match_episode(isolated_runtime) -> None:
     insert_emotional_memory_anchor(
         anchor_type="cognitive_episode",
         anchor_id="ce-2",
-        captured_at="2026-05-04T12:01:00+00:00",
+        captured_at=(now - timedelta(days=5, minutes=4)).isoformat(),
         mood="frustrated",
         intensity=0.7,
         context_features_json=json.dumps({
@@ -327,7 +330,7 @@ def test_find_similar_tier1_structured_match_episode(isolated_runtime) -> None:
     insert_emotional_memory_anchor(
         anchor_type="cognitive_episode",
         anchor_id="ce-other",
-        captured_at="2026-05-04T12:02:00+00:00",
+        captured_at=(now - timedelta(days=5, minutes=3)).isoformat(),
         mood="calm",
         intensity=0.3,
         context_features_json=json.dumps({
@@ -358,13 +361,16 @@ def test_find_similar_tier2_lexical_fallback_when_tier1_thin(
     isolated_runtime,
 ) -> None:
     import json
+    from datetime import UTC, datetime, timedelta
+
+    now = datetime.now(UTC)
     from core.runtime.db import insert_emotional_memory_anchor
     from core.services.emotional_memory_engine import find_similar_anchors
 
     insert_emotional_memory_anchor(
         anchor_type="cognitive_episode",
         anchor_id="lex-1",
-        captured_at="2026-05-04T12:00:00+00:00",
+        captured_at=(now - timedelta(days=5, minutes=5)).isoformat(),
         mood="frustrated",
         intensity=0.6,
         context_features_json=json.dumps({
@@ -378,7 +384,7 @@ def test_find_similar_tier2_lexical_fallback_when_tier1_thin(
     insert_emotional_memory_anchor(
         anchor_type="cognitive_episode",
         anchor_id="lex-2",
-        captured_at="2026-05-04T12:01:00+00:00",
+        captured_at=(now - timedelta(days=5, minutes=4)).isoformat(),
         mood="frustrated",
         intensity=0.6,
         context_features_json=json.dumps({
@@ -459,13 +465,16 @@ def test_find_similar_returns_empty_when_no_match(isolated_runtime) -> None:
 
 def test_surface_returns_inactive_when_below_threshold(isolated_runtime) -> None:
     import json
+    from datetime import UTC, datetime, timedelta
+
+    now = datetime.now(UTC)
     from core.runtime.db import insert_emotional_memory_anchor
     from core.services.emotional_memory_engine import build_emotional_memory_surface
 
     insert_emotional_memory_anchor(
         anchor_type="cognitive_episode",
         anchor_id="solo",
-        captured_at="2026-05-04T12:00:00+00:00",
+        captured_at=(now - timedelta(days=5, minutes=5)).isoformat(),
         mood="frustrated", intensity=0.7,
         outcome_score=-0.4, outcome_source="auto",
         context_features_json=json.dumps({
@@ -491,6 +500,9 @@ def test_surface_directive_compiles_distribution_correctly(
     isolated_runtime,
 ) -> None:
     import json
+    from datetime import UTC, datetime, timedelta
+
+    now = datetime.now(UTC)
     from core.runtime.db import insert_emotional_memory_anchor
     from core.services.emotional_memory_engine import build_emotional_memory_surface
 
@@ -503,7 +515,7 @@ def test_surface_directive_compiles_distribution_correctly(
         insert_emotional_memory_anchor(
             anchor_type="cognitive_episode",
             anchor_id=f"ce-{i}",
-            captured_at=f"2026-05-04T12:0{i}:00+00:00",
+            captured_at=(now - timedelta(days=5, minutes=5 - i)).isoformat(),
             mood="frustrated", intensity=0.6,
             outcome_score=outcome, outcome_source="auto",
             context_features_json=feats,

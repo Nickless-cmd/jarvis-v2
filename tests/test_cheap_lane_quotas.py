@@ -41,14 +41,20 @@ def test_provider_report_beats_config_and_counts_token_usage(
         provider="groq", model="llama", status="completed",
         input_tokens=100, output_tokens=50, auth_profile="default",
     )
+    # TIDEN SKAL HÆNGE SAMMEN (21/9-2026). Kaldet ovenfor stemples med det
+    # RIGTIGE ur, mens snapshottet fik en fast dato. Så længe den faste dato
+    # tilfældigvis lå efter «nu», gik det godt — men med uret stillet frem lå
+    # kaldet i FREMTIDEN set fra vinduet, blev ikke talt med, og
+    # `observed_usage` faldt fra 150 til 0. Målt med faketime: testen knækker
+    # 1/11-2026. Nu følger begge ender det samme ur.
+    nu = datetime.now(UTC)
     record_quota_observation(
         provider="groq", auth_profile="default", period="month", unit="tokens",
-        limit=900_000, remaining=700_000, reset_at="2026-10-01T00:00:00+00:00",
-        observed_at="2026-09-18T10:00:00+00:00",
+        limit=900_000, remaining=700_000,
+        reset_at=(nu + timedelta(days=13)).isoformat(),
+        observed_at=(nu - timedelta(hours=1)).isoformat(),
     )
-    window = capacity_snapshot(
-        now=datetime(2026, 9, 18, 11, tzinfo=UTC)
-    )["windows"][0]
+    window = capacity_snapshot(now=nu)["windows"][0]
 
     assert window["source"] == "provider"
     assert window["limit"] == 900_000

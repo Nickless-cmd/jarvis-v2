@@ -1,7 +1,8 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { ReactNode } from 'react'
 import { renderHook, act, waitFor } from '@testing-library/react'
 import { SessionProvider, mergeServer } from './SessionContext'
+import { getSession } from '../lib/api'
 import { useSessions } from '../hooks/useSessions'
 
 const userMsg = (id: string, text: string) => ({ id, role: 'user' as const, content: [{ type: 'text' as const, text }], created_at: 'now', parent_id: null })
@@ -336,5 +337,38 @@ describe('den gendannede samtale vælger sin flade', () => {
     // listSessions-mocken har ingen workspace_kind → chat.
     expect(set).toHaveBeenCalledWith('chat')
     localStorage.clear()
+  })
+})
+
+describe('en fejlet hentning maa ikke ligne en tom samtale', () => {
+  // Codex' punkt 2 (21/9-2026). `select()` havde `.then().finally()` og INGEN
+  // `.catch`: faldt hentningen, ryddede den foerst beskederne og satte saa
+  // bare loading=false. Resultatet paa skaermen var en samtale uden en eneste
+  // besked — ikke til at skelne fra en ny. Det er den mest foruroligende
+  // maade en chat kan fejle paa, for den ser ud som om historikken er VAEK.
+  // `select()` skriver selv til localStorage, saa tidligere tests i filen
+  // efterlader en gemt samtale her. Uden denne blev min mockRejectedValueOnce
+  // brugt op af gendannelsen ved mount, foer testen naaede at kalde noget.
+  beforeEach(() => localStorage.clear())
+
+  it('siger at beskederne ikke blev hentet — og henter dem paa ny ved forsoeg nummer to', async () => {
+    vi.mocked(getSession)
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockResolvedValueOnce({
+        session: { id: 's1', title: 'T', updated_at: 'x' },
+        messages: [userMsg('u-1', 'hej igen')],
+      } as never)
+    const { result } = renderHook(() => useSessions(), { wrapper })
+    // Vent til listen er inde: gendannelses-effekten fyrer foerst DA, og den
+    // maa vaere faerdig foer vi vaelger — ellers vaelger den selv bagefter.
+    await waitFor(() => expect(result.current.sessions).toHaveLength(1))
+    await act(async () => { result.current.select('s1') })
+    await waitFor(() => expect(result.current.loadFejl).toMatch(/kunne ikke hentes/))
+    expect(result.current.loading).toBe(false)
+
+    // Og «Proev igen» maa ikke ramme «allerede loaded»-genvejen.
+    await act(async () => { result.current.genindlaes() })
+    await waitFor(() => expect(result.current.messages).toHaveLength(1))
+    expect(result.current.loadFejl).toBe('')
   })
 })

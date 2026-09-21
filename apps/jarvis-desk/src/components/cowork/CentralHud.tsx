@@ -322,7 +322,12 @@ function NerveFocus({ config, nerve, onClose }: { config?: ApiConfig; nerve: str
   useEffect(() => {
     if (!config || !nerve) return
     let alive = true
-    getCentralNerve(config, nerve).then((r) => alive && setD(r)).catch((e) => alive && setErr(String(e)))
+    // Stod som String(e) — «TypeError: Failed to fetch» foran en bruger der
+    // klikkede paa en nerve. Ruden VISTE fejlen, den sagde bare ikke hvad den
+    // angik (Codex' punkt 2, 21/9-2026).
+    getCentralNerve(config, nerve)
+      .then((r) => alive && setD(r))
+      .catch(() => alive && setErr(`Sporet for ${nerve} kunne ikke hentes. Luk og klik igen.`))
     return () => { alive = false }
   }, [config, nerve])
   return (

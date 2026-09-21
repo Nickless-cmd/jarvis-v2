@@ -17,6 +17,11 @@ export interface SessionContextValue {
   activeId: string | null
   messages: LocalMessage[]
   loading: boolean
+  /** Tom naar alt er vel. Ellers: beskederne blev IKKE hentet, og det der staar
+   *  paa skaermen er ikke samtalen (Codex' punkt 2, 21/9-2026). */
+  loadFejl: string
+  /** Hent den aktive samtales beskeder igen efter en fejlet indlaesning. */
+  genindlaes: () => void
   select: (id: string) => void
   /** Ryd aktiv samtale → greeting-skærm (session oprettes først ved første send). */
   newChat: () => void
@@ -46,6 +51,7 @@ export function SessionProvider({
   const [activeId, setActiveId] = useState<string | null>(null)
   const [messages, setMessages] = useState<LocalMessage[]>([])
   const [loading, setLoading] = useState(false)
+  const [loadFejl, setLoadFejl] = useState('')
 
   const loadSessions = useCallback(async () => {
     const list = await listSessions(config)
@@ -134,6 +140,7 @@ export function SessionProvider({
     // Ægte skift fra en ANDEN session → ryd den gamles beskeder først.
     if (prevLoaded !== null && prevLoaded !== id) setMessages([])
     setLoading(true)
+    setLoadFejl('')
     getSession(config, id)
       // Merge med NUVÆRENDE lokale beskeder (ikke []) — så en optimistisk
       // besked tilføjet imens overlever (mergeServer bevarer optimistic_user).
@@ -141,8 +148,21 @@ export function SessionProvider({
         if (etag) etagBySessionRef.current.set(id, etag)
         setMessages((prev) => mergeServer(prev, server))
       })
+      // Uden denne stod samtalen TOM naar hentningen fejlede — nøjagtig som en
+      // ny samtale. Vi rydder loadedRef igen, saa «Prøv igen» faktisk henter
+      // paa ny i stedet for at ramme «allerede loaded»-genvejen ovenfor.
+      .catch(() => {
+        loadedRef.current = prevLoaded
+        setLoadFejl('Samtalens beskeder kunne ikke hentes. Det du ser her er ikke hele samtalen.')
+      })
       .finally(() => setLoading(false))
   }, [config])
+
+  const genindlaes = useCallback(() => {
+    if (!activeId) return
+    loadedRef.current = null
+    select(activeId)
+  }, [activeId, select])
 
   const newChat = useCallback(() => {
     setActiveId(null)
@@ -196,8 +216,8 @@ export function SessionProvider({
   }, [])
 
   const value = useMemo<SessionContextValue>(
-    () => ({ sessions, activeId, messages, loading, select, newChat, create, rename, remove, refresh, appendOptimistic, reconcile }),
-    [sessions, activeId, messages, loading, select, newChat, create, rename, remove, refresh, appendOptimistic, reconcile],
+    () => ({ sessions, activeId, messages, loading, loadFejl, genindlaes, select, newChat, create, rename, remove, refresh, appendOptimistic, reconcile }),
+    [sessions, activeId, messages, loading, loadFejl, genindlaes, select, newChat, create, rename, remove, refresh, appendOptimistic, reconcile],
   )
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>
 }

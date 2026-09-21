@@ -5,9 +5,11 @@ import { connectorIcon, connectorBrandColor } from '../../lib/connectorIcon'
 import { greetingFor } from '../../lib/greeting'
 import { takePendingHint } from '../../lib/postConnect'
 
-function openBrowser(url: string): void {
+/** Returnerer null naar der slet ingen bro er (web-fanen) — ellers selve
+ *  loeftet, saa kalderen kan se om browseren faktisk aabnede. */
+function openBrowser(url: string): Promise<void> | null {
   const b = (window as unknown as { jarvisDesk?: { openExternal?: (u: string) => Promise<void> } }).jarvisDesk
-  void b?.openExternal?.(url)
+  return b?.openExternal?.(url) ?? null
 }
 
 /** Tom-session-skærm: tids-bevidst greeting + presence-ring tonet efter tidspunkt
@@ -43,6 +45,7 @@ export function GreetingHero({
   const [suggestions, setSuggestions] = useState<Connector[]>([])
   // Post-connect-hook (engangs): lige forbundet → tilbyd connector-specifikt forslag.
   const [hint, setHint] = useState<string | null>(null)
+  const [forbindFejl, setForbindFejl] = useState('')
   useEffect(() => { setHint(takePendingHint()) }, [])
 
   useEffect(() => {
@@ -65,10 +68,23 @@ export function GreetingHero({
     return () => { cancelled = true }
   }, [config])
 
+  // Codex' punkt 2 (21/9-2026): «Forbind» kunne fejle HELT tavst. Tre steder
+  // kunne det gaa galt — ingen url, ingen bro, en browser der ikke aabnede —
+  // og alle tre saa ens ud: intet skete. Det er den vaerste slags knap.
   const onConnect = async (c: Connector) => {
     if (!config || c.connected) return
+    setForbindFejl('')
     const url = await startConnect(config, c.id).catch(() => null)
-    if (url) openBrowser(url)
+    if (!url) {
+      setForbindFejl(`${c.name} kunne ikke forberedes. Proev igen, eller gaa ind under Flere apps.`)
+      return
+    }
+    const aabner = openBrowser(url)
+    if (!aabner) {
+      setForbindFejl(`${c.name} skal godkendes i en browser, og det kan kun desk-appen aabne.`)
+      return
+    }
+    aabner.catch(() => setForbindFejl(`Browseren aabnede ikke med ${c.name}. Proev igen.`))
   }
 
   return (
@@ -135,6 +151,9 @@ export function GreetingHero({
               })}
             </div>
           </>
+        )}
+        {forbindFejl && (
+          <p className="greeting-forbind-fejl" role="alert">{forbindFejl}</p>
         )}
         <div className="greeting-more">
           <button type="button" onClick={onOpenMarketplace}>Flere apps →</button>

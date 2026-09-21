@@ -908,6 +908,14 @@ export function ChatView({
           der er intet nedenfor at tone ud, og masken aad ellers den sidste
           linje. Toppen beholder sin — der ER altid mere ovenfor. */}
       <div className={`transcript${atBottom ? ' is-at-bottom' : ''}`} ref={transcriptRef} onScroll={onScroll}>
+        {/* En fejlet hentning saa foer ud som en TOM samtale — det mest
+            foruroligende en chat kan vise (Codex' punkt 2, 21/9-2026). */}
+        {sessions.loadFejl && (
+          <div className="transcript-loadfejl" role="alert">
+            <span>{sessions.loadFejl}</span>
+            <button type="button" onClick={sessions.genindlaes}>Prøv igen</button>
+          </div>
+        )}
         {visibleMessages.map((m) => (
           <Fragment key={m.id}>
           {m.id === nyeFra && <NyeBeskederLinje />}

@@ -15,6 +15,13 @@ export function CentralPanel({ config, isOwner }: { config?: ApiConfig; isOwner?
   const [collapsed, setCollapsed] = useState(false)
   const [showLearning, setShowLearning] = useState(false)
   const [denied, setDenied] = useState(false)
+  // Codex' punkt 2 (21/9-2026): panelet tav ved hver eneste fejl. To slags,
+  // og de skal IKKE behandles ens. Pollet er hvert 5. sekund — ét hik er
+  // ingenting, men tre i træk er et kvarters gamle tal der ser friske ud.
+  // Et KLIK derimod er hans egen handling: slår han en nerve fra og der sker
+  // ingenting, skal han have det at vide med det samme.
+  const [pollFejl, setPollFejl] = useState(0)
+  const [handlingFejl, setHandlingFejl] = useState('')
   const [detail, setDetail] = useState<CentralNerveDetail | null>(null)
   const timer = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -26,8 +33,12 @@ export function CentralPanel({ config, isOwner }: { config?: ApiConfig; isOwner?
     const tick = () => {
       if (document.visibilityState === 'hidden') return
       getCentralRealtime(config)
-        .then((s) => { if (!cancelled) setSnap(s) })
-        .catch((e) => { if (!cancelled && String(e).includes('403')) setDenied(true) })
+        .then((s) => { if (!cancelled) { setSnap(s); setPollFejl(0) } })
+        .catch((e) => {
+          if (cancelled) return
+          if (String(e).includes('403')) { setDenied(true); return }
+          setPollFejl((n) => n + 1)
+        })
     }
     tick()
     timer.current = setInterval(tick, 5000)
@@ -51,12 +62,19 @@ export function CentralPanel({ config, isOwner }: { config?: ApiConfig; isOwner?
 
   const openNerve = useCallback((nerve: string) => {
     if (!config) return
-    getCentralNerve(config, nerve).then(setDetail).catch(() => undefined)
+    setHandlingFejl('')
+    getCentralNerve(config, nerve)
+      .then(setDetail)
+      .catch(() => setHandlingFejl(`Sporet for ${nerve} kunne ikke hentes. Klik igen.`))
   }, [config])
 
   const doToggle = useCallback((nerve: string, enabled: boolean) => {
     if (!config) return
-    toggleCentralNerve(config, nerve, enabled).then(() => openNerve(nerve)).catch(() => undefined)
+    setHandlingFejl('')
+    toggleCentralNerve(config, nerve, enabled)
+      .then(() => openNerve(nerve))
+      .catch(() => setHandlingFejl(
+        `${nerve} blev IKKE ${enabled ? 'tændt' : 'slukket'} — den står som før. Prøv igen.`))
   }, [config, openNerve])
 
   if (!isOwner || denied) return null
@@ -94,6 +112,12 @@ export function CentralPanel({ config, isOwner }: { config?: ApiConfig; isOwner?
               {diag.degraded ? 'degraderet' : 'decide+observe ✓'}
             </span>
           </div>
+
+          {pollFejl >= 3 && (
+            <p className="central-flag is-yellow" role="status">
+              <Zap size={12} /> Ingen kontakt til Centralen — tallene er fra sidste gang det lykkedes.
+            </p>
+          )}
 
           {/* Cluster-grid — grøn/gul/rød/idle pr. cluster (se ét cluster brække/gå offline) */}
           {clusters.length > 0 && (
@@ -155,6 +179,11 @@ export function CentralPanel({ config, isOwner }: { config?: ApiConfig; isOwner?
           )}
 
           {/* Lag 2 — live feed (det levende vindue) */}
+          {handlingFejl && !detail && (
+            <p className="central-flag is-red" role="alert">
+              <ShieldAlert size={12} /> {handlingFejl}
+            </p>
+          )}
           <div className="central-feed-head">Live nerve-fyringer</div>
           <ul className="central-feed">
             {feed.length === 0 && <li className="central-feed-empty">— stille —</li>}
@@ -221,6 +250,11 @@ export function CentralPanel({ config, isOwner }: { config?: ApiConfig; isOwner?
                   <span className="central-detail-locked" title="sikkerheds-nerve kan ikke slås fra">låst 🔒</span>
                 )}
               </div>
+              {handlingFejl && (
+                <p className="central-flag is-red" role="alert">
+                  <ShieldAlert size={12} /> {handlingFejl}
+                </p>
+              )}
               <div className="central-detail-feed-head">Seneste spor ({detail.recent.length})</div>
               <ul className="central-detail-feed">
                 {detail.recent.length === 0 && <li className="central-feed-empty">— intet spor i bufferen —</li>}

@@ -41,6 +41,7 @@ export function TakeoverHost({
   const followCtl = useRef<{ abort: () => void } | null>(null)
   const [msgs, setMsgs] = useState<ChatMessage[]>([])
   const [elapsedMs, setElapsedMs] = useState(0)
+  const [tabtKontakt, setTabtKontakt] = useState(0)
   const startedAt = useRef(0)
 
   // Jarvis-figuren på skrivebordet (electron/figur.ts): et klik på dens
@@ -77,7 +78,7 @@ export function TakeoverHost({
         if (cand) { held = cand; bgUntil = Date.now() + 6000 }
         else if (Date.now() >= bgUntil) { held = null }
         setActiveSid(held)
-      } catch { /* behold sidste — ingen flicker */ }
+      } catch { /* behold sidste valg — et hik maa ikke faa popup'en til at blinke */ }
     }
     void tick()
     const t = setInterval(tick, 1500)
@@ -112,7 +113,14 @@ export function TakeoverHost({
           transcriptEtag.current = snapshot.etag
           setMsgs(snapshot.messages)
         }
-      } catch { /* behold */ }
+        if (!cancelled) setTabtKontakt(0)
+      } catch {
+        // Codex' punkt 2 (21/9-2026): vi beholder stadig den sidste udskrift —
+        // men hovedet sagde «🟢 live fra en anden enhed» imens. Ved 1,2 s pr.
+        // hentning er tre i traek under fire sekunders tavshed: for lidt til at
+        // blinke over, rigeligt til at den groenne prik bliver en usandhed.
+        if (!cancelled) setTabtKontakt((n) => n + 1)
+      }
     }
     void pull()
     const t = setInterval(pull, 1200)
@@ -131,12 +139,15 @@ export function TakeoverHost({
   if (!activeSid) return null
   const title = sessions.find((s) => s.id === activeSid)?.title || 'en samtale'
   const live = followState.status === 'working' && followState.blocks.length > 0
+  const mistet = tabtKontakt >= 3
   const lastAssistant = [...msgs].reverse().find((m) => m.role === 'assistant')
   return (
     <div className="takeover-live">
       <div className="takeover-live-head">
         <span className="takeover-live-title">
-          🟢 {title} <span className="takeover-live-sub">— live fra en anden enhed</span>
+          {mistet ? '⚪' : '🟢'} {title} <span className="takeover-live-sub">
+            {mistet ? '— ingen kontakt, det viste er sidste nyt' : '— live fra en anden enhed'}
+          </span>
         </span>
         <button type="button" className="takeover-live-open" onClick={() => { select(activeSid); setSurface('chat'); setActiveSid(null) }}>Åbn chat</button>
         <button type="button" className="takeover-live-x" aria-label="Skjul" onClick={() => { dismissed.current.add(activeSid); setActiveSid(null) }}>×</button>

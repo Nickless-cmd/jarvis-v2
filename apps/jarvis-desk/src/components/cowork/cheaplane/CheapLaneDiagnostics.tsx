@@ -22,10 +22,13 @@ function tid(s?: string | null): string {
 }
 
 export function CheapLaneDiagnostics({
-  diagnose, revisioner, central = [], pakkeUrl,
+  diagnose, revisioner, revisionFejl = false, central = [], pakkeUrl,
 }: {
   diagnose: Diagnose | null
   revisioner: Revision[]
+  /** Kunne sporet ikke hentes? Et TOMT spor betyder «ingen har ændret noget» —
+   *  en helt anden oplysning end «vi kunne ikke hente det». */
+  revisionFejl?: boolean
   /** Centrals egne haendelser for lanen — samme tidslinje som fundene, fordi
    *  et fund og en Central-haendelse ofte er to sider af samme sag. */
   central?: { id?: string; ts?: string; kind?: string; severity?: string; message?: string }[]
@@ -84,7 +87,9 @@ export function CheapLaneDiagnostics({
       ) : null}
 
       <h4 className="cl-forklaring-overskrift">Revisionsspor</h4>
-      {revisioner.length === 0 ? (
+      {revisionFejl ? (
+        <p className="cl-tom">Revisionssporet kunne ikke hentes.</p>
+      ) : revisioner.length === 0 ? (
         <p className="cl-tom">Ingen handlinger endnu.</p>
       ) : (
         <div className="cl-tabel-holder">

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useSettings } from '../hooks/useSettings'
 import { useSessions } from '../hooks/useSessions'
 import { listImages, fetchImageObjectUrl, type ImageAttachment, type ApiConfig } from '../lib/api'
+import { ListeTilstand } from '../components/feedback/ListeTilstand'
 
 /** Galleri (#6): billeder du og Jarvis har uploadet, på tværs af samtaler.
  *  Klik et billede → hop til den samtale det hører til. */
@@ -10,6 +11,11 @@ export function ImageGalleryView({ onOpenChat }: { onOpenChat: () => void }) {
   const { select } = useSessions()
   const [images, setImages] = useState<ImageAttachment[]>([])
   const [loading, setLoading] = useState(true)
+  // `catch → setImages([])` sagde «ingen billeder uploadet endnu» når
+  // hentningen slog fejl. Man kan ikke kende forskel, og så leder man efter
+  // billeder man selv har uploadet.
+  const [fejl, setFejl] = useState(false)
+  const [igen, setIgen] = useState(0)
 
   const config: ApiConfig | null = settings
     ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }
@@ -20,22 +26,24 @@ export function ImageGalleryView({ onOpenChat }: { onOpenChat: () => void }) {
     let cancelled = false
     setLoading(true)
     listImages(config)
-      .then((r) => { if (!cancelled) setImages(r) })
-      .catch(() => { if (!cancelled) setImages([]) })
+      .then((r) => { if (!cancelled) { setImages(r); setFejl(false) } })
+      .catch(() => { if (!cancelled) setFejl(true) })
       .finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [settings])
+  }, [settings, igen])
 
   const openSession = (sessionId: string) => { select(sessionId); onOpenChat() }
 
   return (
     <div className="gallery">
       <div className="gallery-head"><h2>Billeder</h2></div>
-      {loading ? (
-        <p className="gallery-empty">Henter…</p>
-      ) : images.length === 0 ? (
-        <p className="gallery-empty">Ingen billeder uploadet endnu.</p>
+      {loading || fejl || images.length === 0 ? (
+        <ListeTilstand
+          henter={loading} fejl={fejl} navn="billederne"
+          antal={images.length} tomTekst="Ingen billeder uploadet endnu."
+          onIgen={fejl ? () => { setLoading(true); setIgen((n) => n + 1) } : null}
+        />
       ) : (
         <div className="gallery-grid">
           {config && images.map((img) => (

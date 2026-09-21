@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { ListeTilstand } from '../../feedback/ListeTilstand'
 import type { ApiConfig } from '../../../lib/api'
 import { getMcCostsDaily, type McDailyCost } from '../../../lib/missionControlApi'
 
@@ -9,20 +10,30 @@ interface DayAgg { day: string; cost: number; tokens: number; calls: number }
 export function CostPanel({ config }: { config: ApiConfig | undefined }) {
   const [rows, setRows] = useState<McDailyCost[]>([])
   const [loading, setLoading] = useState(true)
+  // `catch → setRows([])` gjorde en fejl til en tom kasse: man kunne ikke se
+  // forskel på «ingen omkostninger endnu» og «tallene kunne ikke hentes».
+  const [fejl, setFejl] = useState(false)
 
-  useEffect(() => {
+  const hent = useCallback(() => {
     if (!config) return
-    let alive = true
     setLoading(true)
     getMcCostsDaily(config, 14)
-      .then((r) => { if (alive) setRows(r) })
-      .catch(() => { if (alive) setRows([]) })
-      .finally(() => { if (alive) setLoading(false) })
-    return () => { alive = false }
+      .then((r) => { setRows(r); setFejl(false) })
+      .catch(() => setFejl(true))
+      .finally(() => setLoading(false))
   }, [config])
 
-  if (loading) return <div className="cowork-empty">Henter…</div>
-  if (rows.length === 0) return <div className="cowork-empty">Ingen omkostningsdata</div>
+  useEffect(() => { hent() }, [hent])
+
+  if (loading || fejl || rows.length === 0) {
+    return (
+      <ListeTilstand
+        henter={loading} fejl={fejl} navn="omkostningerne"
+        antal={rows.length} tomTekst="Ingen omkostningsdata endnu."
+        onIgen={fejl ? hent : null}
+      />
+    )
+  }
 
   const byDay = new Map<string, DayAgg>()
   for (const r of rows) {

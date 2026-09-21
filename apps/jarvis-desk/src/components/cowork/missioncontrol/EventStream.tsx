@@ -12,13 +12,20 @@ export function EventStream({ config }: { config: ApiConfig | undefined }) {
   const [family, setFamily] = useState<Family>('alle')
   const [events, setEvents] = useState<McEvent[]>([])
 
+  // EN ENKELT fejlet poll er ikke en fejl (21/9-2026). Strømmen henter hvert
+  // fjerde sekund, og at blanke visningen ved første hikke ville gøre panelet
+  // urolig at se på. Men en VEDVARENDE fejl skal frem — ellers står der bare
+  // gamle hændelser og ser friske ud. Tre i træk er tolv sekunders tavshed;
+  // det er en afbrydelse, ikke et hikke.
+  const [fejlIStrib, setFejlIStrib] = useState(0)
+
   useEffect(() => {
     if (!config) return
     let alive = true
     const load = () => {
       getMcEvents(config, 60, family === 'alle' ? undefined : family)
-        .then((e) => { if (alive) setEvents(e) })
-        .catch(() => { /* behold sidste */ })
+        .then((e) => { if (alive) { setEvents(e); setFejlIStrib(0) } })
+        .catch(() => { if (alive) setFejlIStrib((n) => n + 1) })
     }
     load()
     const id = setInterval(load, 4000)
@@ -40,7 +47,11 @@ export function EventStream({ config }: { config: ApiConfig | undefined }) {
           </button>
         ))}
       </div>
-      {events.length === 0 ? (
+      {fejlIStrib >= 3 ? (
+        <div className="cowork-empty">
+          Hændelserne kunne ikke hentes — de viste er fra sidste gang det lykkedes.
+        </div>
+      ) : events.length === 0 ? (
         <div className="cowork-empty">Ingen hændelser</div>
       ) : (
         <div className="mc-event-list">

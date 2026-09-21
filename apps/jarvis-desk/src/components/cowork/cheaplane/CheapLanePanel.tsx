@@ -62,6 +62,10 @@ export function CheapLanePanel({ config }: { config?: ApiConfig }) {
   const [valgt, setValgt] = useState<{ provider: string; model: string } | null>(null)
   const [åbnetFra, setÅbnetFra] = useState<HTMLElement | null>(null)
   const [revisioner, setRevisioner] = useState<Revision[]>([])
+  // Revisionssporet gjorde en fejl til en tom liste — og et TOMT revisionsspor
+  // betyder «ingen har ændret noget», hvilket er en helt anden oplysning end
+  // «vi kunne ikke hente sporet». Den forskel er værd at vise her.
+  const [revisionFejl, setRevisionFejl] = useState(false)
   const [visIndstillinger, setVisIndstillinger] = useState(false)
   // Tidsseriens fejl hoerer til GRAFEN, ikke til panelets banner: samme
   // besked to steder er stoej, og banneret er til det der rammer hele fladen.
@@ -89,7 +93,9 @@ export function CheapLanePanel({ config }: { config?: ApiConfig }) {
   useEffect(() => { void hent() }, [hent])
   useEffect(() => {
     if (fane !== 'diagnose' || !config) return
-    getRevisioner(config, 100).then((r) => setRevisioner(r.items ?? [])).catch(() => setRevisioner([]))
+    getRevisioner(config, 100)
+      .then((r) => { setRevisioner(r.items ?? []); setRevisionFejl(false) })
+      .catch(() => setRevisionFejl(true))
   }, [fane, config])
 
   // Hver kontrol-handling er en skrivning med revisionsspor. Efter den skal
@@ -227,6 +233,7 @@ export function CheapLanePanel({ config }: { config?: ApiConfig }) {
           <CheapLaneDiagnostics
             diagnose={butik.snapshot?.sections?.diagnostics?.data ?? null}
             revisioner={revisioner}
+            revisionFejl={revisionFejl}
             central={butik.snapshot?.sections?.central?.data ?? []}
             pakkeUrl={config
               ? `${config.apiBaseUrl}/mc/cheap-lane/diagnostics/export?hours=${timer}`

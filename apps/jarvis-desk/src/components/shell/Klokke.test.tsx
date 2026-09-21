@@ -53,4 +53,45 @@ describe('Klokke', () => {
     render(<Klokke config={cfg} onAaben={() => {}} />)
     expect(await screen.findByTestId('klokke-taeller')).toHaveTextContent('9+')
   })
+
+  // Selve hullet: fire tests ovenfor laaser TITEL/aria-label fast naar
+  // hentningen fejler, men ingen af dem ser efter den visuelle proek selv.
+  // En seende bruger ser `.klokke-fejl`; title/aria-label er kun der for
+  // skaermlaesere. Fjernes proekken fra markup'et uden at title-teksten
+  // aendres, bestod de fire eksisterende tests stadig — det er praecis det
+  // scenarie disse to tests skal fange.
+  //
+  // data-testid frem for className: se kommentaren i Klokke.tsx. Kort sagt
+  // er det samme valg komponenten allerede har traffet for klokke-taeller —
+  // className er en stil-krog, data-testid er testens kontrakt.
+  it('proek-markoeren ER i DOM naar hentningen FEJLER', async () => {
+    hent.mockRejectedValue(new Error('offline'))
+    render(<Klokke config={cfg} onAaben={() => {}} />)
+    expect(await screen.findByTestId('klokke-fejl')).toBeInTheDocument()
+  })
+
+  it('proek-markoeren er IKKE i DOM naar hentningen LYKKES', async () => {
+    hent.mockResolvedValue({ poster: [], antal: 3 })
+    render(<Klokke config={cfg} onAaben={() => {}} />)
+    await screen.findByTestId('klokke-taeller')
+    expect(screen.queryByTestId('klokke-fejl')).toBeNull()
+  })
+
+  it('proek og taeller kan staa SAMTIDIG — listen fejler nu, men sidste kendte tal huskes', async () => {
+    // Maalt i Klokke.tsx: fejl-branchen kalder kun setFejl(true), den
+    // nulstiller ALDRIG antal. Saa et tal der blev hentet foer et senere
+    // kald fejlede, bliver staaende. Vi genskaber det ved at aendre
+    // `config`-objektet: `hent` er en useCallback der afhaenger af
+    // `config`, saa en ny reference faar useEffect til at koere igen —
+    // samme kodesti som naar intervallet selv trigger et nyt kald.
+    hent.mockResolvedValue({ poster: [{ id: '1', slags: 'approval', titel: 'A', tekst: '', kan_afgoere: true, foraeldet: false, oprettet: '', session_id: null }], antal: 1 })
+    const { rerender } = render(<Klokke config={cfg} onAaben={() => {}} />)
+    expect(await screen.findByTestId('klokke-taeller')).toHaveTextContent('1')
+
+    hent.mockRejectedValue(new Error('offline'))
+    rerender(<Klokke config={{ ...cfg, authToken: 't2' }} onAaben={() => {}} />)
+
+    expect(await screen.findByTestId('klokke-fejl')).toBeInTheDocument()
+    expect(screen.getByTestId('klokke-taeller')).toHaveTextContent('1')
+  })
 })

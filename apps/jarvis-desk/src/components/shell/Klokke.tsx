@@ -63,7 +63,12 @@ export function Klokke({ config, onAaben }: {
           {antal > 9 ? '9+' : antal}
         </span>
       )}
-      {fejl && <span className="klokke-fejl" aria-hidden="true" />}
+      {/* data-testid ved siden af className: samme moenster som
+          klokke-taeller ovenfor. className alene er en stil-krog der kan
+          flyttes/omdoebes uden at det er en adfaerdsaendring — en test der
+          hang paa den ville braekke paa den forkerte begivenhed. testid'et
+          er kontrakten testen laaser fast; className er fri til at aendre sig. */}
+      {fejl && <span className="klokke-fejl" data-testid="klokke-fejl" aria-hidden="true" />}
     </button>
   )
 }

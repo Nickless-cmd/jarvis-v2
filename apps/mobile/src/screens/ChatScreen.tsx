@@ -1077,7 +1077,6 @@ export function ChatScreen({
               onTogglePin={sessions.activeId ? handleTogglePin : undefined}
               onSaveMemory={config ? handleSaveMemory : undefined}
               onScrollOffset={onScrollOffset}
-              thinking={stream.state.status === 'working' || serverBusy}
               bottomInset={liftPadding}
             />
           )}

@@ -9,6 +9,7 @@ import { loadFullThinking } from '../lib/fullThinking'
 import { GlidendeTekst } from './GlidendeTekst'
 import { Prikker } from './Prikker'
 import { formatTid } from './InlineToolGroup'
+import { tankeFragment } from '../lib/tankeFragment'
 
 /**
  * «🧠 Tænker…» mens den tænker. «🧠 Tænkte i 14 s ›» når den er færdig.
@@ -148,6 +149,14 @@ export function ThinkingSummary({
   // Fold-ud er kun relevant når der er tekst at vise.
   const expandable = hasText
 
+  // LIVE: hvad han tænker PÅ, dæmpet efter ordet — som desk. Bjørn 21/9-2026:
+  // «tænke fragmenter bør vises I tænke linjen i chatview og linjen over
+  // composer væk». Desk skriver «Tænker · 4 s · Lad mig se hvor værnet sidder…»
+  // på selve linjen; mobilen har intet løbende ur, så tallet står ikke her —
+  // kun fragmentet. Det er den SAMME `tankeFragment` desk bruger, så de to
+  // klienter viser samme sætning for samme tanke.
+  const liveFragment = isLive ? tankeFragment(text) : ''
+
   const toggle = () => {
     if (!expandable) return
     const naeste = !open
@@ -201,7 +210,10 @@ export function ThinkingSummary({
           <View style={styles.ikon}>
             <Brain size={16} color={tokens.color.fg2} strokeWidth={1.8} />
           </View>
-          <GlidendeTekst text={label} aktiv={!!isLive} style={styles.label} numberOfLines={1} />
+          <View style={styles.titel}>
+            <GlidendeTekst text={label} aktiv={!!isLive} style={styles.label} numberOfLines={1} />
+            {liveFragment ? <Text style={styles.meta} numberOfLines={1}>· {liveFragment}</Text> : null}
+          </View>
           {isLive || expandable ? (
             <View style={styles.celle} testID="thinking-caret">
               {isLive ? <Prikker farve={tokens.color.fg2} /> : null}
@@ -235,6 +247,11 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
     paddingVertical: tokens.spacing.sm
   },
   label: { color: tokens.color.fg2, fontSize: 15, flexShrink: 1 },
+  // Fragmentet staar i sin egen, daempede tone efter ordet — som desks
+  // `.linje-meta`. Uden den ville «Taenker» og fragmentet flyde sammen til en
+  // saetning man ikke kan skelne fra et svar.
+  titel: { flexDirection: 'row', alignItems: 'center', flexShrink: 1 },
+  meta: { color: tokens.color.fg3, fontSize: 15, flexShrink: 1, marginLeft: 4 },
   // Samme mål som runde-linjens celler (InlineToolGroup).
   ikon: { width: 20, height: 20, marginRight: 2, alignItems: 'center', justifyContent: 'center' },
   celle: { minWidth: 16, alignItems: 'center', justifyContent: 'center' },

@@ -76,7 +76,6 @@ it('thinking-blokke i stream får egen række — ikke smeltet ind i svaret', as
     <MessageList
       messages={[msg({ id: 'u1', role: 'user', content: 'hvad er 2+2?' })]}
       blocks={blocks}
-      thinking
     />
   )
 
@@ -85,14 +84,31 @@ it('thinking-blokke i stream får egen række — ikke smeltet ind i svaret', as
   // Og teksten skal være en separat boble
   expect(s.getByText('Svaret er 4')).toBeTruthy()
 
-  // TANKESTROEMMEN STAAR OVER KOMPONISTEN, ikke i traaden. Traadens linje
-  // beholder sin rolige form (ikon + «Tænker» + prikker), saa man kan laese
-  // med mens han taenker; raa monolog der flimrer i traaden goer den
-  // ulaeselig. Bjoern 12/9-2026.
-  expect(within(s.getByTestId('thinking-label')).getByText('jeg overvejer om 2+2 er 4'))
-    .toBeTruthy()
-  expect(within(s.getByTestId('thinking-summary')).queryByText('jeg overvejer om 2+2 er 4'))
-    .toBeNull()
+  // LINJEN OVER KOMPONISTEN FINDES IKKE LAENGERE (Bjørn 21/9-2026). Den bar
+  // taenke-fragmenterne nederst i traaden, og desk har ingen saadan linje.
+  expect(s.queryByTestId('thinking-label')).toBeNull()
+})
+
+/**
+ * Bjørn 21/9-2026: «vi har en linje over composer der viser tænke fragmenter og
+ * forsvinder igen efter streamen.. tænke fragmenter bør vises I tænke linjen i
+ * chatview og linjen over composer væk».
+ *
+ * Fragmentet står nu PÅ tænke-linjen selv — samme sted som desk viser det
+ * («Tænker · 4 s · Lad mig se hvor værnet sidder…»). Mobilen har intet løbende
+ * ur, så kun fragmentet følger med ordet.
+ */
+it('tænke-fragmentet står på trådens linje mens den tænker', async () => {
+  const s = await render(
+    <MessageList
+      messages={[msg({ id: 'u1', role: 'user', content: 'hvad er 2+2?' })]}
+      // Tanken er den SIDSTE blok → rækken er live og bærer fragmentet.
+      blocks={[{ type: 'thinking', thinking: 'jeg overvejer om 2+2 er 4' }]}
+    />
+  )
+  expect(
+    within(s.getByTestId('thinking-summary')).getByText(/jeg overvejer om 2\+2 er 4/)
+  ).toBeTruthy()
 })
 
 /**

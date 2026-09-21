@@ -11,11 +11,7 @@ import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 import { nextUserRow } from '../lib/messageNav'
 import { MessageBubble } from './MessageBubble'
 import { InlineToolGroup } from './InlineToolGroup'
-import { ThinkingLabel } from './ThinkingLabel'
 import { aendringAf, diffFraResultat, toolDiff } from '../lib/toolDiff'
-import { arbejdsLinje } from '../lib/arbejdsLinje'
-import { TRIN_MS } from '../lib/prikSekvens'
-import { useReducedMotion } from '../lib/useReducedMotion'
 import { describeTool, describeToolResult } from '../lib/toolSummary'
 import { countFromResult, type ToolItem } from '../lib/toolGroup'
 import { SKILL_VAERKTOEJER, type SkillKald } from '../lib/skillLinje'
@@ -42,8 +38,6 @@ export interface MessageListHandle {
 interface MessageListProps {
   messages: ChatMessage[]
   blocks: ContentBlock[]
-  /** Vis «Tænker» nederst i tråden mens Jarvis arbejder (ChatGPT-mønsteret). */
-  thinking?: boolean
   /**
    * Ekstra plads i bunden mens tastaturet er fremme.
    *
@@ -342,7 +336,7 @@ function taenketid(start?: number, slut?: number): number | undefined {
 }
 
 export const MessageList = forwardRef<MessageListHandle, MessageListProps>(function MessageList(
-  { messages, blocks, onResend, onScrollOffset, thinking, bottomInset = 0, pins, onTogglePin, onSaveMemory, rundeEtiketter, skillFlade, nyeFra, visning = 'normal', tankeResumeer, onRewind },
+  { messages, blocks, onResend, onScrollOffset, bottomInset = 0, pins, onTogglePin, onSaveMemory, rundeEtiketter, skillFlade, nyeFra, visning = 'normal', tankeResumeer, onRewind },
   ref
 ) {
   const tokens = useTheme()
@@ -595,10 +589,11 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
     <FlatList
       ref={flatRef}
       inverted
-      // Inverteret liste: ListHeaderComponent tegnes NEDERST på skærmen —
-      // altså lige efter den nyeste besked, præcis hvor ChatGPT viser
-      // «Thinking». Det er derfor labelen ligger her og ikke over komponisten.
-      ListHeaderComponent={thinking ? <ThinkingLabelRow blocks={blocks ?? []} /> : null}
+      // Ingen linje over komponisten (Bjørn 21/9-2026: «tænke fragmenter bør
+      // vises I tænke linjen i chatview og linjen over composer væk»). Den bar
+      // tænke-fragmenterne og forsvandt når streamen sluttede. Fragmenterne
+      // staar nu PAA traadens egen taenke-linje (ThinkingSummary), praecis hvor
+      // desk har dem — og der er derfor intet der flyder ovenover traaden.
       data={ordered}
       keyExtractor={(item) => item.key}
       onContentSizeChange={(_w, h) => { contentLenRef.current = h }}
@@ -688,28 +683,6 @@ function NyeBeskederRow() {
 }
 
 /**
- * Linjen lige over skrivefeltet — den der siger hvad han laver NU.
- *
- * Den ejer selv prik-tælleren. Lægges den i forælderen, gentegner hele
- * beskedlisten sig hver 420. ms mens han arbejder.
- */
-function ThinkingLabelRow({ blocks }: { blocks: ContentBlock[] }) {
-  const styles = useStyles(makestyles)
-  const reduced = useReducedMotion()
-  const [trin, setTrin] = useState(0)
-  useEffect(() => {
-    if (reduced) return
-    const t = setInterval(() => setTrin((n: number) => n + 1), TRIN_MS)
-    return () => clearInterval(t)
-  }, [reduced])
-  return (
-    <View style={styles.thinkingRow}>
-      <ThinkingLabel label={arbejdsLinje(blocks, trin)} />
-    </View>
-  )
-}
-
-/**
  * Kompakteringens markør. Én diskret linje — ikke en boble.
  *
  * Markøren er intern bogholderi: den fortæller at ældre beskeder er blevet
@@ -740,10 +713,6 @@ const BOTTOM_CLEARANCE = 124
 const TOP_CLEARANCE = 72
 
 const makestyles = (tokens: Theme) => StyleSheet.create({
-  // 12 dp — SAMME indrykning som komponisten har under brug (Composer.outer).
-  // Bjoern: lyset skal loebe «hele composers laengde». Med 16 dp sluttede
-  // linjen fire punkter inde paa hver side, saa de to kanter ikke floej.
-  thinkingRow: { paddingHorizontal: 12 },
   // Kompakterings-markøren: diskret, tonet i warn — samme udtryk som desktop.
   compactMarkerRow: {
     marginHorizontal: tokens.spacing.lg,

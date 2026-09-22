@@ -16,11 +16,23 @@ interface Prefs {
 }
 
 const CHANNELS: Channel[] = ['auto', 'mobile', 'desktop', 'push', 'discord', 'telegram']
+
+/**
+ * V7 (22/9-2026): «no dual truth». Denne sektion viste FOER en per-type-vælger
+ * for hver af de fem — men `briefing`, `reminder` og `reach_out` har ALLE en
+ * modpart i NotifikationsValg (rækker i `notifikations_valg`), og det er DEN
+ * der reelt vinder: `notification_router` læser rækkerne, ikke disse kolonner.
+ * Et valg her saa ud til at gælde, men gjorde intet — «Morgenbriefing →
+ * Discord» her, mens rækken sagde noget andet, ændrede ingenting.
+ *
+ * `wakeup` staar TILBAGE: NotifikationsValg's egen NAVN-liste
+ * (NotifikationsValg.tsx) har INGEN `wakeup`-noegle, saa den nye sektion kan
+ * slet ikke vise den — at fjerne den herfra ville lade «Planlagte
+ * opfølgninger» forsvinde sporløst fra begge sektioner. Se rapporten for
+ * detaljer; core/services/notifikations_valg.py er læst som den ER NU.
+ */
 const TYPES: { key: keyof Prefs; label: string }[] = [
   { key: 'global', label: 'Standard (alle)' },
-  { key: 'briefing', label: 'Morgenbriefing' },
-  { key: 'reminder', label: 'Påmindelser' },
-  { key: 'reach_out', label: 'Jarvis tager kontakt' },
   { key: 'wakeup', label: 'Planlagte opfølgninger' },
 ]
 

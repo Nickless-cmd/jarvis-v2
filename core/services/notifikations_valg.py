@@ -28,10 +28,17 @@ GYLDIGE_KANALER = {"auto", "mobile", "desktop", "push", "ingen"}
 #: FOR ALLE proaktive kilder (se route_proactive_notification), saa en
 #: "ingen" her slukkede tavst for et eksisterende, ufeed-relateret system —
 #: efterproevet: REACH_OUT/BRIEFING gav begge {'delivered': False, 'channel':
-#: 'fravalgt'}. De fire staar derfor UDENFOR STANDARD indtil `fra_jarvis()`
-#: (feedens egen afsender) faktisk faar et kaldested for en af dem — indtil
-#: da er de "ukendte" for feeden og falder til "auto" ligesom enhver anden
-#: slags feeden ikke ejer (membrane_breach, infra_security, ...).
+#: 'fravalgt'}.
+#:
+#: `reach_out` er siden (opgave "routeren-foeder", 2026-09-22) flyttet TILBAGE
+#: i STANDARD — se begrundelsen ved selve STANDARD nedenfor: routeren foder nu
+#: altid en feed-raekke uanset kanal_for()s svar, saa "ingen" ikke laengere
+#: kan betyde total tavshed. `briefing`, `reminder` og `initiative` staar
+#: STADIG udenfor: der findes ingen afsender for dem NOGEN steder i repoet
+#: (grep for "briefing"|"reminder"|"initiative" som notification_type giver
+#: kun urelaterede traef) — de er navne fra den gamle
+#: notification_preferences-tabel, ikke rigtige haendelser. En STANDARD-vaerdi
+#: for en slags der aldrig fødes ville vaere ren fiktion.
 #:
 #: `wakeup` er IKKE et af de fire — den er (i modsaetning til `reach_out`)
 #: ikke `notification_type` for noget andet, eksisterende system; grep over
@@ -41,6 +48,20 @@ GYLDIGE_KANALER = {"auto", "mobile", "desktop", "push", "ingen"}
 #: at huske noget — den blokerer ikke en koersel og venter ikke paa svar
 #: (modsat `approval`/`question`), saa den behoever ikke afbryde telefonen.
 #: Den staar stadig i feeden; brugeren kan altid skrue op i indstillingerne.
+#:
+#: Opgave "routeren-foeder" (2026-09-22): `notification_router.
+#: route_proactive_notification()` laegger nu SELV en feed-raekke for enhver
+#: slags den leverer — ogsaa naar `kanal_for()` her siger "ingen" (raekken
+#: skrives i routerens ydre wrapper, EFTER selve leverings-forsoeget, uanset
+#: dets udfald). K4s aegte problem var ALDRIG at "ingen" betoed "ingen push"
+#: — det var at "ingen" dengang betoed "INGENTING SKER", fordi routeren ikke
+#: havde nogen anden vej for reach_out/briefing. Den vej findes nu (feeden),
+#: saa "ingen" er igen kun en push-praeference, praecis som for run_done/
+#: release/incident/quota ovenfor — og `reach_out` kan derfor sikkert have en
+#: standard igen. De fem oevrige (central_flag, membrane_breach,
+#: infra_security, keymaker_key_earned, moltbook_mention) har ALDRIG vaeret i
+#: K4s undtagelse — de faldt bare til "auto" som enhver anden ukendt slags.
+#: De faar nu en bevidst standard i stedet for den implicitte.
 STANDARD: dict[str, str] = {
     "approval": "auto",
     "question": "auto",
@@ -50,6 +71,12 @@ STANDARD: dict[str, str] = {
     "incident": "ingen",
     "quota": "ingen",
     "wakeup": "ingen",
+    "reach_out": "auto",             # Jarvis tager selv initiativ — som en besked fra et menneske
+    "central_flag": "ingen",         # Centralens egen overvaagning — informativt, sjaeldent akut
+    "membrane_breach": "auto",       # altid importance=critical: brud paa den beskyttede kerne
+    "infra_security": "auto",        # altid importance=high: vaert/net i fare
+    "keymaker_key_earned": "ingen",  # "en mulighed, ikke et brud" (central_keymaker.py)
+    "moltbook_mention": "ingen",     # social omtale, ikke tidskritisk
 }
 
 #: Kolonnenavn i notification_preferences -> slags i den nye tabel.

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7930/15375 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7932/15377 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 7930/15375 functions/methods documented (51%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 686 | 1265 | 54% |
-| `core.services` | 5236 | 10455 | 50% |
+| `core.services` | 5238 | 10457 | 50% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 107 | 183 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1309,14 +1309,14 @@ Generated from source. 7930/15375 functions/methods documented (51%). The list b
 - `core/services/notes_connector.py` :: `delete_note` (L114)
 - `core/services/notes_connector.py` :: `list_notes` (L96)
 - `core/services/notes_connector.py` :: `search_notes` (L105)
-- `core/services/notification_router.py` :: `reset_delivery` (L266)
-- `core/services/notifikations_emittere.py` :: `paa_godkendelse` (L67)
-- `core/services/notifikations_emittere.py` :: `paa_koersel_faerdig` (L83)
-- `core/services/notifikations_emittere.py` :: `paa_koersel_fejlet` (L77)
-- `core/services/notifikations_emittere.py` :: `system` (L94)
+- `core/services/notification_router.py` :: `reset_delivery` (L367)
+- `core/services/notifikations_emittere.py` :: `paa_godkendelse` (L73)
+- `core/services/notifikations_emittere.py` :: `paa_koersel_faerdig` (L89)
+- `core/services/notifikations_emittere.py` :: `paa_koersel_fejlet` (L83)
+- `core/services/notifikations_emittere.py` :: `system` (L100)
 - `core/services/notifikations_opstart.py` :: `koer_ved_opstart` (L13)
-- `core/services/notifikations_valg.py` :: `kanal_for` (L73)
-- `core/services/notifikations_valg.py` :: `saet` (L90)
+- `core/services/notifikations_valg.py` :: `kanal_for` (L100)
+- `core/services/notifikations_valg.py` :: `saet` (L117)
 - `core/services/ntfy_gateway.py` :: `is_configured` (L26)
 - `core/services/oauth_flow.py` :: `is_known_provider` (L46)
 - `core/services/oauth_flow.py` :: `redirect_uri` (L50)

@@ -46,11 +46,17 @@ def _maaske_push(user_id: str, slags: str, titel: str, tekst: str,
         # push-halvdelen var reelt doed: ingen synlig push paa telefonen,
         # "Jarvis" + tom krop paa desktoppen. `tekst or titel` sikrer en krop
         # ogsaa naar kalderen (fx `paa_godkendelse`) ikke selv satte tekst.
+        # feed=False (routeren-foeder, 2026-09-22): `_foed()` har LIGE lagt
+        # raekken faa linjer over dette kald — routeren skriver nu ellers selv
+        # en raekke for enhver slags den ikke faar besked om, og uden dette
+        # flag ville approval/run_failed/run_done/release/incident/quota alle
+        # dubleres (dobbelt-fødsel).
         notification_router.route_proactive_notification(
             user_id, slags,
             {"title": titel, "preview": tekst or titel, "body": tekst or titel,
              "kind": slags, "session_id": session_id or ""},
-            importance="high" if slags in ("approval", "question") else "normal")
+            importance="high" if slags in ("approval", "question") else "normal",
+            feed=False)
     except Exception:
         # Raekken staar allerede i feeden. Et brudt push maa ikke tage den med.
         _log.warning("push for %s til %s fejlede", slags, user_id, exc_info=True)

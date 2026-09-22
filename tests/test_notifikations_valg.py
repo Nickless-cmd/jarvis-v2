@@ -98,15 +98,19 @@ def test_migreringen_overskriver_ikke_et_nyere_valg(isolated_runtime) -> None:
 
 # ── STANDARD er feedens politik, ikke systemets (task 5-rettelse) ──────────────
 def test_kanal_for_ukendt_slags_falder_til_auto_ikke_ingen(isolated_runtime) -> None:
-    """`STANDARD` daekker kun feedens elleve slags. `route_proactive_notification()`
-    kaldes ogsaa med slags der aldrig hoerer til feeden — fx `membrane_breach`
-    (kritisk sikkerhed) og `infra_security`. De maa IKKE stilles som «fravalgt»
-    bare fordi de ikke staar i feedens tabel."""
+    """En slags `STANDARD` intet siger om maa IKKE stilles som «fravalgt» bare
+    fordi den ikke staar i tabellen — det ville tavst slukke for en kildes
+    signal ingen bad om at slukke.
+
+    `membrane_breach`/`infra_security`/`keymaker_key_earned` proevede dette
+    foer (opgave "routeren-foeder", 2026-09-22) — de har nu hver deres egen,
+    bevidste STANDARD-vaerdi (se `test_de_seks_router_slags_har_bevidste_
+    standarder`) og tester derfor ikke laengere "ukendt" her. `keymaker_
+    key_pending` er stadig genuint ukendt for STANDARD."""
     from core.services import notifikations_valg as v
 
-    assert v.kanal_for("bjorn", "membrane_breach") == "auto"
-    assert v.kanal_for("bjorn", "infra_security") == "auto"
-    assert v.kanal_for("bjorn", "keymaker_key_earned") == "auto"
+    assert v.kanal_for("bjorn", "keymaker_key_pending") == "auto"
+    assert v.kanal_for("bjorn", "et_navn_ingen_har_opfundet_endnu") == "auto"
 
 
 def test_membrane_breach_leveres_gennem_routeren(isolated_runtime, monkeypatch) -> None:
@@ -147,19 +151,54 @@ def test_eksplicit_raekke_vinder_ogsaa_for_ukendt_slags(isolated_runtime) -> Non
 # proactivity_bridge.py, autonomous_outreach_daemon.py, action_router.py og
 # central_moltbook.py (via broen), som intet har med notifikations-feeden at
 # goere. Da de fire stod i STANDARD med "ingen", stoppede kanal_for() dem ALLE
-# tavst — ogsaa dem der aldrig var feedens at styre. De er derfor fjernet fra
-# STANDARD: fald-tilbaget for dem er nu det samme "auto" som for enhver anden
-# slags STANDARD ikke har en mening om (se `kanal_for()`s docstring), indtil
-# `fra_jarvis()` faktisk faar et kaldested for en af dem.
-def test_de_fire_navne_staar_ikke_i_standard(isolated_runtime) -> None:
+# tavst — ogsaa dem der aldrig var feedens at styre.
+#
+# `briefing`, `reminder`, `initiative` staar STADIG udenfor STANDARD: der
+# findes ingen afsender for dem nogen steder i repoet (grep for dem som
+# notification_type finder kun urelaterede traef) — de er navne fra den gamle
+# notification_preferences-tabel, ikke rigtige haendelser, og en STANDARD-
+# vaerdi for en slags der aldrig fødes ville vaere ren fiktion.
+def test_briefing_reminder_initiative_staar_stadig_ikke_i_standard(isolated_runtime) -> None:
     from core.services import notifikations_valg as v
 
-    for slags in ("briefing", "reminder", "reach_out", "initiative"):
+    for slags in ("briefing", "reminder", "initiative"):
         assert slags not in v.STANDARD, (
-            f"{slags} staar stadig i STANDARD og kan igen slukke for et "
-            "system der ikke er feedens"
+            f"{slags} har ingen afsender nogen steder i repoet — en "
+            "STANDARD-vaerdi for den ville vaere fiktion"
         )
         assert v.kanal_for("bjorn", slags) == "auto"
+
+
+# `reach_out` er siden (opgave "routeren-foeder", samme dag) flyttet TILBAGE i
+# STANDARD. K4s aegte problem var ikke at "ingen" betoed "ingen push" — det var
+# at "ingen" dengang betoed at notifikationen forsvandt HELT, fordi routeren
+# ikke havde nogen anden vej for reach_out. Den vej findes nu:
+# `notification_router.route_proactive_notification()` laegger altid en
+# feed-raekke naar den leverer, UANSET hvad `kanal_for()` svarer (se
+# `_foed_feed_raekke()`), saa "ingen" er igen kun en push-praeference —
+# praecis som for run_done/release/incident/quota.
+def test_reach_out_har_faaet_en_standard_igen(isolated_runtime) -> None:
+    from core.services import notifikations_valg as v
+
+    assert "reach_out" in v.STANDARD
+    assert v.kanal_for("bjorn", "reach_out") == "auto"
+
+
+# ── De seks router-ejede slags har hver en bevidst STANDARD (samme opgave) ──
+def test_de_seks_router_slags_har_bevidste_standarder(isolated_runtime) -> None:
+    from core.services import notifikations_valg as v
+
+    forventet = {
+        "reach_out": "auto",
+        "central_flag": "ingen",
+        "membrane_breach": "auto",
+        "infra_security": "auto",
+        "keymaker_key_earned": "ingen",
+        "moltbook_mention": "ingen",
+    }
+    for slags, kanal in forventet.items():
+        assert slags in v.STANDARD, f"{slags} mangler i STANDARD"
+        assert v.kanal_for("bjorn", slags) == kanal
 
 
 def test_reach_out_leveres_gennem_routeren(isolated_runtime, monkeypatch) -> None:

@@ -1,15 +1,26 @@
 """Unified proactive notification routing (spec docs/specs/2026-06-20-...).
 
 ÉT indgangspunkt — `route_proactive_notification()` — som ALLE proaktive kilder
-(morgenbriefing, reminders, reach_out, team-invites, wakeups) kalder i stedet for
-hver sin hardcodede sti. Lag-ansvar:
+(reach_out, central_flag, membrane_breach, infra_security, keymaker_key_earned,
+moltbook_mention, team-invites, wakeups) kalder i stedet for hver sin
+hardcodede sti. Lag-ansvar:
 
   notification_router  =  POLICY (per-bruger-præference, quiet hours, kanal-resolve,
                            fallback) + MEKANIK (device-aware levering + eskalering,
                            inlined fra det tidligere proactive_router i Phase 5)
+                           + FEED (opgave "routeren-foeder", 2026-09-22): laegger
+                           selv en raekke i notifikations-feeden for enhver slags
+                           den leverer, medmindre kalderen (notifikations_emittere)
+                           allerede har lagt den selv — se `route_proactive_
+                           notification()`s `feed`-parameter.
   push_dispatcher / desktop_notifications / gateways  =  lavniveau-transport
 
 Kanalværdier: auto | mobile | desktop | push | discord | telegram.
+
+`briefing`/`reminder`/`initiative` er IKKE rigtige kilder — der findes ingen
+afsender for dem nogen steder i repoet (se docs/superpowers/specs/2026-09-21-
+notifikations-feed-design.md). De naevnes ikke ovenfor, i modsaetning til en
+tidligere version af denne docstring.
 """
 from __future__ import annotations
 
@@ -180,6 +191,62 @@ def _deliver_to_channel(uid: str, channel: str, payload: dict, ntype: str) -> bo
     return False
 
 
+# ── Feed-fødsel (opgave "routeren-foeder", 2026-09-22) ──────────────────────
+# Denne docstring kaldte routeren "ÉT indgangspunkt — som ALLE proaktive
+# kilder kalder" længe før det var sandt for notifikations-FEEDEN: seks
+# rigtige slags (reach_out, central_flag, membrane_breach, infra_security,
+# keymaker_key_earned, moltbook_mention) gik allerede herigennem til push,
+# men ingen af dem lagde en række i feeden. Fra nu af gør denne funktion
+# netop det — for ENHVER slags, ikke kun de seks, saa det naeste nogen
+# tilfoejer foder feeden af sig selv uden at nogen skal huske det.
+#
+# Fald-tilbage-titel pr. slags, kun brugt naar payloaden selv ikke satte en
+# (fx `autonomous_outreach_daemon` sender `title=None`, og `moltbook_mention`
+# har aldrig haft en title-noegle). NAVN i NotifikationsValg.tsx er
+# BRUGERENS ord for slags'en i indstillinger; denne er FEED-raekkens egen
+# titel naar payloaden intet siger — de to noedvendigvis overlapper i
+# betydning, men lever hver sit sted.
+_FEED_TITEL_FALDBACK: dict[str, str] = {
+    "reach_out": "Jarvis tager kontakt",
+    "central_flag": "Signal fra Centralen",
+    "membrane_breach": "Membran-brud",
+    "infra_security": "Infrastruktur-sikkerhed",
+    "keymaker_key_earned": "Nøgle optjent",
+    "keymaker_key_pending": "Nøgler venter",
+    "moltbook_mention": "Moltbook",
+}
+
+
+def _feed_titel_og_tekst(notification_type: str, payload: dict) -> tuple[str, str]:
+    """Payloads er ikke ens — nogle sender title+body, andre title+preview+body,
+    andre title+message, moltbook_mention kun text. Ét sted der overs.ætter til
+    feedens (titel, tekst), med et fald-tilbage der aldrig giver en tom titel."""
+    titel = str(payload.get("title") or "").strip()
+    if not titel:
+        titel = _FEED_TITEL_FALDBACK.get(notification_type, "Jarvis")
+    tekst = (str(payload.get("body") or "").strip()
+             or str(payload.get("message") or "").strip()
+             or str(payload.get("preview") or "").strip()
+             or str(payload.get("text") or "").strip())
+    return titel, tekst
+
+
+def _foed_feed_raekke(user_id: str, notification_type: str, payload: dict) -> None:
+    """Læg én åben række i notifikations-feeden for en router-drevet slags.
+
+    `kilde="egen"`: der er ingen anden ejer at hydrere mod (ingen approval_id,
+    intet run_id) — rækkens titel/tekst ER sandheden, ligesom
+    `notifikations_emittere.fra_jarvis()`. `ref=None` med vilje: to
+    `central_flag`-flag er to virkelige haendelser, ikke gentagelser af samme
+    raekke, saa de skal IKKE afdubleres paa (slags, ref) som en godkendelse
+    ville."""
+    from core.services import notifikationer as _lager
+    titel, tekst = _feed_titel_og_tekst(notification_type, payload)
+    _lager.opret(user_id=user_id, slags=notification_type, kilde="egen",
+                titel=titel, tekst=tekst,
+                session_id=str(payload.get("session_id") or "") or None)
+
+
 def route_proactive_notification(
     user_id: str,
     notification_type: str,
@@ -187,11 +254,45 @@ def route_proactive_notification(
     importance: str = "normal",
     *,
     _skip_quiet: bool = False,
+    feed: bool = True,
 ) -> dict:
     """Samlet routing for alle proaktive notifikationer — B-batch 2: leverings-udfald
-    synligt i Centralen (delivery-fejl/fallback var stille). Tynd self-safe observe-wrapper."""
+    synligt i Centralen (delivery-fejl/fallback var stille). Tynd self-safe observe-wrapper.
+
+    `feed` (default True): laeg ogsaa en raekke i notifikations-feeden — se
+    modulets docstring foroven for hvorfor. `notifikations_emittere._maaske_push()`
+    kalder med `feed=False`: den har ALLEREDE lagt sin egen raekke foer den
+    kalder routeren udelukkende for pushet, og en ekstra raekke her ville
+    duplere approval/run_failed/run_done/release/incident/quota (dobbelt-fødsel).
+    Alle andre kaldere (de seks router-ejede slags, og hvad end der kommer
+    senere) laegger INGEN raekke selv, saa default skal vaere True.
+
+    Skrives IKKE naar:
+    - `feed=False` (se ovenfor),
+    - `_skip_quiet=True` — det er en genudsendelse fra quiet-hours-koeen
+      (`fire_due_delayed`); raekken blev allerede lagt foerste gang
+      notifikationen blev sat i koe, og en ny her ville duplere den,
+    - `importance == "low"` — defensivt gulv mod fremtidig stoej. Maalt
+      2026-09-22: ingen af de seks nuvaerende router-kilder bruger "low"
+      (se rapporten), saa gulvet filtrerer intet i dag — det er ren
+      forsikring mod en fremtidig kilde der kalder routeren tit uden selv at
+      have dedup/cooldown.
+    - intet `user_id` (routerens egen tidlige udgang for det).
+
+    Feed-skrivningen kan IKKE tage pushet med sig hvis den fejler — kaldet til
+    `_foed_feed_raekke()` herunder staar i sit EGET try/except, EFTER
+    `_route_proactive_notification_impl()` allerede har afgjort/forsoegt
+    leveringen. Routeren er den varme sti; feed-raekken er tilbehøret."""
     result = _route_proactive_notification_impl(
         user_id, notification_type, payload, importance, _skip_quiet=_skip_quiet)
+    if feed and not _skip_quiet and str(importance or "").strip().lower() != "low":
+        uid = (user_id or "").strip()
+        if uid:
+            try:
+                _foed_feed_raekke(uid, notification_type, payload)
+            except Exception:
+                _log.warning("notification_router: feed-raekke for %s til %s fejlede",
+                             notification_type, uid, exc_info=True)
     try:
         from core.services.central_core import central
         central().observe({"cluster": "stream", "nerve": "notification_route",

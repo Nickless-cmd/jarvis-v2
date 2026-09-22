@@ -30,12 +30,12 @@ describe('NotificationsSection', () => {
     ))
   })
 
-  // V7: «no dual truth» — Morgenbriefing/Påmindelser/«Jarvis tager kontakt»
-  // fandtes FOER som per-type-vælgere BAADE her (kolonner i
+  // V7/V9: «no dual truth» — Morgenbriefing/Påmindelser/«Jarvis tager
+  // kontakt»/wakeup fandtes FOER som per-type-vælgere BAADE her (kolonner i
   // notification_preferences) OG i NotifikationsValg (raekker i
   // notifikations_valg), som rent faktisk vinder (notification_router laeser
   // raekkerne). Et valg i den gamle sektion saa ud til at gaelde, men gjorde
-  // intet. De tre overlappende vælgere er derfor væk herfra — kun
+  // intet. Alle fire overlappende vælgere er derfor væk herfra — kun
   // Standard (alle) og Stille-timer hører til den gamle sektion nu.
   it('de overlappende per-type-vælgere er væk — kun Standard og Stille-timer', async () => {
     const cfg = { apiBaseUrl: 'http://x', authToken: 't' }
@@ -44,14 +44,6 @@ describe('NotificationsSection', () => {
     expect(screen.queryByText('Morgenbriefing')).toBeNull()
     expect(screen.queryByText('Påmindelser')).toBeNull()
     expect(screen.queryByText('Jarvis tager kontakt')).toBeNull()
-  })
-
-  // «Planlagte opfølgninger» (wakeup) har INGEN modpart i NotifikationsValg
-  // (dens NAVN-liste mangler `wakeup`) — den bliver derfor staaende her,
-  // fremfor at forsvinde sporløst fra begge sektioner.
-  it('«Planlagte opfølgninger» bliver staaende — NotifikationsValg har ingen modpart', async () => {
-    const cfg = { apiBaseUrl: 'http://x', authToken: 't' }
-    render(<NotificationsSection config={cfg} />)
-    await waitFor(() => expect(screen.getByText('Planlagte opfølgninger')).toBeInTheDocument())
+    expect(screen.queryByText('Planlagte opfølgninger')).toBeNull()
   })
 })

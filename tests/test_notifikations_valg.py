@@ -218,6 +218,26 @@ def test_migreringen_taber_ikke_wakeup(isolated_runtime) -> None:
     assert v.kanal_for("bjorn", "wakeup") == "push", "wakeup maa ikke forsvinde"
 
 
+# ── K5 (2026-09-22): wakeup flyttet helt over i den nye model ──────────────
+def test_wakeup_har_egen_standard_og_ny_vej_vinder(isolated_runtime) -> None:
+    """`wakeup` boede foer to steder: kolonnen i `notification_preferences`
+    (den gamle `NotificationsSection.tsx`) OG raekken i `notifikations_valg`
+    (den nye `NotifikationsValg.tsx`, som reelt vinder). Brugeren kunne se
+    "discord" i den gamle sektion mens systemet brugte "push" fra raekken —
+    tavst, ingen fejl. `wakeup` er nu tilfoejet til `STANDARD`, saa den har
+    en standard OG kan saettes gennem den ene, nye vej."""
+    from core.services import notifikations_valg as v
+
+    assert v.kanal_for("bjorn", "wakeup") == "ingen", (
+        "standarden for wakeup boer vaere 'ingen' — se STANDARD's kommentar"
+    )
+    v.saet("bjorn", "wakeup", "desktop")
+    assert v.kanal_for("bjorn", "wakeup") == "desktop", (
+        "et eksplicit valg gennem den nye vej skal vinde over standarden"
+    )
+    assert v.alle("bjorn")["wakeup"] == "desktop"
+
+
 def test_migreringen_klemmer_ukendte_kanaler_ned_i_gyldige(isolated_runtime) -> None:
     """Migreringen validerede foer ikke mod `GYLDIGE_KANALER` — de gamle
     kolonner kan lovligt indeholde `discord`/`telegram`

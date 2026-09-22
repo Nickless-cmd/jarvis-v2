@@ -13,6 +13,7 @@ const NAVN: Record<string, string> = {
   reminder: 'Påmindelser',
   reach_out: 'Når Jarvis selv tager kontakt',
   initiative: 'Initiativer',
+  wakeup: 'Planlagte opfølgninger',
   release: 'Ny app-version',
   incident: 'Hændelser i systemet',
   quota: 'Kvote opbrugt',

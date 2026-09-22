@@ -29,6 +29,19 @@ describe('NotifikationsValg', () => {
     await waitFor(() => expect(saet).toHaveBeenCalledWith(cfg, 'release', 'push'))
   })
 
+  // K5 (2026-09-22): `wakeup` boede foer BAADE her (kolonnen i den gamle
+  // NotificationsSection) OG som raekke — men NAVN manglede en `wakeup`-nøgle,
+  // saa denne sektion kunne slet ikke vise den. `wakeup` er nu tilfoejet til
+  // NAVN, saa den nye sektion er den ENESTE der viser den.
+  it('viser og gemmer wakeup ("Planlagte opfølgninger")', async () => {
+    hent.mockResolvedValue({ valg: { approval: 'auto', wakeup: 'ingen' } })
+    saet.mockResolvedValue({ ok: true, fejl: '' })
+    render(<NotifikationsValg config={cfg} />)
+    const felt = await screen.findByLabelText('Planlagte opfølgninger')
+    fireEvent.change(felt, { target: { value: 'push' } })
+    await waitFor(() => expect(saet).toHaveBeenCalledWith(cfg, 'wakeup', 'push'))
+  })
+
   it('ruller valget tilbage og siger det naar det ikke kunne gemmes', async () => {
     hent.mockResolvedValue({ valg: { release: 'ingen' } })
     saet.mockResolvedValue({ ok: false, fejl: 'Kunne ikke gemmes.' })

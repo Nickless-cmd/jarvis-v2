@@ -32,6 +32,15 @@ GYLDIGE_KANALER = {"auto", "mobile", "desktop", "push", "ingen"}
 #: (feedens egen afsender) faktisk faar et kaldested for en af dem — indtil
 #: da er de "ukendte" for feeden og falder til "auto" ligesom enhver anden
 #: slags feeden ikke ejer (membrane_breach, infra_security, ...).
+#:
+#: `wakeup` er IKKE et af de fire — den er (i modsaetning til `reach_out`)
+#: ikke `notification_type` for noget andet, eksisterende system; grep over
+#: `route_proactive_notification`-kaldene finder ingen anden kilde end denne
+#: feed der bruger "wakeup". Den kan derfor sikkert have en standard her.
+#: Valgt "ingen": en planlagt opfoelgning er en TING JARVIS SELV satte for
+#: at huske noget — den blokerer ikke en koersel og venter ikke paa svar
+#: (modsat `approval`/`question`), saa den behoever ikke afbryde telefonen.
+#: Den staar stadig i feeden; brugeren kan altid skrue op i indstillingerne.
 STANDARD: dict[str, str] = {
     "approval": "auto",
     "question": "auto",
@@ -40,6 +49,7 @@ STANDARD: dict[str, str] = {
     "release": "ingen",
     "incident": "ingen",
     "quota": "ingen",
+    "wakeup": "ingen",
 }
 
 #: Kolonnenavn i notification_preferences -> slags i den nye tabel.

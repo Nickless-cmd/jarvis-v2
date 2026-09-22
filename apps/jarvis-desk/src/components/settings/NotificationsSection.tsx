@@ -25,15 +25,14 @@ const CHANNELS: Channel[] = ['auto', 'mobile', 'desktop', 'push', 'discord', 'te
  * Et valg her saa ud til at gælde, men gjorde intet — «Morgenbriefing →
  * Discord» her, mens rækken sagde noget andet, ændrede ingenting.
  *
- * `wakeup` staar TILBAGE: NotifikationsValg's egen NAVN-liste
- * (NotifikationsValg.tsx) har INGEN `wakeup`-noegle, saa den nye sektion kan
- * slet ikke vise den — at fjerne den herfra ville lade «Planlagte
- * opfølgninger» forsvinde sporløst fra begge sektioner. Se rapporten for
- * detaljer; core/services/notifikations_valg.py er læst som den ER NU.
+ * V9 (22/9-2026): `wakeup` var den sidste tilbage her, fordi NotifikationsValg's
+ * NAVN-liste manglede en `wakeup`-nøgle. Den nøgle er nu tilføjet (og
+ * `notifikations_valg.STANDARD` har fået en standard for den), så `wakeup`
+ * er flyttet til den nye sektion — samme grund som de tre andre: rækken i
+ * `notifikations_valg` vinder, denne kolonne gjorde intet.
  */
 const TYPES: { key: keyof Prefs; label: string }[] = [
   { key: 'global', label: 'Standard (alle)' },
-  { key: 'wakeup', label: 'Planlagte opfølgninger' },
 ]
 
 /** Notifikations-routing (spec §6): vælg HVOR proaktive notifikationer lander —

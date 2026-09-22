@@ -41,6 +41,7 @@ import './styles/environment-inspector.css'
 import './styles/cheap-lane.css'
 import './styles/cowork-categories.css'
 import './styles/desk-settings.css'
+import './styles/raekkevisning.css'
 
 /** App = ren wiring. SettingsProvider er wrappet i main.tsx, så useSettings
  *  virker her. Ikke-konfigureret → SetupScreen. Ellers shell med aktiv flade. */

@@ -1,0 +1,220 @@
+/* ════════════════════════════════════════════════════════════════════════
+   RÆKKEVISNING — alternativ transskript-visning bag en knap.
+   Bjørn 22/9-2026: «jeg vil gerne have du rammer der 1:1 med demoen».
+
+   Alle tal er MÅLT i DSH's kilde, ikke taget fra en gengivelse:
+     ui-primitives/src/DisclosureRow.module.css
+     ui-chat/src/client/chat/{ChatView,MessageItem,AssistantMarkdown}.module.css
+     ui-chat/src/client/chat/TurnProcessNodeView.module.css
+     ui-theme/src/styles/design-platform.css
+
+   ALT er scopet under `.raekkevisning`. Bobblevisningen deler stylesheet med
+   os, og en regel som `.r { background: none }` ville ellers ramme klasser vi
+   ikke ejer. Ingen selektor herunder må stå uden rod-klassen.
+   ════════════════════════════════════════════════════════════════════════ */
+
+.raekkevisning {
+  /* Målt: fire teksttrin. Vores palet har kun TRE, og det manglende er
+     præcis dét en sammenfatning bruger — uden det ligger sammenfatningen to
+     trin nede, og titlerne kommer til at råbe. Interpoleret mellem --fg-2 og
+     --fg-3. Bor her og ikke i tokens.css, fordi kun denne visning bruger det;
+     flyttes op hvis bobblevisningen en dag får brug for det. */
+  --rv-tertiary: #a6a59c;
+  --rv-h: 24px;      /* rækkens højde — målt: calc(24px + content-font-delta) */
+  --rv-enhed: 16px;  /* målt: grundenheden mellem ALT */
+}
+:root[data-theme='light'] .raekkevisning,
+:root:not([data-theme='dark']) .raekkevisning { --rv-tertiary: #6a6a64; }
+:root[data-theme='dark'] .raekkevisning { --rv-tertiary: #a6a59c; }
+
+/* ── Flowet ──────────────────────────────────────────────────────────── */
+.raekkevisning > * + * { margin-top: var(--rv-enhed); }
+
+/* ══ RÆKKEN ══ Målt: INGEN baggrund, ingen ramme, intet hover-fyld.
+   I hele samtalen findes kun to malede flader: siden og brugerens boble. */
+.raekkevisning .rv-r {
+  position: relative; overflow: hidden;
+  height: var(--rv-h);
+  display: flex; align-items: center;
+  background: none; border: 0; padding: 0; margin: 0;
+  width: 100%; text-align: left; font: inherit; color: inherit;
+}
+/* Ikonboks 16×16, glyf 14, margin-right 6 → indhold starter ved 22px. */
+.raekkevisning .rv-ikon {
+  flex: none; width: 16px; height: 16px; margin-right: 6px;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--fg-3); font-size: 14px; line-height: 1;
+}
+/* Målt: titel og sammenfatning er BEGGE 13px/24px vægt 400, ét gråtrin fra
+   hinanden. Intet er fremhævet — det er dét der gør den rolig. */
+.raekkevisning .rv-slags {
+  flex: none; font-size: 13px; line-height: var(--rv-h); font-weight: 400; color: var(--fg-2);
+}
+.raekkevisning .rv-sum {
+  flex: 1 1 auto; min-width: 0; overflow: hidden; white-space: nowrap;
+  font-size: 13px; line-height: var(--rv-h); font-weight: 400; color: var(--rv-tertiary);
+}
+.raekkevisning .rv-sumT { display: block; overflow: hidden; text-overflow: ellipsis; }
+/* Målt: separatoren er IKKE et tegn — en tom 2×2px prik med 8px til hver side. */
+.raekkevisning .rv-sep {
+  flex: none; width: 2px; height: 2px; margin: 0 8px; border-radius: 1px;
+  background: var(--fg-3); opacity: .7;
+}
+/* Chevronen står i enden og skifter RETNING, ikke rotation. Kilden udskifter
+   selve ikonet (DisclosureRow.tsx:68 `leading = open ? <Chevron/> : icon`);
+   vi skifter glyffen, hvilket er samme greb og immunt over for transform. */
+.raekkevisning .rv-chev {
+  flex: none; margin-left: 8px; width: 14px; text-align: center;
+  font-size: 10px; color: var(--fg-3); transition: color 100ms ease;
+}
+.raekkevisning .rv-r[data-foldbar] { cursor: pointer; }
+.raekkevisning .rv-r[data-foldbar]:hover .rv-chev { color: var(--fg-2); }
+
+/* Mens rækken kører følger sammenfatningen ENDEN — ellers ser man kun
+   begyndelsen af en lang tanke, og rækken virker død. */
+.raekkevisning .rv-sum[data-foelg-ende] { display: flex; justify-content: flex-end; }
+.raekkevisning .rv-sum[data-foelg-ende] .rv-sumT {
+  flex: 0 0 auto; width: max-content; min-width: 100%;
+  overflow: visible; text-overflow: clip; text-align: start;
+}
+
+/* Målt: `contain: size layout` bruges ÉT sted — tænke-rækken, sammenfoldet. */
+.raekkevisning .rv-r[data-tanke]:not([data-aaben]) { contain: size layout; }
+
+/* Kørende: 300px lysstribe, 2.6s ease-out infinite. */
+.raekkevisning .rv-r[data-koerer]::after {
+  content: ''; position: absolute; inset: 0 auto 0 0; width: 300px; pointer-events: none;
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,.055) 55%, transparent 100%);
+  animation: rv-sweep 2.6s ease-out infinite;
+}
+:root[data-theme='light'] .raekkevisning .rv-r[data-koerer]::after {
+  background: linear-gradient(90deg, transparent 0%, rgba(0,0,0,.05) 55%, transparent 100%);
+}
+@keyframes rv-sweep { 0% { left: -300px; } 90%, 100% { left: 100%; } }
+.raekkevisning .rv-r[data-fejl] .rv-ikon { color: var(--error-fg); }
+
+/* Udfoldet: sticky hoved, krop 4px 0 4px 22px. */
+.raekkevisning .rv-r[data-aaben] {
+  height: auto; flex-direction: column; align-items: stretch;
+}
+.raekkevisning .rv-r[data-aaben] .rv-hoved {
+  display: flex; align-items: center; height: var(--rv-h);
+  position: sticky; top: 0; z-index: 1; background: var(--bg-1);
+}
+.raekkevisning .rv-hoved { display: contents; }
+.raekkevisning .rv-krop { padding: 4px 0 4px 22px; min-width: 0; }
+/* Målt: tænke-rækken TABER sin sammenfatning når den foldes ud. */
+.raekkevisning .rv-r[data-tanke][data-aaben] .rv-sum,
+.raekkevisning .rv-r[data-tanke][data-aaben] .rv-sep { display: none; }
+
+/* ══ TURENS HOVED — den eneste vandrette streg i samtalen ══
+   Målt: 33px, border-bottom .5px, padding 0 0 8px, 8px margin når lukket. */
+.raekkevisning .rv-tur {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  height: 33px; padding: 0 0 8px; margin: 0;
+  border: 0; border-bottom: .5px solid var(--line);
+  background: none; text-align: left;
+  font: 13px/1 inherit; color: var(--rv-tertiary); cursor: pointer;
+}
+.raekkevisning .rv-tur[aria-expanded='false'] { margin-bottom: 8px; }
+.raekkevisning .rv-turC {
+  display: inline-flex; width: 16px; justify-content: center; font-size: 10px; color: var(--fg-3);
+}
+.raekkevisning .rv-gruppe { display: flex; flex-direction: column; padding-top: 8px; }
+/* `display:flex` ovenfor SLÅR browserens egen [hidden]-regel. Uden denne
+   linje skjuler `hidden` ingenting — målt 22/9-2026, og den kostede tre
+   symptomer der lignede tre fejl. */
+.raekkevisning .rv-gruppe[hidden] { display: none; }
+
+/* Målt: 8px er den ENESTE overstyring af 16px i hele forlægget. */
+.raekkevisning .rv-tur[aria-expanded='false'] + .rv-svar { margin-top: 8px; }
+
+/* ══ MELLEMSVAR og SVAR ══
+   Målt: svaret er 14px/24px og ligger HELT frit — ingen baggrund, ramme,
+   radius, padding eller skygge. Mellemsvaret er samme brødtekst, men bor
+   inde i gruppen og folder sig sammen med arbejdet. */
+.raekkevisning .rv-mellem,
+.raekkevisning .rv-svar { font-size: 14px; line-height: 24px; color: var(--fg-1); }
+.raekkevisning .rv-mellem { margin: var(--rv-enhed) 0; }
+.raekkevisning .rv-gruppe > .rv-r + .rv-mellem { margin-top: var(--rv-enhed); }
+
+/* ══ KORT-PRIMITIVERNE ══ Syv former dækker hele værktøjskassen; resten
+   falder i faldbacken. Se `raekkeKroppe.tsx`. */
+.raekkevisning .rv-kort {
+  border: 1px solid var(--line); border-radius: var(--radius-md);
+  background: var(--bg-2); overflow: hidden;
+}
+.raekkevisning .rv-kort pre {
+  margin: 0; padding: 9px 11px; font: 12px/1.65 var(--font-mono);
+  color: var(--rv-tertiary); white-space: pre-wrap; word-break: break-word;
+}
+/* Terminal — målt: exit 0 tegner INGEN pille. Kun ikke-nul markeres. */
+.raekkevisning .rv-term .rv-kh {
+  display: flex; align-items: center; gap: 8px; padding: 6px 11px;
+  border-bottom: 1px solid var(--line); font: 12px var(--font-mono); color: var(--fg-2);
+}
+.raekkevisning .rv-term .rv-exit { margin-left: auto; font: 11px var(--font-mono); }
+.raekkevisning .rv-term[data-exit='0'] .rv-exit { display: none; }
+.raekkevisning .rv-term:not([data-exit='0']) .rv-exit { color: var(--error-fg); }
+.raekkevisning .rv-term:not([data-exit='0']) .rv-kh::before {
+  content: ''; flex: none; width: 5px; height: 5px; border-radius: 50%; background: var(--error-fg);
+}
+/* Diff — målt: +/− tegnes af CSS, ikke af teksten. */
+.raekkevisning .rv-diff pre { padding: 6px 0; }
+.raekkevisning .rv-l { display: block; padding: 1px 11px 1px 26px; position: relative; }
+.raekkevisning .rv-l::before { position: absolute; left: 11px; opacity: .75; }
+.raekkevisning .rv-l[data-k='add'] { background: rgba(124,196,155,.10); color: #a8dcbd; }
+.raekkevisning .rv-l[data-k='add']::before { content: '+'; }
+.raekkevisning .rv-l[data-k='del'] { background: rgba(239,126,107,.10); color: #e8ab9e; }
+.raekkevisning .rv-l[data-k='del']::before { content: '\2212'; }
+/* Ind/ud */
+.raekkevisning .rv-par { display: grid; grid-template-columns: 36px 1fr; }
+.raekkevisning .rv-par + .rv-par { border-top: 1px solid var(--line); }
+.raekkevisning .rv-mrk { padding: 9px 0 9px 11px; font: 11px var(--font-mono); color: var(--fg-3); }
+.raekkevisning .rv-v {
+  padding: 9px 11px 9px 0; font: 12px/1.65 var(--font-mono); color: var(--rv-tertiary);
+  white-space: pre-wrap; word-break: break-word;
+}
+/* Liste og træffere — målt: stier er SANS, ikke mono. */
+.raekkevisning .rv-liste { padding: 6px 0; }
+.raekkevisning .rv-i { display: flex; gap: 12px; padding: 3px 11px; font-size: 13px; color: var(--rv-tertiary); }
+.raekkevisning .rv-i .rv-p { color: var(--fg-2); flex: none; min-width: 24ch; }
+/* Web */
+.raekkevisning .rv-web .rv-i { display: block; padding: 7px 11px; }
+.raekkevisning .rv-dom { font-size: 12px; color: var(--fg-3); }
+.raekkevisning .rv-t { font-size: 13px; color: var(--fg-2); }
+/* Spørgsmål */
+.raekkevisning .rv-sp { padding: 10px 11px; }
+.raekkevisning .rv-q { font-size: 13px; color: var(--fg-1); }
+.raekkevisning .rv-a { display: flex; gap: 9px; margin-top: 7px; font-size: 13px; color: var(--rv-tertiary); }
+.raekkevisning .rv-a .rv-m { color: var(--fg-3); flex: none; }
+/* Billede */
+.raekkevisning .rv-bill { display: flex; gap: 12px; align-items: center; padding: 10px 11px; }
+.raekkevisning .rv-bill img { width: 64px; height: 42px; object-fit: cover; border-radius: var(--radius-sm); }
+.raekkevisning .rv-n { font-size: 13px; color: var(--fg-2); }
+.raekkevisning .rv-m2 { font-size: 12px; color: var(--fg-3); }
+/* Faldbackens hoved */
+.raekkevisning .rv-fald .rv-kh {
+  padding: 6px 11px; border-bottom: 1px solid var(--line); font-size: 12px; color: var(--fg-3);
+}
+
+/* Målt: mono kun TO steder i rækkerne — diff-tallet og fejlkoden. */
+.raekkevisning .rv-diffstat { font: 11px var(--font-mono); color: var(--fg-3); }
+.raekkevisning .rv-fejlkode { font: 11px/16px var(--font-mono); color: var(--error-fg); }
+.raekkevisning .rv-tal { font-variant-numeric: tabular-nums; }
+
+@media (prefers-reduced-motion: reduce) {
+  .raekkevisning .rv-r[data-koerer]::after { animation: none; }
+}
+
+/* ── Tal-linjen under composeren ──────────────────────────────────────────
+   Bjørn: «den linje mellem under composer … vil ligge mellem composer og
+   disclaimer hos os». Den hører ikke til transskriptet og er derfor IKKE
+   scopet under .raekkevisning — men den vises kun når rækkevisningen er slået
+   til, hvilket Composer afgør. */
+.composer-tal {
+  display: flex; justify-content: center; gap: 16px;
+  margin: 8px auto 0; max-width: 820px;
+  font-size: 11.5px; color: var(--fg-3); font-variant-numeric: tabular-nums;
+}
+.composer-tal .mangler { opacity: .55; }

@@ -43,6 +43,7 @@ import { startSideOpgave } from '../lib/sideOpgaveStart'
 import { StickyPrompt } from '../components/transcript/StickyPrompt'
 import { useVisning, VisningContext } from '../lib/visning'
 import { readModelPrefs, readThinkingMode } from '../lib/composerPrefs'
+import { useRaekkevisning } from '../lib/visningsPref'
 import { getContextInfo, getContextUsage, getActiveRuns, followRun, compactNow, warmSession } from '../lib/api'
 import { markInteraction } from '../lib/presenceSignal'
 import { PresenceDot } from '../components/shell/PresenceDot'
@@ -676,6 +677,33 @@ export function ChatView({
     [settings?.apiBaseUrl, settings?.authToken], // eslint-disable-line react-hooks/exhaustive-deps
   )
 
+  /* Koerselstallene til linjen mellem composer og disclaimer. Kun naar
+     raekkevisningen er slaaet til — bobblevisningen ser ud som foer.
+
+     «ture» = assistent-svar i traaden. «trin» = vaerktoejskald i alt. Begge
+     taelles af de beskeder vi ALLEREDE har; der hentes intet nyt.
+     TTFT og tok/s udelades med vilje: de findes ikke i stroemmen, og linjen
+     tegner dem graat frem for at lade som om den er komplet. */
+  const raekkevisning = useRaekkevisning()
+  const koerselsTal = useMemo(() => {
+    if (!raekkevisning) return undefined
+    let trin = 0
+    let ture = 0
+    for (const m of visibleMessages) {
+      if (m.role !== 'assistant') continue
+      ture += 1
+      if (!Array.isArray(m.content)) continue
+      for (const b of m.content) if ((b as { type?: string }).type === 'tool_use') trin += 1
+    }
+    const laest = stream.usage.cacheHit + stream.usage.cacheMiss
+    return {
+      ture,
+      trin,
+      ...(laest > 0 ? { cacheHit: Math.round((stream.usage.cacheHit / laest) * 100) } : {}),
+      ...(tokensTotal > 0 ? { tokens: tokensTotal } : {}),
+    }
+  }, [raekkevisning, visibleMessages, stream.usage.cacheHit, stream.usage.cacheMiss, tokensTotal])
+
   const composer = (
     <>
       <Composer
@@ -697,6 +725,7 @@ export function ChatView({
         isOwner={auth?.role === 'owner'}
         onOpenPrivacy={onOpenPrivacy}
         indsaet={tilbage.indsaet}
+        koerselsTal={koerselsTal}
       />
       <VoiceConversation
         active={voice.active}

@@ -12,6 +12,8 @@ import type { ApiConfig } from '../../lib/api'
 import { InlineErrorBoundary } from '../ErrorBoundary'
 import { denseBlocks } from '../../lib/blockHelpers'
 import { KlikbartBillede } from './BilledLightbox'
+import { RaekkeTranskript } from './RaekkeTranskript'
+import { useRaekkevisning } from '../../lib/visningsPref'
 
 /** Besked-række med locked boble-layout: bruger højre (boble), Jarvis venstre
  *  (avatar + tekst, ingen boble). Density videregives til rich-blocks.
@@ -64,6 +66,10 @@ function MessageRowImpl({
   // iteratorer (user-map, images, BlocksRenderer, detectArtifacts, blocksToPlainText)
   // tilgår b.type → et hul crashede render ved svar-slut, uden om per-besked-hegnet
   // (Bjørn 10. jul, 2. crash). Densificér her → alle downstream er hul-frie.
+  // FOER det tidlige return for bruger-grenen. Et hook efter et betinget
+  // return braekker hele visningen, og hverken tsc eller testene ser det
+  // (maalt tidligere i dette repo).
+  const raekker = useRaekkevisning()
   const blocks = denseBlocks(rawBlocks)
   if (role === 'user') {
     const text = blocks.map((b) => (b.type === 'text' ? b.text : '')).join('')
@@ -111,7 +117,12 @@ function MessageRowImpl({
               tool-blok under streaming) isoleres i stedet for at nuke hele appen
               til sort skærm. Fejlen logges (localStorage jarvis-desk:lastCrash). */}
           <InlineErrorBoundary label="assistant-blocks">
-            <BlocksRenderer blocks={blocks} density={density} streaming={streaming} rundeEtiketter={rundeEtiketter} tankeResumeer={tankeResumeer} beskedId={beskedId} config={config} />
+            {/* Raekkevisning bag en knap (Bjoern 22/9-2026). KUN transskriptet
+                skiftes — fejlhegn, artefakter, kilder og handlinger er de samme,
+                og composer/liveness/save-rail roeres ikke. */}
+            {raekker
+              ? <RaekkeTranskript blocks={blocks} streaming={streaming} beskedId={beskedId} config={config} />
+              : <BlocksRenderer blocks={blocks} density={density} streaming={streaming} rundeEtiketter={rundeEtiketter} tankeResumeer={tankeResumeer} beskedId={beskedId} config={config} />}
             {!streaming && detectArtifacts(blocks).map((a, i) => (
               <ArtifactAffordance key={`${a.kind}-${i}`} artifact={a} />
             ))}

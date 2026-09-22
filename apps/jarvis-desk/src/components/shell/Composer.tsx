@@ -124,6 +124,12 @@ const ComposerTextArea = memo(function ComposerTextArea({
 /** Composer (Codex-stil): venstre [+] + permissions-dropdown; højre model-pill,
  *  think-pill, dikter-mic, send. [+]-menu folder opad med billeder/filer,
  *  planlægnings-toggle og plugins. Enter sender, Shift+Enter ny linje. */
+/** 213000 → «213K». Linjen skal kunne læses i ét blik, ikke tælles. */
+function formatTokens(n: number): string {
+  if (n >= 1000) return `${(n / 1000).toFixed(n >= 10000 ? 0 : 1).replace('.', ',')}K`
+  return String(n)
+}
+
 export function Composer({
   streaming,
   onSend,
@@ -139,6 +145,7 @@ export function Composer({
   onManualCompact,
   isOwner = false,
   onOpenPrivacy,
+  koerselsTal,
   sessionId = null,
   onVoice,
   voiceSupported = false,
@@ -160,6 +167,23 @@ export function Composer({
   voiceSupported?: boolean
   /** Åbner Data & privatliv (Settings) fra disclaimer-linjen. */
   onOpenPrivacy?: () => void
+  /**
+   * Kørselstal til linjen MELLEM composeren og disclaimeren (Bjørn 22/9-2026:
+   * «den linje mellem under composer … vil ligge mellem composer og
+   * disclaimer hos os»). Udeladt = ingen linje; composeren ser ud som før.
+   *
+   * `ttft` og `tokPerSek` er med vilje valgfri: de findes IKKE i strømmen i
+   * dag. Mangler de, tegnes de grå frem for at blive udeladt — så linjen
+   * siger hvad vi ikke ved, i stedet for at lade som om den er komplet.
+   */
+  koerselsTal?: {
+    ture: number
+    trin: number
+    cacheHit?: number
+    tokens?: number
+    ttft?: number
+    tokPerSek?: number
+  }
   /** Permissions-dropdown vises kun hvor værktøjs-godkendelse er relevant
    *  (cowork/code). I ren chat mode er den skjult. Default true. */
   showPermissions?: boolean
@@ -911,6 +935,18 @@ export function Composer({
         </div>
       </div>
     </div>
+    {koerselsTal && (
+      <div className="composer-tal" role="status" aria-label="kørselstal">
+        <span>{koerselsTal.ture} turns {koerselsTal.trin} steps</span>
+        <span className={koerselsTal.ttft == null ? 'mangler' : undefined}>
+          {koerselsTal.ttft == null ? 'TTFT —' : `TTFT ${koerselsTal.ttft}ms`}
+          {' · '}
+          {koerselsTal.tokPerSek == null ? '— tok/s' : `${koerselsTal.tokPerSek} tok/s`}
+        </span>
+        {koerselsTal.cacheHit != null && <span>Cache hit {koerselsTal.cacheHit}%</span>}
+        {koerselsTal.tokens != null && <span>{formatTokens(koerselsTal.tokens)} tokens</span>}
+      </div>
+    )}
     <p className="composer-disclaimer">
       J.A.R.V.I.S. kan tage fejl — dobbelttjek vigtige svar.
       {onOpenPrivacy && (

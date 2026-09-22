@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { loadTheme, saveTheme, applyTheme, type Theme } from '../../lib/themeStore'
 import { useFigurVist } from '../../lib/figurVist'
 import { useFigurSkin, SKIN_VALG } from '../../lib/figurSkin'
+import { useRaekkevisning, writeRaekkevisning } from '../../lib/visningsPref'
 
 const OPTIONS: { key: Theme; label: string }[] = [
   { key: 'dark', label: 'Mørkt' },
@@ -13,6 +14,7 @@ const OPTIONS: { key: Theme; label: string }[] = [
  *  via data-theme på document-root. */
 export function ThemeSection() {
   const [theme, setTheme] = useState<Theme>(loadTheme())
+  const raekker = useRaekkevisning()
   const pick = (t: Theme) => { setTheme(t); saveTheme(t); applyTheme(t) }
   const [figur, saetFigur] = useFigurVist()
   // Skinnet bor samme sted som til/fra (figur.json i main-processen), så
@@ -62,6 +64,23 @@ export function ThemeSection() {
           </div>
         </div>
       ) : null}
+      {/* Rækkevisning (22/9-2026). Samtalen som en flad hændelsesrække i
+          stedet for bobler: hver tanke og hvert værktøjskald er én linje af
+          samme højde, arbejdet folder sig sammen bag turens hoved, og kun
+          svaret bliver stående. Skiftet slår igennem på HELE tråden med det
+          samme — samme samtale, anden tegning. Composer, liveness-linje og
+          save-rail er de samme i begge visninger. */}
+      <label className="figur-indstilling">
+        <input
+          type="checkbox"
+          checked={raekker}
+          onChange={(e) => writeRaekkevisning(e.target.checked)}
+        />
+        <span>
+          <strong>Rækkevisning i chatten</strong>
+          <span className="account-google-hint">Ét svar, én linje pr. hændelse. Fold en linje ud for at se indholdet. Slå fra for at få boblerne tilbage.</span>
+        </span>
+      </label>
     </div>
   )
 }

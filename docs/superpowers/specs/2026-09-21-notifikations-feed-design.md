@@ -49,14 +49,33 @@ en arkitekturdiskussion.
 
 En *slags* er enheden for både visning og push-valg.
 
-| Gruppe | Slags | Ejer af sandheden |
-|---|---|---|
-| Kræver dig | `approval` | `approval_runtime` |
-| Kræver dig | `question` | `visible_runs` (svares i samtalen) |
-| Fejl | `run_failed` | `visible_runs` |
-| Færdig | `run_done` | `visible_runs` |
-| Jarvis selv | `briefing`, `reminder`, `reach_out`, `initiative` | ingen — rækken ER sandheden |
-| System | `release`, `incident`, `quota` | `events` |
+**Rettet 2026-09-22 (opgave "routeren-foeder").** Denne tabel lovede oprindeligt
+elleve slags. Tre af dem har aldrig haft en afsender nogen steder i repoet, og
+en fjerde (`question`) kan strukturelt ikke fødes af serveren. Til gengæld gik
+seks ægte proaktive slags allerede gennem `notification_router.
+route_proactive_notification()` uden at nogen af dem nåede feeden — det er de
+efterprøvet rettet nu.
+
+| Gruppe | Slags | Ejer af sandheden | Fødes af |
+|---|---|---|---|
+| Kræver dig | `approval` | `approval_runtime` | `notifikations_emittere.paa_godkendelse()` |
+| Kræver dig | `question` | — | **Fødes ALDRIG.** `pause_and_ask` er et VÆRKTØJSRESULTAT som klienten fortolker (`apps/jarvis-desk/src/lib/pauseAsk.ts`), ikke en server-hændelse — der findes intet fødested at bygge. Navnet lever kun videre som en `importance`-nøgle i `notifikations_emittere._maaske_push()` (dødt, ingen kalder rammer den) og i `notifikationer_hydrering.AFGOERBARE`s modstykke. |
+| Fejl | `run_failed` | `visible_runs` | `notifikations_emittere.paa_koersel_fejlet()` |
+| Færdig | `run_done` | `visible_runs` | `notifikations_emittere.paa_koersel_faerdig()` |
+| System | `release`, `incident`, `quota` | `events` | `notifikations_emittere.system()` |
+| Jarvis selv (router-ejet, 2026-09-22) | `reach_out` | ingen — rækken ER sandheden | `notification_router.route_proactive_notification()`, kaldt fra `proactivity_bridge.py`, `action_router.py`, `autonomous_outreach_daemon.py` |
+| Router-ejet (2026-09-22) | `central_flag` | ingen — rækken ER sandheden | `central_watch.py` (~2 min cadence, 6-timers cooldown pr. besked) |
+| Router-ejet (2026-09-22) | `membrane_breach` | ingen — rækken ER sandheden | `central_membrane_watch.py` (kun ved NYT brud, dedup på brud-signatur) |
+| Router-ejet (2026-09-22) | `infra_security` | ingen — rækken ER sandheden | `infra_sense.py` (~3 min cadence, men gated af tilstandsovergang/event-drain — se rapporten for opgaven) |
+| Router-ejet (2026-09-22) | `keymaker_key_earned` | ingen — rækken ER sandheden | `central_keymaker.py` |
+| Router-ejet (2026-09-22) | `moltbook_mention` | ingen — rækken ER sandheden | `central_moltbook.py` |
+| **Fiktion — findes ikke** | `briefing`, `reminder`, `initiative` | — | **Ingen afsender nogen steder i repoet.** `grep -rn '"briefing"\|"reminder"\|"initiative"' --include=*.py core/ apps/` giver kun urelaterede træf (et `initiative_type` i et andet domæne, et kandidat-navn). De er kolonnenavne fra den gamle `notification_preferences`-tabel, skrevet ind i denne spec som om de var funktioner. Navnene lever videre KUN i `NotifikationsValg.tsx`s `NAVN` og i `notifikations_valg.py`s `_GAMLE_KOLONNER` — en tidligere migreret bruger kan have en gemt værdi under netop dem, og at fjerne navnet ville filtrere den værdi tavst væk fra visningen (efterprøvet igen 2026-09-22: konklusionen holder stadig). |
+
+`route_proactive_notification()` lægger siden 2026-09-22 selv en feed-række
+for enhver slags den leverer, medmindre kalderen selv allerede har lagt
+rækken (`feed=False`, se `notifikations_emittere.py`). De seks router-ejede
+slags ovenfor krævede derfor ingen ny kode i sig selv — kun at routeren blev
+gjort til det fødested dens egen docstring længe har påstået den var.
 
 ## Lageret
 
@@ -157,7 +176,10 @@ indeholde `discord`/`telegram` (`notification_router.VALID_CHANNELS`), som
 feedens egen kanal-vælger ikke kender. En sådan værdi klemmes nu ned til
 `"auto"` ved migrering i stedet for at blive skrevet uændret over.
 
-Standard: `approval`, `question` og `run_failed` pusher. Resten er tavse.
+Standard: `approval`, `question` og `run_failed` pusher — samt (2026-09-22)
+`reach_out`, `membrane_breach` og `infra_security`, som hver er begrundet i
+`notifikations_valg.STANDARD`s kommentarer. Resten er tavse (feeden bærer dem
+stadig — "tavs" betyder kun "intet push", se samme fil).
 
 ## Levering
 

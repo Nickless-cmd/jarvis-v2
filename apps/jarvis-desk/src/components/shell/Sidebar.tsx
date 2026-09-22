@@ -78,6 +78,20 @@ export function Sidebar({
   // (ellers TS6133 — `noUnusedLocals`).
   const [feedAaben, setFeedAaben] = useState(false)
 
+  // V3: ÉT config-objekt, ikke et nyt pr. render. Klokkens `hentNu` er
+  // `useCallback([config])`, og dens WS-effekt afhaenger af `[config, hentNu]`
+  // — et inline-literal i JSX laver et nyt objekt hver eneste gang Sidebar
+  // rendrer, og saa aabner effekten en NY socket hver gang. Maalt med en
+  // probe: 6 renders → 6 sockets, fordi Sidebar rendrer mindst hvert 4.
+  // sekund (activeRunSessions-pollet) og langt oftere mens et run streamer.
+  // Memoiseret paa de to STRENGE, ikke paa `settings` selv — saa den er
+  // stabil ogsaa hvis `useSettings()` en dag begynder at returnere et nyt
+  // objekt hver render.
+  const apiConfig = useMemo(
+    () => (settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : null),
+    [settings?.apiBaseUrl, settings?.authToken],
+  )
+
   // #8: poll backend for sessioner med aktivt run (også autonome baggrunds-runs
   // som klienten ikke selv driver). Union'es med workingSessionId fra streamen.
   const [activeRunSessions, setActiveRunSessions] = useState<Set<string>>(new Set())
@@ -128,7 +142,7 @@ export function Sidebar({
             <Search size={15} />
           </button>
           <Klokke
-            config={settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : null}
+            config={apiConfig}
             onAaben={() => setFeedAaben(true)}
           />
         </div>
@@ -136,7 +150,7 @@ export function Sidebar({
 
       {feedAaben && (
         <NotifikationsFeed
-          config={settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : null}
+          config={apiConfig}
           onLuk={() => setFeedAaben(false)}
           onAabnSession={(id) => { select(id); setFeedAaben(false); onSurface('chat') }}
         />

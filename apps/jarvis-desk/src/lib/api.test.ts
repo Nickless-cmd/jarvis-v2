@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { cancelRun, getSession, createSession, apiFetch } from './api'
+import { StreamError } from './streamClient'
 
 const cfg = { apiBaseUrl: 'http://test', authToken: 't' }
 
@@ -21,6 +22,26 @@ describe('cancelRun', () => {
   it('swallows network error (aborts locally anyway)', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network down')))
     await expect(cancelRun(cfg, 'r')).resolves.toBeUndefined()
+  })
+})
+
+// V6: «tom» maa ikke ligne «brudt». Serveren svarer nu 401 (ikke et tomt
+// 200-svar) ved manglende/udloebet bruger-binding for baade GET /notifikationer
+// og GET /notifikations-valg. apiFetch skal KASTE paa 401 — ikke returnere
+// noget der ligner et gyldigt, tomt svar — saa kalderne (NotifikationsFeed,
+// NotifikationsValg) rammer deres fejl-gren i stedet for "Ingen
+// notifikationer — alt er klaret".
+describe('V6: 401 paa notifikations-endpoints kaster, det stille-fejler ikke', () => {
+  it('GET /notifikationer paa 401 kaster en ikke-genforsoegsbar auth-fejl', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('', { status: 401 })))
+    await expect(apiFetch(cfg, '/notifikationer')).rejects.toMatchObject({
+      name: 'StreamError', category: 'auth', retryable: false,
+    })
+  })
+
+  it('GET /notifikations-valg paa 401 kaster ligesaa', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('', { status: 401 })))
+    await expect(apiFetch(cfg, '/notifikations-valg')).rejects.toBeInstanceOf(StreamError)
   })
 })
 

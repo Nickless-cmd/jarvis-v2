@@ -15,6 +15,7 @@ import {
   renameSession,
   setSessionFlags,
   setNotifikation,
+  hentNotifikationer,
   cancelRunById,
   getActiveRunSnapshot,
   steerRun,
@@ -369,4 +370,18 @@ it('setNotifikation rydder en post via POST /notifikationer/{id}/set', async () 
     'https://api.srvlab.dk/notifikationer/n1/set',
     expect.objectContaining({ method: 'POST' }),
   )
+})
+
+// V6: «tom» maa ikke ligne «brudt». Serveren svarer nu 401 (ikke et tomt
+// 200-svar) ved manglende/udloebet bruger-binding for GET /notifikationer.
+// apiFetch skal KASTE — ikke returnere noget der ligner et gyldigt, tomt
+// svar — saa ChatScreen's `.catch(() => setNotifFejl(true))` rammer sin
+// fejl-gren, og ActivityCenterScreen viser "kunne ikke hentes", ikke
+// "Ingen notifikationer — alt er klaret".
+it('hentNotifikationer paa 401 kaster — den stille-fejler ikke til en tom liste', async () => {
+  ;(global.fetch as jest.Mock).mockResolvedValue({
+    ok: false, status: 401,
+    json: async () => ({}),
+  })
+  await expect(hentNotifikationer(config)).rejects.toMatchObject(new ApiError('auth', 'HTTP 401', 401))
 })

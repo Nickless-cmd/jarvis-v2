@@ -10,11 +10,11 @@ import { render } from '@testing-library/react'
 // hvert kald — netop for at bevise at fixet ikke laener sig op ad at
 // `useSettings()` selv er stabil, men memoiserer paa de to STRENGE i
 // Sidebar.
-const openEventSocket = vi.fn(() => ({ close: vi.fn(), onmessage: null, onerror: null }))
+const openEventSocket = vi.fn((_cfg: unknown) => ({ close: vi.fn(), onmessage: null, onerror: null }))
 vi.mock('../../lib/api', () => ({
   searchSessions: vi.fn().mockResolvedValue([]),
   getActiveRuns: vi.fn().mockResolvedValue([]),
-  openEventSocket: (...a: unknown[]) => openEventSocket(...a),
+  openEventSocket: (cfg: unknown) => openEventSocket(cfg),
 }))
 vi.mock('../../lib/notifikationerApi', () => ({
   hentNotifikationer: vi.fn().mockResolvedValue({ poster: [], antal: 0 }),

@@ -62,6 +62,15 @@ def advance_tool_lifecycle(session_id: str) -> None:
         pass
 
 
+#: Hvor laenge `status_for_run` stoler paa den in-memory outcome frem for at
+#: laese DB'en (V2, se docstring nedenfor). Rummeligt nok til at daekke den
+#: asynkrone skrivnings normale forsinkelse (millisekunder-til-faa-sekunder
+#: under WAL-contention), stramt nok til at en senere GENOPTAGET koersel med
+#: samme run_id (se `in_flight_runs`) hurtigt falder tilbage til den AEGTE
+#: DB-status igen i stedet for at blive ved med at vise den gamle terminale.
+_FRISK_HUKOMMELSE_S = 30.0
+
+
 def status_for_run(run_id: str) -> str:
     """Koerslens status, eller "" hvis den ikke findes.
 
@@ -77,7 +86,40 @@ def status_for_run(run_id: str) -> str:
     Laesningen laa foer inline i opmaerksomhed.py. Feeden skal ogsaa bruge
     den, og to steder der laeser samme tabel paa hver sin maade er den slags
     der skrider fra hinanden.
+
+    ## V2 (2026-09-22): kapløb mod den asynkrone DB-skrivning
+
+    `set_last_visible_run_outcome` (visible_runs_outcomes.py) laegger DB-
+    projektionen i en daemon-traad — med vilje, for at streamen kan lukke med
+    det samme. `finalize_in_flight` kalder feedens emitter SYNKRONT lige
+    efter, og feeden kan hydrere ligesaa hurtigt. Rammer den laesning FOER
+    traaden har committet, staar DB-status stadig 'running', og raekken
+    lukkes — permanent, feeden reviderer ikke en lukket raekke af sig selv.
+
+    `set_last_visible_run_outcome` saetter samtidig `_LAST_VISIBLE_RUN_OUTCOME`
+    SYNKRONT, foer den starter traaden. Et frisk match paa run_id derfra er
+    derfor den AEGTE, endelige status — ikke en gaetning — og bruges FOER
+    DB-laesningen. Uden en tidsgraense ville en koersel der senere GENOPTAGES
+    med samme run_id (recovering) fejlagtigt blive ved med at vise sin gamle
+    terminale status; `_FRISK_HUKOMMELSE_S` begraenser hvor laenge det gaelder.
     """
+    if run_id:
+        try:
+            from core.services.visible_runs import get_last_visible_run_outcome
+            frisk = get_last_visible_run_outcome()
+        except Exception:
+            frisk = None
+        if frisk and str(frisk.get("run_id") or "") == str(run_id):
+            try:
+                from datetime import UTC, datetime
+                afsluttet = datetime.fromisoformat(str(frisk.get("finished_at") or ""))
+                if afsluttet.tzinfo is None:
+                    afsluttet = afsluttet.replace(tzinfo=UTC)
+                gammel = (datetime.now(UTC) - afsluttet).total_seconds() > _FRISK_HUKOMMELSE_S
+            except Exception:
+                gammel = True
+            if not gammel:
+                return str(frisk.get("status") or "")
     from core.runtime.db import connect
     with connect() as conn:
         raekke = conn.execute(

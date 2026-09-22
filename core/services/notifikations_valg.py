@@ -19,15 +19,24 @@ GYLDIGE_KANALER = {"auto", "mobile", "desktop", "push", "ingen"}
 
 #: Standard naar brugeren ikke har valgt. Kun det der HASTER pusher.
 #: «auto» lader notification_router vaelge kanal efter enhed og stilletimer.
+#:
+#: K4 (2026-09-22): `briefing`, `reminder`, `reach_out` og `initiative` STOD
+#: her foer med "ingen" — men de fire navne er IKKE kun feedens. `reach_out`
+#: er allerede `notification_type` for proactivity_bridge.py,
+#: autonomous_outreach_daemon.py, action_router.py og central_moltbook.py
+#: (via broen), som intet har med denne feed at goere. `kanal_for()` kaldes
+#: FOR ALLE proaktive kilder (se route_proactive_notification), saa en
+#: "ingen" her slukkede tavst for et eksisterende, ufeed-relateret system —
+#: efterproevet: REACH_OUT/BRIEFING gav begge {'delivered': False, 'channel':
+#: 'fravalgt'}. De fire staar derfor UDENFOR STANDARD indtil `fra_jarvis()`
+#: (feedens egen afsender) faktisk faar et kaldested for en af dem — indtil
+#: da er de "ukendte" for feeden og falder til "auto" ligesom enhver anden
+#: slags feeden ikke ejer (membrane_breach, infra_security, ...).
 STANDARD: dict[str, str] = {
     "approval": "auto",
     "question": "auto",
     "run_failed": "auto",
     "run_done": "ingen",
-    "briefing": "ingen",
-    "reminder": "ingen",
-    "reach_out": "ingen",
-    "initiative": "ingen",
     "release": "ingen",
     "incident": "ingen",
     "quota": "ingen",

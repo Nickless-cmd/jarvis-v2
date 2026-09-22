@@ -148,3 +148,46 @@ def test_opslaget_kaster_aldrig():
     import core.services.proactivity_bridge as B
 
     assert isinstance(B._sidst_aktive_samtale(), str)
+
+
+# ── K4 (2026-09-22): _route skrev altid outcome="sent" i cap-ledger'en, uanset
+# hvad routeren rent faktisk svarede. En "reach_out" der aldrig blev leveret
+# (fx fordi kanal_for() slog den fra) blev derfor bogfoert som en succes —
+# regressionen var TAVS, netop fordi ledger'en loej. `outcome` skal foelge
+# `delivered`, ikke vaere en konstant.
+def test_route_logger_sent_naar_leveret(monkeypatch):
+    import core.services.proactivity_bridge as B
+
+    logget = []
+    monkeypatch.setattr(
+        "core.services.notification_router.route_proactive_notification",
+        lambda *a, **k: {"delivered": True, "channel": "push"},
+    )
+    monkeypatch.setattr(
+        "core.services.action_router._append_proactive",
+        lambda entry: logget.append(entry),
+    )
+
+    B._route("bjorn", "hej", "normal")
+
+    assert logget and logget[0]["outcome"] == "sent"
+
+
+def test_route_logger_IKKE_sent_naar_fravalgt(monkeypatch):
+    """Den ægte fejl: kanal_for() sagde "ingen" → routeren returnerede
+    delivered=False, channel="fravalgt" — og ledger'en skrev "sent" alligevel."""
+    import core.services.proactivity_bridge as B
+
+    logget = []
+    monkeypatch.setattr(
+        "core.services.notification_router.route_proactive_notification",
+        lambda *a, **k: {"delivered": False, "channel": "fravalgt"},
+    )
+    monkeypatch.setattr(
+        "core.services.action_router._append_proactive",
+        lambda entry: logget.append(entry),
+    )
+
+    B._route("bjorn", "hej", "normal")
+
+    assert logget and logget[0]["outcome"] != "sent"

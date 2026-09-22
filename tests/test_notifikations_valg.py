@@ -24,18 +24,27 @@ def _navn_noegler() -> set[str]:
     return set(noegler)
 
 
-def test_navn_og_standard_daekker_de_samme_slags() -> None:
-    """`NAVN` (TS, brugerens ord for hver slags) og `STANDARD` (Python, feedens
-    politik) skal daekke praecis de samme slags. Komponenten renderer via
-    `Object.keys(NAVN)` filtreret til det serveren sendte — mangler en slags i
-    NAVN, forsvinder den TAVST fra indstillingerne uden fejl eller indikation."""
+def test_standard_slags_findes_alle_i_navn() -> None:
+    """`NAVN` (TS, brugerens ord for hver slags) skal daekke MINDST de slags
+    `STANDARD` (Python, feedens politik) har en mening om. Komponenten
+    renderer via `Object.keys(NAVN)` filtreret til det serveren sendte —
+    mangler en slags i NAVN som STANDARD styrer, forsvinder den TAVST fra
+    indstillingerne uden fejl eller indikation.
+
+    Omvendt (K4, 2026-09-22): NAVN maa gerne vise FLERE toggles end STANDARD
+    har en default for — `briefing`, `reminder`, `reach_out`, `initiative`
+    staar i NAVN, men er bevidst IKKE i STANDARD, fordi `reach_out` allerede
+    er et andet, eksisterende systems `notification_type` (proactivity_bridge
+    m.fl.), og at give feedens tavse standard forrang derovre slukkede for det
+    system. De falder til routerens egen "auto" i stedet, se
+    `test_de_fire_navne_staar_ikke_i_standard`."""
     from core.services.notifikations_valg import STANDARD
 
     navn = _navn_noegler()
     standard = set(STANDARD.keys())
-    assert navn == standard, (
-        f"NAVN og STANDARD er skredet fra hinanden — kun i NAVN: {navn - standard or '—'}, "
-        f"kun i STANDARD: {standard - navn or '—'}"
+    assert standard <= navn, (
+        f"STANDARD styrer slags NAVN slet ikke kender — de ville aldrig kunne "
+        f"aendres fra klienten: {standard - navn}"
     )
 
 
@@ -130,3 +139,60 @@ def test_eksplicit_raekke_vinder_ogsaa_for_ukendt_slags(isolated_runtime) -> Non
 
     v.saet("bjorn", "central_flag", "push")
     assert v.kanal_for("bjorn", "central_flag") == "push"
+
+
+# ── K4 (2026-09-22): STANDARD slukkede for et EKSISTERENDE proaktivt system ────
+# `briefing`, `reminder`, `reach_out` og `initiative` er IKKE kun feedens egne
+# ord — `reach_out` bruges allerede som `notification_type` af
+# proactivity_bridge.py, autonomous_outreach_daemon.py, action_router.py og
+# central_moltbook.py (via broen), som intet har med notifikations-feeden at
+# goere. Da de fire stod i STANDARD med "ingen", stoppede kanal_for() dem ALLE
+# tavst — ogsaa dem der aldrig var feedens at styre. De er derfor fjernet fra
+# STANDARD: fald-tilbaget for dem er nu det samme "auto" som for enhver anden
+# slags STANDARD ikke har en mening om (se `kanal_for()`s docstring), indtil
+# `fra_jarvis()` faktisk faar et kaldested for en af dem.
+def test_de_fire_navne_staar_ikke_i_standard(isolated_runtime) -> None:
+    from core.services import notifikations_valg as v
+
+    for slags in ("briefing", "reminder", "reach_out", "initiative"):
+        assert slags not in v.STANDARD, (
+            f"{slags} staar stadig i STANDARD og kan igen slukke for et "
+            "system der ikke er feedens"
+        )
+        assert v.kanal_for("bjorn", slags) == "auto"
+
+
+def test_reach_out_leveres_gennem_routeren(isolated_runtime, monkeypatch) -> None:
+    """Beviser at den AEGTE `route_proactive_notification()` stadig leverer
+    `reach_out` — den slags proactivity_bridge/autonomous_outreach/
+    action_router/central_moltbook bruger. Kun transportlaget mockes."""
+    import core.services.notification_router as nr
+
+    delivered = []
+    monkeypatch.setattr(nr, "_deliver_to_channel",
+                        lambda *a, **k: delivered.append(a) or True)
+    monkeypatch.setattr(nr, "is_quiet_hours", lambda *a, **k: False)
+
+    res = nr.route_proactive_notification(
+        "bjorn", "reach_out", {"preview": "tekst", "body": "tekst"}, importance="normal")
+
+    assert res["channel"] != "fravalgt"
+    assert res["delivered"] is True
+    assert delivered
+
+
+def test_briefing_leveres_gennem_routeren(isolated_runtime, monkeypatch) -> None:
+    """Samme bevis for `briefing`."""
+    import core.services.notification_router as nr
+
+    delivered = []
+    monkeypatch.setattr(nr, "_deliver_to_channel",
+                        lambda *a, **k: delivered.append(a) or True)
+    monkeypatch.setattr(nr, "is_quiet_hours", lambda *a, **k: False)
+
+    res = nr.route_proactive_notification(
+        "bjorn", "briefing", {"preview": "god morgen"}, importance="normal")
+
+    assert res["channel"] != "fravalgt"
+    assert res["delivered"] is True
+    assert delivered

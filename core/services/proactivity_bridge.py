@@ -202,13 +202,21 @@ def collect_candidates() -> list[dict[str, Any]]:
 
 def _route(uid: str, text: str, importance: str) -> dict[str, Any]:
     """Send direkte via den eksisterende notifikations-router (springer nudge-brønden over — broen
-    ER beslutnings-laget) og LOG i action_routers delte cap-ledger. Self-safe."""
+    ER beslutnings-laget) og LOG i action_routers delte cap-ledger. Self-safe.
+
+    `outcome` foelger `delivered` (K4, 2026-09-22): den stod tidligere fast som
+    "sent" uanset hvad routeren svarede, saa en `reach_out` der blev slaaet
+    fra af `kanal_for()` blev bogfoert som leveret — den samme regression som
+    slog reach_out helt fra, men usynlig i ledger'en, fordi ledger'en loej."""
     from core.services.notification_router import route_proactive_notification
     res = route_proactive_notification(uid, "reach_out", {"preview": text, "body": text}, importance)
     try:
         from core.services.action_router import _append_proactive
-        _append_proactive({"at": datetime.now(UTC).isoformat(), "outcome": "sent",
-                           "reason": "proactivity_bridge", "channel": str(res.get("channel") or ""),
+        leveret = bool(res.get("delivered"))
+        _append_proactive({"at": datetime.now(UTC).isoformat(),
+                           "outcome": "sent" if leveret else "skipped",
+                           "reason": "proactivity_bridge" if leveret else str(res.get("channel") or "ikke leveret"),
+                           "channel": str(res.get("channel") or ""),
                            "message": text[:240], "importance": importance, "source": "proactivity_bridge"})
     except Exception:
         pass

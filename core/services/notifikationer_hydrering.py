@@ -44,11 +44,21 @@ def _hydrer_approval(raekke: dict[str, Any]) -> dict[str, Any] | None:
 
 
 def _hydrer_run(raekke: dict[str, Any]) -> dict[str, Any] | None:
-    """None = koerslen er ikke laengere i den tilstand der skabte raekken."""
-    from core.services.visible_runs_sections.run_finalization import status_for_run
+    """None = koerslen er ikke laengere i den tilstand der skabte raekken.
+
+    K3 (2026-09-22): brugte foer en lokal `("failed", "interrupted")` der
+    ikke daekkede `failed_terminal` — en status `status_for_run()` (den RAA
+    DB-status) rent faktisk returnerer. Emitteren i
+    `run_finalization.finalize_in_flight` fyrer PAA `failed_terminal`, saa en
+    raekke blev skabt og lukket ved foerste laesning. Deler nu
+    `KOERSEL_FEJLET_STATUS` med den fil, saa de to lister ikke kan skride fra
+    hinanden igen."""
+    from core.services.visible_runs_sections.run_finalization import (
+        KOERSEL_FEJLET_STATUS, status_for_run,
+    )
     tilstand = status_for_run(str(raekke["ref"] or ""))
     slags = str(raekke["slags"])
-    if slags == "run_failed" and tilstand not in ("failed", "interrupted"):
+    if slags == "run_failed" and tilstand not in KOERSEL_FEJLET_STATUS:
         return None
     if slags == "run_done" and tilstand not in ("completed", "done"):
         return None

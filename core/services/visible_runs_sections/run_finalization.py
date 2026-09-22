@@ -33,6 +33,18 @@ import logging
 
 _log = logging.getLogger(__name__)
 
+#: Statusser der betyder "koerslen fejlede" — delt mellem denne fil (som
+#: emitterer `run_failed`, se `finalize_in_flight`) og
+#: `notifikationer_hydrering._hydrer_run` (som afgoer om raekken stadig maa
+#: staa). K3 (2026-09-22): de to lister havde skiftet fra hinanden —
+#: emitteren fyrede paa `failed_terminal`, hydreringen kendte kun
+#: `("failed", "interrupted")` — saa en raekke blev skabt og lukket ved
+#: foerste laesning. `failed_terminal` er en rigtig status
+#: (visible_runs.py:6081), og `settlement_shadow.py` normaliserer netop den
+#: til `failed`. Én liste importeret to steder kan ikke skride fra hinanden
+#: igen paa samme maade.
+KOERSEL_FEJLET_STATUS = frozenset({"failed", "failed_terminal", "interrupted"})
+
 
 def advance_tool_lifecycle(session_id: str) -> None:
     """Ryk tool-result cold_floor frem (spec 2026-07-16). Self-safe.
@@ -104,7 +116,7 @@ def finalize_in_flight(
         from core.services.visible_runs_sections.run_finalization import _ejer_og_titel
         ejer, titel = _ejer_og_titel(session_id)
         if ejer:
-            if status in ("failed", "failed_terminal", "interrupted"):
+            if status in KOERSEL_FEJLET_STATUS:
                 notifikations_emittere.paa_koersel_fejlet(
                     run_id, user_id=ejer, session_id=session_id, titel=titel)
             elif status == "completed":

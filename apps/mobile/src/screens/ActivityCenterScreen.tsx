@@ -12,7 +12,8 @@ export function ActivityCenterScreen({
   notifikationer,
   notifFejl = false,
   onAfgoer,
-  onGenhent
+  onGenhent,
+  onAabn
 }: {
   onClose: () => void
   runs: ActiveRunSnapshot[]
@@ -24,6 +25,11 @@ export function ActivityCenterScreen({
   notifFejl?: boolean
   onAfgoer?: (id: string, approved: boolean) => Promise<{ ok: boolean; fejl: string }>
   onGenhent?: () => void
+  /** V4: aabner en post uden handling — samme regel som desk (NotifikationsFeed.tsx):
+   *  kaldes KUN naar posten ikke kan afgoeres (`kan_afgoere` er falsk), ellers
+   *  har den sine egne Godkend/Afvis-knapper. Selve `/set`-kaldet og navigationen
+   *  ligger hos kalderen (ChatScreen), som ogsaa kender `foraeldet`-reglen. */
+  onAabn?: (p: Notifikation) => void
 }) {
   const tokens = useTheme()
   const styles = useStyles(makes)
@@ -84,7 +90,15 @@ export function ActivityCenterScreen({
         ) : notifikationer.length === 0 ? (
           <Text style={styles.muted}>Ingen notifikationer — alt er klaret.</Text>
         ) : notifikationer.map((p) => (
-          <View key={p.id} style={styles.card}>
+          // Trykbar naar posten INTET kan afgoere — samme regel som desk's
+          // NotifikationsFeed.tsx: en post med Godkend/Afvis har sine egne
+          // knapper og skal ikke ogsaa reagere paa et tryk andetsteds paa kortet.
+          <Pressable
+            key={p.id}
+            style={styles.card}
+            accessibilityRole={!p.kan_afgoere ? 'button' : undefined}
+            onPress={() => { if (!p.kan_afgoere) onAabn?.(p) }}
+          >
             <Text style={styles.value}>{p.titel}</Text>
             {p.tekst ? <Text style={styles.muted}>{p.tekst}</Text> : null}
             {p.foraeldet ? (
@@ -109,7 +123,7 @@ export function ActivityCenterScreen({
                 </Pressable>
               </View>
             ) : null}
-          </View>
+          </Pressable>
         ))}
 
         <View style={styles.summary}>

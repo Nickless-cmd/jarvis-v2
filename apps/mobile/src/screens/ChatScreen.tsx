@@ -54,7 +54,7 @@ import { WorkspacePicker } from '../components/WorkspacePicker'
 import { JobsPanel } from '../components/JobsPanel'
 import { saetSessionWorkspace } from '../lib/workspaceApi'
 import { ActivityCenterScreen } from './ActivityCenterScreen'
-import { cancelActiveRun, cancelRunById, compactNow, deleteSession, denyTool, getActiveRunSnapshot, getContextUsage, getGitStatus, getActiveRuns, getModelOptions, renameSession, setSessionFlags, uploadAttachment, whoami, type ContextUsage, type GitStatus, spolTilbage, fortrydTilbagespoling, hentKodeAdgang, hentNotifikationer, afgoerNotifikation, type Notifikation } from '../lib/apiClient'
+import { cancelActiveRun, cancelRunById, compactNow, deleteSession, denyTool, getActiveRunSnapshot, getContextUsage, getGitStatus, getActiveRuns, getModelOptions, renameSession, setSessionFlags, uploadAttachment, whoami, type ContextUsage, type GitStatus, spolTilbage, fortrydTilbagespoling, hentKodeAdgang, hentNotifikationer, afgoerNotifikation, setNotifikation, type Notifikation } from '../lib/apiClient'
 import { computeUnread } from '../lib/sessionStatus'
 import { loadLastSeen, markSeen } from '../lib/lastSeen'
 import { loadLastSession, saveLastSession } from '../lib/sessionStore'
@@ -419,6 +419,20 @@ export function ChatScreen({
     if (!config) return Promise.resolve({ ok: false, fejl: 'Ikke forbundet.' })
     return afgoerNotifikation(config, id, approved)
   }, [config])
+
+  // V4: aabner en post uden handling (fx `release`, `run_done`) — samme
+  // regel som desk's NotifikationsFeed.tsx `aabn()`. Navigation sker altid
+  // naar `session_id` findes; `/set` sendes KUN naar posten ikke er
+  // `foraeldet` — en foraeldet post (ejeren kunne ikke hydreres) venter
+  // stadig, og et lukket kort kan ikke komme igen gennem dedup'en paa
+  // serveren.
+  const aabnNotif = useCallback((p: Notifikation) => {
+    if (p.session_id && config) {
+      sessions.select(config, p.session_id).catch(() => undefined)
+      closeTopRoute()
+    }
+    if (config && !p.foraeldet) void setNotifikation(config, p.id).then(hentNotifikationerNu).catch(() => undefined)
+  }, [config, sessions, closeTopRoute, hentNotifikationerNu])
 
   const routeIntent = useCallback((intent: MobileIntent | null) => {
     if (!intent || !config) return
@@ -1488,6 +1502,7 @@ export function ChatScreen({
           notifFejl={notifFejl}
           onAfgoer={afgoerNotif}
           onGenhent={hentNotifikationerNu}
+          onAabn={aabnNotif}
         />
       </Modal>
 

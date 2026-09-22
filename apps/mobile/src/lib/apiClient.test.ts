@@ -14,6 +14,7 @@ import {
   listSessions,
   renameSession,
   setSessionFlags,
+  setNotifikation,
   cancelRunById,
   getActiveRunSnapshot,
   steerRun,
@@ -355,4 +356,17 @@ describe('samtale-handlingerne sender et OBJEKT, ikke en streng', () => {
     await setSessionFlags(config, 's1', { pinned: true })
     expect(JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body)).toEqual({ pinned: true })
   })
+})
+
+// V4: mobilen kunne ikke rydde en notifikation — desk kunne, via /set.
+// `run_done` og alt med `kilde='egen'` (fx `release`) lukkes aldrig af
+// hydreringen; de kræver et eksplicit /set, ellers sidder tælleren fast og
+// vokser, indtil man åbner desk.
+it('setNotifikation rydder en post via POST /notifikationer/{id}/set', async () => {
+  ;(global.fetch as jest.Mock).mockResolvedValue({ ok: true, status: 200, json: async () => ({}) })
+  await setNotifikation(config, 'n1')
+  expect(global.fetch).toHaveBeenCalledWith(
+    'https://api.srvlab.dk/notifikationer/n1/set',
+    expect.objectContaining({ method: 'POST' }),
+  )
 })

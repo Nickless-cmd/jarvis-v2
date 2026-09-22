@@ -775,3 +775,12 @@ export async function afgoerNotifikation(
     body: { approved },
   })
 }
+
+/** Ryd en post der ikke kraever en afgoerelse (fx `release`, `run_done`).
+ *  Samme kontrakt som desk's notifikationerApi.ts — kaldes IKKE for en
+ *  `foraeldet` post (V4/V1, 22/9-2026): ejeren kunne ikke hydreres, posten
+ *  venter stadig, og en lukket raekke kan ikke komme igen gennem dedup'en
+ *  paa serveren. */
+export async function setNotifikation(config: ApiConfig, id: string): Promise<void> {
+  await apiFetch(config, `/notifikationer/${encodeURIComponent(id)}/set`, { method: 'POST' })
+}

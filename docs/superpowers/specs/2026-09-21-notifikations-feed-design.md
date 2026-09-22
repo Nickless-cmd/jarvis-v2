@@ -144,6 +144,19 @@ gang. Kolonnerne bliver stående indtil alle kaldesteder læser den nye tabel;
 `notification_router` læser rækker med kolonnerne som fald-tilbage, så en
 halvvejs migreret base ikke taber nogens valg.
 
+**Rettelse (V8, 2026-09-22):** `team_invite` og `wakeup` mappede oprindeligt
+begge til slags `initiative`. `INSERT OR IGNORE` rammer det unikke indeks på
+(user_id, slags), så kun den FØRSTE af de to blev skrevet — efterprøvet:
+`wakeup='push'` forsvandt tavst når `team_invite` også havde et valg, hvilket
+brød løftet ovenfor om at de fem kolonner bæres over uden tab. `wakeup` har nu
+sin egen slags (`wakeup`), adskilt fra `team_invite`s `initiative`.
+
+Migreringen validerede heller ikke de gamle kolonneværdier mod
+`GYLDIGE_KANALER` (`auto | mobile | desktop | push | ingen`) — de kan lovligt
+indeholde `discord`/`telegram` (`notification_router.VALID_CHANNELS`), som
+feedens egen kanal-vælger ikke kender. En sådan værdi klemmes nu ned til
+`"auto"` ved migrering i stedet for at blive skrevet uændret over.
+
 Standard: `approval`, `question` og `run_failed` pusher. Resten er tavse.
 
 ## Levering

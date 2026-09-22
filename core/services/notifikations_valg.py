@@ -43,12 +43,20 @@ STANDARD: dict[str, str] = {
 }
 
 #: Kolonnenavn i notification_preferences -> slags i den nye tabel.
+#:
+#: V8 (2026-09-22): `team_invite` og `wakeup` mappede FOER begge til
+#: `initiative`. `migrer_kolonner()`s `INSERT OR IGNORE` rammer det unikke
+#: indeks paa (user_id, slags), saa kun den FOERSTE af de to blev skrevet —
+#: efterproevet: `wakeup='push'` forsvandt naar `team_invite` ogsaa havde et
+#: valg. Specen (docs/superpowers/specs/2026-09-21-notifikations-feed-
+#: design.md) lover udtrykkeligt at alle fem kolonner baeres over uden tab.
+#: `wakeup` faar derfor sin egen slags i stedet for at dele `team_invite`s.
 _GAMLE_KOLONNER = {
     "briefing": "briefing",
     "reminder": "reminder",
     "reach_out": "reach_out",
     "team_invite": "initiative",
-    "wakeup": "initiative",
+    "wakeup": "wakeup",
 }
 
 
@@ -96,6 +104,12 @@ def migrer_kolonner() -> int:
 
     `INSERT OR IGNORE`: har brugeren allerede valgt noget nyere for den slags,
     roeres det ikke. Ellers ville en genstart rulle et valg tilbage.
+
+    V8 (2026-09-22): de gamle kolonner valideredes ikke mod `GYLDIGE_KANALER`
+    — de kan lovligt indeholde `discord`/`telegram`
+    (`notification_router.VALID_CHANNELS`), som feedens egen kanal-vaelger
+    ikke kender. En ukendt vaerdi klemmes derfor ned til "auto" i stedet for
+    at blive skrevet uaendret over i den nye tabel.
     """
     flyttet = 0
     with connect() as conn:
@@ -110,12 +124,17 @@ def migrer_kolonner() -> int:
         for raekke in raekker:
             user_id = str(raekke[0])
             for i, slags in enumerate(_GAMLE_KOLONNER.values(), start=1):
-                vaerdi = raekke[i]
+                vaerdi = str(raekke[i] or "")
                 if not vaerdi:
                     continue
+                if vaerdi not in GYLDIGE_KANALER:
+                    _log.warning(
+                        "migrering: ukendt kanal %r for %s (bruger %s) — "
+                        "klemt til 'auto'", vaerdi, slags, user_id)
+                    vaerdi = "auto"
                 markoer = conn.execute(
                     "INSERT OR IGNORE INTO notifikations_valg (user_id, slags, kanal)"
-                    " VALUES (?,?,?)", (user_id, slags, str(vaerdi)))
+                    " VALUES (?,?,?)", (user_id, slags, vaerdi))
                 flyttet += int(markoer.rowcount or 0)
         conn.commit()
     return flyttet

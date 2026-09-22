@@ -196,3 +196,46 @@ def test_briefing_leveres_gennem_routeren(isolated_runtime, monkeypatch) -> None
     assert res["channel"] != "fravalgt"
     assert res["delivered"] is True
     assert delivered
+
+
+# ── V8 (2026-09-22): migreringen taber et valg ──────────────────────────────
+def test_migreringen_taber_ikke_wakeup(isolated_runtime) -> None:
+    """`_GAMLE_KOLONNER` mappede foer BAADE `team_invite` og `wakeup` til
+    `initiative`; med `INSERT OR IGNORE` vandt den foerste, og wakeup's
+    vaerdi forsvandt. Specen lover at de fem kolonner baeres over uden tab —
+    `wakeup` faar derfor sin egen slags."""
+    from core.runtime.db import connect
+    from core.services import notifikations_valg as v
+
+    with connect() as conn:
+        conn.execute(
+            "INSERT INTO notification_preferences (user_id, pref_global, team_invite, wakeup)"
+            " VALUES (?,?,?,?)", ("bjorn", "auto", "mobile", "push"))
+        conn.commit()
+
+    assert v.migrer_kolonner() == 2
+    assert v.kanal_for("bjorn", "initiative") == "mobile", "team_invite's valg"
+    assert v.kanal_for("bjorn", "wakeup") == "push", "wakeup maa ikke forsvinde"
+
+
+def test_migreringen_klemmer_ukendte_kanaler_ned_i_gyldige(isolated_runtime) -> None:
+    """Migreringen validerede foer ikke mod `GYLDIGE_KANALER` — de gamle
+    kolonner kan lovligt indeholde `discord`/`telegram`
+    (notification_router.VALID_CHANNELS), som klientens vaelger ikke
+    kender. En saadan vaerdi skal klemmes ned til en kanal feeden faktisk
+    forstaar, ikke skrives uaendret over."""
+    from core.runtime.db import connect
+    from core.services import notifikations_valg as v
+
+    with connect() as conn:
+        conn.execute(
+            "INSERT INTO notification_preferences (user_id, pref_global, reach_out)"
+            " VALUES (?,?,?)", ("bjorn", "auto", "discord"))
+        conn.commit()
+
+    v.migrer_kolonner()
+
+    kanal = v.kanal_for("bjorn", "reach_out")
+    assert kanal in v.GYLDIGE_KANALER, (
+        f"migreret kanal {kanal!r} er ikke en klienten forstaar"
+    )

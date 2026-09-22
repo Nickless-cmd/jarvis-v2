@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { ApiConfig } from '../../lib/api'
 import { hentOpmaerksomhed, markerSet, skalKvittere, type Opmaerksomhed } from '../../lib/opmaerksomhed'
 import { JarvisRing } from './JarvisRing'
+import { maaPolle } from '../../lib/ro'
 
 /**
  * Tilstands-hjernens stemme i desk: én linje der kommer og går.
@@ -34,6 +35,7 @@ export function OpmaerksomhedsLinje({ config, aktivId, onAabn }: {
     if (!config) return
     let aktiv = true
     const tick = () => {
+      if (!maaPolle('opmaerksomhed', 5000)) return  // ingen kigger -> sjaeldnere (ro.ts)
       void hentOpmaerksomhed(config)
         .then((d) => { if (aktiv) setO(d) })
         .catch(() => { /* behold sidste — ingen flimren ved netværks-blip */ })

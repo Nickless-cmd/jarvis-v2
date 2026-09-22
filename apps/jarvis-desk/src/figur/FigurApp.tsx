@@ -6,6 +6,7 @@ import { FigurKrop } from './FigurKrop'
 import { HANDLING_FOR, blikFraMus, boble, maalHoejde, type Handling } from './figurLogik'
 import { sendHurtigt } from './hurtigChat'
 import { useFigurSkin } from '../lib/figurSkin'
+import { maaPolle } from '../lib/ro'
 import './figur.css'
 
 interface FigurBro {
@@ -82,6 +83,11 @@ export function FigurApp() {
     if (!config?.authToken) return
     let aktiv = true
     const tick = () => {
+      // Figuren staar paa skrivebordet og har sit EGET vindue. `ignorerSkjult`
+      // fordi den ofte er daekket af andre vinduer uden at nogen er gaaet —
+      // den skal stadig vide hvad han laver naar du kigger forbi. Men efter
+      // tre minutter uden et tegn paa liv maa den godt blive langsom (ro.ts).
+      if (!maaPolle('figur-opmaerksomhed', POLL_MS, { ignorerSkjult: true })) return
       apiFetch<Opmaerksomhed>(config, '/cowork/opmaerksomhed', { retries: 0 })
         .then((d) => { if (aktiv) setO(d) })
         .catch(() => { /* behold sidste — ingen flimren ved netværks-blip */ })

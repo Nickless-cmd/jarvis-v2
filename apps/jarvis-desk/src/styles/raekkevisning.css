@@ -50,8 +50,12 @@
 .raekkevisning .rv-slags {
   flex: none; font-size: 13px; line-height: var(--rv-h); font-weight: 400; color: var(--fg-2);
 }
+/* `flex: 0 1 auto` og ikke `1 1 auto`: sammenfatningen fylder sin EGEN bredde
+   og skubber ikke chevronen ud i kanten. Den krymper stadig med ellipse naar
+   der ikke er plads. Bjoern 22/9-2026: «> for enden af raekkerne var ikk ment
+   som helt ude i den anden ende... men som efter teksten». */
 .raekkevisning .rv-sum {
-  flex: 1 1 auto; min-width: 0; overflow: hidden; white-space: nowrap;
+  flex: 0 1 auto; min-width: 0; overflow: hidden; white-space: nowrap;
   font-size: 13px; line-height: var(--rv-h); font-weight: 400; color: var(--rv-tertiary);
 }
 .raekkevisning .rv-sumT { display: block; overflow: hidden; text-overflow: ellipsis; }

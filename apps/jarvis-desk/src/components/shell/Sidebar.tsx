@@ -11,6 +11,7 @@ import { useSessions } from '../../hooks/useSessions'
 import { useSettings } from '../../hooks/useSettings'
 import { useStream } from '../../hooks/useStream'
 import { getActiveRuns } from '../../lib/api'
+import { maaPolle } from '../../lib/ro'
 import { COWORK_ZONES, emitZone, getCurrentZone, onZone, normalizeZone, type Zone } from '../../lib/coworkZone'
 import { grupperSessioner, GRUPPER_I_MODE, grupperEfterProjekt, type SessionGruppe } from '../../lib/sessionGroups'
 import { SidebarGreb } from './SidebarGreb'
@@ -100,6 +101,9 @@ export function Sidebar({
     const cfg = { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }
     let cancelled = false
     const tick = () => {
+      // Ingen kigger -> sjaeldnere (ro.ts). Prikken der viser «arbejder» maa
+      // gerne vaere 30s gammel naar maskinen har staaet uroert i tre minutter.
+      if (!maaPolle('sidebar-active-runs', 4000)) return
       void getActiveRuns(cfg)
         .then((ids) => { if (!cancelled) setActiveRunSessions(new Set(ids)) })
         .catch(() => { /* behold sidste — ingen flicker ved netværks-blip */ })

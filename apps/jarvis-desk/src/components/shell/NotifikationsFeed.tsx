@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
-import { X, ShieldAlert, CircleAlert, CircleCheck, Bell, Package } from 'lucide-react'
+import {
+  X, ShieldAlert, CircleAlert, CircleCheck, Bell, Package,
+  MessageCircle, Flag, ShieldX, Radar, Key, AtSign,
+} from 'lucide-react'
 import { openEventSocket, type ApiConfig } from '../../lib/api'
 import {
   hentNotifikationer, afgoerNotifikation, setNotifikation, type Notifikation,
@@ -10,6 +13,13 @@ const IKON: Record<string, typeof Bell> = {
   approval: ShieldAlert, question: ShieldAlert,
   run_failed: CircleAlert, run_done: CircleCheck,
   release: Package,
+  // ── De seks router-ejede slags (routeren-foeder, 2026-09-22) ────────────
+  reach_out: MessageCircle,
+  central_flag: Flag,
+  membrane_breach: ShieldX,
+  infra_security: Radar,
+  keymaker_key_earned: Key,
+  moltbook_mention: AtSign,
 }
 
 /** «for 3 min siden» — et klokkeslaet siger mindre end et interval her. */

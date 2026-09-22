@@ -3,7 +3,23 @@ import type { ApiConfig } from '../../lib/api'
 import { hentNotifikationsValg, saetNotifikationsValg } from '../../lib/notifikationerApi'
 import { SettingsState, SettingsActionError } from './SettingsState'
 
-/** Brugerens ord for hver slags — ikke systemets. */
+/**
+ * Brugerens ord for hver slags — ikke systemets.
+ *
+ * `briefing`, `reminder`, `initiative` har INGEN afsender noget sted i
+ * repoet (der findes ingen `route_proactive_notification(..., "briefing", …)`
+ * eller lignende) — de er kolonnenavne fra den gamle
+ * `notification_preferences`-tabel og kan derfor aldrig vises i feeden. De
+ * staar alligevel her: en tidligere migreret bruger kan have en gemt raekke
+ * under netop de tre navne (se `_GAMLE_KOLONNER` i notifikations_valg.py),
+ * og komponenten herunder viser kun det den finder en NAVN-noegle for
+ * (`Object.keys(NAVN).filter((s) => s in valg)`) — fjernes navnet, forsvinder
+ * det gemte valg TAVST fra indstillingerne uden at holde op med at eksistere
+ * i databasen. Efterproevet 2026-09-22 (opgave "routeren-foeder"): dette
+ * holder stadig, ogsaa nu hvor routeren selv foder feeden — migreringen
+ * skriver stadig de samme raekker, og der findes stadig ingen afsender for
+ * dem.
+ */
 const NAVN: Record<string, string> = {
   approval: 'Godkendelser',
   question: 'Spørgsmål fra Jarvis',
@@ -17,6 +33,12 @@ const NAVN: Record<string, string> = {
   release: 'Ny app-version',
   incident: 'Hændelser i systemet',
   quota: 'Kvote opbrugt',
+  // ── De fem øvrige router-ejede slags (routeren-foeder, 2026-09-22) ──────
+  central_flag: 'Signaler fra Centralen',
+  membrane_breach: 'Brud på den beskyttede kerne',
+  infra_security: 'Sikkerhed i infrastrukturen',
+  keymaker_key_earned: 'Optjente nøgler',
+  moltbook_mention: 'Omtaler på Moltbook',
 }
 
 const KANALER: [string, string][] = [

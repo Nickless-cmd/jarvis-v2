@@ -14,7 +14,6 @@ This module is imported lazily in prompt_contract.py to avoid circular imports.
 from __future__ import annotations
 
 import logging
-from datetime import UTC, datetime
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +21,11 @@ logger = logging.getLogger(__name__)
 _ADVISORY_THRESHOLD = 0.40   # below this → imperative
 _CRITICAL_THRESHOLD = 0.25   # below this → critical
 _GOOD_THRESHOLD = 0.60      # above this → no nudge
+
+# Loft over hvor mange linjer gaten skriver. Rækkerne sorteres værste-først
+# nedenfor, så det kritiske bånd aldrig skubbes ud af loftet — og resten
+# tælles op i én linje frem for at forsvinde tavst (fix 2026-09-21).
+_MAKS_LINJER = 12
 
 
 def decision_adherence_section() -> str:
@@ -36,13 +40,22 @@ def decision_adherence_section() -> str:
     # reached Jarvis as awareness, even when score < 25%. Switched to the
     # correct module so escalation actually surfaces.
     try:
-        from core.services.behavioral_decisions import list_active_decisions
+        from core.services.behavioral_decisions import (
+            count_decisions,
+            list_active_decisions,
+        )
     except ImportError:
         logger.debug("decision_adherence_gate: behavioral_decisions not available")
         return ""
 
+    # Fix 2026-09-21: gaten læste kun 20 af 44 aktive beslutninger — og i en
+    # rækkefølge der gjorde det værre end tilfældigt, fordi lageret sorterer
+    # efter priority/updated_at og IKKE efter adherence. Høj-prioritets-
+    # beslutninger med høj adherence fortrængte de kritiske, som derfor
+    # aldrig nåede frem til mig. Læs ALLE aktive og sortér efter score
+    # nedenfor, så det kritiske bånd altid kommer med.
     try:
-        active = list_active_decisions(limit=20)
+        active = list_active_decisions(limit=max(50, count_decisions(status="active")))
     except Exception as exc:
         logger.debug("decision_adherence_gate: list failed: %s", exc)
         return ""
@@ -74,25 +87,38 @@ def decision_adherence_section() -> str:
         "dec_d56d89ceec24",  # loop-nudge commitment — tracked in R2 gate
     }
 
-    lines = ["\n[DECISION-ADHERENCE-GATE]"]
-    has_escalation = False
-
+    # Saml alt under tærsklen først, sortér værste-først, og skriv så. Uden
+    # sorteringen ville loftet kunne skjule en kritisk beslutning bag
+    # advisory-støj — præcis den fejlklasse fixet 2026-09-21 retter.
+    raekker: list[tuple[float, str, str]] = []
     for d in active:
         directive = d.get("directive", "")
-        stored_score = d.get("adherence_score", 1.0) or 1.0
+        # Fix 2026-09-21: `d.get("adherence_score", 1.0) or 1.0` behandlede en
+        # score på PRÆCIS 0.0 som falsy og løftede den til 1.0 — den værste
+        # beslutning af alle blev læst som «doing fine» og sprunget over.
+        # Kun None betyder «aldrig reviewet».
+        raa = d.get("adherence_score")
+        stored_score = float(raa) if raa is not None else 1.0
         dec_id = d.get("decision_id", "?")
 
         # Overlay R2 telemetry where applicable
         if r2_rate is not None and dec_id in _R2_LINKED_DECISIONS:
-            score = min(float(stored_score), r2_rate)
+            score = min(stored_score, r2_rate)
         else:
-            score = float(stored_score)
+            score = stored_score
 
         if score >= _GOOD_THRESHOLD:
             continue  # doing fine, no nudge needed
 
-        has_escalation = True
+        raekker.append((score, dec_id, directive))
 
+    if not raekker:
+        return ""
+
+    raekker.sort(key=lambda r: r[0])
+
+    lines = ["\n[DECISION-ADHERENCE-GATE]"]
+    for score, dec_id, directive in raekker[:_MAKS_LINJER]:
         if score < _CRITICAL_THRESHOLD:
             # Critical band — adherence below 25%
             lines.append(
@@ -115,8 +141,11 @@ def decision_adherence_section() -> str:
                 f"Adherence {score:.0%} (advisory band) — {dec_id}: {directive}"
             )
 
-    if not has_escalation:
-        return ""
+    skjulte = len(raekker) - _MAKS_LINJER
+    if skjulte > 0:
+        # Aldrig tavs: hellere sige hvor mange der ligger under tærsklen end
+        # at lade dem forsvinde ud af prompten uden et spor.
+        lines.append(f"… og {skjulte} flere under tærsklen (ikke vist her).")
 
     lines.append("[/DECISION-ADHERENCE-GATE]\n")
     return "\n".join(lines)

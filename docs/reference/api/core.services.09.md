@@ -448,7 +448,7 @@ _Gate 1: Decision-adherence gate._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `decision_adherence_section` | `()` | Build an escalation prompt section based on current decision adherence. | [src](../../../core/services/decision_adherence_gate.py#L27) |
+| function | `decision_adherence_section` | `()` | Build an escalation prompt section based on current decision adherence. | [src](../../../core/services/decision_adherence_gate.py#L31) |
 
 ## `core/services/decision_enforcement.py`
 _Decision enforcement — close the loop between commitment and behavior._

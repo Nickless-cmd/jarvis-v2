@@ -127,6 +127,78 @@ def test_push_payloaden_giver_en_synlig_notifikation_i_AEGTE_fcm(isolated_runtim
     assert msg["notification"]["body"]
 
 
+# ── K2 (2026-09-22): kun ÉN ventende godkendelse kunne naa feeden ad gangen ──
+# `afstem_godkendelser` kaldte `pending_for_owner`, som med VILJE kun
+# returnerer det NYESTE kort (til andre kaldere der vil vise ét). Efterproevet
+# foer rettelsen: fire kort ventede samtidig, kun ét naaede feeden, stabilt
+# over gentagne afstemninger.
+def test_flere_ventende_godkendelser_naar_ALLE_feeden(isolated_runtime, monkeypatch) -> None:
+    from core.services import notifikationer as n
+    from core.services import notifikations_emittere as e
+    from core.services import approval_runtime
+
+    kort = [
+        {"approval_id": f"a-{i}", "session_id": f"s-{i}", "tool_name": "bash_session",
+         "created_at": f"2026-09-22T00:0{i}:00+00:00", "owner_user_id": "bjorn"}
+        for i in range(4)
+    ]
+    monkeypatch.setattr(approval_runtime, "alle_pending_for_owner", lambda uid: kort)
+
+    talt = e.afstem_godkendelser("bjorn")
+
+    assert talt == 4, "alle fire ventende kort skulle give en raekke hver"
+    refs = {r["ref"] for r in n.aabne("bjorn", er_owner=True)}
+    assert refs == {"a-0", "a-1", "a-2", "a-3"}
+
+
+def test_dedup_kigger_kun_paa_approval_slags(isolated_runtime, monkeypatch) -> None:
+    """Dedup-maengden slog foer op paa tvaers af ALLE slags. En aaben raekke
+    af en anden slags med samme `ref`-streng maatte ikke kunne skjule en
+    ventende godkendelse."""
+    from core.services import notifikationer as n
+    from core.services import notifikations_emittere as e
+    from core.services import approval_runtime
+
+    n.opret(user_id="bjorn", slags="run_failed", kilde="run", ref="a-1", titel="noget andet")
+    kort = [{"approval_id": "a-1", "session_id": "s-1", "tool_name": "bash_session",
+            "created_at": "2026-09-22T00:00:00+00:00", "owner_user_id": "bjorn"}]
+    monkeypatch.setattr(approval_runtime, "alle_pending_for_owner", lambda uid: kort)
+
+    talt = e.afstem_godkendelser("bjorn")
+
+    assert talt == 1
+    par = {(r["slags"], r["ref"]) for r in n.aabne("bjorn", er_owner=True)}
+    assert ("approval", "a-1") in par
+
+
+# ── V1 (2026-09-22): en raekke lukket ved en fejl kan ellers aldrig komme igen
+def test_afstemning_genaabner_en_forkert_lukket_raekke(isolated_runtime, monkeypatch) -> None:
+    """`opret()`s dedup daekker ogsaa KLAREDE raekker (bevidst — en gen-udsendt
+    haendelse maa ikke kunne genaabne noget). Men afstemningen SPØRGER
+    ejeren direkte, og naar den beviser han stadig venter, skal en raekke der
+    blev lukket forkert kunne komme tilbage."""
+    from core.services import notifikationer as n
+    from core.services import notifikations_emittere as e
+    from core.services import approval_runtime
+
+    nid = n.opret(user_id="bjorn", slags="approval", kilde="approval",
+                  ref="a-1", titel="Gammel titel")
+    n.luk(nid, "superseded")  # lukket forkert, fx af en racende hydrering (V2)
+    assert n.aabne("bjorn", er_owner=True) == []
+
+    kort = [{"approval_id": "a-1", "session_id": "s-1", "tool_name": "bash_session",
+            "created_at": "2026-09-22T00:00:00+00:00", "owner_user_id": "bjorn"}]
+    monkeypatch.setattr(approval_runtime, "alle_pending_for_owner", lambda uid: kort)
+
+    talt = e.afstem_godkendelser("bjorn")
+
+    assert talt == 1
+    raekker = n.aabne("bjorn", er_owner=True)
+    assert len(raekker) == 1
+    assert raekker[0]["ref"] == "a-1"
+    assert raekker[0]["id"] == nid, "det er DEN SAMME raekke, genaabnet — ikke en ny"
+
+
 def test_faerdig_koersel_der_koerer_igen_lukker_raekken(isolated_runtime, monkeypatch) -> None:
     """Startede den forfra, er «svar klar» ikke sandt laengere."""
     from core.services import notifikationer as n

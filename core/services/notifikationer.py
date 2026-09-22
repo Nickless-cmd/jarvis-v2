@@ -135,6 +135,34 @@ def luk(notif_id: str, udfald: str) -> None:
         _udsend("klaret", notif_id, str(raekke[0]), str(raekke[1]))
 
 
+def genaabn(slags: str, ref: str) -> bool:
+    """Genaabn en LUKKET raekke for (slags, ref). Returnerer True hvis en
+    raekke faktisk blev genaabnet.
+
+    V1 (2026-09-22): `opret()`s dedup paa `ux_notif_ref` daekker ogsaa
+    KLAREDE raekker — bevidst, saa en gen-udsendt haendelse ikke kan genaabne
+    noget en anden kanal allerede har afgjort. Men intet reviderede en raekke
+    der blev lukket FORKERT (fx af hydreringen der racede en async
+    DB-skrivning, V2). Kaldes derfor kun fra `afstem_godkendelser`, som
+    SPØRGER ejeren direkte foer den genaabner — modsat en gen-udsendt
+    haendelse er det sikkert, fordi det ikke er en gaetning.
+    """
+    with connect() as conn:
+        markoer = conn.execute(
+            "UPDATE notifikationer SET klaret=NULL, udfald=NULL"
+            " WHERE slags=? AND ref=? AND klaret IS NOT NULL",
+            (slags, ref))
+        conn.commit()
+        raekke = None
+        if markoer.rowcount:
+            raekke = conn.execute(
+                "SELECT id, user_id FROM notifikationer WHERE slags=? AND ref=?",
+                (slags, ref)).fetchone()
+    if raekke:
+        _udsend("genaabnet", str(raekke[0]), str(raekke[1]), slags)
+    return bool(markoer.rowcount)
+
+
 def ryd_gamle(dage: int = 7) -> int:
     """Fjern KLAREDE raekker aeldre end `dage`. Returnerer antal fjernede."""
     graense = (datetime.now(UTC) - timedelta(days=dage)).isoformat()

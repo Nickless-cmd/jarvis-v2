@@ -134,6 +134,35 @@ def pending_for_owner(user_id: str) -> dict[str, Any] | None:
     return kandidater[0]
 
 
+def alle_pending_for_owner(user_id: str) -> list[dict[str, Any]]:
+    """ALLE ventende kort for en EJER — ikke kun det nyeste.
+
+    K2 (2026-09-22): `pending_for_owner` returnerer med vilje kun ét kort, og
+    det er rigtigt for kaldere der vil vise ét kort. Men notifikations-feedens
+    afstemning (`notifikations_emittere.afstem_godkendelser`) brugte den
+    samme funktion til at lægge RÆKKER — og fik derfor kun det NYESTE kort
+    nogensinde med. Efterprøvet: fire kort ventede samtidig, kun ét nåede
+    feeden, stabilt over gentagne afstemninger.
+
+    Selvsamme scenarie var grunden til at `pending_for_owner` blev bygget i
+    sin tid (se dens docstring) — det halve hul lukkede aldrig helt.
+
+    `pending_for_owner` er URØRT: andre kaldere skal fortsat kun se ét kort.
+    """
+    uid = str(user_id or "").strip()
+    if not uid:
+        return []
+    import core.services.visible_runs as _vr
+
+    kandidater = [
+        {**kort, "approval_id": aid}
+        for aid, kort in list(_vr._PENDING_APPROVALS.items())
+        if str((kort or {}).get("owner_user_id") or "") == uid
+    ]
+    kandidater.sort(key=lambda k: str(k.get("created_at") or ""), reverse=True)
+    return kandidater
+
+
 def decide(approval_id: str, *, approved: bool,
            answered_by: str | None = None) -> dict[str, Any]:
     """Svar paa en godkendelse. Den ENE vej ind for enhver svarer.

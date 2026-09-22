@@ -28,8 +28,10 @@ def test_ventende_godkendelse_bliver_staaende_og_kan_afgoeres(isolated_runtime, 
     # `feed()` afstemmer nu ogsaa (spec 2026-09-21). Denne test maaler KUN
     # hydreringen af raekken over — den forudsaetning var uudtalt foer
     # afstemningen fandtes, og skal vaere eksplicit nu: ingen ANDEN ventende
-    # godkendelse for ejeren.
-    monkeypatch.setattr(approval_runtime, "pending_for_owner", lambda uid: None)
+    # godkendelse for ejeren. Afstemningen laeser `alle_pending_for_owner`
+    # (K2, 2026-09-22) — IKKE `pending_for_owner`, som stadig bruges andre
+    # steder og derfor er urørt.
+    monkeypatch.setattr(approval_runtime, "alle_pending_for_owner", lambda uid: [])
 
     poster = h.feed("bjorn", er_owner=True)
     assert len(poster) == 1
@@ -60,8 +62,10 @@ def test_hydrering_der_fejler_lukker_IKKE_raekken(isolated_runtime, monkeypatch)
     # `feed()` afstemmer nu ogsaa (spec 2026-09-21). Denne test maaler KUN
     # hydreringen af raekken over — den forudsaetning var uudtalt foer
     # afstemningen fandtes, og skal vaere eksplicit nu: ingen ANDEN ventende
-    # godkendelse for ejeren.
-    monkeypatch.setattr(approval_runtime, "pending_for_owner", lambda uid: None)
+    # godkendelse for ejeren. Afstemningen laeser `alle_pending_for_owner`
+    # (K2, 2026-09-22) — IKKE `pending_for_owner`, som stadig bruges andre
+    # steder og derfor er urørt.
+    monkeypatch.setattr(approval_runtime, "alle_pending_for_owner", lambda uid: [])
 
     poster = h.feed("bjorn", er_owner=True)
     assert len(poster) == 1

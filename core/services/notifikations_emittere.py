@@ -99,7 +99,8 @@ def system(slags: str, titel: str, tekst: str = "") -> None:
 
 
 def afstem_godkendelser(user_id: str) -> int:
-    """Laeg raekker for ventende godkendelser der mangler. Returnerer antal nye.
+    """Laeg raekker for ALLE ventende godkendelser der mangler. Returnerer
+    antal nye/genaabnede.
 
     Afstemning frem for en krog ved foedslen: kortet foedes to steder i
     visible_runs.py, og en overset krog ville betyde en notifikation der ALDRIG
@@ -107,18 +108,38 @@ def afstem_godkendelser(user_id: str) -> int:
     virker ogsaa for godkendelser der fandtes foer feeden blev bygget.
 
     `opret()` afdublerer paa (slags, ref), saa den er idempotent af sig selv.
+
+    K2 (2026-09-22): brugte foer `pending_for_owner`, som med VILJE kun
+    returnerer det NYESTE kort. Efterproevet: fire kort ventede samtidig, kun
+    ét naaede feeden, stabilt. `alle_pending_for_owner` lister dem alle.
+
+    Dedup-maengden (`aabne_refs`) slog foer op paa TVAERS af alle slags —
+    filtreret her til `slags == "approval"`, saa en aaben raekke af en anden
+    slags med samme `ref`-streng (usandsynligt, men umuligt at udelukke) ikke
+    kunne skjule en ventende godkendelse.
+
+    V1 (2026-09-22): findes raekken allerede, men LUKKET, betyder det at
+    ejeren stadig venter paa noget feeden tidligere lukkede forkert (fx
+    hydreringen der racede en async DB-skrivning, V2). `genaabn()` retter det
+    — sikkert netop fordi afstemningen SPØRGER ejeren, modsat en gen-udsendt
+    haendelse.
     """
     from core.services import approval_runtime
-    kort = approval_runtime.pending_for_owner(user_id)
-    if not kort:
+    kort_liste = approval_runtime.alle_pending_for_owner(user_id)
+    if not kort_liste:
         return 0
-    aid = str(kort.get("approval_id") or "")
-    if not aid:
-        return 0
-    foer = {str(r["ref"]) for r in _lager.aabne(user_id, er_owner=False)}
-    if aid in foer:
-        return 0
-    paa_godkendelse(aid, user_id=user_id,
-                    session_id=str(kort.get("session_id") or ""),
-                    vaerktoej=str(kort.get("tool_name") or "et værktøj"))
-    return 1
+    aabne_refs = {str(r["ref"]) for r in _lager.aabne(user_id, er_owner=False)
+                  if str(r["slags"]) == "approval"}
+    talt = 0
+    for kort in kort_liste:
+        aid = str(kort.get("approval_id") or "")
+        if not aid or aid in aabne_refs:
+            continue
+        if _lager.genaabn("approval", aid):
+            talt += 1
+            continue
+        paa_godkendelse(aid, user_id=user_id,
+                        session_id=str(kort.get("session_id") or ""),
+                        vaerktoej=str(kort.get("tool_name") or "et værktøj"))
+        talt += 1
+    return talt

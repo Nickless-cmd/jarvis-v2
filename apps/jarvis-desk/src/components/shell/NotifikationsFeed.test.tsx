@@ -10,6 +10,18 @@ vi.mock('../../lib/notifikationerApi', () => ({
   setNotifikation: (...a: unknown[]) => set(...a),
 }))
 
+// V5: samme stub-moenster som Klokke.test.tsx — hvert openEventSocket()-kald
+// laegger sin stub i `sockets`, saa en test kan finde den senest oprettede
+// og udloese `onmessage` selv.
+const sockets: { onmessage: ((e: { data: string }) => void) | null; close: () => void }[] = []
+vi.mock('../../lib/api', () => ({
+  openEventSocket: () => {
+    const s = { onmessage: null, onerror: null, close: vi.fn() }
+    sockets.push(s as never)
+    return s
+  },
+}))
+
 import { NotifikationsFeed } from './NotifikationsFeed'
 
 const cfg = { apiBaseUrl: 'http://x', authToken: 't' }
@@ -20,7 +32,7 @@ const post = (o: Partial<Record<string, unknown>> = {}) => ({
 })
 
 describe('NotifikationsFeed', () => {
-  beforeEach(() => { hent.mockReset(); afgoer.mockReset(); set.mockReset() })
+  beforeEach(() => { hent.mockReset(); afgoer.mockReset(); set.mockReset(); sockets.length = 0 })
 
   it('en fejl ser IKKE ud som en tom feed', async () => {
     hent.mockRejectedValue(new Error('offline'))
@@ -91,5 +103,48 @@ describe('NotifikationsFeed', () => {
     fireEvent.click(await screen.findByTestId('notif-1'))
     expect(aabn).toHaveBeenCalledWith('s-1')
     await waitFor(() => expect(set).toHaveBeenCalledWith(cfg, '1'))
+  })
+
+  // V1: en `foraeldet` post har `kan_afgoere: false` (ejeren kunne ikke
+  // hydreres), saa raekkens onClick gaar samme vej som "run_done" ovenfor —
+  // MEN et klik her maa ALDRIG lukke posten paa serveren. Den venter stadig;
+  // en utilgaengelig ejer maa ikke faa den til at ligne en klaret opgave.
+  it('en foraeldet post sender IKKE /set naar man klikker den — den er ikke klaret', async () => {
+    hent.mockResolvedValue({
+      poster: [post({ slags: 'run_done', kan_afgoere: false, foraeldet: true })],
+      antal: 1,
+    })
+    const aabn = vi.fn()
+    render(<NotifikationsFeed config={cfg} onLuk={() => {}} onAabnSession={aabn} />)
+    fireEvent.click(await screen.findByTestId('notif-1'))
+    // Navigation maa gerne ske...
+    expect(aabn).toHaveBeenCalledWith('s-1')
+    // ...men /set maa ALDRIG sendes for en foraeldet raekke.
+    await new Promise((r) => setTimeout(r, 10))
+    expect(set).not.toHaveBeenCalled()
+  })
+
+  // V5: ruden staar IKKE stille mens den er aaben — den deler klokkens
+  // live-signal (samme WS-bus, samme `notifikation.*`-filter).
+  it('opdaterer listen paa en haendelse — uden at man lukker og aabner ruden igen', async () => {
+    hent.mockResolvedValueOnce({ poster: [], antal: 0 })
+       .mockResolvedValue({ poster: [post()], antal: 1 })
+    render(<NotifikationsFeed config={cfg} onLuk={() => {}} onAabnSession={() => {}} />)
+    await screen.findByText(/Ingen notifikationer/)
+
+    const s = sockets[sockets.length - 1]!
+    s.onmessage?.({ data: JSON.stringify({ kind: 'notifikation.ny' }) })
+
+    expect(await screen.findByText('Vil du tillade bash?')).toBeInTheDocument()
+  })
+
+  it('ignorerer haendelser der ikke er vores', async () => {
+    hent.mockResolvedValue({ poster: [], antal: 0 })
+    render(<NotifikationsFeed config={cfg} onLuk={() => {}} onAabnSession={() => {}} />)
+    await waitFor(() => expect(hent).toHaveBeenCalledTimes(1))
+    const s = sockets[sockets.length - 1]!
+    s.onmessage?.({ data: JSON.stringify({ kind: 'runtime.tick' }) })
+    await new Promise((r) => setTimeout(r, 30))
+    expect(hent).toHaveBeenCalledTimes(1)
   })
 })

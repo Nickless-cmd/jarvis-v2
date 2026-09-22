@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { X, ShieldAlert, CircleAlert, CircleCheck, Bell, Package } from 'lucide-react'
-import type { ApiConfig } from '../../lib/api'
+import { openEventSocket, type ApiConfig } from '../../lib/api'
 import {
   hentNotifikationer, afgoerNotifikation, setNotifikation, type Notifikation,
 } from '../../lib/notifikationerApi'
@@ -61,6 +61,31 @@ export function NotifikationsFeed({ config, onLuk, onAabnSession }: {
 
   useEffect(() => { hent() }, [hent])
 
+  // V5: ruden deler klokkens live-signal fremfor at staa stille mens den er
+  // aaben. Samme WS-lytter som Klokke.tsx (samme bus, samme filter paa
+  // `notifikation.*`) — en selvstaendig lytter her, ikke loeftet state fra
+  // Klokke, fordi de to komponenter allerede hver isaer henter deres egen
+  // liste (klokken tager kun `antal`, ruden hele `poster`), og en delt
+  // lytter aendrer ikke ved det. At loefte state op ville kraeve at aendre
+  // Klokkens snitflade og alle dens eksisterende tests for at undgaa et
+  // dobbelt hent-kald — denne rude faar blot den samme selvstaendige lytter,
+  // saa de to aldrig kan drive fra hinanden igen.
+  useEffect(() => {
+    if (!config) return
+    let ws: WebSocket | null = null
+    try {
+      ws = openEventSocket(config)
+      ws.onmessage = (e) => {
+        try {
+          const kind = String(JSON.parse(String(e.data))?.kind || '')
+          if (kind.startsWith('notifikation.')) hent()
+        } catch { /* ikke-JSON paa bussen er ikke vores */ }
+      }
+      ws.onerror = () => { /* mount+handling daekker stadig */ }
+    } catch { /* mount+handling daekker stadig */ }
+    return () => { try { ws?.close() } catch { /* noop */ } }
+  }, [config, hent])
+
   const afgoer = async (p: Notifikation, godkendt: boolean) => {
     if (!config) return
     setTravl(p.id); setHandlingFejl('')
@@ -75,7 +100,11 @@ export function NotifikationsFeed({ config, onLuk, onAabnSession }: {
 
   const aabn = (p: Notifikation) => {
     if (p.session_id) onAabnSession(p.session_id)
-    if (config) void setNotifikation(config, p.id).then(hent).catch(() => undefined)
+    // En `foraeldet` post (ejeren kunne ikke hydreres) maa ALDRIG lukkes med
+    // /set — den venter stadig. Kun navigation er tilladt; et lukket kort kan
+    // ikke komme igen gennem dedup'en paa serveren, saa en utilgaengelig ejer
+    // maa ikke faa den til at ligne en klaret opgave (V1, 22/9-2026).
+    if (config && !p.foraeldet) void setNotifikation(config, p.id).then(hent).catch(() => undefined)
   }
 
   return (

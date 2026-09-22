@@ -31,14 +31,25 @@ def _owner_id() -> str | None:
         return None
 
 
-def _maaske_push(user_id: str, slags: str, titel: str, tekst: str) -> None:
+def _maaske_push(user_id: str, slags: str, titel: str, tekst: str,
+                 *, session_id: str | None = None) -> None:
     kanal = _valg.kanal_for(user_id, slags)
     if kanal == "ingen":
         return
     try:
         from core.services import notification_router
+        # K1 (2026-09-22): payloaden brugte de DANSKE feltnavne (titel/tekst),
+        # men routeren, desktop-koeen og FCM laeser title/preview/body —
+        # samtlige OVRIGE elleve kaldere af route_proactive_notification()
+        # bruger de navne. `fcm_gateway._build_message` tilfoejer kun en
+        # synlig 'notification'-blok naar BAADE title OG body findes, saa
+        # push-halvdelen var reelt doed: ingen synlig push paa telefonen,
+        # "Jarvis" + tom krop paa desktoppen. `tekst or titel` sikrer en krop
+        # ogsaa naar kalderen (fx `paa_godkendelse`) ikke selv satte tekst.
         notification_router.route_proactive_notification(
-            user_id, slags, {"titel": titel, "tekst": tekst},
+            user_id, slags,
+            {"title": titel, "preview": tekst or titel, "body": tekst or titel,
+             "kind": slags, "session_id": session_id or ""},
             importance="high" if slags in ("approval", "question") else "normal")
     except Exception:
         # Raekken staar allerede i feeden. Et brudt push maa ikke tage den med.
@@ -50,13 +61,17 @@ def _foed(*, user_id: str, slags: str, kilde: str, titel: str,
           session_id: str | None = None) -> None:
     _lager.opret(user_id=user_id, slags=slags, kilde=kilde, titel=titel,
                  tekst=tekst, ref=ref, session_id=session_id)
-    _maaske_push(user_id, slags, titel, tekst)
+    _maaske_push(user_id, slags, titel, tekst, session_id=session_id)
 
 
 def paa_godkendelse(approval_id: str, *, user_id: str, session_id: str,
                     vaerktoej: str) -> None:
+    # K1: uden `tekst` var pushets krop tom — `_maaske_push`s `tekst or titel`
+    # daekker det generisk, men en ægte krop giver en bedre push end en
+    # gentagelse af titlen.
     _foed(user_id=user_id, slags="approval", kilde="approval", ref=approval_id,
-          session_id=session_id, titel=f"Vil du tillade {vaerktoej}?")
+          session_id=session_id, titel=f"Vil du tillade {vaerktoej}?",
+          tekst="Åbn feeden for at svare.")
 
 
 def paa_koersel_fejlet(run_id: str, *, user_id: str, session_id: str,

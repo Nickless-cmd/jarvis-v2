@@ -235,3 +235,25 @@ def test_set_lukker_en_uden_handling(klient) -> None:
     nid = n.opret(user_id="bjorn", slags="reminder", kilde="egen", titel="X")
     assert klient.post(f"/notifikationer/{nid}/set").json()["ok"] is True
     assert n.aabne("bjorn", er_owner=True) == []
+
+
+# ── V6 (2026-09-22): «tom» lignede «brudt» ved roden ────────────────────────
+# Uden en bunden bruger svarede `GET /notifikationer` 200 OK med
+# {"poster": [], "antal": 0} — praecis samme form som en AEGTE tom feed.
+# Klienterne viser saa «Ingen notifikationer — alt er klaret», og et
+# udloebet token ser ud som «du er helt ajour».
+def test_feed_uden_bruger_giver_401_ikke_et_tomt_svar(isolated_runtime, monkeypatch) -> None:
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+    from apps.api.jarvis_api.routes import notifikationer as rute
+
+    monkeypatch.setattr(rute, "_nuvaerende_bruger", lambda: (None, True))
+    app = FastAPI()
+    app.include_router(rute.router)
+    klient = TestClient(app)
+
+    svar = klient.get("/notifikationer")
+    assert svar.status_code == 401, (
+        "et manglende token gav 200 OK med en TOM feed — umuligt at skelne "
+        "fra at rent faktisk vaere ajour"
+    )

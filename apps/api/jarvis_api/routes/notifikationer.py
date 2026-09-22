@@ -8,7 +8,7 @@ besvaret.
 """
 from __future__ import annotations
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from core.services import notifikationer as _lager
@@ -79,7 +79,12 @@ def _min_raekke(notif_id: str, user_id: str) -> dict | None:
 async def feed() -> dict:
     uid, er_owner = _nuvaerende_bruger()
     if not uid:
-        return {"poster": [], "antal": 0}
+        # V6 (2026-09-22): svarede foer 200 OK med {"poster": [], "antal": 0}
+        # — praecis samme form som en AEGTE tom feed. Klienterne viser saa
+        # «Ingen notifikationer — alt er klaret», og et udloebet token ser
+        # ud som «du er helt ajour». 401 lader klienten skelne "intet at
+        # vise" fra "jeg kunne ikke spoerge".
+        raise HTTPException(status_code=401, detail="Ikke logget ind.")
     poster = _hyd.feed(uid, er_owner=er_owner)
     return {"poster": poster, "antal": len(poster)}
 

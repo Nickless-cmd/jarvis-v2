@@ -676,8 +676,8 @@ _Notifikations-feeden. Scoper til den auth'ede bruger._
 | function | `_nuvaerende_bruger` | `()` | (user_id, er_owner). | [src](../../../apps/api/jarvis_api/routes/notifikationer.py#L39) |
 | function | `_min_raekke` | `(notif_id, user_id)` | Raekken — kun hvis den er brugerens egen. Et gaettet id fra en anden | [src](../../../apps/api/jarvis_api/routes/notifikationer.py#L69) |
 | function | `feed` | `()` | — | [src](../../../apps/api/jarvis_api/routes/notifikationer.py#L79) |
-| function | `afgoer` | `(notif_id, body)` | — | [src](../../../apps/api/jarvis_api/routes/notifikationer.py#L88) |
-| function | `set_` | `(notif_id)` | — | [src](../../../apps/api/jarvis_api/routes/notifikationer.py#L123) |
+| function | `afgoer` | `(notif_id, body)` | — | [src](../../../apps/api/jarvis_api/routes/notifikationer.py#L93) |
+| function | `set_` | `(notif_id)` | — | [src](../../../apps/api/jarvis_api/routes/notifikationer.py#L128) |
 
 ## `apps/api/jarvis_api/routes/notifikations_valg.py`
 _Push-valg per slags. Scoper til den auth'ede bruger._
@@ -687,7 +687,7 @@ _Push-valg per slags. Scoper til den auth'ede bruger._
 | class | `SaetBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/notifikations_valg.py#L13) |
 | function | `_bruger` | `()` | — | [src](../../../apps/api/jarvis_api/routes/notifikations_valg.py#L18) |
 | function | `hent` | `()` | — | [src](../../../apps/api/jarvis_api/routes/notifikations_valg.py#L24) |
-| function | `saet` | `(body)` | — | [src](../../../apps/api/jarvis_api/routes/notifikations_valg.py#L30) |
+| function | `saet` | `(body)` | — | [src](../../../apps/api/jarvis_api/routes/notifikations_valg.py#L35) |
 
 ## `apps/api/jarvis_api/routes/oauth.py`
 _OAuth connect-flow til plugin-connectors (16. jun 2026)._

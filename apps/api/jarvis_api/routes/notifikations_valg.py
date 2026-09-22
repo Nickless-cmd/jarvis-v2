@@ -2,7 +2,7 @@
 """Push-valg per slags. Scoper til den auth'ede bruger."""
 from __future__ import annotations
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from core.services import notifikations_valg as _valg
@@ -23,7 +23,12 @@ def _bruger() -> str | None:
 @router.get("")
 async def hent() -> dict:
     uid = _bruger()
-    return {"valg": _valg.alle(uid) if uid else {}}
+    if not uid:
+        # V6 (2026-09-22): svarede foer 200 OK med {"valg": {}} — umuligt at
+        # skelne fra en bruger der reelt ikke har sat noget. Se
+        # notifikationer.py's feed() for samme rettelse og begrundelse.
+        raise HTTPException(status_code=401, detail="Ikke logget ind.")
+    return {"valg": _valg.alle(uid)}
 
 
 @router.post("")

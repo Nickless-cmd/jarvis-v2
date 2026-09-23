@@ -1,4 +1,5 @@
 import type { ContentBlock } from './sseProtocol'
+import { diffFraResultat } from './diffStat'
 
 /**
  * Hvilke filer redigerede Jarvis i denne tur?
@@ -6,14 +7,11 @@ import type { ContentBlock } from './sseProtocol'
  * Bjørn 16/9-2026: «lav forløb under hans besked om til det på billedet og kun
  * vist hvis han har redigeret en fil eller flere».
  *
- * KILDEN ER TOOL-KALDENE, ikke tool-svarene. Svarene bærer `bytes_written` og
- * `line_count` — men IKKE hvor mange linjer der blev tilføjet og fjernet i
- * forhold til det der stod før. De tal findes ikke nogen steder pr. redigering.
+ * Filernes stier kommer fra tool-kaldene. Nogle tool-svar indeholder desuden
+ * servermålte linjetal for ændringen.
  *
- * Derfor kommer `+/−` fra arbejdstræets diff (samme kilde som Ændringer-ruden),
- * slået op pr. sti. Det er ærligt så længe man ved hvad tallet ER: ændringer
- * mod HEAD, ikke mod filens tilstand før netop denne tur. Er filen allerede
- * committet, står der intet tal frem for et forkert et.
+ * `maalteRedigeringer` bruger kun serverens målte +/- fra værktøjsresultatet.
+ * Hvis et kald mangler tal, vises intet samlet tal for filen.
  */
 
 /** Værktøjer der SKRIVER i en fil. Læsning, søgning og listning hører ikke til. */
@@ -55,6 +53,23 @@ export function redigeredeFiler(blocks: readonly ContentBlock[]): RedigeretFil[]
     talt.set(sti, (talt.get(sti) ?? 0) + 1)
   }
   return [...talt.entries()].map(([path, gange]) => ({ path, gange }))
+}
+
+/** Summer kun servermålte linjetal. Et manglende resultat gør filens tal ukendt. */
+export function maalteRedigeringer(blocks: readonly ContentBlock[]): Record<string, { added: number; removed: number }> {
+  const tal = new Map<string, { added: number; removed: number }>()
+  const ukendte = new Set<string>()
+  for (const b of blocks) {
+    if (!b || b.type !== 'tool_use' || !SKRIVER.has(b.name) || b.status === 'error') continue
+    const path = stiFra(b.input)
+    if (!path) continue
+    const diff = diffFraResultat(b.result)
+    if (!diff) { ukendte.add(path); continue }
+    const nu = tal.get(path) ?? { added: 0, removed: 0 }
+    tal.set(path, { added: nu.added + diff.add, removed: nu.removed + diff.del })
+  }
+  for (const path of ukendte) tal.delete(path)
+  return Object.fromEntries(tal)
 }
 
 /** Kort filnavn til visning: sidste to led af stien er nok til at skelne. */

@@ -14,6 +14,9 @@ import { denseBlocks } from '../../lib/blockHelpers'
 import { KlikbartBillede } from './BilledLightbox'
 import { RaekkeTranskript } from './RaekkeTranskript'
 import { useRaekkevisning } from '../../lib/visningsPref'
+import { EditedFilesCard } from './EditedFilesCard'
+import { maalteRedigeringer, redigeredeFiler } from '../../lib/redigeredeFiler'
+import { visAendring } from '../../lib/aendringsFokus'
 
 /** Besked-række med locked boble-layout: bruger højre (boble), Jarvis venstre
  *  (avatar + tekst, ingen boble). Density videregives til rich-blocks.
@@ -109,6 +112,9 @@ function MessageRowImpl({
       </div>
     )
   }
+  // Hele beskedens tool-kald er tilgængelige her. Rækkevisningen sender kun
+  // slutteksten til BlocksRenderer, så et kort dér missede alle redigeringer.
+  const redigerede = !streaming ? redigeredeFiler(blocks) : []
   return (
     <div className="msg-jarvis-wrap">
       <article className="msg-jarvis">
@@ -130,6 +136,7 @@ function MessageRowImpl({
           </InlineErrorBoundary>
         </div>
       </article>
+      {!streaming && <EditedFilesCard filer={redigerede} tal={maalteRedigeringer(blocks)} onAabn={visAendring} />}
       {/* Kilderne står tættest på teksten: «hvor ved du det fra?».
           «Forløb»-linjen under dem er slået fra (Bjørn 17/9-2026) — runde-,
           tanke- og skill-linjerne i selve beskeden siger det samme. */}

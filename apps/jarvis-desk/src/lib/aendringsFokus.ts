@@ -3,8 +3,8 @@
  *  Bjørn 16/9-2026: «når man klikker på dem åbner de i den changes panel du
  *  lige har lavet og viser diff».
  *
- *  Modul-niveau af samme grund som coworkZone: afsenderen er et kort dybt nede
- *  i beskedstrømmen (EditedFilesCard inde i BlocksRenderer inde i MessageRow),
+ *  Modul-niveau af samme grund som coworkZone: afsenderen er et kort nede
+ *  i beskedstrømmen (EditedFilesCard inde i MessageRow),
  *  og modtageren er ChatView. De deler ingen provider-gren, og at trække en
  *  callback gennem fem lag props ville binde hvert af dem til en detalje de
  *  ikke har andet med at gøre.

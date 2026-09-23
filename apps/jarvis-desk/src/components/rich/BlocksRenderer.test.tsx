@@ -8,10 +8,8 @@ function renderBlocks(blocks: ContentBlock[], streaming = false) {
 }
 
 describe('BlocksRenderer progress', () => {
-  // AENDRET 16/9-2026: «Forløb (N)» er erstattet af «Redigerede N filer»
-  // nederst i beskeden (Bjørn, efter skærmbillede fra CC). Narrationen stod
-  // kun UNDER streaming og forsvandt bagefter; kortet bliver stående, siger
-  // hvad der faktisk blev ændret, og kan klikkes.
+  // MessageRow viser «Redigerede N filer» efter det færdige svar; denne
+  // blok-renderer viser kun selve beskedens indhold.
   it('viser IKKE længere et Forløb-spor under streaming', () => {
     const blocks: ContentBlock[] = [
       { type: 'text', text: 'Færdig.' },
@@ -30,11 +28,11 @@ describe('BlocksRenderer progress', () => {
     expect(screen.queryByText(/Redigerede/)).not.toBeInTheDocument()
   })
 
-  it('kortet kommer FØRST når en fil er skrevet', () => {
+  it('kortet ejes af MessageRow og duplikeres ikke i blok-rendereren', () => {
     renderBlocks([
       { type: 'tool_use', id: 'c1', name: 'write_file', input: { path: 'src/x.py' }, status: 'done' },
     ], false)
-    expect(screen.getByText('Redigerede 1 fil')).toBeInTheDocument()
+    expect(screen.queryByText('Redigerede 1 fil')).not.toBeInTheDocument()
   })
 
   it('lader tekst-only besked være uændret (intet kort)', () => {

@@ -4080,7 +4080,11 @@ body.egen-ramme .main:has(.chatview-head) { padding-top: 0; }
   display: flex; align-items: center; gap: 10px;
   padding: 8px 10px; border-bottom: 1px solid var(--line);
 }
+.edited-files-headikon { display: inline-flex; align-items: center; justify-content: center;
+  width: 30px; height: 30px; flex: none; border-radius: 8px; color: var(--fg-2);
+  background: var(--bg-3); }
 .edited-files-titel { color: var(--fg-1); font-size: 13px; }
+.edited-files-sum { display: inline-flex; gap: 5px; font-size: 11px; font-variant-numeric: tabular-nums; }
 .edited-files-vis {
   margin-left: auto; background: var(--bg-3); border: 1px solid var(--line);
   color: var(--fg-1); border-radius: 6px; padding: 3px 9px;
@@ -4104,6 +4108,11 @@ body.egen-ramme .main:has(.chatview-head) { padding-top: 0; }
 .edited-files-gange { color: var(--fg-3); font-size: 11.5px; flex: 0 0 auto; }
 .edited-files-tal { display: flex; gap: 6px; flex: 0 0 auto; }
 .edited-files-chevron { color: var(--fg-3); flex: 0 0 auto; }
+.edited-files-mere { width: 100%; display: flex; align-items: center; gap: 8px;
+  padding: 9px 11px; background: var(--bg-2); border: 0; border-top: 1px solid var(--line);
+  color: var(--fg-2); font-size: 12px; text-align: left; cursor: pointer; }
+.edited-files-mere:hover { color: var(--fg-1); background: var(--bg-3); }
+.edited-files-mere .er-aaben { transform: rotate(180deg); }
 
 /* Projekt-overskrift i sidepanelet — «jarvis-v2 · /media/projects», som i CC.
    Ikke en knap: gruppen foldes paa KODE-overskriften ovenover, og to

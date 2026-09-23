@@ -2,8 +2,47 @@ import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { MessageRow } from './MessageRow'
 import { PanelProvider } from '../../contexts/PanelContext'
+import { RAEKKE_KEY } from '../../lib/visningsPref'
+import type { ContentBlock } from '../../lib/sseProtocol'
+import { paaAendringsFokus } from '../../lib/aendringsFokus'
+
+const REDIGERING: ContentBlock[] = [
+  { type: 'tool_use', id: 'e1', name: 'edit_file', input: { path: 'src/app.ts', old_text: 'før', new_text: 'efter' },
+    status: 'done', result: '{"linjer_tilfoejet":9,"linjer_fjernet":4}' },
+  { type: 'text', text: 'Filen er rettet.' },
+]
 
 describe('MessageRow', () => {
+  it('viser ændringskortet under svaret i rækkevisning med målte +/− tal', () => {
+    localStorage.setItem(RAEKKE_KEY, '1')
+    try {
+      const { container } = render(<MessageRow role="assistant" blocks={REDIGERING} density="compact" streaming={false} />)
+      const kort = container.querySelector('.edited-files')!
+      expect(kort).toBeInTheDocument()
+      expect(kort).toHaveTextContent('Redigerede 1 fil')
+      expect(kort).toHaveTextContent('+9')
+      expect(kort).toHaveTextContent('−4')
+      expect(container.querySelectorAll('.edited-files')).toHaveLength(1)
+      expect(container.querySelector('.rv-svar')!.compareDocumentPosition(kort) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    } finally { localStorage.removeItem(RAEKKE_KEY) }
+  })
+
+  it('viser ændringskortet kun én gang i almindelig visning', () => {
+    localStorage.setItem(RAEKKE_KEY, '0')
+    const { container } = render(<MessageRow role="assistant" blocks={REDIGERING} density="compact" streaming={false} />)
+    expect(container.querySelectorAll('.edited-files')).toHaveLength(1)
+  })
+
+  it('kortets fil åbner ændringsvisningen på den valgte sti', () => {
+    localStorage.setItem(RAEKKE_KEY, '1')
+    const fokus = vi.fn()
+    const stop = paaAendringsFokus(fokus)
+    try {
+      render(<MessageRow role="assistant" blocks={REDIGERING} density="compact" streaming={false} />)
+      fireEvent.click(screen.getByRole('button', { name: /app\.ts/ }))
+      expect(fokus).toHaveBeenCalledWith('src/app.ts')
+    } finally { stop(); localStorage.removeItem(RAEKKE_KEY) }
+  })
   it('renders assistant text block as markdown', () => {
     render(<MessageRow role="assistant" blocks={[{ type: 'text', text: '**hej**' }]} density="compact" streaming={false} />)
     expect(screen.getByText('hej').tagName).toBe('STRONG')

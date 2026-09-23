@@ -42,8 +42,7 @@ describe('EditedFilesCard', () => {
   })
 
   it('en fil UDEN kendte tal får ikke «+0 −0»', () => {
-    // Tallene kommer fra arbejdstræet mod HEAD. Er filen allerede committet,
-    // findes tallet ikke — og 0 ville være et gæt, ikke en måling.
+    // Tallene kommer fra værktøjets resultat. Mangler de, ville 0 være et gæt.
     render(<EditedFilesCard filer={FILER} onAabn={() => {}} tal={{}} />)
     expect(screen.queryByText('+0')).not.toBeInTheDocument()
   })
@@ -52,5 +51,22 @@ describe('EditedFilesCard', () => {
     render(<EditedFilesCard filer={[{ path: 'a.ts', gange: 3 }]} onAabn={() => {}} />)
     expect(screen.getAllByRole('listitem')).toHaveLength(1)
     expect(screen.getByText('3×')).toBeInTheDocument()
+  })
+
+  it('viser tre filer først og kan folde resten ud', () => {
+    const filer = Array.from({ length: 5 }, (_, i) => ({ path: `src/fil-${i}.ts`, gange: 1 }))
+    render(<EditedFilesCard filer={filer} onAabn={() => {}} />)
+    expect(screen.getAllByRole('listitem')).toHaveLength(3)
+    fireEvent.click(screen.getByRole('button', { name: 'Vis 2 filer mere' }))
+    expect(screen.getAllByRole('listitem')).toHaveLength(5)
+  })
+
+  it('summerer kun kendte per-fil-tal i overskriften', () => {
+    render(<EditedFilesCard filer={FILER} onAabn={() => {}} tal={{
+      'apps/x/ChangesPanel.tsx': { added: 9, removed: 4 },
+      'apps/x/ChangesPanel.test.tsx': { added: 3, removed: 1 },
+    }} />)
+    expect(document.querySelector('.edited-files-head')).toHaveTextContent('+12')
+    expect(document.querySelector('.edited-files-head')).toHaveTextContent('−5')
   })
 })

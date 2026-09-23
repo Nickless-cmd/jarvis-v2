@@ -1,11 +1,21 @@
 import { describe, it, expect } from 'vitest'
-import { redigeredeFiler, kortSti } from './redigeredeFiler'
+import { redigeredeFiler, maalteRedigeringer, kortSti } from './redigeredeFiler'
 import type { ContentBlock } from './sseProtocol'
 
-const tool = (name: string, input: Record<string, unknown>, status: 'done' | 'error' = 'done'): ContentBlock =>
+const tool = (name: string, input: Record<string, unknown>, status: 'done' | 'error' = 'done'): Extract<ContentBlock, { type: 'tool_use' }> =>
   ({ type: 'tool_use', id: `t-${name}-${JSON.stringify(input)}`, name, input, status })
 
 describe('redigeredeFiler', () => {
+  it('summerer målte ændringer pr. fil og skjuler delvise tal', () => {
+    const blocks: ContentBlock[] = [
+      { ...tool('edit_file', { path: 'a.ts' }), result: '{"linjer_tilfoejet":5,"linjer_fjernet":2}' },
+      { ...tool('edit_file', { path: 'a.ts' }), result: '{"linjer_tilfoejet":3,"linjer_fjernet":1}' },
+      tool('edit_file', { path: 'b.ts' }),
+      { ...tool('edit_file', { path: 'c.ts' }), result: '{"linjer_tilfoejet":1,"linjer_fjernet":0}' },
+      tool('edit_file', { path: 'c.ts' }),
+    ]
+    expect(maalteRedigeringer(blocks)).toEqual({ 'a.ts': { added: 8, removed: 3 } })
+  })
   it('finder de filer der blev SKREVET', () => {
     const ud = redigeredeFiler([
       tool('write_file', { path: 'src/a.ts' }),

@@ -1,4 +1,5 @@
-import { ChevronRight, Code2 } from 'lucide-react'
+import { useState } from 'react'
+import { ChevronDown, ChevronRight, Code2, FileDiff } from 'lucide-react'
 import { kortSti, type RedigeretFil } from '../../lib/redigeredeFiler'
 
 /**
@@ -8,12 +9,8 @@ import { kortSti, type RedigeretFil } from '../../lib/redigeredeFiler'
  * billedet og kun vist hvis han har redigeret en fil eller flere … når man
  * klikker på dem åbner de i den changes panel du lige har lavet og viser diff».
  *
- * TALLENE ER IKKE ALTID DER, OG DET ER MED VILJE. `+166 −0` kommer fra
- * arbejdstræets diff mod HEAD — samme kilde som Ændringer-ruden. Tool-svarene
- * bærer `bytes_written` og `line_count`, men ikke hvad der blev tilføjet og
- * fjernet i forhold til det der stod før; de tal findes ingen steder pr.
- * redigering. Er filen allerede committet, står der derfor INTET tal frem for
- * et forkert et.
+ * Tallene kommer fra serverens målte linjetal i redigeringsresultaterne.
+ * Mangler de for bare ét kald til en fil, står den uden tal frem for et gæt.
  */
 export interface FilTal { added: number; removed: number }
 
@@ -23,27 +20,39 @@ export function EditedFilesCard({
   onAabn,
 }: {
   filer: RedigeretFil[]
-  /** sti → +/− fra arbejdstræet. Mangler en sti, vises intet tal for den. */
+  /** sti → målte +/− fra værktøjsresultater. Mangler en sti, vises intet tal. */
   tal?: Record<string, FilTal>
   /** Klik på en fil: åbn Ændringer-ruden med netop den fil foldet ud. */
   onAabn: (sti: string) => void
 }) {
+  const [alle, setAlle] = useState(false)
   if (filer.length === 0) return null
   const n = filer.length
+  const viste = alle ? filer : filer.slice(0, 3)
+  const rest = n - viste.length
+  const harAlleTal = filer.every((f) => tal?.[f.path] !== undefined)
+  const sum = harAlleTal ? filer.reduce((s, f) => ({
+    added: s.added + tal![f.path]!.added,
+    removed: s.removed + tal![f.path]!.removed,
+  }), { added: 0, removed: 0 }) : null
 
   return (
     <div className="edited-files">
       <div className="edited-files-head">
+        <span className="edited-files-headikon" aria-hidden="true"><FileDiff size={16} /></span>
         <span className="edited-files-titel">
           Redigerede {n} {n === 1 ? 'fil' : 'filer'}
         </span>
+        {sum && <span className="edited-files-sum">
+          <span className="git-add">+{sum.added}</span> <span className="git-del">−{sum.removed}</span>
+        </span>}
         <button type="button" className="edited-files-vis"
                 onClick={() => onAabn(filer[0]!.path)}>
           Vis ændringer
         </button>
       </div>
       <ul className="edited-files-liste">
-        {filer.map((f) => {
+        {viste.map((f) => {
           const t = tal?.[f.path]
           return (
             <li key={f.path}>
@@ -69,6 +78,12 @@ export function EditedFilesCard({
           )
         })}
       </ul>
+      {n > 3 && (
+        <button type="button" className="edited-files-mere" onClick={() => setAlle((v) => !v)}>
+          {alle ? 'Vis færre filer' : `Vis ${rest} ${rest === 1 ? 'fil' : 'filer'} mere`}
+          <ChevronDown size={13} className={alle ? 'er-aaben' : ''} aria-hidden="true" />
+        </button>
+      )}
     </div>
   )
 }

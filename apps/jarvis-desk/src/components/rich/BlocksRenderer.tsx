@@ -7,9 +7,6 @@ import { ToolCard } from './ToolCard'
 import { ToolGroupCard } from './ToolGroupCard'
 import { ImageBlock } from './ImageBlock'
 import { AttachmentBlock } from './AttachmentBlock'
-import { EditedFilesCard } from './EditedFilesCard'
-import { redigeredeFiler } from '../../lib/redigeredeFiler'
-import { visAendring } from '../../lib/aendringsFokus'
 import { ThinkingLine } from './ThinkingLine'
 import { SkillLine, SkillSurfaceLine } from './SkillLine'
 import { SKILL_VAERKTOEJER } from '../../lib/skillLinje'
@@ -142,16 +139,12 @@ export function BlocksRenderer({
   const afsluttet = afslutForladteKald(udenEtiketter, streaming)
   const rendered = coalesceProgress(visning === 'verbose' ? afsluttet : groupToolRounds(afsluttet))
   const lastIdx = rendered.length - 1
-  // Filerne Jarvis redigerede i DENNE besked. Kortet staar nederst — som i CC
-  // — og kun naar der faktisk er redigeret noget.
-  const redigerede = redigeredeFiler(blocks)
 
   return (
     <>
       {rendered.map((b, i) => (
         <BlockView key={i} block={b} density={density} streaming={streaming} isLast={i === lastIdx} rundeEtiketter={etiketter} tankeResumeer={resumeer} visning={visning} beskedId={beskedId} config={config} />
       ))}
-      <EditedFilesCard filer={redigerede} onAabn={visAendring} />
     </>
   )
 }
@@ -187,9 +180,8 @@ function BlockView({
     // eneste der fortaeller hvad der sker lige nu.
     case 'progress_trail':
     case 'progress':
-      // «Forløb (N)» er erstattet af «Redigerede N filer» nederst i beskeden
-      // (Bjørn 16/9-2026). Narrationen stod kun under streaming og forsvandt
-      // bagefter; kortet bliver stående og kan klikkes.
+      // «Forløb (N)» er afløst af ændringskortet i MessageRow, så det også
+      // vises når denne renderer kun får slutteksten i rækkevisning.
       return null
     case 'text':
       return <MarkdownRenderer text={block.text} streaming={streaming} />

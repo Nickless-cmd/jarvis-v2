@@ -1,11 +1,11 @@
 /**
  * Kroppene i rækkevisningen — de få former, ikke de mange værktøjer.
  *
- * ## Hvorfor det er syv former og ikke 366 visere
+ * ## Hvorfor det er få former og ikke 366 visere
  *
  * Målt i DSH 22/9-2026: 63 værktøjer, 17 med dedikeret viser (~25 %), og
- * under dem kun 7 delte kort-primitiver. Resten går til en faldback der ikke
- * er fattig — den kører de samme kortmodeller.
+ * under dem kun 7 delte kort-primitiver. Vores fallback viser et kort
+ * resumé og lader de rå data være tilgængelige ved behov.
  *
  * Vores værktøjskasse er 366 navne. Skrev vi en krop pr. værktøj, ville det
  * aldrig blive færdigt. Vi vælger derfor krop pr. RESULTATFORM, og lader
@@ -18,39 +18,73 @@
  * Rækkevisningen har derfor sin egen etiket-tabel og falder tilbage på
  * registrets label for alt vi ikke har navngivet.
  */
-import type { ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
+import { codeToHtml } from 'shiki'
 import { lookupTool } from '../../lib/toolRegistry'
 
-export type Familie = 'terminal' | 'diff' | 'io' | 'liste' | 'web' | 'spoergsmaal' | 'billede' | 'fald'
+export type Familie = 'terminal' | 'diff' | 'fil' | 'skriv' | 'liste' | 'web' | 'spoergsmaal' | 'billede' | 'fald'
 
 interface Post { etiket: string; familie: Familie }
 
-/** Kun det vi har set i produktion. Alt andet falder igennem med vilje. */
+/** Almindelige navne får en form; alle andre får en læsbar fallback. */
 const KENDTE: Record<string, Post> = {
   bash: { etiket: 'Bash', familie: 'terminal' },
   operator_bash: { etiket: 'Bash', familie: 'terminal' },
   bash_session: { etiket: 'Bash', familie: 'terminal' },
   operator_bash_session: { etiket: 'Bash', familie: 'terminal' },
-  read_file: { etiket: 'Read', familie: 'io' },
-  operator_read_file: { etiket: 'Read', familie: 'io' },
-  write_file: { etiket: 'Write', familie: 'io' },
-  operator_write_file: { etiket: 'Write', familie: 'io' },
-  publish_file: { etiket: 'Write', familie: 'io' },
-  remember_this: { etiket: 'Write', familie: 'io' },
+  read_file: { etiket: 'Read', familie: 'fil' },
+  operator_read_file: { etiket: 'Read', familie: 'fil' },
+  write_file: { etiket: 'Write', familie: 'skriv' },
+  operator_write_file: { etiket: 'Write', familie: 'skriv' },
+  publish_file: { etiket: 'Write', familie: 'skriv' },
+  remember_this: { etiket: 'Write', familie: 'skriv' },
   edit_file: { etiket: 'Edit', familie: 'diff' },
   operator_edit_file: { etiket: 'Edit', familie: 'diff' },
   find_files: { etiket: 'Glob', familie: 'liste' },
-  operator_list_dir: { etiket: 'Glob', familie: 'liste' },
   grep: { etiket: 'Grep', familie: 'liste' },
   memory_search: { etiket: 'Search', familie: 'liste' },
   web_search: { etiket: 'Search', familie: 'web' },
   web_fetch: { etiket: 'Fetch', familie: 'web' },
   analyze_image: { etiket: 'Read image', familie: 'billede' },
-  verify_file_contains: { etiket: 'Verify', familie: 'io' },
+  verify_file_contains: { etiket: 'Verify', familie: 'skriv' },
+  operator_glob: { etiket: 'Glob', familie: 'liste' },
+  operator_grep: { etiket: 'Grep', familie: 'liste' },
+  operator_list_dir: { etiket: 'List', familie: 'liste' },
+  glob: { etiket: 'Glob', familie: 'liste' },
+  search_files: { etiket: 'Search', familie: 'liste' },
+  ask_user: { etiket: 'Ask', familie: 'spoergsmaal' },
+  ask_question: { etiket: 'Ask', familie: 'spoergsmaal' },
 }
 
 export function postFor(navn: string): Post {
   return KENDTE[navn] ?? { etiket: lookupTool(navn).label, familie: 'fald' }
+}
+
+type Data = Record<string, unknown>
+const objekt = (v: unknown): v is Data => typeof v === 'object' && v !== null && !Array.isArray(v)
+const streng = (v: unknown): string => typeof v === 'string' ? v : ''
+const pathNavn = (path: string): string => path.replace(/\\/g, '/').split('/').filter(Boolean).at(-1) || path
+
+/** Serverens resultat kan være et JSON-objekt med en eller flere `result`-skaller. */
+function pakUd(result: string | undefined): { værdi: unknown; ramme: Data | null } {
+  if (!result) return { værdi: '', ramme: null }
+  let værdi: unknown = result
+  try { værdi = JSON.parse(result) } catch { return { værdi, ramme: null } }
+  const ramme = objekt(værdi) ? værdi : null
+  for (let i = 0; i < 3 && objekt(værdi) && 'result' in værdi; i++) {
+    værdi = værdi.result
+  }
+  return { værdi, ramme }
+}
+
+function visTekst(v: unknown): string {
+  if (typeof v === 'string') return v
+  if (v === undefined || v === null) return ''
+  return JSON.stringify(v, null, 2)
+}
+
+function fejlTekst(ramme: Data | null, værdi: unknown): string {
+  return streng(ramme?.error) || (objekt(værdi) ? streng(værdi.error) : '')
 }
 
 /**
@@ -83,16 +117,15 @@ export function exitKode(result: string | undefined, fejl: boolean): number {
 /** Stdout hvis resultatet er vores pakkede form; ellers hele strengen. */
 export function udDel(result: string | undefined): string {
   if (!result) return ''
-  try {
-    const o = JSON.parse(result) as Record<string, unknown>
-    const r = (o.result ?? o) as Record<string, unknown>
-    const ud = [r.stdout, r.stderr].filter((x) => typeof x === 'string' && x).join('\n')
+  const { værdi } = pakUd(result)
+  if (objekt(værdi)) {
+    const ud = [værdi.stdout, værdi.stderr].filter((x) => typeof x === 'string' && x).join('\n')
     if (ud) return ud
-  } catch { /* ikke JSON */ }
-  return result
+  }
+  return visTekst(værdi)
 }
 
-/* ══ De syv former ══════════════════════════════════════════════════════ */
+/* ══ Delte resultatvisninger ════════════════════════════════════════════ */
 
 export function Terminal({ cmd, ud, exit }: { cmd: string; ud: string; exit: number }) {
   return (
@@ -121,6 +154,59 @@ export function IndUd({ ind, ud }: { ind: string; ud: string }) {
       <div className="rv-par"><div className="rv-mrk">OUT</div><div className="rv-v">{ud}</div></div>
     </div>
   )
+}
+
+function Fil({ path, tekst, meta }: { path: string; tekst: string; meta?: string }) {
+  const linjer = tekst ? tekst.split('\n') : []
+  return <div className="rv-kort rv-fil">
+    <div className="rv-filH"><span>{pathNavn(path) || 'File'}</span><span className="rv-filM">{meta || `${linjer.length} lines`}</span></div>
+    {tekst ? <FarvedeLinjer tekst={tekst} path={path} /> : <div className="rv-filTom">Empty file</div>}
+  </div>
+}
+
+function Raadata({ ind, ud }: { ind: string; ud: string }) {
+  return <details className="rv-raadata"><summary>Raw data</summary><IndUd ind={ind} ud={ud} /></details>
+}
+
+function Resultat({ tekst, ind, ud }: { tekst: ReactNode; ind: string; ud: string }) {
+  return <div className="rv-resultat"><div className="rv-kort rv-resultatH">{tekst}</div><Raadata ind={ind} ud={ud} /></div>
+}
+
+function filSprog(path: string): string {
+  const ext = pathNavn(path).split('.').at(-1)?.toLowerCase() || ''
+  return ({ ts: 'typescript', tsx: 'tsx', js: 'javascript', jsx: 'jsx',
+    html: 'html', css: 'css', json: 'json', py: 'python', md: 'markdown',
+    yml: 'yaml', yaml: 'yaml', sh: 'bash' } as Record<string, string>)[ext] || 'text'
+}
+
+function FarvedeLinjer({ tekst, path }: { tekst: string; path: string }) {
+  const lang = filSprog(path)
+  const [html, setHtml] = useState<string | null>(null)
+  useEffect(() => {
+    let alive = true
+    setHtml(null)
+    if (lang !== 'text') {
+      codeToHtml(tekst, { lang, themes: { light: 'github-light', dark: 'github-dark' }, defaultColor: false })
+        .then((v) => { if (alive) setHtml(v) })
+        .catch(() => { if (alive) setHtml(null) })
+    }
+    return () => { alive = false }
+  }, [tekst, lang])
+  if (html) return <div className="rv-filKode" data-lang={lang} dangerouslySetInnerHTML={{ __html: html }} />
+  return <div className="rv-filKode" data-lang={lang}>{tekst.split('\n').map((linje, i) =>
+    <div className="rv-filLinje" key={i}><span className="rv-filNr">{i + 1}</span><span>{linje || ' '}</span></div>
+  )}</div>
+}
+
+function oversigt(v: unknown, fallback: string): ReactNode {
+  if (Array.isArray(v)) return `${v.length} items`
+  if (!objekt(v)) return (visTekst(v) || fallback).slice(0, 500)
+  const poster = Object.entries(v).filter(([k]) => k !== 'status').slice(0, 8)
+  if (poster.length === 0) return fallback
+  return <dl className="rv-felter">{poster.map(([k, felt]) =>
+    <div key={k}><dt>{k}</dt><dd>{Array.isArray(felt) ? `${felt.length} items`
+      : objekt(felt) ? `${Object.keys(felt).length} fields` : visTekst(felt).slice(0, 240)}</dd></div>
+  )}</dl>
 }
 
 export function Liste({ raekker }: { raekker: { p?: string; v: string }[] }) {
@@ -170,17 +256,6 @@ export function Billede({ src, navn, meta }: { src?: string; navn: string; meta:
   )
 }
 
-/** Faldbacken. Ikke fattig: navn, argumenter og resultat, læsbart fra dag ét. */
-export function Faldback({ navn, ind, ud }: { navn: string; ind: string; ud: string }) {
-  return (
-    <div className="rv-kort rv-fald">
-      <div className="rv-kh">{navn}</div>
-      <div className="rv-par"><div className="rv-mrk">IN</div><div className="rv-v">{ind}</div></div>
-      <div className="rv-par"><div className="rv-mrk">OUT</div><div className="rv-v">{ud}</div></div>
-    </div>
-  )
-}
-
 /** Vælg krop ud fra familie. Én indgang, så rækken ikke kender formerne. */
 export function kropFor(
   navn: string,
@@ -191,28 +266,69 @@ export function kropFor(
   const { familie } = postFor(navn)
   const ind = JSON.stringify(input, null, 2)
   const ud = udDel(result)
+  const { værdi, ramme } = pakUd(result)
+  const fejltekst = fejlTekst(ramme, værdi)
+  const terminalMedOutput = familie === 'terminal' && objekt(værdi)
+    && (typeof værdi.stdout === 'string' || typeof værdi.stderr === 'string') && !fejltekst
+  if (!terminalMedOutput && (fejl || fejltekst || ['error', 'blocked', 'approval_needed', 'guard_blocked'].includes(streng(ramme?.status)))) {
+    return <Resultat tekst={fejltekst || streng(ramme?.message) || 'The tool could not complete'} ind={ind} ud={result || ''} />
+  }
 
   if (familie === 'terminal') {
     return <Terminal cmd={String(input.command ?? navn)} ud={ud} exit={exitKode(result, fejl)} />
   }
   if (familie === 'diff') {
-    // Serveren sender ikke en struktureret diff. Vi viser den raa patch og
-    // farver de linjer der ER markeret — bedre end at opdigte en diff.
-    const linjer = ud.split('\n').map((t) => ({
+    const oldText = streng(input.old_string) || streng(input.old_text)
+    const newText = streng(input.new_string) || streng(input.new_text)
+    const preview = objekt(værdi) ? streng(værdi.diff_preview) : ''
+    // Operator-broen giver en reel diff_preview. Ellers kan vi vise det
+    // udskiftningspar brugeren bad om, men kun efter et succesfuldt kald.
+    const patch = preview || (ramme?.status === 'ok' && oldText ? `${oldText.split('\n').map((s) => '-' + s).join('\n')}\n${newText.split('\n').map((s) => '+' + s).join('\n')}` : '')
+    if (!patch) return <Resultat tekst={oversigt(værdi, 'Edit pending')} ind={ind} ud={result || ''} />
+    const linjer = patch.split('\n').filter((t) => !t.startsWith('--- ') && !t.startsWith('+++ ')).map((t) => ({
       k: t.startsWith('+') ? ('add' as const) : t.startsWith('-') ? ('del' as const) : ('ctx' as const),
       t: t.replace(/^[+-]/, ''),
     }))
     return <Diff linjer={linjer} />
   }
+  if (familie === 'fil') {
+    const path = streng(input.path) || streng(input.file_path) || streng(ramme?.path)
+    const tekst = typeof værdi === 'string' ? værdi : objekt(værdi) ? streng(værdi.content) || streng(værdi.text) : ''
+    const harFiltekst = result !== undefined && (typeof værdi === 'string'
+      || (objekt(værdi) && ('content' in værdi || 'text' in værdi)))
+    return harFiltekst ? <Fil path={path} tekst={tekst} /> : <Resultat tekst={oversigt(værdi, 'No file content')} ind={ind} ud={result || ''} />
+  }
+  if (familie === 'skriv') {
+    const path = streng(input.path) || streng(input.file_path)
+    const content = streng(input.content)
+    const bytes = objekt(værdi) && typeof værdi.bytes_written === 'number' ? `${værdi.bytes_written} bytes` : ''
+    if (content && ramme?.status === 'ok') return <Fil path={path} tekst={content} meta={bytes || 'Written'} />
+    return <Resultat tekst={bytes || oversigt(værdi, 'Pending')} ind={ind} ud={result || ''} />
+  }
+  if (familie === 'liste') {
+    const poster = Array.isArray(værdi) ? værdi : objekt(værdi) && Array.isArray(værdi.matches) ? værdi.matches : null
+    if (poster) return <Liste raekker={poster.map((p) => objekt(p)
+      ? { p: `${streng(p.file) || streng(p.path)}${typeof p.line === 'number' ? `:${p.line}` : ''}`, v: streng(p.text) || streng(p.name) || streng(p.summary) || streng(p.title) || streng(p.path) || 'Result' }
+      : { v: visTekst(p) })} />
+    return <Resultat tekst={oversigt(værdi, 'No matches')} ind={ind} ud={result || ''} />
+  }
   if (familie === 'web') {
-    return <div className="rv-kort"><pre>{ud}</pre></div>
+    const poster = Array.isArray(værdi) ? værdi : objekt(værdi) && Array.isArray(værdi.results) ? værdi.results : null
+    if (poster) return <Web traef={poster.map((p) => objekt(p)
+      ? { dom: streng(p.url) || streng(p.domain), titel: streng(p.title) || streng(p.snippet) || streng(p.text) }
+      : { dom: '', titel: visTekst(p) })} />
+    return <Resultat tekst={oversigt(værdi, 'No results')} ind={ind} ud={result || ''} />
+  }
+  if (familie === 'spoergsmaal') {
+    const svar = typeof værdi === 'string' ? værdi : objekt(værdi) ? streng(værdi.answer) || streng(værdi.response) : ''
+    return <Spoergsmaal q={streng(input.question) || streng(input.prompt)} svar={svar || (objekt(værdi) ? 'Answered' : ud)} />
   }
   if (familie === 'billede') {
     const sti = String(input.path ?? input.image_path ?? '')
-    return <Billede navn={sti || navn} meta={ud.slice(0, 120)} />
+    const maal = objekt(værdi) && typeof værdi.width === 'number' && typeof værdi.height === 'number'
+      ? `${værdi.width} × ${værdi.height}` : ''
+    const beskrivelse = objekt(værdi) ? streng(værdi.description) || streng(værdi.caption) : ''
+    return <Billede navn={sti || navn} meta={[maal, beskrivelse].filter(Boolean).join(' · ') || (objekt(værdi) ? 'Image analyzed' : ud.slice(0, 120))} />
   }
-  if (familie === 'io' || familie === 'liste') {
-    return <IndUd ind={ind} ud={ud} />
-  }
-  return <Faldback navn={navn} ind={ind} ud={ud} />
+  return <Resultat tekst={oversigt(værdi, navn)} ind={ind} ud={result || ''} />
 }

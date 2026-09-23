@@ -152,12 +152,50 @@
 .raekkevisning .rv-mellem { margin: var(--rv-enhed) 0; }
 .raekkevisning .rv-gruppe > .rv-r + .rv-mellem { margin-top: var(--rv-enhed); }
 
-/* ══ KORT-PRIMITIVERNE ══ Syv former dækker hele værktøjskassen; resten
+/* ══ KORT-PRIMITIVERNE ══ Delte former dækker hele værktøjskassen; resten
    falder i faldbacken. Se `raekkeKroppe.tsx`. */
 .raekkevisning .rv-kort {
   border: 1px solid var(--line); border-radius: var(--radius-md);
   background: var(--bg-2); overflow: hidden;
 }
+/* Filvisning: sti og linjenumre erstatter Read-værktøjets rå IN/OUT-JSON. */
+.raekkevisning .rv-filH {
+  display: flex; align-items: center; gap: 12px; padding: 7px 11px;
+  border-bottom: 1px solid var(--line); color: var(--fg-2);
+  font: 12px var(--font-mono);
+}
+.raekkevisning .rv-filH > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.raekkevisning .rv-filM { margin-left: auto; color: var(--fg-3); font: 11px var(--font-mono); }
+.raekkevisning .rv-filTom { padding: 12px 11px; color: var(--fg-3); font-size: 12px; }
+.raekkevisning .rv-filKode { max-height: 224px; overflow: auto; padding: 6px 0; }
+.raekkevisning .rv-filKode .shiki {
+  margin: 0; background: transparent !important; counter-reset: rv-linje;
+  font: 12px/20px var(--font-mono); min-width: max-content;
+}
+.raekkevisning .rv-filKode .shiki code { display: block; }
+.raekkevisning .rv-filKode .shiki,
+.raekkevisning .rv-filKode .shiki span { color: var(--shiki-dark); }
+:root[data-theme='light'] .raekkevisning .rv-filKode .shiki,
+:root[data-theme='light'] .raekkevisning .rv-filKode .shiki span { color: var(--shiki-light); }
+.raekkevisning .rv-filKode .shiki .line { display: block; padding: 0 11px; min-height: 20px; }
+.raekkevisning .rv-filKode .shiki .line::before {
+  counter-increment: rv-linje; content: counter(rv-linje); display: inline-block;
+  width: 36px; color: var(--fg-3); user-select: none;
+}
+.raekkevisning .rv-filLinje {
+  display: grid; grid-template-columns: 36px minmax(max-content, 1fr);
+  min-width: max-content; padding: 0 11px; white-space: pre;
+  font: 12px/20px var(--font-mono); color: var(--fg-2);
+}
+.raekkevisning .rv-filNr { color: var(--fg-3); user-select: none; }
+.raekkevisning .rv-resultatH { padding: 9px 11px; font-size: 12px; color: var(--fg-2); white-space: pre-wrap; }
+.raekkevisning .rv-felter { margin: 0; }
+.raekkevisning .rv-felter > div { display: grid; grid-template-columns: minmax(100px, 25%) 1fr; gap: 12px; padding: 3px 0; }
+.raekkevisning .rv-felter dt { color: var(--fg-3); overflow-wrap: anywhere; }
+.raekkevisning .rv-felter dd { margin: 0; overflow-wrap: anywhere; }
+.raekkevisning .rv-raadata { margin-top: 7px; color: var(--fg-3); font-size: 11px; }
+.raekkevisning .rv-raadata summary { width: max-content; cursor: pointer; }
+.raekkevisning .rv-raadata .rv-kort { margin-top: 6px; }
 /* Maks-højder. Uden dem folder en `read_file` hele filen ud i rækken, og
    transskriptet bliver ulæseligt — det er den mest mærkbare mangel i daglig
    brug. Forlægget klipper terminalen ved 224px og ind/ud-kortet ved 150px,
@@ -220,12 +258,7 @@
 .raekkevisning .rv-bill img { width: 64px; height: 42px; object-fit: cover; border-radius: var(--radius-sm); }
 .raekkevisning .rv-n { font-size: 13px; color: var(--fg-2); }
 .raekkevisning .rv-m2 { font-size: 12px; color: var(--fg-3); }
-/* Faldbackens hoved */
-.raekkevisning .rv-fald .rv-kh {
-  padding: 6px 11px; border-bottom: 1px solid var(--line); font-size: 12px; color: var(--fg-3);
-}
-
-/* Målt: mono kun TO steder i rækkerne — diff-tallet og fejlkoden. */
+/* I selve overskriftsrækken er diff-tallet og fejlkoden de eneste mono-felter. */
 /* Kun stoerrelse og skrifttype her. FARVEN kommer fra `git-add`/`git-del`
    inde i den — desks egne klasser, pinnet af tokens.test.ts. Sattes der en
    `color` paa selve `.rv-diffstat`, ville den ikke overskrive boernenes,

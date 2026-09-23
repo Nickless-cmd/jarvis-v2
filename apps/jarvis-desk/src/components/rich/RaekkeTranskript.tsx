@@ -22,7 +22,7 @@
  * billeder er nøjagtig som i bobblevisningen.
  */
 import { memo, useState } from 'react'
-import { Sparkles, Sparkle, ChevronDown, Check, Loader, type LucideIcon } from 'lucide-react'
+import { Sparkles, Sparkle, ChevronDown, ChevronRight, Check, Loader, type LucideIcon } from 'lucide-react'
 import type { ContentBlock } from '../../lib/sseProtocol'
 import type { ApiConfig } from '../../lib/api'
 import { opdel, opdelArbejdsrunder, turFortalt, type ArbejdsElement } from '../../lib/raekkeModel'
@@ -37,6 +37,18 @@ import { BlocksRenderer, etiketterFraBlokke } from './BlocksRenderer'
 function foersteLinje(s: string): string {
   const t = s.trim().split('\n').find((l) => l.trim()) ?? ''
   return t.trim()
+}
+
+/** Fold-pilen. Et RIGTIGT ikon — ikke teksttegnet ▸/▾ (Bjørn 23/9-2026:
+ *  «slippe for ▸ som ikon og så bare bruge den rigtige >»).
+ *
+ *  Retningen skiftes ved at BYTTE ikonet frem for at rotere det, så stregen
+ *  står skarp i begge tilstande — samme greb som forlægget
+ *  (DisclosureRow.tsx:68: `leading = open ? <Chevron/> : icon`). */
+function FoldPil({ aaben }: { aaben: boolean }) {
+  return aaben
+    ? <ChevronDown size={12} strokeWidth={1.75} />
+    : <ChevronRight size={12} strokeWidth={1.75} />
 }
 
 function Raekke({
@@ -97,7 +109,7 @@ function Raekke({
           </>
         ) : <span className="rv-sum" />}
         {mrkat && <span className="rv-mrkat">{mrkat}</span>}
-        {foldbar && <span className="rv-chev" aria-hidden="true">{aaben ? '▾' : '▸'}</span>}
+        {foldbar && <span className="rv-chev" aria-hidden="true"><FoldPil aaben={aaben} /></span>}
       </div>
       {foldbar && aaben && <div className="rv-krop">{krop}</div>}
     </div>
@@ -221,7 +233,7 @@ function Arbejdsrunde({
         {diff && <span className="rv-diffstat" aria-label={`Tilføjet ${diff.add} linjer, fjernet ${diff.del} linjer`}>
           <span className="git-add">+{diff.add}</span> <span className="git-del">−{diff.del}</span>
         </span>}
-        <span className="rv-turC" aria-hidden="true">{aaben ? '▾' : '▸'}</span>
+        <span className="rv-turC" aria-hidden="true"><FoldPil aaben={aaben} /></span>
       </button>
       <div className="rv-arbejdsdetaljer" hidden={!aaben}>
         {elementer.map((e, i) => <Element key={i} e={e} streaming={streaming} config={config} />)}
@@ -260,7 +272,7 @@ function RaekkeTranskriptImpl({
             type="button" className="rv-tur" aria-expanded={aaben}
             onClick={() => setAabenManuelt(!aaben)}
           >
-            <span className="rv-turC" aria-hidden="true">{aaben ? '▾' : '▸'}</span>
+            <span className="rv-turC" aria-hidden="true"><FoldPil aaben={aaben} /></span>
             {/* `shimmer` er desks egen regel (app.css) — 2.25s, pinned 1:1 mod
                 Claude Desktop af tokens.test.ts. Vi laaner den, vi laver ikke
                 en ny. Kun mens der faktisk arbejdes. */}

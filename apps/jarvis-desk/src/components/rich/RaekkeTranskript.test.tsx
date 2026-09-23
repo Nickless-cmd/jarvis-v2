@@ -338,13 +338,23 @@ describe('RaekkeTranskript', () => {
     const { container } = render(<RaekkeTranskript blocks={TUR} streaming />)
     const raekke = [...container.querySelectorAll('.rv-r')]
       .find((r) => r.querySelector('.rv-slags')?.textContent === 'Bash')!
-    expect(raekke.querySelector('.rv-chev')?.textContent).toBe('▸')
+    expect(raekke.querySelector('.rv-chev .lucide-chevron-right')).not.toBeNull()
     expect(raekke.querySelector('.rv-krop')).toBeNull()
     fireEvent.click(raekke)
-    expect(raekke.querySelector('.rv-chev')?.textContent).toBe('▾')
+    expect(raekke.querySelector('.rv-chev .lucide-chevron-down')).not.toBeNull()
     expect(raekke.querySelector('.rv-krop')).not.toBeNull()
     fireEvent.click(raekke)
-    expect(raekke.querySelector('.rv-chev')?.textContent).toBe('▸')
+    expect(raekke.querySelector('.rv-chev .lucide-chevron-right')).not.toBeNull()
+  })
+
+  it('fold-pilen er et rigtigt ikon — teksttegnet ▸/▾ findes ikke længere', () => {
+    const { container } = render(<RaekkeTranskript blocks={TUR} streaming />)
+    // Bjørn 23/9-2026: «slippe for ▸ som ikon og så bare bruge den rigtige >».
+    // Vagten er på TEGNET, ikke på markuppen: et ▸ kan snige sig ind igen via
+    // en helt anden komponent, og så skal den fanges her.
+    expect(container.textContent).not.toMatch(/[▸▾]/)
+    expect(container.querySelectorAll('.lucide-chevron-right, .lucide-chevron-down').length)
+      .toBeGreaterThan(0)
   })
 
   it('viser exit-koden ogsaa naar den er 0 (Bjørn 22/9-2026)', () => {

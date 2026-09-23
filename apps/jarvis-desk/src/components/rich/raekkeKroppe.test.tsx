@@ -164,6 +164,30 @@ describe('rækkevisningens værktøjskroppe', () => {
     expect(container.textContent).toContain('exit code 0')
   })
 
+  it('viser kommandoen og en kørselsstatus straks, før stdout findes', () => {
+    const { container } = render(<>{kropFor('operator_bash', {}, undefined, false, undefined,
+      { partialJson: '{"command":"for i in 1 2; do sleep 1; done"', running: true })}</>)
+    expect(container.querySelector('.rv-term .rv-kh')?.textContent).toContain('for i in 1 2; do sleep 1; done')
+    expect(container.querySelector('.rv-term pre')?.textContent).toContain('Kører…')
+    expect(container.textContent).not.toContain('exit code 0')
+    expect(container.textContent).not.toContain('operator_bash')
+  })
+
+  it('opdaterer også en ufuldstændig kommando under streaming', () => {
+    const { container } = render(<>{kropFor('operator_bash', {}, undefined, false, undefined,
+      { partialJson: '{"command":"for i in 1 2; do sleep', running: true })}</>)
+    expect(container.querySelector('.rv-term .rv-kh')?.textContent).toContain('for i in 1 2; do sleep')
+  })
+
+  it('beholder kommandoen når resultatet kommer, selv om input stadig er tomt', () => {
+    const { container } = render(<>{kropFor('operator_bash', {},
+      JSON.stringify({ result: { stdout: 'done', exit_code: 0 } }), false, undefined,
+      { partialJson: '{"command":"echo done"}' })}</>)
+    expect(container.querySelector('.rv-term .rv-kh')?.textContent).toContain('echo done')
+    expect(container.querySelector('.rv-term pre')?.textContent).toBe('done')
+    expect(container.textContent).toContain('exit code 0')
+  })
+
   it('beholder terminalvisningen ved ikke-nul exit, når der er kommandooutput', () => {
     const { container } = vis('bash', { command: 'pytest' },
       JSON.stringify({ result: { stdout: '1 failed', exit_code: 1 } }), true)

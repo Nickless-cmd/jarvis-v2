@@ -173,7 +173,8 @@ function Element({ e, streaming, config }: { e: ArbejdsElement; streaming: boole
         sum={sum}
         koerer={b.status === 'running'}
         fejl={fejl}
-        krop={kropFor(b.name, b.input, b.result, fejl, config)}
+        krop={kropFor(b.name, b.input, b.result, fejl, config,
+          { partialJson: b.partialJson, running: streaming && b.result == null && (b.status ?? 'running') === 'running' })}
         kind={postFor(b.name).familie}
         mrkat={erUnderagent(b.name) ? 'subagent' : undefined}
       />

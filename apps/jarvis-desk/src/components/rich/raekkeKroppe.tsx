@@ -208,14 +208,14 @@ export function udDel(result: string | undefined): string {
 
 /* ══ Delte resultatvisninger ════════════════════════════════════════════ */
 
-export function Terminal({ cmd, ud, exit }: { cmd: string; ud: string; exit: number }) {
+export function Terminal({ cmd, ud, exit, pending = false }: { cmd: string; ud: string; exit: number; pending?: boolean }) {
   return (
-    <div className="rv-kort rv-term" data-exit={exit}>
+    <div className="rv-kort rv-term" data-exit={pending ? undefined : exit}>
       <div className="rv-kh">
         <span>{cmd}</span>
-        <span className="rv-exit">exit code {exit}</span>
+        {!pending && <span className="rv-exit">exit code {exit}</span>}
       </div>
-      <pre>{ud}</pre>
+      <pre {...(pending && !ud ? { 'data-pending': '' } : {})}>{ud || (pending ? 'Kører…' : '')}</pre>
     </div>
   )
 }
@@ -247,6 +247,23 @@ function Fil({ path, tekst, meta }: { path: string; tekst: string; meta?: string
 
 function Raadata({ ind, ud }: { ind: string; ud: string }) {
   return <details className="rv-raadata"><summary>Raw data</summary><IndUd ind={ind} ud={ud} /></details>
+}
+
+function inputFraStroem(raw: string | undefined): Data {
+  if (!raw) return {}
+  try {
+    const parsed: unknown = JSON.parse(raw)
+    return objekt(parsed) ? parsed : {}
+  } catch { return {} }
+}
+
+/** `input` er tomt indtil kaldet afsluttes; den delvise JSON kan allerede bære kommandoen. */
+function kommandoFraStroem(raw: string | undefined): string {
+  const m = /"(?:command|cmd)"\s*:\s*"((?:\\.|[^"\\])*)/.exec(raw ?? '')
+  if (!m?.[1]) return ''
+  const tekst = m[1].replace(/\\$/, '')
+  try { return JSON.parse(`"${tekst}"`) as string }
+  catch { return tekst.replace(/\\n/g, '\n').replace(/\\"/g, '"').replace(/\\\\/g, '\\') }
 }
 
 function Resultat({ tekst, ind, ud }: { tekst: ReactNode; ind: string; ud: string }) {
@@ -434,11 +451,13 @@ export function Underagent({
 /** Vælg krop ud fra familie. Én indgang, så rækken ikke kender formerne. */
 export function kropFor(
   navn: string,
-  input: Record<string, unknown>,
+  inputRaa: Record<string, unknown>,
   result: string | undefined,
   fejl: boolean,
   config?: ApiConfig,
+  live?: { partialJson?: string; running?: boolean },
 ): ReactNode {
+  const input = { ...inputFraStroem(live?.partialJson), ...inputRaa }
   const { familie } = postFor(navn)
   // Underagent FOER familie-valget: `scout_agent` ville ellers falde i
   // faldbacken og vise raa JSON, mens agentens otte egne kald laa uroert i
@@ -456,7 +475,8 @@ export function kropFor(
   }
 
   if (familie === 'terminal') {
-    return <Terminal cmd={String(input.command ?? navn)} ud={ud} exit={exitKode(result, fejl)} />
+    const cmd = streng(input.command) || streng(input.cmd) || kommandoFraStroem(live?.partialJson) || 'Klargør kommando…'
+    return <Terminal cmd={cmd} ud={ud} exit={exitKode(result, fejl)} pending={live?.running} />
   }
   if (familie === 'diff') {
     const oldText = streng(input.old_string) || streng(input.old_text)

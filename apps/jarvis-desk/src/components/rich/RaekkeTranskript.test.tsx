@@ -192,7 +192,7 @@ describe('RaekkeTranskript', () => {
     // Det var praecis fejlen 22/9: raekkerne blev staaende bagefter, og
     // synteserne druknede i dem.
     render(<RaekkeTranskript blocks={TUR} streaming={false} />)
-    expect(screen.getByText('Thought for 41s · 2 tool calls')).toBeInTheDocument()
+    expect(screen.getByText('Slog noget op og kørte en kommando · 41s')).toBeInTheDocument()
     // `hidden` fjerner ikke noden — den skjuler den. Og bemaerk: jsdom
     // indlaeser ikke CSS, saa DENNE test kan ikke se om reglen der faktisk
     // skjuler gruppen findes. Det maaler `raekkevisning.css`-testen nedenfor.
@@ -228,6 +228,18 @@ describe('RaekkeTranskript', () => {
     const sum = container.querySelector('.rv-sumT')?.textContent ?? ''
     expect(sum).not.toBe('')
     expect(sum).toContain('grep')
+  })
+
+  it('fører delvise argumenter ind i den åbne Bash-krop under kørslen', () => {
+    const med: ContentBlock[] = [{
+      type: 'tool_use', id: 'b1', name: 'operator_bash', input: {}, status: 'running',
+      partialJson: '{"command":"sleep 5"',
+    }]
+    const { container } = render(<RaekkeTranskript blocks={med} streaming />)
+    fireEvent.click(container.querySelector('.rv-arbejdsknap')!)
+    fireEvent.click(container.querySelector('.rv-r[data-foldbar]')!)
+    expect(container.querySelector('.rv-term .rv-kh')?.textContent).toContain('sleep 5')
+    expect(container.querySelector('.rv-term pre')?.textContent).toContain('Kører…')
   })
 
   it('tegner progress-blokke som en række', () => {
@@ -370,7 +382,7 @@ describe('RaekkeTranskript', () => {
 
   it('kan åbnes igen efter turen er slut', () => {
     render(<RaekkeTranskript blocks={TUR} streaming={false} />)
-    fireEvent.click(screen.getByRole('button', { name: /Thought for 41s/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Slog noget op og kørte en kommando · 41s/ }))
     expect(screen.getByText('Bash')).toBeInTheDocument()
   })
 })

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
-import { kropFor } from './raekkeKroppe'
+import { kropFor, postFor } from './raekkeKroppe'
 
 function vis(navn: string, input: Record<string, unknown>, result?: string, fejl = false) {
   return render(<>{kropFor(navn, input, result, fejl)}</>)
@@ -116,7 +116,7 @@ describe('rækkevisningens værktøjskroppe', () => {
   })
 
   it('viser alternative søgefelter uden rå JSON', () => {
-    const { container } = vis('memory_search', { query: 'status' },
+    const { container } = vis('search_memory', { query: 'status' },
       JSON.stringify({ matches: [{ path: 'memory.md', line: 12, summary: 'Status er grøn' }] }))
     expect(container.textContent).toContain('memory.md:12')
     expect(container.textContent).toContain('Status er grøn')
@@ -124,7 +124,7 @@ describe('rækkevisningens værktøjskroppe', () => {
   })
 
   it('viser spørgsmål og billedmetadata uden IN/OUT-kort', () => {
-    const ask = vis('ask_user', { question: 'Fortsæt?' }, 'Ja')
+    const ask = vis('pause_and_ask', { question: 'Fortsæt?' }, 'Ja')
     expect(ask.container.querySelector('.rv-sp')).toBeInTheDocument()
     expect(ask.container.textContent).toContain('Fortsæt?')
     ask.unmount()
@@ -178,5 +178,25 @@ describe('rækkevisningens værktøjskroppe', () => {
     expect(container.textContent).toContain('Adgang nægtet')
     expect(container.querySelector('details')).toBeInTheDocument()
     expect(container.querySelector('details')).not.toHaveAttribute('open')
+  })
+
+  it('giver de mest brugte værktøjer en form — ingen falder til faldbacken', () => {
+    // Vagt mod døde navne i navnekortet. Hvert navn her er målt i faktisk brug
+    // (tool_usage, 23/9-2026) og SKAL have en form. Falder et af dem til 'fald',
+    // er navnet enten stavet forkert eller slettet fra kortet — og så viser
+    // rækkevisningen den generiske dump for et af de mest brugte værktøjer.
+    const skalHaveForm = [
+      'bash_session_run', 'operator_bash_session_run', 'bash_session_open',
+      'operator_run_in_background', 'operator_bash_output', 'phone_adb_shell',
+      'search', 'search_memory', 'search_sessions', 'search_jarvis_brain',
+      'semantic_search_code', 'load_more_tools', 'recall', 'recall_memories',
+      'explore', 'git_log', 'eventbus_recent', 'list_agents', 'list_self_wakeups',
+      'memory_upsert_section', 'send_telegram_message', 'notify',
+      'operator_multi_edit', 'pause_and_ask', 'web_scrape', 'operator_webfetch',
+      'operator_screenshot', 'look_around', 'read_visual_memory',
+    ]
+    for (const navn of skalHaveForm) {
+      expect(postFor(navn).familie, `${navn} mangler i navnekortet`).not.toBe('fald')
+    }
   })
 })

@@ -28,34 +28,99 @@ export type Familie = 'terminal' | 'diff' | 'fil' | 'skriv' | 'liste' | 'web' | 
 
 interface Post { etiket: string; familie: Familie }
 
-/** Almindelige navne får en form; alle andre får en læsbar fallback. */
+/**
+ * Navnekortet — de navne der får en form.
+ *
+ * Familien følger RESULTATETS form, ikke værktøjets emne: et bash-kald giver
+ * stdout + exit-kode (terminal), en søgning giver en hitliste (liste), en
+ * skrivning giver en bekræftelse (skriv).
+ *
+ * Alt hvad der ikke står her falder til `fald` — den generiske feltliste. Det
+ * er ikke en fejl: for små status-objekter (`central_query`, `daemon_status`,
+ * `get_weather`, `read_self_state` …) ER feltlisten den rigtige form. At tvinge
+ * dem ind i en anden familie ville gøre formen ringere, ikke bedre.
+ *
+ * ## Rettet 23/9-2026
+ *
+ * Kortet havde otte navne der ikke findes i registret (482 værktøjer):
+ * `bash_session`, `operator_bash_session`, `memory_search`, `search_files`,
+ * `glob`, `grep`, `ask_user`, `ask_question`. Det er værre end ubrugeligt — et
+ * navn der ikke findes giver en form der LYVER, hvis navnet en dag tages i
+ * brug til noget andet. Og de rigtige navne bag dem manglede: `bash_session_run`
+ * er det fjerde mest brugte værktøj i systemet (1.492 kald) og fik hele tiden
+ * den generiske dump, fordi nogen skrev navnet uden `_run`.
+ *
+ * Kilden til sandheden er `core/tools/simple_tools.py::get_tool_definitions`.
+ * Denne liste skal holdes mod den — se vagt-testen i `raekkeKroppe.test.ts`.
+ */
 const KENDTE: Record<string, Post> = {
+  // ── Terminal: stdout + exit-kode ──────────────────────────────────────
   bash: { etiket: 'Bash', familie: 'terminal' },
   operator_bash: { etiket: 'Bash', familie: 'terminal' },
-  bash_session: { etiket: 'Bash', familie: 'terminal' },
-  operator_bash_session: { etiket: 'Bash', familie: 'terminal' },
+  bash_session_run: { etiket: 'Bash', familie: 'terminal' },
+  operator_bash_session_run: { etiket: 'Bash', familie: 'terminal' },
+  bash_session_open: { etiket: 'Bash', familie: 'terminal' },
+  operator_bash_session_open: { etiket: 'Bash', familie: 'terminal' },
+  bash_session_close: { etiket: 'Bash', familie: 'terminal' },
+  operator_bash_output: { etiket: 'Bash', familie: 'terminal' },
+  operator_run_in_background: { etiket: 'Bash', familie: 'terminal' },
+  operator_session_run: { etiket: 'Bash', familie: 'terminal' },
+  phone_adb_shell: { etiket: 'Bash', familie: 'terminal' },
+  // ── Læs ───────────────────────────────────────────────────────────────
   read_file: { etiket: 'Read', familie: 'fil' },
   operator_read_file: { etiket: 'Read', familie: 'fil' },
+  // ── Skriv ─────────────────────────────────────────────────────────────
   write_file: { etiket: 'Write', familie: 'skriv' },
   operator_write_file: { etiket: 'Write', familie: 'skriv' },
   publish_file: { etiket: 'Write', familie: 'skriv' },
   remember_this: { etiket: 'Write', familie: 'skriv' },
+  memory_upsert_section: { etiket: 'Write', familie: 'skriv' },
+  send_telegram_message: { etiket: 'Write', familie: 'skriv' },
+  notify: { etiket: 'Write', familie: 'skriv' },
+  notify_user: { etiket: 'Write', familie: 'skriv' },
+  verify_file_contains: { etiket: 'Verify', familie: 'skriv' },
+  // ── Redigering: diff ──────────────────────────────────────────────────
   edit_file: { etiket: 'Edit', familie: 'diff' },
   operator_edit_file: { etiket: 'Edit', familie: 'diff' },
+  operator_multi_edit: { etiket: 'Edit', familie: 'diff' },
+  // ── Liste: hitlister, tabeller, oversigter ────────────────────────────
   find_files: { etiket: 'Glob', familie: 'liste' },
-  grep: { etiket: 'Grep', familie: 'liste' },
-  memory_search: { etiket: 'Search', familie: 'liste' },
-  web_search: { etiket: 'Search', familie: 'web' },
-  web_fetch: { etiket: 'Fetch', familie: 'web' },
-  analyze_image: { etiket: 'Read image', familie: 'billede' },
-  verify_file_contains: { etiket: 'Verify', familie: 'skriv' },
   operator_glob: { etiket: 'Glob', familie: 'liste' },
   operator_grep: { etiket: 'Grep', familie: 'liste' },
   operator_list_dir: { etiket: 'List', familie: 'liste' },
-  glob: { etiket: 'Glob', familie: 'liste' },
-  search_files: { etiket: 'Search', familie: 'liste' },
-  ask_user: { etiket: 'Ask', familie: 'spoergsmaal' },
-  ask_question: { etiket: 'Ask', familie: 'spoergsmaal' },
+  list_dir: { etiket: 'List', familie: 'liste' },
+  search: { etiket: 'Search', familie: 'liste' },
+  search_memory: { etiket: 'Search', familie: 'liste' },
+  search_sessions: { etiket: 'Search', familie: 'liste' },
+  search_chat_history: { etiket: 'Search', familie: 'liste' },
+  search_jarvis_brain: { etiket: 'Search', familie: 'liste' },
+  semantic_search_code: { etiket: 'Search', familie: 'liste' },
+  load_more_tools: { etiket: 'Search', familie: 'liste' },
+  recall: { etiket: 'Search', familie: 'liste' },
+  recall_memories: { etiket: 'Search', familie: 'liste' },
+  explore: { etiket: 'Search', familie: 'liste' },
+  smart_outline: { etiket: 'List', familie: 'liste' },
+  git_log: { etiket: 'List', familie: 'liste' },
+  read_chronicles: { etiket: 'List', familie: 'liste' },
+  read_memory_topic: { etiket: 'List', familie: 'liste' },
+  eventbus_recent: { etiket: 'List', familie: 'liste' },
+  list_signal_surfaces: { etiket: 'List', familie: 'liste' },
+  list_self_wakeups: { etiket: 'List', familie: 'liste' },
+  list_agents: { etiket: 'List', familie: 'liste' },
+  list_scheduled_tasks: { etiket: 'List', familie: 'liste' },
+  list_side_tasks: { etiket: 'List', familie: 'liste' },
+  // ── Web ───────────────────────────────────────────────────────────────
+  web_search: { etiket: 'Search', familie: 'web' },
+  web_fetch: { etiket: 'Fetch', familie: 'web' },
+  operator_webfetch: { etiket: 'Fetch', familie: 'web' },
+  web_scrape: { etiket: 'Fetch', familie: 'web' },
+  // ── Spørgsmål ─────────────────────────────────────────────────────────
+  pause_and_ask: { etiket: 'Ask', familie: 'spoergsmaal' },
+  // ── Billede ───────────────────────────────────────────────────────────
+  analyze_image: { etiket: 'Read image', familie: 'billede' },
+  operator_screenshot: { etiket: 'Read image', familie: 'billede' },
+  look_around: { etiket: 'Read image', familie: 'billede' },
+  read_visual_memory: { etiket: 'Read image', familie: 'billede' },
 }
 
 export function postFor(navn: string): Post {

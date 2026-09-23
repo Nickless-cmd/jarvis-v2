@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { RaekkeTranskript } from './RaekkeTranskript'
+import { SettingsProvider } from '../../contexts/SettingsContext'
 import { RAEKKE_KEY } from '../../lib/visningsPref'
 import type { ContentBlock } from '../../lib/sseProtocol'
 import { readFileSync } from 'node:fs'
@@ -73,6 +74,43 @@ describe('RaekkeTranskript', () => {
     const sum = container.querySelector('.rv-sumT')?.textContent ?? ''
     expect(sum).not.toBe('')
     expect(sum).toContain('grep')
+  })
+
+  it('tegner progress-blokke som en række', () => {
+    const med: ContentBlock[] = [
+      kald('bash'),
+      { type: 'progress', tool_use_id: 't1', parent_tool_use_id: null,
+        message: 'Analyserede billede…', status: 'running' },
+      tekst('Færdig.'),
+    ]
+    render(<RaekkeTranskript blocks={med} streaming />)
+    expect(screen.getByText('Progress')).toBeInTheDocument()
+    expect(screen.getByText('Analyserede billede…')).toBeInTheDocument()
+  })
+
+  it('lader INGEN bloktype forsvinde sporløst', () => {
+    // `Element` returnerede `null` for alt den ikke kendte — ingen fejl,
+    // ingen tom raekke, bare indhold der ikke var der. `progress` blev spist
+    // paa praecis den maade indtil 23/9-2026.
+    //
+    // En `file`-blok er proevestenen, fordi dens EGEN kommentar i
+    // sseProtocol.ts beskriver samme fejl fra 15/9: `foldToolResults` kendte
+    // ikke typen og droppede den, saa filen aldrig naaede skaermen. Den
+    // ligger her FOER det sidste kald, altsaa i arbejdsomraadet, hvor det er
+    // `Element` og ikke BlocksRenderer der afgoer om den ses.
+    const medFil: ContentBlock[] = [
+      { type: 'file', filename: 'chatview-run.html', url: 'https://api.srvlab.dk/files/chatview-run.html', kilde: 'published' },
+      kald('bash'),
+      tekst('Svar.'),
+    ]
+    // `AttachmentBlock` slaar op i settings-konteksten. At den overhovedet
+    // NAAR dertil er beviset: blokken bliver renderet i stedet for droppet.
+    const { container } = render(
+      <SettingsProvider initialConfig={{ apiBaseUrl: '', authToken: null }}>
+        <RaekkeTranskript blocks={medFil} streaming />
+      </SettingsProvider>,
+    )
+    expect(container.textContent).toContain('chatview-run.html')
   })
 
   it('bruger engelske etiketter (Bjørn 22/9-2026)', () => {

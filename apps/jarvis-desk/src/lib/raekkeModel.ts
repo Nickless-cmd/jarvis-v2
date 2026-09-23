@@ -52,9 +52,14 @@ export interface RaekkeOpdeling {
   sekunder: number
 }
 
-/** Blokke der tegnes som en række i arbejdsområdet. */
+/** Blokke der tegnes som en række i arbejdsområdet.
+ *
+ * `progress` er narrationen fra live-working_step, persisteret så forløbet
+ * overlever en reload. Den er ARBEJDE uanset hvor den står — lå den i
+ * svaret, ville «Analyserede billede…» blive tegnet som replik. */
 function erArbejdsBlok(b: ContentBlock): boolean {
-  return b.type === 'tool_use' || b.type === 'thinking' || b.type === 'skill_surface'
+  return b.type === 'tool_use' || b.type === 'thinking'
+    || b.type === 'skill_surface' || b.type === 'progress'
 }
 
 /**

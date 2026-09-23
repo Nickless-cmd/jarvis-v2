@@ -23,7 +23,7 @@
  * billeder er nøjagtig som i bobblevisningen.
  */
 import { memo, useState } from 'react'
-import { Sparkles, Sparkle, ChevronDown, type LucideIcon } from 'lucide-react'
+import { Sparkles, Sparkle, ChevronDown, Loader, type LucideIcon } from 'lucide-react'
 import type { ContentBlock } from '../../lib/sseProtocol'
 import type { ApiConfig } from '../../lib/api'
 import { opdel, turHoved, type ArbejdsElement } from '../../lib/raekkeModel'
@@ -114,6 +114,17 @@ function Element({ e, streaming }: { e: ArbejdsElement; streaming: boolean }) {
   if (b.type === 'skill_surface') {
     return <Raekke Ikon={Sparkle} slags="Skill" sum={b.matches.map((m) => m.name).join(' · ')} />
   }
+  if (b.type === 'progress') {
+    // Narrationen fra live-working_step, persisteret saa forloebet overlever
+    // en reload. Bobblevisningen tegner den (BlocksRenderer:66) — raekke-
+    // visningen droppede den tavst indtil 23/9-2026.
+    return (
+      <Raekke
+        Ikon={Loader} slags="Progress" sum={b.message}
+        koerer={b.status === 'running'} fejl={b.status === 'error'}
+      />
+    )
+  }
   if (b.type === 'tool_use') {
     const { etiket } = postFor(b.name)
     const meta = lookupTool(b.name)
@@ -134,7 +145,11 @@ function Element({ e, streaming }: { e: ArbejdsElement; streaming: boolean }) {
       />
     )
   }
-  return null
+  // Alt andet — `image`, `file`, `tool_use_summary` og hvad der maatte komme
+  // til — gaar gennem bobblevisningens renderer. En `return null` her ville
+  // lade blokke forsvinde SPORLOEST: ingen fejl, ingen tom raekke, bare
+  // indhold der ikke er der. Det er praecis hvad der skete for `progress`.
+  return <BlocksRenderer blocks={[b]} density="compact" streaming={streaming} />
 }
 
 function RaekkeTranskriptImpl({

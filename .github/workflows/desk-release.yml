@@ -156,13 +156,21 @@ jobs:
           # var der ikke. Nu spoerger vi release'en hvad den FAKTISK har, og
           # fejler hoejlydt hvis noget mangler.
           echo "Verificerer at alle filer er i release'en…"
+          # GitHub OMDOEBER ved upload: alt uden for [A-Za-z0-9._-] bliver til
+          # et punktum, saa «J.A.R.V.I.S Setup 0.6.81.exe» ligger som
+          # «J.A.R.V.I.S.Setup.0.6.81.exe». Maalt 23/9-2026: uden den regel
+          # meldte verifikationen de to Windows-filer MANGLENDE, selvom alle
+          # elleve laa der. Begge sider normaliseres, saa vi sammenligner
+          # aebler med aebler.
+          normaliser() { sed 's/[^A-Za-z0-9._-]/./g'; }
           gh release view "$tag" --repo "$GITHUB_REPOSITORY" \
-            --json assets -q '.assets[].name' | sort > /tmp/oppe.txt
+            --json assets -q '.assets[].name' | normaliser | sort > /tmp/oppe.txt
           mangler=0
           for f in "${filer[@]}"; do
-            navn="$(basename "$f")"
+            raat="$(basename "$f")"
+            navn="$(printf '%s' "$raat" | normaliser)"
             if ! grep -Fxq "$navn" /tmp/oppe.txt; then
-              echo "MANGLER i release'en: $navn"
+              echo "MANGLER i release'en: $raat (som '$navn')"
               mangler=1
             fi
           done

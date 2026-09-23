@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { lookupTool } from './toolRegistry'
+import { lookupTool, kommandoEmne } from './toolRegistry'
 
 describe('toolRegistry', () => {
   it('known tool → curated label + summary', () => {
@@ -36,5 +36,34 @@ describe('toolRegistry', () => {
     expect(lookupTool('flag_side_task').label).toBe('Flag til senere')
     expect(lookupTool('search_jarvis_brain').label).toBe('Søg i hukommelsen')
     expect(lookupTool('read_brain_entry').label).toBe('Læs minde')
+  })
+})
+
+describe('kommandoEmne — hvad rækken siger om en shell-kommando', () => {
+  it('springer et for-loop over og viser den rigtige kommando', () => {
+    // Bjørn 23/9-2026: denne blev vist som «Bash for id» — første ord af et
+    // loop, som ikke fortæller noget.
+    const cmd = 'for id in 29360132 29360134; do echo -n "$id -> "; xdotool getwindowname $id 2>&1; done; echo "=== alle synlige ==="; wmctrl -l'
+    expect(kommandoEmne(cmd)).toBe('xdotool getwindowname $id 2>&1')
+  })
+
+  it('lader en simpel kommando stå urørt', () => {
+    expect(kommandoEmne('rg "tool-activity-disclosure"')).toBe('rg "tool-activity-disclosure"')
+  })
+
+  it('springer cd over og viser hvad der blev kørt', () => {
+    expect(kommandoEmne('cd /media/projects/jarvis-v2 && npm test')).toBe('npm test')
+  })
+
+  it('springer miljø-tildelinger og overskrift-echo over', () => {
+    expect(kommandoEmne('export FOO=bar; echo "=== test ==="; rg foo')).toBe('rg foo')
+  })
+
+  it('skjuler intet — en ren echo vises som den er', () => {
+    expect(kommandoEmne('echo "hej"')).toBe('echo "hej"')
+  })
+
+  it('tager den første kommando efter en pipe', () => {
+    expect(kommandoEmne('ps aux | grep node')).toBe('ps aux')
   })
 })

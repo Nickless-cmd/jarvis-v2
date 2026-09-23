@@ -24,11 +24,34 @@ function pathOf(args: Record<string, unknown>): string {
   return String(args.path || args.target_path || args.file_path || args.dir || '')
 }
 
+/** Shell-støj: nøgleord, navigation og overskrifter der ikke siger hvad der
+ *  skete. `exit` er med fordi «exit 0» aldrig er svaret på hvad der skete. */
+const SHELL_STOEJ = /^(for|while|until|if|then|else|elif|fi|do|done|case|esac|in|cd|echo|exit|export|set|unset)\b/
+
+/**
+ * Den første kommando i en shell-streng der faktisk siger hvad der skete.
+ *
+ * Bjørn 23/9-2026: en kommando der begyndte med
+ * `for id in 29360132 …; do echo -n "$id -> "; xdotool getwindowname $id; done`
+ * blev vist som «Bash for id» — første ord af et loop, som ikke fortæller
+ * noget. Vi splitter på shell-operatorer, springer nøgleord, `cd` og
+ * `echo`-overskrifter over og tager den første rigtige kommando. Er der ingen
+ * tilbage, vises hele strengen som før — vi skjuler aldrig noget.
+ */
+export function kommandoEmne(cmd: string): string {
+  const dele = cmd
+    .split(/;|&&|\|\||\||\n/)
+    .map((d) => d.trim())
+    .filter(Boolean)
+  const rigtig = dele.find((d) => !SHELL_STOEJ.test(d) && !/^[A-Za-z_][A-Za-z0-9_]*=/.test(d))
+  return (rigtig ?? cmd).trim()
+}
+
 /** Kuraterede entries for de mest sete tools. Alle andre dækkes af lookupTool-fallback. */
 export const TOOL_REGISTRY: Record<string, ToolMeta> = {
   // Kerne fil/shell
-  bash: { label: 'Terminal', Icon: Terminal, summarize: (a) => String(a.command ?? '') },
-  operator_bash: { label: 'Terminal', Icon: Terminal, summarize: (a) => String(a.command ?? '') },
+  bash: { label: 'Terminal', Icon: Terminal, summarize: (a) => kommandoEmne(String(a.command ?? '')) },
+  operator_bash: { label: 'Terminal', Icon: Terminal, summarize: (a) => kommandoEmne(String(a.command ?? '')) },
   read_file: { label: 'Læs fil', Icon: FileText, summarize: pathOf },
   operator_read_file: { label: 'Læs fil', Icon: FileText, summarize: pathOf },
   write_file: { label: 'Skriv fil', Icon: FilePlus, summarize: pathOf },
@@ -65,14 +88,14 @@ export const TOOL_REGISTRY: Record<string, ToolMeta> = {
   dispatch_code_mode_task: { label: 'Kode-opgave', Icon: Cpu, summarize: (a) => firstStr(a, ['task', 'prompt', 'goal']) },
   read_model_config: { label: 'Model-konfig', Icon: Database, summarize: () => '' },
   // Shell-sessioner
-  bash_session_run: { label: 'Terminal', Icon: Terminal, summarize: (a) => String(a.command ?? '') },
-  operator_bash_session_run: { label: 'Terminal', Icon: Terminal, summarize: (a) => String(a.command ?? '') },
+  bash_session_run: { label: 'Terminal', Icon: Terminal, summarize: (a) => kommandoEmne(String(a.command ?? '')) },
+  operator_bash_session_run: { label: 'Terminal', Icon: Terminal, summarize: (a) => kommandoEmne(String(a.command ?? '')) },
   bash_session_open: { label: 'Åbn shell', Icon: Terminal, summarize: () => '' },
   operator_bash_session_open: { label: 'Åbn shell', Icon: Terminal, summarize: () => '' },
   bash_session_close: { label: 'Luk shell', Icon: Terminal, summarize: () => '' },
   operator_bash_output: { label: 'Shell-output', Icon: Terminal, summarize: () => '' },
-  operator_run_in_background: { label: 'Baggrundskørsel', Icon: Terminal, summarize: (a) => String(a.command ?? '') },
-  phone_adb_shell: { label: 'Telefon-shell', Icon: Terminal, summarize: (a) => String(a.command ?? '') },
+  operator_run_in_background: { label: 'Baggrundskørsel', Icon: Terminal, summarize: (a) => kommandoEmne(String(a.command ?? '')) },
+  phone_adb_shell: { label: 'Telefon-shell', Icon: Terminal, summarize: (a) => kommandoEmne(String(a.command ?? '')) },
   // Søgning
   search: { label: 'Søg i kode', Icon: Search, summarize: (a) => firstStr(a, ['pattern', 'query']) },
   find_files: { label: 'Find filer', Icon: Search, summarize: (a) => firstStr(a, ['pattern', 'glob']) },
@@ -117,7 +140,7 @@ export const TOOL_REGISTRY: Record<string, ToolMeta> = {
   mark_wakeup_consumed: { label: 'Kvittér vækning', Icon: AlarmClock, summarize: (a) => firstStr(a, ['wakeup_id']) },
   // Operator-kanal
   operator_channel: { label: 'Operatør-kanal', Icon: Monitor, summarize: (a) => String(a.action ?? '') },
-  operator_session_run: { label: 'Operatør-shell', Icon: Monitor, summarize: (a) => String(a.command ?? '') },
+  operator_session_run: { label: 'Operatør-shell', Icon: Monitor, summarize: (a) => kommandoEmne(String(a.command ?? '')) },
   // Billede
   analyze_image: { label: 'Analysér billede', Icon: Image, summarize: (a) => firstStr(a, ['image_path', 'image_url', 'prompt']) },
   // Værktøjer

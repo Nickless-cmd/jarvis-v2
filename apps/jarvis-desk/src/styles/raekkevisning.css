@@ -195,6 +195,7 @@
   flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   color: var(--rv-tertiary);
 }
+.raekkevisning .rv-arbejdsknap .rv-diffstat { flex: none; font-size: 12px; white-space: nowrap; }
 .raekkevisning .rv-arbejdsknap .rv-turC { flex: none; }
 .raekkevisning .rv-arbejdsdetaljer {
   display: flex; flex-direction: column; padding: 5px 0 7px 22px;

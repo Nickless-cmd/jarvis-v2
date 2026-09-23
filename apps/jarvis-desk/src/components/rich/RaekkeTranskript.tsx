@@ -27,7 +27,7 @@ import type { ContentBlock } from '../../lib/sseProtocol'
 import type { ApiConfig } from '../../lib/api'
 import { opdel, opdelArbejdsrunder, turHoved, type ArbejdsElement } from '../../lib/raekkeModel'
 import { lookupTool } from '../../lib/toolRegistry'
-import { describeTool, egenBeskrivelse, subjectFromInput, summarizeRound } from '../../lib/toolRound'
+import { describeTool, egenBeskrivelse, subjectFromInput, summarizeRound, summerDiff } from '../../lib/toolRound'
 import { diffFraResultat, diffStat } from '../../lib/diffStat'
 import { postFor, kropFor } from './raekkeKroppe'
 import { erUnderagent } from '../../lib/agentKald'
@@ -200,6 +200,7 @@ function Arbejdsrunde({
     if (e.slags === 'blok' && e.blok.type === 'tool_use') vaerktoejer.push(e.blok)
   }
   const seneste = vaerktoejer[vaerktoejer.length - 1]
+  const diff = summerDiff(vaerktoejer)
   const koerer = Boolean(seneste && streaming && (seneste.status ?? 'running') === 'running')
   const etiket = [...vaerktoejer].reverse().map((t) => rundeEtiketter[t.id]).find(Boolean)
   const mekanisk = summarizeRound(vaerktoejer)
@@ -216,6 +217,9 @@ function Arbejdsrunde({
         onClick={() => setAaben((v) => !v)}>
         <Ikon className="rv-arbejdsikon" size={17} strokeWidth={1.8} aria-hidden="true" />
         <span className={`rv-arbejdsfortaelling${koerer ? ' shimmer' : ''}`}>{beskrivelse}</span>
+        {diff && <span className="rv-diffstat" aria-label={`Tilføjet ${diff.add} linjer, fjernet ${diff.del} linjer`}>
+          <span className="git-add">+{diff.add}</span> <span className="git-del">−{diff.del}</span>
+        </span>}
         <span className="rv-turC" aria-hidden="true">{aaben ? '▾' : '▸'}</span>
       </button>
       <div className="rv-arbejdsdetaljer" hidden={!aaben}>

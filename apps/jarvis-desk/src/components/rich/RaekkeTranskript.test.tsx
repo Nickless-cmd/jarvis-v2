@@ -281,6 +281,20 @@ describe('RaekkeTranskript', () => {
     expect(container.querySelector('.rv-diffstat .git-del')?.textContent).toBe('−2')
   })
 
+  it('viser grønne og røde diff-tal på den foldbare arbejdsrække', () => {
+    const redigering: ContentBlock[] = [
+      kald('edit_file', { path: 'a.ts', old_text: 'a', new_text: 'a\nb' }),
+      kald('edit_file', { path: 'b.ts', old_text: 'c', new_text: 'c\nd\ne' }),
+      tekst('Rettet.'),
+    ]
+    const { container, rerender } = render(<RaekkeTranskript blocks={redigering} streaming />)
+    const tal = container.querySelector('.rv-arbejdsknap .rv-diffstat')
+    expect(tal?.querySelector('.git-add')?.textContent).toBe('+5')
+    expect(tal?.querySelector('.git-del')?.textContent).toBe('−2')
+    rerender(<RaekkeTranskript blocks={redigering} streaming={false} />)
+    expect(container.querySelector('.rv-arbejdsknap .rv-diffstat')?.textContent).toContain('+5')
+  })
+
   it('bruger serverens målte tal frem for et gæt ud fra argumenterne', () => {
     // `write_file` kan klienten ikke regne slettede linjer for — den ved ikke
     // om filen fandtes. Serveren har filen i haanden og maaler rigtigt.
@@ -298,6 +312,7 @@ describe('RaekkeTranskript', () => {
     const laesning: ContentBlock[] = [kald('read_file', { path: 'x.ts' }), tekst('Læst.')]
     const { container } = render(<RaekkeTranskript blocks={laesning} streaming />)
     expect(container.querySelector('.rv-diffstat')).toBeNull()
+    expect(container.querySelector('.rv-arbejdsknap .rv-diffstat')).toBeNull()
   })
 
   it('bruger engelske etiketter (Bjørn 22/9-2026)', () => {

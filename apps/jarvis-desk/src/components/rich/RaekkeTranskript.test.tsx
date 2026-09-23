@@ -79,14 +79,31 @@ describe('RaekkeTranskript', () => {
     expect(raekke.querySelector('.rv-chev')?.textContent).toBe('▸')
   })
 
-  it('tegner INGEN exit-pille ved 0 — kun ikke-nul markeres', () => {
-    // Maalt i DSH: `exit 0` tegner ingenting. En groen «exit code 0» paa hvert
-    // kald er halvdelen af hvorfor et transskript foeles terminal-agtigt.
+  it('viser exit-koden ogsaa naar den er 0 (Bjørn 22/9-2026)', () => {
+    // DSH's kilde skjuler «exit code 0» helt. Bjørn vil have tallet vist, som
+    // i hans eget forlaeg — saa koden staar altid, og det er KUN farven der
+    // er forbeholdt ikke-nul.
     const { container } = render(<RaekkeTranskript blocks={TUR} streaming />)
     const raekke = [...container.querySelectorAll('.rv-r')]
       .find((r) => r.querySelector('.rv-slags')?.textContent === 'Bash')!
     fireEvent.click(raekke)
-    expect(raekke.querySelector('.rv-term')?.getAttribute('data-exit')).toBe('0')
+    const term = raekke.querySelector('.rv-term')!
+    expect(term.getAttribute('data-exit')).toBe('0')
+    expect(term.querySelector('.rv-exit')?.textContent).toBe('exit code 0')
+  })
+
+  it('markerer en ikke-nul exit-kode', () => {
+    const fejlTur: ContentBlock[] = [
+      kald('bash', { command: 'pytest' },
+        '{"result":{"stdout":"1 failed","exit_code":1}}'),
+      tekst('Den fejlede.'),
+    ]
+    const { container } = render(<RaekkeTranskript blocks={fejlTur} streaming />)
+    const raekke = container.querySelector('.rv-r')!
+    fireEvent.click(raekke)
+    const term = raekke.querySelector('.rv-term')!
+    expect(term.getAttribute('data-exit')).toBe('1')
+    expect(term.querySelector('.rv-exit')?.textContent).toBe('exit code 1')
   })
 
   it('en besked uden værktøjskald får intet turhoved', () => {
@@ -114,6 +131,13 @@ describe('raekkevisning.css', () => {
     // een manglende linje. jsdom kan ikke se det — derfor maales kilden.
     expect(css).toMatch(/\.rv-gruppe\s*\{[^}]*display:\s*flex/)
     expect(css).toMatch(/\.rv-gruppe\[hidden\]\s*\{\s*display:\s*none/)
+  })
+
+  it('skjuler ikke exit-koden, og farver kun ikke-nul', () => {
+    // jsdom indlaeser ingen CSS, saa raekke-testene ovenfor kan ikke se om
+    // koden faktisk er synlig. Kilden maales.
+    expect(css).not.toMatch(/data-exit='0'\]\s*\.rv-exit\s*\{[^}]*display:\s*none/)
+    expect(css).toMatch(/:not\(\[data-exit='0'\]\)\s*\.rv-exit\s*\{[^}]*color:\s*var\(--error-fg\)/)
   })
 
   it('scoper ALT under .raekkevisning, så bobblevisningen ikke rammes', () => {

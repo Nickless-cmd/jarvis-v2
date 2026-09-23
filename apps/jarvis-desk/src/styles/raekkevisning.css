@@ -152,13 +152,17 @@
   margin: 0; padding: 9px 11px; font: 12px/1.65 var(--font-mono);
   color: var(--rv-tertiary); white-space: pre-wrap; word-break: break-word;
 }
-/* Terminal — målt: exit 0 tegner INGEN pille. Kun ikke-nul markeres. */
+/* Terminal. DSH's kilde skjuler «exit code 0» helt; Bjørn vil have den vist
+   (22/9-2026), som i hans eget forlæg. Så koden står ALTID — men kun ikke-nul
+   får farve og prik. Tallet er information; markeringen er en advarsel, og
+   den skal blive ved at betyde noget. */
 .raekkevisning .rv-term .rv-kh {
   display: flex; align-items: center; gap: 8px; padding: 6px 11px;
   border-bottom: 1px solid var(--line); font: 12px var(--font-mono); color: var(--fg-2);
 }
-.raekkevisning .rv-term .rv-exit { margin-left: auto; font: 11px var(--font-mono); }
-.raekkevisning .rv-term[data-exit='0'] .rv-exit { display: none; }
+.raekkevisning .rv-term .rv-exit {
+  margin-left: auto; font: 11px var(--font-mono); color: var(--fg-3);
+}
 .raekkevisning .rv-term:not([data-exit='0']) .rv-exit { color: var(--error-fg); }
 .raekkevisning .rv-term:not([data-exit='0']) .rv-kh::before {
   content: ''; flex: none; width: 5px; height: 5px; border-radius: 50%; background: var(--error-fg);

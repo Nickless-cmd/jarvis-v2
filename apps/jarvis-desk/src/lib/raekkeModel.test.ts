@@ -31,7 +31,11 @@ describe('opdel', () => {
     const { arbejde } = opdel([
       kald('search'), tekst('A'), kald('fetch'), tekst('B'), kald('read'),
     ])
-    expect(arbejde.map((e) => (e.slags === 'mellemsvar' ? e.tekst : (e.blok as { name: string }).name)))
+    expect(arbejde.map((e) => {
+      if (e.slags === 'mellemsvar') return e.tekst
+      if (e.slags === 'spor') return 'spor'
+      return (e.blok as { name: string }).name
+    }))
       .toEqual(['search', 'A', 'fetch', 'B', 'read'])
   })
 
@@ -53,6 +57,27 @@ describe('opdel', () => {
   it('springer tomme tekstblokke over — de opstår før første delta', () => {
     const { arbejde } = opdel([kald('bash'), tekst('   '), kald('bash')])
     expect(arbejde.filter((e) => e.slags === 'mellemsvar')).toEqual([])
+  })
+
+  it('samler sammenhængende progress-blokke til ÉT spor', () => {
+    // Bjoern 23/9-2026: ni «Koerer kommando: python» under hinanden er stoej.
+    // Én linje der opdaterer sig, med hele forloebet i kroppen.
+    const p = (m: string): ContentBlock => ({
+      type: 'progress', tool_use_id: 't', parent_tool_use_id: null, message: m, status: 'running',
+    })
+    const { arbejde } = opdel([kald('bash'), p('et'), p('to'), p('tre'), tekst('svar')])
+    expect(arbejde.map((e) => e.slags)).toEqual(['blok', 'spor'])
+    const spor = arbejde[1]
+    if (spor?.slags !== 'spor') throw new Error('forventede et spor')
+    expect(spor.trin.map((t) => t.message)).toEqual(['et', 'to', 'tre'])
+  })
+
+  it('bryder sporet når der kommer noget imellem', () => {
+    const p = (m: string): ContentBlock => ({
+      type: 'progress', tool_use_id: 't', parent_tool_use_id: null, message: m, status: 'running',
+    })
+    const { arbejde } = opdel([kald('a'), p('et'), kald('b'), p('to'), tekst('svar')])
+    expect(arbejde.map((e) => e.slags)).toEqual(['blok', 'spor', 'blok', 'spor'])
   })
 
   it('tæller kald og lægger tænketiden sammen', () => {

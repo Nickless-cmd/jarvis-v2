@@ -41,6 +41,16 @@ import type { ContentBlock } from './sseProtocol'
 export type ArbejdsElement =
   | { slags: 'blok'; blok: ContentBlock }
   | { slags: 'mellemsvar'; tekst: string }
+  /**
+   * Et SPOR af progress-blokke, ikke én række pr. blok. Bjørn 23/9-2026:
+   * «burde det ikk bare være en linje der opdater status? og så kan man
+   * udvide den som de andre?» — ni «Kører kommando: python» under hinanden
+   * er støj, ikke information. Bobblevisningen grupperer dem allerede
+   * (`progress_trail`, BlocksRenderer.ts:61); det her er det samme greb.
+   */
+  | { slags: 'spor'; trin: ProgressBlok[] }
+
+type ProgressBlok = Extract<ContentBlock, { type: 'progress' }>
 
 export interface RaekkeOpdeling {
   /** Alt der folder sig sammen bag turens hoved, i rækkefølge. */
@@ -88,7 +98,11 @@ export function opdel(blokke: readonly ContentBlock[]): RaekkeOpdeling {
       // Efter det sidste kald: TEKST er svar. Arbejdsblokke er stadig
       // arbejde — se skillelinjen i hovedkommentaren. Alt andet (fx
       // `tool_use_summary`) falder i svaret, saa intet forsvinder tavst.
-      if (erArbejdsBlok(b)) arbejde.push({ slags: 'blok', blok: b })
+      if (b.type === 'progress') {
+        const sidste = arbejde[arbejde.length - 1]
+        if (sidste && sidste.slags === 'spor') sidste.trin.push(b)
+        else arbejde.push({ slags: 'spor', trin: [b] })
+      } else if (erArbejdsBlok(b)) arbejde.push({ slags: 'blok', blok: b })
       else svar.push(b)
       continue
     }
@@ -101,6 +115,13 @@ export function opdel(blokke: readonly ContentBlock[]): RaekkeOpdeling {
       continue
     }
 
+    if (b.type === 'progress') {
+      // Fortsaetter et spor frem for at starte en ny raekke.
+      const sidste = arbejde[arbejde.length - 1]
+      if (sidste && sidste.slags === 'spor') sidste.trin.push(b)
+      else arbejde.push({ slags: 'spor', trin: [b] })
+      continue
+    }
     if (b.type === 'tool_use') kald += 1
     if (b.type === 'thinking' && typeof b.seconds === 'number') sekunder += b.seconds
     arbejde.push({ slags: 'blok', blok: b })

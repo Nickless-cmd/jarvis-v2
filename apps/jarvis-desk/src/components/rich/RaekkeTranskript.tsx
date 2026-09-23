@@ -100,6 +100,25 @@ function Element({ e, streaming }: { e: ArbejdsElement; streaming: boolean }) {
     // sammen med arbejdet — den er ikke en besked (Bjoern 22/9-2026).
     return <div className="rv-mellem">{e.tekst}</div>
   }
+  if (e.slags === 'spor') {
+    // ÉN linje der opdaterer sig — den viser det SENESTE trin, og hele
+    // forloebet ligger i kroppen. Ni «Koerer kommando: python» under
+    // hinanden er stoej; det ene man vil vide er hvor den er naaet til.
+    const sidste = e.trin[e.trin.length - 1]!
+    return (
+      <Raekke
+        Ikon={Loader} slags="Progress" sum={sidste.message}
+        koerer={sidste.status === 'running'} fejl={sidste.status === 'error'}
+        krop={
+          <div className="rv-kort rv-liste">
+            {e.trin.map((t, i) => (
+              <div key={i} className="rv-i"><span>{t.message}</span></div>
+            ))}
+          </div>
+        }
+      />
+    )
+  }
   const b = e.blok
   if (b.type === 'thinking') {
     return (
@@ -113,17 +132,6 @@ function Element({ e, streaming }: { e: ArbejdsElement; streaming: boolean }) {
   }
   if (b.type === 'skill_surface') {
     return <Raekke Ikon={Sparkle} slags="Skill" sum={b.matches.map((m) => m.name).join(' · ')} />
-  }
-  if (b.type === 'progress') {
-    // Narrationen fra live-working_step, persisteret saa forloebet overlever
-    // en reload. Bobblevisningen tegner den (BlocksRenderer:66) — raekke-
-    // visningen droppede den tavst indtil 23/9-2026.
-    return (
-      <Raekke
-        Ikon={Loader} slags="Progress" sum={b.message}
-        koerer={b.status === 'running'} fejl={b.status === 'error'}
-      />
-    )
   }
   if (b.type === 'tool_use') {
     const { etiket } = postFor(b.name)

@@ -967,7 +967,10 @@ export function ChatView({
         )}
         {visibleMessages.map((m) => (
           <Fragment key={m.id}>
-          {m.id === nyeFra && <NyeBeskederLinje />}
+          {/* Samme boks som en besked. Stod den som en bar flex-soeskende af
+              `.msg-block`, fik den transkriptets fulde bredde, mens beskederne
+              har deres egen — saa stregen laa forskudt (Bjoern 23/9-2026). */}
+          {m.id === nyeFra && <div className="msg-block"><NyeBeskederLinje /></div>}
           <div data-rail-id={m.id} className="msg-block">
           <MessageRow
             role={m.role === 'user' ? 'user' : 'assistant'}

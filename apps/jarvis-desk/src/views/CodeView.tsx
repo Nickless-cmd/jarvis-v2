@@ -1129,7 +1129,8 @@ export function CodeView({
         <div className={`transcript${atBottom ? ' is-at-bottom' : ''}`} ref={transcriptRef} onScroll={onScroll}>
           {visibleMessages.map((m) => (
             <Fragment key={m.id}>
-            {m.id === nyeFra && <NyeBeskederLinje />}
+            {/* Samme boks som en besked — se ChatView. */}
+            {m.id === nyeFra && <div className="msg-block"><NyeBeskederLinje /></div>}
             <div data-rail-id={m.id} className="msg-block">
             <MessageRow
               role={m.role === 'user' ? 'user' : 'assistant'}

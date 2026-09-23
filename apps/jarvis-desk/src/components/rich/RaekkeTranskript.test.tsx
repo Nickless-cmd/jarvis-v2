@@ -59,6 +59,22 @@ describe('RaekkeTranskript', () => {
     expect(container.querySelectorAll('.raekkevisning > .rv-mellem')).toHaveLength(0)
   })
 
+  it('viser emnet MENS argumenterne stadig strømmer ind', () => {
+    // Bjoern 23/9-2026: «under streaming er linjerne tomme, og foerst naar
+    // streamen er endt bliver raekkerne udfyldt».
+    // Aarsagen: `input` er {} indtil blokken lukker — argumenterne ligger i
+    // `partialJson` imens. Registrets `summarize` kender ikke det felt, saa
+    // raekken stod tom praecis mens den var mest interessant.
+    const streamende: ContentBlock[] = [{
+      type: 'tool_use', id: 'b1', name: 'bash', input: {}, status: 'running',
+      partialJson: '{"command": "grep -rn tool_calls apps/jarvis-desk',
+    }]
+    const { container } = render(<RaekkeTranskript blocks={streamende} streaming />)
+    const sum = container.querySelector('.rv-sumT')?.textContent ?? ''
+    expect(sum).not.toBe('')
+    expect(sum).toContain('grep')
+  })
+
   it('bruger engelske etiketter (Bjørn 22/9-2026)', () => {
     render(<RaekkeTranskript blocks={TUR} streaming />)
     expect(screen.getByText('Think')).toBeInTheDocument()

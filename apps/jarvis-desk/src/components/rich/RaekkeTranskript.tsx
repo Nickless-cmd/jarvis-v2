@@ -27,6 +27,7 @@ import type { ContentBlock } from '../../lib/sseProtocol'
 import type { ApiConfig } from '../../lib/api'
 import { opdel, turHoved, type ArbejdsElement } from '../../lib/raekkeModel'
 import { lookupTool } from '../../lib/toolRegistry'
+import { subjectFromInput } from '../../lib/toolRound'
 import { postFor, kropFor } from './raekkeKroppe'
 import { BlocksRenderer } from './BlocksRenderer'
 
@@ -109,10 +110,16 @@ function Element({ e, streaming }: { e: ArbejdsElement; streaming: boolean }) {
     const { etiket } = postFor(b.name)
     const meta = lookupTool(b.name)
     const fejl = b.status === 'error'
+    // `input` er TOMT mens argumenterne stroemmer ind — de ligger i
+    // `partialJson` imens (toolRound.ts:142). Bruger man kun registrets
+    // `summarize`, staar raekken tom netop mens den er mest interessant, og
+    // fyldes foerst naar hele svaret er faerdigt (Bjoern 23/9-2026).
+    // `subjectFromInput` er bobblevisningens egen loesning paa praecis det.
+    const emne = subjectFromInput(b.input, b.partialJson) || meta.summarize(b.input, b.result)
     return (
       <Raekke
         glyf="▸" slags={etiket}
-        sum={meta.summarize(b.input, b.result)}
+        sum={emne}
         koerer={b.status === 'running'}
         fejl={fejl}
         krop={kropFor(b.name, b.input, b.result, fejl)}

@@ -327,6 +327,12 @@ def test_genudsendt_fra_stille_koe_dobler_ikke_feed_raekken(isolated_runtime, mo
     monkeypatch.setattr(nr, "_deliver_to_channel", lambda *a, **k: True)
     nr.set_preferences("bjorn", **{"quiet_start": "00:00", "quiet_end": "12:00"})
 
+    # Uret maa ikke afgoere om testen bestaar. `is_quiet_hours()` laeser
+    # datetime.now() naar den ikke faar et tidspunkt, saa "00:00-12:00" betoed
+    # at testen KUN kunne bestaa foer middag. Den blev skrevet kl. 10:56 og har
+    # vaeret roed siden kl. 12 samme dag (maalt 23/9-2026 kl. 16:26).
+    # Anden halvdel patchede allerede det samme kald; nu goer foerste ogsaa.
+    monkeypatch.setattr(nr, "is_quiet_hours", lambda *a, **k: True)
     res = nr.route_proactive_notification("bjorn", "reach_out", {"body": "hej"}, importance="normal")
     assert res["channel"] == "queued"
     assert len(lager.aabne("bjorn", er_owner=True)) == 1

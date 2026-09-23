@@ -179,7 +179,17 @@ def reset_mood_oscillator() -> None:
 
 
 def build_mood_oscillator_surface() -> dict[str, Any]:
-    """Build MC surface for mood oscillator."""
+    """Build MC surface for mood oscillator.
+
+    `_load_state_if_needed()` FOERST. Uden den laeste dict-literalen
+    `_phase_offset`, `_tick_count` og `_mood_nudge` mens de stadig stod paa
+    deres nul-defaults — Python evaluerer vaerdierne i raekkefoelge, og det
+    var `get_current_mood()` laengere nede der indlaeste tilstanden.
+    Overfladen viste altsaa 0.0 / 0.0 / 0 ved siden af et korrekt
+    "distressed". Maalt 23/9-2026: de rigtige tal var 100,15 / -0,9655 / 2003,
+    og netop de tre ville have vist at uret stod stille.
+    """
+    _load_state_if_needed()
     return {
         "active": True,
         "phase_offset": _phase_offset,

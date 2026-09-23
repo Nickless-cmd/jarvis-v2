@@ -1613,12 +1613,25 @@ def _run_heartbeat_tick_locked(
             pass
 
     # Mood oscillator: update on every tick
+    #
+    # 23/9-2026: den her stod med `except Exception: pass`. Maalt: humoeret
+    # havde ikke tikket siden 16:35 UTC — nudget stod paa -0,97 med en
+    # halveringstid paa 5 MINUTTER, altsaa 54 halveringstider uden henfald.
+    # Det drejede mood_dialer til niveau 0 og laaste Jarvis paa "distressed"
+    # 1.0 i timevis, og det saa ud som en foelelse frem for et stoppet ur.
+    #
+    # `tick()` kaldt direkte i en anden proces virker. Forskellen ligger i den
+    # koerende proces — og den var usynlig, fordi undtagelsen blev slugt.
+    # Derfor logges den nu. Den maa stadig ikke vaelte hjerteslaget: et
+    # humoer-tik er ikke vigtigere end resten af tikket.
     try:
         from core.services.mood_oscillator import tick as mood_tick
 
         mood_tick(seconds=30)
     except Exception:
-        pass
+        logger.warning(
+            "heartbeat: mood_oscillator.tick fejlede — humoeret fryser og "
+            "mood_dialer laaser paa den sidste vaerdi", exc_info=True)
 
     # Experimental services: update on every tick
     try:

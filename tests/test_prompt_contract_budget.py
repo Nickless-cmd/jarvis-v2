@@ -85,3 +85,39 @@ def test_sektionen_fortaeller_hvordan_man_naar_det_udeladte(monkeypatch):
     assert "search_memory" in tekst, (
         "afkortningen naevner ikke hvordan det udeladte naas — saa er det bare "
         "et tab")
+
+
+# ── Tur-cachens levetid (23/9-2026) ──────────────────────────────────────────
+def test_tur_cachen_overlever_en_lang_tur() -> None:
+    """Cachen skal daekke en HEL tur, ikke kun begyndelsen af den.
+
+    Maalt paa CT105 over 6 timer: turene varede 37, 48, 49, 68, 76 og 131
+    sekunder. Med den gamle TTL paa 45s overlevede FEM af de seks laengste
+    ikke deres egen cache, og hver runde efter udloeb byggede prompten forfra
+    til 2,9s median -- ~35 sekunder spildt paa den laengste tur alene.
+
+    Testen binder tallet til maalingen. Falder TTL'en under den laengste
+    observerede tur, er vi tilbage ved at betale for gen-samling midt i en
+    tur, og det sker TAVST: intet fejler, svaret bliver bare langsommere.
+    """
+    from core.services import prompt_contract as pc
+
+    LAENGSTE_MAALTE_TUR_S = 131
+    assert pc._ASSEMBLY_TURN_TTL_S >= LAENGSTE_MAALTE_TUR_S, (
+        f"TTL {pc._ASSEMBLY_TURN_TTL_S}s daekker ikke den laengste maalte tur "
+        f"({LAENGSTE_MAALTE_TUR_S}s) -- lange ture gen-samler prompten pr. runde"
+    )
+
+
+def test_tur_cachen_noegles_paa_besked_id_ikke_tekst() -> None:
+    """Det er NOEGLEN der holder ture adskilt, ikke levetiden.
+
+    Derfor kunne TTL'en hæves trygt. Var nøglen tekst-baseret (som en forældet
+    kommentar paastod), ville to ens korte svar i samme session kunne dele
+    samling -- og en laengere TTL ville goere det MERE sandsynligt.
+    """
+    import inspect
+    from core.services import prompt_contract as pc
+
+    kilde = inspect.getsource(pc.build_visible_chat_prompt_assembly)
+    assert "_latest_user_msg_id" in kilde, "tur-noeglen skal komme fra besked-ID'et"

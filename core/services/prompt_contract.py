@@ -585,11 +585,28 @@ def _device_presence_line(user_id: str) -> str:
 # (prompt_assembly_postool → _build_visible_input) purely to rebuild base_messages. Both
 # calls share (session_id, user_message, provider, model), the awareness is stable within
 # the seconds between them, and the cached PRE-tool assembly IS exactly what base_messages
-# must be. Reuse it → the post-tool re-assembly drops from ~5s to <1ms. TTL covers a
-# multi-round turn; a cross-turn collision needs the SAME message text in the SAME session
-# within the TTL (rare, self-correcting). Keyed lookups only; never load-bearing.
+# must be. Reuse it → the post-tool re-assembly drops from ~5s to <1ms.
+#
+# TTL: 180s siden 23/9-2026. Den stod på 45s, og kommentaren her påstod at det
+# "covers a multi-round turn" — det gjorde det ikke. Målt på CT105 over 6 timer
+# varede turene 37, 48, 49, 68, 76 og 131 sekunder: FEM af de seks længste
+# overlevede ikke deres egen cache. Efter udløb byggede hver følgende runde hele
+# prompten forfra til 2,9s median (måling: `prompt-assembly-timing total_ms`,
+# 27 samlinger). For turen på 19 runder var det ~12 gen-samlinger = 35 sekunder
+# af de 131 — den skulle have taget ~96.
+#
+# Levetiden er ikke det der holder ture adskilt; NØGLEN er. Den er
+# (session, nyeste bruger-besked-id, provider, model, name) — se wrapperen
+# nedenfor. En ny tur får et nyt id og dermed en ny nøgle, så en længere TTL
+# kan ikke lade to ture dele samling. (Den gamle kommentar sagde "SAME message
+# text"; det har ikke været rigtigt siden nøglen blev id-baseret, og det er
+# netop derfor tallet trygt kan hæves.)
+#
+# Hvad en længere TTL faktisk risikerer: at tidskontekst og presence er op til
+# 180s gamle INDE i én tur. Turen begyndte netop dengang, så det er den rigtige
+# afvejning. Keyed lookups only; never load-bearing.
 _ASSEMBLY_TURN_CACHE: dict = {}
-_ASSEMBLY_TURN_TTL_S = 45.0
+_ASSEMBLY_TURN_TTL_S = 180.0
 
 # recall_before_act non-blocking cache (2026-07-23, latency critical-path fix). The
 # main thread used to JOIN up to 4s (typ. ~1.5s) on this recall — the single biggest

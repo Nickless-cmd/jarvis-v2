@@ -81,3 +81,24 @@ def test_prompt_sektionen_og_vaerktoejerne_haenger_sammen():
     assert "Aktive todos" in inspect.getsource(agent_todos)
     from core.tools.simple_tools import _TOOL_HANDLERS
     assert "todo_add" in _TOOL_HANDLERS
+
+
+def test_spawn_agent_task_staar_i_inventaret():
+    """Den dyreste tool-definition skal staa dér hvor han faktisk kigger.
+
+    Maalt 23/9-2026: `spawn_agent_task` fyldte 581 tokens i HVER runde — mere
+    end `bash` — fordi REQUIRED_LAZY_TOOL_NAMES pinnede den ind i selve
+    tool-arrayet. Men den stod ikke i inventaret, og blev kaldt NUL gange fra
+    en samtale, mens `scout_agent` (303 tok) blev brugt 46 gange.
+
+    Han greb den laesende fordi det var den han kunne se. Filens egen
+    kommentar siger det: inventaret er loeftestangen, ikke mere instruks-tekst.
+
+    Falder den ud af inventaret igen, betaler vi ~8.700 tokens i en lang tur
+    for en evne ingen kan finde — og det sker TAVST.
+    """
+    gruppe = dict(_CORE_TOOL_GROUPS)["Filer & kode"]
+    assert "spawn_agent_task" in gruppe
+    # Lige efter scout, saa forskellen kan ses paa stedet: scout LAESER,
+    # spawn HANDLER.
+    assert gruppe.index("spawn_agent_task") == gruppe.index("scout_agent") + 1

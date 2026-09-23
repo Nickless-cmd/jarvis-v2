@@ -40,8 +40,18 @@ _CORE_TOOL_GROUPS: list[tuple[str, list[str]]] = [
     # En vejledning laengere nede i prompten konkurrerer mod 8.256 tegn
     # cognitive_state; INVENTARET er dét han laeser naar han spoerger sig selv
     # «hvad kan jeg». Det er loeftestangen, ikke mere instruks-tekst.
+    # 23/9-2026: `spawn_agent_task` var pinnet ind i vaerktoejs-arrayet af
+    # REQUIRED_LAZY_TOOL_NAMES, men stod IKKE i inventaret. Maalt: 581 tokens
+    # pr. runde — det dyreste enkeltvaerktoej i prompten — og NUL kald fra en
+    # samtale, mens `scout_agent` (303 tok) blev brugt 46 gange. Han greb den
+    # laesende fordi det var den han kunne SE. Samme moenster som todo- og
+    # kode-flaaden: evnen fandtes, inventaret naevnte den ikke.
+    #
+    # Den staar LIGE EFTER scout, saa forskellen kan ses paa stedet: scout
+    # LAESER, spawn HANDLER. Rendereren skriver hver linje som
+    # «- navn: kort beskrivelse», saa vaerktoejets egen tekst baerer resten.
     ("Filer & kode", [
-        "scout_agent", "dispatch_code_mode_task",
+        "scout_agent", "spawn_agent_task", "dispatch_code_mode_task",
         "read_file", "write_file", "edit_file", "search", "find_files",
         "bash", "run_pytest", "db_query", "git_status",
     ]),

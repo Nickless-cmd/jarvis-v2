@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { opdel, turHoved } from './raekkeModel'
+import { opdel, opdelArbejdsrunder, turHoved } from './raekkeModel'
 import type { ContentBlock } from './sseProtocol'
 
 /**
@@ -109,5 +109,44 @@ describe('turHoved', () => {
   })
   it('siger ikke «0s» når der ikke blev tænkt', () => {
     expect(turHoved(2, 0)).toBe('Worked · 2 tool calls')
+  })
+})
+
+describe('opdelArbejdsrunder', () => {
+  it('bevarer synteser mellem foldbare værktøjsrunder', () => {
+    const { arbejde } = opdel([
+      tekst('Jeg finder filen.'), kald('read_file'), kald('grep'),
+      tekst('Jeg retter fejlen.'), kald('edit_file'),
+      tekst('Rettet.'),
+    ])
+    const sektioner = opdelArbejdsrunder(arbejde)
+    expect(sektioner.map((s) => s.slags)).toEqual(['syntese', 'runde', 'syntese', 'runde'])
+    expect(sektioner[0]).toEqual({ slags: 'syntese', tekst: 'Jeg finder filen.' })
+    expect(sektioner[1]).toMatchObject({ slags: 'runde' })
+    expect(sektioner[2]).toEqual({ slags: 'syntese', tekst: 'Jeg retter fejlen.' })
+    expect(sektioner[3]).toMatchObject({ slags: 'runde' })
+    expect(sektioner.filter((s) => s.slags === 'runde').map((s) => s.elementer.length)).toEqual([2, 1])
+  })
+
+  it('bruger en neutral fallback når Jarvis ikke selv skrev en arbejdslinje', () => {
+    const { arbejde } = opdel([kald('read_file'), kald('bash'), tekst('Færdig.')])
+    expect(opdelArbejdsrunder(arbejde)).toEqual([{
+      slags: 'runde',
+      elementer: arbejde,
+    }])
+  })
+
+  it('bevarer tanke og progress i den værktøjsrunde de tilhører', () => {
+    const p: ContentBlock = { type: 'progress', tool_use_id: 'read_file', parent_tool_use_id: null, message: 'Læser', status: 'running' }
+    const { arbejde } = opdel([tekst('Jeg læser.'), tanke(2), kald('read_file'), p, tekst('Svar.')])
+    const runde = opdelArbejdsrunder(arbejde)[1]
+    expect(runde?.slags).toBe('runde')
+    if (runde?.slags !== 'runde') throw new Error('forventede en arbejdsrunde')
+    expect(runde.elementer.map((e) => e.slags)).toEqual(['blok', 'blok', 'spor'])
+  })
+
+  it('laver ikke en tom arbejdsrunde af en tanke uden værktøjskald', () => {
+    const { arbejde } = opdel([tanke(3), tekst('Jeg læser filen.'), kald('read_file'), tekst('Svar.')])
+    expect(opdelArbejdsrunder(arbejde).map((s) => s.slags)).toEqual(['enkelt', 'syntese', 'runde'])
   })
 })

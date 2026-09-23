@@ -75,6 +75,63 @@ describe('underagent-rækken', () => {
 })
 
 describe('RaekkeTranskript', () => {
+  it('bevarer Working øverst og samler rækker mellem synlige synteser', () => {
+    const { container } = render(<RaekkeTranskript blocks={[
+      tekst('Jeg finder filen.'), kald('read_file'), kald('grep'),
+      tekst('Jeg retter den nu.'), kald('edit_file'), tekst('Færdig.'),
+    ]} streaming />)
+    expect(screen.getByText('Working…')).toBeInTheDocument()
+    const gruppe = container.querySelector('.rv-gruppe')!
+    expect([...gruppe.children].map((e) => e.className)).toEqual([
+      'rv-mellem', 'rv-arbejdsrunde', 'rv-mellem', 'rv-arbejdsrunde',
+    ])
+    expect(gruppe.querySelectorAll('.rv-arbejdsrunde')).toHaveLength(2)
+    expect(screen.getByText('Færdig.')).toBeInTheDocument()
+  })
+
+  it('folder værktøjsrækkerne ud fra deres egen arbejdsrække', () => {
+    const { container } = render(<RaekkeTranskript blocks={TUR} streaming />)
+    const arbejdsrunde = container.querySelectorAll('.rv-arbejdsrunde')[1]!
+    const knap = arbejdsrunde.querySelector('button')!
+    expect(knap).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.getByText('Bash')).not.toBeVisible()
+    fireEvent.click(knap)
+    expect(knap).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByText('Bash')).toBeVisible()
+    expect(screen.getByText('Search')).not.toBeVisible()
+  })
+
+  it('bruger Jarvis’ egen kommandobeskrivelse og en faktuel fallback uden den', () => {
+    const medTekst = render(<RaekkeTranskript blocks={[
+      tekst('Jeg undersøger filen.'),
+      kald('bash', { command: 'cat app.ts', description: 'Læs koden i app.ts' }),
+      tekst('Færdig.'),
+    ]} streaming />)
+    expect(medTekst.container.querySelector('.rv-arbejdsrunde > button')?.textContent)
+      .toContain('Læs koden i app.ts')
+    expect(medTekst.container.querySelector('.rv-mellem')?.textContent).toBe('Jeg undersøger filen.')
+    medTekst.unmount()
+    const uden = render(<RaekkeTranskript blocks={[kald('read_file'), tekst('Svar.')]} streaming />)
+    expect(uden.container.querySelector('.rv-arbejdsrunde > button')?.textContent)
+      .toContain('1 værktøjskald')
+  })
+
+  it('opdaterer samme arbejdsrække når Jarvis beskriver næste kald', () => {
+    const start = [tekst('Jeg undersøger problemet.'),
+      kald('bash', { command: 'ls', description: 'Find filerne' }), tekst('Svar.')]
+    const { container, rerender } = render(<RaekkeTranskript blocks={start} streaming />)
+    expect(container.querySelectorAll('.rv-arbejdsrunde')).toHaveLength(1)
+    expect(container.querySelector('.rv-arbejdsknap')?.textContent).toContain('Find filerne')
+    rerender(<RaekkeTranskript blocks={[
+      tekst('Jeg undersøger problemet.'),
+      kald('bash', { command: 'ls', description: 'Find filerne' }),
+      kald('bash', { command: 'cat app.ts', description: 'Læs appens kode' }),
+      tekst('Svar.'),
+    ]} streaming />)
+    expect(container.querySelectorAll('.rv-arbejdsrunde')).toHaveLength(1)
+    expect(container.querySelector('.rv-arbejdsknap')?.textContent).toContain('Læs appens kode')
+  })
+
   it('folder arbejdet SAMMEN når streamingen er slut — svaret bliver stående', () => {
     // Det var praecis fejlen 22/9: raekkerne blev staaende bagefter, og
     // synteserne druknede i dem.
@@ -259,6 +316,7 @@ describe('raekkevisning.css', () => {
     // een manglende linje. jsdom kan ikke se det — derfor maales kilden.
     expect(css).toMatch(/\.rv-gruppe\s*\{[^}]*display:\s*flex/)
     expect(css).toMatch(/\.rv-gruppe\[hidden\]\s*\{\s*display:\s*none/)
+    expect(css).toMatch(/\.rv-arbejdsdetaljer\[hidden\]\s*\{\s*display:\s*none/)
   })
 
   it('skjuler ikke exit-koden, og farver kun ikke-nul', () => {

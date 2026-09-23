@@ -62,6 +62,35 @@ export interface RaekkeOpdeling {
   sekunder: number
 }
 
+export type ArbejdsSektion =
+  | { slags: 'syntese'; tekst: string }
+  | { slags: 'enkelt'; element: ArbejdsElement }
+  | { slags: 'runde'; elementer: ArbejdsElement[] }
+
+/** Behold hver syntese synlig, og saml de følgende detaljer i én foldbar række. */
+export function opdelArbejdsrunder(arbejde: readonly ArbejdsElement[]): ArbejdsSektion[] {
+  const sektioner: ArbejdsSektion[] = []
+  let elementer: ArbejdsElement[] = []
+  const afslut = () => {
+    if (elementer.some((e) => e.slags === 'blok' && e.blok.type === 'tool_use')) {
+      sektioner.push({ slags: 'runde', elementer })
+    } else {
+      for (const element of elementer) sektioner.push({ slags: 'enkelt', element })
+    }
+    elementer = []
+  }
+  for (const e of arbejde) {
+    if (e.slags === 'mellemsvar') {
+      afslut()
+      sektioner.push({ slags: 'syntese', tekst: e.tekst })
+    } else {
+      elementer.push(e)
+    }
+  }
+  afslut()
+  return sektioner
+}
+
 /** Blokke der tegnes som en række i arbejdsområdet.
  *
  * `progress` er narrationen fra live-working_step, persisteret så forløbet

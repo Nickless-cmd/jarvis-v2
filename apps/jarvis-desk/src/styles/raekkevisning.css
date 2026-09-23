@@ -140,6 +140,23 @@
    symptomer der lignede tre fejl. */
 .raekkevisning .rv-gruppe[hidden] { display: none; }
 
+/* Mellem to synteser samles detaljerne bag Jarvis' arbejdsrække. */
+.raekkevisning .rv-arbejdsknap {
+  display: flex; align-items: center; width: 100%; min-width: 0;
+  height: 30px; padding: 0; border: 0; background: none;
+  color: var(--fg-2); text-align: left; font: 13px/24px inherit; cursor: pointer;
+}
+.raekkevisning .rv-arbejdsknap:hover .rv-turC { color: var(--fg-1); }
+.raekkevisning .rv-arbejdsnavn { flex: none; }
+.raekkevisning .rv-arbejdsfortaelling {
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  color: var(--rv-tertiary);
+}
+.raekkevisning .rv-arbejdsdetaljer {
+  display: flex; flex-direction: column; padding: 5px 0 7px 22px;
+}
+.raekkevisning .rv-arbejdsdetaljer[hidden] { display: none; }
+
 /* Målt: 8px er den ENESTE overstyring af 16px i hele forlægget. */
 .raekkevisning .rv-tur[aria-expanded='false'] + .rv-svar { margin-top: 8px; }
 
@@ -150,7 +167,7 @@
 .raekkevisning .rv-mellem,
 .raekkevisning .rv-svar { font-size: 14px; line-height: 24px; color: var(--fg-1); }
 .raekkevisning .rv-mellem { margin: var(--rv-enhed) 0; }
-.raekkevisning .rv-gruppe > .rv-r + .rv-mellem { margin-top: var(--rv-enhed); }
+.raekkevisning .rv-gruppe > .rv-arbejdsrunde + .rv-mellem { margin-top: var(--rv-enhed); }
 
 /* ══ KORT-PRIMITIVERNE ══ Delte former dækker hele værktøjskassen; resten
    falder i faldbacken. Se `raekkeKroppe.tsx`. */

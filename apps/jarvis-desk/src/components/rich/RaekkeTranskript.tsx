@@ -1,12 +1,11 @@
 /**
- * Rækkevisningen: transskriptet som en flad hændelsesrække.
+ * Rækkevisningen: synteser med foldbare arbejdsrunder imellem.
  *
  * ## Hvad den er
  *
- * Et alternativ til bobblevisningen, bag en knap. Hver hændelse — tanke,
- * værktøjskald, kontekstindsprøjtning — er ÉN række af samme form og samme
- * højde. Arbejdet folder sig sammen bag én linje når turen er slut; kun
- * svaret bliver stående.
+ * Et alternativ til bobblevisningen, bag en knap. Turens eksisterende
+ * Working-linje rummer synlige synteser og en foldbar række for hvert stykke
+ * værktøjsarbejde imellem dem. Det endelige svar bliver stående.
  *
  * ## Hvorfor den føles glat
  *
@@ -26,9 +25,9 @@ import { memo, useState } from 'react'
 import { Sparkles, Sparkle, ChevronDown, Loader, type LucideIcon } from 'lucide-react'
 import type { ContentBlock } from '../../lib/sseProtocol'
 import type { ApiConfig } from '../../lib/api'
-import { opdel, turHoved, type ArbejdsElement } from '../../lib/raekkeModel'
+import { opdel, opdelArbejdsrunder, turHoved, type ArbejdsElement } from '../../lib/raekkeModel'
 import { lookupTool } from '../../lib/toolRegistry'
-import { subjectFromInput } from '../../lib/toolRound'
+import { egenBeskrivelse, subjectFromInput } from '../../lib/toolRound'
 import { diffFraResultat, diffStat } from '../../lib/diffStat'
 import { postFor, kropFor } from './raekkeKroppe'
 import { erUnderagent } from '../../lib/agentKald'
@@ -180,6 +179,41 @@ function Element({ e, streaming, config }: { e: ArbejdsElement; streaming: boole
   return <BlocksRenderer blocks={[b]} density="compact" streaming={streaming} />
 }
 
+function Arbejdsrunde({
+  elementer, streaming, config,
+}: {
+  elementer: ArbejdsElement[]
+  streaming: boolean
+  config?: ApiConfig
+}) {
+  const [aaben, setAaben] = useState(false)
+  const kald = elementer.filter((e) => e.slags === 'blok' && e.blok.type === 'tool_use').length
+  // `description` skrives af den synlige model i selve kommando-kaldet.
+  // Den seneste beskrivelse opdaterer rækken, mens flere kald kommer til.
+  let modeltekst = ''
+  for (const e of elementer) {
+    if (e.slags === 'blok' && e.blok.type === 'tool_use') {
+      modeltekst = egenBeskrivelse(e.blok.name, e.blok.input, e.blok.partialJson) || modeltekst
+    }
+  }
+  // Uden modeltekst siger fallbacken kun noget, vi faktisk kan tælle.
+  const fallback = kald > 0 ? `${kald} værktøjskald` : 'Arbejder'
+  return (
+    <div className="rv-arbejdsrunde">
+      <button type="button" className="rv-arbejdsknap" aria-expanded={aaben}
+        onClick={() => setAaben((v) => !v)}>
+        <span className="rv-turC" aria-hidden="true">{aaben ? '▾' : '▸'}</span>
+        <span className="rv-arbejdsnavn">Jarvis arbejder</span>
+        <span className="rv-sep" aria-hidden="true" />
+        <span className="rv-arbejdsfortaelling">{modeltekst || fallback}</span>
+      </button>
+      <div className="rv-arbejdsdetaljer" hidden={!aaben}>
+        {elementer.map((e, i) => <Element key={i} e={e} streaming={streaming} config={config} />)}
+      </div>
+    </div>
+  )
+}
+
 function RaekkeTranskriptImpl({
   blocks, streaming, beskedId, config,
 }: {
@@ -189,6 +223,7 @@ function RaekkeTranskriptImpl({
   config?: ApiConfig
 }) {
   const { arbejde, svar, kald, sekunder } = opdel(blocks)
+  const sektioner = opdelArbejdsrunder(arbejde)
   // Aaben mens der arbejdes, lukket naar turen er slut — man skal kunne
   // FOELGE MED, og bagefter skal rodet vaek (Bjoern 22/9-2026).
   const [aabenManuelt, setAabenManuelt] = useState<boolean | null>(null)
@@ -211,7 +246,11 @@ function RaekkeTranskriptImpl({
               : <span>{turHoved(kald, sekunder)}</span>}
           </button>
           <div className="rv-gruppe" hidden={!aaben}>
-            {arbejde.map((e, i) => <Element key={i} e={e} streaming={streaming} config={config} />)}
+            {sektioner.map((s, i) => {
+              if (s.slags === 'syntese') return <div key={i} className="rv-mellem">{s.tekst}</div>
+              if (s.slags === 'enkelt') return <Element key={i} e={s.element} streaming={streaming} config={config} />
+              return <Arbejdsrunde key={i} elementer={s.elementer} streaming={streaming} config={config} />
+            })}
           </div>
         </>
       )}

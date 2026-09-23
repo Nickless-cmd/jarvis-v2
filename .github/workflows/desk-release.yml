@@ -120,9 +120,13 @@ jobs:
         run: |
           set -euo pipefail
           tag="${{ github.event.inputs.tag || github.ref_name }}"
-          shopt -s nullglob globstar
-          filer=(artefakter/**/*)
-          filer=($(printf '%s\n' "${filer[@]}" | while read -r f; do [ -f "$f" ] && echo "$f"; done))
+          # `mapfile` + `find -print0`, IKKE `$( ... )`: Windows-filen hedder
+          # «J.A.R.V.I.S Setup 0.6.81.exe» MED mellemrum, og en tur gennem
+          # kommando-substitution ordopdeler den i tre stumper. Maalt 23/9-2026:
+          # «no matches found for artefakter/desk-win/J.A.R.V.I.S». Det gamle
+          # workflow ramte det aldrig, fordi hver platform globbede sine egne
+          # filer direkte ind i et array.
+          mapfile -d '' filer < <(find artefakter -type f -print0)
           if [ ${#filer[@]} -eq 0 ]; then
             echo "Ingen artefakter — build-jobbene leverede intet."
             exit 1
@@ -136,6 +140,12 @@ jobs:
               echo "Uploadet i forsoeg $forsoeg."
               break
             fi
+            # En manglende fil er ikke forbigaaende. At proeve igen fem gange
+            # brugte 2,5 minut paa at gentage den samme fejl (23/9-2026), og
+            # skjulte at aarsagen var vores egen filliste og ikke GitHub.
+            for f in "${filer[@]}"; do
+              [ -f "$f" ] || { echo "Filen findes ikke: $f — ikke et forbigaaende problem."; exit 1; }
+            done
             vent=$((forsoeg * 10))
             echo "Forsoeg $forsoeg fejlede — venter ${vent}s."
             sleep "$vent"

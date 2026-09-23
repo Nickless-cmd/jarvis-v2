@@ -52,6 +52,13 @@ LISTE_BLOKKE = [
     ("components/rich/raekkeKroppe.test.tsx", "const skalHaveForm", "skalHaveForm"),
 ]
 
+# Alias-tabellen er den ENE blok hvor nøglerne gerne må være døde — det er hele
+# pointen (se `GAMLE_NAVNE` i lib/toolRegistry.ts). Til gengæld SKAL målene
+# findes, ellers arver en gemt tur et dødt navn og er lige vidt.
+ALIAS_BLOK = ("lib/toolRegistry.ts", "const GAMLE_NAVNE", "GAMLE_NAVNE")
+
+ALIAS_PAR = re.compile(r"^\s{2}([a-z][a-z0-9_]*):\s*'([a-z][a-z0-9_]*)'", re.M)
+
 STRENG = re.compile(r"'([a-z][a-z0-9_]*)'")
 
 
@@ -103,4 +110,27 @@ def test_desk_listenavne_findes_i_registret(sti: str, markoer: str, label: str):
     assert not doede, (
         f"{label} i {sti} nævner værktøjer der ikke findes i registret "
         f"({len(navne)} navne): {', '.join(doede)}"
+    )
+
+
+def test_aliaser_peger_paa_registrerede_navne():
+    """Et alias skal pege på noget der findes.
+
+    Nøglerne i `GAMLE_NAVNE` er med vilje ikke i registret — det er gamle navne,
+    og gemte ture bærer dem. Men målene skal være levende: peger et alias på et
+    navn der er slettet, arver den gemte tur et dødt navn, og så tegner den
+    stadig en form der lyver. Det er præcis den fejl aliaset skulle kurere.
+    """
+    sti, markoer, label = ALIAS_BLOK
+    navne = registrerede_navne()
+    tekst = (DESK / sti).read_text(encoding="utf-8")
+    start = tekst.index(markoer)
+    slut = tekst.index("\n}", start)
+    par = ALIAS_PAR.findall(tekst[start:slut])
+    assert par, f"{label} blev ikke fundet i {sti} — er markøren flyttet?"
+    doede = sorted({maal for _, maal in par} - navne)
+    assert not doede, (
+        f"{label} i {sti} peger på navne der ikke findes i registret "
+        f"({len(navne)} navne): {', '.join(doede)}\n"
+        "Ret målet til det registrerede navn — ellers arver gemte ture et dødt navn."
     )

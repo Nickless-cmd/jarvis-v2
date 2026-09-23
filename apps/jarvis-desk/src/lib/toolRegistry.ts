@@ -125,6 +125,42 @@ export const TOOL_REGISTRY: Record<string, ToolMeta> = {
   skill_gate: { label: 'Færdighed', Icon: Wrench, summarize: (a) => firstStr(a, ['skill', 'name']) },
 }
 
+/**
+ * Gamle navne → de nuværende.
+ *
+ * Et omdøbt værktøj skal MAPPES, ikke slettes. Gemte ture bærer det gamle
+ * navn: uden dette falder de til Title Case og den generiske dump, og hele
+ * historikken ser dårligere ud end den dag den blev skrevet.
+ *
+ * 23/9-2026 ryddede vi døde navne ud af `TOOL_REGISTRY` og `KENDTE`. Det var
+ * rigtigt — ingen af dem findes i registrets 482 værktøjer. Men `explore`
+ * fandtes: den hedder `scout_agent` nu (omdøbt 17/9-2026). Forskellen er
+ * hele pointen — et dødt navn skal ud, et OMDØBT skal pege videre.
+ *
+ * Kun omdøbninger hvor stammen er mekanisk indlysende er med her. Navne hvor
+ * vi ikke kan vide om de blev omdøbt eller slettet (fx `channel`,
+ * `generate_image`) står bevidst udenfor: et gæt ville tegne en form der
+ * lyver om hvad værktøjet gør — værre end den generiske dump.
+ */
+export const GAMLE_NAVNE: Record<string, string> = {
+  // omdøbt 17/9-2026 — samme værktøj, nyt navn
+  explore: 'scout_agent',
+  // `_run` tilføjet for at skelne kald fra åbn/luk af sessionen
+  bash_session: 'bash_session_run',
+  operator_bash_session: 'operator_bash_session_run',
+  // ordstillingen byttet
+  memory_search: 'search_memory',
+  search_files: 'search',
+  // `operator_`-præfiks tilføjet da værktøjerne fik to spor
+  glob: 'operator_glob',
+  grep: 'operator_grep',
+  list_dir: 'operator_list_dir',
+  multi_edit: 'operator_multi_edit',
+  // navnet gjort konkret
+  notify: 'notify_user',
+  memory_write: 'memory_upsert_section',
+}
+
 const GENERIC_KEYS = ['query', 'q', 'command', 'path', 'file_path', 'pattern', 'text', 'url', 'name', 'topic', 'prompt', 'action']
 
 /** snake_case → Title Case. operator_-præfiks humaniseres væk. */
@@ -138,12 +174,14 @@ function titleCase(name: string): string {
 }
 
 /** Slår et tool op. Ukendte tools får en Title-Case-label + generisk opsummering,
- *  så intet tool nogensinde står som rå funktionsnavn. */
+ *  så intet tool nogensinde står som rå funktionsnavn. Et gammelt navn slås
+ *  op på sit nuværende (se `GAMLE_NAVNE`), så gemte ture beholder deres form. */
 export function lookupTool(name: string): ToolMeta {
-  const hit = TOOL_REGISTRY[name]
+  const nu = GAMLE_NAVNE[name]
+  const hit = TOOL_REGISTRY[name] ?? (nu ? TOOL_REGISTRY[nu] : undefined)
   if (hit) return hit
   return {
-    label: titleCase(name),
+    label: titleCase(nu ?? name),
     Icon: Wrench,
     summarize: (a) => firstStr(a, GENERIC_KEYS),
   }

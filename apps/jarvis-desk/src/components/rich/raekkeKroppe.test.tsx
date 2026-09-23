@@ -199,4 +199,31 @@ describe('rækkevisningens værktøjskroppe', () => {
       expect(postFor(navn).familie, `${navn} mangler i navnekortet`).not.toBe('fald')
     }
   })
+
+  it('mapper omdøbte værktøjer til deres nuværende form', () => {
+    // Et omdøbt værktøj skal MAPPER, ikke slettes: gemte ture bærer det gamle
+    // navn. `explore` → `scout_agent` (omdøbt 17/9-2026) er det vigtigste
+    // tilfælde — uden opslaget faldt hver gammel spejder-tur til den generiske
+    // dump, selv om underagent-rækken stod klar til at vise dens kald.
+    //
+    // Testen kræver ikke en bestemt familie: den kræver at gammelt og nyt
+    // giver PRÆCIS samme form. Ændrer nogen det ene uden det andet, fejler den.
+    const par: [string, string][] = [
+      ['explore', 'scout_agent'],
+      ['bash_session', 'bash_session_run'],
+      ['operator_bash_session', 'operator_bash_session_run'],
+      ['glob', 'operator_glob'],
+      ['grep', 'operator_grep'],
+      ['list_dir', 'operator_list_dir'],
+      ['multi_edit', 'operator_multi_edit'],
+      ['notify', 'notify_user'],
+      ['memory_search', 'search_memory'],
+      ['memory_write', 'memory_upsert_section'],
+      ['search_files', 'search'],
+    ]
+    for (const [gammelt, nyt] of par) {
+      expect(postFor(gammelt), `${gammelt} skal give samme form som ${nyt}`)
+        .toEqual(postFor(nyt))
+    }
+  })
 })

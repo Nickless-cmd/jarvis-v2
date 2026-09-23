@@ -20,7 +20,7 @@
  */
 import { useEffect, useState, type ReactNode } from 'react'
 import { codeToHtml } from 'shiki'
-import { lookupTool } from '../../lib/toolRegistry'
+import { lookupTool, GAMLE_NAVNE } from '../../lib/toolRegistry'
 import { hentAgentKald, agentIdFra, type AgentKald } from '../../lib/agentKald'
 import type { ApiConfig } from '../../lib/api'
 
@@ -120,8 +120,16 @@ const KENDTE: Record<string, Post> = {
   read_visual_memory: { etiket: 'Read image', familie: 'billede' },
 }
 
+/** Vælger etiket + familie for et værktøjsnavn.
+ *
+ * Et gammelt navn (se `GAMLE_NAVNE`) slås op på sit nuværende, så gemte ture
+ * beholder deres form. `explore` er det vigtigste eksempel: den hedder
+ * `scout_agent` nu (omdøbt 17/9-2026), og uden opslaget faldt hver gammel
+ * spejder-tur til den generiske dump — selv om underagent-rækken stod klar
+ * til at vise dens kald. Et dødt navn skal ud; et OMDØBT skal pege videre. */
 export function postFor(navn: string): Post {
-  return KENDTE[navn] ?? { etiket: lookupTool(navn).label, familie: 'fald' }
+  const nu = GAMLE_NAVNE[navn] ?? navn
+  return KENDTE[nu] ?? { etiket: lookupTool(nu).label, familie: 'fald' }
 }
 
 type Data = Record<string, unknown>

@@ -79,39 +79,85 @@ jobs:
           # Ingen Apple-signing/notarisering sat op — byg usigneret.
           CSC_IDENTITY_AUTO_DISCOVERY: false
 
-      # Tre jobs uploader til SAMME release samtidig. `action-gh-release`
-      # HENTER release'en foer den uploader, og netop det opslag fejlede med
-      # HttpError i to ud af tre bygninger 15/9-2026 — mac paa 0.3.70, win paa
-      # 0.3.71. Forskelligt job hver gang, altsaa et kaploeb og ikke et
-      # kodeproblem. Linux-filerne naaede frem begge gange.
+      # ÉN SKRIVER. Tidligere uploadede alle tre platform-jobs direkte til
+      # samme release, og det gav et TAVST tab: 23/9-2026 meldte win-jobbet
+      # exit 0 med `latest.yml` navngivet i loggen, og filen var alligevel
+      # ikke i release'en. Et samtidigt upload havde overskrevet asset-listen.
       #
-      # `gh release upload` springer opslaget over (release'en er allerede
-      # oprettet af `prepare`-jobbet) og kan proeves igen. `--clobber` goer en
-      # gentagelse ufarlig, ogsaa naar man koerer et fejlet job om.
-      - name: Upload til GitHub-release
+      # Retry-loekken der stod her kunne ikke fange det: den proever kun igen
+      # ved en FEJLKODE, og der var ingen. Derfor laegger platform-jobbene nu
+      # deres filer op som workflow-artefakter, og ét afsluttende job samler
+      # dem og uploader — saa er der kun én skriver til release'en.
+      - name: Gem artefakter til publicering
+        uses: actions/upload-artifact@v4
+        with:
+          name: desk-${{ matrix.platform }}
+          path: |
+            apps/jarvis-desk/release/*.deb
+            apps/jarvis-desk/release/*.AppImage
+            apps/jarvis-desk/release/*.dmg
+            apps/jarvis-desk/release/*.zip
+            apps/jarvis-desk/release/*.exe
+            apps/jarvis-desk/release/latest*.yml
+            apps/jarvis-desk/release/*.blockmap
+          if-no-files-found: error
+          retention-days: 3
+
+  # Den eneste der skriver til release'en.
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Hent alle platformes artefakter
+        uses: actions/download-artifact@v4
+        with:
+          path: artefakter
+
+      - name: Upload samlet — og VERIFICER at alt landede
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          set -euo pipefail
           tag="${{ github.event.inputs.tag || github.ref_name }}"
-          shopt -s nullglob
-          filer=(release/*.deb release/*.AppImage release/*.dmg release/*.zip
-                 release/*.exe release/latest*.yml release/*.blockmap)
+          shopt -s nullglob globstar
+          filer=(artefakter/**/*)
+          filer=($(printf '%s\n' "${filer[@]}" | while read -r f; do [ -f "$f" ] && echo "$f"; done))
           if [ ${#filer[@]} -eq 0 ]; then
-            echo "Ingen filer for denne platform — intet at uploade."
-            exit 0
+            echo "Ingen artefakter — build-jobbene leverede intet."
+            exit 1
           fi
           printf 'Uploader %s fil(er):\n' "${#filer[@]}"
           printf '  %s\n' "${filer[@]}"
+
           for forsoeg in 1 2 3 4 5; do
             if gh release upload "$tag" "${filer[@]}" \
                  --repo "$GITHUB_REPOSITORY" --clobber; then
               echo "Uploadet i forsoeg $forsoeg."
-              exit 0
+              break
             fi
             vent=$((forsoeg * 10))
-            echo "Forsoeg $forsoeg fejlede — venter ${vent}s og proever igen."
+            echo "Forsoeg $forsoeg fejlede — venter ${vent}s."
             sleep "$vent"
+            if [ "$forsoeg" = 5 ]; then echo "Kunne ikke uploade."; exit 1; fi
           done
-          echo "Kunne ikke uploade efter 5 forsoeg."
-          exit 1
+
+          # VERIFIKATION. Det forrige tab var tavst: upload'en sagde ok, filen
+          # var der ikke. Nu spoerger vi release'en hvad den FAKTISK har, og
+          # fejler hoejlydt hvis noget mangler.
+          echo "Verificerer at alle filer er i release'en…"
+          gh release view "$tag" --repo "$GITHUB_REPOSITORY" \
+            --json assets -q '.assets[].name' | sort > /tmp/oppe.txt
+          mangler=0
+          for f in "${filer[@]}"; do
+            navn="$(basename "$f")"
+            if ! grep -Fxq "$navn" /tmp/oppe.txt; then
+              echo "MANGLER i release'en: $navn"
+              mangler=1
+            fi
+          done
+          if [ "$mangler" = 1 ]; then
+            echo "Release'en er ufuldstaendig — feeden ville love en version den ikke kan levere."
+            exit 1
+          fi
+          echo "Alle ${#filer[@]} filer bekraeftet i release'en."

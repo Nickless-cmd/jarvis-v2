@@ -43,6 +43,12 @@ export interface JarvisDeskBridge {
   }
   /** Åbn et eksternt link i system-browseren (main filtrerer til http/https/mailto). */
   openExternal: (url: string) => Promise<void>
+  /** Læs en lokal billedfil som data-URL. Main læser filen — renderer'en har
+   *  ingen disk-adgang, og CSP'en blokerer file:// (se electron/billede.ts).
+   *  `null` hvis stien ikke er et billede. */
+  billede: {
+    laes: (sti: string) => Promise<string | null>
+  }
   /** Registrér aktivt run_id i main-process så det kan cancelles ved quit (R3). */
   setActiveRun: (runId: string | null) => Promise<void>
   /** Giv main-process auth så den kan kalde cancel-endpoint ved quit. */
@@ -169,6 +175,9 @@ const bridge: JarvisDeskBridge = {
     genindlaes: () => ipcRenderer.invoke('browser:genindlaes'),
   },
   openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url),
+  billede: {
+    laes: (sti: string) => ipcRenderer.invoke('billede:laes', sti),
+  },
   setActiveRun: (runId) => ipcRenderer.invoke('run:setActive', runId),
   setRunAuth: (apiBaseUrl, authToken) => ipcRenderer.invoke('run:setAuth', apiBaseUrl, authToken),
   setActiveSession: (sessionId) => ipcRenderer.invoke('run:setSession', sessionId),

@@ -21,6 +21,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { codeToHtml } from 'shiki'
 import { lookupTool, GAMLE_NAVNE } from '../../lib/toolRegistry'
+import { safeImageSrc } from '../../lib/sanitize'
 import { hentAgentKald, agentIdFra, type AgentKald } from '../../lib/agentKald'
 import type { ApiConfig } from '../../lib/api'
 
@@ -325,9 +326,30 @@ export function Spoergsmaal({ q, svar }: { q: string; svar: string }) {
 }
 
 export function Billede({ src, navn, meta }: { src?: string; navn: string; meta: string }) {
+  const [hentet, setHentet] = useState<string | null>(null)
+
+  // En lokal sti kan ikke vises direkte: CSP'en blokerer `file://`, og
+  // renderer'en har ingen disk-adgang. Main læser filen og giver en data-URL
+  // tilbage (electron/billede.ts). Effekten kører først når rækken foldes ud,
+  // fordi kroppen monteres der — så billedet koster intet før man ser det.
+  useEffect(() => {
+    setHentet(null)
+    if (!src?.startsWith('/')) return
+    const bro = (window as unknown as {
+      jarvisDesk?: { billede?: { laes: (s: string) => Promise<string | null> } }
+    }).jarvisDesk?.billede
+    if (!bro) return // browser-fane: ingen bro, så navnet står alene
+    let afbrudt = false
+    void bro.laes(src).then((url) => { if (!afbrudt && url) setHentet(url) }).catch(() => { /* navnet står */ })
+    return () => { afbrudt = true }
+  }, [src])
+
+  // En data-URL fra main er allerede betroet. Alt andet går gennem sanitizeren,
+  // så et fjendtligt tool-resultat ikke kan smugle en kilde ind i <img>.
+  const vis = src?.startsWith('/') ? hentet : safeImageSrc(src ?? '')
   return (
     <div className="rv-kort rv-bill">
-      {src && <img src={src} alt={navn} />}
+      {vis && <img src={vis} alt={navn} />}
       <div>
         <div className="rv-n">{navn}</div>
         <div className="rv-m2">{meta}</div>
@@ -483,11 +505,15 @@ export function kropFor(
     return <Spoergsmaal q={streng(input.question) || streng(input.prompt)} svar={svar || (objekt(værdi) ? 'Answered' : ud)} />
   }
   if (familie === 'billede') {
-    const sti = String(input.path ?? input.image_path ?? '')
+    // Stien ligger i RESULTATET for fx `operator_screenshot` — ikke i input.
+    // Læste vi kun input, faldt kroppen til et navn uden billede.
+    const fraInput = String(input.path ?? input.image_path ?? '')
+    const fraUd = objekt(værdi) ? streng(værdi.path) || streng(værdi.image_path) : ''
+    const sti = fraInput || fraUd
     const maal = objekt(værdi) && typeof værdi.width === 'number' && typeof værdi.height === 'number'
       ? `${værdi.width} × ${værdi.height}` : ''
     const beskrivelse = objekt(værdi) ? streng(værdi.description) || streng(værdi.caption) : ''
-    return <Billede navn={sti || navn} meta={[maal, beskrivelse].filter(Boolean).join(' · ') || (objekt(værdi) ? 'Image analyzed' : ud.slice(0, 120))} />
+    return <Billede src={sti} navn={sti || navn} meta={[maal, beskrivelse].filter(Boolean).join(' · ') || (objekt(værdi) ? 'Image analyzed' : ud.slice(0, 120))} />
   }
   if (familie === 'opgave') {
     // Formen er `{count, todos:[{content, status}]}` for todo_set/todo_list og

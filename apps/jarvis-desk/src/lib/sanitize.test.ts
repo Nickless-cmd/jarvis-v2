@@ -30,11 +30,20 @@ describe('safeImageSrc', () => {
   it('allows backend attachment relative paths', () => {
     expect(safeImageSrc('/attachments/abc.png')).toBe('/attachments/abc.png')
   })
-  it('blocks file: and data: by default', () => {
+  it('blocks file: and blob:', () => {
     expect(safeImageSrc('file:///x.png')).toBeNull()
-    expect(safeImageSrc('data:image/png;base64,AAAA')).toBeNull()
+    expect(safeImageSrc('blob:abc')).toBeNull()
+  })
+  it('allows raster images as data-URL (main reads local files)', () => {
+    // Main læser en lokal billedfil og giver den videre som data-URL — se
+    // electron/billede.ts. CSP'en tillader data:; denne funktion var det
+    // eneste der stod i vejen.
+    expect(safeImageSrc('data:image/png;base64,iVBORw0KGgo=')).toBe('data:image/png;base64,iVBORw0KGgo=')
+    expect(safeImageSrc('data:image/jpeg;base64,AAAA')).toBe('data:image/jpeg;base64,AAAA')
+    expect(safeImageSrc('data:image/webp;base64,AAAA')).toBe('data:image/webp;base64,AAAA')
   })
   it('blocks data:image/svg+xml (script vector)', () => {
     expect(safeImageSrc('data:image/svg+xml,<svg onload=alert(1)>')).toBeNull()
+    expect(safeImageSrc('data:image/svg+xml;base64,PHN2Zz4=')).toBeNull()
   })
 })

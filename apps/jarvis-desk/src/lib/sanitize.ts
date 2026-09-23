@@ -20,12 +20,18 @@ export function safeLinkHref(raw: string): string | null {
   return raw
 }
 
+/** Raster-billeder som data-URL. SVG er BEVIDST udeladt: en svg+xml-data-URL
+ *  kan bære script, og den vej holdes blokeret. */
+const ALLOWED_DATA_IMG = /^data:image\/(png|jpe?g|webp|gif|avif);base64,[A-Za-z0-9+/]+=*$/i
+
 /** Returnér img-src hvis tilladt kilde, ellers null.
- *  Tilladt: relative backend-stier (/...), https:. Blokeret default: file:,
- *  data: (inkl. svg+xml script-vektor), blob:, http (mixed content). */
+ *  Tilladt: relative backend-stier (/...), https:, og raster-billeder som
+ *  data-URL — main læser lokale filer og giver dem videre sådan (se
+ *  electron/billede.ts). Blokeret: file:, blob:, http, og SVG-data-URLs. */
 export function safeImageSrc(raw: string): string | null {
   if (!raw) return null
   if (raw.startsWith('/')) return raw // backend-attachment relativ sti
+  if (ALLOWED_DATA_IMG.test(raw)) return raw
   let url: URL
   try {
     url = new URL(raw)

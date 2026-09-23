@@ -26,6 +26,7 @@ import {
 } from 'electron'
 import { opretFigur, registrerFigurIpc, laesFigurVist, saetFigurVist } from './figur'
 import { opretMarkoer, registrerMarkoerIpc } from './markoer'
+import { registrerBilledeIpc } from './billede'
 import { startReleaseLytter } from './appRelease'
 import * as path from 'node:path'
 import * as fs from 'node:fs'
@@ -1030,6 +1031,10 @@ app.whenReady().then(() => {
   // Det ligger ALTID oppe og ignorerer mus, så det koster ingen klik — det
   // tegner kun mens der faktisk peges. Se electron/markoer.ts.
   registrerMarkoerIpc()
+  // Billede-IPC (23/9-2026): rækkevisningen viser et billede fra en lokal sti.
+  // Main læser filen og giver en data-URL tilbage — CSP'en blokerer file://,
+  // og renderer'en har ingen disk-adgang. Se electron/billede.ts.
+  registrerBilledeIpc()
   opretMarkoer(figurPreload(), indlaesFlade)
   void bootstrapBridge()
   void bootstrapLocalDiscord()

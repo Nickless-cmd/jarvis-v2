@@ -6676,6 +6676,15 @@ _TOOL_LABELS: dict[str, str] = {
 #: Led der KUN sætter scenen. Hele leddet springes over — resten af det er
 #: argumentet til skiftet, ikke en kommando («cd /media/projects/jarvis-v2»).
 _SCENE_LED = {"cd", "export", "source", ".", "set", "conda"}
+#: Shell-NØGLEORD er syntaks, ikke en kommando. `for … do … done` og
+#: `if … then … fi` beskriver en løkke; `echo` er en overskrift. Uden dem stod
+#: liveness-linjen «Kører kommando: do if» og «Kører kommando: echo ===»
+#: (Bjørn 23/9-2026: «det samme i progress»). Desk's `kommandoEmne` fik
+#: listen 23/9 — denne kopi gjorde ikke, så de to sagde hver sit om samme kald.
+_NOEGLEORD = {
+    "for", "while", "until", "if", "then", "else", "elif", "fi", "do", "done",
+    "case", "esac", "in", "echo", "exit", "unset",
+}
 #: Ord der står FORAN den rigtige kommando i samme led og skal skrælles af.
 _PRAEFIKS = {"sudo", "nohup", "env", "time", "timeout", "exec", "command", "xargs"}
 #: Omdirigering: `>`, `>>`, `2>`, `<<'PY'`, `&1`.
@@ -6702,8 +6711,8 @@ def _bash_hint(cmd: str) -> str:
         # Miljøvariable foran (FOO=bar kommando) hører til scenen.
         while ord_ and "=" in ord_[0] and not ord_[0].startswith("-"):
             ord_ = ord_[1:]
-        if not ord_ or ord_[0] in _SCENE_LED:
-            continue                      # hele leddet var scene-sætning
+        if not ord_ or ord_[0] in _SCENE_LED or ord_[0] in _NOEGLEORD:
+            continue                      # leddet var scene-sætning eller nøgleord
         while ord_ and ord_[0] in _PRAEFIKS:
             ord_ = ord_[1:]
             # `sudo -n x`, `timeout 300 x`: flaget/tallet hører til præfikset.

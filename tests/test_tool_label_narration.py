@@ -30,6 +30,11 @@ from core.services.visible_runs import _bash_hint, _tool_label
     ("JARVIS_X=1 npm run build", "npm run"),
     # Omdirigering er ikke kommandoens genstand.
     ("cd /tmp/ocp && cat > fwd.py", "cat fwd.py"),
+    # Shell-NØGLEORD er syntaks, ikke en kommando. Uden dem stod linjen på
+    # «Kører kommando: do if» og «Kører kommando: echo ===» (Bjørn 23/9-2026).
+    ("for id in 1 2 3; do echo -n \"$id -> \"; xdotool getwindowname $id; done",
+     "xdotool getwindowname"),
+    ("cd /r && echo \"=== status ===\" && git status -sb", "git status"),
     # Er der KUN et mappeskift, er det dét der skete.
     ("cd /tmp", "cd /tmp"),
     ("", ""),

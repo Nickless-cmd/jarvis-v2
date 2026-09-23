@@ -2,6 +2,13 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `apps/api/jarvis_api/routes/openai_auth.py`
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `openai_oauth_launch` | `(profile=…)` | — | [src](../../../apps/api/jarvis_api/routes/openai_auth.py#L14) |
+| function | `openai_oauth_callback` | `(profile, request)` | — | [src](../../../apps/api/jarvis_api/routes/openai_auth.py#L29) |
+
 ## `apps/api/jarvis_api/routes/openai_compat.py`
 _OpenAI-compatible proxy: /v1/chat/completions wrapping Jarvis visible lane._
 

@@ -25,10 +25,17 @@ export interface ChatSession {
 
 export interface ChatMessage {
   id: string
-  role: 'user' | 'assistant' | 'tool' | 'system' | 'approval_request'
+  role: 'user' | 'assistant' | 'tool' | 'system' | 'approval_request' | 'compact_marker'
   content: ContentBlock[]       // ændret fra string — understøtter tool_use/image
   created_at: string
   parent_id?: string | null     // branch-søm
+}
+
+export interface CompactionStats {
+  marker_id: string
+  tokens_before: number
+  tokens_after: number
+  freed_tokens: number
 }
 
 export interface WhoAmI {
@@ -905,7 +912,7 @@ export async function getSessionMilestones(
  *  baggrunds-compaction kører nu (til liveness-indikatoren). */
 export async function getContextUsage(
   config: ApiConfig, sessionId: string, provider = '', model = '',
-): Promise<{ tokens: number; compact_at: number; effective: number; model_window: number; overhead_tokens: number; compacting: boolean; compacted: boolean; last_compact_at?: string }> {
+): Promise<{ tokens: number; compact_at: number; effective: number; model_window: number; overhead_tokens: number; compacting: boolean; compacted: boolean; last_compact_at?: string; compactions?: CompactionStats[] }> {
   const qs = new URLSearchParams({ session_id: sessionId, provider, model }).toString()
   return apiFetch(config, `/chat/context-usage?${qs}`)
 }

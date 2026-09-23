@@ -44,7 +44,7 @@ import { StickyPrompt } from '../components/transcript/StickyPrompt'
 import { useVisning, VisningContext } from '../lib/visning'
 import { readModelPrefs, readThinkingMode } from '../lib/composerPrefs'
 import { useRaekkevisning } from '../lib/visningsPref'
-import { getContextInfo, getContextUsage, getActiveRuns, followRun, compactNow, warmSession } from '../lib/api'
+import { getContextInfo, getContextUsage, getActiveRuns, followRun, compactNow, warmSession, type CompactionStats } from '../lib/api'
 import { markInteraction } from '../lib/presenceSignal'
 import { PresenceDot } from '../components/shell/PresenceDot'
 import { DESK_CHROME } from '../lib/deskChrome'
@@ -63,6 +63,7 @@ import { useRailAnkre } from '../lib/useRailAnkre'
 import { skalGenhente } from '../lib/komprimeringsVagt'
 import { useFastgjorte } from '../hooks/useFastgjorte'
 import { PauseAndAskCard } from '../components/rich/PauseAndAskCard'
+import { CompactionNotice } from '../components/transcript/CompactionNotice'
 
 const NEAR_BOTTOM_PX = 120
 
@@ -181,15 +182,17 @@ export function ChatView({
   const [contextTokens, setContextTokens] = useState(0)
   const [overheadTokens, setOverheadTokens] = useState(0)
   const [compacting, setCompacting] = useState(false)
+  const [compactions, setCompactions] = useState<CompactionStats[]>([])
   const komprRef = useRef<{ sid: string | null; v: string | null }>({ sid: null, v: null })
   useEffect(() => {
-    if (!settings || !sessionId) { setContextTokens(0); setCompacting(false); return }
+    if (!settings || !sessionId) { setContextTokens(0); setCompacting(false); setCompactions([]); return }
     let alive = true
     const cfg = { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }
     const poll = () => getContextUsage(cfg, sessionId)
       .then((r) => {
         if (!alive) return
         setContextTokens(r.tokens || 0); setOverheadTokens(r.overhead_tokens || 0); setCompacting(!!r.compacting)
+        setCompactions(r.compactions ?? [])
           // En ny komprimerings-markoer er landet: hent beskederne, saa den
           // staar paa skaermen uden manuel opdatering (Bjoern 18/9-2026).
           // Ref'en er pr. session og overlever at effekten genstarter — det
@@ -544,6 +547,8 @@ export function ChatView({
   }
 
   const visibleMessages = sessions.messages.filter((m) => m.role === 'user' || m.role === 'assistant')
+  const transcriptMessages = sessions.messages.filter((m) => m.role === 'user' || m.role === 'assistant' || m.role === 'compact_marker')
+  const compactionById = new Map(compactions.map((c) => [c.marker_id, c]))
   // «Nye beskeder»-skillelinjen: første besked man ikke har set (Claude Desktop §10).
   const nyeFra = useNyeBeskeder(sessionId ?? null, visibleMessages.map((m) => m.id), atBottom)
 
@@ -965,7 +970,11 @@ export function ChatView({
             <button type="button" onClick={sessions.genindlaes}>Prøv igen</button>
           </div>
         )}
-        {visibleMessages.map((m) => (
+        {transcriptMessages.map((m) => m.role === 'compact_marker' ? (
+          <div key={m.id} data-rail-id={m.id} className="msg-block">
+            <CompactionNotice stats={compactionById.get(m.id)} />
+          </div>
+        ) : (
           <Fragment key={m.id}>
           {/* Samme boks som en besked. Stod den som en bar flex-soeskende af
               `.msg-block`, fik den transkriptets fulde bredde, mens beskederne
@@ -1023,7 +1032,7 @@ export function ChatView({
             væk / sad i toppen ved ny chat). Vises når der sker noget — eller
             når baggrundsjob kører, også i hvile (Bjørn 20/9-2026): så bærer
             linjen KUN job-tallet, og den forsvinder når jobbene lukker. */}
-        {(stream.status !== 'idle' || bgActive || runningJobs > 0) && (
+        {(stream.status !== 'idle' || bgActive || runningJobs > 0 || compacting) && (
           <LivenessIndicator
             status={bgActive && stream.status !== 'working' ? 'working' : stream.status}
             elapsedMs={stream.elapsedMs}

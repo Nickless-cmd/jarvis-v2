@@ -40,7 +40,8 @@ import { useFastgjorte } from '../hooks/useFastgjorte'
 import { GreetingHero } from '../components/chat/GreetingHero'
 import { useResizableWidth } from '../components/panel/useResizableWidth'
 import { onHighlight } from '../lib/fileTreeHighlight'
-import { getWorkspaceTrust, setWorkspaceTrust, getContextInfo, getContextUsage, compactNow, getActiveRuns, followRun, warmSession } from '../lib/api'
+import { getWorkspaceTrust, setWorkspaceTrust, getContextInfo, getContextUsage, compactNow, getActiveRuns, followRun, warmSession, type CompactionStats } from '../lib/api'
+import { CompactionNotice } from '../components/transcript/CompactionNotice'
 import { streamReducer, initialStreamState, liveBlokke } from '../lib/streamReducer'
 import { useOnline } from '../hooks/useOnline'
 import { useSendeKoe } from '../hooks/useSendeKoe'
@@ -119,6 +120,7 @@ export function CodeView({
   const [contextTokens, setContextTokens] = useState(0)
   const [overheadTokens, setOverheadTokens] = useState(0)
   const [compacting, setCompacting] = useState(false)
+  const [compactions, setCompactions] = useState<CompactionStats[]>([])
   const komprRef = useRef<{ sid: string | null; v: string | null }>({ sid: null, v: null })
   // Ringens tal, meldt op fra Composer. Miljoe-feltet skal vise DET SAMME —
   // ellers staar der to «Kontekst»-procenter der er uenige (Bjoern 8/9-2026).
@@ -404,12 +406,13 @@ export function CodeView({
 
   // Backend-autoritativt transcript-fyld + overhead + compacting-status (samme som ChatView).
   useEffect(() => {
-    if (!config || !sessionId) { setContextTokens(0); setOverheadTokens(0); setCompacting(false); return }
+    if (!config || !sessionId) { setContextTokens(0); setOverheadTokens(0); setCompacting(false); setCompactions([]); return }
     let alive = true
     const poll = () => getContextUsage(config, sessionId)
       .then((r) => {
         if (!alive) return
         setContextTokens(r.tokens || 0); setOverheadTokens(r.overhead_tokens || 0); setCompacting(!!r.compacting)
+        setCompactions(r.compactions ?? [])
           // En ny komprimerings-markoer er landet: hent beskederne, saa den
           // staar paa skaermen uden manuel opdatering (Bjoern 18/9-2026).
           // Ref'en er pr. session og overlever at effekten genstarter — det
@@ -863,6 +866,8 @@ export function CodeView({
   const rewindFor = useRaekkeFn((id) => void tilbage.spol(id))
 
   const visibleMessages = sessions.messages.filter((m) => m.role === 'user' || m.role === 'assistant')
+  const transcriptMessages = sessions.messages.filter((m) => m.role === 'user' || m.role === 'assistant' || m.role === 'compact_marker')
+  const compactionById = new Map(compactions.map((c) => [c.marker_id, c]))
   // «Nye beskeder»-skillelinjen: første besked man ikke har set (Claude Desktop §10).
   const nyeFra = useNyeBeskeder(sessionId ?? null, visibleMessages.map((m) => m.id), atBottom)
   // Saved rail: kapitler + komprimeringer — samme regel som i Chat (lib/railAnkre.ts).
@@ -1127,7 +1132,11 @@ export function CodeView({
         />
         {/* Samme som ChatView: bund-fade'en slukkes naar man ER i bunden. */}
         <div className={`transcript${atBottom ? ' is-at-bottom' : ''}`} ref={transcriptRef} onScroll={onScroll}>
-          {visibleMessages.map((m) => (
+          {transcriptMessages.map((m) => m.role === 'compact_marker' ? (
+            <div key={m.id} data-rail-id={m.id} className="msg-block">
+              <CompactionNotice stats={compactionById.get(m.id)} />
+            </div>
+          ) : (
             <Fragment key={m.id}>
             {/* Samme boks som en besked — se ChatView. */}
             {m.id === nyeFra && <div className="msg-block"><NyeBeskederLinje /></div>}
@@ -1178,6 +1187,7 @@ export function CodeView({
             density="compact"
             workingStep={bgActive && stream.status !== 'working' ? (followState.workingStep ?? 'vågner') : stream.workingStep}
             tokens={bgActive && stream.status !== 'working' ? followState.usage.output : stream.usage.output}
+            compacting={compacting}
             blocks={stream.blocks}
           />
           <div className="composer-notices">

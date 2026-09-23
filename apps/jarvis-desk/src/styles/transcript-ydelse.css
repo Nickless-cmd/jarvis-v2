@@ -22,6 +22,26 @@
   flex-shrink: 0;
 }
 
+.komprimeringslinje {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 16px;
+  color: var(--fg-3);
+  font-size: 12px;
+  letter-spacing: .01em;
+}
+.komprimeringslinje::before,
+.komprimeringslinje::after {
+  content: '';
+  height: 1px;
+  max-width: 70px;
+  flex: 1;
+  background: var(--line);
+}
+.komprimeringslinje svg { flex: none; color: var(--accent); }
+
 /* Hold bunden (19/9-2026): browserens egen scroll-forankring, med et anker
    nederst som det ENESTE der må forankres til. Står man i bund, er ankeret på
    skærmen, og alt der vokser ovenover — stream-blokke, skiftet fra levende

@@ -554,26 +554,21 @@ _Central 'users' route — hvornår var hver bruger sidst aktiv, og hvordan (own
 | function | `chat_run_subscribe` | `(run_id, from_idx=…)` | Gen-abonner paa et server-autoritativt run fra et offset (mobil-reconnect | [src](../../../apps/api/jarvis_api/routes/chat.py#L1354) |
 | function | `chat_session_live` | `(session_id)` | Attach til sessionens aktive run fra offset 0 (cross-device + foreground- | [src](../../../apps/api/jarvis_api/routes/chat.py#L1418) |
 | function | `chat_session_follow` | `(session_id)` | Token-stream det aktive autonome run i sessionen (desk-pickup af wakeup). | [src](../../../apps/api/jarvis_api/routes/chat.py#L1479) |
-| function | `chat_context_info` | `()` | Kontekst-tærskler til composer-ringen (#9). Kun ægte config-tal: | [src](../../../apps/api/jarvis_api/routes/chat.py#L1528) |
-| function | `chat_context_usage` | `(session_id=…, provider=…, model=…)` | ÆGTE kontekst-fyld for en session — backend-autoritativt. | [src](../../../apps/api/jarvis_api/routes/chat.py#L1543) |
-| function | `_system_overhead_tokens` | `(provider, model, session_id)` | Estimér tokens i den STABILE system-prefix (identitet + regler + tool-katalog) — det | [src](../../../apps/api/jarvis_api/routes/chat.py#L1631) |
-| class | `_CompactNowBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat.py#L1661) |
-| function | `chat_compact_now` | `(body)` | Manuel compaction (som Claude Codes /compact). Udløser den SAMME baggrunds-motor som | [src](../../../apps/api/jarvis_api/routes/chat.py#L1667) |
-| function | `chat_session_milestones` | `(session_id=…)` | Milepæle (kapitler) til navigations-rail'en — som Claude Code's mark_chapter. Segmenterer | [src](../../../apps/api/jarvis_api/routes/chat.py#L1709) |
-| function | `chat_model_context` | `(provider=…, model=…)` | Ægte context-ring pr. provider/model: modellens vindue + autocompact-punkt | [src](../../../apps/api/jarvis_api/routes/chat.py#L1726) |
-| function | `chat_create_session` | `(request)` | Opret en ny chat-session (valgfrit bundet til et code-mode workspace). | [src](../../../apps/api/jarvis_api/routes/chat.py#L1740) |
-| function | `chat_session` | `(session_id, request, response)` | Hent én chat-session ud fra id. 404 hvis den ikke findes; ellers {session: ...}. | [src](../../../apps/api/jarvis_api/routes/chat.py#L1752) |
-| function | `chat_rename_session` | `(session_id, request)` | Omdøb en chat-session til request.title. 404 hvis sessionen ikke findes; | [src](../../../apps/api/jarvis_api/routes/chat.py#L1818) |
-| class | `ChatSessionFlagsRequest` | `` | Kun de felter man vil aendre. `None` betyder «roer ikke» — ikke «saet | [src](../../../apps/api/jarvis_api/routes/chat.py#L1828) |
-| function | `chat_set_session_flags` | `(session_id, request)` | Fastgoer eller arkivér en samtale. | [src](../../../apps/api/jarvis_api/routes/chat.py#L1837) |
-| function | `chat_delete_session` | `(session_id)` | Slet en chat-session. 404 hvis den ikke findes; ellers {ok: True, session_id}. | [src](../../../apps/api/jarvis_api/routes/chat.py#L1856) |
-| function | `chat_stream` | `(request)` | Legacy/mobil chat-stream-endpoint (v1 SSE). Injicerer commit-enforcement- | [src](../../../apps/api/jarvis_api/routes/chat.py#L1865) |
-| function | `chat_approve_tool` | `(approval_id)` | Approve a pending tool approval and run it. Resolves in a thread (deadlock- | [src](../../../apps/api/jarvis_api/routes/chat.py#L2037) |
-| function | `chat_deny_tool` | `(approval_id)` | Deny a pending tool approval (does not run the tool). Resolves in a thread. | [src](../../../apps/api/jarvis_api/routes/chat.py#L2062) |
-| function | `_settle_user_stop` | `(run_id, session_id=…)` | Skriv stoppet ned FØR kørslen afbrydes — ellers ligner det en afbrudt | [src](../../../apps/api/jarvis_api/routes/chat.py#L2079) |
-| function | `chat_cancel_run` | `(run_id)` | Afbryd et aktivt visible-run via run_id. 404 hvis runnet ikke er aktivt; | [src](../../../apps/api/jarvis_api/routes/chat.py#L2092) |
-| function | `chat_steer_run` | `(run_id, body)` | Mid-flight steer: inject a user message into a running visible-run. | [src](../../../apps/api/jarvis_api/routes/chat.py#L2106) |
-| function | `chat_client_tool_result` | `(run_id, body)` | Fase 1 (jarvis-code↔v2 forening): klienten leverer resultatet af et | [src](../../../apps/api/jarvis_api/routes/chat.py#L2120) |
+| function | `chat_session_milestones` | `(session_id=…)` | Milepæle (kapitler) til navigations-rail'en — som Claude Code's mark_chapter. Segmenterer | [src](../../../apps/api/jarvis_api/routes/chat.py#L1536) |
+| function | `chat_model_context` | `(provider=…, model=…)` | Ægte context-ring pr. provider/model: modellens vindue + autocompact-punkt | [src](../../../apps/api/jarvis_api/routes/chat.py#L1553) |
+| function | `chat_create_session` | `(request)` | Opret en ny chat-session (valgfrit bundet til et code-mode workspace). | [src](../../../apps/api/jarvis_api/routes/chat.py#L1567) |
+| function | `chat_session` | `(session_id, request, response)` | Hent én chat-session ud fra id. 404 hvis den ikke findes; ellers {session: ...}. | [src](../../../apps/api/jarvis_api/routes/chat.py#L1579) |
+| function | `chat_rename_session` | `(session_id, request)` | Omdøb en chat-session til request.title. 404 hvis sessionen ikke findes; | [src](../../../apps/api/jarvis_api/routes/chat.py#L1645) |
+| class | `ChatSessionFlagsRequest` | `` | Kun de felter man vil aendre. `None` betyder «roer ikke» — ikke «saet | [src](../../../apps/api/jarvis_api/routes/chat.py#L1655) |
+| function | `chat_set_session_flags` | `(session_id, request)` | Fastgoer eller arkivér en samtale. | [src](../../../apps/api/jarvis_api/routes/chat.py#L1664) |
+| function | `chat_delete_session` | `(session_id)` | Slet en chat-session. 404 hvis den ikke findes; ellers {ok: True, session_id}. | [src](../../../apps/api/jarvis_api/routes/chat.py#L1683) |
+| function | `chat_stream` | `(request)` | Legacy/mobil chat-stream-endpoint (v1 SSE). Injicerer commit-enforcement- | [src](../../../apps/api/jarvis_api/routes/chat.py#L1692) |
+| function | `chat_approve_tool` | `(approval_id)` | Approve a pending tool approval and run it. Resolves in a thread (deadlock- | [src](../../../apps/api/jarvis_api/routes/chat.py#L1864) |
+| function | `chat_deny_tool` | `(approval_id)` | Deny a pending tool approval (does not run the tool). Resolves in a thread. | [src](../../../apps/api/jarvis_api/routes/chat.py#L1889) |
+| function | `_settle_user_stop` | `(run_id, session_id=…)` | Skriv stoppet ned FØR kørslen afbrydes — ellers ligner det en afbrudt | [src](../../../apps/api/jarvis_api/routes/chat.py#L1906) |
+| function | `chat_cancel_run` | `(run_id)` | Afbryd et aktivt visible-run via run_id. 404 hvis runnet ikke er aktivt; | [src](../../../apps/api/jarvis_api/routes/chat.py#L1919) |
+| function | `chat_steer_run` | `(run_id, body)` | Mid-flight steer: inject a user message into a running visible-run. | [src](../../../apps/api/jarvis_api/routes/chat.py#L1933) |
+| function | `chat_client_tool_result` | `(run_id, body)` | Fase 1 (jarvis-code↔v2 forening): klienten leverer resultatet af et | [src](../../../apps/api/jarvis_api/routes/chat.py#L1947) |
 
 ## `apps/api/jarvis_api/routes/chat_artifacts.py`
 _`GET /chat/artifacts` — filerne Jarvis har rørt i en mappe, paa tvaers af samtaler._
@@ -581,6 +576,18 @@ _`GET /chat/artifacts` — filerne Jarvis har rørt i en mappe, paa tvaers af sa
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `chat_artifacts` | `(root=…, limit=…)` | Filer skrevet/rettet under `root`, nyeste foerst. `root` er en sti eller | [src](../../../apps/api/jarvis_api/routes/chat_artifacts.py#L22) |
+
+## `apps/api/jarvis_api/routes/chat_context_usage.py`
+_Kontekstforbrug og komprimeringsstatus til Desk._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_compactions_for_session` | `(session_id)` | Successful marker savings from the compaction log, never summary text. | [src](../../../apps/api/jarvis_api/routes/chat_context_usage.py#L13) |
+| function | `chat_context_info` | `()` | Kontekst-tærskler til composer-ringen (#9). Kun ægte config-tal: | [src](../../../apps/api/jarvis_api/routes/chat_context_usage.py#L39) |
+| function | `chat_context_usage` | `(session_id=…, provider=…, model=…)` | ÆGTE kontekst-fyld for en session — backend-autoritativt. | [src](../../../apps/api/jarvis_api/routes/chat_context_usage.py#L54) |
+| function | `_system_overhead_tokens` | `(provider, model, session_id)` | Estimér tokens i den STABILE system-prefix (identitet + regler + tool-katalog) — det | [src](../../../apps/api/jarvis_api/routes/chat_context_usage.py#L143) |
+| class | `_CompactNowBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat_context_usage.py#L173) |
+| function | `chat_compact_now` | `(body)` | Manuel compaction (som Claude Codes /compact). Udløser den SAMME baggrunds-motor som | [src](../../../apps/api/jarvis_api/routes/chat_context_usage.py#L179) |
 
 ## `apps/api/jarvis_api/routes/chat_rewind.py`
 _`POST /chat/sessions/{id}/rewind` og `…/rewind/{rewind_id}/undo`._
@@ -630,28 +637,4 @@ _Mission Control endpoints for cheap_lane_balancer telemetry + controls._
 | function | `history` | `(timer=…, lane=…)` | Pr. udbyder+model i vinduet: kald, fejl, succesrate, latens, pris. | [src](../../../apps/api/jarvis_api/routes/cheap_balancer.py#L53) |
 | function | `errors` | `(timer=…, lane=…, loft=…)` | De nyeste fejl med besked. `antal_i_vinduet` taelles separat fra loftet. | [src](../../../apps/api/jarvis_api/routes/cheap_balancer.py#L60) |
 | function | `timeseries` | `(timer=…, lane=…, spand_minutter=…)` | Kald, fejl og latens pr. tidsspand. | [src](../../../apps/api/jarvis_api/routes/cheap_balancer.py#L67) |
-
-## `apps/api/jarvis_api/routes/cheap_lane_control.py`
-_Owner-only read surface for the Cheap Lane control center._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| class | `_ControlBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/cheap_lane_control.py#L37) |
-| class | `_SimulationBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/cheap_lane_control.py#L45) |
-| function | `_require_owner` | `()` | — | [src](../../../apps/api/jarvis_api/routes/cheap_lane_control.py#L50) |
-| function | `_since` | `(hours)` | — | [src](../../../apps/api/jarvis_api/routes/cheap_lane_control.py#L56) |
-| function | `_safe_row` | `(row)` | — | [src](../../../apps/api/jarvis_api/routes/cheap_lane_control.py#L60) |
-| function | `_filtered_logs` | `(*, hours, provider=…, model=…, auth_profile=…, daemon=…, status=…, error_class=…, correlation_id=…, query=…, cursor=…, limit=…)` | — | [src](../../../apps/api/jarvis_api/routes/cheap_lane_control.py#L69) |
-| function | `_export_rows` | `(*, hours)` | — | [src](../../../apps/api/jarvis_api/routes/cheap_lane_control.py#L93) |
-| function | `_config_fingerprints` | `()` | — | [src](../../../apps/api/jarvis_api/routes/cheap_lane_control.py#L108) |
-| function | `dashboard` | `(hours=…)` | — | [src](../../../apps/api/jarvis_api/routes/cheap_lane_control.py#L117) |
-| function | `capacity` | `()` | — | [src](../../../apps/api/jarvis_api/routes/cheap_lane_control.py#L123) |
-| function | `logs` | `(hours=…, provider=…, model=…, auth_profile=…, daemon=…, status=…, error_class=…, correlation_id=…, query=…, cursor=…, limit=…)` | — | [src](../../../apps/api/jarvis_api/routes/cheap_lane_control.py#L129) |
-| function | `export_logs` | `(format=…, hours=…)` | — | [src](../../../apps/api/jarvis_api/routes/cheap_lane_control.py#L155) |
-| function | `log_detail` | `(invocation_id)` | — | [src](../../../apps/api/jarvis_api/routes/cheap_lane_control.py#L177) |
-| function | `diagnostics` | `()` | — | [src](../../../apps/api/jarvis_api/routes/cheap_lane_control.py#L186) |
-| function | `audit` | `(limit=…)` | — | [src](../../../apps/api/jarvis_api/routes/cheap_lane_control.py#L192) |
-| function | `export_diagnostics` | `(hours=…)` | — | [src](../../../apps/api/jarvis_api/routes/cheap_lane_control.py#L198) |
-| function | `control` | `(body)` | — | [src](../../../apps/api/jarvis_api/routes/cheap_lane_control.py#L218) |
-| function | `simulate` | `(body)` | — | [src](../../../apps/api/jarvis_api/routes/cheap_lane_control.py#L246) |
 

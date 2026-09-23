@@ -2,6 +2,30 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `apps/api/jarvis_api/routes/cheap_lane_control.py`
+_Owner-only read surface for the Cheap Lane control center._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `_ControlBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/cheap_lane_control.py#L37) |
+| class | `_SimulationBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/cheap_lane_control.py#L45) |
+| function | `_require_owner` | `()` | — | [src](../../../apps/api/jarvis_api/routes/cheap_lane_control.py#L50) |
+| function | `_since` | `(hours)` | — | [src](../../../apps/api/jarvis_api/routes/cheap_lane_control.py#L56) |
+| function | `_safe_row` | `(row)` | — | [src](../../../apps/api/jarvis_api/routes/cheap_lane_control.py#L60) |
+| function | `_filtered_logs` | `(*, hours, provider=…, model=…, auth_profile=…, daemon=…, status=…, error_class=…, correlation_id=…, query=…, cursor=…, limit=…)` | — | [src](../../../apps/api/jarvis_api/routes/cheap_lane_control.py#L69) |
+| function | `_export_rows` | `(*, hours)` | — | [src](../../../apps/api/jarvis_api/routes/cheap_lane_control.py#L93) |
+| function | `_config_fingerprints` | `()` | — | [src](../../../apps/api/jarvis_api/routes/cheap_lane_control.py#L108) |
+| function | `dashboard` | `(hours=…)` | — | [src](../../../apps/api/jarvis_api/routes/cheap_lane_control.py#L117) |
+| function | `capacity` | `()` | — | [src](../../../apps/api/jarvis_api/routes/cheap_lane_control.py#L123) |
+| function | `logs` | `(hours=…, provider=…, model=…, auth_profile=…, daemon=…, status=…, error_class=…, correlation_id=…, query=…, cursor=…, limit=…)` | — | [src](../../../apps/api/jarvis_api/routes/cheap_lane_control.py#L129) |
+| function | `export_logs` | `(format=…, hours=…)` | — | [src](../../../apps/api/jarvis_api/routes/cheap_lane_control.py#L155) |
+| function | `log_detail` | `(invocation_id)` | — | [src](../../../apps/api/jarvis_api/routes/cheap_lane_control.py#L177) |
+| function | `diagnostics` | `()` | — | [src](../../../apps/api/jarvis_api/routes/cheap_lane_control.py#L186) |
+| function | `audit` | `(limit=…)` | — | [src](../../../apps/api/jarvis_api/routes/cheap_lane_control.py#L192) |
+| function | `export_diagnostics` | `(hours=…)` | — | [src](../../../apps/api/jarvis_api/routes/cheap_lane_control.py#L198) |
+| function | `control` | `(body)` | — | [src](../../../apps/api/jarvis_api/routes/cheap_lane_control.py#L218) |
+| function | `simulate` | `(body)` | — | [src](../../../apps/api/jarvis_api/routes/cheap_lane_control.py#L246) |
+
 ## `apps/api/jarvis_api/routes/companion.py`
 _Companion-endpoints — Jarvis' tre ønsker til mobil-appen._
 
@@ -697,11 +721,4 @@ _OAuth connect-flow til plugin-connectors (16. jun 2026)._
 | function | `_close_page` | `(ok, msg)` | — | [src](../../../apps/api/jarvis_api/routes/oauth.py#L17) |
 | function | `oauth_start` | `(provider)` | Returnér authorize-URL for den indloggede bruger. Desk åbner den i browseren. | [src](../../../apps/api/jarvis_api/routes/oauth.py#L32) |
 | function | `oauth_callback` | `(provider, code=…, state=…, error=…)` | Browser-callback. Verificér state → byt code → gem token krypteret pr. bruger. | [src](../../../apps/api/jarvis_api/routes/oauth.py#L53) |
-
-## `apps/api/jarvis_api/routes/openai_auth.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `openai_oauth_launch` | `(profile=…)` | — | [src](../../../apps/api/jarvis_api/routes/openai_auth.py#L14) |
-| function | `openai_oauth_callback` | `(profile, request)` | — | [src](../../../apps/api/jarvis_api/routes/openai_auth.py#L29) |
 

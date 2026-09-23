@@ -7,6 +7,7 @@ import { StreamProvider } from '../contexts/StreamContext'
 import { SettingsProvider } from '../contexts/SettingsContext'
 import { PanelProvider } from '../contexts/PanelContext'
 import { PermissionProvider } from '../contexts/PermissionContext'
+import * as api from '../lib/api'
 
 interface FakeHandlers {
   onEvent: (e: unknown) => void
@@ -55,6 +56,61 @@ vi.mock('../lib/sideTasksApi', () => ({
 const cfg = { apiBaseUrl: 'http://t', authToken: 't' }
 
 describe('ChatView integration', () => {
+  it('viser komprimering over composer selv når samtalen er i hvile', async () => {
+    vi.mocked(api.getSession).mockResolvedValue({
+      etag: null, session: { id: 's1', title: 'T', updated_at: 'x' },
+      messages: [{ id: 'u1', role: 'user', created_at: '2026-09-23T19:00:00Z', content: [{ type: 'text', text: 'Hej' }] }],
+    })
+    vi.mocked(api.getContextUsage).mockResolvedValue({
+      tokens: 11000, compact_at: 35000, effective: 35000, model_window: 0,
+      overhead_tokens: 0, compacting: true, compacted: false, last_compact_at: '',
+      compactions: [],
+    })
+    try {
+      const { container } = render(
+        <SettingsProvider initialConfig={cfg}><SessionProvider config={cfg}>
+          <StreamProvider config={cfg}><PermissionProvider><PanelProvider defaultWidth={400}>
+            <ChatView sessionId="s1" />
+          </PanelProvider></PermissionProvider></StreamProvider>
+        </SessionProvider></SettingsProvider>,
+      )
+      expect(await screen.findByText(/Komprimerer kontekst/)).toBeInTheDocument()
+      expect(container.querySelector('.composer-area .liveness')).toHaveClass('is-compacting')
+    } finally {
+      vi.mocked(api.getSession).mockResolvedValue({ session: { id: 's1', title: 'T', updated_at: 'x' }, messages: [], etag: null })
+      vi.mocked(api.getContextUsage).mockResolvedValue({ tokens: 0, compact_at: 130000, effective: 130000, model_window: 0, overhead_tokens: 0, compacting: false, compacted: false })
+    }
+  })
+
+  it('viser en gemt komprimeringsmarkør og hvor meget kontekst der blev frigjort', async () => {
+    vi.mocked(api.getSession).mockResolvedValue({
+      etag: null, session: { id: 's1', title: 'T', updated_at: 'x' },
+      messages: [
+        { id: 'u1', role: 'user', created_at: '2026-09-23T19:00:00Z', content: [{ type: 'text', text: 'Hej' }] },
+        { id: 'compact-1', role: 'compact_marker', created_at: '2026-09-23T19:01:00Z', content: [] },
+      ],
+    })
+    vi.mocked(api.getContextUsage).mockResolvedValue({
+      tokens: 9000, compact_at: 35000, effective: 35000, model_window: 0,
+      overhead_tokens: 0, compacting: false, compacted: true,
+      last_compact_at: '2026-09-23T19:01:00Z',
+      compactions: [{ marker_id: 'compact-1', tokens_before: 24000, tokens_after: 9000, freed_tokens: 15000 }],
+    })
+    try {
+      render(
+        <SettingsProvider initialConfig={cfg}><SessionProvider config={cfg}>
+          <StreamProvider config={cfg}><PermissionProvider><PanelProvider defaultWidth={400}>
+            <ChatView sessionId="s1" />
+          </PanelProvider></PermissionProvider></StreamProvider>
+        </SessionProvider></SettingsProvider>,
+      )
+      expect(await screen.findByText(/15\.000 konteksttokens frigjort/)).toBeInTheDocument()
+    } finally {
+      vi.mocked(api.getSession).mockResolvedValue({ session: { id: 's1', title: 'T', updated_at: 'x' }, messages: [], etag: null })
+      vi.mocked(api.getContextUsage).mockResolvedValue({ tokens: 0, compact_at: 130000, effective: 130000, model_window: 0, overhead_tokens: 0, compacting: false, compacted: false })
+    }
+  })
+
   it('shows optimistic user msg + streamed assistant text', async () => {
     render(
       <SettingsProvider initialConfig={cfg}>

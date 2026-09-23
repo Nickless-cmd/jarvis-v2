@@ -14,6 +14,14 @@ def _call(**kw):
     return asyncio.run(chat_context_usage(**kw))
 
 
+def test_context_routes_remain_registered_after_extraction():
+    from apps.api.jarvis_api.routes.chat import router
+    paths = [route.path for route in router.routes]
+    assert paths.count("/chat/context-info") == 1
+    assert paths.count("/chat/context-usage") == 1
+    assert paths.count("/chat/compact-now") == 1
+
+
 # Kontrakten jarvis-desk afhænger af: ChatView.tsx:110 og CodeView.tsx:282 læser
 # tokens/overhead_tokens/compacting, api.ts:707 typer hele svaret. Fjernes et felt
 # herfra, går composer-ringen i stykker — derfor er sættet LUKKET: en ny nøgle skal
@@ -25,6 +33,7 @@ _DESK_CONTRACT = {
     # beskederne igen naar det skifter — ellers stod markoeren foerst paa
     # skaermen efter en manuel opdatering.
     "last_compact_at",
+    "compactions",
 }
 
 
@@ -33,6 +42,29 @@ def test_shape_and_self_safe_on_empty_session():
     assert set(r) == _DESK_CONTRACT
     assert r["tokens"] == 0
     assert isinstance(r["compacting"], bool) and isinstance(r["compacted"], bool)
+    assert r["compactions"] == []
+
+
+def test_successful_compactions_expose_estimated_context_savings(monkeypatch):
+    import sqlite3
+    from contextlib import nullcontext
+    import core.runtime.db as db
+
+    conn = sqlite3.connect(":memory:", check_same_thread=False)
+    conn.execute("CREATE TABLE compaction_log (session_id TEXT, marker_id TEXT, "
+                 "tokens_foer INTEGER, tokens_efter INTEGER, fremdrift INTEGER, id INTEGER)")
+    conn.executemany("INSERT INTO compaction_log VALUES (?,?,?,?,?,?)", [
+        ("sid-a", "compact-1", 24000, 9000, 1, 1),
+        ("sid-a", "", 24000, 25000, 0, 2),
+        ("sid-b", "compact-other", 1000, 100, 1, 3),
+    ])
+    monkeypatch.setattr(db, "connect", lambda: nullcontext(conn))
+    result = _call(session_id="sid-a")
+    assert result["compactions"] == [{
+        "marker_id": "compact-1", "tokens_before": 24000,
+        "tokens_after": 9000, "freed_tokens": 15000,
+    }]
+    conn.close()
 
 
 def test_model_aware_window_and_effective():

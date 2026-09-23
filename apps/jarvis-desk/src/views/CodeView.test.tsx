@@ -78,6 +78,29 @@ describe('CodeView', () => {
     })
   })
 
+  it('viser baggrundskomprimering og den gemte tokenbesparelse', async () => {
+    vi.mocked(api.getSession).mockResolvedValue({
+      etag: null, session: { id: 's1', title: 'T', updated_at: 'x' },
+      messages: [
+        { id: 'u1', role: 'user', created_at: '2026-09-23T19:00:00Z', content: [{ type: 'text', text: 'Hej' }] },
+        { id: 'compact-1', role: 'compact_marker', created_at: '2026-09-23T19:01:00Z', content: [] },
+      ],
+    })
+    vi.mocked(api.getContextUsage).mockResolvedValue({
+      tokens: 9000, compact_at: 35000, effective: 35000, model_window: 0,
+      overhead_tokens: 0, compacting: true, compacted: true,
+      last_compact_at: '2026-09-23T19:01:00Z',
+      compactions: [{ marker_id: 'compact-1', tokens_before: 24000, tokens_after: 9000, freed_tokens: 15000 }],
+    })
+    try {
+      wrap(<CodeView sessionId="s1" userName="B" role="owner" />)
+      expect(await screen.findByText(/Komprimerer kontekst/)).toBeInTheDocument()
+      expect(await screen.findByText(/15\.000 konteksttokens frigjort/)).toBeInTheDocument()
+    } finally {
+      vi.mocked(api.getContextUsage).mockResolvedValue({ tokens: 0, compact_at: 130000, effective: 130000, model_window: 0, overhead_tokens: 0, compacting: false, compacted: false })
+    }
+  })
+
   it('tom samtale: greeting m. brugernavn + composer', () => {
     wrap(<CodeView sessionId={null} userName="Bjørn" />)
     // Greeting via GreetingHero (tids-bevidst hilsen) — navnet skal fremgå.

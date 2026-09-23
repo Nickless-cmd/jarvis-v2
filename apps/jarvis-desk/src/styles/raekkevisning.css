@@ -397,6 +397,12 @@
 /* Liste og træffere — målt: stier er SANS, ikke mono. */
 .raekkevisning .rv-liste { padding: 6px 0; }
 .raekkevisning .rv-i { display: flex; gap: 12px; padding: 3px 11px; font-size: 13px; color: var(--rv-tertiary); }
+/* Progress-sporet: hvert trin viser VÆRKTØJETS ikon og emnet — ikke serverens
+   label-tekst («Kører kommando: git status») råt. Bjørn 23/9-2026: «Kører
+   kommando skal helt væk og erstattes af ikone». 8px og ikke 12: ikonet hører
+   til teksten, ikke til en anden kolonne. */
+.raekkevisning .rv-sporListe .rv-i { gap: 8px; }
+.raekkevisning .rv-iIkon { flex: none; color: var(--fg-3); margin-top: 2px; }
 .raekkevisning .rv-i .rv-p { color: var(--fg-2); flex: none; min-width: 24ch; }
 /* Web */
 .raekkevisning .rv-web .rv-i { display: block; padding: 7px 11px; }

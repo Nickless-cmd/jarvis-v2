@@ -250,8 +250,28 @@ describe('RaekkeTranskript', () => {
       tekst('Færdig.'),
     ]
     render(<RaekkeTranskript blocks={med} streaming />)
-    expect(screen.getByText('Progress')).toBeInTheDocument()
+    // Uden `tool`/`hint` (en gemt besked fra foer 23/9) falder linjen tilbage
+    // til `message`. Labelen «Progress» findes ikke laengere — raekken viser
+    // vaerktoejets ikon i stedet (Bjoern 23/9-2026).
+    expect(screen.queryByText('Progress')).toBeNull()
     expect(screen.getByText('Analyserede billede…')).toBeInTheDocument()
+  })
+
+  it('viser vaerktoejets ikon og emnet — ikke labelen «Koerer kommando»', () => {
+    // Bjoern 23/9-2026: «Koerer kommando skal helt vaek og erstattes af ikone
+    // og dette echo === burde vise den faktisk kommando». Serveren sender nu
+    // `tool` + `hint` ved siden af den flade `message`, saa klienten kan
+    // vaelge ikonet selv i stedet for at vise label-teksten raat.
+    const med: ContentBlock[] = [
+      kald('bash'),
+      { type: 'progress', tool_use_id: 't1', parent_tool_use_id: null,
+        tool: 'bash', hint: 'git commit', message: 'Kører kommando: git commit',
+        status: 'done' },
+      tekst('Færdig.'),
+    ]
+    const { container } = render(<RaekkeTranskript blocks={med} streaming />)
+    expect(container.textContent).not.toContain('Kører kommando')
+    expect(screen.getByText('git commit')).toBeInTheDocument()
   })
 
   it('lader INGEN bloktype forsvinde sporløst', () => {

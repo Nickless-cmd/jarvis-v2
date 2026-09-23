@@ -22,7 +22,7 @@
  * billeder er nøjagtig som i bobblevisningen.
  */
 import { memo, useState } from 'react'
-import { Sparkles, Sparkle, ChevronDown, ChevronRight, Check, Loader, type LucideIcon } from 'lucide-react'
+import { Sparkles, Sparkle, ChevronDown, ChevronRight, Check, type LucideIcon } from 'lucide-react'
 import type { ContentBlock } from '../../lib/sseProtocol'
 import type { ApiConfig } from '../../lib/api'
 import { opdel, opdelArbejdsrunder, turFortalt, type ArbejdsElement } from '../../lib/raekkeModel'
@@ -55,7 +55,10 @@ function Raekke({
   Ikon, slags, sum, krop, koerer, fejl, tanke, mrkat, kind,
 }: {
   Ikon: LucideIcon
-  slags: string
+  /** Kort etiket foer sammenfatningen. Udelades naar raekken ER sit eget
+   *  emne — progress-sporet viser vaerktoejets ikon og emnet i stedet for et
+   *  navn for handlingen (Bjoern 23/9-2026: «Koerer kommando skal helt vaek»). */
+  slags?: string
   sum: React.ReactNode
   krop?: React.ReactNode
   koerer?: boolean
@@ -97,10 +100,10 @@ function Raekke({
           <Ikon className="rv-glyf" size={14} strokeWidth={1.75} />
           <ChevronDown className="rv-hoverChev" size={14} strokeWidth={1.75} />
         </span>
-        <span className="rv-slags">{slags}</span>
+        {slags ? <span className="rv-slags">{slags}</span> : null}
         {sum !== '' && sum != null ? (
           <>
-            <span className="rv-sep" aria-hidden="true" />
+            {slags ? <span className="rv-sep" aria-hidden="true" /> : null}
             {/* Mens raekken koerer foelger teksten ENDEN — ellers ser man kun
                 begyndelsen af en lang tanke, og raekken virker doed. */}
             <span className="rv-sum" {...(koerer ? { 'data-foelg-ende': '' } : {})}>
@@ -127,15 +130,28 @@ function Element({ e, streaming, config }: { e: ArbejdsElement; streaming: boole
     // forloebet ligger i kroppen. Ni «Koerer kommando: python» under
     // hinanden er stoej; det ene man vil vide er hvor den er naaet til.
     const sidste = e.trin[e.trin.length - 1]!
+    // Hvert trin viser vaerktoejets IKON og emnet — ikke serverens label-tekst
+    // («Koerer kommando: git status») raat. Bjoern 23/9-2026: «Koerer kommando
+    // skal helt vaek og erstattes af ikone og dette echo === burde vise den
+    // faktisk kommando». `tool`/`hint` kom med 23/9; en gemt besked fra foer
+    // dem har dem ikke, og falder tilbage til `message`.
+    const emne = (t: (typeof e.trin)[number]) => t.hint || t.message
     return (
       <Raekke
-        Ikon={Loader} slags="Progress" sum={sidste.message}
+        Ikon={lookupTool(sidste.tool ?? '').Icon}
+        sum={emne(sidste)}
         koerer={sidste.status === 'running'} fejl={sidste.status === 'error'}
         krop={
-          <div className="rv-kort rv-liste">
-            {e.trin.map((t, i) => (
-              <div key={i} className="rv-i"><span>{t.message}</span></div>
-            ))}
+          <div className="rv-kort rv-liste rv-sporListe">
+            {e.trin.map((t, i) => {
+              const TrinIkon = lookupTool(t.tool ?? '').Icon
+              return (
+                <div key={i} className="rv-i">
+                  <TrinIkon className="rv-iIkon" size={13} strokeWidth={1.75} aria-hidden="true" />
+                  <span>{emne(t)}</span>
+                </div>
+              )
+            })}
           </div>
         }
       />

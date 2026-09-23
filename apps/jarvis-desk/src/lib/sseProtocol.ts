@@ -196,10 +196,22 @@ export type ContentBlock =
       // Fladt persisteret progress-element (spec 2026-07-09 §5). Bærer den
       // narration live-working_step viste ("Analyserede billede…") så forløbet
       // overlever reload. parent_tool_use_id er altid null i v1 (fladt).
+      //
+      // `tool` + `hint` kom til 23/9-2026 (Bjørn: «Kører kommando skal helt
+      // væk og erstattes af ikone»): klienten tegner værktøjets IKON og emnet
+      // ved siden af hinanden i stedet for at vise serverens label-tekst
+      // («Kører kommando: git status») råt. `message` bliver som den var —
+      // flade tekst-kanaler (Discord, liveness-linjen) læser stadig den.
+      // Begge er valgfrie: en gemt besked fra før 23/9 har dem ikke, og så
+      // falder visningen tilbage til `message`.
       type: 'progress'
       tool_use_id: string
       parent_tool_use_id: string | null
       message: string
+      /** Værktøjets navn (fx `bash`) — klienten slår ikonet op på det. */
+      tool?: string
+      /** Emnet alene (fx `git status`) — uden label foran. */
+      hint?: string
       status: 'running' | 'done' | 'error'
     }
 

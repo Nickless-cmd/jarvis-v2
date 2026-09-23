@@ -524,8 +524,13 @@ def _deliver_content(uid: str, channel: str, text: str) -> dict:
     if channel in ("webchat", "mobile", "desktop"):
         ok = False
         try:
-            from core.services.notification_bridge import send_session_notification
-            ok = send_session_notification(text, source="notification-router").get("status") == "ok"
+            from core.services.notification_bridge import (
+                delivery_succeeded,
+                send_session_notification,
+            )
+            ok = delivery_succeeded(
+                send_session_notification(text, source="notification-router")
+            )
         except Exception:
             ok = False
         try:  # best-effort surface-notifikation så han kigger

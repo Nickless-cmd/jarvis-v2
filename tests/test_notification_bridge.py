@@ -185,3 +185,60 @@ def test_pinned_session_beholdes_naar_opslag_fejler(monkeypatch):
     monkeypatch.setattr("core.services.chat_sessions.get_chat_session", boom)
 
     assert nb.get_pinned_session_id() == "chat-x"
+
+
+# ── Leverings-kontrakten: "queued" ER en succes (23/9-2026) ────────────────
+# send_session_notification har tre udfald: ok / queued / fejl. Hvert kaldested
+# tjekkede `status == "ok"` og behandlede dermed "queued" som fejl. Det kostede
+# en dobbelt-levering: morgenbriefen blev køet (Bjørn sad aktivt i chatten),
+# run'et læste "queued" som "webchat nede" og tog Discord-nødplanen.
+# delivery_succeeded() er nu den ene sandhed om hvad "leveret" betyder.
+
+
+def test_delivery_succeeded_accepterer_ok_og_queued():
+    from core.services.notification_bridge import delivery_succeeded
+
+    assert delivery_succeeded({"status": "ok", "session_id": "s-1"}) is True
+    assert delivery_succeeded({"status": "queued", "session_id": "s-1"}) is True
+
+
+def test_delivery_succeeded_afviser_reelle_fejl():
+    from core.services.notification_bridge import delivery_succeeded
+
+    assert delivery_succeeded({"status": "blocked", "error": "no active session"}) is False
+    assert delivery_succeeded({"status": "error", "error": "db nede"}) is False
+    # Manglende/ugyldig form er fejl, ikke succes.
+    assert delivery_succeeded({}) is False
+    assert delivery_succeeded(None) is False
+    assert delivery_succeeded("ok") is False
+
+
+def test_notify_user_rapporterer_queued_som_succes(tmp_db, monkeypatch):
+    """Regression: en køet besked må IKKE meldes som `webchat:failed()`.
+
+    Præcis den streng fik morgenbrief-run'et til at tro at webchat var nede,
+    hvorefter det sendte den samme besked til Discord også.
+    """
+    _stub_chat_sessions(monkeypatch, session_id="s-active")
+    _seed_active(tmp_db, "s-active")
+
+    from core.tools.simple_tools_native import _exec_notify_user
+    result = _exec_notify_user({"content": "morgenbrief", "channel": "webchat"})
+
+    assert result["status"] == "ok"
+    assert "webchat:failed" not in result["text"]
+    assert "webchat:queued:s-active" in result["text"]
+
+
+def test_notify_user_rapporterer_reel_fejl_som_fejl(monkeypatch):
+    """Modstykket: en ægte fejl skal stadig se ud som en fejl."""
+    import core.services.notification_bridge as nb
+    monkeypatch.setattr(
+        nb, "send_session_notification",
+        lambda *a, **k: {"status": "blocked", "error": "no active session"},
+    )
+
+    from core.tools.simple_tools_native import _exec_notify_user
+    result = _exec_notify_user({"content": "hej", "channel": "webchat"})
+
+    assert "webchat:failed(no active session)" in result["text"]

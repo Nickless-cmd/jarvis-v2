@@ -83,6 +83,27 @@ def _push_proactive(session_id: str, text: str) -> None:
         pass
 
 
+# 23/9-2026: send_session_notification har TRE udfald, ikke to — men hvert
+# kaldested tjekkede `status == "ok"` og behandlede dermed "queued" som fejl.
+# Det kostede en dobbelt-levering: morgenbriefen blev køet (Bjørn sad aktivt i
+# chatten), run'et læste "queued" som "webchat nede" og tog Discord-nødplanen.
+# Kontrakten bor nu her, ét sted, så ingen læser skal gætte den igen.
+_DELIVERY_OK_STATUSES = frozenset({"ok", "queued"})
+
+
+def delivery_succeeded(result: object) -> bool:
+    """True når notifikationen er ANTAGET til levering.
+
+    "ok"     — skrevet direkte ind i sessionen nu.
+    "queued" — sessionen var aktiv; beskeden ligger i session_inbox og
+               flushes efter den igangværende tur. Stadig en succes.
+    Alt andet ("blocked", "error", manglende status) er en reel fejl.
+    """
+    if not isinstance(result, dict):
+        return False
+    return str(result.get("status") or "") in _DELIVERY_OK_STATUSES
+
+
 def send_session_notification(
     content: str,
     *,

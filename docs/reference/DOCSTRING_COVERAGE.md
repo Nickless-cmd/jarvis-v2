@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7932/15377 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7933/15378 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 7932/15377 functions/methods documented (51%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 686 | 1265 | 54% |
-| `core.services` | 5238 | 10457 | 50% |
+| `core.services` | 5239 | 10458 | 50% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 107 | 183 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1168,7 +1168,7 @@ Generated from source. 7932/15377 functions/methods documented (51%). The list b
 - `core/services/inner_visible_support_signal_tracking.py` :: `build_runtime_inner_visible_support_signal_surface` (L74)
 - `core/services/inner_visible_support_signal_tracking.py` :: `refresh_runtime_inner_visible_support_signal_statuses` (L70)
 - `core/services/inner_visible_support_signal_tracking.py` :: `track_runtime_inner_visible_support_signals_for_visible_turn` (L36)
-- `core/services/inner_voice_notifier.py` :: `get_inner_voice_notifier_state` (L276)
+- `core/services/inner_voice_notifier.py` :: `get_inner_voice_notifier_state` (L277)
 - `core/services/inner_voice_notifier.py` :: `start_inner_voice_notifier` (L41)
 - `core/services/inner_voice_notifier.py` :: `stop_inner_voice_notifier` (L59)
 - `core/services/inner_voice_shadow.py` :: `AppraisalRecord.to_dict` (L116)
@@ -1582,15 +1582,15 @@ Generated from source. 7932/15377 functions/methods documented (51%). The list b
 - `core/services/run_event_log.py` :: `session_for_run` (L392)
 - `core/services/run_event_log.py` :: `subscriber_closed` (L424)
 - `core/services/run_event_log.py` :: `subscriber_opened` (L417)
-- `core/services/runtime_action_executor.py` :: `execute_bounded_self_check` (L417)
-- `core/services/runtime_action_executor.py` :: `execute_follow_open_loop` (L259)
-- `core/services/runtime_action_executor.py` :: `execute_inspect_repo_context` (L307)
-- `core/services/runtime_action_executor.py` :: `execute_promote_initiative_to_visible_lane` (L453)
-- `core/services/runtime_action_executor.py` :: `execute_propose_next_user_step` (L435)
-- `core/services/runtime_action_executor.py` :: `execute_refresh_memory_context` (L243)
-- `core/services/runtime_action_executor.py` :: `execute_review_recent_conversations` (L368)
-- `core/services/runtime_action_executor.py` :: `execute_runtime_action` (L114)
-- `core/services/runtime_action_executor.py` :: `execute_write_internal_work_note` (L380)
+- `core/services/runtime_action_executor.py` :: `execute_bounded_self_check` (L420)
+- `core/services/runtime_action_executor.py` :: `execute_follow_open_loop` (L262)
+- `core/services/runtime_action_executor.py` :: `execute_inspect_repo_context` (L310)
+- `core/services/runtime_action_executor.py` :: `execute_promote_initiative_to_visible_lane` (L456)
+- `core/services/runtime_action_executor.py` :: `execute_propose_next_user_step` (L438)
+- `core/services/runtime_action_executor.py` :: `execute_refresh_memory_context` (L246)
+- `core/services/runtime_action_executor.py` :: `execute_review_recent_conversations` (L371)
+- `core/services/runtime_action_executor.py` :: `execute_runtime_action` (L117)
+- `core/services/runtime_action_executor.py` :: `execute_write_internal_work_note` (L383)
 - `core/services/runtime_action_outcome_tracking.py` :: `build_runtime_action_outcome_surface` (L53)
 - `core/services/runtime_action_outcome_tracking.py` :: `recent_runtime_action_outcomes` (L77)
 - `core/services/runtime_action_outcome_tracking.py` :: `record_runtime_action_outcome` (L13)
@@ -1680,8 +1680,8 @@ Generated from source. 7932/15377 functions/methods documented (51%). The list b
 - `core/services/scheduled_job_windows.py` :: `build_scheduled_job_windows_surface` (L204)
 - `core/services/scheduled_job_windows.py` :: `list_windows` (L194)
 - `core/services/scheduled_job_windows.py` :: `set_window_active` (L103)
-- `core/services/scheduled_tasks.py` :: `start_scheduled_tasks_service` (L322)
-- `core/services/scheduled_tasks.py` :: `stop_scheduled_tasks_service` (L331)
+- `core/services/scheduled_tasks.py` :: `start_scheduled_tasks_service` (L323)
+- `core/services/scheduled_tasks.py` :: `stop_scheduled_tasks_service` (L332)
 - `core/services/security_guard.py` :: `is_session_locked` (L123)
 - `core/services/security_guard.py` :: `lock_session` (L93)
 - `core/services/security_guard.py` :: `unlock_session` (L108)

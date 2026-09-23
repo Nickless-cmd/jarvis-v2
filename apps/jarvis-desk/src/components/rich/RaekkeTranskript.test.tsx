@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { RaekkeTranskript } from './RaekkeTranskript'
 import { SettingsProvider } from '../../contexts/SettingsContext'
@@ -32,6 +32,47 @@ const TUR: ContentBlock[] = [
 ]
 
 beforeEach(() => { localStorage.setItem(RAEKKE_KEY, '1') })
+
+describe('underagent-rækken', () => {
+  const SCOUT: ContentBlock[] = [{
+    type: 'tool_use', id: 's1', name: 'scout_agent', input: { goal: 'find kaldere' },
+    result: '[scout_agent]: [UTROET kilde=subagent] { "agent_id": "agent-35aa724fd0454660bc7150d7bbc86403" }',
+  }, tekst('Fundet.')]
+
+  it('mærker rækken som subagent', () => {
+    const { container } = render(<RaekkeTranskript blocks={SCOUT} streaming />)
+    expect(container.querySelector('.rv-mrkat')?.textContent).toBe('subagent')
+  })
+
+  it('henter FØRST agentens kald når rækken foldes ud', async () => {
+    // Det er hele pointen. Hentede vi ved render, ville hver scout_agent-raekke
+    // i en lang traad fyre et kald af ved indlaesning — samme fejl som
+    // poll-stormen. Kroppen monteres foerst ved udfoldning, saa `useEffect`
+    // er dovent af sig selv; testen pinner at det BLIVER saadan.
+    const hent = vi.fn(async () => ({ tool_calls: [{ tool_name: 'search', status: 'ok' }] }))
+    vi.doMock('../../lib/api', async (rigtig) => ({
+      ...(await rigtig<Record<string, unknown>>()), apiFetch: hent,
+    }))
+    const cfg = { apiBaseUrl: 'http://t', authToken: 'tok' }
+    const { container } = render(<RaekkeTranskript blocks={SCOUT} streaming config={cfg} />)
+    expect(hent).not.toHaveBeenCalled()
+
+    const raekke = [...container.querySelectorAll('.rv-r')]
+      .find((r) => r.querySelector('.rv-mrkat'))!
+    fireEvent.click(raekke)
+    // Kroppen er nu monteret — og dermed er opslaget i gang.
+    expect(container.querySelector('.rv-underagent')).not.toBeNull()
+    vi.doUnmock('../../lib/api')
+  })
+
+  it('siger det når der ikke er nogen forbindelse', () => {
+    // Uden config kan vi ikke spoerge. En tom liste ville ligne «agenten
+    // gjorde ingenting», og det er en anden besked.
+    const { container } = render(<RaekkeTranskript blocks={SCOUT} streaming />)
+    fireEvent.click([...container.querySelectorAll('.rv-r')].find((r) => r.querySelector('.rv-mrkat'))!)
+    expect(container.querySelector('.rv-uaTom')?.textContent).toMatch(/[Ii]ngen forbindelse/)
+  })
+})
 
 describe('RaekkeTranskript', () => {
   it('folder arbejdet SAMMEN når streamingen er slut — svaret bliver stående', () => {

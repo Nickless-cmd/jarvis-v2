@@ -31,6 +31,7 @@ import { lookupTool } from '../../lib/toolRegistry'
 import { subjectFromInput } from '../../lib/toolRound'
 import { diffFraResultat, diffStat } from '../../lib/diffStat'
 import { postFor, kropFor } from './raekkeKroppe'
+import { erUnderagent } from '../../lib/agentKald'
 import { BlocksRenderer } from './BlocksRenderer'
 
 /** Første linje af en tanke — resten ligger i kroppen. */
@@ -40,7 +41,7 @@ function foersteLinje(s: string): string {
 }
 
 function Raekke({
-  Ikon, slags, sum, krop, koerer, fejl, tanke,
+  Ikon, slags, sum, krop, koerer, fejl, tanke, mrkat,
 }: {
   Ikon: LucideIcon
   slags: string
@@ -49,6 +50,8 @@ function Raekke({
   koerer?: boolean
   fejl?: boolean
   tanke?: boolean
+  /** Lille etiket yderst — «subagent». Kun naar den betyder noget. */
+  mrkat?: string
 }) {
   const [aaben, setAaben] = useState(false)
   const foldbar = krop != null
@@ -88,6 +91,7 @@ function Raekke({
             </span>
           </>
         ) : <span className="rv-sum" />}
+        {mrkat && <span className="rv-mrkat">{mrkat}</span>}
         {foldbar && <span className="rv-chev" aria-hidden="true">{aaben ? '▾' : '▸'}</span>}
       </div>
       {foldbar && aaben && <div className="rv-krop">{krop}</div>}
@@ -95,7 +99,7 @@ function Raekke({
   )
 }
 
-function Element({ e, streaming }: { e: ArbejdsElement; streaming: boolean }) {
+function Element({ e, streaming, config }: { e: ArbejdsElement; streaming: boolean; config?: ApiConfig }) {
   if (e.slags === 'mellemsvar') {
     // Jarvis' korte narration MELLEM kaldene. Den bor i gruppen og folder sig
     // sammen med arbejdet — den er ikke en besked (Bjoern 22/9-2026).
@@ -164,7 +168,8 @@ function Element({ e, streaming }: { e: ArbejdsElement; streaming: boolean }) {
         sum={sum}
         koerer={b.status === 'running'}
         fejl={fejl}
-        krop={kropFor(b.name, b.input, b.result, fejl)}
+        krop={kropFor(b.name, b.input, b.result, fejl, config)}
+        mrkat={erUnderagent(b.name) ? 'subagent' : undefined}
       />
     )
   }
@@ -206,7 +211,7 @@ function RaekkeTranskriptImpl({
               : <span>{turHoved(kald, sekunder)}</span>}
           </button>
           <div className="rv-gruppe" hidden={!aaben}>
-            {arbejde.map((e, i) => <Element key={i} e={e} streaming={streaming} />)}
+            {arbejde.map((e, i) => <Element key={i} e={e} streaming={streaming} config={config} />)}
           </div>
         </>
       )}

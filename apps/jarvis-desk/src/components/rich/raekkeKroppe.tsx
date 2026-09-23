@@ -21,6 +21,8 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { codeToHtml } from 'shiki'
 import { lookupTool } from '../../lib/toolRegistry'
+import { hentAgentKald, agentIdFra, type AgentKald } from '../../lib/agentKald'
+import type { ApiConfig } from '../../lib/api'
 
 export type Familie = 'terminal' | 'diff' | 'fil' | 'skriv' | 'liste' | 'web' | 'spoergsmaal' | 'billede' | 'fald'
 
@@ -256,14 +258,65 @@ export function Billede({ src, navn, meta }: { src?: string; navn: string; meta:
   )
 }
 
+/**
+ * Underagentens egne kald. Hentes FØRST når rækken foldes ud — kroppen
+ * monteres ikke før, så `useEffect` her er dovent af sig selv. Gjorde vi det
+ * ved render, ville hver scout_agent-række i en lang tråd fyre et kald af
+ * ved indlæsning; det er samme fejl som poll-stormen.
+ */
+export function Underagent({
+  agentId, resultat, config,
+}: { agentId: string; resultat: string; config?: ApiConfig }) {
+  const [kald, setKald] = useState<AgentKald[] | null>(null)
+  const [fejl, setFejl] = useState(false)
+
+  useEffect(() => {
+    if (!config) return
+    let levende = true
+    hentAgentKald(config, agentId)
+      .then((k) => { if (levende) setKald(k) })
+      .catch(() => { if (levende) setFejl(true) })
+    return () => { levende = false }
+  }, [config, agentId])
+
+  return (
+    <div className="rv-underagent">
+      <div className="rv-kort"><pre>{resultat}</pre></div>
+      {/* Uden config kan vi ikke spoerge — sig det, frem for at vise en tom
+          liste der ligner «agenten gjorde ingenting». */}
+      {!config ? <div className="rv-uaTom">Ingen forbindelse — kan ikke hente agentens kald.</div>
+       : fejl ? <div className="rv-uaTom">Agentens kald kunne ikke hentes.</div>
+       : kald === null ? <div className="rv-uaTom">Henter agentens kald…</div>
+       : kald.length === 0 ? <div className="rv-uaTom">Agenten kaldte ingen værktøjer.</div>
+       : (
+        <div className="rv-uaListe">
+          <div className="rv-uaH">{kald.length} kald i underagenten</div>
+          {kald.map((k, i) => (
+            <div key={i} className="rv-uaKald" data-status={k.status || 'ok'}>
+              <span className="rv-uaNavn">{k.tool_name || 'tool'}</span>
+              <span className="rv-uaArg">{(k.arguments_json || '').slice(0, 120)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 /** Vælg krop ud fra familie. Én indgang, så rækken ikke kender formerne. */
 export function kropFor(
   navn: string,
   input: Record<string, unknown>,
   result: string | undefined,
   fejl: boolean,
+  config?: ApiConfig,
 ): ReactNode {
   const { familie } = postFor(navn)
+  // Underagent FOER familie-valget: `scout_agent` ville ellers falde i
+  // faldbacken og vise raa JSON, mens agentens otte egne kald laa uroert i
+  // `agent_tool_calls` med et endepunkt der allerede serverer dem.
+  const agentId = agentIdFra(result)
+  if (agentId) return <Underagent agentId={agentId} resultat={udDel(result)} config={config} />
   const ind = JSON.stringify(input, null, 2)
   const ud = udDel(result)
   const { værdi, ramme } = pakUd(result)

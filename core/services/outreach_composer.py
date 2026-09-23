@@ -272,9 +272,12 @@ def _send_message(text: str, *, channel: str) -> dict[str, Any]:
         except Exception as e:
             return {"sent": False, "reason": f"discord error: {e}"}
     try:
-        from core.services.notification_bridge import send_session_notification
+        from core.services.notification_bridge import (
+            delivery_succeeded,
+            send_session_notification,
+        )
         r = send_session_notification(text, source="outreach-composer")
-        return {"sent": r.get("status") == "ok", "channel": "webchat", "detail": str(r)}
+        return {"sent": delivery_succeeded(r), "channel": "webchat", "detail": str(r)}
     except Exception as e:
         return {"sent": False, "reason": f"webchat error: {e}"}
 

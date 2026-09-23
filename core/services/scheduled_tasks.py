@@ -195,7 +195,8 @@ def _fire_due_tasks() -> None:
                             f"[scheduled reminder] {focus}",
                             source="scheduled-task",
                         )
-                    if result.get("status") == "ok":
+                    from core.services.notification_bridge import delivery_succeeded
+                    if delivery_succeeded(result):
                         runtime_db.mark_scheduled_task_fired(task_id, fired_at=now_iso, updated_at=now_iso)
                         logger.info("scheduled_tasks: fired %s → delivered (via=%s)", task_id, result.get("via", "direct"))
 

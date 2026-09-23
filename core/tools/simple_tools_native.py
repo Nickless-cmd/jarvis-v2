@@ -835,10 +835,22 @@ def _exec_notify_user(args: dict[str, Any]) -> dict[str, Any]:
 
     if channel in ("webchat", "both"):
         try:
-            from core.services.notification_bridge import send_session_notification
+            from core.services.notification_bridge import (
+                delivery_succeeded,
+                send_session_notification,
+            )
             r = send_session_notification(content, source="jarvis-notify")
-            if r.get("status") == "ok":
-                results.append(f"webchat:{r.get('session_id', '')}")
+            if delivery_succeeded(r):
+                sid = str(r.get("session_id") or "")
+                # 23/9-2026: "queued" ER en succes — beskeden ligger i
+                # session_inbox og leveres efter den igangværende tur. Før
+                # blev den rapporteret som "webchat:failed()", hvorefter
+                # kalderen (morgenbrief-run'et) tog Discord-nødplanen og
+                # leverede i to kanaler.
+                if r.get("status") == "queued":
+                    results.append(f"webchat:queued:{sid}")
+                else:
+                    results.append(f"webchat:{sid}")
             else:
                 results.append(f"webchat:failed({r.get('error', '')})")
         except Exception as exc:
@@ -1177,10 +1189,19 @@ def _exec_send_webchat_message(args: dict[str, Any]) -> dict[str, Any]:
     if not content:
         return {"status": "error", "text": "No content provided."}
     try:
-        from core.services.notification_bridge import send_session_notification
+        from core.services.notification_bridge import (
+            delivery_succeeded,
+            send_session_notification,
+        )
         r = send_session_notification(content, source="jarvis-notify")
-        if r.get("status") == "ok":
-            return {"status": "ok", "text": f"Delivered to webchat session {r.get('session_id', '')}"}
+        if delivery_succeeded(r):
+            sid = str(r.get("session_id", ""))
+            if r.get("status") == "queued":
+                return {
+                    "status": "ok",
+                    "text": f"Queued for webchat session {sid} (active session — flushes after this turn)",
+                }
+            return {"status": "ok", "text": f"Delivered to webchat session {sid}"}
         return {"status": "error", "text": f"Webchat delivery failed: {r.get('error', '')}"}
     except Exception as exc:
         return {"status": "error", "text": f"Webchat error: {exc}"}

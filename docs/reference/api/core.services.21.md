@@ -500,10 +500,10 @@ _Scheduled tasks service — lets Jarvis schedule future reminders/actions._
 | function | `list_pending_for_current_user` | `()` | Return scheduled tasks where scheduled_for_user_id matches current user. | [src](../../../core/services/scheduled_tasks.py#L90) |
 | function | `get_scheduled_tasks_state` | `()` | Return scheduled tasks for observability. | [src](../../../core/services/scheduled_tasks.py#L120) |
 | function | `_fire_due_tasks` | `()` | — | [src](../../../core/services/scheduled_tasks.py#L141) |
-| function | `_poller_loop` | `()` | — | [src](../../../core/services/scheduled_tasks.py#L303) |
-| function | `start_scheduled_tasks_service` | `()` | — | [src](../../../core/services/scheduled_tasks.py#L322) |
-| function | `stop_scheduled_tasks_service` | `()` | — | [src](../../../core/services/scheduled_tasks.py#L331) |
-| function | `build_scheduled_tasks_surface` | `()` | Mission Control surface — read-only meta-projection. | [src](../../../core/services/scheduled_tasks.py#L336) |
+| function | `_poller_loop` | `()` | — | [src](../../../core/services/scheduled_tasks.py#L304) |
+| function | `start_scheduled_tasks_service` | `()` | — | [src](../../../core/services/scheduled_tasks.py#L323) |
+| function | `stop_scheduled_tasks_service` | `()` | — | [src](../../../core/services/scheduled_tasks.py#L332) |
+| function | `build_scheduled_tasks_surface` | `()` | Mission Control surface — read-only meta-projection. | [src](../../../core/services/scheduled_tasks.py#L337) |
 
 ## `core/services/secret_redaction.py`
 _Hemmeligheder ud af det der havner i PROMPTEN — ikke ud af det han redigerer._

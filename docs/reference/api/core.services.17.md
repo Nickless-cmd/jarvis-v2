@@ -23,11 +23,12 @@ _Notification bridge — lets Jarvis push messages to the active session._
 | function | `pin_session` | `(session_id)` | Record which session the user is currently viewing. Call on every user message. | [src](../../../core/services/notification_bridge.py#L30) |
 | function | `get_pinned_session_id` | `()` | Return the currently pinned session ID, or empty string if none. | [src](../../../core/services/notification_bridge.py#L44) |
 | function | `_push_proactive` | `(session_id, text)` | Spejl en proaktiv session-notifikation som mobil-push til sessionens ejer. | [src](../../../core/services/notification_bridge.py#L74) |
-| function | `send_session_notification` | `(content, *, source=…, urgent=…)` | Append a proactive message to the most recently active chat session. | [src](../../../core/services/notification_bridge.py#L86) |
-| function | `_boredom_listener_loop` | `()` | Background thread that listens for boredom_productive events. | [src](../../../core/services/notification_bridge.py#L194) |
-| function | `_reset_boredom_level_listener_loop` | `()` | Background thread that resets the boredom notification guard when level drops. | [src](../../../core/services/notification_bridge.py#L242) |
-| function | `start_notification_bridge` | `()` | Start the boredom notification listener threads. | [src](../../../core/services/notification_bridge.py#L269) |
-| function | `stop_notification_bridge` | `()` | Stop the boredom notification listener. | [src](../../../core/services/notification_bridge.py#L281) |
+| function | `delivery_succeeded` | `(result)` | True når notifikationen er ANTAGET til levering. | [src](../../../core/services/notification_bridge.py#L94) |
+| function | `send_session_notification` | `(content, *, source=…, urgent=…)` | Append a proactive message to the most recently active chat session. | [src](../../../core/services/notification_bridge.py#L107) |
+| function | `_boredom_listener_loop` | `()` | Background thread that listens for boredom_productive events. | [src](../../../core/services/notification_bridge.py#L215) |
+| function | `_reset_boredom_level_listener_loop` | `()` | Background thread that resets the boredom notification guard when level drops. | [src](../../../core/services/notification_bridge.py#L263) |
+| function | `start_notification_bridge` | `()` | Start the boredom notification listener threads. | [src](../../../core/services/notification_bridge.py#L290) |
+| function | `stop_notification_bridge` | `()` | Stop the boredom notification listener. | [src](../../../core/services/notification_bridge.py#L302) |
 
 ## `core/services/notification_router.py`
 _Unified proactive notification routing (spec docs/specs/2026-06-20-...)._
@@ -40,28 +41,29 @@ _Unified proactive notification routing (spec docs/specs/2026-06-20-...)._
 | function | `resolve_channel` | `(prefs, notification_type)` | Prioritet: type-specifik override → global → 'auto'. | [src](../../../core/services/notification_router.py#L90) |
 | function | `is_quiet_hours` | `(prefs, now_hm=…)` | Er vi i quiet hours? now_hm = 'HH:MM' (server-lokal hvis None). Håndterer | [src](../../../core/services/notification_router.py#L98) |
 | function | `_enqueue_delayed` | `(user_id, ntype, payload, importance, deliver_after_hm)` | Gem en notifikation til levering efter quiet_end. deliver_after_hm = 'HH:MM'. | [src](../../../core/services/notification_router.py#L112) |
-| function | `fire_due_delayed` | `(now_hm=…)` | Lever forfaldne udskudte notifikationer (kaldes af scheduler). Returnerer antal. | [src](../../../core/services/notification_router.py#L124) |
-| function | `_deliver_ntfy` | `(payload)` | — | [src](../../../core/services/notification_router.py#L153) |
-| function | `_deliver_to_channel` | `(uid, channel, payload, ntype)` | Lever til én konkret kanal. Returnerer True ved succes. | [src](../../../core/services/notification_router.py#L163) |
-| function | `_feed_titel_og_tekst` | `(notification_type, payload)` | Payloads er ikke ens — nogle sender title+body, andre title+preview+body, | [src](../../../core/services/notification_router.py#L220) |
-| function | `_foed_feed_raekke` | `(user_id, notification_type, payload)` | Læg én åben række i notifikations-feeden for en router-drevet slags. | [src](../../../core/services/notification_router.py#L234) |
-| function | `route_proactive_notification` | `(user_id, notification_type, payload, importance=…, *, _skip_quiet=…, feed=…)` | Samlet routing for alle proaktive notifikationer — B-batch 2: leverings-udfald | [src](../../../core/services/notification_router.py#L250) |
-| function | `_route_proactive_notification_impl` | `(user_id, notification_type, payload, importance=…, *, _skip_quiet=…)` | Samlet routing for alle proaktive notifikationer. | [src](../../../core/services/notification_router.py#L308) |
-| function | `reset_delivery` | `()` | — | [src](../../../core/services/notification_router.py#L367) |
-| function | `_new_id` | `()` | — | [src](../../../core/services/notification_router.py#L376) |
-| function | `_send_fcm` | `(user_id, device_key, data)` | — | [src](../../../core/services/notification_router.py#L380) |
-| function | `_send_desktop` | `(user_id, item)` | — | [src](../../../core/services/notification_router.py#L385) |
-| function | `_fallback_blast` | `(user_id, data)` | — | [src](../../../core/services/notification_router.py#L390) |
-| function | `_deliver` | `(user_id, target, notif_id, payload)` | — | [src](../../../core/services/notification_router.py#L395) |
-| function | `_arm_timer` | `(notif_id)` | — | [src](../../../core/services/notification_router.py#L408) |
-| function | `_ordn_efter_flade` | `(ranked, surface)` | Saet enhederne paa DEN flade turen blev skrevet fra forrest. | [src](../../../core/services/notification_router.py#L422) |
-| function | `route_device_aware` | `(user_id, payload, kind)` | Lever en notifikation til brugerens bedste enhed + arm eskalering. | [src](../../../core/services/notification_router.py#L447) |
-| function | `_escalate` | `(notif_id)` | — | [src](../../../core/services/notification_router.py#L473) |
-| function | `ack` | `(notif_id)` | Annullér eskalering for en leveret notifikation (kaldt af /notifications/ack). | [src](../../../core/services/notification_router.py#L485) |
-| function | `_discord_connected` | `()` | — | [src](../../../core/services/notification_router.py#L498) |
-| function | `_app_device_live` | `(uid)` | Er en app-enhed AKTIVT online (frisk ping), ikke bare en registreret token? | [src](../../../core/services/notification_router.py#L506) |
-| function | `_deliver_content` | `(uid, channel, text)` | — | [src](../../../core/services/notification_router.py#L523) |
-| function | `deliver_message` | `(user_id, text, ntype=…, importance=…)` | Lever proaktivt INDHOLD efter brugerens kanal-præference. | [src](../../../core/services/notification_router.py#L553) |
+| function | `_alder_timer` | `(created_at, nu)` | Timer siden rækken blev lagt i kø. None hvis tidspunktet er ulæseligt — | [src](../../../core/services/notification_router.py#L139) |
+| function | `fire_due_delayed` | `(now_hm=…, *, max_per_run=…)` | Lever forfaldne udskudte notifikationer (kaldes af heartbeat-poll'en). | [src](../../../core/services/notification_router.py#L152) |
+| function | `_deliver_ntfy` | `(payload)` | — | [src](../../../core/services/notification_router.py#L217) |
+| function | `_deliver_to_channel` | `(uid, channel, payload, ntype)` | Lever til én konkret kanal. Returnerer True ved succes. | [src](../../../core/services/notification_router.py#L227) |
+| function | `_feed_titel_og_tekst` | `(notification_type, payload)` | Payloads er ikke ens — nogle sender title+body, andre title+preview+body, | [src](../../../core/services/notification_router.py#L284) |
+| function | `_foed_feed_raekke` | `(user_id, notification_type, payload)` | Læg én åben række i notifikations-feeden for en router-drevet slags. | [src](../../../core/services/notification_router.py#L298) |
+| function | `route_proactive_notification` | `(user_id, notification_type, payload, importance=…, *, _skip_quiet=…, feed=…)` | Samlet routing for alle proaktive notifikationer — B-batch 2: leverings-udfald | [src](../../../core/services/notification_router.py#L314) |
+| function | `_route_proactive_notification_impl` | `(user_id, notification_type, payload, importance=…, *, _skip_quiet=…)` | Samlet routing for alle proaktive notifikationer. | [src](../../../core/services/notification_router.py#L372) |
+| function | `reset_delivery` | `()` | — | [src](../../../core/services/notification_router.py#L431) |
+| function | `_new_id` | `()` | — | [src](../../../core/services/notification_router.py#L440) |
+| function | `_send_fcm` | `(user_id, device_key, data)` | — | [src](../../../core/services/notification_router.py#L444) |
+| function | `_send_desktop` | `(user_id, item)` | — | [src](../../../core/services/notification_router.py#L449) |
+| function | `_fallback_blast` | `(user_id, data)` | — | [src](../../../core/services/notification_router.py#L454) |
+| function | `_deliver` | `(user_id, target, notif_id, payload)` | — | [src](../../../core/services/notification_router.py#L459) |
+| function | `_arm_timer` | `(notif_id)` | — | [src](../../../core/services/notification_router.py#L472) |
+| function | `_ordn_efter_flade` | `(ranked, surface)` | Saet enhederne paa DEN flade turen blev skrevet fra forrest. | [src](../../../core/services/notification_router.py#L486) |
+| function | `route_device_aware` | `(user_id, payload, kind)` | Lever en notifikation til brugerens bedste enhed + arm eskalering. | [src](../../../core/services/notification_router.py#L511) |
+| function | `_escalate` | `(notif_id)` | — | [src](../../../core/services/notification_router.py#L537) |
+| function | `ack` | `(notif_id)` | Annullér eskalering for en leveret notifikation (kaldt af /notifications/ack). | [src](../../../core/services/notification_router.py#L549) |
+| function | `_discord_connected` | `()` | — | [src](../../../core/services/notification_router.py#L562) |
+| function | `_app_device_live` | `(uid)` | Er en app-enhed AKTIVT online (frisk ping), ikke bare en registreret token? | [src](../../../core/services/notification_router.py#L570) |
+| function | `_deliver_content` | `(uid, channel, text)` | — | [src](../../../core/services/notification_router.py#L587) |
+| function | `deliver_message` | `(user_id, text, ntype=…, importance=…)` | Lever proaktivt INDHOLD efter brugerens kanal-præference. | [src](../../../core/services/notification_router.py#L622) |
 
 ## `core/services/notifikationer.py`
 _Notifikations-feedens lager (spec docs/superpowers/specs/2026-09-21-...)._
@@ -372,8 +374,8 @@ _Outreach composer — Spor-1 of generative autonomy._
 | function | `_build_outreach_prompt` | `(*, direction, topic, strength, user_ctx, signal_ctx)` | Build the prompt that asks Jarvis-the-LLM to write the message. | [src](../../../core/services/outreach_composer.py#L162) |
 | function | `_call_visible_model` | `(prompt, *, timeout=…)` | Call the visible-lane model (Ollama / GLM cloud) for the message text. | [src](../../../core/services/outreach_composer.py#L199) |
 | function | `_send_message` | `(text, *, channel)` | Send the composed message via the USER's reach_out-kanalvalg (notification_router). | [src](../../../core/services/outreach_composer.py#L246) |
-| function | `_decay_longing_after_outreach` | `(reduction=…)` | When Jarvis has reached out, the longing pressure should drop. | [src](../../../core/services/outreach_composer.py#L282) |
-| function | `compose_and_send_outreach` | `(*, direction, topic, strength)` | Spor-1 entry point. Compose a coherent message and send it. | [src](../../../core/services/outreach_composer.py#L299) |
+| function | `_decay_longing_after_outreach` | `(reduction=…)` | When Jarvis has reached out, the longing pressure should drop. | [src](../../../core/services/outreach_composer.py#L285) |
+| function | `compose_and_send_outreach` | `(*, direction, topic, strength)` | Spor-1 entry point. Compose a coherent message and send it. | [src](../../../core/services/outreach_composer.py#L302) |
 
 ## `core/services/override_command.py`
 _Owner-override-kommando — delt handler for gateways (Discord/Telegram)._

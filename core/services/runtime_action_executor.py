@@ -13,7 +13,10 @@ from core.services.initiative_queue import (
     mark_acted,
     mark_attempted,
 )
-from core.services.notification_bridge import send_session_notification
+from core.services.notification_bridge import (
+    delivery_succeeded,
+    send_session_notification,
+)
 from core.services.open_loop_closure_proposal_tracking import (
     build_runtime_open_loop_closure_proposal_surface,
 )
@@ -439,7 +442,7 @@ def execute_propose_next_user_step(payload: dict[str, Any]) -> RuntimeExecutionR
         f"men holder den bounded indtil den er nyttig i {current_mode}-mode."
     )
     delivery = send_session_notification(content, source="runtime-proposal")
-    status = "proposed" if delivery.get("status") == "ok" else "blocked"
+    status = "proposed" if delivery_succeeded(delivery) else "blocked"
     return RuntimeExecutionResult(
         status=status,
         action_id="propose_next_user_step",
@@ -457,7 +460,7 @@ def execute_promote_initiative_to_visible_lane(payload: dict[str, Any]) -> Runti
         f"[initiative] Jeg vil gerne følge op på: {focus[:180]}",
         source="runtime-initiative",
     )
-    if delivery.get("status") == "ok":
+    if delivery_succeeded(delivery):
         if initiative_id:
             mark_acted(initiative_id, action_summary="promoted-to-visible-lane")
         return RuntimeExecutionResult(

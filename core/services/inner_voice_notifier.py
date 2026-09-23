@@ -149,7 +149,8 @@ def _handle_event(payload: dict[str, Any]) -> None:
         logger.warning("inner_voice_notifier: delivery raised: %s", exc)
         return
 
-    if isinstance(result, dict) and result.get("status") == "ok":
+    from core.services.notification_bridge import delivery_succeeded
+    if delivery_succeeded(result):
         _record_sent(now, record_id=record_id)
         try:
             event_bus.publish(

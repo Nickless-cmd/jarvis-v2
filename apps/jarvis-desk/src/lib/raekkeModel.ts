@@ -160,11 +160,77 @@ export function opdel(blokke: readonly ContentBlock[]): RaekkeOpdeling {
 }
 
 /**
- * Turens hoved. Formen er Bjørns («thought for x sec», 22/9-2026) — ikke
- * forlæggets «Thought for a while», som skjuler det eneste tal man vil have.
+ * Turens hoved, som en tælling. Formen er Bjørns («thought for x sec»,
+ * 22/9-2026) — ikke forlæggets «Thought for a while», som skjuler det eneste
+ * tal man vil have. Bruges nu kun når der ikke ER arbejde at fortælle om.
  */
 export function turHoved(kald: number, sekunder: number): string {
   const tid = sekunder > 0 ? `Thought for ${sekunder}s` : 'Worked'
-  const k = `${kald} tool call${kald === 1 ? '' : 's'}`
-  return `${tid} · ${k}`
+  // «0 tool calls» er ikke et tal man vil have — det er en tur der tænkte.
+  if (kald === 0) return tid
+  return `${tid} · ${kald} tool call${kald === 1 ? '' : 's'}`
+}
+
+/**
+ * Familien i klart sprog. Nøglerne er de samme `familie`-navne som kroppene
+ * bruger (`raekkeKroppe.tsx`) — så hovedet og rækkerne altid fortæller samme
+ * historie, og en ny familie kun skal læres ét sted.
+ */
+// Fallbacken står uden for tabellen: et `Record`-opslag giver `| undefined`
+// under `noUncheckedIndexedAccess`, og så kan `FRASER.fald` ikke kaldes.
+const FALD = (n: number): string => (n === 1 ? 'arbejdede' : `arbejdede i ${n} trin`)
+
+const FRASER: Record<string, (n: number) => string> = {
+  fil: (n) => (n === 1 ? 'læste en fil' : `læste ${n} filer`),
+  liste: (n) => (n === 1 ? 'søgte en gang' : `søgte ${n} gange`),
+  terminal: (n) => (n === 1 ? 'kørte en kommando' : `kørte ${n} kommandoer`),
+  skriv: (n) => (n === 1 ? 'skrev en fil' : `skrev ${n} filer`),
+  diff: (n) => (n === 1 ? 'redigerede en fil' : `redigerede ${n} filer`),
+  web: (n) => (n === 1 ? 'slog noget op' : `slog ${n} ting op`),
+  billede: (n) => (n === 1 ? 'så på et billede' : `så på ${n} billeder`),
+  spoergsmaal: () => 'spurgte dig',
+  opgave: () => 'lagde en plan',
+  fald: FALD,
+}
+
+/** Flere end tre led, og sætningen bliver en liste man ikke læser. */
+const MAKS_LED = 3
+
+function led(dele: string[]): string {
+  // `join` frem for `dele[0]`: et indeks-opslag er `| undefined` under
+  // noUncheckedIndexedAccess, og tomt/enkelt led skal bare igennem.
+  if (dele.length <= 1) return dele.join('')
+  return `${dele.slice(0, -1).join(', ')} og ${dele[dele.length - 1]}`
+}
+
+/**
+ * Turens hoved, fortalt. Bjørn 23/9-2026: «hvordan forslår du punkt 5 skal
+ * se ud?»
+ *
+ * `turHoved` tæller — «Thought for 90s · 9 tool calls». Det er sandt og
+ * intetsigende: ni kald kan være ni filer læst eller ni kommandoer kørt, og
+ * de to betyder vidt forskellige ting at læse. Her får arbejdet et sprog.
+ *
+ * Meningen kommer først, sekundet sidst — sekunderne bliver stående, fordi
+ * de er det ene tal Bjørn selv bad om at få vist (22/9-2026).
+ */
+export function turFortalt(
+  familier: readonly string[], kald: number, sekunder: number,
+): string {
+  const antal = new Map<string, number>()
+  for (const f of familier) antal.set(f, (antal.get(f) ?? 0) + 1)
+
+  // Største gruppe først — den er det man husker turen for. Map bevarer
+  // indsættelsesrækkefølgen, og sort er stabil, så lige store grupper
+  // beholder den rækkefølge de blev brugt i.
+  const sorteret = [...antal.entries()].sort((a, b) => b[1] - a[1])
+  const dele = sorteret.slice(0, MAKS_LED).map(([f, n]) => (FRASER[f] ?? FALD)(n))
+  if (sorteret.length > MAKS_LED) dele.push('mere')
+
+  // Uden værktøjer er der kun tanken tilbage, og den har kun et tal.
+  if (dele.length === 0) return turHoved(kald, sekunder)
+
+  const saetning = led(dele)
+  const stort = saetning.charAt(0).toUpperCase() + saetning.slice(1)
+  return sekunder > 0 ? `${stort} · ${sekunder}s` : stort
 }

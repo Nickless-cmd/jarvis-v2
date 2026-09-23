@@ -25,7 +25,7 @@ import { memo, useState } from 'react'
 import { Sparkles, Sparkle, ChevronDown, Check, Loader, type LucideIcon } from 'lucide-react'
 import type { ContentBlock } from '../../lib/sseProtocol'
 import type { ApiConfig } from '../../lib/api'
-import { opdel, opdelArbejdsrunder, turHoved, type ArbejdsElement } from '../../lib/raekkeModel'
+import { opdel, opdelArbejdsrunder, turFortalt, type ArbejdsElement } from '../../lib/raekkeModel'
 import { lookupTool } from '../../lib/toolRegistry'
 import { describeTool, egenBeskrivelse, subjectFromInput, summarizeRound, summerDiff } from '../../lib/toolRound'
 import { diffFraResultat, diffStat } from '../../lib/diffStat'
@@ -240,6 +240,11 @@ function RaekkeTranskriptImpl({
 }) {
   const { arbejde, svar, kald, sekunder } = opdel(blocks)
   const sektioner = opdelArbejdsrunder(arbejde)
+  // Familien pr. kald — SAMME kilde som kroppene (`postFor`), så turens
+  // hoved og rækkerne aldrig kan fortælle to forskellige historier.
+  const familier = arbejde.flatMap((e) =>
+    e.slags === 'blok' && e.blok.type === 'tool_use' ? [postFor(e.blok.name).familie] : [],
+  )
   const etiketter = { ...etiketterFraBlokke(blocks), ...(rundeEtiketter ?? {}) }
   // Aaben mens der arbejdes, lukket naar turen er slut — man skal kunne
   // FOELGE MED, og bagefter skal rodet vaek (Bjoern 22/9-2026).
@@ -260,7 +265,7 @@ function RaekkeTranskriptImpl({
                 en ny. Kun mens der faktisk arbejdes. */}
             {streaming && aabenManuelt === null
               ? <span className="shimmer">Working…</span>
-              : <span>{turHoved(kald, sekunder)}</span>}
+              : <span>{turFortalt(familier, kald, sekunder)}</span>}
           </button>
           <div className="rv-gruppe" hidden={!aaben}>
             {sektioner.map((s, i) => {

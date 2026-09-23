@@ -144,6 +144,55 @@ describe('rækkevisningens værktøjskroppe', () => {
     expect(container.textContent).not.toContain('"summary"')
   })
 
+  it('finder listen uanset hvilken nøgle den er pakket i', () => {
+    // Målt 23/9-2026: grenen ledte kun efter `matches`, så disse faldt til den
+    // generiske feltliste — listen FANDTES, den lå bare bag en nøgle grenen
+    // ikke kendte. `process_list` bruger `processes`, wakeups bruger `wakeups`.
+    const p = vis('process_list', {},
+      JSON.stringify({ count: 1, processes: [{ name: 'watchdog', pid: 42, status: 'running' }] }))
+    expect(p.container.querySelector('.rv-liste')).toBeInTheDocument()
+    expect(p.container.querySelector('.rv-felter')).not.toBeInTheDocument()
+    expect(p.container.textContent).toContain('watchdog')
+
+    const w = vis('list_self_wakeups', {},
+      JSON.stringify({ status: 'ok', wakeups: [{ prompt: 'tjek CI', status: 'pending' }] }))
+    expect(w.container.querySelector('.rv-liste')).toBeInTheDocument()
+    expect(w.container.textContent).toContain('tjek CI')
+  })
+
+  it('graver ét niveau ned efter listen (central_query.data.items)', () => {
+    // `central_query` pakker sin liste i `data.items` — dobbelt indpakket.
+    const { container } = vis('central_query', { action: 'incidents' },
+      JSON.stringify({ action: 'incidents', data: { items: [{ id: 7, kind: 'fan5' }] } }))
+    expect(container.querySelector('.rv-liste')).toBeInTheDocument()
+    expect(container.textContent).toContain('fan5')
+  })
+
+  it('viser en tekststreng med linjer som en liste', () => {
+    // `git_log`/`git_status`/`git_diff` sender én streng med linjer, ikke et
+    // array. Formen er en liste; værdien er tekst.
+    const log = vis('git_log', {},
+      JSON.stringify({ status: 'ok', log: 'abc123 fix(desk): x\ndef456 chore: y', n: 2 }))
+    expect(log.container.querySelector('.rv-liste')).toBeInTheDocument()
+    expect(log.container.textContent).toContain('abc123 fix(desk): x')
+    expect(log.container.textContent).toContain('def456 chore: y')
+    expect(log.container.querySelector('.rv-felter')).not.toBeInTheDocument()
+
+    const st = vis('git_status', {},
+      JSON.stringify({ status: 'ok', branch: 'main', changes: ' M a.ts\n?? b.ts' }))
+    expect(st.container.querySelector('.rv-liste')).toBeInTheDocument()
+    expect(st.container.textContent).toContain('M a.ts')
+  })
+
+  it('gør ikke en enkelt-linjes streng til en liste', () => {
+    // Grænsen: én linje er et svar, ikke en liste. Ellers blev `{summary:"ok"}`
+    // til en liste med ét punkt.
+    const { container } = vis('git_status', {},
+      JSON.stringify({ status: 'ok', branch: 'main', changes: '(clean)' }))
+    expect(container.querySelector('.rv-liste')).not.toBeInTheDocument()
+    expect(container.querySelector('.rv-felter')).toBeInTheDocument()
+  })
+
   it('viser spørgsmål og billedmetadata uden IN/OUT-kort', () => {
     const ask = vis('pause_and_ask', { question: 'Fortsæt?' }, 'Ja')
     expect(ask.container.querySelector('.rv-sp')).toBeInTheDocument()
@@ -261,7 +310,9 @@ describe('rækkevisningens værktøjskroppe', () => {
       'operator_run_in_background', 'operator_bash_output', 'phone_adb_shell',
       'search', 'search_memory', 'search_sessions', 'search_jarvis_brain',
       'semantic_search_code', 'load_more_tools', 'recall', 'recall_memories',
-      'git_log', 'eventbus_recent', 'list_agents', 'list_self_wakeups',
+      'git_log', 'git_status', 'git_diff', 'git_branch', 'eventbus_recent',
+      'list_agents', 'list_self_wakeups', 'process_list', 'process_tail',
+      'tail_log', 'central_query',
       'memory_upsert_section', 'send_telegram_message', 'notify_user',
       'operator_multi_edit', 'pause_and_ask', 'web_scrape', 'operator_webfetch',
       'operator_screenshot', 'look_around', 'read_visual_memory',

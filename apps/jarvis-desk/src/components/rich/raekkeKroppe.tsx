@@ -100,6 +100,16 @@ const KENDTE: Record<string, Post> = {
   recall_memories: { etiket: 'Search', familie: 'liste' },
   smart_outline: { etiket: 'List', familie: 'liste' },
   git_log: { etiket: 'List', familie: 'liste' },
+  // Git- og proces-værktøjerne sender LISTER — `{changes}`, `{diff}`,
+  // `{branches}`, `{processes}`, `{wakeups}`. De faldt til den generiske
+  // feltliste fordi de ikke stod her (målt 23/9-2026).
+  git_status: { etiket: 'List', familie: 'liste' },
+  git_diff: { etiket: 'List', familie: 'liste' },
+  git_branch: { etiket: 'List', familie: 'liste' },
+  process_list: { etiket: 'List', familie: 'liste' },
+  process_tail: { etiket: 'List', familie: 'liste' },
+  tail_log: { etiket: 'List', familie: 'liste' },
+  central_query: { etiket: 'List', familie: 'liste' },
   read_chronicles: { etiket: 'List', familie: 'liste' },
   read_memory_topic: { etiket: 'List', familie: 'liste' },
   eventbus_recent: { etiket: 'List', familie: 'liste' },
@@ -543,6 +553,62 @@ function oversigt(v: unknown, fallback: string): ReactNode {
   )}</dl>
 }
 
+/** Den første liste i et resultat — uanset hvilken nøgle den er pakket i.
+ *
+ * Målt 23/9-2026: `liste`-grenen ledte kun efter `matches`, så `process_list`
+ * (`{processes}`), `list_self_wakeups` (`{wakeups}`) og `central_query`
+ * (`{data:{items}}`) faldt alle til den generiske feltliste. Listen FANDTES —
+ * grenen kunne bare ikke se den, fordi den lå bag en nøgle den ikke kendte.
+ *
+ * Ét niveau ned dækker `data`-indpakningen. Vi graver ikke dybere: et vilkårligt
+ * dybt gennemsyn ville gøre enhver struktur til en liste. */
+function foersteListe(v: unknown): unknown[] | null {
+  if (Array.isArray(v)) return v.length ? v : null
+  if (!objekt(v)) return null
+  for (const felt of Object.values(v)) if (Array.isArray(felt) && felt.length) return felt
+  for (const felt of Object.values(v)) {
+    if (!objekt(felt)) continue
+    for (const indre of Object.values(felt)) if (Array.isArray(indre) && indre.length) return indre
+  }
+  return null
+}
+
+/** En streng der ER en liste — én linje pr. element.
+ *
+ * `git_log` (`{log}`), `git_status` (`{changes}`) og `git_diff` (`{diff}`)
+ * sender én streng med linjer, ikke et array. Formen er en liste; værdien er
+ * tekst. Kræver mindst to linjer, så et enkelt svar (`{summary: "ok"}`) ikke
+ * bliver en liste med ét punkt. */
+function tekstLinjer(v: unknown): string[] | null {
+  if (!objekt(v)) return null
+  for (const [k, felt] of Object.entries(v)) {
+    if (k === 'status' || typeof felt !== 'string') continue
+    const linjer = felt.split('\n').map((s) => s.trimEnd()).filter((s) => s.trim() !== '')
+    if (linjer.length > 1) return linjer
+  }
+  return null
+}
+
+/** Én linje for et listepunkt — de kendte felter først, ellers en kompakt
+ * nøgle/værdi-sammenfatning.
+ *
+ * Målt 23/9-2026: faldt til `'Result'` for alt hvad der ikke bar
+ * `text/name/summary/title/path`. `list_self_wakeups` bærer `prompt` og
+ * `central_query` bærer `id`/`kind` — begge stod som «Result», altså en liste
+ * der ikke viste noget. Et punkt uden genkendte felter skal vise SINE felter,
+ * ikke et ord. */
+function listeTekst(p: unknown): string {
+  if (!objekt(p)) return visTekst(p)
+  const kendt = streng(p.text) || streng(p.name) || streng(p.summary) || streng(p.title)
+    || streng(p.prompt) || streng(p.content) || streng(p.path) || streng(p.value)
+  if (kendt) return kendt
+  const par = Object.entries(p)
+    .filter(([k, felt]) => k !== 'status' && !Array.isArray(felt) && !objekt(felt))
+    .slice(0, 4)
+    .map(([k, felt]) => `${k}=${visTekst(felt)}`)
+  return par.join(' · ') || visTekst(p)
+}
+
 export function Liste({ raekker }: { raekker: { p?: string; v: string }[] }) {
   return (
     <div className="rv-kort rv-liste">
@@ -780,10 +846,14 @@ export function kropFor(
     return <Resultat tekst={bytes || oversigt(værdi, 'Pending')} ind={ind} ud={result || ''} />
   }
   if (familie === 'liste') {
-    const poster = Array.isArray(værdi) ? værdi : objekt(værdi) && Array.isArray(værdi.matches) ? værdi.matches : null
+    const poster = foersteListe(værdi)
     if (poster) return <Liste raekker={poster.map((p) => objekt(p)
-      ? { p: `${streng(p.file) || streng(p.path)}${typeof p.line === 'number' ? `:${p.line}` : ''}`, v: streng(p.text) || streng(p.name) || streng(p.summary) || streng(p.title) || streng(p.path) || 'Result' }
+      ? { p: `${streng(p.file) || streng(p.path)}${typeof p.line === 'number' ? `:${p.line}` : ''}`, v: listeTekst(p) }
       : { v: visTekst(p) })} />
+    // Tekst der ER en liste: `git log`, `git status --short` og `git diff`
+    // sender én streng med linjer. Uden dette faldt de til feltlisten.
+    const linjer = tekstLinjer(værdi)
+    if (linjer) return <Liste raekker={linjer.map((v) => ({ v }))} />
     return <Resultat tekst={oversigt(værdi, 'No matches')} ind={ind} ud={result || ''} />
   }
   if (familie === 'web') {

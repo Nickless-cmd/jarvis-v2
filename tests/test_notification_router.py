@@ -316,19 +316,118 @@ def test_fejlende_feed_skrivning_stopper_ikke_pushet(isolated_runtime, monkeypat
 def test_genudsendt_fra_stille_koe_dobler_ikke_feed_raekken(isolated_runtime, monkeypatch) -> None:
     """En notifikation der lægges i quiet-hours-køen er allerede født i
     feeden ved kø-tidspunktet — den udsatte genudsendelse (_skip_quiet=True,
-    fra fire_due_delayed) må ikke lægge en ny."""
+    fra fire_due_delayed) må ikke lægge en ny.
+
+    23/9-2026: kaldet sker nu PÅ rækkens eget tidspunkt. Før ramte "12:00"
+    også en række der ventede til 23:59; med deliver_after-værnet skal testen
+    ramme det tidspunkt hvor genudsendelsen faktisk sker — ellers beviser den
+    intet (den passede før fordi rækken aldrig fyrede)."""
     from core.services import notifikationer as lager
 
     monkeypatch.setattr(nr, "_deliver_to_channel", lambda *a, **k: True)
-    nr.set_preferences("bjorn", **{"quiet_start": "00:00", "quiet_end": "23:59"})
+    nr.set_preferences("bjorn", **{"quiet_start": "00:00", "quiet_end": "12:00"})
 
     res = nr.route_proactive_notification("bjorn", "reach_out", {"body": "hej"}, importance="normal")
     assert res["channel"] == "queued"
     assert len(lager.aabne("bjorn", er_owner=True)) == 1
 
     monkeypatch.setattr(nr, "is_quiet_hours", lambda *a, **k: False)
-    nr.fire_due_delayed("12:00")
+    udfald = nr.fire_due_delayed("12:00")
+    assert udfald["leveret"] == 1, "genudsendelsen skulle være sket — ellers beviser testen intet"
     assert len(lager.aabne("bjorn", er_owner=True)) == 1
+
+
+# ── Quiet-hours-køen TØMMES (23/9-2026) ──────────────────────────────────────
+# Funktionen havde nul kaldere uden for tests; alt der ramte quiet hours blev
+# spist i stilhed (1.542 rækker, 0 leveret, ældste 2. juli). Nu kaldes den fra
+# heartbeat-poll'en. En kø der har stået i månedsvis må ikke tømmes naivt, så
+# tømningen har tre værn — hvert sit test herunder.
+def _indsaet_koe(uid: str, ntype: str, body: str, *, timer_gammel: float = 0.0,
+                 deliver_after: str = "07:00") -> None:
+    """Læg en række direkte i køen med en valgt alder."""
+    import json
+    from datetime import datetime, timedelta, timezone
+    from core.runtime.db import connect
+
+    created = (datetime.now(timezone.utc) - timedelta(hours=timer_gammel)).strftime(
+        "%Y-%m-%dT%H:%M:%SZ")
+    with connect() as conn:
+        conn.execute(
+            "INSERT INTO delayed_notifications "
+            "(user_id, notif_type, payload_json, importance, deliver_after, created_at, delivered) "
+            "VALUES (?,?,?,?,?,?,0)",
+            (uid, ntype, json.dumps({"body": body}), "normal", deliver_after, created),
+        )
+
+
+def _kasseret() -> int:
+    """Antal rækker der er markeret forældet (delivered = 2)."""
+    from core.runtime.db import connect
+    with connect() as conn:
+        return conn.execute(
+            "SELECT COUNT(*) FROM delayed_notifications WHERE delivered = 2").fetchone()[0]
+
+
+def test_foraeldet_raekke_kasseres_frem_for_at_fyre(isolated_runtime, monkeypatch) -> None:
+    """En række over sin levetid er ikke 'forsinket', den er forældet — en
+    'brute_force BLOKERET af pfSense' fra juli er ikke en nyhed i september."""
+    monkeypatch.setattr(nr, "_deliver_to_channel", lambda *a, **k: True)
+    monkeypatch.setattr(nr, "is_quiet_hours", lambda *a, **k: False)
+
+    _indsaet_koe("bjorn", "infra_security", "gammel", timer_gammel=48)
+    _indsaet_koe("bjorn", "infra_security", "frisk", timer_gammel=1)
+
+    udfald = nr.fire_due_delayed("12:00")
+
+    assert udfald["foraeldet"] == 1
+    assert udfald["leveret"] == 1
+    assert _kasseret() == 1
+
+
+def test_approval_har_kortere_levetid_end_andre(isolated_runtime, monkeypatch) -> None:
+    """Et godkendelses-kort der ikke blev set mens handlingen skete, kan ikke
+    besvares bagefter — derfor 2t, ikke de 24t andre slags får."""
+    monkeypatch.setattr(nr, "_deliver_to_channel", lambda *a, **k: True)
+    monkeypatch.setattr(nr, "is_quiet_hours", lambda *a, **k: False)
+
+    _indsaet_koe("bjorn", "approval", "gammel godkendelse", timer_gammel=3)
+    _indsaet_koe("bjorn", "infra_security", "samme alder", timer_gammel=3)
+
+    udfald = nr.fire_due_delayed("12:00")
+
+    assert udfald["foraeldet"] == 1  # approval: 3t > 2t
+    assert udfald["leveret"] == 1    # infra_security: 3t < 24t
+
+
+def test_koeen_toemmes_i_batch_ikke_som_byge(isolated_runtime, monkeypatch) -> None:
+    """En ophobning må ikke lande på én gang — højst _MAX_PR_RUN pr. kald,
+    ældste først, så resten kommer i de næste poll."""
+    monkeypatch.setattr(nr, "_deliver_to_channel", lambda *a, **k: True)
+    monkeypatch.setattr(nr, "is_quiet_hours", lambda *a, **k: False)
+
+    for i in range(8):
+        _indsaet_koe("bjorn", "reach_out", f"nr{i}", timer_gammel=1)
+
+    første = nr.fire_due_delayed("12:00")
+    assert første["leveret"] == nr._MAX_PR_RUN
+    assert første["tilbage"] == 8 - nr._MAX_PR_RUN
+
+    anden = nr.fire_due_delayed("12:00")
+    assert anden["leveret"] == 3
+
+
+def test_raekke_fyrer_ikke_foer_sit_eget_tidspunkt(isolated_runtime, monkeypatch) -> None:
+    """En række venter til sin EGEN deliver_after, ikke til quiet hours er
+    ovre — de to kan falde sammen, men er ikke det samme løfte."""
+    monkeypatch.setattr(nr, "_deliver_to_channel", lambda *a, **k: True)
+    monkeypatch.setattr(nr, "is_quiet_hours", lambda *a, **k: False)
+
+    _indsaet_koe("bjorn", "reach_out", "venter", timer_gammel=1, deliver_after="07:00")
+
+    for tid in ("06:00", "06:59"):
+        assert nr.fire_due_delayed(tid)["leveret"] == 0, f"fyrede for tidligt ved {tid}"
+
+    assert nr.fire_due_delayed("07:00")["leveret"] == 1
 
 
 def test_titel_og_tekst_oversaetter_alle_payload_former(isolated_runtime, monkeypatch) -> None:

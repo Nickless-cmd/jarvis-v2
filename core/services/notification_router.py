@@ -121,17 +121,70 @@ def _enqueue_delayed(user_id: str, ntype: str, payload: dict, importance: str, d
         )
 
 
-def fire_due_delayed(now_hm: str | None = None) -> int:
-    """Lever forfaldne udskudte notifikationer (kaldes af scheduler). Returnerer antal."""
+# Hvor længe en udskudt notifikation er værd at levere. Alt ældre er ikke
+# "forsinket", det er forældet: en "brute_force BLOKERET af pfSense" fra juli
+# er ikke en nyhed i september, og et godkendelses-kort der ikke blev set mens
+# handlingen skete, kan ikke besvares bagefter. Målt 23/9-2026: 1.542 rækker,
+# 0 leveret, ældste 2. juli — hele køen var forældet gæld, og uden denne
+# grænse ville den FØRSTE tømning fyre dem alle på én gang.
+_LEVETID_TIMER: dict[str, int] = {"approval": 2}
+_LEVETID_TIMER_DEFAULT = 24
+
+# Batch: hvor mange der maksimalt leveres pr. kald. Heartbeat-poll'en kører
+# hvert ~30s, så 5/kald tømmer ~600/time — rigeligt til normal drift — uden at
+# en ophobning rammer Bjørn som én byge.
+_MAX_PR_RUN = 5
+
+
+def _alder_timer(created_at: str | None, nu: datetime) -> float | None:
+    """Timer siden rækken blev lagt i kø. None hvis tidspunktet er ulæseligt —
+    så behandler vi den som frisk (lever den) frem for at kassere noget vi ikke
+    kan bedømme."""
+    if not created_at:
+        return None
+    try:
+        t = datetime.strptime(str(created_at), "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+    except ValueError:  # ulaeseligt tidsstempel → "frisk" (se docstring); intet at logge, intet gik tabt
+        return None
+    return (nu - t).total_seconds() / 3600.0
+
+
+def fire_due_delayed(now_hm: str | None = None, *, max_per_run: int = _MAX_PR_RUN) -> dict:
+    """Lever forfaldne udskudte notifikationer (kaldes af heartbeat-poll'en).
+
+    Returnerer {"leveret": n, "foraeldet": n, "tilbage": n}.
+
+    23/9-2026: funktionen havde NUL kaldere uden for tests, så alt der ramte
+    quiet hours blev spist i stilhed (1.542 rækker, 0 leveret). Den er nu
+    hooket i `poll_heartbeat_schedule`. Tre værn følger med, fordi en kø der
+    har stået i månedsvis ikke må tømmes naivt:
+
+    - **Forældelse**: rækker over deres levetid (`_LEVETID_TIMER`, 24t —
+      `approval` kun 2t) markeres `delivered = 2` ("forældet, bevidst ikke
+      leveret") i stedet for at fyre. 1 = leveret, 0 = venter; ingen anden
+      læser rører 2-tallet.
+    - **Batch** (`max_per_run`): højst så mange pr. kald, ældste først, så en
+      ophobning ikke lander som én byge.
+    - **Eget tidspunkt**: en række fyrer ikke før sin egen `deliver_after`.
+    """
     now = now_hm or datetime.now().strftime("%H:%M")
-    fired = 0
+    nu_dt = datetime.now(timezone.utc)
+    leveret = 0
+    foraeldede_ids: list[int] = []
     with connect() as conn:
         rows = conn.execute(
-            "SELECT id, user_id, notif_type, payload_json, importance FROM delayed_notifications "
-            "WHERE delivered = 0",
+            "SELECT id, user_id, notif_type, payload_json, importance, deliver_after, created_at "
+            "FROM delayed_notifications WHERE delivered = 0 ORDER BY id ASC",
         ).fetchall()
-    for rid, uid, ntype, pj, imp in rows:
-        # Quiet hours er overstået når now >= deliver_after ELLER vi er ude af vinduet.
+    tilbage = len(rows)
+    for rid, uid, ntype, pj, imp, deliver_after, created_at in rows:
+        if leveret >= max_per_run:
+            break
+        if (_alder_timer(created_at, nu_dt) or 0.0) > _LEVETID_TIMER.get(
+                str(ntype), _LEVETID_TIMER_DEFAULT):
+            foraeldede_ids.append(rid)
+            tilbage -= 1
+            continue
         try:
             payload = json.loads(pj)
         except Exception:
@@ -139,14 +192,25 @@ def fire_due_delayed(now_hm: str | None = None) -> int:
         prefs = get_preferences(uid)
         if is_quiet_hours(prefs, now):
             continue  # stadig stille — vent
+        if deliver_after and now < str(deliver_after):
+            continue  # rækkens eget tidspunkt ikke nået endnu
         if str(ntype).startswith("msg:"):
             deliver_message(uid, payload.get("body") or "", ntype[4:], importance=imp)
         else:
             route_proactive_notification(uid, ntype, payload, importance=imp, _skip_quiet=True)
         with connect() as conn:
             conn.execute("UPDATE delayed_notifications SET delivered = 1 WHERE id = ?", (rid,))
-        fired += 1
-    return fired
+        leveret += 1
+        tilbage -= 1
+    # Forældelsen skrives i ÉT hug: en kø der har stået i månedsvis kan rumme
+    # tusindvis af rækker (målt 23/9: 1.539), og én forbindelse pr. række i en
+    # heartbeat-poll der kører hvert 30s er spild. Værdien 2 = "forældet,
+    # bevidst ikke leveret" (1 = leveret, 0 = venter).
+    if foraeldede_ids:
+        with connect() as conn:
+            conn.executemany("UPDATE delayed_notifications SET delivered = 2 WHERE id = ?",
+                             [(rid,) for rid in foraeldede_ids])
+    return {"leveret": leveret, "foraeldet": len(foraeldede_ids), "tilbage": tilbage}
 
 
 # ── Levering (mekanik — delegerer til eksisterende primitiver) ─────────────────

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7933/15378 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7934/15379 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 7933/15378 functions/methods documented (51%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 686 | 1265 | 54% |
-| `core.services` | 5239 | 10458 | 50% |
+| `core.services` | 5240 | 10459 | 50% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 107 | 183 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1140,10 +1140,10 @@ Generated from source. 7933/15378 functions/methods documented (51%). The list b
 - `core/services/habits_pipeline.py` :: `reject_suggestion` (L350)
 - `core/services/hardware_body.py` :: `build_hardware_body_surface` (L204)
 - `core/services/heartbeat_manage_runtime_work.py` :: `execute_manage_runtime_work` (L18)
-- `core/services/heartbeat_runtime.py` :: `heartbeat_runtime_surface` (L476)
-- `core/services/heartbeat_runtime.py` :: `load_heartbeat_policy` (L2273)
+- `core/services/heartbeat_runtime.py` :: `heartbeat_runtime_surface` (L487)
+- `core/services/heartbeat_runtime.py` :: `load_heartbeat_policy` (L2284)
 - `core/services/heartbeat_runtime.py` :: `poll_heartbeat_schedule` (L302)
-- `core/services/heartbeat_runtime.py` :: `run_heartbeat_tick` (L1202)
+- `core/services/heartbeat_runtime.py` :: `run_heartbeat_tick` (L1213)
 - `core/services/heartbeat_runtime.py` :: `stop_heartbeat_scheduler` (L272)
 - `core/services/heartbeat_scheduler.py` :: `stop` (L113)
 - `core/services/heartbeat_scheduler.py` :: `stop_event` (L64)
@@ -1309,7 +1309,7 @@ Generated from source. 7933/15378 functions/methods documented (51%). The list b
 - `core/services/notes_connector.py` :: `delete_note` (L114)
 - `core/services/notes_connector.py` :: `list_notes` (L96)
 - `core/services/notes_connector.py` :: `search_notes` (L105)
-- `core/services/notification_router.py` :: `reset_delivery` (L367)
+- `core/services/notification_router.py` :: `reset_delivery` (L431)
 - `core/services/notifikations_emittere.py` :: `paa_godkendelse` (L73)
 - `core/services/notifikations_emittere.py` :: `paa_koersel_faerdig` (L89)
 - `core/services/notifikations_emittere.py` :: `paa_koersel_fejlet` (L83)

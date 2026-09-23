@@ -314,6 +314,17 @@ def poll_heartbeat_schedule(*, name: str = "default") -> dict[str, object]:
     except Exception as _exc:
         _log_debug("periodic jobs check failed", error=str(_exc))
 
+    # 23/9-2026: quiet-hours-køen. `fire_due_delayed` havde NUL kaldere uden for
+    # tests — alt der ramte quiet hours blev spist i stilhed (målt: 1.542 rækker,
+    # 0 leveret, ældste 2. juli). Samme mønster som job-køen nedenfor: den blev
+    # bygget, men ingen tømte den. Tømningen er batchet og forældelses-værnet
+    # bor i funktionen selv (se notification_router.fire_due_delayed).
+    try:
+        from core.services.notification_router import fire_due_delayed
+        fire_due_delayed()
+    except Exception as _exc:
+        _log_debug("delayed notifications drain failed", error=str(_exc))
+
     # 2026-04-27: ALSO process the queue. Bug discovered: jobs were enqueued
     # but never run — run_next_job had no caller. Now drain up to 3 jobs per
     # poll so the queue doesn't grow unbounded. Each call is bounded by the

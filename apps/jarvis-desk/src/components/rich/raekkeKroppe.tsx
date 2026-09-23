@@ -22,6 +22,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { codeToHtml } from 'shiki'
 import { lookupTool, GAMLE_NAVNE } from '../../lib/toolRegistry'
 import { safeImageSrc } from '../../lib/sanitize'
+import { diffPar } from '../../lib/diffStat'
 import { hentAgentKald, agentIdFra, type AgentKald } from '../../lib/agentKald'
 import type { ApiConfig } from '../../lib/api'
 
@@ -185,6 +186,42 @@ function visTekst(v: unknown): string {
 
 function fejlTekst(ramme: Data | null, værdi: unknown): string {
   return streng(ramme?.error) || (objekt(værdi) ? streng(værdi.error) : '')
+}
+
+/** Første meningsfulde linje af en rå tekst — til fejl uden struktur.
+ *
+ * En afvist handling fra broen (fx read-guarden) er ren TEKST, ikke JSON.
+ * `fejlTekst` leder efter et `error`-felt og finder intet, så rækken stod med
+ * «The tool could not complete» — mens den faktiske besked, der forklarer
+ * HVORFOR kaldet blev afvist, lå ulæst inde i Raw data. Et JSON-dokument
+ * springes over: første linje ville bare være `{`, og det siger ingenting.
+ */
+function foersteLinje(tekst: string): string {
+  const linje = tekst.split('\n').map((s) => s.trim()).find(Boolean) || ''
+  if (linje.startsWith('{') || linje.startsWith('[')) return ''
+  return linje.length > 240 ? `${linje.slice(0, 240)}…` : linje
+}
+
+/** Er kaldet BEKRÆFTET af sit resultat?
+ *
+ * Gaten fandtes i forvejen, som `ramme?.status === 'ok'` — men den er for
+ * SMAL: `operator_multi_edit` og `operator_edit_file` sender ingen status i
+ * rammen. Deres bekræftelse ligger i selve resultatet: `replacements` er
+ * antallet af ANVENDTE udskiftninger, `linjer_tilfoejet` er serverens målte
+ * tal, `bytes_written` er filens nye størrelse. Alle tre findes først EFTER
+ * handlingen, så de beviser den.
+ *
+ * Uden en bekræftelse må vi ikke bygge en diff af argumenterne: så viste vi
+ * en ændring der ikke skete. Det er værre end et resumé, og det er hvad
+ * testen «opfinder ikke en anvendt diff ud fra argumenter ved ukendt
+ * resultat» vogter over.
+ */
+function bekræftet(ramme: Data | null, værdi: unknown): boolean {
+  if (streng(ramme?.status) === 'ok') return true
+  if (!objekt(værdi)) return false
+  return typeof værdi.replacements === 'number'
+    || typeof værdi.linjer_tilfoejet === 'number'
+    || typeof værdi.bytes_written === 'number'
 }
 
 /**
@@ -650,7 +687,8 @@ export function kropFor(
   const terminalMedOutput = familie === 'terminal' && objekt(værdi)
     && (typeof værdi.stdout === 'string' || typeof værdi.stderr === 'string') && !fejltekst
   if (!terminalMedOutput && (fejl || fejltekst || ['error', 'blocked', 'approval_needed', 'guard_blocked'].includes(streng(ramme?.status)))) {
-    return <Resultat tekst={fejltekst || streng(ramme?.message) || 'The tool could not complete'} ind={ind} ud={result || ''} />
+    const besked = fejltekst || streng(ramme?.message) || foersteLinje(ud)
+    return <Resultat tekst={besked || 'The tool could not complete'} ind={ind} ud={result || ''} />
   }
 
   if (familie === 'terminal') {
@@ -658,18 +696,31 @@ export function kropFor(
     return <Terminal cmd={cmd} ud={ud} exit={exitKode(result, fejl)} pending={live?.running} />
   }
   if (familie === 'diff') {
-    const oldText = streng(input.old_string) || streng(input.old_text)
-    const newText = streng(input.new_string) || streng(input.new_text)
     const preview = objekt(værdi) ? streng(værdi.diff_preview) : ''
-    // Operator-broen giver en reel diff_preview. Ellers kan vi vise det
-    // udskiftningspar brugeren bad om, men kun efter et succesfuldt kald.
-    const patch = preview || (ramme?.status === 'ok' && oldText ? `${oldText.split('\n').map((s) => '-' + s).join('\n')}\n${newText.split('\n').map((s) => '+' + s).join('\n')}` : '')
+    // Operator-broen giver en reel diff_preview. Ellers bygger vi den af
+    // kaldets EGNE par — samme kilde som `diffStat` regner «+N −M» af, så
+    // linjen og kroppen ikke kan vise to forskellige ting om samme kald.
+    //
+    // Før ledte vi kun efter `old_string`/`old_text` på TOPNIVEAU og krævede
+    // `ramme.status === 'ok'`. `multi_edit` bærer sine par i `edits[]`, og
+    // `operator_*` sender ingen status i rammen — så grenen faldt i gennem
+    // HVER gang og viste resultatets metadata (replacements, edits,
+    // strategies) i stedet for ændringen. Bjørn 23/9-2026: «det er jo ikk
+    // info jeg kan bruge til noget».
+    //
+    // Bekræftelsen er nu bredere (se `bekræftet`) — men den er der stadig.
+    const par = diffPar(navn, input)
+    const hunk = (p: { gammel: string; ny: string }) => [
+      ...(p.gammel ? p.gammel.split('\n').map((s) => '-' + s) : []),
+      ...(p.ny ? p.ny.split('\n').map((s) => '+' + s) : []),
+    ].join('\n')
+    const patch = preview || (par && bekræftet(ramme, værdi) ? par.map(hunk).join('\n\n') : '')
     if (!patch) return <Resultat tekst={oversigt(værdi, 'Edit pending')} ind={ind} ud={result || ''} />
     const linjer = patch.split('\n').filter((t) => !t.startsWith('--- ') && !t.startsWith('+++ ')).map((t) => ({
       k: t.startsWith('+') ? ('add' as const) : t.startsWith('-') ? ('del' as const) : ('ctx' as const),
       t: t.replace(/^[+-]/, ''),
     }))
-    return <Diff linjer={linjer} path={streng(input.path) || streng(input.file_path) || streng(input.target_path)} />
+    return <Diff linjer={linjer} path={streng(input.path) || streng(input.file_path) || streng(input.target_path) || streng(ramme?.path)} />
   }
   if (familie === 'fil') {
     const path = streng(input.path) || streng(input.file_path) || streng(ramme?.path)
@@ -679,10 +730,16 @@ export function kropFor(
     return harFiltekst ? <Fil path={path} tekst={tekst} /> : <Resultat tekst={oversigt(værdi, 'No file content')} ind={ind} ud={result || ''} />
   }
   if (familie === 'skriv') {
-    const path = streng(input.path) || streng(input.file_path)
-    const content = streng(input.content)
+    const path = streng(input.path) || streng(input.file_path) || streng(ramme?.path)
+    const content = streng(input.content) || streng(input.file_text)
     const bytes = objekt(værdi) && typeof værdi.bytes_written === 'number' ? `${værdi.bytes_written} bytes` : ''
-    if (content && ramme?.status === 'ok') return <Fil path={path} tekst={content} meta={bytes || 'Written'} />
+    // Samme smalle gate som diffen: `operator_write_file` sender ingen status
+    // i rammen, så `status === 'ok'` holdt aldrig og filens indhold blev
+    // aldrig vist — kun «1941 bytes» og rå metadata. `bekræftet` tager imod
+    // `bytes_written` som bevis i stedet. Kravet om en STI holder
+    // `publish_file` og `memory_upsert_section` ude: de bærer også `content`,
+    // men skriver ikke en fil, og deres rigtige form er feltlisten.
+    if (content && path && bekræftet(ramme, værdi)) return <Fil path={path} tekst={content} meta={bytes || 'Written'} />
     return <Resultat tekst={bytes || oversigt(værdi, 'Pending')} ind={ind} ud={result || ''} />
   }
   if (familie === 'liste') {

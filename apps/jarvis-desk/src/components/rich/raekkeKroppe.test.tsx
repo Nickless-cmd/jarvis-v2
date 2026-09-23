@@ -326,4 +326,48 @@ describe('rækkevisningens værktøjskroppe', () => {
     expect(container.querySelector('.rv-diff .shiki .line[data-k="del"]')).toBeInTheDocument()
     expect(container.querySelector('.rv-diff .shiki .line[data-k="add"]')).toBeInTheDocument()
   })
+
+  it('bygger redigeringens diff af multi_edit-parrene frem for at dumpe metadata', () => {
+    // Kroppen ledte efter `old_string` på topniveau og krævede desuden
+    // `status === 'ok'`. `operator_multi_edit` bærer parrene i `edits[]` og
+    // sender ingen status — så rækken viste `replacements`, `edits`, `path`
+    // og `strategies` i stedet for ændringen. Bjørn 23/9-2026: «det er jo ikk
+    // info jeg kan bruge til noget».
+    const { container } = vis('operator_multi_edit', {
+      path: '/srv/app.ts',
+      edits: [{ old_text: 'const a = 1', new_text: 'const a = 2' }],
+    }, JSON.stringify({ result: { replacements: 1, edits: 1, path: '/srv/app.ts', strategies: ['exact'] } }))
+    expect(container.querySelector('.rv-diff')).toBeInTheDocument()
+    expect(container.querySelector('[data-k="del"]')?.textContent).toContain('const a = 1')
+    expect(container.querySelector('[data-k="add"]')?.textContent).toContain('const a = 2')
+    // Faldbacken ville tegne `.rv-resultat` med feltlisten i stedet.
+    expect(container.querySelector('.rv-resultat')).not.toBeInTheDocument()
+  })
+
+  it('viser den faktiske besked når et kald afvises uden struktur', () => {
+    // Read-guarden svarer med ren tekst, ikke JSON. `fejlTekst` leder efter et
+    // `error`-felt og fandt intet, så rækken stod med «The tool could not
+    // complete» — mens forklaringen lå ulæst inde i Raw data.
+    const { container } = vis('operator_edit_file', { path: '/srv/app.ts', old_text: 'a', new_text: 'b' },
+      '⚠️ READ-BEFORE-WRITE GUARD (operator): /srv/app.ts skal læses først i denne session.', true)
+    const hoved = container.querySelector('.rv-resultatH')
+    expect(hoved?.textContent).toContain('READ-BEFORE-WRITE GUARD')
+    expect(hoved?.textContent).not.toContain('The tool could not complete')
+  })
+
+  it('viser filens indhold når den er skrevet, også uden status i resultatet', () => {
+    const { container } = vis('operator_write_file', { path: '/srv/notes.md', content: '# Noter\n- et punkt' },
+      JSON.stringify({ result: { bytes_written: 17, path: '/srv/notes.md' } }))
+    expect(container.querySelector('.rv-fil')).toBeInTheDocument()
+    expect(container.textContent).toContain('et punkt')
+  })
+
+  it('lader publish_file og memory_upsert_section beholde deres feltliste', () => {
+    // De bærer også `content`, men skriver ikke en fil. Uden sti-kravet ville
+    // deres tekst blive dumpet som et filkort.
+    const a = vis('publish_file', { filename: 'x.csv', content: 'a,b' }, JSON.stringify({ url: 'http://x' }))
+    expect(a.container.querySelector('.rv-fil')).not.toBeInTheDocument()
+    const b = vis('memory_upsert_section', { heading: 'H', content: 'tekst' }, JSON.stringify({ ok: true }))
+    expect(b.container.querySelector('.rv-fil')).not.toBeInTheDocument()
+  })
 })

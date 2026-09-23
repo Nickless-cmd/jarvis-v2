@@ -26,21 +26,18 @@ export function diffStat(name: string, args: unknown): { add: number; del: numbe
   const n = (name || '').toLowerCase().replace(/^operator_/, '')
   const o = somArgumenter(args)
 
-  if (n === 'edit_file') return fraPar(o.old_text ?? o.old_string, o.new_text ?? o.new_string)
-
-  if (n === 'multi_edit') {
-    // `edits` eller `items` — begge former findes i værktøjsdefinitionerne.
-    const raa = Array.isArray(o.edits) ? o.edits : Array.isArray(o.items) ? o.items : null
-    if (!raa) return null
+  // Redigeringer tælles af PARRENE — samme funktion som kroppen bygger sin
+  // diff af. Regnede de to hver for sig, kunne linjen sige «+24 −12» mens
+  // kroppen viste noget andet om det samme kald.
+  const par = diffPar(name, args)
+  if (par) {
     let add = 0
     let del = 0
-    let nogen = false
-    for (const e of raa) {
-      const r = (e ?? {}) as Record<string, unknown>
-      const d = fraPar(r.old_text ?? r.old_string, r.new_text ?? r.new_string)
-      if (d) { add += d.add; del += d.del; nogen = true }
+    for (const p of par) {
+      add += p.ny ? linjer(p.ny) : 0
+      del += p.gammel ? linjer(p.gammel) : 0
     }
-    return nogen ? { add, del } : null
+    return { add, del }
   }
 
   if (n === 'write_file') {
@@ -76,11 +73,55 @@ function somArgumenter(input: unknown): Record<string, unknown> {
   return {}
 }
 
-function fraPar(gammel: unknown, ny: unknown): { add: number; del: number } | null {
+/**
+ * Parrene af gammel/ny tekst i et redigerende kald — den FÆLLES kilde for
+ * både «+N −M» i linjen og selve diffen i kroppen.
+ *
+ * ## Hvorfor den findes (Bjørn 23/9-2026)
+ *
+ * «det her er visning fra chatview når jeg åbner rækkerne... det er jo ikk
+ * info jeg kan bruge til noget». Kroppen i rækkevisningen ledte efter
+ * `old_string`/`old_text` på TOPNIVEAU af argumenterne, og krævede desuden
+ * `status === 'ok'` i resultatet. `multi_edit` bærer sine par i `edits[]`, og
+ * `operator_*`-værktøjerne sender slet ingen status — så grenen faldt i
+ * gennem HVER gang og viste resultatets metadata (`replacements`, `edits`,
+ * `path`, `strategies`) i stedet for ændringen.
+ *
+ * `null` når kaldet ikke er et redigerende kald, eller når parrene ikke er
+ * kommet ind endnu. Så tegner kroppen sit resumé frem for en tom diff.
+ */
+export function diffPar(name: string, args: unknown): { gammel: string; ny: string }[] | null {
+  const n = (name || '').toLowerCase().replace(/^operator_/, '')
+  const o = somArgumenter(args)
+
+  if (n === 'edit_file') {
+    const p = par(o.old_text ?? o.old_string, o.new_text ?? o.new_string)
+    return p ? [p] : null
+  }
+
+  if (n === 'multi_edit') {
+    // `edits` eller `items` — begge former findes i værktøjsdefinitionerne.
+    const raa = Array.isArray(o.edits) ? o.edits : Array.isArray(o.items) ? o.items : null
+    if (!raa) return null
+    const ud: { gammel: string; ny: string }[] = []
+    for (const e of raa) {
+      const r = (e ?? {}) as Record<string, unknown>
+      const p = par(r.old_text ?? r.old_string, r.new_text ?? r.new_string)
+      if (p) ud.push(p)
+    }
+    return ud.length ? ud : null
+  }
+
+  return null
+}
+
+/** Én side-par. `null` kun når BEGGE sider mangler — en indsættelse uden
+ * gammel tekst er et gyldigt par, og en sletning uden ny tekst er det også. */
+function par(gammel: unknown, ny: unknown): { gammel: string; ny: string } | null {
   const g = typeof gammel === 'string' ? gammel : null
   const n = typeof ny === 'string' ? ny : null
   if (g === null && n === null) return null
-  return { add: n ? linjer(n) : 0, del: g ? linjer(g) : 0 }
+  return { gammel: g ?? '', ny: n ?? '' }
 }
 
 /**

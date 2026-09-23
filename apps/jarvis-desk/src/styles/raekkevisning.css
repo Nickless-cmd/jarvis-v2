@@ -41,10 +41,20 @@
 }
 /* Ikonboks 16×16, glyf 14, margin-right 6 → indhold starter ved 22px. */
 .raekkevisning .rv-ikon {
+  position: relative;
   flex: none; width: 16px; height: 16px; margin-right: 6px;
   display: inline-flex; align-items: center; justify-content: center;
-  color: var(--fg-3); font-size: 14px; line-height: 1;
+  color: var(--fg-3);
 }
+/* Hover: ikonet falmer ud, chevronen ind — 100ms, ingen række-fill.
+   Samme affordance som forlægget (DisclosureRow.module.css:57-77). */
+.raekkevisning .rv-glyf { transition: opacity 100ms ease; }
+.raekkevisning .rv-hoverChev {
+  position: absolute; inset: 0; margin: auto;
+  opacity: 0; transition: opacity 100ms ease;
+}
+.raekkevisning .rv-r[data-foldbar]:hover .rv-glyf { opacity: 0; }
+.raekkevisning .rv-r[data-foldbar]:hover .rv-hoverChev { opacity: 1; }
 /* Målt: titel og sammenfatning er BEGGE 13px/24px vægt 400, ét gråtrin fra
    hinanden. Intet er fremhævet — det er dét der gør den rolig. */
 .raekkevisning .rv-slags {
@@ -148,9 +158,18 @@
   border: 1px solid var(--line); border-radius: var(--radius-md);
   background: var(--bg-2); overflow: hidden;
 }
+/* Maks-højder. Uden dem folder en `read_file` hele filen ud i rækken, og
+   transskriptet bliver ulæseligt — det er den mest mærkbare mangel i daglig
+   brug. Forlægget klipper terminalen ved 224px og ind/ud-kortet ved 150px,
+   begge med scroll i kortet selv, så RÆKKEN under stadig ligger hvor den skal. */
 .raekkevisning .rv-kort pre {
   margin: 0; padding: 9px 11px; font: 12px/1.65 var(--font-mono);
   color: var(--rv-tertiary); white-space: pre-wrap; word-break: break-word;
+  max-height: 224px; overflow: auto; overscroll-behavior: contain;
+}
+.raekkevisning .rv-v { max-height: 150px; overflow: auto; overscroll-behavior: contain; }
+.raekkevisning .rv-liste, .raekkevisning .rv-web, .raekkevisning .rv-sp {
+  max-height: 224px; overflow: auto; overscroll-behavior: contain;
 }
 /* Terminal. DSH's kilde skjuler «exit code 0» helt; Bjørn vil have den vist
    (22/9-2026), som i hans eget forlæg. Så koden står ALTID — men kun ikke-nul

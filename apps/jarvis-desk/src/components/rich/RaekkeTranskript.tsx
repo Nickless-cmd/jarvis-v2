@@ -23,6 +23,7 @@
  * billeder er nøjagtig som i bobblevisningen.
  */
 import { memo, useState } from 'react'
+import { Sparkles, Sparkle, ChevronDown, type LucideIcon } from 'lucide-react'
 import type { ContentBlock } from '../../lib/sseProtocol'
 import type { ApiConfig } from '../../lib/api'
 import { opdel, turHoved, type ArbejdsElement } from '../../lib/raekkeModel'
@@ -38,9 +39,9 @@ function foersteLinje(s: string): string {
 }
 
 function Raekke({
-  glyf, slags, sum, krop, koerer, fejl, tanke,
+  Ikon, slags, sum, krop, koerer, fejl, tanke,
 }: {
-  glyf: string
+  Ikon: LucideIcon
   slags: string
   sum: string
   krop?: React.ReactNode
@@ -67,7 +68,14 @@ function Raekke({
         : {})}
     >
       <div className="rv-hoved">
-        <span className="rv-ikon" aria-hidden="true">{glyf}</span>
+        {/* Rigtigt ikon pr. vaerktoej fra TOOL_REGISTRY — en `read_file` og en
+            `web_search` saa ens ud da alle raekker delte den samme tekst-glyf.
+            Paa hover falmer ikonet ud og en chevron ind over 100ms; ingen
+            raekke-fill, praecis som forlaegget (DisclosureRow.module.css:63). */}
+        <span className="rv-ikon" aria-hidden="true">
+          <Ikon className="rv-glyf" size={14} strokeWidth={1.75} />
+          <ChevronDown className="rv-hoverChev" size={14} strokeWidth={1.75} />
+        </span>
         <span className="rv-slags">{slags}</span>
         {sum ? (
           <>
@@ -96,7 +104,7 @@ function Element({ e, streaming }: { e: ArbejdsElement; streaming: boolean }) {
   if (b.type === 'thinking') {
     return (
       <Raekke
-        tanke glyf="✳" slags="Think"
+        tanke Ikon={Sparkles} slags="Think"
         sum={foersteLinje(b.thinking)}
         koerer={streaming && !b.seconds}
         krop={<div className="rv-kort"><pre>{b.thinking}</pre></div>}
@@ -104,7 +112,7 @@ function Element({ e, streaming }: { e: ArbejdsElement; streaming: boolean }) {
     )
   }
   if (b.type === 'skill_surface') {
-    return <Raekke glyf="◈" slags="Skill" sum={b.matches.map((m) => m.name).join(' · ')} />
+    return <Raekke Ikon={Sparkle} slags="Skill" sum={b.matches.map((m) => m.name).join(' · ')} />
   }
   if (b.type === 'tool_use') {
     const { etiket } = postFor(b.name)
@@ -118,7 +126,7 @@ function Element({ e, streaming }: { e: ArbejdsElement; streaming: boolean }) {
     const emne = subjectFromInput(b.input, b.partialJson) || meta.summarize(b.input, b.result)
     return (
       <Raekke
-        glyf="▸" slags={etiket}
+        Ikon={meta.Icon} slags={etiket}
         sum={emne}
         koerer={b.status === 'running'}
         fejl={fejl}

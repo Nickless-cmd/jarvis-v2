@@ -121,7 +121,10 @@ describe('RaekkeTranskript', () => {
       tekst('Rettet.'),
     ]
     const { container } = render(<RaekkeTranskript blocks={redigering} streaming />)
-    expect(container.querySelector('.rv-diffstat')?.textContent).toBe('+4 −2')
+    expect(container.querySelector('.rv-diffstat')?.textContent?.trim()).toBe('+4 −2')
+    // Farverne skal komme fra desks EGNE klasser, ikke fra nye.
+    expect(container.querySelector('.rv-diffstat .git-add')?.textContent).toBe('+4')
+    expect(container.querySelector('.rv-diffstat .git-del')?.textContent).toBe('−2')
   })
 
   it('bruger serverens målte tal frem for et gæt ud fra argumenterne', () => {
@@ -133,7 +136,7 @@ describe('RaekkeTranskript', () => {
       tekst('Skrevet.'),
     ]
     const { container } = render(<RaekkeTranskript blocks={medResultat} streaming />)
-    expect(container.querySelector('.rv-diffstat')?.textContent).toBe('+9 −4')
+    expect(container.querySelector('.rv-diffstat')?.textContent?.trim()).toBe('+9 −4')
   })
 
   it('tegner INTET diff-tal på læsende værktøjer', () => {

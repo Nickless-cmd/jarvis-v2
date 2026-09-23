@@ -150,7 +150,13 @@ function Element({ e, streaming }: { e: ArbejdsElement; streaming: boolean }) {
     // stilen fandtes, men ingen tegnede den (Bjoern 23/9-2026).
     const ds = diffFraResultat(b.result) ?? diffStat(b.name, b.input)
     const sum = ds
-      ? <>{emne} <span className="rv-diffstat">+{ds.add} −{ds.del}</span></>
+      ? <>{emne} <span className="rv-diffstat">
+          {/* `git-add`/`git-del` er desks egne, pinnet af tokens.test.ts og
+              brugt fem steder i forvejen (ToolCard, ToolGroupCard, ReviewPanel,
+              ArtifactsView). Vi laaner dem — raekkevisningen skal ikke have sin
+              egen groenne og roede. */}
+          <span className="git-add">+{ds.add}</span> <span className="git-del">−{ds.del}</span>
+        </span></>
       : emne
     return (
       <Raekke

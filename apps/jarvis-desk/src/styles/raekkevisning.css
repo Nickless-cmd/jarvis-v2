@@ -226,7 +226,11 @@
 }
 
 /* Målt: mono kun TO steder i rækkerne — diff-tallet og fejlkoden. */
-.raekkevisning .rv-diffstat { font: 11px var(--font-mono); color: var(--fg-3); }
+/* Kun stoerrelse og skrifttype her. FARVEN kommer fra `git-add`/`git-del`
+   inde i den — desks egne klasser, pinnet af tokens.test.ts. Sattes der en
+   `color` paa selve `.rv-diffstat`, ville den ikke overskrive boernenes,
+   men den ville goere det uklart hvem der bestemmer. */
+.raekkevisning .rv-diffstat { font: 11px var(--font-mono); }
 .raekkevisning .rv-fejlkode { font: 11px/16px var(--font-mono); color: var(--error-fg); }
 .raekkevisning .rv-tal { font-variant-numeric: tabular-nums; }
 

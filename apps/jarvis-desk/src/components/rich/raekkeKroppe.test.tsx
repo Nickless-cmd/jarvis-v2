@@ -190,8 +190,8 @@ describe('rækkevisningens værktøjskroppe', () => {
       'operator_run_in_background', 'operator_bash_output', 'phone_adb_shell',
       'search', 'search_memory', 'search_sessions', 'search_jarvis_brain',
       'semantic_search_code', 'load_more_tools', 'recall', 'recall_memories',
-      'explore', 'git_log', 'eventbus_recent', 'list_agents', 'list_self_wakeups',
-      'memory_upsert_section', 'send_telegram_message', 'notify',
+      'git_log', 'eventbus_recent', 'list_agents', 'list_self_wakeups',
+      'memory_upsert_section', 'send_telegram_message', 'notify_user',
       'operator_multi_edit', 'pause_and_ask', 'web_scrape', 'operator_webfetch',
       'operator_screenshot', 'look_around', 'read_visual_memory',
     ]

@@ -76,7 +76,6 @@ const KENDTE: Record<string, Post> = {
   remember_this: { etiket: 'Write', familie: 'skriv' },
   memory_upsert_section: { etiket: 'Write', familie: 'skriv' },
   send_telegram_message: { etiket: 'Write', familie: 'skriv' },
-  notify: { etiket: 'Write', familie: 'skriv' },
   notify_user: { etiket: 'Write', familie: 'skriv' },
   verify_file_contains: { etiket: 'Verify', familie: 'skriv' },
   // ── Redigering: diff ──────────────────────────────────────────────────
@@ -88,7 +87,6 @@ const KENDTE: Record<string, Post> = {
   operator_glob: { etiket: 'Glob', familie: 'liste' },
   operator_grep: { etiket: 'Grep', familie: 'liste' },
   operator_list_dir: { etiket: 'List', familie: 'liste' },
-  list_dir: { etiket: 'List', familie: 'liste' },
   search: { etiket: 'Search', familie: 'liste' },
   search_memory: { etiket: 'Search', familie: 'liste' },
   search_sessions: { etiket: 'Search', familie: 'liste' },
@@ -98,7 +96,6 @@ const KENDTE: Record<string, Post> = {
   load_more_tools: { etiket: 'Search', familie: 'liste' },
   recall: { etiket: 'Search', familie: 'liste' },
   recall_memories: { etiket: 'Search', familie: 'liste' },
-  explore: { etiket: 'Search', familie: 'liste' },
   smart_outline: { etiket: 'List', familie: 'liste' },
   git_log: { etiket: 'List', familie: 'liste' },
   read_chronicles: { etiket: 'List', familie: 'liste' },

@@ -33,11 +33,8 @@ export const TOOL_REGISTRY: Record<string, ToolMeta> = {
   operator_write_file: { label: 'Skriv fil', Icon: FilePlus, summarize: pathOf },
   edit_file: { label: 'Rediger fil', Icon: FilePen, summarize: pathOf },
   operator_edit_file: { label: 'Rediger fil', Icon: FilePen, summarize: pathOf },
-  glob: { label: 'Find filer', Icon: Search, summarize: (a) => firstStr(a, ['pattern', 'glob']) },
   operator_glob: { label: 'Find filer', Icon: Search, summarize: (a) => firstStr(a, ['pattern', 'glob']) },
-  grep: { label: 'Søg i kode', Icon: Search, summarize: (a) => firstStr(a, ['pattern', 'query']) },
   operator_grep: { label: 'Søg i kode', Icon: Search, summarize: (a) => firstStr(a, ['pattern', 'query']) },
-  list_dir: { label: 'List mappe', Icon: FolderTree, summarize: pathOf },
   operator_list_dir: { label: 'List mappe', Icon: FolderTree, summarize: pathOf },
   // Web + internt
   web_search: { label: 'Websøgning', Icon: Globe, summarize: (a) => firstStr(a, ['query', 'q']) },
@@ -56,11 +53,11 @@ export const TOOL_REGISTRY: Record<string, ToolMeta> = {
   // Kanaler / besked
   discord_channel: { label: 'Discord', Icon: MessageSquare, summarize: (a) => firstStr(a, ['action', 'query', 'channel']) },
   // Billede / medie
-  generate_image: { label: 'Generér billede', Icon: Image, summarize: (a) => firstStr(a, ['prompt']) },
+  openrouter_image: { label: 'Generér billede', Icon: Image, summarize: (a) => firstStr(a, ['prompt']) },
   // Tid / planlægning
   list_scheduled_tasks: { label: 'Planlagte opgaver', Icon: Calendar, summarize: () => '' },
   // Notifikation
-  notify: { label: 'Notifikation', Icon: Bell, summarize: (a) => firstStr(a, ['message', 'text']) },
+  notify_user: { label: 'Notifikation', Icon: Bell, summarize: (a) => firstStr(a, ['message', 'text']) },
   // Dispatch
   dispatch_to_claude_code: { label: 'Kode-dispatch', Icon: Cpu, summarize: (a) => firstStr(a, ['task', 'prompt', 'goal']) },
   dispatch_code_mode_task: { label: 'Kode-opgave', Icon: Cpu, summarize: (a) => firstStr(a, ['task', 'prompt', 'goal']) },

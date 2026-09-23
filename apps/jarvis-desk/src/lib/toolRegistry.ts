@@ -1,6 +1,8 @@
 import {
   Wrench, Terminal, FileText, FilePen, FilePlus, FolderTree, Search, Globe,
   Database, MessageSquare, Cpu, PanelRight, Image, Brain, Bell, Calendar,
+  Activity, Bot, ListChecks, AlarmClock, GitBranch, RotateCw, Monitor,
+  CloudSun, Home, Plug, FileCheck, Users,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -62,6 +64,65 @@ export const TOOL_REGISTRY: Record<string, ToolMeta> = {
   dispatch_to_claude_code: { label: 'Kode-dispatch', Icon: Cpu, summarize: (a) => firstStr(a, ['task', 'prompt', 'goal']) },
   dispatch_code_mode_task: { label: 'Kode-opgave', Icon: Cpu, summarize: (a) => firstStr(a, ['task', 'prompt', 'goal']) },
   read_model_config: { label: 'Model-konfig', Icon: Database, summarize: () => '' },
+  // Shell-sessioner
+  bash_session_run: { label: 'Terminal', Icon: Terminal, summarize: (a) => String(a.command ?? '') },
+  operator_bash_session_run: { label: 'Terminal', Icon: Terminal, summarize: (a) => String(a.command ?? '') },
+  bash_session_open: { label: 'Åbn shell', Icon: Terminal, summarize: () => '' },
+  operator_bash_session_open: { label: 'Åbn shell', Icon: Terminal, summarize: () => '' },
+  bash_session_close: { label: 'Luk shell', Icon: Terminal, summarize: () => '' },
+  operator_bash_output: { label: 'Shell-output', Icon: Terminal, summarize: () => '' },
+  operator_run_in_background: { label: 'Baggrundskørsel', Icon: Terminal, summarize: (a) => String(a.command ?? '') },
+  phone_adb_shell: { label: 'Telefon-shell', Icon: Terminal, summarize: (a) => String(a.command ?? '') },
+  // Søgning
+  search: { label: 'Søg i kode', Icon: Search, summarize: (a) => firstStr(a, ['pattern', 'query']) },
+  find_files: { label: 'Find filer', Icon: Search, summarize: (a) => firstStr(a, ['pattern', 'glob']) },
+  semantic_search_code: { label: 'Semantisk søgning', Icon: Search, summarize: (a) => firstStr(a, ['query', 'q']) },
+  search_sessions: { label: 'Søg i samtaler', Icon: Search, summarize: (a) => firstStr(a, ['query', 'q']) },
+  search_chat_history: { label: 'Søg i chat', Icon: Search, summarize: (a) => firstStr(a, ['query', 'q']) },
+  // Hukommelse
+  recall: { label: 'Husk', Icon: Brain, summarize: (a) => firstStr(a, ['query', 'q']) },
+  recall_memories: { label: 'Husk sanseindtryk', Icon: Brain, summarize: (a) => firstStr(a, ['query', 'q']) },
+  read_memory_topic: { label: 'Læs emne', Icon: Brain, summarize: (a) => firstStr(a, ['slug', 'topic', 'name']) },
+  read_chronicles: { label: 'Læs krønike', Icon: Brain, summarize: () => '' },
+  memory_upsert_section: { label: 'Skriv minde', Icon: Brain, summarize: (a) => firstStr(a, ['heading', 'title']) },
+  // Filer
+  verify_file_contains: { label: 'Verificér fil', Icon: FileCheck, summarize: pathOf },
+  publish_file: { label: 'Udgiv fil', Icon: FilePlus, summarize: (a) => firstStr(a, ['filename', 'name']) },
+  web_fetch: { label: 'Hent webside', Icon: Globe, summarize: (a) => firstStr(a, ['url']) },
+  // Status / system
+  central_query: { label: 'Centralen', Icon: Activity, summarize: (a) => firstStr(a, ['action', 'nerve']) },
+  db_query: { label: 'Database', Icon: Database, summarize: (a) => firstStr(a, ['sql', 'query']) },
+  daemon_status: { label: 'Dæmoner', Icon: Activity, summarize: () => '' },
+  read_self_state: { label: 'Egen tilstand', Icon: Activity, summarize: () => '' },
+  read_mood: { label: 'Stemning', Icon: Activity, summarize: () => '' },
+  heartbeat_status: { label: 'Hjerteslag', Icon: Activity, summarize: () => '' },
+  service_status: { label: 'Tjenester', Icon: Activity, summarize: () => '' },
+  list_signal_surfaces: { label: 'Signaler', Icon: Activity, summarize: () => '' },
+  eventbus_recent: { label: 'Hændelser', Icon: Activity, summarize: () => '' },
+  restart_self: { label: 'Genstart', Icon: RotateCw, summarize: () => '' },
+  get_weather: { label: 'Vejr', Icon: CloudSun, summarize: (a) => firstStr(a, ['city', 'location']) },
+  home_assistant: { label: 'Hjem', Icon: Home, summarize: (a) => firstStr(a, ['entity_id', 'action']) },
+  mcp: { label: 'MCP', Icon: Plug, summarize: (a) => firstStr(a, ['server', 'tool']) },
+  // Git
+  git_log: { label: 'Git-log', Icon: GitBranch, summarize: () => '' },
+  // Agenter / opgaver
+  spawn_agent_task: { label: 'Send agent', Icon: Bot, summarize: (a) => firstStr(a, ['task', 'prompt', 'goal']) },
+  list_agents: { label: 'Agenter', Icon: Bot, summarize: () => '' },
+  scout_agent: { label: 'Spejder', Icon: Bot, summarize: (a) => firstStr(a, ['query', 'question', 'task']) },
+  convene_council: { label: 'Råd', Icon: Users, summarize: (a) => firstStr(a, ['question', 'topic']) },
+  todo_set: { label: 'Opgaveliste', Icon: ListChecks, summarize: () => '' },
+  todo_update_status: { label: 'Opdater opgave', Icon: ListChecks, summarize: (a) => firstStr(a, ['todo_id', 'status']) },
+  schedule_self_wakeup: { label: 'Planlæg vækning', Icon: AlarmClock, summarize: (a) => firstStr(a, ['prompt', 'reason']) },
+  list_self_wakeups: { label: 'Vækninger', Icon: AlarmClock, summarize: () => '' },
+  mark_wakeup_consumed: { label: 'Kvittér vækning', Icon: AlarmClock, summarize: (a) => firstStr(a, ['wakeup_id']) },
+  // Operator-kanal
+  operator_channel: { label: 'Operatør-kanal', Icon: Monitor, summarize: (a) => String(a.action ?? '') },
+  operator_session_run: { label: 'Operatør-shell', Icon: Monitor, summarize: (a) => String(a.command ?? '') },
+  // Billede
+  analyze_image: { label: 'Analysér billede', Icon: Image, summarize: (a) => firstStr(a, ['image_path', 'image_url', 'prompt']) },
+  // Værktøjer
+  load_more_tools: { label: 'Flere værktøjer', Icon: Wrench, summarize: (a) => firstStr(a, ['query', 'names']) },
+  skill_gate: { label: 'Færdighed', Icon: Wrench, summarize: (a) => firstStr(a, ['skill', 'name']) },
 }
 
 const GENERIC_KEYS = ['query', 'q', 'command', 'path', 'file_path', 'pattern', 'text', 'url', 'name', 'topic', 'prompt', 'action']

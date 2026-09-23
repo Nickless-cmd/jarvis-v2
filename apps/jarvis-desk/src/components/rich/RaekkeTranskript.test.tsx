@@ -113,6 +113,36 @@ describe('RaekkeTranskript', () => {
     expect(container.textContent).toContain('chatview-run.html')
   })
 
+  it('viser +N −M på redigerende rækker', () => {
+    // Bjoern 23/9-2026: «i raekkerne mangler +xx -xx diff for edit linjer».
+    // `.rv-diffstat` fandtes som CSS, men ingen tegnede den — en doed klasse.
+    const redigering: ContentBlock[] = [
+      kald('edit_file', { path: 'app.css', old_text: 'a\nb', new_text: 'a\nb\nc\nd' }),
+      tekst('Rettet.'),
+    ]
+    const { container } = render(<RaekkeTranskript blocks={redigering} streaming />)
+    expect(container.querySelector('.rv-diffstat')?.textContent).toBe('+4 −2')
+  })
+
+  it('bruger serverens målte tal frem for et gæt ud fra argumenterne', () => {
+    // `write_file` kan klienten ikke regne slettede linjer for — den ved ikke
+    // om filen fandtes. Serveren har filen i haanden og maaler rigtigt.
+    const medResultat: ContentBlock[] = [
+      { type: 'tool_use', id: 'w1', name: 'write_file', input: { path: 'x.ts', content: 'en\nto' },
+        result: '{"linjer_tilfoejet": 9, "linjer_fjernet": 4}' },
+      tekst('Skrevet.'),
+    ]
+    const { container } = render(<RaekkeTranskript blocks={medResultat} streaming />)
+    expect(container.querySelector('.rv-diffstat')?.textContent).toBe('+9 −4')
+  })
+
+  it('tegner INTET diff-tal på læsende værktøjer', () => {
+    // «ingenting at vise» er en anden besked end «nul».
+    const laesning: ContentBlock[] = [kald('read_file', { path: 'x.ts' }), tekst('Læst.')]
+    const { container } = render(<RaekkeTranskript blocks={laesning} streaming />)
+    expect(container.querySelector('.rv-diffstat')).toBeNull()
+  })
+
   it('bruger engelske etiketter (Bjørn 22/9-2026)', () => {
     render(<RaekkeTranskript blocks={TUR} streaming />)
     expect(screen.getByText('Think')).toBeInTheDocument()

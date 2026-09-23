@@ -29,6 +29,7 @@ import type { ApiConfig } from '../../lib/api'
 import { opdel, turHoved, type ArbejdsElement } from '../../lib/raekkeModel'
 import { lookupTool } from '../../lib/toolRegistry'
 import { subjectFromInput } from '../../lib/toolRound'
+import { diffFraResultat, diffStat } from '../../lib/diffStat'
 import { postFor, kropFor } from './raekkeKroppe'
 import { BlocksRenderer } from './BlocksRenderer'
 
@@ -43,7 +44,7 @@ function Raekke({
 }: {
   Ikon: LucideIcon
   slags: string
-  sum: string
+  sum: React.ReactNode
   krop?: React.ReactNode
   koerer?: boolean
   fejl?: boolean
@@ -77,7 +78,7 @@ function Raekke({
           <ChevronDown className="rv-hoverChev" size={14} strokeWidth={1.75} />
         </span>
         <span className="rv-slags">{slags}</span>
-        {sum ? (
+        {sum !== '' && sum != null ? (
           <>
             <span className="rv-sep" aria-hidden="true" />
             {/* Mens raekken koerer foelger teksten ENDEN — ellers ser man kun
@@ -143,10 +144,18 @@ function Element({ e, streaming }: { e: ArbejdsElement; streaming: boolean }) {
     // fyldes foerst naar hele svaret er faerdigt (Bjoern 23/9-2026).
     // `subjectFromInput` er bobblevisningens egen loesning paa praecis det.
     const emne = subjectFromInput(b.input, b.partialJson) || meta.summarize(b.input, b.result)
+    // `+N −M` paa redigerende vaerktoejer. Serverens maalte tal foerst, ellers
+    // regnet ud af kaldets argumenter — samme raekkefoelge som bobblevisningen
+    // (toolRound.ts:402). Uden den stod `.rv-diffstat` som en DOED klasse:
+    // stilen fandtes, men ingen tegnede den (Bjoern 23/9-2026).
+    const ds = diffFraResultat(b.result) ?? diffStat(b.name, b.input)
+    const sum = ds
+      ? <>{emne} <span className="rv-diffstat">+{ds.add} −{ds.del}</span></>
+      : emne
     return (
       <Raekke
         Ikon={meta.Icon} slags={etiket}
-        sum={emne}
+        sum={sum}
         koerer={b.status === 'running'}
         fejl={fejl}
         krop={kropFor(b.name, b.input, b.result, fejl)}

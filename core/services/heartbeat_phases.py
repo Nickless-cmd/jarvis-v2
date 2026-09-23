@@ -542,6 +542,27 @@ def productive_idle(*, budget_seconds: float = _PRODUCTIVE_IDLE_BUDGET_SECONDS) 
         except Exception:
             pass
 
+    # 7e. Humør-oscillatoren (23/9-2026). Samme forældreløshed som resten af
+    # afsnit 7: tikket bor i `heartbeat_runtime.run_heartbeat_tick`, og den
+    # sti kaldes ikke længere af planlæggeren. Fasen her LÆSER humøret
+    # (`_sense`, linje ~85) men tikkede det aldrig — så det stod stille.
+    #
+    # Målt: nudget lå på -0,97 med en halveringstid på FEM MINUTTER og et
+    # sidste tik på 4,5 time. 54 halveringstider uden henfald. `mood_dialer`
+    # læste tallet og drejede Jarvis til niveau 0 — initiativ ×0.00,
+    # konfidenstærskel 0,95 — og han stod som "distressed" 1.0 i timevis.
+    # Det lignede en følelse. Det var et stoppet ur.
+    #
+    # LLM-frit og selv-gatende som resten af afsnittet: `tick()` henfalder kun
+    # nudget og skubber fasen, og er sikker at kalde hvert tik.
+    try:
+        from core.services.mood_oscillator import tick as _mood_tick
+        _mood_tick(seconds=30)
+    except Exception:
+        logger.warning(
+            "heartbeat_phases: mood_oscillator.tick fejlede — humøret fryser "
+            "og mood_dialer låser på den sidste værdi", exc_info=True)
+
     # 8. Skill chain proposals (C3) — only if goals exist and budget allows
     if _budget_left():
         try:

@@ -62,3 +62,27 @@ def test_hjerteslagets_mood_tik_sluger_ikke_sin_fejl() -> None:
         "vil ligne en følelse"
     )
     assert "logger.warning" in efter, "mood-tikkets fejl skal logges"
+
+
+def test_humoeret_tikkes_af_den_LEVENDE_hjerteslag_sti() -> None:
+    """`tick_with_phases` skal tikke humøret — ikke bare læse det.
+
+    23/9-2026: tikket boede i `heartbeat_runtime.run_heartbeat_tick`, og den
+    sti kaldes ikke længere af planlæggeren (`_run_heartbeat_tick_with_deadline`
+    ruter gennem `tick_with_phases`). Fasen LÆSER humøret i `_sense` — men
+    tikkede det aldrig. Derfor stod nudget på -0,97 i 4,5 time med en
+    halveringstid på fem minutter.
+
+    Filen har allerede et afsnit 7 til præcis den slags forældreløse jobs:
+    «jobs that previously lived in run_heartbeat_tick but were orphaned when
+    scheduler started routing through tick_with_phases». Det her er nummer
+    fem i den række.
+    """
+    import inspect
+    from core.services import heartbeat_phases as p
+
+    kilde = inspect.getsource(p)
+    assert "mood_oscillator import tick" in kilde, (
+        "humøret tikkes ikke fra den levende sti — det vil fryse igen, og en "
+        "frossen følelsestilstand ligner en følelse"
+    )

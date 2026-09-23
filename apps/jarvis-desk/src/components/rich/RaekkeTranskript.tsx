@@ -22,16 +22,16 @@
  * billeder er nøjagtig som i bobblevisningen.
  */
 import { memo, useState } from 'react'
-import { Sparkles, Sparkle, ChevronDown, Loader, type LucideIcon } from 'lucide-react'
+import { Sparkles, Sparkle, ChevronDown, Check, Loader, type LucideIcon } from 'lucide-react'
 import type { ContentBlock } from '../../lib/sseProtocol'
 import type { ApiConfig } from '../../lib/api'
 import { opdel, opdelArbejdsrunder, turHoved, type ArbejdsElement } from '../../lib/raekkeModel'
 import { lookupTool } from '../../lib/toolRegistry'
-import { egenBeskrivelse, subjectFromInput } from '../../lib/toolRound'
+import { describeTool, egenBeskrivelse, subjectFromInput, summarizeRound } from '../../lib/toolRound'
 import { diffFraResultat, diffStat } from '../../lib/diffStat'
 import { postFor, kropFor } from './raekkeKroppe'
 import { erUnderagent } from '../../lib/agentKald'
-import { BlocksRenderer } from './BlocksRenderer'
+import { BlocksRenderer, etiketterFraBlokke } from './BlocksRenderer'
 
 /** Første linje af en tanke — resten ligger i kroppen. */
 function foersteLinje(s: string): string {
@@ -180,32 +180,36 @@ function Element({ e, streaming, config }: { e: ArbejdsElement; streaming: boole
 }
 
 function Arbejdsrunde({
-  elementer, streaming, config,
+  elementer, streaming, config, rundeEtiketter,
 }: {
   elementer: ArbejdsElement[]
   streaming: boolean
   config?: ApiConfig
+  rundeEtiketter: Record<string, string>
 }) {
   const [aaben, setAaben] = useState(false)
-  const kald = elementer.filter((e) => e.slags === 'blok' && e.blok.type === 'tool_use').length
-  // `description` skrives af den synlige model i selve kommando-kaldet.
-  // Den seneste beskrivelse opdaterer rækken, mens flere kald kommer til.
-  let modeltekst = ''
+  const vaerktoejer: Extract<ContentBlock, { type: 'tool_use' }>[] = []
   for (const e of elementer) {
-    if (e.slags === 'blok' && e.blok.type === 'tool_use') {
-      modeltekst = egenBeskrivelse(e.blok.name, e.blok.input, e.blok.partialJson) || modeltekst
-    }
+    if (e.slags === 'blok' && e.blok.type === 'tool_use') vaerktoejer.push(e.blok)
   }
-  // Uden modeltekst siger fallbacken kun noget, vi faktisk kan tælle.
-  const fallback = kald > 0 ? `${kald} værktøjskald` : 'Arbejder'
+  const seneste = vaerktoejer[vaerktoejer.length - 1]
+  const koerer = Boolean(seneste && streaming && (seneste.status ?? 'running') === 'running')
+  const etiket = [...vaerktoejer].reverse().map((t) => rundeEtiketter[t.id]).find(Boolean)
+  const mekanisk = summarizeRound(vaerktoejer)
+  // Under udførelse: Jarvis' `description` eller den aktuelle handling.
+  // Bagefter: modelens rundeopsummering, ellers en faktuel afslutning.
+  const beskrivelse = koerer && seneste
+    ? describeTool(seneste.name, seneste.input, true, seneste.partialJson, seneste.result, seneste.status)
+    : etiket || (vaerktoejer.length === 1 && seneste && egenBeskrivelse(seneste.name, seneste.input, seneste.partialJson)
+      ? `Færdig · ${mekanisk}` : mekanisk)
+  const Ikon = koerer && seneste ? lookupTool(seneste.name).Icon : Check
   return (
     <div className="rv-arbejdsrunde">
       <button type="button" className="rv-arbejdsknap" aria-expanded={aaben}
         onClick={() => setAaben((v) => !v)}>
+        <Ikon className="rv-arbejdsikon" size={17} strokeWidth={1.8} aria-hidden="true" />
+        <span className={`rv-arbejdsfortaelling${koerer ? ' shimmer' : ''}`}>{beskrivelse}</span>
         <span className="rv-turC" aria-hidden="true">{aaben ? '▾' : '▸'}</span>
-        <span className="rv-arbejdsnavn">Jarvis arbejder</span>
-        <span className="rv-sep" aria-hidden="true" />
-        <span className="rv-arbejdsfortaelling">{modeltekst || fallback}</span>
       </button>
       <div className="rv-arbejdsdetaljer" hidden={!aaben}>
         {elementer.map((e, i) => <Element key={i} e={e} streaming={streaming} config={config} />)}
@@ -215,15 +219,17 @@ function Arbejdsrunde({
 }
 
 function RaekkeTranskriptImpl({
-  blocks, streaming, beskedId, config,
+  blocks, streaming, beskedId, config, rundeEtiketter,
 }: {
   blocks: ContentBlock[]
   streaming: boolean
   beskedId?: string
   config?: ApiConfig
+  rundeEtiketter?: Record<string, string>
 }) {
   const { arbejde, svar, kald, sekunder } = opdel(blocks)
   const sektioner = opdelArbejdsrunder(arbejde)
+  const etiketter = { ...etiketterFraBlokke(blocks), ...(rundeEtiketter ?? {}) }
   // Aaben mens der arbejdes, lukket naar turen er slut — man skal kunne
   // FOELGE MED, og bagefter skal rodet vaek (Bjoern 22/9-2026).
   const [aabenManuelt, setAabenManuelt] = useState<boolean | null>(null)
@@ -249,7 +255,8 @@ function RaekkeTranskriptImpl({
             {sektioner.map((s, i) => {
               if (s.slags === 'syntese') return <div key={i} className="rv-mellem">{s.tekst}</div>
               if (s.slags === 'enkelt') return <Element key={i} e={s.element} streaming={streaming} config={config} />
-              return <Arbejdsrunde key={i} elementer={s.elementer} streaming={streaming} config={config} />
+              return <Arbejdsrunde key={i} elementer={s.elementer} streaming={streaming}
+                config={config} rundeEtiketter={etiketter} />
             })}
           </div>
         </>

@@ -21,6 +21,9 @@ const tanke = (t: string, s?: number): ContentBlock =>
 const kald = (navn: string, input: Record<string, unknown> = {}, result?: string): ContentBlock => ({
   type: 'tool_use', id: `${navn}-1`, name: navn, input, ...(result ? { result } : {}),
 })
+const statusKald = (navn: string, input: Record<string, unknown>, status: 'running' | 'done'): ContentBlock => ({
+  type: 'tool_use', id: `${navn}-1`, name: navn, input, status,
+})
 
 /** En hel tur: tanke → kald → kort syntese → kald → svar. */
 const TUR: ContentBlock[] = [
@@ -101,7 +104,7 @@ describe('RaekkeTranskript', () => {
     expect(screen.getByText('Search')).not.toBeVisible()
   })
 
-  it('bruger Jarvis’ egen kommandobeskrivelse og en faktuel fallback uden den', () => {
+  it('bruger Jarvis’ egen kommandobeskrivelse og en levende værktøjsfallback', () => {
     const medTekst = render(<RaekkeTranskript blocks={[
       tekst('Jeg undersøger filen.'),
       kald('bash', { command: 'cat app.ts', description: 'Læs koden i app.ts' }),
@@ -113,23 +116,76 @@ describe('RaekkeTranskript', () => {
     medTekst.unmount()
     const uden = render(<RaekkeTranskript blocks={[kald('read_file'), tekst('Svar.')]} streaming />)
     expect(uden.container.querySelector('.rv-arbejdsrunde > button')?.textContent)
-      .toContain('1 værktøjskald')
+      .toContain('Læser')
   })
 
-  it('opdaterer samme arbejdsrække når Jarvis beskriver næste kald', () => {
+  it('skifter tekst og Lucide-ikon når det aktuelle værktøj skifter', () => {
     const start = [tekst('Jeg undersøger problemet.'),
-      kald('bash', { command: 'ls', description: 'Find filerne' }), tekst('Svar.')]
+      statusKald('read_file', { path: 'app.ts' }, 'running'), tekst('Svar.')]
     const { container, rerender } = render(<RaekkeTranskript blocks={start} streaming />)
     expect(container.querySelectorAll('.rv-arbejdsrunde')).toHaveLength(1)
-    expect(container.querySelector('.rv-arbejdsknap')?.textContent).toContain('Find filerne')
+    expect(container.querySelector('.rv-arbejdsknap')?.textContent).toContain('Læser app.ts')
+    expect(container.querySelector('.rv-arbejdsknap svg')).toHaveClass('lucide-file-text')
+    expect(container.querySelector('.rv-arbejdsfortaelling')).toHaveClass('shimmer')
+    expect(container.querySelector('.rv-arbejdsknap')?.textContent).not.toContain('Jarvis arbejder')
     rerender(<RaekkeTranskript blocks={[
       tekst('Jeg undersøger problemet.'),
-      kald('bash', { command: 'ls', description: 'Find filerne' }),
-      kald('bash', { command: 'cat app.ts', description: 'Læs appens kode' }),
+      statusKald('read_file', { path: 'app.ts' }, 'done'),
+      statusKald('edit_file', { path: 'app.ts' }, 'running'),
       tekst('Svar.'),
     ]} streaming />)
     expect(container.querySelectorAll('.rv-arbejdsrunde')).toHaveLength(1)
-    expect(container.querySelector('.rv-arbejdsknap')?.textContent).toContain('Læs appens kode')
+    expect(container.querySelector('.rv-arbejdsknap')?.textContent).toContain('Redigerer app.ts')
+    expect(container.querySelector('.rv-arbejdsknap svg')).toHaveClass('lucide-file-pen')
+  })
+
+  it('opdaterer teksten mens argumenterne til samme kald strømmer ind', () => {
+    const start: ContentBlock[] = [{ type: 'tool_use', id: 'r1', name: 'read_file', input: {}, status: 'running' }]
+    const { container, rerender } = render(<RaekkeTranskript blocks={start} streaming />)
+    expect(container.querySelector('.rv-arbejdsknap')?.textContent).toContain('Læser')
+    rerender(<RaekkeTranskript blocks={[
+      { ...start[0], partialJson: '{"path":"src/app.ts"' } as ContentBlock,
+    ]} streaming />)
+    expect(container.querySelector('.rv-arbejdsknap')?.textContent).toContain('Læser app.ts')
+    rerender(<RaekkeTranskript blocks={[
+      { type: 'tool_use', id: 'r1', name: 'read_file', input: { path: 'src/app.ts' }, status: 'done' },
+    ]} streaming />)
+    expect(container.querySelector('.rv-arbejdsknap')?.textContent).toContain('Læste app.ts')
+    expect(container.querySelector('.rv-arbejdsfortaelling')).not.toHaveClass('shimmer')
+  })
+
+  it('skifter fra løbende handling til modelens rundeopsummering', () => {
+    const aktivt: ContentBlock[] = [
+      statusKald('read_file', { path: 'app.ts' }, 'running'), tekst('Svar.'),
+    ]
+    const { container, rerender } = render(<RaekkeTranskript blocks={aktivt} streaming />)
+    expect(container.querySelector('.rv-arbejdsknap')?.textContent).toContain('Læser app.ts')
+    rerender(<RaekkeTranskript blocks={[
+      statusKald('read_file', { path: 'app.ts' }, 'done'), tekst('Svar.'),
+    ]} streaming rundeEtiketter={{ 'read_file-1': 'Fandt fejlen i filen' }} />)
+    expect(container.querySelector('.rv-arbejdsknap')?.textContent).toContain('Fandt fejlen i filen')
+    expect(container.querySelector('.rv-arbejdsknap')?.textContent).not.toContain('Læser app.ts')
+    expect(container.querySelector('.rv-arbejdsfortaelling')).not.toHaveClass('shimmer')
+  })
+
+  it('viser gemt rundeopsummering efter genindlæsning', () => {
+    const medGemt: ContentBlock[] = [
+      statusKald('read_file', { path: 'app.ts' }, 'done'), tekst('Svar.'),
+      { type: 'tool_use_summary', summary: 'Gennemgik filen', preceding_tool_use_ids: ['read_file-1'] },
+    ]
+    const { container } = render(<RaekkeTranskript blocks={medGemt} streaming={false} />)
+    fireEvent.click(container.querySelector('.rv-tur')!)
+    expect(container.querySelector('.rv-arbejdsknap')?.textContent).toContain('Gennemgik filen')
+  })
+
+  it('markerer en modelbeskrevet kommando som færdig uden rundeetiket', () => {
+    const blocks: ContentBlock[] = [
+      statusKald('bash', { command: 'npm test', description: 'Kør testene' }, 'done'),
+      tekst('Alle tests bestod.'),
+    ]
+    const { container } = render(<RaekkeTranskript blocks={blocks} streaming />)
+    expect(container.querySelector('.rv-arbejdsknap')?.textContent).toContain('Færdig · Kør testene')
+    expect(container.querySelector('.rv-arbejdsknap svg')).toHaveClass('lucide-check')
   })
 
   it('folder arbejdet SAMMEN når streamingen er slut — svaret bliver stående', () => {

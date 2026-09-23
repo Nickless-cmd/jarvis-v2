@@ -121,7 +121,8 @@ function MessageRowImpl({
                 skiftes — fejlhegn, artefakter, kilder og handlinger er de samme,
                 og composer/liveness/save-rail roeres ikke. */}
             {raekker
-              ? <RaekkeTranskript blocks={blocks} streaming={streaming} beskedId={beskedId} config={config} />
+              ? <RaekkeTranskript blocks={blocks} streaming={streaming} beskedId={beskedId}
+                  config={config} rundeEtiketter={rundeEtiketter} />
               : <BlocksRenderer blocks={blocks} density={density} streaming={streaming} rundeEtiketter={rundeEtiketter} tankeResumeer={tankeResumeer} beskedId={beskedId} config={config} />}
             {!streaming && detectArtifacts(blocks).map((a, i) => (
               <ArtifactAffordance key={`${a.kind}-${i}`} artifact={a} />

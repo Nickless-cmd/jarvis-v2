@@ -414,14 +414,16 @@ describe('rækkevisningens værktøjskroppe', () => {
   })
 
   it('viser mindet der blev skrevet frem for id-et det fik', () => {
-    // `remember_this` svarer kun med `{status, id}`. Indholdet står i
-    // argumenterne — uden denne form faldt rækken til feltlisten og viste
-    // «id brn_…», altså beviset på skrivningen i stedet for mindet.
+    // `remember_this` svarer med `{id}` — UDEN `status`. Den oprindelige test
+    // brugte `{status: 'ok', id}`, altså den form jeg TROEDE på, og pinnede
+    // dermed sin egen fantasi: grenen krævede `bekræftet()`, som sagde nej
+    // til `{id}`, og rækken faldt til feltlisten og viste «id brn_…». Målt på
+    // 24 faktiske kald 23/9-2026: alle bar præcis `{id}`.
     const { container } = vis('remember_this', {
       kind: 'indsigt', title: 'Byg-rækkefølgen',
       content: 'Kode committet efter build er ikke i appen.',
       visibility: 'personal', domain: 'projects',
-    }, JSON.stringify({ status: 'ok', id: 'brn_01M37WQ4JF2XH3KQX1HNJ4SD6E' }))
+    }, JSON.stringify({ id: 'brn_01M37WQ4JF2XH3KQX1HNJ4SD6E' }))
     expect(container.querySelector('.rv-minde')).toBeInTheDocument()
     expect(container.textContent).toContain('Byg-rækkefølgen')
     expect(container.textContent).toContain('Kode committet efter build')
@@ -431,7 +433,7 @@ describe('rækkevisningens værktøjskroppe', () => {
 
   it('viser MEMORY.md-sektionen der blev skrevet', () => {
     const { container } = vis('memory_upsert_section', { heading: 'Beslutninger', content: '- vi bygger videre' },
-      JSON.stringify({ status: 'ok', action: 'updated' }))
+      "MEMORY.md section 'Beslutninger' added successfully.")
     expect(container.querySelector('.rv-minde')).toBeInTheDocument()
     expect(container.textContent).toContain('Beslutninger')
     expect(container.textContent).toContain('vi bygger videre')
@@ -451,7 +453,7 @@ describe('rækkevisningens værktøjskroppe', () => {
     expect(a.container.querySelector('.rv-fil')).not.toBeInTheDocument()
     // Et minde er heller ikke et filkort — det har sin egen form.
     const b = vis('memory_upsert_section', { heading: 'H', content: 'tekst' },
-      JSON.stringify({ status: 'ok', action: 'added' }))
+      "MEMORY.md section 'H' added successfully.")
     expect(b.container.querySelector('.rv-fil')).not.toBeInTheDocument()
     expect(b.container.querySelector('.rv-minde')).toBeInTheDocument()
   })

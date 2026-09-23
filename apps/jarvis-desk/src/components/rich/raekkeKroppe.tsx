@@ -831,7 +831,20 @@ export function kropFor(
     if (mindeNavn === 'remember_this' || mindeNavn === 'memory_upsert_section') {
       const titel = streng(input.title) || streng(input.heading)
       const tekst = streng(input.content) || streng(input.text)
-      if (titel && tekst && bekræftet(ramme, værdi)) {
+      // `remember_this` svarer `{id}` — UDEN `status`, og derfor sagde
+      // `bekræftet` nej og grenen faldt til feltlisten (`id brn_…`).
+      // Maalt paa 24 faktiske kald 23/9-2026: alle bar praecis `{id}`.
+      // Id'et findes foerst EFTER posten blev skrevet, saa det beviser
+      // handlingen — samme logik som `bytes_written`. Gaten holdes lokal
+      // her, saa diff- og fil-grenene ikke loesnes.
+      const bevist = bekræftet(ramme, værdi)
+        || (objekt(værdi) && typeof værdi.id === 'string')
+        // `memory_upsert_section` svarer med PROSA — «MEMORY.md section 'X'
+        // added successfully.» — ikke et objekt. Målt på 114 faktiske kald
+        // 23/9-2026: alle bar præcis den sætning. Uden dette faldt den til
+        // den rå tekst, og sektionen den skrev, stod ulæst i argumenterne.
+        || (typeof værdi === 'string' && værdi.includes('MEMORY.md section'))
+      if (titel && tekst && bevist) {
         const meta = [streng(input.kind), streng(input.domain)].filter(Boolean).join(' · ')
         return <Minde titel={titel} meta={meta} tekst={tekst} />
       }

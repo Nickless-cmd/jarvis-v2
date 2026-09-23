@@ -545,11 +545,10 @@ function FarvedeLinjer({ tekst, path }: { tekst: string; path: string }) {
 function oversigt(v: unknown, fallback: string): ReactNode {
   if (Array.isArray(v)) return `${v.length} items`
   if (!objekt(v)) return (visTekst(v) || fallback).slice(0, 500)
-  const poster = Object.entries(v).filter(([k]) => k !== 'status').slice(0, 8)
+  const poster = Object.entries(pakUdEnkelt(v)).filter(([k]) => k !== 'status').slice(0, 8)
   if (poster.length === 0) return fallback
   return <dl className="rv-felter">{poster.map(([k, felt]) =>
-    <div key={k}><dt>{k}</dt><dd>{Array.isArray(felt) ? `${felt.length} items`
-      : objekt(felt) ? `${Object.keys(felt).length} fields` : visTekst(felt).slice(0, 240)}</dd></div>
+    <div key={k}><dt>{k}</dt><dd>{vaerdiLinje(felt)}</dd></div>
   )}</dl>
 }
 
@@ -571,6 +570,65 @@ function foersteListe(v: unknown): unknown[] | null {
     for (const indre of Object.values(felt)) if (Array.isArray(indre) && indre.length) return indre
   }
   return null
+}
+
+/** Et resultat pakket i ÉN nøgle viser indholdet — ikke optællingen.
+ *
+ * Målt 23/9-2026: `schedule_self_wakeup` svarer `{wakeup: {…}}` og `set_flag`
+ * `{confirmed, flag: {…}}`. Feltlisten skrev «wakeup | 6 fields» — en
+ * optælling i stedet for de seks felter, altså præcis den slags ubrugelige
+ * metadata Bjørn pegede på. Er alt indhold pakket i én nøgle (kun booleans
+ * eller `status` ved siden af), viser vi det indre objekts felter i stedet. */
+function pakUdEnkelt(v: Data): Data {
+  const indre = Object.entries(v).filter(([k, f]) => k !== 'status' && objekt(f))
+  if (indre.length !== 1) return v
+  const [noegle, maal] = indre[0] as [string, Data]
+  const resten = Object.entries(v).filter(([k]) => k !== 'status' && k !== noegle)
+  if (resten.some(([, f]) => typeof f !== 'boolean')) return v
+  return Object.keys(maal).length ? maal : v
+}
+
+/** Er listen HELE indholdet — eller står der meningsfulde felter ved siden af?
+ *
+ * `{count, goals:[…]}`: `goals` ER indholdet, `count` er en optælling.
+ * `{count, path, items:[…]}`: `path` er indhold ved siden af listen, så
+ * objektet er formen — ikke listen. Uden den skelnen blev et ukendt
+ * struktureret resultat til en liste af sine `items` og tabte `count`/`path`;
+ * det blev fanget af testen «viser et ukendt struktureret resultat som
+ * nøgle-værdi frem for JSON». */
+const OPTAELLINGER = new Set(['count', 'total', 'n', 'length', 'size', 'antal'])
+
+function listenErIndholdet(v: Data): unknown[] | null {
+  const liste = foersteListe(v)
+  if (!liste) return null
+  const vedSidenAf = Object.entries(v).filter(([k, f]) =>
+    k !== 'status' && !OPTAELLINGER.has(k) && typeof f !== 'object' && typeof f !== 'boolean')
+  return vedSidenAf.length ? null : liste
+}
+
+/** Formen af RESULTATET — når navnet ikke står i navnekortet.
+ *
+ * ## Hvorfor den findes (Bjørn 23/9-2026: «lav den ændring der løfter alle 71»)
+ *
+ * Målt 23/9-2026 over 35.027 parrede kald: 92 værktøjer ramte den generiske
+ * feltliste, og **71 af dem havde slet ingen form** — 372 af 472 kald. Hele
+ * familier var kommet til uden at navnekortet blev opdateret: `operator_*`,
+ * `desk_*`, `jarvis_browser_*`, `decision_*`, `goal_*`, `list_*`, `skill_*`.
+ *
+ * At skrive 71 særkroppe ville drive bagud igen i samme sekund. Men familien
+ * følger RESULTATETS form, ikke værktøjets emne — så formen kan udledes af
+ * resultatet selv. Navnekortet bliver dermed en undtagelsesliste for de få
+ * der skal vise noget ANDET end deres form, i stedet for en flaskehals.
+ *
+ * Kun former der er entydige i resultatet: en liste ER en liste, uanset
+ * hvilket værktøj der sendte den. Et fladt status-objekt (`get_weather`,
+ * `write_memory_topic`) forbliver en feltliste — det ER dens form.
+ */
+function formFamilie(værdi: unknown): Familie {
+  if (!objekt(værdi)) return 'fald'
+  if (typeof værdi.stdout === 'string' || typeof værdi.stderr === 'string') return 'terminal'
+  if (listenErIndholdet(pakUdEnkelt(værdi))) return 'liste'
+  return 'fald'
 }
 
 /** En streng der ER en liste — én linje pr. element.
@@ -607,6 +665,29 @@ function listeTekst(p: unknown): string {
     .slice(0, 4)
     .map(([k, felt]) => `${k}=${visTekst(felt)}`)
   return par.join(' · ') || visTekst(p)
+}
+
+/** Én linje for en feltværdi — også når den er en liste eller et objekt.
+ *
+ * Målt 23/9-2026: `dd` skrev «2 items» og «4 fields» i stedet for indholdet.
+ * `restart_self` skjulte hvilke services den genstarter, og `set_flag` skjulte
+ * flagets felter. En optælling er ikke information — den er en henvisning til
+ * information der ikke er der. Vi viser indholdet kompakt i stedet, klippet
+ * ved fire led, så en lang liste ikke sprænger rækken. */
+function vaerdiLinje(felt: unknown): string {
+  if (Array.isArray(felt)) {
+    if (!felt.length) return '—'
+    const dele = felt.slice(0, 4).map((p) => objekt(p) ? listeTekst(p) : visTekst(p))
+    return dele.join(' · ') + (felt.length > 4 ? ` · +${felt.length - 4}` : '')
+  }
+  if (objekt(felt)) {
+    const par = Object.entries(felt)
+      .filter(([, f]) => !objekt(f) && !Array.isArray(f))
+      .slice(0, 4)
+      .map(([k, f]) => `${k}=${visTekst(f)}`)
+    return par.join(' · ') || '—'
+  }
+  return visTekst(felt).slice(0, 240)
 }
 
 export function Liste({ raekker }: { raekker: { p?: string; v: string }[] }) {
@@ -765,7 +846,14 @@ export function kropFor(
   // resultatet råt videre til `Resultat` — og hvor JSON'en ikke kan parses,
   // dumper kroppen hele dokumentet i stedet for stdout.
   const result = resultRaa === undefined ? undefined : udenHale(resultRaa)
-  const { familie } = postFor(navn)
+  const { værdi, ramme } = pakUd(result)
+  const fejltekst = fejlTekst(ramme, værdi)
+  // Familien følger RESULTATETS form. Står navnet ikke i navnekortet, udleder
+  // vi formen af resultatet selv i stedet for at falde til den generiske
+  // feltliste — se `formFamilie` for målingen bag. Ved fejl er formen
+  // underordnet: fejl-grenen nedenfor viser beskeden.
+  const { familie: erklaeret } = postFor(navn)
+  const familie = erklaeret === 'fald' && !fejltekst ? formFamilie(værdi) : erklaeret
   // Underagent FOER familie-valget: `scout_agent` ville ellers falde i
   // faldbacken og vise raa JSON, mens agentens otte egne kald laa uroert i
   // `agent_tool_calls` med et endepunkt der allerede serverer dem.
@@ -773,8 +861,6 @@ export function kropFor(
   if (agentId) return <Underagent agentId={agentId} resultat={udDel(result)} config={config} />
   const ind = JSON.stringify(input, null, 2)
   const ud = udDel(result)
-  const { værdi, ramme } = pakUd(result)
-  const fejltekst = fejlTekst(ramme, værdi)
   const terminalMedOutput = familie === 'terminal' && objekt(værdi)
     && (typeof værdi.stdout === 'string' || typeof værdi.stderr === 'string') && !fejltekst
   if (!terminalMedOutput && (fejl || fejltekst || ['error', 'blocked', 'approval_needed', 'guard_blocked'].includes(streng(ramme?.status)))) {

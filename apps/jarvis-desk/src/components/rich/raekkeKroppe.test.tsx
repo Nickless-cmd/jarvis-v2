@@ -457,4 +457,69 @@ describe('rækkevisningens værktøjskroppe', () => {
     expect(b.container.querySelector('.rv-fil')).not.toBeInTheDocument()
     expect(b.container.querySelector('.rv-minde')).toBeInTheDocument()
   })
+
+  it('udleder formen af resultatet naar navnet ikke staar i navnekortet', () => {
+    // Maalt 23/9-2026 over 35.027 parrede kald: 71 vaerktoejer havde slet
+    // ingen form — 372 af 472 kald — fordi navnekortet er manuelt
+    // vedligeholdt. Familien foelger RESULTATETS form, saa den kan udledes.
+    // `goal_list` bar `{count, goals:[…]}`:
+    const mål = vis('goal_list', {}, JSON.stringify({ count: 10, goals: [
+      { goal_id: 'goal_ed7b', title: 'Laer at holde tillid', priority: 70 },
+      { goal_id: 'goal_11aa', title: 'Byg videre', priority: 50 },
+    ], stats: { active: 2 } }))
+    expect(mål.container.querySelector('.rv-liste')).toBeInTheDocument()
+    expect(mål.container.textContent).toContain('Laer at holde tillid')
+    // `jarvis_browser_tabs` pakker listen ET niveau ned — `{result:{tabs}}`:
+    const faner = vis('jarvis_browser_tabs', {}, JSON.stringify({ result: { tabs: [
+      { id: 1, url: 'https://jarvis.srvlab.dk/', titel: 'J.A.R.V.I.S.' },
+    ] } }))
+    expect(faner.container.querySelector('.rv-liste')).toBeInTheDocument()
+    expect(faner.container.textContent).toContain('J.A.R.V.I.S.')
+  })
+
+  it('viser indholdet naar resultatet ligger i én noegle — ikke optaellingen', () => {
+    // `schedule_self_wakeup` svarer `{wakeup:{…}}`. Uden udpakningen stod der
+    // «wakeup | 6 fields» — en optaelling i stedet for de seks felter.
+    const v = vis('schedule_self_wakeup', { delay_seconds: 600 },
+      JSON.stringify({ wakeup: { wakeup_id: 'wake-d53e8bd0ca', fire_at: '2026-09-23T14:45:48Z', reason: 'check-build' } }))
+    expect(v.container.textContent).toContain('check-build')
+    expect(v.container.textContent).not.toContain('3 fields')
+    // `set_flag` svarer `{confirmed, flag:{…}}` — boolean ved siden af:
+    const f = vis('set_flag', { key: 'dream_carry_over' },
+      JSON.stringify({ confirmed: true, flag: { key: 'dream_carry_over', ttl_minutes: 30 } }))
+    expect(f.container.textContent).toContain('dream_carry_over')
+    expect(f.container.textContent).toContain('30')
+  })
+
+  it('lader et fladt status-objekt beholde sin feltliste', () => {
+    // Det ER dens form: `get_weather` bærer temp_c/humidity_pct som flade
+    // felter. At tvinge den ind i en anden familie ville goere formen
+    // ringere, ikke bedre — udledningen maa ikke ramme den.
+    const { container } = vis('get_weather', { city: 'Svendborg' },
+      JSON.stringify({ city: 'Svendborg, DK', temp_c: 11.84, humidity_pct: 88 }))
+    expect(container.querySelector('.rv-felter')).toBeInTheDocument()
+    expect(container.textContent).toContain('11.84')
+  })
+
+  it('viser indholdet i en liste i stedet for at taelle den', () => {
+    // Maalt 23/9-2026: 242 kald (10 %, 51 vaerktoejer) skrev «2 items» eller
+    // «4 fields» i stedet for indholdet. `restart_self` skjulte hvilke
+    // services den genstarter.
+    const { container } = vis('restart_self', {},
+      JSON.stringify({ scheduled: true, services: ['jarvis-api', 'jarvis-runtime'], delay_seconds: 3 }))
+    expect(container.textContent).toContain('jarvis-api')
+    expect(container.textContent).toContain('jarvis-runtime')
+    expect(container.textContent).not.toContain('2 items')
+  })
+
+  it('viser flagets felter naar resultatet ligger i én noegle', () => {
+    // `set_flag` svarer `{confirmed, flag:{…}}`. Uden udpakningen stod der
+    // «flag | 4 fields» — flagets navn og levetid laa i argumenterne og i
+    // det indre objekt, og ingen af dem blev vist.
+    const { container } = vis('set_flag', { key: 'dream_carry_over' },
+      JSON.stringify({ confirmed: true, flag: { key: 'dream_carry_over', ttl_minutes: 30 } }))
+    expect(container.textContent).toContain('ttl_minutes')
+    expect(container.textContent).toContain('30')
+    expect(container.textContent).not.toContain('fields')
+  })
 })

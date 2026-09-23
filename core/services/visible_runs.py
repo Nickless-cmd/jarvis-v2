@@ -6711,7 +6711,13 @@ def _bash_hint(cmd: str) -> str:
         # Miljøvariable foran (FOO=bar kommando) hører til scenen.
         while ord_ and "=" in ord_[0] and not ord_[0].startswith("-"):
             ord_ = ord_[1:]
-        if not ord_ or ord_[0] in _SCENE_LED or ord_[0] in _NOEGLEORD:
+        # Resten af et VARIABEL-led er variablens egne argumenter, ikke en
+        # kommando: `RUN_ID=manual-$(date -u +%Y%m%dT%H%M%SZ)-$(openssl ...)`
+        # gav ellers «Koerer kommando: -u +%Y%m%dT%H%M%SZ)-$(openssl» (Bjoern
+        # 23/9-2026). Et led der begynder med `-` er aldrig en kommando.
+        if not ord_ or ord_[0].startswith("-"):
+            continue
+        if ord_[0] in _SCENE_LED or ord_[0] in _NOEGLEORD:
             continue                      # leddet var scene-sætning eller nøgleord
         while ord_ and ord_[0] in _PRAEFIKS:
             ord_ = ord_[1:]
@@ -6721,7 +6727,25 @@ def _bash_hint(cmd: str) -> str:
         if ord_:
             return _hoved_og_genstand(ord_)
     # Kun scene-sætning — så er DET hvad der skete («cd /tmp»).
-    return " ".join(led[0].split()[:2])[:40] if led else s[:40]
+    if not led:
+        return s[:40]
+    foerste = led[0].split()
+    if foerste and "=" in foerste[0] and not foerste[0].startswith("-"):
+        # Ren variabel-tildeling: der findes ingen ydre kommando. Navnet siger
+        # mere end «RUN_ID=manual-$(date -u» (Bjoern 23/9-2026).
+        return foerste[0].split("=", 1)[0][:40]
+    # Ren `echo`: det meningsfulde er det den UDSKRIVER, ikke ordet «echo» og
+    # dets dekorations-`===`. Bjoern 23/9-2026: «dette echo === burde vise den
+    # faktisk kommando». `echo "=== koerer electron-builder? ==="` giver
+    # «koerer electron-builder?»; et banner-løst `echo === status ===` giver
+    # «status». Grebet rammer KUN faldbacken — staar der en rigtig kommando
+    # efter echo-leddet, fandt løkken den allerede.
+    if foerste and foerste[0].split("/")[-1] == "echo":
+        budskab = " ".join(foerste[1:]).strip("\"' ")
+        renset = budskab.strip("= -_").strip()
+        if renset:
+            return renset[:40]
+    return " ".join(foerste[:2])[:40]
 
 
 def _hoved_og_genstand(ord_: list[str]) -> str:
@@ -6740,6 +6764,63 @@ def _hoved_og_genstand(ord_: list[str]) -> str:
     return (f"{hoved} {genstand}".strip() if genstand else hoved)[:40]
 
 
+#: Felter et emne ledes efter når værktøjet ikke har sin egen gren — første
+#: ikke-tomme streng vinder. Det dækker de ~350 værktøjer uden håndskrevet
+#: gren, så linjen sjældent står uden et «hvad». Uden den stod «Opdaterer
+#: hukommelse» og «Verificerer fil» uden emne (Bjørn 23/9-2026).
+_HINT_FELTER = (
+    "path", "file_path", "title", "heading", "query", "q", "pattern",
+    "url", "command", "name", "action", "text", "agent_id",
+)
+
+
+def _tool_hint(tool_name: str, arguments: dict | None = None) -> str:
+    """Emnet for ét kald — HVAD det handler om, uden label foran.
+
+    «git status», «raekkeModel.ts», «Rækkevisningen — tre rettelser». Klienten
+    sætter selv værktøjets ikon foran, så labelen («Kører kommando») hører
+    ikke her; `_tool_label` limer de to sammen for de flade tekst-kanaler
+    (Discord, liveness-linjen).
+    """
+    if not arguments:
+        return ""
+    navn = str(tool_name or "")
+    name = navn[len("operator_"):] if navn.startswith("operator_") else navn
+    a = arguments
+    hint = ""
+    if name in {"read_file", "write_file", "edit_file", "publish_file",
+                "verify_file_contains"}:
+        path = str(a.get("path") or a.get("file_path") or "")
+        if path:
+            hint = path.split("/")[-1]  # basename only
+    elif name == "find_files":
+        hint = str(a.get("pattern") or a.get("path") or "")[:40]
+    elif name in {"search", "web_search", "search_memory", "search_chat_history"}:
+        hint = str(a.get("query") or a.get("q") or "")[:40]
+    elif name == "web_fetch":
+        url = str(a.get("url") or "")
+        hint = url.replace("https://", "").replace("http://", "").split("/")[0][:40]
+    elif name in {"bash", "bash_session_run"}:
+        hint = _bash_hint(str(a.get("command") or ""))
+    elif name in {"discord_channel", "send_discord_dm"}:
+        hint = str(a.get("channel") or a.get("user") or "")[:30]
+    elif name == "home_assistant":
+        hint = str(a.get("action") or a.get("entity_id") or "")[:30]
+    elif name in {"spawn_agent_task", "send_message_to_agent", "relay_to_agent", "cancel_agent"}:
+        hint = str(a.get("agent_id") or a.get("task_id") or "")[:20]
+    elif name in {"todo_set", "todo_add"}:
+        todos = a.get("todos")
+        hint = f"{len(todos)} opgaver" if isinstance(todos, list) else ""
+    if not hint:
+        for felt in _HINT_FELTER:
+            vaerdi = a.get(felt)
+            if isinstance(vaerdi, str) and vaerdi.strip():
+                renset = vaerdi.strip()
+                hint = renset.split("/")[-1] if felt in {"path", "file_path"} else renset
+                break
+    return hint.strip()[:60]
+
+
 def _tool_label(tool_name: str, arguments: dict | None = None) -> str:
     navn = str(tool_name or "")
     base = _TOOL_LABELS.get(navn)
@@ -6750,31 +6831,9 @@ def _tool_label(tool_name: str, arguments: dict | None = None) -> str:
         grund = navn[len("operator_"):] if navn.startswith("operator_") else navn
         base = _TOOL_LABELS.get(grund, grund or "tool")
         tool_name = grund or tool_name
-    if not arguments:
-        return base
-    # Append a short context hint from the arguments
-    hint = ""
-    name = str(tool_name or "")
-    if name in {"read_file", "write_file", "edit_file", "publish_file"}:
-        path = str(arguments.get("path") or arguments.get("file_path") or "")
-        if path:
-            hint = path.split("/")[-1]  # basename only
-    elif name == "find_files":
-        hint = str(arguments.get("pattern") or arguments.get("path") or "")[:40]
-    elif name in {"search", "web_search", "search_memory", "search_chat_history"}:
-        hint = str(arguments.get("query") or arguments.get("q") or "")[:40]
-    elif name == "web_fetch":
-        url = str(arguments.get("url") or "")
-        hint = url.replace("https://", "").replace("http://", "").split("/")[0][:40]
-    elif name in {"bash", "bash_session_run"}:
-        hint = _bash_hint(str(arguments.get("command") or ""))
-    elif name in {"discord_channel", "send_discord_dm"}:
-        hint = str(arguments.get("channel") or arguments.get("user") or "")[:30]
-    elif name == "home_assistant":
-        hint = str(arguments.get("action") or arguments.get("entity_id") or "")[:30]
-    elif name in {"spawn_agent_task", "send_message_to_agent", "relay_to_agent", "cancel_agent"}:
-        hint = str(arguments.get("agent_id") or arguments.get("task_id") or "")[:20]
+    hint = _tool_hint(tool_name, arguments)
     return f"{base}: {hint}" if hint else base
+
 
 
 def _parse_tc_args(tc: dict) -> dict:

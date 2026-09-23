@@ -39,6 +39,18 @@ def _tool_label(tool_name: str, arguments: dict | None = None) -> str:
     return _impl(tool_name, arguments)
 
 
+def _tool_hint(tool_name: str, arguments: dict | None = None) -> str:
+    """Emnet alene — «git status», «raekkeModel.ts», uden label foran.
+
+    Klienten sætter selv værktøjets ikon foran, så labelen («Kører kommando»)
+    hører ikke her. Bjørn 23/9-2026: «Kører kommando skal helt væk og
+    erstattes af ikone».
+    """
+    from core.services.visible_runs import _tool_hint as _impl
+
+    return _impl(tool_name, arguments)
+
+
 def _build_progress_blocks(
     tool_calls: list[dict], tool_results: list[dict]
 ) -> list[dict]:
@@ -67,8 +79,10 @@ def _build_progress_blocks(
         args = raw_input if isinstance(raw_input, dict) else {}
         try:
             message = _tool_label(name, args)
+            hint = _tool_hint(name, args)
         except Exception:
             message = name
+            hint = ""
         r = results_by_id.get(tid)
         status = "done"
         if r is not None and (
@@ -79,6 +93,12 @@ def _build_progress_blocks(
             "type": "progress",
             "tool_use_id": tid,
             "parent_tool_use_id": None,
+            # `tool` + `hint` (23/9-2026): klienten tegner værktøjets ikon og
+            # emnet ved siden af hinanden i stedet for at vise label-teksten
+            # råt. `message` bliver som den var — Discord og liveness-linjen
+            # læser stadig den flade tekst.
+            "tool": name,
+            "hint": str(hint or ""),
             "message": str(message or name),
             "status": status,
         })

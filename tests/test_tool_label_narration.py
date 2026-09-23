@@ -35,6 +35,13 @@ from core.services.visible_runs import _bash_hint, _tool_label
     ("for id in 1 2 3; do echo -n \"$id -> \"; xdotool getwindowname $id; done",
      "xdotool getwindowname"),
     ("cd /r && echo \"=== status ===\" && git status -sb", "git status"),
+    # Ren `echo` uden en kommando bag sig: banneret er ikke svaret, teksten er.
+    # Bjørn 23/9-2026: «dette echo === burde vise den faktisk kommando».
+    ("echo === status ===", "status"),
+    ('echo "=== kører electron-builder? ==="', "kører electron-builder?"),
+    # Ren variabel-tildeling: der findes ingen ydre kommando, så navnet siger
+    # mere end «RUN_ID=manual-$(date -u».
+    ("RUN_ID=manual-$(date -u +%Y%m%dT%H%M%SZ)-$(openssl rand -hex 4)", "RUN_ID"),
     # Er der KUN et mappeskift, er det dét der skete.
     ("cd /tmp", "cd /tmp"),
     ("", ""),

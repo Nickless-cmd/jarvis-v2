@@ -146,11 +146,30 @@ const objekt = (v: unknown): v is Data => typeof v === 'object' && v !== null &&
 const streng = (v: unknown): string => typeof v === 'string' ? v : ''
 const pathNavn = (path: string): string => path.replace(/\\/g, '/').split('/').filter(Boolean).at(-1) || path
 
+/**
+ * Intern hale fra serveren.
+ *
+ * Hver runde hæfter serveren en kort instruks på det SIDSTE værktøjs-resultat
+ * (`visible_followup_results._NUDGE` — statisk og append-only, så prompt-cachen
+ * ikke ryger). Den er skrevet til MODELLEN, men gemmes med i turen. Så fejler
+ * `JSON.parse` på halen: kroppen faldt tilbage til at dumpe hele JSON'en råt i
+ * stedet for stdout, og `exitKode` kunne ikke læse tallet — den viste 0.
+ *
+ * Vi klipper den af ved visning. Mærket er `⟳`-parentesen; den skrives ingen
+ * andre steder i systemet.
+ */
+const INTERN_HALE = /\s*\(⟳[\s\S]*\)\s*$/
+
+function udenHale(tekst: string): string {
+  return tekst.replace(INTERN_HALE, '')
+}
+
 /** Serverens resultat kan være et JSON-objekt med en eller flere `result`-skaller. */
 function pakUd(result: string | undefined): { værdi: unknown; ramme: Data | null } {
   if (!result) return { værdi: '', ramme: null }
-  let værdi: unknown = result
-  try { værdi = JSON.parse(result) } catch { return { værdi, ramme: null } }
+  const renset = udenHale(result)
+  let værdi: unknown = renset
+  try { værdi = JSON.parse(renset) } catch { return { værdi, ramme: null } }
   const ramme = objekt(værdi) ? værdi : null
   for (let i = 0; i < 3 && objekt(værdi) && 'result' in værdi; i++) {
     værdi = værdi.result
@@ -180,7 +199,7 @@ function fejlTekst(ramme: Data | null, værdi: unknown): string {
 export function exitKode(result: string | undefined, fejl: boolean): number {
   if (result) {
     try {
-      const o = JSON.parse(result) as Record<string, unknown>
+      const o = JSON.parse(udenHale(result)) as Record<string, unknown>
       const r = (o.result ?? o) as Record<string, unknown>
       for (const k of ['exit_code', 'returncode', 'exit_status', 'code']) {
         const v = r[k]
@@ -189,7 +208,7 @@ export function exitKode(result: string | undefined, fejl: boolean): number {
     } catch {
       // ikke JSON — proev tekstmarkoeren, som DSH bruger
     }
-    const m = /\[exit code: (\d+)\]\s*$/.exec(result)
+    const m = /\[exit code: (\d+)\]\s*$/.exec(udenHale(result))
     if (m?.[1]) return Number(m[1])
   }
   return fejl ? 1 : 0
@@ -452,12 +471,17 @@ export function Underagent({
 export function kropFor(
   navn: string,
   inputRaa: Record<string, unknown>,
-  result: string | undefined,
+  resultRaa: string | undefined,
   fejl: boolean,
   config?: ApiConfig,
   live?: { partialJson?: string; running?: boolean },
 ): ReactNode {
   const input = { ...inputFraStroem(live?.partialJson), ...inputRaa }
+  // Nudgen fra serveren er skrevet til MODELLEN, men gemmes med i turen (se
+  // `udenHale`). Renser vi ikke her, lækker den ud i de otte steder der sender
+  // resultatet råt videre til `Resultat` — og hvor JSON'en ikke kan parses,
+  // dumper kroppen hele dokumentet i stedet for stdout.
+  const result = resultRaa === undefined ? undefined : udenHale(resultRaa)
   const { familie } = postFor(navn)
   // Underagent FOER familie-valget: `scout_agent` ville ellers falde i
   // faldbacken og vise raa JSON, mens agentens otte egne kald laa uroert i

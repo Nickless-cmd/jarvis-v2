@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
-import { kropFor, postFor } from './raekkeKroppe'
+import { kropFor, postFor, udDel, exitKode } from './raekkeKroppe'
 
 function vis(navn: string, input: Record<string, unknown>, result?: string, fejl = false) {
   return render(<>{kropFor(navn, input, result, fejl)}</>)
@@ -16,6 +16,27 @@ describe('rækkevisningens værktøjskroppe', () => {
     expect(screen.getByText('<title>Før</title>')).toBeInTheDocument()
     expect(container.textContent).not.toContain('"status"')
     expect(container.textContent).not.toContain('IN')
+  })
+
+  it('viser stdout frem for rå JSON når resultatet bærer serverens interne hale', () => {
+    // Serveren hæfter en kort instruks på det sidste værktøjs-resultat hver
+    // runde (visible_followup_results._NUDGE). Den gemmes med i turen, og så
+    // fejlede JSON.parse: kroppen dumpede hele dokumentet i stedet for stdout.
+    const raa = JSON.stringify({ result: { platform: 'linux', stdout: 'version: 0.6.86\nBUILD-EXIT=0', exit_code: 0 } })
+    const { container } = vis('operator_bash', { command: 'npm run build' },
+      `${raa}\n\n(⟳ Før du fortsætter: skriv én kort sætning om hvad disse resultater betyder og hvad du gør nu.)`)
+    expect(container.textContent).toContain('BUILD-EXIT=0')
+    expect(container.textContent).not.toContain('"platform"')
+    expect(container.textContent).not.toContain('⟳')
+  })
+
+  it('læser exit-koden selv om halen står bag JSON-en', () => {
+    const raa = JSON.stringify({ result: { stdout: 'boom', exit_code: 3 } })
+    expect(exitKode(`${raa}\n\n(⟳ Før du fortsætter: noget.)`, false)).toBe(3)
+  })
+
+  it('fjerner halen fra et rent tekst-resultat', () => {
+    expect(udDel('permission denied\n\n(⟳ Før du fortsætter: noget.)')).toBe('permission denied')
   })
 
   it('bevarer JSON-filer som filtekst og viser også de sidste linjer', () => {

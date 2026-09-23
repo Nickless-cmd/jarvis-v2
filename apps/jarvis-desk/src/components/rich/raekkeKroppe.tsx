@@ -188,6 +188,85 @@ function fejlTekst(ramme: Data | null, værdi: unknown): string {
 }
 
 /**
+ * ANSI-farvekoder i terminal-udskrift.
+ *
+ * `ls --color`, `git diff --color` og `grep --color` skriver SGR-sekvenser
+ * (`\x1b[32m`) ind i stdout. Raekkevisningen lagde dem i en `<pre>` raa, saa
+ * koderne stod som skrald midt i teksten. Vi OVERSAETTER dem i stedet for at
+ * fjerne dem: farven ER information — den er hele grunden til at vaerktoejet
+ * skrev den.
+ *
+ * Vi bygger React-spans, ikke HTML. Et fjendtligt vaerktoejsresultat kan
+ * derfor ikke smugle markup ind; `dangerouslySetInnerHTML` bruges bevidst
+ * ikke her, i modsaetning til Shiki-blokkene der selv escaper sin kode.
+ *
+ * Vi understoetter de 16 standardfarver samt fed/daempet. 256-farver og
+ * baggrund falder tilbage til arvet farve — de ville kraeve en terminal vi
+ * ikke er, og `git`, `ls` og `grep` bruger dem ikke i praksis.
+ */
+interface AnsiTilstand { fg: number | undefined; rgb: string | undefined; bold: boolean; dim: boolean }
+
+const ANSI_TOM: AnsiTilstand = { fg: undefined, rgb: undefined, bold: false, dim: false }
+// ESC er et kontroltegn — det ER definitionen af en ANSI-sekvens. Reglen
+// findes for at fange utilsigtede kontroltegn i moenstre; her er det hele
+// pointen.
+// eslint-disable-next-line no-control-regex
+const ANSI_RE = /\x1b\[([0-9;]*)m/g
+
+function anvendSgr(koder: number[], t: AnsiTilstand): AnsiTilstand {
+  const n: AnsiTilstand = { ...t }
+  for (let i = 0; i < koder.length; i++) {
+    const k = koder[i] ?? 0
+    if (k === 0) { n.fg = undefined; n.rgb = undefined; n.bold = false; n.dim = false }
+    else if (k === 1) n.bold = true
+    else if (k === 2) n.dim = true
+    else if (k === 22) { n.bold = false; n.dim = false }
+    else if (k === 39) { n.fg = undefined; n.rgb = undefined }
+    else if (k >= 30 && k <= 37) { n.fg = k - 30; n.rgb = undefined }
+    else if (k >= 90 && k <= 97) { n.fg = k - 90 + 8; n.rgb = undefined }
+    else if (k === 38 && koder[i + 1] === 2) {
+      n.rgb = `rgb(${koder[i + 2] ?? 0}, ${koder[i + 3] ?? 0}, ${koder[i + 4] ?? 0})`
+      n.fg = undefined
+      i += 4
+    }
+  }
+  return n
+}
+
+function ansiStykker(tekst: string): { t: string; s: AnsiTilstand }[] {
+  const ud: { t: string; s: AnsiTilstand }[] = []
+  let s = ANSI_TOM
+  let sidst = 0
+  ANSI_RE.lastIndex = 0
+  let m: RegExpExecArray | null
+  while ((m = ANSI_RE.exec(tekst)) !== null) {
+    if (m.index > sidst) ud.push({ t: tekst.slice(sidst, m.index), s })
+    const koder = (m[1] || '').split(';').map((x) => Number(x) || 0)
+    s = koder.length === 1 && koder[0] === 0 ? ANSI_TOM : anvendSgr(koder, s)
+    sidst = m.index + m[0].length
+  }
+  if (sidst < tekst.length) ud.push({ t: tekst.slice(sidst), s })
+  return ud
+}
+
+function Ansi({ tekst }: { tekst: string }) {
+  if (!tekst.includes('\x1b')) return <>{tekst}</>
+  return <>{ansiStykker(tekst).map((d, i) => {
+    const ren = d.s.fg === undefined && !d.s.rgb && !d.s.bold && !d.s.dim
+    if (ren) return d.t
+    return <span
+      key={i}
+      className={d.s.fg !== undefined ? `rv-ansi-${d.s.fg}` : undefined}
+      style={{
+        ...(d.s.rgb ? { color: d.s.rgb } : {}),
+        ...(d.s.bold ? { fontWeight: 600 } : {}),
+        ...(d.s.dim ? { opacity: 0.7 } : {}),
+      }}
+    >{d.t}</span>
+  })}</>
+}
+
+/**
  * Exit-koden. Vores 366 værktøjer er ikke enige om feltnavnet — `bash_session`
  * har `exit_code`, den almindelige `bash` pakker et objekt med `stdout`, og de
  * fleste har slet ingen. Derfor leder vi efter flere navne og falder tilbage
@@ -234,12 +313,53 @@ export function Terminal({ cmd, ud, exit, pending = false }: { cmd: string; ud: 
         <span>{cmd}</span>
         {!pending && <span className="rv-exit">exit code {exit}</span>}
       </div>
-      <pre {...(pending && !ud ? { 'data-pending': '' } : {})}>{ud || (pending ? 'Kører…' : '')}</pre>
+      <pre {...(pending && !ud ? { 'data-pending': '' } : {})}>{ud ? <Ansi tekst={ud} /> : (pending ? 'Kører…' : '')}</pre>
     </div>
   )
 }
 
-export function Diff({ linjer }: { linjer: { k: 'add' | 'del' | 'ctx'; t: string }[] }) {
+export type DiffLinje = { k: 'add' | 'del' | 'ctx'; t: string }
+
+/**
+ * Diff-linjerne — med kode-farve naar vi kender sproget.
+ *
+ * Vi sender de RENE linjer (uden `+`/`−`) gennem Shiki i ét kald og saetter
+ * linjens art som `data-k` via en transformer. To grunde til den vej: et kald
+ * pr. linje ville vaere dyrt i en lang redigering, og markerne selv maa ikke
+ * igennem grammatikken — `-` foran en linje er en operator for tokenizeren.
+ *
+ * Baggrunden for `add`/`del` laegges i CSS paa linjen, ikke paa tokenet, saa
+ * rytmen i diffen bliver staaende oveni kode-farverne.
+ */
+export function Diff({ linjer, path }: { linjer: DiffLinje[]; path?: string }) {
+  const ren = linjer.map((l) => l.t).join('\n')
+  const lang = path ? filSprog(path) : 'text'
+  const [html, setHtml] = useState<string | null>(null)
+  // Afhaengigheden er en STRENG og ikke `linjer`: arrayet bygges paa ny ved
+  // hver render af kaldsstedet, saa en array-reference i dep-listen ville
+  // starte en ny highlighting i det uendelige.
+  const noegle = linjer.map((l) => l.k + l.t).join('\u0000')
+  useEffect(() => {
+    let alive = true
+    setHtml(null)
+    if (lang !== 'text' && ren) {
+      const ks = linjer.map((l) => l.k)
+      codeToHtml(ren, {
+        lang,
+        themes: { light: 'github-light', dark: 'github-dark' },
+        defaultColor: false,
+        transformers: [{
+          line(node, nr) {
+            const props = node.properties as unknown as Record<string, unknown>
+            props['data-k'] = ks[nr - 1] ?? 'ctx'
+          },
+        }],
+      }).then((v) => { if (alive) setHtml(v) }).catch(() => { if (alive) setHtml(null) })
+    }
+    return () => { alive = false }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [noegle, lang])
+  if (html) return <div className="rv-kort rv-diff" data-lang={lang} dangerouslySetInnerHTML={{ __html: html }} />
   return (
     <div className="rv-kort rv-diff">
       <pre>{linjer.map((l, i) => <span key={i} className="rv-l" data-k={l.k}>{l.t}{'\n'}</span>)}</pre>
@@ -289,11 +409,46 @@ function Resultat({ tekst, ind, ud }: { tekst: ReactNode; ind: string; ud: strin
   return <div className="rv-resultat"><div className="rv-kort rv-resultatH">{tekst}</div><Raadata ind={ind} ud={ud} /></div>
 }
 
+/**
+ * Sproget bag en fil — navn FOER endelse.
+ *
+ * Endelsen alene dækkede kun halvdelen: `Makefile`, `Dockerfile`, `.env` og
+ * `go.mod` har ingen brugbar endelse og faldt til `text`, altså ingen farve.
+ * Navnekortet fanges først, fordi `Dockerfile.prod` har endelsen `.prod`.
+ *
+ * Kun sprog der findes i Shiki's bundt staar her. Et navn uden grammatik
+ * kaster, `catch` sluger det, og filen vises ufarvet — det er tavst og ligner
+ * en tilfaeldighed, saa vi holder listen konservativ.
+ */
+const NAVNE_SPROG: Record<string, string> = {
+  dockerfile: 'dockerfile', containerfile: 'dockerfile', makefile: 'make',
+  gemfile: 'ruby', rakefile: 'ruby', 'go.mod': 'go', 'go.sum': 'go',
+  'cargo.toml': 'toml', 'cargo.lock': 'toml', 'pyproject.toml': 'toml',
+  'package.json': 'json', 'tsconfig.json': 'json', '.gitignore': 'text',
+  '.dockerignore': 'text', '.env': 'dotenv', '.editorconfig': 'ini',
+  'nginx.conf': 'nginx', 'requirements.txt': 'text',
+}
+
+const ENDELSE_SPROG: Record<string, string> = {
+  ts: 'typescript', tsx: 'tsx', mts: 'typescript', cts: 'typescript',
+  js: 'javascript', jsx: 'jsx', mjs: 'javascript', cjs: 'javascript',
+  html: 'html', htm: 'html', css: 'css', scss: 'scss', less: 'less',
+  json: 'json', jsonc: 'jsonc', py: 'python', rb: 'ruby', go: 'go',
+  rs: 'rust', java: 'java', kt: 'kotlin', swift: 'swift', c: 'c', h: 'c',
+  cpp: 'cpp', cc: 'cpp', hpp: 'cpp', cs: 'csharp', php: 'php',
+  md: 'markdown', yml: 'yaml', yaml: 'yaml', toml: 'toml', ini: 'ini',
+  conf: 'ini', cfg: 'ini', sql: 'sql', sh: 'bash', bash: 'bash',
+  zsh: 'bash', ps1: 'powershell', xml: 'xml', svg: 'xml', vue: 'vue',
+  svelte: 'svelte', lua: 'lua', pl: 'perl', r: 'r', diff: 'diff',
+  patch: 'diff', env: 'dotenv',
+}
+
 function filSprog(path: string): string {
-  const ext = pathNavn(path).split('.').at(-1)?.toLowerCase() || ''
-  return ({ ts: 'typescript', tsx: 'tsx', js: 'javascript', jsx: 'jsx',
-    html: 'html', css: 'css', json: 'json', py: 'python', md: 'markdown',
-    yml: 'yaml', yaml: 'yaml', sh: 'bash' } as Record<string, string>)[ext] || 'text'
+  const navn = pathNavn(path).toLowerCase()
+  const kendt = NAVNE_SPROG[navn]
+  if (kendt) return kendt
+  const ext = navn.split('.').at(-1) || ''
+  return ENDELSE_SPROG[ext] || 'text'
 }
 
 function FarvedeLinjer({ tekst, path }: { tekst: string; path: string }) {
@@ -514,7 +669,7 @@ export function kropFor(
       k: t.startsWith('+') ? ('add' as const) : t.startsWith('-') ? ('del' as const) : ('ctx' as const),
       t: t.replace(/^[+-]/, ''),
     }))
-    return <Diff linjer={linjer} />
+    return <Diff linjer={linjer} path={streng(input.path) || streng(input.file_path) || streng(input.target_path)} />
   }
   if (familie === 'fil') {
     const path = streng(input.path) || streng(input.file_path) || streng(ramme?.path)

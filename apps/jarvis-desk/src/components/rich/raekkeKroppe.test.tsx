@@ -298,4 +298,32 @@ describe('rækkevisningens værktøjskroppe', () => {
         .toEqual(postFor(nyt))
     }
   })
+
+  it('farver terminal-udskrift efter ANSI-koderne i stedet for at vise dem raat', () => {
+    // `ls --color`, `git diff --color` og `grep --color` skriver SGR-koder ind
+    // i stdout. Foer stod `\x1b[32m` som skrald midt i teksten.
+    const raa = JSON.stringify({ result: { stdout: '\x1b[32mOK\x1b[0m fejl \x1b[31mNEJ\x1b[0m', exit_code: 0 } })
+    const { container } = vis('operator_bash', { command: 'ls --color' }, raa)
+    expect(container.querySelector('.rv-ansi-2')?.textContent).toBe('OK')
+    expect(container.querySelector('.rv-ansi-1')?.textContent).toBe('NEJ')
+    expect(container.textContent).not.toContain('\x1b')
+    expect(container.textContent).toContain('fejl')
+  })
+
+  it('genkender sproget fra filnavnet naar endelsen ikke siger noget', () => {
+    // `Dockerfile`, `Makefile` og `.env` har ingen brugbar endelse og faldt
+    // til `text`, altsaa ingen farve.
+    const { container } = vis('read_file', { path: '/srv/app/Dockerfile' },
+      JSON.stringify({ status: 'ok', result: 'FROM node:22\nRUN npm ci' }))
+    expect(container.querySelector('.rv-filKode')).toHaveAttribute('data-lang', 'dockerfile')
+  })
+
+  it('farver koden i en redigering naar stien kendes', async () => {
+    const { container } = vis('operator_edit_file', { path: 'app.ts', old_string: 'const a = 1', new_string: 'const a = 2' },
+      JSON.stringify({ status: 'ok', result: { replacements: 1 } }))
+    await waitFor(() => expect(container.querySelector('.rv-diff .shiki .line')).toBeInTheDocument(), { timeout: 5000 })
+    expect(container.querySelector('.rv-diff')).toHaveAttribute('data-lang', 'typescript')
+    expect(container.querySelector('.rv-diff .shiki .line[data-k="del"]')).toBeInTheDocument()
+    expect(container.querySelector('.rv-diff .shiki .line[data-k="add"]')).toBeInTheDocument()
+  })
 })

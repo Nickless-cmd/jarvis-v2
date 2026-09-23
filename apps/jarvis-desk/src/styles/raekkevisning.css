@@ -295,6 +295,71 @@
 .raekkevisning .rv-l[data-k='add']::before { content: '+'; }
 .raekkevisning .rv-l[data-k='del'] { background: rgba(239,126,107,.10); color: #e8ab9e; }
 .raekkevisning .rv-l[data-k='del']::before { content: '\2212'; }
+
+/* ── Diff med kode-farve (23/9-2026) ─────────────────────────────────────
+   Naar stien kendes, farves koden af Shiki og linjens art laegges som
+   `data-k` paa `.line`. Reglerne spejler `.rv-l` ovenfor — samme padding og
+   samme `+`/`−` i margenen — saa en farvet diff og en ufarvet sidder ens.
+
+   Farven kommer fra `--shiki-dark`/`--shiki-light`, som Shiki saetter inline
+   paa hvert token (`defaultColor: false`). Vi vaelger variablen i CSS, saa
+   samme highlightning virker i begge temaer uden et ekstra kald. */
+.raekkevisning .rv-diff .shiki { padding: 6px 0; }
+.raekkevisning .rv-diff .shiki code { display: block; }
+.raekkevisning .rv-diff .shiki .line {
+  display: block; padding: 1px 11px 1px 26px; position: relative;
+}
+.raekkevisning .rv-diff .shiki .line::before { position: absolute; left: 11px; opacity: .75; }
+.raekkevisning .rv-diff .shiki .line[data-k='add'] { background: rgba(124,196,155,.10); }
+.raekkevisning .rv-diff .shiki .line[data-k='add']::before { content: '+'; }
+.raekkevisning .rv-diff .shiki .line[data-k='del'] { background: rgba(239,126,107,.10); }
+.raekkevisning .rv-diff .shiki .line[data-k='del']::before { content: '\2212'; }
+.raekkevisning .rv-diff .shiki,
+.raekkevisning .rv-diff .shiki span { color: var(--shiki-dark); }
+:root[data-theme='light'] .raekkevisning .rv-diff .shiki,
+:root[data-theme='light'] .raekkevisning .rv-diff .shiki span { color: var(--shiki-light); }
+
+/* ── ANSI i terminal-udskrift (23/9-2026) ────────────────────────────────
+   `ls --color`, `git diff --color` og `grep --color` skriver SGR-koder ind i
+   stdout. Vi oversaetter dem til de 16 standardfarver i stedet for at fjerne
+   dem — farven er information, ikke stoj.
+
+   Paletten bor her og ikke i tokens.css, fordi kun denne visning viser
+   terminal-udskrift. To temaer, fordi ANSI's faste farver ikke er laesbare
+   paa begge flader: den samme groenne er fin paa sort og ulaeselig paa hvid. */
+.raekkevisning {
+  --rv-ansi-0: #4a5058;  --rv-ansi-1: #e06c75;  --rv-ansi-2: #98c379;
+  --rv-ansi-3: #e5c07b;  --rv-ansi-4: #61afef;  --rv-ansi-5: #c678dd;
+  --rv-ansi-6: #56b6c2;  --rv-ansi-7: #abb2bf;  --rv-ansi-8: #6b7280;
+  --rv-ansi-9: #ef7e6b;  --rv-ansi-10: #b6e3a0; --rv-ansi-11: #f0d197;
+  --rv-ansi-12: #82c4f5; --rv-ansi-13: #d99ee8; --rv-ansi-14: #7fd0d9;
+  --rv-ansi-15: #ffffff;
+}
+:root[data-theme='light'] .raekkevisning,
+:root:not([data-theme='dark']) .raekkevisning {
+  --rv-ansi-0: #383a42;  --rv-ansi-1: #c1413c;  --rv-ansi-2: #2e7d32;
+  --rv-ansi-3: #8a5200;  --rv-ansi-4: #2563eb;  --rv-ansi-5: #9a3fa8;
+  --rv-ansi-6: #0f7b8a;  --rv-ansi-7: #4a4a4a;  --rv-ansi-8: #6b6b6b;
+  --rv-ansi-9: #b3392f;  --rv-ansi-10: #256b28; --rv-ansi-11: #8a5200;
+  --rv-ansi-12: #1d4ed8; --rv-ansi-13: #8a2f97; --rv-ansi-14: #0b6a77;
+  --rv-ansi-15: #000000;
+}
+.raekkevisning .rv-ansi-0 { color: var(--rv-ansi-0); }
+.raekkevisning .rv-ansi-1 { color: var(--rv-ansi-1); }
+.raekkevisning .rv-ansi-2 { color: var(--rv-ansi-2); }
+.raekkevisning .rv-ansi-3 { color: var(--rv-ansi-3); }
+.raekkevisning .rv-ansi-4 { color: var(--rv-ansi-4); }
+.raekkevisning .rv-ansi-5 { color: var(--rv-ansi-5); }
+.raekkevisning .rv-ansi-6 { color: var(--rv-ansi-6); }
+.raekkevisning .rv-ansi-7 { color: var(--rv-ansi-7); }
+.raekkevisning .rv-ansi-8 { color: var(--rv-ansi-8); }
+.raekkevisning .rv-ansi-9 { color: var(--rv-ansi-9); }
+.raekkevisning .rv-ansi-10 { color: var(--rv-ansi-10); }
+.raekkevisning .rv-ansi-11 { color: var(--rv-ansi-11); }
+.raekkevisning .rv-ansi-12 { color: var(--rv-ansi-12); }
+.raekkevisning .rv-ansi-13 { color: var(--rv-ansi-13); }
+.raekkevisning .rv-ansi-14 { color: var(--rv-ansi-14); }
+.raekkevisning .rv-ansi-15 { color: var(--rv-ansi-15); }
 /* Ind/ud */
 .raekkevisning .rv-par { display: grid; grid-template-columns: 36px 1fr; }
 .raekkevisning .rv-par + .rv-par { border-top: 1px solid var(--line); }

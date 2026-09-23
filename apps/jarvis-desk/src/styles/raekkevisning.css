@@ -22,9 +22,16 @@
   --rv-tertiary: #a6a59c;
   --rv-h: 24px;      /* rækkens højde — målt: calc(24px + content-font-delta) */
   --rv-enhed: 16px;  /* målt: grundenheden mellem ALT */
+  /* Den aktive opgavelinjes tone. Bor her af samme grund som --rv-tertiary:
+     kun denne visning bruger den. `color-mix` er ikke en mulighed i vores
+     Electron-version — rgba virker overalt. */
+  --rv-accent-soft: rgba(63, 199, 180, .10);
 }
 :root[data-theme='light'] .raekkevisning,
-:root:not([data-theme='dark']) .raekkevisning { --rv-tertiary: #6a6a64; }
+:root:not([data-theme='dark']) .raekkevisning {
+  --rv-tertiary: #6a6a64;
+  --rv-accent-soft: rgba(61, 127, 92, .09);
+}
 :root[data-theme='dark'] .raekkevisning { --rv-tertiary: #a6a59c; }
 
 /* ── Flowet ──────────────────────────────────────────────────────────── */
@@ -41,10 +48,13 @@
 }
 /* Ikonboks 16×16, glyf 14, margin-right 6 → indhold starter ved 22px. */
 .raekkevisning .rv-ikon {
-  position: relative;
+  position: relative; z-index: 1;
   flex: none; width: 16px; height: 16px; margin-right: 6px;
   display: inline-flex; align-items: center; justify-content: center;
   color: var(--fg-3);
+  /* Baggrundsplet så rygraden ikke løber gennem glyffen. Samme farve som
+     fladen bag rækken, så pletten ikke ses — den er et hul, ikke en flade. */
+  background: var(--bg-1);
 }
 /* Hover: ikonet falmer ud, chevronen ind — 100ms, ingen række-fill.
    Samme affordance som forlægget (DisclosureRow.module.css:57-77). */
@@ -69,6 +79,13 @@
   font-size: 13px; line-height: var(--rv-h); font-weight: 400; color: var(--rv-tertiary);
 }
 .raekkevisning .rv-sumT { display: block; overflow: hidden; text-overflow: ellipsis; }
+/* Hover løfter rækken: sammenfatningen går fra dæmpet grå til læsbar, og
+   titlen med. Ingen række-fill — det er teksten der vågner, ikke fladen.
+   Det er den affordans der manglede: uden den er der ingen grund til at tro
+   at rækken kan foldes ud. */
+.raekkevisning .rv-sum { transition: color 120ms ease; }
+.raekkevisning .rv-r[data-foldbar]:hover .rv-sum,
+.raekkevisning .rv-r[data-foldbar]:hover .rv-slags { color: var(--fg-1); }
 /* Målt: separatoren er IKKE et tegn — en tom 2×2px prik med 8px til hver side. */
 .raekkevisning .rv-sep {
   flex: none; width: 2px; height: 2px; margin: 0 8px; border-radius: 1px;
@@ -94,6 +111,21 @@
 
 /* Målt: `contain: size layout` bruges ÉT sted — tænke-rækken, sammenfoldet. */
 .raekkevisning .rv-r[data-tanke]:not([data-aaben]) { contain: size layout; }
+
+/* Farve på glyffen efter RESULTATFORMEN (navnekortets familie, sat som
+   `data-kind` i RaekkeTranskript). Kun glyffen: titel og sammenfatning bliver
+   grå, så det er venstremargenen man scanner med øjet — ikke rækken. Fejl
+   vinder overalt; den skal ses før noget andet. */
+.raekkevisning .rv-r[data-kind='fil'] .rv-ikon { color: var(--tint); }
+.raekkevisning .rv-r[data-kind='liste'] .rv-ikon { color: var(--ok); }
+.raekkevisning .rv-r[data-kind='terminal'] .rv-ikon { color: var(--warn-fg); }
+.raekkevisning .rv-r[data-kind='skriv'] .rv-ikon { color: var(--accent-text); }
+.raekkevisning .rv-r[data-kind='diff'] .rv-ikon { color: var(--accent-text); }
+.raekkevisning .rv-r[data-kind='web'] .rv-ikon { color: var(--tint); }
+.raekkevisning .rv-r[data-kind='billede'] .rv-ikon { color: var(--tint); }
+.raekkevisning .rv-r[data-kind='spoergsmaal'] .rv-ikon { color: var(--accent-text); }
+.raekkevisning .rv-r[data-kind='opgave'] .rv-ikon { color: var(--ok); }
+.raekkevisning .rv-r[data-fejl] .rv-ikon { color: var(--error-fg); }
 
 /* Kørende: 300px lysstribe, 2.6s ease-out infinite. */
 .raekkevisning .rv-r[data-koerer]::after {
@@ -134,7 +166,18 @@
 .raekkevisning .rv-turC {
   display: inline-flex; width: 16px; justify-content: center; font-size: 10px; color: var(--fg-3);
 }
-.raekkevisning .rv-gruppe { display: flex; flex-direction: column; padding-top: 8px; }
+.raekkevisning .rv-gruppe {
+  position: relative; display: flex; flex-direction: column; padding-top: 8px;
+}
+/* Rygraden: 1px lodret linje gennem gruppen, med ikonerne siddende PÅ den.
+   Den siger «én sammenhængende handling» i stedet for «otte uafhængige
+   linjer» — dét flytter læsningen fra log til forløb. Linjen starter ved
+   første ikons midte (8px padding + 12px) og slutter et par px under sidste
+   række, så den ikke står som en stub. Kun synlig når turen er foldet UD. */
+.raekkevisning .rv-gruppe::before {
+  content: ''; position: absolute; left: 7.5px; top: 20px; bottom: 8px;
+  width: 1px; background: var(--line); pointer-events: none;
+}
 /* `display:flex` ovenfor SLÅR browserens egen [hidden]-regel. Uden denne
    linje skjuler `hidden` ingenting — målt 22/9-2026, og den kostede tre
    symptomer der lignede tre fejl. */
@@ -167,7 +210,9 @@
    inde i gruppen og folder sig sammen med arbejdet. */
 .raekkevisning .rv-mellem,
 .raekkevisning .rv-svar { font-size: 14px; line-height: 24px; color: var(--fg-1); }
-.raekkevisning .rv-mellem { margin: var(--rv-enhed) 0; }
+/* Indrykket til 22px — samme kant som kroppene — så rygraden har plads og
+   narrativen står på linje med det den handler om. */
+.raekkevisning .rv-mellem { margin: var(--rv-enhed) 0; padding-left: 22px; }
 .raekkevisning .rv-gruppe > .rv-arbejdsrunde + .rv-mellem { margin-top: var(--rv-enhed); }
 
 /* ══ KORT-PRIMITIVERNE ══ Delte former dækker hele værktøjskassen; resten
@@ -332,4 +377,29 @@
 .raekkevisning .rv-uaArg {
   min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
   color: var(--rv-tertiary); font: 12px var(--font-mono);
+}
+
+/* ── Opgavelisten (23/9-2026) ─────────────────────────────────────────────
+   `todo_set` (50 kald) og `todo_update_status` (36) faldt til den generiske
+   feltdump. Formen er linjer, ikke felter: ☑ færdig, ◐ i gang, ☐ venter.
+   Den aktive linje får en svag accent-tone — den er dét man leder efter, og
+   uden fremhævningen læser listen som en log man skal grave i. */
+.raekkevisning .rv-opgaveH {
+  padding: 7px 11px; border-bottom: 1px solid var(--line);
+  font: 11px var(--font-mono); color: var(--fg-3);
+}
+.raekkevisning .rv-opgaveNu { color: var(--fg-2); }
+.raekkevisning .rv-opgaveLinje {
+  display: flex; gap: 10px; align-items: baseline;
+  padding: 4px 11px; font-size: 13px; color: var(--rv-tertiary);
+}
+.raekkevisning .rv-opgaveG { flex: none; width: 13px; color: var(--fg-3); }
+.raekkevisning .rv-opgaveT { min-width: 0; overflow-wrap: anywhere; }
+.raekkevisning .rv-opgaveLinje[data-s='in_progress'] {
+  color: var(--fg-1); background: var(--rv-accent-soft);
+}
+.raekkevisning .rv-opgaveLinje[data-s='in_progress'] .rv-opgaveG { color: var(--warn-fg); }
+.raekkevisning .rv-opgaveLinje[data-s='completed'] .rv-opgaveG { color: var(--ok); }
+.raekkevisning .rv-opgaveLinje[data-s='completed'] .rv-opgaveT {
+  color: var(--fg-3); text-decoration: line-through;
 }

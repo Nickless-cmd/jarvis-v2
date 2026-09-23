@@ -180,6 +180,32 @@ describe('rækkevisningens værktøjskroppe', () => {
     expect(container.querySelector('details')).not.toHaveAttribute('open')
   })
 
+  it('viser en opgaveliste som linjer med status frem for JSON', () => {
+    // `todo_set` gav 50 kald og `todo_update_status` 36 (23/9-2026) og faldt
+    // til den generiske feltdump. Formen er linjer, ikke felter.
+    const { container } = vis('todo_set', { todos: [] },
+      JSON.stringify({ session_id: '_default', count: 3, todos: [
+        { id: 'td-1', content: 'Rette navnekortet', status: 'completed' },
+        { id: 'td-2', content: 'Bygge opgavelisten', status: 'in_progress' },
+        { id: 'td-3', content: 'Skrive test', status: 'pending' },
+      ] }))
+    expect(container.querySelector('.rv-opgave')).toBeInTheDocument()
+    expect(container.textContent).toContain('1 af 3')
+    expect(container.textContent).toContain('1 i gang')
+    expect(container.textContent).toContain('Bygge opgavelisten')
+    expect(container.querySelector('[data-s="in_progress"]')).toBeInTheDocument()
+    expect(container.textContent).not.toContain('"status"')
+    expect(container.textContent).not.toContain('td-1')
+  })
+
+  it('viser også et enkelt opdateret punkt som opgaveliste', () => {
+    const { container } = vis('todo_update_status', { todo_id: 'td-2', status: 'completed' },
+      JSON.stringify({ status: 'ok', todo: { id: 'td-2', content: 'Bygge opgavelisten', status: 'completed' } }))
+    expect(container.querySelector('.rv-opgave')).toBeInTheDocument()
+    expect(container.textContent).toContain('Bygge opgavelisten')
+    expect(container.textContent).toContain('1 af 1')
+  })
+
   it('giver de mest brugte værktøjer en form — ingen falder til faldbacken', () => {
     // Vagt mod døde navne i navnekortet. Hvert navn her er målt i faktisk brug
     // (tool_usage, 23/9-2026) og SKAL have en form. Falder et af dem til 'fald',
@@ -194,6 +220,7 @@ describe('rækkevisningens værktøjskroppe', () => {
       'memory_upsert_section', 'send_telegram_message', 'notify_user',
       'operator_multi_edit', 'pause_and_ask', 'web_scrape', 'operator_webfetch',
       'operator_screenshot', 'look_around', 'read_visual_memory',
+      'todo_set', 'todo_update_status', 'todo_add', 'todo_list',
     ]
     for (const navn of skalHaveForm) {
       expect(postFor(navn).familie, `${navn} mangler i navnekortet`).not.toBe('fald')

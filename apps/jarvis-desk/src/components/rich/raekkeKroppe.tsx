@@ -24,7 +24,7 @@ import { lookupTool, GAMLE_NAVNE } from '../../lib/toolRegistry'
 import { hentAgentKald, agentIdFra, type AgentKald } from '../../lib/agentKald'
 import type { ApiConfig } from '../../lib/api'
 
-export type Familie = 'terminal' | 'diff' | 'fil' | 'skriv' | 'liste' | 'web' | 'spoergsmaal' | 'billede' | 'fald'
+export type Familie = 'terminal' | 'diff' | 'fil' | 'skriv' | 'liste' | 'web' | 'spoergsmaal' | 'billede' | 'opgave' | 'fald'
 
 interface Post { etiket: string; familie: Familie }
 
@@ -118,6 +118,14 @@ const KENDTE: Record<string, Post> = {
   operator_screenshot: { etiket: 'Read image', familie: 'billede' },
   look_around: { etiket: 'Read image', familie: 'billede' },
   read_visual_memory: { etiket: 'Read image', familie: 'billede' },
+  // ── Opgaveliste: én linje pr. punkt, ikke én pr. felt ─────────────────
+  // `todo_set` havde 50 kald og `todo_update_status` 36 (23/9-2026) og faldt
+  // til den generiske feltdump. Formen er linjer, ikke felter.
+  todo_set: { etiket: 'Todo', familie: 'opgave' },
+  todo_add: { etiket: 'Todo', familie: 'opgave' },
+  todo_update_status: { etiket: 'Todo', familie: 'opgave' },
+  todo_remove: { etiket: 'Todo', familie: 'opgave' },
+  todo_list: { etiket: 'Todo', familie: 'opgave' },
 }
 
 /** Vælger etiket + familie for et værktøjsnavn.
@@ -334,6 +342,34 @@ export function Billede({ src, navn, meta }: { src?: string; navn: string; meta:
  * ved render, ville hver scout_agent-række i en lang tråd fyre et kald af
  * ved indlæsning; det er samme fejl som poll-stormen.
  */
+/** Opgavelisten — ☑ færdig, ◐ i gang, ☐ venter.
+ *
+ * Formen er LINJER, ikke felter: en opgaveliste er en tilstand man læser ned
+ * ad, og rækkefølgen er arbejdets — ikke alfabetisk. Den aktive linje
+ * fremhæves, for den er dét man leder efter; uden fremhævningen læser listen
+ * som en log man skal grave i.
+ */
+export function Opgaveliste({ poster }: { poster: { tekst: string; status: string }[] }) {
+  const faerdige = poster.filter((p) => p.status === 'completed').length
+  const igang = poster.filter((p) => p.status === 'in_progress').length
+  return (
+    <div className="rv-kort rv-opgave">
+      <div className="rv-opgaveH">
+        {faerdige} af {poster.length}
+        {igang > 0 && <> · <span className="rv-opgaveNu">{igang} i gang</span></>}
+      </div>
+      {poster.map((p, i) => (
+        <div key={i} className="rv-opgaveLinje" data-s={p.status}>
+          <span className="rv-opgaveG" aria-hidden="true">
+            {p.status === 'completed' ? '☑' : p.status === 'in_progress' ? '◐' : '☐'}
+          </span>
+          <span className="rv-opgaveT">{p.tekst}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export function Underagent({
   agentId, resultat, config,
 }: { agentId: string; resultat: string; config?: ApiConfig }) {
@@ -452,6 +488,17 @@ export function kropFor(
       ? `${værdi.width} × ${værdi.height}` : ''
     const beskrivelse = objekt(værdi) ? streng(værdi.description) || streng(værdi.caption) : ''
     return <Billede navn={sti || navn} meta={[maal, beskrivelse].filter(Boolean).join(' · ') || (objekt(værdi) ? 'Image analyzed' : ud.slice(0, 120))} />
+  }
+  if (familie === 'opgave') {
+    // Formen er `{count, todos:[{content, status}]}` for todo_set/todo_list og
+    // `{todo:{…}}` for todo_update_status — begge læses som ÉN liste.
+    const liste = objekt(værdi)
+      ? (Array.isArray(værdi.todos) ? værdi.todos : objekt(værdi.todo) ? [værdi.todo] : null)
+      : null
+    if (liste) return <Opgaveliste poster={liste.map((p) => objekt(p)
+      ? { tekst: streng(p.content) || streng(p.text) || streng(p.title) || visTekst(p), status: streng(p.status) || 'pending' }
+      : { tekst: visTekst(p), status: 'pending' })} />
+    return <Resultat tekst={oversigt(værdi, 'Opgaveliste')} ind={ind} ud={result || ''} />
   }
   return <Resultat tekst={oversigt(værdi, navn)} ind={ind} ud={result || ''} />
 }

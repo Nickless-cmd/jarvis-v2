@@ -40,7 +40,7 @@ function foersteLinje(s: string): string {
 }
 
 function Raekke({
-  Ikon, slags, sum, krop, koerer, fejl, tanke, mrkat,
+  Ikon, slags, sum, krop, koerer, fejl, tanke, mrkat, kind,
 }: {
   Ikon: LucideIcon
   slags: string
@@ -51,6 +51,11 @@ function Raekke({
   tanke?: boolean
   /** Lille etiket yderst — «subagent». Kun naar den betyder noget. */
   mrkat?: string
+  /** Resultatformen fra navnekortet (`postFor`). Farver KUN glyffen — aldrig
+   *  rækken: de to malede flader (siden, brugerboblen) er dét der holder
+   *  visningen rolig. Farve på blæk er ikke en flade; farve på rækken ville
+   *  være det. Rækkefølgen bliver en farvekodet margen man scanner med øjet. */
+  kind?: string
 }) {
   const [aaben, setAaben] = useState(false)
   const foldbar = krop != null
@@ -62,6 +67,7 @@ function Raekke({
       {...(koerer ? { 'data-koerer': '' } : {})}
       {...(fejl ? { 'data-fejl': '' } : {})}
       {...(tanke ? { 'data-tanke': '' } : {})}
+      {...(kind ? { 'data-kind': kind } : {})}
       {...(foldbar
         ? { role: 'button', tabIndex: 0, 'aria-expanded': aaben, onClick: () => setAaben((v) => !v),
             onKeyDown: (e: React.KeyboardEvent) => {
@@ -168,6 +174,7 @@ function Element({ e, streaming, config }: { e: ArbejdsElement; streaming: boole
         koerer={b.status === 'running'}
         fejl={fejl}
         krop={kropFor(b.name, b.input, b.result, fejl, config)}
+        kind={postFor(b.name).familie}
         mrkat={erUnderagent(b.name) ? 'subagent' : undefined}
       />
     )

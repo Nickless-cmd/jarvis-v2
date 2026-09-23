@@ -421,6 +421,31 @@ function Fil({ path, tekst, meta }: { path: string; tekst: string; meta?: string
   </div>
 }
 
+/**
+ * Et minde der blev skrevet — hvad der blev husket, ikke id'et det fik.
+ *
+ * `remember_this` svarer kun med `{status, id}` og `memory_upsert_section`
+ * med `{status, action}`. Selve indholdet findes KUN i argumenterne, saa
+ * kroppen maa bygges af dem. Laeste vi resultatet, faldt raekken til
+ * feltlisten og viste `id brn_…`: beviset paa skrivningen i stedet for det
+ * der blev skrevet (Bjoern 23/9-2026: «det er jo ikk info jeg kan bruge til
+ * noget»).
+ *
+ * Teksten klippes i CSS'en og ikke her — en hel MEMORY.md-sektion kan vaere
+ * tusind tegn, og raekken skal ikke vokse med den.
+ */
+export function Minde({ titel, meta, tekst }: { titel: string; meta: string; tekst: string }) {
+  return (
+    <div className="rv-kort rv-minde">
+      <div className="rv-mindeH">
+        <span>{titel}</span>
+        {meta && <span className="rv-mindeM">{meta}</span>}
+      </div>
+      {tekst && <div className="rv-mindeT">{tekst}</div>}
+    </div>
+  )
+}
+
 function Raadata({ ind, ud }: { ind: string; ud: string }) {
   return <details className="rv-raadata"><summary>Raw data</summary><IndUd ind={ind} ud={ud} /></details>
 }
@@ -733,6 +758,18 @@ export function kropFor(
     const path = streng(input.path) || streng(input.file_path) || streng(ramme?.path)
     const content = streng(input.content) || streng(input.file_text)
     const bytes = objekt(værdi) && typeof værdi.bytes_written === 'number' ? `${værdi.bytes_written} bytes` : ''
+    // Et MINDES resultat baerer kun beviset — `{id}` for `remember_this`,
+    // `{action}` for `memory_upsert_section`. Indholdet staar i argumenterne,
+    // og uden denne gren faldt raekken til feltlisten og viste `id brn_…`.
+    const mindeNavn = GAMLE_NAVNE[navn] ?? navn
+    if (mindeNavn === 'remember_this' || mindeNavn === 'memory_upsert_section') {
+      const titel = streng(input.title) || streng(input.heading)
+      const tekst = streng(input.content) || streng(input.text)
+      if (titel && tekst && bekræftet(ramme, værdi)) {
+        const meta = [streng(input.kind), streng(input.domain)].filter(Boolean).join(' · ')
+        return <Minde titel={titel} meta={meta} tekst={tekst} />
+      }
+    }
     // Samme smalle gate som diffen: `operator_write_file` sender ingen status
     // i rammen, så `status === 'ok'` holdt aldrig og filens indhold blev
     // aldrig vist — kun «1941 bytes» og rå metadata. `bekræftet` tager imod

@@ -362,12 +362,46 @@ describe('rækkevisningens værktøjskroppe', () => {
     expect(container.textContent).toContain('et punkt')
   })
 
-  it('lader publish_file og memory_upsert_section beholde deres feltliste', () => {
-    // De bærer også `content`, men skriver ikke en fil. Uden sti-kravet ville
-    // deres tekst blive dumpet som et filkort.
+  it('viser mindet der blev skrevet frem for id-et det fik', () => {
+    // `remember_this` svarer kun med `{status, id}`. Indholdet står i
+    // argumenterne — uden denne form faldt rækken til feltlisten og viste
+    // «id brn_…», altså beviset på skrivningen i stedet for mindet.
+    const { container } = vis('remember_this', {
+      kind: 'indsigt', title: 'Byg-rækkefølgen',
+      content: 'Kode committet efter build er ikke i appen.',
+      visibility: 'personal', domain: 'projects',
+    }, JSON.stringify({ status: 'ok', id: 'brn_01M37WQ4JF2XH3KQX1HNJ4SD6E' }))
+    expect(container.querySelector('.rv-minde')).toBeInTheDocument()
+    expect(container.textContent).toContain('Byg-rækkefølgen')
+    expect(container.textContent).toContain('Kode committet efter build')
+    expect(container.textContent).toContain('indsigt')
+    expect(container.textContent).not.toContain('brn_01M37WQ4')
+  })
+
+  it('viser MEMORY.md-sektionen der blev skrevet', () => {
+    const { container } = vis('memory_upsert_section', { heading: 'Beslutninger', content: '- vi bygger videre' },
+      JSON.stringify({ status: 'ok', action: 'updated' }))
+    expect(container.querySelector('.rv-minde')).toBeInTheDocument()
+    expect(container.textContent).toContain('Beslutninger')
+    expect(container.textContent).toContain('vi bygger videre')
+  })
+
+  it('viser ikke et minde der IKKE blev gemt', () => {
+    // Et fejlet kald må ikke vise teksten som om den var skrevet.
+    const { container } = vis('remember_this', { kind: 'indsigt', title: 'T', content: 'C' },
+      JSON.stringify({ status: 'error', error: 'rate_limit_turn' }))
+    expect(container.querySelector('.rv-minde')).not.toBeInTheDocument()
+  })
+
+  it('lader publish_file beholde sin feltliste', () => {
+    // Den bærer også `content`, men skriver ikke en fil. Uden sti-kravet ville
+    // dens tekst blive dumpet som et filkort.
     const a = vis('publish_file', { filename: 'x.csv', content: 'a,b' }, JSON.stringify({ url: 'http://x' }))
     expect(a.container.querySelector('.rv-fil')).not.toBeInTheDocument()
-    const b = vis('memory_upsert_section', { heading: 'H', content: 'tekst' }, JSON.stringify({ ok: true }))
+    // Et minde er heller ikke et filkort — det har sin egen form.
+    const b = vis('memory_upsert_section', { heading: 'H', content: 'tekst' },
+      JSON.stringify({ status: 'ok', action: 'added' }))
     expect(b.container.querySelector('.rv-fil')).not.toBeInTheDocument()
+    expect(b.container.querySelector('.rv-minde')).toBeInTheDocument()
   })
 })

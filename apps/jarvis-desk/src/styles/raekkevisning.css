@@ -238,6 +238,25 @@
 .raekkevisning .rv-filH > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .raekkevisning .rv-filM { margin-left: auto; color: var(--fg-3); font: 11px var(--font-mono); }
 .raekkevisning .rv-filTom { padding: 12px 11px; color: var(--fg-3); font-size: 12px; }
+/* Mindet der blev skrevet (23/9-2026). `remember_this` svarer kun med `{id}`
+   og `memory_upsert_section` med `{action}` — indholdet staar i ARGUMENTERNE.
+   Hovedet er filkortets, saa de to former ikke laeser som to slags raekker.
+   Teksten klippes ved 180px: en hel MEMORY.md-sektion maa ikke goere raekken
+   hoej, for saa rykker transskriptet under den. */
+.raekkevisning .rv-mindeH {
+  display: flex; align-items: center; gap: 12px; padding: 7px 11px;
+  border-bottom: 1px solid var(--line); color: var(--fg-1);
+  font: 12px var(--font-mono);
+}
+.raekkevisning .rv-mindeH > span:first-child {
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.raekkevisning .rv-mindeM { margin-left: auto; color: var(--fg-3); font: 11px var(--font-mono); }
+.raekkevisning .rv-mindeT {
+  max-height: 180px; overflow: auto; overscroll-behavior: contain;
+  padding: 9px 11px; color: var(--rv-tertiary);
+  white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13px;
+}
 .raekkevisning .rv-filKode { max-height: 224px; overflow: auto; padding: 6px 0; }
 .raekkevisning .rv-filKode .shiki {
   margin: 0; background: transparent !important; counter-reset: rv-linje;

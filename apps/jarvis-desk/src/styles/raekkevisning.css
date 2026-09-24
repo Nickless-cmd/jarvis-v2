@@ -298,7 +298,15 @@
   display: flex; align-items: center; gap: 8px; padding: 6px 11px;
   border-bottom: 1px solid var(--line); font: 12px var(--font-mono); color: var(--fg-2);
 }
-.raekkevisning .rv-term .rv-kh > span:first-child { min-width: 0; overflow-wrap: anywhere; }
+.raekkevisning .rv-term .rv-kh > span:first-child {
+  min-width: 0; max-width: 40ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.raekkevisning .rv-term .rv-kommando-toggle {
+  flex: none; border: 0; background: none; padding: 0; cursor: pointer;
+  font: 11px var(--font-mono); color: var(--fg-3);
+}
+.raekkevisning .rv-term .rv-kommando-toggle:hover { color: var(--fg-1); }
+.raekkevisning .rv-term .rv-kommando-fuld { border-bottom: 1px solid var(--line); }
 .raekkevisning .rv-term .rv-exit {
   margin-left: auto; font: 11px var(--font-mono); color: var(--fg-3);
 }

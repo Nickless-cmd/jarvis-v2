@@ -299,6 +299,14 @@ export function countFromResult(content: string | undefined): number | undefined
   return Number.isFinite(n) && n > 0 ? n : undefined
 }
 
+/** Kun et eksplicit antal filer kan erstatte antal filredigeringer. Et tal i
+ * stdout (fx "259 linjer" fra git show) er aldrig antal Bash-kommandoer. */
+function countFilesFromResult(content: string | undefined): number | undefined {
+  const m = /(\d+)\s+(?:filer|files)\b/i.exec(content ?? '')
+  const n = m ? Number(m[1]) : NaN
+  return Number.isFinite(n) && n > 0 ? n : undefined
+}
+
 /**
  * Én linje for hele runden.
  *
@@ -316,13 +324,14 @@ export function summarizeRound(tools: ToolUse[]): string {
   }
 
   const navne = new Set(tools.map((t) => grundnavn(t.name)))
-  const counted = tools.reduce((sum, t) => sum + (countFromResult(t.result) ?? 0), 0)
-
   if (navne.size === 1) {
     const tool = grundnavn(tools[0]!.name)
     if (!PLURAL[tool]) return brugte(tools.length, running) + (running ? '…' : '')
     const [now, past] = PLURAL[tool]!
     const [one, many] = UNIT[tool] ?? ['ting', 'ting']
+    const counted = (tool === 'edit_file' || tool === 'write_file')
+      ? tools.reduce((sum, t) => sum + (countFilesFromResult(t.result) ?? 0), 0)
+      : 0
     const n = counted > 0 ? counted : tools.length
     return `${running ? now : past} ${n} ${n === 1 ? one : many}${running ? '…' : ''}`
   }

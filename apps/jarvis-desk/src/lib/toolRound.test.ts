@@ -107,6 +107,13 @@ describe('én linje for hele runden', () => {
     ])).toBe('Redigerede 16 filer')
   })
 
+  it('tæller Bash-kald, ikke tal om linjer i deres output', () => {
+    expect(summarizeRound([
+      t('bash', { command: 'git log' }, 'done', '259 linjer i loggen'),
+      t('operator_bash', { command: 'git show' }, 'done', '2 files changed'),
+    ])).toBe('Kørte 2 kommandoer')
+  })
+
   it('kører den, står linjen i nutid med prikker', () => {
     expect(summarizeRound([
       t('read_file', { path: 'a' }, 'running'), t('read_file', { path: 'b' }, 'running'),

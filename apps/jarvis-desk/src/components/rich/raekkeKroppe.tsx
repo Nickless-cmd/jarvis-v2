@@ -26,6 +26,7 @@ import { diffPar } from '../../lib/diffStat'
 import { hentAgentKald, agentIdFra, type AgentKald } from '../../lib/agentKald'
 import { fetchBlobWithAuth, type ApiConfig } from '../../lib/api'
 import { KlikbartBillede } from './BilledLightbox'
+import { kommandoEmne } from '../../lib/toolRound'
 
 export type Familie = 'terminal' | 'diff' | 'fil' | 'skriv' | 'liste' | 'web' | 'spoergsmaal' | 'billede' | 'opgave' | 'fald'
 
@@ -356,12 +357,22 @@ export function udDel(result: string | undefined): string {
 /* ══ Delte resultatvisninger ════════════════════════════════════════════ */
 
 export function Terminal({ cmd, ud, exit, pending = false }: { cmd: string; ud: string; exit: number; pending?: boolean }) {
+  const [visHele, setVisHele] = useState(false)
+  const kort = cmd.length > 60 ? (kommandoEmne(cmd) || `${cmd.slice(0, 40)}…`) : cmd
+  const afkortet = kort !== cmd
   return (
     <div className="rv-kort rv-term" data-exit={pending ? undefined : exit}>
       <div className="rv-kh">
-        <span>{cmd}</span>
+        <span>{kort}</span>
+        {afkortet && <button type="button" className="rv-kommando-toggle"
+          aria-label={visHele ? 'Skjul hele kommandoen' : 'Vis hele kommandoen'}
+          aria-expanded={visHele}
+          onClick={(e) => { e.stopPropagation(); setVisHele((v) => !v) }}>
+          {visHele ? 'Skjul' : 'Vis hele'}
+        </button>}
         {!pending && <span className="rv-exit">exit code {exit}</span>}
       </div>
+      {visHele && <pre className="rv-kommando-fuld">{cmd}</pre>}
       <pre {...(pending && !ud ? { 'data-pending': '' } : {})}>{ud ? <Ansi tekst={ud} /> : (pending ? 'Kører…' : '')}</pre>
     </div>
   )

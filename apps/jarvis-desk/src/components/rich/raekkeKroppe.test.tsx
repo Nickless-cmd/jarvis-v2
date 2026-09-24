@@ -258,6 +258,16 @@ describe('rækkevisningens værktøjskroppe', () => {
     expect(container.textContent).toContain('exit code 0')
   })
 
+  it('giver en lang Bash-kommando en kort titel og kan vise hele kommandoen', () => {
+    const cmd = 'cd /media/projects/jarvis-v2/apps/jarvis-desk && echo "=== LAESERE-saettet ===" && sed -n \'55,100p\' src/components/rich/RaekkeTranskript.tsx && echo "" && sed -n \'100,135p\' src/components/rich/RaekkeTranskript.tsx'
+    const { container } = vis('operator_bash', { command: cmd },
+      JSON.stringify({ result: { stdout: 'ok', exit_code: 0 } }))
+    expect(container.querySelector('.rv-term .rv-kh')?.textContent).toContain('sed 55,100p')
+    expect(container.querySelector('.rv-term .rv-kh')?.textContent).not.toContain('cd /media')
+    fireEvent.click(screen.getByRole('button', { name: 'Vis hele kommandoen' }))
+    expect(container.querySelector('.rv-kommando-fuld')?.textContent).toBe(cmd)
+  })
+
   it('viser kommandoen og en kørselsstatus straks, før stdout findes', () => {
     const { container } = render(<>{kropFor('operator_bash', {}, undefined, false, undefined,
       { partialJson: '{"command":"for i in 1 2; do sleep 1; done"', running: true })}</>)

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
-  X, ShieldAlert, CircleAlert, CircleCheck, Bell, Package,
+  X, ShieldAlert, CircleAlert, CircleCheck, Bell, Package, RefreshCw,
   MessageCircle, Flag, ShieldX, Radar, Key, AtSign,
 } from 'lucide-react'
 import { openEventSocket, type ApiConfig } from '../../lib/api'
@@ -61,12 +61,15 @@ export function NotifikationsFeed({ config, onLuk, onAabnSession }: {
   const [fejl, setFejl] = useState(false)
   const [handlingFejl, setHandlingFejl] = useState('')
   const [travl, setTravl] = useState('')
+  const [opdaterer, setOpdaterer] = useState(false)
 
-  const hent = useCallback(() => {
+  const hent = useCallback((manuel = false) => {
     if (!config) return
+    if (manuel) setOpdaterer(true)
     void hentNotifikationer(config)
       .then((f) => { setPoster(f.poster); setFejl(false) })
       .catch(() => setFejl(true))
+      .finally(() => { if (manuel) setOpdaterer(false) })
   }, [config])
 
   useEffect(() => { hent() }, [hent])
@@ -108,19 +111,39 @@ export function NotifikationsFeed({ config, onLuk, onAabnSession }: {
     } finally { setTravl('') }
   }
 
+  const afslut = async (p: Notifikation) => {
+    if (!config || p.foraeldet) return
+    setTravl(p.id); setHandlingFejl('')
+    try {
+      await setNotifikation(config, p.id)
+      hent()
+    } catch {
+      setHandlingFejl('Notifikationen kunne ikke afsluttes. Prøv igen.')
+    } finally { setTravl('') }
+  }
+
   const aabn = (p: Notifikation) => {
     if (p.session_id) onAabnSession(p.session_id)
     // En `foraeldet` post (ejeren kunne ikke hydreres) maa ALDRIG lukkes med
     // /set — den venter stadig. Kun navigation er tilladt; et lukket kort kan
     // ikke komme igen gennem dedup'en paa serveren, saa en utilgaengelig ejer
     // maa ikke faa den til at ligne en klaret opgave (V1, 22/9-2026).
-    if (config && !p.foraeldet) void setNotifikation(config, p.id).then(hent).catch(() => undefined)
+    if (config && !p.foraeldet && p.slags !== 'question') {
+      void setNotifikation(config, p.id).then(() => hent()).catch(() => undefined)
+    }
   }
 
   return (
     <div className="notif-feed" role="dialog" aria-label="Notifikationer">
       <div className="notif-head">
-        <span>Notifikationer</span>
+        <div className="notif-heading">
+          <span>Notifikationer</span>
+          {poster && poster.length > 0 && <span className="notif-count">{poster.length}</span>}
+        </div>
+        <button type="button" className="jobs-close notif-refresh" onClick={() => hent(true)}
+                disabled={opdaterer} aria-label="Opdater notifikationer">
+          <RefreshCw size={14} className={opdaterer ? 'spinning' : ''} />
+        </button>
         <button type="button" className="jobs-close" onClick={onLuk} aria-label="Luk">
           <X size={14} />
         </button>
@@ -131,7 +154,7 @@ export function NotifikationsFeed({ config, onLuk, onAabnSession }: {
       {fejl ? (
         <div className="settings-feedback error" role="alert">
           <p>Notifikationerne kunne ikke hentes.</p>
-          <button type="button" onClick={hent}>Prøv igen</button>
+          <button type="button" onClick={() => hent()}>Prøv igen</button>
         </div>
       ) : poster === null ? (
         <SettingsState status="loading" label="notifikationerne" onRetry={() => {}} />
@@ -142,7 +165,7 @@ export function NotifikationsFeed({ config, onLuk, onAabnSession }: {
           {poster.map((p) => {
             const Ikon = IKON[p.slags] ?? Bell
             return (
-              <li key={p.id}>
+              <li key={p.id} className={`notif-item tone-${p.slags}`}>
                 <div
                   className={`notif-post${p.foraeldet ? ' er-foraeldet' : ''}`}
                   data-testid={`notif-${p.id}`}
@@ -152,10 +175,11 @@ export function NotifikationsFeed({ config, onLuk, onAabnSession }: {
                   onClick={() => { if (!p.kan_afgoere) aabn(p) }}
                   onKeyDown={(e) => { if (e.key === 'Enter' && !p.kan_afgoere) aabn(p) }}
                 >
-                  <Ikon size={14} className="notif-ikon" aria-hidden="true" />
+                  <span className="notif-ikon-ramme"><Ikon size={15} className="notif-ikon" aria-hidden="true" /></span>
                   <span className="notif-titel">{p.titel}</span>
                   <span className="notif-tid">{siden(p.oprettet)}</span>
                 </div>
+                {p.tekst && p.tekst !== p.titel && <p className="notif-tekst">{p.tekst}</p>}
                 {p.foraeldet && (
                   <p className="notif-foraeldet">Kunne ikke opdateres — det viste er sidste nyt.</p>
                 )}
@@ -165,6 +189,11 @@ export function NotifikationsFeed({ config, onLuk, onAabnSession }: {
                             onClick={() => void afgoer(p, true)}>Godkend</button>
                     <button type="button" disabled={travl === p.id}
                             onClick={() => void afgoer(p, false)}>Afvis</button>
+                  </div>
+                )}
+                {!p.kan_afgoere && !p.foraeldet && p.slags !== 'question' && (
+                  <div className="notif-handlinger">
+                    <button type="button" disabled={travl === p.id} onClick={() => void afslut(p)}>Færdig</button>
                   </div>
                 )}
               </li>

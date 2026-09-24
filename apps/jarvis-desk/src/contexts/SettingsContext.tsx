@@ -83,7 +83,7 @@ export function SettingsProvider({
     if (w && settings) {
       await w.config.set({
         apiBaseUrl: partial.apiBaseUrl ?? settings.apiBaseUrl,
-        authToken: partial.authToken ?? settings.authToken,
+        authToken: partial.authToken !== undefined ? partial.authToken : settings.authToken,
       })
     }
   }

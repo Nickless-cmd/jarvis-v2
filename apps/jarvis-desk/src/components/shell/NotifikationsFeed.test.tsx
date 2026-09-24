@@ -81,6 +81,25 @@ describe('NotifikationsFeed', () => {
     expect(raekke.getAttribute('title')).toBe('Jarvis vil køre en kommando.')
   })
 
+  it('viser indholdet i feedet og kan afslutte en post uden samtale', async () => {
+    hent.mockResolvedValueOnce({ poster: [post({ slags: 'run_done', kan_afgoere: false, session_id: null })], antal: 1 })
+      .mockResolvedValue({ poster: [], antal: 0 })
+    set.mockResolvedValue(undefined)
+    render(<NotifikationsFeed config={cfg} onLuk={() => {}} onAabnSession={() => {}} />)
+    expect(await screen.findByText('Jarvis vil køre en kommando.')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Færdig' }))
+    await waitFor(() => expect(set).toHaveBeenCalledWith(cfg, '1'))
+    await waitFor(() => expect(screen.queryByText('Vil du tillade bash?')).toBeNull())
+  })
+
+  it('kan opdatere listen manuelt, mens feedet er åbent', async () => {
+    hent.mockResolvedValueOnce({ poster: [], antal: 0 }).mockResolvedValue({ poster: [post()], antal: 1 })
+    render(<NotifikationsFeed config={cfg} onLuk={() => {}} onAabnSession={() => {}} />)
+    await screen.findByText(/Ingen notifikationer/)
+    fireEvent.click(screen.getByRole('button', { name: 'Opdater notifikationer' }))
+    expect(await screen.findByText('Vil du tillade bash?')).toBeInTheDocument()
+  })
+
   it('et spoergsmaal foerer hen til samtalen — det kan ikke svares her', async () => {
     hent.mockResolvedValue({
       poster: [post({ slags: 'question', kan_afgoere: false, titel: 'Hvilken fil?' })],
@@ -91,8 +110,10 @@ describe('NotifikationsFeed', () => {
     render(<NotifikationsFeed config={cfg} onLuk={() => {}} onAabnSession={aabn} />)
     await screen.findByText('Hvilken fil?')
     expect(screen.queryByRole('button', { name: 'Godkend' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Færdig' })).toBeNull()
     fireEvent.click(screen.getByTestId('notif-1'))
     expect(aabn).toHaveBeenCalledWith('s-1')
+    expect(set).not.toHaveBeenCalled()
   })
 
   it('aabner samtalen naar man trykker paa en post uden handling', async () => {

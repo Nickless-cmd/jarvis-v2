@@ -18,9 +18,10 @@ import { SidebarGreb } from './SidebarGreb'
 import { ModeDropdown, type Mode } from './ModeDropdown'
 import { ModeBladrer } from './ModeBladrer'
 import { JarvisRing } from './JarvisRing'
-import { SecondaryNav, type SecondarySurface } from './SecondaryNav'
+import type { SecondarySurface } from './SecondaryNav'
 import { Klokke } from './Klokke'
 import { NotifikationsFeed } from './NotifikationsFeed'
+import { KontoMenu } from './KontoMenu'
 
 const ZONE_ICONS: Record<string, LucideIcon> = {
   LayoutDashboard, Blocks, Settings, Brain, Cpu,
@@ -57,7 +58,7 @@ export function Sidebar({
   onSearch?: () => void
 }) {
   const { sessions, activeId, select, newChat } = useSessions()
-  const { settings } = useSettings()
+  const { settings, auth, update } = useSettings()
   const { workingSessionId } = useStream()
 
   // Inddeling af sessions-listen (8/9-2026). Bjørn: «sessioner i side panelet
@@ -74,10 +75,28 @@ export function Sidebar({
   const [foldedeGrupper, setFoldedeGrupper] =
     useState<Partial<Record<SessionGruppe, boolean>>>({})
 
-  // Feed-ruden selv kommer i naeste opgave — her aabnes kun tilstanden (klokken
-  // saetter den). Kun setteren bruges endnu, saa laeseren udelades bevidst
-  // (ellers TS6133 — `noUnusedLocals`).
   const [feedAaben, setFeedAaben] = useState(false)
+  const [kontoAaben, setKontoAaben] = useState(false)
+  const klokkeRef = useRef<HTMLDivElement>(null)
+  const feedRef = useRef<HTMLDivElement>(null)
+  const kontoRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!feedAaben && !kontoAaben) return
+    const lukUdenfor = (e: PointerEvent) => {
+      const target = e.target as Node
+      if (!klokkeRef.current?.contains(target) && !feedRef.current?.contains(target)) setFeedAaben(false)
+      if (!kontoRef.current?.contains(target)) setKontoAaben(false)
+    }
+    const lukEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { setFeedAaben(false); setKontoAaben(false) }
+    }
+    window.addEventListener('pointerdown', lukUdenfor)
+    window.addEventListener('keydown', lukEscape)
+    return () => {
+      window.removeEventListener('pointerdown', lukUdenfor)
+      window.removeEventListener('keydown', lukEscape)
+    }
+  }, [feedAaben, kontoAaben])
 
   // V3: ÉT config-objekt, ikke et nyt pr. render. Klokkens `hentNu` er
   // `useCallback([config])`, og dens WS-effekt afhaenger af `[config, hentNu]`
@@ -145,19 +164,23 @@ export function Sidebar({
           >
             <Search size={15} />
           </button>
-          <Klokke
-            config={apiConfig}
-            onAaben={() => setFeedAaben(true)}
-          />
+          <div ref={klokkeRef} className="sidebar-klokke-anchor">
+            <Klokke
+              config={apiConfig}
+              onAaben={() => setFeedAaben((aaben) => !aaben)}
+            />
+          </div>
         </div>
       </div>
 
       {feedAaben && (
-        <NotifikationsFeed
-          config={apiConfig}
-          onLuk={() => setFeedAaben(false)}
-          onAabnSession={(id) => { select(id); setFeedAaben(false); onSurface('chat') }}
-        />
+        <div ref={feedRef}>
+          <NotifikationsFeed
+            config={apiConfig}
+            onLuk={() => setFeedAaben(false)}
+            onAabnSession={(id) => { select(id); setFeedAaben(false); onSurface('chat') }}
+          />
+        </div>
       )}
 
       {surface === 'cowork' ? (
@@ -268,11 +291,22 @@ export function Sidebar({
       {/* Opmaerksomhedslinjen bor nu nederst til HOEJRE i vinduet — se
           OpmaerksomhedsVaert i App.tsx (Bjørn 21/9-2026). */}
       <div className="sidebar-foot">
-        <div className="who">
-          <span className="avatar">{userName.charAt(0).toUpperCase()}</span>
-          <span>{userName}</span>
+        <div ref={kontoRef} className="sidebar-account-anchor">
+          <button type="button" className="who" aria-label="Åbn konto-menu"
+                  aria-expanded={kontoAaben} onClick={() => setKontoAaben((aaben) => !aaben)}>
+            <span className="avatar">{userName.charAt(0).toUpperCase()}</span>
+            <span>{userName}</span>
+            <ChevronDown size={14} className="sidebar-account-arrow" />
+          </button>
+          {kontoAaben && (
+            <KontoMenu
+              userName={userName} role={auth?.role ?? 'guest'} config={apiConfig}
+              onClose={() => setKontoAaben(false)}
+              onSettings={() => onSurface('settings')}
+              onLogout={() => { void update({ authToken: null }) }}
+            />
+          )}
         </div>
-        <SecondaryNav active={surface} onSelect={(s) => onSurface(s)} />
       </div>
     </aside>
   )

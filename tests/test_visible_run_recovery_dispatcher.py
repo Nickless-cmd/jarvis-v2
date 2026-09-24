@@ -210,3 +210,165 @@ def test_en_ulaeselig_runlog_blokerer_ikke_genoptagelsen(spawn, monkeypatch):
     monkeypatch.setattr(rel, "active_run_for_session", _braekker)
     _forladt_opgave()
     assert D.recover_due_once()["started"] == 1
+
+
+# ── En udskydelse er ikke et forsoeg (24/9-2026) ────────────────────────────
+def test_tre_udskydelser_braender_ikke_hele_genoptagelses_budgettet(spawn, monkeypatch):
+    """En samtale der er optaget i 90 sekunder maa ikke koste opgaven ALT.
+
+    Maalt 24/9-2026 paa CT105: 12 poster stod som `recovering` med
+    ``recovery_attempt=3``, ``recovery_limit=3`` og
+    ``exit_reason="samtalen har et levende run"`` — alle tolv. Ikke EN af dem
+    var nogensinde blevet startet. `claim_due_recovery` taeller et forsoeg naar
+    kravet TAGES, og dispatcheren tager et krav for overhovedet at kunne se
+    hvilken session opgaven hoerer til. Tre udskydelser a 30 sekunder var nok:
+    bagefter sprang `claim_due_recovery` posten over for evigt
+    (``exhausted = attempt >= limit``), og arbejdet laa der uden at nogen
+    hentede det.
+
+    Budgettet er til FORSOEG paa at fortsaette, ikke til opslag.
+    """
+    from core.services import run_event_log as rel
+    optaget = {"ja": True}
+    monkeypatch.setattr(rel, "active_run_for_session",
+                        lambda sid: "visible-x" if optaget["ja"] else None)
+    monkeypatch.setattr(D, "BACKOFF_SECONDS", 0)
+    _forladt_opgave()
+
+    for _ in range(5):                      # laengere end `recovery_limit`
+        assert D.recover_due_once()["error"] == "session-optaget"
+
+    optaget["ja"] = False
+    assert D.recover_due_once()["started"] == 1, (
+        "budgettet blev braendt paa udskydelser — opgaven hentes aldrig"
+    )
+
+
+def test_en_udskydelse_spiser_ikke_den_sidste_slutrunde(spawn, monkeypatch):
+    """`final_synthesis_pending` maa ikke forsvinde paa et krav der ikke startede.
+
+    Kravet saetter ``recovery_mode="final_synthesis"`` og rydder flaget i SAMME
+    mutation. Gives kravet tilbage uden at noget blev startet, er retten til en
+    afsluttende sammenfatning vaek — og saa svarer han aldrig paa det han
+    naaede.
+    """
+    from core.services import run_event_log as rel
+    optaget = {"ja": True}
+    monkeypatch.setattr(rel, "active_run_for_session",
+                        lambda sid: "visible-x" if optaget["ja"] else None)
+    monkeypatch.setattr(D, "BACKOFF_SECONDS", 0)
+    ifr.mark_started(run_id="task-fs", session_id="chat-1", user_message="ret cheap lane")
+    ifr.settle_recovering("task-fs", reason="tom", summary="tom",
+                          final_synthesis_pending=True)
+
+    assert D.recover_due_once()["error"] == "session-optaget"
+    assert ifr.get_record("task-fs").get("final_synthesis_pending") is True
+
+    optaget["ja"] = False
+    assert D.recover_due_once()["started"] == 1
+    assert spawn[0]["message"].startswith("Din sidste runde")
+
+
+def test_en_start_der_FEJLER_taeller_stadig_som_et_forsoeg(monkeypatch):
+    """Rullede vi ogsaa den tilbage, ville en permanent brudt start proeve evigt.
+
+    Skellet er hele pointen: et opslag er ikke et forsoeg, men et forsoeg der
+    gik galt er et forsoeg.
+    """
+    def _braekker(**kw):
+        raise RuntimeError("provider nede")
+    monkeypatch.setattr(
+        "core.services.visible_runs_sections.detached_run.start_user_run_detached",
+        _braekker)
+    monkeypatch.setattr(D, "BACKOFF_SECONDS", 0)
+    _forladt_opgave()
+
+    for _ in range(3):
+        assert D.recover_due_once()["started"] == 0
+    # Budgettet er brugt — fjerde gang findes posten ikke laengere som forfalden.
+    assert D.recover_due_once() == {"started": 0, "released": 0, "claimed": ""}
+    assert int(ifr.get_record("task-1")["recovery_attempt"]) == 3
+
+
+def test_udskydelserne_venter_laengere_og_laengere_men_ikke_uendeligt():
+    """En optaget samtale maa ikke blive til et bank paa doeren hvert 30. sekund."""
+    assert D._udskydelses_backoff(0) == D.BACKOFF_SECONDS
+    assert D._udskydelses_backoff(1) == 2 * D.BACKOFF_SECONDS
+    assert D._udskydelses_backoff(3) == 8 * D.BACKOFF_SECONDS      # 240s, under loftet
+    assert D._udskydelses_backoff(50) == D.MAX_UDSKYDELSE_SECONDS
+
+
+def test_udskydelser_nulstilles_naar_et_nyt_segment_doer(spawn, monkeypatch):
+    """Ventetiden arves ikke: en ny afregning starter en ny serie."""
+    from core.services import run_event_log as rel
+    monkeypatch.setattr(rel, "active_run_for_session", lambda sid: "visible-x")
+    monkeypatch.setattr(D, "BACKOFF_SECONDS", 0)
+    _forladt_opgave()
+    for _ in range(3):
+        D.recover_due_once()
+    assert int(ifr.get_record("task-1")["recovery_deferrals"]) == 3
+
+    ifr.settle_recovering("task-1", reason="shutdown igen", summary="shutdown igen")
+    assert int(ifr.get_record("task-1")["recovery_deferrals"]) == 0
+
+
+def test_en_opgave_der_er_for_gammel_genoptages_ikke_men_afregnes(spawn, monkeypatch):
+    """Et spoergsmaal fra i forgaars fortsaettes ikke — det afsluttes synligt.
+
+    Aldersgraensen fandtes kun i `interrupted_for_session`; claim-stien havde
+    ingen. Det gjorde ikke noget saa laenge udskydelser braendte budgettet paa
+    halvandet minut, for saa stoppede opgaven af sig selv. Naar den fejl er
+    rettet, er aldersgraensen det eneste der er tilbage — og uden den ville
+    rettelsen goere det VAERRE: en fortsaettelse af et 71 timer gammelt
+    spoergsmaal midt i en samtale der for laengst er gaaet videre.
+
+    Maalt 24/9-2026 paa CT105: de aeldste fire af de tolv fastlaaste var
+    62-71 timer gamle.
+    """
+    from datetime import UTC, datetime, timedelta
+    _forladt_opgave()
+    gammel = (datetime.now(UTC) - timedelta(
+        hours=ifr.GENOPTAGELSES_VINDUE_TIMER + 1)).isoformat()
+    poster = ifr._load()
+    n = ifr._record_key(poster, "task-1")
+    poster[n]["settled_at"] = gammel
+    poster[n]["interrupted_at"] = gammel
+    ifr._save(poster)
+
+    assert D.recover_due_once()["started"] == 0
+    assert spawn == []
+    efter = ifr.get_record("task-1")
+    # Den maa ikke bare springes over: saa ville den ligge som `recovering`
+    # for evigt og LIGNE noget der stadig kunne hentes.
+    assert efter["status"] == "failed_terminal"
+    assert efter["exit_reason"] == "genoptagelses-vinduet udloeb"
+    assert efter["notice_pending"] is True
+
+
+def test_en_opgivet_opgave_forsvinder_ikke_tavst_fra_klienten(spawn, monkeypatch):
+    """Loeb en opgave toer, skal han FAA det at vide — praecis en gang.
+
+    `recovery_snapshot` saa kun paa `recovering`/`running`. En opgave der blev
+    opgivet forsvandt derfor bare fra klienten: indikatoren slukkede, og der
+    stod ingenting om at spoergsmaalet var droppet. Det er samme fejlklasse som
+    den vi retter her — arbejde der stille holder op med at findes.
+    """
+    from datetime import UTC, datetime, timedelta
+    _forladt_opgave()
+    gammel = (datetime.now(UTC) - timedelta(
+        hours=ifr.GENOPTAGELSES_VINDUE_TIMER + 1)).isoformat()
+    poster = ifr._load()
+    n = ifr._record_key(poster, "task-1")
+    poster[n]["settled_at"] = gammel
+    poster[n]["interrupted_at"] = gammel
+    ifr._save(poster)
+    D.recover_due_once()
+
+    snap = ifr.recovery_snapshot("chat-1")
+    assert snap is not None, "den opgivne opgave blev aldrig fortalt"
+    assert snap["state"] == "failed_terminal"
+    assert snap["notice"]
+
+    # ... og kun EN gang. Ellers ville den staa som «afbrudt» i et doegn og
+    # ligne noget der stadig skete.
+    assert ifr.recovery_snapshot("chat-1") is None

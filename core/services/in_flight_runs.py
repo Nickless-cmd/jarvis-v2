@@ -297,11 +297,20 @@ def recovery_snapshot(session_id: str) -> dict[str, Any] | None:
     sid = str(session_id or "").strip()
     if not sid:
         return None
+    # `failed_terminal` ER med — men kun saa laenge den har et ulaest varsel.
+    # Uden den ville en opgave der loeb toer (eller hvis genoptagelses-vindue
+    # udloeb) bare FORSVINDE fra klienten: indikatoren slukkede, og han fik
+    # aldrig at vide at hans spoergsmaal blev opgivet. Varslet fjernes naedenfor
+    # naar det er hentet, saa det siges praecis en gang.
     kandidater = [
         rec for rec in _load().values()
         if str(rec.get("session_id") or "") == sid
-        and str(rec.get("status") or "") in {"recovering", "running"}
         and str(rec.get("kind") or "visible") == "visible"
+        and (
+            str(rec.get("status") or "") in {"recovering", "running"}
+            or (str(rec.get("status") or "") == "failed_terminal"
+                and bool(rec.get("notice_pending")))
+        )
     ]
     if not kandidater:
         return None
@@ -312,7 +321,7 @@ def recovery_snapshot(session_id: str) -> dict[str, Any] | None:
         return None            # en helt almindelig kørende tur — intet at genoptage
     grund = str(rec.get("exit_reason") or rec.get("interruption_reason") or "")
     from core.services.visible_terminal_policy import recovery_notice
-    return {
+    svar = {
         "task_id": str(rec.get("task_id") or rec.get("run_id") or ""),
         "run_id": str(rec.get("run_id") or ""),
         "state": status,
@@ -323,6 +332,31 @@ def recovery_snapshot(session_id: str) -> dict[str, Any] | None:
         "checkpoint_summary": str(rec.get("summary") or rec.get("excerpt") or "")[:400],
         "notice": recovery_notice(grund or "unknown", continuing=status != "failed_terminal"),
     }
+    if status == "failed_terminal":
+        _kvitter_varsel(str(rec.get("task_id") or rec.get("run_id") or ""))
+    return svar
+
+
+def _kvitter_varsel(task_id: str) -> None:
+    """Varslet er hentet — sig det ikke igen.
+
+    Uden kvitteringen ville et opgivet run staa som «afbrudt» i klienten indtil
+    posten blev ryddet (et doegn), og det ville ligne noget der stadig skete.
+    """
+    if not task_id:
+        return
+
+    def change(records):
+        key = _record_key(records, task_id)
+        if key is None:
+            return False
+        records[key]["notice_pending"] = False
+        return True
+    try:
+        _mutate(change)
+    except Exception:
+        logger.warning("kunne ikke kvittere for genoptagelses-varslet %s",
+                       task_id, exc_info=True)
 
 
 def queue_steer(run_id: str, text: str) -> bool:
@@ -429,6 +463,10 @@ def settle_recovering(
         rec["final_synthesis_pending"] = bool(final_synthesis_pending)
         rec["recovery_owner"] = ""
         rec["recovery_lease_until"] = ""
+        # Et nyt doedt segment = en ny serie udskydelser. Uden nulstillingen
+        # ville en opgave der EN gang ventede laenge paa en optaget samtale
+        # arve den lange ventetid resten af sit liv.
+        rec["recovery_deferrals"] = 0
         rec.setdefault("next_attempt_at", "")
         return dict(rec)
     return _mutate(change)
@@ -505,6 +543,7 @@ def claim_due_recovery(
 
     def change(records):
         candidates: list[tuple[str, dict[str, Any]]] = []
+        udloebne: list[str] = []
         for key, rec in records.items():
             if str(rec.get("kind") or "visible") != "visible":
                 continue
@@ -520,11 +559,37 @@ def claim_due_recovery(
             due = _parsed(rec.get("next_attempt_at"))
             if due is not None and due > instant:
                 continue
+            # FOR GAMMEL TIL AT GENOPTAGE. Hidtil var der ingen aldersgraense
+            # her overhovedet — kun `interrupted_for_session` havde en. Det
+            # gjorde ikke noget saa laenge et taellefejl braendte budgettet paa
+            # halvandet minut (se `release_recovery_claim`), for saa stoppede
+            # opgaven af sig selv. Naar udskydelser ikke laengere koster et
+            # forsoeg, kan en post vente i dagevis — og en fortsaettelse af et
+            # spoergsmaal fra i forgaars er ikke hjaelp, den er stoej i en
+            # samtale der for laengst er gaaet videre.
+            settled = _parsed(rec.get("settled_at")) or _parsed(rec.get("interrupted_at"))
+            if settled is not None and (
+                instant - settled
+            ).total_seconds() > GENOPTAGELSES_VINDUE_TIMER * 3600.0:
+                udloebne.append(key)
+                continue
             exhausted = int(rec.get("recovery_attempt") or 0) >= int(
                 rec.get("recovery_limit") or 3)
             if exhausted and not bool(rec.get("final_synthesis_pending")):
                 continue
             candidates.append((key, rec))
+        # De udloebne afregnes HER, i samme mutation. Sprang vi dem bare over,
+        # ville de ligge som `recovering` for evigt og se genoptagelige ud.
+        for key in udloebne:
+            gammel = records[key]
+            gammel["status"] = "failed_terminal"
+            gammel["exit_reason"] = "genoptagelses-vinduet udloeb"
+            gammel["settled_at"] = instant.isoformat()
+            gammel["recovery_owner"] = ""
+            gammel["recovery_lease_until"] = ""
+            gammel["next_attempt_at"] = ""
+            gammel["final_synthesis_pending"] = False
+            gammel["notice_pending"] = True
         if not candidates:
             return None
         key, rec = min(
@@ -588,8 +653,28 @@ def release_recovery_claim(
     owner: str,
     reason: str,
     retry_after_s: float,
+    attempted: bool = True,
     now: datetime | None = None,
 ) -> bool:
+    """Giv kravet tilbage.
+
+    ``attempted=False`` betyder: der blev ALDRIG forsoegt en start. Saa rulles
+    baade forsoegstaelleren og retten til en slutrunde tilbage, for kravet var
+    et opslag, ikke et forsoeg.
+
+    Hvorfor det skel findes: `claim_due_recovery` er noedt til at TAGE kravet
+    for overhovedet at kunne se hvilken samtale opgaven hoerer til, og den
+    taeller et forsoeg i samme mutation. Dispatcheren opdager foerst BAGEFTER
+    at samtalen har et levende run, og udskyder. Maalt 24/9-2026 paa CT105 stod
+    12 poster som `recovering` med ``recovery_attempt=3``, ``recovery_limit=3``
+    og ``exit_reason="samtalen har et levende run"`` — alle tolv, og ikke EN af
+    dem var nogensinde blevet startet. Tre udskydelser a 30 sekunder braendte
+    hele budgettet paa halvandet minuts optaget samtale, og bagefter sprang
+    `claim_due_recovery` posten over for evigt.
+
+    En start der bliver FORSOEGT og fejler taeller stadig — ellers ville en
+    permanent brudt start proeve i det uendelige.
+    """
     instant = now or datetime.now(UTC)
 
     def change(records):
@@ -606,6 +691,14 @@ def release_recovery_claim(
         rec["exit_reason"] = str(reason or "recovery-dispatch-failed")[:160]
         rec["recovery_owner"] = ""
         rec["recovery_lease_until"] = ""
+        if not attempted:
+            rec["recovery_attempt"] = max(0, int(rec.get("recovery_attempt") or 0) - 1)
+            # Kravet ryddede flaget da det satte `recovery_mode`. Naar intet
+            # blev startet, skal retten til slutrunden tilbage — ellers svarer
+            # han aldrig paa det han naaede.
+            if str(rec.get("recovery_mode") or "") == "final_synthesis":
+                rec["final_synthesis_pending"] = True
+            rec["recovery_deferrals"] = int(rec.get("recovery_deferrals") or 0) + 1
         rec["next_attempt_at"] = (
             instant + timedelta(seconds=max(0.0, float(retry_after_s)))
         ).isoformat()

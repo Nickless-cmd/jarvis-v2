@@ -35,6 +35,15 @@ LEASE_SECONDS = 120.0
 TICK_SECONDS = 5.0
 #: Hvor længe der ventes før en opgave prøves igen efter en mislykket start.
 BACKOFF_SECONDS = 30.0
+#: Loft over ventetiden mellem udskydelser. En samtale kan være optaget længe;
+#: uden loftet ville en eksponentiel backoff gøre en fri samtale til et kvarters
+#: venten, med det ville vi banke på hvert 30. sekund i timevis.
+MAX_UDSKYDELSE_SECONDS = 300.0
+
+
+def _udskydelses_backoff(tidligere: int) -> float:
+    """Vent længere for hver gang samtalen var optaget — men aldrig i det uendelige."""
+    return min(MAX_UDSKYDELSE_SECONDS, BACKOFF_SECONDS * (2 ** max(0, int(tidligere))))
 
 _vaekker = threading.Event()
 _stop = threading.Event()
@@ -124,9 +133,14 @@ def recover_due_once(*, owner: str | None = None) -> dict[str, object]:
     except Exception:
         levende = None   # kan vi ikke se efter, blokerer vi ikke
     if levende:
+        # `attempted=False`: vi tog kravet for at kunne SE sessionen, ikke for
+        # at starte noget. Talte udskydelsen som et forsøg, brændte halvandet
+        # minuts optaget samtale hele budgettet — og opgaven blev aldrig hentet
+        # (12 poster målt sådan på CT105 24/9-2026).
         in_flight_runs.release_recovery_claim(
             task_id, generation, owner=ejer, reason="samtalen har et levende run",
-            retry_after_s=BACKOFF_SECONDS)
+            retry_after_s=_udskydelses_backoff(int(krav.get("recovery_deferrals") or 0)),
+            attempted=False)
         logger.info("recovery-dispatcher: %s udskudt — %s kører stadig i %s",
                     task_id[:24], str(levende)[:24], session_id[:28])
         return {"started": 0, "released": 1, "claimed": task_id, "error": "session-optaget"}

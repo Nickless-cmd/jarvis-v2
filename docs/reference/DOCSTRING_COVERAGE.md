@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7949/15409 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7950/15412 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,7 +8,7 @@ Generated from source. 7949/15409 functions/methods documented (51%). The list b
 |---|---|---|---|
 | `apps.api.jarvis_api` | 34 | 36 | 94% |
 | `apps.api.jarvis_api.middleware` | 8 | 19 | 42% |
-| `apps.api.jarvis_api.routes` | 698 | 929 | 75% |
+| `apps.api.jarvis_api.routes` | 699 | 932 | 75% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 70 | 172 | 40% |
 | `apps.desktop` | 6 | 7 | 85% |
@@ -42,9 +42,9 @@ Generated from source. 7949/15409 functions/methods documented (51%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2206)
+## Undocumented public functions (2207)
 
-- `apps/api/jarvis_api/app.py` :: `create_app` (L208)
+- `apps/api/jarvis_api/app.py` :: `create_app` (L209)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
 - `apps/api/jarvis_api/middleware/api_connection_nerve.py` :: `ApiConnectionNerveMiddleware.dispatch` (L34)
 - `apps/api/jarvis_api/middleware/internal_discord.py` :: `dispatch` (L33)
@@ -126,6 +126,7 @@ Generated from source. 7949/15409 functions/methods documented (51%). The list b
 - `apps/api/jarvis_api/routes/users.py` :: `get_one` (L40)
 - `apps/api/jarvis_api/routes/users.py` :: `list_all` (L35)
 - `apps/api/jarvis_api/routes/users.py` :: `patch_one` (L48)
+- `apps/api/jarvis_api/routes/visning.py` :: `vis_billede` (L103)
 - `apps/api/jarvis_api/routes/voice_live.py` :: `aabn_samtale` (L86)
 - `apps/api/jarvis_api/routes/workbench.py` :: `operator_channel_close` (L60)
 - `apps/central_cli/central_cli/client.py` :: `CentralClient.close` (L70)

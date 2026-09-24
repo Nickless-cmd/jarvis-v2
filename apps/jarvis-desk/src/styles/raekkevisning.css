@@ -416,6 +416,9 @@
 /* Billede */
 .raekkevisning .rv-bill { padding: 10px 11px; }
 .raekkevisning .rv-billH { display: flex; gap: 12px; align-items: center; }
+/* Knappen er billedet — den må ikke klemmes af flex, og cursoren skal vise
+   at man kan åbne det i fuld størrelse. */
+.raekkevisning .rv-bill .billed-knap { flex: none; }
 .raekkevisning .rv-bill img { width: 64px; height: 42px; object-fit: cover; border-radius: var(--radius-sm); }
 .raekkevisning .rv-billQ { margin-top: 8px; font-size: 11px; color: var(--fg-3); overflow-wrap: anywhere; }
 /* Analysens tekst er INDHOLDET — ikke metadata. Samme maks-højde som de øvrige

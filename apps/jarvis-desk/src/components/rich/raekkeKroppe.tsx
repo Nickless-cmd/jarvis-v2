@@ -24,7 +24,8 @@ import { lookupTool, GAMLE_NAVNE } from '../../lib/toolRegistry'
 import { safeImageSrc } from '../../lib/sanitize'
 import { diffPar } from '../../lib/diffStat'
 import { hentAgentKald, agentIdFra, type AgentKald } from '../../lib/agentKald'
-import type { ApiConfig } from '../../lib/api'
+import { fetchBlobWithAuth, type ApiConfig } from '../../lib/api'
+import { KlikbartBillede } from './BilledLightbox'
 
 export type Familie = 'terminal' | 'diff' | 'fil' | 'skriv' | 'liste' | 'web' | 'spoergsmaal' | 'billede' | 'opgave' | 'fald'
 
@@ -725,35 +726,70 @@ export function Spoergsmaal({ q, svar }: { q: string; svar: string }) {
   )
 }
 
-export function Billede({ src, navn, meta, spoergsmaal, tekst }: {
+export function Billede({ src, navn, meta, spoergsmaal, tekst, config }: {
   src?: string; navn: string; meta: string
-  spoergsmaal?: string; tekst?: string
+  spoergsmaal?: string; tekst?: string; config?: ApiConfig
 }) {
-  const [hentet, setHentet] = useState<string | null>(null)
+  const [vis, setVis] = useState<string | null>(null)
 
-  // En lokal sti kan ikke vises direkte: CSP'en blokerer `file://`, og
-  // renderer'en har ingen disk-adgang. Main læser filen og giver en data-URL
-  // tilbage (electron/billede.ts). Effekten kører først når rækken foldes ud,
-  // fordi kroppen monteres der — så billedet koster intet før man ser det.
+  // Billedet kan ligge to steder, og stien alene afgør det ikke:
+  //
+  //   1. På BRUGERENS maskine. Renderer'en har ingen disk-adgang, og CSP'en
+  //      blokerer `file://`, så main læser filen gennem broen og giver en
+  //      data-URL tilbage (electron/billede.ts).
+  //   2. På SERVEREN. Jarvis' egne skærmbilleder lægges i temp-mappen på
+  //      serveren (core/tools/operator_tools.py), så stien findes IKKE hos
+  //      brugeren — broen svarer null. Vi henter den i stedet med token fra
+  //      `/visning/billede`: samme regel, den anden maskine.
+  //
+  // Uden spor 2 stod navnet alene, og man kunne ikke se det samme som Jarvis
+  // (Bjørn 24/9-2026). Effekten kører først når rækken foldes ud, fordi
+  // kroppen monteres der — så billedet koster intet før man ser det.
   useEffect(() => {
-    setHentet(null)
-    if (!src?.startsWith('/')) return
+    setVis(null)
+    if (!src?.startsWith('/')) { setVis(safeImageSrc(src ?? '')); return }
+    let afbrudt = false
+    let objekt: string | null = null
+
     const bro = (window as unknown as {
       jarvisDesk?: { billede?: { laes: (s: string) => Promise<string | null> } }
     }).jarvisDesk?.billede
-    if (!bro) return // browser-fane: ingen bro, så navnet står alene
-    let afbrudt = false
-    void bro.laes(src).then((url) => { if (!afbrudt && url) setHentet(url) }).catch(() => { /* navnet står */ })
-    return () => { afbrudt = true }
-  }, [src])
 
-  // En data-URL fra main er allerede betroet. Alt andet går gennem sanitizeren,
-  // så et fjendtligt tool-resultat ikke kan smugle en kilde ind i <img>.
-  const vis = src?.startsWith('/') ? hentet : safeImageSrc(src ?? '')
+    const fraServer = async (): Promise<string | null> => {
+      if (!config) return null
+      try {
+        const blob = await fetchBlobWithAuth(config, `/visning/billede?sti=${encodeURIComponent(src)}`)
+        if (afbrudt) return null
+        objekt = URL.createObjectURL(blob)
+        return objekt
+      } catch {
+        return null // kan den ikke hentes, står navnet — samme fald som før
+      }
+    }
+
+    void (async () => {
+      const lokal = bro ? await bro.laes(src).catch(() => null) : null
+      if (afbrudt) return
+      if (lokal) { setVis(lokal); return }
+      const fjern = await fraServer()
+      if (!afbrudt && fjern) setVis(fjern)
+    })()
+
+    return () => {
+      afbrudt = true
+      if (objekt) URL.revokeObjectURL(objekt)
+    }
+  }, [src, config])
+
+  // Kilden er allerede betroet: en data-URL fra main, eller en object-URL vi
+  // selv har hentet med token. Alt andet går gennem sanitizeren, så et
+  // fjendtligt tool-resultat ikke kan smugle en kilde ind i <img>.
   return (
     <div className="rv-kort rv-bill">
       <div className="rv-billH">
-        {vis && <img src={vis} alt={navn} />}
+        {/* Klik åbner fuld størrelse — uden det kan man ikke se det samme som
+            Jarvis (Bjørn 20/9-2026). */}
+        {vis && <KlikbartBillede className="rv-billBillede" src={vis} alt={navn} />}
         <div>
           <div className="rv-n">{navn}</div>
           {meta && <div className="rv-m2">{meta}</div>}
@@ -992,6 +1028,7 @@ export function kropFor(
       meta={[maal, beskrivelse].filter(Boolean).join(' · ')}
       spoergsmaal={streng(input.prompt)}
       tekst={analyse}
+      config={config}
     />
   }
   if (familie === 'opgave') {

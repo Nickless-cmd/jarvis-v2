@@ -215,6 +215,15 @@ _Owner-only user-administration (spec 2026-06-15 §4/§6). CRUD + GDPR-erasure._
 | function | `patch_one` | `(user_id, req, claims=…)` | — | [src](../../../apps/api/jarvis_api/routes/users.py#L48) |
 | function | `delete_one` | `(user_id, req, claims=…)` | — | [src](../../../apps/api/jarvis_api/routes/users.py#L75) |
 
+## `apps/api/jarvis_api/routes/visning.py`
+_Visning — serverer et lokalt billede til desk' rækkevisning._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_ligger_under` | `(sti, rod)` | — | [src](../../../apps/api/jarvis_api/routes/visning.py#L68) |
+| function | `tilladt_sti` | `(sti)` | Den opløste sti hvis den må vises — ellers None. | [src](../../../apps/api/jarvis_api/routes/visning.py#L76) |
+| function | `vis_billede` | `(sti)` | — | [src](../../../apps/api/jarvis_api/routes/visning.py#L103) |
+
 ## `apps/api/jarvis_api/routes/voice_live.py`
 _POST /voice/samtale — åbn en ægte stemme-samtale med Jarvis (LiveKit/WebRTC)._
 

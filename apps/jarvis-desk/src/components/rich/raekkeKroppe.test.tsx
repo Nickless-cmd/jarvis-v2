@@ -1,9 +1,16 @@
-import { describe, expect, it } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { kropFor, postFor, udDel, exitKode } from './raekkeKroppe'
+import type { ApiConfig } from '../../lib/api'
 
-function vis(navn: string, input: Record<string, unknown>, result?: string, fejl = false) {
-  return render(<>{kropFor(navn, input, result, fejl)}</>)
+function vis(
+  navn: string,
+  input: Record<string, unknown>,
+  result?: string,
+  fejl = false,
+  config?: ApiConfig,
+) {
+  return render(<>{kropFor(navn, input, result, fejl, config)}</>)
 }
 
 describe('rækkevisningens værktøjskroppe', () => {
@@ -538,5 +545,62 @@ describe('rækkevisningens værktøjskroppe', () => {
     expect(container.textContent).toContain('ttl_minutes')
     expect(container.textContent).toContain('30')
     expect(container.textContent).not.toContain('fields')
+  })
+})
+
+describe('billedet kan ses — ogsaa naar filen ligger paa serveren', () => {
+  const CONFIG: ApiConfig = { apiBaseUrl: 'http://server', authToken: 'tok' }
+
+  // jsdom har hverken `createObjectURL` eller en server. Begge stubbes, saa
+  // testen maaler KOMPONENTEN og ikke miljoeet.
+  beforeEach(() => {
+    ;(URL as unknown as { createObjectURL: unknown }).createObjectURL = vi.fn(() => 'blob:hentet')
+    ;(URL as unknown as { revokeObjectURL: unknown }).revokeObjectURL = vi.fn()
+  })
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
+  it('henter billedet fra serveren naar det ikke findes lokalt', async () => {
+    // Jarvis' skaermbilleder ligger i temp-mappen paa SERVEREN, saa broen
+    // svarer null hos brugeren. Uden server-sporet stod navnet alene, og man
+    // kunne ikke se det samme som Jarvis (24/9-2026).
+    const hentet = vi.fn(async (_url: string) => new Response(new Blob([new Uint8Array([1, 2, 3])]), { status: 200 }))
+    vi.stubGlobal('fetch', hentet)
+
+    const { container } = vis('analyze_image',
+      { image_path: '/tmp/jarvisx-window-1.png', prompt: 'Hvad ser du?' },
+      JSON.stringify({ analysis: 'Et skrivebord' }), false, CONFIG)
+
+    await waitFor(() => expect(container.querySelector('.billed-knap')).toBeInTheDocument())
+    const url = String(hentet.mock.calls[0]?.[0] ?? '')
+    expect(url).toContain('/visning/billede')
+    expect(url).toContain(encodeURIComponent('/tmp/jarvisx-window-1.png'))
+    // Analysens tekst er stadig INDHOLDET — den staar ved siden af billedet.
+    expect(container.textContent).toContain('Et skrivebord')
+  })
+
+  it('aabner billedet i fuld stoerrelse ved klik', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(new Blob([new Uint8Array([1])]), { status: 200 })))
+    const { container } = vis('analyze_image',
+      { image_path: '/tmp/jarvisx-window-2.png' },
+      JSON.stringify({ analysis: 'Et skrivebord' }), false, CONFIG)
+
+    await waitFor(() => expect(container.querySelector('.billed-knap')).toBeInTheDocument())
+    expect(container.querySelector('.billed-lightbox')).not.toBeInTheDocument()
+    fireEvent.click(container.querySelector('.billed-knap') as HTMLButtonElement)
+    await waitFor(() => expect(container.querySelector('.billed-lightbox')).toBeInTheDocument())
+  })
+
+  it('viser navnet naar billedet hverken findes lokalt eller paa serveren', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('nej', { status: 404 })))
+    const { container } = vis('analyze_image',
+      { image_path: '/tmp/jarvisx-window-3.png' },
+      JSON.stringify({ analysis: 'Et skrivebord' }), false, CONFIG)
+
+    await waitFor(() => expect(container.textContent).toContain('Et skrivebord'))
+    expect(container.querySelector('.billed-knap')).not.toBeInTheDocument()
+    expect(container.textContent).toContain('jarvisx-window-3.png')
   })
 })

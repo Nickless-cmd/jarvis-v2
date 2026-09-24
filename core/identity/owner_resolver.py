@@ -279,3 +279,46 @@ def resolve_owner_app_session() -> str:
     except Exception:
         alle = []
     return _senest_aktive_app_session(alle)
+
+
+def owner_user_id() -> str:
+    """Ejerens `user_id` — det id hans egne beskeder er stemplet med.
+
+    **To lagre, én sandhed der mangler i det ene.** Maalt paa CT105 24/9-2026:
+    `users`-TABELLEN har 14 raekker, alle `role='member'`, og Bjoerns id
+    `1246415163603816499` staar slet ikke i den. `users.json` har ham som
+    `owner`. Et opslag der kun spoerger tabellen finder derfor ingen ejer —
+    og det er ikke en teoretisk mangel:
+
+    * `notifikations_emittere.system()` returnerer tomt uden en ejer, saa
+      HVER «Ny version er klar» siden funktionen blev bygget er forsvundet.
+      Maalt: 0 release-raekker i `notifikationer`, fra 0.6.43 til 0.6.94.
+    * De autonome droemme-, hjerteslags- og vaeknings-sessioner skrives uden
+      `user_id`, og sessionslisten kan kun vise en session hvis mindst én
+      besked baerer den spoergendes id. 8534 beskeder usynlige.
+
+    Derfor: tabellen foerst (den er den operationelle kilde naar den ER
+    udfyldt), `users.json` som fald-tilbage. Denne funktion LÆSER kun — at
+    skrive ejeren ind i tabellen er en identitets-aendring og hoerer ikke
+    hjemme i et opslag.
+    """
+    try:
+        from core.runtime.db import connect
+        with connect() as conn:
+            raekke = conn.execute(
+                "SELECT user_id FROM users WHERE role='owner' LIMIT 1").fetchone()
+        if raekke and str(raekke[0] or "").strip():
+            return str(raekke[0]).strip()
+    except Exception as exc:
+        logger.debug("owner_resolver: users-tabellen kunne ikke laeses: %s", exc)
+
+    try:
+        from core.identity.users import load_users
+        for u in load_users():
+            if getattr(u, "role", "") == "owner":
+                uid = str(getattr(u, "discord_id", "") or "").strip()
+                if uid:
+                    return uid
+    except Exception as exc:
+        logger.debug("owner_resolver: users.json kunne ikke laeses: %s", exc)
+    return ""

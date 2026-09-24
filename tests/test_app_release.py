@@ -71,12 +71,26 @@ def test_udsend_lægger_eventet_på_bussen_med_klientens_navn(monkeypatch):
         }
     )
 
-    assert len(kald) == 1
-    kind, payload = kald[0]
+    # To events: selve release-eventet til klienten, og raekken i feeden.
+    #
+    # Testen krævede FØR præcis ét — og bestod, fordi feed-raekken aldrig blev
+    # skrevet. `notifikations_emittere.system()` slog ejeren op i `users`-
+    # TABELLEN, og den har ingen ejer-raekke (14 raekker, alle `member`; Bjørn
+    # står i `users.json`). Uden ejer returnerede den uden at skrive. Målt
+    # 24/9-2026: NUL release-raekker i `notifikationer` nogensinde, fra 0.6.43
+    # til 0.6.94. Testen pinnede altså den tavse fejl som korrekt.
+    kinds = [k for k, _ in kald]
+    assert "app.release.available" in kinds, "klienten får ikke besked"
+    assert "notifikation.ny" in kinds, (
+        "ingen raekke i feeden — «Ny version er klar» forsvinder tavst igen"
+    )
+    payload = next(p for k, p in kald if k == "app.release.available")
     # Navnet skal matche KIND i apps/jarvis-desk/electron/appRelease.ts — ellers
     # lytter klienten forgæves, og fejlen er usynlig (der sker bare ingenting).
-    assert kind == "app.release.available"
     assert payload["version"] == "0.6.59"
+    varsel = next(p for k, p in kald if k == "notifikation.ny")
+    assert varsel.get("slags") == "release"
+    assert varsel.get("user_id"), "feed-raekken har ingen ejer"
 
 
 def test_release_eventet_gaar_gennem_den_rigtige_validering():
@@ -211,5 +225,11 @@ def test_baselinen_rykker_naar_udsendelsen_lykkes(monkeypatch, tmp_path):
     with pytest.raises(Stop):
         asyncio.run(mod._vagt_loop())
 
-    assert [p.get("version") for p in udsendte] == ["0.6.61"]
+    # Kun release-eventet baerer `version`; feed-raekken er det andet event.
+    # Testen sammenlignede FØR hele listen med ["0.6.61"] og bestod kun fordi
+    # feed-raekken aldrig blev skrevet — se den anden test i denne fil.
+    assert [p.get("version") for p in udsendte if p.get("version")] == ["0.6.61"]
+    assert any(p.get("slags") == "release" for p in udsendte), (
+        "baselinen rykkede, men ingen fik det at vide"
+    )
     assert mod._laes_sidste_tag() == "jarvis-desktop-v0.6.61"

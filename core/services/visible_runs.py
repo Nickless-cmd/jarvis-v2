@@ -1175,12 +1175,53 @@ def start_autonomous_run(message: str, session_id: str | None = None, follow: bo
                                         outcome="completed", frames=consumed_frames)
             loop.close()
 
+    # EJEREN BINDES HVIS INGEN ER BUNDET (24/9-2026).
+    #
+    # Kopieringen nedenfor er korrekt — den har altid virket. Problemet var at
+    # der intet var at kopiere: `dreaming_session` fyrer fra sin egen daemon-
+    # traad uden nogen bundet identitet, og saa skrives turens beskeder med tom
+    # `user_id`. Sessionslisten kan kun vise en session hvis mindst én besked
+    # baerer den spoergendes id (privatlivs-vaernet mod at se andres samtaler),
+    # saa de sessioner var usynlige for Bjoern. For evigt.
+    #
+    # Maalt paa CT105 24/9-2026:
+    #
+    #     auto-recurring-   8859 beskeder   user_id = 1246415163603816499  <- ses
+    #     auto-dream-       3468 beskeder   user_id = tom                  <- ses ikke
+    #     auto-heartbeat-   2287 beskeder   user_id = tom                  <- ses ikke
+    #     auto-wakeup-      2779 beskeder   user_id = tom                  <- ses ikke
+    #
+    # `auto-recurring` er den eneste der virker, og kun fordi `scheduled_tasks`
+    # selv binder `user_context` foer den fyrer. Derfor hoerer bindingen HER, i
+    # den faelles tragt, og ikke hos hver kalder — ellers mangler den naeste
+    # oprindelse den igen.
+    #
+    # `bind_context_if_unset` roerer ikke en eksplicit binding, saa et run
+    # discord_gateway har bundet til Michelle forbliver hendes.
+    _ejer_token = None
+    try:
+        from core.identity.owner_resolver import owner_user_id
+        from core.identity.workspace_context import bind_context_if_unset
+        _ejer = owner_user_id()
+        if _ejer:
+            _ejer_token = bind_context_if_unset(user_id=_ejer)
+    except Exception:
+        logger.warning("autonomt run: kunne ikke binde ejeren — turen bliver "
+                       "usynlig i sessionslisten", exc_info=True)
+
     # Propagate ContextVars (workspace_name, user_id) into the new thread.
     # threading.Thread does NOT inherit context by default — without this
     # all downstream code would see default workspace regardless of what
     # discord_gateway bound. This is the pivot for multi-user to work.
     import contextvars as _ctxvars
     _ctx = _ctxvars.copy_context()
+    # Kopien er taget; kalderens egen kontekst maa ikke baere bindingen videre.
+    if _ejer_token is not None:
+        try:
+            from core.identity.workspace_context import reset_context
+            reset_context(_ejer_token)
+        except Exception:
+            logger.warning("kunne ikke rulle ejer-bindingen tilbage", exc_info=True)
     threading.Thread(
         target=lambda: _ctx.run(_in_thread),
         name="jarvis-autonomous-run",

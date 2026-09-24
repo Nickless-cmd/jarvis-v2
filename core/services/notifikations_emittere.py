@@ -19,13 +19,22 @@ _log = logging.getLogger(__name__)
 
 
 def _owner_id() -> str | None:
-    """Ejeren. Systemraekker hoerer til ham — de handler om maskinen."""
+    """Ejeren. Systemraekker hoerer til ham — de handler om maskinen.
+
+    Slog FOER kun op i `users`-tabellen. Paa CT105 har den tabel ingen
+    ejer-raekke (14 raekker, alle `member`) — Bjoern staar i `users.json`.
+    Opslaget gav derfor None, `system()` returnerede uden at skrive, og
+    resultatet var maalbart: NUL release-notifikationer nogensinde, fra
+    0.6.43 til 0.6.94. `owner_user_id` spoerger begge lagre.
+    """
     try:
-        from core.runtime.db import connect
-        with connect() as conn:
-            raekke = conn.execute(
-                "SELECT user_id FROM users WHERE role='owner' LIMIT 1").fetchone()
-        return str(raekke[0]) if raekke else None
+        from core.identity.owner_resolver import owner_user_id
+        uid = owner_user_id()
+        if uid:
+            return uid
+        _log.warning("ingen ejer fundet i hverken users-tabellen eller users.json "
+                     "— systemnotifikationen bliver ikke leveret")
+        return None
     except Exception:
         _log.warning("kunne ikke finde owner til en systemnotifikation", exc_info=True)
         return None

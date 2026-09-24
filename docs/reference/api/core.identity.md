@@ -87,6 +87,7 @@ _Owner-identity resolution for autonomous dispatch._
 | function | `session_is_external_channel` | `(session_id)` | True hvis sessionen er en EKSTERN kanal (Discord/Telegram) ud fra titlen. | [src](../../../core/identity/owner_resolver.py#L166) |
 | function | `_senest_aktive_app_session` | `(sessions)` | Sidste udvej: den senest opdaterede APP-session med bruger-beskeder. | [src](../../../core/identity/owner_resolver.py#L186) |
 | function | `resolve_owner_app_session` | `()` | Som resolve_owner_target_session, men returnerer KUN en app/webchat- | [src](../../../core/identity/owner_resolver.py#L233) |
+| function | `owner_user_id` | `()` | Ejerens `user_id` — det id hans egne beskeder er stemplet med. | [src](../../../core/identity/owner_resolver.py#L284) |
 
 ## `core/identity/passwords.py`
 _Password-hashing (spec 2026-06-15 §5.2) — bcrypt, cost-factor 12._

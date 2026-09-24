@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7963/15427 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7967/15433 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,7 +24,7 @@ Generated from source. 7963/15427 functions/methods documented (51%). The list b
 | `core.identity` | 71 | 165 | 43% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 686 | 1265 | 54% |
+| `core.runtime` | 690 | 1270 | 54% |
 | `core.services` | 5258 | 10478 | 50% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 107 | 183 | 58% |
@@ -32,7 +32,7 @@ Generated from source. 7963/15427 functions/methods documented (51%). The list b
 | `core.services.visible_runs_sections` | 20 | 32 | 62% |
 | `core.skills` | 0 | 0 | 0% |
 | `core.skills.voice` | 39 | 49 | 79% |
-| `core.tools` | 488 | 1007 | 48% |
+| `core.tools` | 488 | 1008 | 48% |
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.undo` | 2 | 18 | 11% |

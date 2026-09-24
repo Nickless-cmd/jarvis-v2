@@ -2,6 +2,22 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/runtime/db_heartbeat.py`
+_Persistence for the heartbeat runtime tables — Jarvis' tick rhythm._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `ensure_heartbeat_tables` | `(conn)` | — | [src](../../../core/runtime/db_heartbeat.py#L17) |
+| function | `_ensure_heartbeat_runtime_state_columns` | `(conn)` | — | [src](../../../core/runtime/db_heartbeat.py#L102) |
+| function | `_ensure_heartbeat_runtime_tick_columns` | `(conn)` | — | [src](../../../core/runtime/db_heartbeat.py#L247) |
+| function | `_heartbeat_runtime_state_from_row` | `(row)` | — | [src](../../../core/runtime/db_heartbeat.py#L301) |
+| function | `_heartbeat_runtime_tick_from_row` | `(row)` | — | [src](../../../core/runtime/db_heartbeat.py#L340) |
+| function | `get_heartbeat_runtime_state` | `()` | — | [src](../../../core/runtime/db_heartbeat.py#L373) |
+| function | `upsert_heartbeat_runtime_state` | `(*, state_id, last_tick_id, last_tick_at, next_tick_at, schedule_state, due, last_decision_type, last_result, blocked_reason, currently_ticking, last_trigger_source, scheduler_active, scheduler_started_at, scheduler_stopped_at, scheduler_health, recovery_status, last_recovery_at, provider, model, lane, model_source, resolution_status, fallback_used, execution_status, parse_status, budget_status, last_ping_eligible, last_ping_result, last_action_type, last_action_status, last_action_summary, last_action_artifact, updated_at, last_successful_ping_at=…)` | — | [src](../../../core/runtime/db_heartbeat.py#L421) |
+| function | `record_heartbeat_runtime_tick` | `(*, tick_id, trigger, tick_status, decision_type, decision_summary, decision_reason, blocked_reason, provider, model, lane, model_source, resolution_status, fallback_used, execution_status, parse_status, budget_status, ping_eligible, ping_result, action_status, action_summary, action_type, action_artifact, raw_response, input_tokens, output_tokens, cost_usd, started_at, finished_at)` | — | [src](../../../core/runtime/db_heartbeat.py#L598) |
+| function | `get_heartbeat_runtime_tick` | `(tick_id)` | — | [src](../../../core/runtime/db_heartbeat.py#L702) |
+| function | `recent_heartbeat_runtime_ticks` | `(limit=…)` | — | [src](../../../core/runtime/db_heartbeat.py#L746) |
+
 ## `core/runtime/db_instrument.py`
 _Persistens for central_instrument — selv-instrumenterings-motorens fund + scan-cache._
 
@@ -915,29 +931,4 @@ _OllamaFreeAPI adapter for PUBLIC-SAFE cheap-lane calls._
 | function | `_alignment_status` | `(*, preferred_lane, preferred_target)` | — | [src](../../../core/runtime/operational_preference_alignment.py#L49) |
 | function | `_mismatch_reason` | `(*, preferred_lane, preferred_target)` | — | [src](../../../core/runtime/operational_preference_alignment.py#L61) |
 | function | `_recommended_action` | `(*, preferred_lane, preferred_target)` | — | [src](../../../core/runtime/operational_preference_alignment.py#L73) |
-
-## `core/runtime/opmaerksomhed.py`
-_Tilstands-hjernen — ÉN samlet opmærksomhedstilstand pr. arbejdsrum._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_standard_rum` | `()` | — | [src](../../../core/runtime/opmaerksomhed.py#L75) |
-| function | `rum_for_session` | `(session_id)` | Samtalens arbejdsrum. Ustemplede (legacy) samtaler hører til | [src](../../../core/runtime/opmaerksomhed.py#L80) |
-| function | `_noegle` | `(rum)` | — | [src](../../../core/runtime/opmaerksomhed.py#L99) |
-| function | `_laes` | `(rum)` | — | [src](../../../core/runtime/opmaerksomhed.py#L103) |
-| function | `_skriv` | `(rum, punkter)` | — | [src](../../../core/runtime/opmaerksomhed.py#L113) |
-| function | `_friske` | `(punkter, nu)` | — | [src](../../../core/runtime/opmaerksomhed.py#L118) |
-| function | `_titel` | `(session_id)` | — | [src](../../../core/runtime/opmaerksomhed.py#L124) |
-| function | `_noter` | `(*, session_id, run_id, tilstand, tekst=…)` | — | [src](../../../core/runtime/opmaerksomhed.py#L133) |
-| function | `_vurder_afsluttet` | `(log_run_id, indre_run_id, session_id)` | — | [src](../../../core/runtime/opmaerksomhed.py#L145) |
-| function | `noter_afsluttet` | `(log_run_id, indre_run_id, session_id)` | Kaldes fra detached_run når en tur slutter. Vurderes efter samme grace | [src](../../../core/runtime/opmaerksomhed.py#L171) |
-| function | `set` | `(session_id, rum=…)` | Brugeren har åbnet samtalen — dens punkt forsvinder. | [src](../../../core/runtime/opmaerksomhed.py#L184) |
-| function | `glem_session` | `(session_id)` | En ny tur starter — den forrige turs udfald er ikke længere nyheden. | [src](../../../core/runtime/opmaerksomhed.py#L199) |
-| function | `_pynt_navn` | `(navn)` | — | [src](../../../core/runtime/opmaerksomhed.py#L209) |
-| function | `aktivitet` | `(frames)` | Hvad laver han LIGE NU — læst bagfra i runnets egen strøm. | [src](../../../core/runtime/opmaerksomhed.py#L217) |
-| function | `_koerende` | `(rum)` | — | [src](../../../core/runtime/opmaerksomhed.py#L264) |
-| function | `_baggrund` | `()` | Autonome kørsler i gang (sidste halve time — friskheds-vagt mod zombier). | [src](../../../core/runtime/opmaerksomhed.py#L282) |
-| function | `_koe` | `(user_id, is_owner)` | (blokerende punkter, antal i indbakken). | [src](../../../core/runtime/opmaerksomhed.py#L299) |
-| function | `_venter` | `(items)` | — | [src](../../../core/runtime/opmaerksomhed.py#L311) |
-| function | `tilstand_for` | `(*, rum=…, user_id=…, is_owner=…)` | Den samlede tilstand. Rækkefølge: prioritet, så nyeste først. | [src](../../../core/runtime/opmaerksomhed.py#L321) |
 

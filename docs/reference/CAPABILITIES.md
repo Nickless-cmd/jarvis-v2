@@ -1,6 +1,6 @@
 # CAPABILITIES
 
-> Generated 2026-09-21 — 483 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
+> Generated 2026-09-24 — 484 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
 
 | Tool | Kind | Mutating |
 |---|---|---|
@@ -384,6 +384,7 @@
 | `stripe_create_issuing_card` | native | no |
 | `stripe_payouts` | native | no |
 | `stripe_transactions` | native | no |
+| `suggest_next_message` | native | no |
 | `surface_nudge` | native | no |
 | `synthesize_arc` | native | no |
 | `tail_log` | native | no |

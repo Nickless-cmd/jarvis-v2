@@ -424,6 +424,17 @@ _Hvad Bjørn gjorde ved komponistens forslag — tog han det, eller skrev han se
 | function | `seneste_valg` | `(*, session_id=…, limit=…)` | De seneste forslag og hvad der skete med dem. Til fase 3 og til at kigge. | [src](../../../core/runtime/db_composer_choice.py#L135) |
 | function | `optaelling` | `(*, session_id=…)` | Hvor mange forslag endte hvor. Grundlaget for «virker det?». | [src](../../../core/runtime/db_composer_choice.py#L153) |
 
+## `core/runtime/db_composer_jarvis.py`
+_Jarvis' EGET forslag til Bjørns næste besked — skrevet i hans egen tur._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_sikr_tabel` | `(conn)` | — | [src](../../../core/runtime/db_composer_jarvis.py#L50) |
+| function | `_rens` | `(tekst)` | Én linje, uden omsluttende anførselstegn, afkortet ved et ordskel. | [src](../../../core/runtime/db_composer_jarvis.py#L68) |
+| function | `gem_forslag` | `(*, session_id, forslag, kilde_besked_id=…, nu=…)` | Læg Jarvis' forslag ned for sessionen. Returnerer `forslag_id` (""=ugyldigt). | [src](../../../core/runtime/db_composer_jarvis.py#L81) |
+| function | `tag_forslag` | `(*, session_id)` | Tag det nyeste forslag for sessionen — og SLET det. Éngangsbrug. | [src](../../../core/runtime/db_composer_jarvis.py#L118) |
+| function | `kig_forslag` | `(*, session_id)` | Det nyeste forslag UDEN at forbruge det — til bekræftelse efter skriv. | [src](../../../core/runtime/db_composer_jarvis.py#L154) |
+
 ## `core/runtime/db_composites.py`
 _Composite tools store — Jarvis proposals of new tool sequences._
 
@@ -645,20 +656,4 @@ _Governance-ledger — PERSISTENT log af governerede mutationer._
 | function | `record_mutation` | `(area, key, value)` | Skriv én række til governance_ledger. Self-safe — sluger fejl. | [src](../../../core/runtime/db_governance_ledger.py#L50) |
 | function | `read_ledger` | `(area=…, limit=…)` | Læs seneste mutationer. Filtrér på area hvis givet. Selv-sikker → [] ved fejl. | [src](../../../core/runtime/db_governance_ledger.py#L73) |
 | function | `summary` | `()` | Aggregér pr. area: {area: {total, latest_ts, keys: [distinkte nøgler]}}. | [src](../../../core/runtime/db_governance_ledger.py#L110) |
-
-## `core/runtime/db_heartbeat.py`
-_Persistence for the heartbeat runtime tables — Jarvis' tick rhythm._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `ensure_heartbeat_tables` | `(conn)` | — | [src](../../../core/runtime/db_heartbeat.py#L17) |
-| function | `_ensure_heartbeat_runtime_state_columns` | `(conn)` | — | [src](../../../core/runtime/db_heartbeat.py#L102) |
-| function | `_ensure_heartbeat_runtime_tick_columns` | `(conn)` | — | [src](../../../core/runtime/db_heartbeat.py#L247) |
-| function | `_heartbeat_runtime_state_from_row` | `(row)` | — | [src](../../../core/runtime/db_heartbeat.py#L301) |
-| function | `_heartbeat_runtime_tick_from_row` | `(row)` | — | [src](../../../core/runtime/db_heartbeat.py#L340) |
-| function | `get_heartbeat_runtime_state` | `()` | — | [src](../../../core/runtime/db_heartbeat.py#L373) |
-| function | `upsert_heartbeat_runtime_state` | `(*, state_id, last_tick_id, last_tick_at, next_tick_at, schedule_state, due, last_decision_type, last_result, blocked_reason, currently_ticking, last_trigger_source, scheduler_active, scheduler_started_at, scheduler_stopped_at, scheduler_health, recovery_status, last_recovery_at, provider, model, lane, model_source, resolution_status, fallback_used, execution_status, parse_status, budget_status, last_ping_eligible, last_ping_result, last_action_type, last_action_status, last_action_summary, last_action_artifact, updated_at, last_successful_ping_at=…)` | — | [src](../../../core/runtime/db_heartbeat.py#L421) |
-| function | `record_heartbeat_runtime_tick` | `(*, tick_id, trigger, tick_status, decision_type, decision_summary, decision_reason, blocked_reason, provider, model, lane, model_source, resolution_status, fallback_used, execution_status, parse_status, budget_status, ping_eligible, ping_result, action_status, action_summary, action_type, action_artifact, raw_response, input_tokens, output_tokens, cost_usd, started_at, finished_at)` | — | [src](../../../core/runtime/db_heartbeat.py#L598) |
-| function | `get_heartbeat_runtime_tick` | `(tick_id)` | — | [src](../../../core/runtime/db_heartbeat.py#L702) |
-| function | `recent_heartbeat_runtime_ticks` | `(limit=…)` | — | [src](../../../core/runtime/db_heartbeat.py#L746) |
 

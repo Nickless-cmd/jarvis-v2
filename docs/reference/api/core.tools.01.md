@@ -167,6 +167,13 @@ _Tool: send_push_notification — proaktiv push til brugerens companion (mobil/d
 |---|---|---|---|---|
 | function | `_exec_send_push_notification` | `(args)` | — | [src](../../../core/tools/companion_push_tools.py#L41) |
 
+## `core/tools/composer_suggest_tools.py`
+_Jarvis' eget forslag i komponisten — «hvad kunne Bjørn skrive nu?»._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_exec_suggest_next_message` | `(args)` | — | [src](../../../core/tools/composer_suggest_tools.py#L29) |
+
 ## `core/tools/composites_tools.py`
 _Composite tools interface — self-extension for Jarvis._
 
@@ -517,13 +524,4 @@ _Mail tools for Jarvis — jarvis@srvlab.dk_
 | function | `_mail_config` | `()` | — | [src](../../../core/tools/mail_tools.py#L24) |
 | function | `_exec_send_mail` | `(args)` | Send an email from jarvis@srvlab.dk. | [src](../../../core/tools/mail_tools.py#L27) |
 | function | `_exec_read_mail` | `(args)` | Read recent emails from jarvis@srvlab.dk inbox. | [src](../../../core/tools/mail_tools.py#L70) |
-
-## `core/tools/math_tools.py`
-_Precise math and unit conversion tools using sympy._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_exec_calculate` | `(args)` | — | [src](../../../core/tools/math_tools.py#L37) |
-| function | `_exec_unit_convert` | `(args)` | — | [src](../../../core/tools/math_tools.py#L50) |
-| function | `_exec_percentage` | `(args)` | — | [src](../../../core/tools/math_tools.py#L80) |
 

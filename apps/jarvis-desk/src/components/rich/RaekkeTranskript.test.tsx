@@ -461,6 +461,14 @@ describe('raekkevisning.css', () => {
     expect(css).toMatch(/\.rv-arbejdsdetaljer\[hidden\]\s*\{\s*display:\s*none/)
   })
 
+  it('har ingen rygrad — stregen gennem gruppen er fjernet', () => {
+    // Bjørn 24/9-2026: «det hele.... synes den er grim» → «Fjern stregen helt».
+    // Det var en 1px lodret linje gennem hver udfoldet gruppe, med ikonerne
+    // siddende på den. Vagt, så den ikke sniger sig ind igen ad en anden vej.
+    expect(css).not.toMatch(/rv-gruppe::before/)
+    expect(css).not.toMatch(/rv-ikon\s*\{[^}]*background/)
+  })
+
   it('skjuler ikke exit-koden, og farver kun ikke-nul', () => {
     // jsdom indlaeser ingen CSS, saa raekke-testene ovenfor kan ikke se om
     // koden faktisk er synlig. Kilden maales.

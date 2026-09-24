@@ -52,9 +52,6 @@
   flex: none; width: 16px; height: 16px; margin-right: 6px;
   display: inline-flex; align-items: center; justify-content: center;
   color: var(--fg-3);
-  /* Baggrundsplet så rygraden ikke løber gennem glyffen. Samme farve som
-     fladen bag rækken, så pletten ikke ses — den er et hul, ikke en flade. */
-  background: var(--bg-1);
 }
 /* Hover: ikonet falmer ud, chevronen ind — 100ms, ingen række-fill.
    Samme affordance som forlægget (DisclosureRow.module.css:57-77). */
@@ -176,15 +173,6 @@
 .raekkevisning .rv-gruppe {
   position: relative; display: flex; flex-direction: column; padding-top: 8px;
 }
-/* Rygraden: 1px lodret linje gennem gruppen, med ikonerne siddende PÅ den.
-   Den siger «én sammenhængende handling» i stedet for «otte uafhængige
-   linjer» — dét flytter læsningen fra log til forløb. Linjen starter ved
-   første ikons midte (8px padding + 12px) og slutter et par px under sidste
-   række, så den ikke står som en stub. Kun synlig når turen er foldet UD. */
-.raekkevisning .rv-gruppe::before {
-  content: ''; position: absolute; left: 7.5px; top: 20px; bottom: 8px;
-  width: 1px; background: var(--line); pointer-events: none;
-}
 /* `display:flex` ovenfor SLÅR browserens egen [hidden]-regel. Uden denne
    linje skjuler `hidden` ingenting — målt 22/9-2026, og den kostede tre
    symptomer der lignede tre fejl. */
@@ -218,8 +206,8 @@
    inde i gruppen og folder sig sammen med arbejdet. */
 .raekkevisning .rv-mellem,
 .raekkevisning .rv-svar { font-size: 14px; line-height: 24px; color: var(--fg-1); }
-/* Indrykket til 22px — samme kant som kroppene — så rygraden har plads og
-   narrativen står på linje med det den handler om. */
+/* Indrykket til 22px — samme kant som kroppene — så narrativen står på linje
+   med det den handler om. */
 .raekkevisning .rv-mellem { margin: var(--rv-enhed) 0; padding-left: 22px; }
 .raekkevisning .rv-gruppe > .rv-arbejdsrunde + .rv-mellem { margin-top: var(--rv-enhed); }
 

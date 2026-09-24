@@ -2566,12 +2566,30 @@ def _build_visible_chat_prompt_assembly_impl(
 
     self_report_content = _timed_result(future_self_report, "self_report")
 
-    support_raw = _visible_support_signal_sections(
+    # CAP DEN. Se `_visible_support_signal_sections` for maalingen: 27,4 s af en
+    # 30,8-sekunders kold promptopbygning laa her, ucappet. Samme behandling som
+    # de oevrige hot-resolves siden 18/7 — berigelse maa aldrig fryse svaret.
+    #
+    # Akkumulatoren gør det billigt at ramme loftet: vi beholder de sektioner
+    # der NAAEDE at blive bygget, og mister kun den der haenger.
+    _support_acc: list[str] = []
+    _future_support = _measured_submit(
+        "support_signals", _visible_support_signal_sections,
         compact=compact,
         include=relevance.include_support_signals,
         user_message=user_message,
         session_id=session_id,
+        acc=_support_acc,
     )
+    support_raw = _timed_result(
+        _future_support, "support_signals",
+        default=None, max_s=_HOT_RESOLVE_CAP_S,
+    )
+    if support_raw is None:
+        # Deadline ramt: tag et oejebliksbillede af det der blev naaet. Traaden
+        # koerer videre i baggrunden og faerdiggoer sig selv; vi venter bare
+        # ikke paa den.
+        support_raw = list(_support_acc)
     # Forbeholdet hoistes til TOPPEN af den samlede blok (8/9-2026).
     #
     # Hver enkelt support-bygger sluttede med «Use only as subordinate support.
@@ -4406,10 +4424,28 @@ def _visible_finitude_context_section() -> str | None:
 def _visible_support_signal_sections(
     *, compact: bool, include: bool,
     user_message: str = "", session_id: str | None = None,
+    acc: list[str] | None = None,
 ) -> list[str]:
+    """Byg de 17 support-sektioner.
+
+    ``acc`` er en delt liste kalderen kan laese SELV OM vi bliver afbrudt.
+
+    24/9-2026: denne loekke var ucappet. Maalt paa en kold promptopbygning tog
+    den 27,4 s af 30,8 — heraf 27,1 s i `_experience_substrate_section`, som er
+    den SIDSTE i listen og laver et synkront embedding-kald. Ét langsomt kald
+    her frøs hele turen.
+
+    Hang-fixet 18/7-2026 indfoerte `_HOT_RESOLVE_CAP_S` mod praecis dette
+    symptom (`embed batch +28306ms`) — men cappede tre ANDRE resolves. Denne
+    sti var et almindeligt synkront kald og gik udenom.
+
+    Uden `acc` ville en deadline koste alle 17 sektioner; 16 af dem er
+    millisekunder og allerede faerdige naar den 17. haenger. Derfor skriver vi
+    loebende, saa kalderen beholder det der naaede at blive bygget.
+    """
     if not include:
         return []
-    sections: list[str] = []
+    sections: list[str] = acc if acc is not None else []
 
     if compact:
         return sections

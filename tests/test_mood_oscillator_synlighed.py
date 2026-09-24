@@ -130,3 +130,31 @@ def test_ingen_kalder_paastaar_en_fast_kadence() -> None:
             f"{modul.__name__} påstår en kadence — brug tick() uden argument, "
             f"så uret måler sig selv"
         )
+
+
+def test_workflow_kontrakten_beder_om_batching() -> None:
+    """Kontrakten skal sige at uafhængige kald hører i SAMME runde.
+
+    Målt 24/9-2026 over 740 runder: 75 % kaldte præcis ét værktøj, gennemsnit
+    1,28 — mens `max_tool_calls_per_turn` sagde 36 og intet i runtime klippede.
+    Det kostede ture på 30 runder, som ramte rundeloftet og blev afskåret
+    midt i arbejdet.
+
+    Årsagen var ikke en spærring, men en manglende opfordring: kontrakten
+    rammesatte en runde som ét fortalt skridt, og så blev ét værktøj det
+    naturlige valg. Narrationen skal blive — Bjørn skal kunne følge med — men
+    den må ikke koste en runde pr. filopslag.
+    """
+    import inspect
+    from core.services import prompt_contract as pc
+
+    kilde = inspect.getsource(pc)
+    i = kilde.index("WORKFLOW (every round)")
+    kontrakt = kilde[i:i + 900]
+    assert "same round" in kontrakt, (
+        "workflow-kontrakten beder ikke om batching — så kalder han ét "
+        "værktøj ad gangen og brænder runder"
+    )
+    # Narrationen skal stadig staa der; batching maa ikke have spist den.
+    assert "one short synthesis" in kontrakt
+    assert "Never run a round silently" in kontrakt

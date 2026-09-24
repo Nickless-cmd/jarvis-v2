@@ -2924,11 +2924,23 @@ def _build_visible_chat_prompt_assembly_impl(
     derived_inputs.append("tool-output hygiene (action contract)")
     # Workflow / narration contract (ReAct): think-before-act + synthesis between
     # rounds. Code/cheap models (deepseek/kimi/glm) emit tool_calls with no prose,
-    # so Bjørn sees a round start blind. Must stay in the head so it survives the
+    # so Bjørn sees a round start blind.
+    #
+    # 24/9-2026: kontrakten rammesatte utilsigtet en runde som ÉT skridt, og saa
+    # blev ét vaerktoej det naturlige. Maalt over 740 runder: 75 % kaldte praecis
+    # ét vaerktoej, gennemsnit 1,28 — mens `max_tool_calls_per_turn` sagde 36 og
+    # intet i runtime klippede. Resultatet var ture paa 30 runder der ramte
+    # rundeloftet og blev afskaaret. Batch-saetningen er tilfoejet HER frem for
+    # som en ny sektion: det er samme kontrakt, og den ville ellers konkurrere
+    # mod 22k tegn cognitive_state et andet sted i prompten. Must stay in the head so it survives the
     # lean transform and applies to ALL agentic rounds. Static → cache-safe.
     _dyn_tail.append(
         "🎬 WORKFLOW (every round): before calling tools, first write one short "
-        "sentence on what you are about to do and why. After a round of tool "
+        "sentence on what you are about to do and why. Then call EVERY tool that "
+        "step needs — all at once, in the same round. Two file reads, a grep and "
+        "a bash check that do not depend on each other belong in ONE round, not "
+        "four. Only split when a call genuinely needs the previous result. "
+        "After a round of tool "
         "results: write one short synthesis of what you found and what it means "
         "BEFORE starting the next round. Never run a round silently — Bjørn must be "
         "able to follow your thinking as you go, not just see the final result."

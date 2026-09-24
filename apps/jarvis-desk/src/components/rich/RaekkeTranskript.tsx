@@ -22,7 +22,7 @@
  * billeder er nøjagtig som i bobblevisningen.
  */
 import { memo, useState } from 'react'
-import { Sparkles, Sparkle, ChevronDown, ChevronRight, Check, type LucideIcon } from 'lucide-react'
+import { Sparkles, Sparkle, ChevronDown, ChevronRight, SquareTerminal, BookOpen, type LucideIcon } from 'lucide-react'
 import type { ContentBlock } from '../../lib/sseProtocol'
 import type { ApiConfig } from '../../lib/api'
 import { opdel, opdelArbejdsrunder, turFortalt, type ArbejdsElement } from '../../lib/raekkeModel'
@@ -32,6 +32,7 @@ import { diffFraResultat, diffStat } from '../../lib/diffStat'
 import { postFor, kropFor } from './raekkeKroppe'
 import { erUnderagent } from '../../lib/agentKald'
 import { BlocksRenderer, etiketterFraBlokke } from './BlocksRenderer'
+import { MarkdownRenderer } from './MarkdownRenderer'
 
 /** Første linje af en tanke — resten ligger i kroppen. */
 function foersteLinje(s: string): string {
@@ -49,6 +50,20 @@ function FoldPil({ aaben }: { aaben: boolean }) {
   return aaben
     ? <ChevronDown size={12} strokeWidth={1.75} />
     : <ChevronRight size={12} strokeWidth={1.75} />
+}
+
+function Syntese({ tekst, streaming }: { tekst: string; streaming: boolean }) {
+  return <div className="rv-mellem"><MarkdownRenderer text={tekst} streaming={streaming} /></div>
+}
+
+const KOMMANDOER = new Set(['bash', 'bash_session_run', 'bash_session_open', 'bash_session_close', 'bash_output', 'run_in_background', 'session_run'])
+
+/** Arbejdsrunden beholder sit handlingsikon når den er færdig. */
+function arbejdsIkon(vaerktoejer: Extract<ContentBlock, { type: 'tool_use' }>[]): LucideIcon {
+  const navne = vaerktoejer.map((t) => t.name.replace(/^operator_/, ''))
+  if (navne.some((n) => n === 'read_file') && navne.some((n) => KOMMANDOER.has(n))) return BookOpen
+  if (navne.length > 0 && navne.every((n) => KOMMANDOER.has(n))) return SquareTerminal
+  return lookupTool(vaerktoejer[vaerktoejer.length - 1]?.name ?? '').Icon
 }
 
 function Raekke({
@@ -125,7 +140,7 @@ function Element({ e, streaming, config, beskedId }: {
   if (e.slags === 'mellemsvar') {
     // Jarvis' korte narration MELLEM kaldene. Den bor i gruppen og folder sig
     // sammen med arbejdet — den er ikke en besked (Bjoern 22/9-2026).
-    return <div className="rv-mellem">{e.tekst}</div>
+    return <Syntese tekst={e.tekst} streaming={streaming} />
   }
   if (e.slags === 'spor') {
     // ÉN linje der opdaterer sig — den viser det SENESTE trin, og hele
@@ -243,7 +258,7 @@ function Arbejdsrunde({
     ? describeTool(seneste.name, seneste.input, true, seneste.partialJson, seneste.result, seneste.status)
     : etiket || (vaerktoejer.length === 1 && seneste && egenBeskrivelse(seneste.name, seneste.input, seneste.partialJson)
       ? `Færdig · ${mekanisk}` : mekanisk)
-  const Ikon = koerer && seneste ? lookupTool(seneste.name).Icon : Check
+  const Ikon = arbejdsIkon(vaerktoejer)
   return (
     <div className="rv-arbejdsrunde">
       <button type="button" className="rv-arbejdsknap" aria-expanded={aaben}
@@ -292,17 +307,17 @@ function RaekkeTranskriptImpl({
             type="button" className="rv-tur" aria-expanded={aaben}
             onClick={() => setAabenManuelt(!aaben)}
           >
-            <span className="rv-turC" aria-hidden="true"><FoldPil aaben={aaben} /></span>
             {/* `shimmer` er desks egen regel (app.css) — 2.25s, pinned 1:1 mod
                 Claude Desktop af tokens.test.ts. Vi laaner den, vi laver ikke
                 en ny. Kun mens der faktisk arbejdes. */}
             {streaming && aabenManuelt === null
-              ? <span className="shimmer">Working…</span>
-              : <span>{turFortalt(familier, kald, sekunder)}</span>}
+              ? <span className="rv-turTekst shimmer">Working…</span>
+              : <span className="rv-turTekst">{turFortalt(familier, kald, sekunder)}</span>}
+            <span className="rv-turC" aria-hidden="true"><FoldPil aaben={aaben} /></span>
           </button>
           <div className="rv-gruppe" hidden={!aaben}>
             {sektioner.map((s, i) => {
-              if (s.slags === 'syntese') return <div key={i} className="rv-mellem">{s.tekst}</div>
+              if (s.slags === 'syntese') return <Syntese key={i} tekst={s.tekst} streaming={streaming} />
               if (s.slags === 'enkelt') return <Element key={i} e={s.element} streaming={streaming} config={config} beskedId={beskedId} />
               return <Arbejdsrunde key={i} elementer={s.elementer} streaming={streaming}
                 config={config} rundeEtiketter={etiketter} beskedId={beskedId} />

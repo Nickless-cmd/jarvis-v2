@@ -164,6 +164,10 @@
   font: 13px/1 inherit; color: var(--rv-tertiary); cursor: pointer;
 }
 .raekkevisning .rv-tur[aria-expanded='false'] { margin-bottom: 8px; }
+.raekkevisning .rv-turTekst {
+  flex: 0 1 auto; min-width: 0; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap;
+}
 .raekkevisning .rv-turC {
   /* `flex: none` som arbejdsknappen allerede havde: uden den kan ikonet
      klemmes fladt når turens tekst er lang. */
@@ -206,9 +210,10 @@
    inde i gruppen og folder sig sammen med arbejdet. */
 .raekkevisning .rv-mellem,
 .raekkevisning .rv-svar { font-size: 14px; line-height: 24px; color: var(--fg-1); }
-/* Indrykket til 22px — samme kant som kroppene — så narrativen står på linje
-   med det den handler om. */
-.raekkevisning .rv-mellem { margin: var(--rv-enhed) 0; padding-left: 22px; }
+/* Synteser er Jarvis' løbende besked, på samme venstrekant som slutteksten.
+   Kun udfoldede værktøjsdetaljer har indrykning. */
+.raekkevisning .rv-mellem { margin: var(--rv-enhed) 0; padding-left: 0; }
+.raekkevisning .rv-mellem > :last-child { margin-bottom: 0; }
 .raekkevisning .rv-gruppe > .rv-arbejdsrunde + .rv-mellem { margin-top: var(--rv-enhed); }
 
 /* ══ KORT-PRIMITIVERNE ══ Delte former dækker hele værktøjskassen; resten

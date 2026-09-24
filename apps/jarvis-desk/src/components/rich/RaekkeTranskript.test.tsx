@@ -214,7 +214,39 @@ describe('RaekkeTranskript', () => {
     ]
     const { container } = render(<RaekkeTranskript blocks={blocks} streaming />)
     expect(container.querySelector('.rv-arbejdsknap')?.textContent).toContain('Færdig · Kør testene')
-    expect(container.querySelector('.rv-arbejdsknap svg')).toHaveClass('lucide-check')
+    expect(container.querySelector('.rv-arbejdsknap svg')).toHaveClass('lucide-square-terminal')
+  })
+
+  it('viser handlingens ikon også efter en runde er færdig', () => {
+    const { container } = render(<RaekkeTranskript blocks={[
+      kald('operator_channel', { action: 'open' }), tekst('Kanalen er åben.'),
+    ]} streaming={false} />)
+    fireEvent.click(container.querySelector('.rv-tur')!)
+    expect(container.querySelector('.rv-arbejdsknap svg')).toHaveClass('lucide-monitor')
+  })
+
+  it('viser blandet fil- og kommandoarbejde med bogikon', () => {
+    const { container } = render(<RaekkeTranskript blocks={[
+      kald('read_file', { path: 'app.ts' }), kald('bash', { command: 'npm test' }), tekst('Færdig.'),
+    ]} streaming />)
+    expect(container.querySelector('.rv-arbejdsknap svg')).toHaveClass('lucide-book-open')
+  })
+
+  it('lægger turens fold-ud-pil efter tiden og formaterer synteser uden indrykning', () => {
+    const { container } = render(<RaekkeTranskript blocks={[
+      tekst('Jeg har **fjernet** fejlen i `app.ts`.'),
+      kald('bash', { command: 'npm test' }),
+      tekst('Færdig.'),
+    ]} streaming={false} />)
+    const header = container.querySelector('.rv-tur')!
+    expect(header.lastElementChild).toHaveClass('rv-turC')
+    fireEvent.click(header)
+    const syntese = container.querySelector('.rv-mellem')!
+    expect(syntese.querySelector('strong')?.textContent).toBe('fjernet')
+    expect(syntese.querySelector('code')?.textContent).toBe('app.ts')
+    expect(syntese.textContent).not.toContain('**')
+    const css = readFileSync(resolve(__dirname, '../../styles/raekkevisning.css'), 'utf8')
+    expect(css).toMatch(/\.raekkevisning \.rv-mellem \{[^}]*padding-left:\s*0/)
   })
 
   it('folder arbejdet SAMMEN når streamingen er slut — svaret bliver stående', () => {

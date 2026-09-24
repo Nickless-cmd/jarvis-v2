@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 15414 functions/methods, 51% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 15424 functions/methods, 51% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -42,20 +42,20 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 15414 functions/
 - [`core.services.11`](core.services.11.md) — `dream_insight_daemon` … `experience_correction_listener`
 - [`core.services.12`](core.services.12.md) — `experience_episodes` … `gate_truth`
 - [`core.services.13`](core.services.13.md) — `gate_verdict_ledger` … `identity_drift_guard`
-- [`core.services.14`](core.services.14.md) — `identity_drift_proposer` … `learning_pipeline_orchestrator`
-- [`core.services.15`](core.services.15.md) — `learning_policy_engine` … `memory_recall_engine`
-- [`core.services.16`](core.services.16.md) — `memory_recall_telemetry` … `non_visible_rate_cap`
-- [`core.services.17`](core.services.17.md) — `notes_connector` … `personal_project`
-- [`core.services.18`](core.services.18.md) — `personality_drift` … `prompt_evolution`
-- [`core.services.19`](core.services.19.md) — `prompt_evolution_runtime` … `recursion_guard`
-- [`core.services.20`](core.services.20.md) — `reflection_cycle_daemon` … `runtime_action_outcome_tracking`
-- [`core.services.21`](core.services.21.md) — `runtime_action_registry` … `self_model_history`
-- [`core.services.22`](core.services.22.md) — `self_model_predictive` … `shadow_experiment_registry`
-- [`core.services.23`](core.services.23.md) — `shadow_ledger_writer` … `state_file_retention`
-- [`core.services.24`](core.services.24.md) — `state_flag_store` … `tool_calling_evidence`
-- [`core.services.25`](core.services.25.md) — `tool_catalog` … `user_theory_of_mind`
-- [`core.services.26`](core.services.26.md) — `user_understanding_signal_tracking` … `visible_runs_watchdog`
-- [`core.services.27`](core.services.27.md) — `visible_self_state_summary` … `world_model_signal_tracking`
+- [`core.services.14`](core.services.14.md) — `identity_drift_proposer` … `layer_tension_daemon`
+- [`core.services.15`](core.services.15.md) — `learning_pipeline_orchestrator` … `memory_pruning_daemon`
+- [`core.services.16`](core.services.16.md) — `memory_recall_engine` … `non_visible_lane_execution`
+- [`core.services.17`](core.services.17.md) — `non_visible_rate_cap` … `permission_engine`
+- [`core.services.18`](core.services.18.md) — `personal_project` … `prompt_contract`
+- [`core.services.19`](core.services.19.md) — `prompt_evolution` … `recurring_tasks`
+- [`core.services.20`](core.services.20.md) — `recursion_guard` … `runtime_action_executor`
+- [`core.services.21`](core.services.21.md) — `runtime_action_outcome_tracking` … `self_model_distiller`
+- [`core.services.22`](core.services.22.md) — `self_model_history` … `shadow_counters`
+- [`core.services.23`](core.services.23.md) — `shadow_experiment_registry` … `standing_orders_registry`
+- [`core.services.24`](core.services.24.md) — `state_file_retention` … `tool_batch_notice`
+- [`core.services.25`](core.services.25.md) — `tool_calling_evidence` … `user_temperature_runtime`
+- [`core.services.26`](core.services.26.md) — `user_theory_of_mind` … `visible_runs_sse_v2`
+- [`core.services.27`](core.services.27.md) — `visible_runs_watchdog` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

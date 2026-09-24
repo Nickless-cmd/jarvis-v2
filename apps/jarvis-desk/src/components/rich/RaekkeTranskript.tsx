@@ -27,7 +27,7 @@ import type { ContentBlock } from '../../lib/sseProtocol'
 import type { ApiConfig } from '../../lib/api'
 import { opdel, opdelArbejdsrunder, turFortalt, type ArbejdsElement } from '../../lib/raekkeModel'
 import { lookupTool } from '../../lib/toolRegistry'
-import { describeTool, egenBeskrivelse, subjectFromInput, summarizeRound, summerDiff } from '../../lib/toolRound'
+import { describeTool, subjectFromInput, summarizeRound, summerDiff } from '../../lib/toolRound'
 import { diffFraResultat, diffStat } from '../../lib/diffStat'
 import { postFor, kropFor } from './raekkeKroppe'
 import { erUnderagent } from '../../lib/agentKald'
@@ -288,10 +288,15 @@ function Arbejdsrunde({
   const mekanisk = summarizeRound(vaerktoejer)
   // Under udførelse: Jarvis' `description` eller den aktuelle handling.
   // Bagefter: modelens rundeopsummering, ellers en faktuel afslutning.
+  //
+  // Bjørn 24/9-2026: «det er bare <færdig> der ikk passer ind». Linjen bar før
+  // et «Færdig · »-præfiks foran den mekaniske tekst, sat ind for at skelne en
+  // afsluttet runde fra en kørende. Ordet var et fremmedelement i en linje der
+  // ellers er ren handling — og skelnen findes allerede: shimmeret kører kun
+  // mens runden er i gang, og pladsen i transskriptet siger resten.
   const beskrivelse = koerer && seneste
     ? describeTool(seneste.name, seneste.input, true, seneste.partialJson, seneste.result, seneste.status)
-    : etiket || (vaerktoejer.length === 1 && seneste && egenBeskrivelse(seneste.name, seneste.input, seneste.partialJson)
-      ? `Færdig · ${mekanisk}` : mekanisk)
+    : etiket || mekanisk
   const Ikon = arbejdsIkon(vaerktoejer)
   return (
     <div className="rv-arbejdsrunde">

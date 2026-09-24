@@ -207,13 +207,18 @@ describe('RaekkeTranskript', () => {
     expect(container.querySelector('.rv-arbejdsknap')?.textContent).toContain('Gennemgik filen')
   })
 
-  it('markerer en modelbeskrevet kommando som færdig uden rundeetiket', () => {
+  it('viser kommandoens egen beskrivelse — uden et «Færdig»-præfiks', () => {
+    // Bjørn 24/9-2026: «det er bare <færdig> der ikk passer ind». Præfikset er
+    // væk; linjen er Jarvis' egen beskrivelse og intet andet. Vagt, så ordet
+    // ikke sniger sig ind igen ad en anden vej.
     const blocks: ContentBlock[] = [
       statusKald('bash', { command: 'npm test', description: 'Kør testene' }, 'done'),
       tekst('Alle tests bestod.'),
     ]
     const { container } = render(<RaekkeTranskript blocks={blocks} streaming />)
-    expect(container.querySelector('.rv-arbejdsknap')?.textContent).toContain('Færdig · Kør testene')
+    const knap = container.querySelector('.rv-arbejdsknap')
+    expect(knap?.textContent).toContain('Kør testene')
+    expect(knap?.textContent).not.toContain('Færdig')
     expect(container.querySelector('.rv-arbejdsknap svg')).toHaveClass('lucide-square-terminal')
   })
 

@@ -121,8 +121,8 @@ const ComposerTextArea = memo(function ComposerTextArea({
   )
 })
 
-/** Composer (Codex-stil): venstre [+] + permissions-dropdown; højre model-pill,
- *  think-pill, dikter-mic, send. [+]-menu folder opad med billeder/filer,
+/** Composer (Codex-stil): venstre [+] + permissions-dropdown; højre samlet
+ *  model/tænkning-vælger, dikter-mic, send. [+]-menu folder opad med billeder/filer,
  *  planlægnings-toggle og plugins. Enter sender, Shift+Enter ny linje. */
 /** 213000 → «213K». Linjen skal kunne læses i ét blik, ikke tælles. */
 function formatTokens(n: number): string {
@@ -251,9 +251,7 @@ export function Composer({
   // Alle visible-klare providers + modeller (owner). Hentes fra /chat/visible-providers.
   const [providers, setProviders] = useState<Array<{ id: string; models: string[] }>>([])
   const [modelOpen, setModelOpen] = useState(false)
-  const [thinkOpen, setThinkOpen] = useState(false)
   const [thinkMode, setThinkMode] = useState<ThinkingMode>(() => readThinkingMode())
-  const [provOpen, setProvOpen] = useState(false)
   const ref = useRef<HTMLTextAreaElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const dictation = useDictation((t) => setText((cur) => (cur ? cur + ' ' : '') + t), config)
@@ -321,16 +319,16 @@ export function Composer({
   const ownerProviders: string[] = providers.length
     ? providers.map((p) => p.id)
     : ['deepseek', 'ollama']
-  const _selProv = providers.find((p) => p.id === provChoice)
   const _deepseekFallback = [
-    { id: 'deepseek-v4-flash', label: 'Standard' },
-    { id: 'deepseek-v4-pro', label: 'Pro' },
+    'deepseek-v4-flash', 'deepseek-v4-pro',
   ]
-  const ownerModelOptions: Array<{ id: string; label: string }> = _selProv
-    ? _selProv.models.map((m) => ({ id: m, label: m.replace(':cloud', '') }))
-    : (provChoice === 'deepseek' ? _deepseekFallback : [])
+  const modelsFor = (pid: string) => providers.find((p) => p.id === pid)?.models
+    ?? (pid === 'deepseek' ? _deepseekFallback : [])
+  const modelLabel = (pid: string, id: string) => pid === 'deepseek'
+    ? id.replace(/^deepseek-/, '').replace(/(^|-)v(\d+)/g, '$1V$2').replace(/-([a-z])/g, (_, c: string) => ` ${c.toUpperCase()}`)
+    : id.replace(':cloud', '')
   const currentModelLabel = isOwner
-    ? (ownerModelOptions.find((o) => o.id === selModel)?.label || 'Vælg model')
+    ? (selModel ? modelLabel(provChoice, selModel) : 'Vælg model')
     : (memberTier === 'pro' ? 'Pro' : 'Standard')
 
   // Auto-resize: composer vokser med teksten (op til CSS max-height, derefter
@@ -395,11 +393,11 @@ export function Composer({
 
   // Luk popovers ved klik udenfor.
   useEffect(() => {
-    if (!menuOpen && !permOpen && !modelOpen && !provOpen && !thinkOpen) return
-    const close = () => { setMenuOpen(false); setPermOpen(false); setModelOpen(false); setProvOpen(false); setThinkOpen(false) }
+    if (!menuOpen && !permOpen && !modelOpen) return
+    const close = () => { setMenuOpen(false); setPermOpen(false); setModelOpen(false) }
     window.addEventListener('click', close)
     return () => window.removeEventListener('click', close)
-  }, [menuOpen, permOpen, modelOpen, provOpen, thinkOpen])
+  }, [menuOpen, permOpen, modelOpen])
 
   // Enter sender altid (også under streaming — ChatView lægger den i kø).
   // useCallback så identiteten er stabil mellem stream-tickets (deps ændrer sig
@@ -450,7 +448,7 @@ export function Composer({
       const finalText = t ? `${t}\n\n${suffix}` : suffix
       emit(finalText)
     })
-  }, [text, attachments, pendingPastes, config, isOwner, selModel, memberTier, provChoice, planMode, permission, onSend])
+  }, [text, attachments, pendingPastes, config, isOwner, selModel, memberTier, provChoice, planMode, permission, thinkMode, onSend])
 
   // Pause under compaction (som Claude Code): mens sessionen komprimeres holdes en send i kø
   // og afsendes AUTOMATISK når compaction er overstået. Teksten bevares imens.
@@ -796,79 +794,66 @@ export function Composer({
         </div>
 
         <div className="composer-right">
-          {/* Provider-vælger — KUN owner. Hele paletten af visible-klare providers. */}
-          {isOwner && (
-            <div className="composer-popover-anchor" onClick={stop}>
-              <button type="button" className="model-pill"
-                onClick={() => { setProvOpen((o) => !o); setModelOpen(false) }}>
-                <span className="dot" />{provLabel(provChoice)}<span className="caret">▾</span>
-              </button>
-              {provOpen && (
-                <div className="composer-menu model-menu">
-                  {ownerProviders.map((pid) => (
-                    <button key={pid} type="button" className={provChoice === pid ? 'active' : ''}
-                      onClick={() => { setProvChoice(pid); setSelModel(''); setProvOpen(false) }}>
-                      {provLabel(pid)}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-          {/* Model-vælger — alle. Owner: dynamisk liste; member: Standard/Pro. */}
+          {/* Én vælger for udbyder, model og tænkning. Owner ser alle tilgængelige
+              udbydere; member ser fortsat kun Standard/Pro. */}
           <div className="composer-popover-anchor" onClick={stop}>
-            <button type="button" className="model-pill"
-              onClick={() => { setModelOpen((o) => !o); setProvOpen(false) }}>
-              <span className="dot" />{currentModelLabel}<span className="caret">▾</span>
+            <button type="button" className="model-pill combined-model-pill"
+              aria-label="Model og tænkning" aria-expanded={modelOpen} aria-haspopup="dialog"
+              onClick={() => { setModelOpen((o) => !o); setPermOpen(false); setMenuOpen(false) }}>
+              <span className="dot" />
+              <span className="combined-model-name">{isOwner && <>{provLabel(provChoice)} · </>}{currentModelLabel}</span>
+              <span className="combined-model-separator">·</span>
+              <span>{THINK_NAVN[thinkMode]}</span>
+              <ChevronDown size={12} aria-hidden="true" />
             </button>
             {modelOpen && (
-              <div className="composer-menu model-menu">
-                {isOwner
-                  ? ownerModelOptions.map((o) => (
-                      <button key={o.id} type="button" className={selModel === o.id ? 'active' : ''}
-                        onClick={() => { setSelModel(o.id); setModelOpen(false) }}>{o.label}</button>
-                    ))
-                  : (['standard', 'pro'] as const).map((tier) => (
-                      <button key={tier} type="button" className={memberTier === tier ? 'active' : ''}
-                        onClick={() => { setSelModel(tier); setModelOpen(false) }}>{tier === 'pro' ? 'Pro' : 'Standard'}</button>
+              <div className="composer-menu combined-model-menu" role="dialog" aria-label="Model og tænkning">
+                <div className="combined-menu-heading">Model</div>
+                {isOwner ? ownerProviders.map((pid) => (
+                  <div key={pid}>
+                    <div className="combined-provider-heading">{provLabel(pid)}</div>
+                    <div role="listbox" aria-label={`${provLabel(pid)} modeller`}>
+                      {modelsFor(pid).map((id) => (
+                        <button key={id} type="button" role="option"
+                          aria-selected={provChoice === pid && selModel === id}
+                          className={provChoice === pid && selModel === id ? 'active' : ''}
+                          onClick={() => { setProvChoice(pid); setSelModel(id) }}>
+                          {modelLabel(pid, id)}
+                          {provChoice === pid && selModel === id && <span className="combined-check">✓</span>}
+                        </button>
+                      ))}
+                      {modelsFor(pid).length === 0 && <span className="combined-model-loading">Henter modeller…</span>}
+                    </div>
+                  </div>
+                )) : (
+                  <div role="listbox" aria-label="Modeller">
+                    {(['standard', 'pro'] as const).map((tier) => (
+                      <button key={tier} type="button" role="option"
+                        aria-selected={memberTier === tier} className={memberTier === tier ? 'active' : ''}
+                        onClick={() => setSelModel(tier)}>
+                        {tier === 'pro' ? 'Pro' : 'Standard'}
+                        {memberTier === tier && <span className="combined-check">✓</span>}
+                      </button>
                     ))}
-                {isOwner && ownerModelOptions.length === 0 && (
-                  <button type="button" disabled>Henter modeller…</button>
+                  </div>
                 )}
-              </div>
-            )}
-          </div>
-          {/* Taenknings-effekt. Pillen tegnede en pil og havde INGEN onClick —
-              den lovede en menu der aldrig fandtes (Bjoern 18/9-2026). Vaerdien
-              var samtidig hardkodet til "think" i baade ChatView og CodeView.
-              Ledningen ud til serveren fandtes hele tiden: streamClient sender
-              thinking_mode, og API'et tager imod. Kun valget manglede. */}
-          <div className="composer-popover-anchor" onClick={stop}>
-            <button
-              type="button"
-              className="model-pill"
-              aria-haspopup="listbox"
-              aria-expanded={thinkOpen}
-              title="Tænknings-effekt"
-              onClick={() => { setThinkOpen((o) => !o); setModelOpen(false); setProvOpen(false) }}
-            >
-              {THINK_NAVN[thinkMode]}<span className="caret">▾</span>
-            </button>
-            {thinkOpen && (
-              <div className="composer-menu model-menu" role="listbox">
-                {(['fast', 'think', 'deep'] as const).map((m) => (
-                  <button
-                    key={m}
-                    type="button"
-                    role="option"
-                    aria-selected={thinkMode === m}
-                    className={thinkMode === m ? 'active' : ''}
-                    title={THINK_HJAELP[m]}
-                    onClick={() => { setThinkMode(m); writeThinkingMode(m); setThinkOpen(false) }}
-                  >
-                    {THINK_NAVN[m]}
-                  </button>
-                ))}
+                <div className="combined-menu-divider" />
+                <label className="combined-menu-heading" htmlFor="composer-thinking-slider">Tænkning</label>
+                <input id="composer-thinking-slider" className="combined-thinking-slider" type="range"
+                  min="0" max="2" step="1"
+                  aria-label="Tænkning" aria-valuetext={THINK_NAVN[thinkMode]}
+                  value={(['fast', 'think', 'deep'] as const).indexOf(thinkMode)}
+                  onChange={(e) => {
+                    const mode = (['fast', 'think', 'deep'] as const)[Number(e.target.value)]
+                    if (!mode) return
+                    setThinkMode(mode)
+                    writeThinkingMode(mode)
+                  }}
+                />
+                <div className="combined-thinking-labels" aria-hidden="true">
+                  <span>Hurtig</span><span>Automatisk</span><span>Dyb</span>
+                </div>
+                <div className="combined-thinking-help">{THINK_HJAELP[thinkMode]}</div>
               </div>
             )}
           </div>

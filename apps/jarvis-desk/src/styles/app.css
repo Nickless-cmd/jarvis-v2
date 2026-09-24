@@ -2068,8 +2068,8 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 .model-menu button:disabled { color: var(--fg-3); cursor: default; }
 
 .combined-model-pill { max-width: min(410px, 48vw); }
-.combined-model-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.combined-model-separator { color: var(--fg-3); }
+.combined-model-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--fg-1); }
+.combined-thinking-name { color: var(--fg-3); white-space: nowrap; }
 .combined-model-pill > svg { flex: 0 0 auto; color: var(--fg-3); }
 .combined-model-menu {
   left: auto; right: 0; width: 286px; max-width: min(286px, calc(100vw - 24px));

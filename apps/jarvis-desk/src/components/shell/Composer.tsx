@@ -815,10 +815,8 @@ export function Composer({
               aria-label="Model og tænkning" aria-expanded={modelOpen} aria-haspopup="dialog"
               title={`${isOwner ? `${provLabel(provChoice)} · ` : ''}${currentModelLabel} · ${THINK_NAVN[thinkMode]}`}
               onClick={() => { setModelOpen((o) => !o); setModelQuery(''); setPermOpen(false); setMenuOpen(false) }}>
-              <span className="dot" />
               <span className="combined-model-name">{currentModelLabel}</span>
-              <span className="combined-model-separator">·</span>
-              <span>{THINK_KORT[thinkMode]}</span>
+              <span className="combined-thinking-name">{THINK_KORT[thinkMode]}</span>
               <ChevronDown size={12} aria-hidden="true" />
             </button>
             {modelOpen && (

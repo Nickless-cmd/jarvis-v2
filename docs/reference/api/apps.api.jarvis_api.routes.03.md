@@ -220,9 +220,10 @@ _Visning — serverer et lokalt billede til desk' rækkevisning._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_ligger_under` | `(sti, rod)` | — | [src](../../../apps/api/jarvis_api/routes/visning.py#L69) |
-| function | `tilladt_sti` | `(sti)` | Den opløste sti hvis den må vises — ellers None. | [src](../../../apps/api/jarvis_api/routes/visning.py#L77) |
-| function | `vis_billede` | `(sti)` | — | [src](../../../apps/api/jarvis_api/routes/visning.py#L104) |
+| function | `_ligger_under` | `(sti, rod)` | — | [src](../../../apps/api/jarvis_api/routes/visning.py#L74) |
+| function | `tilladt_sti` | `(sti)` | Den opløste sti hvis den må vises — ellers None. | [src](../../../apps/api/jarvis_api/routes/visning.py#L82) |
+| function | `_gammelt_analysebillede` | `(sti, besked_id, tool_use_id)` | Allow one old temp image only when the stored tool call names that path. | [src](../../../apps/api/jarvis_api/routes/visning.py#L108) |
+| function | `vis_billede` | `(sti, besked_id=…, tool_use_id=…)` | — | [src](../../../apps/api/jarvis_api/routes/visning.py#L146) |
 
 ## `apps/api/jarvis_api/routes/voice_live.py`
 _POST /voice/samtale — åbn en ægte stemme-samtale med Jarvis (LiveKit/WebRTC)._

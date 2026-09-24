@@ -14,7 +14,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import pytest
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
 
 from apps.api.jarvis_api.routes import visning
@@ -70,6 +70,39 @@ def test_tempfil_staget_af_analyze_image(hjem_og_temp):
     _, temp = hjem_og_temp
     fil = _skriv(temp / "jarvisx-vision-abc.png")
     assert _hent(fil).status_code == 200
+
+
+def test_gammelt_read_image_med_gemt_kald_kan_vises(hjem_og_temp, monkeypatch):
+    import json
+    import sqlite3
+    from core.runtime import db
+    from apps.api.jarvis_api.routes import chat_session_view
+
+    _, temp = hjem_og_temp
+    fil = _skriv(temp / "crop-nederst.png")
+    conn = sqlite3.connect(":memory:", check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    conn.execute("CREATE TABLE chat_messages (message_id TEXT, session_id TEXT, content_json TEXT)")
+    conn.execute("INSERT INTO chat_messages VALUES (?, ?, ?)", (
+        "message-1", "session-1", json.dumps([{
+            "type": "tool_use", "id": "tool-1", "name": "analyze_image",
+            "input": {"image_path": str(fil)},
+        }]),
+    ))
+    monkeypatch.setattr(db, "connect", lambda: conn)
+    monkeypatch.setattr(chat_session_view, "kraev_adgang", lambda session: None if session == "session-1" else pytest.fail("wrong session"))
+
+    params = {"sti": str(fil), "besked_id": "message-1", "tool_use_id": "tool-1"}
+    assert client.get("/visning/billede", params=params).status_code == 200
+    assert _hent(fil).status_code == 403
+    assert client.get("/visning/billede", params={**params, "tool_use_id": "other"}).status_code == 403
+    assert client.get("/visning/billede", params={**params, "sti": str(_skriv(temp / "other.png"))}).status_code == 403
+
+    def naegt(_session: str) -> None:
+        raise HTTPException(status_code=403, detail="Ikke din samtale")
+
+    monkeypatch.setattr(chat_session_view, "kraev_adgang", naegt)
+    assert client.get("/visning/billede", params=params).status_code == 403
 
 
 def test_alle_billed_endelser_godtages(hjem_og_temp):

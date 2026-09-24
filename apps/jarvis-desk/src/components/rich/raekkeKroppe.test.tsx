@@ -571,7 +571,7 @@ describe('billedet kan ses — ogsaa naar filen ligger paa serveren', () => {
     expect(container.querySelector('.rv-bill')).toBeInTheDocument()
     expect(String(hentet.mock.calls[0]?.[0])).toContain(encodeURIComponent('/tmp/jarvisx-window-1790267139770.png'))
     fireEvent.click(container.querySelector('.billed-knap') as HTMLButtonElement)
-    expect(container.querySelector('.billed-lightbox')).toBeInTheDocument()
+    expect(document.body.querySelector('.billed-lightbox')).toBeInTheDocument()
   })
 
   it('bruger Read images server-godkendte previewsti frem for den rå tempsti', async () => {
@@ -610,9 +610,9 @@ describe('billedet kan ses — ogsaa naar filen ligger paa serveren', () => {
       JSON.stringify({ analysis: 'Et skrivebord' }), false, CONFIG)
 
     await waitFor(() => expect(container.querySelector('.billed-knap')).toBeInTheDocument())
-    expect(container.querySelector('.billed-lightbox')).not.toBeInTheDocument()
+    expect(document.body.querySelector('.billed-lightbox')).not.toBeInTheDocument()
     fireEvent.click(container.querySelector('.billed-knap') as HTMLButtonElement)
-    await waitFor(() => expect(container.querySelector('.billed-lightbox')).toBeInTheDocument())
+    await waitFor(() => expect(document.body.querySelector('.billed-lightbox')).toBeInTheDocument())
   })
 
   it('viser navnet naar billedet hverken findes lokalt eller paa serveren', async () => {

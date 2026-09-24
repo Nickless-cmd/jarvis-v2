@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 
 /**
@@ -48,13 +49,13 @@ export function KlikbartBillede({
       <button
         type="button"
         className="billed-knap"
-        onClick={() => setAaben(true)}
+        onClick={(e) => { e.stopPropagation(); setAaben(true) }}
         aria-label={alt ? `Åbn ${alt} i fuld størrelse` : 'Åbn billedet i fuld størrelse'}
         title="Åbn i fuld størrelse"
       >
         <img className={className} src={src} alt={alt ?? ''} loading="lazy" />
       </button>
-      {aaben && (
+      {aaben && createPortal(
         // Klik hvor som helst lukker — også på baggrunden. Selve billedet
         // stopper boblen, så et klik på det ikke lukker ved en fejl.
         <div
@@ -62,13 +63,13 @@ export function KlikbartBillede({
           role="dialog"
           aria-modal="true"
           aria-label={alt || 'Billede'}
-          onClick={luk}
+          onClick={(e) => { e.stopPropagation(); luk() }}
         >
           <button type="button" className="billed-luk" aria-label="Luk" onClick={luk}>
             <X size={18} />
           </button>
           <img src={src} alt={alt ?? ''} onClick={(e) => e.stopPropagation()} />
-        </div>
+        </div>, document.body,
       )}
     </>
   )

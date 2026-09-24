@@ -86,7 +86,7 @@ function Raekke({
       {...(foldbar
         ? { role: 'button', tabIndex: 0, 'aria-expanded': aaben, onClick: () => setAaben((v) => !v),
             onKeyDown: (e: React.KeyboardEvent) => {
-              if (e.key !== 'Enter' && e.key !== ' ') return
+              if (e.target !== e.currentTarget || (e.key !== 'Enter' && e.key !== ' ')) return
               e.preventDefault(); setAaben((v) => !v)
             } }
         : {})}
@@ -119,7 +119,9 @@ function Raekke({
   )
 }
 
-function Element({ e, streaming, config }: { e: ArbejdsElement; streaming: boolean; config?: ApiConfig }) {
+function Element({ e, streaming, config, beskedId }: {
+  e: ArbejdsElement; streaming: boolean; config?: ApiConfig; beskedId?: string
+}) {
   if (e.slags === 'mellemsvar') {
     // Jarvis' korte narration MELLEM kaldene. Den bor i gruppen og folder sig
     // sammen med arbejdet — den er ikke en besked (Bjoern 22/9-2026).
@@ -202,7 +204,8 @@ function Element({ e, streaming, config }: { e: ArbejdsElement; streaming: boole
         koerer={b.status === 'running'}
         fejl={fejl}
         krop={kropFor(b.name, b.input, b.result, fejl, config,
-          { partialJson: b.partialJson, running: streaming && b.result == null && (b.status ?? 'running') === 'running' })}
+          { partialJson: b.partialJson, running: streaming && b.result == null && (b.status ?? 'running') === 'running' },
+          { beskedId, toolUseId: b.id })}
         kind={postFor(b.name).familie}
         mrkat={erUnderagent(b.name) ? 'subagent' : undefined}
       />
@@ -216,11 +219,12 @@ function Element({ e, streaming, config }: { e: ArbejdsElement; streaming: boole
 }
 
 function Arbejdsrunde({
-  elementer, streaming, config, rundeEtiketter,
+  elementer, streaming, config, rundeEtiketter, beskedId,
 }: {
   elementer: ArbejdsElement[]
   streaming: boolean
   config?: ApiConfig
+  beskedId?: string
   rundeEtiketter: Record<string, string>
 }) {
   const [aaben, setAaben] = useState(false)
@@ -252,7 +256,7 @@ function Arbejdsrunde({
         <span className="rv-turC" aria-hidden="true"><FoldPil aaben={aaben} /></span>
       </button>
       <div className="rv-arbejdsdetaljer" hidden={!aaben}>
-        {elementer.map((e, i) => <Element key={i} e={e} streaming={streaming} config={config} />)}
+        {elementer.map((e, i) => <Element key={i} e={e} streaming={streaming} config={config} beskedId={beskedId} />)}
       </div>
     </div>
   )
@@ -299,9 +303,9 @@ function RaekkeTranskriptImpl({
           <div className="rv-gruppe" hidden={!aaben}>
             {sektioner.map((s, i) => {
               if (s.slags === 'syntese') return <div key={i} className="rv-mellem">{s.tekst}</div>
-              if (s.slags === 'enkelt') return <Element key={i} e={s.element} streaming={streaming} config={config} />
+              if (s.slags === 'enkelt') return <Element key={i} e={s.element} streaming={streaming} config={config} beskedId={beskedId} />
               return <Arbejdsrunde key={i} elementer={s.elementer} streaming={streaming}
-                config={config} rundeEtiketter={etiketter} />
+                config={config} rundeEtiketter={etiketter} beskedId={beskedId} />
             })}
           </div>
         </>

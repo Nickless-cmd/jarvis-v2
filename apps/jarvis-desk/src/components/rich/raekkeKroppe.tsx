@@ -727,9 +727,10 @@ export function Spoergsmaal({ q, svar }: { q: string; svar: string }) {
   )
 }
 
-export function Billede({ src, navn, meta, spoergsmaal, tekst, config }: {
+export function Billede({ src, navn, meta, spoergsmaal, tekst, config, beskedId, toolUseId }: {
   src?: string; navn: string; meta: string
   spoergsmaal?: string; tekst?: string; config?: ApiConfig
+  beskedId?: string; toolUseId?: string
 }) {
   const [vis, setVis] = useState<string | null>(null)
 
@@ -759,7 +760,9 @@ export function Billede({ src, navn, meta, spoergsmaal, tekst, config }: {
     const fraServer = async (): Promise<string | null> => {
       if (!config) return null
       try {
-        const blob = await fetchBlobWithAuth(config, `/visning/billede?sti=${encodeURIComponent(src)}`)
+        const reference = beskedId && toolUseId
+          ? `&besked_id=${encodeURIComponent(beskedId)}&tool_use_id=${encodeURIComponent(toolUseId)}` : ''
+        const blob = await fetchBlobWithAuth(config, `/visning/billede?sti=${encodeURIComponent(src)}${reference}`)
         if (afbrudt) return null
         objekt = URL.createObjectURL(blob)
         return objekt
@@ -780,7 +783,7 @@ export function Billede({ src, navn, meta, spoergsmaal, tekst, config }: {
       afbrudt = true
       if (objekt) URL.revokeObjectURL(objekt)
     }
-  }, [src, config])
+  }, [src, config, beskedId, toolUseId])
 
   // Kilden er allerede betroet: en data-URL fra main, eller en object-URL vi
   // selv har hentet med token. Alt andet går gennem sanitizeren, så et
@@ -883,6 +886,7 @@ export function kropFor(
   fejl: boolean,
   config?: ApiConfig,
   live?: { partialJson?: string; running?: boolean },
+  billedKontekst?: { beskedId?: string; toolUseId?: string },
 ): ReactNode {
   const input = { ...inputFraStroem(live?.partialJson), ...inputRaa }
   // Nudgen fra serveren er skrevet til MODELLEN, men gemmes med i turen (se
@@ -1033,6 +1037,8 @@ export function kropFor(
       spoergsmaal={streng(input.prompt)}
       tekst={analyse}
       config={config}
+      beskedId={navn === 'analyze_image' ? billedKontekst?.beskedId : undefined}
+      toolUseId={navn === 'analyze_image' ? billedKontekst?.toolUseId : undefined}
     />
   }
   if (familie === 'opgave') {

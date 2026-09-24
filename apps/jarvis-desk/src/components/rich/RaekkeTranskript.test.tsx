@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { RaekkeTranskript } from './RaekkeTranskript'
 import { SettingsProvider } from '../../contexts/SettingsContext'
 import { RAEKKE_KEY } from '../../lib/visningsPref'
@@ -78,6 +78,35 @@ describe('underagent-rækken', () => {
 })
 
 describe('RaekkeTranskript', () => {
+  it('holder billedrækken åben og viser lightbox uden for rækken ved klik', async () => {
+    const fetchMock = vi.fn(async (_url: string) => new Response(new Blob([new Uint8Array([1])]), { status: 200 }))
+    vi.stubGlobal('fetch', fetchMock)
+    ;(URL as unknown as { createObjectURL: unknown }).createObjectURL = vi.fn(() => 'blob:preview')
+    ;(URL as unknown as { revokeObjectURL: unknown }).revokeObjectURL = vi.fn()
+    try {
+      const { container } = render(<RaekkeTranskript
+        blocks={[kald('analyze_image', { image_path: '/tmp/crop-nederst.png' }, '{"analysis":"udsnit"}'), tekst('Færdig.') ]}
+        streaming={false} beskedId="message-1"
+        config={{ apiBaseUrl: 'http://server', authToken: 'tok' }} />)
+      fireEvent.click(container.querySelector('.rv-tur')!)
+      fireEvent.click(container.querySelector('.rv-arbejdsknap')!)
+      const raekke = container.querySelector('.rv-r')!
+      fireEvent.click(raekke.querySelector('.rv-hoved')!)
+      await waitFor(() => expect(raekke.querySelector('.billed-knap')).toBeInTheDocument())
+      expect(String(fetchMock.mock.calls[0]?.[0])).toContain('besked_id=message-1')
+      expect(String(fetchMock.mock.calls[0]?.[0])).toContain('tool_use_id=analyze_image-1')
+
+      fireEvent.click(raekke.querySelector('.billed-knap')!)
+      expect(raekke).toHaveAttribute('data-aaben')
+      expect(screen.getByRole('dialog', { name: 'crop-nederst.png' })).toBeInTheDocument()
+      expect(raekke.querySelector('.billed-lightbox')).toBeNull()
+      fireEvent.keyDown(window, { key: 'Escape' })
+      expect(screen.queryByRole('dialog')).toBeNull()
+    } finally {
+      vi.unstubAllGlobals()
+      vi.restoreAllMocks()
+    }
+  })
   it('bevarer Working øverst og samler rækker mellem synlige synteser', () => {
     const { container } = render(<RaekkeTranskript blocks={[
       tekst('Jeg finder filen.'), kald('read_file'), kald('grep'),

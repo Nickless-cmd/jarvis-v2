@@ -86,3 +86,47 @@ def test_humoeret_tikkes_af_den_LEVENDE_hjerteslag_sti() -> None:
         "humøret tikkes ikke fra den levende sti — det vil fryse igen, og en "
         "frossen følelsestilstand ligner en følelse"
     )
+
+
+def test_tikket_maaler_den_faktiske_tid_frem_for_at_paastaa_en_kadence() -> None:
+    """`tick()` uden argument skal bruge den VIRKELIGE tid siden sidst.
+
+    23/9-2026: hjerteslaget kaldte `tick(seconds=30)` hvert 15. MINUT. Humørets
+    ur gik dermed 30 gange for langsomt — en halveringstid på fem minutter
+    blev til 2½ time i vægurstid, og et nudge på -0,97 tog over et døgn at
+    falde til ro.
+
+    Det er den lumske af de to fejl: uret gik, det gik bare forkert. Selv
+    efter at tikket blev genforbundet ville han have stået «distressed» i
+    timevis.
+    """
+    import importlib
+    from datetime import datetime, UTC
+
+    m = importlib.reload(importlib.import_module("core.services.mood_oscillator"))
+    m._loaded_from_disk = True          # ingen DB i denne test
+    m._mood_nudge = -0.9
+    m._tick_count = 0
+    # Lad som om der er gået en halveringstid siden sidst.
+    m._last_tick_ts = datetime.now(UTC).timestamp() - m._NUDGE_DECAY_HALF_LIFE_SECONDS
+
+    m.tick()                             # uden argument
+
+    # Én halveringstid → omtrent halvdelen tilbage.
+    assert -0.50 < m._mood_nudge < -0.40, (
+        f"nudget blev {m._mood_nudge:.3f} — tikket brugte ikke den faktiske "
+        f"forløbne tid"
+    )
+
+
+def test_ingen_kalder_paastaar_en_fast_kadence() -> None:
+    """Hverken hjerteslagets fase eller den gamle sti må sende et fast tal."""
+    import inspect
+    from core.services import heartbeat_phases, heartbeat_runtime
+
+    for modul in (heartbeat_phases, heartbeat_runtime):
+        kilde = inspect.getsource(modul)
+        assert "mood_tick(seconds=" not in kilde, (
+            f"{modul.__name__} påstår en kadence — brug tick() uden argument, "
+            f"så uret måler sig selv"
+        )

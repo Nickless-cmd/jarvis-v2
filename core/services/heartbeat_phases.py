@@ -557,7 +557,10 @@ def productive_idle(*, budget_seconds: float = _PRODUCTIVE_IDLE_BUDGET_SECONDS) 
     # nudget og skubber fasen, og er sikker at kalde hvert tik.
     try:
         from core.services.mood_oscillator import tick as _mood_tick
-        _mood_tick(seconds=30)
+        # UDEN argument: `tick()` maaler selv den faktisk forloebne tid. Et
+        # fast tal her ville igen paastaa en kadence — og hjerteslaget tikker
+        # hvert 15. minut, ikke hvert 30. sekund.
+        _mood_tick()
     except Exception:
         logger.warning(
             "heartbeat_phases: mood_oscillator.tick fejlede — humøret fryser "

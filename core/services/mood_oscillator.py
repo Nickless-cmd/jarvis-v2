@@ -81,10 +81,28 @@ def _load_state_if_needed() -> None:
         logger.debug("mood_oscillator: load failed: %s", exc)
 
 
-def tick(seconds: float) -> dict[str, Any]:
-    """Update phase offset based on elapsed time and decay nudge."""
+def tick(seconds: float | None = None) -> dict[str, Any]:
+    """Ryk fasen og lad nudget henfalde.
+
+    ``seconds=None`` (det rigtige for periodiske kaldere) maaler den FAKTISK
+    forloebne tid siden sidste tik. Et fast tal er en paastand om kadencen, og
+    den paastand holdt ikke: hjerteslaget kaldte ``tick(seconds=30)`` hvert
+    15. MINUT, saa humoerets ur gik 30 gange for langsomt. En halveringstid
+    paa 5 minutter blev til 2,5 time i vaegurstid, og et nudge paa -0,97 tog
+    over et doegn at falde til ro i stedet for en halv time (maalt 23/9-2026).
+
+    Ingen oevre graense: efter et langt udfald SKAL nudget vaere henfaldet
+    helt. At klippe det ville holde en gammel stemning kunstigt i live —
+    praecis den fejl vi retter her.
+    """
     global _phase_offset, _tick_count, _mood_nudge, _last_tick_ts
     _load_state_if_needed()
+
+    nu = datetime.now(UTC).timestamp()
+    if seconds is None:
+        # Negativ diff = uret er stillet tilbage; saa henfalder vi ikke.
+        seconds = max(0.0, nu - float(_last_tick_ts)) if _last_tick_ts else 0.0
+
     _tick_count += 1
     _phase_offset += seconds / 600
 
@@ -95,9 +113,12 @@ def tick(seconds: float) -> dict[str, Any]:
         if abs(_mood_nudge) < 0.01:
             _mood_nudge = 0.0
 
-    _last_tick_ts = datetime.now(UTC).timestamp()
-    # Persist every 10 ticks to avoid DB churn
-    if _tick_count % 10 == 0:
+    _forrige = _last_tick_ts
+    _last_tick_ts = nu
+    # Gem hvert 10. tik ELLER naar der er gaaet over et minut. "Hvert 10. tik"
+    # alene antog 30-sekunders kadence; ved 15-minutters tik ville det vaere
+    # 2,5 time mellem skrivninger, og en genstart rullede tilstanden tilbage.
+    if _tick_count % 10 == 0 or not _forrige or (nu - float(_forrige)) >= 60:
         _persist_state()
     return {
         "phase_offset": _phase_offset,

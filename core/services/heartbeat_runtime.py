@@ -1627,7 +1627,10 @@ def _run_heartbeat_tick_locked(
     try:
         from core.services.mood_oscillator import tick as mood_tick
 
-        mood_tick(seconds=30)
+        # Uden argument — se `mood_oscillator.tick`. Denne sti kaldes ikke af
+        # planlaeggeren laengere (den ruter gennem tick_with_phases), men den
+        # maa ikke divergere fra den der goer.
+        mood_tick()
     except Exception:
         logger.warning(
             "heartbeat: mood_oscillator.tick fejlede — humoeret fryser og "

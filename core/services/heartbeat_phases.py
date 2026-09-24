@@ -566,6 +566,27 @@ def productive_idle(*, budget_seconds: float = _PRODUCTIVE_IDLE_BUDGET_SECONDS) 
             "heartbeat_phases: mood_oscillator.tick fejlede — humøret fryser "
             "og mood_dialer låser på den sidste værdi", exc_info=True)
 
+    # 7f. Indre puls (24/9-2026). Vagten der melder naar en tilstand staar
+    # stille ELLER loeber loebsk, og naar to boeger over samme arbejde ikke
+    # stemmer.
+    #
+    # Den bor her fordi den skal koere af sig selv, ikke naar nogen kigger.
+    # Alle fire fejl fundet 24/9 blev opdaget ved at forespoerge databasen i
+    # haanden; ingen af dem sagde til. Netop hjerteslaget stod med 368
+    # haendelser mod 3 bogfoerte tik i fire timer.
+    #
+    # Selv-gatende: den melder én gang per udfald og tier indtil pulsen har
+    # vaeret rask igen. LLM-fri og billig — fire smaa taellinger.
+    try:
+        from core.services.indre_puls import tjek as _puls_tjek
+        _r = _puls_tjek()
+        if _r.get("meldt"):
+            actions.append(f"indre_puls_meldt:{len(_r['meldt'])}")
+    except Exception:
+        logger.warning(
+            "heartbeat_phases: indre_puls fejlede — vagten der skal fange "
+            "tavse fejl er selv tavs", exc_info=True)
+
     # 8. Skill chain proposals (C3) — only if goals exist and budget allows
     if _budget_left():
         try:

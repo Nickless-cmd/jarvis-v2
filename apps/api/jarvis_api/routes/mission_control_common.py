@@ -319,6 +319,9 @@ def _mc_runtime_uncached() -> dict:
                 "seeds": build_seed_surface(),
                 # Experimental services
                 "mood_oscillator": build_mood_oscillator_surface(),
+                # Vagten mod tavse fejl (24/9-2026) — staar den stille, loeber
+                # den loebsk, eller stemmer boegerne ikke?
+                "indre_puls": build_indre_puls_surface(),
                 "existential_drift": build_existential_drift_surface(),
                 "body_memory": build_body_memory_surface(),
                 "ghost_networks": build_ghost_networks_surface(),

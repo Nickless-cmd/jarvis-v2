@@ -166,6 +166,9 @@ from core.services.seed_system import (
 from core.services.mood_oscillator import (
     build_mood_oscillator_surface,
 )
+from core.services.indre_puls import (
+    build_indre_puls_surface,
+)
 from core.services.existential_drift import (
     build_existential_drift_surface,
 )

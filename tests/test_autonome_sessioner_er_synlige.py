@@ -127,3 +127,37 @@ def test_systemnotifikationen_tier_ikke_naar_ejeren_mangler(monkeypatch) -> None
     assert ne._owner_id() is None
     assert advarsler, "ingen ejer fundet — og intet blev logget"
     assert "ejer" in advarsler[0].lower()
+
+
+def test_users_json_vinder_over_tabellen_om_rollen(monkeypatch) -> None:
+    """Rollen bor i `users.json` — tabellen er fald-tilbage, ikke autoritet.
+
+    Kortlagt 24/9-2026. De to bruger-lagre er en ufærdig cutover fra juni med
+    forskellige ansvar: `users`-TABELLEN ejer login, tier, API-nøgler og GDPR;
+    `users.json` ejer token-sub → workspace + rolle. Hvert eneste rolle-opslag
+    i systemet går gennem json — `workspace_context`, `run_profile`,
+    `workspace_paths`, `token_renewal`, `refresh_tokens`.
+
+    Min første udgave af `owner_user_id` spurgte tabellen FØRST. Det virkede
+    kun fordi tabellen ingen ejer-række har (målt: 14 rækker, alle `member`).
+    Dukkede der en op med et andet id, ville denne ene funktion modsige resten
+    af systemet om hvem ejeren er.
+    """
+    from core.identity import owner_resolver
+
+    class _Json:
+        role = "owner"
+        discord_id = "json-ejeren"
+
+    class _Conn:
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def execute(self, *a): return type("R", (), {"fetchone": lambda s: ("db-ejeren",)})()
+
+    monkeypatch.setattr("core.identity.users.load_users", lambda: [_Json()])
+    monkeypatch.setattr("core.runtime.db.connect", lambda *a, **k: _Conn())
+
+    assert owner_resolver.owner_user_id() == "json-ejeren", (
+        "tabellen vandt over users.json — så er ejeren en anden her end i "
+        "resten af systemet"
+    )

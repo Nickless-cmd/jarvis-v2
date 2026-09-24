@@ -302,16 +302,18 @@ def owner_user_id() -> str:
     skrive ejeren ind i tabellen er en identitets-aendring og hoerer ikke
     hjemme i et opslag.
     """
-    try:
-        from core.runtime.db import connect
-        with connect() as conn:
-            raekke = conn.execute(
-                "SELECT user_id FROM users WHERE role='owner' LIMIT 1").fetchone()
-        if raekke and str(raekke[0] or "").strip():
-            return str(raekke[0]).strip()
-    except Exception as exc:
-        logger.debug("owner_resolver: users-tabellen kunne ikke laeses: %s", exc)
-
+    # `users.json` FOERST. Kortlagt 24/9-2026: rollen bor autoritativt dér.
+    #
+    # De to lagre er en ufaerdig cutover fra juni med forskellige ansvar —
+    # `users`-TABELLEN ejer login, tier, API-noegler og GDPR; `users.json` ejer
+    # token-sub -> workspace + rolle. ALLE rolle-opslag i systemet gaar gennem
+    # json: `workspace_context`, `run_profile`, `workspace_paths`,
+    # `token_renewal`, `refresh_tokens`. Denne funktion var det ENESTE sted der
+    # spurgte tabellen om en rolle, og den spurgte den foerst.
+    #
+    # Det virkede kun fordi tabellen ingen ejer-raekke har (14 raekker, alle
+    # `member`). Dukkede der en op med et andet id, ville denne funktion
+    # modsige hele resten af systemet. Rækkefoelgen er derfor vendt.
     try:
         from core.identity.users import load_users
         for u in load_users():
@@ -321,4 +323,16 @@ def owner_user_id() -> str:
                     return uid
     except Exception as exc:
         logger.debug("owner_resolver: users.json kunne ikke laeses: %s", exc)
+
+    # Tabellen som fald-tilbage: hvis cutoveren en dag goeres faerdig og rollen
+    # flytter derind, finder vi ejeren alligevel.
+    try:
+        from core.runtime.db import connect
+        with connect() as conn:
+            raekke = conn.execute(
+                "SELECT user_id FROM users WHERE role='owner' LIMIT 1").fetchone()
+        if raekke and str(raekke[0] or "").strip():
+            return str(raekke[0]).strip()
+    except Exception as exc:
+        logger.debug("owner_resolver: users-tabellen kunne ikke laeses: %s", exc)
     return ""

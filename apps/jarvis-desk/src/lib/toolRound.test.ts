@@ -51,6 +51,14 @@ describe('linjen siger hvad der laves, ikke hvilket værktøj', () => {
     expect(describeTool('operator_read_file', { path: 'x.ts' }, false)).toBe('Læste x.ts')
   })
 
+  it('viser shell-handlingen efter echo-overskrifter i stedet for echo ===', () => {
+    const command = 'echo ===; echo "=== Søger i rækkevisningen ==="; rg safeImageSrc apps/jarvis-desk/src'
+    expect(kommandoEmne(command)).toBe('rg safeImageSrc')
+    expect(subjectFromInput({ command })).toBe('rg safeImageSrc')
+    expect(kommandoEmne('echo === status ===')).toBe('status')
+    expect(kommandoEmne('echo ===\npython scripts/check.py')).toBe('python check.py')
+  })
+
   it('en sti bliver til filnavnet', () => {
     expect(subjectFromInput({ path: '/meget/lang/sti/til/fil.py' })).toBe('fil.py')
   })

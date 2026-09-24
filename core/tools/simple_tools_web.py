@@ -1088,6 +1088,25 @@ def _exec_get_news(args: dict[str, Any]) -> dict[str, Any]:
     return {"text": text, "article_count": len(articles), "query": query, "status": "ok"}
 
 
+def _stage_image_preview(image_bytes: bytes | None, source_path: str) -> str:
+    """Give Desk a narrowly whitelisted copy of a server-side image."""
+    import tempfile
+
+    if not image_bytes or len(image_bytes) > 12 * 1024 * 1024:
+        return ""
+    suffix = Path(source_path).suffix.lower()
+    if suffix not in {".png", ".jpg", ".jpeg", ".webp", ".gif", ".avif"}:
+        return ""
+    try:
+        with tempfile.NamedTemporaryFile(prefix="jarvisx-vision-", suffix=suffix,
+                                         delete=False) as preview:
+            preview.write(image_bytes)
+            return preview.name
+    except OSError as exc:
+        logger.warning("could not stage image preview for Desk: %s", exc)
+        return ""
+
+
 def _exec_analyze_image(args: dict[str, Any]) -> dict[str, Any]:
     """Analyze an image using a vision-capable model via Ollama.
 
@@ -1132,9 +1151,11 @@ def _exec_analyze_image(args: dict[str, Any]) -> dict[str, Any]:
 
     # Load image as base64
     image_b64: str | None = None
+    image_bytes: bytes | None = None
     if image_path:
         try:
-            image_b64 = base64.b64encode(Path(image_path).read_bytes()).decode()
+            image_bytes = Path(image_path).read_bytes()
+            image_b64 = base64.b64encode(image_bytes).decode()
         except OSError as exc:
             return {"error": f"Could not read image file: {exc}", "status": "error"}
     elif image_url:
@@ -1156,7 +1177,9 @@ def _exec_analyze_image(args: dict[str, Any]) -> dict[str, Any]:
             from core.services.vision_backend import describe
             out = describe(image_b64=image_b64, model=model, prompt=prompt,
                            provider="deepseek")
-            return {"analysis": out.get("text", ""), "model": model, "status": "ok"}
+            preview_path = _stage_image_preview(image_bytes, image_path)
+            return {"analysis": out.get("text", ""), "model": model, "status": "ok",
+                    **({"preview_path": preview_path} if preview_path else {})}
         except Exception as exc:
             return {"error": f"Vision model call failed: {exc}", "status": "error"}
 
@@ -1205,7 +1228,9 @@ def _exec_analyze_image(args: dict[str, Any]) -> dict[str, Any]:
     answer = result.get("message", {}).get("content", "").strip()
     if not answer:
         return {"error": "Vision model returned empty response", "status": "error"}
-    return {"analysis": answer, "model": model, "status": "ok"}
+    preview_path = _stage_image_preview(image_bytes, image_path)
+    return {"analysis": answer, "model": model, "status": "ok",
+            **({"preview_path": preview_path} if preview_path else {})}
 
 
 def _exec_read_archive(args: dict[str, Any]) -> dict[str, Any]:

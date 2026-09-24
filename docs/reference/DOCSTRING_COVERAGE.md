@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7950/15412 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7951/15413 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -32,7 +32,7 @@ Generated from source. 7950/15412 functions/methods documented (51%). The list b
 | `core.services.visible_runs_sections` | 20 | 32 | 62% |
 | `core.skills` | 0 | 0 | 0% |
 | `core.skills.voice` | 39 | 49 | 79% |
-| `core.tools` | 487 | 1006 | 48% |
+| `core.tools` | 488 | 1007 | 48% |
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.undo` | 2 | 18 | 11% |
@@ -126,7 +126,7 @@ Generated from source. 7950/15412 functions/methods documented (51%). The list b
 - `apps/api/jarvis_api/routes/users.py` :: `get_one` (L40)
 - `apps/api/jarvis_api/routes/users.py` :: `list_all` (L35)
 - `apps/api/jarvis_api/routes/users.py` :: `patch_one` (L48)
-- `apps/api/jarvis_api/routes/visning.py` :: `vis_billede` (L103)
+- `apps/api/jarvis_api/routes/visning.py` :: `vis_billede` (L104)
 - `apps/api/jarvis_api/routes/voice_live.py` :: `aabn_samtale` (L86)
 - `apps/api/jarvis_api/routes/workbench.py` :: `operator_channel_close` (L60)
 - `apps/central_cli/central_cli/client.py` :: `CentralClient.close` (L70)

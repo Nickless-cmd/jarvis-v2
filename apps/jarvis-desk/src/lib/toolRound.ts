@@ -67,16 +67,17 @@ const VERBS: Record<string, [string, string]> = {
  * `_bash_hint`; den her gælder den tekst klienten selv bygger ud af
  * argumenterne mens de strømmer ind.
  */
-const SCENE_LED = new Set(['cd', 'export', 'source', '.', 'set', 'conda'])
+const SCENE_LED = new Set(['cd', 'export', 'source', '.', 'set', 'conda',
+  'for', 'while', 'until', 'if', 'then', 'else', 'elif', 'fi', 'do', 'done', 'echo', 'exit'])
 const PRAEFIKS = new Set(['sudo', 'nohup', 'env', 'time', 'timeout', 'exec', 'command', 'xargs'])
 /** Omdirigering og lignende er ikke kommandoens genstand: `cat > fil.py` handler om filen. */
 const OPERATOR = /^(?:\d?[<>]{1,2}|&\d?|<<[-']?\w*)$/
 
 export function kommandoEmne(cmd: string): string {
-  const s = (cmd || '').trim().replace(/\s+/g, ' ')
+  const s = (cmd || '').trim().replace(/[\t\r ]+/g, ' ')
   if (!s) return ''
   // En subshell `(npx jest …)` er stadig `npx jest` — parentesen er ikke handlingen.
-  for (const led of s.split(/&&|\|\||;/).map((d) => d.trim().replace(/^\(+|\)+$/g, '').trim()).filter(Boolean)) {
+  for (const led of s.split(/&&|\|\||;|\||\n/).map((d) => d.trim().replace(/^\(+|\)+$/g, '').trim()).filter(Boolean)) {
     let ord = led.split(' ')
     while (ord.length && ord[0]!.includes('=') && !ord[0]!.startsWith('-')) ord = ord.slice(1)
     if (!ord.length || SCENE_LED.has(ord[0]!)) continue
@@ -90,6 +91,12 @@ export function kommandoEmne(cmd: string): string {
     const genstand = arg ? (arg.replace(/^["'`]|["'`]$/g, '').split('/').filter(Boolean).pop() ?? '') : ''
     return (genstand ? `${hoved} ${genstand}` : hoved).slice(0, 40)
   }
+  // Kun en echo-overskrift: vis dens tekst uden dekorations-tegn.
+  const foerste = s.split(/&&|\|\||;|\||\n/).map((d) => d.trim()).find((d) => /^echo\b/.test(d))
+  if (foerste) {
+    const titel = foerste.replace(/^echo\s*/, '').replace(/^["'=\s_-]+|["'=\s_-]+$/g, '').trim()
+    return (titel || 'terminaloverskrift').slice(0, 40)
+  }
   // Kun mappeskift og lignende — så er DET hvad der skete.
   return s.split(' ').slice(0, 2).join(' ').slice(0, 40)
 }
@@ -97,7 +104,7 @@ export function kommandoEmne(cmd: string): string {
 /** Argument-nøgler der plejer at bære emnet, i prioriteret rækkefølge. */
 const SUBJECT_KEYS = [
   'path', 'file_path', 'filepath', 'file', 'target', 'target_path',
-  'command', 'cmd', 'query', 'q', 'pattern', 'title', 'text', 'name', 'goal', 'focus',
+  'command', 'cmd', 'query', 'q', 'pattern', 'title_substring', 'title', 'text', 'name', 'goal', 'focus',
 ]
 
 /** `operator_read_file` og `read_file` er samme handling for læseren. */

@@ -52,6 +52,7 @@ export const TOOL_REGISTRY: Record<string, ToolMeta> = {
   // Kerne fil/shell
   bash: { label: 'Terminal', Icon: Terminal, summarize: (a) => kommandoEmne(String(a.command ?? '')) },
   operator_bash: { label: 'Terminal', Icon: Terminal, summarize: (a) => kommandoEmne(String(a.command ?? '')) },
+  operator_screenshot_window: { label: 'Screenshot Window', Icon: Image, summarize: (a) => firstStr(a, ['title_substring', 'handle']) },
   read_file: { label: 'Læs fil', Icon: FileText, summarize: pathOf },
   operator_read_file: { label: 'Læs fil', Icon: FileText, summarize: pathOf },
   write_file: { label: 'Skriv fil', Icon: FilePlus, summarize: pathOf },

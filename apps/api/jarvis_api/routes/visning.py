@@ -62,6 +62,7 @@ _TEMP_PREFIKSER = (
     "jarvisx-window-",
     "jarvisx-browser-",
     "jarvis-browser-",
+    "jarvisx-vision-",
 )
 
 

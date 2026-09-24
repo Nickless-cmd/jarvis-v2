@@ -562,6 +562,28 @@ describe('billedet kan ses — ogsaa naar filen ligger paa serveren', () => {
     vi.restoreAllMocks()
   })
 
+  it('viser Screenshot Window som klikbart billede', async () => {
+    const hentet = vi.fn(async (_url: string) => new Response(new Blob([new Uint8Array([1])]), { status: 200 }))
+    vi.stubGlobal('fetch', hentet)
+    const { container } = vis('operator_screenshot_window', { title_substring: 'J.A.R.V.I.S.' },
+      JSON.stringify({ captured: true, path: '/tmp/jarvisx-window-1790267139770.png', bytes: 173133 }), false, CONFIG)
+    await waitFor(() => expect(container.querySelector('.billed-knap')).toBeInTheDocument())
+    expect(container.querySelector('.rv-bill')).toBeInTheDocument()
+    expect(String(hentet.mock.calls[0]?.[0])).toContain(encodeURIComponent('/tmp/jarvisx-window-1790267139770.png'))
+    fireEvent.click(container.querySelector('.billed-knap') as HTMLButtonElement)
+    expect(container.querySelector('.billed-lightbox')).toBeInTheDocument()
+  })
+
+  it('bruger Read images server-godkendte previewsti frem for den rå tempsti', async () => {
+    const hentet = vi.fn(async (_url: string) => new Response(new Blob([new Uint8Array([1])]), { status: 200 }))
+    vi.stubGlobal('fetch', hentet)
+    const { container } = vis('analyze_image', { image_path: '/tmp/crop-nederst.png' },
+      JSON.stringify({ analysis: 'Et udsnit', preview_path: '/tmp/jarvisx-vision-abc.png' }), false, CONFIG)
+    await waitFor(() => expect(container.querySelector('.billed-knap')).toBeInTheDocument())
+    expect(String(hentet.mock.calls[0]?.[0])).toContain(encodeURIComponent('/tmp/jarvisx-vision-abc.png'))
+    expect(container.textContent).toContain('crop-nederst.png')
+  })
+
   it('henter billedet fra serveren naar det ikke findes lokalt', async () => {
     // Jarvis' skaermbilleder ligger i temp-mappen paa SERVEREN, saa broen
     // svarer null hos brugeren. Uden server-sporet stod navnet alene, og man

@@ -129,6 +129,7 @@ const KENDTE: Record<string, Post> = {
   // ── Billede ───────────────────────────────────────────────────────────
   analyze_image: { etiket: 'Read image', familie: 'billede' },
   operator_screenshot: { etiket: 'Read image', familie: 'billede' },
+  operator_screenshot_window: { etiket: 'Screenshot Window', familie: 'billede' },
   look_around: { etiket: 'Read image', familie: 'billede' },
   read_visual_memory: { etiket: 'Read image', familie: 'billede' },
   // ── Opgaveliste: én linje pr. punkt, ikke én pr. felt ─────────────────
@@ -1015,6 +1016,9 @@ export function kropFor(
     const fraInput = String(input.path ?? input.image_path ?? '')
     const fraUd = objekt(værdi) ? streng(værdi.path) || streng(værdi.image_path) : ''
     const sti = fraInput || fraUd
+    // `analyze_image` kan læse en vilkårlig tempfil på serveren. Den rå sti
+    // er ikke tilladt af billedruten; værktøjet giver en afgrænset kopi.
+    const preview = objekt(værdi) ? streng(værdi.preview_path) : ''
     const maal = objekt(værdi) && typeof værdi.width === 'number' && typeof værdi.height === 'number'
       ? `${værdi.width} × ${værdi.height}` : ''
     const beskrivelse = objekt(værdi) ? streng(værdi.description) || streng(værdi.caption) : ''
@@ -1023,7 +1027,7 @@ export function kropFor(
     // «Image analyzed» og viste METADATA om kaldet i stedet for dets indhold.
     const analyse = objekt(værdi) ? streng(værdi.analysis) || streng(værdi.text) : ''
     return <Billede
-      src={sti}
+      src={preview || sti}
       navn={pathNavn(sti) || navn}
       meta={[maal, beskrivelse].filter(Boolean).join(' · ')}
       spoergsmaal={streng(input.prompt)}

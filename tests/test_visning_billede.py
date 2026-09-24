@@ -66,6 +66,12 @@ def test_tempfil_med_jarvis_prefix(hjem_og_temp):
     assert _hent(fil).status_code == 200
 
 
+def test_tempfil_staget_af_analyze_image(hjem_og_temp):
+    _, temp = hjem_og_temp
+    fil = _skriv(temp / "jarvisx-vision-abc.png")
+    assert _hent(fil).status_code == 200
+
+
 def test_alle_billed_endelser_godtages(hjem_og_temp):
     hjem, _ = hjem_og_temp
     for navn in ("a.png", "b.jpg", "c.jpeg", "d.webp", "e.gif", "f.avif"):

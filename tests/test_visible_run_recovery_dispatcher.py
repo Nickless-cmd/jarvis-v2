@@ -372,3 +372,32 @@ def test_en_opgivet_opgave_forsvinder_ikke_tavst_fra_klienten(spawn, monkeypatch
     # ... og kun EN gang. Ellers ville den staa som «afbrudt» i et doegn og
     # ligne noget der stadig skete.
     assert ifr.recovery_snapshot("chat-1") is None
+
+
+# ── Varslets tekst skal vaere sand (24/9-2026) ──────────────────────────────
+def test_et_opgivet_run_faar_ikke_at_vide_at_checkpointet_kan_genoptages():
+    """Standardteksten lover «Checkpointet er bevaret» — det passer ikke her.
+
+    Begge de nye grunde faldt tilbage paa `recovery_notice`s standardtekst, og
+    den siger at automatisk recovery er opbrugt MEN at checkpointet er bevaret.
+    For et run hvis genoptagelses-vindue er udloebet — eller som er opgivet
+    efter aftale — er der ikke noget at vente paa. Saa skal beskeden sige hvad
+    han kan goere i stedet: skrive den igen.
+    """
+    from core.services.visible_terminal_policy import recovery_notice
+
+    udloebet = recovery_notice("genoptagelses-vinduet udloeb", continuing=False)
+    assert "Skriv den igen" in udloebet["message"]
+    assert "bevaret" not in udloebet["message"]
+    assert udloebet["continuing"] is False
+
+    opgivet = recovery_notice("opgivet efter aftale — budgettet var braendt", continuing=False)
+    assert "opgivet efter aftale" in opgivet["message"].lower()
+    assert "Skriv den igen" in opgivet["message"]
+    assert opgivet["continuing"] is False
+
+    # De levende grunde skal stadig love fortsaettelse — ellers har jeg
+    # slukket varslet for alt det der FAKTISK fortsaetter.
+    lever = recovery_notice("pending-tool-intent", continuing=True)
+    assert "fortsaetter automatisk" in lever["message"]
+    assert lever["continuing"] is True

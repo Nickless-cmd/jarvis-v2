@@ -44,7 +44,7 @@ import { StickyPrompt } from '../components/transcript/StickyPrompt'
 import { useVisning, VisningContext } from '../lib/visning'
 import { readModelPrefs, readThinkingMode } from '../lib/composerPrefs'
 import { useRaekkevisning } from '../lib/visningsPref'
-import { getContextInfo, getContextUsage, getActiveRuns, followRun, compactNow, warmSession, type CompactionStats } from '../lib/api'
+import { getContextInfo, getContextUsage, getActiveRuns, followRun, compactNow, warmSession, hentGenoptagelsesVarsel, type CompactionStats } from '../lib/api'
 import { markInteraction } from '../lib/presenceSignal'
 import { PresenceDot } from '../components/shell/PresenceDot'
 import { DESK_CHROME } from '../lib/deskChrome'
@@ -227,6 +227,41 @@ export function ChatView({
     window.addEventListener('focus', onFocus)
     return () => window.removeEventListener('focus', onFocus)
   }, [settings, sessionId])
+
+  // ── Blev noget arbejde aldrig gjort færdigt her? ────────────────────────
+  //
+  // `run_recovery` findes KUN som SSE-event, så et run der blev afbrudt mens
+  // ingen så på — eller opgivet i går — fortalte aldrig nogen om det.
+  // Endpointet har eksisteret siden 17/9-2026 og havde nul kaldere; banneret
+  // nedenfor (`stream.recoveryNotice`) var tegnet og klar. Det var kun
+  // spørgsmålet der manglede.
+  //
+  // Spørges én gang pr. session: serveren KVITTERER varslet når det hentes, så
+  // et gentaget kald ville tabe det i stedet for at gentage det. Og kun i
+  // hvile — kommer varslet fra strømmen, er det allerede på skærmen.
+  const varselSpurgtRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (!settings || !sessionId || stream.status !== 'idle') return
+    if (varselSpurgtRef.current === sessionId) return
+    varselSpurgtRef.current = sessionId
+    const cfg = { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }
+    let afbrudt = false
+    hentGenoptagelsesVarsel(cfg, sessionId)
+      .then((v) => {
+        if (afbrudt || !v?.notice?.message) return
+        stream.visGenoptagelsesVarsel({
+          reason: v.notice.reason,
+          message: v.notice.message,
+          continuing: v.notice.continuing,
+        })
+      })
+      .catch(() => {
+        // Kan vi ikke spørge, må samtalen ikke gå i stå — men lad os kunne
+        // spørge igen næste gang sessionen åbnes.
+        varselSpurgtRef.current = null
+      })
+    return () => { afbrudt = true }
+  }, [settings, sessionId, stream.status])
 
   useEffect(() => { if (sessionId) sessions.select(sessionId) }, [sessionId])
 
@@ -1020,7 +1055,11 @@ export function ChatView({
       <div className="composer-area">
         {stream.recoveryNotice && (
           <div className="composer-notices recovery-notice" role="status" aria-live="polite">
-            <div className="banner banner-reconnecting">
+            {/* `banner-reconnecting` har en PULSERENDE prik — den siger «der
+                sker noget lige nu». Det er sandt mens han fortsætter, og
+                misvisende når arbejdet er opgivet: så ville et dødt run ligne
+                et levende. `banner-warn` er den samme farve uden pulsen. */}
+            <div className={`banner ${stream.recoveryNotice.continuing ? 'banner-reconnecting' : 'banner-warn'}`}>
               <span className="banner-message">{stream.recoveryNotice.message}</span>
             </div>
           </div>

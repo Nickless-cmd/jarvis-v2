@@ -1182,3 +1182,48 @@ export function openEventSocket(config: ApiConfig): WebSocket {
     ? new WebSocket(url, [WS_SUBPROTOKOL, token])
     : new WebSocket(url)
 }
+
+/**
+ * Er der arbejde i denne samtale der aldrig blev gjort færdigt?
+ *
+ * `204` = nej. Serveren svarer med et varsel om et run der blev afbrudt og
+ * enten venter på at blive genoptaget eller er opgivet.
+ *
+ * ## Hvorfor det her kald ikke må gentages
+ *
+ * Varslet **forbruges** når det hentes (`in_flight_runs._kvitter_varsel`), så
+ * det kun siges én gang i stedet for at stå og lyse i et døgn. En gentagelse
+ * ville derfor ikke give det samme svar to gange — den ville tabe det.
+ * `apiFetch` gentager ellers alle GET'er to gange.
+ *
+ * `responseHandler` er nødvendig af samme grund som `retries: 0`: en tom krop
+ * på `204` får `res.json()` til at kaste, og den fejl ville se ud som en
+ * netværksfejl og udløse netop den gentagelse.
+ */
+export interface GenoptagelsesVarsel {
+  task_id: string
+  run_id: string
+  state: string
+  reason: string
+  recovery_attempt: number
+  recovery_limit: number
+  checkpoint_summary: string
+  notice: { state: string; reason: string; message: string; continuing: boolean }
+}
+
+export async function hentGenoptagelsesVarsel(
+  config: ApiConfig,
+  sessionId: string,
+): Promise<GenoptagelsesVarsel | null> {
+  if (!sessionId) return null
+  return apiFetch<GenoptagelsesVarsel | null>(
+    config,
+    `/chat/sessions/${encodeURIComponent(sessionId)}/recovery`,
+    {
+      retries: 0,
+      acceptedStatuses: [200, 204],
+      responseHandler: async (res) =>
+        res.status === 204 ? null : ((await res.json()) as GenoptagelsesVarsel),
+    },
+  )
+}

@@ -144,6 +144,15 @@ export interface StreamContextValue {
   armAutoContinue: (message: string) => void
   /** Forbrug + ryd auto-continue (kaldes af den view der gen-sender). */
   consumeAutoContinue: () => string | null
+  /**
+   * Vis et genoptagelses-varsel der IKKE kom fra den levende strøm.
+   *
+   * `run_recovery` findes kun som SSE-event, så et run der blev opgivet i går
+   * — eller mens processen var død — fortalte aldrig nogen om det. Banneret
+   * har stået klar hele tiden (`ChatView`, `stream.recoveryNotice`); det var
+   * kun hentningen der manglede. Se `hentGenoptagelsesVarsel`.
+   */
+  visGenoptagelsesVarsel: (varsel: { reason: string; message: string; continuing: boolean }) => void
 }
 
 // Konteksten bærer et LAGER, ikke selve værdien — se lib/vaerdiLager.
@@ -496,6 +505,19 @@ export function StreamProvider({
     prevStatusRef.current = status
   }, [status, state.blocks, state.recoveryNotice])
 
+  // Et varsel hentet over HTTP lægges ind ad SAMME vej som strømmens eget, så
+  // der kun er én måde et varsel kan opstå på — og kun ét sted det ryddes.
+  const visGenoptagelsesVarsel = useCallback(
+    (varsel: { reason: string; message: string; continuing: boolean }) => {
+      dispatch({
+        type: 'system_event',
+        kind: 'run_recovery',
+        payload: varsel,
+      } as unknown as StreamEvent)
+    },
+    [dispatch],
+  )
+
   const value = useMemo<StreamContextValue>(
     () => ({
       status,
@@ -528,8 +550,9 @@ export function StreamProvider({
       autoContinue,
       armAutoContinue,
       consumeAutoContinue,
+      visGenoptagelsesVarsel,
     }),
-    [status, state.model, state.provider, state.lane, state.blocks, state.rundeEtiketter, state.tankeResumeer, state.activeRunId, workingSessionId, state.usage, elapsedMs, state.workingStep, state.recoveryNotice, error, streamError, canonical.errors, canonical.current, clearError, needsAttention, send, abort, continueFromPartial, pendingApproval, approve, deny, pendingAppAction, clearAppAction, autoContinue, armAutoContinue, consumeAutoContinue],
+    [status, state.model, state.provider, state.lane, state.blocks, state.rundeEtiketter, state.tankeResumeer, state.activeRunId, workingSessionId, state.usage, elapsedMs, state.workingStep, state.recoveryNotice, error, streamError, canonical.errors, canonical.current, clearError, needsAttention, send, abort, continueFromPartial, pendingApproval, approve, deny, pendingAppAction, clearAppAction, autoContinue, armAutoContinue, consumeAutoContinue, visGenoptagelsesVarsel],
   )
   // Lageret oprettes én gang med den første værdi og opdateres efter hver
   // commit. Konteksten selv ændrer sig aldrig (lib/vaerdiLager).

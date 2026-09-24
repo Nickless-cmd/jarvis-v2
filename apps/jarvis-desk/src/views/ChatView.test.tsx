@@ -40,6 +40,9 @@ vi.mock('../lib/api', () => ({
   // i mocken falder hele viewet, fordi StreamContext kalder den.
   hentVentendeGodkendelse: vi.fn(async () => null),
   hentVentendeGodkendelseOveralt: vi.fn(async () => null),
+  // Uden den i mocken falder hele viewet: effekten ved session-aabning kalder
+  // den. Samme faelde som `warmSession` ovenfor.
+  hentGenoptagelsesVarsel: vi.fn(async () => null),
   presencePing: vi.fn().mockResolvedValue(undefined),
   fetchPendingNotifications: vi.fn().mockResolvedValue([]),
   ackNotification: vi.fn().mockResolvedValue(undefined),
@@ -172,6 +175,93 @@ describe('ChatView integration', () => {
     expect(pauseCard!.compareDocumentPosition(liveness!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(screen.getByText('Hvilken vej skal jeg tage?')).toBeInTheDocument()
   })
+
+  // ── Varslet om arbejde der aldrig blev faerdigt (24/9-2026) ──────────────
+  //
+  // `run_recovery` fandtes KUN som live SSE-event. Et run der blev opgivet i
+  // gaar — eller mens processen var doed — fortalte derfor aldrig nogen om
+  // det: indikatoren slukkede bare. Endpointet havde eksisteret i en uge med
+  // nul kaldere, og banneret var tegnet og klar.
+  const medEnBesked = () => vi.mocked(api.getSession).mockResolvedValue({
+    etag: null, session: { id: 's1', title: 'T', updated_at: 'x' },
+    messages: [{ id: 'u1', role: 'user', created_at: '2026-09-23T19:00:00Z', content: [{ type: 'text', text: 'Hej' }] }],
+  })
+  const nulstil = () => {
+    vi.mocked(api.getSession).mockResolvedValue({ session: { id: 's1', title: 'T', updated_at: 'x' }, messages: [], etag: null })
+    vi.mocked(api.hentGenoptagelsesVarsel).mockResolvedValue(null)
+  }
+  const visChat = () => render(
+    <SettingsProvider initialConfig={cfg}><SessionProvider config={cfg}>
+      <StreamProvider config={cfg}><PermissionProvider><PanelProvider defaultWidth={400}>
+        <ChatView sessionId="s1" />
+      </PanelProvider></PermissionProvider></StreamProvider>
+    </SessionProvider></SettingsProvider>,
+  )
+
+  it('henter varslet naar sessionen aabnes og viser det over composeren', async () => {
+    medEnBesked()
+    vi.mocked(api.hentGenoptagelsesVarsel).mockResolvedValue({
+      task_id: 't1', run_id: 'r1', state: 'recovering',
+      reason: 'pending-tool-intent', recovery_attempt: 1, recovery_limit: 3,
+      checkpoint_summary: '',
+      notice: {
+        state: 'recovering', reason: 'pending-tool-intent',
+        message: 'Jarvis havde stadig et vaerktoejskald klar. Jarvis fortsaetter automatisk fra sit checkpoint.',
+        continuing: true,
+      },
+    })
+    try {
+      const { container } = visChat()
+      expect(await screen.findByText(/vaerktoejskald klar/)).toBeInTheDocument()
+      expect(container.querySelector('.composer-area .recovery-notice')).toBeTruthy()
+    } finally { nulstil() }
+  })
+
+  it('et OPGIVET run pulserer ikke — det ville ligne et levende', async () => {
+    // `banner-reconnecting` har en pulserende prik der siger «der sker noget
+    // lige nu». Paa et run der ER opgivet er det ikke bare grimt, det er
+    // usandt.
+    medEnBesked()
+    vi.mocked(api.hentGenoptagelsesVarsel).mockResolvedValue({
+      task_id: 't2', run_id: 'r2', state: 'failed_terminal',
+      reason: 'genoptagelses-vinduet udloeb', recovery_attempt: 3, recovery_limit: 3,
+      checkpoint_summary: '',
+      notice: {
+        state: 'failed_terminal', reason: 'genoptagelses-vinduet udloeb',
+        message: 'Opgaven naaede aldrig at blive genoptaget inden for et doegn. Skriv den igen hvis den stadig skal laves.',
+        continuing: false,
+      },
+    })
+    try {
+      const { container } = visChat()
+      expect(await screen.findByText(/aldrig at blive genoptaget/)).toBeInTheDocument()
+      const b = container.querySelector('.recovery-notice .banner')
+      expect(b).not.toHaveClass('banner-reconnecting')
+      expect(b).toHaveClass('banner-warn')
+    } finally { nulstil() }
+  })
+
+  it('spoerger kun EN gang pr. session — serveren kvitterer varslet', async () => {
+    // Varslet FORBRUGES naar det hentes, saa et gentaget kald ville tabe det
+    // i stedet for at gentage det.
+    medEnBesked()
+    vi.mocked(api.hentGenoptagelsesVarsel).mockClear()
+    try {
+      const { rerender } = visChat()
+      expect(await screen.findByText('Hej')).toBeInTheDocument()
+      await act(async () => {
+        rerender(
+          <SettingsProvider initialConfig={cfg}><SessionProvider config={cfg}>
+            <StreamProvider config={cfg}><PermissionProvider><PanelProvider defaultWidth={400}>
+              <ChatView sessionId="s1" />
+            </PanelProvider></PermissionProvider></StreamProvider>
+          </SessionProvider></SettingsProvider>,
+        )
+      })
+      expect(vi.mocked(api.hentGenoptagelsesVarsel).mock.calls.filter((c) => c[1] === 's1').length).toBe(1)
+    } finally { nulstil() }
+  })
+
 })
 
 /**

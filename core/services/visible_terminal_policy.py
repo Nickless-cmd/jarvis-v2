@@ -135,10 +135,25 @@ def recovery_notice(reason: str, *, continuing: bool = True) -> dict[str, object
         "forced-finalize-unverified": "En tvungen slutrunde manglede bevis for at opgaven var faerdig.",
         "relay_source_idle_timeout": "Svar-kilden var tavs ud over det haarde sikkerhedsloft.",
         "relay_source_closed": "Svar-kilden lukkede uden en normal afslutning.",
+        # 24/9-2026: uden disse faldt begge tilbage paa standardteksten, og den
+        # lover «checkpointet er bevaret» om noget der netop ER opgivet.
+        "genoptagelses-vinduet udloeb": (
+            "Opgaven naaede aldrig at blive genoptaget inden for et doegn."),
     }
-    detail = descriptions.get(str(reason or ""), "Det aktuelle run-segment sluttede foer opgaven.")
-    if str(reason or "") == "shutdown" and continuing:
+    raa = str(reason or "")
+    if raa.startswith("opgivet efter aftale"):
+        return {
+            "state": "failed_terminal",
+            "reason": raa,
+            "message": "Opgaven blev opgivet efter aftale. Skriv den igen hvis "
+                       "den stadig skal laves.",
+            "continuing": False,
+        }
+    detail = descriptions.get(raa, "Det aktuelle run-segment sluttede foer opgaven.")
+    if raa == "shutdown" and continuing:
         action = "Checkpointet er bevaret til genoptagelse efter genstart."
+    elif raa == "genoptagelses-vinduet udloeb":
+        action = "Skriv den igen hvis den stadig skal laves."
     else:
         action = "Jarvis fortsaetter automatisk fra sit checkpoint." if continuing else (
             "Checkpointet er bevaret, men automatisk recovery er opbrugt.")

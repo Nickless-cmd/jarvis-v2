@@ -43,7 +43,25 @@ AGENTIC_BUDGET_DEFAULTS: dict[str, Any] = {
     # få runder, og sidste runde tvinger prosa (ingen tools). 30 giver rigelig
     # plads til ægte dybt arbejde uden at tillade 100-runde-spiraler. Affekt-
     # modulering sænker yderligere til 12-20 under pres.
-    "max_rounds": 30,
+    #
+    # 24/9-2026: 30 → 45. Antagelsen om "få runder" holdt ikke, fordi han
+    # kaldte 1,28 værktøjer pr. runde (målt over 740 runder, 75 % med præcis
+    # ét). Et stykke arbejde der burde være ti runder blev tredive, og turene
+    # ramte loftet: `agentic-loop-exit reason=pending-tool-intent
+    # rounds_done=30`, midt i et værktøjskald han ville lave.
+    #
+    # Det EGENTLIGE svar er batching (se workflow-kontrakten i
+    # prompt_contract.py, samme dato) — et loft behandler symptomet. Men lige
+    # nu koster det at ramme det: en afskåret kørsel markeres `recovering` og
+    # bliver aldrig genoptaget, fordi recovery-dispatcheren udskyder når
+    # samtalen har et andet levende run og så holder op med at prøve. 55 sådanne
+    # står i basen fra syv dage.
+    #
+    # 45 er derfor en margen mens de to ting lander, ikke en ny ambition. Den
+    # er stadig langt fra 100-runde-spiralerne, og loop-gaten er stadig det der
+    # faktisk afslutter normale kørsler. Sænk den igen når batching er målt
+    # hjem og recovery samler op.
+    "max_rounds": 45,
     "max_tool_only_rounds": 24,
     "max_empty_text_rounds": 20,
     "round_total_timeout_s": 300.0,

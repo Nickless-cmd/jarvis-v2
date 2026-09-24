@@ -34,9 +34,22 @@ def test_section_none_when_nothing_changed():
 def test_default_max_rounds_is_sane_backstop():
     """2026-06-30 (#4): default-cap sænket 100 → 30. Loop-gaten + syntese-pausen
     afslutter normale runs langt tidligere; dette er kun et backstop mod
-    runaway-spiraler. Må aldrig krybe tilbage mod 100."""
+    runaway-spiraler. Må aldrig krybe tilbage mod 100.
+
+    24/9-2026: hævet 30 → 45. Testen måler nu et INTERVAL frem for et præcist
+    tal, fordi det den blev bygget til at forhindre er krybet mod 100 — ikke
+    en målt justering. Antagelsen om «få runder» holdt ikke: han kaldte 1,28
+    værktøjer pr. runde (740 runder målt), så tiendes arbejde blev tredive
+    runder, og turene ramte loftet midt i et værktøjskald. 45 er en margen
+    mens batching-kontrakten og recovery lander — ikke en ny ambition.
+
+    Øvre grænse 50: krydser den, er vi på vej tilbage mod backstoppet der
+    tillod 100-runde-spiraler, og så er det en anden samtale."""
     budget = am.compute_agentic_loop_budget()
-    assert budget["max_rounds"] == 30
+    assert 30 <= budget["max_rounds"] <= 50, (
+        f"max_rounds={budget['max_rounds']} — under 30 kvæler ægte dybt arbejde, "
+        f"over 50 er på vej tilbage mod runaway-spiralerne"
+    )
 
 
 def test_resume_and_pressure_cap_below_default():

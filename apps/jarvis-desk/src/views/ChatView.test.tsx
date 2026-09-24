@@ -244,6 +244,60 @@ describe('ChatView integration', () => {
     } finally { nulstil() }
   })
 
+  it('henter IGEN naar en tur slutter — varslet kan vaere opstaaet imens', async () => {
+    // DEN VIRKELIGE FEJL, maalt paa «hey..» 24/9-2026.
+    //
+    // Der blev spurgt én gang pr. session pr. komponent-levetid. Bjoerns desk
+    // havde samtalen aaben i timer; varslerne opstod kl. 20:29. Foerste (og
+    // eneste) forespoergsel skete laenge foer og fandt ingenting — saa syv
+    // ulaeste varsler blev aldrig vist.
+    //
+    // Min foerste test af dette var VACUOUS: den lod komponenten hente mens
+    // status stadig var `idle`, saa den bestod ogsaa med den gamle betingelse.
+    // Denne starter med INTET varsel, koerer en tur, og lader varslet opstaa
+    // derefter.
+    medEnBesked()
+    vi.mocked(api.hentGenoptagelsesVarsel).mockResolvedValue(null)
+    vi.mocked(api.hentGenoptagelsesVarsel).mockClear()
+    try {
+      visChat()
+      expect(await screen.findByText('Hej')).toBeInTheDocument()
+      const foerste = vi.mocked(api.hentGenoptagelsesVarsel).mock.calls.length
+
+      // NU opstaar varslet — som da oprydningen skabte dem kl. 20:29.
+      vi.mocked(api.hentGenoptagelsesVarsel).mockResolvedValue({
+        task_id: 't4', run_id: 'r4', state: 'failed_terminal',
+        reason: 'opgivet efter aftale', recovery_attempt: 3, recovery_limit: 3,
+        checkpoint_summary: '',
+        notice: {
+          state: 'failed_terminal', reason: 'opgivet efter aftale',
+          message: 'Opgaven blev opgivet efter aftale. Skriv den igen hvis den stadig skal laves.',
+          continuing: false,
+        },
+      })
+
+      // En tur koerer og slutter. `handlersRef` saettes foerst naar `send()`
+      // kalder `startStream` — derfor skal der SENDES, ikke bare fyres events.
+      // (Min foerste udgave fyrede events uden at sende, saa handleren var null
+      // og intet skete. Testen maalte sin egen attrap.)
+      await userEvent.type(screen.getByRole('textbox'), 'koer{Enter}')
+      await act(async () => {
+        handlersRef.current?.onRunId('r9')
+        handlersRef.current?.onEvent({
+          type: 'message_start',
+          message: { id: 'r9', model: 'm', provider: 'p', lane: 'l',
+                     session_id: 's1', usage: { input_tokens: 0, output_tokens: 0 } },
+        })
+        await new Promise((r) => setTimeout(r, 150))
+        handlersRef.current?.onEvent({ type: 'message_stop' })
+        await new Promise((r) => setTimeout(r, 250))
+      })
+
+      expect(vi.mocked(api.hentGenoptagelsesVarsel).mock.calls.length).toBeGreaterThan(foerste)
+      expect(await screen.findByText(/opgivet efter aftale/)).toBeInTheDocument()
+    } finally { nulstil() }
+  })
+
   it('spoerger kun EN gang pr. session — serveren kvitterer varslet', async () => {
     // Varslet FORBRUGES naar det hentes, saa et gentaget kald ville tabe det
     // i stedet for at gentage det.

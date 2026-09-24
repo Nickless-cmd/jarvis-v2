@@ -236,12 +236,45 @@ export function ChatView({
   // nedenfor (`stream.recoveryNotice`) var tegnet og klar. Det var kun
   // spørgsmålet der manglede.
   //
-  // Spørges én gang pr. session: serveren KVITTERER varslet når det hentes, så
-  // et gentaget kald ville tabe det i stedet for at gentage det. Og kun i
-  // hvile — kommer varslet fra strømmen, er det allerede på skærmen.
+  // HVORNAAR der spoerges — to fejl rettet 24/9-2026, begge maalt paa «hey..»,
+  // som havde SYV ulaeste varsler og aldrig viste et eneste.
+  //
+  // 1. Betingelsen var `status === 'idle'`. Men reduceren saetter `'done'` naar
+  //    et run slutter (`streamReducer` message_stop); `'idle'` gaelder kun FOER
+  //    det allerfoerste run i en klient-session. Varslet kunne dermed kun vises
+  //    i en samtale man aldrig havde brugt — altsaa aldrig, for det er netop de
+  //    BRUGTE samtaler der har afbrudte runs.
+  //
+  // 2. Der blev spurgt én gang pr. session pr. komponent-levetid. Et varsel der
+  //    opstaar EFTER den foerste forespoergsel blev derfor aldrig hentet. Netop
+  //    det skete: varslerne blev skabt kl. 20:29 mens samtalen havde vaeret
+  //    aaben i timer. Derfor spoerges der ogsaa igen naar en tur slutter — det
+  //    er praecis det oejeblik et nyt varsel kan vaere opstaaet.
+  //
+  // Varslet forbruges serverside naar det hentes, saa vi maa ikke polle; men
+  // «ved aabning» og «naar en tur slutter» er begivenheder, ikke polling.
   const varselSpurgtRef = useRef<string | null>(null)
+  const forrigeStatusRef = useRef<string>('')
   useEffect(() => {
-    if (!settings || !sessionId || stream.status !== 'idle') return
+    const forrige = forrigeStatusRef.current
+    forrigeStatusRef.current = stream.status
+    // En tur sluttede → der kan vaere kommet et nyt varsel. Spoerg igen.
+    //
+    // Betingelsen kan IKKE vaere `forrige === 'working'`. `useRammeReducer`
+    // samler opdateringer til én pr. frame, saa mellemtilstanden `'working'`
+    // findes aldrig i en render — maalt: effekten ser kun `'' -> idle` og
+    // `idle -> done`. En effekt kan ikke observere en tilstand reduceren har
+    // sprunget over.
+    //
+    // Derfor: enhver ANKOMST i en afsluttet tilstand betyder at en tur sluttede.
+    if (forrige !== stream.status
+        && (stream.status === 'done' || stream.status === 'interrupted'
+            || stream.status === 'error')) {
+      varselSpurgtRef.current = null
+    }
+    if (!settings || !sessionId) return
+    // Kun mens der FAKTISK koerer noget: da leverer stroemmen selv varslet.
+    if (stream.status === 'working' || stream.status === 'reconnecting') return
     if (varselSpurgtRef.current === sessionId) return
     varselSpurgtRef.current = sessionId
     const cfg = { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }

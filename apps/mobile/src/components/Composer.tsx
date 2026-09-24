@@ -1,5 +1,13 @@
-import { useEffect, useRef, useState } from 'react'
-import { hentForslag, PAUSE_MS, saetSammen } from '../lib/forslag'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import {
+  hentNaesteForslag,
+  INTET_FORSLAG,
+  HENT_PAUSE_MS,
+  meldValg,
+  type Forslag,
+  type Valg,
+} from '../lib/forslag'
+import type { ApiConfig } from '../lib/types'
 import { Animated, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { haptik } from '../lib/haptics'
 import { ArrowUp, ChevronDown, Cpu, FileText, Mic, Plus, SearchCheck, ShieldCheck, Square } from 'lucide-react-native'
@@ -27,6 +35,7 @@ import { UploadRing, samletUploadAndel } from './UploadRing'
  */
 export function Composer({
   config,
+  sessionId,
   disabled,
   working,
   modelLabel,
@@ -54,7 +63,9 @@ export function Composer({
   onCancelDictation,
 }: {
   /** API-adgang til forslag. Udeladt = ingen forslag, alt andet virker. */
-  config?: { apiBaseUrl: string; authToken: string } | null
+  config?: ApiConfig | null
+  /** Sessionen forslaget bygges på. Udeladt = ingen forslag. */
+  sessionId?: string | null
   disabled?: boolean
   working?: boolean
   modelLabel?: string
@@ -94,19 +105,54 @@ export function Composer({
   const sidsteIndsaet = useRef(0)
 
   // ── Forslag i komponisten ────────────────────────────────────────────────
-  // Hvad der kunne skrives videre. Laves af en LOKAL model (qwen paa GPU'en):
-  // et forslag fyrer mens han skriver, altsaa foer der overhovedet er en tur,
-  // og den betalte lane er kun til hans egne ture. Vigtigere endnu: et halvt
-  // skrevet udkast er det mest private i en samtale — det indeholder det man
-  // fortryder og sletter igen — og det forlader ikke maskinen.
+  // Hvad der kunne skrives videre — samme form som desk. Bjørn 24/9-2026:
+  // «det samme skal ske for suggestions i mobilens composer ... lige nu er det
+  // en model der gætter på mine næste ord udfra det jeg skriver, det er lidt
+  // mærkeligt».
+  //
+  // Den gamle form sendte hans HALVSKREVNE udkast og bad en lokal model gætte
+  // resten. Nu hentes der KUN naar feltet er tomt, og sessionen foelger med —
+  // saa serveren kan svare med Jarvis' EGET forslag foerst, og ellers falde
+  // tilbage til den lokale model. Et halvskrevet udkast forlader aldrig
+  // maskinen, for der sendes intet udkast: feltet er tomt naar vi spoerger.
   //
   // `config` kommer som PROP og ikke fra `useAuth()`. Foerste udgave greb i
   // konteksten, og alle sytten komponist-tests gik roede med «useAuth must be
   // used within AuthProvider» — med rette: en praesentations-komponent der
   // raekker ned i auth-laget kan ikke proeves alene. Uden config er der bare
   // ingen forslag; alt andet i komponisten virker.
-  const [forslag, setForslag] = useState('')
+  const [forslag, setForslag] = useState<Forslag>(INTET_FORSLAG)
   const afbryd = useRef<AbortController | null>(null)
+  // ÉT terminalt valg pr. forslag — samme vagt som desk, fordi klienten kan
+  // sende dobbelt gennem en genrender.
+  const meldt = useRef<{ vist: string; valgt: string }>({ vist: '', valgt: '' })
+  // Det SIDST viste forslag, gemt hver for sig: `skriv` rydder forslaget i
+  // samme øjeblik han taster, og uden den her ville «eget» aldrig kunne
+  // meldes — på afsendelses-tidspunktet er der intet forslag tilbage.
+  const sidstVist = useRef<{ forslag: Forslag; sid: string } | null>(null)
+
+  const meld = useCallback((valg: Valg, hvad?: { forslag: Forslag; sid: string }) => {
+    const f = hvad?.forslag ?? forslag
+    const sid = hvad?.sid ?? (sessionId ?? '')
+    if (!config || !sid || !f.id) return
+    if (valg === 'vist') {
+      if (meldt.current.vist === f.id) return
+      meldt.current.vist = f.id
+      sidstVist.current = { forslag: f, sid }
+    } else {
+      if (meldt.current.valgt === f.id) return
+      meldt.current.valgt = f.id
+    }
+    meldValg(config, f, valg, sid)
+  }, [config, sessionId, forslag])
+
+  // Sættes her; kaldes fra `submit`. Gennem en ref, fordi `meld` hører til
+  // forslags-blokken — og den hører hjemme dér, sammen med resten af forslaget.
+  const meldEget = useRef<() => void>(() => { /* intet forslag endnu */ })
+  meldEget.current = () => {
+    const vist = sidstVist.current
+    if (vist && meldt.current.valgt !== vist.forslag.id) meld('eget', vist)
+  }
 
   /**
    * Skriv i feltet — og ryd forslaget i SAMME opdatering.
@@ -119,27 +165,41 @@ export function Composer({
    */
   function skriv(ny: string) {
     setText(ny)
-    setForslag('')
+    setForslag(INTET_FORSLAG)
   }
 
+  // Forslaget hentes når feltet er TOMT og intet svar er i gang — bygget på
+  // samtalen, ikke på det han er ved at skrive. Lægger Jarvis selv et forslag
+  // i sin tur, er det HANS ord der møder brugeren; ellers falder serveren
+  // tilbage til den lokale model, præcis som før. Bjørn 24/9-2026: «det samme
+  // skal ske for suggestions i mobilens composer».
   useEffect(() => {
     afbryd.current?.abort()
-    if (!config || disabled) {
-      // Slaas feltet fra midt i det hele, skal linjen ogsaa vaek. `skriv`
-      // rydder kun ved tastetryk, og et forslag hen over et deaktiveret felt
-      // er noget man kan trykke paa uden at kunne goere noget ved det.
-      setForslag('')
+    if (!config || disabled || working || text !== '') {
+      // Slaas feltet fra midt i det hele — eller er der skrevet noget — skal
+      // linjen ogsaa vaek. Et forslag hen over et deaktiveret felt er noget
+      // man kan trykke paa uden at kunne goere noget ved det.
+      setForslag(INTET_FORSLAG)
       return
     }
     const c = new AbortController()
     afbryd.current = c
     const id = setTimeout(() => {
-      void hentForslag(
-        config.apiBaseUrl.replace(/\/$/, ''), config.authToken, text, c.signal
+      void hentNaesteForslag(
+        { apiBaseUrl: config.apiBaseUrl.replace(/\/$/, ''), authToken: config.authToken },
+        sessionId ?? '',
+        c.signal,
       ).then((f) => { if (!c.signal.aborted) setForslag(f) })
-    }, PAUSE_MS)
+    }, HENT_PAUSE_MS)
     return () => { clearTimeout(id); c.abort() }
-  }, [text, config, disabled])
+  }, [text, config, disabled, working, sessionId])
+
+  // «Vist» er dét der opfylder kravet om at et forslag der ALDRIG kom på
+  // skærmen ikke tælles med: blev det hentet og kasseret — feltet var ikke
+  // tomt, sessionen skiftede — når vi aldrig hertil.
+  useEffect(() => {
+    if (forslag.tekst) meld('vist')
+  }, [forslag, meld])
   const [submitting, setSubmitting] = useState(false)
   const [focused, setFocused] = useState(false)
   // Et tryk på hvilepillen skal åbne arbejdsformen FØR tastaturet er nået frem.
@@ -192,6 +252,9 @@ export function Composer({
     // Under et svar er send tilladt: ChatScreen lægger beskeden i kø.
     if ((!value && att.length === 0) || disabled || submitting) return
 
+    // Sender han sin EGEN besked mens et forslag stod der, er forslaget
+    // vraget. Kun ét bit: at det ikke blev brugt. Hans tekst følger aldrig med.
+    meldEget.current()
     setSubmitting(true)
     // Kvitteringen kommer FØR kaldet: den skal mærkes i det øjeblik man
     // trykker, ikke når serveren svarer.
@@ -306,20 +369,21 @@ export function Composer({
           onStop={() => onStopDictation?.()}
           onCancel={() => onCancelDictation?.()}
         />
-        {forslag ? (
+        {forslag.tekst ? (
           <Pressable
             testID="composer-forslag"
             accessibilityRole="button"
-            accessibilityLabel={`Forslag: ${text}${forslag}. Tryk for at bruge det.`}
+            accessibilityLabel={`Forslag: ${forslag.tekst}. Tryk for at bruge det.`}
             onPress={() => {
-              setText(saetSammen(text, forslag))
-              setForslag('')
+              meld('accepteret')
+              setText(forslag.tekst)
+              setForslag(INTET_FORSLAG)
               inputRef.current?.focus()
             }}
             style={styles.forslag}
           >
             <Text numberOfLines={1} style={styles.forslagTekst}>
-              <Text style={styles.forslagSkrevet}>{text}</Text>{forslag}
+              {forslag.tekst}
             </Text>
           </Pressable>
         ) : null}
@@ -508,12 +572,6 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
   forslagTekst: {
     fontSize: 15,
     color: tokens.color.fg3
-  },
-  // Det ALLEREDE skrevne staar endnu svagere: oejet skal fange fortsaettelsen,
-  // ikke laese sin egen saetning igen.
-  forslagSkrevet: {
-    color: tokens.color.fg3,
-    opacity: 0.45
   },
   input: {
     minHeight: 28,

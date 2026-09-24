@@ -57,9 +57,11 @@ def suggest(krop: Udkast) -> dict[str, str]:
     To tilstande, ét endpoint, fordi det er det samme spørgsmål stillet to
     steder i skrivningen:
 
-    * **Med udkast** → fortsættelsen af det (mobilens linje man trykker på).
+    * **Med udkast** → fortsættelsen af det. Bevares for ældre klienter; ingen
+      nuværende flade bruger den — mobilen gik 24/9-2026 over til samme form
+      som desk, netop fordi et gæt på resten af hans sætning føltes forkert.
     * **Uden udkast** → et bud på den næste besked, ud fra samtalen. Det er
-      den form desk viser, hvor pladsholderen står.
+      den form både desk og mobil viser, hvor pladsholderen står.
     """
     try:
         from core.services.composer_suggest import foreslaa, foreslaa_naeste_detaljer

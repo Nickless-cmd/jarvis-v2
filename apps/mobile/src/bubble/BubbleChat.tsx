@@ -38,6 +38,7 @@ function BubbleChat({ sessionId, title }: { sessionId: string; title: string }) 
       </View>
       <Composer
       config={config}
+        sessionId={sessionId}
         onSend={onSend}
         working={stream.state.status === 'working'}
         onStop={() => {

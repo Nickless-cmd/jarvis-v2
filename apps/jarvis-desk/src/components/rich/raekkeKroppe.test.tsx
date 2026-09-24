@@ -198,9 +198,12 @@ describe('rækkevisningens værktøjskroppe', () => {
     expect(ask.container.querySelector('.rv-sp')).toBeInTheDocument()
     expect(ask.container.textContent).toContain('Fortsæt?')
     ask.unmount()
-    const image = vis('analyze_image', { path: 'photo.png' }, '1024 × 768')
+    // Målt form: `analyze_image` sender `image_path` og svarer `{analysis}` —
+    // ikke en rå dimensions-streng. Testen brugte den antagede form.
+    const image = vis('analyze_image', { image_path: '/tmp/skaerm.png' },
+      JSON.stringify({ analysis: 'Et skrivebord', model: 'deepseek-v4-flash', status: 'ok' }))
     expect(image.container.querySelector('.rv-bill')).toBeInTheDocument()
-    expect(image.container.textContent).toContain('photo.png')
+    expect(image.container.textContent).toContain('skaerm.png')
   })
 
   it('viser struktureret billedresultat som dimensioner og beskrivelse', () => {
@@ -209,6 +212,20 @@ describe('rækkevisningens værktøjskroppe', () => {
     expect(container.textContent).toContain('1024 × 768')
     expect(container.textContent).toContain('Et skrivebord')
     expect(container.textContent).not.toContain('"width"')
+  })
+
+  it('viser analysens TEKST frem for «Image analyzed» (den målte form)', () => {
+    // Målt på 161 faktiske kald: `analyze_image` svarer `{analysis, model,
+    // status}` — ingen `width`, ingen `description`. Uden denne gren stod der
+    // kun stien og «Image analyzed», altså METADATA om kaldet i stedet for det
+    // kaldet fandt. Prompten vises som kontekst for hvad der blev spurgt om.
+    const { container } = vis('analyze_image',
+      { image_path: '/tmp/skaerm.png', prompt: 'Beskriv rækkevisningen' },
+      JSON.stringify({ analysis: 'Rækkerne viser ikon og emne.', model: 'deepseek-v4-flash', status: 'ok' }))
+    expect(container.querySelector('.rv-bill')).toBeInTheDocument()
+    expect(container.textContent).toContain('Rækkerne viser ikon og emne.')
+    expect(container.textContent).toContain('Beskriv rækkevisningen')
+    expect(container.textContent).not.toContain('Image analyzed')
   })
 
   it('viser et ukendt struktureret resultat som nøgle-værdi frem for JSON', () => {

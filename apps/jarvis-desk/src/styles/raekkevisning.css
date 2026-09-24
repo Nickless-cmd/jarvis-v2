@@ -414,8 +414,17 @@
 .raekkevisning .rv-a { display: flex; gap: 9px; margin-top: 7px; font-size: 13px; color: var(--rv-tertiary); }
 .raekkevisning .rv-a .rv-m { color: var(--fg-3); flex: none; }
 /* Billede */
-.raekkevisning .rv-bill { display: flex; gap: 12px; align-items: center; padding: 10px 11px; }
+.raekkevisning .rv-bill { padding: 10px 11px; }
+.raekkevisning .rv-billH { display: flex; gap: 12px; align-items: center; }
 .raekkevisning .rv-bill img { width: 64px; height: 42px; object-fit: cover; border-radius: var(--radius-sm); }
+.raekkevisning .rv-billQ { margin-top: 8px; font-size: 11px; color: var(--fg-3); overflow-wrap: anywhere; }
+/* Analysens tekst er INDHOLDET — ikke metadata. Samme maks-højde som de øvrige
+   kort, så en lang vision-analyse ikke folder hele rækken ud i transskriptet. */
+.raekkevisning .rv-billT {
+  margin-top: 6px; font-size: 12px; line-height: 1.6; color: var(--fg-2);
+  white-space: pre-wrap; word-break: break-word;
+  max-height: 224px; overflow: auto; overscroll-behavior: contain;
+}
 .raekkevisning .rv-n { font-size: 13px; color: var(--fg-2); }
 .raekkevisning .rv-m2 { font-size: 12px; color: var(--fg-3); }
 /* I selve overskriftsrækken er diff-tallet og fejlkoden de eneste mono-felter. */

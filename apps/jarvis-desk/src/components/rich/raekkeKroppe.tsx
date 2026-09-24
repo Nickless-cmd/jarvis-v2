@@ -725,7 +725,10 @@ export function Spoergsmaal({ q, svar }: { q: string; svar: string }) {
   )
 }
 
-export function Billede({ src, navn, meta }: { src?: string; navn: string; meta: string }) {
+export function Billede({ src, navn, meta, spoergsmaal, tekst }: {
+  src?: string; navn: string; meta: string
+  spoergsmaal?: string; tekst?: string
+}) {
   const [hentet, setHentet] = useState<string | null>(null)
 
   // En lokal sti kan ikke vises direkte: CSP'en blokerer `file://`, og
@@ -749,11 +752,15 @@ export function Billede({ src, navn, meta }: { src?: string; navn: string; meta:
   const vis = src?.startsWith('/') ? hentet : safeImageSrc(src ?? '')
   return (
     <div className="rv-kort rv-bill">
-      {vis && <img src={vis} alt={navn} />}
-      <div>
-        <div className="rv-n">{navn}</div>
-        <div className="rv-m2">{meta}</div>
+      <div className="rv-billH">
+        {vis && <img src={vis} alt={navn} />}
+        <div>
+          <div className="rv-n">{navn}</div>
+          {meta && <div className="rv-m2">{meta}</div>}
+        </div>
       </div>
+      {spoergsmaal && <div className="rv-billQ">{spoergsmaal}</div>}
+      {tekst && <div className="rv-billT">{tekst}</div>}
     </div>
   )
 }
@@ -975,7 +982,17 @@ export function kropFor(
     const maal = objekt(værdi) && typeof værdi.width === 'number' && typeof værdi.height === 'number'
       ? `${værdi.width} × ${værdi.height}` : ''
     const beskrivelse = objekt(værdi) ? streng(værdi.description) || streng(værdi.caption) : ''
-    return <Billede src={sti} navn={sti || navn} meta={[maal, beskrivelse].filter(Boolean).join(' · ') || (objekt(værdi) ? 'Image analyzed' : ud.slice(0, 120))} />
+    // `analyze_image` svarer `{analysis, model, status}` — målt på 161 kald. Der
+    // er ingen `width`, ingen `description`: uden linjen her faldt kroppen til
+    // «Image analyzed» og viste METADATA om kaldet i stedet for dets indhold.
+    const analyse = objekt(værdi) ? streng(værdi.analysis) || streng(værdi.text) : ''
+    return <Billede
+      src={sti}
+      navn={pathNavn(sti) || navn}
+      meta={[maal, beskrivelse].filter(Boolean).join(' · ')}
+      spoergsmaal={streng(input.prompt)}
+      tekst={analyse}
+    />
   }
   if (familie === 'opgave') {
     // Formen er `{count, todos:[{content, status}]}` for todo_set/todo_list og

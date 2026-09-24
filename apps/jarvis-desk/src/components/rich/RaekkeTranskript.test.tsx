@@ -232,6 +232,36 @@ describe('RaekkeTranskript', () => {
     expect(container.querySelector('.rv-arbejdsknap svg')).toHaveClass('lucide-book-open')
   })
 
+  it('giver ogsaa rene research-runder bogikonet', () => {
+    // Bogen hang foer paa ét eneste navn (`read_file`), saa `search`+`bash` og
+    // `recall`+`bash` faldt til terminalen. Praedikatet er nu et SAET laesere
+    // (Bjoern 24/9-2026).
+    for (const laeser of ['search', 'recall', 'web_search', 'operator_grep', 'find_files']) {
+      const { container } = render(<RaekkeTranskript blocks={[
+        kald(laeser, { pattern: 'x' }), kald('bash', { command: 'npm test' }), tekst('Færdig.'),
+      ]} streaming />)
+      expect(container.querySelector('.rv-arbejdsknap svg')).toHaveClass('lucide-book-open')
+    }
+  })
+
+  it('giver IKKE bogikon naar runden kun laeser', () => {
+    // Bogen betyder «laeste og gjorde saa noget». Uden en kommando i runden er
+    // der ikke noget «saa» — ikonet skal vaere det sidste vaerktoejs eget.
+    const { container } = render(<RaekkeTranskript blocks={[
+      kald('read_file', { path: 'a.ts' }), kald('search', { pattern: 'x' }), tekst('Fandt den.'),
+    ]} streaming />)
+    expect(container.querySelector('.rv-arbejdsknap svg')).toHaveClass('lucide-search')
+  })
+
+  it('har ingen operator-praefiksede navne i laeser-saettet', () => {
+    // `arbejdsIkon` stripper `operator_` FOER opslaget, saa et navn med praefiks
+    // i LAESERE ville aldrig matche. Vagten laeser kilden — som CSS-vagten goer.
+    const src = readFileSync(resolve(__dirname, 'RaekkeTranskript.tsx'), 'utf8')
+    const blok = src.match(/const LAESERE = new Set\(\[([\s\S]*?)\]\)/)?.[1] ?? ''
+    expect(blok).not.toBe('')
+    expect(blok).not.toContain("'operator_")
+  })
+
   it('lægger turens fold-ud-pil efter tiden og formaterer synteser uden indrykning', () => {
     const { container } = render(<RaekkeTranskript blocks={[
       tekst('Jeg har **fjernet** fejlen i `app.ts`.'),

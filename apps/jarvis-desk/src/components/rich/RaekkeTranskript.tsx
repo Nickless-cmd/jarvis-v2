@@ -58,10 +58,44 @@ function Syntese({ tekst, streaming }: { tekst: string; streaming: boolean }) {
 
 const KOMMANDOER = new Set(['bash', 'bash_session_run', 'bash_session_open', 'bash_session_close', 'bash_output', 'run_in_background', 'session_run'])
 
-/** Arbejdsrunden beholder sit handlingsikon når den er færdig. */
+/**
+ * Værktøjer der henter viden IND — filer, kode, hukommelse, net, efterforskning
+ * — uden selv at ændre noget.
+ *
+ * Navnene er GRUNDNAVNE: `arbejdsIkon` stripper `operator_` før opslaget, så
+ * `operator_read_file` rammer `read_file`. Et navn med præfiks her ville
+ * aldrig matche — samme stille dødsfald som `_CORE_TOOL_GROUPS` advarer om.
+ *
+ * Grænsen: drifts- og statusværktøjer (`daemon_status`, `central_query`,
+ * `list_self_wakeups`) er IKKE med. De inspicerer maskineriet; de henter ikke
+ * viden ind.
+ */
+const LAESERE = new Set([
+  // Filer og kode
+  'read_file', 'pdf_read', 'docs_read', 'list_dir', 'find_files', 'glob', 'search', 'grep',
+  // Hukommelse
+  'recall', 'recall_memories', 'search_memory', 'search_jarvis_brain',
+  'read_memory_topic', 'curiosity_search_memory',
+  // Nettet
+  'web_search', 'web_fetch', 'drive_search',
+  // Efterforskning
+  'scout_agent',
+])
+
+/**
+ * Arbejdsrundens ikon — rundens FORM, ikke dens sidste skridt.
+ *
+ * Læste runden noget og gjorde den så noget mekanisk, er den en undersøgelse
+ * (bogen). Var ALT mekanisk, er den en kommando (terminalen). Ellers bærer den
+ * det sidste værktøjs eget ikon.
+ *
+ * Bogen hang før på ét eneste navn (`read_file`), så `search`+`bash`,
+ * `recall`+`bash` og `web_search`+`bash` — alle research-runder — faldt til
+ * terminalen. Prædikatet er derfor et SÆT læsere (Bjørn 24/9-2026).
+ */
 function arbejdsIkon(vaerktoejer: Extract<ContentBlock, { type: 'tool_use' }>[]): LucideIcon {
   const navne = vaerktoejer.map((t) => t.name.replace(/^operator_/, ''))
-  if (navne.some((n) => n === 'read_file') && navne.some((n) => KOMMANDOER.has(n))) return BookOpen
+  if (navne.some((n) => LAESERE.has(n)) && navne.some((n) => KOMMANDOER.has(n))) return BookOpen
   if (navne.length > 0 && navne.every((n) => KOMMANDOER.has(n))) return SquareTerminal
   return lookupTool(vaerktoejer[vaerktoejer.length - 1]?.name ?? '').Icon
 }

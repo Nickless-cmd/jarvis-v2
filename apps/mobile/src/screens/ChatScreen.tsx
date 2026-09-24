@@ -1219,6 +1219,7 @@ export function ChatScreen({
         <KoeChip tekst={koet?.text ?? null} onAnnuller={() => setKoet(null)} />
         <Composer
         config={config}
+          sessionId={sessions.activeId}
           indsaet={indsaet}
           disabled={!config || pendingAttachments.some((a) => a.status === 'uploading')}
           working={stream.state.status === 'working' || serverBusy}

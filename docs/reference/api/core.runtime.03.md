@@ -2,6 +2,31 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/runtime/opmaerksomhed.py`
+_Tilstands-hjernen — ÉN samlet opmærksomhedstilstand pr. arbejdsrum._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_standard_rum` | `()` | — | [src](../../../core/runtime/opmaerksomhed.py#L75) |
+| function | `rum_for_session` | `(session_id)` | Samtalens arbejdsrum. Ustemplede (legacy) samtaler hører til | [src](../../../core/runtime/opmaerksomhed.py#L80) |
+| function | `_noegle` | `(rum)` | — | [src](../../../core/runtime/opmaerksomhed.py#L99) |
+| function | `_laes` | `(rum)` | — | [src](../../../core/runtime/opmaerksomhed.py#L103) |
+| function | `_skriv` | `(rum, punkter)` | — | [src](../../../core/runtime/opmaerksomhed.py#L113) |
+| function | `_friske` | `(punkter, nu)` | — | [src](../../../core/runtime/opmaerksomhed.py#L118) |
+| function | `_titel` | `(session_id)` | — | [src](../../../core/runtime/opmaerksomhed.py#L124) |
+| function | `_noter` | `(*, session_id, run_id, tilstand, tekst=…)` | — | [src](../../../core/runtime/opmaerksomhed.py#L133) |
+| function | `_vurder_afsluttet` | `(log_run_id, indre_run_id, session_id)` | — | [src](../../../core/runtime/opmaerksomhed.py#L145) |
+| function | `noter_afsluttet` | `(log_run_id, indre_run_id, session_id)` | Kaldes fra detached_run når en tur slutter. Vurderes efter samme grace | [src](../../../core/runtime/opmaerksomhed.py#L171) |
+| function | `set` | `(session_id, rum=…)` | Brugeren har åbnet samtalen — dens punkt forsvinder. | [src](../../../core/runtime/opmaerksomhed.py#L184) |
+| function | `glem_session` | `(session_id)` | En ny tur starter — den forrige turs udfald er ikke længere nyheden. | [src](../../../core/runtime/opmaerksomhed.py#L199) |
+| function | `_pynt_navn` | `(navn)` | — | [src](../../../core/runtime/opmaerksomhed.py#L209) |
+| function | `aktivitet` | `(frames)` | Hvad laver han LIGE NU — læst bagfra i runnets egen strøm. | [src](../../../core/runtime/opmaerksomhed.py#L217) |
+| function | `_koerende` | `(rum)` | — | [src](../../../core/runtime/opmaerksomhed.py#L264) |
+| function | `_baggrund` | `()` | Autonome kørsler i gang (sidste halve time — friskheds-vagt mod zombier). | [src](../../../core/runtime/opmaerksomhed.py#L282) |
+| function | `_koe` | `(user_id, is_owner)` | (blokerende punkter, antal i indbakken). | [src](../../../core/runtime/opmaerksomhed.py#L299) |
+| function | `_venter` | `(items)` | — | [src](../../../core/runtime/opmaerksomhed.py#L311) |
+| function | `tilstand_for` | `(*, rum=…, user_id=…, is_owner=…)` | Den samlede tilstand. Rækkefølge: prioritet, så nyeste først. | [src](../../../core/runtime/opmaerksomhed.py#L321) |
+
 ## `core/runtime/plugin_graph.py`
 _Afhængighedsgrafen — Fase 9: «plugin boot rejects missing/cyclic dependencies»._
 

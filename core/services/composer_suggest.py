@@ -382,6 +382,25 @@ def foreslaa_naeste_detaljer(session_id: str) -> dict[str, str]:
     if len(" ".join(str(beskeder[-1].get("content") or "").split())) < MIN_SVAR_TEGN:
         return _tomt()
 
+    # Jarvis' EGET forslag (24/9-2026). Bjørn: «det burde endelig osse være
+    # dig der kommer med forslag i composer». Skriver han selv linjen, er den
+    # bedre end en 4b-model der kun læser én besked — han ved hvad han lige
+    # har lavet, og hvad næste skridt er. Forslaget forbruges ved læsning:
+    # det hører til ÉN tur, og et forældet bud er værre end ingen. Findes det
+    # ikke, falder vi tilbage til den lokale model, præcis som før.
+    try:
+        from core.runtime.db_composer_jarvis import tag_forslag
+        eget = tag_forslag(session_id=sid)
+    except Exception:
+        logger.debug("composer_suggest: kunne ikke læse Jarvis' forslag", exc_info=True)
+        eget = None
+    if eget and str(eget.get("forslag") or "").strip():
+        return {
+            "forslag": str(eget["forslag"]).strip(),
+            "forslag_id": str(eget.get("forslag_id") or ""),
+            "kilde_besked_id": str(beskeder[-1].get("message_id") or ""),
+        }
+
     # Mønstret fra hans tidligere valg (fase 3, 20/9-2026). Står SIDST, som
     # en erfaring modellen vægter — ikke som et krav den adlyder. Et forslag
     # der altid beder om det samme, er en vane og ikke et tilbud.

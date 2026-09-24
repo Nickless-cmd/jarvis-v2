@@ -52,6 +52,7 @@ from core.tools.worktree_tools import (WORKTREE_TOOL_DEFINITIONS)
 from core.tools.identity_pin_tools import (IDENTITY_PIN_TOOL_DEFINITIONS)
 from core.tools.ui_panel_tools import (UI_PANEL_TOOL_DEFINITIONS)
 from core.tools.state_flag_tools import (STATE_FLAG_TOOL_DEFINITIONS)
+from core.tools.composer_suggest_tools import (COMPOSER_SUGGEST_TOOL_DEFINITIONS)
 from core.tools.gate_override_tools import (GATE_OVERRIDE_TOOL_DEFINITIONS)
 from core.tools.app_control_tool import (APP_CONTROL_TOOL_DEFINITIONS)
 from core.tools.desk_view_tools import (DESK_VIEW_TOOL_DEFINITIONS)
@@ -3442,6 +3443,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     # kendte scope. Modulet og dets handler bevares for bagudkompatibilitet.
     # *UI_PANEL_TOOL_DEFINITIONS,
     *STATE_FLAG_TOOL_DEFINITIONS,
+    *COMPOSER_SUGGEST_TOOL_DEFINITIONS,
     *GATE_OVERRIDE_TOOL_DEFINITIONS,
     *APP_CONTROL_TOOL_DEFINITIONS,
     # Jarvis styrer desk-vinduet indefra — Claude Desktops ccd_view (19/9-2026).

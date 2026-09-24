@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import pytest
 
+from core.runtime import db_composer_jarvis as dj
 from core.services import composer_suggest as cs
 
 
@@ -508,3 +509,95 @@ def test_MOBILENS_form_har_intet_valg_at_registrere(monkeypatch):
     svar = rute.suggest(rute.Udkast(udkast="kan du lige", session_id="s1"))
     assert svar["forslag"].strip() == "tjekke det"
     assert svar["forslag_id"] == "" and svar["kilde_besked_id"] == ""
+
+
+# ──────────────────────────────── Jarvis' EGET forslag (24/9-2026)
+#
+# Bjoern: «i chatview er det dig selv der saetter ord paa runderne... det
+# burde endelig osse vaere dig der kommer med forslag i composer?» Raekke-
+# foelgen er hele pointen:
+#
+#   Jarvis' eget forslag (hvis det findes)  ->  den lokale model (ellers)
+#
+# Lageret selv (gem/tag/kig/forbrug) er testet i test_db_composer_jarvis.py,
+# og vaerktoejet han kalder i test_composer_suggest_tools.py. Her proves KUN
+# raekkefoelgen: hvornaar hans forslag vinder, og hvornaar det viger.
+
+
+_ASSISTENT_SVAR = "Det er rettet og verificeret — testene er groenne igen."
+
+
+def _med_svar(monkeypatch, session: str = "s1"):
+    """En samtale der slutter med et rigtigt svar fra Jarvis."""
+    monkeypatch.setattr(cs, "_samtale", lambda sid: [{
+        "role": "assistant", "message_id": "message-42", "content": _ASSISTENT_SVAR}])
+
+
+def test_JARVIS_forslag_vinder_og_modellen_spoerges_SLET_IKKE(isolated_runtime, monkeypatch):
+    """Kernetesten. Ligger der et forslag fra Jarvis, maa den lokale model ikke
+    kaldes — hverken for at overskrive det eller for at spilde et GPU-kald."""
+    _med_svar(monkeypatch)
+    monkeypatch.setattr(cs, "_kald_model",
+                        lambda *a, **k: pytest.fail("spurgte den lokale model alligevel"))
+    dj.gem_forslag(session_id="s1", forslag="Vis mig de to der står i karantaene")
+
+    d = cs.foreslaa_naeste_detaljer("s1")
+    assert d["forslag"] == "Vis mig de to der står i karantaene"
+    # Id'et baerer Jarvis' praefiks, saa telemetrien kan se hvor det kom fra.
+    assert d["forslag_id"].startswith("cj-")
+    # Kilde-beskeden er den FAKTISKE sidste besked — ikke noget Jarvis gættede.
+    assert d["kilde_besked_id"] == "message-42"
+
+
+def test_uden_hans_forslag_gaar_den_til_modellen_som_foer(isolated_runtime, monkeypatch):
+    _med_svar(monkeypatch)
+    monkeypatch.setattr(cs, "_kald_model", lambda p: "deploy det")
+    assert cs.foreslaa_naeste_detaljer("s1")["forslag"] == "deploy det"
+
+
+def test_efter_forbrug_falder_den_tilbage_til_modellen(isolated_runtime, monkeypatch):
+    """Forslaget er brugt. Naeste hentning i samme session er modellens igen."""
+    _med_svar(monkeypatch)
+    monkeypatch.setattr(cs, "_kald_model", lambda p: "fra modellen")
+    dj.gem_forslag(session_id="s1", forslag="fra Jarvis")
+
+    assert cs.foreslaa_naeste_detaljer("s1")["forslag"] == "fra Jarvis"
+    assert cs.foreslaa_naeste_detaljer("s1")["forslag"] == "fra modellen"
+
+
+def test_hans_forslag_bruges_ikke_naar_turen_IKKE_er_faerdig(isolated_runtime, monkeypatch):
+    """Står der en ubesvaret besked fra Bjørn, er turen i gang. Så er der
+    ingen «naeste besked» at foreslå — og forslaget skal blive liggende."""
+    monkeypatch.setattr(cs, "_samtale", lambda sid: _samtale(
+        ("assistant", _ASSISTENT_SVAR), ("user", "og hvad med den anden?")))
+    dj.gem_forslag(session_id="s1", forslag="fra Jarvis")
+
+    assert cs.foreslaa_naeste_detaljer("s1")["forslag"] == ""
+    assert dj.kig_forslag(session_id="s1") is not None, "forslaget skal vente, ikke forbruges"
+
+
+def test_hans_forslag_bruges_ikke_paa_en_STUMP(isolated_runtime, monkeypatch):
+    monkeypatch.setattr(cs, "_samtale", lambda sid: _samtale(("assistant", "OK.")))
+    dj.gem_forslag(session_id="s1", forslag="fra Jarvis")
+    assert cs.foreslaa_naeste_detaljer("s1")["forslag"] == ""
+
+
+def test_den_GAMLE_streng_form_svarer_ogsaa_med_hans_forslag(isolated_runtime, monkeypatch):
+    """Mobilen kalder `foreslaa_naeste` og må ikke braekke."""
+    _med_svar(monkeypatch)
+    monkeypatch.setattr(cs, "_kald_model", lambda *a, **k: pytest.fail("spurgte modellen"))
+    dj.gem_forslag(session_id="s1", forslag="deploy det til ct105")
+    assert cs.foreslaa_naeste("s1") == "deploy det til ct105"
+
+
+def test_ruten_svarer_med_hans_forslag_og_dets_id(isolated_runtime, monkeypatch):
+    from apps.api.jarvis_api.routes import composer_suggest_routes as rute
+
+    _med_svar(monkeypatch)
+    monkeypatch.setattr(cs, "_kald_model", lambda *a, **k: pytest.fail("spurgte modellen"))
+    dj.gem_forslag(session_id="s1", forslag="Ret det og koer testene igen")
+
+    svar = rute.suggest(rute.Udkast(udkast="", session_id="s1"))
+    assert svar["forslag"] == "Ret det og koer testene igen"
+    assert svar["forslag_id"].startswith("cj-")
+    assert svar["kilde_besked_id"] == "message-42"

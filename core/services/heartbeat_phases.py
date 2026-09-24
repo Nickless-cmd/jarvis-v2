@@ -702,6 +702,7 @@ def tick_with_phases(*, name: str = "default", trigger: str = "phased") -> dict[
             "act": action,
         },
         "elapsed_ms": elapsed_ms,
+        "started_at": started.isoformat(),
     }
     # Phase 5: self-evaluate this tick's quality (observation only, no mutation)
     try:
@@ -724,6 +725,19 @@ def tick_with_phases(*, name: str = "default", trigger: str = "phased") -> dict[
         )
     except Exception:
         pass
+    # RYK URET. Uden den her staar `next_tick_at` stille, `due` bliver ved med
+    # at vaere sand, og planlaeggeren fyrer et helt tik hver gang den poller —
+    # maalt 24/9-2026: 56 tik paa 30 minutter ved en 15-minutters kadence.
+    # Den maa ikke vaelte tikket (arbejdet ER gjort naar vi naar hertil), men
+    # den maa heller ikke fejle tavst: staar uret stille igen, ligner det et
+    # doedt hjerte i stedet for et der loeber loebsk.
+    try:
+        from core.services.heartbeat_runtime import record_phased_tick
+        record_phased_tick(name=name, trigger=trigger, result=result)
+    except Exception:
+        logger.warning(
+            "heartbeat: kunne ikke rykke uret efter et faset tik — kadencen "
+            "falder tilbage til planlaeggerens poll-interval", exc_info=True)
     return result
 
 

@@ -7058,6 +7058,77 @@ def _load_provider_api_key(*, provider: str, profile: str) -> str:
     return api_key
 
 
+def record_phased_tick(
+    *, name: str, trigger: str, result: dict[str, object],
+) -> None:
+    """Skriv et faset tik ind i uret — saa kadencen faktisk rykker.
+
+    **Uden den her loeber hjertet loebsk.** `tick_with_phases` koerer sense,
+    reflect og act, udsender `heartbeat.phased_tick` og returnerer en dict. Den
+    skrev ALDRIG tilstanden. `next_tick_at` er kun skrevet ét sted i hele
+    kodebasen — `_record_heartbeat_outcome` — og den kaldes tre steder, alle i
+    `heartbeat_runtime`. `heartbeat_phases` kalder den nul gange.
+
+    Planlaeggeren blev 18/5-2026 ruttet om til `tick_with_phases`. Uret blev
+    efterladt i den gamle sti. Resultatet: `next_tick_at` stod stille, `due`
+    blev ved med at vaere sand, og planlaeggeren fyrede et helt tik hver gang
+    den pollede.
+
+    Maalt paa CT105 24/9-2026 med 15-minutters kadence konfigureret:
+
+        sidste  30 min:   56 tik   (forventet  2)
+        sidste  60 min:   83 tik   (forventet  4)
+        sidste 240 min:  368 tik   (forventet 16)
+
+    Ét tik hvert ~32. sekund — planlaeggerens poll-interval. 28 gange for
+    hurtigt, i timevis. Det saa udefra ud som et STOPPET hjerte (uret stod jo
+    stille), og det var det modsatte.
+
+    Det er samme foraeldreloese-familie som mood-tikket (afsnit 7e i
+    `heartbeat_phases`) — men det her er den der styrer kadencen selv.
+    """
+    policy = load_heartbeat_policy(name=name)
+    workspace_dir = ensure_default_workspace(name=name)
+    persisted = get_heartbeat_runtime_state() or _default_persisted_state()
+    faser = (result.get("phases") or {}) if isinstance(result, dict) else {}
+    handling = (faser.get("act") or {}) if isinstance(faser, dict) else {}
+    refleksion = (faser.get("reflect") or {}) if isinstance(faser, dict) else {}
+    slags = str(handling.get("kind") or "productive_idle")
+    resume = str(handling.get("summary") or handling.get("detail") or slags)[:500]
+    startet = str(result.get("started_at") or "") or datetime.now(UTC).isoformat()
+    nu = datetime.now(UTC).isoformat()
+    _record_heartbeat_outcome(
+        policy=policy,
+        persisted=persisted,
+        tick_id=f"heartbeat-tick:{uuid.uuid4()}",
+        trigger=trigger,
+        tick_status="ok",
+        decision_type=slags,
+        decision_summary=resume,
+        decision_reason=str(refleksion.get("activity_level") or ""),
+        blocked_reason="",
+        currently_ticking=False,
+        last_trigger_source=trigger,
+        provider=str(persisted.get("provider") or ""),
+        model=str(persisted.get("model") or ""),
+        lane=str(persisted.get("lane") or ""),
+        budget_status=str(persisted.get("budget_status") or policy["budget_status"]),
+        ping_eligible=False,
+        ping_result="not-applicable",
+        action_status=str(handling.get("status") or "executed"),
+        action_summary=resume,
+        action_type=slags,
+        action_artifact="",
+        raw_response="",
+        input_tokens=0,
+        output_tokens=0,
+        cost_usd=0.0,
+        started_at=startet,
+        finished_at=nu,
+        workspace_dir=workspace_dir,
+    )
+
+
 def _heartbeat_busy_result(*, name: str, trigger: str) -> HeartbeatExecutionResult:
     policy = load_heartbeat_policy(name=name)
     workspace_dir = ensure_default_workspace(name=name)

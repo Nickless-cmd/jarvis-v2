@@ -130,8 +130,15 @@ export async function gemIndstillinger(
 /** Oversæt til de felter stream-kroppen faktisk forstår.
  *
  *  Er der ikke valgt en model for samtalen, sendes den globale videre — så en
- *  tom per-chat-værdi betyder «som appen plejer», ikke «ingen model». */
-export function tilStreamFelter(cfg: ChatIndstillinger): {
+ *  tom per-chat-værdi betyder «som appen plejer», ikke «ingen model».
+ *
+ *  `kode` = står brugeren i kode-fladen. FLADEN ER GULVET (24/9-2026):
+ *  `vaerktoejer` er «Fuld adgang»-kontakten, og dens standard er 'samtale'.
+ *  Uden dette flag sendte en samtale oprettet i kode-fladen `mode: 'chat'` på
+ *  hver besked, mens dens `kind` i databasen var 'code' — så broen afviste
+ *  skærmbilledet og hele computer-use-gruppen i en samtale der ellers VAR
+ *  code. Mode kan hæve (kontakten i chat-fladen), men ikke sænke fladen. */
+export function tilStreamFelter(cfg: ChatIndstillinger, kode = false): {
   model: string
   providerChoice: string
   mode: 'chat' | 'code'
@@ -142,7 +149,7 @@ export function tilStreamFelter(cfg: ChatIndstillinger): {
   return {
     model: cfg.model?.model ?? '',
     providerChoice: cfg.model?.providerChoice ?? '',
-    mode: cfg.vaerktoejer === 'fuldt' ? 'code' : 'chat',
+    mode: kode || cfg.vaerktoejer === 'fuldt' ? 'code' : 'chat',
     approvalMode: cfg.spoergFoerst ? 'ask' : 'trust',
     thinkingMode: cfg.thinkingMode,
     researchMode: cfg.researchMode === 'on',

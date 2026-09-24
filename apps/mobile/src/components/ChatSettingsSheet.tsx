@@ -22,6 +22,8 @@ export interface ChatSettingsSheetProps {
   cfg: ChatIndstillinger
   /** Modeller brugeren må vælge. Tom liste → model-valget skjules. */
   modeller?: StoredModelChoice[]
+  /** Kode-fladen har altid hele værktøjskassen — se `tilStreamFelter`. */
+  kodeFlade?: boolean
   onChange: (next: Partial<ChatIndstillinger>) => void
   onClose: () => void
   /** Åbner søgning i den åbne tråd. Udeladt → rækken vises ikke. */
@@ -29,7 +31,7 @@ export interface ChatSettingsSheetProps {
 }
 
 export function ChatSettingsSheet({
-  visible, cfg, modeller = [], onChange, onClose, onSearch,
+  visible, cfg, modeller = [], kodeFlade = false, onChange, onClose, onSearch,
 }: ChatSettingsSheetProps) {
   const tokens = useTheme()
   const styles = useStyles(makestyles)
@@ -92,12 +94,18 @@ export function ChatSettingsSheet({
 
           {raekke(
             'Værktøjer',
-            cfg.vaerktoejer === 'fuldt'
-              ? 'Han har hele værktøjskassen — også filer og kommandoer.'
-              : 'Kun samtale-værktøjer: web, hukommelse, billeder.',
+            kodeFlade
+              ? 'Kode-fladen har hele værktøjskassen — også filer og kommandoer.'
+              : cfg.vaerktoejer === 'fuldt'
+                ? 'Han har hele værktøjskassen — også filer og kommandoer.'
+                : 'Kun samtale-værktøjer: web, hukommelse, billeder.',
             <Switch
               testID="chatcfg-tools"
-              value={cfg.vaerktoejer === 'fuldt'}
+              // I kode-fladen er svaret ikke et valg: fladen ER fuld adgang
+              // (se `tilStreamFelter`). En kontakt der kunne slukke for noget
+              // der alligevel sker ville se ud som om den gjorde noget.
+              disabled={kodeFlade}
+              value={kodeFlade || cfg.vaerktoejer === 'fuldt'}
               onValueChange={(v) => { void haptik('send'); onChange({ vaerktoejer: v ? 'fuldt' : 'samtale' }) }}
             />,
             'chatcfg-tools-row',

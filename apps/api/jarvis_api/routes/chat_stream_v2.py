@@ -18,11 +18,38 @@ from pydantic import BaseModel
 
 from apps.api.jarvis_api.routes.chat import ChatStreamRequest
 from core.runtime.settings import load_settings
-from core.services.chat_sessions import append_chat_message, get_chat_session
+from core.services.chat_sessions import append_chat_message, get_chat_session, session_kind
 from core.services.visible_runs import start_visible_run
 from core.services.visible_runs_sse_v2 import translate_to_v2
 
 router = APIRouter(prefix="/chat", tags=["chat"])
+
+
+def udled_tool_scope(mode: str, kind: str | None) -> str:
+    """Mode + samtalens art → tool-scope. Ren funktion, så reglen kan testes.
+
+    `mode` er per TUR og kommer fra klienten. `kind` er samtalens vedvarende
+    art fra databasen. Reglen (24/9-2026):
+
+    * ``mode="code"`` → code. Klienten beder om det.
+    * ``mode="chat"`` → chat — MED MINDRE samtalen er en code-samtale.
+      Målt 24/9: mobilen satte mode fra «Fuld adgang»-indstillingen (hvis
+      standard er 'samtale'), ikke fra fladen. En code-samtale bundet til
+      repoet sendte derfor ``mode='chat'`` på hver besked, og både
+      skærmbilledet og hele computer-use-gruppen blev afvist af broen — i en
+      samtale der ellers VAR code.
+    * tom/ukendt mode → code hvis samtalen er code, ellers ubegrænset ("").
+
+    Mode kan altså HÆVE (chat-samtale + fuld adgang = code), men ikke SÆNKE
+    en code-samtale: fladen er gulvet. Enheds-reglen håndhæves af kalderen.
+    """
+    m = (mode or "").strip().lower()
+    er_code = (kind or "").strip().lower() == "code"
+    if m == "code":
+        return "code"
+    if m == "chat":
+        return "code" if er_code else "chat"
+    return "code" if er_code else ""
 
 
 # ── Ollama model-name resolution (2026-07-23) ────────────────────────────────
@@ -349,15 +376,28 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
     # allowlisten (se core.tools.tool_scoping). Andre modes / tom = ubegrænset
     # (rolle-filter gælder stadig).
     _m = (request.mode or "").strip().lower()
-    _tool_scope = "chat" if _m == "chat" else "code" if _m == "code" else ""
+    # Samtalens ART hentes ét felt — ikke hele historikken (se `session_kind`).
+    # Fejler opslaget, fortsætter vi uden den: en læsefejl må ikke låse en
+    # samtale, og `mode` alene er den adfærd vi havde før.
+    _kind: str | None = None
+    try:
+        _kind = session_kind(session_id)
+    except Exception:  # DB utilgængelig → kør uden art: mode alene er den gamle adfærd, og en læsefejl må ikke låse en samtale
+        _kind = None
+    _tool_scope = udled_tool_scope(_m, _kind)
     # Enheds-reglen (19/9-2026, Codex' fjernstyring): er den tændt og er denne
     # enhed ikke tilføjet i desk, afvises code mode med en forklaring — og en
     # TOM mode (= ubegrænset, altså også kode-værktøjerne) bliver til chat.
     # Ellers kunne en klient bare udelade mode og få det hele.
+    #
+    # 403 gælder kun når klienten BAD om code (`mode="code"`). Er scopet hævet
+    # fordi samtalen ER en code-samtale, falder den tilbage til chat i stedet:
+    # en enhed der ikke må bruge code skal ikke kunne låse sin egen samtale
+    # ved at stå i den — og den har ikke bedt om code i denne tur.
     if _tool_scope != "chat":
         from core.identity.kode_adgang import KODE_NAEGTET, kode_tilladt
         if not kode_tilladt():
-            if _tool_scope == "code":
+            if _m == "code":
                 raise HTTPException(status_code=403, detail=KODE_NAEGTET)
             _tool_scope = "chat"
     # Path B (server-owned transcript, LOCAL tool execution): only honoured in code

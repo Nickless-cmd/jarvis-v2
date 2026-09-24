@@ -120,6 +120,22 @@ it('ChatScreen henter git-tilstanden — og KUN i code-fladen', () => {
   expect(cs).toMatch(/if \(!config \|\| !kodeTilstand\) \{ setGit\(null\); return \}/)
 })
 
+it('fladen bestemmer mode — ikke «Fuld adgang»-kontakten alene', () => {
+  // Målt 24/9-2026 på Bjørns samtale `chat-aa57a6d2…`: kind='code' i
+  // databasen, workspace bundet til repoet — og alligevel `mode=chat` på hver
+  // besked, fordi mode kom fra `vaerktoejer` (standard 'samtale') og ikke fra
+  // fladen. Broen afviste skærmbilledet og hele computer-use-gruppen i en
+  // samtale der ellers VAR code.
+  //
+  // Vagten matcher kilden, fordi koblingen ER i kilden: BEGGE send-veje skal
+  // give fladen med. Glemmer én af dem (offline-outbox'en er den stille), kan
+  // den sende chat i en code-samtale — og fejlen er usynlig i UI'et.
+  const cs = kilde('screens/ChatScreen.tsx')
+  const kald = cs.match(/tilStreamFelter\(chatCfg[^)]*\)/g) || []
+  expect(kald.length).toBeGreaterThanOrEqual(2)
+  expect(kald.every((k) => k.includes('kodeTilstand'))).toBe(true)
+})
+
 it('der er INGEN diff-badge over komponisten laengere', () => {
   // Bjoern: «i stedet for badge over composer skal +xx -xx flyttes til de
   // inline tool resultater». Tallene bor nu dér hvor arbejdet staar.

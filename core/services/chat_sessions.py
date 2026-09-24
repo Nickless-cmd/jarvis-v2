@@ -488,6 +488,29 @@ def session_version(session_id: str) -> str | None:
     return f"{row[0]}-{agg[0]}-{agg[1]}-{agg[2]}-{agg[3]}"
 
 
+def session_kind(session_id: str) -> str | None:
+    """Samtalens ART ('chat'/'code') — ét felt, ingen historik.
+
+    Samme grund som ``session_version`` ovenfor: at bygge hele samtalen for at
+    læse ét metadata-felt er den last der gjorde Bjørns session til 21,5 MB.
+    Ruten har brug for arten for at afgøre tool-scope (24/9-2026) og må ikke
+    betale for 381 beskeder for at få svaret.
+
+    Returnerer None hvis sessionen ikke findes — kalderen skal kunne skelne
+    «chat» fra «findes ikke».
+    """
+    normalized = (session_id or "").strip()
+    if not normalized:
+        return None
+    with connect() as conn:
+        _sikr_flag_kolonner(conn)
+        row = conn.execute(
+            "SELECT COALESCE(kind, 'chat') FROM chat_sessions WHERE session_id = ?",
+            (normalized,),
+        ).fetchone()
+    return str(row[0]) if row else None
+
+
 # ── Klient-grænse for compact_marker (12/9-2026) ───────────────────────────
 # Markørens content er HELE den serialiserede transcript, når summariser-
 # modellen fejler og falder tilbage til «Mechanical fallback» (målt: 111.507

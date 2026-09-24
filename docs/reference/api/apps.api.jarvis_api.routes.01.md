@@ -613,16 +613,17 @@ _POST /chat/stream/v2 — Anthropic-style SSE protokol._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_ollama_model_tags` | `()` | Set of model names ollama currently serves. Cached 120s; fail-open (empty set). | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L37) |
-| function | `_resolve_ollama_model_name` | `(model)` | Resolve a (possibly bare) ollama model name to an actually-served tag. | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L64) |
-| class | `_ToolResultItem` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L84) |
-| class | `_ToolResultsBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L90) |
-| function | `chat_tool_results` | `(body)` | Client submits locally-executed tool results; resolve the paused visible run. | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L96) |
-| class | `_WarmBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L113) |
-| function | `chat_warm` | `(body)` | Varm den aktive sessions prefix i DeepSeeks cache (prewarm-on-return). | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L121) |
-| function | `maybe_handle_override` | `(text, session_id)` | Owner-override (§6.3) i webchat/desk-kanalen: `!override <TOTP>` / | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L152) |
-| function | `_override_v2_response` | `(reply, *, session_id, model, provider, lane)` | Byg et minimalt men protokol-korrekt v2-SSE-svar for en override-kvittering, | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L172) |
-| function | `chat_stream_v2` | `(request)` | Anthropic-style streaming alternative til /chat/stream. | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L205) |
+| function | `udled_tool_scope` | `(mode, kind)` | Mode + samtalens art → tool-scope. Ren funktion, så reglen kan testes. | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L28) |
+| function | `_ollama_model_tags` | `()` | Set of model names ollama currently serves. Cached 120s; fail-open (empty set). | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L64) |
+| function | `_resolve_ollama_model_name` | `(model)` | Resolve a (possibly bare) ollama model name to an actually-served tag. | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L91) |
+| class | `_ToolResultItem` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L111) |
+| class | `_ToolResultsBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L117) |
+| function | `chat_tool_results` | `(body)` | Client submits locally-executed tool results; resolve the paused visible run. | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L123) |
+| class | `_WarmBody` | `` | — | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L140) |
+| function | `chat_warm` | `(body)` | Varm den aktive sessions prefix i DeepSeeks cache (prewarm-on-return). | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L148) |
+| function | `maybe_handle_override` | `(text, session_id)` | Owner-override (§6.3) i webchat/desk-kanalen: `!override <TOTP>` / | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L179) |
+| function | `_override_v2_response` | `(reply, *, session_id, model, provider, lane)` | Byg et minimalt men protokol-korrekt v2-SSE-svar for en override-kvittering, | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L199) |
+| function | `chat_stream_v2` | `(request)` | Anthropic-style streaming alternative til /chat/stream. | [src](../../../apps/api/jarvis_api/routes/chat_stream_v2.py#L232) |
 
 ## `apps/api/jarvis_api/routes/cheap_balancer.py`
 _Mission Control endpoints for cheap_lane_balancer telemetry + controls._

@@ -271,7 +271,25 @@ it('sender permission-valget og bruger samtalens værktøjs-mode', async () => {
     config,
     'session-1',
     'ret remote delen',
-    expect.objectContaining({ mode: 'chat', approvalMode: 'trust' })
+    // KODE-FLADEN SENDER CODE (24/9-2026). Før stod der 'chat' her — og
+    // testen pinnede dermed fejlen som om den var kontrakten: samtalen var
+    // kind='code' i databasen, men hver besked gik som chat, så broen afviste
+    // skærmbilledet og hele computer-use-gruppen.
+    expect.objectContaining({ mode: 'code', approvalMode: 'trust' })
+  )
+})
+
+it('en besked i CHAT-fladen sendes som chat', async () => {
+  // Modstykket til kode-fladen: uden den ville «altid code» også bestå.
+  mockStream = { ...mockStream, state: { status: 'idle', blocks: [] } }
+  const screen = await render(<ChatScreen />)
+  await waitFor(() => expect(screen.getByText('Send mocked composer')).toBeTruthy())
+  fireEvent.press(screen.getByText('Send mocked composer'))
+  expect(mockSend).toHaveBeenCalledWith(
+    config,
+    'session-1',
+    'ret remote delen',
+    expect.objectContaining({ mode: 'chat' })
   )
 })
 

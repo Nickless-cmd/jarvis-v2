@@ -839,7 +839,7 @@ export function ChatScreen({
         sessionId: sessions.activeId,
         text,
         attachmentIds: pendingAttachments.filter((a) => a.status !== 'error' && a.status !== 'uploading').map((a) => a.uploadId ?? a.id),
-        controls: tilStreamFelter(chatCfg),
+        controls: tilStreamFelter(chatCfg, kodeTilstand),
       })
       setOutboxCount((await loadOutbox()).length)
       setPendingAttachments([])
@@ -863,7 +863,7 @@ export function ChatScreen({
     if (!config) return
     const sessionId = sessions.activeId ?? (await opretSession()).id
     if (!sessions.activeId) void gemIndstillinger(sessionId, chatCfg)
-    const cfg = tilStreamFelter(chatCfg)
+    const cfg = tilStreamFelter(chatCfg, kodeTilstand)
     stream.send(config, sessionId, text, {
       ...cfg,
       attachmentIds,
@@ -1409,6 +1409,7 @@ export function ChatScreen({
         visible={chatCfgOpen}
         onSearch={() => setSoegAaben(true)}
         cfg={chatCfg}
+        kodeFlade={kodeTilstand}
         modeller={modelChoices.filter((c) => c.model)}
         onChange={(next) => {
           const sid = sessions.activeId

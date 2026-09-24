@@ -25,6 +25,14 @@ _DB_PATH = Path(
 ) / "tool_embeddings.sqlite"
 
 
+def _embed_base() -> str:
+    try:
+        from core.services.semantic_memory import embed_base_url
+        return embed_base_url()
+    except Exception:
+        return "http://localhost:11434"   # samme grund som i memory_search
+
+
 def _connect() -> sqlite3.Connection:
     _DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     c = sqlite3.connect(str(_DB_PATH))
@@ -58,7 +66,10 @@ def _compute_embedding(text: str) -> list[float]:
     s = RuntimeSettings()
     model = s.tool_router_embedding_model
     import requests
-    base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+    # Samme embed-endpoint som resten (24/9-2026). Env-var vinder stadig, saa
+    # en bevidst override virker; defaulten er ikke laengere det GPU Jarvis'
+    # arbejdsmodel maetter.
+    base_url = os.getenv("OLLAMA_BASE_URL") or _embed_base()
     r = requests.post(
         f"{base_url}/api/embeddings",
         json={"model": model, "prompt": text},

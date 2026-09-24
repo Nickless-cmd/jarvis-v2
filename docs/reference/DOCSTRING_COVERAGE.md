@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7961/15424 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7963/15427 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 7961/15424 functions/methods documented (51%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 686 | 1265 | 54% |
-| `core.services` | 5256 | 10475 | 50% |
+| `core.services` | 5258 | 10478 | 50% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 107 | 183 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1745,7 +1745,7 @@ Generated from source. 7961/15424 functions/methods documented (51%). The list b
 - `core/services/selvmodel_kobling.py` :: `parse_nomineringer` (L94)
 - `core/services/semantic_indexer.py` :: `start_semantic_indexer` (L34)
 - `core/services/semantic_indexer.py` :: `stop_semantic_indexer` (L62)
-- `core/services/semantic_memory.py` :: `get_stats` (L531)
+- `core/services/semantic_memory.py` :: `get_stats` (L550)
 - `core/services/sensory_archive.py` :: `count` (L257)
 - `core/services/sensory_archive.py` :: `get` (L253)
 - `core/services/sensory_archive.py` :: `list_recent` (L232)
@@ -1898,8 +1898,8 @@ Generated from source. 7961/15424 functions/methods documented (51%). The list b
 - `core/services/tool_contract_shadow.py` :: `pr_vaerktoej` (L41)
 - `core/services/tool_contract_shadow.py` :: `taellere` (L37)
 - `core/services/tool_contract_shadow.py` :: `taellere_fra_cache` (L57)
-- `core/services/tool_embeddings.py` :: `get_embedding` (L71)
-- `core/services/tool_embeddings.py` :: `invalidate` (L91)
+- `core/services/tool_embeddings.py` :: `get_embedding` (L82)
+- `core/services/tool_embeddings.py` :: `invalidate` (L102)
 - `core/services/tool_intent_approval_runtime.py` :: `build_approval_feedback_surface` (L364)
 - `core/services/tool_intent_approval_runtime.py` :: `build_sudo_approval_window_surface` (L177)
 - `core/services/tool_intent_approval_runtime.py` :: `build_tool_intent_approval_surface` (L50)
@@ -2073,7 +2073,7 @@ Generated from source. 7961/15424 functions/methods documented (51%). The list b
 - `core/tools/operator_tools.py` :: `operator_scheduled_list_async` (L1230)
 - `core/tools/operator_tools.py` :: `operator_wakeup_async` (L1215)
 - `core/tools/security_predicates.py` :: `all_predicates` (L86)
-- `core/tools/session_search.py` :: `exec_search_sessions` (L254)
+- `core/tools/session_search.py` :: `exec_search_sessions` (L262)
 - `core/tools/tool_definition_v2.py` :: `ToolDefinitionV2.annonceret_uden_executor` (L86)
 - `core/tools/tool_definition_v2.py` :: `all_definitions` (L211)
 - `core/tools/tool_schema_contract.py` :: `Brud.haard` (L72)

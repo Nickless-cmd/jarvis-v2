@@ -95,6 +95,25 @@ def _default_sources_registered() -> None:
 # Ollama access
 # ---------------------------------------------------------------------------
 
+def embed_base_url() -> str:
+    """Hvor embeddings skal hen. ÉN sandhed for alle embedding-kald.
+
+    Var privat (`_ollama_base_url`) og blev derfor kun brugt her. Tre andre
+    embedding-veje havde deres egen hardkodede adresse mod `localhost:11434`
+    og ramte dermed det GPU Jarvis' arbejdsmodel koerer paa:
+
+        memory_search.py:23      _OLLAMA_BASE = "http://localhost:11434"
+        tool_embeddings.py:61    os.getenv("OLLAMA_BASE_URL", "…11434")
+        core/tools/session_search.py:152   hardkodet i kaldet
+
+    Maalt 24/9-2026: `qwen3:4b` (4916 MiB) og `nomic-embed-text` laa begge paa
+    GTX 1070, mens GTX 1050 Ti stod tom. Under belastning gik embed-kaldet fra
+    0,14 s til 26 s. En dedikeret instans paa det tomme kort loeser det — men
+    kun for de kaldere der spoerger hvor de skal hen.
+    """
+    return _ollama_base_url()
+
+
 def _ollama_base_url() -> str:
     # DEDIKERET embed-host: recall/brain-embeds må IKKE konkurrere med det synlige svar
     # om GPU-ollama'en (localhost). Embed-kaldet kø'ede 28-91s bag svaret → assembly-

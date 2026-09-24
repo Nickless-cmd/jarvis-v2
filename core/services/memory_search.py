@@ -20,7 +20,23 @@ logger = logging.getLogger(__name__)
 
 _INDEX_LOCK = threading.Lock()
 _EMBED_MODEL = "nomic-embed-text"
-_OLLAMA_BASE = "http://localhost:11434"
+def _ollama_base() -> str:
+    """Hvor embeddings skal hen — SAMME sandhed som resten af systemet.
+
+    Var en modul-konstant paa `localhost:11434`, altsaa det GPU Jarvis'
+    arbejdsmodel koerer paa. Maalt 24/9-2026: under belastning gik et
+    embed-kald derhen fra 0,14 s til 26 s, fordi `qwen3:4b` maettede kortet.
+    `embed_base_url()` honorerer runtime-noeglen `embed_ollama_base_url` og
+    peger paa den dedikerede instans paa det tomme GPU.
+    """
+    try:
+        from core.services.semantic_memory import embed_base_url
+        return embed_base_url()
+    except Exception:
+        # Kan resolveren ikke naas, falder vi tilbage paa en adresse der
+        # VIRKER. Et embed-kald der kaster er vaerre end et der er langsomt:
+        # recall ville forsvinde helt i stedet for bare at vente.
+        return "http://localhost:11434"
 
 # In-memory cache of the unpickled index, per-workspace (keyed by .pkl path).
 # Avoids re-unpickling the on-disk index (multi-MB) on every search_memory call.
@@ -116,7 +132,7 @@ def _embed_ollama(texts: list[str]) -> np.ndarray | None:
     try:
         import httpx
         resp = httpx.post(
-            f"{_OLLAMA_BASE}/api/embed",
+            f"{_ollama_base()}/api/embed",
             json={"model": _EMBED_MODEL, "input": list(texts)},
             timeout=30,
         )
@@ -140,7 +156,7 @@ def _embed_ollama(texts: list[str]) -> np.ndarray | None:
         embeddings = []
         for text in texts:
             resp = httpx.post(
-                f"{_OLLAMA_BASE}/api/embeddings",
+                f"{_ollama_base()}/api/embeddings",
                 json={"model": _EMBED_MODEL, "prompt": text},
                 timeout=20,
             )

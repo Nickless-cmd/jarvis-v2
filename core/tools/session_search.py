@@ -148,8 +148,16 @@ def _embed_query(text: str) -> list[float] | None:
         import urllib.request
 
         payload = json.dumps({"model": "nomic-embed-text", "prompt": text}).encode()
+        # SAMME embed-endpoint som resten (24/9-2026). Adressen stod hardkodet
+        # her og pegede paa det GPU Jarvis' arbejdsmodel koerer paa; under
+        # belastning kostede det sekunder i stedet for millisekunder.
+        try:
+            from core.services.semantic_memory import embed_base_url
+            _base = embed_base_url()
+        except Exception:
+            _base = "http://localhost:11434"   # fungerende faldback, ikke tavshed
         req = urllib.request.Request(
-            "http://localhost:11434/api/embeddings",
+            f"{_base}/api/embeddings",
             data=payload,
             method="POST",
             headers={"Content-Type": "application/json"},

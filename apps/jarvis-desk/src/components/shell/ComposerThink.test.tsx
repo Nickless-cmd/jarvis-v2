@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, within } from '@testing-library/react'
 
 vi.mock('../../lib/api', async () => {
   const real = await vi.importActual<Record<string, unknown>>('../../lib/api')
@@ -9,7 +9,7 @@ vi.mock('../../lib/api', async () => {
     uploadAttachment: vi.fn(),
     getVisibleProviders: vi.fn().mockResolvedValue([
       { id: 'deepseek', models: ['deepseek-v4-flash', 'deepseek-v4-pro'] },
-      { id: 'ollama', models: ['local-small'] },
+      { id: 'ollama', models: ['local-small', 'local-1', 'local-2', 'local-3', 'local-4', 'local-5', 'local-6', 'local-7', 'local-8', 'local-9'] },
     ]),
   }
 })
@@ -47,7 +47,7 @@ describe('samlet model- og tænkningsvælger', () => {
     setup()
     const picker = screen.getByRole('button', { name: 'Model og tænkning' })
     expect(picker.textContent).toContain('Standard')
-    expect(picker.textContent).toContain('Automatisk')
+    expect(picker.textContent).toContain('Auto')
     expect(screen.queryByRole('button', { name: 'Tænknings-effekt' })).toBeNull()
     fireEvent.click(picker)
     expect(screen.getByRole('slider', { name: 'Tænkning' })).toBeTruthy()
@@ -66,11 +66,27 @@ describe('samlet model- og tænkningsvælger', () => {
   it('vælger en model fra en anden udbyder i samme menu og sender begge valg', async () => {
     const { onSend } = setup(true)
     fireEvent.click(screen.getByRole('button', { name: 'Model og tænkning' }))
-    fireEvent.click(await screen.findByRole('option', { name: 'local-small' }))
-    expect(screen.getByRole('button', { name: 'Model og tænkning' }).textContent).toContain('Ollama')
+    expect(await screen.findByRole('option', { name: 'V4 Flash' })).toBeTruthy()
+    expect(screen.queryByRole('option', { name: 'local-small' })).toBeNull()
+    fireEvent.change(screen.getByRole('combobox', { name: 'Udbyder' }), { target: { value: 'ollama' } })
+    expect(screen.queryByRole('option', { name: 'V4 Flash' })).toBeNull()
+    expect(within(screen.getByRole('listbox', { name: 'Modeller' })).getAllByRole('option').length).toBeLessThanOrEqual(7)
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Find model' }), { target: { value: 'local-9' } })
+    fireEvent.click(screen.getByRole('option', { name: 'local-9' }))
+    expect(screen.getByRole('button', { name: 'Model og tænkning' }).textContent).toContain('local-9')
     send('hej')
-    expect(onSend.mock.calls[0]?.[1]).toMatchObject({ providerChoice: 'ollama', model: 'local-small' })
+    expect(onSend.mock.calls[0]?.[1]).toMatchObject({ providerChoice: 'ollama', model: 'local-9' })
     expect(localStorage.getItem(PROV_KEY)).toBe('ollama')
-    expect(localStorage.getItem(MODEL_KEY)).toBe('local-small')
+    expect(localStorage.getItem(MODEL_KEY)).toBe('local-9')
+  })
+
+  it('holder knapteksten kort, men viser fuldt valg som tooltip', () => {
+    localStorage.setItem(PROV_KEY, 'deepseek')
+    localStorage.setItem(MODEL_KEY, 'deepseek-v4-flash')
+    setup(true)
+    const picker = screen.getByRole('button', { name: 'Model og tænkning' })
+    expect(picker.textContent).toMatch(/V4 Flash.*Auto/)
+    expect(picker.textContent).not.toContain('Deepseek')
+    expect(picker.title).toContain('Deepseek · V4 Flash · Automatisk')
   })
 })

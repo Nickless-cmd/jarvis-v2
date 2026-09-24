@@ -25,6 +25,9 @@ export interface SentAttachment { id: string; src?: string; name: string; isImag
 const THINK_NAVN: Record<ThinkingMode, string> = {
   fast: 'Hurtig', think: 'Automatisk', deep: 'Dyb',
 }
+const THINK_KORT: Record<ThinkingMode, string> = {
+  fast: 'Hurtig', think: 'Auto', deep: 'Dyb',
+}
 const THINK_HJAELP: Record<ThinkingMode, string> = {
   fast: 'Svar uden at taenke foerst — hurtigst.',
   think: 'Serveren vaelger selv ud fra hvad du spoerger om.',
@@ -251,6 +254,7 @@ export function Composer({
   // Alle visible-klare providers + modeller (owner). Hentes fra /chat/visible-providers.
   const [providers, setProviders] = useState<Array<{ id: string; models: string[] }>>([])
   const [modelOpen, setModelOpen] = useState(false)
+  const [modelQuery, setModelQuery] = useState('')
   const [thinkMode, setThinkMode] = useState<ThinkingMode>(() => readThinkingMode())
   const ref = useRef<HTMLTextAreaElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -330,6 +334,16 @@ export function Composer({
   const currentModelLabel = isOwner
     ? (selModel ? modelLabel(provChoice, selModel) : 'Vælg model')
     : (memberTier === 'pro' ? 'Pro' : 'Standard')
+  const selectedProviderModels = modelsFor(provChoice)
+  const filteredProviderModels = selectedProviderModels.filter((id) =>
+    modelLabel(provChoice, id).toLocaleLowerCase().includes(modelQuery.toLocaleLowerCase()),
+  )
+  const visibleProviderModels = modelQuery
+    ? filteredProviderModels.slice(0, 7)
+    : [
+        ...filteredProviderModels.filter((id) => id === selModel),
+        ...filteredProviderModels.filter((id) => id !== selModel),
+      ].slice(0, 7)
 
   // Auto-resize: composer vokser med teksten (op til CSS max-height, derefter
   // scroller den indvendigt) i stedet for at være en fast 2-rækkers boks.
@@ -799,33 +813,49 @@ export function Composer({
           <div className="composer-popover-anchor" onClick={stop}>
             <button type="button" className="model-pill combined-model-pill"
               aria-label="Model og tænkning" aria-expanded={modelOpen} aria-haspopup="dialog"
-              onClick={() => { setModelOpen((o) => !o); setPermOpen(false); setMenuOpen(false) }}>
+              title={`${isOwner ? `${provLabel(provChoice)} · ` : ''}${currentModelLabel} · ${THINK_NAVN[thinkMode]}`}
+              onClick={() => { setModelOpen((o) => !o); setModelQuery(''); setPermOpen(false); setMenuOpen(false) }}>
               <span className="dot" />
-              <span className="combined-model-name">{isOwner && <>{provLabel(provChoice)} · </>}{currentModelLabel}</span>
+              <span className="combined-model-name">{currentModelLabel}</span>
               <span className="combined-model-separator">·</span>
-              <span>{THINK_NAVN[thinkMode]}</span>
+              <span>{THINK_KORT[thinkMode]}</span>
               <ChevronDown size={12} aria-hidden="true" />
             </button>
             {modelOpen && (
               <div className="composer-menu combined-model-menu" role="dialog" aria-label="Model og tænkning">
                 <div className="combined-menu-heading">Model</div>
-                {isOwner ? ownerProviders.map((pid) => (
-                  <div key={pid}>
-                    <div className="combined-provider-heading">{provLabel(pid)}</div>
-                    <div role="listbox" aria-label={`${provLabel(pid)} modeller`}>
-                      {modelsFor(pid).map((id) => (
+                {isOwner ? (
+                  <>
+                    <label className="combined-provider-field" htmlFor="composer-provider-select">Udbyder</label>
+                    <select id="composer-provider-select" className="combined-provider-select"
+                      value={provChoice}
+                      onChange={(e) => {
+                        setProvChoice(e.target.value)
+                        setSelModel('')
+                        setModelQuery('')
+                      }}>
+                      {ownerProviders.map((pid) => <option key={pid} value={pid}>{provLabel(pid)}</option>)}
+                    </select>
+                    {selectedProviderModels.length > 7 && (
+                      <input className="combined-model-search" type="search" aria-label="Find model"
+                        placeholder={`Find model blandt ${selectedProviderModels.length}…`}
+                        value={modelQuery} onChange={(e) => setModelQuery(e.target.value)} />
+                    )}
+                    <div role="listbox" aria-label="Modeller">
+                      {visibleProviderModels.map((id) => (
                         <button key={id} type="button" role="option"
-                          aria-selected={provChoice === pid && selModel === id}
-                          className={provChoice === pid && selModel === id ? 'active' : ''}
-                          onClick={() => { setProvChoice(pid); setSelModel(id) }}>
-                          {modelLabel(pid, id)}
-                          {provChoice === pid && selModel === id && <span className="combined-check">✓</span>}
+                          aria-selected={selModel === id}
+                          className={selModel === id ? 'active' : ''}
+                          onClick={() => { setSelModel(id); setModelQuery('') }}>
+                          {modelLabel(provChoice, id)}
+                          {selModel === id && <span className="combined-check">✓</span>}
                         </button>
                       ))}
-                      {modelsFor(pid).length === 0 && <span className="combined-model-loading">Henter modeller…</span>}
                     </div>
-                  </div>
-                )) : (
+                    {selectedProviderModels.length === 0 && <span className="combined-model-loading">Henter modeller…</span>}
+                    {selectedProviderModels.length > 0 && visibleProviderModels.length === 0 && <span className="combined-model-loading">Ingen modeller matcher søgningen.</span>}
+                  </>
+                ) : (
                   <div role="listbox" aria-label="Modeller">
                     {(['standard', 'pro'] as const).map((tier) => (
                       <button key={tier} type="button" role="option"

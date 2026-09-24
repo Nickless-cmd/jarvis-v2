@@ -69,3 +69,15 @@ def test_omsluttende_anfoerselstegn_fjernes(isolated_runtime):
     de stå som en del af beskeden."""
     dj.gem_forslag(session_id="s1", forslag='«Vis mig de to i karantaene»')
     assert dj.tag_forslag(session_id="s1")["forslag"] == "Vis mig de to i karantaene"
+
+
+def test_aeldre_forslag_prunes_saa_hentning_efterlader_INTET(isolated_runtime):
+    """Det ældre forslag må ikke ligge og vente bag det nyeste.
+
+    Blev det ikke prunet, ville hentningen efter det nyeste give det GAMLE —
+    et skridt fra en tur der er kørt videre. Garantien «forbrugt = intet»
+    skal holde uanset hvor mange forslag der er skrevet i sessionen."""
+    dj.gem_forslag(session_id="s1", forslag="det foerste", nu="2026-09-24T20:00:00+00:00")
+    dj.gem_forslag(session_id="s1", forslag="det sidste", nu="2026-09-24T20:00:05+00:00")
+    assert dj.tag_forslag(session_id="s1")["forslag"] == "det sidste"
+    assert dj.tag_forslag(session_id="s1") is None

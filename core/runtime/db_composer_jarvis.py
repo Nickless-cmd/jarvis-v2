@@ -87,10 +87,16 @@ def gem_forslag(
 ) -> str:
     """Læg Jarvis' forslag ned for sessionen. Returnerer `forslag_id` (""=ugyldigt).
 
-    Der er ingen «overskriv»-semantik: to forslag i samme session er to
-    forslag. `tag_forslag` tager det NYESTE, så et forslag der bliver skrevet
-    senere i turen vinder over et tidligere — hvilket er rigtigt, for det
-    senere er skrevet med mere af turen bag sig.
+    Et forslag skrevet senere i turen vinder over et tidligere — det er
+    skrevet med mere af turen bag sig. Det tidligere **slettes** derfor i
+    samme skrivning frem for at blive liggende.
+
+    Pruneringen er ikke kosmetik. Lå det ældre forslag og ventede, ville det
+    dukke op ved en hentning EFTER det nyeste var forbrugt — og vise Bjørn et
+    skridt fra en tur der er kørt videre. Det er præcis det `tag_forslag`s
+    éngangsbrug findes for at forhindre, så uden pruneringen holder garantien
+    kun når der er skrevet ét forslag. Med den står der højst ét pr. session,
+    og en hentning uden forslag falder tilbage til den lokale model.
     """
     sid = (session_id or "").strip()
     tekst = _rens(forslag)
@@ -101,6 +107,9 @@ def gem_forslag(
     def _skriv() -> None:
         with connect() as conn:
             _sikr_tabel(conn)
+            # Højst ét forslag pr. session: det ældre er skrevet med mindre af
+            # turen bag sig og ville ellers dukke op når det nyeste er forbrugt.
+            conn.execute(f"DELETE FROM {_TABEL} WHERE session_id = ?", (sid,))
             conn.execute(
                 f"""
                 INSERT INTO {_TABEL}

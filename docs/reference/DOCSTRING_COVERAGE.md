@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7940/15400 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7942/15403 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -32,10 +32,10 @@ Generated from source. 7940/15400 functions/methods documented (51%). The list b
 | `core.services.visible_runs_sections` | 20 | 32 | 62% |
 | `core.skills` | 0 | 0 | 0% |
 | `core.skills.voice` | 39 | 49 | 79% |
-| `core.tools` | 485 | 1004 | 48% |
+| `core.tools` | 487 | 1006 | 48% |
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
-| `core.undo` | 2 | 17 | 11% |
+| `core.undo` | 2 | 18 | 11% |
 | `core.util` | 9 | 10 | 90% |
 | `scripts` | 208 | 455 | 45% |
 | `scripts.acceptance` | 3 | 7 | 42% |
@@ -2055,23 +2055,23 @@ Generated from source. 7940/15400 functions/methods documented (51%). The list b
 - `core/tools/identity_pin_tools.py` :: `remove_pin` (L118)
 - `core/tools/native_tool_gate.py` :: `is_disabled` (L26)
 - `core/tools/notification_tools.py` :: `exec_get_notification_preferences` (L23)
-- `core/tools/operator_tools.py` :: `operator_browser_click_async` (L658)
-- `core/tools/operator_tools.py` :: `operator_browser_close_async` (L749)
-- `core/tools/operator_tools.py` :: `operator_browser_get_links_async` (L649)
-- `core/tools/operator_tools.py` :: `operator_browser_get_text_async` (L636)
-- `core/tools/operator_tools.py` :: `operator_browser_status_async` (L740)
-- `core/tools/operator_tools.py` :: `operator_browser_type_async` (L676)
-- `core/tools/operator_tools.py` :: `operator_multi_edit` (L205)
-- `core/tools/operator_tools.py` :: `operator_process_kill_async` (L1272)
-- `core/tools/operator_tools.py` :: `operator_process_list_async` (L1282)
-- `core/tools/operator_tools.py` :: `operator_process_output_async` (L1260)
-- `core/tools/operator_tools.py` :: `operator_process_spawn_async` (L1235)
-- `core/tools/operator_tools.py` :: `operator_process_status_async` (L1250)
+- `core/tools/operator_tools.py` :: `operator_browser_click_async` (L679)
+- `core/tools/operator_tools.py` :: `operator_browser_close_async` (L770)
+- `core/tools/operator_tools.py` :: `operator_browser_get_links_async` (L670)
+- `core/tools/operator_tools.py` :: `operator_browser_get_text_async` (L657)
+- `core/tools/operator_tools.py` :: `operator_browser_status_async` (L761)
+- `core/tools/operator_tools.py` :: `operator_browser_type_async` (L697)
+- `core/tools/operator_tools.py` :: `operator_multi_edit` (L226)
+- `core/tools/operator_tools.py` :: `operator_process_kill_async` (L1293)
+- `core/tools/operator_tools.py` :: `operator_process_list_async` (L1303)
+- `core/tools/operator_tools.py` :: `operator_process_output_async` (L1281)
+- `core/tools/operator_tools.py` :: `operator_process_spawn_async` (L1256)
+- `core/tools/operator_tools.py` :: `operator_process_status_async` (L1271)
 - `core/tools/operator_tools.py` :: `operator_read_file` (L67)
-- `core/tools/operator_tools.py` :: `operator_reminder_async` (L1181)
-- `core/tools/operator_tools.py` :: `operator_scheduled_cancel_async` (L1222)
-- `core/tools/operator_tools.py` :: `operator_scheduled_list_async` (L1209)
-- `core/tools/operator_tools.py` :: `operator_wakeup_async` (L1194)
+- `core/tools/operator_tools.py` :: `operator_reminder_async` (L1202)
+- `core/tools/operator_tools.py` :: `operator_scheduled_cancel_async` (L1243)
+- `core/tools/operator_tools.py` :: `operator_scheduled_list_async` (L1230)
+- `core/tools/operator_tools.py` :: `operator_wakeup_async` (L1215)
 - `core/tools/security_predicates.py` :: `all_predicates` (L86)
 - `core/tools/session_search.py` :: `exec_search_sessions` (L254)
 - `core/tools/tool_definition_v2.py` :: `ToolDefinitionV2.annonceret_uden_executor` (L86)
@@ -2087,7 +2087,7 @@ Generated from source. 7940/15400 functions/methods documented (51%). The list b
 - `core/tools/workspace_capabilities.py` :: `get_capability_invocation_truth` (L555)
 - `core/tools/workspace_capabilities.py` :: `invoke_workspace_capability` (L403)
 - `core/tools/workspace_capabilities.py` :: `load_workspace_capabilities` (L144)
-- `core/undo/message_edits.py` :: `capture_after` (L147)
+- `core/undo/message_edits.py` :: `capture_after` (L168)
 - `core/util/timezone.py` :: `dk_weekday_en` (L69)
 - `scripts/acceptance/migration_gate.py` :: `main` (L203)
 - `scripts/acceptance/migration_gate.py` :: `run_suites` (L99)

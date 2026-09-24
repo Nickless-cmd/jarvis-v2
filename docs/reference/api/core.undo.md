@@ -18,15 +18,16 @@ _Undo file writes belonging to one saved assistant message._
 | function | `_save` | `(key, value)` | — | [src](../../../core/undo/message_edits.py#L42) |
 | function | `_snapshot` | `(path)` | — | [src](../../../core/undo/message_edits.py#L47) |
 | function | `_target` | `(name, arguments)` | — | [src](../../../core/undo/message_edits.py#L68) |
-| function | `_remote_read` | `(path, user_id)` | — | [src](../../../core/undo/message_edits.py#L85) |
-| function | `_remote_write` | `(path, user_id, content)` | — | [src](../../../core/undo/message_edits.py#L97) |
-| function | `_remote_snapshot` | `(path, user_id)` | — | [src](../../../core/undo/message_edits.py#L108) |
-| function | `capture_before` | `(session_id, call_id, name, arguments)` | Take a bounded snapshot immediately before a supported file tool executes. | [src](../../../core/undo/message_edits.py#L120) |
-| function | `capture_after` | `(token, result)` | — | [src](../../../core/undo/message_edits.py#L147) |
-| function | `_message_blocks` | `(session_id, message_id)` | — | [src](../../../core/undo/message_edits.py#L166) |
-| function | `_records` | `(session_id, message_id)` | — | [src](../../../core/undo/message_edits.py#L182) |
-| function | `_decode` | `(snapshot)` | — | [src](../../../core/undo/message_edits.py#L203) |
-| function | `_restore` | `(path, snapshot, remote_user_id, data)` | — | [src](../../../core/undo/message_edits.py#L212) |
-| function | `_matches` | `(current, expected)` | — | [src](../../../core/undo/message_edits.py#L234) |
-| function | `undo_message` | `(session_id, message_id)` | Restore exact files only if all still equal this message's after-image. | [src](../../../core/undo/message_edits.py#L240) |
+| function | `_remote_file_state` | `(path, user_id)` | — | [src](../../../core/undo/message_edits.py#L85) |
+| function | `_remote_write` | `(path, user_id, content)` | — | [src](../../../core/undo/message_edits.py#L100) |
+| function | `_remote_remove` | `(path, user_id, expected_sha, expected_mode)` | — | [src](../../../core/undo/message_edits.py#L111) |
+| function | `_remote_snapshot` | `(path, user_id)` | — | [src](../../../core/undo/message_edits.py#L124) |
+| function | `capture_before` | `(session_id, call_id, name, arguments)` | Take a bounded snapshot immediately before a supported file tool executes. | [src](../../../core/undo/message_edits.py#L141) |
+| function | `capture_after` | `(token, result)` | — | [src](../../../core/undo/message_edits.py#L168) |
+| function | `_message_blocks` | `(session_id, message_id)` | — | [src](../../../core/undo/message_edits.py#L187) |
+| function | `_records` | `(session_id, message_id)` | — | [src](../../../core/undo/message_edits.py#L203) |
+| function | `_decode` | `(snapshot)` | — | [src](../../../core/undo/message_edits.py#L224) |
+| function | `_restore` | `(path, snapshot, remote_user_id, data, *, expected=…)` | — | [src](../../../core/undo/message_edits.py#L233) |
+| function | `_matches` | `(current, expected)` | — | [src](../../../core/undo/message_edits.py#L258) |
+| function | `undo_message` | `(session_id, message_id)` | Restore exact files only if all still equal this message's after-image. | [src](../../../core/undo/message_edits.py#L264) |
 

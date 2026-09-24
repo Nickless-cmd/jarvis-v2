@@ -82,16 +82,19 @@ def _target(name: str, arguments: dict[str, Any]) -> Path | None:
         return None
 
 
-def _remote_read(path: str, user_id: str) -> str:
-    from core.tools.operator_tools import operator_read_file_async
+def _remote_file_state(path: str, user_id: str) -> dict[str, Any]:
+    from core.tools.operator_tools import operator_file_snapshot_async
     from core.tools.simple_tools_operator import _run_operator_async_impl
     result = _run_operator_async_impl(
-        lambda: operator_read_file_async(path=path, user_id=user_id),
-        tool_name="operator_read_file", timeout_s=35.0,
+        lambda: operator_file_snapshot_async(path=path, user_id=user_id),
+        tool_name="operator_file_snapshot", timeout_s=35.0,
     )
     if result.get("status") != "ok":
-        raise RuntimeError(str(result.get("error") or "kunne ikke læse filen"))
-    return str(result.get("result") or "")
+        raise RuntimeError(str(result.get("error") or "kunne ikke undersøge filen"))
+    state = result.get("result")
+    if not isinstance(state, dict) or not isinstance(state.get("exists"), bool):
+        raise RuntimeError("operatørbroen gav ikke en gyldig filtilstand")
+    return state
 
 
 def _remote_write(path: str, user_id: str, content: str) -> None:
@@ -105,14 +108,32 @@ def _remote_write(path: str, user_id: str, content: str) -> None:
         raise RuntimeError(str(result.get("error") or "kunne ikke skrive filen"))
 
 
+def _remote_remove(path: str, user_id: str, expected_sha: str, expected_mode: int) -> None:
+    from core.tools.operator_tools import operator_remove_file_async
+    from core.tools.simple_tools_operator import _run_operator_async_impl
+    result = _run_operator_async_impl(
+        lambda: operator_remove_file_async(path=path, user_id=user_id,
+                                            expected_sha256=expected_sha,
+                                            expected_mode=expected_mode),
+        tool_name="operator_remove_file", timeout_s=35.0,
+    )
+    if result.get("status") != "ok":
+        raise RuntimeError(str(result.get("error") or "kunne ikke fjerne filen"))
+
+
 def _remote_snapshot(path: str, user_id: str) -> dict[str, Any] | None:
     try:
-        data = _remote_read(path, user_id).encode("utf-8")
+        state = _remote_file_state(path, user_id)
+        if not state["exists"]:
+            return {"exists": False, "sha": None, "data": None, "mode": None}
+        if not isinstance(state.get("content"), str) or not isinstance(state.get("mode"), int):
+            return None
+        data = state["content"].encode("utf-8")
         if len(data) > _MAX_BYTES:
             return None
         return {"exists": True, "sha": hashlib.sha256(data).hexdigest(),
                 "data": base64.b64encode(zlib.compress(data)).decode("ascii"),
-                "mode": None}
+                "mode": state["mode"]}
     except Exception:  # En frakoblet operatørbro giver intet sikkert før/efter-billede.
         return None
 
@@ -210,10 +231,13 @@ def _decode(snapshot: dict[str, Any]) -> bytes | None:
 
 
 def _restore(path: str, snapshot: dict[str, Any], remote_user_id: str | None,
-             data: bytes | None) -> None:
+             data: bytes | None, *, expected: dict[str, Any] | None = None) -> None:
     if remote_user_id:
         if data is None:
-            raise ValueError("En ny fil på operatørens maskine kan ikke slettes sikkert endnu")
+            if not expected or not expected["exists"]:
+                raise ValueError("Manglende filfingeraftryk")
+            _remote_remove(path, remote_user_id, expected["sha"], expected["mode"])
+            return
         _remote_write(path, remote_user_id, data.decode("utf-8"))
         return
     target = Path(path)
@@ -273,7 +297,8 @@ def undo_message(session_id: str, message_id: str) -> dict[str, Any]:
             if not _matches(current, pair["after"]):
                 raise RuntimeError(f"{path} er ændret under fortrydelsen")
             applied.append(path)
-            _restore(path, pair["before"], pair["remote_user_id"], pair["before_data"])
+            _restore(path, pair["before"], pair["remote_user_id"], pair["before_data"],
+                     expected=pair["after"])
     except Exception as exc:
         for path in reversed(applied):
             pair = by_path[path]

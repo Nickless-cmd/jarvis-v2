@@ -97,7 +97,9 @@ def test_external_change_between_two_calls_blocks_undo(tmp_path, monkeypatch):
 
 def test_operator_file_uses_bridge_snapshot(monkeypatch):
     remote = {"/home/bs/file.txt": "one"}
-    monkeypatch.setattr(undo, "_remote_read", lambda path, user: remote[path])
+    monkeypatch.setattr(undo, "_remote_file_state", lambda path, user: {
+        "exists": path in remote, "content": remote.get(path, ""), "mode": 0o644,
+    })
     monkeypatch.setattr(undo, "_remote_write", lambda path, user, content: remote.__setitem__(path, content))
     before = undo.capture_before("s1", "call-1", "operator_edit_file",
                                  {"path": "/home/bs/file.txt", "_runtime_user_id": "bjorn"})
@@ -108,6 +110,29 @@ def test_operator_file_uses_bridge_snapshot(monkeypatch):
     ])
     assert undo.undo_message("s1", "m1")["status"] == "ok"
     assert remote["/home/bs/file.txt"] == "one"
+
+
+def test_operator_new_file_is_removed_only_if_unchanged(monkeypatch):
+    remote = {}
+    monkeypatch.setattr(undo, "_remote_file_state", lambda path, user: {
+        "exists": path in remote, "content": remote.get(path, ""), "mode": 0o644,
+    })
+
+    def remove(path, user, expected_sha, expected_mode):
+        assert expected_mode == 0o644
+        assert undo.hashlib.sha256(remote[path].encode()).hexdigest() == expected_sha
+        del remote[path]
+
+    monkeypatch.setattr(undo, "_remote_remove", remove)
+    before = undo.capture_before("s1", "call-1", "operator_write_file",
+                                 {"path": "/home/bs/new.txt", "_runtime_user_id": "bjorn"})
+    remote["/home/bs/new.txt"] = "created"
+    undo.capture_after(before, {"status": "ok"})
+    monkeypatch.setattr(undo, "_message_blocks", lambda sid, mid: [
+        {"type": "tool_use", "id": "call-1", "name": "operator_write_file"}
+    ])
+    assert undo.undo_message("s1", "m1")["status"] == "ok"
+    assert "/home/bs/new.txt" not in remote
 
 
 def test_conflict_in_one_file_keeps_all_files(tmp_path, monkeypatch):

@@ -90,6 +90,27 @@ async def operator_write_file_async(
     return result or {}
 
 
+async def operator_file_snapshot_async(*, path: str, user_id: str,
+                                       timeout_s: float = _DEFAULT_TIMEOUT_S) -> dict[str, Any]:
+    """Read a bounded text snapshot or an explicit missing-file marker."""
+    result = await _bridge_call(tool="operator_file_snapshot", args={"path": str(path)},
+                                user_id=user_id, timeout_s=timeout_s)
+    return result if isinstance(result, dict) else {}
+
+
+async def operator_remove_file_async(*, path: str, user_id: str,
+                                     expected_sha256: str, expected_mode: int,
+                                     timeout_s: float = _DEFAULT_TIMEOUT_S) -> dict[str, Any]:
+    """Remove only a newly created file matching its last observed fingerprint."""
+    result = await _bridge_call(
+        tool="operator_remove_file",
+        args={"path": str(path), "expected_sha256": expected_sha256,
+              "expected_mode": expected_mode},
+        user_id=user_id, timeout_s=timeout_s,
+    )
+    return result if isinstance(result, dict) else {}
+
+
 # ── operator_edit_file ──────────────────────────────────────────────────
 
 

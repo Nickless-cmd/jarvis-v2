@@ -210,6 +210,16 @@
    inde i gruppen og folder sig sammen med arbejdet. */
 .raekkevisning .rv-mellem,
 .raekkevisning .rv-svar { font-size: 14px; line-height: 24px; color: var(--fg-1); }
+/* Kun den lokale stream → gemt-besked overgang. Svaret kommer roligt til syne
+   uden en ny loading-shimmer eller et layoutskift. Historiske beskeder animeres ikke. */
+.msg-block[data-just-completed] .raekkevisning .rv-svar,
+.msg-block[data-just-completed] .raekkevisning .rv-turTekst {
+  animation: rv-svar-ankomst 180ms ease-out both;
+}
+@keyframes rv-svar-ankomst {
+  from { opacity: .72; transform: translateY(2px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 /* Synteser er Jarvis' løbende besked, på samme venstrekant som slutteksten.
    Kun udfoldede værktøjsdetaljer har indrykning. */
 .raekkevisning .rv-mellem { margin: var(--rv-enhed) 0; padding-left: 0; }
@@ -442,6 +452,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .raekkevisning .rv-r[data-koerer]::after { animation: none; }
+  .msg-block[data-just-completed] .raekkevisning .rv-svar,
+  .msg-block[data-just-completed] .raekkevisning .rv-turTekst { animation: none; }
 }
 
 /* ── Tal-linjen under composeren ──────────────────────────────────────────

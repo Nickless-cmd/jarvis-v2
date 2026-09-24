@@ -1,7 +1,7 @@
 import { maaPolle } from '../lib/ro'
 import { Fragment } from 'react'
 import { useRammeReducer } from '../lib/useRammeReducer'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useFastholdBund } from '../lib/useFastholdBund'
 import { PanelRight, SquareStack, FileDiff, AudioWaveform, Bot, Globe } from 'lucide-react'
 import { JobsPanel } from '../components/shell/JobsPanel'
@@ -342,7 +342,7 @@ export function ChatView({
     return () => { cancelled = true; clearInterval(id) }
   }, [settings, sessionId, stream.status, stream.workingSessionId])
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (stream.status === 'done' && stream.blocks.length > 0 && reconciledForRun.current !== stream.activeRunId) {
       reconciledForRun.current = stream.activeRunId
       sessions.reconcile({
@@ -1015,7 +1015,8 @@ export function ChatView({
               `.msg-block`, fik den transkriptets fulde bredde, mens beskederne
               har deres egen — saa stregen laa forskudt (Bjoern 23/9-2026). */}
           {m.id === nyeFra && <div className="msg-block"><NyeBeskederLinje /></div>}
-          <div data-rail-id={m.id} className="msg-block">
+          <div data-rail-id={m.id} className="msg-block"
+            data-just-completed={m.clientStatus === 'server_missing_keep_stream' ? '' : undefined}>
           <MessageRow
             role={m.role === 'user' ? 'user' : 'assistant'}
             blocks={withoutPauseAsk(m.content)}

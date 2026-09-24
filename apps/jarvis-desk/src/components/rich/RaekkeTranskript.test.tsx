@@ -304,6 +304,20 @@ describe('RaekkeTranskript', () => {
     expect(container.querySelectorAll('.rv-arbejdsrunde')).toHaveLength(0)
   })
 
+  it('holder foldelinjen på samme sted i viewport når arbejdet åbnes', () => {
+    const { container } = render(<div className="transcript"><RaekkeTranskript blocks={TUR} streaming={false} /></div>)
+    const scroller = container.querySelector('.transcript') as HTMLElement
+    const button = container.querySelector('.rv-tur') as HTMLButtonElement
+    scroller.scrollTop = 400
+    button.getBoundingClientRect = () => ({ top: button.getAttribute('aria-expanded') === 'true' ? -150 : 250 }) as DOMRect
+
+    fireEvent.click(button)
+
+    expect(button).toHaveAttribute('aria-expanded', 'true')
+    expect(scroller.scrollTop).toBe(0)
+    expect(container.querySelector('.rv-gruppe')?.previousElementSibling).toBe(button)
+  })
+
   it('viser arbejdet mens der streames — man skal kunne følge med', () => {
     render(<RaekkeTranskript blocks={TUR} streaming />)
     expect(screen.getByText('Working…')).toBeInTheDocument()

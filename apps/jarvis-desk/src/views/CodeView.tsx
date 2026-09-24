@@ -1,7 +1,7 @@
 import { maaPolle } from '../lib/ro'
 import { Fragment } from 'react'
 import { useRammeReducer } from '../lib/useRammeReducer'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useVoiceConversation } from '../hooks/useVoiceConversation'
 import { FolderTree, PanelRight, Lock, ShieldCheck, FolderOpen, Gauge, SquareStack, FileDiff, Bot, Globe } from 'lucide-react'
 import { onPauseSvar, pauseAskIn, withoutPauseAsk, type PauseAsk } from '../lib/pauseAsk'
@@ -632,7 +632,7 @@ export function CodeView({
   }, [sessions.sessions, sessionId])
 
   // Reconcile assistant-svar ind i transcript når et run slutter (som chat).
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (stream.status === 'done' && stream.blocks.length > 0
         && reconciledForRun.current !== stream.activeRunId) {
       reconciledForRun.current = stream.activeRunId
@@ -1140,7 +1140,8 @@ export function CodeView({
             <Fragment key={m.id}>
             {/* Samme boks som en besked — se ChatView. */}
             {m.id === nyeFra && <div className="msg-block"><NyeBeskederLinje /></div>}
-            <div data-rail-id={m.id} className="msg-block">
+            <div data-rail-id={m.id} className="msg-block"
+              data-just-completed={m.clientStatus === 'server_missing_keep_stream' ? '' : undefined}>
             <MessageRow
               role={m.role === 'user' ? 'user' : 'assistant'}
               blocks={withoutPauseAsk(m.content)}

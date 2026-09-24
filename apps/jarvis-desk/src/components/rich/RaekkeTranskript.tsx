@@ -21,7 +21,7 @@
  * Prosaen går stadig gennem `BlocksRenderer`, så markdown, kodeblokke og
  * billeder er nøjagtig som i bobblevisningen.
  */
-import { memo, useState } from 'react'
+import { memo, useRef, useState } from 'react'
 import { Sparkles, Sparkle, ChevronDown, ChevronRight, SquareTerminal, BookOpen, type LucideIcon } from 'lucide-react'
 import type { ContentBlock } from '../../lib/sseProtocol'
 import type { ApiConfig } from '../../lib/api'
@@ -33,6 +33,7 @@ import { postFor, kropFor } from './raekkeKroppe'
 import { erUnderagent } from '../../lib/agentKald'
 import { BlocksRenderer, etiketterFraBlokke } from './BlocksRenderer'
 import { MarkdownRenderer } from './MarkdownRenderer'
+import { useFoldPosition } from './useFoldPosition'
 
 /** Første linje af en tanke — resten ligger i kroppen. */
 function foersteLinje(s: string): string {
@@ -122,9 +123,12 @@ function Raekke({
   kind?: string
 }) {
   const [aaben, setAaben] = useState(false)
+  const foldRef = useRef<HTMLDivElement>(null)
+  const huskFold = useFoldPosition(foldRef, aaben)
   const foldbar = krop != null
   return (
     <div
+      ref={foldRef}
       className="rv-r"
       {...(foldbar ? { 'data-foldbar': '' } : {})}
       {...(aaben ? { 'data-aaben': '' } : {})}
@@ -133,10 +137,10 @@ function Raekke({
       {...(tanke ? { 'data-tanke': '' } : {})}
       {...(kind ? { 'data-kind': kind } : {})}
       {...(foldbar
-        ? { role: 'button', tabIndex: 0, 'aria-expanded': aaben, onClick: () => setAaben((v) => !v),
+        ? { role: 'button', tabIndex: 0, 'aria-expanded': aaben, onClick: () => { huskFold(); setAaben((v) => !v) },
             onKeyDown: (e: React.KeyboardEvent) => {
               if (e.target !== e.currentTarget || (e.key !== 'Enter' && e.key !== ' ')) return
-              e.preventDefault(); setAaben((v) => !v)
+              e.preventDefault(); huskFold(); setAaben((v) => !v)
             } }
         : {})}
     >
@@ -277,6 +281,8 @@ function Arbejdsrunde({
   rundeEtiketter: Record<string, string>
 }) {
   const [aaben, setAaben] = useState(false)
+  const foldRef = useRef<HTMLButtonElement>(null)
+  const huskFold = useFoldPosition(foldRef, aaben)
   const vaerktoejer: Extract<ContentBlock, { type: 'tool_use' }>[] = []
   for (const e of elementer) {
     if (e.slags === 'blok' && e.blok.type === 'tool_use') vaerktoejer.push(e.blok)
@@ -300,8 +306,8 @@ function Arbejdsrunde({
   const Ikon = arbejdsIkon(vaerktoejer)
   return (
     <div className="rv-arbejdsrunde">
-      <button type="button" className="rv-arbejdsknap" aria-expanded={aaben}
-        onClick={() => setAaben((v) => !v)}>
+      <button type="button" ref={foldRef} className="rv-arbejdsknap" aria-expanded={aaben}
+        onClick={() => { huskFold(); setAaben((v) => !v) }}>
         <Ikon className="rv-arbejdsikon" size={17} strokeWidth={1.8} aria-hidden="true" />
         <span className={`rv-arbejdsfortaelling${koerer ? ' shimmer' : ''}`}>{beskrivelse}</span>
         {diff && <span className="rv-diffstat" aria-label={`Tilføjet ${diff.add} linjer, fjernet ${diff.del} linjer`}>
@@ -337,14 +343,16 @@ function RaekkeTranskriptImpl({
   // FOELGE MED, og bagefter skal rodet vaek (Bjoern 22/9-2026).
   const [aabenManuelt, setAabenManuelt] = useState<boolean | null>(null)
   const aaben = aabenManuelt ?? streaming
+  const turRef = useRef<HTMLButtonElement>(null)
+  const huskFold = useFoldPosition(turRef, aaben)
 
   return (
     <div className="raekkevisning">
       {arbejde.length > 0 && (
         <>
           <button
-            type="button" className="rv-tur" aria-expanded={aaben}
-            onClick={() => setAabenManuelt(!aaben)}
+            type="button" ref={turRef} className="rv-tur" aria-expanded={aaben}
+            onClick={() => { huskFold(); setAabenManuelt(!aaben) }}
           >
             {/* `shimmer` er desks egen regel (app.css) — 2.25s, pinned 1:1 mod
                 Claude Desktop af tokens.test.ts. Vi laaner den, vi laver ikke

@@ -115,7 +115,7 @@ describe('ChatView integration', () => {
   })
 
   it('shows optimistic user msg + streamed assistant text', async () => {
-    render(
+    const { container } = render(
       <SettingsProvider initialConfig={cfg}>
         <SessionProvider config={cfg}>
           <StreamProvider config={cfg}>
@@ -137,6 +137,9 @@ describe('ChatView integration', () => {
       handlersRef.current?.onEvent({ type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: 'svar' } })
     })
     expect(await screen.findByText('svar')).toBeInTheDocument()
+    act(() => { handlersRef.current?.onEvent({ type: 'message_stop' }) })
+    await act(() => new Promise<void>((r) => setTimeout(r, 120)))
+    expect(container.querySelector('.msg-block[data-just-completed]')).toHaveTextContent('svar')
   })
 
   it('viser pause_and_ask over chatten i stedet for inde i den scrollbare transcript', async () => {

@@ -101,21 +101,21 @@ _Central HUD — J.A.R.V.I.S-style Textual UI, built 1:1 to the mockup._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| class | `CentralHud` | `` | The Central HUD app shell (mockup-faithful). | [src](../../../apps/central_cli/central_cli/hud.py#L83) |
-| method | `CentralHud.__init__` | `(self, *, client=…, live=…)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L238) |
-| method | `CentralHud.compose` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L273) |
-| method | `CentralHud.on_mount` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L298) |
-| method | `CentralHud._prime` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L316) |
-| method | `CentralHud._tick_pulse` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L344) |
-| method | `CentralHud._keep_focus` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L348) |
-| method | `CentralHud.show_tab` | `(self, name)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L356) |
-| method | `CentralHud._apply_tab_visibility` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L362) |
-| method | `CentralHud._populate_active_tab` | `(self, force=…)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L374) |
-| method | `CentralHud.refresh_data` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L465) |
-| method | `CentralHud._render_header` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L497) |
-| method | `CentralHud._render_tabs` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L531) |
-| method | `CentralHud._render_cmd` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L542) |
-| function | `run_hud` | `(ns)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L560) |
+| class | `CentralHud` | `` | The Central HUD app shell (mockup-faithful). | [src](../../../apps/central_cli/central_cli/hud.py#L90) |
+| method | `CentralHud.__init__` | `(self, *, client=…, live=…)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L245) |
+| method | `CentralHud.compose` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L280) |
+| method | `CentralHud.on_mount` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L305) |
+| method | `CentralHud._prime` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L323) |
+| method | `CentralHud._tick_pulse` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L351) |
+| method | `CentralHud._keep_focus` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L355) |
+| method | `CentralHud.show_tab` | `(self, name)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L363) |
+| method | `CentralHud._apply_tab_visibility` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L369) |
+| method | `CentralHud._populate_active_tab` | `(self, force=…)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L381) |
+| method | `CentralHud.refresh_data` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L474) |
+| method | `CentralHud._render_header` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L531) |
+| method | `CentralHud._render_tabs` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L565) |
+| method | `CentralHud._render_cmd` | `(self)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L576) |
+| function | `run_hud` | `(ns)` | — | [src](../../../apps/central_cli/central_cli/hud.py#L594) |
 
 ## `apps/central_cli/central_cli/hud_actions.py`
 _Central HUD — action handlers + command/write layer (``_ActionMixin``)._

@@ -22,7 +22,14 @@ keep working unchanged.
 from __future__ import annotations
 
 from datetime import datetime
+from time import monotonic as _monotonic
 from typing import Any
+
+#: Hvor ofte de LANGSOMME flader hentes (omkostning, affekt, tone).
+#: `overview` bliver paa HUD'ens egen 3-sekunders takt — det er den der goer
+#: billedet levende. De fire andre aendrer sig i minutter, og at spoerge dem
+#: hvert 3. sekund gav 100 API-kald i minuttet fra én aaben Central.
+_LANGSOM_INTERVAL_S = 30.0
 
 from rich.table import Table
 from rich.text import Text
@@ -311,7 +318,7 @@ class CentralHud(_PopulateMixin, _ActionMixin, App):
         try:
             self.query_one("#hud-cmd-input", Input).focus()
         except Exception:
-            pass
+            pass          # inputtet er ikke monteret endnu — fokus er pynt
 
     def _prime(self) -> None:
         if self._client is None:
@@ -351,7 +358,7 @@ class CentralHud(_PopulateMixin, _ActionMixin, App):
             if self.focused is not inp:
                 inp.focus()
         except Exception:
-            pass
+            pass          # samme: findes inputtet ikke, er der intet at fokusere
 
     def show_tab(self, name: str) -> None:
         self.active_tab = name
@@ -369,7 +376,7 @@ class CentralHud(_PopulateMixin, _ActionMixin, App):
             try:
                 self.query_one(wid).display = vis
             except Exception:
-                pass
+                pass      # widget'en hoerer til en anden fane og er ikke monteret
 
     def _populate_active_tab(self, force: bool = False) -> None:
         try:
@@ -453,18 +460,24 @@ class CentralHud(_PopulateMixin, _ActionMixin, App):
                         if _t.row_count:
                             _t.move_cursor(row=min(_prev_row, _t.row_count - 1))
                     except Exception:
-                        pass
+                        pass  # markoer-gendannelse er en behagelighed, ikke data
                     # detaljen skal følge den gendannede markør (ikke row 0 fra populate)
                     if name in ("nerves", "clusters", "incidents", "anomalies",
                                 "governance", "agents", "balancer", "runs", "work"):
                         self._refresh_detail_for_current()
         except Exception:
+            # Hele fane-opdateringen: sker der noget uventet, beholder HUD'en
+            # det billede den havde. En halvtegnet fane er vaerre end en gammel.
             return
 
     # -- refresh -----------------------------------------------------------
     def refresh_data(self) -> None:
         if self._client is None:
             return
+        # Første kald skal hente ALT, ellers står de langsomme felter tomme
+        # indtil det første interval er gået.
+        if not hasattr(self, "_sidst_langsom"):
+            self._sidst_langsom = -_LANGSOM_INTERVAL_S
         try:
             start = datetime.now()
             self._overview = datasource.overview(self._client)
@@ -474,22 +487,43 @@ class CentralHud(_PopulateMixin, _ActionMixin, App):
             self._connected = False
             self._sync_header()
             return
-        try:
-            self._cost = datasource.cost_today(self._client)
-        except Exception:
-            pass
-        try:
-            self._costs_daily = datasource.costs_daily(self._client)
-        except Exception:
-            pass
-        try:
-            self._affect = datasource.affect(self._client)
-        except Exception:
-            pass
-        try:
-            self._tone = datasource.tone(self._client)
-        except Exception:
-            pass
+        # DE LANGSOMME FLADER HENTES SJÆLDNERE (24/9-2026).
+        #
+        # Målt på Jarvis-maskinen: denne metode lavede FEM API-kald hvert 3.
+        # sekund — 100 kald i minuttet, døgnet rundt, fra én åben Central. På
+        # runtime-siden så det ud som en poll-storm: 20 kald i minuttet alene
+        # mod `/api/internal/runtime-surface/affect`, hver med et HTTP-hop fra
+        # api-processen til runtime-processen og et flade-build i den anden
+        # ende.
+        #
+        # `overview` er det der gør HUD'en levende, og den bliver hvor den er.
+        # De fire andre ændrer sig i minutter, ikke sekunder: dagens omkostning
+        # akkumulerer, affekt og tone bevæger sig langsomt. At spørge dem ti
+        # gange oftere end de ændrer sig er ren støj.
+        nu = _monotonic()
+        if nu - self._sidst_langsom >= _LANGSOM_INTERVAL_S:
+            self._sidst_langsom = nu
+            # De fire slugte undtagelser er BEVIDSTE og betyder det samme:
+            # fejler ét opslag, beholder feltet sin forrige vaerdi paa skaermen
+            # i stedet for at blanke ud. `overview` ovenfor er den der afgoer om
+            # forbindelsen lever — fejler DEN, stopper hele opdateringen. Disse
+            # fire er pynt paa et billede der allerede er tegnet.
+            try:
+                self._cost = datasource.cost_today(self._client)
+            except Exception:
+                pass          # behold forrige tal frem for at blanke feltet
+            try:
+                self._costs_daily = datasource.costs_daily(self._client)
+            except Exception:
+                pass          # samme: et hul i grafen er vaerre end et gammelt tal
+            try:
+                self._affect = datasource.affect(self._client)
+            except Exception:
+                pass          # affekt aendrer sig langsomt; den gamle er stadig naer
+            try:
+                self._tone = datasource.tone(self._client)
+            except Exception:
+                pass          # som affekt — tonen er ikke vaek fordi ét kald fejler
         self._sync_header()
         self._populate_active_tab()
 

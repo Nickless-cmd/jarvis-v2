@@ -254,11 +254,19 @@ describe('RaekkeTranskript', () => {
     // synteserne druknede i dem.
     render(<RaekkeTranskript blocks={TUR} streaming={false} />)
     expect(screen.getByText('Slog noget op og kørte en kommando · 41s')).toBeInTheDocument()
-    // `hidden` fjerner ikke noden — den skjuler den. Og bemaerk: jsdom
-    // indlaeser ikke CSS, saa DENNE test kan ikke se om reglen der faktisk
-    // skjuler gruppen findes. Det maaler `raekkevisning.css`-testen nedenfor.
-    expect(screen.getByText('Bash')).not.toBeVisible()
+    // Skjulte runder maa ikke fylde DOM'en i en lang gemt samtale.
+    expect(screen.queryByText('Bash')).toBeNull()
     expect(screen.getByText(/ikke betalingsklar/)).toBeInTheDocument()
+  })
+
+  it('monterer først rækkerne når hele turen foldes ud', () => {
+    const { container } = render(<RaekkeTranskript blocks={TUR} streaming={false} />)
+    expect(container.querySelectorAll('.rv-arbejdsrunde')).toHaveLength(0)
+    fireEvent.click(container.querySelector('.rv-tur')!)
+    expect(container.querySelectorAll('.rv-arbejdsrunde')).toHaveLength(2)
+    expect(container.querySelectorAll('.rv-r').length).toBeGreaterThan(0)
+    fireEvent.click(container.querySelector('.rv-tur')!)
+    expect(container.querySelectorAll('.rv-arbejdsrunde')).toHaveLength(0)
   })
 
   it('viser arbejdet mens der streames — man skal kunne følge med', () => {
@@ -385,6 +393,7 @@ describe('RaekkeTranskript', () => {
     expect(tal?.querySelector('.git-add')?.textContent).toBe('+5')
     expect(tal?.querySelector('.git-del')?.textContent).toBe('−2')
     rerender(<RaekkeTranskript blocks={redigering} streaming={false} />)
+    fireEvent.click(container.querySelector('.rv-tur')!)
     expect(container.querySelector('.rv-arbejdsknap .rv-diffstat')?.textContent).toContain('+5')
   })
 

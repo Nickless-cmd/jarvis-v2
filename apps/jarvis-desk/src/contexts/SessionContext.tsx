@@ -29,6 +29,8 @@ export interface SessionContextValue {
   rename: (id: string, title: string) => Promise<void>
   remove: (id: string) => Promise<void>
   refresh: () => Promise<void>
+  /** Poll den aabne samtale; opdater sidebar-listen hoejst hvert 15. sekund. */
+  refreshMessages: () => Promise<void>
   appendOptimistic: (msg: ChatMessage) => void
   reconcile: (assistantMsg: ChatMessage) => void
 }
@@ -52,8 +54,10 @@ export function SessionProvider({
   const [messages, setMessages] = useState<LocalMessage[]>([])
   const [loading, setLoading] = useState(false)
   const [loadFejl, setLoadFejl] = useState('')
+  const lastListLoadAtRef = useRef(0)
 
   const loadSessions = useCallback(async () => {
+    lastListLoadAtRef.current = Date.now()
     const list = await listSessions(config)
     setSessions((current) => stableSessions(current, list))
     return list
@@ -171,10 +175,7 @@ export function SessionProvider({
     try { localStorage.removeItem('jarvis-desk:activeSession') } catch { /* ignore */ }
   }, [])
 
-  const refresh = useCallback(async () => {
-    // Listen FØRST: en ny eller netop omdøbt session skal frem i panelet,
-    // også når der ikke er en aktiv samtale at hente beskeder for.
-    void loadSessions()
+  const refreshActiveSession = useCallback(async () => {
     if (!activeId) return
     const etag = etagBySessionRef.current.get(activeId)
     const snapshot = etag
@@ -183,7 +184,21 @@ export function SessionProvider({
     if (!snapshot) return
     if (snapshot.etag) etagBySessionRef.current.set(activeId, snapshot.etag)
     setMessages((local) => mergeServer(local, snapshot.messages))
-  }, [config, activeId, loadSessions])
+  }, [config, activeId])
+
+  const refresh = useCallback(async () => {
+    // Eksplicit refresh opdaterer listen straks, ogsaa uden aktiv samtale.
+    void loadSessions()
+    await refreshActiveSession()
+  }, [loadSessions, refreshActiveSession])
+
+  const refreshMessages = useCallback(async () => {
+    // Code/Chat poller hvert 1,5 sekund. Listen aendres sjældent og kræver
+    // JSON-parse + sammenligning af alle sessioner; beskederne har egen ETag.
+    // Fokus og eksplicit refresh henter fortsat listen med det samme.
+    if (Date.now() - lastListLoadAtRef.current >= 15_000) void loadSessions()
+    await refreshActiveSession()
+  }, [loadSessions, refreshActiveSession])
 
   const create = useCallback(async (title: string, kind: 'chat' | 'code' = 'chat') => {
     const sess = await createSession(config, title, kind)
@@ -216,8 +231,8 @@ export function SessionProvider({
   }, [])
 
   const value = useMemo<SessionContextValue>(
-    () => ({ sessions, activeId, messages, loading, loadFejl, genindlaes, select, newChat, create, rename, remove, refresh, appendOptimistic, reconcile }),
-    [sessions, activeId, messages, loading, loadFejl, genindlaes, select, newChat, create, rename, remove, refresh, appendOptimistic, reconcile],
+    () => ({ sessions, activeId, messages, loading, loadFejl, genindlaes, select, newChat, create, rename, remove, refresh, refreshMessages, appendOptimistic, reconcile }),
+    [sessions, activeId, messages, loading, loadFejl, genindlaes, select, newChat, create, rename, remove, refresh, refreshMessages, appendOptimistic, reconcile],
   )
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>
 }

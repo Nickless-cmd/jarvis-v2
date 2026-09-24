@@ -157,7 +157,7 @@ function Element({ e, streaming, config, beskedId }: {
       <Raekke
         Ikon={lookupTool(sidste.tool ?? '').Icon}
         sum={emne(sidste)}
-        koerer={sidste.status === 'running'} fejl={sidste.status === 'error'}
+        koerer={streaming && sidste.status === 'running'} fejl={sidste.status === 'error'}
         krop={
           <div className="rv-kort rv-liste rv-sporListe">
             {e.trin.map((t, i) => {
@@ -216,7 +216,7 @@ function Element({ e, streaming, config, beskedId }: {
       <Raekke
         Ikon={meta.Icon} slags={etiket}
         sum={sum}
-        koerer={b.status === 'running'}
+        koerer={streaming && b.status === 'running'}
         fejl={fejl}
         krop={kropFor(b.name, b.input, b.result, fejl, config,
           { partialJson: b.partialJson, running: streaming && b.result == null && (b.status ?? 'running') === 'running' },
@@ -316,7 +316,7 @@ function RaekkeTranskriptImpl({
             <span className="rv-turC" aria-hidden="true"><FoldPil aaben={aaben} /></span>
           </button>
           <div className="rv-gruppe" hidden={!aaben}>
-            {sektioner.map((s, i) => {
+            {aaben && sektioner.map((s, i) => {
               if (s.slags === 'syntese') return <Syntese key={i} tekst={s.tekst} streaming={streaming} />
               if (s.slags === 'enkelt') return <Element key={i} e={s.element} streaming={streaming} config={config} beskedId={beskedId} />
               return <Arbejdsrunde key={i} elementer={s.elementer} streaming={streaming}

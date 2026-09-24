@@ -303,15 +303,15 @@ export function ChatView({
           const active = serverHasRun && stream.status !== 'working'
           if (active) bgUntil = Date.now() + 6000
           setBgActive(active || Date.now() < bgUntil)
-          if (active) { cooldown = 3; void sessions.refresh() }       // mens det kører
-          else if (cooldown > 0) { cooldown -= 1; void sessions.refresh() } // efterslæb
+          if (active) { cooldown = 3; void sessions.refreshMessages() }       // mens det kører
+          else if (cooldown > 0) { cooldown -= 1; void sessions.refreshMessages() } // efterslæb
           else if (stream.status !== 'working') {
             // ROBUSTHED (cross-device realtime, Bjørn 2026-06-20): et kort mobil-
             // svar-run kan starte+slutte mellem to ChatView-polls → vi misser
             // active-kanten (sidebar fangede den, men transcript'en opdaterede
             // aldrig). Pluk derfor ALTID den åbne sessions beskeder op når vi
             // ikke selv streamer. Billig GET; mergeServer dedup'er → ingen flicker.
-            void sessions.refresh()
+            void sessions.refreshMessages()
           }
 
           // HÄNG-DETEKTOR — NEUTRALISERET (Bjørn 2026-06-29: "mobil tog over /

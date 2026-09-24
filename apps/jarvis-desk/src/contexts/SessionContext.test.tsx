@@ -287,6 +287,26 @@ describe('session-listen opdaterer af sig selv', () => {
     await act(async () => { await result.current.refresh() })
     expect(spy.mock.calls.length).toBeGreaterThan(foer)
   })
+
+  it('hyppige besked-polls henter samtalen hver gang, men begrænser session-listen', async () => {
+    const { listSessions, getSession } = await import('../lib/api')
+    const list = vi.mocked(listSessions)
+    const session = vi.mocked(getSession)
+    list.mockClear()
+    session.mockClear()
+    localStorage.clear()
+    const { result } = renderHook(() => useSessions(), { wrapper })
+    await waitFor(() => expect(list).toHaveBeenCalled())
+    await act(async () => { result.current.select('s1') })
+    const listFoer = list.mock.calls.length
+    const sessionFoer = session.mock.calls.length
+
+    await act(async () => { await result.current.refreshMessages() })
+    await act(async () => { await result.current.refreshMessages() })
+
+    expect(session.mock.calls.length).toBe(sessionFoer + 2)
+    expect(list.mock.calls.length).toBeLessThanOrEqual(listFoer + 1)
+  })
 })
 
 // ---------------------------------------------------------------------------

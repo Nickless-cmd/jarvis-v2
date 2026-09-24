@@ -554,9 +554,9 @@ export function CodeView({
           const active = serverHasRun && stream.status !== 'working'
           if (active) bgUntil = Date.now() + 6000
           setBgActive(active || Date.now() < bgUntil)
-          if (active) { cooldown = 3; void sessions.refresh() }
-          else if (cooldown > 0) { cooldown -= 1; void sessions.refresh() }
-          else if (stream.status !== 'working') { void sessions.refresh() }
+          if (active) { cooldown = 3; void sessions.refreshMessages() }
+          else if (cooldown > 0) { cooldown -= 1; void sessions.refreshMessages() }
+          else if (stream.status !== 'working') { void sessions.refreshMessages() }
         })
         .catch(() => { /* behold sidste — ingen flicker */ })
     }

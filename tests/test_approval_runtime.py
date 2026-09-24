@@ -98,7 +98,7 @@ def _laeg(navn: str, alder_s: float, run) -> None:
                             result={}, run=run)
     kort["created_at"] = (datetime.now(UTC)
                           - timedelta(seconds=alder_s)).isoformat()
-    VR._PENDING_APPROVALS[navn] = kort
+    VR.saet_godkendelse(navn, kort)
 
 
 def test_fejningen_fjerner_kun_de_UDLOEBNE(isolated_runtime, run):
@@ -126,10 +126,16 @@ def test_fejningen_kaster_aldrig(isolated_runtime, monkeypatch):
 
 # ── og at man kan spoerge om et kort ─────────────────────────────────────
 
-def test_state_finder_kortet_i_hukommelsen(isolated_runtime, run):
+def test_state_finder_kortet_paa_disken(isolated_runtime, run):
+    """Navnet var «i hukommelsen» — og det var netop problemet.
+
+    Kortene laa i en dict per proces. `jarvis-api` og `jarvis-runtime` delte
+    filen men genindlaeste den aldrig, saa et kort skabt i den ene var usynligt
+    i den anden indtil en genstart (24/9-2026).
+    """
     import core.services.visible_runs as VR
-    VR._PENDING_APPROVALS["a"] = AR.build_request(
-        tool_name="bash", arguments={}, result={}, run=run)
+    VR.saet_godkendelse("a", AR.build_request(
+        tool_name="bash", arguments={}, result={}, run=run))
     assert AR.state("a")["tool_name"] == "bash"
 
 

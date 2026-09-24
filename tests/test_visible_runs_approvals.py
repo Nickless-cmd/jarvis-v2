@@ -4,8 +4,6 @@ import core.services.permission_classifier as pc
 
 
 def test_resolve_unknown_returns_error(monkeypatch):
-    monkeypatch.setattr(vra._vr, "_PENDING_APPROVALS", {})
-    monkeypatch.setattr(vra._vr, "_persist_pending_approvals", lambda: None)
     monkeypatch.setattr(vra._vr, "_get_visible_approval_state", lambda aid: None)
     res = vra.resolve_pending_approval("does-not-exist", approved=True)
     assert res["status"] == "error"
@@ -16,8 +14,7 @@ def test_gold_hook_records_owner_decision_on_deny(monkeypatch):
     pc._stash.clear()
     pc.stash_prediction("appr-x", "write_file", "approve")
     pending = {"status": "pending", "tool_name": "write_file", "session_id": "s"}
-    monkeypatch.setattr(vra._vr, "_PENDING_APPROVALS", {"appr-x": dict(pending)})
-    monkeypatch.setattr(vra._vr, "_persist_pending_approvals", lambda: None)
+    vra._vr.saet_godkendelse("appr-x", dict(pending))
     monkeypatch.setattr(vra._vr, "_get_visible_approval_state", lambda aid: None)
     monkeypatch.setattr(vra._vr, "_set_visible_approval_state", lambda aid, st: None)
     monkeypatch.setattr(vra.event_bus, "publish", lambda *a, **k: None)
@@ -40,7 +37,9 @@ def _pending(monkeypatch, approval_id, tool="bash", args=None):
     import core.services.visible_runs_approvals as A
     p = {"tool_name": tool, "arguments": args or {"command": "ls"},
          "run_id": "r1", "session_id": "s1", "status": "pending"}
-    A._vr._PENDING_APPROVALS[approval_id] = p
+    # Gennem den rigtige vej: kortene bor paa disken og deles af to processer
+    # (24/9-2026). En raa dict-skrivning ville ikke naa derhen koden laeser.
+    A._vr.saet_godkendelse(approval_id, p)
     return p
 
 

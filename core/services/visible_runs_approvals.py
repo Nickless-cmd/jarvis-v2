@@ -84,9 +84,11 @@ def resolve_pending_approval(approval_id: str, *, approved: bool,
     # der ogsaa daekker oplaesningen — saa den anden svarer ser en tilstand der
     # ikke er «pending», og bliver afvist af vagten der allerede fandtes.
     with _OVERTAGELSES_LAAS:
-        pending = _vr._PENDING_APPROVALS.pop(approval_id, None)
-        if pending is not None:
-            _vr._persist_pending_approvals()
+        # `fjern_godkendelse` tager kortet under FIL-laas, saa den anden
+        # proces' kort ikke slettes af en gemning af vores egen dict. Den
+        # trådlokale `_OVERTAGELSES_LAAS` udenom daekker stadig to svarere i
+        # SAMME proces; filaasen daekker de to processer.
+        pending = _vr.fjern_godkendelse(approval_id)
         shared_pending = _vr._get_visible_approval_state(approval_id)
         if not pending and shared_pending:
             pending = shared_pending
@@ -122,8 +124,7 @@ def resolve_pending_approval(approval_id: str, *, approved: bool,
     if _ejer and _svarer and _ejer != _svarer:
         logger.warning("Fase 4: afviser KRYDSBRUGER-svar paa %s — ejer=%r svarer=%r",
                        approval_id, _ejer, _svarer)
-        _vr._PENDING_APPROVALS[approval_id] = pending      # kortet er IKKE brugt
-        _vr._persist_pending_approvals()
+        _vr.saet_godkendelse(approval_id, pending)   # kortet er IKKE brugt
         return {
             "status": "error",
             "tool": pending.get("tool_name") or "",
@@ -148,8 +149,7 @@ def resolve_pending_approval(approval_id: str, *, approved: bool,
     if _for_gammel:
         logger.warning("Fase 4: afviser UDLOEBET godkendelse %s (%s) — %s",
                        approval_id, pending.get("tool_name"), _for_gammel)
-        _vr._PENDING_APPROVALS.pop(approval_id, None)
-        _vr._persist_pending_approvals()
+        _vr.fjern_godkendelse(approval_id)
         return {
             "status": "error",
             "tool": pending.get("tool_name") or "",

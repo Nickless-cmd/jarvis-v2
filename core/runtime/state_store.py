@@ -12,10 +12,12 @@ needed the same treatment, so the pattern is now centralized.
 """
 from __future__ import annotations
 
+import fcntl
 import json
 import logging
 import os
 import threading
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
@@ -80,3 +82,26 @@ def save_json_strict(name: str, data: Any) -> None:
             tmp.unlink(missing_ok=True)
         except OSError:
             pass
+
+
+@contextmanager
+def med_laas(name: str):
+    """Serialisér read-modify-write paa én state-fil paa tvaers af processer.
+
+    `jarvis-api` og `jarvis-runtime` koerer samme kode i hver sin proces og
+    deler disse filer. Uden en laas er «laes, aendr, gem» tre skridt hvor den
+    ene proces kan naa at skrive imellem — og da hver gemning skriver HELE
+    filen, forsvinder den andens aendring sporloest.
+
+    Moensteret er taget fra `in_flight_runs._med_laas`, hvor det har vaeret i
+    drift siden 12/9-2026 med samme begrundelse. Det bor her nu, saa den naeste
+    delte fil ikke skal opfinde det igen.
+    """
+    p = _path(name).with_suffix(".lock")
+    p.parent.mkdir(parents=True, exist_ok=True)
+    with p.open("a+") as handle:
+        fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)

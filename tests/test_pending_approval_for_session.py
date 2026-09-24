@@ -29,19 +29,18 @@ class _Run:
 @pytest.fixture(autouse=True)
 def _tom_venteliste():
     import core.services.visible_runs as vr
-    gammel = dict(vr._PENDING_APPROVALS)
-    vr._PENDING_APPROVALS.clear()
-    yield vr._PENDING_APPROVALS
-    vr._PENDING_APPROVALS.clear()
-    vr._PENDING_APPROVALS.update(gammel)
+    # Kortene bor paa DISKEN (24/9-2026) og deles af api- og runtime-processen.
+    # Conftest rydder lageret foer hver test; her giver vi bare modulet videre,
+    # saa `_laeg` kan skrive gennem den rigtige vej.
+    yield vr
 
 
-def _laeg(venteliste, approval_id: str, session_id: str, *, tool: str = "bash", nu: str = "2026-09-20T10:00:00+00:00"):
-    venteliste[approval_id] = {
+def _laeg(vr, approval_id: str, session_id: str, *, tool: str = "bash", nu: str = "2026-09-20T10:00:00+00:00"):
+    vr.saet_godkendelse(approval_id, {
         "tool_name": tool, "arguments": {"command": "rm -rf /tmp/x"},
         "result": {}, "run_id": "r1", "session_id": session_id,
         "created_at": nu, "owner_user_id": "u1", "invocation_digest": "d",
-    }
+    })
 
 
 def test_finder_kortet_for_SIN_samtale(_tom_venteliste):

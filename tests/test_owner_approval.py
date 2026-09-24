@@ -102,10 +102,9 @@ def test_resolve_giver_ejer_godkendelsen_videre(monkeypatch):
     monkeypatch.setattr("core.tools.simple_tools.execute_tool_force", fake_force)
     monkeypatch.setattr("core.tools.simple_tools.format_tool_result_for_model",
                         lambda n, r: "kørt")
-    monkeypatch.setattr(_vr, "_PENDING_APPROVALS",
-                        {"a1": {"tool_name": "bash", "arguments": dict(DESTRUKTIV),
-                                "run_id": "r1", "session_id": "", "status": "pending"}})
-    monkeypatch.setattr(_vr, "_persist_pending_approvals", lambda: None)
+    # Gennem den rigtige vej: kortene bor paa disken (24/9-2026).
+    _vr.saet_godkendelse("a1", {"tool_name": "bash", "arguments": dict(DESTRUKTIV),
+                                "run_id": "r1", "session_id": "", "status": "pending"})
     monkeypatch.setattr(_vr, "_get_visible_approval_state", lambda aid: {})
     monkeypatch.setattr(_vr, "_set_visible_approval_state", lambda aid, p: None)
 

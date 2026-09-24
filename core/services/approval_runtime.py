@@ -92,7 +92,7 @@ def pending_for_session(session_id: str) -> dict[str, Any] | None:
 
     kandidater = [
         {**kort, "approval_id": aid}
-        for aid, kort in list(_vr._PENDING_APPROVALS.items())
+        for aid, kort in _vr.godkendelser_nu().items()
         if str((kort or {}).get("session_id") or "") == sid
     ]
     if not kandidater:
@@ -125,7 +125,7 @@ def pending_for_owner(user_id: str) -> dict[str, Any] | None:
 
     kandidater = [
         {**kort, "approval_id": aid}
-        for aid, kort in list(_vr._PENDING_APPROVALS.items())
+        for aid, kort in _vr.godkendelser_nu().items()
         if str((kort or {}).get("owner_user_id") or "") == uid
     ]
     if not kandidater:
@@ -156,7 +156,7 @@ def alle_pending_for_owner(user_id: str) -> list[dict[str, Any]]:
 
     kandidater = [
         {**kort, "approval_id": aid}
-        for aid, kort in list(_vr._PENDING_APPROVALS.items())
+        for aid, kort in _vr.godkendelser_nu().items()
         if str((kort or {}).get("owner_user_id") or "") == uid
     ]
     kandidater.sort(key=lambda k: str(k.get("created_at") or ""), reverse=True)
@@ -189,7 +189,8 @@ def state(approval_id: str) -> dict[str, Any] | None:
     docs/superpowers/specs/2026-09-21-notifikations-feed-design.md).
     """
     import core.services.visible_runs as _vr
-    kort = _vr._PENDING_APPROVALS.get(approval_id)
+    # Disken, ikke processens kopi: kortet kan vaere skabt i den ANDEN proces.
+    kort = _vr.godkendelser_nu().get(approval_id)
     if kort is not None:
         return dict(kort)
     delt = _vr._get_visible_approval_state(approval_id)
@@ -208,15 +209,18 @@ def sweep_expired() -> dict[str, int]:
         import core.services.visible_runs as _vr
         from core.services.visible_runs_approvals import _er_udloebet
 
-        doede = [k for k, v in list(_vr._PENDING_APPROVALS.items())
+        # Fejningen koerer i BEGGE processer. Uden read-modify-write under laas
+        # ville den ene kunne gemme sin (aeldre) dict oven paa den andens nye
+        # kort — altsaa slette et kort Bjoern venter paa at se.
+        aktuelle = _vr.godkendelser_nu()
+        doede = [k for k, v in aktuelle.items()
                  if isinstance(v, dict) and _er_udloebet(v)]
         for k in doede:
-            _vr._PENDING_APPROVALS.pop(k, None)
+            _vr.fjern_godkendelse(k)
         if doede:
-            _vr._persist_pending_approvals()
             logger.info("approval_runtime: fejede %d udloebne kort", len(doede))
         ud["fejet"] = len(doede)
-        ud["tilbage"] = len(_vr._PENDING_APPROVALS)
+        ud["tilbage"] = len(_vr.godkendelser_nu())
     except Exception:
         logger.warning("approval_runtime: fejningen fejlede", exc_info=True)
     return ud

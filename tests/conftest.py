@@ -1476,3 +1476,24 @@ def kald_rute(vaerdi):
     if inspect.isawaitable(vaerdi):
         return asyncio.new_event_loop().run_until_complete(vaerdi)
     return vaerdi
+
+
+@pytest.fixture(autouse=True)
+def _tomt_godkendelses_lager():
+    """Godkendelses-kortene bor paa DISKEN (24/9-2026) — tom dem foer hver test.
+
+    Kortene laa foer i en dict i hukommelsen, indlaest én gang ved import.
+    `jarvis-api` og `jarvis-runtime` deler filen, saa et kort skabt i den ene
+    proces var usynligt i den anden indtil en genstart — Bjoerns tilbagevendende
+    «jeg tror han er staaet af, men kortet ligger paa mobilen».
+
+    Nu er disken sandheden. Men shield-mappen er session-scoped, saa uden denne
+    oprydning ville kort fra én test laekke ind i den naeste.
+    """
+    try:
+        import core.services.visible_runs as vr
+        for _aid in list(vr.godkendelser_nu()):
+            vr.fjern_godkendelse(_aid)
+    except Exception:
+        pass   # lageret findes maaske ikke i en minimal testkontekst
+    yield

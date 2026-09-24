@@ -230,7 +230,7 @@ _Én doer ind og ud af en godkendelse — Fase 4's sidste stykke._
 | function | `alle_pending_for_owner` | `(user_id)` | ALLE ventende kort for en EJER — ikke kun det nyeste. | [src](../../../core/services/approval_runtime.py#L137) |
 | function | `decide` | `(approval_id, *, approved, answered_by=…)` | Svar paa en godkendelse. Den ENE vej ind for enhver svarer. | [src](../../../core/services/approval_runtime.py#L166) |
 | function | `state` | `(approval_id)` | Hvad ved vi om dette kort? None hvis det ikke findes. | [src](../../../core/services/approval_runtime.py#L180) |
-| function | `sweep_expired` | `()` | Fjern udloebne kort. Returnerer hvad der blev fejet. | [src](../../../core/services/approval_runtime.py#L199) |
+| function | `sweep_expired` | `()` | Fjern udloebne kort. Returnerer hvad der blev fejet. | [src](../../../core/services/approval_runtime.py#L200) |
 
 ## `core/services/arc_rule_extractor.py`
 _Arc rule extractor — turns narrative arcs into actionable rules._

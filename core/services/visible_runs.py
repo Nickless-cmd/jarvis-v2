@@ -321,6 +321,70 @@ _PENDING_APPROVALS: dict[str, dict] = _friske_godkendelser(
     _load_approvals_state(_APPROVALS_STATE_KEY, {}))
 
 
+# ── Kortene er DELT mellem to processer (24/9-2026) ─────────────────────────
+#
+# `_PENDING_APPROVALS` blev indlaest ÉN gang — her, ved import — og gemt ved
+# hver aendring. Men aldrig genindlaest. `jarvis-api` og `jarvis-runtime` koerer
+# samme kode i hver sin proces og deler filen, saa et kort skabt i den ene var
+# USYNLIGT i den anden indtil en genstart.
+#
+# Bjoerns symptom, gentaget over maaneder: «jeg kan sidde i en samtale i desk og
+# tro han er staaet af, fordi mobilen har overtaget og approval-kortet er landet
+# der». Det er ikke mobilen der overtager. Kortet var aldrig ét sted.
+#
+# To halvdele, og de skal begge med:
+#   * LAESNING fra disk, saa begge processer ser de samme kort.
+#   * Mutation som read-modify-write under laas. Uden den ville to processer,
+#     der hver gemmer HELE sin dict, kunne slette hinandens kort — og med
+#     laesning fra disk ville det tabte kort saa vaere usynligt for ALLE.
+#
+# Laasen er `state_store.med_laas`, samme moenster som `in_flight_runs` har
+# brugt siden 12/9 med praecis samme begrundelse.
+
+def godkendelser_nu() -> dict[str, dict]:
+    """Kortene som de ER paa disken. Disken er sandheden, ikke processens kopi."""
+    # IKKE `_friske_godkendelser` her. Den kasserer udloebne kort, og den hoerer
+    # til OPSTART (hvor et doedt kort ikke skal genoplives). Bruges den ved hver
+    # laesning, FORSVINDER et udloebet kort i stedet for at blive afvist med
+    # «udloebet» — og et kort der bare forsvinder er praecis den forvirring vi
+    # fjerner her. Udloebet haandteres af `_er_udloebet` i resolve-stien og af
+    # fejningen.
+    try:
+        friske = dict(_load_approvals_state(_APPROVALS_STATE_KEY, {}) or {})
+    except Exception:
+        logger.warning("kunne ikke laese godkendelses-kortene fra disk — "
+                       "falder tilbage paa processens egen kopi", exc_info=True)
+        return dict(_PENDING_APPROVALS)
+    # Hold processens kopi i takt, saa kode der stadig laeser dicten direkte
+    # ikke ser noget aeldre end det vi lige har laest.
+    _PENDING_APPROVALS.clear()
+    _PENDING_APPROVALS.update(friske)
+    return dict(friske)
+
+
+def saet_godkendelse(approval_id: str, kort: dict) -> None:
+    """Tilfoej ét kort — uden at overskrive den anden proces' kort."""
+    from core.runtime import state_store as _ss
+    with _ss.med_laas(_APPROVALS_STATE_KEY):
+        aktuelle = dict(_load_approvals_state(_APPROVALS_STATE_KEY, {}) or {})
+        aktuelle[approval_id] = kort
+        _save_approvals_state(_APPROVALS_STATE_KEY, aktuelle)
+        _PENDING_APPROVALS.clear()
+        _PENDING_APPROVALS.update(aktuelle)
+
+
+def fjern_godkendelse(approval_id: str) -> dict | None:
+    """Fjern ét kort og giv det tilbage. `None` = det fandtes ikke."""
+    from core.runtime import state_store as _ss
+    with _ss.med_laas(_APPROVALS_STATE_KEY):
+        aktuelle = dict(_load_approvals_state(_APPROVALS_STATE_KEY, {}) or {})
+        kort = aktuelle.pop(approval_id, None)
+        _save_approvals_state(_APPROVALS_STATE_KEY, aktuelle)
+        _PENDING_APPROVALS.clear()
+        _PENDING_APPROVALS.update(aktuelle)
+        return kort
+
+
 def _publicer_approval_requested(
     *, approval_id: str, tool: str, run_id: str, session_id: str, result: dict,
 ) -> None:
@@ -2266,11 +2330,13 @@ async def _stream_visible_run(
                                 continue
                         approval_id = f"approval-{uuid4().hex[:12]}"
                         created_at = datetime.now(UTC).isoformat()
-                        _PENDING_APPROVALS[approval_id] = _ar.build_request(
+                        # Under laas: den ANDEN proces kan have kort vi ikke
+                        # kender, og en rå dict-skrivning + gemning ville slette dem.
+                        saet_godkendelse(approval_id, _ar.build_request(
                             tool_name=sr["tool_name"],
                             arguments=sr["arguments"],
                             result=sr["result"],
-                            run=run, created_at=created_at)
+                            run=run, created_at=created_at))
                         # 2026-05-24 (Claude): tag the sr so the persistence
                         # loop can later check if resolve_pending_approval
                         # already wrote role=tool to chat (chat_persisted flag
@@ -4639,11 +4705,12 @@ async def _stream_visible_run(
                                     continue
                             _a_apid = f"approval-{uuid4().hex[:12]}"
                             _a_created_at = datetime.now(UTC).isoformat()
-                            _PENDING_APPROVALS[_a_apid] = _ar.build_request(
+                            # Samme laas som paa det foerste oprettelses-sted.
+                            saet_godkendelse(_a_apid, _ar.build_request(
                                 tool_name=_a_sr["tool_name"],
                                 arguments=_a_sr["arguments"],
                                 result=_a_sr["result"],
-                                run=run, created_at=_a_created_at)
+                                run=run, created_at=_a_created_at))
                             # Tag the sr so the second-pass agentic loop's
                             # persistence can later check chat_persisted flag.
                             _a_sr["approval_id"] = _a_apid

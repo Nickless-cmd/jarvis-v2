@@ -27,6 +27,31 @@ def test_basic_sequential_execution(monkeypatch):
     assert out[0]["result_text"] == "ran read_file"
 
 
+def test_file_call_records_before_and_after_for_message_undo(monkeypatch, tmp_path):
+    from core.undo import message_edits as undo
+    path = tmp_path / "file.txt"
+    path.write_text("before")
+    saved = {}
+    monkeypatch.setattr(undo, "_load", lambda key: saved.get(key))
+    monkeypatch.setattr(undo, "_save", lambda key, value: saved.__setitem__(key, value))
+    monkeypatch.setattr("core.services.commit_gate_arbiter.evaluate_commit_gates",
+                        lambda **kw: type("CG", (), {"blocked": False, "soft_warn": "",
+                                                     "reason": "", "gate_type": ""})())
+    monkeypatch.setattr("core.services.agentic_tool_cache.get_cached_result", lambda *a, **kw: None)
+    monkeypatch.setattr("core.tools.simple_tools.execute_tool",
+                        lambda name, arguments: _write_for_test(path))
+    monkeypatch.setattr("core.tools.simple_tools.format_tool_result_for_model",
+                        lambda name, result, **kw: "ok")
+    calls = [{"id": "call-1", "function": {"name": "write_file", "arguments": {"path": str(path)}}}]
+    ste._execute_simple_tool_calls(calls, session_id="s1")
+    assert saved[undo._key("s1", "call-1")]["before"]["sha"] != saved[undo._key("s1", "call-1")]["after"]["sha"]
+
+
+def _write_for_test(path):
+    path.write_text("after")
+    return {"status": "ok"}
+
+
 import contextvars
 import time
 from core.services import tool_concurrency

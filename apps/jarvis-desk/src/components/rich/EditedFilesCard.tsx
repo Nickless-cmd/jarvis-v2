@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronDown, ChevronRight, Code2, FileDiff } from 'lucide-react'
+import { ChevronDown, ChevronRight, Code2, FileDiff, RotateCcw } from 'lucide-react'
 import { kortSti, type RedigeretFil } from '../../lib/redigeredeFiler'
 
 /**
@@ -18,14 +18,20 @@ export function EditedFilesCard({
   filer,
   tal,
   onAabn,
+  onFortryd,
 }: {
   filer: RedigeretFil[]
   /** sti → målte +/− fra værktøjsresultater. Mangler en sti, vises intet tal. */
   tal?: Record<string, FilTal>
   /** Klik på en fil: åbn Ændringer-ruden med netop den fil foldet ud. */
   onAabn: (sti: string) => void
+  onFortryd?: () => Promise<{ status: string; files?: number; error?: string }>
 }) {
   const [alle, setAlle] = useState(false)
+  const [bekraeft, setBekraeft] = useState(false)
+  const [venter, setVenter] = useState(false)
+  const [fortrudt, setFortrudt] = useState(false)
+  const [fejl, setFejl] = useState('')
   if (filer.length === 0) return null
   const n = filer.length
   const viste = alle ? filer : filer.slice(0, 3)
@@ -46,11 +52,31 @@ export function EditedFilesCard({
         {sum && <span className="edited-files-sum">
           <span className="git-add">+{sum.added}</span> <span className="git-del">−{sum.removed}</span>
         </span>}
+        {onFortryd && (fortrudt
+          ? <span className="edited-files-kvittering">{n} {n === 1 ? 'fil fortrudt' : 'filer fortrudt'}</span>
+          : <button type="button" className="edited-files-vis" disabled={venter}
+              onClick={() => { setFejl(''); setBekraeft(true) }}>
+              <RotateCcw size={12} /> Fortryd
+            </button>)}
         <button type="button" className="edited-files-vis"
                 onClick={() => onAabn(filer[0]!.path)}>
           Vis ændringer
         </button>
       </div>
+      {bekraeft && !fortrudt && <div className="edited-files-bekraeft">
+        <span>Fortryd denne beskeds {n} {n === 1 ? 'filændring' : 'filændringer'}? Nyere ændringer i filerne bliver beskyttet.</span>
+        <button type="button" disabled={venter} onClick={() => setBekraeft(false)}>Annuller</button>
+        <button type="button" disabled={venter} onClick={() => {
+          setVenter(true)
+          void onFortryd!().then((result) => {
+            if (result.status === 'ok') { setFortrudt(true); setBekraeft(false) }
+            else setFejl(result.error || 'Kunne ikke fortryde filerne.')
+          }).catch((error: unknown) => {
+            setFejl(error instanceof Error ? error.message : 'Kunne ikke fortryde filerne.')
+          }).finally(() => setVenter(false))
+        }}>Ja, fortryd {n} {n === 1 ? 'fil' : 'filer'}</button>
+      </div>}
+      {fejl && <p className="edited-files-fejl" role="alert">{fejl}</p>}
       <ul className="edited-files-liste">
         {viste.map((f) => {
           const t = tal?.[f.path]

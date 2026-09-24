@@ -1,6 +1,6 @@
 # API_REFERENCE
 
-> Generated 2026-09-23 from app.routes (live) — 614 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
+> Generated 2026-09-24 from app.routes (live) — 615 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
 
 | Method | Path | Response model | Source |
 |---|---|---|---|
@@ -613,6 +613,7 @@
 | GET | `/workbench/checkpoints` | dict | workbench |
 | POST | `/workbench/checkpoints/rollback` | dict | workbench |
 | GET | `/workbench/context` | dict | workbench |
+| POST | `/workbench/messages/{message_id}/undo` | dict | workbench |
 | GET | `/workbench/operator-channel` | dict | workbench |
 | POST | `/workbench/operator-channel/close` | dict | workbench |
 | POST | `/workbench/operator-channel/open` | dict | workbench |

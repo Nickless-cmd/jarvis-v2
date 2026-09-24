@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { EditedFilesCard } from './EditedFilesCard'
 
 const FILER = [{ path: 'apps/x/ChangesPanel.tsx', gange: 1 }, { path: 'apps/x/ChangesPanel.test.tsx', gange: 1 }]
@@ -68,5 +68,23 @@ describe('EditedFilesCard', () => {
     }} />)
     expect(document.querySelector('.edited-files-head')).toHaveTextContent('+12')
     expect(document.querySelector('.edited-files-head')).toHaveTextContent('−5')
+  })
+
+  it('beder om bekræftelse før fortryd og viser kvittering', async () => {
+    const onFortryd = vi.fn().mockResolvedValue({ status: 'ok', files: 2 })
+    render(<EditedFilesCard filer={FILER} onAabn={() => {}} onFortryd={onFortryd} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Fortryd' }))
+    expect(onFortryd).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Ja, fortryd 2 filer' }))
+    await waitFor(() => expect(onFortryd).toHaveBeenCalledOnce())
+    expect(await screen.findByText('2 filer fortrudt')).toBeInTheDocument()
+  })
+
+  it('viser konflikt uden at kalde ændringen for fortrudt', async () => {
+    const onFortryd = vi.fn().mockResolvedValue({ status: 'conflict', error: 'Filen er ændret siden.' })
+    render(<EditedFilesCard filer={FILER} onAabn={() => {}} onFortryd={onFortryd} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Fortryd' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Ja, fortryd 2 filer' }))
+    expect(await screen.findByText('Filen er ændret siden.')).toBeInTheDocument()
   })
 })

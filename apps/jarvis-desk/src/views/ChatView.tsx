@@ -988,6 +988,8 @@ export function ChatView({
             streaming={false}
             createdAt={m.created_at}
             beskedId={m.id}
+            sessionId={sessionId}
+            canUndo={auth?.role === 'owner'}
             onResend={m.role === 'user' ? resendStabil : undefined}
             config={raekkeConfig}
             pinned={fastgjorte.pins.includes(m.id)}

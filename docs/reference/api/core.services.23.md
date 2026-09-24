@@ -287,7 +287,7 @@ _Native tool_calls executor (extracted from visible_runs.py, Boy-Scout 2026-07-0
 | function | `_finalize_call` | `(token, raw_result, *, controller, exec_fmt)` | Single-thread finalize for one executed call: soft-warn wrap, mark-seen on | [src](../../../core/services/simple_tool_executor.py#L132) |
 | function | `_tag_checkpoint_hvis_redigering` | `(calls, session_id)` | Self-safe: en fejl her maa aldrig forhindre selve redigeringen. | [src](../../../core/services/simple_tool_executor.py#L250) |
 | function | `_execute_simple_tool_calls` | `(tool_calls, *, force=…, run_id=…, session_id=…, user_message=…, user_present=…)` | Execute native tool_calls directly via simple_tools. Returns results. | [src](../../../core/services/simple_tool_executor.py#L268) |
-| function | `_execute_local_tool_calls` | `(tool_calls, *, force=…, run_id=…, session_id=…, user_message=…, user_present=…)` | Path B (local_tool_exec) executor — server-owned transcript, CLIENT-side run. | [src](../../../core/services/simple_tool_executor.py#L377) |
+| function | `_execute_local_tool_calls` | `(tool_calls, *, force=…, run_id=…, session_id=…, user_message=…, user_present=…)` | Path B (local_tool_exec) executor — server-owned transcript, CLIENT-side run. | [src](../../../core/services/simple_tool_executor.py#L392) |
 
 ## `core/services/skill_autosurface.py`
 _Owner-approved allowlist governing jarvis-code skill auto-surfacing (Fase 3)._

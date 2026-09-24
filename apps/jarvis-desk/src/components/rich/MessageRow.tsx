@@ -8,7 +8,7 @@ import { blocksToPlainText } from '../../lib/formatTime'
 import { Kilder } from './Kilder'
 import { hasPasteReference, splitPasteSegments } from '../../lib/pasteSegments'
 import { PasteReferenceChip } from './PasteReferenceChip'
-import type { ApiConfig } from '../../lib/api'
+import { apiFetch, type ApiConfig } from '../../lib/api'
 import { InlineErrorBoundary } from '../ErrorBoundary'
 import { denseBlocks } from '../../lib/blockHelpers'
 import { KlikbartBillede } from './BilledLightbox'
@@ -38,6 +38,8 @@ function MessageRowImpl({
   onTogglePin,
   onRewind,
   beskedId,
+  sessionId,
+  canUndo,
 }: {
   role: 'user' | 'assistant'
   blocks: ContentBlock[]
@@ -63,6 +65,9 @@ function MessageRowImpl({
   onRewind?: () => void
   /** Beskedens id — så et afkortet værktøjs-resultat kan hentes ved udfoldning. */
   beskedId?: string
+  /** Filfortrydelse er kun til ejeren og kun for gemte beskeder. */
+  sessionId?: string | null
+  canUndo?: boolean
 }) {
   // denseBlocks ÉN gang ved indgangen: state.blocks/content kan være SPARSOMT
   // (foldede tool_result-content-blok-indices → undefined-huller). ALLE nedstrøms-
@@ -136,7 +141,12 @@ function MessageRowImpl({
           </InlineErrorBoundary>
         </div>
       </article>
-      {!streaming && <EditedFilesCard filer={redigerede} tal={maalteRedigeringer(blocks)} onAabn={visAendring} />}
+      {!streaming && <EditedFilesCard filer={redigerede} tal={maalteRedigeringer(blocks)} onAabn={visAendring}
+        onFortryd={canUndo && config && sessionId && beskedId
+          ? () => apiFetch<{ status: string; files?: number; error?: string }>(config,
+              `/workbench/messages/${encodeURIComponent(beskedId)}/undo`,
+              { method: 'POST', body: { session_id: sessionId }, retries: 0 })
+          : undefined} />}
       {/* Kilderne står tættest på teksten: «hvor ved du det fra?».
           «Forløb»-linjen under dem er slået fra (Bjørn 17/9-2026) — runde-,
           tanke- og skill-linjerne i selve beskeden siger det samme. */}

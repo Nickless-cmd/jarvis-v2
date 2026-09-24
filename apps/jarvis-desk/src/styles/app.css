@@ -4091,6 +4091,15 @@ body.egen-ramme .main:has(.chatview-head) { padding-top: 0; }
   font-size: 12px; cursor: pointer;
 }
 .edited-files-vis:hover { background: var(--bg-4); }
+.edited-files-vis:has(svg) { display: inline-flex; align-items: center; gap: 5px; }
+.edited-files-vis:has(svg) + .edited-files-vis { margin-left: 0; }
+.edited-files-vis:disabled { opacity: .55; cursor: wait; }
+.edited-files-kvittering { margin-left: auto; color: var(--ok); font-size: 12px; }
+.edited-files-bekraeft { display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+  padding: 9px 11px; border-bottom: 1px solid var(--line); color: var(--fg-2); font-size: 12px; }
+.edited-files-bekraeft button { border: 1px solid var(--line); border-radius: 6px;
+  background: var(--bg-3); color: var(--fg-1); padding: 4px 8px; cursor: pointer; }
+.edited-files-fejl { margin: 0; padding: 8px 11px; color: var(--error-fg); font-size: 12px; }
 .edited-files-liste { list-style: none; margin: 0; padding: 0; }
 .edited-files-rk {
   display: flex; align-items: center; gap: 8px; width: 100%;

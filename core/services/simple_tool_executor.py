@@ -320,7 +320,22 @@ def _execute_simple_tool_calls(
             if kind == "result":
                 results.append(payload)
                 continue
+            # Exact per-call file snapshot for the message's Undo button.
+            # Snapshot failures must never block the tool itself.
+            undo_before = None
+            try:
+                from core.undo.message_edits import capture_before
+                undo_before = capture_before(session_id, str(tc.get("id") or ""),
+                                             payload["name"], payload["arguments"])
+            except Exception:
+                logger.warning("edit_message_undo: before-snapshot failed", exc_info=True)
             raw = _exec(payload["name"], payload["arguments"])
+            if undo_before is not None:
+                try:
+                    from core.undo.message_edits import capture_after
+                    capture_after(undo_before, raw)
+                except Exception:
+                    logger.warning("edit_message_undo: after-snapshot failed", exc_info=True)
             results.append(_finalize_call(payload, raw, controller=controller,
                                           exec_fmt=format_tool_result_for_model))
         return results

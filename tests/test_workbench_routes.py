@@ -56,6 +56,21 @@ def test_rollback_er_owner_only(klient, monkeypatch):
     assert klient.post("/workbench/checkpoints/rollback", json={}).status_code == 403
 
 
+def test_message_undo_er_owner_only(klient, monkeypatch):
+    _som(monkeypatch, "member")
+    assert klient.post("/workbench/messages/m1/undo", json={"session_id": "s1"}).status_code == 403
+
+
+def test_message_undo_bruger_besked_og_session(klient, monkeypatch):
+    _som(monkeypatch, "owner")
+    calls = []
+    monkeypatch.setattr("core.undo.message_edits.undo_message",
+                        lambda sid, mid: calls.append((sid, mid)) or {"status": "ok", "files": 1})
+    result = klient.post("/workbench/messages/m1/undo", json={"session_id": "s1"})
+    assert result.status_code == 200
+    assert calls == [("s1", "m1")]
+
+
 def test_kontakter_kan_laeses(klient):
     r = klient.get("/workbench/switches")
     assert r.status_code == 200

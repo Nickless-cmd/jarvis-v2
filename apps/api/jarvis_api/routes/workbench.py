@@ -95,6 +95,17 @@ async def checkpoints_rollback(payload: dict = Body(default={})) -> dict[str, An
     return await asyncio.to_thread(rollback_last, sid)
 
 
+@router.post("/messages/{message_id}/undo")
+async def undo_message_edits(message_id: str, payload: dict = Body(default={})) -> dict[str, Any]:
+    """Owner-only: restore only this message's recorded file writes.
+
+    The service verifies that none of the files changed after Jarvis wrote them.
+    """
+    _kraev_owner("Fortryd filændringer")
+    from core.undo.message_edits import undo_message
+    return await asyncio.to_thread(undo_message, _session_id(payload), message_id)
+
+
 # ── Kontakter (sandbox + env-blok) ──────────────────────────────────────────
 
 @router.get("/switches")

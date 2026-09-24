@@ -1148,6 +1148,8 @@ export function CodeView({
               streaming={false}
               createdAt={m.created_at}
               beskedId={m.id}
+              sessionId={sessionId}
+              canUndo={isOwner}
               config={config}
               onResend={m.role === 'user' ? resendStabil : undefined}
               pinned={fastgjorte.pins.includes(m.id)}

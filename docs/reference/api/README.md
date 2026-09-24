@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 15382 functions/methods, 51% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 15400 functions/methods, 51% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -68,6 +68,7 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 15382 functions/
 - [`core.tools.04`](core.tools.04.md) — `world_model_tools` … `world_model_tools`
 - [`core.tools.agent_dispatch_tool`](core.tools.agent_dispatch_tool.md)
 - [`core.tools.claude_dispatch`](core.tools.claude_dispatch.md)
+- [`core.undo`](core.undo.md)
 - [`core.util`](core.util.md)
 - [`scripts.01`](scripts.01.md) — `__init__` … `interlanguage_structural_classifier`
 - [`scripts.02`](scripts.02.md) — `jarvis` … `signal_noise_cleanup`

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7937/15382 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7940/15400 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,7 +8,7 @@ Generated from source. 7937/15382 functions/methods documented (51%). The list b
 |---|---|---|---|
 | `apps.api.jarvis_api` | 34 | 36 | 94% |
 | `apps.api.jarvis_api.middleware` | 8 | 19 | 42% |
-| `apps.api.jarvis_api.routes` | 696 | 927 | 75% |
+| `apps.api.jarvis_api.routes` | 697 | 928 | 75% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 70 | 172 | 40% |
 | `apps.desktop` | 6 | 7 | 85% |
@@ -35,13 +35,14 @@ Generated from source. 7937/15382 functions/methods documented (51%). The list b
 | `core.tools` | 485 | 1004 | 48% |
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
+| `core.undo` | 2 | 17 | 11% |
 | `core.util` | 9 | 10 | 90% |
 | `scripts` | 208 | 455 | 45% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2206)
+## Undocumented public functions (2207)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L208)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -2086,6 +2087,7 @@ Generated from source. 7937/15382 functions/methods documented (51%). The list b
 - `core/tools/workspace_capabilities.py` :: `get_capability_invocation_truth` (L555)
 - `core/tools/workspace_capabilities.py` :: `invoke_workspace_capability` (L403)
 - `core/tools/workspace_capabilities.py` :: `load_workspace_capabilities` (L144)
+- `core/undo/message_edits.py` :: `capture_after` (L147)
 - `core/util/timezone.py` :: `dk_weekday_en` (L69)
 - `scripts/acceptance/migration_gate.py` :: `main` (L203)
 - `scripts/acceptance/migration_gate.py` :: `run_suites` (L99)

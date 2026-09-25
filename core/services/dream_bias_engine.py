@@ -498,6 +498,13 @@ Rules:
 """
 
 
+#: Groft forhold mellem tokens og tegn for dansk/engelsk prosa. Bruges kun til
+#: at oversaette et token-budget til den TEGN-graense `daemon_llm` klipper paa.
+#: Hellere for hoejt end for lavt: en afkortet JSON er ubrugelig, mens et par
+#: hundrede tegn for meget bare bliver ignoreret af udtraekkeren.
+_TEGN_PR_TOKEN = 4
+
+
 def _call_llm_for_bias(*, events: list[dict], max_tokens: int) -> str:
     """Call quality-lane LLM with both regret and aspiration events."""
     if not events:
@@ -545,9 +552,15 @@ def _call_llm_for_bias(*, events: list[dict], max_tokens: int) -> str:
     full_prompt = _SYSTEM_PROMPT + "\n\n" + user_message
     try:
         from core.services.daemon_llm import quality_daemon_llm_call
+        # `max_len` er TEGN — `daemon_llm` goer `text[:max_len]`. Her blev et
+        # TOKEN-budget sendt ind, saa svaret blev skaaret ved tegn 400. Maalt
+        # 25/9-2026 paa CT105: svaret var praecis 400 tegn med tre aabne
+        # klammer og én lukket — droemmen stod og blev hugget over midt i sin
+        # egen JSON, hver eneste cyklus. Det var den anden af to fejl paa
+        # samme linje arbejde; den foerste var ```-hegnet.
         return quality_daemon_llm_call(
             full_prompt,
-            max_len=max_tokens,
+            max_len=max_tokens * _TEGN_PR_TOKEN,
             fallback="",
             daemon_name="dream_bias",
         )

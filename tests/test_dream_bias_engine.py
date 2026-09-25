@@ -41,3 +41,29 @@ def test_et_svar_uden_json_giver_stadig_en_pæn_status(monkeypatch):
     monkeypatch.setattr(B, "delete_expired_bias_rows", lambda: 0)
     monkeypatch.setattr(B, "_call_llm_for_bias", lambda **kw: "jeg kunne ikke droemme i nat")
     assert B.run_dream_bias_distillation(workspace_id="default")["status"] == "json_parse_failed"
+
+
+def test_tegn_graensen_er_stor_nok_til_en_hel_droem(monkeypatch):
+    """`max_len` er TEGN, ikke tokens — og JSON'en skal kunne vaere der.
+
+    Maalt paa CT105 25/9-2026: token-budgettet 400 blev sendt ind som
+    tegn-graense, saa svaret var praecis 400 tegn med tre aabne klammer og én
+    lukket. Droemmen blev hugget over midt i sin egen JSON.
+
+    Testen maaler den graense der FAKTISK sendes videre, ikke hvordan den er
+    skrevet — en kilde-vagt ville have bestaaet paa den gamle kode.
+    """
+    set_graense: dict = {}
+
+    def _fang(prompt, *, max_len, fallback, daemon_name):
+        set_graense["max_len"] = max_len
+        return ""
+
+    import core.services.daemon_llm as DL
+    monkeypatch.setattr(DL, "quality_daemon_llm_call", _fang)
+    B._call_llm_for_bias(events=[{"source_kind": "decision_kept", "summary": "x"}],
+                         max_tokens=400)
+    # En hel droem-JSON (dream_text + fem attention-noegler + fire
+    # threshold-noegler + intensity) fylder omkring 700 tegn.
+    assert set_graense["max_len"] >= 1200, (
+        f"tegn-graensen er {set_graense['max_len']} — JSON'en naar ikke at lukke")

@@ -14,6 +14,7 @@ import { onPauseSvar, pauseAskIn, withoutPauseAsk, type PauseAsk } from '../lib/
 import { useRedning } from '../hooks/useRedning'
 import { streamReducer, initialStreamState, liveBlokke } from '../lib/streamReducer'
 import { useGenopretEfterBrud } from '../lib/genopretEfterBrud'
+import { skalSpoergeOmVarsel } from '../lib/genoptagelsesVarsel'
 import { useSessions } from '../hooks/useSessions'
 import { useStream } from '../hooks/useStream'
 import { useSettings } from '../hooks/useSettings'
@@ -232,50 +233,31 @@ export function ChatView({
   //
   // `run_recovery` findes KUN som SSE-event, så et run der blev afbrudt mens
   // ingen så på — eller opgivet i går — fortalte aldrig nogen om det.
-  // Endpointet har eksisteret siden 17/9-2026 og havde nul kaldere; banneret
-  // nedenfor (`stream.recoveryNotice`) var tegnet og klar. Det var kun
-  // spørgsmålet der manglede.
+  // Endpointet har eksisteret siden 17/9-2026; banneret nedenfor
+  // (`stream.recoveryNotice`) var tegnet og klar. Det var kun spørgsmålet der
+  // manglede — og fire gange derefter var det betingelsen der manglede.
   //
-  // HVORNAAR der spoerges — to fejl rettet 24/9-2026, begge maalt paa «hey..»,
-  // som havde SYV ulaeste varsler og aldrig viste et eneste.
-  //
-  // 1. Betingelsen var `status === 'idle'`. Men reduceren saetter `'done'` naar
-  //    et run slutter (`streamReducer` message_stop); `'idle'` gaelder kun FOER
-  //    det allerfoerste run i en klient-session. Varslet kunne dermed kun vises
-  //    i en samtale man aldrig havde brugt — altsaa aldrig, for det er netop de
-  //    BRUGTE samtaler der har afbrudte runs.
-  //
-  // 2. Der blev spurgt én gang pr. session pr. komponent-levetid. Et varsel der
-  //    opstaar EFTER den foerste forespoergsel blev derfor aldrig hentet. Netop
-  //    det skete: varslerne blev skabt kl. 20:29 mens samtalen havde vaeret
-  //    aaben i timer. Derfor spoerges der ogsaa igen naar en tur slutter — det
-  //    er praecis det oejeblik et nyt varsel kan vaere opstaaet.
-  //
-  // Varslet forbruges serverside naar det hentes, saa vi maa ikke polle; men
-  // «ved aabning» og «naar en tur slutter» er begivenheder, ikke polling.
+  // HVORNAAR der spørges er flyttet til `lib/genoptagelsesVarsel.ts`, hvor de
+  // fire fejlformer står beskrevet og hver overgang kan prøves uden at bygge
+  // programmet. Varslet forbruges serverside når det hentes, så der må ikke
+  // polles; «ved åbning» og «når en tur slutter» er begivenheder, ikke polling.
   const varselSpurgtRef = useRef<string | null>(null)
   const forrigeStatusRef = useRef<string>('')
   useEffect(() => {
     const forrige = forrigeStatusRef.current
     forrigeStatusRef.current = stream.status
-    // En tur sluttede → der kan vaere kommet et nyt varsel. Spoerg igen.
-    //
-    // Betingelsen kan IKKE vaere `forrige === 'working'`. `useRammeReducer`
-    // samler opdateringer til én pr. frame, saa mellemtilstanden `'working'`
-    // findes aldrig i en render — maalt: effekten ser kun `'' -> idle` og
-    // `idle -> done`. En effekt kan ikke observere en tilstand reduceren har
-    // sprunget over.
-    //
-    // Derfor: enhver ANKOMST i en afsluttet tilstand betyder at en tur sluttede.
-    if (forrige !== stream.status
-        && (stream.status === 'done' || stream.status === 'interrupted'
-            || stream.status === 'error')) {
-      varselSpurgtRef.current = null
-    }
     if (!settings || !sessionId) return
-    // Kun mens der FAKTISK koerer noget: da leverer stroemmen selv varslet.
-    if (stream.status === 'working' || stream.status === 'reconnecting') return
-    if (varselSpurgtRef.current === sessionId) return
+    // Selve reglen bor i `genoptagelsesVarsel.ts`, hvor hver overgang kan
+    // proeves. Den har taget fejl fire gange herinde, hvor den kun kunne
+    // efterproeves ved at bygge programmet og vente.
+    const beslutning = skalSpoergeOmVarsel({
+      forrige,
+      status: stream.status,
+      sessionId,
+      alleredeSpurgt: varselSpurgtRef.current,
+    })
+    if (beslutning.nulstil) varselSpurgtRef.current = null
+    if (!beslutning.spoerg) return
     varselSpurgtRef.current = sessionId
     const cfg = { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }
     let afbrudt = false

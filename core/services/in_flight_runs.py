@@ -239,6 +239,12 @@ def mark_started(
     recovery_generation: int = 0,
     recovery_attempt: int = 0,
     recovery_limit: int = 3,
+    approval_mode: str = "ask",
+    thinking_mode: str = "think",
+    tool_scope: str = "",
+    surface: str = "",
+    force_user_id: str = "",
+    local_tool_exec: bool = False,
 ) -> None:
     """Record that a run is in flight. Keyed by run_id (unique).
 
@@ -269,6 +275,12 @@ def mark_started(
             "kind": str(kind or "visible"),
             "provider": str(provider or ""),
             "model": str(model or ""),
+            "approval_mode": "trust" if approval_mode == "trust" else "ask",
+            "thinking_mode": str(thinking_mode or "think"),
+            "tool_scope": str(tool_scope or ""),
+            "surface": str(surface or ""),
+            "force_user_id": str(force_user_id or ""),
+            "local_tool_exec": bool(local_tool_exec),
             "excerpt": (user_message or "")[:_EXCERPT_LIMIT],
             "original_request": str(user_message or ""),
             "started_at": _iso(),

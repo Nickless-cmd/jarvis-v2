@@ -53,6 +53,24 @@ def test_en_forladt_opgave_genoptages_praecis_EN_gang(spawn):
     assert spawn[0]["recovery_generation"] == 1
 
 
+def test_genoptagelse_bevarer_composer_og_afsenderflade(spawn, monkeypatch):
+    monkeypatch.setattr("core.services.session_permission.hent_permission", lambda sid: "trust")
+    ifr.mark_started(
+        run_id="task-context", session_id="chat-1", user_message="ret koden",
+        approval_mode="trust", thinking_mode="deep", tool_scope="code",
+        surface="desk", force_user_id="owner-1", local_tool_exec=True,
+    )
+    ifr.settle_recovering("task-context", reason="shutdown")
+    assert D.recover_due_once()["started"] == 1
+    assert {k: spawn[0][k] for k in (
+        "approval_mode", "thinking_mode", "tool_scope", "surface",
+        "force_user_id", "local_tool_exec",
+    )} == {
+        "approval_mode": "trust", "thinking_mode": "deep", "tool_scope": "code",
+        "surface": "desk", "force_user_id": "owner-1", "local_tool_exec": True,
+    }
+
+
 def test_to_dispatchere_kan_ikke_tage_den_samme_opgave(spawn):
     """Kravet er atomisk: den anden finder ingenting, ikke den samme opgave."""
     _forladt_opgave()

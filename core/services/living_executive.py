@@ -295,6 +295,18 @@ def _impulse_from_event(event: dict[str, Any]) -> dict[str, Any] | None:
         )
 
     if kind == _GENOPTAG_ART:
+        # Den varige run-journal ejer allerede denne opgave. En ekstra
+        # self-wakeup starter en løs synlig tur uden composer-kontekst og kan
+        # genstarte arbejdet efter at dispatcheren har afsluttet det.
+        rid = str(payload.get("run_id") or "").strip()
+        if rid:
+            try:
+                from core.services.in_flight_runs import get_record
+                if get_record(rid) is not None:
+                    return None
+            except Exception:
+                logger.warning("kunne ikke kontrollere run-journalen for %s", rid,
+                               exc_info=True)
         # Noeglen staar paa KOERSLEN og ikke paa arten. Foer var den
         # konstanten «visible-run-interrupted» med 900 sekunder, saa to
         # forskellige koersler der doer tre minutter fra hinanden gav ÉN
@@ -304,7 +316,6 @@ def _impulse_from_event(event: dict[str, Any]) -> dict[str, Any] | None:
         #
         # En nedkoeling skal afvise DET SAMME tabte arbejde to gange. Ikke
         # tabt arbejde i almindelighed.
-        rid = str(payload.get("run_id") or "").strip()
         # Uden id kan vi ikke bevise at to afbrydelser er forskellige. Saa
         # deler de den gamle faelles noegle: tavshed er ikke belaeg for at
         # gange genoptagelserne op.

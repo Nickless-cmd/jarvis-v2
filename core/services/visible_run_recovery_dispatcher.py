@@ -147,9 +147,17 @@ def recover_due_once(*, owner: str | None = None) -> dict[str, object]:
 
     try:
         from core.services.visible_runs_sections.detached_run import start_user_run_detached
+        from core.services.session_permission import hent_permission
         run_id = start_user_run_detached(
             message=besked,
             session_id=session_id,
+            approval_mode=("trust" if str(krav.get("approval_mode") or
+                                           hent_permission(session_id)) == "trust" else "ask"),
+            thinking_mode=str(krav.get("thinking_mode") or "think"),
+            tool_scope=str(krav.get("tool_scope") or ""),
+            surface=str(krav.get("surface") or ""),
+            force_user_id=str(krav.get("force_user_id") or "") or None,
+            local_tool_exec=bool(krav.get("local_tool_exec")),
             provider_override=str(krav.get("provider") or ""),
             model_override=str(krav.get("model") or ""),
             recovery_task_id=task_id,

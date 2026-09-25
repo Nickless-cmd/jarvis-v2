@@ -139,6 +139,14 @@ def test_genoptagelsen_naevner_HVILKEN_koersel(vaekninger):
     assert "visible-ccc" in str(vaekninger[0].get("prompt") or "")
 
 
+def test_durabel_journal_ejer_genoptagelsen_uden_ekstra_vaekning(monkeypatch, vaekninger):
+    monkeypatch.setattr("core.services.in_flight_runs.get_record", lambda rid: {
+        "run_id": rid, "status": "recovering",
+    })
+    assert lex.process_event(_afbrudt("visible-journal")) is None
+    assert vaekninger == []
+
+
 # ────────────────────────────────────────────────────────── indhentningen
 
 def test_lytteren_indhenter_det_der_skete_FOER_den_abonnerede(monkeypatch, vaekninger):

@@ -6,7 +6,7 @@ tilbage til ``visible_runs`` i bunden af den fil, så eksisterende imports
 (``apps/api/.../chat.py``, ``cowork.py``) og test-kald mod ``visible_runs.X`` virker.
 
 Main-residente symboler der (a) er delt state (``_PENDING_APPROVALS``,
-``_persist_pending_approvals`` — brugt af ``_stream_visible_run``) eller (b)
+``saet_godkendelse``/``fjern_godkendelse`` — de LAASTE veje til filen) eller (b)
 monkeypatches i tests (``append_chat_message``, ``_get_visible_approval_state``,
 ``_set_visible_approval_state``) refereres via ``_vr.X`` INDE i funktions-kroppen
 (lazy) → samme objekt-identitet + patches ses på kald-tidspunkt.

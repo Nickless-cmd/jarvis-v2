@@ -414,8 +414,19 @@ def _publicer_approval_requested(
         logger.debug("kunne ikke publicere tool.approval_requested", exc_info=True)
 
 
-def _persist_pending_approvals() -> None:
-    _save_approvals_state(_APPROVALS_STATE_KEY, _PENDING_APPROVALS)
+# `_persist_pending_approvals()` er FJERNET (25/9-2026, Jarvis' fund).
+#
+# Den skrev hele processens kopi til filen UDEN laas. Efter at
+# `saet_godkendelse`/`fjern_godkendelse` blev laaste, stod de to
+# tilbagevaerende kald lige efter en laast skrivning — altsaa redundante,
+# og samtidig genindfoerte de praecis den fejlklasse laasen fjernede:
+# skriver den anden proces et kort i vinduet mellem laase-udslippet og
+# denne skrivning, bliver det overskrevet af vores kopi og tabt.
+#
+# Vinduet er mikroskopisk, men det sad paa de to steder hvor et kort
+# BLIVER lavet — den mest kritiske sti der findes her.
+#
+# Der er nu ÉN vej til filen: accessorerne ovenfor.
 
 
 # Boy Scout-udtrækning (2026-08-20): run-afslutningens sideeffekter bor nu i
@@ -2354,7 +2365,6 @@ async def _stream_visible_run(
                                            session_id=run.session_id or "")
                         except Exception:
                             pass
-                        _persist_pending_approvals()
                         _set_visible_approval_state(approval_id, {
                             "approval_id": approval_id,
                             "status": "pending",
@@ -4726,7 +4736,6 @@ async def _stream_visible_run(
                                                session_id=run.session_id or "")
                             except Exception:
                                 pass
-                            _persist_pending_approvals()
                             _set_visible_approval_state(_a_apid, {
                                 "approval_id": _a_apid,
                                 "status": "pending",

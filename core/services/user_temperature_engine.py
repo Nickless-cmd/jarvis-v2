@@ -732,10 +732,14 @@ def run_llm_stream(*, workspace_id: str = "default", force: bool = False) -> dic
 
     full_prompt = _LLM_SYSTEM_PROMPT + "\n\n" + user_msg
     try:
-        from core.services.daemon_llm import quality_daemon_llm_call
+        from core.services.daemon_llm import quality_daemon_llm_call, tegn_for_tokens
         raw_response = quality_daemon_llm_call(
             full_prompt,
-            max_len=settings.user_temperature_llm_max_response_tokens,
+            # `max_len` er TEGN. Maalt 25/9-2026: det fulde svar var 267
+            # tegn og blev klippet ved 300 — 33 tegns margen. Det virkede, men
+            # én saetning mere i `rationale` ville have hugget JSON!en over, og
+            # saa finder regex-faldbagen nedenfor ingen afsluttende klamme.
+            max_len=tegn_for_tokens(settings.user_temperature_llm_max_response_tokens),
             fallback="",
             daemon_name="user_temperature",
         )

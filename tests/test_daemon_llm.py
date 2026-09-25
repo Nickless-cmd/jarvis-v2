@@ -153,3 +153,65 @@ def test_note_call_hit_does_not_report_egress(monkeypatch):
     monkeypatch.setattr("core.services.central_llm_egress.observe", lambda **kw: seen.append(kw))
     dl._note_call("thought_stream", hit=True)
     assert seen == []
+
+
+# ── Enheden hvor tokens bliver til tegn (25/9-2026) ──────────────────────
+#
+# `max_len` er TEGN — kaldene her goer `text[:max_len]`. To kaldesteder sendte
+# deres TOKEN-budget direkte ind, og maalt paa CT105:
+#
+#   * dream_bias_engine (400): svaret blev praecis 400 tegn med tre aabne
+#     klammer og én lukket. Droemmen blev hugget over midt i sin egen JSON,
+#     hver cyklus siden 10/5-2026.
+#   * user_temperature_engine (300): virkede — med 33 tegns margen.
+#
+# Naar to kaldere begaar samme forveksling, er navnet ikke tydeligt nok.
+
+def test_tokens_bliver_til_flere_tegn_end_tokens():
+    from core.services.daemon_llm import tegn_for_tokens
+    assert tegn_for_tokens(400) > 400
+    assert tegn_for_tokens(300) > 300
+
+
+def test_et_lille_budget_giver_stadig_noget():
+    """Et budget paa 0 eller negativt maa ikke give en tom skive."""
+    from core.services.daemon_llm import tegn_for_tokens
+    assert tegn_for_tokens(0) >= 1
+    assert tegn_for_tokens(-5) >= 1
+
+
+def test_begge_kaldesteder_gaar_gennem_omregningen():
+    """AST, ikke grep: navnet staar ogsaa i import-linjen.
+
+    Sender et kaldested sit token-budget raat ind i `max_len` igen, bliver
+    svaret klippet midt i sin JSON — og fejlen er tavs.
+    """
+    import ast
+    import inspect
+
+    import core.services.dream_bias_engine as DB
+    import core.services.user_temperature_engine as UT
+
+    for modul in (DB, UT):
+        traen = ast.parse(inspect.getsource(modul))
+        syndere = []
+        for n in ast.walk(traen):
+            if not isinstance(n, ast.Call):
+                continue
+            navn = getattr(n.func, "id", None) or getattr(n.func, "attr", None)
+            if navn not in {"quality_daemon_llm_call", "daemon_llm_call"}:
+                continue
+            for kw in n.keywords:
+                if kw.arg != "max_len":
+                    continue
+                vaerdi = kw.value
+                gaar_gennem = (
+                    isinstance(vaerdi, ast.Call)
+                    and (getattr(vaerdi.func, "id", None)
+                         or getattr(vaerdi.func, "attr", None)) == "tegn_for_tokens"
+                )
+                if not gaar_gennem:
+                    syndere.append(f"linje {n.lineno}: max_len={ast.unparse(vaerdi)}")
+        assert not syndere, (
+            f"{modul.__name__} sender et budget uden om `tegn_for_tokens` — "
+            f"et token-tal som tegn-graense hugger svaret over: {syndere}")

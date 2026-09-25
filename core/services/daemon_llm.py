@@ -159,6 +159,28 @@ def daemon_llm_call(
 # venter paa en daemon; det er billigere at vente end at degradere i stilhed.
 _QUALITY_LANE_TIMEOUT_SECONDS = 120.0
 
+#: Groft forhold mellem tokens og tegn for dansk/engelsk prosa.
+_TEGN_PR_TOKEN = 4
+
+
+def tegn_for_tokens(tokens: int) -> int:
+    """Oversaet et token-budget til den TEGN-graense `max_len` klipper paa.
+
+    `max_len` er tegn — kaldene her goer `text[:max_len]`. To kaldesteder
+    sendte deres TOKEN-budget direkte ind, og maalt 25/9-2026 paa CT105:
+
+      * `dream_bias_engine` (400): svaret blev praecis 400 tegn med tre aabne
+        klammer og én lukket. Droemmen blev hugget over midt i sin egen JSON,
+        hver eneste cyklus, siden 10/5-2026.
+      * `user_temperature_engine` (300): virkede — med 33 tegns margen. Én
+        saetning mere i `rationale`, og den ville falde samme vej.
+
+    Naar to kaldere begaar samme forveksling, er navnet ikke tydeligt nok.
+    Denne funktion er stedet hvor enheden skifter, saa ingen skal huske det.
+    """
+    return max(1, int(tokens)) * _TEGN_PR_TOKEN
+
+
 def quality_daemon_llm_call(
     prompt: str,
     *,

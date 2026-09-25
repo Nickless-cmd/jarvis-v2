@@ -154,11 +154,12 @@ _Liveness-registry (Stage 2, liveness-audit 2026-06-15)._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `classify_table` | `(name)` | Returnér klassifikation for en tabel. Ukendt → 'unclassified' (IKKE 'død'). | [src](../../../core/services/liveness_registry.py#L151) |
-| function | `is_alive` | `(name)` | True hvis tabellen IKKE er forældreløs/død. Afløst/manuel/aktiv tæller som levende. | [src](../../../core/services/liveness_registry.py#L159) |
-| function | `classify_module` | `(name)` | Klassifikation for et MODUL. Ukendt → 'unclassified' (IKKE 'doedt'). | [src](../../../core/services/liveness_registry.py#L164) |
-| function | `module_persists` | `(name)` | False for et modul der kaldes men gemmer i hukommelsen. | [src](../../../core/services/liveness_registry.py#L176) |
-| function | `liveness_summary` | `()` | Aggregeret overblik — til Mission Control / anti-konfabulations-flade. | [src](../../../core/services/liveness_registry.py#L181) |
+| function | `classify_table` | `(name)` | Returnér klassifikation for en tabel. Ukendt → 'unclassified' (IKKE 'død'). | [src](../../../core/services/liveness_registry.py#L195) |
+| function | `is_alive` | `(name)` | True hvis tabellen IKKE er forældreløs/død. Afløst/manuel/aktiv tæller som levende. | [src](../../../core/services/liveness_registry.py#L203) |
+| function | `classify_module` | `(name)` | Klassifikation for et MODUL. Ukendt → 'unclassified' (IKKE 'doedt'). | [src](../../../core/services/liveness_registry.py#L208) |
+| function | `module_persists` | `(name)` | False for et modul der kaldes men gemmer i hukommelsen. | [src](../../../core/services/liveness_registry.py#L220) |
+| function | `module_is_alive` | `(name)` | True naar modulet ikke er doedt. En `projektion` gemmer intet og lever. | [src](../../../core/services/liveness_registry.py#L225) |
+| function | `liveness_summary` | `()` | Aggregeret overblik — til Mission Control / anti-konfabulations-flade. | [src](../../../core/services/liveness_registry.py#L235) |
 
 ## `core/services/living_executive.py`
 _Living Executive — Jarvis' active impulse/choice/action loop._

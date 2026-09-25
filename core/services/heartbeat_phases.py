@@ -709,6 +709,22 @@ def act_phase(
 def tick_with_phases(*, name: str = "default", trigger: str = "phased") -> dict[str, Any]:
     """Run all 3 phases in sequence, return structured result."""
     started = datetime.now(UTC)
+    # Sansningen FOERST, og uden for faserne.
+    #
+    # De ~30 indre daemoner laa i `run_heartbeat_tick`, som `act_phase` kun
+    # kalder naar der ER prioriteter. Er kompasset roligt, returnerer den
+    # `productive_idle` — og saa mærkede han ingenting. Maalt 25/9-2026: 80 tik
+    # i traek gik den vej, `reboot_markers.json` froes kl. 08:01, og
+    # `proprioception_metrics` havde nul gemte snapshots, mens ledgeren skrev
+    # `ok/executed` paa dem alle.
+    #
+    # Foer faserne, saa `sense_phase` laeser friske tal frem for forrige tiks.
+    try:
+        from core.services.heartbeat_daemon_ticks import tik_indre_daemoner
+        daemon_tal = tik_indre_daemoner()
+    except Exception as exc:
+        logger.warning("indre daemoner fejlede: %s", exc)
+        daemon_tal = {"koert": 0, "fejlet": 0}
     signals = sense_phase(name=name)
     reflection = reflect_phase(signals)
     action = act_phase(signals=signals, reflection=reflection, name=name, trigger=trigger)
@@ -717,6 +733,7 @@ def tick_with_phases(*, name: str = "default", trigger: str = "phased") -> dict[
         "status": "ok",
         "name": name,
         "trigger": trigger,
+        "indre_daemoner": daemon_tal,
         "phases": {
             "sense": signals,
             "reflect": reflection,

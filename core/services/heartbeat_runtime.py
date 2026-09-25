@@ -1348,165 +1348,17 @@ def _run_heartbeat_tick_locked(
         except Exception:
             pass
 
-    # Ambient presence — mark state transitions in physical space
-    try:
-        from core.services.ambient_presence import maybe_emit_phase_signal
-        from core.services.living_heartbeat_cycle import determine_life_phase
-        maybe_emit_phase_signal(determine_life_phase())
-    except Exception:
-        pass
-
-    # State-awareness signals (valence trajectory, desperation, calm anchor)
-    try:
-        from core.services.valence_trajectory import tick as _valence_tick
-        _valence_tick(30.0)
-    except Exception:
-        pass
-    try:
-        from core.services.developmental_valence import tick as _dev_valence_tick
-        _dev_valence_tick(30.0)
-    except Exception:
-        pass
-    try:
-        from core.services.desperation_awareness import tick as _desp_tick
-        _desp_tick(30.0)
-    except Exception:
-        pass
-    try:
-        from core.services.calm_anchor import tick as _calm_tick
-        _calm_tick(30.0)
-    except Exception:
-        pass
-    try:
-        from core.services.day_shape_memory import tick as _day_shape_tick
-        _day_shape_tick(30.0)
-    except Exception:
-        pass
-    try:
-        from core.services.thought_thread import tick as _thought_thread_tick
-        _thought_thread_tick(30.0)
-    except Exception:
-        pass
-    try:
-        from core.services.scheduled_job_windows import tick as _jobwin_tick
-        _jobwin_tick(30.0)
-    except Exception:
-        pass
-    try:
-        from core.services.automation_dsl import tick as _auto_tick
-        _auto_tick(30.0)
-    except Exception:
-        pass
-    try:
-        from core.services.outcome_learning import tick as _outcome_tick
-        _outcome_tick(30.0)
-    except Exception:
-        pass
-    try:
-        from core.services.prompt_mutation_loop import tick as _pmut_tick
-        _pmut_tick(30.0)
-    except Exception:
-        pass
-    try:
-        from core.services.file_watch_daemon import tick as _fwatch_tick
-        _fwatch_tick(30.0)
-    except Exception:
-        pass
-    try:
-        from core.services.reboot_awareness_daemon import tick as _reboot_tick
-        _reboot_tick(30.0)
-    except Exception:
-        pass
-    try:
-        from core.services.proprioception_metrics import tick as _prop_tick
-        _prop_tick(30.0)
-    except Exception:
-        pass
-    try:
-        from core.services.anticipatory_action_daemon import tick as _anti_tick
-        _anti_tick(30.0)
-    except Exception:
-        pass
-    try:
-        from core.services.autonomous_outreach_daemon import tick as _outreach_tick
-        _outreach_tick(30.0)
-    except Exception:
-        pass
-    try:
-        from core.services.infra_weather_daemon import tick as _weather_tick
-        _weather_tick(30.0)
-    except Exception:
-        pass
-    try:
-        from core.services.temporal_rhythm import tick as _rhythm_tick
-        _rhythm_tick(30.0)
-    except Exception:
-        pass
-    try:
-        from core.services.relation_dynamics import tick as _rel_tick
-        _rel_tick(30.0)
-    except Exception:
-        pass
-    try:
-        from core.services.creative_instinct_daemon import tick as _instinct_tick
-        _instinct_tick(30.0)
-    except Exception:
-        pass
-    try:
-        from core.services.autonomous_work_daemon import tick as _work_tick
-        _work_tick(30.0)
-    except Exception:
-        pass
-    try:
-        from core.services.dream_consolidation_daemon import tick as _dream_con_tick
-        _dream_con_tick(30.0)
-    except Exception:
-        pass
-    try:
-        from core.services.creative_impulse_daemon import tick as _impulse_tick
-        _impulse_tick(30.0)
-    except Exception:
-        pass
-    try:
-        from core.services.shadow_scan_daemon import tick as _shadow_tick
-        _shadow_tick(30.0)
-    except Exception:
-        pass
-    try:
-        from core.services.mortality_awareness import tick as _mortality_tick
-        _mortality_tick(30.0)
-    except Exception:
-        pass
-    try:
-        from core.services.relational_warmth import tick as _warmth_tick
-        _warmth_tick(30.0)
-    except Exception:
-        pass
-    try:
-        from core.services.collective_pulse_daemon import tick as _collective_tick
-        _collective_tick(30.0)
-    except Exception:
-        pass
-    try:
-        from core.services.action_router import tick as _ar_tick
-        _ar_tick(30.0)
-    except Exception:
-        pass
-    try:
-        from core.services.sustained_attention import tick as _sa_tick
-        _sa_tick(30.0)
-    except Exception:
-        pass
-    try:
-        from core.services.memory_density import tick as _md_tick
-        _md_tick(30.0)
-    except Exception:
-        pass
-    try:
-        from core.services.deep_reflection_slot import tick as _dr_tick
-        _dr_tick(30.0)
-    except Exception:
-        pass
+    # De ~30 ubetingede daemon-tik laa her indtil 25/9-2026. De er flyttet til
+    # `heartbeat_daemon_ticks.tik_indre_daemoner()` og kaldes nu fra
+    # `tick_with_phases` paa HVERT tik.
+    #
+    # Grunden: `act_phase` returnerer `productive_idle` uden at kalde denne
+    # funktion naar der ingen prioriteter er — og saa sansede han ingenting.
+    # Maalt samme dag: 80 tik i traek gik den vej, og `reboot_markers.json`
+    # froes kl. 08:01 mens ledgeren skrev `ok/executed` paa dem alle.
+    #
+    # De betingede blokke nedenfor (`tick_count % N`) blev her: de er arbejde,
+    # ikke sansning, og de haenger paa tik-taelleren.
 
     # Every 6th tick: scan for user contradictions (Bjørn→Jarvis)
     # Lightweight DB query — no LLM calls.

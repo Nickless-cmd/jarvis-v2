@@ -34,6 +34,38 @@ def _persist_recovery_failure(session_id: str, reason: str) -> None:
         logger.exception("kunne ikke persistere fejlet auto-fortsættelse session=%s", sid)
 
 
+def _afregn_genoptaget_run(task_id: str, inner_run_id: str, *, generation: int) -> None:
+    """Close or retry the *same* task using the synchronous run journal.
+
+    The visible_runs DB outcome is persisted in a background thread. Reading it
+    here can race that write, leaving a completed task leased for another turn.
+    """
+    from core.services.in_flight_runs import (
+        current_owner, get_record, release_recovery_claim, settle_terminal,
+    )
+    from core.services.visible_runs_outcomes import run_er_terminal
+
+    rec = get_record(inner_run_id)
+    status = str((rec or {}).get("status") or "")
+    if status in {"completed", "cancelled", "failed_terminal"} or (
+        rec is None and run_er_terminal(inner_run_id) is True
+    ):
+        settle_terminal(
+            task_id, status="completed", reason="recovery-run-terminal",
+            expected_generation=generation, expected_owner=current_owner(),
+        )
+        logger.info("opgave %s lukket — fortsættelsen %s sluttede (%s)",
+                    task_id, inner_run_id, status or "db-terminal")
+    elif status in {"recovering", "interrupted"}:
+        reason = str((rec or {}).get("exit_reason") or status)
+        if release_recovery_claim(
+            task_id, generation, owner=current_owner(), reason=reason,
+            retry_after_s=30.0,
+        ):
+            logger.info("opgave %s givet tilbage efter %s; samme krav genbruges",
+                        task_id, reason)
+
+
 def start_user_run_detached(
     *,
     message: str,
@@ -180,12 +212,10 @@ def start_user_run_detached(
                 # genoptagelsens hele formål.
                 if recovery_task_id:
                     try:
-                        from core.services.in_flight_runs import mark_completed
-                        from core.services.visible_runs_outcomes import run_er_terminal
-                        if run_er_terminal(indre_run_id or run_id) is True:
-                            mark_completed(recovery_task_id)
-                            logger.info("opgave %s lukket — fortsaettelsen %s blev faerdig",
-                                        recovery_task_id, indre_run_id or run_id)
+                        _afregn_genoptaget_run(
+                            recovery_task_id, indre_run_id or run_id,
+                            generation=recovery_generation,
+                        )
                     except Exception:
                         logger.warning("kunne ikke lukke opgave %s", recovery_task_id,
                                        exc_info=True)
@@ -213,15 +243,16 @@ def start_user_run_detached(
                 # ── AUTO-FORTSAETTELSE ────────────────────────────────────
                 # EFTER mark_done: single-flight ville ellers se dette run som
                 # stadig levende og haenge fortsaettelsen paa det doede run.
-                try:
-                    _fortsaet_hvis_budgettet_loeb_toert(
-                        run_id=run_id, sid=sid, startet=_startet,
-                        visible_args=visible_args, eff_model=eff_model,
-                        eff_provider=eff_provider, lane=lane,
-                    )
-                except Exception:
-                    logger.exception("auto-fortsaettelse fejlede for %s", run_id)
-                    _persist_recovery_failure(sid, "continuation spawn failed")
+                if not recovery_task_id:
+                    try:
+                        _fortsaet_hvis_budgettet_loeb_toert(
+                            run_id=run_id, sid=sid, startet=_startet,
+                            visible_args=visible_args, eff_model=eff_model,
+                            eff_provider=eff_provider, lane=lane,
+                        )
+                    except Exception:
+                        logger.exception("auto-fortsaettelse fejlede for %s", run_id)
+                        _persist_recovery_failure(sid, "continuation spawn failed")
                 try:
                     from core.services.push_dispatcher import on_run_done
                     on_run_done(run_id)

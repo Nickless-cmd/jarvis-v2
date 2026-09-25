@@ -165,12 +165,12 @@ _In-flight run tracker for resume-after-interrupt._
 | function | `claim_due_recovery` | `(*, owner, lease_seconds=…, now=…)` | Atomically claim one due visible recovery task. | [src](../../../core/services/in_flight_runs.py#L547) |
 | function | `renew_recovery_lease` | `(task_id, generation, *, owner, lease_seconds=…, now=…)` | — | [src](../../../core/services/in_flight_runs.py#L632) |
 | function | `release_recovery_claim` | `(task_id, generation, *, owner, reason, retry_after_s, attempted=…, now=…)` | Giv kravet tilbage. | [src](../../../core/services/in_flight_runs.py#L661) |
-| function | `_friskere_end` | `(rec, graense)` | Er posten ung nok til at vaere en genoptagelses-kandidat? | [src](../../../core/services/in_flight_runs.py#L730) |
-| function | `interrupted_for_session` | `(session_id)` | Return the most recent in-flight record for this session, or None. | [src](../../../core/services/in_flight_runs.py#L765) |
-| function | `list_running_orphans` | `(stale_after_s, *, dying_owner=…)` | Return ``running`` records whose OWNER is gone — i.e. genuine zombies. | [src](../../../core/services/in_flight_runs.py#L792) |
-| function | `clear_session` | `(session_id)` | Drop all in-flight records for a session (used when user explicitly | [src](../../../core/services/in_flight_runs.py#L849) |
-| function | `classify_resume_intent` | `(user_message)` | Classify whether a user message should resume an interrupted run. | [src](../../../core/services/in_flight_runs.py#L863) |
-| function | `interruption_prompt_section` | `(session_id, user_message=…)` | Format an interrupted record as a system-prompt block, or None. | [src](../../../core/services/in_flight_runs.py#L875) |
+| function | `_friskere_end` | `(rec, graense)` | Er posten ung nok til at vaere en genoptagelses-kandidat? | [src](../../../core/services/in_flight_runs.py#L738) |
+| function | `interrupted_for_session` | `(session_id)` | Return the most recent in-flight record for this session, or None. | [src](../../../core/services/in_flight_runs.py#L773) |
+| function | `list_running_orphans` | `(stale_after_s, *, dying_owner=…)` | Return ``running`` records whose OWNER is gone — i.e. genuine zombies. | [src](../../../core/services/in_flight_runs.py#L800) |
+| function | `clear_session` | `(session_id)` | Drop all in-flight records for a session (used when user explicitly | [src](../../../core/services/in_flight_runs.py#L857) |
+| function | `classify_resume_intent` | `(user_message)` | Classify whether a user message should resume an interrupted run. | [src](../../../core/services/in_flight_runs.py#L871) |
+| function | `interruption_prompt_section` | `(session_id, user_message=…)` | Format an interrupted record as a system-prompt block, or None. | [src](../../../core/services/in_flight_runs.py#L883) |
 
 ## `core/services/indre_puls.py`
 _Hjertet må hverken stå stille eller løbe løbsk — og bøgerne skal passe._

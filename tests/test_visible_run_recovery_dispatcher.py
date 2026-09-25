@@ -172,10 +172,10 @@ def test_den_detachede_koersel_lukker_opgaven_naar_turen_ER_terminal():
     import inspect
     from core.services.visible_runs_sections import detached_run
     kilde = inspect.getsource(detached_run)
-    assert "mark_completed(recovery_task_id)" in kilde
-    # KUN naar turen faktisk blev faerdig: fejlede fortsaettelsen, skal
-    # opgaven blive liggende og tages igen — det er hele formaalet.
-    assert kilde.index("run_er_terminal(") < kilde.index("mark_completed(recovery_task_id)")
+    assert "_afregn_genoptaget_run(" in kilde
+    # Den synkrone journal er sandhed; DB-outcome skrives i en baggrundstraad.
+    assert "settle_terminal(" in kilde
+    assert "get_record(inner_run_id)" in kilde
 
 
 # ── Én kørsel ad gangen i en samtale (Bjørn 20/9-2026) ──────────────────────

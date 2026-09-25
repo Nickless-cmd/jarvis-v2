@@ -711,6 +711,14 @@ def release_recovery_claim(
             if str(rec.get("recovery_mode") or "") == "final_synthesis":
                 rec["final_synthesis_pending"] = True
             rec["recovery_deferrals"] = int(rec.get("recovery_deferrals") or 0) + 1
+        if attempted and int(rec.get("recovery_attempt") or 0) >= int(
+            rec.get("recovery_limit") or 3
+        ) and not bool(rec.get("final_synthesis_pending")):
+            rec["status"] = "failed_terminal"
+            rec["settled_at"] = instant.isoformat()
+            rec["next_attempt_at"] = ""
+            rec["notice_pending"] = True
+            return True
         rec["next_attempt_at"] = (
             instant + timedelta(seconds=max(0.0, float(retry_after_s)))
         ).isoformat()

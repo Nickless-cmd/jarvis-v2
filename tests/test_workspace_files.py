@@ -46,6 +46,12 @@ def test_stub_workspace_falls_back_to_shared(tmp_path, monkeypatch) -> None:
     )
 
     monkeypatch.setenv("HOME", str(fake_home))
+    # OGSAA `JARVIS_HOME`: `workspace_paths._jarvis_home()` laeser den env
+    # foerst, og conftest-vaernet `_guard_prod_shared_dir` saetter den for
+    # hver test. Uden denne linje pegede testens egen `HOME` paa sin fake
+    # home mens `shared_dir()` stadig laa i vaernets tmp-mappe — to
+    # forskellige svar paa «hvor er hjemmet».
+    monkeypatch.setenv("JARVIS_HOME", str(fake_home / ".jarvis-v2"))
 
     section = workspace_files._workspace_file_section(
         workspaces / "SOUL.md",
@@ -72,6 +78,12 @@ def test_no_fallback_when_workspace_is_rich(tmp_path, monkeypatch) -> None:
     (shared / "IDENTITY.md").write_text("Shared version line.\n" + ("text " * 200), encoding="utf-8")
 
     monkeypatch.setenv("HOME", str(fake_home))
+    # OGSAA `JARVIS_HOME`: `workspace_paths._jarvis_home()` laeser den env
+    # foerst, og conftest-vaernet `_guard_prod_shared_dir` saetter den for
+    # hver test. Uden denne linje pegede testens egen `HOME` paa sin fake
+    # home mens `shared_dir()` stadig laa i vaernets tmp-mappe — to
+    # forskellige svar paa «hvor er hjemmet».
+    monkeypatch.setenv("JARVIS_HOME", str(fake_home / ".jarvis-v2"))
 
     section = workspace_files._workspace_file_section(
         workspaces / "IDENTITY.md",
@@ -99,6 +111,12 @@ def test_no_fallback_for_non_identity_file(tmp_path, monkeypatch) -> None:
     (shared / "RANDOM.md").write_text("Rich shared random content here.\n" * 20, encoding="utf-8")
 
     monkeypatch.setenv("HOME", str(fake_home))
+    # OGSAA `JARVIS_HOME`: `workspace_paths._jarvis_home()` laeser den env
+    # foerst, og conftest-vaernet `_guard_prod_shared_dir` saetter den for
+    # hver test. Uden denne linje pegede testens egen `HOME` paa sin fake
+    # home mens `shared_dir()` stadig laa i vaernets tmp-mappe — to
+    # forskellige svar paa «hvor er hjemmet».
+    monkeypatch.setenv("JARVIS_HOME", str(fake_home / ".jarvis-v2"))
 
     section = workspace_files._workspace_file_section(
         workspace / "RANDOM.md",
@@ -119,6 +137,12 @@ def test_resolve_with_shared_fallback_handles_missing_workspace(tmp_path, monkey
     shared.mkdir(parents=True)
     (shared / "MEMORY.md").write_text("a" * 1000, encoding="utf-8")
     monkeypatch.setenv("HOME", str(fake_home))
+    # OGSAA `JARVIS_HOME`: `workspace_paths._jarvis_home()` laeser den env
+    # foerst, og conftest-vaernet `_guard_prod_shared_dir` saetter den for
+    # hver test. Uden denne linje pegede testens egen `HOME` paa sin fake
+    # home mens `shared_dir()` stadig laa i vaernets tmp-mappe — to
+    # forskellige svar paa «hvor er hjemmet».
+    monkeypatch.setenv("JARVIS_HOME", str(fake_home / ".jarvis-v2"))
 
     fake_workspace_path = tmp_path / "non-existent" / "MEMORY.md"
     resolved = _resolve_with_shared_fallback(fake_workspace_path)
@@ -131,6 +155,12 @@ def test_resolve_with_shared_fallback_preserves_when_shared_missing(tmp_path, mo
 
     fake_home = tmp_path / "home"
     monkeypatch.setenv("HOME", str(fake_home))
+    # OGSAA `JARVIS_HOME`: `workspace_paths._jarvis_home()` laeser den env
+    # foerst, og conftest-vaernet `_guard_prod_shared_dir` saetter den for
+    # hver test. Uden denne linje pegede testens egen `HOME` paa sin fake
+    # home mens `shared_dir()` stadig laa i vaernets tmp-mappe — to
+    # forskellige svar paa «hvor er hjemmet».
+    monkeypatch.setenv("JARVIS_HOME", str(fake_home / ".jarvis-v2"))
 
     workspace_path = tmp_path / "ws" / "SOUL.md"
     resolved = _resolve_with_shared_fallback(workspace_path)

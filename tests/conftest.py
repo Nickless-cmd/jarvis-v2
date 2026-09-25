@@ -458,6 +458,37 @@ def _guard_prod_db_path(request, monkeypatch):
 
 
 @pytest.fixture(scope="session")
+def _prod_home_shield_dir(tmp_path_factory):
+    """Én tmp-mappe pr. session som `shared/` og `workspaces/` peges mod."""
+    return tmp_path_factory.mktemp("prod_home_shield")
+
+
+@pytest.fixture(autouse=True)
+def _guard_prod_shared_dir(request, monkeypatch, _prod_home_shield_dir):
+    """INGEN test må skrive i den ægte ~/.jarvis-v2/shared/.
+
+    `state_store` fik sit værn 17/9 efter `in_flight_runs.json`-hændelsen, men
+    `shared_dir()` har aldrig haft et. Målt 25/9-2026: 23 moduler skriver dér
+    — 12 via `shared_dir() / _STORAGE_REL`, 11 via en literal sti — og fem mere
+    via `workspace_dir()`. `tests/test_body_memory.py` og
+    `tests/test_dreaming_session.py` ramte begge produktionsfilen.
+
+    Værnet sætter `JARVIS_HOME`, som `workspace_paths._jarvis_home()` læser ved
+    KALDSTID — docstringen dér siger netop «so tests can override via env».
+    Det rammer `shared_dir()` og `workspace_dir()` og INTET andet:
+    `core.runtime.config.JARVIS_HOME` beregnes ved import fra `Path.home()`, så
+    `config/`, `state/` og `logs/` er urørt (og `state/` har sit eget værn).
+
+    `@pytest.mark.real_home` slipper igennem, som `real_db` og `real_state` gør.
+    """
+    if request.node.get_closest_marker("real_home") is not None:
+        yield
+        return
+    monkeypatch.setenv("JARVIS_HOME", str(_prod_home_shield_dir))
+    yield
+
+
+@pytest.fixture(scope="session")
 def _prod_state_shield_dir(tmp_path_factory):
     """Én tmp-mappe pr. session som `state_store`s JSON-filer peges mod."""
     return tmp_path_factory.mktemp("prod_state_shield")

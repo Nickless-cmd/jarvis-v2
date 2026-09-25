@@ -231,8 +231,18 @@ class TestD2Benchmarks:
                     if latency:
                         assert latency["avg"] < 5000, f"{r['name']}({r['query']}): avg latency {latency['avg']}ms > 5s"
 
+    @pytest.mark.real_home
     def test_source_diversity(self) -> None:
-        """Tjek at multi_signal_recall henter fra flere kilder."""
+        """Tjek at multi_signal_recall henter fra flere kilder.
+
+        `real_home`: benchmarken maaler mod den FAKTISKE hukommelse paa
+        maskinen — den er koblet til data, ikke til kode. Conftest-vaernet
+        `_guard_prod_shared_dir` peger ellers `shared_dir()` mod en tom
+        tmp-mappe, og saa finder recall'en ingenting.
+
+        Koblingen fandtes foer vaernet; markoeren goer den bare synlig. En
+        benchmark uden data er et kald der maaler sig selv.
+        """
         query = "memory architecture"
         result = multi_signal_recall(query=query, total_limit=6, with_mood=False)
         assert result["status"] == "ok"

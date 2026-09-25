@@ -154,9 +154,11 @@ _Liveness-registry (Stage 2, liveness-audit 2026-06-15)._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `classify_table` | `(name)` | Returnér klassifikation for en tabel. Ukendt → 'unclassified' (IKKE 'død'). | [src](../../../core/services/liveness_registry.py#L89) |
-| function | `is_alive` | `(name)` | True hvis tabellen IKKE er forældreløs/død. Afløst/manuel/aktiv tæller som levende. | [src](../../../core/services/liveness_registry.py#L97) |
-| function | `liveness_summary` | `()` | Aggregeret overblik — til Mission Control / anti-konfabulations-flade. | [src](../../../core/services/liveness_registry.py#L102) |
+| function | `classify_table` | `(name)` | Returnér klassifikation for en tabel. Ukendt → 'unclassified' (IKKE 'død'). | [src](../../../core/services/liveness_registry.py#L151) |
+| function | `is_alive` | `(name)` | True hvis tabellen IKKE er forældreløs/død. Afløst/manuel/aktiv tæller som levende. | [src](../../../core/services/liveness_registry.py#L159) |
+| function | `classify_module` | `(name)` | Klassifikation for et MODUL. Ukendt → 'unclassified' (IKKE 'doedt'). | [src](../../../core/services/liveness_registry.py#L164) |
+| function | `module_persists` | `(name)` | False for et modul der kaldes men gemmer i hukommelsen. | [src](../../../core/services/liveness_registry.py#L176) |
+| function | `liveness_summary` | `()` | Aggregeret overblik — til Mission Control / anti-konfabulations-flade. | [src](../../../core/services/liveness_registry.py#L181) |
 
 ## `core/services/living_executive.py`
 _Living Executive — Jarvis' active impulse/choice/action loop._

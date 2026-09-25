@@ -23,6 +23,7 @@ accountable after.
 """
 from __future__ import annotations
 
+import json
 import logging
 import threading
 from datetime import UTC, datetime, timedelta
@@ -103,7 +104,35 @@ _DETECTION_COOLDOWN_S = 60
 _recent_detection_at: datetime | None = None
 
 
-def _build_breach_prompt(assistant_text: str, decisions: list[dict[str, Any]]) -> str:
+def _raekkefoelge_blok(blocks: list[dict] | None) -> str:
+    """Rækkefølgen som prompt-tekst — inkl. markøren når svaret blev skubbet.
+
+    Tom streng når blokkene ikke er der: uden dem er prompten som før, og en tom
+    sektion ville bare være støj.
+    """
+    linjer = blok_rekkefoelge(blocks)
+    if not linjer:
+        return ""
+    ud = ["=== Rækkefølgen i din tur (målt fra blokkene, ikke gættet) ==="]
+    ud += [f"{i + 1}. {x}" for i, x in enumerate(linjer[:40])]
+    regnskab = svar_blev_arbejde(blocks)
+    if regnskab and regnskab["mistænkelig"]:
+        kald = ", ".join(regnskab["kald_efter_tekst"]) or "et værktøjskald"
+        ud.append(
+            "\n⚠ MÅLT: klienten sætter skillelinjen ved det SIDSTE værktøjskald. "
+            f"Dit svar blev derfor kun de {regnskab['svar_tegn']} tegn der stod "
+            f"EFTER kaldet, mens en tekstblok på "
+            f"{regnskab['stoerste_tekst_foer']} tegn FØR kaldet ({kald}) blev "
+            "vist som «arbejde». Hvis den tekst var dit svar, er forpligtelsen "
+            "«ingen kald efter svaret» brudt."
+        )
+    return "\n".join(ud) + "\n\n"
+
+
+def _build_breach_prompt(
+    assistant_text: str, decisions: list[dict[str, Any]],
+    blocks: list[dict] | None = None,
+) -> str:
     decision_lines = []
     for d in decisions:
         directive = str(d.get("directive") or "").strip()
@@ -114,6 +143,7 @@ def _build_breach_prompt(assistant_text: str, decisions: list[dict[str, Any]]) -
         f"{identity_prompt_prefix()}, og du gennemgår en besked du selv lige har sendt for at "
         "checke om den brød en af dine aktive adfærdsforpligtelser.\n\n"
         f"=== Aktive forpligtelser ===\n{decision_block}\n\n"
+        f"{_raekkefoelge_blok(blocks)}"
         f"=== Din besked ===\n{assistant_text[:2000]}\n\n"
         "Vurder ærligt. Hvis ingen blev brudt, skriv NONE. Ellers, for hver "
         "brudt forpligtelse, skriv en linje i format:\n"
@@ -142,8 +172,130 @@ def _parse_breaches(text: str) -> list[dict[str, str]]:
     return out
 
 
-def detect_breach_in_output(assistant_text: str) -> list[dict[str, Any]]:
-    """Return list of detected breaches. Empty if none. LLM-led."""
+# ── Rækkefølgen i turen (25/9-2026) ────────────────────────────────────────
+#
+# Brud-detektoren fik KUN den færdige tekst. Den kunne derfor ikke se dét
+# forpligtelsen «ingen kald efter svaret» handler om: OM et værktøjskald kom
+# efter svaret.
+#
+# Målt på en ægte tur: Jarvis skrev hele sit svar (en analyse der sluttede med
+# et spørgsmål til Bjørn), kaldte `remember_this`, og skrev «Gemt —». Klienten
+# sætter skillelinjen ved det SIDSTE `tool_use` (`raekkeModel.ts::opdel`) —
+# tekst EFTER er «svaret», tekst FØR er «arbejde». Hele analysen blev derfor
+# vist som arbejde, og kvitteringen blev svaret. Dommeren så kun teksten og
+# kunne ikke vide det.
+#
+# Rækkefølgen fandtes hele tiden. Den ligger i `chat_messages.content_json` og
+# følger med `channel.chat_message_appended` som `message.content_json`. Her
+# blev den kastet væk.
+
+_TEKST_TYPE = "text"
+#: Blokke der tæller som et værktøjskald. `tool_use` er den kanoniske form;
+#: `progress` er det flade spor (spec §5) klienten tegner som en række.
+_KALD_TYPER = ("tool_use", "progress")
+
+#: Grænserne er målt, ikke valgt. 25/9-2026 i den levende base: 3.838 ture med
+#: værktøjskald, 1.921 havde tekst BÅDE før og efter det sidste kald, og 39
+#: havde et «svar» under 300 tegn efter kaldet mens en tekstblok FØR var over
+#: 800. Det er de 39 denne markør peger på.
+_SVAR_EFTER_GRENSE = 300
+_TEKST_FOER_GRENSE = 800
+
+
+def _blok_tekst(b: object) -> str:
+    """Blokkens tekst, trimmet. Tom for alt der ikke er en tekstblok."""
+    if not isinstance(b, dict) or b.get("type") != _TEKST_TYPE:
+        return ""
+    return str(b.get("text") or "").strip()
+
+
+def _blok_kald(b: object) -> str:
+    """Navnet på det værktøj blokken kalder — tom streng hvis den ikke er et kald."""
+    if not isinstance(b, dict) or b.get("type") not in _KALD_TYPER:
+        return ""
+    return str(b.get("name") or b.get("tool") or b.get("message") or "værktøj").strip()
+
+
+def blok_rekkefoelge(blocks: list[dict] | None) -> list[str]:
+    """Turens blokke som en kort, ordnet liste — til dommerens prompt.
+
+    Kun det der betyder noget for rækkefølgen: tekst (med længde og begyndelse),
+    kald (med navn), tanke. `tool_result` udelades — et resultat er ikke en
+    handling nogen kan bryde en forpligtelse med, og det ville drukne listen.
+    """
+    ud: list[str] = []
+    for b in (blocks or []):
+        if not isinstance(b, dict):
+            continue
+        art = str(b.get("type") or "")
+        if art == _TEKST_TYPE:
+            tekst = _blok_tekst(b)
+            if tekst:
+                ud.append(f"tekst ({len(tekst)} tegn): «{tekst[:160]}»")
+        elif art in _KALD_TYPER:
+            navn = _blok_kald(b)
+            if navn:
+                ud.append(f"kald: {navn}")
+        elif art == "thinking":
+            ud.append("tanke")
+    return ud
+
+
+def svar_blev_arbejde(blocks: list[dict] | None) -> dict[str, Any] | None:
+    """Blev turens svar skubbet ind i «arbejdet»?
+
+    Klienten deler beskeden ved det sidste `tool_use`: tekst EFTER er svaret,
+    tekst FØR er arbejde. Formen er sund når svaret står sidst. Den er brudt når
+    en kort kvittering efter et kald bliver «svaret», mens turens egentlige svar
+    ligger før kaldet og bliver vist som arbejde.
+
+    Om en tekst *læser* som et svar er en vurdering — det er dommerens. At et
+    kald kom bagefter, og hvor meget tekst der stod på hver side, er fakta.
+    Dette er fakta.
+
+    ``None`` = der er ingen kald, eller intet tekst før det sidste — altså
+    ingen risiko for at et svar blev skubbet ind i arbejdet.
+    """
+    blokke = [b for b in (blocks or []) if isinstance(b, dict)]
+    if not blokke:
+        return None
+    skillelinje = -1
+    for i, b in enumerate(blokke):
+        if b.get("type") == "tool_use":
+            skillelinje = i
+    if skillelinje < 0:
+        return None
+    foer = [t for t in (_blok_tekst(b) for b in blokke[:skillelinje]) if t]
+    if not foer:
+        return None
+    efter = [t for t in (_blok_tekst(b) for b in blokke[skillelinje + 1:]) if t]
+    stoerste_idx = max(
+        (i for i, b in enumerate(blokke[:skillelinje]) if _blok_tekst(b)),
+        key=lambda i: len(_blok_tekst(blokke[i])),
+    )
+    stoerste = _blok_tekst(blokke[stoerste_idx])
+    efter_tegn = sum(len(t) for t in efter)
+    kald_efter = [k for k in (_blok_kald(b) for b in blokke[stoerste_idx + 1:]) if k]
+    return {
+        "svar_tegn": efter_tegn,
+        "stoerste_tekst_foer": len(stoerste),
+        "tekst_foer_uddrag": stoerste[:200],
+        "kald_efter_tekst": kald_efter,
+        "mistænkelig": (
+            len(stoerste) >= _TEKST_FOER_GRENSE
+            and efter_tegn < _SVAR_EFTER_GRENSE
+        ),
+    }
+
+
+def detect_breach_in_output(
+    assistant_text: str, blocks: list[dict] | None = None,
+) -> list[dict[str, Any]]:
+    """Return list of detected breaches. Empty if none. LLM-led.
+
+    ``blocks`` er turens ordnede blokliste. Uden den ser dommeren kun teksten
+    og kan ikke afgøre om et kald kom efter svaret — se `svar_blev_arbejde`.
+    """
     global _recent_detection_at
     if not assistant_text or len(assistant_text.strip()) < 20:
         return []
@@ -163,7 +315,7 @@ def detect_breach_in_output(assistant_text: str) -> list[dict[str, Any]]:
     try:
         from core.services.daemon_llm import daemon_llm_call
         text = daemon_llm_call(
-            _build_breach_prompt(assistant_text, active),
+            _build_breach_prompt(assistant_text, active, blocks),
             max_len=400, fallback="",
             daemon_name="decision_breach_check",
         )
@@ -217,6 +369,80 @@ def detect_breach_in_output(assistant_text: str) -> list[dict[str, Any]]:
     return breaches
 
 
+# ── Blokkene ud af event-payloaden ─────────────────────────────────────────
+
+
+def _blokke_fra_payload(payload: dict, besked: object) -> list[dict] | None:
+    """Turens blokliste ud af `channel.chat_message_appended`.
+
+    Beskeden følger med som `payload["message"]`, og dens `content_json` er den
+    kanoniske blokliste — den ligger der allerede, den blev bare ikke læst.
+    Mangler den (ældre udgiver, eller struktur-flaget slukket), slås den op i
+    basen via besked-id'et. Self-safe: kan intet læses, er svaret None, og
+    dommeren er da som før — på teksten alene.
+    """
+    raa = None
+    if isinstance(besked, dict):
+        raa = besked.get("content_json")
+    if raa is None:
+        raa = payload.get("content_json")
+    if isinstance(raa, list):
+        return raa
+    if isinstance(raa, str) and raa.strip():
+        try:
+            parsed = json.loads(raa)
+            return parsed if isinstance(parsed, list) else None
+        except Exception as exc:
+            # Ugyldig JSON er ikke en fejl vi skal råbe om: den betyder bare at
+            # blokkene ikke kan læses ad denne vej, og DB-fallbacken nedenfor er
+            # den næste. Logget, så et format-skift kan ses i driften.
+            logger.debug("decision_enforcement: content_json kunne ikke parses: %s", exc)
+            return None
+    mid = ""
+    if isinstance(besked, dict):
+        mid = str(besked.get("message_id") or besked.get("id") or "")
+    if not mid:
+        return None
+    try:
+        from core.runtime.db import connect
+        with connect() as conn:
+            row = conn.execute(
+                "SELECT content_json FROM chat_messages WHERE message_id = ?", (mid,),
+            ).fetchone()
+        if row and row[0]:
+            parsed = json.loads(str(row[0]))
+            return parsed if isinstance(parsed, list) else None
+    except Exception as exc:
+        # Kan basen ikke læses, er svaret «ingen blokke» — og dommeren falder da
+        # tilbage til teksten alene, altså som før fixen. Logget, ikke tavst.
+        logger.debug("decision_enforcement: blokke kunne ikke slaaes op: %s", exc)
+        return None
+    return None
+
+
+def _observer_svar_skubbet(blokke: list[dict] | None) -> None:
+    """Mål mønsteret i Centralen — uafhængigt af dommeren og dens cooldown.
+
+    Dommeren er en LLM med loft på ét kald i minuttet. Mønsteret er
+    deterministisk og kan tælles hver gang. Uden det tal står adherence-scoren
+    på en dom der ikke kunne se rækkefølgen — selvbedrag med en måling påklistret.
+    """
+    try:
+        regnskab = svar_blev_arbejde(blokke)
+        if not regnskab or not regnskab.get("mistænkelig"):
+            return
+        from core.services.central_core import central
+        central().observe({
+            "cluster": "commit", "nerve": "svar_efter_kald",
+            "svar_tegn": regnskab["svar_tegn"],
+            "tekst_foer_tegn": regnskab["stoerste_tekst_foer"],
+            "kald_efter_tekst": regnskab["kald_efter_tekst"],
+        })
+    except Exception as exc:
+        # En måling må aldrig kunne vælte besked-flowet. Logget, ikke tavst.
+        logger.debug("decision_enforcement: svar-efter-kald kunne ikke maales: %s", exc)
+
+
 # ── Eventbus subscriber ────────────────────────────────────────────────────
 
 
@@ -239,15 +465,28 @@ def _poll_loop() -> None:
             if kind not in {"channel.chat_message_appended", "runtime.visible_run_completed"}:
                 continue
             payload = item.get("payload") or {}
-            role = str(payload.get("role") or "")
-            text = str(payload.get("content") or payload.get("text") or "").strip()
+            besked = payload.get("message") or {}
+            role = str(
+                payload.get("role")
+                or (besked.get("role") if isinstance(besked, dict) else "")
+                or ""
+            )
+            text = str(
+                payload.get("content") or payload.get("text")
+                or (besked.get("content") if isinstance(besked, dict) else "")
+                or ""
+            ).strip()
             if kind == "channel.chat_message_appended" and role != "assistant":
                 continue
             if not text:
                 continue
+            blokke = _blokke_fra_payload(payload, besked)
+            # Mønsteret tælles deterministisk — før dommeren, og uafhængigt af
+            # dens cooldown. Se `_observer_svar_skubbet`.
+            _observer_svar_skubbet(blokke)
             # Run breach detection in a thread so the bus loop isn't blocked
             threading.Thread(
-                target=detect_breach_in_output, args=(text,), daemon=True,
+                target=detect_breach_in_output, args=(text, blokke), daemon=True,
             ).start()
         except Exception:
             # A loop that fails every item still looks alive from outside; make

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8016/15505 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8023/15512 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 8016/15505 functions/methods documented (51%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 695 | 1275 | 54% |
-| `core.services` | 5298 | 10539 | 50% |
+| `core.services` | 5305 | 10546 | 50% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 107 | 183 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -974,7 +974,7 @@ Generated from source. 8016/15505 functions/methods documented (51%). The list b
 - `core/services/daemon_manager.py` :: `set_daemon_enabled` (L844)
 - `core/services/daily_journal.py` :: `stop_daily_journal_daemon` (L296)
 - `core/services/day_shape_memory.py` :: `build_day_shape_surface` (L261)
-- `core/services/decision_enforcement.py` :: `subscribe` (L266)
+- `core/services/decision_enforcement.py` :: `subscribe` (L505)
 - `core/services/decision_ghosts.py` :: `build_decision_ghosts_surface` (L193)
 - `core/services/decision_ghosts.py` :: `describe_ghost_decision` (L163)
 - `core/services/decision_ghosts.py` :: `describe_success_echo` (L171)
@@ -1441,13 +1441,13 @@ Generated from source. 8016/15505 functions/methods documented (51%). The list b
 - `core/services/projection_runtime.py` :: `registered` (L80)
 - `core/services/projection_tool_router.py` :: `register` (L212)
 - `core/services/prompt_cache_probe.py` :: `ProbeVerdict.as_line` (L61)
-- `core/services/prompt_contract.py` :: `build_future_agent_task_prompt_assembly` (L3513)
-- `core/services/prompt_contract.py` :: `build_heartbeat_prompt_assembly` (L3361)
-- `core/services/prompt_contract.py` :: `build_prompt_relevance_decision` (L3650)
+- `core/services/prompt_contract.py` :: `build_future_agent_task_prompt_assembly` (L3527)
+- `core/services/prompt_contract.py` :: `build_heartbeat_prompt_assembly` (L3375)
+- `core/services/prompt_contract.py` :: `build_prompt_relevance_decision` (L3664)
 - `core/services/prompt_contract.py` :: `build_runtime_inner_visible_prompt_bridge_surface` (L151)
 - `core/services/prompt_contract.py` :: `build_runtime_memory_selection_surface` (L99)
 - `core/services/prompt_contract.py` :: `build_runtime_relevance_decision_surface` (L126)
-- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4886)
+- `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4900)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_from_inputs` (L224)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_runtime_surface` (L469)
 - `core/services/prompt_mutation_loop.py` :: `build_prompt_mutation_loop_prompt_section` (L529)

@@ -231,10 +231,22 @@ def register_maintenance_producers(register_producer: Callable[[ProducerSpec], N
         hobede de sig op (931 uløste 10. sep) og fyldte både panelet og root_causes med
         governance-støj. Vinduet er 2 timer og ikke 1: kadencen kører hver time, og en hændelse
         skal kunne ses i panelet i mere end én cyklus før den lukkes. Rører ALDRIG severe —
-        en SECURITY-RED (ægte cross-user-lækage) skal stå åben indtil nogen håndterer den."""
-        from core.runtime.db_central_incidents import expire_gate_enforce_incidents
+        en SECURITY-RED (ægte cross-user-lækage) skal stå åben indtil nogen håndterer den.
+
+        Udvidet 25/9-2026: expire'en ramte KUN kind='gate_enforce'. Alle andre kinds — stall,
+        flag, gate_fired, undefined_error, silent_cutoff — havde ingen ældning og hobede sig
+        op for evigt. Målt: 583 uløste, hvoraf 22 med severity 'error', den ældste fra 19.
+        august. Fordi status-beregningen farver Centralen gul ved blot ÉN uløst error, stod
+        Centralen strukturelt gul — en stall fra 20/9 farvede «nu» fem dage senere.
+        `expire_stale_incidents` lukker derfor resten ved 48 timer (ts = sidst set; en
+        gentaget fejl bumpes og er frisk)."""
+        from core.runtime.db_central_incidents import (
+            expire_gate_enforce_incidents,
+            expire_stale_incidents,
+        )
         expired = expire_gate_enforce_incidents(older_than_hours=2.0)
-        return {"status": "ok", "expired": expired}
+        stale = expire_stale_incidents(older_than_hours=48.0)
+        return {"status": "ok", "expired": expired, "stale": stale}
 
     register_producer(ProducerSpec(
         name="central_incident_retention",

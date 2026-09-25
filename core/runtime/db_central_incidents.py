@@ -216,6 +216,38 @@ def expire_gate_enforce_incidents(*, older_than_hours: float = 2.0) -> int:
         return 0
 
 
+def expire_stale_incidents(*, older_than_hours: float = 48.0) -> int:
+    """Auto-luk ULØSTE incidents (severity <> 'severe') der ikke er SET i vinduet.
+
+    Samme beslutning som `expire_gate_enforce_incidents`, men for ALLE kinds — ikke kun
+    governance-hændelser. Målt 25/9-2026: 583 uløste incidents, hvoraf 22 med severity
+    'error' — den ældste fra 19. august. `_status_from` farver Centralen gul ved BLOT én
+    uløst error, og ingen af dem havde en selv-løsende modpart. Centralen stod derfor
+    strukturelt gul: en stream-stall fra 20/9 farvede «nu» fem dage senere, og en
+    ubetydelig 'acted'-log fra august gjorde det samme.
+
+    `ts` er SIDST SET, ikke oprettet: `bump_open_incident` opdaterer den ved gentagelse.
+    En incident der ikke er set i 48 timer er derfor ikke en ÅBEN sag — den er historie.
+    Gentages fejlen, bumpes rækken og er frisk igen. Håndterede begivenheder (brute-force
+    BLOKERET, syslogd AUTO-HEALED) lukkes af samme grund.
+
+    Rører ALDRIG 'severe': en SECURITY-RED (ægte cross-user-lækage) skal stå åben indtil
+    nogen håndterer den. Selv-sikker → 0.
+    """
+    cutoff = (datetime.now(UTC) - timedelta(hours=float(older_than_hours))).isoformat()
+    try:
+        with connect() as conn:
+            _ensure_central_incidents_table(conn)
+            cur = conn.execute(
+                "UPDATE central_incidents SET resolved = 1 "
+                "WHERE resolved = 0 AND severity <> 'severe' AND ts < ?",
+                (cutoff,),
+            )
+            return int(cur.rowcount or 0)
+    except Exception:  # selv-sikker: retention må aldrig vælte cadencen der kalder den
+        return 0
+
+
 def has_unresolved_message(
     *, cluster: str, nerve: str, message: str, within_seconds: int = 3600
 ) -> bool:

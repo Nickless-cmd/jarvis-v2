@@ -27,6 +27,7 @@ import { GitChip } from '../components/shell/GitChip'
 import { CodePanel } from '../components/panel/CodePanel'
 import { EnvironmentPanel } from '../components/code/EnvironmentPanel'
 import { CentralBadge } from '../components/shell/CentralBadge'
+import { AndenEnhedMaerke } from '../components/shell/AndenEnhedMaerke'
 import { JobsPanel } from '../components/shell/JobsPanel'
 import { ChangesPanel } from '../components/shell/ChangesPanel'
 import { JarvisBrowserPanel } from '../components/browser/JarvisBrowserPanel'
@@ -524,8 +525,6 @@ export function CodeView({
   // persisterede besked ind via sessions.refresh under+efter runnet.
   // (bgActive/followState/followCtrlRef deklareres tidligere — miljø-feltet
   // bruger dem allerede.)
-  const [takeoverDismissed, setTakeoverDismissed] = useState(false)
-  useEffect(() => { if (!bgActive) setTakeoverDismissed(false) }, [bgActive])
   // Egen sekund-tæller til liveness-linjen: stream.elapsedMs er 0 ved et cross-
   // device run (vi streamer ikke selv), så den ville stå på 00:00. Tæl fra da
   // bgActive blev sat.
@@ -930,6 +929,7 @@ export function CodeView({
     <div className="chatview-head-right">
       {DESK_CHROME.headerGit && config && ready && <GitChip config={config} kind={kind} root={effRoot} refreshKey={gitRefresh} />}
       {DESK_CHROME.headerHealth && <SystemHealth errors={stream.canonicalErrors} />}
+      <AndenEnhedMaerke aktiv={bgActive && stream.status !== 'working'} />
       <CentralBadge config={config} isOwner={isOwner} />
       {DESK_CHROME.headerConnection && config && <ConnectionPill config={config} />}
       {/* Alle fire panel-knapper i SAMME vaegt og stoerrelse som ikonerne i
@@ -1088,12 +1088,6 @@ export function CodeView({
       <div className="codeview-main">
         {headerActive}
         {sideKort}
-        {bgActive && stream.status !== 'working' && !takeoverDismissed && (
-          <div className="takeover-banner" role="status">
-            <span className="takeover-text">📱→🖥 Aktiv på en anden enhed — følger med her live</span>
-            <button type="button" className="takeover-dismiss" aria-label="Skjul" onClick={() => setTakeoverDismissed(true)}>×</button>
-          </div>
-        )}
         {skinne}
         {config && envOpen && !jobsOpen && !changesOpen && !browserOpen && !filesOpen && !panel.open && (
           <div className="code-right-stack">

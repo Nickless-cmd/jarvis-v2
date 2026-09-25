@@ -79,6 +79,22 @@ describe('CodeView', () => {
     })
   })
 
+  it('viser aktivitet fra en anden enhed som ikon ved Central i headeren', async () => {
+    vi.mocked(api.getActiveRunSessions).mockResolvedValueOnce([
+      { session_id: 's1', run_id: 'remote-run', status: 'working' },
+    ])
+    try {
+      const { container } = wrap(<CodeView sessionId="s1" userName="B" role="owner" />)
+      const badge = await screen.findByTestId('anden-enhed', {}, { timeout: 2500 })
+      const headerRight = badge.closest('.chatview-head-right')
+      expect(headerRight).toBeInTheDocument()
+      expect(headerRight?.querySelector('[data-testid="central-badge"]')).toBeInTheDocument()
+      expect(container.querySelector('.takeover-banner')).not.toBeInTheDocument()
+    } finally {
+      vi.mocked(api.getActiveRunSessions).mockResolvedValue([])
+    }
+  })
+
   it('viser baggrundskomprimering og den gemte tokenbesparelse', async () => {
     vi.mocked(api.getSession).mockResolvedValue({
       etag: null, session: { id: 's1', title: 'T', updated_at: 'x' },

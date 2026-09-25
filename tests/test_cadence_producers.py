@@ -154,3 +154,51 @@ def test_uden_domaene_skrives_der_INGEN_hypotese(monkeypatch):
     assert fanget == [], (
         f"en samtale-slug blev skrevet som emne igen: "
         f"{[k['canonical_key'] for k in fanget]}")
+
+
+def test_en_IKKE_teknisk_besked_naar_frem_til_domaene_opslaget(monkeypatch):
+    """DEN begraensning der blev taget 25/9-2026.
+
+    `is_noisy_signal_text` kraever tekniske signalord. Maalt: «Du glemmer hele
+    tiden hvad vi aftalte» kasseres, «din hukommelse paa tvaers af sessioner i
+    runtime» slipper igennem. De tekster der baerer et staaende domaene er
+    netop de IKKE-tekniske, saa 13e sad bag en port bygget til det modsatte af
+    hvad droemme-kaeden vil have.
+    """
+    import core.services.cadence_producers as CP
+    import core.services.dream_domains as DD
+    set_tekst: list[str] = []
+    fanget: list[dict] = []
+    monkeypatch.setattr(CP, "upsert_runtime_dream_hypothesis_signal",
+                        lambda **kw: fanget.append(kw) or kw)
+    monkeypatch.setattr(DD, "domaene_for_tur",
+                        lambda t, **kw: set_tekst.append(t) or "memory")
+    monkeypatch.setattr("core.services.living_heartbeat_cycle.determine_life_phase",
+                        lambda: {"phase": "dreaming"})
+
+    besked = "Du glemmer hele tiden hvad vi aftalte i går"
+    from core.services.signal_noise_guard import is_noisy_signal_text
+    assert is_noisy_signal_text(besked), (
+        "forudsaetningen holder ikke laengere — vagten kasserer den ikke")
+
+    CP.produce_signals_from_run(
+        run_id="r0", session_id="s1", user_message=besked,
+        assistant_response="ok", outcome_status="completed")
+
+    assert set_tekst == [besked], (
+        "beskeden naaede ikke domaene-opslaget — 13e er bag stoejvagten igen")
+    assert [k["canonical_key"] for k in fanget] == [
+        "dream-hypothesis:post_run_hypothesis:memory"]
+
+
+def test_stoejvagten_er_UROERT_for_de_andre():
+    """Vagten gater syv moduler. 13e er taget ud bag den; de seks staar.
+
+    Aendres selve vagten, aendres ogsaa maal-, fokus- og refleksions-signaler
+    — og det er en anden beslutning end denne.
+    """
+    from core.services.signal_noise_guard import is_noisy_signal_text
+    assert is_noisy_signal_text("hej")
+    assert is_noisy_signal_text("Du glemmer hele tiden hvad vi aftalte i går")
+    assert not is_noisy_signal_text(
+        "din hukommelse på tværs af sessioner i runtime holder ikke")

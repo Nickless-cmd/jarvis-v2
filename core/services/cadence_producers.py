@@ -529,13 +529,32 @@ def produce_signals_from_run(
         # der INGEN hypotese. Det er svaret det meste af tiden, med vilje.
         # Spoerges der foerst naar fasen eller run-id'et er rigtigt, koster det
         # ét billigt kald paa ~20 % af turene, i en baggrundstraad.
+        # 13e spoerger IKKE stoejvagten foerst.
+        #
+        # `is_noisy_signal_text` kraever TEKNISKE signalord — den er bygget til
+        # at holde snak ude af verdensmodellen, og det er rigtigt dér. Men de
+        # tekster der baerer et staaende domaene er netop de ikke-tekniske.
+        # Maalt 25/9-2026: «Du glemmer hele tiden hvad vi aftalte» kasseres,
+        # «din hukommelse paa tvaers af sessioner i runtime» slipper igennem.
+        # 13e sad altsaa bag en port bygget til det modsatte af hvad
+        # droemme-kaeden vil have.
+        #
+        # Modellen ER filteret her, og et bedre et: den svarede «none» paa alle
+        # 14 rigtige produktions-tekster (byg-ordrer, natrutiner,
+        # selv-vaekninger) uden at skulle laere hvad et signalord er. Derfor
+        # faar den turen som den er — det rensede emne naar det findes, ellers
+        # beskeden selv.
+        #
+        # Vagten er uroert for de seks andre moduler der bruger den.
+        # Omkostning: ~60-120 synlige runs pr. dag gange ~20 % = 12-25 billige
+        # kald, i en baggrundstraad.
         domaene = None
-        if topic_slug and (
+        if (
             phase.get("phase") in ("dreaming", "reflection")
             or (run_id.endswith("0") or run_id.endswith("5"))
         ):
             from core.services.dream_domains import domaene_for_tur
-            domaene = domaene_for_tur(meaningful_topic)
+            domaene = domaene_for_tur(meaningful_topic or user_message)
         if domaene:
             upsert_runtime_dream_hypothesis_signal(
                 signal_id=f"dh-{uuid4().hex[:10]}",

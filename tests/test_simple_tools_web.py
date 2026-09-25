@@ -140,7 +140,15 @@ def test_udtrykkelig_model_vinder_over_valget(tmp_path, monkeypatch):
 
     monkeypatch.setattr(W.urllib_request, "urlopen", lambda *a, **k: _Svar())
     svar = W._exec_analyze_image({"image_path": str(billede), "model": "llava:7b"})
-    assert svar == {"analysis": "en kat", "model": "llava:7b", "status": "ok"}
+    # Felt for felt, ikke et eksakt dict. Svaret er med vilje udvideligt: 24/9
+    # kl. 18:43 (`1919d8c1d`) kom `preview_path` til, saa billedet kan vises i
+    # raekkerne — en ren tilfoejelse, der alligevel gjorde denne test roed i et
+    # doegn. Det testen handler om er at et UDTRYKKELIGT modelvalg springer
+    # opslaget over; den kontrol ligger i monkeypatchen ovenfor, som kaster hvis
+    # `resolve_vision_target` bliver kaldt. Samme idiom som soester-testen.
+    assert svar["status"] == "ok"
+    assert svar["model"] == "llava:7b"
+    assert svar["analysis"] == "en kat"
 
 
 # ── Lange traeffer-linjer (6/9-2026) ─────────────────────────────────────

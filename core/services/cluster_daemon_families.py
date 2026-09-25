@@ -1256,6 +1256,25 @@ def _infra_provider_autodiscovery_live(_snap: dict) -> dict[str, Any]:
     return tick_provider_autodiscovery_daemon()
 
 
+def _infra_visible_drift_live(_snap: dict) -> dict[str, Any]:
+    """Luk `visible_runs`-rækker der står `recovering`, men er beviseligt slut.
+
+    Samme regel som boot-reconcileren bruger (`_ryd_visible_drift`), men uden at
+    vente på en genstart. Self-throttler på 30 min: reglen er billig, og en række
+    bliver ikke mere sand af at blive talt oftere — `finished_at` er beviset
+    uanset hvor tit vi kigger.
+
+    Målt 25/9-2026: 16 rækker stod `recovering` med `finished_at` sat, den nyeste
+    29 sekunder gammel. Ingen proces kendte dem. Boot-vejen krævede enten en
+    genstart eller seks timers alder, så de lå der indtil nogen ryddede dem i
+    hånden. Nu lukker familien dem af sig selv.
+    """
+    if not _infra_throttle_ready("visible_drift_cleanup", 30):
+        return {"status": "throttled", "cadence_minutes": 30}
+    from core.services.session_boot_reconciler import ryd_visible_drift_periodisk
+    return ryd_visible_drift_periodisk()
+
+
 def _infra_approval_expiry_live(_snap: dict) -> dict[str, Any]:
     """Markér udløbne, ikke-besluttede godkendelser. Rules-based, no LLM.
     Self-throttles INTERNALLY (5 min), so the family calls it every tick.
@@ -1295,6 +1314,7 @@ _INFRA_UNCONDITIONAL: tuple[tuple[str, Callable[[dict], Any]], ...] = (
     ("mail_checker", _infra_mail_checker_live),
     ("visual_memory", _infra_visual_memory_live),
     ("provider_autodiscovery", _infra_provider_autodiscovery_live),
+    ("visible_drift_cleanup", _infra_visible_drift_live),
 )
 
 

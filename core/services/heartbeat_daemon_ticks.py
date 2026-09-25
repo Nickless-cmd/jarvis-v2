@@ -244,6 +244,18 @@ def tik_indre_daemoner() -> dict[str, int]:
     except Exception as exc:
         logger.warning("per-bruger daemoner fejlede: %s", exc)
 
+    # Spoegelserne. `archive_dead_nodes` havde INGEN kalder, og `decay_rate`
+    # blev sat til 0.0 og aldrig opdateret — `describe` tog `active[0]`, altsaa
+    # det aeldste spoegelse for evigt. Nu er henfaldet ALDEREN, og kilden er
+    # signal-tabellernes doede raekker: 29.393 staar `superseded`/`stale`, men
+    # kun de unge cirkler stadig.
+    try:
+        from core.services.ghost_networks import tick as _spoegelse_tick
+        _spoegelse_tick(30.0)
+        koert += 1
+    except Exception:  # taelles frem for at slugges — se docstring
+        fejlet += 1
+
     # «Life services» — indre tilstand MELLEM tik. Laa i `run_heartbeat_tick`
     # og koerte derfor kun naar der var prioriteter, selv om kommentaren over
     # dem sagde «between ticks». Tre af de fire stod paa listen over moduler

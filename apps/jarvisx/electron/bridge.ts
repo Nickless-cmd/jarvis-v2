@@ -1899,18 +1899,42 @@ export class JarvisXBridge {
         // both fire — gives cleaner error reporting.
         //
         // The server sends timeout_ms in the tool_invoke message; we
-        // use that plus a 10s grace margin. Fallback to 45s if the
+        // use that plus a 10s grace margin. Fallback to 35s if the
         // server didn't provide a value (legacy).
+        //
+        // TO FRISKER, TO BETYDNINGER. `timeout_s` (sendt videre i args) er
+        // hvor længe PROCESSEN må LEVE — `asyncSpawn` dræber den med SIGTERM
+        // når den udløber. Denne frist er hvor længe vi må VENTE på svar.
+        // De må ikke klippes sammen til ét tal.
+        //
+        // MÅLT 25/9-2026: loftet stod på 120 s, mens serveren venter op til
+        // 325 s (`operator_bash_async` caper kommandoen ved 300 s og sender
+        // `timeout_s + 25 s` som dispatch-frist). For hvert kald over ~110 s
+        // gav klienten derfor op FØR serveren: kommandoen fuldførte,
+        // `handler_timeout` gik tilbage, og svaret faldt på gulvet uden at
+        // nogen kaldte det en fejl. Loftet SKAL ligge over serverens maksimum.
+        const SERVER_MAX_COMMAND_MS = 300_000
+        const SERVER_DISPATCH_SLACK_MS = 25_000
+        const HANDLER_GRACE_MS = 10_000
+        const HANDLER_CEILING_MS =
+          SERVER_MAX_COMMAND_MS + SERVER_DISPATCH_SLACK_MS + HANDLER_GRACE_MS
         const serverTimeoutMs = Number(msg.timeout_ms) || 35_000
         const HANDLER_TIMEOUT_MS = Math.min(
-          serverTimeoutMs + 10_000,
-          120_000,  // hard ceiling: 2 min
+          serverTimeoutMs + HANDLER_GRACE_MS,
+          HANDLER_CEILING_MS,  // 335 s — over serverens maksimale 325 s
         )
         const result = await Promise.race([
           handler(args),
           new Promise((_, reject) =>
             setTimeout(
-              () => reject(new Error(`handler_timeout: ${tool} did not respond within 40s`)),
+              () =>
+                reject(
+                  new Error(
+                    `handler_timeout: ${tool} did not respond within ${Math.round(
+                      HANDLER_TIMEOUT_MS / 1000,
+                    )}s`,
+                  ),
+                ),
               HANDLER_TIMEOUT_MS,
             ),
           ),

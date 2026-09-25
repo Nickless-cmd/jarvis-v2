@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7994/15475 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7995/15478 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 7994/15475 functions/methods documented (51%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 692 | 1272 | 54% |
-| `core.services` | 5283 | 10518 | 50% |
+| `core.services` | 5284 | 10521 | 50% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 107 | 183 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1882,9 +1882,9 @@ Generated from source. 7994/15475 functions/methods documented (51%). The list b
 - `core/services/temporal_self_continuity.py` :: `build_temporal_self_continuity_surface` (L51)
 - `core/services/temporal_self_continuity.py` :: `update_temporal_continuity_from_episode` (L23)
 - `core/services/temporal_self_continuity.py` :: `update_temporal_continuity_from_latest_episode` (L16)
-- `core/services/text_resonance.py` :: `build_text_resonance_surface` (L143)
-- `core/services/text_resonance.py` :: `recent_resonances` (L139)
-- `core/services/text_resonance.py` :: `reset_text_resonance` (L185)
+- `core/services/text_resonance.py` :: `build_text_resonance_surface` (L200)
+- `core/services/text_resonance.py` :: `recent_resonances` (L196)
+- `core/services/text_resonance.py` :: `reset_text_resonance` (L251)
 - `core/services/theater_audit.py` :: `build_theater_audit_surface` (L85)
 - `core/services/theory_of_mind.py` :: `recent_facts` (L286)
 - `core/services/theory_of_mind.py` :: `stop_theory_of_mind_tracker` (L471)

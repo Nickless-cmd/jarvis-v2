@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 15442 functions/methods, 51% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 15443 functions/methods, 51% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -41,21 +41,21 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 15442 functions/
 - [`core.services.10`](core.services.10.md) — `decisions_journal` … `dream_influence_proposal_tracking`
 - [`core.services.11`](core.services.11.md) — `dream_influence_runtime` … `existential_wonder_daemon`
 - [`core.services.12`](core.services.12.md) — `experience_correction_listener` … `gate_skill`
-- [`core.services.13`](core.services.13.md) — `gate_truth` … `identity_drift_daemon`
-- [`core.services.14`](core.services.14.md) — `identity_drift_guard` … `keyring_store`
-- [`core.services.15`](core.services.15.md) — `layer_tension_daemon` … `memory_maintenance_daemon`
-- [`core.services.16`](core.services.16.md) — `memory_md_update_proposal_tracking` … `network_health`
-- [`core.services.17`](core.services.17.md) — `non_visible_fallback` … `permission_axes`
-- [`core.services.18`](core.services.18.md) — `permission_classifier` … `promise_ledger`
-- [`core.services.19`](core.services.19.md) — `prompt_cache_probe` … `recall_scheduler`
-- [`core.services.20`](core.services.20.md) — `recurrence_loop_daemon` … `run_event_log`
-- [`core.services.21`](core.services.21.md) — `run_follow` … `self_history_grounding`
-- [`core.services.22`](core.services.22.md) — `self_model_blind_spots` … `session_wakeup`
-- [`core.services.23`](core.services.23.md) — `settlement_shadow` … `spild`
-- [`core.services.24`](core.services.24.md) — `staged_edits` … `tick_cache`
-- [`core.services.25`](core.services.25.md) — `tiny_webchat_execution_pilot` … `user_scope`
-- [`core.services.26`](core.services.26.md) — `user_temperature_engine` … `visible_runs_memory`
-- [`core.services.27`](core.services.27.md) — `visible_runs_outcomes` … `world_model_signal_tracking`
+- [`core.services.13`](core.services.13.md) — `gate_truth` … `identity_composer`
+- [`core.services.14`](core.services.14.md) — `identity_drift_daemon` … `kerne_curator`
+- [`core.services.15`](core.services.15.md) — `keyring_store` … `memory_hierarchy`
+- [`core.services.16`](core.services.16.md) — `memory_maintenance_daemon` … `nerve_registry`
+- [`core.services.17`](core.services.17.md) — `network_health` … `periodic_jobs_scheduler`
+- [`core.services.18`](core.services.18.md) — `permission_axes` … `projection_tool_router`
+- [`core.services.19`](core.services.19.md) — `promise_ledger` … `recall`
+- [`core.services.20`](core.services.20.md) — `recall_scheduler` … `run_closure_gate`
+- [`core.services.21`](core.services.21.md) — `run_event_log` … `self_experiments`
+- [`core.services.22`](core.services.22.md) — `self_history_grounding` … `session_view`
+- [`core.services.23`](core.services.23.md) — `session_wakeup` … `spatial_entity_ledger`
+- [`core.services.24`](core.services.24.md) — `spild` … `thought_thread`
+- [`core.services.25`](core.services.25.md) — `tick_cache` … `user_model_daemon`
+- [`core.services.26`](core.services.26.md) — `user_scope` … `visible_runs_learning_signals`
+- [`core.services.27`](core.services.27.md) — `visible_runs_memory` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

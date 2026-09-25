@@ -438,14 +438,23 @@ def _has_completed_goal_history(domain_key: str) -> bool:
 
 def _domain_key_from_focus(canonical_key: str) -> str:
     text = str(canonical_key or "")
-    if "danish-concise-calibration" in text:
-        return "danish-concise-calibration"
-    if ("dansk" in text or "danish" in text) and any(token in text for token in ("kort", "korte", "concise", "short")):
-        return "danish-concise-calibration"
-    if "avoid-repetitive-openers" in text:
-        return "avoid-repetitive-openers"
-    if "hej" in text and "hver-gang" in text:
-        return "avoid-repetitive-openers"
+    # De to hardkodede broer er fjernet 25/9-2026.
+    #
+    # Her stod `if "danish-concise-calibration" in text: return
+    # "danish-concise-calibration"` og det samme for `avoid-repetitive-openers`.
+    # Virkningen var at `development-focus:communication:danish-concise-
+    # calibration` fik strippet sit `communication:`-segment, saa den matchede
+    # hypotesens `dream-hypothesis:...:danish-concise-calibration`.
+    #
+    # Det var den eneste grund til at droemme-kaeden nogensinde foejede noget
+    # sammen. Maalt 25/9: af 1125 fokus-noegler aendrede PRAECIS TO sig naar
+    # broerne kom vaek — netop de to. Kaeden havde altsaa aldrig et ordforraad
+    # den delte af sig selv; den havde to haandskrevne undtagelser, og de fik
+    # mekanikken til at se ud som om den virkede.
+    #
+    # Nu foejer den ærligt nul sammen. Det rigtige emne-ordforraad bor i
+    # `dream_domains`, og et rigtigt moede kraever at fokus og maal vaelger
+    # derfra — ikke at nogen skriver en undtagelse mere.
     if text.startswith("development-focus:"):
         return text.removeprefix("development-focus:").replace(":", "-")
     return ""

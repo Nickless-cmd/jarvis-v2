@@ -115,3 +115,63 @@ def test_for_kort_tekst_spoerger_slet_ikke(monkeypatch):
     from core.services.dream_domains import domaene_for_tur
     assert domaene_for_tur("hej") is None
     assert kaldt == []
+
+
+# ── De to hardkodede broer (fjernet 25/9-2026) ───────────────────────────
+#
+# I `_domain_key_from_*` stod `if "danish-concise-calibration" in text: return
+# "danish-concise-calibration"` og det samme for `avoid-repetitive-openers`.
+# Virkningen var at `development-focus:communication:danish-concise-calibration`
+# fik strippet sit `communication:`-segment, saa den matchede hypotesens
+# `dream-hypothesis:...:danish-concise-calibration`.
+#
+# Det var den ENESTE grund til at droemme-kaeden nogensinde foejede noget
+# sammen. Maalt: af 1125 fokus-noegler aendrede praecis TO sig da broerne kom
+# vaek — netop de to. Kaeden havde aldrig et ordforraad den delte af sig selv.
+
+_BROBYGGERE = (
+    ("core.services.reflection_signal_tracking",
+     ("_domain_key_from_focus", "_domain_key_from_critic")),
+    ("core.services.goal_signal_tracking", ("_domain_key_from_focus",)),
+    ("core.services.self_model_signal_tracking", ("_critic_limitation_key",)),
+)
+
+
+def test_ingen_noegle_udledning_navngiver_et_bestemt_emne():
+    """AST, ikke grep: navnene staar stadig i etiketter og kommentarer.
+
+    En ny undtagelse ville faa mekanikken til at se ud som om den virker igen.
+    """
+    import ast
+    import importlib
+    import inspect
+
+    syndere: list[str] = []
+    for modul_navn, funktioner in _BROBYGGERE:
+        modul = importlib.import_module(modul_navn)
+        traen = ast.parse(inspect.getsource(modul))
+        for n in ast.walk(traen):
+            if not isinstance(n, ast.FunctionDef) or n.name not in funktioner:
+                continue
+            for k in ast.walk(n):
+                if isinstance(k, ast.Constant) and isinstance(k.value, str) \
+                        and k.value in {"danish-concise-calibration",
+                                        "avoid-repetitive-openers"}:
+                    syndere.append(f"{modul_navn}.{n.name} linje {k.lineno}: {k.value!r}")
+    assert not syndere, (
+        "en hardkodet bro er tilbage — saa foejer kaeden sig sammen paa en "
+        f"undtagelse i stedet for paa et delt ordforraad:\n  "
+        + "\n  ".join(syndere))
+
+
+def test_fokus_noeglen_beholder_nu_hele_sin_sti():
+    """Foer broen gav den `danish-concise-calibration`; nu det fulde omraade.
+
+    Det er ikke en forbedring i sig selv — det er ærligheden: fokusset ER et
+    kommunikations-fokus, og det moeder ikke en droemme-hypotese foer begge
+    vaelger fra `DOMAENER`.
+    """
+    from core.services.goal_signal_tracking import _domain_key_from_focus
+    assert _domain_key_from_focus(
+        "development-focus:communication:danish-concise-calibration"
+    ) == "communication-danish-concise-calibration"

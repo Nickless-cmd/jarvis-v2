@@ -89,6 +89,21 @@ def test_release_claim_preserves_recovery_and_applies_backoff(_isolated_records)
     assert datetime.fromisoformat(rec["next_attempt_at"]) == t0 + timedelta(seconds=30)
 
 
+def test_failed_last_attempt_is_terminal_not_endless_recovering(_isolated_records):
+    ifr.mark_started(run_id="r-last", session_id="s1", user_message="fix it",
+                     recovery_limit=1)
+    ifr.settle_recovering("r-last", reason="shutdown", recovery_limit=1)
+    claim = ifr.claim_due_recovery(owner="100:1")
+    assert claim is not None
+    assert ifr.release_recovery_claim(
+        "r-last", claim["recovery_generation"], owner="100:1",
+        reason="budget-opbrugt", retry_after_s=30,
+    )
+    rec = ifr.get_record("r-last")
+    assert rec is not None and rec["status"] == "failed_terminal"
+    assert ifr.claim_due_recovery(owner="200:2") is None
+
+
 def test_explicit_terminal_state_is_not_claimable(_isolated_records):
     ifr.mark_started(run_id="r1", session_id="s1", user_message="fix it")
     rec = ifr.settle_terminal("r1", status="cancelled", reason="user-cancelled")

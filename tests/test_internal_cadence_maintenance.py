@@ -30,14 +30,19 @@ def test_incident_retention_koerer_hver_time():
 
 
 def test_incident_retention_kalder_udloebs_funktionen():
-    """Produceren skal kalde BEGGE udløbs-funktioner — ellers er de bygget og aldrig kørt.
+    """Produceren skal kalde ALLE udløbs-funktioner — ellers er de bygget og aldrig kørt.
     `expire_gate_enforce_incidents` (2t) tager governance-øjeblikke; `expire_stale_incidents`
-    (48t) tager resten, som ellers hober sig op for evigt og holder Centralen strukturelt gul."""
+    (48t) tager resten; `expire_run_bound_incidents` lukker run-bundne når runnet er
+    TERMINALT (en hændelse, ikke en timer); `expire_orphan_incidents` (6t) tager dem uden
+    run-tilknytning, som intet levende run bærer."""
     src = inspect.getsource(_registered()["central_incident_retention"].run_fn)
     assert "expire_gate_enforce_incidents" in src
     assert "older_than_hours=2.0" in src
     assert "expire_stale_incidents" in src
     assert "older_than_hours=48.0" in src
+    assert "expire_run_bound_incidents" in src
+    assert "expire_orphan_incidents" in src
+    assert "older_than_hours=6.0" in src
 
 
 def test_incident_retention_lukker_gamle_governance_incidents(isolated_runtime):

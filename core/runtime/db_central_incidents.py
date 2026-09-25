@@ -248,6 +248,65 @@ def expire_stale_incidents(*, older_than_hours: float = 48.0) -> int:
         return 0
 
 
+def expire_run_bound_incidents() -> int:
+    """Luk ULØSTE incidents hvis RUN er terminalt — en HÆNDELSE, ikke en timer.
+
+    Målt 25/9-2026: alle fire run-bundne error-incidents pegede på runs der stod
+    ``completed``/``cancelled``/``recovering`` med ``finished_at`` sat — de farvede «nu»
+    for forløb der var slut for timer siden, og ingen kunne gøre noget ved dem. En gate
+    der fyrede i et afsluttet run er et ØJEBLIK, ikke en ÅBEN sag. Samme beslutning som
+    `expire_gate_enforce_incidents`, men knyttet til runnets livscyklus frem for til et
+    tidsvindue: den lukker præcis når forløbet er slut, ikke 48 timer senere.
+
+    Rører ALDRIG 'severe'. Selv-sikker → 0.
+    """
+    try:
+        with connect() as conn:
+            _ensure_central_incidents_table(conn)
+            cur = conn.execute(
+                "UPDATE central_incidents SET resolved = 1 "
+                "WHERE resolved = 0 AND severity <> 'severe' AND run_id <> '' "
+                "AND run_id IN ("
+                "SELECT run_id FROM visible_runs "
+                "WHERE lower(status) IN ('completed','error','failed','cancelled','done') "
+                # Et KØRENDE run har finished_at = '' (tom streng, ikke NULL — kolonnen er
+                # NOT NULL). `IS NOT NULL` ville derfor være sandt for ALLE runs og lukke
+                # sager midt i et levende forløb. Målt 25/9-2026: 1 kørende run, tom streng.
+                "OR (finished_at IS NOT NULL AND finished_at <> ''))"
+            )
+            return int(cur.rowcount or 0)
+    except Exception:  # selv-sikker: udløb må aldrig vælte cadencen der kalder det
+        return 0
+
+
+def expire_orphan_incidents(*, older_than_hours: float = 6.0) -> int:
+    """Luk ULØSTE incidents UDEN run-tilknytning der er ældre end vinduet. Selv-sikker → 0.
+
+    Intet levende run bærer dem, og en tur varer minutter — ikke dage. Vinduet er derfor
+    6 timer og ikke de 48 som `expire_stale_incidents` bruger for resten: en forældreløs
+    incident er enten en TILSTAND (der skal have en modpart — fx `tools/outcome`, som fik
+    én 25/9) eller et ØJEBLIK (fx en tavs tur fra i går, hvis kind `turn_without_reply`
+    ikke længere skrives af nogen kode). Ingen af delene bliver mere sande af at stå.
+
+    En gentaget fejl bumpes (`bump_open_incident` opdaterer `ts`) og er frisk igen.
+
+    Rører ALDRIG 'severe'. Selv-sikker → 0.
+    """
+    cutoff = (datetime.now(UTC) - timedelta(hours=float(older_than_hours))).isoformat()
+    try:
+        with connect() as conn:
+            _ensure_central_incidents_table(conn)
+            cur = conn.execute(
+                "UPDATE central_incidents SET resolved = 1 "
+                "WHERE resolved = 0 AND severity <> 'severe' "
+                "AND (run_id = '' OR run_id IS NULL) AND ts < ?",
+                (cutoff,),
+            )
+            return int(cur.rowcount or 0)
+    except Exception:  # selv-sikker: udløb må aldrig vælte cadencen der kalder det
+        return 0
+
+
 def has_unresolved_message(
     *, cluster: str, nerve: str, message: str, within_seconds: int = 3600
 ) -> bool:

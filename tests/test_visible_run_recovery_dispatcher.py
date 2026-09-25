@@ -53,6 +53,24 @@ def test_en_forladt_opgave_genoptages_praecis_EN_gang(spawn):
     assert spawn[0]["recovery_generation"] == 1
 
 
+def test_genoptagelse_bevarer_composer_og_afsenderflade(spawn, monkeypatch):
+    monkeypatch.setattr("core.services.session_permission.hent_permission", lambda sid: "trust")
+    ifr.mark_started(
+        run_id="task-context", session_id="chat-1", user_message="ret koden",
+        approval_mode="trust", thinking_mode="deep", tool_scope="code",
+        surface="desk", force_user_id="owner-1", local_tool_exec=True,
+    )
+    ifr.settle_recovering("task-context", reason="shutdown")
+    assert D.recover_due_once()["started"] == 1
+    assert {k: spawn[0][k] for k in (
+        "approval_mode", "thinking_mode", "tool_scope", "surface",
+        "force_user_id", "local_tool_exec",
+    )} == {
+        "approval_mode": "trust", "thinking_mode": "deep", "tool_scope": "code",
+        "surface": "desk", "force_user_id": "owner-1", "local_tool_exec": True,
+    }
+
+
 def test_to_dispatchere_kan_ikke_tage_den_samme_opgave(spawn):
     """Kravet er atomisk: den anden finder ingenting, ikke den samme opgave."""
     _forladt_opgave()
@@ -154,10 +172,10 @@ def test_den_detachede_koersel_lukker_opgaven_naar_turen_ER_terminal():
     import inspect
     from core.services.visible_runs_sections import detached_run
     kilde = inspect.getsource(detached_run)
-    assert "mark_completed(recovery_task_id)" in kilde
-    # KUN naar turen faktisk blev faerdig: fejlede fortsaettelsen, skal
-    # opgaven blive liggende og tages igen — det er hele formaalet.
-    assert kilde.index("run_er_terminal(") < kilde.index("mark_completed(recovery_task_id)")
+    assert "_afregn_genoptaget_run(" in kilde
+    # Den synkrone journal er sandhed; DB-outcome skrives i en baggrundstraad.
+    assert "settle_terminal(" in kilde
+    assert "get_record(inner_run_id)" in kilde
 
 
 # ── Én kørsel ad gangen i en samtale (Bjørn 20/9-2026) ──────────────────────

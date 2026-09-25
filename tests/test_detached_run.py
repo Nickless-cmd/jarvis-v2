@@ -61,3 +61,52 @@ def test_detached_run_selects_research_iterator_when_requested(monkeypatch):
     assert calls[0]["message"] == "model message"
     assert calls[0]["original_query"] == "original"
     assert calls[0]["visible_run_id"] == rid
+
+
+def test_genoptaget_tur_lukker_opgaven_fra_synkron_journal(monkeypatch):
+    from core.services.visible_runs_sections import detached_run as d
+    from core.services import in_flight_runs as ifr
+    closed = []
+    monkeypatch.setattr(ifr, "get_record", lambda rid: {"status": "completed"})
+    monkeypatch.setattr(ifr, "current_owner", lambda: "owner-1")
+    monkeypatch.setattr(ifr, "settle_terminal",
+                        lambda *args, **kw: closed.append((args, kw)))
+    monkeypatch.setattr("core.services.visible_runs_outcomes.run_er_terminal",
+                        lambda rid: False)
+    d._afregn_genoptaget_run("task-1", "inner-1", generation=1)
+    assert closed == [(("task-1",), {
+        "status": "completed", "reason": "recovery-run-terminal",
+        "expected_generation": 1, "expected_owner": "owner-1",
+    })]
+
+
+def test_afbrudt_genoptagelse_giver_samme_krav_tilbage(monkeypatch):
+    from core.services.visible_runs_sections import detached_run as d
+    from core.services import in_flight_runs as ifr
+    released = []
+    monkeypatch.setattr(ifr, "get_record", lambda rid: {
+        "status": "recovering", "exit_reason": "budget-opbrugt",
+    })
+    monkeypatch.setattr(ifr, "current_owner", lambda: "owner-1")
+    monkeypatch.setattr(ifr, "release_recovery_claim",
+                        lambda *args, **kw: released.append((args, kw)) or True)
+    d._afregn_genoptaget_run("task-1", "inner-1", generation=2)
+    assert released == [(("task-1", 2), {
+        "owner": "owner-1", "reason": "budget-opbrugt", "retry_after_s": 30.0,
+    })]
+
+
+def test_genoptaget_tur_opretter_ikke_et_nyt_krav(monkeypatch):
+    _patch(monkeypatch, ["frame"])
+    from core.services.visible_runs_sections import detached_run as d
+    settled, nested = [], []
+    monkeypatch.setattr(d, "_afregn_genoptaget_run", lambda *a, **kw: settled.append(a))
+    monkeypatch.setattr(d, "_fortsaet_hvis_budgettet_loeb_toert",
+                        lambda **kw: nested.append(kw))
+    d.start_user_run_detached(message="fortsæt", session_id="s1",
+                              recovery_task_id="task-1", recovery_generation=2)
+    for _ in range(60):
+        if settled:
+            break
+        time.sleep(0.05)
+    assert settled and not nested

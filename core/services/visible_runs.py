@@ -1579,28 +1579,9 @@ async def _stream_visible_run(
             "discord-startup-heartbeat fejl run_id=%s: %s",
             run.run_id, _dc_start_exc,
         )
-    # Phase 5: track in-flight runs so an interruption (crash, restart,
-    # cancel) leaves a trail the next visible turn can surface to the user.
-    try:
-        from core.services.in_flight_runs import mark_started as _mark_run_started
-        _mark_run_started(
-            run_id=run.run_id,
-            session_id=run.session_id,
-            user_message=run.user_message,
-            # 12/9-2026: kind/provider/model blev aldrig sendt med, så ALLE
-            # poster stod som `visible` — også de autonome. Boot-reconcilerens
-            # `kinds`-opsummering kunne derfor ikke skelne dem, og et dræbt
-            # autonomt run blev talt som en almindelig tur.
-            kind="autonomous" if getattr(run, "autonomous", False) else "visible",
-            provider=run.provider,
-            model=run.model,
-        )
-    except Exception:
-        # Samme grund som i `autonomous_stream_run` (20/9-2026): uden posten
-        # her kan boot-reconcileren ikke spørge om ejerens pid, og rækken i
-        # `visible_runs` bliver stående `running` i timevis.
-        logger.warning("visible-run %s: kunne ikke skrive in-flight-sporet",
-                       run.run_id, exc_info=True)
+    # Journalfør den synlige tur og dens composer-indstillinger samlet.
+    from core.services.visible_run_journal import mark_visible_run_started
+    mark_visible_run_started(run, tool_scope=tool_scope, force_user_id=force_user_id)
     event_bus.publish(
         "runtime.visible_run_started",
         {

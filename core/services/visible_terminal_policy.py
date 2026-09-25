@@ -27,7 +27,7 @@ class TerminalEvidence:
     pending_tool_intent: bool = False
     explicit_user_cancel: bool = False
     waiting_for_user: bool = False
-    completion_evidence: bool = True
+    incompletion_evidence: bool = False
     recovery_attempt: int = 0
     recovery_limit: int = 3
 
@@ -103,7 +103,7 @@ def classify_terminal(evidence: TerminalEvidence) -> TerminalDecision:
     recovery_reason = ""
     if evidence.pending_tool_intent:
         recovery_reason = "pending-tool-intent"
-    elif evidence.forced_finalize and not evidence.completion_evidence:
+    elif evidence.forced_finalize and evidence.incompletion_evidence:
         recovery_reason = "forced-finalize-unverified"
     elif str(evidence.finish_reason or "").strip().lower() == "length":
         recovery_reason = "completed-truncated"

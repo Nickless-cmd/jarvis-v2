@@ -14,12 +14,6 @@ from core.services.visible_terminal_policy import (
 )
 
 
-_COMPLETION_EVIDENCE_RE = re.compile(
-    r"\b(?:konklusion(?:en)?\s+er|kort\s+sagt|svaret\s+er|"
-    r"færdig|afsluttet|fuldført|implementeret|rettet|løst|verificeret|"
-    r"completed|finished|done|fixed|implemented|verified)\b",
-    re.IGNORECASE,
-)
 _NEGATED_COMPLETION_RE = re.compile(
     r"\b(?:ikke|ej|aldrig|not|never)\b.{0,32}"
     r"\b(?:færdig|afsluttet|fuldført|implementeret|rettet|løst|verificeret|"
@@ -28,13 +22,21 @@ _NEGATED_COMPLETION_RE = re.compile(
 )
 
 
-def has_completion_evidence(text: str | None) -> bool:
-    """Conservative positive evidence used only after a forced final round."""
+_CONTINUING_ACTION_RE = re.compile(
+    r"\b(?:samler|fortsætter|fortsaetter|undersøger|undersoeger|tester|"
+    r"implementerer|retter|kører|koerer|afventer)\s+(?:nu|stadig|videre)\b",
+    re.IGNORECASE,
+)
+
+
+def has_incompletion_evidence(text: str | None) -> bool:
+    """Explicit unfinished work; absence of a completion keyword is not proof."""
     value = str(text or "")
+    if not value.strip():
+        return True
     return bool(
-        value
-        and not _NEGATED_COMPLETION_RE.search(value)
-        and _COMPLETION_EVIDENCE_RE.search(value)
+        _NEGATED_COMPLETION_RE.search(value)
+        or _CONTINUING_ACTION_RE.search(value)
     )
 
 
@@ -62,7 +64,7 @@ def resolve_agentic_exit(
         finish_reason=finish_reason,
         forced_finalize=forced_finalize,
         pending_tool_intent=pending,
-        completion_evidence=has_completion_evidence(final_text),
+        incompletion_evidence=has_incompletion_evidence(final_text),
         recovery_attempt=recovery_attempt,
         recovery_limit=recovery_limit,
     ))

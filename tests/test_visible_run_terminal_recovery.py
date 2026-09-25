@@ -29,7 +29,19 @@ def test_forced_final_with_explicit_conclusion_can_complete():
     assert result.event_name == ""
 
 
-def test_forced_final_without_completion_evidence_recovers():
+def test_forced_final_answer_without_magic_completion_words_does_not_restart():
+    result = resolve_agentic_exit(
+        exit_reason="completed",
+        final_text="Her er resultatet: Firewall-reglen blokerede trafikken. Reglen er nu ændret.",
+        finish_reason="stop",
+        forced_finalize=True,
+        pending_tool_intent=False,
+    )
+    assert result.decision.state is TerminalState.COMPLETED
+    assert result.event_name == ""
+
+
+def test_forced_final_with_explicit_continuing_action_recovers():
     result = resolve_agentic_exit(
         exit_reason="completed",
         final_text="Jeg har undersøgt loggen og samler nu resultaterne.",
@@ -40,6 +52,14 @@ def test_forced_final_without_completion_evidence_recovers():
     assert result.exit_reason == "forced-finalize-unverified"
     assert result.decision.state is TerminalState.RECOVERING
     assert result.event_payload["continuing"] is True
+
+
+def test_forced_final_without_an_answer_still_recovers():
+    result = resolve_agentic_exit(
+        exit_reason="completed", final_text=" ",
+        finish_reason="stop", forced_finalize=True,
+    )
+    assert result.decision.state is TerminalState.RECOVERING
 
 
 def test_negated_completion_claim_never_counts_as_evidence():

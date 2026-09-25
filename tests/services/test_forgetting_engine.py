@@ -99,21 +99,33 @@ def test_is_fredet_table_blocks_self_model(fresh_db):
 
 
 def test_release_memory_for_chronicle_entry(fresh_db):
-    """Hard-deletes the row, inserts a self-marker, no content stored."""
+    """Hard-deletes the row, inserts a self-marker, no content stored.
+
+    Id'et er `slip-mig-hemmelig` og ikke `e1`, fordi denne test soeger efter
+    id'et som DELSTRENG i markoerens felter. `insert_self_marker` danner
+    `trace_id = f"self_{workspace_id}_{uuid4().hex}"` — 32 tilfaeldige
+    hex-tegn — saa «e1» optraadte deri af sig selv: 1-(255/256)**31 ≈ 11 %,
+    maalt til 5 fejl ud af 40 koersler paa `c1f2dd5ec` 25/9-2026. Hensigten
+    (markoeren peger ikke tilbage) var rigtig; et hex-id kunne bare aldrig
+    maale den.
+    """
     from core.runtime.db import connect
     from core.services.forgetting_engine import release_memory
+
+    memory_id = "slip-mig-hemmelig"
 
     with connect() as conn:
         conn.execute(
             "INSERT INTO cognitive_chronicle_entries "
             "(entry_id, period, narrative, created_at, updated_at) "
-            "VALUES ('e1', 'day-2026-02-01', 'private content', "
-            "'2026-02-01T00:00:00Z', '2026-02-01T00:00:00Z')"
+            "VALUES (?, 'day-2026-02-01', 'private content', "
+            "'2026-02-01T00:00:00Z', '2026-02-01T00:00:00Z')",
+            (memory_id,),
         )
 
     result = release_memory(
         memory_kind="chronicle_entry",
-        memory_id="e1",
+        memory_id=memory_id,
         workspace_id="default",
     )
     assert result["status"] == "released", result
@@ -122,18 +134,19 @@ def test_release_memory_for_chronicle_entry(fresh_db):
     # Row is gone
     with connect() as conn:
         rows = conn.execute(
-            "SELECT entry_id FROM cognitive_chronicle_entries WHERE entry_id='e1'"
+            "SELECT entry_id FROM cognitive_chronicle_entries WHERE entry_id=?",
+            (memory_id,),
         ).fetchall()
         assert rows == []
 
-        # Marker exists, but stores NO reference to e1 or its content
+        # Marker exists, but stores NO reference to the memory or its content
         markers = conn.execute(
             "SELECT trace_id, period_label, released_at FROM absence_traces "
             "WHERE track_kind='self_marker'"
         ).fetchall()
         assert len(markers) == 1
         marker_str = " ".join(str(c or "") for c in markers[0])
-        assert "e1" not in marker_str
+        assert memory_id not in marker_str
         assert "private content" not in marker_str
 
 

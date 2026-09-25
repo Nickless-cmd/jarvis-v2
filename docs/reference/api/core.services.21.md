@@ -624,10 +624,10 @@ _Seed System — prospective memory / dormant intentions._
 |---|---|---|---|---|
 | function | `plant_seed` | `(*, title, summary=…, activate_at=…, activate_on_event=…, activate_on_context=…, relevance_score=…, linked_goal=…)` | Plant a dormant intention seed. | [src](../../../core/services/seed_system.py#L26) |
 | function | `check_seed_activation` | `(*, current_context=…, current_event=…)` | Check if any planted seeds should activate. | [src](../../../core/services/seed_system.py#L56) |
-| function | `fulfill_seed` | `(seed_id)` | Mark a seed as fulfilled. | [src](../../../core/services/seed_system.py#L103) |
-| function | `build_seed_surface` | `()` | — | [src](../../../core/services/seed_system.py#L109) |
-| function | `auto_plant_seeds_from_conversation` | `(*, user_message)` | Scan user message for future-intent markers and auto-plant seeds. | [src](../../../core/services/seed_system.py#L123) |
-| function | `_safe_json_list` | `(value)` | — | [src](../../../core/services/seed_system.py#L160) |
+| function | `fulfill_seed` | `(seed_id)` | Mark a seed as fulfilled. | [src](../../../core/services/seed_system.py#L119) |
+| function | `build_seed_surface` | `()` | — | [src](../../../core/services/seed_system.py#L125) |
+| function | `auto_plant_seeds_from_conversation` | `(*, user_message)` | Scan user message for future-intent markers and auto-plant seeds. | [src](../../../core/services/seed_system.py#L139) |
+| function | `_safe_json_list` | `(value)` | — | [src](../../../core/services/seed_system.py#L176) |
 
 ## `core/services/selective_attention.py`
 _Selective Attention — metacognitive focus modulation._

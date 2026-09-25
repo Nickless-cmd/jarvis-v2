@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7981/15445 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7986/15455 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 7981/15445 functions/methods documented (51%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 692 | 1272 | 54% |
-| `core.services` | 5270 | 10488 | 50% |
+| `core.services` | 5275 | 10498 | 50% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 107 | 183 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -42,7 +42,7 @@ Generated from source. 7981/15445 functions/methods documented (51%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2208)
+## Undocumented public functions (2207)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L209)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -726,11 +726,10 @@ Generated from source. 7981/15445 functions/methods documented (51%). The list b
 - `core/services/behavioral_decisions.py` :: `list_all_decisions` (L259)
 - `core/services/behavioral_decisions.py` :: `review_decision` (L107)
 - `core/services/behavioral_decisions.py` :: `revoke_decision` (L196)
-- `core/services/body_memory.py` :: `build_body_memory_surface` (L36)
-- `core/services/body_memory.py` :: `describe_body_memory` (L20)
-- `core/services/body_memory.py` :: `format_body_for_prompt` (L26)
-- `core/services/body_memory.py` :: `record_body_snapshot` (L9)
-- `core/services/body_memory.py` :: `reset_body_memory` (L32)
+- `core/services/body_memory.py` :: `build_body_memory_surface` (L148)
+- `core/services/body_memory.py` :: `describe_body_memory` (L130)
+- `core/services/body_memory.py` :: `format_body_for_prompt` (L139)
+- `core/services/body_memory.py` :: `reset_body_memory` (L144)
 - `core/services/boredom_engine.py` :: `build_boredom_surface` (L53)
 - `core/services/boredom_engine.py` :: `get_boredom_state` (L49)
 - `core/services/boredom_engine.py` :: `update_boredom_state` (L11)
@@ -1094,7 +1093,7 @@ Generated from source. 7981/15445 functions/methods documented (51%). The list b
 - `core/services/flow_state_detection.py` :: `build_flow_state_surface` (L37)
 - `core/services/flow_state_detection.py` :: `get_flow_state` (L33)
 - `core/services/flow_state_detection.py` :: `update_flow_detection` (L11)
-- `core/services/forgetting_curve.py` :: `build_forgetting_curve_surface` (L90)
+- `core/services/forgetting_curve.py` :: `build_forgetting_curve_surface` (L163)
 - `core/services/forgetting_engine.py` :: `is_fredet_path` (L64)
 - `core/services/forgetting_engine.py` :: `is_fredet_table` (L68)
 - `core/services/gate_execution.py` :: `check_command` (L265)

@@ -42,7 +42,7 @@
 /* ══ RÆKKEN ══ Målt: INGEN baggrund, ingen ramme, intet hover-fyld.
    I hele samtalen findes kun to malede flader: siden og brugerens boble. */
 .raekkevisning .rv-r {
-  position: relative; isolation: isolate; overflow: hidden;
+  position: relative; overflow: hidden;
   height: var(--rv-h);
   display: flex; align-items: center;
   background: none; border: 0; padding: 0; margin: 0;
@@ -131,25 +131,20 @@
 .raekkevisning .rv-r[data-kind='opgave'] .rv-ikon { color: var(--ok); }
 .raekkevisning .rv-r[data-fejl] .rv-ikon { color: var(--error-fg); }
 
-/* Én lysstribe for hele rækken. Tekst-clip og SVG-masker havde hver sin
-   tidslinje, så lyset hoppede når en streaming-række opdaterede sin tekst. */
-.raekkevisning .rv-r[data-koerer]::after,
-.raekkevisning .rv-arbejdsknap[data-koerer]::after,
-.raekkevisning .rv-tur[data-koerer]::after {
-  content: ''; position: absolute; top: 0; left: -300px; z-index: 2;
-  width: 300px; height: 100%; pointer-events: none;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,.12) 55%, transparent);
-  mix-blend-mode: screen;
-  animation: rv-sweep 2.25s linear infinite;
+/* Shimmeren klippes til tekstens glyffer. Ikonerne får kun en rolig lysning;
+   en separat SVG-maske gav et synligt hop, og en række-overlay malede en
+   grå flade helt ude til højre for teksten. */
+.raekkevisning .rv-r[data-koerer] .rv-ikon svg,
+.raekkevisning .rv-r[data-koerer] .rv-chev svg,
+.raekkevisning .rv-arbejdsknap[data-koerer] .rv-arbejdsikon,
+.raekkevisning .rv-arbejdsknap[data-koerer] .rv-turC svg,
+.raekkevisning .rv-tur[data-koerer] .rv-turC svg {
+  animation: rv-ikon-lys 2.25s ease-in-out infinite;
 }
-.raekkevisning .rv-r[data-koerer]::after { height: var(--rv-h); }
-:root[data-theme='light'] .raekkevisning .rv-r[data-koerer]::after,
-:root[data-theme='light'] .raekkevisning .rv-arbejdsknap[data-koerer]::after,
-:root[data-theme='light'] .raekkevisning .rv-tur[data-koerer]::after {
-  background: linear-gradient(90deg, transparent, rgba(0,0,0,.10) 55%, transparent);
-  mix-blend-mode: multiply;
+@keyframes rv-ikon-lys {
+  0%, 100% { opacity: .6; }
+  50% { opacity: 1; }
 }
-@keyframes rv-sweep { from { left: -300px; } to { left: 100%; } }
 .raekkevisning .rv-r[data-fejl] .rv-ikon { color: var(--error-fg); }
 
 /* Udfoldet: sticky hoved, krop 4px 0 4px 22px. */
@@ -169,7 +164,6 @@
 /* ══ TURENS HOVED — den eneste vandrette streg i samtalen ══
    Målt: 33px, border-bottom .5px, padding 0 0 8px, 8px margin når lukket. */
 .raekkevisning .rv-tur {
-  position: relative; isolation: isolate; overflow: hidden;
   display: flex; align-items: center; gap: 8px; width: 100%;
   height: 33px; padding: 0 0 8px; margin: 0;
   border: 0; border-bottom: .5px solid var(--line);
@@ -200,7 +194,6 @@
 
 /* Mellem to synteser samles detaljerne bag Jarvis' arbejdsrække. */
 .raekkevisning .rv-arbejdsknap {
-  position: relative; isolation: isolate; overflow: hidden;
   display: flex; align-items: center; gap: 9px; width: 100%; min-width: 0;
   min-height: 38px; padding: 5px 0; border: 0; background: none;
   color: var(--fg-2); text-align: left; font-family: inherit;
@@ -470,9 +463,11 @@
 .raekkevisning .rv-tal { font-variant-numeric: tabular-nums; }
 
 @media (prefers-reduced-motion: reduce) {
-  .raekkevisning .rv-r[data-koerer]::after,
-  .raekkevisning .rv-arbejdsknap[data-koerer]::after,
-  .raekkevisning .rv-tur[data-koerer]::after { animation: none; }
+  .raekkevisning .rv-r[data-koerer] .rv-ikon svg,
+  .raekkevisning .rv-r[data-koerer] .rv-chev svg,
+  .raekkevisning .rv-arbejdsknap[data-koerer] .rv-arbejdsikon,
+  .raekkevisning .rv-arbejdsknap[data-koerer] .rv-turC svg,
+  .raekkevisning .rv-tur[data-koerer] .rv-turC svg { animation: none; }
   .msg-block[data-just-completed] .raekkevisning .rv-svar,
   .msg-block[data-just-completed] .raekkevisning .rv-turTekst { animation: none; }
 }

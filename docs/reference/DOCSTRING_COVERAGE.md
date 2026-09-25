@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7985/15454 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7981/15459 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 7985/15454 functions/methods documented (51%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 691 | 1271 | 54% |
-| `core.services` | 5275 | 10498 | 50% |
+| `core.services` | 5271 | 10503 | 50% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 107 | 183 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -42,7 +42,7 @@ Generated from source. 7985/15454 functions/methods documented (51%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2207)
+## Undocumented public functions (2213)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L209)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -716,16 +716,16 @@ Generated from source. 7985/15454 functions/methods documented (51%). The list b
 - `core/services/background_resume.py` :: `tracked` (L85)
 - `core/services/bash_sandbox.py` :: `Enforcement.as_dict` (L359)
 - `core/services/bash_sandbox.py` :: `set_enabled` (L223)
-- `core/services/behavioral_decisions.py` :: `change_status` (L178)
+- `core/services/behavioral_decisions.py` :: `change_status` (L198)
 - `core/services/behavioral_decisions.py` :: `create_decision` (L51)
-- `core/services/behavioral_decisions.py` :: `delete_decision` (L214)
-- `core/services/behavioral_decisions.py` :: `get_decision` (L224)
-- `core/services/behavioral_decisions.py` :: `get_decision_with_reviews` (L228)
-- `core/services/behavioral_decisions.py` :: `get_stats` (L282)
-- `core/services/behavioral_decisions.py` :: `list_active_decisions` (L255)
-- `core/services/behavioral_decisions.py` :: `list_all_decisions` (L259)
+- `core/services/behavioral_decisions.py` :: `delete_decision` (L234)
+- `core/services/behavioral_decisions.py` :: `get_decision` (L244)
+- `core/services/behavioral_decisions.py` :: `get_decision_with_reviews` (L248)
+- `core/services/behavioral_decisions.py` :: `get_stats` (L302)
+- `core/services/behavioral_decisions.py` :: `list_active_decisions` (L275)
+- `core/services/behavioral_decisions.py` :: `list_all_decisions` (L279)
 - `core/services/behavioral_decisions.py` :: `review_decision` (L107)
-- `core/services/behavioral_decisions.py` :: `revoke_decision` (L196)
+- `core/services/behavioral_decisions.py` :: `revoke_decision` (L216)
 - `core/services/body_memory.py` :: `build_body_memory_surface` (L148)
 - `core/services/body_memory.py` :: `describe_body_memory` (L130)
 - `core/services/body_memory.py` :: `format_body_for_prompt` (L139)
@@ -975,6 +975,12 @@ Generated from source. 7985/15454 functions/methods documented (51%). The list b
 - `core/services/daily_journal.py` :: `stop_daily_journal_daemon` (L296)
 - `core/services/day_shape_memory.py` :: `build_day_shape_surface` (L261)
 - `core/services/decision_enforcement.py` :: `subscribe` (L266)
+- `core/services/decision_ghosts.py` :: `build_decision_ghosts_surface` (L199)
+- `core/services/decision_ghosts.py` :: `describe_ghost_decision` (L169)
+- `core/services/decision_ghosts.py` :: `describe_success_echo` (L177)
+- `core/services/decision_ghosts.py` :: `format_decision_echo_for_prompt` (L190)
+- `core/services/decision_ghosts.py` :: `format_decision_ghost_for_prompt` (L185)
+- `core/services/decision_ghosts.py` :: `reset_decision_ghosts` (L195)
 - `core/services/decision_log.py` :: `build_decision_log_surface` (L50)
 - `core/services/decision_signals.py` :: `register` (L60)
 - `core/services/decision_signals.py` :: `reset_context` (L306)

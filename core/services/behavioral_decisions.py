@@ -131,6 +131,26 @@ def review_decision(
         )
     except Exception as exc:
         logger.debug("behavioral_decisions: publish reviewed failed: %s", exc)
+
+    # Beslutnings-sporet. `decision_ghosts` havde INGEN kalder, selv om
+    # `record_reaffirmed_decision`s egen docstring sagde «Called from
+    # behavioral_decision_review when verdict is kept or partial» (25/9-2026).
+    #
+    # Her er de rigtige tal: dommen og `adherence_score`. Modulet trak dem af
+    # en terning foer — `random.uniform(0.1, 0.6)` — og valgte saa den «mest
+    # saliente» fortrydelse ved det hoejeste kast.
+    try:
+        from core.services import decision_ghosts as _spor
+        _score = result.get("adherence_score")
+        _titel = str(result.get("directive") or "")
+        _id = str(result.get("decision_id") or "")
+        if verdict in {"kept", "partial", "fulfilled"}:
+            _spor.record_reaffirmed_decision(_id, _titel, verdict, adherence_score=_score)
+        elif verdict == "broken":
+            _spor.record_broken_decision(_id, _titel, adherence_score=_score,
+                                         note=str(note or ""))
+    except Exception as exc:  # et spor maa aldrig kunne vaelte en gennemgang
+        logger.debug("decision_ghosts: sporet kunne ikke gemmes: %s", exc)
     return result
 
 

@@ -59,6 +59,19 @@ def test_udfaldet_baerer_baade_dom_post_og_besked():
     assert ud.decision.should_continue is True
 
 
+def test_faerdigt_svar_i_tvungen_slutrunde_starter_ikke_nyt_segment():
+    ifr.mark_started(run_id="r1", session_id="s1", user_message="x")
+    ud = settle_segment_exit(
+        run_id="r1", session_id="s1", exit_reason="completed",
+        final_text="Her er resultatet: Firewall-reglen blokerede trafikken. Reglen er nu ændret.",
+        finish_reason="stop", forced_finalize=True,
+    )
+    assert ud.decision.state.value == "completed"
+    assert ud.dispatch_due is False
+    assert ud.event_name == ""
+    assert ud.record["status"] == "completed"
+
+
 def test_task_id_bruges_naar_det_er_et_andet_end_run_id():
     """Et segment er ikke opgaven: fortsættelsen hører til opgaven."""
     ifr.mark_started(run_id="task-1", session_id="s1", user_message="x")

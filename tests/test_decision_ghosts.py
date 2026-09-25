@@ -52,3 +52,128 @@ def test_empty_decision_ghosts():
     surface = build_decision_ghosts_surface()
     assert surface["active"] is False
     assert surface["rejected_count"] == 0
+
+
+# ── Tallene er maalte, ikke kastede (25/9-2026) ──────────────────────────
+#
+# Indtil i dag stod der:
+#
+#     "regret_potential": random.uniform(0.1, 0.6),
+#     "success_echo": random.uniform(0.3, 0.9),
+#
+# og to modul-globale lister der doede ved genstart. `describe_ghost_decision`
+# valgte den «mest saliente» fortrydelse ved `max(..., key=regret_potential)`
+# — altsaa det hoejeste terningkast. Han ville have faaet at vide hvad han
+# fortrod mest, og svaret var tilfaeldigt.
+#
+# Modulet havde INGEN kalder, selv om `record_reaffirmed_decision`s docstring
+# sagde at den blev kaldt fra beslutnings-gennemgangen.
+#
+# Kilden er nu `behavioral_decision_reviews` (1101 raekker maalt):
+#     kept 538 · broken 299 · partial 263 · fulfilled 1
+# med en rigtig `adherence_score`.
+import json  # noqa: E402
+
+import core.services.decision_ghosts as DG  # noqa: E402
+
+
+def _lager(monkeypatch, tmp_path):
+    monkeypatch.setattr(DG, "_storage_path", lambda: tmp_path / "decision_ghosts.json")
+
+
+def test_sporet_overlever_en_genstart(monkeypatch, tmp_path):
+    """KERNEN. To modul-globale lister doede med processen."""
+    _lager(monkeypatch, tmp_path)
+    DG.reset_decision_ghosts()
+    DG.record_rejected_path("a", "b", "c", 0.4)
+
+    import importlib
+    DG2 = importlib.reload(DG)
+    monkeypatch.setattr(DG2, "_storage_path", lambda: tmp_path / "decision_ghosts.json")
+    assert DG2.build_decision_ghosts_surface()["rejected_count"] == 1
+
+
+def test_der_er_INTET_random_tilbage():
+    """AST, ikke grep: docstringen citerer med vilje den gamle kode."""
+    import ast
+    import inspect
+
+    traen = ast.parse(inspect.getsource(DG))
+    assert not [n.lineno for n in ast.walk(traen)
+                if isinstance(n, ast.Attribute)
+                and getattr(n.value, "id", None) == "random"], "terningen er tilbage"
+    assert not any(isinstance(n, ast.Import) and any(a.name == "random" for a in n.names)
+                   for n in ast.walk(traen))
+
+
+def test_uden_en_maaling_gemmes_None_ikke_et_gaet(monkeypatch, tmp_path):
+    _lager(monkeypatch, tmp_path)
+    DG.reset_decision_ghosts()
+    DG.record_rejected_path("a", "b", "c")
+    gemt = json.loads((tmp_path / "decision_ghosts.json").read_text())
+    assert gemt["rejected"][0]["regret_potential"] is None
+
+
+def test_den_maalte_vinder_over_den_umaalte(monkeypatch, tmp_path):
+    """En post uden tal maa ikke kunne rangere over en med."""
+    _lager(monkeypatch, tmp_path)
+    DG.reset_decision_ghosts()
+    DG.record_rejected_path("uden tal", "b", "vej-A")
+    DG.record_rejected_path("med tal", "b", "vej-B", 0.2)
+    assert "vej-B" in DG.describe_ghost_decision()
+
+
+def test_uden_nogen_tal_vaelges_den_nyeste(monkeypatch, tmp_path):
+    """Frem for et vilkaarligt valg der LIGNER en rangering."""
+    _lager(monkeypatch, tmp_path)
+    DG.reset_decision_ghosts()
+    DG.record_rejected_path("foerste", "b", "vej-A")
+    DG.record_rejected_path("nyeste", "b", "vej-B")
+    assert "vej-B" in DG.describe_ghost_decision()
+
+
+def test_en_brudt_beslutning_giver_fortrydelse_lig_1_minus_efterlevelse(monkeypatch, tmp_path):
+    """Jo mindre han fulgte den, jo mere er der at spoerge om."""
+    _lager(monkeypatch, tmp_path)
+    DG.reset_decision_ghosts()
+    DG.record_broken_decision("d1", "skriv tests foerst", adherence_score=0.25,
+                              note="jeg sprang dem over")
+    top = DG.build_decision_ghosts_surface()["top_regret"]
+    assert top["regret_potential"] == 0.75
+    assert top["alternative"] == "jeg sprang dem over"
+
+
+def test_en_holdt_beslutning_baerer_sin_efterlevelse(monkeypatch, tmp_path):
+    _lager(monkeypatch, tmp_path)
+    DG.reset_decision_ghosts()
+    DG.record_reaffirmed_decision("d2", "maal foer du retter", "kept", adherence_score=1.0)
+    assert DG.build_decision_ghosts_surface()["top_echo"]["success_echo"] == 1.0
+
+
+def test_gennemgangen_skriver_sporet(monkeypatch, tmp_path):
+    """DEN manglende kalder. Docstringen sagde den fandtes; det gjorde den ikke."""
+    import core.services.behavioral_decisions as B
+    _lager(monkeypatch, tmp_path)
+    DG.reset_decision_ghosts()
+    monkeypatch.setattr(B, "append_review", lambda **kw: {
+        "decision_id": "d1", "directive": "en direktiv", "adherence_score": 0.4})
+    monkeypatch.setattr(B.event_bus, "publish", lambda *a, **k: None)
+
+    B.review_decision(decision_id="d1", verdict="broken", note="noget andet")
+    u = DG.build_decision_ghosts_surface()
+    assert u["rejected_count"] == 1
+    assert u["top_regret"]["regret_potential"] == 0.6
+
+    B.review_decision(decision_id="d1", verdict="kept")
+    assert DG.build_decision_ghosts_surface()["confirmed_count"] == 1
+
+
+def test_et_braekket_spor_vaelter_ikke_gennemgangen(monkeypatch, tmp_path):
+    """Gennemgangen er det vigtige; sporet er en biting."""
+    import core.services.behavioral_decisions as B
+    monkeypatch.setattr(DG, "record_broken_decision",
+                        lambda *a, **k: (_ for _ in ()).throw(RuntimeError("i stykker")))
+    monkeypatch.setattr(B, "append_review", lambda **kw: {
+        "decision_id": "d1", "directive": "x", "adherence_score": 0.4})
+    monkeypatch.setattr(B.event_bus, "publish", lambda *a, **k: None)
+    assert B.review_decision(decision_id="d1", verdict="broken") is not None

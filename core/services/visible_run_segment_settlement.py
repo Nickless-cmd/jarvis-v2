@@ -31,7 +31,7 @@ from core.services.visible_run_recovery_coordinator import (
     RecoverySettlementRequest,
     settle_segment,
 )
-from core.services.visible_run_terminal_recovery import has_completion_evidence
+from core.services.visible_run_terminal_recovery import has_incompletion_evidence
 from core.services.visible_terminal_policy import (
     TerminalDecision,
     TerminalEvidence,
@@ -155,7 +155,7 @@ def settle_segment_exit(
         pending_tool_intent=pending,
         explicit_user_cancel=bool(explicit_user_cancel),
         waiting_for_user=bool(waiting_for_user),
-        completion_evidence=has_completion_evidence(final_text),
+        incompletion_evidence=has_incompletion_evidence(final_text),
         recovery_attempt=int(recovery_attempt),
         recovery_limit=int(recovery_limit),
     )

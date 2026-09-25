@@ -184,7 +184,7 @@ def audit_heartbeat_provider() -> dict[str, Any] | None:
     ikke se det. Målt 14/9: den stod på `deepseek`. Hjerteslaget er det mest
     baggrundsagtige der findes i systemet, og det kørte på Bjørns betalte nøgle.
 
-    Dommen falder på UDBYDEREN, aldrig på modelnavnet. `deepseek-v4-flash:cloud`
+    Dommen falder på UDBYDEREN, aldrig på modelnavnet. `deepseek-v4.1-flash:cloud`
     på ollama er gratis, og dømte vi på navnet ville selve rettelsen se ud som
     bruddet — en vagt der råber op om sin egen løsning bliver slået fra.
 

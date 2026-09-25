@@ -37,7 +37,7 @@ import urllib.request
 from pathlib import Path
 
 ENDPOINT = "http://127.0.0.1:11434"
-MODEL = "deepseek-v4-flash:cloud"
+MODEL = "deepseek-v4.1-flash:cloud"
 
 # Fast, komplet persona — som minimal-presettets. Ingen runtime-kontekst,
 # ingen identitetsfiler, ingen hukommelse. Den ændrer sig ikke mellem opgaver.

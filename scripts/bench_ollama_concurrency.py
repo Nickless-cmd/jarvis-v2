@@ -10,7 +10,7 @@ pipeline-støj. Gratis (Bjørns abon.). Ingen deepseek-API-kald.
 
 Brug:
     python scripts/bench_ollama_concurrency.py                 # default glm-5.1:cloud
-    python scripts/bench_ollama_concurrency.py --model deepseek-v4-flash:cloud
+    python scripts/bench_ollama_concurrency.py --model deepseek-v4.1-flash:cloud
     python scripts/bench_ollama_concurrency.py --label "etappe-1-efter"
 
 Output er en JSON-blok der kan gemmes pr. etappe og diffes.

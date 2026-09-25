@@ -115,6 +115,15 @@ def determine_life_phase(*, hour: int | None = None) -> dict[str, object]:
     for phase_name, config in _LIFE_PHASES.items():
         if current_hour in config["hours"]:
             phase = {
+                # `active` SKAL staa her.
+                #
+                # `cognitive_architecture_surface.py:37` laeser
+                # `result.get("active", False)`. Fasen har ALTID et indhold —
+                # her stod «Refleksion — ikke hvad der gik godt/skidt, men hvad
+                # der forskubbede sig» — men den meldte sig doed i mind-
+                # rapporten, fordi noeglen ikke fandtes (maalt 25/9-2026).
+                # En manglende noegle blev laest som en paastand.
+                "active": True,
                 "phase": phase_name,
                 "description": config["description"],
                 "depth_prompt": config.get("depth_prompt", ""),
@@ -134,6 +143,7 @@ def determine_life_phase(*, hour: int | None = None) -> dict[str, object]:
 
     # Fallback (should never reach)
     return {
+        "active": True,
         "phase": "dreaming",
         "description": "Drømmetilstand",
         "suggested_actions": ["decay_forgotten_signals"],

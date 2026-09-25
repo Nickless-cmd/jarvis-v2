@@ -244,6 +244,62 @@ def tik_indre_daemoner() -> dict[str, int]:
     except Exception as exc:
         logger.warning("per-bruger daemoner fejlede: %s", exc)
 
+    # Spoegelserne. `archive_dead_nodes` havde INGEN kalder, og `decay_rate`
+    # blev sat til 0.0 og aldrig opdateret — `describe` tog `active[0]`, altsaa
+    # det aeldste spoegelse for evigt. Nu er henfaldet ALDEREN, og kilden er
+    # signal-tabellernes doede raekker: 29.393 staar `superseded`/`stale`, men
+    # kun de unge cirkler stadig.
+    try:
+        from core.services.ghost_networks import tick as _spoegelse_tick
+        _spoegelse_tick(30.0)
+        koert += 1
+    except Exception:  # taelles frem for at slugges — se docstring
+        fejlet += 1
+
+    # «Life services» — indre tilstand MELLEM tik. Laa i `run_heartbeat_tick`
+    # og koerte derfor kun naar der var prioriteter, selv om kommentaren over
+    # dem sagde «between ticks». Tre af de fire stod paa listen over moduler
+    # uden bord: `continuity_kernel`, `initiative_accumulator`,
+    # `boredom_curiosity_bridge`.
+    from datetime import timedelta as _td
+    try:
+        from core.services.continuity_kernel import record_tick_elapsed
+        record_tick_elapsed(seconds=30)
+        koert += 1
+    except Exception:  # taelles frem for at slugges — se docstring
+        fejlet += 1
+    try:
+        from core.services.dream_continuum import evolve_dreams
+        evolve_dreams(duration=_td(seconds=30))
+        koert += 1
+    except Exception:  # taelles frem for at slugges — se docstring
+        fejlet += 1
+    try:
+        from core.services.initiative_accumulator import accumulate_wants
+        accumulate_wants(duration=_td(seconds=30))
+        koert += 1
+    except Exception:  # taelles frem for at slugges — se docstring
+        fejlet += 1
+    try:
+        from core.services.boredom_curiosity_bridge import add_boredom
+        add_boredom(duration=_td(seconds=30))
+        koert += 1
+    except Exception:  # taelles frem for at slugges — se docstring
+        fejlet += 1
+
+    # Maerkerne. `create_tattoo` havde INGEN kalder, saa overfladen sagde
+    # «Ingen tatoveringer» og ville have sagt det for altid. Kilden er
+    # `emotional_memory_anchors` — men KUN de ikke-perceptuelle: 202.250 af
+    # 205.961 raekker er `perceptual_event`, og intensiteten maetter (24 % over
+    # 0,95), saa en taerskel alene ville give 49.299 «maerker». Hoejst ét i
+    # doegnet: et maerke er hvad der praegede en dag.
+    try:
+        from core.services.memory_tattoos import tick as _maerke_tick
+        _maerke_tick(30.0)
+        koert += 1
+    except Exception:  # taelles frem for at slugges — se docstring
+        fejlet += 1
+
     # Glemselskurven har noget at glemme nu. `register_memory` havde INGEN
     # kalder — henfaldet kunne koere, men der var aldrig noget registreret, saa
     # overfladen sagde «No memories tracked yet» og ville have sagt det for

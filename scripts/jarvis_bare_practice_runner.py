@@ -58,11 +58,11 @@ logger = logging.getLogger("jarvis_bare")
 # ---------------------------------------------------------------------------
 
 OLLAMA_ENDPOINT = "http://127.0.0.1:11434"
-MODEL = "deepseek-v4-flash:cloud"
+MODEL = "deepseek-v4.1-flash:cloud"
 
 
 def _call_model(prompt: str, *, timeout: int = 120) -> str | None:
-    """Call deepseek-v4-flash:cloud via local Ollama. Returns text or None."""
+    """Call deepseek-v4.1-flash:cloud via local Ollama. Returns text or None."""
     payload = json.dumps({
         "model": MODEL,
         "messages": [{"role": "user", "content": prompt}],

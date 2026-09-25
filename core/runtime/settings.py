@@ -64,9 +64,9 @@ class RuntimeSettings:
     heartbeat_local_only: bool = False
     # Autonom/baggrunds-model (wakeup, inderliv, autonome check-ins). Bjørn-regel
     # (2026-07-16): den BETALTE deepseek.com-API er KUN til visible lane — baggrund
-    # kører på ollama (deepseek-v4-flash:cloud). Overstyrbar uden kode-deploy.
+    # kører på ollama (deepseek-v4.1-flash:cloud). Overstyrbar uden kode-deploy.
     autonomous_model_provider: str = "ollama"
-    autonomous_model_name: str = "deepseek-v4-flash:cloud"
+    autonomous_model_name: str = "deepseek-v4.1-flash:cloud"
     relevance_model_name: str = "qwen3:4b-instruct-2507-q4_K_M"  # local GPU (2026-07-23): faster (734 vs 946ms) + better F1 than glm-5.1:cloud remote
     # Associative recall thresholds
     recall_strong_threshold: float = 0.7
@@ -303,7 +303,7 @@ class RuntimeSettings:
     # Emotion decay
     emotion_decay_factor: float = 0.97
     # Ollama visible-lane context window size (tokens).
-    # deepseek-v4-flash:cloud supports 1M tokens. 512k gives double the
+    # deepseek-v4.1-flash:cloud supports 1M tokens. 512k gives double the
     # previous 256k window while staying well within model capacity and
     # GPU memory budget. Configurable via runtime.json so we can tune
     # without redeploying. Must be a power of 2 multiple of 131072.

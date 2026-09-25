@@ -508,7 +508,7 @@ _PROVIDER_FAILOVER_ENV = "JARVIS_PROVIDER_FAILOVER"
 # deepseek bryder Bjørn-reglen (betalt deepseek KUN i visible lane). deepseek-v4-flash
 # :cloud er en OLLAMA-cloud-model → provideren skal være 'ollama' (gratis + gyldigt tag).
 _FAILOVER_FALLBACK_PROVIDER = "ollama"
-_FAILOVER_FALLBACK_MODEL = "deepseek-v4-flash:cloud"
+_FAILOVER_FALLBACK_MODEL = "deepseek-v4.1-flash:cloud"
 
 
 def provider_failover_enabled() -> bool:
@@ -539,7 +539,7 @@ def pick_failover_target(
     findes (fx vi er ALLEREDE på fallback'en → undgå at faile over til os selv,
     eller fallback'ens EGEN breaker er åben → den er også død).
 
-    Default-målet er ``ollama``/``deepseek-v4-flash:cloud`` — samme model, men via
+    Default-målet er ``ollama``/``deepseek-v4.1-flash:cloud`` — samme model, men via
     den GRATIS ollama-cloud-sti (Bjørns free-tier) i stedet for betalt deepseek
     direkte. Self-safe: enhver fejl → None (→ graceful exhaustion)."""
     try:

@@ -66,6 +66,16 @@ def build_cognitive_core_experiments_surface() -> dict[str, object]:
 
     return {
         "kind": "cognitive-core-experiments",
+        # `active` SKAL staa her.
+        #
+        # Fladen meldte `activity_state: "active"` med 3 af 5 undersystemer
+        # aktive — men `cognitive_architecture_surface.py:37` laeser
+        # `result.get("active", False)`, og noeglen fandtes ikke. Et arbejdende
+        # system meldte sig selv doedt paa et fravaer (maalt 25/9-2026).
+        #
+        # En manglende noegle er ikke en paastand om noget. Den blev laest som
+        # én.
+        "active": activity_state == "active",
         "authority": "derived-runtime-truth",
         "visibility": "internal-only",
         "boundary": (

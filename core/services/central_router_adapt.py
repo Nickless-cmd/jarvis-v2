@@ -314,14 +314,14 @@ def resolve_visible_model(*, provider_override: str = "", model_override: str = 
 
 # ── AUTONOM/BAGGRUNDS-model — Bjørn-regel (2026-07-16) ────────────────────────────────
 # Den BETALTE deepseek.com-API må KUN bruges i visible lane. Autonome/baggrunds-runs
-# (wakeup, inderliv, autonome check-ins) kører på ollama (deepseek-v4-flash:cloud) —
+# (wakeup, inderliv, autonome check-ins) kører på ollama (deepseek-v4.1-flash:cloud) —
 # ALDRIG den betalte deepseek-provider. Dette lukker to lækager på én gang:
 #   1) autonome runs defaultede før til settings.visible_model (= deepseek, betalt).
 #   2) eksplorations-armen kunne sample en 'deepseek'/':cloud'-kandidat → deepseek.com
 #      afviste ':cloud'-tag'et med HTTP 400 ("supported names are deepseek-v4-pro/flash").
 _PAID_DEEPSEEK_PROVIDER = "deepseek"
 _AUTONOMOUS_FALLBACK_PROVIDER = "ollama"
-_AUTONOMOUS_FALLBACK_MODEL = "deepseek-v4-flash:cloud"
+_AUTONOMOUS_FALLBACK_MODEL = "deepseek-v4.1-flash:cloud"
 # Code-tuned models degenerate on the autonomous lane's reflective/journaling work:
 # they spiral into read-tool loops and never synthesise text (4/4 looped autonomous
 # runs in the week to 2026-07-18 were kimi-k2.7-code:cloud → gate_loop RED → dead run).
@@ -334,7 +334,7 @@ def resolve_autonomous_model(*, autonomous_provider: str = "",
                              autonomous_model: str = "") -> tuple[str, str]:
     """(provider, model) for et AUTONOMT/baggrunds-run.
 
-    Baggrunds-basen defaulter til ollama/deepseek-v4-flash:cloud (config-overstyrbar via
+    Baggrunds-basen defaulter til ollama/deepseek-v4.1-flash:cloud (config-overstyrbar via
     runtime.settings.autonomous_model_*). Honorerer stadig eksplorations-armen + lært
     præference OVENPÅ basen — men HARD-GUARD: ethvert resultat der lander på den betalte
     'deepseek'-provider klemmes tilbage til baggrunds-basen. Kaster ALDRIG — fail-safe."""

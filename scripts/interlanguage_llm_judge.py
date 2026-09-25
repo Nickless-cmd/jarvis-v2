@@ -13,10 +13,10 @@ docs/superpowers/specs/2026-05-16-interlanguage-validation-phase3-4-design.md:
 
 Protocol amendment (2026-08-17): the judge runs on local Ollama cloud models
 instead of GitHub Copilot (no OAuth dependency). Same prompt protocol, same
-scoring. Model default: deepseek-v4-flash:cloud (same arch as Jarvis runtime).
+scoring. Model default: deepseek-v4.1-flash:cloud (same arch as Jarvis runtime).
 
 Usage:
-  python scripts/interlanguage_llm_judge.py --alpha --model deepseek-v4-flash:cloud
+  python scripts/interlanguage_llm_judge.py --alpha --model deepseek-v4.1-flash:cloud
   python scripts/interlanguage_llm_judge.py --delta --model qwen3.5:cloud
   python scripts/interlanguage_llm_judge.py --all
 """
@@ -227,7 +227,7 @@ def main() -> int:
     ap.add_argument("--alpha", action="store_true", help="run alpha trials (entity guessing)")
     ap.add_argument("--delta", action="store_true", help="run delta trials (pair comparison)")
     ap.add_argument("--all", action="store_true", help="run both")
-    ap.add_argument("--model", default="deepseek-v4-flash:cloud", help="Ollama judge model")
+    ap.add_argument("--model", default="deepseek-v4.1-flash:cloud", help="Ollama judge model")
     ap.add_argument("--seed", type=int, default=0, help="RNG seed")
     ap.add_argument("--out", help="write JSON result to this path")
     args = ap.parse_args()

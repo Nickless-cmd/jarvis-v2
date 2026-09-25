@@ -7,19 +7,64 @@ before logic, before meaning-making.
 
 Simple lexicon-based. Not LLM. Keeps it cheap and always-available.
 Callers use `resonate(text)` before/during text processing.
+
+PERSISTERING (25/9-2026)
+
+Leksikonet, scoringen og koblingen til humoer-oscillatoren var der hele tiden,
+og `resonate` HAR en kalder: `chat_sessions.append_chat_message` paa hver
+brugerbesked. Modulet var altsaa ikke ubygget — det var uden bord.
+
+`_history` var en `deque` i modulet. Den doede ved genstart, og fladen blev
+bygget i `jarvis-api` mens teksten blev laest i samme proces som chatten, saa
+selv mens den levede kunne den vaere usynlig det sted den skulle vises. Samme
+fejlklasse som `_PENDING_APPROVALS` og `reboot_awareness._DETECTION_RUN`.
+
+Skrivningen sker per BRUGERBESKED, ikke per prompt: det er en haandfuld i
+minuttet, og modulet kalder i forvejen humoer-oscillatoren samme sted.
 """
 from __future__ import annotations
 
+import json
 import logging
 import re
-from collections import deque
 from datetime import UTC, datetime
-from typing import Any, Deque
+from pathlib import Path
+from typing import Any
+
+from core.runtime.workspace_paths import shared_dir
 
 logger = logging.getLogger(__name__)
 
 _HISTORY_MAX = 200
-_history: Deque[dict[str, Any]] = deque(maxlen=_HISTORY_MAX)
+
+
+def _storage_path() -> Path:
+    return shared_dir() / "runtime" / "text_resonance.json"
+
+
+def _load() -> list[dict[str, Any]]:
+    """Nyeste foerst — samme raekkefoelge som den gamle `deque.appendleft`."""
+    p = _storage_path()
+    if not p.exists():
+        return []
+    try:
+        d = json.loads(p.read_text(encoding="utf-8"))
+        return d if isinstance(d, list) else []
+    except Exception as exc:
+        logger.warning("text_resonance: kunne ikke laeses: %s", exc)
+        return []
+
+
+def _save(historik: list[dict[str, Any]]) -> None:
+    p = _storage_path()
+    try:
+        p.parent.mkdir(parents=True, exist_ok=True)
+        tmp = p.with_suffix(".tmp")
+        tmp.write_text(json.dumps(historik[:_HISTORY_MAX], ensure_ascii=False),
+                       encoding="utf-8")
+        tmp.replace(p)
+    except Exception as exc:
+        logger.warning("text_resonance: kunne ikke gemmes: %s", exc)
 
 _WORD_RE = re.compile(r"[a-zæøåA-ZÆØÅ_-]+")
 
@@ -122,7 +167,19 @@ def resonate(text: str, *, source: str = "") -> dict[str, Any]:
         "urgency_felt": round(urgency, 3),
         "word_count": wc,
     }
-    _history.appendleft(signal)
+    # Persisteringen har sit EGET vaern.
+    #
+    # Kaldet ligger i `chat_sessions.append_chat_message`, som har et
+    # `except: pass` om det. Men et modul maa ikke laene sig paa sin kalders
+    # vaern — saa er garantien kalderens, ikke modulets, og den naeste kalder
+    # arver den ikke. En resonans maa aldrig kunne forhindre at en besked
+    # bliver gemt.
+    try:
+        historik = _load()
+        historik.insert(0, signal)
+        _save(historik)
+    except Exception as exc:
+        logger.warning("text_resonance: signalet kunne ikke gemmes: %s", exc)
 
     # Feed mood oscillator gently
     try:
@@ -137,7 +194,7 @@ def resonate(text: str, *, source: str = "") -> dict[str, Any]:
 
 
 def recent_resonances(*, limit: int = 20) -> list[dict[str, Any]]:
-    return list(_history)[:limit]
+    return _load()[:limit]
 
 
 def build_text_resonance_surface() -> dict[str, Any]:
@@ -151,11 +208,20 @@ def build_text_resonance_surface() -> dict[str, Any]:
     avg_warmth = round(sum(r["warmth_level"] for r in recent) / len(recent), 3)
     avg_cold = round(sum(r["cold_level"] for r in recent) / len(recent), 3)
     avg_urgency = round(sum(r["urgency_felt"] for r in recent) / len(recent), 3)
+    # Uafgjort er «neutral», ikke et vilkaarligt valg.
+    #
+    # Foer stod der `max(set(tones), key=tones.count)`. Med lige mange `warm`
+    # og `cold` afgoeres det af maengdens iterationsraekkefoelge, som afhaenger
+    # af hash-seedet — altsaa forskelligt fra proces til proces. Maalt: én varm
+    # og én kold besked gav «Laeser warm» med warmth=0.4 og cold=0.4.
     tones = [r["emotional_tone"] for r in recent]
-    dominant = max(set(tones), key=tones.count)
+    taelling = {t: tones.count(t) for t in ("warm", "cold", "neutral")}
+    hoejest = max(taelling.values())
+    vindere = [t for t in ("warm", "cold", "neutral") if taelling[t] == hoejest]
+    dominant = vindere[0] if len(vindere) == 1 else "neutral"
     return {
         "active": True,
-        "total_signals": len(_history),
+        "total_signals": len(_load()),
         "window_size": len(recent),
         "avg_warmth": avg_warmth,
         "avg_cold": avg_cold,
@@ -183,4 +249,4 @@ def build_text_resonance_prompt_section() -> str | None:
 
 
 def reset_text_resonance() -> None:
-    _history.clear()
+    _save([])

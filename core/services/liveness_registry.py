@@ -14,6 +14,18 @@ Status-vokabular:
 - manual_only       — skrives kun via et eksplicit tool, ikke autonomt
 - orphaned          — skrive-funktion findes men har INGEN live-caller; depreceret
 - wired             — tidligere forældreløs, nu fodret (se `note`)
+
+MODULER (tilføjet 25/9-2026). Registret dækkede kun tabeller. Men Jarvis' audit
+fandt 27 borde uden rækker, og en parallel gennemgang fandt 11 MODULER uden
+bord — moduler der gemmer i en modul-global liste der dør ved genstart og er
+usynlig for den proces der bygger fladen. Det er samme sag set fra hver sin
+ende, og de hører til i samme register.
+
+Status for moduler:
+- kørende          — kaldes og gemmer varigt
+- uden_bord        — kaldes, virker, men persisterer INTET
+- bygget           — tidligere uden bord, nu med (se `note`)
+- afløst           — gør det samme som `replacement`, som er i drift
 """
 from __future__ import annotations
 
@@ -83,6 +95,56 @@ _REGISTRY: dict[str, dict[str, Any]] = {
     "cognitive_personality_vectors": {"status": "active"},
 }
 
+
+# modul_navn -> klassifikation. Se docstringen for vokabularet.
+_MODUL_REGISTRY: dict[str, dict[str, Any]] = {
+    # — Kaldes, men gemmer intet —
+    "continuity_kernel": {
+        "status": "uden_bord",
+        "note": (
+            "Eksistens-FOELELSEN mellem tik (`get_existence_feeling`). Jeg var "
+            "25/9-2026 ved at klassificere den som AFLOEST af `continuity` — "
+            "forkert. `continuity` er tilstands-TRANSPORT mellem sessioner "
+            "(`write_capsule`, `get_wake_tier`). Paastanden var bygget paa "
+            "docstring-lighed, ikke paa hvad funktionerne goer."
+        ),
+    },
+    "initiative_accumulator": {
+        "status": "uden_bord",
+        "note": (
+            "Samler OENSKER der akkumulerer mellem tik. Ikke afloest af "
+            "`initiative_queue`, som koer HANDLINGER (`push_initiative`, "
+            "`approve_initiative`). Samme fejl som ovenfor, samme dag."
+        ),
+    },
+    # — Bygget 25/9-2026: persistering + maalt indhold + en kalder —
+    "body_memory": {
+        "status": "bygget",
+        "note": ("Gemte `random.choice([\"varm\",\"kold\",...])` i en modul-liste. "
+                 "Fornemmelsen udledes nu af `embodied_state`, og grundlaget "
+                 "gemmes med."),
+    },
+    "forgetting_curve": {
+        "status": "bygget",
+        "note": ("`register_memory` havde nul callers. Tikket laeser nu "
+                 "arbejdssaettet fra `build_private_brain_context`."),
+    },
+    "decision_ghosts": {
+        "status": "bygget",
+        "note": ("`regret_potential` var `random.uniform(0.1, 0.6)`, og den "
+                 "«mest saliente» fortrydelse var det hoejeste terningkast. "
+                 "Kommer nu fra `adherence_score` i beslutnings-gennemgangen."),
+    },
+    "memory_tattoos": {
+        "status": "bygget",
+        "note": ("Kilden er `emotional_memory_anchors`, men KUN de "
+                 "ikke-perceptuelle: 202.250 af 205.961 er `perceptual_event`, "
+                 "og intensiteten maetter. Hoejst ét maerke i doegnet."),
+    },
+}
+
+_MODUL_LEVENDE = {"koerende", "bygget", "afloest"}
+
 _NON_DEAD = {"active", "wired", "replaced", "manual_only"}
 
 
@@ -97,6 +159,23 @@ def classify_table(name: str) -> dict[str, Any]:
 def is_alive(name: str) -> bool:
     """True hvis tabellen IKKE er forældreløs/død. Afløst/manuel/aktiv tæller som levende."""
     return classify_table(name).get("status") in _NON_DEAD
+
+
+def classify_module(name: str) -> dict[str, Any]:
+    """Klassifikation for et MODUL. Ukendt → 'unclassified' (IKKE 'doedt').
+
+    Tabeller uden raekker og moduler uden bord er to ender af samme sag: et lag
+    hvor formen blev bygget faerdig og indholdet aldrig kom.
+    """
+    entry = _MODUL_REGISTRY.get(str(name or "").strip())
+    if entry is None:
+        return {"status": "unclassified", "module": name}
+    return {"module": name, **entry}
+
+
+def module_persists(name: str) -> bool:
+    """False for et modul der kaldes men gemmer i hukommelsen."""
+    return classify_module(name).get("status") in _MODUL_LEVENDE
 
 
 def liveness_summary() -> dict[str, Any]:

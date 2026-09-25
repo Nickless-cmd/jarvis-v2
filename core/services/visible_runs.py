@@ -1089,7 +1089,7 @@ def start_autonomous_run(message: str, session_id: str | None = None, follow: bo
     settings = load_settings()
     # Bjørn-regel (2026-07-16): den BETALTE deepseek.com-API er KUN til visible lane.
     # Autonome/baggrunds-runs kører på baggrunds-modellen (default ollama/
-    # deepseek-v4-flash:cloud). resolve_autonomous_model honorerer stadig lært præference
+    # deepseek-v4.1-flash:cloud). resolve_autonomous_model honorerer stadig lært præference
     # + eksplorations-armen OVENPÅ baggrunds-basen, men hard-guarder mod at lande på den
     # betalte deepseek-provider (lukkede også HTTP-400 ':cloud'-tag-til-deepseek.com-lækken).
     from core.services.central_router_adapt import resolve_autonomous_model as _resolve_auto

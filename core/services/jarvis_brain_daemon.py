@@ -157,7 +157,7 @@ def _call_local_ollama(prompt: str) -> dict | None:
 
     Model vælges af provider-router "local"-lane (fallback qwen2.5:7b-instruct).
     PRIVATLIVS-NOTE (ejer-beslutning 2026-06-15): lanen må pege på en cloud-model
-    (fx deepseek-v4-flash:cloud) — ejeren har accepteret at intime summaries går
+    (fx deepseek-v4.1-flash:cloud) — ejeren har accepteret at intime summaries går
     til en provider mod hurtigere/stabil drift. Vil man holde det 100% lokalt:
     sæt local-lanen til en pullet lokal model (1070'eren kan køre 7B-q4).
 

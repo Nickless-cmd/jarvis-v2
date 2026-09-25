@@ -150,9 +150,21 @@ def test_resolver_never_deep_tier(isolated_runtime):
 
 # ── AUTONOM/BAGGRUNDS-model (Bjørn-regel: betalt deepseek KUN i visible lane) ──────────
 def test_autonomous_default_is_ollama_cloud(isolated_runtime):
-    """Tom baggrunds-config → default ollama/deepseek-v4-flash:cloud (aldrig betalt deepseek)."""
+    """Tom baggrunds-config → default ollama (ALDRIG betalt deepseek).
+
+    Modelnavnet fulgte med 25/9-2026: `deepseek-v4-flash:cloud` svarede HTTP
+    410 Gone — modellen var væk fra ollama cloud, mens taggen stadig stod i
+    `ollama list`. Testen pinnede det døde navn, så den ville have bestået
+    mens produktionen faldt tilbage på hver eneste kald.
+
+    Det testen VIRKELIG holder fast i er udbyderen, ikke versionen: baggrunden
+    må aldrig ramme det betalte deepseek-API. Det er Bjørns alene, i den
+    synlige bane.
+    """
     p, m = ra.resolve_autonomous_model()
-    assert (p, m) == ("ollama", "deepseek-v4-flash:cloud")
+    assert p == "ollama", "baggrunden ramte en anden udbyder end ollama"
+    assert p != "deepseek", "baggrunden ramte det BETALTE deepseek-API"
+    assert m == "deepseek-v4.1-flash:cloud"
 
 
 def test_autonomous_honors_configured_background_model(isolated_runtime):

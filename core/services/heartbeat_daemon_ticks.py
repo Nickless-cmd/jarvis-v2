@@ -244,6 +244,18 @@ def tik_indre_daemoner() -> dict[str, int]:
     except Exception as exc:
         logger.warning("per-bruger daemoner fejlede: %s", exc)
 
+    # Glemselskurven har noget at glemme nu. `register_memory` havde INGEN
+    # kalder — henfaldet kunne koere, men der var aldrig noget registreret, saa
+    # overfladen sagde «No memories tracked yet» og ville have sagt det for
+    # altid. `tick()` laeser arbejdssaettet (`build_private_brain_context`),
+    # registrerer nye, forstaerker gensete, og lader resten falme ét hak.
+    try:
+        from core.services.forgetting_curve import tick as _glemsel_tick
+        _glemsel_tick(30.0)
+        koert += 1
+    except Exception:  # taelles frem for at slugges — se docstring
+        fejlet += 1
+
     # Kroppen HUSKER nu. `body_memory` havde ingen kalder og gemte
     # `random.choice(["varm","kold","tryk","prikken"])` i en modul-liste der
     # doede ved genstart — mens `embodied_state`, importeret 16 steder, laeste

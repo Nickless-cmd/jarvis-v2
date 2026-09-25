@@ -26,6 +26,13 @@ Status for moduler:
 - uden_bord        — kaldes, virker, men persisterer INTET
 - bygget           — tidligere uden bord, nu med (se `note`)
 - afløst           — gør det samme som `replacement`, som er i drift
+- projektion       — gemmer med RETTE intet: den læser kun andres flader
+
+`projektion` kom til sidst på dagen. `cognitive_core_experiments` stod på
+listen over moduler uden bord, men den har ingen egen tilstand at gemme —
+den samler fem andre familiers flader. At give den et bord ville have været
+en anden sandhed ved siden af den den læser. «Uden bord» er kun en mangel når
+modulet HAR noget at miste.
 """
 from __future__ import annotations
 
@@ -98,26 +105,39 @@ _REGISTRY: dict[str, dict[str, Any]] = {
 
 # modul_navn -> klassifikation. Se docstringen for vokabularet.
 _MODUL_REGISTRY: dict[str, dict[str, Any]] = {
-    # — Kaldes, men gemmer intet —
+    # — Bygget 25/9-2026: persistering + maalt indhold + en kalder —
     "continuity_kernel": {
-        "status": "uden_bord",
+        "status": "bygget",
         "note": (
             "Eksistens-FOELELSEN mellem tik (`get_existence_feeling`). Jeg var "
             "25/9-2026 ved at klassificere den som AFLOEST af `continuity` — "
             "forkert. `continuity` er tilstands-TRANSPORT mellem sessioner "
             "(`write_capsule`, `get_wake_tier`). Paastanden var bygget paa "
-            "docstring-lighed, ikke paa hvad funktionerne goer."
+            "docstring-lighed, ikke paa hvad funktionerne goer. "
+            "Tilstanden ligger nu i `state_store`, og daemon-blokken giver "
+            "den det MAALTE mellemrum: med det haardkodede `seconds=30` var "
+            "`should_express_continuity()` (gap >= 300) altid falsk."
         ),
     },
     "initiative_accumulator": {
-        "status": "uden_bord",
+        "status": "bygget",
         "note": (
             "Samler OENSKER der akkumulerer mellem tik. Ikke afloest af "
             "`initiative_queue`, som koer HANDLINGER (`push_initiative`, "
-            "`approve_initiative`). Samme fejl som ovenfor, samme dag."
+            "`approve_initiative`). Samme fejl som ovenfor, samme dag. "
+            "Persisteret med et doegns levetid — samme tal som koeens "
+            "`_EXPIRE_MINUTES_LOW`, saa et gammelt oenske ikke laaser sin type."
         ),
     },
-    # — Bygget 25/9-2026: persistering + maalt indhold + en kalder —
+    "boredom_curiosity_bridge": {
+        "status": "bygget",
+        "note": (
+            "Ophobningen er hele mekanikken: taerskelen er 2,0 og hvert tik "
+            "laegger en broekdel til — men genstarten satte den paa nul, saa "
+            "den naaede maaske aldrig frem. Persisteret, og nysgerrighederne "
+            "udloeber efter det doegn de faar i `initiative_queue`."
+        ),
+    },
     "body_memory": {
         "status": "bygget",
         "note": ("Gemte `random.choice([\"varm\",\"kold\",...])` i en modul-liste. "
@@ -141,9 +161,33 @@ _MODUL_REGISTRY: dict[str, dict[str, Any]] = {
                  "ikke-perceptuelle: 202.250 af 205.961 er `perceptual_event`, "
                  "og intensiteten maetter. Hoejst ét maerke i doegnet."),
     },
+    "ghost_networks": {
+        "status": "bygget",
+        "note": ("Moenstrene kom fra fire signal-tabeller, ikke fra en "
+                 "modul-liste. Henfald over 30 dage; mindst 12 observationer "
+                 "foer et moenster taeller."),
+    },
+    "text_resonance": {
+        "status": "bygget",
+        "note": ("Persisteret. Uafgjort giver nu `neutral` frem for den "
+                 "foerste noegle i en dict — en vilkaarlig vinder."),
+    },
+    # — Gemmer med RETTE intet —
+    "cognitive_core_experiments": {
+        "status": "projektion",
+        "note": ("Stod paa listen over moduler uden bord, men har ingen egen "
+                 "tilstand: den samler fem andre familiers flader gennem "
+                 "`_safe_build`. Et bord her ville vaere en anden sandhed ved "
+                 "siden af den den laeser. Fik i stedet den `active`-noegle "
+                 "den manglede."),
+    },
 }
 
 _MODUL_LEVENDE = {"koerende", "bygget", "afloest"}
+
+# En projektion er LEVENDE, men persisterer med rette intet — derfor i sin
+# egen maengde og ikke i `_MODUL_LEVENDE`, som `module_persists` laeser.
+_MODUL_IKKE_DOEDE = _MODUL_LEVENDE | {"projektion"}
 
 _NON_DEAD = {"active", "wired", "replaced", "manual_only"}
 
@@ -176,6 +220,16 @@ def classify_module(name: str) -> dict[str, Any]:
 def module_persists(name: str) -> bool:
     """False for et modul der kaldes men gemmer i hukommelsen."""
     return classify_module(name).get("status") in _MODUL_LEVENDE
+
+
+def module_is_alive(name: str) -> bool:
+    """True naar modulet ikke er doedt. En `projektion` gemmer intet og lever.
+
+    Adskilt fra `module_persists`, fordi de to spoergsmaal faldt sammen indtil
+    `cognitive_core_experiments`: et modul der laeser andres flader HAR intet
+    at gemme, og «gemmer ikke» er derfor ikke en mangel ved det.
+    """
+    return classify_module(name).get("status") in _MODUL_IKKE_DOEDE
 
 
 def liveness_summary() -> dict[str, Any]:

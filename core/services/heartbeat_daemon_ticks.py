@@ -53,6 +53,49 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# Et mellemrum laengere end en livsfase (faserne i `living_heartbeat_cycle`
+# er 3-4 timer) betyder at han var VAEK, ikke at han kedede sig i en uge.
+# Ophobningerne loftes derfor her. `continuity_kernel` faar det SANDE tal:
+# dens eneste opgave er at beskrive mellemrummet, og et loft der netop
+# der ville vaere en loegn om det den maaler.
+_OPHOBNING_LOFT_S = 4 * 60 * 60
+
+_SIDSTE_TIK_FIL = "daemon_ticks_sidste"
+
+
+def _forloebet_sekunder() -> float:
+    """Sekunder siden forrige tik — maalt, ikke antaget.
+
+    Blokken kaldte alle fire livs-tjenester med `seconds=30`. Tikket kommer
+    fra `wakeup_dispatcher`, som planlaegger med variabelt interval, saa de
+    30 var et gaet. For `continuity_kernel` var det ikke bare unoejagtigt,
+    men selvmodsigende: `should_express_continuity()` er `gap >= 300`, saa
+    et konstant gap paa 30 gjorde `format_continuity_for_prompt()` tavs for
+    altid. Modulet var bygget, forbundet og stumt ved konstruktion.
+
+    Tidsstemplet ligger i `state_store`, saa maalingen ogsaa holder hen over
+    en genstart — det er netop de lange mellemrum der betyder noget.
+    """
+    from datetime import UTC, datetime
+
+    from core.runtime import state_store
+
+    nu = datetime.now(UTC)
+    forloebet = 0.0
+    try:
+        with state_store.med_laas(_SIDSTE_TIK_FIL):
+            raa = state_store.load_json(_SIDSTE_TIK_FIL, None)
+            if isinstance(raa, dict) and raa.get("ved"):
+                try:
+                    foer = datetime.fromisoformat(str(raa["ved"]))
+                    forloebet = max(0.0, (nu - foer).total_seconds())
+                except ValueError:
+                    forloebet = 0.0
+            state_store.save_json(_SIDSTE_TIK_FIL, {"ved": nu.isoformat()})
+    except Exception:  # disken maa aldrig standse et hjerteslag — 0 er «maalte ikke»
+        return 0.0
+    return forloebet
+
 
 def tik_indre_daemoner() -> dict[str, int]:
     """Tik alle indre daemoner én gang. Kaster aldrig."""
@@ -262,27 +305,29 @@ def tik_indre_daemoner() -> dict[str, int]:
     # uden bord: `continuity_kernel`, `initiative_accumulator`,
     # `boredom_curiosity_bridge`.
     from datetime import timedelta as _td
+    forloebet = _forloebet_sekunder()
+    ophobning = _td(seconds=min(forloebet, _OPHOBNING_LOFT_S))
     try:
         from core.services.continuity_kernel import record_tick_elapsed
-        record_tick_elapsed(seconds=30)
+        record_tick_elapsed(seconds=forloebet)
         koert += 1
     except Exception:  # taelles frem for at slugges — se docstring
         fejlet += 1
     try:
         from core.services.dream_continuum import evolve_dreams
-        evolve_dreams(duration=_td(seconds=30))
+        evolve_dreams(duration=ophobning)
         koert += 1
     except Exception:  # taelles frem for at slugges — se docstring
         fejlet += 1
     try:
         from core.services.initiative_accumulator import accumulate_wants
-        accumulate_wants(duration=_td(seconds=30))
+        accumulate_wants(duration=ophobning)
         koert += 1
     except Exception:  # taelles frem for at slugges — se docstring
         fejlet += 1
     try:
         from core.services.boredom_curiosity_bridge import add_boredom
-        add_boredom(duration=_td(seconds=30))
+        add_boredom(duration=ophobning)
         koert += 1
     except Exception:  # taelles frem for at slugges — se docstring
         fejlet += 1

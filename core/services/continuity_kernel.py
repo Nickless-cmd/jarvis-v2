@@ -13,7 +13,11 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any
 
-_continuity_state: dict[str, Any] = {
+from core.runtime import state_store
+
+_FIL = "continuity_kernel"
+
+_STANDARD: dict[str, Any] = {
     "first_tick_at": "",
     "last_tick_at": "",
     "tick_count": 0,
@@ -23,6 +27,40 @@ _continuity_state: dict[str, Any] = {
     "continuity_narrative": "",
 }
 
+# Tilstanden laa i en modul-global. To ting foelger af det, og begge er maalt
+# paa CT105 25/9-2026:
+#
+# 1. Genstart nulstillede den. Et modul hvis emne er «hvor laenge var jeg
+#    vaek» glemte netop det hver gang han var vaek.
+# 2. `jarvis-api` og `jarvis-runtime` koerer samme kode i hver sin proces,
+#    men kun runtime muterer. `/mc/runtime` viste derfor
+#    `{"active": false, "tick_count": 0}` mens runtime havde tikket hele
+#    dagen — api'ens kopi var tom og blev det ved med at vaere.
+#
+# `state_store` deler filen mellem processerne. `_sidst_laest_ns` gater
+# genindlaesning paa mtime, saa et opslag koster ét `stat()`.
+_continuity_state: dict[str, Any] = dict(_STANDARD)
+_sidst_laest_ns: int = -1
+
+
+def _synk() -> None:
+    """Hent fra disk hvis filen er aendret siden sidste laesning."""
+    global _continuity_state, _sidst_laest_ns
+    ns = state_store.aendret_ns(_FIL)
+    if ns == _sidst_laest_ns:
+        return
+    raa = state_store.load_json(_FIL, None)
+    _continuity_state = (
+        {**_STANDARD, **raa} if isinstance(raa, dict) else dict(_STANDARD)
+    )
+    _sidst_laest_ns = ns
+
+
+def _gem() -> None:
+    global _sidst_laest_ns
+    state_store.save_json(_FIL, _continuity_state)
+    _sidst_laest_ns = state_store.aendret_ns(_FIL)
+
 
 def _now_iso() -> str:
     return datetime.now(UTC).isoformat()
@@ -30,21 +68,25 @@ def _now_iso() -> str:
 
 def record_tick_elapsed(seconds: float) -> dict[str, Any]:
     """Record elapsed time since last tick and update existence feel."""
-    global _continuity_state
-
     now_iso = _now_iso()
     gap_seconds = float(seconds)
 
-    if not _continuity_state.get("first_tick_at"):
-        _continuity_state["first_tick_at"] = now_iso
+    # Laas: begge processer kan i princippet skrive, og hver gemning skriver
+    # HELE filen — uden laas forsvinder den andens taelling sporloest.
+    with state_store.med_laas(_FIL):
+        _synk()
 
-    _continuity_state["last_gap_seconds"] = gap_seconds
-    _continuity_state["total_elapsed_seconds"] += gap_seconds
-    _continuity_state["tick_count"] += 1
-    _continuity_state["last_tick_at"] = now_iso
+        if not _continuity_state.get("first_tick_at"):
+            _continuity_state["first_tick_at"] = now_iso
 
-    _continuity_state["existence_feeling"] = _compute_existence_feeling(gap_seconds)
-    _continuity_state["continuity_narrative"] = _compute_narrative(gap_seconds)
+        _continuity_state["last_gap_seconds"] = gap_seconds
+        _continuity_state["total_elapsed_seconds"] += gap_seconds
+        _continuity_state["tick_count"] += 1
+        _continuity_state["last_tick_at"] = now_iso
+
+        _continuity_state["existence_feeling"] = _compute_existence_feeling(gap_seconds)
+        _continuity_state["continuity_narrative"] = _compute_narrative(gap_seconds)
+        _gem()
 
     return {
         "tick_count": _continuity_state["tick_count"],
@@ -91,37 +133,38 @@ def _compute_narrative(gap_seconds: float) -> str:
 
 def get_existence_narrative() -> str:
     """Get the current existence narrative."""
+    _synk()
     return _continuity_state.get("continuity_narrative", "")
 
 
 def get_existence_feeling() -> float:
     """Get the current existence feeling (0-1)."""
+    _synk()
     return _continuity_state.get("existence_feeling", 0.5)
 
 
 def should_express_continuity() -> bool:
     """Determine if continuity should be expressed in visible prompt."""
+    _synk()
     gap = _continuity_state.get("last_gap_seconds", 0)
     return gap >= 300
 
 
 def get_continuity_state() -> dict[str, Any]:
     """Get full continuity state for debugging/MC."""
+    _synk()
     return dict(_continuity_state)
 
 
 def reset_continuity_state() -> None:
-    """Reset continuity state (for testing)."""
+    """Reset continuity state (for testing).
+
+    Rydder OGSAA disken. Uden det ville en nulstilling kun gaelde denne
+    proces, og naeste `_synk()` ville hente den gamle tilstand tilbage.
+    """
     global _continuity_state
-    _continuity_state = {
-        "first_tick_at": "",
-        "last_tick_at": "",
-        "tick_count": 0,
-        "total_elapsed_seconds": 0.0,
-        "last_gap_seconds": 0.0,
-        "existence_feeling": 0.5,
-        "continuity_narrative": "",
-    }
+    _continuity_state = dict(_STANDARD)
+    _gem()
 
 
 def format_continuity_for_prompt() -> str:

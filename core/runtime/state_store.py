@@ -105,3 +105,22 @@ def med_laas(name: str):
             yield
         finally:
             fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+
+
+def aendret_ns(name: str) -> int:
+    """Filens mtime i nanosekunder, eller 0 naar den ikke findes.
+
+    Hvorfor: `jarvis-api` og `jarvis-runtime` deler disse filer, men kun den
+    ene muterer. Et modul der laeser sine globaler ÉN gang ved import viser
+    derfor tilstanden som den saa ud da DENS proces startede — for api'en er
+    det «tom», for altid. Maalt 25/9-2026 paa CT105: `continuity_kernel`,
+    `initiative_accumulator` og `boredom_curiosity_bridge` stod alle tre paa
+    nul i `/mc/runtime`, mens runtime-processen havde tikket dem hele dagen.
+
+    At laese filen paa hver opslag retter det, men parser JSON hver gang.
+    Denne lader kalderen gate paa mtime, saa et opslag koster ét `stat()`.
+    """
+    try:
+        return _path(name).stat().st_mtime_ns
+    except OSError:  # findes ikke / ikke laesbar — 0 betyder «ingen fil», ikke fejl
+        return 0

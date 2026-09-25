@@ -54,16 +54,47 @@ def test_summary_has_orphaned_and_replaced():
 
 def test_et_modul_der_kaldes_men_ikke_gemmer_er_IKKE_levende():
     """`uden_bord` er den status der manglede. Uden den ville de elleve se ud
-    som «unclassified», altsaa som et spoergsmaal ingen har stillet."""
-    from core.services.liveness_registry import classify_module, module_persists
-    assert classify_module("continuity_kernel")["status"] == "uden_bord"
-    assert module_persists("continuity_kernel") is False
+    som «unclassified», altsaa som et spoergsmaal ingen har stillet.
+
+    `continuity_kernel` stod her indtil den fik sit bord 25/9-2026. Testen
+    pinner nu VOKABULARET frem for et bestemt modul: at status'en findes og
+    betyder «gemmer ikke» — ellers ville den doe naar den sidste post rykker
+    til `bygget`, og det er praecis naar den skal blive staaende.
+    """
+    from core.services.liveness_registry import _MODUL_LEVENDE, module_persists
+
+    assert "uden_bord" not in _MODUL_LEVENDE
+    assert module_persists("et-modul-der-ikke-findes") is False
 
 
-def test_de_fire_byggede_er_markeret_som_byggede():
+def test_de_ti_byggede_er_markeret_som_byggede():
     from core.services.liveness_registry import module_persists
-    for m in ("body_memory", "forgetting_curve", "decision_ghosts", "memory_tattoos"):
+    for m in (
+        "body_memory",
+        "forgetting_curve",
+        "decision_ghosts",
+        "memory_tattoos",
+        "ghost_networks",
+        "text_resonance",
+        "continuity_kernel",
+        "initiative_accumulator",
+        "boredom_curiosity_bridge",
+    ):
         assert module_persists(m) is True, m
+
+
+def test_en_projektion_gemmer_intet_men_er_ikke_doed():
+    """`cognitive_core_experiments` samler fem andres flader og har ingen egen
+    tilstand. «Gemmer ikke» er kun en mangel naar modulet HAR noget at miste."""
+    from core.services.liveness_registry import (
+        classify_module,
+        module_is_alive,
+        module_persists,
+    )
+
+    assert classify_module("cognitive_core_experiments")["status"] == "projektion"
+    assert module_persists("cognitive_core_experiments") is False
+    assert module_is_alive("cognitive_core_experiments") is True
 
 
 def test_continuity_kernel_er_IKKE_afloest_af_continuity():

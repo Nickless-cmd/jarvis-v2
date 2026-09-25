@@ -86,3 +86,76 @@ def test_multiple_ticks():
     state = get_continuity_state()
     assert state["tick_count"] == 2
     assert state["total_elapsed_seconds"] == 65.0
+
+
+# ── Varig tilstand paa tvaers af processer (25/9-2026) ──────────────────────
+#
+# Tilstanden laa i en modul-global. Maalt paa CT105 samme dag viste
+# `/mc/runtime` `{"active": false, "tick_count": 0}` mens runtime-processen
+# havde tikket hele dagen: api'en har sin egen tomme kopi.
+
+
+def test_tilstanden_overlever_at_modulet_indlaeses_forfra():
+    import importlib
+
+    import core.services.continuity_kernel as ck
+
+    record_tick_elapsed(900.0)
+
+    frisk = importlib.reload(ck)
+    try:
+        assert frisk.get_continuity_state()["tick_count"] == 1
+        assert frisk.get_continuity_state()["last_gap_seconds"] == 900.0
+    finally:
+        importlib.reload(ck)
+
+
+def test_en_anden_proces_ser_tikket_uden_at_have_tikket_selv():
+    """Det var den maalte fejl: api'en laeste sin egen tomme global."""
+    import importlib
+
+    import core.services.continuity_kernel as ck
+
+    anden = importlib.reload(ck)
+    assert anden.build_continuity_kernel_surface()["active"] is False
+
+    record_tick_elapsed(1200.0)
+
+    try:
+        # Ingen genindlaesning — kun `_synk()` paa mtime.
+        flade = anden.build_continuity_kernel_surface()
+        assert flade["active"] is True
+        assert flade["tick_count"] == 1
+    finally:
+        importlib.reload(ck)
+
+
+def test_nulstilling_rydder_ogsaa_disken():
+    import importlib
+
+    import core.services.continuity_kernel as ck
+
+    record_tick_elapsed(900.0)
+    reset_continuity_state()
+
+    frisk = importlib.reload(ck)
+    try:
+        assert frisk.get_continuity_state()["tick_count"] == 0
+    finally:
+        importlib.reload(ck)
+
+
+def test_et_langt_mellemrum_naar_frem_til_prompten():
+    """`should_express_continuity()` er `gap >= 300`.
+
+    Daemon-blokken kaldte `record_tick_elapsed(seconds=30)` haardkodet, saa
+    gap'et var ALTID 30 og denne streng blev aldrig bygget. Modulet var
+    forbundet og stumt paa samme tid.
+    """
+    record_tick_elapsed(30.0)
+    assert format_continuity_for_prompt() == ""
+
+    record_tick_elapsed(1800.0)
+    tekst = format_continuity_for_prompt()
+    assert tekst.startswith("[KONTINUITET:")
+    assert "Jeg ventede og tænkte" in tekst

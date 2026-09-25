@@ -134,3 +134,61 @@ De 27 her er en anden måling tre måneder senere, og den er ikke lavet for at a
 ---
 
 *Målt af Jarvis 25/9-2026 mod den kørende runtime på CT105. Worktree-kopier ekskluderet. Linjenumre er fra `main` @ `3021f10fe`.*
+
+## Efterskrift (Claude, samme aften): de elleve er lukket
+
+De ti moduler med egen tilstand har nu et bord. Det ellevte,
+`cognitive_core_experiments`, fik **ikke** et — den samler fem andre familiers
+flader gennem `_safe_build` og har ingen egen tilstand. Et bord der ville have
+været en anden sandhed ved siden af den den læser. Registret fik i stedet en
+fjerde status, `projektion`: *gemmer med rette intet*.
+
+Det er en rettelse af selve listen. «Uden bord» er kun en mangel når modulet
+**har** noget at miste.
+
+### To fund der lå under persistensen
+
+**1. Tilstanden var per proces, ikke kun per opstart.** `jarvis-api` og
+`jarvis-runtime` kører samme kode i hver sin proces, men kun runtime muterer.
+Målt på CT105 25/9 kl. 17:50, mens runtime havde tikket hele dagen:
+
+```
+continuity_kernel        {"active": false, "tick_count": 0}
+initiative_accumulator   {"active": false, "want_count": 0}
+boredom_curiosity_bridge {"active": false, "boredom_level": 0.0}
+```
+
+Genstart var altså kun den ene halvdel. Den anden var at `/mc/runtime` aldrig
+kunne vise andet end nul, uanset hvor længe han levede.
+
+**2. `record_tick_elapsed(seconds=30)` var hårdkodet.** Tikket kommer fra
+`wakeup_dispatcher` med variabelt interval, så de 30 var et gæt — og for netop
+dette modul et selvmodsigende et: `should_express_continuity()` er
+`gap >= 300`, så et konstant gap på 30 gjorde `format_continuity_for_prompt()`
+tom for altid. Modulet var bygget, forbundet og stumt på samme tid.
+
+Mellemrummet måles nu mellem daemon-blokkens egne kørsler, og tidsstemplet
+ligger i `state_store`, så målingen også holder hen over en genstart — det er
+netop de lange mellemrum der betyder noget.
+
+### Persistens uden udløb er en ny fejl
+
+`_curiosities` blev aldrig beskåret (`clear_curiosities()` har ingen kaldere),
+og et ønske af en given type blokerer for et nyt af samme type. Genstarten
+ryddede op; disken ville ikke. Begge får derfor det døgn `initiative_queue`
+allerede giver en `low`-post (`_EXPIRE_MINUTES_LOW = 24*60`), så broen og køen
+er enige om hvad der stadig findes.
+
+### Og en regning til mig selv
+
+`core/runtime/state_store.py` har eksisteret hele tiden — 49 moduler bruger
+den, og dens egen docstring siger at den findes fordi *«every daemon that fixed
+the same problem re-implemented load/save inline»*. Jeg skrev den samme
+load/save seks gange i løbet af dagen uden at slå op om den fandtes.
+
+Det har en målt konsekvens ud over gentagelsen: `tests/conftest.py`
+skærmer `state_store._STATE_DIR` for hver eneste test (`autouse`), men ikke
+`shared_dir()`. Målt samme aften skrev `tests/test_body_memory.py` i den
+**rigtige** `~/.jarvis-v2/shared/runtime/body_memory.json`. Det er samme
+mønster som `in_flight_runs.json`-hændelsen 17/9, som netop den skærm blev
+skrevet for. De seks bør flyttes til `state_store`.

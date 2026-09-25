@@ -329,18 +329,54 @@ def _with_surface_view(item: dict[str, object], *, snapshots: dict[str, dict[str
     return enriched
 
 
+#: Hypotese-typer der kan baere en kandidat.
+#:
+#: `carried-hypothesis` og `emerging-hypothesis` var de eneste porten kendte.
+#: Maalt 25/9-2026 i basen: de doede 16/5 og 21/5. Siden 9/6 skriver den
+#: levende producent (`cadence_producers.py:519`) `post_run_hypothesis` — 41
+#: raekker, stadig i dag — og porten kendte den ikke. Sidste adoptions-kandidat
+#: er fra 15/5, dagen foer det gamle ordforraad doede.
+BAERENDE_HYPOTESER = frozenset({
+    "carried-hypothesis", "emerging-hypothesis",
+    "post_run_hypothesis", "forced-hypothesis", "tension-hypothesis",
+})
+
+
 def _build_candidate_type(*, item: dict[str, object], snapshot: dict[str, object]) -> str:
+    """Hvor staerk en adoptions-kandidat er denne droemme-linje — hvis nogen.
+
+    De to oeverste trin kraever at hypotesen moeder et MAAL eller et FOKUS i
+    samme domaene. Maalt 25/9-2026 sker det aldrig: hver af snapshottets seks
+    dele udleder sin egen domaenenoegle med sin egen funktion, og noeglerne er
+    sluggede samtale-titler (`byg-den-nu-jeg-vil-teste-den-p-tel`). 27
+    snapshots i produktion, hvoraf 26 bar praecis én del; ét havde `focus`,
+    INGEN havde `goal`.
+
+    Der mangler altsaa et faelles domaene-begreb paa tvaers af de seks
+    delsystemer. Det bygges — men foerst skal der komme kandidater at se paa
+    (Bjoerns valg 25/9). Derfor det nederste trin: er hypotesen aktiv OG har
+    noget faktisk bevidnet den, er den en `tentative-candidate`.
+
+    Vidnet er ikke et lavt krav. `_build_adoption_confidence` gav i forvejen
+    `medium` paa et vidne alene — begrebet fandtes, stien derhen gjorde ikke.
+    Og det er stadig KUN en kandidat: adoptionen er et trin mere.
+    """
     hypothesis_type = str(item.get("hypothesis_type") or item.get("signal_type") or "")
     witness_status = str((snapshot.get("witness") or {}).get("status") or "")
     outcome_type = str((snapshot.get("review_outcome") or {}).get("outcome_type") or "")
     has_goal = bool(snapshot.get("goal"))
     has_focus = bool(snapshot.get("focus"))
 
-    if hypothesis_type == "carried-hypothesis" and witness_status == "carried" and outcome_type in {"carry-forward", "nearing-closure"} and (has_goal or has_focus):
+    if hypothesis_type not in BAERENDE_HYPOTESER:
+        return ""
+    if witness_status == "carried" and outcome_type in {"carry-forward", "nearing-closure"} and (has_goal or has_focus):
         return "strong-candidate"
-    if hypothesis_type in {"carried-hypothesis", "emerging-hypothesis"} and (witness_status in {"fresh", "carried"} or outcome_type == "carry-forward") and (has_goal or has_focus):
+    if (witness_status in {"fresh", "carried"} or outcome_type == "carry-forward") and (has_goal or has_focus):
         return "carried-candidate"
     if has_focus or outcome_type in {"watch-closely", "challenge-further", "carry-forward"}:
+        return "tentative-candidate"
+    # Uden maal eller fokus i samme domaene: et vidne raekker til en kandidat.
+    if witness_status in {"fresh", "carried"}:
         return "tentative-candidate"
     return ""
 

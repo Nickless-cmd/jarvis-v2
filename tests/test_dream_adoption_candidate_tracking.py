@@ -415,3 +415,84 @@ def test_dream_adoption_candidate_surface_and_mc_shapes_remain_bounded(isolated_
     assert surface["summary"]["superseded_count"] == 1
     assert mc_shape["summary"]["current_status"] in {"fresh", "active", "fading", "stale"}
     assert runtime_shape["summary"]["current_status"] in {"fresh", "active", "fading", "stale"}
+
+
+# ── Porten fra droem til adoptions-kandidat (25/9-2026) ──────────────────
+#
+# Maalt mod produktionen paa CT105: nul kandidater af tolv aktive hypoteser,
+# og sidste raekke i `runtime_dream_adoption_candidates` var fra 15. maj.
+# To mure:
+#
+#   1. ORDFORRAADET DREV. Porten kendte `carried-hypothesis` (doede 16/5) og
+#      `emerging-hypothesis` (doede 21/5). Den levende producent,
+#      `cadence_producers.py:519`, skriver `post_run_hypothesis` — 41 raekker
+#      siden 9/6, stadig i dag.
+#   2. SAMMENFOEJNINGEN FOEJER ALDRIG SAMMEN. De to oeverste trin kraever et
+#      maal eller et fokus i samme domaene som hypotesen. Hver af snapshottets
+#      seks dele udleder sin egen domaenenoegle med sin egen funktion, og
+#      noeglerne er sluggede samtale-titler. 27 snapshots i produktion: 26 bar
+#      praecis én del, ét havde `focus`, INGEN havde `goal`.
+#
+# Maalt: retter man kun ordforraadet, bliver det 0 kandidater af 12. Derfor
+# ogsaa det nederste trin — et vidne alene baerer en tentativ kandidat. Med
+# aendringen giver de samme tolv signaler 4 kandidater.
+from core.services.dream_adoption_candidate_tracking import (  # noqa: E402
+    BAERENDE_HYPOTESER, _build_candidate_type)
+
+
+def _vidne(status: str = "carried") -> dict:
+    return {"witness": {"status": status}}
+
+
+def test_den_levende_hypotese_type_baerer_en_kandidat():
+    """DEN fejl. `post_run_hypothesis` er alt hvad der skrives i dag."""
+    ud = _build_candidate_type(item={"signal_type": "post_run_hypothesis"},
+                               snapshot=_vidne())
+    assert ud == "tentative-candidate", (
+        "den eneste hypotese-type der faktisk skrives blev afvist")
+
+
+def test_de_gamle_typer_virker_stadig():
+    """En rettelse maa ikke fjerne det der virkede foer maj."""
+    for t in ("carried-hypothesis", "emerging-hypothesis"):
+        assert _build_candidate_type(item={"hypothesis_type": t},
+                                     snapshot=_vidne()) != ""
+
+
+def test_et_vidne_alene_raekker_til_en_TENTATIV_kandidat():
+    """Uden maal eller fokus i samme domaene — som er tilfaeldet i praksis.
+
+    Det er stadig kun en kandidat; adoptionen er et trin mere.
+    """
+    ud = _build_candidate_type(item={"signal_type": "post_run_hypothesis"},
+                               snapshot={"witness": {"status": "fresh"}})
+    assert ud == "tentative-candidate"
+
+
+def test_maal_og_fokus_giver_stadig_et_HOEJERE_trin():
+    """Loesningen maa ikke plane trinnene ud — et rigtigt moede vejer mere."""
+    staerk = _build_candidate_type(
+        item={"signal_type": "post_run_hypothesis"},
+        snapshot={"witness": {"status": "carried"},
+                  "review_outcome": {"outcome_type": "carry-forward"},
+                  "goal": {"status": "active"}})
+    assert staerk == "strong-candidate"
+    baaret = _build_candidate_type(
+        item={"signal_type": "post_run_hypothesis"},
+        snapshot={"witness": {"status": "fresh"}, "focus": {"status": "active"}})
+    assert baaret == "carried-candidate"
+
+
+def test_uden_vidne_og_uden_alt_andet_er_der_INGEN_kandidat():
+    """Loesningen er ikke «alt taeller». Noget skal have bevidnet den."""
+    assert _build_candidate_type(item={"signal_type": "post_run_hypothesis"},
+                                 snapshot={}) == ""
+    assert _build_candidate_type(item={"signal_type": "post_run_hypothesis"},
+                                 snapshot={"witness": {"status": "stale"}}) == ""
+
+
+def test_en_ukendt_hypotese_type_baerer_ingenting():
+    """Et nyt ordforraad skal opdages her, ikke sive igennem som en kandidat."""
+    assert _build_candidate_type(item={"signal_type": "noget-helt-nyt"},
+                                 snapshot=_vidne()) == ""
+    assert "noget-helt-nyt" not in BAERENDE_HYPOTESER

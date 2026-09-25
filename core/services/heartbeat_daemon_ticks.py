@@ -374,7 +374,7 @@ def tik_indre_daemoner() -> dict[str, int]:
     # og det afsnit koerer kun naar `act_phase` finder prioriteter.
     try:
         from core.services.existential_drift import increment_awareness
-        increment_awareness(seconds=30)
+        increment_awareness(seconds=forloebet)
         koert += 1
     except Exception:  # taelles frem for at slugges — se docstring
         fejlet += 1
@@ -386,7 +386,7 @@ def tik_indre_daemoner() -> dict[str, int]:
         fejlet += 1
     try:
         from core.services.silence_listener import experience_silence
-        experience_silence(duration_seconds=30)
+        experience_silence(duration_seconds=forloebet)
         koert += 1
     except Exception:  # taelles frem for at slugges — se docstring
         fejlet += 1

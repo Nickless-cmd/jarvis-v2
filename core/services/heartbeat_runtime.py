@@ -1189,17 +1189,46 @@ def _safe_surface(target: dict, key: str, builder) -> None:
     ikke kun gates og fejl. Throttlet pr. surface (5 min) så de ~25 surfaces ikke flooder
     trace-ringen. Self-safe: en observe-fejl må aldrig røre surface-bygningen.
     """
+    # TRE UDFALD, IKKE TO (maalt 25/9-2026).
+    #
+    # Blokken fangede ALT og gemte `{"active": False, "error": ...}`. Fem
+    # flader — `day_shape_memory`, `memory_write_policy`,
+    # `cross_session_threads`, `relation_dynamics`, `relational_warmth` — er
+    # PER BRUGER og kaster `NoUserContextError` naar en kalder uden bruger
+    # spoerger. Set fra `/mc/runtime` med et system-token meldte de sig doede
+    # med tom summary; set fra Bjoerns app, som spoerger som ham, stod de med
+    # rigtige tal. Samme flade, to svar, og den ene loej.
+    #
+    # «Ikke relevant for denne kalder» er hverken liv-med-indhold eller doed.
+    from core.runtime.workspace_paths import NoUserContextError
+
+    fejlede = False
     try:
         target[key] = builder()
+    except NoUserContextError:
+        target[key] = {
+            "active": True,
+            "scope": "per-bruger",
+            "summary": "kraever brugerkontekst — ikke bygget for denne kalder",
+        }
     except Exception:
-        target[key] = {"active": False, "error": "surface-build-failed"}
+        target[key] = {
+            "active": False,
+            "error": "surface-build-failed",
+            "summary": "fladen kunne ikke bygges",
+        }
+        fejlede = True
     try:
         import time as _t
         now = _t.monotonic()
         if now - _SURFACE_OBSERVE_AT.get(key, 0.0) >= _SURFACE_OBSERVE_INTERVAL:
             _SURFACE_OBSERVE_AT[key] = now
             surf = target.get(key)
-            failed = isinstance(surf, dict) and (surf.get("active") is False or surf.get("error"))
+            # `failed` betyder «byggeren KASTEDE», ikke «active er False».
+            # Foer denne rettelse meldte enhver aerligt tom flade sig som en
+            # FEJL til Centralen — og de var mange: 13 af 71 stod `active:
+            # false` samme dag, og de fleste af dem koerte fint.
+            failed = fejlede
             from core.services.central_core import central
             central().observe({
                 "cluster": "cognition", "nerve": "cognitive_surface",

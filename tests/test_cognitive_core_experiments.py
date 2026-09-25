@@ -54,9 +54,24 @@ def test_livsfasen_er_altid_aktiv():
         assert fase["phase"] and fase["description"]
 
 
-def test_et_tomt_pensum_siger_False_frem_for_at_tie():
-    """«Tom» og «siger ikke noget» må ikke se ens ud. Den ene er en måling."""
+def test_et_tomt_pensum_siger_HVORFOR_frem_for_at_tie():
+    """«Tom» og «siger ikke noget» må ikke se ens ud. Den ene er en måling.
+
+    Testen stod før som `u["active"] == bool(u["curriculum"])`. Den halvdel
+    var rigtig — nøglen SKAL være der — men den koblede livstegnet til
+    indholdet, og `cognitive_architecture_surface` læser `active` som «systemet
+    lever». En plan uden materiale meldte sig derfor død.
+
+    Nu måles begge dele hver for sig: nøglen findes OG summaryen siger hvorfor
+    planen er tom. Målt 25/9-2026 over alle 1007 versioner af
+    personlighedsvektoren: `confidence_by_domain` er ikke-tom i 1,
+    `recurring_mistakes` i 0 — mens `learned_preferences`, samme skrivevej, er
+    fyldt i 728.
+    """
     from core.services.self_experiments import generate_learning_curriculum
     u = generate_learning_curriculum()
     assert "active" in u
-    assert u["active"] == bool(u["curriculum"])
+    assert u["active"] is True
+    assert u["summary"], "en tom plan skal stadig sige noget"
+    if not u["curriculum"]:
+        assert "Ingen plan" in u["summary"]

@@ -138,3 +138,84 @@ def test_idle_beat_rører_ikke_ikke_due_skema(isolated_runtime):
     st = db.get_heartbeat_runtime_state()
     assert st["last_tick_at"] == fresh          # urørt (den fulde tick ejer avanceringen)
     assert st["recovery_status"] == "startup-recovery-completed"
+
+
+# ── `_safe_surface` havde TO udfald hvor der er tre (25/9-2026) ─────────────
+
+
+def test_en_flade_der_bygger_staar_som_den_selv_siger():
+    from core.services.heartbeat_runtime import _safe_surface
+
+    ud: dict = {}
+    _safe_surface(ud, "en_flade", lambda: {"active": True, "summary": "noget"})
+    assert ud["en_flade"] == {"active": True, "summary": "noget"}
+
+
+def test_en_flade_der_KASTER_meldes_som_fejlet():
+    from core.services.heartbeat_runtime import _safe_surface
+
+    def _knaek():
+        raise RuntimeError("tabellen er væk")
+
+    ud: dict = {}
+    _safe_surface(ud, "en_flade", _knaek)
+    assert ud["en_flade"]["active"] is False
+    assert ud["en_flade"]["error"] == "surface-build-failed"
+    assert ud["en_flade"]["summary"], "en fejl skal kunne læses, ikke kun tælles"
+
+
+def test_en_PER_BRUGER_flade_uden_bruger_er_hverken_doed_eller_tom():
+    """Fem flader er per bruger og kaster `NoUserContextError` når en kalder
+    uden bruger spørger.
+
+    Målt 25/9-2026: set fra `/mc/runtime` med et system-token meldte
+    `day_shape_memory`, `memory_write_policy`, `cross_session_threads`,
+    `relation_dynamics` og `relational_warmth` sig døde med TOM summary; set
+    fra Bjørns app, som spørger som ham, stod de med rigtige tal. Samme flade,
+    to svar, og det ene løj.
+
+    «Ikke relevant for denne kalder» er et tredje udfald.
+    """
+    from core.runtime.workspace_paths import NoUserContextError
+    from core.services.heartbeat_runtime import _safe_surface
+
+    def _uden_bruger():
+        raise NoUserContextError("workspace_dir() called without user_id")
+
+    ud: dict = {}
+    _safe_surface(ud, "en_flade", _uden_bruger)
+
+    assert ud["en_flade"]["active"] is True, "modulet lever — kalderen har bare ingen bruger"
+    assert ud["en_flade"]["scope"] == "per-bruger"
+    assert "brugerkontekst" in ud["en_flade"]["summary"]
+    assert "error" not in ud["en_flade"]
+
+
+def test_centralen_faar_KASTEDE_flader_ikke_bare_tomme(monkeypatch):
+    """`failed` betød «active er False» og ikke «byggeren kastede».
+
+    Enhver ærligt tom flade meldte sig derfor som en FEJL til Centralen — og
+    de var mange: 13 af 71 stod `active: false` samme dag, og de fleste af dem
+    kørte fint.
+    """
+    import core.services.heartbeat_runtime as HR
+
+    observeret: list[dict] = []
+
+    class _Falsk:
+        def observe(self, payload):
+            observeret.append(payload)
+
+    monkeypatch.setattr("core.services.central_core.central", lambda: _Falsk())
+    monkeypatch.setattr(HR, "_SURFACE_OBSERVE_AT", {})
+
+    # Ærligt tom, men kørende: må IKKE meldes som fejl.
+    _ud: dict = {}
+    HR._safe_surface(_ud, "tom_men_levende",
+                     lambda: {"active": False, "summary": "ingenting endnu"})
+
+    assert observeret, "der blev ikke observeret noget"
+    assert observeret[-1]["active"] is True, (
+        "en ærligt tom flade blev meldt som en fejl til Centralen"
+    )
+    assert observeret[-1]["error"] is None

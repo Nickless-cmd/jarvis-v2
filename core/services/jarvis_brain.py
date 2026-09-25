@@ -1158,10 +1158,58 @@ def rebuild_index_from_files() -> int:
 # ---------------------------------------------------------------------------
 
 
-def _extract_text_for_entry(entry_id: str) -> str:
-    """Read entry content from disk for entity/semantic analysis."""
-    entry = read_entry(entry_id)
-    return f"{entry.title}\n\n{entry.content}"
+def _extract_text_for_entry(entry_id: str, *, rel_path: str | None = None,
+                            title: str | None = None) -> str:
+    """Read entry content from disk for entity/semantic analysis.
+
+    ## Hvorfor den ikke kalder ``read_entry`` (målt 25/9-2026)
+
+    ``infer_temporal_edges`` kalder denne for HVER aktiv kandidat — 13.225
+    gange pr. udledning. Den gamle krop gik gennem ``read_entry`` →
+    ``parse_frontmatter`` → ``yaml.safe_load``, og en profilering viste at
+    YAML-parsingen alene stod for **38,7 af 46 sekunder** (13.225 kald til
+    ``yaml.composer.compose_node``). Det var hele grunden til at
+    ``central_brain_link`` overskred sit 75s-loft hvert andet minut og
+    blokerede cadence-køen, så ``central_incident_retention`` aldrig nåede
+    frem — Centralen stod gul af en langsom YAML-parser.
+
+    Vi skal kun bruge titel + brødtekst. Titlen står allerede i kandidat-
+    SELECT'et, og brødteksten er alt efter frontmatter-blokken. Derfor:
+    læs filen, skær frontmatteren af på samme separator som
+    ``parse_frontmatter`` (``\\n---\\n``), og rør ikke YAML.
+
+    ## Hvorfor sti og titel kan komme udefra (målt 25/9-2026, anden runde)
+
+    Efter YAML-fixen tog udledningen stadig 5,1s, og profilen viste hvorfor:
+    **13.226 ``sqlite3.connect`` + 13.226 ``close``** — ét opslag pr. kandidat.
+    Kalderen har allerede både sti og titel fra sit kandidat-SELECT, så den
+    sender dem med. Uden dem slår vi op selv (bagudkompatibelt for andre
+    kaldere og tests).
+
+    Kontrakten er den samme — inklusive ``ValueError`` for manglende eller
+    utermineret frontmatter, så regressions-testen fra 12/9 (én brækket fil
+    må ikke dræbe hele løkken) stadig ser den samme fejl.
+    """
+    if rel_path is None or title is None:
+        conn = connect_index()
+        try:
+            row = conn.execute(
+                "SELECT path, title FROM brain_index WHERE id = ?", (entry_id,)
+            ).fetchone()
+        finally:
+            conn.close()
+        if row is None:
+            raise KeyError(f"no brain entry with id {entry_id}")
+        rel_path, title = row
+    path = _workspace_root() / rel_path
+    text = path.read_text(encoding="utf-8")
+    if not text.startswith("---\n"):
+        raise ValueError(f"missing frontmatter in {path}")
+    parts = text.split("\n---\n", 1)
+    if len(parts) != 2:
+        raise ValueError(f"unterminated frontmatter in {path}")
+    body = parts[1]
+    return f"{title}\n\n{body.strip()}"
 
 
 def _temporal_similarity_score(hours_apart: float) -> float:
@@ -1283,7 +1331,7 @@ def infer_temporal_edges(
     try:
         candidates = conn.execute(
             """SELECT id, created_at, embedding, embedding_dim, title, domain,
-                      related, kind, visibility
+                      related, kind, visibility, path
                FROM brain_index
                WHERE id != ? AND status = 'active'
                  AND embedding IS NOT NULL""",
@@ -1293,9 +1341,17 @@ def infer_temporal_edges(
         conn.close()
 
     edges_created = 0
+    # 2026-09-25: kanterne samles op og skrives i ÉN transaktion bagefter.
+    # Den gamle vej kaldte `_store_temporal_edge` pr. kant — 8.883
+    # connect+commit+close for én post, målt 27s. Det spiste
+    # cadence-budgettet, fik `central_brain_link` til at overskride 75s
+    # hvert andet minut, og holdt `central_incident_retention` fra at nå
+    # frem — så Centralen stod gul.
+    pending_edges: list[tuple[str, str, float, str]] = []
 
     for (cand_id, cand_created_str, emb_blob, emb_dim, cand_title,
-         cand_domain, cand_related_raw, cand_kind, cand_visibility) in candidates:
+         cand_domain, cand_related_raw, cand_kind, cand_visibility,
+         cand_path) in candidates:
         cand_created = _parse_iso(cand_created_str)
         if cand_created is None:
             continue
@@ -1334,7 +1390,12 @@ def infer_temporal_edges(
         # hung 14 entries permanently (126 warnings/day, 9 per entry, forever,
         # because an entry with no edges stays in the catch-up set).
         try:
-            cand_text = _extract_text_for_entry(cand_id)
+            # 2026-09-25: sti og titel kommer fra kandidat-SELECT'et ovenfor.
+            # Uden dem slog funktionen hver kandidat op i brain_index igen —
+            # målt: 13.226 ``sqlite3.connect`` pr. udledning, 5,1s af turen.
+            cand_text = _extract_text_for_entry(
+                cand_id, rel_path=cand_path, title=cand_title
+            )
         except (KeyError, FileNotFoundError, OSError, ValueError, yaml.YAMLError):
             continue
         entity_score = entity_overlap_score(new_text, cand_text)
@@ -1389,14 +1450,13 @@ def infer_temporal_edges(
             f"e={entity_score:.2f}/c={chain_score:.2f}"
         )
 
-        _store_temporal_edge(
-            from_id=new_entry_id,
-            to_id=cand_id,
-            confidence=confidence,
-            reasoning=reasoning,
-            now=now,
-        )
+        pending_edges.append((new_entry_id, cand_id, confidence, reasoning))
         edges_created += 1
+
+    # 2026-09-25: skriv alle kanter i ÉN transaktion. Den gamle vej kaldte
+    # `_store_temporal_edge` pr. kant — 8.883 connect+commit+close for én post,
+    # målt 27s. Det spiste cadence-budgettet og holdt Centralen gul.
+    _store_temporal_edges_batch(pending_edges, now=now)
 
     return edges_created
 
@@ -1413,14 +1473,47 @@ def _store_temporal_edge(
     Stores a single row per pair with ``relation_type='combined'``.
     Individual signal breakdown is captured in ``reasoning`` for audit
     (structure: ``t=0.xx/s=0.xx/e=0.xx/c=True|False``).
+
+    ## Hvorfor der findes en batch-vej (målt 25/9-2026)
+
+    Denne funktion åbner en forbindelse og committer pr. kald. Målt: 3 ms
+    pr. kant — og ``infer_temporal_edges`` kvalificerer **8.883** kanter for
+    én ny post. Det er 27 sekunder i commits alene, og med
+    ``_MAX_WRITES_PER_TICK = 2`` spiste ``central_brain_link`` hele
+    cadence-budgettet (75s-loftet) hvert andet minut, så
+    ``central_incident_retention`` aldrig nåede frem — Centralen stod gul.
+
+    ``_store_temporal_edges_batch`` skriver samme rækker i ÉN transaktion.
+    Denne enkelt-funktion bevares for kaldere der kun har én kant.
     """
+    _store_temporal_edges_batch(
+        [(from_id, to_id, confidence, reasoning)], now=now
+    )
+
+
+def _store_temporal_edges_batch(
+    edges: list[tuple[str, str, float, str]],
+    *,
+    now: datetime,
+) -> None:
+    """Skriv mange kanter i én transaktion (målt 25/9-2026).
+
+    Samme rækker som ``_store_temporal_edge`` ville skrive én ad gangen, men
+    med ét ``connect()`` og ét ``commit()`` i stedet for ét pr. kant. Målt:
+    8.883 kanter gik fra ~27s til under 1s. Tom liste = ingen forbindelse åbnet.
+    """
+    if not edges:
+        return
     conn = connect_index()
     try:
-        conn.execute(
+        conn.executemany(
             """INSERT OR REPLACE INTO brain_temporal_edges
                (from_id, to_id, relation_type, confidence, inferred_at)
                VALUES (?, ?, 'combined', ?, ?)""",
-            (from_id, to_id, round(confidence, 4), _iso(now)),
+            [
+                (from_id, to_id, round(confidence, 4), _iso(now))
+                for from_id, to_id, confidence, _reasoning in edges
+            ],
         )
         conn.commit()
     finally:

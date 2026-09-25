@@ -660,7 +660,7 @@ def test_yamlerror_paa_en_kandidat_afbryder_ikke_loekken(tmp_path, monkeypatch):
     JB, now, vec, ny = _kandidat_opsaetning(tmp_path, monkeypatch)
     kaldt = []
 
-    def _extract(entry_id):
+    def _extract(entry_id, *, rel_path=None, title=None):
         kaldt.append(entry_id)
         if entry_id == "cand-1-braekket":
             raise yaml.YAMLError("mapping values are not allowed here")
@@ -685,7 +685,7 @@ def test_valueerror_paa_en_kandidat_afbryder_ikke_loekken(tmp_path, monkeypatch)
     JB, now, vec, ny = _kandidat_opsaetning(tmp_path, monkeypatch)
     kaldt = []
 
-    def _extract(entry_id):
+    def _extract(entry_id, *, rel_path=None, title=None):
         kaldt.append(entry_id)
         if entry_id == "cand-1-braekket":
             raise ValueError("missing frontmatter in p/cand-1-braekket.md")

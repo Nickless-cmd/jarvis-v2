@@ -21,8 +21,11 @@ i central_trace/correlate. Self-safe; kaster aldrig ind i fejl-stien.
 """
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 from typing import Any
+
+_log = logging.getLogger(__name__)
 
 # ── Mapping-tabel: kanonisk fejl-kode → bruger-vendt form ────────────────────
 # severity: info | warning | error | critical. retryable: kan brugeren bare prøve igen?
@@ -177,14 +180,26 @@ def emit(envelope: ErrorEnvelope, *, session_id: str = "", user_id: str = "",
     if notify and user_id:
         try:
             from core.services.notification_router import route_proactive_notification
+            # `notification_type`, IKKE `kind`. Kaldet stod med `kind="error"`,
+            # som routeren ikke har — det kastede `TypeError` ved HVERT forsoeg,
+            # og `except: pass` herunder slugte den. Fejl-notifikationer fra
+            # fejl-konvolutten er altsaa aldrig naaet frem til nogen.
+            #
+            # Alle andre kaldere sender typen positionelt
+            # (`route_proactive_notification(uid, "central_flag", {...})`); denne
+            # ene brugte et navn der ikke fandtes, og ingen kunne se det.
             route_proactive_notification(
-                user_id=str(user_id),
-                payload={"title": "Jarvis-fejl", "body": envelope.user_message,
-                         **event},
-                kind="error",
+                str(user_id),
+                "error",
+                {"title": "Jarvis-fejl", "body": envelope.user_message, **event},
             )
         except Exception:
-            pass
+            # FOER: `pass`. Det var ikke en ekstra sikkerhed — det var det der
+            # holdt fejlen skjult i al den tid. En notifikation der ikke naar
+            # frem, skal mindst kunne ses i loggen.
+            _log.warning(
+                "kunne ikke sende fejl-notifikation code=%s correlation_id=%s",
+                envelope.code, envelope.correlation_id, exc_info=True)
     return event
 
 

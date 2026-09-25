@@ -357,13 +357,13 @@ _Unified fejl-meddelelses-system — Centralen ejer hvad brugeren ser når noget
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| class | `ErrorEnvelope` | `` | Den ENE bruger-vendte fejl-form. Alle flader (desk/companion/UI) renderer den ens. | [src](../../../core/services/central_error_envelope.py#L99) |
-| method | `ErrorEnvelope.to_client_event` | `(self)` | Konsistent payload til klient-rendering (desk SSE system_event kind='error', | [src](../../../core/services/central_error_envelope.py#L115) |
-| function | `build_envelope` | `(*, code, origin_cluster=…, run_id=…, detail=…)` | Map en kanonisk fejl-kode → bruger-vendt envelope. Ukendt kode → 'unknown'-fallback | [src](../../../core/services/central_error_envelope.py#L138) |
-| function | `emit` | `(envelope, *, session_id=…, user_id=…, notify=…)` | Gør fejlen synlig + (valgfrit) rut den til en async flade. Returnerer klient-eventet | [src](../../../core/services/central_error_envelope.py#L155) |
-| function | `for_interruption` | `(*, reason, run_id=…, detail=…)` | Bekvemheds-bro fra _classify_visible_run_interruption's reason → envelope. | [src](../../../core/services/central_error_envelope.py#L191) |
-| function | `envelope_from_kind` | `(kind, *, origin_cluster=…, run_id=…, detail=…, scope=…, context=…)` | Byg en canonical ErrorEnvelope fra en `kind`. KIND_MAP → severity/recoverable/ | [src](../../../core/services/central_error_envelope.py#L284) |
-| function | `kind_for_nerve` | `(cluster, nerve)` | Map (cluster, nerve) → canonical kind, eller None hvis ikke en kendt fejl-nerve. | [src](../../../core/services/central_error_envelope.py#L317) |
+| class | `ErrorEnvelope` | `` | Den ENE bruger-vendte fejl-form. Alle flader (desk/companion/UI) renderer den ens. | [src](../../../core/services/central_error_envelope.py#L102) |
+| method | `ErrorEnvelope.to_client_event` | `(self)` | Konsistent payload til klient-rendering (desk SSE system_event kind='error', | [src](../../../core/services/central_error_envelope.py#L118) |
+| function | `build_envelope` | `(*, code, origin_cluster=…, run_id=…, detail=…)` | Map en kanonisk fejl-kode → bruger-vendt envelope. Ukendt kode → 'unknown'-fallback | [src](../../../core/services/central_error_envelope.py#L141) |
+| function | `emit` | `(envelope, *, session_id=…, user_id=…, notify=…)` | Gør fejlen synlig + (valgfrit) rut den til en async flade. Returnerer klient-eventet | [src](../../../core/services/central_error_envelope.py#L158) |
+| function | `for_interruption` | `(*, reason, run_id=…, detail=…)` | Bekvemheds-bro fra _classify_visible_run_interruption's reason → envelope. | [src](../../../core/services/central_error_envelope.py#L206) |
+| function | `envelope_from_kind` | `(kind, *, origin_cluster=…, run_id=…, detail=…, scope=…, context=…)` | Byg en canonical ErrorEnvelope fra en `kind`. KIND_MAP → severity/recoverable/ | [src](../../../core/services/central_error_envelope.py#L299) |
+| function | `kind_for_nerve` | `(cluster, nerve)` | Map (cluster, nerve) → canonical kind, eller None hvis ikke en kendt fejl-nerve. | [src](../../../core/services/central_error_envelope.py#L332) |
 
 ## `core/services/central_excess.py`
 _Sense of Excess — Centralens gartner-muskel._

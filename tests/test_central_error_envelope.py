@@ -57,3 +57,68 @@ def test_user_error_nerve_in_catalog():
     assert cc.validate() == []
     names = [n.name for n in cc.by_cluster("system")]
     assert "user_error" in names
+
+
+# ── Fejl-notifikationen naaede aldrig frem (maalt 25/9-2026) ────────────────
+
+
+def test_notifikationen_kaldes_med_routerens_EGNE_parameternavne(monkeypatch):
+    """Kaldet stod med `kind="error"`.
+
+    `route_proactive_notification` har ingen parameter der hedder `kind` — den
+    hedder `notification_type`. Kaldet kastede altså `TypeError` ved HVERT
+    forsøg, og et `except: pass` herunder slugte den. Fejl-notifikationer fra
+    fejl-konvolutten er aldrig nået frem til nogen.
+
+    Testen kalder mod den ÆGTE signatur frem for en mock der tager `**kwargs`:
+    en mock der sluger alt ville have været grøn hele tiden.
+    """
+    import inspect
+
+    from core.services import central_error_envelope as CE
+    from core.services.notification_router import route_proactive_notification
+
+    set_kald: list[tuple] = []
+
+    def _falsk(user_id, notification_type, payload, importance="normal", **kw):
+        set_kald.append((user_id, notification_type, payload))
+        return {"delivered": True}
+
+    # Den falske har SAMME positionelle navne som den ægte — ellers måler
+    # testen sin egen mock.
+    aegte = list(inspect.signature(route_proactive_notification).parameters)[:3]
+    assert aegte == ["user_id", "notification_type", "payload"], aegte
+
+    import core.services.notification_router as NR
+    monkeypatch.setattr(NR, "route_proactive_notification", _falsk)
+
+    env = CE.build_envelope(code="provider_error")
+    CE.emit(env, user_id="u-1", notify=True)
+
+    assert len(set_kald) == 1, "notifikationen blev ikke sendt"
+    uid, ntype, payload = set_kald[0]
+    assert uid == "u-1"
+    assert ntype == "error"
+    assert payload.get("title") == "Jarvis-fejl"
+
+
+def test_en_fejlet_notifikation_logges_frem_for_at_tie(monkeypatch, caplog):
+    """`except: pass` var ikke en ekstra sikkerhed — det var det der holdt
+    fejlen skjult i månedsvis."""
+    import logging
+
+    import core.services.notification_router as NR
+    from core.services import central_error_envelope as CE
+
+    def _knaek(*a, **k):
+        raise RuntimeError("kanalen er nede")
+
+    monkeypatch.setattr(NR, "route_proactive_notification", _knaek)
+
+    env = CE.build_envelope(code="provider_error")
+    with caplog.at_level(logging.WARNING):
+        ud = CE.emit(env, user_id="u-1", notify=True)
+
+    assert ud, "en fejlet notifikation maa ikke vaelte kalderen"
+    assert any("fejl-notifikation" in r.message for r in caplog.records), \
+        "fejlen blev slugt i tavshed"

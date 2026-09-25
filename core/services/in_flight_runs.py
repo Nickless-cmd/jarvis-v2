@@ -611,6 +611,11 @@ def claim_due_recovery(
             ),
         )
         rec.setdefault("task_id", str(rec.get("run_id") or key))
+        # Ejer-stemplet FØR kravet. Kravet overskriver `recovery_owner`, og en
+        # udskydelse skal kunne give posten tilbage til den ejer der STOD der
+        # (se `release_recovery_claim`). Uden stemplet blev ejerskabet ryddet,
+        # og en kørsel der VAR startet kunne ikke afregne. (Målt 25/9-2026.)
+        rec["recovery_prev_owner"] = str(rec.get("recovery_owner") or "")
         rec["status"] = "running"
         rec["recovery_generation"] = int(rec.get("recovery_generation") or 0) + 1
         rec["recovery_attempt"] = int(rec.get("recovery_attempt") or 0) + 1
@@ -671,8 +676,8 @@ def release_recovery_claim(
     """Giv kravet tilbage.
 
     ``attempted=False`` betyder: der blev ALDRIG forsoegt en start. Saa rulles
-    baade forsoegstaelleren og retten til en slutrunde tilbage, for kravet var
-    et opslag, ikke et forsoeg.
+    forsoegstaelleren, GENERATIONEN, ejerskabet og retten til en slutrunde
+    tilbage, for kravet var et opslag, ikke et forsoeg.
 
     Hvorfor det skel findes: `claim_due_recovery` er noedt til at TAGE kravet
     for overhovedet at kunne se hvilken samtale opgaven hoerer til, og den
@@ -705,6 +710,24 @@ def release_recovery_claim(
         rec["recovery_lease_until"] = ""
         if not attempted:
             rec["recovery_attempt"] = max(0, int(rec.get("recovery_attempt") or 0) - 1)
+            # GENERATIONEN OG EJERSKABET RULLES TILBAGE MED. Et opslag er ikke
+            # en ny identitet: kravet tog generationen for at kunne SE samtalen,
+            # og uden tilbagerulningen steg den for hvert opslag.
+            #
+            # Maalt 25/9-2026 i journalen: `visible-d9ab73c5` stod med
+            # `recovery_generation=10`, `recovery_attempt=1` og 9 udskydelser —
+            # 10 = 1 forsoeg + 9 opslag. Samme aritmetik paa tre andre poster.
+            #
+            # Konsekvensen var ikke kosmetisk. Den koersel der FAKTISK var
+            # startet afregnede med den generation den blev startet med;
+            # `_check_claim` kastede StaleRecoveryClaim, `_afregn_genoptaget_run`
+            # slugte den som en advarsel — og opgaven blev ALDRIG lukket. Den
+            # faldt tilbage til forfald, blev udskudt igen, og rundgangen
+            # gentog sig. Det er «genoptagelsen braekker sig».
+            rec["recovery_generation"] = max(
+                0, int(rec.get("recovery_generation") or 0) - 1)
+            rec["recovery_owner"] = str(rec.get("recovery_prev_owner") or "")
+            rec["recovery_prev_owner"] = ""
             # Kravet ryddede flaget da det satte `recovery_mode`. Naar intet
             # blev startet, skal retten til slutrunden tilbage — ellers svarer
             # han aldrig paa det han naaede.

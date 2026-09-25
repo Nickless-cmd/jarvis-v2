@@ -181,6 +181,13 @@ _Living Heartbeat Cycle — Jarvis' inner life rhythm._
 | function | `build_living_heartbeat_cycle_surface` | `()` | MC surface for living heartbeat cycle. | [src](../../../core/services/living_heartbeat_cycle.py#L183) |
 | function | `_emit_living_heartbeat_cycle_event` | `(kind, payload=…)` | Emit a scoped event for cartographer observability. | [src](../../../core/services/living_heartbeat_cycle.py#L194) |
 
+## `core/services/llm_json.py`
+_Traek et JSON-objekt ud af et LLM-svar._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `udtraek_json` | `(raw)` | Foerste komplette JSON-objekt i `raw`, eller None. | [src](../../../core/services/llm_json.py#L33) |
+
 ## `core/services/llm_pricing.py`
 _Central LLM-pris-tabel + cost-beregner._
 
@@ -588,14 +595,4 @@ _Memory maintenance daemon — periodic dedup and health of MEMORY.md._
 | function | `_stronger_confidence` | `(left, right)` | — | [src](../../../core/services/memory_md_update_proposal_tracking.py#L486) |
 | function | `_rank_confidence` | `(value)` | — | [src](../../../core/services/memory_md_update_proposal_tracking.py#L490) |
 | function | `_parse_dt` | `(value)` | — | [src](../../../core/services/memory_md_update_proposal_tracking.py#L494) |
-
-## `core/services/memory_pruning_daemon.py`
-_Memory pruning daemon — arkiverer entries med meget lav salience._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `tick_memory_pruning_daemon` | `()` | Run pruning cycle if cadence elapsed. Returns stats dict. | [src](../../../core/services/memory_pruning_daemon.py#L53) |
-| function | `_prune_brain_entries` | `(now)` | Find brain entries med effektiv salience under tærskel og arkivér dem. | [src](../../../core/services/memory_pruning_daemon.py#L103) |
-| function | `_prune_private_brain_records` | `()` | Find private_brain_records med salience under tærskel og arkivér dem. | [src](../../../core/services/memory_pruning_daemon.py#L161) |
-| function | `build_memory_pruning_surface` | `()` | — | [src](../../../core/services/memory_pruning_daemon.py#L207) |
 

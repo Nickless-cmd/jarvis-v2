@@ -2,6 +2,16 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/standing_orders_registry.py`
+_Standing-orders registry — INDEPENDENT grounding for the reasoning-interceptor's standing-orders_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_ensure` | `(conn)` | — | [src](../../../core/services/standing_orders_registry.py#L13) |
+| function | `add_standing_order` | `(*, text, match_key=…)` | — | [src](../../../core/services/standing_orders_registry.py#L25) |
+| function | `set_standing_order_active` | `(order_id, *, active)` | — | [src](../../../core/services/standing_orders_registry.py#L36) |
+| function | `list_active_standing_orders` | `()` | — | [src](../../../core/services/standing_orders_registry.py#L47) |
+
 ## `core/services/state_file_retention.py`
 _Rotation af operationel runtime-tilstand i ``~/.jarvis-v2``._
 
@@ -610,11 +620,4 @@ _Tick-scoped in-memory cache — lives exactly one heartbeat tick._
 | function | `_stronger_confidence` | `(*values)` | — | [src](../../../core/services/tiny_webchat_execution_pilot.py#L451) |
 | function | `_slug` | `(value)` | — | [src](../../../core/services/tiny_webchat_execution_pilot.py#L460) |
 | function | `_parse_dt` | `(value)` | — | [src](../../../core/services/tiny_webchat_execution_pilot.py#L467) |
-
-## `core/services/tool_batch_notice.py`
-_Vink til modellen om at kalde flere uafhængige værktøjer i SAMME runde._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `tool_batch_notice` | `(*, forrige_runde_kald, runder_tilbage, gange_vist)` | Vinket, eller «» når det ikke ville hjælpe. | [src](../../../core/services/tool_batch_notice.py#L35) |
 

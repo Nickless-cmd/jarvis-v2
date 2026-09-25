@@ -486,19 +486,19 @@ _Dream bias engine — Lag 2 distillation + bias state._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_coerce_float` | `(v)` | — | [src](../../../core/services/dream_bias_engine.py#L57) |
-| function | `_now` | `()` | — | [src](../../../core/services/dream_bias_engine.py#L64) |
-| function | `_validate_dream_output` | `(raw)` | Sanitize LLM output — drop unknown keys, clamp values, force guards. | [src](../../../core/services/dream_bias_engine.py#L70) |
-| function | `accumulate_bias` | `(prior, new, intensity)` | Add new bias values to prior, multiplied by intensity, clamped ±1.0. | [src](../../../core/services/dream_bias_engine.py#L119) |
-| function | `get_active_dream_bias` | `(*, workspace_id=…)` | Read active bias, honoring kill-switch + TTL. | [src](../../../core/services/dream_bias_engine.py#L140) |
-| function | `format_dream_bias_for_heartbeat` | `(*, workspace_id=…)` | Render bias as a structured awareness-section block. | [src](../../../core/services/dream_bias_engine.py#L172) |
-| function | `run_dream_bias_distillation` | `(*, workspace_id=…)` | Full pipeline. Called by dream_distillation_daemon each cycle. | [src](../../../core/services/dream_bias_engine.py#L228) |
-| function | `_has_minimum_dream_content` | `(*, workspace_id, settings)` | ≥2 new events (regret + aspiration) since the active bias's source_event_ids. | [src](../../../core/services/dream_bias_engine.py#L306) |
-| function | `_fetch_regret_corpus` | `(*, since_iso, limit=…)` | Pull events from the 6 regret-heavy sources via the events table. | [src](../../../core/services/dream_bias_engine.py#L345) |
-| function | `_summarize_payload` | `(payload, kind)` | Best-effort short-summary line for an event payload. | [src](../../../core/services/dream_bias_engine.py#L404) |
-| function | `_fetch_aspiration_corpus` | `(*, since_iso, limit=…)` | Pull positive/aspiration events — kept decisions, goal progress, etc. | [src](../../../core/services/dream_bias_engine.py#L413) |
-| function | `_call_llm_for_bias` | `(*, events, max_tokens)` | Call quality-lane LLM with both regret and aspiration events. | [src](../../../core/services/dream_bias_engine.py#L496) |
-| function | `_upsert_dream_bias` | `(*, workspace_id, validated, source_events, ttl_hours)` | INSERT new or accumulate into existing row. | [src](../../../core/services/dream_bias_engine.py#L556) |
+| function | `_coerce_float` | `(v)` | — | [src](../../../core/services/dream_bias_engine.py#L58) |
+| function | `_now` | `()` | — | [src](../../../core/services/dream_bias_engine.py#L65) |
+| function | `_validate_dream_output` | `(raw)` | Sanitize LLM output — drop unknown keys, clamp values, force guards. | [src](../../../core/services/dream_bias_engine.py#L71) |
+| function | `accumulate_bias` | `(prior, new, intensity)` | Add new bias values to prior, multiplied by intensity, clamped ±1.0. | [src](../../../core/services/dream_bias_engine.py#L120) |
+| function | `get_active_dream_bias` | `(*, workspace_id=…)` | Read active bias, honoring kill-switch + TTL. | [src](../../../core/services/dream_bias_engine.py#L141) |
+| function | `format_dream_bias_for_heartbeat` | `(*, workspace_id=…)` | Render bias as a structured awareness-section block. | [src](../../../core/services/dream_bias_engine.py#L173) |
+| function | `run_dream_bias_distillation` | `(*, workspace_id=…)` | Full pipeline. Called by dream_distillation_daemon each cycle. | [src](../../../core/services/dream_bias_engine.py#L229) |
+| function | `_has_minimum_dream_content` | `(*, workspace_id, settings)` | ≥2 new events (regret + aspiration) since the active bias's source_event_ids. | [src](../../../core/services/dream_bias_engine.py#L311) |
+| function | `_fetch_regret_corpus` | `(*, since_iso, limit=…)` | Pull events from the 6 regret-heavy sources via the events table. | [src](../../../core/services/dream_bias_engine.py#L350) |
+| function | `_summarize_payload` | `(payload, kind)` | Best-effort short-summary line for an event payload. | [src](../../../core/services/dream_bias_engine.py#L409) |
+| function | `_fetch_aspiration_corpus` | `(*, since_iso, limit=…)` | Pull positive/aspiration events — kept decisions, goal progress, etc. | [src](../../../core/services/dream_bias_engine.py#L418) |
+| function | `_call_llm_for_bias` | `(*, events, max_tokens)` | Call quality-lane LLM with both regret and aspiration events. | [src](../../../core/services/dream_bias_engine.py#L501) |
+| function | `_upsert_dream_bias` | `(*, workspace_id, validated, source_events, ttl_hours)` | INSERT new or accumulate into existing row. | [src](../../../core/services/dream_bias_engine.py#L561) |
 
 ## `core/services/dream_carry_over.py`
 _Dream Carry-Over — hypotheses that survive across sessions._
@@ -602,19 +602,19 @@ _Dream Hypothesis Generator — overraskende forbindelser._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_now_iso` | `()` | — | [src](../../../core/services/dream_hypothesis_generator.py#L34) |
-| function | `_ensure_table` | `()` | — | [src](../../../core/services/dream_hypothesis_generator.py#L38) |
-| function | `_fingerprint` | `(text)` | — | [src](../../../core/services/dream_hypothesis_generator.py#L78) |
-| function | `_basis_fingerprint` | `(signals)` | — | [src](../../../core/services/dream_hypothesis_generator.py#L85) |
-| function | `_collect_source_signals` | `(*, max_signals=…)` | — | [src](../../../core/services/dream_hypothesis_generator.py#L97) |
-| function | `_build_hypothesis_prompt` | `(sampled)` | — | [src](../../../core/services/dream_hypothesis_generator.py#L169) |
-| function | `_extract_dream_json` | `(raw)` | — | [src](../../../core/services/dream_hypothesis_generator.py#L193) |
-| function | `_recently_used_signal_refs` | `(*, limit=…)` | Return refs of signals used in the last N hypotheses. | [src](../../../core/services/dream_hypothesis_generator.py#L221) |
-| function | `generate_dream_hypothesis` | `()` | Generate one surprising hypothesis by combining 3 random signals. | [src](../../../core/services/dream_hypothesis_generator.py#L244) |
-| function | `list_dream_hypotheses` | `(*, presented_only=…, limit=…)` | — | [src](../../../core/services/dream_hypothesis_generator.py#L371) |
-| function | `mark_hypothesis_presented` | `(*, hypothesis_id)` | — | [src](../../../core/services/dream_hypothesis_generator.py#L400) |
-| function | `build_dream_hypothesis_surface` | `()` | — | [src](../../../core/services/dream_hypothesis_generator.py#L411) |
-| function | `build_dream_hypothesis_prompt_section` | `()` | Surface the single highest-confidence unpresented dream hypothesis. | [src](../../../core/services/dream_hypothesis_generator.py#L428) |
+| function | `_now_iso` | `()` | — | [src](../../../core/services/dream_hypothesis_generator.py#L35) |
+| function | `_ensure_table` | `()` | — | [src](../../../core/services/dream_hypothesis_generator.py#L39) |
+| function | `_fingerprint` | `(text)` | — | [src](../../../core/services/dream_hypothesis_generator.py#L79) |
+| function | `_basis_fingerprint` | `(signals)` | — | [src](../../../core/services/dream_hypothesis_generator.py#L86) |
+| function | `_collect_source_signals` | `(*, max_signals=…)` | — | [src](../../../core/services/dream_hypothesis_generator.py#L98) |
+| function | `_build_hypothesis_prompt` | `(sampled)` | — | [src](../../../core/services/dream_hypothesis_generator.py#L170) |
+| function | `_extract_dream_json` | `(raw)` | Bevaret navn; selve udtraekket bor nu i `llm_json`. | [src](../../../core/services/dream_hypothesis_generator.py#L194) |
+| function | `_recently_used_signal_refs` | `(*, limit=…)` | Return refs of signals used in the last N hypotheses. | [src](../../../core/services/dream_hypothesis_generator.py#L204) |
+| function | `generate_dream_hypothesis` | `()` | Generate one surprising hypothesis by combining 3 random signals. | [src](../../../core/services/dream_hypothesis_generator.py#L227) |
+| function | `list_dream_hypotheses` | `(*, presented_only=…, limit=…)` | — | [src](../../../core/services/dream_hypothesis_generator.py#L354) |
+| function | `mark_hypothesis_presented` | `(*, hypothesis_id)` | — | [src](../../../core/services/dream_hypothesis_generator.py#L383) |
+| function | `build_dream_hypothesis_surface` | `()` | — | [src](../../../core/services/dream_hypothesis_generator.py#L394) |
+| function | `build_dream_hypothesis_prompt_section` | `()` | Surface the single highest-confidence unpresented dream hypothesis. | [src](../../../core/services/dream_hypothesis_generator.py#L411) |
 
 ## `core/services/dream_hypothesis_judge.py`
 _Dommer over drømme-hypoteser: hvad skal videre fra drømme-stadiet?_

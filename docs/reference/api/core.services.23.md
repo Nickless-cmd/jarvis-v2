@@ -2,6 +2,13 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/shadow_counters.py`
+_Skygge-taellere der overlever en genstart._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `flet` | `(noegle, aktuelle, sidst_gemt, *, ekstra=…, ttl=…)` | Laeg dette runs tilvaekst oveni det der allerede staar i cachen. | [src](../../../core/services/shadow_counters.py#L28) |
+
 ## `core/services/shadow_experiment_registry.py`
 _core/services/shadow_experiment_registry.py_
 
@@ -573,14 +580,4 @@ _Staged edits — compose multi-file changes, review, then commit atomically._
 | function | `list_staged` | `(session_id, *, full_diffs=…)` | Return all staged edits for the session. | [src](../../../core/services/staged_edits.py#L280) |
 | function | `commit_staged` | `(session_id, *, stage_ids=…)` | Apply staged edits to disk in stage order. | [src](../../../core/services/staged_edits.py#L319) |
 | function | `discard_staged` | `(session_id, *, stage_ids=…)` | Drop staged edits without applying. | [src](../../../core/services/staged_edits.py#L417) |
-
-## `core/services/standing_orders_registry.py`
-_Standing-orders registry — INDEPENDENT grounding for the reasoning-interceptor's standing-orders_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_ensure` | `(conn)` | — | [src](../../../core/services/standing_orders_registry.py#L13) |
-| function | `add_standing_order` | `(*, text, match_key=…)` | — | [src](../../../core/services/standing_orders_registry.py#L25) |
-| function | `set_standing_order_active` | `(order_id, *, active)` | — | [src](../../../core/services/standing_orders_registry.py#L36) |
-| function | `list_active_standing_orders` | `()` | — | [src](../../../core/services/standing_orders_registry.py#L47) |
 

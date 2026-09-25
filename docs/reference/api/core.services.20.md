@@ -2,6 +2,33 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/recurring_tasks.py`
+_Recurring tasks service — lets Jarvis schedule repeating reminders/actions._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_ensure_table` | `()` | — | [src](../../../core/services/recurring_tasks.py#L26) |
+| function | `set_channel` | `(task_id, channel)` | Sæt leverings-kanal på en recurring task. Returnerer True hvis opdateret. | [src](../../../core/services/recurring_tasks.py#L61) |
+| function | `_row_to_dict` | `(row)` | — | [src](../../../core/services/recurring_tasks.py#L77) |
+| function | `_scope` | `()` | Bruger-id til streng per-bruger-scope (#154). "" = ingen scope (fallback). | [src](../../../core/services/recurring_tasks.py#L94) |
+| function | `_create` | `(*, task_id, focus, source, interval_minutes, next_fire_at, now)` | — | [src](../../../core/services/recurring_tasks.py#L100) |
+| function | `_get_due` | `(now_iso)` | — | [src](../../../core/services/recurring_tasks.py#L113) |
+| function | `_naeste_tid` | `(planlagt_iso, interval_minutes, now)` | Næste affyring — regnet fra den PLANLAGTE tid, ikke fra den faktiske. | [src](../../../core/services/recurring_tasks.py#L122) |
+| function | `_advance` | `(task_id, interval_minutes, now, planlagt_iso=…)` | — | [src](../../../core/services/recurring_tasks.py#L161) |
+| function | `_cancel` | `(task_id, now_iso)` | — | [src](../../../core/services/recurring_tasks.py#L177) |
+| function | `_list` | `(limit=…)` | — | [src](../../../core/services/recurring_tasks.py#L197) |
+| function | `_get_one` | `(task_id)` | — | [src](../../../core/services/recurring_tasks.py#L213) |
+| function | `create_recurring_task` | `(*, focus, interval_minutes, source=…, delay_minutes=…)` | Schedule a recurring task. Returns task info dict. | [src](../../../core/services/recurring_tasks.py#L230) |
+| function | `cancel_recurring_task` | `(task_id)` | — | [src](../../../core/services/recurring_tasks.py#L276) |
+| function | `list_recurring_tasks` | `()` | — | [src](../../../core/services/recurring_tasks.py#L284) |
+| function | `get_recurring_tasks_state` | `()` | Summary for observability / Mission Control. | [src](../../../core/services/recurring_tasks.py#L289) |
+| function | `_fire_due` | `()` | — | [src](../../../core/services/recurring_tasks.py#L304) |
+| function | `_enter_owner_context` | `(user_id)` | Sæt workspace-konteksten til task-ejeren for affyringen. Returnerer en | [src](../../../core/services/recurring_tasks.py#L349) |
+| function | `_exit_owner_context` | `(token)` | — | [src](../../../core/services/recurring_tasks.py#L363) |
+| function | `_poller_loop` | `()` | — | [src](../../../core/services/recurring_tasks.py#L373) |
+| function | `start_recurring_tasks_service` | `()` | — | [src](../../../core/services/recurring_tasks.py#L392) |
+| function | `stop_recurring_tasks_service` | `()` | — | [src](../../../core/services/recurring_tasks.py#L401) |
+
 ## `core/services/recursion_guard.py`
 _Recursion guard for autonomous agent dispatch._
 
@@ -698,27 +725,4 @@ _Follow-stream for runs → klienter kan token-streame dem live + liveness-kilde
 | function | `has_active_follow` | `(session_id)` | True hvis der findes en (ikke-afsluttet) follow-buffer for sessionen. | [src](../../../core/services/run_follow.py#L108) |
 | function | `session_is_live` | `(session_id, max_idle_s=…)` | Autoritativ: kører der et run i denne session LIGE NU? (ikke done OG | [src](../../../core/services/run_follow.py#L115) |
 | function | `live_sessions` | `(max_idle_s=…)` | Alle sessioner med et run der aktivt streamer lige nu (desktop-prikker + | [src](../../../core/services/run_follow.py#L126) |
-
-## `core/services/runtime_action_executor.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_classify_action_risk` | `(action)` | Classify runtime action risk for emotional gating. | [src](../../../core/services/runtime_action_executor.py#L66) |
-| class | `RuntimeExecutionResult` | `` | — | [src](../../../core/services/runtime_action_executor.py#L81) |
-| function | `_publish_gate_event` | `(*, input_action, gated_action, gate_reason, snapshot, risk)` | Emit emotional gate decision to eventbus for telemetry. | [src](../../../core/services/runtime_action_executor.py#L90) |
-| function | `execute_runtime_action` | `(*, action_id, payload)` | — | [src](../../../core/services/runtime_action_executor.py#L117) |
-| function | `execute_refresh_memory_context` | `(payload)` | — | [src](../../../core/services/runtime_action_executor.py#L246) |
-| function | `execute_follow_open_loop` | `(payload)` | — | [src](../../../core/services/runtime_action_executor.py#L262) |
-| function | `execute_inspect_repo_context` | `(payload)` | — | [src](../../../core/services/runtime_action_executor.py#L310) |
-| function | `execute_review_recent_conversations` | `(payload)` | — | [src](../../../core/services/runtime_action_executor.py#L371) |
-| function | `execute_write_internal_work_note` | `(payload)` | — | [src](../../../core/services/runtime_action_executor.py#L383) |
-| function | `execute_bounded_self_check` | `(payload)` | — | [src](../../../core/services/runtime_action_executor.py#L420) |
-| function | `execute_propose_next_user_step` | `(payload)` | — | [src](../../../core/services/runtime_action_executor.py#L438) |
-| function | `execute_promote_initiative_to_visible_lane` | `(payload)` | — | [src](../../../core/services/runtime_action_executor.py#L456) |
-| function | `_publish_action_event` | `(result)` | — | [src](../../../core/services/runtime_action_executor.py#L490) |
-| function | `_matching_loop_closure` | `(*, loop_id, canonical_key)` | — | [src](../../../core/services/runtime_action_executor.py#L504) |
-| function | `_loop_domain_key` | `(*, loop_id, canonical_key)` | — | [src](../../../core/services/runtime_action_executor.py#L519) |
-| function | `_repo_operation_from_focus` | `(focus)` | — | [src](../../../core/services/runtime_action_executor.py#L530) |
-| function | `_repo_command_for_operation` | `(operation)` | — | [src](../../../core/services/runtime_action_executor.py#L543) |
-| function | `_build_internal_work_note` | `(*, current_mode, emphasis)` | — | [src](../../../core/services/runtime_action_executor.py#L565) |
 

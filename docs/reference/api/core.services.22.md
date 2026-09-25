@@ -2,6 +2,22 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/self_model_distiller.py`
+_Rig selv-model-distiller (#4, b + 2 guards) — genopliver validerings-ROLLEN._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_current_model` | `()` | — | [src](../../../core/services/self_model_distiller.py#L33) |
+| function | `_richness` | `(model)` | Groft richness-mål: hvor meningsfuld/specifik er identiteten. Højere = rigere. | [src](../../../core/services/self_model_distiller.py#L41) |
+| function | `_is_meaningful` | `(model)` | En model er meningsfuld hvis dens identity_focus er en ægte (ikke-generisk) frase. | [src](../../../core/services/self_model_distiller.py#L60) |
+| function | `_fields_specificity` | `(fields)` | — | [src](../../../core/services/self_model_distiller.py#L69) |
+| function | `_gather_inputs` | `()` | Saml Jarvis' egen nylige selv-historie + nuværende model som distillations-grundlag. | [src](../../../core/services/self_model_distiller.py#L80) |
+| function | `_build_prompt` | `(inputs)` | — | [src](../../../core/services/self_model_distiller.py#L101) |
+| function | `_parse` | `(raw)` | Parse det labelede LLM-svar defensivt. Manglende linjer → udeladt (kalder falder tilbage). | [src](../../../core/services/self_model_distiller.py#L114) |
+| function | `distill_self_model` | `(*, trigger=…)` | Distillér en rig selv-model + anti-flatten-guard + skriv (kun hvis ikke tyndere). Self-safe. | [src](../../../core/services/self_model_distiller.py#L129) |
+| function | `run_self_model_distill_tick` | `(*, trigger=…, last_visible_at=…)` | Cadence-indgang (GUARD 2: langsom rytme). Self-safe. | [src](../../../core/services/self_model_distiller.py#L197) |
+| function | `register_self_model_distiller_producer` | `()` | Registrér distilleren som DAGLIG cadence-producer (GUARD 2). Identitet er stabil. | [src](../../../core/services/self_model_distiller.py#L202) |
+
 ## `core/services/self_model_history.py`
 _Selv-modellens oejebliksbilleder, versioneret saa de kan SAMMENLIGNES._
 
@@ -727,11 +743,4 @@ _Skygge-sammenligning: er den nye afregning enig med den kørende kode?_
 | function | `_puls` | `()` | Gør tællerne aflæselige udefra, og sig dem højt med jævne mellemrum. | [src](../../../core/services/settlement_shadow.py#L131) |
 | function | `taellere_fra_cache` | `()` | Læs tællerne UDEN at være den proces der skrev dem. | [src](../../../core/services/settlement_shadow.py#L141) |
 | function | `observe` | `(*, run_id, legacy_status, legacy_error, text, emitted_prefix=…, cancelled=…, transport_error=…, tool_dispatched=…)` | Sammenlign den kørende beslutning med den nye kontrakts. Kaster aldrig. | [src](../../../core/services/settlement_shadow.py#L151) |
-
-## `core/services/shadow_counters.py`
-_Skygge-taellere der overlever en genstart._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `flet` | `(noegle, aktuelle, sidst_gemt, *, ekstra=…, ttl=…)` | Laeg dette runs tilvaekst oveni det der allerede staar i cachen. | [src](../../../core/services/shadow_counters.py#L28) |
 

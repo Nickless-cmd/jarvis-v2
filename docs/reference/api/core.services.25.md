@@ -2,6 +2,13 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/tool_batch_notice.py`
+_Vink til modellen om at kalde flere uafhængige værktøjer i SAMME runde._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `tool_batch_notice` | `(*, forrige_runde_kald, runder_tilbage, gange_vist)` | Vinket, eller «» når det ikke ville hjælpe. | [src](../../../core/services/tool_batch_notice.py#L35) |
+
 ## `core/services/tool_calling_evidence.py`
 _Hvilke modeller KALDER faktisk vaerktoejer — maalt, ikke antaget._
 
@@ -540,17 +547,4 @@ _User temperature field engine — Lag 10 two-stream pipeline._
 | function | `_get_or_build_baseline` | `(*, prior, settings)` | Return cached baseline if fresh, else rebuild. | [src](../../../core/services/user_temperature_engine.py#L632) |
 | function | `_has_pending_trigger` | `(*, workspace_id)` | Read trigger flag without consuming. | [src](../../../core/services/user_temperature_engine.py#L684) |
 | function | `run_llm_stream` | `(*, workspace_id=…, force=…)` | Run LLM-based pipeline (4h cadence or on trigger). | [src](../../../core/services/user_temperature_engine.py#L690) |
-
-## `core/services/user_temperature_runtime.py`
-_Daemon for the user-temperature LLM stream (Lag 10)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_get_workspace_lock` | `(workspace_id)` | — | [src](../../../core/services/user_temperature_runtime.py#L26) |
-| function | `_run_one_cycle` | `(workspace_id, *, force=…)` | Acquire workspace lock, run LLM stream. Never raises. | [src](../../../core/services/user_temperature_runtime.py#L35) |
-| function | `_list_active_workspaces` | `()` | — | [src](../../../core/services/user_temperature_runtime.py#L52) |
-| function | `_resolve_periodic_interval_seconds` | `()` | — | [src](../../../core/services/user_temperature_runtime.py#L56) |
-| function | `_loop` | `()` | Two rhythms in one loop: | [src](../../../core/services/user_temperature_runtime.py#L65) |
-| function | `start_user_temperature_runtime` | `()` | Start the daemon. Idempotent. | [src](../../../core/services/user_temperature_runtime.py#L88) |
-| function | `stop_user_temperature_runtime` | `()` | — | [src](../../../core/services/user_temperature_runtime.py#L101) |
 

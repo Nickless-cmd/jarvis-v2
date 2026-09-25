@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7972/15437 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7974/15438 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 7972/15437 functions/methods documented (51%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 691 | 1271 | 54% |
-| `core.services` | 5262 | 10481 | 50% |
+| `core.services` | 5264 | 10482 | 50% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 107 | 183 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1024,9 +1024,9 @@ Generated from source. 7972/15437 functions/methods documented (51%). The list b
 - `core/services/dream_distillation_daemon.py` :: `clear_expired_dream_residue` (L187)
 - `core/services/dream_distillation_daemon.py` :: `get_dream_residue_for_prompt` (L150)
 - `core/services/dream_distillation_daemon.py` :: `run_dream_distillation_daemon` (L41)
-- `core/services/dream_hypothesis_generator.py` :: `build_dream_hypothesis_surface` (L411)
-- `core/services/dream_hypothesis_generator.py` :: `list_dream_hypotheses` (L371)
-- `core/services/dream_hypothesis_generator.py` :: `mark_hypothesis_presented` (L400)
+- `core/services/dream_hypothesis_generator.py` :: `build_dream_hypothesis_surface` (L394)
+- `core/services/dream_hypothesis_generator.py` :: `list_dream_hypotheses` (L354)
+- `core/services/dream_hypothesis_generator.py` :: `mark_hypothesis_presented` (L383)
 - `core/services/dream_hypothesis_judge.py` :: `siger_hvad_der_ville_modbevise_den` (L167)
 - `core/services/dream_hypothesis_judge.py` :: `skal_videre` (L213)
 - `core/services/dream_hypothesis_signal_tracking.py` :: `build_runtime_dream_hypothesis_signal_surface` (L89)

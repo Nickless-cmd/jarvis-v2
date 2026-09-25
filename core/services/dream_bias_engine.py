@@ -23,6 +23,7 @@ from core.runtime.db_dream_bias import (
     update_existing_bias,
 )
 from core.runtime.settings import load_settings
+from core.services.llm_json import udtraek_json
 from core.services.text_clip import clip_text
 
 logger = logging.getLogger(__name__)
@@ -260,10 +261,14 @@ def run_dream_bias_distillation(*, workspace_id: str = "default") -> dict[str, A
     if not raw_response:
         return {"status": "llm_failed", "expired_cleaned": expired_count}
 
-    try:
-        parsed = json.loads(raw_response)
-    except json.JSONDecodeError as exc:
-        logger.warning("dream_bias: JSON parse failed: %s", exc)
+    # Raa `json.loads` her kastede paa hver eneste cyklus: modellen svarer med
+    # ```-indhegnet JSON. Maalt 25/9-2026 paa CT105 var droemmen der hver gang
+    # — «Jeg foeler uro og skam, men siger det hoejt til Bjoern» — og blev
+    # kasseret paa tre backticks. `dream_bias_active` har derfor aldrig haft en
+    # raekke siden tabellen kom 10/5-2026.
+    parsed = udtraek_json(raw_response)
+    if parsed is None:
+        logger.warning("dream_bias: intet JSON-objekt i svaret")
         return {"status": "json_parse_failed", "raw_preview": raw_response[:120]}
 
     validated = _validate_dream_output(parsed)

@@ -22,6 +22,7 @@ import random
 from datetime import UTC, datetime
 from typing import Any
 
+from core.services.llm_json import udtraek_json
 from core.eventbus.bus import event_bus
 from core.runtime.db import connect
 from core.services.identity_composer import identity_prompt_prefix
@@ -191,31 +192,13 @@ def _build_hypothesis_prompt(sampled: list[dict[str, Any]]) -> str:
 
 
 def _extract_dream_json(raw: str) -> dict[str, Any] | None:
-    text = str(raw or "").strip()
-    if not text:
-        return None
-    start = text.find("{")
-    if start < 0:
-        return None
-    depth = 0
-    end = -1
-    for i in range(start, len(text)):
-        if text[i] == "{":
-            depth += 1
-        elif text[i] == "}":
-            depth -= 1
-            if depth == 0:
-                end = i
-                break
-    if end < 0:
-        return None
-    try:
-        parsed = json.loads(text[start:end + 1])
-    except Exception:
-        return None
-    if not isinstance(parsed, dict):
-        return None
-    return parsed
+    """Bevaret navn; selve udtraekket bor nu i `llm_json`.
+
+    Denne funktion gjorde det rigtigt hele tiden — klammematchning, ligeglad
+    med ```-indhegning. Naboen `dream_bias_engine` brugte raa `json.loads` og
+    kasserede droemmen hver cyklus. Nu er der én vej.
+    """
+    return udtraek_json(raw)
 
 
 def _recently_used_signal_refs(*, limit: int = 8) -> set[str]:

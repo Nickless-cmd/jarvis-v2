@@ -22,15 +22,22 @@ _Gate-verdict-ledger — in-memory akkumulator + batchet flush til persistent ta
 | function | `summary` | `()` | Aggregeret verdict-fordeling pr. nerve fra den persistente tabel (survives restart). | [src](../../../core/services/gate_verdict_ledger.py#L125) |
 
 ## `core/services/ghost_networks.py`
-_Ghost Networks — traces of old patterns._
+_Ghost Networks — spor af mønstre der holdt op med at være aktive._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `archive_dead_nodes` | `(node_ids)` | — | [src](../../../core/services/ghost_networks.py#L9) |
-| function | `describe_ghost_network` | `()` | — | [src](../../../core/services/ghost_networks.py#L18) |
-| function | `format_ghost_for_prompt` | `()` | — | [src](../../../core/services/ghost_networks.py#L24) |
-| function | `reset_ghost_networks` | `()` | — | [src](../../../core/services/ghost_networks.py#L30) |
-| function | `build_ghost_networks_surface` | `()` | — | [src](../../../core/services/ghost_networks.py#L34) |
+| function | `_kernen` | `(navn)` | Skaer kildens praefiks fra: «Private inner note: X» -> «X». | [src](../../../core/services/ghost_networks.py#L70) |
+| function | `_storage_path` | `()` | — | [src](../../../core/services/ghost_networks.py#L77) |
+| function | `_load` | `()` | — | [src](../../../core/services/ghost_networks.py#L81) |
+| function | `_save` | `(spoegelser)` | — | [src](../../../core/services/ghost_networks.py#L93) |
+| function | `_henfald` | `(doede_ved)` | Alderen som henfald. Var 0.0 og blev aldrig opdateret. | [src](../../../core/services/ghost_networks.py#L105) |
+| function | `archive_dead_nodes` | `(node_ids, slags=…, doede_ved=…)` | Arkiver doede moenstre. Giver antallet der var nye. | [src](../../../core/services/ghost_networks.py#L115) |
+| function | `_med_henfald` | `()` | Spoegelserne med deres AKTUELLE henfald — beregnet, ikke gemt. | [src](../../../core/services/ghost_networks.py#L137) |
+| function | `tick` | `(_seconds=…)` | Hjerteslags-krog: saml de moenstre der er doet siden sidst. | [src](../../../core/services/ghost_networks.py#L143) |
+| function | `describe_ghost_network` | `()` | Det MINDST falmede spoegelse — ikke det aeldste. | [src](../../../core/services/ghost_networks.py#L170) |
+| function | `format_ghost_for_prompt` | `()` | — | [src](../../../core/services/ghost_networks.py#L183) |
+| function | `reset_ghost_networks` | `()` | — | [src](../../../core/services/ghost_networks.py#L188) |
+| function | `build_ghost_networks_surface` | `()` | — | [src](../../../core/services/ghost_networks.py#L192) |
 
 ## `core/services/git_actions.py`
 _Rolle-aware git-eksekvering for code mode._
@@ -357,7 +364,7 @@ _Jarvis' indre daemoner — ét tik, uanset om han har travlt._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `tik_indre_daemoner` | `()` | Tik alle indre daemoner én gang. Kaster aldrig. | [src](../../../core/services/heartbeat_daemon_ticks.py#L57) |
-| function | `_tik_for_bruger` | `(arbejdsrum, bruger_id)` | Tik de arbejdsrums-bundne daemoner for ÉN bruger. | [src](../../../core/services/heartbeat_daemon_ticks.py#L353) |
+| function | `_tik_for_bruger` | `(arbejdsrum, bruger_id)` | Tik de arbejdsrums-bundne daemoner for ÉN bruger. | [src](../../../core/services/heartbeat_daemon_ticks.py#L365) |
 
 ## `core/services/heartbeat_manage_runtime_work.py`
 _Hjerteslagets `manage_runtime_work`-handling — udskilt fra heartbeat_runtime._

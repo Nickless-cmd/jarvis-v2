@@ -1418,26 +1418,19 @@ def _run_heartbeat_tick_locked(
         except Exception:
             pass
 
-    # Life services: update internal state between ticks
-    try:
-        record_tick_elapsed(seconds=30)
-    except Exception:
-        pass
-
-    try:
-        evolve_dreams(duration=timedelta(seconds=30))
-    except Exception:
-        pass
-
-    try:
-        accumulate_wants(duration=timedelta(seconds=30))
-    except Exception:
-        pass
-
-    try:
-        add_boredom(duration=timedelta(seconds=30))
-    except Exception:
-        pass
+    # «Life services: update internal state between ticks» laa her indtil
+    # 25/9-2026. Kommentaren sagde MELLEM tik; koden koerte kun naar
+    # `act_phase` fandt prioriteter. Flyttet til
+    # `heartbeat_daemon_ticks.tik_indre_daemoner()`.
+    #
+    # Jeg var ved at klassificere `continuity_kernel` og
+    # `initiative_accumulator` som AFLOEST af `continuity` og
+    # `initiative_queue` — men de goer noget andet. `continuity_kernel` er
+    # eksistens-FOELELSEN mellem tik (`get_existence_feeling`); `continuity` er
+    # tilstands-TRANSPORT mellem sessioner (`write_capsule`, `get_wake_tier`).
+    # `initiative_accumulator` samler oensker; `initiative_queue` koer
+    # handlinger. Jeg havde bygget paastanden paa docstring-lighed frem for paa
+    # hvad funktionerne goer.
 
     # Every 2nd tick: run mirror reflection
     if tick_count % 2 == 0:

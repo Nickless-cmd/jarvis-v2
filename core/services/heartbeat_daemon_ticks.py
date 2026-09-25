@@ -244,6 +244,37 @@ def tik_indre_daemoner() -> dict[str, int]:
     except Exception as exc:
         logger.warning("per-bruger daemoner fejlede: %s", exc)
 
+    # «Life services» — indre tilstand MELLEM tik. Laa i `run_heartbeat_tick`
+    # og koerte derfor kun naar der var prioriteter, selv om kommentaren over
+    # dem sagde «between ticks». Tre af de fire stod paa listen over moduler
+    # uden bord: `continuity_kernel`, `initiative_accumulator`,
+    # `boredom_curiosity_bridge`.
+    from datetime import timedelta as _td
+    try:
+        from core.services.continuity_kernel import record_tick_elapsed
+        record_tick_elapsed(seconds=30)
+        koert += 1
+    except Exception:  # taelles frem for at slugges — se docstring
+        fejlet += 1
+    try:
+        from core.services.dream_continuum import evolve_dreams
+        evolve_dreams(duration=_td(seconds=30))
+        koert += 1
+    except Exception:  # taelles frem for at slugges — se docstring
+        fejlet += 1
+    try:
+        from core.services.initiative_accumulator import accumulate_wants
+        accumulate_wants(duration=_td(seconds=30))
+        koert += 1
+    except Exception:  # taelles frem for at slugges — se docstring
+        fejlet += 1
+    try:
+        from core.services.boredom_curiosity_bridge import add_boredom
+        add_boredom(duration=_td(seconds=30))
+        koert += 1
+    except Exception:  # taelles frem for at slugges — se docstring
+        fejlet += 1
+
     # Maerkerne. `create_tattoo` havde INGEN kalder, saa overfladen sagde
     # «Ingen tatoveringer» og ville have sagt det for altid. Kilden er
     # `emotional_memory_anchors` — men KUN de ikke-perceptuelle: 202.250 af

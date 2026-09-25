@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7977/15441 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7978/15442 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 7977/15441 functions/methods documented (51%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 691 | 1271 | 54% |
-| `core.services` | 5267 | 10485 | 50% |
+| `core.services` | 5268 | 10486 | 50% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 107 | 183 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1484,7 +1484,7 @@ Generated from source. 7977/15441 functions/methods documented (51%). The list b
 - `core/services/reasoning_classifier.py` :: `build_reasoning_classifier_surface` (L275)
 - `core/services/reasoning_escalation.py` :: `build_reasoning_escalation_surface` (L223)
 - `core/services/reasoning_interceptor.py` :: `intercept_round` (L161)
-- `core/services/reboot_awareness_daemon.py` :: `build_reboot_awareness_surface` (L206)
+- `core/services/reboot_awareness_daemon.py` :: `build_reboot_awareness_surface` (L226)
 - `core/services/reboot_awareness_daemon.py` :: `get_last_boot_event` (L202)
 - `core/services/recall.py` :: `empty_message` (L281)
 - `core/services/recurring_tasks.py` :: `cancel_recurring_task` (L276)

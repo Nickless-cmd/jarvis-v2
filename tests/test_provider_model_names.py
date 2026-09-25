@@ -17,7 +17,10 @@ er urørt — den er Bjørns alene.
 from __future__ import annotations
 
 import ast
+import json
 import pathlib
+
+from core.runtime.config import PROVIDER_ROUTER_FILE, SETTINGS_FILE
 
 #: Modeller der ikke laengere findes paa ollama cloud.
 DOEDE_OLLAMA_MODELLER = ("deepseek-v4-flash:cloud",)
@@ -87,3 +90,91 @@ def test_optegnelserne_staar_uroerte():
     rod = pathlib.Path(__file__).resolve().parents[1]
     for rel in OPTEGNELSER:
         assert "deepseek-v4-flash:cloud" in (rod / rel).read_text(encoding="utf-8"), rel
+
+
+# ── Den halvdel der manglede (25/9-2026) ─────────────────────────────────────
+#
+# Vagten ovenfor parser `.py`-filer. Men `inner-llm-enrichment` henter sin model
+# fra `resolve_provider_router_target(lane="local")` — altsaa fra
+# `provider_router.json`, en JSON-fil i `~/.jarvis-v2/config/`. En vagt der kun
+# læser Python kunne hverken forhindre eller opdage fejlen: den stod i
+# KONFIGURATIONEN, ikke i koden. Maalt: 339 410-fejl i drift indtil kl. 18:30 —
+# config'en var rettet kl. 17:39, men processen havde den gamle i hukommelsen
+# indtil genstarten. Vagten herunder ville have fanget den den 17.
+#
+# `.bak`-filer læses ALDRIG. De er optegnelser over hvad der VAR; runtime rører
+# dem ikke, og en vagt der fejler paa dem ville skrige i aarvis.
+
+
+def _strenge(vaerdi, sti="$"):
+    """Alle strenge i et JSON-dokument, med deres sti — saa en fejl kan peges ud."""
+    if isinstance(vaerdi, str):
+        yield sti, vaerdi
+    elif isinstance(vaerdi, dict):
+        for navn, v in vaerdi.items():
+            yield from _strenge(v, f"{sti}.{navn}")
+    elif isinstance(vaerdi, list):
+        for i, v in enumerate(vaerdi):
+            yield from _strenge(v, f"{sti}[{i}]")
+
+
+def _scan_config(stier=None) -> list[str]:
+    """Doede model-tags i de AKTIVE config-filer."""
+    fund: list[str] = []
+    for sti in (stier if stier is not None else (PROVIDER_ROUTER_FILE, SETTINGS_FILE)):
+        sti = pathlib.Path(sti)
+        if not sti.exists():
+            continue
+        try:
+            data = json.loads(sti.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        for json_sti, vaerdi in _strenge(data):
+            if any(d in vaerdi for d in DOEDE_OLLAMA_MODELLER):
+                fund.append(f"{sti.name}:{json_sti} = {vaerdi!r}")
+    return fund
+
+
+def test_aktiv_config_peger_ikke_paa_en_doed_ollama_model():
+    """DEN anden vagt: konfigurationen, ikke koden.
+
+    Fejlen boede i `provider_router.json`. En `.py`-scan kunne ikke se den.
+    """
+    fund = _scan_config()
+    assert not fund, (
+        "aktiv config peger paa en ollama-model der svarer HTTP 410:\n  "
+        + "\n  ".join(fund)
+    )
+
+
+def test_vagten_kan_faktisk_fange_en_doed_tag(tmp_path):
+    """Beviset. Uden det kunne vagten staa grøn fordi den læser intet.
+
+    Samme fejl blev lavet i boot-reconciler-testen samme dag: fixturen svarede
+    det samme uanset hvad der blev spurgt, saa testen maalte det lette.
+    """
+    falsk = tmp_path / "provider_router.json"
+    falsk.write_text(
+        json.dumps(
+            {"lanes": {"local": {"provider": "ollama",
+                                 "model": "deepseek-v4-flash:cloud"}}}
+        ),
+        encoding="utf-8",
+    )
+    fund = _scan_config([falsk])
+    assert fund, "vagten fandt intet i en fil der ER fyldt med den doede tag"
+    assert "deepseek-v4-flash:cloud" in fund[0], fund
+
+
+def test_lokal_lanen_resolverer_ikke_til_en_doed_model():
+    """Den kode-vej der faktisk fejlede — ikke en efterligning af den.
+
+    `inner-llm-enrichment` kalder praecis denne funktion med lane='local'.
+    """
+    from core.runtime.provider_router import resolve_provider_router_target
+
+    maal = resolve_provider_router_target(lane="local")
+    model = str(maal.get("model") or "")
+    assert not any(d in model for d in DOEDE_OLLAMA_MODELLER), model
+    if str(maal.get("provider") or "") == "ollama":
+        assert model, "ollama-lanen resolverede uden model"

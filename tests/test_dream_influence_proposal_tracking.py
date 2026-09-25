@@ -441,3 +441,53 @@ def test_dream_influence_proposal_surface_and_mc_shapes_remain_bounded(isolated_
     assert surface["summary"]["superseded_count"] == 1
     assert mc_shape["summary"]["current_status"] in {"fresh", "active", "fading", "stale"}
     assert runtime_shape["summary"]["current_status"] in {"fresh", "active", "fading", "stale"}
+
+
+# ── Hvorfor tabellen har stået stille siden 15/5 (målt 25/9-2026) ──────────
+
+
+def test_diagnosen_peger_paa_den_port_der_lukker():
+    """En tom tabel kan betyde to ting, og de så ens ud herfra.
+
+    Målt på CT105: 7 kandidater → 5 med status → 5 med domain_key → 0 med
+    proposal_type. Alt falder ved den sidste port.
+    """
+    from core.services.dream_influence_proposal_tracking import diagnosticer_portene
+
+    d = diagnosticer_portene()
+    for noegle in ("kandidater", "med_status", "med_domaene", "med_type",
+                   "kandidat_typer", "faldt_ved"):
+        assert noegle in d, noegle
+    assert d["med_type"] <= d["med_domaene"] <= d["med_status"] <= d["kandidater"]
+
+
+def test_tre_af_fire_regler_kraever_en_kandidattype_der_ikke_produceres():
+    """`_build_proposal_type` har fire regler. Tre kræver `strong-candidate`
+    eller `carried-candidate`; målt på CT105 er ALLE kandidater
+    `tentative-candidate`, så kun regel tre kan fyre."""
+    from core.services.dream_influence_proposal_tracking import _build_proposal_type
+
+    kun_tentativ = {"candidate_type": "tentative-candidate"}
+
+    # De tre uopnåelige: selv med feltet til stede giver de intet.
+    assert _build_proposal_type(item=kun_tentativ, snapshot={"self_model": {"x": 1}}) == ""
+    assert _build_proposal_type(item=kun_tentativ, snapshot={"goal": {"x": 1}}) == ""
+
+    # Den ene der kan: kræver `focus` på kandidatens EGEN domænenøgle.
+    assert _build_proposal_type(
+        item=kun_tentativ, snapshot={"focus": {"x": 1}}) == "nudge-focus"
+
+
+def test_domaenenoeglen_er_sidste_segment_paa_BEGGE_sider():
+    """Joinet er «sidste kolon-segment» af hver sin frie tekst.
+
+    Kandidaternes nøgle ender på en slugificeret brugerbesked, fokus-signalernes
+    på noget helt andet. De kan kun mødes ved et tilfælde. Om de to sider SKAL
+    dele et vokabular er en designbeslutning — den er ikke truffet her; testen
+    pinner blot hvad joinet FAKTISK er, så den næste kan se det.
+    """
+    from core.services.dream_influence_proposal_tracking import _domain_key
+
+    assert _domain_key("dream-adoption-candidate:tentative:vis-mig-de-to-commits") == \
+        "vis-mig-de-to-commits"
+    assert _domain_key("for-faa:segmenter") == ""

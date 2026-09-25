@@ -111,6 +111,63 @@ def build_runtime_dream_influence_proposal_surface(*, limit: int = 8) -> dict[st
             "current_proposal_type": str((latest or {}).get("proposal_type") or "none"),
             "current_influence_confidence": str((latest or {}).get("influence_confidence") or "low"),
         },
+        # Uden den kunne «ingen forslag» ikke skelnes fra «ingen vej igennem».
+        "porte": diagnosticer_portene() if not ordered else None,
+    }
+
+
+def diagnosticer_portene() -> dict[str, object]:
+    """Hvor mange kandidater falder fra, og ved HVILKEN port.
+
+    Tabellen `runtime_dream_influence_proposals` blev sidst skrevet 15/5-2026,
+    mens kandidater ankommer samme dag. En tom tabel kan betyde to ting — «der
+    er ikke sket noget endnu» eller «der findes ingen vej igennem» — og de to
+    saa ens ud herfra. Maalt paa CT105 25/9-2026:
+
+        kandidater                 7
+        status fresh/active/fading 5
+        domain_key                 5
+        proposal_type              0   <- alt falder her
+
+    ALLE syv kandidater er `tentative-candidate`. Tre af `_build_proposal_type`s
+    fire regler kraever `strong-candidate` eller `carried-candidate` og er
+    dermed uopnaaelige; den fjerde kraever `focus` paa kandidatens EGEN
+    domaenenoegle.
+
+    Og domaenenoeglen er `canonical_key.split(":")[-1]` paa BEGGE sider — altsaa
+    sidste segment af hver sin frie tekst. Kandidaternes noegler ender paa en
+    slugificeret brugerbesked (`vis-mig-de-to-nye-commits-fra-claude.`),
+    fokus-signalernes paa noget helt andet. De kan kun moedes ved et tilfaelde.
+
+    Om de to sider SKAL dele et vokabular — og hvilket — er en beslutning om
+    hvordan droemme maa paavirke selvmodel, maal og fokus. Den er ikke truffet
+    her. Det eneste der er gjort, er at goere frafaldet maalbart.
+    """
+    snapshots = _build_influence_snapshots()
+    items = build_runtime_dream_adoption_candidate_surface(limit=12).get("items", [])
+    med_status = [i for i in items
+                  if str(i.get("status") or "") in {"fresh", "active", "fading"}]
+    med_domaene = [(i, _domain_key(str(i.get("canonical_key") or "")))
+                   for i in med_status]
+    med_domaene = [(i, d) for i, d in med_domaene if d]
+    med_type = [
+        (i, d) for i, d in med_domaene
+        if _build_proposal_type(item=i, snapshot=snapshots.get(d) or {})
+    ]
+    return {
+        "kandidater": len(items),
+        "med_status": len(med_status),
+        "med_domaene": len(med_domaene),
+        "med_type": len(med_type),
+        "kandidat_typer": sorted({str(i.get("candidate_type") or "") for i in items}),
+        "snapshots": len(snapshots),
+        "faldt_ved": (
+            "ingen kandidater" if not items
+            else "status" if not med_status
+            else "domain_key" if not med_domaene
+            else "proposal_type" if not med_type
+            else "ingen — forslag bygges"
+        ),
     }
 
 

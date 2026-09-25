@@ -682,28 +682,29 @@ _Dream-hypothesis signal tracking — migrated onto signal_tracking_framework._
 | function | `track_runtime_dream_influence_proposals_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/dream_influence_proposal_tracking.py#L35) |
 | function | `refresh_runtime_dream_influence_proposal_statuses` | `()` | — | [src](../../../core/services/dream_influence_proposal_tracking.py#L57) |
 | function | `build_runtime_dream_influence_proposal_surface` | `(*, limit=…)` | — | [src](../../../core/services/dream_influence_proposal_tracking.py#L88) |
-| function | `_extract_dream_influence_proposals` | `()` | — | [src](../../../core/services/dream_influence_proposal_tracking.py#L117) |
-| function | `_persist_dream_influence_proposals` | `(*, proposals, session_id, run_id)` | — | [src](../../../core/services/dream_influence_proposal_tracking.py#L194) |
-| function | `_build_influence_snapshots` | `()` | — | [src](../../../core/services/dream_influence_proposal_tracking.py#L267) |
-| function | `_with_runtime_view` | `(item, proposal)` | — | [src](../../../core/services/dream_influence_proposal_tracking.py#L322) |
-| function | `_with_surface_view` | `(item, *, snapshots)` | — | [src](../../../core/services/dream_influence_proposal_tracking.py#L334) |
-| function | `_build_proposal_type` | `(*, item, snapshot)` | — | [src](../../../core/services/dream_influence_proposal_tracking.py#L348) |
-| function | `_influence_target_from_proposal_type` | `(proposal_type)` | — | [src](../../../core/services/dream_influence_proposal_tracking.py#L367) |
-| function | `_build_proposal_status` | `(*, candidate_status, proposal_type)` | — | [src](../../../core/services/dream_influence_proposal_tracking.py#L377) |
-| function | `_build_influence_confidence` | `(*, proposal_type, candidate_type)` | — | [src](../../../core/services/dream_influence_proposal_tracking.py#L385) |
-| function | `_build_proposal_reason` | `(*, proposal_type, candidate_type, influence_confidence)` | — | [src](../../../core/services/dream_influence_proposal_tracking.py#L393) |
-| function | `_build_influence_anchor` | `(*, snapshot)` | — | [src](../../../core/services/dream_influence_proposal_tracking.py#L403) |
-| function | `_build_status_reason` | `(*, proposal_type)` | — | [src](../../../core/services/dream_influence_proposal_tracking.py#L420) |
-| function | `_hypothesis_type_from_snapshot` | `(*, snapshot)` | — | [src](../../../core/services/dream_influence_proposal_tracking.py#L430) |
-| function | `_candidate_state_from_summary` | `(summary)` | — | [src](../../../core/services/dream_influence_proposal_tracking.py#L434) |
-| function | `_influence_confidence_from_summary` | `(summary)` | — | [src](../../../core/services/dream_influence_proposal_tracking.py#L443) |
-| function | `_focus_domain_key` | `(canonical_key)` | — | [src](../../../core/services/dream_influence_proposal_tracking.py#L452) |
-| function | `_goal_domain_key` | `(canonical_key)` | — | [src](../../../core/services/dream_influence_proposal_tracking.py#L457) |
-| function | `_self_model_domain_key` | `(canonical_key)` | — | [src](../../../core/services/dream_influence_proposal_tracking.py#L462) |
-| function | `_world_model_domain_key` | `(canonical_key)` | — | [src](../../../core/services/dream_influence_proposal_tracking.py#L467) |
-| function | `_domain_key` | `(canonical_key)` | — | [src](../../../core/services/dream_influence_proposal_tracking.py#L472) |
-| function | `_domain_title` | `(domain_key)` | — | [src](../../../core/services/dream_influence_proposal_tracking.py#L477) |
-| function | `_stronger_confidence` | `(*values)` | — | [src](../../../core/services/dream_influence_proposal_tracking.py#L482) |
-| function | `_merge_fragments` | `(*parts)` | — | [src](../../../core/services/dream_influence_proposal_tracking.py#L491) |
-| function | `_parse_dt` | `(raw)` | — | [src](../../../core/services/dream_influence_proposal_tracking.py#L501) |
+| function | `diagnosticer_portene` | `()` | Hvor mange kandidater falder fra, og ved HVILKEN port. | [src](../../../core/services/dream_influence_proposal_tracking.py#L119) |
+| function | `_extract_dream_influence_proposals` | `()` | — | [src](../../../core/services/dream_influence_proposal_tracking.py#L174) |
+| function | `_persist_dream_influence_proposals` | `(*, proposals, session_id, run_id)` | — | [src](../../../core/services/dream_influence_proposal_tracking.py#L251) |
+| function | `_build_influence_snapshots` | `()` | — | [src](../../../core/services/dream_influence_proposal_tracking.py#L324) |
+| function | `_with_runtime_view` | `(item, proposal)` | — | [src](../../../core/services/dream_influence_proposal_tracking.py#L379) |
+| function | `_with_surface_view` | `(item, *, snapshots)` | — | [src](../../../core/services/dream_influence_proposal_tracking.py#L391) |
+| function | `_build_proposal_type` | `(*, item, snapshot)` | — | [src](../../../core/services/dream_influence_proposal_tracking.py#L405) |
+| function | `_influence_target_from_proposal_type` | `(proposal_type)` | — | [src](../../../core/services/dream_influence_proposal_tracking.py#L424) |
+| function | `_build_proposal_status` | `(*, candidate_status, proposal_type)` | — | [src](../../../core/services/dream_influence_proposal_tracking.py#L434) |
+| function | `_build_influence_confidence` | `(*, proposal_type, candidate_type)` | — | [src](../../../core/services/dream_influence_proposal_tracking.py#L442) |
+| function | `_build_proposal_reason` | `(*, proposal_type, candidate_type, influence_confidence)` | — | [src](../../../core/services/dream_influence_proposal_tracking.py#L450) |
+| function | `_build_influence_anchor` | `(*, snapshot)` | — | [src](../../../core/services/dream_influence_proposal_tracking.py#L460) |
+| function | `_build_status_reason` | `(*, proposal_type)` | — | [src](../../../core/services/dream_influence_proposal_tracking.py#L477) |
+| function | `_hypothesis_type_from_snapshot` | `(*, snapshot)` | — | [src](../../../core/services/dream_influence_proposal_tracking.py#L487) |
+| function | `_candidate_state_from_summary` | `(summary)` | — | [src](../../../core/services/dream_influence_proposal_tracking.py#L491) |
+| function | `_influence_confidence_from_summary` | `(summary)` | — | [src](../../../core/services/dream_influence_proposal_tracking.py#L500) |
+| function | `_focus_domain_key` | `(canonical_key)` | — | [src](../../../core/services/dream_influence_proposal_tracking.py#L509) |
+| function | `_goal_domain_key` | `(canonical_key)` | — | [src](../../../core/services/dream_influence_proposal_tracking.py#L514) |
+| function | `_self_model_domain_key` | `(canonical_key)` | — | [src](../../../core/services/dream_influence_proposal_tracking.py#L519) |
+| function | `_world_model_domain_key` | `(canonical_key)` | — | [src](../../../core/services/dream_influence_proposal_tracking.py#L524) |
+| function | `_domain_key` | `(canonical_key)` | — | [src](../../../core/services/dream_influence_proposal_tracking.py#L529) |
+| function | `_domain_title` | `(domain_key)` | — | [src](../../../core/services/dream_influence_proposal_tracking.py#L534) |
+| function | `_stronger_confidence` | `(*values)` | — | [src](../../../core/services/dream_influence_proposal_tracking.py#L539) |
+| function | `_merge_fragments` | `(*parts)` | — | [src](../../../core/services/dream_influence_proposal_tracking.py#L548) |
+| function | `_parse_dt` | `(raw)` | — | [src](../../../core/services/dream_influence_proposal_tracking.py#L558) |
 

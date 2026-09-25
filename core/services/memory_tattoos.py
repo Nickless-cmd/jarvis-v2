@@ -37,7 +37,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-from core.runtime.workspace_paths import shared_dir
+from core.runtime import state_store
 
 logger = logging.getLogger(__name__)
 
@@ -57,32 +57,23 @@ _MINDSTE_MELLEMRUM = timedelta(days=1)
 _MAX_MAERKER = 300
 
 
-def _storage_path() -> Path:
-    return shared_dir() / "runtime" / "memory_tattoos.json"
+#: Noeglen i `core/runtime/state_store`. Laa foer i
+#: `shared_dir()/runtime/memory_tattoos.json` med haandskrevet load/save.
+_FIL = "memory_tattoos"
 
 
 def _load() -> list[dict[str, Any]]:
-    p = _storage_path()
-    if not p.exists():
+    d = state_store.load_json(_FIL, None)
+    if d is None:
         return []
-    try:
-        d = json.loads(p.read_text(encoding="utf-8"))
-        return d if isinstance(d, list) else []
-    except Exception as exc:
-        logger.warning("memory_tattoos: kunne ikke laeses: %s", exc)
+    if not isinstance(d, list):
+        logger.warning("memory_tattoos: uventet form i state — starter forfra")
         return []
+    return d
 
 
 def _save(maerker: list[dict[str, Any]]) -> None:
-    p = _storage_path()
-    try:
-        p.parent.mkdir(parents=True, exist_ok=True)
-        tmp = p.with_suffix(".tmp")
-        tmp.write_text(json.dumps(maerker[-_MAX_MAERKER:], ensure_ascii=False,
-                                  indent=1), encoding="utf-8")
-        tmp.replace(p)
-    except Exception as exc:
-        logger.warning("memory_tattoos: kunne ikke gemmes: %s", exc)
+    state_store.save_json(_FIL, maerker[-_MAX_MAERKER:])
 
 
 def create_tattoo(event: str, emotion: str, intensity: float,
@@ -97,9 +88,10 @@ def create_tattoo(event: str, emotion: str, intensity: float,
         "captured_at": str(captured_at) or datetime.now(UTC).isoformat(),
         "created_at": datetime.now(UTC).isoformat(),
     }
-    maerker = _load()
-    maerker.append(maerke)
-    _save(maerker)
+    with state_store.med_laas(_FIL):
+        maerker = _load()
+        maerker.append(maerke)
+        _save(maerker)
     return maerke
 
 

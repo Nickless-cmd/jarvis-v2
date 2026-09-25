@@ -9,10 +9,27 @@ den proces der bygger fladen. Samme fejlklasse som `_PENDING_APPROVALS`.
 from __future__ import annotations
 
 import core.services.text_resonance as R
+import pytest
+from core.runtime import state_store
+
+
+@pytest.fixture(autouse=True)
+def _tom_tilstand():
+    """Hver test starter paa en tom fil.
+
+    Isolationen kom foer fra at hver test patchede `_storage_path` til sin egen
+    `tmp_path`. Med `state_store` er stien skaermet af conftest' autouse-fixture
+    `_guard_prod_state_dir` — men den mappe er SESSIONS-bred, saa tilstand
+    laekker mellem tests i samme fil hvis ingen rydder op. Det var netop den
+    skaerm der manglede for `shared_dir()`: uden den skrev disse tests i den
+    aegte `~/.jarvis-v2/shared/runtime/`.
+    """
+    state_store.save_json("text_resonance", [])
+    yield
+
 
 
 def _lager(monkeypatch, tmp_path):
-    monkeypatch.setattr(R, "_storage_path", lambda: tmp_path / "text_resonance.json")
     monkeypatch.setattr("core.services.mood_oscillator.apply_bump",
                         lambda *a, **k: None)
 
@@ -25,7 +42,6 @@ def test_resonansen_overlever_en_genstart(monkeypatch, tmp_path):
 
     import importlib
     R2 = importlib.reload(R)
-    monkeypatch.setattr(R2, "_storage_path", lambda: tmp_path / "text_resonance.json")
     assert R2.build_text_resonance_surface()["total_signals"] == 1
 
 

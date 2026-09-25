@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8009/15500 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8009/15497 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 8009/15500 functions/methods documented (51%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 695 | 1275 | 54% |
-| `core.services` | 5292 | 10535 | 50% |
+| `core.services` | 5292 | 10532 | 50% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 107 | 183 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1111,9 +1111,9 @@ Generated from source. 8009/15500 functions/methods documented (51%). The list b
 - `core/services/gate_kernel.py` :: `Verdict.is_blocking` (L59)
 - `core/services/gate_kernel.py` :: `kernel` (L250)
 - `core/services/gate_skill.py` :: `SkillScanVerdict.as_dict` (L55)
-- `core/services/ghost_networks.py` :: `build_ghost_networks_surface` (L192)
-- `core/services/ghost_networks.py` :: `format_ghost_for_prompt` (L183)
-- `core/services/ghost_networks.py` :: `reset_ghost_networks` (L188)
+- `core/services/ghost_networks.py` :: `build_ghost_networks_surface` (L184)
+- `core/services/ghost_networks.py` :: `format_ghost_for_prompt` (L175)
+- `core/services/ghost_networks.py` :: `reset_ghost_networks` (L180)
 - `core/services/git_actions.py` :: `commit_all` (L128)
 - `core/services/git_actions.py` :: `commit_all_container` (L47)
 - `core/services/git_actions.py` :: `commit_all_workstation` (L110)
@@ -1256,10 +1256,10 @@ Generated from source. 8009/15500 functions/methods documented (51%). The list b
 - `core/services/memory_md_update_proposal_tracking.py` :: `refresh_runtime_memory_md_update_proposal_statuses` (L58)
 - `core/services/memory_md_update_proposal_tracking.py` :: `track_runtime_memory_md_update_proposals_for_visible_turn` (L26)
 - `core/services/memory_pruning_daemon.py` :: `build_memory_pruning_surface` (L207)
-- `core/services/memory_tattoos.py` :: `build_memory_tattoos_surface` (L181)
-- `core/services/memory_tattoos.py` :: `describe_tattoo` (L164)
-- `core/services/memory_tattoos.py` :: `format_tattoo_for_prompt` (L172)
-- `core/services/memory_tattoos.py` :: `reset_memory_tattoos` (L177)
+- `core/services/memory_tattoos.py` :: `build_memory_tattoos_surface` (L173)
+- `core/services/memory_tattoos.py` :: `describe_tattoo` (L156)
+- `core/services/memory_tattoos.py` :: `format_tattoo_for_prompt` (L164)
+- `core/services/memory_tattoos.py` :: `reset_memory_tattoos` (L169)
 - `core/services/memory_write_policy.py` :: `approve_review` (L182)
 - `core/services/memory_write_policy.py` :: `build_memory_write_policy_prompt_section` (L230)
 - `core/services/memory_write_policy.py` :: `build_memory_write_policy_surface` (L206)
@@ -1882,9 +1882,9 @@ Generated from source. 8009/15500 functions/methods documented (51%). The list b
 - `core/services/temporal_self_continuity.py` :: `build_temporal_self_continuity_surface` (L51)
 - `core/services/temporal_self_continuity.py` :: `update_temporal_continuity_from_episode` (L23)
 - `core/services/temporal_self_continuity.py` :: `update_temporal_continuity_from_latest_episode` (L16)
-- `core/services/text_resonance.py` :: `build_text_resonance_surface` (L200)
-- `core/services/text_resonance.py` :: `recent_resonances` (L196)
-- `core/services/text_resonance.py` :: `reset_text_resonance` (L251)
+- `core/services/text_resonance.py` :: `build_text_resonance_surface` (L195)
+- `core/services/text_resonance.py` :: `recent_resonances` (L191)
+- `core/services/text_resonance.py` :: `reset_text_resonance` (L246)
 - `core/services/theater_audit.py` :: `build_theater_audit_surface` (L85)
 - `core/services/theory_of_mind.py` :: `recent_facts` (L286)
 - `core/services/theory_of_mind.py` :: `stop_theory_of_mind_tracker` (L471)

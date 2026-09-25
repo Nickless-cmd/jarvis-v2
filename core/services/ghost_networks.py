@@ -42,7 +42,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from core.runtime.workspace_paths import shared_dir
+from core.runtime import state_store
 
 logger = logging.getLogger(__name__)
 
@@ -74,32 +74,23 @@ def _kernen(navn: str) -> str:
     return (hale if sep else tekst).strip()
 
 
-def _storage_path() -> Path:
-    return shared_dir() / "runtime" / "ghost_networks.json"
+#: Noeglen i `core/runtime/state_store`. Laa foer i
+#: `shared_dir()/runtime/ghost_networks.json` med haandskrevet load/save.
+_FIL = "ghost_networks"
 
 
 def _load() -> list[dict[str, Any]]:
-    p = _storage_path()
-    if not p.exists():
+    d = state_store.load_json(_FIL, None)
+    if d is None:
         return []
-    try:
-        d = json.loads(p.read_text(encoding="utf-8"))
-        return d if isinstance(d, list) else []
-    except Exception as exc:
-        logger.warning("ghost_networks: kunne ikke laeses: %s", exc)
+    if not isinstance(d, list):
+        logger.warning("ghost_networks: uventet form i state — starter forfra")
         return []
+    return d
 
 
 def _save(spoegelser: list[dict[str, Any]]) -> None:
-    p = _storage_path()
-    try:
-        p.parent.mkdir(parents=True, exist_ok=True)
-        tmp = p.with_suffix(".tmp")
-        tmp.write_text(json.dumps(spoegelser[-_MAX_SPOEGELSER:], ensure_ascii=False,
-                                  indent=1), encoding="utf-8")
-        tmp.replace(p)
-    except Exception as exc:
-        logger.warning("ghost_networks: kunne ikke gemmes: %s", exc)
+    state_store.save_json(_FIL, spoegelser[-_MAX_SPOEGELSER:])
 
 
 def _henfald(doede_ved: str) -> float:
@@ -115,22 +106,23 @@ def _henfald(doede_ved: str) -> float:
 def archive_dead_nodes(node_ids: list[str], slags: str = "et mønster",
                        doede_ved: str = "") -> int:
     """Arkiver doede moenstre. Giver antallet der var nye."""
-    spoegelser = _load()
-    kendte = {str(g.get("node_id")) for g in spoegelser}
-    nu = doede_ved or datetime.now(UTC).isoformat()
-    nye = 0
-    for node_id in node_ids:
-        if str(node_id) in kendte:
-            continue
-        spoegelser.append({
-            "node_id": str(node_id),
-            "slags": slags,
-            "last_seen": nu,
-            "arkiveret_ved": datetime.now(UTC).isoformat(),
-        })
-        nye += 1
-    if nye:
-        _save(spoegelser)
+    with state_store.med_laas(_FIL):
+        spoegelser = _load()
+        kendte = {str(g.get("node_id")) for g in spoegelser}
+        nu = doede_ved or datetime.now(UTC).isoformat()
+        nye = 0
+        for node_id in node_ids:
+            if str(node_id) in kendte:
+                continue
+            spoegelser.append({
+                "node_id": str(node_id),
+                "slags": slags,
+                "last_seen": nu,
+                "arkiveret_ved": datetime.now(UTC).isoformat(),
+            })
+            nye += 1
+        if nye:
+            _save(spoegelser)
     return nye
 
 

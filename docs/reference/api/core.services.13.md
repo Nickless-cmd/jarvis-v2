@@ -27,17 +27,16 @@ _Ghost Networks — spor af mønstre der holdt op med at være aktive._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_kernen` | `(navn)` | Skaer kildens praefiks fra: «Private inner note: X» -> «X». | [src](../../../core/services/ghost_networks.py#L70) |
-| function | `_storage_path` | `()` | — | [src](../../../core/services/ghost_networks.py#L77) |
-| function | `_load` | `()` | — | [src](../../../core/services/ghost_networks.py#L81) |
-| function | `_save` | `(spoegelser)` | — | [src](../../../core/services/ghost_networks.py#L93) |
-| function | `_henfald` | `(doede_ved)` | Alderen som henfald. Var 0.0 og blev aldrig opdateret. | [src](../../../core/services/ghost_networks.py#L105) |
-| function | `archive_dead_nodes` | `(node_ids, slags=…, doede_ved=…)` | Arkiver doede moenstre. Giver antallet der var nye. | [src](../../../core/services/ghost_networks.py#L115) |
-| function | `_med_henfald` | `()` | Spoegelserne med deres AKTUELLE henfald — beregnet, ikke gemt. | [src](../../../core/services/ghost_networks.py#L137) |
-| function | `tick` | `(_seconds=…)` | Hjerteslags-krog: saml de moenstre der er doet siden sidst. | [src](../../../core/services/ghost_networks.py#L143) |
-| function | `describe_ghost_network` | `()` | Det MINDST falmede spoegelse — ikke det aeldste. | [src](../../../core/services/ghost_networks.py#L170) |
-| function | `format_ghost_for_prompt` | `()` | — | [src](../../../core/services/ghost_networks.py#L183) |
-| function | `reset_ghost_networks` | `()` | — | [src](../../../core/services/ghost_networks.py#L188) |
-| function | `build_ghost_networks_surface` | `()` | — | [src](../../../core/services/ghost_networks.py#L192) |
+| function | `_load` | `()` | — | [src](../../../core/services/ghost_networks.py#L82) |
+| function | `_save` | `(spoegelser)` | — | [src](../../../core/services/ghost_networks.py#L92) |
+| function | `_henfald` | `(doede_ved)` | Alderen som henfald. Var 0.0 og blev aldrig opdateret. | [src](../../../core/services/ghost_networks.py#L96) |
+| function | `archive_dead_nodes` | `(node_ids, slags=…, doede_ved=…)` | Arkiver doede moenstre. Giver antallet der var nye. | [src](../../../core/services/ghost_networks.py#L106) |
+| function | `_med_henfald` | `()` | Spoegelserne med deres AKTUELLE henfald — beregnet, ikke gemt. | [src](../../../core/services/ghost_networks.py#L129) |
+| function | `tick` | `(_seconds=…)` | Hjerteslags-krog: saml de moenstre der er doet siden sidst. | [src](../../../core/services/ghost_networks.py#L135) |
+| function | `describe_ghost_network` | `()` | Det MINDST falmede spoegelse — ikke det aeldste. | [src](../../../core/services/ghost_networks.py#L162) |
+| function | `format_ghost_for_prompt` | `()` | — | [src](../../../core/services/ghost_networks.py#L175) |
+| function | `reset_ghost_networks` | `()` | — | [src](../../../core/services/ghost_networks.py#L180) |
+| function | `build_ghost_networks_surface` | `()` | — | [src](../../../core/services/ghost_networks.py#L184) |
 
 ## `core/services/git_actions.py`
 _Rolle-aware git-eksekvering for code mode._

@@ -18,8 +18,9 @@ _Smoke-test the jarvis-runtime startup path WITHOUT serving traffic._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_run_lifespan` | `()` | Import app + drive lifespan context to completion. | [src](../../../scripts/smoke_test_startup.py#L42) |
-| function | `main` | `()` | — | [src](../../../scripts/smoke_test_startup.py#L450) |
+| function | `_run_lifespan` | `()` | Import app + drive lifespan context to completion. | [src](../../../scripts/smoke_test_startup.py#L51) |
+| function | `_start_vagthund` | `(started)` | Bagstopper i en TRAAD for det haeng `asyncio.wait_for` ikke kan se. | [src](../../../scripts/smoke_test_startup.py#L465) |
+| function | `main` | `()` | — | [src](../../../scripts/smoke_test_startup.py#L498) |
 
 ## `scripts/tag_untagged_skills.py`
 _Batch-tag untagged skills for C2 — Skills meta-tags._

@@ -510,14 +510,37 @@ def produce_signals_from_run(
     try:
         from core.services.living_heartbeat_cycle import determine_life_phase
         phase = determine_life_phase()
+        # EMNET skal komme fra det faelles ordforraad, ikke fra beskeden.
+        #
+        # Indtil 25/9-2026 stod her `dream:topic:{topic_slug}`, hvor slug'en var
+        # Bjoerns besked. Droemme-kaeden foejer paa emne — hypotese moeder maal
+        # eller fokus i SAMME emne — saa en samtale-slug kan aldrig moede noget.
+        # Maalt: 42 hypoteser paa den form siden 9/6, nul adoptions-kandidater,
+        # og de fyldte alle tolv pladser i overfladen saa de fire der HAVDE et
+        # rigtigt emne ikke kunne ses.
+        #
+        # Det var ikke en forkert form, men en anden betydning af ordet «emne»:
+        # her «hvad Bjoern lige sagde», i kaeden «hvilket staaende omraade af
+        # Jarvis' udvikling». Samme fejl ryddes allerede ud af verdensmodellen
+        # af `quarantine_legacy_world_topics` tolv linjer over.
+        #
+        # Domaenet vaelges af en model, ikke af en ordliste — begrundelsen og
+        # maalingen staar i `dream_domains`. Kan turen ikke navngives, skrives
+        # der INGEN hypotese. Det er svaret det meste af tiden, med vilje.
+        # Spoerges der foerst naar fasen eller run-id'et er rigtigt, koster det
+        # ét billigt kald paa ~20 % af turene, i en baggrundstraad.
+        domaene = None
         if topic_slug and (
             phase.get("phase") in ("dreaming", "reflection")
             or (run_id.endswith("0") or run_id.endswith("5"))
         ):
+            from core.services.dream_domains import domaene_for_tur
+            domaene = domaene_for_tur(meaningful_topic)
+        if domaene:
             upsert_runtime_dream_hypothesis_signal(
                 signal_id=f"dh-{uuid4().hex[:10]}",
                 signal_type="post_run_hypothesis",
-                canonical_key=f"dream:topic:{topic_slug}",
+                canonical_key=f"dream-hypothesis:post_run_hypothesis:{domaene}",
                 status="active",
                 title=f"Dream hypothesis: {meaningful_topic[:40]}",
                 summary=build_bounded_hypothesis_text(meaningful_topic[:80]),

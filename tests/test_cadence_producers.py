@@ -107,3 +107,50 @@ def test_fladen_viser_HELE_registret_ikke_en_frossen_liste():
     assert "afhaengighedsgraf" in flade
     detalje = flade["producer_detaljer"][0]
     assert {"name", "priority", "cooldown_minutes", "depends_on"} <= set(detalje)
+
+
+# ── Droemme-hypotesens EMNE (25/9-2026) ──────────────────────────────────
+#
+# Indtil i dag skrev 13e `dream:topic:{slug af Bjoerns besked}`. Droemme-kaeden
+# foejer paa emne — hypotese moeder maal eller fokus i SAMME emne — saa en
+# samtale-slug kan aldrig moede noget. Maalt i produktionen: 42 hypoteser paa
+# den form siden 9/6, nul adoptions-kandidater, og de fyldte alle tolv pladser
+# i overfladen saa de fire med et rigtigt emne ikke kunne ses.
+
+def _opsaet(monkeypatch, domaene):
+    """Fang hypoteserne og bestem hvad domaene-opslaget svarer."""
+    import core.services.cadence_producers as CP
+    import core.services.dream_domains as DD
+    fanget: list[dict] = []
+    monkeypatch.setattr(CP, "upsert_runtime_dream_hypothesis_signal",
+                        lambda **kw: fanget.append(kw) or kw)
+    monkeypatch.setattr(DD, "domaene_for_tur", lambda t, **kw: domaene)
+    monkeypatch.setattr("core.services.living_heartbeat_cycle.determine_life_phase",
+                        lambda: {"phase": "dreaming"})
+    return fanget
+
+
+def test_emnet_er_domaenet_ikke_beskeden(monkeypatch):
+    import core.services.cadence_producers as CP
+    fanget = _opsaet(monkeypatch, "memory")
+    CP.produce_signals_from_run(
+        run_id="r0", session_id="s1",
+        # Skal igennem stoejfilteret foerst: det kraever tekniske signalord.
+        user_message="din hukommelse paa tvaers af sessioner i runtime holder ikke",
+        assistant_response="ok", outcome_status="completed")
+    noegler = [k["canonical_key"] for k in fanget]
+    assert noegler == ["dream-hypothesis:post_run_hypothesis:memory"], noegler
+
+
+def test_uden_domaene_skrives_der_INGEN_hypotese(monkeypatch):
+    """DEN fejl. Ordret fra produktionen — den blev til
+    `dream:topic:vis-mig-de-to-nye-commits-fra-claude.`"""
+    import core.services.cadence_producers as CP
+    fanget = _opsaet(monkeypatch, None)
+    CP.produce_signals_from_run(
+        run_id="r0", session_id="s1",
+        user_message="vis mig de to nye commits fra claude og kør testene",
+        assistant_response="ok", outcome_status="completed")
+    assert fanget == [], (
+        f"en samtale-slug blev skrevet som emne igen: "
+        f"{[k['canonical_key'] for k in fanget]}")

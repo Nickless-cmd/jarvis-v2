@@ -28,6 +28,10 @@ og `identity`. Det har bare kun haft én bruger.
 """
 from __future__ import annotations
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 #: De otte kognitive domaener. Raekkefoelgen er ligegyldig; navnene er ikke.
 #: Aendres et navn, holder det op med at moede de maal og fokusser der allerede
 #: baerer det.
@@ -42,25 +46,74 @@ DOMAENER: dict[str, str] = {
     "resilience": "Gentagne udfordringer har afsat et spor",
 }
 
-# ── Hvorfor der IKKE staar en klassifikation her ─────────────────────────
+# ── Hvorfor det er en MODEL der vaelger, ikke en ordliste ────────────────
 #
-# Jeg skrev en 25/9-2026: en lille noegleords-tabel der skulle udlede domaenet
-# af turens tekst. Maalt mod de 42 raekker der faktisk naaede producenten:
+# Jeg skrev en noegleords-tabel 25/9-2026 og maalte den mod de 42 raekker der
+# faktisk havde naaet producenten:
 #
-#   * loest match: 10 traf, hoejst ét var rigtigt. `creativity` kom fra
-#     «digt» inde i «faerdig». Fire `identity` kom fra «dig selv» i
-#     «[SELF-WAKEUP FIRED] Du bad dig selv:». `memory` kom fra filnavnet
-#     MEMORY.md.
+#   * loest match: 10 traf, hoejst ét var rigtigt. `creativity` kom fra «digt»
+#     inde i «faerdig». Fire `identity` kom fra «dig selv» i «[SELF-WAKEUP
+#     FIRED] Du bad dig selv:». `memory` kom fra filnavnet MEMORY.md.
 #   * med ordgraenser og de svage spor fjernet: 0 traf.
 #
-# Der findes ingen noegleords-tabel der virker, og det er ikke tabellens skyld.
-# Teksten der naar producenten handler ikke om staaende domaener — den handler
-# om byg-ordrer, runtime-inspektioner, selv-vaekninger og natrutiner. Et
-# forkert domaene er vaerre end ingen: saa haenger droemmen paa det forkerte
-# staaende omraade, og det er en fejl ingen kan se.
+# Der findes ingen ordliste der virker. Doemmet — «handler den her tur om
+# Jarvis' staaende udvikling inden for hukommelse?» — kraever at man forstaar
+# saetningen, ikke at man finder et ord i den. Og et FORKERT domaene er vaerre
+# end ingen: saa haenger droemmen paa det forkerte staaende omraade, og det er
+# en fejl ingen kan se.
 #
-# Ordforraadet nedenfor er stadig rigtigt og deles nu af producenterne. HVEM
-# der vaelger et domaene ud fra en tur er et aabent spoergsmaal.
+# Kaldet ligger i en baggrundstraad (`_update_cognitive_systems_async`,
+# «fire-and-forget»), saa det koster ikke latenstid paa Bjoerns svar. Billig
+# bane: det er en lille klassifikation, ikke en vurdering af hans samvittighed.
+
+
+_PROMPT = """Du klassificerer en arbejdstur i Jarvis' runtime.
+
+Spoergsmaalet er IKKE hvad turen handlede om fagligt, men om den roerte et
+staaende omraade af Jarvis' egen udvikling. Det gjorde den som regel ikke —
+«none» er det normale og rigtige svar.
+
+De otte omraader:
+{domaener}
+
+Svar KUN med JSON:
+{{"domaene": "<et af navnene ovenfor, eller none>"}}
+
+Vaelg et navn kun hvis turen tydeligt handler om netop det omraade af Jarvis
+selv. En byg-ordre, en fejlsoegning, en runtime-inspektion eller en
+selv-vaekning er «none». Er du i tvivl, er svaret «none».
+
+Turen:
+{tekst}"""
+
+
+def domaene_for_tur(tekst: str, *, timeout_sekunder: float | None = None) -> str | None:
+    """Hvilket staaende domaene roerer turen — eller None.
+
+    Kaster aldrig. Kan modellen ikke naas, eller svarer den noget der ikke er
+    et af de otte navne, er svaret None: saa skrives der ingen hypotese, og
+    det er bedre end en paa et gaettet omraade.
+    """
+    rens = str(tekst or "").strip()
+    if len(rens) < 8:
+        return None
+    try:
+        from core.services.daemon_llm import daemon_llm_call, tegn_for_tokens
+        from core.services.llm_json import udtraek_json
+
+        liste = "\n".join(f"- {n}: {b}" for n, b in DOMAENER.items())
+        svar = daemon_llm_call(
+            _PROMPT.format(domaener=liste, tekst=rens[:600]),
+            max_len=tegn_for_tokens(60),
+            fallback="",
+            daemon_name="dream_domain",
+        )
+        ud = udtraek_json(svar) or {}
+        navn = str(ud.get("domaene") or "").strip().lower()
+        return navn if er_gyldigt_domaene(navn) else None
+    except Exception:  # en droemme-hypotese maa aldrig kunne vaelte en tur
+        logger.debug("domaene_for_tur fejlede", exc_info=True)
+        return None
 
 
 def er_gyldigt_domaene(navn: str) -> bool:

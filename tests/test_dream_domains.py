@@ -39,3 +39,79 @@ def test_et_ukendt_navn_er_ikke_gyldigt():
     assert er_gyldigt_domaene("identity")
     assert not er_gyldigt_domaene("vis-mig-de-to-nye-commits-fra-claude")
     assert not er_gyldigt_domaene("")
+
+
+# ── Modellen vaelger domaenet (25/9-2026) ────────────────────────────────
+#
+# Jeg skrev foerst en noegleords-tabel og maalte den mod de 42 raekker der
+# faktisk havde naaet producenten: 10 traf, hoejst ét var rigtigt. `creativity`
+# kom fra «digt» inde i «faerdig»; fire `identity` fra «dig selv» i
+# «[SELF-WAKEUP FIRED] Du bad dig selv:». Med ordgraenser: 0 traf.
+#
+# Modellen maalt paa DE SAMME tekster: 0 af 14 fik et domaene — og det er
+# rigtigt, for hver eneste er byg-ordrer, natrutiner og selv-vaekninger. Paa
+# otte konstruerede tekster der FAKTISK roerer et staaende omraade ramte den 4.
+# Fejlene er forvekslinger mellem nabodomaener (`relational` set som
+# `boundary`), ikke falske positive paa arbejdssnak. Det er den rigtige vej at
+# fejle: et forkert domaene paa en relevant tekst er mildere end et domaene paa
+# en byg-ordre.
+
+def _svar(monkeypatch, tekst: str):
+    import core.services.daemon_llm as DL
+    monkeypatch.setattr(DL, "daemon_llm_call",
+                        lambda p, **kw: tekst)
+
+
+def test_et_gyldigt_domaene_gives_videre(monkeypatch):
+    from core.services.dream_domains import domaene_for_tur
+    _svar(monkeypatch, '{"domaene": "memory"}')
+    assert domaene_for_tur("Du glemmer hvad vi aftalte i går") == "memory"
+
+
+def test_indhegnet_svar_laeses_ogsaa(monkeypatch):
+    """Modellen svarer ofte med ```. Samme faelde som droemme-biasen i dag."""
+    from core.services.dream_domains import domaene_for_tur
+    _svar(monkeypatch, '```json\n{"domaene": "resilience"}\n```')
+    assert domaene_for_tur("Det er fjerde gang samme fejl") == "resilience"
+
+
+def test_none_er_det_normale_svar(monkeypatch):
+    from core.services.dream_domains import domaene_for_tur
+    _svar(monkeypatch, '{"domaene": "none"}')
+    assert domaene_for_tur("byg den nu jeg vil teste den") is None
+
+
+def test_et_navn_uden_for_ordforraadet_afvises(monkeypatch):
+    """Modellen maa ikke kunne opfinde et emne — kaeden foejer paa netop de otte."""
+    from core.services.dream_domains import domaene_for_tur
+    _svar(monkeypatch, '{"domaene": "vis-mig-de-to-nye-commits"}')
+    assert domaene_for_tur("vis mig de to nye commits") is None
+
+
+def test_ulaeseligt_svar_giver_None(monkeypatch):
+    from core.services.dream_domains import domaene_for_tur
+    _svar(monkeypatch, "jeg ved det ikke rigtig")
+    assert domaene_for_tur("en helt almindelig tur her") is None
+
+
+def test_en_fejl_i_modellen_vaelter_ikke_turen(monkeypatch):
+    """Kaldet ligger i en baggrundstraad efter turen — men en droemme-hypotese
+    maa aldrig kunne kaste op i den kaede."""
+    import core.services.daemon_llm as DL
+    from core.services.dream_domains import domaene_for_tur
+
+    def _braekker(p, **kw):
+        raise RuntimeError("banen er nede")
+    monkeypatch.setattr(DL, "daemon_llm_call", _braekker)
+    assert domaene_for_tur("en helt almindelig tur her") is None
+
+
+def test_for_kort_tekst_spoerger_slet_ikke(monkeypatch):
+    """Intet kald, ingen omkostning, paa noget der ikke kan baere et domaene."""
+    import core.services.daemon_llm as DL
+    kaldt = []
+    monkeypatch.setattr(DL, "daemon_llm_call",
+                        lambda p, **kw: kaldt.append(1) or '{"domaene":"memory"}')
+    from core.services.dream_domains import domaene_for_tur
+    assert domaene_for_tur("hej") is None
+    assert kaldt == []

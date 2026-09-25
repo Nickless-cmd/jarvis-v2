@@ -95,7 +95,7 @@
    >»). Boksens bredde holdes UÆNDRET, så rækkens højde og tekstens kant ikke
    rykker sig ved skiftet. */
 .raekkevisning .rv-chev {
-  flex: none; margin-left: 4px; width: 20px;
+  flex: none; margin-left: 4px; width: 18px;
   display: flex; align-items: center; justify-content: center;
   position: relative; top: 2px;
   color: var(--fg-3); transition: color 100ms ease;
@@ -172,7 +172,7 @@
 .raekkevisning .rv-turC {
   /* `flex: none` som arbejdsknappen allerede havde: uden den kan ikonet
      klemmes fladt når turens tekst er lang. */
-  flex: none; display: flex; width: 20px; align-items: center; justify-content: center;
+  flex: none; display: flex; width: 18px; align-items: center; justify-content: center;
   position: relative; top: 2px;
   color: var(--fg-3);
 }

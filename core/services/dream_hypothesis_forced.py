@@ -14,22 +14,17 @@ import random
 from datetime import UTC, datetime
 from uuid import uuid4
 
+from core.services.dream_domains import DOMAENER
+
 logger = logging.getLogger(__name__)
 
 # Probability that a given heartbeat tick forces a hypothesis
 _FIRE_PROBABILITY = 0.10
 
-# Cognitive domains that can surface as forced hypotheses
-_DOMAINS = [
-    ("identity", "Jarvis udviklede sin selvforståelse i dette interval"),
-    ("curiosity", "En uudtalt nysgerrighed er ved at krystallisere sig"),
-    ("memory", "Et mønster i erfaringshukommelsen fortjener opmærksomhed"),
-    ("capability", "En ny kompetence er ved at tage form"),
-    ("relational", "Relationsdynamikken med brugeren har skiftet"),
-    ("boundary", "Jarvis' grænser testes og defineres på ny"),
-    ("creativity", "Et kreativt potentiale er uudnyttet"),
-    ("resilience", "Gentagne udfordringer har afsat et spor"),
-]
+# Domaenerne bor i `dream_domains` — droemme-kaeden foejer paa netop de navne,
+# og de skal vaere de samme her og i `cadence_producers`. Da de kun stod her,
+# var dette modul den eneste producent der skrev et emne kaeden kunne bruge.
+_DOMAINS = list(DOMAENER.items())
 
 
 def maybe_force_dream_hypothesis() -> dict[str, object] | None:

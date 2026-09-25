@@ -595,7 +595,8 @@ _Det faelles emne-ordforraad for droemme-kaeden._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `er_gyldigt_domaene` | `(navn)` | — | [src](../../../core/services/dream_domains.py#L66) |
+| function | `domaene_for_tur` | `(tekst, *, timeout_sekunder=…)` | Hvilket staaende domaene roerer turen — eller None. | [src](../../../core/services/dream_domains.py#L90) |
+| function | `er_gyldigt_domaene` | `(navn)` | — | [src](../../../core/services/dream_domains.py#L119) |
 
 ## `core/services/dream_hypothesis_forced.py`
 _Forced Dream Hypothesis Generation — 10% probability per heartbeat tick._

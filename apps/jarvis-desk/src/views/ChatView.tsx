@@ -55,6 +55,7 @@ import { SystemHealth } from '../components/shell/SystemHealth'
 import { LivenessIndicator } from '../components/feedback/LivenessIndicator'
 import { InterruptedBanner } from '../components/feedback/InterruptedBanner'
 import { GenoptagelsesVarsel } from '../components/feedback/GenoptagelsesVarsel'
+import { GodkendelsesKort } from '../components/feedback/GodkendelsesKort'
 import { HangPrompt } from '../components/feedback/HangPrompt'
 import { ErrorBanner } from '../components/feedback/ErrorBanner'
 import { ErrorCard } from '../components/feedback/ErrorCard'
@@ -1045,6 +1046,7 @@ export function ChatView({
           />
         )}
         <div className="composer-notices">
+          <GodkendelsesKort />
           {stream.status === 'interrupted' && <InterruptedBanner onResume={() => stream.continueFromPartial()} />}
           {stream.status === 'hung' && (
             <HangPrompt onResume={() => stream.continueFromPartial()} onAbort={() => void stream.abort()} />

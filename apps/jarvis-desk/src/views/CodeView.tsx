@@ -18,7 +18,7 @@ import { GenoptagelsesVarsel } from '../components/feedback/GenoptagelsesVarsel'
 import { InterruptedBanner } from '../components/feedback/InterruptedBanner'
 import { HangPrompt } from '../components/feedback/HangPrompt'
 import { ErrorBanner } from '../components/feedback/ErrorBanner'
-import { ApprovalCard } from '../components/rich/ApprovalCard'
+import { GodkendelsesKort } from '../components/feedback/GodkendelsesKort'
 import { PauseAndAskCard } from '../components/rich/PauseAndAskCard'
 import { PresenceDot } from '../components/shell/PresenceDot'
 import { DESK_CHROME } from '../lib/deskChrome'
@@ -1196,17 +1196,7 @@ export function CodeView({
             blocks={stream.blocks}
           />
           <div className="composer-notices">
-            {stream.pendingApproval && (
-              <ApprovalCard
-                approvalId={stream.pendingApproval.approvalId}
-                tool={stream.pendingApproval.tool}
-                action={stream.pendingApproval.action}
-                risk="medium"
-                canApprove={isOwner}
-                onApprove={(id) => stream.approve(id)}
-                onDeny={(id) => stream.deny(id)}
-              />
-            )}
+            <GodkendelsesKort />
             {stream.status === 'interrupted' && <InterruptedBanner onResume={() => stream.continueFromPartial()} />}
             {stream.status === 'hung' && (
               <HangPrompt onResume={() => stream.continueFromPartial()} onAbort={() => void stream.abort()} />

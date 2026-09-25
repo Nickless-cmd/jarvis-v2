@@ -450,3 +450,65 @@ class TestVetoAdaptiveCountersTable:
                     "DELETE FROM veto_adaptive_counters WHERE tool_name = ?",
                     (TOOL,),
                 )
+
+
+# ── Emotional gate: positive gates må ikke blokere ─────────────────────
+
+class TestEmotionalGatePositiveActionsDoNotBlock:
+    """Målt 25/9-2026: 70 kald på én dag blev standset af
+    "wonder_drives_exploration" — hvert værktøj i et run. `explore_more` og
+    `reflect_deeper` er POSITIVE forstærkninger (se emotional_controls.py):
+    de skal give MERE udforskning, ikke standse det kald der skulle udforske.
+    Kun de defensive handlinger må blokere.
+    """
+
+    @staticmethod
+    def _call_with_gate(monkeypatch, gate_action, gate_reason):
+        from core.tools import simple_tools
+
+        monkeypatch.setattr(
+            "core.services.emotional_controls.apply_emotional_controls",
+            lambda **kwargs: (gate_action, gate_reason),
+        )
+        monkeypatch.setitem(
+            simple_tools._TOOL_HANDLERS,
+            "_test_echo",
+            lambda args: {"status": "ok", "echo": args.get("x")},
+        )
+        monkeypatch.setattr(
+            simple_tools, "_record_tool_outcome_memory", lambda *a, **k: None
+        )
+        return simple_tools._execute_tool_force_impl("_test_echo", {"x": 1})
+
+    def test_explore_more_runs_the_tool(self, monkeypatch):
+        result = self._call_with_gate(
+            monkeypatch, "explore_more", "wonder_drives_exploration"
+        )
+        assert result["status"] == "ok"
+        assert result["echo"] == 1
+
+    def test_reflect_deeper_runs_the_tool(self, monkeypatch):
+        result = self._call_with_gate(
+            monkeypatch, "reflect_deeper", "insight_and_curiosity_drive_reflection"
+        )
+        assert result["status"] == "ok"
+        assert result["echo"] == 1
+
+    def test_escalate_user_still_blocks(self, monkeypatch):
+        result = self._call_with_gate(
+            monkeypatch, "escalate_user", "frustration_threshold_exceeded"
+        )
+        assert result["status"] == "gated"
+        assert result["gate_action"] == "escalate_user"
+
+    def test_verify_first_still_blocks(self, monkeypatch):
+        result = self._call_with_gate(
+            monkeypatch, "verify_first", "low_confidence_guard"
+        )
+        assert result["status"] == "gated"
+
+    def test_simplify_plan_still_blocks(self, monkeypatch):
+        result = self._call_with_gate(
+            monkeypatch, "simplify_plan", "fatigue_threshold"
+        )
+        assert result["status"] == "gated"

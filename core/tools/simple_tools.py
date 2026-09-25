@@ -1126,6 +1126,17 @@ def execute_tool_force(
     return _execute_tool_force_impl(name, arguments)
 
 
+# Emotional gate actions that may STOP a tool call. Everything else
+# apply_emotional_controls() can return ("explore_more", "reflect_deeper") is a
+# POSITIVE enhancement — the intent is deeper exploration/reflection, never a
+# block. See core/services/emotional_controls.py.
+_BLOCKING_GATE_ACTIONS: frozenset[str] = frozenset({
+    "escalate_user",
+    "verify_first",
+    "simplify_plan",
+})
+
+
 def _execute_tool_force_impl(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
     handler = _FORCE_HANDLERS.get(name) or _TOOL_HANDLERS.get(name)
     if not handler:
@@ -1135,6 +1146,13 @@ def _execute_tool_force_impl(name: str, arguments: dict[str, Any]) -> dict[str, 
 
     # Emotional gate — can transform "execute" to escalate/verify/simplify
     # based on mood state. Fire-and-forget safe.
+    #
+    # Only _BLOCKING_GATE_ACTIONS may stop a call. The positive gates
+    # ("explore_more" / "reflect_deeper") exist to make me explore MORE when
+    # wonder or insight is high — treating them as blocks stopped the very
+    # call that was meant to explore. Målt 25/9-2026: 70 blokerede kald på én
+    # dag, hvor hvert værktøj i et run blev standset af
+    # "wonder_drives_exploration". Positive gates now fall through and run.
     try:
         from core.services.emotional_controls import (
             apply_emotional_controls, format_gate_message,
@@ -1142,20 +1160,23 @@ def _execute_tool_force_impl(name: str, arguments: dict[str, Any]) -> dict[str, 
         gate_action, gate_reason = apply_emotional_controls(kernel_action="execute")
         if gate_action != "execute" and gate_reason:
             msg = format_gate_message(gate_action, gate_reason, tool_name=name)
+            blocking = gate_action in _BLOCKING_GATE_ACTIONS
             event_bus.publish("emotional.gate_triggered", {
                 "tool": name,
                 "gate_action": gate_action,
                 "reason": gate_reason,
+                "blocking": blocking,
             })
-            result = {
-                "status": "gated",
-                "gate_action": gate_action,
-                "gate_reason": gate_reason,
-                "message": msg,
-                "tool": name,
-            }
-            _record_tool_outcome_memory(name, arguments, result, mode="tool_force")
-            return result
+            if blocking:
+                result = {
+                    "status": "gated",
+                    "gate_action": gate_action,
+                    "gate_reason": gate_reason,
+                    "message": msg,
+                    "tool": name,
+                }
+                _record_tool_outcome_memory(name, arguments, result, mode="tool_force")
+                return result
     except Exception:
         pass  # never block tool execution on emotional_controls errors
 

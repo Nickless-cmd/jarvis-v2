@@ -646,13 +646,19 @@ export async function denyTool(config: ApiConfig, approvalId: string): Promise<v
  *  Delt læsning: Sidebar, TakeoverHost, ChatView og CodeView poller alle denne (hver med
  *  eget interval) → 95 req/min mod backenden. sharedRead kollapser dem til ét kald pr.
  *  TTL, og bakker hårdt af mens et run streamer (se sharedRead). */
-export async function getActiveRuns(config: ApiConfig): Promise<string[]> {
+export interface ActiveRunSession { session_id: string; run_id: string; status: string }
+
+export async function getActiveRunSessions(config: ApiConfig): Promise<ActiveRunSession[]> {
   const data = await sharedRead(
     `active-runs:${config.apiBaseUrl}`,
-    () => apiFetch<{ session_ids: string[] }>(config, '/chat/active-runs'),
+    () => apiFetch<{ session_ids: string[]; sessions?: ActiveRunSession[] }>(config, '/chat/active-runs'),
     { ttlMs: 2_000, streamingTtlMs: 10_000 },
   )
-  return data.session_ids ?? []
+  return data.sessions ?? (data.session_ids ?? []).map((session_id) => ({ session_id, run_id: '', status: 'working' }))
+}
+
+export async function getActiveRuns(config: ApiConfig): Promise<string[]> {
+  return (await getActiveRunSessions(config)).map((run) => run.session_id)
 }
 
 // ─── Den Intelligente Central — real-time owner-vindue (code mode) ───────────

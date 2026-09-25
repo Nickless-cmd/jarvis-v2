@@ -1,6 +1,6 @@
 import { GenoptagelsesVarselHost } from '../components/feedback/GenoptagelsesVarselHost'
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, act } from '@testing-library/react'
+import { render, screen, act, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ChatView } from './ChatView'
 import { SessionProvider } from '../contexts/SessionContext'
@@ -32,6 +32,7 @@ vi.mock('../lib/api', () => ({
   getContextUsage: vi.fn().mockResolvedValue({ tokens: 0, compact_at: 130000, effective: 130000, compacting: false, compacted: false }),
   getSessionMilestones: vi.fn().mockResolvedValue({ milestones: [] }),
   getActiveRuns: vi.fn().mockResolvedValue([]),
+  getActiveRunSessions: vi.fn().mockResolvedValue([]),
   // warmSession kom til i api.ts uden at mocken fulgte med — testen har
   // vaeret roed siden. Ikke en aegte fejl, men en roed suite skjuler den
   // naeste der ER aegte.
@@ -141,6 +142,51 @@ describe('ChatView integration', () => {
     act(() => { handlersRef.current?.onEvent({ type: 'message_stop' }) })
     await act(() => new Promise<void>((r) => setTimeout(r, 120)))
     expect(container.querySelector('.msg-block[data-just-completed]')).toHaveTextContent('svar')
+  })
+
+  it('starter ikke en follow-stream for sit eget svar efter message_stop', async () => {
+    vi.mocked(api.getActiveRunSessions).mockResolvedValue([])
+    vi.mocked(api.followRun).mockClear()
+    try {
+      render(
+        <SettingsProvider initialConfig={cfg}><SessionProvider config={cfg}>
+          <StreamProvider config={cfg}><PermissionProvider><PanelProvider defaultWidth={400}>
+            <ChatView sessionId="s1" />
+          </PanelProvider></PermissionProvider></StreamProvider>
+        </SessionProvider></SettingsProvider>,
+      )
+      await userEvent.type(screen.getByRole('textbox'), 'hej{Enter}')
+      vi.mocked(api.getActiveRunSessions).mockResolvedValue([{ session_id: 's1', run_id: 'r1', status: 'working' }])
+      vi.mocked(api.followRun).mockClear()
+      const pollsBeforeStop = vi.mocked(api.getActiveRunSessions).mock.calls.length
+      act(() => {
+        handlersRef.current?.onRunId('r1')
+        handlersRef.current?.onEvent({ type: 'message_start', message: { id: 'r1', model: 'm', provider: 'p', lane: 'l', session_id: 's1', usage: { input_tokens: 0, output_tokens: 0 } } })
+        handlersRef.current?.onEvent({ type: 'message_stop' })
+      })
+      await waitFor(() => expect(vi.mocked(api.getActiveRunSessions).mock.calls.length).toBeGreaterThan(pollsBeforeStop))
+      await act(() => new Promise<void>((r) => setTimeout(r, 100)))
+      expect(api.followRun).not.toHaveBeenCalled()
+    } finally {
+      vi.mocked(api.getActiveRunSessions).mockResolvedValue([])
+    }
+  })
+
+  it('følger stadig et andet aktivt run i den åbne session', async () => {
+    vi.mocked(api.getActiveRunSessions).mockResolvedValue([{ session_id: 's1', run_id: 'other-run', status: 'working' }])
+    vi.mocked(api.followRun).mockClear()
+    try {
+      render(
+        <SettingsProvider initialConfig={cfg}><SessionProvider config={cfg}>
+          <StreamProvider config={cfg}><PermissionProvider><PanelProvider defaultWidth={400}>
+            <ChatView sessionId="s1" />
+          </PanelProvider></PermissionProvider></StreamProvider>
+        </SessionProvider></SettingsProvider>,
+      )
+      await waitFor(() => expect(api.followRun).toHaveBeenCalledOnce())
+    } finally {
+      vi.mocked(api.getActiveRunSessions).mockResolvedValue([])
+    }
   })
 
   it('viser pause_and_ask over chatten i stedet for inde i den scrollbare transcript', async () => {

@@ -44,7 +44,7 @@ import { StickyPrompt } from '../components/transcript/StickyPrompt'
 import { useVisning, VisningContext } from '../lib/visning'
 import { readModelPrefs, readThinkingMode } from '../lib/composerPrefs'
 import { useRaekkevisning } from '../lib/visningsPref'
-import { getContextInfo, getContextUsage, getActiveRuns, followRun, compactNow, warmSession, type CompactionStats } from '../lib/api'
+import { getContextInfo, getContextUsage, getActiveRunSessions, followRun, compactNow, warmSession, type CompactionStats } from '../lib/api'
 import { markInteraction } from '../lib/presenceSignal'
 import { PresenceDot } from '../components/shell/PresenceDot'
 import { DESK_CHROME } from '../lib/deskChrome'
@@ -262,12 +262,16 @@ export function ChatView({
       // Ingen kigger → sjældnere (ro.ts). Fuld fart mens vi selv streamer, og
       // så længe der sidst blev set et baggrunds-run.
       if (!maaPolle('chat-aktive-runs', 1500, stream.status === 'working' || Date.now() < bgUntil)) return
-      void getActiveRuns(cfg)
-        .then((ids) => {
+      void getActiveRunSessions(cfg)
+        .then((runs) => {
           if (cancelled) return
-          const serverHasRun = ids.includes(sessionId)
+          const currentRun = runs.find((run) => run.session_id === sessionId)
+          const serverHasRun = !!currentRun
           // 'working' = vi driver selv et run → ikke et baggrunds-run.
+          // Efter message_stop er det detached run stadig live under efterbehandling.
+          // Det er ikke et nyt baggrunds-run og skal ikke starte /follow igen.
           const active = serverHasRun && stream.status !== 'working'
+            && (!currentRun?.run_id || currentRun.run_id !== stream.activeRunId)
           if (active) bgUntil = Date.now() + 6000
           setBgActive(active || Date.now() < bgUntil)
           if (active) { cooldown = 3; void sessions.refreshMessages() }       // mens det kører
@@ -307,7 +311,7 @@ export function ChatView({
     tick()
     const id = setInterval(tick, 1500) // hurtigere → fanger korte autonome runs
     return () => { cancelled = true; clearInterval(id) }
-  }, [settings, sessionId, stream.status, stream.workingSessionId])
+  }, [settings, sessionId, stream.status, stream.workingSessionId, stream.activeRunId])
 
   useLayoutEffect(() => {
     if (stream.status === 'done' && stream.blocks.length > 0 && reconciledForRun.current !== stream.activeRunId) {

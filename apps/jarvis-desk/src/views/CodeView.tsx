@@ -41,7 +41,7 @@ import { useFastgjorte } from '../hooks/useFastgjorte'
 import { GreetingHero } from '../components/chat/GreetingHero'
 import { useResizableWidth } from '../components/panel/useResizableWidth'
 import { onHighlight } from '../lib/fileTreeHighlight'
-import { getWorkspaceTrust, setWorkspaceTrust, getContextInfo, getContextUsage, compactNow, getActiveRuns, followRun, warmSession, type CompactionStats } from '../lib/api'
+import { getWorkspaceTrust, setWorkspaceTrust, getContextInfo, getContextUsage, compactNow, getActiveRunSessions, followRun, warmSession, type CompactionStats } from '../lib/api'
 import { CompactionNotice } from '../components/transcript/CompactionNotice'
 import { streamReducer, initialStreamState, liveBlokke } from '../lib/streamReducer'
 import { useOnline } from '../hooks/useOnline'
@@ -548,11 +548,13 @@ export function CodeView({
       // Ingen kigger → sjældnere (ro.ts). Fuld fart mens vi streamer eller
       // lige har set et baggrunds-run.
       if (!maaPolle('kode-aktive-runs', 1500, stream.status === 'working' || Date.now() < bgUntil)) return
-      void getActiveRuns(cfg)
-        .then((ids) => {
+      void getActiveRunSessions(cfg)
+        .then((runs) => {
           if (cancelled) return
-          const serverHasRun = ids.includes(sessionId)
+          const currentRun = runs.find((run) => run.session_id === sessionId)
+          const serverHasRun = !!currentRun
           const active = serverHasRun && stream.status !== 'working'
+            && (!currentRun?.run_id || currentRun.run_id !== stream.activeRunId)
           if (active) bgUntil = Date.now() + 6000
           setBgActive(active || Date.now() < bgUntil)
           if (active) { cooldown = 3; void sessions.refreshMessages() }
@@ -564,7 +566,7 @@ export function CodeView({
     tick()
     const id = setInterval(tick, 1500)
     return () => { cancelled = true; clearInterval(id) }
-  }, [settings, sessionId, stream.status])
+  }, [settings, sessionId, stream.status, stream.activeRunId])
   useEffect(() => {
     if (!bgActive || !sessionId || !settings) return
     if (followCtrlRef.current) return

@@ -174,6 +174,28 @@ def _latest(cluster: str, nerve: str):
     return rec[-1] if rec else None
 
 
+def _clear_flag(cluster: str, nerve: str) -> int:
+    """Luk en ÅBEN flag-incident når TILSTANDEN er væk. Returnerer antal lukkede.
+
+    MAALT 25/9-2026: `reach_webservice` stod uløst fra 24/9 kl. 17:07 — mens port 22
+    svarede fint fra både serveren og containeren. Årsagen var ikke at flaget var
+    forkert; det var at det aldrig fik en vej UD.
+
+    `_raise_flag` SKRIVER en incident, men havde ingen modpart der lukker den når
+    tilstanden forsvinder. Et flag blev derfor permanent indtil nogen ryddede op — og
+    én forældet række farver Centralen gul i dagevis (`_status_from` bliver gul ved
+    BLOT én uløst error). config_drift, central_health og provider_health har alle en
+    selv-løsende modpart; flag-nerverne havde ingen. Det er den.
+
+    Self-sikker → 0.
+    """
+    from core.runtime.db_central_incidents import resolve_central_incidents
+    try:
+        return resolve_central_incidents(cluster=cluster, nerve=nerve)
+    except Exception:  # self-safe: en fejlet lukning må aldrig vælte vagten
+        return 0
+
+
 def run_watch_tick(*, trigger: str = "cadence", last_visible_at: str = "") -> dict[str, object]:
     """Evaluér de fodrede streams; flag ægte (støjfangede) signaler. Self-safe."""
     flags: list[dict] = []
@@ -182,7 +204,9 @@ def run_watch_tick(*, trigger: str = "cadence", last_visible_at: str = "") -> di
     try:
         s = _latest("system", "bridge_observe_failures")
         breached = bool(s) and float(s.value or 0) > 0
-        if central_noise_filter.is_real_signal("bridge_failures", breached):
+        if not breached:
+            _clear_flag("system", "eventbus_bridge")  # broen fører igen → luk sagen
+        elif central_noise_filter.is_real_signal("bridge_failures", breached):
             n = int(s.value)
             flags.append(_raise_flag(
                 "system", "eventbus_bridge", severity="error",
@@ -226,7 +250,9 @@ def run_watch_tick(*, trigger: str = "cadence", last_visible_at: str = "") -> di
             if len(recent) < _INNER_SILENCE_MIN:
                 continue
             all_down = all((r.value or 0) == 0.0 for r in recent)
-            if central_noise_filter.is_real_signal(f"inner:{nv}", all_down):
+            if not all_down:
+                _clear_flag("inner", nv)  # daemonen tikker igen → luk sagen
+            elif central_noise_filter.is_real_signal(f"inner:{nv}", all_down):
                 # inner-life fodrer læring (legitimt signal) men notificeres ikke som push
                 # (medium) — undgår at spamme owner på indre udsving.
                 flags.append(_raise_flag(
@@ -353,7 +379,11 @@ def run_watch_tick(*, trigger: str = "cadence", last_visible_at: str = "") -> di
                 continue
             down = all((r.value if r.value is not None else -1.0) < 0 for r in recent)
             host = nv[len("reach_"):]
-            if central_noise_filter.is_real_signal(f"infra_down:{host}", down):
+            if not down:
+                # SELV-LØSENDE MODPART: hosten svarer igen → luk den åbne sag med det samme.
+                # Uden den stod `reach_webservice` uløst fra 24/9 mens port 22 svarede fint.
+                _clear_flag("infra", nv)
+            elif central_noise_filter.is_real_signal(f"infra_down:{host}", down):
                 tgt = (recent[-1].meta or {}).get("target", "")
                 flags.append(_raise_flag(
                     "infra", nv, severity="error",

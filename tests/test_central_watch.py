@@ -42,6 +42,9 @@ def wired(monkeypatch):
     monkeypatch.setattr(cw, "_today_cost_usd", lambda: None)
     monkeypatch.setattr(cw, "_cheap_lane_stats", lambda limit=40: (0, 0))
     monkeypatch.setattr(cw, "_council_forced_count", lambda limit=40: 0)
+    # Selv-løsende modpart (25/9-2026): stubbes til 0 så tests ikke rører DB'en.
+    # De tests der måler LUKNINGEN overrider den med en fanger.
+    monkeypatch.setattr(cw, "_clear_flag", lambda cluster, nerve: 0)
     return central, incidents, notifs
 
 
@@ -248,6 +251,69 @@ def test_infra_host_up_no_flag(wired):
     cw.run_watch_tick()
     cw.run_watch_tick()
     assert not any(inc["nerve"] == "reach_pve" for inc in incidents)
+
+
+# ── Selv-løsende modpart: flaget skal lukke sin egen sag når TILSTANDEN forsvinder ──
+# MAALT 25/9-2026: `reach_webservice` stod uløst fra 24/9 kl. 17:07 mens port 22 svarede
+# fint fra både serveren og containeren. `infra_sense` ryddede sit MODUL-flag korrekt ved
+# genoplivning, så notifikationen stoppede — men central_incidents-rækken blev aldrig
+# lukket, og `_status_from` farver Centralen gul ved BLOT én uløst error. Uden modparten
+# er gul'et en TIMER (48t ældning), ikke en SANDHED.
+
+def test_infra_host_recovered_clears_open_incident(wired, monkeypatch):
+    central, incidents, notifs = wired
+    cleared = []
+    monkeypatch.setattr(cw, "_clear_flag", lambda c, n: cleared.append((c, n)) or 1)
+    for _ in range(2):  # nede 2 tick → flag
+        central_timeseries.record("infra", "reach_fileserver", value=-1.0,
+                                  meta={"target": "10.0.0.10:22"})
+    cw.run_watch_tick()
+    cw.run_watch_tick()
+    assert any(inc["nerve"] == "reach_fileserver" for inc in incidents)
+    # mens hosten er NEDE må DENNE sag ikke lukkes (andre sektioner rydder deres egne)
+    assert ("infra", "reach_fileserver") not in cleared
+    for _ in range(2):  # hosten svarer igen → luk
+        central_timeseries.record("infra", "reach_fileserver", value=2.1,
+                                  meta={"target": "10.0.0.10:22"})
+    cw.run_watch_tick()
+    assert ("infra", "reach_fileserver") in cleared
+
+
+def test_bridge_recovered_clears_open_incident(wired, monkeypatch):
+    central, incidents, notifs = wired
+    cleared = []
+    monkeypatch.setattr(cw, "_clear_flag", lambda c, n: cleared.append((c, n)) or 1)
+    central_timeseries.record("system", "bridge_observe_failures", value=3.0)
+    cw.run_watch_tick()
+    cw.run_watch_tick()
+    assert any(inc["nerve"] == "eventbus_bridge" for inc in incidents)
+    assert cleared == []
+    central_timeseries.record("system", "bridge_observe_failures", value=0.0)
+    cw.run_watch_tick()
+    assert ("system", "eventbus_bridge") in cleared
+
+
+def test_inner_daemon_recovered_clears_open_incident(wired, monkeypatch):
+    central, incidents, notifs = wired
+    cleared = []
+    monkeypatch.setattr(cw, "_clear_flag", lambda c, n: cleared.append((c, n)) or 1)
+    for _ in range(cw._INNER_SILENCE_MIN):
+        central_timeseries.record("inner", "witness_daemon", value=0.0)
+    cw.run_watch_tick()
+    cw.run_watch_tick()
+    assert any(inc["nerve"] == "witness_daemon" for inc in incidents)
+    assert ("inner", "witness_daemon") not in cleared
+    central_timeseries.record("inner", "witness_daemon", value=1.0)
+    cw.run_watch_tick()
+    assert ("inner", "witness_daemon") in cleared
+
+
+def test_clear_flag_is_self_safe(monkeypatch):
+    """En incident-log må aldrig vælte vagten — fejler resolve, returnerer vi 0."""
+    import core.runtime.db_central_incidents as dci
+    monkeypatch.setattr(dci, "resolve_central_incidents",
+                        lambda **k: (_ for _ in ()).throw(RuntimeError("db nede")))
+    assert cw._clear_flag("infra", "reach_x") == 0
 
 
 def test_infra_disk_high_flags(wired):

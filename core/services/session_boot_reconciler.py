@@ -239,10 +239,21 @@ def _ryd_visible_drift(enforced: bool) -> int:
             #    dem ikke (den kraever 'running'), saa uden denne gren stod de
             #    for evigt.
             raekker = conn.execute(
-                "SELECT run_id, status FROM visible_runs WHERE "
-                "((status = 'running' AND (finished_at IS NULL OR finished_at = '')) "
-                " OR (status = 'recovering')) "
-                "AND started_at < ? LIMIT 200",
+                "SELECT run_id, status FROM visible_runs WHERE ("
+                # `recovering` MED `finished_at`: kørslen er beviseligt slut.
+                # `finished_at` sættes KUN når udfaldet persisteres, og en
+                # genoptagelse sker under et NYT run_id — så rækken er
+                # forældreløs i det øjeblik den står der. Alder er derfor ikke
+                # beviset her; `finished_at` er. (Målt 25/9-2026: 16 rækker stod
+                # sådan, den nyeste 29 sekunder gammel, usynlige for enhver
+                # proces — de ventede bare på en genstart der ikke kom.)
+                " (status = 'recovering' AND finished_at IS NOT NULL AND finished_at != '')"
+                # Alt andet hviler på et FRAVÆR (ingen post i journalen), og
+                # fravær er svagere end ejerskab — så alderen bærer resten.
+                " OR ((status = 'running' OR status = 'recovering')"
+                "     AND (finished_at IS NULL OR finished_at = '')"
+                "     AND started_at < ?)"
+                ") LIMIT 200",
                 (graense,),
             ).fetchall()
     except Exception as exc:
@@ -308,3 +319,35 @@ def _ryd_visible_drift(enforced: bool) -> int:
                     "session_boot_reconciler: kunne ikke stemple %s som "
                     "interrupted: %s", rid, exc)
     return len(drift)
+
+
+def ryd_visible_drift_periodisk() -> dict[str, Any]:
+    """Periodisk oprydning — samme regel som ved opstart, men uden at vente på en.
+
+    ## Hvorfor den findes
+
+    Oprydningen boede KUN i ``reconcile_on_boot``. Den var korrekt, men dens
+    eneste udløser var en genstart — så en ``recovering``-række blev liggende
+    indtil nogen genstartede containeren. Målt 25/9-2026: 16 rækker stod
+    ``recovering`` med ``finished_at`` sat, den nyeste 29 sekunder gammel, og
+    ingen proces kendte dem. De blev ryddet i hånden.
+
+    Kaldes nu af ``cluster_infra``-familiens medlem ``visible_drift_cleanup``,
+    som i forvejen bærer husets øvrige vedligeholdelse.
+
+    Samme kill-switch som opstarts-vejen: er ``session_persistence`` OFF, tælles
+    der kun — intet skrives. Kaster aldrig (kaldes fra en familie-tick).
+    """
+    try:
+        from core.services.session_persistence_flag import session_persistence_enabled
+        enforced = bool(session_persistence_enabled())
+    except Exception:
+        enforced = False
+
+    try:
+        antal = _ryd_visible_drift(enforced)
+    except Exception as exc:  # noqa: BLE001 — må aldrig vælte familie-tikket
+        logger.warning("session_boot_reconciler: periodisk drift-rydning fejlede: %s", exc)
+        return {"status": "error", "error": str(exc), "enforced": enforced}
+
+    return {"status": "ok", "ryddet": antal, "enforced": enforced}

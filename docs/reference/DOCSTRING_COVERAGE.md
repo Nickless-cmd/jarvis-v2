@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8023/15512 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8028/15519 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 8023/15512 functions/methods documented (51%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 695 | 1275 | 54% |
-| `core.services` | 5305 | 10546 | 50% |
+| `core.services` | 5310 | 10553 | 50% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 107 | 183 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -1089,8 +1089,8 @@ Generated from source. 8023/15512 functions/methods documented (51%). The list b
 - `core/services/fabricated_tool_result_gate.py` :: `FabricationVerdict.ok` (L67)
 - `core/services/fabricated_tool_result_gate.py` :: `FabricationVerdict.severity` (L71)
 - `core/services/fcm_gateway.py` :: `is_configured` (L34)
-- `core/services/file_watch_daemon.py` :: `build_file_watch_surface` (L172)
-- `core/services/file_watch_daemon.py` :: `recent_changes` (L168)
+- `core/services/file_watch_daemon.py` :: `build_file_watch_surface` (L226)
+- `core/services/file_watch_daemon.py` :: `recent_changes` (L221)
 - `core/services/finitude_runtime.py` :: `build_finitude_surface` (L486)
 - `core/services/finitude_runtime.py` :: `get_finitude_context_for_prompt` (L424)
 - `core/services/finitude_runtime.py` :: `note_context_compaction` (L155)
@@ -1705,7 +1705,7 @@ Generated from source. 8023/15512 functions/methods documented (51%). The list b
 - `core/services/self_deception_guard.py` :: `DeceptionGuardTrace.has_blocks` (L54)
 - `core/services/self_deception_guard.py` :: `DeceptionGuardTrace.has_reframes` (L60)
 - `core/services/self_deception_guard.py` :: `DeceptionGuardTrace.to_dict` (L69)
-- `core/services/self_experiments.py` :: `build_self_experiments_surface` (L422)
+- `core/services/self_experiments.py` :: `build_self_experiments_surface` (L456)
 - `core/services/self_model_blind_spots.py` :: `list_blind_spots` (L292)
 - `core/services/self_model_signal_tracking.py` :: `build_runtime_self_model_signal_surface` (L155)
 - `core/services/self_model_signal_tracking.py` :: `refresh_runtime_self_model_signal_statuses` (L68)
@@ -1871,9 +1871,9 @@ Generated from source. 8023/15512 functions/methods documented (51%). The list b
 - `core/services/temporal_recurrence_signal_tracking.py` :: `build_runtime_temporal_recurrence_signal_surface` (L47)
 - `core/services/temporal_recurrence_signal_tracking.py` :: `refresh_runtime_temporal_recurrence_signal_statuses` (L43)
 - `core/services/temporal_recurrence_signal_tracking.py` :: `track_runtime_temporal_recurrence_signals_for_visible_turn` (L35)
-- `core/services/temporal_rhythm.py` :: `build_temporal_rhythm_surface` (L172)
-- `core/services/temporal_rhythm.py` :: `get_current_rhythm` (L168)
-- `core/services/temporal_rhythm.py` :: `tick` (L129)
+- `core/services/temporal_rhythm.py` :: `build_temporal_rhythm_surface` (L229)
+- `core/services/temporal_rhythm.py` :: `get_current_rhythm` (L224)
+- `core/services/temporal_rhythm.py` :: `tick` (L168)
 - `core/services/temporal_self_continuity.py` :: `build_temporal_self_continuity_prompt_section` (L66)
 - `core/services/temporal_self_continuity.py` :: `build_temporal_self_continuity_surface` (L51)
 - `core/services/temporal_self_continuity.py` :: `update_temporal_continuity_from_episode` (L23)

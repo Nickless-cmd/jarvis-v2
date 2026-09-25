@@ -18,18 +18,57 @@ Outputs:
 from __future__ import annotations
 
 import logging
-from collections import deque
 from datetime import UTC, datetime, timedelta
-from typing import Any, Deque
+from typing import Any
+
+from core.runtime import state_store
 
 logger = logging.getLogger(__name__)
 
-_HISTORY_MAX = 30  # ~15 min at 30s ticks
-_tick_history: Deque[dict[str, Any]] = deque(maxlen=_HISTORY_MAX)
+_FIL = "temporal_rhythm"
 
-# Baseline references (established over time)
-_baseline_samples: list[float] = []
+#: Maalt 25/9-2026: daemon-blokken tikker ~hvert 9. minut, ikke hvert 30.
+#: sekund. 30 proever er altsaa ~4,5 time, ikke et kvarter. Kommentaren sagde
+#: «~15 min at 30s ticks» — tallet var rigtigt, antagelsen under det var ikke.
+_HISTORY_MAX = 30
 _BASELINE_MAX = 100
+
+# Tilstanden laa i en `deque` og en liste i modulet. `jarvis-api` og
+# `jarvis-runtime` koerer samme kode i hver sin proces, men kun runtime
+# tikker — api'ens kopi var derfor tom, og fladen sagde «Endnu ingen
+# tempo-sampling» uanset hvor laenge han havde levet. Genstart slettede
+# desuden baade historik og baseline.
+_tick_history: list[dict[str, Any]] = []
+_baseline_samples: list[float] = []
+_sidst_laest_ns: int = -1
+
+
+def _synk() -> None:
+    """Hent fra disk hvis filen er aendret siden sidste laesning."""
+    global _tick_history, _baseline_samples, _sidst_laest_ns
+    ns = state_store.aendret_ns(_FIL)
+    if ns == _sidst_laest_ns:
+        return
+    raa = state_store.load_json(_FIL, None)
+    if isinstance(raa, dict):
+        h = raa.get("history")
+        b = raa.get("baseline")
+        _tick_history = [x for x in h if isinstance(x, dict)] if isinstance(h, list) else []
+        _baseline_samples = [float(x) for x in b
+                             if isinstance(x, (int, float))] if isinstance(b, list) else []
+    else:
+        _tick_history = []
+        _baseline_samples = []
+    _sidst_laest_ns = ns
+
+
+def _gem() -> None:
+    global _sidst_laest_ns
+    state_store.save_json(_FIL, {
+        "history": _tick_history[:_HISTORY_MAX],
+        "baseline": _baseline_samples[-_BASELINE_MAX:],
+    })
+    _sidst_laest_ns = state_store.aendret_ns(_FIL)
 
 
 def _pending_initiatives_count() -> int:
@@ -148,10 +187,18 @@ def tick(_seconds: float = 0.0) -> dict[str, Any]:
             "eventbus_queue": queue,
         },
     }
-    _tick_history.appendleft(snap)
-    _baseline_samples.append(pulse)
-    if len(_baseline_samples) > _BASELINE_MAX:
-        _baseline_samples.pop(0)
+    # Laasen: to processer deler filen, og hver gemning skriver HELE filen.
+    try:
+        with state_store.med_laas(_FIL):
+            _synk()
+            _tick_history.insert(0, snap)
+            del _tick_history[_HISTORY_MAX:]
+            _baseline_samples.append(pulse)
+            if len(_baseline_samples) > _BASELINE_MAX:
+                _baseline_samples.pop(0)
+            _gem()
+    except Exception as exc:
+        logger.warning("temporal_rhythm: rytmen kunne ikke gemmes: %s", exc)
 
     # Feedback into mood: high pulse → mild frustration, low pulse → calm
     try:
@@ -165,16 +212,30 @@ def tick(_seconds: float = 0.0) -> dict[str, Any]:
     return snap
 
 
+def reset_temporal_rhythm() -> None:
+    """Nulstil rytmen. Rydder OGSAA disken — ellers ville naeste `_synk()`
+    hente det gamle tilbage, og nulstillingen ville kun gaelde denne proces."""
+    global _tick_history, _baseline_samples
+    _tick_history = []
+    _baseline_samples = []
+    _gem()
+
+
 def get_current_rhythm() -> dict[str, Any] | None:
+    _synk()
     return _tick_history[0] if _tick_history else None
 
 
 def build_temporal_rhythm_surface() -> dict[str, Any]:
     current = get_current_rhythm()
     if not current:
-        # Ingen sampling ENDNU er ikke det samme som doed. `tick` havde nul
-        # kaldere indtil 25/9-2026, saa denne gren var den eneste der
-        # nogensinde blev naaet.
+        # Ingen sampling ENDNU er ikke det samme som doed.
+        #
+        # RETTELSE af en tidligere kommentar her samme dag: jeg skrev at
+        # `tick` «havde nul kaldere». Det var forkert — daemon-blokken har
+        # altid importeret den som `tick as _rhythm_tick`, og min soegning
+        # efter kald ved navnet `tick` fandt den derfor ikke. Grenen blev naaet
+        # fordi tilstanden laa i modul-globaler og api-processen aldrig tikker.
         return {"active": True, "summary": "Endnu ingen tempo-sampling"}
     baseline_avg = None
     if len(_baseline_samples) >= 5:

@@ -18,11 +18,11 @@ from __future__ import annotations
 
 import logging
 import os
-from collections import deque
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Deque
+from typing import Any
 
+from core.runtime import state_store
 from core.runtime.workspace_paths import shared_dir
 
 logger = logging.getLogger(__name__)
@@ -38,11 +38,56 @@ _IGNORE_FRAGMENTS: tuple[str, ...] = (
 )
 
 _RECENT_MAX = 50
-_recent: Deque[dict[str, Any]] = deque(maxlen=_RECENT_MAX)
+
+_FIL = "file_watch"
+
+# TO SPOERGSMAAL, IKKE ÉT (maalt 25/9-2026).
+#
+# `_fingerprint` og `_first_scan_done` besvarer «har JEG en grundlinje at
+# sammenligne med?». Det er per proces og skal blive det: fingeraftrykket er
+# 16.485 poster, og at skrive ~1,3 MB ved hvert tik for at dele det ville
+# vaere dyrt uden at hjaelpe nogen. Grundlinjen bygges korrekt op igen paa
+# foerste sweep efter en genstart, og `_first_scan_done` sikrer at den foerste
+# sweep er tavs.
+#
+# `_recent` besvarer «hvad er der SKET?». Det spoergsmaal stiller `jarvis-api`,
+# som aldrig tikker — og derfor stod fladen tom uanset hvor meget der var
+# aendret. Den ligger nu i `state_store`.
+#
+# Havde jeg delt dem begge, ville foerste sweep efter en genstart se alle
+# 16.485 filer som nye med `_first_scan_done` allerede sat — og melde dem som
+# «created».
+_recent: list[dict[str, Any]] = []
+_sidst_laest_ns: int = -1
 
 # mtime fingerprint: {path: (mtime, size)}
 _fingerprint: dict[str, tuple[float, int]] = {}
 _first_scan_done: bool = False
+
+
+def _synk() -> None:
+    """Hent de seneste aendringer fra disk hvis filen er aendret."""
+    global _recent, _sidst_laest_ns
+    ns = state_store.aendret_ns(_FIL)
+    if ns == _sidst_laest_ns:
+        return
+    raa = state_store.load_json(_FIL, None)
+    _recent = ([x for x in raa if isinstance(x, dict)]
+               if isinstance(raa, list) else [])
+    _sidst_laest_ns = ns
+
+
+def _gem() -> None:
+    global _sidst_laest_ns
+    state_store.save_json(_FIL, _recent[:_RECENT_MAX])
+    _sidst_laest_ns = state_store.aendret_ns(_FIL)
+
+
+def reset_file_watch_state() -> None:
+    """Ryd de delte aendringer. Roerer IKKE fingeraftrykket — det er per proces."""
+    global _recent
+    _recent = []
+    _gem()
 
 
 def _should_ignore(path_str: str) -> bool:
@@ -97,7 +142,8 @@ def _record_change(path: Path, change_type: str) -> None:
         "when": datetime.now(UTC).isoformat(),
         "diff_preview": _diff_preview(path) if change_type != "deleted" else "",
     }
-    _recent.appendleft(entry)
+    _recent.insert(0, entry)
+    del _recent[_RECENT_MAX:]
     try:
         from core.eventbus.bus import event_bus
         event_bus.publish(
@@ -160,12 +206,20 @@ def tick(_seconds: float = 0.0) -> dict[str, Any]:
                 del _fingerprint[path_str]
                 changes += 1
         _first_scan_done = True
+        if changes:
+            # Laasen: to processer deler filen, og hver gemning skriver HELE
+            # filen. Kun naar der ER noget nyt — et sweep uden aendringer har
+            # intet at dele.
+            with state_store.med_laas(_FIL):
+                _synk()
+                _gem()
     except Exception as exc:
         logger.debug("file_watch_daemon.tick failed: %s", exc)
     return {"changes": changes, "tracked": len(_fingerprint)}
 
 
 def recent_changes(*, limit: int = 20) -> list[dict[str, Any]]:
+    _synk()
     return list(_recent)[:limit]
 
 
@@ -176,7 +230,9 @@ def build_file_watch_surface() -> dict[str, Any]:
         t = str(r.get("change_type") or "")
         by_type[t] = by_type.get(t, 0) + 1
     return {
-        "active": _first_scan_done,
+        # `active` er «modulet koerer». `_first_scan_done` er per proces, saa
+        # den sagde altid False i api'en — som aldrig tikker.
+        "active": True,
         "tracked_files": len(_fingerprint),
         "recent_changes": recent,
         "changes_by_type_recent": by_type,

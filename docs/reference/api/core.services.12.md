@@ -212,18 +212,21 @@ _File Watch Daemon — proprioception: "I feel when my own files change"._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_should_ignore` | `(path_str)` | — | [src](../../../core/services/file_watch_daemon.py#L48) |
-| function | `_watched_roots` | `()` | — | [src](../../../core/services/file_watch_daemon.py#L52) |
-| function | `_iter_watched_files` | `(root)` | — | [src](../../../core/services/file_watch_daemon.py#L68) |
-| function | `_diff_preview` | `(path)` | — | [src](../../../core/services/file_watch_daemon.py#L83) |
-| function | `_record_change` | `(path, change_type)` | — | [src](../../../core/services/file_watch_daemon.py#L92) |
-| function | `_compact_path` | `(path)` | — | [src](../../../core/services/file_watch_daemon.py#L111) |
-| function | `tick` | `(_seconds=…)` | One polling sweep across watched roots. | [src](../../../core/services/file_watch_daemon.py#L127) |
-| function | `recent_changes` | `(*, limit=…)` | — | [src](../../../core/services/file_watch_daemon.py#L168) |
-| function | `build_file_watch_surface` | `()` | — | [src](../../../core/services/file_watch_daemon.py#L172) |
-| function | `_surface_summary` | `(recent)` | — | [src](../../../core/services/file_watch_daemon.py#L187) |
-| function | `build_file_watch_prompt_section` | `()` | Surface recent changes briefly — stays quiet if nothing recent. | [src](../../../core/services/file_watch_daemon.py#L198) |
-| function | `reset_file_watch` | `()` | Reset state (for testing). | [src](../../../core/services/file_watch_daemon.py#L223) |
+| function | `_synk` | `()` | Hent de seneste aendringer fra disk hvis filen er aendret. | [src](../../../core/services/file_watch_daemon.py#L68) |
+| function | `_gem` | `()` | — | [src](../../../core/services/file_watch_daemon.py#L80) |
+| function | `reset_file_watch_state` | `()` | Ryd de delte aendringer. Roerer IKKE fingeraftrykket — det er per proces. | [src](../../../core/services/file_watch_daemon.py#L86) |
+| function | `_should_ignore` | `(path_str)` | — | [src](../../../core/services/file_watch_daemon.py#L93) |
+| function | `_watched_roots` | `()` | — | [src](../../../core/services/file_watch_daemon.py#L97) |
+| function | `_iter_watched_files` | `(root)` | — | [src](../../../core/services/file_watch_daemon.py#L113) |
+| function | `_diff_preview` | `(path)` | — | [src](../../../core/services/file_watch_daemon.py#L128) |
+| function | `_record_change` | `(path, change_type)` | — | [src](../../../core/services/file_watch_daemon.py#L137) |
+| function | `_compact_path` | `(path)` | — | [src](../../../core/services/file_watch_daemon.py#L157) |
+| function | `tick` | `(_seconds=…)` | One polling sweep across watched roots. | [src](../../../core/services/file_watch_daemon.py#L173) |
+| function | `recent_changes` | `(*, limit=…)` | — | [src](../../../core/services/file_watch_daemon.py#L221) |
+| function | `build_file_watch_surface` | `()` | — | [src](../../../core/services/file_watch_daemon.py#L226) |
+| function | `_surface_summary` | `(recent)` | — | [src](../../../core/services/file_watch_daemon.py#L243) |
+| function | `build_file_watch_prompt_section` | `()` | Surface recent changes briefly — stays quiet if nothing recent. | [src](../../../core/services/file_watch_daemon.py#L254) |
+| function | `reset_file_watch` | `()` | Reset state (for testing). | [src](../../../core/services/file_watch_daemon.py#L279) |
 
 ## `core/services/finitude_runtime.py`
 

@@ -116,6 +116,11 @@
       "beskrivelse": "Existential Drift — Jarvis' digital consciousness awareness.",
       "registreret": "2026-09-25"
     },
+    "file_watch": {
+      "ejer": "core/services/file_watch_daemon.py",
+      "beskrivelse": "File Watch Daemon — proprioception: \"I feel when my own files change\".",
+      "registreret": "2026-09-25"
+    },
     "forgetting_curve": {
       "ejer": "core/services/forgetting_curve.py",
       "beskrivelse": "Forgetting Curve — det jeg bliver ved at se, bliver. Resten falmer.",
@@ -284,6 +289,11 @@
     "temporal_body": {
       "ejer": "core/services/temporal_body.py",
       "beskrivelse": "Temporal Body — sense of age.",
+      "registreret": "2026-09-25"
+    },
+    "temporal_rhythm": {
+      "ejer": "core/services/temporal_rhythm.py",
+      "beskrivelse": "Temporal Rhythm — felt time, not computed time.",
       "registreret": "2026-09-25"
     },
     "text_resonance": {

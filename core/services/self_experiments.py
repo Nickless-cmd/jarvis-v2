@@ -173,6 +173,8 @@ def generate_learning_curriculum() -> dict[str, object]:
     experiments to derive a focused learning direction.
     """
     curriculum: list[dict[str, object]] = []
+    #: Kilder der KASTEDE. Uden den kunne «tom» ikke skelnes fra «braekket».
+    kilde_fejl: list[str] = []
 
     # From personality vector — low confidence domains
     try:
@@ -191,8 +193,11 @@ def generate_learning_curriculum() -> dict[str, object]:
                     "suggestion": f"Bliv bedre til {domain} — confidence er kun {conf:.0%}",
                     "priority": 1.0 - conf,
                 })
-    except Exception:
-        pass
+    except Exception as exc:
+        # FOER: `pass`. En braekket kilde og en tom kilde gav samme svar —
+        # «No curriculum generated yet» — og de er ikke det samme.
+        logger.warning("curriculum: svage domaener kunne ikke laeses: %s", exc)
+        kilde_fejl.append("confidence_by_domain")
 
     # From concluded experiments — apply learnings
     concluded = list_cognitive_experiments(status="concluded", limit=5)
@@ -208,8 +213,10 @@ def generate_learning_curriculum() -> dict[str, object]:
                     "suggestion": f"Anvend: {best} er bedre (diff={result.get('difference', 0):.0%})",
                     "priority": 0.6,
                 })
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("curriculum: et afsluttet eksperiment kunne ikke "
+                           "laeses: %s", exc)
+            kilde_fejl.append("concluded_experiments")
 
     # From recurring mistakes
     try:
@@ -225,8 +232,9 @@ def generate_learning_curriculum() -> dict[str, object]:
                     "suggestion": f"Undgå: {mistake[:60]}",
                     "priority": 0.7,
                 })
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("curriculum: gentagne fejl kunne ikke laeses: %s", exc)
+        kilde_fejl.append("recurring_mistakes")
 
     curriculum.sort(key=lambda x: float(x.get("priority", 0)), reverse=True)
     return {
@@ -237,14 +245,40 @@ def generate_learning_curriculum() -> dict[str, object]:
         # noget» det samme paa skaermen, og de to er ikke det samme: den ene er
         # en maaling, den anden et fravaer. To andre flader meldte sig doede paa
         # netop det fravaer, selv om de arbejdede (maalt 25/9-2026).
-        "active": bool(curriculum),
+        # `active` er «planen kan bygges», ikke «der er noget i den».
+        # Den stod som `bool(curriculum)`, og en tom plan meldte sig doed —
+        # samme fejlklasse som de otte flader 25/9-2026.
+        "active": True,
         "curriculum": curriculum[:6],
         "focus_count": len(curriculum),
-        "summary": (
-            f"{len(curriculum)} learning focuses: {', '.join(c['focus'][:20] for c in curriculum[:3])}"
-            if curriculum else "No curriculum generated yet"
-        ),
+        "kilde_fejl": kilde_fejl,
+        "summary": _curriculum_summary(curriculum, kilde_fejl),
     }
+
+
+def _curriculum_summary(
+    curriculum: list[dict[str, object]],
+    kilde_fejl: list[str],
+) -> str:
+    """En tom plan skal sige HVORFOR den er tom.
+
+    Maalt paa CT105 25/9-2026: planen laeser `confidence_by_domain` og
+    `recurring_mistakes` fra personlighedsvektoren, og de er ikke-tomme i
+    henholdsvis 1 og 0 af 1007 versioner. `learned_preferences` — samme
+    skrivevej, samme merge-logik — er fyldt i 728. Skrivningen virker altsaa;
+    de to felter bliver bare aldrig foreslaaet, fordi prompten saetter en
+    taerskel i prosa («tilfoej kun hvis gentaget», «kun ved tydelig evidens»)
+    som modellen aldrig finder naaet.
+
+    «No curriculum generated yet» sagde intet om det. Nu staar det der.
+    """
+    if curriculum:
+        navne = ", ".join(str(c["focus"])[:20] for c in curriculum[:3])
+        return f"{len(curriculum)} learning focuses: {navne}"
+    if kilde_fejl:
+        return f"Ingen plan — kilderne fejlede: {', '.join(sorted(set(kilde_fejl)))}"
+    return ("Ingen plan — ingen svage domaener, ingen gentagne fejl og ingen "
+            "afsluttede eksperimenter at bygge paa")
 
 
 def observe_recent_visible_runs_for_self_experiments(

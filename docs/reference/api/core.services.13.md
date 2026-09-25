@@ -357,7 +357,7 @@ _Jarvis' indre daemoner — ét tik, uanset om han har travlt._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `tik_indre_daemoner` | `()` | Tik alle indre daemoner én gang. Kaster aldrig. | [src](../../../core/services/heartbeat_daemon_ticks.py#L57) |
-| function | `_tik_for_bruger` | `(arbejdsrum, bruger_id)` | Tik de arbejdsrums-bundne daemoner for ÉN bruger. | [src](../../../core/services/heartbeat_daemon_ticks.py#L285) |
+| function | `_tik_for_bruger` | `(arbejdsrum, bruger_id)` | Tik de arbejdsrums-bundne daemoner for ÉN bruger. | [src](../../../core/services/heartbeat_daemon_ticks.py#L297) |
 
 ## `core/services/heartbeat_manage_runtime_work.py`
 _Hjerteslagets `manage_runtime_work`-handling — udskilt fra heartbeat_runtime._

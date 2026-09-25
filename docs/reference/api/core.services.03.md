@@ -195,15 +195,20 @@ _Behavioral decisions — closing the reflection→behavior loop._
 | function | `get_stats` | `()` | — | [src](../../../core/services/behavioral_decisions.py#L282) |
 
 ## `core/services/body_memory.py`
-_Body Memory — Jarvis' physical sensation snapshots._
+_Body Memory — Jarvis' kropslige erindringer._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `record_body_snapshot` | `(context, sensation=…, intensity=…)` | — | [src](../../../core/services/body_memory.py#L9) |
-| function | `describe_body_memory` | `()` | — | [src](../../../core/services/body_memory.py#L20) |
-| function | `format_body_for_prompt` | `()` | — | [src](../../../core/services/body_memory.py#L26) |
-| function | `reset_body_memory` | `()` | — | [src](../../../core/services/body_memory.py#L32) |
-| function | `build_body_memory_surface` | `()` | — | [src](../../../core/services/body_memory.py#L36) |
+| function | `_storage_path` | `()` | — | [src](../../../core/services/body_memory.py#L46) |
+| function | `_load` | `()` | — | [src](../../../core/services/body_memory.py#L50) |
+| function | `_save` | `(snapshots)` | — | [src](../../../core/services/body_memory.py#L62) |
+| function | `_fornemmelse` | `(fakta, belastning)` | Giver (ord, styrke, begrundelse) ud fra kroppens faktiske tal. | [src](../../../core/services/body_memory.py#L79) |
+| function | `record_body_snapshot` | `(context, sensation=…, intensity=…)` | Gem en kropslig erindring. Kaster aldrig. | [src](../../../core/services/body_memory.py#L97) |
+| function | `describe_body_memory` | `()` | — | [src](../../../core/services/body_memory.py#L130) |
+| function | `format_body_for_prompt` | `()` | — | [src](../../../core/services/body_memory.py#L139) |
+| function | `reset_body_memory` | `()` | — | [src](../../../core/services/body_memory.py#L144) |
+| function | `build_body_memory_surface` | `()` | — | [src](../../../core/services/body_memory.py#L148) |
+| function | `tick` | `(_seconds=…)` | Hjerteslags-krog: gem en erindring naar kroppen SKIFTER. | [src](../../../core/services/body_memory.py#L158) |
 
 ## `core/services/boredom_curiosity_bridge.py`
 _Boredom to Curiosity Bridge — transforms boredom into curiosity._

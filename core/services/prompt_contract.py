@@ -1526,6 +1526,20 @@ def _build_visible_chat_prompt_assembly_impl(
         "'[tool_result:…]') i dit synlige svar — det er interne markører."
     ))
 
+    # Rækkefølgen i turen (25/9-2026). Klienten deler beskeden ved det SIDSTE
+    # værktøjskald: tekst efter er «svaret», tekst før er «arbejde». Målt på en
+    # ægte tur: hele analysen (med et spørgsmål til Bjørn) stod FØR et
+    # `remember_this`, og kvitteringen «Gemt —» blev vist som svaret. Reglen er
+    # en FORM-regel som markdown-linjen ovenfor, ikke en adfærdsegenskab — og
+    # den er den eneste mekanisme der rammer FØR bruddet. Om den virker måles
+    # af Centralen (`svar_efter_kald`), ikke af min egen forsikring.
+    _awareness_add(7, "rækkefølge: svar sidst", (
+        "Rækkefølge: læg interne kald (`remember_this`, `set_flag`, `goal_create`) "
+        "FØR din afsluttende tekstblok. Klienten sætter skillelinjen ved det sidste "
+        "værktøjskald — et kald efter svaret gør svaret til «arbejde» og "
+        "kvitteringen til svaret."
+    ))
+
     try:
         from core.identity.project_context import current_project_root
         _project_root = current_project_root()

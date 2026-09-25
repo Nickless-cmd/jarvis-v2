@@ -242,11 +242,18 @@ def register_maintenance_producers(register_producer: Callable[[ProducerSpec], N
         gentaget fejl bumpes og er frisk)."""
         from core.runtime.db_central_incidents import (
             expire_gate_enforce_incidents,
+            expire_orphan_incidents,
+            expire_run_bound_incidents,
             expire_stale_incidents,
         )
         expired = expire_gate_enforce_incidents(older_than_hours=2.0)
         stale = expire_stale_incidents(older_than_hours=48.0)
-        return {"status": "ok", "expired": expired, "stale": stale}
+        # Livscyklus-udløb (25/9): run-bundne lukkes når runnet er terminalt (hændelse,
+        # ikke timer); forældreløse efter 6t, fordi intet levende run bærer dem.
+        run_bound = expire_run_bound_incidents()
+        orphan = expire_orphan_incidents(older_than_hours=6.0)
+        return {"status": "ok", "expired": expired, "stale": stale,
+                "run_bound": run_bound, "orphan": orphan}
 
     register_producer(ProducerSpec(
         name="central_incident_retention",

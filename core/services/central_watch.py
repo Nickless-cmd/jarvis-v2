@@ -301,7 +301,13 @@ def run_watch_tick(*, trigger: str = "cadence", last_visible_at: str = "") -> di
                 pass
             central_timeseries.record("tools", "outcome", value=round(rate, 3),
                                       meta={"total": total, "errors": errors})
-            if central_noise_filter.is_real_signal("tool_error_rate", rate > _TOOL_ERROR_RATE):
+            if rate <= _TOOL_ERROR_RATE:
+                # SELV-LØSENDE MODPART (25/9-2026): fejlraten er under tærsklen igen → luk
+                # sagen. Uden den stod `tools/outcome` uløst fra 17:24 mens den målte rate
+                # var 0,00% — samme hul som sektion A/D/K havde, og samme fejlklasse: en
+                # TILSTAND der er væk, men en sag der bliver stående og farver Centralen gul.
+                _clear_flag("tools", "outcome")
+            elif central_noise_filter.is_real_signal("tool_error_rate", True):
                 flags.append(_raise_flag(
                     "tools", "outcome", severity="error",
                     message=f"Tool-fejlrate {rate*100:.0f}% ({errors}/{total} seneste kald)",

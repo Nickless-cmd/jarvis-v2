@@ -166,6 +166,99 @@ def test_expire_stale_incidents_is_self_safe(monkeypatch):
     assert expire_stale_incidents() == 0
 
 
+def test_expire_run_bound_incidents_closes_terminal_runs(isolated_runtime):
+    """En gate der fyrede i et AFSLUTTET run er et ØJEBLIK, ikke en åben sag. Målt 25/9-2026:
+    alle fire run-bundne error-incidents pegede på runs med `finished_at` sat — de farvede
+    «nu» for forløb der var slut for timer siden. Lukningen er knyttet til runnets livscyklus,
+    ikke til et tidsvindue."""
+    from core.runtime.db_central_incidents import (
+        expire_run_bound_incidents, list_central_incidents, record_central_incident,
+    )
+    from core.runtime.db_core import connect
+
+    done = record_central_incident(cluster="proactivity", nerve="r2_5_gate",
+                                   kind="gate_fired", severity="error",
+                                   message="gate i afsluttet run", run_id="r-done")
+    running = record_central_incident(cluster="proactivity", nerve="r2_5_gate",
+                                      kind="gate_fired", severity="error",
+                                      message="gate i kørende run", run_id="r-live")
+    sec = record_central_incident(cluster="privacy", nerve="leak", kind="gate_fired",
+                                  severity="severe", message="lækage", run_id="r-done")
+    orphan = record_central_incident(cluster="loop", nerve="x", kind="looped",
+                                     severity="error", message="intet run")
+
+    with connect() as conn:
+        # `isolated_runtime` opretter allerede visible_runs med det RIGTIGE skema (11
+        # kolonner, `ensure_visible_tables`) — vi indsætter derfor med kolonnenavne.
+        conn.execute(
+            "INSERT INTO visible_runs (run_id, lane, provider, model, status, finished_at) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            ("r-done", "visible", "p", "m", "completed", "2026-09-25T10:00:00+00:00"))
+        # KØRENDE run har finished_at = '' i virkeligheden (kolonnen er NOT NULL) — ikke
+        # NULL. Testen skal matche virkeligheden, ellers passerer den selv om et `IS NOT
+        # NULL`-predikat ville lukke sager midt i et levende forløb. Målt 25/9-2026.
+        conn.execute(
+            "INSERT INTO visible_runs (run_id, lane, provider, model, status, finished_at) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            ("r-live", "visible", "p", "m", "running", ""))
+
+    assert expire_run_bound_incidents() == 1
+
+    unresolved = {r["id"] for r in list_central_incidents(unresolved_only=True, limit=100)}
+    assert done not in unresolved     # runnet er slut → lukket
+    assert running in unresolved      # runnet kører stadig → står
+    assert sec in unresolved          # SECURITY-RED → ALDRIG auto-lukket
+    assert orphan in unresolved       # intet run_id → urørt af denne funktion
+
+
+def test_expire_orphan_incidents_closes_old_keeps_fresh_and_run_bound(isolated_runtime):
+    """En incident UDEN run-tilknytning kan ikke knyttes til noget levende. Målt 25/9-2026:
+    `turn_without_reply` — en kind der ikke længere skrives af nogen kode — stod fra i går
+    og farvede «nu». En gentaget fejl bumpes og er frisk; derfor et kort vindue."""
+    from datetime import UTC, datetime, timedelta
+
+    from core.runtime.db_central_incidents import (
+        expire_orphan_incidents, list_central_incidents, record_central_incident,
+    )
+    from core.runtime.db_core import connect
+
+    old = record_central_incident(cluster="runtime", nerve="silent_cutoff",
+                                  kind="turn_without_reply", severity="error",
+                                  message="tavs tur i går")
+    fresh = record_central_incident(cluster="runtime", nerve="silent_cutoff",
+                                    kind="turn_without_reply", severity="error",
+                                    message="tavs tur nu")
+    bound = record_central_incident(cluster="loop", nerve="x", kind="looped",
+                                    severity="error", message="har run", run_id="r1")
+    sec = record_central_incident(cluster="privacy", nerve="leak", kind="flag",
+                                  severity="severe", message="lækage")
+
+    old_ts = (datetime.now(UTC) - timedelta(hours=9)).isoformat()
+    with connect() as conn:
+        # `sec` får OGSÅ gammel ts: så severe-værnet er det ENESTE der holder den åben, og
+        # testen fejler hvis værnet fjernes. Ellers målte den det lette.
+        conn.execute("UPDATE central_incidents SET ts = ? WHERE id IN (?, ?)",
+                     (old_ts, old, sec))
+
+    assert expire_orphan_incidents(older_than_hours=6.0) == 1
+
+    unresolved = {r["id"] for r in list_central_incidents(unresolved_only=True, limit=100)}
+    assert old not in unresolved      # forældreløs og gammel → lukket
+    assert fresh in unresolved        # fersk → stadig synlig
+    assert bound in unresolved        # har run_id → urørt af denne funktion
+    assert sec in unresolved          # SECURITY-RED → ALDRIG auto-lukket
+
+
+def test_expire_lifecycle_incidents_are_self_safe(monkeypatch):
+    from core.runtime.db_central_incidents import (
+        expire_orphan_incidents, expire_run_bound_incidents,
+    )
+    monkeypatch.setattr("core.runtime.db_central_incidents.connect",
+                        lambda: (_ for _ in ()).throw(RuntimeError("db nede")))
+    assert expire_run_bound_incidents() == 0
+    assert expire_orphan_incidents() == 0
+
+
 def test_has_unresolved_message_dedup(isolated_runtime):
     from core.runtime.db_central_incidents import (
         record_central_incident, has_unresolved_message, resolve_central_incidents,

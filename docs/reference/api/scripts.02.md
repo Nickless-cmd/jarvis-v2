@@ -29,7 +29,7 @@ _jarvis_bare practice runner — stripped-bare interlanguage expression generato
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_call_model` | `(prompt, *, timeout=…)` | Call deepseek-v4-flash:cloud via local Ollama. Returns text or None. | [src](../../../scripts/jarvis_bare_practice_runner.py#L64) |
+| function | `_call_model` | `(prompt, *, timeout=…)` | Call deepseek-v4.1-flash:cloud via local Ollama. Returns text or None. | [src](../../../scripts/jarvis_bare_practice_runner.py#L64) |
 | function | `_build_bare_prompt` | `()` | Build the minimal bare prompt: system line + protocol + instruction. | [src](../../../scripts/jarvis_bare_practice_runner.py#L118) |
 | function | `_preflight_check` | `()` | Run a quick model ping before starting the loop. | [src](../../../scripts/jarvis_bare_practice_runner.py#L150) |
 | function | `_ping_model` | `()` | Quick ping to verify model is reachable. Returns True if OK. | [src](../../../scripts/jarvis_bare_practice_runner.py#L176) |
@@ -214,7 +214,7 @@ _Peer model adapters for interlanguage validation experiment._
 | function | `_generate_claude` | `(prompt)` | Claude Sonnet 4.6 via GitHub Copilot. | [src](../../../scripts/peer_models.py#L34) |
 | function | `_ollama_chat` | `(model, prompt, *, timeout=…)` | POST mod localhost Ollama /api/chat — virker for cloud-modeller routet via Ollama. | [src](../../../scripts/peer_models.py#L62) |
 | function | `_generate_glm` | `(prompt)` | GLM 5.1 via lokal Ollama cloud-route. | [src](../../../scripts/peer_models.py#L80) |
-| function | `_generate_ollama_local` | `(prompt)` | deepseek-v4-flash:cloud via lokal Ollama (samme model som Jarvis). | [src](../../../scripts/peer_models.py#L85) |
+| function | `_generate_ollama_local` | `(prompt)` | deepseek-v4.1-flash:cloud via lokal Ollama (samme model som Jarvis). | [src](../../../scripts/peer_models.py#L85) |
 | function | `_generate_random` | `(prompt)` | Random baseline — bruger generate_state_expression() uden mood-bias. | [src](../../../scripts/peer_models.py#L99) |
 | function | `generate` | `(prompt, peer_id)` | Dispatch til peer-specific adapter. Raise ValueError ved ukendt peer. | [src](../../../scripts/peer_models.py#L123) |
 

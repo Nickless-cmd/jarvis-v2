@@ -230,9 +230,18 @@ def _ryd_visible_drift(enforced: bool) -> int:
     try:
         graense = _drift_graense().isoformat()
         with connect() as conn:
+            # To tilstande, samme fravaers-bevis (25/9-2026):
+            #  * `running` uden `finished_at` — processen doede midt i koerslen.
+            #  * `recovering` MED `finished_at` — koerslen blev afbrudt og skulle
+            #    genoptages, men genoptagelsen sker under et NYT run_id, saa den
+            #    gamle raekke blev aldrig roert. Maalt: 83 saadanne, hvoraf 76 var
+            #    helt væk fra journalen. `stamp_visible_run_interrupted` rammer
+            #    dem ikke (den kraever 'running'), saa uden denne gren stod de
+            #    for evigt.
             raekker = conn.execute(
-                "SELECT run_id FROM visible_runs WHERE status = 'running' "
-                "AND (finished_at IS NULL OR finished_at = '') "
+                "SELECT run_id, status FROM visible_runs WHERE "
+                "((status = 'running' AND (finished_at IS NULL OR finished_at = '')) "
+                " OR (status = 'recovering')) "
                 "AND started_at < ? LIMIT 200",
                 (graense,),
             ).fetchall()
@@ -253,9 +262,16 @@ def _ryd_visible_drift(enforced: bool) -> int:
             "rydder ingen visible-drift denne gang: %s", exc)
         return 0
 
-    drift = [str(r[0]) for r in raekker if str(r[0]) and str(r[0]) not in kendte]
+    # (run_id, status) for de rækker ingen proces kender. Status bæres med, fordi
+    # de to tilstande skal lukkes FORSKELLIGT: en `running`-række døde midt i
+    # kørslen, mens en `recovering`-række blev genoptaget under et andet run_id.
+    drift = [
+        (str(r[0]), str(r[1] if len(r) > 1 else "running"))
+        for r in raekker
+        if str(r[0]) and str(r[0]) not in kendte
+    ]
     if enforced:
-        for rid in drift:
+        for rid, status in drift:
             try:
                 # `visible_runs` FØRST. Importen af `visible_runs_outcomes` er
                 # cirkulær: outcomes importerer visible_runs, og visible_runs
@@ -270,9 +286,19 @@ def _ryd_visible_drift(enforced: bool) -> int:
                 import core.services.visible_runs  # noqa: F401
                 from core.services.visible_runs_outcomes import (
                     stamp_visible_run_interrupted,
+                    stamp_visible_run_superseded,
                 )
-                stamp_visible_run_interrupted(
-                    rid, reason="proces doede uden at afslutte koerslen")
+                if status == "recovering":
+                    # Kørslen blev afbrudt og genoptaget under et NYT run_id
+                    # (målt 25/9-2026: «genoptog visible-1eb18b… som run
+                    # visible-ddcc9dea…»). Den gamle række er forældreløs og
+                    # skal LUKKES, ikke stemples «død» — den døde ikke, den blev
+                    # afløst.
+                    stamp_visible_run_superseded(
+                        rid, reason="genoptaget under et andet run_id")
+                else:
+                    stamp_visible_run_interrupted(
+                        rid, reason="proces doede uden at afslutte koerslen")
             except Exception as exc:
                 # Tavs slugning her gjorde netop DENNE fejl usynlig: importen
                 # af `visible_runs_outcomes` er cirkulaer og kan fejle hvis

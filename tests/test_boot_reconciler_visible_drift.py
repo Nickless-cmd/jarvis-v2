@@ -28,7 +28,7 @@ from core.services import session_boot_reconciler as sbr
 @pytest.fixture
 def _lager(monkeypatch):
     """Byt både databasen og in_flight-lageret ud."""
-    tilstand: dict = {"raekker": [], "kendte": {}, "stemplet": []}
+    tilstand: dict = {"raekker": [], "kendte": {}, "stemplet": [], "afloest": []}
 
     class _Cursor:
         def __init__(self, raekker): self._r = raekker
@@ -48,16 +48,50 @@ def _lager(monkeypatch):
     import core.services.visible_runs_outcomes as vro
     monkeypatch.setattr(vro, "stamp_visible_run_interrupted",
                         lambda rid, reason="": tilstand["stemplet"].append((rid, reason)))
+    monkeypatch.setattr(vro, "stamp_visible_run_superseded",
+                        lambda rid, reason="": tilstand["afloest"].append((rid, reason)))
     return tilstand
 
 
 def test_raekke_som_INTET_kender_stemples(_lager):
     """Hele pointen: `in_flight_runs` ved intet, altså streamer ingen den."""
-    _lager["raekker"] = [("autonomous-zombie",)]
+    _lager["raekker"] = [("autonomous-zombie", "running")]
     _lager["kendte"] = {}
     assert sbr._ryd_visible_drift(True) == 1
     assert _lager["stemplet"] == [
         ("autonomous-zombie", "proces doede uden at afslutte koerslen")]
+
+
+def test_recovering_raekke_LUKKES_ikke_stemples_doed(_lager):
+    """Et run der blev genoptaget under et ANDET run_id er ikke dødt — det er
+    afløst. Målt 25/9-2026: 83 rækker stod `recovering` med `finished_at` sat,
+    og 76 af dem fandtes slet ikke i journalen. `stamp_visible_run_interrupted`
+    rammer dem ikke (den kræver med vilje `running`), så de stod for evigt."""
+    _lager["raekker"] = [("visible-afloest", "recovering")]
+    _lager["kendte"] = {}
+    assert sbr._ryd_visible_drift(True) == 1
+    assert _lager["afloest"] == [
+        ("visible-afloest", "genoptaget under et andet run_id")]
+    assert _lager["stemplet"] == [], "en genoptaget koersel er ikke doed"
+
+
+def test_begge_tilstande_ryddes_i_SAMME_sweep(_lager):
+    """Sweepen skal ikke vælge én af dem. `running` og `recovering` er to
+    forskellige skæbner, men samme fraværs-bevis."""
+    _lager["raekker"] = [("zombie", "running"), ("afloest", "recovering")]
+    _lager["kendte"] = {}
+    assert sbr._ryd_visible_drift(True) == 2
+    assert _lager["stemplet"] == [("zombie", "proces doede uden at afslutte koerslen")]
+    assert _lager["afloest"] == [("afloest", "genoptaget under et andet run_id")]
+
+
+def test_recovering_der_ER_kendt_roeres_IKKE(_lager):
+    """En genoptagelse der kører lige nu har en aktiv post — den må ikke lukkes."""
+    _lager["raekker"] = [("visible-genoptages", "recovering")]
+    _lager["kendte"] = {"visible-genoptages": {"run_id": "visible-genoptages",
+                                               "status": "recovering"}}
+    assert sbr._ryd_visible_drift(True) == 0
+    assert _lager["afloest"] == []
 
 
 def test_raekke_der_ER_kendt_roeres_IKKE(_lager):
@@ -72,7 +106,7 @@ def test_raekke_der_ER_kendt_roeres_IKKE(_lager):
 def test_SKYGGE_taeller_men_skriver_ikke(_lager):
     """Samme kontakt som resten af reconcileren. Skygge er hele husets
     fremgangsmaade for en gate der skaerer."""
-    _lager["raekker"] = [("autonomous-zombie",)]
+    _lager["raekker"] = [("autonomous-zombie", "running")]
     _lager["kendte"] = {}
     assert sbr._ryd_visible_drift(False) == 1
     assert _lager["stemplet"] == [], "skygge skrev alligevel"
@@ -111,12 +145,21 @@ def test_taersklen_er_KONSERVATIV():
 def test_forespoergslen_filtrerer_paa_ALDER_og_paa_running():
     """Kilde-vagt. Uden alders-filteret ville en koersel der lige er startet —
     og hvis in_flight-post endnu ikke er skrevet — blive stemplet doed i et
-    kapløb ved opstart."""
+    kapløb ved opstart.
+
+    Også `recovering`: fixturen svarer det samme uanset hvilken SQL der stilles,
+    så kun en kilde-vagt kan se at grenen faktisk findes. Målt 25/9-2026:
+    mutationen der fjernede `OR (status = 'recovering')` blev IKKE fanget —
+    20 passed. Testen målte det lette.
+    """
     import inspect
     kilde = inspect.getsource(sbr._ryd_visible_drift)
     assert "status = 'running'" in kilde
     assert "started_at < ?" in kilde
     assert "finished_at IS NULL OR finished_at = ''" in kilde
+    assert "status = 'recovering'" in kilde, \
+        "recovering-grenen er væk — rækkerne står for evigt (målt: 83 stk.)"
+    assert "stamp_visible_run_superseded" in kilde
 
 
 # ------------------------------------------ sweepen skal faktisk KALDES
@@ -280,7 +323,7 @@ def test_opslaget_bruger_FAKTISK_graensen(_lager, monkeypatch):
     from datetime import UTC, datetime
     valgt = datetime(2026, 9, 16, 13, 39, tzinfo=UTC)
     monkeypatch.setattr(sbr, "_drift_graense", lambda *a, **kw: valgt)
-    _lager["raekker"] = [("autonomous-zombie",)]
+    _lager["raekker"] = [("autonomous-zombie", "running")]
     _lager["kendte"] = {}
     sbr._ryd_visible_drift(True)
     assert _lager["sidste_parametre"] == (valgt.isoformat(),)

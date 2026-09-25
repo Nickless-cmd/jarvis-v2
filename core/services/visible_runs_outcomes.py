@@ -793,6 +793,57 @@ def stamp_visible_run_interrupted(run_id: str, *, reason: str = "") -> bool:
     return stemplet
 
 
+def stamp_visible_run_superseded(run_id: str, *, reason: str = "") -> bool:
+    """Luk en ``recovering``-række hvis genoptagelse skete under et andet run_id.
+
+    ## Hullet (målt 25/9-2026)
+
+    Et run der afbrydes midt i skrives til ``visible_runs`` med
+    ``status='recovering'`` OG ``finished_at`` sat: journalen skal kunne
+    genoptage det, men rækken beskriver en kørsel der ER slut. Genoptagelsen
+    sker imidlertid under et NYT run_id (målt i loggen: «genoptog
+    visible-1eb18b… som run visible-ddcc9dea…») — så den gamle række bliver
+    aldrig rørt igen.
+
+    ``stamp_visible_run_interrupted`` kan ikke bruges her: den kræver med vilje
+    ``status='running'``, så et rigtigt udfald ikke kan overskrives. ``recovering``
+    er ikke terminal — men den er heller ikke «i gang».
+
+    Målt: 83 rækker stod ``recovering`` med ``finished_at`` sat, jævnt fordelt
+    over ni dage (4–17 pr. dag) — og **76 af dem fandtes slet ikke i journalen**
+    længere. Kun to havde en aktiv post. Uden denne vej er ``recovering`` en
+    blindgyde i tabellen.
+
+    ``interrupted`` er det ærlige svar: kørslen blev afbrudt, og resten lever i
+    journalen under et andet run_id. ``settlement_shadow`` normaliserer allerede
+    ``recovering`` → ``interrupted``, så de to lag siger nu det samme.
+
+    Rører ALDRIG ``finished_at`` eller ``error`` — begge er allerede sat og
+    sande. Kalderen afgør om rækken er forældreløs; denne funktion stempler
+    kun. Self-safe: kaster aldrig.
+    """
+    rid = str(run_id or "").strip()
+    if not rid:
+        return False
+    try:
+        with connect() as conn:
+            cur = conn.execute(
+                "UPDATE visible_runs SET status = 'interrupted' "
+                "WHERE run_id = ? AND status = 'recovering'",
+                (rid,),
+            )
+            stemplet = bool(cur.rowcount)
+    except Exception:
+        logger.debug(
+            "kunne ikke lukke foraeldet recovering-raekke %s", rid, exc_info=True)
+        return False
+    if stemplet:
+        logger.info(
+            "visible_runs: %s stod 'recovering' uden en post i journalen — "
+            "stemplet 'interrupted' (%s)", rid, str(reason or "")[:120])
+    return stemplet
+
+
 def _persist_visible_run_outcome(
     run: "_vr.VisibleRun",
     *,

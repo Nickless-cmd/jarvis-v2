@@ -85,16 +85,21 @@ describe('RaekkeTranskript', () => {
     const runde = container.querySelector('.rv-arbejdsknap')!
     expect(runde).toHaveAttribute('data-koerer')
     expect(runde.querySelector('.rv-arbejdsikon')).toBeInTheDocument()
-    expect(runde.querySelector('.rv-turC svg')).toHaveAttribute('width', '20')
+    expect(runde.querySelector('.rv-arbejdsfortaelling')).toHaveClass('shimmer')
+    expect(runde.querySelector('.rv-turC svg')).toHaveAttribute('width', '18')
     expect(container.querySelector('.rv-tur')).toHaveAttribute('data-koerer')
-    expect(container.querySelector('.rv-turC svg')).toHaveAttribute('width', '20')
+    expect(container.querySelector('.rv-turTekst')).toHaveClass('shimmer')
+    expect(container.querySelector('.rv-turC svg')).toHaveAttribute('width', '18')
+    // En række-overlay tegnede en stor grå firkant efter "Working…".
+    const css = readFileSync(resolve(__dirname, '../../styles/raekkevisning.css'), 'utf8')
+    expect(css).not.toMatch(/\.rv-(?:r|tur|arbejdsknap)\[data-koerer\]::after/)
     rerender(<RaekkeTranskript blocks={[
       statusKald('read_file', { path: 'app.ts' }, 'done'), tekst('Svar.'),
     ]} streaming={false} />)
     expect(container.querySelector('.rv-tur')).not.toHaveAttribute('data-koerer')
     fireEvent.click(container.querySelector('.rv-tur')!)
     expect(container.querySelector('.rv-arbejdsknap')).not.toHaveAttribute('data-koerer')
-    expect(container.querySelector('.rv-r .rv-chev svg')).toHaveAttribute('width', '20')
+    expect(container.querySelector('.rv-r .rv-chev svg')).toHaveAttribute('width', '18')
   })
 
   it('holder billedrækken åben og viser lightbox uden for rækken ved klik', async () => {
@@ -174,6 +179,7 @@ describe('RaekkeTranskript', () => {
     expect(container.querySelectorAll('.rv-arbejdsrunde')).toHaveLength(1)
     expect(container.querySelector('.rv-arbejdsknap')?.textContent).toContain('Læser app.ts')
     expect(container.querySelector('.rv-arbejdsknap svg')).toHaveClass('lucide-file-text')
+    expect(container.querySelector('.rv-arbejdsknap')).toHaveAttribute('data-koerer')
     expect(container.querySelector('.rv-arbejdsfortaelling')).toHaveClass('shimmer')
     expect(container.querySelector('.rv-arbejdsknap')?.textContent).not.toContain('Jarvis arbejder')
     rerender(<RaekkeTranskript blocks={[
@@ -199,7 +205,25 @@ describe('RaekkeTranskript', () => {
       { type: 'tool_use', id: 'r1', name: 'read_file', input: { path: 'src/app.ts' }, status: 'done' },
     ]} streaming />)
     expect(container.querySelector('.rv-arbejdsknap')?.textContent).toContain('Læste app.ts')
-    expect(container.querySelector('.rv-arbejdsfortaelling')).not.toHaveClass('shimmer')
+    // Værktøjet er færdigt, men Jarvis er stadig i samme runde.
+    expect(container.querySelector('.rv-arbejdsknap')).toHaveAttribute('data-koerer')
+    rerender(<RaekkeTranskript blocks={[
+      { type: 'tool_use', id: 'r1', name: 'read_file', input: { path: 'src/app.ts' }, status: 'done' },
+    ]} streaming={false} />)
+    fireEvent.click(container.querySelector('.rv-tur')!)
+    expect(container.querySelector('.rv-arbejdsknap')).not.toHaveAttribute('data-koerer')
+  })
+
+  it('flytter shimmeren til den nye arbejdsrunde', () => {
+    const { container } = render(<RaekkeTranskript blocks={[
+      statusKald('read_file', { path: 'første.ts' }, 'done'),
+      tekst('Nu retter jeg filen.'),
+      statusKald('edit_file', { path: 'første.ts' }, 'running'),
+    ]} streaming />)
+    const runder = container.querySelectorAll('.rv-arbejdsrunde')
+    expect(runder).toHaveLength(2)
+    expect(runder[0]?.querySelector('.rv-arbejdsknap')).not.toHaveAttribute('data-koerer')
+    expect(runder[1]?.querySelector('.rv-arbejdsknap')).toHaveAttribute('data-koerer')
   })
 
   it('skifter fra løbende handling til modelens rundeopsummering', () => {
@@ -213,7 +237,7 @@ describe('RaekkeTranskript', () => {
     ]} streaming rundeEtiketter={{ 'read_file-1': 'Fandt fejlen i filen' }} />)
     expect(container.querySelector('.rv-arbejdsknap')?.textContent).toContain('Fandt fejlen i filen')
     expect(container.querySelector('.rv-arbejdsknap')?.textContent).not.toContain('Læser app.ts')
-    expect(container.querySelector('.rv-arbejdsfortaelling')).not.toHaveClass('shimmer')
+    expect(container.querySelector('.rv-arbejdsknap')).not.toHaveAttribute('data-koerer')
   })
 
   it('viser gemt rundeopsummering efter genindlæsning', () => {

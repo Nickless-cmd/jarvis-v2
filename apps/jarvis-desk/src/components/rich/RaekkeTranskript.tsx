@@ -49,8 +49,8 @@ function foersteLinje(s: string): string {
  *  (DisclosureRow.tsx:68: `leading = open ? <Chevron/> : icon`). */
 function FoldPil({ aaben }: { aaben: boolean }) {
   return aaben
-    ? <ChevronDown size={20} strokeWidth={1.75} />
-    : <ChevronRight size={20} strokeWidth={1.75} />
+    ? <ChevronDown size={18} strokeWidth={1.75} />
+    : <ChevronRight size={18} strokeWidth={1.75} />
 }
 
 function Syntese({ tekst, streaming }: { tekst: string; streaming: boolean }) {
@@ -160,7 +160,7 @@ function Raekke({
             {/* Mens raekken koerer foelger teksten ENDEN — ellers ser man kun
                 begyndelsen af en lang tanke, og raekken virker doed. */}
             <span className="rv-sum" {...(koerer ? { 'data-foelg-ende': '' } : {})}>
-              <span className="rv-sumT">{sum}</span>
+              <span className={`rv-sumT${koerer ? ' shimmer' : ''}`}>{sum}</span>
             </span>
           </>
         ) : <span className="rv-sum" />}
@@ -272,10 +272,12 @@ function Element({ e, streaming, config, beskedId }: {
 }
 
 function Arbejdsrunde({
-  elementer, streaming, config, rundeEtiketter, beskedId,
+  elementer, streaming, sidste, harSvar, config, rundeEtiketter, beskedId,
 }: {
   elementer: ArbejdsElement[]
   streaming: boolean
+  sidste: boolean
+  harSvar: boolean
   config?: ApiConfig
   beskedId?: string
   rundeEtiketter: Record<string, string>
@@ -290,6 +292,9 @@ function Arbejdsrunde({
   const seneste = vaerktoejer[vaerktoejer.length - 1]
   const diff = summerDiff(vaerktoejer)
   const koerer = Boolean(seneste && streaming && (seneste.status ?? 'running') === 'running')
+  // Et afsluttet kald afslutter ikke nødvendigvis Jarvis' arbejdsrunde. Hold
+  // den sidste fortælling levende indtil en ny sektion eller svaret begynder.
+  const visShimmer = streaming && sidste && (koerer || !harSvar)
   const etiket = [...vaerktoejer].reverse().map((t) => rundeEtiketter[t.id]).find(Boolean)
   const mekanisk = summarizeRound(vaerktoejer)
   // Under udførelse: Jarvis' `description` eller den aktuelle handling.
@@ -298,8 +303,7 @@ function Arbejdsrunde({
   // Bjørn 24/9-2026: «det er bare <færdig> der ikk passer ind». Linjen bar før
   // et «Færdig · »-præfiks foran den mekaniske tekst, sat ind for at skelne en
   // afsluttet runde fra en kørende. Ordet var et fremmedelement i en linje der
-  // ellers er ren handling — og skelnen findes allerede: shimmeret kører kun
-  // mens runden er i gang, og pladsen i transskriptet siger resten.
+  // ellers er ren handling — og skelnen findes allerede i shimmeren.
   const beskrivelse = koerer && seneste
     ? describeTool(seneste.name, seneste.input, true, seneste.partialJson, seneste.result, seneste.status)
     : etiket || mekanisk
@@ -307,10 +311,10 @@ function Arbejdsrunde({
   return (
     <div className="rv-arbejdsrunde">
       <button type="button" ref={foldRef} className="rv-arbejdsknap" aria-expanded={aaben}
-        {...(koerer ? { 'data-koerer': '' } : {})}
+        {...(visShimmer ? { 'data-koerer': '' } : {})}
         onClick={() => { huskFold(); setAaben((v) => !v) }}>
         <Ikon className="rv-arbejdsikon" size={17} strokeWidth={1.8} aria-hidden="true" />
-        <span className={`rv-arbejdsfortaelling${koerer ? ' shimmer' : ''}`}>{beskrivelse}</span>
+        <span className={`rv-arbejdsfortaelling${visShimmer ? ' shimmer' : ''}`}>{beskrivelse}</span>
         {diff && <span className="rv-diffstat" aria-label={`Tilføjet ${diff.add} linjer, fjernet ${diff.del} linjer`}>
           <span className="git-add">+{diff.add}</span> <span className="git-del">−{diff.del}</span>
         </span>}
@@ -356,9 +360,6 @@ function RaekkeTranskriptImpl({
             {...(streaming && aabenManuelt === null ? { 'data-koerer': '' } : {})}
             onClick={() => { huskFold(); setAabenManuelt(!aaben) }}
           >
-            {/* `shimmer` er desks egen regel (app.css) — 2.25s, pinned 1:1 mod
-                Claude Desktop af tokens.test.ts. Vi laaner den, vi laver ikke
-                en ny. Kun mens der faktisk arbejdes. */}
             {streaming && aabenManuelt === null
               ? <span className="rv-turTekst shimmer">Working…</span>
               : <span className="rv-turTekst">{turFortalt(familier, kald, sekunder)}</span>}
@@ -369,6 +370,7 @@ function RaekkeTranskriptImpl({
               if (s.slags === 'syntese') return <Syntese key={i} tekst={s.tekst} streaming={streaming} />
               if (s.slags === 'enkelt') return <Element key={i} e={s.element} streaming={streaming} config={config} beskedId={beskedId} />
               return <Arbejdsrunde key={i} elementer={s.elementer} streaming={streaming}
+                sidste={i === sektioner.length - 1} harSvar={svar.length > 0}
                 config={config} rundeEtiketter={etiketter} beskedId={beskedId} />
             })}
           </div>

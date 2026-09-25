@@ -88,6 +88,23 @@ def test_relation_dynamics_reports_trend_and_prompt(monkeypatch, tmp_path):
 
 
 def test_self_mutation_lineage_records_and_surfaces(tmp_path, monkeypatch):
+    """Stien UDLEDES af projektroden — den maa ikke hardkodes.
+
+    Testen stod med `target_path="/media/projects/jarvis-v2/core/services/..."`.
+    `_categorize_path` goer `Path(p).resolve().relative_to(_PROJECT_ROOT)` og
+    returnerer `None` paa `ValueError`; `record_self_mutation` returnerer saa
+    TAVST uden at skrive. `_PROJECT_ROOT` er `core.runtime.config.PROJECT_ROOT`
+    laest ved import, altsaa den checkout man koerer fra.
+
+    Maalt 25/9-2026: fra hoved-checkouten gav stien `core-runtime`; fra
+    `.worktrees/spoegelser` gav den `None`, og `mutation_count` var 0. Testen
+    bestod altsaa kun ét sted — og husreglen er at ALT arbejde sker i en
+    worktree, saa den fejlede for enhver der fulgte den.
+
+    Produktionen er uberoert: 1.711 raekker i `self_code_mutations` paa CT105,
+    senest samme dag kl. 18:04. Det var kun testen der pegede paa en sti der
+    ikke fandtes hvor den koerte.
+    """
     from core.runtime import db as runtime_db
     from core.services import self_mutation_lineage as lineage
 
@@ -96,8 +113,10 @@ def test_self_mutation_lineage_records_and_surfaces(tmp_path, monkeypatch):
     monkeypatch.setattr(lineage, "connect", lambda: _sqlite_connect(db_path))
     lineage._table_initialized = False
 
+    maal = str(lineage._PROJECT_ROOT / "core/services/self_mutation_lineage.py")
+
     lineage.record_self_mutation(
-        target_path="/media/projects/jarvis-v2/core/services/self_mutation_lineage.py",
+        target_path=maal,
         change_type="edit-staged",
         session_id="sess-1",
     )
@@ -109,6 +128,50 @@ def test_self_mutation_lineage_records_and_surfaces(tmp_path, monkeypatch):
     assert surface["recent_mutations"][0]["category"] == "core-runtime"
     assert surface["recent_mutations"][0]["path"].endswith("core/services/self_mutation_lineage.py")
     assert lines and "edit-staged" in lines[0]
+
+
+def test_en_sti_uden_for_projektet_droppes_TAVST(tmp_path, monkeypatch):
+    """Den tavshed er med vilje — men den var usynlig, og det kostede.
+
+    `record_self_mutation` skal IKKE registrere filer der ikke er hans egne;
+    `_categorize_path` giver `None`, og kaldet returnerer uden at skrive.
+    Rigtigt i drift — men det er ogsaa praecis den sti en forkert test faldt
+    ned i, uden at nogen kunne se hvorfor. Her er den maalt, saa den naeste
+    der undrer sig kan laese den.
+    """
+    from core.runtime import db as runtime_db
+    from core.services import self_mutation_lineage as lineage
+
+    db_path = tmp_path / "jarvis.db"
+    monkeypatch.setattr(runtime_db, "connect", lambda: _sqlite_connect(db_path))
+    monkeypatch.setattr(lineage, "connect", lambda: _sqlite_connect(db_path))
+    lineage._table_initialized = False
+
+    assert lineage._categorize_path("/etc/passwd") is None
+
+    lineage.record_self_mutation(
+        target_path="/etc/passwd",
+        change_type="edit-staged",
+        session_id="sess-1",
+    )
+    assert lineage.build_self_mutation_lineage_surface(limit=5)["mutation_count"] == 0
+
+
+def test_projektroden_er_den_checkout_der_koeres_fra():
+    """Vagten mod at en absolut sti sniger sig ind igen.
+
+    `_PROJECT_ROOT` laeses ved import. En test der hardkoder en anden checkout
+    maaler sin egen forudsaetning frem for koden.
+    """
+    import pathlib
+
+    from core.services import self_mutation_lineage as lineage
+
+    rod = pathlib.Path(lineage._PROJECT_ROOT)
+    assert (rod / "core" / "services" / "self_mutation_lineage.py").exists(), (
+        f"_PROJECT_ROOT ({rod}) peger ikke paa den checkout testen koerer i"
+    )
+    assert lineage._categorize_path(lineage.__file__) == "core-runtime"
 
 
 def test_staged_edits_stage_list_commit_and_discard(tmp_path, monkeypatch):

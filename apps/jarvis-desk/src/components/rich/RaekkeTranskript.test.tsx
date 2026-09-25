@@ -78,6 +78,25 @@ describe('underagent-rækken', () => {
 })
 
 describe('RaekkeTranskript', () => {
+  it('har læsbare foldpile og lader aktive rækkers ikoner følge shimmeren', () => {
+    const { container, rerender } = render(<RaekkeTranskript blocks={[
+      statusKald('read_file', { path: 'app.ts' }, 'running'), tekst('Svar.'),
+    ]} streaming />)
+    const runde = container.querySelector('.rv-arbejdsknap')!
+    expect(runde).toHaveAttribute('data-koerer')
+    expect(runde.querySelector('.rv-arbejdsikon')).toBeInTheDocument()
+    expect(runde.querySelector('.rv-turC svg')).toHaveAttribute('width', '20')
+    expect(container.querySelector('.rv-tur')).toHaveAttribute('data-koerer')
+    expect(container.querySelector('.rv-turC svg')).toHaveAttribute('width', '20')
+    rerender(<RaekkeTranskript blocks={[
+      statusKald('read_file', { path: 'app.ts' }, 'done'), tekst('Svar.'),
+    ]} streaming={false} />)
+    expect(container.querySelector('.rv-tur')).not.toHaveAttribute('data-koerer')
+    fireEvent.click(container.querySelector('.rv-tur')!)
+    expect(container.querySelector('.rv-arbejdsknap')).not.toHaveAttribute('data-koerer')
+    expect(container.querySelector('.rv-r .rv-chev svg')).toHaveAttribute('width', '20')
+  })
+
   it('holder billedrækken åben og viser lightbox uden for rækken ved klik', async () => {
     const fetchMock = vi.fn(async (_url: string) => new Response(new Blob([new Uint8Array([1])]), { status: 200 }))
     vi.stubGlobal('fetch', fetchMock)

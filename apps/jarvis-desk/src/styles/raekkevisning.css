@@ -95,8 +95,9 @@
    >»). Boksens bredde holdes UÆNDRET, så rækkens højde og tekstens kant ikke
    rykker sig ved skiftet. */
 .raekkevisning .rv-chev {
-  flex: none; margin-left: 8px; width: 14px;
+  flex: none; margin-left: 4px; width: 20px;
   display: flex; align-items: center; justify-content: center;
+  position: relative; top: 2px;
   color: var(--fg-3); transition: color 100ms ease;
 }
 .raekkevisning .rv-r[data-foldbar] { cursor: pointer; }
@@ -171,7 +172,8 @@
 .raekkevisning .rv-turC {
   /* `flex: none` som arbejdsknappen allerede havde: uden den kan ikonet
      klemmes fladt når turens tekst er lang. */
-  flex: none; display: flex; width: 16px; align-items: center; justify-content: center;
+  flex: none; display: flex; width: 20px; align-items: center; justify-content: center;
+  position: relative; top: 2px;
   color: var(--fg-3);
 }
 .raekkevisning .rv-gruppe {
@@ -196,6 +198,25 @@
 }
 .raekkevisning .rv-arbejdsknap .rv-diffstat { flex: none; font-size: 12px; white-space: nowrap; }
 .raekkevisning .rv-arbejdsknap .rv-turC { flex: none; }
+
+/* Tekstens lysstribe passerer også gennem rækkens ikoner. Lucide tegner med
+   SVG-stroke, så text-clip fra .shimmer kan ikke ramme dem; en animeret maske
+   giver samme retning og varighed uden at male en flade bag ikonet. */
+.raekkevisning .rv-arbejdsknap[data-koerer] .rv-arbejdsikon,
+.raekkevisning .rv-arbejdsknap[data-koerer] .rv-turC svg,
+.raekkevisning .rv-tur[data-koerer] .rv-turC svg,
+.raekkevisning .rv-r[data-koerer] .rv-ikon svg,
+.raekkevisning .rv-r[data-koerer] .rv-chev svg {
+  color: var(--fg-2);
+  -webkit-mask-image: linear-gradient(90deg, rgba(0,0,0,.45) 30%, #000 50%, rgba(0,0,0,.45) 70%);
+  mask-image: linear-gradient(90deg, rgba(0,0,0,.45) 30%, #000 50%, rgba(0,0,0,.45) 70%);
+  -webkit-mask-size: 220% 100%; mask-size: 220% 100%;
+  animation: rv-ikon-shimmer 2.25s linear infinite;
+}
+@keyframes rv-ikon-shimmer {
+  0% { -webkit-mask-position: 120% 0; mask-position: 120% 0; }
+  100% { -webkit-mask-position: -120% 0; mask-position: -120% 0; }
+}
 .raekkevisning .rv-arbejdsdetaljer {
   display: flex; flex-direction: column; padding: 5px 0 7px 22px;
 }
@@ -452,6 +473,11 @@
 
 @media (prefers-reduced-motion: reduce) {
   .raekkevisning .rv-r[data-koerer]::after { animation: none; }
+  .raekkevisning .rv-arbejdsknap[data-koerer] .rv-arbejdsikon,
+  .raekkevisning .rv-arbejdsknap[data-koerer] .rv-turC svg,
+  .raekkevisning .rv-tur[data-koerer] .rv-turC svg,
+  .raekkevisning .rv-r[data-koerer] .rv-ikon svg,
+  .raekkevisning .rv-r[data-koerer] .rv-chev svg { animation: none; }
   .msg-block[data-just-completed] .raekkevisning .rv-svar,
   .msg-block[data-just-completed] .raekkevisning .rv-turTekst { animation: none; }
 }

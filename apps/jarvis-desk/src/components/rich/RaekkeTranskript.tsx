@@ -49,8 +49,8 @@ function foersteLinje(s: string): string {
  *  (DisclosureRow.tsx:68: `leading = open ? <Chevron/> : icon`). */
 function FoldPil({ aaben }: { aaben: boolean }) {
   return aaben
-    ? <ChevronDown size={12} strokeWidth={1.75} />
-    : <ChevronRight size={12} strokeWidth={1.75} />
+    ? <ChevronDown size={20} strokeWidth={1.75} />
+    : <ChevronRight size={20} strokeWidth={1.75} />
 }
 
 function Syntese({ tekst, streaming }: { tekst: string; streaming: boolean }) {
@@ -307,6 +307,7 @@ function Arbejdsrunde({
   return (
     <div className="rv-arbejdsrunde">
       <button type="button" ref={foldRef} className="rv-arbejdsknap" aria-expanded={aaben}
+        {...(koerer ? { 'data-koerer': '' } : {})}
         onClick={() => { huskFold(); setAaben((v) => !v) }}>
         <Ikon className="rv-arbejdsikon" size={17} strokeWidth={1.8} aria-hidden="true" />
         <span className={`rv-arbejdsfortaelling${koerer ? ' shimmer' : ''}`}>{beskrivelse}</span>
@@ -352,6 +353,7 @@ function RaekkeTranskriptImpl({
         <>
           <button
             type="button" ref={turRef} className="rv-tur" aria-expanded={aaben}
+            {...(streaming && aabenManuelt === null ? { 'data-koerer': '' } : {})}
             onClick={() => { huskFold(); setAabenManuelt(!aaben) }}
           >
             {/* `shimmer` er desks egen regel (app.css) — 2.25s, pinned 1:1 mod

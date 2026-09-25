@@ -211,3 +211,49 @@ Data flyttes med `scripts/migrer_shared_runtime_til_state_store.py` — én gang
 per maskine, FØR genstarten, så den gamle kode stadig kan læse sin egen sti
 imens. Den skriver aldrig oven i en state-fil der har indhold, og lader den
 gamle fil ligge urørt som bagdør.
+
+## De 27 er lukket (Claude, natten til 26/9)
+
+Alle borde fra listen står nu i `liveness_registry._REGISTRY`. Metoden: find
+INSERT-stedet, find den omsluttende funktion, følg kaldene **op** — alias-sikkert,
+altså også `from x import f as _g`. Det skel var ikke pynt: min første måling
+talte kun kald ved navn og meldte otte moduler «aldrig koblet på», som alle var
+koblet på under alias.
+
+Skellet der betyder noget er ikke «tom» vs «ikke tom», men tre ting:
+
+| | antal | betyder |
+|---|---|---|
+| `orphaned` | 11 | der findes ingen vej hvor en række kan opstå |
+| `manual_only` | 6 | kun en bevidst handling skriver |
+| `wired` | 11 | vejen er live; begivenheden er bare ikke sket |
+
+Kun den første er en fejl. `central_rca` er tom fordi ingen har trykket
+`?investigate=1` — og produceren siger selv *«Investigerer IKKE automatisk —
+det er en bevidst handling»*. `research_sources` er tom fordi
+`observe_web_result` returnerer 0 med det samme uden en aktiv research-kørsel.
+Ingen af dem er i stykker.
+
+### Ét fund der er en rigtig fejl
+
+`cheap_lane_quota_observations`. Kæden er live helt ned til
+`_with_quota_observation`, som pakkes om **syv** adaptere og kører ved hvert
+cheap-kald. Men den skriver kun når resultatet indeholder nøglen
+`quota_observation` — og en AST-gennemgang af hele repoet finder ét eneste sted
+hvor nøglen **skrives**: `tests/test_cheap_provider_runtime_adapters.py:16`,
+som fabrikerer sit eget input.
+
+Testen er grøn fordi den måler sit eget opspil. I drift returnerer wrapperen
+uændret hver gang.
+
+At lukke hullet kræver at hver adapter udtrækker kvote-data fra sin udbyders
+svar — rigtigt arbejde pr. udbyder, ikke en tilkobling. Det står noteret i
+koden ved `_with_quota_observation`, og bordet er registreret `orphaned` så det
+ikke tælles som «venter på data».
+
+### En rettelse af min egen første måling
+
+`cognitive_repairs` meldte jeg først som «nul kaldere». Forkert: min søgning
+udelukkede modulets **egen** fil, og `_create_repair` er privat — kalderen bor
+netop dér, to steder i `rupture_repair.py`, og kæden går op i hjerteslaget.
+Den er `wired`.

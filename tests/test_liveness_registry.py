@@ -122,3 +122,77 @@ def test_et_ukendt_modul_er_unclassified_ikke_doedt():
     doede». Et modul der ikke staar her er et spoergsmaal, ikke en dom."""
     from core.services.liveness_registry import classify_module
     assert classify_module("noget_der_ikke_findes")["status"] == "unclassified"
+
+
+# ── Jarvis' audit er lukket (25/9-2026) ─────────────────────────────────────
+
+
+def _auditens_borde() -> set[str]:
+    """Tabelnavnene fra `docs/audits/2026-09-25-tomme-tabeller.md`.
+
+    Læst fra dokumentet frem for kopieret ind: en kopi er et sted mere at
+    glemme, og netop den dublet kostede tre røde tests i `test_cluster_infra`
+    samme dag — anden gang samme fil blev ramt af den.
+    """
+    import pathlib
+    import re
+
+    tekst = pathlib.Path(
+        "docs/audits/2026-09-25-tomme-tabeller.md").read_text(encoding="utf-8")
+    navne = set()
+    for linje in tekst.split("\n"):
+        if not linje.startswith("|"):
+            continue
+        felter = [f.strip().strip("`") for f in linje.split("|")[1:-1]]
+        if len(felter) < 2:
+            continue
+        # Auditens rækker har formen `| tabel | fil.py:linje |` (eller
+        # «INGEN»). Uden det krav talte parseren også ordene fra den
+        # opsummerings-tabel jeg selv skrev i bunden — `orphaned`, `wired`,
+        # `manual_only` ligner alle et tabelnavn. Den fælde fandt sin egen
+        # test med det samme; det er formen der skal måles, ikke kolonne ét.
+        if not re.fullmatch(r"[a-z][a-z0-9_]{3,}", felter[0] or ""):
+            continue
+        andet = felter[1].strip("*` ")
+        if not (re.search(r"\.py:\d+", andet) or andet == "INGEN"):
+            continue
+        navne.add(felter[0])
+    return navne
+
+
+def test_hvert_bord_i_auditen_er_klassificeret():
+    """27 tomme borde. Et uklassificeret bord er et spørgsmål ingen har stillet."""
+    from core.services.liveness_registry import _REGISTRY
+
+    navne = _auditens_borde()
+    assert len(navne) == 27, f"auditen har {len(navne)} borde — er den ændret?"
+    mangler = sorted(navne - set(_REGISTRY))
+    assert not mangler, f"uklassificerede: {mangler}"
+
+
+def test_de_tre_slags_tomhed_holdes_adskilt():
+    """«Tom» er tre forskellige ting, og kun den ene er en fejl."""
+    from core.services.liveness_registry import classify_table
+
+    # Ingen vej til en række: nøglen læses ét sted og skrives kun af en test.
+    assert classify_table("cheap_lane_quota_observations")["status"] == "orphaned"
+    # Kun en bevidst handling: `record_rca` investigerer med vilje ikke selv.
+    assert classify_table("central_rca")["status"] == "manual_only"
+    # Live vej, begivenheden er ikke sket: kræver en aktiv research-kørsel.
+    assert classify_table("research_sources")["status"] == "wired"
+
+
+def test_et_manual_only_bord_er_LEVENDE():
+    """En knap ingen har trykket på er ikke en død tabel."""
+    from core.services.liveness_registry import is_alive
+
+    for bord in ("central_rca", "message_feedback", "cheap_lane_audit"):
+        assert is_alive(bord) is True, bord
+
+
+def test_et_orphaned_bord_er_DOEDT():
+    from core.services.liveness_registry import is_alive
+
+    for bord in ("cadence_idempotency_keys", "runtime_world_facts",
+                 "composer_jarvis_forslag", "cheap_lane_quota_observations"):
+        assert is_alive(bord) is False, bord

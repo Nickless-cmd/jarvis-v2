@@ -389,7 +389,23 @@ def _with_quota_observation(
     auth_profile: str,
     result: dict[str, object],
 ) -> dict[str, object]:
-    """Persist only explicitly normalized quota data returned by an adapter."""
+    """Persist only explicitly normalized quota data returned by an adapter.
+
+    INGEN ADAPTER SAETTER NOEGLEN (maalt 25/9-2026).
+
+    Denne wrapper pakkes om syv adaptere og koerer altsaa ved hvert cheap-kald.
+    Den laeser `result["quota_observation"]` — og en AST-gennemgang af hele
+    repoet finder ét eneste sted hvor noeglen SKRIVES:
+    `tests/test_cheap_provider_runtime_adapters.py:16`, som fabrikerer sit eget
+    input. Testen er groen fordi den maaler sit eget opspil; i drift returnerer
+    wrapperen uaendret hver gang, og `cheap_lane_quota_observations` har nul
+    raekker.
+
+    At lukke hullet kraever at hver adapter udtraekker kvote-data fra sin
+    udbyders svar (rate-limit-headere o.l.) og normaliserer dem hertil — rigtigt
+    arbejde pr. udbyder, ikke en tilkobling. Registreret som `orphaned` i
+    `liveness_registry` indtil da, saa bordet ikke taelles som «venter paa data».
+    """
     observation = result.get("quota_observation")
     if not isinstance(observation, dict):
         return result

@@ -40,6 +40,146 @@ from typing import Any
 
 # table_name -> klassifikation
 _REGISTRY: dict[str, dict[str, Any]] = {
+    # ── De 20 sidste fra Jarvis' audit 25/9-2026 ───────────────────────────
+    #
+    # Metoden: find INSERT-stedet, find den omsluttende funktion, og følg
+    # kaldene OP — alias-sikkert, altså også `from x import f as _g`. Det
+    # skel var ikke pynt: min første maaling talte kun kald ved navn og
+    # meldte otte moduler «aldrig koblet paa», som alle var koblet paa under
+    # alias.
+    #
+    # Skellet der betyder noget er ikke «tom» vs «ikke tom», men:
+    #   orphaned     — der findes ingen vej hvor en raekke kan opstaa
+    #   manual_only  — kun en bevidst menneskelig handling skriver
+    #   wired        — vejen er live; begivenheden er bare ikke sket endnu
+
+    # — Ingen vej til en raekke —
+    "cadence_idempotency_keys": {
+        "status": "orphaned",
+        "producer": "cadence_claims.claim_idempotency_key (nul kaldere nogen steder)",
+        "note": "Defineret paa linje 162 og aldrig naevnt igen — heller ikke i sin egen fil.",
+    },
+    "cheap_lane_quota_observations": {
+        "status": "orphaned",
+        "producer": "db_cheap_lane_control.record_quota_observation",
+        "note": (
+            "Kaeden ER live helt ned til `_with_quota_observation`, som pakkes om "
+            "SYV adaptere og koerer ved hvert cheap-kald. Men den skriver kun naar "
+            "resultatet indeholder noeglen `quota_observation` — og INGEN adapter "
+            "saetter den. Maalt i hele repoet: noeglen skrives ét sted, i "
+            "`tests/test_cheap_provider_runtime_adapters.py:16`, som fabrikerer "
+            "sit eget input. Testen er groen fordi den maaler sit eget opspil. "
+            "At faa raekker kraever at adapterne udtraekker kvote-data fra "
+            "udbydernes svar — rigtigt arbejde pr. udbyder, ikke en tilkobling."
+        ),
+    },
+    "runtime_world_facts": {
+        "status": "orphaned",
+        "producer": "world_facts.record_world_fact (nul kaldere)",
+        "note": (
+            "Hele modulet `core/services/world_facts.py` har ingen brugere. "
+            "Ikke at forveksle med `world_model_signal_tracking`, som lever og "
+            "har sine egne tabeller."
+        ),
+    },
+    "composer_jarvis_forslag": {
+        "status": "orphaned", "producer": "INGEN skrivesti i kilden",
+        "note": "Tabellen findes i den koerende DB; intet sted i koden skriver i den.",
+    },
+    "session_write_leases": {
+        "status": "orphaned", "producer": "INGEN skrivesti i kilden",
+        "note": "Som ovenfor: bord uden nogen der kan daekke det.",
+    },
+    "user_flags": {
+        "status": "orphaned", "producer": "INGEN skrivesti i kilden",
+        "note": "Som ovenfor.",
+    },
+
+    # — Kun en bevidst handling skriver —
+    "central_rca": {
+        "status": "manual_only",
+        "producer": "central_rca.investigate, kun via GET /central/rca?investigate=1 (owner)",
+        "note": (
+            "Cadence-produceren `record_rca` siger det selv: «Investigerer IKKE "
+            "automatisk — det er en bevidst handling». Tom betyder at ingen har "
+            "gravet i en incident endnu, ikke at noget er i stykker."
+        ),
+    },
+    "cheap_lane_admission_state": {
+        "status": "manual_only",
+        "producer": "cheap_lane_admission.set_admission_mode ← cheap_lane_control.apply_control",
+        "note": "Skrives naar nogen aendrer cheap-lanens adgangstilstand.",
+    },
+    "cheap_lane_audit": {
+        "status": "manual_only",
+        "producer": "db_cheap_lane_control.record_cheap_lane_audit ← apply_control",
+        "note": "Samme kilde: en kontrolplan-aendring. Ingen er foretaget endnu.",
+    },
+    "message_feedback": {
+        "status": "manual_only",
+        "producer": "message_feedback.sæt_stemme ← routes/chat.chat_message_feedback",
+        "note": "Tommel op/ned paa et svar. Tom = ingen har stemt.",
+    },
+
+    # — Live vej, begivenheden er bare ikke sket —
+    "agent_schedules": {
+        "status": "wired",
+        "producer": "db_agent_runtime.create_agent_schedule ← agent_runtime_spawn/base",
+    },
+    "cheap_lane_admission_leases": {
+        "status": "wired",
+        "producer": "cheap_lane_admission.acquire_admission ← execute_cheap_lane_via_pool "
+                    "← call_compact_llm (kompaktering, truth-gate)",
+    },
+    "claude_dispatch_audit": {
+        "status": "wired",
+        "producer": "claude_dispatch.audit.start_audit_row ← runner.run_dispatch "
+                    "← _exec_dispatch_to_claude_code",
+        "note": "Vaerktoejet er aldrig blevet brugt.",
+    },
+    "claude_dispatch_budget": {
+        "status": "wired",
+        "producer": "claude_dispatch.budget.check_and_reserve ← samme kaede",
+        "note": "Som ovenfor.",
+    },
+    "cognitive_morning_threads": {
+        "status": "wired",
+        "producer": "session_continuity.generate_morning_thread ← visible_runs._run",
+    },
+    "cognitive_repairs": {
+        "status": "wired",
+        "producer": "rupture_repair._create_repair ← evaluate_ruptures ← hjerteslaget",
+        "note": (
+            "Min foerste maaling sagde «nul kaldere» — den udelukkede modulets "
+            "EGEN fil, og en privat funktions kalder bor der typisk. Den kaldes "
+            "to steder i `rupture_repair.py`."
+        ),
+    },
+    "experiment_broadcast_events": {
+        "status": "wired",
+        "producer": "db_runtime_misc.insert_broadcast_event ← broadcast_daemon._fire_broadcast",
+    },
+    "research_tasks": {
+        "status": "wired",
+        "producer": "research_store.create_tasks ← research_orchestrator.stream_research_run "
+                    "← start_user_run_detached",
+    },
+    "research_sources": {
+        "status": "wired",
+        "producer": "research_store.add_source ← research_evidence_collector.observe_web_result "
+                    "← web-vaerktoejerne",
+        "note": (
+            "`observe_web_result` returnerer 0 med det samme naar `_ACTIVE` er "
+            "tom — den optager KUN under en aktiv research-koersel. Web-soegning "
+            "bruges konstant; research-koersler er ikke startet."
+        ),
+    },
+    "research_steers": {
+        "status": "wired",
+        "producer": "research_store.add_steer ← detached_run",
+        "note": "Som `research_sources`: kraever en aktiv research-koersel.",
+    },
+
     # — Forældreløse/depreceret (un-integrerede ports; afløst af aktive systemer) —
     "cognitive_epistemic_claims": {
         "status": "orphaned", "producer": "epistemics.reconcile_claim (nul callers)",

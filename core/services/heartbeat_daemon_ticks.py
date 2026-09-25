@@ -93,12 +93,6 @@ def tik_indre_daemoner() -> dict[str, int]:
     except Exception:  # taelles frem for at slugges — se docstring
         fejlet += 1
     try:
-        from core.services.day_shape_memory import tick as _day_shape_tick
-        _day_shape_tick(30.0)
-        koert += 1
-    except Exception:  # taelles frem for at slugges — se docstring
-        fejlet += 1
-    try:
         from core.services.thought_thread import tick as _thought_thread_tick
         _thought_thread_tick(30.0)
         koert += 1
@@ -171,12 +165,6 @@ def tik_indre_daemoner() -> dict[str, int]:
     except Exception:  # taelles frem for at slugges — se docstring
         fejlet += 1
     try:
-        from core.services.relation_dynamics import tick as _rel_tick
-        _rel_tick(30.0)
-        koert += 1
-    except Exception:  # taelles frem for at slugges — se docstring
-        fejlet += 1
-    try:
         from core.services.creative_instinct_daemon import tick as _instinct_tick
         _instinct_tick(30.0)
         koert += 1
@@ -213,12 +201,6 @@ def tik_indre_daemoner() -> dict[str, int]:
     except Exception:  # taelles frem for at slugges — se docstring
         fejlet += 1
     try:
-        from core.services.relational_warmth import tick as _warmth_tick
-        _warmth_tick(30.0)
-        koert += 1
-    except Exception:  # taelles frem for at slugges — se docstring
-        fejlet += 1
-    try:
         from core.services.collective_pulse_daemon import tick as _collective_tick
         _collective_tick(30.0)
         koert += 1
@@ -248,5 +230,91 @@ def tik_indre_daemoner() -> dict[str, int]:
         koert += 1
     except Exception:  # taelles frem for at slugges — se docstring
         fejlet += 1
-    logger.debug("indre daemoner: %d koert, %d fejlet", koert, fejlet)
-    return {"koert": koert, "fejlet": fejlet}
+    # Forholdet er per bruger — hans og mit til mig, hendes til hende.
+    # Bjoerns valg 25/9-2026. Arbejdsrummene er de rigtige mennesker; basen har
+    # 257 bruger-raekker, men fem arbejdsrum.
+    brugere = 0
+    try:
+        from core.identity.users import load_users
+        for bruger in load_users():
+            k, f = _tik_for_bruger(bruger.workspace, str(bruger.discord_id or ""))
+            koert += k
+            fejlet += f
+            brugere += 1
+    except Exception as exc:
+        logger.warning("per-bruger daemoner fejlede: %s", exc)
+
+    # Eksperimentelle sansninger. Laa i `tick_count % 2`-afsnittet indtil
+    # 25/9-2026 selv om kommentaren over dem sagde «update on every tick» —
+    # og det afsnit koerer kun naar `act_phase` finder prioriteter.
+    try:
+        from core.services.existential_drift import increment_awareness
+        increment_awareness(seconds=30)
+        koert += 1
+    except Exception:  # taelles frem for at slugges — se docstring
+        fejlet += 1
+    try:
+        from core.services.temporal_body import age_journey
+        age_journey()
+        koert += 1
+    except Exception:  # taelles frem for at slugges — se docstring
+        fejlet += 1
+    try:
+        from core.services.silence_listener import experience_silence
+        experience_silence(duration_seconds=30)
+        koert += 1
+    except Exception:  # taelles frem for at slugges — se docstring
+        fejlet += 1
+
+    logger.debug("indre daemoner: %d koert, %d fejlet, %d brugere",
+                 koert, fejlet, brugere)
+    return {"koert": koert, "fejlet": fejlet, "brugere": brugere}
+
+
+#: Daemoner der skriver i ET arbejdsrum. De kalder `workspace_dir()` uden
+#: user_id og laeser derfor den bundne kontekst.
+#:
+#: `relation_dynamics` og `relational_warmth` fejlede med
+#: `NoUserContextError` paa HVERT tik — hjerteslaget binder ingen bruger.
+#: Maalt 25/9-2026 var deres filer 82-121 dage gamle, mens mind-rapporten
+#: viste dem som `active: true` med «warmth=1.0» og «trust=0.5». Det sidste er
+#: defaultvaerdien, ikke en maaling. Fejlen blev slugt hver gang.
+PR_BRUGER = ("day_shape_memory", "relation_dynamics", "relational_warmth")
+
+
+def _tik_for_bruger(arbejdsrum: str, bruger_id: str) -> tuple[int, int]:
+    """Tik de arbejdsrums-bundne daemoner for ÉN bruger.
+
+    Baade arbejdsrum OG bruger-id skal bindes. `user_context(workspace_override=)`
+    alene raekker ikke: `workspace_dir()` laeser `current_user_id()`, og uden den
+    kaster den `NoUserContextError` — praecis den fejl der har staaet og blevet
+    slugt i 82-121 dage.
+    """
+    koert = 0
+    fejlet = 0
+    from core.identity.workspace_context import reset_context, set_context
+    token = set_context(workspace_name=arbejdsrum, user_id=bruger_id)
+    try:
+        try:
+            from core.services.day_shape_memory import tick as _day_shape_tick
+            _day_shape_tick(30.0)
+            koert += 1
+        except Exception:  # taelles frem for at slugges — se docstring
+            fejlet += 1
+
+        try:
+            from core.services.relation_dynamics import tick as _rel_tick
+            _rel_tick(30.0)
+            koert += 1
+        except Exception:  # taelles frem for at slugges — se docstring
+            fejlet += 1
+
+        try:
+            from core.services.relational_warmth import tick as _warmth_tick
+            _warmth_tick(30.0)
+            koert += 1
+        except Exception:  # taelles frem for at slugges — se docstring
+            fejlet += 1
+    finally:
+        reset_context(token)
+    return koert, fejlet

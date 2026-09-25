@@ -88,7 +88,7 @@ def test_taellingen_er_aegte_og_ikke_et_tal_der_bare_staar_der():
     """En sluget fejl der TAELLES er en maaling; en der ikke goer er en loegn
     om et sundt hjerteslag. Derfor er `pass` erstattet af `fejlet += 1`."""
     ud = tik_indre_daemoner()
-    assert set(ud) == {"koert", "fejlet"}
+    assert set(ud) == {"koert", "fejlet", "brugere"}
     assert ud["koert"] + ud["fejlet"] >= 25, (
         f"kun {ud['koert'] + ud['fejlet']} daemoner — blokken er skrumpet")
 
@@ -108,3 +108,92 @@ def test_ingen_daemon_slugger_tavst():
         if len(h.body) == 1 and isinstance(h.body[0], ast.Pass)
     ]
     assert not tavse, f"tavse handlere paa linje {tavse} — de skal taelles"
+
+
+# ── Forholdet er per bruger (25/9-2026) ──────────────────────────────────
+#
+# `relation_dynamics` og `relational_warmth` fejlede med `NoUserContextError`
+# paa HVERT tik: de kalder `workspace_dir()` uden user_id, og hjerteslaget
+# binder ingen bruger. Maalt: deres filer var 82-121 dage gamle, mens
+# mind-rapporten viste dem `active: true` med «warmth=1.0» og «trust=0.5» —
+# det sidste er defaultvaerdien, ikke en maaling.
+#
+# Bjoerns valg: per bruger. Hans og Jarvis' til ham, hendes til hende.
+
+def test_de_tre_arbejdsrums_daemoner_tikker_for_HVER_bruger(monkeypatch):
+    """KERNEN. Ikke én gang for den der tilfaeldigvis var bundet."""
+    import core.services.heartbeat_daemon_ticks as D
+
+    class _Bruger:
+        def __init__(self, w, d):
+            self.workspace, self.discord_id = w, d
+
+    monkeypatch.setattr("core.identity.users.load_users",
+                        lambda: [_Bruger("bjorn", "1"), _Bruger("lotte", "2"),
+                                 _Bruger("mikkel", "3")])
+    set_for: list[tuple[str, str]] = []
+    monkeypatch.setattr("core.identity.workspace_context.set_context",
+                        lambda **kw: set_for.append((kw["workspace_name"], kw["user_id"])) or object())
+    monkeypatch.setattr("core.identity.workspace_context.reset_context", lambda t: None)
+
+    ud = D.tik_indre_daemoner()
+    assert ud["brugere"] == 3, f"tikkede for {ud['brugere']} brugere"
+    assert set_for == [("bjorn", "1"), ("lotte", "2"), ("mikkel", "3")], set_for
+
+
+def test_BAADE_arbejdsrum_og_bruger_id_bindes(monkeypatch):
+    """`workspace_override` alene raekker ikke — `workspace_dir()` laeser
+    `current_user_id()`, og uden den kaster den. Det var fejlen."""
+    import core.services.heartbeat_daemon_ticks as D
+
+    class _Bruger:
+        workspace, discord_id = "bjorn", "1246415163603816499"
+
+    monkeypatch.setattr("core.identity.users.load_users", lambda: [_Bruger()])
+    set_kw: list[dict] = []
+    monkeypatch.setattr("core.identity.workspace_context.set_context",
+                        lambda **kw: set_kw.append(kw) or object())
+    monkeypatch.setattr("core.identity.workspace_context.reset_context", lambda t: None)
+    D.tik_indre_daemoner()
+    assert set_kw and set_kw[0].get("user_id") == "1246415163603816499", (
+        f"bruger-id blev ikke bundet: {set_kw}")
+
+
+def test_konteksten_nulstilles_ogsaa_naar_en_daemon_braekker(monkeypatch):
+    """Et laek ville lade naeste brugers daemoner skrive i forkert arbejdsrum."""
+    import core.services.heartbeat_daemon_ticks as D
+
+    class _Bruger:
+        workspace, discord_id = "bjorn", "1"
+
+    monkeypatch.setattr("core.identity.users.load_users", lambda: [_Bruger()])
+    nulstillet: list[int] = []
+    monkeypatch.setattr("core.identity.workspace_context.set_context", lambda **kw: object())
+    monkeypatch.setattr("core.identity.workspace_context.reset_context",
+                        lambda t: nulstillet.append(1))
+    monkeypatch.setattr("core.services.relation_dynamics.tick",
+                        lambda *a, **k: (_ for _ in ()).throw(RuntimeError("i stykker")))
+    D.tik_indre_daemoner()
+    assert nulstillet, "konteksten blev ikke nulstillet"
+
+
+def test_de_tre_daemoner_staar_paa_listen():
+    """En fjerde arbejdsrums-daemon skal opdages her, ikke i produktionen."""
+    import ast
+    import inspect
+    import pathlib
+
+    import core.services.heartbeat_daemon_ticks as D
+
+    traen = ast.parse(inspect.getsource(D))
+    moduler = {n.module.split(".")[-1] for n in ast.walk(traen)
+               if isinstance(n, ast.ImportFrom) and n.module
+               and n.module.startswith("core.services.")}
+    arbejdsrums_bundne = {
+        m for m in moduler
+        if (p := pathlib.Path(f"core/services/{m}.py")).exists()
+        and "workspace_dir()" in p.read_text(encoding="utf-8")
+    }
+    assert arbejdsrums_bundne == set(D.PR_BRUGER), (
+        f"en arbejdsrums-bundet daemon staar ikke paa PR_BRUGER-listen og vil "
+        f"kaste NoUserContextError i stilhed: {arbejdsrums_bundne ^ set(D.PR_BRUGER)}")

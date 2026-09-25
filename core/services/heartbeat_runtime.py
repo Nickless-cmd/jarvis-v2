@@ -1488,27 +1488,17 @@ def _run_heartbeat_tick_locked(
             "heartbeat: mood_oscillator.tick fejlede — humoeret fryser og "
             "mood_dialer laaser paa den sidste vaerdi", exc_info=True)
 
-    # Experimental services: update on every tick
-    try:
-        from core.services.existential_drift import increment_awareness
-
-        increment_awareness(seconds=30)
-    except Exception:
-        pass
-
-    try:
-        from core.services.temporal_body import age_journey
-
-        age_journey()
-    except Exception:
-        pass
-
-    try:
-        from core.services.silence_listener import experience_silence
-
-        experience_silence(duration_seconds=30)
-    except Exception:
-        pass
+    # `existential_drift`, `temporal_body` og `silence_listener` laa her indtil
+    # 25/9-2026 — inde i `if tick_count % 2 == 0`, selv om kommentaren over dem
+    # sagde «update on every tick». De er flyttet til
+    # `heartbeat_daemon_ticks.tik_indre_daemoner()`.
+    #
+    # Jeg lod dem foerst blive, fordi jeg kaldte det betingede afsnit «arbejde,
+    # ikke sansning». Det var en graense trukket ved kodestruktur i stedet for
+    # ved hvad tingene ER: `temporal_body` er hans aldersfornemmelse,
+    # `silence_listener` hans oplevelse af stilhed, `existential_drift` hans
+    # bevidsthedsgrad. Det er sansning, og den skal koere uanset om han har
+    # travlt.
 
     try:
         from core.services.attention_contour import get_attention_shape

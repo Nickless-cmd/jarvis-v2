@@ -96,6 +96,22 @@ def check_seed_activation(
                 "cognitive_seed.sprouted",
                 {"seed_id": seed["seed_id"], "title": seed.get("title")},
             )
+            # Et froe der spirer ER et kreativt projekt der begynder: plantet
+            # med en hensigt, vaekket af sin kontekst.
+            #
+            # `creative_projects` havde INGEN kalder i produktion (maalt
+            # 25/9-2026) — modulet er 207 linjer med rigtig persistering, og
+            # ingen har nogensinde skabt et projekt. Det var ikke en fejl i
+            # modulet; der manglede en haendelse at haenge paa. Det her er den.
+            try:
+                from core.services.creative_projects import create_project
+                create_project(
+                    title=str(seed.get("title") or seed["seed_id"]),
+                    intent=str(seed.get("intent") or seed.get("summary") or ""),
+                    status="active",
+                )
+            except Exception as exc:  # et froe maa ikke kunne standse paa dette
+                logger.warning("froe -> kreativt projekt fejlede: %s", exc)
 
     return activated
 

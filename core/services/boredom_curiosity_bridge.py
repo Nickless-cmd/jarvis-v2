@@ -11,10 +11,11 @@ Design constraints:
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+from core.runtime import state_store
 from core.services.living_heartbeat_cycle import determine_life_phase
 
 
@@ -28,61 +29,156 @@ class Curiosity:
     created_at: str
 
 
+_FIL = "boredom_curiosity_bridge"
+
+# Nysgerrigheden skubbes til `initiative_queue` som `low`, og der lever den
+# `_EXPIRE_MINUTES_LOW` = 24*60 minutter. Den lever lige saa laenge her, saa
+# broen og koeen er enige om hvad der stadig findes.
+#
+# Uden udloeb var persistensen en ny fejl: `_curiosities` blev aldrig beskaaret
+# — `clear_curiosities()` har ingen kaldere — saa listen voksede for evigt.
+# Hidtil skjulte genstarten det ved at nulstille den.
+_LEVETID_S = 24 * 60 * 60
+
 _boredom_accumulator: float = 0.0
 _curiosities: list[Curiosity] = []
 _last_accumulation_at: str = ""
+_sidst_laest_ns: int = -1
 
 
 def _now_iso() -> str:
     return datetime.now(UTC).isoformat()
 
 
+def _fra_raa(raa: object) -> Curiosity | None:
+    if not isinstance(raa, dict):
+        return None
+    try:
+        return Curiosity(
+            curiosity_id=str(raa["curiosity_id"]),
+            curiosity_type=str(raa["curiosity_type"]),
+            prompt=str(raa["prompt"]),
+            strength=float(raa["strength"]),
+            created_at=str(raa["created_at"]),
+        )
+    except (KeyError, TypeError, ValueError):  # ét daarligt element maa ikke koste hele listen
+        return None
+
+
+def _alder_s(c: Curiosity, nu: datetime) -> float:
+    try:
+        return (nu - datetime.fromisoformat(c.created_at)).total_seconds()
+    except ValueError:
+        # Ulaeseligt tidsstempel kan ikke aldres og ville leve for evigt.
+        return _LEVETID_S + 1.0
+
+
+def _levende(cs: list[Curiosity], nu: datetime | None = None) -> list[Curiosity]:
+    nu = nu or datetime.now(UTC)
+    return [c for c in cs if _alder_s(c, nu) < _LEVETID_S]
+
+
+def _synk() -> None:
+    """Hent fra disk hvis filen er aendret siden sidste laesning.
+
+    Kedsomheden laa i en modul-global. Tro ophobning: taerskelen er 2,0 og
+    hvert tik laegger en broekdel til — men genstarten satte den paa nul, saa
+    den naaede den maaske aldrig. Maalt paa CT105 25/9-2026 stod baade
+    `boredom_level` og `curiosity_count` paa 0 i `/mc/runtime`.
+    """
+    global _boredom_accumulator, _curiosities, _last_accumulation_at
+    global _sidst_laest_ns
+    ns = state_store.aendret_ns(_FIL)
+    if ns == _sidst_laest_ns:
+        return
+    raa = state_store.load_json(_FIL, None)
+    if isinstance(raa, dict):
+        try:
+            _boredom_accumulator = float(raa.get("boredom") or 0.0)
+        except (TypeError, ValueError):
+            _boredom_accumulator = 0.0
+        _curiosities = [
+            c for c in (_fra_raa(x) for x in raa.get("curiosities") or []) if c
+        ]
+        _last_accumulation_at = str(raa.get("last_accumulation_at") or "")
+    else:
+        _boredom_accumulator = 0.0
+        _curiosities = []
+        _last_accumulation_at = ""
+    _sidst_laest_ns = ns
+
+
+def _gem() -> None:
+    global _sidst_laest_ns
+    state_store.save_json(
+        _FIL,
+        {
+            "boredom": _boredom_accumulator,
+            "curiosities": [asdict(c) for c in _curiosities],
+            "last_accumulation_at": _last_accumulation_at,
+        },
+    )
+    _sidst_laest_ns = state_store.aendret_ns(_FIL)
+
+
 def add_boredom(duration: timedelta) -> dict[str, Any]:
     """Add boredom based on elapsed duration."""
     global _boredom_accumulator, _curiosities, _last_accumulation_at
 
-    now_iso = _now_iso()
-    _last_accumulation_at = now_iso
-
     seconds = duration.total_seconds()
-    
+
     phase = determine_life_phase()
     phase_name = phase.get("phase", "unknown")
 
-    if phase_name in ("dreaming", "reflection"):
-        _boredom_accumulator += seconds / 1200
-    else:
-        _boredom_accumulator += seconds / 1800
+    with state_store.med_laas(_FIL):
+        _synk()
+        _last_accumulation_at = _now_iso()
+        _curiosities = _levende(_curiosities)
 
-    _boredom_accumulator = min(_boredom_accumulator, 10.0)
+        if phase_name in ("dreaming", "reflection"):
+            _boredom_accumulator += seconds / 1200
+        else:
+            _boredom_accumulator += seconds / 1800
 
-    spawned = None
-    if _boredom_accumulator >= 2.0:
-        spawned = _spawn_curiosity()
-        if spawned:
-            _curiosities.append(spawned)
-            _boredom_accumulator = max(0, _boredom_accumulator - 2.0)
-            # 2026-09-04 (blok E): modulets docstring har altid sagt "outputs to
-            # initiative_queue", men kaldet fandtes ikke. Nysgerrighederne laa i
-            # en modul-liste der nulstilles ved hver genstart, og som kun
-            # get_curiosity_prompt laeste — en funktion uden kaldere. Kedsomhed
-            # kunne derfor ALDRIG blive til noget. Nu naar den koen, som low, saa
-            # den lever et doegn og kan hentes frem naar der er plads.
-            try:
-                from core.services.initiative_queue import push_initiative
-                push_initiative(
-                    focus=spawned.prompt,
-                    source="boredom-curiosity",
-                    source_id=spawned.curiosity_id,
-                    priority="low",
-                )
-            except Exception:
-                pass
+        _boredom_accumulator = min(_boredom_accumulator, 10.0)
+
+        spawned = None
+        if _boredom_accumulator >= 2.0:
+            spawned = _spawn_curiosity()
+            if spawned:
+                _curiosities.append(spawned)
+                _boredom_accumulator = max(0, _boredom_accumulator - 2.0)
+
+        _gem()
+        niveau = _boredom_accumulator
+        antal = len(_curiosities)
+
+    # 2026-09-04 (blok E): modulets docstring har altid sagt "outputs to
+    # initiative_queue", men kaldet fandtes ikke. Nysgerrighederne laa i
+    # en modul-liste der nulstilles ved hver genstart, og som kun
+    # get_curiosity_prompt laeste — en funktion uden kaldere. Kedsomhed
+    # kunne derfor ALDRIG blive til noget. Nu naar den koen, som low, saa
+    # den lever et doegn og kan hentes frem naar der er plads.
+    #
+    # Skubbet ligger UDEN for `med_laas`: `push_initiative` skriver i DB'en,
+    # og en DB-skrivning inde i en fil-laas holder den anden proces ude af
+    # kedsomheds-filen mens den venter paa noget helt andet.
+    if spawned is not None:
+        try:
+            from core.services.initiative_queue import push_initiative
+            push_initiative(
+                focus=spawned.prompt,
+                source="boredom-curiosity",
+                source_id=spawned.curiosity_id,
+                priority="low",
+            )
+        except Exception:
+            pass
 
     return {
-        "boredom_level": _boredom_accumulator,
+        "boredom_level": niveau,
         "curiosity_spawned": spawned is not None,
-        "active_curiosities": len(_curiosities),
+        "active_curiosities": antal,
     }
 
 
@@ -128,20 +224,24 @@ def _spawn_curiosity() -> Curiosity | None:
 
 def should_spawn_curiosity() -> bool:
     """Check if curiosity should spawn based on boredom level."""
+    _synk()
     return _boredom_accumulator >= 2.0
 
 
 def get_curiosity_prompt() -> str | None:
     """Get the most relevant curiosity prompt."""
-    if not _curiosities:
+    _synk()
+    levende = _levende(_curiosities)
+    if not levende:
         return None
-    
-    top = max(_curiosities, key=lambda c: c.strength)
+
+    top = max(levende, key=lambda c: c.strength)
     return top.prompt
 
 
 def get_active_curiosities() -> list[dict[str, Any]]:
     """Get all active curiosities."""
+    _synk()
     return [
         {
             "curiosity_id": c.curiosity_id,
@@ -150,29 +250,38 @@ def get_active_curiosities() -> list[dict[str, Any]]:
             "strength": c.strength,
             "created_at": c.created_at,
         }
-        for c in _curiosities
+        for c in _levende(_curiosities)
     ]
 
 
 def clear_curiosities() -> None:
     """Clear all active curiosities."""
     global _curiosities
-    _curiosities = []
+    with state_store.med_laas(_FIL):
+        _synk()
+        _curiosities = []
+        _gem()
 
 
 def reset_boredom_curiosity_bridge() -> None:
-    """Reset boredom curiosity bridge state (for testing)."""
+    """Reset boredom curiosity bridge state (for testing).
+
+    Rydder OGSAA disken — ellers ville naeste `_synk()` hente det gamle
+    tilbage, og nulstillingen ville kun gaelde denne proces.
+    """
     global _boredom_accumulator, _curiosities, _last_accumulation_at
     _boredom_accumulator = 0.0
     _curiosities = []
     _last_accumulation_at = ""
+    _gem()
 
 
 def get_boredom_curiosity_state() -> dict[str, Any]:
     """Get current state of boredom curiosity bridge."""
+    _synk()
     return {
         "boredom_level": _boredom_accumulator,
-        "curiosity_count": len(_curiosities),
+        "curiosity_count": len(_levende(_curiosities)),
         "can_spawn": should_spawn_curiosity(),
         "top_prompt": get_curiosity_prompt(),
     }

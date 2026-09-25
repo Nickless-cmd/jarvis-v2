@@ -28,3 +28,20 @@ def test_save_json_remains_self_safe(tmp_path, monkeypatch):
     )
 
     state_store.save_json("recovery", {"run": "r1"})
+
+
+def test_aendret_ns_er_nul_for_fil_der_ikke_findes():
+    from core.runtime import state_store
+
+    assert state_store.aendret_ns("findes-slet-ikke") == 0
+
+
+def test_aendret_ns_rykker_naar_filen_skrives():
+    from core.runtime import state_store
+
+    foer = state_store.aendret_ns("mtime-proeve")
+    state_store.save_json("mtime-proeve", {"a": 1})
+    efter = state_store.aendret_ns("mtime-proeve")
+
+    assert foer == 0
+    assert efter > 0

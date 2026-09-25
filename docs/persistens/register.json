@@ -56,6 +56,11 @@
       "beskrivelse": "Autonomous goals — persistent top-level goals with decomposition.",
       "registreret": "2026-09-20"
     },
+    "boredom_curiosity_bridge": {
+      "ejer": "core/services/boredom_curiosity_bridge.py",
+      "beskrivelse": "Boredom to Curiosity Bridge — transforms boredom into curiosity.",
+      "registreret": "2026-09-25"
+    },
     "computer_use_policy": {
       "ejer": "core/services/computer_use_policy.py",
       "beskrivelse": "Computer-use-politik (§4.7) — per-bruger on/off for operator/computer-tools.",
@@ -66,10 +71,20 @@
       "beskrivelse": "Proactive context governor — auto-trigger compaction + sub-agent slicing.",
       "registreret": "2026-09-20"
     },
+    "continuity_kernel": {
+      "ejer": "core/services/continuity_kernel.py",
+      "beskrivelse": "Bounded Continuity Kernel — existence feel between ticks.",
+      "registreret": "2026-09-25"
+    },
     "crisis_markers": {
       "ejer": "core/services/crisis_marker_detector.py",
       "beskrivelse": "Crisis marker detector — flag identity-forming friction moments.",
       "registreret": "2026-09-20"
+    },
+    "daemon_ticks_sidste": {
+      "ejer": "core/services/heartbeat_daemon_ticks.py",
+      "beskrivelse": "Tidsstempel for daemon-blokkens forrige koersel. Livs-tjenesterne fik seconds=30 haardkodet; tikket kommer fra wakeup_dispatcher med variabelt interval, saa mellemrummet maales nu — ogsaa hen over en genstart.",
+      "registreret": "2026-09-25"
     },
     "decision_breach_recent": {
       "ejer": "core/services/decision_enforcement.py",
@@ -100,6 +115,11 @@
       "ejer": "core/services/in_flight_runs.py",
       "beskrivelse": "In-flight run tracker for resume-after-interrupt.",
       "registreret": "2026-09-20"
+    },
+    "initiative_accumulator": {
+      "ejer": "core/services/initiative_accumulator.py",
+      "beskrivelse": "Initiative Accumulator — proactive wants that accumulate between ticks.",
+      "registreret": "2026-09-25"
     },
     "living_executive": {
       "ejer": "core/services/living_executive.py",

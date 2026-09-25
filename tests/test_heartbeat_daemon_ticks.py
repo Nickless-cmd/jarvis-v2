@@ -197,3 +197,81 @@ def test_de_tre_daemoner_staar_paa_listen():
     assert arbejdsrums_bundne == set(D.PR_BRUGER), (
         f"en arbejdsrums-bundet daemon staar ikke paa PR_BRUGER-listen og vil "
         f"kaste NoUserContextError i stilhed: {arbejdsrums_bundne ^ set(D.PR_BRUGER)}")
+
+
+# ── Det maalte mellemrum (25/9-2026) ────────────────────────────────────────
+
+
+def test_foerste_tik_giver_nul_og_naeste_giver_det_maalte_mellemrum():
+    from datetime import UTC, datetime, timedelta
+
+    from core.runtime import state_store
+    from core.services.heartbeat_daemon_ticks import (
+        _SIDSTE_TIK_FIL,
+        _forloebet_sekunder,
+    )
+
+    state_store.save_json(_SIDSTE_TIK_FIL, {})
+    assert _forloebet_sekunder() == 0.0
+
+    state_store.save_json(
+        _SIDSTE_TIK_FIL,
+        {"ved": (datetime.now(UTC) - timedelta(seconds=1800)).isoformat()},
+    )
+    forloebet = _forloebet_sekunder()
+    assert 1795 <= forloebet <= 1810
+
+
+def test_et_ulaeseligt_tidsstempel_giver_nul_frem_for_at_kaste():
+    from core.runtime import state_store
+    from core.services.heartbeat_daemon_ticks import (
+        _SIDSTE_TIK_FIL,
+        _forloebet_sekunder,
+    )
+
+    state_store.save_json(_SIDSTE_TIK_FIL, {"ved": "ikke-et-tidsstempel"})
+    assert _forloebet_sekunder() == 0.0
+
+
+def test_livs_tjenesterne_faar_det_maalte_tal_ikke_en_konstant():
+    """Blokken kaldte alle fire med `seconds=30`.
+
+    Tikket kommer fra `wakeup_dispatcher` med variabelt interval, saa de 30
+    var et gaet. For `continuity_kernel` var gaettet selvmodsigende:
+    `should_express_continuity()` er `gap >= 300`, saa et konstant gap paa 30
+    gjorde prompt-strengen tom for altid.
+    """
+    import ast
+
+    kilde = open("core/services/heartbeat_daemon_ticks.py").read()
+    traeet = ast.parse(kilde)
+
+    kald: dict[str, ast.Call] = {}
+    for n in ast.walk(traeet):
+        if not isinstance(n, ast.Call) or not isinstance(n.func, ast.Name):
+            continue
+        if n.func.id in {
+            "record_tick_elapsed",
+            "evolve_dreams",
+            "accumulate_wants",
+            "add_boredom",
+        }:
+            kald[n.func.id] = n
+
+    assert set(kald) == {
+        "record_tick_elapsed",
+        "evolve_dreams",
+        "accumulate_wants",
+        "add_boredom",
+    }, f"mangler kald: {kald.keys()}"
+
+    for navn, n in kald.items():
+        for kw in n.keywords:
+            assert not isinstance(kw.value, ast.Constant), (
+                f"{navn} faar en konstant varighed — den skal maales"
+            )
+
+    # `continuity_kernel` skal have det SANDE tal, ikke det loftede: dens
+    # eneste opgave er at beskrive mellemrummet.
+    kw = kald["record_tick_elapsed"].keywords[0]
+    assert isinstance(kw.value, ast.Name) and kw.value.id == "forloebet"

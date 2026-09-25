@@ -166,3 +166,70 @@ def test_grunden_staar_i_prompten_ikke_kun_tallet(monkeypatch):
     assert "maskinen er presset" in s
     assert "high" in s
     assert "body_strain=" not in s, "grunden må ikke stå som en parameter han skal følge"
+
+
+# ── Genoptagelse maa ikke give FAERRE runder (25/9-2026) ─────────────────
+#
+# Maalt paa CT105 over 14 dage: af de otte synlige runs der endte
+# `reason=pending-tool-intent` — skaaret af MIDT i et vaerktoejskald de ville
+# lave — laa **seks paa praecis 18 runder** og kun to paa loftet 45. Muren var
+# ikke `max_rounds`, men genoptagelses-budgettet, og den ramte tre gange saa
+# ofte som den graense vi diskuterede.
+#
+# Kredsloebet: loeber toer -> genoptages med 2,5 gange faerre runder ->
+# skaeres af samme sted -> genoptages igen. Journalen viser generation 7, og
+# hver runde braender et `recovery_attempt` af tre.
+
+def test_et_run_der_loeb_toer_faar_sit_fulde_budget_igen():
+    """KERNEN. Arbejde der var for stort til 45 maa ikke faa 18 naar det
+    proeves igen."""
+    from core.services.affect_modulation import (
+        AGENTIC_BUDGET_DEFAULTS, compute_agentic_loop_budget)
+    b = compute_agentic_loop_budget(resume_context=True,
+                                    afbrudt_grund="pending-tool-intent")
+    assert b["max_rounds"] == AGENTIC_BUDGET_DEFAULTS["max_rounds"], (
+        "et run der loeb toer for runder blev genoptaget med FAERRE runder")
+
+
+def test_en_nedlukning_genoptages_stadig_kort():
+    """Den oprindelige begrundelse holder stadig for alt ANDET.
+
+    Et run der blev afbrudt af en nedlukning eller en doed proces er ikke
+    stort — det er uheldigt. Der er det korte budget rigtigt.
+    """
+    from core.services.affect_modulation import compute_agentic_loop_budget
+    for grund in ("api-nedlukning", "forced-finalize-unverified", None, ""):
+        b = compute_agentic_loop_budget(resume_context=True, afbrudt_grund=grund)
+        assert b["max_rounds"] == 18, f"{grund!r} burde stadig give 18"
+
+
+def test_uden_genoptagelse_aendrer_grunden_intet():
+    """Grunden maa kun kunne fjerne en indsnaevring, aldrig tilfoeje en."""
+    from core.services.affect_modulation import (
+        AGENTIC_BUDGET_DEFAULTS, compute_agentic_loop_budget)
+    b = compute_agentic_loop_budget(resume_context=False,
+                                    afbrudt_grund="pending-tool-intent")
+    assert b["max_rounds"] == AGENTIC_BUDGET_DEFAULTS["max_rounds"]
+
+
+def test_ogsaa_de_andre_lofter_faar_deres_fulde_vaerdi():
+    """Runderne alene raekker ikke.
+
+    `max_tool_only_rounds` gaar 24 -> 12 og `max_empty_text_rounds` 20 -> 10 i
+    samme blok. Et run der blev skaaret af midt i en vaerktoejskaede har brug
+    for netop de vaerktoejs-runder.
+    """
+    from core.services.affect_modulation import (
+        AGENTIC_BUDGET_DEFAULTS, compute_agentic_loop_budget)
+    b = compute_agentic_loop_budget(resume_context=True,
+                                    afbrudt_grund="pending-tool-intent")
+    for noegle in ("max_tool_only_rounds", "max_empty_text_rounds",
+                   "round_total_timeout_s"):
+        assert b[noegle] == AGENTIC_BUDGET_DEFAULTS[noegle], noegle
+
+
+def test_grunden_laeses_uden_hensyn_til_stort_og_smaat():
+    from core.services.affect_modulation import loeb_toer_for_runder
+    assert loeb_toer_for_runder("  Pending-Tool-Intent ")
+    assert not loeb_toer_for_runder("pending-tool")
+    assert not loeb_toer_for_runder(None)

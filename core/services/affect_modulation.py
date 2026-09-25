@@ -200,14 +200,45 @@ def compute_affect_modulated_params() -> dict[str, Any]:
     return overrides
 
 
-def compute_agentic_loop_budget(*, resume_context: bool = False) -> dict[str, Any]:
+#: Afbrydelses-grunde der betyder «den loeb toer for runder», ikke «noget gik i
+#: stykker». Praecis dem maa IKKE genoptages med et mindre budget.
+LOEB_TOER_FOR_RUNDER = frozenset({"pending-tool-intent"})
+
+
+def loeb_toer_for_runder(grund: str | None) -> bool:
+    """Blev koerslen skaaret af MIDT i et vaerktoejskald den ville lave?"""
+    return str(grund or "").strip().lower() in LOEB_TOER_FOR_RUNDER
+
+
+def compute_agentic_loop_budget(*, resume_context: bool = False,
+                                afbrudt_grund: str | None = None) -> dict[str, Any]:
     """Return affect-aware agentic loop limits.
 
     High fatigue/frustration should make Jarvis checkpoint and summarize
     sooner. Resume context also uses shorter rounds because the system is
     already in recovery mode.
+
+    `afbrudt_grund` er `interruption_reason` fra den afbrudte post. Maalt
+    25/9-2026 paa CT105: af de otte synlige runs der endte
+    `reason=pending-tool-intent` — skaaret af midt i et vaerktoejskald — laa
+    seks paa praecis 18 runder og kun to paa loftet 45. Muren var altsaa ikke
+    `max_rounds`, men genoptagelses-budgettet, og den ramte tre gange saa ofte.
+
+    Kredsloebet: et run loeber toer for runder -> genoptages med 2,5 gange
+    FAERRE -> skaeres af samme sted -> genoptages igen. Journalen viser
+    genoptagelser op til generation 7, og hver runde braender et
+    `recovery_attempt` af tre. Enden er varslet «opgivet efter aftale —
+    budgettet var braendt paa udskydelser».
+
+    Begrundelsen for det korte budget — «systemet er allerede i recovery mode»
+    — holder for et run der blev afbrudt af en nedlukning eller en doed proces.
+    For det run der netop loeb toer for runder er den vendt paa hovedet: saa
+    faar arbejde der var for stort til 45 kun 18 naar det proeves igen.
     """
     budget = dict(AGENTIC_BUDGET_DEFAULTS)
+    # Loeb den toer, skal den have sit fulde budget igen — ikke et mindre.
+    if resume_context and loeb_toer_for_runder(afbrudt_grund):
+        resume_context = False
     try:
         from core.services.emotional_controls import read_emotional_snapshot
         snapshot = read_emotional_snapshot()

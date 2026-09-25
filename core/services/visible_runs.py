@@ -2554,8 +2554,10 @@ async def _stream_visible_run(
                 try:
                     from core.services.affect_modulation import compute_agentic_loop_budget
                     from core.services.in_flight_runs import interrupted_for_session as _interrupted_for_session
+                    _afbrudt = _interrupted_for_session(run.session_id)
                     _agentic_budget = compute_agentic_loop_budget(
-                        resume_context=bool(_interrupted_for_session(run.session_id)),
+                        resume_context=bool(_afbrudt),
+                        afbrudt_grund=(_afbrudt or {}).get("interruption_reason"),
                     )
                 except Exception:
                     _agentic_budget = {}

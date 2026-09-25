@@ -54,6 +54,17 @@ _MEMBER_TICKS = {
     # Tilfoejet i 6bd736ddc: maanedens tommel-op/ned som wakeup. Selv-throttler
     # internt (30 dage).
     "feedback_review": ("core.services.message_feedback", "tick_feedback_review"),
+    # Tilfoejet i 39e9d0872: oprydningen af `visible_runs`-raekker boede KUN i
+    # `reconcile_on_boot`, saa dens eneste udloeser var en genstart — 16 raekker
+    # stod `recovering` med `finished_at` sat og var usynlige for enhver proces.
+    # Selv-throttler internt (30 min), saa familien kalder hver tick.
+    #
+    # Medlemmet kom med sin egen testfil, men DENNE pin blev ikke opdateret, og
+    # tre tests her stod roede indtil 25/9-2026. Pinnen er netop til for at et
+    # nyt medlem skal anerkendes bevidst — den gjorde sit arbejde.
+    "visible_drift_cleanup": (
+        "core.services.session_boot_reconciler", "ryd_visible_drift_periodisk",
+    ),
 }
 
 # Members that run EVERY tick (no family throttle): internal-throttle maintenance +
@@ -67,6 +78,9 @@ _FAMILY_THROTTLED = {
     "ground_truth_registry": 60,
     "mail_checker": 15,
     "visual_memory": 360,
+    # `_infra_throttle_ready("visible_drift_cleanup", 30)` — familiens egen
+    # throttle, samme mekanisme som de fire ovenfor.
+    "visible_drift_cleanup": 30,
 }
 
 
@@ -111,19 +125,16 @@ def test_alle_medlemmer_i_den_ubetingede_traekke():
     """
     names = [name for name, _ in cdmf._INFRA_UNCONDITIONAL]
     assert names[0] == "file_awareness", "cheap load-bearing tamper-ensure runs FIRST"
-    assert set(names) == {
-        "file_awareness",
-        "cache_maintenance",
-        "signal_decay",
-        "wakeup_cleanup",
-        "cost_optimization",
-        "ground_truth_registry",
-        "mail_checker",
-        "visual_memory",
-        "provider_autodiscovery",
-        "approval_expiry",
-        "feedback_review",
-    }
+    # Listen stod FOER som en anden literal her, altsaa en kopi af
+    # `_MEMBER_TICKS` ovenfor. Docstringen fortalte allerede at kopien var
+    # blevet glemt én gang (`provider_autodiscovery`, 9/9-2026) — og det skete
+    # igen 25/9 med `visible_drift_cleanup`. To steder at anerkende et nyt
+    # medlem er ét for mange; vagten har samme kraft med ét.
+    assert set(names) == set(_MEMBER_TICKS), (
+        "familiens medlemmer og testens erklaering er ikke enige — "
+        "tilfoej det nye medlem til `_MEMBER_TICKS` og vaelg dets spand "
+        "(`_EVERY_TICK` eller `_FAMILY_THROTTLED`)"
+    )
     assert len(names) == len(set(names)), "et medlem må ikke stå to gange"
 
 

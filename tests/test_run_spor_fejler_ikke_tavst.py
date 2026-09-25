@@ -25,36 +25,102 @@ import pytest
 # træet parses.
 
 
-def test_kilden_har_ingen_tavse_except_omkring_de_to_spor():
-    """Vagten mod tavse undtagelser, men målt PRÆCIST på de to kald.
+# Vagten leder i HELE `core/`, ikke i to navngivne filer.
+#
+# Den stod før med `("core/services/visible_runs.py", {"_mark_run_started"})`.
+# 25/9-2026 flyttede Boy Scout-reglen skrivningen til
+# `core/services/visible_run_journal.py`, og vagten meldte «fandt ikke kaldene
+# — er de flyttet?». Den havde ret i spørgsmålet: kaldet VAR flyttet, og
+# skrivningen var intakt. Men en vagt der peger på en filsti holder kun til
+# næste udskillelse, og den regel siger netop at filer skal splittes.
+#
+# Nu følger vagten kaldet. Flyttes det igen, flytter vagten med; SLETTES det,
+# falder tællingen og vagten siger fra.
 
-    En kilde-vagt der greper efter en streng måler næsten ingenting, så her
-    parses træet: begge `mark_started`/`persist_visible_run_start`-kald skal
-    ligge i et `try` hvis handler siger NOGET.
+
+def _kald_med_omgivende_try(navn: str) -> list[tuple[str, int, list]]:
+    """(fil, linje, handlers) for hvert kald til `navn` i `core/`.
+
+    `handlers` er tom når kaldet ikke ligger i et `try`.
     """
     import ast
     import pathlib
 
-    for fil, navne in (
-        ("core/services/autonomous_stream_run.py",
-         {"mark_started", "persist_visible_run_start"}),
-        ("core/services/visible_runs.py", {"_mark_run_started"}),
-    ):
-        traeet = ast.parse(pathlib.Path(fil).read_text(encoding="utf-8"))
-        fundet = 0
+    fundne: list[tuple[str, int, list]] = []
+    for fil in sorted(pathlib.Path("core").rglob("*.py")):
+        try:
+            traeet = ast.parse(fil.read_text(encoding="utf-8"))
+        except SyntaxError:  # en fil vi ikke kan parse er ikke vagtens aerinde
+            continue
+        # Hvert kald -> det naermeste omsluttende `try` (kun kroppen, ikke
+        # handlerne: et kald inde i en handler er ikke daekket af den).
+        i_try: dict[int, list] = {}
         for n in ast.walk(traeet):
             if not isinstance(n, ast.Try):
                 continue
-            kaldte = {getattr(c.func, "id", "") or getattr(c.func, "attr", "")
-                      for c in ast.walk(n) if isinstance(c, ast.Call)}
-            if not (kaldte & navne):
+            for s in n.body:
+                for c in ast.walk(s):
+                    if isinstance(c, ast.Call):
+                        i_try[id(c)] = n.handlers
+        for n in ast.walk(traeet):
+            if not isinstance(n, ast.Call):
                 continue
-            fundet += 1
-            for h in n.handlers:
-                tavs = all(isinstance(s, (ast.Pass, ast.Continue, ast.Break))
-                           for s in h.body)
-                assert not tavs, f"{fil}:{h.lineno} sluger fejlen i tavshed"
-        assert fundet, f"{fil}: fandt ikke kaldene — er de flyttet?"
+            kaldt = getattr(n.func, "id", "") or getattr(n.func, "attr", "")
+            if kaldt != navn:
+                continue
+            fundne.append((str(fil), n.lineno, i_try.get(id(n), [])))
+    return fundne
+
+
+def _tavs(handler) -> bool:
+    import ast
+    return all(isinstance(s, (ast.Pass, ast.Continue, ast.Break))
+               for s in handler.body)
+
+
+def test_hvert_mark_started_kald_siger_fra_naar_det_fejler():
+    """`mark_started` skriver journal-posten. Fejler den i tavshed, kan
+    boot-reconcilerens præcise ejer-regel aldrig se runnet."""
+    kald = _kald_med_omgivende_try("mark_started")
+
+    assert len(kald) >= 2, (
+        f"fandt {len(kald)} kald til mark_started — der skal være mindst to: "
+        "den autonome bane og den synlige. Er et spor faldet ud?"
+    )
+    for fil, linje, handlers in kald:
+        assert handlers, f"{fil}:{linje}: mark_started ligger ikke i et try"
+        for h in handlers:
+            assert not _tavs(h), f"{fil}:{h.lineno} sluger fejlen i tavshed"
+
+
+def test_start_raekken_er_selv_safe_og_skrives_fra_begge_baner():
+    """`persist_visible_run_start` kaldes UDEN `try` — dens docstring siger
+    «Self-safe: kaster aldrig». Vagten måler at påstanden holder, frem for at
+    tro på den: værnet skal så ligge i funktionen selv."""
+    import ast
+    import pathlib
+
+    kald = _kald_med_omgivende_try("persist_visible_run_start")
+    assert len(kald) >= 2, (
+        f"fandt {len(kald)} kald til persist_visible_run_start — der skal være "
+        "mindst to: den autonome bane og den synlige."
+    )
+
+    kilde = pathlib.Path("core/services/visible_runs_outcomes.py")
+    traeet = ast.parse(kilde.read_text(encoding="utf-8"))
+    defs = [n for n in ast.walk(traeet)
+            if isinstance(n, ast.FunctionDef)
+            and n.name == "persist_visible_run_start"]
+    assert defs, f"{kilde}: definitionen er flyttet — find den og ret vagten"
+
+    handlers = [h for n in ast.walk(defs[0]) if isinstance(n, ast.Try)
+                for h in n.handlers]
+    assert handlers, "persist_visible_run_start har intet try — «self-safe» er falsk"
+    for h in handlers:
+        assert not _tavs(h), (
+            f"{kilde}:{h.lineno} sluger fejlen i tavshed — så er «self-safe» "
+            "kun sandt om kalderen, ikke om sporet"
+        )
 
 
 @pytest.mark.parametrize("navn", ["autonomous_stream_run", "visible_runs"])

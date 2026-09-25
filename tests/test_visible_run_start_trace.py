@@ -254,13 +254,59 @@ def test_nedluknings_sweepen_stempler_ogsaa_raekken():
         "stamp_visible_run_interrupted(_rid")
 
 
-def test_visible_runs_laeser_kind_igennem():
-    """Uden kind stod ALLE in-flight-poster som `visible` — også autonome."""
-    src = open("core/services/visible_runs.py", encoding="utf-8").read()
-    i = src.index("_mark_run_started(")
-    vindue = src[i:i + 700]
-    assert 'kind="autonomous"' in vindue
-    assert "provider=run.provider" in vindue
+def test_hvert_mark_started_kald_sender_kind_og_provider_med():
+    """Uden `kind` stod ALLE in-flight-poster som `visible` — også autonome.
+
+    Boot-reconcilerens `kinds`-opsummering kunne derfor ikke skelne dem, og et
+    dræbt autonomt run blev talt som en almindelig tur (målt 12/9-2026).
+
+    Vagten stod før som `src.index("_mark_run_started(")` plus et vindue på 700
+    tegn i `visible_runs.py`. To ting var galt med den form. Navnet var et
+    LOKALT alias (`from ... import mark_started as _mark_run_started`), så den
+    målte importlinjens ordvalg frem for kaldet. Og vinduet var en gætning på
+    hvor langt kaldet strækker sig — tilføj to argumenter, og `provider` glider
+    ud af vinduet uden at nogen rører ved sagen. 25/9-2026 flyttede
+    skrivningen til `core/services/visible_run_journal.py`, og `.index()`
+    kastede `ValueError: substring not found`.
+
+    Nu parses træet, kaldene findes hvor de end ligger, og argumenterne læses
+    som argumenter.
+    """
+    import ast
+    import pathlib
+
+    kald = []
+    for fil in sorted(pathlib.Path("core").rglob("*.py")):
+        try:
+            traeet = ast.parse(fil.read_text(encoding="utf-8"))
+        except SyntaxError:  # en fil vi ikke kan parse er ikke vagtens aerinde
+            continue
+        for n in ast.walk(traeet):
+            if not isinstance(n, ast.Call):
+                continue
+            if (getattr(n.func, "id", "") or getattr(n.func, "attr", "")) != "mark_started":
+                continue
+            kald.append((str(fil), n.lineno, n))
+
+    assert len(kald) >= 2, (
+        f"fandt {len(kald)} kald til mark_started — den autonome OG den synlige "
+        "bane skal begge skrive journal-posten"
+    )
+
+    slags: set[str] = set()
+    for fil, linje, n in kald:
+        navne = {kw.arg for kw in n.keywords}
+        assert "kind" in navne, f"{fil}:{linje}: kind sendes ikke med"
+        assert "provider" in navne, f"{fil}:{linje}: provider sendes ikke med"
+        for kw in n.keywords:
+            if kw.arg == "kind":
+                slags |= {c.value for c in ast.walk(kw.value)
+                          if isinstance(c, ast.Constant) and isinstance(c.value, str)}
+
+    assert {"autonomous", "visible"} <= slags, (
+        f"kind-udtrykkene daekker {sorted(slags)} — begge slags skal kunne "
+        "skelnes, ellers taelles et draebt autonomt run som en almindelig tur"
+    )
 
 
 # ── den synlige vej (lukket 12/9-2026) ──────────────────────────────────────

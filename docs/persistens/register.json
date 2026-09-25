@@ -56,6 +56,11 @@
       "beskrivelse": "Autonomous goals — persistent top-level goals with decomposition.",
       "registreret": "2026-09-20"
     },
+    "body_memory": {
+      "ejer": "core/services/body_memory.py",
+      "beskrivelse": "Body Memory — Jarvis' kropslige erindringer.",
+      "registreret": "2026-09-25"
+    },
     "boredom_curiosity_bridge": {
       "ejer": "core/services/boredom_curiosity_bridge.py",
       "beskrivelse": "Boredom to Curiosity Bridge — transforms boredom into curiosity.",
@@ -91,6 +96,11 @@
       "beskrivelse": "Decision enforcement — close the loop between commitment and behavior.",
       "registreret": "2026-09-20"
     },
+    "decision_ghosts": {
+      "ejer": "core/services/decision_ghosts.py",
+      "beskrivelse": "Decision Ghosts — de veje der blev fravalgt, og dem der holdt.",
+      "registreret": "2026-09-25"
+    },
     "decision_signal_telemetry": {
       "ejer": "core/services/decision_signal_telemetry.py",
       "beskrivelse": "Decision-signal telemetry — track whether decision signals get heeded.",
@@ -100,6 +110,16 @@
       "ejer": "core/services/device_presence.py",
       "beskrivelse": "Device-presence pr. bruger. Lever i hukommelsen — og OVERLEVER en genstart.",
       "registreret": "2026-09-20"
+    },
+    "forgetting_curve": {
+      "ejer": "core/services/forgetting_curve.py",
+      "beskrivelse": "Forgetting Curve — det jeg bliver ved at se, bliver. Resten falmer.",
+      "registreret": "2026-09-25"
+    },
+    "ghost_networks": {
+      "ejer": "core/services/ghost_networks.py",
+      "beskrivelse": "Ghost Networks — spor af mønstre der holdt op med at være aktive.",
+      "registreret": "2026-09-25"
     },
     "identity_mutation_log": {
       "ejer": "core/services/identity_mutation_log.py",
@@ -135,6 +155,11 @@
       "ejer": "core/services/mcp_trust.py",
       "beskrivelse": "MCP-tillid: allowliste + TOFU-pinning.",
       "registreret": "2026-09-20"
+    },
+    "memory_tattoos": {
+      "ejer": "core/services/memory_tattoos.py",
+      "beskrivelse": "Memory Tattoos — de mærker der bliver siddende.",
+      "registreret": "2026-09-25"
     },
     "monitor_streams": {
       "ejer": "core/services/monitor_streams.py",
@@ -245,6 +270,11 @@
       "ejer": "core/services/surprise_detector.py",
       "beskrivelse": "Surprise detector — anomaly signals for the proactive/autonomous lane.",
       "registreret": "2026-09-20"
+    },
+    "text_resonance": {
+      "ejer": "core/services/text_resonance.py",
+      "beskrivelse": "Text Resonance — I feel what I read, before I analyze it.",
+      "registreret": "2026-09-25"
     },
     "theater_refactor_briefs": {
       "ejer": "core/services/agency_map.py",

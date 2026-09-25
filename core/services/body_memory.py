@@ -35,7 +35,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from core.runtime.workspace_paths import shared_dir
+from core.runtime import state_store
 
 logger = logging.getLogger(__name__)
 
@@ -43,32 +43,23 @@ logger = logging.getLogger(__name__)
 _MAX_SNAPSHOTS = 200
 
 
-def _storage_path() -> Path:
-    return shared_dir() / "runtime" / "body_memory.json"
+#: Noeglen i `core/runtime/state_store`. Laa foer i
+#: `shared_dir()/runtime/body_memory.json` med haandskrevet load/save.
+_FIL = "body_memory"
 
 
 def _load() -> list[dict[str, Any]]:
-    p = _storage_path()
-    if not p.exists():
+    data = state_store.load_json(_FIL, None)
+    if data is None:
         return []
-    try:
-        data = json.loads(p.read_text(encoding="utf-8"))
-        return data if isinstance(data, list) else []
-    except Exception as exc:
-        logger.warning("body_memory: kunne ikke laeses: %s", exc)
+    if not isinstance(data, list):
+        logger.warning("body_memory: uventet form i state — starter forfra")
         return []
+    return data
 
 
 def _save(snapshots: list[dict[str, Any]]) -> None:
-    p = _storage_path()
-    try:
-        p.parent.mkdir(parents=True, exist_ok=True)
-        tmp = p.with_suffix(".tmp")
-        tmp.write_text(json.dumps(snapshots[-_MAX_SNAPSHOTS:], ensure_ascii=False,
-                                  indent=1), encoding="utf-8")
-        tmp.replace(p)
-    except Exception as exc:
-        logger.warning("body_memory: kunne ikke gemmes: %s", exc)
+    state_store.save_json(_FIL, snapshots[-_MAX_SNAPSHOTS:])
 
 
 #: Fra maalte tal til et ord. Hvert ord skal kunne foeres tilbage til sit tal.
@@ -121,9 +112,12 @@ def record_body_snapshot(context: str, sensation: str | None = None,
         "state": str(flade.get("state") or ""),
         "timestamp": datetime.now(UTC).isoformat(),
     }
-    snapshots = _load()
-    snapshots.append(snapshot)
-    _save(snapshots)
+    # Laas: to processer skriver, og hver gemning skriver HELE filen — uden
+    # laas forsvinder den andens erindring sporloest.
+    with state_store.med_laas(_FIL):
+        snapshots = _load()
+        snapshots.append(snapshot)
+        _save(snapshots)
     return snapshot
 
 

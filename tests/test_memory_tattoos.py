@@ -17,10 +17,24 @@ import json
 from datetime import UTC, datetime, timedelta
 
 import core.services.memory_tattoos as T
+from core.runtime import state_store
+import pytest
 
 
-def _lager(monkeypatch, tmp_path):
-    monkeypatch.setattr(T, "_storage_path", lambda: tmp_path / "memory_tattoos.json")
+@pytest.fixture(autouse=True)
+def _tom_tilstand():
+    """Hver test starter paa en tom fil.
+
+    Isolationen kom foer fra at hver test patchede `_storage_path` til sin egen
+    `tmp_path`. Med `state_store` er stien skaermet af conftest' autouse-fixture
+    `_guard_prod_state_dir` — men den mappe er SESSIONS-bred, saa tilstand
+    laekker mellem tests i samme fil hvis ingen rydder op. Det var netop den
+    skaerm der manglede for `shared_dir()`: uden den skrev disse tests i den
+    aegte `~/.jarvis-v2/shared/runtime/`.
+    """
+    state_store.save_json("memory_tattoos", [])
+    yield
+
 
 
 class _Conn:
@@ -49,15 +63,13 @@ def _anker(monkeypatch, raekke):
     return conn
 
 
-def test_maerket_overlever_en_genstart(monkeypatch, tmp_path):
+def test_maerket_overlever_en_genstart():
     """KERNEN. En modul-global liste døde med processen."""
-    _lager(monkeypatch, tmp_path)
     T.reset_memory_tattoos()
     T.create_tattoo("noget der prægede", "distressed", 0.95)
 
     import importlib
     T2 = importlib.reload(T)
-    monkeypatch.setattr(T2, "_storage_path", lambda: tmp_path / "memory_tattoos.json")
     assert T2.build_memory_tattoos_surface()["tattoo_count"] == 1
     assert "noget der prægede" in T2.describe_tattoo()
 
@@ -69,8 +81,7 @@ def test_perceptuelle_ankre_kan_ALDRIG_blive_et_maerke():
                                       "memory_heading"}
 
 
-def test_tikket_saetter_et_maerke_fra_et_aegte_anker(monkeypatch, tmp_path):
-    _lager(monkeypatch, tmp_path)
+def test_tikket_saetter_et_maerke_fra_et_aegte_anker(monkeypatch):
     T.reset_memory_tattoos()
     conn = _anker(monkeypatch, ("a-1", "distressed", 0.97,
                                 "Selvreparation udført: decision_review", None,
@@ -86,9 +97,8 @@ def test_tikket_saetter_et_maerke_fra_et_aegte_anker(monkeypatch, tmp_path):
         assert t in conn.sidste_arg
 
 
-def test_hoejst_ét_maerke_i_doegnet(monkeypatch, tmp_path):
+def test_hoejst_ét_maerke_i_doegnet(monkeypatch):
     """Fem om dagen er for mange. Et mærke er hvad der prægede en DAG."""
-    _lager(monkeypatch, tmp_path)
     T.reset_memory_tattoos()
     _anker(monkeypatch, ("a-1", "euphoric", 0.99, "foerste", None, ""))
     assert T.tick(30.0)["sat"] is True
@@ -97,37 +107,33 @@ def test_hoejst_ét_maerke_i_doegnet(monkeypatch, tmp_path):
 
 
 def test_samme_anker_maerkes_ikke_to_gange(monkeypatch, tmp_path):
-    _lager(monkeypatch, tmp_path)
     T.reset_memory_tattoos()
     _anker(monkeypatch, ("a-1", "euphoric", 0.99, "foerste", None, ""))
     T.tick(30.0)
     # ryk sidste maerke en uge tilbage saa doegn-reglen ikke blokerer
-    maerker = json.loads((tmp_path / "memory_tattoos.json").read_text())
+    maerker = state_store.load_json("memory_tattoos", [])
     maerker[-1]["created_at"] = (datetime.now(UTC) - timedelta(days=7)).isoformat()
-    (tmp_path / "memory_tattoos.json").write_text(json.dumps(maerker))
+    state_store.save_json("memory_tattoos", maerker)
     assert T.tick(30.0) == {"sat": False, "grund": "allerede maerket"}
 
 
-def test_intet_staerkt_nok_saetter_intet(monkeypatch, tmp_path):
-    _lager(monkeypatch, tmp_path)
+def test_intet_staerkt_nok_saetter_intet(monkeypatch):
     T.reset_memory_tattoos()
     _anker(monkeypatch, None)
     assert T.tick(30.0)["sat"] is False
     assert T.build_memory_tattoos_surface()["summary"] == "Ingen tatoveringer"
 
 
-def test_et_anker_uden_note_faar_sin_udloeser(monkeypatch, tmp_path):
+def test_et_anker_uden_note_faar_sin_udloeser(monkeypatch):
     """`cognitive_episode` har ingen note — kun JSON. Den skal stadig kunne
     saettes i en saetning."""
-    _lager(monkeypatch, tmp_path)
     T.reset_memory_tattoos()
     _anker(monkeypatch, ("a-9", "euphoric", 0.95, None,
                          '{"trigger": "visible-run:ollama/glm-5.2", "x": 1}', ""))
     assert T.tick(30.0)["maerke"]["event"] == "visible-run:ollama/glm-5.2"
 
 
-def test_en_base_der_ikke_kan_naas_vaelter_ikke_tikket(monkeypatch, tmp_path):
-    _lager(monkeypatch, tmp_path)
+def test_en_base_der_ikke_kan_naas_vaelter_ikke_tikket(monkeypatch):
     T.reset_memory_tattoos()
     monkeypatch.setattr("core.runtime.db.connect",
                         lambda *a, **k: (_ for _ in ()).throw(RuntimeError("nede")))

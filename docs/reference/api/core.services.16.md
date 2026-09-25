@@ -136,16 +136,15 @@ _Memory Tattoos — de mærker der bliver siddende._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_storage_path` | `()` | — | [src](../../../core/services/memory_tattoos.py#L60) |
-| function | `_load` | `()` | — | [src](../../../core/services/memory_tattoos.py#L64) |
-| function | `_save` | `(maerker)` | — | [src](../../../core/services/memory_tattoos.py#L76) |
-| function | `create_tattoo` | `(event, emotion, intensity, anchor_id=…, captured_at=…)` | Saet et maerke. `intensity` skal komme fra et maalt anker. | [src](../../../core/services/memory_tattoos.py#L88) |
-| function | `_laeseligt` | `(notes, kontekst)` | Ankrets egen note naar den findes; ellers dens udloeser. | [src](../../../core/services/memory_tattoos.py#L106) |
-| function | `tick` | `(_seconds=…)` | Hjerteslags-krog: saet hoejst ét maerke i doegnet. Kaster aldrig. | [src](../../../core/services/memory_tattoos.py#L119) |
-| function | `describe_tattoo` | `()` | — | [src](../../../core/services/memory_tattoos.py#L164) |
-| function | `format_tattoo_for_prompt` | `()` | — | [src](../../../core/services/memory_tattoos.py#L172) |
-| function | `reset_memory_tattoos` | `()` | — | [src](../../../core/services/memory_tattoos.py#L177) |
-| function | `build_memory_tattoos_surface` | `()` | — | [src](../../../core/services/memory_tattoos.py#L181) |
+| function | `_load` | `()` | — | [src](../../../core/services/memory_tattoos.py#L65) |
+| function | `_save` | `(maerker)` | — | [src](../../../core/services/memory_tattoos.py#L75) |
+| function | `create_tattoo` | `(event, emotion, intensity, anchor_id=…, captured_at=…)` | Saet et maerke. `intensity` skal komme fra et maalt anker. | [src](../../../core/services/memory_tattoos.py#L79) |
+| function | `_laeseligt` | `(notes, kontekst)` | Ankrets egen note naar den findes; ellers dens udloeser. | [src](../../../core/services/memory_tattoos.py#L98) |
+| function | `tick` | `(_seconds=…)` | Hjerteslags-krog: saet hoejst ét maerke i doegnet. Kaster aldrig. | [src](../../../core/services/memory_tattoos.py#L111) |
+| function | `describe_tattoo` | `()` | — | [src](../../../core/services/memory_tattoos.py#L156) |
+| function | `format_tattoo_for_prompt` | `()` | — | [src](../../../core/services/memory_tattoos.py#L164) |
+| function | `reset_memory_tattoos` | `()` | — | [src](../../../core/services/memory_tattoos.py#L169) |
+| function | `build_memory_tattoos_surface` | `()` | — | [src](../../../core/services/memory_tattoos.py#L173) |
 
 ## `core/services/memory_write_policy.py`
 _Memory Write Policy — gating + review queue for inferred memory writes._

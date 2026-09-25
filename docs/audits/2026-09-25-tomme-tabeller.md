@@ -191,4 +191,23 @@ skærmer `state_store._STATE_DIR` for hver eneste test (`autouse`), men ikke
 `shared_dir()`. Målt samme aften skrev `tests/test_body_memory.py` i den
 **rigtige** `~/.jarvis-v2/shared/runtime/body_memory.json`. Det er samme
 mønster som `in_flight_runs.json`-hændelsen 17/9, som netop den skærm blev
-skrevet for. De seks bør flyttes til `state_store`.
+skrevet for.
+
+**De seks er flyttet samme aften.** Alle ti moduler ligger nu i `state_store`,
+og målingen er gentaget: en kørsel af de seks testfiler rører nu **nul** af de
+90 JSON-filer i produktions-tilstanden. Flytningen tog tre ting med som de
+håndskrevne udgaver ikke havde: conftest-skærmen, `med_laas` om hver
+læs-ændr-gem (`text_resonance.resonate` kaldes fra API-processen på hver
+brugerbesked, mens daemonerne skriver fra runtime), og `save_json_strict`.
+
+Én fælde dukkede op undervejs: `forgetting_curve.tick()` kalder
+`apply_decay_tick()`, som selv låser. `flock` hænger på den åbne
+fil-beskrivelse, og `med_laas` åbner en ny hver gang — to låse på samme nøgle
+i samme proces er altså ikke re-entrante, og en indlejring ville få tikket til
+at vente på sig selv for altid. Låsen slippes derfor før kaldet, og en test med
+timeout pinner det: en deadlock fejler ikke, den hænger.
+
+Data flyttes med `scripts/migrer_shared_runtime_til_state_store.py` — én gang
+per maskine, FØR genstarten, så den gamle kode stadig kan læse sin egen sti
+imens. Den skriver aldrig oven i en state-fil der har indhold, og lader den
+gamle fil ligge urørt som bagdør.

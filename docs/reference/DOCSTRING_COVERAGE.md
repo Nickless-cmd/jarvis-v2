@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8007/15499 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8009/15497 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 8007/15499 functions/methods documented (51%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 695 | 1275 | 54% |
-| `core.services` | 5292 | 10538 | 50% |
+| `core.services` | 5292 | 10532 | 50% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 107 | 183 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -37,12 +37,12 @@ Generated from source. 8007/15499 functions/methods documented (51%). The list b
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.undo` | 2 | 18 | 11% |
 | `core.util` | 9 | 10 | 90% |
-| `scripts` | 208 | 455 | 45% |
+| `scripts` | 210 | 459 | 45% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2210)
+## Undocumented public functions (2211)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L209)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -726,10 +726,10 @@ Generated from source. 8007/15499 functions/methods documented (51%). The list b
 - `core/services/behavioral_decisions.py` :: `list_all_decisions` (L279)
 - `core/services/behavioral_decisions.py` :: `review_decision` (L107)
 - `core/services/behavioral_decisions.py` :: `revoke_decision` (L216)
-- `core/services/body_memory.py` :: `build_body_memory_surface` (L148)
-- `core/services/body_memory.py` :: `describe_body_memory` (L130)
-- `core/services/body_memory.py` :: `format_body_for_prompt` (L139)
-- `core/services/body_memory.py` :: `reset_body_memory` (L144)
+- `core/services/body_memory.py` :: `build_body_memory_surface` (L142)
+- `core/services/body_memory.py` :: `describe_body_memory` (L124)
+- `core/services/body_memory.py` :: `format_body_for_prompt` (L133)
+- `core/services/body_memory.py` :: `reset_body_memory` (L138)
 - `core/services/boredom_engine.py` :: `build_boredom_surface` (L53)
 - `core/services/boredom_engine.py` :: `get_boredom_state` (L49)
 - `core/services/boredom_engine.py` :: `update_boredom_state` (L11)
@@ -975,12 +975,12 @@ Generated from source. 8007/15499 functions/methods documented (51%). The list b
 - `core/services/daily_journal.py` :: `stop_daily_journal_daemon` (L296)
 - `core/services/day_shape_memory.py` :: `build_day_shape_surface` (L261)
 - `core/services/decision_enforcement.py` :: `subscribe` (L266)
-- `core/services/decision_ghosts.py` :: `build_decision_ghosts_surface` (L199)
-- `core/services/decision_ghosts.py` :: `describe_ghost_decision` (L169)
-- `core/services/decision_ghosts.py` :: `describe_success_echo` (L177)
-- `core/services/decision_ghosts.py` :: `format_decision_echo_for_prompt` (L190)
-- `core/services/decision_ghosts.py` :: `format_decision_ghost_for_prompt` (L185)
-- `core/services/decision_ghosts.py` :: `reset_decision_ghosts` (L195)
+- `core/services/decision_ghosts.py` :: `build_decision_ghosts_surface` (L193)
+- `core/services/decision_ghosts.py` :: `describe_ghost_decision` (L163)
+- `core/services/decision_ghosts.py` :: `describe_success_echo` (L171)
+- `core/services/decision_ghosts.py` :: `format_decision_echo_for_prompt` (L184)
+- `core/services/decision_ghosts.py` :: `format_decision_ghost_for_prompt` (L179)
+- `core/services/decision_ghosts.py` :: `reset_decision_ghosts` (L189)
 - `core/services/decision_log.py` :: `build_decision_log_surface` (L50)
 - `core/services/decision_signals.py` :: `register` (L60)
 - `core/services/decision_signals.py` :: `reset_context` (L306)
@@ -1099,7 +1099,7 @@ Generated from source. 8007/15499 functions/methods documented (51%). The list b
 - `core/services/flow_state_detection.py` :: `build_flow_state_surface` (L37)
 - `core/services/flow_state_detection.py` :: `get_flow_state` (L33)
 - `core/services/flow_state_detection.py` :: `update_flow_detection` (L11)
-- `core/services/forgetting_curve.py` :: `build_forgetting_curve_surface` (L163)
+- `core/services/forgetting_curve.py` :: `build_forgetting_curve_surface` (L164)
 - `core/services/forgetting_engine.py` :: `is_fredet_path` (L64)
 - `core/services/forgetting_engine.py` :: `is_fredet_table` (L68)
 - `core/services/gate_execution.py` :: `check_command` (L265)
@@ -1111,9 +1111,9 @@ Generated from source. 8007/15499 functions/methods documented (51%). The list b
 - `core/services/gate_kernel.py` :: `Verdict.is_blocking` (L59)
 - `core/services/gate_kernel.py` :: `kernel` (L250)
 - `core/services/gate_skill.py` :: `SkillScanVerdict.as_dict` (L55)
-- `core/services/ghost_networks.py` :: `build_ghost_networks_surface` (L192)
-- `core/services/ghost_networks.py` :: `format_ghost_for_prompt` (L183)
-- `core/services/ghost_networks.py` :: `reset_ghost_networks` (L188)
+- `core/services/ghost_networks.py` :: `build_ghost_networks_surface` (L184)
+- `core/services/ghost_networks.py` :: `format_ghost_for_prompt` (L175)
+- `core/services/ghost_networks.py` :: `reset_ghost_networks` (L180)
 - `core/services/git_actions.py` :: `commit_all` (L128)
 - `core/services/git_actions.py` :: `commit_all_container` (L47)
 - `core/services/git_actions.py` :: `commit_all_workstation` (L110)
@@ -1256,10 +1256,10 @@ Generated from source. 8007/15499 functions/methods documented (51%). The list b
 - `core/services/memory_md_update_proposal_tracking.py` :: `refresh_runtime_memory_md_update_proposal_statuses` (L58)
 - `core/services/memory_md_update_proposal_tracking.py` :: `track_runtime_memory_md_update_proposals_for_visible_turn` (L26)
 - `core/services/memory_pruning_daemon.py` :: `build_memory_pruning_surface` (L207)
-- `core/services/memory_tattoos.py` :: `build_memory_tattoos_surface` (L181)
-- `core/services/memory_tattoos.py` :: `describe_tattoo` (L164)
-- `core/services/memory_tattoos.py` :: `format_tattoo_for_prompt` (L172)
-- `core/services/memory_tattoos.py` :: `reset_memory_tattoos` (L177)
+- `core/services/memory_tattoos.py` :: `build_memory_tattoos_surface` (L173)
+- `core/services/memory_tattoos.py` :: `describe_tattoo` (L156)
+- `core/services/memory_tattoos.py` :: `format_tattoo_for_prompt` (L164)
+- `core/services/memory_tattoos.py` :: `reset_memory_tattoos` (L169)
 - `core/services/memory_write_policy.py` :: `approve_review` (L182)
 - `core/services/memory_write_policy.py` :: `build_memory_write_policy_prompt_section` (L230)
 - `core/services/memory_write_policy.py` :: `build_memory_write_policy_surface` (L206)
@@ -1882,9 +1882,9 @@ Generated from source. 8007/15499 functions/methods documented (51%). The list b
 - `core/services/temporal_self_continuity.py` :: `build_temporal_self_continuity_surface` (L51)
 - `core/services/temporal_self_continuity.py` :: `update_temporal_continuity_from_episode` (L23)
 - `core/services/temporal_self_continuity.py` :: `update_temporal_continuity_from_latest_episode` (L16)
-- `core/services/text_resonance.py` :: `build_text_resonance_surface` (L200)
-- `core/services/text_resonance.py` :: `recent_resonances` (L196)
-- `core/services/text_resonance.py` :: `reset_text_resonance` (L251)
+- `core/services/text_resonance.py` :: `build_text_resonance_surface` (L195)
+- `core/services/text_resonance.py` :: `recent_resonances` (L191)
+- `core/services/text_resonance.py` :: `reset_text_resonance` (L246)
 - `core/services/theater_audit.py` :: `build_theater_audit_surface` (L85)
 - `core/services/theory_of_mind.py` :: `recent_facts` (L286)
 - `core/services/theory_of_mind.py` :: `stop_theory_of_mind_tracker` (L471)
@@ -2185,6 +2185,7 @@ Generated from source. 8007/15499 functions/methods documented (51%). The list b
 - `scripts/memory_probe.py` :: `load_probes` (L24)
 - `scripts/memory_probe.py` :: `main` (L155)
 - `scripts/memory_probe.py` :: `score_probe` (L29)
+- `scripts/migrer_shared_runtime_til_state_store.py` :: `main` (L94)
 - `scripts/minimal_mode_baseline.py` :: `koer_opgave` (L206)
 - `scripts/minimal_mode_baseline.py` :: `main` (L248)
 - `scripts/mint_jarvisx_token.py` :: `main` (L52)

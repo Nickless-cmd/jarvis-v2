@@ -74,10 +74,26 @@ def test_empty_body_memory():
 import json  # noqa: E402
 
 import core.services.body_memory as B  # noqa: E402
+from core.runtime import state_store
+
+
+@pytest.fixture(autouse=True)
+def _tom_tilstand():
+    """Hver test starter paa en tom fil.
+
+    Isolationen kom foer fra at hver test patchede `_storage_path` til sin egen
+    `tmp_path`. Med `state_store` er stien skaermet af conftest' autouse-fixture
+    `_guard_prod_state_dir` — men den mappe er SESSIONS-bred, saa tilstand
+    laekker mellem tests i samme fil hvis ingen rydder op. Det var netop den
+    skaerm der manglede for `shared_dir()`: uden den skrev disse tests i den
+    aegte `~/.jarvis-v2/shared/runtime/`.
+    """
+    state_store.save_json("body_memory", [])
+    yield
+
 
 
 def _krop(monkeypatch, tmp_path, *, load=0.05, tryk=0.4, belastning="low"):
-    monkeypatch.setattr(B, "_storage_path", lambda: tmp_path / "body_memory.json")
     monkeypatch.setattr(
         "core.services.embodied_state.build_embodied_state_surface",
         lambda: {"strain_level": belastning, "state": "steady",
@@ -107,7 +123,6 @@ def test_erindringen_overlever_en_genstart(monkeypatch, tmp_path):
     # simuler en ny proces: modulet genindlaeses, intet i hukommelsen
     import importlib
     B2 = importlib.reload(B)
-    monkeypatch.setattr(B2, "_storage_path", lambda: tmp_path / "body_memory.json")
     assert B2.build_body_memory_surface()["snapshot_count"] == 1
     assert "foer" in B2.describe_body_memory()
 
@@ -151,7 +166,6 @@ def test_en_presset_krop_huskes_hver_gang(monkeypatch, tmp_path):
 
 
 def test_en_krop_der_ikke_kan_laeses_vaelter_ikke_tikket(monkeypatch, tmp_path):
-    monkeypatch.setattr(B, "_storage_path", lambda: tmp_path / "body_memory.json")
     monkeypatch.setattr(
         "core.services.embodied_state.build_embodied_state_surface",
         lambda: (_ for _ in ()).throw(RuntimeError("ingen vaert")))
@@ -165,6 +179,6 @@ def test_hukommelsen_er_afgraenset(monkeypatch, tmp_path):
     B.reset_body_memory()
     for i in range(B._MAX_SNAPSHOTS + 25):
         B.record_body_snapshot(f"tur {i}")
-    gemt = json.loads((tmp_path / "body_memory.json").read_text(encoding="utf-8"))
+    gemt = state_store.load_json("body_memory", None)
     assert len(gemt) == B._MAX_SNAPSHOTS
     assert gemt[-1]["context"].endswith(str(B._MAX_SNAPSHOTS + 24))

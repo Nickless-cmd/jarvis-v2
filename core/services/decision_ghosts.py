@@ -43,45 +43,35 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from core.runtime.workspace_paths import shared_dir
+from core.runtime import state_store
 
 logger = logging.getLogger(__name__)
 
 _MAX_PATHS = 50
 
 
-def _storage_path() -> Path:
-    return shared_dir() / "runtime" / "decision_ghosts.json"
+#: Noeglen i `core/runtime/state_store`. Laa foer i
+#: `shared_dir()/runtime/decision_ghosts.json` med haandskrevet load/save.
+_FIL = "decision_ghosts"
 
 
 def _load() -> dict[str, list[dict[str, Any]]]:
-    p = _storage_path()
     tom: dict[str, list[dict[str, Any]]] = {"rejected": [], "confirmed": []}
-    if not p.exists():
+    d = state_store.load_json(_FIL, None)
+    if d is None:
         return tom
-    try:
-        d = json.loads(p.read_text(encoding="utf-8"))
-        if not isinstance(d, dict):
-            return tom
-        return {"rejected": list(d.get("rejected") or []),
-                "confirmed": list(d.get("confirmed") or [])}
-    except Exception as exc:
-        logger.warning("decision_ghosts: kunne ikke laeses: %s", exc)
+    if not isinstance(d, dict):
+        logger.warning("decision_ghosts: uventet form i state — starter forfra")
         return tom
+    return {"rejected": list(d.get("rejected") or []),
+            "confirmed": list(d.get("confirmed") or [])}
 
 
 def _save(data: dict[str, list[dict[str, Any]]]) -> None:
-    p = _storage_path()
-    try:
-        p.parent.mkdir(parents=True, exist_ok=True)
-        tmp = p.with_suffix(".tmp")
-        tmp.write_text(json.dumps(
-            {"rejected": data["rejected"][-_MAX_PATHS:],
-             "confirmed": data["confirmed"][-_MAX_PATHS:]},
-            ensure_ascii=False, indent=1), encoding="utf-8")
-        tmp.replace(p)
-    except Exception as exc:
-        logger.warning("decision_ghosts: kunne ikke gemmes: %s", exc)
+    state_store.save_json(_FIL, {
+        "rejected": data["rejected"][-_MAX_PATHS:],
+        "confirmed": data["confirmed"][-_MAX_PATHS:],
+    })
 
 
 def _vaelg(poster: list[dict[str, Any]], felt: str) -> dict[str, Any] | None:
@@ -105,30 +95,34 @@ def record_rejected_path(decision: str, reason: str, alternative: str,
     `regret_potential` skal komme fra en maaling (fx `1 - adherence_score` paa
     en brudt beslutning). Udelades den, gemmes `None` — aldrig et gaet.
     """
-    data = _load()
-    data["rejected"].append({
-        "decision": decision,
-        "reason": reason,
-        "alternative": alternative,
-        "regret_potential": (float(regret_potential)
-                             if regret_potential is not None else None),
-        "recorded_at": datetime.now(UTC).isoformat(),
-    })
-    _save(data)
+    # Laas: to processer skriver, og hver gemning skriver HELE filen — uden
+    # laas forsvinder den andens beslutning sporloest.
+    with state_store.med_laas(_FIL):
+        data = _load()
+        data["rejected"].append({
+            "decision": decision,
+            "reason": reason,
+            "alternative": alternative,
+            "regret_potential": (float(regret_potential)
+                                 if regret_potential is not None else None),
+            "recorded_at": datetime.now(UTC).isoformat(),
+        })
+        _save(data)
 
 
 def record_confirmed_path(decision: str, outcome: str, key_factor: str = "",
                           success_echo: float | None = None) -> None:
     """Gem en beslutning der holdt. `success_echo` er `adherence_score`."""
-    data = _load()
-    data["confirmed"].append({
-        "decision": decision,
-        "outcome": outcome,
-        "key_factor": key_factor or "",
-        "success_echo": (float(success_echo) if success_echo is not None else None),
-        "recorded_at": datetime.now(UTC).isoformat(),
-    })
-    _save(data)
+    with state_store.med_laas(_FIL):
+        data = _load()
+        data["confirmed"].append({
+            "decision": decision,
+            "outcome": outcome,
+            "key_factor": key_factor or "",
+            "success_echo": (float(success_echo) if success_echo is not None else None),
+            "recorded_at": datetime.now(UTC).isoformat(),
+        })
+        _save(data)
 
 
 def record_reaffirmed_decision(decision_id: str, title: str, verdict: str,

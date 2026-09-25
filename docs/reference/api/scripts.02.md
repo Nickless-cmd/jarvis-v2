@@ -163,6 +163,16 @@ _One-shot migration: copy memory_emotional_context rows into emotional_memory_an
 | function | `migrate` | `(*, batch_size=…)` | Migrate legacy rows into the new table. | [src](../../../scripts/migrate_emotional_memory.py#L32) |
 | function | `_legacy_table_exists` | `(conn)` | — | [src](../../../scripts/migrate_emotional_memory.py#L77) |
 
+## `scripts/migrer_shared_runtime_til_state_store.py`
+_Flyt seks moduler fra `shared/runtime/*.json` til `state_store`._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_gammel_sti` | `(navn)` | — | [src](../../../scripts/migrer_shared_runtime_til_state_store.py#L52) |
+| function | `_har_indhold` | `(data)` | Tom liste/dict tæller ikke som indhold — så må den gerne overskrives. | [src](../../../scripts/migrer_shared_runtime_til_state_store.py#L56) |
+| function | `flyt` | `(navn, *, toerloeb)` | Returnér (status, forklaring) for ét modul. | [src](../../../scripts/migrer_shared_runtime_til_state_store.py#L65) |
+| function | `main` | `(argv=…)` | — | [src](../../../scripts/migrer_shared_runtime_til_state_store.py#L94) |
+
 ## `scripts/minimal_mode_baseline.py`
 _Minimal-mode-basislinje — hvad kan modellen UDEN Jarvis' stillads?_
 
@@ -441,15 +451,4 @@ _One-time OAuth setup for Google Calendar._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `main` | `()` | — | [src](../../../scripts/setup_google_calendar.py#L17) |
-
-## `scripts/signal_noise_cleanup.py`
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_ensure_signal_archive_table` | `(conn)` | — | [src](../../../scripts/signal_noise_cleanup.py#L31) |
-| function | `_archive_row` | `(conn, *, table, id_column, row, reason)` | — | [src](../../../scripts/signal_noise_cleanup.py#L52) |
-| function | `_row_is_noise` | `(row)` | — | [src](../../../scripts/signal_noise_cleanup.py#L87) |
-| function | `cleanup_signal_noise` | `(*, db_path=…)` | — | [src](../../../scripts/signal_noise_cleanup.py#L103) |
-| function | `_archive_low_support_run_audit_rows` | `(conn, *, table, id_column, keep_latest, where_clause)` | — | [src](../../../scripts/signal_noise_cleanup.py#L160) |
-| function | `main` | `()` | — | [src](../../../scripts/signal_noise_cleanup.py#L191) |
 

@@ -31,40 +31,31 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from core.runtime.workspace_paths import shared_dir
+from core.runtime import state_store
 
 logger = logging.getLogger(__name__)
 
 _HISTORY_MAX = 200
 
 
-def _storage_path() -> Path:
-    return shared_dir() / "runtime" / "text_resonance.json"
+#: Noeglen i `core/runtime/state_store`. Laa foer i
+#: `shared_dir()/runtime/text_resonance.json` med haandskrevet load/save.
+_FIL = "text_resonance"
 
 
 def _load() -> list[dict[str, Any]]:
     """Nyeste foerst — samme raekkefoelge som den gamle `deque.appendleft`."""
-    p = _storage_path()
-    if not p.exists():
+    d = state_store.load_json(_FIL, None)
+    if d is None:
         return []
-    try:
-        d = json.loads(p.read_text(encoding="utf-8"))
-        return d if isinstance(d, list) else []
-    except Exception as exc:
-        logger.warning("text_resonance: kunne ikke laeses: %s", exc)
+    if not isinstance(d, list):
+        logger.warning("text_resonance: uventet form i state — starter forfra")
         return []
+    return d
 
 
 def _save(historik: list[dict[str, Any]]) -> None:
-    p = _storage_path()
-    try:
-        p.parent.mkdir(parents=True, exist_ok=True)
-        tmp = p.with_suffix(".tmp")
-        tmp.write_text(json.dumps(historik[:_HISTORY_MAX], ensure_ascii=False),
-                       encoding="utf-8")
-        tmp.replace(p)
-    except Exception as exc:
-        logger.warning("text_resonance: kunne ikke gemmes: %s", exc)
+    state_store.save_json(_FIL, historik[:_HISTORY_MAX])
 
 _WORD_RE = re.compile(r"[a-zæøåA-ZÆØÅ_-]+")
 
@@ -175,9 +166,13 @@ def resonate(text: str, *, source: str = "") -> dict[str, Any]:
     # arver den ikke. En resonans maa aldrig kunne forhindre at en besked
     # bliver gemt.
     try:
-        historik = _load()
-        historik.insert(0, signal)
-        _save(historik)
+        # Laas: `resonate` kaldes fra `append_chat_message` i API-processen,
+        # mens daemonerne skriver fra runtime. Hver gemning skriver HELE
+        # filen, saa uden laas forsvinder den andens signal sporloest.
+        with state_store.med_laas(_FIL):
+            historik = _load()
+            historik.insert(0, signal)
+            _save(historik)
     except Exception as exc:
         logger.warning("text_resonance: signalet kunne ikke gemmes: %s", exc)
 

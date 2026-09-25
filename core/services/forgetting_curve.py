@@ -40,7 +40,7 @@ from pathlib import Path
 from typing import Any
 
 from core.eventbus.bus import event_bus
-from core.runtime.workspace_paths import shared_dir
+from core.runtime import state_store
 
 logger = logging.getLogger(__name__)
 
@@ -48,20 +48,19 @@ logger = logging.getLogger(__name__)
 _MAX_SPOR = 500
 
 
-def _storage_path() -> Path:
-    return shared_dir() / "runtime" / "forgetting_curve.json"
+#: Noeglen i `core/runtime/state_store`. Laa foer i
+#: `shared_dir()/runtime/forgetting_curve.json` med haandskrevet load/save.
+_FIL = "forgetting_curve"
 
 
 def _load() -> dict[str, dict[str, Any]]:
-    p = _storage_path()
-    if not p.exists():
+    d = state_store.load_json(_FIL, None)
+    if d is None:
         return {}
-    try:
-        d = json.loads(p.read_text(encoding="utf-8"))
-        return d if isinstance(d, dict) else {}
-    except Exception as exc:
-        logger.warning("forgetting_curve: kunne ikke laeses: %s", exc)
+    if not isinstance(d, dict):
+        logger.warning("forgetting_curve: uventet form i state — starter forfra")
         return {}
+    return d
 
 
 def _save(reg: dict[str, dict[str, Any]]) -> None:
@@ -69,14 +68,7 @@ def _save(reg: dict[str, dict[str, Any]]) -> None:
         # Ryd de mest faldne foerst — de er allerede ude af injektionen.
         orden = sorted(reg.items(), key=lambda kv: float(kv[1].get("decay_score") or 0.0))
         reg = dict(orden[:_MAX_SPOR])
-    p = _storage_path()
-    try:
-        p.parent.mkdir(parents=True, exist_ok=True)
-        tmp = p.with_suffix(".tmp")
-        tmp.write_text(json.dumps(reg, ensure_ascii=False, indent=1), encoding="utf-8")
-        tmp.replace(p)
-    except Exception as exc:
-        logger.warning("forgetting_curve: kunne ikke gemmes: %s", exc)
+    state_store.save_json(_FIL, reg)
 
 
 def noegle_for(focus: str, summary: str) -> str:
@@ -92,53 +84,62 @@ def register_memory(
     initial_decay: float = 0.0,
 ) -> None:
     """Register a memory for decay tracking."""
-    reg = _load()
-    reg[memory_key] = {
-        "decay_score": initial_decay,
-        "reinforcement_count": 0,
-        "content_preview": content_preview[:100],
-        "registered_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
-        "last_referenced_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
-    }
-    _save(reg)
+    with state_store.med_laas(_FIL):
+        reg = _load()
+        reg[memory_key] = {
+            "decay_score": initial_decay,
+            "reinforcement_count": 0,
+            "content_preview": content_preview[:100],
+            "registered_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+            "last_referenced_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+        }
+        _save(reg)
 
 
 def reinforce_memory(memory_key: str) -> None:
     """Reinforce a memory — reset decay, increment reinforcement count."""
-    reg = _load()
-    entry = reg.get(memory_key)
-    if entry:
-        entry["decay_score"] = 0.0
-        entry["reinforcement_count"] = int(entry.get("reinforcement_count", 0)) + 1
-        entry["last_referenced_at"] = datetime.now(UTC).isoformat().replace("+00:00", "Z")
-        _save(reg)
+    with state_store.med_laas(_FIL):
+        reg = _load()
+        entry = reg.get(memory_key)
+        if entry:
+            entry["decay_score"] = 0.0
+            entry["reinforcement_count"] = int(entry.get("reinforcement_count", 0)) + 1
+            entry["last_referenced_at"] = datetime.now(UTC).isoformat().replace("+00:00", "Z")
+            _save(reg)
 
 
 def apply_decay_tick(decay_increment: float = 0.01) -> dict[str, object]:
     """Apply one decay tick to all registered memories."""
-    reg = _load()
-    faded = []
-    for key, entry in list(reg.items()):
-        old_decay = float(entry.get("decay_score", 0.0))
-        # Reinforced memories decay slower
-        reinforcements = int(entry.get("reinforcement_count", 0))
-        adjusted_increment = decay_increment / max(1, reinforcements * 0.5 + 1)
-        new_decay = min(1.0, old_decay + adjusted_increment)
-        entry["decay_score"] = new_decay
+    faded: list[tuple[str, float]] = []
+    with state_store.med_laas(_FIL):
+        reg = _load()
+        for key, entry in list(reg.items()):
+            old_decay = float(entry.get("decay_score", 0.0))
+            # Reinforced memories decay slower
+            reinforcements = int(entry.get("reinforcement_count", 0))
+            adjusted_increment = decay_increment / max(1, reinforcements * 0.5 + 1)
+            new_decay = min(1.0, old_decay + adjusted_increment)
+            entry["decay_score"] = new_decay
 
-        if new_decay > 0.9:
-            faded.append(key)
-            event_bus.publish(
-                "cognitive_forgetting.memory_faded",
-                {"memory_key": key, "decay_score": new_decay},
-            )
+            if new_decay > 0.9:
+                faded.append((key, new_decay))
 
-    _save(reg)
+        _save(reg)
+        sporet = len(reg)
+
+    # Haendelserne UDEN for laasen. En abonnent maa ikke kunne holde den anden
+    # proces ude af glemselskurven mens den arbejder paa noget helt andet.
+    for key, decay in faded:
+        event_bus.publish(
+            "cognitive_forgetting.memory_faded",
+            {"memory_key": key, "decay_score": decay},
+        )
+
     return {
         "tick_applied": True,
-        "total_tracked": len(reg),
+        "total_tracked": sporet,
         "faded_count": len(faded),
-        "faded_keys": faded,
+        "faded_keys": [k for k, _ in faded],
     }
 
 
@@ -208,31 +209,35 @@ def tick(_seconds: float = 0.0) -> dict[str, Any]:
     # de laeser+skriver filen hver gang: tolv fulde cyklusser per tik. Vaerre —
     # dubletter blev talt som nye, fordi `noegle in reg` saa paa en kopi der
     # ikke fulgte med. Maalt: «registreret: 10» mens der kun stod 6.
-    reg = _load()
-    nu = datetime.now(UTC).isoformat().replace("+00:00", "Z")
-    nye = genset = 0
-    for udtraek in list(hjerne.get("excerpts") or []):
-        focus = str(udtraek.get("focus") or "")
-        summary = str(udtraek.get("summary") or "")
-        if not summary.strip():
-            continue
-        noegle = noegle_for(focus, summary)
-        post = reg.get(noegle)
-        if post:
-            post["decay_score"] = 0.0
-            post["reinforcement_count"] = int(post.get("reinforcement_count", 0)) + 1
-            post["last_referenced_at"] = nu
-            genset += 1
-        else:
-            reg[noegle] = {
-                "decay_score": 0.0,
-                "reinforcement_count": 0,
-                "content_preview": (f"{focus}: {summary}" if focus else summary)[:100],
-                "registered_at": nu,
-                "last_referenced_at": nu,
-            }
-            nye += 1
-    _save(reg)
+    # Laasen slippes FOER `apply_decay_tick`, som tager den selv. To
+    # `med_laas` paa samme noegle i samme proces er to `flock` paa hver sin
+    # fd — den inderste ville vente paa den yderste for evigt.
+    with state_store.med_laas(_FIL):
+        reg = _load()
+        nu = datetime.now(UTC).isoformat().replace("+00:00", "Z")
+        nye = genset = 0
+        for udtraek in list(hjerne.get("excerpts") or []):
+            focus = str(udtraek.get("focus") or "")
+            summary = str(udtraek.get("summary") or "")
+            if not summary.strip():
+                continue
+            noegle = noegle_for(focus, summary)
+            post = reg.get(noegle)
+            if post:
+                post["decay_score"] = 0.0
+                post["reinforcement_count"] = int(post.get("reinforcement_count", 0)) + 1
+                post["last_referenced_at"] = nu
+                genset += 1
+            else:
+                reg[noegle] = {
+                    "decay_score": 0.0,
+                    "reinforcement_count": 0,
+                    "content_preview": (f"{focus}: {summary}" if focus else summary)[:100],
+                    "registered_at": nu,
+                    "last_referenced_at": nu,
+                }
+                nye += 1
+        _save(reg)
 
     faldet = apply_decay_tick()
     return {

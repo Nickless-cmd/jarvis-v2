@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8009/15497 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8016/15504 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 8009/15497 functions/methods documented (51%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 695 | 1275 | 54% |
-| `core.services` | 5292 | 10532 | 50% |
+| `core.services` | 5299 | 10539 | 50% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 107 | 183 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -974,7 +974,7 @@ Generated from source. 8009/15497 functions/methods documented (51%). The list b
 - `core/services/daemon_manager.py` :: `set_daemon_enabled` (L844)
 - `core/services/daily_journal.py` :: `stop_daily_journal_daemon` (L296)
 - `core/services/day_shape_memory.py` :: `build_day_shape_surface` (L261)
-- `core/services/decision_enforcement.py` :: `subscribe` (L266)
+- `core/services/decision_enforcement.py` :: `subscribe` (L505)
 - `core/services/decision_ghosts.py` :: `build_decision_ghosts_surface` (L193)
 - `core/services/decision_ghosts.py` :: `describe_ghost_decision` (L163)
 - `core/services/decision_ghosts.py` :: `describe_success_echo` (L171)

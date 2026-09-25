@@ -480,8 +480,8 @@ _Temporal Rhythm — felt time, not computed time._
 | function | `tick` | `(_seconds=…)` | — | [src](../../../core/services/temporal_rhythm.py#L129) |
 | function | `get_current_rhythm` | `()` | — | [src](../../../core/services/temporal_rhythm.py#L168) |
 | function | `build_temporal_rhythm_surface` | `()` | — | [src](../../../core/services/temporal_rhythm.py#L172) |
-| function | `_surface_summary` | `(current, baseline)` | — | [src](../../../core/services/temporal_rhythm.py#L191) |
-| function | `build_temporal_rhythm_prompt_section` | `()` | Surface only when tempo is unusual. | [src](../../../core/services/temporal_rhythm.py#L199) |
+| function | `_surface_summary` | `(current, baseline)` | — | [src](../../../core/services/temporal_rhythm.py#L194) |
+| function | `build_temporal_rhythm_prompt_section` | `()` | Surface only when tempo is unusual. | [src](../../../core/services/temporal_rhythm.py#L202) |
 
 ## `core/services/temporal_self_continuity.py`
 _Temporal self-continuity: past/current/future self handoff._

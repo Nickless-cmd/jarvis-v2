@@ -35,3 +35,11 @@ def test_lists_are_canonical_single_source():
     from core.services import gate_mutation as gm
     assert pml._PROTECTED_FILES is gm.PROTECTED_IDENTITY_FILES
     assert pml._EVOLVABLE_FILES is gm.EVOLVABLE_FILES
+
+
+def test_loekken_er_LEVENDE_selv_uden_mutationer():
+    """`active` stod som `len(items) > 0`. «Ingen mutationer registreret» er
+    tomt, ikke dødt — modulet tikkes og persisterer."""
+    import core.services.prompt_mutation_loop as P
+
+    assert P.build_prompt_mutation_loop_surface()["active"] is True

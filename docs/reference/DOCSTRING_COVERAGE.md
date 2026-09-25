@@ -1450,7 +1450,7 @@ Generated from source. 8016/15505 functions/methods documented (51%). The list b
 - `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4886)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_from_inputs` (L224)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_runtime_surface` (L469)
-- `core/services/prompt_mutation_loop.py` :: `build_prompt_mutation_loop_prompt_section` (L528)
+- `core/services/prompt_mutation_loop.py` :: `build_prompt_mutation_loop_prompt_section` (L529)
 - `core/services/prompt_mutation_loop.py` :: `build_prompt_mutation_loop_surface` (L476)
 - `core/services/prompt_mutation_loop.py` :: `get_mutation` (L457)
 - `core/services/prompt_mutation_loop.py` :: `list_evolvable_files` (L466)

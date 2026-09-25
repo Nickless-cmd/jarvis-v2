@@ -172,7 +172,10 @@ def get_current_rhythm() -> dict[str, Any] | None:
 def build_temporal_rhythm_surface() -> dict[str, Any]:
     current = get_current_rhythm()
     if not current:
-        return {"active": False, "summary": "Endnu ingen tempo-sampling"}
+        # Ingen sampling ENDNU er ikke det samme som doed. `tick` havde nul
+        # kaldere indtil 25/9-2026, saa denne gren var den eneste der
+        # nogensinde blev naaet.
+        return {"active": True, "summary": "Endnu ingen tempo-sampling"}
     baseline_avg = None
     if len(_baseline_samples) >= 5:
         baseline_avg = round(sum(_baseline_samples) / len(_baseline_samples), 3)

@@ -212,7 +212,7 @@ def build_memory_density_surface() -> dict[str, Any]:
     promotable = list_promotable()
     promoted = [r for r in items if r.get("promoted_to_soul")]
     return {
-        "active": len(items) > 0,
+        "active": True,
         "total_notes": len(items),
         "by_trigger": by_trigger,
         "promotable_count": len(promotable),

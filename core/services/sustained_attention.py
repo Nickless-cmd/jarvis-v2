@@ -203,7 +203,7 @@ def build_sustained_attention_surface() -> dict[str, Any]:
         lvl = str(p.get("autonomy_level") or "suggest")
         by_autonomy[lvl] = by_autonomy.get(lvl, 0) + 1
     return {
-        "active": len(items) > 0,
+        "active": True,
         "active_count": len(active),
         "paused_count": len(paused),
         "completed_count": len(completed),

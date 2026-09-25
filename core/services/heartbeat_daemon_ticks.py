@@ -244,6 +244,18 @@ def tik_indre_daemoner() -> dict[str, int]:
     except Exception as exc:
         logger.warning("per-bruger daemoner fejlede: %s", exc)
 
+    # Kroppen HUSKER nu. `body_memory` havde ingen kalder og gemte
+    # `random.choice(["varm","kold","tryk","prikken"])` i en modul-liste der
+    # doede ved genstart — mens `embodied_state`, importeret 16 steder, laeste
+    # vaertens rigtige tal hele tiden. Sansningen manglede ikke; erindringen
+    # gjorde. Den gemmer kun naar kroppen SKIFTER.
+    try:
+        from core.services.body_memory import tick as _krop_tick
+        _krop_tick(30.0)
+        koert += 1
+    except Exception:  # taelles frem for at slugges — se docstring
+        fejlet += 1
+
     # Eksperimentelle sansninger. Laa i `tick_count % 2`-afsnittet indtil
     # 25/9-2026 selv om kommentaren over dem sagde «update on every tick» —
     # og det afsnit koerer kun naar `act_phase` finder prioriteter.

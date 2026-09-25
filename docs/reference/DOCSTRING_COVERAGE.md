@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 7984/15464 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 7983/15461 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,8 +24,8 @@ Generated from source. 7984/15464 functions/methods documented (51%). The list b
 | `core.identity` | 71 | 165 | 43% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 691 | 1271 | 54% |
-| `core.services` | 5274 | 10508 | 50% |
+| `core.runtime` | 692 | 1272 | 54% |
+| `core.services` | 5272 | 10504 | 50% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 107 | 183 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -42,7 +42,7 @@ Generated from source. 7984/15464 functions/methods documented (51%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2212)
+## Undocumented public functions (2213)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L209)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1258,10 +1258,11 @@ Generated from source. 7984/15464 functions/methods documented (51%). The list b
 - `core/services/memory_md_update_proposal_tracking.py` :: `refresh_runtime_memory_md_update_proposal_statuses` (L58)
 - `core/services/memory_md_update_proposal_tracking.py` :: `track_runtime_memory_md_update_proposals_for_visible_turn` (L26)
 - `core/services/memory_pruning_daemon.py` :: `build_memory_pruning_surface` (L207)
-- `core/services/memory_tattoos.py` :: `build_memory_tattoos_surface` (L181)
-- `core/services/memory_tattoos.py` :: `describe_tattoo` (L164)
-- `core/services/memory_tattoos.py` :: `format_tattoo_for_prompt` (L172)
-- `core/services/memory_tattoos.py` :: `reset_memory_tattoos` (L177)
+- `core/services/memory_tattoos.py` :: `build_memory_tattoos_surface` (L35)
+- `core/services/memory_tattoos.py` :: `create_tattoo` (L9)
+- `core/services/memory_tattoos.py` :: `describe_tattoo` (L19)
+- `core/services/memory_tattoos.py` :: `format_tattoo_for_prompt` (L25)
+- `core/services/memory_tattoos.py` :: `reset_memory_tattoos` (L31)
 - `core/services/memory_write_policy.py` :: `approve_review` (L182)
 - `core/services/memory_write_policy.py` :: `build_memory_write_policy_prompt_section` (L230)
 - `core/services/memory_write_policy.py` :: `build_memory_write_policy_surface` (L206)

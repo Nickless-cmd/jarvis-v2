@@ -111,11 +111,59 @@ def test_expire_gate_enforce_incidents_closes_only_old_cognitive(isolated_runtim
     assert err in unresolved          # ægte fejl → urørt
 
 
+def test_expire_stale_incidents_closes_unseen_keeps_severe(isolated_runtime):
+    """En incident der ikke er SET i 48 timer er ikke en ÅBEN sag — uanset kind. Målt 25/9:
+    den ældste uløste error var 37 dage (19/8), og fordi status-beregningen farver Centralen
+    gul ved blot ÉN, stod den strukturelt gul. Men 'severe' er en SECURITY-RED og må ALDRIG
+    forsvinde af sig selv, og en fersk fejl skal stadig være synlig."""
+    from datetime import UTC, datetime, timedelta
+
+    from core.runtime.db_central_incidents import (
+        expire_stale_incidents, list_central_incidents, record_central_incident,
+    )
+    from core.runtime.db_core import connect
+
+    old_stall = record_central_incident(cluster="stream", nerve="stream_stall",
+                                        kind="stall", severity="error", message="gammel stall")
+    old_flag = record_central_incident(cluster="infra", nerve="reach_webservice",
+                                       kind="flag", severity="error", message="gammel flag")
+    old_acted = record_central_incident(cluster="learning", nerve="regime",
+                                        kind="acted", severity="info", message="[LIVE] gammel")
+    fresh = record_central_incident(cluster="stream", nerve="stream_stall",
+                                    kind="stall", severity="error", message="fersk stall")
+    sec = record_central_incident(cluster="privacy", nerve="cross_user_share",
+                                  kind="gate_enforce", severity="severe", message="lækage")
+
+    old_ts = (datetime.now(UTC) - timedelta(hours=72)).isoformat()
+    with connect() as conn:
+        # `sec` får OGSÅ gammel ts: ellers ville den aldrig være kandidat til ældning, og
+        # testen ville bestå selv om severe-værnet blev fjernet. Nu er severe-værnet det
+        # ENESTE der holder den åben — det er den ægte prøve.
+        conn.execute("UPDATE central_incidents SET ts = ? WHERE id IN (?, ?, ?, ?)",
+                     (old_ts, old_stall, old_flag, old_acted, sec))
+
+    assert expire_stale_incidents(older_than_hours=48.0) == 3
+
+    unresolved = {r["id"] for r in list_central_incidents(unresolved_only=True, limit=100)}
+    assert old_stall not in unresolved   # gammel error, ingen selv-løsende modpart → lukket
+    assert old_flag not in unresolved    # anden kind, samme klasse → lukket
+    assert old_acted not in unresolved   # info-log fra august → lukket
+    assert fresh in unresolved           # fersk → stadig synlig
+    assert sec in unresolved             # SECURITY-RED → ALDRIG auto-lukket
+
+
 def test_expire_gate_enforce_incidents_is_self_safe(monkeypatch):
     from core.runtime.db_central_incidents import expire_gate_enforce_incidents
     monkeypatch.setattr("core.runtime.db_central_incidents.connect",
                         lambda: (_ for _ in ()).throw(RuntimeError("db nede")))
     assert expire_gate_enforce_incidents() == 0
+
+
+def test_expire_stale_incidents_is_self_safe(monkeypatch):
+    from core.runtime.db_central_incidents import expire_stale_incidents
+    monkeypatch.setattr("core.runtime.db_central_incidents.connect",
+                        lambda: (_ for _ in ()).throw(RuntimeError("db nede")))
+    assert expire_stale_incidents() == 0
 
 
 def test_has_unresolved_message_dedup(isolated_runtime):

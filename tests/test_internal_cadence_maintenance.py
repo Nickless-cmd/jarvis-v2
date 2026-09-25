@@ -30,12 +30,14 @@ def test_incident_retention_koerer_hver_time():
 
 
 def test_incident_retention_kalder_udloebs_funktionen():
-    """Produceren skal kalde `expire_gate_enforce_incidents` — ellers er den bygget
-    og aldrig kørt. Vinduet er 2 timer: kadencen kører hver time, og en hændelse skal
-    kunne ses i panelet i mere end én cyklus før den lukkes."""
+    """Produceren skal kalde BEGGE udløbs-funktioner — ellers er de bygget og aldrig kørt.
+    `expire_gate_enforce_incidents` (2t) tager governance-øjeblikke; `expire_stale_incidents`
+    (48t) tager resten, som ellers hober sig op for evigt og holder Centralen strukturelt gul."""
     src = inspect.getsource(_registered()["central_incident_retention"].run_fn)
     assert "expire_gate_enforce_incidents" in src
     assert "older_than_hours=2.0" in src
+    assert "expire_stale_incidents" in src
+    assert "older_than_hours=48.0" in src
 
 
 def test_incident_retention_lukker_gamle_governance_incidents(isolated_runtime):

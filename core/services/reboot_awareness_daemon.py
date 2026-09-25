@@ -203,6 +203,27 @@ def get_last_boot_event() -> dict[str, Any] | None:
     return _load().get("last_boot_event")
 
 
+#: Hvor laenge efter sidste tik systemet stadig regnes som levende.
+#:
+#: `tick()` kaldes fra hjerteslaget. Vinduet skal vaere rundhaandet nok til at
+#: et langsomt tik ikke slukker lampen, og kort nok til at et doedt hjerteslag
+#: bliver synligt. Et hjerteslag der har staaet stille i en halv time er ikke
+#: «lidt forsinket».
+_LEVENDE_VINDUE_S = 1800.0
+
+
+def _tikket_for_nylig(last_seen: Any, now: datetime) -> bool:
+    """Har nogen proces tikket inden for vinduet? Ukendt tid regnes som nej."""
+    if not last_seen:
+        return False
+    try:
+        set_dt = datetime.fromisoformat(str(last_seen).replace("Z", "+00:00"))
+    except Exception:  # et ulaeseligt tidsstempel siger intet om liv, og et
+        return False   # gaet paa «levende» ville taende lampen paa ingenting
+
+    return (now - set_dt).total_seconds() <= _LEVENDE_VINDUE_S
+
+
 def build_reboot_awareness_surface() -> dict[str, Any]:
     data = _load()
     last_event = data.get("last_boot_event") or {}
@@ -217,7 +238,21 @@ def build_reboot_awareness_surface() -> dict[str, Any]:
         except Exception:
             pass
     return {
-        "active": _DETECTION_RUN,
+        # `active` maa IKKE vaere `_DETECTION_RUN`.
+        #
+        # Det er et modul-flag pr. proces, sat naar detektionen koerer. Bygges
+        # overfladen i en anden proces end den der tikker — og det goer den:
+        # `jarvis-api` serverer flader, `jarvis-runtime` tikker — er flaget
+        # falsk selv om alt virker. Maalt 25/9-2026 stod systemet «active:
+        # false» med summary «Genstartet uventet efter 42890s nede»: data'en
+        # var aegte, flaget var det ikke.
+        #
+        # Samme fejlklasse som `_PENDING_APPROVALS` samme morgen — en
+        # modul-variabel brugt som delt tilstand mellem to processer.
+        #
+        # Sandheden ligger paa disken: der ER et bod-event, og NOGEN har tikket
+        # for nylig. Begge dele kan enhver proces laese.
+        "active": bool(last_event) and _tikket_for_nylig(last_seen, now),
         "last_boot_event": last_event,
         "uptime_seconds": uptime_seconds,
         "last_seen_at": last_seen,

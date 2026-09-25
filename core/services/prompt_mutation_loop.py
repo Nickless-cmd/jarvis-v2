@@ -485,7 +485,8 @@ def build_prompt_mutation_loop_surface() -> dict[str, Any]:
         if scores:
             avg_score = round(statistics.mean(scores), 3)
     return {
-        "active": len(items) > 0,
+        # «Ingen mutationer registreret» er tomt, ikke doedt.
+        "active": True,
         "total": len(items),
         "monitoring": len(monitoring),
         "adopted": len(adopted),

@@ -117,9 +117,9 @@ _Desperation Awareness — self-noticing safety signal._
 | function | `_narrative_for` | `(state, direction)` | — | [src](../../../core/services/desperation_awareness.py#L176) |
 | function | `is_currently_pressed` | `()` | — | [src](../../../core/services/desperation_awareness.py#L183) |
 | function | `build_desperation_awareness_surface` | `()` | — | [src](../../../core/services/desperation_awareness.py#L187) |
-| function | `_surface_summary` | `(state)` | — | [src](../../../core/services/desperation_awareness.py#L199) |
-| function | `build_desperation_awareness_prompt_section` | `()` | Surfaces only when pressed or desperate — silent when calm. | [src](../../../core/services/desperation_awareness.py#L210) |
-| function | `reset_desperation_awareness` | `()` | Reset state (for testing). | [src](../../../core/services/desperation_awareness.py#L222) |
+| function | `_surface_summary` | `(state)` | — | [src](../../../core/services/desperation_awareness.py#L203) |
+| function | `build_desperation_awareness_prompt_section` | `()` | Surfaces only when pressed or desperate — silent when calm. | [src](../../../core/services/desperation_awareness.py#L214) |
+| function | `reset_desperation_awareness` | `()` | Reset state (for testing). | [src](../../../core/services/desperation_awareness.py#L226) |
 
 ## `core/services/development_focus_tracking.py`
 

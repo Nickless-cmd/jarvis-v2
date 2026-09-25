@@ -187,7 +187,11 @@ def is_currently_pressed() -> bool:
 def build_desperation_awareness_surface() -> dict[str, Any]:
     state = compute_desperation_score()
     return {
-        "active": state["level"] != "calm",
+        # «Rolig baseline» er en MAALING, ikke en doed daemon. Noeglen blev
+        # laest som liv af `cognitive_architecture_surface`, saa en sund
+        # tilstand fik systemet til at melde sig doedt. Presset staar i
+        # `level` og `score`, hvor det hoerer hjemme.
+        "active": True,
         "level": state["level"],
         "score": state["score"],
         "components": state["components"],

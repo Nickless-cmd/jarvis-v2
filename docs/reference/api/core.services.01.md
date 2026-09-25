@@ -100,8 +100,8 @@ _Action Router — close the loop: signal → handling._
 | function | `recent_actions` | `(*, limit=…)` | — | [src](../../../core/services/action_router.py#L609) |
 | function | `recent_proactive` | `(*, limit=…)` | — | [src](../../../core/services/action_router.py#L613) |
 | function | `build_action_router_surface` | `()` | — | [src](../../../core/services/action_router.py#L617) |
-| function | `_surface_summary` | `(actions, proactive_today, proactive_sent_today)` | — | [src](../../../core/services/action_router.py#L645) |
-| function | `build_action_router_prompt_section` | `()` | Tell him quietly what the router has done recently. | [src](../../../core/services/action_router.py#L658) |
+| function | `_surface_summary` | `(actions, proactive_today, proactive_sent_today)` | — | [src](../../../core/services/action_router.py#L649) |
+| function | `build_action_router_prompt_section` | `()` | Tell him quietly what the router has done recently. | [src](../../../core/services/action_router.py#L669) |
 
 ## `core/services/active_file_store.py`
 _Live "aktiv fil" — den sti Jarvis senest læste/skrev (file-tree-control-spec)._

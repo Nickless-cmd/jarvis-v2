@@ -26,6 +26,7 @@ import asyncio
 import os
 import signal
 import sys
+import threading
 import time
 import traceback
 from pathlib import Path
@@ -37,6 +38,14 @@ if str(_REPO_ROOT) not in sys.path:
 
 
 _TIMEOUT_SECONDS = 60
+
+#: Bagstopperens ekstra luft. `asyncio.wait_for` faar foerste forsoeg og giver
+#: en ren exit-kode; traaden fyrer kun naar loekken slet ikke kan give slip.
+_BAGSTOP_MARGIN_S = 5.0
+
+#: Hvordan processen afsluttes haardt. Et modul-navn, saa en test kan bytte
+#: det — ellers kunne bagstopperen kun proeves ved at draebe pytest.
+_AFSLUT = os._exit
 
 
 async def _run_lifespan() -> None:
@@ -57,12 +66,18 @@ async def _run_lifespan() -> None:
         # Also verify the tool-router endpoint is reachable in-process.
         from fastapi.testclient import TestClient
         try:
-            with TestClient(app) as client:
-                r = client.get("/mc/tool-router-state")
-                if r.status_code != 200:
-                    raise RuntimeError(
-                        f"tool-router-state returned {r.status_code}"
-                    )
+            # IKKE `with TestClient(app)`. Kontekst-formen koerer app'ens
+            # lifespan ÉN GANG TIL — inde i den lifespan vi allerede staar i.
+            # Hver daemon blev derfor startet to gange; maalt 25/9-2026 stod
+            # `recurring-tasks-poller` og `prompt-cache-prewarm` dobbelt blandt
+            # de traade der var i live ved exit. Uden `with` starter klienten
+            # ingen lifespan, og app'en er allerede oppe her.
+            client = TestClient(app)
+            r = client.get("/mc/tool-router-state")
+            if r.status_code != 200:
+                raise RuntimeError(
+                    f"tool-router-state returned {r.status_code}"
+                )
         except Exception:
             # Don't let endpoint check failures hide real startup bugs;
             # report but continue.
@@ -447,8 +462,42 @@ async def _run_lifespan() -> None:
             traceback.print_exc()
 
 
+def _start_vagthund(started: float) -> "threading.Timer":
+    """Bagstopper i en TRAAD for det haeng `asyncio.wait_for` ikke kan se.
+
+    `wait_for` kan kun afbryde ved et `await`, og lifespan-kroppen er
+    overvejende SYNKRON — importer, `create_app()`, DB-kald. Haenger en af
+    dem, naar loekken aldrig at give slip, og timeouten fyrer ikke for netop
+    den fejl den blev skrevet til.
+
+    Maalt 25/9-2026: med `_TIMEOUT_SECONDS = 0.4` svarede skriptet
+    «OK in 6.9s». Exit-kode 2 var uopnaaelig for et synkront haeng.
+
+    Traaden koerer uden for loekken og kan afslutte processen uanset hvor den
+    staar. Den faar `_BAGSTOP_MARGIN_S` ekstra, saa `wait_for` beholder
+    foerste forsoeg og den rene exit-kode; kommer vi hertil, KAN
+    hovedtraaden ikke modtage en undtagelse, og derfor afsluttes den haardt.
+    """
+    def _for_sent() -> None:
+        elapsed = time.monotonic() - started
+        print(
+            f"smoke_test_startup: TIMEOUT after {elapsed:.1f}s "
+            f"(limit {_TIMEOUT_SECONDS}s) — startup hung",
+            file=sys.stderr,
+        )
+        sys.stdout.flush()
+        sys.stderr.flush()
+        _AFSLUT(2)
+
+    vagt = threading.Timer(_TIMEOUT_SECONDS + _BAGSTOP_MARGIN_S, _for_sent)
+    vagt.daemon = True
+    vagt.start()
+    return vagt
+
+
 def main() -> int:
     started = time.monotonic()
+    vagt = _start_vagthund(started)
     try:
         asyncio.run(asyncio.wait_for(_run_lifespan(), timeout=_TIMEOUT_SECONDS))
     except asyncio.TimeoutError:
@@ -467,6 +516,8 @@ def main() -> int:
         )
         traceback.print_exc()
         return 1
+    finally:
+        vagt.cancel()
 
     elapsed = time.monotonic() - started
     print(f"smoke_test_startup: OK in {elapsed:.1f}s")
@@ -479,4 +530,31 @@ if __name__ == "__main__":
         signal.signal(signal.SIGPIPE, signal.SIG_DFL)
     except (AttributeError, ValueError):
         pass
-    sys.exit(main())
+
+    _kode = main()
+
+    # `os._exit`, ikke `sys.exit`. HVORFOR (maalt 25/9-2026):
+    #
+    # Lifespan starter ~30 daemon-traade, og nedlukningen stopper kun to af
+    # dem (`stop_recovery_dispatcher`, `stop_release_vagt`) — resten er
+    # `daemon=True` med vilje. Ved `sys.exit` finaliserer fortolkeren saa
+    # UNDER 30 koerende traade, og rammer den én der staar i et C++-kald
+    # (aiohttp, PIL, mmh3 — 17 udvidelsesmoduler er indlaest), afbryder
+    # processen med `terminate called without an active exception`.
+    #
+    # Maalt paa `b2d8594df`: 2 SIGABRT ud af 12 koersler — ALTID efter at
+    # linjen «smoke_test_startup: OK» var skrevet. Som pre-push-hook betoed
+    # det at et gyldigt deploy blev afvist tilfaeldigt; det skete to gange
+    # samme aften.
+    #
+    # Det er IKKE en produktionsfejl der skjules her: `jarvis-api` og
+    # `jarvis-runtime` lukker rent ned paa CT105 — ingen `terminate called`
+    # i journalen. Forskellen er at dette skript er en MAALING, og maalingen
+    # er afgivet naar `main()` har svaret. Finaliseringen bagefter tilfoejer
+    # intet og kan kun goere et sandt svar falsk.
+    #
+    # Den rigtige rettelse er en samlet nedlukning af de ~30 daemoner. Den
+    # findes ikke, og at bygge den hoerer ikke i et roeg-test-skript.
+    sys.stdout.flush()
+    sys.stderr.flush()
+    _AFSLUT(_kode)

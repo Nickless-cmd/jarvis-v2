@@ -36,3 +36,31 @@ def test_reach_out_falls_back_to_ntfy_when_router_fails(monkeypatch):
     entry = ar._reach_out(message="vigtigt", importance="high", bypass_nudge=True, source="test")
     assert entry["outcome"] == "sent"
     assert ntfy_called.get("msg") == "vigtigt"  # fallback brugt
+
+
+# ── Livstegnet læste den tomme af to lister (25/9-2026) ─────────────────────
+
+
+def test_routeren_er_LEVENDE_selv_naar_actions_er_tom():
+    """`active` stod som `len(actions) > 0`.
+
+    Målt på CT105 25/9-2026: `actions: 0` mens `proactive_log` havde 217
+    poster. Modulet arbejdede påviseligt og meldte sig dødt, fordi nøglen
+    læste den ene af to lister.
+    """
+    import core.services.action_router as AR
+
+    flade = AR.build_action_router_surface()
+    assert flade["active"] is True
+
+
+def test_summaryen_naevner_det_proaktive_naar_actions_er_tom():
+    """«Ingen handlinger endnu» var kun halvdelen af sandheden."""
+    import core.services.action_router as AR
+
+    tekst = AR._surface_summary([], proactive_today=4, proactive_sent_today=2)
+    assert "proaktive" in tekst
+    assert "4" in tekst and "2" in tekst
+
+    # Er der intet af nogen slags, står den gamle sætning.
+    assert AR._surface_summary([], 0, 0) == "Ingen handlinger endnu"

@@ -394,12 +394,14 @@ _Temporal Body — sense of age._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `age_journey` | `(thoughts=…)` | — | [src](../../../core/services/temporal_body.py#L11) |
-| function | `get_temporal_body_age` | `()` | — | [src](../../../core/services/temporal_body.py#L16) |
-| function | `describe_temporal_body` | `()` | — | [src](../../../core/services/temporal_body.py#L26) |
-| function | `format_age_for_prompt` | `()` | — | [src](../../../core/services/temporal_body.py#L30) |
-| function | `reset_temporal_body` | `()` | — | [src](../../../core/services/temporal_body.py#L33) |
-| function | `build_temporal_body_surface` | `()` | — | [src](../../../core/services/temporal_body.py#L38) |
+| function | `_taelling` | `()` | Antal tanke-optegnelser. 0 når databasen ikke kan læses. | [src](../../../core/services/temporal_body.py#L52) |
+| function | `_load` | `()` | — | [src](../../../core/services/temporal_body.py#L75) |
+| function | `age_journey` | `(thoughts=…)` | Tæl ét tik. `thoughts` ignoreres nu — tankerne TÆLLES, ikke lægges til. | [src](../../../core/services/temporal_body.py#L85) |
+| function | `get_temporal_body_age` | `()` | — | [src](../../../core/services/temporal_body.py#L104) |
+| function | `describe_temporal_body` | `()` | — | [src](../../../core/services/temporal_body.py#L116) |
+| function | `format_age_for_prompt` | `()` | — | [src](../../../core/services/temporal_body.py#L121) |
+| function | `reset_temporal_body` | `()` | Nulstil tik-tælleren. Rydder OGSÅ disken. | [src](../../../core/services/temporal_body.py#L125) |
+| function | `build_temporal_body_surface` | `()` | — | [src](../../../core/services/temporal_body.py#L136) |
 
 ## `core/services/temporal_context.py`
 _Temporal Context — time-based situational awareness._
@@ -478,8 +480,8 @@ _Temporal Rhythm — felt time, not computed time._
 | function | `tick` | `(_seconds=…)` | — | [src](../../../core/services/temporal_rhythm.py#L129) |
 | function | `get_current_rhythm` | `()` | — | [src](../../../core/services/temporal_rhythm.py#L168) |
 | function | `build_temporal_rhythm_surface` | `()` | — | [src](../../../core/services/temporal_rhythm.py#L172) |
-| function | `_surface_summary` | `(current, baseline)` | — | [src](../../../core/services/temporal_rhythm.py#L191) |
-| function | `build_temporal_rhythm_prompt_section` | `()` | Surface only when tempo is unusual. | [src](../../../core/services/temporal_rhythm.py#L199) |
+| function | `_surface_summary` | `(current, baseline)` | — | [src](../../../core/services/temporal_rhythm.py#L194) |
+| function | `build_temporal_rhythm_prompt_section` | `()` | Surface only when tempo is unusual. | [src](../../../core/services/temporal_rhythm.py#L202) |
 
 ## `core/services/temporal_self_continuity.py`
 _Temporal self-continuity: past/current/future self handoff._

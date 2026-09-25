@@ -255,6 +255,13 @@ def test_livs_tjenesterne_faar_det_maalte_tal_ikke_en_konstant():
             "evolve_dreams",
             "accumulate_wants",
             "add_boredom",
+            # 25/9-2026, anden runde: de tre havde samme konstant, og for to
+            # af dem var den ikke bare unoejagtig men udelukkende.
+            # `experience_silence` optager kun over 60 sekunder, saa 30 kunne
+            # ALDRIG optage noget; `increment_awareness` skulle bruge 72 tik
+            # (11 timers uafbrudt oppetid) for at naa sin egen taerskel.
+            "increment_awareness",
+            "experience_silence",
         }:
             kald[n.func.id] = n
 
@@ -263,6 +270,8 @@ def test_livs_tjenesterne_faar_det_maalte_tal_ikke_en_konstant():
         "evolve_dreams",
         "accumulate_wants",
         "add_boredom",
+        "increment_awareness",
+        "experience_silence",
     }, f"mangler kald: {kald.keys()}"
 
     for navn, n in kald.items():

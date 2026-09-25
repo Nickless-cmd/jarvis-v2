@@ -305,11 +305,14 @@ _Silence Listener — experience of empty space._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `experience_silence` | `(duration_seconds)` | — | [src](../../../core/services/silence_listener.py#L11) |
-| function | `describe_silence` | `()` | — | [src](../../../core/services/silence_listener.py#L24) |
-| function | `format_silence_for_prompt` | `()` | — | [src](../../../core/services/silence_listener.py#L31) |
-| function | `reset_silence_listener` | `()` | — | [src](../../../core/services/silence_listener.py#L38) |
-| function | `build_silence_listener_surface` | `()` | — | [src](../../../core/services/silence_listener.py#L43) |
+| function | `_load` | `()` | — | [src](../../../core/services/silence_listener.py#L47) |
+| function | `_save` | `(oplevelser)` | — | [src](../../../core/services/silence_listener.py#L57) |
+| function | `_tekstur` | `(duration_seconds)` | (ord, grundlag) for hvordan stilheden var. | [src](../../../core/services/silence_listener.py#L61) |
+| function | `experience_silence` | `(duration_seconds)` | Optag en stilhed. Kaster aldrig. Returnerer posten, eller None. | [src](../../../core/services/silence_listener.py#L85) |
+| function | `describe_silence` | `()` | — | [src](../../../core/services/silence_listener.py#L109) |
+| function | `format_silence_for_prompt` | `()` | — | [src](../../../core/services/silence_listener.py#L118) |
+| function | `reset_silence_listener` | `()` | Nulstil. Rydder OGSÅ disken — ellers ville næste læsning hente det | [src](../../../core/services/silence_listener.py#L125) |
+| function | `build_silence_listener_surface` | `()` | — | [src](../../../core/services/silence_listener.py#L131) |
 
 ## `core/services/silence_patterns.py`
 _Silence Patterns — hvad brugeren IKKE siger._

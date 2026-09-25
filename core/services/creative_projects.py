@@ -145,7 +145,8 @@ def build_creative_projects_surface() -> dict[str, Any]:
     stale = [p for p in projects if _is_stale(p)]
 
     return {
-        "active": len(active) > 0 or len(dreaming) > 0,
+        # «Ingen projekter endnu» er tomt, ikke doedt.
+        "active": True,
         "total": len(projects),
         "active_count": len(active),
         "paused_count": len(paused),

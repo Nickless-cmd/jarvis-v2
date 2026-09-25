@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8018/15506 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8025/15514 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 8018/15506 functions/methods documented (51%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 695 | 1275 | 54% |
-| `core.services` | 5301 | 10541 | 50% |
+| `core.services` | 5307 | 10548 | 50% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 107 | 183 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -37,12 +37,12 @@ Generated from source. 8018/15506 functions/methods documented (51%). The list b
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.undo` | 2 | 18 | 11% |
 | `core.util` | 9 | 10 | 90% |
-| `scripts` | 210 | 459 | 45% |
+| `scripts` | 211 | 460 | 45% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2211)
+## Undocumented public functions (2207)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L209)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1450,7 +1450,7 @@ Generated from source. 8018/15506 functions/methods documented (51%). The list b
 - `core/services/prompt_contract.py` :: `prompt_mode_loader_summary` (L4900)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_from_inputs` (L224)
 - `core/services/prompt_evolution_runtime.py` :: `build_prompt_evolution_runtime_surface` (L469)
-- `core/services/prompt_mutation_loop.py` :: `build_prompt_mutation_loop_prompt_section` (L528)
+- `core/services/prompt_mutation_loop.py` :: `build_prompt_mutation_loop_prompt_section` (L529)
 - `core/services/prompt_mutation_loop.py` :: `build_prompt_mutation_loop_surface` (L476)
 - `core/services/prompt_mutation_loop.py` :: `get_mutation` (L457)
 - `core/services/prompt_mutation_loop.py` :: `list_evolvable_files` (L466)
@@ -1793,11 +1793,9 @@ Generated from source. 8018/15506 functions/methods documented (51%). The list b
 - `core/services/signal_tracking_framework.py` :: `SignalTrackingSpec.ev` (L152)
 - `core/services/signal_tracking_framework.py` :: `SignalTrackingSpec.new_signal_id` (L155)
 - `core/services/silence_detector.py` :: `build_silence_surface` (L62)
-- `core/services/silence_listener.py` :: `build_silence_listener_surface` (L43)
-- `core/services/silence_listener.py` :: `describe_silence` (L24)
-- `core/services/silence_listener.py` :: `experience_silence` (L11)
-- `core/services/silence_listener.py` :: `format_silence_for_prompt` (L31)
-- `core/services/silence_listener.py` :: `reset_silence_listener` (L38)
+- `core/services/silence_listener.py` :: `build_silence_listener_surface` (L131)
+- `core/services/silence_listener.py` :: `describe_silence` (L109)
+- `core/services/silence_listener.py` :: `format_silence_for_prompt` (L118)
 - `core/services/skill_contract_registry.py` :: `get_manifest` (L59)
 - `core/services/skill_contract_registry.py` :: `list_manifests` (L63)
 - `core/services/skill_scanner.py` :: `ScanResult.as_dict` (L49)
@@ -1864,12 +1862,10 @@ Generated from source. 8018/15506 functions/methods documented (51%). The list b
 - `core/services/temperament_tendency_signal_tracking.py` :: `build_runtime_temperament_tendency_signal_surface` (L69)
 - `core/services/temperament_tendency_signal_tracking.py` :: `refresh_runtime_temperament_tendency_signal_statuses` (L65)
 - `core/services/temperament_tendency_signal_tracking.py` :: `track_runtime_temperament_tendency_signals_for_visible_turn` (L39)
-- `core/services/temporal_body.py` :: `age_journey` (L11)
-- `core/services/temporal_body.py` :: `build_temporal_body_surface` (L38)
-- `core/services/temporal_body.py` :: `describe_temporal_body` (L26)
-- `core/services/temporal_body.py` :: `format_age_for_prompt` (L30)
-- `core/services/temporal_body.py` :: `get_temporal_body_age` (L16)
-- `core/services/temporal_body.py` :: `reset_temporal_body` (L33)
+- `core/services/temporal_body.py` :: `build_temporal_body_surface` (L136)
+- `core/services/temporal_body.py` :: `describe_temporal_body` (L116)
+- `core/services/temporal_body.py` :: `format_age_for_prompt` (L121)
+- `core/services/temporal_body.py` :: `get_temporal_body_age` (L104)
 - `core/services/temporal_context.py` :: `build_temporal_context_surface` (L44)
 - `core/services/temporal_depth.py` :: `get_temporal_depth` (L180)
 - `core/services/temporal_recurrence_signal_tracking.py` :: `build_runtime_temporal_recurrence_signal_surface` (L47)
@@ -2236,7 +2232,7 @@ Generated from source. 8018/15506 functions/methods documented (51%). The list b
 - `scripts/setup_google_calendar.py` :: `main` (L17)
 - `scripts/signal_noise_cleanup.py` :: `cleanup_signal_noise` (L103)
 - `scripts/signal_noise_cleanup.py` :: `main` (L191)
-- `scripts/smoke_test_startup.py` :: `main` (L450)
+- `scripts/smoke_test_startup.py` :: `main` (L498)
 - `scripts/tag_untagged_skills.py` :: `main` (L155)
 - `scripts/tool_result_cleanup.py` :: `main` (L6)
 - `scripts/tool_router_bootstrap.py` :: `main` (L22)

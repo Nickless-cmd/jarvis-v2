@@ -111,6 +111,11 @@
       "beskrivelse": "Device-presence pr. bruger. Lever i hukommelsen — og OVERLEVER en genstart.",
       "registreret": "2026-09-20"
     },
+    "existential_drift": {
+      "ejer": "core/services/existential_drift.py",
+      "beskrivelse": "Existential Drift — Jarvis' digital consciousness awareness.",
+      "registreret": "2026-09-25"
+    },
     "forgetting_curve": {
       "ejer": "core/services/forgetting_curve.py",
       "beskrivelse": "Forgetting Curve — det jeg bliver ved at se, bliver. Resten falmer.",
@@ -261,6 +266,11 @@
       "beskrivelse": "Side-task flag — keep the main thread focused.",
       "registreret": "2026-09-20"
     },
+    "silence_listener": {
+      "ejer": "core/services/silence_listener.py",
+      "beskrivelse": "Silence Listener — experience of empty space.",
+      "registreret": "2026-09-25"
+    },
     "subagent_digest_marks": {
       "ejer": "core/services/subagent_digest.py",
       "beskrivelse": "Surface recently-completed subagents into the visible prompt.",
@@ -270,6 +280,11 @@
       "ejer": "core/services/surprise_detector.py",
       "beskrivelse": "Surprise detector — anomaly signals for the proactive/autonomous lane.",
       "registreret": "2026-09-20"
+    },
+    "temporal_body": {
+      "ejer": "core/services/temporal_body.py",
+      "beskrivelse": "Temporal Body — sense of age.",
+      "registreret": "2026-09-25"
     },
     "text_resonance": {
       "ejer": "core/services/text_resonance.py",

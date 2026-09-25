@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 15439 functions/methods, 51% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 15440 functions/methods, 51% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -38,24 +38,24 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 15439 functions/
 - [`core.services.07`](core.services.07.md) — `cheap_lane_diagnostics` … `communication_guard`
 - [`core.services.08`](core.services.08.md) — `communication_guard_daemon` … `counterfactual_predictions`
 - [`core.services.09`](core.services.09.md) — `counterfactual_self_simulation` … `decision_weight`
-- [`core.services.10`](core.services.10.md) — `decisions_journal` … `dream_influence_runtime`
-- [`core.services.11`](core.services.11.md) — `dream_insight_daemon` … `experience_correction_listener`
-- [`core.services.12`](core.services.12.md) — `experience_episodes` … `gate_truth`
-- [`core.services.13`](core.services.13.md) — `gate_verdict_ledger` … `identity_drift_guard`
-- [`core.services.14`](core.services.14.md) — `identity_drift_proposer` … `layer_tension_daemon`
-- [`core.services.15`](core.services.15.md) — `learning_pipeline_orchestrator` … `memory_md_update_proposal_tracking`
-- [`core.services.16`](core.services.16.md) — `memory_pruning_daemon` … `non_visible_fallback`
-- [`core.services.17`](core.services.17.md) — `non_visible_lane_execution` … `permission_classifier`
-- [`core.services.18`](core.services.18.md) — `permission_engine` … `prompt_cache_probe`
-- [`core.services.19`](core.services.19.md) — `prompt_contract` … `recurrence_loop_daemon`
-- [`core.services.20`](core.services.20.md) — `recurring_tasks` … `run_follow`
-- [`core.services.21`](core.services.21.md) — `runtime_action_executor` … `self_model_blind_spots`
-- [`core.services.22`](core.services.22.md) — `self_model_distiller` … `settlement_shadow`
-- [`core.services.23`](core.services.23.md) — `shadow_counters` … `staged_edits`
-- [`core.services.24`](core.services.24.md) — `standing_orders_registry` … `tiny_webchat_execution_pilot`
-- [`core.services.25`](core.services.25.md) — `tool_batch_notice` … `user_temperature_engine`
-- [`core.services.26`](core.services.26.md) — `user_temperature_runtime` … `visible_runs_outcomes`
-- [`core.services.27`](core.services.27.md) — `visible_runs_sse_v2` … `world_model_signal_tracking`
+- [`core.services.10`](core.services.10.md) — `decisions_journal` … `dream_influence_proposal_tracking`
+- [`core.services.11`](core.services.11.md) — `dream_influence_runtime` … `existential_wonder_daemon`
+- [`core.services.12`](core.services.12.md) — `experience_correction_listener` … `gate_skill`
+- [`core.services.13`](core.services.13.md) — `gate_truth` … `identity_drift_daemon`
+- [`core.services.14`](core.services.14.md) — `identity_drift_guard` … `keyring_store`
+- [`core.services.15`](core.services.15.md) — `layer_tension_daemon` … `memory_maintenance_daemon`
+- [`core.services.16`](core.services.16.md) — `memory_md_update_proposal_tracking` … `network_health`
+- [`core.services.17`](core.services.17.md) — `non_visible_fallback` … `permission_axes`
+- [`core.services.18`](core.services.18.md) — `permission_classifier` … `promise_ledger`
+- [`core.services.19`](core.services.19.md) — `prompt_cache_probe` … `recall_scheduler`
+- [`core.services.20`](core.services.20.md) — `recurrence_loop_daemon` … `run_event_log`
+- [`core.services.21`](core.services.21.md) — `run_follow` … `self_history_grounding`
+- [`core.services.22`](core.services.22.md) — `self_model_blind_spots` … `session_wakeup`
+- [`core.services.23`](core.services.23.md) — `settlement_shadow` … `spild`
+- [`core.services.24`](core.services.24.md) — `staged_edits` … `tick_cache`
+- [`core.services.25`](core.services.25.md) — `tiny_webchat_execution_pilot` … `user_scope`
+- [`core.services.26`](core.services.26.md) — `user_temperature_engine` … `visible_runs_memory`
+- [`core.services.27`](core.services.27.md) — `visible_runs_outcomes` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

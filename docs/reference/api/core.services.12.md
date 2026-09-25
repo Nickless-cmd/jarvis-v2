@@ -2,6 +2,23 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/experience_correction_listener.py`
+_Experience-episode correction enrichment — closes the negative-signal loop._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_looks_like_acknowledgement` | `(text)` | True hvis Jarvis selv siger at han tog fejl. | [src](../../../core/services/experience_correction_listener.py#L116) |
+| function | `_looks_like_correction` | `(text)` | Return True if the message opens with or contains a correction phrase. | [src](../../../core/services/experience_correction_listener.py#L131) |
+| function | `_mark_recent_episode_corrected` | `(session_id)` | Find the most recent un-corrected episode in this session within | [src](../../../core/services/experience_correction_listener.py#L146) |
+| function | `_extract_user_message` | `(payload)` | Return (session_id, content) if this is a role=user chat message. | [src](../../../core/services/experience_correction_listener.py#L225) |
+| function | `_previous_assistant_text` | `(session_id)` | The assistant message Bjørn is most likely correcting (newest before his). | [src](../../../core/services/experience_correction_listener.py#L239) |
+| function | `_previous_user_text` | `(session_id)` | Bjoerns seneste besked FOER dette svar — det er selve rettelsen. | [src](../../../core/services/experience_correction_listener.py#L254) |
+| function | `_record_self_ack_lesson` | `(session_id, jarvis_words)` | Jarvis indroemmede selv. Gem Bjoerns foregaaende ord som lektien. | [src](../../../core/services/experience_correction_listener.py#L270) |
+| function | `_record_correction_lesson` | `(session_id, content)` | 2026-09-04 (memory repair, R4): before, the correction text was thrown | [src](../../../core/services/experience_correction_listener.py#L284) |
+| function | `_listener_loop` | `(q)` | — | [src](../../../core/services/experience_correction_listener.py#L298) |
+| function | `start_listener` | `()` | Idempotent — safe to call multiple times. | [src](../../../core/services/experience_correction_listener.py#L336) |
+| function | `stop_listener` | `()` | — | [src](../../../core/services/experience_correction_listener.py#L358) |
+
 ## `core/services/experience_episodes.py`
 _Experience-episode collector + retrieval — embedding-based learning substrate._
 
@@ -528,12 +545,4 @@ _Skill-Safety-cluster gate 🔒 — graderet SECURITY-gate for skill-indholds-sc
 | method | `SkillScanVerdict.as_dict` | `(self)` | — | [src](../../../core/services/gate_skill.py#L55) |
 | function | `_decide` | `(ctx)` | Route gennem Centralen (SECURITY, fail-CLOSED). Central-katastrofe → kør gaten | [src](../../../core/services/gate_skill.py#L59) |
 | function | `check_skill_scan` | `(content)` | Scan skill-indhold gennem Centralen. Returnér ScanResult-lignende facade. | [src](../../../core/services/gate_skill.py#L74) |
-
-## `core/services/gate_truth.py`
-_Unified TruthGate (cluster B). Smelter Truth-klyngens tre homogene Verdict-gates_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `truth_gate` | `(ctx)` | Kør de tre Truth-checks på samme ctx og kombinér til ét Verdict. | [src](../../../core/services/gate_truth.py#L17) |
-| function | `register_truth_nerve` | `(central)` | Registrér den unified TruthGate som post_output-nerve i Centralen. | [src](../../../core/services/gate_truth.py#L33) |
 

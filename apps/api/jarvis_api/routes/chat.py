@@ -992,7 +992,7 @@ class ChatStreamRequest(BaseModel):
 def _resolve_visible_target(uid: str | None, provider_choice: str, model: str) -> tuple[str, str]:
     """Rolle-bevidst (provider, model)-override for en visible-run.
 
-    - member → ALTID ollama + deepseek-v4-flash:cloud (eller -pro:cloud hvis
+    - member → ALTID ollama + deepseek-v4.1-flash:cloud (eller -pro:cloud hvis
       model'en indeholder "pro"). provider_choice ignoreres (kan ikke eskalere).
     - owner  → honorér provider_choice ("deepseek"|"ollama") + valgfri model.
       Tom/ukendt provider_choice → ("","") = fald tilbage til global config.
@@ -1010,7 +1010,7 @@ def _resolve_visible_target(uid: str | None, provider_choice: str, model: str) -
             role = "member"
     if role != "owner":
         is_pro = "pro" in (model or "").lower()
-        return ("ollama", "deepseek-v4-pro:cloud" if is_pro else "deepseek-v4-flash:cloud")
+        return ("ollama", "deepseek-v4-pro:cloud" if is_pro else "deepseek-v4.1-flash:cloud")
     # Owner: honorér ENHVER visible-klar provider (2026-06-13 — udvidet fra
     # kun deepseek/ollama). Den valgte (provider, model) sendes igennem som
     # override; tom provider → global config. Backenden kan eksekvere alle
@@ -1021,7 +1021,7 @@ def _resolve_visible_target(uid: str | None, provider_choice: str, model: str) -
     m = (model or "").strip()
     if not m:
         if prov == "ollama":
-            m = "deepseek-v4-flash:cloud"
+            m = "deepseek-v4.1-flash:cloud"
         elif prov == "deepseek":
             from core.runtime.settings import load_settings
             m = load_settings().visible_model_name

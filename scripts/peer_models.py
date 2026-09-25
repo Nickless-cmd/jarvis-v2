@@ -8,7 +8,7 @@ Modelvalg (2026-05-16):
   (Anthropic-arkitektur, anden end Jarvis' deepseek)
 - glm / glm_jp: glm-5.1:cloud via lokal Ollama
   (Zhipu-arkitektur, anden end Jarvis OG Claude)
-- ollama_local: deepseek-v4-flash:cloud via lokal Ollama
+- ollama_local: deepseek-v4.1-flash:cloud via lokal Ollama
   (samme arkitektur som Jarvis — kontrol for arkitektur-effekt)
 - random: generate_state_expression() uden mood-bias (gulv-baseline)
 
@@ -83,13 +83,13 @@ def _generate_glm(prompt: str) -> str:
 
 
 def _generate_ollama_local(prompt: str) -> str:
-    """deepseek-v4-flash:cloud via lokal Ollama (samme model som Jarvis).
+    """deepseek-v4.1-flash:cloud via lokal Ollama (samme model som Jarvis).
 
     Bemærk: Jarvis selv bruger samme model OG samme endpoint, men i
     en separat session/context — så denne peer tester "samme model,
     forskellig session" vs. "samme model, samme session (Jarvis)".
     """
-    return _ollama_chat("deepseek-v4-flash:cloud", prompt)
+    return _ollama_chat("deepseek-v4.1-flash:cloud", prompt)
 
 
 # ---------------------------------------------------------------------------

@@ -144,7 +144,7 @@ def probe(rounds: int, message: str) -> None:
 
     for rnd in range(1, rounds + 1):
         for prov, model in (("deepseek", "deepseek-v4-flash"),
-                            ("ollama", "deepseek-v4-flash:cloud")):
+                            ("ollama", "deepseek-v4.1-flash:cloud")):
             payload = {"session_id": sid, "message": message,
                        "provider_choice": prov, "model": model,
                        "approval_mode": "trust", "thinking_mode": "think"}

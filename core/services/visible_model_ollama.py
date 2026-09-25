@@ -189,7 +189,7 @@ def _apply_thinking_mode(payload: dict, thinking_mode: str) -> None:
     # 'think' (default) → don't add anything; let model use its own default
 
 
-# Visible-lane num_ctx for ollama. deepseek-v4-flash:cloud supports 1M tokens.
+# Visible-lane num_ctx for ollama. deepseek-v4.1-flash:cloud supports 1M tokens.
 # Now configurable via runtime.json (visible_ollama_num_ctx). The hardcoded
 # default here is the fallback when settings aren't loaded yet — it should
 # match the default in core.runtime.settings.JarvisSettings.

@@ -59,9 +59,16 @@ _MEMBER_TICKS = {
     # stod `recovering` med `finished_at` sat og var usynlige for enhver proces.
     # Selv-throttler internt (30 min), saa familien kalder hver tick.
     #
-    # Medlemmet kom med sin egen testfil, men DENNE pin blev ikke opdateret, og
-    # tre tests her stod roede indtil 25/9-2026. Pinnen er netop til for at et
-    # nyt medlem skal anerkendes bevidst — den gjorde sit arbejde.
+    # Medlemmet kom med sin egen testfil (253 linjer), men DENNE pin blev ikke
+    # opdateret, og tre tests her stod roede indtil 25/9-2026. Pinnen er netop
+    # til for at et nyt medlem skal anerkendes bevidst — den gjorde sit arbejde.
+    #
+    # `39e9d0872` er JARVIS' commit (`Actor: jarvis`,
+    # Run-ID `manual-20260925T180508Z-43e4f190`). Rettelsen `215c0f77a` skrev i
+    # sin body at det var codex'; det var forkert, og han rettede den selv.
+    # Attributionen staar her fordi den blev GAETTET én gang — ud fra hvem der
+    # ellers havde commit'et i naerheden — og et gaet om hvem der gjorde hvad
+    # hoerer ikke hjemme i en fejlfortaelling. Traileren er der; den skal laeses.
     "visible_drift_cleanup": (
         "core.services.session_boot_reconciler", "ryd_visible_drift_periodisk",
     ),

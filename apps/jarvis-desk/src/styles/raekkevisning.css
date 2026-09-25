@@ -14,6 +14,8 @@
    ════════════════════════════════════════════════════════════════════════ */
 
 .raekkevisning {
+  font-family: "Ubuntu Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", system-ui, sans-serif;
+  font-weight: 400;
   /* Målt: fire teksttrin. Vores palet har kun TRE, og det manglende er
      præcis dét en sammenfatning bruger — uden det ligger sammenfatningen to
      trin nede, og titlerne kommer til at råbe. Interpoleret mellem --fg-2 og
@@ -40,7 +42,7 @@
 /* ══ RÆKKEN ══ Målt: INGEN baggrund, ingen ramme, intet hover-fyld.
    I hele samtalen findes kun to malede flader: siden og brugerens boble. */
 .raekkevisning .rv-r {
-  position: relative; overflow: hidden;
+  position: relative; isolation: isolate; overflow: hidden;
   height: var(--rv-h);
   display: flex; align-items: center;
   background: none; border: 0; padding: 0; margin: 0;
@@ -65,7 +67,7 @@
 /* Målt: titel og sammenfatning er BEGGE 13px/24px vægt 400, ét gråtrin fra
    hinanden. Intet er fremhævet — det er dét der gør den rolig. */
 .raekkevisning .rv-slags {
-  flex: none; font-size: 13px; line-height: var(--rv-h); font-weight: 400; color: var(--fg-2);
+  flex: none; font-size: 14px; line-height: var(--rv-h); font-weight: 400; color: var(--fg-2);
 }
 /* `flex: 0 1 auto` og ikke `1 1 auto`: sammenfatningen fylder sin EGEN bredde
    og skubber ikke chevronen ud i kanten. Den krymper stadig med ellipse naar
@@ -73,7 +75,7 @@
    som helt ude i den anden ende... men som efter teksten». */
 .raekkevisning .rv-sum {
   flex: 0 1 auto; min-width: 0; overflow: hidden; white-space: nowrap;
-  font-size: 13px; line-height: var(--rv-h); font-weight: 400; color: var(--rv-tertiary);
+  font-size: 14px; line-height: var(--rv-h); font-weight: 400; color: var(--rv-tertiary);
 }
 .raekkevisning .rv-sumT { display: block; overflow: hidden; text-overflow: ellipsis; }
 /* Hover løfter rækken: sammenfatningen går fra dæmpet grå til læsbar, og
@@ -129,16 +131,25 @@
 .raekkevisning .rv-r[data-kind='opgave'] .rv-ikon { color: var(--ok); }
 .raekkevisning .rv-r[data-fejl] .rv-ikon { color: var(--error-fg); }
 
-/* Kørende: 300px lysstribe, 2.6s ease-out infinite. */
-.raekkevisning .rv-r[data-koerer]::after {
-  content: ''; position: absolute; inset: 0 auto 0 0; width: 300px; pointer-events: none;
-  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,.055) 55%, transparent 100%);
-  animation: rv-sweep 2.6s ease-out infinite;
+/* Én lysstribe for hele rækken. Tekst-clip og SVG-masker havde hver sin
+   tidslinje, så lyset hoppede når en streaming-række opdaterede sin tekst. */
+.raekkevisning .rv-r[data-koerer]::after,
+.raekkevisning .rv-arbejdsknap[data-koerer]::after,
+.raekkevisning .rv-tur[data-koerer]::after {
+  content: ''; position: absolute; top: 0; left: -300px; z-index: 2;
+  width: 300px; height: 100%; pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.12) 55%, transparent);
+  mix-blend-mode: screen;
+  animation: rv-sweep 2.25s linear infinite;
 }
-:root[data-theme='light'] .raekkevisning .rv-r[data-koerer]::after {
-  background: linear-gradient(90deg, transparent 0%, rgba(0,0,0,.05) 55%, transparent 100%);
+.raekkevisning .rv-r[data-koerer]::after { height: var(--rv-h); }
+:root[data-theme='light'] .raekkevisning .rv-r[data-koerer]::after,
+:root[data-theme='light'] .raekkevisning .rv-arbejdsknap[data-koerer]::after,
+:root[data-theme='light'] .raekkevisning .rv-tur[data-koerer]::after {
+  background: linear-gradient(90deg, transparent, rgba(0,0,0,.10) 55%, transparent);
+  mix-blend-mode: multiply;
 }
-@keyframes rv-sweep { 0% { left: -300px; } 90%, 100% { left: 100%; } }
+@keyframes rv-sweep { from { left: -300px; } to { left: 100%; } }
 .raekkevisning .rv-r[data-fejl] .rv-ikon { color: var(--error-fg); }
 
 /* Udfoldet: sticky hoved, krop 4px 0 4px 22px. */
@@ -158,11 +169,12 @@
 /* ══ TURENS HOVED — den eneste vandrette streg i samtalen ══
    Målt: 33px, border-bottom .5px, padding 0 0 8px, 8px margin når lukket. */
 .raekkevisning .rv-tur {
+  position: relative; isolation: isolate; overflow: hidden;
   display: flex; align-items: center; gap: 8px; width: 100%;
   height: 33px; padding: 0 0 8px; margin: 0;
   border: 0; border-bottom: .5px solid var(--line);
   background: none; text-align: left;
-  font-family: "Ubuntu Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", system-ui, sans-serif;
+  font-family: inherit;
   font-size: 14px; line-height: 1.3; font-weight: 400;
   color: var(--rv-tertiary); cursor: pointer;
 }
@@ -188,9 +200,11 @@
 
 /* Mellem to synteser samles detaljerne bag Jarvis' arbejdsrække. */
 .raekkevisning .rv-arbejdsknap {
+  position: relative; isolation: isolate; overflow: hidden;
   display: flex; align-items: center; gap: 9px; width: 100%; min-width: 0;
   min-height: 38px; padding: 5px 0; border: 0; background: none;
-  color: var(--fg-2); text-align: left; font: 14px/26px inherit; cursor: pointer;
+  color: var(--fg-2); text-align: left; font-family: inherit;
+  font-size: 14px; line-height: 26px; font-weight: 400; cursor: pointer;
 }
 .raekkevisning .rv-arbejdsknap:hover .rv-turC { color: var(--fg-1); }
 .raekkevisning .rv-arbejdsikon { flex: none; color: var(--fg-3); }
@@ -201,24 +215,6 @@
 .raekkevisning .rv-arbejdsknap .rv-diffstat { flex: none; font-size: 12px; white-space: nowrap; }
 .raekkevisning .rv-arbejdsknap .rv-turC { flex: none; }
 
-/* Tekstens lysstribe passerer også gennem rækkens ikoner. Lucide tegner med
-   SVG-stroke, så text-clip fra .shimmer kan ikke ramme dem; en animeret maske
-   giver samme retning og varighed uden at male en flade bag ikonet. */
-.raekkevisning .rv-arbejdsknap[data-koerer] .rv-arbejdsikon,
-.raekkevisning .rv-arbejdsknap[data-koerer] .rv-turC svg,
-.raekkevisning .rv-tur[data-koerer] .rv-turC svg,
-.raekkevisning .rv-r[data-koerer] .rv-ikon svg,
-.raekkevisning .rv-r[data-koerer] .rv-chev svg {
-  color: var(--fg-2);
-  -webkit-mask-image: linear-gradient(90deg, rgba(0,0,0,.45) 30%, #000 50%, rgba(0,0,0,.45) 70%);
-  mask-image: linear-gradient(90deg, rgba(0,0,0,.45) 30%, #000 50%, rgba(0,0,0,.45) 70%);
-  -webkit-mask-size: 220% 100%; mask-size: 220% 100%;
-  animation: rv-ikon-shimmer 2.25s linear infinite;
-}
-@keyframes rv-ikon-shimmer {
-  0% { -webkit-mask-position: 120% 0; mask-position: 120% 0; }
-  100% { -webkit-mask-position: -120% 0; mask-position: -120% 0; }
-}
 .raekkevisning .rv-arbejdsdetaljer {
   display: flex; flex-direction: column; padding: 5px 0 7px 22px;
 }
@@ -474,12 +470,9 @@
 .raekkevisning .rv-tal { font-variant-numeric: tabular-nums; }
 
 @media (prefers-reduced-motion: reduce) {
-  .raekkevisning .rv-r[data-koerer]::after { animation: none; }
-  .raekkevisning .rv-arbejdsknap[data-koerer] .rv-arbejdsikon,
-  .raekkevisning .rv-arbejdsknap[data-koerer] .rv-turC svg,
-  .raekkevisning .rv-tur[data-koerer] .rv-turC svg,
-  .raekkevisning .rv-r[data-koerer] .rv-ikon svg,
-  .raekkevisning .rv-r[data-koerer] .rv-chev svg { animation: none; }
+  .raekkevisning .rv-r[data-koerer]::after,
+  .raekkevisning .rv-arbejdsknap[data-koerer]::after,
+  .raekkevisning .rv-tur[data-koerer]::after { animation: none; }
   .msg-block[data-just-completed] .raekkevisning .rv-svar,
   .msg-block[data-just-completed] .raekkevisning .rv-turTekst { animation: none; }
 }

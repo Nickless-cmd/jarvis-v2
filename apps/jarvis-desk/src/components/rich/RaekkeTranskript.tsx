@@ -314,7 +314,7 @@ function Arbejdsrunde({
         {...(visShimmer ? { 'data-koerer': '' } : {})}
         onClick={() => { huskFold(); setAaben((v) => !v) }}>
         <Ikon className="rv-arbejdsikon" size={17} strokeWidth={1.8} aria-hidden="true" />
-        <span className={`rv-arbejdsfortaelling${visShimmer ? ' shimmer' : ''}`}>{beskrivelse}</span>
+        <span className="rv-arbejdsfortaelling">{beskrivelse}</span>
         {diff && <span className="rv-diffstat" aria-label={`Tilføjet ${diff.add} linjer, fjernet ${diff.del} linjer`}>
           <span className="git-add">+{diff.add}</span> <span className="git-del">−{diff.del}</span>
         </span>}
@@ -360,11 +360,8 @@ function RaekkeTranskriptImpl({
             {...(streaming && aabenManuelt === null ? { 'data-koerer': '' } : {})}
             onClick={() => { huskFold(); setAabenManuelt(!aaben) }}
           >
-            {/* `shimmer` er desks egen regel (app.css) — 2.25s, pinned 1:1 mod
-                Claude Desktop af tokens.test.ts. Vi laaner den, vi laver ikke
-                en ny. Kun mens der faktisk arbejdes. */}
             {streaming && aabenManuelt === null
-              ? <span className="rv-turTekst shimmer">Working…</span>
+              ? <span className="rv-turTekst">Working…</span>
               : <span className="rv-turTekst">{turFortalt(familier, kald, sekunder)}</span>}
             <span className="rv-turC" aria-hidden="true"><FoldPil aaben={aaben} /></span>
           </button>

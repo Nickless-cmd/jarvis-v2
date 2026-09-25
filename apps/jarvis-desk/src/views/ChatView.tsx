@@ -14,7 +14,6 @@ import { onPauseSvar, pauseAskIn, withoutPauseAsk, type PauseAsk } from '../lib/
 import { useRedning } from '../hooks/useRedning'
 import { streamReducer, initialStreamState, liveBlokke } from '../lib/streamReducer'
 import { useGenopretEfterBrud } from '../lib/genopretEfterBrud'
-import { skalSpoergeOmVarsel } from '../lib/genoptagelsesVarsel'
 import { useSessions } from '../hooks/useSessions'
 import { useStream } from '../hooks/useStream'
 import { useSettings } from '../hooks/useSettings'
@@ -45,7 +44,7 @@ import { StickyPrompt } from '../components/transcript/StickyPrompt'
 import { useVisning, VisningContext } from '../lib/visning'
 import { readModelPrefs, readThinkingMode } from '../lib/composerPrefs'
 import { useRaekkevisning } from '../lib/visningsPref'
-import { getContextInfo, getContextUsage, getActiveRuns, followRun, compactNow, warmSession, hentGenoptagelsesVarsel, type CompactionStats } from '../lib/api'
+import { getContextInfo, getContextUsage, getActiveRuns, followRun, compactNow, warmSession, type CompactionStats } from '../lib/api'
 import { markInteraction } from '../lib/presenceSignal'
 import { PresenceDot } from '../components/shell/PresenceDot'
 import { DESK_CHROME } from '../lib/deskChrome'
@@ -55,6 +54,7 @@ import { AndenEnhedMaerke } from '../components/shell/AndenEnhedMaerke'
 import { SystemHealth } from '../components/shell/SystemHealth'
 import { LivenessIndicator } from '../components/feedback/LivenessIndicator'
 import { InterruptedBanner } from '../components/feedback/InterruptedBanner'
+import { GenoptagelsesVarsel } from '../components/feedback/GenoptagelsesVarsel'
 import { HangPrompt } from '../components/feedback/HangPrompt'
 import { ErrorBanner } from '../components/feedback/ErrorBanner'
 import { ErrorCard } from '../components/feedback/ErrorCard'
@@ -228,55 +228,6 @@ export function ChatView({
     window.addEventListener('focus', onFocus)
     return () => window.removeEventListener('focus', onFocus)
   }, [settings, sessionId])
-
-  // ── Blev noget arbejde aldrig gjort færdigt her? ────────────────────────
-  //
-  // `run_recovery` findes KUN som SSE-event, så et run der blev afbrudt mens
-  // ingen så på — eller opgivet i går — fortalte aldrig nogen om det.
-  // Endpointet har eksisteret siden 17/9-2026; banneret nedenfor
-  // (`stream.recoveryNotice`) var tegnet og klar. Det var kun spørgsmålet der
-  // manglede — og fire gange derefter var det betingelsen der manglede.
-  //
-  // HVORNAAR der spørges er flyttet til `lib/genoptagelsesVarsel.ts`, hvor de
-  // fire fejlformer står beskrevet og hver overgang kan prøves uden at bygge
-  // programmet. Varslet forbruges serverside når det hentes, så der må ikke
-  // polles; «ved åbning» og «når en tur slutter» er begivenheder, ikke polling.
-  const varselSpurgtRef = useRef<string | null>(null)
-  const forrigeStatusRef = useRef<string>('')
-  useEffect(() => {
-    const forrige = forrigeStatusRef.current
-    forrigeStatusRef.current = stream.status
-    if (!settings || !sessionId) return
-    // Selve reglen bor i `genoptagelsesVarsel.ts`, hvor hver overgang kan
-    // proeves. Den har taget fejl fire gange herinde, hvor den kun kunne
-    // efterproeves ved at bygge programmet og vente.
-    const beslutning = skalSpoergeOmVarsel({
-      forrige,
-      status: stream.status,
-      sessionId,
-      alleredeSpurgt: varselSpurgtRef.current,
-    })
-    if (beslutning.nulstil) varselSpurgtRef.current = null
-    if (!beslutning.spoerg) return
-    varselSpurgtRef.current = sessionId
-    const cfg = { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }
-    let afbrudt = false
-    hentGenoptagelsesVarsel(cfg, sessionId)
-      .then((v) => {
-        if (afbrudt || !v?.notice?.message) return
-        stream.visGenoptagelsesVarsel({
-          reason: v.notice.reason,
-          message: v.notice.message,
-          continuing: v.notice.continuing,
-        })
-      })
-      .catch(() => {
-        // Kan vi ikke spørge, må samtalen ikke gå i stå — men lad os kunne
-        // spørge igen næste gang sessionen åbnes.
-        varselSpurgtRef.current = null
-      })
-    return () => { afbrudt = true }
-  }, [settings, sessionId, stream.status])
 
   useEffect(() => { if (sessionId) sessions.select(sessionId) }, [sessionId])
 
@@ -1069,17 +1020,7 @@ export function ChatView({
       </div>
 
       <div className="composer-area">
-        {stream.recoveryNotice && (
-          <div className="composer-notices recovery-notice" role="status" aria-live="polite">
-            {/* `banner-reconnecting` har en PULSERENDE prik — den siger «der
-                sker noget lige nu». Det er sandt mens han fortsætter, og
-                misvisende når arbejdet er opgivet: så ville et dødt run ligne
-                et levende. `banner-warn` er den samme farve uden pulsen. */}
-            <div className={`banner ${stream.recoveryNotice.continuing ? 'banner-reconnecting' : 'banner-warn'}`}>
-              <span className="banner-message">{stream.recoveryNotice.message}</span>
-            </div>
-          </div>
-        )}
+        <GenoptagelsesVarsel />
         {pendingPauseAsk && (
           <div className="composer-notices pauseask-notice">
             <PauseAndAskCard ask={pendingPauseAsk} />

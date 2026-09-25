@@ -1,3 +1,4 @@
+import { GenoptagelsesVarselHost } from './components/feedback/GenoptagelsesVarselHost'
 import { useState, useEffect, useMemo, useRef, type ReactNode } from 'react'
 import { UpdateCard } from './components/shell/UpdateCard'
 import { DependencyCard } from './components/shell/DependencyCard'
@@ -256,6 +257,7 @@ function Shell({
           }}
         />
         <ApprovalNotifierHost />
+        <GenoptagelsesVarselHost sessionId={activeId} />
         <AppActionHost setSurface={setSurface} />
         <TakeoverHost surface={surface} setSurface={setSurface} />
         <ShellWithPanel>

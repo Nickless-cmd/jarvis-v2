@@ -14,6 +14,7 @@ import { readModelPrefs, readThinkingMode } from '../lib/composerPrefs'
 import { MessageRow } from '../components/rich/MessageRow'
 import { Composer, type ComposerSendOpts } from '../components/shell/Composer'
 import { LivenessIndicator } from '../components/feedback/LivenessIndicator'
+import { GenoptagelsesVarsel } from '../components/feedback/GenoptagelsesVarsel'
 import { InterruptedBanner } from '../components/feedback/InterruptedBanner'
 import { HangPrompt } from '../components/feedback/HangPrompt'
 import { ErrorBanner } from '../components/feedback/ErrorBanner'
@@ -1176,6 +1177,7 @@ export function CodeView({
         </div>
         </div>
         <div className="composer-area">
+        <GenoptagelsesVarsel />
           {pendingPauseAsk && (
             <div className="composer-notices pauseask-notice">
               <PauseAndAskCard ask={pendingPauseAsk} />

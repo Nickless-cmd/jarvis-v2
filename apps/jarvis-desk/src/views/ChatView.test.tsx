@@ -1,3 +1,4 @@
+import { GenoptagelsesVarselHost } from '../components/feedback/GenoptagelsesVarselHost'
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -196,6 +197,7 @@ describe('ChatView integration', () => {
   const visChat = () => render(
     <SettingsProvider initialConfig={cfg}><SessionProvider config={cfg}>
       <StreamProvider config={cfg}><PermissionProvider><PanelProvider defaultWidth={400}>
+        <GenoptagelsesVarselHost sessionId="s1" />
         <ChatView sessionId="s1" />
       </PanelProvider></PermissionProvider></StreamProvider>
     </SessionProvider></SettingsProvider>,
@@ -310,6 +312,7 @@ describe('ChatView integration', () => {
         rerender(
           <SettingsProvider initialConfig={cfg}><SessionProvider config={cfg}>
             <StreamProvider config={cfg}><PermissionProvider><PanelProvider defaultWidth={400}>
+              <GenoptagelsesVarselHost sessionId="s1" />
               <ChatView sessionId="s1" />
             </PanelProvider></PermissionProvider></StreamProvider>
           </SessionProvider></SettingsProvider>,

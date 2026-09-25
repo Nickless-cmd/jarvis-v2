@@ -230,6 +230,14 @@ def generate_learning_curriculum() -> dict[str, object]:
 
     curriculum.sort(key=lambda x: float(x.get("priority", 0)), reverse=True)
     return {
+        # `active` SKAL staa her — ogsaa naar svaret er False.
+        #
+        # `cognitive_architecture_surface.py:37` laeser
+        # `result.get("active", False)`. Uden noeglen er «tom» og «siger ikke
+        # noget» det samme paa skaermen, og de to er ikke det samme: den ene er
+        # en maaling, den anden et fravaer. To andre flader meldte sig doede paa
+        # netop det fravaer, selv om de arbejdede (maalt 25/9-2026).
+        "active": bool(curriculum),
         "curriculum": curriculum[:6],
         "focus_count": len(curriculum),
         "summary": (

@@ -63,6 +63,62 @@ At skelne de to kræver at man læser hvad stien gør når den kaldes, ikke bare
 
 ---
 
+## Registret havde allerede svaret for syv af dem
+
+**Tilføjet af Claude 25/9-2026.** `core/services/liveness_registry.py` — skrevet
+som Stage 2 efter auditten 15. juni — er et maskinlæsbart register over præcis
+dette spørgsmål. Dets egen docstring siger hvorfor det findes:
+
+> Formålet er at STOPPE konfabulation — både Jarvis' og menneskers — om at
+> "hans systemer er døde". En tom GAMMEL tabel betyder oftest AFLØST, ikke død.
+
+Det dækker 21 tabeller. **Syv af de 27 her står allerede klassificeret:**
+
+| Tabel | Registrets status | Producent / note |
+|---|---|---|
+| `cognitive_epistemic_claims` | `orphaned` | epistemics.reconcile_claim (nul callers) |
+| `cognitive_mission_messages` | `orphaned` | missions_pipeline.send_mission_message (nul callers) |
+| `cognitive_missions` | `orphaned` | missions_pipeline.create_mission (nul callers) |
+| `cognitive_trade_outcomes` | `orphaned` | negotiation_pipeline.record_trade_outcome (nul callers) |
+| `cognitive_wrongness` | `orphaned` | epistemics.reconcile_claim (nul callers) |
+| `meta_learning_hypotheses` | `manual_only` | meta_learning_tools (Jarvis-tool) |
+| `meta_learning_hypothesis_samples` | `manual_only` | meta_learning_tools (Jarvis-tool) |
+
+**Tyve er uklassificerede** — og det er den egentlige arbejdsliste.
+
+### En tredje klasse
+
+Registrets vokabular har en status hverken Jarvis' audit eller Claudes
+gennemgang havde: **`manual_only`** — skrives kun via et eksplicit tool, ikke
+autonomt. `meta_learning_hypotheses` er ikke i stykker og ikke ufærdig. Den
+venter på at Jarvis selv bruger værktøjet.
+
+Så der er tre klasser, ikke to:
+
+- **aldrig kaldt rigtigt** — stien findes og fejler eller springes over
+  (`relation_dynamics`: `NoUserContextError` på hvert tik i 82–121 dage)
+- **aldrig færdigbygget** — formen findes uden producent
+  (`composer_jarvis_forslag`: ingen skrivesti overhovedet)
+- **venter på at blive brugt** — virker, men ingen har kaldt værktøjet
+  (`meta_learning_hypotheses`, `meta_learning_hypothesis_samples`)
+
+At blande de tre er hvordan man ender med at reparere noget der ikke er i
+stykker.
+
+### Metode-tilføjelse
+
+`liveness_registry` læses af **én** fil i hele repoet
+(`apps/api/jarvis_api/routes/mission_control_runs_ops.py`). Det er tredje
+sted samme dag hvor sandheden er skrevet ned og lagt hvor ingen kigger — de to
+andre er kommentaren i `central_body_mood_feel.py:14` om at `body_memory` er
+droppet, og `quarantine_legacy_world_topics`, der rydder samtale-emner ud af
+verdensmodellen tolv linjer over det kald der laver nye.
+
+**Spørg registret før du graver.** Står tabellen der ikke, er svaret at
+klassificere den — ikke at gætte.
+
+---
+
 ## Sidestykke: den 15. juni
 
 `docs/audits/2026-06-15-cognitive-liveness-audit.md` blev skrevet på præcis samme anledning — Codex flagede «mange tomme/stale livs-tabeller». Dengang var konklusionen at Jarvis var *intenst i live*, og at de ægte problemer var små og afgrænsede. Den konklusion holdt for de tabeller den undersøgte.

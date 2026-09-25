@@ -211,7 +211,7 @@ def build_anticipatory_action_surface() -> dict[str, Any]:
         upcoming.sort(key=lambda x: x["minutes_until"])
     total_obs = sum(data.get("hour_counts", {}).values()) if isinstance(data.get("hour_counts"), dict) else 0
     return {
-        "active": len(peaks) > 0,
+        "active": True,
         "peak_hour_count": len(peaks),
         "total_observations": int(total_obs),
         "upcoming_peaks": upcoming[:5],

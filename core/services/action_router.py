@@ -629,7 +629,11 @@ def build_action_router_surface() -> dict[str, Any]:
         if str(e.get("at", "")).startswith(today) and e.get("outcome") == "sent"
     )
     return {
-        "active": len(actions) > 0,
+        # Stod som `len(actions) > 0` — og maalt paa CT105 25/9-2026 stod
+        # `actions: 0` mens `proactive_log` havde 217 poster. Modulet
+        # arbejdede paaviseligt og meldte sig doedt, fordi noeglen laeste
+        # den ene af to lister. `active` er «modulet koerer».
+        "active": True,
         "total_actions": len(actions),
         "by_class": by_class,
         "proactive_today": proactive_today,
@@ -648,6 +652,13 @@ def _surface_summary(
     proactive_sent_today: int,
 ) -> str:
     if not actions:
+        # «Ingen handlinger endnu» var kun halvdelen: `proactive_log` havde
+        # 217 poster mens `actions` stod paa nul (maalt 25/9-2026). Summaryen
+        # skal sige hvad der SKETE, ikke kun hvilken liste der var tom.
+        if proactive_today:
+            return (f"Ingen rutede handlinger i dag — "
+                    f"{proactive_sent_today}/{_max_proactive_per_day()} proaktive "
+                    f"beskeder sendt ({proactive_today} forsøg)")
         return "Ingen handlinger endnu"
     return (
         f"{len(actions)} handlinger, {proactive_sent_today}/{_max_proactive_per_day()} "

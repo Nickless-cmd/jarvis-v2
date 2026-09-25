@@ -173,8 +173,8 @@ _Creative Projects — multi-week persistent creative impulse._
 | function | `get_project` | `(project_id)` | — | [src](../../../core/services/creative_projects.py#L123) |
 | function | `_is_stale` | `(project)` | — | [src](../../../core/services/creative_projects.py#L130) |
 | function | `build_creative_projects_surface` | `()` | — | [src](../../../core/services/creative_projects.py#L140) |
-| function | `_surface_summary` | `(active, paused, dreaming, stale)` | — | [src](../../../core/services/creative_projects.py#L168) |
-| function | `build_creative_projects_prompt_section` | `()` | Surface active/dreaming projects so he can resume or carry them. | [src](../../../core/services/creative_projects.py#L188) |
+| function | `_surface_summary` | `(active, paused, dreaming, stale)` | — | [src](../../../core/services/creative_projects.py#L169) |
+| function | `build_creative_projects_prompt_section` | `()` | Surface active/dreaming projects so he can resume or carry them. | [src](../../../core/services/creative_projects.py#L189) |
 
 ## `core/services/crisis_marker_detector.py`
 _Crisis marker detector — flag identity-forming friction moments._

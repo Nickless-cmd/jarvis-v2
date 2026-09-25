@@ -162,7 +162,9 @@
   height: 33px; padding: 0 0 8px; margin: 0;
   border: 0; border-bottom: .5px solid var(--line);
   background: none; text-align: left;
-  font: 13px/1 inherit; color: var(--rv-tertiary); cursor: pointer;
+  font-family: "Ubuntu Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", system-ui, sans-serif;
+  font-size: 14px; line-height: 1.3; font-weight: 400;
+  color: var(--rv-tertiary); cursor: pointer;
 }
 .raekkevisning .rv-tur[aria-expanded='false'] { margin-bottom: 8px; }
 .raekkevisning .rv-turTekst {

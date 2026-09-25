@@ -642,9 +642,9 @@ _Reboot Awareness Daemon — proprioception: "I feel when I restart"._
 | function | `tick` | `(_seconds=…)` | Heartbeat hook: first call triggers detect_reboot(), thereafter | [src](../../../core/services/reboot_awareness_daemon.py#L193) |
 | function | `get_last_boot_event` | `()` | — | [src](../../../core/services/reboot_awareness_daemon.py#L202) |
 | function | `_tikket_for_nylig` | `(last_seen, now)` | Har nogen proces tikket inden for vinduet? Ukendt tid regnes som nej. | [src](../../../core/services/reboot_awareness_daemon.py#L215) |
-| function | `build_reboot_awareness_surface` | `()` | — | [src](../../../core/services/reboot_awareness_daemon.py#L226) |
-| function | `_surface_summary` | `(event, uptime)` | — | [src](../../../core/services/reboot_awareness_daemon.py#L263) |
-| function | `build_reboot_awareness_prompt_section` | `()` | Announce recent reboot once; stays silent after first ~10 min. | [src](../../../core/services/reboot_awareness_daemon.py#L286) |
+| function | `build_reboot_awareness_surface` | `()` | — | [src](../../../core/services/reboot_awareness_daemon.py#L227) |
+| function | `_surface_summary` | `(event, uptime)` | — | [src](../../../core/services/reboot_awareness_daemon.py#L264) |
+| function | `build_reboot_awareness_prompt_section` | `()` | Announce recent reboot once; stays silent after first ~10 min. | [src](../../../core/services/reboot_awareness_daemon.py#L287) |
 
 ## `core/services/recall.py`
 _One recall path over every memory source (memory repair 2026-09-04, R5)._

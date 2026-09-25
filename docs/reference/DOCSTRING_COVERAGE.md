@@ -1484,7 +1484,7 @@ Generated from source. 7978/15442 functions/methods documented (51%). The list b
 - `core/services/reasoning_classifier.py` :: `build_reasoning_classifier_surface` (L275)
 - `core/services/reasoning_escalation.py` :: `build_reasoning_escalation_surface` (L223)
 - `core/services/reasoning_interceptor.py` :: `intercept_round` (L161)
-- `core/services/reboot_awareness_daemon.py` :: `build_reboot_awareness_surface` (L226)
+- `core/services/reboot_awareness_daemon.py` :: `build_reboot_awareness_surface` (L227)
 - `core/services/reboot_awareness_daemon.py` :: `get_last_boot_event` (L202)
 - `core/services/recall.py` :: `empty_message` (L281)
 - `core/services/recurring_tasks.py` :: `cancel_recurring_task` (L276)

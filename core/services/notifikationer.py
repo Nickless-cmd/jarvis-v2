@@ -117,6 +117,33 @@ def aabne(user_id: str, *, er_owner: bool) -> list[dict[str, Any]]:
     return [dict(zip(kolonner, r)) for r in raekker]
 
 
+def afsluttede(user_id: str, *, dage: int = 7) -> list[dict[str, Any]]:
+    """KLAREDE raekker for denne bruger — de sidste `dage`. RAA.
+
+    `aabne()` er to-do-listen; dette er historikken. Den fandtes ikke, og
+    derfor kunne fladen ikke vise andet end det der endnu ikke var afgjort:
+    naar man svarede, forsvandt posten uden spor (Bjoern 26/9-2026: «jeg
+    havde forstillet mig noget mere hen efter notifikations feed de har i
+    facebook»).
+
+    Vinduet er ikke en graense vi saetter — `ryd_gamle()` sletter efter en
+    uge, saa det er den fulde historik der FINDES. At filtrere haardere her
+    ville skjule noget der ligger i tabellen.
+    """
+    graense = (datetime.now(UTC) - timedelta(days=dage)).isoformat()
+    with connect() as conn:
+        raekker = conn.execute(
+            "SELECT id, user_id, slags, kilde, ref, session_id, titel, tekst,"
+            " oprettet, klaret, udfald"
+            " FROM notifikationer WHERE user_id=? AND klaret IS NOT NULL"
+            " AND klaret >= ?"
+            " ORDER BY klaret DESC",
+            (user_id, graense)).fetchall()
+    kolonner = ("id", "user_id", "slags", "kilde", "ref", "session_id",
+                "titel", "tekst", "oprettet", "klaret", "udfald")
+    return [dict(zip(kolonner, r)) for r in raekker]
+
+
 def luk(notif_id: str, udfald: str) -> None:
     """Klaret — vaek fra fladen. Raekken bliver liggende til `ryd_gamle`."""
     with connect() as conn:

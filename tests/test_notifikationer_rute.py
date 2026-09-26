@@ -45,16 +45,66 @@ def test_afgoer_en_godkendelse_kalder_decide(klient, monkeypatch) -> None:
     assert kaldt["answered_by"] == "bjorn"
 
 
-def test_ruten_lukker_IKKE_raekken_selv(klient, monkeypatch) -> None:
-    """Hydreringen bestemmer. Lukkede ruten ogsaa, kunne den lukke en raekke
-    hvis ejer stadig venter — og saa var kortet vaek uden at vaere besvaret."""
+def test_ruten_lukker_med_udfaldet_naar_svaret_gik_igennem(klient, monkeypatch) -> None:
+    """Ruten lukker — men KUN naar decide() svarede ok, og MED udfaldet.
+
+    Den gamle regel var «ruten lukker aldrig». Den var for grov i den anden
+    ende: naar svaret ER sendt, venter ejeren ikke laengere, og historikken
+    skal kunne se HVAD han svarede. Uden udfaldet her blev baade et ja og et
+    nej lukket af hydreringen som «superseded» — to modsatte svar med samme
+    ord, og «Tidligere»-fanen ville vaere tavs om hvad der var sket.
+    """
     from core.services import notifikationer as n
     from core.services import approval_runtime
 
     nid = n.opret(user_id="bjorn", slags="approval", kilde="approval", ref="a-1", titel="X")
     monkeypatch.setattr(approval_runtime, "decide", lambda aid, **kw: {"ok": True})
+    klient.post(f"/notifikationer/{nid}/afgoer", json={"approved": False})
+
+    assert n.aabne("bjorn", er_owner=True) == []
+    assert [r["udfald"] for r in n.afsluttede("bjorn")] == ["afvist"]
+
+
+def test_ruten_lukker_IKKE_naar_decide_fejler(klient, monkeypatch) -> None:
+    """Den DEL af den gamle regel der stadig gaelder, staar uaendret: et svar
+    der IKKE gik igennem maa ikke fjerne kortet fra den der stadig venter."""
+    from core.services import notifikationer as n
+    from core.services import approval_runtime
+
+    nid = n.opret(user_id="bjorn", slags="approval", kilde="approval", ref="a-1", titel="X")
+    monkeypatch.setattr(approval_runtime, "decide",
+                        lambda aid, **kw: {"status": "error", "error": "Kortet er væk."})
     klient.post(f"/notifikationer/{nid}/afgoer", json={"approved": True})
+
     assert len(n.aabne("bjorn", er_owner=True)) == 1
+    assert n.afsluttede("bjorn") == []
+
+
+def test_tidligere_returnerer_de_afgjorte_og_kun_dem(klient, monkeypatch) -> None:
+    """Historikken: de klarede med deres udfald — og den aabne er IKKE med."""
+    from core.services import notifikationer as n
+    from core.services import approval_runtime
+
+    aaben = n.opret(user_id="bjorn", slags="reminder", kilde="egen", titel="Husk mælk")
+    lukket = n.opret(user_id="bjorn", slags="approval", kilde="approval", ref="a-1", titel="X")
+    n.luk(lukket, "godkendt")
+    monkeypatch.setattr(approval_runtime, "state", lambda aid: None)
+
+    svar = klient.get("/notifikationer/tidligere").json()
+    assert svar["antal"] == 1
+    assert svar["poster"][0]["titel"] == "X"
+    assert svar["poster"][0]["udfald_tekst"] == "Godkendt af dig"
+    assert svar["poster"][0]["kan_afgoere"] is False
+    assert all(p["id"] != aaben for p in svar["poster"])
+
+
+def test_tidligere_uden_login_giver_401(klient, monkeypatch) -> None:
+    """Samme regel som feed(): en tom liste og «jeg kunne ikke spoerge» maa
+    ikke se ens ud."""
+    from apps.api.jarvis_api.routes import notifikationer as rute
+
+    monkeypatch.setattr(rute, "_nuvaerende_bruger", lambda: (None, True))
+    assert klient.get("/notifikationer/tidligere").status_code == 401
 
 
 def test_afgoer_afviser_en_raekke_der_ikke_kan_afgoeres(klient) -> None:

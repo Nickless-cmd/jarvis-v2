@@ -700,8 +700,9 @@ _Notifikations-feeden. Scoper til den auth'ede bruger._
 | function | `_nuvaerende_bruger` | `()` | (user_id, er_owner). | [src](../../../apps/api/jarvis_api/routes/notifikationer.py#L39) |
 | function | `_min_raekke` | `(notif_id, user_id)` | Raekken — kun hvis den er brugerens egen. Et gaettet id fra en anden | [src](../../../apps/api/jarvis_api/routes/notifikationer.py#L69) |
 | function | `feed` | `()` | — | [src](../../../apps/api/jarvis_api/routes/notifikationer.py#L79) |
-| function | `afgoer` | `(notif_id, body)` | — | [src](../../../apps/api/jarvis_api/routes/notifikationer.py#L93) |
-| function | `set_` | `(notif_id)` | — | [src](../../../apps/api/jarvis_api/routes/notifikationer.py#L128) |
+| function | `tidligere_feed` | `()` | Historikken. Samme form som feed() — én klient-type, to lister. | [src](../../../apps/api/jarvis_api/routes/notifikationer.py#L93) |
+| function | `afgoer` | `(notif_id, body)` | — | [src](../../../apps/api/jarvis_api/routes/notifikationer.py#L110) |
+| function | `set_` | `(notif_id)` | — | [src](../../../apps/api/jarvis_api/routes/notifikationer.py#L157) |
 
 ## `apps/api/jarvis_api/routes/notifikations_valg.py`
 _Push-valg per slags. Scoper til den auth'ede bruger._

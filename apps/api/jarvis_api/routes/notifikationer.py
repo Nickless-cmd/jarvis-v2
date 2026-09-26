@@ -89,6 +89,23 @@ async def feed() -> dict:
     return {"poster": poster, "antal": len(poster)}
 
 
+@router.get("/tidligere")
+async def tidligere_feed() -> dict:
+    """Historikken. Samme form som feed() — én klient-type, to lister.
+
+    Egen rute frem for et flag paa feed(): de to lister har forskellige
+    levetider. Aabne poster hydreres og kan forsvinde MIDT i en laesning;
+    klarede er frosne og skal bare laeses. Et flag ville lave feed() til to
+    funktioner i én krop — og den slags bliver til to fejl der skal rettes
+    hver for sig.
+    """
+    uid, er_owner = _nuvaerende_bruger()
+    if not uid:
+        raise HTTPException(status_code=401, detail="Ikke logget ind.")
+    poster = _hyd.tidligere(uid, er_owner=er_owner)
+    return {"poster": poster, "antal": len(poster)}
+
+
 @router.post("/{notif_id}/afgoer")
 async def afgoer(notif_id: str, body: AfgoerBody) -> dict:
     uid, _ = _nuvaerende_bruger()
@@ -120,7 +137,19 @@ async def afgoer(notif_id: str, body: AfgoerBody) -> dict:
         raa_fejl = str(resultat.get("error") or resultat.get("result_text")
                        or "Ukendt fejl.")
         return {"ok": False, "fejl": _oversaet_fejl(raa_fejl)}
-    # Raekken lukkes af hydreringen ved naeste laesning — ikke her.
+    # Udfaldet skrives HER — men foerst efter decide() har svaret ok.
+    #
+    # Modulet ovenfor siger at ruten ikke maa lukke en raekke hvis ejer stadig
+    # venter. Det er praecis derfor linjen ligger EFTER fejl-grenen: er kortet
+    # afgjort, venter ejeren ikke laengere. Lukkede vi ogsaa naar decide()
+    # svarede error, ville et fejlet svar fjerne kortet fra den der stadig
+    # venter — den fejl ruten er bygget til at undgaa.
+    #
+    # Uden udfaldet her kunne historikken ikke skelne «godkendt» fra «afvist»:
+    # begge blev lukket af hydreringen som «superseded», og fladen ville vise
+    # det samme ord for to modsatte svar.
+    _lager.luk(notif_id, "godkendt" if body.approved else "afvist")
+    # Raekken lukkes i OEVrigt af hydreringen ved naeste laesning.
     return {"ok": True, "fejl": ""}
 
 

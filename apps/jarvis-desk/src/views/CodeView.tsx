@@ -31,6 +31,7 @@ import { AndenEnhedMaerke } from '../components/shell/AndenEnhedMaerke'
 import { JobsPanel } from '../components/shell/JobsPanel'
 import { ChangesPanel } from '../components/shell/ChangesPanel'
 import { JarvisBrowserPanel } from '../components/browser/JarvisBrowserPanel'
+import { SkinneGreb } from '../components/shell/SkinneGreb'
 import { paaAendringsFokus, visAendring } from '../lib/aendringsFokus'
 import { IKKE_I_DESK, registrerSkaerm } from '../lib/skaermRegister'
 import { listProcesses } from '../lib/processesApi'
@@ -1019,6 +1020,8 @@ export function CodeView({
   // steder. Nu gør code det samme (Bjørn 21/9-2026).
   const skinne = config && skinneAaben ? (
       <div className={`code-right-stack${fuldRude ? ' er-fuld' : ''}`}>
+        {/* Traekgrebet — se ChatView for hvorfor det ikke er med i fuld rude. */}
+        {!fuldRude && <SkinneGreb />}
         {changesOpen && (!fuldRude || fuldRude === 'changes') && (
           <ChangesPanel
             config={config}

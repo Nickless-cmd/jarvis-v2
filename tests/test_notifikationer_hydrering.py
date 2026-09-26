@@ -135,3 +135,40 @@ def test_anden_brugers_raekke_naar_aldrig_owners_feed(isolated_runtime) -> None:
     n.opret(user_id="mikkel", slags="reminder", kilde="egen", titel="Mikkels ting")
     assert h.feed("bjorn", er_owner=True) == []
     assert len(h.feed("mikkel", er_owner=False)) == 1
+
+
+def test_tidligere_hydrerer_ikke(isolated_runtime, monkeypatch) -> None:
+    """En afgjort raekke maa ikke slaa op hos ejeren — den ER svaret.
+
+    Slog den op alligevel, ville en utilgaengelig ejer faa en KLARET post til
+    at se foraeldet ud, og et svar der er givet ville kunne se ubesvaret ud.
+    """
+    from core.services import notifikationer as n
+    from core.services import notifikationer_hydrering as h
+    from core.services import approval_runtime
+
+    nid = n.opret(user_id="bjorn", slags="approval", kilde="approval", ref="a-1", titel="X")
+    n.luk(nid, "godkendt")
+
+    def maa_ikke_kaldes(aid):
+        raise AssertionError("historikken maa ikke hydrere")
+
+    monkeypatch.setattr(approval_runtime, "state", maa_ikke_kaldes)
+
+    poster = h.tidligere("bjorn", er_owner=True)
+    assert len(poster) == 1
+    assert poster[0]["udfald_tekst"] == "Godkendt af dig"
+    assert poster[0]["kan_afgoere"] is False
+
+
+def test_ukendt_udfald_bliver_ikke_tavst(isolated_runtime) -> None:
+    """Et nyt udfald skal kunne SES med det samme nogen skriver det — ikke
+    skjules indtil nogen husker at opdatere tabellen. En tavs historik er
+    vaerre end en upraecis en."""
+    from core.services import notifikationer as n
+    from core.services import notifikationer_hydrering as h
+
+    nid = n.opret(user_id="bjorn", slags="reminder", kilde="egen", titel="X")
+    n.luk(nid, "et-helt-nyt-udfald")
+
+    assert h.tidligere("bjorn", er_owner=True)[0]["udfald_tekst"] == "Klaret"

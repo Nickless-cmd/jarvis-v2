@@ -25,6 +25,19 @@ _log = logging.getLogger(__name__)
 #: samtalen. Specen sagde oprindeligt begge; kaldestedet sagde noget andet.
 AFGOERBARE = {"approval"}
 
+#: Udfald -> den saetning fladen viser i historikken.
+#:
+#: Ukendte udfald falder tilbage til «Klaret» frem for at forsvinde: et nyt
+#: udfald skal kunne SES med det samme nogen skriver det, ikke skjules indtil
+#: nogen husker at opdatere denne tabel. En tavs historik er vaerre end en
+#: upraecis en.
+_UDFALD_TEKST = {
+    "godkendt": "Godkendt af dig",
+    "afvist": "Afvist af dig",
+    "seen": "Lukket af dig",
+    "superseded": "Klaret",
+}
+
 
 def _hydrer_approval(raekke: dict[str, Any]) -> dict[str, Any] | None:
     """None = ejeren er faerdig, luk raekken. Kaster = ejeren er utilgaengelig."""
@@ -109,5 +122,38 @@ def feed(user_id: str, *, er_owner: bool) -> list[dict[str, Any]]:
             "oprettet": raekke["oprettet"],
             "kan_afgoere": raekke["slags"] in AFGOERBARE and not foraeldet,
             "foraeldet": foraeldet,
+        })
+    return ud
+
+
+def tidligere(user_id: str, *, er_owner: bool, dage: int = 7) -> list[dict[str, Any]]:
+    """KLAREDE notifikationer — ren laesning, ingen hydrering.
+
+    Der er intet at slaa op: raekken ER afgjort, og det er hele dens pointe.
+    Hydreringen findes for de AABNE, hvor svaret kan vaere givet et andet
+    sted; her er svaret givet her. At hydrere alligevel ville betyde at
+    spoerge ejeren om noget han allerede har svaret paa — og en utilgaengelig
+    ejer ville faa en klaret post til at se foraeldet ud.
+
+    Felterne er de SAMME som i ``feed()``, blot med ``klaret``/``udfald``
+    tilfoejet, saa fladen kan bruge én post-type og kun skifte hvad den
+    tilbyder af handlinger (intet).
+    """
+    del er_owner  # samme begrundelse som i aabne(): ikke et filter i dag
+    ud: list[dict[str, Any]] = []
+    for raekke in _lager.afsluttede(user_id, dage=dage):
+        udfald = str(raekke["udfald"] or "")
+        ud.append({
+            "id": raekke["id"],
+            "slags": raekke["slags"],
+            "titel": raekke["titel"],
+            "tekst": raekke["tekst"],
+            "session_id": raekke["session_id"],
+            "oprettet": raekke["oprettet"],
+            "klaret": raekke["klaret"],
+            "udfald": udfald,
+            "udfald_tekst": _UDFALD_TEKST.get(udfald, "Klaret"),
+            "kan_afgoere": False,
+            "foraeldet": False,
         })
     return ud

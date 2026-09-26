@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8041/15530 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8044/15533 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,7 +8,7 @@ Generated from source. 8041/15530 functions/methods documented (51%). The list b
 |---|---|---|---|
 | `apps.api.jarvis_api` | 34 | 36 | 94% |
 | `apps.api.jarvis_api.middleware` | 8 | 19 | 42% |
-| `apps.api.jarvis_api.routes` | 700 | 933 | 75% |
+| `apps.api.jarvis_api.routes` | 701 | 934 | 75% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 70 | 172 | 40% |
 | `apps.desktop` | 6 | 7 | 85% |
@@ -25,7 +25,7 @@ Generated from source. 8041/15530 functions/methods documented (51%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 695 | 1275 | 54% |
-| `core.services` | 5323 | 10564 | 50% |
+| `core.services` | 5325 | 10566 | 50% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 107 | 183 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -97,9 +97,9 @@ Generated from source. 8041/15530 functions/methods documented (51%). The list b
 - `apps/api/jarvis_api/routes/mission_control_skills_hardening_lab.py` :: `mc_skills` (L14)
 - `apps/api/jarvis_api/routes/mobile_update.py` :: `mobile_download` (L45)
 - `apps/api/jarvis_api/routes/mobile_update.py` :: `mobile_latest` (L29)
-- `apps/api/jarvis_api/routes/notifikationer.py` :: `afgoer` (L93)
+- `apps/api/jarvis_api/routes/notifikationer.py` :: `afgoer` (L110)
 - `apps/api/jarvis_api/routes/notifikationer.py` :: `feed` (L79)
-- `apps/api/jarvis_api/routes/notifikationer.py` :: `set_` (L128)
+- `apps/api/jarvis_api/routes/notifikationer.py` :: `set_` (L157)
 - `apps/api/jarvis_api/routes/notifikations_valg.py` :: `hent` (L24)
 - `apps/api/jarvis_api/routes/notifikations_valg.py` :: `saet` (L35)
 - `apps/api/jarvis_api/routes/openai_auth.py` :: `openai_oauth_callback` (L29)

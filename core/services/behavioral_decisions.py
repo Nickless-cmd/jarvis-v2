@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import logging
 import re
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from core.eventbus.bus import event_bus
@@ -48,6 +49,51 @@ def _commit_observe(outcome: str, decision_id: Any) -> None:
         pass
 
 
+# Hvor længe efter en revoke et direktiv stadig er lukket for genoprettelse.
+#
+# Revoke SKAL frigive direktivet — ellers kan en beslutning aldrig
+# genoprettes. Men det åbnede et loop: en auto-generator kunne skrive
+# opret → revoke → opret i det uendelige, og samme sætning endte med at
+# stå 27 gange i tabellen (3/5 → 9/7-2026). Inden for vinduet dedupes der
+# mod den revokede række i stedet for at oprette en ny.
+_REVOKE_REOPEN_COOLDOWN = timedelta(hours=24)
+
+
+def _recently_revoked(normalized: str) -> dict[str, Any] | None:
+    """En revokeret beslutning med samme direktiv, revokeret for nylig."""
+    cutoff = (datetime.now(UTC) - _REVOKE_REOPEN_COOLDOWN).isoformat()
+    for existing in _db_list(status="revoked", limit=None):
+        if _normalize_directive(str(existing.get("directive") or "")) != normalized:
+            continue
+        if str(existing.get("updated_at") or "") >= cutoff:
+            return existing
+    return None
+
+
+def _dedup_result(
+    existing: dict[str, Any], reason: str, source_type: str | None
+) -> dict[str, Any]:
+    """Returnér den række der allerede dækker direktivet — uden at oprette."""
+    deduped = dict(existing)
+    deduped["deduped"] = True
+    deduped["dedupe_reason"] = reason
+    try:
+        event_bus.publish(
+            "decision.deduped",
+            {
+                "decision_id": deduped.get("decision_id"),
+                "directive": deduped.get("directive"),
+                "priority": deduped.get("priority"),
+                "source_type": source_type,
+                "reason": reason,
+            },
+        )
+    except Exception as exc:
+        logger.debug("behavioral_decisions: publish deduped failed: %s", exc)
+    _commit_observe("deduped", deduped.get("decision_id"))
+    return deduped
+
+
 def create_decision(
     *,
     directive: str,
@@ -59,25 +105,17 @@ def create_decision(
     created_by: str | None = None,
 ) -> dict[str, Any]:
     normalized = _normalize_directive(directive)
-    for existing in _db_list(status="active", limit=100):
+
+    # Ingen loft her. Et limit=100 var aldrig en semantisk grænse — den slap
+    # igennem som default, og når tabellen voksede forbi loftet så dedup'en
+    # ikke længere alle aktive, så samme direktiv blev oprettet i dublet.
+    for existing in _db_list(status="active", limit=None):
         if _normalize_directive(str(existing.get("directive") or "")) == normalized:
-            deduped = dict(existing)
-            deduped["deduped"] = True
-            deduped["dedupe_reason"] = "active-directive-already-exists"
-            try:
-                event_bus.publish(
-                    "decision.deduped",
-                    {
-                        "decision_id": deduped.get("decision_id"),
-                        "directive": deduped.get("directive"),
-                        "priority": deduped.get("priority"),
-                        "source_type": source_type,
-                    },
-                )
-            except Exception as exc:
-                logger.debug("behavioral_decisions: publish deduped failed: %s", exc)
-            _commit_observe("deduped", deduped.get("decision_id"))
-            return deduped
+            return _dedup_result(existing, "active-directive-already-exists", source_type)
+
+    recent = _recently_revoked(normalized)
+    if recent is not None:
+        return _dedup_result(recent, "directive-revoked-within-cooldown", source_type)
 
     decision = _db_create(
         directive=directive,

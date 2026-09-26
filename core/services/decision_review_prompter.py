@@ -144,9 +144,11 @@ def _parse_review(text: str) -> tuple[str, str, str] | None:
     return verdict, channel, reasoning[:280]
 
 
-# Hoejt nok til at daekke enhver realistisk maengde aktive direktiver. Et tal
-# frem for None, fordi den underliggende _db_list KRAEVER en graense — og en
-# uendelig ville bare flytte problemet til den dag nogen laver 10.000.
+# Hoejt nok til at daekke enhver realistisk maengde aktive direktiver. Loftet
+# er en BEVIDST beskyttelse af review-belastningen, ikke en teknisk noedvendighed:
+# `_db_list` tillader nu `limit=None` (26/9-2026), saa API'et kraever ikke
+# laengere en graense. Uden et loft ville en dag med 10.000 aktive direktiver
+# koere 10.000 LLM-anmeldelser i eet tick.
 _ALL_ACTIVE = 500
 
 

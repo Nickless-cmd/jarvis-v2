@@ -526,10 +526,10 @@ _Behavioral decisions store — commitments Jarvis makes to himself._
 | function | `update_decision` | `(decision_id, *, directive=…, rationale=…, trigger_cue=…, trigger_name=…, priority=…, status=…)` | Update mutable fields on a decision. | [src](../../../core/runtime/db_decisions.py#L187) |
 | function | `set_status` | `(decision_id, new_status)` | — | [src](../../../core/runtime/db_decisions.py#L249) |
 | function | `get_decision` | `(decision_id)` | — | [src](../../../core/runtime/db_decisions.py#L266) |
-| function | `list_decisions` | `(*, status=…, limit=…)` | — | [src](../../../core/runtime/db_decisions.py#L278) |
-| function | `list_reviews` | `(decision_id, *, limit=…)` | — | [src](../../../core/runtime/db_decisions.py#L299) |
-| function | `delete_decision` | `(decision_id)` | — | [src](../../../core/runtime/db_decisions.py#L310) |
-| function | `count_decisions` | `(*, status=…)` | — | [src](../../../core/runtime/db_decisions.py#L325) |
+| function | `list_decisions` | `(*, status=…, limit=…)` | List decisions, newest priority first. | [src](../../../core/runtime/db_decisions.py#L278) |
+| function | `list_reviews` | `(decision_id, *, limit=…)` | — | [src](../../../core/runtime/db_decisions.py#L309) |
+| function | `delete_decision` | `(decision_id)` | — | [src](../../../core/runtime/db_decisions.py#L320) |
+| function | `count_decisions` | `(*, status=…)` | — | [src](../../../core/runtime/db_decisions.py#L335) |
 
 ## `core/runtime/db_devices.py`
 _Enheder — hvem må styre denne computer, og hvem må bruge code mode._

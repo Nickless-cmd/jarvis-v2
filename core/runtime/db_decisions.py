@@ -278,8 +278,16 @@ def get_decision(decision_id: str) -> dict[str, Any] | None:
 def list_decisions(
     *,
     status: str | None = "active",
-    limit: int = 50,
+    limit: int | None = 50,
 ) -> list[dict[str, Any]]:
+    """List decisions, newest priority first.
+
+    ``limit=None`` means *no cap*. Dedup'en i
+    ``behavioral_decisions.create_decision`` bruger det: loftet på 100 var
+    aldrig en semantisk grænse, men den slap igennem som default og lod
+    samme direktiv blive oprettet i dublet så snart tabellen voksede forbi
+    loftet (26/9-2026).
+    """
     where = ""
     params: list[Any] = []
     if status and status != "all":
@@ -287,9 +295,11 @@ def list_decisions(
         params.append(status)
     query = (
         f"SELECT * FROM behavioral_decisions {where} "
-        "ORDER BY priority DESC, updated_at DESC LIMIT ?"
+        "ORDER BY priority DESC, updated_at DESC"
     )
-    params.append(int(limit))
+    if limit is not None:
+        query += " LIMIT ?"
+        params.append(int(limit))
     with connect() as conn:
         _ensure_tables(conn)
         rows = conn.execute(query, params).fetchall()

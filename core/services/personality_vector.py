@@ -87,16 +87,23 @@ Returner KUN et JSON-objekt med ændrede felter. Uændrede felter udelades.
 
 Mulige felter:
 - confidence_by_domain: {{"python": 0.0-1.0, "frontend": 0.0-1.0, "ops": 0.0-1.0, ...}}
+  Er domænet ikke i vektoren endnu, så SÆT det første gang turen siger noget om
+  det. Et domæne uden et tal kan aldrig justeres senere.
 - communication_style: {{"directness": 0.0-1.0, "humor": 0.0-1.0, "formality": 0.0-1.0}}
-- learned_preferences: ["preference1", "preference2"] (tilføj nye, behold gamle)
-- recurring_mistakes: ["mistake1"] (tilføj kun hvis gentaget)
-- strengths_discovered: ["strength1"] (tilføj kun ved tydelig evidens)
+- learned_preferences: ["præference"] (tilføj nye, behold gamle)
+- recurring_mistakes: ["fejl i menneskelig form"]
+  Tilføj den fejl DENNE tur faktisk viser — også første gang du ser den.
+- strengths_discovered: ["styrke i menneskelig form"]
+  Tilføj den styrke DENNE tur faktisk viser — også første gang du ser den.
 - current_bearing: "kort sætning om nuværende fokus"
 - emotional_baseline: {{"curiosity": 0.0-1.0, "confidence": 0.0-1.0, "fatigue": 0.0-1.0, "frustration": 0.0-1.0}}
 
 Regler:
-- Vær konservativ — kun opdatér det der faktisk ændrede sig
-- Foretræk små justeringer over dramatiske ændringer
+- Vær konservativ om TAL: små justeringer, ikke dramatiske spring
+- Men et TOMT felt er ikke en værdi der skal bevares. Står listen eller
+  dict'en tom, er den første post en tilføjelse — ikke en dramatisk ændring
+- Skriv i menneskelig form med mellemrum. Aldrig maskin-navne som
+  `sensory_archive_analysis` — de bliver kasseret
 - Confidence stiger langsomt ved succes, falder hurtigere ved fejl
 - Svar KUN med JSON, ingen forklaring
 """
@@ -492,12 +499,40 @@ def _call_llm(target: dict, system_prompt: str, user_prompt: str) -> str:
                 {"role": "user", "content": user_prompt},
             ],
             "stream": False,
-            "options": {"num_predict": 200},
+            # 600, ikke 200. MAALT paa CT105 26/9-2026 mod
+            # `deepseek-v4.1-flash:cloud`:
+            #
+            #   num_predict=200   content=   0 tegn  thinking= 910  done_reason=length
+            #   num_predict=600   content= 399 tegn  thinking= 263  done_reason=stop
+            #
+            # Modellen TAENKER, og raesonnementet taeller med i budgettet. Ved
+            # 200 aad det hele loftet, `content` kom tom tilbage, og
+            # `update_personality_vector_from_run` faldt tilbage paa
+            # `_deterministic_update` — som aldrig roerer `recurring_mistakes`,
+            # `strengths_discovered` eller `confidence_by_domain`.
+            #
+            # Det er derfor `recurring_mistakes` aldrig har aendret sig: ikke
+            # fordi taersklen i prompten var for haard, men fordi svaret sjaeldent
+            # naaede frem. Ved 600 svarer den — og svarede netop med
+            # `recurring_mistakes` i maalingen.
+            "options": {"num_predict": 600},
         }).encode()
         req = urllib_request.Request(url, data=payload, headers={"Content-Type": "application/json"})
         with urllib_request.urlopen(req, timeout=30) as resp:
             result = json.loads(resp.read())
-        return str(result.get("message", {}).get("content", ""))
+        besked = result.get("message", {}) or {}
+        indhold = str(besked.get("content", "") or "")
+        if not indhold:
+            # En tom `content` er ikke ingenting — den er et svar der blev
+            # afkortet. Uden denne linje var det umuligt at skelne «modellen
+            # havde intet at sige» fra «budgettet slap op», og den forskel
+            # kostede at feltet stod tomt i maaneder.
+            logger.warning(
+                "personality_vector: tomt svar fra %s (done_reason=%s, "
+                "thinking=%d tegn) — falder tilbage paa deterministisk",
+                model, result.get("done_reason"),
+                len(str(besked.get("thinking") or "")))
+        return indhold
     return ""
 
 

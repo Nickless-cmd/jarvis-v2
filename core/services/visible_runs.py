@@ -1525,58 +1525,28 @@ async def _stream_visible_run(
     trace = _start_visible_execution_trace(run)
     _set_orb_phase("think")
 
-    # 2026-06-11 (Bjørn frustration crisis fix D): Discord run-start heartbeat.
-    # Bjørn beskriver Discord-symptomet: "jarvis skriver..." indikator
-    # hænger evigt uden noget der sker. Fix B sendte progress EFTER tools,
-    # men hvis han bare "tænker" i første LLM-kald i 3+ min ser brugeren
-    # ingenting. Vi sender derfor en "💭 modtaget — arbejder på det..."
-    # straks ved run-start så Bjørn ved Jarvis er i live, plus en
-    # baggrunds-watchdog der pusher "(arbejder stadig...)" hvert 30. sek.
-    _discord_watchdog_task: asyncio.Task[None] | None = None
+    # Discord run-start: tænd «skriver…»-indikatoren i stedet for at skrive
+    # i kanalen. Frem til 26/9-2026 sendte vi "💭 modtaget — arbejder på
+    # det..." her, plus en watchdog-linje hvert 30. sek, plus en
+    # "🔧 Runde N: … — fortsætter..."-linje pr. værktøjsrunde. Bjørn:
+    # linjerne «gavner ikk andet end rod» — ét svar gav otte Runde-linjer
+    # ovenover selve teksten. Indikatoren siger det samme (Jarvis er i live)
+    # uden at efterlade en besked i kanalen. Den fornyes hvert 8. sek af
+    # _typing_loop og slukkes først når svaret sendes, så den dækker hele
+    # kørslen — også de 3+ min hvor første LLM-kald tænker, som var grunden
+    # til at linjen blev indført 11/6-2026.
     try:
         if run.session_id:
             from core.services.discord_gateway import (
                 get_discord_channel_for_session,
-                send_discord_message,
+                start_discord_typing,
             )
             _dc_channel_start = get_discord_channel_for_session(run.session_id)
             if _dc_channel_start:
-                send_discord_message(
-                    _dc_channel_start,
-                    "💭 modtaget — arbejder på det...",
-                )
-                controller._last_discord_status_at = time.monotonic()  # type: ignore[attr-defined]
-
-                # Baggrunds-watchdog: hver 30 sek, hvis runet stadig kører
-                # og vi ikke har sendt noget i 30 sek, send "still alive".
-                async def _discord_alive_watchdog(
-                    cid: int = _dc_channel_start,
-                    ctrl=controller,
-                    rid: str = run.run_id,
-                ) -> None:
-                    try:
-                        while True:
-                            await asyncio.sleep(30.0)
-                            if ctrl.is_cancelled():
-                                return
-                            _last = getattr(ctrl, "_last_discord_status_at", 0.0)
-                            if time.monotonic() - _last >= 30.0:
-                                try:
-                                    send_discord_message(
-                                        cid, "⏳ (arbejder stadig...)",
-                                    )
-                                    ctrl._last_discord_status_at = time.monotonic()
-                                except Exception:
-                                    pass
-                    except asyncio.CancelledError:
-                        return
-
-                _discord_watchdog_task = asyncio.create_task(
-                    _discord_alive_watchdog()
-                )
+                start_discord_typing(_dc_channel_start)
     except Exception as _dc_start_exc:
         logger.debug(
-            "discord-startup-heartbeat fejl run_id=%s: %s",
+            "discord-startup-typing fejl run_id=%s: %s",
             run.run_id, _dc_start_exc,
         )
     # Journalfør den synlige tur og dens composer-indstillinger samlet.
@@ -4609,42 +4579,11 @@ async def _stream_visible_run(
                                 pass
                     except Exception:
                         pass
-                    # 2026-06-11 (Bjørn frustration crisis fix B): hvis dette
-                    # er en Discord-session, send live tool-progress til
-                    # Discord-kanalen så brugeren ser hvad Jarvis arbejder på
-                    # i stedet for total stilhed. Throttled til 1/15s for
-                    # at undgå spam.
-                    try:
-                        if run.session_id:
-                            from core.services.discord_gateway import (
-                                get_discord_channel_for_session,
-                                send_discord_message,
-                            )
-                            _dc_channel = get_discord_channel_for_session(run.session_id)
-                            if _dc_channel:
-                                _last_status_at = getattr(
-                                    controller, "_last_discord_status_at", 0.0,
-                                )
-                                _now_mono = time.monotonic()
-                                if _now_mono - _last_status_at >= 15.0:
-                                    _names = [
-                                        str((tc.get("function") or {}).get("name") or "?")
-                                        for tc in _a_tool_calls[:3]
-                                    ]
-                                    _names_str = ", ".join(_names)
-                                    if len(_a_tool_calls) > 3:
-                                        _names_str += f" (+{len(_a_tool_calls) - 3} flere)"
-                                    _status_text = (
-                                        f"🔧 Runde {_agentic_round + 1}: "
-                                        f"{_names_str} — fortsætter..."
-                                    )
-                                    send_discord_message(_dc_channel, _status_text)
-                                    controller._last_discord_status_at = _now_mono  # type: ignore[attr-defined]
-                    except Exception as _dc_exc:
-                        logger.debug(
-                            "discord-progress-status fejl run_id=%s: %s",
-                            run.run_id, _dc_exc,
-                        )
+                    # Discord-progress-linjerne («🔧 Runde N: … — fortsætter»)
+                    # blev fjernet 26/9-2026. Bjørn: de «gavner ikk andet end
+                    # rod» — ét svar gav otte linjer ovenover selve teksten.
+                    # Live-signalet bæres nu af typing-indikatoren, tændt ved
+                    # run-start (se start_discord_typing).
                     # If any tool call this round was load_more_tools, capture
                     # its added names so the next round's tool_definitions
                     # includes them.
@@ -6112,15 +6051,10 @@ async def _stream_visible_run(
         # Message persistence now happens synchronously before done (above).
         import threading
 
-        # 2026-06-11 (fix D): cancel Discord-heartbeat-watchdog hvis aktiv.
-        # Skal ske før unregister så vi ikke har en zombie-task der
-        # fortsætter med at sende "(arbejder stadig...)" efter runet er
-        # færdigt.
-        try:
-            if _discord_watchdog_task is not None and not _discord_watchdog_task.done():
-                _discord_watchdog_task.cancel()
-        except Exception:
-            pass
+        # 2026-06-11 (fix D): Discord-heartbeat-watchdoggen blev fjernet
+        # 26/9-2026 sammen med sine tekst-linjer — typing-indikatoren bærer
+        # livstegnet nu, og den slukkes af _send_outbound_loop når svaret
+        # sendes. Der er derfor ingen zombie-task at annullere her.
 
         # 2026-05-16 fix: unregister FIRST, synchronously. Earlier version let
         # post_process-thread (daemon=True) be responsible for clearing

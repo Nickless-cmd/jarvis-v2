@@ -13,3 +13,11 @@ def test_tick_returns_dict_and_is_cadence_gated(isolated_runtime, monkeypatch):
 def test_surface_shape(isolated_runtime):
     s = cmd.build_cache_maintenance_surface()
     assert isinstance(s, dict) and "last_deleted" in s
+
+
+def test_checkpoint_result_is_logged(isolated_runtime, caplog):
+    with caplog.at_level("INFO", logger="core.services.cache_maintenance_daemon"):
+        checkpoint = cmd.checkpoint_wal()
+    assert "busy" in checkpoint
+    assert any("WAL checkpoint" in record.message and "busy=" in record.message
+               for record in caplog.records)

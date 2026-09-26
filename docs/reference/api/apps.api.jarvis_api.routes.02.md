@@ -127,8 +127,8 @@ _Internal loopback endpoint for cross-process Discord dispatch._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| class | `DispatchRequest` | `` | — | [src](../../../apps/api/jarvis_api/routes/internal_discord.py#L27) |
-| function | `dispatch` | `(req, request)` | — | [src](../../../apps/api/jarvis_api/routes/internal_discord.py#L33) |
+| class | `DispatchRequest` | `` | — | [src](../../../apps/api/jarvis_api/routes/internal_discord.py#L28) |
+| function | `dispatch` | `(req, request)` | — | [src](../../../apps/api/jarvis_api/routes/internal_discord.py#L34) |
 
 ## `apps/api/jarvis_api/routes/internal_errors.py`
 _Internal loopback endpoint for canonical error reports (Fase 0)._

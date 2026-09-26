@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import base64
 import binascii
+import gzip
 import json
 from typing import Any
 from uuid import uuid4
@@ -13,6 +14,7 @@ from core.runtime.db_core import _now_iso, connect, skriv_med_genforsoeg
 _MAX_JSON_BYTES = 64 * 1024
 _MAX_CANDIDATES = 100
 _MAX_PAGE_SIZE = 500
+_COMPRESSED_JSON_PREFIX = "gzip+base64:"
 
 
 def _bounded_json(value: object, *, max_bytes: int = _MAX_JSON_BYTES) -> str:
@@ -22,10 +24,28 @@ def _bounded_json(value: object, *, max_bytes: int = _MAX_JSON_BYTES) -> str:
     return encoded
 
 
+def _encode_candidates(candidates: list[dict[str, object]]) -> str:
+    """Store full route evidence compactly in the existing TEXT column."""
+    plain = _bounded_json(candidates)
+    compressed = _COMPRESSED_JSON_PREFIX + base64.b64encode(
+        gzip.compress(plain.encode("utf-8"), compresslevel=6, mtime=0)
+    ).decode("ascii")
+    return compressed if len(compressed) < len(plain) else plain
+
+
 def _decode_json(value: object, fallback: object) -> object:
     try:
-        return json.loads(str(value or ""))
-    except (TypeError, ValueError, json.JSONDecodeError):
+        raw = str(value or "")
+        if raw.startswith(_COMPRESSED_JSON_PREFIX):
+            packed = base64.b64decode(
+                raw[len(_COMPRESSED_JSON_PREFIX):], validate=True
+            )
+            decoded = gzip.decompress(packed)
+            if len(decoded) > _MAX_JSON_BYTES:
+                return fallback
+            raw = decoded.decode("utf-8")
+        return json.loads(raw)
+    except (TypeError, ValueError, UnicodeError, OSError, EOFError, binascii.Error):
         return fallback
 
 
@@ -170,7 +190,7 @@ def record_route_decision(
                     correlation_id,
                     task_kind,
                     daemon,
-                    _bounded_json(candidates),
+                    _encode_candidates(candidates),
                     selected_slot_id,
                     selection_reason,
                     now,

@@ -7,9 +7,12 @@ Also logs cache composition so we can track growth over time.
 """
 from __future__ import annotations
 
+import logging
 from datetime import UTC, datetime, timedelta
 
 from core.eventbus.bus import event_bus
+
+_log = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -118,27 +121,10 @@ def tick_cache_maintenance_daemon() -> dict[str, object]:
         except Exception:
             pass
 
-        # WAL checkpoint: passive checkpoints get starved by long-running readers,
-        # so the WAL grows unbounded (12+ MB observed) → write-lock contention →
-        # visible-lane stalls. Retention above just freed pages; TRUNCATE folds the
-        # WAL back into the main DB and resets it to 0. Best-effort on its own
-        # connection so a checkpoint failure never aborts the tick.
-        wal_checkpoint: dict[str, object] = {}
-        try:
-            from core.runtime.db import connect as _ckpt_connect
-            with _ckpt_connect() as ckpt_conn:
-                row = ckpt_conn.execute(
-                    "PRAGMA wal_checkpoint(TRUNCATE)"
-                ).fetchone()
-                if row is not None:
-                    # (busy, log_frames, checkpointed_frames)
-                    wal_checkpoint = {
-                        "busy": row[0],
-                        "wal_frames": row[1],
-                        "checkpointed": row[2],
-                    }
-        except Exception as exc:
-            wal_checkpoint = {"error": str(exc)[:120]}
+        # Log the actual checkpoint result. WAL file size alone is only a
+        # high-water mark: SQLite can reuse a large file with few live frames.
+        # TRUNCATE reclaims the allocated file when no reader blocks it.
+        wal_checkpoint = checkpoint_wal()
 
         result = {
             "deleted": deleted,
@@ -175,6 +161,26 @@ def tick_cache_maintenance_daemon() -> dict[str, object]:
             pass
 
     return {"maintained": True, **result}
+
+
+def checkpoint_wal() -> dict[str, object]:
+    """Checkpoint and record the actual SQLite result, including busy frames."""
+    try:
+        from core.runtime.db import connect
+        with connect() as conn:
+            row = conn.execute("PRAGMA wal_checkpoint(TRUNCATE)").fetchone()
+        if row is None:
+            _log.warning("WAL checkpoint returned no result")
+            return {}
+        result: dict[str, object] = {
+            "busy": row[0], "wal_frames": row[1], "checkpointed": row[2],
+        }
+        _log.info("WAL checkpoint: busy=%s wal_frames=%s checkpointed=%s",
+                  row[0], row[1], row[2])
+        return result
+    except Exception as exc:
+        _log.warning("WAL checkpoint failed: %s", exc)
+        return {"error": str(exc)[:120]}
 
 
 def get_cache_maintenance_stats() -> dict[str, object]:

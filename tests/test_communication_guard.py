@@ -412,6 +412,26 @@ class TestScrubOutgoing:
         assert "Her er rapporten" in scrubbed
         assert "sov godt" not in scrubbed.lower()
 
+    def test_preserves_newlines_and_bullets(self):
+        """Formatering bevares: en besked uden hårde fraser må ikke flades ud
+        til én linje. (Regression: ' '.join(...) kollapsede \\n og \\n\\n, så
+        Discord-beskeder kom ud som én lang linje.)"""
+        from core.services.communication_guard import scrub_outgoing
+        txt = "Linje et.\n\nLinje to her.\n- punkt\n- punkt to"
+        scrubbed, removed = scrub_outgoing(txt)
+        assert scrubbed == txt
+        assert removed == []
+
+    def test_dropped_line_keeps_rest_of_formatting(self):
+        """En hård frase i én linje fjerner kun den linje — resten beholder
+        sine linjeskift."""
+        from core.services.communication_guard import scrub_outgoing
+        txt = "Her er rapporten.\nSov godt.\nMere indhold her."
+        scrubbed, removed = scrub_outgoing(txt)
+        assert "sov godt" not in scrubbed.lower()
+        assert "\n" in scrubbed
+        assert scrubbed.splitlines()[-1] == "Mere indhold her."
+
 
 class TestGuardChannelText:
     """guard_channel_text() er convenience-wrapperen kanalerne kalder."""

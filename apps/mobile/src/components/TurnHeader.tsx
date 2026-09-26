@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { memo, useEffect, useRef } from 'react'
 import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native'
 import { ChevronDown, ChevronRight } from 'lucide-react-native'
 import { useReducedMotion } from '../lib/useReducedMotion'
@@ -6,7 +6,7 @@ import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 import { GlidendeTekst } from './GlidendeTekst'
 
 /** Turens arbejdsdør. Svaret ligger udenfor og bliver altid synligt. */
-export function TurnHeader({
+export const TurnHeader = memo(function TurnHeader({
   label, live, open, onToggle,
 }: {
   label: string
@@ -53,7 +53,7 @@ export function TurnHeader({
       </Animated.View>
     </Pressable>
   )
-}
+})
 
 const makestyles = (tokens: Theme) => StyleSheet.create({
   row: {

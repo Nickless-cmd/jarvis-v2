@@ -139,7 +139,7 @@ jest.mock('expo-audio', () => ({
 jest.mock('react-native-svg', () => {
   const React = require('react')
   const mk = (name) => {
-    const C = (props) => React.createElement(String(name), props, props.children)
+    const C = React.forwardRef((props, ref) => React.createElement(name === 'G' ? require('react-native').View : String(name), { ...props, ref }, props.children))
     C.displayName = String(name)
     return C
   }

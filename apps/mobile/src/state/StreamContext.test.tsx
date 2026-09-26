@@ -568,13 +568,13 @@ describe('generations-hegn paa follow', () => {
   })
 })
 
-/**
- * Én render pr. frame (19/9-2026, samme rettelse som desk). Hver delta gav
- * før en render af hele chatten; deltaer kommer hurtigere end skærmen kan
- * vise dem. Tekst-deltaer samles til næste frame — og teksten er komplet
- * bagefter, så intet går tabt i samlingen.
- */
-it('mange deltaer i samme frame giver én render, og hele teksten', async () => {
+it('stream-tekst mætter ikke JS med en render på hver hurtig skærmframe', async () => {
+  const now = jest.spyOn(performance, 'now').mockReturnValue(1000)
+  const frames: Array<(t: number) => void> = []
+  const raf = jest.spyOn(global, 'requestAnimationFrame').mockImplementation((cb) => {
+    frames.push(cb as (t: number) => void)
+    return frames.length
+  })
   let handlers: StreamHandlers | undefined
   mockStartStream.mockImplementation((_request: unknown, nextHandlers: StreamHandlers) => {
     handlers = nextHandlers
@@ -584,40 +584,30 @@ it('mange deltaer i samme frame giver én render, og hele teksten', async () => 
   function Taeller() {
     const { state } = useStream()
     renders += 1
-    const tekst = state.blocks.map((b) => ('text' in b ? String(b.text ?? '') : '')).join('')
-    return <Text testID="tekst">{tekst}</Text>
+    return <Text testID="tekst">{state.blocks.map((b) => ('text' in b ? b.text : '')).join('')}</Text>
   }
-  const screen = await render(<StreamProvider><Probe /><Taeller /></StreamProvider>)
-  await act(async () => { screen.getByText('send').props.onPress() })
-  await act(async () => {
-    handlers?.onEvent({
-      type: 'message_start',
-      message: { id: 'run-123', model: 'm', provider: 'p', lane: 'primary', session_id: 'session-1',
-        usage: { input_tokens: 1, output_tokens: 0 } }
-    } satisfies StreamEvent)
-    handlers?.onEvent({ type: 'content_block_start', index: 0, content_block: { type: 'text', text: '' } } satisfies StreamEvent)
-  })
-  // Framen styres af testen: i jest kører requestAnimationFrame næsten med
-  // det samme, og så kunne testen ikke skelne samling fra ingen samling
-  // (modprøvet: den bestod også uden). Hver delta får sin EGEN act — som
-  // separate netværks-callbacks — og framen udløses først bagefter.
-  const rammer: Array<(t: number) => void> = []
-  const raf = jest.spyOn(global, 'requestAnimationFrame').mockImplementation((cb) => {
-    rammer.push(cb as (t: number) => void)
-    return rammer.length
-  })
-  const foer = renders
-  for (let i = 0; i < 50; i++) {
+  try {
+    const screen = await render(<StreamProvider><Probe /><Taeller /></StreamProvider>)
+    await act(async () => { screen.getByText('send').props.onPress() })
     await act(async () => {
-      handlers?.onEvent({ type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: 'x' } } satisfies StreamEvent)
+      handlers?.onEvent({ type: 'message_start', message: { id: 'run-123', usage: { input_tokens: 1 } } } as StreamEvent)
+      handlers?.onEvent({ type: 'content_block_start', index: 0, content_block: { type: 'text', text: '' } } as StreamEvent)
     })
+    await act(async () => { frames.splice(0).forEach((frame) => frame(1040)) })
+    const start = 1040
+    const before = renders
+    for (let i = 1; i <= 3; i++) {
+      await act(async () => {
+        handlers?.onEvent({ type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: 'x' } } as StreamEvent)
+        frames.shift()?.(start + i * 8)
+      })
+    }
+    expect(renders - before).toBe(0)
+    await act(async () => { frames.shift()?.(start + 40) })
+    expect(screen.getByTestId('tekst').props.children).toBe('xxx')
+    expect(renders - before).toBe(1)
+  } finally {
+    raf.mockRestore()
+    now.mockRestore()
   }
-  // Højst én før framen: reserve-timeren (100 ms) må fyre, hvis 50 separate
-  // act-kald tager længere end det — det er den der sikrer fremdrift når
-  // frames udebliver. Uden samling: 50 (modprøvet).
-  expect(renders - foer).toBeLessThanOrEqual(1)
-  await act(async () => { rammer.splice(0).forEach((f) => f(0)) })
-  expect(renders - foer).toBeLessThanOrEqual(2)
-  expect(screen.getByTestId('tekst').props.children).toBe('x'.repeat(50))
-  raf.mockRestore()
 })

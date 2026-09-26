@@ -20,6 +20,7 @@ import logging
 from datetime import UTC, datetime, timedelta
 from typing import Any
 from core.services.decision_evidence import (
+    _CHANNELS,
     evidence_permits_verdict,
     gather_evidence,
 )
@@ -83,37 +84,56 @@ def _build_review_prompt(decision: dict[str, Any], evidence: dict[str, Any] | No
     reason = str(decision.get("reason") or "").strip()
     regnskab = str((evidence or {}).get("summary") or "").strip()
     timer = (evidence or {}).get("window_hours")
+    kanaler = (evidence or {}).get("channels") or {}
+    tilstede = ", ".join(k for k, v in kanaler.items() if v) or "ingen"
     return (
         f"{identity_prompt_prefix()}. Du forpligtede dig på en adfærdsbeslutning og skal nu "
         "vurdere om du har holdt den siden sidste review.\n\n"
         f"Beslutning: {directive}\n"
         f"Grund: {reason}\n\n"
-        f"REGNSKAB for de seneste {timer} timer — dette er hentet fra eventbus og "
-        "git-log, ikke fra din hukommelse:\n"
+        f"REGNSKAB for de seneste {timer} timer — hentet fra eventbus, git-log, dine "
+        "egne svar og din indre tilstand. Ikke fra din hukommelse:\n"
         f"  {regnskab}\n\n"
-        "Hold din vurdering op mod regnskabet, ikke mod hvad du mener at have gjort. "
-        "Siger regnskabet at intet skete, kan du ikke have holdt en beslutning der "
-        "kræver handling.\n"
-        "Vurder: fulgte du den, delvist, eller brød du den?\n"
-        "Format (præcis to linjer):\n"
-        "  VERDICT: kept|partial|broken\n"
+        f"Kanaler med data i vinduet: {tilstede}\n\n"
+        "Regler:\n"
+        "  1. Hold vurderingen op mod regnskabet, ikke mod hvad du mener at have gjort.\n"
+        "  2. Navngiv den kanal dommen hviler på (CHANNEL).\n"
+        "  3. Kræver beslutningen en kanal der IKKE har data, er svaret unknown — "
+        "tavshed i et tomt regnskab er ikke et brud.\n"
+        "  4. Sig 'broken' når situationen faktisk indtraf og du ikke greb den.\n"
+        "Format (præcis tre linjer):\n"
+        "  VERDICT: kept|partial|broken|unknown\n"
+        "  CHANNEL: tools|commits|words|signals|inner|none\n"
         "  REASONING: <kort sætning om hvorfor>\n"
     )
 
 
-def _parse_review(text: str) -> tuple[str, str] | None:
+def _parse_review(text: str) -> tuple[str, str, str] | None:
+    """Læs dommen. Returnerer (verdict, channel, reasoning) — eller None.
+
+    ``unknown`` er en gyldig dom siden 26/9-2026: regnskabet kan nu indeholde
+    kanaler (egne ord, beslutnings-signaler, indre tilstand), og en beslutning
+    hvis kanal ikke findes i vinduet må ikke dømmes på sin egen tavshed.
+    """
     if not text:
         return None
     verdict = ""
+    channel = ""
     reasoning = ""
     for raw in text.splitlines():
         line = raw.strip()
         upper = line.upper()
         if upper.startswith("VERDICT:"):
             v = line.split(":", 1)[1].strip().lower()
-            for cand in ("kept", "partial", "broken"):
+            for cand in ("kept", "partial", "broken", "unknown"):
                 if cand in v:
                     verdict = cand
+                    break
+        elif upper.startswith("CHANNEL:"):
+            c = line.split(":", 1)[1].strip().lower()
+            for cand in (*_CHANNELS, "none"):
+                if cand in c:
+                    channel = cand
                     break
         elif upper.startswith("REASONING:") or upper.startswith("EVIDENCE:"):
             # EVIDENCE beholdes som fallback: aeldre modelsvar bruger stadig det ord.
@@ -121,7 +141,7 @@ def _parse_review(text: str) -> tuple[str, str] | None:
             reasoning = line.split(":", 1)[1].strip()
     if not verdict:
         return None
-    return verdict, reasoning[:280]
+    return verdict, channel, reasoning[:280]
 
 
 # Hoejt nok til at daekke enhver realistisk maengde aktive direktiver. Et tal
@@ -221,16 +241,18 @@ def review_pending_decisions(*, max_reviews: int | None = None) -> dict[str, Any
         if not parsed:
             failed += 1
             continue
-        paastand, reasoning = parsed
-        # Porten: en positiv dom uden ydre spor bliver til "unknown", som det
-        # rullende gennemsnit i append_review ignorerer. "broken" slipper altid
-        # igennem — fraværet af handling ER ofte bruddet.
-        verdict = evidence_permits_verdict(paastand, evidence)
+        paastand, kanal, reasoning = parsed
+        # Porten: en positiv dom uden dækning bliver "unknown", som det rullende
+        # gennemsnit i append_review ignorerer. Siden 26/9 gælder samme regel for
+        # "broken" når ALLE kanaler er tomme — ellers blev hver umålelig beslutning
+        # dømt på sin egen tavshed. Dommen skal desuden navngive sin kanal.
+        verdict = evidence_permits_verdict(paastand, evidence, channel=kanal)
         if verdict != paastand:
             downgraded += 1
             logger.info(
-                "decision_review: %s nedgraderet %s→%s (intet ydre spor i %sh)",
-                decision_id, paastand, verdict, evidence.get("window_hours"),
+                "decision_review: %s nedgraderet %s→%s (kanal=%s, intet spor i %sh)",
+                decision_id, paastand, verdict, kanal or "ukendt",
+                evidence.get("window_hours"),
             )
         try:
             review_decision(

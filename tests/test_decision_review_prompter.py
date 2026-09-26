@@ -54,3 +54,46 @@ def test_graensen_er_et_TAL_ikke_uendelig():
     from core.services.decision_review_prompter import _ALL_ACTIVE
 
     assert isinstance(_ALL_ACTIVE, int) and _ALL_ACTIVE >= 100
+
+
+# ---------------------------------------------------------------------------
+# Dommen skal navngive sin kanal (26/9-2026)
+# ---------------------------------------------------------------------------
+
+
+def test_dommeren_svarer_med_kanal_og_kan_sige_unknown():
+    """Uden kanalen i svaret kan porten ikke vide hvad dommen hviler på."""
+    from core.services import decision_review_prompter as P
+
+    assert P._parse_review(
+        "VERDICT: unknown\nCHANNEL: none\nREASONING: kanalen findes ikke"
+    ) == ("unknown", "none", "kanalen findes ikke")
+    assert P._parse_review(
+        "VERDICT: broken\nCHANNEL: signals\nREASONING: fyrede, greb den ikke"
+    ) == ("broken", "signals", "fyrede, greb den ikke")
+    assert P._parse_review(
+        "VERDICT: kept\nCHANNEL: words\nREASONING: skrev det højt"
+    ) == ("kept", "words", "skrev det højt")
+
+
+def test_gamle_to_linjers_svar_taales_stadig():
+    """Ældre modelsvar har ingen CHANNEL-linje — de må ikke kaste."""
+    from core.services import decision_review_prompter as P
+
+    assert P._parse_review("VERDICT: kept\nREASONING: gjorde det") == (
+        "kept", "", "gjorde det")
+
+
+def test_prompten_naevner_kanalerne_og_tillader_unknown():
+    """Reglen «tavshed i et tomt regnskab er ikke et brud» skal stå i prompten —
+    ellers dømmer modellen på et hul i instrumentet som om det var et brud."""
+    from core.services import decision_review_prompter as P
+
+    p = P._build_review_prompt(
+        {"directive": "sig uroen højt", "reason": "fordi den tynger"},
+        {"summary": "…", "window_hours": 24,
+         "channels": {"tools": True, "words": True, "inner": False}},
+    )
+    assert "CHANNEL:" in p
+    assert "unknown" in p
+    assert "words" in p, "kanalerne med data skal nævnes i prompten"

@@ -293,3 +293,28 @@ def test_tallets_betydning_er_forskellig_paa_de_to_kilder(monkeypatch):
     kort = {j["kilde"]: j["kommando"] for j in bj.liste()["jobs"]}
     assert "sidste kommando startede" in kort["shell"]
     assert "sidste kommando sluttede" in kort["shell_operator"]
+
+
+def test_en_shell_der_KOERER_viser_kommandoen_og_dens_koeretid(monkeypatch):
+    # Det er kortet fra Bjoerns billede: «koerer / 19m20s / hvad det er».
+    # `last_used` saettes ved kommandoens START, saa idle_seconds ER koeretiden.
+    _taend_shells(monkeypatch)
+    _monter_lokal(monkeypatch, [{"session_id": "bsh-0123456789", "alive": True,
+                                 "idle_seconds": 1160, "busy": True,
+                                 "command": "npm run build -- --watch"}])
+    _monter_operator(monkeypatch, [])
+    j = bj.liste()["jobs"][0]
+    assert j["kommando"] == "kører: npm run build -- --watch"
+    assert j["sekunder"] == 1160
+
+
+def test_en_daemon_uden_busy_feltet_paastaar_ingenting(monkeypatch):
+    # En daemon startet foer 26/9-2026 svarer uden `busy`. Kortet maa saa
+    # falde tilbage til den neutrale tekst, ikke gaette at der er ledigt.
+    _taend_shells(monkeypatch)
+    _monter_lokal(monkeypatch, [{"session_id": "bsh-0123456789",
+                                 "alive": True, "idle_seconds": 7}])
+    _monter_operator(monkeypatch, [])
+    kommando = bj.liste()["jobs"][0]["kommando"]
+    assert "kører:" not in kommando
+    assert "åben shell" in kommando

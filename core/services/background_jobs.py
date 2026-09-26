@@ -36,10 +36,9 @@ virkelig forskellige:
     fødselstidspunkt, kun «sidst brugt». Hvad det så er, står i `_shell_kort`
     — og det er ikke det samme for de to kilder.
 
-    Panelet kan heller ikke se OM der kører en kommando. `list` svarer det
-    samme uanset, og daemonen er tråd-per-forbindelse, så et opslag bliver
-    besvaret midt i en kørsel. Begge dele kræver en ændring inde i de to
-    værktøjer, og de er fastfrosne indtil gate-systemet står.
+    Fra 26/9-2026 svarer `bash_session.list` også `busy` og `command`, så et
+    kort kan sige hvad der kører og hvor længe. Operator-siden kan det ikke:
+    dens `run` er ét bro-hop uden noget der holder tilstanden imens.
 
 Et panel der kun viste den ene ville være sandt om sin form og tavst om sit
 indhold — man ville tro der ikke kørte noget, mens der gjorde.
@@ -238,7 +237,7 @@ def _default_bash_sid() -> str:
 
 
 def _shell_kort(sid: str, *, egen_maskine: bool, idle: int, cwd: str = "",
-                arbejds_shell: bool = False) -> dict[str, Any]:
+                arbejds_shell: bool = False, koerer: str = "") -> dict[str, Any]:
     """Ét kort for en åben shell — samme form som de øvrige kilder.
 
     Teksten siger hvad tallet ER, og de to kilder er ikke ens:
@@ -262,6 +261,11 @@ def _shell_kort(sid: str, *, egen_maskine: bool, idle: int, cwd: str = "",
     hvor = f" i {cwd}" if cwd and cwd != "~" else ""
     siden = "sidste kommando sluttede" if egen_maskine else "sidste kommando startede"
     hvad = "Jarvis' arbejds-shell (bash)" if arbejds_shell else "åben shell"
+    # Kører der noget, ER tallet kommandoens køretid (`last_used` sættes ved
+    # dens start), og så siger linjen hvad der kører — som i panelets øvrige
+    # rækker. Det kunne den ikke før 26/9-2026: `list` svarede det samme
+    # uanset, så kortet påstod «intet kører» uden at kunne vide det.
+    linje = f"kører: {koerer}" if koerer else f"{hvad}{hvor} · tiden er siden {siden}"
     return {
         "id": sid,
         # Id'et ER navnet, som operator-shellene ovenfor. Daemonen tillader
@@ -273,7 +277,7 @@ def _shell_kort(sid: str, *, egen_maskine: bool, idle: int, cwd: str = "",
         # kontrakt svarer `kilde` netop på HVILKEN maskine, og det er dét
         # panelets linje 2 viser. Én fælles kilde ville gøre den linje stum.
         "kilde": "shell_operator" if egen_maskine else "shell",
-        "kommando": f"{hvad}{hvor} · tiden er siden {siden}",
+        "kommando": linje,
         "status": "running",
         "pid": None,
         "sekunder": max(0, int(idle)),
@@ -323,9 +327,14 @@ def _lokale_shell_sessioner() -> list[dict[str, Any]]:
         sid = str(s.get("session_id") or "")
         if not sid:
             continue
-        ud.append(_shell_kort(sid, egen_maskine=False,
-                              idle=_sekunder(s.get("idle_seconds")),
-                              arbejds_shell=sid == arbejds))
+        ud.append(_shell_kort(
+            sid, egen_maskine=False,
+            idle=_sekunder(s.get("idle_seconds")),
+            arbejds_shell=sid == arbejds,
+            # Mangler feltet, er daemonen ældre end 26/9-2026 og kan ikke
+            # svare på spørgsmålet. Så siger kortet det ikke.
+            koerer=str(s.get("command") or "") if s.get("busy") else "",
+        ))
     return ud
 
 

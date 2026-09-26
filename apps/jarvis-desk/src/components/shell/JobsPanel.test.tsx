@@ -242,4 +242,20 @@ describe('åbne shell-sessioner', () => {
     expect(stopJob.mock.calls[0]?.[1].kilde).toBe('shell_operator')
     expect(stopJob.mock.calls[0]?.[1].id).toBe('opsess-0123456789ab')
   })
+
+  it('viser en shell der KØRER med kommandoen og en stop-knap', async () => {
+  // Kortet fra Bjørns billede: «Kører / 19m20s / hvad det er».
+  listJobs.mockResolvedValue({
+    jobs: [{
+      ...SHELL_SERVER, sekunder: 1160,
+      kommando: 'kører: npm run build -- --watch',
+    }],
+    bridge_ok: true,
+  })
+  render(<JobsPanel config={cfg} onClose={() => {}} isOwner />)
+  await waitFor(() => expect(screen.getByText('19m 20s')).toBeTruthy())
+  expect(screen.getByText('kører: npm run build -- --watch')).toBeTruthy()
+  fireEvent.click(screen.getByLabelText('Stop bsh-115cd823bf'))
+  await waitFor(() => expect(stopJob).toHaveBeenCalled())
+})
 })

@@ -15,6 +15,7 @@ Architecture:
 
 Wire protocol: line-delimited JSON over the socket.
 - Request: {"op": "open"|"run"|"close"|"list", ...args}
+- `list` svarer pr. session: session_id, alive, idle_seconds, busy, command.
 - Response: {"status": "ok"|"error", ...payload}
 
 Containment:
@@ -58,6 +59,10 @@ _DEFAULT_TIMEOUT = 30
 _IDLE_SESSION_TTL = 30 * 60
 _IDLE_DAEMON_TTL = 60 * 60
 _CLIENT_CONNECT_TIMEOUT = 5.0
+#: Hvor længe `close` venter på at få sessionens lås, udelukkende for at
+#: lukke pty-fd'en. Drabet er sket før vi venter, så en kørende `run` slipper
+#: låsen straks; fristen er en bagstopper, ikke en forventning.
+_CLOSE_FD_WAIT_S = 2.0
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -71,6 +76,11 @@ class _Session:
         self.session_id = session_id
         self.lock = threading.Lock()
         self.last_used = time.time()
+        #: Kommandoen fra sidste `run`. Kun meningsfuld MENS laasen holdes —
+        #: derfor ryddes den aldrig, og `_list_row` viser den kun naar
+        #: `lock.locked()`. Det sparer et try/finally om hele `run`s krop,
+        #: og laasen kan ikke komme ud af trit med sig selv.
+        self.running_command = ""
         self.pid, self.fd = pty.fork()
         if self.pid == 0:
             try:
@@ -179,6 +189,7 @@ class _Session:
 
         with self.lock:
             self.last_used = time.time()
+            self.running_command = command[:160]
             # Ryd efterladt output fra en tidligere timeout/afbrudt kommando, så det ikke
             # blandes ind i denne kommandos output eller forvirrer marker-detektionen.
             self._drain_pending(timeout=0.05)
@@ -228,10 +239,25 @@ class _Session:
                 # roden til "alle mine bash-kald sluges" (18. aug 2026). Resync nu.
                 _recovered = self._resync()
                 if not _recovered:
-                    # Kan ikke reddes → luk, så kalderens "session terminated"-sti
-                    # åbner en frisk session ved næste kald i stedet for at sluge alt.
+                    # Kan ikke reddes → dræb shellen, så kalderens "session
+                    # terminated"-sti åbner en frisk session ved næste kald i
+                    # stedet for at sluge alt.
+                    #
+                    # `terminate()`, IKKE `close()`. Vi står inde i `with
+                    # self.lock`, og `close()` tog den samme lås. threading.Lock
+                    # er ikke rekursiv, så tråden ventede på sig selv — for
+                    # evigt. Målt 26/9-2026 med `_resync` tvunget til False:
+                    # `run` vendte aldrig tilbage, og `lock.locked()` var stadig
+                    # True efter 15 s. Derfra hang sessionens daemon-tråd, og
+                    # reaperens egen `s.close()` på den ville hænge med — så
+                    # idle-oprydning og daemonens selv-nedlukning stoppede også.
+                    # Klienten timede ud og fik `_client_call` til at dræbe hele
+                    # daemonen, hvilket tog ALLE sessioner med.
+                    #
+                    # Fd'en lukkes ikke her; det gør reaperen når den popper
+                    # sessionen, og da er låsen fri.
                     try:
-                        self.close()
+                        self.terminate()
                     except Exception:
                         pass
                     return {
@@ -259,23 +285,79 @@ class _Session:
                 "output": _decode(buf)[-_OUTPUT_LIMIT_BYTES:],
             }
 
-    def close(self) -> None:
-        with self.lock:
-            try:
+    def terminate(self) -> None:
+        """Dræb shellen UDEN at tage sessionens lås.
+
+        Låsen holdes af en kørende kommando i op til 300 sekunder. Tog
+        drabet den med, kunne en session der var i gang hverken lukkes
+        udefra (målt: 10,2 s ventetid, hvorefter klienten dræbte hele
+        daemonen og tog uvedkommende sessioner med) eller indefra (`run`
+        kalder dette fra sin egen lås-blok — se dér).
+
+        At dræbe processen er i sig selv låsefrit: en `run` der select'er
+        på pty'en får EOF når bash dør, returnerer og slipper låsen.
+        """
+        try:
+            if self.alive():
+                os.kill(self.pid, signal.SIGTERM)
+                for _ in range(10):
+                    if not self.alive():
+                        break
+                    time.sleep(0.1)
                 if self.alive():
-                    os.kill(self.pid, signal.SIGTERM)
-                    for _ in range(10):
-                        if not self.alive():
-                            break
-                        time.sleep(0.1)
-                    if self.alive():
-                        os.kill(self.pid, signal.SIGKILL)
-            except Exception as exc:
-                logger.debug("bash_session %s close failed: %s", self.session_id, exc)
-            try:
-                os.close(self.fd)
-            except OSError:
-                pass
+                    os.kill(self.pid, signal.SIGKILL)
+        except Exception as exc:
+            logger.debug("bash_session %s terminate failed: %s", self.session_id, exc)
+
+    def close(self) -> None:
+        """Dræb shellen og luk pty'en. Vender tilbage selv om en kommando kører."""
+        self.terminate()
+        # Fd'en maa kun lukkes naar ingen select'er paa den: lukkes den under
+        # en anden traads select(), kan nummeret blive genbrugt af en helt
+        # anden fil. Bash er doed nu, saa en koerende `run` slipper laasen med
+        # det samme. Faar vi den ikke inden fristen, lader vi fd'en staa frem
+        # for at lukke den under nogen — den foelger med naar daemonen doer, og
+        # der er hoejst `_MAX_SESSIONS` af dem.
+        fik = self.lock.acquire(timeout=_CLOSE_FD_WAIT_S)
+        try:
+            if fik:
+                try:
+                    os.close(self.fd)
+                except OSError:
+                    pass
+            else:
+                logger.debug("bash_session %s: fd ikke lukket — laasen var optaget",
+                             self.session_id)
+        finally:
+            if fik:
+                self.lock.release()
+
+
+def _list_row(sid: str, sess: _Session, now: float) -> dict[str, Any]:
+    """Én række i `list`-svaret.
+
+    Udskilt fra handleren i `_daemon_main` så den kan testes uden at starte en
+    daemon — det er præcis denne payload baggrundsjob-panelet læser.
+
+    `busy` er LÅSEN selv, ikke et sideløbende flag: `run` holder sessionens
+    lås i hele kommandoens levetid, så de to kan ikke komme ud af trit. Før
+    denne række fandtes, svarede `list` det samme uanset om der kørte noget,
+    og daemonen er tråd-per-forbindelse — et opslag bliver altså besvaret midt
+    i en kørsel. Panelet skrev «intet kører» på ren tro.
+
+    `last_used` sættes ved kommandoens START, så mens den kører ER
+    `idle_seconds` dens hidtidige køretid. Er sessionen ledig, er det tiden
+    siden sidste kommando blev startet.
+    """
+    optaget = sess.lock.locked()
+    return {
+        "session_id": sid,
+        "alive": sess.alive(),
+        "idle_seconds": int(now - sess.last_used),
+        "busy": optaget,
+        # `running_command` ryddes aldrig; den er kun sand mens låsen holdes.
+        "command": sess.running_command if optaget else "",
+    }
 
 
 def _decode(buf: bytes) -> str:
@@ -424,12 +506,9 @@ def _daemon_main() -> int:
                     _send(client, {"status": "ok", "session_id": sid, "closed": True})
 
             elif op == "list":
+                now_l = time.time()
                 with sess_lock:
-                    snapshot = [
-                        {"session_id": sid, "alive": s.alive(),
-                         "idle_seconds": int(time.time() - s.last_used)}
-                        for sid, s in sessions.items()
-                    ]
+                    snapshot = [_list_row(sid, s, now_l) for sid, s in sessions.items()]
                 _send(client, {"status": "ok", "sessions": snapshot, "count": len(snapshot)})
 
             elif op == "ping":

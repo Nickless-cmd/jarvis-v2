@@ -499,22 +499,36 @@ def _call_llm(target: dict, system_prompt: str, user_prompt: str) -> str:
                 {"role": "user", "content": user_prompt},
             ],
             "stream": False,
-            # 600, ikke 200. MAALT paa CT105 26/9-2026 mod
-            # `deepseek-v4.1-flash:cloud`:
+            # `think: False` ER rettelsen. `num_predict` alene var ikke nok.
             #
-            #   num_predict=200   content=   0 tegn  thinking= 910  done_reason=length
-            #   num_predict=600   content= 399 tegn  thinking= 263  done_reason=stop
+            # MAALT paa CT105 26/9-2026 mod `deepseek-v4.1-flash:cloud`, samme
+            # prompt og samme input:
             #
-            # Modellen TAENKER, og raesonnementet taeller med i budgettet. Ved
-            # 200 aad det hele loftet, `content` kom tom tilbage, og
+            #   np=200            content=   0  thinking=  910  done=length
+            #   np=600            content= 399  thinking=  263  done=stop
+            #   np=600            content=   0  thinking= 2421  done=length
+            #   np=1500           content=  53  thinking= 3203  done=stop
+            #   np=600 think=off  content= 359  thinking=    0  done=stop
+            #   np=600 think=off  content= 520  thinking=    0  done=stop
+            #   np=600 think=off  content= 278  thinking=    0  done=stop
+            #
+            # Modellen TAENKER, raesonnementet taeller med i budgettet, og dets
+            # laengde svinger fra 263 til 3.203 tegn. Ethvert fast loft er
+            # derfor et gaet: ved 200 aad det hele budgettet, og selv 600 slog
+            # fejl paa et langt raesonnement. `content` kom tom tilbage, og
             # `update_personality_vector_from_run` faldt tilbage paa
             # `_deterministic_update` — som aldrig roerer `recurring_mistakes`,
             # `strengths_discovered` eller `confidence_by_domain`.
             #
             # Det er derfor `recurring_mistakes` aldrig har aendret sig: ikke
-            # fordi taersklen i prompten var for haard, men fordi svaret sjaeldent
-            # naaede frem. Ved 600 svarer den — og svarede netop med
-            # `recurring_mistakes` i maalingen.
+            # fordi taersklen i prompten var for haard, men fordi svaret
+            # sjaeldent naaede frem.
+            #
+            # Med `think: False` er der intet raesonnement at betale for, og de
+            # 600 raekker rigeligt: 3 ud af 3 kald svarede, alle med
+            # `recurring_mistakes` udfyldt. Opgaven er struktureret udtraek af
+            # JSON — den har ikke brug for synlig taenkning.
+            "think": False,
             "options": {"num_predict": 600},
         }).encode()
         req = urllib_request.Request(url, data=payload, headers={"Content-Type": "application/json"})

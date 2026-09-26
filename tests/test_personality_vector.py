@@ -114,20 +114,22 @@ def test_merge_deduplikerer_saa_en_gentagelse_ikke_bliver_to_poster():
 # ── Svaret naaede sjældent frem (målt 26/9-2026) ───────────────────────────
 
 
-def test_budgettet_er_stort_nok_til_en_taenkende_model():
-    """`num_predict` var 200. Modellen TÆNKER, og ræsonnementet tæller med.
+def test_taenkningen_er_slaaet_FRA_og_budgettet_raekker():
+    """Ræsonnementet åd svar-budgettet. Målt på CT105 mod
+    `deepseek-v4.1-flash:cloud`, samme prompt og input:
 
-    Målt på CT105 mod `deepseek-v4.1-flash:cloud`:
+        np=200            content=   0  thinking=  910  done=length
+        np=600            content= 399  thinking=  263  done=stop
+        np=600            content=   0  thinking= 2421  done=length
+        np=1500           content=  53  thinking= 3203  done=stop
+        np=600 think=off  content= 359  thinking=    0  done=stop  (3 af 3)
 
-        num_predict=200   content=  0 tegn  thinking= 910  done_reason=length
-        num_predict=600   content=399 tegn  thinking= 263  done_reason=stop
+    Ræsonnementets længde svinger fra 263 til 3.203 tegn, så ethvert fast loft
+    er et gæt — selv 600 slog fejl. Med `think: False` er der intet at betale
+    for, og alle tre kald svarede med `recurring_mistakes` udfyldt.
 
-    Ved 200 åd ræsonnementet hele loftet, `content` kom tom tilbage, og
-    kaldet faldt tilbage på `_deterministic_update` — som aldrig rører
-    `recurring_mistakes`, `strengths_discovered` eller `confidence_by_domain`.
-
-    Det er den egentlige grund til at `recurring_mistakes` aldrig har ændret
-    sig i 1.002 versioner. Ikke tærsklen i prompten.
+    Det er den egentlige grund til at feltet aldrig har ændret sig. Ikke
+    tærsklen i prompten.
     """
     import ast
     import inspect
@@ -143,8 +145,15 @@ def test_budgettet_er_stort_nok_til_en_taenkende_model():
                     fundet.append(v.value)
     assert fundet, "num_predict findes ikke længere — er kaldet lagt om?"
     assert all(v >= 600 for v in fundet), (
-        f"num_predict={fundet} er for lavt til en tænkende model; "
-        "ræsonnementet tæller med i budgettet og content kommer tom tilbage"
+        f"num_predict={fundet} er for lavt; ræsonnementet tæller med i "
+        "budgettet og content kommer tom tilbage"
+    )
+
+    # Selve rettelsen: uden denne er ethvert loft et gæt.
+    kilde = inspect.getsource(PV._call_llm)
+    assert '"think": False' in kilde, (
+        "tænkningen er slået til igen — ræsonnementet æder svar-budgettet, og "
+        "kaldet falder tilbage på den deterministiske sti"
     )
 
 

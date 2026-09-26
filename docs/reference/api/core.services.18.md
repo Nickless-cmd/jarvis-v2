@@ -104,7 +104,7 @@ _Personality Vector — cumulative personality that grows over time._
 | function | `_safe_json_field` | `(value, default)` | — | [src](../../../core/services/personality_vector.py#L463) |
 | function | `_resolve_local_llm_target` | `()` | — | [src](../../../core/services/personality_vector.py#L476) |
 | function | `_call_llm` | `(target, system_prompt, user_prompt)` | Minimal LLM call via provider router target. | [src](../../../core/services/personality_vector.py#L487) |
-| function | `_parse_json_response` | `(text)` | — | [src](../../../core/services/personality_vector.py#L539) |
+| function | `_parse_json_response` | `(text)` | — | [src](../../../core/services/personality_vector.py#L553) |
 
 ## `core/services/pfsense_syslog.py`
 _core/services/pfsense_syslog.py_

@@ -19,6 +19,24 @@ export interface Kilde {
   domaene: string
 }
 
+/**
+ * KUN de værktøjer der slår op på nettet giver kilder (Bjørn 26/9-2026).
+ *
+ * Før scannede vi ALLE tool-inputs og -resultater for URL'er. Det var
+ * misvisende: læser man en fil — en test, et dokument, en config — står der
+ * adresser i den, og de dukkede op som «kilder». Målt i Bjørns miljø-panel:
+ * 180 kilder, hvoraf de synlige var «d», «apkcombo.com», «ude.dk» og
+ * «dr.dk» — alle sammen fixture-tekst fra filer, ikke sider han havde hentet.
+ * En kilde er en side man slog OP, ikke en streng man læste.
+ *
+ * `bash` med `curl` henter ganske vist ogsaa en side, men den samme kommando
+ * kan lige saa godt vaere `grep` i en fil. Vi kan ikke se forskel, og en regel
+ * der gaetter er vaerre end en regel der er smal.
+ */
+export const WEB_TOOLS: ReadonlySet<string> = new Set([
+  'web_fetch', 'web_search', 'web_scrape', 'operator_webfetch', 'get_news',
+])
+
 const URL_RE = /https?:\/\/[^\s<>"'`)\]}(|$&]+/gi
 
 /** Hans eget maskineri er ikke en kilde. */
@@ -60,7 +78,8 @@ function tilfoej(kilder: Kilde[], ud: Map<string, Kilde>): void {
 export function kilderFraBlokke(blokke: ContentBlock[] | null | undefined): Kilde[] {
   const ud = new Map<string, Kilde>()
   for (const b of blokke ?? []) {
-    if (b?.type === 'tool_use') {
+    // Kun WEB_TOOLS: se noten dér. Et `read_file` er ikke en kilde.
+    if (b?.type === 'tool_use' && WEB_TOOLS.has(b.name)) {
       tilfoej(kilderFraTekst(JSON.stringify(b.input ?? {})), ud)
       if (typeof b.result === 'string') tilfoej(kilderFraTekst(b.result), ud)
     }

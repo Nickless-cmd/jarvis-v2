@@ -117,6 +117,23 @@ describe('EnvironmentPanel — agent-rækker og halen', () => {
     expect(screen.queryByRole('button', { name: /Vis alle/ })).not.toBeInTheDocument()
   })
 
+  it('to sider på samme domæne er ÉN række (Bjørn 26/9-2026: «kilder skal dedups»)', async () => {
+    // Lageret dedup'er på URL, så /api og /guide på samme vært stod som to
+    // ens rækker — og man kunne ikke se hvor mange STEDER der var tale om.
+    const sources = [
+      { url: 'https://docs.example.com/api', domaene: 'docs.example.com', origin: 'tool_result' as const },
+      { url: 'https://docs.example.com/guide', domaene: 'docs.example.com', origin: 'tool_result' as const },
+      { url: 'https://tv2.dk/nyt', domaene: 'tv2.dk', origin: 'tool_result' as const },
+    ]
+    render(<EnvironmentPanel config={cfg} kind="container" root="/r" working
+      evidence={{ tools: [], agents: [], sources }} />)
+    await screen.findByText('docs.example.com')
+    expect(screen.getAllByText('docs.example.com')).toHaveLength(1)
+    expect(screen.getAllByText('tv2.dk')).toHaveLength(1)
+    // Ingen hale: de to domæner er der ikke flere af.
+    expect(screen.queryByRole('button', { name: /Vis alle/ })).not.toBeInTheDocument()
+  })
+
   it('en agents farve følger agenten, ikke dens plads i listen', async () => {
     const agent = { agentId: 'a1', role: 'researcher', status: 'active', dispatchToolUseId: 't1' }
     const farve = (el: HTMLElement) => el.style.color

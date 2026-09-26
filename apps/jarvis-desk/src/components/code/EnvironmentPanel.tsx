@@ -113,10 +113,24 @@ export function EnvironmentPanel({
   const agents = (evidence?.agents ?? []).filter((a) => agentSkalStaaFremme(a.status))
   const alleSources = evidence?.sources ?? []
   const alleTools = evidence?.tools ?? []
+  // Én række pr. DOMÆNE (Bjørn 26/9-2026: «kilder skal dedups»). Lageret
+  // dedup'er paa URL, saa to sider paa samme vaert — /docs og /api — stod som
+  // to ens rækker, og man kunne ikke se hvor mange steder der egentlig var
+  // tale om. Foerste URL vinder, som i chatview'ets kompakte række.
+  const unikkeSources = (() => {
+    const set = new Set<string>()
+    const ud: SourceEvidence[] = []
+    for (const s of alleSources) {
+      if (set.has(s.domaene)) continue
+      set.add(s.domaene)
+      ud.push(s)
+    }
+    return ud
+  })()
   // Fire linjer, resten bag «Vis alle». Tallet staar PAA knappen, saa halen
   // aldrig er skjult uden at nogen kan se at den findes.
-  const sources = visAlleKilder ? alleSources : alleSources.slice(-SYNLIGE_LINJER)
-  const flereKilder = alleSources.length > sources.length
+  const sources = visAlleKilder ? unikkeSources : unikkeSources.slice(-SYNLIGE_LINJER)
+  const flereKilder = unikkeSources.length > sources.length
 
   return (
     <aside className="env-panel" aria-label="Miljø">
@@ -256,7 +270,7 @@ export function EnvironmentPanel({
               </ul>
               {(flereKilder || visAlleKilder) && (
                 <button type="button" className="env-vis-alle" onClick={() => setVisAlleKilder((v) => !v)}>
-                  {visAlleKilder ? 'Vis færre' : `Vis alle ${alleSources.length}`}
+                  {visAlleKilder ? 'Vis færre' : `Vis alle ${unikkeSources.length}`}
                 </button>
               )}
             </>

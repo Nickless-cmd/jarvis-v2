@@ -172,10 +172,14 @@
      SMALLERE end skinnen («og så må miljø feltet gerne være lidt smallere»).
      Det er en oversigt paa faa raekker; 360 px goer den bred og tom. Den
      flugter til hoejre, saa kanten foelger de andre ruder. */
-  /* 50 = headerens 42 px + 8 px luft. Skinnen starter nu i toppen (top: 0),
-     saa margenen skal baere hele headeren — foer laa skinnen 34 px nede og
-     margenen behoevede kun 16. */
-  margin-top: 50px;
+  /* 8 = luft under headeren. Bjørn 26/9-2026: «miljø feltet skal rykkes højer
+     op». Det laa FOER 50 px nede, oveni stakkens egen top: 36 px — altsaa
+     86 px fra codeview-mains overkant, mens headeren (GitChip, badges, de
+     fire panel-knapper) slutter omkring 42. Der stod 44 px tomt imellem.
+     Nu flugter feltet med headerens underkant i stedet.
+     De to andre ruder i stakken er uberoert: de er lister der skal have
+     hoejden, og de har deres egen header at moede. */
+  margin-top: 8px;
   width: 300px;
   align-self: flex-end;
 }

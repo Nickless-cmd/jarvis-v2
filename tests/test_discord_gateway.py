@@ -243,6 +243,125 @@ class TestExtractTextDeltas:
         assert _extract_text_deltas(["event: content_block_delta\ndata: ikke-json\n\n"]) == ""
 
 
+# ── Preview-stabilisering (26/9-2026, anden runde) ──────────────────────────
+# Bjørn: streaming virkede, men føltes «laggy/tung/hakkende». Tre årsager:
+# hele beskeden gensendes ved hver edit, uafsluttet markdown flimrer, og
+# 1900-loftet frøs preview'en på lange svar. Disse tests dækker alle tre.
+class TestStreamPreviewHelpers:
+    """Hale-vindue + markør-stabilisering — preview'en må ikke fryse/flimre."""
+
+    def test_tail_window_shows_the_tail_not_the_head(self):
+        from core.services.discord_gateway import _tail_window
+
+        text = "A" * 500 + "\n" + "B" * 500
+        out = _tail_window(text, 300)
+        assert out.startswith("…")
+        assert "B" in out, "halen skal være med — ikke begyndelsen"
+        assert "A" * 500 not in out, "begyndelsen må ikke fylde preview'en"
+
+    def test_tail_window_leaves_short_text_alone(self):
+        from core.services.discord_gateway import _tail_window
+
+        assert _tail_window("kort svar", 1900) == "kort svar"
+
+    def test_tail_window_keeps_window_on_one_long_line(self):
+        """Én meget lang linje: linjeskiftet ligger for langt ude — så må
+        vinduet ikke kollapse til næsten ingenting."""
+        from core.services.discord_gateway import _tail_window
+
+        text = ("Start på svaret. " * 200) + "\nSLUTNINGEN af svaret her."
+        out = _tail_window(text, 1900)
+        assert len(out) > 1000, f"vinduet kollapsede: {len(out)} tegn"
+        assert "SLUTNINGEN" in out
+
+    def test_tail_window_reopens_code_fence(self):
+        """Halen starter inde i en kodeblok → fence-markøren skal med."""
+        from core.services.discord_gateway import _tail_window
+
+        text = "```python\n" + "\n".join("x = %d" % i for i in range(200)) + "\n```"
+        out = _tail_window(text, 200)
+        assert out.startswith("…\n```")
+
+    def test_stabilize_closes_unclosed_bold(self):
+        from core.services.discord_gateway import _stabilize_stream_preview
+
+        assert _stabilize_stream_preview("Her er **fed tekst").endswith("**")
+
+    def test_stabilize_closes_unclosed_fence(self):
+        from core.services.discord_gateway import _stabilize_stream_preview
+
+        assert _stabilize_stream_preview("Kode:\n```python\nx = 1").endswith("```")
+
+    def test_stabilize_ignores_backticks_inside_fences(self):
+        from core.services.discord_gateway import _stabilize_stream_preview
+
+        text = "Eksempel:\n```\nbrug ` til inline-kode\n```\nFærdig."
+        assert _stabilize_stream_preview(text) == text
+
+    def test_stabilize_leaves_balanced_text_alone(self):
+        from core.services.discord_gateway import _stabilize_stream_preview
+
+        text = "**fed** og *kursiv* og `kode`."
+        assert _stabilize_stream_preview(text) == text
+
+
+class TestStreamEditThrottle:
+    """Færre og større hop læses glattere end én edit pr. delta-bid."""
+
+    def _fake_client(self, sent, edits):
+        class FakeMessage:
+            async def edit(self, content=None):
+                edits.append(content)
+
+        class FakeChannel:
+            async def send(self, content=None):
+                sent.append(content)
+                return FakeMessage()
+
+        class FakeClient:
+            def get_channel(self, cid):
+                return FakeChannel()
+
+        return FakeClient()
+
+    def test_small_deltas_do_not_produce_one_edit_each(self, monkeypatch):
+        import asyncio
+
+        import core.services.discord_gateway as dg
+
+        sent: list = []
+        edits: list = []
+        monkeypatch.setattr(dg, "_client", self._fake_client(sent, edits))
+        monkeypatch.setattr(dg, "_STREAM_EDIT_INTERVAL_S", 0.0)
+        monkeypatch.setattr(dg, "_STREAM_POLL_S", 0.0)
+
+        # 10 bid à 20 tegn = 200 tegn. Uden vækstkrav ville det give ~10 edits.
+        batches = []
+        for i in range(10):
+            frame = (
+                'event: content_block_delta\ndata: '
+                '{"delta": {"type": "text_delta", "text": "%s"}}\n\n' % ("x" * 20)
+            )
+            batches.append(([frame], False, i + 1))
+        batches.append(([], True, 10))
+        calls = {"n": 0}
+
+        def fake_snapshot(sid, idx):
+            b = batches[min(calls["n"], len(batches) - 1)]
+            calls["n"] += 1
+            return b
+
+        import core.services.run_follow as rf
+        monkeypatch.setattr(rf, "snapshot_from", fake_snapshot)
+
+        asyncio.run(dg._stream_run_to_discord(123, "sess-grow"))
+        try:
+            assert len(edits) <= 3, f"for mange edits: {len(edits)} (hakker)"
+            assert len(edits) >= 1, "200 tegn bør give mindst én edit"
+        finally:
+            dg._stream_state.pop("sess-grow", None)
+
+
 class TestStreamRunToDiscord:
     """Streameren sender beskeden ved første tekst og redigerer den derefter."""
 

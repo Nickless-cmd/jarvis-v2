@@ -64,6 +64,10 @@ _STREAM_POLL_S = 0.6
 _STREAM_MAX_S = 900.0        # absolut loft på én preview-session
 _STREAM_MAX_CHARS = 1900     # Discord-beskedloft minus margin
 _STREAM_STATE_TTL_S = 120.0  # efterladt streamer-state uden finalize ryges her
+# Mindste vækst (tegn) siden sidste edit før vi redigerer igen. Hele beskeden
+# gensendes ved hver edit, så mange små hop koster både rate-limit-budget og
+# læserens tålmodighed. Færre og større hop læses markant glattere.
+_STREAM_MIN_GROWTH_CHARS = 80
 
 # session_id → {"message", "accumulated", "last_edit", "finished", "stopped", "channel_id"}
 _stream_state: dict[str, dict] = {}
@@ -755,6 +759,66 @@ def _extract_text_deltas(frames: list[str]) -> str:
     return "".join(out)
 
 
+def _tail_window(text: str, limit: int) -> str:
+    """Vis HALEN af teksten når den overstiger Discord-loftet.
+
+    Den første version viste de FØRSTE ``limit`` tegn (``acc[:limit]``). Når
+    svaret passerede loftet frøs preview'en derfor på begyndelsen, og kanalen
+    så ud som om jeg var gået i stå midt i et svar der stadig kørte. Vi klipper
+    ved et linjeskift, så halen ikke starter midt i en linje, og markerer
+    afkortningen med et «…». Starter halen inde i en kodeblok, tages
+    fence-markøren med, så resten af koden ikke tegnes som brødtekst.
+    """
+    if len(text) <= limit:
+        return text
+    cut = len(text) - (limit - 2)          # plads til "…\n"
+    nl = text.find("\n", cut)
+    # Brug kun linjeskiftet hvis halen ikke bliver skåret for kort: en meget
+    # lang sidste linje ville ellers give en næsten tom preview (målt: 27 tegn
+    # af et 1900-loft). Under halvdelen af vinduet → klip rå i stedet.
+    start = nl + 1 if (nl != -1 and (len(text) - (nl + 1)) >= (limit - 2) // 2) else cut
+    head, tail = text[:start], text[start:]
+    prefix = "…\n"
+    fences = sum(1 for ln in head.split("\n") if _FENCE_LINE_RE.match(ln))
+    if fences % 2 == 1:
+        prefix += "```\n"
+    return prefix + tail
+
+
+def _strip_fenced(text: str) -> str:
+    """Fjern kodeblok-indhold — bruges når vi tæller inline-markører."""
+    out: list[str] = []
+    fence: str | None = None
+    for ln in text.split("\n"):
+        m = _FENCE_LINE_RE.match(ln)
+        if m:
+            fence = None if fence else m.group(1)
+            continue
+        if fence is None:
+            out.append(ln)
+    return "\n".join(out)
+
+
+def _stabilize_stream_preview(text: str) -> str:
+    """Luk uafsluttede markdown-markører i en STREAMENDE preview.
+
+    Preview'en tegnes midt i skrivningen. Et ``**`` der endnu ikke er lukket
+    skifter mellem rå tegn og fed fra den ene redigering til den næste — det
+    er flimren. Vi lukker markørerne for preview'en, så billedet står stille
+    mens teksten vokser. Den ENDELIGE tekst er urørt: den ejes af finalize.
+    """
+    if not text:
+        return text
+    lines = text.split("\n")
+    if sum(1 for ln in lines if _FENCE_LINE_RE.match(ln)) % 2 == 1:
+        return text + "\n```"      # åben kodeblok → luk den
+    bare = _strip_fenced(text)
+    for marker in ("**", "~~", "`"):
+        if bare.count(marker) % 2 == 1:
+            text += marker
+    return text
+
+
 async def _stream_run_to_discord(channel_id: int, session_id: str) -> None:
     """Send beskeden ved første tekst og redigér den mens runnet streamer.
 
@@ -769,6 +833,7 @@ async def _stream_run_to_discord(channel_id: int, session_id: str) -> None:
         "message": None,
         "accumulated": "",
         "last_edit": 0.0,
+        "last_edit_len": 0,
         "last_rendered": "",
         "finished": False,
         "stopped": False,
@@ -799,8 +864,9 @@ async def _stream_run_to_discord(channel_id: int, session_id: str) -> None:
             now = time.monotonic()
             acc = state["accumulated"]
             if acc:
-                preview = _wrap_tables_for_discord(acc[:_STREAM_MAX_CHARS])
+                preview = _wrap_tables_for_discord(_tail_window(acc, _STREAM_MAX_CHARS))
                 preview = _downgrade_unsupported_for_discord(preview)
+                preview = _stabilize_stream_preview(preview)
                 if preview != state["last_rendered"]:
                     if state["message"] is None:
                         # Første rigtige tekst: send beskeden nu. Indtil da bar
@@ -809,17 +875,24 @@ async def _stream_run_to_discord(channel_id: int, session_id: str) -> None:
                             state["message"] = await channel.send(preview)
                             state["last_rendered"] = preview
                             state["last_edit"] = now
+                            state["last_edit_len"] = len(acc)
                             with _typing_lock:
                                 _typing_channels.discard(channel_id)
                         except Exception:
                             logger.debug("discord stream: first send failed", exc_info=True)
-                    # Redigér KUN når teksten faktisk har ændret sig — ellers
-                    # brænder vi Discords rate-limit-budget (5 edits/5 s).
-                    elif (now - state["last_edit"]) >= _STREAM_EDIT_INTERVAL_S:
+                    # Redigér kun når teksten er VOKSET meningsfuldt siden
+                    # sidst. Hele beskeden gensendes ved hver edit, så mange
+                    # små hop koster både rate-limit-budget og læserens
+                    # tålmodighed — færre og større hop læses glattere.
+                    elif (
+                        (now - state["last_edit"]) >= _STREAM_EDIT_INTERVAL_S
+                        and (len(acc) - state["last_edit_len"]) >= _STREAM_MIN_GROWTH_CHARS
+                    ):
                         try:
                             await state["message"].edit(content=preview)
                             state["last_rendered"] = preview
                             state["last_edit"] = now
+                            state["last_edit_len"] = len(acc)
                         except Exception:
                             logger.debug("discord stream: edit failed (rate-limit?)", exc_info=True)
             if done or (now - started) > _STREAM_MAX_S:

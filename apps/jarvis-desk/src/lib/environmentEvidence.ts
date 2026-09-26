@@ -1,4 +1,4 @@
-import { kilderFraTekst, type Kilde } from './kilder'
+import { kilderFraTekst, WEB_TOOLS, type Kilde } from './kilder'
 import type { ContentBlock } from './sseProtocol'
 
 export interface ToolEvidence {
@@ -210,6 +210,9 @@ export function buildEnvironmentEvidence(
   const tools = [...toolMap.values()]
   const sourceMap = new Map<string, SourceEvidence>()
   for (const tool of tools) {
+    // Kun WEB_TOOLS giver kilder (se kilder.ts). Foer scannede vi alle
+    // tool-resultater, og en laest fil med adresser i blev vist som en kilde.
+    if (!WEB_TOOLS.has(tool.name)) continue
     for (const source of kilderFraTekst(JSON.stringify(tool.input))) {
       addSource(sourceMap, {
         ...source,

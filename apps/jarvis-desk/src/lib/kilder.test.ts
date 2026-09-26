@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest'
 import { kilderFraBlokke, kilderPrDomaene } from './kilder'
 import type { ContentBlock } from './sseProtocol'
 
-const brug = (input: Record<string, unknown>, result?: string): ContentBlock =>
-  ({ type: 'tool_use', id: 't1', name: 'web', input, result } as ContentBlock)
+const brug = (input: Record<string, unknown>, result?: string, name = 'web_fetch'): ContentBlock =>
+  ({ type: 'tool_use', id: 't1', name, input, result } as ContentBlock)
 
 describe('kilder fra blokke', () => {
   it('finder adressen i et hentnings-KALD', () => {
@@ -60,10 +60,29 @@ describe('kompakt visning', () => {
   })
 })
 
-describe('fund fra ÆGTE historik (7/9-2026)', () => {
+describe('kun det han SLOG OP er en kilde (26/9-2026)', () => {
+  it('en fil man LÆSER er ikke en kilde', () => {
+    // Det var hele fejlen. Miljø-panelet viste 180 «kilder», og de synlige var
+    // «d», «apkcombo.com», «ude.dk», «dr.dk» — fixture-tekst fra test- og
+    // kodefiler. En adresse i et resultat er ikke det samme som en side man
+    // hentede.
+    expect(kilderFraBlokke([
+      brug({ path: '/tmp/x.ts' }, 'se https://ude.dk/z og https://dr.dk/nyt', 'read_file'),
+    ])).toEqual([])
+  })
+
+  it('et bash-kald er ikke en kilde — selv når det henter en side', () => {
+    // `curl` henter ganske vist en side, men den samme kommando kan være
+    // `grep` i en fil. Vi kan ikke se forskel, og en regel der gætter er
+    // værre end en regel der er smal.
+    expect(kilderFraBlokke([brug({ command: 'curl https://apkcombo.com/x' }, '', 'bash')]))
+      .toEqual([])
+  })
+
   it('shell-syntaks klistret på en adresse hører ikke med', () => {
-    // Målt: en bash-kommando gav domænet «apkcombo.com$(grep».
-    expect(kilderFraBlokke([brug({ command: 'curl https://apkcombo.com/x$(grep -c y)' })])
+    // Målt: en bash-kommando gav domænet «apkcombo.com$(grep». Reglen lever
+    // videre for WEB-værktøjer, hvor indholdet også kan være råt.
+    expect(kilderFraBlokke([brug({}, 'https://apkcombo.com/x$(grep -c y)')])
       .map((k) => k.domaene)).toEqual(['apkcombo.com'])
   })
 

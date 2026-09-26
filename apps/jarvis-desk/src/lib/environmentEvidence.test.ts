@@ -53,6 +53,17 @@ describe('environment evidence', () => {
     ])
   })
 
+  it('et værktøj der LÆSER en fil giver ingen kilder (26/9-2026)', () => {
+    // Miljø-panelet viste 180 «kilder», og de synlige var fixture-tekst fra
+    // filer. Kun WEB_TOOLS slår op på nettet; resten læser noget lokalt, og
+    // en adresse i et resultat er ikke en side man hentede.
+    const evidence = buildEnvironmentEvidence([[
+      tool('t1', 'read_file', { path: '/tmp/x.ts' }, 'se https://ude.dk/z'),
+      tool('t2', 'bash', { command: 'curl https://apkcombo.com/x' }, ''),
+    ]])
+    expect(evidence.sources).toEqual([])
+  })
+
   it('udleder både top-level og spawned agent-id uden at gætte', () => {
     const evidence = buildEnvironmentEvidence([[
       tool('a', 'explore', { query: 'find parser' },

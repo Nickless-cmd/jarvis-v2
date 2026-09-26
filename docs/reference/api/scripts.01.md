@@ -354,6 +354,24 @@ _Install or verify the required commit-attribution Git hooks._
 | function | `install` | `(repo)` | — | [src](../../../scripts/install_git_hooks.py#L115) |
 | function | `main` | `(argv=…)` | — | [src](../../../scripts/install_git_hooks.py#L179) |
 
+## `scripts/installer_desk_appimage.py`
+_Installér desk-AppImage'en, og hold `.desktop` og AppArmor-profil i takt med den._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `Fejl` | `` | En fejl brugeren skal se, ikke et stakspor. | [src](../../../scripts/installer_desk_appimage.py#L73) |
+| function | `_koer` | `(*args, tjek=…)` | — | [src](../../../scripts/installer_desk_appimage.py#L77) |
+| function | `find_appimage` | `()` | Nyeste AppImage i desk'ens `dist/`. | [src](../../../scripts/installer_desk_appimage.py#L81) |
+| function | `udpak` | `(appimage, moenster, ud)` | Udpak et mønster fra AppImage'en til `ud`. Kaster ved fejl. | [src](../../../scripts/installer_desk_appimage.py#L95) |
+| function | `laes_indlejret_desktop` | `(appimage)` | Nøgle→værdi fra AppImage'ens EGEN `.desktop`. | [src](../../../scripts/installer_desk_appimage.py#L106) |
+| function | `byg_desktop` | `(felter, maal)` | `.desktop`-indholdet, med `--no-sandbox` fjernet og stien sat. | [src](../../../scripts/installer_desk_appimage.py#L129) |
+| function | `byg_profil` | `(navn, maal)` | — | [src](../../../scripts/installer_desk_appimage.py#L149) |
+| function | `_skriv_hvis_anderledes` | `(sti, indhold, toerloeb)` | — | [src](../../../scripts/installer_desk_appimage.py#L172) |
+| function | `skriv_profil` | `(navn, indhold, toerloeb)` | Skriv profilen med sudo og genindlæs den. True hvis den ændrede sig. | [src](../../../scripts/installer_desk_appimage.py#L185) |
+| function | `installer_ikoner` | `(appimage, toerloeb)` | Kopiér AppImage'ens egne ikoner ind i temaet. Giver antallet. | [src](../../../scripts/installer_desk_appimage.py#L208) |
+| function | `verificer` | `(maal)` | Start appen SOM GNOME-SHELL GOER DET og se om zygoten overlever. | [src](../../../scripts/installer_desk_appimage.py#L225) |
+| function | `main` | `(argv=…)` | — | [src](../../../scripts/installer_desk_appimage.py#L266) |
+
 ## `scripts/interlanguage_analyze.py`
 _Interlanguage analysis — aggregate report over the practice corpus._
 
@@ -421,17 +439,4 @@ _LLM-judge for interlanguage validation — Phase 3+4 pre-registered design._
 | function | `run_delta` | `(model, *, seed=…)` | — | [src](../../../scripts/interlanguage_llm_judge.py#L159) |
 | function | `_binomial_p` | `(k, n, p0)` | One-sided binomial p-value: P(X >= k) under H0 with prob p0. | [src](../../../scripts/interlanguage_llm_judge.py#L209) |
 | function | `main` | `()` | — | [src](../../../scripts/interlanguage_llm_judge.py#L225) |
-
-## `scripts/interlanguage_structural_classifier.py`
-_Structural-feature classifier for interlanguage expressions._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `load_rows` | `()` | Mirror the official classifier's row loading + cleanup. | [src](../../../scripts/interlanguage_structural_classifier.py#L44) |
-| function | `split_clauses` | `(text)` | Split expression into clauses by | separator. | [src](../../../scripts/interlanguage_structural_classifier.py#L89) |
-| function | `first_token` | `(clause)` | First word/concept of a clause (before any operator). | [src](../../../scripts/interlanguage_structural_classifier.py#L94) |
-| function | `count_operators` | `(text)` | Count each operator occurrence. | [src](../../../scripts/interlanguage_structural_classifier.py#L100) |
-| function | `is_standalone_negation` | `(clause)` | A clause like '!lys' with no operator after the negated word. | [src](../../../scripts/interlanguage_structural_classifier.py#L105) |
-| function | `extract_features` | `(text)` | Engineered features per Bjørn's heuristics. | [src](../../../scripts/interlanguage_structural_classifier.py#L112) |
-| function | `main` | `()` | — | [src](../../../scripts/interlanguage_structural_classifier.py#L174) |
 

@@ -2,6 +2,19 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `scripts/interlanguage_structural_classifier.py`
+_Structural-feature classifier for interlanguage expressions._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `load_rows` | `()` | Mirror the official classifier's row loading + cleanup. | [src](../../../scripts/interlanguage_structural_classifier.py#L44) |
+| function | `split_clauses` | `(text)` | Split expression into clauses by | separator. | [src](../../../scripts/interlanguage_structural_classifier.py#L89) |
+| function | `first_token` | `(clause)` | First word/concept of a clause (before any operator). | [src](../../../scripts/interlanguage_structural_classifier.py#L94) |
+| function | `count_operators` | `(text)` | Count each operator occurrence. | [src](../../../scripts/interlanguage_structural_classifier.py#L100) |
+| function | `is_standalone_negation` | `(clause)` | A clause like '!lys' with no operator after the negated word. | [src](../../../scripts/interlanguage_structural_classifier.py#L105) |
+| function | `extract_features` | `(text)` | Engineered features per Bjørn's heuristics. | [src](../../../scripts/interlanguage_structural_classifier.py#L112) |
+| function | `main` | `()` | — | [src](../../../scripts/interlanguage_structural_classifier.py#L174) |
+
 ## `scripts/jarvis.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -444,11 +457,4 @@ _Seed cognitive state tables with initial values based on known context._
 | function | `seed_rhythm` | `()` | Seed rytme-tilstanden ud fra nuværende UTC-time. | [src](../../../scripts/seed_cognitive_state.py#L180) |
 | function | `seed_chronicle` | `()` | Seed en initial chronicle-post (2026-W14: narrativ, key_events, lessons). | [src](../../../scripts/seed_cognitive_state.py#L208) |
 | function | `main` | `()` | Kør alle seed-funktioner i rækkefølge og print samlet status. | [src](../../../scripts/seed_cognitive_state.py#L241) |
-
-## `scripts/setup_google_calendar.py`
-_One-time OAuth setup for Google Calendar._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `main` | `()` | — | [src](../../../scripts/setup_google_calendar.py#L17) |
 

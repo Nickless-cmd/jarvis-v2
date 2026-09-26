@@ -136,6 +136,34 @@ def _raekkefoelge_blok(blocks: list[dict] | None) -> str:
     return "\n".join(ud) + "\n\n"
 
 
+def _seneste_bruger_besked(limit: int = 1) -> list[str]:
+    """De seneste beskeder fra Bjørn — præmissen dommen skal holdes op mod.
+
+    Målt 26/9-2026: `_build_breach_prompt` fik kun Jarvis' egen tekst og
+    rækkefølgen, aldrig Bjørns besked. Alligevel dømte den fire brud af typen
+    «responded without first reproducing Bjørn's quoted message» — den dømte på
+    en præmis den ikke havde. Self-safe: fejler DB'en, er svaret tomt.
+    """
+    try:
+        from core.runtime.db import connect
+
+        with connect() as conn:
+            rows = conn.execute(
+                "SELECT content FROM chat_messages WHERE role = 'user' "
+                " ORDER BY id DESC LIMIT ?",
+                (int(limit),),
+            ).fetchall()
+    except Exception as exc:
+        logger.debug("decision_enforcement: kunne ikke laese bruger-besked: %s", exc)
+        return []
+    ud: list[str] = []
+    for row in rows:
+        tekst = " ".join(str(row["content"] or "").split())
+        if tekst:
+            ud.append(tekst[:600])
+    return ud
+
+
 def _build_breach_prompt(
     assistant_text: str, decisions: list[dict[str, Any]],
     blocks: list[dict] | None = None,
@@ -146,10 +174,20 @@ def _build_breach_prompt(
         if directive:
             decision_lines.append(f"- ID: {d.get('decision_id')} | {directive}")
     decision_block = "\n".join(decision_lines)
+    # Præmissen. Uden den dømte dommeren «responded without reproducing Bjørn's
+    # quoted message» på en besked den aldrig havde set (målt 26/9-2026).
+    bjoern = _seneste_bruger_besked()
+    bjoern_block = (
+        "=== Bjørns besked (præmissen) ===\n"
+        + "\n---\n".join(bjoern) + "\n\n"
+        if bjoern
+        else "=== Bjørns besked ===\n(ingen fundet)\n\n"
+    )
     return (
         f"{identity_prompt_prefix()}, og du gennemgår en besked du selv lige har sendt for at "
         "checke om den brød en af dine aktive adfærdsforpligtelser.\n\n"
         f"=== Aktive forpligtelser ===\n{decision_block}\n\n"
+        f"{bjoern_block}"
         f"{_raekkefoelge_blok(blocks)}"
         f"=== Din besked ===\n{assistant_text[:2000]}\n\n"
         "Vurder ærligt. Hvis ingen blev brudt, skriv NONE. Ellers, for hver "

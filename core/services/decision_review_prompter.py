@@ -103,7 +103,7 @@ def _build_review_prompt(decision: dict[str, Any], evidence: dict[str, Any] | No
         "  4. Sig 'broken' når situationen faktisk indtraf og du ikke greb den.\n"
         "Format (præcis tre linjer):\n"
         "  VERDICT: kept|partial|broken|unknown\n"
-        "  CHANNEL: tools|commits|words|signals|inner|none\n"
+        "  CHANNEL: tools|commits|words|messages|signals|inner|none\n"
         "  REASONING: <kort sætning om hvorfor>\n"
     )
 

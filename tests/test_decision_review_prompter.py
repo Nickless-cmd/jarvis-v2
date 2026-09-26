@@ -97,3 +97,20 @@ def test_prompten_naevner_kanalerne_og_tillader_unknown():
     assert "CHANNEL:" in p
     assert "unknown" in p
     assert "words" in p, "kanalerne med data skal nævnes i prompten"
+
+
+def test_prompten_kender_messages_kanalen():
+    """`messages` skal kunne vælges som CHANNEL — ellers kan en dom om at
+    citere nogen ikke navngive den kanal den hviler på, og porten tvinger den
+    til `unknown` selv når beviset står lige foran den (målt 26/9-2026)."""
+    from core.services import decision_review_prompter as P
+
+    p = P._build_review_prompt(
+        {"directive": "citér hans ord", "reason": "fordi han rettede mig"},
+        {"summary": "…", "window_hours": 24,
+         "channels": {"tools": True, "messages": True}},
+    )
+    assert "messages" in p, "kanalen findes i regnskabet men ikke i dommerens valg"
+    assert P._parse_review(
+        "VERDICT: kept\nCHANNEL: messages\nREASONING: citerede hans besked"
+    ) == ("kept", "messages", "citerede hans besked")

@@ -34,9 +34,16 @@ Dommeren manglede ikke dømmekraft. Den manglede kanalen. Tre tilføjes derfor �
 alle skrevet af runtime selv, aldrig af modellen, så selvbedømmelsen fra 11/6
 ikke kan snige sig ind ad bagvejen:
 
-* ``words``   — mine egne synlige svar (`chat_messages`, role=assistant)
-* ``signals`` — beslutnings-triggere der faktisk fyrede (`decision_signal.fired`)
-* ``inner``   — den indre tilstand som runtime selv skrev ned (`cached_affective_state`)
+* ``words``    — mine egne synlige svar (`chat_messages`, role=assistant)
+* ``messages`` — Bjørns indgående beskeder (`chat_messages`, role=user), plus en
+  deterministisk citat-probe: genfindes et uddrag af hans besked i mine svar?
+  Tilføjet 26/9-2026. `words` gav mine ord, men ikke modpartens — og en
+  beslutning om at *citere nogen* blev derfor dømt på det halve regnskab.
+  `dec_9ddb5bc6f7df` stod på 0,30 efter 18 domme, hvoraf flere ordret klagede
+  over «ingen log over at have citeret Bjørn» — i et regnskab der per
+  konstruktion ikke kunne indeholde ham.
+* ``signals``  — beslutnings-triggere der faktisk fyrede (`decision_signal.fired`)
+* ``inner``    — den indre tilstand som runtime selv skrev ned (`cached_affective_state`)
 
 Og dommen skal navngive den kanal den hviler på (``CHANNEL:``). Porten
 kontrollerer at kanalen faktisk har data — ellers er dommen ``unknown``.
@@ -47,6 +54,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import subprocess
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -70,9 +78,18 @@ _OWN_WORDS_CHARS = 200
 _SIGNALS_MAX = 8
 _INNER_MAX = 3
 _INNER_CHARS = 200
+# Modpartens ord. Bjørns beskeder er korte (typisk under 200 tegn), så uddraget
+# kan vises næsten fuldt — derfor et større loft end `words`.
+_MESSAGES_MAX = 4
+_MESSAGES_CHARS = 300
 
 # Kanalerne en dom kan hvile på. Rækkefølgen er den dommeren skal vælge fra.
-_CHANNELS = ("tools", "commits", "words", "signals", "inner")
+# `messages` kom til 26/9-2026: `words` gav mine egne ord, men en beslutning om
+# at *citere* nogen kan ikke måles uden modpartens ord. Uden kanalen faldt
+# dommeren tilbage på tools/commits og målte fravær i et instrument der ikke
+# kunne se fænomenet — og portens egen unknown-regel kunne ikke bruges, fordi
+# der ikke var nogen besked-kanal at være tavs i.
+_CHANNELS = ("tools", "commits", "words", "messages", "signals", "inner")
 
 # Følelses-proben. Ord-kanalen har ~150 af mine svar i et døgn, så «de nyeste
 # fire» er vilkårligt for netop den beslutning kanalen findes for: «sig uroen
@@ -182,6 +199,98 @@ def _foelelses_traef(uddrag: list[str]) -> list[str]:
         tekst for tekst in uddrag
         if any(m in tekst.lower() for m in _FOLELSE_MARKOER)
     ]
+
+
+# ── citat-proben (modpartens ord) ───────────────────────────────────────────
+
+
+def _normalisér_ord(tekst: str) -> list[str]:
+    """Tekst → ordrække, lowercase, uden tegnsætning. Ren funktion."""
+    return re.findall(r"[a-zæøå0-9]+", (tekst or "").lower())
+
+
+def _citat_traef(bjoern_tekster: list[str], mine_tekster: list[str]) -> list[str]:
+    """Hvilke af Bjørns beskeder har et genkendeligt uddrag i mine svar?
+
+    Deterministisk, som ``_foelelses_traef``: en sammenhængende ordsekvens fra
+    Bjørns besked (op til fem ord, mindst tre) der genfindes i mine egne svar i
+    samme vindue. Det er en hentnings-hjælp, ikke en dom — den siger «ordene
+    står der», ikke «du læste dem». Dommen falder stadig i porten.
+
+    Beskeder under tre ord springes over: «ja» og «ok» kan ikke citeres
+    meningsfuldt, og et tilfældigt sammenfald ville give et falsk hit.
+    """
+    mine = " \n ".join(" ".join(_normalisér_ord(t)) for t in mine_tekster)
+    if not mine:
+        return []
+    traef: list[str] = []
+    for besked in bjoern_tekster:
+        ord_liste = _normalisér_ord(besked)
+        if len(ord_liste) < 3:
+            continue
+        n = min(5, len(ord_liste))
+        for i in range(len(ord_liste) - n + 1):
+            if " ".join(ord_liste[i:i + n]) in mine:
+                traef.append(besked)
+                break
+    return traef
+
+
+def _messages_since(since: datetime, until: datetime) -> dict[str, Any]:
+    """Bjørns indgående beskeder i vinduet — tvillingen til ``_own_words_since``.
+
+    Målt 26/9-2026: `dec_9ddb5bc6f7df` («citér hans ord») stod på 0,30 efter 18
+    domme, hvoraf flere ordret klagede over at «regnskabet viser 4195
+    værktøjskald og 116 commits uden nogen log over at have citeret Bjørn».
+    Regnskabet kunne per konstruktion ikke indeholde modpartens ord — det var
+    den manglende tvilling til `words`, på den anden side af samtalen.
+
+    Uden kanalen kan portens egen regel 3 («kræver beslutningen en kanal der
+    IKKE har data, er svaret unknown») ikke bruges for en citat-beslutning: der
+    var ingen besked-kanal at være tavs i, så dommeren faldt tilbage på
+    tools/commits og dømte på dem.
+
+    Self-safe som resten: fejler DB'en, er svaret «ingen beskeder», ikke en
+    exception.
+    """
+    try:
+        from core.runtime.db import connect
+
+        with connect() as conn:
+            rows = conn.execute(
+                "SELECT content FROM chat_messages "
+                " WHERE role = 'user' AND created_at >= ? AND created_at <= ? "
+                " ORDER BY id DESC LIMIT 200",
+                (since.isoformat(), until.isoformat()),
+            ).fetchall()
+            egne = conn.execute(
+                "SELECT content FROM chat_messages "
+                " WHERE role = 'assistant' AND created_at >= ? AND created_at <= ? "
+                " ORDER BY id DESC LIMIT 200",
+                (since.isoformat(), until.isoformat()),
+            ).fetchall()
+    except Exception as exc:
+        logger.debug("decision_evidence: kunne ikke laese beskeder: %s", exc)
+        return {"count": 0, "samples": [], "citat_hit_count": 0, "citat_hits": []}
+
+    bjoern: list[str] = []
+    for row in rows:
+        tekst = " ".join(str(row["content"] or "").split())
+        if tekst:
+            bjoern.append(tekst)
+    mine: list[str] = []
+    for row in egne:
+        tekst = " ".join(str(row["content"] or "").split())
+        if tekst:
+            mine.append(tekst)
+
+    traef = _citat_traef(bjoern, mine)
+    return {
+        "count": len(bjoern),
+        "samples": [t[:_MESSAGES_CHARS] for t in bjoern[:_MESSAGES_MAX]],
+        "citat_hit_count": len(traef),
+        "citat_hits": [t[:140] for t in traef[:4]],
+    }
 
 
 def _own_words_since(since: datetime, until: datetime) -> dict[str, Any]:
@@ -316,6 +425,7 @@ def gather_evidence(
     tools = _tool_names_since(since, until)
     commits = _commits_since(since, until)
     words = _own_words_since(since, until)
+    messages = _messages_since(since, until)
     signals = _signals_since(since, until)
     inner = _inner_state_since(since, until)
     kald_i_alt = sum(tools.values())
@@ -324,6 +434,7 @@ def gather_evidence(
         "tools": bool(tools),
         "commits": bool(commits),
         "words": bool(words["count"]),
+        "messages": bool(messages["count"]),
         "signals": bool(signals["count"]),
         "inner": bool(inner["count"]),
     }
@@ -361,6 +472,22 @@ def gather_evidence(
             )
     else:
         linjer.append("Egne ord: ingen")
+    if messages["count"]:
+        linjer.append(
+            "Bjørns beskeder (%d i vinduet, nyeste vist): %s"
+            % (messages["count"], " | ".join('"%s"' % s for s in messages["samples"]))
+        )
+        if messages.get("citat_hit_count"):
+            linjer.append(
+                "Citat-traf i mine svar (%d af %d): %s"
+                % (
+                    messages["citat_hit_count"],
+                    messages["count"],
+                    " | ".join('"%s"' % s for s in messages.get("citat_hits") or []),
+                )
+            )
+    else:
+        linjer.append("Bjørns beskeder: ingen")
     if signals["count"]:
         linjer.append(
             "Beslutnings-signaler (%d fyringer): %s"
@@ -390,6 +517,7 @@ def gather_evidence(
         "tool_calls_total": kald_i_alt,
         "commits": commits,
         "words": words,
+        "messages": messages,
         "signals": signals,
         "inner": inner,
         "channels": kanaler,

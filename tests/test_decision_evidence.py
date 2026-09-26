@@ -115,10 +115,23 @@ def test_kun_udfoerte_vaerktoejer_taeller():
 
 
 def _tomme_kanaler(monkeypatch):
-    """Hermetisk indsamling: ingen af de fem kanaler rører den rigtige DB."""
+    """Hermetisk indsamling: ingen af de seks kanaler rører en rigtig DB.
+
+    `messages` kom til 26/9-2026 og hører med her af samme grund som de andre:
+    en kanal der ikke patches læser hvad der nu ligger i den DB testen kører
+    mod. Den ægte beskyttelse mod prod er dog conftest'ens autouse-DB-shield —
+    mutationstest 26/9 viste at testen består selv uden denne patch, fordi
+    shield'en giver en frisk base. Patchen er altså konsistens og determinisme,
+    ikke den sidste forsvarslinje; det står her så ingen tror den bærer mere,
+    end den gør.
+    """
     monkeypatch.setattr(DE, "_tool_names_since", lambda s, u: {})
     monkeypatch.setattr(DE, "_commits_since", lambda s, u: [])
     monkeypatch.setattr(DE, "_own_words_since", lambda s, u: {"count": 0, "samples": []})
+    monkeypatch.setattr(
+        DE, "_messages_since",
+        lambda s, u: {"count": 0, "samples": [], "citat_hit_count": 0, "citat_hits": []},
+    )
     monkeypatch.setattr(DE, "_signals_since", lambda s, u: {"count": 0, "items": []})
     monkeypatch.setattr(DE, "_inner_state_since", lambda s, u: {"count": 0, "samples": []})
 
@@ -165,6 +178,50 @@ def test_indre_tilstand_er_en_kanal(monkeypatch):
     ud = DE.gather_evidence(since=datetime.now(UTC) - timedelta(hours=6))
     assert ud["channels"]["inner"] is True
     assert "valens -0.7" in ud["summary"]
+
+
+def test_bjoerns_besked_er_en_kanal(monkeypatch):
+    """En beslutning om at CITERE nogen kan ikke måles uden modpartens ord.
+
+    `dec_9ddb5bc6f7df` («citér hans ord») stod på 0,30 efter 18 domme, hvoraf
+    flere ordret klagede over at regnskabet manglede spor af at have citeret
+    Bjørn — i et regnskab der pr. konstruktion ikke kunne indeholde ham. Uden
+    kanalen kunne portens unknown-regel heller ikke bruges: der var ingen
+    besked-kanal at være tavs i, så dommeren dømte på tools/commits.
+    """
+    _tomme_kanaler(monkeypatch)
+    monkeypatch.setattr(
+        DE, "_messages_since",
+        lambda s, u: {
+            "count": 1, "samples": ["Skær triggeren ned"],
+            "citat_hit_count": 1, "citat_hits": ["Skær triggeren ned"],
+        },
+    )
+    ud = DE.gather_evidence(since=datetime.now(UTC) - timedelta(hours=6))
+    assert ud["channels"]["messages"] is True
+    assert ud["has_evidence"] is False, "handling-kanalerne skal være urørte"
+    assert ud["has_any_channel"] is True
+    assert "Bjørns beskeder" in ud["summary"]
+    assert "Citat-traf" in ud["summary"]
+
+
+def test_citat_proben_fanger_et_aegte_citat():
+    """Ren funktion: ordene står der — det er hvad proben måler, ikke mere."""
+    assert DE._citat_traef(
+        ["Skær triggeren ned — og lad eskalering erstatte revoke"],
+        ["Jeg har skåret triggeren ned, og lad eskalering erstatte revoke er nu i koden."],
+    )
+
+
+def test_citat_proben_giver_ikke_falsk_hit_paa_kort_besked():
+    """«ja» og «ok» kan ikke citeres meningsfuldt — et hit ville være støj."""
+    assert DE._citat_traef(["ja"], ["ja, det gør jeg"]) == []
+    assert DE._citat_traef(["ok tak"], ["ok tak, jeg kigger"]) == []
+
+
+def test_citat_proben_uden_mine_svar_giver_ingen_traef():
+    """Ingen svar i vinduet → ingen traf, uanset hvad Bjørn skrev."""
+    assert DE._citat_traef(["Skær triggeren ned"], []) == []
 
 
 def test_positiv_dom_paa_tom_kanal_er_ikke_en_dom():
@@ -237,5 +294,6 @@ def test_kanal_funktionerne_er_selvsikre_mod_doed_db(monkeypatch):
     monkeypatch.setattr("core.runtime.db.connect", _sprang)
     nu = datetime.now(UTC)
     assert DE._own_words_since(nu, nu)["count"] == 0
+    assert DE._messages_since(nu, nu)["count"] == 0
     assert DE._signals_since(nu, nu)["count"] == 0
     assert DE._inner_state_since(nu, nu)["count"] == 0

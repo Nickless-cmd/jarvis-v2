@@ -596,14 +596,17 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
         turnId: 'stream', work: true }]
     : []
   const grupperet: Row[] = groupToolRounds([...persisted, ...flade, ...levende])
-  const medHoveder = medTurHoveder(grupperet, (id) => turnOverrides[id] ?? visning === 'verbose')
+  // Desk viser arbejdet mens turen kører og folder det sammen ved afslutning.
+  // Et manuelt tryk gælder kun den aktuelle tur.
+  const erAaben = (id: string) => turnOverrides[id] ?? (id === 'stream' || visning === 'verbose')
+  const medHoveder = medTurHoveder(grupperet, erAaben)
   // En tur starter før første SSE-indholdsblok. Behold samme header-nøgle,
   // så rækken ikke hopper når den første tanke eller det første værktøj lander.
   if (working && !medHoveder.some((r) => r.kind === 'turn-header' && r.turnId === 'stream')) {
     const firstLive = medHoveder.findIndex((r) => r.turnId === 'stream')
     medHoveder.splice(firstLive < 0 ? medHoveder.length : firstLive, 0, {
       kind: 'turn-header', key: 'turn-stream', turnId: 'stream',
-      label: 'Working…', live: true, open: turnOverrides.stream ?? visning === 'verbose',
+      label: 'Working…', live: true, open: erAaben('stream'),
     })
   }
   // Skillelinjen over den FØRSTE række der hører til den første nye besked.

@@ -1,5 +1,7 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { useEffect, useRef } from 'react'
+import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native'
 import { ChevronDown, ChevronRight } from 'lucide-react-native'
+import { useReducedMotion } from '../lib/useReducedMotion'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 import { GlidendeTekst } from './GlidendeTekst'
 
@@ -14,7 +16,22 @@ export function TurnHeader({
 }) {
   const tokens = useTheme()
   const styles = useStyles(makestyles)
+  const reduced = useReducedMotion()
+  const caretLight = useRef(new Animated.Value(1)).current
   const tekst = live ? 'Working…' : label
+  useEffect(() => {
+    if (!live || reduced) {
+      caretLight.stopAnimation()
+      caretLight.setValue(1)
+      return
+    }
+    const loop = Animated.loop(Animated.sequence([
+      Animated.timing(caretLight, { toValue: 0.6, duration: 1125, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+      Animated.timing(caretLight, { toValue: 1, duration: 1125, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+    ]))
+    loop.start()
+    return () => loop.stop()
+  }, [caretLight, live, reduced])
   return (
     <Pressable
       testID="turn-header"
@@ -29,9 +46,11 @@ export function TurnHeader({
           ? <GlidendeTekst text={tekst} aktiv style={styles.label} numberOfLines={1} />
           : <Text style={styles.label} numberOfLines={1}>{tekst}</Text>}
       </View>
-      {open
-        ? <ChevronDown size={18} color={tokens.color.fg3} strokeWidth={1.8} />
-        : <ChevronRight size={18} color={tokens.color.fg3} strokeWidth={1.8} />}
+      <Animated.View style={{ opacity: caretLight }}>
+        {open
+          ? <ChevronDown size={18} color={tokens.color.fg3} strokeWidth={1.8} />
+          : <ChevronRight size={18} color={tokens.color.fg3} strokeWidth={1.8} />}
+      </Animated.View>
     </Pressable>
   )
 }
@@ -46,6 +65,6 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
     alignItems: 'center',
     gap: 6,
   },
-  tekst: { flex: 0, flexShrink: 1, minWidth: 0 },
+  tekst: { flexShrink: 1, minWidth: 0 },
   label: { color: tokens.color.fg2, fontSize: 14, fontWeight: '400' },
 })

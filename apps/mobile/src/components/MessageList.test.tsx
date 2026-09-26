@@ -17,14 +17,15 @@ it('viser turn header fra turen starter, før første blok kommer', async () => 
   expect(s.getByText('Working…')).toBeTruthy()
 })
 
-it('en ny tur starter foldet, selv hvis forrige live tur blev åbnet', async () => {
+it('en ny tur starter åben, selv hvis forrige live tur blev lukket', async () => {
   const blocks: ContentBlock[] = [{ type: 'thinking', thinking: 'Undersøger.' }]
   const s = await render(<MessageList messages={[]} blocks={blocks} working />)
-  await act(async () => { fireEvent.press(s.getByTestId('turn-header')) })
   expect(s.getByTestId('thinking-summary')).toBeTruthy()
+  await act(async () => { fireEvent.press(s.getByTestId('turn-header')) })
+  expect(s.queryByTestId('thinking-summary')).toBeNull()
   await act(async () => { s.rerender(<MessageList messages={[]} blocks={[]} working={false} />) })
   await act(async () => { s.rerender(<MessageList messages={[]} blocks={blocks} working />) })
-  expect(s.queryByTestId('thinking-summary')).toBeNull()
+  expect(s.getByTestId('thinking-summary')).toBeTruthy()
 })
 
 it('samler gemt arbejde bag én turn header og lader slutsvaret stå synligt', async () => {
@@ -45,21 +46,43 @@ it('samler gemt arbejde bag én turn header og lader slutsvaret stå synligt', a
   expect(s.getByTestId('tool-group')).toBeTruthy()
 })
 
-it('folder også live arbejde ind, mens det sidste svar stadig vises', async () => {
+it('åbner live arbejde ned under turn headeren og lader svaret stå synligt', async () => {
   const blocks: ContentBlock[] = [
     { type: 'thinking', thinking: 'Jeg lægger en plan.' },
     { type: 'text', text: 'Jeg finder filen.' },
     { type: 'tool_use', id: 't1', name: 'read_file', input: { path: 'app.py' }, status: 'done' },
     { type: 'text', text: 'Her er svaret.' },
   ]
-  const s = await render(<MessageList messages={[]} blocks={blocks} />)
-  expect(s.getByTestId('turn-header')).toBeTruthy()
+  const s = await render(<MessageList messages={[]} blocks={blocks} working />)
+  expect(s.getByTestId('turn-header').props.accessibilityState.expanded).toBe(true)
   expect(s.getByText('Her er svaret.')).toBeTruthy()
-  expect(s.queryByText('Jeg finder filen.')).toBeNull()
-  expect(s.queryByTestId('thinking-summary')).toBeNull()
-  await fireEvent.press(s.getByTestId('turn-header'))
   expect(s.getByText('Jeg finder filen.')).toBeTruthy()
   expect(s.getByTestId('thinking-summary')).toBeTruthy()
+  await act(async () => { fireEvent.press(s.getByTestId('turn-header')) })
+  expect(s.queryByTestId('thinking-summary')).toBeNull()
+  expect(s.getByText('Her er svaret.')).toBeTruthy()
+})
+
+it('folder arbejdet sammen ved skiftet fra stream til gemt slutsvar', async () => {
+  const blocks: ContentBlock[] = [
+    { type: 'thinking', thinking: 'Finder årsagen.' },
+    { type: 'text', text: 'Rettet.' },
+  ]
+  const s = await render(<MessageList messages={[]} blocks={blocks} working />)
+  expect(s.getByTestId('turn-header').props.accessibilityState.expanded).toBe(true)
+  expect(s.getByTestId('thinking-summary')).toBeTruthy()
+
+  const saved = msg({
+    id: 'a1', role: 'assistant', content: 'Rettet.',
+    content_json: [
+      { type: 'thinking', text: 'Finder årsagen.', seconds: 2 },
+      { type: 'text', text: 'Rettet.' },
+    ],
+  })
+  await act(async () => { s.rerender(<MessageList messages={[saved]} blocks={[]} working={false} />) })
+  expect(s.getByTestId('turn-header').props.accessibilityState.expanded).toBe(false)
+  expect(s.queryByTestId('thinking-summary')).toBeNull()
+  expect(s.getByText('Rettet.')).toBeTruthy()
 })
 
 /**
@@ -130,9 +153,8 @@ it('thinking-blokke i stream får egen række — ikke smeltet ind i svaret', as
     />
   )
 
-  // Thinking ligger bag turn headeren, ikke inde i selve svaret.
+  // Thinking ligger under den åbne turn header, ikke inde i selve svaret.
   expect(s.getByTestId('turn-header')).toBeTruthy()
-  await fireEvent.press(s.getByTestId('turn-header'))
   expect(s.getByTestId('thinking-summary')).toBeTruthy()
   // Og teksten skal være en separat boble
   expect(s.getByText('Svaret er 4')).toBeTruthy()
@@ -159,7 +181,6 @@ it('tænke-fragmentet står på trådens linje mens den tænker', async () => {
       blocks={[{ type: 'thinking', thinking: 'jeg overvejer om 2+2 er 4' }]}
     />
   )
-  await fireEvent.press(s.getByTestId('turn-header'))
   expect(
     within(s.getByTestId('thinking-summary')).getByText(/jeg overvejer om 2\+2 er 4/)
   ).toBeTruthy()

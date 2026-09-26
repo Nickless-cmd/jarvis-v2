@@ -579,6 +579,8 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
   // funktion ved hver render ville få ALLE synlige bobler til at rendere om
   // ved hver stream-delta (samme fund som desk, 19/9-2026).
   const genSend = useSenesteFn((...a: Parameters<NonNullable<typeof onResend>>) => onResend?.(...a))
+  const toggleFor = useRaekkeFn((id) => setTurnOverrides((current) => ({ ...current,
+    [id]: !(current[id] ?? (id === 'stream' || visning === 'verbose')) })))
   const rewindFor = useRaekkeFn((id) => onRewind?.(id))
   const pinFor = useRaekkeFn((id) => onTogglePin?.(id))
   // Rækkens EGEN besked — et afsnit af en tur har id'et `<id>-b<n>` og findes
@@ -595,11 +597,41 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
     ? [{ kind: 'skill-flade' as const, key: 'stream-skill-flade', matches: skillFlade.matches,
         turnId: 'stream', work: true }]
     : []
-  const grupperet: Row[] = groupToolRounds([...persisted, ...flade, ...levende])
+  // Historikken ændrer sig ikke ved et nyt tekst-delta. Dens grupper og
+  // turn-headere var ellers bygget om for hver lille bid af livestrømmen.
+  const gemteGrupper = useMemo(() => groupToolRounds(persisted), [persisted])
+  const gemteHoveder = useMemo(() => medTurHoveder(gemteGrupper,
+    (id) => turnOverrides[id] ?? visning === 'verbose'), [gemteGrupper, turnOverrides, visning])
   // Desk viser arbejdet mens turen kører og folder det sammen ved afslutning.
-  // Et manuelt tryk gælder kun den aktuelle tur.
   const erAaben = (id: string) => turnOverrides[id] ?? (id === 'stream' || visning === 'verbose')
-  const medHoveder = medTurHoveder(grupperet, erAaben)
+  const nyeLive = medTurHoveder(groupToolRounds([...flade, ...levende]), erAaben)
+  // En ny delta ændrer som regel kun den sidste række. Genbrug de øvrige
+  // referencer, så memoiserede rækker beholder deres tekst, ikoner og state.
+  const gamleLive = useRef(new Map<string, Row>())
+  const naesteLive = new Map<string, Row>()
+  const liveHoveder = nyeLive.map((row) => {
+    const gammel = gamleLive.current.get(row.key)
+    let stabil = row
+    if (gammel?.kind === row.kind && gammel.work === row.work) {
+      if (row.kind === 'msg' && gammel.kind === 'msg'
+        && gammel.message.content === row.message.content
+        && gammel.hideActions === row.hideActions
+        && gammel.kildeBlokke === row.kildeBlokke) stabil = gammel
+      if (row.kind === 'tool-group' && gammel.kind === 'tool-group'
+        && JSON.stringify(gammel.items) === JSON.stringify(row.items)) stabil = gammel
+      if (row.kind === 'thinking' && gammel.kind === 'thinking'
+        && gammel.text === row.text && gammel.seconds === row.seconds
+        && gammel.live === row.live) stabil = gammel
+      if (row.kind === 'turn-header' && gammel.kind === 'turn-header'
+        && gammel.label === row.label && gammel.open === row.open
+        && gammel.live === row.live) stabil = gammel
+    }
+    naesteLive.set(row.key, stabil)
+    return stabil
+  })
+  gamleLive.current = naesteLive
+  const medHoveder = [...gemteHoveder, ...liveHoveder]
+
   // En tur starter før første SSE-indholdsblok. Behold samme header-nøgle,
   // så rækken ikke hopper når den første tanke eller det første værktøj lander.
   if (working && !medHoveder.some((r) => r.kind === 'turn-header' && r.turnId === 'stream')) {
@@ -698,8 +730,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
         if (item.kind === 'turn-header') {
           return <TurnHeader
             label={item.label} live={item.live} open={item.open}
-            onToggle={() => setTurnOverrides((current) => ({ ...current,
-              [item.turnId!]: !item.open }))}
+            onToggle={toggleFor(item.turnId!)}
           />
         }
         // Værktøjsarbejde er ÉN linje inde i samtalen — ikke et kort.

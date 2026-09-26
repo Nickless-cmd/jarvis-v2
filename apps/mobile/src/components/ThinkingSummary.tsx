@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { memo, useEffect, useRef, useState } from 'react'
 import { Animated, Easing, LayoutAnimation, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { Brain, ChevronDown } from 'lucide-react-native'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
@@ -46,7 +46,7 @@ import { tankeFragment } from '../lib/tankeFragment'
  */
 export const KORT_TAERSKEL_S = 3
 
-export function ThinkingSummary({
+export const ThinkingSummary = memo(function ThinkingSummary({
   seconds,
   text,
   live,
@@ -235,7 +235,7 @@ export function ThinkingSummary({
       ) : null}
     </View>
   )
-}
+})
 
 
 const makestyles = (tokens: Theme) => StyleSheet.create({

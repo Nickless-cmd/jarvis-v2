@@ -174,17 +174,27 @@ export function StreamProvider({ children }: { children: ReactNode }) {
   const [ejerSession, setEjerSession] = useState<string | null>(null)
   const saetEjer = (sid: string | null) => { ejerRef.current = sid; setEjerSession(sid) }
 
-  // Én render pr. frame (19/9-2026, samme rettelse som desk). Deltaer kommer
-  // hurtigere end skærmen kan vise dem, og HVER af dem gav før en render af
-  // hele chatten. stateRef er altid den nyeste tilstand — logikken læser
-  // den — så kun selve renderen venter. Et statusskift (arbejder → færdig,
-  // fejl …) sendes med det samme; kun tekst-deltaer samles. Timeren
-  // dækker, hvis en frame udebliver (appen i baggrunden).
+  // Tekst-deltaer samles til højst cirka 30 renders/s. På en 120 Hz-telefon
+  // gav «én pr. frame» næsten fuld belastning af Hermes/JS-tråden, mens
+  // Androids tegnings-tråd havde god luft. Status og approvals vises straks.
+  // stateRef opdateres for HVER delta, så ingen tekst går tabt.
+  const MIN_TEXT_FRAME_MS = 33
+  const sidstRenderet = useRef(performance.now())
   const planlagtRender = useRef<{ raf: number; timer: ReturnType<typeof setTimeout> } | null>(null)
-  const toemRender = () => {
+  const toemRender = (nu = performance.now()) => {
     const p = planlagtRender.current
     if (p) { cancelAnimationFrame(p.raf); clearTimeout(p.timer); planlagtRender.current = null }
+    sidstRenderet.current = nu
     setState(stateRef.current)
+  }
+  const paaFrame = (nu: number) => {
+    if (!planlagtRender.current) return
+    const sidst = sidstRenderet.current
+    if (nu - sidst < MIN_TEXT_FRAME_MS) {
+      planlagtRender.current.raf = requestAnimationFrame(paaFrame)
+      return
+    }
+    toemRender(nu)
   }
   const updateState = (next: StreamState | ((current: StreamState) => StreamState)) => {
     const forrige = stateRef.current
@@ -199,7 +209,7 @@ export function StreamProvider({ children }: { children: ReactNode }) {
       return
     }
     if (!planlagtRender.current) {
-      planlagtRender.current = { raf: requestAnimationFrame(toemRender), timer: setTimeout(toemRender, 100) }
+      planlagtRender.current = { raf: requestAnimationFrame(paaFrame), timer: setTimeout(() => toemRender(), 100) }
     }
   }
 

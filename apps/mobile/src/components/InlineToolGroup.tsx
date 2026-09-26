@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { memo, useEffect, useRef, useState } from 'react'
 import { Animated, Easing, LayoutAnimation, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { ChevronDown, Code2 } from 'lucide-react-native'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
@@ -54,7 +54,7 @@ export function formatTid(sek: number): string {
  * - **Folden**: 200 ms med opacitet; indholdet i en ramme på højst 200 dp,
  *   der selv scroller.
  */
-export function InlineToolGroup({ items, etiket, aabenFraStart }: Props) {
+export const InlineToolGroup = memo(function InlineToolGroup({ items, etiket, aabenFraStart }: Props) {
   const tokens = useTheme()
   const styles = useStyles(makestyles)
   const reduced = useReducedMotion()
@@ -183,7 +183,7 @@ export function InlineToolGroup({ items, etiket, aabenFraStart }: Props) {
       <DiffArk aendring={vistAendring ?? null} onClose={() => setVistAendring(null)} />
     </Animated.View>
   )
-}
+})
 
 const makestyles = (tokens: Theme) => StyleSheet.create({
   wrap: { paddingHorizontal: tokens.spacing.lg },

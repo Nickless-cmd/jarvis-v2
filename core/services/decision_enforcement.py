@@ -136,22 +136,34 @@ def _raekkefoelge_blok(blocks: list[dict] | None) -> str:
     return "\n".join(ud) + "\n\n"
 
 
-def _seneste_bruger_besked(limit: int = 1) -> list[str]:
-    """De seneste beskeder fra Bjørn — præmissen dommen skal holdes op mod.
+def _seneste_bruger_besked(limit: int = 1, workspace: str | None = None) -> list[str]:
+    """De seneste beskeder fra brugeren — præmissen dommen skal holdes op mod.
 
     Målt 26/9-2026: `_build_breach_prompt` fik kun Jarvis' egen tekst og
-    rækkefølgen, aldrig Bjørns besked. Alligevel dømte den fire brud af typen
+    rækkefølgen, aldrig brugerens besked. Alligevel dømte den fire brud af typen
     «responded without first reproducing Bjørn's quoted message» — den dømte på
     en præmis den ikke havde. Self-safe: fejler DB'en, er svaret tomt.
+
+    Samme dag viste det sig at hentningen manglede et workspace-filter: uden
+    det hentede `ORDER BY id DESC LIMIT 1` den allerseneste besked i HELE
+    basen — også når den kom fra en anden brugers samtale. Dommeren kunne
+    dermed få en fremmeds private besked som «præmissen». Nu afgrænses der til
+    én workspace, og kan den ikke bestemmes, hentes intet (fail-closed).
     """
+    from core.services.decision_evidence import _afgraens_workspace
+
+    ws = _afgraens_workspace(workspace)
+    if not ws:
+        return []
     try:
         from core.runtime.db import connect
 
         with connect() as conn:
             rows = conn.execute(
-                "SELECT content FROM chat_messages WHERE role = 'user' "
+                "SELECT content FROM chat_messages "
+                " WHERE role = 'user' AND workspace_name = ? "
                 " ORDER BY id DESC LIMIT ?",
-                (int(limit),),
+                (ws, int(limit)),
             ).fetchall()
     except Exception as exc:
         logger.debug("decision_enforcement: kunne ikke laese bruger-besked: %s", exc)

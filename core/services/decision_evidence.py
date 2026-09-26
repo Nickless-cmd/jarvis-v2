@@ -42,6 +42,14 @@ ikke kan snige sig ind ad bagvejen:
   `dec_9ddb5bc6f7df` stod på 0,30 efter 18 domme, hvoraf flere ordret klagede
   over «ingen log over at have citeret Bjørn» — i et regnskab der per
   konstruktion ikke kunne indeholde ham.
+
+**Afgrænsning (26/9-2026, samme dag).** `words` og `messages` hentede fra
+`chat_messages` uden filter — og tabellen rummer ALLE brugeres samtaler
+(bjorn, default, mikkel, public, michelle, lotte). Regnskabet blandede dermed
+fire andre personers private beskeder ind i dommen og sendte dem videre til en
+ekstern LLM i review-prompten. Ord-kanalerne filtrerer nu på `workspace_name`,
+og kan workspace ikke bestemmes, hentes intet (fail-closed). Et tomt regnskab
+giver `unknown` — det er altid bedre end en fremmeds ord.
 * ``signals``  — beslutnings-triggere der faktisk fyrede (`decision_signal.fired`)
 * ``inner``    — den indre tilstand som runtime selv skrev ned (`cached_affective_state`)
 
@@ -90,6 +98,31 @@ _MESSAGES_CHARS = 300
 # kunne se fænomenet — og portens egen unknown-regel kunne ikke bruges, fordi
 # der ikke var nogen besked-kanal at være tavs i.
 _CHANNELS = ("tools", "commits", "words", "messages", "signals", "inner")
+
+
+# ── workspace-afgrænsning (lækket lukket 26/9-2026) ─────────────────────────
+#
+# `_messages_since` og `_own_words_since` hentede fra `chat_messages` UDEN
+# filter på session eller workspace. Tabellen rummer ALLE brugeres samtaler
+# (målt: bjorn 3381, default 1165, tom 447, mikkel 231, public 75, michelle 54,
+# lotte 43), så regnskabet blandede fire andre personers private beskeder ind i
+# dommen — og review-prompten sender regnskabet til en ekstern LLM. Det er
+# persondata om tredjeparter, videregivet uden grundlag.
+#
+# Reglen nu: en beslutnings dom må kun se den workspace beslutningen hører til.
+# Kan workspace ikke bestemmes, hentes INTET. Et tomt regnskab giver `unknown`,
+# og det er altid bedre end en fremmeds ord.
+def _afgraens_workspace(eksplicit: str | None = None) -> str:
+    """Den workspace regnskabet må læse fra. Tom streng = læs intet."""
+    if eksplicit is not None:
+        return eksplicit.strip()
+    try:
+        from core.identity.workspace_context import current_workspace_name
+
+        return (current_workspace_name() or "").strip()
+    except Exception as exc:  # pragma: no cover — self-safe som resten
+        logger.debug("decision_evidence: kunne ikke bestemme workspace: %s", exc)
+        return ""
 
 # Følelses-proben. Ord-kanalen har ~150 af mine svar i et døgn, så «de nyeste
 # fire» er vilkårligt for netop den beslutning kanalen findes for: «sig uroen
@@ -236,8 +269,12 @@ def _citat_traef(bjoern_tekster: list[str], mine_tekster: list[str]) -> list[str
     return traef
 
 
-def _messages_since(since: datetime, until: datetime) -> dict[str, Any]:
-    """Bjørns indgående beskeder i vinduet — tvillingen til ``_own_words_since``.
+def _messages_since(
+    since: datetime,
+    until: datetime,
+    workspace: str | None = None,
+) -> dict[str, Any]:
+    """Indgående beskeder i vinduet — tvillingen til ``_own_words_since``.
 
     Målt 26/9-2026: `dec_9ddb5bc6f7df` («citér hans ord») stod på 0,30 efter 18
     domme, hvoraf flere ordret klagede over at «regnskabet viser 4195
@@ -253,21 +290,26 @@ def _messages_since(since: datetime, until: datetime) -> dict[str, Any]:
     Self-safe som resten: fejler DB'en, er svaret «ingen beskeder», ikke en
     exception.
     """
+    ws = _afgraens_workspace(workspace)
+    if not ws:
+        return {"count": 0, "samples": [], "citat_hit_count": 0, "citat_hits": []}
     try:
         from core.runtime.db import connect
 
         with connect() as conn:
             rows = conn.execute(
                 "SELECT content FROM chat_messages "
-                " WHERE role = 'user' AND created_at >= ? AND created_at <= ? "
+                " WHERE role = 'user' AND workspace_name = ? "
+                "   AND created_at >= ? AND created_at <= ? "
                 " ORDER BY id DESC LIMIT 200",
-                (since.isoformat(), until.isoformat()),
+                (ws, since.isoformat(), until.isoformat()),
             ).fetchall()
             egne = conn.execute(
                 "SELECT content FROM chat_messages "
-                " WHERE role = 'assistant' AND created_at >= ? AND created_at <= ? "
+                " WHERE role = 'assistant' AND workspace_name = ? "
+                "   AND created_at >= ? AND created_at <= ? "
                 " ORDER BY id DESC LIMIT 200",
-                (since.isoformat(), until.isoformat()),
+                (ws, since.isoformat(), until.isoformat()),
             ).fetchall()
     except Exception as exc:
         logger.debug("decision_evidence: kunne ikke laese beskeder: %s", exc)
@@ -293,7 +335,11 @@ def _messages_since(since: datetime, until: datetime) -> dict[str, Any]:
     }
 
 
-def _own_words_since(since: datetime, until: datetime) -> dict[str, Any]:
+def _own_words_since(
+    since: datetime,
+    until: datetime,
+    workspace: str | None = None,
+) -> dict[str, Any]:
     """Mine egne synlige svar i vinduet — kanalen hvor «sig det højt» står.
 
     Regnskabet kunne pr. konstruktion ikke indeholde et ord, og en beslutning om
@@ -301,15 +347,19 @@ def _own_words_since(since: datetime, until: datetime) -> dict[str, Any]:
     svar, trunkeret. Self-safe som resten: fejler DB'en, er svaret «ingen ord»,
     ikke en exception.
     """
+    ws = _afgraens_workspace(workspace)
+    if not ws:
+        return {"count": 0, "samples": []}
     try:
         from core.runtime.db import connect
 
         with connect() as conn:
             rows = conn.execute(
                 "SELECT content FROM chat_messages "
-                " WHERE role = 'assistant' AND created_at >= ? AND created_at <= ? "
+                " WHERE role = 'assistant' AND workspace_name = ? "
+                "   AND created_at >= ? AND created_at <= ? "
                 " ORDER BY id DESC LIMIT 200",
-                (since.isoformat(), until.isoformat()),
+                (ws, since.isoformat(), until.isoformat()),
             ).fetchall()
     except Exception as exc:
         logger.debug("decision_evidence: kunne ikke laese egne ord: %s", exc)
@@ -403,12 +453,16 @@ def _inner_state_since(since: datetime, until: datetime) -> dict[str, Any]:
 
 
 def gather_evidence(
-    *, since: datetime, until: datetime | None = None,
+    *, since: datetime, until: datetime | None = None, workspace: str | None = None,
 ) -> dict[str, Any]:
     """Saml regnskabet for vinduet. Returnerer også en kompakt tekst.
 
-    Fem kanaler: ``tools`` og ``commits`` er handling (uændret siden C3),
-    ``words``, ``signals`` og ``inner`` er det indre instrument.
+    Seks kanaler: ``tools`` og ``commits`` er handling (uændret siden C3),
+    ``words``, ``messages``, ``signals`` og ``inner`` er det indre instrument.
+
+    ``workspace`` afgrænser hvilke samtaler ord-kanalerne må læse. Udelades
+    den, bruges den aktuelle workspace-kontekst; kan den ikke bestemmes,
+    returnerer ord-kanalerne tomt (fail-closed). Se `_afgraens_workspace`.
 
     ``channels`` er det felt der betyder noget: en dom må kun hvile på en kanal
     der faktisk har data. ``has_evidence`` er handling-kanalerne alene — den
@@ -424,8 +478,8 @@ def gather_evidence(
 
     tools = _tool_names_since(since, until)
     commits = _commits_since(since, until)
-    words = _own_words_since(since, until)
-    messages = _messages_since(since, until)
+    words = _own_words_since(since, until, workspace)
+    messages = _messages_since(since, until, workspace)
     signals = _signals_since(since, until)
     inner = _inner_state_since(since, until)
     kald_i_alt = sum(tools.values())

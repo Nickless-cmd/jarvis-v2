@@ -127,10 +127,10 @@ def _tomme_kanaler(monkeypatch):
     """
     monkeypatch.setattr(DE, "_tool_names_since", lambda s, u: {})
     monkeypatch.setattr(DE, "_commits_since", lambda s, u: [])
-    monkeypatch.setattr(DE, "_own_words_since", lambda s, u: {"count": 0, "samples": []})
+    monkeypatch.setattr(DE, "_own_words_since", lambda s, u, *_a: {"count": 0, "samples": []})
     monkeypatch.setattr(
         DE, "_messages_since",
-        lambda s, u: {"count": 0, "samples": [], "citat_hit_count": 0, "citat_hits": []},
+        lambda s, u, *_a: {"count": 0, "samples": [], "citat_hit_count": 0, "citat_hits": []},
     )
     monkeypatch.setattr(DE, "_signals_since", lambda s, u: {"count": 0, "items": []})
     monkeypatch.setattr(DE, "_inner_state_since", lambda s, u: {"count": 0, "samples": []})
@@ -146,7 +146,7 @@ def test_egne_ord_er_en_kanal(monkeypatch):
     _tomme_kanaler(monkeypatch)
     monkeypatch.setattr(
         DE, "_own_words_since",
-        lambda s, u: {"count": 3, "samples": ["jeg er urolig for det her"]},
+        lambda s, u, *_a: {"count": 3, "samples": ["jeg er urolig for det her"]},
     )
     ud = DE.gather_evidence(since=datetime.now(UTC) - timedelta(hours=6))
     assert ud["channels"]["words"] is True
@@ -192,7 +192,7 @@ def test_bjoerns_besked_er_en_kanal(monkeypatch):
     _tomme_kanaler(monkeypatch)
     monkeypatch.setattr(
         DE, "_messages_since",
-        lambda s, u: {
+        lambda s, u, *_a: {
             "count": 1, "samples": ["Skær triggeren ned"],
             "citat_hit_count": 1, "citat_hits": ["Skær triggeren ned"],
         },
@@ -297,3 +297,83 @@ def test_kanal_funktionerne_er_selvsikre_mod_doed_db(monkeypatch):
     assert DE._messages_since(nu, nu)["count"] == 0
     assert DE._signals_since(nu, nu)["count"] == 0
     assert DE._inner_state_since(nu, nu)["count"] == 0
+
+
+# ---------------------------------------------------------------------------
+# Lækket — ord-kanalerne hentede på tværs af ALLE workspaces (26/9-2026)
+# ---------------------------------------------------------------------------
+
+
+def _to_workspaces_base():
+    """En base med to brugeres samtaler — som den rigtige `chat_messages`."""
+    import sqlite3
+    from contextlib import contextmanager
+
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    conn.execute(
+        "CREATE TABLE chat_messages (id INTEGER PRIMARY KEY, role TEXT, "
+        "content TEXT, created_at TEXT, workspace_name TEXT)"
+    )
+    t = "2026-09-26T14:00:00+00:00"
+    conn.executemany(
+        "INSERT INTO chat_messages (role, content, created_at, workspace_name) "
+        "VALUES (?,?,?,?)",
+        [
+            ("user", "Skær triggeren ned", t, "bjorn"),
+            ("assistant", "Ja, det gør jeg", t, "bjorn"),
+            ("user", "450g kylling inderfilet", t, "michelle"),
+            ("assistant", "Her er tre bud", t, "michelle"),
+            ("user", "Hej fra Lotte", t, "lotte"),
+        ],
+    )
+
+    @contextmanager
+    def _fake_connect():
+        yield conn
+
+    return _fake_connect
+
+
+def test_fremmed_workspace_laekker_ikke_ind(monkeypatch):
+    """LÆKKET 26/9-2026: ord-kanalerne hentede på tværs af alle workspaces.
+
+    `chat_messages` rummer ALLE brugeres samtaler (målt: bjorn 3381, default
+    1165, mikkel 231, public 75, michelle 54, lotte 43). Uden filter blandede
+    regnskabet fire andre personers private beskeder ind i dommen — og
+    review-prompten sender regnskabet videre til en ekstern LLM. Vagten her
+    pinner at kun beslutningens egen workspace kommer med.
+    """
+    monkeypatch.setattr("core.runtime.db.connect", _to_workspaces_base())
+    nu = datetime.now(UTC)
+    ud = DE._messages_since(nu - timedelta(hours=1), nu, workspace="bjorn")
+    assert ud["count"] == 1, "kun Bjørns besked må tælles"
+    assert "kylling" not in " ".join(ud["samples"])
+    assert "Lotte" not in " ".join(ud["samples"])
+
+    egne = DE._own_words_since(nu - timedelta(hours=1), nu, workspace="bjorn")
+    assert egne["count"] == 1, "kun mine svar i Bjørns workspace"
+    assert "tre bud" not in " ".join(egne["samples"])
+
+
+def test_ukendt_workspace_laeser_intet(monkeypatch):
+    """Fail-closed: kan workspace ikke bestemmes, hentes INTET — aldrig «alt».
+
+    Et tomt regnskab giver `unknown`. Det er altid bedre end en fremmeds ord.
+    """
+    monkeypatch.setattr("core.runtime.db.connect", _to_workspaces_base())
+    nu = datetime.now(UTC)
+    for tom in ("", "   "):
+        assert DE._messages_since(nu - timedelta(hours=1), nu, workspace=tom)["count"] == 0
+        assert DE._own_words_since(nu - timedelta(hours=1), nu, workspace=tom)["count"] == 0
+
+
+def test_breach_praemissen_er_workspace_afgraenset(monkeypatch):
+    """Samme læk i breach-dommeren: den hentede den allerseneste besked i HELE
+    basen — også når den kom fra en anden brugers samtale."""
+    from core.services import decision_enforcement as DE_
+
+    monkeypatch.setattr("core.runtime.db.connect", _to_workspaces_base())
+    assert DE_._seneste_bruger_besked(workspace="") == []
+    ud = DE_._seneste_bruger_besked(workspace="bjorn")
+    assert ud == ["Skær triggeren ned"], ud

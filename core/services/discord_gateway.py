@@ -1357,6 +1357,17 @@ async def _run_client(config: dict) -> None:
                 finally:
                     reset_context(token)
 
+            # Nulstil follow-buffer FØR tråden og streameren startes.
+            # Uden dette kan streameren nå at læse gamle frames fra den
+            # forrige run — Bjørn 26/9: "forrige besked vises under streamen
+            # og opdateres til nyt svar efter få sekunder". Race mellem
+            # thread-start (begin_follow inde i tråden) og streamerens
+            # første snapshot_from(idx=0).
+            try:
+                from core.services.run_follow import begin_follow
+                begin_follow(session_id, "")
+            except Exception:
+                logger.debug("discord on_message: begin_follow pre-flush failed", exc_info=True)
             threading.Thread(
                 target=_run_in_context,
                 args=(content, session_id, author_id_str, workspace_name, user_display, user_role),

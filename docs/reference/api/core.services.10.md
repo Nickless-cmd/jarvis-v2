@@ -352,12 +352,12 @@ _Discord gateway — runs discord.py in a dedicated daemon thread._
 | function | `_finalize_stream_or_send` | `(session_id, channel_id, content)` | Ved run-slut: redigér streamerens besked til den endelige tekst, eller | [src](../../../core/services/discord_gateway.py#L974) |
 | function | `_send_outbound_loop` | `()` | Asyncio coroutine that drains the outbound queue and sends to Discord. | [src](../../../core/services/discord_gateway.py#L1009) |
 | function | `_run_client` | `(config)` | Main coroutine: set up discord client and run until stopped. | [src](../../../core/services/discord_gateway.py#L1087) |
-| function | `_discord_thread_func` | `(config)` | Entry point for the daemon thread. | [src](../../../core/services/discord_gateway.py#L1407) |
-| function | `_announce_user_message_appended` | `(session_id, message)` | Udsend channel.chat_message_appended for en Discord-brugerbesked (Spor B). | [src](../../../core/services/discord_gateway.py#L1425) |
-| function | `_eventbus_subscriber_loop` | `()` | Background thread: watch eventbus for assistant responses in Discord sessions. | [src](../../../core/services/discord_gateway.py#L1445) |
-| function | `_resolve_channel_for_session` | `(session_id)` | Look up the Discord channel that originated a given session. | [src](../../../core/services/discord_gateway.py#L1566) |
-| function | `start_discord_gateway` | `()` | Start gateway if config exists. Safe to call unconditionally. | [src](../../../core/services/discord_gateway.py#L1589) |
-| function | `stop_discord_gateway` | `()` | Stop the gateway gracefully. | [src](../../../core/services/discord_gateway.py#L1633) |
+| function | `_discord_thread_func` | `(config)` | Entry point for the daemon thread. | [src](../../../core/services/discord_gateway.py#L1418) |
+| function | `_announce_user_message_appended` | `(session_id, message)` | Udsend channel.chat_message_appended for en Discord-brugerbesked (Spor B). | [src](../../../core/services/discord_gateway.py#L1436) |
+| function | `_eventbus_subscriber_loop` | `()` | Background thread: watch eventbus for assistant responses in Discord sessions. | [src](../../../core/services/discord_gateway.py#L1456) |
+| function | `_resolve_channel_for_session` | `(session_id)` | Look up the Discord channel that originated a given session. | [src](../../../core/services/discord_gateway.py#L1577) |
+| function | `start_discord_gateway` | `()` | Start gateway if config exists. Safe to call unconditionally. | [src](../../../core/services/discord_gateway.py#L1600) |
+| function | `stop_discord_gateway` | `()` | Stop the gateway gracefully. | [src](../../../core/services/discord_gateway.py#L1644) |
 
 ## `core/services/dispatch_envelope.py`
 _Robustness envelope builder + plausibility guard for the dispatch-redesign._

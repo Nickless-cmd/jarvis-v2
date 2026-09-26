@@ -307,3 +307,59 @@ def test_feed_uden_bruger_giver_401_ikke_et_tomt_svar(isolated_runtime, monkeypa
         "et manglende token gav 200 OK med en TOM feed — umuligt at skelne "
         "fra at rent faktisk vaere ajour"
     )
+
+
+def _indsæt_run(run_id: str, *, status: str = "completed", svar: str = "") -> None:
+    from core.runtime.db import connect
+    from core.runtime.db_visible import ensure_visible_tables
+    with connect() as conn:
+        ensure_visible_tables(conn)
+        conn.execute(
+            "INSERT INTO visible_runs"
+            " (run_id, lane, provider, model, status, finished_at, text_preview)"
+            " VALUES (?,?,?,?,?,?,?)",
+            (run_id, "primary", "deepseek", "m", status,
+             "2026-09-26T07:00:00+00:00", svar))
+        conn.commit()
+
+
+def test_feed_taeller_venter_uden_svar(klient, monkeypatch) -> None:
+    """To tal: `antal` er alt aabent, `venter` er dem der kraever et svar.
+
+    Maalt 26/9-2026 stod 100 `run_done` aabne samtidig. Et enkelt tal gjorde
+    klokken til en konstant «9+» hvor intet ventede — forskellen skal kunne
+    ses af klienten.
+    """
+    from core.services import notifikationer as n
+    from core.services import approval_runtime
+
+    monkeypatch.setattr(approval_runtime, "alle_pending_for_owner", lambda uid: [])
+    _indsæt_run("r-1", svar="svaret")
+    n.opret(user_id="bjorn", slags="reminder", kilde="egen", titel="Husk mælk")
+    n.opret(user_id="bjorn", slags="run_done", kilde="run", ref="r-1",
+            session_id="chat-x", titel="Svar klar")
+
+    svar = klient.get("/notifikationer").json()
+    assert svar["antal"] == 2
+    assert svar["venter"] == 1
+
+
+def test_feed_springer_svar_fra_aktiv_session_over(klient, monkeypatch) -> None:
+    """`?aktiv=` er den samtale klienten SIDDER I. Svar fra den skjules."""
+    from core.services import notifikationer as n
+    from core.services import approval_runtime
+
+    monkeypatch.setattr(approval_runtime, "alle_pending_for_owner", lambda uid: [])
+    _indsæt_run("r-1")
+    _indsæt_run("r-2")
+    n.opret(user_id="bjorn", slags="run_done", kilde="run", ref="r-1",
+            session_id="chat-her", titel="Svar klar i «her»")
+    n.opret(user_id="bjorn", slags="run_done", kilde="run", ref="r-2",
+            session_id="chat-der", titel="Svar klar i «der»")
+
+    uden = klient.get("/notifikationer").json()
+    assert uden["antal"] == 2
+
+    med = klient.get("/notifikationer", params={"aktiv": "chat-her"}).json()
+    assert med["antal"] == 1
+    assert med["poster"][0]["titel"] == "Svar klar i «der»"

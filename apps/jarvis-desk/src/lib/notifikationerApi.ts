@@ -18,7 +18,7 @@ export interface Notifikation {
   foraeldet: boolean
 }
 
-export interface Feed { poster: Notifikation[]; antal: number }
+export interface Feed { poster: Notifikation[]; antal: number; venter: number }
 
 /**
  * En AFGJORT post. Samme felter som `Notifikation` — plus hvornaar den blev
@@ -33,8 +33,18 @@ export interface TidligereNotifikation extends Notifikation {
 
 export interface TidligereFeed { poster: TidligereNotifikation[]; antal: number }
 
-export async function hentNotifikationer(config: ApiConfig): Promise<Feed> {
-  return apiFetch<Feed>(config, '/notifikationer')
+/**
+ * Feedet. `aktivSession` = samtalen brugeren sidder i lige nu; svar fra den
+ * springes over paa serveren (Bjoern 26/9-2026). Sendes som query-parameter
+ * frem for at filtrere i klienten, saa KLOKKENS tal og LISTEN altid bygger
+ * paa samme maengde — en klokke der taeller noget listen ikke viser er
+ * praecis den slags mismatch resten af huset bruger tid paa at undgaa.
+ */
+export async function hentNotifikationer(
+  config: ApiConfig, aktivSession?: string | null,
+): Promise<Feed> {
+  const q = aktivSession ? `?aktiv=${encodeURIComponent(aktivSession)}` : ''
+  return apiFetch<Feed>(config, `/notifikationer${q}`)
 }
 
 /** Historikken — de sidste syv dage, som er saa laenge lageret beholder dem. */

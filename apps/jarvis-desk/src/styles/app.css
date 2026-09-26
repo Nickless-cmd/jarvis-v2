@@ -470,15 +470,31 @@ button.sidebar-group svg { flex: none; opacity: .7; }
   background: var(--error-fg, #ff6b6b);
 }
 
-/* Feeden haenger under klokken, ikke i sidepanelets flow: den maa ikke skubbe
-   samtalelisten ned hver gang den aabnes. */
+/* Ankeret baerer positionen (Bjoern 26/9-2026: «notifikations feed skal
+   aabne til hoejre»).
+
+   Feedet laa FOER selv absolut inde i `.sidebar`, som har `overflow: hidden`
+   — det blev derfor klippet ved panelets 290 px og kunne ikke vokse ud mod
+   hoejre, uanset hvad der stod i dens egen regel. Ankeret er `fixed` og
+   maales fra klokken i Sidebar.tsx, saa ruden ligger uden for klipningen og
+   kan brede sig ind over indholdet. */
+.notif-anker {
+  position: fixed; z-index: 70;
+}
 .notif-feed {
-  position: absolute; top: 46px; left: 10px; right: 10px; z-index: 70;
+  /* static: ankeret bestemmer hvor ruden staar, feedet fylder den. */
+  position: static; width: 100%;
   max-height: min(60vh, 520px); overflow-y: auto;
+  /* Skjult scrollbar (Bjoern 26/9-2026). Indholdet scroller stadig — hjulet
+     og piletasterne virker uaendret — men striben er væk. Firefox laeser
+     `scrollbar-width`; webkit-motorerne (Electron/Chromium) faar reglen
+     nedenfor. Begge skal med: den ene alene lader den anden vise striben. */
+  scrollbar-width: none;
   padding: 12px; border-radius: 14px;
   background: var(--bg-2); border: 1px solid var(--line);
   box-shadow: 0 16px 38px rgba(0,0,0,.42);
 }
+.notif-feed::-webkit-scrollbar { display: none; }
 .notif-head {
   display: flex; align-items: center; justify-content: space-between;
   gap: 5px; font-size: 13px; color: var(--fg-1); margin-bottom: 12px;
@@ -521,6 +537,16 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 .notif-tid { flex: none; color: var(--fg-3); font-size: 11px; }
 .notif-post.er-foraeldet { opacity: .7; }
 .notif-tekst { margin: 5px 0 0 34px; color: var(--fg-2); font-size: 11.5px; line-height: 1.45; }
+/* Svarets krop (Bjoern 26/9-2026: «hver svar du skriver … bliver vist der»).
+   Det er feedens laengste tekst — et svar kan vaere flere afsnit — og den
+   vises i fuld bredde under titlen, klippet til seks linjer: nok til at se
+   HVAD der blev svaret, kort nok til at ti svar ikke bliver én lang rulle.
+   Resten laeser man i samtalen, som klikket aabner. `pre-wrap` bevarer
+   afsnittene, saa svaret ikke bliver én grød. */
+.notif-svar-tekst {
+  display: -webkit-box; -webkit-line-clamp: 6; -webkit-box-orient: vertical;
+  overflow: hidden; overflow-wrap: break-word; white-space: pre-wrap;
+}
 .notif-foraeldet { margin: 5px 0 0 34px; font-size: 11.5px; color: var(--error-fg, #ff8e8e); }
 .notif-handlinger { display: flex; gap: 6px; margin: 8px 0 0 34px; }
 .notif-handlinger button {

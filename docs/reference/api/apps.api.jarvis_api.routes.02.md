@@ -699,10 +699,10 @@ _Notifikations-feeden. Scoper til den auth'ede bruger._
 | function | `_oversaet_fejl` | `(raa_fejl)` | Oversaet en teknisk/engelsk fejltekst til noget en almindelig bruger | [src](../../../apps/api/jarvis_api/routes/notifikationer.py#L32) |
 | function | `_nuvaerende_bruger` | `()` | (user_id, er_owner). | [src](../../../apps/api/jarvis_api/routes/notifikationer.py#L39) |
 | function | `_min_raekke` | `(notif_id, user_id)` | Raekken — kun hvis den er brugerens egen. Et gaettet id fra en anden | [src](../../../apps/api/jarvis_api/routes/notifikationer.py#L69) |
-| function | `feed` | `()` | — | [src](../../../apps/api/jarvis_api/routes/notifikationer.py#L79) |
-| function | `tidligere_feed` | `()` | Historikken. Samme form som feed() — én klient-type, to lister. | [src](../../../apps/api/jarvis_api/routes/notifikationer.py#L93) |
-| function | `afgoer` | `(notif_id, body)` | — | [src](../../../apps/api/jarvis_api/routes/notifikationer.py#L110) |
-| function | `set_` | `(notif_id)` | — | [src](../../../apps/api/jarvis_api/routes/notifikationer.py#L157) |
+| function | `feed` | `(aktiv=…)` | Feedet. `aktiv` = den samtale klienten SIDDER I lige nu. | [src](../../../apps/api/jarvis_api/routes/notifikationer.py#L79) |
+| function | `tidligere_feed` | `()` | Historikken. Samme form som feed() — én klient-type, to lister. | [src](../../../apps/api/jarvis_api/routes/notifikationer.py#L106) |
+| function | `afgoer` | `(notif_id, body)` | — | [src](../../../apps/api/jarvis_api/routes/notifikationer.py#L123) |
+| function | `set_` | `(notif_id)` | — | [src](../../../apps/api/jarvis_api/routes/notifikationer.py#L170) |
 
 ## `apps/api/jarvis_api/routes/notifikations_valg.py`
 _Push-valg per slags. Scoper til den auth'ede bruger._

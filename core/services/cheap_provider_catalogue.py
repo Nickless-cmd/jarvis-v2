@@ -71,6 +71,22 @@ CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
         "static_models": ["claude-sonnet-4-6", "deepseek-v4-flash",
                           "glm-5.3-flash", "mimo-v2.6-flash"],
     },
+    # api.navy AFVIST 26/9-2026 — gratis-planen er lukket for ALLE, ikke kun os.
+    # Nøglen (`sk-navy-…`) er gyldig og kommer forbi auth; kaldet svarer derefter:
+    #
+    #   {"error":{"code":"insufficient_plan","type":"permission_error",
+    #    "message":"The Free plan is temporarily paused for all users. You can
+    #               purchase a plan at https://api.navy/dashboard/billing …"}}
+    #
+    # Ingen af de 144 modeller svarer — heller ikke de små. Katalogets liste ser
+    # fristende ud (claude-opus-5.5, gpt-5.6, grok-4.7, gemini-3.8), og
+    # `/v1/models` svarer 200 UDEN nøgle, så udbyderen ligner en åben
+    # aggregator. Den er den ikke: modellisten er offentlig, adgangen er ikke.
+    #
+    # Samme familie som SiliconFlow-afvisningen nedenfor: gratis-fladen findes
+    # på papiret og hård-gater i praksis. Forskellen er at navy siger det
+    # ligeud i fejlteksten. Prøves igen kun hvis nogen har købt en plan.
+    # Ikke wired.
     # AI Horde / stablehorde.net AFVIST 26/9-2026 — ægte gratis, men for langsom
     # og forkert slags modeller. Nøglen virker (`Nickless#539500`, 25 kudos,
     # concurrency 30), og det er et af de få steder der IKKE er en mellemhandler

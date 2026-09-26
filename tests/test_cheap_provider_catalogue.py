@@ -260,3 +260,15 @@ def test_stablehorde_er_afvist_med_sin_maaling():
     src = inspect.getsource(kat)
     assert "stablehorde.net AFVIST" in src
     assert "28 SEKUNDER" in src
+
+
+def test_api_navy_er_afvist_med_sin_fejltekst():
+    """`/v1/models` svarer 200 UDEN nøgle, så udbyderen ligner en åben
+    aggregator med 144 modeller. Den er den ikke: listen er offentlig,
+    adgangen er ikke. Et rigtigt kald svarer «The Free plan is temporarily
+    paused for all users» — det gælder altså ikke kun vores konto."""
+    assert "navy" not in kat.CHEAP_PROVIDER_DEFAULTS
+    import inspect
+    src = inspect.getsource(kat)
+    assert "api.navy AFVIST" in src
+    assert "for all users" in src

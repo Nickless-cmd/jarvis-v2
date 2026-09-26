@@ -71,6 +71,25 @@ CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
         "static_models": ["claude-sonnet-4-6", "deepseek-v4-flash",
                           "glm-5.3-flash", "mimo-v2.6-flash"],
     },
+    # AI Horde / stablehorde.net AFVIST 26/9-2026 — ægte gratis, men for langsom
+    # og forkert slags modeller. Nøglen virker (`Nickless#539500`, 25 kudos,
+    # concurrency 30), og det er et af de få steder der IKKE er en mellemhandler
+    # med en regning: netværket er crowdsourced og betales i kudos.
+    #
+    # MÅLT ende til ende: indsendt job → 28 SEKUNDER til svar, købosition 31 ved
+    # start. De øvrige udbydere svarer på 1-3 s. Kudos styrer prioriteten, og 25
+    # er i bunden — under belastning bliver det værre, ikke bedre.
+    #
+    # Og svaret var ubrugeligt: en 3B-model der FORTSATTE teksten i stedet for
+    # at svare («, men hvad? Det er jo den, vi»). Af de 29 tekstmodeller online
+    # er de fleste roleplay-finetunes (Behemoth, Cydonia, Impish) — samme grund
+    # som AionLabs er begrænset ovenfor.
+    #
+    # Teknisk er den heller ikke en `openai-chat`-post: API'et er asynkront
+    # (POST /api/v2/generate/text/async → poll /status/{id}), så den kræver sin
+    # egen protokol-adapter. Det kunne bære sig for arbejde hvor 30 s er ligegyldigt
+    # — drømme, journal — men ikke for cheap-lane, og adapteren er sin egen opgave.
+    # Ikke wired.
     # tu-zi / «Kanin-API» IKKE WIRED 26/9-2026 — kontoen er tom.
     #
     # Registreret, deployet og afprøvet i drift. Første kald svarede:

@@ -248,3 +248,15 @@ def test_en_for_lille_probe_kan_ikke_skelne_doed_fra_taenkende():
     src = inspect.getsource(kat)
     assert "kan ikke skelne «virker ikke» fra «taenker»" in src
     assert "reasoning_content" in src
+
+
+def test_stablehorde_er_afvist_med_sin_maaling():
+    """Ægte gratis og ingen mellemhandler — men målt til 28 s ende til ende
+    mod de øvriges 1-3 s, og svaret kom fra en 3B-model der fortsatte teksten
+    i stedet for at svare. Grunden står i kataloget så ingen prøver igen om
+    tre måneder uden at kende tallet."""
+    assert "stablehorde" not in kat.CHEAP_PROVIDER_DEFAULTS
+    import inspect
+    src = inspect.getsource(kat)
+    assert "stablehorde.net AFVIST" in src
+    assert "28 SEKUNDER" in src

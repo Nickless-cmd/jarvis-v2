@@ -176,6 +176,9 @@ def test_capacity_usage_counts_both_accounts_without_quota_policy(
             for row in day["profiles"]} == {
         ("groq", "default"): 140, ("groq", "account2"): 100,
     }
+    assert {row["account"]: row["total_tokens"] for row in day["accounts"]} == {
+        "account1": 140, "account2": 100,
+    }
 
 
 def test_capacity_aggregate_keeps_unconfigured_account_unknown(
@@ -224,6 +227,24 @@ def test_request_based_estimate_uses_distinct_active_accounts(
     assert {(p["provider"], p["auth_profile"]) for p in estimate["profiles"]} == {
         ("groq", "default"), ("groq", "account2"),
     }
+    assert snapshot["estimated_capacity"]["month"]["observed_30d_run_rate"] == round(150 * 30 / 7)
+
+
+def test_gateway_ollama_cloud_usage_belongs_to_account2(
+    isolated_runtime, cheap_registry
+):
+    from core.runtime.db_cheap_provider import record_cheap_provider_invocation
+    from core.services.cheap_lane_quotas import capacity_snapshot
+
+    record_cheap_provider_invocation(
+        provider="ollama-a2", model="gemma4:31b-cloud", status="completed",
+        input_tokens=70, output_tokens=30, auth_profile="default",
+    )
+    day = capacity_snapshot(now=datetime.now(UTC))["usage"]["day"]
+
+    assert day["profiles"][0]["account"] == "account2"
+    assert day["accounts"][0]["account"] == "account2"
+    assert day["accounts"][0]["total_tokens"] == 100
 
 
 def test_account2_can_have_its_own_quota_policy(

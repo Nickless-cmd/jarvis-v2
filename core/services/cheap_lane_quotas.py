@@ -157,6 +157,19 @@ def _active_profiles(provider: str, registry_profile: str, *, multiprofile: bool
     return ready or [registry_profile or "default"]
 
 
+def _account_group(provider: str, profile: str) -> str:
+    """Logical owner of usage; gateway Ollama Cloud uses its own account2 login."""
+    from core.services.cheap_provider_catalogue import CHEAP_PROVIDER_DEFAULTS
+
+    if provider == "ollama-a2":
+        return "account2"
+    if profile.startswith("account") and profile[7:].isdigit():
+        return profile
+    if str((CHEAP_PROVIDER_DEFAULTS.get(provider) or {}).get("auth_kind") or "") == "none":
+        return "shared"
+    return "account1"
+
+
 def _measured_usage(now: datetime) -> dict[str, dict[str, object]]:
     """Calendar-window token accounting, including profiles without policies."""
     result: dict[str, dict[str, object]] = {}
@@ -177,12 +190,22 @@ def _measured_usage(now: datetime) -> dict[str, dict[str, object]]:
             profiles = [{
                 "provider": str(row["provider"]),
                 "auth_profile": str(row["profile"]),
+                "account": _account_group(str(row["provider"]), str(row["profile"])),
                 "calls": int(row["calls"]),
                 "input_tokens": int(row["input_tokens"]),
                 "output_tokens": int(row["output_tokens"]),
                 "total_tokens": int(row["input_tokens"]) + int(row["output_tokens"]),
                 "unmetered_calls": int(row["unmetered_calls"] or 0),
             } for row in rows]
+            account_totals: dict[str, dict[str, object]] = {}
+            for profile in profiles:
+                account = str(profile["account"])
+                group = account_totals.setdefault(account, {
+                    "account": account, "input_tokens": 0, "output_tokens": 0,
+                    "total_tokens": 0, "calls": 0, "unmetered_calls": 0,
+                })
+                for field in ("input_tokens", "output_tokens", "total_tokens", "calls", "unmetered_calls"):
+                    group[field] = int(group[field]) + int(profile[field])
             result[period] = {
                 "start_at": start.isoformat(), "end_at": end.isoformat(),
                 "input_tokens": sum(p["input_tokens"] for p in profiles),
@@ -191,6 +214,7 @@ def _measured_usage(now: datetime) -> dict[str, dict[str, object]]:
                 "calls": sum(p["calls"] for p in profiles),
                 "unmetered_calls": sum(p["unmetered_calls"] for p in profiles),
                 "profiles": sorted(profiles, key=lambda p: (-p["total_tokens"], p["provider"], p["auth_profile"])),
+                "accounts": sorted(account_totals.values(), key=lambda p: str(p["account"])),
             }
     return result
 
@@ -223,6 +247,12 @@ def _estimated_capacity(
         (int(row["calls"]), int(row["tokens"]))
         for row in rows
     }
+    observed_7d = sum(
+        tokens for (provider, profile), (_, tokens) in samples.items()
+        if (provider, profile) in members
+        and provider_cost_class(provider) != "paid"
+        and is_routable_provider(provider)
+    )
     today_calls = {
         (str(row["provider"]), str(row["auth_profile"])): int(row["calls"])
         for row in usage["day"]["profiles"]  # type: ignore[index]
@@ -247,6 +277,7 @@ def _estimated_capacity(
             estimate = round(calls * sample_tokens / sample_calls)
             profiles.append({
                 "provider": provider, "auth_profile": profile,
+                "account": _account_group(provider, profile),
                 "daily_call_limit": daily_limit,
                 "sample_calls": sample_calls,
                 "mean_tokens_per_call": round(sample_tokens / sample_calls),
@@ -260,6 +291,9 @@ def _estimated_capacity(
             "profiles": sorted(profiles, key=lambda p: -int(p["estimated_tokens"])),
             "end_at": end.isoformat(),
         }
+        if period == "month":
+            estimates[period]["observed_7d_tokens"] = observed_7d
+            estimates[period]["observed_30d_run_rate"] = round(observed_7d * 30 / 7)
     return estimates
 
 

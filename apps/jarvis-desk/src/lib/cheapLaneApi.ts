@@ -308,15 +308,20 @@ export interface Kapacitet {
     input_tokens: number; output_tokens: number; total_tokens: number
     calls: number; unmetered_calls: number
     profiles: {
-      provider: string; auth_profile: string; input_tokens: number
+      provider: string; auth_profile: string; account?: string; input_tokens: number
       output_tokens: number; total_tokens: number; calls: number; unmetered_calls: number
+    }[]
+    accounts?: {
+      account: string; input_tokens: number; output_tokens: number
+      total_tokens: number; calls: number; unmetered_calls: number
     }[]
   }>
   estimated_capacity?: Record<string, {
     known_estimate_tokens: number; complete: boolean; end_at: string
+    observed_7d_tokens?: number; observed_30d_run_rate?: number
     unknown_members: { provider: string; auth_profile: string }[]
     profiles: {
-      provider: string; auth_profile: string; daily_call_limit: number
+      provider: string; auth_profile: string; account?: string; daily_call_limit: number
       sample_calls: number; mean_tokens_per_call: number
       remaining_calls: number; estimated_tokens: number
     }[]

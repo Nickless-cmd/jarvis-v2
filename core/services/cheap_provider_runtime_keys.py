@@ -47,6 +47,9 @@ RUNTIME_KEY_PROVIDERS: dict[str, tuple[str, str]] = {
     "nscale": ("nscale_api_key", "NSCALE_API_KEY"),
     "airforce": ("airforce_api_key", "AIRFORCE_API_KEY"),
     "chinaapi": ("chinaapi_api_key", "CHINAAPI_API_KEY"),
+    # Samme konto, samme nøgle — kun routing-niveauet er forskelligt.
+    "chinaapi-premium": ("chinaapi_api_key", "CHINAAPI_API_KEY"),
+    "tuzi": ("tuzi_api_key", "TUZI_API_KEY"),
 }
 
 

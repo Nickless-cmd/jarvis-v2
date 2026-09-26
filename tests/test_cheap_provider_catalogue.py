@@ -165,3 +165,44 @@ def test_chinaapi_lister_KUN_de_modeller_hvor_forbruget_blev_maalt_til_nul():
     m = set(kat.CHEAP_PROVIDER_DEFAULTS["chinaapi"]["static_models"])
     assert m == {"agnes-2.5-flash", "agnes-3.0-flash", "stepaudio-3-chat-preview"}
     assert not any(k in " ".join(m) for k in ("opus", "gpt-5", "kimi", "gemini"))
+
+
+def test_tuzi_er_PAID_for_den_har_ingen_gratis_tekstmodeller():
+    """213 af de 797 modeller står med `model_ratio: 0` — men fælden er et
+    ANDET felt end på chinaapi: kun ÉN af de 213 har også `model_price: 0`,
+    og den er ikke en tekstmodel. De øvrige 212 har fast pris pr. kald.
+
+    På chinaapi var fælden `quota_type: 1`. Samme gateway-software, to
+    forskellige felter. Derfor duer det ikke at lære ét mønster og genbruge
+    det — hver konto skal måles.
+    """
+    assert kat.CHEAP_PROVIDER_DEFAULTS["tuzi"]["cost_class"] == "paid"
+
+
+def test_frontiermodellerne_ligger_i_deres_EGEN_post():
+    """«lad os nu bruge det ordentligt» — de store modeller skal kunne vælges
+    MED VILJE, ikke rammes af en daemon der ledte efter noget billigt.
+
+    Samme mønster som `copilot-premium`: egen post, `cost_class: paid`, høj
+    prioritet så den vælges først NÅR betalt er tilladt. Den gratis
+    chinaapi-post må ikke indeholde dem.
+    """
+    prem = kat.CHEAP_PROVIDER_DEFAULTS["chinaapi-premium"]
+    gratis = kat.CHEAP_PROVIDER_DEFAULTS["chinaapi"]
+    assert prem["cost_class"] == "paid"
+    assert prem["priority"] < 10, "premium skal vælges før de billige"
+    assert "claude-opus-5" in prem["static_models"]
+    assert not any("opus" in m for m in gratis["static_models"])
+    # Samme base_url — det er ÉN konto, kun routing-niveauet er forskelligt.
+    assert prem["base_url"] == gratis["base_url"]
+
+
+def test_udeladte_modeller_er_dem_der_ikke_svarede():
+    """Kataloget lister kun det der HAR svaret. `deepseek-v4-pro` giver
+    `model_requires_topup`, `gpt-5.5` svarede tomt, og på tu-zi gjorde
+    `deepseek-v3` og `kimi-k2.6` det samme."""
+    prem = kat.CHEAP_PROVIDER_DEFAULTS["chinaapi-premium"]["static_models"]
+    assert "deepseek-v4-pro" not in prem
+    assert "gpt-5.5" not in prem
+    tuzi = kat.CHEAP_PROVIDER_DEFAULTS["tuzi"]["static_models"]
+    assert "deepseek-v3" not in tuzi and "kimi-k2.6" not in tuzi

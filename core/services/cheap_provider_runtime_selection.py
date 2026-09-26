@@ -325,7 +325,9 @@ _PUBLIC_PROXY_PROVIDERS = (
     "ovhcloud",
     "pollinations",
     "chinaapi",
+    "chinaapi-premium",
     "airforce",
+    "tuzi",
 )
 
 # Round-robin counter so consecutive background calls spread across the

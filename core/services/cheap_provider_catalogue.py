@@ -18,6 +18,65 @@ CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
     # ── Tre udbydere tilføjet 26/9-2026 (Bjørns egne konti, nøgler i
     # runtime.json). Hver post er hvad der er MÅLT, ikke hvad siden lover.
 
+    # ── tu-zi / «Kanin-API» (26/9-2026, Bjørns konto, intet betalingskort).
+    # Samme NewAPI-gateway-familie som chinaapi: svarer med `x-new-api-version`
+    # og `x-oneapi-request-id`, plus `x-tuzi-route-class`. 797 modeller.
+    #
+    # DEN GRATIS FLADE FINDES IKKE. 213 modeller står med `model_ratio: 0`, og
+    # på chinaapi var fælden `quota_type: 1`; her er den et ANDET felt: kun ÉN
+    # af de 213 har også `model_price: 0`, og den er ikke en tekstmodel. De
+    # øvrige 212 har en fast pris pr. kald gemt i `model_price`. Derfor
+    # `cost_class: paid` — der er intet gratis at hente.
+    #
+    # MÅLT at svare: claude-opus-4-5, gpt-5, gemini-2.5-flash,
+    # claude-3-5-haiku-latest. `deepseek-v3` og `kimi-k2.6` gav tomt svar og
+    # står derfor ikke her — kataloget lister kun det der HAR svaret.
+    "tuzi": {
+        "label": "tu-zi (gateway)",
+        "priority": 68,
+        "base_url": "https://api.tu-zi.com/v1",
+        "auth_kind": "bearer",
+        "protocol": "openai-chat",
+        "models_endpoint": "/models",
+        # Ingen rate-limit-headers set. Konservativt indtil et loft er målt.
+        "rpm_limit": 10,
+        "daily_limit": 300,
+        "cost_class": "paid",
+        "static_models": ["gemini-2.5-flash", "claude-3-5-haiku-latest"],
+    },
+    # ── chinaapi-premium (26/9-2026): frontiermodellerne på Bjørns
+    # chinaapi-konto, som EGEN post efter `copilot-premium`-mønstret — høj
+    # prioritet, valgt FØRST når betalt er tilladt, og aldrig blandet ind i
+    # det almindelige baggrundsarbejde.
+    #
+    # Bjørn: «lad os nu bruge det ordentligt». Det er dét den her adskillelse
+    # er: de store modeller skal kunne vælges MED VILJE, ikke rammes af en
+    # daemon der ledte efter noget billigt.
+    #
+    # Konto uden betalingskort — værst tænkelige er at kaldene begynder at
+    # fejle, ikke en regning.
+    #
+    # PRIS, MÅLT: ét kald til claude-opus-5 med et 16-token-svar flyttede
+    # `total_usage` 0,0988 → 0,3568. NB: tallet er et RULLENDE vindue, ikke en
+    # kumulativ total — det faldt igen ved næste måling — så det duer som
+    # størrelsesorden og ikke som forbrugsmåler. En rigtig samtale med
+    # kontekst koster mange gange dette.
+    #
+    # `deepseek-v4-pro` er udeladt: den svarer `model_requires_topup`.
+    # `gpt-5.5` svarede tomt ved min måling og står derfor heller ikke her.
+    "chinaapi-premium": {
+        "label": "ChinaAPI (frontier, betalt)",
+        "priority": 6,
+        "base_url": "https://api.chinaapi.ai/v1",
+        "auth_kind": "bearer",
+        "protocol": "openai-chat",
+        "models_endpoint": "/models",
+        "rpm_limit": 10,
+        "daily_limit": 100,
+        "cost_class": "paid",
+        "static_models": ["claude-opus-5", "claude-haiku-4-5", "kimi-k3",
+                          "gemini-3.8-flash"],
+    },
     # nscale: rigtig udbyder, OpenAI-kompatibel, 23 modeller og INGEN gratis —
     # alle har pris. «Free» er $5 engangskredit, derefter pay-as-you-go. Ingen
     # /credits- eller /usage-flade (404), så forbruget kan ikke læses herfra;

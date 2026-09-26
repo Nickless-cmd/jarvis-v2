@@ -476,3 +476,100 @@ def test_response_style_low_intensity_returns_default(fresh_db, monkeypatch):
     mods = get_response_style_modifiers(workspace_id="default")
     assert mods["warmth"] == "neutral"
     assert mods["pace"] == "normal"
+
+
+# ── workspace-afgrænsning (lækket lukket 26/9-2026) ────────────────────
+#
+# Motoren læste `chat_messages` på tværs af ALLE brugeres samtaler: fire
+# queries uden `workspace_name`-filter. Corpus-query'en sendte dem til
+# deepseek under overskriften «Bjørns sidste 24 timer» — så Michelle,
+# Mikkel og Lottes beskeder gik ud af huset som om de var Bjørns.
+#
+# Vagterne pinner både STRUKTUREN (ingen query uden filter, også fremtidige)
+# og ADFÆRDEN (A ser ikke B), plus fail-closed.
+
+
+def _indsæt(db_path, *, workspace, role, content, created_at, i):
+    import sqlite3
+    with sqlite3.connect(db_path) as c:
+        c.execute(
+            "INSERT INTO chat_messages "
+            "(message_id, session_id, role, content, created_at, user_id, workspace_name) "
+            "VALUES (?,?,?,?,?,?,?)",
+            (f"m{i}", "s1", role, content, created_at, workspace, workspace),
+        )
+        c.commit()
+
+
+def test_ingen_query_uden_workspace_filter():
+    """Strukturel vagt: enhver `FROM chat_messages` skal bære workspace_name.
+
+    Uden den kan en fremtidig tilføjelse gentage lækket uden at nogen test
+    fanger det — præcis fejlen fra 26/9.
+    """
+    import pathlib as _pl
+    import re as _re
+    src = _pl.Path("core/services/user_temperature_engine.py").read_text(encoding="utf-8")
+    ramte = 0
+    for m in _re.finditer(r"FROM chat_messages", src):
+        ramte += 1
+        blok = src[m.start(): m.start() + 260]
+        assert "workspace_name" in blok, (
+            f"chat_messages-query uden workspace_name-filter ved tegn "
+            f"{m.start()}: {blok[:120]!r}"
+        )
+    assert ramte == 4, f"forventede 4 queries, fandt {ramte} — opdatér vagten"
+
+
+def test_baseline_ser_kun_egen_workspace(fresh_db):
+    from core.services.user_temperature_engine import _compute_baseline
+    for i in range(3):
+        _indsæt(fresh_db, workspace="bjorn", role="user",
+                content="x" * 20, created_at=f"2026-09-26T10:0{i}:00Z", i=i)
+    for i in range(2):
+        _indsæt(fresh_db, workspace="michelle", role="user",
+                content="y" * 20, created_at=f"2026-09-26T11:0{i}:00Z", i=10 + i)
+
+    assert _compute_baseline(days=30, workspace="bjorn")["message_count"] == 3, (
+        "baselinen må ikke se Michelles beskeder"
+    )
+    assert _compute_baseline(days=30, workspace="michelle")["message_count"] == 2
+
+
+def test_burst_taeller_kun_egen_workspace(fresh_db):
+    from core.services.user_temperature_engine import _burst_density
+    for i in range(2):
+        _indsæt(fresh_db, workspace="bjorn", role="user",
+                content="a", created_at=f"2026-09-26T10:00:0{i}Z", i=i)
+    for i in range(3):
+        _indsæt(fresh_db, workspace="michelle", role="user",
+                content="b", created_at=f"2026-09-26T10:00:0{i}Z", i=10 + i)
+
+    d = _burst_density("2026-09-26T10:00:05Z", workspace="bjorn")
+    assert d == pytest.approx(2 / 5, abs=0.01), "må ikke tælle Michelles burst med"
+
+
+def test_delay_ser_kun_egen_workspace(fresh_db):
+    from core.services.user_temperature_engine import _delay_since_last_jarvis
+    _indsæt(fresh_db, workspace="michelle", role="assistant",
+            content="hej", created_at="2026-09-26T09:59:50Z", i=99)
+    assert _delay_since_last_jarvis("2026-09-26T10:00:00Z", workspace="bjorn") is None
+
+
+def test_fail_closed_uden_workspace(fresh_db):
+    """Kan workspace ikke bestemmes, hentes INTET — aldrig 'alt'."""
+    from core.services.user_temperature_engine import (
+        _burst_density, _compute_baseline, _delay_since_last_jarvis,
+    )
+    _indsæt(fresh_db, workspace="bjorn", role="user",
+            content="z" * 20, created_at="2026-09-26T10:00:00Z", i=1)
+
+    ud = _compute_baseline(days=30, workspace="")
+    assert ud["ready"] is False
+    # `message_count` er den skarpe del: `ready=False` alene kan også komme af
+    # «for få rækker», så den skelner ikke «intet hentet» fra «lidt hentet».
+    # Målt 26/9: uden denne linje bestod vagten en mutation der faldt tilbage
+    # til workspace 'bjorn' — altså præcis den adfærd den skulle forbyde.
+    assert ud["message_count"] == 0, "fail-closed: ingen rækker må hentes"
+    assert _burst_density("2026-09-26T10:00:00Z", workspace="") == 0.0
+    assert _delay_since_last_jarvis("2026-09-26T10:00:00Z", workspace=None) is None

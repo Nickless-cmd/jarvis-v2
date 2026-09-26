@@ -56,6 +56,22 @@ _CONFLICT_AROUSAL_DISTANCE = 0.6
 
 # ── Helpers ────────────────────────────────────────────────────────────
 
+# ── workspace-afgrænsning (lækket lukket 26/9-2026) ────────────────────────
+#
+# Motoren læste `chat_messages` på tværs af ALLE brugeres samtaler: fire
+# queries uden `workspace_name`-filter. Corpus-query'en sendte dem til
+# deepseek under overskriften «Bjørns sidste 24 timer» — så Michelle, Mikkel
+# og Lottes beskeder gik ud af huset som om de var Bjørns.
+#
+# Fail-closed: kan workspace ikke bestemmes, hentes INTET. Et tomt signal er
+# altid bedre end en fremmeds ord i en prompt.
+
+
+def _afgraens_workspace(workspace: str | None) -> str:
+    """Hvilken workspace må læses? Tom → intet (fail-closed)."""
+    return (workspace or "").strip()
+
+
 def _coerce_float(v: Any) -> float | None:
     try:
         return float(v)
@@ -89,8 +105,11 @@ def _caps_density(message: str) -> float:
     return upper / len(letters)
 
 
-def _burst_density(message_at: str) -> float:
+def _burst_density(message_at: str, *, workspace: str | None = None) -> float:
     """User msgs in last 5 min, normalized: 0 → 0.0, 5+ → 1.0."""
+    ws = _afgraens_workspace(workspace)
+    if not ws:
+        return 0.0
     try:
         at = datetime.fromisoformat(str(message_at).replace("Z", "+00:00"))
     except (ValueError, TypeError):
@@ -101,16 +120,22 @@ def _burst_density(message_at: str) -> float:
         with connect() as c:
             n = c.execute(
                 "SELECT COUNT(*) FROM chat_messages "
-                "WHERE role='user' AND created_at >= ? AND created_at <= ?",
-                (cutoff, cutoff_end),
+                "WHERE role='user' AND workspace_name = ? "
+                "AND created_at >= ? AND created_at <= ?",
+                (ws, cutoff, cutoff_end),
             ).fetchone()[0]
         return min(1.0, int(n) / 5.0)
     except Exception:
         return 0.0
 
 
-def _delay_since_last_jarvis(message_at: str) -> float | None:
+def _delay_since_last_jarvis(
+    message_at: str, *, workspace: str | None = None
+) -> float | None:
     """Seconds since the prior assistant message. None if no prior or > 60min."""
+    ws = _afgraens_workspace(workspace)
+    if not ws:
+        return None
     try:
         at = datetime.fromisoformat(str(message_at).replace("Z", "+00:00"))
     except (ValueError, TypeError):
@@ -119,9 +144,10 @@ def _delay_since_last_jarvis(message_at: str) -> float | None:
         with connect() as c:
             row = c.execute(
                 "SELECT created_at FROM chat_messages "
-                "WHERE role='assistant' AND created_at < ? "
+                "WHERE role='assistant' AND workspace_name = ? "
+                "AND created_at < ? "
                 "ORDER BY created_at DESC LIMIT 1",
-                (message_at,),
+                (ws, message_at),
             ).fetchone()
     except Exception:
         return None
@@ -145,7 +171,9 @@ def _parse_hour(message_at: str) -> int:
         return 12
 
 
-def _compute_raw_signals(*, message: str, message_at: str, baseline: dict) -> dict:
+def _compute_raw_signals(
+    *, message: str, message_at: str, baseline: dict, workspace: str | None = None
+) -> dict:
     """Map a single message + baseline to 6 normalized signals."""
     if not baseline.get("ready"):
         return {
@@ -154,14 +182,14 @@ def _compute_raw_signals(*, message: str, message_at: str, baseline: dict) -> di
             "punctuation_density": _punct_density(message),
             "caps_density": _caps_density(message),
             "hour_of_day_offset": 0.0,
-            "burst_density": _burst_density(message_at),
+            "burst_density": _burst_density(message_at, workspace=workspace),
         }
 
     char_count = len(message)
     length_z = (char_count - baseline["char_count_mean"]) / max(baseline["char_count_stdev"], 1)
     length_z = max(-3.0, min(3.0, length_z)) / 3.0
 
-    delay = _delay_since_last_jarvis(message_at)
+    delay = _delay_since_last_jarvis(message_at, workspace=workspace)
     if delay is None:
         response_z = 0.0
     else:
@@ -184,7 +212,7 @@ def _compute_raw_signals(*, message: str, message_at: str, baseline: dict) -> di
         "punctuation_density": _punct_density(message),
         "caps_density": _caps_density(message),
         "hour_of_day_offset": hour_offset,
-        "burst_density": _burst_density(message_at),
+        "burst_density": _burst_density(message_at, workspace=workspace),
     }
 
 
@@ -345,16 +373,20 @@ def _is_significant_shift(prior: dict | None, new: dict) -> bool:
 # ── Baseline computation ──────────────────────────────────────────────
 
 
-def _compute_baseline(*, days: int = 30) -> dict:
+def _compute_baseline(*, days: int = 30, workspace: str | None = None) -> dict:
     """Compute rolling baseline from last N days of user messages."""
+    ws = _afgraens_workspace(workspace)
+    if not ws:
+        return {"ready": False, "message_count": 0, "built_at": _now_iso()}
     cutoff = (_now() - timedelta(days=days)).isoformat().replace("+00:00", "Z")
     try:
         with connect() as c:
             rows = c.execute(
                 "SELECT content, created_at FROM chat_messages "
-                "WHERE role='user' AND created_at > ? "
+                "WHERE role='user' AND workspace_name = ? "
+                "AND created_at > ? "
                 "ORDER BY created_at ASC",
-                (cutoff,),
+                (ws, cutoff),
             ).fetchall()
     except Exception as exc:
         logger.warning("temperature: baseline query failed: %s", exc)
@@ -370,7 +402,7 @@ def _compute_baseline(*, days: int = 30) -> dict:
     char_counts = [len(str(r["content"] or "")) for r in rows]
     delays = []
     for r in rows:
-        d = _delay_since_last_jarvis(str(r["created_at"]))
+        d = _delay_since_last_jarvis(str(r["created_at"]), workspace=ws)
         if d is not None:
             delays.append(d)
     hours = []
@@ -569,10 +601,13 @@ def run_structural_stream(
         return {"status": "error", "reason": f"settings: {exc}"}
 
     prior = get_active_field_raw(workspace_id=workspace_id)
-    baseline = _get_or_build_baseline(prior=prior, settings=settings)
+    baseline = _get_or_build_baseline(
+        prior=prior, settings=settings, workspace=workspace_id
+    )
 
     signals = _compute_raw_signals(
         message=message, message_at=message_at, baseline=baseline,
+        workspace=workspace_id,
     )
 
     struct_result = map_signals_to_field(signals)
@@ -629,7 +664,9 @@ def run_structural_stream(
     }
 
 
-def _get_or_build_baseline(*, prior: dict | None, settings) -> dict:
+def _get_or_build_baseline(
+    *, prior: dict | None, settings, workspace: str | None = None
+) -> dict:
     """Return cached baseline if fresh, else rebuild."""
     if prior and prior.get("baseline_stats"):
         cached = prior["baseline_stats"]
@@ -643,7 +680,9 @@ def _get_or_build_baseline(*, prior: dict | None, settings) -> dict:
                 return cached
         except Exception:
             pass
-    return _compute_baseline(days=settings.user_temperature_baseline_days)
+    return _compute_baseline(
+        days=settings.user_temperature_baseline_days, workspace=workspace
+    )
 
 
 # ── LLM stream (4h cadence + on-trigger) ──────────────────────────────
@@ -699,14 +738,18 @@ def run_llm_stream(*, workspace_id: str = "default", force: bool = False) -> dic
             return {"status": "no_trigger"}
 
     n_messages = settings.user_temperature_llm_corpus_messages
+    ws = _afgraens_workspace(workspace_id)
+    if not ws:
+        return {"status": "no_corpus"}
     cutoff = (_now() - timedelta(hours=24)).isoformat().replace("+00:00", "Z")
     try:
         with connect() as c:
             rows = c.execute(
                 "SELECT content, created_at FROM chat_messages "
-                "WHERE role='user' AND created_at > ? "
+                "WHERE role='user' AND workspace_name = ? "
+                "AND created_at > ? "
                 "ORDER BY created_at DESC LIMIT ?",
-                (cutoff, n_messages),
+                (ws, cutoff, n_messages),
             ).fetchall()
     except Exception as exc:
         return {"status": "error", "reason": f"corpus fetch: {exc}"}

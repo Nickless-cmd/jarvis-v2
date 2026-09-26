@@ -108,6 +108,13 @@ def _evaluate_producer(
     adfærd; alle eksterne kaldere upåvirket). Infra/health/SECURITY undtages inde i
     effective_cooldown → altid rå cadence. tempo ∈ [0.5, 2.0] → 0.5×..2× base.
     """
+    # Kører den FORRIGE kørsel stadig? Den timede ud, men tråden lever. At
+    # starte endnu en er ikke bare spild: producenten er langsom netop FORDI
+    # den er tung, så nummer to gør nummer et langsommere, og de hober sig op
+    # indtil processen genstartes.
+    if stadig_i_flugt(spec.name):
+        return "i_flugt", "forrige koersel koerer endnu"
+
     # Check dependencies — "har kørt for NYLIGT", ikke "kørte i SAMME tick" (Bjørn
     # 18. aug 2026). Same-tick-kravet betød at hele indre-liv-kæden (dream_distillation,
     # creative_journal, finitude, ontological_revision, self_critique …) kun kunne åbne
@@ -180,6 +187,37 @@ def _evaluate_producer(
 # Tick dispatch
 # ---------------------------------------------------------------------------
 
+#: Tråde fra en producent der timede ud og som STADIG kører.
+#:
+#: `_run_producer_bounded` opgiver at vente, men tråden er daemon og lever
+#: videre til processen slutter. Uden dette register blev den usynlig, og
+#: næste tik startede endnu en. Målt 26/9-2026 på CT105: 26 af 86 tråde i
+#: `jarvis-runtime` sad i samme producent (`cadence-prod-agent_smith`), ca. én
+#: ny hvert 4.-5. minut, og værten gik fra 35 til 73 °C i løbet af dagen.
+_i_flugt: dict[str, threading.Thread] = {}
+_i_flugt_laas = threading.Lock()
+
+
+def stadig_i_flugt(navn: str) -> bool:
+    """Kører en tidligere, timet-ud kørsel af producenten stadig?
+
+    Rydder op undervejs: er tråden død, glemmes den, så registret ikke vokser.
+    """
+    with _i_flugt_laas:
+        t = _i_flugt.get(navn)
+        if t is None:
+            return False
+        if t.is_alive():
+            return True
+        _i_flugt.pop(navn, None)
+        return False
+
+
+def _noter_i_flugt(navn: str, t: threading.Thread) -> None:
+    with _i_flugt_laas:
+        _i_flugt[navn] = t
+
+
 def _run_producer_bounded(spec, *, trigger: str, last_visible_at: str, timeout_s: float):
     """Kør en producer i sin EGEN dæmon-tråd med en hård timeout.
 
@@ -214,6 +252,11 @@ def _run_producer_bounded(spec, *, trigger: str, last_visible_at: str, timeout_s
     t.start()
     t.join(timeout_s)
     if t.is_alive():
+        # Tråden lever videre — «sprunget over» er kun sandt for OS. Noteres
+        # her, så `_evaluate_producer` kan nægte at starte endnu en af samme
+        # slags. Ellers blev en producent der er for langsom til sin egen
+        # timeout startet igen ved HVERT tik.
+        _noter_i_flugt(spec.name, t)
         raise TimeoutError(f"producer '{spec.name}' overskred {timeout_s:.0f}s — sprunget over")
     if "e" in box:
         raise box["e"]  # type: ignore[misc]
@@ -263,6 +306,7 @@ def run_cadence_tick(
     ran_this_tick: set[str] = set()
     due_names: list[str] = []
     blocked_names: list[str] = []
+    i_flugt_names: list[str] = []
     cooling_names: list[str] = []
     grace_names: list[str] = []
     ran_names: list[str] = []
@@ -323,6 +367,14 @@ def run_cadence_tick(
                     pass
             except Exception as exc:
                 error_names.append(spec.name)
+                # En TIMEOUT er ikke en fejlet kørsel — den kører stadig. Uden
+                # dette stempel blev `_last_run_at` aldrig sat (linjen står
+                # efter kaldet, inde i try'en), så afkølingen på 180 minutter
+                # aldrig trådte i kraft og producenten var «due» ved næste tik.
+                # `stadig_i_flugt` fanger det samme mere præcist; stemplet her
+                # er bagstopperen, hvis tråden når at dø mellem to tik.
+                if isinstance(exc, TimeoutError):
+                    _last_run_at[spec.name] = now_iso
                 logger.warning("cadence producer %s failed: %s", spec.name, exc)
                 results.append(ProducerTickResult(
                     name=spec.name,
@@ -349,6 +401,15 @@ def run_cadence_tick(
             results.append(ProducerTickResult(
                 name=spec.name, status=status, reason=reason,
             ))
+        elif status == "i_flugt":
+            # EGEN spand. Faldt den i «skipped», lignede den paa fladen en
+            # producent der havde fri — mens den i virkeligheden braendte en
+            # kerne. Den halve time hvor Bjoerns vaert gik fra 35 til 73 grader
+            # ville have staaet som ro.
+            i_flugt_names.append(spec.name)
+            results.append(ProducerTickResult(
+                name=spec.name, status=status, reason=reason,
+            ))
         else:
             results.append(ProducerTickResult(
                 name=spec.name, status="skipped", reason=reason,
@@ -370,6 +431,7 @@ def run_cadence_tick(
             "visible_grace": grace_names,
             "blocked": blocked_names,
             "errors": error_names,
+            "i_flugt": i_flugt_names,
         },
     )
 
@@ -395,6 +457,7 @@ def run_cadence_tick(
         "visible_grace": grace_names,
         "blocked": blocked_names,
         "errors": error_names,
+        "i_flugt": i_flugt_names,
         "results": [
             {
                 "name": r.name,

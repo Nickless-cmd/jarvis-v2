@@ -30,9 +30,11 @@ def _reset_cadence_state():
     """Reset cadence module state between tests."""
     cadence_mod._producers.clear()
     cadence_mod._last_run_at.clear()
+    cadence_mod._i_flugt.clear()
     cadence_mod._last_tick_at = ""
     cadence_mod._last_tick_results.clear()
     yield
+    cadence_mod._i_flugt.clear()
     cadence_mod._producers.clear()
     cadence_mod._last_run_at.clear()
     cadence_mod._last_tick_at = ""
@@ -415,3 +417,87 @@ def test_dep_stale_when_parent_ran_too_long_ago(isolated_runtime) -> None:
         child, now=now, last_visible_at=None, ran_this_tick=set(),
     )
     assert status == "blocked" and "dependency-stale:parent" in reason
+
+
+# ---------------------------------------------------------------------------
+# Traad-laek ved timeout (målt 26/9-2026)
+# ---------------------------------------------------------------------------
+#
+# `_run_producer_bounded` opgiver at vente efter 75 s og rejser TimeoutError.
+# Men tråden er daemon og kører VIDERE, og raise'et sker ud af try-blokken, så
+# `_last_run_at[spec.name] = now_iso` aldrig blev nået — afkølingen på 180
+# minutter trådte derfor aldrig i kraft, og producenten var «due» ved næste
+# tik. Ét tik = én ny tråd, for evigt.
+#
+# Målt på CT105: 26 af 86 tråde i `jarvis-runtime` sad i den samme producent
+# (`cadence-prod-agent_smith`), ca. én ny hvert 4.-5. minut. Værten gik fra 35
+# til 73 °C i løbet af dagen og sendte køle-advarsler til Bjørns telefon.
+
+
+def _langsom(navn: str, sekunder: float):
+    """Producent der er langsommere end sin egen timeout."""
+    import time as _t
+    startede = []
+
+    def run_fn(*, trigger: str, last_visible_at: str = ""):
+        startede.append(trigger)
+        _t.sleep(sekunder)
+        return {"ran": True}
+
+    return ProducerSpec(name=navn, cooldown_minutes=180, visible_grace_minutes=0,
+                        run_fn=run_fn, priority=5), startede
+
+
+def test_en_producent_der_stadig_koerer_startes_ikke_igen(isolated_runtime, monkeypatch):
+    monkeypatch.setattr(cadence_mod, "_PRODUCER_TIMEOUT_S", 0.2)
+    spec, startede = _langsom("snegl", 3.0)
+    register_producer(spec)
+
+    run_cadence_tick(trigger="test")
+    assert len(startede) == 1, "opsaetningen virker ikke"
+
+    # Andet tik MENS den foerste stadig koerer.
+    ud = run_cadence_tick(trigger="test")
+    assert len(startede) == 1, "der blev startet en traad mere oven i den koerende"
+    status = {str(r.get("name")): str(r.get("status"))
+              for r in (ud.get("results") or [])}
+    assert status.get("snegl") == "i_flugt", status
+    # Egen spand, ikke «skipped»: en producent der braender en kerne maa ikke
+    # se ud som en der har fri.
+    assert ud.get("i_flugt") == ["snegl"]
+
+
+def test_afkoelingen_stemples_ogsaa_naar_producenten_timer_ud(isolated_runtime, monkeypatch):
+    # Bagstopperen: naar traaden naar at doe mellem to tik, er `stadig_i_flugt`
+    # False, og saa er det kun stemplet der holder afkoelingen.
+    monkeypatch.setattr(cadence_mod, "_PRODUCER_TIMEOUT_S", 0.2)
+    spec, _ = _langsom("stempel", 0.5)
+    register_producer(spec)
+
+    run_cadence_tick(trigger="test")
+    assert cadence_mod._last_run_at.get("stempel"), \
+        "afkoelingen blev aldrig stemplet — producenten er «due» igen ved naeste tik"
+
+
+def test_en_ALMINDELIG_fejl_stempler_IKKE_afkoelingen(isolated_runtime):
+    # En producent der fejler hurtigt skal gerne proeve igen. Kun timeout
+    # betyder «den koerer stadig».
+    def run_fn(*, trigger: str, last_visible_at: str = ""):
+        raise RuntimeError("gik galt")
+
+    register_producer(ProducerSpec(name="fejler", cooldown_minutes=180,
+                                   visible_grace_minutes=0, run_fn=run_fn, priority=5))
+    run_cadence_tick(trigger="test")
+    assert "fejler" not in cadence_mod._last_run_at
+
+
+def test_registret_vokser_ikke_naar_traaden_er_doed(isolated_runtime, monkeypatch):
+    import time as _t
+    monkeypatch.setattr(cadence_mod, "_PRODUCER_TIMEOUT_S", 0.2)
+    spec, _ = _langsom("kort", 0.5)
+    register_producer(spec)
+    run_cadence_tick(trigger="test")
+    assert cadence_mod.stadig_i_flugt("kort") is True
+    _t.sleep(1.0)
+    assert cadence_mod.stadig_i_flugt("kort") is False
+    assert "kort" not in cadence_mod._i_flugt, "den doede traad blev liggende"

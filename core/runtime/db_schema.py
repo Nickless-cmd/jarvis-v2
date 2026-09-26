@@ -507,6 +507,15 @@ def init_db() -> None:
             """
         )
         conn.execute(
+            # Rolle + tid. Tabellen havde KUN (session_id, id), saa ethvert
+            # opslag af formen «assistent-beskeder siden T» blev en fuld
+            # scanning: 72.224 raekker for at finde 205. Maalt 26/9-2026.
+            """
+            CREATE INDEX IF NOT EXISTS idx_chat_messages_rolle_tid
+            ON chat_messages(role, created_at)
+            """
+        )
+        conn.execute(
             """
             CREATE TABLE IF NOT EXISTS runtime_contract_candidates (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,

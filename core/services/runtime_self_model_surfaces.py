@@ -319,6 +319,10 @@ def _producer_layers() -> list[dict[str, str]]:
             role_map = {
                 "ran": "active",
                 "cooling_down": "cooling",
+                # En producent hvis forrige koersel stadig koerer ER aktiv.
+                # Uden denne linje faldt den til default «idle» og fladen
+                # ville vise ro netop mens den braendte en kerne.
+                "i_flugt": "active",
                 "visible_grace": "idle",
                 "blocked": "idle",
                 "error": "idle",

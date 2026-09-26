@@ -115,3 +115,48 @@ def test_en_daarlig_database_giver_tomt_svar_ikke_en_exception(monkeypatch):
                         lambda: (_ for _ in ()).throw(RuntimeError("nede")))
     r = hpc.census(24)
     assert r["available"] is False and r["models"] == []
+
+
+# ── Planen, ikke kun resultatet (26/9-2026) ─────────────────────────────
+
+
+def test_optaellingen_scanner_ikke_hele_visible_runs_pr_raekke(tmp_path):
+    """Uden indeks kostede folketællingen en kerne i døgndrift.
+
+    `_MODEL_FOR_MSG` er `? BETWEEN r.started_at AND r.finished_at ORDER BY
+    r.started_at DESC LIMIT 1`. Uden et indeks på tidsvinduet gav SQLite
+    `SCAN r` + `USE TEMP B-TREE FOR ORDER BY` for HVER ydre række. Målt på
+    CT105: 28,4 ms pr. opslag mod 19.883 rækker × 72.224 ydre rækker = 34
+    minutter for én gennemgang — og delforespørgslen står tre steder i planen.
+
+    Testen pinner PLANEN og ikke indeksets navn: det er ikke navnet der gør
+    arbejdet, og et omdøbt indeks der stadig virker skal ikke fælde den.
+    """
+    sti = tmp_path / "plan.db"
+    c = sqlite3.connect(sti)
+    c.executescript("""
+        CREATE TABLE visible_runs (run_id TEXT, model TEXT,
+                                   started_at TEXT, finished_at TEXT);
+        CREATE INDEX idx_visible_runs_vindue ON visible_runs(started_at, finished_at);
+    """)
+    plan = "\n".join(
+        str(r[-1]) for r in c.execute(
+            "EXPLAIN QUERY PLAN "
+            "SELECT r.model FROM visible_runs r "
+            "WHERE ? BETWEEN r.started_at AND r.finished_at "
+            "ORDER BY r.started_at DESC LIMIT 1", ("x",))
+    )
+    c.close()
+    assert "SCAN r" not in plan, plan
+    assert "TEMP B-TREE" not in plan, plan
+
+
+def test_indeksene_staar_i_skemaet_saa_en_frisk_db_faar_dem():
+    """Et indeks der kun findes i produktionen er ikke et indeks — det er et
+    uheld der endnu ikke er sket på den næste maskine."""
+    import inspect
+
+    from core.runtime import db_schema, db_visible
+
+    assert "idx_visible_runs_vindue" in inspect.getsource(db_visible.ensure_visible_tables)
+    assert "idx_chat_messages_rolle_tid" in inspect.getsource(db_schema)

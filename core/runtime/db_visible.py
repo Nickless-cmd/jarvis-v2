@@ -31,6 +31,19 @@ def ensure_visible_tables(conn: sqlite3.Connection) -> None:
         """
     )
     conn.execute(
+        # Tidsvinduet. `hollow_promise_census` slaar modellen op med
+        # `? BETWEEN r.started_at AND r.finished_at ORDER BY r.started_at DESC
+        # LIMIT 1` — uden indeks blev det SCAN r + TEMP B-TREE FOR ORDER BY for
+        # HVER ydre raekke. Maalt 26/9-2026 paa CT105: 28,4 ms pr. opslag mod
+        # 19.883 raekker, gange 72.224 ydre raekker = 34 minutter for ÉN
+        # gennemgang. Paa en kopi af samme tabel bringer dette indeks opslaget
+        # under timer-oploesning, altsaa hele scanningen til ~0,1 s.
+        """
+        CREATE INDEX IF NOT EXISTS idx_visible_runs_vindue
+        ON visible_runs(started_at, finished_at)
+        """
+    )
+    conn.execute(
         """
         CREATE TABLE IF NOT EXISTS visible_work_notes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,

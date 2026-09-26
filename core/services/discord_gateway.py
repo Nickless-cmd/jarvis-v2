@@ -12,6 +12,7 @@ import json
 import logging
 import os
 import queue
+import re
 import threading
 import time
 import urllib.error
@@ -527,14 +528,112 @@ def _get_or_create_discord_session(
         return str(create_chat_session(title=target_title)["id"])
 
 
+# Kode-fence-linje (``` eller ~~~), evt. med sprog-tag. Bruges til at holde
+# styr på om en chunk slutter inde i en kodeblok.
+_FENCE_LINE_RE = re.compile(r"^\s*(`{3,}|~{3,})")
+
+
+def _is_table_row(line: str) -> bool:
+    """En tabel-række: starter med `|` og har mindst to pipe-tegn (`| a | b |`)."""
+    s = line.strip()
+    return s.startswith("|") and s.count("|") >= 2
+
+
+def _is_table_separator(line: str) -> bool:
+    """True for GFM-separatorrækken (`| --- | :--: |`) der skelner header fra data."""
+    s = line.strip()
+    if not s.startswith("|"):
+        return False
+    cells = [c.strip() for c in s.strip("|").split("|")]
+    return bool(cells) and all(re.fullmatch(r":?-{1,}:?", c) for c in cells)
+
+
+def _wrap_tables_for_discord(text: str) -> str:
+    """Pak GFM-tabeller i kode-fences — Discord tegner dem ikke ellers.
+
+    Normalizeren (`markdown_structure.normalize_markdown_structure`) kører for
+    ALLE kanaler og producerer rigtige GFM-tabeller. Discord har ingen
+    tabel-renderer: rækkerne står som rå `| a | b |`-tegn. Indholdet i en
+    ```-blok tegnes monospace og på linje, så tabellen bliver læsbar igen.
+    Rører ikke tabeller der allerede står inde i en fence."""
+    if "|" not in text:
+        return text
+    lines = text.split("\n")
+    out: list[str] = []
+    fence: str | None = None
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        m = _FENCE_LINE_RE.match(line)
+        if m:
+            fence = None if fence else m.group(1)
+            out.append(line)
+            i += 1
+            continue
+        if (
+            fence is None
+            and _is_table_row(line)
+            and i + 1 < len(lines)
+            and _is_table_separator(lines[i + 1])
+        ):
+            j = i
+            while j < len(lines) and _is_table_row(lines[j]):
+                j += 1
+            out.append("```")
+            out.extend(lines[i:j])
+            out.append("```")
+            i = j
+            continue
+        out.append(line)
+        i += 1
+    return "\n".join(out)
+
+
 def _split_message(text: str, limit: int) -> list[str]:
-    """Split text into chunks of at most `limit` characters."""
+    """Split text into chunks of at most `limit` characters.
+
+    Linjebevidst: bryder ved linjeskift frem for midt i en linje, og holder
+    styr på åbne kode-fences — en fence der krydser grænsen lukkes ved
+    chunk-slut og genåbnes ved næste chunks start, så Discord ikke viser
+    halve kodeblokke. En enkelt linje længere end `limit` hard-splittes."""
     if len(text) <= limit:
         return [text]
-    chunks = []
-    while text:
-        chunks.append(text[:limit])
-        text = text[limit:]
+    chunks: list[str] = []
+    cur: list[str] = []
+    cur_len = 0
+    fence: str | None = None
+
+    for line in text.split("\n"):
+        add = len(line) + (1 if cur else 0)
+        # En åben fence koster en ekstra lukke-linje ved chunk-slut — hold
+        # plads til den, så ingen chunk overskrider loftet.
+        budget = limit - (len(fence) + 1 if fence else 0)
+        if cur and cur_len + add > budget:
+            # Luk en åben fence i den chunk vi forlader, og genåbn i næste —
+            # ellers står resten af koden som løs tekst hos Discord.
+            body = "\n".join(cur)
+            if fence:
+                body = body + "\n" + fence
+            chunks.append(body)
+            cur = []
+            cur_len = 0
+            if fence:
+                cur.append(fence)
+                cur_len = len(fence)
+                add = len(line) + 1
+        if not cur and len(line) > limit:
+            # Enkelt linje større end hele loftet: hard-split (kan ikke brydes
+            # ved linjeskift). Fence-linjer er korte og rammer aldrig her.
+            for k in range(0, len(line), limit):
+                chunks.append(line[k:k + limit])
+            continue
+        cur.append(line)
+        cur_len += add
+        m = _FENCE_LINE_RE.match(line)
+        if m:
+            fence = None if fence else m.group(1)
+    if cur:
+        chunks.append("\n".join(cur))
     return chunks
 
 
@@ -592,6 +691,11 @@ async def _send_outbound_loop() -> None:
                     _typing_channels.add(channel_id)
                     asyncio.ensure_future(_typing_loop(channel_id))
             continue
+
+        # Discord tegner ikke GFM-tabeller — pak dem i kode-fences. Kun
+        # Discord; normalizeren og desk/webchat er urørt.
+        if text:
+            text = _wrap_tables_for_discord(text)
 
         # Stop typing indicator before sending
         with _typing_lock:

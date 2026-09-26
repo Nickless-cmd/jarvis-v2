@@ -116,3 +116,38 @@ def test_ryd_gamle_fjerner_kun_klarede(isolated_runtime) -> None:
     with connect() as conn:
         tilbage = [r[0] for r in conn.execute("SELECT id FROM notifikationer").fetchall()]
     assert tilbage == [aaben]
+
+
+def test_afsluttede_er_historikken_og_aabne_er_to_do(isolated_runtime) -> None:
+    """To lister over SAMME tabel, adskilt af `klaret`. Foer fandtes kun den
+    ene, og et svar slettede sit eget spoer (Bjoern 26/9-2026)."""
+    from core.services import notifikationer as n
+
+    aaben = n.opret(user_id="bjorn", slags="reminder", kilde="egen", titel="Aaben")
+    lukket = n.opret(user_id="bjorn", slags="reminder", kilde="egen", titel="Lukket")
+    n.luk(lukket, "godkendt")
+
+    assert [r["id"] for r in n.aabne("bjorn", er_owner=True)] == [aaben]
+    historik = n.afsluttede("bjorn")
+    assert [r["id"] for r in historik] == [lukket]
+    assert historik[0]["udfald"] == "godkendt"
+    assert historik[0]["klaret"] is not None
+
+
+def test_afsluttede_ser_kun_egne_og_kun_inden_for_vinduet(isolated_runtime) -> None:
+    from datetime import UTC, datetime, timedelta
+    from core.services import notifikationer as n
+    from core.runtime.db import connect
+
+    min_egen = n.opret(user_id="bjorn", slags="reminder", kilde="egen", titel="Min")
+    n.luk(min_egen, "seen")
+    andens = n.opret(user_id="mikkel", slags="reminder", kilde="egen", titel="Mikkels")
+    n.luk(andens, "seen")
+    gammel = n.opret(user_id="bjorn", slags="reminder", kilde="egen", titel="Gammel")
+    n.luk(gammel, "seen")
+    for_laenge_siden = (datetime.now(UTC) - timedelta(days=9)).isoformat()
+    with connect() as conn:
+        conn.execute("UPDATE notifikationer SET klaret=? WHERE id=?", (for_laenge_siden, gammel))
+        conn.commit()
+
+    assert [r["id"] for r in n.afsluttede("bjorn")] == [min_egen]

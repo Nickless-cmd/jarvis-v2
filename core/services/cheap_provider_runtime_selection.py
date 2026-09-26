@@ -328,6 +328,7 @@ _PUBLIC_PROXY_PROVIDERS = (
     "chinaapi-premium",
     "airforce",
     "tuzi",
+    "fujcloud",
 )
 
 # Round-robin counter so consecutive background calls spread across the

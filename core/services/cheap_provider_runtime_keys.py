@@ -50,6 +50,7 @@ RUNTIME_KEY_PROVIDERS: dict[str, tuple[str, str]] = {
     # Samme konto, samme nøgle — kun routing-niveauet er forskelligt.
     "chinaapi-premium": ("chinaapi_api_key", "CHINAAPI_API_KEY"),
     "tuzi": ("tuzi_api_key", "TUZI_API_KEY"),
+    "fujcloud": ("fujcloud_api_key", "FUJCLOUD_API_KEY"),
 }
 
 

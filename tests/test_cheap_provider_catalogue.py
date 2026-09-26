@@ -167,16 +167,25 @@ def test_chinaapi_lister_KUN_de_modeller_hvor_forbruget_blev_maalt_til_nul():
     assert not any(k in " ".join(m) for k in ("opus", "gpt-5", "kimi", "gemini"))
 
 
-def test_tuzi_er_PAID_for_den_har_ingen_gratis_tekstmodeller():
-    """213 af de 797 modeller står med `model_ratio: 0` — men fælden er et
-    ANDET felt end på chinaapi: kun ÉN af de 213 har også `model_price: 0`,
-    og den er ikke en tekstmodel. De øvrige 212 har fast pris pr. kald.
+def test_tuzi_er_IKKE_wired_for_kontoen_er_tom():
+    """Registreret, deployet, og så svarede det første kald i drift:
 
-    På chinaapi var fælden `quota_type: 1`. Samme gateway-software, to
-    forskellige felter. Derfor duer det ikke at lære ét mønster og genbruge
-    det — hver konto skal måles.
+        预扣费额度失败, 用户剩余额度: ＄0.075
+
+    «forhåndsreservation mislykkedes, resterende saldo: $0,075». En udbyder
+    der fejler hvert kald må ikke stå i puljen — balanceren ville bruge et
+    forsøg på den hver gang. Den står som dokumenteret kommentar, som
+    SiliconFlow, så den kan wires igen med én blok hvis kontoen fyldes.
+
+    Gateway-softwarens fejltekst røber i øvrigt den ægte saldo. Det er den
+    eneste pålidelige vej: `/v1/dashboard/billing/subscription` svarer med
+    NewAPI's attrap (`hard_limit_usd: 100000000`), og `total_usage` er et
+    rullende vindue der kan FALDE mellem to målinger.
     """
-    assert kat.CHEAP_PROVIDER_DEFAULTS["tuzi"]["cost_class"] == "paid"
+    assert "tuzi" not in kat.CHEAP_PROVIDER_DEFAULTS
+    import inspect
+    src = inspect.getsource(kat)
+    assert "api.tu-zi.com" in src, "viden om udbyderen må ikke forsvinde"
 
 
 def test_frontiermodellerne_ligger_i_deres_EGEN_post():
@@ -202,7 +211,40 @@ def test_udeladte_modeller_er_dem_der_ikke_svarede():
     `model_requires_topup`, `gpt-5.5` svarede tomt, og på tu-zi gjorde
     `deepseek-v3` og `kimi-k2.6` det samme."""
     prem = kat.CHEAP_PROVIDER_DEFAULTS["chinaapi-premium"]["static_models"]
-    assert "deepseek-v4-pro" not in prem
-    assert "gpt-5.5" not in prem
-    tuzi = kat.CHEAP_PROVIDER_DEFAULTS["tuzi"]["static_models"]
-    assert "deepseek-v3" not in tuzi and "kimi-k2.6" not in tuzi
+    assert "deepseek-v4-pro" not in prem, "den afviser aegte: available after topup"
+    # gpt-5.5 blev foerst udeladt paa et FORKERT grundlag: proben brugte
+    # `max_tokens: 16`, og paa en thinking-model gaar hele budgettet til
+    # `reasoning_content`. Med 800 tokens svarer den. En probe der er for lille
+    # kan ikke skelne «virker ikke» fra «taenker».
+    assert "gpt-5.5" in prem
+    # tu-zi er ikke wired (tom konto), men dens målinger står i kommentaren —
+    # netop de to der gav tomt svar, så ingen wirer dem igen i god tro.
+    import inspect
+    src = inspect.getsource(kat)
+    assert "deepseek-v3 og kimi-k2.6 gav tomt" in src
+
+
+def test_fujcloud_er_registreret_som_betalt_mellemhandler():
+    """Fjerde NewAPI-gateway. Ingen gratis flade: 20 modeller, 14 med fast
+    pris pr. kald og 6 token-prisede — ingen med pris nul."""
+    f = kat.CHEAP_PROVIDER_DEFAULTS["fujcloud"]
+    assert "ai.fujcloud.com" in str(f["base_url"])
+    assert f["cost_class"] == "paid"
+    assert "mercury-2.5" not in f["static_models"], "den gav tomt svar"
+
+
+def test_en_for_lille_probe_kan_ikke_skelne_doed_fra_taenkende():
+    """Den fejl jeg selv begik 26/9-2026, skrevet ind så den ikke gentages.
+
+    Jeg udelod `gpt-5.5` fra chinaapi med begrundelsen «svarede tomt». Proben
+    brugte `max_tokens: 16`, og på en thinking-model går hele budgettet til
+    `reasoning_content` — `content` bliver tom, og modellen ser død ud. Med
+    800 tokens svarer den «ok».
+
+    Tre af fujclouds modeller gør præcis det samme (76-514 tegn reasoning før
+    svaret), så fælden er ikke teoretisk her.
+    """
+    import inspect
+    src = inspect.getsource(kat)
+    assert "kan ikke skelne «virker ikke» fra «taenker»" in src
+    assert "reasoning_content" in src

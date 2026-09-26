@@ -31,19 +31,72 @@ CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
     # MÅLT at svare: claude-opus-4-5, gpt-5, gemini-2.5-flash,
     # claude-3-5-haiku-latest. `deepseek-v3` og `kimi-k2.6` gav tomt svar og
     # står derfor ikke her — kataloget lister kun det der HAR svaret.
-    "tuzi": {
-        "label": "tu-zi (gateway)",
-        "priority": 68,
-        "base_url": "https://api.tu-zi.com/v1",
+    # ── fujcloud (26/9-2026, Bjørns konto). Fjerde NewAPI-gateway i rækken,
+    # kørende i Vietnam — fejltekster kommer på vietnamesisk.
+    #
+    # NØGLEN SÅ ANDERLEDES UD, OG DET VAR IKKE ET FORMATPROBLEM. De to strenge
+    # Bjørn først gav var `dashboard-access-tokens`, ikke API-nøgler; beviset
+    # var at `/api/user/self` svarede «Thiếu header New-Api-User» — altså
+    # manglende header, ikke ugyldigt token. Kontoen havde slet ingen API-nøgle
+    # oprettet. Den rigtige er 48 tegn UDEN `sk-`-præfiks.
+    #
+    # INGEN GRATIS FLADE: 20 modeller i prislisten, 14 med `quota_type: 1`
+    # (fast pris pr. kald) og 6 token-prisede — ingen med pris nul. Prislisten
+    # kan læses uden nøgle på /api/pricing.
+    #
+    # MÅLT at svare (max_tokens=800): claude-opus-5, claude-sonnet-4-6,
+    # deepseek-v4-flash, glm-5.3-flash, mimo-v2.6-flash. `mercury-2.5` gav tomt
+    # og står derfor ikke her.
+    #
+    # BEMÆRK om de tre thinking-modeller: deepseek-v4-flash, glm-5.3-flash og
+    # mimo-v2.6-flash bruger 76-514 tegn på `reasoning_content` FØR de svarer.
+    # En probe med et lille `max_tokens` ser dem som døde. Det er ikke en
+    # teori — jeg begik netop den fejl på chinaapis `gpt-5.5` samme aften.
+    #
+    # SALDO: kontoen kører sin EGEN valuta (`quota_display_type: CUSTOM`,
+    # symbol ✦, 500.000 kvote = 1 ✦). Balancen er ~2.000 ✦. Hvad en ✦ er værd
+    # i rigtige penge kunne ikke fastslås — topup-kursen er admin-only. Så
+    # rækkevidden er kendt i ✦ og ukendt i kroner: ~30 kald til de dyre
+    # (65 ✦) eller ~150 til de billige (13 ✦).
+    "fujcloud": {
+        "label": "fujcloud (gateway, VN)",
+        "priority": 67,
+        "base_url": "https://ai.fujcloud.com/v1",
         "auth_kind": "bearer",
         "protocol": "openai-chat",
         "models_endpoint": "/models",
-        # Ingen rate-limit-headers set. Konservativt indtil et loft er målt.
         "rpm_limit": 10,
-        "daily_limit": 300,
+        "daily_limit": 100,
         "cost_class": "paid",
-        "static_models": ["gemini-2.5-flash", "claude-3-5-haiku-latest"],
+        "static_models": ["claude-sonnet-4-6", "deepseek-v4-flash",
+                          "glm-5.3-flash", "mimo-v2.6-flash"],
     },
+    # tu-zi / «Kanin-API» IKKE WIRED 26/9-2026 — kontoen er tom.
+    #
+    # Registreret, deployet og afprøvet i drift. Første kald svarede:
+    #     {"error":{"message":"预扣费额度失败, 用户剩余额度: ＄0.075"}}
+    # «forhåndsreservation mislykkedes, brugerens resterende saldo: $0,075».
+    # En udbyder der fejler HVERT kald må ikke stå i puljen: balanceren ville
+    # bruge et forsøg på den hver gang.
+    #
+    # Alt andet om den HOLDER, og det er derfor den står her frem for at være
+    # slettet — fyldes kontoen op, er det én blok at wire igen:
+    #
+    #   base_url   https://api.tu-zi.com/v1     (OpenAI-kompatibel, bearer)
+    #   nøgle      runtime.json → tuzi_api_key
+    #   familie    tredje NewAPI-instans i rækken (x-new-api-version,
+    #              x-oneapi-request-id, x-tuzi-route-class). 797 modeller.
+    #   svarede    claude-opus-4-5, gpt-5, gemini-2.5-flash,
+    #              claude-3-5-haiku-latest. deepseek-v3 og kimi-k2.6 gav tomt.
+    #   cost_class paid — og fælden er et ANDET felt end på chinaapi: 213
+    #              modeller har `model_ratio: 0`, men kun ÉN af dem har også
+    #              `model_price: 0`, og den er ikke en tekstmodel. De øvrige
+    #              212 har fast pris pr. kald i `model_price`. På chinaapi var
+    #              fælden `quota_type: 1`. Samme software, to felter — hver
+    #              konto skal måles for sig.
+    #   port       hører i _PUBLIC_PROXY_PROVIDERS: en tredjepart ser prompten
+    #              i klartekst uanset hvem der ejer kontoen.
+    #
     # ── chinaapi-premium (26/9-2026): frontiermodellerne på Bjørns
     # chinaapi-konto, som EGEN post efter `copilot-premium`-mønstret — høj
     # prioritet, valgt FØRST når betalt er tilladt, og aldrig blandet ind i
@@ -62,8 +115,15 @@ CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
     # størrelsesorden og ikke som forbrugsmåler. En rigtig samtale med
     # kontekst koster mange gange dette.
     #
-    # `deepseek-v4-pro` er udeladt: den svarer `model_requires_topup`.
-    # `gpt-5.5` svarede tomt ved min måling og står derfor heller ikke her.
+    # `deepseek-v4-pro` er udeladt: den svarer ægte «available after topup».
+    #
+    # RETTET samme aften: jeg udelod ogsaa `gpt-5.5` med begrundelsen «svarede
+    # tomt». Det var MIN maalefejl. Jeg proevede med `max_tokens: 16`, og paa en
+    # thinking-model gaar hele budgettet til `reasoning_content` — `content`
+    # bliver tom, og modellen ser doed ud. Med 800 tokens svarer den «ok».
+    #
+    # En probe paa 16 tokens kan ikke skelne «virker ikke» fra «taenker».
+    # Samme faelde som Ollamas thinking-modeller, i ny forklaedning.
     "chinaapi-premium": {
         "label": "ChinaAPI (frontier, betalt)",
         "priority": 6,
@@ -75,7 +135,7 @@ CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
         "daily_limit": 100,
         "cost_class": "paid",
         "static_models": ["claude-opus-5", "claude-haiku-4-5", "kimi-k3",
-                          "gemini-3.8-flash"],
+                          "gemini-3.8-flash", "gpt-5.5"],
     },
     # nscale: rigtig udbyder, OpenAI-kompatibel, 23 modeller og INGEN gratis —
     # alle har pris. «Free» er $5 engangskredit, derefter pay-as-you-go. Ingen

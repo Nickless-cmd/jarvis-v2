@@ -129,6 +129,61 @@ def test_en_appimage_uden_de_noedvendige_felter_afvises(monkeypatch, tmp_path, m
 
 
 def test_en_manglende_build_giver_en_brugbar_besked(monkeypatch, tmp_path):
+    """Fejlen skal sige hvad man GØR, ikke bare at noget mangler."""
+    import json
+
+    (tmp_path / "package.json").write_text(
+        json.dumps({"build": {"directories": {"output": "release"}}}), encoding="utf-8")
     monkeypatch.setattr(I, "DESK", tmp_path)
     with pytest.raises(I.Fejl, match="npm run package:linux"):
         I.find_appimage()
+
+
+# ── Output-mappen læses, ikke antages (målt 26/9-2026) ─────────────────────
+
+
+def test_byg_mappen_laeses_af_package_json(tmp_path, monkeypatch):
+    """Scriptet antog `dist/`. Konfigurationen siger `release/`, og fejlen
+    viste sig ved allerførste rigtige brug — i et script hvis hele pointe er
+    ikke at antage."""
+    import json
+
+    (tmp_path / "package.json").write_text(
+        json.dumps({"build": {"directories": {"output": "et-andet-sted"}}}),
+        encoding="utf-8")
+    monkeypatch.setattr(I, "DESK", tmp_path)
+
+    assert I.byg_mappe() == tmp_path / "et-andet-sted"
+
+
+def test_uden_konfiguration_falder_den_tilbage_paa_release(tmp_path, monkeypatch):
+    """electron-builders egen standard — ikke `dist`."""
+    import json
+
+    (tmp_path / "package.json").write_text(json.dumps({}), encoding="utf-8")
+    monkeypatch.setattr(I, "DESK", tmp_path)
+
+    assert I.byg_mappe().name == "release"
+
+
+def test_den_nyeste_build_vaelges(tmp_path, monkeypatch):
+    """`release/` samler ALLE udgivelser — 70+ på denne maskine. Vælges den
+    forkerte, installeres en gammel app uden at nogen opdager det."""
+    import json
+    import os
+    import time
+
+    (tmp_path / "package.json").write_text(
+        json.dumps({"build": {"directories": {"output": "release"}}}), encoding="utf-8")
+    rel = tmp_path / "release"
+    rel.mkdir()
+    for navn, alder in (("J.A.R.V.I.S-0.6.9.AppImage", 100),
+                        ("J.A.R.V.I.S-0.6.125.AppImage", 1),
+                        ("J.A.R.V.I.S-0.6.10.AppImage", 50)):
+        f = rel / navn
+        f.write_text("x", encoding="utf-8")
+        os.utime(f, (time.time() - alder, time.time() - alder))
+    monkeypatch.setattr(I, "DESK", tmp_path)
+
+    # Nyeste efter TID, ikke efter navn: "0.6.9" sorterer efter "0.6.125".
+    assert I.find_appimage().name == "J.A.R.V.I.S-0.6.125.AppImage"

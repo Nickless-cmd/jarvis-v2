@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8053/15545 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8054/15546 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -37,7 +37,7 @@ Generated from source. 8053/15545 functions/methods documented (51%). The list b
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.undo` | 2 | 18 | 11% |
 | `core.util` | 9 | 10 | 90% |
-| `scripts` | 218 | 471 | 46% |
+| `scripts` | 219 | 472 | 46% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
@@ -2135,8 +2135,8 @@ Generated from source. 8053/15545 functions/methods documented (51%). The list b
 - `scripts/injection_richness_check.py` :: `richness_ok` (L14)
 - `scripts/install_git_hooks.py` :: `install` (L115)
 - `scripts/install_git_hooks.py` :: `main` (L179)
-- `scripts/installer_desk_appimage.py` :: `byg_profil` (L149)
-- `scripts/installer_desk_appimage.py` :: `main` (L266)
+- `scripts/installer_desk_appimage.py` :: `byg_profil` (L167)
+- `scripts/installer_desk_appimage.py` :: `main` (L284)
 - `scripts/interlanguage_analyze.py` :: `analyze` (L61)
 - `scripts/interlanguage_analyze.py` :: `load_all` (L42)
 - `scripts/interlanguage_analyze.py` :: `main` (L96)

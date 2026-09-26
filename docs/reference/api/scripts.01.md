@@ -361,16 +361,17 @@ _Installér desk-AppImage'en, og hold `.desktop` og AppArmor-profil i takt med d
 |---|---|---|---|---|
 | class | `Fejl` | `` | En fejl brugeren skal se, ikke et stakspor. | [src](../../../scripts/installer_desk_appimage.py#L73) |
 | function | `_koer` | `(*args, tjek=…)` | — | [src](../../../scripts/installer_desk_appimage.py#L77) |
-| function | `find_appimage` | `()` | Nyeste AppImage i desk'ens `dist/`. | [src](../../../scripts/installer_desk_appimage.py#L81) |
-| function | `udpak` | `(appimage, moenster, ud)` | Udpak et mønster fra AppImage'en til `ud`. Kaster ved fejl. | [src](../../../scripts/installer_desk_appimage.py#L95) |
-| function | `laes_indlejret_desktop` | `(appimage)` | Nøgle→værdi fra AppImage'ens EGEN `.desktop`. | [src](../../../scripts/installer_desk_appimage.py#L106) |
-| function | `byg_desktop` | `(felter, maal)` | `.desktop`-indholdet, med `--no-sandbox` fjernet og stien sat. | [src](../../../scripts/installer_desk_appimage.py#L129) |
-| function | `byg_profil` | `(navn, maal)` | — | [src](../../../scripts/installer_desk_appimage.py#L149) |
-| function | `_skriv_hvis_anderledes` | `(sti, indhold, toerloeb)` | — | [src](../../../scripts/installer_desk_appimage.py#L172) |
-| function | `skriv_profil` | `(navn, indhold, toerloeb)` | Skriv profilen med sudo og genindlæs den. True hvis den ændrede sig. | [src](../../../scripts/installer_desk_appimage.py#L185) |
-| function | `installer_ikoner` | `(appimage, toerloeb)` | Kopiér AppImage'ens egne ikoner ind i temaet. Giver antallet. | [src](../../../scripts/installer_desk_appimage.py#L208) |
-| function | `verificer` | `(maal)` | Start appen SOM GNOME-SHELL GOER DET og se om zygoten overlever. | [src](../../../scripts/installer_desk_appimage.py#L225) |
-| function | `main` | `(argv=…)` | — | [src](../../../scripts/installer_desk_appimage.py#L266) |
+| function | `byg_mappe` | `()` | electron-builders output-mappe, LÆST af package.json. | [src](../../../scripts/installer_desk_appimage.py#L81) |
+| function | `find_appimage` | `()` | Nyeste AppImage i electron-builders output-mappe. | [src](../../../scripts/installer_desk_appimage.py#L98) |
+| function | `udpak` | `(appimage, moenster, ud)` | Udpak et mønster fra AppImage'en til `ud`. Kaster ved fejl. | [src](../../../scripts/installer_desk_appimage.py#L113) |
+| function | `laes_indlejret_desktop` | `(appimage)` | Nøgle→værdi fra AppImage'ens EGEN `.desktop`. | [src](../../../scripts/installer_desk_appimage.py#L124) |
+| function | `byg_desktop` | `(felter, maal)` | `.desktop`-indholdet, med `--no-sandbox` fjernet og stien sat. | [src](../../../scripts/installer_desk_appimage.py#L147) |
+| function | `byg_profil` | `(navn, maal)` | — | [src](../../../scripts/installer_desk_appimage.py#L167) |
+| function | `_skriv_hvis_anderledes` | `(sti, indhold, toerloeb)` | — | [src](../../../scripts/installer_desk_appimage.py#L190) |
+| function | `skriv_profil` | `(navn, indhold, toerloeb)` | Skriv profilen med sudo og genindlæs den. True hvis den ændrede sig. | [src](../../../scripts/installer_desk_appimage.py#L203) |
+| function | `installer_ikoner` | `(appimage, toerloeb)` | Kopiér AppImage'ens egne ikoner ind i temaet. Giver antallet. | [src](../../../scripts/installer_desk_appimage.py#L226) |
+| function | `verificer` | `(maal)` | Start appen SOM GNOME-SHELL GOER DET og se om zygoten overlever. | [src](../../../scripts/installer_desk_appimage.py#L243) |
+| function | `main` | `(argv=…)` | — | [src](../../../scripts/installer_desk_appimage.py#L284) |
 
 ## `scripts/interlanguage_analyze.py`
 _Interlanguage analysis — aggregate report over the practice corpus._

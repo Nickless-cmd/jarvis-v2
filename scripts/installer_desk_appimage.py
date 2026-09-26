@@ -78,15 +78,33 @@ def _koer(*args: str, tjek: bool = True) -> subprocess.CompletedProcess:
     return subprocess.run(args, capture_output=True, text=True, check=tjek)
 
 
+def byg_mappe() -> Path:
+    """electron-builders output-mappe, LÆST af package.json.
+
+    Jeg antog `dist/` da scriptet blev skrevet. Konfigurationen siger
+    `release/`, og fejlen viste sig ved allerførste rigtige brug — i et script
+    hvis hele pointe er ikke at antage. Nu står der ét sted hvor det slås op.
+    """
+    import json
+
+    try:
+        b = json.loads((DESK / "package.json").read_text(encoding="utf-8")).get("build") or {}
+        ud = (b.get("directories") or {}).get("output") or "release"
+    except (OSError, json.JSONDecodeError) as exc:
+        raise Fejl(f"kunne ikke læse {DESK / 'package.json'}: {exc}") from exc
+    return DESK / ud
+
+
 def find_appimage() -> Path:
-    """Nyeste AppImage i desk'ens `dist/`."""
+    """Nyeste AppImage i electron-builders output-mappe."""
+    mappe = byg_mappe()
     kandidater = sorted(
-        (DESK / "dist").glob("*.AppImage"),
+        mappe.glob("*.AppImage"),
         key=lambda p: p.stat().st_mtime, reverse=True,
     )
     if not kandidater:
         raise Fejl(
-            f"ingen AppImage i {DESK / 'dist'} — byg den først:\n"
+            f"ingen AppImage i {mappe} — byg den først:\n"
             f"    cd {DESK} && npm run package:linux"
         )
     return kandidater[0]

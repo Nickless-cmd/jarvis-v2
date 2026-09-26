@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8038/15528 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8041/15530 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 8038/15528 functions/methods documented (51%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 695 | 1275 | 54% |
-| `core.services` | 5320 | 10562 | 50% |
+| `core.services` | 5323 | 10564 | 50% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 107 | 183 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -42,7 +42,7 @@ Generated from source. 8038/15528 functions/methods documented (51%). The list b
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2207)
+## Undocumented public functions (2206)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L209)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -678,10 +678,9 @@ Generated from source. 8038/15528 functions/methods documented (51%). The list b
 - `core/services/attention_budget.py` :: `AttentionTrace.omitted_sections` (L144)
 - `core/services/attention_budget.py` :: `AttentionTrace.summary` (L151)
 - `core/services/attention_budget.py` :: `AttentionTrace.trimmed_sections` (L148)
-- `core/services/attention_contour.py` :: `build_attention_contour_surface` (L20)
-- `core/services/attention_contour.py` :: `describe_attention` (L13)
-- `core/services/attention_contour.py` :: `format_attention_for_prompt` (L17)
-- `core/services/attention_contour.py` :: `get_attention_shape` (L10)
+- `core/services/attention_contour.py` :: `build_attention_contour_surface` (L122)
+- `core/services/attention_contour.py` :: `describe_attention` (L114)
+- `core/services/attention_contour.py` :: `format_attention_for_prompt` (L118)
 - `core/services/auto_code_review.py` :: `review_pending_commit` (L77)
 - `core/services/auto_continuation.py` :: `kaede_nr` (L198)
 - `core/services/auto_continuation.py` :: `saet_kaede` (L203)

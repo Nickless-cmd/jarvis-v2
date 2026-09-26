@@ -21,6 +21,7 @@ import logging
 from pathlib import Path
 
 from core.identity.workspace_bootstrap import ensure_default_workspace
+from core.identity.samtale_scope import aktuel_samtale_workspace
 
 logger = logging.getLogger(__name__)
 
@@ -124,10 +125,11 @@ def _fetch_chat_exemplars(*, limit: int) -> list[dict]:
             rows = c.execute(
                 """
                 SELECT content, created_at FROM chat_messages
-                WHERE role = 'assistant' AND created_at >= ?
+                WHERE role = 'assistant' AND workspace_name = ?
+                  AND created_at >= ?
                 ORDER BY id DESC LIMIT ?
                 """,
-                (cutoff, limit),
+                (aktuel_samtale_workspace(), cutoff, limit),
             ).fetchall()
     except Exception as exc:
         logger.warning("voice_curator: chat fetch failed: %s", exc)

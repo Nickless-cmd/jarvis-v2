@@ -20,6 +20,7 @@ metadata-only (andel/booleans/tællinger) — INTET samtaleindhold lækkes til e
 from __future__ import annotations
 
 from typing import Any
+from core.identity.samtale_scope import aktuel_samtale_workspace
 
 # Hvor mange af Jarvis' seneste svar vi læser klangen på.
 _SCAN_LIMIT = 30
@@ -57,8 +58,10 @@ def _recent_assistant_texts(limit: int = _SCAN_LIMIT) -> list[str]:
         from core.runtime.db_core import connect
         with connect() as conn:
             rows = conn.execute(
-                "SELECT content FROM chat_messages WHERE role='assistant' ORDER BY id DESC LIMIT ?",
-                (int(limit),)).fetchall()
+                # LÆKKEN 26/9-2026 — se core/identity/samtale_scope.py.
+                "SELECT content FROM chat_messages WHERE role='assistant' "
+                "AND workspace_name = ? ORDER BY id DESC LIMIT ?",
+                (aktuel_samtale_workspace(), int(limit))).fetchall()
         return [str(r["content"]) for r in rows if r and r["content"]]
     except Exception:
         return []

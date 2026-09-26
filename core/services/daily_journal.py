@@ -31,6 +31,7 @@ import time
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Any
+from core.identity.samtale_scope import aktuel_samtale_workspace
 
 logger = logging.getLogger(__name__)
 
@@ -73,13 +74,14 @@ def _fetch_chat_pairs_for_day(day: date, limit: int = 80) -> list[dict[str, str]
                 """
                 SELECT role, content, created_at FROM chat_messages
                 WHERE role IN ('user', 'assistant')
+                  AND workspace_name = ?
                   AND created_at >= ?
                   AND created_at < ?
                   AND LENGTH(COALESCE(content, '')) > 20
                 ORDER BY id ASC
                 LIMIT ?
                 """,
-                (start, end, limit),
+                (aktuel_samtale_workspace(), start, end, limit),
             ).fetchall()
     except Exception as exc:
         logger.debug("daily_journal: chat fetch failed: %s", exc)

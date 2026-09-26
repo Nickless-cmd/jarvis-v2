@@ -17,6 +17,7 @@ import re
 from collections import Counter
 from datetime import UTC, datetime
 from typing import Any
+from core.identity.samtale_scope import aktuel_samtale_workspace
 
 _PROFILE_KEY = "ghost_profile"
 _SENT_SPLIT = re.compile(r"[.!?…]+")
@@ -118,8 +119,10 @@ def _recent_texts(limit: int = 40) -> list[str]:
         from core.runtime.db_core import connect
         with connect() as conn:
             rows = conn.execute(
-                "SELECT content FROM chat_messages WHERE role='assistant' ORDER BY id DESC LIMIT ?",
-                (int(limit),)).fetchall()
+                # LÆKKEN 26/9-2026 — se core/identity/samtale_scope.py.
+                "SELECT content FROM chat_messages WHERE role='assistant' "
+                "AND workspace_name = ? ORDER BY id DESC LIMIT ?",
+                (aktuel_samtale_workspace(), int(limit))).fetchall()
         return [str(r["content"]) for r in rows if r and r["content"]]
     except Exception:
         return []

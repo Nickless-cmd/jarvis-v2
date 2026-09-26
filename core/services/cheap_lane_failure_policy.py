@@ -33,11 +33,18 @@ from __future__ import annotations
 
 # Config-drift: modellen/endpointet findes ikke, eller nøglen afvises. Ingen mængde
 # gentagelser inden for det næste døgn ændrer det — det kræver en config-ændring.
+#
+# ``model-unavailable`` (tilføjet 26/9-2026): udbyderen svarer 404 med "No endpoints
+# found for <model>". Målt på ``openrouter::nex-agi/nex-n2.5-mini:free``, der fejlede
+# 25 gange i træk: modellen har ingen endpoints, og der kommer ingen inden for det
+# næste døgn. Samme permanente tilstand som ``model-not-found`` — uden koden faldt den
+# til transient og var tilbage i lodtrækningen med det samme.
 PERMANENT_CODES: frozenset[str] = frozenset({
     "model-not-found",
     "not-found",
     "http-404",
     "http-410",
+    "model-unavailable",
     "auth-rejected",
     "unauthorized",
     "forbidden",
@@ -47,11 +54,20 @@ PERMANENT_CODES: frozenset[str] = frozenset({
 
 # Budgettet er brugt. Kommer tilbage på en daglig eller månedlig cyklus — men ikke
 # inden for de næste minutter, som breaker-trappen ellers ville antage.
+#
+# ``provider-blocked`` (tilføjet 26/9-2026): udbyderen har lukket kontoen for
+# gratis-kvoten ("account banned from free quota due to violations" — målt 90 gange i
+# DB'en). Det er IKKE config-drift: modellen findes. Og det er ikke en model-egenskab —
+# blokeringen hører til ÉN konto. Derfor står den bevidst ikke i ``_MODEL_GONE_CODES``,
+# hvor den ville lukke modellen for alle konti. Seks timer, ikke et døgn: blokeringen er
+# administrativ og kan løftes, og et slot skal ikke forsvinde i 24 timer på en tilstand
+# vi ikke selv kan verificere.
 DEPLETED_CODES: frozenset[str] = frozenset({
     "credits-exhausted",
     "quota-exhausted",
     "insufficient-credits",
     "billing",
+    "provider-blocked",
 })
 
 PERMANENT_QUARANTINE_S = 24 * 3600
@@ -102,7 +118,12 @@ def classify(error_kind: str, message: str = "") -> str:
 # Koder der handler om MODELLEN, ikke om kontoen. Skelnen er nødvendig, fordi
 # `cheap_provider_runtime_state` gælder pr. (udbyder, model) — ikke pr. konto.
 _TRANSIENT_NOT_FOUND_PHRASES = ("function id",)
-_MODEL_GONE_CODES: frozenset[str] = frozenset({"model-not-found", "not-found", "http-404", "http-410"})
+# ``model-unavailable`` er med her af samme grund som i ``PERMANENT_CODES``: "No
+# endpoints found" handler om MODELLEN og gælder alle konti. ``provider-blocked`` er
+# bevidst IKKE med — den handler om én konto, og tilstanden her er pr. (udbyder, model).
+_MODEL_GONE_CODES: frozenset[str] = frozenset({
+    "model-not-found", "not-found", "http-404", "http-410", "model-unavailable",
+})
 
 
 def model_retired(error_kind: str, message: str = "") -> bool:

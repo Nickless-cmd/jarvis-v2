@@ -17,6 +17,24 @@ class TestKlassifikation:
         for code in ("model-not-found", "http-410", "http-404", "not-found"):
             assert pol.classify(code) == "permanent", code
 
+    def test_model_uden_endpoints_er_permanent(self):
+        """Målt 26/9-2026: openrouter svarede 404 «No endpoints found for <model>» —
+        25 fejl i træk på nex-agi/nex-n2.5-mini:free. Modellen er væk, ikke flakkende."""
+        assert pol.classify("model-unavailable") == "permanent"
+        assert pol.quarantine_seconds("model-unavailable") == pol.PERMANENT_QUARANTINE_S
+
+    def test_blokeret_konto_er_depleted(self):
+        """Målt 26/9-2026: 90 fejl med «account banned from free quota». Modellen
+        findes — det er kontoen der er lukket. Seks timer, ikke et døgn."""
+        assert pol.classify("provider-blocked") == "depleted"
+        assert pol.quarantine_seconds("provider-blocked") == pol.DEPLETED_QUARANTINE_S
+
+    def test_blokeret_konto_lukker_ikke_modellen_for_andre(self):
+        """``model_retired`` gælder pr. (udbyder, model). En blokeret account2 må ikke
+        lukke modellen for account1 — men en model uden endpoints er væk for alle."""
+        assert pol.model_retired("provider-blocked") is False
+        assert pol.model_retired("model-unavailable") is True
+
     def test_afviste_noegler_er_permanente(self):
         for code in ("auth-rejected", "unauthorized", "forbidden", "http-401"):
             assert pol.classify(code) == "permanent", code

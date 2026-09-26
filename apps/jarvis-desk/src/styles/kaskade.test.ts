@@ -144,8 +144,12 @@ describe('kaskaden for miljø-feltets kontekst-række', () => {
 
     const vinder = vinderPaddingTop(kand)
     expect(vinder).not.toBeNull()
-    // 18 px = samme luft over som under (se app.css-noten med regnestykket).
-    expect(vinder!.vaerdi).toBe('18px')
+    // 14 px — ikke 18. Maalt paa skaermen 26/9-2026: med 18 laa linjen 24 px
+    // over teksten mod 18 under. Regnestykket staar i app.css:
+    //   over  = margin-top (6) + padding-top (14) = 20
+    //   under = listens bundmargin (8) + skillestregens margin (10) = 18
+    // `.env-row` har ingen egen padding — den antagelse kostede 4 px.
+    expect(vinder!.vaerdi).toBe('14px')
   })
 
   it('den vægtede selektor har højere specificitet end den bare .env-rows', () => {

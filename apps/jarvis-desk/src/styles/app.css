@@ -3769,8 +3769,18 @@ p.central-flag { margin: 0 0 6px; }
    specificitet (0,1,0), men senere, saa den vandt og aad de 18 px. Maalt
    26/9-2026: tallet var praecis det samme foer og efter rettelsen, mens
    bundlen indeholdt 18px. `.env-rows.rh-rows` (0,2,0) vinder uanset
-   raekkefoelgen. */
-.env-rows.rh-rows { margin-top: 6px; padding-top: 18px; border-top: 1px solid var(--line); }
+   raekkefoelgen.
+
+   TALLET ER 14, IKKE 18 — og det er maalt, ikke gættet. Foerste forsoeg
+   satte 18 og ramte 24 px over mod 18 under (maalt paa skaermen 26/9:
+   linjen y=268, teksten y=293-304, naeste linje y=321). Regnestykket:
+
+     over  = margin-top (6) + padding-top (14) = 20
+     under = listens bundmargin (8) + skillestregens margin (10) = 18
+
+   `.env-row` har INGEN egen padding — den antagelse kostede 4 px i foerste
+   forsoeg. De to sider skal moedes omkring 18-20, og 14 rammer det. */
+.env-rows.rh-rows { margin-top: 6px; padding-top: 14px; border-top: 1px solid var(--line); }
 .rh-tryk { color: var(--fg-3); }
 .rh-tryk.rh-medium { color: var(--warn-fg); }
 .rh-tryk.rh-high { color: var(--error-fg); }

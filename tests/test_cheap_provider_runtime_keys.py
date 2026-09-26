@@ -83,3 +83,13 @@ def test_katalog_entry_matcher_det_maalte():
     # Kun `:free`-mærkede i cheap lane — DeepSeek-modellerne trækker fra samme
     # pulje, men navnet lover intet, og de hører til i den synlige bane.
     assert all(m.endswith(":free") for m in e["static_models"])
+
+
+def test_de_tre_nye_udbydere_henter_deres_noegle_fra_runtime_json():
+    """Nøglerne bor KUN i `~/.jarvis-v2/config/runtime.json` på CT105 — aldrig
+    i repoet. Kortet her er mekanismen: uden en post bliver udbyderen markeret
+    som ikke-klar og kommer aldrig i puljen, selvom nøglen findes."""
+    for navn, forventet in (("nscale", "nscale_api_key"),
+                            ("airforce", "airforce_api_key"),
+                            ("chinaapi", "chinaapi_api_key")):
+        assert k.RUNTIME_KEY_PROVIDERS[navn][0] == forventet

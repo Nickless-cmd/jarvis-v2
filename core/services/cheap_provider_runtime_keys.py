@@ -43,6 +43,10 @@ RUNTIME_KEY_PROVIDERS: dict[str, tuple[str, str]] = {
     "agnes": ("agnes_api_key", "AGNES_API_KEY"),
     "orcarouter": ("orcarouter_api_key", "ORCAROUTER_API_KEY"),
     "meganova": ("meganova_api_key", "MEGANOVA_API_KEY"),
+    # 26/9-2026 — Bjørns egne konti. Nøglerne bor KUN i runtime.json på CT105.
+    "nscale": ("nscale_api_key", "NSCALE_API_KEY"),
+    "airforce": ("airforce_api_key", "AIRFORCE_API_KEY"),
+    "chinaapi": ("chinaapi_api_key", "CHINAAPI_API_KEY"),
 }
 
 

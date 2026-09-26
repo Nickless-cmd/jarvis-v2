@@ -3752,8 +3752,17 @@ p.central-flag { margin: 0 0 6px; }
 @media (prefers-reduced-motion: reduce) { .mention-rk { transition: none; } }
 
 /* Run health i miljø-feltet. Bruger env-rows' egen rytme — det er en
-   udvidelse af feltet, ikke et nyt kort med egen ramme. */
-.rh-rows { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--line); }
+   udvidelse af feltet, ikke et nyt kort med egen ramme.
+
+   Afstanden under border-top er 18 px, ikke 6 (Bjørn 26/9-2026: «stregen
+   over kontekst mangler lidt afstand til kontekst, altså lige så meget rum
+   som stregen under»). Regnestykket, målt på skærmbilledet: rummet UNDER
+   Kontekst er rækkens egen padding (2) + listens bundmargin (8) +
+   skillestregens margin (10) = 20 px. Rummet over var 6 + 2 = 8 px.
+   Marginerne kollapser IKKE — panelet er en flex-kolonne, så de 8 og de 10
+   lægges sammen. Med 18 px bliver begge sider 20, og rækken står midt
+   mellem de to linjer i stedet for at hænge op ad den øverste. */
+.rh-rows { margin-top: 6px; padding-top: 18px; border-top: 1px solid var(--line); }
 .rh-tryk { color: var(--fg-3); }
 .rh-tryk.rh-medium { color: var(--warn-fg); }
 .rh-tryk.rh-high { color: var(--error-fg); }

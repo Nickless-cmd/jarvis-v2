@@ -301,8 +301,26 @@ export interface KvoteVindue {
 export interface Kapacitet {
   generated_at?: string
   windows?: KvoteVindue[]
-  totals?: Record<string, { limit: number | null; used: number; remaining: number | null }>
+  totals?: Record<string, { limit: number | null; known_limit?: number; used: number; remaining: number | null; complete?: boolean }>
   unknown_members?: { provider?: string; auth_profile?: string; reason?: string }[]
+  usage?: Record<string, {
+    start_at: string; end_at: string
+    input_tokens: number; output_tokens: number; total_tokens: number
+    calls: number; unmetered_calls: number
+    profiles: {
+      provider: string; auth_profile: string; input_tokens: number
+      output_tokens: number; total_tokens: number; calls: number; unmetered_calls: number
+    }[]
+  }>
+  estimated_capacity?: Record<string, {
+    known_estimate_tokens: number; complete: boolean; end_at: string
+    unknown_members: { provider: string; auth_profile: string }[]
+    profiles: {
+      provider: string; auth_profile: string; daily_call_limit: number
+      sample_calls: number; mean_tokens_per_call: number
+      remaining_calls: number; estimated_tokens: number
+    }[]
+  }>
 }
 
 export interface Fund {

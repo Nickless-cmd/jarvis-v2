@@ -155,7 +155,7 @@ export function CheapLanePanel({ config }: { config?: ApiConfig }) {
       )}
 
       {fane === 'kapacitet' && (
-        <CheapLaneCapacity vinduer={butik.snapshot?.sections?.capacity?.data?.windows ?? []} />
+        <CheapLaneCapacity kapacitet={butik.snapshot?.sections?.capacity?.data ?? null} />
       )}
 
       {fane === 'pulje' && (

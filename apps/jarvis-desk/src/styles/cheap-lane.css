@@ -51,6 +51,21 @@
 
 /* ── kvoter ─────────────────────────────────────────────────────────── */
 
+.cl-kapacitet .cl-note { margin: 8px 0 12px; }
+.cl-kapacitet h3 { font-size: 13px; font-weight: 600; margin: 18px 0 8px; }
+.cl-kapacitet-tabel { width: 100%; border-collapse: collapse; font-size: 12px; }
+.cl-kapacitet-tabel th, .cl-kapacitet-tabel td {
+  padding: 8px 10px; border-bottom: 1px solid var(--line); text-align: right;
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.cl-kapacitet-tabel th:first-child { text-align: left; }
+.cl-kapacitet-tabel thead th { color: var(--fg-3); font-weight: 500; }
+.cl-kapacitet-tabel tbody th { color: var(--fg-1); font-weight: 500; }
+.cl-kapacitet-tabel td small { color: var(--fg-3); font-size: 10px; }
+.cl-kapacitet-detaljer { margin-top: 10px; }
+.cl-kapacitet-detaljer summary { cursor: pointer; color: var(--fg-2); font-size: 12px; }
+.cl-kapacitet-detaljer .cl-tabel-holder { margin-top: 7px; }
+
 .cl-kvoter { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 
 .cl-kvote {

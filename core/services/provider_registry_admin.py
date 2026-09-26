@@ -135,6 +135,7 @@ def fuld_registrering() -> dict[str, Any]:
             "model_count": len(modeller),
             "enabled_model_count": sum(1 for m in modeller if bool(m.get("enabled", True))),
             "quota_policy": list(p.get("quota_policy") or []),
+            "quota_policies": dict(p.get("quota_policies") or {}),
         })
 
     modeller = [{
@@ -236,8 +237,11 @@ def saet_kvote_politik(*, provider: str, auth_profile: str,
     for post in r["providers"]:
         if str(post.get("provider") or "") != p:
             continue
-        if str(post.get("auth_profile") or "default") != profil:
-            return {"status": "error", "fejl": f"ukendt auth_profile: {p}/{profil}"}
+        registry_profile = str(post.get("auth_profile") or "default")
+        if profil != registry_profile:
+            from core.services.auth_profile_scan import ready_profiles_for
+            if profil not in ready_profiles_for(p):
+                return {"status": "error", "fejl": f"ukendt auth_profile: {p}/{profil}"}
         har_cheap_lane = any(
             str(model.get("provider") or "") == p
             and str(model.get("lane") or "") == "cheap"
@@ -245,7 +249,12 @@ def saet_kvote_politik(*, provider: str, auth_profile: str,
         )
         if not har_cheap_lane:
             return {"status": "error", "fejl": f"udbyderen er ikke i cheap lane: {p}"}
-        post["quota_policy"] = valideret
+        if profil == registry_profile:
+            post["quota_policy"] = valideret
+        else:
+            profile_policies = dict(post.get("quota_policies") or {})
+            profile_policies[profil] = valideret
+            post["quota_policies"] = profile_policies
         post["updated_at"] = _nu()
         backup = _skriv(r)
         _sig_det_hoejt("kvote_politik", {

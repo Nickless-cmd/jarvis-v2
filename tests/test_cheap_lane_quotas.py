@@ -148,5 +148,139 @@ def test_unknown_provider_capacity_makes_aggregate_incomplete(
     assert total["limit"] is None
     assert total["known_limit"] == 1_000
     assert snapshot["unknown_members"] == [{
-        "provider": "mistral", "period": "month", "unit": "tokens",
+        "provider": "mistral", "auth_profile": "default",
+        "period": "month", "unit": "tokens",
     }]
+
+
+def test_capacity_usage_counts_both_accounts_without_quota_policy(
+    isolated_runtime, cheap_registry
+):
+    from core.runtime.db_cheap_provider import record_cheap_provider_invocation
+    from core.services.cheap_lane_quotas import capacity_snapshot
+
+    for profile, input_tokens, output_tokens in (
+        ("default", 100, 40), ("account2", 70, 30),
+    ):
+        record_cheap_provider_invocation(
+            provider="groq", model="llama", status="completed",
+            input_tokens=input_tokens, output_tokens=output_tokens,
+            auth_profile=profile,
+        )
+    snapshot = capacity_snapshot(now=datetime.now(UTC))
+
+    assert snapshot["windows"] == []
+    day = snapshot["usage"]["day"]
+    assert (day["input_tokens"], day["output_tokens"], day["total_tokens"]) == (170, 70, 240)
+    assert {(row["provider"], row["auth_profile"]): row["total_tokens"]
+            for row in day["profiles"]} == {
+        ("groq", "default"): 140, ("groq", "account2"): 100,
+    }
+
+
+def test_capacity_aggregate_keeps_unconfigured_account_unknown(
+    isolated_runtime, cheap_registry, monkeypatch
+):
+    from core.services import auth_profile_scan
+    from core.runtime import db_core
+    from core.services.cheap_lane_quotas import capacity_snapshot, set_quota_policy
+
+    monkeypatch.setattr(db_core, "get_runtime_state_bool", lambda *_args: True)
+    monkeypatch.setattr(auth_profile_scan, "ready_profiles_for",
+                        lambda provider: ["default", "account2"] if provider == "groq" else [])
+    set_quota_policy(provider="groq", auth_profile="default", windows=[{
+        "period": "month", "unit": "tokens", "limit": 1_000,
+    }])
+    snapshot = capacity_snapshot(now=datetime.now(UTC))
+
+    assert snapshot["totals"]["month:tokens"]["complete"] is False
+    assert snapshot["totals"]["month:tokens"]["known_limit"] == 1_000
+    assert {m["auth_profile"] for m in snapshot["unknown_members"]} == {"account2"}
+
+
+def test_request_based_estimate_uses_distinct_active_accounts(
+    isolated_runtime, cheap_registry, monkeypatch
+):
+    from core.runtime.db_cheap_provider import record_cheap_provider_invocation
+    from core.services import auth_profile_scan
+    from core.runtime import db_core
+    from core.services.cheap_provider_catalogue import CHEAP_PROVIDER_DEFAULTS
+    from core.services.cheap_lane_quotas import capacity_snapshot
+
+    monkeypatch.setattr(db_core, "get_runtime_state_bool", lambda *_args: True)
+    monkeypatch.setattr(auth_profile_scan, "ready_profiles_for",
+                        lambda provider: ["default", "account2"])
+    monkeypatch.setitem(CHEAP_PROVIDER_DEFAULTS["groq"], "daily_limit", 10)
+    for profile, tokens in (("default", 100), ("account2", 50)):
+        record_cheap_provider_invocation(
+            provider="groq", model="llama", status="completed",
+            input_tokens=tokens, output_tokens=0, auth_profile=profile,
+        )
+    snapshot = capacity_snapshot(now=datetime.now(UTC))
+    estimate = snapshot["estimated_capacity"]["day"]
+
+    assert estimate["known_estimate_tokens"] == 1350
+    assert estimate["complete"] is True
+    assert {(p["provider"], p["auth_profile"]) for p in estimate["profiles"]} == {
+        ("groq", "default"), ("groq", "account2"),
+    }
+
+
+def test_account2_can_have_its_own_quota_policy(
+    isolated_runtime, cheap_registry, monkeypatch
+):
+    from core.services import auth_profile_scan
+    from core.runtime import db_core
+    from core.services.cheap_lane_quotas import capacity_snapshot, set_quota_policy
+
+    monkeypatch.setattr(db_core, "get_runtime_state_bool", lambda *_args: True)
+    monkeypatch.setattr(auth_profile_scan, "ready_profiles_for",
+                        lambda provider: ["default", "account2"])
+    first = set_quota_policy(provider="groq", auth_profile="default", windows=[{
+        "period": "day", "unit": "tokens", "limit": 1000,
+    }])
+    second = set_quota_policy(provider="groq", auth_profile="account2", windows=[{
+        "period": "day", "unit": "tokens", "limit": 2000,
+    }])
+    snapshot = capacity_snapshot(now=datetime.now(UTC))
+
+    assert first["status"] == second["status"] == "ok"
+    assert snapshot["totals"]["day:tokens"]["limit"] == 3000
+    assert snapshot["totals"]["day:tokens"]["complete"] is True
+
+
+def test_fresh_provider_observation_is_visible_without_manual_policy(
+    isolated_runtime, cheap_registry
+):
+    from core.runtime.db_cheap_lane_control import record_quota_observation
+    from core.services.cheap_lane_quotas import capacity_snapshot
+
+    now = datetime.now(UTC)
+    record_quota_observation(
+        provider="groq", auth_profile="default", period="day", unit="tokens",
+        limit=5000, remaining=4200, reset_at=None, observed_at=now.isoformat(),
+    )
+    snapshot = capacity_snapshot(now=now)
+
+    assert snapshot["totals"]["day:tokens"]["limit"] == 5000
+    assert snapshot["windows"][0]["source"] == "provider"
+    assert snapshot["windows"][0]["remaining"] == 4200
+
+
+def test_ready_second_account_is_not_counted_while_multiprofile_is_off(
+    isolated_runtime, cheap_registry, monkeypatch
+):
+    from core.runtime import db_core
+    from core.services import auth_profile_scan
+    from core.services.cheap_lane_quotas import capacity_snapshot, set_quota_policy
+
+    monkeypatch.setattr(db_core, "get_runtime_state_bool", lambda *_args: False)
+    monkeypatch.setattr(auth_profile_scan, "ready_profiles_for",
+                        lambda provider: ["default", "account2"])
+    set_quota_policy(provider="groq", auth_profile="default", windows=[{
+        "period": "day", "unit": "tokens", "limit": 1000,
+    }])
+
+    snapshot = capacity_snapshot(now=datetime.now(UTC))
+    assert snapshot["totals"]["day:tokens"]["complete"] is True
+    assert snapshot["totals"]["day:tokens"]["limit"] == 1000

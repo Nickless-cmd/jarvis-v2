@@ -971,7 +971,7 @@ Generated from source. 8067/15558 functions/methods documented (51%). The list b
 - `core/services/daemon_manager.py` :: `set_daemon_enabled` (L844)
 - `core/services/daily_journal.py` :: `stop_daily_journal_daemon` (L296)
 - `core/services/day_shape_memory.py` :: `build_day_shape_surface` (L261)
-- `core/services/decision_enforcement.py` :: `subscribe` (L505)
+- `core/services/decision_enforcement.py` :: `subscribe` (L512)
 - `core/services/decision_ghosts.py` :: `build_decision_ghosts_surface` (L193)
 - `core/services/decision_ghosts.py` :: `describe_ghost_decision` (L163)
 - `core/services/decision_ghosts.py` :: `describe_success_echo` (L171)

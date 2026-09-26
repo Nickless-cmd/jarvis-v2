@@ -120,12 +120,26 @@ def decision_adherence_section() -> str:
     lines = ["\n[DECISION-ADHERENCE-GATE]"]
     for score, dec_id, directive in raekker[:_MAKS_LINJER]:
         if score < _CRITICAL_THRESHOLD:
-            # Critical band — adherence below 25%
+            # Critical band — adherence below 25%.
+            #
+            # Rettet 26/9-2026 (Bjørn: «lad eskalering erstatte revoke»).
+            # FØR stod der «ved fortsat lav adherence revokes decision
+            # automatisk» — og det var ikke sandt. Ingen kode kalder
+            # revoke_decision på en adherence-score; kun Agent Smith (når
+            # mønstret er løst) og konsoliderings-dommeren revokerer, og
+            # ingen af dem læser scoren. Truslen var pres uden mekanisme bag
+            # — og den ramte netop de beslutninger der peger på ægte
+            # svagheder. Et bånd der kan revoke, sletter systematisk de
+            # svære og beholder de lette: den modsatte af læring.
+            #
+            # Nu eskalerer båndet i HANDLING i stedet: en beslutning der ikke
+            # kan opfyldes som formuleret skal omformuleres, ikke slettes.
             lines.append(
                 f"Adherence {score:.0%} (kritisk band) — {dec_id}: {directive}"
             )
             lines.append(
-                "  Mekanisme: ved fortsat lav adherence revokes decision automatisk."
+                "  Handling: kan ikke opfyldes som formuleret — omformulér den "
+                "til trigger → handling → bevis. Den slettes ikke."
             )
         elif score < _ADVISORY_THRESHOLD:
             # Imperative band — adherence below 40%
@@ -133,7 +147,7 @@ def decision_adherence_section() -> str:
                 f"Adherence {score:.0%} (imperativ band) — {dec_id}: {directive}"
             )
             lines.append(
-                "  Mekanisme: adherence falder yderligere ved næste brud, kan trigger revoke."
+                "  Handling: bruddet gentages — navngiv det eksplicit i næste svar."
             )
         else:
             # Advisory band — adherence below good threshold

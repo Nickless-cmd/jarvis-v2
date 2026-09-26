@@ -44,7 +44,11 @@ def test_decision_adherence_gate_escalates_low_scores(monkeypatch):
 
     assert section.startswith("\n[DECISION-ADHERENCE-GATE]")
     assert "kritisk band" in section
-    assert "revokes decision automatisk" in section
+    # Rettet 26/9-2026: det kritiske bånd lovede en automatisk revoke der ikke
+    # findes i koden — og vagten låste løgnen fast. Nu pinner den i stedet at
+    # eskaleringen er en HANDLING (omformulér), og at truslen er væk.
+    assert "omformulér" in section
+    assert "revokes decision automatisk" not in section
 
 
 def test_decision_adherence_gate_shows_zero_score(monkeypatch):

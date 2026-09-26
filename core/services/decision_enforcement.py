@@ -84,9 +84,16 @@ def enforcement_section() -> str | None:
             lines.append(f"  • {directive}")
 
     if low_adherence_count > 0:
+        # Rettet 26/9-2026: FØR stod der «revoke ved fortsat brud» — men ingen
+        # kode revokerer på en adherence-score. Sektionen er slået fra når
+        # decision_signals_enabled er True (default), så løgnen var skjult;
+        # den ville vende tilbage den dag nogen flipper indstillingen.
+        # Båndet eskalerer i HANDLING: bruddet skal navngives, beslutningen
+        # omformuleres — ikke slettes.
         lines.append(
             f"Adherence under {_ESCALATION_THRESHOLD:.0%} på {low_adherence_count}/{len(active)} "
-            "decisions — enforcement-band aktiv (revoke ved fortsat brud)."
+            "decisions — enforcement-band aktiv (navngiv bruddet; omformulér hvis "
+            "beslutningen ikke kan opfyldes som skrevet)."
         )
     else:
         lines.append(

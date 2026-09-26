@@ -11,6 +11,7 @@ Slot orchestrering:
 """
 from __future__ import annotations
 import logging
+from core.identity.samtale_scope import aktuel_samtale_workspace
 
 logger = logging.getLogger("jarvis_brain_reflection")
 
@@ -59,7 +60,9 @@ def _was_active_today() -> bool:
         today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         with connect() as conn:
             row = conn.execute(
-                "SELECT 1 FROM chat_messages WHERE created_at >= ? LIMIT 1",
+                # LÆKKEN 26/9-2026 — se core/identity/samtale_scope.py.
+            "SELECT 1 FROM chat_messages WHERE workspace_name = ? "
+            "AND created_at >= ? LIMIT 1",
                 (today + "T00:00:00",),
             ).fetchone()
         return row is not None

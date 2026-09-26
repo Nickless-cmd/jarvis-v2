@@ -6,6 +6,7 @@ kill-switch; fail-closed for afsendelse. Self-safe — kaster aldrig i cadence-h
 from __future__ import annotations
 
 from typing import Any
+from core.identity.samtale_scope import aktuel_samtale_workspace
 
 _DIGEST_MAX = 5           # højst så mange normale items i én digest
 _PRESENT_WINDOW_S = 900   # owner regnes "til stede" hvis synlig < 15 min siden
@@ -155,7 +156,9 @@ def _owner_presence(uid: str) -> tuple[bool, float]:
     try:
         from core.runtime.db import connect
         with connect() as conn:
-            row = conn.execute("SELECT MAX(created_at) AS t FROM chat_messages WHERE role='user'").fetchone()
+            row = conn.execute(# LÆKKEN 26/9-2026 — se core/identity/samtale_scope.py.
+            "SELECT MAX(created_at) AS t FROM chat_messages "
+            "WHERE role='user' AND workspace_name = ?").fetchone()
         ts = row["t"] if row else None
         if ts:
             last_seen = datetime.fromisoformat(str(ts).replace("Z", "+00:00"))

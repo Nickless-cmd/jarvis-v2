@@ -299,6 +299,24 @@ def smoke_cheap_lane(
 # auth_kind="none" backups but were missing from this list, so they leaked into
 # default selection ahead of Groq/Mistral and were never excluded from the
 # important tier.
+# UDVIDET 26/9-2026, og betydningen er bredere end overskriften ovenfor.
+# Listen hed «anonyme/nøgleløse aggregatorer», men det afgørende er ikke om
+# der er en nøgle — det er om en TREDJEPART ser prompten i klartekst.
+#
+# Bjørn: «uanset om det ryger igennem der, så må vi styre hvad der ryger der
+# igennem». Det er præcis hvad denne liste gør: medlemmerne droppes for
+# «important»-arbejde og for de kaldere der sætter `include_public_proxy=False`
+# — i dag `inner_llm_enrichment` (som læser hans beskeder) og
+# `heartbeat_provider_fallback`. De må stadig tage almindeligt baggrundsarbejde.
+#
+# `chinaapi` og `airforce` er Bjørns EGNE konti med hans egen nøgle, men begge
+# er videresalgs-gateways: chinaapi svarer med `x-oneapi-request-id` og
+# `x-new-api-version`, altså en OneAPI/NewAPI-mellemhandler. Prompten passerer
+# deres server uanset hvem der ejer kontoen, og cheap-lanen kører på indhold
+# fra `chat_messages`.
+#
+# `nscale` står bevidst IKKE her: den er en førstepartsudbyder der kører sin
+# egen inferens, ikke en mellemhandler.
 _PUBLIC_PROXY_PROVIDERS = (
     "ollamafreeapi",
     "arko",
@@ -306,6 +324,8 @@ _PUBLIC_PROXY_PROVIDERS = (
     "kilo",
     "ovhcloud",
     "pollinations",
+    "chinaapi",
+    "airforce",
 )
 
 # Round-robin counter so consecutive background calls spread across the

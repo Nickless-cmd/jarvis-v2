@@ -2,6 +2,19 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `scripts/interlanguage_llm_judge.py`
+_LLM-judge for interlanguage validation — Phase 3+4 pre-registered design._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `load_expressions` | `(peer_id, *, days=…, limit=…)` | Pull expression_text for a peer from the interlanguage_practice table. | [src](../../../scripts/interlanguage_llm_judge.py#L58) |
+| function | `_ollama_chat` | `(model, prompt, *, timeout=…, retries=…)` | — | [src](../../../scripts/interlanguage_llm_judge.py#L73) |
+| function | `_parse_entity` | `(raw)` | Match first token of judge reply to an entity name (case-insensitive). | [src](../../../scripts/interlanguage_llm_judge.py#L98) |
+| function | `run_alpha` | `(model, *, seed=…)` | — | [src](../../../scripts/interlanguage_llm_judge.py#L110) |
+| function | `run_delta` | `(model, *, seed=…)` | — | [src](../../../scripts/interlanguage_llm_judge.py#L159) |
+| function | `_binomial_p` | `(k, n, p0)` | One-sided binomial p-value: P(X >= k) under H0 with prob p0. | [src](../../../scripts/interlanguage_llm_judge.py#L209) |
+| function | `main` | `()` | — | [src](../../../scripts/interlanguage_llm_judge.py#L225) |
+
 ## `scripts/interlanguage_structural_classifier.py`
 _Structural-feature classifier for interlanguage expressions._
 
@@ -444,17 +457,4 @@ _Bulk-rewrite legacy `[MEMORY.md]` / `[USER.md]` prefixes in daily memory._
 |---|---|---|---|---|
 | function | `rewrite_file` | `(path, *, dry_run)` | Return (matched_lines, rewritten_lines). | [src](../../../scripts/rewrite_legacy_memory_provenance.py#L36) |
 | function | `main` | `()` | — | [src](../../../scripts/rewrite_legacy_memory_provenance.py#L57) |
-
-## `scripts/seed_cognitive_state.py`
-_Seed cognitive state tables with initial values based on known context._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `seed_personality_vector` | `()` | Seed personality-vektoren (confidence/stil/præferencer/fejl/styrker/baseline). | [src](../../../scripts/seed_cognitive_state.py#L33) |
-| function | `seed_taste_profile` | `()` | Seed taste-profilen (kode-/design-/kommunikations-smag + evidence_count). | [src](../../../scripts/seed_cognitive_state.py#L84) |
-| function | `seed_relationship_texture` | `()` | Seed relations-teksturen (humor, inside-referencer, korrektions-mønstre, | [src](../../../scripts/seed_cognitive_state.py#L118) |
-| function | `seed_compass` | `()` | Seed kompas-tilstanden (bearing, rationale, open_loop_count). | [src](../../../scripts/seed_cognitive_state.py#L164) |
-| function | `seed_rhythm` | `()` | Seed rytme-tilstanden ud fra nuværende UTC-time. | [src](../../../scripts/seed_cognitive_state.py#L180) |
-| function | `seed_chronicle` | `()` | Seed en initial chronicle-post (2026-W14: narrativ, key_events, lessons). | [src](../../../scripts/seed_cognitive_state.py#L208) |
-| function | `main` | `()` | Kør alle seed-funktioner i rækkefølge og print samlet status. | [src](../../../scripts/seed_cognitive_state.py#L241) |
 

@@ -125,3 +125,43 @@ def test_meganova_kun_modellen_der_kaldte_vaerktoejet():
     e = kat.CHEAP_PROVIDER_DEFAULTS["meganova"]
     assert e["static_models"] == ["mistralai/Mistral-Small-3.2-24B-Instruct-2506"]
     assert "meganova" in kat._OPENAI_COMPATIBLE_PROVIDERS
+
+
+# ── Tre udbydere tilføjet 26/9-2026 ─────────────────────────────────────
+
+
+def test_de_tre_nye_udbydere_staar_i_kataloget():
+    for navn, url in (("nscale", "inference.api.nscale.com"),
+                      ("airforce", "api.airforce"),
+                      ("chinaapi", "api.chinaapi.ai")):
+        post = kat.CHEAP_PROVIDER_DEFAULTS[navn]
+        assert url in str(post["base_url"]), navn
+        assert post["static_models"], f"{navn} uden målte modeller"
+
+
+def test_airforce_baerer_sit_AEGTE_loft_paa_ét_kald_i_minuttet():
+    """Målt konkret: 65 s ventetid → 200, kald igen straks →
+    `rate_limit_exceeded, limit: 1, retry_after 59s`.
+
+    Mod ~440 kald/minut i puljen ville et optimistisk loft betyde at
+    balanceren brændte forsøg på den i næsten hvert forsøg. Tallet er ikke
+    forsigtighed — det er målingen.
+    """
+    assert kat.CHEAP_PROVIDER_DEFAULTS["airforce"]["rpm_limit"] == 1
+
+
+def test_nscale_er_PAID_for_den_har_ingen_gratis_modeller():
+    """23 modeller, alle med pris. «Free» er $5 engangskredit, og der er
+    ingen /credits-flade at læse resten på — den løber tør uden varsel.
+    Den skal derfor gennem den samme port som de øvrige betalte."""
+    assert kat.CHEAP_PROVIDER_DEFAULTS["nscale"]["cost_class"] == "paid"
+
+
+def test_chinaapi_lister_KUN_de_modeller_hvor_forbruget_blev_maalt_til_nul():
+    """45 af de 167 modeller står med `model_ratio: 0`, men 38 af dem har
+    `quota_type: 1` — fast pris pr. kald, hvor ratio-feltet intet betyder.
+    Kun de tre hvor `total_usage` er målt til IKKE at flytte sig hører til
+    her. Frontiermodellerne svarer også, men de koster."""
+    m = set(kat.CHEAP_PROVIDER_DEFAULTS["chinaapi"]["static_models"])
+    assert m == {"agnes-2.5-flash", "agnes-3.0-flash", "stepaudio-3-chat-preview"}
+    assert not any(k in " ".join(m) for k in ("opus", "gpt-5", "kimi", "gemini"))

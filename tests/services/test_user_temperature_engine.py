@@ -522,13 +522,32 @@ def test_ingen_query_uden_workspace_filter():
 
 
 def test_baseline_ser_kun_egen_workspace(fresh_db):
+    """Baselinen ser 30 dage tilbage, så rækkerne skal stemples RELATIVT.
+
+    Fundet 26/9-2026 ved at køre hele suiten under `faketime '+30 days'`:
+    med faste stempler (`2026-09-26T10:0i:00Z`) falder rækkerne ud af
+    `days=30`-vinduet en måned efter at vagten blev skrevet, og så bliver
+    den rød uden at noget er i stykker. Præcis samme fælde som
+    `test_decision_evidence.test_fremmed_workspace_laekker_ikke_ind`, der
+    var rød allerede en time efter.
+
+    En vagt der fejler af sig selv er værre end ingen vagt: den lærer folk
+    at se bort fra suiten, og næste gang filteret FAKTISK knækker, ligner
+    det bare den røde vi allerede kender.
+    """
+    from datetime import UTC, datetime, timedelta
+
     from core.services.user_temperature_engine import _compute_baseline
+
+    def _for(minutter: int) -> str:
+        return (datetime.now(UTC) - timedelta(minutes=minutter)).isoformat()
+
     for i in range(3):
         _indsæt(fresh_db, workspace="bjorn", role="user",
-                content="x" * 20, created_at=f"2026-09-26T10:0{i}:00Z", i=i)
+                content="x" * 20, created_at=_for(60 - i), i=i)
     for i in range(2):
         _indsæt(fresh_db, workspace="michelle", role="user",
-                content="y" * 20, created_at=f"2026-09-26T11:0{i}:00Z", i=10 + i)
+                content="y" * 20, created_at=_for(30 - i), i=10 + i)
 
     assert _compute_baseline(days=30, workspace="bjorn")["message_count"] == 3, (
         "baselinen må ikke se Michelles beskeder"

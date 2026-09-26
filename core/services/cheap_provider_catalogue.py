@@ -15,6 +15,85 @@ eksisterende kaldere og tests virker uændret.
 from __future__ import annotations
 
 CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
+    # ── Tre udbydere tilføjet 26/9-2026 (Bjørns egne konti, nøgler i
+    # runtime.json). Hver post er hvad der er MÅLT, ikke hvad siden lover.
+
+    # nscale: rigtig udbyder, OpenAI-kompatibel, 23 modeller og INGEN gratis —
+    # alle har pris. «Free» er $5 engangskredit, derefter pay-as-you-go. Ingen
+    # /credits- eller /usage-flade (404), så forbruget kan ikke læses herfra;
+    # kreditten løber tør uden varsel. Derfor `cost_class: paid`: den skal
+    # gennem den samme port som de øvrige betalte, ikke glide med som gratis.
+    # Billigst målt: Qwen3-4B $0,01/$0,03 pr. mio. — $5 rækker ~50 mio tokens.
+    # gpt-oss-20b ($0,05/$0,20) svarede på et rigtigt kald.
+    "nscale": {
+        "label": "nscale (engangskredit)",
+        "priority": 86,
+        "base_url": "https://inference.api.nscale.com/v1",
+        "auth_kind": "bearer",
+        "protocol": "openai-chat",
+        "models_endpoint": "/models",
+        "rpm_limit": 20,
+        "daily_limit": 200,
+        "cost_class": "paid",
+        "static_models": ["Qwen/Qwen3-4B", "openai/gpt-oss-20b"],
+    },
+    # airforce: free tier FINDES, men den er 1 request/MINUT (1.000/dag,
+    # kun basic models). Verificeret konkret: 65 s ventetid → 200, kald igen
+    # straks → `rate_limit_exceeded, limit: 1, retry_after 59s`.
+    #
+    # Mod vores ~440 kald/minut betyder det at den rate-limiteres i næsten
+    # hvert forsøg. `rpm_limit: 1` er derfor ikke forsigtighed — det er det
+    # ægte tal, og uden det ville balanceren brænde forsøg på den konstant.
+    # Prioritet 95 = nederst: den er en reserve, ikke en bane.
+    #
+    # API'et melder 636 modeller og `tier: free` på de fleste — feltet LYVER:
+    # de svarer 402 `paid_model_required`. Kun gpt-oss-20b svarede 200
+    # (tre andre gav 429). Deres egen side: 28 free, 588 bag $9,99/md.
+    "airforce": {
+        "label": "airforce (1 RPM free tier)",
+        "priority": 95,
+        "base_url": "https://api.airforce/v1",
+        "auth_kind": "bearer",
+        "protocol": "openai-chat",
+        "models_endpoint": "/models",
+        "rpm_limit": 1,
+        "daily_limit": 1000,
+        "cost_class": "free",
+        "static_models": ["gpt-oss-20b"],
+    },
+    # chinaapi: OneAPI/NewAPI-GATEWAY (x-oneapi-request-id, x-new-api-version)
+    # — en mellemhandler der videresælger adgang. Ikke vores `agnes`-provider
+    # (den peger på apihub.agnes-ai.com). Bjørns egen konto, oprettet 26/9,
+    # saldo $1,9990, forbrug $0,0010 over 15 kald, unlimited quota.
+    #
+    # DEN FÆLDE DER GØR MODELLISTEN KORT: 45 af de 167 modeller står med
+    # `model_ratio: 0`, men 38 af dem har `quota_type: 1` — fast pris pr.
+    # kald, hvor ratio-feltet intet betyder. Kun `quota_type: 0` +
+    # `billing_unit: tokens` er reelt gratis. `static_models` er derfor kun
+    # de tre hvor `total_usage` er MÅLT til ikke at flytte sig.
+    #
+    # Frontiermodellerne svarer også (claude-opus-5, gpt-5.5, kimi-k3,
+    # gemini-3.8-flash), men de koster, og cheap-lanen er ikke stedet:
+    # «Cheap models may support Jarvis, not define him».
+    #
+    # PRIVATLIV: prompten går i klartekst gennem deres server uanset hvem der
+    # ejer kontoen. Cheap-lanen kører på indhold fra `chat_messages`. Sagt
+    # til Bjørn 26/9; hans beslutning.
+    "chinaapi": {
+        "label": "ChinaAPI (gateway)",
+        "priority": 66,
+        "base_url": "https://api.chinaapi.ai/v1",
+        "auth_kind": "bearer",
+        "protocol": "openai-chat",
+        "models_endpoint": "/models",
+        # Ingen rate-limit-headers set i fire kald i træk. 10 er et
+        # konservativt gæt indtil et loft er målt — ikke et tal de har oplyst.
+        "rpm_limit": 10,
+        "daily_limit": 300,
+        "cost_class": "free",
+        "static_models": ["agnes-2.5-flash", "agnes-3.0-flash",
+                          "stepaudio-3-chat-preview"],
+    },
     # Phase A re-prioritization (2026-04-26): groq was hogging the chain
     # with priority=10 even though it's frequently rate-limited and in
     # cooldown. Spread load across nvidia-nim / openrouter / sambanova /

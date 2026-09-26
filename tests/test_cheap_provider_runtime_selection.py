@@ -268,3 +268,31 @@ def test_slukket_model_i_registret_kommer_ikke_ind_via_kataloget(monkeypatch):
     xkiro = {c["model"] for c in sel._configured_cheap_candidates(include_public_proxy=True) if c["provider"] == "xkiro"}
     assert doed not in xkiro
     assert levende in xkiro
+
+
+# ── Hvad der må ryge gennem en mellemhandler (26/9-2026) ────────────────
+
+
+def test_de_to_gateways_regnes_som_mellemhandlere():
+    """Bjørn: «uanset om det ryger igennem der, så må vi styre hvad der ryger
+    der igennem».
+
+    `chinaapi` og `airforce` er hans egne konti med hans egen nøgle, men begge
+    er videresalgs-gateways — chinaapi svarer med `x-oneapi-request-id`. Prompten
+    passerer deres server uanset hvem der ejer kontoen, og cheap-lanen kører på
+    indhold fra `chat_messages`. Medlemskab her er styringen: de droppes for
+    «important»-arbejde og for de kaldere der sætter `include_public_proxy=False`.
+    """
+    from core.services.cheap_provider_runtime_selection import _is_public_proxy
+
+    assert _is_public_proxy("chinaapi")
+    assert _is_public_proxy("airforce")
+
+
+def test_nscale_er_IKKE_en_mellemhandler():
+    """Førstepartsudbyder der kører sin egen inferens. At sætte den på listen
+    ville gøre ordet meningsløst — og listen er kun værd at have så længe den
+    betyder én ting."""
+    from core.services.cheap_provider_runtime_selection import _is_public_proxy
+
+    assert not _is_public_proxy("nscale")

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8093/15584 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8093/15586 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -37,12 +37,12 @@ Generated from source. 8093/15584 functions/methods documented (51%). The list b
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.undo` | 2 | 18 | 11% |
 | `core.util` | 9 | 10 | 90% |
-| `scripts` | 219 | 472 | 46% |
+| `scripts` | 219 | 474 | 46% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2206)
+## Undocumented public functions (2207)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L209)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -850,8 +850,8 @@ Generated from source. 8093/15584 functions/methods documented (51%). The list b
 - `core/services/cheap_provider_runtime_adapters.py` :: `provider_runtime_defaults` (L106)
 - `core/services/cheap_provider_runtime_adapters.py` :: `supported_cheap_providers` (L96)
 - `core/services/cheap_provider_runtime_selection.py` :: `cheap_lane_status_surface` (L81)
-- `core/services/cheap_provider_runtime_selection.py` :: `execute_cheap_lane_via_pool` (L672)
-- `core/services/cheap_provider_runtime_selection.py` :: `execute_public_safe_cheap_lane` (L1030)
+- `core/services/cheap_provider_runtime_selection.py` :: `execute_cheap_lane_via_pool` (L692)
+- `core/services/cheap_provider_runtime_selection.py` :: `execute_public_safe_cheap_lane` (L1050)
 - `core/services/cheap_provider_runtime_selection.py` :: `provider_runtime_defaults` (L55)
 - `core/services/cheap_provider_runtime_selection.py` :: `record_cheap_provider_invocation` (L59)
 - `core/services/cheap_provider_runtime_selection.py` :: `smoke_cheap_lane` (L173)
@@ -2123,6 +2123,7 @@ Generated from source. 8093/15584 functions/methods documented (51%). The list b
 - `scripts/diagnostics/canary_measure.py` :: `main` (L56)
 - `scripts/enforce_commit_hygiene.py` :: `main` (L80)
 - `scripts/eval_research_lane.py` :: `evaluate_cases` (L16)
+- `scripts/find_tidsbomber.py` :: `main` (L54)
 - `scripts/forced_tool_choice_report.py` :: `main` (L65)
 - `scripts/generate_puls_icons.py` :: `main` (L57)
 - `scripts/generate_puls_icons.py` :: `render` (L46)

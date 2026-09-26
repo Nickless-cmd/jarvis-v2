@@ -294,6 +294,14 @@ _Offline deterministic smoke evaluation for research routing and gates._
 |---|---|---|---|---|
 | function | `evaluate_cases` | `(path=…)` | — | [src](../../../scripts/eval_research_lane.py#L16) |
 
+## `scripts/find_tidsbomber.py`
+_Find tests der går i stykker af sig selv når kalenderen skrider._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_koer` | `(spring, pytest_args)` | — | [src](../../../scripts/find_tidsbomber.py#L46) |
+| function | `main` | `()` | — | [src](../../../scripts/find_tidsbomber.py#L54) |
+
 ## `scripts/forced_tool_choice_report.py`
 _Aflæs sonden: honorerer providerne ``tool_choice="required"``?_
 
@@ -427,17 +435,4 @@ _Phase 3 supplementary — drift-feature classifier for jarvis vs random._
 | function | `build_chunks_for_peer` | `(peer)` | Chunk expressions chronologically; return [(snapshot, drift), ...]. | [src](../../../scripts/interlanguage_drift_classifier.py#L119) |
 | function | `run` | `(allow_early)` | — | [src](../../../scripts/interlanguage_drift_classifier.py#L128) |
 | function | `main` | `()` | — | [src](../../../scripts/interlanguage_drift_classifier.py#L211) |
-
-## `scripts/interlanguage_llm_judge.py`
-_LLM-judge for interlanguage validation — Phase 3+4 pre-registered design._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `load_expressions` | `(peer_id, *, days=…, limit=…)` | Pull expression_text for a peer from the interlanguage_practice table. | [src](../../../scripts/interlanguage_llm_judge.py#L58) |
-| function | `_ollama_chat` | `(model, prompt, *, timeout=…, retries=…)` | — | [src](../../../scripts/interlanguage_llm_judge.py#L73) |
-| function | `_parse_entity` | `(raw)` | Match first token of judge reply to an entity name (case-insensitive). | [src](../../../scripts/interlanguage_llm_judge.py#L98) |
-| function | `run_alpha` | `(model, *, seed=…)` | — | [src](../../../scripts/interlanguage_llm_judge.py#L110) |
-| function | `run_delta` | `(model, *, seed=…)` | — | [src](../../../scripts/interlanguage_llm_judge.py#L159) |
-| function | `_binomial_p` | `(k, n, p0)` | One-sided binomial p-value: P(X >= k) under H0 with prob p0. | [src](../../../scripts/interlanguage_llm_judge.py#L209) |
-| function | `main` | `()` | — | [src](../../../scripts/interlanguage_llm_judge.py#L225) |
 

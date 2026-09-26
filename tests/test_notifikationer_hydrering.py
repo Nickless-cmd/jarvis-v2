@@ -40,6 +40,58 @@ def test_ventende_godkendelse_bliver_staaende_og_kan_afgoeres(isolated_runtime, 
     assert "bash_session" in poster[0]["titel"]
 
 
+def test_aktivt_kort_uden_status_faar_ikke_feedet_til_at_lukke_og_genaabne(isolated_runtime, monkeypatch) -> None:
+    from core.eventbus.bus import event_bus
+    from core.runtime.db import connect
+    from core.services import notifikationer as n
+    from core.services import notifikationer_hydrering as h
+    import core.services.visible_runs as vr
+
+    kort = {"owner_user_id": "bjorn", "tool_name": "bash_session",
+            "session_id": "chat-1", "created_at": "2026-09-26T15:00:00+00:00"}
+    monkeypatch.setattr(vr, "godkendelser_nu", lambda: {"a-1": kort})
+    monkeypatch.setattr(vr, "_get_visible_approval_state",
+                        lambda _aid: {**kort, "status": "pending"})
+    nid = n.opret(user_id="bjorn", slags="approval", kilde="approval",
+                  ref="a-1", titel="Vil du tillade bash_session?")
+
+    for _ in range(3):
+        poster = h.feed("bjorn", er_owner=True)
+        assert [p["id"] for p in poster] == [nid]
+        assert poster[0]["kan_afgoere"] is True
+
+    event_bus.flush()
+    with connect() as conn:
+        for kind in ("notifikation.klaret", "notifikation.genaabnet"):
+            assert conn.execute("SELECT COUNT(*) FROM events WHERE kind=?", (kind,)).fetchone()[0] == 0
+
+
+def test_afgjort_kort_i_filen_genaabner_ikke_lukket_post(isolated_runtime, monkeypatch) -> None:
+    from core.eventbus.bus import event_bus
+    from core.runtime.db import connect
+    from core.services import notifikationer as n
+    from core.services import notifikationer_hydrering as h
+    import core.services.visible_runs as vr
+
+    kort = {"owner_user_id": "bjorn", "tool_name": "bash_session",
+            "session_id": "chat-1", "created_at": "2026-09-26T15:00:00+00:00"}
+    monkeypatch.setattr(vr, "godkendelser_nu", lambda: {"a-1": kort})
+    monkeypatch.setattr(vr, "_get_visible_approval_state",
+                        lambda _aid: {**kort, "status": "approved"})
+    nid = n.opret(user_id="bjorn", slags="approval", kilde="approval",
+                  ref="a-1", titel="Vil du tillade bash_session?")
+    n.luk(nid, "godkendt")
+
+    for _ in range(3):
+        assert h.feed("bjorn", er_owner=True) == []
+
+    event_bus.flush()
+    with connect() as conn:
+        assert conn.execute(
+            "SELECT COUNT(*) FROM events WHERE kind='notifikation.genaabnet'"
+        ).fetchone()[0] == 0
+
+
 def test_hydrering_der_fejler_lukker_IKKE_raekken(isolated_runtime, monkeypatch) -> None:
     """En utilgaengelig ejer maa ikke se ud som en klaret opgave.
 

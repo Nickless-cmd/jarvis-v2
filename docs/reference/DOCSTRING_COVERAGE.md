@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8073/15564 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8075/15566 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,8 +24,8 @@ Generated from source. 8073/15564 functions/methods documented (51%). The list b
 | `core.identity` | 71 | 165 | 43% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 696 | 1275 | 54% |
-| `core.services` | 5340 | 10582 | 50% |
+| `core.runtime` | 697 | 1276 | 54% |
+| `core.services` | 5341 | 10583 | 50% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 107 | 183 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -360,16 +360,16 @@ Generated from source. 8073/15564 functions/methods documented (51%). The list b
 - `core/runtime/db_capability_approval.py` :: `list_approval_feedback` (L697)
 - `core/runtime/db_capability_approval.py` :: `recent_capability_approval_requests` (L85)
 - `core/runtime/db_capability_approval.py` :: `record_capability_approval_request_execution` (L247)
-- `core/runtime/db_cheap_lane_control.py` :: `finalize_cheap_lane_audit` (L303)
-- `core/runtime/db_cheap_lane_control.py` :: `get_cheap_lane_invocation_detail` (L481)
-- `core/runtime/db_cheap_lane_control.py` :: `get_route_decision` (L185)
-- `core/runtime/db_cheap_lane_control.py` :: `list_cheap_lane_audit` (L333)
-- `core/runtime/db_cheap_lane_control.py` :: `list_cheap_lane_invocations` (L416)
-- `core/runtime/db_cheap_lane_control.py` :: `list_quota_observations` (L234)
-- `core/runtime/db_cheap_lane_control.py` :: `record_cheap_lane_audit` (L263)
-- `core/runtime/db_cheap_lane_control.py` :: `record_quota_observation` (L199)
-- `core/runtime/db_cheap_lane_control.py` :: `record_redacted_payload` (L351)
-- `core/runtime/db_cheap_lane_control.py` :: `record_route_decision` (L123)
+- `core/runtime/db_cheap_lane_control.py` :: `finalize_cheap_lane_audit` (L323)
+- `core/runtime/db_cheap_lane_control.py` :: `get_cheap_lane_invocation_detail` (L501)
+- `core/runtime/db_cheap_lane_control.py` :: `get_route_decision` (L205)
+- `core/runtime/db_cheap_lane_control.py` :: `list_cheap_lane_audit` (L353)
+- `core/runtime/db_cheap_lane_control.py` :: `list_cheap_lane_invocations` (L436)
+- `core/runtime/db_cheap_lane_control.py` :: `list_quota_observations` (L254)
+- `core/runtime/db_cheap_lane_control.py` :: `record_cheap_lane_audit` (L283)
+- `core/runtime/db_cheap_lane_control.py` :: `record_quota_observation` (L219)
+- `core/runtime/db_cheap_lane_control.py` :: `record_redacted_payload` (L371)
+- `core/runtime/db_cheap_lane_control.py` :: `record_route_decision` (L143)
 - `core/runtime/db_cheap_provider.py` :: `count_cheap_provider_invocations` (L400)
 - `core/runtime/db_cheap_provider.py` :: `get_cheap_provider_runtime_state` (L184)
 - `core/runtime/db_cheap_provider.py` :: `list_cheap_provider_runtime_states` (L240)
@@ -735,8 +735,8 @@ Generated from source. 8073/15564 functions/methods documented (51%). The list b
 - `core/services/bounded_mutation_intent_runtime.py` :: `build_bounded_mutation_intent_surface` (L25)
 - `core/services/bounded_repo_tools_runtime.py` :: `build_bounded_repo_tool_execution_surface` (L14)
 - `core/services/bounded_workspace_write_runtime.py` :: `build_bounded_workspace_write_execution_surface` (L7)
-- `core/services/cache_maintenance_daemon.py` :: `build_cache_maintenance_surface` (L187)
-- `core/services/cache_maintenance_daemon.py` :: `get_cache_maintenance_stats` (L180)
+- `core/services/cache_maintenance_daemon.py` :: `build_cache_maintenance_surface` (L193)
+- `core/services/cache_maintenance_daemon.py` :: `get_cache_maintenance_stats` (L186)
 - `core/services/calm_anchor.py` :: `build_calm_anchor_surface` (L215)
 - `core/services/candidate_tracking.py` :: `auto_apply_safe_memory_md_candidates_for_visible_turn` (L296)
 - `core/services/candidate_tracking.py` :: `auto_apply_safe_user_md_candidates_for_visible_turn` (L287)

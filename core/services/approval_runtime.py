@@ -154,11 +154,17 @@ def alle_pending_for_owner(user_id: str) -> list[dict[str, Any]]:
         return []
     import core.services.visible_runs as _vr
 
-    kandidater = [
-        {**kort, "approval_id": aid}
-        for aid, kort in _vr.godkendelser_nu().items()
-        if str((kort or {}).get("owner_user_id") or "") == uid
-    ]
+    kandidater = []
+    for aid, kort in _vr.godkendelser_nu().items():
+        if str((kort or {}).get("owner_user_id") or "") != uid:
+            continue
+        # Filen kan kortvarigt indeholde et kort som DB allerede har afgjort.
+        # Kun et reelt ventende kort maa faa afstemningen til at genaabne en
+        # notifikation. Manglende DB-status er normalt lige efter oprettelse.
+        status = str(_vr._get_visible_approval_state(aid).get("status") or "pending")
+        if status != "pending" or str(kort.get("status") or "pending") != "pending":
+            continue
+        kandidater.append({**kort, "approval_id": aid})
     kandidater.sort(key=lambda k: str(k.get("created_at") or ""), reverse=True)
     return kandidater
 
@@ -181,19 +187,21 @@ def state(approval_id: str) -> dict[str, Any] | None:
     """Hvad ved vi om dette kort? None hvis det ikke findes.
 
     Kaster videre hvis DB-opslaget bag `_get_visible_approval_state` fejler —
-    fanges IKKE her. Eneste kalder (2026-09-21, `grep -rn
-    "approval_runtime.state("`) er `notifikationer_hydrering._hydrer_approval`,
-    hvis eget `except Exception` i `_hydrer` skal se fejlen for at kunne
-    skelne «kortet findes ikke» fra «ejeren kunne ikke naas». Et internt net
+    fanges IKKE her. Hydreringen skal se fejlen for at kunne skelne
+    «kortet findes ikke» fra «ejeren kunne ikke naas». Et internt net
     her ville goere de to umulige at skelne igen (se
     docs/superpowers/specs/2026-09-21-notifikations-feed-design.md).
     """
     import core.services.visible_runs as _vr
-    # Disken, ikke processens kopi: kortet kan vaere skabt i den ANDEN proces.
+    delt = _vr._get_visible_approval_state(approval_id)
+    # Terminal DB-state vinder over et kort der endnu ikke er fjernet fra
+    # den delte fil. Nye kort i filen har derimod intet statusfelt: tilstede-
+    # vaerelsen betyder pending, og skal ikke faa feedet til at lukke dem.
+    if str(delt.get("status") or "") not in {"", "pending"}:
+        return dict(delt)
     kort = _vr.godkendelser_nu().get(approval_id)
     if kort is not None:
-        return dict(kort)
-    delt = _vr._get_visible_approval_state(approval_id)
+        return {**kort, "status": str(kort.get("status") or "pending")}
     return dict(delt) if delt else None
 
 

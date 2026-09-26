@@ -99,6 +99,53 @@ def test_route_trace_and_audit_are_durable(isolated_runtime):
     assert audits["items"][0]["result"] == "ok"
 
 
+def test_route_candidates_are_compressed_without_changing_the_detail(isolated_runtime):
+    from core.runtime.db import connect
+    from core.runtime.db_cheap_lane_control import get_route_decision, record_route_decision
+
+    candidates = [{"slot_id": f"slot-{n}", "quota": {"status": "ready", "detail": "x" * 200}}
+                  for n in range(100)]
+    route_id = record_route_decision(
+        correlation_id="compressed-route", task_kind="default", daemon="test",
+        candidates=candidates, selected_slot_id="slot-0", selection_reason="test",
+    )
+
+    with connect() as conn:
+        stored = conn.execute(
+            "SELECT candidates_json FROM cheap_lane_route_decisions WHERE route_decision_id=?",
+            (route_id,),
+        ).fetchone()[0]
+    assert stored.startswith("gzip+base64:")
+    assert len(stored) < len(str(candidates))
+    assert get_route_decision(route_id)["candidates"] == candidates
+
+
+def test_old_plain_json_route_candidates_still_read(isolated_runtime):
+    from core.runtime.db import connect
+    from core.runtime.db_cheap_lane_control import get_route_decision
+
+    assert get_route_decision("missing") is None
+    with connect() as conn:
+        conn.execute(
+            "INSERT INTO cheap_lane_route_decisions "
+            "(route_decision_id,correlation_id,task_kind,daemon,candidates_json,"
+            "selected_slot_id,selection_reason,created_at) VALUES (?,?,?,?,?,?,?,?)",
+            ("old-route", "old", "default", "test", '[{"slot_id":"old"}]',
+             "old", "legacy", "2026-09-26T00:00:00+00:00"),
+        )
+        conn.commit()
+    assert get_route_decision("old-route")["candidates"] == [{"slot_id": "old"}]
+
+
+def test_truncated_compressed_route_trace_returns_fallback():
+    import base64
+    import gzip
+    from core.runtime.db_cheap_lane_control import _decode_json
+
+    damaged = "gzip+base64:" + base64.b64encode(gzip.compress(b'[{"slot_id":"x"}]')[:-2]).decode()
+    assert _decode_json(damaged, []) == []
+
+
 def test_quota_observation_and_redacted_payload_join_detail(isolated_runtime):
     from core.runtime.db_cheap_lane_control import (
         get_cheap_lane_invocation_detail,

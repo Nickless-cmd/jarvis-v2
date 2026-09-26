@@ -200,3 +200,185 @@ class TestSplitMessage:
         chunks = _split_message(text, 200)
         assert all(len(c) <= 200 for c in chunks)
         assert "".join(chunks) == text
+
+
+# ── Streaming (message-edit) — 26/9-2026 ────────────────────────────────────
+# Discord føltes langsommere end desk fordi svaret blev dumpet først når kørslen
+# var færdig. Løsningen: placeholder + redigering mens teksten vokser, med den
+# ENDELIGE tekst ejet af eventbus-abonnenten.
+class TestExtractTextDeltas:
+    """Preview-teksten kommer fra v2-SSE-frames — kun text_delta, ikke thinking."""
+
+    def test_accumulates_text_deltas(self):
+        from core.services.discord_gateway import _extract_text_deltas
+
+        frames = [
+            'event: content_block_delta\ndata: {"index": 0, "delta": {"type": "text_delta", "text": "Hej "}}\n\n',
+            'event: content_block_delta\ndata: {"index": 0, "delta": {"type": "text_delta", "text": "Bjørn"}}\n\n',
+        ]
+        assert _extract_text_deltas(frames) == "Hej Bjørn"
+
+    def test_ignores_thinking_delta(self):
+        from core.services.discord_gateway import _extract_text_deltas
+
+        frames = [
+            'event: content_block_delta\ndata: {"index": 1, "delta": {"type": "thinking_delta", "thinking": "skjult tanke"}}\n\n',
+            'event: content_block_delta\ndata: {"index": 0, "delta": {"type": "text_delta", "text": "svar"}}\n\n',
+        ]
+        assert _extract_text_deltas(frames) == "svar"
+
+    def test_ignores_non_delta_frames(self):
+        from core.services.discord_gateway import _extract_text_deltas
+
+        frames = [
+            'event: message_start\ndata: {"run_id": "r1"}\n\n',
+            'event: content_block_stop\ndata: {"index": 0}\n\n',
+            'event: ping\ndata: {}\n\n',
+        ]
+        assert _extract_text_deltas(frames) == ""
+
+    def test_ignores_malformed_json(self):
+        from core.services.discord_gateway import _extract_text_deltas
+
+        assert _extract_text_deltas(["event: content_block_delta\ndata: ikke-json\n\n"]) == ""
+
+
+class TestStreamRunToDiscord:
+    """Streameren sender placeholder og redigerer den mens frames lander."""
+
+    def _fake_client(self, sent, edits):
+        class FakeMessage:
+            async def edit(self, content=None):
+                edits.append(content)
+
+        class FakeChannel:
+            async def send(self, content=None):
+                sent.append(content)
+                return FakeMessage()
+
+        class FakeClient:
+            def get_channel(self, cid):
+                return FakeChannel()
+
+        return FakeClient()
+
+    def test_sends_placeholder_and_edits_with_text(self, monkeypatch):
+        import asyncio
+
+        import core.services.discord_gateway as dg
+
+        sent: list = []
+        edits: list = []
+        monkeypatch.setattr(dg, "_client", self._fake_client(sent, edits))
+        monkeypatch.setattr(dg, "_STREAM_EDIT_INTERVAL_S", 0.0)
+        monkeypatch.setattr(dg, "_STREAM_POLL_S", 0.0)
+
+        batches = [
+            (['event: content_block_delta\ndata: {"delta": {"type": "text_delta", "text": "Hej"}}\n\n'], False, 1),
+            ([], True, 1),
+        ]
+        calls = {"n": 0}
+
+        def fake_snapshot(sid, idx):
+            b = batches[min(calls["n"], len(batches) - 1)]
+            calls["n"] += 1
+            return b
+
+        import core.services.run_follow as rf
+        monkeypatch.setattr(rf, "snapshot_from", fake_snapshot)
+
+        asyncio.run(dg._stream_run_to_discord(123, "sess-x"))
+
+        assert sent == [dg._STREAM_PLACEHOLDER]
+        assert any("Hej" in (e or "") for e in edits)
+        # Abonnenten overtog ikke → streameren rydder selv sin state.
+        assert "sess-x" not in dg._stream_state
+
+
+class TestFinalizeStreamOrSend:
+    """Ved run-slut: redigér placeholder hvis den findes, ellers send ny besked."""
+
+    def test_queues_edit_intent_when_placeholder_exists(self, monkeypatch):
+        import core.services.discord_gateway as dg
+
+        class FakeMessage:
+            pass
+
+        class FakeQ:
+            def __init__(self):
+                self.items = []
+
+            def put_nowait(self, item):
+                self.items.append(item)
+
+        fq = FakeQ()
+        monkeypatch.setattr(dg, "_outbound_queue", fq)
+        sent: list = []
+        monkeypatch.setattr(dg, "send_discord_message", lambda cid, txt: sent.append((cid, txt)))
+        dg._stream_state["s"] = {"message": FakeMessage(), "stopped": True, "finished": False}
+        try:
+            dg._finalize_stream_or_send("s", 42, "endelig tekst")
+        finally:
+            dg._stream_state.pop("s", None)
+
+        assert sent == [], "placeholder findes → ingen ny besked"
+        assert fq.items and fq.items[0]["edit_session"] == "s"
+        assert fq.items[0]["text"] == "endelig tekst"
+
+    def test_falls_back_to_send_without_placeholder(self, monkeypatch):
+        import core.services.discord_gateway as dg
+
+        sent: list = []
+        monkeypatch.setattr(dg, "send_discord_message", lambda cid, txt: sent.append((cid, txt)))
+        dg._finalize_stream_or_send("ukendt-session", 42, "tekst")
+
+        assert sent == [(42, "tekst")]
+
+
+class TestApplyEditIntent:
+    """Edit-intentet redigerer beskeden til den endelige, formaterede tekst."""
+
+    def test_edits_message_and_wraps_tables(self, monkeypatch):
+        import asyncio
+
+        import core.services.discord_gateway as dg
+
+        edits: list = []
+
+        class FakeMessage:
+            async def edit(self, content=None):
+                edits.append(content)
+
+        class FakeChannel:
+            async def send(self, content=None):
+                pass
+
+        class Msg(FakeMessage):
+            channel = FakeChannel()
+
+        monkeypatch.setattr(dg, "_persist_status", lambda: None)
+        dg._stream_state["s"] = {"message": Msg(), "stopped": True}
+        try:
+            asyncio.run(dg._apply_edit_intent({
+                "edit_session": "s",
+                "channel_id": 42,
+                "text": "| a | b |\n| --- | --- |\n| 1 | 2 |",
+            }))
+        finally:
+            dg._stream_state.pop("s", None)
+
+        assert edits, "beskeden blev ikke redigeret"
+        assert "```" in edits[0], "tabellen skulle være pakket i kode-fence"
+        assert "s" not in dg._stream_state, "state skulle være ryddet"
+
+    def test_falls_back_to_send_without_message(self, monkeypatch):
+        import asyncio
+
+        import core.services.discord_gateway as dg
+
+        sent: list = []
+        monkeypatch.setattr(dg, "send_discord_message", lambda cid, txt: sent.append((cid, txt)))
+        asyncio.run(dg._apply_edit_intent({"edit_session": "x", "channel_id": 7, "text": "hej"}))
+
+        assert sent == [(7, "hej")]
+

@@ -5,7 +5,8 @@ import {
 } from 'lucide-react'
 import { openEventSocket, type ApiConfig } from '../../lib/api'
 import {
-  hentNotifikationer, afgoerNotifikation, setNotifikation, type Notifikation,
+  hentNotifikationer, hentTidligere, afgoerNotifikation, setNotifikation,
+  type Notifikation, type TidligereNotifikation,
 } from '../../lib/notifikationerApi'
 import { SettingsState, SettingsActionError } from '../settings/SettingsState'
 
@@ -35,11 +36,23 @@ function siden(iso: string): string {
 }
 
 /**
- * Notifikations-feeden — en to-do-liste, ikke en journal.
+ * Notifikations-feeden — to lister med hver sin skaebne.
  *
- * Har man handlet, er posten vaek. Derfor er en tom feed en GOD nyhed, og
- * derfor maa en fejlet hentning aldrig ligne den: de to staar som hver sin
- * besked, og fejlen har en «Prøv igen».
+ * FOER (til 26/9-2026) var den én liste: har man handlet, er posten vaek.
+ * Det gjorde en tom feed til en GOD nyhed — men ogsaa til en feed uden
+ * hukommelse. Man kunne ikke se hvad man havde svaret, eller om man havde
+ * svaret; svaret slettede sit eget spoer (Bjoern 26/9-2026: «jeg havde
+ * forstillet mig noget mere hen efter notifikations feed de har i
+ * facebook»).
+ *
+ * NU: to faner. «Venter på dig» er opgavelisten — handlingerne staar altid
+ * fremme, og posten forsvinder naar man har svaret. «Tidligere» er ren
+ * laesning: afgjort, intet at trykke paa, kun udfaldet. Fanerne baerer deres
+ * tal, saa man kan se om der venter noget UDEN at aabne den.
+ *
+ * En fejlet hentning maa aldrig ligne en tom liste. Det gaelder nu BEGGE
+ * faner, og de har hver sin fejl-tilstand: historikken kan vaere hentet
+ * mens de aabne fejler, og omvendt.
  *
  * Fejlteksten for en mislykket hentning skrives IKKE via SettingsState's
  * skabelon («Kunne ikke hente ${label}.») — den bøjning bruger «hente», ikke
@@ -63,6 +76,11 @@ export function NotifikationsFeed({ config, onLuk, onAabnSession }: {
   const [travl, setTravl] = useState('')
   const [opdaterer, setOpdaterer] = useState(false)
 
+  // To faner. «venter» er standarden: den er der hvor der ER noget at goere.
+  const [fane, setFane] = useState<'venter' | 'tidligere'>('venter')
+  const [tidligere, setTidligere] = useState<TidligereNotifikation[] | null>(null)
+  const [fejlTidligere, setFejlTidligere] = useState(false)
+
   const hent = useCallback((manuel = false) => {
     if (!config) return
     if (manuel) setOpdaterer(true)
@@ -72,7 +90,18 @@ export function NotifikationsFeed({ config, onLuk, onAabnSession }: {
       .finally(() => { if (manuel) setOpdaterer(false) })
   }, [config])
 
-  useEffect(() => { hent() }, [hent])
+  // Historikken hentes ogsaa ved mount — ikke foerst naar man klikker paa
+  // fanen. Tallet paa fanen SKAL staa der foer man trykker: en fane der
+  // foerst viser sit indhold bagefter kan ikke svare paa «er der noget
+  // gammelt her?», og det er hele grunden til at den findes.
+  const hentHistorik = useCallback(() => {
+    if (!config) return
+    void hentTidligere(config)
+      .then((f) => { setTidligere(f.poster); setFejlTidligere(false) })
+      .catch(() => setFejlTidligere(true))
+  }, [config])
+
+  useEffect(() => { hent(); hentHistorik() }, [hent, hentHistorik])
 
   // V5: ruden deler klokkens live-signal fremfor at staa stille mens den er
   // aaben. Samme WS-lytter som Klokke.tsx (samme bus, samme filter paa
@@ -83,6 +112,10 @@ export function NotifikationsFeed({ config, onLuk, onAabnSession }: {
   // Klokkens snitflade og alle dens eksisterende tests for at undgaa et
   // dobbelt hent-kald — denne rude faar blot den samme selvstaendige lytter,
   // saa de to aldrig kan drive fra hinanden igen.
+  //
+  // Historikken lyttes der ogsaa paa: et svar sendt fra telefonen lukker
+  // raekken, og uden dette ville den dukke op i «Venter» indtil nogen
+  // genaabnede ruden.
   useEffect(() => {
     if (!config) return
     let ws: WebSocket | null = null
@@ -91,13 +124,17 @@ export function NotifikationsFeed({ config, onLuk, onAabnSession }: {
       ws.onmessage = (e) => {
         try {
           const kind = String(JSON.parse(String(e.data))?.kind || '')
-          if (kind.startsWith('notifikation.')) hent()
+          if (kind.startsWith('notifikation.')) { hent(); hentHistorik() }
         } catch { /* ikke-JSON paa bussen er ikke vores */ }
       }
       ws.onerror = () => { /* mount+handling daekker stadig */ }
     } catch { /* mount+handling daekker stadig */ }
     return () => { try { ws?.close() } catch { /* noop */ } }
-  }, [config, hent])
+  }, [config, hent, hentHistorik])
+
+  // Efter et svar er posten flyttet fra «venter» til «tidligere» — begge
+  // lister skal hentes igen, ellers staar den et sted og mangler det andet.
+  const genindlaes = useCallback(() => { hent(); hentHistorik() }, [hent, hentHistorik])
 
   const afgoer = async (p: Notifikation, godkendt: boolean) => {
     if (!config) return
@@ -105,7 +142,7 @@ export function NotifikationsFeed({ config, onLuk, onAabnSession }: {
     try {
       const svar = await afgoerNotifikation(config, p.id, godkendt)
       if (!svar.ok) { setHandlingFejl(svar.fejl || 'Svaret kunne ikke sendes.'); return }
-      hent()
+      genindlaes()
     } catch {
       setHandlingFejl('Svaret kunne ikke sendes. Prøv igen.')
     } finally { setTravl('') }
@@ -116,7 +153,7 @@ export function NotifikationsFeed({ config, onLuk, onAabnSession }: {
     setTravl(p.id); setHandlingFejl('')
     try {
       await setNotifikation(config, p.id)
-      hent()
+      genindlaes()
     } catch {
       setHandlingFejl('Notifikationen kunne ikke afsluttes. Prøv igen.')
     } finally { setTravl('') }
@@ -129,18 +166,20 @@ export function NotifikationsFeed({ config, onLuk, onAabnSession }: {
     // ikke komme igen gennem dedup'en paa serveren, saa en utilgaengelig ejer
     // maa ikke faa den til at ligne en klaret opgave (V1, 22/9-2026).
     if (config && !p.foraeldet && p.slags !== 'question') {
-      void setNotifikation(config, p.id).then(() => hent()).catch(() => undefined)
+      void setNotifikation(config, p.id).then(genindlaes).catch(() => undefined)
     }
   }
+
+  const venter = poster ?? []
+  const afgjort = tidligere ?? []
 
   return (
     <div className="notif-feed" role="dialog" aria-label="Notifikationer">
       <div className="notif-head">
         <div className="notif-heading">
           <span>Notifikationer</span>
-          {poster && poster.length > 0 && <span className="notif-count">{poster.length}</span>}
         </div>
-        <button type="button" className="jobs-close notif-refresh" onClick={() => hent(true)}
+        <button type="button" className="jobs-close notif-refresh" onClick={() => { hent(true); hentHistorik() }}
                 disabled={opdaterer} aria-label="Opdater notifikationer">
           <RefreshCw size={14} className={opdaterer ? 'spinning' : ''} />
         </button>
@@ -149,57 +188,119 @@ export function NotifikationsFeed({ config, onLuk, onAabnSession }: {
         </button>
       </div>
 
+      {/* Fanerne baerer deres EGNE tal. «Venter» er fremhaevet naar den har
+          noget — det er den eneste af de to hvor der er noget at goere. */}
+      <div className="notif-faner" role="tablist" aria-label="Notifikationer">
+        <button
+          type="button" role="tab" aria-selected={fane === 'venter'}
+          className={`notif-fane${fane === 'venter' ? ' aktiv' : ''}`}
+          onClick={() => setFane('venter')}
+        >
+          Venter på dig
+          {venter.length > 0 && <span className="notif-fane-tal er-venter">{venter.length}</span>}
+        </button>
+        <button
+          type="button" role="tab" aria-selected={fane === 'tidligere'}
+          className={`notif-fane${fane === 'tidligere' ? ' aktiv' : ''}`}
+          onClick={() => setFane('tidligere')}
+        >
+          Tidligere
+          {afgjort.length > 0 && <span className="notif-fane-tal">{afgjort.length}</span>}
+        </button>
+      </div>
+
       <SettingsActionError message={handlingFejl} />
 
-      {fejl ? (
-        <div className="settings-feedback error" role="alert">
-          <p>Notifikationerne kunne ikke hentes.</p>
-          <button type="button" onClick={() => hent()}>Prøv igen</button>
-        </div>
-      ) : poster === null ? (
-        <SettingsState status="loading" label="notifikationerne" onRetry={() => {}} />
-      ) : poster.length === 0 ? (
-        <p className="notif-tom">Ingen notifikationer — alt er klaret.</p>
+      {fane === 'venter' ? (
+        fejl ? (
+          <div className="settings-feedback error" role="alert">
+            <p>Notifikationerne kunne ikke hentes.</p>
+            <button type="button" onClick={() => hent()}>Prøv igen</button>
+          </div>
+        ) : poster === null ? (
+          <SettingsState status="loading" label="notifikationerne" onRetry={() => {}} />
+        ) : poster.length === 0 ? (
+          <p className="notif-tom">Ingen notifikationer — alt er klaret.</p>
+        ) : (
+          <ul className="notif-liste">
+            {poster.map((p) => {
+              const Ikon = IKON[p.slags] ?? Bell
+              return (
+                <li key={p.id} className={`notif-item tone-${p.slags}`}>
+                  <div
+                    className={`notif-post${p.foraeldet ? ' er-foraeldet' : ''}`}
+                    data-testid={`notif-${p.id}`}
+                    title={p.tekst || p.titel}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => { if (!p.kan_afgoere) aabn(p) }}
+                    onKeyDown={(e) => { if (e.key === 'Enter' && !p.kan_afgoere) aabn(p) }}
+                  >
+                    <span className="notif-ikon-ramme"><Ikon size={15} className="notif-ikon" aria-hidden="true" /></span>
+                    <span className="notif-titel">{p.titel}</span>
+                    <span className="notif-tid">{siden(p.oprettet)}</span>
+                  </div>
+                  {p.tekst && p.tekst !== p.titel && <p className="notif-tekst">{p.tekst}</p>}
+                  {p.foraeldet && (
+                    <p className="notif-foraeldet">Kunne ikke opdateres — det viste er sidste nyt.</p>
+                  )}
+                  {p.kan_afgoere && (
+                    <div className="notif-handlinger">
+                      <button type="button" disabled={travl === p.id}
+                              onClick={() => void afgoer(p, true)}>Godkend</button>
+                      <button type="button" disabled={travl === p.id}
+                              onClick={() => void afgoer(p, false)}>Afvis</button>
+                    </div>
+                  )}
+                  {!p.kan_afgoere && !p.foraeldet && p.slags !== 'question' && (
+                    <div className="notif-handlinger">
+                      <button type="button" disabled={travl === p.id} onClick={() => void afslut(p)}>Færdig</button>
+                    </div>
+                  )}
+                </li>
+              )
+            })}
+          </ul>
+        )
       ) : (
-        <ul className="notif-liste">
-          {poster.map((p) => {
-            const Ikon = IKON[p.slags] ?? Bell
-            return (
-              <li key={p.id} className={`notif-item tone-${p.slags}`}>
-                <div
-                  className={`notif-post${p.foraeldet ? ' er-foraeldet' : ''}`}
-                  data-testid={`notif-${p.id}`}
-                  title={p.tekst || p.titel}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => { if (!p.kan_afgoere) aabn(p) }}
-                  onKeyDown={(e) => { if (e.key === 'Enter' && !p.kan_afgoere) aabn(p) }}
-                >
-                  <span className="notif-ikon-ramme"><Ikon size={15} className="notif-ikon" aria-hidden="true" /></span>
-                  <span className="notif-titel">{p.titel}</span>
-                  <span className="notif-tid">{siden(p.oprettet)}</span>
-                </div>
-                {p.tekst && p.tekst !== p.titel && <p className="notif-tekst">{p.tekst}</p>}
-                {p.foraeldet && (
-                  <p className="notif-foraeldet">Kunne ikke opdateres — det viste er sidste nyt.</p>
-                )}
-                {p.kan_afgoere && (
-                  <div className="notif-handlinger">
-                    <button type="button" disabled={travl === p.id}
-                            onClick={() => void afgoer(p, true)}>Godkend</button>
-                    <button type="button" disabled={travl === p.id}
-                            onClick={() => void afgoer(p, false)}>Afvis</button>
+        fejlTidligere ? (
+          <div className="settings-feedback error" role="alert">
+            <p>Notifikationerne kunne ikke hentes.</p>
+            <button type="button" onClick={() => hentHistorik()}>Prøv igen</button>
+          </div>
+        ) : tidligere === null ? (
+          <SettingsState status="loading" label="notifikationerne" onRetry={() => {}} />
+        ) : tidligere.length === 0 ? (
+          <p className="notif-tom">Intet afsluttet endnu.</p>
+        ) : (
+          <ul className="notif-liste">
+            {tidligere.map((p) => {
+              const Ikon = IKON[p.slags] ?? Bell
+              return (
+                <li key={p.id} className={`notif-item tone-${p.slags} er-afgjort`}>
+                  {/* Ingen handlingsknapper her — det ER hele forskellen.
+                      Er posten afgjort, er der intet at trykke paa; den er
+                      laesning, ikke en opgave der venter. */}
+                  <div
+                    className="notif-post"
+                    data-testid={`notif-tidligere-${p.id}`}
+                    title={p.tekst || p.titel}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => { if (p.session_id) onAabnSession(p.session_id) }}
+                    onKeyDown={(e) => { if (e.key === 'Enter' && p.session_id) onAabnSession(p.session_id) }}
+                  >
+                    <span className="notif-ikon-ramme"><Ikon size={15} className="notif-ikon" aria-hidden="true" /></span>
+                    <span className="notif-titel">{p.titel}</span>
+                    <span className="notif-tid">{siden(p.oprettet)}</span>
                   </div>
-                )}
-                {!p.kan_afgoere && !p.foraeldet && p.slags !== 'question' && (
-                  <div className="notif-handlinger">
-                    <button type="button" disabled={travl === p.id} onClick={() => void afslut(p)}>Færdig</button>
-                  </div>
-                )}
-              </li>
-            )
-          })}
-        </ul>
+                  {p.tekst && p.tekst !== p.titel && <p className="notif-tekst">{p.tekst}</p>}
+                  <p className="notif-udfald">{p.udfald_tekst}</p>
+                </li>
+              )
+            })}
+          </ul>
+        )
       )}
     </div>
   )

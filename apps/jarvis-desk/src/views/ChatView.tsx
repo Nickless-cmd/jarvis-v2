@@ -52,6 +52,7 @@ import { ConnectionPill } from '../components/shell/ConnectionPill'
 import { CentralBadge } from '../components/shell/CentralBadge'
 import { AndenEnhedMaerke } from '../components/shell/AndenEnhedMaerke'
 import { SystemHealth } from '../components/shell/SystemHealth'
+import { SkinneGreb } from '../components/shell/SkinneGreb'
 import { LivenessIndicator } from '../components/feedback/LivenessIndicator'
 import { InterruptedBanner } from '../components/feedback/InterruptedBanner'
 import { GenoptagelsesVarsel } from '../components/feedback/GenoptagelsesVarsel'
@@ -836,6 +837,10 @@ export function ChatView({
   const visBrowser = browserOpen && (!fuldRude || fuldRude === 'browser')
   const jobsRude = skinneAaben ? (
     <div className={`code-right-stack${fuldRude ? ' er-fuld' : ''}`}>
+      {/* Traekgrebet (Bjoern 26/9-2026). Ikke med i fuld rude: dér fylder
+          ruden hele bredden (`.er-fuld` saetter width: auto), og et greb
+          ville traekke i noget der ikke kan blive bredere. */}
+      {!fuldRude && <SkinneGreb />}
       {visChanges && cfgSkinne && (
         <ChangesPanel
           config={cfgSkinne}

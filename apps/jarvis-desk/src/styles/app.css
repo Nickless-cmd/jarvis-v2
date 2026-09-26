@@ -529,6 +529,38 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 }
 .notif-handlinger button:hover:not(:disabled) { color: var(--fg-1); background: var(--bg-2); }
 .notif-handlinger button:disabled { opacity: .5; cursor: default; }
+
+/* Fanerne (Bjoern 26/9-2026). Foer var feeden ÉN liste: svarede man,
+   forsvandt posten — ogsaa historikken over hvad man havde svaret. Nu to
+   lister med hver sin skaebne, og fanerne baerer deres tal, saa man kan se om
+   der venter noget UDEN at aabne ruden. */
+.notif-faner {
+  display: flex; gap: 4px; margin: 0 0 10px;
+  border-bottom: 1px solid var(--line);
+}
+.notif-fane {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: none; border: 0; border-bottom: 2px solid transparent;
+  color: var(--fg-3); font-size: 12px; font-family: inherit;
+  padding: 5px 8px; margin-bottom: -1px; cursor: pointer;
+}
+.notif-fane:hover { color: var(--fg-1); }
+.notif-fane.aktiv { color: var(--fg-1); border-bottom-color: var(--accent); }
+.notif-fane-tal {
+  min-width: 16px; padding: 0 5px; height: 16px;
+  display: grid; place-items: center;
+  background: var(--bg-3); color: var(--fg-3);
+  border-radius: 999px; font-size: 10px; font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+/* «Venter» er den eneste af de to hvor der ER noget at goere. Tallet skal
+   derfor se anderledes ud end et historik-tal — ikke bare staa der. */
+.notif-fane-tal.er-venter { background: var(--warn-fg); color: var(--bg-0); }
+/* En afgjort post er LAESNING. Den beholder sin slags-farve i ikonet, men
+   kanten daempes: et kort der ser ud som om det kan trykkes, men ikke kan,
+   er den samme fejl som en tom klokke der ser brudt ud. */
+.notif-item.er-afgjort { border-left-color: var(--line); }
+.notif-udfald { margin: 5px 0 0 34px; color: var(--fg-3); font-size: 11px; }
 @media (prefers-reduced-motion: reduce) {
   .notif-item, .notif-refresh svg.spinning { animation: none; }
 }
@@ -3129,6 +3161,31 @@ button.sidebar-group svg { flex: none; opacity: .7; }
      stedet for headeren: samme fejl, flyttet et skridt. */
   pointer-events: auto;
 }
+/* Traekgrebet paa skinnens venstre kant (Bjoern 26/9-2026: «jeg mangler
+   træk/slip altsaa at kunne udvide dem til siden.. lige som man kan med
+   venstre panel»).
+
+   Reglen staar EFTER `.code-right-stack > *` og med hoejere vaegt
+   (0-2-0 mod 0-1-0), og det er ikke kosmetik: reglen ovenfor giver hvert
+   barn flex: 1 1 0, hvilket er det der lader to ruder DELE hoejden. Et greb
+   der arvede den ville tage halvdelen af skinnen og skubbe ruderne sammen
+   til to striber. Grebet er en kant, ikke en rude. */
+.code-right-stack > .skinne-greb {
+  position: absolute; left: 0; top: 0; bottom: 0; width: 6px; z-index: 1;
+  flex: 0 0 auto; overflow: visible;
+  cursor: col-resize; background: transparent;
+  transition: background .12s;
+  /* Skinnen selv er klik-gennemsigtig (se noten dér). Grebet skal kunne
+     rammes — baade indenfor sine 6 px og et par px udenfor, saa man ikke
+     skal ramme praecist. */
+  pointer-events: auto;
+}
+.code-right-stack > .skinne-greb::after {
+  content: ''; position: absolute; left: -3px; top: 0; bottom: 0; width: 12px;
+}
+.code-right-stack > .skinne-greb:hover,
+.code-right-stack > .skinne-greb.er-aktiv { background: var(--accent); }
+.code-right-stack > .skinne-greb:focus-visible { outline: none; background: var(--accent); }
 /* Undtagelsen for miljoe-feltet staar i environment-inspector.css, hvor
    .env-panel bor — app.css maa ikke baere dens regler (test i tokens.test.ts). */
 

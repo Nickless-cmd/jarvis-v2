@@ -2,10 +2,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 
 const hent = vi.fn()
+const hentHistorik = vi.fn()
 const afgoer = vi.fn()
 const set = vi.fn()
 vi.mock('../../lib/notifikationerApi', () => ({
   hentNotifikationer: (...a: unknown[]) => hent(...a),
+  hentTidligere: (...a: unknown[]) => hentHistorik(...a),
   afgoerNotifikation: (...a: unknown[]) => afgoer(...a),
   setNotifikation: (...a: unknown[]) => set(...a),
 }))
@@ -31,8 +33,28 @@ const post = (o: Partial<Record<string, unknown>> = {}) => ({
   oprettet: new Date().toISOString(), kan_afgoere: true, foraeldet: false, ...o,
 })
 
+/** En AFGJORT post — samme felter plus udfaldet. `kan_afgoere` er false: der
+ *  er intet at svare paa, og det er hele forskellen til listen ovenfor.
+ *
+ *  `...o` staar SIDST. Ligger overstyringen foer standarden, vinder standarden
+ *  — og en test der bad om «afvist» fik «godkendt» uden at nogen opdagede
+ *  hvorfor (maalt 26/9-2026: praecis det skete, og testen fangede det). */
+const afgjortPost = (o: Partial<Record<string, unknown>> = {}) => ({
+  ...post({ kan_afgoere: false }),
+  klaret: new Date().toISOString(),
+  udfald: 'godkendt',
+  udfald_tekst: 'Godkendt af dig',
+  ...o,
+})
+
 describe('NotifikationsFeed', () => {
-  beforeEach(() => { hent.mockReset(); afgoer.mockReset(); set.mockReset(); sockets.length = 0 })
+  beforeEach(() => {
+    hent.mockReset(); hentHistorik.mockReset(); afgoer.mockReset(); set.mockReset()
+    sockets.length = 0
+    // Historikken er tom som udgangspunkt — de fleste tests handler om
+    // «venter», og uden en default ville `.then` ramme undefined.
+    hentHistorik.mockResolvedValue({ poster: [], antal: 0 })
+  })
 
   it('en fejl ser IKKE ud som en tom feed', async () => {
     hent.mockRejectedValue(new Error('offline'))
@@ -167,5 +189,57 @@ describe('NotifikationsFeed', () => {
     s.onmessage?.({ data: JSON.stringify({ kind: 'runtime.tick' }) })
     await new Promise((r) => setTimeout(r, 30))
     expect(hent).toHaveBeenCalledTimes(1)
+  })
+
+  // ── Fanerne (Bjoern 26/9-2026) ─────────────────────────────────────────
+  //
+  // Foer var feeden ÉN liste: svarede man, forsvandt posten — ogsaa
+  // historikken over hvad man havde svaret. Disse fire tests laaser den
+  // adskillelse fast.
+
+  it('«Tidligere» viser de afgjorte — med udfaldet, og uden handlingsknapper', async () => {
+    hent.mockResolvedValue({ poster: [], antal: 0 })
+    hentHistorik.mockResolvedValue({ poster: [afgjortPost()], antal: 1 })
+    render(<NotifikationsFeed config={cfg} onLuk={() => {}} onAabnSession={() => {}} />)
+
+    fireEvent.click(await screen.findByRole('tab', { name: /Tidligere/ }))
+
+    expect(await screen.findByText('Godkendt af dig')).toBeInTheDocument()
+    // Afgjort = laesning. Et kort der SER ud som om det kan trykkes, men ikke
+    // kan, er samme fejlklasse som en tom klokke der ser brudt ud.
+    expect(screen.queryByRole('button', { name: 'Godkend' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Færdig' })).toBeNull()
+  })
+
+  it('et godkendt og et afvist svar staar IKKE som det samme ord', async () => {
+    hent.mockResolvedValue({ poster: [], antal: 0 })
+    hentHistorik.mockResolvedValue({
+      poster: [afgjortPost({ udfald: 'afvist', udfald_tekst: 'Afvist af dig' })],
+      antal: 1,
+    })
+    render(<NotifikationsFeed config={cfg} onLuk={() => {}} onAabnSession={() => {}} />)
+    fireEvent.click(await screen.findByRole('tab', { name: /Tidligere/ }))
+    expect(await screen.findByText('Afvist af dig')).toBeInTheDocument()
+  })
+
+  it('fanerne baerer deres tal — man ser at der ER en historik uden at aabne den', async () => {
+    hent.mockResolvedValue({ poster: [post()], antal: 1 })
+    hentHistorik.mockResolvedValue({ poster: [afgjortPost()], antal: 1 })
+    render(<NotifikationsFeed config={cfg} onLuk={() => {}} onAabnSession={() => {}} />)
+
+    expect(await screen.findByRole('tab', { name: /Venter på dig/ })).toHaveTextContent('1')
+    expect(screen.getByRole('tab', { name: /Tidligere/ })).toHaveTextContent('1')
+  })
+
+  it('historikken fejler for sig selv — «venter» staar uberoert', async () => {
+    hent.mockResolvedValue({ poster: [post()], antal: 1 })
+    hentHistorik.mockRejectedValue(new Error('offline'))
+    render(<NotifikationsFeed config={cfg} onLuk={() => {}} onAabnSession={() => {}} />)
+
+    // De aabne er hentet fint, og de bliver ikke skjult af at historikken
+    // fejler. Det er to lister med hver sin fejl-tilstand.
+    expect(await screen.findByText('Vil du tillade bash?')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('tab', { name: /Tidligere/ }))
+    expect(await screen.findByRole('alert')).toHaveTextContent(/kunne ikke hentes/i)
   })
 })

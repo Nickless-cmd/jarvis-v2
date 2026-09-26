@@ -529,7 +529,7 @@ def _bash_daemon_shield_dir(tmp_path_factory):
 
 @pytest.fixture(autouse=True)
 def _guard_bash_session_daemon(request, monkeypatch, _bash_daemon_shield_dir):
-    """INGEN test må røre den ÆGTE bash_session-daemon.
+    """Lukker panelets vej ind til den ægte bash_session-daemon.
 
     `bash_session._STATE_DIR` beregnes ved import som
     `Path.home()/".jarvis-v2"/"state"` og læser ALDRIG `JARVIS_HOME`. Værnene
@@ -546,8 +546,20 @@ def _guard_bash_session_daemon(request, monkeypatch, _bash_daemon_shield_dir):
 
     Værnet peger pid-filen mod en tom mappe: `_read_daemon_pid()` svarer None,
     og kaldere der spørger FØR de laver IPC — som `_lokale_shell_sessioner` —
-    stopper dér. `tests/test_bash_session_selvhelbredelse.py` sætter selv
-    `_PID_PATH` pr. test og overskriver værnet, hvilket er meningen.
+    stopper dér. Verificeret 26/9-2026: med pid-filen fjernet startede
+    `test_background_jobs*` og `test_conftest_vaern` ingen daemon.
+
+    **Det er ikke et totalt værn, og det skal ikke læses som ét.**
+    `_ensure_daemon_running()` pinger `_SOCKET_PATH` FØRST, og soklen er ikke
+    skærmet. En test der kalder `_exec_bash_session_run` eller `_open` vil
+    derfor stadig ramme — eller starte — en ægte daemon. At skærme soklen ville
+    gøre det værre: så ville den spawne en daemon på tmp-soklen i stedet.
+    Den fulde afskærmning er at lade `_ensure_daemon_running` svare False, og
+    den koster at `test_bash_session*` skal markeres; de bruger i dag `_Session`
+    direkte og rører ikke daemonen, så regningen er lille men ikke nul.
+
+    `tests/test_bash_session_selvhelbredelse.py` sætter selv `_PID_PATH` pr.
+    test og overskriver værnet, hvilket er meningen.
 
     `@pytest.mark.real_bash_daemon` slipper igennem, som `real_home` og
     `real_state` gør.

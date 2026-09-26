@@ -262,3 +262,34 @@ def test_to_doede_shell_kilder_vaelter_ikke_de_oevrige_jobs(monkeypatch):
     monkeypatch.setattr(bs, "_read_daemon_pid", _bang)
     monkeypatch.setattr(ops, "_exec_operator_bash_session_list", _bang)
     assert [x["id"] for x in bj.liste()["jobs"]] == ["grid-bot"]
+
+
+def test_arbejds_shellen_maerkes_op_saa_den_ikke_ligner_en_stray(monkeypatch):
+    # Det almindelige `bash`-vaerktoej genbruger EN delt session. Den staar i
+    # daemonens liste side om side med dem der er aabnet med vilje, og et stop
+    # paa den smider Jarvis' cd/env/venv vaek midt i en opgave.
+    _taend_shells(monkeypatch)
+    import core.tools.simple_tools_web as stw
+    monkeypatch.setattr(stw, "_DEFAULT_BASH_SESSION_ID", "bsh-aaaaaaaaaa", raising=False)
+    _monter_lokal(monkeypatch, [
+        {"session_id": "bsh-aaaaaaaaaa", "alive": True, "idle_seconds": 4},
+        {"session_id": "bsh-bbbbbbbbbb", "alive": True, "idle_seconds": 9},
+    ])
+    _monter_operator(monkeypatch, [])
+    kort = {j["id"]: j["kommando"] for j in bj.liste()["jobs"]}
+    assert "arbejds-shell" in kort["bsh-aaaaaaaaaa"]
+    assert "arbejds-shell" not in kort["bsh-bbbbbbbbbb"]
+
+
+def test_tallets_betydning_er_forskellig_paa_de_to_kilder(monkeypatch):
+    # `_Session.run` saetter `last_used` ved kommandoens START; operator-siden
+    # saetter `last` EFTER kaldet er vendt tilbage. Panelet maa ikke kalde de
+    # to det samme — foerste udgave skrev «tomgang» paa begge.
+    _taend_shells(monkeypatch)
+    _monter_lokal(monkeypatch, [{"session_id": "bsh-0123456789",
+                                 "alive": True, "idle_seconds": 3}])
+    _monter_operator(monkeypatch, [{"session_id": "opsess-0123456789ab",
+                                    "cwd": "~", "idle_s": 3}])
+    kort = {j["kilde"]: j["kommando"] for j in bj.liste()["jobs"]}
+    assert "sidste kommando startede" in kort["shell"]
+    assert "sidste kommando sluttede" in kort["shell_operator"]

@@ -120,11 +120,41 @@ def test_et_UGYLDIGT_session_id_afvises():
 
 def test_en_lokal_shell_lukkes_gennem_daemonens_egen_close(monkeypatch):
     import core.tools.bash_session as bs
-    set_id = {}
-    monkeypatch.setattr(bs, "_exec_bash_session_close",
-                        lambda a: set_id.update(sid=a["session_id"]) or {"status": "ok"})
+    set_p = {}
+    monkeypatch.setattr(bs, "_client_call_once",
+                        lambda p, timeout=0: set_p.update(p) or {"status": "ok"})
     assert r._signal_job("shell", "bsh-115cd823bf", "stop")["status"] == "ok"
-    assert set_id["sid"] == "bsh-115cd823bf"
+    assert set_p == {"op": "close", "session_id": "bsh-115cd823bf"}
+
+
+def test_stop_paa_en_OPTAGET_session_maa_ikke_draebe_de_andre(monkeypatch):
+    # MAALT 26/9-2026: `_exec_bash_session_close` gaar gennem `_client_call`,
+    # som paa en IPC-timeout draeber og genstarter HELE daemonen. Paa en
+    # optaget session (close venter paa sessionens laas, som en koerende
+    # kommando holder op til 300 s) kostede det 10,2 s, svarede `status: ok`
+    # med noten «was not open», og en uvedkommende session doede med.
+    #
+    # `_client_call_once` har ikke den selv-helbredelse. Timeout skal derfor
+    # naa klienten som en fejl — 409, sessionen er optaget — ikke som et ok.
+    import core.tools.bash_session as bs
+    monkeypatch.setattr(bs, "_client_call_once",
+                        lambda p, timeout=0: {"status": "error",
+                                              "error": "daemon ipc failed: timed out"})
+    with pytest.raises(HTTPException) as e:
+        r._signal_job("shell", "bsh-115cd823bf", "stop")
+    assert e.value.status_code == 409
+    assert "optaget" in str(e.value.detail)
+
+
+def test_vagten_mod_selv_helbredelsen_kalder_IKKE_client_call(monkeypatch):
+    # Pinner mekanikken, ikke bare udfaldet: kaldes `_client_call` (eller
+    # `_exec_bash_session_close`, som bruger den), er forstaerkeren tilbage.
+    import core.tools.bash_session as bs
+    def _forbudt(*_a, **_k):
+        raise AssertionError("_client_call er selv-helbredende og maa ikke bruges her")
+    monkeypatch.setattr(bs, "_client_call", _forbudt)
+    monkeypatch.setattr(bs, "_client_call_once", lambda p, timeout=0: {"status": "ok"})
+    assert r._signal_job("shell", "bsh-115cd823bf", "stop")["status"] == "ok"
 
 
 def test_en_operator_shell_lukkes_gennem_operator_vaerktoejets_close(monkeypatch):
@@ -141,8 +171,9 @@ def test_en_operator_shell_lukkes_gennem_operator_vaerktoejets_close(monkeypatch
 
 def test_en_close_der_fejler_er_400_ikke_en_tavs_succes(monkeypatch):
     import core.tools.bash_session as bs
-    monkeypatch.setattr(bs, "_exec_bash_session_close",
-                        lambda a: {"status": "error", "error": "daemonen svarede ikke"})
+    monkeypatch.setattr(bs, "_client_call_once",
+                        lambda p, timeout=0: {"status": "error",
+                                              "error": "daemonen svarede ikke"})
     with pytest.raises(HTTPException) as e:
         r._signal_job("shell", "bsh-0123456789", "stop")
     assert e.value.status_code == 400

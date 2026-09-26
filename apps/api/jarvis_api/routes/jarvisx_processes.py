@@ -157,8 +157,25 @@ def _signal_job(kilde: str, job_id: str, handling: str) -> dict[str, Any]:
         # vaere en streng. `bsh-` er daemonens eget format
         # (`uuid4().hex[:10]`), `opsess-` operator-sessionernes (`[:12]`).
         if re.fullmatch(r"bsh-[0-9a-f]{10}", job_id):
-            from core.tools.bash_session import _exec_bash_session_close
-            out = _exec_bash_session_close({"session_id": job_id})
+            # IKKE `_exec_bash_session_close`. MAALT 26/9-2026 paa en OPTAGET
+            # session: `close()` tager sessionens egen laas, som en koerende
+            # kommando holder i op til 300 s. Klienten timer ud efter 10 s, og
+            # `_client_call` svarer paa «daemon ipc failed» med at draebe og
+            # genstarte HELE daemonen. Resultatet var 10,2 s ventetid,
+            # `status: ok` med noten «was not open» — en succes der var usand —
+            # og at en helt uvedkommende session blev draebt med.
+            #
+            # `_client_call_once` er samme IPC uden den selv-helbredelse. En
+            # optaget session kan stadig ikke lukkes (det kraever en aendring
+            # inde i daemonen), men forsoeget rammer nu kun den session man
+            # trykkede paa, og det siges som en fejl frem for som et ok.
+            from core.tools.bash_session import _client_call_once
+            out = _client_call_once({"op": "close", "session_id": job_id}, timeout=8.0)
+            if str(out.get("error") or "").startswith("daemon ipc failed"):
+                raise HTTPException(
+                    status_code=409,
+                    detail=("sessionen er optaget af en kommando og kan ikke lukkes "
+                            "foer den er faerdig"))
         elif re.fullmatch(r"opsess-[0-9a-f]{12}", job_id):
             from core.identity.workspace_context import current_user_id
             from core.tools.operator_bash_session import _exec_operator_bash_session_close

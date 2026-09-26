@@ -32,11 +32,14 @@ virkelig forskellige:
     og panelet bruger netop dem: stop-knappen er den samme lukning Jarvis selv
     kan kalde. Intet nyt gates.
 
-    En shell-session er ikke et job der kører. Den er en shell der STÅR ÅBEN;
-    en kommando i den blokerer kaldet og er loftet til 300 sekunder, så den
-    findes aldrig mellem to opslag. Derfor er tallet på kortet **uberørt tid**
-    og ikke levetid — hverken daemonen eller operator-dict'en gemmer et
-    fødselstidspunkt, kun «sidst brugt». `kommando`-linjen siger det.
+    Tallet er IKKE levetid: hverken daemonen eller operator-dict'en gemmer et
+    fødselstidspunkt, kun «sidst brugt». Hvad det så er, står i `_shell_kort`
+    — og det er ikke det samme for de to kilder.
+
+    Panelet kan heller ikke se OM der kører en kommando. `list` svarer det
+    samme uanset, og daemonen er tråd-per-forbindelse, så et opslag bliver
+    besvaret midt i en kørsel. Begge dele kræver en ændring inde i de to
+    værktøjer, og de er fastfrosne indtil gate-systemet står.
 
 Et panel der kun viste den ene ville være sandt om sin form og tavst om sit
 indhold — man ville tro der ikke kørte noget, mens der gjorde.
@@ -211,9 +214,54 @@ def _scout_jobs() -> list[dict[str, Any]]:
     return jobs
 
 
-def _shell_kort(sid: str, *, egen_maskine: bool, idle: int, cwd: str = "") -> dict[str, Any]:
-    """Ét kort for en åben shell — samme form som de øvrige kilder."""
+def _default_bash_sid() -> str:
+    """Id'et på den DELTE shell som det almindelige `bash`-værktøj bruger.
+
+    Målt 26/9-2026: `simple_tools_web._default_bash_session()` åbner én
+    vedvarende session og genbruger den til hvert `bash`-kald. Den står derfor
+    i daemonens liste side om side med de sessioner der er åbnet MED VILJE via
+    `bash_session_open` — og de to skal ikke se ens ud i panelet: et stop på
+    arbejds-shellen smider Jarvis' `cd`, env og venv væk midt i en opgave
+    (den genåbnes ved næste kald, men tilstanden er tabt).
+
+    Samme proces-forbehold som operator-sessionerne: globalen lever i den
+    proces der kører værktøjet. Kan den ikke læses, falder kortet tilbage til
+    den neutrale tekst frem for at gætte.
+    """
+    try:
+        from core.tools import simple_tools_web
+        return str(simple_tools_web._DEFAULT_BASH_SESSION_ID or "")
+    except Exception:
+        logger.debug("background_jobs: default-bash-sessionen kunne ikke laeses",
+                     exc_info=True)
+        return ""
+
+
+def _shell_kort(sid: str, *, egen_maskine: bool, idle: int, cwd: str = "",
+                arbejds_shell: bool = False) -> dict[str, Any]:
+    """Ét kort for en åben shell — samme form som de øvrige kilder.
+
+    Teksten siger hvad tallet ER, og de to kilder er ikke ens:
+
+    ``bash_session``
+        `_Session.run` sætter `last_used` ved kommandoens START, så tallet er
+        tiden siden sidste kommando blev startet. Kører der en lige nu, ER
+        tallet dens hidtidige køretid — samme betydning som i panelets øvrige
+        rækker.
+
+    ``operator_bash_session``
+        `last` sættes EFTER kaldet er vendt tilbage, så tallet er tiden siden
+        sidste kommando sluttede. Kører der en, står tallet stille og tæller
+        stadig fra den forrige.
+
+    Det stod «intet kører · tiden er tomgang» i første udgave. Begge halvdele
+    var påstande jeg ikke havde målt: daemonen er tråd-per-forbindelse, så
+    `list` besvares MENS en kommando kører, og `list` fortæller ikke om
+    sessionen er optaget.
+    """
     hvor = f" i {cwd}" if cwd and cwd != "~" else ""
+    siden = "sidste kommando sluttede" if egen_maskine else "sidste kommando startede"
+    hvad = "Jarvis' arbejds-shell (bash)" if arbejds_shell else "åben shell"
     return {
         "id": sid,
         # Id'et ER navnet, som operator-shellene ovenfor. Daemonen tillader
@@ -225,7 +273,7 @@ def _shell_kort(sid: str, *, egen_maskine: bool, idle: int, cwd: str = "") -> di
         # kontrakt svarer `kilde` netop på HVILKEN maskine, og det er dét
         # panelets linje 2 viser. Én fælles kilde ville gøre den linje stum.
         "kilde": "shell_operator" if egen_maskine else "shell",
-        "kommando": f"åben shell{hvor} · intet kører · tiden er tomgang",
+        "kommando": f"{hvad}{hvor} · tiden er siden {siden}",
         "status": "running",
         "pid": None,
         "sekunder": max(0, int(idle)),
@@ -263,6 +311,7 @@ def _lokale_shell_sessioner() -> list[dict[str, Any]]:
     if str(svar.get("status") or "") != "ok":
         raise RuntimeError(str(svar.get("error") or "daemonen svarede ikke"))
     ud = []
+    arbejds = _default_bash_sid()
     for s in svar.get("sessions") or []:
         # En doed session udelades. Daemonen beholder den i sin dict til den
         # reapes, men en lukket shell er ikke et baggrundsjob: der er intet
@@ -275,7 +324,8 @@ def _lokale_shell_sessioner() -> list[dict[str, Any]]:
         if not sid:
             continue
         ud.append(_shell_kort(sid, egen_maskine=False,
-                              idle=_sekunder(s.get("idle_seconds"))))
+                              idle=_sekunder(s.get("idle_seconds")),
+                              arbejds_shell=sid == arbejds))
     return ud
 
 

@@ -38,15 +38,37 @@ def _clean():
 
 
 def _bind_bus(monkeypatch, per_family):
-    """Fake bus: hver familie får `n` rows med stigende event-id'er (til delta-beregning)."""
+    """Fake `recent_by_family` PÅ den ægte bus — singletonen udskiftes ikke.
+
+    Stod før som `monkeypatch.setattr(bus, "event_bus", _Bus())`. Det lækkede
+    ud af testen og forurenede en helt anden fil.
+
+    Hvorfor: moduler binder bussen med `from core.eventbus.bus import event_bus`
+    ved IMPORT. `run_growth_observe_tick()` importerer `sensory_archive` — og
+    hvis det sker mens den falske bus står i modulet, binder `sensory_archive`
+    den falske FOR ALTID. `monkeypatch` gendanner `bus.event_bus`, men aldrig
+    kopien inde i det modul der nåede at importere den.
+
+    Målt 26/9-2026: efter denne fil holdt `sensory_archive.event_bus` en `_Bus`
+    mens `perceptual_event_engine` og `emotional_memory_engine` havde den ægte.
+    `test_sensory_perception_creates_emotional_memory_anchor` publicerede
+    derfor ind i attrappen, `event_bus.recent()` gav 0 i stedet for 1, og der
+    blev aldrig skabt et anker. Den test var rød i den fulde suite og grøn
+    alene — i ugevis.
+
+    At lappe METODEN på det ægte objekt har ingen af de problemer: enhver der
+    holder bussen — før eller efter — ser lappen, og `monkeypatch` ruller den
+    tilbage.
+    """
     import core.eventbus.bus as bus
 
-    class _Bus:
-        def recent_by_family(self, fam, limit=50):
-            n = per_family.get(fam, 0)
-            # nyeste først (ORDER BY id DESC), id'er 1..n
-            return [{"kind": f"{fam}.x", "id": i} for i in range(n, 0, -1)][:limit]
-    monkeypatch.setattr(bus, "event_bus", _Bus())
+    def _recent_by_family(fam, limit=50):
+        n = per_family.get(fam, 0)
+        # nyeste først (ORDER BY id DESC), id'er 1..n
+        return [{"kind": f"{fam}.x", "id": i} for i in range(n, 0, -1)][:limit]
+
+    monkeypatch.setattr(bus.event_bus, "recent_by_family", _recent_by_family,
+                        raising=False)
     return bus
 
 

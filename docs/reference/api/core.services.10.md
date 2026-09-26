@@ -339,16 +339,17 @@ _Discord gateway — runs discord.py in a dedicated daemon thread._
 | function | `_is_table_row` | `(line)` | En tabel-række: starter med `|` og har mindst to pipe-tegn (`| a | b |`). | [src](../../../core/services/discord_gateway.py#L536) |
 | function | `_is_table_separator` | `(line)` | True for GFM-separatorrækken (`| --- | :--: |`) der skelner header fra data. | [src](../../../core/services/discord_gateway.py#L542) |
 | function | `_wrap_tables_for_discord` | `(text)` | Pak GFM-tabeller i kode-fences — Discord tegner dem ikke ellers. | [src](../../../core/services/discord_gateway.py#L551) |
-| function | `_split_message` | `(text, limit)` | Split text into chunks of at most `limit` characters. | [src](../../../core/services/discord_gateway.py#L592) |
-| function | `_typing_loop` | `(channel_id)` | Keep showing 'typing...' indicator until the outbound message is sent. | [src](../../../core/services/discord_gateway.py#L640) |
-| function | `_send_outbound_loop` | `()` | Asyncio coroutine that drains the outbound queue and sends to Discord. | [src](../../../core/services/discord_gateway.py#L666) |
-| function | `_run_client` | `(config)` | Main coroutine: set up discord client and run until stopped. | [src](../../../core/services/discord_gateway.py#L735) |
-| function | `_discord_thread_func` | `(config)` | Entry point for the daemon thread. | [src](../../../core/services/discord_gateway.py#L1047) |
-| function | `_announce_user_message_appended` | `(session_id, message)` | Udsend channel.chat_message_appended for en Discord-brugerbesked (Spor B). | [src](../../../core/services/discord_gateway.py#L1065) |
-| function | `_eventbus_subscriber_loop` | `()` | Background thread: watch eventbus for assistant responses in Discord sessions. | [src](../../../core/services/discord_gateway.py#L1085) |
-| function | `_resolve_channel_for_session` | `(session_id)` | Look up the Discord channel that originated a given session. | [src](../../../core/services/discord_gateway.py#L1207) |
-| function | `start_discord_gateway` | `()` | Start gateway if config exists. Safe to call unconditionally. | [src](../../../core/services/discord_gateway.py#L1230) |
-| function | `stop_discord_gateway` | `()` | Stop the gateway gracefully. | [src](../../../core/services/discord_gateway.py#L1274) |
+| function | `_downgrade_unsupported_for_discord` | `(text)` | Nedgrader markdown Discord ikke tegner, så det ikke står som rå tegn. | [src](../../../core/services/discord_gateway.py#L602) |
+| function | `_split_message` | `(text, limit)` | Split text into chunks of at most `limit` characters. | [src](../../../core/services/discord_gateway.py#L632) |
+| function | `_typing_loop` | `(channel_id)` | Keep showing 'typing...' indicator until the outbound message is sent. | [src](../../../core/services/discord_gateway.py#L680) |
+| function | `_send_outbound_loop` | `()` | Asyncio coroutine that drains the outbound queue and sends to Discord. | [src](../../../core/services/discord_gateway.py#L706) |
+| function | `_run_client` | `(config)` | Main coroutine: set up discord client and run until stopped. | [src](../../../core/services/discord_gateway.py#L776) |
+| function | `_discord_thread_func` | `(config)` | Entry point for the daemon thread. | [src](../../../core/services/discord_gateway.py#L1088) |
+| function | `_announce_user_message_appended` | `(session_id, message)` | Udsend channel.chat_message_appended for en Discord-brugerbesked (Spor B). | [src](../../../core/services/discord_gateway.py#L1106) |
+| function | `_eventbus_subscriber_loop` | `()` | Background thread: watch eventbus for assistant responses in Discord sessions. | [src](../../../core/services/discord_gateway.py#L1126) |
+| function | `_resolve_channel_for_session` | `(session_id)` | Look up the Discord channel that originated a given session. | [src](../../../core/services/discord_gateway.py#L1248) |
+| function | `start_discord_gateway` | `()` | Start gateway if config exists. Safe to call unconditionally. | [src](../../../core/services/discord_gateway.py#L1271) |
+| function | `stop_discord_gateway` | `()` | Stop the gateway gracefully. | [src](../../../core/services/discord_gateway.py#L1315) |
 
 ## `core/services/dispatch_envelope.py`
 _Robustness envelope builder + plausibility guard for the dispatch-redesign._

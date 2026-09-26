@@ -101,6 +101,57 @@ class TestWrapTablesForDiscord:
         assert _wrap_tables_for_discord(text) == text
 
 
+class TestDowngradeUnsupportedForDiscord:
+    """Discord tegner ikke `---` (thematic break) eller `####`+ overskrifter —
+    de står som rå tegn. Nedgraderingen gør dem læsbare."""
+
+    def test_thematic_break_becomes_rule(self):
+        from core.services.discord_gateway import (
+            _downgrade_unsupported_for_discord,
+            _DISCORD_RULE,
+        )
+
+        out = _downgrade_unsupported_for_discord("Før\n---\nEfter")
+        assert out == f"Før\n{_DISCORD_RULE}\nEfter"
+
+    def test_deep_header_downgraded_to_three(self):
+        from core.services.discord_gateway import _downgrade_unsupported_for_discord
+
+        assert (
+            _downgrade_unsupported_for_discord("#### Detaljer")
+            == "### Detaljer"
+        )
+        # Fem hashes også.
+        assert (
+            _downgrade_unsupported_for_discord("##### Dybt")
+            == "### Dybt"
+        )
+
+    def test_three_hashes_untouched(self):
+        from core.services.discord_gateway import _downgrade_unsupported_for_discord
+
+        assert _downgrade_unsupported_for_discord("### Fint") == "### Fint"
+
+    def test_hash_without_space_is_not_a_header(self):
+        from core.services.discord_gateway import _downgrade_unsupported_for_discord
+
+        # `####5` er ikke en ATX-header (kræver whitespace efter hashes).
+        assert _downgrade_unsupported_for_discord("se ####5 her") == "se ####5 her"
+
+    def test_inside_code_fence_untouched(self):
+        from core.services.discord_gateway import _downgrade_unsupported_for_discord
+
+        text = "```\n---\n#### x\n```"
+        assert _downgrade_unsupported_for_discord(text) == text
+
+    def test_table_separator_row_is_not_a_break(self):
+        from core.services.discord_gateway import _downgrade_unsupported_for_discord
+
+        # `| --- | --- |` starter med pipe → ikke en thematic break.
+        text = "| a | b |\n| --- | --- |"
+        assert _downgrade_unsupported_for_discord(text) == text
+
+
 class TestSplitMessage:
     """Splitteren må ikke flække en kodeblok midt over: en fence der krydser
     grænsen lukkes ved chunk-slut og genåbnes ved næste chunks start."""

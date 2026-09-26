@@ -31,6 +31,7 @@ from typing import Any
 
 from core.eventbus.bus import event_bus
 from core.runtime.db import connect
+from core.identity.samtale_scope import aktuel_samtale_workspace
 
 logger = logging.getLogger(__name__)
 
@@ -112,8 +113,10 @@ def detect_new_session() -> dict[str, Any]:
     try:
         with connect() as conn:
             row = conn.execute(
+                # LÆKKEN 26/9-2026 — se core/identity/samtale_scope.py.
                 "SELECT created_at FROM chat_messages "
-                "ORDER BY id DESC LIMIT 1"
+                "WHERE workspace_name = ? ORDER BY id DESC LIMIT 1",
+                (aktuel_samtale_workspace(),),
             ).fetchone()
         if row:
             last_activity = _parse_iso(row["created_at"])
@@ -501,12 +504,15 @@ def detect_echo_themes(*, lookback_days: int = _ECHO_LOOKBACK_DAYS) -> list[dict
     # User messages (for recurring user-raised topics)
     try:
         with connect() as conn:
+            # LÆKKEN 26/9-2026: andres ord blev til Bjørns «tilbagevendende
+            # emner» og derfra til morgen-prompten. Fail-closed.
+            _ws = aktuel_samtale_workspace()
             rows = conn.execute(
                 "SELECT content, created_at FROM chat_messages "
-                "WHERE role = 'user' AND created_at >= ? "
+                "WHERE role = 'user' AND workspace_name = ? AND created_at >= ? "
                 "ORDER BY id DESC LIMIT 100",
-                (since_iso,),
-            ).fetchall()
+                (_ws, since_iso),
+            ).fetchall() if _ws else []
         for r in rows:
             content = str(r["content"] or "")
             for t in _tokens(content):

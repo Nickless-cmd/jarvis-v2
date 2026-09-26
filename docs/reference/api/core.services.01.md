@@ -249,15 +249,15 @@ _Affect-modulated runtime — emotions adjust behavioral parameters._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `body_pressure` | `()` | Hvor presset er maskinen, 0..1, og hvilket niveau den melder. | [src](../../../core/services/affect_modulation.py#L110) |
-| function | `compute_affect_modulated_params` | `()` | Compute behavioral parameters adjusted by current emotional state. | [src](../../../core/services/affect_modulation.py#L125) |
-| function | `loeb_toer_for_runder` | `(grund)` | Blev koerslen skaaret af MIDT i et vaerktoejskald den ville lave? | [src](../../../core/services/affect_modulation.py#L208) |
-| function | `compute_agentic_loop_budget` | `(*, resume_context=…, afbrudt_grund=…)` | Return affect-aware agentic loop limits. | [src](../../../core/services/affect_modulation.py#L213) |
-| function | `affect_modulation_section` | `()` | Render affect-modulated parameters as a prompt section. | [src](../../../core/services/affect_modulation.py#L288) |
-| function | `compute_affect_tone_hints` | `()` | Return Danish tone-instruction strings derived from active emotion concepts. | [src](../../../core/services/affect_modulation.py#L354) |
-| function | `compute_concept_perception_focus` | `()` | Return a Danish perception-focus suffix derived from active concepts. | [src](../../../core/services/affect_modulation.py#L399) |
-| function | `_summarize_affect_payload` | `(kind, payload)` | Pull the most affectively-relevant kerne from a payload. | [src](../../../core/services/affect_modulation.py#L453) |
-| function | `compute_affect_substrate` | `(*, window_min=…, max_events=…)` | Return raw affectively-relevant events as substrate strings. | [src](../../../core/services/affect_modulation.py#L503) |
+| function | `body_pressure` | `()` | Hvor presset er maskinen, 0..1, og hvilket niveau den melder. | [src](../../../core/services/affect_modulation.py#L111) |
+| function | `compute_affect_modulated_params` | `()` | Compute behavioral parameters adjusted by current emotional state. | [src](../../../core/services/affect_modulation.py#L126) |
+| function | `loeb_toer_for_runder` | `(grund)` | Blev koerslen skaaret af MIDT i et vaerktoejskald den ville lave? | [src](../../../core/services/affect_modulation.py#L209) |
+| function | `compute_agentic_loop_budget` | `(*, resume_context=…, afbrudt_grund=…)` | Return affect-aware agentic loop limits. | [src](../../../core/services/affect_modulation.py#L214) |
+| function | `affect_modulation_section` | `()` | Render affect-modulated parameters as a prompt section. | [src](../../../core/services/affect_modulation.py#L289) |
+| function | `compute_affect_tone_hints` | `()` | Return Danish tone-instruction strings derived from active emotion concepts. | [src](../../../core/services/affect_modulation.py#L355) |
+| function | `compute_concept_perception_focus` | `()` | Return a Danish perception-focus suffix derived from active concepts. | [src](../../../core/services/affect_modulation.py#L400) |
+| function | `_summarize_affect_payload` | `(kind, payload)` | Pull the most affectively-relevant kerne from a payload. | [src](../../../core/services/affect_modulation.py#L454) |
+| function | `compute_affect_substrate` | `(*, window_min=…, max_events=…)` | Return raw affectively-relevant events as substrate strings. | [src](../../../core/services/affect_modulation.py#L504) |
 
 ## `core/services/affective_meta_state.py`
 

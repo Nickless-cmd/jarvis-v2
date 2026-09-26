@@ -329,6 +329,7 @@ _PUBLIC_PROXY_PROVIDERS = (
     "airforce",
     "tuzi",
     "fujcloud",
+    "freeai",
 )
 
 # Round-robin counter so consecutive background calls spread across the

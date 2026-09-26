@@ -71,6 +71,80 @@ CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
         "static_models": ["claude-sonnet-4-6", "deepseek-v4-flash",
                           "glm-5.3-flash", "mimo-v2.6-flash"],
     },
+    # ── free.ai (26/9-2026). Nøgleløs, gratis, hurtig og værktøjs-dygtig —
+    # og den eneste af aftenens otte der er ALLE fire dele på én gang.
+    #
+    # MODELLISTEN ER FIKTION. API'et melder 503 modeller, 465 af dem chat.
+    # Målt: TO aliaser svarer — `qwen7b` og `qwen3-8b` — og begge peger på
+    # SAMME bagvedliggende model, `Qwen/Qwen3-30B-A3B-Instruct`. Alle andre
+    # svarer «'X' is not a model»: z-ai/glm-5.3-prime, qwen/qwen3.8-max-prime,
+    # deepseek-r1, aion-labs/aion-3.5, qwen3-coder, mistral, llama3, gemma,
+    # phi3. Samme slags løgn som airforces `tier: free`-felt, bare i
+    # modelnavnene i stedet for i et flag.
+    #
+    # Derfor står der ÉN model her og ikke to: `qwen3-8b` ville være samme
+    # backend under et andet navn, og en balancer der tror den har to veje har
+    # ikke to veje.
+    #
+    # MÅLT: 345-365 ms svartid. 15 kald i træk → alle 200, intet loft observeret.
+    # Værktøjskald VIRKER (`tool_calls: 1 get_weather` på en rigtig skema-test)
+    # — det er ikke en selvfølge for en gratis 30B, og det er grunden til at
+    # den er mere værd end de fleste nøgleløse.
+    #
+    # NØGLEN ER VALGFRI: kaldet svarer 200 UDEN auth. Vi sender den alligevel,
+    # fordi den er Bjørns og kan bære en kvote vi ikke kan se. Den hører derfor
+    # i `_PUBLIC_PROXY_PROVIDERS`: nøgleløs adgang betyder delt, anonym rute.
+    "freeai": {
+        "label": "free.ai (nøgleløs)",
+        "priority": 44,
+        "base_url": "https://api.free.ai/v1",
+        "auth_kind": "bearer",
+        "protocol": "openai-chat",
+        "models_endpoint": "/models",
+        "rpm_limit": 30,
+        "daily_limit": 1000,
+        "cost_class": "free",
+        "static_models": ["qwen7b"],
+    },
+    # PEKPIK AFVIST 26/9-2026 — den ene model den tilbyder fejler på HVERT kald,
+    # og kaldet trækker forbrug alligevel.
+    #
+    # `aiapiv2.pekpik.com/v1`, femte NewAPI-gateway i rækken
+    # (`x-oneapi-request-id`, bag Cloudflare). Nøgle påkrævet. Token'et er
+    # `free-daily-591`: gruppe «free», $1,00/$1,00, ser ud til at forny sig
+    # dagligt.
+    #
+    # Katalogets ENESTE model er `gemini-2.5-flash`. MÅLT, tre kald:
+    #   med værktøjs-skema  → `openai_error`, 0 tool_calls, tom content, 9.935 ms
+    #   almindelig chat ×2  → `openai_error`, tom content, 9.051 og 8.436 ms
+    #
+    # Og det afgørende: forbruget gik 0 → 0,027 → 0,039 MENS alle tre kald
+    # fejlede. En udbyder der fakturerer for fejl ville dræne den daglige
+    # dollar uden at levere en eneste besvarelse — og gøre det tavst, fordi
+    # fejlen ligner en almindelig provider-fejl i loggen.
+    #
+    # Prøves igen kun hvis nogen har set den svare. Ikke wired.
+    # llm.kiwi AFVIST 26/9-2026 — fire af seks modeller kræver en Pro-plan, den
+    # femte hænger, og den sjette kan ikke kalde værktøjer.
+    #
+    # `api.llm.kiwi/v1` (bemærk: `llm.kiwi/v1` giver 404). Modellisten er åben,
+    # men KALD kræver nøglen — altså en krediteret udbyder, ikke en anonym
+    # proxy. Seks modeller: auto, hrLLM, minimax-m3, minimax-m2.5,
+    # nemotron-3-super, nemotron-3-ultra.
+    #
+    # MÅLT, hver model med et rigtigt værktøjs-skema:
+    #   minimax-m3/m2.5, nemotron-3-super/ultra → «This model requires a Pro
+    #     or VIP plan» (93-176 ms, afvist med det samme)
+    #   hrLLM                                   → INTET svar, 90 s timeout
+    #   auto                                    → svarer på almindelig chat,
+    #     men 0 tool_calls og TOM content på værktøjs-testen (986 ms)
+    #
+    # `auto` fulgte heller ikke en triviel instruktion: på «Svar præcis: ok»
+    # skrev den en forklaring af hvad ordet «ok» betyder.
+    #
+    # NB om nemotron-3-ultra: den er i forvejen kendt herfra for at FABRIKERE
+    # filstier i explore-arbejde (se `agent_runtime_spawn`s kapabilitets-gulv),
+    # så den ville være rutet udenom alligevel. Ikke wired.
     # api.navy AFVIST 26/9-2026 — gratis-planen er lukket for ALLE, ikke kun os.
     # Nøglen (`sk-navy-…`) er gyldig og kommer forbi auth; kaldet svarer derefter:
     #

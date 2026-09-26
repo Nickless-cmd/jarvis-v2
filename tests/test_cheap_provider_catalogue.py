@@ -272,3 +272,51 @@ def test_api_navy_er_afvist_med_sin_fejltekst():
     src = inspect.getsource(kat)
     assert "api.navy AFVIST" in src
     assert "for all users" in src
+
+
+def test_freeai_lister_EN_model_selv_om_api_et_melder_503():
+    """API'et melder 503 modeller, 465 af dem chat. Målt: to aliaser svarer —
+    `qwen7b` og `qwen3-8b` — og begge peger på SAMME backend
+    (`Qwen/Qwen3-30B-A3B-Instruct`). Alle andre svarer «is not a model».
+
+    Derfor står der ÉN model og ikke to: en balancer der tror den har to veje
+    har ikke to veje. Samme slags løgn som airforces `tier: free`, bare i
+    modelnavnene i stedet for i et flag.
+    """
+    f = kat.CHEAP_PROVIDER_DEFAULTS["freeai"]
+    assert f["static_models"] == ["qwen7b"]
+    assert f["cost_class"] == "free"
+
+
+def test_freeai_er_en_noegleloes_rute_og_hoerer_bag_porten():
+    """Kaldet svarer 200 UDEN auth. Nøglen sendes alligevel fordi den er
+    Bjørns og kan bære en kvote vi ikke kan se — men nøgleløs adgang betyder
+    delt, anonym rute, og så hører den i mellemhandler-porten."""
+    from core.services.cheap_provider_runtime_selection import _is_public_proxy
+
+    assert _is_public_proxy("freeai")
+
+
+def test_llm_kiwi_er_afvist_paa_vaerktoejer_og_pro_gate():
+    """Fire af seks modeller kræver en Pro-plan, `hrLLM` svarede ikke inden
+    for 90 s, og `auto` gav 0 tool_calls med tom content på et rigtigt
+    værktøjs-skema. En cheap-lane-udbyder der ikke kan kalde værktøjer er
+    kun det halve af en udbyder."""
+    assert "kiwi" not in kat.CHEAP_PROVIDER_DEFAULTS
+    import inspect
+    src = inspect.getsource(kat)
+    assert "llm.kiwi AFVIST" in src
+    assert "0 tool_calls og TOM content" in src
+
+
+def test_pekpik_er_afvist_for_den_fakturerer_for_fejl():
+    """Den eneste model (`gemini-2.5-flash`) svarede `openai_error` på alle tre
+    kald — med og uden værktøjer — og forbruget gik 0 → 0,027 → 0,039
+    imens. En udbyder der fakturerer for fejl dræner sin daglige dollar uden
+    at levere noget, og gør det tavst: fejlen ligner en almindelig
+    provider-fejl i loggen."""
+    assert "pekpik" not in kat.CHEAP_PROVIDER_DEFAULTS
+    import inspect
+    src = inspect.getsource(kat)
+    assert "PEKPIK AFVIST" in src
+    assert "fakturerer for fejl" in src

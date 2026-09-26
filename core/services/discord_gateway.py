@@ -589,6 +589,46 @@ def _wrap_tables_for_discord(text: str) -> str:
     return "\n".join(out)
 
 
+# CommonMark thematic break (`---`, `***`, `___`) på sin egen linje. Discord
+# tegner den ikke — den står som rå tekst.
+_THEMATIC_BREAK_RE = re.compile(r"^\s*([-*_])(?:\s*\1){2,}\s*$")
+
+# ATX-header med 4+ hashes. Discord har kun #/##/### — dybere står som rå tekst.
+_ATX_DEEP_RE = re.compile(r"^(\s{0,3})(#{4,})(\s+)")
+
+_DISCORD_RULE = "─" * 30
+
+
+def _downgrade_unsupported_for_discord(text: str) -> str:
+    """Nedgrader markdown Discord ikke tegner, så det ikke står som rå tegn.
+
+    - `---` (thematic break) → en box-drawing-linje der læses som skillelinje.
+    - `####`+ overskrift → `###` (Discords dybeste). Samme visuelle vægt som
+      desk' mindste overskrift — nærmeste match.
+    Kode-fences lades i fred (samme fence-sporing som tabel-wrapperen)."""
+    if not text:
+        return text
+    lines = text.split("\n")
+    out: list[str] = []
+    fence: str | None = None
+    for line in lines:
+        m = _FENCE_LINE_RE.match(line)
+        if m:
+            fence = None if fence else m.group(1)
+            out.append(line)
+            continue
+        if fence is None:
+            if _THEMATIC_BREAK_RE.match(line):
+                out.append(_DISCORD_RULE)
+                continue
+            dm = _ATX_DEEP_RE.match(line)
+            if dm:
+                out.append(f"{dm.group(1)}###{dm.group(3)}{line[dm.end():]}")
+                continue
+        out.append(line)
+    return "\n".join(out)
+
+
 def _split_message(text: str, limit: int) -> list[str]:
     """Split text into chunks of at most `limit` characters.
 
@@ -696,6 +736,7 @@ async def _send_outbound_loop() -> None:
         # Discord; normalizeren og desk/webchat er urørt.
         if text:
             text = _wrap_tables_for_discord(text)
+            text = _downgrade_unsupported_for_discord(text)
 
         # Stop typing indicator before sending
         with _typing_lock:

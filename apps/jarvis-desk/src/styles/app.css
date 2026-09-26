@@ -3761,8 +3761,16 @@ p.central-flag { margin: 0 0 6px; }
    skillestregens margin (10) = 20 px. Rummet over var 6 + 2 = 8 px.
    Marginerne kollapser IKKE — panelet er en flex-kolonne, så de 8 og de 10
    lægges sammen. Med 18 px bliver begge sider 20, og rækken står midt
-   mellem de to linjer i stedet for at hænge op ad den øverste. */
-.rh-rows { margin-top: 6px; padding-top: 18px; border-top: 1px solid var(--line); }
+   mellem de to linjer i stedet for at hænge op ad den øverste.
+
+   VÆLGEREN ER VÆGTET, og det er ikke kosmetik. Elementet bærer baade
+   `env-rows` og `rh-rows`, og `environment-inspector.css` indlaeses EFTER
+   `app.css` (App.tsx). `.env-rows { padding: 0 }` staar dér — samme
+   specificitet (0,1,0), men senere, saa den vandt og aad de 18 px. Maalt
+   26/9-2026: tallet var praecis det samme foer og efter rettelsen, mens
+   bundlen indeholdt 18px. `.env-rows.rh-rows` (0,2,0) vinder uanset
+   raekkefoelgen. */
+.env-rows.rh-rows { margin-top: 6px; padding-top: 18px; border-top: 1px solid var(--line); }
 .rh-tryk { color: var(--fg-3); }
 .rh-tryk.rh-medium { color: var(--warn-fg); }
 .rh-tryk.rh-high { color: var(--error-fg); }

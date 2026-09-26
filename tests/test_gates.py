@@ -106,7 +106,22 @@ class TestDecisionGate:
         )
         assert allowed is True
 
-    def test_blocks_when_tool_contradicts_active_decision(self):
+    def test_blocks_when_tool_contradicts_active_decision(self, tmp_path, monkeypatch):
+        """Isoleret DB (rettet 26/9-2026).
+
+        FØR: create_decision ramte den LEVENDE jarvis.db. Resultatet stod i
+        produktions-tabellen som 33 rækker «undgå at slette filer uden backup»
+        (3/5 → 9/7), alle revoked — testen revokede godt nok i `finally`, men
+        den OPRETTEDE en rigtig række hver eneste kørsel. Samme opskrift som
+        tests/test_pushback.py: peg DB_PATH på tmp_path før init_db.
+        """
+        import core.runtime.db as db
+        import core.runtime.db_core as db_core
+
+        monkeypatch.setattr(db_core, "DB_PATH", tmp_path / "t.db")
+        monkeypatch.setenv("JARVIS_HOME", str(tmp_path))
+        db.init_db()
+
         from core.services.decision_gate import check_decision_gate
         from core.runtime.db_decisions import create_decision, set_status
 

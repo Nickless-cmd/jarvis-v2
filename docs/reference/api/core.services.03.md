@@ -129,15 +129,20 @@ _Alle kørende baggrundsopgaver — uanset hvor de kører._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_nu` | `()` | — | [src](../../../core/services/background_jobs.py#L62) |
-| function | `_operator_jobs` | `(uid, exec_fn)` | Baggrunds-shells på operatørens maskine. Tom liste hvis broen tier. | [src](../../../core/services/background_jobs.py#L66) |
-| class | `BroTier` | `` | Broen svarede ikke — vi VED ikke hvad der kører på operatørens maskine. | [src](../../../core/services/background_jobs.py#L102) |
-| function | `_tal` | `(v)` | — | [src](../../../core/services/background_jobs.py#L106) |
-| function | `_supervisor_jobs` | `()` | — | [src](../../../core/services/background_jobs.py#L113) |
-| function | `_iso_ts` | `(v)` | — | [src](../../../core/services/background_jobs.py#L142) |
-| function | `_scout_jobs` | `()` | Scout-agenter der kører — og dem der blev færdige den seneste time. | [src](../../../core/services/background_jobs.py#L149) |
-| function | `liste` | `(*, uid=…, exec_fn=…, kun_aktive=…)` | Alle jobs fra begge kilder. | [src](../../../core/services/background_jobs.py#L184) |
-| function | `_skal_vises` | `(job)` | Kører den, eller gik den galt? | [src](../../../core/services/background_jobs.py#L215) |
+| function | `_nu` | `()` | — | [src](../../../core/services/background_jobs.py#L78) |
+| function | `_operator_jobs` | `(uid, exec_fn)` | Baggrunds-shells på operatørens maskine. Tom liste hvis broen tier. | [src](../../../core/services/background_jobs.py#L82) |
+| class | `BroTier` | `` | Broen svarede ikke — vi VED ikke hvad der kører på operatørens maskine. | [src](../../../core/services/background_jobs.py#L118) |
+| function | `_tal` | `(v)` | — | [src](../../../core/services/background_jobs.py#L122) |
+| function | `_sekunder` | `(v)` | Sekunder der kan komme som float. | [src](../../../core/services/background_jobs.py#L129) |
+| function | `_supervisor_jobs` | `()` | — | [src](../../../core/services/background_jobs.py#L143) |
+| function | `_iso_ts` | `(v)` | — | [src](../../../core/services/background_jobs.py#L172) |
+| function | `_scout_jobs` | `()` | Scout-agenter der kører — og dem der blev færdige den seneste time. | [src](../../../core/services/background_jobs.py#L179) |
+| function | `_shell_kort` | `(sid, *, egen_maskine, idle, cwd=…)` | Ét kort for en åben shell — samme form som de øvrige kilder. | [src](../../../core/services/background_jobs.py#L214) |
+| function | `_lokale_shell_sessioner` | `()` | Åbne `bash_session`-shells — KUN hvis daemonen allerede kører. | [src](../../../core/services/background_jobs.py#L238) |
+| function | `_operator_shell_sessioner` | `()` | Åbne `operator_bash_session`-shells på Bjørns maskine. | [src](../../../core/services/background_jobs.py#L282) |
+| function | `_shell_sessioner` | `()` | Begge slags åbne shells. Den ene kilde må ikke kunne tie den anden. | [src](../../../core/services/background_jobs.py#L312) |
+| function | `liste` | `(*, uid=…, exec_fn=…, kun_aktive=…)` | Alle jobs fra alle fire kilder. | [src](../../../core/services/background_jobs.py#L325) |
+| function | `_skal_vises` | `(job)` | Kører den, eller gik den galt? | [src](../../../core/services/background_jobs.py#L357) |
 
 ## `core/services/background_resume.py`
 _Turen maa ikke slutte mens en baggrunds-shell stadig producerer._

@@ -190,3 +190,56 @@ describe('scout-agenter i panelet (17/9-2026)', () => {
     await waitFor(() => expect(stopJob).toHaveBeenCalledWith(cfg, SCOUT))
   })
 })
+
+// ── Åbne shell-sessioner (26/9-2026) ────────────────────────────────────
+//
+// Bjørn: «hans bash og operator_bash [skal] ramme baggrundsjobs panelet...
+// simple vising med en stop knap».
+const SHELL_SERVER = {
+  id: 'bsh-115cd823bf', kilde: 'shell' as const, navn: 'bsh-115cd823bf',
+  kommando: 'åben shell · intet kører · tiden er tomgang',
+  status: 'running', pid: null, sekunder: 606, exit_code: null, can_pause: false,
+}
+const SHELL_MIN_MASKINE = {
+  id: 'opsess-0123456789ab', kilde: 'shell_operator' as const, navn: 'opsess-0123456789ab',
+  kommando: 'åben shell i /media/projects · intet kører · tiden er tomgang',
+  status: 'running', pid: null, sekunder: 12, exit_code: null, can_pause: false,
+}
+
+describe('åbne shell-sessioner', () => {
+  beforeEach(() => { vi.clearAllMocks() })
+
+  it('viser en shell på serveren og en på hans maskine som HVER sin maskine', async () => {
+    listJobs.mockResolvedValue({ jobs: [SHELL_SERVER, SHELL_MIN_MASKINE], bridge_ok: true })
+    render(<JobsPanel config={cfg} onClose={() => {}} isOwner />)
+    await waitFor(() => expect(screen.getByText('bsh-115cd823bf')).toBeTruthy())
+    expect(screen.getByText('opsess-0123456789ab')).toBeTruthy()
+    // Linje 2 er HVOR den kører. Uden 'shell_operator' i `kildeNavn` faldt
+    // hans egen shell igennem til «Server».
+    expect(screen.getByText('Din maskine')).toBeTruthy()
+    expect(screen.getByText('Server')).toBeTruthy()
+  })
+
+  it('har en stop-knap, men INGEN pause-knap', async () => {
+    listJobs.mockResolvedValue({ jobs: [SHELL_SERVER], bridge_ok: true })
+    render(<JobsPanel config={cfg} onClose={() => {}} isOwner />)
+    const stop = await screen.findByLabelText('Stop bsh-115cd823bf')
+    // can_pause=false: en kommando i sessionen blokerer kaldet og er loftet
+    // til 300 s, saa der er ikke noget oejeblik at pause i.
+    expect(screen.queryByLabelText('Pause bsh-115cd823bf')).toBeNull()
+    fireEvent.click(stop)
+    await waitFor(() => expect(stopJob).toHaveBeenCalled())
+    // Kilden foelger med, saa ruten ved hvilket vaerktoejs `close` der skal
+    // kaldes — daemonens eller operatorens.
+    expect(stopJob.mock.calls[0]?.[1].kilde).toBe('shell')
+  })
+
+  it('stopper HANS shell gennem operator-kilden, ikke serverens', async () => {
+    listJobs.mockResolvedValue({ jobs: [SHELL_MIN_MASKINE], bridge_ok: true })
+    render(<JobsPanel config={cfg} onClose={() => {}} isOwner />)
+    fireEvent.click(await screen.findByLabelText('Stop opsess-0123456789ab'))
+    await waitFor(() => expect(stopJob).toHaveBeenCalled())
+    expect(stopJob.mock.calls[0]?.[1].kilde).toBe('shell_operator')
+    expect(stopJob.mock.calls[0]?.[1].id).toBe('opsess-0123456789ab')
+  })
+})

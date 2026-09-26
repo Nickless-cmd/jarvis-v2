@@ -521,6 +521,50 @@ def _guard_prod_state_dir(request, monkeypatch, _prod_state_shield_dir):
     yield
 
 
+@pytest.fixture(scope="session")
+def _bash_daemon_shield_dir(tmp_path_factory):
+    """Tom tmp-mappe som bash_session-daemonens pid-fil peges mod."""
+    return tmp_path_factory.mktemp("bash_daemon_shield")
+
+
+@pytest.fixture(autouse=True)
+def _guard_bash_session_daemon(request, monkeypatch, _bash_daemon_shield_dir):
+    """INGEN test må røre den ÆGTE bash_session-daemon.
+
+    `bash_session._STATE_DIR` beregnes ved import som
+    `Path.home()/".jarvis-v2"/"state"` og læser ALDRIG `JARVIS_HOME`. Værnene
+    for `shared/` og for `state/*.json` rammer den derfor ikke: pid-filen,
+    soklen og låsen peger på produktionen uanset hvad en test sætter.
+
+    Det blev farligt 26/9-2026, da baggrundsjob-panelet fik en kilde der
+    spørger daemonen om åbne sessioner. To ting gør den sti giftig i en test:
+    `_ensure_daemon_running()` STARTER en daemon når der ikke er nogen, og
+    ENHVER forespørgsel — også `list` — nulstiller dens inaktivitets-ur, som
+    selv-nedlukningen efter en time hænger på. En test der kaldte
+    `background_jobs.liste()` kunne altså både starte en shell-daemon på
+    maskinen og bagefter forhindre den i at lukke ned igen.
+
+    Værnet peger pid-filen mod en tom mappe: `_read_daemon_pid()` svarer None,
+    og kaldere der spørger FØR de laver IPC — som `_lokale_shell_sessioner` —
+    stopper dér. `tests/test_bash_session_selvhelbredelse.py` sætter selv
+    `_PID_PATH` pr. test og overskriver værnet, hvilket er meningen.
+
+    `@pytest.mark.real_bash_daemon` slipper igennem, som `real_home` og
+    `real_state` gør.
+    """
+    if request.node.get_closest_marker("real_bash_daemon") is not None:
+        yield
+        return
+    try:
+        from core.tools import bash_session
+        monkeypatch.setattr(
+            bash_session, "_PID_PATH",
+            Path(_bash_daemon_shield_dir) / "findes-ikke.pid", raising=False)
+    except Exception:
+        pass
+    yield
+
+
 @pytest.fixture(autouse=True)
 def _restore_visible_runs_anchor_classes():
     """Gen-installér visible_runs' ANKER-klasser efter hver test (se blok ovenfor).

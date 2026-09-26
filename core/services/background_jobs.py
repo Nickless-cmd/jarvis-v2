@@ -22,6 +22,22 @@ virkelig forskellige:
     start til slut, og Bjørn: «scout agenter [skal] vises i baggrundsjob panel
     i desk». Før var de usynlige her, selv mens de arbejdede i minutter.
 
+``shell``
+    Åbne shell-sessioner: `bash_session` (serverens egen daemon) og
+    `operator_bash_session` (Bjørns maskine). Tilføjet 26/9-2026 — Bjørn:
+    «hans bash og operator_bash [skal] ramme baggrundsjobs panelet... simple
+    vising med en stop knap».
+
+    De to værktøjsfiler er IKKE rørt. Begge havde `list` og `close` i forvejen,
+    og panelet bruger netop dem: stop-knappen er den samme lukning Jarvis selv
+    kan kalde. Intet nyt gates.
+
+    En shell-session er ikke et job der kører. Den er en shell der STÅR ÅBEN;
+    en kommando i den blokerer kaldet og er loftet til 300 sekunder, så den
+    findes aldrig mellem to opslag. Derfor er tallet på kortet **uberørt tid**
+    og ikke levetid — hverken daemonen eller operator-dict'en gemmer et
+    fødselstidspunkt, kun «sidst brugt». `kommando`-linjen siger det.
+
 Et panel der kun viste den ene ville være sandt om sin form og tavst om sit
 indhold — man ville tro der ikke kørte noget, mens der gjorde.
 
@@ -110,6 +126,20 @@ def _tal(v: Any) -> int:
         return 0
 
 
+def _sekunder(v: Any) -> int:
+    """Sekunder der kan komme som float.
+
+    `_tal` er til heltalsfelter og svarer 0 på «12.4», fordi `int("12.4")`
+    rejser. Operator-sessionernes `idle_s` er netop `round(..., 1)`, så en
+    session der havde ligget 12,4 sekunder ville stå som 0 — et tavst nul der
+    lignede en helt frisk session.
+    """
+    try:
+        return int(float(str(v).strip()))
+    except (TypeError, ValueError):  # ikke et tal — 0 betyder «ukendt», ikke fejl
+        return 0
+
+
 def _supervisor_jobs() -> list[dict[str, Any]]:
     from core.services.process_supervisor import list_processes
     ud = list_processes(include_stopped=True)
@@ -181,8 +211,119 @@ def _scout_jobs() -> list[dict[str, Any]]:
     return jobs
 
 
+def _shell_kort(sid: str, *, egen_maskine: bool, idle: int, cwd: str = "") -> dict[str, Any]:
+    """Ét kort for en åben shell — samme form som de øvrige kilder."""
+    hvor = f" i {cwd}" if cwd and cwd != "~" else ""
+    return {
+        "id": sid,
+        # Id'et ER navnet, som operator-shellene ovenfor. Daemonen tillader
+        # otte samtidige sessioner, og «Shell-session» otte gange ville give
+        # otte ens raekker OG otte ens `aria-label`s paa stop-knapperne.
+        # Hvad det er, staar paa linje tre.
+        "navn": sid,
+        # To kilder, ikke én med maskinen gemt i navnet: i den eksisterende
+        # kontrakt svarer `kilde` netop på HVILKEN maskine, og det er dét
+        # panelets linje 2 viser. Én fælles kilde ville gøre den linje stum.
+        "kilde": "shell_operator" if egen_maskine else "shell",
+        "kommando": f"åben shell{hvor} · intet kører · tiden er tomgang",
+        "status": "running",
+        "pid": None,
+        "sekunder": max(0, int(idle)),
+        "exit_code": None,
+        # `close` dræber shellen. Der findes ingen pause.
+        "can_pause": False,
+    }
+
+
+def _lokale_shell_sessioner() -> list[dict[str, Any]]:
+    """Åbne `bash_session`-shells — KUN hvis daemonen allerede kører.
+
+    `_exec_bash_session_list` går gennem `_ensure_daemon_running()`, som
+    STARTER daemonen når den er væk. Et panel der poller hvert femte sekund
+    ville dermed skabe den proces det påstod at observere. Derfor spørges der
+    først når pid-filen peger på en ægte daemon; ellers er svaret den tomme
+    liste, hvilket er sandt: ingen daemon, ingen sessioner.
+
+    Tilbage står én bivirkning, og den skal stå skrevet frem for at blive
+    opdaget: daemonens selv-nedlukning kræver `last_activity` ældre end en
+    time OG nul sessioner, og ENHVER forespørgsel — også `list` — nulstiller
+    uret. Så længe panelet er åbent, lukker en session-løs daemon altså ikke
+    ned af sig selv. Panelet henter kun mens det er åbent, så virkningen
+    holder op når man lukker det.
+    """
+    from core.tools.bash_session import (
+        _exec_bash_session_list,
+        _pid_is_our_daemon,
+        _read_daemon_pid,
+    )
+    pid = _read_daemon_pid()
+    if pid is None or not _pid_is_our_daemon(pid):
+        return []
+    svar = _exec_bash_session_list({})
+    if str(svar.get("status") or "") != "ok":
+        raise RuntimeError(str(svar.get("error") or "daemonen svarede ikke"))
+    ud = []
+    for s in svar.get("sessions") or []:
+        # En doed session udelades. Daemonen beholder den i sin dict til den
+        # reapes, men en lukket shell er ikke et baggrundsjob: der er intet
+        # at stoppe, og panelet viser ikke stop-knappen paa noget faerdigt.
+        # Den ville staa under «Faerdige» og hverken kunne ryddes eller
+        # handles paa.
+        if not s.get("alive"):
+            continue
+        sid = str(s.get("session_id") or "")
+        if not sid:
+            continue
+        ud.append(_shell_kort(sid, egen_maskine=False,
+                              idle=_sekunder(s.get("idle_seconds"))))
+    return ud
+
+
+def _operator_shell_sessioner() -> list[dict[str, Any]]:
+    """Åbne `operator_bash_session`-shells på Bjørns maskine.
+
+    `_SESSIONS` er en dict i PROCESSENS hukommelse, ikke en daemon. Målt
+    26/9-2026 på CT105: en frisk proces så en tom liste i samme øjeblik som
+    `bash_session`-daemonen havde `bsh-115cd823bf` åben. Listen her dækker
+    derfor kun sessioner åbnet i SAMME proces som den der svarer — API-
+    processen, der betjener den synlige samtale. Åbner han en session under
+    en autonom kørsel (jarvis-runtime, en anden proces), er den usynlig her.
+
+    Det er en halv sandhed, men en afgrænset og målt en. Alternativet — at
+    flytte sessionerne ud af processen — er en ændring af selve værktøjet, og
+    de to filer skal stå urørt.
+    """
+    from core.tools.operator_bash_session import _exec_operator_bash_session_list
+    svar = _exec_operator_bash_session_list({})
+    if str(svar.get("status") or "") != "ok":
+        raise RuntimeError(str(svar.get("error") or "operator-sessionerne svarede ikke"))
+    ud = []
+    for s in svar.get("sessions") or []:
+        sid = str(s.get("session_id") or "")
+        if not sid:
+            continue
+        ud.append(_shell_kort(
+            sid, egen_maskine=True, idle=_sekunder(s.get("idle_s")),
+            cwd=str(s.get("cwd") or ""),
+        ))
+    return ud
+
+
+def _shell_sessioner() -> list[dict[str, Any]]:
+    """Begge slags åbne shells. Den ene kilde må ikke kunne tie den anden."""
+    jobs: list[dict[str, Any]] = []
+    for navn, fn in (("lokale", _lokale_shell_sessioner),
+                     ("operator", _operator_shell_sessioner)):
+        try:
+            jobs += fn()
+        except Exception:
+            logger.warning("background_jobs: %s shell-sessioner kunne ikke laeses",
+                           navn, exc_info=True)
+    return jobs
+
+
 def liste(*, uid: str = "", exec_fn=None, kun_aktive: bool = True) -> dict[str, Any]:
-    """Alle jobs fra begge kilder.
+    """Alle jobs fra alle fire kilder.
 
     `kun_aktive` fjerner det der er FÆRDIGT — Bjørn: «de skal automatisk
     forsvinde når opgave er fuldført». Et job der fejlede bliver derimod
@@ -191,6 +332,7 @@ def liste(*, uid: str = "", exec_fn=None, kun_aktive: bool = True) -> dict[str, 
     åbne.
     """
     jobs = _supervisor_jobs()
+    jobs += _shell_sessioner()
     try:
         jobs += _scout_jobs()
     except Exception:

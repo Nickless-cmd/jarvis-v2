@@ -90,3 +90,60 @@ def test_en_scout_agent_kan_ikke_pauses_og_id_valideres(monkeypatch):
     with pytest.raises(HTTPException) as e:
         r._signal_job("agent", "agent-" + "0" * 32, "pause")
     assert e.value.status_code == 400
+
+
+# ── Stop på en åben shell-session (26/9-2026) ───────────────────────────
+#
+# Stop-knappen kalder værktøjernes EGEN `close`. De to filer er urørt — der
+# gates intet nyt; Bjørn får den knap Jarvis allerede havde.
+
+
+def test_en_shell_session_kan_kun_LUKKES_ikke_pauses():
+    # En kommando i en session blokerer kaldet og er loftet til 300 s. Der
+    # findes ikke et oejeblik mellem to opslag hvor man kunne standse den,
+    # saa en pause-knap ville vaere en knap der intet gjorde.
+    for h in ("pause", "resume"):
+        with pytest.raises(HTTPException) as e:
+            r._signal_job("shell", "bsh-0123456789", h)
+        assert e.value.status_code == 400
+
+
+def test_et_UGYLDIGT_session_id_afvises():
+    # Id'et vaelger hvilket vaerktoej der kaldes. Uden moenster-kontrollen
+    # ville en vilkaarlig streng naa helt ind i `close`.
+    for slem in ("bsh-ZZZZZZZZZZ", "bsh-012", "opsess-0123", "; rm -rf /",
+                 "opsess-ZZZZZZZZZZZZ", ""):
+        with pytest.raises(HTTPException) as e:
+            r._signal_job("shell", slem, "stop")
+        assert e.value.status_code == 400
+
+
+def test_en_lokal_shell_lukkes_gennem_daemonens_egen_close(monkeypatch):
+    import core.tools.bash_session as bs
+    set_id = {}
+    monkeypatch.setattr(bs, "_exec_bash_session_close",
+                        lambda a: set_id.update(sid=a["session_id"]) or {"status": "ok"})
+    assert r._signal_job("shell", "bsh-115cd823bf", "stop")["status"] == "ok"
+    assert set_id["sid"] == "bsh-115cd823bf"
+
+
+def test_en_operator_shell_lukkes_gennem_operator_vaerktoejets_close(monkeypatch):
+    import core.tools.operator_bash_session as ops
+    set_a = {}
+    monkeypatch.setattr(ops, "_exec_operator_bash_session_close",
+                        lambda a: set_a.update(a) or {"status": "ok", "closed": True})
+    assert r._signal_job("shell_operator", "opsess-0123456789ab", "stop")["status"] == "ok"
+    assert set_a["session_id"] == "opsess-0123456789ab"
+    # `_user_id` skal med: operator-siden rydder sin env-fil paa HANS maskine,
+    # og det kald skal vide hvem det koeres som.
+    assert "_user_id" in set_a
+
+
+def test_en_close_der_fejler_er_400_ikke_en_tavs_succes(monkeypatch):
+    import core.tools.bash_session as bs
+    monkeypatch.setattr(bs, "_exec_bash_session_close",
+                        lambda a: {"status": "error", "error": "daemonen svarede ikke"})
+    with pytest.raises(HTTPException) as e:
+        r._signal_job("shell", "bsh-0123456789", "stop")
+    assert e.value.status_code == 400
+    assert "daemonen" in str(e.value.detail)

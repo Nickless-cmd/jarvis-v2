@@ -98,7 +98,7 @@ _SIGNALER = {"pause": "STOP", "resume": "CONT", "stop": "TERM"}
 
 
 def _signal_job(kilde: str, job_id: str, handling: str) -> dict[str, Any]:
-    """Én vej for begge kilder — de signaleres bare ikke samme sted.
+    """Én vej for alle kilder — de signaleres bare ikke samme sted.
 
     Supervisoren har sine egne funktioner med et værn mod at signalere
     serverens EGEN proces-gruppe. Operatørens shells ligger på en anden
@@ -144,6 +144,31 @@ def _signal_job(kilde: str, job_id: str, handling: str) -> dict[str, Any]:
             raise HTTPException(status_code=502, detail="broen svarede ikke")
         if "ok" not in str((res.get("result") or {}).get("stdout") or ""):
             raise HTTPException(status_code=400, detail="processen svarede ikke — er den allerede slut?")
+        return {"status": "ok"}
+    if kilde in ("shell", "shell_operator"):
+        import re
+        # `close` lukker shellen. Der er ingen pause at give: en kommando i en
+        # session blokerer kaldet og er loftet til 300 sekunder, saa der er
+        # intet mellemrum hvor man kunne standse den.
+        if handling != "stop":
+            raise HTTPException(status_code=400, detail="en shell-session kan kun lukkes")
+        # Samme aarsag som operator-grenen ovenfor: id'et vaelger hvilket
+        # vaerktoej der kaldes, saa det maa matche et moenster og ikke bare
+        # vaere en streng. `bsh-` er daemonens eget format
+        # (`uuid4().hex[:10]`), `opsess-` operator-sessionernes (`[:12]`).
+        if re.fullmatch(r"bsh-[0-9a-f]{10}", job_id):
+            from core.tools.bash_session import _exec_bash_session_close
+            out = _exec_bash_session_close({"session_id": job_id})
+        elif re.fullmatch(r"opsess-[0-9a-f]{12}", job_id):
+            from core.identity.workspace_context import current_user_id
+            from core.tools.operator_bash_session import _exec_operator_bash_session_close
+            out = _exec_operator_bash_session_close(
+                {"session_id": job_id, "_user_id": current_user_id() or ""})
+        else:
+            raise HTTPException(status_code=400, detail="ugyldigt session-id")
+        if str(out.get("status") or "") != "ok":
+            raise HTTPException(status_code=400,
+                                detail=str(out.get("error") or "kunne ikke lukke sessionen"))
         return {"status": "ok"}
     raise HTTPException(status_code=400, detail="ukendt kilde")
 

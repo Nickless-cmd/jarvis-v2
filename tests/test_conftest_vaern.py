@@ -88,3 +88,33 @@ def test_de_to_vaern_er_uafhaengige():
 
     assert JARVIS_HOME.resolve() == _aegte_hjem().resolve()
     assert shared_dir().resolve() != (_aegte_hjem() / "shared").resolve()
+
+
+# ── bash_session-daemonen ───────────────────────────────────────────────────
+
+
+def test_pid_filen_peger_ikke_paa_den_aegte_daemon():
+    """`_PID_PATH` er porten ind til den ægte shell-daemon.
+
+    `bash_session._STATE_DIR` beregnes ved import som
+    `Path.home()/".jarvis-v2"/"state"` og læser ALDRIG `JARVIS_HOME`, så
+    hverken `shared/`-værnet eller `state/`-værnet rammer den. Uden dette
+    tredje værn kunne en test starte en shell-daemon på maskinen
+    (`_ensure_daemon_running` spawner når der ingen er) og bagefter forhindre
+    den i at lukke ned igen (enhver forespørgsel nulstiller uret bag
+    selv-nedlukningen efter en time).
+    """
+    from core.tools import bash_session
+
+    assert bash_session._PID_PATH.resolve() != (
+        _aegte_hjem() / "state" / "bash_session.pid").resolve()
+    assert not bash_session._PID_PATH.exists()
+    assert bash_session._read_daemon_pid() is None
+
+
+@pytest.mark.real_bash_daemon
+def test_real_bash_daemon_slipper_igennem():
+    from core.tools import bash_session
+
+    assert bash_session._PID_PATH.resolve() == (
+        _aegte_hjem() / "state" / "bash_session.pid").resolve()

@@ -16,8 +16,10 @@ import { apiFetch, type ApiConfig } from './api'
 export interface BackgroundJob {
   id: string
   /** 'supervisor' = serverens egne services. 'operator' = Bjørns maskine.
-   *  'agent' = en scout-agent (17/9-2026) — kan stoppes, ikke pauses. */
-  kilde: 'supervisor' | 'operator' | 'agent'
+   *  'agent' = en scout-agent (17/9-2026) — kan stoppes, ikke pauses.
+   *  'shell' / 'shell_operator' = en ÅBEN shell-session (26/9-2026), på
+   *  henholdsvis serveren og Bjørns maskine. Kan kun lukkes. */
+  kilde: 'supervisor' | 'operator' | 'agent' | 'shell' | 'shell_operator'
   navn: string
   kommando: string
   status: 'running' | 'paused' | 'exited' | string
@@ -74,5 +76,8 @@ export function varighed(sekunder?: number | null): string {
  *  ene af de to man ikke kunne se. */
 export function kildeNavn(kilde: string): string {
   if (kilde === 'agent') return 'Agent'
-  return kilde === 'operator' ? 'Din maskine' : 'Server'
+  // 'shell_operator' skal med her: uden den faldt en shell paa HANS maskine
+  // igennem til 'Server' — praecis den forveksling den samlede liste findes
+  // for at fjerne.
+  return kilde === 'operator' || kilde === 'shell_operator' ? 'Din maskine' : 'Server'
 }

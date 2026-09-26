@@ -4,6 +4,7 @@ import pytest
 from core.services import background_jobs as bj
 
 _ægte_scout_jobs = bj._scout_jobs
+_ægte_shell_sessioner = bj._shell_sessioner
 
 
 def _bro(stdout, status="ok"):
@@ -17,6 +18,9 @@ def _bro(stdout, status="ok"):
 def ingen_supervisor(monkeypatch):
     monkeypatch.setattr(bj, "_supervisor_jobs", lambda: [])
     monkeypatch.setattr(bj, "_scout_jobs", lambda: [])
+    # Shell-sessionerne slaas fra som de to andre kilder. De tests der
+    # handler OM dem taender dem igen med deres egen patch.
+    monkeypatch.setattr(bj, "_shell_sessioner", lambda: [])
 
 
 def test_en_standset_shell_er_PAUSET_ikke_koerende(monkeypatch):
@@ -139,3 +143,122 @@ def test_et_brudt_register_vaelter_ikke_panelet(monkeypatch):
     monkeypatch.setattr(bj, "_supervisor_jobs", lambda: [{"id": "x", "kilde": "supervisor", "status": "running",
                                                           "sekunder": 1, "exit_code": None}])
     assert [x["id"] for x in bj.liste()["jobs"]] == ["x"]
+
+
+# ── Åbne shell-sessioner (26/9-2026) ────────────────────────────────────
+#
+# Bjoern: «hans bash og operator_bash [skal] ramme baggrundsjobs panelet...
+# simple vising med en stop knap». De to vaerktoejsfiler er URØRT; panelet
+# bruger deres egne `list` og `close`.
+#
+# NB: den ægte funktion sættes tilbage med `_ægte_shell_sessioner` — IKKE med
+# `monkeypatch.undo()`, som ville rulle conftests produktions-værn tilbage
+# sammen med autouse-fiksturet her.
+
+
+def _taend_shells(monkeypatch):
+    monkeypatch.setattr(bj, "_shell_sessioner", _ægte_shell_sessioner)
+
+
+def _monter_lokal(monkeypatch, sessioner, *, pid=4242, kaldt=None):
+    """Attrap for bash_session: pid-porten og daemonens svar."""
+    import core.tools.bash_session as bs
+    def _list(_args):
+        if kaldt is not None:
+            kaldt.append("list")
+        return {"status": "ok", "sessions": sessioner}
+    monkeypatch.setattr(bs, "_read_daemon_pid", lambda: pid)
+    monkeypatch.setattr(bs, "_pid_is_our_daemon", lambda _p: pid is not None)
+    monkeypatch.setattr(bs, "_exec_bash_session_list", _list)
+
+
+def _monter_operator(monkeypatch, sessioner):
+    import core.tools.operator_bash_session as ops
+    monkeypatch.setattr(ops, "_exec_operator_bash_session_list",
+                        lambda _a: {"status": "ok", "sessions": sessioner})
+
+
+def test_en_aaben_shell_paa_serveren_vises_som_baggrundsjob(monkeypatch):
+    _taend_shells(monkeypatch)
+    _monter_lokal(monkeypatch, [{"session_id": "bsh-115cd823bf",
+                                 "alive": True, "idle_seconds": 606}])
+    _monter_operator(monkeypatch, [])
+    j = bj.liste()["jobs"]
+    assert len(j) == 1
+    assert j[0]["id"] == "bsh-115cd823bf"
+    assert j[0]["kilde"] == "shell"
+    assert j[0]["status"] == "running"
+    assert j[0]["sekunder"] == 606
+    # Der er ingen pause: en kommando i sessionen blokerer kaldet og er
+    # loftet til 300 s, saa der findes ikke et oejeblik at standse den i.
+    assert j[0]["can_pause"] is False
+
+
+def test_panelet_maa_ikke_STARTE_daemonen_for_at_kigge_efter_den(monkeypatch):
+    # `_exec_bash_session_list` gaar gennem `_ensure_daemon_running()`, som
+    # spawner en daemon naar der ikke er nogen. Panelet poller hvert femte
+    # sekund; uden pid-porten ville visningen SKABE det den observerer.
+    _taend_shells(monkeypatch)
+    kaldt = []
+    _monter_lokal(monkeypatch, [{"session_id": "bsh-0123456789",
+                                 "alive": True, "idle_seconds": 1}],
+                  pid=None, kaldt=kaldt)
+    _monter_operator(monkeypatch, [])
+    assert bj.liste()["jobs"] == []
+    assert kaldt == [], "der blev lavet IPC selv om der ingen daemon var"
+
+
+def test_en_doed_shell_udelades_frem_for_at_staa_som_faerdig(monkeypatch):
+    # Daemonen beholder en lukket session til den reapes. Den kan ikke
+    # stoppes (stop-knappen vises ikke paa noget faerdigt) og kan ikke
+    # ryddes — den ville bare ligge der for evigt.
+    _taend_shells(monkeypatch)
+    _monter_lokal(monkeypatch, [{"session_id": "bsh-doed000000",
+                                 "alive": False, "idle_seconds": 9}])
+    _monter_operator(monkeypatch, [])
+    assert bj.liste(kun_aktive=False)["jobs"] == []
+
+
+def test_en_operator_shell_siger_HANS_maskine_ikke_serveren(monkeypatch):
+    _taend_shells(monkeypatch)
+    _monter_lokal(monkeypatch, [], pid=None)
+    _monter_operator(monkeypatch, [{"session_id": "opsess-0123456789ab",
+                                    "cwd": "/media/projects", "idle_s": 12.4}])
+    j = bj.liste()["jobs"]
+    assert len(j) == 1
+    assert j[0]["kilde"] == "shell_operator"
+    assert "/media/projects" in j[0]["kommando"]
+    # Tallet er UBERØRT tid, ikke levetid: hverken daemonen eller
+    # operator-dict'en gemmer et foedselstidspunkt.
+    assert j[0]["sekunder"] == 12
+
+
+def test_den_ene_shell_kilde_maa_ikke_kunne_tie_den_anden(monkeypatch):
+    _taend_shells(monkeypatch)
+    import core.tools.bash_session as bs
+    def _sprang(_args):
+        raise RuntimeError("daemonen svarede ikke")
+    monkeypatch.setattr(bs, "_read_daemon_pid", lambda: 4242)
+    monkeypatch.setattr(bs, "_pid_is_our_daemon", lambda _p: True)
+    monkeypatch.setattr(bs, "_exec_bash_session_list", _sprang)
+    _monter_operator(monkeypatch, [{"session_id": "opsess-0123456789ab",
+                                    "cwd": "~", "idle_s": 1}])
+    assert [x["kilde"] for x in bj.liste()["jobs"]] == ["shell_operator"]
+
+
+def test_to_doede_shell_kilder_vaelter_ikke_de_oevrige_jobs(monkeypatch):
+    # Shell-sessionerne er en TILFOEJELSE til panelet, ikke dets fundament:
+    # supervisor- og operator-jobbene skal stadig vises.
+    _taend_shells(monkeypatch)
+    monkeypatch.setattr(bj, "_supervisor_jobs",
+                        lambda: [{"id": "grid-bot", "kilde": "supervisor",
+                                  "navn": "grid-bot", "kommando": "bot",
+                                  "status": "running", "pid": 7, "sekunder": 5,
+                                  "exit_code": None, "can_pause": True}])
+    import core.tools.bash_session as bs
+    import core.tools.operator_bash_session as ops
+    def _bang(*_a, **_k):
+        raise RuntimeError("nede")
+    monkeypatch.setattr(bs, "_read_daemon_pid", _bang)
+    monkeypatch.setattr(ops, "_exec_operator_bash_session_list", _bang)
+    assert [x["id"] for x in bj.liste()["jobs"]] == ["grid-bot"]

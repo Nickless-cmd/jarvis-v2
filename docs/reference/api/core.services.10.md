@@ -327,24 +327,25 @@ _Discord gateway — runs discord.py in a dedicated daemon thread._
 | function | `_is_gateway_owner` | `()` | True if the discord client thread is running in this process. | [src](../../../core/services/discord_gateway.py#L210) |
 | function | `_dispatch_to_runtime` | `(action, args)` | Forward a send intent to the runtime process via internal HTTP. | [src](../../../core/services/discord_gateway.py#L215) |
 | function | `send_discord_message` | `(channel_id, text)` | Thread-safe: queue a message to be sent to a Discord channel. | [src](../../../core/services/discord_gateway.py#L236) |
-| function | `_download_attachment` | `(attachment, session_id)` | Download a single discord.Attachment via attachment_service. | [src](../../../core/services/discord_gateway.py#L264) |
-| function | `_build_attachment_prefix` | `(attachments, session_id)` | Build content prefix lines for all attachments in a Discord message. | [src](../../../core/services/discord_gateway.py#L277) |
-| function | `_validate_send_path` | `(path)` | — | [src](../../../core/services/discord_gateway.py#L297) |
-| function | `send_discord_file` | `(channel_id, text, file_path)` | Queue a file send to a Discord channel. Validates path first. | [src](../../../core/services/discord_gateway.py#L302) |
-| function | `_open_dm_and_send` | `(recipient_discord_id, text, timeout, max_retries=…, retry_delay=…)` | Open DM channel with a Discord user and queue a message. Gateway-process only. | [src](../../../core/services/discord_gateway.py#L316) |
-| function | `send_dm_to_owner` | `(text, timeout=…)` | Send a DM directly to the owner via owner_discord_id. | [src](../../../core/services/discord_gateway.py#L395) |
-| function | `send_dm_to_user` | `(recipient_discord_id, text, timeout=…)` | DM a known Discord user by ID. | [src](../../../core/services/discord_gateway.py#L430) |
-| function | `_get_or_create_discord_session` | `(channel_id, is_dm, owner_discord_id, author_id=…)` | Return session_id for this Discord channel. Creates session if needed. | [src](../../../core/services/discord_gateway.py#L472) |
-| function | `_split_message` | `(text, limit)` | Split text into chunks of at most `limit` characters. | [src](../../../core/services/discord_gateway.py#L510) |
-| function | `_typing_loop` | `(channel_id)` | Keep showing 'typing...' indicator until the outbound message is sent. | [src](../../../core/services/discord_gateway.py#L521) |
-| function | `_send_outbound_loop` | `()` | Asyncio coroutine that drains the outbound queue and sends to Discord. | [src](../../../core/services/discord_gateway.py#L547) |
-| function | `_run_client` | `(config)` | Main coroutine: set up discord client and run until stopped. | [src](../../../core/services/discord_gateway.py#L600) |
-| function | `_discord_thread_func` | `(config)` | Entry point for the daemon thread. | [src](../../../core/services/discord_gateway.py#L912) |
-| function | `_announce_user_message_appended` | `(session_id, message)` | Udsend channel.chat_message_appended for en Discord-brugerbesked (Spor B). | [src](../../../core/services/discord_gateway.py#L930) |
-| function | `_eventbus_subscriber_loop` | `()` | Background thread: watch eventbus for assistant responses in Discord sessions. | [src](../../../core/services/discord_gateway.py#L950) |
-| function | `_resolve_channel_for_session` | `(session_id)` | Look up the Discord channel that originated a given session. | [src](../../../core/services/discord_gateway.py#L1072) |
-| function | `start_discord_gateway` | `()` | Start gateway if config exists. Safe to call unconditionally. | [src](../../../core/services/discord_gateway.py#L1095) |
-| function | `stop_discord_gateway` | `()` | Stop the gateway gracefully. | [src](../../../core/services/discord_gateway.py#L1139) |
+| function | `start_discord_typing` | `(channel_id)` | Tænd «Jarvis skriver…» og hold den kørende indtil næste besked sendes. | [src](../../../core/services/discord_gateway.py#L264) |
+| function | `_download_attachment` | `(attachment, session_id)` | Download a single discord.Attachment via attachment_service. | [src](../../../core/services/discord_gateway.py#L284) |
+| function | `_build_attachment_prefix` | `(attachments, session_id)` | Build content prefix lines for all attachments in a Discord message. | [src](../../../core/services/discord_gateway.py#L297) |
+| function | `_validate_send_path` | `(path)` | — | [src](../../../core/services/discord_gateway.py#L317) |
+| function | `send_discord_file` | `(channel_id, text, file_path)` | Queue a file send to a Discord channel. Validates path first. | [src](../../../core/services/discord_gateway.py#L322) |
+| function | `_open_dm_and_send` | `(recipient_discord_id, text, timeout, max_retries=…, retry_delay=…)` | Open DM channel with a Discord user and queue a message. Gateway-process only. | [src](../../../core/services/discord_gateway.py#L336) |
+| function | `send_dm_to_owner` | `(text, timeout=…)` | Send a DM directly to the owner via owner_discord_id. | [src](../../../core/services/discord_gateway.py#L415) |
+| function | `send_dm_to_user` | `(recipient_discord_id, text, timeout=…)` | DM a known Discord user by ID. | [src](../../../core/services/discord_gateway.py#L450) |
+| function | `_get_or_create_discord_session` | `(channel_id, is_dm, owner_discord_id, author_id=…)` | Return session_id for this Discord channel. Creates session if needed. | [src](../../../core/services/discord_gateway.py#L492) |
+| function | `_split_message` | `(text, limit)` | Split text into chunks of at most `limit` characters. | [src](../../../core/services/discord_gateway.py#L530) |
+| function | `_typing_loop` | `(channel_id)` | Keep showing 'typing...' indicator until the outbound message is sent. | [src](../../../core/services/discord_gateway.py#L541) |
+| function | `_send_outbound_loop` | `()` | Asyncio coroutine that drains the outbound queue and sends to Discord. | [src](../../../core/services/discord_gateway.py#L567) |
+| function | `_run_client` | `(config)` | Main coroutine: set up discord client and run until stopped. | [src](../../../core/services/discord_gateway.py#L631) |
+| function | `_discord_thread_func` | `(config)` | Entry point for the daemon thread. | [src](../../../core/services/discord_gateway.py#L943) |
+| function | `_announce_user_message_appended` | `(session_id, message)` | Udsend channel.chat_message_appended for en Discord-brugerbesked (Spor B). | [src](../../../core/services/discord_gateway.py#L961) |
+| function | `_eventbus_subscriber_loop` | `()` | Background thread: watch eventbus for assistant responses in Discord sessions. | [src](../../../core/services/discord_gateway.py#L981) |
+| function | `_resolve_channel_for_session` | `(session_id)` | Look up the Discord channel that originated a given session. | [src](../../../core/services/discord_gateway.py#L1103) |
+| function | `start_discord_gateway` | `()` | Start gateway if config exists. Safe to call unconditionally. | [src](../../../core/services/discord_gateway.py#L1126) |
+| function | `stop_discord_gateway` | `()` | Stop the gateway gracefully. | [src](../../../core/services/discord_gateway.py#L1170) |
 
 ## `core/services/dispatch_envelope.py`
 _Robustness envelope builder + plausibility guard for the dispatch-redesign._

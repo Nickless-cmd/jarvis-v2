@@ -19,6 +19,7 @@ from core.services.discord_gateway import (
     send_discord_message,
     send_dm_to_owner,
     send_dm_to_user,
+    start_discord_typing,
 )
 
 router = APIRouter(prefix="/api/internal/discord", tags=["internal"])
@@ -51,6 +52,9 @@ def dispatch(req: DispatchRequest, request: Request) -> dict:
 
     if action == "send_message":
         send_discord_message(int(args["channel_id"]), str(args["text"]))
+        return {"status": "queued"}
+    if action == "start_typing":
+        start_discord_typing(int(args["channel_id"]))
         return {"status": "queued"}
     if action == "send_file":
         return send_discord_file(

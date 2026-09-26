@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8075/15566 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8076/15567 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 8075/15566 functions/methods documented (51%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 697 | 1276 | 54% |
-| `core.services` | 5341 | 10583 | 50% |
+| `core.services` | 5342 | 10584 | 50% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 107 | 183 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -85,7 +85,7 @@ Generated from source. 8075/15566 functions/methods documented (51%). The list b
 - `apps/api/jarvis_api/routes/interlanguage_blind.py` :: `finish_session` (L232)
 - `apps/api/jarvis_api/routes/interlanguage_blind.py` :: `progress` (L222)
 - `apps/api/jarvis_api/routes/interlanguage_blind.py` :: `serve_ui` (L269)
-- `apps/api/jarvis_api/routes/internal_discord.py` :: `dispatch` (L33)
+- `apps/api/jarvis_api/routes/internal_discord.py` :: `dispatch` (L34)
 - `apps/api/jarvis_api/routes/jarvisx_sessions.py` :: `preferences_set` (L53)
 - `apps/api/jarvis_api/routes/jarvisx_sessions.py` :: `todos_status` (L128)
 - `apps/api/jarvis_api/routes/live.py` :: `websocket_stream` (L20)
@@ -1973,19 +1973,19 @@ Generated from source. 8075/15566 functions/methods documented (51%). The list b
 - `core/services/visible_runs.py` :: `VisibleRunController.cancel` (L551)
 - `core/services/visible_runs.py` :: `VisibleRunController.clear_stream` (L548)
 - `core/services/visible_runs.py` :: `VisibleRunController.is_cancelled` (L558)
-- `core/services/visible_runs.py` :: `cancel_visible_run` (L7222)
-- `core/services/visible_runs.py` :: `get_active_visible_run` (L7247)
-- `core/services/visible_runs.py` :: `get_last_visible_capability_use` (L7451)
-- `core/services/visible_runs.py` :: `get_last_visible_run_outcome` (L7447)
-- `core/services/visible_runs.py` :: `get_visible_run_controller` (L7218)
-- `core/services/visible_runs.py` :: `get_visible_selected_work_item` (L7360)
-- `core/services/visible_runs.py` :: `get_visible_selected_work_note` (L7412)
-- `core/services/visible_runs.py` :: `get_visible_selected_work_surface` (L7329)
-- `core/services/visible_runs.py` :: `get_visible_work` (L7270)
-- `core/services/visible_runs.py` :: `get_visible_work_surface` (L7302)
-- `core/services/visible_runs.py` :: `register_visible_run` (L7180)
-- `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L7468)
-- `core/services/visible_runs.py` :: `unregister_visible_run` (L7233)
+- `core/services/visible_runs.py` :: `cancel_visible_run` (L7156)
+- `core/services/visible_runs.py` :: `get_active_visible_run` (L7181)
+- `core/services/visible_runs.py` :: `get_last_visible_capability_use` (L7385)
+- `core/services/visible_runs.py` :: `get_last_visible_run_outcome` (L7381)
+- `core/services/visible_runs.py` :: `get_visible_run_controller` (L7152)
+- `core/services/visible_runs.py` :: `get_visible_selected_work_item` (L7294)
+- `core/services/visible_runs.py` :: `get_visible_selected_work_note` (L7346)
+- `core/services/visible_runs.py` :: `get_visible_selected_work_surface` (L7263)
+- `core/services/visible_runs.py` :: `get_visible_work` (L7204)
+- `core/services/visible_runs.py` :: `get_visible_work_surface` (L7236)
+- `core/services/visible_runs.py` :: `register_visible_run` (L7114)
+- `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L7402)
+- `core/services/visible_runs.py` :: `unregister_visible_run` (L7167)
 - `core/services/visible_runs_learning_signals.py` :: `record_visible_run_learning_signals` (L53)
 - `core/services/visible_runs_outcomes.py` :: `set_last_visible_run_outcome` (L587)
 - `core/services/visible_runs_sse_v2.py` :: `ToolEchoFilter.feed` (L104)

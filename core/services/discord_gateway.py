@@ -261,6 +261,26 @@ def send_discord_message(channel_id: int, text: str) -> None:
         )
 
 
+def start_discord_typing(channel_id: int) -> None:
+    """Tænd «Jarvis skriver…» og hold den kørende indtil næste besked sendes.
+
+    Erstatter tekst-progress-linjerne i Discord-kanalen. De gav Bjørn besked
+    om at Jarvis var i live, men efterlod én besked pr. værktøjsrunde — rod
+    uden værdi (målt 26/9-2026: ét svar gav otte «Runde N»-linjer ovenover
+    selve teksten). Typing-indikatoren siger det samme uden at skrive i
+    kanalen, og `_typing_loop` fornyer den hvert 8. sek, så den dækker hele
+    kørslen — også de 3+ min hvor første LLM-kald tænker.
+
+    Thread-safe. Lægges i outbound-køen når denne proces ejer gatewayen, så
+    `_send_outbound_loop` kan starte loop'en i dens egen event-loop (kalderen
+    kører i en anden tråd). Ellers dispatches intentet til runtime-processen.
+    """
+    if _is_gateway_owner():
+        _outbound_queue.put_nowait({"channel_id": int(channel_id), "typing": True})
+        return
+    _dispatch_to_runtime("start_typing", {"channel_id": int(channel_id)})
+
+
 def _download_attachment(attachment: Any, session_id: str) -> dict:
     """Download a single discord.Attachment via attachment_service."""
     from core.services.attachment_service import download_and_store
@@ -561,6 +581,17 @@ async def _send_outbound_loop() -> None:
             channel_id = item["channel_id"]
             text = item.get("text", "")
             file_path = item.get("file_path")
+
+        # Typing-intent: tænd «skriver…» uden at sende en besked. Bruges ved
+        # run-start i stedet for de gamle tekst-linjer, der fyldte kanalen.
+        # Lægges i køen frem for at kalde _typing_loop direkte, fordi kaldet
+        # kommer fra en anden tråd end gatewayens event-loop.
+        if not isinstance(item, tuple) and item.get("typing"):
+            with _typing_lock:
+                if channel_id not in _typing_channels:
+                    _typing_channels.add(channel_id)
+                    asyncio.ensure_future(_typing_loop(channel_id))
+            continue
 
         # Stop typing indicator before sending
         with _typing_lock:

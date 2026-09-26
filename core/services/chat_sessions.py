@@ -15,6 +15,7 @@ from core.services.tool_result_store import (
 )
 from core.runtime.db import connect
 from core.runtime.db_core import skriv_med_genforsoeg
+from core.identity.samtale_scope import aktuel_samtale_workspace
 
 logger = logging.getLogger(__name__)
 
@@ -1127,15 +1128,21 @@ def recent_user_message_texts(*, limit: int = 1500) -> list[str]:
     Meget korte beskeder («ok», «kør») bidrager ikke med ord der betyder noget
     og skaevvrider naevneren, saa de sorteres fra i selve forespoergslen.
     """
+    # LÆKKEN 26/9-2026: uden workspace-filteret var «de seneste N
+    # bruger-beskeder» alles beskeder. Fail-closed: intet workspace, intet ord.
+    ws = aktuel_samtale_workspace()
+    if not ws:
+        return []
     with connect() as conn:
         rows = conn.execute(
             """
             SELECT content FROM chat_messages
-            WHERE role = 'user' AND length(content) BETWEEN 15 AND 2000
+            WHERE role = 'user' AND workspace_name = ?
+              AND length(content) BETWEEN 15 AND 2000
             ORDER BY created_at DESC
             LIMIT ?
             """,
-            (max(1, int(limit)),),
+            (ws, max(1, int(limit))),
         ).fetchall()
     return [str(r["content"] or "") for r in rows]
 

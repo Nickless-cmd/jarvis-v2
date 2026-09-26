@@ -133,6 +133,13 @@ _Project context — current "where am I working" as set by JarvisX._
 | function | `_file_summary` | `(name, role, present, loaded_by_default)` | — | [src](../../../core/identity/runtime_contract.py#L344) |
 | function | `_capability_contract_state` | `(capability_truth)` | — | [src](../../../core/identity/runtime_contract.py#L354) |
 
+## `core/identity/samtale_scope.py`
+_Hvis samtaler må denne kørsel læse?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `aktuel_samtale_workspace` | `()` | Workspace hvis samtaler denne kørsel må læse. Tom streng = ingen. | [src](../../../core/identity/samtale_scope.py#L45) |
+
 ## `core/identity/session_access.py`
 _Må den der spørger, røre DENNE samtale?_
 

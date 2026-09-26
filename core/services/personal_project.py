@@ -34,6 +34,7 @@ from uuid import uuid4
 
 from core.eventbus.bus import event_bus
 from core.runtime.db import connect
+from core.identity.samtale_scope import aktuel_samtale_workspace
 
 logger = logging.getLogger(__name__)
 
@@ -166,11 +167,17 @@ def detect_nomination_candidates(*, lookback_days: int = _NOMINATION_LOOKBACK_DA
     # User messages (1×)
     try:
         with connect() as conn:
+            # LÆKKEN 26/9-2026, og den værste af dem: uddragene herfra
+            # (`sample[:120]`) blev GEMT i projekt-rækkens beskrivelse og
+            # derfra sendt til en LLM. Andres ord blev altså både lagret og
+            # eksporteret. Fail-closed.
+            _ws = aktuel_samtale_workspace()
             rows = conn.execute(
                 "SELECT content, created_at FROM chat_messages "
-                "WHERE role = 'user' AND created_at >= ? LIMIT 200",
-                (since_iso,),
-            ).fetchall()
+                "WHERE role = 'user' AND workspace_name = ? "
+                "AND created_at >= ? LIMIT 200",
+                (_ws, since_iso),
+            ).fetchall() if _ws else []
         for r in rows:
             content = str(r["content"] or "")
             _add(content, weight=1, sample=content)

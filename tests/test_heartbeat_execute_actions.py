@@ -6,6 +6,7 @@ import sys
 from datetime import UTC, datetime
 from pathlib import Path
 from uuid import uuid4
+from core.identity.samtale_scope import aktuel_samtale_workspace
 
 
 def _insert_visible_run(
@@ -450,7 +451,13 @@ def test_active_chat_gate_blocks_ping_when_user_recently_active(
         role="user",
         content="Jeg er her lige nu, så heartbeat skal ikke afbryde.",
         user_id="test-user",
-        workspace_name="default",
+        # EJERENS workspace, ikke «default». Gaten spørger «er brugeren
+        # aktiv lige nu?» for at lade være med at afbryde ham — og efter
+        # 26/9-2026 er det spørgsmål workspace-bundet, fordi det ellers var
+        # sandt når en HELT ANDEN bruger skrev. «default» er desuden en
+        # blandet bucket i produktionen (9.198 rækker, 142 med et
+        # Discord-id), så den duer ikke som stand-in for ham.
+        workspace_name=aktuel_samtale_workspace(),
     )
 
     emitted = []

@@ -27,6 +27,7 @@ import logging
 import time
 from datetime import UTC, datetime, timedelta
 from typing import Any
+from core.identity.samtale_scope import aktuel_samtale_workspace
 
 logger = logging.getLogger(__name__)
 
@@ -48,10 +49,13 @@ def _user_active_recently(*, window_minutes: int = 10) -> bool:
         cutoff = (datetime.now(UTC) - timedelta(minutes=max(1, int(window_minutes)))).isoformat()
         with connect() as c:
             row = c.execute(
+                # LÆKKEN 26/9-2026: «har brugeren sagt noget for nylig?»
+                # var sandt hvis en HELT ANDEN bruger havde skrevet.
                 """SELECT 1 FROM chat_messages
-                   WHERE role = 'user' AND created_at >= ?
+                   WHERE role = 'user' AND workspace_name = ?
+                     AND created_at >= ?
                    LIMIT 1""",
-                (cutoff,),
+                (aktuel_samtale_workspace(), cutoff),
             ).fetchone()
         return row is not None
     except Exception:

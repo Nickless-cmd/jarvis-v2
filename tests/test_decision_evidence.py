@@ -315,7 +315,13 @@ def _to_workspaces_base():
         "CREATE TABLE chat_messages (id INTEGER PRIMARY KEY, role TEXT, "
         "content TEXT, created_at TEXT, workspace_name TEXT)"
     )
-    t = "2026-09-26T14:00:00+00:00"
+    # RELATIVT til nu, ikke et literal. Vagten blev skrevet 26/9-2026 kl. ~14
+    # med `t = "2026-09-26T14:00:00+00:00"` og spørger på «den seneste time».
+    # Den bestod i den time den blev skrevet i og har fejlet lige siden — en
+    # rød vagt der måler ingenting er værre end ingen vagt, for den lærer
+    # folk at se bort fra suiten. (Målt live på CT105: selve filteret VIRKER
+    # — bjorn 200, michelle 1, tom workspace 0. Det var testen, ikke koden.)
+    t = (datetime.now(UTC) - timedelta(minutes=5)).isoformat()
     conn.executemany(
         "INSERT INTO chat_messages (role, content, created_at, workspace_name) "
         "VALUES (?,?,?,?)",

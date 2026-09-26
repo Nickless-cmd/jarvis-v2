@@ -8,6 +8,7 @@ import math
 import re
 from collections import Counter
 from typing import Any
+from core.identity.samtale_scope import aktuel_samtale_workspace
 
 _PHRASE_MIN_MSGS = 3      # en frase skal gå igen i ≥ så mange DISTINKTE beskeder
 _SEQ_MIN_RUNS = 3         # en beslutnings-signatur skal gå igen i ≥ så mange runs
@@ -202,8 +203,11 @@ def _recent_assistant(n: int = 50) -> list[str]:
         from core.runtime.db import connect
         with connect() as conn:
             rows = conn.execute(
-                "SELECT content FROM chat_messages WHERE role='assistant' AND content != '' "
-                "ORDER BY id DESC LIMIT ?", (max(1, n),)).fetchall()
+                # LÆKKEN 26/9-2026 — se core/identity/samtale_scope.py.
+                "SELECT content FROM chat_messages WHERE role='assistant' "
+                "AND workspace_name = ? AND content != '' "
+                "ORDER BY id DESC LIMIT ?",
+                (aktuel_samtale_workspace(), max(1, n))).fetchall()
         return [str(r["content"]) for r in rows if r["content"]]
     except Exception:
         return []

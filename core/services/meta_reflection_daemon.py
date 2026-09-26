@@ -17,6 +17,7 @@ from core.runtime.db_credit_assignment import (
 )
 from core.services.daemon_llm import daemon_llm_call
 from core.services.identity_composer import build_identity_preamble
+from core.identity.samtale_scope import aktuel_samtale_workspace
 
 _CADENCE_MINUTES = 30
 _BUFFER_MAX = 5
@@ -221,11 +222,16 @@ def _get_turns_after(created_at: str, min_turns: int = 3) -> list[dict] | None:
     try:
         from core.runtime.db import connect
         with connect() as conn:
+            # LÆKKEN 26/9-2026 — se samtale_scope.
+            _ws = aktuel_samtale_workspace()
+            if not _ws:
+                return None
             rows = conn.execute(
                 """SELECT role, content, created_at FROM chat_messages
-                   WHERE created_at > ? AND role != 'compact_marker'
+                   WHERE workspace_name = ? AND created_at > ?
+                     AND role != 'compact_marker'
                    ORDER BY created_at ASC LIMIT ?""",
-                (created_at, max(min_turns * 4, 10)),
+                (_ws, created_at, max(min_turns * 4, 10)),
             ).fetchall()
         after = [dict(r) for r in rows]
     except Exception:
@@ -250,9 +256,9 @@ def _get_next_user_message(created_at: str) -> str | None:
         with connect() as conn:
             row = conn.execute(
                 """SELECT content FROM chat_messages
-                   WHERE created_at > ? AND role = 'user'
+                   WHERE workspace_name = ? AND created_at > ? AND role = 'user'
                    ORDER BY created_at ASC LIMIT 1""",
-                (created_at,),
+                (aktuel_samtale_workspace(), created_at),
             ).fetchone()
         if row is None:
             return None

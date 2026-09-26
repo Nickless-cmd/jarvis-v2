@@ -19,6 +19,7 @@ instructions, no tone-tags.
 from __future__ import annotations
 
 import logging
+from core.identity.samtale_scope import aktuel_samtale_workspace
 
 logger = logging.getLogger(__name__)
 
@@ -77,8 +78,9 @@ def detect_agreement_streak(
         with connect() as c:
             rows = c.execute(
                 "SELECT created_at, content FROM chat_messages "
-                "WHERE role='assistant' ORDER BY id DESC LIMIT ?",
-                (max(1, int(lookback)),),
+                "WHERE role='assistant' AND workspace_name = ? "
+                "ORDER BY id DESC LIMIT ?",
+                (aktuel_samtale_workspace(), max(1, int(lookback))),
             ).fetchall()
     except Exception as exc:  # pragma: no cover — defensive
         logger.debug("detect_agreement_streak query failed: %s", exc)

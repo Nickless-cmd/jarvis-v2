@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8080/15571 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8081/15572 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -21,7 +21,7 @@ Generated from source. 8080/15571 functions/methods documented (51%). The list b
 | `core.context` | 70 | 97 | 72% |
 | `core.costing` | 6 | 8 | 75% |
 | `core.eventbus` | 15 | 32 | 46% |
-| `core.identity` | 71 | 165 | 43% |
+| `core.identity` | 72 | 166 | 43% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 697 | 1276 | 54% |
@@ -770,7 +770,7 @@ Generated from source. 8080/15571 functions/methods documented (51%). The list b
 - `core/services/central_existence_feel.py` :: `get_continuity_reading` (L151)
 - `core/services/central_existence_feel.py` :: `get_mortality_reading` (L159)
 - `core/services/central_existence_feel.py` :: `get_subjective_time_reading` (L155)
-- `core/services/central_ghost.py` :: `get_profile` (L88)
+- `core/services/central_ghost.py` :: `get_profile` (L89)
 - `core/services/central_hypothesis_generator.py` :: `list_active_hypotheses` (L504)
 - `core/services/central_hypothesis_governance.py` :: `get_anchored_baseline` (L295)
 - `core/services/central_injection_registry.py` :: `register` (L50)
@@ -822,12 +822,12 @@ Generated from source. 8080/15571 functions/methods documented (51%). The list b
 - `core/services/central_trace.py` :: `sink` (L96)
 - `core/services/central_white_rabbit.py` :: `build_white_rabbit_surface` (L58)
 - `core/services/central_white_rabbit.py` :: `record_white_rabbit` (L62)
-- `core/services/chat_sessions.py` :: `append_chat_message` (L759)
-- `core/services/chat_sessions.py` :: `create_chat_session` (L64)
-- `core/services/chat_sessions.py` :: `delete_chat_session` (L1467)
-- `core/services/chat_sessions.py` :: `recent_chat_session_messages` (L1143)
-- `core/services/chat_sessions.py` :: `recent_chat_tool_messages` (L1428)
-- `core/services/chat_sessions.py` :: `rename_chat_session` (L1453)
+- `core/services/chat_sessions.py` :: `append_chat_message` (L760)
+- `core/services/chat_sessions.py` :: `create_chat_session` (L65)
+- `core/services/chat_sessions.py` :: `delete_chat_session` (L1474)
+- `core/services/chat_sessions.py` :: `recent_chat_session_messages` (L1150)
+- `core/services/chat_sessions.py` :: `recent_chat_tool_messages` (L1435)
+- `core/services/chat_sessions.py` :: `rename_chat_session` (L1460)
 - `core/services/cheap_lane_admission.py` :: `acquire_admission` (L123)
 - `core/services/cheap_lane_admission.py` :: `admission_snapshot` (L102)
 - `core/services/cheap_lane_admission.py` :: `release_admission` (L155)
@@ -969,7 +969,7 @@ Generated from source. 8080/15571 functions/methods documented (51%). The list b
 - `core/services/current_pull.py` :: `build_current_pull_surface` (L360)
 - `core/services/daemon_manager.py` :: `get_daemon_names` (L797)
 - `core/services/daemon_manager.py` :: `set_daemon_enabled` (L844)
-- `core/services/daily_journal.py` :: `stop_daily_journal_daemon` (L296)
+- `core/services/daily_journal.py` :: `stop_daily_journal_daemon` (L298)
 - `core/services/day_shape_memory.py` :: `build_day_shape_surface` (L261)
 - `core/services/decision_enforcement.py` :: `subscribe` (L562)
 - `core/services/decision_ghosts.py` :: `build_decision_ghosts_surface` (L193)
@@ -1143,11 +1143,11 @@ Generated from source. 8080/15571 functions/methods documented (51%). The list b
 - `core/services/habits_pipeline.py` :: `reject_suggestion` (L350)
 - `core/services/hardware_body.py` :: `build_hardware_body_surface` (L204)
 - `core/services/heartbeat_manage_runtime_work.py` :: `execute_manage_runtime_work` (L18)
-- `core/services/heartbeat_runtime.py` :: `heartbeat_runtime_surface` (L487)
-- `core/services/heartbeat_runtime.py` :: `load_heartbeat_policy` (L2164)
-- `core/services/heartbeat_runtime.py` :: `poll_heartbeat_schedule` (L302)
-- `core/services/heartbeat_runtime.py` :: `run_heartbeat_tick` (L1242)
-- `core/services/heartbeat_runtime.py` :: `stop_heartbeat_scheduler` (L272)
+- `core/services/heartbeat_runtime.py` :: `heartbeat_runtime_surface` (L488)
+- `core/services/heartbeat_runtime.py` :: `load_heartbeat_policy` (L2165)
+- `core/services/heartbeat_runtime.py` :: `poll_heartbeat_schedule` (L303)
+- `core/services/heartbeat_runtime.py` :: `run_heartbeat_tick` (L1243)
+- `core/services/heartbeat_runtime.py` :: `stop_heartbeat_scheduler` (L273)
 - `core/services/heartbeat_scheduler.py` :: `stop` (L113)
 - `core/services/heartbeat_scheduler.py` :: `stop_event` (L64)
 - `core/services/hf_connector.py` :: `model_info` (L85)
@@ -1266,8 +1266,8 @@ Generated from source. 8080/15571 functions/methods documented (51%). The list b
 - `core/services/meta_learning_hypotheses.py` :: `list_active_hypotheses` (L189)
 - `core/services/meta_learning_retrospective.py` :: `fetch_memo_by_id` (L256)
 - `core/services/meta_learning_retrospective.py` :: `list_recent_memos` (L272)
-- `core/services/meta_reflection_daemon.py` :: `build_meta_reflection_surface` (L334)
-- `core/services/meta_reflection_daemon.py` :: `get_latest_meta_insight` (L330)
+- `core/services/meta_reflection_daemon.py` :: `build_meta_reflection_surface` (L340)
+- `core/services/meta_reflection_daemon.py` :: `get_latest_meta_insight` (L336)
 - `core/services/metabolism_state_signal_tracking.py` :: `build_runtime_metabolism_state_signal_surface` (L52)
 - `core/services/metabolism_state_signal_tracking.py` :: `refresh_runtime_metabolism_state_signal_statuses` (L48)
 - `core/services/metabolism_state_signal_tracking.py` :: `track_runtime_metabolism_state_signals_for_visible_turn` (L38)
@@ -1363,15 +1363,15 @@ Generated from source. 8080/15571 functions/methods documented (51%). The list b
 - `core/services/perceptual_event_engine.py` :: `classify_event_change` (L146)
 - `core/services/perceptual_event_engine.py` :: `record_perceptual_event` (L296)
 - `core/services/permission_classifier.py` :: `is_mutating` (L47)
-- `core/services/personal_project.py` :: `build_personal_project_surface` (L633)
-- `core/services/personal_project.py` :: `complete_project` (L405)
-- `core/services/personal_project.py` :: `get_active_project` (L583)
-- `core/services/personal_project.py` :: `get_latest_proposal` (L593)
-- `core/services/personal_project.py` :: `get_project` (L574)
-- `core/services/personal_project.py` :: `list_journal_entries` (L489)
-- `core/services/personal_project.py` :: `list_projects` (L603)
-- `core/services/personal_project.py` :: `pause_project` (L356)
-- `core/services/personal_project.py` :: `resume_project` (L380)
+- `core/services/personal_project.py` :: `build_personal_project_surface` (L640)
+- `core/services/personal_project.py` :: `complete_project` (L412)
+- `core/services/personal_project.py` :: `get_active_project` (L590)
+- `core/services/personal_project.py` :: `get_latest_proposal` (L600)
+- `core/services/personal_project.py` :: `get_project` (L581)
+- `core/services/personal_project.py` :: `list_journal_entries` (L496)
+- `core/services/personal_project.py` :: `list_projects` (L610)
+- `core/services/personal_project.py` :: `pause_project` (L363)
+- `core/services/personal_project.py` :: `resume_project` (L387)
 - `core/services/pfsense_syslog.py` :: `syslog_stats` (L221)
 - `core/services/plan_proposals.py` :: `list_session_plans` (L545)
 - `core/services/plan_proposals.py` :: `propose_plan` (L110)
@@ -1754,8 +1754,8 @@ Generated from source. 8080/15571 functions/methods documented (51%). The list b
 - `core/services/sensory_archive.py` :: `record_mixed` (L223)
 - `core/services/sensory_archive.py` :: `record_visual` (L196)
 - `core/services/sensory_archive.py` :: `search` (L244)
-- `core/services/session_continuity.py` :: `build_session_continuity_surface` (L560)
-- `core/services/session_continuity.py` :: `get_latest_morning_thread` (L438)
+- `core/services/session_continuity.py` :: `build_session_continuity_surface` (L566)
+- `core/services/session_continuity.py` :: `get_latest_morning_thread` (L441)
 - `core/services/session_inbox.py` :: `pending_count` (L237)
 - `core/services/session_inbox.py` :: `stop_session_inbox` (L363)
 - `core/services/session_permission.py` :: `saet_permission` (L79)

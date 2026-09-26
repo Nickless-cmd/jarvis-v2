@@ -88,6 +88,7 @@ from core.services.private_state_snapshot_tracking import (
     build_runtime_private_state_snapshot_surface,
 )
 from core.services.prompt_contract import build_heartbeat_prompt_assembly
+from core.identity.samtale_scope import aktuel_samtale_workspace
 from core.services.regulation_homeostasis_signal_tracking import (
     build_runtime_regulation_homeostasis_signal_surface,
 )
@@ -3592,9 +3593,10 @@ def _user_recently_active(minutes: int) -> bool:
         ).isoformat()
         with connect() as c:
             row = c.execute(
+                # LÆKKEN 26/9-2026 — se core/identity/samtale_scope.py.
                 "SELECT 1 FROM chat_messages WHERE role='user' "
-                "AND created_at >= ? LIMIT 1",
-                (cutoff,),
+                "AND workspace_name = ? AND created_at >= ? LIMIT 1",
+                (aktuel_samtale_workspace(), cutoff),
             ).fetchone()
         return row is not None
     except Exception:

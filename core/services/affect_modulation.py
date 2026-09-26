@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import logging
 from typing import Any
+from core.identity.samtale_scope import aktuel_samtale_workspace
 
 logger = logging.getLogger(__name__)
 
@@ -538,12 +539,15 @@ def compute_affect_substrate(
             rows = list(c.execute(sql, params).fetchall())
             # User messages are stored in chat_messages, not in event
             # payloads. Pull them directly so user text actually surfaces.
+            # LÆKKEN 26/9-2026: uden workspace-filteret hentede denne
+            # ALLE brugeres beskeder ind i Bjørns affekt-substrat.
+            _ws = aktuel_samtale_workspace()
             chat_rows = c.execute(
                 "SELECT created_at, content FROM chat_messages "
-                "WHERE role='user' AND created_at >= ? "
+                "WHERE role='user' AND workspace_name = ? AND created_at >= ? "
                 "ORDER BY id DESC LIMIT ?",
-                (cutoff, max(1, int(max_events)) * 2),
-            ).fetchall()
+                (_ws, cutoff, max(1, int(max_events)) * 2),
+            ).fetchall() if _ws else []
     except Exception as exc:  # pragma: no cover — defensive
         logger.debug("compute_affect_substrate query failed: %s", exc)
         return []

@@ -35,9 +35,9 @@ _Agreement-streak substrate trigger._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_opening_is_agreement` | `(text)` | Return the matched phrase if the text opens with agreement, else None. | [src](../../../core/services/agreement_streak.py#L45) |
-| function | `detect_agreement_streak` | `(*, lookback=…, threshold=…)` | Pull last N assistant messages, return substrate dict if streak detected. | [src](../../../core/services/agreement_streak.py#L60) |
-| function | `build_agreement_streak_section` | `()` | Prompt section — substrate, ikke domm. | [src](../../../core/services/agreement_streak.py#L110) |
+| function | `_opening_is_agreement` | `(text)` | Return the matched phrase if the text opens with agreement, else None. | [src](../../../core/services/agreement_streak.py#L46) |
+| function | `detect_agreement_streak` | `(*, lookback=…, threshold=…)` | Pull last N assistant messages, return substrate dict if streak detected. | [src](../../../core/services/agreement_streak.py#L61) |
+| function | `build_agreement_streak_section` | `()` | Prompt section — substrate, ikke domm. | [src](../../../core/services/agreement_streak.py#L112) |
 
 ## `core/services/ambient_presence.py`
 _Ambient presence — subtle signals that mark Jarvis' state in the physical space._

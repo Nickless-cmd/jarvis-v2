@@ -172,3 +172,99 @@ def test_ukendt_udfald_bliver_ikke_tavst(isolated_runtime) -> None:
     n.luk(nid, "et-helt-nyt-udfald")
 
     assert h.tidligere("bjorn", er_owner=True)[0]["udfald_tekst"] == "Klaret"
+
+
+def _indsæt_run(run_id: str, *, status: str = "completed", svar: str = "") -> None:
+    """En raekke i `visible_runs` — ejeren et `run_done`-kort peger paa."""
+    from core.runtime.db import connect
+    from core.runtime.db_visible import ensure_visible_tables
+    with connect() as conn:
+        ensure_visible_tables(conn)
+        conn.execute(
+            "INSERT INTO visible_runs"
+            " (run_id, lane, provider, model, status, finished_at, text_preview)"
+            " VALUES (?,?,?,?,?,?,?)",
+            (run_id, "primary", "deepseek", "m", status,
+             "2026-09-26T07:00:00+00:00", svar))
+        conn.commit()
+
+
+def test_svar_for_run_henter_teksten_fra_ejeren(isolated_runtime) -> None:
+    """Svaret bor i `visible_runs`, ikke i notifikations-raekken."""
+    from core.services.visible_runs_sections.run_finalization import svar_for_run
+
+    _indsæt_run("r-1", svar="Jeg byggede det, og her er hvad jeg fandt.")
+    assert svar_for_run("r-1") == "Jeg byggede det, og her er hvad jeg fandt."
+
+
+def test_svar_for_run_er_tom_for_ukendt_koersel(isolated_runtime) -> None:
+    """Ukendt run giver "" — ikke en undtagelse. Forskellen mellem «kørslen
+    svarede ikke» og «jeg kunne ikke spørge» skal kunne ses."""
+    from core.services.visible_runs_sections.run_finalization import svar_for_run
+
+    assert svar_for_run("findes-ikke") == ""
+
+
+def test_run_done_baerer_svaret_ikke_kun_titlen(isolated_runtime, monkeypatch) -> None:
+    """Kortet blev foedt med en titel og en TOM tekst, saa fladen kunne sige
+    at der var et svar uden at vise det (Bjoern 26/9-2026)."""
+    from core.services import notifikationer as n
+    from core.services import notifikationer_hydrering as h
+
+    _indsæt_run("r-1", svar="Her er hvad jeg gjorde.")
+    n.opret(user_id="bjorn", slags="run_done", kilde="run", ref="r-1",
+            session_id="chat-aaa", titel="Svar klar i «hey..»")
+
+    poster = h.feed("bjorn", er_owner=True)
+    assert len(poster) == 1
+    assert poster[0]["titel"] == "Svar klar i «hey..»"
+    assert poster[0]["tekst"] == "Her er hvad jeg gjorde."
+
+
+def test_run_done_uden_svar_beholder_den_gemte_tekst(isolated_runtime) -> None:
+    """En koersel kan ende uden at have skrevet noget. Et kort med en tom
+    krop ser ud som en fejl — den gemte tekst staar derfor uaendret."""
+    from core.services import notifikationer as n
+    from core.services import notifikationer_hydrering as h
+
+    _indsæt_run("r-2", svar="")
+    n.opret(user_id="bjorn", slags="run_done", kilde="run", ref="r-2",
+            session_id="chat-aaa", titel="Svar klar i «hey..»", tekst="Gemt tekst")
+
+    assert h.feed("bjorn", er_owner=True)[0]["tekst"] == "Gemt tekst"
+
+
+def test_svar_fra_den_aktive_samtale_springes_over(isolated_runtime) -> None:
+    """Man laeser dem allerede i vinduet ved siden af."""
+    from core.services import notifikationer as n
+    from core.services import notifikationer_hydrering as h
+
+    _indsæt_run("r-1")
+    _indsæt_run("r-2")
+    n.opret(user_id="bjorn", slags="run_done", kilde="run", ref="r-1",
+            session_id="chat-her", titel="Svar klar i «her»")
+    n.opret(user_id="bjorn", slags="run_done", kilde="run", ref="r-2",
+            session_id="chat-der", titel="Svar klar i «der»")
+
+    poster = h.feed("bjorn", er_owner=True, aktiv_session="chat-her")
+    assert [p["titel"] for p in poster] == ["Svar klar i «der»"]
+    # Uden filtrering staar begge — det er den gamle adfaerd.
+    assert len(h.feed("bjorn", er_owner=True)) == 2
+
+
+def test_godkendelse_i_den_aktive_samtale_skjules_IKKE(isolated_runtime, monkeypatch) -> None:
+    """Et svar er laesning, en godkendelse venter paa et svar. At skjule den
+    ville betyde at man ikke kunne svare paa den flade man sidder i."""
+    from core.services import notifikationer as n
+    from core.services import notifikationer_hydrering as h
+    from core.services import approval_runtime
+
+    monkeypatch.setattr(approval_runtime, "alle_pending_for_owner", lambda uid: [])
+    monkeypatch.setattr(approval_runtime, "state",
+                        lambda aid: {"status": "pending", "tool_name": "bash"})
+    n.opret(user_id="bjorn", slags="approval", kilde="approval", ref="a-1",
+            session_id="chat-her", titel="Vil du tillade bash?")
+
+    poster = h.feed("bjorn", er_owner=True, aktiv_session="chat-her")
+    assert len(poster) == 1
+    assert poster[0]["kan_afgoere"] is True

@@ -242,4 +242,45 @@ describe('NotifikationsFeed', () => {
     fireEvent.click(screen.getByRole('tab', { name: /Tidligere/ }))
     expect(await screen.findByRole('alert')).toHaveTextContent(/kunne ikke hentes/i)
   })
+
+  // ── «Svar»-fanen (Bjoern 26/9-2026) ────────────────────────────────────
+  //
+  // Et svar er ikke en opgave. Maalt 26/9-2026 stod 100 aabne `run_done` i
+  // «Venter paa dig» sammen med de 24 der faktisk ventede — og tilboed en
+  // «Faerdig»-knap for noget der allerede var faerdigt.
+
+  const svarPost = (o: Partial<Record<string, unknown>> = {}) => ({
+    ...post({
+      id: 'r-1', slags: 'run_done', titel: 'Svar klar i «hey..»',
+      tekst: 'Her er hvad jeg gjorde.', kan_afgoere: false, session_id: 'chat-x',
+    }),
+    ...o,
+  })
+
+  it('«Svar» har sin egen liste — de staar ikke i «Venter på dig»', async () => {
+    hent.mockResolvedValue({ poster: [post(), svarPost()], antal: 2, venter: 1 })
+    render(<NotifikationsFeed config={cfg} onLuk={() => {}} onAabnSession={() => {}} />)
+
+    expect(await screen.findByRole('tab', { name: /Venter på dig/ })).toHaveTextContent('1')
+    expect(screen.getByRole('tab', { name: /^Svar/ })).toHaveTextContent('1')
+
+    fireEvent.click(screen.getByRole('tab', { name: /^Svar/ }))
+    expect(await screen.findByText('Her er hvad jeg gjorde.')).toBeInTheDocument()
+  })
+
+  it('et svar er laesning — ingen handlingsknapper', async () => {
+    hent.mockResolvedValue({ poster: [svarPost()], antal: 1, venter: 0 })
+    render(<NotifikationsFeed config={cfg} onLuk={() => {}} onAabnSession={() => {}} />)
+    fireEvent.click(await screen.findByRole('tab', { name: /^Svar/ }))
+    expect(await screen.findByText('Her er hvad jeg gjorde.')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Færdig' })).toBeNull()
+  })
+
+  it('sender den aktive samtale med, saa serveren kan springe dens svar over', async () => {
+    hent.mockResolvedValue({ poster: [], antal: 0, venter: 0 })
+    render(<NotifikationsFeed config={cfg} onLuk={() => {}} onAabnSession={() => {}}
+                              aktivSession="chat-her" />)
+    await waitFor(() => expect(hent).toHaveBeenCalled())
+    expect(hent.mock.calls[0]![1]).toBe('chat-her')
+  })
 })

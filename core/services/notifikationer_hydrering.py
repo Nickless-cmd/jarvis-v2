@@ -67,7 +67,7 @@ def _hydrer_run(raekke: dict[str, Any]) -> dict[str, Any] | None:
     `KOERSEL_FEJLET_STATUS` med den fil, saa de to lister ikke kan skride fra
     hinanden igen."""
     from core.services.visible_runs_sections.run_finalization import (
-        KOERSEL_FEJLET_STATUS, status_for_run,
+        KOERSEL_FEJLET_STATUS, status_for_run, svar_for_run,
     )
     tilstand = status_for_run(str(raekke["ref"] or ""))
     slags = str(raekke["slags"])
@@ -75,6 +75,21 @@ def _hydrer_run(raekke: dict[str, Any]) -> dict[str, Any] | None:
         return None
     if slags == "run_done" and tilstand not in ("completed", "done"):
         return None
+    if slags == "run_done":
+        # SVARET, ikke titlen. Raekken blev foedt med en titel («Svar klar i
+        # «hey..»») og en TOM tekst, saa fladen kunne sige at der var et svar
+        # uden at kunne vise det (Bjoern 26/9-2026: «hvor svar du skriver …
+        # bliver vist der»). Teksten ligger hos ejeren — `visible_runs`
+        # `.text_preview` — og hentes her, i samme aand som godkendelsens
+        # hydrering: raekken PEGER paa sin ejer, den kopierer ham ikke.
+        #
+        # Er svaret tomt, falder vi tilbage til den gemte tekst frem for at
+        # vise et tomt kort. En koersel kan ende uden at have skrevet noget
+        # (afbrudt straks efter start), og «Svar klar» uden et svar er stadig
+        # sandt — men et kort med en tom krop ser ud som en fejl.
+        svar = svar_for_run(str(raekke["ref"] or ""))
+        if svar:
+            return {"titel": raekke["titel"], "tekst": svar}
     return {"titel": raekke["titel"], "tekst": raekke["tekst"]}
 
 
@@ -97,8 +112,19 @@ def _hydrer(raekke: dict[str, Any]) -> tuple[dict[str, Any] | None, bool]:
         return {"titel": raekke["titel"], "tekst": raekke["tekst"]}, True
 
 
-def feed(user_id: str, *, er_owner: bool) -> list[dict[str, Any]]:
-    """Aabne notifikationer, hydreret hos deres ejere."""
+def feed(user_id: str, *, er_owner: bool,
+         aktiv_session: str | None = None) -> list[dict[str, Any]]:
+    """Aabne notifikationer, hydreret hos deres ejere.
+
+    `aktiv_session` (Bjoern 26/9-2026): den samtale brugeren SIDDER I lige nu.
+    Svar fra den springes over — man laeser dem allerede i vinduet ved siden
+    af, og en «Svar klar»-klokke for det man har foran sig er ren stoejfyld.
+
+    Kun `run_done` filtreres. En GODKENDELSE i den aktive samtale skal
+    fortsat vises: den venter paa et svar, og at skjule den ville betyde at
+    man ikke kunne svare paa den flade man sidder i. Det er forskellen
+    mellem «du har allerede set dette» og «du skal goere noget her».
+    """
     # Afstemningen foerst: en ventende godkendelse uden raekke skal med i
     # SAMME laesning, ellers ville den foerst dukke op naeste gang.
     try:
@@ -109,6 +135,11 @@ def feed(user_id: str, *, er_owner: bool) -> list[dict[str, Any]]:
         _log.warning("godkendelser kunne ikke afstemmes for %s", user_id, exc_info=True)
     ud: list[dict[str, Any]] = []
     for raekke in _lager.aabne(user_id, er_owner=er_owner):
+        # Filtreringen ligger FOER hydreringen: den er billig, og et svar vi
+        # alligevel kaster vaek skal ikke koste et DB-opslag hos ejeren.
+        if (aktiv_session and str(raekke["slags"]) == "run_done"
+                and str(raekke["session_id"] or "") == aktiv_session):
+            continue
         felter, foraeldet = _hydrer(raekke)
         if felter is None:
             _lager.luk(str(raekke["id"]), "superseded")

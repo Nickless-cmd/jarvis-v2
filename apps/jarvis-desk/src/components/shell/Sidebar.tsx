@@ -80,6 +80,37 @@ export function Sidebar({
   const klokkeRef = useRef<HTMLDivElement>(null)
   const feedRef = useRef<HTMLDivElement>(null)
   const kontoRef = useRef<HTMLDivElement>(null)
+
+  // HVOR feedet lander (Bjoern 26/9-2026: «notifikations feed skal aabne til
+  // hoejre»).
+  //
+  // Det kan ikke klares i CSS alene. `.sidebar` har `overflow: hidden`, saa
+  // et barn der voksede ud over de 290 px blev KLIPPET — popoveren var laast
+  // til panelets bredde, uanset hvad man skrev i dens egen regel. Ankeret
+  // her er derfor `position: fixed` og maales fra klokken, uden for
+  // klipningen, og kan brede sig ind over indholdet.
+  //
+  // Bredden regnes fra vinduets kant, ikke som et fast tal: en 440 px-rude
+  // forankret langt til hoejre ville stikke ud over skaermen paa et smalt
+  // vindue.
+  const [feedPos, setFeedPos] = useState<{ top: number; left: number; bredde: number } | null>(null)
+  useEffect(() => {
+    if (!feedAaben) { setFeedPos(null); return }
+    const maal = () => {
+      const r = klokkeRef.current?.getBoundingClientRect()
+      if (!r) return
+      const left = Math.max(8, Math.round(r.left))
+      setFeedPos({
+        top: Math.round(r.bottom + 8),
+        left,
+        bredde: Math.max(300, Math.min(440, window.innerWidth - left - 16)),
+      })
+    }
+    maal()
+    window.addEventListener('resize', maal)
+    return () => window.removeEventListener('resize', maal)
+  }, [feedAaben])
+
   useEffect(() => {
     if (!feedAaben && !kontoAaben) return
     const lukUdenfor = (e: PointerEvent) => {
@@ -168,17 +199,25 @@ export function Sidebar({
             <Klokke
               config={apiConfig}
               onAaben={() => setFeedAaben((aaben) => !aaben)}
+              aktivSession={activeId}
             />
           </div>
         </div>
       </div>
 
       {feedAaben && (
-        <div ref={feedRef}>
+        <div
+          ref={feedRef}
+          className="notif-anker"
+          style={feedPos
+            ? { top: feedPos.top, left: feedPos.left, width: feedPos.bredde }
+            : undefined}
+        >
           <NotifikationsFeed
             config={apiConfig}
             onLuk={() => setFeedAaben(false)}
             onAabnSession={(id) => { select(id); setFeedAaben(false); onSurface('chat') }}
+            aktivSession={activeId}
           />
         </div>
       )}

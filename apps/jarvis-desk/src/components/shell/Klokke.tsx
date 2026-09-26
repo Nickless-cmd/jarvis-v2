@@ -8,17 +8,25 @@ import { maaPolle } from '../../lib/ro'
 /**
  * Notifikations-klokken med sin taeller.
  *
- * Taelleren er antal AABNE — alle slags, ikke kun dem der kraever et svar.
- * Det foelger af at feeden er en to-do-liste: staar noget der, er det ikke
- * klaret. En taeller der kun talte godkendelser ville lade et fejlet run staa
- * usynligt bag et tomt tal.
+ * Taelleren er antal der VENTER — alt undtagen Jarvis' egne svar.
+ *
+ * Den var foer antal AABNE i alt, med den begrundelse at feeden var en
+ * to-do-liste: staar noget der, er det ikke klaret. Det holdt indtil
+ * `run_done` viste sig at vaere den stoerste post i tabellen (maalt
+ * 26/9-2026: 100 aabne paa én gang). Et svar venter ikke paa noget — det er
+ * laesning — og et tal der taeller dem gjorde klokken til en konstant «9+»
+ * hvor intet faktisk manglede hans svar. Serveren sender derfor to tal:
+ * `antal` (alt aabent) og `venter` (dem der ikke er svar). Klokken viser det
+ * sidste; feedet viser begge, i hver sin fane.
  *
  * Kan listen ikke hentes, skjules taelleren ikke bare — knappen siger det.
  * En tom klokke og en brudt klokke maa ikke ligne hinanden.
  */
-export function Klokke({ config, onAaben }: {
+export function Klokke({ config, onAaben, aktivSession }: {
   config: ApiConfig | null
   onAaben: () => void
+  /** Samtalen brugeren sidder i nu. Svar fra den springes over paa serveren. */
+  aktivSession?: string | null
 }) {
   const [antal, setAntal] = useState(0)
   const [fejl, setFejl] = useState(false)
@@ -34,17 +42,20 @@ export function Klokke({ config, onAaben }: {
   // haendelse ER signalet og derfor aldrig maa sluges af ro-mekanismen.
   const hentNu = useCallback(() => {
     if (!config) return
-    hentNotifikationer(config)
+    hentNotifikationer(config, aktivSession)
       .then((f) => {
         if (!alive.current) return
-        setAntal(f.antal)
+        // Faldet til `antal` er ikke kosmetik: en klient der rammer en
+        // aeldre server (rullende udgivelse) faar ingen `venter`, og uden
+        // det ville taelleren vise NaN.
+        setAntal(typeof f.venter === 'number' ? f.venter : f.antal)
         setFejl(false)
       })
       .catch(() => {
         if (!alive.current) return
         setFejl(true)
       })
-  }, [config])
+  }, [config, aktivSession])
 
   const hent = useCallback(() => {
     if (!config) return

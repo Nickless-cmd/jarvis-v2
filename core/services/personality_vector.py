@@ -87,16 +87,23 @@ Returner KUN et JSON-objekt med ændrede felter. Uændrede felter udelades.
 
 Mulige felter:
 - confidence_by_domain: {{"python": 0.0-1.0, "frontend": 0.0-1.0, "ops": 0.0-1.0, ...}}
+  Er domænet ikke i vektoren endnu, så SÆT det første gang turen siger noget om
+  det. Et domæne uden et tal kan aldrig justeres senere.
 - communication_style: {{"directness": 0.0-1.0, "humor": 0.0-1.0, "formality": 0.0-1.0}}
-- learned_preferences: ["preference1", "preference2"] (tilføj nye, behold gamle)
-- recurring_mistakes: ["mistake1"] (tilføj kun hvis gentaget)
-- strengths_discovered: ["strength1"] (tilføj kun ved tydelig evidens)
+- learned_preferences: ["præference"] (tilføj nye, behold gamle)
+- recurring_mistakes: ["fejl i menneskelig form"]
+  Tilføj den fejl DENNE tur faktisk viser — også første gang du ser den.
+- strengths_discovered: ["styrke i menneskelig form"]
+  Tilføj den styrke DENNE tur faktisk viser — også første gang du ser den.
 - current_bearing: "kort sætning om nuværende fokus"
 - emotional_baseline: {{"curiosity": 0.0-1.0, "confidence": 0.0-1.0, "fatigue": 0.0-1.0, "frustration": 0.0-1.0}}
 
 Regler:
-- Vær konservativ — kun opdatér det der faktisk ændrede sig
-- Foretræk små justeringer over dramatiske ændringer
+- Vær konservativ om TAL: små justeringer, ikke dramatiske spring
+- Men et TOMT felt er ikke en værdi der skal bevares. Står listen eller
+  dict'en tom, er den første post en tilføjelse — ikke en dramatisk ændring
+- Skriv i menneskelig form med mellemrum. Aldrig maskin-navne som
+  `sensory_archive_analysis` — de bliver kasseret
 - Confidence stiger langsomt ved succes, falder hurtigere ved fejl
 - Svar KUN med JSON, ingen forklaring
 """
@@ -492,12 +499,54 @@ def _call_llm(target: dict, system_prompt: str, user_prompt: str) -> str:
                 {"role": "user", "content": user_prompt},
             ],
             "stream": False,
-            "options": {"num_predict": 200},
+            # `think: False` ER rettelsen. `num_predict` alene var ikke nok.
+            #
+            # MAALT paa CT105 26/9-2026 mod `deepseek-v4.1-flash:cloud`, samme
+            # prompt og samme input:
+            #
+            #   np=200            content=   0  thinking=  910  done=length
+            #   np=600            content= 399  thinking=  263  done=stop
+            #   np=600            content=   0  thinking= 2421  done=length
+            #   np=1500           content=  53  thinking= 3203  done=stop
+            #   np=600 think=off  content= 359  thinking=    0  done=stop
+            #   np=600 think=off  content= 520  thinking=    0  done=stop
+            #   np=600 think=off  content= 278  thinking=    0  done=stop
+            #
+            # Modellen TAENKER, raesonnementet taeller med i budgettet, og dets
+            # laengde svinger fra 263 til 3.203 tegn. Ethvert fast loft er
+            # derfor et gaet: ved 200 aad det hele budgettet, og selv 600 slog
+            # fejl paa et langt raesonnement. `content` kom tom tilbage, og
+            # `update_personality_vector_from_run` faldt tilbage paa
+            # `_deterministic_update` — som aldrig roerer `recurring_mistakes`,
+            # `strengths_discovered` eller `confidence_by_domain`.
+            #
+            # Det er derfor `recurring_mistakes` aldrig har aendret sig: ikke
+            # fordi taersklen i prompten var for haard, men fordi svaret
+            # sjaeldent naaede frem.
+            #
+            # Med `think: False` er der intet raesonnement at betale for, og de
+            # 600 raekker rigeligt: 3 ud af 3 kald svarede, alle med
+            # `recurring_mistakes` udfyldt. Opgaven er struktureret udtraek af
+            # JSON — den har ikke brug for synlig taenkning.
+            "think": False,
+            "options": {"num_predict": 600},
         }).encode()
         req = urllib_request.Request(url, data=payload, headers={"Content-Type": "application/json"})
         with urllib_request.urlopen(req, timeout=30) as resp:
             result = json.loads(resp.read())
-        return str(result.get("message", {}).get("content", ""))
+        besked = result.get("message", {}) or {}
+        indhold = str(besked.get("content", "") or "")
+        if not indhold:
+            # En tom `content` er ikke ingenting — den er et svar der blev
+            # afkortet. Uden denne linje var det umuligt at skelne «modellen
+            # havde intet at sige» fra «budgettet slap op», og den forskel
+            # kostede at feltet stod tomt i maaneder.
+            logger.warning(
+                "personality_vector: tomt svar fra %s (done_reason=%s, "
+                "thinking=%d tegn) — falder tilbage paa deterministisk",
+                model, result.get("done_reason"),
+                len(str(besked.get("thinking") or "")))
+        return indhold
     return ""
 
 

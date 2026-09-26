@@ -76,7 +76,19 @@ def _min_raekke(notif_id: str, user_id: str) -> dict | None:
 
 
 @router.get("")
-async def feed() -> dict:
+async def feed(aktiv: str = "") -> dict:
+    """Feedet. `aktiv` = den samtale klienten SIDDER I lige nu.
+
+    Svar fra den springes over (se `notifikationer_hydrering.feed`): man
+    laeser dem allerede i vinduet ved siden af. Klienten sender sit eget
+    sessions-id — serveren kan ikke vide hvilken samtale der er aaben paa
+    skaermen, og en gaetning her ville skjule det forkerte.
+
+    To tal, ikke ét: `antal` er alt der er aabent (klokkens «der er nyt»),
+    `venter` er dem der kraever et SVAR. Forskellen er de klarede svar —
+    maalt 26/9-2026 stod 100 `run_done` aabne samtidig, og et enkelt tal
+    gjorde klokken til en konstant «9+» uden at noget ventede.
+    """
     uid, er_owner = _nuvaerende_bruger()
     if not uid:
         # V6 (2026-09-22): svarede foer 200 OK med {"poster": [], "antal": 0}
@@ -85,8 +97,9 @@ async def feed() -> dict:
         # ud som «du er helt ajour». 401 lader klienten skelne "intet at
         # vise" fra "jeg kunne ikke spoerge".
         raise HTTPException(status_code=401, detail="Ikke logget ind.")
-    poster = _hyd.feed(uid, er_owner=er_owner)
-    return {"poster": poster, "antal": len(poster)}
+    poster = _hyd.feed(uid, er_owner=er_owner, aktiv_session=aktiv or None)
+    return {"poster": poster, "antal": len(poster),
+            "venter": sum(1 for p in poster if p["slags"] != "run_done")}
 
 
 @router.get("/tidligere")

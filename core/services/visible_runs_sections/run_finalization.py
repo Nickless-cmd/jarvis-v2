@@ -127,6 +127,46 @@ def status_for_run(run_id: str) -> str:
     return str(raekke[0] or "") if raekke else ""
 
 
+def svar_for_run(run_id: str) -> str:
+    """Kørslens svar — den tekst assistenten skrev — eller "".
+
+    Søster til `status_for_run`, og med SAMME regel: MÅ IKKE fange DB-fejl.
+    Kan den ikke spørge, skal undtagelsen forplante sig op til `_hydrer`s
+    net, som markerer rækken forældet frem for at lukke den. En tom streng
+    betyder «kørslen svarede ikke med tekst», ikke «jeg kunne ikke spørge».
+
+    Rækkefølgen spejler `status_for_run`, og af samme grund (V2, 22/9):
+    `set_last_visible_run_outcome` lægger DB-projektionen i en daemon-tråd,
+    men sætter `_LAST_VISIBLE_RUN_OUTCOME` SYNKRONT. Feeden kan hydrere før
+    tråden har committet — og så ville svaret mangle netop i det øjeblik
+    rækken fødes, altså altid. Den friske in-memory outcome bruges derfor
+    først, med samme tidsgrænse som status (en kørsel der GENOPTAGES med
+    samme run_id må ikke blive ved med at vise sit gamle svar).
+    """
+    if run_id:
+        try:
+            from core.services.visible_runs import get_last_visible_run_outcome
+            frisk = get_last_visible_run_outcome()
+        except Exception:
+            frisk = None
+        if frisk and str(frisk.get("run_id") or "") == str(run_id):
+            try:
+                from datetime import UTC, datetime
+                afsluttet = datetime.fromisoformat(str(frisk.get("finished_at") or ""))
+                if afsluttet.tzinfo is None:
+                    afsluttet = afsluttet.replace(tzinfo=UTC)
+                gammel = (datetime.now(UTC) - afsluttet).total_seconds() > _FRISK_HUKOMMELSE_S
+            except Exception:
+                gammel = True
+            if not gammel:
+                return str(frisk.get("text_preview") or "")
+    from core.runtime.db import connect
+    with connect() as conn:
+        raekke = conn.execute(
+            "SELECT text_preview FROM visible_runs WHERE run_id = ?", (run_id,)).fetchone()
+    return str(raekke[0] or "") if raekke and raekke[0] else ""
+
+
 def finalize_run(session_id: str, *, status: str) -> None:
     """Kaldes fra run-afslutningens finally — uanset hvordan runnet endte.
 

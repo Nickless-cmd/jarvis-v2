@@ -65,10 +65,17 @@ function siden(iso: string): string {
  * funktionen — til denne ene besked. SettingsState bruges uaendret til
  * hente-tilstanden, og SettingsActionError bruges uaendret til svar-fejl.
  */
-export function NotifikationsFeed({ config, onLuk, onAabnSession }: {
+export function NotifikationsFeed({ config, onLuk, onAabnSession, aktivSession }: {
   config: ApiConfig | null
   onLuk: () => void
   onAabnSession: (sessionId: string) => void
+  /**
+   * Samtalen brugeren sidder i nu. Sendes til serveren, som springer svar
+   * fra den over (Bjoern 26/9-2026): man laeser dem allerede i vinduet ved
+   * siden af. Filtreringen ligger paa SERVEREN, saa klokkens tal og listen
+   * bygger paa samme maengde — se notifikationerApi.hentNotifikationer.
+   */
+  aktivSession?: string | null
 }) {
   const [poster, setPoster] = useState<Notifikation[] | null>(null)
   const [fejl, setFejl] = useState(false)
@@ -76,19 +83,19 @@ export function NotifikationsFeed({ config, onLuk, onAabnSession }: {
   const [travl, setTravl] = useState('')
   const [opdaterer, setOpdaterer] = useState(false)
 
-  // To faner. «venter» er standarden: den er der hvor der ER noget at goere.
-  const [fane, setFane] = useState<'venter' | 'tidligere'>('venter')
+  // Tre faner. «venter» er standarden: den er der hvor der ER noget at goere.
+  const [fane, setFane] = useState<'venter' | 'svar' | 'tidligere'>('venter')
   const [tidligere, setTidligere] = useState<TidligereNotifikation[] | null>(null)
   const [fejlTidligere, setFejlTidligere] = useState(false)
 
   const hent = useCallback((manuel = false) => {
     if (!config) return
     if (manuel) setOpdaterer(true)
-    void hentNotifikationer(config)
+    void hentNotifikationer(config, aktivSession)
       .then((f) => { setPoster(f.poster); setFejl(false) })
       .catch(() => setFejl(true))
       .finally(() => { if (manuel) setOpdaterer(false) })
-  }, [config])
+  }, [config, aktivSession])
 
   // Historikken hentes ogsaa ved mount — ikke foerst naar man klikker paa
   // fanen. Tallet paa fanen SKAL staa der foer man trykker: en fane der
@@ -170,7 +177,18 @@ export function NotifikationsFeed({ config, onLuk, onAabnSession }: {
     }
   }
 
-  const venter = poster ?? []
+  // Et svar er ikke en opgave, og de to skal ikke dele liste.
+  //
+  // Maalt 26/9-2026: 100 aabne `run_done` mod 24 poster der faktisk ventede.
+  // Svarene druknede dem man skulle svare paa — og et svar i «Venter paa dig»
+  // tilboed en «Faerdig»-knap for noget der allerede var faerdigt.
+  //
+  // Opdelingen sker HER og ikke i `poster`, saa begge lister bygger paa den
+  // samme hentning. Serveren har allerede fjernet svar fra den aktive
+  // samtale, saa «Svar» viser baggrunden — ikke det man har foran sig.
+  const alle = poster ?? []
+  const venter = alle.filter((p) => p.slags !== 'run_done')
+  const svar = alle.filter((p) => p.slags === 'run_done')
   const afgjort = tidligere ?? []
 
   return (
@@ -200,6 +218,14 @@ export function NotifikationsFeed({ config, onLuk, onAabnSession }: {
           {venter.length > 0 && <span className="notif-fane-tal er-venter">{venter.length}</span>}
         </button>
         <button
+          type="button" role="tab" aria-selected={fane === 'svar'}
+          className={`notif-fane${fane === 'svar' ? ' aktiv' : ''}`}
+          onClick={() => setFane('svar')}
+        >
+          Svar
+          {svar.length > 0 && <span className="notif-fane-tal">{svar.length}</span>}
+        </button>
+        <button
           type="button" role="tab" aria-selected={fane === 'tidligere'}
           className={`notif-fane${fane === 'tidligere' ? ' aktiv' : ''}`}
           onClick={() => setFane('tidligere')}
@@ -211,7 +237,49 @@ export function NotifikationsFeed({ config, onLuk, onAabnSession }: {
 
       <SettingsActionError message={handlingFejl} />
 
-      {fane === 'venter' ? (
+      {fane === 'svar' ? (
+        fejl ? (
+          <div className="settings-feedback error" role="alert">
+            <p>Notifikationerne kunne ikke hentes.</p>
+            <button type="button" onClick={() => hent()}>Prøv igen</button>
+          </div>
+        ) : poster === null ? (
+          <SettingsState status="loading" label="notifikationerne" onRetry={() => {}} />
+        ) : svar.length === 0 ? (
+          <p className="notif-tom">Ingen svar fra baggrunden endnu.</p>
+        ) : (
+          <ul className="notif-liste">
+            {svar.map((p) => {
+              const Ikon = IKON[p.slags] ?? Bell
+              return (
+                <li key={p.id} className={`notif-item tone-${p.slags} er-svar`}>
+                  {/* Et svar er LAESNING, ikke en opgave: ingen knapper her.
+                      At trykke paa kortet aabner samtalen svaret kom fra —
+                      den eneste handling der giver mening, og den samme som
+                      «Tidligere» tilbyder. Forskellen er at svaret her er
+                      AABENT: man kan svare i den samtale det kom fra. */}
+                  <div
+                    className="notif-post"
+                    data-testid={`notif-svar-${p.id}`}
+                    title={p.tekst || p.titel}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => { if (p.session_id) onAabnSession(p.session_id) }}
+                    onKeyDown={(e) => { if (e.key === 'Enter' && p.session_id) onAabnSession(p.session_id) }}
+                  >
+                    <span className="notif-ikon-ramme"><Ikon size={15} className="notif-ikon" aria-hidden="true" /></span>
+                    <span className="notif-titel">{p.titel}</span>
+                    <span className="notif-tid">{siden(p.oprettet)}</span>
+                  </div>
+                  {p.tekst && p.tekst !== p.titel && (
+                    <p className="notif-tekst notif-svar-tekst">{p.tekst}</p>
+                  )}
+                </li>
+              )
+            })}
+          </ul>
+        )
+      ) : fane === 'venter' ? (
         fejl ? (
           <div className="settings-feedback error" role="alert">
             <p>Notifikationerne kunne ikke hentes.</p>

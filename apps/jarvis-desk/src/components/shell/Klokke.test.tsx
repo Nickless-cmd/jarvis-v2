@@ -188,4 +188,32 @@ describe('Klokke', () => {
     await new Promise((r) => setTimeout(r, 30))
     expect(hent).toHaveBeenCalledTimes(1)
   })
+
+  // ── De to tal (Bjoern 26/9-2026) ───────────────────────────────────────
+  //
+  // Serveren sender `antal` (alt aabent) og `venter` (dem der ikke er svar).
+  // Maalt 26/9-2026 stod 100 `run_done` aabne samtidig, og et taeller der
+  // talte dem gjorde klokken til en konstant «9+» hvor intet ventede.
+
+  it('taelleren viser hvad der VENTER, ikke Jarvis egne svar', async () => {
+    hent.mockResolvedValue({ poster: [], antal: 100, venter: 3 })
+    render(<Klokke config={cfg} onAaben={() => {}} />)
+    expect(await screen.findByTestId('klokke-taeller')).toHaveTextContent('3')
+  })
+
+  it('falder tilbage til antal naar serveren ikke kender venter', async () => {
+    // Rullende udgivelse: en aeldre server sender kun `antal`. Uden faldet
+    // ville taelleren vise NaN — et tal der ikke findes er vaerre end et
+    // groft et.
+    hent.mockResolvedValue({ poster: [], antal: 4 })
+    render(<Klokke config={cfg} onAaben={() => {}} />)
+    expect(await screen.findByTestId('klokke-taeller')).toHaveTextContent('4')
+  })
+
+  it('sender den aktive samtale med, saa serveren kan springe dens svar over', async () => {
+    hent.mockResolvedValue({ poster: [], antal: 0, venter: 0 })
+    render(<Klokke config={cfg} onAaben={() => {}} aktivSession="chat-her" />)
+    await waitFor(() => expect(hent).toHaveBeenCalled())
+    expect(hent.mock.calls[0]![1]).toBe('chat-her')
+  })
 })

@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { ChatTranscript } from '../components/chat/ChatTranscript'
 import { Composer } from '../components/chat/Composer'
 import { ChatHeader } from '../components/chat/ChatHeader'
 import { ChatSupportRail } from '../components/chat/ChatSupportRail'
+import { useFollowupQueue } from './useFollowupQueue'
 
 export function ChatPage({
   activeSession,
@@ -23,29 +24,19 @@ export function ChatPage({
   jarvisSurface,
   lastRunTokens,
   streamingTokenEstimate,
+  steerReady,
 }) {
   const [draft, setDraft] = useState('')
-  // Queue a follow-up message while Jarvis is still streaming, so the user
-  // doesn't have to wait or cancel just to add a thought. Same UX as Claude
-  // Code's composer. Auto-flushes when the current run ends.
-  const [queuedMessage, setQueuedMessage] = useState(null)
-  const wasStreamingRef = useRef(isStreaming)
+  const followups = useFollowupQueue({
+    sessionId: activeSession?.id,
+    isStreaming,
+    onSend,
+    onSteer,
+  })
   const hero = useMemo(() => ({
     title: activeSession?.title || 'New chat',
     subtitle: activeSession?.subtitle || 'Conversation-first front door',
   }), [activeSession])
-
-  // Flush queued message as soon as the active run finishes.
-  useEffect(() => {
-    if (wasStreamingRef.current && !isStreaming && queuedMessage) {
-      const { msg, opts } = queuedMessage
-      setQueuedMessage(null)
-      // Defer one tick so React has flushed the streaming-end state before
-      // we kick off the new run. Otherwise we can race the parent hook.
-      setTimeout(() => onSend(msg, opts), 0)
-    }
-    wasStreamingRef.current = isStreaming
-  }, [isStreaming, queuedMessage, onSend])
 
   return (
     <div className="chat-shell-grid">
@@ -68,12 +59,17 @@ export function ChatPage({
           value={draft}
           onChange={setDraft}
           isStreaming={isStreaming}
-          queuedMessage={queuedMessage}
-          onClearQueued={() => setQueuedMessage(null)}
+          queuedMessages={followups.items}
+          queueError={followups.error}
+          steerReady={steerReady}
+          onEditQueued={followups.edit}
+          onRemoveQueued={followups.remove}
+          onMoveQueued={followups.move}
+          onSendQueuedNow={followups.sendNow}
           onSend={(msg, opts) => {
-            if (isStreaming) {
+            if (isStreaming || followups.items.length) {
               // Queue rather than dispatch — auto-sends when run ends.
-              setQueuedMessage({ msg, opts })
+              followups.enqueue(msg, opts)
               setDraft('')
               return
             }
@@ -81,12 +77,6 @@ export function ChatPage({
             setDraft('')
           }}
           onCancel={onCancel}
-          onSteer={(msg) => {
-            if (onSteer) {
-              onSteer(msg)
-              setDraft('')
-            }
-          }}
           selection={selection}
           onSelectionChange={onSelectionChange}
           lastRunTokens={lastRunTokens}

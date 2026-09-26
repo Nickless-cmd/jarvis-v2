@@ -18,6 +18,7 @@ type MockStream = {
   state: {
     status: 'idle' | 'working' | 'interrupted' | 'hung' | 'error' | 'done'
     blocks: []
+    activeRunId?: string
   }
   approval: null | {
     approvalId: string
@@ -152,6 +153,7 @@ jest.mock('../lib/apiClient', () => ({
   getModelOptions: jest.fn().mockResolvedValue([]),
   getContextUsage: jest.fn().mockResolvedValue(null),
   compactNow: jest.fn().mockResolvedValue({ started: true }),
+  steerRun: jest.fn().mockResolvedValue(undefined),
   getGitStatus: jest.fn().mockResolvedValue(null),
   hentNotifikationer: jest.fn().mockResolvedValue({ poster: [], antal: 0 }),
   afgoerNotifikation: jest.fn().mockResolvedValue({ ok: true, fejl: '' })
@@ -397,6 +399,17 @@ describe('køen', () => {
     mockStream = { ...mockStream, state: { status: 'done', blocks: [] } }
     await screen.rerender(<ChatScreen />)
     expect(mockSend).not.toHaveBeenCalled()
+  })
+
+  it('send nu styrer det aktive run og starter ikke et parallelt run', async () => {
+    const api = require('../lib/apiClient')
+    mockStream = { ...mockStream, state: { status: 'working', blocks: [], activeRunId: 'run-1' } }
+    const screen = await render(<ChatScreen />)
+    await act(async () => { fireEvent.press(screen.getByText('Send mocked composer')) })
+    await act(async () => { fireEvent.press(screen.getByLabelText('Send nu til aktivt run')) })
+    await waitFor(() => expect(api.steerRun).toHaveBeenCalledWith(config, 'run-1', 'ret remote delen'))
+    expect(mockSend).not.toHaveBeenCalled()
+    expect(screen.queryByTestId('koe-chip')).toBeNull()
   })
 })
 

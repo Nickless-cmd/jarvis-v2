@@ -32,6 +32,7 @@ function applySmileys(text) {
 import { ArrowUp, Square, Plus, GitBranch, GitCommit, ShieldCheck, Layers, Activity, Check, X, Monitor, FileText } from 'lucide-react'
 import { backend } from '../../lib/adapters'
 import { useFileMentions } from './useFileMentions'
+import { QueuedFollowups } from './QueuedFollowups'
 
 function formatTokens(n) {
   if (!n && n !== 0) return null
@@ -65,15 +66,19 @@ export function Composer({
   onChange,
   onSend,
   onCancel,
-  onSteer,
   isStreaming,
   selection,
   onSelectionChange,
   lastRunTokens,
   streamingTokenEstimate,
   sessionId,
-  queuedMessage,
-  onClearQueued,
+  queuedMessages = [],
+  queueError,
+  steerReady,
+  onEditQueued,
+  onRemoveQueued,
+  onMoveQueued,
+  onSendQueuedNow,
 }) {
   const textareaRef = useRef(null)
   const commitInputRef = useRef(null)
@@ -129,13 +134,7 @@ export function Composer({
   const [isDragOver, setIsDragOver] = useState(false)
 
   const doneAttachments = attachments.filter((a) => a.status === 'done')
-  const canSend = (
-    (Boolean(value.trim()) || doneAttachments.length > 0)
-    && !queuedMessage
-  )
-  // While streaming, the same button steers the active run mid-flight
-  // (injects the message between agentic rounds) instead of queueing.
-  const canSteer = isStreaming && Boolean(value.trim()) && Boolean(onSteer)
+  const canSend = Boolean(value.trim()) || doneAttachments.length > 0
 
   useEffect(() => {
     setProvider(selection?.currentProvider || '')
@@ -249,13 +248,6 @@ export function Composer({
     setAttachments([])
   }
 
-  function handleSteer() {
-    if (!canSteer) return
-    const msg = value.trim()
-    onSteer(msg)
-    onChange('')
-  }
-
   function handleDragOver(e) {
     e.preventDefault()
     setIsDragOver(true)
@@ -361,23 +353,16 @@ export function Composer({
         </div>
       )}
 
-      {queuedMessage && (
-        <div className="composer-queued-chip" title="Queued follow-up">
-          <span className="composer-queued-label mono">queued ▸</span>
-          <span className="composer-queued-text">
-            {String(queuedMessage.msg || '').slice(0, 120)}
-            {String(queuedMessage.msg || '').length > 120 ? '…' : ''}
-          </span>
-          <button
-            className="composer-queued-cancel"
-            type="button"
-            onClick={onClearQueued}
-            title="Cancel queued message"
-          >
-            <X size={12} />
-          </button>
-        </div>
-      )}
+      <QueuedFollowups
+        items={queuedMessages}
+        error={queueError}
+        isStreaming={isStreaming}
+        steerReady={steerReady}
+        onEdit={onEditQueued}
+        onRemove={onRemoveQueued}
+        onMove={onMoveQueued}
+        onSendNow={onSendQueuedNow}
+      />
 
       <div
         className={`composer-card${isStreaming ? ' working' : ''}${isDragOver ? ' drop-active' : ''}`}
@@ -525,8 +510,8 @@ export function Composer({
             }
           }}
           placeholder={
-            queuedMessage
-              ? 'Queued — will send when current run finishes'
+            queuedMessages.length
+              ? 'Add another follow-up…'
               : isStreaming
                 ? 'Type a follow-up — sends when Jarvis is done…'
                 : planMode
@@ -584,15 +569,9 @@ export function Composer({
               <>
                 <button
                   className="send-btn steer"
-                  onClick={canSteer ? handleSteer : handleSend}
-                  disabled={!canSteer && !canSend}
-                  title={
-                    canSteer
-                      ? 'Steer mid-flight — Jarvis sees this between tool rounds'
-                      : canSend
-                        ? 'Queue follow-up — sends when Jarvis finishes'
-                        : 'Already queued'
-                  }
+                  onClick={handleSend}
+                  disabled={!canSend}
+                  title={canSend ? 'Queue follow-up — sends when Jarvis finishes' : 'Write a follow-up first'}
                 >
                   <ArrowUp size={16} />
                 </button>

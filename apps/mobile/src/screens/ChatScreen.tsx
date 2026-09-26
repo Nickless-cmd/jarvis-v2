@@ -31,6 +31,7 @@ import { GreetingHero } from '../components/GreetingHero'
 import { MessageList, type MessageListHandle } from '../components/MessageList'
 import { ScrollToBottom } from '../components/ScrollToBottom'
 import { KoeChip } from '../components/KoeChip'
+import { useFollowupQueue, type FollowupItem } from '../lib/useFollowupQueue'
 import { TilbagespolBanner } from '../components/TilbagespolBanner'
 import { KodeLaastBanner } from '../components/KodeLaastBanner'
 import { useNyeBeskeder } from '../lib/useNyeBeskeder'
@@ -54,7 +55,7 @@ import { WorkspacePicker } from '../components/WorkspacePicker'
 import { JobsPanel } from '../components/JobsPanel'
 import { saetSessionWorkspace } from '../lib/workspaceApi'
 import { ActivityCenterScreen } from './ActivityCenterScreen'
-import { cancelActiveRun, cancelRunById, compactNow, deleteSession, denyTool, getActiveRunSnapshot, getContextUsage, getGitStatus, getActiveRuns, getModelOptions, renameSession, setSessionFlags, uploadAttachment, whoami, type ContextUsage, type GitStatus, spolTilbage, fortrydTilbagespoling, hentKodeAdgang, hentNotifikationer, afgoerNotifikation, setNotifikation, type Notifikation } from '../lib/apiClient'
+import { cancelActiveRun, cancelRunById, compactNow, deleteSession, denyTool, getActiveRunSnapshot, getContextUsage, getGitStatus, getActiveRuns, getModelOptions, renameSession, setSessionFlags, steerRun, uploadAttachment, whoami, type ContextUsage, type GitStatus, spolTilbage, fortrydTilbagespoling, hentKodeAdgang, hentNotifikationer, afgoerNotifikation, setNotifikation, type Notifikation } from '../lib/apiClient'
 import { computeUnread } from '../lib/sessionStatus'
 import { loadLastSeen, markSeen } from '../lib/lastSeen'
 import { loadLastSession, saveLastSession } from '../lib/sessionStore'
@@ -853,32 +854,35 @@ export function ChatScreen({
     // Svarer han allerede, lægges beskeden i KØ og sendes når svaret er
     // færdigt (19/9-2026, som desk). Før kunne man slet ikke sende imens.
     if (stream.state.status === 'working' || serverBusy) {
-      setKoet({ text, attachmentIds })
+      followups.enqueue(text, attachmentIds, tilStreamFelter(chatCfg, kodeTilstand))
       return
     }
     await sendNu(text, attachmentIds)
   }
 
-  const sendNu = async (text: string, attachmentIds?: string[]) => {
-    if (!config) return
+  const sendNu = async (text: string, attachmentIds?: string[], controls?: FollowupItem['controls']) => {
+    if (!config) throw new Error('Forbindelsen er ikke klar')
     const sessionId = sessions.activeId ?? (await opretSession()).id
     if (!sessions.activeId) void gemIndstillinger(sessionId, chatCfg)
-    const cfg = tilStreamFelter(chatCfg, kodeTilstand)
+    const cfg = controls ?? tilStreamFelter(chatCfg, kodeTilstand)
     stream.send(config, sessionId, text, {
       ...cfg,
       attachmentIds,
     })
   }
 
-  // Køen: én besked der venter på at svaret bliver færdigt. At fjerne den
-  // (KoeChip ×) rører KUN køen — aldrig turen der kører (Claude Desktop §6).
-  const [koet, setKoet] = useState<{ text: string; attachmentIds?: string[] } | null>(null)
-  useEffect(() => {
-    if (!koet || stream.state.status === 'working' || serverBusy || connectivity === 'offline') return
-    const k = koet
-    setKoet(null)
-    void sendNu(k.text, k.attachmentIds)
-  }, [koet, stream.state.status, serverBusy, connectivity]) // eslint-disable-line react-hooks/exhaustive-deps
+  const followups = useFollowupQueue({
+    sessionId: sessions.activeId,
+    busy: stream.state.status === 'working' || serverBusy,
+    online: connectivity !== 'offline',
+    send: (item) => sendNu(item.text, item.attachmentIds, item.controls),
+    steer: async (item) => {
+      if (!config) throw new Error('Forbindelsen er ikke klar')
+      const runId = stream.state.activeRunId || activeRunId
+      if (!runId) throw new Error('Venter på run-id. Prøv igen om lidt.')
+      await steerRun(config, runId, item.text)
+    },
+  })
 
   // Samtale-mode (Trin 3): voice-hook. sendMessage=ensureSessionAndSend, text fra text-blocks.
   const _voiceExtract = (blocks: ContentBlock[]) =>
@@ -1217,7 +1221,16 @@ export function ChatScreen({
           onFortryd={() => void fortrydSpol()}
           onLuk={() => { setTilbagespolet(null); setSpolFejl('') }}
         />
-        <KoeChip tekst={koet?.text ?? null} onAnnuller={() => setKoet(null)} />
+        <KoeChip
+          items={followups.items}
+          busy={stream.state.status === 'working' || serverBusy}
+          canSteer={!!(stream.state.activeRunId || activeRunId)}
+          error={followups.error}
+          onEdit={followups.edit}
+          onRemove={followups.remove}
+          onMove={followups.move}
+          onSendNow={(id) => { void followups.sendNow(id) }}
+        />
         <Composer
         config={config}
           sessionId={sessions.activeId}

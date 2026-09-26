@@ -29,6 +29,7 @@ export function App() {
     error,
     isRefreshing,
     isStreaming,
+    steerReady,
     workingSteps,
     systemHealth,
     jarvisSurface,
@@ -93,6 +94,7 @@ export function App() {
         onDelete={handleDeleteSession}
         isRefreshing={isRefreshing}
         isStreaming={isStreaming}
+        steerReady={steerReady}
         workingSteps={workingSteps}
         capabilityActivity={capabilityActivity}
         systemHealth={systemHealth}

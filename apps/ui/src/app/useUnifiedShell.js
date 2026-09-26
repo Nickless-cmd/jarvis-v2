@@ -392,13 +392,9 @@ export function useUnifiedShell() {
   }
 
   async function handleSteer(content) {
-    if (!activeRunId || !content?.trim()) return
-    try {
-      await backend.steerRun(activeRunId, content.trim())
-    } catch (err) {
-      // eslint-disable-next-line no-console
-      console.warn('steer failed', err)
-    }
+    if (!activeRunId || !content?.trim()) return false
+    await backend.steerRun(activeRunId, content.trim())
+    return true
   }
 
   async function handleRenameSession(title) {
@@ -477,6 +473,7 @@ export function useUnifiedShell() {
     error,
     isRefreshing,
     isStreaming,
+    steerReady: Boolean(activeRunId),
     workingSteps,
     capabilityActivity,
     systemHealth,

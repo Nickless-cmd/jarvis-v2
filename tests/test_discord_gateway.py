@@ -244,7 +244,7 @@ class TestExtractTextDeltas:
 
 
 class TestStreamRunToDiscord:
-    """Streameren sender placeholder og redigerer den mens frames lander."""
+    """Streameren sender beskeden ved første tekst og redigerer den derefter."""
 
     def _fake_client(self, sent, edits):
         class FakeMessage:
@@ -262,7 +262,7 @@ class TestStreamRunToDiscord:
 
         return FakeClient()
 
-    def test_sends_placeholder_and_edits_with_text(self, monkeypatch):
+    def test_sends_message_on_first_text_and_edits(self, monkeypatch):
         import asyncio
 
         import core.services.discord_gateway as dg
@@ -288,17 +288,75 @@ class TestStreamRunToDiscord:
         monkeypatch.setattr(rf, "snapshot_from", fake_snapshot)
 
         asyncio.run(dg._stream_run_to_discord(123, "sess-x"))
+        try:
+            # Første rigtige tekst sendes som besked — ingen «…»-placeholder.
+            assert sent == ["Hej"]
+            assert edits == [], "beskeden indeholder allerede teksten → ingen edit"
+            # Runnet er done → staten står til finalize. Ryddede vi den her,
+            # ville finalize sende svaret som en DUBLET i stedet for at redigere.
+            st = dg._stream_state.get("sess-x")
+            assert st is not None and st["run_done"] and st["stopped"]
+        finally:
+            dg._stream_state.pop("sess-x", None)
 
-        assert sent == [dg._STREAM_PLACEHOLDER]
-        assert any("Hej" in (e or "") for e in edits)
-        # Abonnenten overtog ikke → streameren rydder selv sin state.
-        assert "sess-x" not in dg._stream_state
+    def test_sends_nothing_when_no_text_arrives(self, monkeypatch):
+        """Ingen tekst → ingen besked. Typing-indikatoren bar livstegnet."""
+        import asyncio
+
+        import core.services.discord_gateway as dg
+
+        sent: list = []
+        edits: list = []
+        monkeypatch.setattr(dg, "_client", self._fake_client(sent, edits))
+        monkeypatch.setattr(dg, "_STREAM_POLL_S", 0.0)
+
+        import core.services.run_follow as rf
+        monkeypatch.setattr(rf, "snapshot_from", lambda sid, idx: ([], True, idx))
+
+        asyncio.run(dg._stream_run_to_discord(123, "sess-tom"))
+        try:
+            assert sent == [], "ingen tekst → ingen besked i kanalen"
+            assert dg._stream_state.get("sess-tom") is not None, "staten står til finalize"
+        finally:
+            dg._stream_state.pop("sess-tom", None)
+
+    def test_done_before_finalize_edits_instead_of_duplicating(self, monkeypatch):
+        """Streameren ser done FØR finalize → staten skal stå, så finalize
+        REDIGERER beskeden. Ellers står svaret to gange i kanalen."""
+        import asyncio
+
+        import core.services.discord_gateway as dg
+
+        sent: list = []
+        edits: list = []
+        monkeypatch.setattr(dg, "_client", self._fake_client(sent, edits))
+        monkeypatch.setattr(dg, "_STREAM_POLL_S", 0.0)
+
+        import core.services.run_follow as rf
+        frames = ['event: content_block_delta\ndata: {"delta": {"type": "text_delta", "text": "Hej"}}\n\n']
+        monkeypatch.setattr(rf, "snapshot_from", lambda sid, idx: (frames, True, 1))
+
+        q: list = []
+        monkeypatch.setattr(
+            dg, "_outbound_queue", type("Q", (), {"put_nowait": lambda self, i: q.append(i)})()
+        )
+        try:
+            asyncio.run(dg._stream_run_to_discord(123, "sess-done"))
+            st = dg._stream_state.get("sess-done")
+            assert st is not None and st["run_done"], "staten skal stå til finalize"
+
+            dg._finalize_stream_or_send("sess-done", 123, "Hej")
+
+            assert sent == ["Hej"], "ingen NY besked — svaret må ikke dubleres"
+            assert q and q[0]["edit_session"] == "sess-done"
+        finally:
+            dg._stream_state.pop("sess-done", None)
 
 
 class TestFinalizeStreamOrSend:
-    """Ved run-slut: redigér placeholder hvis den findes, ellers send ny besked."""
+    """Ved run-slut: redigér streamerens besked, ellers send en ny."""
 
-    def test_queues_edit_intent_when_placeholder_exists(self, monkeypatch):
+    def test_queues_edit_intent_when_message_exists(self, monkeypatch):
         import core.services.discord_gateway as dg
 
         class FakeMessage:
@@ -321,11 +379,11 @@ class TestFinalizeStreamOrSend:
         finally:
             dg._stream_state.pop("s", None)
 
-        assert sent == [], "placeholder findes → ingen ny besked"
+        assert sent == [], "besked findes → ingen ny besked"
         assert fq.items and fq.items[0]["edit_session"] == "s"
         assert fq.items[0]["text"] == "endelig tekst"
 
-    def test_falls_back_to_send_without_placeholder(self, monkeypatch):
+    def test_falls_back_to_send_without_state(self, monkeypatch):
         import core.services.discord_gateway as dg
 
         sent: list = []
@@ -333,6 +391,43 @@ class TestFinalizeStreamOrSend:
         dg._finalize_stream_or_send("ukendt-session", 42, "tekst")
 
         assert sent == [(42, "tekst")]
+
+    def test_falls_back_when_streamer_never_sent(self, monkeypatch):
+        """State findes, men streameren fik aldrig tekst → normal send + ryd."""
+        import core.services.discord_gateway as dg
+
+        sent: list = []
+        monkeypatch.setattr(dg, "send_discord_message", lambda cid, txt: sent.append((cid, txt)))
+        dg._stream_state["s2"] = {"message": None, "stopped": True, "finished": False}
+        try:
+            dg._finalize_stream_or_send("s2", 42, "tekst")
+        finally:
+            dg._stream_state.pop("s2", None)
+
+        assert sent == [(42, "tekst")]
+        assert "s2" not in dg._stream_state
+
+
+class TestSweepStaleStreams:
+    """Efterladte streamer-states (intet finalize-kald) skal ryddes."""
+
+    def test_removes_old_stopped_keeps_fresh_and_active(self):
+        import time
+
+        import core.services.discord_gateway as dg
+
+        now = time.monotonic()
+        dg._stream_state["gammel"] = {"stopped": True, "stopped_at": now - 9999}
+        dg._stream_state["frisk"] = {"stopped": True, "stopped_at": now}
+        dg._stream_state["aktiv"] = {"stopped": False, "stopped_at": 0.0}
+        try:
+            dg._sweep_stale_streams()
+            assert "gammel" not in dg._stream_state
+            assert "frisk" in dg._stream_state
+            assert "aktiv" in dg._stream_state
+        finally:
+            for k in ("gammel", "frisk", "aktiv"):
+                dg._stream_state.pop(k, None)
 
 
 class TestApplyEditIntent:

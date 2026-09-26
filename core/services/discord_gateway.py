@@ -46,8 +46,12 @@ _discord_sessions_lock = threading.Lock()
 # ── Streaming (message-edit) ───────────────────────────────────────────
 # Bjørn 26/9-2026: Discord føltes langsommere end desk, fordi svaret blev
 # bufferet og dumpet FØRST når kørslen var færdig — tre prikker og ingen tekst.
-# Løsningen er Discords egen teknik: send en placeholder med det samme og
-# redigér den mens teksten kommer ind.
+# Løsningen er Discords egen teknik: send beskeden så snart den første tekst
+# lander, og redigér den mens resten kommer ind.
+#
+# Ingen «…»-placeholder: indtil den første tekst bærer typing-indikatoren
+# («Jarvis skriver…») livstegnet. Bjørn 26/9: en besked der kun stod «…» var
+# det ene skår i den ellers perfekte kanal.
 #
 # Live-teksten læses fra run_follow-bufferen, der ligger i SAMME proces som
 # gatewayen (jarvis-runtime, JARVIS_ENABLE_RUNTIME_SERVICES=1) for Discord-runs
@@ -58,8 +62,8 @@ _discord_sessions_lock = threading.Lock()
 _STREAM_EDIT_INTERVAL_S = 1.6
 _STREAM_POLL_S = 0.6
 _STREAM_MAX_S = 900.0        # absolut loft på én preview-session
-_STREAM_PLACEHOLDER = "…"
 _STREAM_MAX_CHARS = 1900     # Discord-beskedloft minus margin
+_STREAM_STATE_TTL_S = 120.0  # efterladt streamer-state uden finalize ryges her
 
 # session_id → {"message", "accumulated", "last_edit", "finished", "stopped", "channel_id"}
 _stream_state: dict[str, dict] = {}
@@ -752,11 +756,12 @@ def _extract_text_deltas(frames: list[str]) -> str:
 
 
 async def _stream_run_to_discord(channel_id: int, session_id: str) -> None:
-    """Send en placeholder og redigér den mens runnet streamer (message-edit).
+    """Send beskeden ved første tekst og redigér den mens runnet streamer.
 
-    Live-teksten læses fra run_follow-bufferen (samme proces). Den ENDELIGE
-    tekst ejes af _eventbus_subscriber_loop: streameren laver kun preview, så
-    en halv formateret sluttekst aldrig står i kanalen.
+    Ingen «…»-placeholder: indtil den første tekst lander bærer typing-
+    indikatoren livstegnet. Live-teksten læses fra run_follow-bufferen (samme
+    proces). Den ENDELIGE tekst ejes af _eventbus_subscriber_loop: streameren
+    laver kun preview, så en halv formateret sluttekst aldrig står i kanalen.
     """
     if not _client:
         return
@@ -767,6 +772,8 @@ async def _stream_run_to_discord(channel_id: int, session_id: str) -> None:
         "last_rendered": "",
         "finished": False,
         "stopped": False,
+        "stopped_at": 0.0,
+        "run_done": False,
         "channel_id": int(channel_id),
     }
     with _stream_lock:
@@ -779,7 +786,6 @@ async def _stream_run_to_discord(channel_id: int, session_id: str) -> None:
             channel = await _client.fetch_channel(channel_id)
         if channel is None:
             return
-        state["message"] = await channel.send(_STREAM_PLACEHOLDER)
         idx = 0
         started = time.monotonic()
         while True:
@@ -795,34 +801,70 @@ async def _stream_run_to_discord(channel_id: int, session_id: str) -> None:
             if acc:
                 preview = _wrap_tables_for_discord(acc[:_STREAM_MAX_CHARS])
                 preview = _downgrade_unsupported_for_discord(preview)
-                # Redigér KUN når teksten faktisk har ændret sig — ellers brænder
-                # vi Discords rate-limit-budget (5 edits/5 s) på ingenting.
-                if preview != state["last_rendered"] and (now - state["last_edit"]) >= _STREAM_EDIT_INTERVAL_S:
-                    try:
-                        await state["message"].edit(content=preview)
-                        state["last_rendered"] = preview
-                        state["last_edit"] = now
-                    except Exception:
-                        logger.debug("discord stream: edit failed (rate-limit?)", exc_info=True)
+                if preview != state["last_rendered"]:
+                    if state["message"] is None:
+                        # Første rigtige tekst: send beskeden nu. Indtil da bar
+                        # typing-indikatoren livstegnet — ingen «…»-besked.
+                        try:
+                            state["message"] = await channel.send(preview)
+                            state["last_rendered"] = preview
+                            state["last_edit"] = now
+                            with _typing_lock:
+                                _typing_channels.discard(channel_id)
+                        except Exception:
+                            logger.debug("discord stream: first send failed", exc_info=True)
+                    # Redigér KUN når teksten faktisk har ændret sig — ellers
+                    # brænder vi Discords rate-limit-budget (5 edits/5 s).
+                    elif (now - state["last_edit"]) >= _STREAM_EDIT_INTERVAL_S:
+                        try:
+                            await state["message"].edit(content=preview)
+                            state["last_rendered"] = preview
+                            state["last_edit"] = now
+                        except Exception:
+                            logger.debug("discord stream: edit failed (rate-limit?)", exc_info=True)
             if done or (now - started) > _STREAM_MAX_S:
+                # done = runnet er afsluttet → finalize-kaldet er lige på vej.
+                state["run_done"] = bool(done)
                 break
             await asyncio.sleep(_STREAM_POLL_S)
     except Exception:
         logger.debug("discord stream: preview aborted", exc_info=True)
     finally:
         state["stopped"] = True
-        # Hvis abonnenten ikke har overtaget (finished), rydder vi selv op —
-        # ellers lækker state når et run dør uden completed-event.
-        if not state["finished"]:
+        state["stopped_at"] = time.monotonic()
+        # Ryd kun når ingen kan tage over. `finished` = finalize har overtaget.
+        # `run_done` = end_follow skete FØR completed-eventet (visible_runs
+        # kalder end_follow først), så finalize kommer lige efter — lod vi
+        # staten ryge her, ville finalize sende svaret som en DUBLET i stedet
+        # for at redigere beskeden. Efterladte states ryges af _sweep.
+        if not state["finished"] and not state["run_done"]:
             with _stream_lock:
                 _stream_state.pop(session_id, None)
 
 
-async def _apply_edit_intent(item: dict) -> None:
-    """Redigér streamerens placeholder til den ENDELIGE tekst.
+def _sweep_stale_streams() -> None:
+    """Ryd streamer-states der blev efterladt uden et finalize-kald.
 
-    Kaldes fra _send_outbound_loop (asyncio-loop'en). Ingen placeholder →
-    fald tilbage til normal send, så et svar aldrig tabes.
+    Streameren lader sin state stå ved run-slut, så finalize kan redigere
+    beskeden i stedet for at sende en dublet. Kommer finalize aldrig (run dør
+    uden completed-event), rydder vi her. Kaldes fra _send_outbound_loop.
+    """
+    now = time.monotonic()
+    with _stream_lock:
+        stale = [
+            sid
+            for sid, st in _stream_state.items()
+            if st.get("stopped") and (now - float(st.get("stopped_at") or now)) > _STREAM_STATE_TTL_S
+        ]
+        for sid in stale:
+            _stream_state.pop(sid, None)
+
+
+async def _apply_edit_intent(item: dict) -> None:
+    """Redigér streamerens besked til den ENDELIGE tekst.
+
+    Kaldes fra _send_outbound_loop (asyncio-loop'en). Ingen besked at redigere
+    → fald tilbage til normal send, så et svar aldrig tabes.
     """
     session_id = str(item.get("edit_session") or "")
     channel_id = int(item.get("channel_id") or 0)
@@ -857,25 +899,33 @@ async def _apply_edit_intent(item: dict) -> None:
 
 
 def _finalize_stream_or_send(session_id: str, channel_id: int, content: str) -> None:
-    """Ved run-slut: redigér streamerens placeholder til den endelige tekst,
-    eller send en ny besked hvis der ingen placeholder findes.
+    """Ved run-slut: redigér streamerens besked til den endelige tekst, eller
+    send en ny besked hvis streameren aldrig fik tekst at vise.
 
-    Kaldes fra _eventbus_subscriber_loop (egen tråd). Venter kort på at
-    streameren stopper, så en gammel preview ikke overskriver final-teksten.
+    Kaldes fra _eventbus_subscriber_loop (egen tråd). Streameren stoppes først
+    (finished + vent på stopped), så et sent første-send eller en sen edit ikke
+    kan dublere eller overskrive slutteksten.
     """
     with _stream_lock:
         st = _stream_state.get(session_id)
-    if st is not None and st.get("message") is not None:
-        logger.info("discord_sub: finalizing stream channel=%s len=%d", channel_id, len(content))
+    if st is not None:
         st["finished"] = True
         deadline = time.monotonic() + 3.0
         while not st.get("stopped") and time.monotonic() < deadline:
             time.sleep(0.05)
-        _outbound_queue.put_nowait({
-            "edit_session": session_id,
-            "channel_id": int(channel_id),
-            "text": content,
-        })
+        if st.get("message") is not None:
+            logger.info("discord_sub: finalizing stream channel=%s len=%d", channel_id, len(content))
+            _outbound_queue.put_nowait({
+                "edit_session": session_id,
+                "channel_id": int(channel_id),
+                "text": content,
+            })
+            return
+        # Streameren fik aldrig tekst at vise (kort run / fejl) → normal send.
+        with _stream_lock:
+            _stream_state.pop(session_id, None)
+        logger.info("discord_sub: streamer had no text — flushing channel=%s len=%d", channel_id, len(content))
+        send_discord_message(channel_id, content)
         return
     with _stream_lock:
         _stream_state.pop(session_id, None)
@@ -889,6 +939,7 @@ async def _send_outbound_loop() -> None:
         try:
             item = _outbound_queue.get_nowait()
         except queue.Empty:
+            _sweep_stale_streams()
             await asyncio.sleep(0.2)
             continue
 
@@ -912,7 +963,7 @@ async def _send_outbound_loop() -> None:
                     asyncio.ensure_future(_typing_loop(channel_id))
             continue
 
-        # Edit-intent: streameren har vist en placeholder — redigér den til den
+        # Edit-intent: streameren har sendt beskeden — redigér den til den
         # ENDELIGE tekst (ejet af _eventbus_subscriber_loop) i stedet for at
         # sende en ny besked.
         if not isinstance(item, tuple) and item.get("edit_session"):
@@ -1240,8 +1291,9 @@ async def _run_client(config: dict) -> None:
                 name=f"discord-run-{session_id[-8:]}",
             ).start()
             # Streaming (message-edit): follow=True tee'er runnets v2-frames til
-            # run_follow-bufferen; streameren læser dem og redigerer placeholder'en
-            # mens svaret vokser — i stedet for tre prikker og ingenting.
+            # run_follow-bufferen; streameren sender beskeden ved første tekst og
+            # redigerer den mens svaret vokser — i stedet for tre prikker og
+            # ingenting.
             try:
                 asyncio.ensure_future(_stream_run_to_discord(channel_id, session_id))
             except Exception:

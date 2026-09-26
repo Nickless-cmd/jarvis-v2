@@ -1,4 +1,4 @@
-import { render, within } from '@testing-library/react-native'
+import { act, fireEvent, render, within } from '@testing-library/react-native'
 import { MessageList } from './MessageList'
 import type { ChatMessage } from '../lib/types'
 import type { ContentBlock } from '../lib/sseProtocol'
@@ -9,6 +9,57 @@ const msg = (over: Partial<ChatMessage>): ChatMessage => ({
   content: 'hej',
   created_at: '2026-09-12T12:00:00Z',
   ...over
+})
+
+it('viser turn header fra turen starter, før første blok kommer', async () => {
+  const s = await render(<MessageList messages={[]} blocks={[]} working />)
+  expect(s.getByTestId('turn-header')).toBeTruthy()
+  expect(s.getByText('Working…')).toBeTruthy()
+})
+
+it('en ny tur starter foldet, selv hvis forrige live tur blev åbnet', async () => {
+  const blocks: ContentBlock[] = [{ type: 'thinking', thinking: 'Undersøger.' }]
+  const s = await render(<MessageList messages={[]} blocks={blocks} working />)
+  await act(async () => { fireEvent.press(s.getByTestId('turn-header')) })
+  expect(s.getByTestId('thinking-summary')).toBeTruthy()
+  await act(async () => { s.rerender(<MessageList messages={[]} blocks={[]} working={false} />) })
+  await act(async () => { s.rerender(<MessageList messages={[]} blocks={blocks} working />) })
+  expect(s.queryByTestId('thinking-summary')).toBeNull()
+})
+
+it('samler gemt arbejde bag én turn header og lader slutsvaret stå synligt', async () => {
+  const s = await render(<MessageList messages={[msg({
+    id: 'a1', role: 'assistant', content: 'Det er løst.',
+    content_json: [
+      { type: 'text', text: 'Jeg undersøger filen.' },
+      { type: 'tool_use', id: 't1', name: 'read_file', input: { path: 'app.py' } },
+      { type: 'text', text: 'Det er løst.' },
+    ],
+  })]} blocks={[]} />)
+  expect(s.getByTestId('turn-header')).toBeTruthy()
+  expect(s.getByText('Det er løst.')).toBeTruthy()
+  expect(s.queryByText('Jeg undersøger filen.')).toBeNull()
+  expect(s.queryByTestId('tool-group')).toBeNull()
+  await fireEvent.press(s.getByTestId('turn-header'))
+  expect(s.getByText('Jeg undersøger filen.')).toBeTruthy()
+  expect(s.getByTestId('tool-group')).toBeTruthy()
+})
+
+it('folder også live arbejde ind, mens det sidste svar stadig vises', async () => {
+  const blocks: ContentBlock[] = [
+    { type: 'thinking', thinking: 'Jeg lægger en plan.' },
+    { type: 'text', text: 'Jeg finder filen.' },
+    { type: 'tool_use', id: 't1', name: 'read_file', input: { path: 'app.py' }, status: 'done' },
+    { type: 'text', text: 'Her er svaret.' },
+  ]
+  const s = await render(<MessageList messages={[]} blocks={blocks} />)
+  expect(s.getByTestId('turn-header')).toBeTruthy()
+  expect(s.getByText('Her er svaret.')).toBeTruthy()
+  expect(s.queryByText('Jeg finder filen.')).toBeNull()
+  expect(s.queryByTestId('thinking-summary')).toBeNull()
+  await fireEvent.press(s.getByTestId('turn-header'))
+  expect(s.getByText('Jeg finder filen.')).toBeTruthy()
+  expect(s.getByTestId('thinking-summary')).toBeTruthy()
 })
 
 /**
@@ -79,7 +130,9 @@ it('thinking-blokke i stream får egen række — ikke smeltet ind i svaret', as
     />
   )
 
-  // Thinking skal være en egen linje med testID
+  // Thinking ligger bag turn headeren, ikke inde i selve svaret.
+  expect(s.getByTestId('turn-header')).toBeTruthy()
+  await fireEvent.press(s.getByTestId('turn-header'))
   expect(s.getByTestId('thinking-summary')).toBeTruthy()
   // Og teksten skal være en separat boble
   expect(s.getByText('Svaret er 4')).toBeTruthy()
@@ -106,6 +159,7 @@ it('tænke-fragmentet står på trådens linje mens den tænker', async () => {
       blocks={[{ type: 'thinking', thinking: 'jeg overvejer om 2+2 er 4' }]}
     />
   )
+  await fireEvent.press(s.getByTestId('turn-header'))
   expect(
     within(s.getByTestId('thinking-summary')).getByText(/jeg overvejer om 2\+2 er 4/)
   ).toBeTruthy()
@@ -141,6 +195,7 @@ it('en gemt tur med flere tanker beholder dem alle, på deres plads', async () =
       blocks={[]}
     />
   )
+  await fireEvent.press(s.getByTestId('turn-header'))
   const taenkte = s.queryAllByText(/Tænkte/)
   expect(taenkte.length).toBe(2)
   // Og de baerer hver sin maalte tid — ikke den foerstes for dem begge.

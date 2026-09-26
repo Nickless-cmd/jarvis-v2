@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react-native'
+import { act, fireEvent, render } from '@testing-library/react-native'
 import { MessageList } from './MessageList'
 import { streamReducer, initialStreamState } from '../lib/streamReducer'
 import { blocksToPersisted } from '../lib/blocksToPersisted'
@@ -39,5 +39,6 @@ it('tænkningen overlever vejen fra stream til gemt besked', async () => {
     created_at: '2026-09-13T00:00:00Z', content_json: gemt
   } as ChatMessage
   const v = await render(<MessageList messages={[msg]} blocks={[]} />)
+  await act(async () => { fireEvent.press(v.getByTestId('turn-header')) })
   expect(v.queryAllByText(/Tænkte/).length).toBe(2)
 })

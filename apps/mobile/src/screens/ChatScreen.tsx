@@ -1108,6 +1108,7 @@ export function ChatScreen({
               ref={listRef}
               messages={sessions.messages}
               blocks={stream.state.blocks}
+              working={stream.state.status === 'working' || serverBusy}
               // Rundens overskrift — «Rettede fejl i login». Uden den her linje
               // ville etiketten blive regnet, sendt og gemt i tilstanden uden
               // nogensinde at naa skaermen: husets hyppigste fejl.

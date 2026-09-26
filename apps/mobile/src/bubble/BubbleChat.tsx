@@ -34,7 +34,7 @@ function BubbleChat({ sessionId, title }: { sessionId: string; title: string }) 
         {title || 'Jarvis'}
       </Text>
       <View style={styles.list}>
-        <MessageList messages={sessions.messages} blocks={stream.state.blocks} skillFlade={stream.state.skillFlade} />
+        <MessageList messages={sessions.messages} blocks={stream.state.blocks} working={stream.state.status === 'working'} skillFlade={stream.state.skillFlade} />
       </View>
       <Composer
       config={config}

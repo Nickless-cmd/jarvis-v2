@@ -11,9 +11,11 @@ import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 import { nextUserRow } from '../lib/messageNav'
 import { MessageBubble } from './MessageBubble'
 import { InlineToolGroup } from './InlineToolGroup'
+import { formatTid } from './InlineToolGroup'
+import { TurnHeader } from './TurnHeader'
 import { aendringAf, diffFraResultat, toolDiff } from '../lib/toolDiff'
 import { describeTool, describeToolResult } from '../lib/toolSummary'
-import { countFromResult, type ToolItem } from '../lib/toolGroup'
+import { countFromResult, summarizeRound, type ToolItem } from '../lib/toolGroup'
 import { SKILL_VAERKTOEJER, type SkillKald } from '../lib/skillLinje'
 import { SkillFladeLinje, SkillLinje, type SkillFladeMatch } from './SkillLinje'
 import { TankeResumeLinje } from './TankeResumeLinje'
@@ -38,6 +40,8 @@ export interface MessageListHandle {
 interface MessageListProps {
   messages: ChatMessage[]
   blocks: ContentBlock[]
+  /** Sand mens en tur kører, også før første indholdsblok er ankommet. */
+  working?: boolean
   /**
    * Ekstra plads i bunden mens tastaturet er fremme.
    *
@@ -80,7 +84,7 @@ interface MessageListProps {
   onScrollOffset?: (fromBottom: number) => void
 }
 
-type Row =
+type Row = (
   | { kind: 'msg'; key: string; message: ChatMessage; hideActions?: boolean
       // Turens blokke følger med den SIDSTE tekstboble, så «Kilder» kan bygges
       // af det han faktisk slog op. Uden dem faldt kilderne væk i samme sekund
@@ -108,8 +112,10 @@ type Row =
    * serialiserede transcript (målt 111k tegn).
    */
   | { kind: 'compact-marker'; key: string; content: string }
+  | { kind: 'turn-header'; key: string; label: string; live: boolean; open: boolean }
   /** «Nye beskeder» — over den første besked man ikke har set (Claude Desktop §10). */
   | { kind: 'nye-beskeder'; key: string }
+) & { turnId?: string; work?: boolean }
 
 /**
  * Fold sammenhængende værktøjsrækker sammen til én pr. runde.
@@ -139,7 +145,8 @@ function skillFladeMatches(v: unknown): SkillFladeMatch[] {
 export function medNyeLinje<R extends { key: string }>(rows: R[], nyeFra: string | null | undefined): Array<R | { kind: 'nye-beskeder'; key: string }> {
   if (!nyeFra) return rows
   const i = rows.findIndex((r) => {
-    const k = r.key.startsWith('group-') ? r.key.slice(6) : r.key
+    const k = r.key.startsWith('group-') ? r.key.slice(6)
+      : r.key.startsWith('turn-') ? r.key.slice(5) : r.key
     return k === nyeFra || k.startsWith(`${nyeFra}-`)
   })
   return i > 0 ? [...rows.slice(0, i), { kind: 'nye-beskeder', key: `nye-${nyeFra}` }, ...rows.slice(i)] : rows
@@ -178,11 +185,15 @@ function groupToolRounds(rows: Row[]): Row[] {
             count: countFromResult((r as { content: string }).content)
           }
     )
-    out.push({ kind: 'tool-group', key: `group-${buf[0]!.key}`, items })
+    out.push({ kind: 'tool-group', key: `group-${buf[0]!.key}`, items,
+      turnId: buf[0]!.turnId, work: buf[0]!.work })
     buf = []
   }
   for (const r of rows) {
-    if (r.kind === 'tool' || r.kind === 'live-tool') buf.push(r)
+    if (r.kind === 'tool' || r.kind === 'live-tool') {
+      if (buf.length && r.turnId !== buf[0]!.turnId) flush()
+      buf.push(r)
+    }
     else {
       flush()
       out.push(r)
@@ -190,6 +201,37 @@ function groupToolRounds(rows: Row[]): Row[] {
   }
   flush()
   return out
+}
+
+/** Hold turens arbejde bag én linje, men lad svaret blive i FlatList som sin
+ * egen række. Så kan søgning, sticky prompt og rul-til-bunden stadig finde det. */
+function medTurHoveder(rows: Row[], aaben: (id: string) => boolean): Row[] {
+  const arbejde = new Map<string, Row[]>()
+  for (const row of rows) {
+    if (row.turnId && row.work) {
+      const gruppe = arbejde.get(row.turnId) ?? []
+      gruppe.push(row)
+      arbejde.set(row.turnId, gruppe)
+    }
+  }
+  const setHoved = new Set<string>()
+  const ud: Row[] = []
+  for (const row of rows) {
+    if (!row.turnId || !row.work) { ud.push(row); continue }
+    if (!setHoved.has(row.turnId)) {
+      setHoved.add(row.turnId)
+      const dele = arbejde.get(row.turnId) ?? []
+      const vaerktoejer = dele.flatMap((r) => r.kind === 'tool-group' ? r.items : [])
+      const sekunder = dele.reduce((n, r) => n + (r.kind === 'thinking' ? r.seconds ?? 0 : 0), 0)
+      const fortalt = summarizeRound(vaerktoejer).replace(/…$/, '') ||
+        (sekunder > 0 ? `Tænkte i ${formatTid(sekunder)}` : 'Arbejdede')
+      const label = vaerktoejer.length && sekunder > 0 ? `${fortalt} · ${formatTid(sekunder)}` : fortalt
+      ud.push({ kind: 'turn-header', key: `turn-${row.turnId}`, turnId: row.turnId,
+        label, live: row.turnId === 'stream', open: aaben(row.turnId) })
+    }
+    if (aaben(row.turnId)) ud.push(row)
+  }
+  return ud
 }
 
 function toolBody(block: Extract<ContentBlock, { type: 'tool_use' }>): string {
@@ -320,6 +362,12 @@ function buildStreamingRows(blocks: ContentBlock[]): Row[] {
   // der kom bagefter; det er selve beviset for at den er færdig.
   const sidste = rows[rows.length - 1]
   if (sidste?.kind === 'thinking') sidste.live = true
+  const sidsteArbejde = rows.reduce((index, r, j) => r.kind === 'msg' ? index : j, -1)
+  const sidsteTekst = rows.reduce((index, r, j) => r.kind === 'msg' ? j : index, -1)
+  rows.forEach((r, j) => {
+    r.turnId = 'stream'
+    r.work = r.kind !== 'msg' || (sidsteArbejde >= 0 && (j !== sidsteTekst || j < sidsteArbejde))
+  })
   return rows
 }
 
@@ -336,12 +384,25 @@ function taenketid(start?: number, slut?: number): number | undefined {
 }
 
 export const MessageList = forwardRef<MessageListHandle, MessageListProps>(function MessageList(
-  { messages, blocks, onResend, onScrollOffset, bottomInset = 0, pins, onTogglePin, onSaveMemory, rundeEtiketter, skillFlade, nyeFra, visning = 'normal', tankeResumeer, onRewind },
+  { messages, blocks, working = false, onResend, onScrollOffset, bottomInset = 0, pins, onTogglePin, onSaveMemory, rundeEtiketter, skillFlade, nyeFra, visning = 'normal', tankeResumeer, onRewind },
   ref
 ) {
   const tokens = useTheme()
   const styles = useStyles(makestyles)
   const flatRef = useRef<FlatList>(null)
+  const [turnOverrides, setTurnOverrides] = useState<Record<string, boolean>>({})
+  const wasWorking = useRef(working)
+  useEffect(() => {
+    if (working && !wasWorking.current) {
+      setTurnOverrides((current) => {
+        if (!('stream' in current)) return current
+        const next = { ...current }
+        delete next.stream
+        return next
+      })
+    }
+    wasWorking.current = working
+  }, [working])
   const visibleRef = useRef(0)   // ordered-index øverst i viewport (inverted)
   const contentLenRef = useRef(0)
   // Stabil callback — RN kaster hvis onViewableItemsChanged ændrer identitet on-the-fly.
@@ -369,9 +430,11 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
   const persisted = useMemo(() => {
     const persisted: Row[] = []
     let skipToolRows = false
+    let legacyTurnId: string | undefined
     for (let i = messages.length - 1; i >= 0; i--) {
       const m = messages[i]!
       if (m.role === 'assistant') {
+        legacyTurnId = String(m.id)
         const blocks = parseBlocks(m)
         const think = thinkingBlock(blocks)
         // UDGIVNE FILER, lagt fra sig FOER grenene nedenfor. Foerste forsoeg lagde
@@ -397,11 +460,14 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
             (acc, b, i) => (b.type === 'text' && (b.text ?? '').trim() ? i : acc),
             -1
           )
+          const lastWorkIdx = thread.reduce((acc, b, i) =>
+            b.type === 'tool_use' || b.type === 'skill_surface' ? i : acc, -1)
           thread.forEach((b, bi) => {
             if (b.type === 'text' && (b.text ?? '').trim()) {
               expanded.push({
                 kind: 'msg',
                 key: `${m.id}-b${bi}`,
+                turnId: String(m.id), work: bi !== lastTextIdx || bi < lastWorkIdx,
                 message: { ...m, id: `${m.id}-b${bi}`, content: (b.text ?? '').trim() },
                 // Kun turens sidste afsnit bærer kopiér/oplæs — ellers gentages
                 // rækken efter hvert afsnit og tråden bliver støjende. Samme
@@ -414,6 +480,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
               const res = thread.find((r) => r.type === 'tool_result' && r.tool_use_id === b.id)
               expanded.push({
                 kind: 'skill', key: `${m.id}-sk${bi}`,
+                turnId: String(m.id), work: true,
                 kald: {
                   name: String(b.name), input: b.input,
                   result: typeof res?.content === 'string' ? res.content : undefined,
@@ -422,11 +489,13 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
               })
             } else if (b.type === 'skill_surface' && Array.isArray((b as { matches?: unknown }).matches)) {
               const matches = skillFladeMatches((b as { matches?: unknown }).matches)
-              if (matches.length) expanded.push({ kind: 'skill-flade', key: `${m.id}-sf${bi}`, matches })
+              if (matches.length) expanded.push({ kind: 'skill-flade', key: `${m.id}-sf${bi}`, matches,
+                turnId: String(m.id), work: true })
             } else if (b.type === 'tool_use') {
               expanded.push({
                 kind: 'live-tool',
                 key: `${m.id}-t${bi}`,
+                turnId: String(m.id), work: true,
                 // `id` og `diff` skal MED, ellers doer baade linjetallene og
                 // runde-etiketten i det oejeblik turen er faerdig: uden id'et
                 // kan etiketten ikke slaas op, og uden diff'en er der intet at
@@ -443,6 +512,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
               // hvor den blev taenkt — mellem de to vaerktoejer den forbinder.
               expanded.push({
                 kind: 'thinking', key: `${m.id}-tk${bi}`,
+                turnId: String(m.id), work: true,
                 seconds: b.seconds, text: b.text, messageId: m.id
               })
             }
@@ -456,7 +526,8 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
         // sagtens have tænkt. Uden dette forsvandt linjen på netop de turer hvor
         // tænkningen ofte er mest interessant: de rene svar.
         if (think) {
-          persisted.unshift({ kind: 'msg', key: m.id, message: m, kildeBlokke: blocks })
+          persisted.unshift({ kind: 'msg', key: m.id, message: m, kildeBlokke: blocks,
+            turnId: String(m.id) })
           // ALLE turens tanker, i raekkefoelge. `unshift` saetter forrest, saa
           // listen vendes for at bevare den.
           const tanker = (blocks ?? []).filter(
@@ -464,6 +535,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
           for (let ti = tanker.length - 1; ti >= 0; ti--) {
             persisted.unshift({
               kind: 'thinking', key: `${m.id}-tk${ti}`,
+              turnId: String(m.id), work: true,
               seconds: tanker[ti]!.seconds, text: tanker[ti]!.text,
               messageId: m.id
             })
@@ -473,6 +545,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
       }
       if (m.role === 'user') {
         skipToolRows = false
+        legacyTurnId = undefined
         const ublocks = attachmentBlocks(parseBlocks(m))
         if (ublocks.length) {
           persisted.unshift({ kind: 'msg', key: m.id, message: m, kildeBlokke: blocks })
@@ -483,7 +556,8 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
       }
       if (m.role === 'tool') {
         if (skipToolRows) continue
-        persisted.unshift({ kind: 'tool', key: m.id, content: m.content })
+        persisted.unshift({ kind: 'tool', key: m.id, content: m.content,
+          turnId: legacyTurnId, work: !!legacyTurnId })
         continue
       }
       if (m.role === 'compact_marker') {
@@ -495,7 +569,8 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
         persisted.unshift({ kind: 'compact-marker', key: m.id, content: m.content })
         continue
       }
-      persisted.unshift({ kind: 'msg', key: m.id, message: m })
+      persisted.unshift({ kind: 'msg', key: m.id, message: m,
+        turnId: m.role === 'assistant' ? String(m.id) : undefined })
     }
     return persisted
   }, [messages])
@@ -517,13 +592,24 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
   // Den levende turs skill-flade står øverst i turen, før strømmen — som desk.
   const levende = buildStreamingRows(blocks)
   const flade = skillFlade?.matches?.length && levende.length
-    ? [{ kind: 'skill-flade' as const, key: 'stream-skill-flade', matches: skillFlade.matches }]
+    ? [{ kind: 'skill-flade' as const, key: 'stream-skill-flade', matches: skillFlade.matches,
+        turnId: 'stream', work: true }]
     : []
   const grupperet: Row[] = groupToolRounds([...persisted, ...flade, ...levende])
+  const medHoveder = medTurHoveder(grupperet, (id) => turnOverrides[id] ?? visning === 'verbose')
+  // En tur starter før første SSE-indholdsblok. Behold samme header-nøgle,
+  // så rækken ikke hopper når den første tanke eller det første værktøj lander.
+  if (working && !medHoveder.some((r) => r.kind === 'turn-header' && r.turnId === 'stream')) {
+    const firstLive = medHoveder.findIndex((r) => r.turnId === 'stream')
+    medHoveder.splice(firstLive < 0 ? medHoveder.length : firstLive, 0, {
+      kind: 'turn-header', key: 'turn-stream', turnId: 'stream',
+      label: 'Working…', live: true, open: turnOverrides.stream ?? visning === 'verbose',
+    })
+  }
   // Skillelinjen over den FØRSTE række der hører til den første nye besked.
   // En besked kan blive til flere rækker (afsnit, runder, tanker), og en
   // runde-række bærer nøglen `group-<første kalds nøgle>`.
-  const rows: Row[] = medNyeLinje(grupperet, nyeFra)
+  const rows: Row[] = medNyeLinje(medHoveder, nyeFra)
 
   // Inverteret liste: nyeste række sidder altid i bunden og er synlig fra start.
   const ordered = [...rows].reverse()
@@ -557,7 +643,9 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
     },
     scrubTo: (f: number) => flatRef.current?.scrollToOffset({ offset: f * contentLenRef.current, animated: false }),
     jumpToMessage: (messageId: string) => {
-      const i = ordered.findIndex((r) => r.kind === 'msg' && String(r.message.id) === String(messageId))
+      const i = ordered.findIndex((r) =>
+        (r.kind === 'msg' && String(r.turnId ?? r.message.id) === String(messageId)) ||
+        (r.kind === 'turn-header' && r.turnId === String(messageId)))
       if (i < 0) return
       // viewPosition 0.3: træffet lander lidt under toppen, så man kan se
       // linjerne FØR det — en besked uden sin optakt er svær at genkende.
@@ -604,6 +692,13 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
         flatRef.current?.scrollToOffset({ offset: info.averageItemLength * info.index, animated: true })
       }}
       renderItem={({ item }) => {
+        if (item.kind === 'turn-header') {
+          return <TurnHeader
+            label={item.label} live={item.live} open={item.open}
+            onToggle={() => setTurnOverrides((current) => ({ ...current,
+              [item.turnId!]: !item.open }))}
+          />
+        }
         // Værktøjsarbejde er ÉN linje inde i samtalen — ikke et kort.
         // Målt i Codex-tråden: «</> Ændrede 16 filer ›». Det fulde output
         // ligger bag linjen, ikke foran den.

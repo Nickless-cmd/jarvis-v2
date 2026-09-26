@@ -26,10 +26,12 @@ describe('visningerne', () => {
   })
   it('Tænkning: det gemte resumé står over gruppen', async () => {
     const s = await render(<MessageList messages={[tur]} blocks={[]} visning="thinking" />)
+    await fireEvent.press(s.getByTestId('turn-header'))
     expect(s.getByText('Ville finde værnet i ruten')).toBeTruthy()
   })
   it('Tænkning: et live resumé vinder', async () => {
     const s = await render(<MessageList messages={[tur]} blocks={[]} visning="thinking" tankeResumeer={{ t1: 'Live-resumé' }} />)
+    await fireEvent.press(s.getByTestId('turn-header'))
     expect(s.getByText('Live-resumé')).toBeTruthy()
   })
   it('Alt: gruppen og tanken står åbne fra start', async () => {

@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react-native'
+import { act, fireEvent, render } from '@testing-library/react-native'
 import { MessageList } from './MessageList'
 import type { ChatMessage } from '../lib/types'
 
@@ -19,6 +19,7 @@ it('en genindlæst runde viser sine +/− — også for broens redigeringer', as
     ],
   } as unknown as ChatMessage
   const v = await render(<MessageList messages={[msg]} blocks={[]} />)
+  await act(async () => { fireEvent.press(v.getByTestId('turn-header')) })
   expect(v.getByText('+5')).toBeTruthy()
   expect(v.getByText('−3')).toBeTruthy()
 })

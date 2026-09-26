@@ -1,6 +1,6 @@
 {
   "name": "jarvis-mobile",
-  "version": "0.2.103",
+  "version": "0.2.105",
   "private": true,
   "main": "index.js",
   "scripts": {

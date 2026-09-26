@@ -89,6 +89,50 @@ def _spawn_depth_for(parent_agent_id: str) -> int:
         return 1
 
 
+#: En scout er en `researcher` med en LÆSENDE værktøjs-politik. Samme to
+#: navne som `background_jobs._SCOUT_POLICIES` bruger til at vise dem i
+#: baggrundsjob-panelet — en agent der kan skrive er ikke en scout.
+_SCOUT_POLICIES = frozenset({"read-only-runtime", "read-only-workstation"})
+
+#: HVAD ROUTEREN SO VÆLGER, målt på CT105 26/9-2026 med samme router:
+#:
+#:     i dag (gratis)     chatanywhere / gpt-4.1-mini
+#:     med betalt         copilot-premium / claude-sonnet-5
+#:     uden copilot       chinaapi-premium / claude-opus-5
+#:
+#: Første udgave af denne ændring udelukkede `copilot-premium`, fordi jeg
+#: antog at Bjørns eget abonnement ikke måtte bruges på agent-arbejde. Han
+#: rettede mig: «det er meningen copilot premium er til hans agenter, og nu
+#: chinaapi». Begge er altså kandidater, og routeren vælger på kapabilitet.
+#: Der er ingen udelukkelses-mængde — den ville have holdt den bedste model
+#: ude af netop den pulje den var tiltænkt.
+
+
+def _scout_maa_betale(role: str, tool_policy: str) -> bool:
+    """Må denne agent vælge blandt de BETALTE udbydere?
+
+    Bjørn 26/9-2026: «de skal i hans scout pulje» — om frontiermodellerne på
+    chinaapi-kontoen (claude-opus-5, gpt-5.5, kimi-k3, gemini-3.8).
+
+    HVORFOR DET KRÆVEDE EN ÆNDRING OG IKKE BARE EN KATALOG-POST: mekanismen
+    fandtes i forvejen. `cost_class: "paid"` holder en udbyder ude af cheap
+    lane, og `central_route` lukker den ind i agent-puljen når `allow_paid`
+    er sat — `freetheai`s egen kommentar beskriver netop den vej. Men
+    **`allow_paid=True` blev aldrig sendt af nogen.** Begge kaldsteder i denne
+    fil stod hårdkodet på `False`, så porten har været bygget og lukket hele
+    tiden.
+
+    Kun scouten får nøglen. De øvrige tool-roller (critic, planner, executor …)
+    er uændret på gratis, for de kører i løkker hvor et betalt kald pr. runde
+    ville løbe fra os uden at nogen så det.
+
+    I agent-banen vægtes kapabilitet FØRST (`central_route`: `-cap` før rank),
+    så en stærk betalt model vinder over en svag gratis — hvilket er hele
+    formålet her.
+    """
+    return str(role or "") == "researcher" and str(tool_policy or "") in _SCOUT_POLICIES
+
+
 def spawn_agent_task(
     *,
     role: str,
@@ -207,6 +251,10 @@ def spawn_agent_task(
     # router (deepseek/70B/qwen3-32b/nemotron-120B). Reflection roles (filosof/etiker)
     # and already-capable configs are untouched. Se central_route._model_capability.
     _TOOL_ROLES = {"researcher", "critic", "planner", "executor", "watcher", "devils_advocate"}
+    # Scouten må bruge de BETALTE modeller (Bjørn 26/9-2026: «de skal i hans
+    # scout pulje»). Se `_scout_maa_betale` nedenfor for hvorfor det kræver
+    # et flag der aldrig har været brugt.
+    _betal = _scout_maa_betale(role, tool_policy)
     # Denne blok fyrer KUN naar kalderen har valgt eksplicit — og den kasserer
     # netop det valg. MAALT 10/9-2026: explores rotation valgte
     # `mistral/ministral-3b-latest` (capability 0,28), vagten kasserede det, og
@@ -226,7 +274,7 @@ def spawn_agent_task(
             from core.services.central_route import _model_capability
             if _model_capability(provider, model) < 0.6:
                 from core.services.agent_pool_router import route_agent_task
-                _rr = route_agent_task(kind=role, allow_paid=False)
+                _rr = route_agent_task(kind=role, allow_paid=_betal)
                 _rp, _rm = str(_rr.get("provider") or ""), str(_rr.get("model") or "")
                 _duer = True
                 try:
@@ -251,7 +299,7 @@ def spawn_agent_task(
         # arbejdskraft). Only reached when config gave no provider/model at all.
         try:
             from core.services.agent_pool_router import route_agent_task
-            _rr = route_agent_task(kind=role, allow_paid=False)
+            _rr = route_agent_task(kind=role, allow_paid=_betal)
             provider = str(provider or _rr.get("provider") or "")
             model = str(model or _rr.get("model") or "")
         except Exception:

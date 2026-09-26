@@ -413,12 +413,20 @@ def scrub_outgoing(text: str | None) -> tuple[str, list[str]]:
     if not hard:
         return (text, [])
 
-    # Split i segmenter på sætnings-/linjeskel, behold afgrænserne så
-    # rekonstruktionen ikke ødelægger formatering for de bevarede dele.
-    segments = re.split(r"(?<=[.!?])\s+|\n+", text)
+    # Split i segmenter på sætnings-/linjeskel MED capture-gruppe, så
+    # separatorerne (\n, \n\n, mellemrum) selv kommer med i listen. Uden
+    # capture-gruppen smider re.split dem væk, og rekonstruktionen flader
+    # hele beskeden ud til én linje — Discord/Telegram-formatering forsvinder.
+    segments = re.split(r"(\n+|(?<=[.!?])\s+)", text)
     kept: list[str] = []
     removed: list[str] = []
     for seg in segments:
+        if not seg:
+            continue
+        # Ren separator (kun whitespace) bevares altid — den bærer formateringen.
+        if not seg.strip():
+            kept.append(seg)
+            continue
         low = seg.lower()
         hit = next((p for p in hard if p in low), None)
         if hit:
@@ -426,7 +434,7 @@ def scrub_outgoing(text: str | None) -> tuple[str, list[str]]:
         else:
             kept.append(seg)
 
-    scrubbed = " ".join(s for s in kept if s.strip()).strip()
+    scrubbed = "".join(kept).strip()
     return (scrubbed, removed)
 
 

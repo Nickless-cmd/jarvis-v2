@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 15602 functions/methods, 51% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 15607 functions/methods, 51% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -31,31 +31,31 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 15602 functions/
 - [`core.runtime.03`](core.runtime.03.md) — `opmaerksomhed` … `ws_auth`
 - [`core.services.01`](core.services.01.md) — `__init__` … `agentic_tool_cache`
 - [`core.services.02`](core.services.02.md) — `agentic_working_conclusions` … `autonomous_run_failures`
-- [`core.services.03`](core.services.03.md) — `autonomous_sessions` … `central_agents_surface`
-- [`core.services.04`](core.services.04.md) — `central_analyst` … `central_hypothesis_generator`
-- [`core.services.05`](core.services.05.md) — `central_hypothesis_governance` … `central_realtime`
-- [`core.services.06`](core.services.06.md) — `central_red_dress` … `cheap_lane_dashboard`
-- [`core.services.07`](core.services.07.md) — `cheap_lane_diagnostics` … `communication_guard`
-- [`core.services.08`](core.services.08.md) — `communication_guard_daemon` … `counterfactual_predictions`
-- [`core.services.09`](core.services.09.md) — `counterfactual_self_simulation` … `decision_weight`
-- [`core.services.10`](core.services.10.md) — `decisions_journal` … `dream_influence_proposal_tracking`
-- [`core.services.11`](core.services.11.md) — `dream_influence_runtime` … `existential_wonder_daemon`
-- [`core.services.12`](core.services.12.md) — `experience_correction_listener` … `gate_skill`
-- [`core.services.13`](core.services.13.md) — `gate_truth` … `identity_composer`
-- [`core.services.14`](core.services.14.md) — `identity_drift_daemon` … `kerne_curator`
-- [`core.services.15`](core.services.15.md) — `keyring_store` … `memory_hierarchy`
-- [`core.services.16`](core.services.16.md) — `memory_maintenance_daemon` … `nerve_registry`
-- [`core.services.17`](core.services.17.md) — `network_health` … `periodic_jobs_scheduler`
-- [`core.services.18`](core.services.18.md) — `permission_axes` … `projection_tool_router`
-- [`core.services.19`](core.services.19.md) — `promise_ledger` … `recall`
-- [`core.services.20`](core.services.20.md) — `recall_scheduler` … `run_closure_gate`
-- [`core.services.21`](core.services.21.md) — `run_event_log` … `self_experiments`
-- [`core.services.22`](core.services.22.md) — `self_history_grounding` … `session_view`
-- [`core.services.23`](core.services.23.md) — `session_wakeup` … `spatial_entity_ledger`
-- [`core.services.24`](core.services.24.md) — `spild` … `thought_thread`
-- [`core.services.25`](core.services.25.md) — `tick_cache` … `user_model_daemon`
-- [`core.services.26`](core.services.26.md) — `user_scope` … `visible_runs_error_messaging`
-- [`core.services.27`](core.services.27.md) — `visible_runs_learning_signals` … `world_model_signal_tracking`
+- [`core.services.03`](core.services.03.md) — `autonomous_sessions` … `central_agent_smith_escalation`
+- [`core.services.04`](core.services.04.md) — `central_agents_surface` … `central_hub`
+- [`core.services.05`](core.services.05.md) — `central_hypothesis_generator` … `central_rca`
+- [`core.services.06`](core.services.06.md) — `central_realtime` … `cheap_lane_control`
+- [`core.services.07`](core.services.07.md) — `cheap_lane_dashboard` … `commit_gate_arbiter`
+- [`core.services.08`](core.services.08.md) — `communication_guard` … `counterfactual_engine_runtime`
+- [`core.services.09`](core.services.09.md) — `counterfactual_predictions` … `decision_signals`
+- [`core.services.10`](core.services.10.md) — `decision_weight` … `dream_hypothesis_signal_tracking`
+- [`core.services.11`](core.services.11.md) — `dream_influence_proposal_tracking` … `existential_drift`
+- [`core.services.12`](core.services.12.md) — `existential_wonder_daemon` … `gate_shadow`
+- [`core.services.13`](core.services.13.md) — `gate_skill` … `identity_canon`
+- [`core.services.14`](core.services.14.md) — `identity_composer` … `jobs_engine`
+- [`core.services.15`](core.services.15.md) — `kerne_curator` … `memory_graph`
+- [`core.services.16`](core.services.16.md) — `memory_hierarchy` … `negotiation_pipeline`
+- [`core.services.17`](core.services.17.md) — `nerve_registry` … `perceptual_event_engine`
+- [`core.services.18`](core.services.18.md) — `periodic_jobs_scheduler` … `projection_runtime`
+- [`core.services.19`](core.services.19.md) — `projection_tool_router` … `reboot_awareness_daemon`
+- [`core.services.20`](core.services.20.md) — `recall` … `run_autonomy_context`
+- [`core.services.21`](core.services.21.md) — `run_closure_gate` … `self_deception_guard`
+- [`core.services.22`](core.services.22.md) — `self_experiments` … `session_topic_tracker`
+- [`core.services.23`](core.services.23.md) — `session_view` … `spaced_repetition`
+- [`core.services.24`](core.services.24.md) — `spatial_entity_ledger` … `thought_stream_daemon`
+- [`core.services.25`](core.services.25.md) — `thought_thread` … `user_md_update_proposal_tracking`
+- [`core.services.26`](core.services.26.md) — `user_model_daemon` … `visible_runs_cognitive`
+- [`core.services.27`](core.services.27.md) — `visible_runs_error_messaging` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

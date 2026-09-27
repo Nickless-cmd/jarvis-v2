@@ -2,6 +2,24 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/projection_tool_router.py`
+_Projektion: `tool_router_decisions` foldet fra sessionens hændelser._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `decision_id_for` | `(session_id, event_id)` | Stabilt id: samme hændelse giver altid samme id. | [src](../../../core/services/projection_tool_router.py#L65) |
+| function | `_decision_id` | `(session_id, e, payload)` | Et id hændelsen allerede bærer VINDER over et udledt. | [src](../../../core/services/projection_tool_router.py#L75) |
+| function | `_json_tekst` | `(v)` | Lister og objekter gemmes som tekst; tekst gemmes uændret. | [src](../../../core/services/projection_tool_router.py#L86) |
+| function | `valider` | `(payload)` | Returnér en grund hvis hændelsen ikke kan blive en række, ellers None. | [src](../../../core/services/projection_tool_router.py#L99) |
+| function | `_raekke` | `(session_id, e)` | — | [src](../../../core/services/projection_tool_router.py#L115) |
+| function | `_migrer` | `(conn)` | Doven migration: `decision_id` og dens unikke indeks. | [src](../../../core/services/projection_tool_router.py#L141) |
+| function | `_skriv` | `(raekke)` | — | [src](../../../core/services/projection_tool_router.py#L167) |
+| function | `start` | `()` | Formen ligger i STARTEN, ikke i den første fold — som `chat_messages`. | [src](../../../core/services/projection_tool_router.py#L190) |
+| function | `fold` | `(state, e)` | Ren pr. hændelse og idempotent: samme hændelse igen ændrer ingenting. | [src](../../../core/services/projection_tool_router.py#L195) |
+| function | `register` | `()` | — | [src](../../../core/services/projection_tool_router.py#L212) |
+| function | `rebuild` | `(session_id)` | Genskab sessionens router-beslutninger fra hovedbogen. | [src](../../../core/services/projection_tool_router.py#L217) |
+| function | `guard_direct_write` | `(session_id, *, conn=…)` | Afvis direkte `tool_router_decisions`-skrivninger for en ledger-session. | [src](../../../core/services/projection_tool_router.py#L237) |
+
 ## `core/services/promise_ledger.py`
 _Promise-ledger (Bjørn-gate) — 16. jun 2026._
 
@@ -654,26 +672,4 @@ _Reboot Awareness Daemon — proprioception: "I feel when I restart"._
 | function | `build_reboot_awareness_surface` | `()` | — | [src](../../../core/services/reboot_awareness_daemon.py#L227) |
 | function | `_surface_summary` | `(event, uptime)` | — | [src](../../../core/services/reboot_awareness_daemon.py#L264) |
 | function | `build_reboot_awareness_prompt_section` | `()` | Announce recent reboot once; stays silent after first ~10 min. | [src](../../../core/services/reboot_awareness_daemon.py#L287) |
-
-## `core/services/recall.py`
-_One recall path over every memory source (memory repair 2026-09-04, R5)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_clip` | `(text, cap=…)` | — | [src](../../../core/services/recall.py#L54) |
-| function | `_dedupe_key` | `(text)` | — | [src](../../../core/services/recall.py#L59) |
-| function | `_terms` | `(text)` | — | [src](../../../core/services/recall.py#L64) |
-| function | `_lexical_coverage` | `(query, text)` | — | [src](../../../core/services/recall.py#L76) |
-| function | `_default_sources_for_query` | `(query)` | — | [src](../../../core/services/recall.py#L84) |
-| function | `_source_workspace` | `(query, limit)` | — | [src](../../../core/services/recall.py#L94) |
-| function | `_source_brain` | `(query, limit)` | — | [src](../../../core/services/recall.py#L110) |
-| function | `_source_private_brain` | `(query, limit)` | — | [src](../../../core/services/recall.py#L129) |
-| function | `_source_sensory` | `(query, limit)` | — | [src](../../../core/services/recall.py#L154) |
-| function | `_rank_score` | `(index)` | FTS5 bm25() giver 0,05-0,09 efter 1/(1+|rank|) — aldrig konkurrencedygtig | [src](../../../core/services/recall.py#L172) |
-| function | `_source_session_summary` | `(query, limit)` | — | [src](../../../core/services/recall.py#L179) |
-| function | `_source_chat` | `(query, limit)` | — | [src](../../../core/services/recall.py#L193) |
-| function | `_source_chronicle` | `(query, limit)` | — | [src](../../../core/services/recall.py#L207) |
-| function | `fuse` | `(query, candidates)` | Re-score candidates: 0.6 × native + 0.4 × BM25 (over the candidate texts), | [src](../../../core/services/recall.py#L237) |
-| function | `empty_message` | `(query)` | — | [src](../../../core/services/recall.py#L281) |
-| function | `recall` | `(query, *, limit=…, sources=…, session_id=…, min_score=…, per_source=…)` | Search every memory source with one fused ranking. | [src](../../../core/services/recall.py#L285) |
 

@@ -323,6 +323,17 @@ _Kant-udledningen for en ny hjerne-post flyttes ud af værktøjets ventetid._
 | function | `koesaet` | `(entry_id, now=…)` | Læg en post i kø til kant-udledning. `False` = køen er fuld. | [src](../../../core/services/brain_edge_worker.py#L74) |
 | function | `venter` | `()` | Hvor mange poster der står i kø. Til test og til at se hvor langt bagud. | [src](../../../core/services/brain_edge_worker.py#L100) |
 
+## `core/services/brain_vector_cache.py`
+_Embedding-matricen for `jarvis_brain`, holdt i hukommelsen mellem søgninger._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `ryd` | `()` | Smid alt væk. Bruges af tests og af en eksplicit genopbygning. | [src](../../../core/services/brain_vector_cache.py#L79) |
+| function | `status` | `()` | Hvad ligger der lige nu. Til diagnostik — ikke en del af søgevejen. | [src](../../../core/services/brain_vector_cache.py#L89) |
+| function | `cosinus` | `(noegler, qv)` | Cosinus mellem `qv` og hver nøgle, i samme rækkefølge som `noegler`. | [src](../../../core/services/brain_vector_cache.py#L100) |
+| function | `_nulstil_hvis_anden_db` | `()` | Kaldes under `_LAAS`. | [src](../../../core/services/brain_vector_cache.py#L145) |
+| function | `_hent_ind` | `(mangler, dim)` | Hent de manglende vektorer og udvid matricen. Kaldes under `_LAAS`. | [src](../../../core/services/brain_vector_cache.py#L158) |
+
 ## `core/services/bridge_presence.py`
 _Cross-proces bro-tilstedeværelse via shared_cache (samme mønster som central_xproc)._
 
@@ -627,19 +638,4 @@ _Agent Smith — eskalerings-stige ("The Confrontation")._
 | function | `_resolve_actions` | `(state, key, pat, now, reason)` | Byg de-eskalerings-actions: pensionér direktiv (hvis mintet), anerkend, observ. | [src](../../../core/services/central_agent_smith_escalation.py#L259) |
 | function | `step_escalation` | `(state, detected, now, cfg=…)` | REN kerne. `detected` = {pattern_key: {kind, label, metric, corroborated?}} for mønstre | [src](../../../core/services/central_agent_smith_escalation.py#L282) |
 | function | `top_line` | `(actions)` | Vælg den mest alvorlige stemme-linje til prompt-halen (confront>bind>resolved>comment). | [src](../../../core/services/central_agent_smith_escalation.py#L406) |
-
-## `core/services/central_agents_surface.py`
-_Central agents-/council-surface (B3, 13. jul 2026) — gør de nye agent-/council-_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_window_threshold` | `(window)` | ISO8601-tærskel (samme format som costs.created_at → lex-sammenlignelig). | [src](../../../core/services/central_agents_surface.py#L29) |
-| function | `_agg_for_window` | `(conn, window)` | — | [src](../../../core/services/central_agents_surface.py#L42) |
-| function | `_lane_breakdown` | `(conn, window)` | — | [src](../../../core/services/central_agents_surface.py#L62) |
-| function | `_agents_trace` | `()` | De seneste agents-cluster trace-records (nyeste sidst). Self-safe. | [src](../../../core/services/central_agents_surface.py#L88) |
-| function | `_dispatch_signal` | `(records)` | Per-status + recent fra agent_result/agent_blocked/agent_error-events. | [src](../../../core/services/central_agents_surface.py#L98) |
-| function | `build_agents_surface` | `(*, window=…)` | Agent-observabilitet til /central/agents + `jc agents`. | [src](../../../core/services/central_agents_surface.py#L131) |
-| function | `_roster` | `()` | Full model roster (every pool model as a row) fra core.services.agents. | [src](../../../core/services/central_agents_surface.py#L166) |
-| function | `build_council_surface` | `(*, window=…)` | Council-observabilitet til /central/council + `jc council`. | [src](../../../core/services/central_agents_surface.py#L179) |
-| function | `build_recent_agent_work` | `(limit=…)` | De sidste subagent-koersler som arbejdskort — rolle, udfald, pris. | [src](../../../core/services/central_agents_surface.py#L234) |
 

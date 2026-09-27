@@ -64,3 +64,45 @@ class TestLaesFoerSkrivVaernet:
             "path": "/x.py", "edits": [{"old_string": "a", "new_string": "b"}]})
         assert kaldt["tool"] == "operator_multi_edit"
         assert r["status"] == "ok"
+
+
+class TestBashTimeoutStandard:
+    """Standard-timeouten for bash (27/9-2026).
+
+    `maybe_reroute_bash` bygger sine args UDEN `timeout_s`, så hvert
+    bash-kald gennem operator-kanalen faldt tilbage til standarden. Den var
+    30 — og broens loft blev derfor 30 + 25 = 55 s. Et grep over 2,9 GB døde
+    på præcis det tal uden at sige hvorfor. Standarden er nu 120.
+
+    Testen måler den KONKRETE værdi der sendes videre, ikke at koden nævner
+    et tal: fejlen var netop at tallet var for lavt, ikke at det manglede.
+    """
+
+    def _fang(self, monkeypatch, args):
+        fanget: dict = {}
+        import core.tools.operator_tools as ot
+        import core.tools.simple_tools_operator as sto
+
+        def _fake_async(**kw):
+            fanget.update(kw)
+            return {"stdout": "", "stderr": "", "exit_code": 0}
+
+        monkeypatch.setattr(ot, "operator_bash_async", _fake_async)
+        monkeypatch.setattr(sto, "_operator_user_id", lambda a: "u1")
+        monkeypatch.setattr(
+            sto, "_run_operator_async",
+            lambda fn, *, tool_name, timeout_s: {"status": "ok", "result": fn()})
+        sto._exec_operator_bash(args)
+        return fanget
+
+    def test_bash_uden_timeout_faar_120(self, monkeypatch):
+        """Netop den vej `maybe_reroute_bash` tager: ingen timeout med."""
+        fanget = self._fang(monkeypatch, {"command": "echo hi"})
+        assert fanget["timeout_s"] == 120.0
+
+    def test_eksplicit_timeout_respekteres(self, monkeypatch):
+        """Standarden må ikke overskrive et bevidst valgt tal."""
+        fanget = self._fang(
+            monkeypatch, {"command": "sleep 5", "timeout_s": 30.0})
+        assert fanget["timeout_s"] == 30.0
+

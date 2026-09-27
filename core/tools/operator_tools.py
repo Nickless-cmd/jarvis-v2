@@ -17,7 +17,10 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-_DEFAULT_TIMEOUT_S = 30.0
+# 120 siden 27/9-2026 (var 30). Et grep eller en laesning paa Bjoerns maskine
+# kan sagtens tage et minut; den gamle graense gav «bridge_timeout» paa
+# arbejde der var i gang, ikke fejlet. Loftet er 300 — se operator_bash_async.
+_DEFAULT_TIMEOUT_S = 120.0
 
 
 def _workspace_scoped_args(
@@ -320,7 +323,7 @@ async def operator_webfetch_async(
     method: str = "GET",
     headers: dict[str, str] | None = None,
     body: str | None = None,
-    timeout_s: float = 30.0,
+    timeout_s: float = 120.0,
     user_id: str,
 ) -> dict[str, Any]:
     """Fetch a URL from the operator's local network via the bridge.
@@ -354,7 +357,7 @@ async def operator_bash_async(
     *,
     command: str,
     cwd: str | None = None,
-    timeout_s: float = 30.0,
+    timeout_s: float = 120.0,
     user_id: str,
     skip_approval: bool = False,
 ) -> dict[str, Any]:
@@ -1422,9 +1425,9 @@ def _exec_operator_session_run(args: dict[str, Any]) -> dict[str, Any]:
                 "error": "unknown session_id (udløbet?) — kald operator_session_open"}
     uid = (sess or {}).get("user_id") or _op_sess_user_id(args)
     try:
-        timeout_s = max(1.0, min(float(args.get("timeout") or args.get("timeout_s") or 30.0), 300.0))
+        timeout_s = max(1.0, min(float(args.get("timeout") or args.get("timeout_s") or 120.0), 300.0))
     except Exception:
-        timeout_s = 30.0
+        timeout_s = 120.0
     res = _op_dispatch_bash(cmd, user_id=uid, cwd=args.get("cwd"), timeout_s=timeout_s)
     if sess is not None:
         with _OP_SESS_LOCK:

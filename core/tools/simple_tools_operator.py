@@ -46,7 +46,7 @@ def _operator_user_id(args: dict[str, Any]) -> str:
     return _st()._operator_user_id(args)
 
 
-def _run_operator_async(coro_fn, *, tool_name: str, timeout_s: float = 35.0) -> dict[str, Any]:
+def _run_operator_async(coro_fn, *, tool_name: str, timeout_s: float = 150.0) -> dict[str, Any]:
     """Facade → simple_tools._run_operator_async (honorér test-patch-søm)."""
     return _st()._run_operator_async(coro_fn, tool_name=tool_name, timeout_s=timeout_s)
 
@@ -110,7 +110,7 @@ def _record_active_file(path: str, op: str, args: dict[str, Any]) -> None:
         pass
 
 
-def _run_operator_async_impl(coro_fn, *, tool_name: str, timeout_s: float = 35.0) -> dict[str, Any]:
+def _run_operator_async_impl(coro_fn, *, tool_name: str, timeout_s: float = 150.0) -> dict[str, Any]:
     """Bridge sync tool-handler → async dispatcher.
 
     The bridge's WebSocket lives on uvicorn's main asyncio loop. Submitting
@@ -656,7 +656,7 @@ def _exec_operator_webfetch(args: dict[str, Any]) -> dict[str, Any]:
     if not url:
         return {"error": "url is required", "status": "error"}
     user_id = _operator_user_id(args)
-    timeout_s = float(args.get("timeout_s") or 30.0)
+    timeout_s = float(args.get("timeout_s") or 120.0)
     from core.tools.operator_tools import operator_webfetch_async
     return _run_operator_async(
         lambda: operator_webfetch_async(
@@ -677,7 +677,13 @@ def _exec_operator_bash(args: dict[str, Any]) -> dict[str, Any]:
     if not command:
         return {"error": "command is required", "status": "error"}
     user_id = _operator_user_id(args)
-    timeout_s = float(args.get("timeout_s") or 30.0)
+    # 120 er standarden (27/9-2026). Foer 30 — og den styrer HELE kaeden:
+    # `maybe_reroute_bash` bygger sine args UDEN `timeout_s`, saa hvert
+    # bash-kald gennem operator-kanalen faldt tilbage hertil. Broens loft
+    # blev 30 + 25 = 55 s, og et grep over 2,9 GB doede paa praecis det tal
+    # uden at sige hvorfor. 120 giver plads til rigtige soegninger uden at
+    # nogen skal huske at saette tallet selv.
+    timeout_s = float(args.get("timeout_s") or 120.0)
     thread_timeout = min(timeout_s, 300.0) + 30.0
 
     # Dispatch direkte til bridge — approval er håndteret af

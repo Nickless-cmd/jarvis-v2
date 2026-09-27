@@ -504,7 +504,7 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
                     },
                     "timeout_s": {
                         "type": "number",
-                        "description": "Command timeout in seconds (default 30, max 300)",
+                        "description": "Command timeout in seconds (default 120, max 300)",
                     },
                 },
                 "required": ["command", "description"],

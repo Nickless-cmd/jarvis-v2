@@ -60,6 +60,14 @@ it('samler ikke billeder fra to forskellige genereringer', async () => {
   expect(screen.getByTestId('attachment-image-b')).toBeTruthy()
 })
 
+it('viser også ét genereret billede i stor størrelse', async () => {
+  const screen = await render(<MessageAttachments side="left" items={[
+    { type: 'image', attachment_id: 'solo', filename: 'solo.png', kilde: 'generated', tool_use_id: 'call-1' },
+  ]} />)
+  const style = flad(screen.getByTestId('attachment-image-solo').props.style)
+  expect(Number(style.width)).toBeGreaterThan(240)
+})
+
 /** children kan være en streng, et array eller nested — fladgør før vi ser efter. */
 const tekstAf = (node: { props: { children?: unknown } }): string => {
   const ud: string[] = []

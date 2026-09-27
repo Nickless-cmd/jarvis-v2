@@ -109,7 +109,7 @@ export function MessageAttachments({ items, side = 'right', kantlos = false }: {
           const valg = side === 'left' && b.kilde === 'generated' && groupId
             ? items.filter((item) => item.type === 'image' && item.kilde === 'generated' && item.tool_use_id === groupId)
             : []
-          if (valg.length < 2) return tegnBillede(b)
+          if (valg.length < 2) return tegnBillede(b, false, undefined, side === 'left' && b.kilde === 'generated')
           if (b !== valg[0]) return null
           return (
             <View key={id} testID="generated-image-gallery" style={styles.galleri}>

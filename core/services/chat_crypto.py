@@ -113,24 +113,38 @@ def medlem_for_session(session_id: str, conn=None) -> str | None:
 
     def _slaa_op(c):
         return c.execute(
-            "SELECT workspace_name, user_id FROM chat_messages "
-            "WHERE session_id = ? AND (workspace_name != '' OR user_id != '') "
-            "LIMIT 1", (sid,),
-        ).fetchone()
+            "SELECT DISTINCT workspace_name, user_id FROM chat_messages "
+            "WHERE session_id = ?", (sid,),
+        ).fetchall()
 
     try:
         if conn is not None:
-            raekke = _slaa_op(conn)
+            raekker = _slaa_op(conn)
         else:
             from core.runtime.db import connect
             with connect() as c:
-                raekke = _slaa_op(c)
+                raekker = _slaa_op(c)
     except Exception as exc:
         logger.warning("chat_crypto: kunne ikke slå sessionen %s op: %s", sid, exc)
         return None
-    if not raekke:
+
+    # ALLE parrene, ikke det første. Målt 27/9-2026: Michelles session havde
+    # sine `user`-rækker tagget `default` og kun `assistant`-rækkerne tagget
+    # `michelle`. Et `LIMIT 1` fandt `default`, svarede «ingen ejer», og lod
+    # hendes egne ord ligge i klartekst.
+    fundne = {
+        m for r in raekker
+        if (m := medlem_for_raekke(workspace_name=r[0] or "", user_id=r[1] or ""))
+    }
+    if len(fundne) > 1:
+        # To medlemmer i én session findes ikke i dataene i dag (målt: nul).
+        # Skulle det opstå, er der ikke ét rigtigt svar — så siges det højt i
+        # stedet for at vælge en af dem.
+        logger.warning(
+            "chat_crypto: session %s har FLERE medlemmer (%s) — krypterer ikke",
+            sid, sorted(fundne))
         return None
-    return medlem_for_raekke(workspace_name=raekke[0] or "", user_id=raekke[1] or "")
+    return next(iter(fundne), None)
 
 
 def er_krypteret(raa: object) -> bool:
@@ -167,7 +181,39 @@ def dekrypter(raa: str, medlem_id: str) -> str:
         return raa
 
 
-def krypter_raekke(raekke: dict) -> dict:
+def medlem_for_skrivning(raekke: dict, *, session_id: str = "", conn=None) -> str | None:
+    """Hvem rækken tilhører — rækkens egne felter først, ellers SESSIONEN.
+
+    EN SESSION HAR ÉN EJER. Det er ikke en forenkling, det er hvad dataene
+    viser. Målt 27/9-2026 på de seks sessioner der involverer et medlem:
+
+    * to havde medlemmets EGNE beskeder tagget `default` og kun Jarvis' svar
+      tagget med workspace'et — 19 rækker af deres samtale blev derfor ikke
+      fanget af en ren rækkevis regel;
+    * én havde elleve `tool`-rækker og ét `assistant`-svar tagget `bjorn`
+      INDE I Mikkels session. Ingen `user`-rækker. Det er altså ikke Bjørn der
+      skriver — det er Jarvis' eget output der har fået ejerens mærkat.
+
+    Taggingen på skrivestien er med andre ord upålidelig, og samtalen er
+    enheden folk oplever. Derfor: findes der ét medlem i sessionen, tilhører
+    hele sessionen det medlem.
+
+    Er sessionen ukendt eller tom, falder den tilbage til rækken alene — det er
+    tilfældet ved den allerførste besked i en ny session.
+    """
+    eget = medlem_for_raekke(
+        workspace_name=str(raekke.get("workspace_name") or ""),
+        user_id=str(raekke.get("user_id") or ""),
+    )
+    if eget is not None:
+        return eget
+    sid = str(session_id or raekke.get("session_id") or "")
+    if not sid:
+        return None
+    return medlem_for_session(sid, conn=conn)
+
+
+def krypter_raekke(raekke: dict, *, session_id: str = "", conn=None) -> dict:
     """Krypter de tekstbærende felter i en chat-række, hvis den er en members.
 
     Returnerer en NY dict med `encrypted` sat. Rækken ændres ikke på stedet —
@@ -177,10 +223,7 @@ def krypter_raekke(raekke: dict) -> dict:
     ud.setdefault("encrypted", 0)
     if not kryptering_slaaet_til():
         return ud
-    medlem = medlem_for_raekke(
-        workspace_name=str(ud.get("workspace_name") or ""),
-        user_id=str(ud.get("user_id") or ""),
-    )
+    medlem = medlem_for_skrivning(ud, session_id=session_id, conn=conn)
     if medlem is None:
         return ud
     for felt in ("content", "reasoning_content", "content_json"):

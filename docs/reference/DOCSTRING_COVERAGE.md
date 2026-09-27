@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8130/15633 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8131/15634 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 8130/15633 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 698 | 1277 | 54% |
-| `core.services` | 5393 | 10642 | 50% |
+| `core.services` | 5394 | 10643 | 50% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 107 | 183 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -822,13 +822,13 @@ Generated from source. 8130/15633 functions/methods documented (52%). The list b
 - `core/services/central_trace.py` :: `sink` (L96)
 - `core/services/central_white_rabbit.py` :: `build_white_rabbit_surface` (L58)
 - `core/services/central_white_rabbit.py` :: `record_white_rabbit` (L62)
-- `core/services/chat_crypto.py` :: `er_krypteret` (L136)
+- `core/services/chat_crypto.py` :: `er_krypteret` (L150)
 - `core/services/chat_sessions.py` :: `append_chat_message` (L761)
 - `core/services/chat_sessions.py` :: `create_chat_session` (L66)
-- `core/services/chat_sessions.py` :: `delete_chat_session` (L1531)
-- `core/services/chat_sessions.py` :: `recent_chat_session_messages` (L1164)
-- `core/services/chat_sessions.py` :: `recent_chat_tool_messages` (L1485)
-- `core/services/chat_sessions.py` :: `rename_chat_session` (L1517)
+- `core/services/chat_sessions.py` :: `delete_chat_session` (L1532)
+- `core/services/chat_sessions.py` :: `recent_chat_session_messages` (L1165)
+- `core/services/chat_sessions.py` :: `recent_chat_tool_messages` (L1486)
+- `core/services/chat_sessions.py` :: `rename_chat_session` (L1518)
 - `core/services/cheap_lane_admission.py` :: `acquire_admission` (L123)
 - `core/services/cheap_lane_admission.py` :: `admission_snapshot` (L102)
 - `core/services/cheap_lane_admission.py` :: `release_admission` (L155)
@@ -2159,8 +2159,8 @@ Generated from source. 8130/15633 functions/methods documented (52%). The list b
 - `scripts/interlanguage_llm_judge.py` :: `run_delta` (L159)
 - `scripts/interlanguage_structural_classifier.py` :: `main` (L174)
 - `scripts/jarvis_bare_practice_runner.py` :: `main` (L318)
-- `scripts/krypter_medlems_chat.py` :: `koer` (L66)
-- `scripts/krypter_medlems_chat.py` :: `main` (L135)
+- `scripts/krypter_medlems_chat.py` :: `koer` (L76)
+- `scripts/krypter_medlems_chat.py` :: `main` (L145)
 - `scripts/laering_status.py` :: `main` (L23)
 - `scripts/ledger_rehearsal.py` :: `kopiér` (L39)
 - `scripts/ledger_rehearsal.py` :: `main` (L70)

@@ -70,9 +70,9 @@ _Krypter de medlems-chatbeskeder der allerede ligger i klartekst (task 3.3)._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `_db_sti` | `()` | — | [src](../../../scripts/krypter_medlems_chat.py#L45) |
-| function | `find_kandidater` | `(conn)` | Rækker der tilhører en NON-owner og endnu ikke er krypteret. | [src](../../../scripts/krypter_medlems_chat.py#L49) |
-| function | `koer` | `(sti, *, goer_det)` | — | [src](../../../scripts/krypter_medlems_chat.py#L66) |
-| function | `main` | `()` | — | [src](../../../scripts/krypter_medlems_chat.py#L135) |
+| function | `find_kandidater` | `(conn)` | Rækker i en MEDLEMS-SESSION der endnu ikke er krypteret. | [src](../../../scripts/krypter_medlems_chat.py#L49) |
+| function | `koer` | `(sti, *, goer_det)` | — | [src](../../../scripts/krypter_medlems_chat.py#L76) |
+| function | `main` | `()` | — | [src](../../../scripts/krypter_medlems_chat.py#L145) |
 
 ## `scripts/laering_status.py`
 _Hvad fangede laeringskredsloebet siden nulpunktet?_

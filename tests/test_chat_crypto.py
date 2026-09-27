@@ -297,3 +297,80 @@ class TestHeleVejenIgennem:
         finally:
             c.close()
         assert "Lottes private" not in alt
+
+
+class TestSessionenErEnheden:
+    """Målt i produktionen 27/9-2026, efter første migration: Michelles session
+    gav ciffertekst tilbage, fordi hendes EGNE beskeder var tagget `default` og
+    kun Jarvis' svar var tagget `michelle`. Og i Mikkels session lå elleve
+    tool-rækker tagget `bjorn` — Jarvis' eget output med ejerens mærkat.
+
+    Taggingen pr. række er upålidelig. Samtalen er enheden folk oplever, så
+    findes der ét medlem i sessionen, tilhører hele sessionen det medlem.
+    """
+
+    @pytest.fixture
+    def db(self, tmp_path, monkeypatch):
+        import core.runtime.db_core as dbc
+        sti = tmp_path / "jarvis.db"
+        monkeypatch.setenv("JARVIS_DB_NOPOOL", "1")
+        monkeypatch.setattr(dbc, "_POOL_DISABLED", True, raising=False)
+        monkeypatch.setattr(dbc, "DB_PATH", str(sti), raising=False)
+        from core.runtime.db_schema import init_db
+        init_db()
+        return sti
+
+    @staticmethod
+    def _raekke(ws, uid, sid, indhold="x"):
+        import core.runtime.db_core as dbc
+        with dbc.connect() as conn:
+            conn.execute(
+                "INSERT INTO chat_messages (message_id, session_id, role, content, "
+                "user_id, workspace_name, created_at) VALUES (?, ?, 'user', ?, ?, ?, '2026-01-01')",
+                ("m-%s-%s" % (sid, indhold), sid, indhold, uid, ws))
+            conn.commit()
+
+    def test_medlem_findes_selvom_foerste_raekke_er_default(self, db) -> None:
+        """Præcis Michelles tilfælde. Et `LIMIT 1` fandt `default` og svarede
+        «ingen ejer»."""
+        self._raekke("default", "", "s1", "a")
+        self._raekke("michelle", "partner-id-opdigtet", "s1", "b")
+        assert cc.medlem_for_session("s1") == "partner-id-opdigtet"
+
+    def test_default_raekke_i_en_medlems_session_krypteres(self, db) -> None:
+        self._raekke("michelle", "partner-id-opdigtet", "s2", "b")
+        ud = cc.krypter_raekke(
+            {"workspace_name": "default", "user_id": "", "session_id": "s2",
+             "content": "Michelles egne ord"})
+        assert ud["encrypted"] == 1 and cc.er_krypteret(ud["content"])
+
+    def test_bjorn_tagget_raekke_i_en_medlems_session_krypteres_ogsaa(self, db) -> None:
+        """De elleve tool-rækker. Mærkatet er Jarvis' eget output, ikke Bjørn."""
+        self._raekke("mikkel", "member-a-id-opdigtet", "s3", "b")
+        ud = cc.krypter_raekke(
+            {"workspace_name": "bjorn", "user_id": "", "session_id": "s3",
+             "content": "tool-resultat inde i Mikkels samtale"})
+        assert ud["encrypted"] == 1
+
+    def test_en_ren_owner_session_roeres_stadig_ikke(self, db) -> None:
+        """Den vigtige modprøve: sessionen må ikke kunne trække owner-rækker med."""
+        self._raekke("default", "", "s4", "a")
+        self._raekke("bjorn", "owner-id-opdigtet", "s4", "b")
+        assert cc.medlem_for_session("s4") is None
+        ud = cc.krypter_raekke(
+            {"workspace_name": "default", "user_id": "", "session_id": "s4",
+             "content": "Bjørns egen"})
+        assert ud["encrypted"] == 0 and ud["content"] == "Bjørns egen"
+
+    def test_ukendt_session_falder_tilbage_til_raekken(self, db) -> None:
+        """Den allerførste besked i en ny session har ingen naboer at spørge."""
+        ud = cc.krypter_raekke(
+            {"workspace_name": "mikkel", "user_id": "", "session_id": "helt-ny",
+             "content": "foerste besked"})
+        assert ud["encrypted"] == 1
+
+    def test_to_medlemmer_i_en_session_krypteres_IKKE(self, db) -> None:
+        """Der er ikke ét rigtigt svar. Så siges det højt frem for at vælge."""
+        self._raekke("mikkel", "member-a-id-opdigtet", "s5", "a")
+        self._raekke("lotte", "member-b-id-opdigtet", "s5", "b")
+        assert cc.medlem_for_session("s5") is None

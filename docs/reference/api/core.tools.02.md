@@ -142,11 +142,11 @@ _OpenRouter billed-generering — Gemini tegner, diffusion maler (målt 12/9-202
 | function | `_report_cost` | `(usage, *, model, run_id=…)` | Bogfør den FAKTISKE pris fra OpenRouter. Returnerer cost_usd. | [src](../../../core/tools/openrouter_image_tools.py#L188) |
 | function | `_post` | `(body, *, timeout=…)` | Ét POST til billed-endpointet. Kaster aldrig — returnerer fejl-dict. | [src](../../../core/tools/openrouter_image_tools.py#L229) |
 | function | `_save_images` | `(data, *, prompt, model, gen_id, save_dir=…, ekstra=…)` | Dekodér, gem og registrér billederne fra et svar. Delt af begge veje. | [src](../../../core/tools/openrouter_image_tools.py#L267) |
-| function | `generate_image` | `(*, prompt, model=…, aspect_ratio=…, resolution=…, quality=…, output_format=…, n=…, seed=…, references=…, save_dir=…, timeout=…)` | Generér (eller redigér) et billede via OpenRouter. Betalt — se cost_usd. | [src](../../../core/tools/openrouter_image_tools.py#L396) |
-| function | `edit_image` | `(*, reference, prompt, model=…, aspect_ratio=…, resolution=…, n=…, seed=…, save_dir=…, timeout=…)` | Redigér et eksisterende billede: reference + instruktion → nyt billede. | [src](../../../core/tools/openrouter_image_tools.py#L459) |
-| function | `_haeng_paa_turen` | `(args, result)` | Læg det genererede billede på turen, så klienten kan vise det i tråden. | [src](../../../core/tools/openrouter_image_tools.py#L490) |
-| function | `_exec_openrouter_image` | `(args)` | — | [src](../../../core/tools/openrouter_image_tools.py#L522) |
-| function | `_exec_openrouter_image_edit` | `(args)` | — | [src](../../../core/tools/openrouter_image_tools.py#L555) |
+| function | `generate_image` | `(*, prompt, model=…, aspect_ratio=…, resolution=…, quality=…, output_format=…, n=…, seed=…, references=…, save_dir=…, timeout=…)` | Generér (eller redigér) et billede via OpenRouter. Betalt — se cost_usd. | [src](../../../core/tools/openrouter_image_tools.py#L398) |
+| function | `edit_image` | `(*, reference, prompt, model=…, aspect_ratio=…, resolution=…, n=…, seed=…, save_dir=…, timeout=…)` | Redigér et eksisterende billede: reference + instruktion → nyt billede. | [src](../../../core/tools/openrouter_image_tools.py#L461) |
+| function | `_haeng_paa_turen` | `(args, result)` | Læg det genererede billede på turen, så klienten kan vise det i tråden. | [src](../../../core/tools/openrouter_image_tools.py#L492) |
+| function | `_exec_openrouter_image` | `(args)` | — | [src](../../../core/tools/openrouter_image_tools.py#L530) |
+| function | `_exec_openrouter_image_edit` | `(args)` | — | [src](../../../core/tools/openrouter_image_tools.py#L563) |
 
 ## `core/tools/operator_background.py`
 _Baggrunds-shells paa operatoerens maskine — paritet med jarvis-code._

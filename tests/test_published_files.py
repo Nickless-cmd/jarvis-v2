@@ -171,6 +171,20 @@ def test_billedvaerktoejet_haefter_billedet_paa_turen(monkeypatch):
     assert poster[0]["filename"] == "tegning.png"
 
 
+def test_billedvaerktoejet_haefter_alle_valg_paa_turen(monkeypatch):
+    from core.tools import openrouter_image_tools as OI
+    monkeypatch.setattr(OI, "generate_image", lambda **kw: {
+        "status": "ok", "path": "/tmp/x/a.png", "bytes": 10,
+        "media_type": "image/png", "cost_usd": 0.03, "attachment_id": "att-a",
+        "images": [
+            {"path": "/tmp/x/a.png", "bytes": 10, "media_type": "image/png", "attachment_id": "att-a"},
+            {"path": "/tmp/x/b.png", "bytes": 11, "media_type": "image/png", "attachment_id": "att-b"},
+        ],
+    })
+    OI._exec_openrouter_image({"prompt": "to katte", "_runtime_turn_id": "run-to"})
+    assert [p["attachment_id"] for p in P.take("run-to")] == ["att-a", "att-b"]
+
+
 def test_redigering_haefter_ogsaa(monkeypatch):
     """Redigerings-vejen er en selvstændig exec — den skal hæfte for sig."""
     from core.tools import openrouter_image_tools as OI

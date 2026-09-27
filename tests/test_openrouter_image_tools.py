@@ -110,6 +110,20 @@ def test_save_skriver_fil_og_sidecar(tmp_path):
     assert meta["model"] == "google/gemini-2.5-flash-image"
 
 
+def test_flere_billeder_faar_hver_sin_fil_og_attachment(tmp_path, monkeypatch):
+    import core.services.attachment_service as att
+
+    monkeypatch.setattr(att, "register_generated_image", lambda **kw: Path(kw["local_path"]).name)
+    svar = _svar()
+    svar["data"] *= 2
+    res = t._save_images(svar, prompt="to valg", model="m", gen_id="orimg-abc123", save_dir=tmp_path)
+
+    assert len(res["images"]) == 2
+    assert len({image["path"] for image in res["images"]}) == 2
+    assert len({image["attachment_id"] for image in res["images"]}) == 2
+    assert all(Path(image["path"]).is_file() for image in res["images"])
+
+
 def test_udvidelsen_kommer_fra_media_type(tmp_path):
     """Målt 13/9-2026: bad man om png, svarede modellen image/jpeg. Udvidelsen
     skal følge svaret — ikke ønsket."""

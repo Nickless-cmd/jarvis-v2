@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native'
+import { Image, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native'
 import { planlaegPreview } from '../lib/filePreview'
 import { aabnUdgivetFil, blokUrl } from '../lib/aabnFil'
 import { FileText } from 'lucide-react-native'
@@ -45,13 +45,54 @@ export function MessageAttachments({ items, side = 'right', kantlos = false }: {
   const tokens = useTheme()
   const styles = useStyles(makestyles)
   const { config } = useAuth()
+  const { width: windowWidth } = useWindowDimensions()
   const [preview, setPreview] = useState<{
     uri: string
     title: string
     filnavn: string
     mime: string
   } | null>(null)
+  const [valgteBilleder, setValgteBilleder] = useState<Record<string, number>>({})
   if (!items.length) return null
+
+  const storBredde = Math.min(400, windowWidth - 48)
+  const tegnBillede = (b: PersistedBlock, miniature = false, onSelect?: () => void, stor = false) => {
+    const id = String(b.attachment_id ?? '') || String(b.filename ?? '')
+    const direkte = String(b.src || '')
+    const fraServer = config?.apiBaseUrl ? blokUrl(b, config.apiBaseUrl) : ''
+    const adresse = direkte || fraServer
+    if (!adresse) return null
+    return (
+      <Pressable
+        key={id}
+        testID={miniature ? `attachment-choice-${id}` : `attachment-open-${id}`}
+        accessibilityRole="imagebutton"
+        accessibilityLabel={miniature ? `Vælg ${b.filename || 'billede'}` : `Åbn ${b.filename || 'billede'}`}
+        onPress={() => onSelect
+          ? onSelect()
+          : setPreview({ uri: adresse, title: b.filename || 'Billede',
+              filnavn: String(b.filename || ''), mime: String(b.mime_type || '') })}
+      >
+        {direkte ? (
+          <Image
+            testID={miniature ? undefined : `attachment-image-${id}`}
+            source={{ uri: direkte }}
+            style={miniature ? styles.miniature : stor ? [styles.image, { width: storBredde, height: storBredde }] : styles.image}
+            resizeMode={stor ? 'contain' : 'cover'}
+          />
+        ) : config ? (
+          <AuthImage
+            testID={miniature ? undefined : `attachment-image-${id}`}
+            config={config}
+            url={adresse}
+            navn={id}
+            style={miniature ? styles.miniature : stor ? [styles.image, { width: storBredde, height: storBredde }] : styles.image}
+            resizeMode={stor ? 'contain' : 'cover'}
+          />
+        ) : null}
+      </Pressable>
+    )
+  }
 
   return (
     <View
@@ -63,52 +104,21 @@ export function MessageAttachments({ items, side = 'right', kantlos = false }: {
         // Noeglen maa derfor falde tilbage paa navnet, ellers ville alle
         // udgivne filer i samme tur dele noeglen '' og React tegne én.
         const id = String(b.attachment_id ?? '') || String(b.filename ?? '')
-        // LIVE billeder bærer deres egen `src` (en data-URL fra streamen) og
-        // skal ikke hentes med token. PERSISTEREDE bærer kun en reference.
-        const direkte = String(b.src || '')
-        const fraServer = config?.apiBaseUrl ? blokUrl(b, config.apiBaseUrl) : ''
-        const adresse = direkte || fraServer
-        if (b.type === 'image' && adresse) {
+        if (b.type === 'image') {
+          const groupId = String(b.tool_use_id || '')
+          const valg = side === 'left' && b.kilde === 'generated' && groupId
+            ? items.filter((item) => item.type === 'image' && item.kilde === 'generated' && item.tool_use_id === groupId)
+            : []
+          if (valg.length < 2) return tegnBillede(b)
+          if (b !== valg[0]) return null
           return (
-            <Pressable
-              key={id}
-              testID={`attachment-open-${id}`}
-              accessibilityRole="imagebutton"
-              accessibilityLabel={`Åbn ${b.filename || 'billede'}`}
-              onPress={() => setPreview({
-                uri: adresse,
-                title: b.filename || 'Billede',
-                // Endelsen foelger med videre: galleriet afgoer typen ud fra
-                // den, og `mime` er reserven naar navnet ikke har en.
-                filnavn: String(b.filename || ''),
-                mime: String(b.mime_type || ''),
-              })}
-            >
-              {/* IKKE <Image source={{uri, headers}}>. Maalt 12/9-2026:
-                  React Natives billed-loader sender anmodningen UDEN
-                  headeren, og serveren svarer 401 - saa billedet blev et
-                  tomt felt. Se AuthImage.
-
-                  En data-URL er undtagelsen: den ligger i haanden allerede og
-                  er vores egen — der er ingen header at tabe, og AuthImage kan
-                  ikke hente den gennem filsystemet. */}
-              {direkte ? (
-                <Image
-                  testID={`attachment-image-${id}`}
-                  source={{ uri: direkte }}
-                  style={styles.image}
-                  resizeMode="cover"
-                />
-              ) : config ? (
-                <AuthImage
-                  testID={`attachment-image-${id}`}
-                  config={config}
-                  url={adresse}
-                  navn={id}
-                  style={styles.image}
-                />
-              ) : null}
-            </Pressable>
+            <View key={id} testID="generated-image-gallery" style={styles.galleri}>
+              {tegnBillede(valg[Math.min(valgteBilleder[groupId] ?? 0, valg.length - 1)]!, false, undefined, true)}
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.valg}>
+                {valg.map((billede, index) => tegnBillede(billede, true,
+                  () => setValgteBilleder((current) => ({ ...current, [groupId]: index }))))}
+              </ScrollView>
+            </View>
           )
         }
         // Codex lavede billeder. Resten fik et generisk ikon uden at sige HVAD
@@ -189,7 +199,7 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
   },
   // Assistenten skriver fra venstre, brugeren fra højre. Siden ligger her og
   // ikke i `wrap`, så der ikke findes en standard der kan blive forkert.
-  venstre: { alignSelf: 'flex-start', alignItems: 'flex-start' },
+  venstre: { alignSelf: 'flex-start', alignItems: 'flex-start', maxWidth: '100%' },
   hoejre: { alignSelf: 'flex-end', alignItems: 'flex-end' },
   // Inde i beskeden: `MessageBubble` ejer afstanden ud til kanten.
   kantlos: { marginHorizontal: 0, marginBottom: 0 },
@@ -198,6 +208,12 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
     height: 240,
     borderRadius: tokens.radius.lg,
     backgroundColor: tokens.color.bg2
+  },
+  galleri: { gap: tokens.spacing.sm },
+  valg: { gap: tokens.spacing.sm },
+  miniature: {
+    width: 58, height: 58, borderRadius: tokens.radius.md,
+    backgroundColor: tokens.color.bg2,
   },
   file: {
     flexDirection: 'row',

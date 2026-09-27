@@ -36,6 +36,30 @@ it('åbner billedvedhæftninger i fullscreen preview ved tryk', async () => {
   expect(screen.getByTestId('attachment-fullscreen-image')).toBeTruthy()
 })
 
+it('viser flere genererede billeder som ét stort billede med valg nedenunder', async () => {
+  const screen = await render(
+    <MessageAttachments side="left" items={[
+      { type: 'image', attachment_id: 'a', filename: 'a.png', kilde: 'generated', tool_use_id: 'call-1' },
+      { type: 'image', attachment_id: 'b', filename: 'b.png', kilde: 'generated', tool_use_id: 'call-1' },
+    ] as never} />
+  )
+  expect(screen.getByTestId('attachment-image-a')).toBeTruthy()
+  expect(screen.queryByTestId('attachment-image-b')).toBeNull()
+  await act(async () => fireEvent.press(screen.getByTestId('attachment-choice-b')))
+  expect(screen.getByTestId('attachment-image-b')).toBeTruthy()
+  expect(screen.queryByTestId('attachment-image-a')).toBeNull()
+})
+
+it('samler ikke billeder fra to forskellige genereringer', async () => {
+  const screen = await render(<MessageAttachments side="left" items={[
+    { type: 'image', attachment_id: 'a', filename: 'a.png', kilde: 'generated', tool_use_id: 'call-1' },
+    { type: 'image', attachment_id: 'b', filename: 'b.png', kilde: 'generated', tool_use_id: 'call-2' },
+  ]} />)
+  expect(screen.queryByTestId('generated-image-gallery')).toBeNull()
+  expect(screen.getByTestId('attachment-image-a')).toBeTruthy()
+  expect(screen.getByTestId('attachment-image-b')).toBeTruthy()
+})
+
 /** children kan være en streng, et array eller nested — fladgør før vi ser efter. */
 const tekstAf = (node: { props: { children?: unknown } }): string => {
   const ud: string[] = []

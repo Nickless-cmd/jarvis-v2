@@ -14,6 +14,25 @@ const REDIGERING: ContentBlock[] = [
 ]
 
 describe('MessageRow', () => {
+  it('viser billedgenerering også i rækkevisning', () => {
+    localStorage.setItem(RAEKKE_KEY, '1')
+    try {
+      render(<MessageRow role="assistant" blocks={[
+        { type: 'tool_use', id: 'im1', name: 'pollinations_image', input: { prompt: 'kat' }, status: 'running' },
+      ]} density="compact" streaming />)
+      expect(screen.getByLabelText('Genererer billede')).toBeInTheDocument()
+    } finally { localStorage.removeItem(RAEKKE_KEY) }
+  })
+  it('fjerner ventefladen i rækkevisning når Jarvis er gået videre', () => {
+    localStorage.setItem(RAEKKE_KEY, '1')
+    try {
+      render(<MessageRow role="assistant" blocks={[
+        { type: 'tool_use', id: 'im1', name: 'pollinations_image', input: {}, status: 'running' },
+        { type: 'text', text: 'Her er billedet.' },
+      ]} density="compact" streaming />)
+      expect(screen.queryByLabelText('Genererer billede')).not.toBeInTheDocument()
+    } finally { localStorage.removeItem(RAEKKE_KEY) }
+  })
   it('viser ændringskortet under svaret i rækkevisning med målte +/− tal', () => {
     localStorage.setItem(RAEKKE_KEY, '1')
     try {

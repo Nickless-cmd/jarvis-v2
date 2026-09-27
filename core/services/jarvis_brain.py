@@ -809,8 +809,30 @@ def search_brain_scored(
         candidate_ids.append(entry_id)
 
     # B4 Phase 2 — temporal boost: entries with strong edges get a lift
+    #
+    # AFSKÆRINGEN ER EKSAKT, IKKE EN TILNÆRMELSE (27/9-2026). Før blev boosten
+    # slået op for ALLE kandidater — målt 13.534 — for at returnere fem. Det
+    # gav en `IN (...)` med 13.534 pladsholdere, TO gange (from_id og to_id),
+    # altså 27.068 parametre pr. søgning.
+    #
+    # Målt: `search_brain` tog 551 ms, hvoraf boosten var 426. Til
+    # sammenligning er selve vektor-matmul'en 2,5 ms. 77 % af tiden gik til at
+    # berige poster ingen nogensinde ser.
+    #
+    # Boosten kan kun HÆVE en score, og den er loftet: `boost_factor × max
+    # confidence`. Målt i produktionen ligger confidence mellem 0,50 og 0,98,
+    # så loftet er 0,147. En post hvis GRUNDSCORE ligger mere end loftet under
+    # den `limit`-te bedste kan derfor aldrig overhale den — heller ikke hvis
+    # den får fuld boost og den anden får nul. Rangeringen bliver identisk;
+    # det er ikke et gæt, det er en ulighed.
     if use_temporal_boost and candidate_ids:
-        temporal_boosts = _compute_search_temporal_boost(candidate_ids)
+        scored.sort(reverse=True)
+        if len(scored) > limit > 0:
+            graense = scored[limit - 1][0] - _MAX_TEMPORAL_BOOST
+            relevante = [eid for sc, eid in scored if sc >= graense]
+        else:
+            relevante = candidate_ids
+        temporal_boosts = _compute_search_temporal_boost(relevante)
         scored = [
             (s + temporal_boosts.get(eid, 0.0), eid)
             for s, eid in scored
@@ -836,6 +858,17 @@ TEMPORAL_EDGE_READ_MIN_CONFIDENCE = 0.5
 # get_temporal_neighbors bruger LIMIT 10 — så en tæt hale bliver aldrig set.
 # Uden et loft vokser grafen kvadratisk med antallet af entries.
 TEMPORAL_EDGE_MAX_PER_NODE = 64
+
+
+#: Loftet over hvad en temporal boost kan flytte en score. `boost_factor`
+#: (0,15) gange den højeste confidence i basen. Målt 27/9-2026: confidence
+#: ligger mellem 0,50 og 0,98 over alle 493.339 kanter, så 0,15 er et sikkert
+#: loft — det holder selv hvis en fremtidig kant får confidence 1,0.
+#:
+#: Bruges til at afskære hvilke kandidater der overhovedet kan flytte sig ind
+#: i top-K. Hæves `boost_factor`, skal dette tal følge med, ellers bliver
+#: afskæringen for stram og rangeringen ændrer sig stille.
+_MAX_TEMPORAL_BOOST = 0.15
 
 
 def _compute_search_temporal_boost(

@@ -159,6 +159,13 @@ def test_account_cooldown_is_one_parked_finding_not_four_breakers(monkeypatch):
         "consecutive_failures": 10, "cooldown_reason": "model-not-found",
         "account_block_reason": None,
     })
+    slots.append({
+        "slot_id": "ovhcloud::bad-model::default", "provider": "ovhcloud",
+        "auth_profile": "default", "egress": "home", "weight": 0,
+        "status": "cooldown", "breaker_level": 3,
+        "consecutive_failures": 10, "cooldown_reason": "model-not-found",
+        "account_block_reason": None,
+    })
     monkeypatch.setattr(diagnostics, "balancer_snapshot", lambda: {
         "eligible_now": 1, "saved_at": "2026-09-18T12:00:00+00:00", "slots": slots,
     })
@@ -178,5 +185,10 @@ def test_account_cooldown_is_one_parked_finding_not_four_breakers(monkeypatch):
     assert parked[0]["severity"] == "medium"
     assert parked[0]["evidence"]["affected_slots"] == 4
     assert parked[0]["evidence"]["reason"] == "provider-blocked"
-    assert [item["slot_id"] for item in breakers] == ["groq::bad-model::default"]
-    assert len(starvation) == 1 and starvation[0]["severity"] == "medium"
+    assert {item["slot_id"]: item["severity"] for item in breakers} == {
+        "groq::bad-model::default": "medium",
+        "ovhcloud::bad-model::default": "high",
+    }
+    assert {item["provider"]: item["severity"] for item in starvation} == {
+        "chatanywhere": "medium", "ovhcloud": "high",
+    }

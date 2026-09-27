@@ -223,10 +223,13 @@ def diagnose_cheap_lane(now: datetime | None = None) -> dict[str, object]:
         if int(slot.get("breaker_level") or 0) >= 2 or int(
             slot.get("consecutive_failures") or 0
         ) >= 3:
+            active_cooldown = (str(slot.get("status") or "") == "cooldown"
+                               and float(slot.get("weight") or 0) <= 0)
             findings.append(_finding(
-                "breaker-repeated", "high", instant,
+                "breaker-repeated", "high" if active_cooldown else "medium", instant,
                 {"breaker_level": slot.get("breaker_level"),
-                 "consecutive_failures": slot.get("consecutive_failures")},
+                 "consecutive_failures": slot.get("consecutive_failures"),
+                 "status": slot.get("status")},
                 provider=str(slot.get("provider") or ""),
                 slot_id=str(slot.get("slot_id") or ""),
             ))

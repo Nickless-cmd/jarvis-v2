@@ -4,6 +4,7 @@ import { blocksToPersisted } from '../lib/blocksToPersisted'
 import type { ApprovalViewModel } from '../components/ApprovalCard'
 import type { ContentBlock } from '../lib/sseProtocol'
 import { denseBlocks } from '../lib/blockHelpers'
+import type { PersistedBlock } from '../lib/persistedBlocks'
 import { followSession, startStream, type StreamControl, type StreamHandlers } from '../lib/streamClient'
 import {
   initialStreamState,
@@ -31,6 +32,16 @@ interface StreamContextValue {
       model?: string
       providerChoice?: string
       attachmentIds?: string[]
+      /**
+       * Vedhæftningerne som blokke, så den OPTIMISTISKE besked kan vise dem
+       * straks.
+       *
+       * `MessageList` læser brugerens billeder ud af `content_json`. Uden
+       * blokkene her stod den lokale besked tom, og billedet dukkede først op
+       * da serverens persisterede kopi overtog den — altså ved run-slut (målt
+       * 27/9-2026; samme fejl sad i desk).
+       */
+      attachmentBlocks?: PersistedBlock[]
       mode?: 'chat' | 'cowork' | 'code'
       thinkingMode?: 'think' | 'fast'
       approvalMode?: 'ask' | 'trust'
@@ -314,7 +325,12 @@ export function StreamProvider({ children }: { children: ReactNode }) {
           id: `local-${Date.now()}`,
           role: 'user',
           content: message,
-          created_at: new Date().toISOString()
+          created_at: new Date().toISOString(),
+          // Blokkene følger med fra FØRSTE sekund. Uploaden er allerede færdig
+          // når beskeden sendes, så `attachment_id` kan hentes straks — der er
+          // intet at vente på. Uden dem var beskeden tom for billeder indtil
+          // serverens persisterede kopi overtog den.
+          content_json: opts?.attachmentBlocks?.length ? opts.attachmentBlocks : undefined
         }
 
         // En aktiv send ejer streamen → stop enhver passiv follow først.

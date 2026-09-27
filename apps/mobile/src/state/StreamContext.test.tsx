@@ -42,6 +42,9 @@ function Probe() {
       <Text>{approval?.message ?? 'no-approval'}</Text>
       <Text onPress={() => send(config, 'session-1', 'Hej Jarvis')}>send</Text>
       <Text onPress={() => send(config, 'session-1', 'Hej hurtigt', { thinkingMode: 'fast', approvalMode: 'trust', researchMode: true })}>send-controlled</Text>
+      <Text onPress={() => send(config, 'session-1', 'her ser du', { attachmentBlocks: [
+        { type: 'image', attachment_id: '6a048f50', filename: 'skærm.png', mime_type: 'image/png' }
+      ] })}>send-med-billede</Text>
       <Text onPress={() => void stop(config)}>stop</Text>
       <Text onPress={() => detachForBackground()}>detach</Text>
       <Text onPress={() => { genoptagKoerende(config) }}>genoptag</Text>
@@ -174,6 +177,48 @@ it('appends a local message and updates state from stream events', async () => {
 
   await waitFor(() => expect(screen.getByText('working')).toBeTruthy())
   expect(screen.getByText('run-123')).toBeTruthy()
+})
+
+it('den optimistiske besked bærer vedhæftningerne — billedet vises straks', async () => {
+  // `MessageList` læser brugerens billeder ud af `content_json`. Uden blokkene
+  // her stod den lokale besked tom, og uploaden dukkede først op da serverens
+  // persisterede kopi overtog den — altså ved run-slut (målt 27/9-2026).
+  const screen = await render(
+    <StreamProvider>
+      <Probe />
+    </StreamProvider>
+  )
+
+  await act(async () => {
+    screen.getByText('send-med-billede').props.onPress()
+  })
+
+  expect(mockAppendLocalMessage).toHaveBeenCalledWith(
+    expect.objectContaining({
+      role: 'user',
+      content: 'her ser du',
+      content_json: [expect.objectContaining({ type: 'image', attachment_id: '6a048f50' })]
+    })
+  )
+})
+
+it('uden vedhæftninger sættes ingen tom blok-liste', async () => {
+  // En tom liste ville se ud som om beskeden HAVDE blokke. Feltet skal være
+  // fraværende, så `parseBlocks` falder tilbage på `content`.
+  const screen = await render(
+    <StreamProvider>
+      <Probe />
+    </StreamProvider>
+  )
+
+  await act(async () => {
+    screen.getByText('send').props.onPress()
+  })
+
+  const kald = mockAppendLocalMessage.mock.calls[
+    mockAppendLocalMessage.mock.calls.length - 1
+  ]?.[0] as { content_json?: unknown }
+  expect(kald.content_json).toBeUndefined()
 })
 
 it('aborts and cancels the active run when stopped', async () => {

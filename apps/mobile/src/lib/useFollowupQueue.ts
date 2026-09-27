@@ -1,11 +1,19 @@
 import { useEffect, useRef, useState } from 'react'
 import type { tilStreamFelter } from './chatSettings'
+import type { PersistedBlock } from './persistedBlocks'
 
 export interface FollowupItem {
   id: number
   sessionId: string
   text: string
   attachmentIds?: string[]
+  /**
+   * Vedhæftningerne som blokke, båret med gennem køen.
+   *
+   * Køen afsender beskeden senere; uden blokkene her ville billedet mangle i
+   * den optimistiske besked præcis som på den direkte vej.
+   */
+  attachmentBlocks?: PersistedBlock[]
   controls?: ReturnType<typeof tilStreamFelter>
 }
 
@@ -47,9 +55,17 @@ export function useFollowupQueue({
   return {
     items: visible,
     error,
-    enqueue: (text: string, attachmentIds?: string[], controls?: ReturnType<typeof tilStreamFelter>) => {
+    enqueue: (
+      text: string,
+      attachmentIds?: string[],
+      controls?: ReturnType<typeof tilStreamFelter>,
+      attachmentBlocks?: PersistedBlock[],
+    ) => {
       if (!sessionId) return
-      setQueue((current) => [...current, { id: ++nextId.current, sessionId, text, attachmentIds, controls }])
+      setQueue((current) => [
+        ...current,
+        { id: ++nextId.current, sessionId, text, attachmentIds, controls, attachmentBlocks },
+      ])
       setError('')
     },
     remove: (id: number) => setQueue((current) => current.filter((item) => item.id !== id)),

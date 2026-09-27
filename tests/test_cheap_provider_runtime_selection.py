@@ -124,6 +124,23 @@ def test_pool_falls_to_floor_instead_of_raising(monkeypatch):
     assert called["reason"] == "no-healthy-provider"
 
 
+def test_small_internal_prompt_requests_latency_sensitive_route(monkeypatch):
+    import core.services.cheap_provider_runtime_selection as sel
+
+    seen = []
+    monkeypatch.setattr(sel, "select_cheap_lane_target", lambda **kw: (
+        seen.append(kw) or {"active": False, "provider": ""}
+    ))
+    monkeypatch.setattr("core.services.cheap_lane_floor.attempt_floor", lambda **_kw: {
+        "status": "degraded", "provider": "floor", "text": "", "is_floor": True,
+    })
+
+    sel.execute_cheap_lane_via_pool(message="kort", task_kind="inner_voice_shadow")
+    sel.execute_cheap_lane_via_pool(message="x" * 5000, task_kind="default")
+    assert seen[0]["latency_sensitive"] is True
+    assert seen[1]["latency_sensitive"] is False
+
+
 def test_shadow_compare_off_is_noop(monkeypatch):
     """Task 9: default OFF → zero overhead, byte-identisk adfærd."""
     import core.services.cheap_provider_runtime_selection as sel

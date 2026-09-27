@@ -67,6 +67,68 @@ def test_balancer_success_clears_profile_account_block(isolated_runtime):
     assert not account_block_active("chatanywhere", "default", now)
 
 
+def test_selection_success_releases_only_matching_balancer_profile(isolated_runtime, monkeypatch):
+    import time
+    from core.runtime.db_cheap_provider import record_cheap_provider_invocation
+    from core.services import cheap_lane_balancer as bal
+
+    home = _profile_slot("ovhcloud", "Mistral-7B-Instruct-v0.3", "default")
+    vpn = _profile_slot("ovhcloud", "Mistral-7B-Instruct-v0.3", "account2")
+    other_model = _profile_slot("ovhcloud", "other-model", "default")
+    monkeypatch.setattr(bal, "build_slot_pool", lambda: [home, vpn, other_model])
+    now = time.time()
+    states = {
+        slot.slot_id: bal.SlotState(
+            slot_id=slot.slot_id, last_failure_at=now - 60,
+            cooldown_until=now + 3600, cooldown_reason="rate-limited",
+            consecutive_failures=5, breaker_level=3,
+        )
+        for slot in (home, vpn, other_model)
+    }
+    bal._save_state(states)
+    record_cheap_provider_invocation(
+        provider=home.provider, model=home.model, auth_profile="default",
+        status="completed", latency_ms=800,
+    )
+
+    slots = {slot["slot_id"]: slot for slot in bal.balancer_snapshot()["slots"]}
+    assert slots[home.slot_id]["weight"] > 0
+    assert slots[home.slot_id]["consecutive_failures"] == 0
+    assert slots[vpn.slot_id]["weight"] == 0
+    assert slots[vpn.slot_id]["status"] == "cooldown"
+    assert slots[other_model.slot_id]["weight"] == 0
+    assert bal._load_state()[home.slot_id].cooldown_until is None
+
+
+def test_older_selection_success_does_not_clear_newer_balancer_failure(isolated_runtime, monkeypatch):
+    import time
+    from datetime import UTC, datetime
+    from core.runtime.db_cheap_provider import _ensure_invocation_schema
+    from core.runtime.db_core import connect
+    from core.services import cheap_lane_balancer as bal
+
+    slot = _profile_slot("ovhcloud", "Mistral-7B-Instruct-v0.3", "default")
+    monkeypatch.setattr(bal, "build_slot_pool", lambda: [slot])
+    now = time.time()
+    bal._save_state({slot.slot_id: bal.SlotState(
+        slot_id=slot.slot_id, last_failure_at=now - 60,
+        cooldown_until=now + 3600, cooldown_reason="rate-limited",
+        consecutive_failures=5, breaker_level=3,
+    )})
+    with connect() as conn:
+        _ensure_invocation_schema(conn)
+        conn.execute(
+            "INSERT INTO cheap_provider_invocations "
+            "(provider, model, auth_profile, status, created_at) VALUES (?,?,?,?,?)",
+            (slot.provider, slot.model, "default", "completed",
+             datetime.fromtimestamp(now - 120, UTC).isoformat()),
+        )
+
+    item = bal.balancer_snapshot()["slots"][0]
+    assert item["weight"] == 0
+    assert item["consecutive_failures"] == 5
+
+
 def test_slot_state_defaults():
     from core.services.cheap_lane_balancer import SlotState
     st = SlotState(slot_id="x::y")

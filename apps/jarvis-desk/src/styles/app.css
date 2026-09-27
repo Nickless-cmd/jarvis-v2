@@ -1237,6 +1237,8 @@ button.sidebar-group svg { flex: none; opacity: .7; }
    Når en besked er i kø (queued) pulserer den, så det er tydeligt at den afsendes bagefter. */
 .composer-send.composer-compacting { background: var(--bg-4); color: var(--fg-2); cursor: progress; }
 .composer-send.composer-compacting.queued { background: var(--accent, #5b9bd5); color: var(--bg-0); animation: liveness-pulse 1.4s ease-in-out infinite; }
+/* Vent-og-send: uploaden er ikke færdig, beskeden holdes tilbage og sendes selv. */
+.composer-send.composer-waiting { background: var(--bg-4); color: var(--fg-2); cursor: progress; }
 .spin { animation: presence-spin 0.9s linear infinite; transform-origin: center; }
 
 /* drag/drop overlay + attachment-chips */

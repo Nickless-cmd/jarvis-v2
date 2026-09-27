@@ -67,6 +67,53 @@ def test_route_spread_on_agent_lane_unchanged(monkeypatch):
     assert t["reason"] == "central-route:ranked"
 
 
+def test_small_cheap_task_ranks_observed_fast_model_ahead_of_slow_model(monkeypatch):
+    from core.services import cheap_provider_runtime_selection as sel
+
+    candidates = [
+        {"provider": "slow", "model": "large", "priority": 10, "credentials_ready": True},
+        {"provider": "fast", "model": "small", "priority": 18, "credentials_ready": True},
+    ]
+    monkeypatch.setattr(sel, "_configured_cheap_candidates", lambda **_kw: candidates)
+    monkeypatch.setattr(cr, "_cheap_latency_metrics", lambda: {
+        ("slow", "large"): (9000, 50), ("fast", "small"): (1000, 50),
+    })
+    monkeypatch.setattr(sel, "_is_public_proxy", lambda _p: False)
+    monkeypatch.setattr("core.services.central_route_headroom.headroom_ok", lambda _p: True)
+    monkeypatch.setattr("core.services.central_route_headroom.headroom_weight", lambda _p: 1.0)
+    monkeypatch.setattr("core.services.cheap_provider_runtime_adapters.provider_cost_class",
+                        lambda _p: "free")
+    monkeypatch.setattr("core.services.cheap_provider_runtime_adapters.CHEAP_PROVIDER_DEFAULTS",
+                        {"slow": {"protocol": "openai-chat"},
+                         "fast": {"protocol": "openai-chat"}})
+
+    assert cr._rank_candidates("cheap", {"kind": "default"}, frozenset())[0][0] == "slow"
+    assert cr._rank_candidates(
+        "cheap", {"kind": "default", "latency_sensitive": True}, frozenset(),
+    )[0][0] == "fast"
+    assert cr._rank_candidates(
+        "agent", {"kind": "default", "latency_sensitive": True}, frozenset(),
+    )[0][0] == "slow"
+
+
+def test_cheap_latency_metrics_reads_model_history_in_one_batch(monkeypatch):
+    import json
+    from core.runtime import db_cheap_provider
+
+    monkeypatch.setattr(db_cheap_provider, "list_cheap_provider_runtime_states", lambda **_kw: [
+        {"provider": "slow", "model": "large", "metadata_json": json.dumps({
+            "avg_latency_ms": 9000, "success_count": 50,
+        })},
+        {"provider": "fast", "model": "small", "metadata_json": json.dumps({
+            "avg_latency_ms": 1000, "success_count": 5,
+        })},
+    ])
+
+    assert cr._cheap_latency_metrics() == {
+        ("slow", "large"): (9000.0, 50), ("fast", "small"): (1000.0, 5),
+    }
+
+
 def test_provider_history_computes_error_rate(monkeypatch):
     """Task 10: fejlrate + oppetid fra invocation-rækker."""
     import core.services.central_route as cr

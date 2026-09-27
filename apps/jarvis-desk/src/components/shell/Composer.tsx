@@ -230,6 +230,14 @@ export function Composer({
   const [planMode, setPlanMode] = useState(false)
   const { permission, setPermission } = usePermission()
   const [attachments, setAttachments] = useState<PendingAttachment[]>([])
+  // Vent-og-send (Bjørn 27/9-2026). En upload der er i gang har endnu intet
+  // `id`, og `doSend` filtrerer den derfor STILLE ud af `ready`. Beskeden gik
+  // afsted uden vedhæftningen — uden en lyd. Målt i serverloggen: beskeden
+  // «her» gik afsted 1 s efter upload-svaret med `attachments=[]`, så billedet
+  // aldrig blev persisteret og forsvandt da serverens kopi overtog den
+  // optimistiske besked. Nu holdes beskeden tilbage til uploaden har svar.
+  const [venterPaaUpload, setVenterPaaUpload] = useState(false)
+  const ventPaaUploadRef = useRef(false)
   // Mobilen bruger `text || att.length`; det samme her, saa en vedhaeftning
   // uden tekst stadig er «noget at sende» og ikke en boelge-knap.
   const tomt = !text.trim() && attachments.length === 0
@@ -417,6 +425,14 @@ export function Composer({
   // useCallback så identiteten er stabil mellem stream-tickets (deps ændrer sig
   // kun ved faktisk input/valg) → den memo'd textarea re-renderer ikke unødigt.
   const doSend = useCallback(() => {
+    // Er en upload stadig i gang, har den intet `id` endnu — og `ready`
+    // nedenfor ville filtrere den stille ud. Beskeden holdes derfor tilbage
+    // her og sendes af effekten længere nede, så snart uploaden har svar.
+    if (attachments.some((a) => a.uploading)) {
+      ventPaaUploadRef.current = true
+      setVenterPaaUpload(true)
+      return
+    }
     const t = emojify(text.trim())  // :) ;) :P → 🙂 😉 😛 (vises som emoji i boblen)
     const ready = attachments.filter((a) => a.id && !a.error)
     if (!t && ready.length === 0 && pendingPastes.length === 0) return
@@ -464,6 +480,18 @@ export function Composer({
     })
   }, [text, attachments, pendingPastes, config, isOwner, selModel, memberTier, provChoice, planMode, permission, thinkMode, onSend])
 
+  // Anden halvdel af vent-og-send: når den sidste upload har fået svar (eller
+  // fejlet), sendes den besked der blev holdt tilbage. `doSend` lukker over de
+  // NUVÆRENDE vedhæftninger, fordi den er genskabt i denne render — derfor er
+  // den med i afhængighederne og ikke kaldt gennem en ref.
+  useEffect(() => {
+    if (!ventPaaUploadRef.current) return
+    if (attachments.some((a) => a.uploading)) return
+    ventPaaUploadRef.current = false
+    setVenterPaaUpload(false)
+    doSend()
+  }, [attachments, doSend])
+
   // Pause under compaction (som Claude Code): mens sessionen komprimeres holdes en send i kø
   // og afsendes AUTOMATISK når compaction er overstået. Teksten bevares imens.
   const [queuedDuringCompact, setQueuedDuringCompact] = useState(false)
@@ -477,7 +505,9 @@ export function Composer({
     // resten af forslaget.
     meldEget.current()
     if (compacting) {
-      if (text.trim() || attachments.some((a) => a.id && !a.error)) setQueuedDuringCompact(true)
+      // Også en upload der endnu ikke har sit id tæller som «noget at sende»
+      // — ellers blev beskeden tabt stille mens compaction kørte.
+      if (text.trim() || attachments.some((a) => !a.error)) setQueuedDuringCompact(true)
       return
     }
     doSend()
@@ -933,6 +963,19 @@ export function Composer({
               title="Start samtale med stemmen"
             >
               <JarvisRing size={15} />
+            </button>
+          ) : venterPaaUpload ? (
+            /* Uploaden er ikke færdig endnu — beskeden venter og sendes selv.
+               Knappen viser det samme som under compaction, så «der sker noget»
+               er synligt i stedet for tavst. */
+            <button
+              type="button"
+              className="composer-send composer-waiting"
+              onClick={send}
+              aria-label="Venter på upload — sender automatisk"
+              title="Uploaden er ikke færdig — beskeden sendes automatisk om et øjeblik"
+            >
+              <Loader2 size={14} strokeWidth={2.5} className="spin" />
             </button>
           ) : (
             <button

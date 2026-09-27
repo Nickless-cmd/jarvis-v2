@@ -12,6 +12,7 @@ import { apiFetch, type ApiConfig } from '../../lib/api'
 import { InlineErrorBoundary } from '../ErrorBoundary'
 import { denseBlocks } from '../../lib/blockHelpers'
 import { KlikbartBillede } from './BilledLightbox'
+import { AttachmentBlock } from './AttachmentBlock'
 import { RaekkeTranskript } from './RaekkeTranskript'
 import { useRaekkevisning } from '../../lib/visningsPref'
 import { EditedFilesCard } from './EditedFilesCard'
@@ -86,9 +87,23 @@ function MessageRowImpl({
       <div className="msg-user-wrap">
         {images.length > 0 && (
           <div className="msg-user-images">
-            {/* Bruger-egne billeder (blob: preview eller server-attachment) renderes
-                direkte — sanitering er forbeholdt Jarvis' (utrusted) indhold. */}
-            {images.map((img, i) => <KlikbartBillede key={i} src={img.src ?? ''} alt={img.alt ?? ''} />)}
+            {/* Bruger-egne billeder. To slags kilder, og de skal håndteres hver
+                for sig — samme forgrening som `BlocksRenderer` bruger for
+                Jarvis' billeder:
+                  - LIVE/optimistisk: en blob-URL fra composeren → tegnes straks
+                  - PERSISTERET: kun en REFERENCE (`attachment_id`) → hentes med
+                    token gennem `AttachmentBlock`, fordi `/attachments/...`
+                    svarer 401 uden `Authorization`.
+                Uden forgreningen stod der `src=''` for alt der kom fra serveren:
+                ens egen upload var synlig som preview og forsvandt i samme
+                øjeblik serveren overtog beskeden (målt 27/9-2026). Sanitering er
+                fortsat forbeholdt Jarvis' (utrusted) indhold — begge veje her er
+                brugerens EGNE filer. */}
+            {images.map((img, i) => (
+              img.src
+                ? <KlikbartBillede key={i} src={img.src} alt={img.alt ?? ''} />
+                : <AttachmentBlock key={i} block={{ ...img, type: 'image' }} />
+            ))}
           </div>
         )}
         {text && (

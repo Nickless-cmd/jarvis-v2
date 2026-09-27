@@ -248,7 +248,8 @@ def test_account_cooldown_is_one_parked_finding_not_four_breakers(monkeypatch):
 # ── To bøger over samme udbyders sundhed (codex' fund, 27/9-2026) ───────
 
 
-def _base_med_invocation(monkeypatch, *, provider, profil, tidspunkt, status="completed"):
+def _base_med_invocation(monkeypatch, *, provider, profil, tidspunkt,
+                         model="x", status="completed"):
     """En rigtig SQLite med én invocation. Hele pointen er SQL'en."""
     import sqlite3
     from contextlib import contextmanager
@@ -256,10 +257,10 @@ def _base_med_invocation(monkeypatch, *, provider, profil, tidspunkt, status="co
     conn = sqlite3.connect(":memory:")
     conn.row_factory = sqlite3.Row
     conn.execute("CREATE TABLE cheap_provider_invocations "
-                 "(provider TEXT, auth_profile TEXT, status TEXT, created_at TEXT)")
+                 "(provider TEXT, model TEXT, auth_profile TEXT, status TEXT, created_at TEXT)")
     if tidspunkt:
-        conn.execute("INSERT INTO cheap_provider_invocations VALUES (?,?,?,?)",
-                     (provider, profil, status, tidspunkt))
+        conn.execute("INSERT INTO cheap_provider_invocations VALUES (?,?,?,?,?)",
+                     (provider, model, profil, status, tidspunkt))
     conn.commit()
 
     @contextmanager
@@ -271,8 +272,10 @@ def _base_med_invocation(monkeypatch, *, provider, profil, tidspunkt, status="co
 
 
 def _slot(**kw):
-    s = {"provider": "ovhcloud", "auth_profile": "default", "slot_id": "ovhcloud::x",
-         "status": "cooldown", "last_success_at": "2026-09-27T06:40:00+00:00"}
+    s = {"provider": "ovhcloud", "model": "x", "auth_profile": "default",
+         "slot_id": "ovhcloud::x::default", "status": "cooldown",
+         "last_success_at": "2026-09-27T06:40:00+00:00",
+         "last_failure_at": "2026-09-27T06:40:00+00:00"}
     s.update(kw)
     return s
 
@@ -344,6 +347,25 @@ def test_profilen_skal_passe_saa_en_anden_konto_ikke_frikender(monkeypatch):
     _base_med_invocation(monkeypatch, provider="ovhcloud", profil="account2",
                          tidspunkt="2026-09-27T06:58:00+00:00")
     assert health_divergence([_slot()], since=datetime(2026, 9, 27, tzinfo=UTC)) == []
+
+
+def test_modellen_skal_passe_saa_en_anden_model_ikke_frikender(monkeypatch):
+    from core.services.cheap_lane_diagnostics import health_divergence
+
+    _base_med_invocation(monkeypatch, provider="ovhcloud", model="other-model",
+                         profil="default", tidspunkt="2026-09-27T06:58:00+00:00")
+    assert health_divergence([_slot()], since=datetime(2026, 9, 27, tzinfo=UTC)) == []
+
+
+def test_succes_foer_sidste_balancerfejl_frikender_ikke(monkeypatch):
+    from core.services.cheap_lane_diagnostics import health_divergence
+
+    _base_med_invocation(monkeypatch, provider="ovhcloud", profil="default",
+                         tidspunkt="2026-09-27T06:58:00+00:00")
+    assert health_divergence(
+        [_slot(last_failure_at="2026-09-27T07:00:00+00:00")],
+        since=datetime(2026, 9, 27, tzinfo=UTC),
+    ) == []
 
 
 def test_status_vaerdien_er_maalt_og_ikke_opfundet():

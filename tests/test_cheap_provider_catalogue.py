@@ -116,7 +116,9 @@ def test_kilo_har_de_maalte_gratis_modeller_og_ikke_stealth():
     ms = kat.CHEAP_PROVIDER_DEFAULTS["kilo"]["static_models"]
     assert all(m.endswith(":free") or m == "openrouter/free" for m in ms)
     assert "nex-agi/nex-n2.5-mini:free" not in ms
+    assert "nex-agi/nex-n2.5-pro:free" not in ms
     assert "inclusionai/ling-3.0-flash-fin:free" in ms
+    assert "inclusionai/ling-3.0-flash-sante:free" in ms
     assert not any(m.startswith("stealth/") for m in ms)
 
 

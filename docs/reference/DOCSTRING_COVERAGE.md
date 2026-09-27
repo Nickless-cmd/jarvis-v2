@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8115/15614 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8118/15617 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 8115/15614 functions/methods documented (51%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 697 | 1276 | 54% |
-| `core.services` | 5380 | 10628 | 50% |
+| `core.services` | 5383 | 10631 | 50% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 107 | 183 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -838,7 +838,7 @@ Generated from source. 8115/15614 functions/methods documented (51%). The list b
 - `core/services/cheap_lane_dashboard.py` :: `build_cheap_lane_dashboard` (L49)
 - `core/services/cheap_lane_dashboard.py` :: `invocation_trends` (L15)
 - `core/services/cheap_lane_diagnostics.py` :: `central_evidence` (L36)
-- `core/services/cheap_lane_diagnostics.py` :: `diagnose_cheap_lane` (L241)
+- `core/services/cheap_lane_diagnostics.py` :: `diagnose_cheap_lane` (L220)
 - `core/services/cheap_lane_diagnostics.py` :: `recent_invocations` (L20)
 - `core/services/cheap_lane_diagnostics.py` :: `route_integrity` (L49)
 - `core/services/cheap_lane_quotas.py` :: `set_quota_policy` (L18)
@@ -849,13 +849,13 @@ Generated from source. 8115/15614 functions/methods documented (51%). The list b
 - `core/services/cheap_provider_runtime_adapters.py` :: `provider_auth_ready` (L146)
 - `core/services/cheap_provider_runtime_adapters.py` :: `provider_runtime_defaults` (L113)
 - `core/services/cheap_provider_runtime_adapters.py` :: `supported_cheap_providers` (L103)
-- `core/services/cheap_provider_runtime_selection.py` :: `cheap_lane_status_surface` (L87)
-- `core/services/cheap_provider_runtime_selection.py` :: `execute_cheap_lane_via_pool` (L703)
-- `core/services/cheap_provider_runtime_selection.py` :: `execute_public_safe_cheap_lane` (L1062)
-- `core/services/cheap_provider_runtime_selection.py` :: `provider_runtime_defaults` (L61)
-- `core/services/cheap_provider_runtime_selection.py` :: `record_cheap_provider_invocation` (L65)
-- `core/services/cheap_provider_runtime_selection.py` :: `smoke_cheap_lane` (L179)
-- `core/services/cheap_provider_runtime_selection.py` :: `test_provider_target` (L151)
+- `core/services/cheap_provider_runtime_selection.py` :: `cheap_lane_status_surface` (L88)
+- `core/services/cheap_provider_runtime_selection.py` :: `execute_cheap_lane_via_pool` (L720)
+- `core/services/cheap_provider_runtime_selection.py` :: `execute_public_safe_cheap_lane` (L1083)
+- `core/services/cheap_provider_runtime_selection.py` :: `provider_runtime_defaults` (L62)
+- `core/services/cheap_provider_runtime_selection.py` :: `record_cheap_provider_invocation` (L66)
+- `core/services/cheap_provider_runtime_selection.py` :: `smoke_cheap_lane` (L180)
+- `core/services/cheap_provider_runtime_selection.py` :: `test_provider_target` (L152)
 - `core/services/chronicle_consolidation_brief_tracking.py` :: `build_runtime_chronicle_consolidation_brief_surface` (L84)
 - `core/services/chronicle_consolidation_brief_tracking.py` :: `refresh_runtime_chronicle_consolidation_brief_statuses` (L53)
 - `core/services/chronicle_consolidation_brief_tracking.py` :: `track_runtime_chronicle_consolidation_briefs_for_visible_turn` (L30)
@@ -2004,11 +2004,11 @@ Generated from source. 8115/15614 functions/methods documented (51%). The list b
 - `core/services/voice_daemon.py` :: `start_voice_daemon` (L60)
 - `core/services/voice_daemon.py` :: `stop_voice_daemon` (L73)
 - `core/services/weighted_slot_health.py` :: `adaptive_snapshot` (L145)
-- `core/services/weighted_slot_health.py` :: `decode_state_metadata` (L186)
-- `core/services/weighted_slot_health.py` :: `normalize_probe_text` (L203)
+- `core/services/weighted_slot_health.py` :: `decode_state_metadata` (L193)
+- `core/services/weighted_slot_health.py` :: `normalize_probe_text` (L210)
 - `core/services/weighted_slot_health.py` :: `quota_snapshot` (L69)
-- `core/services/weighted_slot_health.py` :: `rolling_average` (L197)
-- `core/services/weighted_slot_health.py` :: `smoke_quality_score` (L208)
+- `core/services/weighted_slot_health.py` :: `rolling_average` (L204)
+- `core/services/weighted_slot_health.py` :: `smoke_quality_score` (L215)
 - `core/services/witness_signal_tracking.py` :: `build_runtime_witness_signal_surface` (L120)
 - `core/services/witness_signal_tracking.py` :: `refresh_runtime_witness_signal_statuses` (L51)
 - `core/services/witness_signal_tracking.py` :: `track_runtime_witness_signals_for_visible_turn` (L29)

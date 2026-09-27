@@ -183,6 +183,13 @@ def adaptive_snapshot(
     }
 
 
+def latency_rank_multiplier(avg_latency_ms: float, success_count: int) -> float:
+    """Bias small cheap tasks toward proven fast models without excluding slow ones."""
+    if success_count < 10:
+        return 1.0
+    return 1.0 + min(4.0, max(0.0, float(avg_latency_ms) - 1500.0) / 3000.0)
+
+
 def decode_state_metadata(state: dict[str, object]) -> dict[str, object]:
     raw = state.get("metadata_json")
     if not raw:

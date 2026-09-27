@@ -1,14 +1,18 @@
 import { GenoptagelsesVarselHost } from '../components/feedback/GenoptagelsesVarselHost'
+import { useEffect } from 'react'
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, act, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ChatView } from './ChatView'
 import { SessionProvider } from '../contexts/SessionContext'
+import { useSessions } from '../hooks/useSessions'
 import { StreamProvider } from '../contexts/StreamContext'
 import { SettingsProvider } from '../contexts/SettingsContext'
 import { PanelProvider } from '../contexts/PanelContext'
 import { PermissionProvider } from '../contexts/PermissionContext'
 import * as api from '../lib/api'
+import { writeRaekkevisning } from '../lib/visningsPref'
+import type { ContentBlock } from '../lib/sseProtocol'
 
 interface FakeHandlers {
   onEvent: (e: unknown) => void
@@ -61,6 +65,34 @@ vi.mock('../lib/sideTasksApi', () => ({
 const cfg = { apiBaseUrl: 'http://t', authToken: 't' }
 
 describe('ChatView integration', () => {
+  it('viser rækkevisning når en ældre assistentbesked har et tomt blokindeks', async () => {
+    writeRaekkevisning(true)
+    const sparseContent = new Array<ContentBlock>(2)
+    sparseContent[1] = { type: 'tool_use', id: 't1', name: 'read_file', input: {} }
+    function InjectMessages() {
+      const { reconcile } = useSessions()
+      useEffect(() => {
+        reconcile({ id: 'a1', role: 'assistant', created_at: '2026-09-27T10:00:00Z',
+          content: sparseContent })
+        reconcile({ id: 'a2', role: 'assistant', created_at: '2026-09-27T10:01:00Z',
+          content: [{ type: 'text', text: 'Sikkert svar' }] })
+      }, [reconcile])
+      return null
+    }
+    try {
+      render(
+        <SettingsProvider initialConfig={cfg}><SessionProvider config={cfg}>
+          <StreamProvider config={cfg}><PermissionProvider><PanelProvider defaultWidth={400}>
+            <ChatView sessionId="s1" /><InjectMessages />
+          </PanelProvider></PermissionProvider></StreamProvider>
+        </SessionProvider></SettingsProvider>,
+      )
+      expect(await screen.findByText('Sikkert svar')).toBeInTheDocument()
+    } finally {
+      writeRaekkevisning(false)
+    }
+  })
+
   it('viser komprimering over composer selv når samtalen er i hvile', async () => {
     vi.mocked(api.getSession).mockResolvedValue({
       etag: null, session: { id: 's1', title: 'T', updated_at: 'x' },

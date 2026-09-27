@@ -164,41 +164,15 @@ _STATUS_SUCCES = "completed"
 
 def health_divergence(slots: list[dict[str, object]], *,
                       since: datetime) -> list[dict[str, object]]:
-    """Slots balanceren holder i cooldown, mens lanen HAR haft succes bagefter.
+    """Find cooldowns contradicted by a later success for the exact slot.
 
-    FUNDET af codex 27/9-2026: OVHcloud gennemførte et kald kl. 06:58, mens
-    balancerens registrerede seneste succes stod på 06:40 og slottet stadig lå
-    i cooldown. To bøger over den samme udbyders sundhed, og de stemmer ikke.
-
-    Årsagen er mekanisk: `_register_success` i balanceren rydder cooldown og
-    tæller breakeren ned — men den kaldes KUN når kaldet gik gennem
-    balanceren. Selection-lanen kan ramme samme udbyder udenom, og den succes
-    når aldrig frem. Slottet bliver liggende i en cooldown virkeligheden har
-    modbevist.
-
-    DENNE FUNKTION ÆNDRER INGEN RUTNING. Den måler kun uenigheden. Det er med
-    vilje: at lade en selection-succes rydde balancerens cooldown ville være en
-    adfærdsændring i den varme sti, og de to lag kan have gode grunde til at
-    holde hver sin bog (andre konti, andre profiler). Først skal uenigheden
-    kunne SES — så kan nogen afgøre hvilken bog der har ret.
-
-    En cooldown uden en nyere succes er ikke en uenighed; den er balanceren der
-    gør sit arbejde. Derfor meldes kun de slots hvor lanen beviseligt kom
-    igennem bagefter.
-
-    STATUS-VÆRDIEN ER `completed`, IKKE `ok`. Første udgave af denne funktion
-    filtrerede på `'ok'` — en værdi jeg selv fandt på — og vagten kunne derfor
-    ALDRIG fyre. Målt i produktionen 27/9-2026, sidste døgn:
-
-        completed   5082
-        failed       434
-
-    Der findes ingen `ok`. `_STATUS_SUCCES` er derfor pinnet i en test mod den
-    ægte kolonne, ikke mod en konstant jeg selv skrev.
+    The invocation must match provider, model, and auth profile and occur after
+    the balancer's last failure. A success before that failure proves nothing.
     """
     i_cooldown = [s for s in slots
                   if str(s.get("status") or "") == "cooldown"
-                  and str(s.get("provider") or "")]
+                  and str(s.get("provider") or "")
+                  and str(s.get("model") or "")]
     if not i_cooldown:
         return []
 
@@ -210,25 +184,30 @@ def health_divergence(slots: list[dict[str, object]], *,
     with connect() as conn:
         for slot in i_cooldown:
             provider = str(slot.get("provider") or "")
+            model = str(slot.get("model") or "")
             profil = str(slot.get("auth_profile") or "default")
             raekke = conn.execute(
                 "SELECT MAX(created_at) FROM cheap_provider_invocations "
-                "WHERE provider = ? AND COALESCE(NULLIF(auth_profile, ''), 'default') = ? "
+                "WHERE provider = ? AND model = ? "
+                "AND COALESCE(NULLIF(auth_profile, ''), 'default') = ? "
                 "AND status = ? AND created_at >= ?",
-                (provider, profil, _STATUS_SUCCES, since.isoformat()),
+                (provider, model, profil, _STATUS_SUCCES, since.isoformat()),
             ).fetchone()
             lanens = _parse_time((raekke or [None])[0])
             if lanens is None:
                 continue
             balancerens = _parse_time(slot.get("last_success_at"))
-            if balancerens is not None and lanens <= balancerens:
+            sidste_fejl = _parse_time(slot.get("last_failure_at"))
+            if sidste_fejl is None or lanens <= sidste_fejl:
                 continue
             fundet.append({
                 "provider": provider,
+                "model": model,
                 "auth_profile": profil,
                 "slot_id": str(slot.get("slot_id") or ""),
                 "balancer_last_success": (balancerens.isoformat()
                                           if balancerens else None),
+                "balancer_last_failure": sidste_fejl.isoformat(),
                 "lane_last_success": lanens.isoformat(),
                 "bagud_s": (round((lanens - balancerens).total_seconds(), 1)
                             if balancerens else None),

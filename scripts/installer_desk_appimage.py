@@ -313,7 +313,20 @@ def main(argv: list[str] | None = None) -> int:
             maal.parent.mkdir(parents=True, exist_ok=True)
             if maal.exists():
                 shutil.copy2(maal, maal.with_name(f"{maal.stem}-forrige{maal.suffix}"))
-            shutil.copy2(kilde, maal)
+            # Skriv til en søskende og OMDØB — skriv ikke oveni målet.
+            #
+            # `shutil.copy2(kilde, maal)` åbner målet til skrivning, og en
+            # AppImage der KØRER kan ikke overskrives: kernen svarer ETXTBSY
+            # («Text file busy»). Målt 27/9-2026, hvor installeren fejlede med
+            # et stakspor midt i en udgivelse, fordi Bjørn havde appen åben.
+            # `os.replace` er en atomisk omdøbning i samme mappe: den rammer
+            # aldrig den kørende inode, og målet findes ikke i en halvt
+            # skrevet tilstand på noget tidspunkt. Den kørende app kører videre
+            # på den gamle fil indtil den genstartes — det er prisen, og den
+            # er ærlig.
+            midlertidig = maal.with_name(maal.name + ".ny")
+            shutil.copy2(kilde, midlertidig)
+            os.replace(midlertidig, maal)
             maal.chmod(maal.stat().st_mode | 0o111)
         print(f"  binaer     {'installeret' if flyttet else 'uaendret'}")
 
@@ -331,10 +344,15 @@ def main(argv: list[str] | None = None) -> int:
         print(f"  apparmor   {'opdateret' if p_aendret else 'uaendret'}  ({PROFIL_MAPPE / navn})")
 
         if not a.toerloeb and (d_aendret or n):
-            subprocess.run(["update-desktop-database", str(APPLIKATIONER)],
-                           capture_output=True)
-            subprocess.run(["gtk-update-icon-cache", "-f", "-t", str(IKON_ROD)],
-                           capture_output=True)
+            # Cache-opdateringerne er best-effort. Værktøjerne findes ikke på
+            # alle maskiner — containeren har fx ikke `update-desktop-database`
+            # — og et manglende værktøj skal ikke få en GENNEMFØRT installation
+            # til at ende i et stakspor. Målt 27/9-2026 gennem testen for
+            # omdøbningen, som faldt på netop dette.
+            for kommando in (["update-desktop-database", str(APPLIKATIONER)],
+                             ["gtk-update-icon-cache", "-f", "-t", str(IKON_ROD)]):
+                if shutil.which(kommando[0]):
+                    subprocess.run(kommando, capture_output=True)
 
         if a.toerloeb:
             print("\n  (tørløb — intet blev skrevet)")

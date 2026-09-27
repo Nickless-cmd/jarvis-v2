@@ -115,6 +115,27 @@ it('folder arbejdet sammen ved skiftet fra stream til gemt slutsvar', async () =
   expect(s.getByText('Rettet.')).toBeTruthy()
 })
 
+it('en bruger-upload tegnes STRAKS — også før serveren har persisteret beskeden', async () => {
+  // Den optimistiske besked bærer sine vedhæftninger som blokke. Uden dem stod
+  // den tom, og billedet dukkede først op da serverens persisterede kopi
+  // overtog den — altså ved run-slut (målt 27/9-2026, samme fejl i mobil og
+  // desk).
+  //
+  // Persisteret form: kun en REFERENCE. Hentningen går derfor gennem
+  // token-ruten (`AuthImage`), ikke direkte i `<Image>`.
+  const s = await render(<MessageList messages={[msg({
+    id: 'local-1',
+    role: 'user',
+    content: 'her ser du',
+    content_json: [
+      { type: 'image', attachment_id: '6a048f50', filename: 'skærm.png', mime_type: 'image/png' },
+    ],
+  })]} blocks={[]} />)
+
+  expect(s.getByTestId('attachment-wrap')).toBeTruthy()
+  expect(s.getByTestId('attachment-image-6a048f50')).toBeTruthy()
+})
+
 /**
  * Målt 12/9-2026: markøren faldt i default-grenen og blev tegnet som en
  * almindelig boble med HELE den serialiserede transcript som indhold (111k

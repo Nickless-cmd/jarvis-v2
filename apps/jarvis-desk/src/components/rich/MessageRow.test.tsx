@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { MessageRow } from './MessageRow'
 import { PanelProvider } from '../../contexts/PanelContext'
+import { SettingsProvider } from '../../contexts/SettingsContext'
 import { RAEKKE_KEY } from '../../lib/visningsPref'
 import type { ContentBlock } from '../../lib/sseProtocol'
 import { paaAendringsFokus } from '../../lib/aendringsFokus'
@@ -75,6 +76,41 @@ describe('MessageRow', () => {
   it('ingen gensend-knap uden onResend', () => {
     render(<MessageRow role="user" blocks={[{ type: 'text', text: 'x' }]} density="compact" streaming={false} />)
     expect(screen.queryByTitle('Send igen')).not.toBeInTheDocument()
+  })
+
+  it('viser en PERSISTERET upload gennem token-hentning — ikke et tomt <img>', () => {
+    // Bjørn 27/9-2026: «billeder jeg uploader via composer bliver først vist i
+    // chatview når dit run er færdig». Årsagen var en manglende forgrening:
+    // bruger-grenen tegnede ALT med `KlikbartBillede src={img.src ?? ''}`.
+    // Live-previewet (blob) virkede, men i det øjeblik serveren overtog
+    // beskeden, havde blokken kun en REFERENCE (`attachment_id`) — og `src`
+    // blev tom. Assistent-grenen havde forgreningen hele tiden.
+    //
+    // Beviset er at blokken NÅR `AttachmentBlock`, som slår op i
+    // settings-konteksten og henter med token: navnet står på skærmen med det
+    // samme (før hentningen er færdig). En tom `<img src="">` ville vise intet.
+    const upload: ContentBlock[] = [
+      { type: 'text', text: 'her ser du hvad jeg ser' },
+      { type: 'image', attachment_id: 'abc123', filename: 'Skærmbillede.png' },
+    ]
+    const { container } = render(
+      <SettingsProvider initialConfig={{ apiBaseUrl: '', authToken: null }}>
+        <MessageRow role="user" blocks={upload} density="compact" streaming={false} />
+      </SettingsProvider>,
+    )
+    expect(container.querySelector('.msg-user-images')).toBeInTheDocument()
+    expect(container.textContent).toContain('Skærmbillede.png')
+  })
+
+  it('tegner et LIVE billede (blob) direkte — uden token-hentning', () => {
+    const live: ContentBlock[] = [{ type: 'image', src: 'blob:preview-1', alt: 'mit billede' }]
+    const { container } = render(
+      <SettingsProvider initialConfig={{ apiBaseUrl: '', authToken: null }}>
+        <MessageRow role="user" blocks={live} density="compact" streaming={false} />
+      </SettingsProvider>,
+    )
+    const img = container.querySelector('.msg-user-images img')
+    expect(img?.getAttribute('src')).toBe('blob:preview-1')
   })
   it('viser "Åbn"-affordance for langt markdown-svar', () => {
     const long = '# Titel\n' + Array.from({ length: 45 }, (_, i) => `linje ${i}`).join('\n') + '\n## Sektion\nx'

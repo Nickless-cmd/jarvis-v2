@@ -1,4 +1,5 @@
 import * as SecureStore from 'expo-secure-store'
+import type { PersistedBlock } from './persistedBlocks'
 
 const OUTBOX_KEY = 'jarvis.mobile.offlineOutbox'
 
@@ -20,6 +21,12 @@ export type OutboxItem =
       sessionId: string
       text: string
       attachmentIds?: string[]
+      /**
+       * Vedhæftningerne som blokke. Beskeden sendes først når der er forbindelse
+       * igen — og først DER bliver den en optimistisk besked i tråden. Uden
+       * blokkene her ville billedet mangle på samme måde som på den direkte vej.
+       */
+      attachmentBlocks?: PersistedBlock[]
       controls?: OutboxTurnControls
       lastError?: string
     }

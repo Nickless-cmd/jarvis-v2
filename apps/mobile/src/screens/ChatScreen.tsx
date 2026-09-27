@@ -24,6 +24,7 @@ import { useVoiceConversation } from '../lib/useVoiceConversation'
 import { useComposerDictation } from '../lib/useComposerDictation'
 import { VoiceOverlay } from '../components/VoiceOverlay'
 import type { ContentBlock } from '../lib/sseProtocol'
+import type { PersistedBlock } from '../lib/persistedBlocks'
 import { ErrorBanner } from '../components/ErrorBanner'
 import { ErrorCard } from '../components/ErrorCard'
 import { OfflineNotice } from '../components/OfflineNotice'
@@ -584,6 +585,7 @@ export function ChatScreen({
             stream.send(config, item.sessionId, item.text, {
               ...item.controls,
               attachmentIds: item.attachmentIds,
+              attachmentBlocks: item.attachmentBlocks,
             })
           } else if (item.kind === 'approval_action') {
             if (item.action === 'approve') {
@@ -830,6 +832,21 @@ export function ChatScreen({
     setTilbagespolet(null) // fortryd lukker ved næste besked (Claude Desktop §8)
     setSpolFejl('')
     if (pendingAttachments.some((a) => a.status === 'uploading')) return
+    // Uploadene er FÆRDIGE her (en igangværende upload er afvist ovenfor), så
+    // deres `attachment_id` kan hentes straks. Blokkene bygges derfor allerede
+    // nu og følger med ind i den optimistiske besked. Uden dem stod brugerens
+    // billede tomt indtil serveren havde persisteret beskeden — altså til
+    // run-slut (målt 27/9-2026).
+    const readyAttachments = pendingAttachments.filter((a) => a.status !== 'error' && a.status !== 'uploading')
+    const attachmentIds = readyAttachments.length
+      ? readyAttachments.map((a) => a.uploadId ?? a.id)
+      : undefined
+    const attachmentBlocks: PersistedBlock[] = readyAttachments.map((a) => ({
+      type: a.mime?.startsWith('image/') ? 'image' : 'file',
+      attachment_id: a.uploadId ?? a.id,
+      filename: a.name,
+      mime_type: a.mime,
+    }))
     if (connectivity === 'offline') {
       if (!sessions.activeId) {
         Alert.alert('Offline', 'Åbn en eksisterende samtale før du køer en besked offline.')
@@ -839,28 +856,30 @@ export function ChatScreen({
         kind: 'chat_message',
         sessionId: sessions.activeId,
         text,
-        attachmentIds: pendingAttachments.filter((a) => a.status !== 'error' && a.status !== 'uploading').map((a) => a.uploadId ?? a.id),
+        attachmentIds,
+        attachmentBlocks,
         controls: tilStreamFelter(chatCfg, kodeTilstand),
       })
       setOutboxCount((await loadOutbox()).length)
       setPendingAttachments([])
       return
     }
-    const readyAttachments = pendingAttachments.filter((a) => a.status !== 'error' && a.status !== 'uploading')
-    const attachmentIds = readyAttachments.length
-      ? readyAttachments.map((a) => a.uploadId ?? a.id)
-      : undefined
     setPendingAttachments([])
     // Svarer han allerede, lægges beskeden i KØ og sendes når svaret er
     // færdigt (19/9-2026, som desk). Før kunne man slet ikke sende imens.
     if (stream.state.status === 'working' || serverBusy) {
-      followups.enqueue(text, attachmentIds, tilStreamFelter(chatCfg, kodeTilstand))
+      followups.enqueue(text, attachmentIds, tilStreamFelter(chatCfg, kodeTilstand), attachmentBlocks)
       return
     }
-    await sendNu(text, attachmentIds)
+    await sendNu(text, attachmentIds, undefined, attachmentBlocks)
   }
 
-  const sendNu = async (text: string, attachmentIds?: string[], controls?: FollowupItem['controls']) => {
+  const sendNu = async (
+    text: string,
+    attachmentIds?: string[],
+    controls?: FollowupItem['controls'],
+    attachmentBlocks?: PersistedBlock[],
+  ) => {
     if (!config) throw new Error('Forbindelsen er ikke klar')
     const sessionId = sessions.activeId ?? (await opretSession()).id
     if (!sessions.activeId) void gemIndstillinger(sessionId, chatCfg)
@@ -868,6 +887,7 @@ export function ChatScreen({
     stream.send(config, sessionId, text, {
       ...cfg,
       attachmentIds,
+      attachmentBlocks,
     })
   }
 
@@ -875,7 +895,7 @@ export function ChatScreen({
     sessionId: sessions.activeId,
     busy: stream.state.status === 'working' || serverBusy,
     online: connectivity !== 'offline',
-    send: (item) => sendNu(item.text, item.attachmentIds, item.controls),
+    send: (item) => sendNu(item.text, item.attachmentIds, item.controls, item.attachmentBlocks),
     steer: async (item) => {
       if (!config) throw new Error('Forbindelsen er ikke klar')
       const runId = stream.state.activeRunId || activeRunId

@@ -564,21 +564,6 @@ async def translate_to_v2(
         # betingelse på `openrouter_image` alene ville glemme redigeringen OG
         # `pollinations_image`, og det ville ingen opdage, fordi man tester med
         # det værktøj man selv bruger.
-        #
-        # MIDLERTIDIG MAALING (27/9-2026): billedet naaede ikke frem, og to
-        # gaet paa hvorfor var forkerte. Fjernes naar aarsagen er fundet.
-        try:
-            import os as _os
-            from core.services.published_files import peek as _peek
-            _mrid = str(_state.get("run_id") or "")
-            logger.info(
-                "MAAL tool_result: pid=%s name=%r er_billede=%s run_id=%r "
-                "tool_id=%r noter_i_alt=%d",
-                _os.getpid(), name, name in _BILLEDVAERKTOEJER, _mrid, tool_id,
-                len(_peek(_mrid)) if _mrid else -1)
-        except Exception as _m_exc:
-            logger.warning("MAAL fejlede: %r", _m_exc)
-
         try:
             if name in _BILLEDVAERKTOEJER:
                 for _blok in _live_billedblokke(tool_id, _sendte_billeder):

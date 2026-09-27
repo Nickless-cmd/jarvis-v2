@@ -76,10 +76,6 @@ def note(run_id: str, *, filename: str, url: str = "", mime_type: str = "",
     # En post uden nogen hentbar reference er en blok klienten ikke kan fylde.
     if not aid and not str(url or "").strip():
         return
-    # MIDLERTIDIG MAALING (27/9-2026) — se commit-beskeden. Fjernes bagefter.
-    import os as _os
-    logger.info("MAAL note: pid=%s run_id=%r tool_use_id=%r fil=%s aid=%s",
-                _os.getpid(), rid, tool_use_id, navn, aid)
     try:
         with _laas:
             liste = _pr_run.setdefault(rid, [])

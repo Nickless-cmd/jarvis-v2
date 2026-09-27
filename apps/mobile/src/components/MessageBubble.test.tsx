@@ -299,11 +299,29 @@ describe("Jarvis' eget billede hører til beskeden", () => {
     created_at: '2026-09-27T09:00:00Z'
   }
 
+  it('billedet står OVER teksten — samme rækkefølge som desk', async () => {
+    // Bjørn, 27/9-2026 om aftenen, efter at live-billedet kom til at virke:
+    // «det eneste der mangler er at billederne bliver vist over hans besked,
+    // ligesom i desk». I desk lander billedblokken i svaret i den orden den
+    // kom — altså før den afsluttende tekst — og hele pointen med at sende den
+    // live er at den står dér hvor den blev lavet.
+    const s = await render(
+      <MessageBubble
+        message={svar}
+        vedhaeftninger={[{ type: 'image', attachment_id: 'i0', filename: 'a.png' }]}
+      />
+    )
+    const json = JSON.stringify(s.toJSON())
+    expect(json.indexOf('attachment-wrap')).toBeGreaterThan(-1)
+    expect(json.indexOf('Her er billedet.')).toBeGreaterThan(-1)
+    expect(json.indexOf('attachment-wrap')).toBeLessThan(json.indexOf('Her er billedet.'))
+  })
+
   it('billedet står FØR handlingsrækken — ikke efter svaret', async () => {
     // Målt 27/9-2026 på Bjørns telefon: filen lå i sin EGEN række efter boblen,
     // altså neden for kopiér/oplæs-ikonerne, og så ud som om den kom bagefter
     // svaret i stedet for at være en del af det. Rækkefølgen er nu
-    // tekst → billede → handlinger.
+    // billede → tekst → handlinger.
     const s = await render(
       <MessageBubble
         message={svar}

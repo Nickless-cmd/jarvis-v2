@@ -218,6 +218,22 @@ export const MessageBubble = memo(function MessageBubble({
         { opacity: enter, transform: [{ scale: enterScale }] }
       ]}
     >
+      {/* Jarvis' egne filer hører til BESKEDEN — ikke til tråden, og de står
+          OVER teksten. Det er samme rækkefølge som desk: dér lander
+          billedblokken i svaret i den orden den kom, altså før den afsluttende
+          tekst, og hele pointen med at sende den live er at den står hvor den
+          blev lavet.
+
+          De lå under teksten indtil 27/9-2026 om aftenen (8b36e9e84). Det var
+          rigtigt dengang, hvor billedet FØRST fandtes når turen var slut — så
+          var det en efterskrift. Nu kommer det midt i strømmen, og så er det
+          svaret man læser bagefter. Bjørn bad om de to flader ens. */}
+      {!isUser && vedh ? (
+        <View style={styles.vedhaeftningOver}>
+          <MessageAttachments items={vedh} side="left" kantlos />
+        </View>
+      ) : null}
+
       {markering ? (
         <View>
           <Text selectable style={styles.markeringText}>{message.content}</Text>
@@ -267,17 +283,6 @@ export const MessageBubble = memo(function MessageBubble({
               </Text>
             ))}
           </View>
-        </View>
-      ) : null}
-
-      {/* Jarvis' egne filer hører til BESKEDEN — ikke til tråden. De står
-          under teksten og FØR handlingsrækken, så billedet læses som en del af
-          svaret. Før lå de i en selvstændig række efter boblen, altså neden for
-          kopiér/oplæs-ikonerne, og så ud som om de kom bagefter svaret
-          (målt 27/9-2026 på Bjørns telefon). */}
-      {!isUser && vedh ? (
-        <View style={styles.vedhaeftningUnder}>
-          <MessageAttachments items={vedh} side="left" kantlos />
         </View>
       ) : null}
 
@@ -491,9 +496,10 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
     marginTop: tokens.spacing.md
   },
   sources: { marginTop: tokens.spacing.sm, gap: tokens.spacing.xs },
-  // Afstanden mellem svaret og Jarvis' eget billede. `MessageAttachments` får
-  // `kantlos`, så afstanden sættes ÉT sted — her — og ikke to.
-  vedhaeftningUnder: { marginTop: tokens.spacing.md },
+  // Afstanden mellem Jarvis' eget billede og svaret under det.
+  // `MessageAttachments` får `kantlos`, så afstanden sættes ÉT sted — her —
+  // og ikke to.
+  vedhaeftningOver: { marginBottom: tokens.spacing.md },
   sourcesLabel: { color: tokens.color.fg3, fontSize: 11, fontWeight: '800', textTransform: 'uppercase' },
   sourceChips: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spacing.xs },
   // Markerings-tilstand: rå tekst, monospace, indrykning bevaret. Den tegnede

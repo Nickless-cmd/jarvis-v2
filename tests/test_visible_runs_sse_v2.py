@@ -731,3 +731,81 @@ async def test_et_AFVIST_kald_efterlader_ikke_linjen_koerende():
               and e[1]["payload"].get("tool_use_id") == "call-7"]
     assert lukket, "linjen blev aldrig lukket"
     assert lukket[0][1]["payload"]["status"] == "denied"
+
+
+@pytest.mark.asyncio
+async def test_billedblok_sendes_i_den_levende_stream(monkeypatch):
+    """Hele vejen gennem den RIGTIGE oversætter (27/9-2026).
+
+    Bjørn meldte at billedet stadig først kom til sidst efter udrulningen. En
+    enhedstest på `_live_billedblokke` alene kunne ikke se det: den beviser at
+    blokken kan BYGGES, ikke at den bliver SENDT. Denne kører legacy-eventet
+    gennem `translate_to_v2` og leder efter blokken i det den faktisk udsender.
+    """
+    from core.services import published_files as pf
+    import core.services.attachment_service as a
+
+    pf._nulstil_for_tests()
+    monkeypatch.setattr(a, "image_data_url", lambda aid: "data:image/png;base64,AAA")
+    pf.note("v1", filename="k.png", mime_type="image/png",
+            attachment_id="att-1", tool_use_id="cap-1")
+
+    async def legacy() -> AsyncIterator[str]:
+        yield _legacy_sse("delta", {"type": "delta", "run_id": "v1", "delta": "x"})
+        # PRÆCIS den form den godkendte vej sender (visible_runs ~4706):
+        # `tool` og `status`, og INTET `capability_id`. Den første udgave af
+        # denne test gav den et id, og derfor bestod den mens driften fejlede.
+        yield _legacy_sse("capability", {
+            "type": "tool_result", "tool": "openrouter_image", "status": "ok",
+        })
+        yield _legacy_sse("done", {"type": "done", "run_id": "v1", "status": "completed"})
+
+    output = await _collect(translate_to_v2(
+        legacy(), session_id="s", ping_interval_s=999.0,
+    ))
+    events = _parse_v2_events(output)
+    billeder = [
+        p for navn, p in events
+        if navn == "content_block_start"
+        and str((p.get("content_block") or {}).get("type") or "") == "image"
+    ]
+    assert billeder, "ingen billedblok i det oversætteren udsendte"
+    blok = billeder[0]["content_block"]
+    assert blok["src"] == "data:image/png;base64,AAA"
+    assert blok["attachment_id"] == "att-1"
+    pf._nulstil_for_tests()
+
+
+@pytest.mark.asyncio
+async def test_samme_billede_sendes_ikke_to_gange(monkeypatch):
+    """To billedkald i én tur må ikke gensende det første billede.
+
+    Uden `_sendte_billeder` ville hvert efterfølgende resultat tage HELE
+    turens noter med igen, og billedet stod to gange i tråden.
+    """
+    from core.services import published_files as pf
+    import core.services.attachment_service as a
+
+    pf._nulstil_for_tests()
+    monkeypatch.setattr(a, "image_data_url", lambda aid: "data:%s" % aid)
+
+    async def legacy() -> AsyncIterator[str]:
+        yield _legacy_sse("delta", {"type": "delta", "run_id": "v2", "delta": "x"})
+        pf.note("v2", filename="en.png", mime_type="image/png", attachment_id="att-en")
+        yield _legacy_sse("capability", {
+            "type": "tool_result", "tool": "openrouter_image", "status": "ok"})
+        pf.note("v2", filename="to.png", mime_type="image/png", attachment_id="att-to")
+        yield _legacy_sse("capability", {
+            "type": "tool_result", "tool": "openrouter_image_edit", "status": "ok"})
+        yield _legacy_sse("done", {"type": "done", "run_id": "v2", "status": "completed"})
+
+    events = _parse_v2_events(await _collect(translate_to_v2(
+        legacy(), session_id="s", ping_interval_s=999.0)))
+    ider = [
+        str((p.get("content_block") or {}).get("attachment_id") or "")
+        for navn, p in events
+        if navn == "content_block_start"
+        and str((p.get("content_block") or {}).get("type") or "") == "image"
+    ]
+    assert ider == ["att-en", "att-to"], ider
+    pf._nulstil_for_tests()

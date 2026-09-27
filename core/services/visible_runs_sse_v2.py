@@ -199,12 +199,27 @@ _BILLEDVAERKTOEJER = frozenset({
 })
 
 
-def _live_billedblokke(run_id: str, tool_use_id: str) -> list[dict[str, Any]]:
-    """Billedblokke for ét værktøjskald, klar til den levende stream.
+def _live_billedblokke(run_id: str, allerede_sendt: set[str]) -> list[dict[str, Any]]:
+    """Billedblokke for turen der endnu ikke er sendt, klar til den levende stream.
 
     Noterne kommer fra `published_files` — dem værktøjet lagde fra sig under
     turen — og læses med `peek`, ikke `take`: den der persisterer svaret
     bagefter skal stadig kunne finde dem.
+
+    ## Hvorfor der IKKE filtreres på `tool_use_id`
+
+    Første udgave gjorde det, og den virkede i test og ikke i drift. Grunden
+    stod i udsenderen: `visible_runs` har TO steder der sender
+    `capability/tool_result`, og det ene (linje ~4706, den godkendte vej)
+    sender kun `{"type", "tool", "status"}` — **uden `capability_id`**. Så
+    faldt `tool_id` tilbage til selve værktøjsNAVNET, filteret ledte efter en
+    note med `tool_use_id = "openrouter_image"`, og der var ingen. Testen
+    gav eventet et `capability_id` og kunne derfor ikke se det.
+
+    I stedet holdes der styr på hvad der ER sendt. Enhver endnu usendt
+    billed-note går ud ved næste billedværktøjs-resultat. Det virker uanset om
+    udsenderen har et id med, uanset om ét kald producerede flere billeder
+    (`n > 1`), og uanset hvor mange billedkald turen indeholder.
 
     En LIVE-blok bærer `src` (en data-URL) så klienten kan tegne den med det
     samme. Er billedet for stort til en data-URL, sendes blokken alligevel med
@@ -215,8 +230,16 @@ def _live_billedblokke(run_id: str, tool_use_id: str) -> list[dict[str, Any]]:
     if not run_id:
         return []
     from core.services.published_files import as_blocks, peek
-    poster = peek(run_id, tool_use_id=tool_use_id)
-    blokke = [b for b in as_blocks(poster) if b.get("type") == "image"]
+    poster = peek(run_id)
+    blokke = []
+    for b in as_blocks(poster):
+        if b.get("type") != "image":
+            continue
+        noegle = str(b.get("attachment_id") or b.get("url") or b.get("filename") or "")
+        if not noegle or noegle in allerede_sendt:
+            continue
+        allerede_sendt.add(noegle)
+        blokke.append(b)
     if not blokke:
         return []
     from core.services.attachment_service import image_data_url
@@ -403,6 +426,11 @@ async def translate_to_v2(
             ).to_sse_line())
             _state["text_block_open"] = False
 
+    #: Hvilke billeder streamen allerede har sendt — nøgle er `attachment_id`.
+    #: Uden den ville hvert efterfølgende billedværktøjs-resultat sende turens
+    #: tidligere billeder igen.
+    _sendte_billeder: set[str] = set()
+
     async def _emit_tool_use_start(payload: dict) -> None:
         """Vis værktøjslinjen NÅR kaldet starter — ikke når det er færdigt.
 
@@ -539,7 +567,7 @@ async def translate_to_v2(
         try:
             if name in _BILLEDVAERKTOEJER:
                 for _blok in _live_billedblokke(
-                    str(_state.get("run_id") or ""), tool_id):
+                    str(_state.get("run_id") or ""), _sendte_billeder):
                     _img_idx = _alloc_index()
                     await queue.put(_sse_format("content_block_start", {
                         "type": "content_block_start",

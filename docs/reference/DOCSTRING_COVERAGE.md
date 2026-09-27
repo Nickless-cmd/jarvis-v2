@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8103/15601 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8104/15602 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 8103/15601 functions/methods documented (51%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 697 | 1276 | 54% |
-| `core.services` | 5368 | 10615 | 50% |
+| `core.services` | 5369 | 10616 | 50% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 107 | 183 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -838,7 +838,7 @@ Generated from source. 8103/15601 functions/methods documented (51%). The list b
 - `core/services/cheap_lane_dashboard.py` :: `build_cheap_lane_dashboard` (L49)
 - `core/services/cheap_lane_dashboard.py` :: `invocation_trends` (L15)
 - `core/services/cheap_lane_diagnostics.py` :: `central_evidence` (L36)
-- `core/services/cheap_lane_diagnostics.py` :: `diagnose_cheap_lane` (L160)
+- `core/services/cheap_lane_diagnostics.py` :: `diagnose_cheap_lane` (L241)
 - `core/services/cheap_lane_diagnostics.py` :: `recent_invocations` (L20)
 - `core/services/cheap_lane_diagnostics.py` :: `route_integrity` (L49)
 - `core/services/cheap_lane_quotas.py` :: `set_quota_policy` (L18)

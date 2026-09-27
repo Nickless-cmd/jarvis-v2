@@ -243,3 +243,137 @@ def test_account_cooldown_is_one_parked_finding_not_four_breakers(monkeypatch):
     assert {item["provider"]: item["severity"] for item in starvation} == {
         "chatanywhere": "medium", "ovhcloud": "high",
     }
+
+
+# ── To bøger over samme udbyders sundhed (codex' fund, 27/9-2026) ───────
+
+
+def _base_med_invocation(monkeypatch, *, provider, profil, tidspunkt, status="completed"):
+    """En rigtig SQLite med én invocation. Hele pointen er SQL'en."""
+    import sqlite3
+    from contextlib import contextmanager
+
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    conn.execute("CREATE TABLE cheap_provider_invocations "
+                 "(provider TEXT, auth_profile TEXT, status TEXT, created_at TEXT)")
+    if tidspunkt:
+        conn.execute("INSERT INTO cheap_provider_invocations VALUES (?,?,?,?)",
+                     (provider, profil, status, tidspunkt))
+    conn.commit()
+
+    @contextmanager
+    def _c():
+        yield conn
+
+    monkeypatch.setattr("core.runtime.db_core.connect", _c)
+    return conn
+
+
+def _slot(**kw):
+    s = {"provider": "ovhcloud", "auth_profile": "default", "slot_id": "ovhcloud::x",
+         "status": "cooldown", "last_success_at": "2026-09-27T06:40:00+00:00"}
+    s.update(kw)
+    return s
+
+
+def test_lanens_succes_EFTER_balancerens_er_en_uenighed(monkeypatch):
+    """Codex' konkrete fund: OVHcloud gennemførte et kald 06:58, mens
+    balancerens registrerede seneste succes stod på 06:40 og slottet lå i
+    cooldown.
+
+    Årsagen er mekanisk: `_register_success` rydder cooldown, men kaldes kun
+    når kaldet gik GENNEM balanceren. En selection-succes når aldrig frem, og
+    slottet bliver liggende i en cooldown virkeligheden har modbevist.
+    """
+    from core.services.cheap_lane_diagnostics import health_divergence
+
+    _base_med_invocation(monkeypatch, provider="ovhcloud", profil="default",
+                         tidspunkt="2026-09-27T06:58:00+00:00")
+    ud = health_divergence([_slot()], since=datetime(2026, 9, 27, tzinfo=UTC))
+    assert len(ud) == 1
+    assert ud[0]["balancer_last_success"] == "2026-09-27T06:40:00+00:00"
+    assert ud[0]["lane_last_success"] == "2026-09-27T06:58:00+00:00"
+    assert ud[0]["bagud_s"] == 1080.0
+
+
+def test_en_succes_FOER_balancerens_beviser_ingenting(monkeypatch):
+    """Den nuance codex selv fangede: OVHclouds succes kl. 06:38 lå FØR
+    balancerens fejl kl. 06:40 og beviste derfor ikke stale state. Kun en
+    nyere succes er en uenighed."""
+    from core.services.cheap_lane_diagnostics import health_divergence
+
+    _base_med_invocation(monkeypatch, provider="ovhcloud", profil="default",
+                         tidspunkt="2026-09-27T06:38:00+00:00")
+    assert health_divergence([_slot()], since=datetime(2026, 9, 27, tzinfo=UTC)) == []
+
+
+def test_cooldown_UDEN_nyere_succes_er_balanceren_der_goer_sit_arbejde(monkeypatch):
+    from core.services.cheap_lane_diagnostics import health_divergence
+
+    _base_med_invocation(monkeypatch, provider="ovhcloud", profil="default",
+                         tidspunkt=None)
+    assert health_divergence([_slot()], since=datetime(2026, 9, 27, tzinfo=UTC)) == []
+
+
+def test_et_slot_der_IKKE_er_i_cooldown_maales_ikke(monkeypatch):
+    """Uenigheden betyder kun noget når balanceren holder slottet tilbage."""
+    from core.services.cheap_lane_diagnostics import health_divergence
+
+    _base_med_invocation(monkeypatch, provider="ovhcloud", profil="default",
+                         tidspunkt="2026-09-27T06:58:00+00:00")
+    assert health_divergence([_slot(status="healthy")],
+                             since=datetime(2026, 9, 27, tzinfo=UTC)) == []
+
+
+def test_en_FEJLET_invocation_er_ikke_en_succes(monkeypatch):
+    """Kun `status='ok'` tæller. Ellers ville en fejl bagefter se ud som et
+    bevis på at cooldown'en var forkert — stik modsat."""
+    from core.services.cheap_lane_diagnostics import health_divergence
+
+    _base_med_invocation(monkeypatch, provider="ovhcloud", profil="default",
+                         tidspunkt="2026-09-27T06:58:00+00:00", status="failed")
+    assert health_divergence([_slot()], since=datetime(2026, 9, 27, tzinfo=UTC)) == []
+
+
+def test_profilen_skal_passe_saa_en_anden_konto_ikke_frikender(monkeypatch):
+    """`account2`s succes siger intet om `default`s cooldown — det er to
+    konti hos samme udbyder."""
+    from core.services.cheap_lane_diagnostics import health_divergence
+
+    _base_med_invocation(monkeypatch, provider="ovhcloud", profil="account2",
+                         tidspunkt="2026-09-27T06:58:00+00:00")
+    assert health_divergence([_slot()], since=datetime(2026, 9, 27, tzinfo=UTC)) == []
+
+
+def test_status_vaerdien_er_maalt_og_ikke_opfundet():
+    """Første udgave filtrerede på `status = 'ok'` — en værdi JEG fandt på.
+    Vagten kunne aldrig have fyret.
+
+    Målt i produktionen 27/9-2026, sidste døgn: `completed` 5082, `failed`
+    434. Der findes ingen `ok`. Samme fejlklasse som dengang klienten læste
+    `old_string` mens værktøjet sendte `old_text`: testen pinnede sit eget
+    opdigtede navn og bestod, mens produktionen aldrig ramte koden.
+    """
+    from core.services.cheap_lane_diagnostics import _STATUS_SUCCES
+
+    assert _STATUS_SUCCES == "completed"
+
+
+def test_en_FEJLET_invocation_taeller_ikke_med_den_aegte_vaerdi(monkeypatch):
+    from core.services.cheap_lane_diagnostics import health_divergence
+
+    _base_med_invocation(monkeypatch, provider="ovhcloud", profil="default",
+                         tidspunkt="2026-09-27T06:58:00+00:00", status="failed")
+    assert health_divergence([_slot()], since=datetime(2026, 9, 27, tzinfo=UTC)) == []
+
+
+def test_tidsstempel_med_Z_suffiks_laeses(monkeypatch):
+    """Produktionen skriver `2026-09-27T06:58:48.786792Z`; balanceren skriver
+    uden suffiks. Begge skal kunne sammenlignes."""
+    from core.services.cheap_lane_diagnostics import health_divergence
+
+    _base_med_invocation(monkeypatch, provider="ovhcloud", profil="default",
+                         tidspunkt="2026-09-27T06:58:48.786792Z")
+    ud = health_divergence([_slot()], since=datetime(2026, 9, 27, tzinfo=UTC))
+    assert len(ud) == 1

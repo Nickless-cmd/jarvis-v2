@@ -157,6 +157,87 @@ def unrouted_pool_invocations(rows: list[dict[str, object]]) -> list[dict[str, o
     ]
 
 
+#: Værdien i `cheap_provider_invocations.status` for et gennemført kald.
+#: MÅLT, ikke antaget: kolonnen rummer `completed` og `failed` — aldrig `ok`.
+_STATUS_SUCCES = "completed"
+
+
+def health_divergence(slots: list[dict[str, object]], *,
+                      since: datetime) -> list[dict[str, object]]:
+    """Slots balanceren holder i cooldown, mens lanen HAR haft succes bagefter.
+
+    FUNDET af codex 27/9-2026: OVHcloud gennemførte et kald kl. 06:58, mens
+    balancerens registrerede seneste succes stod på 06:40 og slottet stadig lå
+    i cooldown. To bøger over den samme udbyders sundhed, og de stemmer ikke.
+
+    Årsagen er mekanisk: `_register_success` i balanceren rydder cooldown og
+    tæller breakeren ned — men den kaldes KUN når kaldet gik gennem
+    balanceren. Selection-lanen kan ramme samme udbyder udenom, og den succes
+    når aldrig frem. Slottet bliver liggende i en cooldown virkeligheden har
+    modbevist.
+
+    DENNE FUNKTION ÆNDRER INGEN RUTNING. Den måler kun uenigheden. Det er med
+    vilje: at lade en selection-succes rydde balancerens cooldown ville være en
+    adfærdsændring i den varme sti, og de to lag kan have gode grunde til at
+    holde hver sin bog (andre konti, andre profiler). Først skal uenigheden
+    kunne SES — så kan nogen afgøre hvilken bog der har ret.
+
+    En cooldown uden en nyere succes er ikke en uenighed; den er balanceren der
+    gør sit arbejde. Derfor meldes kun de slots hvor lanen beviseligt kom
+    igennem bagefter.
+
+    STATUS-VÆRDIEN ER `completed`, IKKE `ok`. Første udgave af denne funktion
+    filtrerede på `'ok'` — en værdi jeg selv fandt på — og vagten kunne derfor
+    ALDRIG fyre. Målt i produktionen 27/9-2026, sidste døgn:
+
+        completed   5082
+        failed       434
+
+    Der findes ingen `ok`. `_STATUS_SUCCES` er derfor pinnet i en test mod den
+    ægte kolonne, ikke mod en konstant jeg selv skrev.
+    """
+    i_cooldown = [s for s in slots
+                  if str(s.get("status") or "") == "cooldown"
+                  and str(s.get("provider") or "")]
+    if not i_cooldown:
+        return []
+
+    # Samme funktions-lokale import som `route_integrity` ovenfor: modulet
+    # holder ikke en DB-reference paa modulniveau.
+    from core.runtime.db_core import connect
+
+    fundet: list[dict[str, object]] = []
+    with connect() as conn:
+        for slot in i_cooldown:
+            provider = str(slot.get("provider") or "")
+            profil = str(slot.get("auth_profile") or "default")
+            raekke = conn.execute(
+                "SELECT MAX(created_at) FROM cheap_provider_invocations "
+                "WHERE provider = ? AND COALESCE(NULLIF(auth_profile, ''), 'default') = ? "
+                "AND status = ? AND created_at >= ?",
+                (provider, profil, _STATUS_SUCCES, since.isoformat()),
+            ).fetchone()
+            lanens = _parse_time((raekke or [None])[0])
+            if lanens is None:
+                continue
+            balancerens = _parse_time(slot.get("last_success_at"))
+            if balancerens is not None and lanens <= balancerens:
+                continue
+            fundet.append({
+                "provider": provider,
+                "auth_profile": profil,
+                "slot_id": str(slot.get("slot_id") or ""),
+                "balancer_last_success": (balancerens.isoformat()
+                                          if balancerens else None),
+                "lane_last_success": lanens.isoformat(),
+                "bagud_s": (round((lanens - balancerens).total_seconds(), 1)
+                            if balancerens else None),
+                "cooldown_until": slot.get("cooldown_until"),
+                "cooldown_reason": slot.get("cooldown_reason"),
+            })
+    return fundet
+
+
 def diagnose_cheap_lane(now: datetime | None = None) -> dict[str, object]:
     instant = now or datetime.now(UTC)
     if instant.tzinfo is None:
@@ -253,6 +334,14 @@ def diagnose_cheap_lane(now: datetime | None = None) -> dict[str, object]:
                 provider=str(slot.get("provider") or ""),
                 slot_id=str(slot.get("slot_id") or ""),
             ))
+    for uenig in health_divergence(slots, since=instant - timedelta(hours=24)):
+        findings.append(_finding(
+            "health-divergence", "medium", instant,
+            {k: v for k, v in uenig.items() if k not in ("provider", "slot_id")},
+            provider=str(uenig.get("provider") or ""),
+            slot_id=str(uenig.get("slot_id") or ""),
+        ))
+
     for (provider, profile, reason), members in sorted(parked_accounts.items()):
         findings.append(_finding(
             "account-parked", "medium", instant,

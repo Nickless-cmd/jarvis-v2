@@ -582,6 +582,16 @@ _Retention-sweep — bremser ubegrænset vækst på høj-volumen tabeller._
 | function | `_prune_unmatched_policies` | `(max_age_days, now)` | Slet generaliserede principper der ALDRIG har matchet og er >max_age gamle — | [src](../../../core/services/retention.py#L66) |
 | function | `run_retention_sweep` | `(*, force=…, now=…)` | Kør retention. Selv-throttlende (max 1×/24h) medmindre force=True. | [src](../../../core/services/retention.py#L83) |
 
+## `core/services/retention_coverage.py`
+_Vagt: hvilke store tabeller i `jarvis.db` har ingen aftale om oprydning?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `har_politik` | `()` | Tabeller med en alders-politik, og hvor den står. Kilden er én. | [src](../../../core/services/retention_coverage.py#L74) |
+| function | `_stoerrelser` | `(conn)` | Bytes pr. tabel via dbstat. Tom dict hvis dbstat ikke er bygget ind. | [src](../../../core/services/retention_coverage.py#L94) |
+| function | `tabeller_uden_politik` | `(*, conn=…, min_bytes=…, min_raekker=…)` | De store tabeller der hverken har en politik eller en skreven grund. | [src](../../../core/services/retention_coverage.py#L110) |
+| function | `rapport` | `(fund)` | Én linje til loggen. Tom streng når der intet er at sige. | [src](../../../core/services/retention_coverage.py#L169) |
+
 ## `core/services/retry_admissibility.py`
 _Et ukendt udfald maa aldrig gentages automatisk — Fase 3, K7._
 
@@ -679,16 +689,4 @@ _Rule Engine — forward-chaining symbolic inference over signal surfaces._
 | function | `get_all_rules` | `()` | Return all registered rules as serializable dicts (for tools). | [src](../../../core/services/rule_engine.py#L212) |
 | function | `build_rule_engine_surface` | `()` | — | [src](../../../core/services/rule_engine.py#L224) |
 | function | `_emit_rule_fired_event` | `(rule_name, urgency)` | — | [src](../../../core/services/rule_engine.py#L239) |
-
-## `core/services/run_autonomy_context.py`
-_Er DEN HER koersel uovervaaget? — run-scopet, ikke gaettet._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `set_autonomous` | `(vaerdi)` | Markér koerslen. Returnerer token'et saa kalderen kan nulstille. | [src](../../../core/services/run_autonomy_context.py#L33) |
-| function | `reset_autonomous` | `(token)` | — | [src](../../../core/services/run_autonomy_context.py#L38) |
-| function | `is_autonomous` | `()` | Kaster aldrig. Ved vi det ikke, er svaret NEJ — og saa opfoerer alt sig | [src](../../../core/services/run_autonomy_context.py#L45) |
-| function | `set_run_identity` | `(run_id, origin=…)` | — | [src](../../../core/services/run_autonomy_context.py#L75) |
-| function | `current_run_id` | `()` | "" naar ingen koersel har sat det. Kaster aldrig. | [src](../../../core/services/run_autonomy_context.py#L80) |
-| function | `current_origin` | `()` | "" for en almindelig brugertur, eller naar vi ikke ved det. | [src](../../../core/services/run_autonomy_context.py#L88) |
 

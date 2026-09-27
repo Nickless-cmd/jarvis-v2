@@ -2,6 +2,23 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/spaced_repetition.py`
+_Spaced Repetition — schedule reviews for things Jarvis learned._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_storage_path` | `()` | — | [src](../../../core/services/spaced_repetition.py#L39) |
+| function | `_load` | `()` | — | [src](../../../core/services/spaced_repetition.py#L43) |
+| function | `_save` | `(data)` | — | [src](../../../core/services/spaced_repetition.py#L59) |
+| function | `schedule_reviews_on_completion` | `(*, topic, plan_id=…, intervals_days=…)` | Create review entries for a topic at expanding intervals. | [src](../../../core/services/spaced_repetition.py#L71) |
+| function | `list_due_reviews` | `(*, now=…, limit=…)` | — | [src](../../../core/services/spaced_repetition.py#L103) |
+| function | `complete_review` | `(review_id, *, score)` | Mark a review as completed with score in [0, 1], update profile. | [src](../../../core/services/spaced_repetition.py#L120) |
+| function | `_update_profile` | `(profile, score)` | — | [src](../../../core/services/spaced_repetition.py#L150) |
+| function | `get_profile` | `(topic)` | — | [src](../../../core/services/spaced_repetition.py#L170) |
+| function | `build_spaced_repetition_surface` | `()` | — | [src](../../../core/services/spaced_repetition.py#L174) |
+| function | `_summary_line` | `(due, profiles, avg_conf)` | — | [src](../../../core/services/spaced_repetition.py#L205) |
+| function | `build_spaced_repetition_prompt_section` | `()` | — | [src](../../../core/services/spaced_repetition.py#L214) |
+
 ## `core/services/spatial_entity_ledger.py`
 _Spatial entity ledger — Step D.v1 of meta-evne stack._
 
@@ -619,18 +636,4 @@ _Er dette en tanke — eller er det maskineriet der taler?_
 | function | `_uafbalanceret` | `(tekst)` | Flere lukke- end aabne-tegn = teksten begyndte foer den blev revet ud. | [src](../../../core/services/thought_leak_guard.py#L91) |
 | function | `_ender_midt_i_et_ord` | `(tekst)` | «... if genuine, el» — afkortet mellem to bogstaver uden tegnsaetning. | [src](../../../core/services/thought_leak_guard.py#L99) |
 | function | `ligner_ikke_en_tanke` | `(tekst)` | Grund til at kassere teksten. Tom streng = behold den. | [src](../../../core/services/thought_leak_guard.py#L112) |
-
-## `core/services/thought_stream_daemon.py`
-_Thought stream daemon — continuous associative fragment stream for Jarvis._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_text_signal` | `(value)` | Deterministic 0..1 proxy of a short text state so the event-gate can | [src](../../../core/services/thought_stream_daemon.py#L20) |
-| function | `tick_thought_stream_daemon` | `(energy_level=…, inner_voice_mode=…, *, skip_event_gate=…)` | — | [src](../../../core/services/thought_stream_daemon.py#L28) |
-| function | `_gather_concrete_priors` | `()` | Pull a few specific recent things so the fragment has material to drift | [src](../../../core/services/thought_stream_daemon.py#L69) |
-| function | `_generate_fragment` | `(energy_level, previous_fragment, inner_voice_mode=…)` | — | [src](../../../core/services/thought_stream_daemon.py#L104) |
-| function | `_store_fragment` | `(fragment)` | — | [src](../../../core/services/thought_stream_daemon.py#L142) |
-| function | `get_latest_thought_fragment` | `()` | — | [src](../../../core/services/thought_stream_daemon.py#L175) |
-| function | `inject_rediscovery_fragment` | `(summary)` | Inject a re-discovered memory as a thought fragment. | [src](../../../core/services/thought_stream_daemon.py#L179) |
-| function | `build_thought_stream_surface` | `()` | — | [src](../../../core/services/thought_stream_daemon.py#L189) |
 

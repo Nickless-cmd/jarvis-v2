@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 15607 functions/methods, 51% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 15611 functions/methods, 51% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -48,14 +48,14 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 15607 functions/
 - [`core.services.17`](core.services.17.md) — `nerve_registry` … `perceptual_event_engine`
 - [`core.services.18`](core.services.18.md) — `periodic_jobs_scheduler` … `projection_runtime`
 - [`core.services.19`](core.services.19.md) — `projection_tool_router` … `reboot_awareness_daemon`
-- [`core.services.20`](core.services.20.md) — `recall` … `run_autonomy_context`
-- [`core.services.21`](core.services.21.md) — `run_closure_gate` … `self_deception_guard`
-- [`core.services.22`](core.services.22.md) — `self_experiments` … `session_topic_tracker`
-- [`core.services.23`](core.services.23.md) — `session_view` … `spaced_repetition`
-- [`core.services.24`](core.services.24.md) — `spatial_entity_ledger` … `thought_stream_daemon`
-- [`core.services.25`](core.services.25.md) — `thought_thread` … `user_md_update_proposal_tracking`
-- [`core.services.26`](core.services.26.md) — `user_model_daemon` … `visible_runs_cognitive`
-- [`core.services.27`](core.services.27.md) — `visible_runs_error_messaging` … `world_model_signal_tracking`
+- [`core.services.20`](core.services.20.md) — `recall` … `rule_engine`
+- [`core.services.21`](core.services.21.md) — `run_autonomy_context` … `self_critique_runtime`
+- [`core.services.22`](core.services.22.md) — `self_deception_guard` … `session_tool_pin`
+- [`core.services.23`](core.services.23.md) — `session_topic_tracker` … `source_confidence_gate`
+- [`core.services.24`](core.services.24.md) — `spaced_repetition` … `thought_leak_guard`
+- [`core.services.25`](core.services.25.md) — `thought_stream_daemon` … `user_emotional_resonance`
+- [`core.services.26`](core.services.26.md) — `user_md_update_proposal_tracking` … `visible_runs_capabilities`
+- [`core.services.27`](core.services.27.md) — `visible_runs_cognitive` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

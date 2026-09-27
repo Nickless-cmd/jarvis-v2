@@ -318,22 +318,24 @@ _attachment_service — download, store, and read channel attachments._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_http_download` | `(url, headers)` | — | [src](../../../core/services/attachment_service.py#L45) |
-| function | `_db_store` | `(*, attachment_id, session_id, channel_type, filename, mime_type, size_bytes, local_path, source_url)` | — | [src](../../../core/services/attachment_service.py#L54) |
-| function | `_db_get` | `(attachment_id)` | — | [src](../../../core/services/attachment_service.py#L86) |
-| function | `_db_list` | `(session_id, limit)` | — | [src](../../../core/services/attachment_service.py#L97) |
-| function | `list_image_attachments` | `(*, user_id=…, limit=…, session_id=…)` | List billed-attachments til galleriet (#6). | [src](../../../core/services/attachment_service.py#L108) |
-| function | `register_generated_image` | `(*, local_path, mime_type=…, source_url=…, session_id=…)` | Gør et billede Jarvis LAVEDE synligt — returnerer attachment_id, ellers "". | [src](../../../core/services/attachment_service.py#L164) |
-| function | `attachment_visible_to_user` | `(attachment_id, user_id)` | Privacy-cluster GENNEM Centralen (observe): cross-user attachment-adgangs-beslutning | [src](../../../core/services/attachment_service.py#L215) |
-| function | `_attachment_visible_to_user_impl` | `(attachment_id, user_id)` | Må denne bruger se attachment'et? user_id tom → ja (owner/legacy). | [src](../../../core/services/attachment_service.py#L231) |
-| function | `_call_vision` | `(image_b64, *, model, prompt=…)` | Send billedet til den VALGTE vision-backend. | [src](../../../core/services/attachment_service.py#L255) |
-| function | `_vision_model` | `()` | — | [src](../../../core/services/attachment_service.py#L279) |
-| function | `download_and_store` | `(*, url, filename, mime_type, size_bytes, session_id, channel_type, http_headers=…)` | Download file from URL and persist to uploads/ + DB. | [src](../../../core/services/attachment_service.py#L301) |
-| function | `get_attachment` | `(attachment_id)` | Return attachment metadata dict, or None if not found. | [src](../../../core/services/attachment_service.py#L366) |
-| function | `list_attachments` | `(session_id, limit=…)` | Return recent attachments for session, newest first. | [src](../../../core/services/attachment_service.py#L374) |
-| function | `image_data_url` | `(attachment_id)` | `data:`-URL til et billede — modellens EGNE øjne (2026-09-06). | [src](../../../core/services/attachment_service.py#L385) |
-| function | `read_attachment_content` | `(attachment_id, question=…)` | Read attachment content for Jarvis. | [src](../../../core/services/attachment_service.py#L411) |
-| function | `validate_send_path` | `(path)` | Return (ok, error_message) for outbound file send. | [src](../../../core/services/attachment_service.py#L509) |
+| function | `_allowed_send_roots` | `()` | Rødder et fil-svar må sendes fra — beregnet ved KALD, ikke ved import. | [src](../../../core/services/attachment_service.py#L30) |
+| function | `_http_download` | `(url, headers)` | — | [src](../../../core/services/attachment_service.py#L66) |
+| function | `_db_store` | `(*, attachment_id, session_id, channel_type, filename, mime_type, size_bytes, local_path, source_url)` | — | [src](../../../core/services/attachment_service.py#L75) |
+| function | `_db_get` | `(attachment_id)` | — | [src](../../../core/services/attachment_service.py#L107) |
+| function | `_db_list` | `(session_id, limit)` | — | [src](../../../core/services/attachment_service.py#L118) |
+| function | `list_image_attachments` | `(*, user_id=…, limit=…, session_id=…)` | List billed-attachments til galleriet (#6). | [src](../../../core/services/attachment_service.py#L129) |
+| function | `_send_generated_to_channel` | `(session_id, local_path)` | Send et NYLIGT genereret billede til den kanal sessionen hører til. | [src](../../../core/services/attachment_service.py#L185) |
+| function | `register_generated_image` | `(*, local_path, mime_type=…, source_url=…, session_id=…)` | Gør et billede Jarvis LAVEDE synligt — returnerer attachment_id, ellers "". | [src](../../../core/services/attachment_service.py#L229) |
+| function | `attachment_visible_to_user` | `(attachment_id, user_id)` | Privacy-cluster GENNEM Centralen (observe): cross-user attachment-adgangs-beslutning | [src](../../../core/services/attachment_service.py#L283) |
+| function | `_attachment_visible_to_user_impl` | `(attachment_id, user_id)` | Må denne bruger se attachment'et? user_id tom → ja (owner/legacy). | [src](../../../core/services/attachment_service.py#L299) |
+| function | `_call_vision` | `(image_b64, *, model, prompt=…)` | Send billedet til den VALGTE vision-backend. | [src](../../../core/services/attachment_service.py#L323) |
+| function | `_vision_model` | `()` | — | [src](../../../core/services/attachment_service.py#L347) |
+| function | `download_and_store` | `(*, url, filename, mime_type, size_bytes, session_id, channel_type, http_headers=…)` | Download file from URL and persist to uploads/ + DB. | [src](../../../core/services/attachment_service.py#L369) |
+| function | `get_attachment` | `(attachment_id)` | Return attachment metadata dict, or None if not found. | [src](../../../core/services/attachment_service.py#L434) |
+| function | `list_attachments` | `(session_id, limit=…)` | Return recent attachments for session, newest first. | [src](../../../core/services/attachment_service.py#L442) |
+| function | `image_data_url` | `(attachment_id)` | `data:`-URL til et billede — modellens EGNE øjne (2026-09-06). | [src](../../../core/services/attachment_service.py#L453) |
+| function | `read_attachment_content` | `(attachment_id, question=…)` | Read attachment content for Jarvis. | [src](../../../core/services/attachment_service.py#L479) |
+| function | `validate_send_path` | `(path)` | Return (ok, error_message) for outbound file send. | [src](../../../core/services/attachment_service.py#L577) |
 
 ## `core/services/attachment_topology_signal_tracking.py`
 _Attachment-topology signal tracking — migrated onto signal_tracking_framework._

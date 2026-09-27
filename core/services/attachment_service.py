@@ -27,6 +27,27 @@ _ALLOWED_SEND_ROOTS: list[Path] = [
 ]
 
 
+def _allowed_send_roots() -> list[Path]:
+    """Rødder et fil-svar må sendes fra — beregnet ved KALD, ikke ved import.
+
+    Den genererede billed-mappe (`shared_dir()/memory/generated`, hvor både
+    openrouter_image og pollinations_image lægger filer) resolves dynamisk:
+    `shared_dir()` læser HOME ved kald. En statisk kopi ville derfor pege på
+    det forkerte træ i det øjeblik HOME flytter sig — og det gjorde den:
+    målt 27/9-2026 gav `validate_send_path(<genereret .png>)` svaret
+    (False, 'not-allowed'), mens en upload gik igennem. Uden denne rod
+    fandtes der INGEN vej til at sende et genereret billede til en kanal.
+    """
+    rødder = list(_ALLOWED_SEND_ROOTS)
+    try:
+        from core.runtime.workspace_paths import shared_dir
+
+        rødder.append(shared_dir() / "memory" / "generated")
+    except Exception:
+        logger.debug("kunne ikke resolve genereret-mappe", exc_info=True)
+    return rødder
+
+
 # ---------------------------------------------------------------------------
 # Internal helpers (monkeypatchable in tests)
 # ---------------------------------------------------------------------------
@@ -161,6 +182,50 @@ def list_image_attachments(
 GENERERET = "generated"
 
 
+def _send_generated_to_channel(session_id: str, local_path: str) -> None:
+    """Send et NYLIGT genereret billede til den kanal sessionen hører til.
+
+    ## Hvorfor den findes
+
+    Målt 27/9-2026: Bjørn bad om et billede på Discord. Det blev genereret
+    (1.240.612 bytes) og registreret — og var usynligt. Der findes ingen
+    automatisk kobling fra `openrouter_image` til en kanal, og
+    `validate_send_path` afviste end ikke stien manuelt. Jarvis skrev
+    «Der er den, Bjørn! 🎨» om noget Bjørn ikke kunne se.
+
+    Desk viser billedet fordi SSE-streamen bærer en `image`-blok. Discord har
+    ingen blok-rendering — der SKAL en fil-vedhæftning til.
+
+    Koblingen hører her og ikke i hvert værktøj: `register_generated_image`
+    er det fælles punkt for både openrouter_image og pollinations_image, så
+    én ændring dækker begge.
+
+    Self-safe og tavs: fejler opslaget eller afsendelsen, er billedet stadig
+    registreret og synligt i tråden. En kanal-fejl må aldrig kunne vælte en
+    generering der lykkedes.
+    """
+    try:
+        # Doven import: discord_gateway importerer attachment_service (via
+        # validate_send_path), så en top-level import ville lukke en cirkel.
+        from core.services.discord_gateway import (
+            get_discord_channel_for_session,
+            send_discord_file,
+        )
+
+        kanal = get_discord_channel_for_session(session_id)
+        if not kanal:
+            return
+        send_discord_file(
+            channel_id=int(kanal),
+            text="",
+            file_path=local_path,
+        )
+    except Exception:
+        logger.debug(
+            "register_generated_image: kunne ikke sende til kanal", exc_info=True
+        )
+
+
 def register_generated_image(
     *, local_path: str, mime_type: str = "image/jpeg", source_url: str = "",
     session_id: str | None = None,
@@ -206,10 +271,13 @@ def register_generated_image(
             local_path=str(sti),
             source_url=source_url or "",
         )
-        return aid
     except Exception:
         logger.debug("register_generated_image: kunne ikke registrere", exc_info=True)
         return ""
+    # UDEN FOR try: rækken er skrevet, og en kanal-fejl må ikke koste
+    # attachment_id'et. Billedet er synligt i tråden uanset hvad Discord gør.
+    _send_generated_to_channel(sid, str(sti))
+    return aid
 
 
 def attachment_visible_to_user(attachment_id: str, user_id: str | None) -> bool:
@@ -510,11 +578,15 @@ def validate_send_path(path: str) -> tuple[bool, str]:
     """Return (ok, error_message) for outbound file send.
 
     Checks: path within allowed roots, file exists and readable, under 50 MB.
+
+    Sti-tjekket er `is_relative_to`, ikke `startswith`: med prefix-sammenligning
+    ville `<rod>-evil/fil` passere som om den lå UNDER roden. Rødderne beregnes
+    ved kald, så genereret-mappen følger HOME (se `_allowed_send_roots`).
     """
     p = Path(path).resolve()
     allowed = any(
-        str(p).startswith(str(root.resolve()))
-        for root in _ALLOWED_SEND_ROOTS
+        p.is_relative_to(root.resolve())
+        for root in _allowed_send_roots()
     )
     if not allowed:
         return False, "not-allowed"

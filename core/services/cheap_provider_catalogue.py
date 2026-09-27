@@ -106,6 +106,48 @@ CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
         "cost_class": "free",
         "static_models": ["qwen7b"],
     },
+    # github-models PENSIONERET 27/9-2026 — tjenesten findes ikke længere.
+    #
+    # Bjørn bad om at få den til at virke. Den kan ikke. Målt:
+    #   models.github.ai svarer 200 med brødteksten «OK» paa HVER sti —
+    #     ogsaa `/` og `/inference/chat/completions`. Det er en
+    #     health-check-flade, ikke et API. Bekraeftet fra TO net (CT105 og
+    #     CheifOne), saa det er ikke vores egress.
+    #   models.inference.ai.azure.com — den oprindelige adresse — slaar ikke
+    #     op laengere (NXDOMAIN).
+    #   Nøglen FINDES og er gyldig (`gho_…` i default-profilen), saa det er
+    #     ikke et auth-problem.
+    #
+    # Registret har fem model-poster, alle `lane=cheap` og alle slaaet FRA
+    # 19-08-2026 i samme sekund. Det var ikke en ugepr&oslash;ve der fandt fem
+    # d&aring;rlige modeller — det var migrationen. `visible_model_adapters`
+    # siger det selv: «that was for the old models.github.ai free tier».
+    #
+    # Tjenesten er foldet ind i Copilot, og den kører allerede som
+    # `copilot-free` (i puljen, verificeret). De modeller github-models ville
+    # have tilføjet — o4-mini, deepseek-r1, llama-3.3-70b — er væk med den.
+    #
+    # Posten staar her uden `static_models` af historiske grunde; den kan ikke
+    # komme i puljen, og det er rigtigt. Ikke wired.
+
+    # ollamafreeapi IKKE BRUGBAR 27/9-2026 — de offentlige servere er nede.
+    #
+    # Den har sit eget adapter-modul (`core/runtime/ollamafreeapi_provider`)
+    # og henter modellisten dynamisk: 10 modeller MED servere. Men et kald
+    # fejler efter 136 sekunder med «All servers failed».
+    #
+    # Maalt paa serverne bag `llama3.2:3b` (4 stk) og `gpt-oss:20b` (1 stk):
+    #   5.149.249.212:11434    timeout
+    #   89.111.170.212:11434   timeout
+    #   185.211.5.32:11434     connection refused paa 35 ms — vaerten lever,
+    #                          porten er lukket
+    # Samme resultat fra CT105 og fra CheifOne. Det er ikke vores firewall;
+    # de offentlige Ollama-servere er vaek.
+    #
+    # Derfor har den hverken `static_models` her eller model-poster i
+    # registret, og kommer aldrig i puljen. Registret siger stadig
+    # `enabled: true`, hvilket faar den til at taelle med i «38 enabled» —
+    # to tal der maaler forskellige ting. Se ogsaa modul-docstringen.
     # PEKPIK AFVIST 26/9-2026 — den ene model den tilbyder fejler på HVERT kald,
     # og kaldet trækker forbrug alligevel.
     #

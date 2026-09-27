@@ -321,3 +321,27 @@ def test_pekpik_er_afvist_for_den_fakturerer_for_fejl():
     src = inspect.getsource(kat)
     assert "PEKPIK AFVIST" in src
     assert "fakturerer for fejl" in src
+
+
+def test_github_models_og_ollamafreeapi_er_dokumenteret_som_ubrugelige():
+    """Bjørn bad om at få dem til at virke 27/9-2026. Begge kan ikke, og af
+    hver sin grund — målt fra TO net, så det ikke er vores egress:
+
+    * `models.github.ai` svarer 200 «OK» på hver sti (health-check-flade),
+      og `models.inference.ai.azure.com` slår ikke op. Nøglen er gyldig.
+      Tjenesten er foldet ind i Copilot, som kører som `copilot-free`.
+    * ollamafreeapis offentlige servere: to timeout, én connection refused
+      på 35 ms. Serverne er væk.
+
+    Grundene står i kataloget med tallene, så ingen bruger en formiddag på
+    dem igen.
+    """
+    import inspect
+    src = inspect.getsource(kat)
+    assert "github-models PENSIONERET" in src
+    assert "ollamafreeapi IKKE BRUGBAR" in src
+    assert "connection refused paa 35 ms" in src
+    # Ingen af dem må have modeller der kunne få dem i puljen.
+    for n in ("github-models", "ollamafreeapi"):
+        post = kat.CHEAP_PROVIDER_DEFAULTS.get(n) or {}
+        assert not (post.get("static_models") or []), n

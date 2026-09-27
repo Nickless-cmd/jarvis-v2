@@ -59,21 +59,29 @@ class TestBlokkenBygges:
         pf.note("r7", filename="k.png", mime_type="image/png",
                 attachment_id="att-7", tool_use_id="t7")
         sendt: set[str] = set()
-        assert len(sse._live_billedblokke("r7", sendt)) == 1
-        assert sse._live_billedblokke("r7", sendt) == [], "billedet blev sendt igen"
+        assert len(sse._live_billedblokke("t7", sendt)) == 1
+        assert sse._live_billedblokke("t7", sendt) == [], "billedet blev sendt igen"
 
-    def test_filteret_hviler_IKKE_paa_tool_use_id(self) -> None:
-        """Den godkendte udsender-vej i `visible_runs` sender ingen
-        `capability_id`, så et filter på `tool_use_id` fandt aldrig noten.
-        Det var derfor det virkede i test og ikke i drift."""
-        pf.note("r8", filename="k.png", mime_type="image/png",
-                attachment_id="att-8", tool_use_id="et-rigtigt-toolu-id")
-        assert len(sse._live_billedblokke("r8", set())) == 1
+    def test_noten_findes_SELVOM_run_id_er_et_andet(self) -> None:
+        """DRIFTENS form, målt 27/9-2026 med logning i begge ender:
+
+            note:        run_id='visible-a75f…'  tool_use_id='call_00_bUh…'
+            tool_result: run_id='visible-8fa4…'  tool_id='call_00_bUh…'
+
+        Samme proces, samme sekund, samme kald-id — men TO forskellige run'er,
+        fordi `_state["run_id"]` sættes én gang og turen spænder over flere.
+        Slår opslaget på run'et, findes noten aldrig. Det er dét her er.
+        """
+        pf.note("visible-a75f4f3f", filename="k.png", mime_type="image/png",
+                attachment_id="att-8", tool_use_id="call_00_bUhJiD6P")
+        blokke = sse._live_billedblokke("call_00_bUhJiD6P", set())
+        assert len(blokke) == 1
+        assert blokke[0]["attachment_id"] == "att-8"
 
     def test_blokken_baerer_referencen_og_ankeret(self) -> None:
         pf.note("r3", filename="k.png", mime_type="image/png",
                 attachment_id="att-3", tool_use_id="t3")
-        blokke = sse._live_billedblokke("r3", set())
+        blokke = sse._live_billedblokke("t3", set())
         assert len(blokke) == 1
         assert blokke[0]["type"] == "image"
         assert blokke[0]["attachment_id"] == "att-3"
@@ -83,7 +91,7 @@ class TestBlokkenBygges:
     def test_en_fil_der_ikke_er_et_billede_kommer_ikke_med(self) -> None:
         pf.note("r4", filename="rapport.md", mime_type="text/markdown",
                 url="/files/rapport.md", tool_use_id="t4")
-        assert sse._live_billedblokke("r4", set()) == []
+        assert sse._live_billedblokke("t4", set()) == []
 
     def test_tomt_run_id_giver_ingen_blokke(self) -> None:
         assert sse._live_billedblokke("", set()) == []
@@ -93,7 +101,7 @@ class TestBlokkenBygges:
                 attachment_id="att-5", tool_use_id="t5")
         import core.services.attachment_service as a
         monkeypatch.setattr(a, "image_data_url", lambda aid: "data:image/png;base64,AAA")
-        blokke = sse._live_billedblokke("r5", set())
+        blokke = sse._live_billedblokke("t5", set())
         assert blokke[0]["src"] == "data:image/png;base64,AAA"
 
     def test_for_stort_billede_sendes_stadig_med_sin_reference(self, monkeypatch) -> None:
@@ -104,7 +112,7 @@ class TestBlokkenBygges:
                 attachment_id="att-6", tool_use_id="t6")
         import core.services.attachment_service as a
         monkeypatch.setattr(a, "image_data_url", lambda aid: None)
-        blokke = sse._live_billedblokke("r6", set())
+        blokke = sse._live_billedblokke("t6", set())
         assert len(blokke) == 1
         assert "src" not in blokke[0]
         assert blokke[0]["attachment_id"] == "att-6"

@@ -199,7 +199,7 @@ _BILLEDVAERKTOEJER = frozenset({
 })
 
 
-def _live_billedblokke(run_id: str, allerede_sendt: set[str]) -> list[dict[str, Any]]:
+def _live_billedblokke(tool_use_id: str, allerede_sendt: set[str]) -> list[dict[str, Any]]:
     """Billedblokke for turen der endnu ikke er sendt, klar til den levende stream.
 
     Noterne kommer fra `published_files` — dem værktøjet lagde fra sig under
@@ -227,10 +227,10 @@ def _live_billedblokke(run_id: str, allerede_sendt: set[str]) -> list[dict[str, 
     `/attachments/image/{id}` virker med det samme, og klienten henter den
     med token. Bedre et billede der kommer et øjeblik senere end intet.
     """
-    if not run_id:
+    if not tool_use_id:
         return []
-    from core.services.published_files import as_blocks, peek
-    poster = peek(run_id)
+    from core.services.published_files import as_blocks, peek_efter_tool_use
+    poster = peek_efter_tool_use(tool_use_id)
     blokke = []
     for b in as_blocks(poster):
         if b.get("type") != "image":
@@ -581,8 +581,7 @@ async def translate_to_v2(
 
         try:
             if name in _BILLEDVAERKTOEJER:
-                for _blok in _live_billedblokke(
-                    str(_state.get("run_id") or ""), _sendte_billeder):
+                for _blok in _live_billedblokke(tool_id, _sendte_billeder):
                     _img_idx = _alloc_index()
                     await queue.put(_sse_format("content_block_start", {
                         "type": "content_block_start",

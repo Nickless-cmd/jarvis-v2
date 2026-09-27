@@ -747,8 +747,10 @@ async def test_billedblok_sendes_i_den_levende_stream(monkeypatch):
 
     pf._nulstil_for_tests()
     monkeypatch.setattr(a, "image_data_url", lambda aid: "data:image/png;base64,AAA")
-    pf.note("v1", filename="k.png", mime_type="image/png",
-            attachment_id="att-1", tool_use_id="cap-1")
+    # DRIFTENS form: noten ligger under et ANDET run end det streamen står
+    # med (målt 27/9-2026), og eventet bærer et capability_id som tool_id.
+    pf.note("et-HELT-andet-run", filename="k.png", mime_type="image/png",
+            attachment_id="att-1", tool_use_id="call_00_bUh")
 
     async def legacy() -> AsyncIterator[str]:
         yield _legacy_sse("delta", {"type": "delta", "run_id": "v1", "delta": "x"})
@@ -757,6 +759,7 @@ async def test_billedblok_sendes_i_den_levende_stream(monkeypatch):
         # denne test gav den et id, og derfor bestod den mens driften fejlede.
         yield _legacy_sse("capability", {
             "type": "tool_result", "tool": "openrouter_image", "status": "ok",
+            "capability_id": "call_00_bUh",
         })
         yield _legacy_sse("done", {"type": "done", "run_id": "v1", "status": "completed"})
 
@@ -791,12 +794,16 @@ async def test_samme_billede_sendes_ikke_to_gange(monkeypatch):
 
     async def legacy() -> AsyncIterator[str]:
         yield _legacy_sse("delta", {"type": "delta", "run_id": "v2", "delta": "x"})
-        pf.note("v2", filename="en.png", mime_type="image/png", attachment_id="att-en")
+        pf.note("run-en", filename="en.png", mime_type="image/png",
+                attachment_id="att-en", tool_use_id="kald-1")
         yield _legacy_sse("capability", {
-            "type": "tool_result", "tool": "openrouter_image", "status": "ok"})
-        pf.note("v2", filename="to.png", mime_type="image/png", attachment_id="att-to")
+            "type": "tool_result", "tool": "openrouter_image", "status": "ok",
+            "capability_id": "kald-1"})
+        pf.note("run-to", filename="to.png", mime_type="image/png",
+                attachment_id="att-to", tool_use_id="kald-2")
         yield _legacy_sse("capability", {
-            "type": "tool_result", "tool": "openrouter_image_edit", "status": "ok"})
+            "type": "tool_result", "tool": "openrouter_image_edit", "status": "ok",
+            "capability_id": "kald-2"})
         yield _legacy_sse("done", {"type": "done", "run_id": "v2", "status": "completed"})
 
     events = _parse_v2_events(await _collect(translate_to_v2(

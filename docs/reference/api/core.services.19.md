@@ -503,7 +503,8 @@ _Filer Jarvis har udgivet i en tur — så de kan hæfte sig på svaret._
 | function | `note` | `(run_id, *, filename, url=…, mime_type=…, size_bytes=…, attachment_id=…, tool_use_id=…)` | Registrér at turen udgav en fil eller et billede. Kaster aldrig. | [src](../../../core/services/published_files.py#L51) |
 | function | `take` | `(run_id)` | Hent og RYD turens udgivne filer. Tom liste hvis ingen. | [src](../../../core/services/published_files.py#L103) |
 | function | `peek` | `(run_id, *, tool_use_id=…)` | Se turens poster UDEN at rydde dem. Tom liste hvis ingen. | [src](../../../core/services/published_files.py#L112) |
-| function | `as_blocks` | `(poster)` | Oversæt til content_json-blokke i samme form som vedhæftninger. | [src](../../../core/services/published_files.py#L134) |
+| function | `peek_efter_tool_use` | `(tool_use_id)` | Turens poster for ÉT værktøjskald — uden at vide hvilket run de ligger i. | [src](../../../core/services/published_files.py#L134) |
+| function | `as_blocks` | `(poster)` | Oversæt til content_json-blokke i samme form som vedhæftninger. | [src](../../../core/services/published_files.py#L159) |
 
 ## `core/services/push_dispatcher.py`
 _Beslutter HVORNAAR og HVEM der skal pushes. Bygger paa run_event_log-suppression._

@@ -45,6 +45,7 @@ from core.services.cheap_lane_trace_context import (
     CheapLaneTraceContext,
     candidate_slot_id,
 )
+from core.services.cheap_lane_route_write import _spor_uden_at_vaelte
 
 
 def _facade():
@@ -475,6 +476,7 @@ def _maybe_central_route_live(
     candidates: list[dict[str, object]],
     kind: str,
     skip_providers: frozenset[str],
+    latency_sensitive: bool = False,
 ) -> dict[str, object]:
     """Task 9 live: når central_route_live er ON henter selection sit pick fra det
     Central-ejede beslutnings-punkt (så BÅDE balancer og selection deler ét beslutnings-
@@ -485,7 +487,10 @@ def _maybe_central_route_live(
         return old_target
     try:
         from core.services import central_route
-        r = central_route.route(lane="cheap", task={"kind": kind}, exclude=skip_providers)
+        r = central_route.route(
+            lane="cheap", task={"kind": kind, "latency_sensitive": latency_sensitive},
+            exclude=skip_providers,
+        )
         if r.get("is_floor"):
             return old_target
         p, m = str(r.get("provider") or ""), str(r.get("model") or "")
@@ -517,6 +522,7 @@ def select_cheap_lane_target(
     correlation_id: str = "",
     daemon: str = "",
     persist_trace: bool = True,
+    latency_sensitive: bool = False,
 ) -> dict[str, object]:
     """Pick a cheap-lane provider. See task_kind notes above for routing.
 
@@ -607,14 +613,23 @@ def select_cheap_lane_target(
             "eligibility_reason": "eligible",
             "effective_priority": adaptive["effective_priority"],
             "adaptive_penalty": adaptive["adaptive_penalty"],
+            "avg_latency_ms": adaptive.get("avg_latency_ms", 0),
+            "success_count": adaptive.get("success_count", 0),
         })
         evaluated.append((candidate, trace))
 
     eligible = [pair for pair in evaluated if pair[1]["eligible"]]
+    from core.services.weighted_slot_health import latency_rank_multiplier
     for _candidate, trace in eligible:
         bias = max(-0.9, min(float(trace.get("manual_bias") or 0.0), 2.0))
+        multiplier = 1.0
+        if latency_sensitive:
+            multiplier = latency_rank_multiplier(
+                float(trace.get("avg_latency_ms") or 0),
+                int(trace.get("success_count") or 0),
+            )
         trace["final_weight"] = round(
-            float(trace.get("effective_priority") or 9999) / (1.0 + bias), 4
+            float(trace.get("effective_priority") or 9999) * multiplier / (1.0 + bias), 4
         )
     # RAEKKEFOELGEN OVENFOR ER EN BESLUTNING, IKKE EN TILFAELDIGHED (18/9-2026).
     #
@@ -660,7 +675,9 @@ def select_cheap_lane_target(
             "correlation_id": trace_context.correlation_id,
         }
         _maybe_shadow_compare(_target)
-        final = _maybe_central_route_live(_target, candidates, kind, skip_providers)
+        final = _maybe_central_route_live(
+            _target, candidates, kind, skip_providers, latency_sensitive,
+        )
         route_id = ""
         if persist_trace:
             from core.runtime.db_cheap_lane_control import record_route_decision
@@ -743,11 +760,15 @@ def execute_cheap_lane_via_pool(
                 _tg.sleep(0.1)
         except Exception:
             pass
+    latency_sensitive = (task_kind == "inner_voice_shadow" or
+                         task_kind in {"default", "background"}
+                         and _estimate_tokens(message) <= 256)
     target = select_cheap_lane_target(
         skip_providers=skip_providers,
         task_kind=task_kind,
         correlation_id=trace_context.correlation_id,
         daemon=trace_context.daemon,
+        latency_sensitive=latency_sensitive,
     )
     if not bool(target.get("active", True)) or not str(target.get("provider") or "").strip():
         # Spec Fund 4: aldrig rejse ved tom pool — fald til garanteret bund.
@@ -1286,32 +1307,6 @@ def _candidate_quota_snapshot(candidate: dict[str, object]) -> dict[str, object]
         cache_ttl_seconds=_QUOTA_SNAPSHOT_TTL_SECONDS,
         reset_hours=_QUOTA_RESET_HOURS,
     )
-
-
-def _spor_uden_at_vaelte(skriv, **felter) -> str:
-    """Skriv sporet, men lad aldrig en fejl i det vaelte turen.
-
-    Maalt 18/9-2026: `record_route_decision` kastede ved over 100 kandidater,
-    puljen har 161, og undtagelsen forplantede sig hele vejen ud i kalderen.
-    Jarvis’ indre stemme faldt tilbage til skabelonen ved hvert forsoeg — og
-    paa skaermen saa det bare ud som om den var blevet fattig.
-
-    Et spor er en observation. En observation der kan slaa handlingen ihjel,
-    er ikke en observation laengere.
-    """
-    try:
-        return str(skriv(**felter) or "")
-    except Exception:
-        # Modulet har ingen logger — og en logning der selv kaster, ville
-        # forvandle et haandteret uheld til det nedbrud vi lige har fjernet.
-        # (Maalt: NameError inde i except-blokken, foerste forsoeg.)
-        try:
-            import logging
-            logging.getLogger(__name__).warning(
-                "cheap-lane: rute-sporet kunne ikke skrives", exc_info=True)
-        except Exception:
-            pass
-        return ""
 
 
 def _fallback_after_failure(*, failed_provider: str, failed_model: str) -> dict[str, object] | None:

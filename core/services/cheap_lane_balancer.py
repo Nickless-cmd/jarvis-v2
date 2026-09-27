@@ -840,8 +840,11 @@ def call_balanced(
     selection-stien ('cheap'). Forening sker naturligt når central_route_live flippes.
     """
     from core.services.cheap_provider_runtime import CheapProviderError
+    from core.services.cheap_lane_health_reconcile import reconcile_successes
 
     states = _load_state()
+    if reconcile_successes(states, _time.time()):
+        _save_state(states)
     pool = build_slot_pool()
     if not pool:
         # Fund 4: tom pool → garanteret bund, aldrig rejse.
@@ -1248,10 +1251,13 @@ def _is_enabled() -> bool:
 def balancer_snapshot() -> dict:
     """Return full state surface for Mission Control telemetry."""
     from core.services.weighted_slot_health import active_account_block
+    from core.services.cheap_lane_health_reconcile import reconcile_successes
 
     states = _load_state()
     pool = build_slot_pool()
     now = _time.time()
+    if reconcile_successes(states, now):
+        _save_state(states)
 
     eligible = 0
     blocked = 0
@@ -1320,6 +1326,10 @@ def balancer_snapshot() -> dict:
             "total_failures": state.total_failures,
             "success_rate": success_rate,
             "last_success_at": last_success_iso,
+            "last_failure_at": (
+                datetime.fromtimestamp(state.last_failure_at, tz=timezone.utc).isoformat()
+                if state.last_failure_at else None
+            ),
             "daily_observed": state.daily_observed,
             "stale": bool(state.stale_until_daily_reset),
         })

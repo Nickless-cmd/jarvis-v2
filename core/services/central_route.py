@@ -56,6 +56,21 @@ def _rank_candidates(lane: str, task: Any, exclude: frozenset[str]) -> list[tupl
     return [(p, m) for _, _, p, m in _scored_candidates(lane, task, exclude)]
 
 
+def _cheap_latency_metrics() -> dict[tuple[str, str], tuple[float, int]]:
+    """Read model latency and sample count in one query for small-task ranking."""
+    from core.runtime.db_cheap_provider import list_cheap_provider_runtime_states
+    from core.services.weighted_slot_health import decode_state_metadata
+
+    metrics: dict[tuple[str, str], tuple[float, int]] = {}
+    for state in list_cheap_provider_runtime_states(lane="cheap"):
+        metadata = decode_state_metadata(state)
+        metrics[(str(state["provider"]), str(state["model"]))] = (
+            float(metadata.get("avg_latency_ms") or 0),
+            int(metadata.get("success_count") or 0),
+        )
+    return metrics
+
+
 def _scored_candidates(lane: str, task: Any, exclude: frozenset[str]) -> list[tuple[float, float, str, str]]:
     """(-cap, rank, provider, model) sorteret bedst-først. rank = prio/headroom_weight
     (lavere=bedre); bevares så cheap-lanens kvote-proportionale spredning kan vægte.
@@ -72,7 +87,11 @@ def _scored_candidates(lane: str, task: Any, exclude: frozenset[str]) -> list[tu
     from core.services.central_route_headroom import headroom_ok, headroom_weight
     from core.services.cheap_provider_runtime_adapters import (
         CHEAP_PROVIDER_DEFAULTS, provider_cost_class)
+    from core.services.weighted_slot_health import latency_rank_multiplier
     kind = str((task or {}).get("kind") or "default") if isinstance(task, dict) else "default"
+    latency_sensitive = (lane == "cheap" and isinstance(task, dict)
+                         and bool(task.get("latency_sensitive")))
+    latency_metrics = _cheap_latency_metrics() if latency_sensitive else {}
     # Cost-gate (Bjørn 15. jul): betalte modeller (Copilot-premium) må KUN vælges når
     # task'en eksplicit tillader det — "gratis = frit valg, betalt = rigtige opgaver".
     allow_paid = bool((task or {}).get("allow_paid")) if isinstance(task, dict) else False
@@ -95,6 +114,11 @@ def _scored_candidates(lane: str, task: Any, exclude: frozenset[str]) -> list[tu
         if not headroom_ok(p):            # >=95% kvote → skip proaktivt
             continue
         prio = float(c.get("priority") or 9999)
+        if latency_sensitive:
+            avg_latency_ms, success_count = latency_metrics.get((p, m), (0.0, 0))
+            prio *= latency_rank_multiplier(
+                avg_latency_ms, success_count,
+            )
         # background: skub public proxies foran (træk 1000 fra så de vinder)
         proxy_bonus = -1000.0 if (kind == "background" and _is_public_proxy(p)) else 0.0
         rank = proxy_bonus + prio / max(headroom_weight(p), 1e-3)

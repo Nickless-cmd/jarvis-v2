@@ -2,6 +2,8 @@
 Description=Jarvis V2 runtime owner (heartbeat, schedulers, bridges)
 After=network.target
 Wants=network.target
+StartLimitIntervalSec=120s
+StartLimitBurst=5
 
 [Service]
 Type=simple
@@ -13,12 +15,11 @@ ExecStart=/opt/conda/envs/ai/bin/uvicorn apps.api.jarvis_api.app:app \
     --host 127.0.0.1 \
     --port 8011 \
     --workers 1 \
-    --timeout-graceful-shutdown 5
+    --timeout-graceful-shutdown 35
 
 Restart=on-failure
 RestartSec=10s
-StartLimitIntervalSec=120s
-StartLimitBurst=5
+TimeoutStopSec=45s
 
 Environment=PYTHONPATH=/media/projects/jarvis-v2
 Environment=PYTHONUNBUFFERED=1

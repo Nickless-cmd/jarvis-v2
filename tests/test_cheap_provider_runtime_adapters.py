@@ -36,7 +36,7 @@ def test_new_verified_providers_present_and_well_formed():
     expected_models = {
         "cerebras": "gpt-oss-120b",
         "cline": "deepseek/deepseek-chat",
-        "aihubmix": "gpt-5.5-free",
+        "aihubmix": "coding-glm-5.3-free",
         "requesty": "nvidia/nemotron-3-ultra-550b-a55b",  # gratis-planen 17/9-2026
     }
     for provider, must_have_model in expected_models.items():

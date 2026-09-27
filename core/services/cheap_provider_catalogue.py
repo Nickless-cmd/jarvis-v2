@@ -758,9 +758,9 @@ CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
         "static_models": ["nvidia/nemotron-3-super-120b-a12b:free",
                           "nvidia/nemotron-3-ultra-550b-a55b:free",
                           "cohere/north-mini-code:free", "openrouter/free",
-                          # Nex mini gav model-not-found 27/9; ling-3.0 blev
-                          # verificeret med tekst og tool_call som aktiv erstatning.
-                          "nex-agi/nex-n2.5-pro:free",
+                          # Nex pro forsvandt fra Kilos live-katalog 27/9.
+                          # Ling sante svarede med tekst og tool_call samme dag.
+                          "inclusionai/ling-3.0-flash-sante:free",
                           "dots-studio/dots-3-note-preview:free",
                           "poolside/laguna-xs-2.1:free", "stepfun/step-3.7-flash:free",
                           "inclusionai/ling-3.0-flash-fin:free",

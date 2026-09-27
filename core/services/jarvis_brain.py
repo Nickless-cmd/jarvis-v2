@@ -902,9 +902,15 @@ def search_brain_scored(
 # tabellen voksede til 2,81 mio. rækker / 1,2 GB (målt 2026-08-30).
 TEMPORAL_EDGE_READ_MIN_CONFIDENCE = 0.5
 
-# Loft pr. node. Læseren tager MAX(confidence) pr. kandidat, og den ubrugte
-# get_temporal_neighbors bruger LIMIT 10 — så en tæt hale bliver aldrig set.
-# Uden et loft vokser grafen kvadratisk med antallet af entries.
+# Loft pr. node, pr. retning. Uden et loft vokser grafen kvadratisk med
+# antallet af entries.
+#
+# 64 er IKKE valgt fordi halen er usynlig. Den ene læser
+# (_compute_search_temporal_boost) ser kun MAX(confidence) og ville få samme
+# svar med et loft på 1 — men den anden (temporal_boost_recall) bruger
+# kanterne som naboskab og mister en svag nabo for hver kant der skæres.
+# Loftet er derfor et kompromis, ikke en no-op: det beholder de 64 stærkeste
+# naboer i hver retning og skærer resten.
 TEMPORAL_EDGE_MAX_PER_NODE = 64
 
 
@@ -1743,12 +1749,32 @@ def prune_stale_edges(
 def prune_unreadable_edges() -> int:
     """Fjern kanter der beviseligt ALDRIG læses — uanset alder.
 
-    Den eneste reelle læser er ``_compute_search_temporal_boost``, som filtrerer
-    på ``confidence >= TEMPORAL_EDGE_READ_MIN_CONFIDENCE``.
-    ``get_temporal_neighbors`` har ingen kaldere. Alt under tærsklen er derfor
-    dødvægt, og alderskriteriet i ``prune_stale_edges`` er irrelevant for dem.
+    Der er TO læsere, ikke én — denne docstring påstod det modsatte indtil
+    27/9-2026, og påstanden var selve begrundelsen for et DELETE:
+
+    * ``_compute_search_temporal_boost`` (kaldt fra ``search_brain_scored``)
+      tager ``MAX(confidence)`` pr. kandidat. Den ser kun kandidatens
+      STÆRKESTE kant.
+    * ``temporal_boost_recall`` (kaldt fra
+      ``memory_recall_engine.multi_signal_recall``, som prompt-samlingen kører
+      hver tur) bruger kanterne som NABOSKAB: den returnerer poster der IKKE
+      var i resultatsættet, fundet via deres kanter til dem der var. Den læser
+      altså grafen, ikke bare hvert knudepunkts bedste kant.
+
+    ``get_temporal_neighbors`` har derimod ingen kaldere.
+
+    Begge læsere filtrerer på ``confidence >= TEMPORAL_EDGE_READ_MIN_CONFIDENCE``,
+    så alt under tærsklen er dødvægt for dem begge — det er dét denne funktion
+    fjerner, og alderskriteriet i ``prune_stale_edges`` er irrelevant for dem.
 
     Målt 2026-08-30: 639.266 af 2.812.752 kanter (22,7 %) lå under tærsklen.
+
+    **Den fjerner IKKE kanter til arkiverede poster.** 13.968 kanter havde
+    27/9-2026 mindst ét arkiveret endepunkt, og det er fristende at kalde dem
+    døde. Det er de ikke: 304 af de 306 arkiverede poster har stadig en
+    embedding, og ``search_brain(include_archived=True)`` — som er et argument
+    på Jarvis' eget brain-search-værktøj — gør dem til kandidater. Kanterne kan
+    altså læses.
     """
     conn = connect_index()
     try:
@@ -1779,10 +1805,15 @@ def prune_dense_edges(*, max_per_node: int = TEMPORAL_EDGE_MAX_PER_NODE) -> int:
     voksede videre til 653 MB.
 
     Nu er loftet et loft: en kant slettes når den er uden for top-N for ét af
-    endepunkterne. Det er sikkert, fordi læseren
-    (`_compute_search_temporal_boost`) tager MAX(confidence) pr. kandidat —
-    altså kun den STÆRKESTE kant. Top-64 er dermed allerede 64 gange mere end
-    nogen læser.
+    endepunkterne.
+
+    Argumentet for at det er sikkert stod forkert her indtil 27/9-2026: «læseren
+    tager MAX(confidence), så top-64 er 64 gange mere end nogen læser». Det
+    gælder for `_compute_search_temporal_boost`, men der er en læser mere.
+    `temporal_boost_recall` bruger kanterne som naboskab og mister en svag nabo
+    for hver kant der skæres. Oprydningen er stadig forsvarlig — den skærer
+    altid de SVAGESTE, og den læser sorterer selv efter styrke — men den er et
+    kompromis, ikke gratis.
 
     ## Værnet mod forældreløse noder
 

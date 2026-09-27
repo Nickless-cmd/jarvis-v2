@@ -178,3 +178,86 @@ class TestPruneDenseEdges:
         # Hver m{i} beholder sin stærkeste; hubberne er trimmet.
         assert _count(brain_db) < 60, "loftet trimmede ingenting"
         assert _count(brain_db) >= 30, "en nabo mistede sin sidste kant"
+
+
+class TestKanterTilArkiveredePosterErIKKEDoede:
+    """27/9-2026: jeg var ved at slette 13.968 kanter med et arkiveret endepunkt.
+
+    Begrundelsen var at søgningen kun ser aktive poster. Det holder ikke:
+    ``search_brain`` har et ``include_archived``-argument, og det er eksponeret
+    på Jarvis' eget brain-search-værktøj. Målt samme dag havde 304 af de 306
+    arkiverede poster stadig en embedding — de er altså kandidater.
+
+    Testene her pinner den kendsgerning, så en fremtidig oprydning ikke kan
+    hvile på den samme forkerte antagelse uden at noget bliver rødt.
+    """
+
+    @staticmethod
+    def _post(conn, eid: str, status: str, vektor) -> None:
+        import numpy as np
+        conn.execute(
+            """INSERT OR REPLACE INTO brain_index
+               (id, path, kind, visibility, domain, title, created_at,
+                updated_at, file_hash, status, embedding, embedding_dim, indexed_at)
+               VALUES (?, ?, 'fakta', 'personal', 'test', ?,
+                       '2026-01-01T00:00:00+00:00', '2026-01-01T00:00:00+00:00',
+                       'h', ?, ?, ?, '2026-01-01T00:00:00+00:00')""",
+            (eid, f"p/{eid}.md", eid, status,
+             np.asarray(vektor, dtype="float32").tobytes(), len(vektor)),
+        )
+
+    def _opsaet(self, brain_db, monkeypatch):
+        import numpy as np
+        import core.services.brain_vector_cache as bvc
+        bvc.ryd()
+        monkeypatch.setattr(
+            jb, "_embed_text", lambda t: np.array([1.0, 0.0], dtype="float32")
+        )
+        conn = jb.connect_index()
+        try:
+            self._post(conn, "brn_aktiv", "active", [1.0, 0.0])
+            self._post(conn, "brn_arkiv", "archived", [1.0, 0.0])
+            conn.commit()
+        finally:
+            conn.close()
+        _edges(brain_db, [("brn_aktiv", "brn_arkiv", 0.9)])
+
+    def test_arkiveret_post_er_kandidat_naar_include_archived(
+        self, brain_db, monkeypatch
+    ) -> None:
+        self._opsaet(brain_db, monkeypatch)
+        med = jb.search_brain_scored(
+            query_text="x", limit=10, include_archived=True, use_temporal_boost=False
+        )
+        uden = jb.search_brain_scored(
+            query_text="x", limit=10, include_archived=False, use_temporal_boost=False
+        )
+        assert "brn_arkiv" in [e for _, e in med]
+        assert "brn_arkiv" not in [e for _, e in uden]
+
+    def test_boosten_slaas_op_for_den_arkiverede_post(
+        self, brain_db, monkeypatch
+    ) -> None:
+        """Selve pointen: kanten til den arkiverede post BLIVER læst."""
+        self._opsaet(brain_db, monkeypatch)
+        boosts = jb._compute_search_temporal_boost(["brn_arkiv"])
+        assert boosts.get("brn_arkiv", 0.0) > 0.0, (
+            "kanten til en arkiveret post er læsbar — den må ikke kaldes død"
+        )
+
+    def test_der_er_TO_laesere_af_kant_tabellen(self) -> None:
+        """Docstringen i prune_unreadable_edges påstod at der kun var én, og
+        den påstand var begrundelsen for et DELETE. Denne test er vagten."""
+        import ast
+        import inspect
+
+        from core.services import memory_recall_engine
+
+        kaldte: set[str] = set()
+        for node in ast.walk(ast.parse(inspect.getsource(memory_recall_engine))):
+            if isinstance(node, ast.ImportFrom) and node.module == "core.services.jarvis_brain":
+                kaldte.update(a.name for a in node.names)
+        assert "temporal_boost_recall" in kaldte, (
+            "memory_recall_engine læser ikke længere kant-tabellen — "
+            "så opdatér begrundelsen i prune_unreadable_edges/prune_dense_edges"
+        )

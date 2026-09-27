@@ -457,28 +457,40 @@ CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
         "routable": False,
     },
     "opencode": {
-        "label": "OpenCode Zen",
+        "label": "OpenCode Zen (via klientens lokale server)",
         "priority": 80,
-        "base_url": "https://opencode.ai/zen/v1",
+        # IKKE zen-endpointet. Et direkte POST til https://opencode.ai/zen/v1/
+        # chat/completions giver 403 FreeTierError — «free tier can only be used
+        # from within OpenCode». Gaten er hærdet: målt 27/9-2026 med et FRISK
+        # session-id fra klient 1.18.32 gav stadig 403, hvor 17/9-tricket med
+        # header-emulering virkede. Klienten selv kommer igennem, så den står som
+        # mellemled på 127.0.0.1:4199 (systemd: scripts/opencode-serve.service),
+        # og vi taler dens REST-API i stedet for OpenAI-formatet.
+        "base_url": "http://127.0.0.1:4199",
         "auth_kind": "bearer",
-        "protocol": "openai-chat",
-        # No dynamic /models endpoint — models listed in static_models below.
+        # Bevidst IKKE "openai-chat": _OPENAI_COMPATIBLE_PROVIDERS udledes af
+        # protocol, og opencode skal have sin egen adapter-gren i stedet for den
+        # direkte zen-sti (som ville give 403).
+        "protocol": "opencode-server",
+        # Ingen dynamisk /models-endpoint i OpenAI-forstand; klientens egen
+        # `opencode models` kan liste dem, men den liste er kontobundet (se nedenfor).
         "models_endpoint": "",
         "rpm_limit": None,
         "daily_limit": None,
-        # De faktiske gratis OpenCode Zen-modeller (verificeret via `opencode models`
-        # på CheifOne, 14. jul). minimax-m2.5-free→mimo-v2.5-free og nemotron-3-super-
-        # free→nemotron-3-ultra-free var UDFASET. Alle 6 verificeret $0.
+        # De gratis modeller der svarer fra CONTAINEREN med lanens nøgle
+        # (målt 27/9-2026: alle 7 svarede PONG via `opencode run`).
+        #
+        # Listen er KONTOBUNDET, ikke bare tidsbundet. Bjørns snap-installation
+        # viste longcat-2.5-preview-free, space-bunny-free og mimo-v2.6-flash-free
+        # — ingen af dem findes her — og omvendt dukkede muse-spark-1.2 op her.
+        # Tjek derfor med `opencode models`, og husk ikke listen.
         "static_models": [
             "big-pickle",
-            "deepseek-v4-flash-free",
-            # hy3-free og laguna-s-2.1-free udgik («Model … is not supported»,
-            # fuld prøve 17/9-2026 på begge konti).
+            "ling-3.0-flash-fin-free",
             "mimo-v2.5-free",
+            "muse-spark-1.2-contributor-free",
+            "muse-spark-1.3-contributor-free",
             "nemotron-3-ultra-free",
-            # north-mini-code-free udgik 19. aug 2026 ("Model … is not supported" —
-            # rapporteret som auth-rejected, hvilket sendte fejlsøgningen efter nøgler
-            # frem for efter modeller). /models viser 6 gratis; disse to er nye.
             "nemotron-3.5-lightning-free",
         ],
     },

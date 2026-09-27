@@ -372,10 +372,16 @@ def test_openai_compatible_set_derived_from_protocol():
     from core.services.cheap_provider_runtime_adapters import _OPENAI_COMPATIBLE_PROVIDERS
     for p in ("cerebras", "aihubmix", "requesty", "cline", "gemini", "cloudflare",
               "github-models", "ovhcloud", "copilot-free", "copilot-premium",
-              "groq", "nvidia-nim", "openrouter", "mistral", "opencode"):
+              "groq", "nvidia-nim", "openrouter", "mistral"):
         assert p in _OPENAI_COMPATIBLE_PROVIDERS, f"{p} mangler"
     assert "arko" not in _OPENAI_COMPATIBLE_PROVIDERS          # arko-protokol
     assert "ollamafreeapi" not in _OPENAI_COMPATIBLE_PROVIDERS
+    # opencode UDE af openai-compat-sættet 27/9-2026: den går nu gennem klientens
+    # LOKALE server (protocol=opencode-server), ikke zen's OpenAI-endpoint direkte.
+    # Et direkte POST til zen giver 403 FreeTierError — gaten er hærdet, målt med
+    # et FRISK session-id fra 1.18.32. Sættet udledes af protocol, så dette holder
+    # automatisk; assertionen fanger hvis nogen sætter protocol tilbage.
+    assert "opencode" not in _OPENAI_COMPATIBLE_PROVIDERS
 
 
 def test_ollama_a2_present_free_lan_cloud_account():

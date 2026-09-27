@@ -1,0 +1,41 @@
+[Unit]
+Description=OpenCode Zen bridge (Jarvis cheap lane)
+Documentation=file:///media/projects/jarvis-v2/scripts/opencode-serve.service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=bs
+Group=bs
+WorkingDirectory=/home/bs
+
+# Hvorfor en lokal server og ikke direkte kald til zen:
+#   Et direkte POST til https://opencode.ai/zen/v1/chat/completions giver 403
+#   FreeTierError — "free tier can only be used from within OpenCode". Gaten er
+#   haerdet (maalt 27/9-2026 med et frisk session-id fra 1.18.32: stadig 403).
+#   Klienten selv kommer igennem. Derfor staar klienten som mellemled, og lanen
+#   taler dens REST-API i stedet for OpenAI-formatet.
+ExecStart=/home/bs/.npm-global/bin/opencode serve --port 4199 --hostname 127.0.0.1
+
+Restart=on-failure
+RestartSec=10s
+StartLimitIntervalSec=120s
+StartLimitBurst=5
+
+Environment=HOME=/home/bs
+Environment=PATH=/home/bs/.npm-global/bin:/usr/local/bin:/usr/bin:/bin
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=opencode-serve
+
+# Serveren lytter kun paa 127.0.0.1 (se ExecStart), saa den er ikke naaet
+# udefra containeren. Ingen AmbientCapabilities — se noten i
+# jarvis-runtime.service om hvorfor det braekker bash-sandkassen.
+CapabilityBoundingSet=CAP_SETUID CAP_SETGID
+
+MemoryMax=4G
+
+[Install]
+WantedBy=multi-user.target

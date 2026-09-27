@@ -73,6 +73,7 @@ from core.services.cheap_provider_runtime_adapters import (
     _execute_local_ollama_chat,
     _execute_ollamafreeapi_chat,
     _execute_openai_compatible_chat,
+    _execute_opencode_chat,
     _execute_provider_chat,
     _execute_public_safe_local_ollama,
     _extract_cloudflare_text,

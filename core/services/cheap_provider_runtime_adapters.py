@@ -10,12 +10,19 @@ from __future__ import annotations
 # stability (blast-radius 45) and for monkeypatch seams (tests patch
 # cheap_provider_runtime._execute_provider_chat / _http_json / httpx etc.).
 import json
+import logging
+import time
 from datetime import UTC, datetime
 from decimal import Decimal
 from urllib import error as urllib_error
 from urllib import parse as urllib_parse
 from urllib import request as urllib_request
 import httpx
+
+# Manglede indtil 27/9-2026: linje ~1530 kaldte allerede logger.debug uden at
+# navnet fandtes -> latent NameError hvis checkin-nudgen fejlede. Definérét nu,
+# så både den og opencode-oprydningen kan logge i stedet for at sluge.
+logger = logging.getLogger(__name__)
 
 from core.auth.profiles import get_provider_credentials, provider_has_real_credentials
 from core.services.cheap_provider_reasoning_budget import (
@@ -370,6 +377,17 @@ def _execute_provider_chat(
         return _with_quota_observation(
             provider, auth_profile, _f._execute_arko_chat(message=message)
         )
+    if provider == "opencode":
+        # Går gennem klientens lokale server, ikke zen direkte — se
+        # _execute_opencode_chat. Tekst-only: serverens REST-API tager ikke
+        # lanens tools-array, så et tool-kaldende kald degraderer til tekst
+        # ligesom de øvrige ikke-OpenAI-adaptere (beskeden er allerede foldet
+        # til én streng ovenfor).
+        return _with_quota_observation(provider, auth_profile, _f._execute_opencode_chat(
+            model=model,
+            base_url=base_url,
+            message=message,
+        ))
     if provider == _OPENAI_CODEX_PROVIDER:
         return _with_quota_observation(provider, auth_profile, _f._execute_openai_codex_chat(
             model=model,
@@ -635,6 +653,128 @@ def _execute_openai_compatible_chat(
         "cache_miss_tokens": cache_miss,
         "cost_usd": float(_estimate_cheap_cost(provider=provider, usage=enriched_usage)),
         "finish_reason": str(_first_choice.get("finish_reason") or ""),
+    }
+
+
+_OPENCODE_POLL_SECONDS = 1.0
+_OPENCODE_DEFAULT_TIMEOUT_SECONDS = 150.0
+# Serveren svarer på providerID "opencode" for zen-modeller.
+_OPENCODE_SERVER_PROVIDER_ID = "opencode"
+
+
+def _execute_opencode_chat(
+    *,
+    model: str,
+    base_url: str,
+    message: str,
+    timeout: float | None = None,
+) -> dict[str, object]:
+    """Kald OpenCode Zen gennem klientens lokale server.
+
+    HVORFOR ET MELLEMLED (målt 27/9-2026): et direkte POST til
+    https://opencode.ai/zen/v1/chat/completions giver 403 FreeTierError —
+    «free tier can only be used from within OpenCode». Gaten er hærdet siden
+    17/9: dengang virkede header-emulering (x-opencode-session mod en kendt
+    session), nu giver selv et FRISK session-id fra klient 1.18.32 403.
+    Klienten selv kommer igennem. Derfor står den som mellemled på
+    127.0.0.1:4199 og vi taler dens REST-API i stedet for OpenAI-formatet.
+
+    Protokollen er IKKE OpenAI-format og er ASYNKRON:
+      POST   /api/session              {model:{id,providerID}} -> {data:{id:ses_…}}
+      POST   /api/session/{id}/prompt  {prompt:{text}}        -> kvittering (i kø)
+      GET    /api/session/{id}/message                        -> beskeder (poll)
+      DELETE /session/{id}                                    -> ryd op
+
+    Prompten kvitteres straks og svaret kommer senere — derfor pollingen.
+    Sessionen er stateful og skal ryddes op, også når kaldet fejler.
+    """
+    _f = _facade()
+    root = str(base_url or "").rstrip("/") or "http://127.0.0.1:4199"
+    deadline = time.monotonic() + float(timeout or _OPENCODE_DEFAULT_TIMEOUT_SECONDS)
+
+    created, _headers = _f._http_json(
+        f"{root}/api/session",
+        provider="opencode",
+        payload={
+            "model": {
+                "id": str(model),
+                "providerID": _OPENCODE_SERVER_PROVIDER_ID,
+            }
+        },
+    )
+    session = created.get("data") if isinstance(created.get("data"), dict) else created
+    session_id = str((session or {}).get("id") or "").strip()
+    if not session_id.startswith("ses"):
+        raise CheapProviderError(
+            provider="opencode",
+            code="session-create-failed",
+            message=f"kunne ikke oprette session: {str(created)[:300]}",
+        )
+
+    try:
+        _f._http_json(
+            f"{root}/api/session/{session_id}/prompt",
+            provider="opencode",
+            payload={"prompt": {"text": message}},
+        )
+        while time.monotonic() < deadline:
+            data, _h = _f._http_json(
+                f"{root}/api/session/{session_id}/message",
+                provider="opencode",
+                method="GET",
+            )
+            entries = data.get("data") if isinstance(data.get("data"), list) else data
+            for entry in entries if isinstance(entries, list) else []:
+                if not isinstance(entry, dict) or entry.get("type") != "assistant":
+                    continue
+                parts = [
+                    str(part.get("text") or "")
+                    for part in (entry.get("content") or [])
+                    if isinstance(part, dict) and part.get("type") == "text"
+                ]
+                text = "\n".join(p for p in parts if p).strip()
+                if text:
+                    return _opencode_chat_result(entry=entry, text=text)
+            time.sleep(_OPENCODE_POLL_SECONDS)
+        raise CheapProviderError(
+            provider="opencode",
+            code="timeout",
+            message=(
+                "intet assistent-svar inden for "
+                f"{_OPENCODE_DEFAULT_TIMEOUT_SECONDS:.0f}s"
+            ),
+        )
+    finally:
+        # En fejl i oprydningen må ikke overskygge det egentlige udfald.
+        try:
+            _f._http_json(
+                f"{root}/session/{session_id}",
+                provider="opencode",
+                method="DELETE",
+            )
+        except Exception as exc:  # oprydning maa ikke overskygge det egentlige udfald
+            logger.debug("opencode: session-oprydning fejlede for %s: %s", session_id, exc)
+
+
+def _opencode_chat_result(*, entry: dict[str, object], text: str) -> dict[str, object]:
+    """Normalisér en opencode-assistentbesked til lanens fælles returformat.
+
+    Modellerne er gratis, men cost_usd MÅLES frem for at hardkodes til nul:
+    serveren rapporterer selv `cost` pr. besked, og den er 0 for zen's
+    gratis-flade (verificeret 27/9-2026). Rapporterer den en dag ikke-nul,
+    skal det ses frem for at skjules bag en konstant.
+    """
+    tokens = entry.get("tokens") or {}
+    return {
+        "text": text,
+        "tool_calls": [],
+        "reasoning_content": "",
+        "input_tokens": int(tokens.get("input") or 0),
+        "output_tokens": int(tokens.get("output") or _estimate_tokens(text)),
+        "cache_hit_tokens": 0,
+        "cache_miss_tokens": 0,
+        "cost_usd": float(entry.get("cost") or 0),
+        "finish_reason": str(entry.get("finish") or ""),
     }
 
 

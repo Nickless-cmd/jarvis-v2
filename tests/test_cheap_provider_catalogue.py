@@ -345,3 +345,21 @@ def test_github_models_og_ollamafreeapi_er_dokumenteret_som_ubrugelige():
     for n in ("github-models", "ollamafreeapi"):
         post = kat.CHEAP_PROVIDER_DEFAULTS.get(n) or {}
         assert not (post.get("static_models") or []), n
+
+
+def test_github_models_er_ikke_et_noegle_eller_modelid_problem():
+    """Bjørn spurgte 27/9 om det bare var nye modeller. Nej — afgjort med tre
+    kald til samme sti: gyldig nøgle, ugyldig nøgle og INGEN nøgle gav alle
+    `200 "OK"`. Endpointet autentificerer ikke, så et forkert model-id kan
+    ikke være forklaringen.
+
+    Og det er GitHubs egen server: certifikatet er `CN = *.github.ai` fra
+    Sectigo, samme CA som `*.github.com`. Min første formulering «bekræftet
+    fra to net» var for stærk — CT105 og CheifOne deler pfSense. Certifikatet
+    er det bevis der faktisk holder.
+    """
+    import inspect
+    src = inspect.getsource(kat)
+    assert "UGYLDIG noegle   200" in src
+    assert "INGEN noegle     200" in src
+    assert "CN = *.github.ai" in src

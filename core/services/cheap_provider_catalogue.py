@@ -110,9 +110,30 @@ CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
     #
     # Bjørn bad om at få den til at virke. Den kan ikke. Målt:
     #   models.github.ai svarer 200 med brødteksten «OK» paa HVER sti —
-    #     ogsaa `/` og `/inference/chat/completions`. Det er en
-    #     health-check-flade, ikke et API. Bekraeftet fra TO net (CT105 og
-    #     CheifOne), saa det er ikke vores egress.
+    #     ogsaa `/` og `/inference/chat/completions`.
+    #
+    #   DET ER IKKE NOEGLEN, OG IKKE ET FORAELDET MODEL-ID. Bjoern spurgte om
+    #     det bare var nye modeller. Afgjort med tre kald til samme sti:
+    #         gyldig noegle    200 "OK"
+    #         UGYLDIG noegle   200 "OK"
+    #         INGEN noegle     200 "OK"
+    #     Endpointet autentificerer slet ikke. En levende API med et forkert
+    #     model-id ville svare 400/404 med JSON; denne svarer det samme uanset
+    #     hvem der spoerger.
+    #
+    #   OG DET ER IKKE OPSNAPPET TRAFIK. Jeg skrev foerst «bekraeftet fra to
+    #     net», men CT105 og CheifOne gaar BEGGE gennem den samme pfSense —
+    #     det var et svagere bevis end jeg paastod. Certifikatet afgoer det:
+    #         CN = *.github.ai, Sectigo, gyldig 3/9 - 1/12 2026
+    #     Samme CA som *.github.com. Det ER GitHubs egen server der svarer
+    #     «OK». Vaertsnavnet vedligeholdes stadig; API'et er bare flyttet.
+    #
+    #   api.github.com/models svarer 404 med ÆGTE JSON — samme noegle, samme
+    #     net. Vaerten autentificerer og ruter korrekt; der er bare ingen
+    #     Models-API der.
+    #
+    #   Noeglens eneste scope er `read:user` (Models kraever `models:read`),
+    #     men det er uden betydning naar endpointet ikke tjekker auth.
     #   models.inference.ai.azure.com — den oprindelige adresse — slaar ikke
     #     op laengere (NXDOMAIN).
     #   Nøglen FINDES og er gyldig (`gho_…` i default-profilen), saa det er

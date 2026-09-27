@@ -306,6 +306,8 @@ def _save_images(
         media_type = str(item.get("media_type") or "image/png")
         ext = _MIME_EXT.get(media_type, ".png")
         filename = _safe_filename(prompt, gen_id, ext)
+        if len(items) > 1:
+            filename = f"{Path(filename).stem}-{idx + 1}{ext}"
         path = target_dir / filename
         try:
             path.write_bytes(raw)
@@ -503,18 +505,24 @@ def _haeng_paa_turen(args: dict[str, Any], result: dict[str, Any]) -> None:
     """
     try:
         from core.services.published_files import note as _note
-        sti = str(result.get("path") or "")
-        aid = str(result.get("attachment_id") or "")
-        if not aid and not sti:
-            return
-        _note(
-            str(args.get("_runtime_turn_id") or args.get("_runtime_run_id") or ""),
-            filename=Path(sti).name if sti else "billede",
-            mime_type=str(result.get("media_type") or "image/png"),
-            size_bytes=int(result.get("bytes") or 0),
-            attachment_id=aid,
-            tool_use_id=str(args.get("_runtime_tool_use_id") or ""),
-        )
+        billeder = result.get("images")
+        if not isinstance(billeder, list) or not billeder:
+            billeder = [result]
+        for billede in billeder:
+            if not isinstance(billede, dict):
+                continue
+            sti = str(billede.get("path") or "")
+            aid = str(billede.get("attachment_id") or "")
+            if not aid and not sti:
+                continue
+            _note(
+                str(args.get("_runtime_turn_id") or args.get("_runtime_run_id") or ""),
+                filename=Path(sti).name if sti else "billede",
+                mime_type=str(billede.get("media_type") or "image/png"),
+                size_bytes=int(billede.get("bytes") or 0),
+                attachment_id=aid,
+                tool_use_id=str(args.get("_runtime_tool_use_id") or ""),
+            )
     except Exception:
         logger.debug("openrouter_image: kunne ikke haefte paa turen", exc_info=True)
 

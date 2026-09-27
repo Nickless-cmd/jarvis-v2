@@ -12,6 +12,7 @@ import { SkillLine, SkillSurfaceLine } from './SkillLine'
 import { SKILL_VAERKTOEJER } from '../../lib/skillLinje'
 import { useVisningen, type Visning } from '../../lib/visning'
 import { TankeResumeLinje } from './TankeResumeLinje'
+import { erBilledVaerktoej, GeneratedImageGallery, ImageGenerationProgress } from './ImageGeneration'
 
 type ProgressBlock = Extract<ContentBlock, { type: 'progress' }>
 
@@ -49,6 +50,8 @@ export function afslutForladteKald(blocks: ContentBlock[], streaming: boolean): 
 /** Saml sammenhængende progress-blokke til ét ProgressTrail-element; alt andet
  *  passeres uændret. Ren transform (view-lokal) — persist/wire urørt. */
 type ProgressTrailBlock = { type: 'progress_trail'; items: ProgressBlock[] }
+type ImageGalleryBlock = { type: 'image_gallery'; images: Array<Extract<ContentBlock, { type: 'image' }>> }
+type VisibleBlock = RenderBlock | ProgressTrailBlock | ImageGalleryBlock
 
 function coalesceProgress(blocks: RenderBlock[]): (RenderBlock | ProgressTrailBlock)[] {
   const out: (RenderBlock | ProgressTrailBlock)[] = []
@@ -68,6 +71,27 @@ function coalesceProgress(blocks: RenderBlock[]): (RenderBlock | ProgressTrailBl
     }
   }
   flush()
+  return out
+}
+
+function coalesceImages(blocks: (RenderBlock | ProgressTrailBlock)[]): VisibleBlock[] {
+  const out: VisibleBlock[] = []
+  for (let i = 0; i < blocks.length;) {
+    const first = blocks[i]
+    if (first?.type !== 'image' || first.kilde !== 'generated' || !first.tool_use_id) {
+      if (first) out.push(first)
+      i++
+      continue
+    }
+    const images: Array<Extract<ContentBlock, { type: 'image' }>> = []
+    while (blocks[i]?.type === 'image' &&
+      (blocks[i] as Extract<ContentBlock, { type: 'image' }>).kilde === 'generated' &&
+      (blocks[i] as Extract<ContentBlock, { type: 'image' }>).tool_use_id === first.tool_use_id) {
+      images.push(blocks[i] as Extract<ContentBlock, { type: 'image' }>)
+      i++
+    }
+    out.push(images.length > 1 ? { type: 'image_gallery', images } : first)
+  }
   return out
 }
 
@@ -137,7 +161,7 @@ export function BlocksRenderer({
   const resumeer = { ...resumeerFraBlokke(taet), ...(tankeResumeer ?? {}) }
   // «Alt» (verbose): ingen gruppering — hvert kald står for sig og åbent.
   const afsluttet = afslutForladteKald(udenEtiketter, streaming)
-  const rendered = coalesceProgress(visning === 'verbose' ? afsluttet : groupToolRounds(afsluttet))
+  const rendered = coalesceImages(coalesceProgress(visning === 'verbose' ? afsluttet : groupToolRounds(afsluttet)))
   const lastIdx = rendered.length - 1
 
   return (
@@ -160,7 +184,7 @@ function BlockView({
   beskedId,
   config,
 }: {
-  block: RenderBlock | ProgressTrailBlock
+  block: VisibleBlock
   density: 'compact' | 'full'
   streaming: boolean
   isLast: boolean
@@ -197,11 +221,15 @@ function BlockView({
           <>
             {resume ? <TankeResumeLinje tekst={resume} /> : null}
             <ToolGroupCard block={block} density={density} etiket={etik} />
+            {streaming && block.tools.some((tool) => erBilledVaerktoej(tool.name) && (tool.status ?? 'running') === 'running')
+              ? <ImageGenerationProgress /> : null}
           </>
         )
       }
     case 'tool_use':
-      return SKILL_VAERKTOEJER.has(block.name)
+      return streaming && erBilledVaerktoej(block.name) && (block.status ?? 'running') === 'running'
+        ? <><ToolCard block={block} density={density} aabenFraStart={visning === 'verbose'} beskedId={beskedId} config={config} /><ImageGenerationProgress /></>
+        : SKILL_VAERKTOEJER.has(block.name)
         ? <SkillLine block={block} density={density} />
         : <ToolCard block={block} density={density} aabenFraStart={visning === 'verbose'}
             beskedId={beskedId} config={config} />
@@ -212,6 +240,8 @@ function BlockView({
       return block.src
         ? <ImageBlock src={block.src} alt={block.alt} />
         : <AttachmentBlock block={{ ...block, type: 'image' }} />
+    case 'image_gallery':
+      return <GeneratedImageGallery images={block.images} />
     case 'file':
       // UDGIVET fil (`publish_file`) eller en vedhæftning. Havde ingen gren
       // før, så den ramte `default: return null` — filen lå i beskeden og nåede

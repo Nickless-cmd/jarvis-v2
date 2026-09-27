@@ -2,6 +2,13 @@ import { describe, it, expect } from 'vitest'
 import { foldToolResults } from './foldToolResults'
 
 describe('foldToolResults', () => {
+  it('bevarer billedets generation og kald-id til galleriet efter genindlæsning', () => {
+    const [image] = foldToolResults([{
+      type: 'image', attachment_id: 'att-1', filename: 'a.png',
+      kilde: 'generated', tool_use_id: 'call-1',
+    }])
+    expect(image).toMatchObject({ kilde: 'generated', tool_use_id: 'call-1' })
+  })
   it('folder tool_result ind på matchende tool_use og fjerner tool_result-blokken', () => {
     const blocks = [
       { type: 'text', text: 'svar' },

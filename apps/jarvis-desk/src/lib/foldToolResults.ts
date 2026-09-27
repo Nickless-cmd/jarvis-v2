@@ -79,6 +79,8 @@ export function foldToolResults(blocks: Array<Record<string, unknown>>): Content
         url: b.url != null ? String(b.url) : undefined,
         filename: b.filename != null ? String(b.filename) : undefined,
         mime_type: b.mime_type != null ? String(b.mime_type) : undefined,
+        kilde: b.kilde != null ? String(b.kilde) : undefined,
+        tool_use_id: b.tool_use_id != null ? String(b.tool_use_id) : undefined,
       })
     } else if (b.type === 'file') {
       // UDGIVET fil eller vedhæftning. Uden denne gren droppede normaliseringen

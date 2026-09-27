@@ -25,6 +25,7 @@ import { threadBlocks } from '../lib/persistedBlocks'
 import { ThinkingSummary } from './ThinkingSummary'
 import { MessageAttachments } from './MessageAttachments'
 import { ToolResultCard } from './ToolResultCard'
+import { ImageGenerationCard } from './ImageGenerationCard'
 
 export interface MessageListHandle {
   jumpTop: () => void       // ældste besked
@@ -109,6 +110,7 @@ type Row = (
   | { kind: 'attachments'; key: string; items: PersistedBlock[]; side: 'left' | 'right' }
   | { kind: 'tool'; key: string; content: string }
   | { kind: 'live-tool'; key: string; id?: string; name: string; body: string; running: boolean; etiket?: string; diff?: { tilfoejet: number; fjernet: number } | null }
+  | { kind: 'image-generation'; key: string }
   /** Én RUNDE værktøjsarbejde, foldet sammen til én linje. */
   | { kind: 'tool-group'; key: string; items: ToolItem[] }
   /** Et skill-kald (skill_gate/skill_invoke) — sin EGEN linje, ikke i runden. */
@@ -353,6 +355,12 @@ function buildStreamingRows(blocks: ContentBlock[]): Row[] {
         kald: { name: b.name, input: b.input, result: b.result, status: b.status ?? 'running' },
       })
     }
+    else if (b.type === 'tool_use' &&
+      (b.name === 'openrouter_image' || b.name === 'openrouter_image_edit' || b.name === 'pollinations_image') &&
+      b.status !== 'done' && b.status !== 'error') {
+      flush()
+      rows.push({ kind: 'image-generation', key: `stream-image-${b.id || i}` })
+    }
     else if (b.type === 'tool_use') {
       flush()
       rows.push({
@@ -383,6 +391,11 @@ function buildStreamingRows(blocks: ContentBlock[]): Row[] {
     }
   }
   flush()
+  // En senere blok betyder at Jarvis er gået videre. Et gammelt tool_use kan
+  // mangle slutstatus i en sparsom stream; ventefladen må ikke blive stående.
+  for (let index = rows.length - 2; index >= 0; index--) {
+    if (rows[index]?.kind === 'image-generation') rows.splice(index, 1)
+  }
   // KUN den sidste række kan være i gang. Alt før den er overhalet af noget
   // der kom bagefter; det er selve beviset for at den er færdig.
   const sidste = rows[rows.length - 1]
@@ -802,6 +815,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
         if (item.kind === 'attachments') {
           return <MessageAttachments items={item.items} side={item.side} />
         }
+        if (item.kind === 'image-generation') return <ImageGenerationCard />
         if (item.kind === 'compact-marker') return <CompactMarkerRow content={item.content} />
         return (
           <MessageBubble

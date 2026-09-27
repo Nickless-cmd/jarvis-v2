@@ -291,3 +291,20 @@ it('en gemt tur med flere tanker beholder dem alle, på deres plads', async () =
   expect(s.queryAllByText(/Tænkte i 3s/).length).toBe(1)
   expect(s.queryAllByText(/Tænkte i 9s/).length).toBe(1)
 })
+
+/**
+ * Prikkerne skal danne et 16×16-KVADRAT — ikke én lang stribe.
+ *
+ * Målt 27/9-2026 på mobilen: den flade `flexWrap`-liste wrappede ved
+ * CONTAINERBREDDEN (64 prikker à 4 px) i stedet for ved 16, så kvadratet blev
+ * 4 rækker à 16 px høj i en 256 px høj boks — en tynd vandret bjælke, og
+ * opacity-gradienten pegede på prikker der lå helt andre steder. Desk slap,
+ * fordi CSS grid med `repeat(16, 1fr)` TILLADER 16 kolonner. Rækkerne er nu
+ * eksplicitte, så formen ikke afhænger af containerbredden.
+ */
+it('tegner prikkerne som 16 rækker — ikke én flad stribe', async () => {
+  const s = await render(<MessageList messages={[]} blocks={[
+    { type: 'tool_use', id: 'img-1', name: 'openrouter_image', input: {}, status: 'running' },
+  ]} working />)
+  expect(s.getAllByTestId('image-generation-raekke')).toHaveLength(16)
+})

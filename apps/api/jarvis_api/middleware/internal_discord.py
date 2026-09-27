@@ -59,12 +59,17 @@ def dispatch(req: DispatchRequest, request: Request) -> dict:
             str(args["file_path"]),
         )
     if action == "send_dm_to_owner":
-        return send_dm_to_owner(str(args["text"]), float(args.get("timeout", 10.0)))
+        return send_dm_to_owner(
+            str(args["text"]),
+            float(args.get("timeout", 10.0)),
+            str(args.get("file_path", "")),
+        )
     if action == "send_dm_to_user":
         return send_dm_to_user(
             str(args["recipient_discord_id"]),
             str(args["text"]),
             float(args.get("timeout", 10.0)),
+            str(args.get("file_path", "")),
         )
     if action == "discord_channel":
         # Re-invoke the tool here, where _is_gateway_owner() is True so the

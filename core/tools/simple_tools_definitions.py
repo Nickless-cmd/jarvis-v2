@@ -2439,20 +2439,24 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "send_discord_dm",
-            "description": "Send a direct message (DM) on Discord to a known user. Works even when they haven't written first. Defaults to Bjørn (owner) when no recipient is specified. Use the `recipient` field to DM other known users (e.g. Michelle) — recipient must be registered in users.json.",
+            "description": "Send a direct message (DM) on Discord to a known user, optionally WITH A FILE ATTACHMENT. Works even when they haven't written first. Defaults to Bjørn (owner) when no recipient is specified. Use the `recipient` field to DM other known users (e.g. Michelle) — recipient must be registered in users.json. Pass `file_path` to attach a real file (e.g. a generated image): it then appears inline in Discord instead of as a link.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "content": {
                         "type": "string",
-                        "description": "The message to send as a DM on Discord.",
+                        "description": "The message text. Optional when file_path is given — a file can be sent on its own.",
+                    },
+                    "file_path": {
+                        "type": "string",
+                        "description": "Optional absolute path to a file to attach. Must lie under uploads/, workspaces/ or shared/memory/generated/ — it is validated before send, so a path outside those roots is rejected. Use this for images so they render inline in Discord instead of being sent as a URL.",
                     },
                     "recipient": {
                         "type": "string",
                         "description": "Optional. Discord user ID or name of a known user to DM (e.g. '1313522677369143429' or 'Michelle'). Omit to DM Bjørn (owner). Must be registered in users.json — Jarvis cannot DM strangers.",
                     },
                 },
-                "required": ["content"],
+                "required": [],
             },
         },
     },

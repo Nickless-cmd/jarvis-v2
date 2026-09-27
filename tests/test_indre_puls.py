@@ -166,3 +166,103 @@ def test_registret_daekker_det_der_faktisk_gik_galt() -> None:
 
 def PULSE_NAVNE():
     return ip.PULSE
+
+
+# ── Hændelsesdrevne tilstande (27/9-2026) ───────────────────────────────
+
+
+def _base_med(tmp_path, monkeypatch, *, skrevet, drevet):
+    """En base med én kv-nøgle og én driver-hændelse."""
+    import sqlite3
+    from contextlib import contextmanager
+
+    conn = sqlite3.connect(":memory:")
+    conn.execute("CREATE TABLE runtime_state_kv (key TEXT, updated_at TEXT)")
+    conn.execute("CREATE TABLE events (kind TEXT, created_at TEXT)")
+    if skrevet:
+        conn.execute("INSERT INTO runtime_state_kv VALUES (?,?)", ("k", skrevet))
+    if drevet:
+        conn.execute("INSERT INTO events VALUES (?,?)", ("drv", drevet))
+    conn.commit()
+
+    @contextmanager
+    def _c():
+        yield conn
+
+    monkeypatch.setattr("core.runtime.db.connect", _c)
+    return conn
+
+
+def _h():
+    from core.services.indre_puls import Haendelsesdrevet
+    return Haendelsesdrevet("Prøve", "k", "drv")
+
+
+def test_driver_der_ikke_har_fyret_er_ikke_en_fejl(tmp_path, monkeypatch):
+    """Ingen sansninger er ikke en fejl. Det var netop dén forveksling der
+    sendte «Somatisk krop står stille» til Bjørns telefon hver stille nat."""
+    from core.services.indre_puls import maal_haendelsesdrevet
+
+    _base_med(tmp_path, monkeypatch, skrevet="2026-09-27T05:00:00+00:00", drevet=None)
+    assert maal_haendelsesdrevet(_h())["tilstand"] == "frisk"
+
+
+def test_noeglen_skrevet_lige_efter_driveren_er_frisk(tmp_path, monkeypatch):
+    """Målt i produktionen 27/9: nøglen følger driveren med 49 MIKROsekunder."""
+    from core.services.indre_puls import maal_haendelsesdrevet
+
+    _base_med(tmp_path, monkeypatch,
+              skrevet="2026-09-27T05:22:43.074460+00:00",
+              drevet="2026-09-27T05:22:43.074411+00:00")
+    ud = maal_haendelsesdrevet(_h())
+    assert ud["tilstand"] == "frisk"
+    # Seks decimaler i koden: med tre ville -49 µs blive til -0.0, og
+    # målingen der viste hvor tæt koblingen er ville forsvinde i afrundingen.
+    assert ud["bagud_s"] == -0.000049
+
+
+def test_driveren_fyrede_men_tilstanden_fulgte_ikke_med(tmp_path, monkeypatch):
+    """DEN ægte fejl: der SKETE noget, og kroppen reagerede ikke."""
+    from core.services.indre_puls import maal_haendelsesdrevet
+
+    _base_med(tmp_path, monkeypatch,
+              skrevet="2026-09-27T05:00:00+00:00",
+              drevet="2026-09-27T06:00:00+00:00")
+    ud = maal_haendelsesdrevet(_h())
+    assert ud["tilstand"] == "stille"
+    assert ud["bagud_s"] == 3600.0
+
+
+def test_naaden_taaler_en_langsom_skrivning(tmp_path, monkeypatch):
+    """60 s er rigelig plads mod en målt afstand i mikrosekunder — stramt nok
+    til at fange en brudt kobling, løst nok til at en travl skrivning ikke
+    melder."""
+    from core.services.indre_puls import maal_haendelsesdrevet
+
+    _base_med(tmp_path, monkeypatch,
+              skrevet="2026-09-27T05:00:00+00:00",
+              drevet="2026-09-27T05:00:30+00:00")
+    assert maal_haendelsesdrevet(_h())["tilstand"] == "frisk"
+
+
+def test_de_to_er_flyttet_UD_af_pulse():
+    """De havde en gættet kadence. `perceptual_event_engine` og
+    `cognitive_episodes` har intet ur — de skriver når noget sker."""
+    from core.services.indre_puls import HAENDELSESDREVNE, PULSE
+
+    navne_puls = {p.navn for p in PULSE}
+    assert "Somatisk krop" not in navne_puls
+    assert "Driftsafvejning" not in navne_puls
+    assert {h.navn for h in HAENDELSESDREVNE} == {"Somatisk krop", "Driftsafvejning"}
+
+
+def test_meldingen_taler_om_driveren_og_ikke_om_en_kadence():
+    """Den gamle tekst ville have sagt «et slag hvert 0. minut» og «Sidste
+    spor: None», for en hændelsesdrevet tilstand har ingen kadence."""
+    import inspect
+
+    from core.services import indre_puls as M
+
+    src = inspect.getsource(M._meld)
+    assert 'm.get("kilde") == "haendelsesdrevet"' in src
+    assert "følger ikke sin driver" in src

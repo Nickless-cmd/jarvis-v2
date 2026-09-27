@@ -90,17 +90,69 @@ class Afstemning:
     tolerance: float = 4.0
 
 
+@dataclass(frozen=True, slots=True)
+class Haendelsesdrevet:
+    """En tilstand der skrives NÅR noget sker — ikke på et ur.
+
+    27/9-2026 kl. 07 meldte vagten «Somatisk krop står stille» og
+    «Driftsafvejning står stille» til Bjørns telefon. Intet var i stykker.
+
+    Begge stod i `PULSE` med en erklæret kadence (300 s og 900 s), men ingen
+    af dem har et ur: `somatic_runtime_body` skrives af
+    `perceptual_event_engine` når der kommer en sansning, og
+    `drive_arbitration_engine` af `cognitive_episodes` når der opstår en
+    episode. Om natten sker der ingenting, alderen vokser forbi tærsklen, og
+    vagten råber ulv.
+
+    MÅLT samme morgen — koblingen er perfekt:
+
+        somatic_runtime_body   nøgle skrevet 05:22:43.074460
+                               driver sidst  05:22:43.074411
+                               driver-events efter nøglen: 0
+
+    49 mikrosekunder. Nøglen følger driveren i samme åndedrag.
+
+    Derfor er spørgsmålet ikke «hvor gammel er den?» men «fyrede driveren
+    uden at den fulgte med?». Ingen sansninger er ikke en fejl; sansninger
+    uden en krop der reagerer ER.
+
+    En vagt der melder hver stille nat bliver slukket, og så er den næste
+    ægte stilstand usynlig. Det er samme fejlklasse som de røde tests der
+    fejler af sig selv.
+    """
+
+    navn: str
+    #: Nøglen i `runtime_state_kv` der skal følge med.
+    noegle: str
+    #: Event-kind hvis forekomst FORVENTER en skrivning.
+    driver_kind: str
+    #: Hvor langt bagud nøglen må være efter driverens seneste hændelse.
+    #: Målt afstand er mikrosekunder; 60 s er rigelig plads til en langsom
+    #: skrivning og stadig stramt nok til at fange en brudt kobling.
+    naade_s: float = 60.0
+
+
 #: Kadencerne er ERKLÆREDE, ikke gættede. Tallene kommer fra hvad koden selv
 #: siger den gør — ikke fra hvad den tilfældigvis gjorde da jeg målte.
+#:
+#: Står en tilstand IKKE her, er det fordi den ikke har et ur. Se
+#: `HAENDELSESDREVNE` nedenfor.
 PULSE: tuple[Puls, ...] = (
     Puls("Hjerteslagets tik", "event", "heartbeat.phased_tick", 900.0),
     Puls("Humørets ur", "kv", "mood_oscillator.state", 900.0),
     Puls("Valens", "kv", "central_valence_state", 900.0),
-    Puls("Somatisk krop", "kv", "somatic_runtime_body", 300.0),
     Puls("Selvtilstand", "kv", "central_self_state", 900.0),
-    Puls("Driftsafvejning", "kv", "drive_arbitration_engine", 900.0),
     Puls("Endelighed", "kv", "finitude_runtime.state", 21600.0),
     Puls("Drømmemotiver", "kv", "dream_motif_daemon.state", 86400.0),
+)
+
+#: De to der blev flyttet ud af `PULSE` 27/9-2026. Deres «kadence» var gættet;
+#: her måles de mod det der faktisk driver dem.
+HAENDELSESDREVNE: tuple[Haendelsesdrevet, ...] = (
+    Haendelsesdrevet("Somatisk krop", "somatic_runtime_body",
+                     "cognitive_state.perceptual_event_recorded"),
+    Haendelsesdrevet("Driftsafvejning", "drive_arbitration_engine",
+                     "cognitive_state.episode_recorded"),
 )
 
 AFSTEMNINGER: tuple[Afstemning, ...] = (
@@ -214,6 +266,52 @@ def maal_afstemning(a: Afstemning, *, vindue_s: float = 14400.0) -> dict[str, ob
     return ud
 
 
+def maal_haendelsesdrevet(h: Haendelsesdrevet) -> dict[str, object]:
+    """Fyrede driveren uden at tilstanden fulgte med?
+
+    «frisk» når driveren ikke har fyret (intet arbejde er ikke en fejl), og
+    når nøglen er skrevet efter driverens seneste hændelse. «stille» kun når
+    driveren HAR fyret og nøglen er blevet hængende bagefter.
+    """
+    ud: dict[str, object] = {"navn": h.navn, "noegle": h.noegle,
+                             "driver": h.driver_kind, "kilde": "haendelsesdrevet"}
+    try:
+        from core.runtime.db import connect
+        with connect() as conn:
+            r = conn.execute("SELECT updated_at FROM runtime_state_kv WHERE key = ?",
+                             (h.noegle,)).fetchone()
+            d = conn.execute("SELECT MAX(created_at) FROM events WHERE kind = ?",
+                             (h.driver_kind,)).fetchone()
+    except Exception as exc:
+        logger.debug("indre_puls: kunne ikke aflaese %s: %s", h.noegle, exc)
+        ud["tilstand"] = "ukendt"
+        return ud
+
+    skrevet = str((r or [None])[0] or "")
+    drevet = str((d or [None])[0] or "")
+    ud["skrevet"] = skrevet or None
+    ud["driver_sidst"] = drevet or None
+    if not drevet:
+        # Driveren har aldrig fyret. Der er intet den kunne have fulgt.
+        ud["tilstand"] = "frisk"
+        return ud
+    if not skrevet:
+        ud["tilstand"] = "stille"
+        return ud
+    try:
+        bagud = (datetime.fromisoformat(drevet)
+                 - datetime.fromisoformat(skrevet)).total_seconds()
+    except (ValueError, TypeError):
+        ud["tilstand"] = "ukendt"
+        return ud
+    # SEKS decimaler, ikke tre. Den målte afstand er MIKROsekunder (49 µs i
+    # produktionen), og `round(-0.000049, 3)` er `-0.0` — afrundingen ville
+    # kaste netop den præcision væk der viste at koblingen er tæt.
+    ud["bagud_s"] = round(bagud, 6)
+    ud["tilstand"] = "stille" if bagud > h.naade_s else "frisk"
+    return ud
+
+
 def _kvitterede() -> set[str]:
     """Hvad har vi allerede meldt om?
 
@@ -252,6 +350,7 @@ def tjek(*, meld: bool = True, foerste_koersel: bool = False) -> dict[str, objec
     på ny — det er et nyt udfald, ikke det samme.
     """
     maalinger = [maal_puls(p) for p in PULSE]
+    maalinger += [maal_haendelsesdrevet(h) for h in HAENDELSESDREVNE]
     maalinger += [maal_afstemning(a) for a in AFSTEMNINGER]
     daarlige = {str(m["navn"]) for m in maalinger
                 if m.get("tilstand") in ("stille", "loebsk", "uenig")}
@@ -287,7 +386,15 @@ def _meld(m: dict[str, object]) -> None:
     """
     tilstand = str(m.get("tilstand"))
     navn = str(m.get("navn"))
-    if tilstand == "stille":
+    if tilstand == "stille" and m.get("kilde") == "haendelsesdrevet":
+        # EGEN tekst. Den gamle talte om en kadence, og en hændelsesdrevet
+        # tilstand har ingen — beskeden ville have sagt «et slag hvert 0.
+        # minut» og «Sidste spor: None».
+        titel = f"{navn} følger ikke sin driver"
+        tekst = (f"{m.get('driver')} fyrede {m.get('driver_sidst')}, men "
+                 f"tilstanden blev hængende {m.get('bagud_s')} sekunder bagefter. "
+                 f"Sidst skrevet: {m.get('skrevet')}.")
+    elif tilstand == "stille":
         titel = f"{navn} står stille"
         tekst = (f"Forventet et slag hvert {float(m.get('kadence_s') or 0)/60:.0f}. minut. "
                  f"Sidste spor: {m.get('alder_s') or m.get('antal')}.")

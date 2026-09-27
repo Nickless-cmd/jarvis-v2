@@ -179,16 +179,18 @@ _Hjertet må hverken stå stille eller løbe løbsk — og bøgerne skal passe._
 |---|---|---|---|---|
 | class | `Puls` | `` | En tilstand der skal slå i en kendt takt. | [src](../../../core/services/indre_puls.py#L51) |
 | class | `Afstemning` | `` | To bøger over det samme arbejde. De skal stemme. | [src](../../../core/services/indre_puls.py#L76) |
-| function | `_nu` | `()` | — | [src](../../../core/services/indre_puls.py#L112) |
-| function | `_alder_af_kv` | `(noegle)` | Sekunder siden nøglen sidst blev skrevet. `None` = kan ikke aflæses. | [src](../../../core/services/indre_puls.py#L116) |
-| function | `_antal` | `(tabel, tidskolonne, siden, hvor=…)` | Rækker i et vindue. `None` = kan ikke tælles (tabellen findes måske ikke). | [src](../../../core/services/indre_puls.py#L133) |
-| function | `maal_puls` | `(p, *, vindue_s=…)` | Mål én puls. ``tilstand`` er "frisk", "stille", "loebsk" eller "ukendt". | [src](../../../core/services/indre_puls.py#L150) |
-| function | `maal_afstemning` | `(a, *, vindue_s=…)` | Sammenlign to bøger over det samme arbejde. | [src](../../../core/services/indre_puls.py#L191) |
-| function | `_kvitterede` | `()` | Hvad har vi allerede meldt om? | [src](../../../core/services/indre_puls.py#L217) |
-| function | `_gem_kvitterede` | `(navne)` | — | [src](../../../core/services/indre_puls.py#L236) |
-| function | `tjek` | `(*, meld=…, foerste_koersel=…)` | Mål alt, og meld det der er nyt galt. | [src](../../../core/services/indre_puls.py#L244) |
-| function | `_meld` | `(m)` | Send én melding gennem feeden. | [src](../../../core/services/indre_puls.py#L280) |
-| function | `build_indre_puls_surface` | `()` | Centralens flade. Læser kun — den melder ikke. | [src](../../../core/services/indre_puls.py#L310) |
+| class | `Haendelsesdrevet` | `` | En tilstand der skrives NÅR noget sker — ikke på et ur. | [src](../../../core/services/indre_puls.py#L94) |
+| function | `_nu` | `()` | — | [src](../../../core/services/indre_puls.py#L164) |
+| function | `_alder_af_kv` | `(noegle)` | Sekunder siden nøglen sidst blev skrevet. `None` = kan ikke aflæses. | [src](../../../core/services/indre_puls.py#L168) |
+| function | `_antal` | `(tabel, tidskolonne, siden, hvor=…)` | Rækker i et vindue. `None` = kan ikke tælles (tabellen findes måske ikke). | [src](../../../core/services/indre_puls.py#L185) |
+| function | `maal_puls` | `(p, *, vindue_s=…)` | Mål én puls. ``tilstand`` er "frisk", "stille", "loebsk" eller "ukendt". | [src](../../../core/services/indre_puls.py#L202) |
+| function | `maal_afstemning` | `(a, *, vindue_s=…)` | Sammenlign to bøger over det samme arbejde. | [src](../../../core/services/indre_puls.py#L243) |
+| function | `maal_haendelsesdrevet` | `(h)` | Fyrede driveren uden at tilstanden fulgte med? | [src](../../../core/services/indre_puls.py#L269) |
+| function | `_kvitterede` | `()` | Hvad har vi allerede meldt om? | [src](../../../core/services/indre_puls.py#L315) |
+| function | `_gem_kvitterede` | `(navne)` | — | [src](../../../core/services/indre_puls.py#L334) |
+| function | `tjek` | `(*, meld=…, foerste_koersel=…)` | Mål alt, og meld det der er nyt galt. | [src](../../../core/services/indre_puls.py#L342) |
+| function | `_meld` | `(m)` | Send én melding gennem feeden. | [src](../../../core/services/indre_puls.py#L379) |
+| function | `build_indre_puls_surface` | `()` | Centralens flade. Læser kun — den melder ikke. | [src](../../../core/services/indre_puls.py#L417) |
 
 ## `core/services/infra_sense.py`
 _core/services/infra_sense.py_

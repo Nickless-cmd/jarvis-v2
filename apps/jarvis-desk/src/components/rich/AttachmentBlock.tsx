@@ -63,7 +63,11 @@ export function formatSize(bytes?: number): string {
   return `${text} ${units[i]}`
 }
 
-export function AttachmentBlock({ block }: { block: VedhaefningsBlok }) {
+export function AttachmentBlock({ block, onImageSelect, imageClassName }: {
+  block: VedhaefningsBlok
+  onImageSelect?: () => void
+  imageClassName?: string
+}) {
   const { settings } = useSettings()
   const config: ApiConfig | null = settings
     ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }
@@ -106,7 +110,7 @@ export function AttachmentBlock({ block }: { block: VedhaefningsBlok }) {
     // Klik åbner fuld størrelse (Bjørn 20/9-2026). Formen kommer fra
     // `.attachment-image` — men uden `object-fit: cover`, som KLIPPEDE
     // kanterne af ens eget billede.
-    return <KlikbartBillede className="attachment-image" src={billedeUrl} alt={navn} />
+    return <KlikbartBillede className={imageClassName || 'attachment-image'} src={billedeUrl} alt={navn} onSelect={onImageSelect} />
   }
 
   const stoerrelse = formatSize(block.size_bytes)

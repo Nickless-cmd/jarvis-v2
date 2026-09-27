@@ -41,6 +41,23 @@ it('viser et live-billede mens svaret streames', async () => {
   expect(s.getByText('Her er billedet.')).toBeTruthy()
 })
 
+it('viser billedgenerering som venteflade uden opdigtet procent', async () => {
+  const blocks: ContentBlock[] = [
+    { type: 'tool_use', id: 'img-1', name: 'openrouter_image', input: { prompt: 'en kat' }, status: 'running' },
+  ]
+  const s = await render(<MessageList messages={[]} blocks={blocks} working />)
+  expect(s.getByTestId('image-generation-progress')).toBeTruthy()
+  expect(s.queryByText(/%/)).toBeNull()
+})
+
+it('fjerner ventefladen når Jarvis fortsætter med tekst', async () => {
+  const s = await render(<MessageList messages={[]} blocks={[
+    { type: 'tool_use', id: 'img-1', name: 'openrouter_image', input: {}, status: 'running' },
+    { type: 'text', text: 'Her er billedet.' },
+  ]} working />)
+  expect(s.queryByTestId('image-generation-progress')).toBeNull()
+})
+
 it('viser turn header fra turen starter, før første blok kommer', async () => {
   const s = await render(<MessageList messages={[]} blocks={[]} working />)
   expect(s.getByTestId('turn-header')).toBeTruthy()

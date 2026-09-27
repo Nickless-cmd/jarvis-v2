@@ -31,9 +31,10 @@ import { describeTool, subjectFromInput, summarizeRound, summerDiff } from '../.
 import { diffFraResultat, diffStat } from '../../lib/diffStat'
 import { postFor, kropFor } from './raekkeKroppe'
 import { erUnderagent } from '../../lib/agentKald'
-import { BlocksRenderer, etiketterFraBlokke } from './BlocksRenderer'
+import { BlocksRenderer, afslutForladteKald, etiketterFraBlokke } from './BlocksRenderer'
 import { MarkdownRenderer } from './MarkdownRenderer'
 import { useFoldPosition } from './useFoldPosition'
+import { erBilledVaerktoej, ImageGenerationProgress } from './ImageGeneration'
 
 /** Første linje af en tanke — resten ligger i kroppen. */
 function foersteLinje(s: string): string {
@@ -337,6 +338,8 @@ function RaekkeTranskriptImpl({
   rundeEtiketter?: Record<string, string>
 }) {
   const { arbejde, svar, kald, sekunder } = opdel(blocks)
+  const billedKald = streaming && afslutForladteKald(blocks, true).some((b) =>
+    b.type === 'tool_use' && erBilledVaerktoej(b.name) && (b.status ?? 'running') === 'running')
   const sektioner = opdelArbejdsrunder(arbejde)
   // Familien pr. kald — SAMME kilde som kroppene (`postFor`), så turens
   // hoved og rækkerne aldrig kan fortælle to forskellige historier.
@@ -376,6 +379,7 @@ function RaekkeTranskriptImpl({
           </div>
         </>
       )}
+      {billedKald ? <ImageGenerationProgress /> : null}
       {svar.length > 0 && (
         <div className="rv-svar">
           <BlocksRenderer

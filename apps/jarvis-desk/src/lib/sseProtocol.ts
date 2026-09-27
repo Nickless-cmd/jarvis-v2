@@ -174,6 +174,8 @@ export type ContentBlock =
       url?: string
       filename?: string
       mime_type?: string
+      kilde?: string
+      tool_use_id?: string
     }
   | {
       // UDGIVET fil (`publish_file`) eller en vedhæftning. Bærer ALTID kun en

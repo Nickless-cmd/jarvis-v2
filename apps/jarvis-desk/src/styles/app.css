@@ -1294,6 +1294,22 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 .attachment-image { margin: 4px 0; }
 .attachment-fejl { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--fg-3); }
 
+.image-generation { width: min(320px, 100%); margin: 14px 0; color: var(--fg-2); }
+.image-generation-label { display: block; margin-bottom: 16px; font-size: 13px; }
+.image-generation-grid {
+  display: grid; grid-template-columns: repeat(16, 1fr); place-items: center;
+  width: 256px; height: 256px; animation: image-generation-breath 3s ease-in-out infinite;
+}
+.image-generation-grid i { width: 4px; height: 4px; border-radius: 50%; background: var(--accent); }
+@keyframes image-generation-breath { 0%, 100% { opacity: .4; } 50% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .image-generation-grid { animation: none; opacity: .7; } }
+.generated-gallery { display: flex; flex-direction: column; align-items: flex-start; gap: 9px; margin: 8px 0; max-width: 100%; }
+.generated-gallery .generated-main { max-width: min(420px, 100%); max-height: 420px; }
+.generated-choices { display: flex; gap: 8px; overflow-x: auto; max-width: 100%; padding: 2px; }
+.generated-choices .billed-knap { cursor: pointer; }
+.generated-choices .generated-thumbnail { width: 58px; height: 58px; object-fit: cover; border-radius: 9px; }
+.generated-choices .selected { outline: 2px solid var(--accent); border-radius: 11px; }
+
 /* billeder i bruger-bobler (højre-justeret) */
 .msg-user-images { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; margin-bottom: 6px; }
 

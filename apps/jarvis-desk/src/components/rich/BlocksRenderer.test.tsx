@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { BlocksRenderer } from './BlocksRenderer'
 import type { ContentBlock } from '../../lib/sseProtocol'
 
@@ -8,6 +8,22 @@ function renderBlocks(blocks: ContentBlock[], streaming = false) {
 }
 
 describe('BlocksRenderer progress', () => {
+  it('viser en ærlig billed-animation mens generatoren kører', () => {
+    renderBlocks([{ type: 'tool_use', id: 'im1', name: 'openrouter_image', input: { prompt: 'kat' }, status: 'running' }], true)
+    expect(screen.getByLabelText('Genererer billede')).toBeInTheDocument()
+    expect(screen.queryByText(/\d+%/)).not.toBeInTheDocument()
+  })
+
+  it('samler genererede varianter i ét galleri', () => {
+    renderBlocks([
+      { type: 'image', src: 'data:image/png;base64,AAAA', filename: 'a.png', kilde: 'generated', tool_use_id: 'im1' },
+      { type: 'image', src: 'data:image/png;base64,BBBB', filename: 'b.png', kilde: 'generated', tool_use_id: 'im1' },
+    ])
+    expect(screen.getByTestId('generated-image-gallery')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Vælg b.png' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Vælg b.png' }))
+    expect(screen.getByRole('button', { name: 'Åbn b.png i fuld størrelse' })).toBeInTheDocument()
+  })
   // MessageRow viser «Redigerede N filer» efter det færdige svar; denne
   // blok-renderer viser kun selve beskedens indhold.
   it('viser IKKE længere et Forløb-spor under streaming', () => {

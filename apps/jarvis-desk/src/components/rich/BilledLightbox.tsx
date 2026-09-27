@@ -24,11 +24,14 @@ export function KlikbartBillede({
   src,
   alt,
   className,
+  onSelect,
 }: {
   src: string
   alt?: string
   /** Beholdes så hvert sted kan bære sin egen form (fx `.attachment-image`). */
   className?: string
+  /** Miniaturer vælger et billede i stedet for at åbne lightbox. */
+  onSelect?: () => void
 }) {
   const [aaben, setAaben] = useState(false)
   const luk = useCallback(() => setAaben(false), [])
@@ -49,8 +52,8 @@ export function KlikbartBillede({
       <button
         type="button"
         className="billed-knap"
-        onClick={(e) => { e.stopPropagation(); setAaben(true) }}
-        aria-label={alt ? `Åbn ${alt} i fuld størrelse` : 'Åbn billedet i fuld størrelse'}
+        onClick={(e) => { e.stopPropagation(); if (onSelect) onSelect(); else setAaben(true) }}
+        aria-label={onSelect ? `Vælg ${alt || 'billede'}` : alt ? `Åbn ${alt} i fuld størrelse` : 'Åbn billedet i fuld størrelse'}
         title="Åbn i fuld størrelse"
       >
         <img className={className} src={src} alt={alt ?? ''} loading="lazy" />

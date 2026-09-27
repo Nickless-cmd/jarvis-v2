@@ -370,6 +370,7 @@ def _open_dm_and_send(
     timeout: float,
     max_retries: int = 3,
     retry_delay: float = 5.0,
+    file_path: str = "",
 ) -> dict[str, object]:
     """Open DM channel with a Discord user and queue a message. Gateway-process only.
 
@@ -400,6 +401,23 @@ def _open_dm_and_send(
         try:
             future = asyncio.run_coroutine_threadsafe(_open(), _loop)
             channel_id = future.result(timeout=remaining_timeout)
+            if file_path:
+                # DM med fil: stien valideres af send_discord_file — samme
+                # graense som kanal-afsendelsen — og filen laegges i samme
+                # outbound-koe. channel.send(file=...) virker paa en DM-kanal
+                # praecis som paa en guild-kanal; mekanikken fandtes, det var
+                # kun vejen hertil der manglede (maalt 27/9-2026).
+                res = send_discord_file(channel_id, text, file_path)
+                if res.get("status") != "queued":
+                    return {
+                        "status": "error",
+                        "reason": f"file-send-rejected: {res.get('reason')}",
+                    }
+                logger.info(
+                    "discord_gateway: DM med fil til %d koet (channel=%d)",
+                    recipient_discord_id, channel_id,
+                )
+                return {"status": "sent", "channel_id": channel_id, "with_file": True}
             send_discord_message(channel_id, text)
             if attempt > 1:
                 logger.info(
@@ -443,7 +461,11 @@ def _open_dm_and_send(
     return {"status": "error", "reason": "DM failed — unexpected retry exhaustion"}
 
 
-def send_dm_to_owner(text: str, timeout: float = 10.0) -> dict[str, object]:
+def send_dm_to_owner(
+    text: str,
+    timeout: float = 10.0,
+    file_path: str = "",
+) -> dict[str, object]:
     """Send a DM directly to the owner via owner_discord_id.
 
     ## Testmiljøet må ALDRIG nå hans telefon
@@ -469,19 +491,26 @@ def send_dm_to_owner(text: str, timeout: float = 10.0) -> dict[str, object]:
     if not _is_gateway_owner():
         return _dispatch_to_runtime(
             "send_dm_to_owner",
-            {"text": str(text), "timeout": float(timeout)},
+            {
+                "text": str(text),
+                "timeout": float(timeout),
+                "file_path": str(file_path),
+            },
         )
     from core.services.discord_config import load_discord_config
     cfg = load_discord_config()
     if not cfg:
         return {"status": "error", "reason": "discord-not-configured"}
-    return _open_dm_and_send(int(cfg["owner_discord_id"]), text, timeout)
+    return _open_dm_and_send(
+        int(cfg["owner_discord_id"]), text, timeout, file_path=file_path,
+    )
 
 
 def send_dm_to_user(
     recipient_discord_id: str,
     text: str,
     timeout: float = 10.0,
+    file_path: str = "",
 ) -> dict[str, object]:
     """DM a known Discord user by ID.
 
@@ -496,6 +525,7 @@ def send_dm_to_user(
                 "recipient_discord_id": str(recipient_discord_id),
                 "text": str(text),
                 "timeout": float(timeout),
+                "file_path": str(file_path),
             },
         )
 
@@ -514,7 +544,9 @@ def send_dm_to_user(
             ),
         }
 
-    result = _open_dm_and_send(int(recipient_discord_id), text, timeout)
+    result = _open_dm_and_send(
+        int(recipient_discord_id), text, timeout, file_path=file_path,
+    )
     if result.get("status") == "sent":
         result["recipient_name"] = recipient.name
     return result

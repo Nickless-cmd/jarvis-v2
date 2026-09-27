@@ -1208,17 +1208,35 @@ def _exec_send_webchat_message(args: dict[str, Any]) -> dict[str, Any]:
 
 
 def _exec_send_discord_dm(args: dict[str, Any]) -> dict[str, Any]:
-    """Send a DM on Discord. Defaults to owner; resolves optional recipient from users.json."""
+    """Send a DM on Discord, optionally with a file attachment.
+
+    Defaults to owner; resolves optional recipient from users.json.
+
+    `file_path` bæres hele vejen til DM-kanalen og sendes som en RIGTIG
+    Discord-vedhæftning. Målt 27/9-2026: den vej fandtes ikke, så et billede
+    måtte sendes som URL — og blev derfor ikke vist inline. Stien valideres
+    her først, så et afvist kald giver en klar fejl i stedet for en tavs
+    afvisning dybt i gateway'en.
+    """
     content = str(args.get("content") or "").strip()
-    if not content:
-        return {"status": "error", "text": "No content provided."}
+    file_path = str(args.get("file_path") or "").strip()
+    if not content and not file_path:
+        return {"status": "error", "text": "No content or file_path provided."}
+    if file_path:
+        # validate_send_path returnerer (ok, err) og kaster ikke — ingen grund
+        # til at pakke den ind. Et afvist kald skal give en KLAR fejl her, ikke
+        # en tavs afvisning dybt i gateway'en.
+        from core.services.attachment_service import validate_send_path
+        ok, err = validate_send_path(file_path)
+        if not ok:
+            return {"status": "error", "text": f"file_path rejected: {err}"}
     recipient_raw = str(args.get("recipient") or "").strip()
 
     try:
         from core.services.discord_gateway import send_dm_to_owner, send_dm_to_user
 
         if not recipient_raw:
-            result = send_dm_to_owner(content)
+            result = send_dm_to_owner(content, file_path=file_path)
             who = "Bjørn (owner)"
         else:
             from core.identity.users import load_users
@@ -1238,13 +1256,19 @@ def _exec_send_discord_dm(args: dict[str, Any]) -> dict[str, Any]:
                     "status": "error",
                     "text": f"Unknown Discord recipient '{recipient_raw}'. Known users: {known}",
                 }
-            result = send_dm_to_user(matched.discord_id, content)
+            result = send_dm_to_user(
+                matched.discord_id, content, file_path=file_path,
+            )
             who = f"{matched.name} ({matched.discord_id})"
 
         if result.get("status") == "sent":
+            vedhaeftet = " med fil" if result.get("with_file") else ""
             return {
                 "status": "ok",
-                "text": f"Discord DM sent to {who}. channel_id={result.get('channel_id')}",
+                "text": (
+                    f"Discord DM sent to {who}{vedhaeftet}. "
+                    f"channel_id={result.get('channel_id')}"
+                ),
             }
         return {"status": "error", "text": f"Discord DM failed: {result.get('reason')}"}
     except Exception as exc:

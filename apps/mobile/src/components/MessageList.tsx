@@ -339,10 +339,24 @@ function buildStreamingRows(blocks: ContentBlock[]): Row[] {
       // først op ved genindlæsning — altså netop mens man venter på det, og
       // det er dét Bjørn pegede på med ChatGPT-appen som facit (27/9-2026).
       flush()
+      // REFERENCEN skal med, ikke kun `src`. Er billedet for stort til en
+      // data-URL, sender serveren `attachment_id` alene — attachment'en er
+      // allerede registreret, så `blokUrl` finder den. Uden felterne her
+      // ville `tegnBillede` få hverken `src` eller adresse og tegne INTET,
+      // præcis for de største billeder.
       rows.push({
         kind: 'attachments',
         key: `stream-vedh-${rows.length}`,
-        items: [{ type: 'image', src: b.src, filename: b.alt }],
+        items: [{
+          type: 'image',
+          src: b.src,
+          attachment_id: b.attachment_id,
+          url: b.url,
+          filename: b.filename ?? b.alt,
+          mime_type: b.mime_type,
+          kilde: b.kilde,
+          tool_use_id: b.tool_use_id,
+        }],
         side: 'left',
       })
     }

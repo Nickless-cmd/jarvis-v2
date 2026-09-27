@@ -308,3 +308,31 @@ it('tegner prikkerne som 16 rækker — ikke én flad stribe', async () => {
   ]} working />)
   expect(s.getAllByTestId('image-generation-raekke')).toHaveLength(16)
 })
+
+/**
+ * Billedet i streamen bærer sin REFERENCE (27/9-2026).
+ *
+ * Er billedet for stort til en data-URL, sender serveren `attachment_id`
+ * alene — attachment'en er allerede registreret, så adressen findes. Gav
+ * streaming-rækken kun `src` videre, fik `tegnBillede` hverken src eller
+ * adresse og tegnede INTET, præcis for de største billeder.
+ *
+ * Testet gennem den rigtige visning, ikke mod hjælperen: det er koblingen
+ * fra blok til tegnet billede der kunne knække.
+ */
+it('et streamet billede UDEN src tegnes stadig — via sin attachment_id', async () => {
+  const blocks: ContentBlock[] = [
+    { type: 'image', attachment_id: 'att-9', filename: 'stor.png',
+      mime_type: 'image/png', kilde: 'generated', tool_use_id: 'tu-1' } as ContentBlock,
+  ]
+  const s = await render(<MessageList messages={[]} blocks={blocks} working />)
+  expect(s.getByTestId('attachment-open-att-9')).toBeTruthy()
+})
+
+it('et streamet billede MED data-URL tegnes direkte', async () => {
+  const blocks: ContentBlock[] = [
+    { type: 'image', src: 'data:image/png;base64,AAA', filename: 'k.png' } as ContentBlock,
+  ]
+  const s = await render(<MessageList messages={[]} blocks={blocks} working />)
+  expect(s.getByTestId('attachment-open-k.png')).toBeTruthy()
+})

@@ -2161,7 +2161,13 @@ def format_tool_result_for_model(
     status = result.get("status", "unknown")
 
     if status == "error":
-        return f"[Tool {name} error: {result.get('error', 'unknown error')}]"
+        # `text` FOER `unknown error` (27/9-2026). 74 steder i vaerktoejerne
+        # laegger deres fejlbesked i `text` og ikke i `error` — `read_attachment`
+        # er en af dem. Uden dette fald tilbage viste hvert eneste af dem
+        # «unknown error», og den rigtige aarsag fandtes ingen steder i
+        # samtalen: beskeden VAR der, den blev kastet vaek her.
+        besked = result.get("error") or result.get("text") or "unknown error"
+        return f"[Tool {name} error: {besked}]"
 
     if status == "blocked":
         return f"[Tool {name} blocked: {result.get('error', 'blocked for safety')}]"

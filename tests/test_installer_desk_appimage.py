@@ -187,3 +187,48 @@ def test_den_nyeste_build_vaelges(tmp_path, monkeypatch):
 
     # Nyeste efter TID, ikke efter navn: "0.6.9" sorterer efter "0.6.125".
     assert I.find_appimage().name == "J.A.R.V.I.S-0.6.125.AppImage"
+
+
+# ── Målet OMDØBES — det åbnes ikke til skrivning (målt 27/9-2026) ───────────
+
+
+def _falsk_udpak_med_desktop(ud: Path) -> None:
+    rod = Path(ud) / "squashfs-root"
+    rod.mkdir(parents=True, exist_ok=True)
+    tekst = "[Desktop Entry]\n" + "\n".join(f"{k}={v}" for k, v in FELTER.items())
+    (rod / "jarvis-desktop.desktop").write_text(tekst, encoding="utf-8")
+
+
+def test_maalet_omdoebes_og_aabnes_aldrig(monkeypatch, tmp_path):
+    """En AppImage der KØRER kan ikke overskrives — kernen svarer ETXTBSY.
+
+    Målt 27/9-2026: installeren fejlede med et stakspor midt i en udgivelse,
+    fordi Bjørn havde appen åben. `shutil.copy2(kilde, maal)` åbner målet til
+    skrivning, og det kan man ikke på en binær der er i brug.
+
+    Målet gøres her skrivebeskyttet (0444). Det er den samme begrænsning i en
+    form testen kan fremkalde uden en kørende proces: filen kan ikke åbnes
+    til skrivning, men den kan OMDØBES over. Testen fejler hvis nogen sætter
+    `shutil.copy2(kilde, maal)` tilbage.
+    """
+    kilde = tmp_path / "J.A.R.V.I.S-9.9.9.AppImage"
+    kilde.write_bytes(b"ny-app" * 1000)
+    maal = tmp_path / "Applications" / "J.A.R.V.I.S.AppImage"
+    maal.parent.mkdir()
+    maal.write_bytes(b"gammel-app" * 1000)
+    maal.chmod(0o444)
+
+    monkeypatch.setattr(I, "udpak", lambda a, m, u: _falsk_udpak_med_desktop(u))
+    monkeypatch.setattr(I, "APPLIKATIONER", tmp_path / "applications")
+    monkeypatch.setattr(I, "IKON_ROD", tmp_path / "icons")
+    monkeypatch.setattr(I, "skriv_profil", lambda *a, **k: False)
+
+    rc = I.main(["--appimage", str(kilde), "--maal", str(maal),
+                 "--spring-verifikation-over"])
+
+    assert rc == 0
+    assert maal.read_bytes() == kilde.read_bytes(), "målet blev ikke den nye fil"
+    assert maal.stat().st_mode & 0o111, "den nye fil er ikke eksekverbar"
+    forrige = maal.with_name("J.A.R.V.I.S-forrige.AppImage")
+    assert forrige.read_bytes() == b"gammel-app" * 1000, "den forrige blev ikke gemt"
+    assert not maal.with_name(maal.name + ".ny").exists(), "efterlod en .ny-fil"

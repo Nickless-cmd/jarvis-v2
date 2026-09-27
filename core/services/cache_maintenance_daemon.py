@@ -111,6 +111,24 @@ def tick_cache_maintenance_daemon() -> dict[str, object]:
         except Exception:
             pass
 
+        # Vagten mod at politikken sakker bagud for skemaet. Oprydningen ovenfor
+        # virker — men den er en håndskreven liste, og 27/9-2026 var
+        # `cheap_lane_route_decisions` nået 2.381 MB på ni dage uden at stå på
+        # den. En liste kan ikke selv opdage hvad der mangler på den, så her
+        # spørges der den anden vej: hvad fylder, som ingen har taget stilling
+        # til? Rapporteres, slettes aldrig af sig selv.
+        uden_politik: list[dict[str, object]] = []
+        try:
+            from core.services.retention_coverage import (
+                rapport, tabeller_uden_politik,
+            )
+            uden_politik = tabeller_uden_politik()
+            linje = rapport(uden_politik)
+            if linje:
+                _log.info("cache_maintenance: %s", linje)
+        except Exception as exc:
+            _log.debug("retention_coverage fejlede: %s", exc)
+
         # Forældreløse balancer-slots: profiler der aldrig vælges (backup-mapper,
         # provider-navngivne profiler). Målt 01-09: 166 af 264 poster var inert
         # historik, så state-filen så dobbelt så stor ud som virkeligheden.
@@ -138,6 +156,7 @@ def tick_cache_maintenance_daemon() -> dict[str, object]:
             "state_files_pruned": state_files_pruned,
             "orphan_uploads": orphan_uploads,
             "orphan_slots": orphan_slots,
+            "uden_politik": uden_politik,
             "wal_checkpoint": wal_checkpoint,
         }
     except Exception as exc:

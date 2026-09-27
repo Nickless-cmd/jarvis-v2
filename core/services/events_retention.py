@@ -99,7 +99,41 @@ _TELEMETRY_RETENTION: tuple[tuple[str, str, int], ...] = (
     ("runtime_action_outcomes", "recorded_at", 60),
     ("runtime_contract_candidates", "created_at", 60),
     ("behavioral_decision_reviews", "created_at", 60),
+    # 2026-09-27: tabellen blev oprettet 18. september og var ni dage senere
+    # 2.381 MB — 45 % af hele jarvis.db. 6.000 rutebeslutninger om dagen, hver
+    # med alle 101 kandidat-slots og deres fulde kvote-tilstand (48 KB pr.
+    # række indtil `15e04466f` skar den til 4 KB). Den kom aldrig på denne
+    # liste, og intet sagde til; `retention_coverage` er vagten mod at det
+    # gentager sig.
+    #
+    # SYV DAGE, ikke de 60 som `cheap_provider_invocations` har, og det er
+    # ikke en glidning: de to tabeller er ikke samme slags. En invocation-
+    # række er et par hundrede bytes udfald — hvad blev kaldt, hvad skete der.
+    # En rutebeslutning er et fejlfindings-spor over HVORDAN der blev valgt,
+    # ti til hundrede gange så fedt. Udfaldet er værd at gemme i to måneder;
+    # sporet er det ikke.
+    #
+    # Syv dage er valgt ud fra læserne, ikke på fornemmelse.
+    # `route_integrity` og `health_divergence` ser 24 timer tilbage — syv dage
+    # er syv gange det. Den eneste læser derudover er `get_route_decision`,
+    # et opslag på id fra detalje-visningen af en invocation; den felt er
+    # allerede valgfrit (None når `route_decision_id` er tom), så en ældre
+    # invocation mister sit spor uden at noget går i stykker.
+    #
+    # KOBLINGEN ER DEN VIGTIGE: retentionen SKAL være bredere end
+    # diagnostik-vinduet. Bliver vinduet en dag udvidet til en uge, begynder
+    # `route_integrity` at melde «invocation uden rute» om rækker vi selv har
+    # slettet. `test_retention_coverage.py` læser vinduet ud af
+    # `cheap_lane_diagnostics` og fejler hvis de to nærmer sig hinanden.
+    ("cheap_lane_route_decisions", "created_at", 7),
 )
+
+
+#: Styres af ÉN indstilling, `cheap_lane_metadata_retention_days`, så de ikke
+#: kan glide fra hinanden. Rutebeslutningerne står med vilje UDENFOR: de er et
+#: fejlfindings-spor, ikke metadata om et udfald — se kommentaren ved deres
+#: linje i `_TELEMETRY_RETENTION`.
+_CHEAP_LANE_METADATA_TABLER = frozenset({"cheap_provider_invocations"})
 
 
 def prune_telemetry_tables() -> dict[str, object]:
@@ -107,7 +141,7 @@ def prune_telemetry_tables() -> dict[str, object]:
     out: dict[str, object] = {}
     for table, ts_col, days in _TELEMETRY_RETENTION:
         try:
-            if table == "cheap_provider_invocations":
+            if table in _CHEAP_LANE_METADATA_TABLER:
                 try:
                     from core.runtime.settings import load_settings
 

@@ -1,6 +1,7 @@
 import { createContext, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { listSessions, getSession, createSession, renameSession, deleteSession, type ChatSession, type ChatMessage } from '../lib/api'
 import { parsePauseAsk } from '../lib/pauseAsk'
+import { denseBlocks } from '../lib/blockHelpers'
 
 type ClientStatus =
   | 'optimistic_user'
@@ -227,7 +228,9 @@ export function SessionProvider({
   }, [])
 
   const reconcile = useCallback((assistantMsg: ChatMessage) => {
-    setMessages((prev) => [...prev, { ...assistantMsg, clientStatus: 'server_missing_keep_stream' }])
+    setMessages((prev) => [...prev, {
+      ...compactMessage(assistantMsg), clientStatus: 'server_missing_keep_stream',
+    }])
   }, [])
 
   const value = useMemo<SessionContextValue>(
@@ -273,6 +276,13 @@ function assistantNorm(m: ChatMessage): string {
   return raw.replace(/\s+/g, ' ').trim()
 }
 
+/** Finished messages no longer need SSE index alignment; remove empty slots. */
+function compactMessage(message: ChatMessage): ChatMessage {
+  if (!Array.isArray(message.content)) return message
+  const content = denseBlocks(message.content)
+  return content.length === message.content.length ? message : { ...message, content }
+}
+
 /**
  * Flet server-beskeder ind. Server-beskeder bliver 'server_confirmed'. Lokale
  * beskeder serveren endnu IKKE har (optimistic_user / server_missing_keep_stream)
@@ -287,6 +297,7 @@ function assistantNorm(m: ChatMessage): string {
  * også på INDHOLD, og dropper den optimistiske når serveren har indhentet.
  */
 function mergeServer(local: LocalMessage[], server: ChatMessage[]): LocalMessage[] {
+  server = server.map(compactMessage)
   const serverIds = new Set(server.map((m) => m.id))
   const serverUserTexts = new Set(
     server.filter((m) => m.role === 'user').map(userText).filter(Boolean),

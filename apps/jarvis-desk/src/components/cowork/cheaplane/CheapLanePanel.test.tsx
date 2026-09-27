@@ -82,7 +82,7 @@ describe('CheapLanePanel', () => {
     render(<CheapLanePanel config={config} />)
     await waitFor(() => expect(screen.getByRole('button', { name: 'Kapacitet' })).toBeTruthy())
     await bruger.click(screen.getByRole('button', { name: 'Kapacitet' }))
-    expect(screen.getByText(/ingen kvoter/i)).toBeTruthy()
+    expect(screen.getByText(/ingen tokenkvoter/i)).toBeTruthy()
     expect(screen.queryByText('0 %')).toBeNull()
   })
 

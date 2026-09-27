@@ -10,6 +10,13 @@ const asstMsg = (id: string, text: string) => ({ id, role: 'assistant' as const,
 const toolMsg = (id: string) => ({ id, role: 'tool' as const, content: [{ type: 'text' as const, text: 'tool-resultat' }], created_at: 'now', parent_id: null })
 
 describe('mergeServer afdublering', () => {
+  it('fjerner tomme blokindeks fra hentede beskeder før de vises', () => {
+    const server = [{ ...asstMsg('a-hole', 'svar'),
+      content: [null, { type: 'text', text: 'svar' }] as never }]
+    const merged = mergeServer([], server)
+    expect(merged[0]!.content).toEqual([{ type: 'text', text: 'svar' }])
+  })
+
   it('beholder array- og beskedreferencer når serverens transcript er uændret', () => {
     const local = [
       { ...userMsg('u-1', 'hej'), clientStatus: 'server_confirmed' as const },

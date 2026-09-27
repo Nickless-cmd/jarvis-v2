@@ -3,12 +3,42 @@ import { MessageList } from './MessageList'
 import type { ChatMessage } from '../lib/types'
 import type { ContentBlock } from '../lib/sseProtocol'
 
+// `MessageAttachments` henter sin konfiguration gennem `useAuth`, som kaster
+// uden for en AuthProvider. Samme mock som `MessageAttachments.test.tsx`.
+jest.mock('../state/AuthContext', () => {
+  const config = { apiBaseUrl: 'https://api.srvlab.dk/', authToken: 'token' }
+  return {
+    ...jest.requireActual('../state/AuthContext'),
+    useAuth: () => ({ config }),
+    useAuthOptional: () => ({ config }),
+  }
+})
+
 const msg = (over: Partial<ChatMessage>): ChatMessage => ({
   id: 'm1',
   role: 'user',
   content: 'hej',
   created_at: '2026-09-12T12:00:00Z',
   ...over
+})
+
+/**
+ * Et billede Jarvis laver MIDT i streamen. Det bærer sin egen `src` (en
+ * data-URL), så det kan tegnes med det samme.
+ *
+ * Uden en gren for det faldt billedet ud af den LEVENDE visning og dukkede
+ * først op ved genindlæsning — altså netop mens man venter på det. Bjørn
+ * pegede på ChatGPT-appen som facit (27/9-2026): dér kommer billedet ind i
+ * samtalen mens det laves.
+ */
+it('viser et live-billede mens svaret streames', async () => {
+  const blocks: ContentBlock[] = [
+    { type: 'text', text: 'Her er billedet.' },
+    { type: 'image', src: 'data:image/png;base64,AAAA', alt: 'et æble' },
+  ]
+  const s = await render(<MessageList messages={[]} blocks={blocks} working />)
+  expect(s.getByTestId('attachment-wrap')).toBeTruthy()
+  expect(s.getByText('Her er billedet.')).toBeTruthy()
 })
 
 it('viser turn header fra turen starter, før første blok kommer', async () => {

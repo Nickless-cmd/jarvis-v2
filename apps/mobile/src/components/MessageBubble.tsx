@@ -10,7 +10,9 @@ import { useAuthOptional } from '../state/AuthContext'
 import { sendMessageFeedback } from '../lib/apiClient'
 import { Animated, Linking, Modal, Platform, Pressable, Share, StyleSheet, Text, View } from 'react-native'
 import { CodeBlock } from './CodeBlock'
+import { MessageAttachments } from './MessageAttachments'
 import type { ChatMessage } from '../lib/types'
+import type { PersistedBlock } from '../lib/persistedBlocks'
 import { kilderFraBlokke, kilderPrDomaene, type Kilde, type KildeBlok } from '../lib/kilder'
 import { tokens } from '../theme/tokens'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
@@ -77,6 +79,7 @@ export function sourceDomains(text: string): string[] {
 export const MessageBubble = memo(function MessageBubble({
   message,
   kildeBlokke,
+  vedhaeftninger,
   onResend,
   onRewind,
   onRegenerate,
@@ -89,6 +92,18 @@ export const MessageBubble = memo(function MessageBubble({
   /** Turens strukturerede blokke, så kilderne kan læses af det han faktisk
    *  slog op i stedet for af hvad der tilfældigvis står i svarteksten. */
   kildeBlokke?: KildeBlok[] | null
+  /**
+   * Jarvis' EGNE filer og billeder — de hører til beskeden.
+   *
+   * De står under teksten og FØR handlingsrækken (GPT-formen, 27/9-2026). Lå
+   * de i en selvstændig række efter boblen, faldt de neden for kopiér/oplæs-
+   * ikonerne og så ud som om de kom efter svaret i stedet for at være en del
+   * af det — præcis dét Bjørn pegede på fra telefonen.
+   *
+   * Dine EGNE uploads går ikke her: de har ingen handlingsrække imellem sig
+   * og boblen, så de ligger allerede rigtigt over den.
+   */
+  vedhaeftninger?: PersistedBlock[]
   onResend?: (text: string) => void
   /** Kun dine beskeder: spol samtalen tilbage hertil (Claude Desktop §8). */
   onRewind?: () => void
@@ -164,6 +179,10 @@ export const MessageBubble = memo(function MessageBubble({
     Animated.spring(enter, { toValue: 1, useNativeDriver: true, speed: 16, bounciness: 6 }).start()
   }, [enter])
   const enterScale = enter.interpolate({ inputRange: [0, 1], outputRange: [0.96, 1] })
+
+  // Kun assistentens EGNE filer. Dine uploads har deres egen række over boblen
+  // og skal ikke igennem her (se `vedhaeftninger`).
+  const vedh = !isUser && vedhaeftninger?.length ? vedhaeftninger : null
 
   const copy = async () => {
     await Clipboard.setStringAsync(message.content)
@@ -248,6 +267,17 @@ export const MessageBubble = memo(function MessageBubble({
               </Text>
             ))}
           </View>
+        </View>
+      ) : null}
+
+      {/* Jarvis' egne filer hører til BESKEDEN — ikke til tråden. De står
+          under teksten og FØR handlingsrækken, så billedet læses som en del af
+          svaret. Før lå de i en selvstændig række efter boblen, altså neden for
+          kopiér/oplæs-ikonerne, og så ud som om de kom bagefter svaret
+          (målt 27/9-2026 på Bjørns telefon). */}
+      {!isUser && vedh ? (
+        <View style={styles.vedhaeftningUnder}>
+          <MessageAttachments items={vedh} side="left" kantlos />
         </View>
       ) : null}
 
@@ -461,6 +491,9 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
     marginTop: tokens.spacing.md
   },
   sources: { marginTop: tokens.spacing.sm, gap: tokens.spacing.xs },
+  // Afstanden mellem svaret og Jarvis' eget billede. `MessageAttachments` får
+  // `kantlos`, så afstanden sættes ÉT sted — her — og ikke to.
+  vedhaeftningUnder: { marginTop: tokens.spacing.md },
   sourcesLabel: { color: tokens.color.fg3, fontSize: 11, fontWeight: '800', textTransform: 'uppercase' },
   sourceChips: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spacing.xs },
   // Markerings-tilstand: rå tekst, monospace, indrykning bevaret. Den tegnede

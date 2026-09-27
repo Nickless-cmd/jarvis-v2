@@ -28,10 +28,19 @@ import { FullscreenImagePreview } from './FullscreenImagePreview'
  * billede Jarvis havde lavet havnede i brugerens side og så ud som om brugeren
  * havde sendt det. Derfor `side` — målt 13/9-2026 på telefonen.
  */
-export function MessageAttachments({ items, side = 'right' }: {
+export function MessageAttachments({ items, side = 'right', kantlos = false }: {
   items: PersistedBlock[]
   /** Hvilken side af tråden vedhæftningen hører til. */
   side?: 'left' | 'right'
+  /**
+   * Uden egen kant-margin.
+   *
+   * Blokken er flyttet IND i beskeden (GPT-formen, 27/9-2026): teksten,
+   * billedet og handlingsrækken er nu ÉN besked, og så ejer `MessageBubble`
+   * afstanden ud til kanten. Uden dette blev marginen lagt på to gange, og
+   * billedet stod ikke på linje med teksten ovenover.
+   */
+  kantlos?: boolean
 }) {
   const tokens = useTheme()
   const styles = useStyles(makestyles)
@@ -47,15 +56,19 @@ export function MessageAttachments({ items, side = 'right' }: {
   return (
     <View
       testID="attachment-wrap"
-      style={[styles.wrap, side === 'left' ? styles.venstre : styles.hoejre]}
+      style={[styles.wrap, kantlos && styles.kantlos, side === 'left' ? styles.venstre : styles.hoejre]}
     >
       {items.map((b) => {
         // En UDGIVET fil har ingen attachment_id — den baerer sin egen url.
         // Noeglen maa derfor falde tilbage paa navnet, ellers ville alle
         // udgivne filer i samme tur dele noeglen '' og React tegne én.
         const id = String(b.attachment_id ?? '') || String(b.filename ?? '')
-        if (b.type === 'image' && config?.apiBaseUrl) {
-          const uri = blokUrl(b, config.apiBaseUrl)
+        // LIVE billeder bærer deres egen `src` (en data-URL fra streamen) og
+        // skal ikke hentes med token. PERSISTEREDE bærer kun en reference.
+        const direkte = String(b.src || '')
+        const fraServer = config?.apiBaseUrl ? blokUrl(b, config.apiBaseUrl) : ''
+        const adresse = direkte || fraServer
+        if (b.type === 'image' && adresse) {
           return (
             <Pressable
               key={id}
@@ -63,7 +76,7 @@ export function MessageAttachments({ items, side = 'right' }: {
               accessibilityRole="imagebutton"
               accessibilityLabel={`Åbn ${b.filename || 'billede'}`}
               onPress={() => setPreview({
-                uri,
+                uri: adresse,
                 title: b.filename || 'Billede',
                 // Endelsen foelger med videre: galleriet afgoer typen ud fra
                 // den, og `mime` er reserven naar navnet ikke har en.
@@ -74,14 +87,27 @@ export function MessageAttachments({ items, side = 'right' }: {
               {/* IKKE <Image source={{uri, headers}}>. Maalt 12/9-2026:
                   React Natives billed-loader sender anmodningen UDEN
                   headeren, og serveren svarer 401 - saa billedet blev et
-                  tomt felt. Se AuthImage. */}
-              <AuthImage
-                testID={`attachment-image-${id}`}
-                config={config}
-                url={uri}
-                navn={id}
-                style={styles.image}
-              />
+                  tomt felt. Se AuthImage.
+
+                  En data-URL er undtagelsen: den ligger i haanden allerede og
+                  er vores egen — der er ingen header at tabe, og AuthImage kan
+                  ikke hente den gennem filsystemet. */}
+              {direkte ? (
+                <Image
+                  testID={`attachment-image-${id}`}
+                  source={{ uri: direkte }}
+                  style={styles.image}
+                  resizeMode="cover"
+                />
+              ) : config ? (
+                <AuthImage
+                  testID={`attachment-image-${id}`}
+                  config={config}
+                  url={adresse}
+                  navn={id}
+                  style={styles.image}
+                />
+              ) : null}
             </Pressable>
           )
         }
@@ -165,6 +191,8 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
   // ikke i `wrap`, så der ikke findes en standard der kan blive forkert.
   venstre: { alignSelf: 'flex-start', alignItems: 'flex-start' },
   hoejre: { alignSelf: 'flex-end', alignItems: 'flex-end' },
+  // Inde i beskeden: `MessageBubble` ejer afstanden ud til kanten.
+  kantlos: { marginHorizontal: 0, marginBottom: 0 },
   image: {
     width: 240,
     height: 240,

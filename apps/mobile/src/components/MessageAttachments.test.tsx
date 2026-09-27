@@ -135,7 +135,7 @@ it('MessageList laegger assistentens filer fra sig FOER grenene', () => {
 // lavet landede derfor i brugerens boble og saa ud som om brugeren havde sendt
 // det. Siden er nu en prop — og koblingen skal kunne ses.
 
-it('assistentens billeder tegnes i VENSTRE side — brugerens i hoejre', () => {
+it('assistentens filer bæres på turens sidste afsnit — ikke i egen række', () => {
   const kilde = require('fs').readFileSync(
     require('path').join(__dirname, 'MessageList.tsx'), 'utf8') as string
 
@@ -143,13 +143,25 @@ it('assistentens billeder tegnes i VENSTRE side — brugerens i hoejre', () => {
   // spurgte om `side: 'left'` — og bestod mutationen, fordi kommentaren
   // ovenfor selv skriver `side: 'left'`. En test der matcher beskrivelsen af
   // rettelsen i stedet for rettelsen.
+  //
+  // 27/9-2026: filerne flyttede fra deres EGEN række ind på beskedens sidste
+  // afsnit, fordi en selvstændig række lander efter boblens handlingsrække.
+  // Linjen ligger inde i `thread.forEach`, altså EFTER `if (hasOrdering(...))`
+  // — derfor søges der i hele assistent-grenen.
   const iAssistent = kilde.split("if (m.role === 'assistant') {")[1] ?? ''
-  expect(iAssistent.split('if (hasOrdering(blocks))')[0] ?? '')
-    .toContain("items: afiler, side: 'left'")
+  const assistentGren = iAssistent.split("if (m.role === 'user') {")[0] ?? ''
+  expect(assistentGren)
+    .toContain('vedhaeftninger: bi === lastTextIdx && afiler.length ? afiler : undefined')
 
   const iBruger = kilde.split("if (m.role === 'user') {")[1] ?? ''
   expect(iBruger.split("if (m.role === 'tool')")[0] ?? '')
     .toContain("items: ublocks, side: 'right'")
+})
+
+it('boblen tegner dem til VENSTRE, før handlingsrækken', () => {
+  const kilde = require('fs').readFileSync(
+    require('path').join(__dirname, 'MessageBubble.tsx'), 'utf8') as string
+  expect(kilde).toContain('<MessageAttachments items={vedh} side="left" kantlos />')
 })
 
 it('siden foelger med hele vejen ud i komponenten', () => {

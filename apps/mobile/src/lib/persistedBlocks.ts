@@ -53,6 +53,14 @@ export interface PersistedBlock {
   /** image/file: reference, ALDRIG data — hentning går over det user-scopede endpoint. */
   attachment_id?: string
   /**
+   * image: LIVE billedets egen kilde — en data-URL fra streamen.
+   *
+   * Sat betyder «billedet er allerede i hånden»: det skal ikke hentes med
+   * token, og `AuthImage` kan ikke hente en data-URL gennem filsystemet.
+   * Persisterede billeder har feltet IKKE — de bærer kun en reference.
+   */
+  src?: string
+  /**
    * file: UDGIVET fils egen adresse.
    *
    * `publish_file` lægger filen i `files/` og skriver sin URL i blokken — den

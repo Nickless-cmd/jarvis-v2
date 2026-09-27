@@ -176,6 +176,21 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
         type: 'tool_use', id: cb.id, name: cb.name, input: cb.input ?? {}, partialJson: '', status: 'running',
         startet: forrige && forrige.type === 'tool_use' && forrige.startet != null ? forrige.startet : nu,
       }
+      // Billedet fandtes ikke i streamen før 27/9-2026: værktøjet lagde en
+      // note fra sig, og blokken blev først bygget når svaret blev gemt.
+      // Renderen har haft grenen hele tiden (`BlocksRenderer`: `block.src ?
+      // <ImageBlock/> : …`) — den fik bare aldrig noget. Nu gør den.
+      else if (cb.type === 'image') blocks[event.index] = {
+        type: 'image',
+        src: cb.src,
+        alt: cb.alt,
+        attachment_id: cb.attachment_id,
+        url: cb.url,
+        filename: cb.filename,
+        mime_type: cb.mime_type,
+        kilde: cb.kilde,
+        tool_use_id: cb.tool_use_id,
+      }
       else if (cb.type === 'tool_result') {
         const idx = blocks.findIndex((b) => b && b.type === 'tool_use' && b.id === cb.tool_use_id)
         if (idx >= 0) {

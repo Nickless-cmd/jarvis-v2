@@ -28,6 +28,23 @@ export interface ContentBlockStartEvent {
     | { type: 'thinking'; thinking: string }
     | { type: 'tool_use'; id: string; name: string; input: Record<string, unknown> }
     | { type: 'tool_result'; tool_use_id: string; status: string; content: string; is_error?: boolean }
+    // Billede UNDER kørslen (27/9-2026). Samme konvolut som `tool_result`:
+    // ingen ny event-type, kun en blok mere `content_block_start` kan bære.
+    // LIVE har den `src` (data-URL) og tegnes straks; er billedet for stort
+    // til en data-URL, kommer den med `attachment_id` alene og hentes med
+    // token. `tool_use_id` er ankeret — den gemte blok får det samme, så
+    // billedet lander samme sted før og efter turen. Intet hop.
+    | {
+        type: 'image'
+        src?: string
+        alt?: string
+        attachment_id?: string
+        url?: string
+        filename?: string
+        mime_type?: string
+        kilde?: string
+        tool_use_id?: string
+      }
 }
 
 export interface ContentBlockDeltaEvent {

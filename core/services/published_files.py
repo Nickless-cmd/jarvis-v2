@@ -105,6 +105,28 @@ def take(run_id: str) -> list[dict[str, Any]]:
         return _pr_run.pop(rid, [])
 
 
+def peek(run_id: str, *, tool_use_id: str = "") -> list[dict[str, Any]]:
+    """Se turens poster UDEN at rydde dem. Tom liste hvis ingen.
+
+    `take` popper, fordi den kaldes når svaret persisteres og posten skal
+    hæftes på præcis én besked. Den levende stream skal se de samme poster
+    MENS turen kører — og må derfor ikke tage dem fra den der gemmer bagefter.
+
+    `tool_use_id` afgrænser til ét værktøjskald, så et billede kan sendes ud i
+    samme øjeblik dets eget `tool_result` passerer, i stedet for at turens
+    øvrige filer følger med.
+    """
+    rid = str(run_id or "").strip()
+    if not rid:
+        return []
+    tid = str(tool_use_id or "").strip()
+    with _laas:
+        poster = list(_pr_run.get(rid) or [])
+    if not tid:
+        return poster
+    return [p for p in poster if str(p.get("tool_use_id") or "") == tid]
+
+
 def as_blocks(poster: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Oversæt til content_json-blokke i samme form som vedhæftninger.
 

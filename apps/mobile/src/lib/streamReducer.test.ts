@@ -401,3 +401,41 @@ describe('tool_round_label via system_event (SSE-v2)', () => {
     expect(s.rundeEtiketter ?? {}).toEqual({})
   })
 })
+
+describe('billedet i den levende stream (27/9-2026)', () => {
+  // Indtil nu lagde billedværktøjet en note fra sig under turen, og blokken
+  // blev først bygget når svaret blev gemt. Under kørslen var der intet at
+  // tegne — animationen er sin egen komponent, billedet havde ingen blok.
+  //
+  // `src` var PÅKRÆVET i protokollen, så et billede der kun har en reference
+  // kunne slet ikke udtrykkes. `MessageAttachments.tegnBillede` har kunnet
+  // begge dele hele tiden: `b.src` hvis den er der, ellers `blokUrl(...)`.
+  const start = (cb: Record<string, unknown>) =>
+    streamReducer(initialStreamState(), {
+      type: 'content_block_start', index: 0, content_block: cb,
+    } as never)
+
+  it('en LIVE-blok med data-URL lander paa sit index', () => {
+    const s = start({
+      type: 'image', src: 'data:image/png;base64,AAA', filename: 'k.png',
+      tool_use_id: 'tu-1', kilde: 'generated',
+    })
+    expect(s.blocks[0]).toMatchObject({
+      type: 'image', src: 'data:image/png;base64,AAA', tool_use_id: 'tu-1',
+    })
+  })
+
+  it('en blok UDEN src beholder sin reference', () => {
+    const s = start({
+      type: 'image', attachment_id: 'att-77', filename: 'stor.png',
+      mime_type: 'image/png', kilde: 'generated', tool_use_id: 'tu-2',
+    })
+    expect(s.blocks[0]).toMatchObject({ type: 'image', attachment_id: 'att-77' })
+    expect((s.blocks[0] as { src?: string }).src).toBeUndefined()
+  })
+
+  it('tool_use_id foelger med — ankeret der gør at billedet ikke hopper', () => {
+    const s = start({ type: 'image', src: 'data:image/png;base64,B', tool_use_id: 'tu-3' })
+    expect((s.blocks[0] as { tool_use_id?: string }).tool_use_id).toBe('tu-3')
+  })
+})

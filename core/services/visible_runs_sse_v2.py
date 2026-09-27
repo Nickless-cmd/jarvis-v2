@@ -21,8 +21,9 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import re
-from typing import AsyncIterator
+from typing import Any, AsyncIterator
 
 from apps.api.jarvis_api.sse_v2_events import (
     ContentBlockDelta,
@@ -36,6 +37,8 @@ from apps.api.jarvis_api.sse_v2_events import (
     _sse_format,
 )
 from core.services.structured_content_flag import structured_content_v2_enabled
+
+logger = logging.getLogger(__name__)
 
 # SSE-format regex til at parse legacy events:
 #   event: <name>
@@ -186,6 +189,49 @@ def _parse_legacy_sse(chunk: str) -> tuple[str, dict] | None:
 # → bryd ud så message_stop fyrer. Hård loft (_MAX_IDLE_TICKS) som sidste værn.
 _IDLE_TICK_S = 20.0          # sekunder uden legacy-event før vi tjekker active-state
 _MAX_IDLE_TICKS = 9          # ~180s total stilhed → kilden er død uanset
+
+
+#: De tre værktøjer der producerer et billede. `openrouter_image_edit` er et
+#: tyndt lag over `generate_image` og deler hele kæden efter kaldet, så den er
+#: lige så ramt af et manglende live-billede som genereringen.
+_BILLEDVAERKTOEJER = frozenset({
+    "openrouter_image", "openrouter_image_edit", "pollinations_image",
+})
+
+
+def _live_billedblokke(run_id: str, tool_use_id: str) -> list[dict[str, Any]]:
+    """Billedblokke for ét værktøjskald, klar til den levende stream.
+
+    Noterne kommer fra `published_files` — dem værktøjet lagde fra sig under
+    turen — og læses med `peek`, ikke `take`: den der persisterer svaret
+    bagefter skal stadig kunne finde dem.
+
+    En LIVE-blok bærer `src` (en data-URL) så klienten kan tegne den med det
+    samme. Er billedet for stort til en data-URL, sendes blokken alligevel med
+    sin `attachment_id`: den er allerede registreret, så
+    `/attachments/image/{id}` virker med det samme, og klienten henter den
+    med token. Bedre et billede der kommer et øjeblik senere end intet.
+    """
+    if not run_id:
+        return []
+    from core.services.published_files import as_blocks, peek
+    poster = peek(run_id, tool_use_id=tool_use_id)
+    blokke = [b for b in as_blocks(poster) if b.get("type") == "image"]
+    if not blokke:
+        return []
+    from core.services.attachment_service import image_data_url
+    for blok in blokke:
+        aid = str(blok.get("attachment_id") or "")
+        if not aid:
+            continue
+        try:
+            url = image_data_url(aid)
+        except Exception as exc:
+            logger.debug("sse_v2: data-URL for %s fejlede: %s", aid, exc)
+            url = None
+        if url:
+            blok["src"] = url
+    return blokke
 
 
 def _run_still_active(run_id: str) -> bool:
@@ -469,6 +515,46 @@ async def translate_to_v2(
                 }))
         except Exception:
             pass
+
+        # BILLEDET I DEN LEVENDE STREAM (27/9-2026).
+        #
+        # Indtil nu lagde billedværktøjet en note fra sig under turen, og
+        # blokken blev først bygget når svaret blev PERSISTERET. Under kørslen
+        # var der bogstaveligt talt intet at tegne: animationen vistes, fordi
+        # den er sin egen komponent, men billedet havde ingen blok at bo i før
+        # turen var slut. Begge klienter havde grenen klar — desk skriver det
+        # selv i `sseProtocol.ts`: «LIVE bærer det en `src`, PERSISTERET bærer
+        # det en REFERENCE» — den havde bare aldrig fået noget at tage imod.
+        #
+        # Det er IKKE en ændring af stream-formatet. `content_block_start`
+        # bærer allerede vilkårlige blokke; det er præcis sådan `tool_result`
+        # ovenfor blev en førsteklasses blok. Her bruges samme konvolut.
+        #
+        # ALLE TRE billedværktøjer. `openrouter_image_edit` er et tyndt lag
+        # over `generate_image` og deler hele resten af kæden — samme
+        # `_save_images`, samme `register_generated_image`, samme note. En
+        # betingelse på `openrouter_image` alene ville glemme redigeringen OG
+        # `pollinations_image`, og det ville ingen opdage, fordi man tester med
+        # det værktøj man selv bruger.
+        try:
+            if name in _BILLEDVAERKTOEJER:
+                for _blok in _live_billedblokke(
+                    str(_state.get("run_id") or ""), tool_id):
+                    _img_idx = _alloc_index()
+                    await queue.put(_sse_format("content_block_start", {
+                        "type": "content_block_start",
+                        "index": _img_idx,
+                        "content_block": _blok,
+                    }))
+                    await queue.put(_sse_format("content_block_stop", {
+                        "type": "content_block_stop",
+                        "index": _img_idx,
+                    }))
+        except Exception as _img_exc:
+            # Et billede der ikke kan sendes live må aldrig brække streamen —
+            # den persisterede blok bygges stadig når svaret gemmes, så
+            # billedet er der efter turen uanset hvad der sker her.
+            logger.warning("sse_v2: kunne ikke sende billedet live: %r", _img_exc)
 
     async def _ping_loop() -> None:
         try:

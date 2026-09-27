@@ -169,6 +169,22 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
             delete blocks[i]
           }
         }
+      } else if (cb.type === 'image') {
+        // Billedet fandtes ikke i streamen før 27/9-2026: værktøjet lagde en
+        // note fra sig, og blokken blev først bygget når svaret blev gemt.
+        // Animationen vistes, fordi den er sin egen komponent — billedet havde
+        // ingen blok at bo i før turen var slut.
+        blocks[event.index] = {
+          type: 'image',
+          src: cb.src,
+          alt: cb.alt,
+          attachment_id: cb.attachment_id,
+          url: cb.url,
+          filename: cb.filename,
+          mime_type: cb.mime_type,
+          kilde: cb.kilde,
+          tool_use_id: cb.tool_use_id,
+        }
       } else if (cb.type === 'tool_result') {
         // Fold resultatet ind på sin matchende tool_use-blok (via tool_use_id) i
         // stedet for at fylde `blocks[event.index]`. Dette er MED VILJE — hvis vi

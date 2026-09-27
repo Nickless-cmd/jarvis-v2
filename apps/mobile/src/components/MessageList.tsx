@@ -26,6 +26,8 @@ import { ThinkingSummary } from './ThinkingSummary'
 import { MessageAttachments } from './MessageAttachments'
 import { ToolResultCard } from './ToolResultCard'
 import { ImageGenerationCard } from './ImageGenerationCard'
+import { ImageAnalysisCard } from './ImageAnalysisCard'
+import { billedArbejdeFor } from '../lib/billedArbejde'
 
 export interface MessageListHandle {
   jumpTop: () => void       // ældste besked
@@ -111,6 +113,7 @@ type Row = (
   | { kind: 'tool'; key: string; content: string }
   | { kind: 'live-tool'; key: string; id?: string; name: string; body: string; running: boolean; etiket?: string; diff?: { tilfoejet: number; fjernet: number } | null }
   | { kind: 'image-generation'; key: string }
+  | { kind: 'image-analysis'; key: string; kilde: string }
   /** Én RUNDE værktøjsarbejde, foldet sammen til én linje. */
   | { kind: 'tool-group'; key: string; items: ToolItem[] }
   /** Et skill-kald (skill_gate/skill_invoke) — sin EGEN linje, ikke i runden. */
@@ -369,11 +372,14 @@ function buildStreamingRows(blocks: ContentBlock[]): Row[] {
         kald: { name: b.name, input: b.input, result: b.result, status: b.status ?? 'running' },
       })
     }
-    else if (b.type === 'tool_use' &&
-      (b.name === 'openrouter_image' || b.name === 'openrouter_image_edit' || b.name === 'pollinations_image') &&
-      b.status !== 'done' && b.status !== 'error') {
+    else if (b.type === 'tool_use' && billedArbejdeFor(b)) {
+      // Generering ELLER analyse. Ét opslag (lib/billedArbejde), så et nyt
+      // billedværktøj ikke kan blive husket her og glemt i desk.
+      const arbejde = billedArbejdeFor(b)!
       flush()
-      rows.push({ kind: 'image-generation', key: `stream-image-${b.id || i}` })
+      rows.push(arbejde.slags === 'analyse'
+        ? { kind: 'image-analysis', key: `stream-analyse-${b.id || i}`, kilde: arbejde.kilde }
+        : { kind: 'image-generation', key: `stream-image-${b.id || i}` })
     }
     else if (b.type === 'tool_use') {
       flush()
@@ -408,7 +414,8 @@ function buildStreamingRows(blocks: ContentBlock[]): Row[] {
   // En senere blok betyder at Jarvis er gået videre. Et gammelt tool_use kan
   // mangle slutstatus i en sparsom stream; ventefladen må ikke blive stående.
   for (let index = rows.length - 2; index >= 0; index--) {
-    if (rows[index]?.kind === 'image-generation') rows.splice(index, 1)
+    const k = rows[index]?.kind
+    if (k === 'image-generation' || k === 'image-analysis') rows.splice(index, 1)
   }
   // KUN den sidste række kan være i gang. Alt før den er overhalet af noget
   // der kom bagefter; det er selve beviset for at den er færdig.
@@ -830,6 +837,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
           return <MessageAttachments items={item.items} side={item.side} />
         }
         if (item.kind === 'image-generation') return <ImageGenerationCard />
+        if (item.kind === 'image-analysis') return <ImageAnalysisCard kilde={item.kilde} />
         if (item.kind === 'compact-marker') return <CompactMarkerRow content={item.content} />
         return (
           <MessageBubble

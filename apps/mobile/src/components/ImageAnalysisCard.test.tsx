@@ -1,0 +1,130 @@
+import { render } from '@testing-library/react-native'
+import { MessageList } from './MessageList'
+import { billedArbejdeFor, billedKilde } from '../lib/billedArbejde'
+import type { ContentBlock } from '../lib/sseProtocol'
+
+jest.mock('../state/AuthContext', () => {
+  const config = { apiBaseUrl: 'https://api.srvlab.dk/', authToken: 'token' }
+  return {
+    ...jest.requireActual('../state/AuthContext'),
+    useAuth: () => ({ config }),
+    useAuthOptional: () => ({ config }),
+  }
+})
+
+/**
+ * Animationen for `analyze_image` — mobilens halvdel.
+ *
+ * Målt på CT105 27/9-2026 over fjorten dage: **232 kald, median 8,49 s**,
+ * p90 28,6 s, 219 ok. Otte tavse sekunder er rigeligt til at tro turen er
+ * gået i stå. `jarvis_browser_screenshot` er målt til 0,02 s og har derfor
+ * ingen animation.
+ *
+ * `read_attachment` er bevidst ikke med: alle 18 målte kald var fejl, så der
+ * findes endnu ikke én måling af et vellykket kald.
+ */
+
+const analyse = (input: Record<string, unknown>, status = 'running'): ContentBlock =>
+  ({ type: 'tool_use', id: 'a1', name: 'analyze_image', input, status } as ContentBlock)
+
+describe('billedKilde', () => {
+  it('tager sidste led af stien', () => {
+    expect(billedKilde({ image_path: '/home/bs/billeder/kat.png' })).toBe('kat.png')
+  })
+
+  it('klarer bagudskråstreger og en sti der ender på skråstreg', () => {
+    expect(billedKilde({ image_path: 'C:\\Users\\bs\\kat.png' })).toBe('kat.png')
+    expect(billedKilde({ image_path: '/home/bs/billeder/' })).toBe('billeder')
+  })
+
+  it('falder tilbage til værten på en URL — uden port og bruger', () => {
+    expect(billedKilde({ image_url: 'https://eksempel.dk/a/kat.png?x=1' })).toBe('eksempel.dk')
+    expect(billedKilde({ image_url: 'https://bs@eksempel.dk:8443/kat.png' })).toBe('eksempel.dk')
+  })
+
+  it('stien vinder over URL\'en', () => {
+    expect(billedKilde({ image_path: '/tmp/kat.png', image_url: 'https://eksempel.dk/x.png' })).toBe('kat.png')
+  })
+
+  it('noget der ikke er en URL giver tom streng frem for at gætte', () => {
+    expect(billedKilde({ image_url: 'ikke en url' })).toBe('')
+    expect(billedKilde(undefined)).toBe('')
+    expect(billedKilde({ image_path: 42 })).toBe('')
+  })
+
+  /** Mens kaldet streames ind ligger argumenterne i `partialJson` som en
+   *  streng, ikke i `input` — samme fælde som «+12 −4» faldt i. */
+  it('læser argumenterne fra partialJson når input er tomt', () => {
+    expect(billedKilde({}, '{"image_path": "/x/skaerm.png"}')).toBe('skaerm.png')
+    expect(billedKilde(undefined, '{"image_path": "/x/skae')).toBe('')
+  })
+
+  it('input vinder over partialJson når begge er der', () => {
+    expect(billedKilde({ image_path: '/a/rigtig.png' }, '{"image_path": "/b/gammel.png"}')).toBe('rigtig.png')
+  })
+})
+
+describe('billedArbejdeFor', () => {
+  it('kender analysen fra genereringen', () => {
+    expect(billedArbejdeFor({ name: 'analyze_image', status: 'running', input: { image_path: '/x/k.png' } }))
+      .toEqual({ slags: 'analyse', kilde: 'k.png' })
+    expect(billedArbejdeFor({ name: 'openrouter_image', status: 'running' })).toEqual({ slags: 'generering' })
+  })
+
+  it('alle tre billedværktøjer tæller som generering', () => {
+    for (const navn of ['openrouter_image', 'openrouter_image_edit', 'pollinations_image']) {
+      expect(billedArbejdeFor({ name: navn, status: 'running' })).toEqual({ slags: 'generering' })
+    }
+  })
+
+  it('et færdigt eller fejlet kald er ikke levende arbejde', () => {
+    expect(billedArbejdeFor({ name: 'analyze_image', status: 'done' })).toBeNull()
+    expect(billedArbejdeFor({ name: 'analyze_image', status: 'error' })).toBeNull()
+  })
+
+  it('uden status er kaldet lige begyndt', () => {
+    expect(billedArbejdeFor({ name: 'analyze_image' })).toEqual({ slags: 'analyse', kilde: '' })
+  })
+
+  it('andre værktøjer giver intet', () => {
+    expect(billedArbejdeFor({ name: 'bash', status: 'running' })).toBeNull()
+  })
+})
+
+describe('kortet i strømmen', () => {
+  it('viser scanningen med billedets navn mens analysen kører', async () => {
+    const s = await render(<MessageList messages={[]} blocks={[analyse({ image_path: '/home/bs/skaerm.png' })]} working />)
+    expect(s.getByTestId('image-analysis-progress')).toBeTruthy()
+    expect(s.getByLabelText('Analyserer skaerm.png')).toBeTruthy()
+    // Det er ikke generatorens gitter — de to skal kunne kendes fra hinanden.
+    expect(s.queryByTestId('image-generation-progress')).toBeNull()
+    expect(s.queryByText(/%/)).toBeNull()
+  })
+
+  it('uden navn står den stadig — men finder ikke på et', async () => {
+    const s = await render(<MessageList messages={[]} blocks={[analyse({})]} working />)
+    expect(s.getByLabelText('Analyserer billede')).toBeTruthy()
+  })
+
+  it('et færdigt kald animerer ikke', async () => {
+    const s = await render(<MessageList messages={[]} blocks={[analyse({ image_path: '/x/k.png' }, 'done')]} working />)
+    expect(s.queryByTestId('image-analysis-progress')).toBeNull()
+  })
+
+  it('ventefladen forsvinder når Jarvis fortsætter med tekst', async () => {
+    const s = await render(<MessageList messages={[]} working blocks={[
+      analyse({ image_path: '/x/k.png' }),
+      { type: 'text', text: 'Der står «Hej» på billedet.' },
+    ]} />)
+    expect(s.queryByTestId('image-analysis-progress')).toBeNull()
+    expect(s.getByText('Der står «Hej» på billedet.')).toBeTruthy()
+  })
+
+  it('generatoren har stadig sit eget kort', async () => {
+    const s = await render(<MessageList messages={[]} working blocks={[
+      { type: 'tool_use', id: 'g1', name: 'pollinations_image', input: {}, status: 'running' } as ContentBlock,
+    ]} />)
+    expect(s.getByTestId('image-generation-progress')).toBeTruthy()
+    expect(s.queryByTestId('image-analysis-progress')).toBeNull()
+  })
+})

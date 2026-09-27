@@ -1303,6 +1303,47 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 .image-generation-grid i { width: 4px; height: 4px; border-radius: 50%; background: var(--accent); }
 @keyframes image-generation-breath { 0%, 100% { opacity: .4; } 50% { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .image-generation-grid { animation: none; opacity: .7; } }
+
+/* BILLEDANALYSE. Målt 27/9-2026 på CT105: 232 kald, median 8,49 s, p90
+   28,6 s. Den ligner med vilje ikke gitteret ovenfor — gitteret siger «noget
+   bliver til», scanningen siger «der bliver kigget på noget der allerede er». */
+.image-analysis { width: min(320px, 100%); margin: 14px 0; color: var(--fg-2); }
+.image-analysis-label { display: block; margin-bottom: 12px; font-size: 13px; }
+.image-analysis-kilde {
+  color: var(--fg-3); font-family: var(--mono); font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.image-analysis-ramme {
+  position: relative; width: 256px; max-width: 100%; height: 148px;
+  border-radius: 6px; overflow: hidden; background: var(--bg-2);
+  border: 1px solid var(--line);
+}
+/* Selve scanningen: en blød bjælke der vandrer ned og op igen. */
+.image-analysis-scan {
+  position: absolute; left: 0; right: 0; top: 0; height: 34px;
+  background: linear-gradient(to bottom,
+    transparent, color-mix(in srgb, var(--accent) 26%, transparent), transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  animation: image-analysis-scan 2.2s ease-in-out infinite alternate;
+}
+@keyframes image-analysis-scan {
+  from { transform: translateY(-34px); }
+  to { transform: translateY(148px); }
+}
+/* Hjørnemarkørerne — rammen om det der kigges på. */
+.image-analysis-hjoerne {
+  position: absolute; width: 14px; height: 14px; border: 2px solid var(--accent);
+  opacity: .65; animation: image-analysis-puls 2.2s ease-in-out infinite;
+}
+.image-analysis-hjoerne.tv { top: 10px; left: 10px; border-right: 0; border-bottom: 0; }
+.image-analysis-hjoerne.th { top: 10px; right: 10px; border-left: 0; border-bottom: 0; }
+.image-analysis-hjoerne.bv { bottom: 10px; left: 10px; border-right: 0; border-top: 0; }
+.image-analysis-hjoerne.bh { bottom: 10px; right: 10px; border-left: 0; border-top: 0; }
+@keyframes image-analysis-puls { 0%, 100% { opacity: .35; } 50% { opacity: .85; } }
+@media (prefers-reduced-motion: reduce) {
+  .image-analysis-scan { animation: none; top: 50%; }
+  .image-analysis-hjoerne { animation: none; opacity: .6; }
+}
 .generated-gallery { display: flex; flex-direction: column; align-items: flex-start; gap: 9px; margin: 8px 0; max-width: 100%; }
 .generated-gallery .generated-main { max-width: min(420px, 100%); max-height: 420px; }
 .generated-choices { display: flex; gap: 8px; overflow-x: auto; max-width: 100%; padding: 2px; }

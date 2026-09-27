@@ -62,7 +62,8 @@ SAMMENLIGN = ("role", "content", "reasoning_content", "content_json", "created_a
 PAAKRAEVET = ("role", "content")
 
 _KOLONNER = ("role", "content", "user_id", "workspace_name",
-             "reasoning_content", "git_sha", "content_json", "created_at")
+             "reasoning_content", "git_sha", "content_json", "created_at",
+             "encrypted")
 
 
 def message_id_for(session_id: str, event_id: str) -> str:
@@ -126,6 +127,14 @@ def _raekke(session_id: str, e: dict[str, Any]) -> dict[str, Any]:
 
 
 def _skriv(raekke: dict[str, Any]) -> None:
+    # §16.2 / task 3.3: en medlems-række fødes KRYPTERET. Det sker her og ikke
+    # hos kalderen, fordi projektoren er det eneste sted en kanonisk session
+    # bliver til en `chat_messages`-række — og en grænse der håndhæves ét sted
+    # er en grænse. `krypter_raekke` er en no-op for owner-rækker, og den
+    # returnerer en NY dict, så kalderens egen klartekst er urørt.
+    from core.services.chat_crypto import krypter_raekke
+    raekke = krypter_raekke(raekke)
+
     from core.runtime.db import connect
     # `git_sha` er en DOVEN kolonne: den står ikke i CREATE TABLE, kun i en
     # migration der køres af den der skriver kompakt-markører. En frisk database
@@ -136,16 +145,25 @@ def _skriv(raekke: dict[str, Any]) -> None:
             conn.execute("ALTER TABLE chat_messages ADD COLUMN git_sha TEXT NOT NULL DEFAULT ''")
         except Exception:
             pass  # kolonnen findes allerede
+        # `encrypted` er lige så doven som `git_sha` og af samme grund: en frisk
+        # database har den ikke før schema-migrationen har kørt, og projektoren
+        # må ikke falde over sit første INSERT.
+        try:
+            conn.execute(
+                "ALTER TABLE chat_messages ADD COLUMN encrypted INTEGER NOT NULL DEFAULT 0")
+        except Exception:
+            pass  # kolonnen findes allerede
         conn.execute(
             "INSERT INTO chat_messages "
             "(message_id, session_id, role, content, user_id, workspace_name, "
-            " reasoning_content, git_sha, created_at, content_json) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
+            " reasoning_content, git_sha, created_at, content_json, encrypted) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
             f"ON CONFLICT(message_id) DO UPDATE SET {sat}",
             (raekke["message_id"], raekke["session_id"], raekke["role"],
              raekke["content"], raekke["user_id"], raekke["workspace_name"],
              raekke["reasoning_content"], raekke["git_sha"],
-             raekke["created_at"], raekke["content_json"]),
+             raekke["created_at"], raekke["content_json"],
+             int(raekke.get("encrypted") or 0)),
         )
 
 

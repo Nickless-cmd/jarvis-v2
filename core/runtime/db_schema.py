@@ -927,6 +927,7 @@ def init_db() -> None:
         _ensure_decision_trigger_column(conn)
         _ensure_chat_messages_reasoning_column(conn)
         _ensure_chat_messages_content_json_column(conn)
+        _ensure_chat_messages_encrypted_column(conn)
         _ensure_counterfactuals_table(conn)
         _ensure_absence_traces_table(conn)
         _ensure_reasoning_conclusions_table(conn)
@@ -1034,6 +1035,27 @@ def _ensure_chat_messages_content_json_column(conn: sqlite3.Connection) -> None:
     ]
     if "content_json" not in cols:
         conn.execute("ALTER TABLE chat_messages ADD COLUMN content_json TEXT")
+
+
+def _ensure_chat_messages_encrypted_column(conn: sqlite3.Connection) -> None:
+    """Tilføj `chat_messages.encrypted`. Idempotent. (Spec §16.2, task 3.3.)
+
+    Den AUTORITATIVE markør for om rækkens tekstfelter er ciffertekst.
+    `chat_crypto` sætter også et `enc:v1:`-præfiks på selve værdien, men det er
+    krydstjekket — kolonnen er svaret. Uden den kunne en besked der tilfældigvis
+    BEGYNDTE med præfikset blive læst som krypteret.
+
+    DEFAULT 0 og ingen backfill: eksisterende rækker ER klartekst, og det er
+    sandt at sige det. Migrationen af de medlems-rækker der allerede ligger
+    klart, sker i `scripts/krypter_medlems_chat.py`, som sætter kolonnen selv.
+    """
+    cols = [
+        r[1] for r in conn.execute("PRAGMA table_info(chat_messages)").fetchall()
+    ]
+    if "encrypted" not in cols:
+        conn.execute(
+            "ALTER TABLE chat_messages ADD COLUMN encrypted INTEGER NOT NULL DEFAULT 0"
+        )
 
 
 def _ensure_causal_edges_table(conn: sqlite3.Connection) -> None:

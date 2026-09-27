@@ -14,6 +14,7 @@ from core.services.tool_result_store import (
     save_tool_result,
 )
 from core.runtime.db import connect
+from core.services.chat_crypto import dekrypter_sessionsraekker
 from core.runtime.db_core import skriv_med_genforsoeg
 from core.identity.samtale_scope import aktuel_samtale_workspace
 
@@ -915,16 +916,29 @@ def append_chat_message(
                 from core.services.projection_chat_messages import guard_direct_write
                 guard_direct_write(normalized_session, conn=conn)
 
+                # §16.2 / task 3.3 — den gamle, direkte vej skal kryptere
+                # præcis som projektoren gør for kanoniske sessioner. Ellers
+                # ville hvilken LAGRINGSFORM sessionen tilfældigvis har,
+                # afgøre om en members beskeder ligger læsbare.
+                from core.services.chat_crypto import krypter_raekke
+                _kr = krypter_raekke({
+                    "content": normalized_content,
+                    "reasoning_content": str(reasoning_content or ""),
+                    "content_json": content_json,
+                    "user_id": _user_id,
+                    "workspace_name": _workspace_name,
+                })
                 conn.execute(
                     """
                     INSERT INTO chat_messages (message_id, session_id, role, content,
                                                 user_id, workspace_name,
-                                                reasoning_content, content_json, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                                reasoning_content, content_json, created_at,
+                                                encrypted)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
-                    (message_id, normalized_session, normalized_role, normalized_content,
-                     _user_id, _workspace_name, str(reasoning_content or ""),
-                     content_json, timestamp),
+                    (message_id, normalized_session, normalized_role, _kr["content"],
+                     _user_id, _workspace_name, _kr["reasoning_content"],
+                     _kr["content_json"], timestamp, int(_kr.get("encrypted") or 0)),
                 )
 
             next_title = str(exists["title"])
@@ -1162,20 +1176,27 @@ def recent_chat_session_messages(session_id: str, *, limit: int = 12) -> list[di
             """,
             (normalized, max(limit, 1)),
         ).fetchall()
-    return [
-        {
-            # `message_id` kom til 20/9-2026: komponistens forslag skal kunne
-            # pege på DEN besked det blev udledt af, når valget registreres.
-            # Et ekstra felt bryder ingen læser — de plukker de nøgler de bruger.
-            "message_id": str(row["message_id"] or ""),
-            "role": str(row["role"]),
-            "content": str(row["content"]),
-            "created_at": str(row["created_at"]),
-            "user_id": str(row["user_id"] or ""),
-            "reasoning_content": str(row["reasoning_content"] or ""),
-        }
-        for row in reversed(rows)
-    ]
+    # §16.2 / task 3.3: sessions-laeserne er de ENESTE der dekrypterer.
+    # Alle andre laesere af chat_messages ser cifferteksten, og det er
+    # meningen — nordstjernen siger at hverken Bjoern eller Jarvis maa
+    # kunne laese en andens private session. No-op for owner-raekker.
+    return dekrypter_sessionsraekker(
+        [
+            {
+                # `message_id` kom til 20/9-2026: komponistens forslag skal kunne
+                # pege på DEN besked det blev udledt af, når valget registreres.
+                # Et ekstra felt bryder ingen læser — de plukker de nøgler de bruger.
+                "message_id": str(row["message_id"] or ""),
+                "role": str(row["role"]),
+                "content": str(row["content"]),
+                "created_at": str(row["created_at"]),
+                "user_id": str(row["user_id"] or ""),
+                "reasoning_content": str(row["reasoning_content"] or ""),
+            }
+            for row in reversed(rows)
+        ],
+        normalized,
+    )
 
 
 def chat_session_messages_since_last_compact(
@@ -1227,17 +1248,24 @@ def chat_session_messages_since_last_compact(
                 """,
                 (normalized, max_total),
             ).fetchall()
-    return [
-        {
-            "id": int(row["id"]),
-            "role": str(row["role"]),
-            "content": str(row["content"]),
-            "created_at": str(row["created_at"]),
-            "user_id": str(row["user_id"] or ""),
-            "reasoning_content": str(row["reasoning_content"] or ""),
-        }
-        for row in rows
-    ]
+    # §16.2 / task 3.3: sessions-laeserne er de ENESTE der dekrypterer.
+    # Alle andre laesere af chat_messages ser cifferteksten, og det er
+    # meningen — nordstjernen siger at hverken Bjoern eller Jarvis maa
+    # kunne laese en andens private session. No-op for owner-raekker.
+    return dekrypter_sessionsraekker(
+        [
+            {
+                "id": int(row["id"]),
+                "role": str(row["role"]),
+                "content": str(row["content"]),
+                "created_at": str(row["created_at"]),
+                "user_id": str(row["user_id"] or ""),
+                "reasoning_content": str(row["reasoning_content"] or ""),
+            }
+            for row in rows
+        ],
+        normalized,
+    )
 
 
 def recent_chat_session_messages_by_user_turns(
@@ -1304,16 +1332,23 @@ def recent_chat_session_messages_by_user_turns(
                 """,
                 (normalized, anchor_id, max_total),
             ).fetchall()
-    return [
-        {
-            "role": str(row["role"]),
-            "content": str(row["content"]),
-            "created_at": str(row["created_at"]),
-            "user_id": str(row["user_id"] or ""),
-            "reasoning_content": str(row["reasoning_content"] or ""),
-        }
-        for row in rows
-    ]
+    # §16.2 / task 3.3: sessions-laeserne er de ENESTE der dekrypterer.
+    # Alle andre laesere af chat_messages ser cifferteksten, og det er
+    # meningen — nordstjernen siger at hverken Bjoern eller Jarvis maa
+    # kunne laese en andens private session. No-op for owner-raekker.
+    return dekrypter_sessionsraekker(
+        [
+            {
+                "role": str(row["role"]),
+                "content": str(row["content"]),
+                "created_at": str(row["created_at"]),
+                "user_id": str(row["user_id"] or ""),
+                "reasoning_content": str(row["reasoning_content"] or ""),
+            }
+            for row in rows
+        ],
+        normalized,
+    )
 
 
 def _ensure_compact_marker_git_sha_column() -> None:
@@ -1360,12 +1395,27 @@ def store_compact_marker(
         if not kanonisk:
             from core.services.projection_chat_messages import guard_direct_write
             guard_direct_write(normalized_session, conn=conn)
+            # En markør sammenfatter samtalen omkring sig. For en members
+            # session er den derfor lige så følsom som beskederne — men den
+            # skrives uden workspace og bruger, så ejerskabet hentes fra
+            # sessionens egne rækker.
+            from core.services.chat_crypto import (
+                kryptering_slaaet_til, krypter, medlem_for_session,
+            )
+            _medlem = medlem_for_session(normalized_session, conn=conn)
+            _indhold = normalized_content
+            _kr_flag = 0
+            if _medlem is not None and kryptering_slaaet_til():
+                _indhold = krypter(normalized_content, _medlem)
+                _kr_flag = 1
             conn.execute(
                 """
-                INSERT INTO chat_messages (message_id, session_id, role, content, git_sha, created_at)
-                VALUES (?, ?, 'compact_marker', ?, ?, ?)
+                INSERT INTO chat_messages (message_id, session_id, role, content, git_sha,
+                                           created_at, encrypted)
+                VALUES (?, ?, 'compact_marker', ?, ?, ?, ?)
                 """,
-                (marker_id, normalized_session, normalized_content, normalized_git_sha, timestamp),
+                (marker_id, normalized_session, _indhold, normalized_git_sha,
+                 timestamp, _kr_flag),
             )
 
     # En markør ER en `chat_messages`-række — samme tabel, samme id-kolonne,
@@ -1447,14 +1497,21 @@ def recent_chat_tool_messages(session_id: str, *, limit: int = 6) -> list[dict[s
             """,
             (normalized, max(limit, 1)),
         ).fetchall()
-    return [
-        {
-            "role": str(row["role"]),
-            "content": str(row["content"]),
-            "created_at": str(row["created_at"]),
-        }
-        for row in reversed(rows)
-    ]
+    # §16.2 / task 3.3: sessions-laeserne er de ENESTE der dekrypterer.
+    # Alle andre laesere af chat_messages ser cifferteksten, og det er
+    # meningen — nordstjernen siger at hverken Bjoern eller Jarvis maa
+    # kunne laese en andens private session. No-op for owner-raekker.
+    return dekrypter_sessionsraekker(
+        [
+            {
+                "role": str(row["role"]),
+                "content": str(row["content"]),
+                "created_at": str(row["created_at"]),
+            }
+            for row in reversed(rows)
+        ],
+        normalized,
+    )
 
 
 def rename_chat_session(session_id: str, *, title: str) -> dict[str, object] | None:

@@ -511,12 +511,10 @@ CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
         "models_endpoint": "/models",
         "rpm_limit": 30,
         "daily_limit": 1000,
-        # gemma-4-31b (non-reasoning) først = default-pick uden reasoning-overhead;
-        # gpt-oss/glm er reasoning (brænder korte token-budgetter på tanke → tom content).
-        # zai-glm-4.7 fjernet 19. aug 2026: Cerebras svarer `model_archived_error`
-        # ("archived and unavailable for the organization") på begge auth-profiler.
-        # Verificeret mod /v1/models — kontoen tilbyder nu KUN gemma-4-31b + gpt-oss-120b.
-        "static_models": ["gemma-4-31b", "gpt-oss-120b"],
+        # 27/9: gemma-4-31b svarer model-not-found og er væk fra /models.
+        # /models viser qwen-3.8-27b og gpt-oss-120b, men begge konti svarer 402
+        # på begge. Qwen kommer først i poolen efter et vellykket prøvekald.
+        "static_models": ["gpt-oss-120b"],
     },
     "cline": {
         "label": "Cline",
@@ -542,7 +540,9 @@ CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
         "rpm_limit": 20,
         "daily_limit": 200,
         # KUN *-free — "auto" router til BETALT (403 balance). Se spec §1.
-        "static_models": ["gpt-5.5-free", "coding-glm-5.2-free", "coding-minimax-m3-free"],
+        # 27/9: gpt-5.5-free gav 103 model-not-found i træk. coding-glm-5.3-free
+        # svarede med både tekst og tool_call på default-profilen til $0.
+        "static_models": ["coding-glm-5.3-free", "coding-glm-5.2-free", "coding-minimax-m3-free"],
     },
     "requesty": {
         "label": "Requesty",
@@ -1151,4 +1151,3 @@ _OPENAI_COMPATIBLE_PROVIDERS = frozenset(
     p for p, _cfg in CHEAP_PROVIDER_DEFAULTS.items()
     if str(_cfg.get("protocol")) == "openai-chat"
 ) | {"deepseek"}
-

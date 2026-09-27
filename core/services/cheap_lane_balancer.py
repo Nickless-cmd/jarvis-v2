@@ -1116,15 +1116,25 @@ def build_slot_pool() -> list[BalancerSlot]:
         CHEAP_PROVIDER_DEFAULTS, is_routable_provider, provider_cost_class)
     seen = {s.slot_id for s in slots}
     prov_profiles: dict[str, str] = {}
+    disabled_providers: set[str] = set()
+    disabled_models: set[tuple[str, str]] = set()
     try:
         data = json.loads(_provider_router_path().read_text(encoding="utf-8"))
         for pe in data.get("providers", []):
-            prov_profiles[str(pe.get("provider") or "")] = str(pe.get("auth_profile") or "")
+            name = str(pe.get("provider") or "")
+            prov_profiles[name] = str(pe.get("auth_profile") or "")
+            if not bool(pe.get("enabled", True)):
+                disabled_providers.add(name)
+        for model_entry in data.get("models", []):
+            if not bool(model_entry.get("enabled", True)):
+                disabled_models.add((str(model_entry.get("provider") or ""),
+                                     str(model_entry.get("model") or "")))
     except Exception:
         pass
     for provider, cfg in CHEAP_PROVIDER_DEFAULTS.items():
         static_models = cfg.get("static_models") or []
         if (not static_models or provider in _EXCLUDED_PROVIDERS
+                or provider in disabled_providers
                 or not is_routable_provider(provider)
                 or provider_cost_class(provider) == "paid"):  # betalt aldrig i balancer
             continue
@@ -1138,6 +1148,8 @@ def build_slot_pool() -> list[BalancerSlot]:
             if not _credentials_ready(provider, auth_profile):
                 continue
             for model in static_models:
+                if (provider, str(model)) in disabled_models:
+                    continue
                 sid = f"{provider}::{model}::{auth_profile or 'default'}"
                 if sid in seen:
                     continue

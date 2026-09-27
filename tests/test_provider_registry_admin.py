@@ -52,6 +52,23 @@ def test_hele_registret_kommer_med(registret):
     assert alfa["model_count"] == 2 and alfa["enabled_model_count"] == 2
 
 
+def test_cheap_provider_readiness_uses_dispatch_credentials(registret, monkeypatch):
+    import core.runtime.provider_router as pr
+    import core.services.cheap_provider_runtime_adapters as adapters
+
+    data = _laes(registret)
+    data["providers"].append({"provider": "arko", "auth_mode": "runtime-key",
+                              "auth_profile": "default", "enabled": True})
+    data["models"].append({"provider": "arko", "model": "jarvis-cheap-lane",
+                           "lane": "cheap", "enabled": True})
+    registret.write_text(json.dumps(data), encoding="utf-8")
+    monkeypatch.setattr(pr, "_credentials_ready", lambda **kw: kw["provider"] != "arko")
+    monkeypatch.setattr(adapters, "provider_auth_ready", lambda **kw: kw["provider"] == "arko")
+
+    arko = next(p for p in A.fuld_registrering()["udbydere"] if p["provider"] == "arko")
+    assert arko["credentials_ready"] is True
+
+
 def test_en_model_kan_slaas_FRA_og_TIL_igen(registret):
     A.saet_model_aktiv(provider="alfa", model="m1", aktiv=False, grund="for dyr")
     m = next(x for x in _laes(registret)["models"] if x["model"] == "m1")

@@ -759,6 +759,26 @@ def test_build_slot_pool_includes_static_models_providers(monkeypatch):
     assert "copilot-premium" not in provs2  # betalt aldrig i balancer
 
 
+def test_static_catalogue_does_not_resurrect_retired_registry_model(tmp_path, monkeypatch):
+    from core.services import cheap_lane_balancer as bal
+    from core.services import cheap_provider_runtime_adapters as adapters
+
+    registry = tmp_path / "provider_router.json"
+    registry.write_text(_json.dumps({
+        "providers": [{"provider": "aihubmix", "auth_profile": "default", "enabled": True}],
+        "models": [{"provider": "aihubmix", "model": "retired", "lane": "cheap",
+                    "enabled": False}],
+    }), encoding="utf-8")
+    monkeypatch.setattr(bal, "_provider_router_path", lambda: registry)
+    monkeypatch.setattr(bal, "_credentials_ready", lambda *_args: True)
+    monkeypatch.setattr(bal, "_flag_multiprofile", lambda: False)
+    monkeypatch.setattr(adapters, "CHEAP_PROVIDER_DEFAULTS", {
+        "aihubmix": {"static_models": ["retired", "working"], "base_url": "https://example.test"},
+    })
+
+    assert {slot.model for slot in bal.build_slot_pool()} == {"working"}
+
+
 # --- §5.5 central_route hook (mirror af selection-siden; shadow→live) ---
 
 

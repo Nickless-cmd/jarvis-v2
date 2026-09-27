@@ -3,6 +3,37 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 
+def test_recent_invocations_reads_every_page_in_window(monkeypatch):
+    import core.runtime.db_cheap_lane_control as db
+    from core.services.cheap_lane_diagnostics import recent_invocations
+
+    pages = {
+        "": {"items": [{"invocation_id": "new"}], "next_cursor": "older"},
+        "older": {"items": [{"invocation_id": "old"}], "next_cursor": None},
+    }
+    monkeypatch.setattr(db, "list_cheap_lane_invocations", lambda **kw: pages[kw.get("cursor", "")])
+
+    rows = recent_invocations(since=datetime(2026, 9, 26, tzinfo=UTC))
+    assert [row["invocation_id"] for row in rows] == ["new", "old"]
+
+
+def test_invocation_health_is_split_by_account_and_provider():
+    from core.services.cheap_lane_diagnostics import invocation_health
+
+    rows = [
+        {"provider": "groq", "auth_profile": "default", "status": "completed", "latency_ms": 100},
+        {"provider": "groq", "auth_profile": "account2", "status": "failed", "latency_ms": 900},
+        {"provider": "groq", "auth_profile": "account2", "status": "completed", "latency_ms": 300},
+    ]
+    health = invocation_health(rows)
+
+    assert health["requests"] == 3
+    assert health["failures"] == 1
+    assert health["p95_latency_ms"] == 900
+    assert health["by_profile"]["account2"]["failures"] == 1
+    assert health["by_provider_profile"]["groq::default"]["p95_latency_ms"] == 100
+
+
 def test_diagnostics_detects_starvation_and_stale_quota(monkeypatch):
     import core.services.cheap_lane_diagnostics as diagnostics
 

@@ -114,16 +114,25 @@ def fuld_registrering() -> dict[str, Any]:
     """
     r = _laes()
     from core.runtime.provider_router import _credentials_ready
+    from core.services.cheap_provider_runtime_adapters import (
+        CHEAP_PROVIDER_DEFAULTS, provider_auth_ready,
+    )
 
     udbydere = []
     for p in r["providers"]:
         navn = str(p.get("provider") or "")
         profil = str(p.get("auth_profile") or "default")
+        modeller = [m for m in r["models"] if str(m.get("provider") or "") == navn]
         try:
-            klar = bool(_credentials_ready(provider=navn, auth_profile=profil))
+            if navn in CHEAP_PROVIDER_DEFAULTS and any(
+                m.get("lane") == "cheap" and bool(m.get("enabled", True))
+                for m in modeller
+            ):
+                klar = bool(provider_auth_ready(provider=navn, auth_profile=profil))
+            else:
+                klar = bool(_credentials_ready(provider=navn, auth_profile=profil))
         except Exception:
             klar = False
-        modeller = [m for m in r["models"] if str(m.get("provider") or "") == navn]
         udbydere.append({
             "provider": navn,
             "auth_mode": p.get("auth_mode"),

@@ -2,6 +2,84 @@
 from __future__ import annotations
 
 
+def test_quota_snapshot_is_scoped_to_auth_profile(monkeypatch):
+    import core.services.cheap_provider_runtime_selection as sel
+    import core.services.shared_cache as cache
+
+    stored = {}
+    monkeypatch.setattr(cache, "get", lambda key: stored.get(key))
+    monkeypatch.setattr(cache, "set", lambda key, value, **_kw: stored.__setitem__(key, value))
+    monkeypatch.setattr(sel, "get_cheap_provider_runtime_state", lambda **_kw: None)
+    monkeypatch.setattr(sel, "count_cheap_provider_invocations",
+                        lambda **kw: 2 if kw.get("auth_profile") == "default" else 30)
+    base = {"provider": "groq", "model": "shared", "rpm_limit": 10, "daily_limit": 100}
+
+    home = sel._candidate_quota_snapshot({**base, "auth_profile": "default"})
+    account2 = sel._candidate_quota_snapshot({**base, "auth_profile": "account2"})
+
+    assert home["blocked"] is False
+    assert account2["blocked"] is True
+
+
+def test_account_cooldown_does_not_block_other_account(monkeypatch):
+    import json
+    import core.services.cheap_provider_runtime_selection as sel
+    import core.services.shared_cache as cache
+    from datetime import UTC, datetime, timedelta
+
+    future = (datetime.now(UTC) + timedelta(hours=1)).isoformat()
+    state = {"cooldown_until": None,
+             "metadata_json": json.dumps({"profile_cooldowns": {"account2": future}})}
+    monkeypatch.setattr(cache, "get", lambda _key: None)
+    monkeypatch.setattr(cache, "set", lambda *_args, **_kw: None)
+    monkeypatch.setattr(sel, "get_cheap_provider_runtime_state", lambda **_kw: state)
+    monkeypatch.setattr(sel, "count_cheap_provider_invocations", lambda **_kw: 0)
+    base = {"provider": "groq", "model": "shared", "rpm_limit": 10, "daily_limit": 100}
+
+    assert sel._candidate_quota_snapshot({**base, "auth_profile": "default"})["blocked"] is False
+    assert sel._candidate_quota_snapshot({**base, "auth_profile": "account2"})["blocked"] is True
+
+
+def test_account_quota_failure_records_only_profile_cooldown(monkeypatch):
+    import json
+    import core.services.cheap_provider_runtime_selection as sel
+    from core.services.cheap_provider_runtime_adapters import CheapProviderError
+
+    saved = {}
+    monkeypatch.setattr(sel, "get_cheap_provider_runtime_state", lambda **_kw: {})
+    monkeypatch.setattr(sel, "provider_auth_ready", lambda **_kw: True)
+    monkeypatch.setattr(sel, "record_cheap_provider_invocation", lambda **_kw: {"invocation_id": "test"})
+    monkeypatch.setattr(sel, "upsert_cheap_provider_runtime_state", lambda **kw: saved.update(kw))
+    monkeypatch.setattr(sel.event_bus, "publish", lambda *_args, **_kw: None)
+
+    sel._register_provider_failure(
+        provider="groq", model="shared", auth_profile="account2",
+        error=CheapProviderError(provider="groq", code="credits-exhausted", message="quota"),
+    )
+
+    assert saved["cooldown_until"] is None
+    assert "account2" in json.loads(saved["metadata_json"])["profile_cooldowns"]
+
+
+def test_success_clears_only_succeeding_profile_cooldown(monkeypatch):
+    import json
+    import core.services.cheap_provider_runtime_selection as sel
+    from datetime import UTC, datetime, timedelta
+
+    future = (datetime.now(UTC) + timedelta(hours=1)).isoformat()
+    state = {"metadata_json": json.dumps({"profile_cooldowns": {
+        "default": future, "account2": future,
+    }})}
+    saved = {}
+    monkeypatch.setattr(sel, "get_cheap_provider_runtime_state", lambda **_kw: state)
+    monkeypatch.setattr(sel, "upsert_cheap_provider_runtime_state", lambda **kw: saved.update(kw))
+
+    sel._record_provider_success(provider="groq", model="shared", auth_profile="default",
+                                 latency_ms=100, quality_score=None, smoke_test=False)
+
+    assert json.loads(saved["metadata_json"])["profile_cooldowns"] == {"account2": future}
+
+
 def test_pool_falls_to_floor_instead_of_raising(monkeypatch):
     """Spec Fund 4: execute_cheap_lane_via_pool må ALDRIG rejse 'no-healthy-provider'
     — den falder til bunden (cheap_lane_floor)."""

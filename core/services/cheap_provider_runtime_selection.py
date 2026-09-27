@@ -35,6 +35,12 @@ from core.services.cheap_provider_runtime_adapters import (
     _execute_public_safe_local_ollama,
     provider_auth_ready,
 )
+from core.services.weighted_slot_health import (
+    decode_state_metadata as _decode_state_metadata,
+    rolling_average as _rolling_average,
+    smoke_quality_score as _smoke_quality_score,
+    normalize_probe_text as _normalize_probe_text,
+)
 from core.services.cheap_lane_trace_context import (
     CheapLaneTraceContext,
     candidate_slot_id,
@@ -248,6 +254,7 @@ def smoke_cheap_lane(
         _record_provider_success(
             provider=provider,
             model=model,
+            auth_profile=auth_profile,
             latency_ms=latency_ms,
             quality_score=quality_score,
             smoke_test=True,
@@ -883,6 +890,7 @@ def execute_cheap_lane_via_pool(
     _record_provider_success(
         provider=provider,
         model=model,
+        auth_profile=profile,
         latency_ms=latency_ms,
         quality_score=None,
         smoke_test=False,
@@ -1079,6 +1087,7 @@ def execute_public_safe_cheap_lane(*, message: str) -> dict[str, object]:
             _record_provider_success(
                 provider=provider,
                 model=model,
+                auth_profile=profile,
                 latency_ms=latency_ms,
                 quality_score=None,
                 smoke_test=False,
@@ -1266,60 +1275,17 @@ def _configured_cheap_candidates(
 
 
 def _candidate_quota_snapshot(candidate: dict[str, object]) -> dict[str, object]:
-    provider = str(candidate["provider"])
-    model = str(candidate["model"])
-    # TTL cache via shared_cache (2026-05-15): SQLite-backed so all 4
-    # workers see the same cached quota state. Quota counts barely move
-    # on the 2s timescale, and MC polling + awareness builders hammer
-    # this repeatedly.
-    from core.services import shared_cache as _sc
-    _qkey = f"{_QUOTA_SNAPSHOT_PREFIX}{provider}/{model}"
-    _cached = _sc.get(_qkey)
-    if isinstance(_cached, dict):
-        return _cached
-    state = get_cheap_provider_runtime_state(provider=provider, model=model) or {}
-    now = datetime.now(UTC)
-    cooldown_until_raw = str(state.get("cooldown_until") or "").strip()
-    cooldown_active = False
-    if cooldown_until_raw:
-        try:
-            cooldown_active = datetime.fromisoformat(cooldown_until_raw) > now
-        except ValueError:
-            cooldown_active = False
-    minute_since = (now - timedelta(minutes=1)).isoformat()
-    day_since = (now - timedelta(hours=_QUOTA_RESET_HOURS)).isoformat()
-    requests_last_minute = count_cheap_provider_invocations(
-        provider=provider,
-        since=minute_since,
+    from core.services.weighted_slot_health import quota_snapshot
+
+    return quota_snapshot(
+        candidate,
+        get_state=get_cheap_provider_runtime_state,
+        count_invocations=count_cheap_provider_invocations,
+        decode_metadata=_decode_state_metadata,
+        cache_prefix=_QUOTA_SNAPSHOT_PREFIX,
+        cache_ttl_seconds=_QUOTA_SNAPSHOT_TTL_SECONDS,
+        reset_hours=_QUOTA_RESET_HOURS,
     )
-    requests_last_day = count_cheap_provider_invocations(
-        provider=provider,
-        since=day_since,
-    )
-    rpm_limit = candidate.get("rpm_limit")
-    daily_limit = candidate.get("daily_limit")
-    rpm_exhausted = isinstance(rpm_limit, int) and requests_last_minute >= rpm_limit
-    daily_exhausted = isinstance(daily_limit, int) and requests_last_day >= daily_limit
-    status = "ready"
-    if cooldown_active:
-        status = "cooldown-active"
-    elif rpm_exhausted:
-        status = "rpm-exhausted"
-    elif daily_exhausted:
-        status = "daily-exhausted"
-    snapshot = {
-        "status": status,
-        "blocked": cooldown_active or rpm_exhausted or daily_exhausted,
-        "cooldown_active": cooldown_active,
-        "cooldown_until": cooldown_until_raw or None,
-        "requests_last_minute": requests_last_minute,
-        "requests_last_day": requests_last_day,
-        "rpm_limit": rpm_limit,
-        "daily_limit": daily_limit,
-        "daily_neurons": candidate.get("daily_neurons"),
-    }
-    _sc.set(_qkey, snapshot, ttl_seconds=_QUOTA_SNAPSHOT_TTL_SECONDS)
-    return snapshot
 
 
 def _spor_uden_at_vaelte(skriv, **felter) -> str:
@@ -1372,52 +1338,28 @@ def _candidate_adaptive_snapshot(
     *,
     state: dict[str, object] | None = None,
 ) -> dict[str, object]:
-    current_state = state or get_cheap_provider_runtime_state(
-        provider=str(candidate["provider"]),
-        model=str(candidate["model"]),
-    ) or {}
-    metadata = _decode_state_metadata(current_state)
-    base_priority = int(candidate.get("priority") or 9999)
-    success_count = int(metadata.get("success_count") or 0)
-    failure_count = int(metadata.get("failure_count") or 0)
-    smoke_success_count = int(metadata.get("smoke_success_count") or 0)
-    smoke_failure_count = int(metadata.get("smoke_failure_count") or 0)
-    avg_latency_ms = float(metadata.get("avg_latency_ms") or 0.0)
-    avg_quality_score = float(metadata.get("avg_quality_score") or 1.0)
-    total_runs = success_count + failure_count
-    success_ratio = 1.0 if total_runs <= 0 else success_count / total_runs
-    total_smokes = smoke_success_count + smoke_failure_count
-    smoke_success_ratio = 1.0 if total_smokes <= 0 else smoke_success_count / total_smokes
-    quality_penalty = max(0.0, (1.0 - avg_quality_score) * 8.0)
-    reliability_penalty = max(0.0, (1.0 - success_ratio) * 10.0)
-    smoke_penalty = max(0.0, (1.0 - smoke_success_ratio) * 8.0)
-    latency_penalty = min(6.0, avg_latency_ms / 1200.0)
-    adaptive_penalty = int(round(quality_penalty + reliability_penalty + smoke_penalty + latency_penalty))
-    return {
-        "base_priority": base_priority,
-        "effective_priority": base_priority + adaptive_penalty,
-        "adaptive_penalty": adaptive_penalty,
-        "success_count": success_count,
-        "failure_count": failure_count,
-        "smoke_success_count": smoke_success_count,
-        "smoke_failure_count": smoke_failure_count,
-        "success_ratio": round(success_ratio, 4),
-        "smoke_success_ratio": round(smoke_success_ratio, 4),
-        "avg_latency_ms": round(avg_latency_ms, 2),
-        "avg_quality_score": round(avg_quality_score, 4),
-    }
+    from core.services.weighted_slot_health import adaptive_snapshot
+
+    return adaptive_snapshot(
+        candidate, state=state,
+        get_state=get_cheap_provider_runtime_state,
+        decode_metadata=_decode_state_metadata,
+    )
 
 
 def _record_provider_success(
     *,
     provider: str,
     model: str,
+    auth_profile: str,
     latency_ms: int,
     quality_score: float | None,
     smoke_test: bool,
 ) -> None:
     current_state = get_cheap_provider_runtime_state(provider=provider, model=model) or {}
     metadata = _decode_state_metadata(current_state)
+    profile_cooldowns = dict(metadata.get("profile_cooldowns") or {})
+    profile_cooldowns.pop(auth_profile or "default", None)
     success_count = int(metadata.get("success_count") or 0) + 1
     smoke_success_count = int(metadata.get("smoke_success_count") or 0) + (1 if smoke_test else 0)
     avg_latency_ms = _rolling_average(
@@ -1447,6 +1389,7 @@ def _record_provider_success(
         metadata_json=json.dumps(
             {
                 **metadata,
+                "profile_cooldowns": profile_cooldowns,
                 "protocol": provider_runtime_defaults(provider).get("protocol"),
                 "success_count": success_count,
                 "smoke_success_count": smoke_success_count,
@@ -1485,15 +1428,10 @@ def _register_provider_failure(
     elif error.code in {"provider-blocked", "provider-error", "model-not-found", "model-unavailable", "request-failed"}:
         retry_after = error.retry_after_seconds or _default_failure_cooldown_seconds(error.code)
         cooldown_until = (now + timedelta(seconds=retry_after)).isoformat()
-    # KARANTÆNE HER TIL (17/9-2026). Politikken i cheap_lane_failure_policy (24 t for
-    # en pensioneret model) blev kun brugt i balancerens slot-tilstand — ikke i den
-    # tilstand selektoren læser. Her stod model-not-found på 900 s, og en arkiveret
-    # cerebras-model blev kaldt 21-69 gange i døgnet (453 gange på 7 dage). Et
-    # «not supported» bag auth-rejected fik slet ingen cooldown, så self-heal så
-    # slottet som fastlåst og prøvede igen og igen.
-    # Kun når MODELLEN er væk: tilstanden her gælder pr. model, ikke pr. konto.
+    # Modelkarantæne er global; øvrige cooldowns tilhører kun auth-profilen.
     from core.services.cheap_lane_failure_policy import PERMANENT_QUARANTINE_S, model_retired
-    if not error.retry_after_seconds and model_retired(error.code, error.message):
+    retired = model_retired(error.code, error.message)
+    if not error.retry_after_seconds and retired:
         cooldown_until = (now + timedelta(seconds=PERMANENT_QUARANTINE_S)).isoformat()
     from core.services.cheap_provider_runtime_adapters import provider_min_failure_cooldown_seconds
     _mindst = provider_min_failure_cooldown_seconds(provider)
@@ -1501,6 +1439,12 @@ def _register_provider_failure(
         _gulv = now + timedelta(seconds=_mindst)
         if cooldown_until is None or datetime.fromisoformat(cooldown_until) < _gulv:
             cooldown_until = _gulv.isoformat()
+    profile_cooldowns = dict(metadata.get("profile_cooldowns") or {})
+    if not retired:
+        if cooldown_until:
+            profile_cooldowns[auth_profile or "default"] = cooldown_until
+        cooldown_until = None
+    metadata["profile_cooldowns"] = profile_cooldowns
     recorded = record_cheap_provider_invocation(
         provider=provider,
         model=model,
@@ -1552,35 +1496,3 @@ def _register_provider_failure(
         },
     )
     return str(recorded.get("invocation_id") or "")
-
-
-def _decode_state_metadata(state: dict[str, object]) -> dict[str, object]:
-    raw = state.get("metadata_json")
-    if not raw:
-        return {}
-    try:
-        decoded = json.loads(str(raw))
-    except (TypeError, ValueError):
-        return {}
-    return decoded if isinstance(decoded, dict) else {}
-
-
-def _rolling_average(*, current_avg: float, current_count: int, new_value: float) -> float:
-    if current_count <= 0:
-        return float(new_value)
-    return ((current_avg * current_count) + new_value) / float(current_count + 1)
-
-
-def _smoke_quality_score(*, expected: str, actual: str) -> float:
-    normalized_expected = _normalize_probe_text(expected)
-    normalized_actual = _normalize_probe_text(actual)
-    if normalized_actual == normalized_expected:
-        return 1.0
-    if normalized_expected and normalized_expected in normalized_actual:
-        return 0.9
-    return 0.4
-
-
-def _normalize_probe_text(value: str) -> str:
-    text = str(value or "").strip().strip("\"'`")
-    return " ".join(text.lower().split())

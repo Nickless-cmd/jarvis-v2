@@ -5,23 +5,23 @@ from datetime import UTC, datetime, timedelta
 from typing import Callable
 
 from core.services.cheap_lane_balancer import balancer_snapshot
-from core.services.cheap_lane_diagnostics import central_evidence, diagnose_cheap_lane
+from core.services.cheap_lane_diagnostics import (
+    central_evidence, diagnose_cheap_lane, recent_invocations,
+)
 from core.services.cheap_lane_quotas import capacity_snapshot
 from core.services.provider_registry_admin import fuld_registrering
 
 
 def invocation_trends(*, window_hours: int) -> dict[str, object]:
-    from core.runtime.db_cheap_lane_control import list_cheap_lane_invocations
-
     since = datetime.now(UTC) - timedelta(hours=window_hours)
-    rows = list_cheap_lane_invocations(since=since.isoformat(), limit=500)["items"]
+    rows = recent_invocations(since=since)
     return {
         "requests": len(rows),
         "tokens": sum(int(row.get("input_tokens") or 0) + int(row.get("output_tokens") or 0)
                       for row in rows),
         "errors": sum(1 for row in rows if str(row.get("status") or "") == "failed"),
         "cost_usd": sum(float(row.get("cost_usd") or 0) for row in rows),
-        "truncated": len(rows) == 500,
+        "truncated": False,
     }
 
 

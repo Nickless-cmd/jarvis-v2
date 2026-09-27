@@ -269,6 +269,18 @@ _Weekly manifest — Jarvis' running self-reflection._
 | function | `_build_prompt` | `(ctx)` | — | [src](../../../core/services/weekly_manifest.py#L58) |
 | function | `build_weekly_manifest` | `()` | Generate weekly manifest, write to WEEKLY_MANIFEST.md, return summary. | [src](../../../core/services/weekly_manifest.py#L73) |
 
+## `core/services/weighted_slot_health.py`
+_Quota and adaptive health calculations for cheap-lane candidates._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `quota_snapshot` | `(candidate, *, get_state, count_invocations, decode_metadata, cache_prefix, cache_ttl_seconds, reset_hours)` | — | [src](../../../core/services/weighted_slot_health.py#L9) |
+| function | `adaptive_snapshot` | `(candidate, *, state, get_state, decode_metadata)` | — | [src](../../../core/services/weighted_slot_health.py#L76) |
+| function | `decode_state_metadata` | `(state)` | — | [src](../../../core/services/weighted_slot_health.py#L117) |
+| function | `rolling_average` | `(*, current_avg, current_count, new_value)` | — | [src](../../../core/services/weighted_slot_health.py#L128) |
+| function | `normalize_probe_text` | `(value)` | — | [src](../../../core/services/weighted_slot_health.py#L134) |
+| function | `smoke_quality_score` | `(*, expected, actual)` | — | [src](../../../core/services/weighted_slot_health.py#L139) |
+
 ## `core/services/witness_signal_tracking.py`
 
 | Kind | Name | Signature | Summary | Source |

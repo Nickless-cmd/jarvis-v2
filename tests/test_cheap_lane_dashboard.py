@@ -1,6 +1,20 @@
 from __future__ import annotations
 
 
+def test_invocation_trends_count_all_pages(monkeypatch):
+    import core.services.cheap_lane_dashboard as dashboard
+
+    monkeypatch.setattr(dashboard, "recent_invocations", lambda **_kw: [
+        {"status": "completed", "input_tokens": 20, "output_tokens": 5, "cost_usd": 0},
+        {"status": "failed", "input_tokens": 10, "output_tokens": 0, "cost_usd": 0},
+    ], raising=False)
+
+    assert dashboard.invocation_trends(window_hours=24) == {
+        "requests": 2, "tokens": 35, "errors": 1, "cost_usd": 0.0,
+        "truncated": False,
+    }
+
+
 def test_dashboard_keeps_healthy_sections_when_central_fails(monkeypatch):
     import core.services.cheap_lane_dashboard as dashboard
 

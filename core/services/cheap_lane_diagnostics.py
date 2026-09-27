@@ -20,9 +20,17 @@ def _parse_time(value: object) -> datetime | None:
 def recent_invocations(*, since: datetime, limit: int = 500) -> list[dict[str, object]]:
     from core.runtime.db_cheap_lane_control import list_cheap_lane_invocations
 
-    return list_cheap_lane_invocations(
-        since=since.isoformat(), limit=limit
-    )["items"]  # type: ignore[return-value]
+    rows: list[dict[str, object]] = []
+    cursor = ""
+    while True:
+        page = list_cheap_lane_invocations(
+            since=since.isoformat(), limit=limit, cursor=cursor,
+        )
+        rows.extend(page["items"])
+        next_cursor = str(page.get("next_cursor") or "")
+        if not next_cursor or next_cursor == cursor:
+            return rows
+        cursor = next_cursor
 
 
 def central_evidence(*, limit: int = 100) -> list[dict[str, object]]:
@@ -86,6 +94,33 @@ def _finding(
         "provider": provider or None,
         "slot_id": slot_id or None,
         "central_incident_id": None,
+    }
+
+
+def invocation_health(rows: list[dict[str, object]]) -> dict[str, object]:
+    """Summarize the full invocation window without merging account outcomes."""
+    groups: dict[str, dict[str, list[dict[str, object]]]] = {
+        "by_profile": {}, "by_provider_profile": {},
+    }
+    for row in rows:
+        profile = str(row.get("auth_profile") or "default")
+        provider = str(row.get("provider") or "")
+        groups["by_profile"].setdefault(profile, []).append(row)
+        groups["by_provider_profile"].setdefault(f"{provider}::{profile}", []).append(row)
+
+    def metrics(items: list[dict[str, object]]) -> dict[str, int]:
+        latencies = sorted(int(item.get("latency_ms") or 0) for item in items)
+        return {
+            "requests": len(items),
+            "failures": sum(str(item.get("status") or "") == "failed" for item in items),
+            "p95_latency_ms": latencies[min(len(latencies) - 1, int(len(latencies) * 0.95))]
+            if latencies else 0,
+        }
+
+    return {
+        **metrics(rows),
+        **{kind: {key: metrics(items) for key, items in entries.items()}
+           for kind, entries in groups.items()},
     }
 
 
@@ -183,14 +218,14 @@ def diagnose_cheap_lane(now: datetime | None = None) -> dict[str, object]:
                 provider=str(provider.get("provider") or ""),
             ))
 
+    health = invocation_health(invocations)
     if len(invocations) >= 5:
-        failures = sum(1 for row in invocations if str(row.get("status")) == "failed")
-        latencies = sorted(int(row.get("latency_ms") or 0) for row in invocations)
-        p95 = latencies[min(len(latencies) - 1, int(len(latencies) * 0.95))]
+        failures = int(health["failures"])
+        p95 = int(health["p95_latency_ms"])
         if failures / len(invocations) >= 0.25 or p95 >= 10_000:
             findings.append(_finding(
                 "runtime-regression", "high", instant,
-                {"requests": len(invocations), "failures": failures, "p95_latency_ms": p95},
+                health,
             ))
     bypass = [
         row for row in invocations

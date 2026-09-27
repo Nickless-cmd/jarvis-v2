@@ -2,6 +2,19 @@ import { act, fireEvent, render } from '@testing-library/react-native'
 import { MessageBubble } from './MessageBubble'
 import type { ChatMessage } from '../lib/types'
 
+// Boblen kan nu bære Jarvis' EGNE filer, og `MessageAttachments` henter sin
+// konfiguration gennem `useAuth` — som kaster uden for en AuthProvider. Samme
+// mock som `MessageAttachments.test.tsx` bruger; resten af modulet holdes ægte,
+// så en fremtidig eksport ikke skal tilføjes her.
+jest.mock('../state/AuthContext', () => {
+  const config = { apiBaseUrl: 'https://api.srvlab.dk/', authToken: 'token' }
+  return {
+    ...jest.requireActual('../state/AuthContext'),
+    useAuth: () => ({ config }),
+    useAuthOptional: () => ({ config }),
+  }
+})
+
 const base = { id: 'm1', created_at: new Date().toISOString() }
 
 describe('MessageBubble', () => {
@@ -254,5 +267,71 @@ describe('tilbagemeldinger', () => {
     await fireEvent.press(s.getByTestId('msg-vote-up'))
     await fireEvent.press(s.getByLabelText('Flere handlinger'))
     expect(s.getByText('God besvarelse')).toBeTruthy()
+  })
+})
+
+/**
+ * Rækkefølgen i det tegnede træ, som testID'er og tilgængeligheds-labels.
+ *
+ * `getAllByTestId` kan ikke svare på «hvad kommer først» på tværs af
+ * FORSKELLIGE id'er — og netop dét er hele spørgsmålet her: står billedet før
+ * eller efter handlingsrækken? Derfor læses træet i dokument-rækkefølge.
+ */
+const raekkefoelge = (node: unknown, ud: string[] = []): string[] => {
+  if (Array.isArray(node)) {
+    node.forEach((n) => raekkefoelge(n, ud))
+    return ud
+  }
+  if (!node || typeof node !== 'object') return ud
+  const n = node as { props?: Record<string, unknown>; children?: unknown }
+  const p = n.props ?? {}
+  if (typeof p.testID === 'string') ud.push(p.testID)
+  if (typeof p.accessibilityLabel === 'string') ud.push(p.accessibilityLabel)
+  raekkefoelge(n.children, ud)
+  return ud
+}
+
+describe("Jarvis' eget billede hører til beskeden", () => {
+  const svar = {
+    id: 'a1',
+    role: 'assistant' as const,
+    content: 'Her er billedet.',
+    created_at: '2026-09-27T09:00:00Z'
+  }
+
+  it('billedet står FØR handlingsrækken — ikke efter svaret', async () => {
+    // Målt 27/9-2026 på Bjørns telefon: filen lå i sin EGEN række efter boblen,
+    // altså neden for kopiér/oplæs-ikonerne, og så ud som om den kom bagefter
+    // svaret i stedet for at være en del af det. Rækkefølgen er nu
+    // tekst → billede → handlinger.
+    const s = await render(
+      <MessageBubble
+        message={svar}
+        vedhaeftninger={[{ type: 'image', attachment_id: 'i1', filename: 'a.png' }]}
+      />
+    )
+    expect(s.getByTestId('attachment-wrap')).toBeTruthy()
+    const orden = raekkefoelge(s.toJSON())
+    expect(orden.indexOf('attachment-wrap')).toBeGreaterThan(-1)
+    expect(orden.indexOf('Læs op')).toBeGreaterThan(-1)
+    expect(orden.indexOf('attachment-wrap')).toBeLessThan(orden.indexOf('Læs op'))
+  })
+
+  it('uden filer er rækkefølgen uændret', async () => {
+    const s = await render(<MessageBubble message={svar} />)
+    expect(s.queryByTestId('attachment-wrap')).toBeNull()
+    expect(s.getByLabelText('Læs op')).toBeTruthy()
+  })
+
+  it('dine EGNE uploads går ikke gennem boblen', async () => {
+    // De har ingen handlingsrække imellem sig og boblen og ligger allerede
+    // rigtigt over den — se `MessageList`.
+    const s = await render(
+      <MessageBubble
+        message={{ ...svar, role: 'user', content: 'se her' }}
+        vedhaeftninger={[{ type: 'image', attachment_id: 'i2', filename: 'b.png' }]}
+      />
+    )
+    expect(s.queryByTestId('attachment-wrap')).toBeNull()
   })
 })

@@ -89,7 +89,17 @@ type Row = (
       // Turens blokke følger med den SIDSTE tekstboble, så «Kilder» kan bygges
       // af det han faktisk slog op. Uden dem faldt kilderne væk i samme sekund
       // streamen stoppede.
-      kildeBlokke?: PersistedBlock[] | null }
+      kildeBlokke?: PersistedBlock[] | null
+      /**
+       * Jarvis' egne filer og billeder — de hører til BESKEDEN (GPT-formen,
+       * 27/9-2026).
+       *
+       * De bæres her frem for i deres egen række, fordi en selvstændig række
+       * lander EFTER boblens handlingsrække: billedet endte under kopiér/
+       * oplæs-ikonerne og så ud som om det kom efter svaret i stedet for at
+       * være en del af det. Bjørn så det på telefonen.
+       */
+      vedhaeftninger?: PersistedBlock[] }
   /** «Tænkte i 14 s ›» — foldet spor af turens overvejelse.
    *  `live`: tænkningen streames lige nu → «Tænker…» med åndedrag.
    *  `messageId`: beskedens id — nøglen til at hente den FULDE strøm, hvis
@@ -319,6 +329,21 @@ function buildStreamingRows(blocks: ContentBlock[]): Row[] {
       if (b.startet != null) tankeStart = Math.min(tankeStart ?? b.startet, b.startet)
       if (b.sidst != null) tankeSlut = Math.max(tankeSlut ?? b.sidst, b.sidst)
     }
+    else if (b.type === 'image') {
+      // Jarvis' EGET billede midt i streamen. Det bærer `src` direkte (en
+      // data-URL fra streamen), så det kan tegnes med det samme.
+      //
+      // Uden denne gren faldt billedet ud af den LEVENDE visning og dukkede
+      // først op ved genindlæsning — altså netop mens man venter på det, og
+      // det er dét Bjørn pegede på med ChatGPT-appen som facit (27/9-2026).
+      flush()
+      rows.push({
+        kind: 'attachments',
+        key: `stream-vedh-${rows.length}`,
+        items: [{ type: 'image', src: b.src, filename: b.alt }],
+        side: 'left',
+      })
+    }
     else if (b.type === 'tool_use' && SKILL_VAERKTOEJER.has(b.name)) {
       // Skill-kald står på deres EGEN linje (som desk): i runden ville
       // «hvilken skill, og blev den indlæst» forsvinde i «Brugte et værktøj».
@@ -437,22 +462,16 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
         legacyTurnId = String(m.id)
         const blocks = parseBlocks(m)
         const think = thinkingBlock(blocks)
-        // UDGIVNE FILER, lagt fra sig FOER grenene nedenfor. Foerste forsoeg lagde
-        // dem i en egen gren til sidst — men baade ordre-grenen og taenke-grenen
-        // `continue`r foer den, altsaa paa de fleste ture, og filen forsvandt.
+        // UDGIVNE FILER. De bæres nu PÅ beskedens sidste afsnit frem for i
+        // deres egen række (GPT-formen, 27/9-2026). I en egen række faldt de
+        // neden for boblens kopiér/oplæs-ikoner og så ud som om de kom efter
+        // svaret — se `MessageBubble.vedhaeftninger`.
         //
-        // `unshift` saetter forrest, og listen bygges bagfra: den SIDST
-        // unshiftede staar oeverst. Filerne laegges derfor foerst, saa turens
-        // tekst ender OVER dem. En fil er et resultat og hoerer under det den
-        // handler om — modsat brugerens billeder, der ligger over boblen fordi
-        // billedet dér ofte ER beskeden.
+        // Den oprindelige kommentar her forklarede hvorfor de blev lagt FØR
+        // grenene: både ordre-grenen og tænke-grenen `continue`r, så en
+        // håndtering placeret efter dem blev aldrig nået. Det gælder stadig —
+        // filerne lægges derfor af her og bæres med ind i hver gren.
         const afiler = attachmentBlocks(blocks)
-        if (afiler.length) {
-          // `side: 'left'`: assistenten skriver fra venstre. Uden den landede et
-          // billede Jarvis havde lavet i brugerens side og så ud som om brugeren
-          // havde sendt det — målt 13/9-2026 på telefonen.
-          persisted.unshift({ kind: 'attachments', key: `${m.id}-pub`, items: afiler, side: 'left' })
-        }
         if (hasOrdering(blocks)) {
           const expanded: Row[] = []
           const thread = threadBlocks(blocks!)
@@ -473,7 +492,10 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
                 // rækken efter hvert afsnit og tråden bliver støjende. Samme
                 // sted hører kilderne hjemme: én gang pr. tur, i bunden.
                 hideActions: bi !== lastTextIdx,
-                kildeBlokke: bi === lastTextIdx ? blocks : null
+                kildeBlokke: bi === lastTextIdx ? blocks : null,
+                // Filen hører til turens SIDSTE afsnit — samme sted som
+                // kilderne og som handlingsrækken sidder.
+                vedhaeftninger: bi === lastTextIdx && afiler.length ? afiler : undefined
               })
             } else if (b.type === 'tool_use' && SKILL_VAERKTOEJER.has(String(b.name ?? ''))) {
               // Resultatet ligger i den tilhørende `tool_result`-blok, ikke i kaldet.
@@ -517,6 +539,12 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
               })
             }
           })
+          // En tur UDEN tekstblokke (fx ren værktøjskørsel der ender med et
+          // billede) har ingen besked at hænge filen på. Så står den alene —
+          // det er bedre end at tabe den.
+          if (afiler.length && !expanded.some((r) => r.kind === 'msg')) {
+            expanded.push({ kind: 'attachments', key: `${m.id}-pub`, items: afiler, side: 'left' })
+          }
           persisted.unshift(...expanded)
           skipToolRows = true
           continue
@@ -527,7 +555,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
         // tænkningen ofte er mest interessant: de rene svar.
         if (think) {
           persisted.unshift({ kind: 'msg', key: m.id, message: m, kildeBlokke: blocks,
-            turnId: String(m.id) })
+            turnId: String(m.id), vedhaeftninger: afiler.length ? afiler : undefined })
           // ALLE turens tanker, i raekkefoelge. `unshift` saetter forrest, saa
           // listen vendes for at bevare den.
           const tanker = (blocks ?? []).filter(
@@ -542,6 +570,11 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
           }
           continue
         }
+        // Hverken rækkefølge eller tænkning: et rent svar — med eller uden
+        // fil. Filerne bæres på rækken, så de ikke skal have deres egen.
+        persisted.unshift({ kind: 'msg', key: m.id, message: m,
+          turnId: String(m.id), vedhaeftninger: afiler.length ? afiler : undefined })
+        continue
       }
       if (m.role === 'user') {
         skipToolRows = false
@@ -569,8 +602,10 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
         persisted.unshift({ kind: 'compact-marker', key: m.id, content: m.content })
         continue
       }
-      persisted.unshift({ kind: 'msg', key: m.id, message: m,
-        turnId: m.role === 'assistant' ? String(m.id) : undefined })
+      // Assistent-ture har deres egen gren ovenfor og `continue`r altid, så
+      // `turnId` sættes ikke her: de roller der når hertil (bruger, system,
+      // godkendelse) har aldrig haft et turn-id.
+      persisted.unshift({ kind: 'msg', key: m.id, message: m })
     }
     return persisted
   }, [messages])
@@ -772,6 +807,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
           <MessageBubble
             message={item.message}
             kildeBlokke={item.kildeBlokke}
+            vedhaeftninger={item.vedhaeftninger}
             onResend={item.message.role === 'user' && onResend ? genSend : undefined}
             // Kun en besked serveren kender (ikke en lokal/optimistisk), og kun
             // hele beskeder — et afsnit af en tur har id'et `<id>-b<n>`.

@@ -80,6 +80,31 @@ def test_success_clears_only_succeeding_profile_cooldown(monkeypatch):
     assert json.loads(saved["metadata_json"])["profile_cooldowns"] == {"account2": future}
 
 
+def test_provider_blocking_failure_pauses_sibling_model_until_success(isolated_runtime, monkeypatch):
+    import core.services.cheap_provider_runtime_selection as sel
+    import core.services.shared_cache as cache
+    from core.services.cheap_provider_runtime_adapters import CheapProviderError
+
+    monkeypatch.setattr(cache, "get", lambda _key: None)
+    monkeypatch.setattr(cache, "set", lambda *_args, **_kw: None)
+    monkeypatch.setattr(sel.event_bus, "publish", lambda *_args, **_kw: None)
+    monkeypatch.setattr(sel, "count_cheap_provider_invocations", lambda **_kw: 0)
+    candidate = {"provider": "chatanywhere", "model": "sibling", "auth_profile": "default",
+                 "rpm_limit": 10, "daily_limit": 100}
+
+    sel._register_provider_failure(
+        provider="chatanywhere", model="first", auth_profile="default",
+        error=CheapProviderError(provider="chatanywhere", code="provider-blocked",
+                                 message="account blocked"),
+    )
+    assert sel._candidate_quota_snapshot(candidate)["status"] == "account-cooldown"
+
+    sel._record_provider_success(provider="chatanywhere", model="first",
+                                 auth_profile="default", latency_ms=100,
+                                 quality_score=None, smoke_test=False)
+    assert sel._candidate_quota_snapshot(candidate)["blocked"] is False
+
+
 def test_pool_falls_to_floor_instead_of_raising(monkeypatch):
     """Spec Fund 4: execute_cheap_lane_via_pool må ALDRIG rejse 'no-healthy-provider'
     — den falder til bunden (cheap_lane_floor)."""

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8096/15591 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8098/15595 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 8096/15591 functions/methods documented (51%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 697 | 1276 | 54% |
-| `core.services` | 5361 | 10605 | 50% |
+| `core.services` | 5363 | 10609 | 50% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 107 | 183 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -2003,12 +2003,12 @@ Generated from source. 8096/15591 functions/methods documented (51%). The list b
 - `core/services/vision_backend.py` :: `build_vision_backend_surface` (L237)
 - `core/services/voice_daemon.py` :: `start_voice_daemon` (L60)
 - `core/services/voice_daemon.py` :: `stop_voice_daemon` (L73)
-- `core/services/weighted_slot_health.py` :: `adaptive_snapshot` (L76)
-- `core/services/weighted_slot_health.py` :: `decode_state_metadata` (L117)
-- `core/services/weighted_slot_health.py` :: `normalize_probe_text` (L134)
-- `core/services/weighted_slot_health.py` :: `quota_snapshot` (L9)
-- `core/services/weighted_slot_health.py` :: `rolling_average` (L128)
-- `core/services/weighted_slot_health.py` :: `smoke_quality_score` (L139)
+- `core/services/weighted_slot_health.py` :: `adaptive_snapshot` (L122)
+- `core/services/weighted_slot_health.py` :: `decode_state_metadata` (L163)
+- `core/services/weighted_slot_health.py` :: `normalize_probe_text` (L180)
+- `core/services/weighted_slot_health.py` :: `quota_snapshot` (L46)
+- `core/services/weighted_slot_health.py` :: `rolling_average` (L174)
+- `core/services/weighted_slot_health.py` :: `smoke_quality_score` (L185)
 - `core/services/witness_signal_tracking.py` :: `build_runtime_witness_signal_surface` (L120)
 - `core/services/witness_signal_tracking.py` :: `refresh_runtime_witness_signal_statuses` (L51)
 - `core/services/witness_signal_tracking.py` :: `track_runtime_witness_signals_for_visible_turn` (L29)

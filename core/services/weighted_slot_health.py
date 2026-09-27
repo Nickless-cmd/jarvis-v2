@@ -6,6 +6,43 @@ from datetime import UTC, datetime, timedelta
 from typing import Callable
 
 
+_ACCOUNT_BLOCK_CODES = frozenset({"credits-exhausted", "provider-blocked"})
+_ACCOUNT_BLOCK_SECONDS = 6 * 3600
+
+
+def _account_block_key(provider: str, auth_profile: str) -> str:
+    return f"cheap_lane:account_block:{provider}:{auth_profile or 'default'}"
+
+
+def record_account_block(
+    provider: str, auth_profile: str, code: str, retry_after_seconds: int,
+) -> None:
+    """Pause every model on a profile when the provider rejects that account."""
+    if code not in _ACCOUNT_BLOCK_CODES:
+        return
+    from core.runtime.db_core import set_runtime_state_value
+
+    duration = retry_after_seconds if retry_after_seconds > 0 else _ACCOUNT_BLOCK_SECONDS
+    set_runtime_state_value(_account_block_key(provider, auth_profile), {
+        "until": (datetime.now(UTC) + timedelta(seconds=duration)).isoformat(),
+        "reason": code,
+    })
+
+
+def clear_account_block(provider: str, auth_profile: str) -> None:
+    """A real success proves that the account can be used again."""
+    from core.runtime.db_core import set_runtime_state_value
+
+    set_runtime_state_value(_account_block_key(provider, auth_profile), None)
+
+
+def _account_block_until(provider: str, auth_profile: str) -> str:
+    from core.runtime.db_core import get_runtime_state_value
+
+    value = get_runtime_state_value(_account_block_key(provider, auth_profile))
+    return str(value.get("until") or "") if isinstance(value, dict) else ""
+
+
 def quota_snapshot(
     candidate: dict[str, object], *,
     get_state: Callable[..., dict[str, object] | None],
@@ -43,6 +80,14 @@ def quota_snapshot(
         except ValueError:  # Ignore malformed persisted cooldown and keep routing.
             continue
 
+    account_cooldown_active = False
+    account_until = _account_block_until(provider, auth_profile)
+    if account_until:
+        try:
+            account_cooldown_active = datetime.fromisoformat(account_until) > now
+        except ValueError:  # Ignore malformed account block and keep routing.
+            pass
+
     requests_last_minute = count_invocations(
         provider=provider, since=(now - timedelta(minutes=1)).isoformat(),
         auth_profile=auth_profile,
@@ -55,14 +100,15 @@ def quota_snapshot(
     daily_limit = candidate.get("daily_limit")
     rpm_exhausted = isinstance(rpm_limit, int) and requests_last_minute >= rpm_limit
     daily_exhausted = isinstance(daily_limit, int) and requests_last_day >= daily_limit
-    status = ("cooldown-active" if cooldown_active else
+    status = ("account-cooldown" if account_cooldown_active else
+              "cooldown-active" if cooldown_active else
               "rpm-exhausted" if rpm_exhausted else
               "daily-exhausted" if daily_exhausted else "ready")
     snapshot = {
         "status": status,
-        "blocked": cooldown_active or rpm_exhausted or daily_exhausted,
+        "blocked": account_cooldown_active or cooldown_active or rpm_exhausted or daily_exhausted,
         "cooldown_active": cooldown_active,
-        "cooldown_until": cooldown_until_raw or None,
+        "cooldown_until": account_until if account_cooldown_active else cooldown_until_raw or None,
         "requests_last_minute": requests_last_minute,
         "requests_last_day": requests_last_day,
         "rpm_limit": rpm_limit,

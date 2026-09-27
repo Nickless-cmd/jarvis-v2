@@ -39,7 +39,7 @@ from core.services.weighted_slot_health import (
     decode_state_metadata as _decode_state_metadata,
     rolling_average as _rolling_average,
     smoke_quality_score as _smoke_quality_score,
-    normalize_probe_text as _normalize_probe_text,
+    normalize_probe_text as _normalize_probe_text, clear_account_block, record_account_block,
 )
 from core.services.cheap_lane_trace_context import (
     CheapLaneTraceContext,
@@ -1400,6 +1400,7 @@ def _record_provider_success(
             ensure_ascii=False,
         ),
     )
+    clear_account_block(provider, auth_profile)
 
 
 def _register_provider_failure(
@@ -1485,6 +1486,7 @@ def _register_provider_failure(
             ensure_ascii=False,
         ),
     )
+    record_account_block(provider, auth_profile, error.code, error.retry_after_seconds)
     event_bus.publish(
         "runtime.cheap_lane_provider_failed",
         {

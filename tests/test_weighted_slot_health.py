@@ -31,12 +31,14 @@ def test_malformed_runtime_metadata_is_ignored():
 def test_provider_block_applies_to_all_models_on_one_profile(isolated_runtime, monkeypatch):
     import core.services.shared_cache as cache
     from core.services.weighted_slot_health import (
-        clear_account_block, quota_snapshot, record_account_block,
+        active_account_block, clear_account_block, quota_snapshot, record_account_block,
     )
 
     monkeypatch.setattr(cache, "get", lambda _key: None)
     monkeypatch.setattr(cache, "set", lambda *_args, **_kw: None)
     record_account_block("chatanywhere", "account2", "provider-blocked", 0)
+    import time
+    assert active_account_block("chatanywhere", "account2", time.time())["reason"] == "provider-blocked"
     base = {"provider": "chatanywhere", "rpm_limit": 10, "daily_limit": 100}
 
     def health(model, profile):
@@ -51,4 +53,5 @@ def test_provider_block_applies_to_all_models_on_one_profile(isolated_runtime, m
     assert health("m2", "account2")["blocked"] is True
     assert health("m1", "default")["blocked"] is False
     clear_account_block("chatanywhere", "account2")
+    assert active_account_block("chatanywhere", "account2", time.time()) is None
     assert health("m1", "account2")["blocked"] is False

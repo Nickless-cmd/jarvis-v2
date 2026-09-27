@@ -36,22 +36,34 @@ def clear_account_block(provider: str, auth_profile: str) -> None:
     set_runtime_state_value(_account_block_key(provider, auth_profile), None)
 
 
-def _account_block_until(provider: str, auth_profile: str) -> str:
+def _account_block_record(provider: str, auth_profile: str) -> dict[str, object]:
     from core.runtime.db_core import get_runtime_state_value
 
     value = get_runtime_state_value(_account_block_key(provider, auth_profile))
-    return str(value.get("until") or "") if isinstance(value, dict) else ""
+    return value if isinstance(value, dict) else {}
+
+
+def _account_block_until(provider: str, auth_profile: str) -> str:
+    return str(_account_block_record(provider, auth_profile).get("until") or "")
+
+
+def active_account_block(
+    provider: str, auth_profile: str, now_epoch: float,
+) -> dict[str, str] | None:
+    """Return the active account cooldown and its cause for telemetry."""
+    record = _account_block_record(provider, auth_profile)
+    until = str(record.get("until") or "")
+    try:
+        if until and datetime.fromisoformat(until).timestamp() > now_epoch:
+            return {"until": until, "reason": str(record.get("reason") or "")}
+    except ValueError:  # Malformed optional block state must not stop routing.
+        pass
+    return None
 
 
 def account_block_active(provider: str, auth_profile: str, now_epoch: float) -> bool:
     """Whether this provider account is in its temporary shared cooldown."""
-    until = _account_block_until(provider, auth_profile)
-    if not until:
-        return False
-    try:
-        return datetime.fromisoformat(until).timestamp() > now_epoch
-    except ValueError:  # Malformed optional block state must not stop routing.
-        return False
+    return active_account_block(provider, auth_profile, now_epoch) is not None
 
 
 def quota_snapshot(

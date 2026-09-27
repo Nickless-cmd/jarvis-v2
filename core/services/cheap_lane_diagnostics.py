@@ -162,9 +162,10 @@ def diagnose_cheap_lane(now: datetime | None = None) -> dict[str, object]:
         for group in sorted(groups):
             members = [slot for slot in slots if str(slot.get(field) or "default") == group]
             if members and not any(float(slot.get("weight") or 0) > 0 for slot in members):
+                parked = all(bool(slot.get("account_block_reason")) for slot in members)
                 findings.append(_finding(
-                    code, "high", instant,
-                    {field: group, "slots": len(members)},
+                    code, "medium" if parked else "high", instant,
+                    {field: group, "slots": len(members), "account_parked": parked},
                     provider=group if field == "provider" else "",
                 ))
 
@@ -211,7 +212,14 @@ def diagnose_cheap_lane(now: datetime | None = None) -> dict[str, object]:
                 provider=provider,
             ))
 
+    parked_accounts: dict[tuple[str, str, str], list[dict[str, object]]] = {}
     for slot in slots:
+        account_reason = str(slot.get("account_block_reason") or "")
+        if account_reason:
+            key = (str(slot.get("provider") or ""),
+                   str(slot.get("auth_profile") or "default"), account_reason)
+            parked_accounts.setdefault(key, []).append(slot)
+            continue
         if int(slot.get("breaker_level") or 0) >= 2 or int(
             slot.get("consecutive_failures") or 0
         ) >= 3:
@@ -222,6 +230,14 @@ def diagnose_cheap_lane(now: datetime | None = None) -> dict[str, object]:
                 provider=str(slot.get("provider") or ""),
                 slot_id=str(slot.get("slot_id") or ""),
             ))
+    for (provider, profile, reason), members in sorted(parked_accounts.items()):
+        findings.append(_finding(
+            "account-parked", "medium", instant,
+            {"auth_profile": profile, "reason": reason,
+             "affected_slots": len(members),
+             "until": members[0].get("account_block_until")},
+            provider=provider,
+        ))
 
     for provider in list(registry.get("udbydere") or []):
         if not bool(provider.get("credentials_ready", False)):

@@ -138,3 +138,45 @@ def test_diagnostics_detects_concentration_credentials_and_exhaustion(monkeypatc
         )["findings"]
     }
     assert {"capacity-concentrated", "quota-near-exhaustion", "credentials-missing"} <= codes
+
+
+def test_account_cooldown_is_one_parked_finding_not_four_breakers(monkeypatch):
+    import core.services.cheap_lane_diagnostics as diagnostics
+
+    slots = [
+        {"slot_id": f"chatanywhere::m{i}::default", "provider": "chatanywhere",
+         "auth_profile": "default", "egress": "home", "weight": 0,
+         "status": "cooldown", "breaker_level": 3,
+         "consecutive_failures": 10, "cooldown_reason": "provider-blocked",
+         "account_block_reason": "provider-blocked",
+         "account_block_until": "2026-09-18T18:00:00+00:00"}
+        for i in range(4)
+    ]
+    slots.append({
+        "slot_id": "groq::bad-model::default", "provider": "groq",
+        "auth_profile": "default", "egress": "home", "weight": 0.1,
+        "status": "recovering", "breaker_level": 3,
+        "consecutive_failures": 10, "cooldown_reason": "model-not-found",
+        "account_block_reason": None,
+    })
+    monkeypatch.setattr(diagnostics, "balancer_snapshot", lambda: {
+        "eligible_now": 1, "saved_at": "2026-09-18T12:00:00+00:00", "slots": slots,
+    })
+    monkeypatch.setattr(diagnostics, "capacity_snapshot", lambda **_kw: {"windows": []})
+    monkeypatch.setattr(diagnostics, "fuld_registrering", lambda: {"udbydere": []})
+    monkeypatch.setattr(diagnostics, "recent_invocations", lambda **_kw: [])
+    monkeypatch.setattr(diagnostics, "route_integrity", lambda **_kw: [])
+    monkeypatch.setattr(diagnostics, "central_evidence", lambda **_kw: [])
+
+    findings = diagnostics.diagnose_cheap_lane(
+        now=datetime(2026, 9, 18, 12, tzinfo=UTC)
+    )["findings"]
+    parked = [item for item in findings if item["code"] == "account-parked"]
+    breakers = [item for item in findings if item["code"] == "breaker-repeated"]
+    starvation = [item for item in findings if item["code"] == "provider-starvation"]
+    assert len(parked) == 1
+    assert parked[0]["severity"] == "medium"
+    assert parked[0]["evidence"]["affected_slots"] == 4
+    assert parked[0]["evidence"]["reason"] == "provider-blocked"
+    assert [item["slot_id"] for item in breakers] == ["groq::bad-model::default"]
+    assert len(starvation) == 1 and starvation[0]["severity"] == "medium"

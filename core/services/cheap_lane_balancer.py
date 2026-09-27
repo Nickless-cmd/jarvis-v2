@@ -1247,6 +1247,8 @@ def _is_enabled() -> bool:
 
 def balancer_snapshot() -> dict:
     """Return full state surface for Mission Control telemetry."""
+    from core.services.weighted_slot_health import active_account_block
+
     states = _load_state()
     pool = build_slot_pool()
     now = _time.time()
@@ -1254,6 +1256,7 @@ def balancer_snapshot() -> dict:
     eligible = 0
     blocked = 0
     slot_payloads: list[dict] = []
+    account_blocks: dict[tuple[str, str], dict[str, str] | None] = {}
     for slot in pool:
         state = _ensure_state(states, slot.slot_id)
         weight = _compute_weight(slot, state, now)
@@ -1268,6 +1271,10 @@ def balancer_snapshot() -> dict:
 
         rpm_used = _count_recent_calls(state.recent_call_timestamps, now, 60)
         status = _slot_status(slot, state, now)
+        account_key = (slot.provider, slot.auth_profile)
+        if account_key not in account_blocks:
+            account_blocks[account_key] = active_account_block(*account_key, now)
+        account_block = account_blocks[account_key] or {}
         # success_rate: fraction of successful calls; None when no calls yet
         # (no data to report a rate). Callers treat None as "unknown", not 0/1.
         success_rate = (
@@ -1304,6 +1311,8 @@ def balancer_snapshot() -> dict:
             "current_weight": round(weight, 4),
             "cooldown_until": cooldown_until_iso,
             "cooldown_reason": state.cooldown_reason,
+            "account_block_reason": account_block.get("reason"),
+            "account_block_until": account_block.get("until"),
             "breaker_level": state.breaker_level,
             "consecutive_failures": state.consecutive_failures,
             "manually_disabled": state.manually_disabled,

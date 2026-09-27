@@ -813,10 +813,14 @@ def test_balancer_events_observe_to_central(monkeypatch):
     assert seen[0][1]["error_kind"] == "rate-limited"
 
 
-def test_build_slot_pool_includes_static_models_providers(monkeypatch):
+def test_build_slot_pool_includes_static_models_providers(tmp_path, monkeypatch):
     """Fund 14. jul: inderlivet (balancer) manglede static_models-only providers
     (cerebras/aihubmix/requesty/cline). De injiceres nu → hele huset samme pool."""
     import core.services.cheap_lane_balancer as clb
+    registry = tmp_path / "provider_router.json"
+    registry.write_text(_json.dumps({"providers": [], "models": []}), encoding="utf-8")
+    monkeypatch.setattr(clb, "_provider_router_path", lambda: registry)
+    monkeypatch.setattr(clb, "_flag_multiprofile", lambda: False)
     monkeypatch.setattr(clb, "_router_enabled_models", lambda: [])
     monkeypatch.setattr(clb, "_credentials_ready", lambda p, ap: True)
     monkeypatch.setattr(clb, "_provider_metadata", lambda p: {})
@@ -1082,7 +1086,7 @@ def _profile_slot(provider, model, profile, egress="home"):
                         is_public_proxy=False, egress=egress)
 
 
-def test_account2_equal_weight_to_default():
+def test_account2_equal_weight_to_default(isolated_runtime):
     from core.services import cheap_lane_balancer as bal
     now = 1000.0
     sd = _profile_slot("groq", "x", "default", "home")
@@ -1092,7 +1096,7 @@ def test_account2_equal_weight_to_default():
     assert bal._compute_weight(sd, st_d, now) == bal._compute_weight(sa, st_a, now) > 0
 
 
-def test_both_profiles_get_selected_over_many_draws():
+def test_both_profiles_get_selected_over_many_draws(isolated_runtime):
     # Two equal-weight slots (default + account2). Weighted-random _select_slot must
     # pick BOTH across many draws; neither is starved. _select_slot uses the module
     # `random`, so seed it for determinism.
@@ -1332,7 +1336,8 @@ def test_balancer_snapshot_has_egress_status_and_header(monkeypatch, tmp_path):
         for k in ("slot_id", "provider", "model", "auth_profile", "egress",
                   "status", "weight", "daily_headroom", "daily_used",
                   "daily_limit", "rpm_used", "rpm_limit", "breaker_level",
-                  "cooldown_until", "cooldown_reason", "last_success_at",
+                  "cooldown_until", "cooldown_reason", "account_block_reason",
+                  "account_block_until", "last_success_at",
                   "total_calls", "total_failures", "success_rate",
                   "daily_observed", "stale"):
             assert k in s, f"missing {k}"

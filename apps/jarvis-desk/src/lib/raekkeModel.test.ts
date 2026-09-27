@@ -95,6 +95,26 @@ describe('opdel', () => {
     expect(svar).toEqual([])
   })
 
+  it('løfter et billede UD af arbejdet — det er en leverance, ikke arbejde', () => {
+    // Målt 27/9-2026 i Bjørns tråd: et genereret billede lå MIDT i beskeden
+    // (efter sit eget værktøj, før de senere kald) og faldt derfor i arbejdet —
+    // hvor rækkevisningen folder det væk bag turens hoved. Det samme billede
+    // stod frit i mobilen. En leverance skal ses; den hører i svaret.
+    const billede: ContentBlock = { type: 'image', filename: 'x.png', attachment_id: 'a1' }
+    const { arbejde, svar } = opdel([
+      kald('openrouter_image'), billede, kald('analyze_image'), tekst('Færdig.'),
+    ])
+    expect(arbejde.map((e) => e.slags)).toEqual(['blok', 'blok'])
+    expect(svar).toEqual([billede, tekst('Færdig.')])
+  })
+
+  it('gør det samme for en udgivet fil', () => {
+    const fil: ContentBlock = { type: 'file', filename: 'rapport.csv', url: '/files/rapport.csv' }
+    const { arbejde, svar } = opdel([kald('publish_file'), fil, kald('bash'), tekst('Klar.')])
+    expect(arbejde.map((e) => e.slags)).toEqual(['blok', 'blok'])
+    expect(svar).toEqual([fil, tekst('Klar.')])
+  })
+
   it('er tom for en tom besked', () => {
     expect(opdel([])).toEqual({ arbejde: [], svar: [], kald: 0, sekunder: 0 })
   })

@@ -101,6 +101,20 @@ function erArbejdsBlok(b: ContentBlock): boolean {
     || b.type === 'skill_surface' || b.type === 'progress'
 }
 
+/** En LEVERANCE — noget Jarvis lægger frem TIL brugeren: et billede han har
+ *  lavet, eller en fil han har udgivet. Den er ikke arbejde. Den skal SES, og
+ *  den må derfor aldrig foldes væk bag turens hoved.
+ *
+ *  Målt 27/9-2026 i Bjørns tråd: et genereret billede lå MIDT i beskeden —
+ *  efter sit eget værktøj, men FØR de senere kald (`analyze_image`,
+ *  `remember_this`). Skillelinjen er det sidste `tool_use`, så billedet faldt
+ *  i arbejdet og forsvandt bag den sammenfoldede runde. Det samme billede stod
+ *  frit i mobilen, fordi mobilen bærer filen på beskeden frem for i en række.
+ *  Reglen her er den samme: leverancen hører til svaret. */
+function erLeverance(b: ContentBlock): boolean {
+  return b.type === 'image' || b.type === 'file'
+}
+
 /**
  * Del en assistent-besked op. Rækkefølgen bevares nøjagtigt — en syntese
  * skal stå mellem de to kald den faktisk stod imellem.
@@ -151,6 +165,9 @@ export function opdel(blokke: readonly ContentBlock[]): RaekkeOpdeling {
       else arbejde.push({ slags: 'spor', trin: [b] })
       continue
     }
+    // Leverancen løftes UD af arbejdet — se `erLeverance`. Uden dette stod et
+    // billede lavet midt i turen begravet i den foldede runde (målt 27/9-2026).
+    if (erLeverance(b)) { svar.push(b); continue }
     if (b.type === 'tool_use') kald += 1
     if (b.type === 'thinking' && typeof b.seconds === 'number') sekunder += b.seconds
     arbejde.push({ slags: 'blok', blok: b })

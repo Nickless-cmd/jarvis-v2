@@ -179,3 +179,120 @@ class TestRapport:
         fund = [{"tabel": "t%d" % i, "bytes": i, "raekker": i} for i in range(10)]
         linje = rc.rapport(fund)
         assert "+4 mere" in linje
+
+
+class TestTredjeSkuffe:
+    """`_EGEN_OPRYDNING` blev til fordi vagten meldte to tabeller som udækkede
+    i sin allerførste kørsel — `causal_edges` og `api_request_log` ryddes
+    begge, bare ikke af `events_retention`. En vagt der råber om noget der er
+    i orden, bliver et varsel man lærer at overse.
+    """
+
+    def test_tabel_med_egen_oprydning_rapporteres_ikke(self, db) -> None:
+        navn = next(iter(rc._EGEN_OPRYDNING))
+        _tabel(db, navn, raekker=500)
+        assert rc.tabeller_uden_politik(conn=db, min_bytes=1, min_raekker=1) == []
+
+    def test_hver_egen_oprydning_siger_HVOR(self) -> None:
+        """Påstanden skal kunne efterprøves, ikke tros."""
+        for tabel, hvor in rc._EGEN_OPRYDNING.items():
+            assert len(hvor.strip()) >= 30, "%s: %r" % (tabel, hvor)
+            assert "." in hvor, "%s peger ikke på et modul: %r" % (tabel, hvor)
+
+    def test_de_to_paastande_holder_i_koden(self) -> None:
+        """Vagten må ikke kunne bringes til tavshed med en påstand der ikke passer."""
+        import inspect
+
+        from core.runtime import db_api_connections
+        from core.services import causal_inference_daemon
+
+        assert "DELETE FROM causal_edges" in inspect.getsource(
+            causal_inference_daemon._prune_old_edges)
+        assert "DELETE FROM api_request_log" in inspect.getsource(
+            db_api_connections.anonymize_and_prune)
+
+    def test_ingen_tabel_staar_i_to_skuffer(self) -> None:
+        politik = set(rc.har_politik())
+        egen = set(rc._EGEN_OPRYDNING)
+        uden = set(rc._BEVIDST_UDEN_ALDER)
+        assert not (politik & egen), sorted(politik & egen)
+        assert not (politik & uden), sorted(politik & uden)
+        assert not (egen & uden), sorted(egen & uden)
+
+
+class TestDeTolvBeslutninger:
+    """Punkt 3, afgjort 27/9-2026: hver af de tolv tabeller vagten fandt, fik
+    sit svar ved at læse HVEM der læser den."""
+
+    TOLV = (
+        "central_hypotheses", "costs", "runtime_self_review_outcomes",
+        "central_hypothesis_samples", "cognitive_decisions", "runtime_state_kv",
+        "inner_voice_shadow", "runtime_chronicle_consolidation_briefs",
+        "session_events", "cognitive_shared_language", "causal_edges",
+        "api_request_log",
+    )
+
+    def test_alle_tolv_er_placeret(self) -> None:
+        placeret = set(rc.har_politik()) | set(rc._EGEN_OPRYDNING) | set(rc._BEVIDST_UDEN_ALDER)
+        mangler = [t for t in self.TOLV if t not in placeret]
+        assert not mangler, "stadig uden svar: %s" % mangler
+
+    #: Kendte læsere af `inner_voice_shadow`, målt 27/9-2026. To af dem bor i
+    #: modulet selv og har ingen kaldere; den tredje er et healthcheck der
+    #: køres i hånden. Ingen produktionssti læser tabellen — DET er grundlaget
+    #: for de 30 dage.
+    #:
+    #: Jeg påstod først at der slet ingen læsere var, og satte 14 dage på den
+    #: påstand. Den her test var det der rettede mig. Derfor er den en
+    #: grundlinje og ikke et «skal være tom»: kommer der en læser til, skal
+    #: nogen se på tallet igen, ikke bare føje navnet til listen.
+    KENDTE_LAESERE = {
+        "core/services/inner_voice_shadow.py",
+        "scripts/meta_evne_healthcheck.py",
+    }
+
+    def test_inner_voice_shadow_laesere_er_kendte(self) -> None:
+        import pathlib
+        import re
+
+        rod = pathlib.Path(__file__).resolve().parents[1]
+        laesere = set()
+        for m in ("core/**/*.py", "apps/**/*.py", "scripts/**/*.py"):
+            for p in rod.glob(m):
+                if "__pycache__" in str(p) or "tests" in p.parts:
+                    continue
+                t = p.read_text(encoding="utf-8", errors="replace")
+                if re.search(r"""(FROM|JOIN)\s+["'`]?inner_voice_shadow\b""", t, re.I):
+                    laesere.add(str(p.relative_to(rod)))
+        nye = laesere - self.KENDTE_LAESERE
+        assert not nye, (
+            "ny læser af inner_voice_shadow: %s — genovervej de 30 dages "
+            "retention før navnet føjes til listen" % sorted(nye)
+        )
+
+    def test_ingen_af_de_tre_alder_er_strukturelt_doed(self) -> None:
+        """En tærskel der ikke kan matche noget er en oprydning der ser ud til
+        at køre. `brain_temporal_edges` stod sådan i tre måneder.
+
+        Rækkerne rækker kun så langt tilbage som tabellen er gammel, så et tal
+        større end tabellens levetid rammer nul. Målt 27/9-2026:
+        runtime_self_review_outcomes går tilbage til 9. juli — 90 dage ville
+        have matchet nul rækker.
+        """
+        from core.services import events_retention as er
+        dage = dict((t, d) for t, _k, d in er._TELEMETRY_RETENTION)
+        assert dage["runtime_self_review_outcomes"] <= 80, (
+            "tabellen er kun 80 dage gammel; en højere tærskel rammer intet"
+        )
+
+    def test_costs_har_livstids_aggregater_og_maa_derfor_ikke_aldres(self) -> None:
+        """Begrundelsen i `_BEVIDST_UDEN_ALDER` skal kunne efterprøves."""
+        import inspect
+
+        from core.costing import ledger
+
+        krop = inspect.getsource(ledger.telemetry_summary)
+        assert "FROM costs" in krop
+        assert "WHERE" not in krop.upper(), (
+            "telemetry_summary har fået et tidsfilter — så kan costs godt aldres"
+        )

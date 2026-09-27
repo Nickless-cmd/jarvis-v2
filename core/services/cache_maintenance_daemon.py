@@ -129,6 +129,29 @@ def tick_cache_maintenance_daemon() -> dict[str, object]:
         except Exception as exc:
             _log.debug("retention_coverage fejlede: %s", exc)
 
+        # Roterede logfiler. Skrivernes cron-jobs roterer, men INGEN slettede
+        # bagefter: målt 27/9-2026 lå `cache_warmer.jsonl.1` (28 MB) og
+        # `cache_warmer_cron.log.1` (19 MB) fra 13. september. Kun det roterede
+        # røres — den aktive fil skrives der til hvert tiende minut.
+        rotated_logs: dict[str, int] = {}
+        try:
+            from core.services.state_file_retention import prune_rotated_logs
+            rotated_logs = prune_rotated_logs()
+        except Exception as exc:
+            _log.debug("prune_rotated_logs fejlede: %s", exc)
+
+        # Tool-resultater på disk. `cleanup_old_results(7)` har ligget i
+        # `tool_result_store` siden den blev skrevet — men dens ENESTE kalder
+        # var `scripts/tool_result_cleanup.py`, som hverken et cron-job eller
+        # en timer kører. Målt 27/9-2026: 18.630 filer, den ældste elleve dage
+        # gammel — fire dage forbi sin egen politik. Bygget, aldrig tilsluttet.
+        tool_results_pruned = 0
+        try:
+            from core.services.tool_result_store import cleanup_old_results
+            tool_results_pruned = cleanup_old_results(max_age_days=7)
+        except Exception as exc:
+            _log.debug("cleanup_old_results fejlede: %s", exc)
+
         # Forældreløse balancer-slots: profiler der aldrig vælges (backup-mapper,
         # provider-navngivne profiler). Målt 01-09: 166 af 264 poster var inert
         # historik, så state-filen så dobbelt så stor ud som virkeligheden.
@@ -156,6 +179,8 @@ def tick_cache_maintenance_daemon() -> dict[str, object]:
             "state_files_pruned": state_files_pruned,
             "orphan_uploads": orphan_uploads,
             "orphan_slots": orphan_slots,
+            "rotated_logs": rotated_logs,
+            "tool_results_pruned": tool_results_pruned,
             "uden_politik": uden_politik,
             "wal_checkpoint": wal_checkpoint,
         }

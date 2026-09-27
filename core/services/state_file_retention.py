@@ -213,3 +213,90 @@ def cleanup_orphan_uploads() -> dict[str, int]:
     except Exception:
         pass
     return stats
+
+
+# ---------------------------------------------------------------------------
+# Roterede logfiler (2026-09-27)
+# ---------------------------------------------------------------------------
+#
+# `~/.jarvis-v2/logs` roteres af skrivernes egne cron-jobs, men INGEN sletter
+# det roterede bagefter. Målt 27/9-2026: `cache_warmer.jsonl.1` (28 MB) og
+# `cache_warmer_cron.log.1` (19 MB) lå fra 13. september — 47 MB der aldrig
+# kunne læses igen af nogen.
+#
+# Kun ROTEREDE filer røres. Den aktive `cache_warmer.jsonl` skrives der til
+# hvert tiende minut, og en oprydning der ikke kan kende forskel på de to er
+# farligere end de 47 MB er værd.
+
+_ROTEREDE_ENDELSER: tuple[str, ...] = (".1", ".2", ".3", ".gz", ".old")
+
+#: Rundhåndet med vilje. En roteret log er død i samme øjeblik den roteres;
+#: fjorten dage er kun til at kunne kigge tilbage på en hændelse der lige var.
+_LOG_MAX_AGE_DAGE = 14
+
+
+def _log_dir() -> str:
+    return os.path.join(os.path.expanduser("~"), ".jarvis-v2", "logs")
+
+
+def er_roteret(navn: str) -> bool:
+    """Sandt for en logfil der er rullet fra, falsk for den der skrives til.
+
+    Endelsen alene er ikke nok: `foo.1` er roteret, men en fil der HEDDER
+    `.gz` uden noget foran er ikke en log. Der kræves et navn før endelsen.
+    """
+    for endelse in _ROTEREDE_ENDELSER:
+        if navn.endswith(endelse) and len(navn) > len(endelse):
+            return True
+    return False
+
+
+def prune_rotated_logs(
+    *, max_age_days: int = _LOG_MAX_AGE_DAGE, now: datetime | None = None
+) -> dict[str, int]:
+    """Slet roterede logfiler ældre end ``max_age_days``. Self-safe.
+
+    Returnerer ``{"fjernet": n, "bytes": n}``. Aldre måles på filens mtime —
+    en roteret fil skrives ikke til, så mtime ER tidspunktet den blev rullet
+    fra.
+    """
+    stats = {"fjernet": 0, "bytes": 0}
+    rod = _log_dir()
+    if not os.path.isdir(rod):
+        return stats
+    graense = (now or datetime.now(UTC)) - timedelta(days=max(max_age_days, 0))
+    try:
+        navne = os.listdir(rod)
+    except OSError:
+        # Kan mappen ikke listes (rettigheder, mount væk), er der intet at
+        # rydde op i — og en baggrundsdæmon skal ikke vælte af det. Samme
+        # holdning som `if not os.path.isdir(rod)` ovenfor.
+        return stats
+    for navn in navne:
+        if not er_roteret(navn):
+            continue
+        sti = os.path.join(rod, navn)
+        try:
+            # Samme link-disciplin som `cleanup_old_results`: en oprydning der
+            # kører af sig selv må aldrig følge et link ud af sin egen mappe.
+            #
+            # `islink` er nok her, og der stod oprindeligt en realpath-kontrol
+            # ved siden af. Den blev fjernet igen: listningen er ikke rekursiv,
+            # så hver sti er et navn DIREKTE i mappen, og er det ikke et link,
+            # kan dens realpath ikke ligge et andet sted. Grenen kunne ikke
+            # nås af nogen test — og et værn ingen test kan ramme er ikke et
+            # værn, det er kode man tror på.
+            if os.path.islink(sti) or not os.path.isfile(sti):
+                continue
+            st = os.stat(sti)
+            if datetime.fromtimestamp(st.st_mtime, UTC) > graense:
+                continue
+            os.unlink(sti)
+        except OSError:
+            # Én fil vi ikke kunne stat'e eller slette må ikke stoppe de
+            # øvrige. Den forsvinder bare ikke i denne runde, og næste
+            # kørsel prøver igen — den er stadig gammel til den tid.
+            continue
+        stats["fjernet"] += 1
+        stats["bytes"] += int(st.st_size)
+    return stats

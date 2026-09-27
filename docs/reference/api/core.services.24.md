@@ -95,6 +95,9 @@ _Rotation af operationel runtime-tilstand i ``~/.jarvis-v2``._
 | function | `prune_all_state_files` | `(*, now=…)` | Kør rotationen på alle filer i ``POLICIES``. Returnér {fil: antal fjernet}. | [src](../../../core/services/state_file_retention.py#L127) |
 | function | `find_orphan_upload_dirs` | `(upload_root, *, session_is_known)` | Mapper hvis session hverken har en række eller beskeder. Ren udvælgelse. | [src](../../../core/services/state_file_retention.py#L151) |
 | function | `cleanup_orphan_uploads` | `()` | Fjern vedhæftnings-mapper for sessioner der hverken har række eller beskeder. | [src](../../../core/services/state_file_retention.py#L176) |
+| function | `_log_dir` | `()` | — | [src](../../../core/services/state_file_retention.py#L238) |
+| function | `er_roteret` | `(navn)` | Sandt for en logfil der er rullet fra, falsk for den der skrives til. | [src](../../../core/services/state_file_retention.py#L242) |
+| function | `prune_rotated_logs` | `(*, max_age_days=…, now=…)` | Slet roterede logfiler ældre end ``max_age_days``. Self-safe. | [src](../../../core/services/state_file_retention.py#L254) |
 
 ## `core/services/state_flag_store.py`
 _State-flag store (leak-kandidat #1, 2026-07-10)._

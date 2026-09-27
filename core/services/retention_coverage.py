@@ -18,11 +18,16 @@ fylder i databasen, og kræver at hver stor tabel er placeret i én af to
 skuffer — enten har den en politik, eller også er den bevidst gemt for evigt
 med en skreven grund. Alt andet rapporteres.
 
-## De to skuffer
+## De tre skuffer
 
 * **Har politik** — udledt af `events_retention._TELEMETRY_RETENTION`,
   `_VERSIONED_RETENTION` og `events` selv. Den liste er sandheden; her
   gentages den ikke.
+* **Egen oprydning et andet sted** (`_EGEN_OPRYDNING`) — tabeller der ryddes
+  af deres eget modul på deres egen kadence. Skuffen blev til fordi vagten
+  meldte dem som udækkede i sin allerførste kørsel: den kendte kun
+  `events_retention`. En vagt der råber om noget der ER i orden, bliver et
+  varsel man lærer at overse.
 * **Bevidst uden alder** (`_BEVIDST_UDEN_ALDER`) — tabeller der SKAL blive
   liggende. Grunden står i værdien og er ikke valgfri: en tom grund er en
   udeladelse forklædt som en beslutning.
@@ -52,6 +57,19 @@ _MIN_BYTES = 25_000_000
 #: meget en ubesvaret beslutning som en fed en med få.
 _MIN_RAEKKER = 100_000
 
+#: Tabeller der ryddes af deres eget modul, ikke af `events_retention`.
+#: Værdien siger HVOR, så påstanden kan efterprøves i stedet for at tros.
+_EGEN_OPRYDNING: dict[str, str] = {
+    "causal_edges":
+        "causal_inference_daemon._prune_old_edges — 30 dage for udledte, 60 "
+        "for eksplicitte, kørt ved hvert tick af dæmonen.",
+    "api_request_log":
+        "db_api_connections.anonymize_and_prune — IP anonymiseres efter 48 "
+        "timer, rækken slettes efter 14 dage, og et hårdt loft på 100.000 "
+        "rækker bounder den selv når ingest overhaler alderen. Kørt hver "
+        "30. minut fra api_connection_nerve.",
+}
+
 #: Tabeller der bliver liggende for evigt — med grunden. Værdien er ikke
 #: pynt: den er hele forskellen på en beslutning og en forglemmelse.
 _BEVIDST_UDEN_ALDER: dict[str, str] = {
@@ -68,6 +86,43 @@ _BEVIDST_UDEN_ALDER: dict[str, str] = {
         "(db_embeddings). En alder her ville gøre gammel hukommelse usøgbar.",
     "chat_messages_fts_data":
         "FTS-skygge af chat_messages — følger sin tabel, har ingen egen alder.",
+    # --- afgjort 27/9-2026 ved at læse hver enkelt læser ---
+    "costs":
+        "Regnskabet. `ledger.telemetry_summary` summerer input_tokens, "
+        "output_tokens og cost_usd over HELE historikken og kaldes seks "
+        "steder, heriblandt Mission Control og cost_optimization_daemon; "
+        "`weekly_cost_summary` grupperer alle uger tilbage til marts. En "
+        "alder her ville stille og roligt ændre hans livstidsforbrug. Skal "
+        "den bounded, skal gamle rækker først rulles op i en månedstabel — "
+        "det er et stykke arbejde, ikke en indstilling.",
+    "central_hypotheses":
+        "Hans egen facitliste. `central_adaptation` og `central_belief_gap` "
+        "tæller `outcome` over hele historikken for at sige hvor ofte hans "
+        "hypoteser holdt. En alder ville omskrive den track record.",
+    "central_hypothesis_samples":
+        "Belægget under hypoteserne, læst udelukkende som `WHERE hyp_id=?`. "
+        "Den følger sin hypotese og vokser proportionalt (503.798 stikprøver "
+        "på 101.345 hypoteser — omkring fem hver), ikke frit.",
+    "cognitive_decisions":
+        "`compact_ground_truth` tæller dem uden filter, så tallet er noget "
+        "han siger om sig selv. Resten af læserne er afgrænsede, men "
+        "livstidstallet er nok til at en alder ikke er harmløs.",
+    "runtime_state_kv":
+        "Et nøgle/værdi-lager. Rækkerne ER den nuværende tilstand, ikke "
+        "historik — alder betyder intet her. (39 MB på 23.533 nøgler er 1,7 "
+        "KB pr. nøgle og fortjener sit eget kig, men det er et andet "
+        "spørgsmål end oprydning.)",
+    "cognitive_shared_language":
+        "Fælles vendinger mellem ham og Jarvis. Læses som `WHERE phrase = ?` "
+        "og `ORDER BY confidence DESC LIMIT` — altså rang-afgrænset, ikke "
+        "tids-afgrænset. 234.930 rækker er for mange til et ordforråd, men "
+        "kuren er et loft på rang (som brain_temporal_edges fik), ikke en "
+        "alder. Egen opgave.",
+    "session_events":
+        "Sessions-hovedbogen, læst som `WHERE session_id = ? AND seq > ?` og "
+        "spillet om ved genoptagelse. En alder ville gøre gamle samtaler "
+        "uigenoptagelige. (Dens eneste DELETE er canary-reseed, ikke "
+        "oprydning.)",
 }
 
 
@@ -137,7 +192,8 @@ def tabeller_uden_politik(
         ]
         fund: list[dict[str, Any]] = []
         for navn in navne:
-            if navn in dakket or navn in _BEVIDST_UDEN_ALDER:
+            if (navn in dakket or navn in _EGEN_OPRYDNING
+                    or navn in _BEVIDST_UDEN_ALDER):
                 continue
             bytes_ = int(stoerrelser.get(navn, 0))
             try:

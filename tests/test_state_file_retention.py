@@ -244,3 +244,96 @@ class TestOrphanBalancerSlots:
         from core.services.cheap_lane_balancer import orphan_slot_ids
         assert orphan_slot_ids([], is_account_profile=self._real) == []
         assert orphan_slot_ids(None, is_account_profile=self._real) == []
+
+
+# ---------------------------------------------------------------------------
+# Roterede logfiler (2026-09-27)
+# ---------------------------------------------------------------------------
+
+
+class TestRoteredeLogfiler:
+    """`~/.jarvis-v2/logs` roteres af skrivernes cron-jobs, men INGEN slettede
+    bagefter. Målt 27/9-2026: `cache_warmer.jsonl.1` (28 MB) og
+    `cache_warmer_cron.log.1` (19 MB) lå fra 13. september.
+
+    Det farlige er ikke at slette for lidt — det er at slette den fil der
+    skrives til. Derfor står halvdelen af testene her om hvad den IKKE rører.
+    """
+
+    @staticmethod
+    def _logmappe(tmp_path, monkeypatch):
+        from core.services import state_file_retention as sfr
+        d = tmp_path / "logs"
+        d.mkdir()
+        monkeypatch.setattr(sfr, "_log_dir", lambda: str(d))
+        return d
+
+    @staticmethod
+    def _fil(d, navn: str, *, dage_gammel: float, indhold: str = "x" * 100):
+        import os
+        p = d / navn
+        p.write_text(indhold, encoding="utf-8")
+        t = (datetime.now(UTC) - timedelta(days=dage_gammel)).timestamp()
+        os.utime(p, (t, t))
+        return p
+
+    def test_gammel_roteret_fil_fjernes(self, tmp_path, monkeypatch) -> None:
+        from core.services.state_file_retention import prune_rotated_logs
+        d = self._logmappe(tmp_path, monkeypatch)
+        p = self._fil(d, "cache_warmer.jsonl.1", dage_gammel=30)
+        ud = prune_rotated_logs(max_age_days=14)
+        assert not p.exists()
+        assert ud == {"fjernet": 1, "bytes": 100}
+
+    def test_den_AKTIVE_fil_roeres_aldrig(self, tmp_path, monkeypatch) -> None:
+        """Den her er hele grunden til at funktionen er så forsigtig."""
+        from core.services.state_file_retention import prune_rotated_logs
+        d = self._logmappe(tmp_path, monkeypatch)
+        aktiv = self._fil(d, "cache_warmer.jsonl", dage_gammel=400)
+        roteret = self._fil(d, "cache_warmer.jsonl.1", dage_gammel=400)
+        prune_rotated_logs(max_age_days=14)
+        assert aktiv.exists(), "den aktive log blev slettet"
+        assert not roteret.exists()
+
+    def test_ung_roteret_fil_bliver_liggende(self, tmp_path, monkeypatch) -> None:
+        from core.services.state_file_retention import prune_rotated_logs
+        d = self._logmappe(tmp_path, monkeypatch)
+        p = self._fil(d, "noget.log.1", dage_gammel=3)
+        assert prune_rotated_logs(max_age_days=14)["fjernet"] == 0
+        assert p.exists()
+
+    def test_symlink_ud_af_mappen_foelges_ikke(self, tmp_path, monkeypatch) -> None:
+        """En oprydning der kører af sig selv må aldrig slette udenfor sin mappe."""
+        import os
+        from core.services.state_file_retention import prune_rotated_logs
+        d = self._logmappe(tmp_path, monkeypatch)
+        udenfor = tmp_path / "vigtig.jsonl.1"
+        udenfor.write_text("maa ikke forsvinde", encoding="utf-8")
+        t = (datetime.now(UTC) - timedelta(days=400)).timestamp()
+        os.utime(udenfor, (t, t))
+        (d / "link.jsonl.1").symlink_to(udenfor)
+        ud = prune_rotated_logs(max_age_days=14)
+        assert udenfor.exists(), "oprydningen fulgte et link ud af logmappen"
+        assert ud["fjernet"] == 0
+
+    def test_manglende_mappe_er_ikke_en_fejl(self, tmp_path, monkeypatch) -> None:
+        from core.services import state_file_retention as sfr
+        monkeypatch.setattr(sfr, "_log_dir", lambda: str(tmp_path / "findes-ikke"))
+        assert sfr.prune_rotated_logs() == {"fjernet": 0, "bytes": 0}
+
+    @pytest.mark.parametrize(
+        "navn,roteret",
+        [
+            ("cache_warmer.jsonl.1", True),
+            ("cache_warmer_cron.log.1", True),
+            ("noget.gz", True),
+            ("gammel.old", True),
+            ("cache_warmer.jsonl", False),
+            ("cutoff-detector.log", False),
+            (".1", False),        # kun en endelse, intet navn foran
+            (".gz", False),
+        ],
+    )
+    def test_hvad_taeller_som_roteret(self, navn, roteret) -> None:
+        from core.services.state_file_retention import er_roteret
+        assert er_roteret(navn) is roteret

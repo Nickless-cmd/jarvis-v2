@@ -126,6 +126,41 @@ _TELEMETRY_RETENTION: tuple[tuple[str, str, int], ...] = (
     # slettet. `test_retention_coverage.py` læser vinduet ud af
     # `cheap_lane_diagnostics` og fejler hvis de to nærmer sig hinanden.
     ("cheap_lane_route_decisions", "created_at", 7),
+    # 2026-09-27, punkt 3: tre tabeller mere, hver med sit tal fundet ved at
+    # læse HVEM der læser dem — ikke ved at gætte.
+    #
+    # `inner_voice_shadow`: 30 dage. Tidskolonnen hedder `generated_at`, ikke
+    # `created_at` — derfor så tabellen ud til at mangle et tidsstempel helt.
+    #
+    # Jeg skrev først «ingen læser den overhovedet» og satte 14 dage. Det var
+    # forkert, og testen `test_inner_voice_shadow_laesere_er_kendte` fangede
+    # det: der er tre. To — `recent_comparisons` og `shadow_stats` — bor i
+    # modulet selv og har ingen kaldere. Den tredje er
+    # `scripts/meta_evne_healthcheck.py`, som køres i hånden og regner
+    # succesrate og gennemsnitlig latenstid over HELE historikken.
+    #
+    # Ingen produktionssti læser tabellen. 30 dage gør healthcheckets tal til
+    # «den seneste måned» i stedet for «siden 24. maj», hvilket for et
+    # helbredstjek er det mere brugbare — men det ER en ændring af hvad det
+    # svarer. Målt: 66 % af de 73.750 rækker er over 30 dage.
+    ("inner_voice_shadow", "generated_at", 30),
+    # 60 dage, samme som `runtime_action_outcomes` — de to hører sammen.
+    # Læserne er udelukkende afgrænsede: `ORDER BY id DESC LIMIT`, opslag på
+    # `outcome_id`, og pr. `decision_id` med `LIMIT 20`. Den join'es fra
+    # `cognitive_decisions` med LEFT JOIN og `ORDER BY cd.created_at DESC
+    # LIMIT`, så en gammel beslutning uden bevaret gennemgang giver NULL i
+    # stedet for at forsvinde.
+    #
+    # 90 dage havde ikke virket: tabellen går kun tilbage til 9. juli, så et
+    # 90-dages filter ville matche NUL rækker — samme strukturelt døde
+    # oprydning som `brain_temporal_edges` havde i tre måneder. 60 rammer
+    # 15,7 % i dag og vokser derfra.
+    ("runtime_self_review_outcomes", "created_at", 60),
+    # 90 dage — rundhåndet, fordi den grænser op til kronikken (hukommelse),
+    # ikke til telemetri. Læserne er `ORDER BY id DESC LIMIT` og opslag på
+    # `brief_id`; ingen aggregerer over hele historikken. Rækker tilbage til
+    # 6. april, så 90 dage rammer 39 % med det samme.
+    ("runtime_chronicle_consolidation_briefs", "created_at", 90),
 )
 
 

@@ -11,10 +11,10 @@ _Read-only, deterministic diagnostics over Cheap Lane source-of-truth data._
 | function | `recent_invocations` | `(*, since, limit=…)` | — | [src](../../../core/services/cheap_lane_diagnostics.py#L20) |
 | function | `central_evidence` | `(*, limit=…)` | — | [src](../../../core/services/cheap_lane_diagnostics.py#L36) |
 | function | `route_integrity` | `(*, since)` | — | [src](../../../core/services/cheap_lane_diagnostics.py#L49) |
-| function | `_finding` | `(code, severity, now, evidence, *, provider=…, slot_id=…)` | — | [src](../../../core/services/cheap_lane_diagnostics.py#L82) |
-| function | `invocation_health` | `(rows)` | Summarize the full invocation window without merging account outcomes. | [src](../../../core/services/cheap_lane_diagnostics.py#L103) |
-| function | `unrouted_pool_invocations` | `(rows)` | Find missing route IDs only where a cheap-pool route was expected. | [src](../../../core/services/cheap_lane_diagnostics.py#L130) |
-| function | `diagnose_cheap_lane` | `(now=…)` | — | [src](../../../core/services/cheap_lane_diagnostics.py#L140) |
+| function | `_finding` | `(code, severity, now, evidence, *, provider=…, slot_id=…)` | — | [src](../../../core/services/cheap_lane_diagnostics.py#L102) |
+| function | `invocation_health` | `(rows)` | Summarize the full invocation window without merging account outcomes. | [src](../../../core/services/cheap_lane_diagnostics.py#L123) |
+| function | `unrouted_pool_invocations` | `(rows)` | Find missing route IDs only where a cheap-pool route was expected. | [src](../../../core/services/cheap_lane_diagnostics.py#L150) |
+| function | `diagnose_cheap_lane` | `(now=…)` | — | [src](../../../core/services/cheap_lane_diagnostics.py#L160) |
 
 ## `core/services/cheap_lane_failure_policy.py`
 _Hvor længe skal et cheap-lane-slot i karantæne? Afhænger af HVORFOR det fejlede._

@@ -838,7 +838,7 @@ Generated from source. 8103/15601 functions/methods documented (51%). The list b
 - `core/services/cheap_lane_dashboard.py` :: `build_cheap_lane_dashboard` (L49)
 - `core/services/cheap_lane_dashboard.py` :: `invocation_trends` (L15)
 - `core/services/cheap_lane_diagnostics.py` :: `central_evidence` (L36)
-- `core/services/cheap_lane_diagnostics.py` :: `diagnose_cheap_lane` (L140)
+- `core/services/cheap_lane_diagnostics.py` :: `diagnose_cheap_lane` (L160)
 - `core/services/cheap_lane_diagnostics.py` :: `recent_invocations` (L20)
 - `core/services/cheap_lane_diagnostics.py` :: `route_integrity` (L49)
 - `core/services/cheap_lane_quotas.py` :: `set_quota_policy` (L18)

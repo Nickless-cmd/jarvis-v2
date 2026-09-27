@@ -72,8 +72,28 @@ def route_integrity(*, since: datetime) -> list[dict[str, object]]:
             "AND r.route_decision_id IS NULL LIMIT 100",
             (since.isoformat(),),
         ).fetchall()
+        restarts = [
+            _parse_time(row["created_at"])
+            for row in conn.execute(
+                "SELECT created_at FROM events WHERE kind = 'runtime.started' "
+                "AND created_at >= ?",
+                ((since - timedelta(minutes=1)).isoformat(),),
+            ).fetchall()
+        ]
     return [
-        {"kind": "route-without-invocation", **dict(row)} for row in routes
+        {
+            "kind": (
+                "route-interrupted-by-restart"
+                if created is not None and any(
+                    abs((started - created).total_seconds()) <= 60
+                    for started in restarts if started is not None
+                )
+                else "route-without-invocation"
+            ),
+            **dict(row),
+        }
+        for row in routes
+        for created in [_parse_time(row["created_at"])]
     ] + [
         {"kind": "invocation-without-route", **dict(row)} for row in invocations
     ]
@@ -265,10 +285,19 @@ def diagnose_cheap_lane(now: datetime | None = None) -> dict[str, object]:
             "route-bypassed", "medium", instant,
             {"count": len(bypass), "sample_invocation_id": bypass[0].get("invocation_id")},
         ))
-    if integrity:
+    interrupted = [item for item in integrity
+                   if item.get("kind") == "route-interrupted-by-restart"]
+    mismatches = [item for item in integrity
+                  if item.get("kind") != "route-interrupted-by-restart"]
+    if interrupted:
+        findings.append(_finding(
+            "route-interrupted", "medium", instant,
+            {"count": len(interrupted), "samples": interrupted[:5]},
+        ))
+    if mismatches:
         findings.append(_finding(
             "route-trace-mismatch", "high", instant,
-            {"count": len(integrity), "samples": integrity[:5]},
+            {"count": len(mismatches), "samples": mismatches[:5]},
         ))
 
     incidents = central_evidence(limit=100)

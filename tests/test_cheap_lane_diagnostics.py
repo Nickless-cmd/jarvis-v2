@@ -56,6 +56,57 @@ def test_route_integrity_waits_for_inflight_invocation(isolated_runtime):
     assert [row["route_decision_id"] for row in mismatches] == ["old"]
 
 
+def test_route_interrupted_near_runtime_restart_is_classified_separately(isolated_runtime):
+    from datetime import timedelta
+    from core.runtime.db_core import connect
+    from core.runtime.db_cheap_lane_control import _ensure_control_schema
+    from core.services.cheap_lane_diagnostics import route_integrity
+
+    now = datetime.now(UTC)
+    routed_at = (now - timedelta(minutes=10)).isoformat()
+    started_at = (now - timedelta(minutes=9, seconds=50)).isoformat()
+    with connect() as conn:
+        _ensure_control_schema(conn)
+        conn.execute(
+            "INSERT INTO cheap_lane_route_decisions "
+            "(route_decision_id,correlation_id,created_at) VALUES (?,?,?)",
+            ("interrupted", "corr", routed_at),
+        )
+        conn.execute(
+            "INSERT INTO events(kind,payload_json,created_at) VALUES (?,?,?)",
+            ("runtime.started", '{"component":"api"}', started_at),
+        )
+
+    rows = route_integrity(since=now - timedelta(hours=1))
+    assert [(row["route_decision_id"], row["kind"]) for row in rows] == [
+        ("interrupted", "route-interrupted-by-restart"),
+    ]
+
+
+def test_restart_interruption_does_not_raise_route_mismatch_high(monkeypatch):
+    import core.services.cheap_lane_diagnostics as diagnostics
+
+    monkeypatch.setattr(diagnostics, "balancer_snapshot", lambda: {
+        "eligible_now": 1, "slots": [],
+    })
+    monkeypatch.setattr(diagnostics, "capacity_snapshot", lambda **_kw: {"windows": []})
+    monkeypatch.setattr(diagnostics, "fuld_registrering", lambda: {"udbydere": []})
+    monkeypatch.setattr(diagnostics, "recent_invocations", lambda **_kw: [])
+    monkeypatch.setattr(diagnostics, "central_evidence", lambda **_kw: [])
+    monkeypatch.setattr(diagnostics, "route_integrity", lambda **_kw: [
+        {"kind": "route-interrupted-by-restart", "route_decision_id": "restart"},
+        {"kind": "route-without-invocation", "route_decision_id": "real"},
+    ])
+
+    findings = diagnostics.diagnose_cheap_lane(
+        now=datetime(2026, 9, 27, 12, tzinfo=UTC)
+    )["findings"]
+    routes = {item["code"]: item for item in findings if item["code"].startswith("route-")}
+    assert routes["route-trace-mismatch"]["evidence"]["count"] == 1
+    assert routes["route-interrupted"]["severity"] == "medium"
+    assert routes["route-interrupted"]["evidence"]["count"] == 1
+
+
 def test_local_ollama_fallback_is_not_a_pool_route_bypass():
     from core.services.cheap_lane_diagnostics import unrouted_pool_invocations
 

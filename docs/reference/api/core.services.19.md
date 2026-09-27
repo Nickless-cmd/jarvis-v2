@@ -2,6 +2,21 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/projection_drift.py`
+_Drift-detektion — er ledgeren og `chat_messages` enige?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_normaliser_json` | `(v)` | `content_json` kan være tekst ét sted og et objekt et andet. Det er | [src](../../../core/services/projection_drift.py#L46) |
+| function | `_felt` | `(raekke, navn)` | — | [src](../../../core/services/projection_drift.py#L63) |
+| function | `_modul` | `(projektion)` | Slå projektionen op. Et ukendt navn er en fejl, ikke et tomt svar — | [src](../../../core/services/projection_drift.py#L77) |
+| function | `_samme_tid` | `(a, b)` | Samme øjeblik skrevet på to måder er ikke uenighed. | [src](../../../core/services/projection_drift.py#L88) |
+| function | `_fra_ledger` | `(session_id, m)` | Fold i HUKOMMELSEN. At kalde projektoren ville skrive de rækker vi | [src](../../../core/services/projection_drift.py#L117) |
+| function | `_fra_tabellen` | `(session_id, m)` | — | [src](../../../core/services/projection_drift.py#L132) |
+| function | `compare` | `(session_id, projektion=…)` | Sammenlign de to sider. `enige` er svaret på om sessionen må skifte. | [src](../../../core/services/projection_drift.py#L144) |
+| function | `_nyeste` | `(raekker)` | Tidsstemplet paa den nyeste raekke — saa en laeser kan se om «enige» | [src](../../../core/services/projection_drift.py#L199) |
+| function | `may_cut_over` | `(session_id, projektion=…)` | Må denne session skifte til `ledger`? | [src](../../../core/services/projection_drift.py#L210) |
+
 ## `core/services/projection_guard.py`
 _Vagten der gør et skifte til hovedbogen fortrydeligt._
 
@@ -652,11 +667,4 @@ _Reasoning interceptor orchestrator. intercept_round() runs between a round's re
 | function | `build_reasoning_interceptor_surface` | `()` | Central-CLI view: recent interceptor verdicts. Self-safe, read-only. Returns static shape | [src](../../../core/services/reasoning_interceptor.py#L114) |
 | function | `intercept_round_async` | `(*, run_id, round_num, reasoning_text, tool_calls_this_run, ctx=…, budget_ms=…)` | Async wrapper (invariant 4 — async/keepalive): runs the sync intercept in a thread with a | [src](../../../core/services/reasoning_interceptor.py#L140) |
 | function | `intercept_round` | `(*, run_id, round_num, reasoning_text, tool_calls_this_run, ctx=…)` | — | [src](../../../core/services/reasoning_interceptor.py#L161) |
-
-## `core/services/reasoning_prefilter.py`
-_Deterministic pre-filter (interceptor invariant 5): cheap regex/heuristics over reasoning text →_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `prefilter` | `(reasoning_text, *, ctx=…, other_user_ids=…)` | Return the risk classes present in `reasoning_text`. Self-safe (never raises). | [src](../../../core/services/reasoning_prefilter.py#L15) |
 

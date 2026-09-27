@@ -2,6 +2,30 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/cheap_lane_control.py`
+_Audited operator commands for Cheap Lane._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `ControlError` | `` | — | [src](../../../core/services/cheap_lane_control.py#L17) |
+| class | `ControlAuditError` | `` | — | [src](../../../core/services/cheap_lane_control.py#L21) |
+| class | `ControlRevisionConflict` | `` | — | [src](../../../core/services/cheap_lane_control.py#L25) |
+| class | `ControlScopeError` | `` | — | [src](../../../core/services/cheap_lane_control.py#L29) |
+| class | `ControlTargetNotFound` | `` | — | [src](../../../core/services/cheap_lane_control.py#L33) |
+| class | `CheapLaneCommand` | `` | — | [src](../../../core/services/cheap_lane_control.py#L38) |
+| function | `_revision` | `(value)` | — | [src](../../../core/services/cheap_lane_control.py#L46) |
+| function | `_split_model` | `(target)` | — | [src](../../../core/services/cheap_lane_control.py#L51) |
+| function | `_registry_state` | `(action, target)` | — | [src](../../../core/services/cheap_lane_control.py#L58) |
+| function | `_authoritative_result` | `(command, mutation)` | — | [src](../../../core/services/cheap_lane_control.py#L77) |
+| function | `_before` | `(command)` | — | [src](../../../core/services/cheap_lane_control.py#L90) |
+| function | `_require_reason` | `(command)` | — | [src](../../../core/services/cheap_lane_control.py#L110) |
+| function | `_require_cheap_scope` | `(command)` | — | [src](../../../core/services/cheap_lane_control.py#L120) |
+| function | `_admission_mutation` | `(command)` | — | [src](../../../core/services/cheap_lane_control.py#L148) |
+| function | `_registry_mutation` | `(command)` | — | [src](../../../core/services/cheap_lane_control.py#L166) |
+| function | `_mutate` | `(command)` | — | [src](../../../core/services/cheap_lane_control.py#L221) |
+| function | `apply_control` | `(command, actor)` | — | [src](../../../core/services/cheap_lane_control.py#L262) |
+| function | `simulate_route` | `(task_kind, skip_providers)` | — | [src](../../../core/services/cheap_lane_control.py#L313) |
+
 ## `core/services/cheap_lane_dashboard.py`
 _Composite, partial-safe snapshot for the Cheap Lane control center._
 
@@ -703,24 +727,4 @@ _LLM-based narrativizer for cognitive state lines._
 | function | `_generate_in_background` | `(*, line_key, fingerprint, system_prompt, user_message)` | Run the LLM call in a background thread and update cache. | [src](../../../core/services/cognitive_state_narrativizer.py#L119) |
 | function | `narrativize_line` | `(*, line_key, state, system_prompt, user_message_builder, fallback=…)` | Return an LLM-narrativized line for this state, or fallback. | [src](../../../core/services/cognitive_state_narrativizer.py#L151) |
 | function | `cache_snapshot` | `()` | Expose current cache state for MC observability. | [src](../../../core/services/cognitive_state_narrativizer.py#L228) |
-
-## `core/services/collective_pulse_daemon.py`
-_Collective Pulse — what is the air full of right now?_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_storage_path` | `()` | — | [src](../../../core/services/collective_pulse_daemon.py#L43) |
-| function | `_collective_dir` | `()` | — | [src](../../../core/services/collective_pulse_daemon.py#L47) |
-| function | `_load` | `()` | — | [src](../../../core/services/collective_pulse_daemon.py#L51) |
-| function | `_save` | `(data)` | — | [src](../../../core/services/collective_pulse_daemon.py#L67) |
-| function | `_tokens` | `(text)` | — | [src](../../../core/services/collective_pulse_daemon.py#L79) |
-| function | `_gather_week_text` | `()` | — | [src](../../../core/services/collective_pulse_daemon.py#L86) |
-| function | `_week_mood_trajectory` | `()` | Average mood over the week, if mood samples are available. | [src](../../../core/services/collective_pulse_daemon.py#L123) |
-| function | `_describe_zeitgeist` | `(top_terms, mood_info)` | — | [src](../../../core/services/collective_pulse_daemon.py#L142) |
-| function | `_write_weekly_note` | `(pulse)` | — | [src](../../../core/services/collective_pulse_daemon.py#L156) |
-| function | `run_pulse` | `()` | — | [src](../../../core/services/collective_pulse_daemon.py#L192) |
-| function | `tick` | `(_seconds=…)` | — | [src](../../../core/services/collective_pulse_daemon.py#L233) |
-| function | `build_collective_pulse_surface` | `()` | — | [src](../../../core/services/collective_pulse_daemon.py#L246) |
-| function | `_surface_summary` | `(latest)` | — | [src](../../../core/services/collective_pulse_daemon.py#L259) |
-| function | `build_collective_pulse_prompt_section` | `()` | Surface the week's zeitgeist while it's still current (within 7 days). | [src](../../../core/services/collective_pulse_daemon.py#L266) |
 

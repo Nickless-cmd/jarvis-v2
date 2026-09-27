@@ -2,6 +2,18 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/pattern_counterfactual_daemon.py`
+_Pattern counterfactual daemon — Phase 3.5 of causal graph._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_fetch_top_patterns` | `()` | Reuse causal_patterns._fetch_patterns; take top N filtered. | [src](../../../core/services/pattern_counterfactual_daemon.py#L46) |
+| function | `_already_counterfactualized` | `(parent_kind, child_kind)` | — | [src](../../../core/services/pattern_counterfactual_daemon.py#L57) |
+| function | `_build_prompt` | `(pattern)` | — | [src](../../../core/services/pattern_counterfactual_daemon.py#L72) |
+| function | `_persist` | `(pattern, hypothesis)` | — | [src](../../../core/services/pattern_counterfactual_daemon.py#L89) |
+| function | `run_pattern_cf_cycle` | `()` | — | [src](../../../core/services/pattern_counterfactual_daemon.py#L105) |
+| function | `tick_pattern_counterfactual_daemon` | `()` | — | [src](../../../core/services/pattern_counterfactual_daemon.py#L145) |
+
 ## `core/services/pdf_connector.py`
 _PDF-connector (lokal) — læs/ekstraher tekst fra PDF-filer._
 
@@ -662,29 +674,14 @@ _Kompatibilitets-projektoren — ledger-hændelser → `chat_messages`-rækker._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `message_id_for` | `(session_id, event_id)` | Udled et stabilt `message_id`. Samme hændelse → altid samme id. | [src](../../../core/services/projection_chat_messages.py#L68) |
-| function | `_message_id` | `(session_id, e, payload)` | Et id sessionen allerede har, VINDER over et udledt. | [src](../../../core/services/projection_chat_messages.py#L80) |
-| function | `valider` | `(payload)` | Returnér en grund hvis hændelsen ikke kan blive en række, ellers None. | [src](../../../core/services/projection_chat_messages.py#L94) |
-| function | `_raekke` | `(session_id, e)` | — | [src](../../../core/services/projection_chat_messages.py#L107) |
-| function | `_skriv` | `(raekke)` | — | [src](../../../core/services/projection_chat_messages.py#L128) |
-| function | `start` | `()` | Formen ligger i STARTEN, ikke i den første fold. | [src](../../../core/services/projection_chat_messages.py#L152) |
-| function | `fold` | `(state, e)` | Ren pr. hændelse og idempotent: samme hændelse igen ændrer ingenting. | [src](../../../core/services/projection_chat_messages.py#L161) |
-| function | `register` | `()` | — | [src](../../../core/services/projection_chat_messages.py#L180) |
-| function | `rebuild` | `(session_id)` | Genskab sessionens `chat_messages`-rækker fra ledgeren. | [src](../../../core/services/projection_chat_messages.py#L185) |
-| function | `guard_direct_write` | `(session_id, *, conn=…)` | Afvis direkte `chat_messages`-skrivninger for en ledger-session. | [src](../../../core/services/projection_chat_messages.py#L214) |
-
-## `core/services/projection_drift.py`
-_Drift-detektion — er ledgeren og `chat_messages` enige?_
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_normaliser_json` | `(v)` | `content_json` kan være tekst ét sted og et objekt et andet. Det er | [src](../../../core/services/projection_drift.py#L46) |
-| function | `_felt` | `(raekke, navn)` | — | [src](../../../core/services/projection_drift.py#L63) |
-| function | `_modul` | `(projektion)` | Slå projektionen op. Et ukendt navn er en fejl, ikke et tomt svar — | [src](../../../core/services/projection_drift.py#L77) |
-| function | `_samme_tid` | `(a, b)` | Samme øjeblik skrevet på to måder er ikke uenighed. | [src](../../../core/services/projection_drift.py#L88) |
-| function | `_fra_ledger` | `(session_id, m)` | Fold i HUKOMMELSEN. At kalde projektoren ville skrive de rækker vi | [src](../../../core/services/projection_drift.py#L117) |
-| function | `_fra_tabellen` | `(session_id, m)` | — | [src](../../../core/services/projection_drift.py#L132) |
-| function | `compare` | `(session_id, projektion=…)` | Sammenlign de to sider. `enige` er svaret på om sessionen må skifte. | [src](../../../core/services/projection_drift.py#L144) |
-| function | `_nyeste` | `(raekker)` | Tidsstemplet paa den nyeste raekke — saa en laeser kan se om «enige» | [src](../../../core/services/projection_drift.py#L199) |
-| function | `may_cut_over` | `(session_id, projektion=…)` | Må denne session skifte til `ledger`? | [src](../../../core/services/projection_drift.py#L210) |
+| function | `message_id_for` | `(session_id, event_id)` | Udled et stabilt `message_id`. Samme hændelse → altid samme id. | [src](../../../core/services/projection_chat_messages.py#L69) |
+| function | `_message_id` | `(session_id, e, payload)` | Et id sessionen allerede har, VINDER over et udledt. | [src](../../../core/services/projection_chat_messages.py#L81) |
+| function | `valider` | `(payload)` | Returnér en grund hvis hændelsen ikke kan blive en række, ellers None. | [src](../../../core/services/projection_chat_messages.py#L95) |
+| function | `_raekke` | `(session_id, e)` | — | [src](../../../core/services/projection_chat_messages.py#L108) |
+| function | `_skriv` | `(raekke)` | — | [src](../../../core/services/projection_chat_messages.py#L129) |
+| function | `start` | `()` | Formen ligger i STARTEN, ikke i den første fold. | [src](../../../core/services/projection_chat_messages.py#L170) |
+| function | `fold` | `(state, e)` | Ren pr. hændelse og idempotent: samme hændelse igen ændrer ingenting. | [src](../../../core/services/projection_chat_messages.py#L179) |
+| function | `register` | `()` | — | [src](../../../core/services/projection_chat_messages.py#L198) |
+| function | `rebuild` | `(session_id)` | Genskab sessionens `chat_messages`-rækker fra ledgeren. | [src](../../../core/services/projection_chat_messages.py#L203) |
+| function | `guard_direct_write` | `(session_id, *, conn=…)` | Afvis direkte `chat_messages`-skrivninger for en ledger-session. | [src](../../../core/services/projection_chat_messages.py#L232) |
 

@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `scripts/rewrite_legacy_memory_provenance.py`
+_Bulk-rewrite legacy `[MEMORY.md]` / `[USER.md]` prefixes in daily memory._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `rewrite_file` | `(path, *, dry_run)` | Return (matched_lines, rewritten_lines). | [src](../../../scripts/rewrite_legacy_memory_provenance.py#L36) |
+| function | `main` | `()` | — | [src](../../../scripts/rewrite_legacy_memory_provenance.py#L57) |
+
 ## `scripts/seed_cognitive_state.py`
 _Seed cognitive state tables with initial values based on known context._
 

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8118/15617 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8128/15631 functions/methods documented (51%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,8 +24,8 @@ Generated from source. 8118/15617 functions/methods documented (51%). The list b
 | `core.identity` | 72 | 166 | 43% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 697 | 1276 | 54% |
-| `core.services` | 5383 | 10631 | 50% |
+| `core.runtime` | 698 | 1277 | 54% |
+| `core.services` | 5391 | 10640 | 50% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 107 | 183 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -37,12 +37,12 @@ Generated from source. 8118/15617 functions/methods documented (51%). The list b
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.undo` | 2 | 18 | 11% |
 | `core.util` | 9 | 10 | 90% |
-| `scripts` | 219 | 474 | 46% |
+| `scripts` | 220 | 478 | 46% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2213)
+## Undocumented public functions (2216)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L209)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -822,12 +822,13 @@ Generated from source. 8118/15617 functions/methods documented (51%). The list b
 - `core/services/central_trace.py` :: `sink` (L96)
 - `core/services/central_white_rabbit.py` :: `build_white_rabbit_surface` (L58)
 - `core/services/central_white_rabbit.py` :: `record_white_rabbit` (L62)
-- `core/services/chat_sessions.py` :: `append_chat_message` (L760)
-- `core/services/chat_sessions.py` :: `create_chat_session` (L65)
-- `core/services/chat_sessions.py` :: `delete_chat_session` (L1474)
-- `core/services/chat_sessions.py` :: `recent_chat_session_messages` (L1150)
-- `core/services/chat_sessions.py` :: `recent_chat_tool_messages` (L1435)
-- `core/services/chat_sessions.py` :: `rename_chat_session` (L1460)
+- `core/services/chat_crypto.py` :: `er_krypteret` (L136)
+- `core/services/chat_sessions.py` :: `append_chat_message` (L761)
+- `core/services/chat_sessions.py` :: `create_chat_session` (L66)
+- `core/services/chat_sessions.py` :: `delete_chat_session` (L1531)
+- `core/services/chat_sessions.py` :: `recent_chat_session_messages` (L1164)
+- `core/services/chat_sessions.py` :: `recent_chat_tool_messages` (L1485)
+- `core/services/chat_sessions.py` :: `rename_chat_session` (L1517)
 - `core/services/cheap_lane_admission.py` :: `acquire_admission` (L123)
 - `core/services/cheap_lane_admission.py` :: `admission_snapshot` (L102)
 - `core/services/cheap_lane_admission.py` :: `release_admission` (L155)
@@ -1434,7 +1435,7 @@ Generated from source. 8118/15617 functions/methods documented (51%). The list b
 - `core/services/process_watcher.py` :: `set_watch_enabled` (L239)
 - `core/services/producer_novelty.py` :: `clear_producer` (L66)
 - `core/services/producer_novelty.py` :: `get_producer` (L73)
-- `core/services/projection_chat_messages.py` :: `register` (L180)
+- `core/services/projection_chat_messages.py` :: `register` (L198)
 - `core/services/projection_runtime.py` :: `registered` (L80)
 - `core/services/projection_tool_router.py` :: `register` (L212)
 - `core/services/prompt_cache_probe.py` :: `ProbeVerdict.as_line` (L61)
@@ -2158,6 +2159,8 @@ Generated from source. 8118/15617 functions/methods documented (51%). The list b
 - `scripts/interlanguage_llm_judge.py` :: `run_delta` (L159)
 - `scripts/interlanguage_structural_classifier.py` :: `main` (L174)
 - `scripts/jarvis_bare_practice_runner.py` :: `main` (L318)
+- `scripts/krypter_medlems_chat.py` :: `koer` (L66)
+- `scripts/krypter_medlems_chat.py` :: `main` (L135)
 - `scripts/laering_status.py` :: `main` (L23)
 - `scripts/ledger_rehearsal.py` :: `kopiér` (L39)
 - `scripts/ledger_rehearsal.py` :: `main` (L70)

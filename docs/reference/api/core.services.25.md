@@ -2,6 +2,22 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/theory_of_mind_engine.py`
+_Active theory-of-mind engine for Jarvis._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `build_theory_of_mind_surface` | `(*, user_message=…, assistant_text=…, user_id=…)` | Build active social hypotheses and response policy. | [src](../../../core/services/theory_of_mind_engine.py#L20) |
+| function | `build_theory_of_mind_prompt_section` | `(*, user_message=…, assistant_text=…, user_id=…)` | — | [src](../../../core/services/theory_of_mind_engine.py#L53) |
+| function | `record_theory_of_mind_update` | `(*, user_message=…, assistant_text=…, outcome_status=…, source_run_id=…, user_id=…)` | Persist a lightweight outcome update for future hypotheses. | [src](../../../core/services/theory_of_mind_engine.py#L84) |
+| function | `_load_state` | `()` | — | [src](../../../core/services/theory_of_mind_engine.py#L135) |
+| function | `_safe_user_model` | `(agent_id)` | — | [src](../../../core/services/theory_of_mind_engine.py#L142) |
+| function | `_derive_hypotheses` | `(*, base_model, recent_updates, user_message, assistant_text)` | — | [src](../../../core/services/theory_of_mind_engine.py#L150) |
+| function | `_hypothesis` | `(label, confidence, evidence, implication)` | — | [src](../../../core/services/theory_of_mind_engine.py#L214) |
+| function | `_derive_response_policy` | `(*, hypotheses, user_message)` | — | [src](../../../core/services/theory_of_mind_engine.py#L225) |
+| function | `_derive_uncertainty` | `(*, hypotheses, user_message)` | — | [src](../../../core/services/theory_of_mind_engine.py#L252) |
+| function | `_summary` | `(*, hypotheses, policy)` | — | [src](../../../core/services/theory_of_mind_engine.py#L263) |
+
 ## `core/services/thought_action_proposal_daemon.py`
 _Thought-action proposal daemon — turns action impulses in thought stream into MC proposals._
 
@@ -515,12 +531,4 @@ _Uploadede filer og arkiver — pakket ud ét sted, og aldrig eksekverbart._
 | function | `_chunks` | `(fileobj, size=…)` | — | [src](../../../core/services/upload_sandbox.py#L136) |
 | function | `safe_extract` | `(archive_path, attachment_id)` | Pak et arkiv ud i sin egen sandkasse — post for post. | [src](../../../core/services/upload_sandbox.py#L144) |
 | function | `scan_tree` | `(root)` | Kør ClamAV på en udpakket sandkasse. (ren, begrundelse). | [src](../../../core/services/upload_sandbox.py#L234) |
-
-## `core/services/user_activity.py`
-_Bruger-aktivitets-nerve — ét sted der svarer "hvornår var X sidst aktiv, og hvordan"._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_q1` | `(conn, sql, params)` | — | [src](../../../core/services/user_activity.py#L17) |
-| function | `build_user_activity_surface` | `(*, active_within_s=…)` | Pr. registreret bruger: sidst aktiv (flettet fra alle kilder), via hvad, aktiv nu, | [src](../../../core/services/user_activity.py#L25) |
 

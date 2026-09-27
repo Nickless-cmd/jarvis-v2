@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 15617 functions/methods, 51% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 15631 functions/methods, 51% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -34,28 +34,28 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 15617 functions/
 - [`core.services.03`](core.services.03.md) — `autonomous_sessions` … `central_agent_smith_escalation`
 - [`core.services.04`](core.services.04.md) — `central_agents_surface` … `central_hub`
 - [`core.services.05`](core.services.05.md) — `central_hypothesis_generator` … `central_rca`
-- [`core.services.06`](core.services.06.md) — `central_realtime` … `cheap_lane_control`
-- [`core.services.07`](core.services.07.md) — `cheap_lane_dashboard` … `collective_pulse_daemon`
-- [`core.services.08`](core.services.08.md) — `commit_attribution` … `council_settlement`
-- [`core.services.09`](core.services.09.md) — `counterfactual_engine` … `decision_signal_staging`
-- [`core.services.10`](core.services.10.md) — `decision_signal_telemetry` … `dream_hypothesis_generator`
-- [`core.services.11`](core.services.11.md) — `dream_hypothesis_judge` … `events_retention`
-- [`core.services.12`](core.services.12.md) — `executive_contradiction_signal_tracking` … `gate_proactivity`
-- [`core.services.13`](core.services.13.md) — `gate_review` … `hollow_promise_guard`
-- [`core.services.14`](core.services.14.md) — `hollow_promise_round` … `jarvisx_bridge`
-- [`core.services.15`](core.services.15.md) — `jc_tool_telemetry` … `memory_density`
-- [`core.services.16`](core.services.16.md) — `memory_emotional_context` … `narrative_summary_daemon`
-- [`core.services.17`](core.services.17.md) — `negotiation_engine` … `pattern_counterfactual_daemon`
-- [`core.services.18`](core.services.18.md) — `pdf_connector` … `projection_drift`
-- [`core.services.19`](core.services.19.md) — `projection_guard` … `reasoning_prefilter`
-- [`core.services.20`](core.services.20.md) — `reasoning_store` … `round_budget_notice`
-- [`core.services.21`](core.services.21.md) — `rule_definitions` … `self_authored_prompt_proposal_tracking`
-- [`core.services.22`](core.services.22.md) — `self_compassion` … `session_persistence_flag`
-- [`core.services.23`](core.services.23.md) — `session_prewarm` … `somatic_daemon`
-- [`core.services.24`](core.services.24.md) — `somatic_runtime_body` … `theory_of_mind_engine`
-- [`core.services.25`](core.services.25.md) — `thought_action_proposal_daemon` … `user_activity`
-- [`core.services.26`](core.services.26.md) — `user_contradiction_tracker` … `visible_runs`
-- [`core.services.27`](core.services.27.md) — `visible_runs_approvals` … `world_model_signal_tracking`
+- [`core.services.06`](core.services.06.md) — `central_realtime` … `cheap_lane_balancer`
+- [`core.services.07`](core.services.07.md) — `cheap_lane_control` … `cognitive_state_narrativizer`
+- [`core.services.08`](core.services.08.md) — `collective_pulse_daemon` … `council_runtime`
+- [`core.services.09`](core.services.09.md) — `council_settlement` … `decision_review_prompter`
+- [`core.services.10`](core.services.10.md) — `decision_signal_staging` … `dream_hypothesis_forced`
+- [`core.services.11`](core.services.11.md) — `dream_hypothesis_generator` … `eventbus_central_bridge`
+- [`core.services.12`](core.services.12.md) — `events_retention` … `gate_privacy`
+- [`core.services.13`](core.services.13.md) — `gate_proactivity` … `hollow_promise_census`
+- [`core.services.14`](core.services.14.md) — `hollow_promise_guard` … `jarvis_brain_visibility`
+- [`core.services.15`](core.services.15.md) — `jarvisx_bridge` … `memory_decay_daemon`
+- [`core.services.16`](core.services.16.md) — `memory_density` … `narrative_identity`
+- [`core.services.17`](core.services.17.md) — `narrative_summary_daemon` … `paste_store`
+- [`core.services.18`](core.services.18.md) — `pattern_counterfactual_daemon` … `projection_chat_messages`
+- [`core.services.19`](core.services.19.md) — `projection_drift` … `reasoning_interceptor`
+- [`core.services.20`](core.services.20.md) — `reasoning_prefilter` … `role_registry`
+- [`core.services.21`](core.services.21.md) — `round_budget_notice` … `selective_forgetting_candidate_tracking`
+- [`core.services.22`](core.services.22.md) — `self_authored_prompt_proposal_tracking` … `session_permission`
+- [`core.services.23`](core.services.23.md) — `session_persistence_flag` … `social_labilizer`
+- [`core.services.24`](core.services.24.md) — `somatic_daemon` … `theory_of_mind`
+- [`core.services.25`](core.services.25.md) — `theory_of_mind_engine` … `upload_sandbox`
+- [`core.services.26`](core.services.26.md) — `user_activity` … `visible_run_trace`
+- [`core.services.27`](core.services.27.md) — `visible_runs` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)
@@ -71,8 +71,8 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 15617 functions/
 - [`core.undo`](core.undo.md)
 - [`core.util`](core.util.md)
 - [`scripts.01`](scripts.01.md) — `__init__` … `interlanguage_drift_classifier`
-- [`scripts.02`](scripts.02.md) — `interlanguage_llm_judge` … `rewrite_legacy_memory_provenance`
-- [`scripts.03`](scripts.03.md) — `seed_cognitive_state` … `verify_vagt_graenser`
+- [`scripts.02`](scripts.02.md) — `interlanguage_llm_judge` … `reset_heartbeat_state`
+- [`scripts.03`](scripts.03.md) — `rewrite_legacy_memory_provenance` … `verify_vagt_graenser`
 - [`scripts.acceptance`](scripts.acceptance.md)
 - [`scripts.diagnostics`](scripts.diagnostics.md)
 - [`scripts.pipelines`](scripts.pipelines.md)

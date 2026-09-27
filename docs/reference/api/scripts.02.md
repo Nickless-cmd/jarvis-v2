@@ -64,6 +64,16 @@ _jarvis_bare practice runner — stripped-bare interlanguage expression generato
 | function | `_run_loop` | `(args)` | Run forever (or for args.hours hours) with args.interval_min between ticks. | [src](../../../scripts/jarvis_bare_practice_runner.py#L232) |
 | function | `main` | `()` | — | [src](../../../scripts/jarvis_bare_practice_runner.py#L318) |
 
+## `scripts/krypter_medlems_chat.py`
+_Krypter de medlems-chatbeskeder der allerede ligger i klartekst (task 3.3)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_db_sti` | `()` | — | [src](../../../scripts/krypter_medlems_chat.py#L45) |
+| function | `find_kandidater` | `(conn)` | Rækker der tilhører en NON-owner og endnu ikke er krypteret. | [src](../../../scripts/krypter_medlems_chat.py#L49) |
+| function | `koer` | `(sti, *, goer_det)` | — | [src](../../../scripts/krypter_medlems_chat.py#L66) |
+| function | `main` | `()` | — | [src](../../../scripts/krypter_medlems_chat.py#L135) |
+
 ## `scripts/laering_status.py`
 _Hvad fangede laeringskredsloebet siden nulpunktet?_
 
@@ -449,12 +459,4 @@ _Reset heartbeat scheduler state when it gets stuck._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `main` | `()` | — | [src](../../../scripts/reset_heartbeat_state.py#L36) |
-
-## `scripts/rewrite_legacy_memory_provenance.py`
-_Bulk-rewrite legacy `[MEMORY.md]` / `[USER.md]` prefixes in daily memory._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `rewrite_file` | `(path, *, dry_run)` | Return (matched_lines, rewritten_lines). | [src](../../../scripts/rewrite_legacy_memory_provenance.py#L36) |
-| function | `main` | `()` | — | [src](../../../scripts/rewrite_legacy_memory_provenance.py#L57) |
 

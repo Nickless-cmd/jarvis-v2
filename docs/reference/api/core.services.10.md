@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/decision_signal_staging.py`
+_Efemer staging af decision-signals til model-kontekst (2026-07-04 runaway-fix)._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `compose_signal_note` | `(decision_id, trigger_name, context_summary)` | Den efemere note modellen ser næste runde (omgivet af blanke linjer). | [src](../../../core/services/decision_signal_staging.py#L22) |
+| function | `stage_signal` | `(active, decision_id, note, *, cap=…)` | Dedup pr. decision-id (erstat, akkumulér ALDRIG) + cap antal distinkte | [src](../../../core/services/decision_signal_staging.py#L30) |
+| function | `compose_exchange_text` | `(base_parts, active)` | Assistant-turen til næste rundes model-input = det ægte svar (`base_parts`) | [src](../../../core/services/decision_signal_staging.py#L46) |
+
 ## `core/services/decision_signal_telemetry.py`
 _Decision-signal telemetry — track whether decision signals get heeded._
 
@@ -663,23 +672,4 @@ _Forced Dream Hypothesis Generation — 10% probability per heartbeat tick._
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
 | function | `maybe_force_dream_hypothesis` | `()` | Roll 10% chance and if it fires upsert a forced dream hypothesis. | [src](../../../core/services/dream_hypothesis_forced.py#L30) |
-
-## `core/services/dream_hypothesis_generator.py`
-_Dream Hypothesis Generator — overraskende forbindelser._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_now_iso` | `()` | — | [src](../../../core/services/dream_hypothesis_generator.py#L35) |
-| function | `_ensure_table` | `()` | — | [src](../../../core/services/dream_hypothesis_generator.py#L39) |
-| function | `_fingerprint` | `(text)` | — | [src](../../../core/services/dream_hypothesis_generator.py#L79) |
-| function | `_basis_fingerprint` | `(signals)` | — | [src](../../../core/services/dream_hypothesis_generator.py#L86) |
-| function | `_collect_source_signals` | `(*, max_signals=…)` | — | [src](../../../core/services/dream_hypothesis_generator.py#L98) |
-| function | `_build_hypothesis_prompt` | `(sampled)` | — | [src](../../../core/services/dream_hypothesis_generator.py#L170) |
-| function | `_extract_dream_json` | `(raw)` | Bevaret navn; selve udtraekket bor nu i `llm_json`. | [src](../../../core/services/dream_hypothesis_generator.py#L194) |
-| function | `_recently_used_signal_refs` | `(*, limit=…)` | Return refs of signals used in the last N hypotheses. | [src](../../../core/services/dream_hypothesis_generator.py#L204) |
-| function | `generate_dream_hypothesis` | `()` | Generate one surprising hypothesis by combining 3 random signals. | [src](../../../core/services/dream_hypothesis_generator.py#L227) |
-| function | `list_dream_hypotheses` | `(*, presented_only=…, limit=…)` | — | [src](../../../core/services/dream_hypothesis_generator.py#L354) |
-| function | `mark_hypothesis_presented` | `(*, hypothesis_id)` | — | [src](../../../core/services/dream_hypothesis_generator.py#L383) |
-| function | `build_dream_hypothesis_surface` | `()` | — | [src](../../../core/services/dream_hypothesis_generator.py#L394) |
-| function | `build_dream_hypothesis_prompt_section` | `()` | Surface the single highest-confidence unpresented dream hypothesis. | [src](../../../core/services/dream_hypothesis_generator.py#L411) |
 

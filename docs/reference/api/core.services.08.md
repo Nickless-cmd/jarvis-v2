@@ -2,6 +2,26 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/collective_pulse_daemon.py`
+_Collective Pulse — what is the air full of right now?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_storage_path` | `()` | — | [src](../../../core/services/collective_pulse_daemon.py#L43) |
+| function | `_collective_dir` | `()` | — | [src](../../../core/services/collective_pulse_daemon.py#L47) |
+| function | `_load` | `()` | — | [src](../../../core/services/collective_pulse_daemon.py#L51) |
+| function | `_save` | `(data)` | — | [src](../../../core/services/collective_pulse_daemon.py#L67) |
+| function | `_tokens` | `(text)` | — | [src](../../../core/services/collective_pulse_daemon.py#L79) |
+| function | `_gather_week_text` | `()` | — | [src](../../../core/services/collective_pulse_daemon.py#L86) |
+| function | `_week_mood_trajectory` | `()` | Average mood over the week, if mood samples are available. | [src](../../../core/services/collective_pulse_daemon.py#L123) |
+| function | `_describe_zeitgeist` | `(top_terms, mood_info)` | — | [src](../../../core/services/collective_pulse_daemon.py#L142) |
+| function | `_write_weekly_note` | `(pulse)` | — | [src](../../../core/services/collective_pulse_daemon.py#L156) |
+| function | `run_pulse` | `()` | — | [src](../../../core/services/collective_pulse_daemon.py#L192) |
+| function | `tick` | `(_seconds=…)` | — | [src](../../../core/services/collective_pulse_daemon.py#L233) |
+| function | `build_collective_pulse_surface` | `()` | — | [src](../../../core/services/collective_pulse_daemon.py#L246) |
+| function | `_surface_summary` | `(latest)` | — | [src](../../../core/services/collective_pulse_daemon.py#L259) |
+| function | `build_collective_pulse_prompt_section` | `()` | Surface the week's zeitgeist while it's still current (within 7 days). | [src](../../../core/services/collective_pulse_daemon.py#L266) |
+
 ## `core/services/commit_attribution.py`
 _Canonical, audit-only attribution metadata for Git commit messages._
 
@@ -548,13 +568,4 @@ _Et raad kvitteres nu med det samme — Fase 6._
 | function | `_safe_epistemic_runtime_state` | `()` | — | [src](../../../core/services/council_runtime.py#L339) |
 | function | `_safe_conflict_trace` | `()` | — | [src](../../../core/services/council_runtime.py#L349) |
 | function | `get_latest_council_conclusion` | `()` | Return the most recent closed council session summary, or None. | [src](../../../core/services/council_runtime.py#L359) |
-
-## `core/services/council_settlement.py`
-_Et raad der blev afbrudt af en genstart skal AFREGNE — Fase 8._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `settle_interrupted_councils` | `()` | Afregn raad hvis proces beviseligt er vaek. Kaster aldrig. | [src](../../../core/services/council_settlement.py#L40) |
-| function | `_luk_medlemmer` | `(council_id)` | Medlemmer der stadig venter paa et doedt raad skal ikke taelle med. | [src](../../../core/services/council_settlement.py#L99) |
-| function | `_nu` | `()` | — | [src](../../../core/services/council_settlement.py#L129) |
 

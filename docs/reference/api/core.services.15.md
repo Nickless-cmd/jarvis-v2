@@ -2,6 +2,42 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/jarvisx_bridge.py`
+_JarvisX tool-bridge — bidirectional dispatch over WebSocket._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `internal_dispatch_token` | `()` | Shared-secret som BEGGE processer kan udlede ens. | [src](../../../core/services/jarvisx_bridge.py#L47) |
+| function | `_api_port` | `()` | Port for jarvis-api-procesen (hvor broen lever). Default 8080. | [src](../../../core/services/jarvisx_bridge.py#L88) |
+| function | `_runtime_port` | `()` | Port for jarvis-runtime-procesen (autonome/wakeup-runs). Default 8011. | [src](../../../core/services/jarvisx_bridge.py#L99) |
+| function | `_port_for_process` | `(role)` | Localhost-port for procesrollen. Begge processer kører SAMME uvicorn-app | [src](../../../core/services/jarvisx_bridge.py#L110) |
+| function | `_looks_like_closed_ws` | `(exc)` | Er dette en 'send over en allerede-lukket WebSocket'-fejl? Starlette/uvicorn | [src](../../../core/services/jarvisx_bridge.py#L116) |
+| function | `_ws_is_closed` | `(ws)` | Bedste-effort: er WS'en allerede lukket? Self-safe → False når ukendt, så vi | [src](../../../core/services/jarvisx_bridge.py#L126) |
+| class | `BridgeConnection` | `` | One live bridge connection. WS object is platform-dependent. | [src](../../../core/services/jarvisx_bridge.py#L145) |
+| method | `BridgeConnection.send_raw` | `(self, data, *, timeout_s=…)` | Send raw JSON over WS with lock and timeout. | [src](../../../core/services/jarvisx_bridge.py#L174) |
+| method | `BridgeConnection.send_invoke` | `(self, *, correlation_id, tool, args, timeout_ms)` | Send tool_invoke over WS and register the pending future. | [src](../../../core/services/jarvisx_bridge.py#L206) |
+| method | `BridgeConnection.deliver_result` | `(self, *, correlation_id, status, result=…, error=…)` | Complete the pending future for this correlation_id. | [src](../../../core/services/jarvisx_bridge.py#L253) |
+| method | `BridgeConnection.cancel_all_pending` | `(self, *, reason=…)` | Cancel all in-flight calls (e.g. on WS disconnect). | [src](../../../core/services/jarvisx_bridge.py#L298) |
+| function | `_kan_forsvinde` | `(conn)` | Forlader den her klient broen naar brugeren kigger et andet sted hen? | [src](../../../core/services/jarvisx_bridge.py#L325) |
+| class | `BridgeRegistry` | `` | Process-local registry of active bridges: user_id → client_id → bro. | [src](../../../core/services/jarvisx_bridge.py#L331) |
+| method | `BridgeRegistry.__init__` | `(self)` | — | [src](../../../core/services/jarvisx_bridge.py#L344) |
+| method | `BridgeRegistry._client_key` | `(conn)` | — | [src](../../../core/services/jarvisx_bridge.py#L349) |
+| method | `BridgeRegistry.register` | `(self, conn)` | — | [src](../../../core/services/jarvisx_bridge.py#L352) |
+| method | `BridgeRegistry.unregister` | `(self, conn)` | Remove ONLY if the registered bridge for this client IS this conn. | [src](../../../core/services/jarvisx_bridge.py#L374) |
+| method | `BridgeRegistry._evict_if_current` | `(self, user_id, conn, *, reason)` | Fjern en stale/død bro fra registret HVIS den stadig er den aktuelle for | [src](../../../core/services/jarvisx_bridge.py#L389) |
+| method | `BridgeRegistry._publish_presence` | `(self)` | Publicér dette registrys bro'er til shared_cache, så DEN ANDEN proces (og | [src](../../../core/services/jarvisx_bridge.py#L406) |
+| method | `BridgeRegistry._diagnose_no_bridge` | `(self, user_id, *, stage)` | Fastslå HVORFOR der ikke er en bro for user_id (i stedet for et blindt | [src](../../../core/services/jarvisx_bridge.py#L434) |
+| method | `BridgeRegistry._foretrukken` | `(klienter)` | Broen der bruges naar intet vaerktoej peger et bestemt sted hen. | [src](../../../core/services/jarvisx_bridge.py#L472) |
+| method | `BridgeRegistry.get_bridge` | `(self, user_id, *, tool=…)` | Broen for ``user_id`` — og med ``tool`` DEN der kan udfoere det. | [src](../../../core/services/jarvisx_bridge.py#L483) |
+| method | `BridgeRegistry.list_bridges` | `(self, user_id)` | Alle forbundne klienter for en bruger (computer OG telefon). | [src](../../../core/services/jarvisx_bridge.py#L536) |
+| method | `BridgeRegistry.list_user_ids` | `(self)` | user_id'er med en aktiv bro (til bro_broker / override-switch). | [src](../../../core/services/jarvisx_bridge.py#L540) |
+| method | `BridgeRegistry.clear` | `(self)` | Test helper — drop all registrations. | [src](../../../core/services/jarvisx_bridge.py#L544) |
+| method | `BridgeRegistry.dispatch` | `(self, *, user_id, tool, args, timeout_s=…, allow_cross_process=…)` | Send tool_invoke to user's bridge, await result or timeout. | [src](../../../core/services/jarvisx_bridge.py#L551) |
+| method | `BridgeRegistry._dispatch_without_local_bridge` | `(self, *, user_id, tool, args, timeout_s, allow_cross_process, stage)` | Ingen LEVENDE lokal bro for user_id (aldrig registreret, eller netop evictet | [src](../../../core/services/jarvisx_bridge.py#L678) |
+| method | `BridgeRegistry._forward_cross_process` | `(self, *, user_id, tool, args, timeout_s, target_port=…)` | HTTP-forward dispatch til den proces der holder broen (dens interne endpoint). | [src](../../../core/services/jarvisx_bridge.py#L733) |
+| function | `set_main_loop` | `(loop)` | Register the main uvicorn loop. Called from app startup. | [src](../../../core/services/jarvisx_bridge.py#L820) |
+| function | `get_main_loop` | `()` | Return the registered main loop, or None if not set yet. | [src](../../../core/services/jarvisx_bridge.py#L826) |
+
 ## `core/services/jc_tool_telemetry.py`
 _jc_tool_telemetry.py — per-tool eventbus telemetry for jarvis-code's_
 
@@ -566,24 +602,4 @@ _Memory decay daemon — selective forgetting and re-discovery._
 | function | `maybe_rediscover` | `(force=…)` | Possibly surface a near-forgotten memory into the re-discovery buffer. | [src](../../../core/services/memory_decay_daemon.py#L101) |
 | function | `get_latest_rediscovery` | `()` | — | [src](../../../core/services/memory_decay_daemon.py#L142) |
 | function | `build_memory_decay_surface` | `()` | — | [src](../../../core/services/memory_decay_daemon.py#L146) |
-
-## `core/services/memory_density.py`
-_Memory Density — memories with emotional weight, not just facts._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_storage_path` | `()` | — | [src](../../../core/services/memory_density.py#L41) |
-| function | `_density_dir` | `()` | — | [src](../../../core/services/memory_density.py#L45) |
-| function | `_load` | `()` | — | [src](../../../core/services/memory_density.py#L49) |
-| function | `_save` | `(items)` | — | [src](../../../core/services/memory_density.py#L63) |
-| function | `_slug` | `(text)` | — | [src](../../../core/services/memory_density.py#L75) |
-| function | `write_density_note` | `(*, title, what_happened, what_it_meant, how_it_felt, what_it_changed, trigger_type=…, metadata=…)` | Record a density memory: what + meaning + feeling + change. | [src](../../../core/services/memory_density.py#L81) |
-| function | `confirm_density_note` | `(note_id, *, by=…)` | Increment confirmation count when a density note is re-referenced. | [src](../../../core/services/memory_density.py#L162) |
-| function | `list_promotable` | `()` | Return density notes confirmed >= threshold and not yet promoted. | [src](../../../core/services/memory_density.py#L175) |
-| function | `mark_promoted` | `(note_id)` | — | [src](../../../core/services/memory_density.py#L185) |
-| function | `list_recent` | `(*, limit=…)` | — | [src](../../../core/services/memory_density.py#L196) |
-| function | `tick` | `(_seconds=…)` | No periodic work — memory_density is event-driven. | [src](../../../core/services/memory_density.py#L200) |
-| function | `build_memory_density_surface` | `()` | — | [src](../../../core/services/memory_density.py#L206) |
-| function | `_surface_summary` | `(items, promotable, promoted)` | — | [src](../../../core/services/memory_density.py#L237) |
-| function | `build_memory_density_prompt_section` | `()` | — | [src](../../../core/services/memory_density.py#L252) |
 

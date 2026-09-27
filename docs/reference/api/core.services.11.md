@@ -2,6 +2,25 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/dream_hypothesis_generator.py`
+_Dream Hypothesis Generator — overraskende forbindelser._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_now_iso` | `()` | — | [src](../../../core/services/dream_hypothesis_generator.py#L35) |
+| function | `_ensure_table` | `()` | — | [src](../../../core/services/dream_hypothesis_generator.py#L39) |
+| function | `_fingerprint` | `(text)` | — | [src](../../../core/services/dream_hypothesis_generator.py#L79) |
+| function | `_basis_fingerprint` | `(signals)` | — | [src](../../../core/services/dream_hypothesis_generator.py#L86) |
+| function | `_collect_source_signals` | `(*, max_signals=…)` | — | [src](../../../core/services/dream_hypothesis_generator.py#L98) |
+| function | `_build_hypothesis_prompt` | `(sampled)` | — | [src](../../../core/services/dream_hypothesis_generator.py#L170) |
+| function | `_extract_dream_json` | `(raw)` | Bevaret navn; selve udtraekket bor nu i `llm_json`. | [src](../../../core/services/dream_hypothesis_generator.py#L194) |
+| function | `_recently_used_signal_refs` | `(*, limit=…)` | Return refs of signals used in the last N hypotheses. | [src](../../../core/services/dream_hypothesis_generator.py#L204) |
+| function | `generate_dream_hypothesis` | `()` | Generate one surprising hypothesis by combining 3 random signals. | [src](../../../core/services/dream_hypothesis_generator.py#L227) |
+| function | `list_dream_hypotheses` | `(*, presented_only=…, limit=…)` | — | [src](../../../core/services/dream_hypothesis_generator.py#L354) |
+| function | `mark_hypothesis_presented` | `(*, hypothesis_id)` | — | [src](../../../core/services/dream_hypothesis_generator.py#L383) |
+| function | `build_dream_hypothesis_surface` | `()` | — | [src](../../../core/services/dream_hypothesis_generator.py#L394) |
+| function | `build_dream_hypothesis_prompt_section` | `()` | Surface the single highest-confidence unpresented dream hypothesis. | [src](../../../core/services/dream_hypothesis_generator.py#L411) |
+
 ## `core/services/dream_hypothesis_judge.py`
 _Dommer over drømme-hypoteser: hvad skal videre fra drømme-stadiet?_
 
@@ -663,16 +682,4 @@ _core/services/eventbus_central_bridge.py_
 | function | `_observe_skipped_families` | `(skipped_families)` | Rådets fund #3: gør UROUTEDE event-families selv-opdagende i stedet for at tælle dem i én | [src](../../../core/services/eventbus_central_bridge.py#L652) |
 | function | `run_bridge_tick` | `(*, trigger=…, last_visible_at=…)` | Ét poll-tick: læs nye events siden last_seen_id, router hvidlistede → observe. | [src](../../../core/services/eventbus_central_bridge.py#L677) |
 | function | `register_bridge_producer` | `()` | Registrér broen som cadence-producer (poll ~hvert 30s). Observe-only → ingen | [src](../../../core/services/eventbus_central_bridge.py#L766) |
-
-## `core/services/events_retention.py`
-_Events-table retention — bound the unbounded ``events`` telemetry table._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_retention_days` | `()` | — | [src](../../../core/services/events_retention.py#L24) |
-| function | `prune_old_events` | `(*, max_age_days=…, max_delete=…, batch_size=…)` | Delete events older than ``max_age_days`` in batches. Returns {"deleted": N}. | [src](../../../core/services/events_retention.py#L33) |
-| function | `prune_table_by_age` | `(table, ts_column, *, max_age_days, max_delete=…, batch_size=…)` | Delete rows from ``table`` where ``ts_column`` < cutoff, in small capped | [src](../../../core/services/events_retention.py#L50) |
-| function | `prune_telemetry_tables` | `()` | Age-prune the safe telemetry tables. Self-safe. Returns per-table deleted counts. | [src](../../../core/services/events_retention.py#L174) |
-| function | `prune_versioned_table` | `(table, version_col, *, keep_latest, max_delete=…, batch_size=…)` | Delete all but the newest ``keep_latest`` versions from a versioned snapshot | [src](../../../core/services/events_retention.py#L213) |
-| function | `prune_versioned_tables` | `()` | Keep-latest-N prune the versioned cognitive snapshot tables. Self-safe. | [src](../../../core/services/events_retention.py#L259) |
 

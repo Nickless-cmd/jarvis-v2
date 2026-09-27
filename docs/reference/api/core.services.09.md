@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/council_settlement.py`
+_Et raad der blev afbrudt af en genstart skal AFREGNE — Fase 8._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `settle_interrupted_councils` | `()` | Afregn raad hvis proces beviseligt er vaek. Kaster aldrig. | [src](../../../core/services/council_settlement.py#L40) |
+| function | `_luk_medlemmer` | `(council_id)` | Medlemmer der stadig venter paa et doedt raad skal ikke taelle med. | [src](../../../core/services/council_settlement.py#L99) |
+| function | `_nu` | `()` | — | [src](../../../core/services/council_settlement.py#L129) |
+
 ## `core/services/counterfactual_engine.py`
 _Counterfactual reflection orchestrator._
 
@@ -601,13 +610,4 @@ _Decision review prompter — closes the adherence loop._
 | function | `_build_review_prompt` | `(decision, evidence=…)` | — | [src](../../../core/services/decision_review_prompter.py#L82) |
 | function | `_parse_review` | `(text)` | Læs dommen. Returnerer (verdict, channel, reasoning) — eller None. | [src](../../../core/services/decision_review_prompter.py#L111) |
 | function | `review_pending_decisions` | `(*, max_reviews=…)` | Run the review loop. Returns counts. | [src](../../../core/services/decision_review_prompter.py#L155) |
-
-## `core/services/decision_signal_staging.py`
-_Efemer staging af decision-signals til model-kontekst (2026-07-04 runaway-fix)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `compose_signal_note` | `(decision_id, trigger_name, context_summary)` | Den efemere note modellen ser næste runde (omgivet af blanke linjer). | [src](../../../core/services/decision_signal_staging.py#L22) |
-| function | `stage_signal` | `(active, decision_id, note, *, cap=…)` | Dedup pr. decision-id (erstat, akkumulér ALDRIG) + cap antal distinkte | [src](../../../core/services/decision_signal_staging.py#L30) |
-| function | `compose_exchange_text` | `(base_parts, active)` | Assistant-turen til næste rundes model-input = det ægte svar (`base_parts`) | [src](../../../core/services/decision_signal_staging.py#L46) |
 

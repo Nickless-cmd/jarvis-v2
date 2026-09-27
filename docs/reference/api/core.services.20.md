@@ -2,6 +2,13 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/reasoning_prefilter.py`
+_Deterministic pre-filter (interceptor invariant 5): cheap regex/heuristics over reasoning text →_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `prefilter` | `(reasoning_text, *, ctx=…, other_user_ids=…)` | Return the risk classes present in `reasoning_text`. Self-safe (never raises). | [src](../../../core/services/reasoning_prefilter.py#L15) |
+
 ## `core/services/reasoning_store.py`
 _Reasoning Store — Phase 1 of Generalized Learning._
 
@@ -683,11 +690,4 @@ _Role registry — runtime-extensible agent roles._
 | function | `register_custom_role` | `(*, role, title, system_prompt, default_tool_policy=…, extends=…, tags=…)` | Persist a new custom role to disk. Idempotent on (role) name. | [src](../../../core/services/role_registry.py#L79) |
 | function | `_exec_list_roles` | `(args)` | — | [src](../../../core/services/role_registry.py#L119) |
 | function | `_exec_register_custom_role` | `(args)` | — | [src](../../../core/services/role_registry.py#L138) |
-
-## `core/services/round_budget_notice.py`
-_Fortael ham hvor mange runder han har tilbage, foer doeren smaekker._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `round_budget_notice` | `(*, round_index, max_rounds)` | Varsel til modellen naar rundebudgettet slipper op. "" ellers. | [src](../../../core/services/round_budget_notice.py#L34) |
 

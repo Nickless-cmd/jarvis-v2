@@ -2,6 +2,17 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/hollow_promise_guard.py`
+_Hollow-promise guard (4. jul) — fang "lovede handling, kaldte intet værktøj"._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_last_sentence` | `(text)` | Sidste hele sætning. Løftet står dér — det er dét man efterlades med. | [src](../../../core/services/hollow_promise_guard.py#L135) |
+| function | `is_promise_of_action` | `(text)` | True hvis `text` lover at assistenten tager en handling imminent. Self-safe. | [src](../../../core/services/hollow_promise_guard.py#L141) |
+| function | `is_deferred_text_promise` | `(text)` | True for a promise to emit another prose section after this run ends. | [src](../../../core/services/hollow_promise_guard.py#L168) |
+| function | `is_hollow_promise` | `(final_text, total_tool_calls, user_message=…, nudged_already=…, last_round_tool_calls=…)` | Tom løfte = lovede handling + NUL tool-kald i SIDSTE runde + ikke allerede nudget. | [src](../../../core/services/hollow_promise_guard.py#L179) |
+| function | `hollow_promise_guard_enabled` | `()` | Default TRUE (Bjørn bad om værnet 4. jul). Env `JARVIS_HOLLOW_PROMISE_GUARD` vinder; | [src](../../../core/services/hollow_promise_guard.py#L211) |
+
 ## `core/services/hollow_promise_round.py`
 _Hollow-promise follow-through (redesign 2026-09-04)._
 
@@ -705,40 +716,4 @@ _Privacy-gate for Jarvis Brain recall._
 | function | `_resolve_owner_id` | `()` | Hentet via owner_resolver. Wrapped så tests kan monkeypatche. | [src](../../../core/services/jarvis_brain_visibility.py#L14) |
 | function | `can_recall` | `(entry_visibility, ceiling)` | True if entry's visibility is permitted at the given ceiling. | [src](../../../core/services/jarvis_brain_visibility.py#L30) |
 | function | `session_visibility_ceiling` | `(session)` | Beregn visibility-ceiling for en session. | [src](../../../core/services/jarvis_brain_visibility.py#L35) |
-
-## `core/services/jarvisx_bridge.py`
-_JarvisX tool-bridge — bidirectional dispatch over WebSocket._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `internal_dispatch_token` | `()` | Shared-secret som BEGGE processer kan udlede ens. | [src](../../../core/services/jarvisx_bridge.py#L47) |
-| function | `_api_port` | `()` | Port for jarvis-api-procesen (hvor broen lever). Default 8080. | [src](../../../core/services/jarvisx_bridge.py#L88) |
-| function | `_runtime_port` | `()` | Port for jarvis-runtime-procesen (autonome/wakeup-runs). Default 8011. | [src](../../../core/services/jarvisx_bridge.py#L99) |
-| function | `_port_for_process` | `(role)` | Localhost-port for procesrollen. Begge processer kører SAMME uvicorn-app | [src](../../../core/services/jarvisx_bridge.py#L110) |
-| function | `_looks_like_closed_ws` | `(exc)` | Er dette en 'send over en allerede-lukket WebSocket'-fejl? Starlette/uvicorn | [src](../../../core/services/jarvisx_bridge.py#L116) |
-| function | `_ws_is_closed` | `(ws)` | Bedste-effort: er WS'en allerede lukket? Self-safe → False når ukendt, så vi | [src](../../../core/services/jarvisx_bridge.py#L126) |
-| class | `BridgeConnection` | `` | One live bridge connection. WS object is platform-dependent. | [src](../../../core/services/jarvisx_bridge.py#L145) |
-| method | `BridgeConnection.send_raw` | `(self, data, *, timeout_s=…)` | Send raw JSON over WS with lock and timeout. | [src](../../../core/services/jarvisx_bridge.py#L174) |
-| method | `BridgeConnection.send_invoke` | `(self, *, correlation_id, tool, args, timeout_ms)` | Send tool_invoke over WS and register the pending future. | [src](../../../core/services/jarvisx_bridge.py#L206) |
-| method | `BridgeConnection.deliver_result` | `(self, *, correlation_id, status, result=…, error=…)` | Complete the pending future for this correlation_id. | [src](../../../core/services/jarvisx_bridge.py#L253) |
-| method | `BridgeConnection.cancel_all_pending` | `(self, *, reason=…)` | Cancel all in-flight calls (e.g. on WS disconnect). | [src](../../../core/services/jarvisx_bridge.py#L298) |
-| function | `_kan_forsvinde` | `(conn)` | Forlader den her klient broen naar brugeren kigger et andet sted hen? | [src](../../../core/services/jarvisx_bridge.py#L325) |
-| class | `BridgeRegistry` | `` | Process-local registry of active bridges: user_id → client_id → bro. | [src](../../../core/services/jarvisx_bridge.py#L331) |
-| method | `BridgeRegistry.__init__` | `(self)` | — | [src](../../../core/services/jarvisx_bridge.py#L344) |
-| method | `BridgeRegistry._client_key` | `(conn)` | — | [src](../../../core/services/jarvisx_bridge.py#L349) |
-| method | `BridgeRegistry.register` | `(self, conn)` | — | [src](../../../core/services/jarvisx_bridge.py#L352) |
-| method | `BridgeRegistry.unregister` | `(self, conn)` | Remove ONLY if the registered bridge for this client IS this conn. | [src](../../../core/services/jarvisx_bridge.py#L374) |
-| method | `BridgeRegistry._evict_if_current` | `(self, user_id, conn, *, reason)` | Fjern en stale/død bro fra registret HVIS den stadig er den aktuelle for | [src](../../../core/services/jarvisx_bridge.py#L389) |
-| method | `BridgeRegistry._publish_presence` | `(self)` | Publicér dette registrys bro'er til shared_cache, så DEN ANDEN proces (og | [src](../../../core/services/jarvisx_bridge.py#L406) |
-| method | `BridgeRegistry._diagnose_no_bridge` | `(self, user_id, *, stage)` | Fastslå HVORFOR der ikke er en bro for user_id (i stedet for et blindt | [src](../../../core/services/jarvisx_bridge.py#L434) |
-| method | `BridgeRegistry._foretrukken` | `(klienter)` | Broen der bruges naar intet vaerktoej peger et bestemt sted hen. | [src](../../../core/services/jarvisx_bridge.py#L472) |
-| method | `BridgeRegistry.get_bridge` | `(self, user_id, *, tool=…)` | Broen for ``user_id`` — og med ``tool`` DEN der kan udfoere det. | [src](../../../core/services/jarvisx_bridge.py#L483) |
-| method | `BridgeRegistry.list_bridges` | `(self, user_id)` | Alle forbundne klienter for en bruger (computer OG telefon). | [src](../../../core/services/jarvisx_bridge.py#L536) |
-| method | `BridgeRegistry.list_user_ids` | `(self)` | user_id'er med en aktiv bro (til bro_broker / override-switch). | [src](../../../core/services/jarvisx_bridge.py#L540) |
-| method | `BridgeRegistry.clear` | `(self)` | Test helper — drop all registrations. | [src](../../../core/services/jarvisx_bridge.py#L544) |
-| method | `BridgeRegistry.dispatch` | `(self, *, user_id, tool, args, timeout_s=…, allow_cross_process=…)` | Send tool_invoke to user's bridge, await result or timeout. | [src](../../../core/services/jarvisx_bridge.py#L551) |
-| method | `BridgeRegistry._dispatch_without_local_bridge` | `(self, *, user_id, tool, args, timeout_s, allow_cross_process, stage)` | Ingen LEVENDE lokal bro for user_id (aldrig registreret, eller netop evictet | [src](../../../core/services/jarvisx_bridge.py#L678) |
-| method | `BridgeRegistry._forward_cross_process` | `(self, *, user_id, tool, args, timeout_s, target_port=…)` | HTTP-forward dispatch til den proces der holder broen (dens interne endpoint). | [src](../../../core/services/jarvisx_bridge.py#L733) |
-| function | `set_main_loop` | `(loop)` | Register the main uvicorn loop. Called from app startup. | [src](../../../core/services/jarvisx_bridge.py#L820) |
-| function | `get_main_loop` | `()` | Return the registered main loop, or None if not set yet. | [src](../../../core/services/jarvisx_bridge.py#L826) |
 

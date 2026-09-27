@@ -106,9 +106,23 @@ CHEAP_PROVIDER_DEFAULTS: dict[str, dict[str, object]] = {
         "cost_class": "free",
         "static_models": ["qwen7b"],
     },
-    # github-models PENSIONERET 27/9-2026 — tjenesten findes ikke længere.
+    # github-models PENSIONERET — GitHub lukkede tjenesten 30. JULI 2026.
     #
-    # Bjørn bad om at få den til at virke. Den kan ikke. Målt:
+    # Det er ikke en slutning; det står i deres egen dokumentation
+    # (docs.github.com/en/rest/models/inference): «As of July 30, 2026, GitHub
+    # Models has been fully retired. The playground, model catalog, inference
+    # API, and bring your own key (BYOK) are no longer available to any
+    # customer.» De anbefaler Azure AI Foundry eller GitHub Copilot i stedet —
+    # og Copilot kører allerede her som `copilot-free`.
+    #
+    # Registrets fem model-poster blev slaaet fra 19-08-2026, altsaa TRE UGER
+    # EFTER lukningen. Den der slukkede dem reagerede paa fejl; han var ikke
+    # aarsagen. Og ingen skrev hvorfor — derfor stod de som fem mystisk
+    # slukkede modeller i en maaned.
+    #
+    # Jeg maalte mig frem til det samme FOER jeg slog det op, og maalingerne
+    # staar nedenfor — ikke for at bevise noget der nu er dokumenteret, men
+    # fordi de viser hvordan en lukket tjeneste SER UD udefra:
     #   models.github.ai svarer 200 med brødteksten «OK» paa HVER sti —
     #     ogsaa `/` og `/inference/chat/completions`.
     #

@@ -339,6 +339,7 @@ def test_github_models_og_ollamafreeapi_er_dokumenteret_som_ubrugelige():
     import inspect
     src = inspect.getsource(kat)
     assert "github-models PENSIONERET" in src
+    assert "30. JULI 2026" in src, "lukkedatoen er kilden, ikke min slutning"
     assert "ollamafreeapi IKKE BRUGBAR" in src
     assert "connection refused paa 35 ms" in src
     # Ingen af dem må have modeller der kunne få dem i puljen.

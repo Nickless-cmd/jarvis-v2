@@ -274,8 +274,18 @@ CREATE TABLE IF NOT EXISTS brain_temporal_edges (
     PRIMARY KEY (from_id, to_id, relation_type)
 );
 
-CREATE INDEX IF NOT EXISTS idx_temporal_edges_from ON brain_temporal_edges(from_id);
-CREATE INDEX IF NOT EXISTS idx_temporal_edges_to   ON brain_temporal_edges(to_id);
+-- Dækkende indeks for den ENESTE læser, `_compute_search_temporal_boost`:
+-- den filtrerer på (endepunkt, relation_type) og tager MAX(confidence), så
+-- alle tre kolonner kan besvares fra indekset uden at røre tabellen.
+--
+-- De tidligere `idx_temporal_edges_from`/`_to` var strikte PRÆFIKSER af disse
+-- og kunne aldrig bruges til noget de to ikke allerede dækkede. De blev målt
+-- til 59,3 MB på CT105 og blev vedligeholdt ved hver eneste indsættelse —
+-- ~21.000 om dagen. `_ensure_index_schema_migrations` dropper dem.
+CREATE INDEX IF NOT EXISTS idx_tedges_from_rel_conf
+    ON brain_temporal_edges(from_id, relation_type, confidence);
+CREATE INDEX IF NOT EXISTS idx_tedges_to_rel_conf
+    ON brain_temporal_edges(to_id, relation_type, confidence);
 """
 
 
@@ -434,6 +444,22 @@ def _ensure_index_schema_migrations(conn: sqlite3.Connection) -> None:
             # default '[]' and let write_entry populate it going forward.
             pass
 
+    # 2026-09-27: de to dækkende indeks på `brain_temporal_edges` fandtes KUN i
+    # produktionen — de var lavet i hånden på CT105 og stod ingen steder i
+    # repoet. Samtidig oprettede skemaet to præfiks-indeks som produktionen
+    # ikke havde brug for. To sandheder om det samme skema, i hver sin retning.
+    #
+    # Målt 27/9-2026: tabellen fylder 74,6 MB og BAR 190 MB indeks, hvoraf
+    # `idx_temporal_edges_from` (24,8 MB) og `idx_temporal_edges_to` (34,5 MB)
+    # var strikte præfikser af de dækkende og derfor aldrig kunne vælges til
+    # noget eget. Skemaet ovenfor ejer nu de dækkende; her fjernes de døde.
+    for doedt_indeks in ("idx_temporal_edges_from", "idx_temporal_edges_to"):
+        try:
+            conn.execute(f"DROP INDEX IF EXISTS {doedt_indeks}")
+        except sqlite3.OperationalError:
+            # Et DROP der ikke kan tages nu (lås) er ikke værd at fejle på —
+            # næste opstart tager den. Indekset koster plads, ikke korrekthed.
+            pass
 
 
 def _slugify(s: str, max_len: int = 40) -> str:
@@ -1395,7 +1421,6 @@ def infer_temporal_edges(
     finally:
         conn.close()
 
-    edges_created = 0
     # 2026-09-25: kanterne samles op og skrives i ÉN transaktion bagefter.
     # Den gamle vej kaldte `_store_temporal_edge` pr. kant — 8.883
     # connect+commit+close for én post, målt 27s. Det spiste
@@ -1506,8 +1531,34 @@ def infer_temporal_edges(
         )
 
         pending_edges.append((new_entry_id, cand_id, confidence, reasoning))
-        edges_created += 1
 
+    # LOFTET GÆLDER VED SKRIVNING, IKKE FØRST VED OPRYDNING (27/9-2026).
+    #
+    # `TEMPORAL_EDGE_MAX_PER_NODE` fandtes kun i `prune_dense_edges`, som kører
+    # ÉN GANG I DØGNET. Skriveren havde intet loft: en ny post fik en kant til
+    # hver eneste kandidat der kom over tærsklen.
+    #
+    # Gennemsnittet skjuler det. Målt over en uge på CT105 skriver en ny post
+    # ~50 kanter — under loftet. Det er udskriderne der gør skaden: 27/9-2026
+    # havde to poster fra samme formiddag 8.024 kanter HVER, 125 gange loftet,
+    # og de to stod for 16.048 af dagens 18.304 kanter mens de øvrige 49 poster
+    # tilsammen skrev omkring 256. Oprydningen ville have fjernet 15.945 rækker
+    # næste gang den kørte — altså op til et døgn senere.
+    #
+    # Læseren (`_compute_search_temporal_boost`) tager MAX(confidence) pr.
+    # kandidat. Af den nye posts egne kanter læses altså nøjagtig ÉN. Top-64 er
+    # allerede 64 gange mere end nogen nogensinde ser, og det er præcis den
+    # mængde den daglige oprydning ender med at efterlade. Forskellen er kun at
+    # de 7.960 øvrige rækker aldrig bliver skrevet — i stedet for at blive
+    # skrevet, indekseret to steder, og slettet igen inden for et døgn.
+    #
+    # Ingen node bliver forældreløs af det: den nye post beholder selv sine 64
+    # stærkeste, og en eksisterende kandidat der ikke når med, mister intet den
+    # havde i forvejen. Det er kun kanter der ALDRIG kom til at findes.
+    if len(pending_edges) > TEMPORAL_EDGE_MAX_PER_NODE:
+        pending_edges.sort(key=lambda kant: kant[2], reverse=True)
+        del pending_edges[TEMPORAL_EDGE_MAX_PER_NODE:]
+    edges_created = len(pending_edges)
 
     # 2026-09-25: skriv alle kanter i ÉN transaktion. Den gamle vej kaldte
     # `_store_temporal_edge` pr. kant — 8.883 connect+commit+close for én post,

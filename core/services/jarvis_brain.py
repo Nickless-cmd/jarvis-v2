@@ -23,6 +23,8 @@ import time
 import numpy as np
 import yaml
 
+from core.services import brain_vector_cache
+
 # Prøv python-ulid først, fallback til lokal Crockford b32 generator.
 try:
     import ulid as _ulid_mod  # type: ignore
@@ -433,6 +435,7 @@ def _ensure_index_schema_migrations(conn: sqlite3.Connection) -> None:
             pass
 
 
+
 def _slugify(s: str, max_len: int = 40) -> str:
     s = s.lower().strip()
     s = re.sub(r"[^a-z0-9]+", "-", s)
@@ -738,9 +741,12 @@ def search_brain_scored(
     qv = _embed_text(query_text)
     ceiling_lvl = _VIS_LEVEL[visibility_ceiling]
 
+    # Blob-kolonnen er IKKE med. Vektorerne kommer fra `brain_vector_cache`,
+    # som holder dem som én matrix mellem søgninger. `indexed_at` er cachens
+    # nøgle sammen med id'et — se modulets docstring for hvorfor det er nok.
     sql = """SELECT id, kind, visibility, salience_base, salience_bumps,
-                    last_used_at, embedding, embedding_dim, created_at, tags,
-                    importance
+                    last_used_at, embedding_dim, created_at, tags,
+                    importance, indexed_at
              FROM brain_index
              WHERE embedding IS NOT NULL"""
     params: list = []
@@ -760,15 +766,20 @@ def search_brain_scored(
     finally:
         conn.close()
 
-    candidate_ids: list[str] = []
-    scored: list[tuple[float, str]] = []
+    # FØRSTE PAS: de filtre der ikke kræver en vektor. Målt 27/9-2026 på CT105
+    # kostede den gamle løkke 56,9 ms på at regne cosinus én række ad gangen
+    # for 13.541 poster; den samme udregning som ÉN matmul tager 2,6 ms. Derfor
+    # er rækkefølgen vendt om: filtrér først, regn så alle cosinusser på én gang.
+    beholdt: list[tuple] = []
+    noegler: list[tuple[str, str]] = []
     for row in rows:
-        entry_id, kind, vis, sal_base, bumps, last_used, emb_blob, emb_dim, created_at = row[:9]
-        entry_tags_raw = row[9] if len(row) > 9 else "[]"
+        entry_id, kind, vis, sal_base, bumps, last_used, emb_dim, created_at = row[:8]
+        entry_tags_raw = row[8] if len(row) > 8 else "[]"
         try:
-            importance = float(row[10]) if len(row) > 10 and row[10] is not None else 1.0
+            importance = float(row[9]) if len(row) > 9 and row[9] is not None else 1.0
         except (TypeError, ValueError):
             importance = 1.0
+        indexed_at = row[10] if len(row) > 10 else ""
         if _VIS_LEVEL[vis] > ceiling_lvl:
             continue
 
@@ -781,9 +792,20 @@ def search_brain_scored(
             if not all(t in entry_tags for t in tags):
                 continue
 
-        v = _embedding_from_blob(emb_blob, emb_dim)
-        denom = float(np.linalg.norm(qv) * np.linalg.norm(v)) or 1e-9
-        cos = float(np.dot(qv, v) / denom)
+        beholdt.append(
+            (entry_id, kind, sal_base, bumps, last_used, created_at, importance)
+        )
+        noegler.append((entry_id, indexed_at or ""))
+
+    cosinusser = brain_vector_cache.cosinus(noegler, qv)
+
+    # ANDET PAS: relevans-filter og salience, nu hvor cosinus allerede er regnet.
+    candidate_ids: list[str] = []
+    scored: list[tuple[float, str]] = []
+    for (entry_id, kind, sal_base, bumps, last_used, created_at, importance), cos_np in zip(
+        beholdt, cosinusser
+    ):
+        cos = float(cos_np)
 
         # Relevans-floor på COS-komponenten (Jarvis-spec 2026-06-23 #3, runde 2):
         # min_score på den KOMBINEREDE score virkede ikke — 0.3*salience lod høj-salience
@@ -1485,6 +1507,7 @@ def infer_temporal_edges(
 
         pending_edges.append((new_entry_id, cand_id, confidence, reasoning))
         edges_created += 1
+
 
     # 2026-09-25: skriv alle kanter i ÉN transaktion. Den gamle vej kaldte
     # `_store_temporal_edge` pr. kant — 8.883 connect+commit+close for én post,

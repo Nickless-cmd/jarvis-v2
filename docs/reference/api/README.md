@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 15611 functions/methods, 51% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 15614 functions/methods, 51% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -35,27 +35,27 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 15611 functions/
 - [`core.services.04`](core.services.04.md) — `central_agents_surface` … `central_hub`
 - [`core.services.05`](core.services.05.md) — `central_hypothesis_generator` … `central_rca`
 - [`core.services.06`](core.services.06.md) — `central_realtime` … `cheap_lane_control`
-- [`core.services.07`](core.services.07.md) — `cheap_lane_dashboard` … `commit_gate_arbiter`
-- [`core.services.08`](core.services.08.md) — `communication_guard` … `counterfactual_engine_runtime`
-- [`core.services.09`](core.services.09.md) — `counterfactual_predictions` … `decision_signals`
-- [`core.services.10`](core.services.10.md) — `decision_weight` … `dream_hypothesis_signal_tracking`
-- [`core.services.11`](core.services.11.md) — `dream_influence_proposal_tracking` … `existential_drift`
-- [`core.services.12`](core.services.12.md) — `existential_wonder_daemon` … `gate_shadow`
-- [`core.services.13`](core.services.13.md) — `gate_skill` … `identity_canon`
-- [`core.services.14`](core.services.14.md) — `identity_composer` … `jobs_engine`
-- [`core.services.15`](core.services.15.md) — `kerne_curator` … `memory_graph`
-- [`core.services.16`](core.services.16.md) — `memory_hierarchy` … `negotiation_pipeline`
-- [`core.services.17`](core.services.17.md) — `nerve_registry` … `perceptual_event_engine`
-- [`core.services.18`](core.services.18.md) — `periodic_jobs_scheduler` … `projection_runtime`
-- [`core.services.19`](core.services.19.md) — `projection_tool_router` … `reboot_awareness_daemon`
-- [`core.services.20`](core.services.20.md) — `recall` … `rule_engine`
-- [`core.services.21`](core.services.21.md) — `run_autonomy_context` … `self_critique_runtime`
-- [`core.services.22`](core.services.22.md) — `self_deception_guard` … `session_tool_pin`
-- [`core.services.23`](core.services.23.md) — `session_topic_tracker` … `source_confidence_gate`
-- [`core.services.24`](core.services.24.md) — `spaced_repetition` … `thought_leak_guard`
-- [`core.services.25`](core.services.25.md) — `thought_stream_daemon` … `user_emotional_resonance`
-- [`core.services.26`](core.services.26.md) — `user_md_update_proposal_tracking` … `visible_runs_capabilities`
-- [`core.services.27`](core.services.27.md) — `visible_runs_cognitive` … `world_model_signal_tracking`
+- [`core.services.07`](core.services.07.md) — `cheap_lane_dashboard` … `collective_pulse_daemon`
+- [`core.services.08`](core.services.08.md) — `commit_attribution` … `council_settlement`
+- [`core.services.09`](core.services.09.md) — `counterfactual_engine` … `decision_signal_staging`
+- [`core.services.10`](core.services.10.md) — `decision_signal_telemetry` … `dream_hypothesis_generator`
+- [`core.services.11`](core.services.11.md) — `dream_hypothesis_judge` … `events_retention`
+- [`core.services.12`](core.services.12.md) — `executive_contradiction_signal_tracking` … `gate_proactivity`
+- [`core.services.13`](core.services.13.md) — `gate_review` … `hollow_promise_guard`
+- [`core.services.14`](core.services.14.md) — `hollow_promise_round` … `jarvisx_bridge`
+- [`core.services.15`](core.services.15.md) — `jc_tool_telemetry` … `memory_density`
+- [`core.services.16`](core.services.16.md) — `memory_emotional_context` … `narrative_summary_daemon`
+- [`core.services.17`](core.services.17.md) — `negotiation_engine` … `pattern_counterfactual_daemon`
+- [`core.services.18`](core.services.18.md) — `pdf_connector` … `projection_drift`
+- [`core.services.19`](core.services.19.md) — `projection_guard` … `reasoning_prefilter`
+- [`core.services.20`](core.services.20.md) — `reasoning_store` … `round_budget_notice`
+- [`core.services.21`](core.services.21.md) — `rule_definitions` … `self_authored_prompt_proposal_tracking`
+- [`core.services.22`](core.services.22.md) — `self_compassion` … `session_persistence_flag`
+- [`core.services.23`](core.services.23.md) — `session_prewarm` … `somatic_daemon`
+- [`core.services.24`](core.services.24.md) — `somatic_runtime_body` … `theory_of_mind_engine`
+- [`core.services.25`](core.services.25.md) — `thought_action_proposal_daemon` … `user_activity`
+- [`core.services.26`](core.services.26.md) — `user_contradiction_tracker` … `visible_runs`
+- [`core.services.27`](core.services.27.md) — `visible_runs_approvals` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

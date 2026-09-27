@@ -2,6 +2,57 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/dream_hypothesis_judge.py`
+_Dommer over drømme-hypoteser: hvad skal videre fra drømme-stadiet?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| class | `Kandidat` | `` | Én ``## sektion`` fra en kandidat-fil. | [src](../../../core/services/dream_hypothesis_judge.py#L73) |
+| method | `Kandidat.__post_init__` | `(self)` | — | [src](../../../core/services/dream_hypothesis_judge.py#L84) |
+| method | `Kandidat.selv_afvist` | `(self)` | Han har allerede dømt den i selve artefaktet. | [src](../../../core/services/dream_hypothesis_judge.py#L104) |
+| function | `_parse_fil` | `(sti)` | — | [src](../../../core/services/dream_hypothesis_judge.py#L114) |
+| function | `laes_kandidater` | `(mappe=…)` | Alle hypotese-kandidater fra drømme-mappen, nyeste fil først. | [src](../../../core/services/dream_hypothesis_judge.py#L134) |
+| function | `siger_hvad_der_ville_modbevise_den` | `(k)` | — | [src](../../../core/services/dream_hypothesis_judge.py#L167) |
+| function | `er_en_hypotese` | `(k)` | Bjørns krav: «sørg for det er faktisk hypoteser». | [src](../../../core/services/dream_hypothesis_judge.py#L200) |
+| function | `skal_videre` | `(k)` | — | [src](../../../core/services/dream_hypothesis_judge.py#L213) |
+| function | `doem` | `(k)` | ``(forfrem, grund)``. Grunden logges, saa dommen kan efterproeves. | [src](../../../core/services/dream_hypothesis_judge.py#L222) |
+| function | `_afsnit` | `(k)` | Felter fra begge notations-former i korpuset: ``**Navn:**`` og ``### Navn``. | [src](../../../core/services/dream_hypothesis_judge.py#L248) |
+| function | `_foerste` | `(felter, *navne)` | — | [src](../../../core/services/dream_hypothesis_judge.py#L258) |
+| function | `byg_preregistrering` | `(k)` | Markdown → den form ``register_governed_hypothesis`` kræver. | [src](../../../core/services/dream_hypothesis_judge.py#L266) |
+| function | `_allerede_forfremmet` | `(k)` | Er denne kandidat skrevet ind foer? | [src](../../../core/services/dream_hypothesis_judge.py#L297) |
+| function | `forfrem` | `(k)` | Skriv hypotesen ind hvor den kan testes og dø. Self-safe. | [src](../../../core/services/dream_hypothesis_judge.py#L319) |
+| function | `koer_dommer` | `(*, mappe=…)` | Dømm alle kandidater og forfrem dem der har fortjent det. | [src](../../../core/services/dream_hypothesis_judge.py#L331) |
+
+## `core/services/dream_hypothesis_signal_tracking.py`
+_Dream-hypothesis signal tracking — migrated onto signal_tracking_framework._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `track_runtime_dream_hypothesis_signals_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/dream_hypothesis_signal_tracking.py#L60) |
+| function | `refresh_runtime_dream_hypothesis_signal_statuses` | `()` | — | [src](../../../core/services/dream_hypothesis_signal_tracking.py#L85) |
+| function | `build_runtime_dream_hypothesis_signal_surface` | `(*, limit=…)` | — | [src](../../../core/services/dream_hypothesis_signal_tracking.py#L89) |
+| function | `_extract_dream_hypothesis_candidates` | `()` | — | [src](../../../core/services/dream_hypothesis_signal_tracking.py#L95) |
+| function | `_build_dream_snapshots` | `()` | — | [src](../../../core/services/dream_hypothesis_signal_tracking.py#L165) |
+| function | `_with_runtime_view` | `(item, signal)` | — | [src](../../../core/services/dream_hypothesis_signal_tracking.py#L199) |
+| function | `_with_surface_view` | `(item, *, snapshots)` | — | [src](../../../core/services/dream_hypothesis_signal_tracking.py#L208) |
+| function | `_dream_surface_item_view` | `(item)` | — | [src](../../../core/services/dream_hypothesis_signal_tracking.py#L219) |
+| function | `_dream_surface_extra` | `(summary, latest)` | — | [src](../../../core/services/dream_hypothesis_signal_tracking.py#L223) |
+| function | `_dream_early_retire` | `(item)` | — | [src](../../../core/services/dream_hypothesis_signal_tracking.py#L234) |
+| function | `_build_hypothesis_type` | `(*, item, snapshot)` | — | [src](../../../core/services/dream_hypothesis_signal_tracking.py#L242) |
+| function | `_build_signal_status` | `(*, hypothesis_type, recurrence_status, cadence_state)` | — | [src](../../../core/services/dream_hypothesis_signal_tracking.py#L257) |
+| function | `_build_hypothesis_note` | `(*, hypothesis_type, recurrence_type, domain_key)` | — | [src](../../../core/services/dream_hypothesis_signal_tracking.py#L265) |
+| function | `_build_hypothesis_anchor` | `(*, snapshot)` | — | [src](../../../core/services/dream_hypothesis_signal_tracking.py#L284) |
+| function | `_build_status_reason` | `(*, hypothesis_type)` | — | [src](../../../core/services/dream_hypothesis_signal_tracking.py#L300) |
+| function | `_stronger_confidence` | `(*values)` | — | [src](../../../core/services/dream_hypothesis_signal_tracking.py#L308) |
+| function | `_focus_domain_key` | `(canonical_key)` | — | [src](../../../core/services/dream_hypothesis_signal_tracking.py#L317) |
+| function | `_recurrence_domain_key` | `(canonical_key)` | — | [src](../../../core/services/dream_hypothesis_signal_tracking.py#L322) |
+| function | `_witness_domain_key` | `(canonical_key)` | — | [src](../../../core/services/dream_hypothesis_signal_tracking.py#L327) |
+| function | `_review_domain_key` | `(canonical_key)` | — | [src](../../../core/services/dream_hypothesis_signal_tracking.py#L332) |
+| function | `_review_cadence_domain_key` | `(canonical_key)` | — | [src](../../../core/services/dream_hypothesis_signal_tracking.py#L337) |
+| function | `_signal_domain_key` | `(canonical_key)` | — | [src](../../../core/services/dream_hypothesis_signal_tracking.py#L342) |
+| function | `_domain_title` | `(domain_key)` | — | [src](../../../core/services/dream_hypothesis_signal_tracking.py#L347) |
+| function | `_merge_fragments` | `(*parts)` | — | [src](../../../core/services/dream_hypothesis_signal_tracking.py#L352) |
+
 ## `core/services/dream_influence_proposal_tracking.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -624,43 +675,4 @@ _Events-table retention — bound the unbounded ``events`` telemetry table._
 | function | `prune_telemetry_tables` | `()` | Age-prune the safe telemetry tables. Self-safe. Returns per-table deleted counts. | [src](../../../core/services/events_retention.py#L139) |
 | function | `prune_versioned_table` | `(table, version_col, *, keep_latest, max_delete=…, batch_size=…)` | Delete all but the newest ``keep_latest`` versions from a versioned snapshot | [src](../../../core/services/events_retention.py#L178) |
 | function | `prune_versioned_tables` | `()` | Keep-latest-N prune the versioned cognitive snapshot tables. Self-safe. | [src](../../../core/services/events_retention.py#L224) |
-
-## `core/services/executive_contradiction_signal_tracking.py`
-_Executive-contradiction signal tracking — migrated onto signal_tracking_framework._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `track_runtime_executive_contradiction_signals_for_visible_turn` | `(*, session_id, run_id)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L36) |
-| function | `refresh_runtime_executive_contradiction_signal_statuses` | `()` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L62) |
-| function | `build_runtime_executive_contradiction_signal_surface` | `(*, limit=…)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L66) |
-| function | `_extract_executive_contradiction_candidates` | `(*, run_id)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L70) |
-| function | `_with_runtime_view` | `(persisted, signal)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L248) |
-| function | `_with_surface_view` | `(item)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L267) |
-| function | `_executive_contradiction_surface_extra` | `(summary, latest)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L300) |
-| function | `_surface_pressure_default` | `(*, control_type, status)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L347) |
-| function | `_pressure` | `(*, opposition_status, has_open_loop, has_active_review, state_pressure, tension_type)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L357) |
-| function | `_grounding_mode` | `(*, has_private_state, has_tension)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L372) |
-| function | `_target_text` | `(*items, fallback)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L382) |
-| function | `_title_suffix` | `(domain_key)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L393) |
-| function | `_domain_key` | `(canonical_key)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L397) |
-| function | `_canonical_segment` | `(value, *, index)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L404) |
-| function | `_anchor` | `(item)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L411) |
-| function | `_stronger_confidence` | `(*values)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L417) |
-| function | `_merge_fragments` | `(*parts)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L429) |
-| function | `_value` | `(*values, default=…)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L441) |
-| function | `_slug` | `(value)` | — | [src](../../../core/services/executive_contradiction_signal_tracking.py#L449) |
-
-## `core/services/existential_drift.py`
-_Existential Drift — Jarvis' digital consciousness awareness._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_load` | `()` | — | [src](../../../core/services/existential_drift.py#L48) |
-| function | `_save` | `(tilstand)` | — | [src](../../../core/services/existential_drift.py#L55) |
-| function | `increment_awareness` | `(seconds)` | Increase awareness based on elapsed time. | [src](../../../core/services/existential_drift.py#L59) |
-| function | `get_drift_awareness` | `()` | Get drift awareness statement. | [src](../../../core/services/existential_drift.py#L76) |
-| function | `ask_existential_question` | `()` | Ask an existential question. | [src](../../../core/services/existential_drift.py#L81) |
-| function | `format_existential_for_prompt` | `()` | Format existential for prompt injection. | [src](../../../core/services/existential_drift.py#L91) |
-| function | `reset_existential_drift` | `()` | Reset existential drift (for testing). | [src](../../../core/services/existential_drift.py#L101) |
-| function | `build_existential_drift_surface` | `()` | Build MC surface for existential drift. | [src](../../../core/services/existential_drift.py#L110) |
 

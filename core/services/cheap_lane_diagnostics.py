@@ -51,6 +51,9 @@ def route_integrity(*, since: datetime) -> list[dict[str, object]]:
     from core.runtime.db_cheap_provider import _ensure_invocation_schema
     from core.runtime.db_core import connect
 
+    # A route is written before dispatch. Let in-flight calls finish before
+    # treating the missing invocation as a trace mismatch.
+    mature_before = (datetime.now(UTC) - timedelta(minutes=5)).isoformat()
     with connect() as conn:
         _ensure_control_schema(conn)
         _ensure_invocation_schema(conn)
@@ -58,8 +61,8 @@ def route_integrity(*, since: datetime) -> list[dict[str, object]]:
             "SELECT r.route_decision_id, r.correlation_id, r.created_at "
             "FROM cheap_lane_route_decisions r LEFT JOIN cheap_provider_invocations i "
             "ON i.route_decision_id = r.route_decision_id "
-            "WHERE r.created_at >= ? AND i.id IS NULL LIMIT 100",
-            (since.isoformat(),),
+            "WHERE r.created_at >= ? AND r.created_at < ? AND i.id IS NULL LIMIT 100",
+            (since.isoformat(), mature_before),
         ).fetchall()
         invocations = conn.execute(
             "SELECT i.invocation_id, i.route_decision_id, i.created_at "
@@ -122,6 +125,16 @@ def invocation_health(rows: list[dict[str, object]]) -> dict[str, object]:
         **{kind: {key: metrics(items) for key, items in entries.items()}
            for kind, entries in groups.items()},
     }
+
+
+def unrouted_pool_invocations(rows: list[dict[str, object]]) -> list[dict[str, object]]:
+    """Find missing route IDs only where a cheap-pool route was expected."""
+    return [
+        row for row in rows
+        if str(row.get("provider") or "") != "ollama"  # direct local fallback
+        and str(row.get("status") or "") != "smoke-ok"
+        and not str(row.get("route_decision_id") or "")
+    ]
 
 
 def diagnose_cheap_lane(now: datetime | None = None) -> dict[str, object]:
@@ -227,11 +240,7 @@ def diagnose_cheap_lane(now: datetime | None = None) -> dict[str, object]:
                 "runtime-regression", "high", instant,
                 health,
             ))
-    bypass = [
-        row for row in invocations
-        if str(row.get("status") or "") not in {"smoke-ok"}
-        and not str(row.get("route_decision_id") or "")
-    ]
+    bypass = unrouted_pool_invocations(invocations)
     if bypass:
         findings.append(_finding(
             "route-bypassed", "medium", instant,

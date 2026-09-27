@@ -34,6 +34,39 @@ def test_invocation_health_is_split_by_account_and_provider():
     assert health["by_provider_profile"]["groq::default"]["p95_latency_ms"] == 100
 
 
+def test_route_integrity_waits_for_inflight_invocation(isolated_runtime):
+    from datetime import timedelta
+    from core.runtime.db_core import connect
+    from core.runtime.db_cheap_lane_control import _ensure_control_schema
+    from core.services.cheap_lane_diagnostics import route_integrity
+
+    now = datetime.now(UTC)
+    old = (now - timedelta(minutes=10)).isoformat()
+    fresh = now.isoformat()
+    with connect() as conn:
+        _ensure_control_schema(conn)
+        for route_id, created_at in (("old", old), ("fresh", fresh)):
+            conn.execute(
+                "INSERT INTO cheap_lane_route_decisions "
+                "(route_decision_id,correlation_id,created_at) VALUES (?,?,?)",
+                (route_id, route_id, created_at),
+            )
+
+    mismatches = route_integrity(since=now - timedelta(hours=1))
+    assert [row["route_decision_id"] for row in mismatches] == ["old"]
+
+
+def test_local_ollama_fallback_is_not_a_pool_route_bypass():
+    from core.services.cheap_lane_diagnostics import unrouted_pool_invocations
+
+    rows = [
+        {"provider": "ollama", "status": "failed", "route_decision_id": ""},
+        {"provider": "groq", "status": "failed", "route_decision_id": ""},
+        {"provider": "groq", "status": "completed", "route_decision_id": "route-1"},
+    ]
+    assert unrouted_pool_invocations(rows) == [rows[1]]
+
+
 def test_diagnostics_detects_starvation_and_stale_quota(monkeypatch):
     import core.services.cheap_lane_diagnostics as diagnostics
 

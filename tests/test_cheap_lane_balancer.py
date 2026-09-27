@@ -25,6 +25,48 @@ def test_balancer_slot_is_frozen():
         s.provider = "other"
 
 
+def test_account_block_applies_to_balancer_slots_on_that_profile(isolated_runtime):
+    import time
+    from core.services.cheap_lane_balancer import BalancerSlot, SlotState, _compute_weight, _slot_status
+    from core.services.weighted_slot_health import record_account_block
+
+    record_account_block("chatanywhere", "account2", "provider-blocked", 0)
+    common = dict(provider="chatanywhere", model="m1", base_url="", rpm_limit=None,
+                  daily_limit=None, is_public_proxy=False)
+    home = BalancerSlot(**common, auth_profile="default")
+    vpn = BalancerSlot(**common, auth_profile="account2")
+    now = time.time()
+
+    assert _compute_weight(home, SlotState(slot_id=home.slot_id), now) > 0
+    assert _compute_weight(vpn, SlotState(slot_id=vpn.slot_id), now) == 0
+    assert _slot_status(vpn, SlotState(slot_id=vpn.slot_id), now) == "cooldown"
+
+
+def test_balancer_provider_block_failure_quarantines_sibling_slots(isolated_runtime):
+    import time
+    from core.services.cheap_lane_balancer import SlotState, _register_failure
+    from core.services.weighted_slot_health import account_block_active
+
+    now = time.time()
+    state = SlotState(slot_id="chatanywhere::m1::account2")
+    _register_failure(state, "provider-blocked", now=now)
+
+    assert account_block_active("chatanywhere", "account2", now)
+    assert not account_block_active("chatanywhere", "default", now)
+
+
+def test_balancer_success_clears_profile_account_block(isolated_runtime):
+    import time
+    from core.services.cheap_lane_balancer import SlotState, _register_success
+    from core.services.weighted_slot_health import account_block_active, record_account_block
+
+    now = time.time()
+    record_account_block("chatanywhere", "default", "provider-blocked", 0)
+    _register_success(SlotState(slot_id="chatanywhere::m2::default"), now)
+
+    assert not account_block_active("chatanywhere", "default", now)
+
+
 def test_slot_state_defaults():
     from core.services.cheap_lane_balancer import SlotState
     st = SlotState(slot_id="x::y")
@@ -704,6 +746,34 @@ def test_call_balanced_dns_failure_excludes_whole_provider(monkeypatch, tmp_path
     groq_calls = [p for p, _ in call_log if p == "groq"]
     assert len(ofa_calls) == 1, f"expected 1 ofa call, got {len(ofa_calls)}: {call_log}"
     assert len(groq_calls) == 1
+
+
+def test_vpn_connection_failure_keeps_home_profile_available(monkeypatch, tmp_path):
+    from core.services import cheap_lane_balancer as bal
+    from core.services.cheap_provider_runtime_adapters import CheapProviderError
+
+    monkeypatch.setattr(bal, "_state_path", lambda: tmp_path / "state.json")
+    pool = [
+        _slot(provider="groq", model="shared", auth_profile="account2", egress="vpn"),
+        _slot(provider="groq", model="shared", auth_profile="default", egress="home"),
+    ]
+    monkeypatch.setattr(bal, "build_slot_pool", lambda: pool)
+    monkeypatch.setattr(bal, "_select_slot", lambda _states, current_pool, _now:
+                        current_pool[0] if current_pool else None)
+    calls = []
+
+    def executor(*, auth_profile, **_kw):
+        calls.append(auth_profile)
+        if auth_profile == "account2":
+            raise CheapProviderError(provider="groq", code="connection-error",
+                                     message="VPN gateway unavailable")
+        return {"text": "home works"}
+
+    monkeypatch.setattr(bal, "_call_provider_chat", executor)
+
+    result = bal.call_balanced(prompt="hi", daemon_name="test", max_retries=2)
+    assert result["status"] == "ok"
+    assert calls == ["account2", "default"]
 
 
 # --- Fase A: floor + SQLite-kvote + Central-observe ---

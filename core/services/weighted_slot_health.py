@@ -43,6 +43,17 @@ def _account_block_until(provider: str, auth_profile: str) -> str:
     return str(value.get("until") or "") if isinstance(value, dict) else ""
 
 
+def account_block_active(provider: str, auth_profile: str, now_epoch: float) -> bool:
+    """Whether this provider account is in its temporary shared cooldown."""
+    until = _account_block_until(provider, auth_profile)
+    if not until:
+        return False
+    try:
+        return datetime.fromisoformat(until).timestamp() > now_epoch
+    except ValueError:  # Malformed optional block state must not stop routing.
+        return False
+
+
 def quota_snapshot(
     candidate: dict[str, object], *,
     get_state: Callable[..., dict[str, object] | None],

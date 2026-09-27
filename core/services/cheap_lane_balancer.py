@@ -332,6 +332,9 @@ def _compute_weight(slot: BalancerSlot, state: SlotState, now: float) -> float:
         return 0.0
     if state.cooldown_until and now < state.cooldown_until:
         return 0.0
+    from core.services.weighted_slot_health import account_block_active
+    if account_block_active(slot.provider, slot.auth_profile, now):
+        return 0.0
     # Task 14: anti-jag — a slot flagged stale (≥3 daily-quota 429s today) is
     # skipped until the daily reset. Only when the adaptive flag is ON; with the
     # flag OFF the field is ignored entirely (byte-identical to before).
@@ -388,6 +391,9 @@ def _slot_status(slot: BalancerSlot, state: SlotState, now: float) -> str:
     if state.manually_disabled:
         return "disabled"
     if state.cooldown_until and now < state.cooldown_until:
+        return "cooldown"
+    from core.services.weighted_slot_health import account_block_active
+    if account_block_active(slot.provider, slot.auth_profile, now):
         return "cooldown"
     if state.stale_until_daily_reset:
         return "stale"
@@ -481,6 +487,11 @@ def _register_failure(
     state.total_failures += 1
     state.total_calls += 1   # FIX 15. jul: tæl ALLE forsøg (før: kun succes → fejl% kunne >100%)
     state.cooldown_reason = error_kind
+    if error_kind in {"credits-exhausted", "provider-blocked"} and state.slot_id.count("::") >= 2:
+        from core.services.weighted_slot_health import record_account_block
+        provider = state.slot_id.split("::", 1)[0]
+        profile = state.slot_id.rsplit("::", 1)[-1]
+        record_account_block(provider, profile, error_kind, retry_after_s)
 
     # Karantæne efter ÅRSAG, ikke kun efter antal (18. aug 2026). Breaker-trappen
     # nedenfor antager en flakkende forbindelse: tre fejl før den reagerer, maks 1 times
@@ -543,6 +554,11 @@ def _register_success(state: SlotState, now: float) -> None:
     state.cooldown_until = None
     if state.breaker_level > 0:
         state.breaker_level = max(0, state.breaker_level - 1)
+    if state.slot_id.count("::") >= 2:
+        from core.services.weighted_slot_health import clear_account_block
+        provider = state.slot_id.split("::", 1)[0]
+        profile = state.slot_id.rsplit("::", 1)[-1]
+        clear_account_block(provider, profile)
 
 
 # Provider-wide cooldown when DNS / connection-level failure detected.
@@ -576,16 +592,19 @@ def _register_provider_wide_failure(
     now: float,
     *,
     reason: str,
+    auth_profile: str | None = None,
     cooldown_s: int = _PROVIDER_WIDE_DNS_COOLDOWN_SECONDS,
 ) -> int:
-    """Apply cooldown to ALL slots from `provider`. Returns number of slots affected.
+    """Apply cooldown to a provider's affected auth profile, or all when unspecified.
 
     Used when a provider-level issue (DNS down, connection refused, etc.) is
     detected — saves us from retrying every slot on a dead provider.
     """
     affected = 0
     for slot in pool:
-        if slot.provider != provider:
+        if slot.provider != provider or (
+            auth_profile is not None and slot.auth_profile != auth_profile
+        ):
             continue
         s = _ensure_state(states, slot.slot_id)
         # Don't override an already-longer cooldown
@@ -960,11 +979,12 @@ def call_balanced(
                 _register_provider_wide_failure(
                     states, pool, slot.provider, _time.time(),
                     reason=exc.code,
+                    auth_profile=slot.auth_profile,
                 )
                 # Add all that provider's slot_ids to tried set so next
                 # iteration's eligible_pool excludes them too.
                 for s in pool:
-                    if s.provider == slot.provider:
+                    if s.provider == slot.provider and s.auth_profile == slot.auth_profile:
                         tried_slot_ids.add(s.slot_id)
             latency_ms = int((_time.time() - call_started) * 1000)
             _append_recent_call(slot.slot_id, daemon_name, "error", latency_ms,
@@ -999,9 +1019,10 @@ def call_balanced(
                 _register_provider_wide_failure(
                     states, pool, slot.provider, _time.time(),
                     reason=f"unknown:{type(exc).__name__}",
+                    auth_profile=slot.auth_profile,
                 )
                 for s in pool:
-                    if s.provider == slot.provider:
+                    if s.provider == slot.provider and s.auth_profile == slot.auth_profile:
                         tried_slot_ids.add(s.slot_id)
             latency_ms = int((_time.time() - call_started) * 1000)
             _append_recent_call(slot.slot_id, daemon_name, "error", latency_ms,

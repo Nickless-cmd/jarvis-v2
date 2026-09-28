@@ -2,6 +2,23 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/theater_audit.py`
+_Theater Audit -- find narrative-first inner-life patterns._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `build_theater_audit_surface` | `()` | — | [src](../../../core/services/theater_audit.py#L85) |
+| function | `_scan_findings` | `()` | — | [src](../../../core/services/theater_audit.py#L113) |
+| function | `_scan_files` | `()` | — | [src](../../../core/services/theater_audit.py#L160) |
+| function | `_python_line_state` | `(line, in_docstring)` | Track multi-line docstring state and decide whether to skip this line. | [src](../../../core/services/theater_audit.py#L178) |
+| function | `_skip_python_line` | `(line)` | Backwards-compatible wrapper. Use _python_line_state for new code. | [src](../../../core/services/theater_audit.py#L226) |
+| function | `_strip_trailing_inline_comment` | `(line)` | Drop trailing `  # ...` or `\t# ...` comment so its prose isn't scanned. | [src](../../../core/services/theater_audit.py#L232) |
+| function | `_rank_files` | `(findings)` | — | [src](../../../core/services/theater_audit.py#L247) |
+| function | `_recommended_task` | `(files)` | — | [src](../../../core/services/theater_audit.py#L284) |
+| function | `_counts` | `(findings)` | — | [src](../../../core/services/theater_audit.py#L309) |
+| function | `_priority_label` | `(score)` | — | [src](../../../core/services/theater_audit.py#L317) |
+| function | `_excerpt` | `(line)` | — | [src](../../../core/services/theater_audit.py#L325) |
+
 ## `core/services/theory_of_mind.py`
 _Theory of Mind — Step A.v1 of meta-evne stack._
 
@@ -522,16 +539,4 @@ _Unfinished-intent detector for visible-run output._
 | function | `is_in_cooldown` | `(session_id)` | True hvis session_id har triggered en continuation indenfor cooldown-vinduet. | [src](../../../core/services/unfinished_intent.py#L239) |
 | function | `mark_triggered` | `(session_id)` | Marker at en continuation netop er triggered for session_id. | [src](../../../core/services/unfinished_intent.py#L248) |
 | function | `reset_cooldown_for_tests` | `()` | Test-helper: tøm cooldown-state mellem test cases. | [src](../../../core/services/unfinished_intent.py#L256) |
-
-## `core/services/untrusted_fencing.py`
-_Indhegning af utroet indhold — porteret fra jarvis-code._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_neutralisér` | `(tekst)` | Afvaebn hegn-markoerer INDE i nyttelasten. | [src](../../../core/services/untrusted_fencing.py#L46) |
-| function | `fence` | `(kilde, indhold)` | Pak indhold ind som utroet data. Self-safe. | [src](../../../core/services/untrusted_fencing.py#L63) |
-| function | `kilde_for_tool` | `(navn)` | Hvilken slags kilde er dette vaerktoejs resultat? Ren. | [src](../../../core/services/untrusted_fencing.py#L71) |
-| function | `should_fence` | `(navn)` | Skal dette vaerktoejs resultat hegnes ind? Ren. | [src](../../../core/services/untrusted_fencing.py#L89) |
-| function | `_hegn_blok` | `(kilde, blok)` | Hegn teksten i én indholdsblok. Ikke-tekst-blokke roeres ikke. | [src](../../../core/services/untrusted_fencing.py#L102) |
-| function | `fence_tool_result` | `(navn, resultat)` | Hegn den laesbare krop af et vaerktoejs-resultat. Self-safe. | [src](../../../core/services/untrusted_fencing.py#L113) |
 

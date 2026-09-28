@@ -2,6 +2,14 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/smith_noise_veto.py`
+_Veto mod Smiths sproglige stoej — modellen kan kun sige nej, aldrig ja._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_er_risikabel` | `(etiket, cfg)` | Risiko afgoeres af den liste stigen allerede bruger — ikke af en model. | [src](../../../core/services/smith_noise_veto.py#L80) |
+| function | `maa_minte` | `(pattern_key, etiket=…, cfg=…)` | Skal Smith have lov at minte dette moenster? | [src](../../../core/services/smith_noise_veto.py#L99) |
+
 ## `core/services/social_labilizer.py`
 _Social labilizer — Fase 2 of generative autonomy._
 
@@ -623,21 +631,4 @@ _Text Resonance — I feel what I read, before I analyze it._
 | function | `build_text_resonance_surface` | `()` | — | [src](../../../core/services/text_resonance.py#L195) |
 | function | `build_text_resonance_prompt_section` | `()` | Only surface when recent reading is strongly toned. | [src](../../../core/services/text_resonance.py#L229) |
 | function | `reset_text_resonance` | `()` | — | [src](../../../core/services/text_resonance.py#L246) |
-
-## `core/services/theater_audit.py`
-_Theater Audit -- find narrative-first inner-life patterns._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `build_theater_audit_surface` | `()` | — | [src](../../../core/services/theater_audit.py#L85) |
-| function | `_scan_findings` | `()` | — | [src](../../../core/services/theater_audit.py#L113) |
-| function | `_scan_files` | `()` | — | [src](../../../core/services/theater_audit.py#L160) |
-| function | `_python_line_state` | `(line, in_docstring)` | Track multi-line docstring state and decide whether to skip this line. | [src](../../../core/services/theater_audit.py#L178) |
-| function | `_skip_python_line` | `(line)` | Backwards-compatible wrapper. Use _python_line_state for new code. | [src](../../../core/services/theater_audit.py#L226) |
-| function | `_strip_trailing_inline_comment` | `(line)` | Drop trailing `  # ...` or `\t# ...` comment so its prose isn't scanned. | [src](../../../core/services/theater_audit.py#L232) |
-| function | `_rank_files` | `(findings)` | — | [src](../../../core/services/theater_audit.py#L247) |
-| function | `_recommended_task` | `(files)` | — | [src](../../../core/services/theater_audit.py#L284) |
-| function | `_counts` | `(findings)` | — | [src](../../../core/services/theater_audit.py#L309) |
-| function | `_priority_label` | `(score)` | — | [src](../../../core/services/theater_audit.py#L317) |
-| function | `_excerpt` | `(line)` | — | [src](../../../core/services/theater_audit.py#L325) |
 

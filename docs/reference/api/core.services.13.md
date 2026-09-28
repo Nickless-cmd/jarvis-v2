@@ -147,6 +147,18 @@ _Gmail-connector — API-klient + tool-handlers (vertical: search + list)._
 | function | `list_inbox` | `(user_id, *, max_results=…)` | — | [src](../../../core/services/gmail_connector.py#L148) |
 | function | `send_message` | `(user_id, to, subject, body)` | Send en mail på brugerens vegne. KRÆVER approval-flow før den eksponeres som tool. | [src](../../../core/services/gmail_connector.py#L152) |
 
+## `core/services/goal_reporter.py`
+_Goal reporter — fører systemets egne målinger tilbage til målet der bad om dem._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_criterion_fulfilment` | `(measured, target)` | Hvor stor en del af kriteriet er opfyldt — kappet ved 1.0. | [src](../../../core/services/goal_reporter.py#L33) |
+| function | `_find_goal` | `(*, title_fragment)` | Slå det aktive mål op hvis titel indeholder fragmentet. | [src](../../../core/services/goal_reporter.py#L48) |
+| function | `collect_metrics` | `(*, days=…)` | Læs de tre tal. Fejler aldrig hårdt — et manglende tal bliver None. | [src](../../../core/services/goal_reporter.py#L58) |
+| function | `compute_progress` | `(*, tick_score, heed_rate)` | progress_pct + de enkelte kriterier. Svageste led bestemmer. | [src](../../../core/services/goal_reporter.py#L95) |
+| function | `_format_note` | `(metrics, progress)` | Én kort note til update-loggen — tallene, ikke fortællingen om dem. | [src](../../../core/services/goal_reporter.py#L132) |
+| function | `report_goal_metrics` | `(*, days=…, dry_run=…, goal_title_fragment=…)` | Mål, skriv til målet, returnér hvad der skete. Aldrig stille. | [src](../../../core/services/goal_reporter.py#L155) |
+
 ## `core/services/goal_signal_synthesizer.py`
 _Goal signal synthesizer — surface candidate goals from dreams/reflections._
 
@@ -570,13 +582,4 @@ _Hugging Face-connector — søg modeller/datasets via Hub API._
 | function | `_get` | `(path, params=…)` | — | [src](../../../core/services/hf_connector.py#L52) |
 | function | `search_models` | `(query, *, limit=…)` | — | [src](../../../core/services/hf_connector.py#L67) |
 | function | `model_info` | `(model_id)` | — | [src](../../../core/services/hf_connector.py#L85) |
-
-## `core/services/hollow_promise_census.py`
-_Optælling af tomme løfter — så Centralen kan SE Jarvis' værste mønster._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_since` | `(hours)` | ISO-UTC-grænse. DB'en gemmer `2026-09-05T16:20:19.213749+00:00`, så en | [src](../../../core/services/hollow_promise_census.py#L71) |
-| function | `census` | `(hours=…)` | Den ægte rate pr. model + hvor meget værnet fangede. Self-safe. | [src](../../../core/services/hollow_promise_census.py#L79) |
-| function | `_guard_counts` | `(grænse)` | Hvad værnet selv greb, fra dets egne events. Self-safe. | [src](../../../core/services/hollow_promise_census.py#L129) |
 

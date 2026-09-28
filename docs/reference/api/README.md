@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 15646 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 15653 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -41,21 +41,21 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 15646 functions/
 - [`core.services.10`](core.services.10.md) — `decision_signal_staging` … `dream_hypothesis_forced`
 - [`core.services.11`](core.services.11.md) — `dream_hypothesis_generator` … `eventbus_central_bridge`
 - [`core.services.12`](core.services.12.md) — `events_retention` … `gate_privacy`
-- [`core.services.13`](core.services.13.md) — `gate_proactivity` … `hollow_promise_census`
-- [`core.services.14`](core.services.14.md) — `hollow_promise_guard` … `jarvis_brain_visibility`
-- [`core.services.15`](core.services.15.md) — `jarvisx_bridge` … `memory_consolidation_nudge`
-- [`core.services.16`](core.services.16.md) — `memory_decay_daemon` … `my_projects`
-- [`core.services.17`](core.services.17.md) — `narrative_identity` … `past_context_router`
-- [`core.services.18`](core.services.18.md) — `paste_store` … `producer_novelty`
-- [`core.services.19`](core.services.19.md) — `projection_chat_messages` … `reasoning_escalation`
-- [`core.services.20`](core.services.20.md) — `reasoning_interceptor` … `role_model_resolver`
-- [`core.services.21`](core.services.21.md) — `role_registry` … `selective_consolidation_daemon`
-- [`core.services.22`](core.services.22.md) — `selective_forgetting_candidate_tracking` … `session_milestones`
-- [`core.services.23`](core.services.23.md) — `session_permission` … `smith_noise_veto`
-- [`core.services.24`](core.services.24.md) — `social_labilizer` … `theater_audit`
-- [`core.services.25`](core.services.25.md) — `theory_of_mind` … `untrusted_fencing`
-- [`core.services.26`](core.services.26.md) — `upload_sandbox` … `visible_run_terminal_recovery`
-- [`core.services.27`](core.services.27.md) — `visible_run_trace` … `world_model_signal_tracking`
+- [`core.services.13`](core.services.13.md) — `gate_proactivity` … `hf_connector`
+- [`core.services.14`](core.services.14.md) — `hollow_promise_census` … `jarvis_brain_reflection`
+- [`core.services.15`](core.services.15.md) — `jarvis_brain_visibility` … `memory_breathing`
+- [`core.services.16`](core.services.16.md) — `memory_consolidation_nudge` … `multi_signal_retrieval`
+- [`core.services.17`](core.services.17.md) — `my_projects` … `parallel_selves`
+- [`core.services.18`](core.services.18.md) — `past_context_router` … `process_watcher`
+- [`core.services.19`](core.services.19.md) — `producer_novelty` … `reasoning_detectors`
+- [`core.services.20`](core.services.20.md) — `reasoning_escalation` … `rhythm_engine`
+- [`core.services.21`](core.services.21.md) — `role_model_resolver` … `selective_attention`
+- [`core.services.22`](core.services.22.md) — `selective_consolidation_daemon` … `session_inbox`
+- [`core.services.23`](core.services.23.md) — `session_milestones` … `smith_confrontation`
+- [`core.services.24`](core.services.24.md) — `smith_noise_veto` … `text_resonance`
+- [`core.services.25`](core.services.25.md) — `theater_audit` … `unfinished_intent`
+- [`core.services.26`](core.services.26.md) — `untrusted_fencing` … `visible_run_segment_settlement`
+- [`core.services.27`](core.services.27.md) — `visible_run_terminal_recovery` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)
@@ -70,9 +70,9 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 15646 functions/
 - [`core.tools.claude_dispatch`](core.tools.claude_dispatch.md)
 - [`core.undo`](core.undo.md)
 - [`core.util`](core.util.md)
-- [`scripts.01`](scripts.01.md) — `__init__` … `interlanguage_classifier_interim`
-- [`scripts.02`](scripts.02.md) — `interlanguage_drift_classifier` … `requirements_gen`
-- [`scripts.03`](scripts.03.md) — `reset_heartbeat_state` … `verify_vagt_graenser`
+- [`scripts.01`](scripts.01.md) — `__init__` … `interlanguage_classifier_final`
+- [`scripts.02`](scripts.02.md) — `interlanguage_classifier_interim` … `repro_streaming_fault`
+- [`scripts.03`](scripts.03.md) — `requirements_gen` … `verify_vagt_graenser`
 - [`scripts.acceptance`](scripts.acceptance.md)
 - [`scripts.diagnostics`](scripts.diagnostics.md)
 - [`scripts.pipelines`](scripts.pipelines.md)

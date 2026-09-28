@@ -52,8 +52,15 @@ def has_pending_tool_intent(text: str | None) -> bool:
     return bool(text and _DSML_TOOL_INTENT_RE.search(str(text)))
 
 
+def is_non_retryable_recovery_reason(reason: str | None) -> bool:
+    """A rejected provider request will fail again with the same checkpoint."""
+    return bool(re.search(r"\bhttp\s+400\b|\b400 bad request\b", str(reason or ""), re.I))
+
+
 def is_recoverable_exit_reason(reason: str | None) -> bool:
     value = str(reason or "").strip().lower()
+    if is_non_retryable_recovery_reason(value):
+        return False
     if not value or value == "completed":
         return False
     if value in {"user-cancelled", "user-steer-stop", "user-steer-stop-mid-stream"}:
@@ -99,6 +106,9 @@ def classify_terminal(evidence: TerminalEvidence) -> TerminalDecision:
     if evidence.waiting_for_user:
         return TerminalDecision(
             TerminalState.WAITING_FOR_USER, reason, False, True, "waiting_for_user")
+    if is_non_retryable_recovery_reason(reason):
+        return TerminalDecision(
+            TerminalState.FAILED_TERMINAL, reason, False, True, "failed_terminal")
 
     recovery_reason = ""
     if evidence.pending_tool_intent:

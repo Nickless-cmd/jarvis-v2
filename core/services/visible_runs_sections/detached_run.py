@@ -44,6 +44,7 @@ def _afregn_genoptaget_run(task_id: str, inner_run_id: str, *, generation: int) 
         current_owner, get_record, release_recovery_claim, settle_terminal,
     )
     from core.services.visible_runs_outcomes import run_er_terminal
+    from core.services.visible_terminal_policy import is_non_retryable_recovery_reason
 
     rec = get_record(inner_run_id)
     status = str((rec or {}).get("status") or "")
@@ -59,6 +60,14 @@ def _afregn_genoptaget_run(task_id: str, inner_run_id: str, *, generation: int) 
                     task_id, inner_run_id, status or "db-terminal")
     elif status in {"recovering", "interrupted"}:
         reason = str((rec or {}).get("exit_reason") or status)
+        if is_non_retryable_recovery_reason(reason):
+            settle_terminal(
+                task_id, status="failed_terminal", reason=reason,
+                expected_generation=generation, expected_owner=current_owner(),
+            )
+            logger.info("opgave %s stoppet efter ikke-genoptagelig fejl i %s",
+                        task_id, inner_run_id)
+            return
         if release_recovery_claim(
             task_id, generation, owner=current_owner(), reason=reason,
             retry_after_s=30.0,

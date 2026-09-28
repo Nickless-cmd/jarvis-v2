@@ -115,6 +115,28 @@ def test_afbrudt_genoptagelse_giver_samme_krav_tilbage(monkeypatch):
     })]
 
 
+def test_providerens_http_400_genstarter_ikke_samme_opgave(monkeypatch):
+    from core.services.visible_runs_sections import detached_run as d
+    from core.services import in_flight_runs as ifr
+    closed, released = [], []
+    monkeypatch.setattr(ifr, "get_record", lambda rid: {
+        "status": "recovering",
+        "exit_reason": "interrupted:followup-round-1-provider-error: HTTP 400: invalid tool_calls",
+    })
+    monkeypatch.setattr(ifr, "current_owner", lambda: "owner-1")
+    monkeypatch.setattr(ifr, "settle_terminal",
+                        lambda *args, **kw: closed.append((args, kw)))
+    monkeypatch.setattr(ifr, "release_recovery_claim",
+                        lambda *args, **kw: released.append((args, kw)))
+
+    d._afregn_genoptaget_run("task-1", "inner-1", generation=2)
+
+    assert len(closed) == 1
+    assert closed[0][1]["status"] == "failed_terminal"
+    assert closed[0][1]["expected_generation"] == 2
+    assert released == []
+
+
 def test_genoptaget_tur_opretter_ikke_et_nyt_krav(monkeypatch):
     _patch(monkeypatch, ["frame"])
     from core.services.visible_runs_sections import detached_run as d

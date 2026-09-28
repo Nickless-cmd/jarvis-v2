@@ -459,6 +459,8 @@ def settle_recovering(
             expected_generation=expected_generation,
             expected_owner=expected_owner,
         )
+        if str(rec.get("status") or "") in _TERMINAL_STATUSES:
+            return dict(rec)
         now = _iso()
         rec.setdefault("task_id", str(rec.get("run_id") or key))
         rec["status"] = "recovering"
@@ -551,6 +553,8 @@ def claim_due_recovery(
     now: datetime | None = None,
 ) -> dict[str, Any] | None:
     """Atomically claim one due visible recovery task."""
+    from core.services.visible_terminal_policy import is_non_retryable_recovery_reason
+
     instant = now or datetime.now(UTC)
 
     def change(records):
@@ -567,6 +571,14 @@ def claim_due_recovery(
                 if lease is not None and lease > instant:
                     continue
             else:
+                continue
+            if is_non_retryable_recovery_reason(rec.get("exit_reason")):
+                rec["status"] = "failed_terminal"
+                rec["settled_at"] = instant.isoformat()
+                rec["recovery_owner"] = ""
+                rec["recovery_lease_until"] = ""
+                rec["next_attempt_at"] = ""
+                rec["notice_pending"] = True
                 continue
             due = _parsed(rec.get("next_attempt_at"))
             if due is not None and due > instant:

@@ -112,6 +112,28 @@ def test_explicit_terminal_state_is_not_claimable(_isolated_records):
     assert ifr.claim_due_recovery(owner="200:2") is None
 
 
+def test_sen_recovery_afslutning_kan_ikke_genaabne_faerdig_opgave(_isolated_records):
+    ifr.mark_started(run_id="r1", session_id="s1", user_message="fix it")
+    ifr.settle_terminal("r1", status="completed", reason="completed")
+
+    rec = ifr.settle_recovering("r1", reason="shutdown")
+
+    assert rec["status"] == "completed"
+    assert rec["exit_reason"] == "completed"
+    assert ifr.claim_due_recovery(owner="200:2") is None
+
+
+def test_gammel_http_400_opgave_stoppes_foer_dispatch(_isolated_records):
+    ifr.mark_started(run_id="r400", session_id="s1", user_message="fix it")
+    ifr.settle_recovering(
+        "r400", reason="interrupted:provider-error: HTTP 400: invalid tool_calls"
+    )
+
+    assert ifr.claim_due_recovery(owner="200:2") is None
+    rec = ifr.get_record("r400")
+    assert rec is not None and rec["status"] == "failed_terminal"
+
+
 def test_renew_rejects_wrong_owner_or_generation(_isolated_records):
     ifr.mark_started(run_id="r1", session_id="s1", user_message="fix it")
     ifr.settle_recovering("r1", reason="shutdown")

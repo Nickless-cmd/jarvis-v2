@@ -435,6 +435,47 @@ def _exec_pollinations_video(args: dict[str, Any]) -> dict[str, Any]:
         image_url=str(image_url) if image_url else None,
     )
     if result.get("status") == "ok":
+        # SAMME BEHANDLING SOM BILLEDER. Indtil 28/9-2026 gjorde denne gren
+        # ingen af de to ting billed-grenen goer: filen blev hverken
+        # registreret eller lagt paa turen. En video Jarvis lavede kunne
+        # derfor aldrig naa traaden — den laa paa disken og blev naevnt i en
+        # saetning.
+        #
+        # Begge kald er self-safe hver for sig: en generering der tog op til
+        # ti minutter maa ikke gaa tabt fordi et opslag ikke kunne skrives.
+        attachment_id = ""
+        try:
+            from core.services.attachment_service import register_generated_media
+            attachment_id = register_generated_media(
+                local_path=str(result.get("path") or ""),
+                mime_type=str(result.get("content_type") or "video/mp4"),
+                source_url=str(result.get("url") or ""),
+            )
+        except Exception:  # registreringen maa ALDRIG koste en generering der
+            # tog op til ti minutter. Tomt id er aerligt: klienten faar stien.
+            attachment_id = ""
+        try:
+            from core.services.published_files import note as _note
+            _sti = str(result.get("path") or "")
+            _note(
+                str(args.get("_runtime_turn_id") or args.get("_runtime_run_id") or ""),
+                filename=_sti.replace("\\", "/").rsplit("/", 1)[-1] or "video",
+                mime_type=str(result.get("content_type") or "video/mp4"),
+                size_bytes=int(result.get("bytes") or 0),
+                attachment_id=attachment_id,
+                # Ankeret der bestemmer HVOR i traaden den lander.
+                # `_indsaet_ved_deres_vaerktoej` matcher det mod progress-
+                # blokkens id; uden det ryger videoen bagest, efter prosaen —
+                # praecis den fejl billederne havde indtil 13/9-2026.
+                # BEMAERK: `_exec_pollinations_image` sender det stadig IKKE,
+                # saa pollinations-billeder lander bagest den dag i dag.
+                # openrouter_image gør det rigtigt. Det er en selvstaendig
+                # fejl paa billed-siden, ikke rørt her.
+                tool_use_id=str(args.get("_runtime_tool_use_id") or ""),
+            )
+        except Exception:  # samme grund: posten er hvordan videoen naar
+            # traaden, men filen findes uanset om posten kunne skrives.
+            pass
         return {
             "status": "ok",
             "text": (
@@ -442,6 +483,7 @@ def _exec_pollinations_video(args: dict[str, Any]) -> dict[str, Any]:
                 f"model={result['model']}) saved to {result['path']}"
             ),
             **result,
+            "attachment_id": attachment_id,
         }
     return result
 

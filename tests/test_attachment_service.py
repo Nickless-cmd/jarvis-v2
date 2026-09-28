@@ -234,3 +234,77 @@ def test_attachment_visible_to_user(isolated_runtime):
     assert svc.attachment_visible_to_user("img9", "u2") is False
     assert svc.attachment_visible_to_user("img9", None) is True   # owner/legacy
     assert svc.attachment_visible_to_user("findes_ikke", "u1") is False
+
+
+# ── Medie-agnostisk registrering (28/9-2026) ────────────────────────────────
+#
+# `register_generated_image` tog `mime_type` som parameter men hed «image», og
+# video-vaerktoejet kaldte den slet ikke. Den hedder nu
+# `register_generated_media`; det gamle navn staar tilbage som indpakning,
+# fordi to vaerktoejer kalder det.
+
+
+def _fang_raekken(monkeypatch, tmp_path):
+    """Fang hvad der ville blive skrevet — uden at roere den rigtige DB."""
+    from core.services import attachment_service as A
+    gemt: dict = {}
+    monkeypatch.setattr(A, "_db_store", lambda **kw: gemt.update(kw))
+    monkeypatch.setattr(A, "_send_generated_to_channel", lambda *a, **k: None)
+    monkeypatch.setattr("core.services.session_context_resolve.aktiv_session_id",
+                        lambda: "sess-1")
+    fil = tmp_path / "klip.mp4"
+    fil.write_bytes(b"ikke rigtig video, men den findes")
+    return gemt, fil
+
+
+def test_video_kan_registreres_med_sin_egen_mime(monkeypatch, tmp_path):
+    from core.services.attachment_service import register_generated_media
+    gemt, fil = _fang_raekken(monkeypatch, tmp_path)
+    aid = register_generated_media(local_path=str(fil), mime_type="video/mp4")
+    assert aid
+    assert gemt["mime_type"] == "video/mp4"
+    assert gemt["filename"] == "klip.mp4"
+
+
+def test_det_gamle_navn_giver_SAMME_resultat(monkeypatch, tmp_path):
+    """Indpakningen skal vaere en indpakning, ikke en anden funktion."""
+    from core.services.attachment_service import (
+        register_generated_image, register_generated_media)
+    gemt_a, fil = _fang_raekken(monkeypatch, tmp_path)
+    register_generated_media(local_path=str(fil), mime_type="image/png",
+                             source_url="http://x/y.png")
+    a = dict(gemt_a)
+    gemt_b, _ = _fang_raekken(monkeypatch, tmp_path)
+    register_generated_image(local_path=str(fil), mime_type="image/png",
+                             source_url="http://x/y.png")
+    b = dict(gemt_b)
+    for noegle in ("mime_type", "filename", "source_url", "size_bytes", "local_path"):
+        assert a[noegle] == b[noegle], noegle
+
+
+def test_indpakningen_sender_mime_VIDERE(monkeypatch, tmp_path):
+    """Hardkodede den «image/jpeg», ville en PNG blive stemplet forkert — og
+    ingen anden test ville se det. openrouter_image sender sin egen mime ind."""
+    from core.services.attachment_service import register_generated_image
+    gemt, fil = _fang_raekken(monkeypatch, tmp_path)
+    register_generated_image(local_path=str(fil), mime_type="image/png")
+    assert gemt["mime_type"] == "image/png"
+
+
+def test_indpakningen_har_stadig_sit_gamle_standardvalg(monkeypatch, tmp_path):
+    """Kalderne maa kunne udelade mime. Det gamle navn lovede image/jpeg."""
+    from core.services.attachment_service import register_generated_image
+    gemt, fil = _fang_raekken(monkeypatch, tmp_path)
+    register_generated_image(local_path=str(fil))
+    assert gemt["mime_type"] == "image/jpeg"
+
+
+def test_galleriet_er_STADIG_kun_billeder():
+    """Bevidst: begge klienter tegner /attachments/images som <img>. En video
+    dér ville blive et tomt felt. Video vises i traaden, ikke i galleriet."""
+    import inspect
+    from core.services import attachment_service as A
+    kilde = inspect.getsource(A.list_image_attachments)
+    assert kilde.count("LIKE 'image/%'") == 2, (
+        "galleriets to forespoergsler skal begge blive ved billeder")
+    assert "video/%" not in kilde

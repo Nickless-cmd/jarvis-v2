@@ -340,6 +340,19 @@ async def list_images(limit: int = 200, session_id: str = "") -> dict:
     )}
 
 
+@router.get("/media/{attachment_id}")
+async def serve_media_from_db(attachment_id: str) -> FileResponse:
+    """Samme fil, medie-agnostisk navn — til video og alt andet Jarvis laver.
+
+    Ruten nedenfor hed `/image/` men var aldrig billed-specifik: den saetter
+    `media_type` fra raekkens egen mime, saa en video serveres allerede med
+    `video/mp4`. Navnet loej dog, og en klient der skulle afspille noget ville
+    hente fra en adresse der hed «image». Begge navne peger paa samme kode og
+    samme user-scope; `/image/` bevares fordi klienterne bruger den i dag.
+    """
+    return await serve_image_from_db(attachment_id)
+
+
 @router.get("/image/{attachment_id}")
 async def serve_image_from_db(attachment_id: str) -> FileResponse:
     """Serve et billede fra DB'ens local_path (virker for historiske billeder

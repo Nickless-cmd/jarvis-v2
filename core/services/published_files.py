@@ -152,11 +152,28 @@ def peek_efter_tool_use(tool_use_id: str) -> list[dict[str, Any]]:
     return [p for p in alle if str(p.get("tool_use_id") or "") == tid]
 
 
+def _bloktype(mime: str) -> str:
+    """Hvilken renderer skal klienten bruge?
+
+    `file` er et download-kort. Det er rigtigt for en zip og forkert for en
+    video: indtil 28/9-2026 endte enhver genereret video som et kort man kunne
+    hente, ikke som noget man kunne se. Video faar sin egen type, saa begge
+    klienter kan tegne en afspiller — samme reference-felter som `image`,
+    saa der ikke skal findes en ny hente-vej op.
+    """
+    if mime.startswith("image/"):
+        return "image"
+    if mime.startswith("video/"):
+        return "video"
+    return "file"
+
+
 def as_blocks(poster: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Oversæt til content_json-blokke i samme form som vedhæftninger.
 
     Klienten kender allerede `image`/`file` fra brugerbeskeder, så en udgivet
     fil kan genbruge den renderer i stedet for at kræve en ny bloktype.
+    `video` kom til 28/9-2026 — se :func:`_bloktype`.
 
     `attachment_id` frem for `url` når billedet er GENERERET: en genereret fil
     ligger i `memory/generated/` og hentes over det user-scopede
@@ -171,7 +188,7 @@ def as_blocks(poster: list[dict[str, Any]]) -> list[dict[str, Any]]:
             continue
         mime = str(p.get("mime_type") or "")
         blok: dict[str, Any] = {
-            "type": "image" if mime.startswith("image/") else "file",
+            "type": _bloktype(mime),
             "filename": navn,
             "mime_type": mime or "application/octet-stream",
         }

@@ -37,4 +37,11 @@ describe('KantFade', () => {
     expect(screen.getByTestId('kantfade-ramme-komponist')).toHaveStyle({ top: -56, bottom: 0 })
     expect(screen.getByTestId('kantfade-komponist')).toHaveProp('height', '100%')
   })
+
+  it('daekker omraadet under en udvidet composer med en rigtig flade', async () => {
+    const screen = await render(<KantFade retning="op" navn="komponist" over={20} opaqueBelow under={32} />)
+    expect(screen.getByTestId('kantfade-ramme-komponist')).toHaveStyle({ top: -20, bottom: -32 })
+    expect(screen.getByTestId('kantfade-komponist')).toHaveProp('height', 20)
+    expect(screen.getByTestId('kantfade-bund-komponist')).toHaveStyle({ top: 20, bottom: 0, backgroundColor: '#000000' })
+  })
 })

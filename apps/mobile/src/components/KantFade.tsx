@@ -22,9 +22,9 @@ import { useTheme } from '../theme/ThemeContext'
  * han havde svært ved at sætte ord på det: der BURDE være en fade, og der var
  * en kant.
  *
- * `KantFade` maler præcis den samme farve som en gradient i stedet. Boksens
- * egen `backgroundColor` fjernes, og denne lægges i dens sted — så bjælken
- * dækker lige så meget som før, men overgangen til tråden er glidende.
+ * `KantFade` maler overgangen som en gradient. Naar komponisten er udvidet,
+ * bliver selve området bag og under kortet en native, uigennemsigtig flade:
+ * Android dækkede ikke hele den høje boks med en procenthøj SVG alene.
  *
  * ## Retningen
  *
@@ -47,7 +47,7 @@ import { useTheme } from '../theme/ThemeContext'
  * arve hinandens farve, og den ene ville stiltiende forsvinde. `navn` gør dem
  * unikke — og giver samtidig et testID at måle på.
  */
-export function KantFade({ retning, navn, over = 0 }: {
+export function KantFade({ retning, navn, over = 0, opaqueBelow = false, under = 0 }: {
   retning: 'op' | 'ned'
   navn: string
   /**
@@ -65,17 +65,40 @@ export function KantFade({ retning, navn, over = 0 }: {
    * forælderens top, og fuld hele vejen ned.
    */
   over?: number
+  /** Udvidet composer: en native flade under kortet, fordi Androids SVG med
+   *  100 % højde ikke dækkede området helt ned til navigationskanten. */
+  opaqueBelow?: boolean
+  /** Ekstra dækning under forælderens bund (gestus-zonen). */
+  under?: number
 }) {
   const { color } = useTheme()
   const { farve, alpha } = delAlpha(color.scrim)
   const id = `kantfade-${navn}`
   const ned = retning === 'ned'
-  // Forlængelsen kraever at gradienten måles i faste dp (userSpaceOnUse) frem
+  // Forlængelsen kræver at gradienten måles i faste dp (userSpaceOnUse) frem
   // for i procenter af boksen: procent-koordinater ville følge den NYE, højere
   // boks og sprede faden ud over hele laget i stedet for at samle den ved
   // kanten. y2 = over betyder «fuld dér hvor forælderen begynder» — alt
   // nedenunder arver den fulde stop-farve.
   const straek = over > 0 && !ned
+  if (straek && opaqueBelow) return (
+    <View
+      testID={`kantfade-ramme-${navn}`}
+      pointerEvents="none"
+      style={[styles.lag, { top: -over, bottom: -under }]}
+    >
+      <Svg testID={`kantfade-${navn}`} pointerEvents="none" width="100%" height={over}>
+        <Defs>
+          <LinearGradient id={id} x1="0" y1="0" x2="0" y2={over} gradientUnits="userSpaceOnUse">
+            <Stop offset="0" stopColor={color.bg0} stopOpacity={0} />
+            <Stop offset="1" stopColor={color.bg0} stopOpacity={1} />
+          </LinearGradient>
+        </Defs>
+        <Rect x="0" y="0" width="100%" height="100%" fill={`url(#${id})`} />
+      </Svg>
+      <View testID={`kantfade-bund-${navn}`} style={[styles.bund, { top: over, backgroundColor: color.bg0 }]} />
+    </View>
+  )
   return (
     <View
       testID={`kantfade-ramme-${navn}`}
@@ -131,5 +154,6 @@ export function delAlpha(rgba: string): { farve: string; alpha: number } {
 const styles = StyleSheet.create({
   // Fylder den boks den lægges i — hverken mere eller mindre. At strække den
   // ned under headeren ville ramme søgefeltet, der ligger ved `insets.top + 52`.
-  lag: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }
+  lag: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 },
+  bund: { position: 'absolute', left: 0, right: 0, bottom: 0 }
 })

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { ActivityIndicator, Linking, Modal, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native'
+import type { ReactNode } from 'react'
+import { ActivityIndicator, Linking, Modal, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { QrScanScreen } from './QrScanScreen'
 import { DataControlsScreen } from './DataControlsScreen'
@@ -36,6 +37,7 @@ import { AppearanceSection } from '../components/AppearanceSection'
 import { LanguageSection } from '../components/LanguageSection'
 import { SvarstilSection } from '../components/SvarstilSection'
 import { useI18n } from '../i18n/I18nContext'
+import { SETTINGS_GRUPPER, matcherSoegning, type SettingsPunktId } from '../lib/settingsGrupper'
 
 const CONN_LABEL: Record<string, string> = {
   connected: 'Forbundet til Jarvis ✓',
@@ -91,6 +93,7 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
   const [currentDeviceName, setCurrentDeviceName] = useState('')
   const [routeTargetName, setRouteTargetName] = useState('')
   const [outboxCount, setOutboxCount] = useState(0)
+  const [soeg, setSoeg] = useState('')
   useEffect(() => { void bubble.isSupported().then(setBubbleOk) }, [])
   useEffect(() => { void loadBubblePersist().then(setPersistBubble) }, [])
   useEffect(() => { void loadPrecision().then(setLocPrecision) }, [])
@@ -198,83 +201,27 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
     outboxCount
   }, t)
 
-  return (
-    <View style={[styles.root, { paddingTop: insets.top }]}>
-      <View style={styles.header}>
-        <Text style={styles.heading}>{t('settings.title')}</Text>
-        {onClose ? (
-          <Pressable accessibilityRole="button" accessibilityLabel={t('settings.close')} onPress={onClose} hitSlop={8} style={styles.close}>
-            <Text style={styles.closeX}>✕</Text>
-          </Pressable>
-        ) : null}
-      </View>
-
-      <ScrollView contentContainerStyle={styles.body}>
-        {/* Konto-hoved. Målt i ChatGPT-appen: avatar og navn ØVERST og
-            centreret, før alt andet. Det svarer på «hvis konto er det her?»
-            før man begynder at ændre noget — og det spørgsmål er værd at
-            besvare først, når appen kan bruges af flere i samme hjem. */}
-        <View style={styles.identity}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{initials(profile?.name || profile?.email || '?')}</Text>
-          </View>
-          <Text style={styles.identityName}>{profile?.name || profile?.email || 'Konto'}</Text>
-          {profile?.email && profile?.name ? (
-            <Text style={styles.identityMail}>{profile.email}</Text>
-          ) : null}
-        </View>
-
-        <View style={styles.healthGrid}>
-          {healthTiles.map((tile) => (
-            <View key={tile.label} style={styles.healthTile}>
-              <View style={[styles.healthDot, tile.state === 'ok' ? styles.healthOk : tile.state === 'warn' ? styles.healthWarn : styles.healthOff]} />
-              <Text style={styles.healthLabel}>{tile.label}</Text>
-              <Text style={styles.healthValue} numberOfLines={1}>{tile.value}</Text>
-            </View>
-          ))}
-        </View>
-
-        <Text style={styles.sectionTitle}>{t('devices.section')}</Text>
-        <View style={styles.card}>
-          <Text style={styles.value}>{t('devices.current', { name: currentDeviceName || t('devices.none') })}</Text>
-          <Text style={styles.muted}>
-            {routeTargetName ? t('devices.routeNow', { name: routeTargetName }) : t('devices.routeHint')}
-          </Text>
-          {deviceRows.slice(0, 3).map((row) => (
-            <Text key={row.key} style={styles.deviceLine}>
-              {row.current ? '• ' : ''}{row.label}{row.routeTarget ? ' → valgt' : ''} · {row.detail}
-            </Text>
-          ))}
-          <Pressable accessibilityRole="button" onPress={checkPresence} style={styles.secondaryButton}>
-            <Text style={styles.secondaryButtonText}>{t('devices.refresh')}</Text>
-          </Pressable>
-        </View>
-
-        <Text style={styles.sectionTitle}>Sanser & privatliv</Text>
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => setPrivacyOpen(true)}
-          style={({ pressed }) => [styles.card, styles.rowCard, pressed && styles.pressedRow]}
-        >
-          <View style={styles.rowText}>
-            <Text style={styles.rowLabel}>Sensor-dashboard</Text>
-            <Text style={styles.muted}>Kamera, mikrofon, lokation, baggrund, boble og batteri samlet.</Text>
-          </View>
-          <Text style={styles.chevron}>›</Text>
-        </Pressable>
-
-        <Text style={styles.sectionTitle}>{t('settings.account')}</Text>
-        <View style={styles.card}>
-          <Text style={styles.cardEmail}>{profile?.email || config?.apiBaseUrl || 'Konto'}</Text>
-          <View style={styles.badges}>
-            {profile?.role ? <Text style={styles.badge}>{profile.role}</Text> : null}
-            {profile?.tier ? <Text style={styles.badge}>{profile.tier}</Text> : null}
-          </View>
-          <Text style={[styles.connLine, connectivity === 'connected' ? styles.ok : connectivity === 'offline' ? styles.connBad : styles.connWarn]}>
-            ● {CONN_LABEL[connectivity]}
-          </Text>
-        </View>
-
+  // Hvert punkt er nu en node i en GRUPPE frem for en fri sektion i en flad
+  // liste. Rækkefølgen og søgeordene ejes af `settingsGrupper` — én kilde,
+  // så skærmen og testen ikke kan drive fra hinanden.
+  const punkter: Record<SettingsPunktId, ReactNode> = {
+    udseende: (
+      <>
+        <AppearanceSection />
+      </>
+    ),
+    sprog: (
+      <>
+        <LanguageSection config={config ?? null} currentLanguage={profile?.language} />
+      </>
+    ),
+    svarstil: (
+      <>
+        <SvarstilSection config={config ?? null} />
+      </>
+    ),
+    hukommelse: (
+      <>
         <Text style={styles.sectionTitle}>Hukommelse</Text>
         <Pressable
           accessibilityRole="button"
@@ -287,118 +234,26 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
           </View>
           <Text style={styles.chevron}>›</Text>
         </Pressable>
-
-        {/* Plugins / connectors */}
-        <AppearanceSection />
-        <LanguageSection config={config ?? null} currentLanguage={profile?.language} />
-        <SvarstilSection config={config ?? null} />
-
-        <Text style={styles.sectionTitle}>Tilsluttede tjenester</Text>
-        <View style={styles.card}>
-          {connectorsLoading ? (
-            <ActivityIndicator color={tokens.color.accent} style={styles.loader} />
-          ) : connectors.length === 0 ? (
-            <Text style={styles.muted}>Ingen plugins</Text>
-          ) : (
-            connectors.map((c, idx) => (
-              <View key={c.id} style={[styles.connectorRow, idx > 0 ? styles.divider : null]}>
-                <View style={styles.connectorInfo}>
-                  <Text style={styles.connectorName} numberOfLines={1}>{c.name}</Text>
-                  <Text style={styles.connectorMeta} numberOfLines={1}>{c.connected ? 'Forbundet' : c.category}</Text>
-                </View>
-                <Switch
-                  value={c.enabled}
-                  disabled={pendingId === c.id || c.status === 'coming_soon'}
-                  onValueChange={(next) => void toggleConnector(c, next)}
-                  trackColor={{ true: tokens.color.accent, false: tokens.color.bg3 }}
-                />
-              </View>
-            ))
-          )}
-        </View>
-
-        {/* Google */}
-        <Text style={styles.sectionTitle}>Google</Text>
-        <View style={styles.card}>
-          {linked ? (
-            <Text style={styles.value}><Text style={styles.ok}>Google forbundet ✓</Text>  Du kan logge ind med Google.</Text>
-          ) : (
-            <Text style={styles.muted}>Forbind kontoen for Google-login fremover.</Text>
-          )}
-          <Pressable
-            accessibilityRole="button"
-            disabled={googleBusy}
-            onPress={linkGoogle}
-            style={[styles.secondaryButton, googleBusy ? styles.buttonDisabled : null]}
-          >
-            <Text style={styles.secondaryButtonText}>
-              {googleBusy ? 'Forbinder...' : linked ? 'Forbind en anden Google-konto' : 'Forbind Google-konto'}
-            </Text>
-          </Pressable>
-          {googleMessage ? <Text style={styles.message}>{googleMessage}</Text> : null}
-        </View>
-
-        {/* Diagnostik */}
-        <Text style={styles.sectionTitle}>Diagnostik</Text>
-        <View style={styles.card}>
-          <Text style={styles.value}>{diagnostic}</Text>
-          <Pressable accessibilityRole="button" onPress={checkApi} style={styles.secondaryButton}>
-            <Text style={styles.secondaryButtonText}>Test API</Text>
-          </Pressable>
-          {presenceDiagnostic ? <Text style={styles.message}>{presenceDiagnostic}</Text> : null}
-          <Pressable accessibilityRole="button" onPress={checkPresence} style={styles.secondaryButton}>
-            <Text style={styles.secondaryButtonText}>Test device-presence</Text>
-          </Pressable>
-        </View>
-
-        <Text style={styles.sectionTitle}>Batteri</Text>
-        <View style={styles.card}>
-          <View style={styles.bubbleRow}>
-            <Text style={styles.value}>Batterioptimering</Text>
-            <Switch
-              value={batterySaver}
-              onValueChange={(on) => {
-                setBatterySaver(on)
-                void saveBatterySaver(on)
-              }}
-              trackColor={{ true: tokens.color.accent, false: tokens.color.bg3 }}
-            />
+      </>
+    ),
+    sanser: (
+      <>
+        <Text style={styles.sectionTitle}>Sanser & privatliv</Text>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => setPrivacyOpen(true)}
+          style={({ pressed }) => [styles.card, styles.rowCard, pressed && styles.pressedRow]}
+        >
+          <View style={styles.rowText}>
+            <Text style={styles.rowLabel}>Sensor-dashboard</Text>
+            <Text style={styles.muted}>Kamera, mikrofon, lokation, baggrund, boble og batteri samlet.</Text>
           </View>
-          <Text style={styles.muted}>Reducerer live-stream, polling og præcis GPS når Jarvis kan hente state igen senere.</Text>
-        </View>
-
-        {/* Tankestrømmen: standarden er ChatGPT-agtig (kun halen), hele
-            strømmen er et tilvalg for den avancerede bruger. */}
-        <Text style={styles.sectionTitle}>Chat</Text>
-        <View style={styles.card}>
-          <View style={styles.bubbleRow}>
-            <Text style={styles.value}>Vis hele tankestrømmen</Text>
-            <Switch
-              value={fullThinking}
-              onValueChange={(on) => {
-                setFullThinking(on)
-                void saveFullThinking(on)
-              }}
-              trackColor={{ true: tokens.color.accent, false: tokens.color.bg3 }}
-            />
-          </View>
-          <Text style={styles.muted}>
-            Som standard folder «Tænkte i X s» ud til den sidste del af tænkningen — nok til at
-            følge tanken. Slår du dette til, hentes HELE ræsonneringen bag svaret, når du folder
-            linjen ud. Den er markant længere, og den hentes kun når du selv beder om den.
-          </Text>
-        </View>
-
-        {/* Forbind enhed (scan QR fra desktop) */}
-        <Text style={styles.sectionTitle}>Forbind enhed</Text>
-        <View style={styles.card}>
-          <Text style={styles.value}><Text style={styles.ok}>Denne enhed er forbundet ✓</Text></Text>
-          <Text style={styles.muted}>Skal du parre en ny telefon? Scan "Forbind mobil-app"-QR'en i Jarvis-desk.</Text>
-          <Pressable accessibilityRole="button" onPress={() => setQrOpen(true)} style={styles.secondaryButton}>
-            <Text style={styles.secondaryButtonText}>Scan QR</Text>
-          </Pressable>
-        </View>
-
+          <Text style={styles.chevron}>›</Text>
+        </Pressable>
+      </>
+    ),
+    lokation: (
+      <>
         <Text style={styles.sectionTitle}>Lokation</Text>
         <View style={styles.card}>
           <Text style={styles.value}>Del lokation med Jarvis</Text>
@@ -430,7 +285,209 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
                       : 'Præcis (gade) via GPS — fx "Toftegårdsvej, Svendborg". Kun mens appen er åben.'}
           </Text>
         </View>
+      </>
+    ),
+    batteri: (
+      <>
+        <Text style={styles.sectionTitle}>Batteri</Text>
+        <View style={styles.card}>
+          <View style={styles.bubbleRow}>
+            <Text style={styles.value}>Batterioptimering</Text>
+            <Switch
+              value={batterySaver}
+              onValueChange={(on) => {
+                setBatterySaver(on)
+                void saveBatterySaver(on)
+              }}
+              trackColor={{ true: tokens.color.accent, false: tokens.color.bg3 }}
+            />
+          </View>
+          <Text style={styles.muted}>Reducerer live-stream, polling og præcis GPS når Jarvis kan hente state igen senere.</Text>
+        </View>
 
+        {/* Tankestrømmen: standarden er ChatGPT-agtig (kun halen), hele
+            strømmen er et tilvalg for den avancerede bruger. */}
+      </>
+    ),
+    enheder: (
+      <>
+        <Text style={styles.sectionTitle}>{t('devices.section')}</Text>
+        <View style={styles.card}>
+          <Text style={styles.value}>{t('devices.current', { name: currentDeviceName || t('devices.none') })}</Text>
+          <Text style={styles.muted}>
+            {routeTargetName ? t('devices.routeNow', { name: routeTargetName }) : t('devices.routeHint')}
+          </Text>
+          {deviceRows.slice(0, 3).map((row) => (
+            <Text key={row.key} style={styles.deviceLine}>
+              {row.current ? '• ' : ''}{row.label}{row.routeTarget ? ' → valgt' : ''} · {row.detail}
+            </Text>
+          ))}
+          <Pressable accessibilityRole="button" onPress={checkPresence} style={styles.secondaryButton}>
+            <Text style={styles.secondaryButtonText}>{t('devices.refresh')}</Text>
+          </Pressable>
+        </View>
+      </>
+    ),
+    tjenester: (
+      <>
+        <Text style={styles.sectionTitle}>Tilsluttede tjenester</Text>
+        <View style={styles.card}>
+          {connectorsLoading ? (
+            <ActivityIndicator color={tokens.color.accent} style={styles.loader} />
+          ) : connectors.length === 0 ? (
+            <Text style={styles.muted}>Ingen plugins</Text>
+          ) : (
+            connectors.map((c, idx) => (
+              <View key={c.id} style={[styles.connectorRow, idx > 0 ? styles.divider : null]}>
+                <View style={styles.connectorInfo}>
+                  <Text style={styles.connectorName} numberOfLines={1}>{c.name}</Text>
+                  <Text style={styles.connectorMeta} numberOfLines={1}>{c.connected ? 'Forbundet' : c.category}</Text>
+                </View>
+                <Switch
+                  value={c.enabled}
+                  disabled={pendingId === c.id || c.status === 'coming_soon'}
+                  onValueChange={(next) => void toggleConnector(c, next)}
+                  trackColor={{ true: tokens.color.accent, false: tokens.color.bg3 }}
+                />
+              </View>
+            ))
+          )}
+        </View>
+
+        {/* Google */}
+      </>
+    ),
+    notifikationer: (
+      <>
+        <NotificationsSection config={config ?? null} />
+      </>
+    ),
+    google: (
+      <>
+        <Text style={styles.sectionTitle}>Google</Text>
+        <View style={styles.card}>
+          {linked ? (
+            <Text style={styles.value}><Text style={styles.ok}>Google forbundet ✓</Text>  Du kan logge ind med Google.</Text>
+          ) : (
+            <Text style={styles.muted}>Forbind kontoen for Google-login fremover.</Text>
+          )}
+          <Pressable
+            accessibilityRole="button"
+            disabled={googleBusy}
+            onPress={linkGoogle}
+            style={[styles.secondaryButton, googleBusy ? styles.buttonDisabled : null]}
+          >
+            <Text style={styles.secondaryButtonText}>
+              {googleBusy ? 'Forbinder...' : linked ? 'Forbind en anden Google-konto' : 'Forbind Google-konto'}
+            </Text>
+          </Pressable>
+          {googleMessage ? <Text style={styles.message}>{googleMessage}</Text> : null}
+        </View>
+
+        {/* Diagnostik */}
+      </>
+    ),
+    forbind: (
+      <>
+        {/* Forbind enhed (scan QR fra desktop) */}
+        <Text style={styles.sectionTitle}>Forbind enhed</Text>
+        <View style={styles.card}>
+          <Text style={styles.value}><Text style={styles.ok}>Denne enhed er forbundet ✓</Text></Text>
+          <Text style={styles.muted}>Skal du parre en ny telefon? Scan "Forbind mobil-app"-QR'en i Jarvis-desk.</Text>
+          <Pressable accessibilityRole="button" onPress={() => setQrOpen(true)} style={styles.secondaryButton}>
+            <Text style={styles.secondaryButtonText}>Scan QR</Text>
+          </Pressable>
+        </View>
+      </>
+    ),
+    konto: (
+      <>
+        <Text style={styles.sectionTitle}>{t('settings.account')}</Text>
+        <View style={styles.card}>
+          <Text style={styles.cardEmail}>{profile?.email || config?.apiBaseUrl || 'Konto'}</Text>
+          <View style={styles.badges}>
+            {profile?.role ? <Text style={styles.badge}>{profile.role}</Text> : null}
+            {profile?.tier ? <Text style={styles.badge}>{profile.tier}</Text> : null}
+          </View>
+          <Text style={[styles.connLine, connectivity === 'connected' ? styles.ok : connectivity === 'offline' ? styles.connBad : styles.connWarn]}>
+            ● {CONN_LABEL[connectivity]}
+          </Text>
+        </View>
+      </>
+    ),
+    data: (
+      <>
+        {/* Dine data. Egen skærm frem for et par rækker her: sletning er
+            uigenkaldelig og fortjener plads til at forklare hvad man mister. */}
+        <Text style={styles.sectionTitle}>Dine data</Text>
+        <Pressable
+          testID="open-data-controls"
+          accessibilityRole="button"
+          onPress={() => setDataOpen(true)}
+          style={({ pressed }) => [styles.card, styles.rowCard, pressed && styles.pressedRow]}
+        >
+          <View style={styles.rowText}>
+            <Text style={styles.rowLabel}>Datastyring</Text>
+            <Text style={styles.muted}>Se, eksportér eller slet det Jarvis husker om dig.</Text>
+          </View>
+          <Text style={styles.chevron}>›</Text>
+        </Pressable>
+      </>
+    ),
+    status: (
+      <>
+        <Text style={styles.sectionTitle}>Status</Text>
+        <View style={styles.healthGrid}>
+          {healthTiles.map((tile) => (
+            <View key={tile.label} style={styles.healthTile}>
+              <View style={[styles.healthDot, tile.state === 'ok' ? styles.healthOk : tile.state === 'warn' ? styles.healthWarn : styles.healthOff]} />
+              <Text style={styles.healthLabel}>{tile.label}</Text>
+              <Text style={styles.healthValue} numberOfLines={1}>{tile.value}</Text>
+            </View>
+          ))}
+        </View>
+      </>
+    ),
+    diagnostik: (
+      <>
+        <Text style={styles.sectionTitle}>Diagnostik</Text>
+        <View style={styles.card}>
+          <Text style={styles.value}>{diagnostic}</Text>
+          <Pressable accessibilityRole="button" onPress={checkApi} style={styles.secondaryButton}>
+            <Text style={styles.secondaryButtonText}>Test API</Text>
+          </Pressable>
+          {presenceDiagnostic ? <Text style={styles.message}>{presenceDiagnostic}</Text> : null}
+          <Pressable accessibilityRole="button" onPress={checkPresence} style={styles.secondaryButton}>
+            <Text style={styles.secondaryButtonText}>Test device-presence</Text>
+          </Pressable>
+        </View>
+      </>
+    ),
+    chat: (
+      <>
+        <Text style={styles.sectionTitle}>Chat</Text>
+        <View style={styles.card}>
+          <View style={styles.bubbleRow}>
+            <Text style={styles.value}>Vis hele tankestrømmen</Text>
+            <Switch
+              value={fullThinking}
+              onValueChange={(on) => {
+                setFullThinking(on)
+                void saveFullThinking(on)
+              }}
+              trackColor={{ true: tokens.color.accent, false: tokens.color.bg3 }}
+            />
+          </View>
+          <Text style={styles.muted}>
+            Som standard folder «Tænkte i X s» ud til den sidste del af tænkningen — nok til at
+            følge tanken. Slår du dette til, hentes HELE ræsonneringen bag svaret, når du folder
+            linjen ud. Den er markant længere, og den hentes kun når du selv beder om den.
+          </Text>
+        </View>
+      </>
+    ),
+    boble: (
+      <>
         {bubbleOk ? (
           <>
             <Text style={styles.sectionTitle}>Chatboble</Text>
@@ -451,24 +508,65 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
             </View>
           </>
         ) : null}
+      </>
+    ),
+  }
 
-        <NotificationsSection config={config ?? null} />
+  return (
+    <View style={[styles.root, { paddingTop: insets.top }]}>
+      <View style={styles.header}>
+        <Text style={styles.heading}>{t('settings.title')}</Text>
+        {onClose ? (
+          <Pressable accessibilityRole="button" accessibilityLabel={t('settings.close')} onPress={onClose} hitSlop={8} style={styles.close}>
+            <Text style={styles.closeX}>✕</Text>
+          </Pressable>
+        ) : null}
+      </View>
 
-        {/* Dine data. Egen skærm frem for et par rækker her: sletning er
-            uigenkaldelig og fortjener plads til at forklare hvad man mister. */}
-        <Text style={styles.sectionTitle}>Dine data</Text>
-        <Pressable
-          testID="open-data-controls"
-          accessibilityRole="button"
-          onPress={() => setDataOpen(true)}
-          style={({ pressed }) => [styles.card, styles.rowCard, pressed && styles.pressedRow]}
-        >
-          <View style={styles.rowText}>
-            <Text style={styles.rowLabel}>Datastyring</Text>
-            <Text style={styles.muted}>Se, eksportér eller slet det Jarvis husker om dig.</Text>
+      <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
+
+        {/* Konto-hoved. Målt i ChatGPT-appen: avatar og navn ØVERST og
+            centreret, før alt andet. Det svarer på «hvis konto er det her?»
+            før man begynder at ændre noget — og det spørgsmål er værd at
+            besvare først, når appen kan bruges af flere i samme hjem. */}
+        <View style={styles.identity}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>{initials(profile?.name || profile?.email || '?')}</Text>
           </View>
-          <Text style={styles.chevron}>›</Text>
-        </Pressable>
+          <Text style={styles.identityName}>{profile?.name || profile?.email || 'Konto'}</Text>
+          {profile?.email && profile?.name ? (
+            <Text style={styles.identityMail}>{profile.email}</Text>
+          ) : null}
+        </View>
+
+        {/* Søgning. Den der ved hvad de leder efter, behøver ikke forstå
+            grupperne; den der ikke gør, kan læse dem. Den filtrerer på
+            punkternes søgeord, så «mørk» rammer Udseende uden at man kender
+            ordet «tema». */}
+        <TextInput
+          testID="settings-soeg"
+          accessibilityLabel="Søg i indstillinger"
+          value={soeg}
+          onChangeText={setSoeg}
+          placeholder="Søg i indstillinger"
+          placeholderTextColor={tokens.color.fg3}
+          autoCorrect={false}
+          autoCapitalize="none"
+          style={styles.soeg}
+        />
+
+        {SETTINGS_GRUPPER.map((gruppe) => {
+          const synlige = gruppe.punkter.filter((p) => matcherSoegning(p.noegle, soeg))
+          if (!synlige.length) return null
+          return (
+            <View key={gruppe.navn}>
+              <Text style={styles.groupTitle}>{gruppe.navn}</Text>
+              {synlige.map((p) => (
+                <View key={p.id}>{punkter[p.id]}</View>
+              ))}
+            </View>
+          )
+        })}
 
         <Pressable accessibilityRole="button" onPress={() => void signOut()} style={styles.signOut}>
           <Text style={styles.signOutText}>Log ud</Text>
@@ -601,6 +699,26 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
     textTransform: 'uppercase',
     marginTop: tokens.spacing.md,
     marginBottom: tokens.spacing.xs
+  },
+  /** Gruppens navn. Større end sektionens eget med vilje: der er nu TRE
+   *  niveauer — gruppe, sektion, række — og de skal kunne ses på afstand. */
+  groupTitle: {
+    color: tokens.color.fg1,
+    fontSize: 18,
+    fontWeight: '700',
+    marginTop: tokens.spacing.xl,
+    marginBottom: tokens.spacing.xs
+  },
+  soeg: {
+    backgroundColor: tokens.color.bg1,
+    borderRadius: tokens.radius.lg,
+    borderWidth: 1,
+    borderColor: tokens.color.line,
+    color: tokens.color.fg1,
+    fontSize: 15,
+    paddingHorizontal: tokens.spacing.md,
+    paddingVertical: tokens.spacing.md,
+    marginBottom: tokens.spacing.sm
   },
   value: { color: tokens.color.fg1 },
   ok: { color: tokens.color.accentText, fontWeight: '700' },

@@ -12,7 +12,7 @@ import { SkillLine, SkillSurfaceLine } from './SkillLine'
 import { SKILL_VAERKTOEJER } from '../../lib/skillLinje'
 import { useVisningen, type Visning } from '../../lib/visning'
 import { TankeResumeLinje } from './TankeResumeLinje'
-import { erBilledVaerktoej, GeneratedImageGallery, ImageGenerationProgress } from './ImageGeneration'
+import { BilledArbejdeAnimation, GeneratedImageGallery, levendeBilledArbejde } from './ImageGeneration'
 
 type ProgressBlock = Extract<ContentBlock, { type: 'progress' }>
 
@@ -217,22 +217,26 @@ function BlockView({
         const etik = block.tools.map((t) => rundeEtiketter?.[t.id]).find(Boolean)
         // «Tænkning»: resuméet af tænkningen står OVER gruppen (Claude Desktop §2).
         const resume = visning === 'thinking' ? block.tools.map((t) => tankeResumeer?.[t.id]).find(Boolean) : undefined
+        // Generering ELLER analyse — ét opslag, så et nyt billedværktøj ikke
+        // kan blive husket her og glemt de to andre steder.
+        const billedArbejde = streaming ? levendeBilledArbejde(block.tools) : null
         return (
           <>
             {resume ? <TankeResumeLinje tekst={resume} /> : null}
             <ToolGroupCard block={block} density={density} etiket={etik} />
-            {streaming && block.tools.some((tool) => erBilledVaerktoej(tool.name) && (tool.status ?? 'running') === 'running')
-              ? <ImageGenerationProgress /> : null}
+            {billedArbejde ? <BilledArbejdeAnimation arbejde={billedArbejde} config={config} /> : null}
           </>
         )
       }
-    case 'tool_use':
-      return streaming && erBilledVaerktoej(block.name) && (block.status ?? 'running') === 'running'
-        ? <><ToolCard block={block} density={density} aabenFraStart={visning === 'verbose'} beskedId={beskedId} config={config} /><ImageGenerationProgress /></>
+    case 'tool_use': {
+      const billedArbejde = streaming ? levendeBilledArbejde([block]) : null
+      return billedArbejde
+        ? <><ToolCard block={block} density={density} aabenFraStart={visning === 'verbose'} beskedId={beskedId} config={config} /><BilledArbejdeAnimation arbejde={billedArbejde} config={config} /></>
         : SKILL_VAERKTOEJER.has(block.name)
         ? <SkillLine block={block} density={density} />
         : <ToolCard block={block} density={density} aabenFraStart={visning === 'verbose'}
             beskedId={beskedId} config={config} />
+    }
     case 'image':
       // LIVE billede bærer en `src` (data-URL fra streamen) og kan tegnes med
       // det samme. PERSISTERET bærer kun en reference og skal hentes med token

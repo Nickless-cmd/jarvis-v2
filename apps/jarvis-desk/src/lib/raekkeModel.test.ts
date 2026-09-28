@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { opdel, opdelArbejdsrunder, turFortalt, turHoved } from './raekkeModel'
 import type { ContentBlock } from './sseProtocol'
+import { erBilledVaerktoej } from '../components/rich/ImageGeneration'
 
 /**
  * Opdelingen er hele rækkevisningen.
@@ -201,5 +202,57 @@ describe('opdelArbejdsrunder', () => {
   it('laver ikke en tom arbejdsrunde af en tanke uden værktøjskald', () => {
     const { arbejde } = opdel([tanke(3), tekst('Jeg læser filen.'), kald('read_file'), tekst('Svar.')])
     expect(opdelArbejdsrunder(arbejde).map((s) => s.slags)).toEqual(['enkelt', 'syntese', 'runde'])
+  })
+})
+
+describe('forløbet Bjørn bad om (27/9-2026)', () => {
+  // «generér billede (animationen) → vis billede → streamen fortsætter →
+  //  streamen slutter (billedet står i det foldede hoveds svar, som nu)»
+  //
+  // Animationen tegnes af `RaekkeTranskript` mellem arbejdet og svaret, og
+  // kun mens billedværktøjets `tool_use` har status `running`. Svaret tegnes
+  // uanset om turens hoved er foldet ud. Så i samme øjeblik blokken lander,
+  // står billedet dér hvor animationen lige stod.
+  //
+  // Det er IKKE fordi hovedet er foldet ud at billedet manglede — `erLeverance`
+  // har løftet billeder ud af arbejdet siden c1428a7da. Der fandtes bare ingen
+  // billedblok i streamen at løfte.
+  const kald = (status: 'running' | 'done'): ContentBlock =>
+    ({ type: 'tool_use', id: 'tu-1', name: 'openrouter_image', input: {}, status } as ContentBlock)
+  const billede: ContentBlock =
+    { type: 'image', src: 'data:image/png;base64,AAA', tool_use_id: 'tu-1' } as ContentBlock
+
+  it('1) mens værktøjet kører: intet billede endnu, kaldet er arbejde', () => {
+    const { arbejde, svar } = opdel([kald('running')])
+    expect(svar).toHaveLength(0)
+    expect(arbejde).toHaveLength(1)
+  })
+
+  it('2) blokken lander: billedet står i SVARET, ikke bag turens hoved', () => {
+    const { arbejde, svar } = opdel([kald('done'), billede])
+    expect(svar).toEqual([billede])
+    expect(arbejde.some((e) => e.slags === 'blok' && e.blok.type === 'image')).toBe(false)
+  })
+
+  it('3) streamen fortsætter: senere kald skubber ikke billedet tilbage i arbejdet', () => {
+    // Skillelinjen er det SIDSTE tool_use. Uden `erLeverance` ville billedet
+    // her falde i arbejdet og forsvinde bag hovedet — præcis fejlen fra 27/9.
+    const senere = { type: 'tool_use', id: 'tu-2', name: 'remember_this', input: {}, status: 'done' } as ContentBlock
+    const { svar } = opdel([kald('done'), billede, senere])
+    expect(svar).toEqual([billede])
+  })
+
+  it('4) turen slutter: billedet står sammen med den endelige tekst', () => {
+    const tekst = { type: 'text', text: 'Her er billedet.' } as ContentBlock
+    const senere = { type: 'tool_use', id: 'tu-2', name: 'remember_this', input: {}, status: 'done' } as ContentBlock
+    const { svar } = opdel([kald('done'), billede, senere, tekst])
+    expect(svar).toEqual([billede, tekst])
+  })
+
+  it('alle tre billedværktøjer udløser animationen — ikke kun genereringen', () => {
+    for (const n of ['openrouter_image', 'openrouter_image_edit', 'pollinations_image']) {
+      expect(erBilledVaerktoej(n)).toBe(true)
+    }
+    expect(erBilledVaerktoej('remember_this')).toBe(false)
   })
 })

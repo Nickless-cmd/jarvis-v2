@@ -1089,22 +1089,25 @@ def _exec_get_news(args: dict[str, Any]) -> dict[str, Any]:
 
 
 def _stage_image_preview(image_bytes: bytes | None, source_path: str) -> str:
-    """Give Desk a narrowly whitelisted copy of a server-side image."""
-    import tempfile
+    """Den sti desk kan hente billedet paa — uden at aabne hvidlisten.
 
-    if not image_bytes or len(image_bytes) > 12 * 1024 * 1024:
+    Var en kopi ved HVERT kald, med `NamedTemporaryFile`. To ting var galt med
+    det: den kopierede ogsaa naar originalen allerede maatte vises (alt
+    uploadet ligger under `JARVIS_HOME`), og ventefladen — som nu skal bruge
+    den samme sti under koerslen — ville have lavet endnu en ved siden af.
+    Maalt 28/9-2026 paa CT105: 163 kopier, 120 MB.
+
+    `visnings_sti` svarer paa begge dele: originalen naar den maa vises, ellers
+    én kopi med et navn udledt af filen selv, saa to kald om samme billede
+    lander paa samme fil.
+
+    `image_bytes` er ikke laengere noedvendig — kilden laeses fra disken — men
+    beholdes som skranke: er der intet indhold, er der intet at vise.
+    """
+    if not image_bytes:
         return ""
-    suffix = Path(source_path).suffix.lower()
-    if suffix not in {".png", ".jpg", ".jpeg", ".webp", ".gif", ".avif"}:
-        return ""
-    try:
-        with tempfile.NamedTemporaryFile(prefix="jarvisx-vision-", suffix=suffix,
-                                         delete=False) as preview:
-            preview.write(image_bytes)
-            return preview.name
-    except OSError as exc:
-        logger.warning("could not stage image preview for Desk: %s", exc)
-        return ""
+    from core.services.vision_preview import visnings_sti
+    return visnings_sti(source_path)
 
 
 def _exec_analyze_image(args: dict[str, Any]) -> dict[str, Any]:

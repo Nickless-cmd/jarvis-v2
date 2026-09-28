@@ -169,6 +169,22 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
             delete blocks[i]
           }
         }
+      } else if (cb.type === 'image') {
+        // Billedet fandtes ikke i streamen før 27/9-2026: værktøjet lagde en
+        // note fra sig, og blokken blev først bygget når svaret blev gemt.
+        // Animationen vistes, fordi den er sin egen komponent — billedet havde
+        // ingen blok at bo i før turen var slut.
+        blocks[event.index] = {
+          type: 'image',
+          src: cb.src,
+          alt: cb.alt,
+          attachment_id: cb.attachment_id,
+          url: cb.url,
+          filename: cb.filename,
+          mime_type: cb.mime_type,
+          kilde: cb.kilde,
+          tool_use_id: cb.tool_use_id,
+        }
       } else if (cb.type === 'tool_result') {
         // Fold resultatet ind på sin matchende tool_use-blok (via tool_use_id) i
         // stedet for at fylde `blocks[event.index]`. Dette er MED VILJE — hvis vi
@@ -336,8 +352,24 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
           return { ...state, workingStep: detail }
         }
         const skridt = Number(event.payload.step ?? 0)
-        // Allerede annonceret (genoptag efter reconnect) → lad blokken stå.
-        if (state.blocks.some((b) => b && b.type === 'tool_use' && b.foreloebig?.skridt === skridt)) {
+        // Allerede annonceret → lav den ikke igen. To slags «allerede»:
+        //
+        //  1. En foreløbig blok for SAMME skridt (genoptag efter reconnect).
+        //  2. Serverens EGEN blok for samme værktøj, som stadig kører.
+        //
+        // (2) er driftens normaltilfælde og manglede: `_emit_tool_use_start`
+        // lægger `content_block_start` + argumenterne på køen og sender FØRST
+        // DEREFTER `system_event(working_step)` med det samme kald. Den
+        // foreløbige blok blev altså født EFTER den rigtige, havnede sidst i
+        // arrayet — og `buildStreamingRows` beholder den SIDSTE venteflade.
+        // Resultat, målt 28/9-2026 på telefonen: `analyze_image`-animationen
+        // stod uden navn og uden billede, fordi den blok der vandt var den
+        // tomme. Den rigtige, med `image_path`, blev smidt væk.
+        const alleredeAnnonceret = state.blocks.some((b) => b && b.type === 'tool_use'
+          && (b.foreloebig
+            ? b.foreloebig.skridt === skridt
+            : b.name === navn && b.status === 'running'))
+        if (alleredeAnnonceret) {
           return { ...state, workingStep: detail }
         }
         // EN RIGTIG BLOK I TRÅDEN — ikke et kort ved siden af. Det er de samme

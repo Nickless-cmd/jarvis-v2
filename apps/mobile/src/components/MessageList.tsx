@@ -26,6 +26,8 @@ import { ThinkingSummary } from './ThinkingSummary'
 import { MessageAttachments } from './MessageAttachments'
 import { ToolResultCard } from './ToolResultCard'
 import { ImageGenerationCard } from './ImageGenerationCard'
+import { ImageAnalysisCard } from './ImageAnalysisCard'
+import { billedArbejdeFor } from '../lib/billedArbejde'
 
 export interface MessageListHandle {
   jumpTop: () => void       // ældste besked
@@ -50,6 +52,15 @@ interface MessageListProps {
    * stående, og de nyeste linjer forsvandt bag den. Nu følger indholdet med op.
    */
   bottomInset?: number
+  /**
+   * Headerens samlede højde — `insets.top + headerHeight` fra App.tsx.
+   *
+   * Lægges til `TOP_CLEARANCE`, så trådens øverste kant ligger UNDER den
+   * svævende header i stedet for 2 dp inde i den. Bjørn 28/9-2026: den
+   * øverste boble blev klippet fladt foroven, men kun når streamen stod
+   * stille — i hvile lander tråden på sin faste plads.
+   */
+  topInset?: number
   /**
    * Runde-etiketter slået op på tool-id — «Rettede fejl i login».
    *
@@ -111,6 +122,7 @@ type Row = (
   | { kind: 'tool'; key: string; content: string }
   | { kind: 'live-tool'; key: string; id?: string; name: string; body: string; running: boolean; etiket?: string; diff?: { tilfoejet: number; fjernet: number } | null }
   | { kind: 'image-generation'; key: string }
+  | { kind: 'image-analysis'; key: string; kilde: string; sti: string }
   /** Én RUNDE værktøjsarbejde, foldet sammen til én linje. */
   | { kind: 'tool-group'; key: string; items: ToolItem[] }
   /** Et skill-kald (skill_gate/skill_invoke) — sin EGEN linje, ikke i runden. */
@@ -339,10 +351,24 @@ function buildStreamingRows(blocks: ContentBlock[]): Row[] {
       // først op ved genindlæsning — altså netop mens man venter på det, og
       // det er dét Bjørn pegede på med ChatGPT-appen som facit (27/9-2026).
       flush()
+      // REFERENCEN skal med, ikke kun `src`. Er billedet for stort til en
+      // data-URL, sender serveren `attachment_id` alene — attachment'en er
+      // allerede registreret, så `blokUrl` finder den. Uden felterne her
+      // ville `tegnBillede` få hverken `src` eller adresse og tegne INTET,
+      // præcis for de største billeder.
       rows.push({
         kind: 'attachments',
         key: `stream-vedh-${rows.length}`,
-        items: [{ type: 'image', src: b.src, filename: b.alt }],
+        items: [{
+          type: 'image',
+          src: b.src,
+          attachment_id: b.attachment_id,
+          url: b.url,
+          filename: b.filename ?? b.alt,
+          mime_type: b.mime_type,
+          kilde: b.kilde,
+          tool_use_id: b.tool_use_id,
+        }],
         side: 'left',
       })
     }
@@ -355,11 +381,14 @@ function buildStreamingRows(blocks: ContentBlock[]): Row[] {
         kald: { name: b.name, input: b.input, result: b.result, status: b.status ?? 'running' },
       })
     }
-    else if (b.type === 'tool_use' &&
-      (b.name === 'openrouter_image' || b.name === 'openrouter_image_edit' || b.name === 'pollinations_image') &&
-      b.status !== 'done' && b.status !== 'error') {
+    else if (b.type === 'tool_use' && billedArbejdeFor(b)) {
+      // Generering ELLER analyse. Ét opslag (lib/billedArbejde), så et nyt
+      // billedværktøj ikke kan blive husket her og glemt i desk.
+      const arbejde = billedArbejdeFor(b)!
       flush()
-      rows.push({ kind: 'image-generation', key: `stream-image-${b.id || i}` })
+      rows.push(arbejde.slags === 'analyse'
+        ? { kind: 'image-analysis', key: `stream-analyse-${b.id || i}`, kilde: arbejde.kilde, sti: arbejde.sti }
+        : { kind: 'image-generation', key: `stream-image-${b.id || i}` })
     }
     else if (b.type === 'tool_use') {
       flush()
@@ -394,7 +423,8 @@ function buildStreamingRows(blocks: ContentBlock[]): Row[] {
   // En senere blok betyder at Jarvis er gået videre. Et gammelt tool_use kan
   // mangle slutstatus i en sparsom stream; ventefladen må ikke blive stående.
   for (let index = rows.length - 2; index >= 0; index--) {
-    if (rows[index]?.kind === 'image-generation') rows.splice(index, 1)
+    const k = rows[index]?.kind
+    if (k === 'image-generation' || k === 'image-analysis') rows.splice(index, 1)
   }
   // KUN den sidste række kan være i gang. Alt før den er overhalet af noget
   // der kom bagefter; det er selve beviset for at den er færdig.
@@ -422,7 +452,7 @@ function taenketid(start?: number, slut?: number): number | undefined {
 }
 
 export const MessageList = forwardRef<MessageListHandle, MessageListProps>(function MessageList(
-  { messages, blocks, working = false, onResend, onScrollOffset, bottomInset = 0, pins, onTogglePin, onSaveMemory, rundeEtiketter, skillFlade, nyeFra, visning = 'normal', tankeResumeer, onRewind },
+  { messages, blocks, working = false, onResend, onScrollOffset, bottomInset = 0, topInset = 0, pins, onTogglePin, onSaveMemory, rundeEtiketter, skillFlade, nyeFra, visning = 'normal', tankeResumeer, onRewind },
   ref
 ) {
   const tokens = useTheme()
@@ -759,6 +789,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
     <View style={styles.listeWrap}>
     <FlatList
       ref={flatRef}
+      testID="traad"
       inverted
       // Ingen linje over komponisten (Bjørn 21/9-2026: «tænke fragmenter bør
       // vises I tænke linjen i chatview og linjen over composer væk»). Den bar
@@ -816,6 +847,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
           return <MessageAttachments items={item.items} side={item.side} />
         }
         if (item.kind === 'image-generation') return <ImageGenerationCard />
+        if (item.kind === 'image-analysis') return <ImageAnalysisCard kilde={item.kilde} sti={item.sti} />
         if (item.kind === 'compact-marker') return <CompactMarkerRow content={item.content} />
         return (
           <MessageBubble
@@ -842,7 +874,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
       }}
       // INVERTERET: paddingTop lander visuelt NEDERST — det er dér tastaturet
       // og komponisten æder plads.
-      contentContainerStyle={[styles.content, { paddingTop: BOTTOM_CLEARANCE + bottomInset }]}
+      contentContainerStyle={[styles.content, { paddingTop: BOTTOM_CLEARANCE + bottomInset, paddingBottom: TOP_CLEARANCE + topInset }]}
       keyboardShouldPersistTaps="handled"
     />
     </View>
@@ -889,7 +921,9 @@ function CompactMarkerRow({ content }: { content: string }) {
  * komponisten. Man skal måle til bunden af det SIDSTE element, ikke af teksten.
  */
 const BOTTOM_CLEARANCE = 124
-const TOP_CLEARANCE = 72
+/** Luft under den svævende header UD OVER headerens egen højde. Selve
+ *  headerhøjden lægges til dynamisk via `topInset` — se `content`. */
+const TOP_CLEARANCE = 12
 
 const makestyles = (tokens: Theme) => StyleSheet.create({
   // Kompakterings-markøren: diskret, tonet i warn — samme udtryk som desktop.
@@ -916,8 +950,17 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
   nyeStreg: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: tokens.color.accent, opacity: 0.6 },
   nyeTekst: { color: tokens.color.accent, fontSize: 12, fontWeight: '600', letterSpacing: 0.3 },
   content: {
-    // paddingTop sættes dynamisk (BOTTOM_CLEARANCE + tastaturhøjde) — se
-    // contentContainerStyle. Kun den øverste er konstant.
-    paddingBottom: TOP_CLEARANCE
+    // BEGGE sættes dynamisk i contentContainerStyle — se den.
+    //
+    // Den øverste var FAST (TOP_CLEARANCE = 72) indtil 28/9-2026, og det var
+    // en fejl: 72 dp er målt fra skærmens top, men header'en fylder
+    // `insets.top + BADGE_H + polstring` — ca. 74 dp på Bjørns enhed. Tråden
+    // begyndte derfor 2 dp inde UNDER header'ens underkant, og den øverste
+    // boble blev klippet fladt foroven. Bjørn 28/9-2026: «Der sker et eller
+    // andet ved header … men kun når streamen står stille» — i hvile lander
+    // tråden på sin faste plads; mens der streames skubbes den op.
+    //
+    // Tallet kommer nu fra App.tsx, som allerede måler headerHeight til
+    // WorkScreen. Ét tal, ét sted.
   }
 })

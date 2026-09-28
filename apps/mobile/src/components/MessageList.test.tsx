@@ -308,3 +308,62 @@ it('tegner prikkerne som 16 rækker — ikke én flad stribe', async () => {
   ]} working />)
   expect(s.getAllByTestId('image-generation-raekke')).toHaveLength(16)
 })
+
+/**
+ * Billedet i streamen bærer sin REFERENCE (27/9-2026).
+ *
+ * Er billedet for stort til en data-URL, sender serveren `attachment_id`
+ * alene — attachment'en er allerede registreret, så adressen findes. Gav
+ * streaming-rækken kun `src` videre, fik `tegnBillede` hverken src eller
+ * adresse og tegnede INTET, præcis for de største billeder.
+ *
+ * Testet gennem den rigtige visning, ikke mod hjælperen: det er koblingen
+ * fra blok til tegnet billede der kunne knække.
+ */
+it('et streamet billede UDEN src tegnes stadig — via sin attachment_id', async () => {
+  const blocks: ContentBlock[] = [
+    { type: 'image', attachment_id: 'att-9', filename: 'stor.png',
+      mime_type: 'image/png', kilde: 'generated', tool_use_id: 'tu-1' } as ContentBlock,
+  ]
+  const s = await render(<MessageList messages={[]} blocks={blocks} working />)
+  expect(s.getByTestId('attachment-open-att-9')).toBeTruthy()
+})
+
+it('et streamet billede MED data-URL tegnes direkte', async () => {
+  const blocks: ContentBlock[] = [
+    { type: 'image', src: 'data:image/png;base64,AAA', filename: 'k.png' } as ContentBlock,
+  ]
+  const s = await render(<MessageList messages={[]} blocks={blocks} working />)
+  expect(s.getByTestId('attachment-open-k.png')).toBeTruthy()
+})
+
+// ── Trådens top-clearance (28/9-2026) ───────────────────────────────────
+//
+// Bjørn: «Der sker et eller andet ved header … men kun når streamen står
+// stille.» Den øverste boble blev klippet fladt foroven.
+//
+// Årsagen var at clearance var et FAST tal (72 dp) målt fra skærmens top,
+// mens header'en fylder `insets.top + BADGE_H + polstring` — ca. 74 dp på
+// hans enhed. Tråden begyndte derfor 2 dp inde UNDER header'ens underkant.
+// I hvile lander tråden på sin faste plads; mens der streames skubbes den op,
+// og derfor sås fejlen kun i hvile.
+//
+// Vagten holder at tallet kommer UDEFRA. Sætter nogen det faste tal tilbage,
+// fejler den her — og ikke først på hans telefon.
+it('lægger headerens højde oveni top-clearance — den er ikke et fast tal', async () => {
+  const s = await render(<MessageList messages={[msg({})]} blocks={[]} topInset={74} />)
+  const liste = s.getByTestId('traad')
+  const stil = liste.props.contentContainerStyle
+  const flad = Array.isArray(stil) ? Object.assign({}, ...stil.filter(Boolean)) : stil
+  // 12 (TOP_CLEARANCE) + 74 (header) = 86. Med det gamle faste tal ville
+  // paddingBottom vaere 72 uanset hvad der blev sendt ind.
+  expect(flad.paddingBottom).toBe(86)
+})
+
+it('uden topInset er der stadig luft — men kun den faste margin', async () => {
+  const s = await render(<MessageList messages={[msg({})]} blocks={[]} />)
+  const liste = s.getByTestId('traad')
+  const stil = liste.props.contentContainerStyle
+  const flad = Array.isArray(stil) ? Object.assign({}, ...stil.filter(Boolean)) : stil
+  expect(flad.paddingBottom).toBe(12)
+})

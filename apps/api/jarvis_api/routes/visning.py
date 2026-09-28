@@ -42,67 +42,25 @@ from pathlib import Path
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 
-from core.runtime.config import JARVIS_HOME
-
 router = APIRouter(prefix="/visning", tags=["visning"])
 logger = logging.getLogger(__name__)
 
-# Samme liste som desk'ens `electron/billede.ts`. To steder med samme regel er
-# ét sted for meget — men den ene kan ikke importere den anden (TS mod Python),
-# og reglen er lille nok til at kunne holdes i hånden.
-_MIME = {
-    ".png": "image/png",
-    ".jpg": "image/jpeg",
-    ".jpeg": "image/jpeg",
-    ".webp": "image/webp",
-    ".gif": "image/gif",
-    ".avif": "image/avif",
-}
-
-# 12 MB. Et fuldt skærmbillede er ~2 MB — resten er ikke noget vi viser.
-_LOFT = 12 * 1024 * 1024
-
-_TEMP_PREFIKSER = (
-    "jarvisx-screenshot-",
-    "jarvisx-window-",
-    "jarvisx-browser-",
-    "jarvis-browser-",
-    "jarvisx-vision-",
+# Reglen selv bor i `core/services/vision_preview` — vaerktoejslaget skal kunne
+# spoerge «maa klienten hente det her?» FOER det svarer, og `core/` kan ikke
+# importere en API-rute. Ruten er stadig den eneste der serverer filen; den
+# laaner bare reglen i stedet for at eje sin egen kopi af den.
+#
+# Navnene herunder er gen-eksporteret fordi testen og ruten bruger dem. BEMAERK
+# at `tilladt_sti` laeser `JARVIS_HOME` og `tempfile` fra vision_preview — en
+# monkeypatch skal ramme DET modul, ikke dette.
+from core.services.vision_preview import (  # noqa: E402
+    LOFT as _LOFT,
+    MIME as _MIME,
+    TEMP_PREFIKSER as _TEMP_PREFIKSER,
+    maa_vises as tilladt_sti,
 )
 
-
-def _ligger_under(sti: Path, rod: Path) -> bool:
-    try:
-        sti.relative_to(rod)
-    except ValueError:  # uden for roden — det ER svaret, ikke en fejl
-        return False
-    return True
-
-
-def tilladt_sti(sti: str) -> Path | None:
-    """Den opløste sti hvis den må vises — ellers None.
-
-    Ren funktion uden I/O ud over `resolve()`, så reglen kan testes for sig.
-    """
-    if not sti or not sti.startswith("/"):
-        return None
-    raa = Path(sti)
-    if raa.suffix.lower() not in _MIME:
-        return None
-    try:
-        fuld = raa.resolve()
-    except OSError:  # kan stien ikke opløses (fx for lang), må den ikke vises
-        return None
-
-    if _ligger_under(fuld, JARVIS_HOME.resolve()):
-        return fuld
-
-    # Jarvis' egne skærmbilleder: direkte i temp-roden, med et kendt prefix.
-    tmp = Path(tempfile.gettempdir()).resolve()
-    if fuld.parent == tmp and fuld.name.startswith(_TEMP_PREFIKSER):
-        return fuld
-
-    return None
+__all__ = ["router", "tilladt_sti", "vis_billede"]
 
 
 def _gammelt_analysebillede(sti: str, besked_id: str, tool_use_id: str) -> Path | None:

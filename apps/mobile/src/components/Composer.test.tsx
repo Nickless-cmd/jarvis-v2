@@ -1,3 +1,4 @@
+import { StyleSheet } from 'react-native'
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native'
 import { Composer } from './Composer'
 
@@ -209,8 +210,30 @@ describe('Composer', () => {
     expect(onSend).toHaveBeenCalledWith('')
   })
 
-  it('viser permissions, model og research som ikoner i den rækkefølge', async () => {
-    const onResearchModeChange = jest.fn()
+  it('model-navnet og tilladelses-ikonet bærer ingen badge — kun tekst og ikon', async () => {
+  // Bjørn 28/9-2026: «fjern den grå badge rundt om model vælger ... Og det
+  // samme med permissions ikon fjern badge rundt om så det kun er ikon som
+  // diktator ikonet.» Begge havde `backgroundColor: bg3` + borderRadius 17 —
+  // en flade der gjorde dem til knapper ved siden af to andre knapper.
+  const screen = await render(
+    <Composer
+      onSend={jest.fn()}
+      onStop={jest.fn()}
+      modelLabel="V4 Flash"
+      onPressModel={jest.fn()}
+      permission="ask"
+      onPressPermission={jest.fn()}
+    />
+  )
+  await openComposer(screen)
+  for (const id of ['composer-model', 'composer-permission']) {
+    const stil = StyleSheet.flatten(screen.getByTestId(id).props.style) ?? {}
+    expect(stil.backgroundColor).toBeUndefined()
+    expect(stil.borderRadius).toBeUndefined()
+  }
+})
+
+it('viser permissions og model — research er flyttet til plus-menuen', async () => {
     const screen = await render(
       <Composer
         onSend={jest.fn()}
@@ -219,24 +242,17 @@ describe('Composer', () => {
         onPressModel={jest.fn()}
         permission="ask"
         onPressPermission={jest.fn()}
-        researchMode={false}
-        onResearchModeChange={onResearchModeChange}
       />
     )
     await openComposer(screen)
 
-    const row = screen.getByTestId('composer-control-row')
-    const ids = row.props.children
-      .filter(Boolean)
-      .map((child: { props: { testID?: string } }) => child.props.testID)
-      .filter(Boolean)
-    expect(ids).toEqual(['composer-permission', 'composer-model', 'composer-research'])
-    expect(screen.queryByText('Research')).toBeNull()
-    expect(screen.queryByText('DeepSeek V4 Flash')).toBeNull()
-
-    await act(async () => { fireEvent.press(screen.getByTestId('composer-research')) })
-
-    expect(onResearchModeChange).toHaveBeenCalledWith(true)
+    expect(screen.getByTestId('composer-permission')).toBeTruthy()
+    expect(screen.getByTestId('composer-model')).toBeTruthy()
+    // Research bor nu i plus-menuen (Bjørn 28/9-2026: «research flyttet til
+    // plus menu»). Dukker den op her igen, er den havnet to steder.
+    expect(screen.queryByTestId('composer-research')).toBeNull()
+    // Model-navnet er TEKST nu — som desk' pille — saa det kan laeses.
+    expect(screen.getByText('DeepSeek V4 Flash')).toBeTruthy()
   })
 
   it('bruger mikrofon til diktering og bølge til samtale', async () => {

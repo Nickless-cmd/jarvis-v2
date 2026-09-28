@@ -10,7 +10,7 @@ import {
 import type { ApiConfig } from '../lib/types'
 import { Animated, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { haptik } from '../lib/haptics'
-import { ArrowUp, ChevronDown, Cpu, FileText, Mic, Plus, SearchCheck, ShieldCheck, Square } from 'lucide-react-native'
+import { ArrowUp, ChevronDown, FileText, Mic, Plus, ShieldCheck, Square } from 'lucide-react-native'
 import { PulsIkon } from './PulsIkon'
 import type { ApprovalMode } from './PermissionPicker'
 import type { DictationState } from '../lib/useComposerDictation'
@@ -39,6 +39,7 @@ export function Composer({
   disabled,
   working,
   modelLabel,
+  thinkingMode,
   onSend,
   onStop,
   onPressModel,
@@ -50,8 +51,6 @@ export function Composer({
   onFocusChange,
   showJumpToBottom,
   onJumpToBottom,
-  researchMode,
-  onResearchModeChange,
   permission,
   onPressPermission,
   indsaet,
@@ -82,8 +81,9 @@ export function Composer({
   /** Rul-til-bunden flytter IND i komponisten mens man skriver. */
   showJumpToBottom?: boolean
   onJumpToBottom?: () => void
-  researchMode?: boolean
-  onResearchModeChange?: (next: boolean) => void
+  /** Tænke-tilstanden. Vises som ÉT ord ved siden af model-navnet — samme
+   *  form som desk' model-pille: `DeepSeek V4 Flash  Auto  ⌄`. */
+  thinkingMode?: 'think' | 'fast'
   permission?: ApprovalMode
   onPressPermission?: () => void
   /** Tekst udefra — fx en delt lokation eller udklipsholderen.
@@ -101,6 +101,7 @@ export function Composer({
 }) {
   const tokens = useTheme()
   const styles = useStyles(makestyles)
+  const tanke = thinkingMode ? TANKE_KORT[thinkingMode] : undefined
   const [text, setText] = useState('')
   const sidsteIndsaet = useRef(0)
 
@@ -292,6 +293,7 @@ export function Composer({
             <Plus size={22} color={tokens.color.fg1} strokeWidth={2} />
           </Pressable>
           <Text style={styles.restPlaceholder} numberOfLines={1}>Skriv til Jarvis</Text>
+          {modelLabel ? <ModelPille navn={modelLabel} tanke={tanke} onPress={onPressModel} /> : null}
           <Pressable testID="composer-dictate" accessibilityRole="button" accessibilityLabel="Dikter" onPress={onDictate} hitSlop={6} style={styles.iconBtn}>
             <Mic size={21} color={tokens.color.fg1} strokeWidth={1.8} />
           </Pressable>
@@ -411,32 +413,10 @@ export function Composer({
                 accessibilityRole="button"
                 accessibilityLabel={`Tilladelser: ${permission === 'trust' ? 'Fuld adgang' : 'Spørg først'}`}
                 onPress={onPressPermission}
-                style={[styles.controlIcon, permission === 'trust' && styles.controlIconOn]}
-              >
-                <ShieldCheck size={18} color={permission === 'trust' ? tokens.color.bg0 : tokens.color.fg2} strokeWidth={2} />
-              </Pressable>
-            ) : null}
-            {modelLabel ? (
-              <Pressable
-                testID="composer-model"
-                accessibilityRole="button"
-                accessibilityLabel={`Model: ${modelLabel}`}
-                onPress={onPressModel}
+                hitSlop={6}
                 style={styles.controlIcon}
               >
-                <Cpu size={18} color={tokens.color.fg2} strokeWidth={2} />
-              </Pressable>
-            ) : null}
-            {onResearchModeChange ? (
-              <Pressable
-                testID="composer-research"
-                accessibilityRole="button"
-                accessibilityLabel={`Research: ${researchMode ? 'Til' : 'Fra'}`}
-                accessibilityState={{ selected: Boolean(researchMode) }}
-                onPress={() => onResearchModeChange(!researchMode)}
-                style={[styles.controlIcon, researchMode && styles.controlIconOn]}
-              >
-                <SearchCheck size={18} color={researchMode ? tokens.color.bg0 : tokens.color.fg2} strokeWidth={2} />
+                <ShieldCheck size={18} color={permission === 'trust' ? tokens.color.accent : tokens.color.fg2} strokeWidth={2} />
               </Pressable>
             ) : null}
           </View>
@@ -453,6 +433,7 @@ export function Composer({
                 <ChevronDown size={20} color={tokens.color.fg1} strokeWidth={2.2} />
               </Pressable>
             ) : null}
+            {modelLabel ? <ModelPille navn={modelLabel} tanke={tanke} onPress={onPressModel} /> : null}
             <Pressable testID="composer-dictate" accessibilityRole="button" accessibilityLabel="Dikter" onPress={onDictate} hitSlop={6} style={styles.iconBtn}>
               <Mic size={21} color={tokens.color.fg1} strokeWidth={1.8} />
             </Pressable>
@@ -593,6 +574,23 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
   },
   left: { flexDirection: 'row', alignItems: 'center', gap: tokens.spacing.sm, flexShrink: 1 },
   right: { flexDirection: 'row', alignItems: 'center', gap: tokens.spacing.sm },
+  // Model-pillen: navnet som TEKST (som desk), tænke-tilstanden i daempet
+  // farve, og en chevron der siger at den kan aabnes. Bjørn 28/9-2026:
+  // «model vælger icon skal laves om saa det ligner … tekst lige som desk».
+  // Navnet maa ikke skubbe send-knappen ud, saa det forkortes med ellipsis.
+  // UDEN badge. Bjørn 28/9-2026: «fjern den grå badge rundt om model vælger».
+  // Fladen bagved gjorde teksten til en knap mellem to andre knapper — og
+  // navnet druknede i den. Diktafonen er kun et ikon; model-navnet er kun
+  // tekst. Højden bliver, så rækken står paa samme linje.
+  modelPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    maxWidth: 168,
+    height: 34
+  },
+  modelNavn: { color: tokens.color.fg1, fontSize: 13, flexShrink: 1 },
+  modelTanke: { color: tokens.color.fg3, fontSize: 13 },
   iconBtn: {
     width: 34,
     height: 34,
@@ -607,15 +605,15 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
     width: 44, height: 44, borderRadius: 22,
     alignItems: 'center', justifyContent: 'center'
   },
+  // UDEN badge — samme flade som diktafonen, se `modelPill`. Tilstanden
+  // baeres af ikonets FARVE i stedet for af en baggrund: fuld adgang giver
+  // accent-farve, «spørg først» lader ikonet staa i fg2.
   controlIcon: {
     width: 34,
     height: 34,
-    borderRadius: 17,
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: tokens.color.bg3
+    justifyContent: 'center'
   },
-  controlIconOn: { backgroundColor: tokens.color.accent },
   sendBtn: {
     width: 40,
     height: 40,
@@ -632,3 +630,26 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
   pressed: { opacity: 0.85 },
   sendText: { color: tokens.color.bg0, fontWeight: '800', fontSize: 18 }
 })
+
+/** Tænke-tilstanden som ÉT ord — samme forkortelser som desk' model-pille. */
+const TANKE_KORT: Record<'think' | 'fast', string> = { think: 'Auto', fast: 'Hurtig' }
+
+/** Model-vælgeren som tekst: navn, tænke-tilstand, chevron. */
+function ModelPille({ navn, tanke, onPress }: { navn: string; tanke?: string; onPress?: () => void }) {
+  const tokens = useTheme()
+  const styles = useStyles(makestyles)
+  return (
+    <Pressable
+      testID="composer-model"
+      accessibilityRole="button"
+      accessibilityLabel={`Model: ${navn}${tanke ? `, ${tanke}` : ''}`}
+      onPress={onPress}
+      hitSlop={6}
+      style={styles.modelPill}
+    >
+      <Text style={styles.modelNavn} numberOfLines={1}>{navn}</Text>
+      {tanke ? <Text style={styles.modelTanke}>{tanke}</Text> : null}
+      <ChevronDown size={12} color={tokens.color.fg3} strokeWidth={2} />
+    </Pressable>
+  )
+}

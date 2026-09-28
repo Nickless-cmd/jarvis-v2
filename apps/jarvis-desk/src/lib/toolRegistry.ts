@@ -80,6 +80,11 @@ export const TOOL_REGISTRY: Record<string, ToolMeta> = {
   discord_channel: { label: 'Discord', Icon: MessageSquare, summarize: (a) => firstStr(a, ['action', 'query', 'channel']) },
   // Billede / medie
   openrouter_image: { label: 'Generér billede', Icon: Image, summarize: (a) => firstStr(a, ['prompt']) },
+  // Uden denne post faldt redigeringen til fallbacken: labelen blev
+  // «Openrouter Image Edit» og ikonet en skruenøgle. Funktionen var intakt —
+  // den så bare ikke ud som et billedværktøj.
+  openrouter_image_edit: { label: 'Redigér billede', Icon: Image, summarize: (a) => firstStr(a, ['prompt']) },
+  pollinations_image: { label: 'Generér billede', Icon: Image, summarize: (a) => firstStr(a, ['prompt']) },
   // Tid / planlægning
   list_scheduled_tasks: { label: 'Planlagte opgaver', Icon: Calendar, summarize: () => '' },
   // Notifikation

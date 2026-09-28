@@ -927,7 +927,8 @@ def append_chat_message(
                     "content_json": content_json,
                     "user_id": _user_id,
                     "workspace_name": _workspace_name,
-                })
+                    "session_id": normalized_session,
+                }, conn=conn)
                 conn.execute(
                     """
                     INSERT INTO chat_messages (message_id, session_id, role, content,

@@ -1,4 +1,6 @@
+import { useEffect, useState } from 'react'
 import { FlatList, Modal, Pressable, StyleSheet, Text, View } from 'react-native'
+import { ChevronLeft, ChevronRight } from 'lucide-react-native'
 import { tokens } from '../theme/tokens'
 import type { StoredModelChoice } from '../lib/sessionStore'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
@@ -7,9 +9,28 @@ export type ModelChoice = StoredModelChoice
 
 export type ThinkingMode = 'think' | 'fast'
 
+/** Tænke-tilstandenes navne — desks ord, ikke vores egne. */
+const TANKE_NAVN: Record<ThinkingMode, string> = { think: 'Auto', fast: 'Hurtig' }
+const TANKE_RAEKKE: ThinkingMode[] = ['think', 'fast']
+
 /**
  * Bottom-sheet model-vælger. Rolle-bevidst indhold leveres af kalderen:
  * owner får hele paletten, member får kun Standard/Pro (= ollama flash/pro).
+ *
+ * ## Formen er lånt, ikke opfundet
+ *
+ * Bjørn 28/9-2026: «med samme visning når åbnet» — og viste to skærmbilleder.
+ * Formen er den fra ChatGPT-appens egen vælger: det man skifter oftest står som
+ * en LISTE øverst med et flueben ved det valgte, og de ting der sjældnere røres
+ * ligger som UNDERMENUER nederst, hver med sin nuværende værdi og en chevron.
+ *
+ * Det er omvendt af hvad den var: modellisten laa øverst og taenkningen laa som
+ * to segmenter nederst. Man skifter taenkning oftere end model, saa den hoerer
+ * øverst — og et segment kan ikke vise «hvad er valgt lige nu» for et blik paa
+ * samme maade som en raekke med et flueben kan.
+ *
+ * «Hastighed» fra billedet findes ikke her: i denne app er taenkning og
+ * hastighed EET begreb (`think`/`fast`), hvor ChatGPT deler dem i to.
  */
 export function ModelPicker({
   open,
@@ -30,55 +51,113 @@ export function ModelPicker({
 }) {
   const tokens = useTheme()
   const styles = useStyles(makestyles)
+  const [visning, setVisning] = useState<'hoved' | 'model'>('hoved')
+  const harTaenkning = Boolean(onThinkingModeChange)
+
+  // Hver åbning starter på hoved-visningen. Uden dette landede man i model-
+  // listen fra sidste gang, og tænke-valget var skjult bag et tryk man ikke
+  // vidste om — den slags husker sheet'en ikke imellem, og skal ikke gøre det.
+  useEffect(() => {
+    if (open) setVisning('hoved')
+  }, [open])
+
+  const modelListe = (
+    <FlatList
+      data={choices}
+      keyExtractor={(c) => c.label}
+      style={styles.list}
+      renderItem={({ item }) => {
+        const active = item.label === selectedLabel
+        return (
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => {
+              onSelect(item)
+              onClose()
+            }}
+            style={({ pressed }) => [styles.row, pressed ? styles.pressed : null]}
+          >
+            <Text style={[styles.rowLabel, active ? styles.rowActive : null]} numberOfLines={1}>
+              {item.label}
+            </Text>
+            {active ? <Text style={styles.check}>✓</Text> : null}
+          </Pressable>
+        )
+      }}
+      ListEmptyComponent={<Text style={styles.empty}>Ingen modeller tilgængelige</Text>}
+    />
+  )
+
   return (
     <Modal transparent visible={open} animationType="slide" onRequestClose={onClose}>
       <Pressable style={styles.scrim} onPress={onClose}>
         <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
           <View style={styles.grabber} />
-          <Text style={styles.title}>Model</Text>
-          {onThinkingModeChange ? (
+
+          {/* Uden tænke-valg er der kun én ting at vise — saa er der ingen
+              undermenu at gaa ind i, og listen staar direkte. */}
+          {!harTaenkning ? (
             <>
-              <Text style={styles.subTitle}>Tænkning</Text>
-              <View style={styles.segmentRow}>
-                {(['think', 'fast'] as ThinkingMode[]).map((m) => (
+              <Text style={styles.title}>Model</Text>
+              {modelListe}
+            </>
+          ) : visning === 'model' ? (
+            <>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Tilbage"
+                onPress={() => setVisning('hoved')}
+                hitSlop={8}
+                style={styles.tilbage}
+              >
+                <ChevronLeft size={18} color={tokens.color.fg2} strokeWidth={2} />
+                <Text style={styles.tilbageTekst}>Tilbage</Text>
+              </Pressable>
+              <Text style={styles.title}>Model</Text>
+              {modelListe}
+            </>
+          ) : (
+            <>
+              <Text style={styles.title}>Tænkning</Text>
+              {TANKE_RAEKKE.map((m) => {
+                const valgt = thinkingMode === m
+                return (
                   <Pressable
                     key={m}
                     accessibilityRole="button"
-                    onPress={() => onThinkingModeChange(m)}
-                    style={[styles.segment, thinkingMode === m && styles.segmentOn]}
+                    accessibilityLabel={TANKE_NAVN[m]}
+                    accessibilityState={{ selected: valgt }}
+                    onPress={() => onThinkingModeChange?.(m)}
+                    style={({ pressed }) => [styles.row, pressed ? styles.pressed : null]}
                   >
-                    <Text style={[styles.segmentText, thinkingMode === m && styles.segmentTextOn]}>
-                      {m === 'think' ? 'Think' : 'Fast'}
+                    <Text style={[styles.rowLabel, valgt ? styles.rowActive : null]}>
+                      {TANKE_NAVN[m]}
                     </Text>
+                    {valgt ? <Text style={styles.check}>✓</Text> : null}
                   </Pressable>
-                ))}
-              </View>
-            </>
-          ) : null}
-          <FlatList
-            data={choices}
-            keyExtractor={(c) => c.label}
-            style={styles.list}
-            renderItem={({ item }) => {
-              const active = item.label === selectedLabel
-              return (
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={() => {
-                    onSelect(item)
-                    onClose()
-                  }}
-                  style={({ pressed }) => [styles.row, pressed ? styles.pressed : null]}
-                >
-                  <Text style={[styles.rowLabel, active ? styles.rowActive : null]} numberOfLines={1}>
-                    {item.label}
+                )
+              })}
+
+              <View style={styles.divider} />
+
+              {/* Undermenuen: navnet til venstre, den nuværende værdi og en
+                  chevron til højre — praecis som billedet Bjørn viste. */}
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Model: ${selectedLabel ?? ''}`}
+                onPress={() => setVisning('model')}
+                style={({ pressed }) => [styles.underRow, pressed ? styles.pressed : null]}
+              >
+                <Text style={styles.underNavn}>Model</Text>
+                <View style={styles.underHoejre}>
+                  <Text style={styles.underVaerdi} numberOfLines={1}>
+                    {selectedLabel ?? 'Vælg'}
                   </Text>
-                  {active ? <Text style={styles.check}>✓</Text> : null}
-                </Pressable>
-              )
-            }}
-            ListEmptyComponent={<Text style={styles.empty}>Ingen modeller tilgængelige</Text>}
-          />
+                  <ChevronRight size={16} color={tokens.color.fg3} strokeWidth={2} />
+                </View>
+              </Pressable>
+            </>
+          )}
         </Pressable>
       </Pressable>
     </Modal>
@@ -104,20 +183,16 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
     backgroundColor: tokens.color.bg3,
     marginBottom: tokens.spacing.md
   },
-  title: { color: tokens.color.fg3, fontSize: 12, fontWeight: '700', textTransform: 'uppercase', marginBottom: tokens.spacing.sm },
-  subTitle: { color: tokens.color.fg3, fontSize: 11, fontWeight: '700', textTransform: 'uppercase', marginTop: tokens.spacing.sm, marginBottom: 6 },
-  segmentRow: { flexDirection: 'row', gap: tokens.spacing.sm, marginBottom: tokens.spacing.xs },
-  segment: {
-    flex: 1,
-    minHeight: 38,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: tokens.radius.md,
-    backgroundColor: tokens.color.bg2
+  title: {
+    color: tokens.color.fg3,
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    marginBottom: tokens.spacing.sm
   },
-  segmentOn: { backgroundColor: tokens.color.accent },
-  segmentText: { color: tokens.color.fg2, fontWeight: '700' },
-  segmentTextOn: { color: tokens.color.bg0 },
+  tilbage: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: tokens.spacing.xs },
+  tilbageTekst: { color: tokens.color.fg2, fontSize: 14, fontWeight: '600' },
+  divider: { height: StyleSheet.hairlineWidth, backgroundColor: tokens.color.line, marginTop: tokens.spacing.md },
   list: { flexGrow: 0 },
   row: {
     flexDirection: 'row',
@@ -131,5 +206,15 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
   rowLabel: { color: tokens.color.fg1, fontSize: 16, flexShrink: 1 },
   rowActive: { color: tokens.color.accentText, fontWeight: '700' },
   check: { color: tokens.color.accentText, fontSize: 16, fontWeight: '700' },
+  underRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: tokens.spacing.md,
+    gap: tokens.spacing.md
+  },
+  underNavn: { color: tokens.color.fg1, fontSize: 16 },
+  underHoejre: { flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1, minWidth: 0 },
+  underVaerdi: { color: tokens.color.fg3, fontSize: 15, flexShrink: 1 },
   empty: { color: tokens.color.fg3, paddingVertical: tokens.spacing.lg, textAlign: 'center' }
 })

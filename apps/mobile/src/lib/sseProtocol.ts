@@ -17,6 +17,19 @@ export interface ContentBlockStartEvent {
     | { type: 'text'; text: string }
     | { type: 'thinking'; thinking: string }
     | { type: 'tool_use'; id: string; name: string; input: Record<string, unknown> }
+    // Billede UNDER kørslen (27/9-2026). Samme konvolut som tool_result —
+    // ingen ny event-type. Bærer `src` når den kan, ellers `attachment_id`.
+    | {
+        type: 'image'
+        src?: string
+        alt?: string
+        attachment_id?: string
+        url?: string
+        filename?: string
+        mime_type?: string
+        kilde?: string
+        tool_use_id?: string
+      }
     // Backenden streamer nu OGSÅ en tool_result-content-blok (Claude-Code-modellen).
     // Den bærer et tool_use_id og foldes ind på sin matchende tool_use-blok
     // (status/result) i reduceren — den fylder ALDRIG sit eget index (undgår hul).
@@ -155,4 +168,20 @@ export type ContentBlock =
         etiket: string
       }
     }
-  | { type: 'image'; src: string; alt?: string }
+  // Billede. `src` var PÅKRÆVET indtil 27/9-2026, og derfor kunne blokken slet
+  // ikke udtrykke et billede der kun har en reference. LIVE bærer den `src`
+  // (data-URL) og tegnes straks; er billedet for stort til en data-URL, kommer
+  // den med `attachment_id` alene og hentes over `/attachments/image/{id}`.
+  // `MessageAttachments.tegnBillede` har kunnet begge dele hele tiden — den
+  // tager `b.src` hvis den er der, ellers `blokUrl(b, apiBaseUrl)`.
+  | {
+      type: 'image'
+      src?: string
+      alt?: string
+      attachment_id?: string
+      url?: string
+      filename?: string
+      mime_type?: string
+      kilde?: string
+      tool_use_id?: string
+    }

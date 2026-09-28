@@ -1,4 +1,5 @@
 import type { AccountProfile, ApiConfig, ChatMessage, ChatSession, Connector, ModelOption, VisibleProvider, WhoAmI } from './types'
+import * as Application from 'expo-application'
 
 export type ApiErrorKind = 'network' | 'auth' | 'rate_limit' | 'server' | 'unknown'
 
@@ -38,6 +39,72 @@ async function _forklaring(response: Response): Promise<string> {
   return `HTTP ${response.status}`
 }
 
+/**
+ * Fortæl serveren hvilken udgave der kører.
+ *
+ * 28/9-2026 gik der en time med at afgøre om telefonen kørte 218 eller 219.
+ * Manifestet sagde hvad der var UDGIVET; ingen kunne sige hvad der var
+ * INSTALLERET. Appen ved det selv — den skal bare sige det.
+ *
+ * `nativeBuildVersion` er versionCode, det tal auto-updateren sammenligner på,
+ * og derfor det der faktisk afgør sagen. Kaster aldrig: et manglende hoved må
+ * ikke kunne vælte et kald.
+ */
+export function klientHoveder(): Record<string, string> {
+  try {
+    const navn = String(Application.nativeApplicationVersion ?? '').trim()
+    const kode = String(Application.nativeBuildVersion ?? '').trim()
+    if (!navn && !kode) return {}
+    return {
+      'X-Jarvis-Klient': 'mobile',
+      'X-Jarvis-Klientversion': kode ? `${navn || '?'} (${kode})` : navn,
+    }
+  } catch {
+    return {}
+  }
+}
+
+/** Hvad serveren siger om en opgivet eller genoptaget koersel. */
+export type GenoptagelsesVarsel = {
+  task_id: string
+  run_id: string
+  state: string
+  reason: string
+  recovery_attempt: number
+  recovery_limit: number
+  checkpoint_summary: string
+  notice: { reason: string; message: string; continuing: boolean }
+}
+
+/**
+ * Er der noget at genoptage for denne samtale? `null` naar der ikke er.
+ *
+ * EGET kald og ikke `apiFetch`, fordi ruten svarer **204 uden krop** naar der
+ * intet er — og det er det normale svar. `apiFetch` slutter med
+ * `response.json()`, som paa en tom krop kaster og bliver til en netvaerksfejl.
+ * Saa ville «ingenting at fortaelle» ligne «kunne ikke spoerge».
+ */
+export async function hentGenoptagelsesVarsel(
+  config: ApiConfig, sessionId: string,
+): Promise<GenoptagelsesVarsel | null> {
+  const id = String(sessionId || '').trim()
+  if (!id) return null
+  const url = new URL(
+    `/chat/sessions/${encodeURIComponent(id)}/recovery`, config.apiBaseUrl,
+  ).toString()
+  const res = await fetch(url, {
+    headers: {
+      Accept: 'application/json',
+      ...klientHoveder(),
+      Authorization: `Bearer ${config.authToken}`,
+    },
+  })
+  if (res.status === 204) return null
+  if (!res.ok) throw new ApiError('unknown', `HTTP ${res.status}`, res.status)
+  const data = (await res.json()) as GenoptagelsesVarsel | null
+  return data && data.notice ? data : null
+}
+
 export async function apiFetch<T>(
   config: ApiConfig,
   path: string,
@@ -52,6 +119,7 @@ export async function apiFetch<T>(
         Accept: 'application/json',
         ...(options.body === undefined ? {} : { 'Content-Type': 'application/json' }),
         ...(options.ifNoneMatch ? { 'If-None-Match': options.ifNoneMatch } : {}),
+        ...klientHoveder(),
         Authorization: `Bearer ${config.authToken}`
       },
       body: options.body === undefined ? undefined : JSON.stringify(options.body)
@@ -497,6 +565,23 @@ export async function setAccountLanguage(config: ApiConfig, language: string): P
   await apiFetch(config, '/account/language', { method: 'PATCH', body: { language } })
 }
 
+/**
+ * Kort model-navn til vælgeren — desks regel, ord for ord.
+ *
+ * «deepseek-v4-flash» fylder for meget ved siden af diktafonen. Desk viser
+ * «V4 Flash»: provider-præfikset væk, V-tallet i versal, bindestreger blevet
+ * mellemrum. Samme regel her, saa de to flader siger det samme ord om den
+ * samme model. Ollama bærer «:cloud» — det er ikke en del af navnet.
+ */
+export function kortModelNavn(provider: string, model: string): string {
+  return provider === 'deepseek'
+    ? model
+        .replace(/^deepseek-/, '')
+        .replace(/(^|-)v(\d+)/g, '$1V$2')
+        .replace(/-([a-z])/g, (_, c: string) => ` ${c.toUpperCase()}`)
+    : model.replace(':cloud', '')
+}
+
 export async function getModelOptions(config: ApiConfig): Promise<ModelOption[]> {
   // Owner-only endpoint; member/guest får 403 → tom liste (skjuler pillen).
   let raw: { providers?: VisibleProvider[] }
@@ -508,7 +593,7 @@ export async function getModelOptions(config: ApiConfig): Promise<ModelOption[]>
   const out: ModelOption[] = []
   for (const p of raw.providers ?? []) {
     for (const model of p.models ?? []) {
-      out.push({ provider: p.id, model, label: `${p.id} · ${model}` })
+      out.push({ provider: p.id, model, label: kortModelNavn(p.id, model) })
     }
   }
   return out

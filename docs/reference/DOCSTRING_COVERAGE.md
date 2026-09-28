@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8131/15634 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8136/15639 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -8,7 +8,7 @@ Generated from source. 8131/15634 functions/methods documented (52%). The list b
 |---|---|---|---|
 | `apps.api.jarvis_api` | 34 | 36 | 94% |
 | `apps.api.jarvis_api.middleware` | 8 | 19 | 42% |
-| `apps.api.jarvis_api.routes` | 702 | 934 | 75% |
+| `apps.api.jarvis_api.routes` | 701 | 932 | 75% |
 | `apps.api.jarvis_api.schemas` | 0 | 0 | 0% |
 | `apps.central_cli.central_cli` | 70 | 172 | 40% |
 | `apps.desktop` | 6 | 7 | 85% |
@@ -25,14 +25,14 @@ Generated from source. 8131/15634 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 698 | 1277 | 54% |
-| `core.services` | 5393 | 10642 | 50% |
+| `core.services` | 5398 | 10648 | 50% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 107 | 183 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
 | `core.services.visible_runs_sections` | 23 | 35 | 65% |
 | `core.skills` | 0 | 0 | 0% |
 | `core.skills.voice` | 39 | 49 | 79% |
-| `core.tools` | 491 | 1010 | 48% |
+| `core.tools` | 492 | 1011 | 48% |
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.undo` | 2 | 18 | 11% |
@@ -125,7 +125,7 @@ Generated from source. 8131/15634 functions/methods documented (52%). The list b
 - `apps/api/jarvis_api/routes/users.py` :: `get_one` (L40)
 - `apps/api/jarvis_api/routes/users.py` :: `list_all` (L35)
 - `apps/api/jarvis_api/routes/users.py` :: `patch_one` (L48)
-- `apps/api/jarvis_api/routes/visning.py` :: `vis_billede` (L146)
+- `apps/api/jarvis_api/routes/visning.py` :: `vis_billede` (L104)
 - `apps/api/jarvis_api/routes/voice_live.py` :: `aabn_samtale` (L86)
 - `apps/api/jarvis_api/routes/workbench.py` :: `operator_channel_close` (L60)
 - `apps/central_cli/central_cli/client.py` :: `CentralClient.close` (L70)
@@ -822,13 +822,13 @@ Generated from source. 8131/15634 functions/methods documented (52%). The list b
 - `core/services/central_trace.py` :: `sink` (L96)
 - `core/services/central_white_rabbit.py` :: `build_white_rabbit_surface` (L58)
 - `core/services/central_white_rabbit.py` :: `record_white_rabbit` (L62)
-- `core/services/chat_crypto.py` :: `er_krypteret` (L136)
+- `core/services/chat_crypto.py` :: `er_krypteret` (L150)
 - `core/services/chat_sessions.py` :: `append_chat_message` (L761)
 - `core/services/chat_sessions.py` :: `create_chat_session` (L66)
-- `core/services/chat_sessions.py` :: `delete_chat_session` (L1531)
-- `core/services/chat_sessions.py` :: `recent_chat_session_messages` (L1164)
-- `core/services/chat_sessions.py` :: `recent_chat_tool_messages` (L1485)
-- `core/services/chat_sessions.py` :: `rename_chat_session` (L1517)
+- `core/services/chat_sessions.py` :: `delete_chat_session` (L1532)
+- `core/services/chat_sessions.py` :: `recent_chat_session_messages` (L1165)
+- `core/services/chat_sessions.py` :: `recent_chat_tool_messages` (L1486)
+- `core/services/chat_sessions.py` :: `rename_chat_session` (L1518)
 - `core/services/cheap_lane_admission.py` :: `acquire_admission` (L123)
 - `core/services/cheap_lane_admission.py` :: `admission_snapshot` (L102)
 - `core/services/cheap_lane_admission.py` :: `release_admission` (L155)
@@ -1487,10 +1487,10 @@ Generated from source. 8131/15634 functions/methods documented (52%). The list b
 - `core/services/reboot_awareness_daemon.py` :: `build_reboot_awareness_surface` (L227)
 - `core/services/reboot_awareness_daemon.py` :: `get_last_boot_event` (L202)
 - `core/services/recall.py` :: `empty_message` (L281)
-- `core/services/recurring_tasks.py` :: `cancel_recurring_task` (L276)
-- `core/services/recurring_tasks.py` :: `list_recurring_tasks` (L284)
-- `core/services/recurring_tasks.py` :: `start_recurring_tasks_service` (L392)
-- `core/services/recurring_tasks.py` :: `stop_recurring_tasks_service` (L401)
+- `core/services/recurring_tasks.py` :: `cancel_recurring_task` (L418)
+- `core/services/recurring_tasks.py` :: `list_recurring_tasks` (L426)
+- `core/services/recurring_tasks.py` :: `start_recurring_tasks_service` (L545)
+- `core/services/recurring_tasks.py` :: `stop_recurring_tasks_service` (L554)
 - `core/services/reflection_cycle_daemon.py` :: `build_reflection_surface` (L143)
 - `core/services/reflection_cycle_daemon.py` :: `get_latest_reflection` (L139)
 - `core/services/reflection_signal_tracking.py` :: `build_runtime_reflection_signal_surface` (L51)
@@ -1989,8 +1989,8 @@ Generated from source. 8131/15634 functions/methods documented (52%). The list b
 - `core/services/visible_runs.py` :: `unregister_visible_run` (L7167)
 - `core/services/visible_runs_learning_signals.py` :: `record_visible_run_learning_signals` (L53)
 - `core/services/visible_runs_outcomes.py` :: `set_last_visible_run_outcome` (L587)
-- `core/services/visible_runs_sse_v2.py` :: `ToolEchoFilter.feed` (L104)
-- `core/services/visible_runs_sse_v2.py` :: `ToolEchoFilter.flush` (L153)
+- `core/services/visible_runs_sse_v2.py` :: `ToolEchoFilter.feed` (L107)
+- `core/services/visible_runs_sse_v2.py` :: `ToolEchoFilter.flush` (L156)
 - `core/services/visible_stream_gate.py` :: `enter_visible_stream` (L38)
 - `core/services/visible_stream_gate.py` :: `exit_visible_stream` (L44)
 - `core/services/visible_terminal_policy.py` :: `classify_terminal` (L92)
@@ -2159,8 +2159,8 @@ Generated from source. 8131/15634 functions/methods documented (52%). The list b
 - `scripts/interlanguage_llm_judge.py` :: `run_delta` (L159)
 - `scripts/interlanguage_structural_classifier.py` :: `main` (L174)
 - `scripts/jarvis_bare_practice_runner.py` :: `main` (L318)
-- `scripts/krypter_medlems_chat.py` :: `koer` (L66)
-- `scripts/krypter_medlems_chat.py` :: `main` (L135)
+- `scripts/krypter_medlems_chat.py` :: `koer` (L76)
+- `scripts/krypter_medlems_chat.py` :: `main` (L145)
 - `scripts/laering_status.py` :: `main` (L23)
 - `scripts/ledger_rehearsal.py` :: `kopiér` (L39)
 - `scripts/ledger_rehearsal.py` :: `main` (L70)

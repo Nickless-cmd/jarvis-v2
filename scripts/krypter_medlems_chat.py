@@ -36,7 +36,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core.services.chat_crypto import (  # noqa: E402
-    dekrypter, er_krypteret, krypter, medlem_for_raekke,
+    dekrypter, er_krypteret, krypter, medlem_for_session,
 )
 
 FELTER = ("content", "reasoning_content", "content_json")
@@ -47,19 +47,29 @@ def _db_sti() -> str:
 
 
 def find_kandidater(conn: sqlite3.Connection) -> list[tuple]:
-    """Rækker der tilhører en NON-owner og endnu ikke er krypteret."""
-    raekker = conn.execute(
-        "SELECT id, workspace_name, user_id, content, reasoning_content, content_json "
-        "FROM chat_messages WHERE COALESCE(encrypted, 0) = 0"
-    ).fetchall()
+    """Rækker i en MEDLEMS-SESSION der endnu ikke er krypteret.
+
+    Sessionen er enheden, ikke rækken. Den første udgave af dette script spurgte
+    rækkevis, og den missede 31 rækker: to sessioner havde medlemmets egne
+    beskeder tagget `default`, og én havde elleve tool-rækker tagget `bjorn`
+    inde i Mikkels samtale. Se `chat_crypto.medlem_for_skrivning`.
+    """
+    sessioner = [r[0] for r in conn.execute(
+        "SELECT DISTINCT session_id FROM chat_messages WHERE COALESCE(encrypted, 0) = 0"
+    ).fetchall()]
     ud = []
-    for r in raekker:
-        medlem = medlem_for_raekke(workspace_name=r[1] or "", user_id=r[2] or "")
+    for sid in sessioner:
+        medlem = medlem_for_session(sid, conn=conn)
         if medlem is None:
             continue
-        if any(er_krypteret(r[i]) for i in (3, 4, 5)):
-            continue
-        ud.append((r, medlem))
+        for r in conn.execute(
+            "SELECT id, workspace_name, user_id, content, reasoning_content, content_json "
+            "FROM chat_messages WHERE session_id = ? AND COALESCE(encrypted, 0) = 0",
+            (sid,),
+        ).fetchall():
+            if any(er_krypteret(r[i]) for i in (3, 4, 5)):
+                continue
+            ud.append((r, medlem))
     return ud
 
 

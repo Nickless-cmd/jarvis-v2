@@ -32,16 +32,17 @@ describe('hentNaesteForslag', () => {
     })
   })
 
-  it('sender TOMT udkast og sessionen med', async () => {
-    // Det er hele forskellen fra den gamle form: udkastet er tomt, så serveren
-    // bygger på SAMTALEN — og sessionen er dét der lader Jarvis' eget forslag
-    // ligge klar til at blive hentet i stedet for den lokale models gæt.
+  it('sender KUN sessionen med — intet udkast', async () => {
+    // Udkast-feltet stod her indtil 28/9-2026. Fortsættelses-formen er fjernet:
+    // serveren bygger udelukkende på SAMTALEN, og sessionen er dét der lader
+    // Jarvis' eget forslag ligge klar til at blive hentet. Der sendes intet
+    // halvskrevet — feltet er tomt når vi spørger.
     const f = jest.fn(() => svar({ forslag: '' }))
     global.fetch = f as unknown as typeof fetch
     await hentNaesteForslag(cfg, 's1')
     const [url, init] = f.mock.calls[0] as unknown as [string, RequestInit]
     expect(url).toBe('http://x/composer/suggest')
-    expect(JSON.parse(String(init.body))).toEqual({ udkast: '', session_id: 's1' })
+    expect(JSON.parse(String(init.body))).toEqual({ session_id: 's1' })
     expect((init.headers as Record<string, string>).Authorization).toBe('Bearer t')
   })
 

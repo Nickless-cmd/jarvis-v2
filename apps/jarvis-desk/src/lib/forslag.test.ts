@@ -16,13 +16,13 @@ function svar(krop: unknown, ok = true) {
 // objekt og ikke en tom streng.
 
 describe('hentNaesteForslag', () => {
-  it('sender samtalen — ikke et udkast — og bærer forslaget igennem', async () => {
+  it('sender KUN sessionen — intet udkast — og bærer forslaget igennem', async () => {
     const f = svar({ forslag: 'deploy det til ct105' })
     vi.stubGlobal('fetch', f)
     expect(await hentNaesteForslag(cfg, 'sess-1')).toEqual({
       tekst: 'deploy det til ct105', id: '', kildeBeskedId: '' })
     const krop = JSON.parse((f.mock.calls[0]?.[1] as RequestInit).body as string)
-    expect(krop).toEqual({ udkast: '', session_id: 'sess-1' })
+    expect(krop).toEqual({ session_id: 'sess-1' })
   })
 
   it('spørger slet ikke uden en session — der er intet at bygge forslaget på', async () => {

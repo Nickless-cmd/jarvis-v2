@@ -213,3 +213,49 @@ describe('streamReducer tool_result content-blok', () => {
     expect(tu.result).toBe('via-legacy')
   })
 })
+
+describe('billedet i den levende stream (27/9-2026)', () => {
+  // Indtil nu lagde billedværktøjet en note fra sig under turen, og blokken
+  // blev først bygget når svaret blev gemt. Under kørslen var der intet at
+  // tegne. Renderen har haft grenen hele tiden (`BlocksRenderer`: `block.src ?
+  // <ImageBlock/> : …`) — den fik bare aldrig noget.
+  const start = (cb: Record<string, unknown>): StreamEvent =>
+    ({ type: 'content_block_start', index: 0, content_block: cb } as StreamEvent)
+
+  it('en LIVE-blok med data-URL lander på sit index og kan tegnes', () => {
+    const s = reduce([start({
+      type: 'image', src: 'data:image/png;base64,AAA', filename: 'k.png',
+      tool_use_id: 'tu-1', kilde: 'generated',
+    })])
+    expect(s.blocks[0]).toMatchObject({
+      type: 'image', src: 'data:image/png;base64,AAA', tool_use_id: 'tu-1',
+    })
+  })
+
+  it('en blok UDEN src beholder sin reference — billedet hentes med token', () => {
+    // Er billedet for stort til en data-URL, sender serveren attachment_id
+    // alene. Attachment'en er allerede registreret, så adressen virker straks.
+    const s = reduce([start({
+      type: 'image', attachment_id: 'att-77', filename: 'stor.png',
+      mime_type: 'image/png', kilde: 'generated', tool_use_id: 'tu-2',
+    })])
+    expect(s.blocks[0]).toMatchObject({ type: 'image', attachment_id: 'att-77' })
+    expect((s.blocks[0] as { src?: string }).src).toBeUndefined()
+  })
+
+  it('tool_use_id følger med — det er ANKERET', () => {
+    // Den gemte blok får samme tool_use_id, så billedet lander samme sted før
+    // og efter turen. Ingen mellemstation, intet hop.
+    const s = reduce([start({ type: 'image', src: 'data:image/png;base64,B', tool_use_id: 'tu-3' })])
+    expect((s.blocks[0] as { tool_use_id?: string }).tool_use_id).toBe('tu-3')
+  })
+
+  it('billedblokken fortrænger ikke en tool_use på et andet index', () => {
+    const s = reduce([
+      { type: 'content_block_start', index: 0, content_block: { type: 'tool_use', id: 'tu-4', name: 'openrouter_image', input: {} } },
+      { type: 'content_block_start', index: 1, content_block: { type: 'image', src: 'data:image/png;base64,C', tool_use_id: 'tu-4' } },
+    ] as StreamEvent[])
+    expect(s.blocks[0]).toMatchObject({ type: 'tool_use', id: 'tu-4' })
+    expect(s.blocks[1]).toMatchObject({ type: 'image' })
+  })
+})

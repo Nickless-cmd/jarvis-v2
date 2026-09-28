@@ -12,14 +12,16 @@
  * Så desk henter ÉT forslag når feltet er tomt, bygget på samtalen, og viser
  * det dér hvor pladsholderen står. Tab gør det til rigtig tekst.
  *
- * Mobilen beholder fortsættelses-formen i sin egen `lib/forslag.ts`: der er
- * ingen pladsholder-plads at stå i, og React Natives `TextInput` kan ikke
- * tegne inde i feltet. Samme endpoint, to former, fordi fladerne er forskellige.
+ * Mobilen viser forslaget på en linje over feltet i stedet: der er ingen
+ * pladsholder-plads at stå i, og React Natives `TextInput` kan ikke tegne inde
+ * i feltet. Samme forslag, to flader.
  *
  * ## Hvad der ALDRIG sker
  *
- * Kaldet går til `/composer/suggest`, som spørger den lokale ollama. Hverken
- * udkast eller samtale forlader maskinen, og der er ingen udgift at bogføre.
+ * Kaldet går til `/composer/suggest`. Siden 28/9-2026 kommer forslaget
+ * udelukkende fra Jarvis selv: den lokale model blev droppet, og uden et eget
+ * forslag står feltet tomt. Der sendes intet udkast — feltet er tomt når vi
+ * spørger — og der er ingen udgift at bogføre, for der kaldes ingen model.
  */
 import type { ApiConfig } from './api'
 
@@ -57,7 +59,7 @@ export async function hentNaesteForslag(
         'Content-Type': 'application/json',
         ...(config.authToken ? { Authorization: `Bearer ${config.authToken}` } : {}),
       },
-      body: JSON.stringify({ udkast: '', session_id: sessionId }),
+      body: JSON.stringify({ session_id: sessionId }),
       signal,
     })
     if (!r.ok) return INTET_FORSLAG

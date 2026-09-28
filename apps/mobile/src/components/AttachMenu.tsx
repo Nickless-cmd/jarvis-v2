@@ -14,7 +14,7 @@ import {
 // billeder», hvilket er præcis det gitteret skal bruge. Den nye Query-API kan
 // det samme, men koster mere kode for ingen gevinst her.
 import * as MediaLibrary from 'expo-media-library/legacy'
-import { Camera, Check, Images, Upload, X } from 'lucide-react-native'
+import { Camera, Check, Images, SearchCheck, Upload, X } from 'lucide-react-native'
 import { tokens } from '../theme/tokens'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 import type { CapturedPhoto } from '../screens/CameraCapture'
@@ -43,7 +43,9 @@ export function AttachMenu({
   onGallery,
   onUpload,
   onPick,
-  onClose
+  onClose,
+  researchMode,
+  onResearchModeChange
 }: {
   visible: boolean
   onCamera: () => void
@@ -54,6 +56,12 @@ export function AttachMenu({
   /** Valg direkte i gitteret — springer systemvælgeren helt over. */
   onPick?: (photos: CapturedPhoto[]) => void
   onClose: () => void
+  /** Research-tilstand. Flyttet herind fra komponistens kontrol-raekke
+   *  (Bjørn 28/9-2026: «research flyttet til plus menu»): den hoerer til
+   *  blandt de andre valg om HVAD der skal med, ikke blandt de knapper man
+   *  rammer midt i en saetning. */
+  researchMode?: boolean
+  onResearchModeChange?: (next: boolean) => void
   /** Genveje til det man ellers skal igennem fem menuer for at give ham:
    *  hvor man er, hvad der ligger i udklipsholderen, hvilken enhed man sidder
    *  ved. Udeladt → striben vises ikke. */
@@ -155,6 +163,22 @@ export function AttachMenu({
           <Upload size={22} color={tokens.color.fg1} strokeWidth={2} />
           <Text style={styles.uploadText}>Upload filer</Text>
         </Pressable>
+        {onResearchModeChange ? (
+          <Pressable
+            testID="attach-research"
+            accessibilityRole="button"
+            accessibilityLabel={`Research: ${researchMode ? 'Til' : 'Fra'}`}
+            accessibilityState={{ selected: Boolean(researchMode) }}
+            onPress={() => onResearchModeChange(!researchMode)}
+            style={({ pressed }) => [styles.uploadRow, pressed && styles.pressed]}
+          >
+            <SearchCheck size={22} color={researchMode ? tokens.color.accent : tokens.color.fg1} strokeWidth={2} />
+            <Text style={styles.uploadText}>Research</Text>
+            <Text style={[styles.rowTilstand, researchMode && styles.rowTilstandOn]}>
+              {researchMode ? 'Til' : 'Fra'}
+            </Text>
+          </Pressable>
+        ) : null}
         <View style={styles.divider} />
 
         {kontekster && kontekster.length ? (
@@ -309,6 +333,8 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
     paddingVertical: tokens.spacing.md
   },
   uploadText: { color: tokens.color.fg1, fontSize: 17 },
+  rowTilstand: { color: tokens.color.fg3, fontSize: 14, marginLeft: 'auto' },
+  rowTilstandOn: { color: tokens.color.accent, fontWeight: '700' },
   divider: { height: StyleSheet.hairlineWidth, backgroundColor: tokens.color.line, marginHorizontal: tokens.spacing.lg },
   ctxWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 16, paddingBottom: 4 },
   ctxCard: {

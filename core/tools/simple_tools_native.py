@@ -1072,6 +1072,11 @@ def _exec_read_attachment(args: dict[str, Any]) -> dict[str, Any]:
     attachment_id = str(args.get("attachment_id") or "").strip()
     if not attachment_id:
         return {"status": "error", "text": "attachment_id is required"}
+    # Målt 27/9-2026: 18 af 20 kald fejlede, og 16 af dem pegede på en
+    # vedhæftning der FANDTES — de sendte bare filnavnet i stedet for id'et.
+    # Se `resolve_attachment_id`.
+    from core.services.attachment_service import resolve_attachment_id
+    attachment_id = resolve_attachment_id(attachment_id)
     question = str(args.get("question") or "").strip()
     # Egne oejne foerst (2026-09-06): svarer han paa en model der SELV kan se,
     # skal billedet i HANS kontekst — ikke en beskrivelse en anden model skrev

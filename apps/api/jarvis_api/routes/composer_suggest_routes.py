@@ -6,18 +6,20 @@ ville føles som to forskellige assistenter.
 
 ## Hvad der ALDRIG sker her
 
-Udkastet gemmes ikke. Halvskrevne sætninger er det mest private i en samtale —
-de indeholder det man fortryder, omformulerer eller sletter igen — og de går
-kun til den lokale model. Der er ingen hovedbogs-række, fordi der ikke er nogen
-udgift: det er ollama på egen GPU.
+Der sendes intet udkast. Siden 28/9-2026 bygges forslaget udelukkende på
+samtalen og kommer fra Jarvis selv — den vej der fuldførte en halvskreven
+sætning er fjernet, og begge klienter sender et tomt felt. Halvskrevne
+sætninger er det mest private i en samtale; de forlader ikke maskinen, fordi
+der ikke er noget at sende. Der er ingen hovedbogs-række, fordi der ingen
+udgift er: der kaldes ikke længere nogen model.
 
 ## Hvorfor et tomt svar er et gyldigt svar
 
 Et forslag er en bekvemmelighed, ikke en funktion man kan miste. Ruten svarer
-altid 200 med `{"forslag": "..."}` — tom streng når der intet er at foreslå,
-når modellen er nede, eller når udkastet ikke indbyder til det. En klient der
+altid 200 med `{"forslag": "..."}` — tom streng når Jarvis ikke selv har lagt
+et forslag ned, eller når der ikke er noget at bygge det på. En klient der
 skulle håndtere fejlkoder for at kunne skrive videre, ville være en klient der
-holdt op med at virke når GPU'en var optaget.
+holdt op med at virke af en grund der ikke rager den.
 """
 from __future__ import annotations
 
@@ -32,9 +34,12 @@ router = APIRouter(prefix="/composer", tags=["composer"])
 
 
 class Udkast(BaseModel):
-    udkast: str = ""
-    #: Tomt udkast + en samtale = «hvad kunne jeg skrive nu?». Uden session
-    #: er der intet at bygge forslaget på, og svaret er tomt.
+    #: En samtale = «hvad kunne jeg skrive nu?». Uden session er der intet at
+    #: bygge forslaget på, og svaret er tomt.
+    #:
+    #: Feltet `udkast` stod her indtil 28/9-2026. Ingen flade sendte andet end
+    #: en tom streng, og fortsættelses-formen er fjernet — et gammelt kald der
+    #: stadig sender feltet ignoreres, hvilket er præcis det rigtige.
     session_id: str = ""
 
 
@@ -54,23 +59,16 @@ class Valg(BaseModel):
 def suggest(krop: Udkast) -> dict[str, str]:
     """Et forslag, eller tom streng. Fejler aldrig.
 
-    To tilstande, ét endpoint, fordi det er det samme spørgsmål stillet to
-    steder i skrivningen:
+    Ét spørgsmål: hvad kunne han skrive nu? Kilden er samtalen, og svaret
+    kommer fra Jarvis selv gennem `suggest_next_message`. Har han ikke lagt et
+    forslag ned, er svaret tomt — et tomt felt er ærligere end et gæt.
 
-    * **Med udkast** → fortsættelsen af det. Bevares for ældre klienter; ingen
-      nuværende flade bruger den — mobilen gik 24/9-2026 over til samme form
-      som desk, netop fordi et gæt på resten af hans sætning føltes forkert.
-    * **Uden udkast** → et bud på den næste besked, ud fra samtalen. Det er
-      den form både desk og mobil viser, hvor pladsholderen står.
+    Fortsættelses-formen (et halvskrevet udkast) stod her indtil 28/9-2026.
+    Ingen flade brugte den; mobilen gik 24/9-2026 over til samme form som desk,
+    netop fordi et gæt på resten af hans sætning føltes forkert.
     """
     try:
-        from core.services.composer_suggest import foreslaa, foreslaa_naeste_detaljer
-        udkast = (krop.udkast or "").strip()
-        if udkast:
-            # Fortsættelses-formen (mobilen) har intet valg at registrere:
-            # der er ingen Tab-tast at trykke på i et felt man skriver i.
-            return {"forslag": foreslaa(krop.udkast or ""), "forslag_id": "",
-                    "kilde_besked_id": ""}
+        from core.services.composer_suggest import foreslaa_naeste_detaljer
         return foreslaa_naeste_detaljer(krop.session_id or "")
     except Exception:
         logger.debug("composer/suggest fejlede", exc_info=True)

@@ -105,6 +105,53 @@ def take(run_id: str) -> list[dict[str, Any]]:
         return _pr_run.pop(rid, [])
 
 
+def peek(run_id: str, *, tool_use_id: str = "") -> list[dict[str, Any]]:
+    """Se turens poster UDEN at rydde dem. Tom liste hvis ingen.
+
+    `take` popper, fordi den kaldes når svaret persisteres og posten skal
+    hæftes på præcis én besked. Den levende stream skal se de samme poster
+    MENS turen kører — og må derfor ikke tage dem fra den der gemmer bagefter.
+
+    `tool_use_id` afgrænser til ét værktøjskald, så et billede kan sendes ud i
+    samme øjeblik dets eget `tool_result` passerer, i stedet for at turens
+    øvrige filer følger med.
+    """
+    rid = str(run_id or "").strip()
+    if not rid:
+        return []
+    tid = str(tool_use_id or "").strip()
+    with _laas:
+        poster = list(_pr_run.get(rid) or [])
+    if not tid:
+        return poster
+    return [p for p in poster if str(p.get("tool_use_id") or "") == tid]
+
+
+def peek_efter_tool_use(tool_use_id: str) -> list[dict[str, Any]]:
+    """Turens poster for ÉT værktøjskald — uden at vide hvilket run de ligger i.
+
+    Målt i drift 27/9-2026 med logning i begge ender: noten blev skrevet under
+    `run_id='visible-a75f…'` mens den levende stream stod med
+    `run_id='visible-8fa4…'`. Samme proces, samme sekund, samme
+    `tool_use_id` — men to forskellige run'er. `visible_runs_sse_v2` sætter
+    `_state["run_id"]` ÉN gang (`_state["run_id"] or …`) og opdaterer den
+    aldrig, så spænder turen over mere end ét visible run, står streamen med
+    det første mens værktøjerne kører under et senere.
+
+    `tool_use_id` er derimod det samme i begge ender — det er modellens eget
+    kald-id. Derfor slår denne op på DET og ikke på run'et.
+
+    Rydder ikke: `take` popper, og den der persisterer svaret bagefter skal
+    stadig kunne finde posterne.
+    """
+    tid = str(tool_use_id or "").strip()
+    if not tid:
+        return []
+    with _laas:
+        alle = [p for poster in _pr_run.values() for p in list(poster)]
+    return [p for p in alle if str(p.get("tool_use_id") or "") == tid]
+
+
 def as_blocks(poster: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Oversæt til content_json-blokke i samme form som vedhæftninger.
 

@@ -22,7 +22,7 @@ export function sourceOf(run: McRun): RunSource {
 }
 
 const SOURCE_LABEL: Record<RunSource, string> = {
-  snak: 'Snak',
+  snak: 'Chat',
   autonom: 'Autonom',
   agent: 'Agent'
 }

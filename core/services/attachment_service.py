@@ -431,6 +431,64 @@ def download_and_store(
     }
 
 
+def resolve_attachment_id(vaerdi: str) -> str:
+    """Oversæt det brugeren SKREV til et rigtigt `attachment_id`.
+
+    ## Hvorfor den findes
+
+    Målt på CT105 27/9-2026 over fjorten dage: `read_attachment` blev kaldt 20
+    gange og fejlede **18**. Ikke fordi vedhæftningerne manglede — 16 af de 18
+    peger på en række der ligger i `channel_attachments` lige nu. De blev bare
+    slået op på den forkerte kolonne:
+
+        8 kald sendte FILNAVNET             «Skærmbillede fra 2026-09-23 20-56-18.png»
+        4 kald sendte en UUID der er præfiks af filnavnet
+        4 kald sendte det GEMTE filnavn     «<id>_<original>.jpeg» (local_path)
+        2 kald var reelt opfundne
+
+    Det er ikke et værktøj i stykker. Det er et værktøj der kun accepterer det
+    id ingen kan se. Jarvis ser filnavnet i sin kontekst, og sender det han ser.
+
+    ## Rækkefølgen
+
+    Det EKSAKTE id først — det må aldrig kunne blive skygget af et filnavn der
+    tilfældigvis ligner. Derefter eksakt filnavn, så basenavnet af `local_path`,
+    og til sidst et præfiks-match på filnavnet. Findes der flere, vælges den
+    NYESTE: det er den der lige er sendt, og det er den man mener.
+
+    Kan intet opløses, returneres værdien uændret, så kalderen fejler med
+    præcis samme besked som før — vi gætter ikke en vedhæftning frem.
+    """
+    raa = str(vaerdi or "").strip()
+    if not raa:
+        return raa
+    from core.runtime.db import _ensure_channel_attachments_table, connect
+    try:
+        with connect() as conn:
+            _ensure_channel_attachments_table(conn)
+            if conn.execute(
+                "SELECT 1 FROM channel_attachments WHERE attachment_id = ?", (raa,)
+            ).fetchone():
+                return raa
+            for sql, arg in (
+                ("SELECT attachment_id FROM channel_attachments WHERE filename = ? "
+                 "ORDER BY id DESC LIMIT 1", raa),
+                ("SELECT attachment_id FROM channel_attachments "
+                 "WHERE local_path LIKE ? ORDER BY id DESC LIMIT 1", "%/" + raa),
+                ("SELECT attachment_id FROM channel_attachments WHERE filename LIKE ? "
+                 "ORDER BY id DESC LIMIT 1", raa + "%"),
+            ):
+                row = conn.execute(sql, (arg,)).fetchone()
+                if row and row[0]:
+                    logger.info(
+                        "read_attachment: %r opløst til attachment_id %s", raa, row[0])
+                    return str(row[0])
+    except Exception as exc:
+        # Kan opslaget ikke laves, skal kalderen fejle som før — ikke hårdere.
+        logger.warning("resolve_attachment_id(%r) fejlede: %s", raa, exc)
+    return raa
+
+
 def get_attachment(attachment_id: str) -> dict | None:
     """Return attachment metadata dict, or None if not found."""
     try:

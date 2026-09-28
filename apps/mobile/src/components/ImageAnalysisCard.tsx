@@ -40,6 +40,7 @@ export function ImageAnalysisCard({ kilde, sti }: { kilde?: string; sti?: string
     let levende = true
     // Hele stien bruges som cache-navn: `hentTilCache` saniterer det selv, og
     // to billeder med samme basnavn i hver sin mappe må ikke dele fil.
+    // Adressen goeres absolut af henteren.
     void hentTilCache(config, `/visning/billede?sti=${encodeURIComponent(sti)}`, sti)
       .then((p) => { if (levende) setLokal(p) })
       // Tavs: må stien ikke vises, eller svigter netværket, står rammen tom —

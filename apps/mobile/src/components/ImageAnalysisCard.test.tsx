@@ -1,16 +1,28 @@
 import { render, waitFor } from '@testing-library/react-native'
 import { MessageList } from './MessageList'
 import { billedArbejdeFor, billedKilde, billedSti } from '../lib/billedArbejde'
-import { hentTilCache } from './AuthImage'
 import type { ContentBlock } from '../lib/sseProtocol'
 import { initialStreamState, streamReducer } from '../lib/streamReducer'
 
-/** Hentningen af selve billedet skal kunne måles — ikke et rigtigt netværk. */
-jest.mock('./AuthImage', () => ({
-  ...jest.requireActual('./AuthImage'),
-  hentTilCache: jest.fn(async () => 'file:///cache/img-analyse.png'),
+/**
+ * Målepunktet ligger ved NETVÆRKET, ikke på `hentTilCache`.
+ *
+ * En mock på `hentTilCache` ville skjule præcis den fejl der var: at url'en
+ * er relativ og derfor ikke kan hentes. Her erstattes `expo-file-system`s
+ * download, så testen ser den adresse der faktisk ville gå ud.
+ */
+const filsystem = jest.requireMock('expo-file-system/legacy') as {
+  createDownloadResumable: jest.Mock
+  getInfoAsync: jest.Mock
+}
+const hent = jest.fn((url: string, dest: string) => ({
+  downloadAsync: jest.fn(async () => ({ uri: dest })),
 }))
-const hentet = hentTilCache as unknown as jest.Mock
+beforeEach(() => {
+  hent.mockClear()
+  filsystem.createDownloadResumable.mockImplementation(hent)
+  filsystem.getInfoAsync.mockResolvedValue({ exists: false, size: 0 })
+})
 
 jest.mock('../state/AuthContext', () => {
   const config = { apiBaseUrl: 'https://api.srvlab.dk/', authToken: 'token' }
@@ -156,21 +168,39 @@ describe('kortet i strømmen', () => {
     expect(s.getByText('Der står «Hej» på billedet.')).toBeTruthy()
   })
 
-  it('henter det billede der kigges på og lægger det under scanneren', async () => {
-    hentet.mockClear()
+  /**
+   * Adressen skal være ABSOLUT — målt HELT nede ved netværket.
+   *
+   * Den her test pinnede før en fejl i stedet for at fange den: den mockede
+   * `hentTilCache` og krævede præcis den RELATIVE sti `/visning/billede?sti=…`.
+   * Men `createDownloadResumable` kender ingen base, så en relativ sti henter
+   * ingenting — tavst, fordi fejlen sluges og billedet bare udebliver. En mock
+   * oven på den brækkede søm kan aldrig se det.
+   *
+   * Nu måles der på `expo-file-system` selv, altså på den url der FAKTISK
+   * ville gå på nettet. Målt på telefonen 28/9-2026: rammen stod tom, også
+   * for en upload der ellers må vises.
+   */
+  it('henter billedet på en ABSOLUT adresse og lægger det under scanneren', async () => {
+    hent.mockClear()
     const s = await render(<MessageList messages={[]} blocks={[analyse({ image_path: '/home/bs/skaerm.png' })]} working />)
     await waitFor(() => expect(s.getByTestId('image-analysis-billede')).toBeTruthy())
-    expect(hentet).toHaveBeenCalledWith(
-      expect.objectContaining({ apiBaseUrl: 'https://api.srvlab.dk/' }),
-      `/visning/billede?sti=${encodeURIComponent('/home/bs/skaerm.png')}`,
-      '/home/bs/skaerm.png',
-    )
+
+    expect(hent).toHaveBeenCalledTimes(1)
+    const [url, dest] = hent.mock.calls[0]!
+    expect(url).toBe(
+      `https://api.srvlab.dk/visning/billede?sti=${encodeURIComponent('/home/bs/skaerm.png')}`)
+    // Eksplicit, så en relativ sti ikke kan snige sig ind igen.
+    expect(String(url).startsWith('https://')).toBe(true)
+    // Cache-navnet er den fulde sti, så to filer med samme basnavn i hver sin
+    // mappe ikke deler kopi.
+    expect(String(dest)).toContain('_home_bs_skaerm.png')
   })
 
   it('henter intet for en Windows-sti — ruten ville afvise den', async () => {
-    hentet.mockClear()
+    hent.mockClear()
     await render(<MessageList messages={[]} blocks={[analyse({ image_path: 'C:\\Users\\bs\\kat.png' })]} working />)
-    expect(hentet).not.toHaveBeenCalled()
+    expect(hent).not.toHaveBeenCalled()
   })
 
   /**

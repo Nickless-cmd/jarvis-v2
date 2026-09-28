@@ -164,12 +164,20 @@ const stilPlads = StyleSheet.create({
 export async function hentTilCache(
   config: ApiConfig, url: string, navn: string,
 ): Promise<string> {
+  // ABSOLUT adresse, her og ikke hos kalderen. `createDownloadResumable`
+  // kender ingen base, saa en relativ sti henter ingenting — tavst, fordi
+  // fejlen bliver slugt og billedet bare udebliver. Desks tvilling
+  // (`fetchBlobWithAuth`) har altid gjort det samme ét sted; mobilen gav
+  // url'en uroert videre, og ImageAnalysisCard sendte en relativ sti.
+  // Maalt paa telefonen 28/9-2026: rammen stod tom, ogsaa for uploads der
+  // ellers maa vises.
+  const adresse = new URL(url, config.apiBaseUrl).toString()
   const rent = String(navn || 'b').replace(/[^A-Za-z0-9._-]/g, '_')
   const dest = `${FileSystem.cacheDirectory}img-${rent}`
   const info = await FileSystem.getInfoAsync(dest)
   if (info.exists && (info.size ?? 0) > 0) return dest
   const opg = FileSystem.createDownloadResumable(
-    url, dest,
+    adresse, dest,
     { headers: config.authToken ? { Authorization: `Bearer ${config.authToken}` } : {} },
   )
   const res = await opg.downloadAsync()

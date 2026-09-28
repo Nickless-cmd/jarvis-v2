@@ -1303,8 +1303,18 @@ export function ChatScreen({
         <KantFade
           retning="op"
           navn="komponist"
-          over={composerFocused ? 20 : 56}
-          opaqueBelow={composerFocused}
+          // UDFOLDET: faden begynder ved komponistens OVERKANT, ikke over den.
+          // Strakt 20 dp op laa den hen over kortets øverste linje, og med en
+          // massiv `bg0`-flade under blev hele området bag komponisten sort.
+          // Bjørn 28/9-2026: «fade skal ikke vises over composer i udfoldet
+          // tilstand.. den skal starte under composers øverste linje og så er
+          // den helt sort lige nu.. det skal være lige som i toppen».
+          //
+          // SAMMENFOLDET står den stadig 56 dp op: dér ER der tråd over
+          // kortet at tone ud imod, og det var hele pointen med faden.
+          over={composerFocused ? 0 : 56}
+          // Dækningen af gestus-zonen kommer nu fra `under`, som forlænger
+          // gradientens FULDE ende nedad — i stedet for en flade.
           under={composerFocused ? 32 : 0}
         />
         {/* Polstringen bor HER, ikke paa `floatBottom`. Faden fylder sin

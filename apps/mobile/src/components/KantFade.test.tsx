@@ -38,6 +38,30 @@ describe('KantFade', () => {
     expect(screen.getByTestId('kantfade-komponist')).toHaveProp('height', '100%')
   })
 
+  /**
+   * UDFOLDET komponist: faden begynder ved kortets OVERKANT, ikke over den,
+   * og den er en GRADIENT hele vejen — ikke en flade.
+   *
+   * Bjoern 28/9-2026: «fade skal ikke vises over composer i udfoldet
+   * tilstand.. den skal starte under composers oeverste linje og saa er den
+   * helt sort lige nu.. det skal vaere lige som i toppen». Den var strakt
+   * 20 dp op over kortet, og under gradienten laa en massiv `bg0`-flade.
+   */
+  it('udfoldet: begynder ved overkanten og er en gradient, ikke en flade', async () => {
+    const screen = await render(<KantFade retning="op" navn="komponist" over={0} under={32} />)
+    const ramme = screen.getByTestId('kantfade-ramme-komponist')
+    expect(ramme).toHaveStyle({ top: 0, bottom: -32 })
+    // Ingen native flade — det var den der gjorde omraadet helt sort.
+    expect(screen.queryByTestId('kantfade-bund-komponist')).toBeNull()
+    // Og gradienten fylder hele boksen, saa den toner hele vejen ned.
+    expect(screen.getByTestId('kantfade-komponist')).toHaveProp('height', '100%')
+  })
+
+  it('under-daekningen gaelder ogsaa uden straek — gestus-zonen maa ikke tabes', async () => {
+    const screen = await render(<KantFade retning="op" navn="k2" under={32} />)
+    expect(screen.getByTestId('kantfade-ramme-k2')).toHaveStyle({ bottom: -32 })
+  })
+
   it('daekker omraadet under en udvidet composer med en rigtig flade', async () => {
     const screen = await render(<KantFade retning="op" navn="komponist" over={20} opaqueBelow under={32} />)
     expect(screen.getByTestId('kantfade-ramme-komponist')).toHaveStyle({ top: -20, bottom: -32 })

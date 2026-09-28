@@ -65,8 +65,19 @@ export function KantFade({ retning, navn, over = 0, opaqueBelow = false, under =
    * forælderens top, og fuld hele vejen ned.
    */
   over?: number
-  /** Udvidet composer: en native flade under kortet, fordi Androids SVG med
-   *  100 % højde ikke dækkede området helt ned til navigationskanten. */
+  /**
+   * En native, UIGENNEMSIGTIG flade under kortet.
+   *
+   * Kom til fordi Androids SVG med 100 % højde ikke dækkede en høj boks helt
+   * ned til navigationskanten. Men den maler `bg0` massivt, og i udfoldet
+   * tilstand blev hele området bag komponisten derfor helt sort — ikke en
+   * fade, en flade. Bjørn 28/9-2026: «den er helt sort lige nu.. det skal
+   * være lige som i toppen».
+   *
+   * Dækningen løses nu med `under` i stedet: gradienten forlænges ned under
+   * forælderen og beholder sin fulde ende dernede. Flaget står tilbage til
+   * det tilfælde det blev skrevet for, og bruges ikke af komponisten.
+   */
   opaqueBelow?: boolean
   /** Ekstra dækning under forælderens bund (gestus-zonen). */
   under?: number
@@ -103,7 +114,7 @@ export function KantFade({ retning, navn, over = 0, opaqueBelow = false, under =
     <View
       testID={`kantfade-ramme-${navn}`}
       pointerEvents="none"
-      style={straek ? [styles.lag, { top: -over }] : styles.lag}
+      style={[styles.lag, straek ? { top: -over } : null, under > 0 ? { bottom: -under } : null]}
     >
       <Svg
         testID={`kantfade-${navn}`}

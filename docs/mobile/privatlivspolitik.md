@@ -28,7 +28,7 @@ revieweren ikke har en token til Bjørns server.
 | Baggrundslokation: 5 min / 250 m, opt-in | `apps/mobile/src/lib/backgroundLocation.ts` — `timeInterval: 300000`, `distanceInterval: 250`, kræver `requestBackgroundPermissionsAsync` |
 | Fire datalag, lagvis sletning | `apps/mobile/src/lib/accountData.ts` + `core/services/encryption.py` §16.2 |
 | Ejerens data er plaintext, andres krypteret | `core/services/encryption.py` — `should_encrypt()`: «Owner (Bjørns egen workspace) er plaintext» |
-| Tredjeparter | `core/services/vision_backend.py` (DeepSeek), `core/tools/openrouter_image_tools.py` (OpenRouter), `apps/api/jarvis_api/routes/tts.py` (ElevenLabs/edge-tts), Firebase FCM, Cloudflare |
+| Tredjeparter | `core/services/vision_backend.py` (DeepSeek), `core/tools/openrouter_image_tools.py` (OpenRouter), `apps/api/jarvis_api/routes/tts.py` (ElevenLabs/edge-tts), Firebase FCM, Cloudflare, **`apps/mobile/src/lib/location.ts` (Nominatim/OpenStreetMap)** |
 
 ## Det bevidste valg: ærlighed om kryptering
 

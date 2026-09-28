@@ -1037,6 +1037,24 @@ def _resolve_visible_target(uid: str | None, provider_choice: str, model: str) -
     return (prov, m)
 
 
+#: De baner en model skal ligge i for at høre hjemme i CHAT-vælgeren.
+#:
+#: Målt på CT105 28/9-2026: registret har 238 poster fordelt på fem baner —
+#: `cheap` 209, `visible` 12, `local` 10, `coding` 6, `inner_enrichment` 1.
+#: Vælgeren viste 99 modeller fra 21 udbydere, fordi den kun spurgte «er
+#: providerens credentials klar?» og ikke «hvilken bane hører modellen til».
+#: Cheap-lane er til swarm og council — aihubmix, kilo, reka, requesty,
+#: xkiro, internlm … De kan køre, men de er ikke dem man taler med.
+#:
+#: Bjørn 28/9-2026: «den skal kun vise dem der faktisk er tilgængelige i
+#: visible lane».
+#:
+#: `local` er med fordi det ER den synlige banes lokale halvdel: ollama,
+#: inklusive `:cloud`-modellerne, og det er dem desks composer er låst til.
+#: `coding` og `inner_enrichment` er andre arbejdsgange og hører ikke til.
+SYNLIGE_BANER = frozenset({"visible", "local"})
+
+
 def _visible_capable_providers() -> set[str]:
     """Providers som stream_visible_model faktisk kan eksekvere til chat."""
     try:
@@ -1060,7 +1078,8 @@ def _list_visible_providers_sync() -> list[dict]:
                 continue
             prov = str(m.get("provider") or "").strip()
             mdl = str(m.get("model") or "").strip()
-            if prov in capable and mdl and m.get("enabled"):
+            if (prov in capable and mdl and m.get("enabled")
+                    and str(m.get("lane") or "") in SYNLIGE_BANER):
                 by_provider.setdefault(prov, [])
                 if mdl not in by_provider[prov]:
                     by_provider[prov].append(mdl)

@@ -89,3 +89,57 @@ it('uden tænke-valg står modellisten direkte — ingen tom undermenu', async (
   expect(screen.queryByText('Tænkning')).toBeNull()
   expect(screen.getByText('V4 Flash')).toBeTruthy()
 })
+
+/**
+ * Udbyderen under hvert modelnavn.
+ *
+ * Bjørn 28/9-2026: «en lille skrift under hver model så jeg kan se hvilken
+ * udbyder modellen hører til». Navnet alene siger det ikke: «gpt-5.5» kommer
+ * fra openai-codex, og «deepseek-v4-pro» findes både hos deepseek og som
+ * `:cloud` hos ollama. To rækker der ser ens ud, men rammer hver sin maskine.
+ */
+it('skriver udbyderen under hvert modelnavn', async () => {
+  const screen = await render(
+    <ModelPicker
+      {...base}
+      onThinkingModeChange={undefined}
+      choices={[
+        { model: 'deepseek-v4-pro', providerChoice: 'deepseek', label: 'V4 Pro' },
+        { model: 'deepseek-v4-pro:cloud', providerChoice: 'ollama', label: 'V4 Pro Cloud' },
+        { model: 'gpt-5.5', providerChoice: 'openai-codex', label: 'GPT-5.5' }
+      ]}
+    />
+  )
+  await waitFor(() => expect(screen.getByText('V4 Pro')).toBeTruthy())
+  expect(screen.getByText('deepseek')).toBeTruthy()
+  expect(screen.getByText('ollama')).toBeTruthy()
+  expect(screen.getByText('openai-codex')).toBeTruthy()
+})
+
+it('to modeller med samme navn kan skelnes på udbyderen', async () => {
+  const screen = await render(
+    <ModelPicker
+      {...base}
+      onThinkingModeChange={undefined}
+      choices={[
+        { model: 'deepseek-v4-pro', providerChoice: 'deepseek', label: 'V4 Pro' },
+        { model: 'deepseek-v4-pro:cloud', providerChoice: 'ollama', label: 'V4 Pro' }
+      ]}
+    />
+  )
+  await waitFor(() => expect(screen.getAllByText('V4 Pro')).toHaveLength(2))
+  expect(screen.getByText('deepseek')).toBeTruthy()
+  expect(screen.getByText('ollama')).toBeTruthy()
+})
+
+it('uden en udbyder står modellen alene — ingen tom linje', async () => {
+  const screen = await render(
+    <ModelPicker
+      {...base}
+      onThinkingModeChange={undefined}
+      choices={[{ model: 'x', providerChoice: '', label: 'Uden udbyder' }]}
+    />
+  )
+  await waitFor(() => expect(screen.getByText('Uden udbyder')).toBeTruthy())
+  expect(screen.queryByText('')).toBeNull()
+})

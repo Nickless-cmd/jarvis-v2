@@ -95,9 +95,19 @@ export function ModelPicker({
             }}
             style={({ pressed }) => [styles.row, pressed ? styles.pressed : null]}
           >
-            <Text style={[styles.rowLabel, active ? styles.rowActive : null]} numberOfLines={1}>
-              {item.label}
-            </Text>
+            {/* Udbyderen under navnet. Modelnavnene alene siger ikke hvem der
+                svarer — «gpt-5.5» kan komme fra openai-codex, og
+                «deepseek-v4-pro» findes baade hos deepseek og som :cloud hos
+                ollama. Bjoern 28/9-2026: «en lille skrift under hver model saa
+                jeg kan se hvilken udbyder modellen hoerer til». */}
+            <View style={styles.rowTekst}>
+              <Text style={[styles.rowLabel, active ? styles.rowActive : null]} numberOfLines={1}>
+                {item.label}
+              </Text>
+              {item.providerChoice ? (
+                <Text style={styles.rowUdbyder} numberOfLines={1}>{item.providerChoice}</Text>
+              ) : null}
+            </View>
             {active ? <Text style={styles.check}>✓</Text> : null}
           </Pressable>
         )
@@ -209,11 +219,14 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: tokens.spacing.sm,
     minHeight: 54,
     paddingVertical: tokens.spacing.md
   },
   pressed: { opacity: 0.7 },
+  rowTekst: { flex: 1, minWidth: 0, gap: 1 },
   rowLabel: { color: tokens.color.fg1, fontSize: 16, flexShrink: 1 },
+  rowUdbyder: { color: tokens.color.fg3, fontSize: 11 },
   rowActive: { color: tokens.color.fg1, fontWeight: '700' },
   check: { color: tokens.color.accentText, fontSize: 16, fontWeight: '700' },
   underRow: {

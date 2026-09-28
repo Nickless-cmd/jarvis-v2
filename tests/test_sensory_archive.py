@@ -100,3 +100,110 @@ def test_oversigten_viser_maettede_ikke_kvitteringer(isolated_runtime) -> None:
     assert oversigt["total"] == 7, "tællingen dækker HELE arkivet"
     assert oversigt["substantive_in_window"] == 2
     assert [r["content"][:12] for r in oversigt["recent"]] == ["Skyggerne er", "Morgenlys ov"]
+
+
+# ── Kvitterings-gaten: skrivesiden lukket (28/9-2026) ────────────────────────
+#
+# Læsesiden (`er_maettet`) har filtreret kvitteringer fra siden 18/9 — men
+# arkivet blev ved med at fyldes, og filteret skjulte det bagefter. Her er det
+# samme spørgsmål flyttet til det ene punkt alle skrivninger går igennem.
+
+
+def test_pladsholder_arkiveres_ikke(isolated_runtime) -> None:
+    """«Intet mærkbart ændret.» er svaret på at der ikke var noget at se.
+
+    Målt 28/9-2026: 45 sådanne poster i arkivet, den nyeste 26/9 — og hanen
+    skrev videre, fordi `visual_memory_daemon` arkiverede hvert svar uanset.
+    """
+    from core.services.sensory_archive import count, record_visual
+
+    foer = count()
+    post = record_visual("Intet mærkbart ændret.")
+
+    assert post["skipped"] is True
+    assert post["reason"] == "kvittering"
+    assert count() == foer, "arkivet vokser ikke af en kvittering"
+
+
+def test_silence_lyt_arkiveres_ikke(isolated_runtime) -> None:
+    """Et lyt der endte i `silence` er ikke et indtryk — der var intet at høre.
+
+    Målt 28/9-2026: 24 sådanne poster, nyeste 26/9.
+    """
+    from core.services.sensory_archive import count, record_audio
+
+    foer = count()
+    post = record_audio(
+        "Jeg lyttede til rummet. Klassifikation: silence "
+        "(amplitude 0.0000±0.0000)."
+    )
+
+    assert post["skipped"] is True
+    assert count() == foer
+
+
+def test_rigtigt_indtryk_arkiveres_uændret(isolated_runtime) -> None:
+    """Gaten må ikke fange det den skal beskytte."""
+    from core.services.sensory_archive import record_visual
+
+    tekst = "Skarpt eftermiddagslys gennem vinduet, støv der driver i strålen."
+    post = record_visual(tekst)
+
+    assert "skipped" not in post
+    assert post["content"] == tekst
+    assert post["id"]
+
+
+def test_en_lyd_der_faktisk_var_noget_arkiveres(isolated_runtime) -> None:
+    """Kun `silence` er en kvittering — musik er en sansning."""
+    from core.services.sensory_archive import record_audio
+
+    post = record_audio(
+        "Jeg lyttede til rummet. Klassifikation: music "
+        "(amplitude 0.0312±0.0081)."
+    )
+
+    assert "skipped" not in post
+    assert post["id"]
+
+
+def test_mode_always_gendanner_den_gamle_adfaerd(isolated_runtime, monkeypatch) -> None:
+    """Indstillingen skal kunne skrues tilbage — ellers er den ikke en beslutning."""
+    from core.services import sensory_archive
+
+    monkeypatch.setattr(sensory_archive, "_kvittering_mode", lambda: "always")
+    post = sensory_archive.record_visual("Intet mærkbart ændret.")
+
+    assert "skipped" not in post
+    assert post["id"]
+
+
+def test_ukendt_mode_falder_til_skip(monkeypatch) -> None:
+    """En slåfejl i indstillingen må ikke åbne hanen igen."""
+    from core.services import sensory_archive
+
+    class _Falsk:
+        sensory_receipt_archive_mode = "altid-agtig-slåfejl"
+
+    monkeypatch.setattr("core.runtime.settings.load_settings", lambda: _Falsk())
+    assert sensory_archive._kvittering_mode() == "skip"
+
+
+def test_er_kvittering_fanger_begge_familier() -> None:
+    from core.services.sensory_archive import er_kvittering
+
+    assert er_kvittering("Intet mærkbart ændret.")
+    assert er_kvittering("Ingen ændring.")
+    assert er_kvittering(
+        "Jeg lyttede til rummet. Klassifikation: silence (amplitude 0.0)."
+    )
+    assert er_kvittering("Lydbillede: silence")
+    assert er_kvittering("")
+    assert not er_kvittering("Rummet ligger stille med en lav summen fra køleskabet.")
+    # Grænsen: en BESKRIVELSE der nævner 'silence' er et indtryk, ikke en
+    # kvittering. Reglen skal være snæver nok til at lade den stå — målt
+    # 28/9-2026: arkivet har flere af dem, og de beskriver noget.
+    assert not er_kvittering(
+        "En akustisk snapshot med kategori 'silence' betyder, at der er en "
+        "meget lav lydintensitet i rummet lige nu."
+    )

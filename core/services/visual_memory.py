@@ -171,7 +171,7 @@ def tick_visual_memory_daemon() -> dict[str, object]:
         records = records[-_MAX_RECORDS:]
     set_runtime_state_value(_STATE_KEY, records)
 
-    _archive_sensory(
+    arkiveret = _archive_sensory(
         description,
         metadata={
             "source": "visual_memory_daemon",
@@ -189,7 +189,13 @@ def tick_visual_memory_daemon() -> dict[str, object]:
     except Exception:
         pass
 
-    return {"status": "captured", "captured_at": now, "preview": description[:80]}
+    # «Intet mærkbart ændret.» er et gyldigt udfald af at kigge — men ikke et
+    # indtryk. Tick'en skal sige det, ikke bogføre en sansning der ikke blev skrevet.
+    return {
+        "status": "captured" if arkiveret else "unchanged",
+        "captured_at": now,
+        "preview": description[:80],
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -806,10 +812,17 @@ def _enabled() -> bool:
     return bool(settings.extra.get("layer_visual_memory_enabled", True))
 
 
-def _archive_sensory(description: str, *, metadata: dict[str, object]) -> None:
-    """Mirror every visual memory into Sansernes Arkiv. Silent on failure."""
+def _archive_sensory(description: str, *, metadata: dict[str, object]) -> bool:
+    """Mirror every visual memory into Sansernes Arkiv.
+
+    Returnerer False når posten blev sprunget over som kvittering (fx «Intet
+    mærkbart ændret.») — kalderen skal kunne sige at der ikke var noget nyt,
+    i stedet for at bogføre et indtryk der ikke blev skrevet. Tavs ved fejl.
+    """
     try:
         from core.services.sensory_archive import record_visual
-        record_visual(description, metadata=dict(metadata))
+        record = record_visual(description, metadata=dict(metadata))
+        return not record.get("skipped")
     except Exception as exc:
         logger.debug("visual_memory: archive mirror failed: %s", exc)
+        return False

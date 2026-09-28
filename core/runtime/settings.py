@@ -443,6 +443,15 @@ class RuntimeSettings:
     # Målt 28/9-2026: 287 poster, men kun 11 unikke indhold (175x den samme).
     # "off" = skriv aldrig · "always" = gammel adfærd (hver reparation).
     emotion_repair_senses_bridge_mode: str = "first"
+    # Kvitteringer → Sanser: hvornår en KVITTERING for at der blev sanset
+    # ("Intet mærkbart ændret.", "Jeg lyttede til rummet. Klassifikation:
+    # silence") er en SANSNING. Den er ikke — den er svaret på at der ikke var
+    # noget at sanse. "skip" arkiverer den ikke; "always" er den gamle adfærd.
+    # Målt 28/9-2026: 45 "Intet mærkbart ændret." og 24 silence-lyt i arkivet,
+    # begge med en hane der stadig skrev. Læsesiden (`er_maettet`) filtrerede
+    # dem allerede fra — her lukkes SKRIVESIDEN, så filteret ikke længere skal
+    # skjule dem bagefter. Se `sensory_archive.skal_arkiveres`.
+    sensory_receipt_archive_mode: str = "skip"
     # Self-repair engine — runtime-instigated repair actions for known patterns.
     self_repair_engine_enabled: bool = True
     self_repair_default_cooldown_seconds: int = 300
@@ -1047,6 +1056,7 @@ def load_settings() -> RuntimeSettings:
         sensory_perception_min_baseline_records=int(data.get("sensory_perception_min_baseline_records", defaults.sensory_perception_min_baseline_records)),
         sensory_perception_recent_baseline_size=int(data.get("sensory_perception_recent_baseline_size", defaults.sensory_perception_recent_baseline_size)),
         emotion_repair_senses_bridge_mode=str(data.get("emotion_repair_senses_bridge_mode", defaults.emotion_repair_senses_bridge_mode)),
+        sensory_receipt_archive_mode=str(data.get("sensory_receipt_archive_mode", defaults.sensory_receipt_archive_mode)),
         self_repair_engine_enabled=_som_bool(data.get("self_repair_engine_enabled", defaults.self_repair_engine_enabled)),
         self_repair_default_cooldown_seconds=int(data.get("self_repair_default_cooldown_seconds", defaults.self_repair_default_cooldown_seconds)),
         self_repair_default_max_attempts_per_window=int(data.get("self_repair_default_max_attempts_per_window", defaults.self_repair_default_max_attempts_per_window)),

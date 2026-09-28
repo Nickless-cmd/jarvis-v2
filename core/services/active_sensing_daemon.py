@@ -325,7 +325,7 @@ def _sense_audio(state: dict[str, Any], now: datetime) -> dict[str, Any]:
 
         try:
             from core.services.sensory_archive import record_audio
-            record_audio(
+            record = record_audio(
                 content,
                 metadata={
                     "source": "active_sensing_daemon",
@@ -336,16 +336,27 @@ def _sense_audio(state: dict[str, Any], now: datetime) -> dict[str, Any]:
                     "desire": state.get("last_desire", 0),
                 },
             )
-            arkiveret = True
+            # Et lyt der endte i `silence` er kvitteringen for at der ikke var
+            # noget at høre — ikke et indtryk. Arkivet afviser den selv (se
+            # sensory_archive.skal_arkiveres); her skal turen bare sige sandt.
+            sprunget_over = bool(record.get("skipped"))
+            arkiveret = not sprunget_over
         except Exception as exc:
             logger.warning("active_sensing: audio archive failed: %s", exc)
             arkiveret = False
+            sprunget_over = False
 
         # Et lyt der ikke naaede arkivet er ikke et indtryk — det er et tab.
+        if sprunget_over:
+            reason = "audio_silence_not_an_impression"
+        elif arkiveret:
+            reason = f"audio_{category}"
+        else:
+            reason = "audio_archive_failed"
         return {
             "ok": arkiveret,
             "preview": preview,
-            "reason": f"audio_{category}" if arkiveret else "audio_archive_failed",
+            "reason": reason,
             "description": content,
         }
     except Exception as exc:

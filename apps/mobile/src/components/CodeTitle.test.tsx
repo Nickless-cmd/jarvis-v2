@@ -74,14 +74,36 @@ it('titel-pillen har et BREDDE-loft — den maa ikke vokse med navnet', async ()
   const lang = 'Hvad er den samlet status paa cheaplane og hvordan ser det ud'
   const screen = await render(<CodeTitle titel={lang} git={g()} />)
   const flad = StyleSheet.flatten(screen.getByTestId('code-titel').props.style)
-  expect(flad.maxWidth).toBe(106)
+  expect(flad.maxWidth).toBe(142)
 })
 
-it('loftet er det SAMME tal som hoejre felt — ikke et der kan drive', () => {
+it('loftet laeses fra badgeGeometri — ikke skrevet to steder', () => {
   // Et tal skrevet to steder passer kun indtil nogen aendrer det ene. Samme
   // regel som for hoejden: begge skal laeses fra badgeGeometri.
   const fs = require('fs'); const path = require('path')
   const l = (f: string) => fs.readFileSync(path.join(__dirname, f), 'utf8')
   expect(l('CodeTitle.tsx')).toMatch(/maxWidth: BADGE_MAKS_B/)
-  expect(l('badgeGeometri.ts')).toMatch(/export const BADGE_MAKS_B = 106/)
+  expect(l('badgeGeometri.ts')).toMatch(/export const BADGE_MAKS_B = 142/)
+})
+
+it('kontekst-linjen maa SKRUMPE — ellers flyder den ud over kanten', () => {
+  // Selve mekanismen bag Bjoerns anden melding 28/9-2026: «indholdet stikker
+  // ud over». Boernene i pillen havde flexShrink 0 (RN's standard), saa da
+  // loftet blev sat under deres naturlige bredde, voksede de forbi deres far i
+  // stedet for at klippe sig selv. Et loft uden skrump er ikke et loft.
+  const fs = require('fs'); const path = require('path')
+  const kilde = fs.readFileSync(path.join(__dirname, 'CodeTitle.tsx'), 'utf8')
+  const raekke = kilde.split('kontekst: {')[1].split('}')[0]
+  expect(raekke).toMatch(/flexShrink: 1/)
+  expect(raekke).toMatch(/minWidth: 0/)
+  const meta = kilde.split('meta: {')[1].split('}')[0]
+  expect(meta).toMatch(/flexShrink: 1/)
+})
+
+it('prikken maa IKKE skrumpe — den er kun 6 dp', () => {
+  // Skrump skal ramme TEKSTEN, ikke den lille prik der forsvinder hvis den
+  // faar lov at give sig.
+  const fs = require('fs'); const path = require('path')
+  const kilde = fs.readFileSync(path.join(__dirname, 'CodeTitle.tsx'), 'utf8')
+  expect(kilde.split('prik: {')[1].split('}')[0]).toMatch(/flexShrink: 0/)
 })

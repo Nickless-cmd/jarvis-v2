@@ -29,6 +29,7 @@ def _exec_schedule_recurring(args: dict[str, Any]) -> dict[str, Any]:
     interval = args.get("interval")
     unit = str(args.get("unit") or "minutes").strip().lower()
     delay_minutes = int(args.get("delay_minutes") or 0)
+    weekdays = str(args.get("weekdays") or "")
 
     if not focus:
         return {"status": "error", "error": "focus is required"}
@@ -47,16 +48,19 @@ def _exec_schedule_recurring(args: dict[str, Any]) -> dict[str, Any]:
             focus=focus,
             interval_minutes=interval_minutes,
             delay_minutes=delay_minutes,
+            weekdays=weekdays,
         )
         unit_display = f"{interval} {unit}"
+        ug_display = task.get("weekdays") or "alle dage"
         return {
             "status": "ok",
             "task_id": task["task_id"],
             "focus": task["focus"],
             "interval": unit_display,
             "interval_minutes": interval_minutes,
+            "weekdays": task.get("weekdays", ""),
             "next_fire_at": task["next_fire_at"],
-            "text": f"Recurring task scheduled: '{focus}' every {unit_display}. First fire: {task['next_fire_at'][:16]}Z",
+            "text": f"Recurring task scheduled: '{focus}' every {unit_display} ({ug_display}). First fire: {task['next_fire_at'][:16]}Z",
         }
     except Exception as e:
         return {"status": "error", "error": str(e)}
@@ -127,6 +131,15 @@ RECURRING_TOOL_DEFINITIONS: list[dict[str, Any]] = [
                             "starts in 13 days."
                         ),
                     },
+                    "weekdays": {
+                        "type": "string",
+                        "description": (
+                            "Which weekdays the task may fire on. Omit = every day. "
+                            "Examples: 'man-fre' (Mon-Fri), '1,2,3,4,5', 'weekend'. "
+                            "The clock time is kept — a weekday task skips the days "
+                            "not listed instead of moving."
+                        ),
+                    },
                 },
                 "required": ["focus", "interval"],
             },
@@ -185,6 +198,25 @@ RECURRING_TOOL_DEFINITIONS: list[dict[str, Any]] = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "set_recurring_weekdays",
+            "description": ("Limit an existing recurring task to certain weekdays "
+                            "(e.g. workdays only). Omit weekdays, or pass 'alle', to "
+                            "let it fire every day again."),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "task_id": {"type": "string", "description": "task_id from list_recurring."},
+                    "weekdays": {"type": "string",
+                                 "description": ("'man-fre' / '1,2,3,4,5' / 'weekend' / 'alle'. "
+                                                 "Empty = every day.")},
+                },
+                "required": ["task_id"],
+            },
+        },
+    },
 ]
 
 
@@ -205,4 +237,33 @@ def _exec_set_recurring_channel(args: dict[str, Any]) -> dict[str, Any]:
     except ValueError as e:
         return {"status": "error", "error": str(e)}
     except Exception as e:
+        return {"status": "error", "error": str(e)}
+
+
+def _exec_set_recurring_weekdays(args: dict[str, Any]) -> dict[str, Any]:
+    """Begræns en recurring task til bestemte ugedage.
+
+    Args: task_id, weekdays ('man-fre', '1,2,3,4,5', 'weekend', '' = alle).
+    Bjoern 28/9-2026: «begraens medicin-paamindelserne til hverdage».
+    """
+    task_id = str(args.get("task_id") or "").strip()
+    if not task_id:
+        return {"status": "error", "error": "task_id is required"}
+    weekdays = str(args.get("weekdays") or "")
+    try:
+        from core.services.recurring_tasks import set_weekdays
+        ok = set_weekdays(task_id, weekdays)
+        if not ok:
+            return {"status": "error", "error": f"Task {task_id!r} not found"}
+        from core.services.recurring_tasks import get_recurring_tasks_state
+        gemt = ""
+        for t in get_recurring_tasks_state().get("active", []):
+            if t.get("task_id") == task_id:
+                gemt = t.get("weekdays") or ""
+        vis = gemt or "alle dage"
+        return {"status": "ok", "task_id": task_id, "weekdays": gemt,
+                "text": f"Recurring task {task_id} fyrer nu: {vis}."}
+    except ValueError as e:  # ugyldig ugedags-streng — svar med fejlen frem for at kaste
+        return {"status": "error", "error": str(e)}
+    except Exception as e:  # et vaerktoej maa ikke kaste ind i dispatcheren
         return {"status": "error", "error": str(e)}

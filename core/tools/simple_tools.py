@@ -467,6 +467,7 @@ from core.tools.recurring_scheduler_tools import (
     _exec_list_recurring,
     _exec_cancel_recurring,
     _exec_set_recurring_channel,
+    _exec_set_recurring_weekdays,
 )
 from core.tools.notification_tools import (
     NOTIFICATION_TOOL_DEFINITIONS,
@@ -1837,6 +1838,7 @@ _TOOL_HANDLERS: dict[str, Any] = {
     "list_recurring": _exec_list_recurring,
     "cancel_recurring": _exec_cancel_recurring,
     "set_recurring_channel": _exec_set_recurring_channel,
+    "set_recurring_weekdays": _exec_set_recurring_weekdays,
     "get_notification_preferences": exec_get_notification_preferences,
     "set_notification_preferences": exec_set_notification_preferences,
     # Kurateret memory-topics (spec 2026-07-10 Spec B)

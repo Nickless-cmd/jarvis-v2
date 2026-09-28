@@ -206,3 +206,16 @@ def test_ascii_stavning_rammer_samme_kamera(monkeypatch):
         assert VM.resolve_camera(skrivemaade)[0] == "hoveddor", skrivemaade
     for skrivemaade in ("dørklokke", "doerklokke", "doerklokken"):
         assert VM.resolve_camera(skrivemaade)[0] == "dorklokke", skrivemaade
+
+
+def test_archive_sensory_siger_falsk_for_kvittering(isolated_runtime) -> None:
+    """«Intet mærkbart ændret.» er et gyldigt udfald af at kigge — ikke et indtryk.
+
+    Den passive kadence arkiverede hvert svar uanset indhold. Målt 28/9-2026:
+    45 sådanne poster. Tick'en skal kunne sige «unchanged» i stedet for at
+    bogføre en sansning der aldrig blev skrevet.
+    """
+    assert VM._archive_sensory("Intet mærkbart ændret.", metadata={}) is False
+    assert VM._archive_sensory(
+        "En kop damper stadig på bordet, lyset er skiftet mod vest.", metadata={}
+    ) is True

@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8160/15669 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8163/15672 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 8160/15669 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 698 | 1277 | 54% |
-| `core.services` | 5419 | 10668 | 50% |
+| `core.services` | 5422 | 10671 | 50% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 107 | 183 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -573,9 +573,9 @@ Generated from source. 8160/15669 functions/methods documented (52%). The list b
 - `core/runtime/session_handle.py` :: `SessionHandle.writable` (L174)
 - `core/runtime/session_handle.py` :: `SessionHeader.as_json` (L87)
 - `core/runtime/session_handle.py` :: `read_header` (L119)
-- `core/runtime/settings.py` :: `RuntimeSettings.to_dict` (L575)
-- `core/runtime/settings.py` :: `load_settings` (L625)
-- `core/runtime/settings.py` :: `update_visible_execution_settings` (L1096)
+- `core/runtime/settings.py` :: `RuntimeSettings.to_dict` (L584)
+- `core/runtime/settings.py` :: `load_settings` (L634)
+- `core/runtime/settings.py` :: `update_visible_execution_settings` (L1106)
 - `core/runtime/work_ref.py` :: `fra_task` (L129)
 - `core/services/absence_daemon.py` :: `build_absence_surface` (L155)
 - `core/services/absence_daemon.py` :: `get_latest_absence` (L151)
@@ -1747,14 +1747,14 @@ Generated from source. 8160/15669 functions/methods documented (52%). The list b
 - `core/services/semantic_indexer.py` :: `start_semantic_indexer` (L34)
 - `core/services/semantic_indexer.py` :: `stop_semantic_indexer` (L62)
 - `core/services/semantic_memory.py` :: `get_stats` (L550)
-- `core/services/sensory_archive.py` :: `count` (L261)
-- `core/services/sensory_archive.py` :: `get` (L257)
-- `core/services/sensory_archive.py` :: `list_recent` (L236)
-- `core/services/sensory_archive.py` :: `record_atmosphere` (L218)
-- `core/services/sensory_archive.py` :: `record_audio` (L209)
-- `core/services/sensory_archive.py` :: `record_mixed` (L227)
-- `core/services/sensory_archive.py` :: `record_visual` (L200)
-- `core/services/sensory_archive.py` :: `search` (L248)
+- `core/services/sensory_archive.py` :: `count` (L276)
+- `core/services/sensory_archive.py` :: `get` (L272)
+- `core/services/sensory_archive.py` :: `list_recent` (L251)
+- `core/services/sensory_archive.py` :: `record_atmosphere` (L233)
+- `core/services/sensory_archive.py` :: `record_audio` (L224)
+- `core/services/sensory_archive.py` :: `record_mixed` (L242)
+- `core/services/sensory_archive.py` :: `record_visual` (L215)
+- `core/services/sensory_archive.py` :: `search` (L263)
 - `core/services/session_continuity.py` :: `build_session_continuity_surface` (L566)
 - `core/services/session_continuity.py` :: `get_latest_morning_thread` (L441)
 - `core/services/session_inbox.py` :: `pending_count` (L237)

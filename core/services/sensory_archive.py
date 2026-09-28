@@ -153,6 +153,21 @@ def _record(
             "sensory memory content is model reasoning, not an impression"
         )
 
+    # Kvitterings-gaten — den anden indgangsgrænse. Et sanseindtryk markerer at
+    # noget ÆNDREDE sig; «Intet mærkbart ændret.» og et lyt der endte i
+    # `silence` er svaret på at der ikke var noget at sanse. De arkiveres ikke,
+    # men returneres som en tydelig «sprunget over», så kalderen kan sige sandt
+    # i stedet for at bogføre et indtryk der aldrig blev skrevet.
+    if not skal_arkiveres(content):
+        return {
+            "id": None,
+            "timestamp": None,
+            "modality": modality,
+            "content": content.strip(),
+            "skipped": True,
+            "reason": "kvittering",
+        }
+
     # Auto-extract mood if not provided
     final_mood = mood_tone
     if final_mood is None:
@@ -272,6 +287,61 @@ _PLADSHOLDERE = (
     "ingen ændring",
     "ingen aendring",
 )
+
+# Kvitteringer der ikke er pladsholder-TEKSTER men kvitteringer for et udfald.
+# Lyd-siden skriver sin klassifikation som indhold, i to formater kodebasen
+# selv producerer: «Jeg lyttede til rummet. Klassifikation: silence (amplitude
+# …)» (active_sensing) og «Lydbillede: silence» (ambient_sound). Begge betyder
+# at der ikke var noget at høre. Målt 28/9-2026: 24 sådanne poster, nyeste 26/9.
+# Bevidst snævert: en BESKRIVELSE der nævner 'silence' («…kategori 'silence'
+# betyder, at der er en meget lav lydintensitet») er et indtryk og rammes ikke.
+_KVITTERING_MOENSTRE = (
+    re.compile(r"(?:klassifikation|lydbillede):\s*silence\b", re.IGNORECASE),
+)
+
+# Hvornår en kvittering er en sansning. Ukendt værdi falder til «skip».
+_KVITTERING_MODES = ("skip", "always")
+
+
+def er_kvittering(content: object) -> bool:
+    """Er dette kvitteringen for at der blev sanset — ikke et indtryk?
+
+    Fanger to familier: pladsholder-teksterne ("Intet mærkbart ændret.") og
+    lyd-klassifikationen `silence`, som betyder at der ikke var noget at høre.
+    """
+    tekst = str(content or "").strip()
+    if not tekst:
+        return True
+    lav = tekst.lower()
+    if any(lav.startswith(p) for p in _PLADSHOLDERE):
+        return True
+    return any(m.search(tekst) for m in _KVITTERING_MOENSTRE)
+
+
+def _kvittering_mode() -> str:
+    """Hvornår en kvittering er en sansning: skip | always."""
+    try:
+        from core.runtime.settings import load_settings
+
+        raa = str(load_settings().sensory_receipt_archive_mode or "")
+    except Exception as exc:  # indstillingerne kan ikke læses → sikkert valg
+        logger.debug("sensory_archive: kunne ikke læse indstilling: %s", exc)
+        return "skip"
+    mode = raa.strip().lower()
+    return mode if mode in _KVITTERING_MODES else "skip"
+
+
+def skal_arkiveres(content: object) -> bool:
+    """Skal denne tekst arkiveres som en sansning?
+
+    `er_maettet` har svaret på det siden 18/9 — men kun på LÆSESIDEN: arkivet
+    blev ved med at fyldes med kvitteringer, og filteret skjulte dem bagefter.
+    Her er det samme spørgsmål flyttet til det ene punkt alle skrivninger går
+    igennem, så hanen lukkes i stedet for at gulvet moppes.
+    """
+    if _kvittering_mode() == "always":
+        return True
+    return not er_kvittering(content)
 
 
 def er_maettet(content: object) -> bool:

@@ -134,12 +134,12 @@ _Aktiv Sansning — Sansernes Arkiv får autonom sansetrang._
 | function | `_perform_sensing` | `(modality, state, now)` | Udfør sansningen og skriv til Sansernes Arkiv. | [src](../../../core/services/active_sensing_daemon.py#L255) |
 | function | `_sense_visual` | `(state, now)` | Se rummet på eget initiativ. | [src](../../../core/services/active_sensing_daemon.py#L275) |
 | function | `_sense_audio` | `(state, now)` | Lyt i rummet på eget initiativ — og arkivér indtrykket. | [src](../../../core/services/active_sensing_daemon.py#L304) |
-| function | `_sense_atmosphere` | `(state, now)` | Registrer rummets stemning — kombinerer tilgængelige data. | [src](../../../core/services/active_sensing_daemon.py#L356) |
-| function | `_sense_mixed` | `(state, now)` | Blandet sansning — både se og lyt i samme tur. | [src](../../../core/services/active_sensing_daemon.py#L408) |
-| function | `build_active_sensing_surface` | `()` | Observability surface til Mission Control. | [src](../../../core/services/active_sensing_daemon.py#L460) |
-| function | `_enabled` | `()` | — | [src](../../../core/services/active_sensing_daemon.py#L481) |
-| function | `_load_state` | `()` | — | [src](../../../core/services/active_sensing_daemon.py#L489) |
-| function | `_save_state` | `(state)` | — | [src](../../../core/services/active_sensing_daemon.py#L494) |
+| function | `_sense_atmosphere` | `(state, now)` | Registrer rummets stemning — kombinerer tilgængelige data. | [src](../../../core/services/active_sensing_daemon.py#L367) |
+| function | `_sense_mixed` | `(state, now)` | Blandet sansning — både se og lyt i samme tur. | [src](../../../core/services/active_sensing_daemon.py#L419) |
+| function | `build_active_sensing_surface` | `()` | Observability surface til Mission Control. | [src](../../../core/services/active_sensing_daemon.py#L471) |
+| function | `_enabled` | `()` | — | [src](../../../core/services/active_sensing_daemon.py#L492) |
+| function | `_load_state` | `()` | — | [src](../../../core/services/active_sensing_daemon.py#L500) |
+| function | `_save_state` | `(state)` | — | [src](../../../core/services/active_sensing_daemon.py#L505) |
 
 ## `core/services/adaptive_learning_runtime.py`
 

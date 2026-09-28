@@ -148,3 +148,43 @@ def test_fladen_viser_fejlene_ved_siden_af_taellingen(isolated_runtime, monkeypa
     assert flade["total_sensing_events"] == 799
     assert flade["total_failed_sensings"] == 41
     assert flade["last_fail_reason"] == "vision_failed"
+
+
+def test_silence_lyt_taeller_ikke_som_arkiveret(isolated_runtime, monkeypatch) -> None:
+    """Et lyt der endte i `silence` er ikke et indtryk.
+
+    Målt 28/9-2026: 24 sådanne poster, nyeste 26/9 — og hanen skrev videre.
+    Turen må ikke melde «arkiveret» når arkivet afviste den.
+    """
+    from datetime import UTC, datetime
+
+    from core.services import active_sensing_daemon as asd
+    from core.services import ambient_sound_daemon as amb
+
+    monkeypatch.setattr(
+        amb, "_capture_sample",
+        lambda save_wav=True: ("silence", 0.0, 0.0, None),
+    )
+
+    svar = asd._sense_audio({}, datetime.now(UTC))
+
+    assert svar["ok"] is False, "intet indtryk blev arkiveret"
+    assert svar["reason"] == "audio_silence_not_an_impression"
+
+
+def test_rigtig_lyd_arkiveres_som_foer(isolated_runtime, monkeypatch) -> None:
+    """Kun `silence` er en kvittering — musik er en sansning."""
+    from datetime import UTC, datetime
+
+    from core.services import active_sensing_daemon as asd
+    from core.services import ambient_sound_daemon as amb
+
+    monkeypatch.setattr(
+        amb, "_capture_sample",
+        lambda save_wav=True: ("music", 0.0312, 0.0081, None),
+    )
+
+    svar = asd._sense_audio({}, datetime.now(UTC))
+
+    assert svar["ok"] is True
+    assert svar["reason"] == "audio_music"

@@ -344,7 +344,7 @@ def _iter_openai_compatible_chat_events(
     try:
         if provider == "deepseek" and tools and len(tools) >= 20:
             from core.services.cache_telemetry import (
-                prefix_signature, record_visible_cache,
+                component_signatures, prefix_signature, record_visible_cache,
             )
             _sys_c = ""
             for _m in (messages or []):
@@ -352,10 +352,12 @@ def _iter_openai_compatible_chat_events(
                     _sys_c = str(_m.get("content") or "")
                     break
             _psha, _plen = prefix_signature(_sys_c, tools)
+            _parts = component_signatures(messages, tools)
             record_visible_cache(
                 lane="visible-call", provider=provider, model=model,
                 prefix_sha=_psha, prefix_len=_plen,
                 cache_hit=cache_hit, cache_miss=cache_miss,
+                **_parts,
             )
     except Exception:
         pass

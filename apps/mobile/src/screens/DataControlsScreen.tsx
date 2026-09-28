@@ -44,7 +44,7 @@ export function DataControlsScreen({ onClose }: { onClose: () => void }) {
     Alert.alert(
       `Slet ${layer.label.toLowerCase()}?`,
       `${layer.detail}\n\nDette sletter ${describeLayer(layer)}.\n\n` +
-      'Dine data er krypteret — der findes ingen kopi at hente tilbage fra.',
+      'Sletning er endelig — der findes ingen kopi at hente tilbage fra.',
       [
         { text: 'Annullér', style: 'cancel' },
         { text: 'Slet', style: 'destructive', onPress: () => void run(layer.key, layer.label) }
@@ -56,8 +56,8 @@ export function DataControlsScreen({ onClose }: { onClose: () => void }) {
     Alert.alert(
       'Slet alt?',
       'Samtaler, Sansernes Arkiv, hans viden om dig og hans billede af hvem du er.\n\n' +
-      'Han starter forfra. Dine data er krypteret — der findes ingen kopi at ' +
-      'hente tilbage fra, heller ikke for Bjørn.',
+      'Han starter forfra. Sletning er endelig — der findes ingen kopi at ' +
+      'hente tilbage fra.',
       [
         { text: 'Annullér', style: 'cancel' },
         { text: 'Slet alt', style: 'destructive', onPress: () => void run('all', 'Alt') }
@@ -116,14 +116,19 @@ export function DataControlsScreen({ onClose }: { onClose: () => void }) {
           Jarvis husker fire forskellige ting om dig. Du kan slette dem hver for sig.
         </Text>
         {/* Endeligheden skal stå FØR knapperne, ikke i en dialog bagefter.
-            Alle workspaces undtagen ejerens er krypterede, og der findes ingen
-            læsbar kopi at fortryde fra. Det er ikke en advarsel man kan nøjes
-            med at give i det øjeblik man trykker. */}
+            Sletningen er uigenkaldelig, og der findes ingen læsbar kopi at
+            fortryde fra. Det er ikke en advarsel man kan nøjes med at give i
+            det øjeblik man trykker.
+
+            Teksten nævner IKKE kryptering med vilje: ejerens workspace er
+            plaintext (§16.2), så påstanden ville være falsk for ham — og en
+            rolle-bevidst variant ville selv være en lækage-vej, da skærmen er
+            åben for alle og rolle-detektionen har fejlet før. */}
         <View style={styles.warning}>
           <ShieldAlert size={18} color={tokens.color.warn} strokeWidth={1.9} />
           <Text style={styles.warningText}>
-            Dine data er krypteret, og sletning er endelig. Der findes ingen
-            læsbar kopi at hente tilbage fra — heller ikke for Bjørn.
+            Sletning er endelig. Der findes ingen læsbar kopi at hente tilbage
+            fra.
           </Text>
         </View>
 

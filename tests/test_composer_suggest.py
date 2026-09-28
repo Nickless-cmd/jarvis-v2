@@ -176,87 +176,6 @@ def _samtale(*par):
     return [{"role": r, "content": c} for r, c in par]
 
 
-def test_naeste_forslag_bygger_paa_ASSISTENTENS_SIDSTE_BESKED(monkeypatch):
-    """AENDRET 20/9-2026. Foer stod de seks seneste beskeder fra BEGGE sider i
-    prompten. Bjoern: «hvis den ska virke rigtigt, skal den kun udlede kontekst
-    fra din sidste besked, og hvad naeste step kan vaere». Hans egne tidligere
-    formuleringer er stoej for en 4b-model — naeste skridt ligger i svaret,
-    ikke i spoergsmaalet der foerte til det."""
-    monkeypatch.setattr(cs, "_samtale", lambda sid: _samtale(
-        ("user", "hvordan ser cheap lane ud?"),
-        ("assistant", "81% succes, 34 udbydere. To staar i karantaene."),
-    ))
-    sendt: list[str] = []
-    monkeypatch.setattr(cs, "_kald_model",
-                        lambda p: sendt.append(p) or "vis de to i karantaene")
-    assert cs.foreslaa_naeste("s1") == "vis de to i karantaene"
-    # Svaret skal FAKTISK med — ellers gaetter modellen i blinde.
-    assert "karantaene" in sendt[0]
-    # ... og hans eget spoergsmaal skal IKKE.
-    assert "cheap lane" not in sendt[0], "brugerens egne beskeder er stoej her"
-
-
-def test_ANBEFALINGEN_loeftes_ud_saa_modellen_ikke_vaelger_selv(monkeypatch):
-    """Bjoern 20/9-2026: «hvis du feks. har skrevet 3 veje hvor du anbefaler en
-    boer den gaa med den». En 4b-model laeser en lang besked som en liste af
-    muligheder og griber den foerste. Staar anbefalingen ALENE under sin egen
-    overskrift, er der ikke noget at vaelge imellem."""
-    monkeypatch.setattr(cs, "_samtale", lambda sid: _samtale(("assistant",
-        "Tre veje: (a) rydde op i worktrees, (b) genstarte ollama, "
-        "(c) lade den ligge til i morgen. Jeg ville tage (b) foerst — "
-        "(a) kan vente til der er ro paa.")))
-    sendt: list[str] = []
-    monkeypatch.setattr(cs, "_kald_model",
-                        lambda p: sendt.append(p) or "genstart ollama og se om den kommer op")
-    assert cs.foreslaa_naeste("s1") == "genstart ollama og se om den kommer op"
-    assert "Assistenten anbefaler: Jeg ville tage (b) foerst" in sendt[0]
-
-
-def test_den_SIDSTE_anbefaling_vinder():
-    """Staar der «jeg ville tage (b)» EFTER «jeg foreslaar tre veje», er det
-    (b) der er dommen — ikke den foerste vending der lignede en anbefaling."""
-    t = ("Jeg foreslaar vi ser paa tre ting. Jeg ville starte med logfilen.")
-    assert cs._anbefaling(t) == "Jeg ville starte med logfilen."
-
-
-def test_uden_en_anbefaling_staar_beskeden_ALENE(monkeypatch):
-    """En besked uden valg skal ikke faa en tom overskrift paahaeftet."""
-    monkeypatch.setattr(cs, "_samtale", lambda sid: _samtale(
-        ("assistant", "Led Lys er taendt — standerlampen staar stadig off.")))
-    sendt: list[str] = []
-    monkeypatch.setattr(cs, "_kald_model", lambda p: sendt.append(p) or "taend standerlampen ogsaa")
-    cs.foreslaa_naeste("s1")
-    assert "anbefaler" not in sendt[0]
-
-
-def test_en_lang_besked_beholder_BEGGE_ender():
-    """En ren `[:maks]` ville tage begyndelsen — og netop dér staar
-    anbefalingen ikke. Den staar til sidst, efter mulighederne."""
-    lang = "START " + "fyld " * 1000 + "SLUT jeg ville tage (b)."
-    ud = cs._klip_kontekst(lang)
-    assert ud.startswith("START")
-    assert ud.endswith("jeg ville tage (b).")
-    assert len(ud) <= cs.MAKS_KONTEKST_TEGN + 10
-
-
-def test_naeste_forslag_er_en_HEL_besked_uden_hoeftende_mellemrum(monkeypatch):
-    """Fortsaettelses-formen haefter et mellemrum paa. Her er der intet at
-    haefte paa: feltet er tomt, og et forslag der begynder med mellemrum ville
-    blive til en besked der goer det samme."""
-    monkeypatch.setattr(cs, "_samtale", lambda sid: _samtale(
-        ("assistant", "Det er rettet og verificeret — testene er groenne igen.")))
-    monkeypatch.setattr(cs, "_kald_model", lambda p: "  deploy det til ct105  ")
-    assert cs.foreslaa_naeste("s1") == "deploy det til ct105"
-
-
-def test_modellens_ROLLENAVN_fjernes(monkeypatch):
-    """Rollerne staar i prompten, saa modellen skriver dem gerne med."""
-    monkeypatch.setattr(cs, "_samtale", lambda sid: _samtale(
-        ("assistant", "Klar — jeg har bygget det og deployet det til ct105.")))
-    monkeypatch.setattr(cs, "_kald_model", lambda p: "Bruger: koer testene igen")
-    assert cs.foreslaa_naeste("s1") == "koer testene igen"
-
-
 def test_uden_SESSION_spoerges_der_ikke(monkeypatch):
     monkeypatch.setattr(cs, "_kald_model", lambda p: pytest.fail("spurgte alligevel"))
     assert cs.foreslaa_naeste("") == ""
@@ -281,93 +200,26 @@ def test_mens_HANS_besked_venter_paa_svar_foreslaas_intet(monkeypatch):
     assert cs.foreslaa_naeste("s1") == ""
 
 
-def test_en_LANG_besked_klippes_i_prompten(monkeypatch):
-    """Ét vaerktoejs-svar paa 30k tegn ville ellers skubbe alt det der faktisk
-    blev sagt ud af prompten — og koere den lokale model i staa."""
-    monkeypatch.setattr(cs, "_samtale", lambda sid: _samtale(("assistant", "x" * 5000)))
-    sendt: list[str] = []
-    monkeypatch.setattr(cs, "_kald_model", lambda p: sendt.append(p) or "ok")
-    cs.foreslaa_naeste("s1")
-    assert len(sendt[0]) < 2000
-
-
 def test_en_DB_fejl_giver_tomt_og_kaster_ikke(monkeypatch):
     monkeypatch.setattr(cs, "_samtale",
                         lambda sid: (_ for _ in ()).throw(RuntimeError("laast")))
     assert cs.foreslaa_naeste("s1") == ""
 
 
-def test_en_MODELFEJL_i_naeste_forslag_giver_tomt(monkeypatch):
-    monkeypatch.setattr(cs, "_samtale", lambda sid: _samtale(
-        ("assistant", "Klar — jeg har bygget det og deployet det til ct105.")))
-    monkeypatch.setattr(cs, "_kald_model",
-                        lambda p: (_ for _ in ()).throw(RuntimeError("nede")))
-    assert cs.foreslaa_naeste("s1") == ""
-
-
-# ─────────────────────── forslaget skal vaere en ORDRE, ikke en replik (17/9)
+# ───────────────────────────── en STUMP giver intet forslag (17/9-2026)
 #
-# Maalt paa ti aegte samtaler: modellen SVAREDE assistenten i stedet for at
-# bede om noget — «Fire. Det er nemt.», «4. Takk for det.», «Ja, det kan vi
-# lave i morgen!», «Jeg forstaar ikke, hvad du mener». Et svar kan han skrive
-# selv; et forslag skal spare ham for at formulere en ordre. Og et forkert
-# forslag koster mere end intet: det staar og fylder pladsholderens plads.
-
-_LANGT_SVAR = "Det er rettet og verificeret — begge services koerer igen paa ct105."
-
-
-@pytest.mark.parametrize("replik", [
-    "Ja, det kan vi lave i morgen!",
-    "Nej, det behoever du ikke",
-    "Tak for det",
-    "Okay, saa proever vi det",
-    "Jeg forstaar ikke, hvad du mener",
-    "Super, det lyder godt",
-])
-def test_en_REPLIK_er_ikke_et_forslag(monkeypatch, replik):
-    monkeypatch.setattr(cs, "_samtale", lambda sid: _samtale(("assistant", _LANGT_SVAR)))
-    monkeypatch.setattr(cs, "_kald_model", lambda p: replik)
-    assert cs.foreslaa_naeste("s1") == ""
-
-
-def test_en_PAASTAND_er_heller_ikke_et_forslag(monkeypatch):
-    """Maalt: «Fyrede kl. 20:18, ventetid var 60 sekunder» — en konstatering.
-    En ordre begynder aldrig med et datids-verbum, og et spoergsmaal baerer
-    sit spoergsmaalstegn; derfor kan de skelnes uden at forstaa saetningen."""
-    monkeypatch.setattr(cs, "_samtale", lambda sid: _samtale(("assistant", _LANGT_SVAR)))
-    monkeypatch.setattr(cs, "_kald_model", lambda p: "Fyrede kl. 20:18, ventetid var 60 sekunder")
-    assert cs.foreslaa_naeste("s1") == ""
-
-
-@pytest.mark.parametrize("ordre", [
-    "Deploy det og hold oeje med journalen",
-    "Vis mig de to der staar i karantaene",
-    "Hvorfor fejler den kun paa ct105?",
-    "Ret det og koer testene igen",
-    "Jeg vil have dig til at rulle det tilbage",
-])
-def test_en_ORDRE_slipper_igennem(monkeypatch, ordre):
-    """Vagterne maa ikke aede det de er sat til at beskytte. «Jeg vil have dig
-    til at…» begynder med «Jeg» men er en ordre, ikke en replik."""
-    monkeypatch.setattr(cs, "_samtale", lambda sid: _samtale(("assistant", _LANGT_SVAR)))
-    monkeypatch.setattr(cs, "_kald_model", lambda p: ordre)
-    assert cs.foreslaa_naeste("s1") == ordre
-
+# Maalt paa ti aegte samtaler: assistentens sidste besked kan vaere en stump —
+# «4.», «OK», «Generation cancelled.» — og der er intet naeste skridt at bygge
+# paa. Det gaelder ogsaa et forslag fra Jarvis selv: uden noget at bygge paa
+# ville det vaere et bud uden grundlag.
 
 @pytest.mark.parametrize("stump", ["4.", "OK", "Generation cancelled.", "Ja."])
 def test_en_STUMP_til_sidst_giver_intet_forslag(monkeypatch, stump):
-    """Der er intet naeste skridt at bygge paa. Maalt: praecis dér begyndte
-    modellen at foere samtalen i stedet for at foreslaa noget."""
+    """Der er intet naeste skridt at bygge paa — hverken for en model eller
+    for Jarvis selv."""
     monkeypatch.setattr(cs, "_samtale", lambda sid: _samtale(("assistant", stump)))
     monkeypatch.setattr(cs, "_kald_model", lambda p: pytest.fail("spurgte alligevel"))
     assert cs.foreslaa_naeste("s1") == ""
-
-
-def test_prompten_forlanger_noget_KONKRET_fra_samtalen():
-    """«Saa kan vi gaa videre til naeste trin» er sandt om enhver samtale og
-    derfor ubrugeligt i denne. Kravet staar i prompten; dét kan maales."""
-    assert "KONKRET" in cs._PROMPT_NAESTE
-    assert "ORDRE" in cs._PROMPT_NAESTE
 
 
 def test_ruten_vaelger_tilstand_efter_om_der_ER_et_udkast(monkeypatch):
@@ -427,42 +279,12 @@ def test_ruten_taaler_en_tom_krop():
 # klienten kan melde tilbage hvad der skete med netop DET forslag.
 
 
-def test_forslaget_baerer_et_ID_og_beskeden_det_kom_af(monkeypatch):
-    monkeypatch.setattr(cs, "_samtale", lambda sid: [{
-        "role": "assistant", "message_id": "message-42",
-        "content": "Det er rettet og verificeret — testene er groenne igen."}])
-    monkeypatch.setattr(cs, "_kald_model", lambda p: "deploy det til ct105")
-    d = cs.foreslaa_naeste_detaljer("s1")
-    assert d["forslag"] == "deploy det til ct105"
-    assert d["forslag_id"].startswith("cs-") and len(d["forslag_id"]) > 8
-    assert d["kilde_besked_id"] == "message-42"
-
-
-def test_to_forslag_faar_FORSKELLIGE_id(monkeypatch):
-    """Ellers ville to valg skrive oven i hinanden."""
-    monkeypatch.setattr(cs, "_samtale", lambda sid: [{
-        "role": "assistant", "message_id": "m1",
-        "content": "Det er rettet og verificeret — testene er groenne igen."}])
-    monkeypatch.setattr(cs, "_kald_model", lambda p: "deploy det")
-    assert cs.foreslaa_naeste_detaljer("s1")["forslag_id"] != \
-        cs.foreslaa_naeste_detaljer("s1")["forslag_id"]
-
-
 def test_INTET_forslag_giver_tomme_id(monkeypatch):
     """Der er ikke noget at melde tilbage om — og en klient der fik et id uden
     et forslag, ville oprette en raekke for noget der aldrig blev vist."""
     monkeypatch.setattr(cs, "_samtale", lambda sid: [])
     d = cs.foreslaa_naeste_detaljer("s1")
     assert d == {"forslag": "", "forslag_id": "", "kilde_besked_id": ""}
-
-
-def test_den_GAMLE_form_svarer_stadig_med_en_streng(monkeypatch):
-    """Mobilen og enhver anden kalder maa ikke braekke af at der kom felter til."""
-    monkeypatch.setattr(cs, "_samtale", lambda sid: [{
-        "role": "assistant", "message_id": "m1",
-        "content": "Det er rettet og verificeret — testene er groenne igen."}])
-    monkeypatch.setattr(cs, "_kald_model", lambda p: "deploy det")
-    assert cs.foreslaa_naeste("s1") == "deploy det"
 
 
 def test_ruten_registrerer_VIST_og_derefter_valget(isolated_runtime, monkeypatch):
@@ -486,18 +308,6 @@ def test_ruten_fejler_ALDRIG(isolated_runtime, monkeypatch):
                         lambda **k: (_ for _ in ()).throw(RuntimeError("basen er nede")))
     assert rute.choice(rute.Valg(forslag_id="cs-1", session_id="s1",
                                  forslag="x", valg="vist")) == {"ok": True}
-
-
-def test_ruten_svarer_med_id_saa_klienten_kan_melde_tilbage(monkeypatch):
-    from apps.api.jarvis_api.routes import composer_suggest_routes as rute
-
-    monkeypatch.setattr(cs, "_samtale", lambda sid: [{
-        "role": "assistant", "message_id": "m5",
-        "content": "Det er rettet og verificeret — testene er groenne igen."}])
-    monkeypatch.setattr(cs, "_kald_model", lambda p: "deploy det")
-    svar = rute.suggest(rute.Udkast(udkast="", session_id="s1"))
-    assert svar["forslag"] == "deploy det"
-    assert svar["kilde_besked_id"] == "m5" and svar["forslag_id"]
 
 
 def test_MOBILENS_form_har_intet_valg_at_registrere(monkeypatch):
@@ -549,20 +359,27 @@ def test_JARVIS_forslag_vinder_og_modellen_spoerges_SLET_IKKE(isolated_runtime, 
     assert d["kilde_besked_id"] == "message-42"
 
 
-def test_uden_hans_forslag_gaar_den_til_modellen_som_foer(isolated_runtime, monkeypatch):
+def test_uden_hans_forslag_staar_FELTET_TOMT(isolated_runtime, monkeypatch):
+    """Den lokale model blev droppet 28/9-2026: «drop den anden models forslag
+    og kun bruge dine». Uden et eget forslag er der intet bud — og et tomt felt
+    er aerligere end et daarligt forslag. Modellen maa ikke spoerges."""
     _med_svar(monkeypatch)
-    monkeypatch.setattr(cs, "_kald_model", lambda p: "deploy det")
-    assert cs.foreslaa_naeste_detaljer("s1")["forslag"] == "deploy det"
+    monkeypatch.setattr(cs, "_kald_model",
+                        lambda *a, **k: pytest.fail("spurgte den lokale model alligevel"))
+    assert cs.foreslaa_naeste_detaljer("s1") == {
+        "forslag": "", "forslag_id": "", "kilde_besked_id": ""}
 
 
-def test_efter_forbrug_falder_den_tilbage_til_modellen(isolated_runtime, monkeypatch):
-    """Forslaget er brugt. Naeste hentning i samme session er modellens igen."""
+def test_efter_forbrug_staar_feltet_TOMT_igen(isolated_runtime, monkeypatch):
+    """Forslaget forbruges ved laesning. Naeste hentning i samme session giver
+    intet — der er ingen model at falde tilbage til laengere."""
     _med_svar(monkeypatch)
-    monkeypatch.setattr(cs, "_kald_model", lambda p: "fra modellen")
+    monkeypatch.setattr(cs, "_kald_model",
+                        lambda *a, **k: pytest.fail("spurgte den lokale model alligevel"))
     dj.gem_forslag(session_id="s1", forslag="fra Jarvis")
 
     assert cs.foreslaa_naeste_detaljer("s1")["forslag"] == "fra Jarvis"
-    assert cs.foreslaa_naeste_detaljer("s1")["forslag"] == "fra modellen"
+    assert cs.foreslaa_naeste_detaljer("s1")["forslag"] == ""
 
 
 def test_hans_forslag_bruges_ikke_naar_turen_IKKE_er_faerdig(isolated_runtime, monkeypatch):

@@ -1,5 +1,17 @@
 """Forslag i komponisten — hvad der kunne skrives videre, mens man skriver.
 
+## Hvem der foreslår (ændret 28/9-2026)
+
+Forslaget til den NÆSTE besked kommer nu udelukkende fra Jarvis selv, gennem
+vaerktoejet `suggest_next_message`. Den lokale model (qwen3:4b) skrev tidligere
+et bud naar han ikke selv lagde et ned; det blev droppet efter Bjoerns maaling
+og dom: «drop den anden models forslag og kun bruge dine... den anden model
+viser lorte forslag». Af 428 viste forslag kom 411 fra modellen, og de blev
+valgt 2,9 % af gangene mod 23,5 % for hans egne.
+
+Det er et bevidst tab af daekning: uden et eget forslag staar pladsholderen
+TOM. Et tomt felt er aerligere end et daarligt forslag.
+
 ## Hvorfor lokalt, og kun lokalt
 
 Et forslag er baggrundsarbejde, ikke Bjørns tur. Reglen han har gentaget mange
@@ -32,7 +44,6 @@ import json
 import logging
 import re
 import urllib.request
-from uuid import uuid4
 from typing import Final
 
 logger = logging.getLogger(__name__)
@@ -184,149 +195,15 @@ def foreslaa(udkast: str) -> str:
 # hvad han kunne sige nu. Derfor er kilden samtalen og ikke udkastet — der er
 # jo ikke noget udkast.
 
-#: Hvor mange rækker der HENTES. Kun den sidste bruges i prompten (se
-#: `_kontekst`); de øvrige afgør om turen er i gang.
+#: Hvor mange rækker der HENTES. Kun den sidste bruges — den bærer
+#: kilde-beskeden; de øvrige afgør om turen er i gang.
 MAKS_HISTORIK: Final[int] = 6
-
-#: Budgettet for den ENE besked der bærer konteksten. Afløste
-#: `MAKS_BESKED_TEGN = 400` 20/9-2026: dengang skulle seks beskeder deles om
-#: prompten, nu er der kun én — men den skal stadig kunne holdes i hovedet af
-#: en 4b-model.
-MAKS_KONTEKST_TEGN: Final[int] = 900
 
 #: Under det er assistentens sidste besked en stump — «4.», «Generation
 #: cancelled.», «OK» — og der er intet at bygge et næste skridt på. Målt
 #: 17/9-2026: netop dér svarede modellen «Fire. Det er nemt.» og «Jeg forstår
 #: ikke, hvad du mener», altså replikker i samtalen frem for forslag.
 MIN_SVAR_TEGN: Final[int] = 40
-
-_PROMPT_NAESTE = (
-    "Du hjælper en bruger med at skrive sin næste besked til sin assistent.\n"
-    "Herunder står assistentens SENESTE besked. Foreslå ÉN besked brugeren "
-    "kunne sende nu — det næste skridt der følger af netop den besked.\n\n"
-    "Krav:\n"
-    # Målt 17/9-2026: modellen svarede assistenten i stedet for at bede om
-    # noget — «Fire. Det er nemt.», «Ja, det kan vi lave i morgen!». Et svar
-    # kan brugeren skrive selv; et forslag skal spare ham for at formulere en
-    # ordre.
-    "- Det skal være en ORDRE eller et SPØRGSMÅL til assistenten — noget "
-    "brugeren beder om. Aldrig et svar, en kommentar eller en høflighed.\n"
-    # Målt samme dag: «Så kan vi gå videre til næste trin» — sandt om enhver
-    # samtale, og derfor ubrugeligt i denne.
-    "- Det skal nævne noget KONKRET fra beskeden: en fil, et navn, et tal, en "
-    "opgave. Et forslag der passer på enhver samtale, er ikke et forslag.\n"
-    # Bjørn 20/9-2026: «hvis du feks. har skrevet 3 veje hvor du anbefaler en
-    # bør den gå med den». Peger beskeden selv på en vej, er valget truffet —
-    # et forslag der spørger om noget der allerede er anbefalet, er spild.
-    "- Peger beskeden på en anbefalet vej blandt flere, skal forslaget følge "
-    "DEN vej — ikke de fravalgte.\n"
-    "- Dansk. Højst ti ord. Ingen indledning som «Så nu» eller «Okay».\n"
-    "- Svar KUN med beskeden: ingen anførselstegn, intet rollenavn, ingen "
-    "forklaring.\n\n"
-    "Eksempler på FORMEN (indholdet skal komme fra samtalen nedenfor): "
-    "«Deploy det og hold øje med journalen» · «Vis mig de to der står i "
-    "karantæne» · «Hvorfor fejler den kun på ct105?» · «Ret det og kør "
-    "testene igen»\n\n"
-    "Assistentens sidste besked:\n"
-)
-
-#: Åbninger der afslører en REPLIK frem for en ordre. Kun begyndelser, og kun
-#: entydige: «Ja, det kan vi…» er et svar, mens «Jeg vil have dig til at…» er
-#: en ordre og skal slippe igennem.
-_REPLIK_START: Final[tuple[str, ...]] = (
-    "ja,", "ja.", "ja ", "nej,", "nej.", "nej ", "tak", "okay", "ok,", "ok.",
-    # Begge stavemaader: modellen skriver af og til uden danske bogstaver
-    # (målt: den svarede endda «Takk for det» på norsk).
-    "jeg forstår", "jeg forstaar", "det lyder", "det er godt", "godt,",
-    "super", "fedt", "takk",
-    "enig", "nemlig", "præcis",
-)
-
-#: Modellen svarer gerne med rollen foran, fordi den står i prompten.
-_ROLLE_PRAEFIKS = ("bruger:", "brugeren:", "user:", "assistent:", "assistant:")
-
-
-def _er_paastand(s: str) -> bool:
-    """Er forslaget en konstatering frem for noget man beder om?
-
-    Målt 17/9-2026: «Fyrede kl. 20:18, ventetid var 60 sekunder» — modellen
-    refererede hvad der var sket i stedet for at bede om noget. En ordre
-    begynder aldrig med et datids-verbum («Vis», «Ret», «Kør», «Verificer»),
-    og et spørgsmål bærer sit spørgsmålstegn. Derfor kan de to skelnes uden at
-    forstå sætningen.
-    """
-    t = (s or "").strip()
-    if not t or "?" in t:
-        return False
-    ord0 = t.split()[0].lower().strip(".,;:!«»\"'")
-    return len(ord0) > 4 and (ord0.endswith("ede") or ord0.endswith("te"))
-
-
-#: Vendinger hvor beskeden selv peger på en vej. Målt på Jarvis' egne svar
-#: 20/9-2026: anbefalingen står næsten altid til SIDST, efter mulighederne —
-#: «Tre veje: (a) … (b) … (c) … Jeg ville tage (b) først».
-_ANBEFALING: Final[tuple[str, ...]] = (
-    "jeg ville", "jeg anbefaler", "min anbefaling", "jeg foreslår",
-    "jeg foreslaar", "mit forslag", "jeg vil anbefale", "bedst at",
-    "det rigtige er", "start med", "tag den", "vælg", "vaelg",
-)
-
-
-def _anbefaling(tekst: str) -> str:
-    """Den sætning hvor beskeden peger på ÉN vej — eller `""`.
-
-    Hvorfor den skal løftes ud og ikke bare stå i teksten: en 4b-model læser
-    en lang besked som en liste af muligheder og griber den første. Bjørn
-    20/9-2026: «hvis du feks. har skrevet 3 veje hvor du anbefaler en bør den
-    gå med den». Står anbefalingen ALENE i prompten under sin egen overskrift,
-    er der ikke noget at vælge imellem.
-
-    Den SIDSTE der matcher vinder: står der «jeg ville tage (b)» efter
-    «jeg foreslår tre veje», er det (b) der er dommen.
-    """
-    t = " ".join((tekst or "").split())
-    if not t:
-        return ""
-    fundet = ""
-    for saetning in re.split(r"(?<=[.!?])\s+", t):
-        lav = saetning.lower()
-        if any(v in lav for v in _ANBEFALING):
-            fundet = saetning.strip()
-    return fundet
-
-
-def _klip_kontekst(tekst: str, maks: int = MAKS_KONTEKST_TEGN) -> str:
-    """Klip en lang besked, men behold BEGGE ender.
-
-    En ren `[:maks]` ville tage begyndelsen — og netop dér står anbefalingen
-    ikke. Den står til sidst, efter mulighederne. En ren hale ville omvendt
-    tabe hvad beskeden handler om. Derfor en tredjedel fra starten og resten
-    fra slutningen, med et synligt spring imellem, så modellen ikke læser det
-    som én sammenhængende sætning.
-    """
-    t = " ".join((tekst or "").split())
-    if len(t) <= maks:
-        return t
-    hoved = maks // 3
-    hale = maks - hoved
-    return t[:hoved].rstrip() + " […] " + t[-hale:].lstrip()
-
-
-def _kontekst(besked: str) -> str:
-    """Prompt-konteksten: assistentens sidste besked, og dens anbefaling.
-
-    Før 20/9-2026 stod her de seks seneste beskeder fra BEGGE sider. Bjørn:
-    «hvis den ska virke rigtigt, skal den kun udlede kontekst fra din sidste
-    besked, og hvad næste step kan være». Hans egne tidligere formuleringer er
-    støj for en lille model — næste skridt ligger i svaret, ikke i spørgsmålet
-    der førte til det.
-    """
-    krop = _klip_kontekst(besked)
-    anb = _anbefaling(krop)
-    if anb and anb != krop:
-        return f"{krop}\n\nAssistenten anbefaler: {anb}"
-    return krop
-
 
 def _samtale(session_id: str) -> list[dict[str, str]]:
     """De seneste beskeder. Egen funktion, så testene kan sætte dem."""
@@ -378,7 +255,8 @@ def foreslaa_naeste_detaljer(session_id: str) -> dict[str, str]:
     if str(beskeder[-1].get("role") or "") != "assistant":
         return _tomt()
     # En stump til sidst («4.», «Generation cancelled.») er ikke et svar der
-    # peger nogen steder hen. Målt: dér begyndte modellen at føre samtalen.
+    # peger nogen steder hen — og et forslag på den ville være et bud uden
+    # noget at bygge på.
     if len(" ".join(str(beskeder[-1].get("content") or "").split())) < MIN_SVAR_TEGN:
         return _tomt()
 
@@ -387,7 +265,7 @@ def foreslaa_naeste_detaljer(session_id: str) -> dict[str, str]:
     # bedre end en 4b-model der kun læser én besked — han ved hvad han lige
     # har lavet, og hvad næste skridt er. Forslaget forbruges ved læsning:
     # det hører til ÉN tur, og et forældet bud er værre end ingen. Findes det
-    # ikke, falder vi tilbage til den lokale model, præcis som før.
+    # ikke, står pladsholderen tom — den lokale model blev droppet 28/9-2026.
     try:
         from core.runtime.db_composer_jarvis import tag_forslag
         eget = tag_forslag(session_id=sid)
@@ -401,44 +279,12 @@ def foreslaa_naeste_detaljer(session_id: str) -> dict[str, str]:
             "kilde_besked_id": str(beskeder[-1].get("message_id") or ""),
         }
 
-    # Mønstret fra hans tidligere valg (fase 3, 20/9-2026). Står SIDST, som
-    # en erfaring modellen vægter — ikke som et krav den adlyder. Et forslag
-    # der altid beder om det samme, er en vane og ikke et tilbud.
-    try:
-        from core.services.composer_moenster import prompt_linje
-        erfaring = prompt_linje()
-    except Exception:
-        logger.debug("composer_suggest: mønsteret kunne ikke læses", exc_info=True)
-        erfaring = ""
-
-    prompt = _PROMPT_NAESTE + _kontekst(str(beskeder[-1].get("content") or ""))
-    if erfaring:
-        prompt = f"{prompt}\n\n{erfaring}"
-    try:
-        raa = _kald_model(prompt)
-    except Exception:
-        logger.debug("composer_suggest: næste-kald fejlede", exc_info=True)
-        return _tomt()
-
-    ud = _ryd(raa)
-    for praefiks in _ROLLE_PRAEFIKS:
-        if ud.lower().startswith(praefiks):
-            ud = ud[len(praefiks):].strip()
-            break
-    ud = ud.strip()
-    # Et svar er ikke et forslag. Prompten siger det, men en 4b-model glider
-    # tilbage i replik-rollen, og et forkert forslag koster mere end intet:
-    # det står og fylder pladsholderens plads.
-    if ud.lower().startswith(_REPLIK_START):
-        logger.debug("composer_suggest: kasseret som replik: %r", ud)
-        return _tomt()
-    if _er_paastand(ud):
-        logger.debug("composer_suggest: kasseret som påstand: %r", ud)
-        return _tomt()
-    # Ingen hæftning med mellemrum her: det er en hel besked, ikke en
-    # fortsættelse af noget.
-    return {
-        "forslag": ud,
-        "forslag_id": f"cs-{uuid4().hex[:16]}",
-        "kilde_besked_id": str(beskeder[-1].get("message_id") or ""),
-    }
+    # Her stod den lokale models forslag (qwen3:4b) indtil 28/9-2026.
+    # Bjørn: «drop den anden models forslag og kun bruge dine... den anden
+    # model viser lorte forslag». Målt i `composer_choices`: af 428 viste
+    # forslag kom 411 fra modellen og 17 fra Jarvis selv — og hans egne blev
+    # valgt 23,5 % af gangene mod modellens 2,9 %, altså otte gange så ofte.
+    # Modellen læste ÉN besked og gættede i blinde; Jarvis ved hvad han lige
+    # har lavet. Uden et eget forslag står pladsholderen tom — et tomt felt
+    # er bedre end et dårligt forslag.
+    return _tomt()

@@ -18,8 +18,10 @@
  *
  * ## Hvad der ALDRIG sker
  *
- * Kaldet går til `/composer/suggest`, som spørger den lokale ollama. Hverken
- * udkast eller samtale forlader maskinen, og der er ingen udgift at bogføre.
+ * Kaldet går til `/composer/suggest`. Siden 28/9-2026 kommer forslaget
+ * udelukkende fra Jarvis selv: den lokale model blev droppet, og uden et eget
+ * forslag står feltet tomt. Intet udkast forlader maskinen, og der er ingen
+ * udgift at bogføre.
  */
 import type { ApiConfig } from './api'
 

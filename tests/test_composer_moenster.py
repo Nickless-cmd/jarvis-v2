@@ -131,34 +131,11 @@ def test_linjen_er_en_ERFARING_ikke_en_ordre(monkeypatch):
     assert "skal" not in linje and "altid" not in linje
 
 
-def test_kontakten_slukker_linjen(monkeypatch):
-    _saet(monkeypatch, _valg(*[("Kør testene igen", "accepteret")] * 12))
-    monkeypatch.setattr(cm, "er_taendt", lambda: False)
-    assert cm.prompt_linje() == ""
-    monkeypatch.setattr(cm, "er_taendt", lambda: True)
-    assert cm.prompt_linje() != ""
-
-
 def test_en_FEJL_i_moenstret_koster_ikke_forslaget(monkeypatch):
     """Komponisten må aldrig kunne gå i stykker af en erfaring."""
     monkeypatch.setattr(cm, "_valg_i_vinduet",
                         lambda: (_ for _ in ()).throw(RuntimeError("basen er nede")))
     assert cm.moenster() == ""
-
-
-def test_forslaget_baerer_moenstret_MED_i_prompten(monkeypatch):
-    """Den fælde huset kender: en sektion der er bygget, men aldrig når frem."""
-    from core.services import composer_suggest as cs
-
-    monkeypatch.setattr(cs, "_samtale", lambda sid: [{
-        "role": "assistant", "message_id": "m1",
-        "content": "Det er rettet og verificeret — testene er groenne igen."}])
-    monkeypatch.setattr(cm, "prompt_linje", lambda: "Erfaring fra hans tidligere valg: X.")
-    sendt: list[str] = []
-    monkeypatch.setattr(cs, "_kald_model", lambda p: sendt.append(p) or "deploy det")
-    cs.foreslaa_naeste("s1")
-    assert "Erfaring fra hans tidligere valg: X." in sendt[0]
-    assert sendt[0].rstrip().endswith("X."), "erfaringen står sidst, efter beskeden"
 
 
 def test_moenstret_kan_SES_i_klartekst(isolated_runtime, monkeypatch):

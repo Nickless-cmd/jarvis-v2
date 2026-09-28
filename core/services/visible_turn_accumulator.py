@@ -221,12 +221,49 @@ class TurnAccumulator:
             thinking_segments=self.thinking_segments,
             thinking_seconds=self.thinking_seconds(),
         )
-        # Etiketterne til sidst: de hæfter sig på deres kald via ids, ikke på
-        # en plads i listen — og midt i blokkene ville de dele en runde op.
+        # Etiketterne SIDST blandt arbejdet, men FØR det sidste svar.
+        #
+        # De hæfter sig på deres kald via `preceding_tool_use_ids`, ikke på en
+        # plads i listen, så opslaget er ligeglad med hvor de står. Men
+        # klienten TEGNER i rækkefølge, og desks rækkemodel lægger alt efter
+        # sidste værktøjskald i svar-sektionen. Lå etiketterne bagest, havnede
+        # de præcis dér hvor det endelige svar skulle stå.
+        #
+        # Målt 28/9-2026: 4.027 `tool_use_summary`-blokke lå efter svaret på
+        # syv dage — i 791 beskeder, altså ~5 pr. besked — og andelen af
+        # beskeder der ikke slutter i tekst sprang fra 2 % til 76 % den 19/9,
+        # da etiketterne begyndte at blive gemt. Bjørn så det som «et
+        # værktøjskald og en syntese i stedet for den endelige besked», og
+        # læste det som om Jarvis arbejdede videre efter at have svaret. Det
+        # gjorde han ikke: 913 af hans 919 gemninger ligger FØR svaret.
+        #
+        # Midt i blokkene ville stadig dele en runde op — derfor ikke dér.
+        # Lige før den sidste tekstblok er både efter alt arbejdet og før
+        # svaret.
         etiketter = [dict(b) for b in self.round_labels]
+        krop = _med_etiketter_foer_svaret(blokke, etiketter)
         if self.skill_surface:
-            return [dict(self.skill_surface), *blokke, *etiketter]
+            return [dict(self.skill_surface), *krop]
+        return krop
+
+
+def _med_etiketter_foer_svaret(
+    blokke: list[dict], etiketter: list[dict],
+) -> list[dict]:
+    """Læg etiketterne ind lige før den sidste tekstblok.
+
+    Uden en tekstblok er der intet svar at beskytte, og så står de bagest som
+    før — det er tilfældet hvor turen kun er arbejde.
+    """
+    if not etiketter:
+        return list(blokke)
+    sidste_tekst = -1
+    for i, b in enumerate(blokke):
+        if isinstance(b, dict) and b.get("type") == "text" and str(b.get("text") or "").strip():
+            sidste_tekst = i
+    if sidste_tekst < 0:
         return [*blokke, *etiketter]
+    return [*blokke[:sidste_tekst], *etiketter, *blokke[sidste_tekst:]]
 
 
 def coerce_tool_input(raw: object) -> dict:

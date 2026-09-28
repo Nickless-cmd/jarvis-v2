@@ -220,13 +220,112 @@ def test_hele_kaeden_fra_runde_til_gemt_blok():
 # gemmes den som Claude Desktops egen blok: {type, summary,
 # preceding_tool_use_ids}.
 
+def _synlige(blokke):
+    """Blokke klienterne faktisk tegner. `progress` giver `null` i begge."""
+    return [b for b in blokke if b.get("type") != "progress"]
+
+
 def test_etiketten_gemmes_som_tool_use_summary():
     a = TurnAccumulator()
     a.add_tools([{"id": "c1", "name": "read_file", "input": {"path": "x"}}], [])
     a.add_round_label({"run_id": "r", "round": 1, "etiket": "Fandt fejlen", "tool_use_ids": ["c1"]})
     blokke = a.build_blocks("svar")
-    assert blokke[-1] == {"type": "tool_use_summary", "summary": "Fandt fejlen",
-                          "preceding_tool_use_ids": ["c1"]}
+    assert {"type": "tool_use_summary", "summary": "Fandt fejlen",
+            "preceding_tool_use_ids": ["c1"]} in blokke
+
+
+def test_svaret_er_det_SIDSTE_man_ser():
+    """Etiketten laa foer bagest, og saa stod den dér hvor svaret skulle vaere.
+
+    Maalt 28/9-2026: 4.027 `tool_use_summary`-blokke efter svaret paa syv dage,
+    ~5 pr. besked. Desks raekkemodel lægger alt efter sidste kald i
+    svar-sektionen, saa Bjoern saa «et vaerktoejskald og en syntese i stedet
+    for den endelige besked». Etiketten skal ligge foer svaret.
+    """
+    a = TurnAccumulator()
+    a.add_tools([{"id": "c1", "name": "read_file", "input": {"path": "x"}}], [])
+    a.add_round_label({"etiket": "Fandt fejlen", "tool_use_ids": ["c1"]})
+    synlige = _synlige(a.build_blocks("det endelige svar"))
+    assert synlige[-1]["type"] == "text"
+    assert synlige[-1]["text"] == "det endelige svar"
+    # og etiketten staar stadig EFTER sit kald, saa runden ikke deles op
+    typer = [b["type"] for b in synlige]
+    assert typer.index("tool_use") < typer.index("tool_use_summary") < typer.index("text")
+
+
+def test_flere_etiketter_beholder_deres_raekkefoelge():
+    a = TurnAccumulator()
+    a.add_tools([{"id": "c1", "name": "read_file", "input": {"path": "x"}}], [])
+    a.add_round_label({"etiket": "Foerst", "tool_use_ids": ["c1"]})
+    a.add_round_label({"etiket": "Saa", "tool_use_ids": ["c2"]})
+    synlige = _synlige(a.build_blocks("svar"))
+    etik = [b["summary"] for b in synlige if b["type"] == "tool_use_summary"]
+    assert etik == ["Foerst", "Saa"]
+    assert synlige[-1]["type"] == "text"
+
+
+def test_en_tur_UDEN_svar_beholder_etiketterne_bagest():
+    """Er der ingen tekst, er der intet svar at beskytte — og en tom tekstblok
+    maa ikke tælle, ellers ville etiketterne lande foer ingenting."""
+    a = TurnAccumulator()
+    a.add_tools([{"id": "c1", "name": "read_file", "input": {"path": "x"}}], [])
+    a.add_round_label({"etiket": "Fandt fejlen", "tool_use_ids": ["c1"]})
+    for tom in ("", "   "):
+        synlige = _synlige(a.build_blocks(tom))
+        assert synlige[-1]["type"] == "tool_use_summary"
+
+
+# ── placeringen som ren funktion ─────────────────────────────────────────
+#
+# De to egenskaber herunder kan ikke naas gennem TurnAccumulator uden at bygge
+# en hel tur med interleave-log; de bor i hjaelperen, saa de proeves dér. To
+# mutationer slap forbi uden dem: «tom tekst taeller som et svar» og «brug den
+# FOERSTE tekstblok i stedet for den sidste».
+
+def _laeg(blokke, etiketter):
+    from core.services.visible_turn_accumulator import _med_etiketter_foer_svaret
+    return _med_etiketter_foer_svaret(blokke, etiketter)
+
+
+def test_etiketterne_laegges_foer_den_SIDSTE_tekst():
+    """En tur kan have prosa undervejs. Ramte vi den foerste tekstblok, ville
+    etiketterne lande midt i arbejdet — og svaret stod stadig ikke sidst."""
+    blokke = [
+        {"type": "text", "text": "Jeg kigger paa det."},
+        {"type": "tool_use", "id": "c1", "name": "read_file"},
+        {"type": "tool_result", "tool_use_id": "c1"},
+        {"type": "text", "text": "Her er svaret."},
+    ]
+    ud = _laeg(blokke, [{"type": "tool_use_summary", "summary": "Fandt fejlen"}])
+    assert [b["type"] for b in ud] == [
+        "text", "tool_use", "tool_result", "tool_use_summary", "text"]
+    assert ud[-1]["text"] == "Her er svaret."
+
+
+def test_en_TOM_tekstblok_er_ikke_et_svar():
+    """Et tomt segment maa ikke tælle, ellers lander etiketterne foer ingenting
+    og den rigtige hale staar stadig bagest."""
+    blokke = [
+        {"type": "tool_use", "id": "c1", "name": "read_file"},
+        {"type": "text", "text": "   "},
+    ]
+    ud = _laeg(blokke, [{"type": "tool_use_summary", "summary": "x"}])
+    assert [b["type"] for b in ud] == ["tool_use", "text", "tool_use_summary"]
+
+
+def test_uden_etiketter_roeres_listen_ikke():
+    blokke = [{"type": "text", "text": "svar"}]
+    assert _laeg(blokke, []) == blokke
+
+
+def test_opslaget_paa_id_er_uroert():
+    """Etiketten haefter sig paa sine kald via ids, ikke paa en plads — det var
+    hele grunden til at den maatte kunne flyttes."""
+    a = TurnAccumulator()
+    a.add_tools([{"id": "c1", "name": "read_file", "input": {"path": "x"}}], [])
+    a.add_round_label({"etiket": "Fandt fejlen", "tool_use_ids": ["c1", "c2"]})
+    etik = [b for b in a.build_blocks("svar") if b["type"] == "tool_use_summary"][0]
+    assert etik["preceding_tool_use_ids"] == ["c1", "c2"]
 
 
 def test_samme_etiket_to_gange_gemmes_een_gang():

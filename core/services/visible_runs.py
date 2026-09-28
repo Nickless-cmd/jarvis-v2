@@ -2914,6 +2914,24 @@ async def _stream_visible_run(
                     # Runde ≥1 + flag ON = lean (drop tung per-turn-hale). Flag OFF
                     # → ``_round_base_messages is base_messages`` (byte-identisk i dag).
                     _round_base_messages = base_messages
+                    # ── HALEN: per-runde-beskeder hoerer EFTER historikken ──
+                    #
+                    # De tre vink nedenfor laa foer i `_round_base_messages`, og
+                    # kommentarerne kaldte dem «append-only trailing tur». Det var
+                    # de ikke: beskedlisten bygges som `base_messages + exchanges`,
+                    # saa alt der laegges paa base_messages havner MIDT i prompten,
+                    # foran hele den voksende historik.
+                    #
+                    # Maalt 28/9-2026 paa ét run: batch-vinket (273 tegn) dukkede op
+                    # paa plads 7 i runde 9, 12 og 14 og forsvandt igen imellem.
+                    # Hver optraeden OG hver forsvinden forskoed alt bagefter én
+                    # plads og braekkede praefiks-cachen ved 156.497 tegn. De seks
+                    # ramte runder kostede 6.840 miss-tokens i snit mod 1.109 i de
+                    # oevrige — 34.388 ekstra, 27 % af hele runets miss.
+                    #
+                    # Halen sendes nu som sin egen liste og haeftes paa EFTER
+                    # exchanges, hvor den ikke forskyder noget.
+                    _round_trailing: list[dict] = []
                     try:
                         if _agentic_round >= 1 and _vf.agentic_lean_prompt_enabled():
                             _lean_msgs, _lean_metrics = _vf.build_lean_base_messages(
@@ -3063,9 +3081,7 @@ async def _stream_visible_run(
                         except Exception:
                             _varsel = ""
                         if _varsel:
-                            _round_base_messages = list(_round_base_messages) + [
-                                {"role": "user", "content": _varsel},
-                            ]
+                            _round_trailing.append({"role": "user", "content": _varsel})
                     if not _is_last_round:
                         try:
                             from core.services.tool_batch_notice import tool_batch_notice as _tbn
@@ -3078,19 +3094,17 @@ async def _stream_visible_run(
                             _vink = ""
                         if _vink:
                             _batch_vink_vist += 1
-                            _round_base_messages = list(_round_base_messages) + [
-                                {"role": "user", "content": _vink},
-                            ]
+                            _round_trailing.append({"role": "user", "content": _vink})
                     if _is_last_round:
                         _forced_finalize_seen = True
                         _round_tool_definitions = None
-                        _round_base_messages = list(_round_base_messages) + [{
+                        _round_trailing.append({
                             "role": "user",
                             "content": (
                                 "Skriv nu dit endelige svar til brugeren i prosa, baseret "
                                 "på værktøjs-resultaterne ovenfor. Kald IKKE flere værktøjer "
                                 "— opsummer hvad du fandt og svar direkte."),
-                        }]
+                        })
                     # Merge in tools added by load_more_tools in previous rounds
                     if _round_tool_definitions is not None and _round_extra_tools:
                         _all_defs = _get_tool_defs() or []
@@ -3151,6 +3165,9 @@ async def _stream_visible_run(
                             # full snapshot as a default arg so every attempt's pump
                             # captures byte-identical messages — never recompute lean.
                             round_base_messages=_round_base_messages,
+                            # Samme grund som linjen ovenfor: halen bindes ÉN
+                            # gang pr. runde, saa et retry sender byte-identisk.
+                            round_trailing=list(_round_trailing),
                             # Fase 3 (S6/§11.2): bind the CURRENT (possibly failed-
                             # over) provider/model. Flag OFF → these equal run's own
                             # → byte-identical dispatch.
@@ -3165,6 +3182,7 @@ async def _stream_visible_run(
                                     provider=pump_provider,
                                     model=pump_model,
                                     base_messages=round_base_messages,
+                                    trailing_messages=round_trailing,
                                     exchanges=_followup_exchanges,
                                     tool_definitions=tool_defs,
                                     round_index=rnd,

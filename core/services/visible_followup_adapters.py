@@ -251,6 +251,7 @@ class OllamaFollowupAdapter:
         thinking_mode: str = "think",
         temperature: float | None = None,
         top_p: float | None = None,
+        trailing_messages: list[dict] | None = None,
     ) -> Iterator[FollowupEvent]:
         # 2026-06-13: ollama-followup skal bruge OLLAMA-providerens base_url, ikke
         # visible-lanen (deepseek-API). Ellers POST'er tool-runden ollama-format til
@@ -263,7 +264,8 @@ class OllamaFollowupAdapter:
             _pburl(provider="ollama", registry=_lprr()) or "http://127.0.0.1:11434"
         ).rstrip("/")
 
-        messages = list(base_messages) + self._serialize_exchanges(exchanges)
+        messages = (list(base_messages) + self._serialize_exchanges(exchanges)
+                    + list(trailing_messages or []))
 
         _options: dict[str, object] = {"num_ctx": 262_144}
         # Lav agentisk temperatur (anti-hallucination). Ollama læser sampling-
@@ -820,6 +822,7 @@ class OpenAICompatFollowupAdapter:
         tool_choice: str | None = None,
         run_id: str = "",
         autonomous: bool = False,
+        trailing_messages: list[dict] | None = None,
         _length_retry: bool = False,
     ) -> Iterator[FollowupEvent]:
         from core.services.visible_model import (
@@ -870,7 +873,11 @@ class OpenAICompatFollowupAdapter:
                 for m in base_messages
             ]
 
-        messages = list(base_messages) + self._serialize_exchanges(exchanges)
+        # Halen haeftes paa EFTER historikken. Laa den i base_messages, sad den
+        # foran alle exchanges — og en besked der kommer og gaar dér forskyder
+        # hele resten og braekker praefiks-cachen. Se noten i visible_runs.
+        messages = (list(base_messages) + self._serialize_exchanges(exchanges)
+                    + list(trailing_messages or []))
 
         # Belt-and-suspenders: even after _is_thinking_model patch above
         # covered base_messages, current-run exchanges can still arrive
@@ -1274,7 +1281,8 @@ class CodexFollowupAdapter:
 
     provider_id = "openai-codex"
 
-    def _build_input(self, base_messages: list[dict], exchanges: list[ToolExchange]) -> list[dict]:
+    def _build_input(self, base_messages: list[dict], exchanges: list[ToolExchange],
+                     *, trailing_messages: list[dict] | None = None) -> list[dict]:
         items: list[dict] = []
         for m in base_messages:
             role = str(m.get("role") or "user")
@@ -1305,6 +1313,14 @@ class CodexFollowupAdapter:
                     "call_id": str(tr.tool_call_id or ""),
                     "output": str(tr.content or ""),
                 })
+        # Halen SIDST — samme grund som i de to andre adaptere. Uden den her
+        # ville den samme runde se forskellig ud alt efter udbyder.
+        for m in (trailing_messages or []):
+            text = str(m.get("content") or "")
+            if not text:
+                continue
+            items.append({"role": str(m.get("role") or "user"),
+                          "content": [{"type": "input_text", "text": text}]})
         return items
 
     def stream_followup(
@@ -1316,6 +1332,7 @@ class CodexFollowupAdapter:
         tool_definitions: list[dict] | None = None,
         round_index: int = 0,
         thinking_mode: str = "think",
+        trailing_messages: list[dict] | None = None,
     ) -> Iterator[FollowupEvent]:
         from core.services.cheap_provider_runtime import (
             _iter_openai_codex_chat_events,
@@ -1327,7 +1344,8 @@ class CodexFollowupAdapter:
         profile = str(cfg.get("auth_profile") or "").strip() or "codex"
         base_url = str(cfg.get("base_url") or "").strip()
 
-        input_items = self._build_input(base_messages, exchanges)
+        input_items = self._build_input(
+            base_messages, exchanges, trailing_messages=trailing_messages)
         collected_tool_calls: list[dict] = []
         try:
             for ev in _iter_openai_codex_chat_events(

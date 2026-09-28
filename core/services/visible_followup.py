@@ -140,6 +140,7 @@ def stream_visible_followup(
     tool_choice: str | None = None,
     run_id: str = "",
     autonomous: bool = False,
+    trailing_messages: list[dict] | None = None,
 ) -> Iterator[FollowupEvent]:
     """Dispatch to the provider's follow-up adapter; yield FollowupEvents.
 
@@ -147,6 +148,11 @@ def stream_visible_followup(
     user/assistant prose). ``exchanges`` is the chronological list of tool
     rounds (assistant_tool_calls + results) that should be replayed to the
     model in the provider-native shape.
+
+    ``trailing_messages`` er beskeder der kun gaelder DENNE runde — varsler,
+    vink, den tvungne afslutning. De haenges bagest, efter historikken. Laa de
+    i ``base_messages``, sad de foran alle exchanges, og en besked der kommer
+    og gaar dér forskyder hele resten og braekker praefiks-cachen.
 
     For unsupported providers a single :class:`FollowupFailed` is yielded so
     the caller can record a trace event and fall back cleanly.
@@ -178,6 +184,10 @@ def stream_visible_followup(
         exchanges=exchanges,
         tool_definitions=tool_definitions,
         round_index=round_index,
+        # Per-runde-beskeder. ALLE tre adaptere tager imod og haefter dem paa
+        # efter historikken — en hale der kun naaede én adapter ville betyde at
+        # den samme runde saa forskellig ud alt efter udbyder.
+        trailing_messages=list(trailing_messages or []),
     )
     if isinstance(adapter, (OllamaFollowupAdapter, OpenAICompatFollowupAdapter)):
         _kwargs["thinking_mode"] = thinking_mode

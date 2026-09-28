@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8148/15654 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8152/15660 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 8148/15654 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 698 | 1277 | 54% |
-| `core.services` | 5412 | 10661 | 50% |
+| `core.services` | 5415 | 10664 | 50% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 107 | 183 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -37,12 +37,12 @@ Generated from source. 8148/15654 functions/methods documented (52%). The list b
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.undo` | 2 | 18 | 11% |
 | `core.util` | 9 | 10 | 90% |
-| `scripts` | 220 | 482 | 45% |
+| `scripts` | 221 | 485 | 45% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
 
-## Undocumented public functions (2218)
+## Undocumented public functions (2219)
 
 - `apps/api/jarvis_api/app.py` :: `create_app` (L209)
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
@@ -1747,14 +1747,14 @@ Generated from source. 8148/15654 functions/methods documented (52%). The list b
 - `core/services/semantic_indexer.py` :: `start_semantic_indexer` (L34)
 - `core/services/semantic_indexer.py` :: `stop_semantic_indexer` (L62)
 - `core/services/semantic_memory.py` :: `get_stats` (L550)
-- `core/services/sensory_archive.py` :: `count` (L257)
-- `core/services/sensory_archive.py` :: `get` (L253)
-- `core/services/sensory_archive.py` :: `list_recent` (L232)
-- `core/services/sensory_archive.py` :: `record_atmosphere` (L214)
-- `core/services/sensory_archive.py` :: `record_audio` (L205)
-- `core/services/sensory_archive.py` :: `record_mixed` (L223)
-- `core/services/sensory_archive.py` :: `record_visual` (L196)
-- `core/services/sensory_archive.py` :: `search` (L244)
+- `core/services/sensory_archive.py` :: `count` (L261)
+- `core/services/sensory_archive.py` :: `get` (L257)
+- `core/services/sensory_archive.py` :: `list_recent` (L236)
+- `core/services/sensory_archive.py` :: `record_atmosphere` (L218)
+- `core/services/sensory_archive.py` :: `record_audio` (L209)
+- `core/services/sensory_archive.py` :: `record_mixed` (L227)
+- `core/services/sensory_archive.py` :: `record_visual` (L200)
+- `core/services/sensory_archive.py` :: `search` (L248)
 - `core/services/session_continuity.py` :: `build_session_continuity_surface` (L566)
 - `core/services/session_continuity.py` :: `get_latest_morning_thread` (L441)
 - `core/services/session_inbox.py` :: `pending_count` (L237)
@@ -2198,6 +2198,7 @@ Generated from source. 8148/15654 functions/methods documented (52%). The list b
 - `scripts/mint_jarvisx_token.py` :: `main` (L52)
 - `scripts/model_catalogue_sweep.py` :: `main` (L36)
 - `scripts/navngiv_kode_sessioner.py` :: `main` (L27)
+- `scripts/normalize_sensory_sources.py` :: `main` (L59)
 - `scripts/nudge_well_cleanup.py` :: `clean_broend` (L64)
 - `scripts/nudge_well_cleanup.py` :: `clean_outbound` (L24)
 - `scripts/nudge_well_cleanup.py` :: `main` (L85)

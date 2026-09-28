@@ -1284,6 +1284,11 @@ export function ChatScreen({
             Fladen var scrim som en FLAD baggrund; den er nu gradienten her —
             transparent foroven, fuld forneden, så bunden stadig dækker. */}
         <KantFade retning="op" navn="komponist" />
+        {/* Polstringen bor HER, ikke paa `floatBottom`. Faden fylder sin
+            foraelders boks, og laa `paddingBottom: 16` der, stoppede faden
+            16 dp over skaermens bund — traaden under den var umalet. Bjørn
+            28/9-2026: «Fade går ikk helt ned til bunden af skærmen». */}
+        <View style={styles.komponistIndhold} pointerEvents="box-none">
         <ResearchStatus research={stream.state.research} />
         <KodeLaastBanner vis={kodeLaast} />
         <TilbagespolBanner
@@ -1365,6 +1370,7 @@ export function ChatScreen({
           // knapper man BRUGER skal staa.
           onPressPermission={kodeTilstand ? () => setPermissionPickerOpen(true) : undefined}
         />
+        </View>
         </View>
       </View>
 
@@ -1644,10 +1650,8 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    // Under komponisten ligger enhedens gestus-zone. Uden en bund her
-    // lyste en smal stribe tråd igennem dernede — teksten rullede korrekt
-    // bagved, men fortsatte forbi den flade der skulle dække den.
-    paddingBottom: 16,
+    // INGEN polstring her — se `komponistIndhold` nedenfor. Faden fylder
+    // denne boks, og polstring ville efterlade den nederste stribe umalet.
     zIndex: 5,
     // INGEN baggrundsfarve her. Den halvgennemsigtige flade ligger i
     // <KantFade> som en GRADIENT — transparent foroven, fuld scrim forneden.
@@ -1655,5 +1659,10 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
     // nedenfor), men overkanten toner ud i stedet for at begynde ved en streg.
     // Som en flad farve gav den en skarp kant, fordi baggrunden selv er sort:
     // 72 % sort oven på sort er stadig sort. Bjørn 28/9-2026.
-  }
+  },
+  // Under komponisten ligger enhedens gestus-zone. Uden en bund her lyste en
+  // smal stribe tråd igennem dernede — teksten rullede korrekt bagved, men
+  // fortsatte forbi den flade der skulle dække den. Bunden bor derfor her,
+  // ét niveau inde, saa <KantFade> kan gaa helt ned til skaermens kant.
+  komponistIndhold: { paddingBottom: 16 }
 })

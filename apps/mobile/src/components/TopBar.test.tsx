@@ -1,3 +1,4 @@
+import { StyleSheet } from 'react-native'
 import { fireEvent, render, within } from '@testing-library/react-native'
 import { TopBar } from './TopBar'
 import { I18nProvider } from '../i18n/I18nContext'
@@ -19,6 +20,20 @@ it('baerer en blod fade i stedet for en flad scrim-baggrund', async () => {
   expect(screen.getByTestId('kantfade-topbar')).toBeTruthy()
 })
 
+it('fadens foraelder er IKKE polstret — ellers naar den ikke kanterne', async () => {
+  // Bjørn 28/9-2026: «I toppen går fade ikk helt ud til siden af skærme. I
+  // højre side». Aarsagen var ikke gradienten men POLSTRINGEN: faden fylder
+  // sin foraelders boks, og `paddingHorizontal: 14` efterlod en umalet stribe
+  // i hver side. Polstringen bor derfor i det indre lag — flytter den op
+  // igen, fælder denne test.
+  const screen = await render(<TopBar {...base} />)
+  const baerer = StyleSheet.flatten(screen.getByTestId('topbar-baerer').props.style) ?? {}
+  expect(baerer.paddingHorizontal).toBeUndefined()
+  expect(baerer.paddingVertical).toBeUndefined()
+  const indhold = StyleSheet.flatten(screen.getByTestId('topbar-indhold').props.style) ?? {}
+  expect(indhold.paddingHorizontal).toBe(14)
+})
+
 it('skifter tilstand via segmented control', async () => {
   const screen = await render(<TopBar {...base} />)
   await fireEvent.press(screen.getByLabelText('Arbejde'))
@@ -35,6 +50,8 @@ it('bruger appens valgte sprog til segmenter og accessibility labels', async () 
   expect(screen.getByLabelText('Work')).toBeTruthy()
   expect(screen.getByLabelText('Menu')).toBeTruthy()
   expect(screen.getByLabelText('More')).toBeTruthy()
+  // «Snak» er vaek som navn (Bjørn 28/9-2026: fladen hedder Chat nu) — den
+  // skal ikke snige sig ind igen, heller ikke i den engelske visning.
   expect(screen.queryByLabelText('Snak')).toBeNull()
   expect(screen.queryByLabelText('Arbejde')).toBeNull()
   expect(screen.queryByLabelText('Mere')).toBeNull()
@@ -62,16 +79,16 @@ it('baerer en prik paa Arbejde naar noget venter', async () => {
 
 // --- code-fladen ---
 
-it('uden code-tilstand hedder segmentet Snak', async () => {
+it('uden code-tilstand hedder segmentet Chat', async () => {
   const screen = await render(<TopBar {...base} />)
-  expect(screen.getByLabelText('Snak')).toBeTruthy()
+  expect(screen.getByLabelText('Chat')).toBeTruthy()
 })
 
 it('i code-tilstand er segmentet VAEK — pladsen er titlens', async () => {
   // «Snak | Arbejde» hoerer til chat-fladen. I code er de to valg allerede
   // truffet, og kontakten er kun stoej paa appens mest vaerdifulde plads.
   const screen = await render(<TopBar {...base} kodeTilstand kodeTitel="Diagnose WLED" />)
-  expect(screen.queryByLabelText('Snak')).toBeNull()
+  expect(screen.queryByLabelText('Chat')).toBeNull()
   expect(screen.queryByLabelText('Arbejde')).toBeNull()
   expect(screen.getByText('Diagnose WLED')).toBeTruthy()
 })
@@ -79,7 +96,7 @@ it('i code-tilstand er segmentet VAEK — pladsen er titlens', async () => {
 it('i chat-tilstand er titlen VAEK — pladsen er segmentets', async () => {
   const screen = await render(<TopBar {...base} kodeTitel="Diagnose WLED" />)
   expect(screen.queryByTestId('code-titel')).toBeNull()
-  expect(screen.getByLabelText('Snak')).toBeTruthy()
+  expect(screen.getByLabelText('Chat')).toBeTruthy()
 })
 
 it('code-titlen baerer repo og vaert naar git svarede', async () => {

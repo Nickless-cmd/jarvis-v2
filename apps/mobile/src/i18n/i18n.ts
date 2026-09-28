@@ -17,7 +17,7 @@ const DA: Dict = {
   'common.more': 'Mere',
   'common.closePanel': 'Luk panel',
   'common.search': 'Søg',
-  'app.chat': 'Snak',
+  'app.chat': 'Chat',
   'app.work': 'Arbejde',
   'app.code': 'Code',
   'topbar.refresh': 'Opdatér',

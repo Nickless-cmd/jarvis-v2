@@ -1,6 +1,6 @@
 # API_REFERENCE
 
-> Generated 2026-09-28 from app.routes (live) — 617 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
+> Generated 2026-09-28 from app.routes (live) — 618 routes. Regenerate: `python scripts/api_reference_gen.py`. DO NOT hand-edit.
 
 | Method | Path | Response model | Source |
 |---|---|---|---|
@@ -114,6 +114,7 @@
 | GET | `/api/workspace/tree` | dict | jarvisx_workspace |
 | GET | `/attachments/image/{attachment_id}` |  | attachments |
 | GET | `/attachments/images` | dict | attachments |
+| GET | `/attachments/media/{attachment_id}` |  | attachments |
 | POST | `/attachments/upload` | dict | attachments |
 | GET | `/attachments/{attachment_id}` |  | attachments |
 | GET | `/auth/openai/callback/{profile}` |  | openai_auth |

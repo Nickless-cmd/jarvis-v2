@@ -772,10 +772,10 @@ export function ChatScreen({
         serverBusyRef.current = busy
         setServerBusy(busy)
         setActiveRunId(match?.runId ?? '')
-        // idle → kørende: et run startede i sessionen. Live-attach (delt-session
-        // sync) — stream.follow rører IKKE noget hvis vi selv sender (guard'en
-        // tjekker control.current). Så ser vi en anden enheds/Jarvis' run live.
-        if (!was && busy) stream.follow(config, sid)
+        // Hvert run-id er en ny strøm, også når sessionen aldrig nåede at se
+        // ledig ud mellem et afbrudt run og Løkkens fortsættelse. follow()
+        // dedup'er samme run og prøver igen hvis en passiv SSE er faldet af.
+        if (busy) stream.follow(config, sid, match?.runId)
         // kørende → færdig: svaret er nu persisteret → hent det ind (+ stop attach).
         if (was && !busy) {
           stream.stopFollow()

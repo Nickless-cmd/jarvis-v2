@@ -55,7 +55,7 @@ interface StreamContextValue {
   deny: (config: ApiConfig) => Promise<void>
   /** Følg en sessions live-stream (delte sessioner): se transcript + liveness
    * live uanset hvem der skriver. Passiv — afbrydes automatisk af send(). */
-  follow: (config: ApiConfig, sessionId: string) => void
+  follow: (config: ApiConfig, sessionId: string, runId?: string) => void
   stopFollow: () => void
   /** Mobil lifecycle: slip den lokale SSE når appen backgrounder, men lad
    * server-runnet leve videre. Foreground sync/follow samler op igen. */
@@ -161,6 +161,7 @@ export function StreamProvider({ children }: { children: ReactNode }) {
   const [reconnecting, setReconnecting] = useState(false)
   const control = useRef<StreamControl | null>(null)
   const followControl = useRef<StreamControl | null>(null)
+  const followedRunRef = useRef<string | null>(null)
   // GENERATION. Fase 10, kriterium 3: «fences late old-generation callbacks».
   //
   // `follow()` afbryder den forrige, men handler-closuren havde ingen
@@ -458,12 +459,15 @@ export function StreamProvider({ children }: { children: ReactNode }) {
           setLastError(err instanceof Error ? err.message : 'Kunne ikke afvise')
         }
       },
-      follow: (config, sessionId) => {
+      follow: (config, sessionId, runId) => {
         // Passiv: ALDRIG oven på en aktiv send (control.current != null ⟺ vi
         // sender selv → vores egen send-stream ER live-visningen). Dette er
         // værnet der forhindrer den dobbelt-render der knækkede follow før.
         if (control.current) return
+        if (runId && persistedRunRef.current === runId) return
+        if (followControl.current && runId && followedRunRef.current === runId) return
         followControl.current?.abort()
+        followedRunRef.current = runId ?? null
         saetEjer(sessionId)
         const minFollow = ++followGen.current
         const erAktuel = () => followGen.current === minFollow
@@ -497,6 +501,7 @@ export function StreamProvider({ children }: { children: ReactNode }) {
           onComplete: () => {
             if (!erAktuel()) return
             followControl.current = null
+            followedRunRef.current = null
             if (!skip && stateRef.current.blocks.length === 0) {
               updateState((prev) => (prev.status === 'working' ? { ...prev, status: 'idle' } : prev))
             }
@@ -504,12 +509,15 @@ export function StreamProvider({ children }: { children: ReactNode }) {
           onError: () => {
             if (!erAktuel()) return
             followControl.current = null
+            followedRunRef.current = null
           }
         })
       },
       stopFollow: () => {
+        followGen.current += 1
         followControl.current?.abort()
         followControl.current = null
+        followedRunRef.current = null
       },
       ejerSession,
       forladSession: (sessionId) => {
@@ -519,6 +527,7 @@ export function StreamProvider({ children }: { children: ReactNode }) {
         followGen.current += 1
         followControl.current?.abort()
         followControl.current = null
+        followedRunRef.current = null
         // Ogsaa en egen send: runnet koerer videre paa serveren. Vi river kun
         // den LOKALE forbindelse ned, praecis som ved baggrund.
         control.current?.abort()

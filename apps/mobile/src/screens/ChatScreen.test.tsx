@@ -341,11 +341,34 @@ describe('retur fra baggrund mens et run koerer', () => {
 
     // Intet at genoptage (genoptag gav false) → pollen skal koble paa igen.
     expect(genoptagKoerende).toHaveBeenCalled()
-    await waitFor(() => expect(follow).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(follow.mock.calls.length).toBeGreaterThanOrEqual(2))
     spy.mockRestore()
     api.getActiveRunSnapshot = originalSnapshot
   })
 })
+
+it('følger næste run når Løkken skifter run-id uden ledig poll imellem', async () => {
+  const { AppState } = require('react-native')
+  const spy = jest.spyOn(AppState, 'addEventListener').mockImplementation(() => ({ remove: jest.fn() }))
+  const oldAppState = AppState.currentState
+  AppState.currentState = 'active'
+  const api = require('../lib/apiClient')
+  const originalSnapshot = api.getActiveRunSnapshot
+  let runId = 'run-1'
+  api.getActiveRunSnapshot = jest.fn(async () => [{ sessionId: 'session-1', runId, status: 'working' }])
+  const follow = jest.fn()
+  mockStream = { ...mockStream, state: { status: 'working', blocks: [], activeRunId: 'old-run' }, follow } as never
+  try {
+    await render(<ChatScreen />)
+    await waitFor(() => expect(follow).toHaveBeenCalledTimes(1))
+    runId = 'run-2'
+    await waitFor(() => expect(follow).toHaveBeenCalledTimes(2), { timeout: 10000 })
+  } finally {
+    api.getActiveRunSnapshot = originalSnapshot
+    AppState.currentState = oldAppState
+    spy.mockRestore()
+  }
+}, 12000)
 
 
 it('samtaleskift beder stroemmen slippe den forrige samtale', async () => {

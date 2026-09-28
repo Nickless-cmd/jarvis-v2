@@ -1294,6 +1294,45 @@ button.sidebar-group svg { flex: none; opacity: .7; }
 .attachment-image { margin: 4px 0; }
 .attachment-fejl { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--fg-3); }
 
+/* Video. Samme bredde-loft som et billede, saa en leverance ikke skifter
+   format alt efter medietype. Ingen max-height: en video har sit eget
+   forhold, og en hoej video klippet paa midten er ubrugelig. */
+.video-block { margin: 4px 0; }
+.video-block-player {
+  max-width: min(420px, 100%);
+  width: 100%; height: auto;
+  border-radius: 10px;
+  display: block;
+  background: var(--bg-2);
+}
+.video-block-navn {
+  display: block; margin-top: 4px;
+  font-size: 12px; color: var(--fg-3);
+}
+
+/* Video bliver til. Et spor der loeber i ring — ingen procent, fordi backend
+   ikke har nogen. Uret staar i etiketten og er den eneste oplysning der
+   aendrer sig i op til ti minutter. */
+.video-generation { width: min(320px, 100%); margin: 14px 0; color: var(--fg-2); }
+.video-generation-label { display: block; margin-bottom: 10px; font-size: 13px; }
+.video-generation-ur { color: var(--fg-3); font-variant-numeric: tabular-nums; }
+.video-generation-spor {
+  position: relative; height: 4px; border-radius: 2px;
+  background: var(--bg-2); overflow: hidden;
+}
+.video-generation-hoved {
+  position: absolute; inset-block: 0; width: 38%;
+  border-radius: 2px; background: var(--accent);
+  animation: video-generation-loeb 1.8s ease-in-out infinite;
+}
+@keyframes video-generation-loeb {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(300%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .video-generation-hoved { animation: none; width: 100%; opacity: 0.4; }
+}
+
 .image-generation { width: min(320px, 100%); margin: 14px 0; color: var(--fg-2); }
 .image-generation-label { display: block; margin-bottom: 16px; font-size: 13px; }
 .image-generation-grid {

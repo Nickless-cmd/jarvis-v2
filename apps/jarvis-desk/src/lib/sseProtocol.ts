@@ -195,6 +195,25 @@ export type ContentBlock =
       tool_use_id?: string
     }
   | {
+      // Video. SAMME reference-felter som `image`, med vilje: en video hentes
+      // ad samme vej og skal overleve reload af samme grund. Blokken kom til
+      // 28/9-2026 — indtil da lavede `as_blocks` en `file` ud af enhver video,
+      // så en genereret video blev et download-kort man ikke kunne se.
+      //
+      // Uden typen HER ville den falde ud af `foldToolResults` efter reload —
+      // præcis den fejl billederne havde indtil 15/9.
+      type: 'video'
+      src?: string
+      alt?: string
+      attachment_id?: string
+      url?: string
+      filename?: string
+      mime_type?: string
+      size_bytes?: number
+      kilde?: string
+      tool_use_id?: string
+    }
+  | {
       // UDGIVET fil (`publish_file`) eller en vedhæftning. Bærer ALTID kun en
       // reference, aldrig data: `url` for Jarvis' egen udgivelse over
       // `/files/{navn}`, `attachment_id` for uploads over `/attachments/...`.

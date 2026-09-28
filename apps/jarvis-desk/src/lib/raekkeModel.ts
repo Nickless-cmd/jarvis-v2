@@ -112,7 +112,7 @@ function erArbejdsBlok(b: ContentBlock): boolean {
  *  frit i mobilen, fordi mobilen bærer filen på beskeden frem for i en række.
  *  Reglen her er den samme: leverancen hører til svaret. */
 function erLeverance(b: ContentBlock): boolean {
-  return b.type === 'image' || b.type === 'file'
+  return b.type === 'image' || b.type === 'file' || b.type === 'video'
 }
 
 /**

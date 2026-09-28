@@ -82,6 +82,21 @@ export function foldToolResults(blocks: Array<Record<string, unknown>>): Content
         kilde: b.kilde != null ? String(b.kilde) : undefined,
         tool_use_id: b.tool_use_id != null ? String(b.tool_use_id) : undefined,
       })
+    } else if (b.type === 'video') {
+      // Samme behandling som `image`: en reference gaar uroert videre, saa
+      // `VideoBlock` kan hente den med token ved visning.
+      out.push({
+        type: 'video',
+        src: b.src != null ? String(b.src) : undefined,
+        alt: b.alt != null ? String(b.alt) : undefined,
+        attachment_id: b.attachment_id != null ? String(b.attachment_id) : undefined,
+        url: b.url != null ? String(b.url) : undefined,
+        filename: b.filename != null ? String(b.filename) : undefined,
+        mime_type: b.mime_type != null ? String(b.mime_type) : undefined,
+        size_bytes: typeof b.size_bytes === 'number' ? b.size_bytes : undefined,
+        kilde: b.kilde != null ? String(b.kilde) : undefined,
+        tool_use_id: b.tool_use_id != null ? String(b.tool_use_id) : undefined,
+      })
     } else if (b.type === 'file') {
       // UDGIVET fil eller vedhæftning. Uden denne gren droppede normaliseringen
       // den, og filen Jarvis lagde ud nåede aldrig skærmen (målt 15/9-2026).

@@ -7,6 +7,7 @@ import { ToolCard } from './ToolCard'
 import { ToolGroupCard } from './ToolGroupCard'
 import { ImageBlock } from './ImageBlock'
 import { AttachmentBlock } from './AttachmentBlock'
+import { VideoBlock } from './VideoBlock'
 import { ThinkingLine } from './ThinkingLine'
 import { SkillLine, SkillSurfaceLine } from './SkillLine'
 import { SKILL_VAERKTOEJER } from '../../lib/skillLinje'
@@ -244,6 +245,10 @@ function BlockView({
       return block.src
         ? <ImageBlock src={block.src} alt={block.alt} />
         : <AttachmentBlock block={{ ...block, type: 'image' }} />
+    case 'video':
+      // Live baerer en data-URL fra streamen; persisteret baerer en reference
+      // der skal hentes med token. VideoBlock kender begge veje.
+      return <VideoBlock block={block} />
     case 'image_gallery':
       return <GeneratedImageGallery images={block.images} />
     case 'file':

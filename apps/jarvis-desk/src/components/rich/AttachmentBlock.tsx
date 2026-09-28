@@ -28,7 +28,7 @@ import { KlikbartBillede } from './BilledLightbox'
 
 /** Den slags blokke denne komponent kan vise. */
 export interface VedhaefningsBlok {
-  type: 'image' | 'file'
+  type: 'image' | 'file' | 'video'
   filename?: string
   url?: string
   attachment_id?: string
@@ -42,9 +42,13 @@ export function filAdresse(block: VedhaefningsBlok): string {
   if (direkte) return direkte
   const id = String(block.attachment_id || '').trim()
   if (!id) return ''
-  return block.type === 'image'
-    ? `/attachments/image/${encodeURIComponent(id)}`
-    : `/attachments/${encodeURIComponent(id)}`
+  // `/attachments/{id}` kender KUN denne sessions registry og duer derfor
+  // ikke til noget der skal overleve reload. `/image/` og `/media/` slaar op i
+  // DB'en og er user-scopede; `/media/` er samme kode under et aerligt navn,
+  // saa en video ikke skal hentes fra en adresse der hedder «image».
+  if (block.type === 'image') return `/attachments/image/${encodeURIComponent(id)}`
+  if (block.type === 'video') return `/attachments/media/${encodeURIComponent(id)}`
+  return `/attachments/${encodeURIComponent(id)}`
 }
 
 /** 1536 → «1,5 kB». Dansk komma — samme regel som mobilen. */

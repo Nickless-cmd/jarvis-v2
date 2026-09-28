@@ -224,14 +224,14 @@ function BlockView({
           <>
             {resume ? <TankeResumeLinje tekst={resume} /> : null}
             <ToolGroupCard block={block} density={density} etiket={etik} />
-            {billedArbejde ? <BilledArbejdeAnimation arbejde={billedArbejde} /> : null}
+            {billedArbejde ? <BilledArbejdeAnimation arbejde={billedArbejde} config={config} /> : null}
           </>
         )
       }
     case 'tool_use': {
       const billedArbejde = streaming ? levendeBilledArbejde([block]) : null
       return billedArbejde
-        ? <><ToolCard block={block} density={density} aabenFraStart={visning === 'verbose'} beskedId={beskedId} config={config} /><BilledArbejdeAnimation arbejde={billedArbejde} /></>
+        ? <><ToolCard block={block} density={density} aabenFraStart={visning === 'verbose'} beskedId={beskedId} config={config} /><BilledArbejdeAnimation arbejde={billedArbejde} config={config} /></>
         : SKILL_VAERKTOEJER.has(block.name)
         ? <SkillLine block={block} density={density} />
         : <ToolCard block={block} density={density} aabenFraStart={visning === 'verbose'}

@@ -113,7 +113,7 @@ type Row = (
   | { kind: 'tool'; key: string; content: string }
   | { kind: 'live-tool'; key: string; id?: string; name: string; body: string; running: boolean; etiket?: string; diff?: { tilfoejet: number; fjernet: number } | null }
   | { kind: 'image-generation'; key: string }
-  | { kind: 'image-analysis'; key: string; kilde: string }
+  | { kind: 'image-analysis'; key: string; kilde: string; sti: string }
   /** Én RUNDE værktøjsarbejde, foldet sammen til én linje. */
   | { kind: 'tool-group'; key: string; items: ToolItem[] }
   /** Et skill-kald (skill_gate/skill_invoke) — sin EGEN linje, ikke i runden. */
@@ -378,7 +378,7 @@ function buildStreamingRows(blocks: ContentBlock[]): Row[] {
       const arbejde = billedArbejdeFor(b)!
       flush()
       rows.push(arbejde.slags === 'analyse'
-        ? { kind: 'image-analysis', key: `stream-analyse-${b.id || i}`, kilde: arbejde.kilde }
+        ? { kind: 'image-analysis', key: `stream-analyse-${b.id || i}`, kilde: arbejde.kilde, sti: arbejde.sti }
         : { kind: 'image-generation', key: `stream-image-${b.id || i}` })
     }
     else if (b.type === 'tool_use') {
@@ -837,7 +837,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
           return <MessageAttachments items={item.items} side={item.side} />
         }
         if (item.kind === 'image-generation') return <ImageGenerationCard />
-        if (item.kind === 'image-analysis') return <ImageAnalysisCard kilde={item.kilde} />
+        if (item.kind === 'image-analysis') return <ImageAnalysisCard kilde={item.kilde} sti={item.sti} />
         if (item.kind === 'compact-marker') return <CompactMarkerRow content={item.content} />
         return (
           <MessageBubble

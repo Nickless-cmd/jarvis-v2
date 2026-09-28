@@ -380,7 +380,7 @@ function RaekkeTranskriptImpl({
           </div>
         </>
       )}
-      {billedArbejde ? <BilledArbejdeAnimation arbejde={billedArbejde} /> : null}
+      {billedArbejde ? <BilledArbejdeAnimation arbejde={billedArbejde} config={config} /> : null}
       {svar.length > 0 && (
         <div className="rv-svar">
           <BlocksRenderer

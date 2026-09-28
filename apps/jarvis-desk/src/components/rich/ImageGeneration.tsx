@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { ContentBlock } from '../../lib/sseProtocol'
+import { fetchBlobWithAuth, type ApiConfig } from '../../lib/api'
 import { AttachmentBlock } from './AttachmentBlock'
 import { KlikbartBillede } from './BilledLightbox'
 
@@ -20,7 +21,9 @@ export function erBilledAnalyse(name: string): boolean {
  *  skærmen, fordi de ikke er det samme arbejde. */
 export type BilledArbejde =
   | { slags: 'generering' }
-  | { slags: 'analyse'; kilde: string }
+  /** `kilde` er navnet, til etiketten. `sti` er den FULDE sti — den er den
+   *  eneste af de to der kan hentes, gennem `/visning/billede`. */
+  | { slags: 'analyse'; kilde: string; sti: string }
 
 /** Navnet på det billede der kigges på: sidste led af stien, ellers værten på
  *  en URL. Tom når kaldet ikke siger hvad det ser på — så står animationen
@@ -37,6 +40,14 @@ export function billedKilde(input: Record<string, unknown> | undefined): string 
   }
 }
 
+/** Den fulde sti til det billede der kigges på — kun når kaldet giver en
+ *  absolut en. Ruten afviser alt andet, og så står rammen tom frem for at
+ *  hente noget vi ikke må vise. */
+export function billedSti(input: Record<string, unknown> | undefined): string {
+  const sti = typeof input?.image_path === 'string' ? input.image_path : ''
+  return sti.startsWith('/') ? sti : ''
+}
+
 type LevendeKald = { name: string; status?: string; input?: Record<string, unknown> }
 
 /**
@@ -51,14 +62,16 @@ export function levendeBilledArbejde(kald: LevendeKald[]): BilledArbejde | null 
   for (const k of kald) {
     if ((k.status ?? 'running') !== 'running') continue
     if (erBilledVaerktoej(k.name)) return { slags: 'generering' }
-    if (erBilledAnalyse(k.name)) return { slags: 'analyse', kilde: billedKilde(k.input) }
+    if (erBilledAnalyse(k.name)) {
+      return { slags: 'analyse', kilde: billedKilde(k.input), sti: billedSti(k.input) }
+    }
   }
   return null
 }
 
-export function BilledArbejdeAnimation({ arbejde }: { arbejde: BilledArbejde }) {
+export function BilledArbejdeAnimation({ arbejde, config }: { arbejde: BilledArbejde; config?: ApiConfig }) {
   return arbejde.slags === 'analyse'
-    ? <ImageAnalysisProgress kilde={arbejde.kilde} />
+    ? <ImageAnalysisProgress kilde={arbejde.kilde} sti={arbejde.sti} config={config} />
     : <ImageGenerationProgress />
 }
 
@@ -83,14 +96,39 @@ export function ImageGenerationProgress() {
  * bliver til»; scanningen siger «der bliver kigget på noget der allerede er».
  * Ingen procent, fordi backend ikke har nogen.
  */
-export function ImageAnalysisProgress({ kilde }: { kilde?: string }) {
+export function ImageAnalysisProgress({ kilde, sti, config }: { kilde?: string; sti?: string; config?: ApiConfig }) {
   const navn = (kilde || '').trim()
+  const [billede, setBillede] = useState<string | null>(null)
+
+  // Det billede der bliver kigget på — hentet gennem den SAMME hvidlistede
+  // rute som rækkevisningen bruger. Desk har ingen disk-adgang, og stien er
+  // Jarvis' egen, ikke brugerens: et skærmbillede tages på serveren.
+  useEffect(() => {
+    setBillede(null)
+    if (!config || !sti) return
+    let afbrudt = false
+    let objekt: string | null = null
+    void (async () => {
+      try {
+        const blob = await fetchBlobWithAuth(config, `/visning/billede?sti=${encodeURIComponent(sti)}`)
+        if (afbrudt) return
+        objekt = URL.createObjectURL(blob)
+        setBillede(objekt)
+      } catch {
+        // Uden for de hvidlistede rødder, eller netværket svigter: rammen står
+        // tom, præcis som før. Navnet bærer resten.
+      }
+    })()
+    return () => { afbrudt = true; if (objekt) URL.revokeObjectURL(objekt) }
+  }, [config?.apiBaseUrl, config?.authToken, sti])
+
   return <div className="image-analysis" role="progressbar"
     aria-label={navn ? `Analyserer ${navn}` : 'Analyserer billede'}>
     <span className="image-analysis-label">
       Analyserer billede{navn ? <> · <span className="image-analysis-kilde">{navn}</span></> : null}…
     </span>
     <div className="image-analysis-ramme" aria-hidden="true">
+      {billede ? <img className="image-analysis-billede" src={billede} alt="" /> : null}
       <span className="image-analysis-scan" />
       <span className="image-analysis-hjoerne tv" />
       <span className="image-analysis-hjoerne th" />

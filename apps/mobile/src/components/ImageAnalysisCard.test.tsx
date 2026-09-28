@@ -1,7 +1,15 @@
-import { render } from '@testing-library/react-native'
+import { render, waitFor } from '@testing-library/react-native'
 import { MessageList } from './MessageList'
-import { billedArbejdeFor, billedKilde } from '../lib/billedArbejde'
+import { billedArbejdeFor, billedKilde, billedSti } from '../lib/billedArbejde'
+import { hentTilCache } from './AuthImage'
 import type { ContentBlock } from '../lib/sseProtocol'
+
+/** Hentningen af selve billedet skal kunne måles — ikke et rigtigt netværk. */
+jest.mock('./AuthImage', () => ({
+  ...jest.requireActual('./AuthImage'),
+  hentTilCache: jest.fn(async () => 'file:///cache/img-analyse.png'),
+}))
+const hentet = hentTilCache as unknown as jest.Mock
 
 jest.mock('../state/AuthContext', () => {
   const config = { apiBaseUrl: 'https://api.srvlab.dk/', authToken: 'token' }
@@ -67,7 +75,7 @@ describe('billedKilde', () => {
 describe('billedArbejdeFor', () => {
   it('kender analysen fra genereringen', () => {
     expect(billedArbejdeFor({ name: 'analyze_image', status: 'running', input: { image_path: '/x/k.png' } }))
-      .toEqual({ slags: 'analyse', kilde: 'k.png' })
+      .toEqual({ slags: 'analyse', kilde: 'k.png', sti: '/x/k.png' })
     expect(billedArbejdeFor({ name: 'openrouter_image', status: 'running' })).toEqual({ slags: 'generering' })
   })
 
@@ -83,7 +91,7 @@ describe('billedArbejdeFor', () => {
   })
 
   it('uden status er kaldet lige begyndt', () => {
-    expect(billedArbejdeFor({ name: 'analyze_image' })).toEqual({ slags: 'analyse', kilde: '' })
+    expect(billedArbejdeFor({ name: 'analyze_image' })).toEqual({ slags: 'analyse', kilde: '', sti: '' })
   })
 
   it('andre værktøjer giver intet', () => {
@@ -120,11 +128,44 @@ describe('kortet i strømmen', () => {
     expect(s.getByText('Der står «Hej» på billedet.')).toBeTruthy()
   })
 
+  it('henter det billede der kigges på og lægger det under scanneren', async () => {
+    hentet.mockClear()
+    const s = await render(<MessageList messages={[]} blocks={[analyse({ image_path: '/home/bs/skaerm.png' })]} working />)
+    await waitFor(() => expect(s.getByTestId('image-analysis-billede')).toBeTruthy())
+    expect(hentet).toHaveBeenCalledWith(
+      expect.objectContaining({ apiBaseUrl: 'https://api.srvlab.dk/' }),
+      `/visning/billede?sti=${encodeURIComponent('/home/bs/skaerm.png')}`,
+      '/home/bs/skaerm.png',
+    )
+  })
+
+  it('henter intet for en Windows-sti — ruten ville afvise den', async () => {
+    hentet.mockClear()
+    await render(<MessageList messages={[]} blocks={[analyse({ image_path: 'C:\\Users\\bs\\kat.png' })]} working />)
+    expect(hentet).not.toHaveBeenCalled()
+  })
+
   it('generatoren har stadig sit eget kort', async () => {
     const s = await render(<MessageList messages={[]} working blocks={[
       { type: 'tool_use', id: 'g1', name: 'pollinations_image', input: {}, status: 'running' } as ContentBlock,
     ]} />)
     expect(s.getByTestId('image-generation-progress')).toBeTruthy()
     expect(s.queryByTestId('image-analysis-progress')).toBeNull()
+  })
+})
+
+describe('billedSti', () => {
+  it('giver den fulde sti når den er absolut', () => {
+    expect(billedSti({ image_path: '/home/bs/skaerm.png' })).toBe('/home/bs/skaerm.png')
+  })
+
+  it('giver tom streng for alt andet — ruten tager kun absolutte unix-stier', () => {
+    expect(billedSti({ image_path: 'C:\\Users\\bs\\kat.png' })).toBe('')
+    expect(billedSti({ image_url: 'https://eksempel.dk/kat.png' })).toBe('')
+    expect(billedSti(undefined)).toBe('')
+  })
+
+  it('læser stien fra partialJson mens kaldet streames ind', () => {
+    expect(billedSti({}, '{"image_path": "/x/skaerm.png"}')).toBe('/x/skaerm.png')
   })
 })

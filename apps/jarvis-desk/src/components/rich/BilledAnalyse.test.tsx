@@ -1,10 +1,36 @@
-import { describe, it, expect } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { render, screen, waitFor } from '@testing-library/react'
 import { BlocksRenderer } from './BlocksRenderer'
 import { RaekkeTranskript } from './RaekkeTranskript'
 import { VisningContext } from '../../lib/visning'
-import { billedKilde, levendeBilledArbejde } from './ImageGeneration'
+import { billedKilde, billedSti, levendeBilledArbejde } from './ImageGeneration'
+import type { ApiConfig } from '../../lib/api'
 import type { ContentBlock } from '../../lib/sseProtocol'
+
+/** Hentningen af selve billedet går gennem `/visning/billede`, og den skal
+ *  kunne måles — derfor en optager i stedet for et rigtigt netværk. */
+const hentede: string[] = []
+let hentFejler = false
+const config = { apiBaseUrl: 'https://api.srvlab.dk/', authToken: 't' } as unknown as ApiConfig
+
+vi.mock('../../lib/api', async (importOriginal) => {
+  const faktisk = await importOriginal<typeof import('../../lib/api')>()
+  return {
+    ...faktisk,
+    fetchBlobWithAuth: async (_c: unknown, url: string) => {
+      hentede.push(url)
+      if (hentFejler) throw new Error('403')
+      return new Blob(['billede'], { type: 'image/png' })
+    },
+  }
+})
+
+beforeEach(() => {
+  hentede.length = 0
+  hentFejler = false
+  URL.createObjectURL = vi.fn(() => 'blob:analyse')
+  URL.revokeObjectURL = vi.fn()
+})
 
 /**
  * Animationen for `analyze_image`.
@@ -61,7 +87,7 @@ describe('billedKilde', () => {
 describe('levendeBilledArbejde', () => {
   it('kender analysen fra genereringen', () => {
     expect(levendeBilledArbejde([{ name: 'analyze_image', status: 'running', input: { image_path: '/x/k.png' } }]))
-      .toEqual({ slags: 'analyse', kilde: 'k.png' })
+      .toEqual({ slags: 'analyse', kilde: 'k.png', sti: '/x/k.png' })
     expect(levendeBilledArbejde([{ name: 'openrouter_image', status: 'running', input: {} }]))
       .toEqual({ slags: 'generering' })
   })
@@ -78,7 +104,7 @@ describe('levendeBilledArbejde', () => {
   })
 
   it('manglende status regnes som kørende — sådan bar streamen det før', () => {
-    expect(levendeBilledArbejde([{ name: 'analyze_image', input: {} }])).toEqual({ slags: 'analyse', kilde: '' })
+    expect(levendeBilledArbejde([{ name: 'analyze_image', input: {} }])).toEqual({ slags: 'analyse', kilde: '', sti: '' })
   })
 
   it('andre værktøjer giver intet', () => {
@@ -92,7 +118,7 @@ describe('levendeBilledArbejde', () => {
     expect(levendeBilledArbejde([
       { name: 'analyze_image', status: 'running', input: { image_path: '/x/k.png' } },
       { name: 'openrouter_image', status: 'running', input: {} },
-    ])).toEqual({ slags: 'analyse', kilde: 'k.png' })
+    ])).toEqual({ slags: 'analyse', kilde: 'k.png', sti: '/x/k.png' })
   })
 
   it('tom liste giver null', () => {
@@ -145,5 +171,57 @@ describe('animationen på skærmen', () => {
   it('ingen procent — backend har ingen', () => {
     render(<BlocksRenderer blocks={[analyse({ image_path: '/x/k.png' })]} density="compact" streaming />)
     expect(screen.queryByText(/\d+%/)).not.toBeInTheDocument()
+  })
+})
+
+describe('billedet under scanneren', () => {
+  const skaerm = { image_path: '/home/bs/.jarvis-v2/uploads/chat-x/skaerm.png' }
+
+  it('henter det billede der kigges på gennem den hvidlistede rute', async () => {
+    const { container } = render(
+      <BlocksRenderer blocks={[analyse(skaerm)]} density="compact" streaming config={config} />)
+    await waitFor(() => expect(hentede).toHaveLength(1))
+    expect(hentede[0]).toBe(`/visning/billede?sti=${encodeURIComponent(skaerm.image_path)}`)
+    expect(container.querySelector('img.image-analysis-billede')).not.toBeNull()
+  })
+
+  it('en Windows-sti hentes ikke — ruten tager kun absolutte unix-stier', () => {
+    render(<BlocksRenderer blocks={[analyse({ image_path: 'C:\\Users\\bs\\kat.png' })]}
+      density="compact" streaming config={config} />)
+    expect(hentede).toHaveLength(0)
+  })
+
+  it('kun en URL hentes ikke — der er ingen sti at gå efter', () => {
+    render(<BlocksRenderer blocks={[analyse({ image_url: 'https://eksempel.dk/kat.png' })]}
+      density="compact" streaming config={config} />)
+    expect(hentede).toHaveLength(0)
+  })
+
+  it('uden config står rammen tom frem for at kaste', () => {
+    render(<BlocksRenderer blocks={[analyse(skaerm)]} density="compact" streaming />)
+    expect(hentede).toHaveLength(0)
+  })
+
+  it('en afvist hentning giver tom ramme — kortet står stadig', async () => {
+    hentFejler = true
+    const { container } = render(
+      <BlocksRenderer blocks={[analyse(skaerm)]} density="compact" streaming config={config} />)
+    await waitFor(() => expect(hentede).toHaveLength(1))
+    expect(container.querySelector('img.image-analysis-billede')).toBeNull()
+    expect(screen.getByLabelText('Analyserer skaerm.png')).toBeInTheDocument()
+  })
+})
+
+describe('billedSti', () => {
+  it('giver den fulde sti når den er absolut', () => {
+    expect(billedSti({ image_path: '/home/bs/skaerm.png' })).toBe('/home/bs/skaerm.png')
+  })
+
+  it('giver tom streng for alt der ikke er en absolut unix-sti', () => {
+    expect(billedSti({ image_path: 'C:\\Users\\bs\\kat.png' })).toBe('')
+    expect(billedSti({ image_path: 'relativ/kat.png' })).toBe('')
+    expect(billedSti({ image_url: 'https://eksempel.dk/kat.png' })).toBe('')
+    expect(billedSti(undefined)).toBe('')
+    expect(billedSti({ image_path: 42 })).toBe('')
   })
 })

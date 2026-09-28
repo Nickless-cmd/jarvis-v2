@@ -73,6 +73,33 @@ describe('billedKilde', () => {
   })
 })
 
+describe('hvilken sti hentes billedet fra', () => {
+  /** Se desks tvilling. `/tmp/ss_mid.png` giver 403; `visning_sti` er den der
+   *  virker. Fejlen blev fotograferet på telefonen 28/9-2026. */
+  it('serverens visning_sti vinder over image_path', () => {
+    expect(billedSti({ image_path: '/tmp/ss_mid.png',
+      visning_sti: '/tmp/jarvisx-vision-abc.png' })).toBe('/tmp/jarvisx-vision-abc.png')
+  })
+
+  it('uden visning_sti bruges image_path — en ældre server', () => {
+    expect(billedSti({ image_path: '/x/k.png' })).toBe('/x/k.png')
+  })
+
+  it('en visning_sti der ikke er absolut ignoreres', () => {
+    expect(billedSti({ image_path: '/x/k.png', visning_sti: 'relativ.png' })).toBe('/x/k.png')
+  })
+
+  it('den læses også fra partialJson under streaming', () => {
+    expect(billedSti({}, '{"image_path":"/tmp/ss.png","visning_sti":"/tmp/jarvisx-vision-a.png"}'))
+      .toBe('/tmp/jarvisx-vision-a.png')
+  })
+
+  it('etiketten viser stadig det RIGTIGE filnavn', () => {
+    expect(billedKilde({ image_path: '/tmp/ss_mid.png',
+      visning_sti: '/tmp/jarvisx-vision-abc.png' })).toBe('ss_mid.png')
+  })
+})
+
 describe('billedArbejdeFor', () => {
   it('kender analysen fra genereringen', () => {
     expect(billedArbejdeFor({ name: 'analyze_image', status: 'running', input: { image_path: '/x/k.png' } }))

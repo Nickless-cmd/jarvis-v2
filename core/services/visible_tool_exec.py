@@ -63,6 +63,36 @@ def _bruger_til_stede(run) -> bool:
     return not bool(getattr(run, "autonomous", False))
 
 
+def _vis_argumenter(navn: str, args: dict) -> dict:
+    """Argumenterne klienten faar — plus en sti den maa HENTE billedet paa.
+
+    `analyze_image` baerer `image_path`, og det er den sti ventefladen gerne
+    ville vise billedet fra. Men stien er Jarvis' egen, og `/visning/billede`
+    viser kun det der ligger under `JARVIS_HOME` eller baerer et af hans
+    skaermbilled-praefikser — beskaerer han et udsnit til `/tmp/ss_mid.png`,
+    svarer ruten 403 og rammen staar tom (maalt paa telefonen 28/9-2026).
+
+    `visnings_sti` giver den sti der VIRKER: originalen naar den maa vises (alt
+    uploadet), ellers en hvidlistet kopi. `image_path` staar uroert, saa
+    etiketten stadig viser det rigtige filnavn.
+
+    Kaster aldrig: det her sker midt i streamen, og en manglende venteflade maa
+    aldrig koste turen.
+    """
+    from core.services.tool_chip_payload import trim_arguments
+    ud = trim_arguments(args)
+    if navn != "analyze_image":
+        return ud
+    try:
+        from core.services.vision_preview import visnings_sti
+        sti = visnings_sti(str(ud.get("image_path") or ""))
+        if sti:
+            ud["visning_sti"] = sti
+    except Exception:  # noqa: BLE001 — ventefladen er pynt, turen er ikke
+        logger.warning("ingen visnings-sti til analyze_image", exc_info=True)
+    return ud
+
+
 async def run_tool_batch(
     tool_calls: list[dict],
     *,
@@ -111,7 +141,6 @@ async def run_tool_batch(
     from core.services.simple_tool_executor import (
         _execute_simple_tool_calls, _execute_local_tool_calls,
     )
-    from core.services.tool_chip_payload import trim_arguments as _trim_arguments
 
     _local = bool(getattr(run, "local_tool_exec", False))
 
@@ -172,7 +201,7 @@ async def run_tool_batch(
                 # tidlige linje ikke parres med sit resultat, og klienten ville
                 # vise to linjer om samme kald.
                 "tool_id": str(_tc.get("id") or ""),
-                "arguments": _trim_arguments(_tc_args),
+                "arguments": _vis_argumenter(_tc_name, _tc_args),
                 # ET ÆGTE VÆRKTØJSKALD — ikke et livstegn.
                 #
                 # `working_step` bærer to slags ting: dette, og «Thinking via

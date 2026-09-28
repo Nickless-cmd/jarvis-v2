@@ -61,6 +61,11 @@ export function billedKilde(input?: Record<string, unknown>, partialJson?: strin
  *  URL'er), og så står rammen tom frem for at hente noget vi ikke må vise. */
 export function billedSti(input?: Record<string, unknown>, partialJson?: string): string {
   const arg = analyseArg(input, partialJson)
+  // Serveren siger selv hvilken sti der KAN hentes — se desks tvilling.
+  // `image_path` kan ligge uden for `/visning/billede`s hvidliste; `visning_sti`
+  // er originalen naar den maa vises, ellers en hvidlistet kopi.
+  const vist = typeof arg?.visning_sti === 'string' ? arg.visning_sti : ''
+  if (vist.startsWith('/')) return vist
   const sti = typeof arg?.image_path === 'string' ? arg.image_path : ''
   return sti.startsWith('/') ? sti : ''
 }

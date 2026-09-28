@@ -44,9 +44,17 @@ export function billedKilde(input: Record<string, unknown> | undefined): string 
  *  absolut en. Ruten afviser alt andet, og så står rammen tom frem for at
  *  hente noget vi ikke må vise. */
 export function billedSti(input: Record<string, unknown> | undefined): string {
+  // Serveren siger selv hvilken sti der KAN hentes. `image_path` er Jarvis'
+  // egen, og ligger den uden for `/visning/billede`s hvidliste — fx et udsnit
+  // han lige har beskaaret til `/tmp/ss_mid.png` — svarer ruten 403 og rammen
+  // staar tom. `visning_sti` er originalen naar den maa vises, ellers en
+  // hvidlistet kopi. Findes den ikke (aeldre server), falder vi tilbage.
+  const vist = typeof input?.visning_sti === 'string' ? input.visning_sti : ''
+  if (vist.startsWith('/')) return vist
   const sti = typeof input?.image_path === 'string' ? input.image_path : ''
   return sti.startsWith('/') ? sti : ''
 }
+
 
 type LevendeKald = { name: string; status?: string; input?: Record<string, unknown> }
 

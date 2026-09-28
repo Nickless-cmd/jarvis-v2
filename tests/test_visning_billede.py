@@ -18,6 +18,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
 
 from apps.api.jarvis_api.routes import visning
+from core.services import vision_preview
 
 app = FastAPI()
 app.include_router(visning.router)
@@ -33,8 +34,11 @@ def hjem_og_temp(tmp_path, monkeypatch):
     temp = tmp_path / "temp"
     hjem.mkdir()
     temp.mkdir()
-    monkeypatch.setattr(visning, "JARVIS_HOME", hjem)
-    monkeypatch.setattr(visning.tempfile, "gettempdir", lambda: str(temp))
+    # Reglen laeser sine roedder fra `vision_preview`, ikke fra ruten. Patchede
+    # man `visning.JARVIS_HOME`, ramte man en KOPI af navnet og testen ville
+    # maale den rigtige maskine (from-import binder en kopi, ikke en laenke).
+    monkeypatch.setattr(vision_preview, "JARVIS_HOME", hjem)
+    monkeypatch.setattr(vision_preview.tempfile, "gettempdir", lambda: str(temp))
     return hjem, temp
 
 

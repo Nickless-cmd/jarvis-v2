@@ -126,6 +126,35 @@ describe('levendeBilledArbejde', () => {
   })
 })
 
+describe('hvilken sti hentes billedet fra', () => {
+  /**
+   * Målt på telefonen 28/9-2026: Jarvis beskar et skærmbillede til
+   * `/tmp/ss_mid.png` og analyserede det. Kortet viste navnet, men rammen stod
+   * tom — `/visning/billede` svarer 403 på en bar `/tmp`-sti, og skal blive
+   * ved med det. Serveren lægger derfor en hentbar sti i `visning_sti`:
+   * originalen når den må vises, ellers en hvidlistet kopi.
+   */
+  it('serverens visning_sti vinder over image_path', () => {
+    expect(billedSti({ image_path: '/tmp/ss_mid.png',
+      visning_sti: '/tmp/jarvisx-vision-abc.png' })).toBe('/tmp/jarvisx-vision-abc.png')
+  })
+
+  it('uden visning_sti bruges image_path — en ældre server', () => {
+    expect(billedSti({ image_path: '/home/bs/.jarvis-v2/uploads/a/k.png' }))
+      .toBe('/home/bs/.jarvis-v2/uploads/a/k.png')
+  })
+
+  it('en visning_sti der ikke er absolut ignoreres', () => {
+    expect(billedSti({ image_path: '/x/k.png', visning_sti: 'relativ.png' })).toBe('/x/k.png')
+    expect(billedSti({ image_path: '/x/k.png', visning_sti: '' })).toBe('/x/k.png')
+  })
+
+  it('etiketten viser stadig det RIGTIGE filnavn, ikke kopiens', () => {
+    expect(billedKilde({ image_path: '/tmp/ss_mid.png',
+      visning_sti: '/tmp/jarvisx-vision-abc.png' })).toBe('ss_mid.png')
+  })
+})
+
 describe('animationen på skærmen', () => {
   it('BlocksRenderer: runden viser scanningen mens analysen kører', () => {
     render(<BlocksRenderer blocks={[analyse({ image_path: '/home/bs/skaerm.png' })]} density="compact" streaming />)

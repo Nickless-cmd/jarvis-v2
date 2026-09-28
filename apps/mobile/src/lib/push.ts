@@ -184,36 +184,19 @@ export async function display(config: ApiConfig, data: PushData) {
 
 const RUN_NOTIFICATION_ID = 'jarvis-active-run'
 
-export async function showRunInProgressNotification(sessionId?: string, runId?: string): Promise<void> {
-  try {
-    const channelId = await notifee.createChannel({
-      id: 'jarvis',
-      name: 'Jarvis',
-      importance: AndroidImportance.HIGH,
-    })
-    await notifee.displayNotification({
-      id: RUN_NOTIFICATION_ID,
-      title: 'Jarvis arbejder',
-      body: 'Du kan lukke skærmen. Runnet fortsætter på serveren.',
-      data: {
-        kind: 'run_in_progress',
-        ...(sessionId ? { session_id: sessionId } : {}),
-        ...(runId ? { run_id: runId } : {})
-      },
-      android: {
-        channelId,
-        pressAction: { id: 'default' },
-        smallIcon: 'ic_notification',
-        ongoing: true,
-        autoCancel: false,
-        actions: notificationActionsFor({ kind: 'run_in_progress', run_id: runId })
-      }
-    })
-  } catch {
-    /* notification er hjælp, ikke run-sandhed */
-  }
-}
-
+/**
+ * Ryd «Jarvis arbejder»-notifikationen.
+ *
+ * Den blev vist naar appen gik i baggrunden midt i et run: «Du kan lukke
+ * skaermen. Runnet fortsaetter paa serveren.» Bjoern 28/9-2026: «den skal
+ * vaek». Han havde to stablet paa laaseskaermen.
+ *
+ * Den var `ongoing: true, autoCancel: false` — altsaa kunne den ikke swipes
+ * vaek. Derfor bliver den her funktion staaende selv om ingen viser den
+ * laengere: en notifikation fra en tidligere udgave sidder fast indtil nogen
+ * aktivt annullerer den, og det gjorde vi kun ved retur til forgrunden. Nu
+ * ryddes den ogsaa ved opstart, saa den forsvinder efter en opdatering.
+ */
 export async function clearRunInProgressNotification(): Promise<void> {
   try {
     await notifee.cancelNotification(RUN_NOTIFICATION_ID)

@@ -68,7 +68,6 @@ import { bubble } from '../lib/bubbleModule'
 import {
   clearRunInProgressNotification,
   handleNotificationAction,
-  showRunInProgressNotification,
   submitNotificationReply
 } from '../lib/push'
 import { computeRuntimePolicy } from '../lib/mobileRuntimePolicy'
@@ -752,6 +751,14 @@ export function ChatScreen({
   // Stream dør når appen baggrunder (Android dræber SSE), men kørslen fortsætter
   // server-side. Når appen kommer tilbage i forgrunden, gen-synkroniserer vi den
   // aktive session så svaret der blev færdigt mens man var væk, dukker op.
+  // En «Jarvis arbejder» fra en TIDLIGERE udgave sidder fast: den var
+  // `ongoing: true, autoCancel: false`, saa den kan hverken swipes vaek eller
+  // udloebe. Vi viser den ikke laengere, men den forsvinder foerst naar nogen
+  // annullerer den — og det gjorde vi kun ved retur til forgrunden. Ryddes
+  // derfor ogsaa ved opstart, saa en koldstart efter opdateringen goer det af
+  // med den. Er der ingen, er kaldet en no-op.
+  useEffect(() => { void clearRunInProgressNotification() }, [])
+
   const appStateRef = useRef(AppState.currentState)
   useEffect(() => {
     const sub = AppState.addEventListener('change', (next) => {
@@ -759,11 +766,14 @@ export function ChatScreen({
       appStateRef.current = next
       setAppState(next)
       if (next.match(/inactive|background/) && (stream.state.status === 'working' || serverBusy)) {
+        // INGEN notifikation her. Den sagde «Du kan lukke skærmen. Runnet
+        // fortsætter på serveren» hver gang man forlod appen midt i et svar —
+        // og fordi den var `ongoing`, kunne den ikke swipes væk. Bjørn
+        // 28/9-2026: «den skal væk». Han havde to stablet på låseskærmen.
+        //
+        // Selve frakoblingen bliver: streamen dør alligevel når Android
+        // baggrunder appen, og `genoptagKoerende` kobler på igen ved retur.
         stream.detachForBackground()
-        void showRunInProgressNotification(
-          sessions.activeId ?? undefined,
-          stream.state.activeRunId ?? activeRunId
-        )
       }
       if (prev.match(/inactive|background/) && next === 'active' && config && sessions.activeId) {
         void clearRunInProgressNotification()

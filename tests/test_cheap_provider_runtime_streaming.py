@@ -70,3 +70,37 @@ def test_cheap_lane_providers_keep_4096(monkeypatch):
     _drain("groq", "llama-3.3-70b")
     assert seen["payload"]["max_tokens"] == 4096
     assert "thinking" not in seen["payload"]
+
+
+def test_deepseek_visible_stream_records_component_signatures(monkeypatch):
+    seen = _capture_payload(monkeypatch)
+    recorded = []
+    monkeypatch.setattr("core.services.cache_telemetry.record_visible_cache",
+                        lambda **kw: recorded.append(kw))
+
+    @contextmanager
+    def fake_stream(method, url, *, json=None, headers=None, timeout=None):  # noqa: A002
+        seen["payload"] = json
+        yield _FakeResponse([
+            'data: {"choices":[{"delta":{"content":"ok"},"finish_reason":"stop"}],'
+            '"usage":{"prompt_cache_hit_tokens":80,"prompt_cache_miss_tokens":20}}',
+            "data: [DONE]", "",
+        ])
+
+    monkeypatch.setattr(streaming.httpx, "stream", fake_stream)
+    tools = [{"type": "function", "function": {"name": f"tool_{n}"}} for n in range(20)]
+    messages = [
+        {"role": "system", "content": "stable"},
+        {"role": "user", "content": "hello"},
+        {"role": "system", "content": "living tail"},
+    ]
+    list(streaming._iter_openai_compatible_chat_events(
+        provider="deepseek", model="deepseek-v4-flash", auth_profile="default",
+        base_url="https://api.test/v1", messages=messages, tools=tools))
+
+    assert len(recorded) == 1
+    assert recorded[0]["system_sha"]
+    assert recorded[0]["tools_sha"]
+    assert recorded[0]["tail_sha"]
+    assert recorded[0]["cache_hit"] == 80
+    assert recorded[0]["cache_miss"] == 20

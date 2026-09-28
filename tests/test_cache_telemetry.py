@@ -28,18 +28,71 @@ def test_prefix_signature_key_order_invariant():
     assert ct.prefix_signature("s", a)[0] == ct.prefix_signature("s", b)[0]
 
 
+def test_component_signatures_keep_the_dynamic_tail_separate():
+    tools = [{"type": "function", "function": {"name": "read_file"}}]
+    before = [
+        {"role": "system", "content": "stable identity"},
+        {"role": "user", "content": "old turn"},
+        {"role": "system", "content": "inner life at 09:00"},
+        {"role": "user", "content": "new turn"},
+    ]
+    after = [*before[:2], {"role": "system", "content": "inner life at 09:01"}, before[3]]
+    first = ct.component_signatures(before, tools)
+    second = ct.component_signatures(after, tools)
+
+    assert first["system_sha"] == second["system_sha"]
+    assert first["tools_sha"] == second["tools_sha"]
+    assert first["tail_sha"] != second["tail_sha"]
+    assert first["system_len"] == len("stable identity")
+    assert first["tail_len"] == len("inner life at 09:00")
+    assert first["system_chunks"] == second["system_chunks"]
+    assert "inner life" not in str(first)
+
+
+def test_component_signatures_locate_a_change_within_stable_system():
+    original = [{"role": "system", "content": "a" * 1024 + "time: 17:16" + "z" * 1024}]
+    changed = [{"role": "system", "content": "a" * 1024 + "time: 17:19" + "z" * 1024}]
+    before = ct.component_signatures(original, [])
+    after = ct.component_signatures(changed, [])
+    assert len(before["system_chunks"]) == 3
+    assert [a != b for a, b in zip(before["system_chunks"], after["system_chunks"])] == [False, True, False]
+
+
+def test_component_signatures_identify_system_and_tool_changes():
+    messages = [{"role": "system", "content": "identity"}]
+    tools = [{"function": {"name": "read_file"}}]
+    base = ct.component_signatures(messages, tools)
+    new_system = ct.component_signatures([{"role": "system", "content": "identity changed"}], tools)
+    new_tools = ct.component_signatures(messages, [{"function": {"name": "write_file"}}])
+    assert base["system_sha"] != new_system["system_sha"]
+    assert base["tools_sha"] == new_system["tools_sha"]
+    assert base["system_sha"] == new_tools["system_sha"]
+    assert base["tools_sha"] != new_tools["tools_sha"]
+
+
 def test_record_writes_jsonl_line(tmp_path, monkeypatch):
     monkeypatch.setenv("JARVIS_HOME", str(tmp_path))
     ct.record_visible_cache(
         run_id="visible-abc", round_index=3, autonomous=False, lane="visible",
         provider="deepseek", model="deepseek-v4-flash",
         prefix_sha="deadbeef", prefix_len=12345, cache_hit=90000, cache_miss=1000,
+        session_id="chat-1", system_sha="systemhash", tools_sha="toolhash",
+        tail_sha="tailhash", system_len=100, tools_len=200, tail_len=300,
+        system_chunks=["chunk-a", "chunk-b"],
     )
     log = tmp_path / "logs" / "cache_telemetry.jsonl"
     row = json.loads(log.read_text().strip())
     assert row["run_id"] == "visible-abc"
     assert row["round"] == 3
     assert row["prefix_sha"] == "deadbeef"
+    assert row["session_id"] == "chat-1"
+    assert row["system_sha"] == "systemhash"
+    assert row["tools_sha"] == "toolhash"
+    assert row["tail_sha"] == "tailhash"
+    assert row["system_len"] == 100 and row["tools_len"] == 200
+    assert row["tail_len"] == 300
+    assert row["system_chunks"] == ["chunk-a", "chunk-b"]
+    assert row["timestamp"].endswith("+00:00")
     assert row["hit"] == 90000 and row["miss"] == 1000
     assert row["pct"] == round(100.0 * 90000 / 91000, 1)
 

@@ -310,6 +310,11 @@
       "ejer": "core/services/agent_self_evaluation.py",
       "beskrivelse": "Agent self-evaluation — track quality, adherence, goal progress (READ-ONLY).",
       "registreret": "2026-09-20"
+    },
+    "klient_versioner": {
+      "ejer": "core/services/klient_versioner.py",
+      "beskrivelse": "Seneste APP-VERSION pr. klient (mobile/desk), meldt af klienten selv i X-Jarvis-Klientversion. Ikke en historik: én post pr. klient, sidst skrevet vinder. Findes fordi manifestet kun siger hvad der er UDGIVET, ikke hvad der er INSTALLERET.",
+      "registreret": "2026-09-28"
     }
   }
 }

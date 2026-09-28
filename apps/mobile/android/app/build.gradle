@@ -172,8 +172,11 @@ android {
         // Sideload-vejen er UROERT: `assembleRelease` bygger praecis som foer,
         // og det er den APK telefonen faar. Play-bygget laves separat:
         //
-        //   ./gradlew :app:assemblePlayRelease -PreactNativeArchitectures=arm64-v8a
-        //   ./gradlew :app:bundlePlayRelease -PreactNativeArchitectures=arm64-v8a
+        //   ./gradlew :app:assemblePlay -PreactNativeArchitectures=arm64-v8a
+        //   ./gradlew :app:bundlePlay -PreactNativeArchitectures=arm64-v8a
+        //
+        // Varianten hedder bare `play` — ikke `playRelease` — fordi der ikke er
+        // nogen flavors. APK'en lander i app/build/outputs/apk/play/app-play.apk.
         //
         // `initWith release` arver signering, minify og proguard. Uden
         // matchingFallbacks fejler konfigurationen, fordi bibliotekerne kun

@@ -7,14 +7,14 @@ describe('elevation', () => {
   // #212121 (33), kanten 66, altså alpha ≈ 0,15 — men ved 0,15 var forskellen
   // kun 32 gråtoner, og det læser øjet som en blød overgang frem for en streg.
   //
-  // BJØRN 28/9-2026 valgte 0,35 på en mockup (kant 109 mod flade 33 = 76
-  // gråtoner). Testen holder det niveau: falder alpha tilbage under 0,30, er
-  // den linje han bad om, væk igen.
+  // BJØRN 28/9-2026 valgte 0,50 på en mockup med tre valg (kant 143 mod flade
+  // 33 = 110 gråtoner — den kraftigste af de tre). Testen holder det niveau:
+  // falder alpha tilbage under 0,45, er den linje han bad om, væk igen.
   it('moerk kant er synligt lysere end fladen den tegner omridset af', () => {
     const e = elevation('dark')
     const m = /rgba\(255,\s*255,\s*255,\s*([\d.]+)\)/.exec(e.borderColor ?? '')
     expect(m).not.toBeNull()
-    expect(Number(m![1])).toBeGreaterThanOrEqual(0.30)
+    expect(Number(m![1])).toBeGreaterThanOrEqual(0.45)
     expect(e.borderWidth).toBeGreaterThan(0)
   })
 

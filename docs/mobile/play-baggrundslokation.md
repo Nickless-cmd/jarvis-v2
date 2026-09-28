@@ -4,7 +4,8 @@
 > Dette er **pakken** til erklæringen: hvad Google kræver, hvad der skal svares,
 > hvordan videoen skal skydes — og hvad appen mangler i koden for at kunne søge.
 >
-> **Status: der er ikke søgt. Og det er ikke sikkert det kan lade sig gøre.**
+> **Status: der er ikke søgt — og 28/9-2026 blev Vej B valgt i stedet:
+> Play-bygget laves uden baggrundsplacering. Se «Valget blev taget» nederst.**
 
 ## Den ærlige vurdering først
 
@@ -190,3 +191,60 @@ anden vej, hvis man kan levere oplevelsen uden.
 **Det jeg ikke kan afgøre for dig:** om «Jarvis ved hvor jeg er, selv når appen er
 lukket» er noget du faktisk bruger. Bruger du det ikke, er Vej B gratis. Bruger
 du det, er Vej A forsøget værd — men den skal bygges færdig først, uanset.
+
+---
+
+## Valget blev taget: Vej B (28/9-2026)
+
+Bjørn valgte Vej B. Play-bygget laves uden baggrundsplacering; sideload-APK'en
+beholder den.
+
+**Sådan er det bygget.** En ny build type `play` ved siden af `release`, med sin
+egen manifest-fil `android/app/src/play/AndroidManifest.xml` der fjerner fire
+ting via `tools:node="remove"`:
+
+| Fjernet | Hvorfor |
+|---|---|
+| `ACCESS_BACKGROUND_LOCATION` | Hele sagen (#6) |
+| `REQUEST_INSTALL_PACKAGES` | Appens egen opdatering — Play forbyder selv-opdatering |
+| `SYSTEM_ALERT_WINDOW` | Samme mekanisme |
+| `FOREGROUND_SERVICE_LOCATION` + `LocationTaskService` | Uden baggrundslokation kan servicen ikke starte, og en ubrugt location-service kræver sin egen begrundelse i Play |
+
+`FOREGROUND_SERVICE` (uden `_LOCATION`) blev **beholdt** — WebRTC's
+`mediaProjection` og notifees `shortService` bruger den.
+
+**Sideload-vejen er urørt.** `assembleRelease` bygger præcis som før. Play-bygget
+laves separat:
+
+```
+./gradlew :app:assemblePlay -PreactNativeArchitectures=arm64-v8a
+./gradlew :app:bundlePlay -PreactNativeArchitectures=arm64-v8a
+```
+
+Varianten hedder bare `play` (ingen flavors), så opgavenavnene er `assemblePlay`
+og `bundlePlay` — **ikke** `playRelease`. APK'en lander i
+`app/build/outputs/apk/play/app-play.apk`.
+
+**Verificeret 28/9-2026** ved at bygge begge varianter og sammenligne de merged
+manifester:
+
+| Tilladelse | `release` | `play` |
+|---|---|---|
+| `ACCESS_BACKGROUND_LOCATION` | har | **mangler** |
+| `REQUEST_INSTALL_PACKAGES` | har | **mangler** |
+| `SYSTEM_ALERT_WINDOW` | har | **mangler** |
+| `FOREGROUND_SERVICE_LOCATION` | har | **mangler** |
+| `CAMERA`, `RECORD_AUDIO` | har | har |
+
+Play-APK'en blev bygget (57,7 MB, arm64) og er signeret med upload-nøglen
+`CN=Jarvis Mobile, O=srvlab.dk`.
+
+**Kendt skævhed i Play-bygget:** indstillings-skærmen viser stadig chippen
+«I baggrund». Den kan ikke slås til — `requestBackgroundPermissionsAsync()`
+returnerer ikke «granted», og `backgroundLocation.ts` falder tilbage til
+forgrunds-ping. Chippen bør skjules i Play-bygget, men det kræver et
+build-tids-flag der kan læses fra JS. Ikke bygget endnu.
+
+**Dermed er #3 i Play-listen ikke længere en blocker for udgivelsen** — men
+bemærk at rækkefølgen i `docs/mobile/` ikke er en prioritering. Auto-updateren
+var samme slags konflikt, og den er nu også ude af Play-bygget.

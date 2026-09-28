@@ -20,4 +20,17 @@
                    tools:node="remove"/>
   <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"
                    tools:node="remove"/>
+
+  <!-- Baggrundslokationens foreground-service. Uden ACCESS_BACKGROUND_LOCATION
+       kan LocationTaskService alligevel ikke starte — og en deklareret
+       location-foreground-service uden brug er praecis den slags Play beder om
+       en saerlig begrundelse for. Derfor ryger baade tilladelsen og servicen.
+
+       FOREGROUND_SERVICE (uden _LOCATION) bliver: den bruges ogsaa af WebRTC's
+       mediaProjection og notifees shortService. Verificeret i den merged
+       manifest 28/9-2026 — kun LocationTaskService brugte type "location". -->
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION"
+                   tools:node="remove"/>
+  <service android:name="expo.modules.location.services.LocationTaskService"
+           tools:node="remove"/>
 </manifest>

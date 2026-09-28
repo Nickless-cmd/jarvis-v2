@@ -5,6 +5,15 @@
   <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
   <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" tools:replace="android:maxSdkVersion"/>
   <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+  <!-- Baggrundslokation (28/9-2026): `<service>`-deklarationen kommer fra
+       expo-location's EGEN manifest og merges ind automatisk — men
+       TILLADELSERNE goer ikke. De laegges normalt ind af expo-location-
+       pluginnet ved prebuild, og android/ er allerede ejected, saa pluginnet
+       kører aldrig. Uden FOREGROUND_SERVICE_LOCATION kaster Android 14+ naar
+       servicen starter — og fejlen blev slugt af `catch {}` i
+       backgroundLocation.ts, saa baggrundslokation fejlede STILLE. -->
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION"/>
   <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>
   <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
   <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>

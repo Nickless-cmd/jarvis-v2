@@ -82,6 +82,16 @@ def enableMinifyInReleaseBuilds = (findProperty('android.enableMinifyInReleaseBu
  */
 def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
 
+// Upload-noegle til Play (28/9-2026). Filen er gitignored og findes kun paa
+// den maskine der bygger til Play. Mangler den, falder release tilbage til
+// debug-noeglen — saa en frisk klon kan stadig bygge, og Bjørns sideload-APK
+// braekker ikke foer han selv saetter filen op.
+def keystoreProperties = new Properties()
+def keystorePropertiesFile = rootProject.file('keystore.properties')
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
 android {
     ndkVersion rootProject.ext.ndkVersion
 
@@ -113,6 +123,17 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+        // Definieres KUN naar keystore.properties findes. Er blokken tom,
+        // findes signingConfigs.release ikke — og release falder tilbage til
+        // debug (se buildTypes nedenfor).
+        if (keystorePropertiesFile.exists()) {
+            release {
+                storeFile file(keystoreProperties['storeFile'])
+                storePassword keystoreProperties['storePassword']
+                keyAlias keystoreProperties['keyAlias']
+                keyPassword keystoreProperties['keyPassword']
+            }
+        }
     }
     // Instrumenterings-testene skal koere mod den RELEASE-app der faktisk
     // sidder paa telefonen — ikke mod en debug-build der opfoerer sig anderledes
@@ -130,7 +151,10 @@ android {
         release {
             // Caution! In production, you need to generate your own keystore file.
             // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
+            // Skifter foerst certifikat naar upload-noeglen er sat op. Indtil da
+            // debug-noeglen — ellers ville Bjørns installerede app ikke kunne
+            // opdateres uden en afinstallering foerst.
+            signingConfig keystorePropertiesFile.exists() ? signingConfigs.release : signingConfigs.debug
             def enableShrinkResources = findProperty('android.enableShrinkResourcesInReleaseBuilds') ?: 'false'
             shrinkResources enableShrinkResources.toBoolean()
             minifyEnabled enableMinifyInReleaseBuilds

@@ -9,7 +9,7 @@ jest.mock('react-native-sse', () => {
 })
 
 import EventSource from 'react-native-sse'
-import { startStream } from './streamClient'
+import { followSession, startStream } from './streamClient'
 import type { StreamEvent } from './sseProtocol'
 import type { ApiConfig } from './types'
 
@@ -30,6 +30,14 @@ const getListener = (name: string): Listener => {
 
 beforeEach(() => {
   jest.clearAllMocks()
+})
+
+it('passiv mobil følger det konkrete run fra snapshot uden at starte et nyt', () => {
+  followSession(config, 's1', { onEvent: jest.fn() }, 'run-2')
+  expect(EventSource).toHaveBeenCalledWith(
+    'https://api.srvlab.dk/chat/runs/run-2/subscribe?from_idx=0',
+    expect.objectContaining({ method: 'GET' })
+  )
 })
 
 it('forwards parsed events and completes on message_stop', () => {

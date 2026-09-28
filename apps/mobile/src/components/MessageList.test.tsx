@@ -336,3 +336,34 @@ it('et streamet billede MED data-URL tegnes direkte', async () => {
   const s = await render(<MessageList messages={[]} blocks={blocks} working />)
   expect(s.getByTestId('attachment-open-k.png')).toBeTruthy()
 })
+
+// ── Trådens top-clearance (28/9-2026) ───────────────────────────────────
+//
+// Bjørn: «Der sker et eller andet ved header … men kun når streamen står
+// stille.» Den øverste boble blev klippet fladt foroven.
+//
+// Årsagen var at clearance var et FAST tal (72 dp) målt fra skærmens top,
+// mens header'en fylder `insets.top + BADGE_H + polstring` — ca. 74 dp på
+// hans enhed. Tråden begyndte derfor 2 dp inde UNDER header'ens underkant.
+// I hvile lander tråden på sin faste plads; mens der streames skubbes den op,
+// og derfor sås fejlen kun i hvile.
+//
+// Vagten holder at tallet kommer UDEFRA. Sætter nogen det faste tal tilbage,
+// fejler den her — og ikke først på hans telefon.
+it('lægger headerens højde oveni top-clearance — den er ikke et fast tal', async () => {
+  const s = await render(<MessageList messages={[msg({})]} blocks={[]} topInset={74} />)
+  const liste = s.getByTestId('traad')
+  const stil = liste.props.contentContainerStyle
+  const flad = Array.isArray(stil) ? Object.assign({}, ...stil.filter(Boolean)) : stil
+  // 12 (TOP_CLEARANCE) + 74 (header) = 86. Med det gamle faste tal ville
+  // paddingBottom vaere 72 uanset hvad der blev sendt ind.
+  expect(flad.paddingBottom).toBe(86)
+})
+
+it('uden topInset er der stadig luft — men kun den faste margin', async () => {
+  const s = await render(<MessageList messages={[msg({})]} blocks={[]} />)
+  const liste = s.getByTestId('traad')
+  const stil = liste.props.contentContainerStyle
+  const flad = Array.isArray(stil) ? Object.assign({}, ...stil.filter(Boolean)) : stil
+  expect(flad.paddingBottom).toBe(12)
+})

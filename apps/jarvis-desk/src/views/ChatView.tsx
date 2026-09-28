@@ -148,6 +148,8 @@ export function ChatView({
   // at "dumpe" det ind når det er færdigt). Egen reducer fodret af /follow-SSE'en.
   const [followState, followDispatch] = useRammeReducer(streamReducer, initialStreamState)
   const followCtrlRef = useRef<{ abort: () => void } | null>(null)
+  const [bgRunId, setBgRunId] = useState<string | null>(null)
+  const [followRetry, setFollowRetry] = useState(0)
 
   // Debounced refresh (Bjørn 2026-06-29): vi havde FIRE stablede sessions.refresh()-
   // timere (700/2200ms efter eget done + 600/2000ms efter et fulgt run sluttede).
@@ -273,6 +275,7 @@ export function ChatView({
           // Det er ikke et nyt baggrunds-run og skal ikke starte /follow igen.
           const active = serverHasRun && stream.status !== 'working'
             && (!currentRun?.run_id || currentRun.run_id !== stream.activeRunId)
+          setBgRunId(active ? currentRun?.run_id || null : null)
           if (active) bgUntil = Date.now() + 6000
           setBgActive(active || Date.now() < bgUntil)
           if (active) { cooldown = 3; void sessions.refreshMessages() }       // mens det kører
@@ -355,10 +358,18 @@ export function ChatView({
     if (!FOLLOW_ENABLED || !bgActive || !sessionId || !settings) return
     if (followCtrlRef.current) return // følger allerede
     const cfg = { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken }
+    let alive = true
+    let stopped = false
+    let retryTimer: ReturnType<typeof setTimeout> | null = null
     followCtrlRef.current = followRun(
       cfg, sessionId,
-      (ev) => followDispatch(ev),
+      (ev) => {
+        if (!alive) return
+        if (ev.type === 'message_stop') stopped = true
+        followDispatch(ev)
+      },
       () => {
+        if (!alive) return
         followCtrlRef.current = null
         // Et fulgt (cross-device/autonomt) run er afsluttet → hent den
         // persisterede + rensede besked ind i den ÅBNE transcript. Uden dette
@@ -366,10 +377,19 @@ export function ChatView({
         // pollet kan misse det sidste run hvis bgActive lige er droppet). Én
         // debounced refresh (var 2 stablede timere) dækker persist-latency.
         debouncedRefresh(2000)
+        // En tabt passiv SSE må ikke stå stille resten af runnet. Et normalt
+        // message_stop afventer næste run-id; et netværksbrud prøver igen.
+        if (!stopped && bgRunId) retryTimer = setTimeout(() => setFollowRetry((n) => n + 1), 1000)
       },
+      bgRunId,
     )
-    return () => { followCtrlRef.current?.abort(); followCtrlRef.current = null }
-  }, [bgActive, sessionId, settings])
+    return () => {
+      alive = false
+      if (retryTimer) clearTimeout(retryTimer)
+      followCtrlRef.current?.abort()
+      followCtrlRef.current = null
+    }
+  }, [bgActive, bgRunId, followRetry, sessionId, settings])
 
   const scrollToBottom = () => {
     const el = transcriptRef.current

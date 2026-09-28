@@ -3,10 +3,13 @@ import {
   ActivityIndicator,
   FlatList,
   Image,
+  BackHandler,
   Modal,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View
 } from 'react-native'
 // expo-media-library 56 flyttede den nye API til rod-indgangen. Vi bruger den
@@ -14,38 +17,31 @@ import {
 // billeder», hvilket er præcis det gitteret skal bruge. Den nye Query-API kan
 // det samme, men koster mere kode for ingen gevinst her.
 import * as MediaLibrary from 'expo-media-library/legacy'
-import { Camera, Check, Images, Upload, X } from 'lucide-react-native'
-import { tokens } from '../theme/tokens'
+import { Camera, Check, FileUp, Images, SearchCheck, Upload, X } from 'lucide-react-native'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 import type { CapturedPhoto } from '../screens/CameraCapture'
 import { sorteretTilVisning, type KontekstPunkt, type KontekstSlags } from '../lib/recentContexts'
 
-/**
- * «Tilføj filer» — bygget efter ChatGPT-appens flade (set 2026-09-02).
- *
- * Den gamle var en lille bundmenu med tre tekstrækker. Deres er en HEL flade:
- * lukkekryds og titel øverst, «Upload filer» som én række, og derunder
- * «Seneste» som et gitter af faktiske miniaturer man kan trykke direkte på.
- *
- * Forskellen er ikke kosmetisk. I bundmenuen skal man vælge en KILDE først og
- * derefter finde billedet i en anden app. I gitteret ser man billedet med det
- * samme og er færdig i ét tryk — det er derfor deres føles hurtigere.
- */
+/** Kompakt plusmenu over composer. Det eksisterende billedgitter er en undermenu. */
 
 const COLS = 2
 const PAGE = 12
 
 export function AttachMenu({
   visible,
+  bottomOffset = 88,
   kontekster,
   onKontekst,
   onCamera,
   onGallery,
   onUpload,
   onPick,
-  onClose
+  onClose,
+  researchMode,
+  onResearchModeChange
 }: {
   visible: boolean
+  bottomOffset?: number
   onCamera: () => void
   /** Systemets billedvælger (flere ad gangen). */
   onGallery: () => void
@@ -54,6 +50,12 @@ export function AttachMenu({
   /** Valg direkte i gitteret — springer systemvælgeren helt over. */
   onPick?: (photos: CapturedPhoto[]) => void
   onClose: () => void
+  /** Research-tilstand. Flyttet herind fra komponistens kontrol-raekke
+   *  (Bjørn 28/9-2026: «research flyttet til plus menu»): den hoerer til
+   *  blandt de andre valg om HVAD der skal med, ikke blandt de knapper man
+   *  rammer midt i en saetning. */
+  researchMode?: boolean
+  onResearchModeChange?: (next: boolean) => void
   /** Genveje til det man ellers skal igennem fem menuer for at give ham:
    *  hvor man er, hvad der ligger i udklipsholderen, hvilken enhed man sidder
    *  ved. Udeladt → striben vises ikke. */
@@ -62,6 +64,8 @@ export function AttachMenu({
 }) {
   const tokens = useTheme()
   const styles = useStyles(makestyles)
+  const { width, height } = useWindowDimensions()
+  const [page, setPage] = useState<'main' | 'recent'>('main')
   const [assets, setAssets] = useState<MediaLibrary.Asset[]>([])
   // Flere billeder ad gangen. Med kun ét valg skulle man åbne fladen igen for
   // hvert billede, og rækkefølgen blev umulig at styre.
@@ -98,10 +102,21 @@ export function AttachMenu({
   }
 
   useEffect(() => {
-    if (!visible) return
+    if (!visible) { setPage('main'); return }
+    if (page !== 'recent') return
     void load(false)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visible])
+  }, [visible, page])
+
+  useEffect(() => {
+    if (!visible) return
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (page === 'recent') setPage('main')
+      else onClose()
+      return true
+    })
+    return () => sub.remove()
+  }, [visible, page, onClose])
 
   const toggle = (id: string) => {
     setChosen((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
@@ -131,14 +146,70 @@ export function AttachMenu({
     else onGallery()
   }
 
+  if (!visible) return null
+
+  if (page === 'main') return (
+    <View style={styles.overlay} pointerEvents="box-none">
+      <Pressable style={styles.backdrop} accessibilityLabel="Luk tilføj-menu" onPress={onClose} />
+      <View testID="attach-popover" style={[styles.popover, { bottom: bottomOffset, width: Math.min(width - 32, 300), maxHeight: Math.max(200, height - bottomOffset - 64) }]}>
+        <ScrollView bounces={false} keyboardShouldPersistTaps="always" contentContainerStyle={styles.popoverContent}>
+          <Pressable accessibilityRole="button" onPress={onGallery} style={styles.popoverRow}>
+            <Images size={21} color={tokens.color.fg1} /><Text style={styles.popoverText}>Upload foto</Text>
+          </Pressable>
+          <Pressable accessibilityRole="button" onPress={onUpload ?? onGallery} style={styles.popoverRow}>
+            <FileUp size={21} color={tokens.color.fg1} /><Text style={styles.popoverText}>Upload fil</Text>
+          </Pressable>
+          <Pressable testID="attach-camera" accessibilityRole="button" onPress={onCamera} style={styles.popoverRow}>
+            <Camera size={21} color={tokens.color.fg1} /><Text style={styles.popoverText}>Tag billede</Text>
+          </Pressable>
+          {onPick ? <Pressable accessibilityRole="button" onPress={() => setPage('recent')} style={styles.popoverRow}>
+            <Images size={21} color={tokens.color.fg1} /><Text style={styles.popoverText}>Seneste billeder</Text>
+          </Pressable> : null}
+          {onResearchModeChange ? <Pressable
+            testID="attach-research"
+            accessibilityRole="button"
+            accessibilityLabel={`Research: ${researchMode ? 'Til' : 'Fra'}`}
+            accessibilityState={{ selected: Boolean(researchMode) }}
+            onPress={() => onResearchModeChange(!researchMode)}
+            style={styles.popoverRow}
+          >
+            <SearchCheck size={21} color={researchMode ? tokens.color.accent : tokens.color.fg1} />
+            <Text style={styles.popoverText}>Research</Text>
+            <Text style={[styles.rowTilstand, researchMode && styles.rowTilstandOn]}>{researchMode ? 'Til' : 'Fra'}</Text>
+          </Pressable> : null}
+          {kontekster?.length ? <>
+            <View style={styles.popoverDivider} />
+            <Text style={styles.popoverSection}>Kontekst</Text>
+            <View testID="attach-contexts">
+              {sorteretTilVisning(kontekster).filter((k) => k.slags !== 'kamera' && k.slags !== 'fil').map((k) => (
+                <Pressable
+                  key={k.slags}
+                  testID={`attach-ctx-${k.slags}`}
+                  accessibilityRole="button"
+                  accessibilityLabel={k.titel}
+                  disabled={!k.tilgaengelig}
+                  onPress={() => onKontekst?.(k.slags)}
+                  style={[styles.popoverContext, !k.tilgaengelig && styles.ctxOff]}
+                >
+                  <Text style={styles.popoverText}>{k.titel}</Text>
+                  <Text style={styles.popoverHint} numberOfLines={1}>{k.detalje}</Text>
+                </Pressable>
+              ))}
+            </View>
+          </> : null}
+        </ScrollView>
+      </View>
+    </View>
+  )
+
   return (
-    <Modal visible={visible} animationType="slide" onRequestClose={onClose} statusBarTranslucent>
+    <Modal visible animationType="slide" onRequestClose={() => setPage('main')} statusBarTranslucent>
       <View style={styles.root}>
         <View style={styles.header}>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Luk"
-            onPress={onClose}
+            onPress={() => setPage('main')}
             style={({ pressed }) => [styles.circle, pressed && styles.pressed]}
           >
             <X size={20} color={tokens.color.fg1} strokeWidth={2} />
@@ -155,6 +226,22 @@ export function AttachMenu({
           <Upload size={22} color={tokens.color.fg1} strokeWidth={2} />
           <Text style={styles.uploadText}>Upload filer</Text>
         </Pressable>
+        {onResearchModeChange ? (
+          <Pressable
+            testID="attach-research"
+            accessibilityRole="button"
+            accessibilityLabel={`Research: ${researchMode ? 'Til' : 'Fra'}`}
+            accessibilityState={{ selected: Boolean(researchMode) }}
+            onPress={() => onResearchModeChange(!researchMode)}
+            style={({ pressed }) => [styles.uploadRow, pressed && styles.pressed]}
+          >
+            <SearchCheck size={22} color={researchMode ? tokens.color.accent : tokens.color.fg1} strokeWidth={2} />
+            <Text style={styles.uploadText}>Research</Text>
+            <Text style={[styles.rowTilstand, researchMode && styles.rowTilstandOn]}>
+              {researchMode ? 'Til' : 'Fra'}
+            </Text>
+          </Pressable>
+        ) : null}
         <View style={styles.divider} />
 
         {kontekster && kontekster.length ? (
@@ -283,6 +370,20 @@ export function AttachMenu({
 }
 
 const makestyles = (tokens: Theme) => StyleSheet.create({
+  overlay: { ...StyleSheet.absoluteFill, zIndex: 30 },
+  backdrop: { ...StyleSheet.absoluteFill },
+  popover: {
+    position: 'absolute', left: 14, overflow: 'hidden', borderRadius: 24,
+    backgroundColor: tokens.color.bg3, borderWidth: StyleSheet.hairlineWidth,
+    borderColor: tokens.color.glassLine, ...tokens.elevation
+  },
+  popoverContent: { paddingVertical: 10 },
+  popoverRow: { flexDirection: 'row', alignItems: 'center', minHeight: 56, gap: 16, paddingHorizontal: 20 },
+  popoverText: { color: tokens.color.fg1, fontSize: 16, fontWeight: '500' },
+  popoverDivider: { height: StyleSheet.hairlineWidth, backgroundColor: tokens.color.glassLine, marginHorizontal: 20, marginVertical: 8 },
+  popoverSection: { color: tokens.color.fg2, fontSize: 13, paddingHorizontal: 20, paddingVertical: 8 },
+  popoverContext: { minHeight: 52, paddingHorizontal: 20, justifyContent: 'center' },
+  popoverHint: { color: tokens.color.fg2, fontSize: 12, marginTop: 2 },
   root: { flex: 1, backgroundColor: tokens.color.bg0, paddingTop: 48 },
   header: {
     flexDirection: 'row',
@@ -309,6 +410,8 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
     paddingVertical: tokens.spacing.md
   },
   uploadText: { color: tokens.color.fg1, fontSize: 17 },
+  rowTilstand: { color: tokens.color.fg3, fontSize: 14, marginLeft: 'auto' },
+  rowTilstandOn: { color: tokens.color.accent, fontWeight: '700' },
   divider: { height: StyleSheet.hairlineWidth, backgroundColor: tokens.color.line, marginHorizontal: tokens.spacing.lg },
   ctxWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 16, paddingBottom: 4 },
   ctxCard: {

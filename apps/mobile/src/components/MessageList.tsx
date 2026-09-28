@@ -53,6 +53,15 @@ interface MessageListProps {
    */
   bottomInset?: number
   /**
+   * Headerens samlede højde — `insets.top + headerHeight` fra App.tsx.
+   *
+   * Lægges til `TOP_CLEARANCE`, så trådens øverste kant ligger UNDER den
+   * svævende header i stedet for 2 dp inde i den. Bjørn 28/9-2026: den
+   * øverste boble blev klippet fladt foroven, men kun når streamen stod
+   * stille — i hvile lander tråden på sin faste plads.
+   */
+  topInset?: number
+  /**
    * Runde-etiketter slået op på tool-id — «Rettede fejl i login».
    *
    * Kommer fra streamens `tool_round_label`. Udeladt = ingen overskrifter;
@@ -443,7 +452,7 @@ function taenketid(start?: number, slut?: number): number | undefined {
 }
 
 export const MessageList = forwardRef<MessageListHandle, MessageListProps>(function MessageList(
-  { messages, blocks, working = false, onResend, onScrollOffset, bottomInset = 0, pins, onTogglePin, onSaveMemory, rundeEtiketter, skillFlade, nyeFra, visning = 'normal', tankeResumeer, onRewind },
+  { messages, blocks, working = false, onResend, onScrollOffset, bottomInset = 0, topInset = 0, pins, onTogglePin, onSaveMemory, rundeEtiketter, skillFlade, nyeFra, visning = 'normal', tankeResumeer, onRewind },
   ref
 ) {
   const tokens = useTheme()
@@ -464,6 +473,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
   }, [working])
   const visibleRef = useRef(0)   // ordered-index øverst i viewport (inverted)
   const contentLenRef = useRef(0)
+  const aabnetTurRef = useRef<string | null>(null)
   // Stabil callback — RN kaster hvis onViewableItemsChanged ændrer identitet on-the-fly.
   // Hele det synlige spænd — sticky prompt skal vide om DIN besked er i syne.
   const [synlige, setSynlige] = useState<[number, number] | null>(null)
@@ -648,8 +658,14 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
   // funktion ved hver render ville få ALLE synlige bobler til at rendere om
   // ved hver stream-delta (samme fund som desk, 19/9-2026).
   const genSend = useSenesteFn((...a: Parameters<NonNullable<typeof onResend>>) => onResend?.(...a))
-  const toggleFor = useRaekkeFn((id) => setTurnOverrides((current) => ({ ...current,
-    [id]: !(current[id] ?? (id === 'stream' || visning === 'verbose')) })))
+  const toggleFor = useRaekkeFn((id) => {
+    const aaben = turnOverrides[id] ?? (id === 'stream' || visning === 'verbose')
+    // Listen er inverteret og fastholder normalt bunden. Indsatte arbejdsrækker
+    // skubber derfor headeren OP i viewporten. Naar den foldes ud, ankrer vi
+    // headeren efter ny layout, saa indholdet aabner NED under den.
+    aabnetTurRef.current = aaben ? null : id
+    setTurnOverrides((current) => ({ ...current, [id]: !aaben }))
+  })
   const rewindFor = useRaekkeFn((id) => onRewind?.(id))
   const pinFor = useRaekkeFn((id) => onTogglePin?.(id))
   // Rækkens EGEN besked — et afsnit af en tur har id'et `<id>-b<n>` og findes
@@ -780,6 +796,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
     <View style={styles.listeWrap}>
     <FlatList
       ref={flatRef}
+      testID="traad"
       inverted
       // Ingen linje over komponisten (Bjørn 21/9-2026: «tænke fragmenter bør
       // vises I tænke linjen i chatview og linjen over composer væk»). Den bar
@@ -788,7 +805,15 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
       // desk har dem — og der er derfor intet der flyder ovenover traaden.
       data={ordered}
       keyExtractor={(item) => item.key}
-      onContentSizeChange={(_w, h) => { contentLenRef.current = h }}
+      onContentSizeChange={(_w, h) => {
+        contentLenRef.current = h
+        const id = aabnetTurRef.current
+        if (!id) return
+        const index = ordered.findIndex((row) => row.kind === 'turn-header' && row.turnId === id && row.open)
+        if (index < 0) return
+        aabnetTurRef.current = null
+        flatRef.current?.scrollToIndex({ index, animated: true, viewPosition: 0.3 })
+      }}
       onScroll={onScrollOffset ? (e) => onScrollOffset(e.nativeEvent.contentOffset.y) : undefined}
       scrollEventThrottle={120}
       onViewableItemsChanged={onViewable}
@@ -864,7 +889,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
       }}
       // INVERTERET: paddingTop lander visuelt NEDERST — det er dér tastaturet
       // og komponisten æder plads.
-      contentContainerStyle={[styles.content, { paddingTop: BOTTOM_CLEARANCE + bottomInset }]}
+      contentContainerStyle={[styles.content, { paddingTop: BOTTOM_CLEARANCE + bottomInset, paddingBottom: TOP_CLEARANCE + topInset }]}
       keyboardShouldPersistTaps="handled"
     />
     </View>
@@ -911,7 +936,9 @@ function CompactMarkerRow({ content }: { content: string }) {
  * komponisten. Man skal måle til bunden af det SIDSTE element, ikke af teksten.
  */
 const BOTTOM_CLEARANCE = 124
-const TOP_CLEARANCE = 72
+/** Luft under den svævende header UD OVER headerens egen højde. Selve
+ *  headerhøjden lægges til dynamisk via `topInset` — se `content`. */
+const TOP_CLEARANCE = 12
 
 const makestyles = (tokens: Theme) => StyleSheet.create({
   // Kompakterings-markøren: diskret, tonet i warn — samme udtryk som desktop.
@@ -938,8 +965,17 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
   nyeStreg: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: tokens.color.accent, opacity: 0.6 },
   nyeTekst: { color: tokens.color.accent, fontSize: 12, fontWeight: '600', letterSpacing: 0.3 },
   content: {
-    // paddingTop sættes dynamisk (BOTTOM_CLEARANCE + tastaturhøjde) — se
-    // contentContainerStyle. Kun den øverste er konstant.
-    paddingBottom: TOP_CLEARANCE
+    // BEGGE sættes dynamisk i contentContainerStyle — se den.
+    //
+    // Den øverste var FAST (TOP_CLEARANCE = 72) indtil 28/9-2026, og det var
+    // en fejl: 72 dp er målt fra skærmens top, men header'en fylder
+    // `insets.top + BADGE_H + polstring` — ca. 74 dp på Bjørns enhed. Tråden
+    // begyndte derfor 2 dp inde UNDER header'ens underkant, og den øverste
+    // boble blev klippet fladt foroven. Bjørn 28/9-2026: «Der sker et eller
+    // andet ved header … men kun når streamen står stille» — i hvile lander
+    // tråden på sin faste plads; mens der streames skubbes den op.
+    //
+    // Tallet kommer nu fra App.tsx, som allerede måler headerHeight til
+    // WorkScreen. Ét tal, ét sted.
   }
 })

@@ -19,6 +19,7 @@ import { useKeyboardHeight } from '../lib/useKeyboardHeight'
 import { useConnectivity } from '../lib/useConnectivity'
 import { ApprovalCard } from '../components/ApprovalCard'
 import { Composer } from '../components/Composer'
+import { KantFade } from '../components/KantFade'
 import { ResearchStatus } from '../components/ResearchStatus'
 import { useVoiceConversation } from '../lib/useVoiceConversation'
 import { useComposerDictation } from '../lib/useComposerDictation'
@@ -89,7 +90,10 @@ const MEMBER_CHOICES: ModelChoice[] = [
   { model: 'standard', providerChoice: '', label: 'Standard' },
   { model: 'pro', providerChoice: '', label: 'Pro' }
 ]
-const OWNER_DEFAULT: ModelChoice = { model: '', providerChoice: 'deepseek', label: 'Deepseek' }
+// Tom model = «serverens egen standard». Den er `visible_model_name`, maalt
+// 28/9-2026 til 'deepseek-v4-flash' — og kort-navnet for den er «V4 Flash».
+// Stod der «Deepseek» (provideren), fyldte det mere end modellen selv.
+const OWNER_DEFAULT: ModelChoice = { model: '', providerChoice: 'deepseek', label: 'V4 Flash' }
 
 interface ChatScreenProps {
   /** Stiger når TopBars menu-knap trykkes — åbner sidepanelet. */
@@ -111,6 +115,8 @@ interface ChatScreenProps {
   workspaceSignal?: number
   /** Stiger når «Baggrundsjobs» vælges i tre-prik menuen. */
   jobsSignal?: number
+  /** Headerens samlede højde (`insets.top + headerHeight`) — se MessageList. */
+  topInset?: number
   /** Samtalens visning meldes op til topbjælkens menu. */
   onVisning?: (v: Visning) => void
   /** Menuens valg — et ønske med løbenummer, så samme valg to gange også virker. */
@@ -119,7 +125,7 @@ interface ChatScreenProps {
 
 export function ChatScreen({
   openPanelSignal = 0, syncSignal = 0, onSyncDone, onKontekst, compactSignal = 0,
-  kodeTilstand = false, onSkiftFlade, onKodeKontekst, workspaceSignal = 0, jobsSignal = 0, onVisning, visningOenske,
+  kodeTilstand = false, onSkiftFlade, onKodeKontekst, workspaceSignal = 0, jobsSignal = 0, onVisning, visningOenske, topInset = 0,
 }: ChatScreenProps) {
   const tokens = useTheme()
   const styles = useStyles(makestyles)
@@ -136,6 +142,13 @@ export function ChatScreen({
   //
   // HVORNAAR der spoerges bor i `lib/genoptagelsesVarsel` — den regel har
   // taget fejl fire gange og hoerer ikke hjemme flettet ind i en effekt.
+  //
+  // Bjørn 28/9-2026, anden runde: banneret blev FOERST fjernet, fordi traaden
+  // selv skriver markoeren («Dit forrige run-segment sluttede foer opgaven var
+  // faerdig»). Men det stod i TOPPEN af skaermen, hvor det skubbede traaden ned
+  // under den svaevende header og gav en haard kant. Nu staar det OVER
+  // KOMPONISTEN — samme sted som desks banner har staaet siden 25/9 — og
+  // hverken skubber traaden eller ligger i headerens spor.
   const [genoptagelse, setGenoptagelse] =
     useState<{ reason: string; message: string; continuing: boolean } | null>(null)
   const varselSpurgtRef = useRef<string | null>(null)
@@ -167,6 +180,7 @@ export function ChatScreen({
   useEffect(() => {
     if (stream.state.status === 'working') setGenoptagelse(null)
   }, [stream.state.status])
+
   const [panelOpen, setPanelOpen] = useState(false)
 
   // Fladens art ÉT sted. Fire kaldesteder henter sessioner, og de skal alle
@@ -816,10 +830,10 @@ export function ChatScreen({
         serverBusyRef.current = busy
         setServerBusy(busy)
         setActiveRunId(match?.runId ?? '')
-        // idle → kørende: et run startede i sessionen. Live-attach (delt-session
-        // sync) — stream.follow rører IKKE noget hvis vi selv sender (guard'en
-        // tjekker control.current). Så ser vi en anden enheds/Jarvis' run live.
-        if (!was && busy) stream.follow(config, sid)
+        // Hvert run-id er en ny strøm, også når sessionen aldrig nåede at se
+        // ledig ud mellem et afbrudt run og Løkkens fortsættelse. follow()
+        // dedup'er samme run og prøver igen hvis en passiv SSE er faldet af.
+        if (busy) stream.follow(config, sid, match?.runId)
         // kørende → færdig: svaret er nu persisteret → hent det ind (+ stop attach).
         if (was && !busy) {
           stream.stopFollow()
@@ -1149,13 +1163,13 @@ export function ChatScreen({
     !!lastUserMessage && (stream.state.status === 'interrupted' || stream.state.status === 'error')
   // Er der overhovedet et kort at gøre plads til? Afgør om afstandsklodsen
   // nedenfor findes — en klods uden noget at holde afstand fra er bare et hul.
-  const hasCard = canRetry || Boolean(stream.approval && config)
+  // Banneret taeller med: det ligger i samme blok som kortene, og uden det
+  // ville det mangle den afstandsklods der holder det over komposeren.
+  const hasCard = canRetry || Boolean(stream.approval && config) || Boolean(genoptagelse?.message)
 
   return (
     <View style={styles.root}>
       <OfflineNotice connectivity={connectivity} reconnecting={stream.reconnecting} outboxCount={outboxCount} />
-      <GenoptagelsesBanner varsel={genoptagelse} onLuk={() => setGenoptagelse(null)} />
-
       <View style={styles.flex}>
         {/* Svæver ligesom TopBar og komponisten. Som almindeligt søskende-
             element ville feltet lande i y=0 — altså BAG den svævende
@@ -1175,6 +1189,7 @@ export function ChatScreen({
           ) : (
             <MessageList
               ref={listRef}
+              topInset={topInset}
               messages={sessions.messages}
               blocks={stream.state.blocks}
               working={stream.state.status === 'working' || serverBusy}
@@ -1215,6 +1230,9 @@ export function ChatScreen({
           style={cardSpacerStyle(hasCard, composerHeight, liftPadding)}
           pointerEvents="box-none"
         >
+        {/* Oeverst i blokken: varslet hoerer over komposeren, sammen med
+            fejl- og godkendelses-kortene — ikke i toppen af skaermen. */}
+        <GenoptagelsesBanner varsel={genoptagelse} onLuk={() => setGenoptagelse(null)} />
         {canRetry ? (
           stream.streamError && stream.streamError.kind ? (
             // Kanonisk fejl (Canonical Error System, Fase 2): rigt kort med titel,
@@ -1278,6 +1296,16 @@ export function ChatScreen({
             setComposerHeight((prev) => (Math.abs(prev - h) > 1 ? h : prev))
           }}
         >
+        {/* Tråden toner UD ned mod komponisten i stedet for at blive klippet af
+            en flad kant. Bjørn 28/9-2026: «fade både ved composer og header».
+            Fladen var scrim som en FLAD baggrund; den er nu gradienten her —
+            transparent foroven, fuld forneden, så bunden stadig dækker. */}
+        <KantFade retning="op" navn="komponist" over={56} />
+        {/* Polstringen bor HER, ikke paa `floatBottom`. Faden fylder sin
+            foraelders boks, og laa `paddingBottom: 16` der, stoppede faden
+            16 dp over skaermens bund — traaden under den var umalet. Bjørn
+            28/9-2026: «Fade går ikk helt ned til bunden af skærmen». */}
+        <View style={styles.komponistIndhold} pointerEvents="box-none">
         <ResearchStatus research={stream.state.research} />
         <KodeLaastBanner vis={kodeLaast} />
         <TilbagespolBanner
@@ -1341,13 +1369,7 @@ export function ChatScreen({
           onFocusChange={setComposerFocused}
           showJumpToBottom={scrolledUp && composerFocused}
           onJumpToBottom={jumpToBottom}
-          researchMode={chatCfg.researchMode === 'on'}
-          onResearchModeChange={(enabled) => {
-            const next = { researchMode: enabled ? 'on' as const : 'off' as const }
-            const sid = sessions.activeId
-            setChatCfg((current) => ({ ...current, ...next }))
-            if (sid) void gemIndstillinger(sid, next).then(setChatCfg).catch(() => undefined)
-          }}
+          thinkingMode={chatCfg.thinkingMode}
           permission={chatCfg.spoergFoerst ? 'ask' : 'trust'}
           // KUN i code-fladen. Komponisten har allerede kontrakten «ingen
           // handler = ingen knap», saa porten hoerer hjemme her frem for som
@@ -1360,10 +1382,12 @@ export function ChatScreen({
           onPressPermission={kodeTilstand ? () => setPermissionPickerOpen(true) : undefined}
         />
         </View>
+        </View>
       </View>
 
       <ModelPicker
         open={modelPickerOpen}
+        bottomOffset={liftPadding + Math.max(68, composerHeight - 12)}
         choices={modelChoices}
         selectedLabel={chatCfg.model?.label ?? modelChoices[0]?.label}
         thinkingMode={chatCfg.thinkingMode}
@@ -1508,6 +1532,14 @@ export function ChatScreen({
 
       <AttachMenu
         visible={attachMenuOpen}
+        bottomOffset={liftPadding + Math.max(68, composerHeight - 12)}
+        researchMode={chatCfg.researchMode === 'on'}
+        onResearchModeChange={(enabled) => {
+          const next = { researchMode: enabled ? 'on' as const : 'off' as const }
+          const sid = sessions.activeId
+          setChatCfg((current) => ({ ...current, ...next }))
+          if (sid) void gemIndstillinger(sid, next).then(setChatCfg).catch(() => undefined)
+        }}
         kontekster={byggeKontekster({
           kameraTilladt: true,
           lokationsPraecision: ctxPraecision,
@@ -1638,14 +1670,19 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    // Under komponisten ligger enhedens gestus-zone. Uden en bund her
-    // lyste en smal stribe tråd igennem dernede — teksten rullede korrekt
-    // bagved, men fortsatte forbi den flade der skulle dække den.
-    paddingBottom: 16,
+    // INGEN polstring her — se `komponistIndhold` nedenfor. Faden fylder
+    // denne boks, og polstring ville efterlade den nederste stribe umalet.
     zIndex: 5,
-    // Samme halvgennemsigtige flade som TopBar. Uden den lækkede tråden ud
-    // NEDEN UNDER komponisten i skærmens sidste par millimeter — teksten
-    // rullede korrekt bagved, men fortsatte forbi pillens underkant.
-    backgroundColor: tokens.color.scrim
-  }
+    // INGEN baggrundsfarve her. Den halvgennemsigtige flade ligger i
+    // <KantFade> som en GRADIENT — transparent foroven, fuld scrim forneden.
+    // Bunden er dermed stadig dækket (tråden må ikke lække ud i gestus-zonen
+    // nedenfor), men overkanten toner ud i stedet for at begynde ved en streg.
+    // Som en flad farve gav den en skarp kant, fordi baggrunden selv er sort:
+    // 72 % sort oven på sort er stadig sort. Bjørn 28/9-2026.
+  },
+  // Under komponisten ligger enhedens gestus-zone. Uden en bund her lyste en
+  // smal stribe tråd igennem dernede — teksten rullede korrekt bagved, men
+  // fortsatte forbi den flade der skulle dække den. Bunden bor derfor her,
+  // ét niveau inde, saa <KantFade> kan gaa helt ned til skaermens kant.
+  komponistIndhold: { paddingBottom: 16 }
 })

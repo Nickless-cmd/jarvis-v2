@@ -6,6 +6,7 @@ import type { StreamEvent } from '../lib/sseProtocol'
 
 const mockAppendLocalMessage = jest.fn()
 const mockStartStream = jest.fn()
+const mockFollowSession = jest.fn()
 const mockCancelRun = jest.fn()
 const mockApproveTool = jest.fn()
 const mockDenyTool = jest.fn()
@@ -18,7 +19,7 @@ jest.mock('./SessionContext', () => ({
 
 jest.mock('../lib/streamClient', () => ({
   startStream: (...args: unknown[]) => mockStartStream(...args),
-  followSession: jest.fn()
+  followSession: jest.fn((...args: unknown[]) => mockFollowSession(...args))
 }))
 
 jest.mock('../lib/apiClient', () => ({
@@ -61,6 +62,10 @@ function Probe() {
 
 beforeEach(() => {
   jest.clearAllMocks()
+  const { followSession } = jest.requireMock('../lib/streamClient') as { followSession: jest.Mock }
+  followSession.mockReset()
+  followSession.mockImplementation((...args: unknown[]) => mockFollowSession(...args))
+  mockFollowSession.mockReturnValue({ abort: jest.fn(), getRunId: () => 'run-1', getOffset: () => 0 })
   mockStartStream.mockReturnValue({
     abort: jest.fn(),
     getRunId: () => 'run-123',
@@ -68,6 +73,28 @@ beforeEach(() => {
   })
   mockApproveTool.mockResolvedValue(undefined)
   mockDenyTool.mockResolvedValue(undefined)
+})
+
+it('genbruger en levende follow og prøver igen efter passivt SSE-brud', async () => {
+  function FollowProbe() {
+    const { follow } = useStream()
+    return (
+      <>
+        <Text onPress={() => follow(config, 'session-1', 'run-1')}>samme-run</Text>
+        <Text onPress={() => follow(config, 'session-1', 'run-2')}>nyt-run</Text>
+      </>
+    )
+  }
+  const screen = await render(<StreamProvider><FollowProbe /></StreamProvider>)
+  await act(async () => { screen.getByText('samme-run').props.onPress() })
+  await act(async () => { screen.getByText('samme-run').props.onPress() })
+  expect(mockFollowSession).toHaveBeenCalledTimes(1)
+  const firstHandlers = mockFollowSession.mock.calls[0][2] as StreamHandlers
+  await act(async () => { firstHandlers.onError?.(new Error('socket closed')) })
+  await act(async () => { screen.getByText('samme-run').props.onPress() })
+  expect(mockFollowSession).toHaveBeenCalledTimes(2)
+  await act(async () => { screen.getByText('nyt-run').props.onPress() })
+  expect(mockFollowSession).toHaveBeenCalledTimes(3)
 })
 
 it('gendanner aktiv research fra cold-start snapshot', async () => {
@@ -648,7 +675,9 @@ it('stream-tekst mætter ikke JS med en render på hver hurtig skærmframe', asy
       })
     }
     expect(renders - before).toBe(0)
-    await act(async () => { frames.shift()?.(start + 40) })
+    // Andre monterede providers kan have en forældet RAF i køen. Dræn alle
+    // callbacks; kun den aktuelle må ændre denne providers viste tekst.
+    await act(async () => { frames.splice(0).forEach((frame) => frame(start + 40)) })
     expect(screen.getByTestId('tekst').props.children).toBe('xxx')
     expect(renders - before).toBe(1)
   } finally {

@@ -857,14 +857,25 @@ export function followRun(
   sessionId: string,
   onEvent: (ev: import('./sseProtocol').StreamEvent) => void,
   onDone: () => void,
+  runId?: string | null,
 ): { abort: () => void } {
   const ctrl = new AbortController()
   const run = async () => {
-    const url = new URL(`/chat/sessions/${encodeURIComponent(sessionId)}/live`, config.apiBaseUrl).toString()
+    const url = new URL(
+      runId
+        ? `/chat/runs/${encodeURIComponent(runId)}/subscribe?from_idx=0`
+        : `/chat/sessions/${encodeURIComponent(sessionId)}/live`,
+      config.apiBaseUrl,
+    ).toString()
     const headers: Record<string, string> = { Accept: 'text/event-stream' }
     if (config.authToken) headers.Authorization = `Bearer ${config.authToken}`
     let resp: Response
-    try { resp = await fetch(url, { headers, signal: ctrl.signal }) } catch { onDone(); return }
+    try { resp = await fetch(url, { method: 'GET', headers, signal: ctrl.signal }) } catch { onDone(); return }
+    if (runId && resp.status === 404) {
+      onEvent({ type: 'message_stop' })
+      onDone()
+      return
+    }
     if (!resp.ok || !resp.body) { onDone(); return }
     const reader = resp.body.getReader()
     const dec = new TextDecoder()

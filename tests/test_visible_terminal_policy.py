@@ -37,6 +37,15 @@ def test_en_model_uden_followup_genoptages_IKKE():
     assert is_recoverable_exit_reason("provider-not-supported") is False
 
 
+def test_providerens_http_400_starter_ikke_nye_betalte_runs():
+    reason = ('interrupted:followup-round-1-provider-error: HTTP 400: '
+              'tool_calls must be followed by tool messages')
+    decision = classify_terminal(TerminalEvidence(exit_reason=reason))
+    assert decision.state is TerminalState.FAILED_TERMINAL
+    assert decision.should_continue is False
+    assert is_recoverable_exit_reason(reason) is False
+
+
 def test_budget_shutdown_and_provider_failures_are_recoverable_segments():
     for reason in (
         "budget-opbrugt",

@@ -81,7 +81,8 @@ it('bruger appens valgte sprog til panel chrome', async () => {
   expect(screen.getByText('Move chat to bubble')).toBeTruthy()
   expect(screen.getByText('Activity')).toBeTruthy()
   expect(screen.getByText('This conversation')).toBeTruthy()
-  expect(screen.getByText('Settings')).toBeTruthy()
+  expect(screen.queryByText('Settings')).toBeNull()
+  expect(screen.getByTestId('profile-settings')).toBeTruthy()
   expect(screen.getByText('New chat')).toBeTruthy()
   expect(screen.queryByPlaceholderText('Søg samtaler')).toBeNull()
   expect(screen.queryByText('Flyt chat til boble')).toBeNull()
@@ -91,10 +92,11 @@ it('bruger appens valgte sprog til panel chrome', async () => {
   expect(screen.queryByText('Ny samtale')).toBeNull()
 })
 
-it('opens settings via gear', async () => {
+it('opens settings via the profile badge', async () => {
   const onOpenSettings = jest.fn()
   const screen = await wrap(<SidePanel open {...base} onOpenSettings={onOpenSettings} />)
-  fireEvent.press(screen.getByLabelText('Indstillinger'))
+  expect(screen.queryByTestId('open-settings')).toBeNull()
+  fireEvent.press(screen.getByTestId('profile-settings'))
   expect(onOpenSettings).toHaveBeenCalled()
 })
 
@@ -133,13 +135,13 @@ it('soegefeltet er foldet sammen indtil ikonet trykkes', async () => {
   expect(await screen.findByPlaceholderText('Søg samtaler')).toBeTruthy()
 })
 
-it('indstillinger staar som et felt med navn', async () => {
+it('indstillinger aabnes fra B-badgen uden en ekstra linje', async () => {
   const onOpenSettings = jest.fn()
   const screen = await wrap(<SidePanel open {...base} onOpenSettings={onOpenSettings} />)
-  // Kontrolarm mod at den bare forsvandt under ombygningen.
-  fireEvent.press(screen.getByTestId('open-settings'))
+  expect(screen.queryByTestId('open-settings')).toBeNull()
+  expect(screen.queryByText('Indstillinger')).toBeNull()
+  fireEvent.press(screen.getByTestId('profile-settings'))
   expect(onOpenSettings).toHaveBeenCalled()
-  expect(screen.getByText('Indstillinger')).toBeTruthy()
 })
 
 // --- flade-feltet (chat <-> code) ---

@@ -215,9 +215,10 @@ _Single source of truth for visible task terminal decisions._
 | class | `TerminalEvidence` | `` | — | [src](../../../core/services/visible_terminal_policy.py#L23) |
 | class | `TerminalDecision` | `` | — | [src](../../../core/services/visible_terminal_policy.py#L36) |
 | function | `has_pending_tool_intent` | `(text)` | — | [src](../../../core/services/visible_terminal_policy.py#L51) |
-| function | `is_recoverable_exit_reason` | `(reason)` | — | [src](../../../core/services/visible_terminal_policy.py#L55) |
-| function | `classify_terminal` | `(evidence)` | — | [src](../../../core/services/visible_terminal_policy.py#L92) |
-| function | `recovery_notice` | `(reason, *, continuing=…)` | — | [src](../../../core/services/visible_terminal_policy.py#L128) |
+| function | `is_non_retryable_recovery_reason` | `(reason)` | A rejected provider request will fail again with the same checkpoint. | [src](../../../core/services/visible_terminal_policy.py#L55) |
+| function | `is_recoverable_exit_reason` | `(reason)` | — | [src](../../../core/services/visible_terminal_policy.py#L60) |
+| function | `classify_terminal` | `(evidence)` | — | [src](../../../core/services/visible_terminal_policy.py#L99) |
+| function | `recovery_notice` | `(reason, *, continuing=…)` | — | [src](../../../core/services/visible_terminal_policy.py#L138) |
 
 ## `core/services/visible_text_scrub.py`
 _Fjern runtime'ens interne markører fra den tekst brugeren ser._

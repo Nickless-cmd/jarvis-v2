@@ -12,6 +12,7 @@ import { useStickyPrompt } from '../lib/stickyPrompt'
 import { useOpmaerksomhed } from '../lib/opmaerksomhed'
 import { farveFor } from './OpmaerksomhedsLinje'
 import { PulsVedPil } from './AnimeretPuls'
+import { KantFade } from './KantFade'
 
 export type AppMode = 'snak' | 'arbejde'
 
@@ -71,7 +72,17 @@ export function TopBar({
   const sticky = useStickyPrompt()
   const opm = useOpmaerksomhed()
   return (
-    <View style={styles.bar}>
+    <View style={styles.bar} testID="topbar-baerer">
+      {/* Tråden toner IND under bjælken i stedet for at begynde ved en streg.
+          Bjørn 28/9-2026: «det er så tidligt man se kanten». Fladen var scrim
+          som en FLAD baggrund; den er nu gradienten her i stedet — se KantFade
+          for hvorfor en flad farve gav en kant over en sort baggrund. */}
+      <KantFade retning="ned" navn="topbar" />
+      {/* Polstringen bor HER, ikke paa `bar`. Faden fylder sin foraelders
+          boks, og en polstret foraelder gav en umalet stribe i kanten —
+          14 dp i hver side. Bjørn 28/9-2026: «I toppen går fade ikk helt ud
+          til siden af skærme. I højre side». */}
+      <View style={styles.indhold} testID="topbar-indhold">
       {/* Pilen og titlen hoerer SAMMEN, i ét spor til venstre. Titlen laa
           foerst centreret - samme plads som segmentet - men det er to
           forskellige slags oplysning: segmentet er en KONTAKT man sigter
@@ -173,21 +184,32 @@ export function TopBar({
         )}
       </Pressable>
       </View>
+      </View>
     </View>
   )
 }
 
 const makestyles = (tokens: Theme) => StyleSheet.create({
-  bar: {
+  // INGEN polstring her. <KantFade> fylder sin foraelders boks, og laa
+  // polstringen her, blev faden maalt mod indholds-boksen og efterlod en
+  // umalet stribe i kanten. Bjørn 28/9-2026: «I toppen går fade ikk helt ud
+  // til siden af skærme. I højre side». Bjælken er derfor kant-til-kant, og
+  // polstringen bor i `indhold` nedenfor.
+  bar: {},
+  // Rækken: pil, segment og hoejre felt. Flyttet herned fra `bar`, saa faden
+  // kan naa kanterne. Geometrien er ellers uaendret.
+  indhold: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: EDGE,
     paddingVertical: 6,
-    // Halvgennemsigtig: tråden ANES bagved frem for at blive klippet af
-    // en massiv bjælke. Det er dét der giver følelsen af ét sammenhængende
-    // rum i stedet for tre etager.
-    backgroundColor: tokens.color.scrim
+    // INGEN baggrundsfarve her. Den halvgennemsigtige flade ligger i
+    // <KantFade> som en GRADIENT i stedet — samme farve (scrim), men med blød
+    // overgang forneden. Som en flad farve gav den en skarp vandret kant tværs
+    // over skærmen: baggrunden er selv sort (#000000), og 72 % sort oven på
+    // sort er stadig sort, så der var intet at tone ud imod. Bjørn 28/9-2026.
+    // Tråden anes stadig bagved — det var dét, fladen skulle give.
   },
   // Fylder hele bjælken og lader tryk gå igennem til cirklerne udenfor.
   centerWrap: {

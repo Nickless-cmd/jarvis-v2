@@ -1,4 +1,5 @@
-import { act, fireEvent, render } from '@testing-library/react-native'
+import { act, fireEvent, render, waitFor } from '@testing-library/react-native'
+import { FlatList } from 'react-native'
 import { MessageList } from './MessageList'
 import { TopBarMenu } from './TopBarMenu'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
@@ -38,6 +39,18 @@ describe('visningerne', () => {
     const s = await render(<MessageList messages={[tur]} blocks={[]} visning="verbose" />)
     expect(s.getByTestId('tool-group-details')).toBeTruthy()
     expect(s.getByText('Hvor sidder værnet mon?')).toBeTruthy()
+  })
+
+  it('folder en tur nedad ved at holde headeren oppe i synsfeltet', async () => {
+    const scroll = jest.spyOn(FlatList.prototype, 'scrollToIndex').mockImplementation(() => undefined)
+    try {
+      const s = await render(<MessageList messages={[tur]} blocks={[]} visning="normal" />)
+      await act(async () => { fireEvent.press(s.getByTestId('turn-header')) })
+      await act(async () => { fireEvent(s.getByTestId('traad'), 'contentSizeChange', 400, 1000) })
+      await waitFor(() => expect(scroll).toHaveBeenCalledWith(expect.objectContaining({ animated: true, viewPosition: 0.3 })))
+    } finally {
+      scroll.mockRestore()
+    }
   })
 })
 

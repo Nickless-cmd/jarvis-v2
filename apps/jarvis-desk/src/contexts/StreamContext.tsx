@@ -255,6 +255,7 @@ export function StreamProvider({
             setOverride('error')
           }
         },
+        runIdRef.current,
       )
     }
     reconnectTimerRef.current = setTimeout(arm, delay)

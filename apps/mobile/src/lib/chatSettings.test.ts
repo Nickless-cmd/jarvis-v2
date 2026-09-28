@@ -70,6 +70,15 @@ it('sender model-id, provider og alle turn-controls atomisk', () => {
   })
 })
 
+it('bevarer det tredje niveau gennem et genstart — deep er ikke tabt', async () => {
+  // Parser-linjen afgjorde om `deep` overlevede en app-genstart: alt andet end
+  // 'fast' faldt til 'think', så det dybe niveau blev stille nulstillet hver
+  // gang. Testen skriver og LÆSER igen — ikke kun den ene vej.
+  await gemIndstillinger('chat-deep', { thinkingMode: 'deep' })
+  expect((await laesIndstillinger('chat-deep')).thinkingMode).toBe('deep')
+  expect(tilStreamFelter({ ...STANDARD, thinkingMode: 'deep' }).thinkingMode).toBe('deep')
+})
+
 it('bevarer member-modeller hvor provider vælges server-side', async () => {
   const model = { model: 'pro', providerChoice: '', label: 'Pro' }
   await gemIndstillinger('member-chat', { model })

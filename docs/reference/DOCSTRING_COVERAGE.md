@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8136/15639 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8138/15641 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,11 +25,11 @@ Generated from source. 8136/15639 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 698 | 1277 | 54% |
-| `core.services` | 5399 | 10649 | 50% |
+| `core.services` | 5400 | 10650 | 50% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 107 | 183 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
-| `core.services.visible_runs_sections` | 22 | 34 | 64% |
+| `core.services.visible_runs_sections` | 23 | 35 | 65% |
 | `core.skills` | 0 | 0 | 0% |
 | `core.skills.voice` | 39 | 49 | 79% |
 | `core.tools` | 492 | 1011 | 48% |
@@ -1160,7 +1160,7 @@ Generated from source. 8136/15639 functions/methods documented (52%). The list b
 - `core/services/identity_mutation_log.py` :: `list_mutations` (L206)
 - `core/services/idle_consolidation.py` :: `build_idle_consolidation_surface` (L312)
 - `core/services/idle_thinking.py` :: `build_idle_thinking_surface` (L83)
-- `core/services/in_flight_runs.py` :: `renew_recovery_lease` (L637)
+- `core/services/in_flight_runs.py` :: `renew_recovery_lease` (L649)
 - `core/services/infra_weather_daemon.py` :: `build_infra_weather_surface` (L290)
 - `core/services/infra_weather_daemon.py` :: `get_weather` (L268)
 - `core/services/initiative_queue.py` :: `abandon_long_term_intention` (L550)
@@ -1993,10 +1993,10 @@ Generated from source. 8136/15639 functions/methods documented (52%). The list b
 - `core/services/visible_runs_sse_v2.py` :: `ToolEchoFilter.flush` (L156)
 - `core/services/visible_stream_gate.py` :: `enter_visible_stream` (L38)
 - `core/services/visible_stream_gate.py` :: `exit_visible_stream` (L44)
-- `core/services/visible_terminal_policy.py` :: `classify_terminal` (L92)
+- `core/services/visible_terminal_policy.py` :: `classify_terminal` (L99)
 - `core/services/visible_terminal_policy.py` :: `has_pending_tool_intent` (L51)
-- `core/services/visible_terminal_policy.py` :: `is_recoverable_exit_reason` (L55)
-- `core/services/visible_terminal_policy.py` :: `recovery_notice` (L128)
+- `core/services/visible_terminal_policy.py` :: `is_recoverable_exit_reason` (L60)
+- `core/services/visible_terminal_policy.py` :: `recovery_notice` (L138)
 - `core/services/visible_turn_accumulator.py` :: `TurnAccumulator.close_segment` (L76)
 - `core/services/visible_turn_accumulator.py` :: `TurnAccumulator.close_thinking` (L160)
 - `core/services/visible_turn_accumulator.py` :: `TurnAccumulator.note_text` (L80)

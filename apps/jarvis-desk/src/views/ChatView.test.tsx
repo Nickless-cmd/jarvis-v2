@@ -221,6 +221,55 @@ describe('ChatView integration', () => {
     }
   })
 
+  it('følger fortsættelses-run selv om sessionen forbliver aktiv', async () => {
+    let runId = 'run-1'
+    vi.mocked(api.getActiveRunSessions).mockImplementation(async () => [{ session_id: 's1', run_id: runId, status: 'working' }])
+    vi.mocked(api.followRun).mockClear()
+    try {
+      render(
+        <SettingsProvider initialConfig={cfg}><SessionProvider config={cfg}>
+          <StreamProvider config={cfg}><PermissionProvider><PanelProvider defaultWidth={400}>
+            <ChatView sessionId="s1" />
+          </PanelProvider></PermissionProvider></StreamProvider>
+        </SessionProvider></SettingsProvider>,
+      )
+      await waitFor(() => expect(api.followRun).toHaveBeenCalledTimes(1))
+      expect(api.followRun).toHaveBeenLastCalledWith(
+        expect.anything(), 's1', expect.any(Function), expect.any(Function), 'run-1')
+      runId = 'run-2'
+      await waitFor(() => expect(api.followRun).toHaveBeenCalledTimes(2), { timeout: 10000 })
+      expect(api.followRun).toHaveBeenLastCalledWith(
+        expect.anything(), 's1', expect.any(Function), expect.any(Function), 'run-2')
+    } finally {
+      vi.mocked(api.getActiveRunSessions).mockResolvedValue([])
+    }
+  }, 12000)
+
+  it('kobler passiv desk-stream på igen efter et netværksbrud', async () => {
+    let onDone: (() => void) | undefined
+    vi.mocked(api.getActiveRunSessions).mockResolvedValue([{ session_id: 's1', run_id: 'run-1', status: 'working' }])
+    vi.mocked(api.followRun).mockClear()
+    vi.mocked(api.followRun).mockImplementation((_cfg, _sid, _onEvent, done) => {
+      onDone = done
+      return { abort: vi.fn() }
+    })
+    try {
+      render(
+        <SettingsProvider initialConfig={cfg}><SessionProvider config={cfg}>
+          <StreamProvider config={cfg}><PermissionProvider><PanelProvider defaultWidth={400}>
+            <ChatView sessionId="s1" />
+          </PanelProvider></PermissionProvider></StreamProvider>
+        </SessionProvider></SettingsProvider>,
+      )
+      await waitFor(() => expect(api.followRun).toHaveBeenCalledTimes(1))
+      act(() => onDone?.())
+      await waitFor(() => expect(api.followRun).toHaveBeenCalledTimes(2), { timeout: 4000 })
+    } finally {
+      vi.mocked(api.getActiveRunSessions).mockResolvedValue([])
+      vi.mocked(api.followRun).mockImplementation(() => ({ abort: vi.fn() }))
+    }
+  }, 6000)
+
   it('viser pause_and_ask over chatten i stedet for inde i den scrollbare transcript', async () => {
     const { container } = render(
       <SettingsProvider initialConfig={cfg}>

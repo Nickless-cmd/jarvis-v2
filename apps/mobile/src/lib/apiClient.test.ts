@@ -18,6 +18,7 @@ import {
   hentNotifikationer,
   cancelRunById,
   getActiveRunSnapshot,
+  kortModelNavn,
   steerRun,
   whoami
 } from './apiClient'
@@ -384,4 +385,32 @@ it('hentNotifikationer paa 401 kaster — den stille-fejler ikke til en tom list
     json: async () => ({}),
   })
   await expect(hentNotifikationer(config)).rejects.toMatchObject(new ApiError('auth', 'HTTP 401', 401))
+})
+
+// ── kortModelNavn (28/9-2026) ────────────────────────────────────────────
+//
+// Bjørn: «Istedet for deepseek så feks. V4 flash (fylder mindre)». Reglen er
+// desks, ord for ord — men den var den ENESTE af de to navne-regler i mobilen
+// uden en test. `shortModelLabel` i modelLabel.ts er testet men brugt ingen
+// steder; denne er brugt og var ubevogtet. Det er omvendt af hvad det boer
+// vaere, saa vagten flyttes hertil hvor reglen faktisk lever.
+describe('kortModelNavn', () => {
+  it('forkorter deepseek-modeller til det Bjoern ser: V4 Flash', () => {
+    expect(kortModelNavn('deepseek', 'deepseek-v4-flash')).toBe('V4 Flash')
+    expect(kortModelNavn('deepseek', 'deepseek-v4-pro')).toBe('V4 Pro')
+  })
+
+  it('fjerner ollama-cloud-suffikset', () => {
+    expect(kortModelNavn('ollama', 'qwen3-coder:cloud')).toBe('qwen3-coder')
+  })
+
+  it('lader andre udbydere staa urørt', () => {
+    expect(kortModelNavn('openrouter', 'gpt-5')).toBe('gpt-5')
+  })
+
+  it('beholder navnet naar der ikke er et praefiks at skaere', () => {
+    // Reglen fjerner «deepseek-» MED bindestreg. Et bart «deepseek» har intet
+    // praefiks at skaere, og saa staar det — hellere et langt navn end et tomt.
+    expect(kortModelNavn('deepseek', 'deepseek')).toBe('deepseek')
+  })
 })

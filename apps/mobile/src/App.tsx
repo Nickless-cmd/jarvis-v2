@@ -280,6 +280,7 @@ function AppBody() {
         <View style={mode === 'snak' ? styles.visible : styles.hidden}>
           <ErrorBoundary label="chat">
             <ChatScreen
+              topInset={headerHeight + insets.top}
               openPanelSignal={menuSignal}
               syncSignal={mode === 'snak' ? syncSignal : 0}
               onSyncDone={() => setSyncing(false)}

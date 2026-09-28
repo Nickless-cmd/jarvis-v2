@@ -45,7 +45,17 @@ def test_component_signatures_keep_the_dynamic_tail_separate():
     assert first["tail_sha"] != second["tail_sha"]
     assert first["system_len"] == len("stable identity")
     assert first["tail_len"] == len("inner life at 09:00")
+    assert first["system_chunks"] == second["system_chunks"]
     assert "inner life" not in str(first)
+
+
+def test_component_signatures_locate_a_change_within_stable_system():
+    original = [{"role": "system", "content": "a" * 1024 + "time: 17:16" + "z" * 1024}]
+    changed = [{"role": "system", "content": "a" * 1024 + "time: 17:19" + "z" * 1024}]
+    before = ct.component_signatures(original, [])
+    after = ct.component_signatures(changed, [])
+    assert len(before["system_chunks"]) == 3
+    assert [a != b for a, b in zip(before["system_chunks"], after["system_chunks"])] == [False, True, False]
 
 
 def test_component_signatures_identify_system_and_tool_changes():
@@ -68,6 +78,7 @@ def test_record_writes_jsonl_line(tmp_path, monkeypatch):
         prefix_sha="deadbeef", prefix_len=12345, cache_hit=90000, cache_miss=1000,
         session_id="chat-1", system_sha="systemhash", tools_sha="toolhash",
         tail_sha="tailhash", system_len=100, tools_len=200, tail_len=300,
+        system_chunks=["chunk-a", "chunk-b"],
     )
     log = tmp_path / "logs" / "cache_telemetry.jsonl"
     row = json.loads(log.read_text().strip())
@@ -80,6 +91,7 @@ def test_record_writes_jsonl_line(tmp_path, monkeypatch):
     assert row["tail_sha"] == "tailhash"
     assert row["system_len"] == 100 and row["tools_len"] == 200
     assert row["tail_len"] == 300
+    assert row["system_chunks"] == ["chunk-a", "chunk-b"]
     assert row["timestamp"].endswith("+00:00")
     assert row["hit"] == 90000 and row["miss"] == 1000
     assert row["pct"] == round(100.0 * 90000 / 91000, 1)

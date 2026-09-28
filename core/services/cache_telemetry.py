@@ -38,7 +38,7 @@ def prefix_signature(system_content: str, tools: Any) -> tuple[str, int]:
         return "", 0
 
 
-def component_signatures(messages: list[dict[str, Any]], tools: Any) -> dict[str, str | int]:
+def component_signatures(messages: list[dict[str, Any]], tools: Any) -> dict[str, str | int | list[str]]:
     """Fingerprint prompt regions separately, without recording their contents.
 
     The first system message is the stable prefix. A system message after the
@@ -64,6 +64,7 @@ def component_signatures(messages: list[dict[str, Any]], tools: Any) -> dict[str
 
     return {
         "system_sha": digest(system), "system_len": len(system),
+        "system_chunks": [digest(system[i:i + 1024]) for i in range(0, len(system), 1024)],
         "tools_sha": digest(tools_text), "tools_len": len(tools_text),
         "tail_sha": digest(tail), "tail_len": len(tail),
     }
@@ -88,6 +89,7 @@ def record_visible_cache(
     system_len: int = 0,
     tools_len: int = 0,
     tail_len: int = 0,
+    system_chunks: list[str] | None = None,
 ) -> None:
     """Append én telemetri-linje. Self-safe (sluger alt)."""
     try:
@@ -113,6 +115,7 @@ def record_visible_cache(
             "tools_sha": tools_sha,
             "tail_sha": tail_sha,
             "system_len": int(system_len),
+            "system_chunks": list(system_chunks or []),
             "tools_len": int(tools_len),
             "tail_len": int(tail_len),
             "hit": int(cache_hit),

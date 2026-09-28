@@ -6,7 +6,7 @@ import { QrScanScreen } from './QrScanScreen'
 import { DataControlsScreen } from './DataControlsScreen'
 import { MemoryScreen } from './MemoryScreen'
 import { SensorPrivacyScreen } from './SensorPrivacyScreen'
-import {
+import { apiFetch,
   getAccountMe,
   googleLinkStart,
   googleLoginResult,
@@ -37,7 +37,10 @@ import { AppearanceSection } from '../components/AppearanceSection'
 import { LanguageSection } from '../components/LanguageSection'
 import { SvarstilSection } from '../components/SvarstilSection'
 import { useI18n } from '../i18n/I18nContext'
-import { SETTINGS_GRUPPER, matcherSoegning, type SettingsPunktId } from '../lib/settingsGrupper'
+import { SETTINGS_GRUPPER, matcherSoegning, settingsVaerdier, type SettingsPunktId } from '../lib/settingsGrupper'
+import { SettingsGruppeKort, SettingsKontoRaekke, SettingsRaekke } from '../components/SettingsRaekke'
+import { SettingsDetalje } from '../components/SettingsDetalje'
+import { SVARSTILE, hentSvarstil, type Svarstil } from '../lib/svarstil'
 
 const CONN_LABEL: Record<string, string> = {
   connected: 'Forbundet til Jarvis ✓',
@@ -63,6 +66,24 @@ export function initials(name: string): string {
   const last = parts.length > 1 ? (parts[parts.length - 1]![0] ?? '') : ''
   return (first + last).toUpperCase() || '?'
 }
+
+/** De gamle sektions-navne. De er ikke laengere raekker i listen — flere af
+ *  dem er nu fragmenter der saettes sammen bag ÉN raekke (fx `enheder` +
+ *  `forbind`, og hele `Avanceret`). */
+/** Rudens overskrift. Samme ord som paa raekken, saa man ved hvor man landede. */
+const DETALJE_TITEL: Record<string, string> = {
+  udseende: 'Udseende', sprog: 'Sprog', svarstil: 'Svarstil',
+  lokation: 'Lokation', batteri: 'Privatliv & batteri',
+  tjenester: 'Tjenester', notifikationer: 'Notifikationer', enheder: 'Enheder',
+  konto: 'Konto', avanceret: 'Avanceret',
+}
+
+type FragmentId =
+  | 'udseende' | 'sprog' | 'svarstil' | 'hukommelse'
+  | 'sanser' | 'lokation' | 'batteri'
+  | 'enheder' | 'tjenester' | 'notifikationer' | 'google' | 'forbind'
+  | 'konto' | 'data'
+  | 'status' | 'diagnostik' | 'chat' | 'boble'
 
 export function SettingsScreen({ onClose }: { onClose?: () => void }) {
   const tokens = useTheme()
@@ -94,6 +115,12 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
   const [routeTargetName, setRouteTargetName] = useState('')
   const [outboxCount, setOutboxCount] = useState(0)
   const [soeg, setSoeg] = useState('')
+  const [aaben, setAaben] = useState<SettingsPunktId | 'konto' | null>(null)
+  // Vaerdierne paa raekkerne. `svarstil` og notifikationerne bor inde i deres
+  // egne sektioner, som foerst monteres naar ruden aabnes — saa raekken ville
+  // staa uden vaerdi indtil man havde besoegt den. De hentes derfor her.
+  const [svarstil, setSvarstil] = useState<Svarstil | null>(null)
+  const [pushTil, setPushTil] = useState<boolean | null>(null)
   useEffect(() => { void bubble.isSupported().then(setBubbleOk) }, [])
   useEffect(() => { void loadBubblePersist().then(setPersistBubble) }, [])
   useEffect(() => { void loadPrecision().then(setLocPrecision) }, [])
@@ -101,6 +128,19 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
   useEffect(() => { void loadFullThinking().then(setFullThinking) }, [])
   useEffect(() => { void loadCameraPrefs().then((prefs) => setCameraShutterSound(prefs.shutterSound)) }, [])
   useEffect(() => { void loadOutbox().then((items) => setOutboxCount(items.length)) }, [])
+  useEffect(() => {
+    if (!config) return
+    let levende = true
+    void hentSvarstil(config).then((v) => { if (levende) setSvarstil(v) }).catch(() => undefined)
+    void apiFetch<{ preferences: Record<string, boolean> }>(config, '/notifications/preferences')
+      .then((r) => {
+        if (!levende) return
+        const p = r?.preferences || {}
+        setPushTil(Object.values(p).some(Boolean))
+      })
+      .catch(() => undefined)
+    return () => { levende = false }
+  }, [config])
 
   useEffect(() => {
     if (!config) return
@@ -204,7 +244,32 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
   // Hvert punkt er nu en node i en GRUPPE frem for en fri sektion i en flad
   // liste. Rækkefølgen og søgeordene ejes af `settingsGrupper` — én kilde,
   // så skærmen og testen ikke kan drive fra hinanden.
-  const punkter: Record<SettingsPunktId, ReactNode> = {
+  // De gamle sektioner, uroerte. De er nu FRAGMENTER der saettes sammen bag
+  // raekkerne — samme knapper og kontakter, bare bag ét tryk i stedet for
+  // udfoldet i listen.
+  // Ordene bor i `settingsGrupper` — se `settingsVaerdier`.
+  const vaerdier = settingsVaerdier({
+    temaTilstand: tokens.mode,
+    sprog: (profile?.language as 'da' | 'en' | 'auto' | undefined) ?? null,
+    svarstil: svarstil ? (SVARSTILE.find((v) => v.value === svarstil)?.navn ?? null) : null,
+    kameraLyd: cameraShutterSound,
+    lokation: locPrecision,
+    batteriSparer: batterySaver,
+    aktiveTjenester: connectorsLoading ? null : connectors.filter((c) => c.enabled).length,
+    pushTil,
+    antalEnheder: deviceRows.length,
+  })
+
+  // Tre punkter har allerede deres EGEN fuldskaerm — de skal ikke ligge bag en
+  // ekstra rude, det ville vaere to tryk til det samme.
+  const aabnPunkt = (id: SettingsPunktId) => {
+    if (id === 'hukommelse') return setMemoryOpen(true)
+    if (id === 'sanser') return setPrivacyOpen(true)
+    if (id === 'data') return setDataOpen(true)
+    setAaben(id)
+  }
+
+  const fragment: Record<FragmentId, ReactNode> = {
     udseende: (
       <>
         <AppearanceSection />
@@ -525,24 +590,10 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
 
       <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
 
-        {/* Konto-hoved. Målt i ChatGPT-appen: avatar og navn ØVERST og
-            centreret, før alt andet. Det svarer på «hvis konto er det her?»
-            før man begynder at ændre noget — og det spørgsmål er værd at
-            besvare først, når appen kan bruges af flere i samme hjem. */}
-        <View style={styles.identity}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{initials(profile?.name || profile?.email || '?')}</Text>
-          </View>
-          <Text style={styles.identityName}>{profile?.name || profile?.email || 'Konto'}</Text>
-          {profile?.email && profile?.name ? (
-            <Text style={styles.identityMail}>{profile.email}</Text>
-          ) : null}
-        </View>
-
-        {/* Søgning. Den der ved hvad de leder efter, behøver ikke forstå
-            grupperne; den der ikke gør, kan læse dem. Den filtrerer på
-            punkternes søgeord, så «mørk» rammer Udseende uden at man kender
-            ordet «tema». */}
+        {/* Soegning oeverst. Den der ved hvad de leder efter, behoever ikke
+            forstaa grupperne; den der ikke goer, kan laese dem. Den filtrerer
+            paa punkternes soegeord, saa «mikrofon» rammer raekken selv om den
+            bor under Sanser. */}
         <TextInput
           testID="settings-soeg"
           accessibilityLabel="Søg i indstillinger"
@@ -555,23 +606,74 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
           style={styles.soeg}
         />
 
+        {/* Kontoen som en RAEKKE. Foer var det et 76 px avatar midt paa
+            skaermen; nu svarer den paa det samme plus om der ER forbindelse
+            og til hvilken maskine — paa fire linjer i stedet for en skaermfuld. */}
+        {!soeg.trim() ? (
+          <SettingsKontoRaekke
+            navn={profile?.name || profile?.email || 'Konto'}
+            initialer={initials(profile?.name || profile?.email || '?')}
+            forbundet={connectivity === 'connected'}
+            vaert={routeTargetName || currentDeviceName}
+            onPress={() => setAaben('konto')}
+          />
+        ) : null}
+
         {SETTINGS_GRUPPER.map((gruppe) => {
-          const synlige = gruppe.punkter.filter((p) => matcherSoegning(p.noegle, soeg))
+          const synlige = gruppe.punkter.filter((pkt) => matcherSoegning(pkt, soeg))
           if (!synlige.length) return null
           return (
-            <View key={gruppe.navn}>
-              <Text style={styles.groupTitle}>{gruppe.navn}</Text>
-              {synlige.map((p) => (
-                <View key={p.id}>{punkter[p.id]}</View>
+            <SettingsGruppeKort key={gruppe.navn} navn={gruppe.navn}>
+              {synlige.map((pkt, i) => (
+                <SettingsRaekke
+                  key={pkt.id}
+                  navn={pkt.navn}
+                  ikon={pkt.ikon}
+                  vaerdi={vaerdier[pkt.id]}
+                  foerste={i === 0}
+                  sidste={i === synlige.length - 1}
+                  onPress={() => aabnPunkt(pkt.id)}
+                />
               ))}
-            </View>
+            </SettingsGruppeKort>
           )
         })}
 
-        <Pressable accessibilityRole="button" onPress={() => void signOut()} style={styles.signOut}>
-          <Text style={styles.signOutText}>Log ud</Text>
-        </Pressable>
       </ScrollView>
+
+      {/* Ruden bag raekken. Indholdet er de SAMME sektioner som foer — de
+          ligger bag ét tryk i stedet for udfoldet i listen. */}
+      <SettingsDetalje
+        titel={DETALJE_TITEL[aaben ?? 'konto'] ?? ''}
+        aaben={aaben !== null}
+        onLuk={() => setAaben(null)}
+      >
+        {aaben === 'udseende' ? fragment.udseende : null}
+        {aaben === 'sprog' ? fragment.sprog : null}
+        {aaben === 'svarstil' ? fragment.svarstil : null}
+        {aaben === 'lokation' ? fragment.lokation : null}
+        {aaben === 'batteri' ? fragment.batteri : null}
+        {aaben === 'tjenester' ? fragment.tjenester : null}
+        {aaben === 'notifikationer' ? fragment.notifikationer : null}
+        {/* Enheder og «forbind ny» hoerer sammen: man ser listen og parrer
+            den naeste fra samme sted. */}
+        {aaben === 'enheder' ? <>{fragment.enheder}{fragment.forbind}</> : null}
+        {/* Kontoen: hvem er jeg, hvordan logger jeg ind, og hvordan gaar jeg ud. */}
+        {aaben === 'konto' ? (
+          <>
+            {fragment.konto}
+            {fragment.google}
+            <Pressable accessibilityRole="button" onPress={() => void signOut()} style={styles.signOut}>
+              <Text style={styles.signOutText}>Log ud</Text>
+            </Pressable>
+          </>
+        ) : null}
+        {/* Teknikken. Den er der stadig — den fylder bare ikke for en der lige
+            har hentet appen. */}
+        {aaben === 'avanceret' ? (
+          <>{fragment.status}{fragment.diagnostik}{fragment.chat}{fragment.boble}</>
+        ) : null}
+      </SettingsDetalje>
 
       <Modal visible={dataOpen} animationType="slide" onRequestClose={() => setDataOpen(false)}>
         <DataControlsScreen onClose={() => setDataOpen(false)} />

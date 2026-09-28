@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { FolderGit2, Monitor } from 'lucide-react-native'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
-import { BADGE_H } from './badgeGeometri'
+import { BADGE_H, BADGE_MAKS_B } from './badgeGeometri'
 import type { GitStatus } from '../lib/apiClient'
 
 /**
@@ -97,6 +97,11 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
     // sig selv frem for at skubbe hoejre felt ud over skaermkanten.
     flexShrink: 1,
     minWidth: 0,
+    // ... og den maa ikke blive BREDERE end hoejre felt. Bjoern 28/9-2026:
+    // «ikke stoerre end feltet i hoejre side af header». Uden loftet voksede
+    // et langt session-navn frit — maalt 229 dp mod hoejre pilles 106 — og
+    // dominerede hele bjaelken. Se badgeGeometri for hvor tallet kommer fra.
+    maxWidth: BADGE_MAKS_B,
     ...tokens.elevation,
   },
   // Faste linjehoejder: uden dem afhaenger indholdets hoejde af systemets
@@ -104,11 +109,25 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
   // telefon med stoerre tekst.
   titel: {
     color: tokens.color.fg1, fontSize: 13.5, fontWeight: '600',
-    lineHeight: 16, flexShrink: 1,
+    lineHeight: 16, flexShrink: 1, minWidth: 0,
   },
   trykket: { opacity: 0.65 },
-  kontekst: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 1 },
-  meta: { color: tokens.color.fg2, fontSize: 10.5, lineHeight: 12, maxWidth: 92 },
-  // Farven saettes inline efter forbindelsen; her staar kun formen.
-  prik: { width: 6, height: 6, borderRadius: 3, marginLeft: 1 },
+  // Kontekst-linjen SKAL kunne skrumpe. Det er den del af pillen der ikke kan
+  // forkortes meningsfuldt — repo og vaert er hele pointen — saa naar loftet
+  // rammes skal teksten klippes, ikke flyde ud over kanten.
+  //
+  // Bjoern 28/9-2026, anden melding: «indholdet stikker ud over». Aarsagen var
+  // ikke loftet men at boernene havde flexShrink 0 (RN's standard): de voksede
+  // forbi deres far i stedet for at give sig. Et loft uden skrump holdes ikke.
+  kontekst: {
+    flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 1,
+    flexShrink: 1, minWidth: 0,
+  },
+  meta: {
+    color: tokens.color.fg2, fontSize: 10.5, lineHeight: 12,
+    maxWidth: 92, flexShrink: 1, minWidth: 0,
+  },
+  // Farven saettes inline efter forbindelsen; her staar kun formen. Prikken maa
+  // IKKE skrumpe — den er 6 dp og forsvinder hvis den faar lov at give sig.
+  prik: { width: 6, height: 6, borderRadius: 3, marginLeft: 1, flexShrink: 0 },
 })

@@ -55,6 +55,12 @@ def _ensure_table() -> None:
         cols = {r[1] for r in conn.execute("PRAGMA table_info(recurring_tasks)").fetchall()}
         if "channel" not in cols:
             conn.execute("ALTER TABLE recurring_tasks ADD COLUMN channel TEXT NOT NULL DEFAULT 'auto'")
+        # Ugedage (Bjoern 28/9-2026: «begraens medicin-paamindelserne til
+        # hverdage»). '' = alle dage, praecis som foer — ALLE eksisterende
+        # raekker er derfor uaendrede, og kun de opgaver der eksplicit saettes
+        # rammes. Idempotent ALTER, samme moenster som channel ovenfor.
+        if "weekdays" not in cols:
+            conn.execute("ALTER TABLE recurring_tasks ADD COLUMN weekdays TEXT NOT NULL DEFAULT ''")
         conn.commit()
 
 
@@ -74,6 +80,28 @@ def set_channel(task_id: str, channel: str) -> bool:
         return cur.rowcount > 0
 
 
+def set_weekdays(task_id: str, weekdays: str) -> bool:
+    """Sæt hvilke ugedage en task må fyre på. ``''`` = alle dage (uændret).
+
+    Rammer kun affyringer FREMAD: den planlagte tid står hvor den står, og næste
+    gang ``_advance`` regner, springer den udenom de dage der ikke er valgt.
+    Derfor røres ``next_fire_at`` ikke her — at flytte den ville rykke
+    klokkeslættet, og det er ikke det man beder om.
+
+    Kaster på ukendt ugedag (se ``parse_weekdays``) i stedet for at falde
+    tilbage til «alle dage».
+    """
+    _ensure_table()
+    ud = parse_weekdays(weekdays)
+    with runtime_db.connect() as conn:
+        cur = conn.execute(
+            "UPDATE recurring_tasks SET weekdays = ?, updated_at = ? WHERE task_id = ?",
+            (ud, datetime.now(UTC).isoformat(), str(task_id)),
+        )
+        conn.commit()
+        return cur.rowcount > 0
+
+
 def _row_to_dict(row) -> dict:
     keys = row.keys() if hasattr(row, "keys") else []
     return {
@@ -88,6 +116,8 @@ def _row_to_dict(row) -> dict:
         "created_at": row["created_at"],
         "updated_at": row["updated_at"],
         "user_id": (row["user_id"] if "user_id" in keys else None),
+        # '' = alle dage — ogsaa for raekker skrevet foer kolonnen fandtes.
+        "weekdays": (row["weekdays"] if "weekdays" in keys else ""),
     }
 
 
@@ -97,15 +127,16 @@ def _scope() -> str:
     return scope_uid()
 
 
-def _create(*, task_id: str, focus: str, source: str, interval_minutes: int, next_fire_at: str, now: str) -> None:
+def _create(*, task_id: str, focus: str, source: str, interval_minutes: int,
+            next_fire_at: str, now: str, weekdays: str = "") -> None:
     with runtime_db.connect() as conn:
         conn.execute(
             """
             INSERT INTO recurring_tasks
-              (task_id, focus, source, status, interval_minutes, next_fire_at, created_at, updated_at, user_id)
-            VALUES (?, ?, ?, 'active', ?, ?, ?, ?, ?)
+              (task_id, focus, source, status, interval_minutes, next_fire_at, created_at, updated_at, user_id, weekdays)
+            VALUES (?, ?, ?, 'active', ?, ?, ?, ?, ?, ?)
             """,
-            (task_id, focus, source, interval_minutes, next_fire_at, now, now, _scope() or None),
+            (task_id, focus, source, interval_minutes, next_fire_at, now, now, _scope() or None, weekdays),
         )
         conn.commit()
 
@@ -119,7 +150,100 @@ def _get_due(now_iso: str) -> list[dict]:
     return [_row_to_dict(r) for r in rows]
 
 
-def _naeste_tid(planlagt_iso: str, interval_minutes: int, now: datetime) -> datetime:
+# ── Ugedage ──────────────────────────────────────────────────────────────────
+
+# ISO-numre: mandag = 1 … soendag = 7. Baade tal og tre-bogstavs navne, dansk
+# og engelsk, fordi det er saadan man skriver det naar man ikke taenker over det.
+_UGEDAG_TAL = {
+    "1": 1, "2": 2, "3": 3, "4": 4, "5": 5, "6": 6, "7": 7,
+    "mon": 1, "tue": 2, "wed": 3, "thu": 4, "fri": 5, "sat": 6, "sun": 7,
+    "man": 1, "tir": 2, "ons": 3, "tor": 4, "fre": 5, "lor": 6, "son": 7,
+}
+_ALLE_DAGE = {"", "all", "alle", "every", "hver", "dagligt", "daily", "altid"}
+_HVERDAGE = {"weekdays", "weekday", "hverdage", "hverdag", "ugedage",
+             "man-fre", "mon-fri", "mandag-fredag"}
+_WEEKEND = {"weekend", "weekenden", "weekends", "sat-sun", "lor-son"}
+
+
+def parse_weekdays(raw: object) -> str:
+    """Normalisér ugedage til ``'1,2,3,4,5'`` (ISO: mandag = 1). ``''`` = alle.
+
+    Tager imod det man naturligt skriver: ``'man-fre'``, ``'1,2,3,4,5'``,
+    ``'mon,wed,fri'``, ``'weekend'``, ``'alle'``.
+
+    Ukendt input KASTER. En tastefejl maa ikke tavst blive til «alle dage» —
+    saa fyrer paamindelsen i weekenden alligevel, og fejlen er usynlig.
+    """
+    s = str(raw or "").strip().lower()
+    if s in _ALLE_DAGE:
+        return ""
+    if s in _HVERDAGE:
+        return "1,2,3,4,5"
+    if s in _WEEKEND:
+        return "6,7"
+    ud: set[int] = set()
+    for del_ in s.replace(" ", "").split(","):
+        if not del_:
+            continue
+        if "-" in del_:
+            a, _, b = del_.partition("-")
+            na, nb = _UGEDAG_TAL.get(a), _UGEDAG_TAL.get(b)
+            if na and nb:
+                i = na
+                while True:
+                    ud.add(i)
+                    if i == nb:
+                        break
+                    i = i % 7 + 1
+        else:
+            n = _UGEDAG_TAL.get(del_)
+            if n:
+                ud.add(n)
+    if not ud:
+        raise ValueError(
+            f"ukendt ugedag {raw!r} — brug fx 'man-fre', '1,2,3,4,5' eller 'weekend'"
+        )
+    return ",".join(str(n) for n in sorted(ud))
+
+
+def _ugedage(raw: object) -> set[int]:
+    """Ugedagene som et sæt ISO-tal (mandag = 1). Tomt sæt = alle dage.
+
+    Læser den gemte form (``'1,2,3,4,5'``). Skrald ignoreres frem for at
+    kaste: en raekke fra foer kolonnen fandtes er ``''`` og skal bare virke.
+    """
+    s = str(raw or "").strip()
+    if not s:
+        return set()
+    ud: set[int] = set()
+    for d in s.split(","):
+        try:
+            n = int(d)
+        except ValueError:  # skrald i den gemte kolonne — se docstring; ignorer frem for at kaste
+            continue
+        if 1 <= n <= 7:
+            ud.add(n)
+    return ud
+
+
+def _ryk_til_ugedag(tid: datetime, trin: timedelta, ugedage: set[int] | None) -> datetime:
+    """Ryk frem i hele INTERVALLER til en dag brugeren har valgt.
+
+    Loekken er afgraenset: uden ugedage returnerer den straks (alle eksisterende
+    opgaver), og selv et ugentligt sæt rammes inden for faa trin. Graensen paa
+    400 er der for at en fejlkonfigureret opgave ikke kan henge polleren.
+    """
+    if not ugedage:
+        return tid
+    for _ in range(400):
+        if tid.isoweekday() in ugedage:
+            return tid
+        tid = tid + trin
+    return tid
+
+
+def _naeste_tid(planlagt_iso: str, interval_minutes: int, now: datetime,
+                ugedage: set[int] | None = None) -> datetime:
     """Næste affyring — regnet fra den PLANLAGTE tid, ikke fra den faktiske.
 
     ## Hvorfor det ikke er det samme
@@ -147,20 +271,20 @@ def _naeste_tid(planlagt_iso: str, interval_minutes: int, now: datetime) -> date
         naeste = datetime.fromisoformat(str(planlagt_iso))
     except Exception:
         # Ukendt planlagt tid — så er det bedste vi kan gøre det gamle.
-        return now + trin
+        return _ryk_til_ugedag(now + trin, trin, ugedage)
     if naeste.tzinfo is None:
         naeste = naeste.replace(tzinfo=UTC)
     if naeste > now:
         # Fyrede før tid (eller uret gik baglæns): rør ikke ved planen.
-        return naeste + trin
+        return _ryk_til_ugedag(naeste + trin, trin, ugedage)
     # Spring frem i hele intervaller — bevarer tidspunktet på dagen.
     spring = int((now - naeste) / trin) + 1
-    return naeste + trin * spring
+    return _ryk_til_ugedag(naeste + trin * spring, trin, ugedage)
 
 
 def _advance(task_id: str, interval_minutes: int, now: datetime,
-             planlagt_iso: str = "") -> None:
-    next_fire = _naeste_tid(planlagt_iso, interval_minutes, now).isoformat()
+             planlagt_iso: str = "", ugedage: set[int] | None = None) -> None:
+    next_fire = _naeste_tid(planlagt_iso, interval_minutes, now, ugedage).isoformat()
     now_iso = now.isoformat()
     with runtime_db.connect() as conn:
         conn.execute(
@@ -233,8 +357,15 @@ def create_recurring_task(
     interval_minutes: int,
     source: str = "jarvis-tool",
     delay_minutes: int = 0,
+    weekdays: str = "",
 ) -> dict:
     """Schedule a recurring task. Returns task info dict.
+
+    ``weekdays`` (Bjoern 28/9-2026: «begraens medicin-paamindelserne til
+    hverdage»): hvilke ugedage opgaven maa fyre paa — ``'man-fre'``,
+    ``'1,2,3,4,5'``, ``'weekend'``. Tom = alle dage, praecis som foer, saa alle
+    eksisterende opgaver er uaendrede. Klokkeslaettet bevares: en hverdagsoppgave
+    springer weekenden over frem for at flytte sig.
 
     Foerste affyring (fix 18/9-2026): en EKSPLICIT ``delay_minutes`` vinder over
     intervallet. Foer stod der ``max(delay_minutes, interval_minutes)``, saa et
@@ -253,6 +384,14 @@ def create_recurring_task(
         first_fire = now + timedelta(minutes=max(delay_minutes, 1))
     else:
         first_fire = now + timedelta(minutes=max(interval_minutes, 1))
+    ud = parse_weekdays(weekdays)
+    ugedage = _ugedage(ud)
+    if ugedage:
+        # Foerste affyring maa heller ikke lande paa en fridag. Vi rykker i hele
+        # DAGE — ikke i hele intervaller — saa klokkeslaettet bevares: en
+        # paamindelse sat loerdag morgen skal ramme mandag morgen, ikke mandag
+        # kl. 00:30 fordi intervallet tilfaeldigt var en time.
+        first_fire = _ryk_til_ugedag(first_fire, timedelta(days=1), ugedage)
     task_id = f"rec-{uuid4().hex[:10]}"
     focus = focus[:300].strip() or "Recurring reminder"
     _create(
@@ -262,13 +401,16 @@ def create_recurring_task(
         interval_minutes=interval_minutes,
         next_fire_at=first_fire.isoformat(),
         now=now.isoformat(),
+        weekdays=ud,
     )
-    logger.info("recurring_tasks: created %s every %dm focus=%r", task_id, interval_minutes, focus[:60])
+    logger.info("recurring_tasks: created %s every %dm weekdays=%r focus=%r",
+                task_id, interval_minutes, ud or "alle", focus[:60])
     return {
         "task_id": task_id,
         "focus": focus,
         "interval_minutes": interval_minutes,
         "next_fire_at": first_fire.isoformat(),
+        "weekdays": ud,
         "status": "active",
     }
 
@@ -322,6 +464,17 @@ def _fire_due() -> None:
         focus = str(task["focus"])
         interval_minutes = int(task["interval_minutes"])
         channel = str(task.get("channel") or "auto")
+        ugedage = _ugedage(task.get("weekdays"))
+        if ugedage and now.isoweekday() not in ugedage:
+            # I dag er ikke en valgt ugedag. Ryk videre UDEN at fyre: en
+            # paamindelse der fyrer loerdag fordi maskinen var nede fredag er
+            # praecis den stoej brugeren bad os undgaa. Uden dette led ville
+            # raekken desuden blive ved med at vaere forfalden og fylde koen.
+            _advance(task_id, interval_minutes, now,
+                     str(task.get('next_fire_at') or ''), ugedage)
+            logger.info("recurring_tasks: %s springer over — ugedag %s ikke i %r",
+                        task_id, now.isoweekday(), task.get("weekdays"))
+            continue
         # channel != 'auto' => brugeren har valgt en specifik leverings-kanal.
         # Run-completion-notifikationens kanal-routing deles med wakeup-deferral
         # (run-vs-notification-design, spec §3.5) — kanalen er gemt + settbar nu.
@@ -335,7 +488,7 @@ def _fire_due() -> None:
             # let both paths produce a user-visible message independently.
             start_autonomous_run(message=focus, session_id=None, origin="recurring")
             _advance(task_id, interval_minutes, now,
-                     str(task.get('next_fire_at') or ''))
+                     str(task.get('next_fire_at') or ''), ugedage)
             logger.info(
                 "recurring_tasks: fired %s as autonomous run (every %dm) user=%s",
                 task_id, interval_minutes, task.get("user_id") or "-",

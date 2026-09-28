@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8140/15644 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8135/15638 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,14 +25,14 @@ Generated from source. 8140/15644 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 698 | 1277 | 54% |
-| `core.services` | 5404 | 10655 | 50% |
+| `core.services` | 5398 | 10648 | 50% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 107 | 183 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
 | `core.services.visible_runs_sections` | 22 | 34 | 64% |
 | `core.skills` | 0 | 0 | 0% |
 | `core.skills.voice` | 39 | 49 | 79% |
-| `core.tools` | 491 | 1010 | 48% |
+| `core.tools` | 492 | 1011 | 48% |
 | `core.tools.agent_dispatch_tool` | 0 | 1 | 0% |
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.undo` | 2 | 18 | 11% |
@@ -1487,10 +1487,10 @@ Generated from source. 8140/15644 functions/methods documented (52%). The list b
 - `core/services/reboot_awareness_daemon.py` :: `build_reboot_awareness_surface` (L227)
 - `core/services/reboot_awareness_daemon.py` :: `get_last_boot_event` (L202)
 - `core/services/recall.py` :: `empty_message` (L281)
-- `core/services/recurring_tasks.py` :: `cancel_recurring_task` (L276)
-- `core/services/recurring_tasks.py` :: `list_recurring_tasks` (L284)
-- `core/services/recurring_tasks.py` :: `start_recurring_tasks_service` (L392)
-- `core/services/recurring_tasks.py` :: `stop_recurring_tasks_service` (L401)
+- `core/services/recurring_tasks.py` :: `cancel_recurring_task` (L418)
+- `core/services/recurring_tasks.py` :: `list_recurring_tasks` (L426)
+- `core/services/recurring_tasks.py` :: `start_recurring_tasks_service` (L545)
+- `core/services/recurring_tasks.py` :: `stop_recurring_tasks_service` (L554)
 - `core/services/reflection_cycle_daemon.py` :: `build_reflection_surface` (L143)
 - `core/services/reflection_cycle_daemon.py` :: `get_latest_reflection` (L139)
 - `core/services/reflection_signal_tracking.py` :: `build_runtime_reflection_signal_surface` (L51)

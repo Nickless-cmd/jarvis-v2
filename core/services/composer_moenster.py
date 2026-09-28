@@ -157,8 +157,7 @@ def er_taendt() -> bool:
         return True
 
 
-def prompt_linje() -> str:
-    """Mønstret som det ser ud i prompten — tom streng når det er slukket."""
-    if not er_taendt():
-        return ""
-    return moenster()
+# `prompt_linje()` stod her indtil 28/9-2026. Den byggede mønstret ind i
+# prompten til den lokale model — og da modellen blev droppet (se
+# `composer_suggest`), kunne intet længere kalde den. `moenster()` lever
+# videre: den er stadig synlig i klartekst gennem `/composer/moenster`.

@@ -14,8 +14,8 @@
  * «lige nu er det en model der gætter på mine næste ord udfra det jeg
  * skriver, det er lidt mærkeligt». Formen er nu den samme som desk: ÉT
  * forslag, hentet når feltet er TOMT, bygget på samtalen — og når Jarvis selv
- * har lagt et forslag i sin tur, er det HANS ord der møder brugeren, ikke en
- * lille models gæt.
+ * har lagt et forslag i sin tur, er det HANS ord der møder brugeren. Den
+ * lokale model er helt ude (28/9-2026); uden et eget forslag står linjen tom.
  *
  * ## Hvorfor en linje over feltet, og ikke pladsholder-tekst
  *
@@ -27,10 +27,9 @@
  *
  * ## Hvad der ALDRIG sker
  *
- * Kaldet går til `/composer/suggest`. Med et tomt udkast og en session svarer
- * serveren med samtale-kontekst — og med Jarvis' eget forslag først, hvis han
- * har lagt et. Et halvskrevet udkast forlader aldrig maskinen, for der sendes
- * intet udkast: feltet er tomt når vi spørger.
+ * Kaldet går til `/composer/suggest`. Med en session svarer serveren med
+ * samtale-kontekst — og med Jarvis' eget forslag, hvis han har lagt et. Der
+ * sendes intet udkast: feltet er tomt når vi spørger.
  */
 import type { ApiConfig } from './types'
 
@@ -77,7 +76,7 @@ export async function hentNaesteForslag(
         'Content-Type': 'application/json',
         ...(config.authToken ? { Authorization: `Bearer ${config.authToken}` } : {}),
       },
-      body: JSON.stringify({ udkast: '', session_id: sessionId }),
+      body: JSON.stringify({ session_id: sessionId }),
       signal,
     })
     if (!r.ok) return INTET_FORSLAG

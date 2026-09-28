@@ -133,27 +133,16 @@ _Hvad Bjørn plejer at bede om — udledt af hans valg, ikke af hans ord._
 | function | `_valg_i_vinduet` | `()` | De terminale valg indenfor vinduet. Egen funktion, så testene kan sætte dem. | [src](../../../core/services/composer_moenster.py#L94) |
 | function | `moenster` | `()` | Én linje til prompten — eller `""` når der ikke er noget at sige. | [src](../../../core/services/composer_moenster.py#L111) |
 | function | `er_taendt` | `()` | Kontakten. Et mønster der peger galt skal kunne tages ud uden et deploy. | [src](../../../core/services/composer_moenster.py#L151) |
-| function | `prompt_linje` | `()` | Mønstret som det ser ud i prompten — tom streng når det er slukket. | [src](../../../core/services/composer_moenster.py#L160) |
 
 ## `core/services/composer_suggest.py`
 _Forslag i komponisten — hvad der kunne skrives videre, mens man skriver._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_base_url` | `()` | GPU-ollamaen. Aldrig en betalt vært — se modulets docstring. | [src](../../../core/services/composer_suggest.py#L61) |
-| function | `_model` | `()` | — | [src](../../../core/services/composer_suggest.py#L73) |
-| function | `_kald_model` | `(prompt)` | Ét kald til den lokale model. Kaster ved fejl; kalderen fanger. | [src](../../../core/services/composer_suggest.py#L92) |
-| function | `_afkort` | `(udkast, svar)` | Fjern den del af svaret der gentager udkastet. | [src](../../../core/services/composer_suggest.py#L111) |
-| function | `_ryd` | `(s)` | Én linje, uden omsluttende anførselstegn, afkortet ved et ordskel. | [src](../../../core/services/composer_suggest.py#L130) |
-| function | `foreslaa` | `(udkast)` | Fortsættelsen af `udkast`, eller `""`. | [src](../../../core/services/composer_suggest.py#L146) |
-| function | `_er_paastand` | `(s)` | Er forslaget en konstatering frem for noget man beder om? | [src](../../../core/services/composer_suggest.py#L249) |
-| function | `_anbefaling` | `(tekst)` | Den sætning hvor beskeden peger på ÉN vej — eller `""`. | [src](../../../core/services/composer_suggest.py#L275) |
-| function | `_klip_kontekst` | `(tekst, maks=…)` | Klip en lang besked, men behold BEGGE ender. | [src](../../../core/services/composer_suggest.py#L298) |
-| function | `_kontekst` | `(besked)` | Prompt-konteksten: assistentens sidste besked, og dens anbefaling. | [src](../../../core/services/composer_suggest.py#L315) |
-| function | `_samtale` | `(session_id)` | De seneste beskeder. Egen funktion, så testene kan sætte dem. | [src](../../../core/services/composer_suggest.py#L331) |
-| function | `_tomt` | `()` | Intet forslag — og dermed intet at melde tilbage om. | [src](../../../core/services/composer_suggest.py#L337) |
-| function | `foreslaa_naeste` | `(session_id)` | Et bud på brugerens næste besked, eller `""`. | [src](../../../core/services/composer_suggest.py#L342) |
-| function | `foreslaa_naeste_detaljer` | `(session_id)` | Forslaget OG det klienten skal bruge for at kunne melde valget tilbage. | [src](../../../core/services/composer_suggest.py#L351) |
+| function | `_samtale` | `(session_id)` | De seneste beskeder. Egen funktion, så testene kan sætte dem. | [src](../../../core/services/composer_suggest.py#L51) |
+| function | `_tomt` | `()` | Intet forslag — og dermed intet at melde tilbage om. | [src](../../../core/services/composer_suggest.py#L57) |
+| function | `foreslaa_naeste` | `(session_id)` | Et bud på brugerens næste besked, eller `""`. | [src](../../../core/services/composer_suggest.py#L62) |
+| function | `foreslaa_naeste_detaljer` | `(session_id)` | Forslaget OG det klienten skal bruge for at kunne melde valget tilbage. | [src](../../../core/services/composer_suggest.py#L71) |
 
 ## `core/services/composite_tools.py`
 _Composite tools — safe self-extension through composition only._

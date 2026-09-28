@@ -437,6 +437,12 @@ class RuntimeSettings:
     sensory_perception_time_window_days: int = 7
     sensory_perception_min_baseline_records: int = 3
     sensory_perception_recent_baseline_size: int = 3
+    # Selvreparation → Sanser: hvornår en reparation er en SANSNING.
+    # "first" = kun første gang et (mønster, udfald) sker. En gentagelse er
+    # ikke en ny oplevelse — forsøget ligger i forvejen i self_repair_attempts.
+    # Målt 28/9-2026: 287 poster, men kun 11 unikke indhold (175x den samme).
+    # "off" = skriv aldrig · "always" = gammel adfærd (hver reparation).
+    emotion_repair_senses_bridge_mode: str = "first"
     # Self-repair engine — runtime-instigated repair actions for known patterns.
     self_repair_engine_enabled: bool = True
     self_repair_default_cooldown_seconds: int = 300
@@ -1040,6 +1046,7 @@ def load_settings() -> RuntimeSettings:
         sensory_perception_time_window_days=int(data.get("sensory_perception_time_window_days", defaults.sensory_perception_time_window_days)),
         sensory_perception_min_baseline_records=int(data.get("sensory_perception_min_baseline_records", defaults.sensory_perception_min_baseline_records)),
         sensory_perception_recent_baseline_size=int(data.get("sensory_perception_recent_baseline_size", defaults.sensory_perception_recent_baseline_size)),
+        emotion_repair_senses_bridge_mode=str(data.get("emotion_repair_senses_bridge_mode", defaults.emotion_repair_senses_bridge_mode)),
         self_repair_engine_enabled=_som_bool(data.get("self_repair_engine_enabled", defaults.self_repair_engine_enabled)),
         self_repair_default_cooldown_seconds=int(data.get("self_repair_default_cooldown_seconds", defaults.self_repair_default_cooldown_seconds)),
         self_repair_default_max_attempts_per_window=int(data.get("self_repair_default_max_attempts_per_window", defaults.self_repair_default_max_attempts_per_window)),

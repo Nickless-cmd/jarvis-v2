@@ -1300,7 +1300,13 @@ export function ChatScreen({
             en flad kant. Bjørn 28/9-2026: «fade både ved composer og header».
             Fladen var scrim som en FLAD baggrund; den er nu gradienten her —
             transparent foroven, fuld forneden, så bunden stadig dækker. */}
-        <KantFade retning="op" navn="komponist" over={56} />
+        <KantFade
+          retning="op"
+          navn="komponist"
+          over={composerFocused ? 20 : 56}
+          opaqueBelow={composerFocused}
+          under={composerFocused ? 32 : 0}
+        />
         {/* Polstringen bor HER, ikke paa `floatBottom`. Faden fylder sin
             foraelders boks, og laa `paddingBottom: 16` der, stoppede faden
             16 dp over skaermens bund — traaden under den var umalet. Bjørn

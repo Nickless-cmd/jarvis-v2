@@ -80,6 +80,25 @@ def test_genoptaget_tur_lukker_opgaven_fra_synkron_journal(monkeypatch):
     })]
 
 
+def test_faerdigt_svar_lukker_opgaven_selv_om_in_flight_stadig_staar_running(monkeypatch):
+    """En forsinket journal-finalisering må ikke købe samme svar igen efter lejen."""
+    from core.services.visible_runs_sections import detached_run as d
+    from core.services import in_flight_runs as ifr
+    closed = []
+    monkeypatch.setattr(ifr, "get_record", lambda rid: {"status": "running"})
+    monkeypatch.setattr(ifr, "current_owner", lambda: "owner-1")
+    monkeypatch.setattr(ifr, "settle_terminal",
+                        lambda *args, **kw: closed.append((args, kw)))
+    monkeypatch.setattr("core.services.visible_runs_outcomes.run_er_terminal",
+                        lambda rid: True)
+
+    d._afregn_genoptaget_run("task-1", "inner-1", generation=1)
+
+    assert len(closed) == 1
+    assert closed[0][0] == ("task-1",)
+    assert closed[0][1]["expected_generation"] == 1
+
+
 def test_afbrudt_genoptagelse_giver_samme_krav_tilbage(monkeypatch):
     from core.services.visible_runs_sections import detached_run as d
     from core.services import in_flight_runs as ifr
@@ -110,3 +129,40 @@ def test_genoptaget_tur_opretter_ikke_et_nyt_krav(monkeypatch):
             break
         time.sleep(0.05)
     assert settled and not nested
+
+
+def test_genoptaget_opgave_lukkes_foer_runlog_slippes(monkeypatch):
+    """Dispatcheren må ikke se en fri session med et uafregnet krav."""
+    import core.services.run_event_log as rel
+    from core.services.visible_runs_sections import detached_run as d
+    _patch(monkeypatch, [])
+    raekkefoelge = []
+    monkeypatch.setattr(rel, "mark_done", lambda rid: raekkefoelge.append("run-done"))
+    monkeypatch.setattr(d, "_afregn_genoptaget_run",
+                        lambda *args, **kw: raekkefoelge.append("task-settled"))
+    d.start_user_run_detached(message="fortsæt", session_id="s1",
+                              recovery_task_id="task-1", recovery_generation=1)
+    for _ in range(60):
+        if "run-done" in raekkefoelge:
+            break
+        time.sleep(0.05)
+    assert raekkefoelge[:2] == ["task-settled", "run-done"]
+
+
+def test_levende_fortsaettelse_holder_sit_krav_fra_at_udloebe(monkeypatch):
+    """Et run over 120 sekunder må ikke blive taget igen mens det arbejder."""
+    from core.services.visible_runs_sections import detached_run as d
+    from core.services import in_flight_runs as ifr
+    kald = []
+    monkeypatch.setattr(ifr, "renew_recovery_lease",
+                        lambda *args, **kw: kald.append((args, kw)) or True)
+
+    class StopEfterEtTick:
+        antal = 0
+
+        def wait(self, _sekunder):
+            self.antal += 1
+            return self.antal > 1
+
+    d._hold_recovery_lease("task-1", 2, "owner-1", StopEfterEtTick())
+    assert kald == [(('task-1', 2), {'owner': 'owner-1', 'lease_seconds': 120.0})]

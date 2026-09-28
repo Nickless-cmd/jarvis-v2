@@ -48,7 +48,8 @@ def _afregn_genoptaget_run(task_id: str, inner_run_id: str, *, generation: int) 
     rec = get_record(inner_run_id)
     status = str((rec or {}).get("status") or "")
     if status in {"completed", "cancelled", "failed_terminal"} or (
-        rec is None and run_er_terminal(inner_run_id) is True
+        status not in {"recovering", "interrupted"}
+        and run_er_terminal(inner_run_id) is True
     ):
         settle_terminal(
             task_id, status="completed", reason="recovery-run-terminal",
@@ -64,6 +65,25 @@ def _afregn_genoptaget_run(task_id: str, inner_run_id: str, *, generation: int) 
         ):
             logger.info("opgave %s givet tilbage efter %s; samme krav genbruges",
                         task_id, reason)
+    else:
+        logger.warning("opgave %s kan ikke afregnes endnu: run %s status=%s",
+                       task_id, inner_run_id, status or "mangler")
+
+
+def _hold_recovery_lease(task_id: str, generation: int, owner: str, stop) -> None:
+    """Hold et langt levende run claimet, indtil det selv afregner opgaven."""
+    from core.services.in_flight_runs import renew_recovery_lease
+
+    while not stop.wait(30.0):
+        try:
+            if not renew_recovery_lease(
+                task_id, generation, owner=owner, lease_seconds=120.0,
+            ):
+                logger.warning("opgave %s mistede sit recovery-lejemaal", task_id)
+                return
+        except Exception:
+            logger.warning("kunne ikke forny recovery-lejemaal for %s", task_id,
+                           exc_info=True)
 
 
 def start_user_run_detached(
@@ -158,6 +178,14 @@ def start_user_run_detached(
         import asyncio as _asyncio
 
         loop = _asyncio.new_event_loop()
+        lease_stop = threading.Event()
+        if recovery_task_id:
+            from core.services.in_flight_runs import current_owner
+            threading.Thread(
+                target=_hold_recovery_lease,
+                args=(recovery_task_id, recovery_generation, current_owner(), lease_stop),
+                name="jarvis-recovery-lease", daemon=True,
+            ).start()
 
         async def _consume() -> None:
             gen = translate_to_v2(
@@ -193,10 +221,6 @@ def start_user_run_detached(
                     await gen.aclose()  # -> _stream_visible_run finally -> unregister
                 except Exception:
                     pass
-                try:
-                    rel.mark_done(run_id)
-                except Exception:
-                    pass
                 # ── OPGAVEN LUKKES NÅR FORTSÆTTELSEN ER FÆRDIG ────────────
                 # Målt 17/9-2026 i produktionen: den samme opgave blev
                 # genoptaget TRE gange — 21:48:12, 21:50:13, 21:52:14 — og hver
@@ -219,6 +243,13 @@ def start_user_run_detached(
                     except Exception:
                         logger.warning("kunne ikke lukke opgave %s", recovery_task_id,
                                        exc_info=True)
+                # Frigiv først sessionen EFTER kravet er afregnet. Ellers kan
+                # dispatcheren se et udløbet krav og intet aktivt run i vinduet
+                # herimellem og starte samme betalte fortsættelse igen.
+                try:
+                    rel.mark_done(run_id)
+                except Exception:
+                    pass
                 # Ryd den globale active-visible-run-singleton for DENNE session.
                 # Den detached-sti er nu single-flight via run_event_log
                 # (claim_or_create), men start_visible_run's gamle globale slot
@@ -299,6 +330,7 @@ def start_user_run_detached(
             except Exception:
                 logger.warning("kunne ikke markere %s som done", run_id)
         finally:
+            lease_stop.set()
             loop.close()
 
     _ctx = _ctxvars.copy_context()

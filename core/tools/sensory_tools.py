@@ -115,8 +115,12 @@ SENSORY_TOOL_DEFINITIONS: list[dict[str, Any]] = [
                 "Use this when you see, hear, or sense something worth keeping. "
                 "Content should capture atmosphere and meaning, not just a flat "
                 "inventory. Mood tone is a short mood label (e.g. 'roligt', "
-                "'anspændt', 'varmt'). Metadata is free-form (source daemon, "
-                "location, luminosity, db level, etc.)."
+                "'anspændt', 'varmt'). Metadata is free-form ("
+                "location, luminosity, db level, etc.). `source` is normalised "
+                "to a fixed set of producers — pass the tool or routine that "
+                "produced the impression (e.g. 'look_around', 'mic_listen', "
+                "'natrutine', 'dybdesession'); anything unrecognised is kept "
+                "as 'ukendt' with the raw name preserved in 'source_raw'."
             ),
             "parameters": {
                 "type": "object",

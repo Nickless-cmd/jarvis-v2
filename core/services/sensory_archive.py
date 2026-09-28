@@ -21,6 +21,7 @@ from core.runtime.db_sensory import (
     list_sensory_memories,
     search_sensory_memories,
 )
+from core.services.sensory_source import normalize_metadata
 
 logger = logging.getLogger(__name__)
 
@@ -171,7 +172,10 @@ def _record(
         modality=modality,
         content=final_content,
         mood_tone=final_mood,
-        metadata=metadata or {},
+        # Kilden er fri tekst fra kalderen, og når kalderen er en rutine, opdigtes
+        # et nyt navn hver nat — målt 28/9-2026: 69 navne for ni kilder. Her er
+        # det ene punkt alle skrivninger går igennem, så her foldes navnet.
+        metadata=normalize_metadata(metadata),
     )
     try:
         event_bus.publish(

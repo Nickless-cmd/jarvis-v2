@@ -90,7 +90,10 @@ const MEMBER_CHOICES: ModelChoice[] = [
   { model: 'standard', providerChoice: '', label: 'Standard' },
   { model: 'pro', providerChoice: '', label: 'Pro' }
 ]
-const OWNER_DEFAULT: ModelChoice = { model: '', providerChoice: 'deepseek', label: 'Deepseek' }
+// Tom model = «serverens egen standard». Den er `visible_model_name`, maalt
+// 28/9-2026 til 'deepseek-v4-flash' — og kort-navnet for den er «V4 Flash».
+// Stod der «Deepseek» (provideren), fyldte det mere end modellen selv.
+const OWNER_DEFAULT: ModelChoice = { model: '', providerChoice: 'deepseek', label: 'V4 Flash' }
 
 interface ChatScreenProps {
   /** Stiger når TopBars menu-knap trykkes — åbner sidepanelet. */

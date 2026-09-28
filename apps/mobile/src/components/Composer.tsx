@@ -413,9 +413,10 @@ export function Composer({
                 accessibilityRole="button"
                 accessibilityLabel={`Tilladelser: ${permission === 'trust' ? 'Fuld adgang' : 'Spørg først'}`}
                 onPress={onPressPermission}
-                style={[styles.controlIcon, permission === 'trust' && styles.controlIconOn]}
+                hitSlop={6}
+                style={styles.controlIcon}
               >
-                <ShieldCheck size={18} color={permission === 'trust' ? tokens.color.bg0 : tokens.color.fg2} strokeWidth={2} />
+                <ShieldCheck size={18} color={permission === 'trust' ? tokens.color.accent : tokens.color.fg2} strokeWidth={2} />
               </Pressable>
             ) : null}
           </View>
@@ -577,15 +578,16 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
   // farve, og en chevron der siger at den kan aabnes. Bjørn 28/9-2026:
   // «model vælger icon skal laves om saa det ligner … tekst lige som desk».
   // Navnet maa ikke skubbe send-knappen ud, saa det forkortes med ellipsis.
+  // UDEN badge. Bjørn 28/9-2026: «fjern den grå badge rundt om model vælger».
+  // Fladen bagved gjorde teksten til en knap mellem to andre knapper — og
+  // navnet druknede i den. Diktafonen er kun et ikon; model-navnet er kun
+  // tekst. Højden bliver, så rækken står paa samme linje.
   modelPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
     maxWidth: 168,
-    paddingHorizontal: 10,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: tokens.color.bg3
+    height: 34
   },
   modelNavn: { color: tokens.color.fg1, fontSize: 13, flexShrink: 1 },
   modelTanke: { color: tokens.color.fg3, fontSize: 13 },
@@ -603,15 +605,15 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
     width: 44, height: 44, borderRadius: 22,
     alignItems: 'center', justifyContent: 'center'
   },
+  // UDEN badge — samme flade som diktafonen, se `modelPill`. Tilstanden
+  // baeres af ikonets FARVE i stedet for af en baggrund: fuld adgang giver
+  // accent-farve, «spørg først» lader ikonet staa i fg2.
   controlIcon: {
     width: 34,
     height: 34,
-    borderRadius: 17,
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: tokens.color.bg3
+    justifyContent: 'center'
   },
-  controlIconOn: { backgroundColor: tokens.color.accent },
   sendBtn: {
     width: 40,
     height: 40,
@@ -642,6 +644,7 @@ function ModelPille({ navn, tanke, onPress }: { navn: string; tanke?: string; on
       accessibilityRole="button"
       accessibilityLabel={`Model: ${navn}${tanke ? `, ${tanke}` : ''}`}
       onPress={onPress}
+      hitSlop={6}
       style={styles.modelPill}
     >
       <Text style={styles.modelNavn} numberOfLines={1}>{navn}</Text>

@@ -1,3 +1,4 @@
+import { StyleSheet } from 'react-native'
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native'
 import { Composer } from './Composer'
 
@@ -209,7 +210,30 @@ describe('Composer', () => {
     expect(onSend).toHaveBeenCalledWith('')
   })
 
-  it('viser permissions og model — research er flyttet til plus-menuen', async () => {
+  it('model-navnet og tilladelses-ikonet bærer ingen badge — kun tekst og ikon', async () => {
+  // Bjørn 28/9-2026: «fjern den grå badge rundt om model vælger ... Og det
+  // samme med permissions ikon fjern badge rundt om så det kun er ikon som
+  // diktator ikonet.» Begge havde `backgroundColor: bg3` + borderRadius 17 —
+  // en flade der gjorde dem til knapper ved siden af to andre knapper.
+  const screen = await render(
+    <Composer
+      onSend={jest.fn()}
+      onStop={jest.fn()}
+      modelLabel="V4 Flash"
+      onPressModel={jest.fn()}
+      permission="ask"
+      onPressPermission={jest.fn()}
+    />
+  )
+  await openComposer(screen)
+  for (const id of ['composer-model', 'composer-permission']) {
+    const stil = StyleSheet.flatten(screen.getByTestId(id).props.style) ?? {}
+    expect(stil.backgroundColor).toBeUndefined()
+    expect(stil.borderRadius).toBeUndefined()
+  }
+})
+
+it('viser permissions og model — research er flyttet til plus-menuen', async () => {
     const screen = await render(
       <Composer
         onSend={jest.fn()}

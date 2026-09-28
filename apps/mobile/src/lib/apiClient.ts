@@ -565,6 +565,23 @@ export async function setAccountLanguage(config: ApiConfig, language: string): P
   await apiFetch(config, '/account/language', { method: 'PATCH', body: { language } })
 }
 
+/**
+ * Kort model-navn til vælgeren — desks regel, ord for ord.
+ *
+ * «deepseek-v4-flash» fylder for meget ved siden af diktafonen. Desk viser
+ * «V4 Flash»: provider-præfikset væk, V-tallet i versal, bindestreger blevet
+ * mellemrum. Samme regel her, saa de to flader siger det samme ord om den
+ * samme model. Ollama bærer «:cloud» — det er ikke en del af navnet.
+ */
+export function kortModelNavn(provider: string, model: string): string {
+  return provider === 'deepseek'
+    ? model
+        .replace(/^deepseek-/, '')
+        .replace(/(^|-)v(\d+)/g, '$1V$2')
+        .replace(/-([a-z])/g, (_, c: string) => ` ${c.toUpperCase()}`)
+    : model.replace(':cloud', '')
+}
+
 export async function getModelOptions(config: ApiConfig): Promise<ModelOption[]> {
   // Owner-only endpoint; member/guest får 403 → tom liste (skjuler pillen).
   let raw: { providers?: VisibleProvider[] }
@@ -576,7 +593,7 @@ export async function getModelOptions(config: ApiConfig): Promise<ModelOption[]>
   const out: ModelOption[] = []
   for (const p of raw.providers ?? []) {
     for (const model of p.models ?? []) {
-      out.push({ provider: p.id, model, label: `${p.id} · ${model}` })
+      out.push({ provider: p.id, model, label: kortModelNavn(p.id, model) })
     }
   }
   return out

@@ -31,4 +31,10 @@ describe('KantFade', () => {
     expect(a.getByTestId('kantfade-topbar')).toBeTruthy()
     expect(b.getByTestId('kantfade-komponist')).toBeTruthy()
   })
+
+  it('forlaenger composer-faden opad og helt ned til bunden af dens boks', async () => {
+    const screen = await render(<KantFade retning="op" navn="komponist" over={56} />)
+    expect(screen.getByTestId('kantfade-ramme-komponist')).toHaveStyle({ top: -56, bottom: 0 })
+    expect(screen.getByTestId('kantfade-komponist')).toHaveProp('height', '100%')
+  })
 })

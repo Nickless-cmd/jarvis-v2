@@ -473,6 +473,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
   }, [working])
   const visibleRef = useRef(0)   // ordered-index øverst i viewport (inverted)
   const contentLenRef = useRef(0)
+  const aabnetTurRef = useRef<string | null>(null)
   // Stabil callback — RN kaster hvis onViewableItemsChanged ændrer identitet on-the-fly.
   // Hele det synlige spænd — sticky prompt skal vide om DIN besked er i syne.
   const [synlige, setSynlige] = useState<[number, number] | null>(null)
@@ -657,8 +658,14 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
   // funktion ved hver render ville få ALLE synlige bobler til at rendere om
   // ved hver stream-delta (samme fund som desk, 19/9-2026).
   const genSend = useSenesteFn((...a: Parameters<NonNullable<typeof onResend>>) => onResend?.(...a))
-  const toggleFor = useRaekkeFn((id) => setTurnOverrides((current) => ({ ...current,
-    [id]: !(current[id] ?? (id === 'stream' || visning === 'verbose')) })))
+  const toggleFor = useRaekkeFn((id) => {
+    const aaben = turnOverrides[id] ?? (id === 'stream' || visning === 'verbose')
+    // Listen er inverteret og fastholder normalt bunden. Indsatte arbejdsrækker
+    // skubber derfor headeren OP i viewporten. Naar den foldes ud, ankrer vi
+    // headeren efter ny layout, saa indholdet aabner NED under den.
+    aabnetTurRef.current = aaben ? null : id
+    setTurnOverrides((current) => ({ ...current, [id]: !aaben }))
+  })
   const rewindFor = useRaekkeFn((id) => onRewind?.(id))
   const pinFor = useRaekkeFn((id) => onTogglePin?.(id))
   // Rækkens EGEN besked — et afsnit af en tur har id'et `<id>-b<n>` og findes
@@ -798,7 +805,15 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
       // desk har dem — og der er derfor intet der flyder ovenover traaden.
       data={ordered}
       keyExtractor={(item) => item.key}
-      onContentSizeChange={(_w, h) => { contentLenRef.current = h }}
+      onContentSizeChange={(_w, h) => {
+        contentLenRef.current = h
+        const id = aabnetTurRef.current
+        if (!id) return
+        const index = ordered.findIndex((row) => row.kind === 'turn-header' && row.turnId === id && row.open)
+        if (index < 0) return
+        aabnetTurRef.current = null
+        flatRef.current?.scrollToIndex({ index, animated: true, viewPosition: 0.3 })
+      }}
       onScroll={onScrollOffset ? (e) => onScrollOffset(e.nativeEvent.contentOffset.y) : undefined}
       scrollEventThrottle={120}
       onViewableItemsChanged={onViewable}

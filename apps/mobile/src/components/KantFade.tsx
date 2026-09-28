@@ -1,4 +1,4 @@
-import { StyleSheet } from 'react-native'
+import { StyleSheet, View } from 'react-native'
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg'
 import { useTheme } from '../theme/ThemeContext'
 
@@ -77,26 +77,31 @@ export function KantFade({ retning, navn, over = 0 }: {
   // nedenunder arver den fulde stop-farve.
   const straek = over > 0 && !ned
   return (
-    <Svg
-      testID={`kantfade-${navn}`}
+    <View
+      testID={`kantfade-ramme-${navn}`}
       pointerEvents="none"
-      width="100%"
-      height="100%"
       style={straek ? [styles.lag, { top: -over }] : styles.lag}
     >
-      <Defs>
-        <LinearGradient
-          id={id}
-          x1="0" y1={straek ? 0 : '0%'}
-          x2="0" y2={straek ? over : '100%'}
-          gradientUnits={straek ? 'userSpaceOnUse' : 'objectBoundingBox'}
-        >
-          <Stop offset="0" stopColor={farve} stopOpacity={ned ? alpha : 0} />
-          <Stop offset="1" stopColor={farve} stopOpacity={ned ? 0 : alpha} />
-        </LinearGradient>
-      </Defs>
-      <Rect x="0" y="0" width="100%" height="100%" fill={`url(#${id})`} />
-    </Svg>
+      <Svg
+        testID={`kantfade-${navn}`}
+        pointerEvents="none"
+        width="100%"
+        height="100%"
+      >
+        <Defs>
+          <LinearGradient
+            id={id}
+            x1="0" y1={straek ? 0 : '0%'}
+            x2="0" y2={straek ? over : '100%'}
+            gradientUnits={straek ? 'userSpaceOnUse' : 'objectBoundingBox'}
+          >
+            <Stop offset="0" stopColor={farve} stopOpacity={ned ? alpha : 0} />
+            <Stop offset="1" stopColor={farve} stopOpacity={ned ? 0 : alpha} />
+          </LinearGradient>
+        </Defs>
+        <Rect x="0" y="0" width="100%" height="100%" fill={`url(#${id})`} />
+      </Svg>
+    </View>
   )
 }
 

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Animated, Dimensions, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg'
-import { Activity, Boxes, Code2, Eye, Image as ImageIcon, MessageCircle, MessageSquare, MessagesSquare, MoreVertical, Pin, Search, Settings, SlidersHorizontal, SquarePen, Terminal } from 'lucide-react-native'
+import { Activity, Boxes, Code2, Eye, Image as ImageIcon, MessageCircle, MessageSquare, MessagesSquare, MoreVertical, Pin, Search, SlidersHorizontal, SquarePen, Terminal } from 'lucide-react-native'
 import { formatRelativeDate } from '../lib/relativeDate'
 import { AnimeretPuls } from './AnimeretPuls'
 import { PulsIkon } from './PulsIkon'
@@ -18,7 +18,7 @@ const PANEL_WIDTH = Math.min(360, Math.round(Dimensions.get('window').width * 0.
 
 /**
  * Slide-in panel (åbnes via presence-ringen). Sessioner med søg + datoer,
- * "Ny samtale", og et tandhjul → Settings (hvor plugins/connectors + log ud
+ * "Ny samtale", og profil-badgen → Settings (hvor plugins/connectors + log ud
  * bor — spec §"Settings vs Plugins"). Lukker ved ring-tryk, valg, eller udenfor.
  */
 /** En raekke i panelet: ikon + navn. Erstatter de navnloese ikoner i toppen —
@@ -422,20 +422,6 @@ export function SidePanel({
             <TeamsPanel config={config} onSelectSession={onSelectSession} />
           </ScrollView>
 
-          {/* Indstillinger NEDERST. Den sad som et af seks ikoner i toppen, hvor
-              den konkurrerede med fem genveje man bruger oftere. Nederst er den
-              hvor man leder efter den — og fastlaast, saa den ikke ruller vaek. */}
-          <Pressable
-            testID="open-settings"
-            accessibilityRole="button"
-            accessibilityLabel={t('settings.title')}
-            onPress={onOpenSettings}
-            style={({ pressed }) => [styles.felt, styles.feltBund, pressed ? styles.pressed : null]}
-          >
-            <Settings size={17} color={tokens.color.fg2} strokeWidth={1.8} />
-            <Text style={styles.feltTekst}>{t('settings.title')}</Text>
-          </Pressable>
-
           {/* Bundlaget, målt på R4: en lilla pille med blyant + label i
               venstre side, og brugerens initial-cirkel til højre. Den flyder
               OVER listen frem for at ligge i den — så «ny samtale» altid er
@@ -450,9 +436,15 @@ export function SidePanel({
               <SquarePen size={18} color={tokens.color.bg0} strokeWidth={2} />
               <Text style={styles.fabText}>{t('side.newConversation')}</Text>
             </Pressable>
-            <View style={styles.avatar}>
+            <Pressable
+              testID="profile-settings"
+              accessibilityRole="button"
+              accessibilityLabel={t('settings.title')}
+              onPress={onOpenSettings}
+              style={({ pressed }) => [styles.avatar, pressed ? styles.pressed : null]}
+            >
               <Text style={styles.avatarText}>{initials}</Text>
-            </View>
+            </Pressable>
           </View>
         </Animated.View>
 
@@ -501,11 +493,6 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
   felt: {
     flexDirection: 'row', alignItems: 'center', gap: tokens.spacing.sm,
     paddingVertical: 10, paddingHorizontal: tokens.spacing.sm, borderRadius: 10,
-  },
-  feltBund: {
-    marginHorizontal: tokens.spacing.sm,
-    borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: tokens.color.bg2,
-    borderRadius: 0, paddingTop: 12,
   },
   feltTekst: { color: tokens.color.fg1, fontSize: 14, flexShrink: 1 },
   // Samme vaerdier som ActivityCenterScreen's egen `styles.badge` — tallet

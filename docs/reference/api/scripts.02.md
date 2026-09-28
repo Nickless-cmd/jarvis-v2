@@ -2,6 +2,18 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `scripts/interlanguage_drift_classifier.py`
+_Phase 3 supplementary — drift-feature classifier for jarvis vs random._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `load_peer_expressions` | `(peer)` | Pull all post-cleanup expressions for one peer, chronologically ordered. | [src](../../../scripts/interlanguage_drift_classifier.py#L60) |
+| function | `featurize_snapshot` | `(expressions)` | 19-dim: 5 op-freqs + 14 vocab-freqs (relative to total ops + total vocab). | [src](../../../scripts/interlanguage_drift_classifier.py#L89) |
+| function | `featurize_chunk` | `(chunk)` | Return (snapshot_19, drift_19) where drift = late_half - early_half. | [src](../../../scripts/interlanguage_drift_classifier.py#L106) |
+| function | `build_chunks_for_peer` | `(peer)` | Chunk expressions chronologically; return [(snapshot, drift), ...]. | [src](../../../scripts/interlanguage_drift_classifier.py#L119) |
+| function | `run` | `(allow_early)` | — | [src](../../../scripts/interlanguage_drift_classifier.py#L128) |
+| function | `main` | `()` | — | [src](../../../scripts/interlanguage_drift_classifier.py#L211) |
+
 ## `scripts/interlanguage_llm_judge.py`
 _LLM-judge for interlanguage validation — Phase 3+4 pre-registered design._
 
@@ -452,11 +464,4 @@ _Scan core/+apps/+scripts for THIRD-PARTY top-level imports (filter stdlib + fir
 | function | `scan` | `(repo=…)` | — | [src](../../../scripts/requirements_gen.py#L29) |
 | function | `third_party` | `(mods)` | — | [src](../../../scripts/requirements_gen.py#L40) |
 | function | `main` | `()` | — | [src](../../../scripts/requirements_gen.py#L46) |
-
-## `scripts/reset_heartbeat_state.py`
-_Reset heartbeat scheduler state when it gets stuck._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `main` | `()` | — | [src](../../../scripts/reset_heartbeat_state.py#L36) |
 

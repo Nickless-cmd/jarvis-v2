@@ -147,3 +147,122 @@ def test_cache_no_central_feed_when_idle(tmp_path, monkeypatch):
     monkeypatch.setattr(cc, "central", lambda: _FakeCentral())
     ct.record_visible_cache(run_id="r0", cache_hit=0, cache_miss=0)
     assert observed == []
+
+
+# ── Ét aftryk pr. besked (28/9-2026) ─────────────────────────────────────────
+#
+# Hittet faldt fra 148.352 til 67.840 mellem runde 11 og 12 i ét synligt run og
+# blev haengende dér i fem runder. system_sha, tools_sha og tail_sha var
+# uaendrede hele vejen — bruddet laa inde i samtalen, hvor der ingen maaler var.
+#
+# `msg_shas` gør brudstedet til en simpel ting: den foerste plads hvor to
+# runder er uenige. Summen af `msg_lens` foer den plads er hvor langt cachen
+# kunne naa.
+
+
+def _faelles(a, b):
+    n = 0
+    for x, y in zip(a, b):
+        if x != y:
+            break
+        n += 1
+    return n
+
+
+def test_ren_tilfoejelse_giver_et_helt_faelles_praefiks():
+    """Den normale runde: samtalen vokser bagi, intet skrives om."""
+    base = [{"role": "system", "content": "id"}, {"role": "user", "content": "et"}]
+    foer = ct.component_signatures(base, [])
+    efter = ct.component_signatures([*base, {"role": "assistant", "content": "svar"}], [])
+    assert _faelles(foer["msg_shas"], efter["msg_shas"]) == len(foer["msg_shas"])
+    assert efter["msg_count"] == 3
+
+
+def test_en_omskrevet_besked_MIDT_i_samtalen_peger_paa_sin_egen_plads():
+    """Det er hele formaalet: bruddet skal kunne stedfaestes."""
+    foer_msgs = [{"role": "system", "content": "id"}] + [
+        {"role": "user", "content": f"tur {i}"} for i in range(6)]
+    efter_msgs = list(foer_msgs)
+    efter_msgs[3] = {"role": "user", "content": "tur 2 OMSKREVET"}
+    foer = ct.component_signatures(foer_msgs, [])
+    efter = ct.component_signatures(efter_msgs, [])
+    assert foer["system_sha"] == efter["system_sha"], "systemdelen skal vaere uroert"
+    assert foer["tools_sha"] == efter["tools_sha"]
+    assert _faelles(foer["msg_shas"], efter["msg_shas"]) == 3
+
+
+def test_stabile_tegn_taelles_frem_til_bruddet():
+    """Tallet skal kunne holdes op mod det hit udbyderen rapporterer.
+
+    Det maa altsaa foelge den FAKTISKE stoerrelse. En konstant pr. besked ville
+    give et pænt tal der intet betyder — og bruddet ville se lige dyrt ud
+    uanset hvor meget tekst der laa foran det.
+    """
+    msgs = [{"role": "user", "content": "x" * 100} for _ in range(4)]
+    msgs[1] = {"role": "user", "content": "x" * 900}     # én er ni gange saa stor
+    sig = ct.component_signatures(msgs, [])
+    aendret = list(msgs); aendret[2] = {"role": "user", "content": "y" * 100}
+    k = _faelles(sig["msg_shas"], ct.component_signatures(aendret, [])["msg_shas"])
+    assert k == 2
+    # Serialiseringen baerer ogsaa rolle og tegnsaetning, saa laengden er lidt
+    # over indholdet — men den skal foelge det, ikke vaere et fast tal.
+    assert sig["msg_lens"][1] > 900
+    # Praecis forskellen mellem de to indhold. Et fast tal pr. besked ville
+    # give 0 her; et loest "stoerre end"-forhold ville slippe det igennem.
+    assert sig["msg_lens"][1] - sig["msg_lens"][0] == 800
+    assert sum(sig["msg_lens"][:k]) > 1000
+
+
+def test_noeglernes_raekkefoelge_maa_ikke_aendre_aftrykket():
+    """Samme besked, bygget i en anden raekkefoelge, er SAMME besked.
+
+    Uden `sort_keys` ville et harmloest skift i hvordan dict'en blev bygget se
+    ud som et cache-brud — og vi ville jage et spoegelse.
+    """
+    a = [{"role": "assistant", "content": "svar", "name": "jarvis"}]
+    b = [{"name": "jarvis", "content": "svar", "role": "assistant"}]
+    assert ct.component_signatures(a, [])["msg_shas"] == ct.component_signatures(b, [])["msg_shas"]
+
+
+def test_en_aendring_i_tool_calls_er_OGSAA_et_brud():
+    """Kun `content` ville vaere blindt her — og et skift i tool_calls braekker
+    cachen praecis lige saa haardt som et skift i teksten."""
+    a = [{"role": "assistant", "content": "", "tool_calls": [{"id": "1", "name": "read_file"}]}]
+    b = [{"role": "assistant", "content": "", "tool_calls": [{"id": "2", "name": "read_file"}]}]
+    assert ct.component_signatures(a, [])["msg_shas"] != ct.component_signatures(b, [])["msg_shas"]
+
+
+def test_naevner_aldrig_indholdet():
+    """Telemetri, ikke en kopi af samtalen."""
+    sig = ct.component_signatures(
+        [{"role": "user", "content": "hemmelig sætning"}], [])
+    assert "hemmelig" not in str(sig)
+    assert all(len(h) == 6 for h in sig["msg_shas"])
+
+
+def test_loftet_afkorter_listen_men_roeber_det():
+    """En afkortet liste maa ALDRIG kunne laeses som en hel — saa ville et brud
+    ude i halen se ud som en ren tilfoejelse."""
+    n = ct._MSG_MAX + 25
+    sig = ct.component_signatures([{"role": "user", "content": str(i)} for i in range(n)], [])
+    assert len(sig["msg_shas"]) == ct._MSG_MAX
+    assert sig["msg_count"] == n
+
+
+def test_userialiserbart_indhold_vaelter_ikke_maaleren():
+    """Telemetri maa aldrig kaste ind i stream-stien."""
+    class Umulig:
+        pass
+    sig = ct.component_signatures([{"role": "user", "content": Umulig()}], [])
+    assert len(sig["msg_shas"]) == 1
+
+
+def test_linjen_baerer_besked_aftrykkene_videre(tmp_path, monkeypatch):
+    """Felterne skal helt ud i loggen — ellers maaler scriptet paa ingenting."""
+    monkeypatch.setenv("JARVIS_HOME", str(tmp_path))
+    ct.record_visible_cache(run_id="r", round_index=3, cache_hit=10, cache_miss=5,
+                            msg_shas=["aaaaaa", "bbbbbb"], msg_lens=[12, 34], msg_count=2)
+    linje = json.loads((tmp_path / "logs" / "cache_telemetry.jsonl").read_text().splitlines()[-1])
+    assert linje["msg_shas"] == ["aaaaaa", "bbbbbb"]
+    assert linje["msg_lens"] == [12, 34]
+    assert linje["msg_count"] == 2

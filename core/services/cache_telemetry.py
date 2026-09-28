@@ -38,6 +38,54 @@ def prefix_signature(system_content: str, tools: Any) -> tuple[str, int]:
         return "", 0
 
 
+#: Hvor mange beskeder vi signerer pr. linje. En lang agentisk tur kan have
+# hundredvis; ved 600 er vi paa ~8 KB ekstra pr. event, og `msg_count` roeber
+# hvis loftet ramte, saa en afkortet liste aldrig laeses som en hel.
+_MSG_MAX = 600
+
+#: Kort nok til at vaere billigt, langt nok til at en positionsvis
+# sammenligning ikke kolliderer (1 ud af 16 mio. pr. plads).
+_MSG_SHA_LEN = 6
+
+
+def message_signatures(messages: list[dict[str, Any]]) -> tuple[list[str], list[int], int]:
+    """Ét fingeraftryk og én laengde pr. besked, i den raekkefoelge de sendes.
+
+    ## Hvorfor beskeder og ikke bare system+hale
+
+    Praefiks-cachen matcher paa hele besked-arrayet. Da hittet faldt fra
+    148.352 til 67.840 i runde 12 af ét run (28/9-2026), laa bruddet **dybt
+    inde i samtalen** — system_sha og tools_sha var uaendrede, saa de
+    eksisterende felter kunne ikke pege paa noget. Med ét aftryk pr. besked er
+    braeddet bare den foerste plads hvor to runder er uenige, og summen af
+    laengderne foer den plads er omtrent hvor mange tegn cachen naaede.
+
+    Hele beskeden serialiseres, ikke kun `content`: en aendring i `tool_calls`
+    eller `tool_call_id` braekker cachen praecis lige saa haardt, og ville
+    vaere usynlig hvis vi kun saa paa teksten.
+
+    Kun aftryk og tal — aldrig indhold. Det er telemetri, ikke en kopi af
+    samtalen.
+    """
+    shas: list[str] = []
+    lens: list[int] = []
+    if not isinstance(messages, (list, tuple)):
+        return [], [], 0
+    for i_alt, message in enumerate(messages, start=1):
+        if len(shas) >= _MSG_MAX:
+            continue
+        try:
+            blob = json.dumps(message, sort_keys=True, ensure_ascii=False, default=str)
+        except (TypeError, ValueError):
+            # Et userialiserbart felt maa ikke koste os hele linjen. `str()`
+            # er stabilt nok til at opdage en aendring, og alternativet — at
+            # tabe maalingen — er praecis det vi forsoeger at raade bod paa.
+            blob = str(message)
+        shas.append(hashlib.sha256(blob.encode("utf-8", "replace")).hexdigest()[:_MSG_SHA_LEN])
+        lens.append(len(blob))
+    return shas, lens, len(messages)
+
+
 def component_signatures(messages: list[dict[str, Any]], tools: Any) -> dict[str, str | int | list[str]]:
     """Fingerprint prompt regions separately, without recording their contents.
 
@@ -62,11 +110,13 @@ def component_signatures(messages: list[dict[str, Any]], tools: Any) -> dict[str
     def digest(value: str) -> str:
         return hashlib.sha256(value.encode("utf-8", "replace")).hexdigest()[:16] if value else ""
 
+    msg_shas, msg_lens, msg_count = message_signatures(messages)
     return {
         "system_sha": digest(system), "system_len": len(system),
         "system_chunks": [digest(system[i:i + 1024]) for i in range(0, len(system), 1024)],
         "tools_sha": digest(tools_text), "tools_len": len(tools_text),
         "tail_sha": digest(tail), "tail_len": len(tail),
+        "msg_shas": msg_shas, "msg_lens": msg_lens, "msg_count": msg_count,
     }
 
 
@@ -90,6 +140,9 @@ def record_visible_cache(
     tools_len: int = 0,
     tail_len: int = 0,
     system_chunks: list[str] | None = None,
+    msg_shas: list[str] | None = None,
+    msg_lens: list[int] | None = None,
+    msg_count: int = 0,
 ) -> None:
     """Append én telemetri-linje. Self-safe (sluger alt)."""
     try:
@@ -118,6 +171,9 @@ def record_visible_cache(
             "system_chunks": list(system_chunks or []),
             "tools_len": int(tools_len),
             "tail_len": int(tail_len),
+            "msg_shas": list(msg_shas or []),
+            "msg_lens": [int(n) for n in (msg_lens or [])],
+            "msg_count": int(msg_count),
             "hit": int(cache_hit),
             "miss": int(cache_miss),
             "pct": round(100.0 * int(cache_hit) / _in, 1) if _in else 0.0,

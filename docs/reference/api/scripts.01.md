@@ -105,6 +105,15 @@ _One-off: cap runaway salience_bumps in Jarvis' brain (memory repair 2026-09-04,
 | function | `reset_salience_bumps` | `(*, cap=…, apply=…)` | Cap ``salience_bumps`` at ``cap`` for every entry above it. | [src](../../../scripts/brain_salience_reset.py#L21) |
 | function | `main` | `()` | — | [src](../../../scripts/brain_salience_reset.py#L65) |
 
+## `scripts/cache_break_report.py`
+_Hvor braekker praefiks-cachen — og hvilken besked gjorde det?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_faelles_praefiks` | `(a, b)` | — | [src](../../../scripts/cache_break_report.py#L35) |
+| function | `_hent` | `(skaer)` | — | [src](../../../scripts/cache_break_report.py#L44) |
+| function | `main` | `()` | — | [src](../../../scripts/cache_break_report.py#L69) |
+
 ## `scripts/cache_rate_monitor.py`
 _Cache hit rate monitor._
 
@@ -423,16 +432,4 @@ _Interim Phase 3 classifier — pre-registered method, partial data._
 | function | `featurize` | `(rows, embedder)` | — | [src](../../../scripts/interlanguage_classifier_interim.py#L101) |
 | function | `permutation_p` | `(clf_template, X_train, y_train, X_test, y_test, observed_acc, n=…)` | — | [src](../../../scripts/interlanguage_classifier_interim.py#L118) |
 | function | `main` | `()` | — | [src](../../../scripts/interlanguage_classifier_interim.py#L136) |
-
-## `scripts/interlanguage_drift_classifier.py`
-_Phase 3 supplementary — drift-feature classifier for jarvis vs random._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `load_peer_expressions` | `(peer)` | Pull all post-cleanup expressions for one peer, chronologically ordered. | [src](../../../scripts/interlanguage_drift_classifier.py#L60) |
-| function | `featurize_snapshot` | `(expressions)` | 19-dim: 5 op-freqs + 14 vocab-freqs (relative to total ops + total vocab). | [src](../../../scripts/interlanguage_drift_classifier.py#L89) |
-| function | `featurize_chunk` | `(chunk)` | Return (snapshot_19, drift_19) where drift = late_half - early_half. | [src](../../../scripts/interlanguage_drift_classifier.py#L106) |
-| function | `build_chunks_for_peer` | `(peer)` | Chunk expressions chronologically; return [(snapshot, drift), ...]. | [src](../../../scripts/interlanguage_drift_classifier.py#L119) |
-| function | `run` | `(allow_early)` | — | [src](../../../scripts/interlanguage_drift_classifier.py#L128) |
-| function | `main` | `()` | — | [src](../../../scripts/interlanguage_drift_classifier.py#L211) |
 

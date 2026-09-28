@@ -19,6 +19,7 @@ import { useKeyboardHeight } from '../lib/useKeyboardHeight'
 import { useConnectivity } from '../lib/useConnectivity'
 import { ApprovalCard } from '../components/ApprovalCard'
 import { Composer } from '../components/Composer'
+import { KantFade } from '../components/KantFade'
 import { ResearchStatus } from '../components/ResearchStatus'
 import { useVoiceConversation } from '../lib/useVoiceConversation'
 import { useComposerDictation } from '../lib/useComposerDictation'
@@ -1233,6 +1234,11 @@ export function ChatScreen({
             setComposerHeight((prev) => (Math.abs(prev - h) > 1 ? h : prev))
           }}
         >
+        {/* Tråden toner UD ned mod komponisten i stedet for at blive klippet af
+            en flad kant. Bjørn 28/9-2026: «fade både ved composer og header».
+            Fladen var scrim som en FLAD baggrund; den er nu gradienten her —
+            transparent foroven, fuld forneden, så bunden stadig dækker. */}
+        <KantFade retning="op" navn="komponist" />
         <ResearchStatus research={stream.state.research} />
         <KodeLaastBanner vis={kodeLaast} />
         <TilbagespolBanner
@@ -1598,9 +1604,11 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
     // bagved, men fortsatte forbi den flade der skulle dække den.
     paddingBottom: 16,
     zIndex: 5,
-    // Samme halvgennemsigtige flade som TopBar. Uden den lækkede tråden ud
-    // NEDEN UNDER komponisten i skærmens sidste par millimeter — teksten
-    // rullede korrekt bagved, men fortsatte forbi pillens underkant.
-    backgroundColor: tokens.color.scrim
+    // INGEN baggrundsfarve her. Den halvgennemsigtige flade ligger i
+    // <KantFade> som en GRADIENT — transparent foroven, fuld scrim forneden.
+    // Bunden er dermed stadig dækket (tråden må ikke lække ud i gestus-zonen
+    // nedenfor), men overkanten toner ud i stedet for at begynde ved en streg.
+    // Som en flad farve gav den en skarp kant, fordi baggrunden selv er sort:
+    // 72 % sort oven på sort er stadig sort. Bjørn 28/9-2026.
   }
 })

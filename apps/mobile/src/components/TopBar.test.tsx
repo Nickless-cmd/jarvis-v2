@@ -11,6 +11,14 @@ const base = {
 
 beforeEach(() => jest.clearAllMocks())
 
+it('baerer en blod fade i stedet for en flad scrim-baggrund', async () => {
+  // Bjørn 28/9-2026: «det er så tidligt man se kanten». Fladen var en FLAD
+  // scrim-baggrund, og over en sort baggrund gav den en skarp vandret streg.
+  // Faden skal vaere der — forsvinder den, er kanten tilbage.
+  const screen = await render(<TopBar {...base} />)
+  expect(screen.getByTestId('kantfade-topbar')).toBeTruthy()
+})
+
 it('skifter tilstand via segmented control', async () => {
   const screen = await render(<TopBar {...base} />)
   await fireEvent.press(screen.getByLabelText('Arbejde'))

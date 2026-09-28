@@ -162,6 +162,26 @@ android {
             def enablePngCrunchInRelease = findProperty('android.enablePngCrunchInReleaseBuilds') ?: 'true'
             crunchPngs enablePngCrunchInRelease.toBoolean()
         }
+
+        // Play-variant (28/9-2026). Samme app og samme pakkenavn — men uden de
+        // tilladelser Google Play afviser: baggrundslokation (#6) og appens
+        // EGEN opdaterings-mekanisme (REQUEST_INSTALL_PACKAGES +
+        // SYSTEM_ALERT_WINDOW). Begge er bygget til sideload, hvor de er
+        // noedvendige; Play forbyder dem og haandterer selv opdateringer.
+        //
+        // Sideload-vejen er UROERT: `assembleRelease` bygger praecis som foer,
+        // og det er den APK telefonen faar. Play-bygget laves separat:
+        //
+        //   ./gradlew :app:assemblePlayRelease -PreactNativeArchitectures=arm64-v8a
+        //   ./gradlew :app:bundlePlayRelease -PreactNativeArchitectures=arm64-v8a
+        //
+        // `initWith release` arver signering, minify og proguard. Uden
+        // matchingFallbacks fejler konfigurationen, fordi bibliotekerne kun
+        // kender debug/release.
+        play {
+            initWith release
+            matchingFallbacks = ['release']
+        }
     }
     packagingOptions {
         jniLibs {

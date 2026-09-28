@@ -1,0 +1,23 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+          xmlns:tools="http://schemas.android.com/tools">
+
+  <!-- Play-varianten (28/9-2026). Denne fil merges KUN ind i `play`-bygget;
+       `release` (sideload) er uberoert og beholder alle tilladelser.
+
+       `tools:node="remove"` fjerner noden efter merger — ogsaa naar den kommer
+       fra en andens manifest (expo-location erklærer selv baggrundslokationens
+       <service>, og hovedmanifestet erklærer tilladelserne). Uden `remove`
+       ville merger'en bare lægge dem sammen.
+
+       Konsekvens for brugeren i Play-bygget:
+       · Baggrundslokation kan ikke slaaes til. `requestBackgroundPermissionsAsync()`
+         returnerer ikke «granted», og backgroundLocation.ts falder tilbage til
+         forgrunds-ping (den har allerede den gren).
+       · Appen kan ikke laengere opdatere sig selv — Play tager over. -->
+  <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION"
+                   tools:node="remove"/>
+  <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"
+                   tools:node="remove"/>
+  <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"
+                   tools:node="remove"/>
+</manifest>

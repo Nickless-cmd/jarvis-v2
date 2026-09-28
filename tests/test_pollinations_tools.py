@@ -156,3 +156,94 @@ def test_videoen_baerer_sit_kald_id_saa_den_lander_rigtigt(monkeypatch):
     monkeypatch.setattr(F, "note", lambda t, **kw: noter.append(kw))
     P._exec_pollinations_video({"prompt": "x", "_runtime_tool_use_id": "call_42"})
     assert noter[0]["tool_use_id"] == "call_42"
+
+
+# ── Video-redigering (28/9-2026) ────────────────────────────────────────────
+#
+# Kapabiliteten FINDES: pollinations' video-endpoint tager `reference_videos`
+# («public HTTP(S) video URLs for motion or style guidance»), og fem af nitten
+# video-modeller oplyser evnen i deres `video_capabilities`.
+#
+# Men ordet er **public**. Udbyderen henter selv videoen. Jarvis' egne filer
+# ligger bag /attachments/ og /files/, som begge svarede 401 uden token da det
+# blev maalt paa CT105. Derfor kan vaerktoejet redigere en video fra nettet,
+# men ikke en han lige har lavet — og det skal det SIGE, ikke gaette.
+
+
+def test_en_lokal_sti_afvises_med_en_forklaring():
+    """Sendte vi stien alligevel, ville udbyderen faa 401 og svare med en HELT
+    ny video der intet havde med originalen at goere. Det ligner et resultat."""
+    ud = P.edit_video(prompt="gør den blå", video_url="/home/bs/klip.mp4")
+    assert ud["status"] == "error"
+    assert "public" in ud["text"].lower() or "OFFENTLIG" in ud["text"]
+
+
+def test_en_attachments_adresse_afvises_ogsaa():
+    ud = P.edit_video(prompt="x", video_url="/attachments/media/aid-1")
+    assert ud["status"] == "error"
+
+
+def test_uden_video_url_er_der_intet_at_redigere():
+    assert P.edit_video(prompt="x", video_url="")["status"] == "error"
+
+
+def test_en_offentlig_url_naar_frem_til_udbyderen(monkeypatch):
+    fanget: dict = {}
+    monkeypatch.setattr(P, "_hent_video",
+                        lambda **kw: fanget.update(kw) or _ok_video())
+    monkeypatch.setattr(P, "_api_key", lambda: "n")
+    P.edit_video(prompt="gør den blå", video_url="https://example.com/k.mp4")
+    assert "reference_videos=https%3A%2F%2Fexample.com%2Fk.mp4" in fanget["url"]
+
+
+def test_kun_modeller_der_FAKTISK_kan_video_til_video(monkeypatch):
+    """De oevrige fjorten ignorerer `reference_videos` TAVST og returnerer en
+    ny video. En tavs ignorering er vaerre end en fejl — den ligner et svar."""
+    fanget: dict = {}
+    monkeypatch.setattr(P, "_hent_video", lambda **kw: fanget.update(kw) or _ok_video())
+    monkeypatch.setattr(P, "_api_key", lambda: "n")
+    for duer_ikke in ("wan-fast", "veo", "nova-reel", "p-video"):
+        P.edit_video(prompt="x", video_url="https://e.com/k.mp4", model=duer_ikke)
+        assert fanget["model"] == P._DEFAULT_VIDEO_EDIT_MODEL, duer_ikke
+    for duer in P._VIDEO_EDIT_MODELS:
+        P.edit_video(prompt="x", video_url="https://e.com/k.mp4", model=duer)
+        assert fanget["model"] == duer
+
+
+def test_en_redigeret_video_registreres_som_enhver_anden(monkeypatch, fanget):
+    """Den skal i traaden paa samme maade — ellers er den lige saa usynlig som
+    en genereret video var foer i dag."""
+    monkeypatch.setattr(P, "_api_key", lambda: "n")
+    monkeypatch.setattr(P, "_hent_video", lambda **kw: _ok_video())
+    ud = P._exec_pollinations_video_edit({
+        "prompt": "gør den blå", "video_url": "https://e.com/k.mp4",
+        "_runtime_turn_id": "turn-9", "_runtime_tool_use_id": "call_9",
+    })
+    assert ud["status"] == "ok" and ud["attachment_id"] == "aid-video-1"
+    assert fanget["note"]["tool_use_id"] == "call_9"
+    assert fanget["register"]["mime_type"] == "video/mp4"
+    assert "edited" in ud["text"].lower()
+
+
+def test_uden_api_noegle_siger_den_det(monkeypatch):
+    monkeypatch.setattr(P, "_api_key", lambda: "")
+    ud = P.edit_video(prompt="x", video_url="https://e.com/k.mp4")
+    assert ud["status"] == "error" and "api_key" in ud["text"]
+
+
+def test_vaerktoejet_er_REGISTRERET_saa_han_kan_kalde_det():
+    """Et vaerktoej ingen kan kalde er en funktion, ikke en kapabilitet."""
+    from core.tools.simple_tools import _TOOL_HANDLERS
+    assert "pollinations_video_edit" in _TOOL_HANDLERS
+    navne = [d["function"]["name"] for d in P.POLLINATIONS_TOOL_DEFINITIONS]
+    assert "pollinations_video_edit" in navne
+
+
+def test_beskrivelsen_ADVARER_om_graensen():
+    """Modellen laeser kun beskrivelsen. Staar graensen der ikke, vil den
+    proeve med sin egen fil og faa noget der ligner et svar."""
+    d = next(x for x in P.POLLINATIONS_TOOL_DEFINITIONS
+             if x["function"]["name"] == "pollinations_video_edit")
+    besk = d["function"]["description"].lower()
+    assert "public" in besk
+    assert "cannot" in besk or "not" in besk

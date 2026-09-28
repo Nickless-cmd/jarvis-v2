@@ -54,6 +54,7 @@ from core.tools.pollinations_tools import (
     POLLINATIONS_TOOL_DEFINITIONS,
     _exec_pollinations_image,
     _exec_pollinations_video,
+    _exec_pollinations_video_edit,
 )
 from core.tools.openrouter_image_tools import (
     OPENROUTER_IMAGE_TOOL_DEFINITIONS,
@@ -1646,6 +1647,7 @@ _TOOL_HANDLERS: dict[str, Any] = {
     # Pollinations.ai free image gen (no RAM, no auth)
     "pollinations_image": _exec_pollinations_image,
     "pollinations_video": _exec_pollinations_video,
+    "pollinations_video_edit": _exec_pollinations_video_edit,
     # OpenRouter paid image gen + edit (Gemini draws — sharp, vector-like)
     "openrouter_image": _exec_openrouter_image,
     "openrouter_image_edit": _exec_openrouter_image_edit,

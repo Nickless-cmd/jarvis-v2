@@ -1,6 +1,6 @@
 # CAPABILITIES
 
-> Generated 2026-09-28 — 485 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
+> Generated 2026-09-28 — 486 tools (8 mutating). Regenerate: `python scripts/capabilities_gen.py`. DO NOT hand-edit.
 
 | Tool | Kind | Mutating |
 |---|---|---|
@@ -266,6 +266,7 @@
 | `pin_identity` | native | no |
 | `pollinations_image` | native | no |
 | `pollinations_video` | native | no |
+| `pollinations_video_edit` | native | no |
 | `predict_outcome` | native | no |
 | `process_list` | native | no |
 | `process_remove` | native | no |

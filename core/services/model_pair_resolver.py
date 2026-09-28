@@ -55,6 +55,46 @@ def _nulstil_cache_for_tests() -> None:
     _cache.clear()
 
 
+def _chat_ollama_base_url() -> str:
+    """CHAT-ollamaens adresse — ikke embeddings'.
+
+    Her stod `semantic_memory._ollama_base_url()`, og den peger med vilje på
+    den DEDIKEREDE EMBED-vaert (`embed_ollama_base_url`): recall maa ikke
+    konkurrere med det synlige svar om GPU-ollamaen. Den vaert har kun
+    `nomic-embed-text` — den skal ikke have andet.
+
+    Saa spurgte modelspoergsmaalet «findes deepseek-v4.1-flash:cloud?» en
+    instans der pr. design aldrig har chat-modeller. Svaret var altid nej.
+
+    Maalt 28/9-2026 kl. 18:43, da Bjoern skrev til Jarvis:
+
+        visible-run afvist: ollama/deepseek-v4.1-flash:cloud findes ikke.
+        ollama har: nomic-embed-text:latest
+
+    Det gjaldt ALLE ollama-modeller, ikke kun den ene — ogsaa `glm-5.2:cloud`,
+    som han havde brugt hele dagen. Fejlen laa der i forvejen; den blev synlig
+    da embed-instansen blev opgraderet og begyndte at svare rent paa
+    `/api/tags` i stedet for at fejle (og en fejl lod parret gaa).
+
+    Adressen tages fra provider-registrets `ollama`-post — samme kilde som
+    `visible_model` bruger naar den FAKTISK kalder modellen. Uden det ville
+    tjekket og kaldet kunne pege to forskellige steder hen, hvilket er
+    praecis det her.
+    """
+    try:
+        from core.runtime.provider_router import (
+            _provider_base_url, load_provider_router_registry,
+        )
+        base = _provider_base_url(
+            provider="ollama", registry=load_provider_router_registry())
+        if base:
+            return str(base).rstrip("/")
+    except Exception:
+        logger.warning("model_pair_resolver: kunne ikke laese ollamas base_url",
+                       exc_info=True)
+    return "http://127.0.0.1:11434"
+
+
 def _ollama_modeller(base_url: str | None = None) -> list[str] | None:
     """Ollamas modelnavne. `None` betyder «kunne ikke spørge», ikke «tom»."""
     now = time.monotonic()
@@ -64,8 +104,7 @@ def _ollama_modeller(base_url: str | None = None) -> list[str] | None:
         return hit[1]
     try:
         import httpx
-        from core.services.semantic_memory import _ollama_base_url
-        base = base_url or _ollama_base_url()
+        base = base_url or _chat_ollama_base_url()
         data = httpx.get(f"{base}/api/tags", timeout=5.0).json()
         navne = [str(m.get("name") or "") for m in (data.get("models") or [])]
         navne = [n for n in navne if n]

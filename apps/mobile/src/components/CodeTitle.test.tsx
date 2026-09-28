@@ -64,3 +64,24 @@ it('UDEN git-status er der ingen kontekstlinje', async () => {
   expect(screen.queryByTestId('link-ok')).toBeNull()
   expect(screen.getByText('x')).toBeTruthy()
 })
+
+it('titel-pillen har et BREDDE-loft — den maa ikke vokse med navnet', async () => {
+  // Bjoern 28/9-2026: «i header feltet(badge) der holder session navn skal
+  // have en fast stoerrelse. Ikke stoerre end feltet(badge) i hoejre side af
+  // header». Hoejden var laast siden 12/9; det var BREDDEN der loeb — maalt
+  // 229 dp mod hoejre pilles 106. Uden loftet skubber et langt navn bjaelken.
+  const { StyleSheet } = require('react-native')
+  const lang = 'Hvad er den samlet status paa cheaplane og hvordan ser det ud'
+  const screen = await render(<CodeTitle titel={lang} git={g()} />)
+  const flad = StyleSheet.flatten(screen.getByTestId('code-titel').props.style)
+  expect(flad.maxWidth).toBe(106)
+})
+
+it('loftet er det SAMME tal som hoejre felt — ikke et der kan drive', () => {
+  // Et tal skrevet to steder passer kun indtil nogen aendrer det ene. Samme
+  // regel som for hoejden: begge skal laeses fra badgeGeometri.
+  const fs = require('fs'); const path = require('path')
+  const l = (f: string) => fs.readFileSync(path.join(__dirname, f), 'utf8')
+  expect(l('CodeTitle.tsx')).toMatch(/maxWidth: BADGE_MAKS_B/)
+  expect(l('badgeGeometri.ts')).toMatch(/export const BADGE_MAKS_B = 106/)
+})

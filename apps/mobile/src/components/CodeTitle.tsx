@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { FolderGit2, Monitor } from 'lucide-react-native'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
-import { BADGE_H } from './badgeGeometri'
+import { BADGE_H, BADGE_MAKS_B } from './badgeGeometri'
 import type { GitStatus } from '../lib/apiClient'
 
 /**
@@ -97,6 +97,11 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
     // sig selv frem for at skubbe hoejre felt ud over skaermkanten.
     flexShrink: 1,
     minWidth: 0,
+    // ... og den maa ikke blive BREDERE end hoejre felt. Bjoern 28/9-2026:
+    // «ikke stoerre end feltet i hoejre side af header». Uden loftet voksede
+    // et langt session-navn frit — maalt 229 dp mod hoejre pilles 106 — og
+    // dominerede hele bjaelken. Se badgeGeometri for hvor tallet kommer fra.
+    maxWidth: BADGE_MAKS_B,
     ...tokens.elevation,
   },
   // Faste linjehoejder: uden dem afhaenger indholdets hoejde af systemets

@@ -39,8 +39,25 @@ Play spørger for hver kategori: **indsamles?** · **deles med tredjepart?** ·
 ### Bemærkninger til de enkelte svar
 
 **Placering (begge).** Kræver at brugeren aktivt slår det til. Baggrundsplacering
-er en separat tilladelse, der skal bekræftes særskilt af Android. Data forlader
-ikke brugerens eget setup — «deles» = Nej.
+er en separat tilladelse, der skal bekræftes særskilt af Android.
+
+**⚠️ «Deles» er ikke entydigt «Nej» — rettet 28/9-2026.** `reverseLabel()` i
+`apps/mobile/src/lib/location.ts` sender de præcise koordinater til
+**OpenStreetMap (Nominatim)** for at lave dem om til et stednavn. Det er en
+tredjepart, og den var ikke erklæret nogen steder før 28/9.
+
+To mulige svar, og valget er ikke mit:
+
+- **«Deles = Ja»** — det mest forsigtige og det mest sandfærdige, hvis man læser
+  «overførsel til en tredjepart» bogstaveligt. Koordinaterne forlader opsætningen.
+- **«Deles = Nej»** — forsvar­bart *kun* hvis man holder på, at Nominatim er en
+  opslags-tjeneste der behandler koordinaten på forespørgslen og ikke gemmer den
+  som brugerdata. Google skelner mellem tredjeparter og serviceudbydere, men
+  Nominatim er hverken kontraktbundet eller en udbyder — den er et offentligt gode.
+
+**Anbefaling:** svar **Ja**, og nævn at det kun sker når placering er slået til.
+Alternativet — at fjerne tredjeparten helt ved at flytte reverse-geokodningen til
+brugerens egen server — er den reneste løsning, men det er en kodeændring.
 
 **Beskeder → deles = Ja.** Chat-teksten sendes til en sprogmodel-udbyder
 (DeepSeek, OpenRouter eller OpenAI) for at kunne besvares. Det er en teknisk

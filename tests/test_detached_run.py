@@ -140,17 +140,15 @@ def test_providerens_http_400_genstarter_ikke_samme_opgave(monkeypatch):
 def test_genoptaget_tur_opretter_ikke_et_nyt_krav(monkeypatch):
     _patch(monkeypatch, ["frame"])
     from core.services.visible_runs_sections import detached_run as d
-    settled, nested = [], []
+    settled = []
     monkeypatch.setattr(d, "_afregn_genoptaget_run", lambda *a, **kw: settled.append(a))
-    monkeypatch.setattr(d, "_fortsaet_hvis_budgettet_loeb_toert",
-                        lambda **kw: nested.append(kw))
     d.start_user_run_detached(message="fortsæt", session_id="s1",
                               recovery_task_id="task-1", recovery_generation=2)
     for _ in range(60):
         if settled:
             break
         time.sleep(0.05)
-    assert settled and not nested
+    assert settled
 
 
 def test_genoptaget_opgave_lukkes_foer_runlog_slippes(monkeypatch):

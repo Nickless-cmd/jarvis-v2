@@ -181,17 +181,31 @@ export function elevation(scheme: Scheme): { boxShadow?: string; borderWidth?: n
     // gråtoner, og det læser øjet som en blød overgang frem for en streg.
     //
     // BJØRN 28/9-2026, efter en mockup med TRE valg (0,25 / 0,35 / 0,50):
-    // «0.50 den 3 mulighed». Ved 0,35 var forskellen 76 gråtoner (kant 109 mod
-    // flade 33); ved 0,50 er den 110 (kant 143 mod flade 33). Han så alle tre
-    // side om side og valgte den kraftigste. Tallet er valgt på en rendering
-    // der ved 0,15 ramte hans egen skærm inden for én gråtonе — ikke gættet.
+    // «0.50 den 3 mulighed». Men da 226 kom på telefonen: «Der ser lidt
+    // underligt ud gør det ikk? Pixel agtigt?» — og målingen gav ham ret.
+    //
+    // ÅRSAGEN var ikke alpha, men BREDDEN. `hairlineWidth` er ÉN FYSISK PIXEL
+    // uanset densitet; på hans skærm (2,625) er det 0,38 dp, mens alt andet i
+    // UI'et er 2-3 px. En 1-pixel streg kan kun ligge i hele pixels, så den
+    // kan ikke følge en kurve uden at trappe — hjørnerne blev klodser. Ved
+    // 0,15 så man det ikke (32 gråtoner over fladen); ved 0,50 var kontrasten
+    // 98, og så ser man at stregen er én pixel bred. Han valgte altså et tal
+    // der var rigtigt, oven på en bredde der var forkert.
+    //
+    // DERFOR 1 dp og ikke hairline: 1 dp = 2-3 px på hans skærm, altså en jævn
+    // streg. Alpha følger med ned til 0,35, så VÆGTEN bliver den samme som før
+    // — 77 gråtoner mod fladens 33. 0,50 oven på 1 dp ville give 111 og være
+    // tungere end det han bad om. Målt i mockup'en rammer begge tal hans egen
+    // skærm. Han valgte dette bud med de fire styrker foran sig.
     //
     // Rækkevidden er med vilje: kanten kommer herfra og deles af ALT svævende —
     // badges, komposeren, cirklerne i toppen (Composer.card og TopBar.circle
     // spreder tokens.elevation). Ét tal flytter dem alle, så sproget er det
-    // samme hele vejen. Den LYSE palet er ikke rørt: dens 0,10 er stadig umålt,
-    // og sort på hvidt bærer en lavere alpha.
-    return { borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.50)' }
+    // samme hele vejen.
+    //
+    // Den LYSE palet har stadig `hairlineWidth` og 0,10 — dens tal er aldrig
+    // målt på et skærmbillede, og jeg rører ikke en kant jeg ikke kan se.
+    return { borderWidth: 1, borderColor: 'rgba(255,255,255,0.35)' }
   }
   // To skygger, ikke én: den brede giver højden, den tætte giver kanten noget
   // at hvile på. Med kun den brede flyder omridset ud; med kun den tætte

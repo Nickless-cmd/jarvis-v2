@@ -7,15 +7,21 @@ describe('elevation', () => {
   // #212121 (33), kanten 66, altså alpha ≈ 0,15 — men ved 0,15 var forskellen
   // kun 32 gråtoner, og det læser øjet som en blød overgang frem for en streg.
   //
-  // BJØRN 28/9-2026 valgte 0,50 på en mockup med tre valg (kant 143 mod flade
-  // 33 = 110 gråtoner — den kraftigste af de tre). Testen holder det niveau:
-  // falder alpha tilbage under 0,45, er den linje han bad om, væk igen.
+  // BJØRN 28/9-2026 valgte først 0,50 på en mockup med tre valg — men på
+  // telefonen så kanten «pixelagtig» ud, fordi `hairlineWidth` er ÉN FYSISK
+  // PIXEL og derfor ikke kan følge en kurve uden at trappe. 227 gik til 1 dp
+  // ved 0,35: 77 gråtoner mod fladens 33 — samme vægt som før, jævn streg.
+  //
+  // Testen holder BEGGE dele: at bredden ikke er faldet tilbage til en
+  // hairline, og at alpha ikke er bleget af. Er bredden hairline igen, fælder
+  // den på `toBe(1)`; falder alpha under 0,30, fælder den ovenfor.
   it('moerk kant er synligt lysere end fladen den tegner omridset af', () => {
     const e = elevation('dark')
     const m = /rgba\(255,\s*255,\s*255,\s*([\d.]+)\)/.exec(e.borderColor ?? '')
     expect(m).not.toBeNull()
-    expect(Number(m![1])).toBeGreaterThanOrEqual(0.45)
-    expect(e.borderWidth).toBeGreaterThan(0)
+    expect(Number(m![1])).toBeGreaterThanOrEqual(0.30)
+    // 1 dp = 2-3 px på telefonen. Hairline er 1 px og trapper i kurverne.
+    expect(e.borderWidth).toBe(1)
   })
 
   // OMVENDT 12. sep 2026. Denne test krævede før at lyst tema IKKE havde en

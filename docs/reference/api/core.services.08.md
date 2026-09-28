@@ -139,16 +139,10 @@ _Forslag i komponisten — hvad der kunne skrives videre, mens man skriver._
 
 | Kind | Name | Signature | Summary | Source |
 |---|---|---|---|---|
-| function | `_base_url` | `()` | GPU-ollamaen. Aldrig en betalt vært — se modulets docstring. | [src](../../../core/services/composer_suggest.py#L72) |
-| function | `_model` | `()` | — | [src](../../../core/services/composer_suggest.py#L84) |
-| function | `_kald_model` | `(prompt)` | Ét kald til den lokale model. Kaster ved fejl; kalderen fanger. | [src](../../../core/services/composer_suggest.py#L103) |
-| function | `_afkort` | `(udkast, svar)` | Fjern den del af svaret der gentager udkastet. | [src](../../../core/services/composer_suggest.py#L122) |
-| function | `_ryd` | `(s)` | Én linje, uden omsluttende anførselstegn, afkortet ved et ordskel. | [src](../../../core/services/composer_suggest.py#L141) |
-| function | `foreslaa` | `(udkast)` | Fortsættelsen af `udkast`, eller `""`. | [src](../../../core/services/composer_suggest.py#L157) |
-| function | `_samtale` | `(session_id)` | De seneste beskeder. Egen funktion, så testene kan sætte dem. | [src](../../../core/services/composer_suggest.py#L208) |
-| function | `_tomt` | `()` | Intet forslag — og dermed intet at melde tilbage om. | [src](../../../core/services/composer_suggest.py#L214) |
-| function | `foreslaa_naeste` | `(session_id)` | Et bud på brugerens næste besked, eller `""`. | [src](../../../core/services/composer_suggest.py#L219) |
-| function | `foreslaa_naeste_detaljer` | `(session_id)` | Forslaget OG det klienten skal bruge for at kunne melde valget tilbage. | [src](../../../core/services/composer_suggest.py#L228) |
+| function | `_samtale` | `(session_id)` | De seneste beskeder. Egen funktion, så testene kan sætte dem. | [src](../../../core/services/composer_suggest.py#L51) |
+| function | `_tomt` | `()` | Intet forslag — og dermed intet at melde tilbage om. | [src](../../../core/services/composer_suggest.py#L57) |
+| function | `foreslaa_naeste` | `(session_id)` | Et bud på brugerens næste besked, eller `""`. | [src](../../../core/services/composer_suggest.py#L62) |
+| function | `foreslaa_naeste_detaljer` | `(session_id)` | Forslaget OG det klienten skal bruge for at kunne melde valget tilbage. | [src](../../../core/services/composer_suggest.py#L71) |
 
 ## `core/services/composite_tools.py`
 _Composite tools — safe self-extension through composition only._

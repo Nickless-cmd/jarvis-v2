@@ -13,6 +13,7 @@ import { haptik } from '../lib/haptics'
 import { ArrowUp, ChevronDown, FileText, Mic, Plus, ShieldCheck, Square } from 'lucide-react-native'
 import { PulsIkon } from './PulsIkon'
 import type { ApprovalMode } from './PermissionPicker'
+import type { ThinkingMode } from '../lib/chatSettings'
 import type { DictationState } from '../lib/useComposerDictation'
 import { DictationBar } from './DictationBar'
 import { tokens } from '../theme/tokens'
@@ -83,7 +84,7 @@ export function Composer({
   onJumpToBottom?: () => void
   /** Tænke-tilstanden. Vises som ÉT ord ved siden af model-navnet — samme
    *  form som desk' model-pille: `DeepSeek V4 Flash  Auto  ⌄`. */
-  thinkingMode?: 'think' | 'fast'
+  thinkingMode?: ThinkingMode
   permission?: ApprovalMode
   onPressPermission?: () => void
   /** Tekst udefra — fx en delt lokation eller udklipsholderen.
@@ -632,7 +633,7 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
 })
 
 /** Tænke-tilstanden som ÉT ord — samme forkortelser som desk' model-pille. */
-const TANKE_KORT: Record<'think' | 'fast', string> = { think: 'Auto', fast: 'Hurtig' }
+const TANKE_KORT: Record<ThinkingMode, string> = { think: 'Auto', fast: 'Hurtig', deep: 'Dyb' }
 
 /** Model-vælgeren som tekst: navn, tænke-tilstand, chevron. */
 function ModelPille({ navn, tanke, onPress }: { navn: string; tanke?: string; onPress?: () => void }) {

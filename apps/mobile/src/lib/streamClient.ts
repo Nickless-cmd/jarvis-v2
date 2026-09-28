@@ -8,7 +8,7 @@ export interface StreamRequest {
   sessionId: string
   message: string
   approvalMode?: 'ask' | 'trust'
-  thinkingMode?: 'think' | 'fast'
+  thinkingMode?: 'think' | 'fast' | 'deep'
   mode?: 'chat' | 'cowork' | 'code'
   model?: string
   providerChoice?: string

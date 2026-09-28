@@ -22,7 +22,8 @@ import type { StoredModelChoice } from './sessionStore'
 
 export type VaerktoejsOmfang = 'samtale' | 'fuldt'
 export type ResearchMode = 'off' | 'on'
-export type ThinkingMode = 'fast' | 'think'
+
+export type ThinkingMode = 'fast' | 'think' | 'deep'
 
 export interface ChatIndstillingerV2 {
   version: 2
@@ -91,7 +92,7 @@ export function parseChatIndstillinger(v: unknown): ChatIndstillingerV2 {
   return {
     version: 2,
     model: rensModel(o.model),
-    thinkingMode: o.thinkingMode === 'fast' ? 'fast' : 'think',
+    thinkingMode: o.thinkingMode === 'fast' ? 'fast' : o.thinkingMode === 'deep' ? 'deep' : 'think',
     researchMode: o.researchMode === 'on' ? 'on' : 'off',
     vaerktoejer: o.vaerktoejer === 'fuldt' ? 'fuldt' : 'samtale',
     stemme: o.stemme === true,

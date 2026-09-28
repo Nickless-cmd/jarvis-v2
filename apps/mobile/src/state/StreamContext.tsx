@@ -43,7 +43,7 @@ interface StreamContextValue {
        */
       attachmentBlocks?: PersistedBlock[]
       mode?: 'chat' | 'cowork' | 'code'
-      thinkingMode?: 'think' | 'fast'
+      thinkingMode?: 'think' | 'fast' | 'deep'
       approvalMode?: 'ask' | 'trust'
       researchMode?: boolean
     }

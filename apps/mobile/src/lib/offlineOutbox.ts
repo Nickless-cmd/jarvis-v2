@@ -7,7 +7,7 @@ export interface OutboxTurnControls {
   model?: string
   providerChoice?: string
   mode?: 'chat' | 'cowork' | 'code'
-  thinkingMode?: 'think' | 'fast'
+  thinkingMode?: 'think' | 'fast' | 'deep'
   approvalMode?: 'ask' | 'trust'
   researchMode?: boolean
 }

@@ -3,15 +3,21 @@ import { FlatList, Modal, Pressable, StyleSheet, Text, View } from 'react-native
 import { ChevronLeft, ChevronRight } from 'lucide-react-native'
 import { tokens } from '../theme/tokens'
 import type { StoredModelChoice } from '../lib/sessionStore'
+import type { ThinkingMode } from '../lib/chatSettings'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
 
 export type ModelChoice = StoredModelChoice
 
-export type ThinkingMode = 'think' | 'fast'
+/** Tænke-tilstanden EJES af `chatSettings` — den gemmes pr. samtale, og det er
+ *  dér den oversættes til stream-kroppen. Den var erklæret her OGSÅ, som en
+ *  identisk union, og de to holdt kun hinanden i sync ved held: en fjerde
+ *  tilstand tilføjet det ene sted ville tavst blive afvist det andet. Nu er
+ *  der én, og den genbruges her. */
+export type { ThinkingMode }
 
 /** Tænke-tilstandenes navne — desks ord, ikke vores egne. */
-const TANKE_NAVN: Record<ThinkingMode, string> = { think: 'Auto', fast: 'Hurtig' }
-const TANKE_RAEKKE: ThinkingMode[] = ['think', 'fast']
+const TANKE_NAVN: Record<ThinkingMode, string> = { fast: 'Hurtig', think: 'Automatisk', deep: 'Dyb' }
+const TANKE_RAEKKE: ThinkingMode[] = ['fast', 'think', 'deep']
 
 /**
  * Bottom-sheet model-vælger. Rolle-bevidst indhold leveres af kalderen:
@@ -118,7 +124,7 @@ export function ModelPicker({
             </>
           ) : (
             <>
-              <Text style={styles.title}>Tænkning</Text>
+              <Text style={styles.title}>Intelligens</Text>
               {TANKE_RAEKKE.map((m) => {
                 const valgt = thinkingMode === m
                 return (

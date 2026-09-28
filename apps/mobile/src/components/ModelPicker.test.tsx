@@ -38,11 +38,27 @@ it('modellen ligger bag en undermenu — listen er ikke synlig ved åbning', asy
   const screen = await render(<ModelPicker {...base} />)
 
   expect(screen.queryByText('V4 Flash')).toBeNull()
-  expect(screen.getByText('Tænkning')).toBeTruthy()
+  expect(screen.getByText('Intelligens')).toBeTruthy()
 
   fireEvent.press(screen.getByLabelText('Model: Deepseek'))
 
   await waitFor(() => expect(screen.getByText('V4 Flash')).toBeTruthy())
+})
+
+it('byder alle TRE niveauer serveren kender — og melder det rigtige', async () => {
+  // Bjørn 28/9-2026: «Kun 3. Serveren kender». De tre er fast/think/deep, og
+  // serveren ærer dem alle: fast slår thinking FRA, deep sætter
+  // reasoning_effort="max". Et niveau uden en tilstand bag sig er en knap der
+  // løjer — og et niveau der ikke kan MELDES er lige så galt.
+  const onThinkingModeChange = jest.fn()
+  const screen = await render(<ModelPicker {...base} onThinkingModeChange={onThinkingModeChange} />)
+
+  expect(screen.getByText('Hurtig')).toBeTruthy()
+  expect(screen.getByText('Automatisk')).toBeTruthy()
+  expect(screen.getByText('Dyb')).toBeTruthy()
+
+  fireEvent.press(screen.getByText('Dyb'))
+  expect(onThinkingModeChange).toHaveBeenCalledWith('deep')
 })
 
 it('et valg i model-listen melder modellen og lukker', async () => {
@@ -63,6 +79,7 @@ it('uden tænke-valg står modellisten direkte — ingen tom undermenu', async (
     <ModelPicker {...base} onThinkingModeChange={undefined} />
   )
 
+  expect(screen.queryByText('Intelligens')).toBeNull()
   expect(screen.queryByText('Tænkning')).toBeNull()
   expect(screen.getByText('V4 Flash')).toBeTruthy()
 })

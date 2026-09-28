@@ -26,6 +26,7 @@ import { ThinkingSummary } from './ThinkingSummary'
 import { MessageAttachments } from './MessageAttachments'
 import { ToolResultCard } from './ToolResultCard'
 import { ImageGenerationCard } from './ImageGenerationCard'
+import { VideoGenerationCard } from './VideoGenerationCard'
 import { ImageAnalysisCard } from './ImageAnalysisCard'
 import { billedArbejdeFor } from '../lib/billedArbejde'
 
@@ -122,6 +123,7 @@ type Row = (
   | { kind: 'tool'; key: string; content: string }
   | { kind: 'live-tool'; key: string; id?: string; name: string; body: string; running: boolean; etiket?: string; diff?: { tilfoejet: number; fjernet: number } | null }
   | { kind: 'image-generation'; key: string }
+  | { kind: 'video-generation'; key: string }
   | { kind: 'image-analysis'; key: string; kilde: string; sti: string }
   /** Én RUNDE værktøjsarbejde, foldet sammen til én linje. */
   | { kind: 'tool-group'; key: string; items: ToolItem[] }
@@ -388,7 +390,9 @@ function buildStreamingRows(blocks: ContentBlock[]): Row[] {
       flush()
       rows.push(arbejde.slags === 'analyse'
         ? { kind: 'image-analysis', key: `stream-analyse-${b.id || i}`, kilde: arbejde.kilde, sti: arbejde.sti }
-        : { kind: 'image-generation', key: `stream-image-${b.id || i}` })
+        : arbejde.slags === 'video'
+          ? { kind: 'video-generation', key: `stream-video-${b.id || i}` }
+          : { kind: 'image-generation', key: `stream-image-${b.id || i}` })
     }
     else if (b.type === 'tool_use') {
       flush()
@@ -424,7 +428,7 @@ function buildStreamingRows(blocks: ContentBlock[]): Row[] {
   // mangle slutstatus i en sparsom stream; ventefladen må ikke blive stående.
   for (let index = rows.length - 2; index >= 0; index--) {
     const k = rows[index]?.kind
-    if (k === 'image-generation' || k === 'image-analysis') rows.splice(index, 1)
+    if (k === 'image-generation' || k === 'image-analysis' || k === 'video-generation') rows.splice(index, 1)
   }
   // KUN den sidste række kan være i gang. Alt før den er overhalet af noget
   // der kom bagefter; det er selve beviset for at den er færdig.
@@ -862,6 +866,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
           return <MessageAttachments items={item.items} side={item.side} />
         }
         if (item.kind === 'image-generation') return <ImageGenerationCard />
+        if (item.kind === 'video-generation') return <VideoGenerationCard />
         if (item.kind === 'image-analysis') return <ImageAnalysisCard kilde={item.kilde} sti={item.sti} />
         if (item.kind === 'compact-marker') return <CompactMarkerRow content={item.content} />
         return (

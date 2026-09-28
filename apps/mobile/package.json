@@ -31,6 +31,7 @@
     "expo-secure-store": "^56.0.4",
     "expo-speech": "~56.0.3",
     "expo-task-manager": "~56.0.27",
+    "expo-video": "~56.0.0",
     "livekit-client": "2.22.3",
     "lucide-react-native": "^1.39.0",
     "react": "19.2.3",

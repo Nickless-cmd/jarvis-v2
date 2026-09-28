@@ -69,8 +69,13 @@ export function blokUrl(
   }
   const id = String(blok.attachment_id || '').trim()
   if (!id) return ''
+  // `/attachments/{id}` kender KUN denne sessions registry. `/image/` og
+  // `/media/` slaar op i DB'en og overlever reload; `/media/` er samme kode
+  // under et aerligt navn, saa en video ikke hentes fra «image».
   const sti = blok.type === 'image'
     ? `/attachments/image/${encodeURIComponent(id)}`
-    : `/attachments/${encodeURIComponent(id)}`
+    : blok.type === 'video'
+      ? `/attachments/media/${encodeURIComponent(id)}`
+      : `/attachments/${encodeURIComponent(id)}`
   return new URL(sti, apiBaseUrl).toString()
 }

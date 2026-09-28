@@ -5,6 +5,7 @@ import { aabnUdgivetFil, blokUrl } from '../lib/aabnFil'
 import { FileText } from 'lucide-react-native'
 import { useAuth } from '../state/AuthContext'
 import { AuthImage } from './AuthImage'
+import { AuthVideo } from './AuthVideo'
 import type { PersistedBlock } from '../lib/persistedBlocks'
 import { tokens } from '../theme/tokens'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
@@ -121,6 +122,23 @@ export function MessageAttachments({ items, side = 'right', kantlos = false }: {
             </View>
           )
         }
+        if (b.type === 'video') {
+          // En video skal SES, ikke hentes. Foer 28/9-2026 faldt den igennem
+          // til fil-kortet nedenfor: `filePreview` kendte godt `mp4` og
+          // skrev «Video», men som en FIL man kunne aabne i et andet program.
+          const videoUrl = config?.apiBaseUrl ? blokUrl(b, config.apiBaseUrl) : ''
+          if (!videoUrl || !config) return null
+          return (
+            <View key={id} style={styles.videoRamme}>
+              <AuthVideo
+                config={config}
+                url={videoUrl}
+                navn={id || 'video'}
+                testID={`attachment-video-${id}`}
+              />
+            </View>
+          )
+        }
         // Codex lavede billeder. Resten fik et generisk ikon uden at sige HVAD
         // det var — en PDF og en zip så ens ud. Planen siger nu typen, og om
         // filen kan vises inde i appen eller hører til i systemets fremviser.
@@ -210,6 +228,7 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
     backgroundColor: tokens.color.bg2
   },
   galleri: { gap: tokens.spacing.sm },
+  videoRamme: { width: '100%' },
   valg: { gap: tokens.spacing.sm },
   miniature: {
     width: 58, height: 58, borderRadius: tokens.radius.md,

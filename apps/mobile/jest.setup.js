@@ -51,6 +51,19 @@ jest.mock('expo-file-system/legacy', () => ({
   getContentUriAsync: jest.fn(async () => 'content://app.apk'),
 }))
 
+// Video-afspilleren. Native modul — uden en mock kaster enhver test der
+// rendrer en video-blok. Spilleren er et tomt objekt: testene måler at
+// elementet er der og peger på den rigtige kilde, ikke at pixels bevæger sig.
+jest.mock('expo-video', () => {
+  const React = require('react')
+  return {
+    __esModule: true,
+    useVideoPlayer: jest.fn((kilde) => ({ kilde, loop: false, play: jest.fn(), pause: jest.fn() })),
+    VideoView: ({ testID, player }) =>
+      React.createElement('VideoView', { testID, 'data-kilde': player?.kilde ?? null }),
+  }
+})
+
 // Galleriet. Bruges af «gem billedet» i fuldskærms-visningen og af AttachMenu,
 // som overskriver denne mock lokalt med sit eget svar.
 jest.mock('expo-media-library/legacy', () => ({

@@ -64,6 +64,47 @@ export function klientHoveder(): Record<string, string> {
   }
 }
 
+/** Hvad serveren siger om en opgivet eller genoptaget koersel. */
+export type GenoptagelsesVarsel = {
+  task_id: string
+  run_id: string
+  state: string
+  reason: string
+  recovery_attempt: number
+  recovery_limit: number
+  checkpoint_summary: string
+  notice: { reason: string; message: string; continuing: boolean }
+}
+
+/**
+ * Er der noget at genoptage for denne samtale? `null` naar der ikke er.
+ *
+ * EGET kald og ikke `apiFetch`, fordi ruten svarer **204 uden krop** naar der
+ * intet er — og det er det normale svar. `apiFetch` slutter med
+ * `response.json()`, som paa en tom krop kaster og bliver til en netvaerksfejl.
+ * Saa ville «ingenting at fortaelle» ligne «kunne ikke spoerge».
+ */
+export async function hentGenoptagelsesVarsel(
+  config: ApiConfig, sessionId: string,
+): Promise<GenoptagelsesVarsel | null> {
+  const id = String(sessionId || '').trim()
+  if (!id) return null
+  const url = new URL(
+    `/chat/sessions/${encodeURIComponent(id)}/recovery`, config.apiBaseUrl,
+  ).toString()
+  const res = await fetch(url, {
+    headers: {
+      Accept: 'application/json',
+      ...klientHoveder(),
+      Authorization: `Bearer ${config.authToken}`,
+    },
+  })
+  if (res.status === 204) return null
+  if (!res.ok) throw new ApiError('unknown', `HTTP ${res.status}`, res.status)
+  const data = (await res.json()) as GenoptagelsesVarsel | null
+  return data && data.notice ? data : null
+}
+
 export async function apiFetch<T>(
   config: ApiConfig,
   path: string,

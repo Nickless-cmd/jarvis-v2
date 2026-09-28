@@ -35,6 +35,9 @@ import { ScrollToBottom } from '../components/ScrollToBottom'
 import { KoeChip } from '../components/KoeChip'
 import { useFollowupQueue, type FollowupItem } from '../lib/useFollowupQueue'
 import { TilbagespolBanner } from '../components/TilbagespolBanner'
+import { GenoptagelsesBanner } from '../components/GenoptagelsesBanner'
+import { hentGenoptagelsesVarsel } from '../lib/apiClient'
+import { skalSpoergeOmVarsel } from '../lib/genoptagelsesVarsel'
 import { KodeLaastBanner } from '../components/KodeLaastBanner'
 import { useNyeBeskeder } from '../lib/useNyeBeskeder'
 import { useVisning, type Visning } from '../lib/visning'
@@ -124,6 +127,47 @@ export function ChatScreen({
   const { config } = useAuth()
   const sessions = useSessions()
   const stream = useStream()
+
+  // ── Varslet om arbejde der aldrig blev faerdigt ────────────────────────
+  // Her, i ChatScreen, fordi App holder BEGGE skaerme monteret (skjult, ikke
+  // unmountet) — saa effekten koerer uanset om han staar paa Snak eller
+  // Arbejde. I desk laa den tilsvarende inde i en komponent der KUN var
+  // monteret paa én flade, og fire rettelser gik til noget der ikke var paa
+  // skaermen. Her er antagelsen pinnet i en test.
+  //
+  // HVORNAAR der spoerges bor i `lib/genoptagelsesVarsel` — den regel har
+  // taget fejl fire gange og hoerer ikke hjemme flettet ind i en effekt.
+  const [genoptagelse, setGenoptagelse] =
+    useState<{ reason: string; message: string; continuing: boolean } | null>(null)
+  const varselSpurgtRef = useRef<string | null>(null)
+  const varselForrigeStatusRef = useRef<string>('')
+
+  useEffect(() => {
+    const forrige = varselForrigeStatusRef.current
+    varselForrigeStatusRef.current = stream.state.status
+    const sid = sessions.activeId ?? null
+    const beslutning = skalSpoergeOmVarsel({
+      forrige, status: stream.state.status, sessionId: sid,
+      alleredeSpurgt: varselSpurgtRef.current,
+    })
+    if (beslutning.nulstil) varselSpurgtRef.current = null
+    if (!beslutning.spoerg || !config || !sid) return
+    varselSpurgtRef.current = sid
+    let afbrudt = false
+    hentGenoptagelsesVarsel(config, sid)
+      .then((v) => { if (!afbrudt && v?.notice?.message) setGenoptagelse(v.notice) })
+      .catch(() => {
+        // Kan vi ikke spoerge, maa samtalen ikke gaa i staa — men lad os kunne
+        // spoerge igen naeste gang sessionen aabnes.
+        varselSpurgtRef.current = null
+      })
+    return () => { afbrudt = true }
+  }, [config, sessions.activeId, stream.state.status])
+
+  // Et nyt spoergsmaal rydder varslet: det handlede om den FORRIGE tur.
+  useEffect(() => {
+    if (stream.state.status === 'working') setGenoptagelse(null)
+  }, [stream.state.status])
   const [panelOpen, setPanelOpen] = useState(false)
 
   // Fladens art ÉT sted. Fire kaldesteder henter sessioner, og de skal alle
@@ -1111,6 +1155,7 @@ export function ChatScreen({
   return (
     <View style={styles.root}>
       <OfflineNotice connectivity={connectivity} reconnecting={stream.reconnecting} outboxCount={outboxCount} />
+      <GenoptagelsesBanner varsel={genoptagelse} onLuk={() => setGenoptagelse(null)} />
 
       <View style={styles.flex}>
         {/* Svæver ligesom TopBar og komponisten. Som almindeligt søskende-

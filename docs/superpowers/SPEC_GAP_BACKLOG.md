@@ -1,64 +1,75 @@
 ---
-status: færdig
-audited: 2026-07-08
-ground_truth: superpowers artifact shipped (refs/symbols present in tree)
+status: delvist
+audited: 2026-09-28
+ground_truth: 4 punkter lukket 28/9-2026 efter kode-verifikation; 3 står reelt åbent
 ---
 # Spec-Gap Backlog
 
 Genereret 2026-06-14 efter audit af alle 61 specs i `docs/superpowers/specs/` mod
 kodebasen (7 parallelle Explore-agenter). ~50 specs er fuldt live; hullerne herunder.
 
+> **Opdateret 28/9-2026.** Fire punkter stod markeret som åbne huller, men er bygget
+> siden — verificeret i koden, ikke i commit-beskeder. Backloggen var 2,5 måned gammel
+> og bar derfor forældede huller. Se «Lukket 28.9» nedenfor.
+>
+> Frontmatter sagde `status: færdig` fra 8. juli. Det var forkert — tre punkter stod
+> stadig åbne. Rettet til `delvist`.
+
 Status-legende: 🔴 ægte hul (kode mangler) · 🟡 hurtig win (kode findes, mangler wire)
 · 🟠 større men afgrænset · ⚪ bevidst parkeret · 🔍 skal verificeres
 
 ---
 
-## ✅ LUKKET 15. juni
+## ✅ LUKKET 28.9.2026 — verificeret i kode
+
+- **Promise-ledger (var #5)** — `core/services/promise_ledger.py` findes **og er wired**:
+  `record_promise` kaldes fra `core/services/visible_runs_memory.py:268`, og
+  `pending_promises` bruges i `core/services/prompt_contract.py:4215`.
+  Backloggen sagde «ikke bygget».
+- **db-split (var #9)** — `core/runtime/db.py` er **1.234 linjer**, ikke ~33.700.
+  Domæne-splittet er gennemført; punktet er ikke længere et hul.
+- **Interlanguage fase 3-4 (var #10)** — `interlanguage_llm_judge.py` og
+  `interlanguage_analyze.py` findes begge i `core/services/`. Backloggen sagde «mangler».
+- **User-temperature Site 4 (var #7)** — `get_response_style_modifiers` kaldes nu fra
+  `core/services/prompt_sections/private_layer_sections.py:63`.
+
+## ✅ LUKKET 15. juni (uændret)
+
 - **Codex follow-up-adapter** — bygget + live-verificeret (commit 71c1fede). gpt-5.4-mini
   fuldfører nu tool-ture. Se [[project_codex_toolcall_empty_bug]].
 - **Diagnosis-gate fase 1** — bygget (advisory, commit fe26fece). Logger uverificerede
   diagnostiske konklusioner; eskalerer til blocking efter data.
 - **read_model_config aktiv-model** (ba292444) + **SIKKERHEDS-fixes** (search-scoping,
   override-data-guard, chronicle/scheduled-scope) — se [[project_db_table_scope_audit]].
-
-## 🔴 Ægte huller — kode mangler
-
-2. **Code-mode git-diff** *(v1-krav, jarvis-desk)* — `CodePanel` har ingen diff-rendering.
-   Spec 2026-06-12-jarvis-desk-code-mode kræver "write/edit viser en diff i panelet" (v1).
-   Var "Task 10 / openDiff"-TODO der aldrig blev lavet. Byg: detektér write/edit-tool_use-
-   blokke → byg diff-artifact → vis i ArtifactPanel med diff-komponent.
-
-3. **Context-ring backend-event** *(jarvis-desk)* — preview-panelet er bygget, men v2-stream
-   emitterer ikke `system_event kind="context"` med live token/compaction-tal. Ringen viser
-   localStorage-fallback. Backend: emit context-event i visible_runs_sse_v2.
-
-5. **Promise-ledger** *(14. jun, fase 2 af diagnosis-gate)* — ledger + verifier (tjek git/fil
-   for "det er gjort"-løfter). Ikke bygget. Bygger ovenpå diagnosis-gate (nu live).
-
-## 🟡 Hurtige wins — kode findes, mangler ét wire
-
-6. **Decisions-as-Signals** — `fired_decisions_section()` findes men kaldes ikke;
-   `prompt_contract.py:1156-1157` bruger stadig gamle `enforcement_section()`. Én-linjes skift.
-
-7. **User-temperature Site 4** — `get_response_style_modifiers()` findes men injiceres ikke i
-   visible-run-prompten.
-
-## ✅ LUKKET 15. juni (runde 2)
 - **Generalized-learning capture-wiring (item 8)** — plan A (direkte capture m. dedup):
-  deep_analyze/reasoning_classify/self_evaluation/counterfactual kalder nu
-  `capture_conclusion(..., dedup_key=...)` → reasoning_store. learning_policy fungerede
-  allerede via orchestratoren (cognitive_state-familie). Latent-bug fixet: `reasoning`
-  event-familie var afvist af eventbus (publish kastede altid). Live (0a850449).
+  `capture_conclusion(..., dedup_key=...)` → reasoning_store. Live (0a850449).
 - **User Management** (hele spec'en) + app-self-control tool-scope-fix + footer-fix —
   se [[project_user_management]] / [[project_desk_toolchips_appcontrol]].
 
+---
+
+## 🔴 Ægte huller — kode mangler (STADIG ÅBNE pr. 28.9.2026)
+
+**1. Code-mode git-diff** *(jarvis-desk)* — `CodePanel.tsx` importerer `CodeBlock`, ikke
+`DiffView`. Skriver Jarvis en fil, viser panelet filens indhold — ikke hvad der ændrede
+sig. `DiffView.tsx` findes og virker (bruges i `rich/ToolCard.tsx` til tool-resultater),
+så komponenten er der; det er wire'en i CodePanel der mangler.
+*(Mobil-appen har det: `apps/mobile/src/lib/toolDiff.ts` + `components/DiffArk.tsx`.)*
+
+**2. Context-ring backend-event** *(jarvis-desk)* — preview-panelet er bygget, men
+streamen emitterer intet `system_event kind="context"` med live token/compaction-tal.
+SSE-streamen bor nu i `apps/api/jarvis_api/routes/chat_stream_v2.py` (den gamle
+`visible_runs_sse_v2.py` findes ikke længere). Ringen viser localStorage-fallback.
+
+**3. Decisions-as-Signals** — `fired_decisions_section()` findes i
+`core/services/decision_signals.py:251`, men kaldes ikke. `prompt_contract.py:1876-1877`
+bruger stadig den gamle `enforcement_section()`. Én-linjes skift.
+
+---
+
 ## 🟠 Større, men afgrænset
 
-9. **db-split** — `core/runtime/db.py` er stadig ~33.700 linjer (kun fase 0 udskilt). Fase 1-N
-   domæne-splits (runtime_self, private, dream, chronicle…) mangler.
-
-10. **Interlanguage-validation fase 3-4** — data indsamlet (1000+ udtryk), men
-    `interlanguage_llm_judge.py` + `interlanguage_analyze.py` mangler → ingen analyse-rapport.
+*(db-split og interlanguage flyttet til «Lukket 28.9». Ingen tilbage her.)*
 
 ## ⚪ Bevidst parkeret (ikke huller)
 
@@ -68,7 +79,7 @@ Status-legende: 🔴 ægte hul (kode mangler) · 🟡 hurtig win (kode findes, m
 - Multi-user Group 7 (oprydning + E2E-test)
 - Code-mode deferred: multi-fil-diff-review, git-graf/branch-UI, inline-editor
 - Terminal v2: interaktiv TTY via node-pty (feasibility lavet, deferred)
-- Boy Scout-split af `cheap_provider_runtime.py` (2897 linjer — codex-provider udskilles)
+- Boy Scout-split af `cheap_provider_runtime.py` (codex-provider udskilles)
 
 ## 🔍 Skal verificeres (agenter var usikre)
 
@@ -76,3 +87,12 @@ Status-legende: 🔴 ægte hul (kode mangler) · 🟡 hurtig win (kode findes, m
 - Cowork ShareGuard/AgentDispatch-wiring
 - Foundation R2 hang-watchdog → HungPrompt-sti
 - Edge-case-tests: reconcile-race, approval-timeout, 401-midt-i-session
+
+---
+
+## Ændringslog for denne fil
+
+- **2026-09-28:** 4 punkter lukket efter kode-verifikation; frontmatter rettet fra
+  `færdig` til `delvist` (den var forkert — 3 punkter stod åbent). Nummereringen omlagt:
+  de lukkede er ude af hul-listen, så de åbne står som 1-3.
+- **2026-06-14:** genereret.

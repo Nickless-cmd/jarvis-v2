@@ -18,6 +18,12 @@ const base = {
 
 beforeEach(() => jest.clearAllMocks())
 
+it('viser vaelgeren som en kompakt popover ved komponisten', async () => {
+  const screen = await render(<ModelPicker {...base} bottomOffset={110} />)
+  expect(screen.getByTestId('model-popover')).toHaveStyle({ bottom: 110 })
+  expect(screen.getByTestId('model-popover')).toHaveStyle({ borderRadius: 24 })
+})
+
 it('viser tænkning som liste med flueben — og ikke permissions', async () => {
   const onThinkingModeChange = jest.fn()
   const screen = await render(<ModelPicker {...base} onThinkingModeChange={onThinkingModeChange} />)

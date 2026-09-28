@@ -27,6 +27,26 @@ it('striben vises ikke når skærmen ikke leverer nogen kontekster', async () =>
   expect(screen.queryByTestId('attach-contexts')).toBeNull()
 })
 
+it('aabner en kompakt menu med separate foto- og filvalg over komponisten', async () => {
+  const onGallery = jest.fn()
+  const onUpload = jest.fn()
+  const screen = await render(<AttachMenu {...base} onGallery={onGallery} onUpload={onUpload} bottomOffset={110} />)
+  expect(screen.getByTestId('attach-popover')).toHaveStyle({ bottom: 110 })
+  expect(screen.queryByText('Tilføj filer')).toBeNull()
+  await act(async () => { fireEvent.press(screen.getByText('Upload foto')) })
+  await act(async () => { fireEvent.press(screen.getByText('Upload fil')) })
+  expect(onGallery).toHaveBeenCalledTimes(1)
+  expect(onUpload).toHaveBeenCalledTimes(1)
+})
+
+it('bevarer genvejen til de seneste billeder som undermenu', async () => {
+  const screen = await render(<AttachMenu {...base} onPick={jest.fn()} />)
+  await act(async () => { fireEvent.press(screen.getByText('Seneste billeder')) })
+  expect(screen.getByText('Tilføj filer')).toBeTruthy()
+  await act(async () => { fireEvent.press(screen.getByLabelText('Luk')) })
+  expect(screen.getByText('Upload foto')).toBeTruthy()
+})
+
 it('viser de kontekster skærmen leverer', async () => {
   const screen = await render(<AttachMenu {...base} kontekster={kontekster} onKontekst={jest.fn()} />)
   expect(screen.getByTestId('attach-ctx-udklip')).toBeTruthy()

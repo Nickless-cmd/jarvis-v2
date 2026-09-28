@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
-import { FlatList, Modal, Pressable, StyleSheet, Text, View } from 'react-native'
+import { BackHandler, FlatList, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native'
 import { ChevronLeft, ChevronRight } from 'lucide-react-native'
-import { tokens } from '../theme/tokens'
 import type { StoredModelChoice } from '../lib/sessionStore'
 import type { ThinkingMode } from '../lib/chatSettings'
 import { useStyles, useTheme, type Theme } from '../theme/ThemeContext'
@@ -20,7 +19,7 @@ const TANKE_NAVN: Record<ThinkingMode, string> = { fast: 'Hurtig', think: 'Autom
 const TANKE_RAEKKE: ThinkingMode[] = ['fast', 'think', 'deep']
 
 /**
- * Bottom-sheet model-vælger. Rolle-bevidst indhold leveres af kalderen:
+ * Kompakt model-menu over composer. Rolle-bevidst indhold leveres af kalderen:
  * owner får hele paletten, member får kun Standard/Pro (= ollama flash/pro).
  *
  * ## Formen er lånt, ikke opfundet
@@ -40,6 +39,7 @@ const TANKE_RAEKKE: ThinkingMode[] = ['fast', 'think', 'deep']
  */
 export function ModelPicker({
   open,
+  bottomOffset = 88,
   choices,
   selectedLabel,
   thinkingMode,
@@ -48,6 +48,7 @@ export function ModelPicker({
   onClose
 }: {
   open: boolean
+  bottomOffset?: number
   choices: ModelChoice[]
   selectedLabel?: string
   thinkingMode?: ThinkingMode
@@ -57,6 +58,7 @@ export function ModelPicker({
 }) {
   const tokens = useTheme()
   const styles = useStyles(makestyles)
+  const { width, height } = useWindowDimensions()
   const [visning, setVisning] = useState<'hoved' | 'model'>('hoved')
   const harTaenkning = Boolean(onThinkingModeChange)
 
@@ -66,6 +68,16 @@ export function ModelPicker({
   useEffect(() => {
     if (open) setVisning('hoved')
   }, [open])
+
+  useEffect(() => {
+    if (!open) return
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (visning === 'model' && harTaenkning) setVisning('hoved')
+      else onClose()
+      return true
+    })
+    return () => sub.remove()
+  }, [open, visning, harTaenkning, onClose])
 
   const modelListe = (
     <FlatList
@@ -94,11 +106,12 @@ export function ModelPicker({
     />
   )
 
+  if (!open) return null
+
   return (
-    <Modal transparent visible={open} animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.scrim} onPress={onClose}>
-        <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
-          <View style={styles.grabber} />
+    <View style={styles.overlay} pointerEvents="box-none">
+      <Pressable style={styles.scrim} onPress={onClose} accessibilityLabel="Luk modelvælger" />
+      <View testID="model-popover" style={[styles.sheet, { bottom: bottomOffset, width: Math.min(width - 32, 208), maxHeight: Math.max(200, height - bottomOffset - 64) }]}>
 
           {/* Uden tænke-valg er der kun én ting at vise — saa er der ingen
               undermenu at gaa ind i, og listen staar direkte. */}
@@ -154,46 +167,38 @@ export function ModelPicker({
                 onPress={() => setVisning('model')}
                 style={({ pressed }) => [styles.underRow, pressed ? styles.pressed : null]}
               >
-                <Text style={styles.underNavn}>Model</Text>
-                <View style={styles.underHoejre}>
-                  <Text style={styles.underVaerdi} numberOfLines={1}>
-                    {selectedLabel ?? 'Vælg'}
-                  </Text>
-                  <ChevronRight size={16} color={tokens.color.fg3} strokeWidth={2} />
+                <View style={styles.underTekst}>
+                  <Text style={styles.underNavn}>Model</Text>
+                  <Text style={styles.underVaerdi} numberOfLines={1}>{selectedLabel ?? 'Vælg'}</Text>
                 </View>
+                <ChevronRight size={16} color={tokens.color.fg2} strokeWidth={2} />
               </Pressable>
             </>
           )}
-        </Pressable>
-      </Pressable>
-    </Modal>
+      </View>
+    </View>
   )
 }
 
 const makestyles = (tokens: Theme) => StyleSheet.create({
-  scrim: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  overlay: { ...StyleSheet.absoluteFill, zIndex: 31 },
+  scrim: { ...StyleSheet.absoluteFill },
   sheet: {
-    backgroundColor: tokens.color.bg1,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingHorizontal: tokens.spacing.lg,
-    paddingTop: tokens.spacing.sm,
-    paddingBottom: tokens.spacing.xl,
-    maxHeight: '70%'
-  },
-  grabber: {
-    alignSelf: 'center',
-    width: 40,
-    height: 4,
-    borderRadius: 2,
+    position: 'absolute', right: 14,
     backgroundColor: tokens.color.bg3,
-    marginBottom: tokens.spacing.md
+    borderRadius: 24,
+    borderColor: tokens.color.glassLine,
+    borderWidth: StyleSheet.hairlineWidth,
+    ...tokens.elevation,
+    overflow: 'hidden',
+    paddingHorizontal: tokens.spacing.lg,
+    paddingTop: tokens.spacing.lg,
+    paddingBottom: tokens.spacing.md
   },
   title: {
-    color: tokens.color.fg3,
-    fontSize: 12,
-    fontWeight: '700',
-    textTransform: 'uppercase',
+    color: tokens.color.fg2,
+    fontSize: 15,
+    fontWeight: '500',
     marginBottom: tokens.spacing.sm
   },
   tilbage: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: tokens.spacing.xs },
@@ -204,23 +209,23 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: tokens.spacing.md,
-    borderBottomColor: tokens.color.line,
-    borderBottomWidth: 1
+    minHeight: 54,
+    paddingVertical: tokens.spacing.md
   },
   pressed: { opacity: 0.7 },
   rowLabel: { color: tokens.color.fg1, fontSize: 16, flexShrink: 1 },
-  rowActive: { color: tokens.color.accentText, fontWeight: '700' },
+  rowActive: { color: tokens.color.fg1, fontWeight: '700' },
   check: { color: tokens.color.accentText, fontSize: 16, fontWeight: '700' },
   underRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    minHeight: 62,
     paddingVertical: tokens.spacing.md,
     gap: tokens.spacing.md
   },
+  underTekst: { flex: 1, minWidth: 0 },
   underNavn: { color: tokens.color.fg1, fontSize: 16 },
-  underHoejre: { flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1, minWidth: 0 },
-  underVaerdi: { color: tokens.color.fg3, fontSize: 15, flexShrink: 1 },
+  underVaerdi: { color: tokens.color.fg2, fontSize: 12, marginTop: 2 },
   empty: { color: tokens.color.fg3, paddingVertical: tokens.spacing.lg, textAlign: 'center' }
 })

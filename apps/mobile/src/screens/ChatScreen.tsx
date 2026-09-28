@@ -1387,6 +1387,7 @@ export function ChatScreen({
 
       <ModelPicker
         open={modelPickerOpen}
+        bottomOffset={liftPadding + Math.max(68, composerHeight - 12)}
         choices={modelChoices}
         selectedLabel={chatCfg.model?.label ?? modelChoices[0]?.label}
         thinkingMode={chatCfg.thinkingMode}
@@ -1531,6 +1532,7 @@ export function ChatScreen({
 
       <AttachMenu
         visible={attachMenuOpen}
+        bottomOffset={liftPadding + Math.max(68, composerHeight - 12)}
         researchMode={chatCfg.researchMode === 'on'}
         onResearchModeChange={(enabled) => {
           const next = { researchMode: enabled ? 'on' as const : 'off' as const }

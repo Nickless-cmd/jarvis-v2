@@ -174,14 +174,23 @@ export function onAccent(accent: Accent): string {
 export function elevation(scheme: Scheme): { boxShadow?: string; borderWidth?: number; borderColor?: string } {
   if (scheme === 'dark') {
     // MÅLT 12. sep 2026 på Bjørns skærmbillede: fladen er #212121 (33), og
-    // kanten måler 66 — præcis dobbelt så lys. alpha = (66-33)/(255-33) ≈ 0,15.
+    // kanten målte 66 — alpha = (66-33)/(255-33) ≈ 0,15.
     //
     // Den stod på 0,10, som giver 55: kanten VAR der, men lå for tæt på fladen
-    // til at løfte den. Det var netop den forskel Bjørn pegede på — den tynde,
-    // lysere linje om komponisten og om cirklerne i toppen. Begge steder kommer
-    // kanten herfra (Composer.card og TopBar.circle spreder tokens.elevation),
-    // så ét tal flytter begge.
-    return { borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.15)' }
+    // til at løfte den. Ved 0,15 gav den 65 mod fladens 33 — altså kun 32
+    // gråtoner, og det læser øjet som en blød overgang frem for en streg.
+    //
+    // BJØRN 28/9-2026, efter en mockup med fire styrker: «Byg 225 med hairline
+    // på 0,35». Ved 0,35 er forskellen 76 gråtoner (kant 109 mod flade 33), og
+    // først dér står den som en linje. Tallet er valgt på en rendering der ved
+    // 0,15 ramte hans egen skærm inden for én gråtonе — ikke gættet.
+    //
+    // Rækkevidden er med vilje: kanten kommer herfra og deles af ALT svævende —
+    // badges, komposeren, cirklerne i toppen (Composer.card og TopBar.circle
+    // spreder tokens.elevation). Ét tal flytter dem alle, så sproget er det
+    // samme hele vejen. Den LYSE palet er ikke rørt: dens 0,10 er stadig umålt,
+    // og sort på hvidt bærer en lavere alpha.
+    return { borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.35)' }
   }
   // To skygger, ikke én: den brede giver højden, den tætte giver kanten noget
   // at hvile på. Med kun den brede flyder omridset ud; med kun den tætte

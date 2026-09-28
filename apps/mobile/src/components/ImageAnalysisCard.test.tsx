@@ -148,37 +148,44 @@ describe('kortet i strømmen', () => {
 
   /**
    * SYMPTOMET, fotograferet 28/9-2026: animationen stod uden navn og uden
-   * billede.
+   * billede. Aarsagen laa i stroemmen, ikke i kortet — serveren sender sin
+   * EGEN tool_use-blok (med `image_path`) FOER `working_step`, og reducer'en
+   * byggede en tom foreloebig blok af den sidste. To blokke for ét kald, den
+   * tomme bagest, og `buildStreamingRows` beholder den SIDSTE venteflade.
    *
-   * Aarsagen laa i strømmen, ikke i kortet: serveren sender sin EGEN blok
-   * (med `image_path`) og DEREFTER `working_step` for samme kald, og
-   * reducer'en byggede en foreloebig blok af den sidste — helt tom. To
-   * blokke for ét kald, og `buildStreamingRows` beholder den SIDSTE
-   * venteflade. Den tomme vandt.
-   *
-   * Testen kører derfor den RIGTIGE event-raekkefoelge gennem reducer'en og
-   * tegner det den producerer. En test paa haandbyggede blokke ville have
-   * maalt min egen antagelse om raekkefoelgen i stedet for serverens.
+   * FRAMES NEDENFOR ER MAALT, ikke antaget. `visible_tool_exec.run_tool_batch`
+   * bygger sit `working_step` med `tool_id`, `arguments` og `er_vaerktoej`;
+   * den sekvens er koert gennem `visible_runs_sse_v2.translate_to_v2` og det
+   * er RESULTATET der staar her — text-blok, tool_use, input_json_delta,
+   * derefter system_event(working_step). Min foerste udgave af denne test gav
+   * MessageList to haandbyggede blokke og maalte dermed min egen antagelse om
+   * raekkefoelgen i stedet for serverens.
    */
-  it('hele vejen: serverens event-raekkefoelge giver ÉT kort — med navn', async () => {
+  it('hele vejen: serverens MAALTE frames giver ÉT kort — med navn', async () => {
+    const sti = '/home/bs/.jarvis-v2/uploads/chat-a/abc123_skaerm.png'
+    const frames = [
+      { type: 'content_block_start', index: 0, content_block: { type: 'text', text: '' } },
+      { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: 'Jeg kigger på det nu.' } },
+      { type: 'content_block_stop', index: 0 },
+      { type: 'content_block_start', index: 1,
+        content_block: { type: 'tool_use', id: 'call_00_X', name: 'analyze_image', input: {} } },
+      { type: 'content_block_delta', index: 1,
+        delta: { type: 'input_json_delta', partial_json: JSON.stringify({ image_path: sti, prompt: 'beskriv' }) } },
+      { type: 'content_block_stop', index: 1 },
+      { type: 'system_event', kind: 'working_step',
+        payload: { type: 'working_step', action: 'analyze_image', detail: 'Analyserer billede',
+          step: 1, status: 'running', tool_id: 'call_00_X', er_vaerktoej: true } },
+    ]
     let st = initialStreamState()
-    st = streamReducer(st, {
-      type: 'content_block_start', index: 0,
-      content_block: { type: 'tool_use', id: 'call_01', name: 'analyze_image', input: {} },
-    } as never)
-    st = streamReducer(st, {
-      type: 'content_block_delta', index: 0,
-      delta: { type: 'input_json_delta', partial_json: '{"image_path":"/home/bs/skaerm.png"}' },
-    } as never)
-    st = streamReducer(st, {
-      type: 'system_event', kind: 'working_step',
-      payload: { action: 'analyze_image', detail: 'Analyserer billede', step: 3,
-        status: 'running', er_vaerktoej: true, tool_id: 'call_01' },
-    } as never)
+    for (const f of frames) st = streamReducer(st, f as never)
+
+    // Én blok pr. kald — ingen foreløbig tvilling.
+    expect(st.blocks.filter((b) => b && b.type === 'tool_use')).toHaveLength(1)
 
     const s = await render(<MessageList messages={[]} working blocks={st.blocks as ContentBlock[]} />)
     expect(s.queryAllByTestId('image-analysis-progress')).toHaveLength(1)
-    expect(s.getByLabelText('Analyserer skaerm.png')).toBeTruthy()
+    expect(s.getByLabelText('Analyserer abc123_skaerm.png')).toBeTruthy()
+    expect(s.queryByLabelText('Analyserer billede')).toBeNull()
   })
 
   it('generatoren har stadig sit eget kort', async () => {

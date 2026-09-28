@@ -1,11 +1,31 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { cancelRun, getSession, createSession, apiFetch } from './api'
+import { cancelRun, getSession, createSession, apiFetch, followRun } from './api'
 import { StreamError } from './streamClient'
 
 const cfg = { apiBaseUrl: 'http://test', authToken: 't' }
 
 beforeEach(() => {
   vi.restoreAllMocks()
+})
+
+it('passiv desk følger det konkrete run med GET', async () => {
+  const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 204 }))
+  vi.stubGlobal('fetch', fetchMock)
+  followRun(cfg, 's1', vi.fn(), vi.fn(), 'run-2')
+  await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledOnce())
+  expect(fetchMock).toHaveBeenCalledWith(
+    'http://test/chat/runs/run-2/subscribe?from_idx=0',
+    expect.objectContaining({ method: 'GET' })
+  )
+})
+
+it('et forsvundet run afslutter reattach uden gentagne netvaerksforsoeg', async () => {
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 404 })))
+  const onEvent = vi.fn()
+  const onDone = vi.fn()
+  followRun(cfg, 's1', onEvent, onDone, 'finished-run')
+  await vi.waitFor(() => expect(onDone).toHaveBeenCalledOnce())
+  expect(onEvent).toHaveBeenCalledWith({ type: 'message_stop' })
 })
 
 describe('cancelRun', () => {

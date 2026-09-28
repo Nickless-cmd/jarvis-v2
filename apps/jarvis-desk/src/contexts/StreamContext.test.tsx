@@ -248,6 +248,15 @@ describe('generations-hegn paa reattach', () => {
     act(() => { vi.advanceTimersByTime(10_000) })
   }
 
+  it('genforbinder til eget run-id, selv hvis sessionen faar et nyt run', () => {
+    const { result } = renderHook(() => useStream(), { wrapper })
+    act(() => { result.current.send('hej', { sessionId: 's' }) })
+    act(() => { handlersRef.current?.onRunId('visible-1') })
+    brudPaaNettet()
+    expect(followRunMock).toHaveBeenLastCalledWith(
+      expect.anything(), 's', expect.any(Function), expect.any(Function), 'visible-1')
+  })
+
   it('et nyt reattach AFBRYDER det forrige', () => {
     const gen = alleFollows()
     const { result } = renderHook(() => useStream(), { wrapper })

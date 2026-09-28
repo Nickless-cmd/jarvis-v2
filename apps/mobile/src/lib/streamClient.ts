@@ -312,11 +312,14 @@ export function startStream(request: StreamRequest, handlers: StreamHandlers): S
 export function followSession(
   config: ApiConfig,
   sessionId: string,
-  handlers: StreamHandlers
+  handlers: StreamHandlers,
+  runId?: string
 ): StreamControl {
   let activeRunId: string | null = null
   const url = new URL(
-    `/chat/sessions/${encodeURIComponent(sessionId)}/live`,
+    runId
+      ? `/chat/runs/${encodeURIComponent(runId)}/subscribe?from_idx=0`
+      : `/chat/sessions/${encodeURIComponent(sessionId)}/live`,
     config.apiBaseUrl
   ).toString()
   const headers: Record<string, string> = { Accept: 'text/event-stream' }
@@ -365,8 +368,7 @@ export function followSession(
   })
 
   return {
-    // followSession laeser en sessions live-stream, ikke et enkelt run, saa
-    // der er intet offset at genoptage fra. 0 er aerligt: "jeg har ingen".
+    // Passiv follow starter altid fra 0 og dedupes mod den gemte samtale.
     getOffset: () => 0,
     abort: () => source.close(),
     getRunId: () => activeRunId

@@ -675,7 +675,9 @@ it('stream-tekst mætter ikke JS med en render på hver hurtig skærmframe', asy
       })
     }
     expect(renders - before).toBe(0)
-    await act(async () => { frames.shift()?.(start + 40) })
+    // Andre monterede providers kan have en forældet RAF i køen. Dræn alle
+    // callbacks; kun den aktuelle må ændre denne providers viste tekst.
+    await act(async () => { frames.splice(0).forEach((frame) => frame(start + 40)) })
     expect(screen.getByTestId('tekst').props.children).toBe('xxx')
     expect(renders - before).toBe(1)
   } finally {

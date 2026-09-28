@@ -511,7 +511,7 @@ export function StreamProvider({ children }: { children: ReactNode }) {
             followControl.current = null
             followedRunRef.current = null
           }
-        })
+        }, runId)
       },
       stopFollow: () => {
         followGen.current += 1

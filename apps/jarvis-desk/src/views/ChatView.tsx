@@ -381,6 +381,7 @@ export function ChatView({
         // message_stop afventer næste run-id; et netværksbrud prøver igen.
         if (!stopped && bgRunId) retryTimer = setTimeout(() => setFollowRetry((n) => n + 1), 1000)
       },
+      bgRunId,
     )
     return () => {
       alive = false

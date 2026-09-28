@@ -234,8 +234,12 @@ describe('ChatView integration', () => {
         </SessionProvider></SettingsProvider>,
       )
       await waitFor(() => expect(api.followRun).toHaveBeenCalledTimes(1))
+      expect(api.followRun).toHaveBeenLastCalledWith(
+        expect.anything(), 's1', expect.any(Function), expect.any(Function), 'run-1')
       runId = 'run-2'
       await waitFor(() => expect(api.followRun).toHaveBeenCalledTimes(2), { timeout: 10000 })
+      expect(api.followRun).toHaveBeenLastCalledWith(
+        expect.anything(), 's1', expect.any(Function), expect.any(Function), 'run-2')
     } finally {
       vi.mocked(api.getActiveRunSessions).mockResolvedValue([])
     }

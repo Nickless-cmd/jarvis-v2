@@ -76,5 +76,5 @@ def test_send_discord_file_queues_on_valid_path(monkeypatch, tmp_path):
     result = gw.send_discord_file(channel_id=456, text="here", file_path=str(f))
     assert result["status"] == "queued"
     assert len(queued) == 1
-    assert queued[0]["file_path"] == str(f)
+    assert queued[0]["file_paths"] == [str(f)]
     assert queued[0]["channel_id"] == 456

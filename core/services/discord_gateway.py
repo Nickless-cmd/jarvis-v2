@@ -350,17 +350,77 @@ def _validate_send_path(path: str) -> tuple[bool, str]:
     return validate_send_path(path)
 
 
-def send_discord_file(channel_id: int, text: str, file_path: str) -> dict:
-    """Queue a file send to a Discord channel. Validates path first."""
+def _normaliser_stier(file_path: str | list[str] | tuple[str, ...] | None) -> list[str]:
+    """Én sti eller en liste af stier → altid en liste. Tom liste = ingen fil.
+
+    Findes fordi Discord tillader op til 10 vedhæftninger i ÉN besked, mens
+    kaldestederne historisk bar én streng. Normaliseringen ligger ét sted, så
+    `file_path` (streng) og `file_paths` (liste) kan leve side om side uden
+    at hver indgang skal huske reglen.
+    """
+    if not file_path:
+        return []
+    if isinstance(file_path, (list, tuple)):
+        return [str(p).strip() for p in file_path if str(p).strip()]
+    return [str(file_path).strip()]
+
+
+def send_discord_file(
+    channel_id: int,
+    text: str,
+    file_path: str | list[str],
+    *,
+    wait: bool = False,
+    timeout: float = 15.0,
+) -> dict:
+    """Queue a file send to a Discord channel. Validates path(s) first.
+
+    `file_path` er ÉN sti eller en LISTE af stier — Discord tillader op til 10
+    vedhæftninger pr. besked, så tre billeder kan følge med samme besked i
+    stedet for tre separate (målt 28/9-2026: Bjørn spurgte netop om det).
+
+    `wait=True` venter til kø-forbrugeren har sendt, og returnerer Discord's
+    svar i stedet for «queued». Uden den meldte `_open_dm_and_send` «sent» om
+    en besked der kun var lagt i kø — et udfald vi ikke havde verificeret.
+    """
+    stier = _normaliser_stier(file_path)
+    if not stier:
+        return {"status": "error", "reason": "no-file-path"}
+    if len(stier) > 10:
+        return {
+            "status": "error",
+            "reason": f"for-mange-filer: {len(stier)} (Discord tillader 10 pr. besked)",
+        }
     if _is_gateway_owner():
-        ok, err = _validate_send_path(file_path)
-        if not ok:
-            return {"status": "error", "reason": err}
-        _outbound_queue.put_nowait({"channel_id": channel_id, "text": text, "file_path": file_path})
-        return {"status": "queued", "channel_id": channel_id, "file_path": file_path}
+        for p in stier:
+            ok, err = _validate_send_path(p)
+            if not ok:
+                return {"status": "error", "reason": err}
+        item: dict[str, Any] = {
+            "channel_id": channel_id,
+            "text": text,
+            "file_paths": stier,
+        }
+        if wait:
+            # Ack: kø-forbrugeren sætter eventet når `channel.send` er vendt
+            # tilbage (eller fejlet). Uden den kunne værktøjet melde «sendt»
+            # om noget der stadig lå i køen — eller blev droppet i stilhed.
+            ack = threading.Event()
+            svar: dict[str, Any] = {}
+            item["ack"] = ack
+            item["svar"] = svar
+            _outbound_queue.put_nowait(item)
+            if ack.wait(timeout):
+                return svar
+            return {
+                "status": "error",
+                "reason": f"send-timeout: Discord svarede ikke inden for {timeout:.0f}s",
+            }
+        _outbound_queue.put_nowait(item)
+        return {"status": "queued", "channel_id": channel_id, "file_paths": stier}
     return _dispatch_to_runtime(
         "send_file",
-        {"channel_id": int(channel_id), "text": str(text), "file_path": str(file_path)},
+        {"channel_id": int(channel_id), "text": str(text), "file_paths": stier},
     )
 
 
@@ -402,22 +462,31 @@ def _open_dm_and_send(
             future = asyncio.run_coroutine_threadsafe(_open(), _loop)
             channel_id = future.result(timeout=remaining_timeout)
             if file_path:
-                # DM med fil: stien valideres af send_discord_file — samme
-                # graense som kanal-afsendelsen — og filen laegges i samme
-                # outbound-koe. channel.send(file=...) virker paa en DM-kanal
+                # DM med fil(er): stierne valideres af send_discord_file —
+                # samme graense som kanal-afsendelsen — og laegges i samme
+                # outbound-koe. channel.send(files=...) virker paa en DM-kanal
                 # praecis som paa en guild-kanal; mekanikken fandtes, det var
                 # kun vejen hertil der manglede (maalt 27/9-2026).
-                res = send_discord_file(channel_id, text, file_path)
-                if res.get("status") != "queued":
+                #
+                # wait=True: vi venter til Discord HAR taget imod, saa «sent»
+                # betyder leveret. Foer ventede vi ikke, og kaldet kunne melde
+                # succes om en besked der aldrig naaede frem (maalt 28/9-2026).
+                res = send_discord_file(channel_id, text, file_path, wait=True)
+                if res.get("status") != "sent":
                     return {
                         "status": "error",
                         "reason": f"file-send-rejected: {res.get('reason')}",
                     }
                 logger.info(
-                    "discord_gateway: DM med fil til %d koet (channel=%d)",
+                    "discord_gateway: DM med fil til %d sendt (channel=%d)",
                     recipient_discord_id, channel_id,
                 )
-                return {"status": "sent", "channel_id": channel_id, "with_file": True}
+                return {
+                    "status": "sent",
+                    "channel_id": channel_id,
+                    "with_file": True,
+                    "files": int(res.get("files") or len(_normaliser_stier(file_path))),
+                }
             send_discord_message(channel_id, text)
             if attempt > 1:
                 logger.info(
@@ -464,7 +533,7 @@ def _open_dm_and_send(
 def send_dm_to_owner(
     text: str,
     timeout: float = 10.0,
-    file_path: str = "",
+    file_path: str | list[str] = "",
 ) -> dict[str, object]:
     """Send a DM directly to the owner via owner_discord_id.
 
@@ -494,7 +563,9 @@ def send_dm_to_owner(
             {
                 "text": str(text),
                 "timeout": float(timeout),
-                "file_path": str(file_path),
+                # Altid en liste over ledningen — `str(file_path)` ville gøre
+                # en liste til teksten "['a', 'b']" og tabe begge filer.
+                "file_paths": _normaliser_stier(file_path),
             },
         )
     from core.services.discord_config import load_discord_config
@@ -510,7 +581,7 @@ def send_dm_to_user(
     recipient_discord_id: str,
     text: str,
     timeout: float = 10.0,
-    file_path: str = "",
+    file_path: str | list[str] = "",
 ) -> dict[str, object]:
     """DM a known Discord user by ID.
 
@@ -525,7 +596,8 @@ def send_dm_to_user(
                 "recipient_discord_id": str(recipient_discord_id),
                 "text": str(text),
                 "timeout": float(timeout),
-                "file_path": str(file_path),
+                # Liste over ledningen — se send_dm_to_owner.
+                "file_paths": _normaliser_stier(file_path),
             },
         )
 
@@ -1051,11 +1123,18 @@ async def _send_outbound_loop() -> None:
         # Support both old tuple format (channel_id, text) and new dict format
         if isinstance(item, tuple):
             channel_id, text = item
-            file_path = None
+            stier: list[str] = []
+            ack = None
+            svar = None
         else:
             channel_id = item["channel_id"]
             text = item.get("text", "")
-            file_path = item.get("file_path")
+            # file_paths (liste, ny form) eller file_path (streng, ældre
+            # kø-element). Begge bæres, så en besked der blev lagt i køen før
+            # denne ændring ikke taber sin vedhæftning undervejs.
+            stier = item.get("file_paths") or _normaliser_stier(item.get("file_path"))
+            ack = item.get("ack")
+            svar = item.get("svar")
 
         # Typing-intent: tænd «skriver…» uden at sende en besked. Bruges ved
         # run-start i stedet for de gamle tekst-linjer, der fyldte kanalen.
@@ -1084,7 +1163,7 @@ async def _send_outbound_loop() -> None:
         # Stop typing indicator before sending
         with _typing_lock:
             _typing_channels.discard(channel_id)
-        logger.info("discord_outbound: dequeued channel=%s len=%d file=%s", channel_id, len(text), file_path)
+        logger.info("discord_outbound: dequeued channel=%s len=%d files=%d", channel_id, len(text), len(stier))
         try:
             if _client:
                 channel = _client.get_channel(channel_id)
@@ -1092,16 +1171,22 @@ async def _send_outbound_loop() -> None:
                 if channel is None:
                     channel = await _client.fetch_channel(channel_id)
                     logger.info("discord_outbound: fetch_channel=%s", channel)
-                if file_path:
+                if stier:
                     import discord as _discord_lib
-                    await channel.send(
-                        content=text or None,
-                        file=_discord_lib.File(file_path),
-                    )
+                    # Én besked, op til 10 filer — Discord's eget loft. Tre
+                    # billeder følger med samme besked i stedet for tre.
+                    filer = [_discord_lib.File(p) for p in stier]
+                    await channel.send(content=text or None, files=filer)
                 else:
                     for chunk in _split_message(text, 1900):
                         await channel.send(chunk)
                 logger.info("discord_outbound: sent ok to channel=%s", channel_id)
+                if svar is not None:
+                    svar.update({
+                        "status": "sent",
+                        "channel_id": channel_id,
+                        "files": len(stier),
+                    })
                 _status["message_count"] += 1
                 _status["last_message_at"] = datetime.now(UTC).isoformat()
                 _persist_status()
@@ -1112,8 +1197,18 @@ async def _send_outbound_loop() -> None:
                 })
             else:
                 logger.warning("discord_outbound: _client is None, dropping message")
+                if svar is not None:
+                    svar.update({"status": "error", "reason": "discord-not-connected"})
         except Exception as exc:
             logger.warning("discord_gateway: failed to send to channel %s: %s", channel_id, exc)
+            if svar is not None:
+                svar.update({"status": "error", "reason": f"send-failed: {exc}"})
+        finally:
+            # Ack SKAL sættes uanset vej. Ellers hænger et `wait=True`-kald til
+            # dets timeout og melder fejl om en besked der faktisk kom af sted
+            # — eller værre: en tavs drop bliver aldrig rapporteret.
+            if ack is not None:
+                ack.set()
 
 
 async def _run_client(config: dict) -> None:

@@ -60,20 +60,22 @@ def dispatch(req: DispatchRequest, request: Request) -> dict:
         return send_discord_file(
             int(args["channel_id"]),
             str(args["text"]),
-            str(args["file_path"]),
+            # file_paths (liste, ny) eller file_path (streng, ældre kalder) —
+            # begge accepteres, så en ikke-opdateret kalder ikke taber filen.
+            args.get("file_paths") or str(args.get("file_path") or ""),
         )
     if action == "send_dm_to_owner":
         return send_dm_to_owner(
             str(args["text"]),
             float(args.get("timeout", 10.0)),
-            str(args.get("file_path", "")),
+            args.get("file_paths") or str(args.get("file_path") or ""),
         )
     if action == "send_dm_to_user":
         return send_dm_to_user(
             str(args["recipient_discord_id"]),
             str(args["text"]),
             float(args.get("timeout", 10.0)),
-            str(args.get("file_path", "")),
+            args.get("file_paths") or str(args.get("file_path") or ""),
         )
     if action == "discord_channel":
         # Re-invoke the tool here, where _is_gateway_owner() is True so the

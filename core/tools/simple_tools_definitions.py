@@ -2448,8 +2448,11 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
                         "description": "The message text. Optional when file_path is given — a file can be sent on its own.",
                     },
                     "file_path": {
-                        "type": "string",
-                        "description": "Optional absolute path to a file to attach. Must lie under uploads/, workspaces/ or shared/memory/generated/ — it is validated before send, so a path outside those roots is rejected. Use this for images so they render inline in Discord instead of being sent as a URL.",
+                        "oneOf": [
+                            {"type": "string"},
+                            {"type": "array", "items": {"type": "string"}, "maxItems": 10},
+                        ],
+                        "description": "Optional file(s) to attach. Either ONE absolute path, or a LIST of up to 10 paths — Discord allows 10 attachments in a single message, so several images arrive together in one message instead of one message each. Every path must lie under uploads/, workspaces/ or shared/memory/generated/; all are validated before send, and a path outside those roots is rejected. Use this for images so they render inline in Discord instead of being sent as a URL.",
                     },
                     "recipient": {
                         "type": "string",

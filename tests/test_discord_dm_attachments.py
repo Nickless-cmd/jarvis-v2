@@ -141,7 +141,9 @@ def test_open_dm_and_send_koer_filen_naar_sti_er_sat(gateway_owner, monkeypatch)
     tekst_kald: list = []
     monkeypatch.setattr(
         gw, "send_discord_file",
-        lambda ch, t, p: (fil_kald.append((ch, t, p)), {"status": "queued"})[1],
+        # **kw bærer `wait=True` — uden den ville _open_dm_and_send ikke
+        # kunne vente på at Discord faktisk har taget imod (28/9-2026).
+        lambda ch, t, p, **kw: (fil_kald.append((ch, t, p)), {"status": "sent", "files": 1})[1],
     )
     monkeypatch.setattr(
         gw, "send_discord_message",
@@ -162,7 +164,7 @@ def test_open_dm_and_send_afviser_fil_der_ikke_maa_sendes(gateway_owner, monkeyp
     _klar_dm_aabning(gw, monkeypatch)
     monkeypatch.setattr(
         gw, "send_discord_file",
-        lambda ch, t, p: {"status": "error", "reason": "not-allowed"},
+        lambda ch, t, p, **kw: {"status": "error", "reason": "not-allowed"},
     )
 
     result = gw._open_dm_and_send(7, "x", 5.0, file_path="/etc/passwd")
@@ -204,7 +206,9 @@ def test_vaerktoejet_videresender_file_path(monkeypatch):
 
     assert r["status"] == "ok"
     assert "med fil" in r["text"]
-    assert fanget["file_path"] == "/tmp/a.png"
+    # Værktøjet normaliserer til en LISTE, så resten af kæden kun kender én
+    # form — og så flere filer kan følge samme besked (28/9-2026).
+    assert fanget["file_path"] == ["/tmp/a.png"]
 
 
 def test_vaerktoejet_tillader_fil_uden_tekst(monkeypatch):
@@ -314,3 +318,143 @@ def test_schemaet_annoncerer_file_path():
     props = dm["function"]["parameters"]["properties"]
     assert "file_path" in props
     assert "content" in props
+
+
+def test_schemaet_tillader_en_liste_af_stier():
+    """Schemaet skal annoncere at file_path kan være en liste.
+
+    Uden det i schemaet ville modellen aldrig prøve at sende tre billeder i
+    én besked — parameteren ville kun virke for den der læste koden.
+    """
+    from core.tools.simple_tools import get_tool_definitions
+
+    defs = get_tool_definitions(role="owner", scope="")
+    dm = next(
+        d for d in defs if d.get("function", {}).get("name") == "send_discord_dm"
+    )
+    fp = dm["function"]["parameters"]["properties"]["file_path"]
+
+    assert "oneOf" in fp
+    typer = [v.get("type") for v in fp["oneOf"]]
+    assert "string" in typer
+    assert "array" in typer
+
+
+# ---------------------------------------------------------------------------
+# Flere filer i ÉN besked — Discord tillader op til 10 vedhæftninger
+# ---------------------------------------------------------------------------
+
+def test_send_discord_file_tager_en_liste(gateway_owner, monkeypatch):
+    """Tre billeder skal kunne følge SAMME besked, ikke tre separate."""
+    gw = gateway_owner
+    monkeypatch.setattr(gw, "_validate_send_path", lambda p: (True, ""))
+    queued: list = []
+    monkeypatch.setattr(gw._outbound_queue, "put_nowait", lambda item: queued.append(item))
+
+    result = gw.send_discord_file(1, "her", ["/a.png", "/b.png", "/c.png"])
+
+    assert result["status"] == "queued"
+    assert queued[0]["file_paths"] == ["/a.png", "/b.png", "/c.png"]
+
+
+def test_send_discord_file_afviser_over_ti(gateway_owner, monkeypatch):
+    """Discord tager maks 10 vedhæftninger — 11 skal afvises klart."""
+    gw = gateway_owner
+    monkeypatch.setattr(gw, "_validate_send_path", lambda p: (True, ""))
+
+    result = gw.send_discord_file(1, "her", [f"/{i}.png" for i in range(11)])
+
+    assert result["status"] == "error"
+    assert "for-mange-filer" in result["reason"]
+
+
+def test_send_discord_file_validerer_hele_listen(gateway_owner, monkeypatch):
+    """Én dårlig sti må afvise HELE kaldet — ikke sende de gode alene."""
+    gw = gateway_owner
+    monkeypatch.setattr(
+        gw, "_validate_send_path",
+        lambda p: (False, "not-allowed") if p == "/etc/passwd" else (True, ""),
+    )
+    queued: list = []
+    monkeypatch.setattr(gw._outbound_queue, "put_nowait", lambda item: queued.append(item))
+
+    result = gw.send_discord_file(1, "her", ["/a.png", "/etc/passwd"])
+
+    assert result["status"] == "error"
+    assert "not-allowed" in result["reason"]
+    assert queued == []
+
+
+def test_send_discord_file_wait_svarer_med_discords_udfald(gateway_owner, monkeypatch):
+    """wait=True skal svare med Discord's udfald — ikke «queued».
+
+    Uden den meldte _open_dm_and_send «sent» om en besked der kun lå i køen.
+    """
+    gw = gateway_owner
+    monkeypatch.setattr(gw, "_validate_send_path", lambda p: (True, ""))
+
+    def _put(item):
+        # Efterlign kø-forbrugeren: skriv svaret og sæt kvitteringen.
+        item["svar"].update({"status": "sent", "channel_id": 1, "files": 1})
+        item["ack"].set()
+
+    monkeypatch.setattr(gw._outbound_queue, "put_nowait", _put)
+    result = gw.send_discord_file(1, "her", ["/a.png"], wait=True)
+
+    assert result["status"] == "sent"
+    assert result["files"] == 1
+
+
+def test_send_discord_file_wait_timeouter_uden_kvittering(gateway_owner, monkeypatch):
+    """Uden kvittering må kaldet fejle ærligt — aldrig melde succes."""
+    gw = gateway_owner
+    monkeypatch.setattr(gw, "_validate_send_path", lambda p: (True, ""))
+    monkeypatch.setattr(gw._outbound_queue, "put_nowait", lambda item: None)
+
+    result = gw.send_discord_file(1, "her", ["/a.png"], wait=True, timeout=0.05)
+
+    assert result["status"] == "error"
+    assert "send-timeout" in result["reason"]
+
+
+def test_vaerktoejet_videresender_en_liste(monkeypatch):
+    """Tre stier ind → tre stier videre, og svaret nævner antallet."""
+    import core.services.attachment_service as svc
+    import core.services.discord_gateway as gw
+    from core.tools.simple_tools_native import _exec_send_discord_dm
+
+    monkeypatch.setattr(svc, "validate_send_path", lambda p: (True, ""))
+    fanget: dict = {}
+    monkeypatch.setattr(
+        gw, "send_dm_to_owner",
+        lambda content, file_path="": (
+            fanget.update(content=content, file_path=file_path),
+            {"status": "sent", "channel_id": 5, "with_file": True, "files": 3},
+        )[1],
+    )
+
+    r = _exec_send_discord_dm(
+        {"content": "her", "file_path": ["/a.png", "/b.png", "/c.png"]}
+    )
+
+    assert r["status"] == "ok"
+    assert "3 filer" in r["text"]
+    assert fanget["file_path"] == ["/a.png", "/b.png", "/c.png"]
+
+
+def test_vaerktoejet_afviser_en_daarlig_sti_i_listen(monkeypatch):
+    """Én afvist sti i listen skal give en KLAR fejl — ikke en tavs drop."""
+    import core.services.attachment_service as svc
+    from core.tools.simple_tools_native import _exec_send_discord_dm
+
+    monkeypatch.setattr(
+        svc, "validate_send_path",
+        lambda p: (False, "not-allowed") if p == "/etc/passwd" else (True, ""),
+    )
+
+    r = _exec_send_discord_dm(
+        {"content": "her", "file_path": ["/a.png", "/etc/passwd"]}
+    )
+
+    assert r["status"] == "error"
+    assert "rejected" in r["text"]

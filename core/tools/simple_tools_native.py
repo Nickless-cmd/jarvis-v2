@@ -1224,24 +1224,33 @@ def _exec_send_discord_dm(args: dict[str, Any]) -> dict[str, Any]:
     afvisning dybt i gateway'en.
     """
     content = str(args.get("content") or "").strip()
-    file_path = str(args.get("file_path") or "").strip()
-    if not content and not file_path:
+    # file_path kan være ÉN sti eller en LISTE (Discord tillader op til 10
+    # vedhæftninger i én besked — målt 28/9-2026: Bjørn spurgte netop om det).
+    # Begge former normaliseres til en liste her, så resten af kæden kun
+    # forholder sig til én form.
+    raw_path = args.get("file_path")
+    if isinstance(raw_path, (list, tuple)):
+        stier = [str(p).strip() for p in raw_path if str(p).strip()]
+    else:
+        stier = [str(raw_path).strip()] if str(raw_path or "").strip() else []
+    if not content and not stier:
         return {"status": "error", "text": "No content or file_path provided."}
-    if file_path:
+    if stier:
         # validate_send_path returnerer (ok, err) og kaster ikke — ingen grund
         # til at pakke den ind. Et afvist kald skal give en KLAR fejl her, ikke
         # en tavs afvisning dybt i gateway'en.
         from core.services.attachment_service import validate_send_path
-        ok, err = validate_send_path(file_path)
-        if not ok:
-            return {"status": "error", "text": f"file_path rejected: {err}"}
+        for p in stier:
+            ok, err = validate_send_path(p)
+            if not ok:
+                return {"status": "error", "text": f"file_path rejected: {err}"}
     recipient_raw = str(args.get("recipient") or "").strip()
 
     try:
         from core.services.discord_gateway import send_dm_to_owner, send_dm_to_user
 
         if not recipient_raw:
-            result = send_dm_to_owner(content, file_path=file_path)
+            result = send_dm_to_owner(content, file_path=stier)
             who = "Bjørn (owner)"
         else:
             from core.identity.users import load_users
@@ -1262,12 +1271,18 @@ def _exec_send_discord_dm(args: dict[str, Any]) -> dict[str, Any]:
                     "text": f"Unknown Discord recipient '{recipient_raw}'. Known users: {known}",
                 }
             result = send_dm_to_user(
-                matched.discord_id, content, file_path=file_path,
+                matched.discord_id, content, file_path=stier,
             )
             who = f"{matched.name} ({matched.discord_id})"
 
         if result.get("status") == "sent":
-            vedhaeftet = " med fil" if result.get("with_file") else ""
+            antal = int(result.get("files") or 0)
+            if antal > 1:
+                vedhaeftet = f" med {antal} filer"
+            elif antal == 1 or result.get("with_file"):
+                vedhaeftet = " med fil"
+            else:
+                vedhaeftet = ""
             return {
                 "status": "ok",
                 "text": (

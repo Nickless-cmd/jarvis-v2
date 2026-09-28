@@ -95,4 +95,4 @@ def test_discord_channel_send_file_queued(monkeypatch, tmp_path):
     monkeypatch.setattr(gw._outbound_queue, "put_nowait", lambda item: queued.append(item))
     result = gw.send_discord_file(channel_id=123, text="check this", file_path=str(f))
     assert result["status"] == "queued"
-    assert queued[0]["file_path"] == str(f)
+    assert queued[0]["file_paths"] == [str(f)]

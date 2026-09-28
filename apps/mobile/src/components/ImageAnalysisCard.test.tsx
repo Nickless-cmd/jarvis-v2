@@ -3,6 +3,7 @@ import { MessageList } from './MessageList'
 import { billedArbejdeFor, billedKilde, billedSti } from '../lib/billedArbejde'
 import { hentTilCache } from './AuthImage'
 import type { ContentBlock } from '../lib/sseProtocol'
+import { initialStreamState, streamReducer } from '../lib/streamReducer'
 
 /** Hentningen af selve billedet skal kunne måles — ikke et rigtigt netværk. */
 jest.mock('./AuthImage', () => ({
@@ -143,6 +144,41 @@ describe('kortet i strømmen', () => {
     hentet.mockClear()
     await render(<MessageList messages={[]} blocks={[analyse({ image_path: 'C:\\Users\\bs\\kat.png' })]} working />)
     expect(hentet).not.toHaveBeenCalled()
+  })
+
+  /**
+   * SYMPTOMET, fotograferet 28/9-2026: animationen stod uden navn og uden
+   * billede.
+   *
+   * Aarsagen laa i strømmen, ikke i kortet: serveren sender sin EGEN blok
+   * (med `image_path`) og DEREFTER `working_step` for samme kald, og
+   * reducer'en byggede en foreloebig blok af den sidste — helt tom. To
+   * blokke for ét kald, og `buildStreamingRows` beholder den SIDSTE
+   * venteflade. Den tomme vandt.
+   *
+   * Testen kører derfor den RIGTIGE event-raekkefoelge gennem reducer'en og
+   * tegner det den producerer. En test paa haandbyggede blokke ville have
+   * maalt min egen antagelse om raekkefoelgen i stedet for serverens.
+   */
+  it('hele vejen: serverens event-raekkefoelge giver ÉT kort — med navn', async () => {
+    let st = initialStreamState()
+    st = streamReducer(st, {
+      type: 'content_block_start', index: 0,
+      content_block: { type: 'tool_use', id: 'call_01', name: 'analyze_image', input: {} },
+    } as never)
+    st = streamReducer(st, {
+      type: 'content_block_delta', index: 0,
+      delta: { type: 'input_json_delta', partial_json: '{"image_path":"/home/bs/skaerm.png"}' },
+    } as never)
+    st = streamReducer(st, {
+      type: 'system_event', kind: 'working_step',
+      payload: { action: 'analyze_image', detail: 'Analyserer billede', step: 3,
+        status: 'running', er_vaerktoej: true, tool_id: 'call_01' },
+    } as never)
+
+    const s = await render(<MessageList messages={[]} working blocks={st.blocks as ContentBlock[]} />)
+    expect(s.queryAllByTestId('image-analysis-progress')).toHaveLength(1)
+    expect(s.getByLabelText('Analyserer skaerm.png')).toBeTruthy()
   })
 
   it('generatoren har stadig sit eget kort', async () => {

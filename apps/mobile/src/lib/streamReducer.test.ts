@@ -171,6 +171,57 @@ it('et annonceret vaerktoej staar i TRAADEN med det samme', () => {
   expect(b && b.type === 'tool_use' && b.status).toBe('running')
 })
 
+/**
+ * DRIFTENS RAEKKEFOELGE, maalt 28/9-2026 paa telefonen.
+ *
+ * `visible_runs_sse_v2._emit_tool_use_start` laegger `content_block_start` +
+ * argumenterne paa koeen og sender FOERST DEREFTER `system_event(working_step)`
+ * for det SAMME kald. Den rigtige blok kommer altsaa altid foerst.
+ *
+ * Foer denne rettelse blev den foreloebige blok alligevel bygget — og den
+ * havde `input: {}` og `partialJson: ''`. To blokke for samme kald, og
+ * `buildStreamingRows` beholder den SIDSTE venteflade: den tomme. Paa skaermen
+ * stod `analyze_image`-animationen derfor uden navn og uden billede, mens den
+ * blok der faktisk bar `image_path` blev smidt vaek.
+ */
+it('serverens EGEN blok kom foerst — saa bygges der ingen foreloebig oveni', () => {
+  let s = initialStreamState()
+  s = streamReducer(s, {
+    type: 'content_block_start', index: 0,
+    content_block: { type: 'tool_use', id: 'call_01', name: 'analyze_image', input: {} },
+  } as never)
+  s = streamReducer(s, {
+    type: 'content_block_delta', index: 0,
+    delta: { type: 'input_json_delta', partial_json: '{"image_path":"/x/k.png"}' },
+  } as never)
+  s = streamReducer(s, workingStep({ action: 'analyze_image', step: 3 }) as never)
+
+  expect(foreloebige(s)).toHaveLength(0)
+  const kald = s.blocks.filter((b) => b && b.type === 'tool_use')
+  expect(kald).toHaveLength(1)
+  expect(kald[0] && kald[0].type === 'tool_use' && kald[0].partialJson)
+    .toBe('{"image_path":"/x/k.png"}')
+})
+
+it('er der INGEN rigtig blok endnu, staar den foreloebige stadig', () => {
+  const s = streamReducer(initialStreamState(), workingStep({ action: 'analyze_image', step: 3 }) as never)
+  expect(foreloebige(s)).toHaveLength(1)
+})
+
+it('et FAERDIGT kald spaerrer ikke for naeste annoncering af samme vaerktoej', () => {
+  let s = initialStreamState()
+  s = streamReducer(s, {
+    type: 'content_block_start', index: 0,
+    content_block: { type: 'tool_use', id: 'call_01', name: 'bash', input: {} },
+  } as never)
+  s = streamReducer(s, {
+    type: 'content_block_start', index: 1,
+    content_block: { type: 'tool_result', tool_use_id: 'call_01', status: 'ok', content: 'ok' },
+  } as never)
+  s = streamReducer(s, workingStep({ action: 'bash', step: 2 }) as never)
+  expect(foreloebige(s)).toHaveLength(1)
+})
+
 it('«Taenker videre · runde N» er IKKE et vaerktoej', () => {
   // DEN FEJL: `working_step` bruges ogsaa til livstegn med action="thinking".
   // De faar aldrig en rigtig blok der kan rydde dem - ti runder blev til ti

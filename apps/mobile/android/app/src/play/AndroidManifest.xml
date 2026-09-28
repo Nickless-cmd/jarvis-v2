@@ -31,6 +31,15 @@
        manifest 28/9-2026 — kun LocationTaskService brugte type "location". -->
   <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION"
                    tools:node="remove"/>
-  <service android:name="expo.modules.location.services.LocationTaskService"
-           tools:node="remove"/>
+
+  <!-- NB (28/9-2026): `<service>` hoerer under `<application>`. Laa den direkte
+       under `<manifest>` — som tilladelserne — behandlede merger'en den som en
+       DEKLARATION i stedet for en fjernelse, og resultatet var at servicen
+       stadig stod i den merged manifest med bibliotekets attributter
+       (`android:exported="false"`, `foregroundServiceType="location"`).
+       Maalt i manifest-merger-blame-rapporten. Derfor denne nesting. -->
+  <application>
+    <service android:name="expo.modules.location.services.LocationTaskService"
+             tools:node="remove"/>
+  </application>
 </manifest>

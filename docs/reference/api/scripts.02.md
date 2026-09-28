@@ -2,6 +2,17 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `scripts/interlanguage_classifier_interim.py`
+_Interim Phase 3 classifier — pre-registered method, partial data._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `load_raw` | `()` | — | [src](../../../scripts/interlanguage_classifier_interim.py#L49) |
+| function | `cleanup` | `(rows)` | Pre-registreret cleanup (§1): | [src](../../../scripts/interlanguage_classifier_interim.py#L62) |
+| function | `featurize` | `(rows, embedder)` | — | [src](../../../scripts/interlanguage_classifier_interim.py#L101) |
+| function | `permutation_p` | `(clf_template, X_train, y_train, X_test, y_test, observed_acc, n=…)` | — | [src](../../../scripts/interlanguage_classifier_interim.py#L118) |
+| function | `main` | `()` | — | [src](../../../scripts/interlanguage_classifier_interim.py#L136) |
+
 ## `scripts/interlanguage_drift_classifier.py`
 _Phase 3 supplementary — drift-feature classifier for jarvis vs random._
 
@@ -454,14 +465,4 @@ _Manuel repro af de tre streaming-fejl-former (Fase 0-harness)._
 |---|---|---|---|---|
 | function | `_install_hermetic_mocks` | `(persisted, nerves)` | — | [src](../../../scripts/repro_streaming_fault.py#L50) |
 | function | `main` | `()` | — | [src](../../../scripts/repro_streaming_fault.py#L77) |
-
-## `scripts/requirements_gen.py`
-_Scan core/+apps/+scripts for THIRD-PARTY top-level imports (filter stdlib + first-party)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `top_level_imports` | `(tree)` | Root module names of ABSOLUTE imports in one parsed file (relative imports ignored). | [src](../../../scripts/requirements_gen.py#L15) |
-| function | `scan` | `(repo=…)` | — | [src](../../../scripts/requirements_gen.py#L29) |
-| function | `third_party` | `(mods)` | — | [src](../../../scripts/requirements_gen.py#L40) |
-| function | `main` | `()` | — | [src](../../../scripts/requirements_gen.py#L46) |
 

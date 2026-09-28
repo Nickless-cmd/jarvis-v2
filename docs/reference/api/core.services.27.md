@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/visible_run_terminal_recovery.py`
+_Resolve whether an agentic run segment completed or needs recovery._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `has_incompletion_evidence` | `(text)` | Explicit unfinished work; absence of a completion keyword is not proof. | [src](../../../core/services/visible_run_terminal_recovery.py#L32) |
+| class | `AgenticExitResolution` | `` | — | [src](../../../core/services/visible_run_terminal_recovery.py#L44) |
+| function | `resolve_agentic_exit` | `(*, exit_reason, final_text, finish_reason=…, forced_finalize=…, pending_tool_intent=…, recovery_attempt=…, recovery_limit=…)` | — | [src](../../../core/services/visible_run_terminal_recovery.py#L51) |
+
 ## `core/services/visible_run_trace.py`
 _Sporet gennem én synlig kørsel — og runde-grænserne i den._
 

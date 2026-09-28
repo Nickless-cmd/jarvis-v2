@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/my_projects.py`
+_My Projects — auto-start + watchdog for Jarvis' own background processes._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `projekter_slaaet_til` | `()` | Skal mine egne baggrundsprojekter starte af sig selv? | [src](../../../core/services/my_projects.py#L27) |
+| function | `ensure_my_projects_running` | `()` | Called at runtime boot. Spawn any of my 4 projects that aren't running. | [src](../../../core/services/my_projects.py#L72) |
+| function | `tick_my_projects_watchdog` | `()` | Check all 4 projects are alive; restart any that died. | [src](../../../core/services/my_projects.py#L133) |
+
 ## `core/services/narrative_identity.py`
 _Narrative Identity — periodisk "Hvem er jeg lige nu?" selvfortælling._
 
@@ -615,12 +624,4 @@ _Parallel Selves — internal sub-selves._
 | function | `describe_self_plural` | `()` | — | [src](../../../core/services/parallel_selves.py#L23) |
 | function | `format_self_for_prompt` | `()` | — | [src](../../../core/services/parallel_selves.py#L26) |
 | function | `build_parallel_selves_surface` | `()` | — | [src](../../../core/services/parallel_selves.py#L29) |
-
-## `core/services/past_context_router.py`
-_Past-context cue router for visible prompts._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `needs_past_context` | `(user_message)` | Return True when a user turn likely depends on prior conversation. | [src](../../../core/services/past_context_router.py#L20) |
-| function | `build_past_context_section` | `(user_message, *, session_id=…, limit=…)` | Render a compact context block from summaries/chat when cues warrant it. | [src](../../../core/services/past_context_router.py#L28) |
 

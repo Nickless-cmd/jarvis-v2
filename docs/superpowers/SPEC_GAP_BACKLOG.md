@@ -1,35 +1,54 @@
 ---
-status: delvist
+status: færdig
 audited: 2026-09-28
-ground_truth: 4 punkter lukket 28/9-2026 efter kode-verifikation; 3 står reelt åbent
+ground_truth: ingen åbne huller — alle 7 punkter lukket efter kode-verifikation 28/9-2026; 4 punkter under «skal verificeres» er stadig uafklarede
 ---
 # Spec-Gap Backlog
 
 Genereret 2026-06-14 efter audit af alle 61 specs i `docs/superpowers/specs/` mod
 kodebasen (7 parallelle Explore-agenter). ~50 specs er fuldt live; hullerne herunder.
 
-> **Opdateret 28/9-2026.** Fire punkter stod markeret som åbne huller, men er bygget
-> siden — verificeret i koden, ikke i commit-beskeder. Backloggen var 2,5 måned gammel
-> og bar derfor forældede huller. Se «Lukket 28.9» nedenfor.
+> **Opdateret 28/9-2026 (anden runde).** Alle tre huller der stadig stod åbne, er nu
+> lukket — men kun ét af dem krævede kode. De to andre var **allerede bygget** med en
+> anden løsning end backloggen beskrev; beskrivelsen var forældet, ikke hullet ægte.
+> Det er den samme fejlklasse som frontmatter bar: en tekst der påstod en tilstand
+> uden at nogen verificerede den mod koden.
 >
-> Frontmatter sagde `status: færdig` fra 8. juli. Det var forkert — tre punkter stod
-> stadig åbne. Rettet til `delvist`.
+> **Læren:** en backlog er kun sand den dag den skrives. Verificér punktet i koden
+> før du bygger — to af tre «huller» her var arbejde nogen allerede havde gjort.
 
 Status-legende: 🔴 ægte hul (kode mangler) · 🟡 hurtig win (kode findes, mangler wire)
 · 🟠 større men afgrænset · ⚪ bevidst parkeret · 🔍 skal verificeres
 
 ---
 
-## ✅ LUKKET 28.9.2026 — verificeret i kode
+## ✅ LUKKET 28.9.2026 — kode skrevet
 
+- **Code-mode git-diff** *(jarvis-desk)* — `CodePanel.tsx` viser nu ændringerne: en
+  «Vis ændringer»-knap i edit-mode skifter mellem tekstfeltet og `DiffView`
+  (`oldText=content`, `newText=draft`). Bygget 28/9; test i `CodePanel.test.tsx`
+  (8/8 grønne). `DiffView` blev genbrugt, ikke genopfundet.
+
+## ✅ LUKKET 28.9.2026 — var allerede bygget (backloggen tog fejl)
+
+- **Context-ring backend-event** — backloggen sagde «ringen viser localStorage-fallback».
+  Det er ikke sandt længere: `ChatView.tsx` poller `getContextInfo` og får det
+  backend-autoritative transcript-estimat siden sidste compaction (`setContextTokens(r.tokens)`).
+  Kommentaren i kilden siger det direkte: den gamle per-tur stream-usage «hoppede ulogisk»
+  og blev erstattet 23/6-2026 af et **poll** frem for et SSE-event. Den *arkitektur*
+  backloggen beskrev, findes ikke mere.
+- **Decisions-as-Signals** — backloggen sagde `fired_decisions_section()` «kaldes ikke».
+  Sandt, men irrelevant: den er en **ubrugt alternativ-formatter**. Den aktive vej er
+  `evaluate_decision_triggers()`, som kaldes i det agentiske loop
+  (`core/services/visible_runs.py:4347`), lægges i rundens kontekst via `_a_parts`, og
+  emitteres som `decision_signal`-SSE-event. Signalet fyrer og når modellen.
 - **Promise-ledger (var #5)** — `core/services/promise_ledger.py` findes **og er wired**:
   `record_promise` kaldes fra `core/services/visible_runs_memory.py:268`, og
   `pending_promises` bruges i `core/services/prompt_contract.py:4215`.
-  Backloggen sagde «ikke bygget».
 - **db-split (var #9)** — `core/runtime/db.py` er **1.234 linjer**, ikke ~33.700.
   Domæne-splittet er gennemført; punktet er ikke længere et hul.
 - **Interlanguage fase 3-4 (var #10)** — `interlanguage_llm_judge.py` og
-  `interlanguage_analyze.py` findes begge i `core/services/`. Backloggen sagde «mangler».
+  `interlanguage_analyze.py` findes begge i `core/services/`.
 - **User-temperature Site 4 (var #7)** — `get_response_style_modifiers` kaldes nu fra
   `core/services/prompt_sections/private_layer_sections.py:63`.
 
@@ -48,28 +67,13 @@ Status-legende: 🔴 ægte hul (kode mangler) · 🟡 hurtig win (kode findes, m
 
 ---
 
-## 🔴 Ægte huller — kode mangler (STADIG ÅBNE pr. 28.9.2026)
+## 🔴 Ægte huller — kode mangler
 
-**1. Code-mode git-diff** *(jarvis-desk)* — `CodePanel.tsx` importerer `CodeBlock`, ikke
-`DiffView`. Skriver Jarvis en fil, viser panelet filens indhold — ikke hvad der ændrede
-sig. `DiffView.tsx` findes og virker (bruges i `rich/ToolCard.tsx` til tool-resultater),
-så komponenten er der; det er wire'en i CodePanel der mangler.
-*(Mobil-appen har det: `apps/mobile/src/lib/toolDiff.ts` + `components/DiffArk.tsx`.)*
-
-**2. Context-ring backend-event** *(jarvis-desk)* — preview-panelet er bygget, men
-streamen emitterer intet `system_event kind="context"` med live token/compaction-tal.
-SSE-streamen bor nu i `apps/api/jarvis_api/routes/chat_stream_v2.py` (den gamle
-`visible_runs_sse_v2.py` findes ikke længere). Ringen viser localStorage-fallback.
-
-**3. Decisions-as-Signals** — `fired_decisions_section()` findes i
-`core/services/decision_signals.py:251`, men kaldes ikke. `prompt_contract.py:1876-1877`
-bruger stadig den gamle `enforcement_section()`. Én-linjes skift.
-
----
+**Ingen.** Alle punkter der stod her pr. 28/9 er lukket.
 
 ## 🟠 Større, men afgrænset
 
-*(db-split og interlanguage flyttet til «Lukket 28.9». Ingen tilbage her.)*
+*(db-split og interlanguage flyttet til «Lukket». Ingen tilbage her.)*
 
 ## ⚪ Bevidst parkeret (ikke huller)
 
@@ -92,7 +96,9 @@ bruger stadig den gamle `enforcement_section()`. Én-linjes skift.
 
 ## Ændringslog for denne fil
 
-- **2026-09-28:** 4 punkter lukket efter kode-verifikation; frontmatter rettet fra
-  `færdig` til `delvist` (den var forkert — 3 punkter stod åbent). Nummereringen omlagt:
-  de lukkede er ude af hul-listen, så de åbne står som 1-3.
+- **2026-09-28 (runde 2):** de tre sidste huller lukket. Ét krævede kode (Code-mode
+  git-diff — bygget); to var allerede bygget med en anden løsning (context-ring poller,
+  decisions-signaler wired i loopet). Ingen åbne huller tilbage.
+- **2026-09-28 (runde 1):** 4 punkter lukket efter kode-verifikation; frontmatter rettet fra
+  `færdig` til `delvist` (den var forkert — 3 punkter stod åbent).
 - **2026-06-14:** genereret.

@@ -328,6 +328,13 @@ _Render Jarvis Puls assets. Requires rsvg-convert and Pillow; run from any cwd._
 | function | `render` | `(dest, size, source)` | — | [src](../../../scripts/generate_puls_icons.py#L46) |
 | function | `main` | `()` | — | [src](../../../scripts/generate_puls_icons.py#L57) |
 
+## `scripts/goal_report.py`
+_Kør goal-reporteren: skriv tick-kvalitet, heed-rate og adherence til målet._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `main` | `(argv)` | — | [src](../../../scripts/goal_report.py#L17) |
+
 ## `scripts/god_file_map.py`
 _Read-only god-fil-kort: alle egne .py-filer ≥1500 linjer, karakteriseret (linjer, funktioner,_
 
@@ -421,15 +428,4 @@ _Phase 3 FINAL classifier — pre-registered method, full 7-day data._
 | function | `render_text_report` | `(report)` | Format the full report for human reading. | [src](../../../scripts/interlanguage_classifier_final.py#L284) |
 | function | `run` | `()` | Execute the full pre-registered Phase 3 pipeline and return the report dict. | [src](../../../scripts/interlanguage_classifier_final.py#L394) |
 | function | `main` | `()` | CLI entry point. Parses --json/--allow-early, enforces the pre-registered | [src](../../../scripts/interlanguage_classifier_final.py#L500) |
-
-## `scripts/interlanguage_classifier_interim.py`
-_Interim Phase 3 classifier — pre-registered method, partial data._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `load_raw` | `()` | — | [src](../../../scripts/interlanguage_classifier_interim.py#L49) |
-| function | `cleanup` | `(rows)` | Pre-registreret cleanup (§1): | [src](../../../scripts/interlanguage_classifier_interim.py#L62) |
-| function | `featurize` | `(rows, embedder)` | — | [src](../../../scripts/interlanguage_classifier_interim.py#L101) |
-| function | `permutation_p` | `(clf_template, X_train, y_train, X_test, y_test, observed_acc, n=…)` | — | [src](../../../scripts/interlanguage_classifier_interim.py#L118) |
-| function | `main` | `()` | — | [src](../../../scripts/interlanguage_classifier_interim.py#L136) |
 

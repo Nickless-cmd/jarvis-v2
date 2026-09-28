@@ -2,6 +2,13 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/memory_consolidation_nudge.py`
+_Memory consolidation nudge — unconditional prompt section._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `memory_consolidation_nudge_section` | `()` | Return a short prompt section that fires every turn unconditionally. | [src](../../../core/services/memory_consolidation_nudge.py#L13) |
+
 ## `core/services/memory_decay_daemon.py`
 _Memory decay daemon — selective forgetting and re-discovery._
 
@@ -612,13 +619,4 @@ _Multi-signal retrieval — BM25 keyword scoring + entity fusion._
 | function | `entity_overlap_score` | `(query, document_text)` | Pure entity overlap score (0.0–1.0) without a base score. | [src](../../../core/services/multi_signal_retrieval.py#L265) |
 | function | `fuse_signals` | `(embedding_score=…, bm25_score=…, entity_overlap=…, recency_score=…, importance=…, recall_freq=…, weights=…)` | Fuse multiple retrieval signals into a single composite score. | [src](../../../core/services/multi_signal_retrieval.py#L301) |
 | function | `score_record` | `(query, record_text, embedding_score=…, bm25_index=…, record_idx=…, recency_score=…, importance=…, recall_freq=…)` | Score a single record using all available signals. | [src](../../../core/services/multi_signal_retrieval.py#L348) |
-
-## `core/services/my_projects.py`
-_My Projects — auto-start + watchdog for Jarvis' own background processes._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `projekter_slaaet_til` | `()` | Skal mine egne baggrundsprojekter starte af sig selv? | [src](../../../core/services/my_projects.py#L27) |
-| function | `ensure_my_projects_running` | `()` | Called at runtime boot. Spawn any of my 4 projects that aren't running. | [src](../../../core/services/my_projects.py#L72) |
-| function | `tick_my_projects_watchdog` | `()` | Check all 4 projects are alive; restart any that died. | [src](../../../core/services/my_projects.py#L133) |
 

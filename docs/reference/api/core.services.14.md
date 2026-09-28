@@ -2,6 +2,15 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/hollow_promise_census.py`
+_Optælling af tomme løfter — så Centralen kan SE Jarvis' værste mønster._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_since` | `(hours)` | ISO-UTC-grænse. DB'en gemmer `2026-09-05T16:20:19.213749+00:00`, så en | [src](../../../core/services/hollow_promise_census.py#L71) |
+| function | `census` | `(hours=…)` | Den ægte rate pr. model + hvor meget værnet fangede. Self-safe. | [src](../../../core/services/hollow_promise_census.py#L79) |
+| function | `_guard_counts` | `(grænse)` | Hvad værnet selv greb, fra dets egne events. Self-safe. | [src](../../../core/services/hollow_promise_census.py#L129) |
+
 ## `core/services/hollow_promise_guard.py`
 _Hollow-promise guard (4. jul) — fang "lovede handling, kaldte intet værktøj"._
 
@@ -707,13 +716,4 @@ _End-of-day refleksions-slot — visible Jarvis spørger sig selv hvad han lært
 | function | `_run_reflection_turn` | `(chronicle_summary)` | Trigger en visible-Jarvis tur med reflection-envelope. | [src](../../../core/services/jarvis_brain_reflection.py#L86) |
 | function | `run_daily_reflection_if_active` | `()` | Entry point for the daily slot trigger. | [src](../../../core/services/jarvis_brain_reflection.py#L110) |
 | function | `build_jarvis_brain_reflection_surface` | `()` | Surface the daily reflection slot without triggering it. | [src](../../../core/services/jarvis_brain_reflection.py#L126) |
-
-## `core/services/jarvis_brain_visibility.py`
-_Privacy-gate for Jarvis Brain recall._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_resolve_owner_id` | `()` | Hentet via owner_resolver. Wrapped så tests kan monkeypatche. | [src](../../../core/services/jarvis_brain_visibility.py#L14) |
-| function | `can_recall` | `(entry_visibility, ceiling)` | True if entry's visibility is permitted at the given ceiling. | [src](../../../core/services/jarvis_brain_visibility.py#L30) |
-| function | `session_visibility_ceiling` | `(session)` | Beregn visibility-ceiling for en session. | [src](../../../core/services/jarvis_brain_visibility.py#L35) |
 

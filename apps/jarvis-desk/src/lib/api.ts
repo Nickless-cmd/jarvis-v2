@@ -92,6 +92,28 @@ export async function serverForklaring(res: Response): Promise<string> {
   return t ? `HTTP ${res.status}: ${t.slice(0, 200)}` : `HTTP ${res.status}`
 }
 
+declare const __DESK_VERSION__: string | undefined
+
+/**
+ * Fortæl serveren hvilken udgave der kører.
+ *
+ * 28/9-2026 gik der en time med at afgøre om en klient kørte den nye build
+ * eller den gamle. Manifestet sagde hvad der var UDGIVET; ingen kunne sige
+ * hvad der var INSTALLERET. Klienten ved det selv — den skal bare sige det.
+ *
+ * Versionen bages ind af Vite fra `package.json`, som i forvejen er desks
+ * eneste versionskilde. Kaster aldrig: et manglende hoved må ikke vælte et
+ * kald, og i test findes konstanten ikke.
+ */
+export function klientHoveder(): Record<string, string> {
+  try {
+    const v = typeof __DESK_VERSION__ === 'string' ? __DESK_VERSION__.trim() : ''
+    return v ? { 'X-Jarvis-Klient': 'desk', 'X-Jarvis-Klientversion': v } : {}
+  } catch {
+    return {}
+  }
+}
+
 export async function apiFetch<T>(
   config: ApiConfig,
   path: string,
@@ -136,6 +158,7 @@ export async function apiFetch<T>(
   const url = new URL(path, config.apiBaseUrl).toString()
   const headers: Record<string, string> = {
     Accept: 'application/json',
+    ...klientHoveder(),
     ...options.headers,
   }
   if (body !== undefined) headers['Content-Type'] = 'application/json'

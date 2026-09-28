@@ -1,4 +1,5 @@
 import type { AccountProfile, ApiConfig, ChatMessage, ChatSession, Connector, ModelOption, VisibleProvider, WhoAmI } from './types'
+import * as Application from 'expo-application'
 
 export type ApiErrorKind = 'network' | 'auth' | 'rate_limit' | 'server' | 'unknown'
 
@@ -38,6 +39,31 @@ async function _forklaring(response: Response): Promise<string> {
   return `HTTP ${response.status}`
 }
 
+/**
+ * Fortæl serveren hvilken udgave der kører.
+ *
+ * 28/9-2026 gik der en time med at afgøre om telefonen kørte 218 eller 219.
+ * Manifestet sagde hvad der var UDGIVET; ingen kunne sige hvad der var
+ * INSTALLERET. Appen ved det selv — den skal bare sige det.
+ *
+ * `nativeBuildVersion` er versionCode, det tal auto-updateren sammenligner på,
+ * og derfor det der faktisk afgør sagen. Kaster aldrig: et manglende hoved må
+ * ikke kunne vælte et kald.
+ */
+export function klientHoveder(): Record<string, string> {
+  try {
+    const navn = String(Application.nativeApplicationVersion ?? '').trim()
+    const kode = String(Application.nativeBuildVersion ?? '').trim()
+    if (!navn && !kode) return {}
+    return {
+      'X-Jarvis-Klient': 'mobile',
+      'X-Jarvis-Klientversion': kode ? `${navn || '?'} (${kode})` : navn,
+    }
+  } catch {
+    return {}
+  }
+}
+
 export async function apiFetch<T>(
   config: ApiConfig,
   path: string,
@@ -52,6 +78,7 @@ export async function apiFetch<T>(
         Accept: 'application/json',
         ...(options.body === undefined ? {} : { 'Content-Type': 'application/json' }),
         ...(options.ifNoneMatch ? { 'If-None-Match': options.ifNoneMatch } : {}),
+        ...klientHoveder(),
         Authorization: `Bearer ${config.authToken}`
       },
       body: options.body === undefined ? undefined : JSON.stringify(options.body)

@@ -811,6 +811,24 @@ def create_app() -> FastAPI:
     )
     app.middleware("http")(jarvisx_user_routing_middleware)
 
+    # Hvilken udgave af appen sidder der i den anden ende? 28/9-2026 gik der en
+    # time med at afgoere om en telefon koerte 218 eller 219: manifestet sagde
+    # hvad der var UDGIVET, ingen kunne sige hvad der var INSTALLERET. Klienten
+    # ved det selv — den skal bare sige det. Skrives i traaden, fordi det er en
+    # fil-skrivning og event-loopet koerer med --workers 1.
+    @app.middleware("http")
+    async def _klient_version_middleware(request, call_next):
+        try:
+            import asyncio
+            klient = request.headers.get("x-jarvis-klient") or ""
+            version = request.headers.get("x-jarvis-klientversion") or ""
+            if klient and version:
+                from core.services.klient_versioner import noter
+                asyncio.get_running_loop().run_in_executor(None, noter, klient, version)
+        except Exception as exc:  # noqa: BLE001 — en version er ikke kaldet vaerd
+            logger.debug("kunne ikke notere klientversion: %s", exc)
+        return await call_next(request)
+
     # Tools-cluster: endpoint-usage-tæller (parallel til tool-statistik). Offloadet til tråd
     # — sync DB-UPSERT må ALDRIG blokere event-loopet med --workers 1 (blocking-freeze-mønstret).
     # Fire-and-forget; rute-TEMPLATE (request.scope["route"].path) så alle kald til samme

@@ -14,26 +14,6 @@ from uuid import uuid4
 logger = logging.getLogger(__name__)
 
 
-def _persist_recovery_failure(session_id: str, reason: str) -> None:
-    """Make a failed continuation visible even after the prior SSE has closed."""
-    sid = (session_id or "").strip()
-    if not sid:
-        return
-    try:
-        from core.services.chat_sessions import append_chat_message
-        append_chat_message(
-            session_id=sid,
-            role="assistant",
-            content=(
-                "Den automatiske fortsættelse kunne ikke startes. "
-                "Checkpointet er bevaret, så opgaven kan genoptages. "
-                f"Årsag: {str(reason or 'ukendt fejl')[:180]}"
-            ),
-        )
-    except Exception:
-        logger.exception("kunne ikke persistere fejlet auto-fortsættelse session=%s", sid)
-
-
 def _afregn_genoptaget_run(task_id: str, inner_run_id: str, *, generation: int) -> None:
     """Close or retry the *same* task using the synchronous run journal.
 
@@ -167,8 +147,6 @@ def start_user_run_detached(
         from core.services.visible_runs import start_visible_run
         legacy_iter = start_visible_run(**visible_args)
 
-    import time as _time
-    _startet = _time.monotonic()
     # Ny tur: den forrige turs udfald maa ikke kunne arves (auto_continuation).
     try:
         from core.services.auto_continuation import glem_session_udfald
@@ -280,19 +258,11 @@ def start_user_run_detached(
                         _set_active_visible_run({})
                 except Exception:
                     pass
-                # ── AUTO-FORTSAETTELSE ────────────────────────────────────
-                # EFTER mark_done: single-flight ville ellers se dette run som
-                # stadig levende og haenge fortsaettelsen paa det doede run.
-                if not recovery_task_id:
-                    try:
-                        _fortsaet_hvis_budgettet_loeb_toert(
-                            run_id=run_id, sid=sid, startet=_startet,
-                            visible_args=visible_args, eff_model=eff_model,
-                            eff_provider=eff_provider, lane=lane,
-                        )
-                    except Exception:
-                        logger.exception("auto-fortsaettelse fejlede for %s", run_id)
-                        _persist_recovery_failure(sid, "continuation spawn failed")
+                # visible_runs afregner det INDRE run i den durable journal
+                # foer terminal SSE. Kun recovery-dispatcheren maa starte en
+                # fortsaettelse. En ekstra sti her brugte wrapperens ydre id;
+                # ved journalfejl startede den direkte og koebte en tur mere,
+                # mens dispatcheren senere genoptog den oprindelige opgave.
                 try:
                     from core.services.push_dispatcher import on_run_done
                     on_run_done(run_id)
@@ -432,87 +402,3 @@ def start_or_attach_user_run(
 
     run_id = start_user_run_detached(message=message, session_id=session_id, run_id=claimed, **kw)
     return run_id, False
-
-
-def _fortsaet_hvis_budgettet_loeb_toert(
-    *, run_id: str, sid: str, startet: float,
-    visible_args: dict, eff_model: str, eff_provider: str, lane: str,
-) -> None:
-    """Start en fortsættelse når terminal-policyen klassificerede segmentet
-    som resumérbart.
-
-    Beslutningen ligger i `auto_continuation.beslut`, som er ren og proevet fra
-    alle kanter. Her er kun ledningen: hent kendsgerningerne, spoerg, og start.
-
-    Grunden logges ALTID — ogsaa naar svaret er nej. En fortsaettelse der
-    udebliver skal kunne forklares uden at laese koden.
-    """
-    from core.services import auto_continuation as ac
-
-    try:
-        from core.runtime.settings import load_settings
-        _slaaet_til = bool(getattr(load_settings(), "auto_continuation_enabled", True))
-    except Exception:
-        _slaaet_til = True
-
-    _exit_reason = ac.hent_udfald(run_id, sid)
-    beslutning = ac.beslut(
-        exit_reason=_exit_reason,
-        slaaet_til=_slaaet_til,
-        # Denne sti er brugerens; autonome runs kommer aldrig herigennem.
-        autonom=False,
-        kaede_nr=ac.kaede_nr(sid),
-        bruger_skrev_imens=ac.bruger_skrev_efter(sid, startet),
-    )
-    if not beslutning.fortsaet:
-        logger.info("auto-fortsaettelse NEJ run_id=%s: %s", run_id, beslutning.grund)
-        return
-
-    # A continuation spawned after SIGTERM inherits a process that is already
-    # being torn down. It can only be cut off again, consume the chain limit,
-    # and replace a useful checkpoint with noise. The durable checkpoint is
-    # instead surfaced by the boot/session recovery path after restart.
-    try:
-        from core.runtime.process_lifecycle import lukker_ned
-        if lukker_ned():
-            logger.info(
-                "auto-fortsaettelse UDSAT run_id=%s: processen lukker ned; "
-                "checkpointet bevares til genoptagelse",
-                run_id,
-            )
-            return
-    except Exception:
-        pass
-
-    nr = ac.kaede_nr(sid) + 1
-    ac.saet_kaede(sid, nr)
-    logger.info("auto-fortsaettelse JA run_id=%s: %s", run_id, beslutning.grund)
-
-    # ÉN EJER AF FORTSÆTTELSEN (opgave 4). Her stod `start_user_run_detached`
-    # direkte — og så kunne den samme opgave startes to steder fra: her, og af
-    # dispatcheren der læser journalen. To veje til samme handling giver enten
-    # to kørsler eller ingen, afhængigt af hvem der nåede først.
-    #
-    # Nu skrives ønsket ned og dispatcheren vækkes. Den tager kravet atomisk,
-    # så præcis én fortsættelse starter. Kan journalen ikke skrives, falder vi
-    # tilbage til den direkte start: en fortsættelse der udebliver er værre end
-    # en der starter ad den gamle vej.
-    from core.services.in_flight_runs import settle_recovering
-    from core.services.visible_run_recovery_dispatcher import signal_recovery_dispatcher
-    _fortsaettelse = ac.fortsaettelses_besked(nr, reason=_exit_reason)
-    try:
-        settle_recovering(run_id, reason=_exit_reason or "budget-opbrugt",
-                          summary=_fortsaettelse)
-        signal_recovery_dispatcher()
-        return
-    except Exception:
-        logger.warning("auto-fortsaettelse: kunne ikke skrive kravet for %s — "
-                       "starter direkte", run_id, exc_info=True)
-
-    nye = dict(visible_args)
-    nye["message"] = _fortsaettelse
-    nye.pop("session_id", None)
-    start_user_run_detached(
-        session_id=sid, eff_model=eff_model, eff_provider=eff_provider,
-        lane=lane, **nye,
-    )

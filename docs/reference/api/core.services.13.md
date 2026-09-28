@@ -2,6 +2,13 @@
 
 > Generated from source (AST). Regenerate: `python scripts/api_docs_gen.py`. DO NOT hand-edit.
 
+## `core/services/gate_privacy.py`
+_Privacy-cluster gate 🔒 — cross-user-deling, GRADERET + fail-CLOSED._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `privacy_gate` | `(ctx)` | ctx: {text, current_user_id}. Returnér ét SECURITY-Verdict for cross-user-deling. | [src](../../../core/services/gate_privacy.py#L26) |
+
 ## `core/services/gate_proactivity.py`
 _Proactivity-cluster gate — verifikations-disciplin, GRADERET (R2 blød / R2.5 hård)._
 
@@ -572,14 +579,4 @@ _Hjerteslagets dæmon — tråden der spørger «er det tid?» hvert 30. sekund.
 | function | `start` | `(*, name=…)` | Start dæmonen. Er den allerede i gang, sker der ingenting. | [src](../../../core/services/heartbeat_scheduler.py#L68) |
 | function | `stop` | `(*, name=…)` | — | [src](../../../core/services/heartbeat_scheduler.py#L113) |
 | function | `_loop` | `(*, name, startup_recovery_requested)` | — | [src](../../../core/services/heartbeat_scheduler.py#L127) |
-
-## `core/services/hf_connector.py`
-_Hugging Face-connector — søg modeller/datasets via Hub API._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_headers` | `()` | — | [src](../../../core/services/hf_connector.py#L43) |
-| function | `_get` | `(path, params=…)` | — | [src](../../../core/services/hf_connector.py#L52) |
-| function | `search_models` | `(query, *, limit=…)` | — | [src](../../../core/services/hf_connector.py#L67) |
-| function | `model_info` | `(model_id)` | — | [src](../../../core/services/hf_connector.py#L85) |
 

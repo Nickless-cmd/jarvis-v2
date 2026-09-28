@@ -48,7 +48,7 @@ Generated from source. 8139/15642 functions/methods documented (52%). The list b
 - `apps/api/jarvis_api/middleware/anthropic_auth.py` :: `invalidate_cache` (L40)
 - `apps/api/jarvis_api/middleware/api_connection_nerve.py` :: `ApiConnectionNerveMiddleware.dispatch` (L34)
 - `apps/api/jarvis_api/middleware/internal_discord.py` :: `dispatch` (L33)
-- `apps/api/jarvis_api/middleware/jarvisx_user_routing.py` :: `jarvisx_user_routing_middleware` (L187)
+- `apps/api/jarvis_api/middleware/jarvisx_user_routing.py` :: `jarvisx_user_routing_middleware` (L203)
 - `apps/api/jarvis_api/middleware/security_headers.py` :: `HttpsRedirectMiddleware.dispatch` (L57)
 - `apps/api/jarvis_api/middleware/security_headers.py` :: `SecurityHeadersMiddleware.dispatch` (L70)
 - `apps/api/jarvis_api/middleware/security_headers.py` :: `SimpleRateLimitMiddleware.dispatch` (L110)

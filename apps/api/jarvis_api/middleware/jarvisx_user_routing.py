@@ -125,6 +125,22 @@ _PUBLIC_PATHS = (
     # da selve API-kaldene (/api/next etc) stadig kræver session_id,
     # ikke en bruger-identitet.
     "/interlanguage-blind",
+    # ── PRIVATLIVSPOLITIK, OFFENTLIG MED VILJE (28/9-2026) ────────────────
+    # Google Play kræver en URL til appens privatlivspolitik, og en
+    # Play-reviewer har ikke et token til Bjørns server. En politik bag
+    # login er derfor det samme som ingen politik.
+    #
+    # Den hører i _PUBLIC_PATHS og ikke i _UI_SKAL: skallen er bevidst
+    # KUN åben for lokale afsendere (se _er_lokal_afsender), så en
+    # udefrakommende reviewer ville få 401 på trods af undtagelsen.
+    #
+    # Filen ligger i apps/ui/public/privatlivspolitik.html og kopieres
+    # til apps/ui/dist ved build — den serveres af samme UI-mount som `/`.
+    # Indholdet er offentligt i sig selv: en beskrivelse af hvad appen
+    # gør, uden brugernavne, uden nøgler, uden data.
+    #
+    # Bevidst en enkelt sti og ikke et præfiks — kun præcis denne fil åbnes.
+    "/privatlivspolitik.html",
 )
 
 

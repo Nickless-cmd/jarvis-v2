@@ -161,3 +161,44 @@ async def test_fjern_afsender_faar_ikke_engang_skallen(monkeypatch):
     kode, igennem = await _svar_paa("/index.html", "185.107.14.241", monkeypatch)
     assert not igennem
     assert kode == 401, kode
+
+
+# ────────────── privatlivspolitikken er offentlig MED VILJE (28/9-2026)
+#
+# Google Play kræver en URL til appens privatlivspolitik, og en reviewer har
+# ikke et token til Bjørns server. Politikken skal derfor kunne læses UDEFRA.
+#
+# Den ligger i _PUBLIC_PATHS og ikke i _UI_SKAL — skallen er bevidst kun åben
+# for lokale afsendere, så en udefrakommende reviewer ville få 401 på trods af
+# undtagelsen. Det er forskellen mellem «åben i stuen» og «åben mod internettet»,
+# og den er hele pointen med de to lister.
+
+
+@pytest.mark.parametrize("vaert", ["185.107.14.241", "8.8.8.8", "10.0.0.20", "127.0.0.1"])
+def test_politikken_er_offentlig_uanset_hvor_kaldet_kommer_fra(vaert):
+    assert m._is_public_path("/privatlivspolitik.html") is True
+    assert m._er_ui_skal("/privatlivspolitik.html") is False, (
+        "politikken maa ikke hvile paa skal-undtagelsen — den er kun lokal"
+    )
+
+
+@pytest.mark.parametrize("sti", [
+    "/privatlivspolitik",           # uden endelse
+    "/privatlivspolitik.html.bak",  # backup-fil
+    "/privatlivspolitik-hemmelig.html",
+    "/privatlivspolitik/",          # mappe
+])
+def test_politikken_aabner_ikke_sine_naboer(sti):
+    """Enkelt sti, ikke præfiks. Kun præcis den ene fil åbnes."""
+    assert m._is_public_path(sti) is False, f"{sti} slap igennem"
+
+
+@pytest.mark.asyncio
+async def test_reviewer_udefra_faar_politikken_uden_token(monkeypatch):
+    """Den SAMMENSATTE beslutning: offentlig adresse, ingen token, udefra.
+
+    Det er præcis den vej en Play-reviewer går — og den skal give 200, ikke 401.
+    """
+    kode, igennem = await _svar_paa("/privatlivspolitik.html", "185.107.14.241", monkeypatch)
+    assert igennem, f"reviewer udefra blev afvist (kode {kode})"
+

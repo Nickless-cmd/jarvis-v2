@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 15661 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 15662 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -40,22 +40,22 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 15661 functions/
 - [`core.services.09`](core.services.09.md) — `council_settlement` … `decision_review_prompter`
 - [`core.services.10`](core.services.10.md) — `decision_signal_staging` … `dream_hypothesis_forced`
 - [`core.services.11`](core.services.11.md) — `dream_hypothesis_generator` … `eventbus_central_bridge`
-- [`core.services.12`](core.services.12.md) — `events_retention` … `gate_privacy`
-- [`core.services.13`](core.services.13.md) — `gate_proactivity` … `hf_connector`
-- [`core.services.14`](core.services.14.md) — `hollow_promise_census` … `jarvis_brain_reflection`
-- [`core.services.15`](core.services.15.md) — `jarvis_brain_visibility` … `memory_breathing`
-- [`core.services.16`](core.services.16.md) — `memory_consolidation_nudge` … `multi_signal_retrieval`
-- [`core.services.17`](core.services.17.md) — `my_projects` … `parallel_selves`
-- [`core.services.18`](core.services.18.md) — `past_context_router` … `process_watcher`
-- [`core.services.19`](core.services.19.md) — `producer_novelty` … `reasoning_detectors`
-- [`core.services.20`](core.services.20.md) — `reasoning_escalation` … `rhythm_engine`
-- [`core.services.21`](core.services.21.md) — `role_model_resolver` … `selective_attention`
-- [`core.services.22`](core.services.22.md) — `selective_consolidation_daemon` … `session_distillation`
-- [`core.services.23`](core.services.23.md) — `session_inbox` … `skill_security_scanner`
-- [`core.services.24`](core.services.24.md) — `smith_confrontation` … `text_clip`
-- [`core.services.25`](core.services.25.md) — `text_resonance` … `unconscious_temperature_field`
-- [`core.services.26`](core.services.26.md) — `unfinished_intent` … `visible_run_recovery_dispatcher`
-- [`core.services.27`](core.services.27.md) — `visible_run_segment_settlement` … `world_model_signal_tracking`
+- [`core.services.12`](core.services.12.md) — `events_retention` … `gate_pattern_learning`
+- [`core.services.13`](core.services.13.md) — `gate_privacy` … `heartbeat_scheduler`
+- [`core.services.14`](core.services.14.md) — `hf_connector` … `jarvis_brain_daemon`
+- [`core.services.15`](core.services.15.md) — `jarvis_brain_reflection` … `meaning_significance_signal_tracking`
+- [`core.services.16`](core.services.16.md) — `memory_breathing` … `mortality_awareness`
+- [`core.services.17`](core.services.17.md) — `multi_signal_retrieval` … `paradoxes_capture`
+- [`core.services.18`](core.services.18.md) — `parallel_selves` … `process_supervisor`
+- [`core.services.19`](core.services.19.md) — `process_watcher` … `reasoning_classifier`
+- [`core.services.20`](core.services.20.md) — `reasoning_detectors` … `retry_runtime`
+- [`core.services.21`](core.services.21.md) — `rhythm_engine` … `seed_system`
+- [`core.services.22`](core.services.22.md) — `selective_attention` … `session_continuity`
+- [`core.services.23`](core.services.23.md) — `session_distillation` … `skill_scanner`
+- [`core.services.24`](core.services.24.md) — `skill_security_scanner` … `terminal_sanitize`
+- [`core.services.25`](core.services.25.md) — `text_clip` … `unconscious_modulation`
+- [`core.services.26`](core.services.26.md) — `unconscious_temperature_field` … `visible_run_recovery_coordinator`
+- [`core.services.27`](core.services.27.md) — `visible_run_recovery_dispatcher` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)

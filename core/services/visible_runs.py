@@ -3097,7 +3097,18 @@ async def _stream_visible_run(
                             _round_trailing.append({"role": "user", "content": _vink})
                     if _is_last_round:
                         _forced_finalize_seen = True
-                        _round_tool_definitions = None
+                        # Behold listen hos de udbydere der ER maalt til at
+                        # adlyde tool_choice="none" — saa er praefikset urørt og
+                        # den dyreste runde i turen bliver billig. Se
+                        # finalize_tool_policy for tallene og hvorfor det er en
+                        # hvidliste.
+                        from core.services.finalize_tool_policy import (
+                            behold_vaerktoejer_paa_finalize as _behold,
+                        )
+                        if _behold(_active_provider):
+                            _round_tool_choice = "none"
+                        else:
+                            _round_tool_definitions = None
                         _round_trailing.append({
                             "role": "user",
                             "content": (

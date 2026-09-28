@@ -291,6 +291,13 @@ _File Watch Daemon — proprioception: "I feel when my own files change"._
 | function | `build_file_watch_prompt_section` | `()` | Surface recent changes briefly — stays quiet if nothing recent. | [src](../../../core/services/file_watch_daemon.py#L254) |
 | function | `reset_file_watch` | `()` | Reset state (for testing). | [src](../../../core/services/file_watch_daemon.py#L279) |
 
+## `core/services/finalize_tool_policy.py`
+_Skal den tvungne afslutnings-runde FJERNE vaerktoejslisten — eller raekker et flag?_
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `behold_vaerktoejer_paa_finalize` | `(provider)` | Maa den tvungne afslutning beholde vaerktoejslisten hos denne udbyder? | [src](../../../core/services/finalize_tool_policy.py#L53) |
+
 ## `core/services/finitude_runtime.py`
 
 | Kind | Name | Signature | Summary | Source |
@@ -571,11 +578,4 @@ _Gate-mønster-læring — vane-bryder oven på gate-substratet (2026-07-13)._
 | function | `_persist_best_effort` | `(force=…)` | Bedste-indsats durabel snapshot til runtime_state (overlever genstart). Fire-and-forget, | [src](../../../core/services/gate_pattern_learning.py#L167) |
 | function | `hydrate` | `()` | Genindlæs durabel snapshot fra runtime_state ind i in-memory-store. Kaldes eksplicit | [src](../../../core/services/gate_pattern_learning.py#L195) |
 | function | `_reset` | `()` | Test-hook: ryd in-memory-store + durabel snapshot + hydrate-flag (ren slate, så | [src](../../../core/services/gate_pattern_learning.py#L227) |
-
-## `core/services/gate_privacy.py`
-_Privacy-cluster gate 🔒 — cross-user-deling, GRADERET + fail-CLOSED._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `privacy_gate` | `(ctx)` | ctx: {text, current_user_id}. Returnér ét SECURITY-Verdict for cross-user-deling. | [src](../../../core/services/gate_privacy.py#L26) |
 

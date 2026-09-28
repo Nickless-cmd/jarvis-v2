@@ -95,6 +95,60 @@ def test_lean_transform_handles_dynamic_tail_as_system_message():
     assert any("⚖️ Before you answer" in m["content"] for m in lean)
 
 
+@pytest.mark.parametrize("appended_notes", [
+    ["[HOOK] Fortsæt kun efter kontrol."],
+    ["[HOOK] Fortsæt kun efter kontrol.", "Baggrundsarbejdet er afsluttet."],
+])
+def test_lean_system_tail_survives_appended_user_notes(appended_notes):
+    base = [
+        {"role": "system", "content": _SYSTEM_PREFIX},
+        {"role": "user", "content": "Hej Jarvis"},
+        {"role": "assistant", "content": "Hej Bjørn"},
+        {"role": "system", "content": _HEAVY_TAIL},
+        {"role": "user", "content": _ORIGINAL_TASK},
+        *({"role": "user", "content": note} for note in appended_notes),
+    ]
+    original = [dict(message) for message in base]
+
+    lean, metrics = vf.build_lean_base_messages(base)
+
+    assert metrics["changed"] is True
+    assert metrics["dropped_chars"] > 0
+    assert "[INDRE LIV]" not in lean[3]["content"]
+    assert "⚖️ Before you answer" in lean[3]["content"]
+    assert lean[4:] == base[4:]
+    assert lean[0] == base[0]
+    assert base == original
+
+
+def test_lean_legacy_tail_survives_appended_user_note():
+    base = _make_base_messages()
+    base.append({"role": "user", "content": "[HOOK] Fortsæt kun efter kontrol."})
+
+    lean, metrics = vf.build_lean_base_messages(base)
+
+    assert metrics["changed"] is True
+    assert lean[3]["content"].startswith(_ORIGINAL_TASK)
+    assert "[INDRE LIV]" not in lean[3]["content"]
+    assert "⚖️ Before you answer" in lean[3]["content"]
+    assert lean[4] == base[4]
+
+
+def test_lean_does_not_strip_quoted_marker_from_history():
+    base = [
+        {"role": "system", "content": _SYSTEM_PREFIX},
+        {"role": "user", "content": "Forklar markøren [INDRE LIV] i denne tekst."},
+        {"role": "assistant", "content": "Det er en markør."},
+        {"role": "user", "content": _ORIGINAL_TASK},
+        {"role": "user", "content": "[HOOK] Fortsæt kun efter kontrol."},
+    ]
+
+    lean, metrics = vf.build_lean_base_messages(base)
+
+    assert metrics["changed"] is False
+    assert lean == base
+
+
 def test_lean_keeps_identity_core_and_tool_hygiene():
     base = _make_base_messages()
     lean, _ = vf.build_lean_base_messages(base)

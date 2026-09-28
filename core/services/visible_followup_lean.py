@@ -130,7 +130,24 @@ def build_lean_base_messages(
         if not base_messages:
             return base_messages, {"changed": False, "before_chars": _before,
                                    "after_chars": _before, "dropped_chars": 0}
-        # Find INDEKSET på den sidste user-besked (det er den der bærer halen).
+        # Den oprindelige user-turn kan efterfølges af styringer, hooks og
+        # baggrundsnoter. Find først en genereret hale, uanset om den ligger i
+        # en separat systembesked eller i en legacy user-turn. Anti-løgn-ankeret
+        # skelner den fra historik, hvor brugeren blot citerer en heavy-marker.
+        _candidate_indexes = []
+        for _i in range(len(base_messages) - 1, 0, -1):
+            _msg = base_messages[_i]
+            if str(_msg.get("role") or "") not in ("system", "user"):
+                continue
+            _content = str(_msg.get("content") or "")
+            if (
+                any(_m in _content for _m in _LEAN_TAIL_START_MARKERS)
+                and any(_p in _content for _p in _LEAN_KEEP_ROW_PREFIXES)
+            ):
+                _candidate_indexes.append(_i)
+
+        # Bagudkompatibilitet for payloads uden anker: prøv kun den seneste
+        # user-turn og den systembesked, der står umiddelbart før den.
         _last_user_idx = -1
         for _i in range(len(base_messages) - 1, -1, -1):
             if str(base_messages[_i].get("role") or "") == "user":
@@ -139,13 +156,12 @@ def build_lean_base_messages(
         if _last_user_idx == -1:
             return base_messages, {"changed": False, "before_chars": _before,
                                    "after_chars": _before, "dropped_chars": 0}
-        # Legacy-form: halen er flettet ind i den aktuelle user-turn. Ny form:
-        # separat systembesked umiddelbart før user-turnen. Prøv begge uden at
-        # røre ældre system-/historikbeskeder.
-        _candidate_indexes = [_last_user_idx]
+        if _last_user_idx not in _candidate_indexes:
+            _candidate_indexes.append(_last_user_idx)
         if (
             _last_user_idx > 0
             and str(base_messages[_last_user_idx - 1].get("role") or "") == "system"
+            and _last_user_idx - 1 not in _candidate_indexes
         ):
             _candidate_indexes.append(_last_user_idx - 1)
 

@@ -47,21 +47,50 @@ import { useTheme } from '../theme/ThemeContext'
  * arve hinandens farve, og den ene ville stiltiende forsvinde. `navn` gør dem
  * unikke — og giver samtidig et testID at måle på.
  */
-export function KantFade({ retning, navn }: { retning: 'op' | 'ned'; navn: string }) {
+export function KantFade({ retning, navn, over = 0 }: {
+  retning: 'op' | 'ned'
+  navn: string
+  /**
+   * Hvor mange dp over forælderens overkant gradienten skal begynde.
+   *
+   * Kun for `op`, og den findes fordi den er nødvendig: uden den starter
+   * gradienten ved forælderens top med opacity 0 — og for komponisten ER
+   * forælderens top komponistens overkant. Faden var derfor transparent
+   * netop dér hvor tråden møder komposeren, og fuld (sort på sort) bag det
+   * uigennemsigtige kort. Den var altså usynlig, ikke fraværende.
+   *
+   * Bjørn 28/9-2026: «mangler fade helt bag composer». Målt: gradienten nåede
+   * aldrig op over kortets overkant. Med `over` forlænges laget opad, og
+   * gradienten måles i dp derfra — transparent ved -over, fuld ved
+   * forælderens top, og fuld hele vejen ned.
+   */
+  over?: number
+}) {
   const { color } = useTheme()
   const { farve, alpha } = delAlpha(color.scrim)
   const id = `kantfade-${navn}`
   const ned = retning === 'ned'
+  // Forlængelsen kraever at gradienten måles i faste dp (userSpaceOnUse) frem
+  // for i procenter af boksen: procent-koordinater ville følge den NYE, højere
+  // boks og sprede faden ud over hele laget i stedet for at samle den ved
+  // kanten. y2 = over betyder «fuld dér hvor forælderen begynder» — alt
+  // nedenunder arver den fulde stop-farve.
+  const straek = over > 0 && !ned
   return (
     <Svg
       testID={`kantfade-${navn}`}
       pointerEvents="none"
       width="100%"
       height="100%"
-      style={styles.lag}
+      style={straek ? [styles.lag, { top: -over }] : styles.lag}
     >
       <Defs>
-        <LinearGradient id={id} x1="0" y1="0" x2="0" y2="1">
+        <LinearGradient
+          id={id}
+          x1="0" y1={straek ? 0 : '0%'}
+          x2="0" y2={straek ? over : '100%'}
+          gradientUnits={straek ? 'userSpaceOnUse' : 'objectBoundingBox'}
+        >
           <Stop offset="0" stopColor={farve} stopOpacity={ned ? alpha : 0} />
           <Stop offset="1" stopColor={farve} stopOpacity={ned ? 0 : alpha} />
         </LinearGradient>

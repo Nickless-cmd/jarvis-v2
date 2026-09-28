@@ -35,6 +35,9 @@ import { ScrollToBottom } from '../components/ScrollToBottom'
 import { KoeChip } from '../components/KoeChip'
 import { useFollowupQueue, type FollowupItem } from '../lib/useFollowupQueue'
 import { TilbagespolBanner } from '../components/TilbagespolBanner'
+import { GenoptagelsesBanner } from '../components/GenoptagelsesBanner'
+import { hentGenoptagelsesVarsel } from '../lib/apiClient'
+import { skalSpoergeOmVarsel } from '../lib/genoptagelsesVarsel'
 import { KodeLaastBanner } from '../components/KodeLaastBanner'
 import { useNyeBeskeder } from '../lib/useNyeBeskeder'
 import { useVisning, type Visning } from '../lib/visning'
@@ -109,6 +112,8 @@ interface ChatScreenProps {
   workspaceSignal?: number
   /** Stiger når «Baggrundsjobs» vælges i tre-prik menuen. */
   jobsSignal?: number
+  /** Headerens samlede højde (`insets.top + headerHeight`) — se MessageList. */
+  topInset?: number
   /** Samtalens visning meldes op til topbjælkens menu. */
   onVisning?: (v: Visning) => void
   /** Menuens valg — et ønske med løbenummer, så samme valg to gange også virker. */
@@ -117,13 +122,61 @@ interface ChatScreenProps {
 
 export function ChatScreen({
   openPanelSignal = 0, syncSignal = 0, onSyncDone, onKontekst, compactSignal = 0,
-  kodeTilstand = false, onSkiftFlade, onKodeKontekst, workspaceSignal = 0, jobsSignal = 0, onVisning, visningOenske,
+  kodeTilstand = false, onSkiftFlade, onKodeKontekst, workspaceSignal = 0, jobsSignal = 0, onVisning, visningOenske, topInset = 0,
 }: ChatScreenProps) {
   const tokens = useTheme()
   const styles = useStyles(makestyles)
   const { config } = useAuth()
   const sessions = useSessions()
   const stream = useStream()
+
+  // ── Varslet om arbejde der aldrig blev faerdigt ────────────────────────
+  // Her, i ChatScreen, fordi App holder BEGGE skaerme monteret (skjult, ikke
+  // unmountet) — saa effekten koerer uanset om han staar paa Snak eller
+  // Arbejde. I desk laa den tilsvarende inde i en komponent der KUN var
+  // monteret paa én flade, og fire rettelser gik til noget der ikke var paa
+  // skaermen. Her er antagelsen pinnet i en test.
+  //
+  // HVORNAAR der spoerges bor i `lib/genoptagelsesVarsel` — den regel har
+  // taget fejl fire gange og hoerer ikke hjemme flettet ind i en effekt.
+  //
+  // Bjørn 28/9-2026, anden runde: banneret blev FOERST fjernet, fordi traaden
+  // selv skriver markoeren («Dit forrige run-segment sluttede foer opgaven var
+  // faerdig»). Men det stod i TOPPEN af skaermen, hvor det skubbede traaden ned
+  // under den svaevende header og gav en haard kant. Nu staar det OVER
+  // KOMPONISTEN — samme sted som desks banner har staaet siden 25/9 — og
+  // hverken skubber traaden eller ligger i headerens spor.
+  const [genoptagelse, setGenoptagelse] =
+    useState<{ reason: string; message: string; continuing: boolean } | null>(null)
+  const varselSpurgtRef = useRef<string | null>(null)
+  const varselForrigeStatusRef = useRef<string>('')
+
+  useEffect(() => {
+    const forrige = varselForrigeStatusRef.current
+    varselForrigeStatusRef.current = stream.state.status
+    const sid = sessions.activeId ?? null
+    const beslutning = skalSpoergeOmVarsel({
+      forrige, status: stream.state.status, sessionId: sid,
+      alleredeSpurgt: varselSpurgtRef.current,
+    })
+    if (beslutning.nulstil) varselSpurgtRef.current = null
+    if (!beslutning.spoerg || !config || !sid) return
+    varselSpurgtRef.current = sid
+    let afbrudt = false
+    hentGenoptagelsesVarsel(config, sid)
+      .then((v) => { if (!afbrudt && v?.notice?.message) setGenoptagelse(v.notice) })
+      .catch(() => {
+        // Kan vi ikke spoerge, maa samtalen ikke gaa i staa — men lad os kunne
+        // spoerge igen naeste gang sessionen aabnes.
+        varselSpurgtRef.current = null
+      })
+    return () => { afbrudt = true }
+  }, [config, sessions.activeId, stream.state.status])
+
+  // Et nyt spoergsmaal rydder varslet: det handlede om den FORRIGE tur.
+  useEffect(() => {
+    if (stream.state.status === 'working') setGenoptagelse(null)
+  }, [stream.state.status])
 
   const [panelOpen, setPanelOpen] = useState(false)
 
@@ -1107,7 +1160,9 @@ export function ChatScreen({
     !!lastUserMessage && (stream.state.status === 'interrupted' || stream.state.status === 'error')
   // Er der overhovedet et kort at gøre plads til? Afgør om afstandsklodsen
   // nedenfor findes — en klods uden noget at holde afstand fra er bare et hul.
-  const hasCard = canRetry || Boolean(stream.approval && config)
+  // Banneret taeller med: det ligger i samme blok som kortene, og uden det
+  // ville det mangle den afstandsklods der holder det over komposeren.
+  const hasCard = canRetry || Boolean(stream.approval && config) || Boolean(genoptagelse?.message)
 
   return (
     <View style={styles.root}>
@@ -1131,6 +1186,7 @@ export function ChatScreen({
           ) : (
             <MessageList
               ref={listRef}
+              topInset={topInset}
               messages={sessions.messages}
               blocks={stream.state.blocks}
               working={stream.state.status === 'working' || serverBusy}
@@ -1171,6 +1227,9 @@ export function ChatScreen({
           style={cardSpacerStyle(hasCard, composerHeight, liftPadding)}
           pointerEvents="box-none"
         >
+        {/* Oeverst i blokken: varslet hoerer over komposeren, sammen med
+            fejl- og godkendelses-kortene — ikke i toppen af skaermen. */}
+        <GenoptagelsesBanner varsel={genoptagelse} onLuk={() => setGenoptagelse(null)} />
         {canRetry ? (
           stream.streamError && stream.streamError.kind ? (
             // Kanonisk fejl (Canonical Error System, Fase 2): rigt kort med titel,
@@ -1238,7 +1297,7 @@ export function ChatScreen({
             en flad kant. Bjørn 28/9-2026: «fade både ved composer og header».
             Fladen var scrim som en FLAD baggrund; den er nu gradienten her —
             transparent foroven, fuld forneden, så bunden stadig dækker. */}
-        <KantFade retning="op" navn="komponist" />
+        <KantFade retning="op" navn="komponist" over={56} />
         {/* Polstringen bor HER, ikke paa `floatBottom`. Faden fylder sin
             foraelders boks, og laa `paddingBottom: 16` der, stoppede faden
             16 dp over skaermens bund — traaden under den var umalet. Bjørn
@@ -1307,13 +1366,7 @@ export function ChatScreen({
           onFocusChange={setComposerFocused}
           showJumpToBottom={scrolledUp && composerFocused}
           onJumpToBottom={jumpToBottom}
-          researchMode={chatCfg.researchMode === 'on'}
-          onResearchModeChange={(enabled) => {
-            const next = { researchMode: enabled ? 'on' as const : 'off' as const }
-            const sid = sessions.activeId
-            setChatCfg((current) => ({ ...current, ...next }))
-            if (sid) void gemIndstillinger(sid, next).then(setChatCfg).catch(() => undefined)
-          }}
+          thinkingMode={chatCfg.thinkingMode}
           permission={chatCfg.spoergFoerst ? 'ask' : 'trust'}
           // KUN i code-fladen. Komponisten har allerede kontrakten «ingen
           // handler = ingen knap», saa porten hoerer hjemme her frem for som
@@ -1475,6 +1528,13 @@ export function ChatScreen({
 
       <AttachMenu
         visible={attachMenuOpen}
+        researchMode={chatCfg.researchMode === 'on'}
+        onResearchModeChange={(enabled) => {
+          const next = { researchMode: enabled ? 'on' as const : 'off' as const }
+          const sid = sessions.activeId
+          setChatCfg((current) => ({ ...current, ...next }))
+          if (sid) void gemIndstillinger(sid, next).then(setChatCfg).catch(() => undefined)
+        }}
         kontekster={byggeKontekster({
           kameraTilladt: true,
           lokationsPraecision: ctxPraecision,

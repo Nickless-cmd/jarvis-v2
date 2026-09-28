@@ -47,3 +47,37 @@ it('melder hvilken kontekst der blev valgt', async () => {
   await act(async () => { fireEvent.press(screen.getByTestId('attach-ctx-udklip')) })
   expect(onKontekst).toHaveBeenCalledWith('udklip')
 })
+
+// ── Research (28/9-2026) ───────────────────────────────────────────────────
+// Bjørn: «research flyttet til plus menu». Den laa foer som et ikon i
+// komponistens kontrol-raekke, hvor den stod sammen med tilladelser og model.
+// Den hoerer her: den er noget man SLAAR TIL, ikke noget man trykker paa.
+it('research-tilstanden kan slaas til her — den bor ikke i komponisten mere', async () => {
+  const onResearchModeChange = jest.fn()
+  const screen = await render(
+    <AttachMenu {...base} researchMode={false} onResearchModeChange={onResearchModeChange} />
+  )
+  expect(screen.getByText('Research')).toBeTruthy()
+  expect(screen.getByText('Fra')).toBeTruthy()
+
+  await act(async () => { fireEvent.press(screen.getByTestId('attach-research')) })
+
+  expect(onResearchModeChange).toHaveBeenCalledWith(true)
+})
+
+it('research-raekken viser TIL og kan slaas fra igen', async () => {
+  const onResearchModeChange = jest.fn()
+  const screen = await render(
+    <AttachMenu {...base} researchMode onResearchModeChange={onResearchModeChange} />
+  )
+  expect(screen.getByText('Til')).toBeTruthy()
+
+  await act(async () => { fireEvent.press(screen.getByTestId('attach-research')) })
+
+  expect(onResearchModeChange).toHaveBeenCalledWith(false)
+})
+
+it('uden onResearchModeChange er der ingen research-raekke', async () => {
+  const screen = await render(<AttachMenu {...base} />)
+  expect(screen.queryByTestId('attach-research')).toBeNull()
+})

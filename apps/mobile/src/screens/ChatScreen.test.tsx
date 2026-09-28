@@ -149,6 +149,11 @@ jest.mock('../lib/useConnectivity', () => ({
 jest.mock('../lib/apiClient', () => ({
   // Enheds-reglen (19/9-2026): «ved ikke» — code mode låses ikke i testene.
   hentKodeAdgang: jest.fn().mockResolvedValue(null),
+  // Genoptagelses-varslet: standarden er «ingenting at fortaelle», saa de
+  // oevrige tests ikke faar et banner de ikke har bedt om. Det skal staa her
+  // — mocken er en HVIDLISTE, og uden linjen kaster skaermen paa et kald der
+  // ikke findes.
+  hentGenoptagelsesVarsel: jest.fn().mockResolvedValue(null),
   whoami: jest.fn().mockResolvedValue({ user_id: 'u', display_name: 'Bjørn', role: 'owner' }),
   getModelOptions: jest.fn().mockResolvedValue([]),
   getContextUsage: jest.fn().mockResolvedValue(null),
@@ -460,4 +465,64 @@ it('en ny samtale i CHAT-fladen oprettes som chat', async () => {
   await waitFor(() => expect(mockCreate).toHaveBeenCalled())
   expect(mockCreate).toHaveBeenCalledWith(config, 'Ny samtale', 'chat')
   spion.mockRestore()
+})
+
+// ── Genoptagelses-varslet (28/9-2026) ────────────────────────────────────
+//
+// Maalt: NUL forekomster af «recovery» i hele mobil-kildekoden, mens andelen
+// af koersler der ikke naar «completed» gik fra 2-8 % til 13-21 % (20.-28.
+// sep), drevet af `pending-tool-intent`. Paa telefonen stoppede en koersel
+// der gik i genoptagelse bare — med den tekst den naaede, og ingen
+// forklaring. Det er dét man oplever som et tavst cut.
+//
+// Banneret blev fjernet i 230 (Bjørn: «Det står allerede i bunden af din
+// besked»). Han bad det tilbage i 231 — men OVER KOMPOSEREN, som desk har
+// haft det siden 25/9, ikke i toppen af skaermen hvor det skubbede traaden
+// ned og gav en haard kant under header'en.
+describe('genoptagelses-varslet', () => {
+  const hent = require('../lib/apiClient').hentGenoptagelsesVarsel as jest.Mock
+  let spy: jest.SpyInstance
+
+  beforeEach(() => {
+    // Samme stump som filens egen AppState-describe: den globale
+    // `jest.clearAllMocks()` toemmer implementeringen, og uden en abonnent
+    // kaster oprydningen paa `sub.remove()`.
+    const { AppState } = require('react-native')
+    spy = jest.spyOn(AppState, 'addEventListener').mockImplementation(() => ({ remove: jest.fn() }))
+    hent.mockReset()
+    hent.mockResolvedValue(null)
+  })
+  afterEach(() => spy.mockRestore())
+
+  it('spoerger serveren naar samtalen aabnes', async () => {
+    await render(<ChatScreen />)
+    await waitFor(() => expect(hent).toHaveBeenCalledWith(config, 'session-1'))
+  })
+
+  it('viser beskeden serveren sender', async () => {
+    hent.mockResolvedValue({
+      notice: { reason: 'pending-tool-intent', continuing: true,
+                message: 'Jarvis havde stadig et vaerktoejskald klar.' },
+    })
+    const s = await render(<ChatScreen />)
+    await waitFor(() => expect(s.getByTestId('genoptagelses-banner')).toBeTruthy())
+    expect(s.getByText('Jarvis havde stadig et vaerktoejskald klar.')).toBeTruthy()
+  })
+
+  it('ingenting at genoptage — intet banner', async () => {
+    const s = await render(<ChatScreen />)
+    await waitFor(() => expect(hent).toHaveBeenCalled())
+    expect(s.queryByTestId('genoptagelses-banner')).toBeNull()
+  })
+
+  // Kan vi ikke spoerge, maa samtalen ikke gaa i staa. Fejlen sluges — men
+  // tavst paa SKAERMEN, ikke i koden: der proeves igen naeste gang.
+  it('en fejl fra serveren vaelter ikke skaermen', async () => {
+    hent.mockRejectedValue(new Error('nede'))
+    const s = await render(<ChatScreen />)
+    await waitFor(() => expect(hent).toHaveBeenCalled())
+    expect(s.queryByTestId('genoptagelses-banner')).toBeNull()
+    // Skaermen staar: komponisten er der stadig, saa turen kan fortsaette.
+    expect(s.getByText(/Composer permission/)).toBeTruthy()
+  })
 })

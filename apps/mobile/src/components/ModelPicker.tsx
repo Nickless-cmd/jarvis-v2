@@ -36,25 +36,6 @@ export function ModelPicker({
         <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
           <View style={styles.grabber} />
           <Text style={styles.title}>Model</Text>
-          {onThinkingModeChange ? (
-            <>
-              <Text style={styles.subTitle}>Tænkning</Text>
-              <View style={styles.segmentRow}>
-                {(['think', 'fast'] as ThinkingMode[]).map((m) => (
-                  <Pressable
-                    key={m}
-                    accessibilityRole="button"
-                    onPress={() => onThinkingModeChange(m)}
-                    style={[styles.segment, thinkingMode === m && styles.segmentOn]}
-                  >
-                    <Text style={[styles.segmentText, thinkingMode === m && styles.segmentTextOn]}>
-                      {m === 'think' ? 'Think' : 'Fast'}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-            </>
-          ) : null}
           <FlatList
             data={choices}
             keyExtractor={(c) => c.label}
@@ -79,6 +60,30 @@ export function ModelPicker({
             }}
             ListEmptyComponent={<Text style={styles.empty}>Ingen modeller tilgængelige</Text>}
           />
+          {/* Taenkningen staar NEDERST, som i desks «Model og taenkning»-menu:
+              foerst hvad man vaelger mellem, saa hvor grundigt der taenkes.
+              Bjørn 28/9-2026: «med samme visning naar aabnet». */}
+          {onThinkingModeChange ? (
+            <>
+              <View style={styles.divider} />
+              <Text style={styles.title}>Tænkning</Text>
+              <View style={styles.segmentRow}>
+                {(['think', 'fast'] as ThinkingMode[]).map((m) => (
+                  <Pressable
+                    key={m}
+                    accessibilityRole="button"
+                    accessibilityLabel={m === 'think' ? 'Auto' : 'Hurtig'}
+                    onPress={() => onThinkingModeChange(m)}
+                    style={[styles.segment, thinkingMode === m && styles.segmentOn]}
+                  >
+                    <Text style={[styles.segmentText, thinkingMode === m && styles.segmentTextOn]}>
+                      {m === 'think' ? 'Auto' : 'Hurtig'}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </>
+          ) : null}
         </Pressable>
       </Pressable>
     </Modal>
@@ -105,6 +110,7 @@ const makestyles = (tokens: Theme) => StyleSheet.create({
     marginBottom: tokens.spacing.md
   },
   title: { color: tokens.color.fg3, fontSize: 12, fontWeight: '700', textTransform: 'uppercase', marginBottom: tokens.spacing.sm },
+  divider: { height: StyleSheet.hairlineWidth, backgroundColor: tokens.color.line, marginTop: tokens.spacing.md },
   subTitle: { color: tokens.color.fg3, fontSize: 11, fontWeight: '700', textTransform: 'uppercase', marginTop: tokens.spacing.sm, marginBottom: 6 },
   segmentRow: { flexDirection: 'row', gap: tokens.spacing.sm, marginBottom: tokens.spacing.xs },
   segment: {

@@ -17,7 +17,9 @@ it('viser thinking men ikke permissions', async () => {
     />
   )
 
-  fireEvent.press(screen.getByText('Fast'))
+  // Ordene er desks, ikke vores: dens THINK_KORT er {fast:'Hurtig',
+  // think:'Auto'}. Mobilen skrev «Think/Fast» — det var dét der ikke lignede.
+  fireEvent.press(screen.getByText('Hurtig'))
 
   expect(onThinkingModeChange).toHaveBeenCalledWith('fast')
   expect(screen.queryByText('Godkendelser')).toBeNull()

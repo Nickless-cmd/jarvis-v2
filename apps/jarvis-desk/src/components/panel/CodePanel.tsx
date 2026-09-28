@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
-import { FileText, TerminalSquare, Save, X, Search, GitCommit } from 'lucide-react'
+import { FileText, TerminalSquare, Save, X, Search, GitCommit, Eye } from 'lucide-react'
 import { FileTree } from './FileTree'
 import { FileContextMenu } from './FileContextMenu'
 import { TerminalPane } from './TerminalPane'
 import { CodeBlock } from '../rich/CodeBlock'
+import { DiffView } from '../rich/DiffView'
 import { useResizableWidth } from './useResizableWidth'
 import { invalidateTree } from '../../lib/treeCache'
 import {
@@ -53,6 +54,8 @@ export function CodePanel({
   const [saveMsg, setSaveMsg] = useState('')
   // Find/erstat i editoren.
   const [showFind, setShowFind] = useState(false)
+  // Diff-visning (#2): se ændringerne farvekodet i edit-mode, før man gemmer.
+  const [showDiff, setShowDiff] = useState(false)
   const [findText, setFindText] = useState('')
   const [replaceText, setReplaceText] = useState('')
   // Gem & commit-flow: redigerbar auto-besked → commit.
@@ -67,7 +70,7 @@ export function CodePanel({
 
   const loadFile = (rel: string, edit = false) => {
     setOpenPath(rel); setContent(''); setLang(''); setEditing(false)
-    setSaveMsg(''); setCommitDraft(null); setShowFind(false)
+    setSaveMsg(''); setCommitDraft(null); setShowFind(false); setShowDiff(false)
     getFile(config, root, rel, kind)
       .then((f) => {
         setContent(f.content); setLang(f.language || '')
@@ -116,7 +119,7 @@ export function CodePanel({
     setSaveMsg('Gemmer…')
     writeFile(config, root, openPath, draft, kind)
       .then(() => {
-        setContent(draft); setEditing(false); setSaveMsg('Gemt ✓')
+        setContent(draft); setEditing(false); setShowDiff(false); setSaveMsg('Gemt ✓')
         invalidateTree(kind, root, openPath.includes('/') ? openPath.slice(0, openPath.lastIndexOf('/')) : '')
         setTimeout(() => setSaveMsg(''), 1800)
       })
@@ -137,7 +140,7 @@ export function CodePanel({
     setCommitBusy(true)
     commitFile(config, root, openPath, draft, commitDraft)
       .then((r) => {
-        setContent(draft); setEditing(false); setCommitDraft(null)
+        setContent(draft); setEditing(false); setCommitDraft(null); setShowDiff(false)
         setSaveMsg(r.status === 'nochange' ? 'Ingen ændring' : `Committed ${r.sha ?? ''} ✓`)
         invalidateTree(kind, root, openPath.includes('/') ? openPath.slice(0, openPath.lastIndexOf('/')) : '')
         setTimeout(() => setSaveMsg(''), 2400)
@@ -192,6 +195,10 @@ export function CodePanel({
                     <button type="button" className="codepanel-tool" onClick={() => setShowFind((s) => !s)} title="Find/erstat">
                       <Search size={12} />
                     </button>
+                    <button type="button" className={`codepanel-tool ${showDiff ? 'active' : ''}`}
+                      onClick={() => setShowDiff((s) => !s)} title="Vis ændringer (diff)">
+                      <Eye size={12} />
+                    </button>
                     <button type="button" className="codepanel-save" onClick={save} title="Gem">
                       <Save size={12} /> Gem
                     </button>
@@ -230,8 +237,12 @@ export function CodePanel({
                 </div>
               )}
               {editing ? (
-                <textarea className="codepanel-editor" value={draft} spellCheck={false}
-                  onChange={(e) => setDraft(e.target.value)} />
+                showDiff ? (
+                  <DiffView oldText={content} newText={draft} filename={openPath} />
+                ) : (
+                  <textarea className="codepanel-editor" value={draft} spellCheck={false}
+                    onChange={(e) => setDraft(e.target.value)} />
+                )
               ) : _PLAIN.has(lang.toLowerCase()) ? (
                 <pre className="codepanel-content">{content}</pre>
               ) : (

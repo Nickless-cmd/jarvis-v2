@@ -168,10 +168,26 @@ def test_visible_prompt_assembly_includes_chronicle_between_identity_and_memory(
         user_message="Hej",
     )
 
-    soul_pos = assembly.text.index("SOUL.md:")
-    chronicle_pos = assembly.text.index("## Mine seneste chronicle-entries")
-    memory_pos = assembly.text.index("MEMORY.md:")
-    assert soul_pos < chronicle_pos < memory_pos
+    # KONTRAKTEN ER VENDT (28/9-2026). Kroeniken laa mellem identitet og
+    # hukommelse — altsaa i den CACHEBARE praefiks. Den baerer «(0 dage siden)»
+    # og et humoer-tal pr. post, og begge skifter. Maalt: den foerste
+    # systembesked havde tre forskellige hashes med naesten samme laengde, og
+    # foerste kald i et run ramte 50,3 % cache mod opfoelgningernes 84,9 %.
+    #
+    # Den hoerer i halen, hvor det oevrige levende staar. Indholdet er uaendret.
+    praefiks, sentinel, hale = assembly.text.partition(
+        prompt_contract.DYNAMIC_TAIL_SENTINEL)
+    assert sentinel, "ingen tail-markoer i samlingen"
+    assert "## Mine seneste chronicle-entries" not in praefiks
+    assert "## Mine seneste chronicle-entries" in hale
+    # Identiteten staar stadig i praefikset, hvor cachen kan bruge den.
+    assert "SOUL.md:" in praefiks
+
+    # Og her er grunden til at den GAMLE test bestod uanset hvad: den
+    # sammenlignede `chronicle_pos < memory_pos`, men MEMORY.md ligger SELV i
+    # halen. Paastanden holdt derfor lige godt med kroeniken i praefikset og i
+    # halen — den maalte ingenting.
+    assert "MEMORY.md:" not in praefiks
 
 
 def test_visible_prompt_assembly_places_dream_residue_after_chronicle(

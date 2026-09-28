@@ -721,6 +721,12 @@ def _build_visible_chat_prompt_assembly_impl(
     compact = (provider == "ollama") and not _is_cloud_model and (0 < _win < 200_000)
     workspace_dir = ensure_default_workspace(name=name)
     parts: list[str] = []
+
+    #: Den VOLATILE hale. Erklaeret her — ikke laengere nede — fordi
+    #: vaekke-blokken, kroeniken og droemmeresten bygges tidligt og hoerer
+    #: hjemme HER. Det er tredje gang den skal flyttes op af samme grund:
+    #: en sektion med levende tal i praefikset bryder DeepSeeks cache.
+    _dyn_tail: list[str] = []
     included_files: list[str] = []
     conditional_files: list[str] = []
     derived_inputs: list[str] = []
@@ -1013,14 +1019,25 @@ def _build_visible_chat_prompt_assembly_impl(
         from core.services.continuity import build_wake_up_block
         wake_block = build_wake_up_block()
         if wake_block:
+            # I HALEN, ikke i praefikset. Maalt 28/9-2026: blokken baerer
+            # «Quick return (0 min since last session)» og mood-vaerdier, og
+            # den laa 79 % inde i den cachebare systembesked. Hver gang
+            # gap-strengen eller et humoer-tal rykkede, blev alt derfra og ned
+            # et cache-miss — foerste kald i et run ramte 50,3 % mod
+            # opfoelgningernes 84,9 %.
+            #
+            # Mood blev afrundet til 0,1 i maj af samme grund; det daekkede
+            # halvdelen. Gap-strengen skifter stadig hvert minut. Indholdet er
+            # uaendret — Jarvis vaagner stadig med sin fornemmede tilstand; den
+            # staar bare dér hvor det oevrige levende staar.
             if compact:
                 # Compact: only include the first 3 lines (tier + mood + focus)
                 wake_lines = wake_block.split("\n")
                 compact_wake = "\n".join(wake_lines[:4])
-                parts.append(f"▲ WAKE (compact):\n{compact_wake}")
+                _dyn_tail.append(f"▲ WAKE (compact):\n{compact_wake}")
             else:
-                parts.append(wake_block)
-            derived_inputs.append("continuity wake-up block")
+                _dyn_tail.append(wake_block)
+            derived_inputs.append("continuity wake-up block (hale)")
     except Exception:
         pass
 
@@ -2388,9 +2405,11 @@ def _build_visible_chat_prompt_assembly_impl(
 
     chronicle_section = _visible_chronicle_context_section()
     if chronicle_section:
-        parts.append(chronicle_section)
+        # I HALEN: den baerer «(0 dage siden)» og et humoer-tal pr. post, og
+        # begge skifter. Samme maaling som vaekke-blokken ovenfor.
+        _dyn_tail.append(chronicle_section)
         conditional_files.append("CHRONICLE.md")
-        derived_inputs.append("chronicle continuity")
+        derived_inputs.append("chronicle continuity (hale)")
 
     try:
         from core.services.life_milestones import build_life_history_prompt_section
@@ -2412,7 +2431,8 @@ def _build_visible_chat_prompt_assembly_impl(
 
     dream_residue_section = _visible_dream_residue_section()
     if dream_residue_section:
-        parts.append(dream_residue_section)
+        # I HALEN: droemmeresten er pr. definition dagsfrisk.
+        _dyn_tail.append(dream_residue_section)
         derived_inputs.append("dream residue carry-over")
 
     # Visual memory — Lag 6: cut from the prefix 2026-06-22. The room now lives
@@ -2908,7 +2928,9 @@ def _build_visible_chat_prompt_assembly_impl(
     # (med live decimal-metrikker: Tick-kvalitet/Vækstpuls) endte i HOVEDET og bustede
     # DeepSeek prefix-cachen (visible 35.9% hit, byte-diff: første divergens = tick-metrik).
     # Nu ægte i halen → historik-cachen bevares → mål ~90% som agent-lanen.
-    _dyn_tail: list[str] = []
+    # `_dyn_tail` er erklaeret hoejere oppe (se ved `parts`) — den skulle vaere
+    # tilgaengelig allerede naar vaekke-blokken, kroeniken og droemmeresten
+    # bygges, fordi de hoerer i halen og ikke i praefikset.
     # ── ZONE A: ACTION CONTRACT — how I conduct THIS turn (audit #3, 2026-07-22).
     # Bjørn: gather the tail-side rules into ONE meaningfully-placed section, not
     # scattered. These sit at the HEAD of the volatile tail (BEFORE the heavy state

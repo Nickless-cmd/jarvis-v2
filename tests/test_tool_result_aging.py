@@ -72,7 +72,10 @@ def test_compress_only_when_deep_and_large():
     out, m = age_tool_results(ex, mode="active", strength="strong",
                               round_index=12, compress_fn=lambda c: "SUMMARY")
     assert m["compressed"] == 3 and m["cleared"] == 0
-    assert out[0].results[0].content == "SUMMARY"
+    # Sammendraget baerer nu et MAERKE forrest. Uden det saa naeste runde
+    # resultatet som ualdret og komprimerede det igen — se `_COMPRESS_PREFIX`.
+    assert out[0].results[0].content.startswith("[tool-resultat forkortet")
+    assert "SUMMARY" in out[0].results[0].content
 
 
 def test_no_compress_when_shallow_even_if_large():
@@ -135,3 +138,78 @@ def test_trigger_helper_default(monkeypatch):
     monkeypatch.setattr("core.runtime.settings.load_settings",
                         lambda: type("S", (), {"extra": {}})())
     assert aging_trigger_tokens() == 120_000
+
+
+# ── Maerket paa komprimerede resultater (28/9-2026) ──────────────────────
+#
+# Maalt over et doegn: 10,45 mio. af 36,5 mio. miss-tokens (29 %) laa i
+# straekninger hvor cache-hit slet ikke voksede. De startede naesten altid ved
+# runde 12 — `_AGING_COMPRESS_ROUND` — og varede fem runder.
+#
+# Aarsagen: `_is_already_aged` genkendte kun den RYDDEDE variant. Et
+# komprimeret resultat gled igennem hver runde og blev komprimeret paa ny, med
+# et nyt LLM-svar hver gang. Historikken blev skrevet om midt i prompten, og
+# praefiks-cachen froes praecis dér. Det stoppede foerst naar teksten var under
+# 2.000 tegn og faldt til `clear`, som ER maerket.
+
+
+def test_et_komprimeret_resultat_komprimeres_ikke_igen():
+    """Anden runde maa lade det vaere — ellers skrives historikken om."""
+    kald = []
+
+    def komprimer(c: str) -> str:
+        kald.append(c)
+        return f"sammendrag-{len(kald)}"
+
+    ex = _exchanges(8, content="q" * 3000)
+    runde1, m1 = age_tool_results(ex, mode="active", strength="strong",
+                                  round_index=12, compress_fn=komprimer)
+    assert m1["compressed"] == 3
+    runde2, m2 = age_tool_results(runde1, mode="active", strength="strong",
+                                  round_index=13, compress_fn=komprimer)
+    assert m2["compressed"] == 0, "komprimerede igen — cachen fryser"
+    assert m2["cleared"] == 0
+    assert len(kald) == 3, f"komprimeringen blev kaldt {len(kald)} gange, ikke 3"
+
+
+def test_indholdet_er_BYTE_IDENTISK_runde_efter_runde():
+    """Det er selve cache-kravet: samme bytes → samme praefiks → hit.
+
+    En taelling af `compressed` alene ville ikke fange at teksten skiftede.
+    """
+    n = [0]
+
+    def komprimer(c: str) -> str:
+        n[0] += 1
+        return f"sammendrag nummer {n[0]}"   # ANDERLEDES hver gang
+
+    ex = _exchanges(8, content="q" * 3000)
+    ud = ex
+    tekster = []
+    for runde in (12, 13, 14, 15, 16):
+        ud, _ = age_tool_results(ud, mode="active", strength="strong",
+                                 round_index=runde, compress_fn=komprimer)
+        tekster.append(ud[0].results[0].content)
+    assert len(set(tekster)) == 1, (
+        "indholdet aendrede sig mellem runder — det var praecis fejlen: "
+        f"{len(set(tekster))} forskellige udgaver")
+
+
+def test_en_ryddet_er_stadig_aeldet():
+    """Rettelsen maa ikke tabe den gamle genkendelse."""
+    from core.services.tool_result_aging import _is_already_aged
+    assert _is_already_aged("[tool-resultat ryddet — 500 tegn. …]")
+    assert _is_already_aged("[tool-resultat forkortet fra 3000 tegn]\nnoget")
+    assert not _is_already_aged("et helt almindeligt resultat")
+
+
+def test_maerket_naevner_den_OPRINDELIGE_laengde():
+    """Tallet er mærkets eneste indhold — det skal være det der blev skåret væk.
+
+    Med sammendragets egen længde ville der stå «fra 9 tegn» om et resultat på
+    3.000, og Jarvis ville læse en usandhed om sin egen historik.
+    """
+    ex = _exchanges(8, content="q" * 3000)
+    ud, _ = age_tool_results(ex, mode="active", strength="strong",
+                             round_index=12, compress_fn=lambda c: "kort")
+    assert ud[0].results[0].content.startswith("[tool-resultat forkortet fra 3000 tegn]")

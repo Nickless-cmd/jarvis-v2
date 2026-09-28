@@ -1,6 +1,6 @@
 # Codebase API reference
 
-Generated per-package reference for `core/`+`apps/`+`scripts/`. 15653 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
+Generated per-package reference for `core/`+`apps/`+`scripts/`. 15659 functions/methods, 52% with docstrings. Undocumented public functions: see [`DOCSTRING_COVERAGE.md`](../DOCSTRING_COVERAGE.md).
 
 **Convention (code ↔ doc):** a module `<pkg>/<mod>.py` is documented on the page for its package (`docs/reference/api/<dotted pkg>[.chunk].md`), section `## \`<pkg>/<mod>.py\``. Each entry links back to the source at `file#Lline`.
 
@@ -50,12 +50,12 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 15653 functions/
 - [`core.services.19`](core.services.19.md) — `producer_novelty` … `reasoning_detectors`
 - [`core.services.20`](core.services.20.md) — `reasoning_escalation` … `rhythm_engine`
 - [`core.services.21`](core.services.21.md) — `role_model_resolver` … `selective_attention`
-- [`core.services.22`](core.services.22.md) — `selective_consolidation_daemon` … `session_inbox`
-- [`core.services.23`](core.services.23.md) — `session_milestones` … `smith_confrontation`
-- [`core.services.24`](core.services.24.md) — `smith_noise_veto` … `text_resonance`
-- [`core.services.25`](core.services.25.md) — `theater_audit` … `unfinished_intent`
-- [`core.services.26`](core.services.26.md) — `untrusted_fencing` … `visible_run_segment_settlement`
-- [`core.services.27`](core.services.27.md) — `visible_run_terminal_recovery` … `world_model_signal_tracking`
+- [`core.services.22`](core.services.22.md) — `selective_consolidation_daemon` … `session_distillation`
+- [`core.services.23`](core.services.23.md) — `session_inbox` … `skill_security_scanner`
+- [`core.services.24`](core.services.24.md) — `smith_confrontation` … `text_clip`
+- [`core.services.25`](core.services.25.md) — `text_resonance` … `unconscious_temperature_field`
+- [`core.services.26`](core.services.26.md) — `unfinished_intent` … `visible_run_recovery_dispatcher`
+- [`core.services.27`](core.services.27.md) — `visible_run_segment_settlement` … `world_model_signal_tracking`
 - [`core.services.decision_triggers`](core.services.decision_triggers.md)
 - [`core.services.prompt_sections`](core.services.prompt_sections.md)
 - [`core.services.trading`](core.services.trading.md)
@@ -71,8 +71,8 @@ Generated per-package reference for `core/`+`apps/`+`scripts/`. 15653 functions/
 - [`core.undo`](core.undo.md)
 - [`core.util`](core.util.md)
 - [`scripts.01`](scripts.01.md) — `__init__` … `interlanguage_classifier_final`
-- [`scripts.02`](scripts.02.md) — `interlanguage_classifier_interim` … `repro_streaming_fault`
-- [`scripts.03`](scripts.03.md) — `requirements_gen` … `verify_vagt_graenser`
+- [`scripts.02`](scripts.02.md) — `interlanguage_classifier_interim` … `regenerate_tier1`
+- [`scripts.03`](scripts.03.md) — `repro_streaming_fault` … `verify_vagt_graenser`
 - [`scripts.acceptance`](scripts.acceptance.md)
 - [`scripts.diagnostics`](scripts.diagnostics.md)
 - [`scripts.pipelines`](scripts.pipelines.md)

@@ -266,6 +266,15 @@ _Døb de sessioner der aldrig fik et navn, efter deres første brugerbesked._
 |---|---|---|---|---|
 | function | `main` | `()` | — | [src](../../../scripts/navngiv_kode_sessioner.py#L27) |
 
+## `scripts/normalize_sensory_sources.py`
+_Normalisér kilde-navnene i Sansernes Arkiv — én gang, med tør-kørsel først._
+
+| Kind | Name | Signature | Summary | Source |
+|---|---|---|---|---|
+| function | `_laes_alle` | `(conn)` | — | [src](../../../scripts/normalize_sensory_sources.py#L30) |
+| function | `_plan` | `(rows)` | Returnér (id, gammel_json, ny_json, nye_metadata) for rækker der ændres. | [src](../../../scripts/normalize_sensory_sources.py#L35) |
+| function | `main` | `()` | — | [src](../../../scripts/normalize_sensory_sources.py#L59) |
+
 ## `scripts/nudge_well_cleanup.py`
 _Drain the two dead nudge wells (redesign 2026-09-04). Dry-run by default._
 
@@ -457,12 +466,4 @@ _Regenerate TIER_1_ALWAYS_ON in copilot_tool_pruning.py from 30-day usage data._
 | function | `render_literal` | `(names)` | Render the tool names as the source text of a TIER_1_ALWAYS_ON frozenset | [src](../../../scripts/regenerate_tier1.py#L104) |
 | function | `replace_literal_in_file` | `(new_literal)` | Rewrite the TIER_1_ALWAYS_ON literal in copilot_tool_pruning.py in place. | [src](../../../scripts/regenerate_tier1.py#L116) |
 | function | `main` | `()` | CLI entry point: compute the new Tier-1 set and print the diff vs current. | [src](../../../scripts/regenerate_tier1.py#L137) |
-
-## `scripts/repro_streaming_fault.py`
-_Manuel repro af de tre streaming-fejl-former (Fase 0-harness)._
-
-| Kind | Name | Signature | Summary | Source |
-|---|---|---|---|---|
-| function | `_install_hermetic_mocks` | `(persisted, nerves)` | — | [src](../../../scripts/repro_streaming_fault.py#L50) |
-| function | `main` | `()` | — | [src](../../../scripts/repro_streaming_fault.py#L77) |
 

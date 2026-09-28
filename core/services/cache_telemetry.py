@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from datetime import datetime, timezone
 from typing import Any
 
 
@@ -37,6 +38,37 @@ def prefix_signature(system_content: str, tools: Any) -> tuple[str, int]:
         return "", 0
 
 
+def component_signatures(messages: list[dict[str, Any]], tools: Any) -> dict[str, str | int]:
+    """Fingerprint prompt regions separately, without recording their contents.
+
+    The first system message is the stable prefix. A system message after the
+    conversation begins is the live tail; its expected changes must not be
+    mistaken for a break in the stable prefix.
+    """
+    system = ""
+    tail = ""
+    seen_conversation = False
+    for message in messages:
+        role = str(message.get("role") or "")
+        content = str(message.get("content") or "")
+        if role == "system" and not seen_conversation and not system:
+            system = content
+        elif role == "system" and seen_conversation:
+            tail = content
+        elif role != "system":
+            seen_conversation = True
+    tools_text = json.dumps(tools or [], sort_keys=True, ensure_ascii=False)
+
+    def digest(value: str) -> str:
+        return hashlib.sha256(value.encode("utf-8", "replace")).hexdigest()[:16] if value else ""
+
+    return {
+        "system_sha": digest(system), "system_len": len(system),
+        "tools_sha": digest(tools_text), "tools_len": len(tools_text),
+        "tail_sha": digest(tail), "tail_len": len(tail),
+    }
+
+
 def record_visible_cache(
     *,
     run_id: str = "",
@@ -49,6 +81,13 @@ def record_visible_cache(
     prefix_len: int = 0,
     cache_hit: int = 0,
     cache_miss: int = 0,
+    session_id: str = "",
+    system_sha: str = "",
+    tools_sha: str = "",
+    tail_sha: str = "",
+    system_len: int = 0,
+    tools_len: int = 0,
+    tail_len: int = 0,
 ) -> None:
     """Append én telemetri-linje. Self-safe (sluger alt)."""
     try:
@@ -60,7 +99,9 @@ def record_visible_cache(
         path = log_dir / "cache_telemetry.jsonl"
         _in = int(cache_hit) + int(cache_miss)
         line = {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "run_id": run_id,
+            "session_id": session_id,
             "round": round_index,
             "auto": bool(autonomous),
             "lane": lane,
@@ -68,6 +109,12 @@ def record_visible_cache(
             "model": model,
             "prefix_sha": prefix_sha,
             "prefix_len": prefix_len,
+            "system_sha": system_sha,
+            "tools_sha": tools_sha,
+            "tail_sha": tail_sha,
+            "system_len": int(system_len),
+            "tools_len": int(tools_len),
+            "tail_len": int(tail_len),
             "hit": int(cache_hit),
             "miss": int(cache_miss),
             "pct": round(100.0 * int(cache_hit) / _in, 1) if _in else 0.0,

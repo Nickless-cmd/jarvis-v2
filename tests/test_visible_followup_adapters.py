@@ -1048,6 +1048,40 @@ def _sequenced_urlopen(monkeypatch, responses: list[list[bytes]]) -> list[dict]:
     return bodies
 
 
+def test_deepseek_cache_telemetry_identifies_the_stable_prefix_and_live_tail(monkeypatch) -> None:
+    _stub_deepseek_compat(monkeypatch)
+    _sequenced_urlopen(monkeypatch, [_sse(
+        b'data: {"choices":[{"delta":{"content":"ok"}}]}',
+        b'data: {"choices":[{"delta":{},"finish_reason":"stop"}]}',
+        b'data: {"choices":[],"usage":{"prompt_tokens":100,"completion_tokens":2,"prompt_cache_hit_tokens":80,"prompt_cache_miss_tokens":20}}',
+    )])
+    seen = []
+    monkeypatch.setattr("core.services.cache_telemetry.record_visible_cache",
+                        lambda **kw: seen.append(kw))
+    monkeypatch.setattr("core.identity.workspace_context.current_session_id",
+                        lambda: "chat-1")
+    monkeypatch.setattr("core.costing.ledger.record_cost", lambda **kw: None)
+
+    list(vf.stream_visible_followup(
+        provider="deepseek", model="deepseek-v4-flash", run_id="visible-1",
+        base_messages=[
+            {"role": "system", "content": "stable identity"},
+            {"role": "user", "content": "earlier message"},
+            {"role": "system", "content": "inner life now"},
+            {"role": "user", "content": "current message"},
+        ],
+        exchanges=[],
+        tool_definitions=[{"type": "function", "function": {"name": "read_file", "parameters": {}}}],
+    ))
+
+    assert len(seen) == 1
+    assert seen[0]["session_id"] == "chat-1"
+    assert seen[0]["system_sha"] and seen[0]["tools_sha"] and seen[0]["tail_sha"]
+    assert seen[0]["system_len"] == len("stable identity")
+    assert seen[0]["tail_len"] == len("inner life now")
+    assert seen[0]["cache_hit"] == 80 and seen[0]["cache_miss"] == 20
+
+
 def test_deepseek_followup_budget_fits_reasoning_plus_answer(monkeypatch) -> None:
     """4096 var MiniMax/OpenCode-loftet; på DeepSeek tæller ræsonneringen med →
     4 af Bjørns ture døde 4/9 med length efter ~32 s tænkning og nul tekst."""

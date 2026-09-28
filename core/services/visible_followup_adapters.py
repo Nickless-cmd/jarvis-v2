@@ -1103,7 +1103,7 @@ class OpenAICompatFollowupAdapter:
         try:
             if self.provider_id == "deepseek":
                 from core.services.cache_telemetry import (
-                    prefix_signature, record_visible_cache,
+                    component_signatures, prefix_signature, record_visible_cache,
                 )
                 _sys = ""
                 for _m in messages:
@@ -1112,14 +1112,17 @@ class OpenAICompatFollowupAdapter:
                         break
                 # `payload` lever i _build_request — her hed den ALDRIG noget
                 # (NameError slugt af except → per-runde cache-telemetri var død).
-                _sha, _plen = prefix_signature(
-                    _sys, (getattr(self, "_last_payload", None) or {}).get("tools"))
+                _tools = (getattr(self, "_last_payload", None) or {}).get("tools")
+                _sha, _plen = prefix_signature(_sys, _tools)
+                _parts = component_signatures(messages, _tools)
                 _ch = int((_usage or {}).get("prompt_cache_hit_tokens") or 0)
                 _cm = int((_usage or {}).get("prompt_cache_miss_tokens") or 0)
+                from core.identity.workspace_context import current_session_id
                 record_visible_cache(
                     run_id=run_id, round_index=round_index, autonomous=autonomous,
                     lane="visible", provider=self.provider_id, model=model,
                     prefix_sha=_sha, prefix_len=_plen, cache_hit=_ch, cache_miss=_cm,
+                    session_id=current_session_id(), **_parts,
                 )
         except Exception:
             pass

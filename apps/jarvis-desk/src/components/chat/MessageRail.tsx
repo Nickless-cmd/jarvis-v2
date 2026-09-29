@@ -1,4 +1,5 @@
 import { useEffect, useState, type RefObject } from 'react'
+import { useSkinneSynlig } from '../../lib/railSynlighed'
 import { Pin } from 'lucide-react'
 
 export interface RailAnchor {
@@ -41,6 +42,9 @@ export function MessageRail({
   // når at køre — en skinne uden markering ser død ud, og det var netop
   // klagen.
   const [aktivId, setAktivId] = useState<string | null>(anchors[0]?.id ?? null)
+  // Hooks staar FOER enhver betinget return; en hook efter et `return null`
+  // braekker visningen, og hverken tsc eller testene ser det (17/9-2026).
+  const synlig = useSkinneSynlig(containerRef)
 
   // Positionen: det SIDSTE anker der er rullet forbi toppen — altså
   // overskriften på det afsnit man står i. En ren «er den synlig»-test
@@ -80,6 +84,11 @@ export function MessageRail({
     }
   }, [containerRef, anchors])
 
+  // Skinnen trækkes tilbage naar transcriptet er for smalt — den ville ellers
+  // folde sig ud hen over samtalen. Kriteriet er transcriptets EGEN bredde,
+  // ikke vinduets: aabner man kode-panelet krymper transcriptet uden at
+  // vinduet roerer sig. (spec punkt 3.5)
+  if (!synlig) return null
   if (anchors.length < 2) return null
 
   const jump = (id: string) => {

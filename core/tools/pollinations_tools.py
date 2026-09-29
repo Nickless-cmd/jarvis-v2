@@ -41,9 +41,22 @@ _VIDEO_REL = "memory/generated/video"
 _DEFAULT_MODEL = "flux"  # Options: flux, turbo, variation, anime
 _ALLOWED_MODELS = ("flux", "turbo", "variation", "anime")
 _DEFAULT_VIDEO_MODEL = "wan-fast"
+#: Maalt mod `gen.pollinations.ai/video/models` 28/9-2026. To navne i den
+#: gamle liste fandtes ikke laengere: `seedance` og `ltx-2`. Vaelger man et
+#: ukendt navn, falder koden TAVST tilbage til standardmodellen — saa hvis
+#: Jarvis bad om `ltx-2`, fik han `wan-fast` uden at nogen sagde noget, og
+#: resultatet var bare «en anden video end forventet».
+#:
+#: Fallbacken bliver staaende: et ukendt navn maa ikke vaelte en tur. Men saa
+#: skal listen til gengaeld vaere sand. Maal den igen naar du bruger den:
+#:     curl -s https://gen.pollinations.ai/video/models | jq -r '.[].aliases[]?'
 _ALLOWED_VIDEO_MODELS = (
-    "veo", "seedance", "seedance-pro", "wan", "wan-fast",
-    "grok-video-pro", "ltx-2", "p-video", "nova-reel",
+    # de syv fra den gamle liste der stadig svarer
+    "veo", "seedance-pro", "wan", "wan-fast",
+    "grok-video-pro", "p-video", "nova-reel",
+    # nyere modeller kataloget har faaet siden
+    "wan-2.7", "wan-3.0", "seedance-2.0", "seedance-2.5",
+    "minimax-h3", "grok-imagine-video-1.5", "happyhorse",
 )
 #: De modeller der FAKTISK kan tage en video ind. Maalt mod
 #: `gen.pollinations.ai/video/models` 28/9-2026: af nitten video-modeller
@@ -293,6 +306,13 @@ def _exec_pollinations_image(args: dict[str, Any]) -> dict[str, Any]:
                 mime_type=str(result.get("content_type") or "image/jpeg"),
                 size_bytes=int(result.get("bytes") or 0),
                 attachment_id=attachment_id,
+                # Ankeret der bestemmer HVOR i traaden billedet lander.
+                # `_indsaet_ved_deres_vaerktoej` matcher det mod progress-
+                # blokkens id. Uden det havnede pollinations-billeder BAGEST,
+                # efter prosaen — praecis den fejl openrouter_image fik rettet
+                # 13/9-2026, og som blev glemt her. Fundet 28/9 mens video fik
+                # samme behandling.
+                tool_use_id=str(args.get("_runtime_tool_use_id") or ""),
             )
         except Exception:
             pass
@@ -467,9 +487,6 @@ def _registrer_video(result: dict[str, Any], args: dict[str, Any], *,
             # `_indsaet_ved_deres_vaerktoej` matcher det mod progress-blokkens
             # id; uden det ryger videoen bagest, efter prosaen — praecis den
             # fejl billederne havde indtil 13/9-2026.
-            # BEMAERK: `_exec_pollinations_image` sender det stadig IKKE, saa
-            # pollinations-BILLEDER lander bagest den dag i dag.
-            # openrouter_image goer det rigtigt. Selvstaendig fejl, ikke roert.
             tool_use_id=str(args.get("_runtime_tool_use_id") or ""),
         )
     except Exception:  # samme grund: posten er hvordan videoen naar traaden,
@@ -661,8 +678,9 @@ POLLINATIONS_TOOL_DEFINITIONS: list[dict[str, Any]] = [
             "description": (
                 "Generate a text-to-video via pollinations.ai (requires API key in "
                 "runtime.json). Returns saved MP4 path. Models: wan-fast (default, "
-                "fast), wan (higher quality), seedance/seedance-pro (ByteDance), "
-                "veo (Google), ltx-2, grok-video-pro, p-video, nova-reel. "
+                "fast), wan, wan-2.7, wan-3.0, seedance-pro, seedance-2.0, "
+                "seedance-2.5, veo (Google), minimax-h3, grok-video-pro, "
+                "grok-imagine-video-1.5, p-video, nova-reel, happyhorse. "
                 "Optionally pass image_url to seed image-to-video."
             ),
             "parameters": {
@@ -675,8 +693,10 @@ POLLINATIONS_TOOL_DEFINITIONS: list[dict[str, Any]] = [
                     "model": {
                         "type": "string",
                         "description": (
-                            "wan-fast (default) | wan | seedance | seedance-pro | "
-                            "veo | ltx-2 | grok-video-pro | p-video | nova-reel"
+                            "wan-fast (default) | wan | wan-2.7 | wan-3.0 | "
+                            "seedance-pro | seedance-2.0 | seedance-2.5 | veo | "
+                            "minimax-h3 | grok-video-pro | grok-imagine-video-1.5 | "
+                            "p-video | nova-reel | happyhorse"
                         ),
                     },
                     "duration": {

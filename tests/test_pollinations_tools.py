@@ -247,3 +247,67 @@ def test_beskrivelsen_ADVARER_om_graensen():
     besk = d["function"]["description"].lower()
     assert "public" in besk
     assert "cannot" in besk or "not" in besk
+
+
+# ── De to fund fra 28/9, rettet 29/9 ────────────────────────────────────────
+
+
+def test_billedet_baerer_OGSAA_sit_kald_id():
+    """Uden ankeret lander billedet bagest, efter prosaen.
+
+    `openrouter_image` fik det rettet 13/9-2026; pollinations blev glemt. Det
+    kom frem da video fik samme behandling — og det er derfor testen staar
+    ved siden af videoens: de to maa ikke drive fra hinanden igen.
+    """
+    import ast
+    import inspect
+    kilde = inspect.getsource(P._exec_pollinations_image)
+    assert "_runtime_tool_use_id" in kilde
+    # ... og den skal sendes til `note`, ikke bare naevnes.
+    traeet = ast.parse(kilde.lstrip())
+    sendt = any(
+        isinstance(n, ast.Call)
+        and any(kw.arg == "tool_use_id" for kw in n.keywords)
+        for n in ast.walk(traeet)
+    )
+    assert sendt, "tool_use_id naevnes men sendes ikke videre"
+
+
+def test_doede_modelnavne_er_UDE_af_listen():
+    """`seedance` og `ltx-2` fandtes ikke i kataloget 28/9-2026. Vaelger man
+    dem, falder koden TAVST tilbage — og man faar en anden video end bedt om,
+    uden at noget siger fra."""
+    assert "seedance" not in P._ALLOWED_VIDEO_MODELS
+    assert "ltx-2" not in P._ALLOWED_VIDEO_MODELS
+
+
+def test_de_levende_navne_er_BEVARET():
+    """Rettelsen maa ikke tage noget med sig der virkede."""
+    for navn in ("veo", "seedance-pro", "wan", "wan-fast",
+                 "grok-video-pro", "p-video", "nova-reel"):
+        assert navn in P._ALLOWED_VIDEO_MODELS, navn
+
+
+def test_beskrivelsen_naevner_ikke_en_model_der_ikke_findes():
+    """Modellen laeser kun beskrivelsen. Staar `ltx-2` der, vil den proeve —
+    og faa noget andet uden at vide det."""
+    d = next(x for x in P.POLLINATIONS_TOOL_DEFINITIONS
+             if x["function"]["name"] == "pollinations_video")
+    tekst = json_dumps_dybt(d)
+    assert "ltx-2" not in tekst
+    assert "seedance/" not in tekst
+
+
+def json_dumps_dybt(d) -> str:
+    import json
+    return json.dumps(d, ensure_ascii=False)
+
+
+def test_et_ukendt_navn_falder_stadig_tilbage_frem_for_at_vaelte(monkeypatch):
+    """Fallbacken er med vilje: et ukendt navn maa ikke koste hele turen.
+    Det er listen der skal vaere sand, ikke fallbacken der skal vaek."""
+    fanget: dict = {}
+    monkeypatch.setattr(P, "_hent_video", lambda **kw: fanget.update(kw) or _ok_video())
+    monkeypatch.setattr(P, "_api_key", lambda: "n")
+    P.generate_video(prompt="x", model="en-model-der-ikke-findes")
+    assert fanget["model"] == P._DEFAULT_VIDEO_MODEL

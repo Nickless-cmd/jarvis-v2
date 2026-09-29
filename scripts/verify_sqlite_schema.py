@@ -131,6 +131,29 @@ def compare(current: dict, expected: dict) -> list[str]:
                     # fik gaten til at fejle eller passere alt efter om der
                     # tilfaeldigt var en aktiv lease i det ojeblik hooken koerte.
                     continue
+                if field == "created_at_formats":
+                    # STIKPROEVEN er ikke tabellen. `_timestamp_formats` laeser
+                    # kun de 3 aeldste og 3 nyeste raekker, saa saettet svinger
+                    # af sig selv: `causal_edges` har TO skrivere med hvert sit
+                    # format (bus.py `+00:00`, causal_inference_daemon `Z`), og
+                    # de tre nyeste raekker er den der tilfaeldigvis skrev sidst.
+                    # Maalt 29/9-2026: samme uaendrede base gav
+                    # `['iso_utc_offset']` kl. 11:21 og
+                    # `['iso_utc_offset','iso_utc_z']` kl. 17:55 — gaten
+                    # blokerede altsaa efter lodtraekning, og dens eneste
+                    # anviste udvej (`--write-snapshot`) fastfryser bare hvem
+                    # der vandt det sekund.
+                    #
+                    # Det vagten findes for, er en skriver der TAGER ET NYT
+                    # format i brug — ISO-`T` mod mellemrum. Det er stadig en
+                    # fejl her, for et nyt format er en ny vaerdi i saettet. Et
+                    # format der FALDER UD af stikproeven er derimod stoej.
+                    nye = [f for f in actual_value if f not in (saved_value or [])]
+                    if not nye:
+                        continue
+                    issues.append(f"CHANGED {name}.{field}: NYT format "
+                                  f"{nye} (kendte: {saved_value})")
+                    continue
                 issues.append(f"CHANGED {name}.{field}: "
                               f"{saved_value} -> {actual_value}")
     return issues

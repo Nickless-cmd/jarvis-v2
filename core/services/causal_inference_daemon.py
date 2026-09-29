@@ -76,7 +76,23 @@ def _ensure_table_ready() -> None:
 
 
 def _now_iso() -> str:
-    return datetime.now(UTC).isoformat().replace("+00:00", "Z")
+    """Samme form som resten af bussen skriver: `...+00:00`.
+
+    `causal_edges` har TO skrivere — `eventbus.bus` for de eksplicitte kanter
+    og denne daemon for de udledte — og de skrev i hver sin form: bussen
+    `2026-07-31T20:03:30.596145+00:00`, denne `...Z`. Samme kolonne, to
+    sandheder. 107.121 af 140.178 raekker stod med `Z` da det blev maalt
+    29/9-2026.
+
+    Det var ikke kosmetik: skema-vagten klassificerer en tabel ud fra de tre
+    aeldste og tre nyeste raekker, saa hvilken skriver der tilfaeldigvis skrev
+    sidst afgjorde dens svar. Den blokerede Jarvis' commit kl. 11:21 og
+    passerede paa samme uaendrede base kl. 17:55.
+
+    `.replace` fjernet, ikke erstattet: `datetime.fromisoformat` laeser begge
+    former, saa de 107.121 gamle raekker kan stadig parses.
+    """
+    return datetime.now(UTC).isoformat()
 
 
 def _parse_iso(s: str) -> datetime | None:

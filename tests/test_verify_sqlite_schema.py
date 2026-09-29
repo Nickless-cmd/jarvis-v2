@@ -36,9 +36,11 @@ def test_timestamp_format_drift_is_separate_from_schema_digest():
     conn.execute("INSERT INTO events VALUES (2, '2026-09-29 05:30:26')")
     actual = guard.inventory(conn)
     assert actual["tables"]["events"]["digest"] == expected["tables"]["events"]["digest"]
+    # Beskeden navngiver det NYE format (29/9-2026). Foer stod hele saettet paa
+    # begge sider af en pil, og den der blev stoppet skulle selv finde forskellen.
     assert guard.compare(actual, expected) == [
-        "CHANGED events.created_at_formats: ['iso_utc_offset'] -> "
-        "['iso_utc_offset', 'sqlite_utc_seconds']"
+        "CHANGED events.created_at_formats: NYT format ['sqlite_utc_seconds'] "
+        "(kendte: ['iso_utc_offset'])"
     ]
 
 
@@ -207,9 +209,11 @@ def test_real_format_shift_between_two_observed_states_still_blocks():
     expected = guard.inventory(conn)
     conn.execute("INSERT INTO events VALUES (2, '2026-09-29 05:30:26')")
     actual = guard.inventory(conn)
+    # Beskeden navngiver det NYE format (29/9-2026). Foer stod hele saettet paa
+    # begge sider af en pil, og den der blev stoppet skulle selv finde forskellen.
     assert guard.compare(actual, expected) == [
-        "CHANGED events.created_at_formats: ['iso_utc_offset'] -> "
-        "['iso_utc_offset', 'sqlite_utc_seconds']"
+        "CHANGED events.created_at_formats: NYT format ['sqlite_utc_seconds'] "
+        "(kendte: ['iso_utc_offset'])"
     ]
 
 
@@ -220,3 +224,74 @@ def test_table_without_created_at_column_is_not_a_format_drift():
     expected = guard.inventory(conn)
     assert expected["tables"]["uden_tid"]["created_at_formats"] == []
     assert guard.compare(guard.inventory(conn), expected) == []
+
+
+# ── Stikproeven er ikke tabellen (29/9-2026) ────────────────────────────────
+#
+# `_timestamp_formats` laeser kun de 3 aeldste og 3 nyeste raekker. `causal_edges`
+# har TO skrivere med hvert sit format, saa de tre nyeste er den der tilfaeldigvis
+# skrev sidst. Samme uaendrede base gav `['iso_utc_offset']` kl. 11:21 og
+# `['iso_utc_offset','iso_utc_z']` kl. 17:55 — og gaten blokerede Jarvis' commit
+# paa den foerste maaling. Dens eneste anviste udvej, `--write-snapshot`,
+# fastfryser bare hvem der vandt det sekund.
+#
+# Reglen er derfor delmaengde, ikke lighed: et NYT format er drift, et format
+# der falder ud af stikproeven er stoej.
+
+
+def test_et_format_der_forsvinder_fra_stikproeven_er_ikke_drift():
+    """Den sag der blokerede en commit efter lodtraekning."""
+    snapshot = {"tables": {"causal_edges": {
+        "digest": "aa:bb", "schema": {"columns": [], "indexes": []},
+        "created_at_formats": ["iso_utc_offset", "iso_utc_z"]}}}
+    nu = {"tables": {"causal_edges": {
+        "digest": "aa:bb", "schema": {"columns": [], "indexes": []},
+        "created_at_formats": ["iso_utc_offset"]}}}
+    assert guard.compare(nu, snapshot) == []
+    # ... og den anden vej rundt, naar den anden skriver vinder stikproeven
+    nu["tables"]["causal_edges"]["created_at_formats"] = ["iso_utc_z"]
+    assert guard.compare(nu, snapshot) == []
+
+
+def test_et_NYT_format_er_stadig_drift_og_naevnes_ved_navn():
+    """Fixet maa ikke slukke vagten. Det er praecis ISO-`T` mod mellemrum den
+    findes for: `'T' > ' '`, saa en skiftet skriver giver et TROVAERDIGT tal."""
+    snapshot = {"tables": {"events": {
+        "digest": "aa:bb", "schema": {"columns": [], "indexes": []},
+        "created_at_formats": ["iso_utc_offset"]}}}
+    nu = {"tables": {"events": {
+        "digest": "aa:bb", "schema": {"columns": [], "indexes": []},
+        "created_at_formats": ["iso_utc_offset", "sqlite_utc_seconds"]}}}
+    fund = guard.compare(nu, snapshot)
+    assert len(fund) == 1, fund
+    assert "NYT format" in fund[0]
+    assert "sqlite_utc_seconds" in fund[0]
+    # det kendte format maa ikke staa som om det var det nye
+    assert fund[0].count("iso_utc_offset") == 1
+
+
+def test_et_nyt_format_der_ERSTATTER_det_gamle_fanges_ogsaa():
+    """Den farligste udgave: skriveren skifter HELT, saa saettet baade mister
+    og faar et format. Delmaengde-reglen maa ikke lade den slippe igennem
+    fordi der ogsaa forsvandt noget."""
+    snapshot = {"tables": {"noter": {
+        "digest": "aa:bb", "schema": {"columns": [], "indexes": []},
+        "created_at_formats": ["iso_utc_z"]}}}
+    nu = {"tables": {"noter": {
+        "digest": "aa:bb", "schema": {"columns": [], "indexes": []},
+        "created_at_formats": ["sqlite_utc_seconds"]}}}
+    fund = guard.compare(nu, snapshot)
+    assert len(fund) == 1, fund
+    assert "sqlite_utc_seconds" in fund[0]
+
+
+def test_digesten_sammenlignes_stadig_paa_LIGHED():
+    """Loosningen gaelder KUN tidsformater. En kolonne der forsvinder fra
+    skemaet er stadig en forskel — ellers havde fixet slukket hele vagten."""
+    snapshot = {"tables": {"alpha": {
+        "digest": "aa:bb", "schema": {"columns": [], "indexes": []},
+        "created_at_formats": ["iso_utc_offset"]}}}
+    nu = {"tables": {"alpha": {
+        "digest": "cc:dd", "schema": {"columns": [], "indexes": []},
+        "created_at_formats": ["iso_utc_offset"]}}}
+    assert guard.compare(nu, snapshot) == ["CHANGED alpha.digest: aa:bb -> cc:dd"]

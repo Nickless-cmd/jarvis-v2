@@ -1,6 +1,6 @@
 /** Placeholder — rolle-skopet. Member ser egne planlagte; owner ser alle.
  *  Server-kontrakt defineres i Scheduling-spec. */
-export function SchedulingView({ role }: { role: 'owner' | 'member' | 'guest' }) {
+export function SchedulingView({ role }: { role: 'owner' | 'partner' | 'member' | 'guest' }) {
   return (
     <div className="view-placeholder">
       <h2>Scheduling</h2>

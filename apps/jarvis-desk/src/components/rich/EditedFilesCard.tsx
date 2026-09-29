@@ -1,6 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { ChevronDown, ChevronRight, Code2, FileDiff, RotateCcw } from 'lucide-react'
-import { kortSti, type RedigeretFil } from '../../lib/redigeredeFiler'
+import { kortSti, type DiffPar, type RedigeretFil } from '../../lib/redigeredeFiler'
+import { DiffView } from './DiffView'
 
 /**
  * «Redigerede N filer» under Jarvis' besked — formen er Claude Codes egen.
@@ -11,18 +13,29 @@ import { kortSti, type RedigeretFil } from '../../lib/redigeredeFiler'
  *
  * Tallene kommer fra serverens målte linjetal i redigeringsresultaterne.
  * Mangler de for bare ét kald til en fil, står den uden tal frem for et gæt.
+ *
+ * Hover-diffen kom 29/9-2026 (Bjørn: «hvis jeg holder musen over fil navnet i
+ * feltet så kommer der en diff visning med scrool»). Den viser ændringen UDEN
+ * at man først skal åbne Ændringer-ruden — et klik åbner stadig ruden, men nu
+ * kan man se hvad der skete ved bare at pege på rækken.
  */
 export interface FilTal { added: number; removed: number }
+
+/** Højden popup'en højst må fylde — resten scroller. Samme tal i CSS'en. */
+const DIFF_HOEJDE = 360
 
 export function EditedFilesCard({
   filer,
   tal,
+  diffs,
   onAabn,
   onFortryd,
 }: {
   filer: RedigeretFil[]
   /** sti → målte +/− fra værktøjsresultater. Mangler en sti, vises intet tal. */
   tal?: Record<string, FilTal>
+  /** sti → gammel/ny-par fra kaldets egne argumenter. Grundlaget for hover-diffen. */
+  diffs?: Record<string, DiffPar[]>
   /** Klik på en fil: åbn Ændringer-ruden med netop den fil foldet ud. */
   onAabn: (sti: string) => void
   onFortryd?: () => Promise<{ status: string; files?: number; error?: string }>
@@ -32,6 +45,29 @@ export function EditedFilesCard({
   const [venter, setVenter] = useState(false)
   const [fortrudt, setFortrudt] = useState(false)
   const [fejl, setFejl] = useState('')
+  const [hover, setHover] = useState<{ path: string; top: number; left: number; bredde: number } | null>(null)
+  const lukkeTimer = useRef<number | null>(null)
+
+  // Popup'en staar uden for kortet i DOM'en (portal), fordi `.edited-files`
+  // har `overflow: hidden` — uden portalen blev diffen klippet af kortets kant.
+  const afbrydLuk = () => {
+    if (lukkeTimer.current !== null) { window.clearTimeout(lukkeTimer.current); lukkeTimer.current = null }
+  }
+  // Lille nådesfrist: musen skal kunne flytte fra rækken og OVER i popup'en
+  // (hvor man kan scrolle og trykke «Kun ændringer») uden at den lukker.
+  const planlaegLuk = () => {
+    afbrydLuk()
+    lukkeTimer.current = window.setTimeout(() => setHover(null), 140)
+  }
+  useEffect(() => afbrydLuk, [])
+
+  useEffect(() => {
+    if (!hover) return
+    const paaTast = (e: KeyboardEvent) => { if (e.key === 'Escape') setHover(null) }
+    window.addEventListener('keydown', paaTast)
+    return () => window.removeEventListener('keydown', paaTast)
+  }, [hover])
+
   if (filer.length === 0) return null
   const n = filer.length
   const viste = alle ? filer : filer.slice(0, 3)
@@ -41,6 +77,20 @@ export function EditedFilesCard({
     added: s.added + tal![f.path]!.added,
     removed: s.removed + tal![f.path]!.removed,
   }), { added: 0, removed: 0 }) : null
+
+  const visDiff = (path: string, el: HTMLElement) => {
+    if (!diffs?.[path]?.length) return
+    afbrydLuk()
+    const r = el.getBoundingClientRect()
+    const bredde = Math.min(560, Math.max(320, window.innerWidth - 24))
+    // Til højre for rækken; er der ikke plads, spejles den til venstre.
+    let left = r.right + 10
+    if (left + bredde > window.innerWidth - 8) left = Math.max(8, r.left - bredde - 10)
+    const top = Math.max(8, Math.min(r.top, window.innerHeight - DIFF_HOEJDE - 8))
+    setHover({ path, top, left, bredde })
+  }
+
+  const hoverPar = hover ? diffs?.[hover.path] : undefined
 
   return (
     <div className="edited-files">
@@ -80,10 +130,17 @@ export function EditedFilesCard({
       <ul className="edited-files-liste">
         {viste.map((f) => {
           const t = tal?.[f.path]
+          const harDiff = Boolean(diffs?.[f.path]?.length)
           return (
             <li key={f.path}>
               <button type="button" className="edited-files-rk" onClick={() => onAabn(f.path)}
-                      title={f.path}>
+                      /* Native tooltip kun når der IKKE er en diff-popup — ellers
+                         ville to tooltips ligge oven i hinanden. */
+                      title={harDiff ? undefined : f.path}
+                      onMouseEnter={(e) => visDiff(f.path, e.currentTarget)}
+                      onMouseLeave={planlaegLuk}
+                      onFocus={(e) => visDiff(f.path, e.currentTarget)}
+                      onBlur={planlaegLuk}>
                 <Code2 size={12} className="edited-files-ikon" />
                 <span className="edited-files-sti">{kortSti(f.path)}</span>
                 {f.gange > 1 && (
@@ -109,6 +166,29 @@ export function EditedFilesCard({
           {alle ? 'Vis færre filer' : `Vis ${rest} ${rest === 1 ? 'fil' : 'filer'} mere`}
           <ChevronDown size={13} className={alle ? 'er-aaben' : ''} aria-hidden="true" />
         </button>
+      )}
+
+      {hover && hoverPar && createPortal(
+        <div className="edited-files-diff" role="tooltip"
+             aria-label={`Diff for ${hover.path}`}
+             style={{ top: hover.top, left: hover.left, width: hover.bredde, maxHeight: DIFF_HOEJDE }}
+             onMouseEnter={afbrydLuk} onMouseLeave={planlaegLuk}>
+          <div className="edited-files-diff-head">
+            <span className="edited-files-diff-sti" title={hover.path}>{hover.path}</span>
+            {hoverPar.length > 1 && (
+              <span className="edited-files-diff-antal">{hoverPar.length} ændringer</span>
+            )}
+          </div>
+          {/* Kroppen scroller. Flere redigeringer af samme fil vises i
+              rækkefølge, så man kan følge hvad der skete — ikke kun slutformen. */}
+          <div className="edited-files-diff-krop">
+            {hoverPar.map((p, i) => (
+              <DiffView key={i} oldText={p.gammel} newText={p.ny}
+                        filename={hoverPar.length > 1 ? `Ændring ${i + 1} af ${hoverPar.length}` : undefined} />
+            ))}
+          </div>
+        </div>,
+        document.body,
       )}
     </div>
   )

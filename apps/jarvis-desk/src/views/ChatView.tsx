@@ -1070,8 +1070,8 @@ export function ChatView({
             thoughtMs={thoughtMs}
             thoughtAfsluttet={thoughtAfsluttet}
             runningJobs={runningJobs}
+            onOpenJobs={() => setJobsOpen(true)}
             compacting={compacting}
-            blocks={stream.blocks}
           />
         )}
         <div className="composer-notices">

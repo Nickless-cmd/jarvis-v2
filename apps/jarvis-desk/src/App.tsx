@@ -33,11 +33,14 @@ import { SchedulingView } from './views/SchedulingView'
 import { ImageGalleryView } from './views/ImageGalleryView'
 import { ArtifactsView } from './views/ArtifactsView'
 import { Sidebar, type Surface } from './components/shell/Sidebar'
-import { OpmaerksomhedsVaert } from './components/shell/OpmaerksomhedsVaert'
+// OpmaerksomhedsVaert fjernet (Bjørn 29/9-2026): det lille arbejder-felt i
+// højre nederste hjørne skulle ud. Komponenten er bevaret — kun renderingen
+// er fjernet. Genaktiveres med: import + <OpmaerksomhedsVaert setSurface={setSurface} />
 import { DESK_CHROME } from './lib/deskChrome'
 import { StatusBar } from './components/shell/StatusBar'
 import './styles/tokens.css'
 import './styles/app.css'
+import './styles/liveness.css'
 import './styles/environment-inspector.css'
 import './styles/cheap-lane.css'
 import './styles/cowork-categories.css'
@@ -98,7 +101,7 @@ export function App() {
             />
             <UiPanelWatcher config={cfg} setSurface={setSurface} />
             <ViewRequestWatcher config={cfg} />
-            <OpmaerksomhedsVaert setSurface={setSurface} />
+            {/* OpmaerksomhedsVaert fjernet (Bjørn 29/9-2026) */}
             <AiTransparencyNotice onNavigate={setSurface} />
             <UpdateHost />
             <DependencyHost />
@@ -223,7 +226,7 @@ function Shell({
 }: {
   surface: Surface
   setSurface: (s: Surface) => void
-  role: 'owner' | 'member' | 'guest'
+  role: 'owner' | 'partner' | 'member' | 'guest'
   userName: string
   model: string
 }) {

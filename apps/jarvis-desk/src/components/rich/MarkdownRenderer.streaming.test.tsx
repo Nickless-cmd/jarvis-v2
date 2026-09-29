@@ -1,8 +1,19 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render } from '@testing-library/react'
+import { cleanup, render } from '@testing-library/react'
 
 // Tæl hvor mange gange hver blok faktisk parses (= react-markdown kaldes med den).
 const parset = vi.hoisted(() => new Map<string, number>())
+const strukturLaengder = vi.hoisted(() => [] as number[])
+vi.mock('../../lib/enforceStructure', async (orig) => {
+  const ægte = await orig<typeof import('../../lib/enforceStructure')>()
+  return {
+    ...ægte,
+    enforceStructure: (md: string) => {
+      strukturLaengder.push(md.length)
+      return ægte.enforceStructure(md)
+    },
+  }
+})
 vi.mock('react-markdown', async (orig) => {
   const ægte = (await orig<typeof import('react-markdown')>()).default
   return {
@@ -19,6 +30,26 @@ const afsnit = (i: number) => `## Afsnit ${i}\n\nTekst ${i} med **fed**, \`kode\
 const doc = Array.from({ length: 12 }, (_, i) => afsnit(i)).join('') + 'Slutafsnit.'
 
 describe('MarkdownRenderer under streaming', () => {
+  it('strukturarbejdet vokser omtrent lineært med antallet af frosne blokke', () => {
+    // 29/9-2026: hele historikken blev transformeret ved hver delta, selv om
+    // kun den sidste blok kunne ændre sig. Summen af behandlede tegn afslører
+    // den kvadratiske vækst uden afhængighed af maskinens klokke.
+    const maal = (antal: number) => {
+      strukturLaengder.length = 0
+      const { rerender, unmount } = render(<MarkdownRenderer text="" streaming />)
+      let tekst = ''
+      for (let i = 0; i < antal; i++) {
+        tekst += afsnit(i)
+        rerender(<MarkdownRenderer text={tekst} streaming />)
+      }
+      const sum = strukturLaengder.reduce((a, b) => a + b, 0)
+      unmount()
+      cleanup()
+      return sum
+    }
+    expect(maal(40) / maal(20)).toBeLessThan(2.8)
+  })
+
   it('giver PRÆCIS samme HTML som ét samlet parse', () => {
     // Et samlet parse lægger linjeskift-tekstnoder MELLEM blokelementerne;
     // de delte blokke gør ikke. Det er mellemrum mellem blokke — usynligt —
@@ -27,6 +58,22 @@ describe('MarkdownRenderer under streaming', () => {
     const del = render(<MarkdownRenderer text={doc} streaming />).container.innerHTML
     const hel = render(<MarkdownRenderer text={doc} streaming={false} />).container.innerHTML
     expect(norm(del)).toBe(norm(hel))
+  })
+
+  it('bevarer settled-layout for ekko, krammet tabel og inline-struktur', () => {
+    const norm = (h: string) => h.replace(/>\s+</g, '><')
+    const tekster = [
+      '[list_proposals]: intern echo\n\nRigtigt svar.\n\n**Vigtig overskrift**\n\n- et\n\n- to',
+      'Intro.\n\n| A | B | --- | --- | en | to |\n\nEfter tabellen.',
+      'Vi har lag — API klar — DB klar — UI klar\n\n**Næste skridt:** Gør arbejdet nu.',
+    ]
+    for (const tekst of tekster) {
+      const del = render(<MarkdownRenderer text={tekst} streaming />)
+      const hel = render(<MarkdownRenderer text={tekst} streaming={false} />)
+      expect(norm(del.container.innerHTML)).toBe(norm(hel.container.innerHTML))
+      del.unmount()
+      hel.unmount()
+    }
   })
 
   it('en færdig blok parses ÉN gang — kun den levende hale parses igen', () => {

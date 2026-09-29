@@ -95,6 +95,16 @@ def inventory(conn: sqlite3.Connection) -> dict[str, object]:
     return {"version": 1, "tables": tables}
 
 
+def _unobserved(value: object) -> bool:
+    """True når et format ikke er observeret — tom tabel eller ingen kolonne.
+
+    `inventory` skriver `["unobserved"]` for en tabel uden raekker og `[]` for
+    en tabel uden `created_at`-kolonne. Ingen af dem er et format; de er fravaer
+    af observation.
+    """
+    return value in (None, [], ["unobserved"])
+
+
 def compare(current: dict, expected: dict) -> list[str]:
     actual_tables = current["tables"]
     saved_tables = expected.get("tables", {})
@@ -106,9 +116,23 @@ def compare(current: dict, expected: dict) -> list[str]:
             issues.append(f"MISSING {name}")
         else:
             for field in ("digest", "created_at_formats"):
-                if actual_tables[name][field] != saved_tables[name].get(field):
-                    issues.append(f"CHANGED {name}.{field}: "
-                                  f"{saved_tables[name].get(field)} -> {actual_tables[name][field]}")
+                saved_value = saved_tables[name].get(field)
+                actual_value = actual_tables[name][field]
+                if actual_value == saved_value:
+                    continue
+                if field == "created_at_formats" and (
+                    _unobserved(saved_value) or _unobserved(actual_value)
+                ):
+                    # `unobserved` betyder "vi ved det ikke", ikke "der er ingen":
+                    # en tabel uden raekker har intet format at sammenligne med.
+                    # Foerste raekke i en tidligere tom tabel — og en tabel der
+                    # tommes igen — er derfor ikke en skriver der skifter format.
+                    # Maalt 29/9-2026: cheap_lane_admission_leases (lease-tabel)
+                    # fik gaten til at fejle eller passere alt efter om der
+                    # tilfaeldigt var en aktiv lease i det ojeblik hooken koerte.
+                    continue
+                issues.append(f"CHANGED {name}.{field}: "
+                              f"{saved_value} -> {actual_value}")
     return issues
 
 

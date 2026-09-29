@@ -38,7 +38,7 @@ import { AboutPanel } from '../components/AboutPanel'
  * Zone aliases keep older open_ui_panel and command-palette calls working. */
 export function CoworkView({
   role = 'owner', sessionId,
-}: { role?: 'owner' | 'member' | 'guest'; sessionId?: string | null }) {
+}: { role?: 'owner' | 'partner' | 'member' | 'guest'; sessionId?: string | null }) {
   const { settings, auth } = useSettings()
   const isOwner = role === 'owner'
   const config = settings ? { apiBaseUrl: settings.apiBaseUrl, authToken: settings.authToken } : undefined

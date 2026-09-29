@@ -32,6 +32,11 @@ const cfg = { apiBaseUrl: 'http://x', authToken: 't' }
  *  1. vise job fra BEGGE maskiner — serverens supervisor og Bjørns egne shells
  *  2. sige forskel på «der kører ingenting» og «jeg kan ikke se din maskine»
  *  3. stoppe et job på den maskine det faktisk kører på
+ *
+ * 29/9-2026 — formen blev CC's (B, Bjørn: «dejlig roligt og simplet for
+ * uerfaren bruger»): linje 1 er TITLEN (hvad jobbet laver), linje 2 type + ur.
+ * Id'et er ude af rækken og lever i `title` + `aria-label`, så to ens job
+ * stadig kan skelnes. Derfor bærer mock'erne nedenfor en titel — ikke id'et.
  */
 const SERVER = {
   id: 'grid-bot', kilde: 'supervisor' as const, navn: 'grid-bot',
@@ -39,7 +44,7 @@ const SERVER = {
   sekunder: 11178, exit_code: null, can_pause: false,
 }
 const MIN_MASKINE = {
-  id: 'bg_a1b2c3d4e5f6', kilde: 'operator' as const, navn: 'bg_a1b2c3d4e5f6',
+  id: 'bg_a1b2c3d4e5f6', kilde: 'operator' as const, navn: 'Bygger klienten',
   kommando: 'npm run build -- --watch', status: 'running', pid: 4242,
   sekunder: 95, exit_code: null, can_pause: true,
 }
@@ -62,9 +67,21 @@ describe('JobsPanel', () => {
     // satte i gang på Bjørns egen maskine var usynligt.
     render(<JobsPanel config={cfg} isOwner onClose={() => {}} />)
     expect(await screen.findByText('grid-bot')).toBeInTheDocument()
-    expect(screen.getByText('bg_a1b2c3d4e5f6')).toBeInTheDocument()
+    expect(screen.getByText('Bygger klienten')).toBeInTheDocument()
     expect(screen.getByText('Server')).toBeInTheDocument()
     expect(screen.getByText('Din maskine')).toBeInTheDocument()
+  })
+
+  it('viser TITLEN i rækken og id-et i tooltip — ikke omvendt', async () => {
+    // B (Bjørn 29/9-2026). Kernen: den uerfarne bruger skal ikke læse et
+    // shell-id som det første. Id'et er ikke VÆK — det er i `title`, så det
+    // stadig kan slås op, og i aria-label, så to ens job kan skelnes.
+    render(<JobsPanel config={cfg} isOwner onClose={() => {}} />)
+    const titel = await screen.findByText('Bygger klienten')
+    expect(titel.getAttribute('title')).toBe('bg_a1b2c3d4e5f6 · npm run build -- --watch')
+    // Id'et fylder ingenting i rækken — hverken som tekst eller som linje 3.
+    expect(screen.queryByText('bg_a1b2c3d4e5f6')).toBeNull()
+    expect(screen.queryByText('npm run build -- --watch')).toBeNull()
   })
 
   it('henter den SAMLEDE liste, ikke kun serverens processer', async () => {
@@ -84,8 +101,8 @@ describe('JobsPanel', () => {
 
   it('stop rammer jobbet på DEN maskine det kører på', async () => {
     render(<JobsPanel config={cfg} isOwner onClose={() => {}} />)
-    await screen.findByText('bg_a1b2c3d4e5f6')
-    fireEvent.click(screen.getByRole('button', { name: 'Stop bg_a1b2c3d4e5f6' }))
+    await screen.findByText('Bygger klienten')
+    fireEvent.click(screen.getByRole('button', { name: 'Stop Bygger klienten (bg_a1b2c3d4e5f6)' }))
     await waitFor(() => expect(stopJob).toHaveBeenCalledWith(cfg, expect.objectContaining({
       kilde: 'operator', id: 'bg_a1b2c3d4e5f6',
     })))
@@ -95,14 +112,14 @@ describe('JobsPanel', () => {
     render(<JobsPanel config={cfg} isOwner onClose={() => {}} />)
     await screen.findByText('grid-bot')
     // can_pause=false på serverens job — en knap der ikke virker er værre end ingen.
-    expect(screen.queryByRole('button', { name: 'Pause grid-bot' })).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Pause bg_a1b2c3d4e5f6' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Pause grid-bot/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Pause Bygger klienten (bg_a1b2c3d4e5f6)' })).toBeInTheDocument()
   })
 
   it('en pauset shell kan genoptages', async () => {
     listJobs.mockResolvedValue({ jobs: [{ ...MIN_MASKINE, status: 'paused' }], bridge_ok: true })
     render(<JobsPanel config={cfg} isOwner onClose={() => {}} />)
-    fireEvent.click(await screen.findByRole('button', { name: 'Genoptag bg_a1b2c3d4e5f6' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Genoptag Bygger klienten (bg_a1b2c3d4e5f6)' }))
     await waitFor(() => expect(resumeJob).toHaveBeenCalled())
     expect(pauseJob).not.toHaveBeenCalled()
   })
@@ -174,19 +191,22 @@ describe('scout-agenter i panelet (17/9-2026)', () => {
   beforeEach(() => { listJobs.mockReset(); stopJob.mockReset() })
 
   const SCOUT = {
-    id: 'agent-' + 'a'.repeat(32), kilde: 'agent' as const, navn: 'Scout-agent',
-    kommando: 'Hvor bor cheap lane-værnet?', status: 'running', pid: null,
+    id: 'agent-' + 'a'.repeat(32), kilde: 'agent' as const, navn: 'Hvor bor cheap lane-værnet?',
+    kommando: 'Scout-agent', status: 'running', pid: null,
     sekunder: 42, exit_code: null, can_pause: false,
   }
 
-  it('en kørende scout vises under «Kører», med «Agent» som kilde og uden pause-knap', async () => {
+  it('en kørende scout vises under «Kører» med spørgsmålet som titel', async () => {
+    // B (29/9): spørgsmålet ER hvad agenten laver. «Scout-agent» siger kun
+    // hvad den ER, og den tekst lever nu i tooltip — ellers ville linje 3's
+    // forsvinden have taget spørgsmålet med sig.
     listJobs.mockResolvedValue({ jobs: [SCOUT], bridge_ok: true })
     render(<JobsPanel config={cfg} onClose={() => {}} isOwner />)
-    await waitFor(() => expect(screen.getByText('Scout-agent')).toBeInTheDocument())
+    const titel = await screen.findByText('Hvor bor cheap lane-værnet?')
+    expect(titel.getAttribute('title')).toBe(`agent-${'a'.repeat(32)} · Scout-agent`)
     expect(screen.getByText('Agent')).toBeInTheDocument()
-    expect(screen.getAllByText('Hvor bor cheap lane-værnet?').length).toBeGreaterThan(0)
-    expect(screen.queryByLabelText('Pause Scout-agent')).toBeNull()
-    fireEvent.click(screen.getByLabelText('Stop Scout-agent'))
+    expect(screen.queryByLabelText(/^Pause /)).toBeNull()
+    fireEvent.click(screen.getByLabelText(/^Stop Hvor bor/))
     await waitFor(() => expect(stopJob).toHaveBeenCalledWith(cfg, SCOUT))
   })
 })
@@ -196,13 +216,13 @@ describe('scout-agenter i panelet (17/9-2026)', () => {
 // Bjørn: «hans bash og operator_bash [skal] ramme baggrundsjobs panelet...
 // simple vising med en stop knap».
 const SHELL_SERVER = {
-  id: 'bsh-115cd823bf', kilde: 'shell' as const, navn: 'bsh-115cd823bf',
-  kommando: 'åben shell · intet kører · tiden er tomgang',
+  id: 'bsh-115cd823bf', kilde: 'shell' as const, navn: "Jarvis' arbejds-shell",
+  kommando: "Jarvis' arbejds-shell · tiden er siden sidste kommando startede",
   status: 'running', pid: null, sekunder: 606, exit_code: null, can_pause: false,
 }
 const SHELL_MIN_MASKINE = {
-  id: 'opsess-0123456789ab', kilde: 'shell_operator' as const, navn: 'opsess-0123456789ab',
-  kommando: 'åben shell i /media/projects · intet kører · tiden er tomgang',
+  id: 'opsess-0123456789ab', kilde: 'shell_operator' as const, navn: 'åben shell',
+  kommando: 'åben shell i /media/projects · tiden er siden sidste kommando sluttede',
   status: 'running', pid: null, sekunder: 12, exit_code: null, can_pause: false,
 }
 
@@ -212,8 +232,8 @@ describe('åbne shell-sessioner', () => {
   it('viser en shell på serveren og en på hans maskine som HVER sin maskine', async () => {
     listJobs.mockResolvedValue({ jobs: [SHELL_SERVER, SHELL_MIN_MASKINE], bridge_ok: true })
     render(<JobsPanel config={cfg} onClose={() => {}} isOwner />)
-    await waitFor(() => expect(screen.getByText('bsh-115cd823bf')).toBeTruthy())
-    expect(screen.getByText('opsess-0123456789ab')).toBeTruthy()
+    await waitFor(() => expect(screen.getByText("Jarvis' arbejds-shell")).toBeTruthy())
+    expect(screen.getByText('åben shell')).toBeTruthy()
     // Linje 2 er HVOR den kører. Uden 'shell_operator' i `kildeNavn` faldt
     // hans egen shell igennem til «Server».
     expect(screen.getByText('Din maskine')).toBeTruthy()
@@ -223,10 +243,10 @@ describe('åbne shell-sessioner', () => {
   it('har en stop-knap, men INGEN pause-knap', async () => {
     listJobs.mockResolvedValue({ jobs: [SHELL_SERVER], bridge_ok: true })
     render(<JobsPanel config={cfg} onClose={() => {}} isOwner />)
-    const stop = await screen.findByLabelText('Stop bsh-115cd823bf')
+    const stop = await screen.findByLabelText("Stop Jarvis' arbejds-shell (bsh-115cd823bf)")
     // can_pause=false: en kommando i sessionen blokerer kaldet og er loftet
     // til 300 s, saa der er ikke noget oejeblik at pause i.
-    expect(screen.queryByLabelText('Pause bsh-115cd823bf')).toBeNull()
+    expect(screen.queryByLabelText(/^Pause /)).toBeNull()
     fireEvent.click(stop)
     await waitFor(() => expect(stopJob).toHaveBeenCalled())
     // Kilden foelger med, saa ruten ved hvilket vaerktoejs `close` der skal
@@ -237,25 +257,28 @@ describe('åbne shell-sessioner', () => {
   it('stopper HANS shell gennem operator-kilden, ikke serverens', async () => {
     listJobs.mockResolvedValue({ jobs: [SHELL_MIN_MASKINE], bridge_ok: true })
     render(<JobsPanel config={cfg} onClose={() => {}} isOwner />)
-    fireEvent.click(await screen.findByLabelText('Stop opsess-0123456789ab'))
+    fireEvent.click(await screen.findByLabelText('Stop åben shell (opsess-0123456789ab)'))
     await waitFor(() => expect(stopJob).toHaveBeenCalled())
     expect(stopJob.mock.calls[0]?.[1].kilde).toBe('shell_operator')
     expect(stopJob.mock.calls[0]?.[1].id).toBe('opsess-0123456789ab')
   })
 
-  it('viser en shell der KØRER med kommandoen og en stop-knap', async () => {
-  // Kortet fra Bjørns billede: «Kører / 19m20s / hvad det er».
-  listJobs.mockResolvedValue({
-    jobs: [{
-      ...SHELL_SERVER, sekunder: 1160,
-      kommando: 'kører: npm run build -- --watch',
-    }],
-    bridge_ok: true,
+  it('viser en shell der KØRER med kommandoen i tooltip og en stop-knap', async () => {
+    // Kortet fra Bjørns billede: «Kører / 19m20s / hvad det er». Efter B står
+    // «hvad det er» på linje 1, og den fulde kommando i tooltip.
+    listJobs.mockResolvedValue({
+      jobs: [{
+        ...SHELL_SERVER, sekunder: 1160,
+        navn: 'kører: npm run build -- --watch',
+        kommando: 'kører: npm run build -- --watch',
+      }],
+      bridge_ok: true,
+    })
+    render(<JobsPanel config={cfg} onClose={() => {}} isOwner />)
+    const titel = await screen.findByText('kører: npm run build -- --watch')
+    expect(titel.getAttribute('title')).toBe('bsh-115cd823bf · kører: npm run build -- --watch')
+    await waitFor(() => expect(screen.getByText('19m 20s')).toBeTruthy())
+    fireEvent.click(screen.getByLabelText(/^Stop /))
+    await waitFor(() => expect(stopJob).toHaveBeenCalled())
   })
-  render(<JobsPanel config={cfg} onClose={() => {}} isOwner />)
-  await waitFor(() => expect(screen.getByText('19m 20s')).toBeTruthy())
-  expect(screen.getByText('kører: npm run build -- --watch')).toBeTruthy()
-  fireEvent.click(screen.getByLabelText('Stop bsh-115cd823bf'))
-  await waitFor(() => expect(stopJob).toHaveBeenCalled())
-})
 })

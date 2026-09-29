@@ -60,7 +60,7 @@ export function AccountSection({ config }: { config: ApiConfig | undefined }) {
             : null}
         </dd>
         <dt>Sprog</dt><dd>{{ da: 'Dansk', en: 'Engelsk' }[profile.language] ?? profile.language}</dd>
-        <dt>Rolle</dt><dd>{{ owner: 'Ejer', member: 'Medlem', guest: 'Gæst' }[profile.role] ?? profile.role}</dd>
+        <dt>Rolle</dt><dd>{{ owner: 'Ejer', partner: 'Partner', member: 'Medlem', guest: 'Gæst' }[profile.role] ?? profile.role}</dd>
         <dt>Kontotype</dt><dd>{profile.tier}</dd>
       </dl>
       <div className="account-google">

@@ -77,7 +77,7 @@ const ROOT_LABELS: Record<string, string> = {
 }
 
 type WsKind = 'container' | 'workstation'
-type Role = 'owner' | 'member' | 'guest'
+type Role = 'owner' | 'partner' | 'member' | 'guest'
 
 /** Native mappe-vælger (Electron). Returnerer valgt sti eller null udenfor app'en. */
 async function pickFolder(): Promise<string | null> {
@@ -1192,7 +1192,6 @@ export function CodeView({
             workingStep={bgActive && stream.status !== 'working' ? (followState.workingStep ?? 'vågner') : stream.workingStep}
             tokens={bgActive && stream.status !== 'working' ? followState.usage.output : stream.usage.output}
             compacting={compacting}
-            blocks={stream.blocks}
           />
           <div className="composer-notices">
             <GodkendelsesKort />

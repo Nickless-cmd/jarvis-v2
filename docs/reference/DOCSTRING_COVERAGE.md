@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8172/15690 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8174/15692 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -25,7 +25,7 @@ Generated from source. 8172/15690 functions/methods documented (52%). The list b
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
 | `core.runtime` | 699 | 1278 | 54% |
-| `core.services` | 5428 | 10680 | 50% |
+| `core.services` | 5429 | 10681 | 50% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 108 | 184 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -37,7 +37,7 @@ Generated from source. 8172/15690 functions/methods documented (52%). The list b
 | `core.tools.claude_dispatch` | 5 | 28 | 17% |
 | `core.undo` | 2 | 18 | 11% |
 | `core.util` | 9 | 10 | 90% |
-| `scripts` | 222 | 492 | 45% |
+| `scripts` | 223 | 493 | 45% |
 | `scripts.acceptance` | 3 | 7 | 42% |
 | `scripts.diagnostics` | 1 | 2 | 50% |
 | `scripts.pipelines` | 64 | 83 | 77% |
@@ -266,10 +266,10 @@ Generated from source. 8172/15690 functions/methods documented (52%). The list b
 - `core/eventbus/bus.py` :: `EventBus.recent_since_id` (L207)
 - `core/eventbus/bus.py` :: `EventBus.subscribe` (L229)
 - `core/eventbus/bus.py` :: `EventBus.unsubscribe` (L235)
-- `core/eventbus/events.py` :: `Event.create` (L268)
-- `core/eventbus/events.py` :: `Event.family` (L264)
-- `core/eventbus/events.py` :: `Event.from_record` (L274)
-- `core/eventbus/events.py` :: `Event.validate` (L285)
+- `core/eventbus/events.py` :: `Event.create` (L276)
+- `core/eventbus/events.py` :: `Event.family` (L272)
+- `core/eventbus/events.py` :: `Event.from_record` (L282)
+- `core/eventbus/events.py` :: `Event.validate` (L293)
 - `core/identity/candidate_workflow.py` :: `apply_approved_runtime_contract_candidates` (L318)
 - `core/identity/candidate_workflow.py` :: `apply_runtime_contract_candidate` (L119)
 - `core/identity/candidate_workflow.py` :: `approve_runtime_contract_candidate` (L51)
@@ -1975,19 +1975,19 @@ Generated from source. 8172/15690 functions/methods documented (52%). The list b
 - `core/services/visible_runs.py` :: `VisibleRunController.cancel` (L551)
 - `core/services/visible_runs.py` :: `VisibleRunController.clear_stream` (L548)
 - `core/services/visible_runs.py` :: `VisibleRunController.is_cancelled` (L558)
-- `core/services/visible_runs.py` :: `cancel_visible_run` (L7203)
-- `core/services/visible_runs.py` :: `get_active_visible_run` (L7228)
-- `core/services/visible_runs.py` :: `get_last_visible_capability_use` (L7432)
-- `core/services/visible_runs.py` :: `get_last_visible_run_outcome` (L7428)
-- `core/services/visible_runs.py` :: `get_visible_run_controller` (L7199)
-- `core/services/visible_runs.py` :: `get_visible_selected_work_item` (L7341)
-- `core/services/visible_runs.py` :: `get_visible_selected_work_note` (L7393)
-- `core/services/visible_runs.py` :: `get_visible_selected_work_surface` (L7310)
-- `core/services/visible_runs.py` :: `get_visible_work` (L7251)
-- `core/services/visible_runs.py` :: `get_visible_work_surface` (L7283)
-- `core/services/visible_runs.py` :: `register_visible_run` (L7161)
-- `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L7449)
-- `core/services/visible_runs.py` :: `unregister_visible_run` (L7214)
+- `core/services/visible_runs.py` :: `cancel_visible_run` (L6929)
+- `core/services/visible_runs.py` :: `get_active_visible_run` (L6954)
+- `core/services/visible_runs.py` :: `get_last_visible_capability_use` (L7158)
+- `core/services/visible_runs.py` :: `get_last_visible_run_outcome` (L7154)
+- `core/services/visible_runs.py` :: `get_visible_run_controller` (L6925)
+- `core/services/visible_runs.py` :: `get_visible_selected_work_item` (L7067)
+- `core/services/visible_runs.py` :: `get_visible_selected_work_note` (L7119)
+- `core/services/visible_runs.py` :: `get_visible_selected_work_surface` (L7036)
+- `core/services/visible_runs.py` :: `get_visible_work` (L6977)
+- `core/services/visible_runs.py` :: `get_visible_work_surface` (L7009)
+- `core/services/visible_runs.py` :: `register_visible_run` (L6887)
+- `core/services/visible_runs.py` :: `set_last_visible_capability_use` (L7175)
+- `core/services/visible_runs.py` :: `unregister_visible_run` (L6940)
 - `core/services/visible_runs_learning_signals.py` :: `record_visible_run_learning_signals` (L53)
 - `core/services/visible_runs_outcomes.py` :: `set_last_visible_run_outcome` (L587)
 - `core/services/visible_runs_sse_v2.py` :: `ToolEchoFilter.feed` (L107)
@@ -2262,9 +2262,9 @@ Generated from source. 8172/15690 functions/methods documented (52%). The list b
 - `scripts/verify_notes.py` :: `main` (L67)
 - `scripts/verify_persistens.py` :: `main` (L118)
 - `scripts/verify_silent_except.py` :: `main` (L125)
-- `scripts/verify_sqlite_schema.py` :: `compare` (L98)
+- `scripts/verify_sqlite_schema.py` :: `compare` (L108)
 - `scripts/verify_sqlite_schema.py` :: `inventory` (L60)
-- `scripts/verify_sqlite_schema.py` :: `main` (L154)
+- `scripts/verify_sqlite_schema.py` :: `main` (L178)
 - `scripts/verify_sqlite_schema.py` :: `timestamp_format` (L26)
 - `scripts/verify_vagt_graenser.py` :: `brud` (L55)
 - `scripts/verify_vagt_graenser.py` :: `main` (L74)

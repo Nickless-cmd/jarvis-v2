@@ -113,7 +113,13 @@ export function JobsPanel({
   const kort = (j: BackgroundJob, faerdig: boolean) => (
     <li className={`jobs-kort${faerdig ? ' er-faerdig' : ''}`} key={`${j.kilde}:${j.id}`}>
       <div className="jobs-kort-tekst">
-        <span className="jobs-navn" title={j.kommando}>{j.navn}</span>
+        {/* B (Bjørn 29/9-2026): titlen er hvad jobbet LAVER. Id'et er ude af
+            raekken — det staar i tooltip sammen med den tekniske kommando og
+            i aria-label, saa to ens job stadig kan skelnes. Formen er CC's:
+            titel · type · ur. */}
+        <span className="jobs-navn" title={j.kommando ? `${j.id} · ${j.kommando}` : j.id}>
+          {j.navn}
+        </span>
         <span className="jobs-meta">
           {/* Linje 2 som i CC: HVOR den kører + hvor længe. At skelne server
               fra hans egen maskine er hele pointen med den samlede liste. */}
@@ -134,9 +140,9 @@ export function JobsPanel({
             </>
           )}
         </span>
-        {/* Linje 3: selve kommandoen — CC viser «localhost:5174» her. Den
-            siger HVAD der kører, og det er det man afgør stop på. */}
-        <span className="jobs-kommando" title={j.kommando}>{j.kommando}</span>
+        {/* Linje 3 er FJERNET (Bjørn 29/9-2026): CC viser titel · type · ur,
+            og kommandoen staar nu i `title` paa titlen ovenfor. Rækken er
+            lavere end før, ikke højere. */}
       </div>
       {isOwner && !faerdig && (
         <div className="jobs-knapper">
@@ -144,7 +150,7 @@ export function JobsPanel({
             <button
               type="button" className="jobs-stop" disabled={travl === j.id}
               title={j.status === 'paused' ? 'Genoptag' : 'Sæt på pause'}
-              aria-label={`${j.status === 'paused' ? 'Genoptag' : 'Pause'} ${j.navn}`}
+              aria-label={`${j.status === 'paused' ? 'Genoptag' : 'Pause'} ${j.navn} (${j.id})`}
               onClick={() => void handling(j.id, () => (j.status === 'paused'
                 ? resumeJob(config!, j) : pauseJob(config!, j)))}
             >
@@ -153,7 +159,7 @@ export function JobsPanel({
           )}
           <button
             type="button" className="jobs-stop" title="Stop jobbet"
-            aria-label={`Stop ${j.navn}`} disabled={travl === j.id}
+            aria-label={`Stop ${j.navn} (${j.id})`} disabled={travl === j.id}
             onClick={() => void handling(j.id, () => stopJob(config!, j))}
           >
             <Square size={12} />

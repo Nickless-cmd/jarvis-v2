@@ -266,6 +266,9 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
       }
       if (event.kind !== 'working_step') return state // ukendt kind → ignorér gracefully
       const p = event.payload as { tool_id?: string; status?: string; result?: string; detail?: string; action?: string }
+      // Thinking er allerede liveness-indikatorens egen tilstand. Livstegnet
+      // rydder samtidig en gammel værktøjsetiket efter et afsluttet kald.
+      if (p.action === 'thinking' && !p.tool_id) return { ...state, workingStep: null }
       // Surface seneste progress-tekst (også steps uden tool_id, fx "thinking").
       const step = p.detail ?? p.action ?? state.workingStep
       if (!p.tool_id) return { ...state, workingStep: step }

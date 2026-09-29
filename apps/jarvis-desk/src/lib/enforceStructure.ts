@@ -1,3 +1,5 @@
+import { scanFences } from './fenceScanner'
+
 /** Strukturel håndhævelse af Jarvis' output-format.
  *
  *  Baggrund: Jarvis følger ikke konsekvent markdown-konventioner — han skriver
@@ -15,13 +17,13 @@
  *  beskyttet (code-fence, der skal lades helt i fred). */
 function splitProtected(md: string): Array<{ kind: 'text' | 'fence'; body: string }> {
   const out: Array<{ kind: 'text' | 'fence'; body: string }> = []
-  const re = /```[\s\S]*?```/g
   let last = 0
-  let m: RegExpExecArray | null
-  while ((m = re.exec(md)) !== null) {
-    if (m.index > last) out.push({ kind: 'text', body: md.slice(last, m.index) })
-    out.push({ kind: 'fence', body: m[0] })
-    last = m.index + m[0].length
+  // 29/9-2026: regexen kendte kun lukkede ```-par; åbne og ~~~-fences
+  // blev derfor omskrevet som prosa midt i en kodeblok.
+  for (const span of scanFences(md)) {
+    if (span.start > last) out.push({ kind: 'text', body: md.slice(last, span.start) })
+    out.push({ kind: 'fence', body: md.slice(span.start, span.end) })
+    last = span.end
   }
   if (last < md.length) out.push({ kind: 'text', body: md.slice(last) })
   return out

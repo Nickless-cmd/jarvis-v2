@@ -60,6 +60,11 @@ import time as _t_ollama
 _OLLAMA_TAGS_CACHE: dict = {"ts": 0.0, "tags": set()}
 _OLLAMA_TAGS_TTL_S = 120.0
 
+# Give-up efter ~24s tavshed på SSE-subscriberen. Tærsklen er en TÆLLING af tomme
+# polls og SKAL følge poll-intervallet i _subscribe (15ms): 1600 × 15ms ≈ 24s.
+# Før 29/9-2026 var den 300, kalibreret til dengang idle-stien sov 80ms.
+_IDLE_GIVEUP_POLLS = 1600
+
 
 def _ollama_model_tags() -> set:
     """Set of model names ollama currently serves. Cached 120s; fail-open (empty set)."""
@@ -550,7 +555,7 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
                         # Frames FLYDER → poll hurtigt (15ms) så tokens/tool-frames når
                         # klienten ét-for-ét i stedet for 80ms-klumper. Fluid streaming.
                         # Kun aktiv mens der reelt strømmer content (få sekunder pr. tur),
-                        # så CPU-omkostningen er forsvindende. Idle-stien bevarer 80ms.
+                        # så CPU-omkostningen er forsvindende.
                         empty = 0
                         await _a.sleep(0.015)
                         continue
@@ -559,7 +564,7 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
                     if (_xt.monotonic() - _last_emit) >= _PING_GAP_S:
                         yield _Ping().to_sse_line()
                         _last_emit = _xt.monotonic()
-                    if empty > 300 and rel.is_open(run_id):
+                    if empty > _IDLE_GIVEUP_POLLS and rel.is_open(run_id):
                         # ROD (Bjørn 29. jun, instrumenterings-bevist): glm-5.2's tænke/assembly-
                         # fase producerer ~ingen relay-frames i ~24s (ping-starvation) →
                         # give-up'en fyrede MENS runnet stadig var LIVE → syntetisk
@@ -567,16 +572,19 @@ async def chat_stream_v2(request: ChatStreamRequest) -> StreamingResponse:
                         # overtog → ALT content (kom efter 24s) gik til mobil. Giv KUN op
                         # hvis runnet er ÆGTE dødt (ikke is_live); ellers bliv ved at vente.
                         empty = 0
-                    elif empty > 300:  # ~24s tavst OG run ikke længere live → giv op
+                    elif empty > _IDLE_GIVEUP_POLLS:  # ~24s tavst OG run ikke længere live → giv op
                         # H1/G6: aldrig bare break — emit syntetisk terminal-frame
                         # så klienten forlader 'working', + fyr subscriber_timeout-nerve.
                         yield rel.synthetic_terminal_frame(
                             run_id, session_id, reason="relay_subscriber_idle"
                         )
                         break
-                    # Idle → langsom poll: sparer CPU + holder ping/timeout-kadencen
-                    # (empty>300 ≈ 24s uændret, da kun tomme polls tæller ved 80ms).
-                    await _a.sleep(0.08)
+                    # Idle-poll er OGSÅ 15ms (målt 29/9-2026). Før sov den 80ms, og
+                    # det KVANTISEREDE kildens huller op: en bølge der ankom 5ms efter
+                    # polleren gik i søvn ventede 75ms i utide. Målt direkte på
+                    # udgangen (curl -N, ms-tidsstempler): huller på 95/96/95ms =
+                    # 80 + 15. Nu følger kadencen kilden i stedet for at forstærke den.
+                    await _a.sleep(0.015)
             finally:
                 rel.subscriber_closed(run_id)
 

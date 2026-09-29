@@ -87,4 +87,40 @@ describe('EditedFilesCard', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Ja, fortryd 2 filer' }))
     expect(await screen.findByText('Filen er ændret siden.')).toBeInTheDocument()
   })
+
+  // ── Hover-diff (Bjørn 29/9-2026: «en diff visning med scrool») ──────────
+  it('viser diffen naar man holder musen over filnavnet', () => {
+    render(<EditedFilesCard filer={FILER} onAabn={() => {}}
+      diffs={{ 'apps/x/ChangesPanel.tsx': [{ gammel: 'gammel linje', ny: 'ny linje' }] }} />)
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+    fireEvent.mouseEnter(screen.getByText('x/ChangesPanel.tsx'))
+    const tip = screen.getByRole('tooltip')
+    expect(tip).toHaveTextContent('gammel linje')
+    expect(tip).toHaveTextContent('ny linje')
+  })
+
+  it('viser ingen popup for en fil uden par', () => {
+    render(<EditedFilesCard filer={FILER} onAabn={() => {}} diffs={{}} />)
+    fireEvent.mouseEnter(screen.getByText('x/ChangesPanel.tsx'))
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+  })
+
+  it('viser hver redigering af samme fil i raekkefoelge', () => {
+    render(<EditedFilesCard filer={[{ path: 'a.ts', gange: 2 }]} onAabn={() => {}}
+      diffs={{ 'a.ts': [{ gammel: 'v1', ny: 'v2' }, { gammel: 'v2', ny: 'v3' }] }} />)
+    fireEvent.mouseEnter(screen.getByText('a.ts'))
+    const tip = screen.getByRole('tooltip')
+    expect(tip).toHaveTextContent('2 ændringer')
+    expect(tip).toHaveTextContent('Ændring 1 af 2')
+    expect(tip).toHaveTextContent('Ændring 2 af 2')
+  })
+
+  it('Escape lukker diffen igen', () => {
+    render(<EditedFilesCard filer={FILER} onAabn={() => {}}
+      diffs={{ 'apps/x/ChangesPanel.tsx': [{ gammel: 'a', ny: 'b' }] }} />)
+    fireEvent.mouseEnter(screen.getByText('x/ChangesPanel.tsx'))
+    expect(screen.getByRole('tooltip')).toBeInTheDocument()
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+  })
 })

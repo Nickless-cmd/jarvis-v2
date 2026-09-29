@@ -177,7 +177,7 @@ export interface AccountProfile {
   email: string
   email_verified: boolean
   language: string
-  role: 'owner' | 'member' | 'guest'
+  role: 'owner' | 'partner' | 'member' | 'guest'
   tier: string
   google_linked?: boolean
 }

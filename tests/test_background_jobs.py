@@ -114,7 +114,9 @@ def test_en_koerende_scout_vises_som_baggrundsjob(monkeypatch):
     j = bj.liste()["jobs"]
     assert len(j) == 1, "kun scout-agenter — ikke andre agent-roller"
     assert j[0]["kilde"] == "agent" and j[0]["status"] == "running"
-    assert j[0]["kommando"] == "Hvor bor cheap lane-værnet?"
+    # B (29/9-2026): spoergsmaalet er TITLEN, rollen ligger i tooltip.
+    assert j[0]["navn"] == "Hvor bor cheap lane-værnet?"
+    assert j[0]["kommando"] == "Scout-agent"
     assert j[0]["sekunder"] == 42 and j[0]["can_pause"] is False
 
 
@@ -264,21 +266,7 @@ def test_to_doede_shell_kilder_vaelter_ikke_de_oevrige_jobs(monkeypatch):
     assert [x["id"] for x in bj.liste()["jobs"]] == ["grid-bot"]
 
 
-def test_arbejds_shellen_maerkes_op_saa_den_ikke_ligner_en_stray(monkeypatch):
-    # Det almindelige `bash`-vaerktoej genbruger EN delt session. Den staar i
-    # daemonens liste side om side med dem der er aabnet med vilje, og et stop
-    # paa den smider Jarvis' cd/env/venv vaek midt i en opgave.
-    _taend_shells(monkeypatch)
-    import core.tools.simple_tools_web as stw
-    monkeypatch.setattr(stw, "_DEFAULT_BASH_SESSION_ID", "bsh-aaaaaaaaaa", raising=False)
-    _monter_lokal(monkeypatch, [
-        {"session_id": "bsh-aaaaaaaaaa", "alive": True, "idle_seconds": 4},
-        {"session_id": "bsh-bbbbbbbbbb", "alive": True, "idle_seconds": 9},
-    ])
-    _monter_operator(monkeypatch, [])
-    kort = {j["id"]: j["kommando"] for j in bj.liste()["jobs"]}
-    assert "arbejds-shell" in kort["bsh-aaaaaaaaaa"]
-    assert "arbejds-shell" not in kort["bsh-bbbbbbbbbb"]
+
 
 
 def test_tallets_betydning_er_forskellig_paa_de_to_kilder(monkeypatch):

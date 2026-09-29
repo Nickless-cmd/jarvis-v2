@@ -251,6 +251,14 @@ ALLOWED_EVENT_FAMILIES = {
     #    release-events i bussen. (Fjerde gang samme moenster: prompt 4/9,
     #    tool_discovery 6/9, r2_5_gate 19/9.) ──
     "app",
+    # ── 29. sep 2026: selv-instrumenteringen (FEMTE gang samme moenster: prompt
+    #    4/9, tool_discovery 6/9, r2_5_gate 19/9, app 20/9).
+    #    `central_instrument.finding_accepted` blev publiceret fra
+    #    core/services/autonomy_proposal_queue.py:641, men familien stod ikke her
+    #    → publish kastede ValueError, og kaldestedets `except` slugte den. Fundet
+    #    blev lukket, men eventet naaede ALDRIG bussen. Fandt vagten
+    #    tests/test_publish_scan.py::test_ingen_NYE_utilsluttede_familier. ──
+    "central_instrument",
 }
 
 

@@ -2236,6 +2236,12 @@ async def _stream_visible_run(
                         })
                 visible_input_pre = await _bvi_task
                 base_messages = serialize_ollama_chat_messages(visible_input_pre)
+                # Turens hale. ALT der opstaar undervejs — styringer,
+                # nudges, hook-noter, baggrunds-noter, per-runde-vink —
+                # hoerer HER og ikke paa base_messages. Se run_trailing for
+                # hvad det kostede at have dem det forkerte sted.
+                from core.services.run_trailing import RundeHale
+                _tur_hale = RundeHale()
 
                 # ── Cache-boundary drift observer (harness Part B, Mechanism A) ──
                 # Zero prompt mutation: hash the STATIC system message (base_messages[0])
@@ -2931,7 +2937,7 @@ async def _stream_visible_run(
                     #
                     # Halen sendes nu som sin egen liste og haeftes paa EFTER
                     # exchanges, hvor den ikke forskyder noget.
-                    _round_trailing: list[dict] = []
+                    _tur_hale.ny_runde()
                     try:
                         if _agentic_round >= 1 and _vf.agentic_lean_prompt_enabled():
                             _lean_msgs, _lean_metrics = _vf.build_lean_base_messages(
@@ -2947,6 +2953,26 @@ async def _stream_visible_run(
                                     saved_tokens=int(_lean_metrics.get("saved_tokens") or 0),
                                     applied=bool(_lean_metrics.get("changed")))
                             except Exception:
+                                pass
+                            # ... OG et VARIGT spor. `note_lean_prompt` gaar til
+                            # Centralens trace-sink, som er en ring-buffer i
+                            # hukommelsen med SSE-abonnenter. Den viser det live
+                            # og husker intet: da slankningen holdt op med at
+                            # virke midt i et run 28/9-2026 og kostede 120.704
+                            # tokens paa én runde, fandtes der bagefter INTET
+                            # spor af at den ikke havde skaaret. Aarsagen maatte
+                            # udledes af hale-laengden i cache-telemetrien.
+                            try:
+                                from core.services import central_timeseries as _cts_lean
+                                _cts_lean.record(
+                                    "context", "lean_prompt",
+                                    float(_lean_metrics.get("saved_tokens") or 0),
+                                    meta={"run_id": run.run_id,
+                                          "round": _agentic_round + 1,
+                                          "applied": bool(_lean_metrics.get("changed")),
+                                          "before_chars": int(_lean_metrics.get("before_chars") or 0),
+                                          "after_chars": int(_lean_metrics.get("after_chars") or 0)})
+                            except Exception:  # telemetri maa aldrig vaelte en tur
                                 pass
                     except Exception:
                         # Fail-open mod bloat — fald til full prompt, aldrig et brud.
@@ -3081,7 +3107,7 @@ async def _stream_visible_run(
                         except Exception:
                             _varsel = ""
                         if _varsel:
-                            _round_trailing.append({"role": "user", "content": _varsel})
+                            _tur_hale.tilfoej_runde(_varsel)
                     if not _is_last_round:
                         try:
                             from core.services.tool_batch_notice import tool_batch_notice as _tbn
@@ -3094,7 +3120,7 @@ async def _stream_visible_run(
                             _vink = ""
                         if _vink:
                             _batch_vink_vist += 1
-                            _round_trailing.append({"role": "user", "content": _vink})
+                            _tur_hale.tilfoej_runde(_vink)
                     if _is_last_round:
                         _forced_finalize_seen = True
                         # Behold listen hos de udbydere der ER maalt til at
@@ -3109,13 +3135,10 @@ async def _stream_visible_run(
                             _round_tool_choice = "none"
                         else:
                             _round_tool_definitions = None
-                        _round_trailing.append({
-                            "role": "user",
-                            "content": (
-                                "Skriv nu dit endelige svar til brugeren i prosa, baseret "
-                                "på værktøjs-resultaterne ovenfor. Kald IKKE flere værktøjer "
-                                "— opsummer hvad du fandt og svar direkte."),
-                        })
+                        _tur_hale.tilfoej_runde(
+                            "Skriv nu dit endelige svar til brugeren i prosa, baseret "
+                            "på værktøjs-resultaterne ovenfor. Kald IKKE flere værktøjer "
+                            "— opsummer hvad du fandt og svar direkte.")
                     # Merge in tools added by load_more_tools in previous rounds
                     if _round_tool_definitions is not None and _round_extra_tools:
                         _all_defs = _get_tool_defs() or []
@@ -3178,7 +3201,7 @@ async def _stream_visible_run(
                             round_base_messages=_round_base_messages,
                             # Samme grund som linjen ovenfor: halen bindes ÉN
                             # gang pr. runde, saa et retry sender byte-identisk.
-                            round_trailing=list(_round_trailing),
+                            round_trailing=_tur_hale.som_liste(),
                             # Fase 3 (S6/§11.2): bind the CURRENT (possibly failed-
                             # over) provider/model. Flag OFF → these equal run's own
                             # → byte-identical dispatch.
@@ -3886,7 +3909,7 @@ async def _stream_visible_run(
                             content = str(s.get("content") or "").strip()
                             if not content:
                                 continue
-                            base_messages.append({"role": "user", "content": content})
+                            _tur_hale.tilfoej_vedvarende(content)
                             stop_words = ("stop", "stop.", "cancel", "afbryd", "abort", "stop nu")
                             if content.strip().lower() in stop_words:
                                 _agentic_loop_exit_reason = "user-steer-stop-mid-stream"
@@ -4122,8 +4145,7 @@ async def _stream_visible_run(
                                 _followup_exchanges.append(
                                     _vf.ToolExchange(
                                         text=_exchange_text(), tool_calls=[], results=[]))
-                                base_messages.append(
-                                    {"role": "user", "content": HOLLOW_PROMISE_NUDGE})
+                                _tur_hale.tilfoej_vedvarende(HOLLOW_PROMISE_NUDGE)
                                 # Redesign 4/9: næste runde tvinger et tool-kald og udfaldet
                                 # persisteres (runtime.hollow_promise_detected/outcome).
                                 _hollow_force_next = True
@@ -4216,8 +4238,7 @@ async def _stream_visible_run(
                                 str(run.session_id or ""), str(force_user_id or ""))
                             if _bg_note and not _bg_resumed_this_turn:
                                 _bg_resumed_this_turn = True
-                                base_messages.append(
-                                    {"role": "user", "content": _bg_note})
+                                _tur_hale.tilfoej_vedvarende(_bg_note)
                                 _followup_exchanges.append(
                                     _vf.ToolExchange(text=_exchange_text(),
                                                      tool_calls=[], results=[]))
@@ -4250,11 +4271,8 @@ async def _stream_visible_run(
                                     user_id=str(force_user_id or ""))
                                 if _sd.get("action") == "block":
                                     _stop_hook_resumed = True
-                                    base_messages.append({
-                                        "role": "user",
-                                        "content": ("[HOOK] " + str(
-                                            _sd.get("message")
-                                            or "Du er ikke faerdig endnu."))})
+                                    _tur_hale.tilfoej_vedvarende("[HOOK] " + str(
+                                        _sd.get("message") or "Du er ikke faerdig endnu."))
                                     _followup_exchanges.append(
                                         _vf.ToolExchange(text=_exchange_text(),
                                                          tool_calls=[], results=[]))
@@ -4914,7 +4932,7 @@ async def _stream_visible_run(
                             content = str(s.get("content") or "").strip()
                             if not content:
                                 continue
-                            base_messages.append({"role": "user", "content": content})
+                            _tur_hale.tilfoej_vedvarende(content)
                             yield _sse("steer_received", {
                                 "type": "steer_received",
                                 "run_id": run.run_id,

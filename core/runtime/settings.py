@@ -443,6 +443,14 @@ class RuntimeSettings:
     # Målt 28/9-2026: 287 poster, men kun 11 unikke indhold (175x den samme).
     # "off" = skriv aldrig · "always" = gammel adfærd (hver reparation).
     emotion_repair_senses_bridge_mode: str = "first"
+    # Reflection → Plan: konvertér en tanke til en eksekverbar plan.
+    # False (default 29/9-2026) = skriv ingen planer. Tre daemons (inner_voice,
+    # self_review, blind_spots) skrev planer ind i cognitive_reflective_plans,
+    # men INGEN læste dem: accept_reflective_plan() og
+    # build_reflection_to_plan_surface() kaldes ikke ét sted uden for deres egen
+    # fil. Tabellen var skrive-kun — målt 29/9: 603 planer, alle 'proposed',
+    # ældste fra 14. maj. True = gammel adfærd (skriv planer igen).
+    reflection_to_plan_enabled: bool = False
     # Kvitteringer → Sanser: hvornår en KVITTERING for at der blev sanset
     # ("Intet mærkbart ændret.", "Jeg lyttede til rummet. Klassifikation:
     # silence") er en SANSNING. Den er ikke — den er svaret på at der ikke var
@@ -1056,6 +1064,7 @@ def load_settings() -> RuntimeSettings:
         sensory_perception_min_baseline_records=int(data.get("sensory_perception_min_baseline_records", defaults.sensory_perception_min_baseline_records)),
         sensory_perception_recent_baseline_size=int(data.get("sensory_perception_recent_baseline_size", defaults.sensory_perception_recent_baseline_size)),
         emotion_repair_senses_bridge_mode=str(data.get("emotion_repair_senses_bridge_mode", defaults.emotion_repair_senses_bridge_mode)),
+        reflection_to_plan_enabled=bool(data.get("reflection_to_plan_enabled", defaults.reflection_to_plan_enabled)),
         sensory_receipt_archive_mode=str(data.get("sensory_receipt_archive_mode", defaults.sensory_receipt_archive_mode)),
         self_repair_engine_enabled=_som_bool(data.get("self_repair_engine_enabled", defaults.self_repair_engine_enabled)),
         self_repair_default_cooldown_seconds=int(data.get("self_repair_default_cooldown_seconds", defaults.self_repair_default_cooldown_seconds)),

@@ -111,3 +111,38 @@ def test_approval_passes_proposal_context_to_executor():
         "session_id": "session-3",
         "approved_by": "bjorn",
     }
+
+
+# ── instrument_fix — den manglende executor ───────────────────────────────
+# Før 29/9-2026 havde kind'en ingen executor: godkendelse satte status til
+# 'approved' med «no executor registered» og gjorde intet (1.129 forslag fra
+# 23/6). Disse tests fastholder at godkendelse nu LUKKER fundet.
+
+def test_instrument_fix_executor_lukker_fundet(isolated_runtime):
+    from core.runtime import db_instrument as dbi
+    from core.services.autonomy_proposal_queue import _execute_instrument_fix_proposal
+
+    dbi.replace_file_findings("core/q.py", [
+        {"signature": "sig-q", "line": 7, "kind": "except_silent", "severity": "high",
+         "score": 5, "function": "f", "snippet": "x"},
+    ])
+    out = _execute_instrument_fix_proposal(
+        {"finding": {"signature": "sig-q", "file": "core/q.py", "line": 7}}
+    )
+    assert out["status"] == "executed"
+    assert out["action"] == "finding_accepted"
+    assert not any(r["signature"] == "sig-q" for r in dbi.list_findings(status="open", limit=10))
+
+
+def test_instrument_fix_er_registreret():
+    """Kind'en skal have en executor — ellers er godkendelse igen en tom status."""
+    from core.services.autonomy_proposal_queue import _PROPOSAL_EXECUTORS
+    assert "instrument_fix" in _PROPOSAL_EXECUTORS
+
+
+def test_instrument_fix_uden_signatur_er_fejl():
+    from core.services.autonomy_proposal_queue import _execute_instrument_fix_proposal
+
+    assert _execute_instrument_fix_proposal({})["status"] == "error"
+    assert _execute_instrument_fix_proposal({"finding": {}})["status"] == "error"
+    assert _execute_instrument_fix_proposal({"finding": "ikke-et-objekt"})["status"] == "error"

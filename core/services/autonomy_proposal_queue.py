@@ -608,7 +608,54 @@ def _execute_git_commit_proposal(payload: dict) -> dict:
 
 
 
+def _execute_instrument_fix_proposal(payload: dict) -> dict:
+    """Execute an approved instrument_fix proposal.
+
+    Et instrument_fix-forslag er ikke en kode-ændring — det er en ACCEPT af et
+    fund. central_instrument scanner repoet, finder et silent-failure-mønster og
+    filer et forslag. Godkendelse betyder «set og accepteret»: fundet lukkes, så
+    daemonen holder op med at genindsende det.
+
+    Før 29/9-2026 havde kind'en ingen executor: godkendelse ramte
+    ``executor is None`` og satte status til 'approved' med noten «no executor
+    registered» — der skete intet. 1.129 forslag stod sådan fra 23/6 til 29/9.
+
+    Payload schema:
+        {"finding": {"signature": "...", "file": "...", "line": N, ...}}
+    """
+    from core.runtime import db_instrument as dbi
+
+    finding = payload.get("finding") or {}
+    if not isinstance(finding, dict):
+        return {"status": "error", "error": "finding must be an object"}
+    signature = str(finding.get("signature") or "").strip()
+    if not signature:
+        return {"status": "error", "error": "finding.signature is required"}
+
+    closed = dbi.set_finding_status(signature, "accepted")
+    if not closed:
+        return {"status": "error", "error": f"finding not found: {signature}"}
+
+    try:
+        from core.eventbus.bus import event_bus as _eb
+        _eb.publish("central_instrument.finding_accepted", {
+            "signature": signature,
+            "file": str(finding.get("file") or ""),
+            "line": int(finding.get("line") or 0),
+        })
+    except Exception:  # self-safe: en event-fejl må ikke vælte fund-lukningen
+        pass
+
+    return {
+        "status": "executed",
+        "signature": signature,
+        "action": "finding_accepted",
+        "file": str(finding.get("file") or ""),
+    }
+
+
 # Register built-ins on import
 register_proposal_executor("memory-rewrite", _execute_memory_rewrite_proposal)
 register_proposal_executor("source-edit", _execute_source_edit_proposal)
 register_proposal_executor("git-commit", _execute_git_commit_proposal)
+register_proposal_executor("instrument_fix", _execute_instrument_fix_proposal)

@@ -50,8 +50,19 @@ describe('lange samtaler: beskeder uden for skærmen springes over', () => {
     const kilde = fs.readFileSync(path.resolve(__dirname, `../../views/${vis}.tsx`), 'utf8')
     const sf = ts.createSourceFile(`${vis}.tsx`, kilde, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
     let sidste = ''
+    // Containeren findes på sin KLASSE, ikke på ref-variablens navn: 29/9-2026
+    // flyttede ChatView sin ref til en callback-ref i scroll-koordinatoren, og
+    // navnet «transcriptRef» er en implementeringsdetalje. Klassen er den CSS'en
+    // faktisk bruger — reglen er `.transcript > .bund-anker`.
+    const erTranscriptRod = (n: import('typescript').JsxElement) => {
+      const attrs = n.openingElement.attributes.properties
+      const harRef = attrs.some((a) => ts.isJsxAttribute(a) && a.name.getText(sf) === 'ref')
+      const harKlasse = attrs.some((a) => ts.isJsxAttribute(a) && a.name.getText(sf) === 'className'
+        && (a.initializer?.getText(sf) ?? '').includes('transcript'))
+      return harRef && harKlasse
+    }
     const besoeg = (n: import('typescript').Node) => {
-      if (ts.isJsxElement(n) && n.openingElement.attributes.properties.some((a) => ts.isJsxAttribute(a) && a.name.getText(sf) === 'ref' && a.initializer?.getText(sf) === '{transcriptRef}')) {
+      if (ts.isJsxElement(n) && erTranscriptRod(n)) {
         const boern = n.children.filter((c) => ts.isJsxElement(c) || ts.isJsxSelfClosingElement(c))
         sidste = boern.at(-1)?.getText(sf) ?? ''
       }

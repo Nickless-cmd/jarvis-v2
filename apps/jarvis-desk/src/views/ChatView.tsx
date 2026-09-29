@@ -2,7 +2,7 @@ import { maaPolle } from '../lib/ro'
 import { Fragment } from 'react'
 import { useRammeReducer } from '../lib/useRammeReducer'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { useFastholdBund } from '../lib/useFastholdBund'
+import { useChatScroll } from '../lib/useChatScroll'
 import { PanelRight, SquareStack, FileDiff, AudioWaveform, Bot, Globe } from 'lucide-react'
 import { JobsPanel } from '../components/shell/JobsPanel'
 import { JarvisBrowserPanel } from '../components/browser/JarvisBrowserPanel'
@@ -29,7 +29,6 @@ import { KoeChip } from '../components/transcript/KoeChip'
 import { TilbagespolBanner } from '../components/transcript/TilbagespolBanner'
 import { useTilbagespol } from '../hooks/useTilbagespol'
 import { JumpToLatest } from '../components/transcript/JumpToLatest'
-import { usePinVedStart } from '../hooks/usePinVedStart'
 import { useNyeBeskeder } from '../hooks/useNyeBeskeder'
 import { NyeBeskederLinje } from '../components/transcript/NyeBeskederLinje'
 import { onStemmeBud, tagStemmeBud } from '../lib/figurBud'
@@ -68,7 +67,6 @@ import { useFastgjorte } from '../hooks/useFastgjorte'
 import { PauseAndAskCard } from '../components/rich/PauseAndAskCard'
 import { CompactionNotice } from '../components/transcript/CompactionNotice'
 
-const NEAR_BOTTOM_PX = 120
 
 /** Chat-mode. Ved tom/ny samtale: composer centreret midt på skærmen. Ved
  *  første besked oprettes session (hvis nødvendigt) og layoutet skifter — composer
@@ -90,8 +88,6 @@ export function ChatView({
   // Brister strømmen, ligger svaret allerede gemt på serveren. Hent det hjem.
   useGenopretEfterBrud(stream.status, sessions.activeId ?? null, sessions.refresh)
   const transcriptRef = useRef<HTMLDivElement>(null)
-  const [atBottom, setAtBottom] = useState(true)
-  const [unread, setUnread] = useState(0)
   const [compactAt, setCompactAt] = useState(0)
   // Autonomt baggrunds-run (fx operator_wakeup) i NETOP denne session — som
   // klienten ikke selv driver. Når det opdages, vis at Jarvis arbejder + hent
@@ -391,67 +387,39 @@ export function ChatView({
     }
   }, [bgActive, bgRunId, followRetry, sessionId, settings])
 
-  const scrollToBottom = () => {
-    const el = transcriptRef.current
-    if (el) el.scrollTop = el.scrollHeight
-    setUnread(0)
-  }
-
-  const onScroll = () => {
-    const el = transcriptRef.current
-    if (!el) return
-    const near = el.scrollHeight - el.scrollTop - el.clientHeight < NEAR_BOTTOM_PX
-    setAtBottom(near)
-    if (near) setUnread(0)
-  }
-
-  const lastScrolledSession = useRef<string | null>(null)
-  useEffect(() => {
-    const el = transcriptRef.current
-    if (!el) return
-    const isNewSession = lastScrolledSession.current !== sessionId
-    if (isNewSession) {
-      el.scrollTop = el.scrollHeight
-      if (sessions.messages.length > 0) lastScrolledSession.current = sessionId
-      setUnread(0)
-      return
-    }
-    if (atBottom) el.scrollTop = el.scrollHeight
-    else setUnread((u) => u + 1)
-  }, [sessions.messages.length, sessionId])
+  // Én scroll-koordinator (spec'ens punkt 1a, 29/9-2026). Før skrev fire steder i
+  // dette view til `scrollTop`, hver med sin egen opfattelse af hvem der bestemte:
+  // scrollToBottom, ny-session/ny-besked-effekten, usePinVedStart, useFastholdBund
+  // og ResizeObserveren. Nu melder de alle intent, og koordinatorens `melder`
+  // afgør om der må skrives. `arbejder` er dit EGET svar (pin-ved-start); `aktiv`
+  // er alt arbejde, også et cross-device run (interval-nettet).
+  const scroll = useChatScroll(transcriptRef, {
+    arbejder: stream.status === 'working',
+    aktiv: stream.status === 'working' || bgActive || followState.status === 'working',
+  })
+  const { melder } = scroll
 
   // Stream-blokke der vokser, holdes i bund af browserens scroll-anker
   // (.bund-anker nederst i transcriptet, styles/transcript-ydelse.css) — ikke
   // af en effekt der læste scrollHeight ved hver opdatering (19/9-2026).
 
-  // Mens der arbejdes: hold ruden i bund uanset hvor indholdet kommer fra.
-  // Effekterne ovenfor kender kun stream-blokke, follow-blokke og ANTALLET af
-  // beskeder; et svar der lander som en erstattet besked (samme antal) eller
-  // ved refresh efter et autonomt run voksede indholdet usynligt for dem.
-  // Dit eget svar starter → til bund og bliv der (Claude Desktops pin, §10).
-  usePinVedStart(transcriptRef, stream.status === 'working', () => { setAtBottom(true); setUnread(0) })
-
-  useFastholdBund(
-    transcriptRef,
-    stream.status === 'working' || bgActive || followState.status === 'working',
-    atBottom,
-  )
-
-  // Re-pin til bund når transcript-containerens HØJDE ændrer sig (Bjørn 29. jun):
-  // takeover-banneret ("anden enhed følger med") + liveness-indikatoren sidder UDENFOR
-  // scroll-containeren, så når de dukker op krymper .transcript → nederste nye besked
-  // falder under folden, og auto-scroll-effekten ovenfor (der kun lytter på blocks/atBottom)
-  // fyrer ikke → det SER stille ud selvom streamen kører. ResizeObserver dækker ALLE
-  // layout-ændringer generisk; respekterer at brugeren har scrollet op (kun ved atBottom).
+  // Ny session eller nyt indhold: HVAD der skete meldes her — om der må flyttes
+  // på rullen afgør koordinatoren. Et svar der lander som en erstattet besked
+  // (samme antal) eller ved refresh efter et autonomt run fanges ikke her; det
+  // er interval-nettet i koordinatoren der dækker det (Bjørn 17/9-2026).
+  const lastScrolledSession = useRef<string | null>(null)
   useEffect(() => {
-    const el = transcriptRef.current
-    if (!el || typeof ResizeObserver === 'undefined') return
-    const ro = new ResizeObserver(() => {
-      if (atBottom) el.scrollTop = el.scrollHeight
-    })
-    ro.observe(el)
-    return () => ro.disconnect()
-  }, [atBottom])
+    if (!transcriptRef.current) return
+    const isNewSession = lastScrolledSession.current !== sessionId
+    if (isNewSession) {
+      // Først når der ER beskeder i den nye session husker vi den — ellers skal
+      // den første besked der lander stadig følge med ned.
+      if (sessions.messages.length > 0) lastScrolledSession.current = sessionId
+      melder('ny-session')
+      return
+    }
+    melder('ny-besked')
+  }, [sessions.messages.length, sessionId, melder])
 
   const doSend = async (text: string, opts: ComposerSendOpts) => {
     tilbage.glem() // fortryd lukker ved næste besked (Claude Desktop §8)
@@ -480,8 +448,8 @@ export function ChatView({
       created_at: new Date().toISOString(),
       parent_id: null,
     })
-    setAtBottom(true)
-    setUnread(0)
+    // Dit eget svar starter → til bund og bliv der (Claude Desktops pin, §10).
+    melder('pin-start')
     stream.send(message, {
       sessionId: sid,
       approvalMode: opts.permission,
@@ -577,7 +545,7 @@ export function ChatView({
   const transcriptMessages = sessions.messages.filter((m) => m.role === 'user' || m.role === 'assistant' || m.role === 'compact_marker')
   const compactionById = new Map(compactions.map((c) => [c.marker_id, c]))
   // «Nye beskeder»-skillelinjen: første besked man ikke har set (Claude Desktop §10).
-  const nyeFra = useNyeBeskeder(sessionId ?? null, visibleMessages.map((m) => m.id), atBottom)
+  const nyeFra = useNyeBeskeder(sessionId ?? null, visibleMessages.map((m) => m.id), scroll.atBottom)
 
   // pause_and_ask er aktivt indtil næste bruger-besked. Selve tool-blokken
   // bevares i sessionens sandhed, men kortet hostes uden for den scrollbare
@@ -992,7 +960,7 @@ export function ChatView({
       {/* is-at-bottom slukker bund-fade'en naar man ER i bunden (Bjørn 17/9):
           der er intet nedenfor at tone ud, og masken aad ellers den sidste
           linje. Toppen beholder sin — der ER altid mere ovenfor. */}
-      <div className={`transcript${atBottom ? ' is-at-bottom' : ''}`} ref={transcriptRef} onScroll={onScroll}>
+      <div className={`transcript${scroll.atBottom ? ' is-at-bottom' : ''}`} ref={scroll.containerRef} onScroll={scroll.onScroll}>
         {/* En fejlet hentning saa foer ud som en TOM samtale — det mest
             foruroligende en chat kan vise (Codex' punkt 2, 21/9-2026). */}
         {sessions.loadFejl && (
@@ -1115,7 +1083,7 @@ export function ChatView({
             />
           )}
         </div>
-        <JumpToLatest synlig={!atBottom} live={streaming || (bgActive && followState.status === 'working')} ulaeste={unread} onClick={scrollToBottom} />
+        <JumpToLatest synlig={!scroll.atBottom} live={streaming || (bgActive && followState.status === 'working')} ulaeste={scroll.unread} onClick={() => melder('til-bund')} />
         <TilbagespolBanner fjernet={tilbage.tilbagespolet?.fjernet ?? null} fejl={tilbage.fejl} onFortryd={() => void tilbage.fortryd()} onLuk={tilbage.glem} />
         <KoeChip koet={koe.koet} online={online} onAnnuller={koe.annuller} />
         {composer}

@@ -11,6 +11,9 @@ export interface RailAnchor {
   /** Kapitel (standard), komprimering eller fastgjort — se `lib/railAnkre.ts`.
    *  «fastgjort» er den ENESTE af de tre brugeren selv har sat. */
   slags?: 'kapitel' | 'komprimering' | 'fastgjort'
+  /** Op til tre linjer af SVARET paa turen (spec punkt 3.2).
+   *  Etiketten siger hvad man spurgte om; den her siger hvad man fik. */
+  svar?: string
 }
 
 /**
@@ -112,8 +115,15 @@ export function MessageRail({
           >
             <span className="msg-rail-dash" aria-hidden />
             <span className="msg-rail-text" title={a.slags === 'fastgjort' ? `Fastgjort: ${a.label}` : a.label}>
-              {a.slags === 'fastgjort' ? <Pin size={9} className="msg-rail-pin" aria-hidden /> : null}
-              {a.label}
+              <span className="msg-rail-spm">
+                {a.slags === 'fastgjort' ? <Pin size={9} className="msg-rail-pin" aria-hidden /> : null}
+                {a.label}
+              </span>
+              {/* Svaret staar UNDER spoergsmaalet og daempet. Etiketten alene
+                  svarer paa «hvad spurgte jeg om»; det man leder efter naar man
+                  scroller tilbage er som regel «fik jeg det jeg skulle bruge».
+                  (spec punkt 3.2, 29/9-2026) */}
+              {a.svar ? <span className="msg-rail-svar">{a.svar}</span> : null}
             </span>
           </button>
         ))}

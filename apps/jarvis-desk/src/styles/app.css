@@ -3469,6 +3469,23 @@ p.central-flag { margin: 0 0 6px; }
 .msg-rail-pin { flex: none; margin-right: 4px; vertical-align: -1px; color: var(--accent); }
 .msg-rail-row.er-komprimering.er-sidste .msg-rail-dash { border-top-color: var(--accent); }
 .msg-rail-row.er-komprimering .msg-rail-text { font-style: italic; }
+/* Spoergsmaal over, svar under (spec punkt 3.2, 29/9-2026). Etiketten alene
+   svarer paa «hvad spurgte jeg om»; det man leder efter naar man scroller
+   tilbage i en lang samtale er som regel «fik jeg det jeg skulle bruge».
+   Raekken maa STADIG vaere 10px i hvile — svaret findes kun i den udfoldede
+   tilstand, saa skinnens hvilehoejde er uaendret. */
+.msg-rail-row { align-items: flex-start; }
+.msg-rail-row .msg-rail-dash { margin-top: 4px; }
+.msg-rail-spm { display: block; }
+.msg-rail-svar {
+  display: block; margin-top: 2px;
+  color: var(--fg-3); font-size: 11px; line-height: 1.35;
+  /* To linjer er nok til at genkende svaret. Tre gjorde raekkerne saa hoeje
+     at stigen holdt op med at ligne en indholdsfortegnelse. */
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.msg-rail-row.is-active .msg-rail-svar { color: var(--fg-2); }
 .msg-rail-text { display: none; font-size: 12px; line-height: 1.3; max-width: 230px;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .msg-rail:hover .msg-rail-text { display: inline; }

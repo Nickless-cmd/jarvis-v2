@@ -104,3 +104,53 @@ describe('MessageRail — bredde', () => {
     expect(screen.queryByRole('navigation', { name: 'Spring til besked' })).not.toBeInTheDocument()
   })
 })
+
+/* ── Hvilende tilstand må ikke ændre sig (spec punkt 3.2) ───────────────────
+ *
+ * Svar-uddraget lever KUN i den udfoldede tilstand. Rækken er 10px i hvile, og
+ * skinnen er 26px bred — det er den form Bjørn har tunet, og et preview må
+ * ikke koste den. Testen findes fordi `align-items: flex-start` og en
+ * `margin-top` på stregen blev sat i samme ombæring: gik de galt, ville
+ * stregerne rykke sig i hvile uden at nogen test så det.
+ */
+describe('MessageRail — svar-uddraget', () => {
+  afterEach(() => { vi.restoreAllMocks() })
+
+  it('svaret står i sin egen linje under spørgsmålet', () => {
+    render(
+      <HarnessMedSvar ids={['a', 'b']} svar="det korte svar" />,
+    )
+    const spm = document.querySelector('.msg-rail-spm')
+    const svar = document.querySelector('.msg-rail-svar')
+    expect(spm?.textContent).toContain('besked a')
+    expect(svar?.textContent).toBe('det korte svar')
+    // Rækkefølgen betyder noget: spørgsmålet først.
+    expect(spm).toBeTruthy(); expect(svar).toBeTruthy()
+    expect(spm!.compareDocumentPosition(svar!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('en tur UDEN svar får ingen tom linje', () => {
+    // En tom `<span>` ville stadig tage plads og gøre rækken højere.
+    render(<HarnessMedSvar ids={['a', 'b']} svar="" />)
+    expect(document.querySelector('.msg-rail-svar')).toBeNull()
+  })
+
+  it('spørgsmålet står stadig i `title`, så det kan læses uklippet', () => {
+    render(<HarnessMedSvar ids={['a', 'b']} svar="noget" />)
+    const t = document.querySelector('.msg-rail-text')
+    expect(t?.getAttribute('title')).toBe('besked a')
+  })
+})
+
+function HarnessMedSvar({ ids, svar }: { ids: string[]; svar: string }) {
+  const ref = useRef<HTMLDivElement>(null)
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <MessageRail
+        containerRef={ref}
+        anchors={ids.map((id) => ({ id, label: `besked ${id}`, svar: svar || undefined }))}
+      />
+      {ids.map((id) => <div key={id} data-rail-id={id}>m{id}</div>)}
+    </div>
+  )
+}

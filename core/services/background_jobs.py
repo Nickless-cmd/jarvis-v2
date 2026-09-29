@@ -338,10 +338,15 @@ def _lokale_shell_sessioner() -> list[dict[str, Any]]:
         sid = str(s.get("session_id") or "")
         if not sid:
             continue
+        # Jarvis' arbejds-shell (det almindelige bash-vaerktoejs delte session)
+        # vises IKKE i panelet — den er konstant og kun server-info (Bjørn 29/9-2026).
+        # Andre shell-sessioner (aabnet med vilje) vises stadig.
+        if sid == arbejds:
+            continue
         ud.append(_shell_kort(
             sid, egen_maskine=False,
             idle=_sekunder(s.get("idle_seconds")),
-            arbejds_shell=sid == arbejds,
+            arbejds_shell=False,
             # Mangler feltet, er daemonen ældre end 26/9-2026 og kan ikke
             # svare på spørgsmålet. Så siger kortet det ikke.
             koerer=str(s.get("command") or "") if s.get("busy") else "",

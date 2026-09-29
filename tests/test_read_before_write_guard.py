@@ -142,3 +142,29 @@ def test_force_bypasser_IKKE_sti_gaten(monkeypatch):
     )
     assert ud.get("status") == "blocked"
     assert skrev["ja"] is False
+
+
+# ── is_protected — fail-closed ────────────────────────────────────────────
+
+def test_is_protected_fail_closed_ved_parse_fejl(monkeypatch):
+    """Ukendt sti → beskyttet (fail-closed), ikke åben.
+
+    Den gamle `except: return False` var fail-open: en sti der ikke kunne
+    parses ville slippe forbi skrive-vagten.
+    """
+    from core.services import read_before_write_guard as g
+
+    class _Boom:
+        def __init__(self, *a, **k):
+            raise ValueError("kan ikke parses")
+
+    monkeypatch.setattr(g, "Path", _Boom)
+    assert g.is_protected("/noget/underligt") is True
+
+
+def test_is_protected_kender_beskyttede_navne(monkeypatch):
+    from core.services import read_before_write_guard as g
+
+    navn = next(iter(g._PROTECTED_FILENAMES))
+    assert g.is_protected(f"/vilkårlig/sti/{navn}") is True
+    assert g.is_protected("/vilkårlig/sti/helt-normal.txt") is False

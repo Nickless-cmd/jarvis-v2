@@ -132,6 +132,33 @@ def list_findings(*, status: str = "open", min_score: int = 0, limit: int = 200)
         return []
 
 
+def set_finding_status(signature: str, status: str) -> bool:
+    """Sæt status på ét fund — lukker hagen.
+
+    Et fund der ikke længere er 'open' samles ikke op af list_findings(status=
+    "open"), så central_instrument filer ikke et nyt forslag for samme signatur.
+    Det er den manglende kobling: godkendelse af et instrument_fix-forslag skal
+    betyde «set og accepteret», ikke bare en status uden virkning.
+    (Målt 29/9-2026: 1.129 approved uden executor fra 23/6 — de gjorde intet.)
+
+    Self-safe → False.
+    """
+    sig = str(signature or "").strip()
+    st = str(status or "").strip()
+    if not sig or not st:
+        return False
+    try:
+        with connect() as conn:
+            _ensure_tables(conn)
+            cur = conn.execute(
+                "UPDATE central_instrument_findings SET status = ? WHERE signature = ?",
+                (st, sig),
+            )
+            return cur.rowcount > 0
+    except Exception:  # self-safe: en DB-fejl må ikke vælte kalderen
+        return False
+
+
 def summary() -> dict[str, Any]:
     """Hurtig optælling pr. severity + total (til observe/central_query). Self-safe."""
     out = {"total": 0, "critical": 0, "high": 0, "medium": 0, "low": 0, "proposals": 0}

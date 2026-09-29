@@ -1,6 +1,6 @@
 # Docstring coverage
 
-Generated from source. 8163/15672 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
+Generated from source. 8165/15674 functions/methods documented (52%). The list below is the **mangler** for functions — public (non-`_`) undocumented functions, the target of a future docstring gap-fill.
 
 ## Coverage by package
 
@@ -24,8 +24,8 @@ Generated from source. 8163/15672 functions/methods documented (52%). The list b
 | `core.identity` | 72 | 166 | 43% |
 | `core.memory` | 55 | 142 | 38% |
 | `core.plugins` | 6 | 9 | 66% |
-| `core.runtime` | 698 | 1277 | 54% |
-| `core.services` | 5422 | 10671 | 50% |
+| `core.runtime` | 699 | 1278 | 54% |
+| `core.services` | 5423 | 10672 | 50% |
 | `core.services.decision_triggers` | 0 | 3 | 0% |
 | `core.services.prompt_sections` | 107 | 183 | 58% |
 | `core.services.trading` | 4 | 20 | 20% |
@@ -573,9 +573,9 @@ Generated from source. 8163/15672 functions/methods documented (52%). The list b
 - `core/runtime/session_handle.py` :: `SessionHandle.writable` (L174)
 - `core/runtime/session_handle.py` :: `SessionHeader.as_json` (L87)
 - `core/runtime/session_handle.py` :: `read_header` (L119)
-- `core/runtime/settings.py` :: `RuntimeSettings.to_dict` (L584)
-- `core/runtime/settings.py` :: `load_settings` (L634)
-- `core/runtime/settings.py` :: `update_visible_execution_settings` (L1106)
+- `core/runtime/settings.py` :: `RuntimeSettings.to_dict` (L592)
+- `core/runtime/settings.py` :: `load_settings` (L642)
+- `core/runtime/settings.py` :: `update_visible_execution_settings` (L1115)
 - `core/runtime/work_ref.py` :: `fra_task` (L129)
 - `core/services/absence_daemon.py` :: `build_absence_surface` (L155)
 - `core/services/absence_daemon.py` :: `get_latest_absence` (L151)
@@ -1496,12 +1496,12 @@ Generated from source. 8163/15672 functions/methods documented (52%). The list b
 - `core/services/reflection_signal_tracking.py` :: `build_runtime_reflection_signal_surface` (L51)
 - `core/services/reflection_signal_tracking.py` :: `refresh_runtime_reflection_signal_statuses` (L47)
 - `core/services/reflection_signal_tracking.py` :: `track_runtime_reflection_signals_for_visible_turn` (L36)
-- `core/services/reflection_to_plan.py` :: `build_reflection_to_plan_surface` (L340)
-- `core/services/reflection_to_plan.py` :: `complete_reflective_plan` (L265)
-- `core/services/reflection_to_plan.py` :: `list_reflective_plans` (L320)
-- `core/services/reflection_to_plan.py` :: `plan_from_blind_spot` (L371)
-- `core/services/reflection_to_plan.py` :: `plan_from_self_review` (L380)
-- `core/services/reflection_to_plan.py` :: `reject_reflective_plan` (L292)
+- `core/services/reflection_to_plan.py` :: `build_reflection_to_plan_surface` (L351)
+- `core/services/reflection_to_plan.py` :: `complete_reflective_plan` (L276)
+- `core/services/reflection_to_plan.py` :: `list_reflective_plans` (L331)
+- `core/services/reflection_to_plan.py` :: `plan_from_blind_spot` (L382)
+- `core/services/reflection_to_plan.py` :: `plan_from_self_review` (L391)
+- `core/services/reflection_to_plan.py` :: `reject_reflective_plan` (L303)
 - `core/services/reflective_critic_tracking.py` :: `build_runtime_reflective_critic_surface` (L99)
 - `core/services/reflective_critic_tracking.py` :: `refresh_runtime_reflective_critic_statuses` (L69)
 - `core/services/reflective_critic_tracking.py` :: `track_runtime_reflective_critics_for_visible_turn` (L27)

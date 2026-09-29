@@ -94,11 +94,17 @@ def _was_read(abs_path: str, session_id: str) -> bool:
 
 
 def is_protected(path: str) -> bool:
-    """True if the path's basename is in the protected set."""
+    """True if the path's basename is in the protected set.
+
+    Fail-CLOSED: kan vi ikke afgøre stien, antager vi at den ER beskyttet.
+    Det modsatte (return False) er fail-open — en sti der ikke kan parses ville
+    slippe forbi skrive-vagten. Målt 29/9-2026: funktionen kaldes ingen steder
+    i dag, men mønstret rettes så den er sikker hvis nogen tager den i brug.
+    """
     try:
         name = Path(path).expanduser().name
     except Exception:
-        return False
+        return True  # self-safe: ukendt sti = beskyttet
     return name in _PROTECTED_FILENAMES
 
 

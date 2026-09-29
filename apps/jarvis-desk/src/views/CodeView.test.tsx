@@ -11,6 +11,7 @@ import { PanelProvider } from '../contexts/PanelContext'
 import { PermissionProvider } from '../contexts/PermissionContext'
 import * as api from '../lib/api'
 import { usePanel } from '../hooks/usePanel'
+import { PIN_INTERVAL_MS } from '../lib/useChatScroll'
 
 interface FakeHandlers {
   onEvent: (e: unknown) => void
@@ -68,6 +69,14 @@ function wrap(ui: ReactNode) {
       </SessionProvider>
     </SettingsProvider>,
   )
+}
+
+/** jsdom har ingen layout: vi styrer selv målene, som browseren ville gøre. */
+const maal = (t: HTMLElement, scrollHeight: number, clientHeight: number, scrollTop: number) => {
+  Object.defineProperty(t, 'scrollHeight', { value: scrollHeight, configurable: true })
+  Object.defineProperty(t, 'clientHeight', { value: clientHeight, configurable: true })
+  t.scrollTop = scrollTop
+  act(() => { t.dispatchEvent(new Event('scroll')) })
 }
 
 describe('CodeView', () => {
@@ -212,5 +221,36 @@ describe('CodeView', () => {
     // Aabner vi baggrundsjob nu, SKAL den kunne ses.
     await userEvent.click(screen.getByRole('button', { name: 'Vis/skjul baggrundsjob' }))
     expect(await screen.findByRole('complementary', { name: 'Baggrundsjob' })).toBeInTheDocument()
+  })
+
+  /**
+   * 17/9-nettet i code-mode (spec'ens punkt 1c, 29/9-2026).
+   *
+   * Før havde dette view KUN pin-ved-start. Interval-nettet og ResizeObserveren
+   * fandtes ikke her, så et svar der landede ad en vej hvor hverken
+   * stream-blokke, follow-blokke eller besked-antallet ændrede sig havde INTET
+   * net i code-mode — samme bug Bjørn mærkede i chat 17/9-2026.
+   *
+   * Testen driver den ægte sti: et run fra en ANDEN enhed gør `aktiv` sand, og
+   * indholdet vokser derefter UDEN en React-opdatering. Kun interval-nettet kan
+   * redde den — ingen effekt i viewet ser højdeændringen.
+   */
+  it('holder bunden naar indholdet vokser uden en React-opdatering (17/9-nettet)', async () => {
+    vi.mocked(api.getActiveRunSessions).mockResolvedValue([
+      { session_id: 's1', run_id: 'remote-run', status: 'working' },
+    ])
+    const { container } = wrap(<CodeView sessionId="s1" userName="B" role="owner" />)
+    await screen.findByTestId('anden-enhed', {}, { timeout: 2500 })
+
+    const t = container.querySelector('.transcript') as HTMLElement
+    expect(t).toBeInTheDocument()
+    maal(t, 1000, 300, 700) // 1000 indhold, 300 synligt → staar i bunden
+    expect(t.className).toContain('is-at-bottom')
+
+    // Svaret lander ad en anden vej: indholdet vokser, intet re-render sker.
+    Object.defineProperty(t, 'scrollHeight', { value: 1800, configurable: true })
+    await act(async () => { await new Promise((r) => setTimeout(r, PIN_INTERVAL_MS + 80)) })
+
+    expect(t.scrollTop).toBe(1800)
   })
 })

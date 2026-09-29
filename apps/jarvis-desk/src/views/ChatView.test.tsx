@@ -6,6 +6,7 @@ import userEvent from '@testing-library/user-event'
 import { ChatView } from './ChatView'
 import { SessionProvider } from '../contexts/SessionContext'
 import { useSessions } from '../hooks/useSessions'
+import { PIN_INTERVAL_MS } from '../lib/useChatScroll'
 import { StreamProvider } from '../contexts/StreamContext'
 import { SettingsProvider } from '../contexts/SettingsContext'
 import { PanelProvider } from '../contexts/PanelContext'
@@ -596,6 +597,31 @@ describe('ChatView — bund-fade', () => {
     // 50px fra bunden → inden for graensen
     maal(t, 1000, 300, 650)
     expect(t.className).toContain('is-at-bottom')
+  })
+
+  // 17/9-nettet (spec'ens punkt 1a/1c, 29/9-2026): et svar kan lande ad en vej
+  // hvor hverken stream-blokke, follow-blokke eller besked-antallet ændrer sig —
+  // fx serverens gemte besked der ERSTATTER en linje, eller et autonomt run
+  // hentet ind ved refresh. Kun interval-nettet ser det.
+  it('holder bunden naar indholdet vokser uden en React-opdatering (17/9-nettet)', async () => {
+    vi.mocked(api.getActiveRunSessions).mockResolvedValue([
+      { session_id: 's1', run_id: 'remote-run', status: 'working' },
+    ])
+    try {
+      const { container } = await vis()
+      const t = container.querySelector('.transcript') as HTMLElement
+      maal(t, 1000, 300, 700) // staar i bunden
+      expect(t.className).toContain('is-at-bottom')
+
+      Object.defineProperty(t, 'scrollHeight', { value: 1800, configurable: true })
+      await act(async () => { await new Promise((r) => setTimeout(r, PIN_INTERVAL_MS + 80)) })
+
+      expect(t.scrollTop).toBe(1800)
+    } finally {
+      // Uden oprydningen ser næste test et aktivt run og får «anden enhed»-badgen
+      // — samme mønster som de to follow-stream-tests ovenfor.
+      vi.mocked(api.getActiveRunSessions).mockResolvedValue([])
+    }
   })
 })
 

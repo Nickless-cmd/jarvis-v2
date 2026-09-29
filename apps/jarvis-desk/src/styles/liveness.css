@@ -1,0 +1,86 @@
+/* 29/9-2026: liveness-reglerne bor sammen, fordi app.css er over Boy Scout-grænsen. */
+.liveness {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 4px; color: var(--fg-3); font-size: 13px;
+  /* Match composeren (max-width 820, centreret) så ringen står lige OVER
+     composeren — ikke ude i venstre skærmkant (Bjørn 2026-06-13). */
+  width: 100%; max-width: 820px; margin: 0 auto; box-sizing: border-box;
+  /* Linjen bærer nu også arbejds-sektionerne («læste 3 filer, kørte 2 …») —
+     den kan blive lang, og så skal den ombryde frem for at flyde ud over
+     kanten. Tilføjet 19/9-2026 sammen med sektionerne.
+     Ombrydningen sker INDE i teksten, ikke i flex-rækken: med `flex-wrap:
+     wrap` var hele teksten ét element, der røg ned under ringen, så ringen
+     stod alene på sin egen linje (målt i demo 19/9-2026). Ringen står nu ud
+     for første tekstlinje. */
+  align-items: flex-start;
+}
+.liveness > .jarvis-ring { flex: none; height: 1.45em; }
+.liveness.is-idle { opacity: 0.7; }
+/* Job-linjen i hvile (Bjørn 20/9-2026) er ikke en rest af et run — den er en
+   melding om noget der kører NU. Derfor fuld styrke, i modsætning til
+   `.is-idle`, der viser et afsluttet run. */
+.liveness.is-jobs { opacity: 1; }
+.liveness-label { color: var(--fg-3); flex: 1; min-width: 0; line-height: 1.45; }
+/* Bølgen gennem HELE linjen (Bjørn 20/9-2026): sweepet løb før kun gennem det
+   sidste ord, fordi gradienten var klippet til verbet. Nu klippes den til hele
+   labelen, så lyset går fra første tal til sidste ord i ét strøg.
+   Børnene må ikke bære egen farve eller baggrund — så bryder klippet. Prikkerne
+   undtages: de er form, ikke tekst. */
+/* BØLGEN MÅ IKKE KUNNE SLUKKE TEKSTEN (Bjørn 20/9-2026: «den sidste del før
+   prikkerne sort, og jeg kører i sort tema»).
+
+   `background-clip: text` + `text-fill-color: transparent` er en skrøbelig
+   konstruktion: teksten er USYNLIG, og det eneste der gør den læselig, er at
+   forælderens baggrund males oven i bogstaverne. Kan den ikke det — en
+   compositor-grænse, et lag der males for sig, en anden Chromium-version —
+   står der ingenting tilbage. På et mørkt tema ser det ud som sort tekst.
+
+   Jeg kunne ikke genskabe det i browserpanelets Chromium; hans desk kører
+   Electron 33 med sin egen compositor. Derfor er fejlen ikke jagtet videre,
+   men gjort UMULIG: farven sættes først, klippet lægges ovenpå. Falder
+   klippet bort, står teksten i `--fg-3` — præcis som før bølgen fandtes.
+
+   `will-change`/`contain` er væk af samme grund: de er netop de hints der
+   skaber det separate lag hvor klippet kan svigte. Prisen er en maling mere
+   pr. frame på én linje tekst. */
+.liveness.is-working .liveness-label {
+  color: var(--fg-3);
+  -webkit-text-fill-color: var(--fg-3);
+  background: linear-gradient(100deg, var(--fg-3) 30%, #eafff3 50%, var(--fg-3) 70%);
+  background-size: 220% 100%;
+  animation: shimmer-sweep 2.25s linear infinite;
+}
+/* Klippet står for sig, så et manglende `background-clip: text` ikke river
+   synligheden med sig: uden reglen er teksten stadig `--fg-3`. */
+@supports ((-webkit-background-clip: text) or (background-clip: text)) {
+  .liveness.is-working .liveness-label {
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+}
+.liveness.is-working .liveness-label .liveness-arbjede,
+.liveness.is-working .liveness-label .liveness-thought { color: inherit; }
+/* Verbet bar før sit eget sweep. Nu hvor hele linjen bærer det, ville to
+   gradienter oven i hinanden slås — så verbets eget lag slukkes, og dets tekst
+   males af forælderens klippede baggrund som alt det andet. */
+.liveness.is-working .liveness-label .shimmer {
+  background: none; animation: none;
+  -webkit-text-fill-color: inherit; color: inherit;
+  /* Uden de to her er verbet sit EGET malelag midt inde i forælderens klip —
+     den nærmeste mistænkte for at netop «den sidste del før prikkerne»
+     forsvandt. Forælderen bærer allerede bølgen; barnet skal bare male med. */
+  will-change: auto; contain: none;
+}
+/* Arbejds-sektionerne — én sætning i samme dæmpede vægt som resten af linjen.
+   nowrap pr. sektion så et tal ikke skilles fra sin enhed. */
+.liveness-arbjede { color: var(--fg-3); white-space: nowrap; }
+/* Tænke-tiden («Thought for 2s»). Gennemstreget når tanken er SLUT — samme
+   signal som Claude Code bruger: linjen er en afsluttet tanke, ikke en kørende. */
+.liveness-thought { white-space: nowrap; }
+.liveness-thought.afsluttet { text-decoration: line-through; opacity: 0.75; }
+.liveness-dot {
+  width: 7px; height: 7px; border-radius: 50%; background: var(--warn-fg);
+  animation: liveness-pulse 1.4s ease-in-out infinite;
+}
+@keyframes liveness-pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+

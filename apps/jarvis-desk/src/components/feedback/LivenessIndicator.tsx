@@ -1,9 +1,7 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { JarvisRing } from '../shell/JarvisRing'
 import { LiveVerb } from '../shell/LiveVerb'
 import { varighed } from '../../lib/jobsApi'
-import { klippSektioner, sektioner, type Sektion } from '../../lib/livenessSektioner'
-import type { ContentBlock } from '../../lib/sseProtocol'
 
 /** Skiftende status-verber i Jarvis' stemme (når der ikke er en konkret tool-
  *  handling). Roterer hvert par sekunder så det føles levende. */
@@ -19,35 +17,9 @@ function jobTekst(n: number): string {
   return n === 1 ? '1 job kører' : `${n} jobs kører`
 }
 
-/** Vedvarende liveness-linje — Jarvis' svar på Claude Codes linje over composeren.
- *
- *  Samme oplysninger, samme rækkefølge: varighed · tokens · tænke-tid ·
- *  hvad der blev lavet (talt sammen pr. familie) · baggrundsjob — og så hvad
- *  han laver lige nu. Formen er lånt fra Claude Code 2.1.271 (se
- *  `lib/livenessSektioner.ts` for kilden); to forskelle er bevidste:
- *
- *  1. Ikonet er Jarvis' egen ring, ikke et stjernemotiv. Vi viser de samme
- *     ting som CC; vi klæder os ikke ud som CC.
- *  2. Tidsformatet kommer fra `varighed()` i jobsApi — samme funktion panelet
- *     bruger, så linjen og panelet aldrig viser to forskellige tal for samme
- *     job. (Bjørn 19/9-2026: «vi for den 1:1 og viser de samme ting».)
- *
- *  Bjørn 19/9-2026, senere samme aften: «Der var mere end 4 ting i den første
- *  liste du viste mig.» Han havde ret — sektionerne manglede. Nu er de med.
- *
- *  ## Fire ting Bjørn bad om 20/9-2026
- *
- *  1. **Sektionerne klippes** (`klippSektioner`). De akkumulerer gennem hele
- *     runnet; otte familier gjorde linjen 69px høj — tre linjer.
- *  2. **Komprimering bliver en TILSTAND i linjen** i stedet for et separat
- *     `.liveness`-banner oven over den. To linjer med samme ring og samme
- *     stil var to instanser af samme komponent — en arkitektur-fejl, ikke et
- *     designvalg. Komprimering ER en liveness-tilstand.
- *  3. **Job-linjen i hvile**: når intet run kører men baggrundsjob gør, viser
- *     linjen KUN job-tallet. Runets gamle tal er rester af noget der er slut.
- *  4. **Bølgen gennem hele linjen** (CSS, `.liveness-label`) — før løb sweepet
- *     kun gennem det sidste ord.
- */
+/** 29/9-2026: linjen over composeren viser runnets aktuelle tilstand og få
+ *  tal. Fil- og værktøjsarbejdet hører til i tur-headeren, hvor det allerede
+ *  kan læses; gentagelsen gjorde liveness-linjen bred og urolig. */
 export function LivenessIndicator({
   status,
   elapsedMs,
@@ -58,7 +30,6 @@ export function LivenessIndicator({
   thoughtAfsluttet = false,
   runningJobs = 0,
   compacting = false,
-  blocks,
 }: {
   status: string
   elapsedMs: number
@@ -74,8 +45,6 @@ export function LivenessIndicator({
   runningJobs?: number
   /** Kontekst-komprimering: en tilstand i linjen, ikke et banner ved siden af. */
   compacting?: boolean
-  /** Runnets blokke — grundlaget for sektionerne («Læste 3 filer, kørte 2 …»). */
-  blocks?: ContentBlock[]
 }) {
   // Komprimering tæller som aktiv, også hvis strømmen et øjeblik melder idle —
   // linjen skal ikke blinke til «klar» midt i en komprimering.
@@ -90,19 +59,13 @@ export function LivenessIndicator({
     return () => clearInterval(id)
   }, [working])
 
-  // Sektionerne: nutid mens han arbejder, datid når turen er slut — CC's
-  // én-boolean-greb. Memoiseret på blokkene så vi ikke tæller for hver tick.
-  const arbejde = useMemo(() => sektioner(blocks, working), [blocks, working])
-
   // Job-linjen i hvile (Bjørn 20/9-2026): intet run kører, men baggrundsjob
   // gør. Så bærer linjen KUN job-tallet — varighed, tokens og sektioner er
   // rester af et run der er slut, og de hører ikke til her. Forsvinder når
   // jobbene lukker, fordi `runningJobs` falder til 0.
   const hvileJobs = !working && runningJobs > 0
 
-  // Sektionerne i CC's rækkefølge. Tænke-tiden er den FØRSTE af dem, derefter
-  // arbejdet — hver vises kun hvis den har indhold, så der ikke står tomme
-  // skilletegn.
+  // Kun tællere der beskriver runnets tilstand; arbejdslisten er i tur-headeren.
   const dele: ReactNode[] = []
   if (hvileJobs) {
     dele.push(jobTekst(runningJobs))
@@ -122,12 +85,6 @@ export function LivenessIndicator({
         </span>,
       )
     }
-    // Klippet: de mest fortællende familier vises, resten samles i ét tal.
-    const { viste, rest } = klippSektioner(arbejde as Sektion[])
-    for (const s of viste) {
-      dele.push(<span key={s.key} className="liveness-arbjede">{s.tekst}</span>)
-    }
-    if (rest > 0) dele.push(`og ${rest} andre`)
     if (runningJobs > 0) dele.push(jobTekst(runningJobs))
   }
 

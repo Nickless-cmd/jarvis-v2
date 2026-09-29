@@ -1071,7 +1071,6 @@ export function ChatView({
             thoughtAfsluttet={thoughtAfsluttet}
             runningJobs={runningJobs}
             compacting={compacting}
-            blocks={stream.blocks}
           />
         )}
         <div className="composer-notices">

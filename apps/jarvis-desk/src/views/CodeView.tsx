@@ -1192,7 +1192,6 @@ export function CodeView({
             workingStep={bgActive && stream.status !== 'working' ? (followState.workingStep ?? 'vågner') : stream.workingStep}
             tokens={bgActive && stream.status !== 'working' ? followState.usage.output : stream.usage.output}
             compacting={compacting}
-            blocks={stream.blocks}
           />
           <div className="composer-notices">
             <GodkendelsesKort />

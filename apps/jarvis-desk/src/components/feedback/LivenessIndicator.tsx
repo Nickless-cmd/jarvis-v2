@@ -29,6 +29,7 @@ export function LivenessIndicator({
   thoughtMs = null,
   thoughtAfsluttet = false,
   runningJobs = 0,
+  onOpenJobs,
   compacting = false,
 }: {
   status: string
@@ -43,6 +44,7 @@ export function LivenessIndicator({
   thoughtAfsluttet?: boolean
   /** Antal kørende baggrundsjobs (server + Bjørns maskine + agenter). */
   runningJobs?: number
+  onOpenJobs?: () => void
   /** Kontekst-komprimering: en tilstand i linjen, ikke et banner ved siden af. */
   compacting?: boolean
 }) {
@@ -67,8 +69,13 @@ export function LivenessIndicator({
 
   // Kun tællere der beskriver runnets tilstand; arbejdslisten er i tur-headeren.
   const dele: ReactNode[] = []
+  const jobLed = (count: number) => onOpenJobs ? (
+    <button type="button" className="liveness-jobs-button" onClick={onOpenJobs}>
+      {jobTekst(count)}
+    </button>
+  ) : jobTekst(count)
   if (hvileJobs) {
-    dele.push(jobTekst(runningJobs))
+    dele.push(jobLed(runningJobs))
   } else {
     if (working && !compacting) {
       const sek = Math.floor(elapsedMs / 1000)
@@ -85,13 +92,13 @@ export function LivenessIndicator({
         </span>,
       )
     }
-    if (runningJobs > 0) dele.push(jobTekst(runningJobs))
+    if (runningJobs > 0) dele.push(jobLed(runningJobs))
   }
 
   // Konkret tool-handling beholdes; model-boilerplate ("Thinking via …") droppes
   // til fordel for et skiftende verbum.
   const step = (workingStep || '').trim()
-  const isBoilerplate = !step || /^thinking via/i.test(step) || /^arbejder$/i.test(step)
+  const isBoilerplate = !step || /^thinking via/i.test(step) || /^tænker videre\s*·\s*runde\s+\d+$/i.test(step) || /^arbejder$/i.test(step)
   const action = hvileJobs
     ? null
     : compacting

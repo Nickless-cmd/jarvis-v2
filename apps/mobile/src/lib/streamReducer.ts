@@ -348,6 +348,9 @@ export function streamReducer(state: StreamState, event: StreamEvent): StreamSta
         // rettelsen virker mod den server der kører NU.
         const erVaerktoej = event.payload.er_vaerktoej === true
           || (event.payload.er_vaerktoej === undefined && navn !== 'thinking')
+        if (navn === 'thinking' && !erVaerktoej) {
+          return { ...state, workingStep: null }
+        }
         if (!navn || status !== 'running' || !erVaerktoej) {
           return { ...state, workingStep: detail }
         }

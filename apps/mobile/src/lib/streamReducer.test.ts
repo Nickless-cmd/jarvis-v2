@@ -234,7 +234,7 @@ it('«Taenker videre · runde N» er IKKE et vaerktoej', () => {
     }) as never)
   }
   expect(foreloebige(s)).toHaveLength(0)
-  expect(s.workingStep).toBe('Tænker videre · runde 10')
+  expect(s.workingStep).toBeNull()
 })
 
 it('serverens eget flag vinder over navne-gaettet', () => {

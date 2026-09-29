@@ -1070,6 +1070,7 @@ export function ChatView({
             thoughtMs={thoughtMs}
             thoughtAfsluttet={thoughtAfsluttet}
             runningJobs={runningJobs}
+            onOpenJobs={() => setJobsOpen(true)}
             compacting={compacting}
           />
         )}

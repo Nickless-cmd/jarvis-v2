@@ -119,6 +119,14 @@ describe('streamReducer', () => {
       expect(b.result).toBe('ok')
     }
   })
+
+  it('internt thinking-livstegn rydder sidste værktøj uden at vise runden', () => {
+    const s = reduce([
+      { type: 'system_event', kind: 'working_step', payload: { action: 'bash', detail: 'Bash: git status', status: 'running' } },
+      { type: 'system_event', kind: 'working_step', payload: { action: 'thinking', detail: 'Tænker videre · runde 2', status: 'running' } },
+    ] as StreamEvent[])
+    expect(s.workingStep).toBeNull()
+  })
 })
 
 describe('streamReducer — tool_result status (Phase 2)', () => {

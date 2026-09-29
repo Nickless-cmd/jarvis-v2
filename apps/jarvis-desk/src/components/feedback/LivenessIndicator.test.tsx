@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent, cleanup } from '@testing-library/react'
 import { LivenessIndicator } from './LivenessIndicator'
 
@@ -38,6 +38,21 @@ describe('LivenessIndicator · komprimering er en tilstand', () => {
 })
 
 describe('LivenessIndicator · job-linjen i hvile', () => {
+  it('kun job-tallet åbner baggrundsjob, også mens runnet arbejder', () => {
+    cleanup()
+    const aabn = vi.fn()
+    vis({ status: 'working', runningJobs: 2, elapsedMs: 3000, onOpenJobs: aabn })
+    fireEvent.click(screen.getByRole('button', { name: '2 jobs kører' }))
+    expect(aabn).toHaveBeenCalledOnce()
+    expect(screen.getByText('3s').closest('button')).toBeNull()
+  })
+
+  it('viser ikke rundetal fra serverens interne tænke-livstegn', () => {
+    cleanup()
+    const { container } = vis({ status: 'working', workingStep: 'Tænker videre · runde 2' })
+    expect(container.textContent).not.toContain('runde 2')
+  })
+
   it('bærer KUN job-tallet når intet run kører men jobs gør', () => {
     cleanup()
     const { container } = vis({ status: 'idle', runningJobs: 2, tokens: 45_200 })

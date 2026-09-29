@@ -173,3 +173,45 @@ describe('menuen vender opad naar der ikke er plads', () => {
     expect(aabenProjektMenu().className).toMatch(/\bopad\b/)
   })
 })
+
+/* ── Fodens flade og projektnavnets stoerrelse (Bjoern 29/9-2026) ───────────
+ *
+ * «det graa felt bag badge, name, owner skal vaek — og projekt navn skal vaere
+ * lidt stoerre». Den graa flade var `.sidebar-foot .who`s hover/aaben-baggrund;
+ * det var den eneste regel der malte noget bag de tre. */
+
+const appCss = () =>
+  readFileSync(join(__dirname, '../../styles/app.css'), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '')   // kommentarer vaek — de naevner ordene selv
+
+describe('sidepanelets fod og projekt-overskrift', () => {
+  it('konto-knappen maler INGEN flade — hverken ved hover eller aaben', () => {
+    // :hover kan ikke maales i jsdom, saa reglen laeses fra kilden. Begge
+    // tilstande skal med: en af dem alene ville lade den anden staa.
+    const css = appCss()
+    for (const tilstand of [':hover', '[aria-expanded="true"]']) {
+      const re = new RegExp(`\\.sidebar-foot \\.who${tilstand.replace(/[[\]"]/g, '\\$&')}[^{]*\\{([^}]*)\\}`)
+      const krop = re.exec(css)?.[1]
+      expect(krop, `ingen regel for ${tilstand}`).toBeTruthy()
+      expect(krop, `${tilstand} maler stadig en flade: ${krop}`)
+        .not.toMatch(/background(-color)?\s*:\s*(?!none\b|transparent\b)/)
+    }
+  })
+
+  it('knappen svarer stadig — teksten loefter sig, saa den ikke bliver doed', () => {
+    const css = appCss()
+    const krop = /\.sidebar-foot \.who:hover[^{]*\{([^}]*)\}/.exec(css)?.[1] ?? ''
+    expect(krop).toMatch(/color\s*:\s*var\(--fg-1\)/)
+  })
+
+  it('projektnavnet er stoerre end etiketten omkring det', () => {
+    medAppCss()
+    render(<Sidebar surface="code" onSurface={() => {}} userName="Bjørn" />)
+    const navn = document.querySelector('.sidebar-projekt-navn') as HTMLElement
+    const sti = document.querySelector('.sidebar-projekt-sti') as HTMLElement
+    const px = (el: HTMLElement) => Number(getComputedStyle(el).fontSize.replace('px', ''))
+    // 11px er `.sidebar-label`s egen stoerrelse — den stien stadig staar paa.
+    expect(px(sti)).toBe(11)
+    expect(px(navn)).toBeGreaterThan(px(sti))
+  })
+})

@@ -394,7 +394,14 @@ button.sidebar-group svg { flex: none; opacity: .7; }
   padding: 5px 6px; background: none; border: none; border-radius: 8px;
   color: var(--fg-2); font: inherit; text-align: left; cursor: pointer;
 }
-.sidebar-foot .who:hover, .sidebar-foot .who[aria-expanded="true"] { background: var(--bg-2); color: var(--fg-1); }
+/* INGEN udfyldt flade bag badge, navn og rolle (Bjoern 29/9-2026: «det graa
+   felt bag badge, name, owner skal vaek»). Foden er panelets roligste raekke,
+   og en graa pille om tre elementer der allerede staar for sig selv tegner en
+   kasse uden indhold. Knappen svarer stadig — teksten og pilen loefter sig til
+   --fg-1 — men der males ikke en flade. */
+.sidebar-foot .who:hover, .sidebar-foot .who[aria-expanded="true"] { color: var(--fg-1); }
+.sidebar-foot .who:hover .sidebar-account-arrow,
+.sidebar-foot .who[aria-expanded="true"] .sidebar-account-arrow { color: var(--fg-2); }
 /* Pilen staar LIGE efter rollen, ikke ude i kanten — «Bjørn - owner ⌄». */
 .sidebar-account-arrow { color: var(--fg-3); flex: 0 0 auto; }
 .who-navn { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -4502,7 +4509,10 @@ body.egen-ramme .main:has(.chatview-head) { padding-top: 0; }
 .sidebar-projekt .session-menu-anchor { margin-left: auto; }
 .sidebar-projekt:hover .session-more,
 .sidebar-projekt .session-more:focus-visible { opacity: 1; }
-.sidebar-projekt-navn { color: var(--fg-2); flex: 0 0 auto; }
+/* Lidt stoerre end etikettens 11px (Bjoern 29/9-2026). Projektnavnet er
+   overskriften for gruppen under den; stien ved siden af bliver staaende paa
+   11px, saa forskellen mellem NAVN og sti er det der laeses foerst. */
+.sidebar-projekt-navn { color: var(--fg-2); flex: 0 0 auto; font-size: 12.5px; }
 .sidebar-projekt-sti {
   color: var(--fg-3); font-size: 11px; min-width: 0;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;

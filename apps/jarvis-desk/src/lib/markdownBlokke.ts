@@ -37,7 +37,11 @@ export function delIBlokke(md: string): string[] {
       else if (f[0] === fenceTegn) { iFence = false }
     }
     if (!iFence && l.trim() === '' && aktuel.length > 0) {
-      const naeste = linjer.slice(i + 1).find((x) => x.trim() !== '')
+      // 29/9-2026: slice kopierede hele resten af dokumentet ved hvert skel;
+      // indeks-opslag bevarer samme næste linje uden at kopiere den lange hale.
+      let j = i + 1
+      while (j < linjer.length && linjer[j]!.trim() === '') j++
+      const naeste = j < linjer.length ? linjer[j] : undefined
       const blokErListe = aktuel.some((x) => LISTEPUNKT.test(x))
       const fortsaetter = naeste !== undefined && (
         /^[ \t]/.test(naeste) || (blokErListe && LISTEPUNKT.test(naeste))

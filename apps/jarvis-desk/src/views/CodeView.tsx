@@ -77,7 +77,7 @@ const ROOT_LABELS: Record<string, string> = {
 }
 
 type WsKind = 'container' | 'workstation'
-type Role = 'owner' | 'member' | 'guest'
+type Role = 'owner' | 'partner' | 'member' | 'guest'
 
 /** Native mappe-vælger (Electron). Returnerer valgt sti eller null udenfor app'en. */
 async function pickFolder(): Promise<string | null> {

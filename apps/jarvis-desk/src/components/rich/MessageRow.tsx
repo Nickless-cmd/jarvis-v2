@@ -16,7 +16,7 @@ import { AttachmentBlock } from './AttachmentBlock'
 import { RaekkeTranskript } from './RaekkeTranskript'
 import { useRaekkevisning } from '../../lib/visningsPref'
 import { EditedFilesCard } from './EditedFilesCard'
-import { maalteRedigeringer, redigeredeFiler } from '../../lib/redigeredeFiler'
+import { maalteRedigeringer, redigeredeDiffPar, redigeredeFiler } from '../../lib/redigeredeFiler'
 import { visAendring } from '../../lib/aendringsFokus'
 
 /** Besked-række med locked boble-layout: bruger højre (boble), Jarvis venstre
@@ -156,7 +156,8 @@ function MessageRowImpl({
           </InlineErrorBoundary>
         </div>
       </article>
-      {!streaming && <EditedFilesCard filer={redigerede} tal={maalteRedigeringer(blocks)} onAabn={visAendring}
+      {!streaming && <EditedFilesCard filer={redigerede} tal={maalteRedigeringer(blocks)}
+        diffs={redigeredeDiffPar(blocks)} onAabn={visAendring}
         onFortryd={canUndo && config && sessionId && beskedId
           ? () => apiFetch<{ status: string; files?: number; error?: string }>(config,
               `/workbench/messages/${encodeURIComponent(beskedId)}/undo`,

@@ -8,12 +8,12 @@ const KVOTE_NAVN: Record<string, string> = {
   chat: 'Chat', code: 'Code · min', cowork: 'Cowork', agent: 'Agenter',
 }
 const TIER_NAVN: Record<string, string> = {
-  owner: 'Owner', free: 'Free', plus: 'Plus', pro: 'Pro',
+  owner: 'Owner', partner: 'Partner', free: 'Free', plus: 'Plus', pro: 'Pro',
 }
 
 export function KontoMenu({ userName, role, config, onSettings, onLogout, onClose }: {
   userName: string
-  role: 'owner' | 'member' | 'guest'
+  role: 'owner' | 'partner' | 'member' | 'guest'
   config: ApiConfig | null
   onSettings: () => void
   onLogout: () => void

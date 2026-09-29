@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { redigeredeFiler, maalteRedigeringer, kortSti } from './redigeredeFiler'
+import { redigeredeFiler, maalteRedigeringer, redigeredeDiffPar, kortSti } from './redigeredeFiler'
 import type { ContentBlock } from './sseProtocol'
 
 const tool = (name: string, input: Record<string, unknown>, status: 'done' | 'error' = 'done'): Extract<ContentBlock, { type: 'tool_use' }> =>
@@ -81,5 +81,55 @@ describe('kortSti', () => {
     expect(kortSti('/media/projects/jarvis-v2/apps/jarvis-desk/src/a.ts')).toBe('src/a.ts')
     expect(kortSti('a.ts')).toBe('a.ts')
     expect(kortSti('src/a.ts')).toBe('src/a.ts')
+  })
+})
+
+describe('redigeredeDiffPar', () => {
+  it('giver parrene bag hover-diffen — samme kilde som tallene', () => {
+    // Bjørn 29/9-2026: «hvis jeg holder musen over fil navnet i feltet så
+    // kommer der en diff visning med scrool». Diffen bygges af kaldets EGNE
+    // par, fordi serverens målte tal kun er tal — de bærer ingen linjer.
+    const par = redigeredeDiffPar([
+      tool('edit_file', { path: 'a.ts', old_text: 'gammel', new_text: 'ny' }),
+    ])
+    expect(par).toEqual({ 'a.ts': [{ gammel: 'gammel', ny: 'ny' }] })
+  })
+
+  it('samler flere redigeringer af samme fil i rækkefølge', () => {
+    const par = redigeredeDiffPar([
+      tool('edit_file', { path: 'a.ts', old_text: 'v1', new_text: 'v2' }),
+      tool('edit_file', { path: 'a.ts', old_text: 'v2', new_text: 'v3' }),
+    ])
+    expect(par['a.ts']).toEqual([
+      { gammel: 'v1', ny: 'v2' },
+      { gammel: 'v2', ny: 'v3' },
+    ])
+  })
+
+  it('multi_edit bærer sine par i edits[]', () => {
+    const par = redigeredeDiffPar([
+      tool('multi_edit', { path: 'a.ts', edits: [
+        { old_text: 'x', new_text: 'y' },
+        { old_text: 'p', new_text: 'q' },
+      ] }),
+    ])
+    expect(par['a.ts']).toEqual([{ gammel: 'x', ny: 'y' }, { gammel: 'p', ny: 'q' }])
+  })
+
+  it('operator-varianten giver også par — den skriver på hans maskine', () => {
+    const par = redigeredeDiffPar([
+      tool('operator_edit_file', { path: '/home/bs/x.ts', old_text: 'a', new_text: 'b' }),
+    ])
+    expect(par['/home/bs/x.ts']).toEqual([{ gammel: 'a', ny: 'b' }])
+  })
+
+  it('et FEJLET kald giver ingen diff', () => {
+    expect(redigeredeDiffPar([
+      tool('edit_file', { path: 'a.ts', old_text: 'a', new_text: 'b' }, 'error'),
+    ])).toEqual({})
+  })
+
+  it('læsning giver ingen diff', () => {
+    expect(redigeredeDiffPar([tool('read_file', { path: 'a.ts' })])).toEqual({})
   })
 })

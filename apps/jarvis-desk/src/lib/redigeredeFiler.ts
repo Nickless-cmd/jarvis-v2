@@ -1,5 +1,5 @@
 import type { ContentBlock } from './sseProtocol'
-import { diffFraResultat, diffStat } from './diffStat'
+import { diffFraResultat, diffStat, diffPar } from './diffStat'
 
 /**
  * Hvilke filer redigerede Jarvis i denne tur?
@@ -86,4 +86,37 @@ export function maalteRedigeringer(blocks: readonly ContentBlock[]): Record<stri
 export function kortSti(sti: string): string {
   const dele = sti.split('/').filter(Boolean)
   return dele.length <= 2 ? sti : dele.slice(-2).join('/')
+}
+
+/** Én gammel/ny-tekst-par fra et redigerende kald. */
+export interface DiffPar { gammel: string; ny: string }
+
+/**
+ * Parrene af gammel/ny tekst pr. fil — grundlaget for hover-diffen i kortet.
+ *
+ * Bjørn 29/9-2026: «hvis jeg holder musen over fil navnet i feltet så kommer
+ * der en diff visning med scrool».
+ *
+ * Kilden er den SAMME som `diffStat` regner «+N −M» af (`diffPar`), så tallet
+ * i rækken og diffen i popup'en ikke kan sige hver sit om ét kald. Serverens
+ * målte tal findes kun som tal — de bærer ingen linjer — så diffen bygges af
+ * kaldets egne par, og en `write_file` (som kun har nyt indhold) giver et par
+ * med tom «gammel» side frem for ingen diff.
+ *
+ * En fil kan være rørt flere gange i samme tur; parrene lægges i rækkefølge,
+ * så popup'en viser ændringerne som de skete.
+ */
+export function redigeredeDiffPar(blocks: readonly ContentBlock[]): Record<string, DiffPar[]> {
+  const ud: Record<string, DiffPar[]> = {}
+  for (const b of blocks) {
+    if (!b || b.type !== 'tool_use') continue
+    if (!SKRIVER.has(b.name)) continue
+    if (b.status === 'error') continue
+    const path = stiFra(b.input)
+    if (!path) continue
+    const par = diffPar(b.name, b.input)
+    if (!par) continue
+    ;(ud[path] ??= []).push(...par)
+  }
+  return ud
 }

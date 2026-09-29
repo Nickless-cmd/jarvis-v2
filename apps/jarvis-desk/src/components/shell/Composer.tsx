@@ -413,6 +413,20 @@ export function Composer({
     }
   }, [])
 
+  // Bug-rapporten fra sidebarens fod (29/9-2026). Ikonet dér sender teksten
+  // herind, så den ligger i skrivefeltet klar til at sende — man kan rette den
+  // før den går af sted, og der skal ingen ny server-route til.
+  useEffect(() => {
+    const paa = (e: Event) => {
+      const t = String((e as CustomEvent<string>).detail || '').trim()
+      if (!t) return
+      setText((forrige) => (forrige.trim() ? `${forrige}\n\n${t}` : t))
+      ref.current?.focus()
+    }
+    window.addEventListener('jarvis-bug', paa as EventListener)
+    return () => window.removeEventListener('jarvis-bug', paa as EventListener)
+  }, [])
+
   // Luk popovers ved klik udenfor.
   useEffect(() => {
     if (!menuOpen && !permOpen && !modelOpen) return

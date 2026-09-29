@@ -41,7 +41,13 @@ export interface CompactionStats {
 export interface WhoAmI {
   user_id: string
   display_name: string
-  role: 'owner' | 'member' | 'guest'
+  /** Rollerne fra `users.json` (samme opslag som `/api/whoami` bruger).
+   *  `partner` er husstanden — Bjørn er `owner`, Michelle er `partner`,
+   *  Mikkel/Lotte/Rune er `member`. Rangen er guest < member < partner <
+   *  owner (`core/runtime/token_renewal.py`), og den har været en rigtig
+   *  rolle i runtime hele tiden; typen her manglede den bare, så klienten
+   *  viste «member» for et token der sagde «partner». (Bjørn 29/9-2026.) */
+  role: 'owner' | 'partner' | 'member' | 'guest'
 }
 
 export interface ApiConfig {

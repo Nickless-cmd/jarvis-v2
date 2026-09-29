@@ -4,7 +4,7 @@ import {
   ChevronRight, ChevronDown, MessageSquare,
   LayoutDashboard, Blocks, Settings, Brain, Cpu,
   User, ShieldCheck, Bell, Palette, Languages, MapPin, Database, Folder, Plug, Bot, Info,
-  Gauge, Users,
+  Gauge, Users, Bug,
   type LucideIcon,
 } from 'lucide-react'
 import { useSessions } from '../../hooks/useSessions'
@@ -27,6 +27,13 @@ const ZONE_ICONS: Record<string, LucideIcon> = {
   LayoutDashboard, Blocks, Settings, Brain, Cpu,
   User, ShieldCheck, Bell, Palette, Languages, MapPin, Database, Folder, Plug, Bot, Info,
   Gauge, Users,
+}
+
+/** Rollen som den står i foden. Værdierne kommer fra `users.json` — Bjørn er
+ *  `owner`, Michelle er `partner`, Mikkel/Lotte/Rune er `member`. ÉN rolle, ikke
+ *  både role og tier: det er samme oplysning to gange. (Bjørn 29/9-2026.) */
+const ROLLE_NAVN: Record<string, string> = {
+  owner: 'owner', partner: 'partner', member: 'member', guest: 'gæst',
 }
 
 export type Surface = Mode | SecondarySurface | 'gallery' | 'artifacts'
@@ -77,6 +84,8 @@ export function Sidebar({
 
   const [feedAaben, setFeedAaben] = useState(false)
   const [kontoAaben, setKontoAaben] = useState(false)
+  const [bugAaben, setBugAaben] = useState(false)
+  const [bugTekst, setBugTekst] = useState('')
   const klokkeRef = useRef<HTMLDivElement>(null)
   const feedRef = useRef<HTMLDivElement>(null)
   const kontoRef = useRef<HTMLDivElement>(null)
@@ -334,7 +343,12 @@ export function Sidebar({
           <button type="button" className="who" aria-label="Åbn konto-menu"
                   aria-expanded={kontoAaben} onClick={() => setKontoAaben((aaben) => !aaben)}>
             <span className="avatar">{userName.charAt(0).toUpperCase()}</span>
-            <span>{userName}</span>
+            <span className="who-navn">{userName}</span>
+            {/* Rollen står EFTER navnet med en streg imellem, og fold-ud-pilen
+                følger lige efter teksten — ikke ude i kanten. Rollen er ÉN
+                oplysning: både «member» og en tier ville sige det samme to
+                gange. (Bjørn 29/9-2026.) */}
+            <span className="who-rolle">- {ROLLE_NAVN[auth?.role ?? 'guest'] ?? auth?.role ?? 'gæst'}</span>
             <ChevronDown size={14} className="sidebar-account-arrow" />
           </button>
           {kontoAaben && (
@@ -346,6 +360,36 @@ export function Sidebar({
             />
           )}
         </div>
+        {/* Bug-ikonet bor i fodens HØJRE side. Indtil videre er det hele
+            ikonet: et klik åbner et lille felt, og teksten lægges i
+            skrivefeltet via `jarvis-bug`, så den kan rettes før den sendes.
+            (Bjørn 29/9-2026: «bare iconet til at starte med».) */}
+        <button type="button" className="sidebar-bug" aria-label="Rapportér en fejl"
+                aria-expanded={bugAaben} title="Rapportér en fejl"
+                onClick={() => setBugAaben((aaben) => !aaben)}>
+          <Bug size={14} />
+        </button>
+        {bugAaben && (
+          <div className="sidebar-bug-pop" role="dialog" aria-label="Rapportér en fejl">
+            <label className="sidebar-bug-label" htmlFor="jarvis-bug-tekst">Hvad gik galt?</label>
+            <textarea id="jarvis-bug-tekst" className="sidebar-bug-tekst" rows={4}
+                      value={bugTekst} onChange={(e) => setBugTekst(e.target.value)}
+                      placeholder="Beskriv fejlen — den lægges i skrivefeltet, klar til at sende." />
+            <div className="sidebar-bug-handlinger">
+              <button type="button" onClick={() => { setBugAaben(false); setBugTekst('') }}>
+                Annuller
+              </button>
+              <button type="button" className="primaer" disabled={!bugTekst.trim()}
+                      onClick={() => {
+                        window.dispatchEvent(new CustomEvent('jarvis-bug', { detail: bugTekst.trim() }))
+                        setBugAaben(false)
+                        setBugTekst('')
+                      }}>
+                Send til Jarvis
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </aside>
   )

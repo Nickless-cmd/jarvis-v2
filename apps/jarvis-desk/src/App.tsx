@@ -224,7 +224,7 @@ function Shell({
 }: {
   surface: Surface
   setSurface: (s: Surface) => void
-  role: 'owner' | 'member' | 'guest'
+  role: 'owner' | 'partner' | 'member' | 'guest'
   userName: string
   model: string
 }) {

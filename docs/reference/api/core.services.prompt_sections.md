@@ -310,17 +310,18 @@ _Peg paa de vaerktoejer han ikke kan se — han kan ikke soege efter det han ikk
 | function | `_registrerede_navne` | `()` | Navne der FAKTISK findes lige nu. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L224) |
 | function | `_katalog_tekst` | `()` | Katalogets klartekst. Tom streng hvis den ikke kan laeses. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L246) |
 | function | `_staar_i_katalog` | `(navn, katalog)` | Staar NAVNET i klartekst i kataloget? Saa behoever han intet nudge. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L256) |
-| function | `_undertrykt` | `(session_id, navn)` | — | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L269) |
-| function | `_husk_nudge` | `(session_id, navn)` | — | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L279) |
-| function | `_log_nudge` | `(navn, session_id, score, *, gate=…)` | Fase-1-logging. Uden den kan vi ikke maale om nudgen virker — hverken | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L291) |
-| function | `_korpus` | `()` | Leksikalsk korpus over vaerktoejerne, bygget én gang pr. vaerktoejssaet. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L312) |
-| function | `_matches` | `(besked, kandidater=…)` | Bedste leksikalske bud blandt ``kandidater``, eller ``None``. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L331) |
-| function | `_brugerens_hyppige_ord` | `()` | Ord han bruger hele tiden — spaerret uanset hvor saerkende de er. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L362) |
-| function | `_intent_gate` | `(besked, navn)` | Modellens dom, eller ``False`` hvis den ikke kunne afgives. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L408) |
-| function | `tool_discovery_nudge_section` | `(user_message, session_id=…)` | Prompt-sektion der peger paa ET relevant vaerktoej uden for hans kasse. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L424) |
-| function | `_GULV` | `()` | Laeses ved kaldet, ikke ved import — saa fladen ikke fryser en gammel vaerdi. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L495) |
-| function | `_FAKTOR` | `()` | — | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L501) |
-| function | `build_tool_discovery_nudge_surface` | `(user_message=…, session_id=…)` | Observationsflade — hvad nudgen ville sige om denne besked. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L506) |
+| function | `_kernens_navne` | `()` | De vaerktoejer der ALTID sendes med — dem behoever han intet nudge om. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L276) |
+| function | `_undertrykt` | `(session_id, navn)` | — | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L324) |
+| function | `_husk_nudge` | `(session_id, navn)` | — | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L334) |
+| function | `_log_nudge` | `(navn, session_id, score, *, gate=…)` | Fase-1-logging. Uden den kan vi ikke maale om nudgen virker — hverken | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L346) |
+| function | `_korpus` | `()` | Leksikalsk korpus over vaerktoejerne, bygget én gang pr. vaerktoejssaet. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L367) |
+| function | `_matches` | `(besked, kandidater=…)` | Bedste leksikalske bud blandt ``kandidater``, eller ``None``. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L386) |
+| function | `_brugerens_hyppige_ord` | `()` | Ord han bruger hele tiden — spaerret uanset hvor saerkende de er. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L417) |
+| function | `_intent_gate` | `(besked, navn)` | Modellens dom, eller ``False`` hvis den ikke kunne afgives. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L463) |
+| function | `tool_discovery_nudge_section` | `(user_message, session_id=…)` | Prompt-sektion der peger paa ET relevant vaerktoej uden for hans kasse. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L479) |
+| function | `_GULV` | `()` | Laeses ved kaldet, ikke ved import — saa fladen ikke fryser en gammel vaerdi. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L552) |
+| function | `_FAKTOR` | `()` | — | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L558) |
+| function | `build_tool_discovery_nudge_surface` | `(user_message=…, session_id=…)` | Observationsflade — hvad nudgen ville sige om denne besked. | [src](../../../core/services/prompt_sections/tool_discovery_nudge.py#L563) |
 
 ## `core/services/prompt_sections/transcript_sections.py`
 _Transcript rendering + session compaction for prompts._

@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useContext, useEffect, useState } from 'react'
 import QRCode from 'qrcode'
 import type { ApiConfig } from '../../lib/api'
 import { getPairStatus } from '../../lib/api'
 import { fjernEnhed, hentEnheder, opretParring, saetEnhedsKrav, tilfoejDenneComputer, type EnhedsOverblik } from '../../lib/enheder'
 import { formatRelativeTime } from '../../lib/formatTime'
+import { SettingsContext } from '../../contexts/SettingsContext'
 
 /**
  * Enheder — hvem må styre denne computer, og hvem må bruge code mode.
@@ -28,6 +29,14 @@ export function EnhederSection({ config, ejer }: { config: ApiConfig; ejer: bool
   const [kravTotp, setKravTotp] = useState('')
   const [kravAaben, setKravAaben] = useState(false)
   const [computerTotp, setComputerTotp] = useState('')
+  // Serveren sender et nyt token med `app_id` i claim'en tilbage. Gemmes det
+  // ikke, er enheden tilføjet men usynlig for code mode-kontrollen — den
+  // læser KUN claim'en, aldrig kroppen.
+  const indstillinger = useContext(SettingsContext)
+  const gemNytToken = async (r: { token?: string }) => {
+    const t = String(r?.token || '').trim()
+    if (t) await indstillinger?.update({ authToken: t })
+  }
 
   const hent = async () => {
     const r = await hentEnheder(config)
@@ -79,7 +88,8 @@ export function EnhederSection({ config, ejer }: { config: ApiConfig; ejer: bool
     setTravl(true)
     const r = await tilfoejDenneComputer(config, computerTotp.trim(), 'Denne computer')
     setTravl(false); setComputerTotp('')
-    if (!r.ok) setFejl(r.fejl); else void hent()
+    if (!r.ok) setFejl(r.fejl)
+    else { await gemNytToken(r.data ?? {}); void hent() }
   }
 
   const skiftKrav = async () => {
@@ -87,7 +97,8 @@ export function EnhederSection({ config, ejer }: { config: ApiConfig; ejer: bool
     setTravl(true)
     const r = await saetEnhedsKrav(config, !overblik.kraev_aktivt, kravTotp.trim(), 'Denne computer')
     setTravl(false); setKravTotp(''); setKravAaben(false)
-    if (!r.ok) setFejl(r.fejl); else void hent()
+    if (!r.ok) setFejl(r.fejl)
+    else { await gemNytToken(r.data ?? {}); void hent() }
   }
 
   return (

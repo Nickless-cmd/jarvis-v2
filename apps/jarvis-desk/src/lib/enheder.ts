@@ -57,11 +57,24 @@ async function appId(): Promise<string> {
 
 export const hentEnheder = (c: ApiConfig) => kald<EnhedsOverblik>(c, '/api/auth/enheder')
 export const fjernEnhed = (c: ApiConfig, id: string) => kald<{ ok: boolean }>(c, `/api/auth/enheder/${encodeURIComponent(id)}`, { method: 'DELETE' })
+/** Serveren udsteder et FRISKT token med `app_id` i claim'en når enheden
+ *  tilføjes — begge faktorer er brugt dér, og kontrollen læser kun claim'en.
+ *
+ *  Uden det var enheden tilføjet men usynlig: registreringen har haft en
+ *  fallback til kroppen siden 20/9, men `maa_bruge_kode` har aldrig haft en.
+ *  Målt 29/9-2026 med enheden aktiv i registret:
+ *
+ *      maa_bruge_kode(app_id: "e74bd42a-…")  ->  true
+ *      maa_bruge_kode(app_id: "")            ->  false   <- det tokenet gav
+ *
+ *  Feltet er valgfrit: en ældre server svarer uden, og så er alt som før. */
+export interface MedNytToken { token?: string; expires_at?: string }
+
 export const tilfoejDenneComputer = async (c: ApiConfig, totp: string, navn: string) =>
-  kald<Enhed>(c, '/api/auth/enheder/denne-computer',
+  kald<Enhed & MedNytToken>(c, '/api/auth/enheder/denne-computer',
     { method: 'POST', body: { totp, navn, app_id: await appId() } })
 export const saetEnhedsKrav = async (c: ApiConfig, aktiv: boolean, totp: string, navn: string) =>
-  kald<{ ok: boolean }>(c, '/api/auth/enheds-krav',
+  kald<{ ok: boolean } & MedNytToken>(c, '/api/auth/enheds-krav',
     { method: 'PUT', body: { aktiv, totp, navn, app_id: await appId() } })
 export const opretParring = (c: ApiConfig, totp: string) =>
   kald<{ code: string; expires_in: number }>(c, '/api/auth/pair/create', { method: 'POST', body: { totp } })

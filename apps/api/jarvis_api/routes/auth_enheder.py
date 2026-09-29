@@ -10,8 +10,12 @@ dér adgangen til code mode bliver givet.
 """
 from __future__ import annotations
 
+import logging
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -95,6 +99,61 @@ def fjern_enhed(enheds_id: str) -> dict:
     return {"ok": True}
 
 
+def _token_med_app_id(uid: str, app_id: str) -> dict:
+    """Udsted et friskt token der BAERER `app_id` — og giv det til klienten.
+
+    ## Hvorfor det her er noedvendigt (29/9-2026)
+
+    Registreringen har haft en fallback siden 20/9: findes der intet
+    `app_id`-claim, tages det fra kroppen. Den blev tilfoejet fordi Bjoerns
+    token er aeldre end Google-login-flowet og kun har `exp, iat, iss, role,
+    sub`.
+
+    Men KONTROLLEN (`kode_adgang.kode_tilladt` -> `maa_bruge_kode`) laeser kun
+    claim'et. Maalt paa CT105 samme dag med enheden registreret og aktiv:
+
+        maa_bruge_kode(app_id="e74bd42a-…")  -> True    (det registreringen gemte)
+        maa_bruge_kode(app_id="")            -> False   (det tokenet giver)
+
+    Enheden kunne altsaa tilfoejes, men aldrig genkendes. Hullet blev lukket
+    den ene vej og glemt den anden.
+
+    ## Hvorfor claim'et og ikke en header
+
+    En header kunne enhver med tokenet saette, og saa var reglen ingen regel.
+    Registreringens fallback er kun forsvarlig fordi totrinskoden kraeves
+    FOERST — begge faktorer er brugt naar vi naar hertil. Derfor bindes
+    `app_id` til tokenet netop her og ingen andre steder.
+
+    `token_renewal.renew` bevarer allerede `app_id` gennem fornyelser, saa
+    bindingen overlever. Rollen arves fra det token der spoerger — det her
+    udsteder aldrig mere end kalderen allerede havde.
+    """
+    try:
+        import uuid
+        from core.identity.workspace_context import current_role
+        from core.runtime.jarvisx_auth import issue_token
+        jti = uuid.uuid4().hex
+        ud = issue_token(
+            user_id=uid,
+            role=(current_role() or "member"),
+            extra_claims={"jti": jti, "app_id": app_id},
+        )
+        try:
+            from core.runtime.token_renewal import _husk_jti
+            _husk_jti(uid, jti)
+        except Exception:  # jti-bogen er til tilbagekaldelse; et token der
+            # ikke naaede at blive husket er stadig gyldigt og kan fornys.
+            pass
+        return {"token": ud["token"], "expires_at": ud["expires_at"]}
+    except Exception:
+        # Registreringen LYKKEDES. Kan vi ikke udstede tokenet, skal svaret
+        # stadig vaere et ja — klienten kan hente et nyt ad den almindelige
+        # vej. Et halvt nej her ville se ud som om enheden ikke blev tilfoejet.
+        logger.warning("auth_enheder: kunne ikke udstede token med app_id", exc_info=True)
+        return {}
+
+
 class TotpReq(BaseModel):
     totp: str = ""
     navn: str = ""
@@ -111,9 +170,12 @@ def registrer_denne_computer(req: TotpReq) -> dict:
     _totp(uid, req.totp)   # koden FØRST — den er den anden faktor
     app_id = _app_id_for_registrering(req.app_id)
     try:
-        return registrer_computer(uid, app_id, navn=req.navn or "Computer")
+        svar = dict(registrer_computer(uid, app_id, navn=req.navn or "Computer"))
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
+    # Uden claim'et er enheden tilfoejet men usynlig for kontrollen.
+    svar.update(_token_med_app_id(uid, app_id))
+    return svar
 
 
 class KravReq(BaseModel):
@@ -147,4 +209,7 @@ def saet_enheds_krav(req: KravReq) -> dict:
                 detail=f"{e} — tænd reglen fra desk på din computer, så den selv bliver tilføjet.",
             ) from e
     saet_kraev(req.aktiv, af=uid)
-    return {"ok": True, "kraev_aktivt": req.aktiv}
+    svar = {"ok": True, "kraev_aktivt": req.aktiv}
+    if req.aktiv:
+        svar.update(_token_med_app_id(uid, app_id))
+    return svar

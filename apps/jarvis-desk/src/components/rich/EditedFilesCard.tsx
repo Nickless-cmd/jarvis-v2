@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { beregnDiffPlacering } from '../../lib/diffPopupPlacering'
 import { ChevronDown, ChevronRight, Code2, FileDiff, RotateCcw } from 'lucide-react'
 import { kortSti, type DiffPar, type RedigeretFil } from '../../lib/redigeredeFiler'
 import { DiffView } from './DiffView'
@@ -45,7 +46,8 @@ export function EditedFilesCard({
   const [venter, setVenter] = useState(false)
   const [fortrudt, setFortrudt] = useState(false)
   const [fejl, setFejl] = useState('')
-  const [hover, setHover] = useState<{ path: string; top: number; left: number; bredde: number } | null>(null)
+  const [hover, setHover] = useState<
+    { path: string; top: number; left: number; bredde: number; hoejde: number } | null>(null)
   const lukkeTimer = useRef<number | null>(null)
 
   // Popup'en staar uden for kortet i DOM'en (portal), fordi `.edited-files`
@@ -81,13 +83,22 @@ export function EditedFilesCard({
   const visDiff = (path: string, el: HTMLElement) => {
     if (!diffs?.[path]?.length) return
     afbrydLuk()
-    const r = el.getBoundingClientRect()
-    const bredde = Math.min(560, Math.max(320, window.innerWidth - 24))
-    // Til højre for rækken; er der ikke plads, spejles den til venstre.
-    let left = r.right + 10
-    if (left + bredde > window.innerWidth - 8) left = Math.max(8, r.left - bredde - 10)
-    const top = Math.max(8, Math.min(r.top, window.innerHeight - DIFF_HOEJDE - 8))
-    setHover({ path, top, left, bredde })
+    // Rammen er CHAT-FLADEN, ikke vinduet. Foer blev pladsen maalt mod hele
+    // vinduet, og en fil-raekke yderst til hoejre havde saa aldrig plads —
+    // spejlingen lagde diffen hen over sidepanelet (Bjoern 29/9-2026).
+    // `.main` er den flade raekken selv bor i; findes den ikke, falder vi
+    // tilbage paa vinduet, og saa opfoerer den sig som foer.
+    const flade = el.closest('.main')
+    const ramme = flade
+      ? flade.getBoundingClientRect()
+      : { top: 0, bottom: window.innerHeight, left: 0, right: window.innerWidth }
+    const p = beregnDiffPlacering({
+      raekke: el.getBoundingClientRect(),
+      ramme,
+      vindue: { bredde: window.innerWidth, hoejde: window.innerHeight },
+      hoejde: DIFF_HOEJDE,
+    })
+    setHover({ path, top: p.top, left: p.left, bredde: p.bredde, hoejde: p.hoejde })
   }
 
   const hoverPar = hover ? diffs?.[hover.path] : undefined
@@ -171,7 +182,7 @@ export function EditedFilesCard({
       {hover && hoverPar && createPortal(
         <div className="edited-files-diff" role="tooltip"
              aria-label={`Diff for ${hover.path}`}
-             style={{ top: hover.top, left: hover.left, width: hover.bredde, maxHeight: DIFF_HOEJDE }}
+             style={{ top: hover.top, left: hover.left, width: hover.bredde, maxHeight: hover.hoejde }}
              onMouseEnter={afbrydLuk} onMouseLeave={planlaegLuk}>
           <div className="edited-files-diff-head">
             <span className="edited-files-diff-sti" title={hover.path}>{hover.path}</span>

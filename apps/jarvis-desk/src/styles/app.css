@@ -4475,6 +4475,27 @@ body.egen-ramme .main:has(.chatview-head) { padding-top: 0; }
 /* Kroppen scroller — `min-height: 0` er det der lader den krympe inde i
    flex-kolonnen, så `overflow-y: auto` virker i stedet for at sprænge kassen. */
 .edited-files-diff-krop { overflow-y: auto; min-height: 0; padding: 6px; }
+/* Scrollbaren stod som systemets egen — bred og lys midt i et moerkt felt
+   (Bjoern 29/9-2026: «scrollbar er synlig»). Samme behandling som
+   `.sessions` allerede har: tynd og i temaets farver, baade i Firefox og
+   Webkit. Diffen kan ogsaa vaere bredere end feltet, saa den vandrige
+   scrollbar inde i `DiffView` faar den samme. */
+.edited-files-diff-krop, .edited-files-diff-krop * {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+.edited-files-diff-krop::-webkit-scrollbar,
+.edited-files-diff-krop *::-webkit-scrollbar { width: 8px; height: 8px; }
+.edited-files-diff-krop::-webkit-scrollbar-track,
+.edited-files-diff-krop *::-webkit-scrollbar-track { background: transparent; }
+.edited-files-diff-krop::-webkit-scrollbar-thumb,
+.edited-files-diff-krop *::-webkit-scrollbar-thumb {
+  background: var(--line); border-radius: 4px;
+}
+.edited-files-diff-krop::-webkit-scrollbar-thumb:hover,
+.edited-files-diff-krop *::-webkit-scrollbar-thumb:hover { background: var(--fg-3); }
+.edited-files-diff-krop::-webkit-scrollbar-corner,
+.edited-files-diff-krop *::-webkit-scrollbar-corner { background: transparent; }
 
 /* Projekt-overskrift i sidepanelet — «jarvis-v2 · /media/projects», som i CC.
    Ikke en knap: gruppen foldes paa KODE-overskriften ovenover, og to

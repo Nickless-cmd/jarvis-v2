@@ -1,5 +1,7 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { EditedFilesCard } from './EditedFilesCard'
 
 const FILER = [{ path: 'apps/x/ChangesPanel.tsx', gange: 1 }, { path: 'apps/x/ChangesPanel.test.tsx', gange: 1 }]
@@ -122,5 +124,100 @@ describe('EditedFilesCard', () => {
     expect(screen.getByRole('tooltip')).toBeInTheDocument()
     fireEvent.keyDown(window, { key: 'Escape' })
     expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+  })
+})
+
+/* ── Popup'en holder sig inde i chat-fladen (Bjoern 29/9-2026) ──────────────
+ *
+ * «den ska til den anden side altsaa over chatview.. og opad eller nedad
+ * afhaengig af skaermen». Placeringen selv er maalt i
+ * `lib/diffPopupPlacering.test.ts`. Den her beviser noget andet og lige saa
+ * vigtigt: at KOMPONENTEN faktisk giver den chat-fladens kant og ikke
+ * vinduets. En perfekt funktion som ingen kalder rigtigt er stadig fejlen. */
+
+/** Giv `.main` og fil-raekken hver sit rektangel — jsdom giver ellers nul. */
+function medFlader(raekke: { left: number; right: number; top: number; bottom: number }) {
+  const r = (k: { left: number; right: number; top: number; bottom: number }) =>
+    ({ ...k, width: k.right - k.left, height: k.bottom - k.top,
+       x: k.left, y: k.top, toJSON: () => ({}) }) as DOMRect
+  vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
+    if ((this as HTMLElement).classList?.contains('main')) {
+      return r({ left: 260, right: 1400, top: 0, bottom: 900 })
+    }
+    return r(raekke)
+  })
+  Object.defineProperty(window, 'innerWidth', { value: 1400, configurable: true })
+  Object.defineProperty(window, 'innerHeight', { value: 900, configurable: true })
+}
+
+const iChatten = (tip: HTMLElement) => {
+  const left = Number(tip.style.left.replace('px', ''))
+  const bredde = Number(tip.style.width.replace('px', ''))
+  return { left, hoejre: left + bredde }
+}
+
+describe('hover-diffens placering i panelet', () => {
+  afterEach(() => { vi.restoreAllMocks() })
+
+  it('lander ALDRIG over sidepanelet — heller ikke uden plads til hoejre', () => {
+    // Hans sag: fil-raekken staar yderst til hoejre i en bred besked.
+    medFlader({ left: 300, right: 1380, top: 300, bottom: 320 })
+    render(
+      <main className="main">
+        <EditedFilesCard filer={FILER} onAabn={() => {}}
+          diffs={{ 'apps/x/ChangesPanel.tsx': [{ gammel: 'a', ny: 'b' }] }} />
+      </main>,
+    )
+    fireEvent.mouseEnter(screen.getByText('x/ChangesPanel.tsx'))
+    const { left, hoejre } = iChatten(screen.getByRole('tooltip'))
+    expect(left, 'popup\'en stikker ind over sidepanelet').toBeGreaterThanOrEqual(260)
+    expect(hoejre).toBeLessThanOrEqual(1400)
+  })
+
+  it('en raekke naer skaermens bund vender popup\'en OPAD', () => {
+    medFlader({ left: 300, right: 500, top: 850, bottom: 870 })
+    render(
+      <main className="main">
+        <EditedFilesCard filer={FILER} onAabn={() => {}}
+          diffs={{ 'apps/x/ChangesPanel.tsx': [{ gammel: 'a', ny: 'b' }] }} />
+      </main>,
+    )
+    fireEvent.mouseEnter(screen.getByText('x/ChangesPanel.tsx'))
+    const tip = screen.getByRole('tooltip')
+    const top = Number(tip.style.top.replace('px', ''))
+    const hoejde = Number(tip.style.maxHeight.replace('px', ''))
+    expect(top).toBeLessThan(850)               // den aabner opad
+    expect(top + hoejde).toBeLessThanOrEqual(900 - 8)
+  })
+})
+
+describe('hover-diffens scrollbar', () => {
+  // «scrollbar er synlig» (Bjoern 29/9-2026): systemets egen, bred og lys
+  // midt i et moerkt felt. jsdom tegner ingen scrollbar, saa reglen laeses
+  // fra kilden — men BEGGE motorer skal med, ellers staar den stadig i den
+  // ene. En mutationskoersel fandt at dette hul var helt utestet.
+  const css = () =>
+    readFileSync(join(__dirname, '../../styles/app.css'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+
+  it('Firefox: tynd og i temaets farver', () => {
+    const krop = /\.edited-files-diff-krop[^{]*\{([^}]*)\}/g
+    const blokke = [...css().matchAll(krop)].map((m) => m[1] ?? '').join(' ')
+    expect(blokke).toMatch(/scrollbar-width\s*:\s*thin/)
+    expect(blokke).toMatch(/scrollbar-color\s*:\s*var\(--line\)/)
+  })
+
+  it('Webkit: smal bane og en toemme i temaets farve', () => {
+    const c = css()
+    expect(c, 'ingen webkit-scrollbar-regel').toMatch(
+      /\.edited-files-diff-krop[^{]*::-webkit-scrollbar[^-][^{]*\{[^}]*width\s*:\s*8px/)
+    expect(c).toMatch(
+      /\.edited-files-diff-krop[^{]*::-webkit-scrollbar-thumb[^{]*\{[^}]*background\s*:\s*var\(--line\)/)
+  })
+
+  it('ogsaa diffens EGEN vandrette scrollbar — den er et barn, ikke kroppen', () => {
+    // DiffView scroller vandret inde i kroppen. Uden `*`-reglen stod netop
+    // den tilbage som systemets egen.
+    expect(css()).toMatch(/\.edited-files-diff-krop \*[^{]*\{[^}]*scrollbar-width\s*:\s*thin/)
   })
 })

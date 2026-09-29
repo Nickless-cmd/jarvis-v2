@@ -1652,34 +1652,14 @@ async def _stream_visible_run(
             import time as _fptime
             _fp_t0 = _fptime.monotonic()
 
+            from core.services.visible_first_pass_pump import pump_first_pass
+
             def _pump_model_stream() -> None:
-                # RE-ASSERT tool-scope + local-exec (2026-07-22, MÅLT rod): ContextVars sat
-                # øverst i denne async-generator (~:1237) TABES her — async-generatorer bevarer
-                # ikke ContextVar-mutationer over yields (og/eller tråd-grænsen). Målt: scope=''
-                # ved tool-bygningen → get_tool_definitions() ser DEFAULT → ALLE 126 tools
-                # (17.751 tok = 56% af prompten) i stedet for code-scopets ~22. Re-sæt fra
-                # closuren så tool-bygningen ser det RIGTIGE scope. Se reference_tool_scope_ctxvar_lost.
-                try:
-                    from core.tools.tool_scoping import set_tool_scope as _sts_reassert, set_local_exec as _sle_reassert
-                    if tool_scope:
-                        _sts_reassert(tool_scope)
-                    _sle_reassert(bool(getattr(run, "local_tool_exec", False)))
-                except Exception:
-                    pass
-                try:
-                    for item in stream_visible_model(
-                        message=run.user_message,
-                        provider=run.provider,
-                        model=run.model,
-                        session_id=run.session_id,
-                        controller=controller,
-                        thinking_mode=run.thinking_mode,
-                    ):
-                        loop.call_soon_threadsafe(queue.put_nowait, item)
-                except Exception as exc:
-                    loop.call_soon_threadsafe(queue.put_nowait, exc)
-                finally:
-                    loop.call_soon_threadsafe(queue.put_nowait, _sentinel)
+                pump_first_pass(
+                    run, controller=controller, tool_scope=tool_scope or "",
+                    loop=loop, queue=queue, sentinel=_sentinel,
+                    stream_fn=stream_visible_model,
+                )
 
             _run_stage = "first_pass_streaming"
             # KONTEKST-PROPAGATION (2026-07-22, målt rod): run_in_executor kopierer IKKE

@@ -614,16 +614,10 @@ _ASSEMBLY_TURN_TTL_S = 180.0
 # memory, not stub"), so a one-turn-stale result is acceptable. We now serve the last
 # cached result IMMEDIATELY (never join) and refresh in the background for the next
 # turn. Keyed per session; first turn per session has none (self-corrects next turn).
-_RBA_CACHE: dict = {}          # session_id -> (monotonic_ts, summary_text)
-_RBA_INFLIGHT: set = set()     # session_ids with a background refresh running
-_RBA_LOCK = _threading_mod.Lock()
-_RBA_TTL_S = 300.0
-
-# multi_signal_recall — same non-blocking treatment (2026-07-23). It's the "wider
-# net" complementary recall (~1.9s synchronous), also supplementary → serve cached,
-# refresh in background. Shares the RBA lock (both are quick dict ops).
-_MSR_CACHE: dict = {}
-_MSR_INFLIGHT: set = set()
+from core.services.prompt_memory_recall import (
+    _RBA_CACHE, _RBA_INFLIGHT, _RBA_LOCK, _RBA_TTL_S,
+    _MSR_CACHE, _MSR_INFLIGHT,
+)
 
 
 def _latest_user_msg_id(session_id: str | None) -> int:
@@ -875,6 +869,16 @@ def _build_visible_chat_prompt_assembly_impl(
         _runtime_self_report_instruction,
         user_message=user_message,
         runtime_self_report_context=runtime_self_report_context or {},
+    )
+    from core.services.decision_action_gate import (
+        opportunities as _decision_opportunities,
+        query_current_memory as _query_current_memory,
+    )
+    from core.services.run_autonomy_context import is_autonomous
+    _decision_due = set() if is_autonomous() else _decision_opportunities(user_message)
+    _future_decision_memory = (
+        _measured_submit("decision_current_recall", _query_current_memory, user_message, session_id)
+        if "memory" in _decision_due else None
     )
 
     # Sync-gap instrumentation: capture timestamps at key landmarks so we can
@@ -1919,99 +1923,10 @@ def _build_visible_chat_prompt_assembly_impl(
         _awareness_add(26, "context window degradation signal", context_window_section())
     except Exception as _e:
         _sec_err("context window degradation signal", _e)
-    # Fix 2 (2026-04-27): recall_before_act in visible runs — was only used
-    # in heartbeat phases. Surface relevant memories tied to user_message so
-    # Jarvis answers from memory, not stub-context.
-    try:
-        from core.services.memory_hierarchy import recall_before_act_summary
-        if user_message and len(user_message.strip()) >= 8:
-            # Query-adaptiv recall → bruger-besked-halen (lever #4 cache-fix),
-            # ikke awareness (som rendres før historikken).
-            # Hård 4s deadline (29. jun, CUT-OFF-ROD): denne recall laver embed/DB-
-            # kald der UNDER ollama-kontention (baggrunds frame/cognitive_state-
-            # futures mætter samme ollama) kø'ede 20-26s INLINE i q3-segmentet →
-            # frøs --workers 1 → cut-off for ALLE brugere (verificeret på Mikkels
-            # session). Var den ENESTE uncappede recall i q3 (multi_signal har
-            # allerede 4s-cap). Samme tråd-deadline-mønster; synlig i Centralen.
-            import threading as _thr_rba
-            import contextvars as _cv_rba
-            import time as _t_rba
-            _sid_rba = (session_id or "").strip()
-            _now_rba = _t_rba.monotonic()
-            # 1) Serve the last cached recall IMMEDIATELY — never block the turn.
-            with _RBA_LOCK:
-                _cached = _RBA_CACHE.get(_sid_rba)
-                _busy = _sid_rba in _RBA_INFLIGHT
-            if _cached and (_now_rba - _cached[0]) < _RBA_TTL_S and _cached[1]:
-                _dyn_memory_recall.append(_cached[1])
-                derived_inputs.append("recall-before-act (cached, non-blocking)")
-            # 2) Refresh in the background for the NEXT turn (deduped per session).
-            #    copy_context() so the raw thread keeps user_context (workspace source).
-            if not _busy and _sid_rba:
-                with _RBA_LOCK:
-                    _RBA_INFLIGHT.add(_sid_rba)
-                _rba_ctx = _cv_rba.copy_context()
-                _rba_q = user_message
-
-                def _refresh_rba() -> None:
-                    try:
-                        _v = _rba_ctx.run(recall_before_act_summary, query=_rba_q)
-                        if _v:
-                            with _RBA_LOCK:
-                                _RBA_CACHE[_sid_rba] = (_t_rba.monotonic(), _v)
-                    except Exception:
-                        pass
-                    finally:
-                        with _RBA_LOCK:
-                            _RBA_INFLIGHT.discard(_sid_rba)
-
-                _thr_rba.Thread(target=_refresh_rba, name="recall-before-act-bg", daemon=True).start()
-    except Exception:
-        pass
-    # Multi-signal recall (B1, 2026-06-08) — Claude 2026-06-09: B1 module
-    # (multi_signal_retrieval.py + 214 lines integration in
-    # memory_recall_engine.py) was built and tested but never wired into
-    # any prompt section. Now surfaced as a complementary recall using
-    # BM25 + entity + embedding fusion. Lower priority than
-    # recall-before-act since this is "wider net", not user-message-specific.
-    try:
-        from core.services.memory_recall_engine import multi_signal_recall_section
-        if user_message and len(user_message.strip()) >= 8:
-            import threading as _thr_msr
-            import contextvars as _cv_msr
-            import time as _t_msr
-            _sid_msr = (session_id or "").strip()
-            _now_msr = _t_msr.monotonic()
-            with _RBA_LOCK:
-                _c_msr = _MSR_CACHE.get(_sid_msr)
-                _busy_msr = _sid_msr in _MSR_INFLIGHT
-            # Serve last cached result immediately (non-blocking).
-            if _c_msr and (_now_msr - _c_msr[0]) < _RBA_TTL_S and _c_msr[1]:
-                # 2026-09-04 (memory repair, R2): til [HUKOMMELSE]-gruppen.
-                _dyn_memory_recall.append(_c_msr[1])
-                derived_inputs.append("multi-signal recall (memory group)")
-            # Refresh in background for the next turn (deduped per session).
-            if not _busy_msr and _sid_msr:
-                with _RBA_LOCK:
-                    _MSR_INFLIGHT.add(_sid_msr)
-                _msr_ctx = _cv_msr.copy_context()
-                _msr_q = user_message
-
-                def _refresh_msr() -> None:
-                    try:
-                        _v = _msr_ctx.run(multi_signal_recall_section, _msr_q)
-                        if _v:
-                            with _RBA_LOCK:
-                                _MSR_CACHE[_sid_msr] = (_t_msr.monotonic(), _v)
-                    except Exception:
-                        pass
-                    finally:
-                        with _RBA_LOCK:
-                            _MSR_INFLIGHT.discard(_sid_msr)
-
-                _thr_msr.Thread(target=_refresh_msr, name="multi-signal-recall-bg", daemon=True).start()
-    except Exception as _e:
-        _sec_err("multi-signal recall (BM25+entity+embedding)", _e)
+    from core.services.prompt_memory_recall import append_background_recall
+    append_background_recall(
+        user_message, session_id, _dyn_memory_recall, derived_inputs, _sec_err,
+    )
     # Phase 1 — proactive auto-compact at 70% threshold (best-effort, cooldown-protected)
     # Guard: ALDRIG compaction som bivirkning af en pre-warm-build (session_prewarm /
     # assembly_prewarm sætter is_prewarm_active()). Ellers ville en cache-warm kunne
@@ -3150,6 +3065,21 @@ def _build_visible_chat_prompt_assembly_impl(
         pass
     # 2026-09-04 (memory repair, R2): én overskrift for hele gruppen, så
     # hukommelsen ikke arver diagnostik-blokkens "citér det ALDRIG".
+    try:
+        from core.services.decision_action_gate import action_section, record_opportunities
+        from core.services.run_autonomy_context import current_run_id
+
+        _current_recall = _timed_result(
+            _future_decision_memory, "decision_current_recall", default=None, max_s=0.8,
+        )
+        _action_text = action_section(user_message, recall_text=_current_recall) if _decision_due else ""
+        if _action_text:
+            _dyn_tail.append(_action_text)
+            record_opportunities(
+                current_run_id(), user_message, memory_recalled=bool(_current_recall),
+            )
+    except Exception as _e:
+        _sec_err("current-turn decision action", _e)
     if _dyn_memory_recall:
         _dyn_tail.append(MEMORY_GROUP_HEADER)
     _dyn_tail.extend(_dyn_memory_recall)

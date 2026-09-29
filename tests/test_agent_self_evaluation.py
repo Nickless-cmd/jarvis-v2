@@ -189,13 +189,15 @@ def test_adherence_returns_none_when_no_decisions():
 
 
 def test_adherence_calculates_score():
-    with patch("core.runtime.db_decisions.list_decisions", return_value=[
+    with patch("core.services.decision_action_gate.opportunity_summary", return_value={"quote": {"opportunities": 2, "kept": 1, "unconfirmed": 1}}), \
+         patch("core.runtime.db_decisions.list_decisions", return_value=[
         {"decision_id": "d1", "directive": "x", "adherence_score": 1.0},
         {"decision_id": "d2", "directive": "y", "adherence_score": 0.5},
     ]):
         result = decision_adherence_summary()
     assert result["score"] == 75.0
     assert result["flag"] is None  # 75 > 60
+    assert result["observed_opportunities"]["quote"]["kept"] == 1
 
 
 def test_adherence_flags_low_score():

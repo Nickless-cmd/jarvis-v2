@@ -422,6 +422,21 @@ def _persist_session_assistant_message(
         reasoning_content=str(reasoning_content or ""),
         content_json=content_json,
     )
+    if not bool(getattr(run, "autonomous", False)):
+        try:
+            from core.services.decision_action_gate import record_outcomes
+
+            tool_names = [
+                str(block.get("name") or block.get("tool") or "")
+                for block in (blocks or [])
+                if isinstance(block, dict) and block.get("type") in {"tool_use", "progress"}
+            ]
+            record_outcomes(
+                run.run_id, str(getattr(run, "user_message", "") or ""), normalized,
+                tool_names=tool_names,
+            )
+        except Exception as exc:
+            logger.warning("decision action outcome recording failed run_id=%s: %s", run.run_id, exc)
     try:
         from core.eventbus.bus import event_bus
         event_bus.publish("channel.chat_message_appended", {

@@ -69,6 +69,34 @@ def test_no_memory_group_header_when_nothing_to_recall(isolated_runtime, monkeyp
     assert text.count("[HUKOMMELSE]") <= 1
 
 
+def test_current_turn_correction_reaches_prompt_tail(isolated_runtime) -> None:
+    text = _build(isolated_runtime.prompt_contract, "Du tog fejl om den fil").text
+    assert "[Aktiv forpligtelse i denne tur]" in text
+    assert "Gengiv først" in text
+
+
+def test_current_turn_memory_result_reaches_prompt(isolated_runtime, monkeypatch) -> None:
+    from core.services import decision_action_gate
+
+    monkeypatch.setattr(
+        decision_action_gate, "query_current_memory",
+        lambda message, session_id: "Hukommelse: vi valgte A",
+    )
+    text = _build(isolated_runtime.prompt_contract, "Hvad aftalte vi sidst?").text
+    assert "Hukommelse: vi valgte A" in text
+
+
+def test_autonomous_prompt_skips_owner_action_gate(isolated_runtime) -> None:
+    from core.services.run_autonomy_context import reset_autonomous, set_autonomous
+
+    token = set_autonomous(True)
+    try:
+        text = _build(isolated_runtime.prompt_contract, "Du tog fejl om den fil").text
+    finally:
+        reset_autonomous(token)
+    assert "[Aktiv forpligtelse i denne tur]" not in text
+
+
 def test_nudge_well_gone_midway_and_since_last_present(isolated_runtime, monkeypatch) -> None:
     """Redesign 4/9: ingen 'Pending nudges … mark_sent' i diagnostik-blokken; Bjørns
     mid-run-beskeder som egen sektion i halen; én 'Siden sidst'-linje i [HUKOMMELSE]."""

@@ -1,4 +1,5 @@
 import { createContext, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { erKodeSamtale } from '../lib/sessionGroups'
 import { listSessions, getSession, createSession, renameSession, deleteSession, type ChatSession, type ChatMessage } from '../lib/api'
 import { parsePauseAsk } from '../lib/pauseAsk'
 import { denseBlocks } from '../lib/blockHelpers'
@@ -101,7 +102,7 @@ export function SessionProvider({
     // Sidebarens klik gør præcis det samme opslag (`workspace_kind` sat →
     // code); at gøre noget andet her ville være to definitioner af det samme.
     const s = sessions.find((x) => x.id === gemt)
-    if (s) onRestore?.(s.workspace_kind ? 'code' : 'chat')
+    if (s) onRestore?.(erKodeSamtale(s) ? 'code' : 'chat')
     // `select` udelades: den gendannes ved hver config-ændring og ville koere
     // gendannelsen igen. `gendannetRef` gør den til en engangs-handling.
     // eslint-disable-next-line react-hooks/exhaustive-deps

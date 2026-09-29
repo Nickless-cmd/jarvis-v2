@@ -17,6 +17,10 @@ export interface ChatSession {
   title: string
   updated_at: string
   message_count?: number
+  /** Samtalens vedvarende art fra basen: 'chat' | 'code'. Serveren har sendt
+   *  den hele tiden; klienten læste den bare ikke, og grupperede i stedet paa
+   *  `workspace_kind` — se `sessionGroups.erKodeSamtale`. */
+  kind?: string | null
   workspace_kind?: string | null
   /** Projektet — stien til arbejdstraeet. Gemt i basen siden begyndelsen, men
    *  sendt med foerst 16/9-2026, saa sidepanelet kan gruppere efter projekt. */

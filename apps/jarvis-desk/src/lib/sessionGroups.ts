@@ -8,19 +8,51 @@
  * flad liste — og indtil samme dag hed chat-sessionerne alle sammen «Ny
  * samtale», så navnene hjalp heller ikke.
  *
- * Inddelingen bruger data klienten allerede får (`id` og `workspace_kind`), så
- * der skal ikke en API-ændring til. Og den bruger appens EGEN definition af en
- * kode-session — `workspace_kind` sat — frem for at indføre en ny: sidebaren
- * åbner i forvejen en session i kode-fladen på præcis det kriterium
- * (`onSurface(s.workspace_kind ? 'code' : 'chat')`). To definitioner af det
- * samme ville drive fra hinanden.
+ * Inddelingen brugte oprindeligt `workspace_kind` som stedfortræder for
+ * samtalens art, fordi der ikke fandtes andet. Siden fik basen en
+ * `kind`-kolonne; se `erKodeSamtale` for hvad stedfortræderen kostede.
  */
 
 export type SessionGruppe = 'chat' | 'kode' | 'baggrund'
 
 export interface GrupperbarSession {
   id: string
+  /** Samtalens VEDVARENDE art fra basen: 'chat' | 'code'. Den rigtige kilde. */
+  kind?: string | null
   workspace_kind?: string | null
+}
+
+/**
+ * Er samtalen en kode-samtale? ÉT sted, fordi tre steder spurgte hver for sig.
+ *
+ * ## Hvad der var galt (29/9-2026)
+ *
+ * Kriteriet var `workspace_kind` sat. Men `workspace_kind` er ARBEJDSTRÆETS
+ * art ('workstation', 'code'), ikke samtalens tilstand — den blev valgt som
+ * stedfortræder dengang der ikke fandtes andet. Siden fik `chat_sessions` en
+ * `kind`-kolonne, og serveren sender den med i listen; klienten så den bare
+ * aldrig.
+ *
+ * Målt på CT105, 550 samtaler:
+ *
+ *     kode-samtaler UDEN workspace_kind  ->  10 af 26   vist som chat
+ *     chat-samtaler MED workspace_kind   ->  19         vist som kode
+ *
+ * Altså 29 samtaler i den forkerte liste, og fejlen gik begge veje. Bjørn:
+ * «den session ham og jeg lige har skrevet i er oprettet som kode mode session
+ * men vises i session listen i chat mode».
+ *
+ * Det er ikke kun kosmetik. Åbnes en kode-samtale fra chat-fladen, sender
+ * klienten `mode='chat'`; `udled_tool_scope` hæver til code fordi samtalen ER
+ * code, og hæves den, skal enheds-reglen passere. Gør den ikke det, falder
+ * scopet til chat — og broens værktøjer afvises. Det er «broen ryger».
+ *
+ * `workspace_kind` bliver stående som fallback for rækker fra før kolonnen.
+ */
+export function erKodeSamtale(s: GrupperbarSession): boolean {
+  const k = String(s.kind || '').trim().toLowerCase()
+  if (k) return k === 'code'
+  return Boolean(s.workspace_kind)
 }
 
 /** Autonome kørsler og den proaktive kanal. Præfikserne er runtime'ens egne:
@@ -33,7 +65,7 @@ export function erBaggrund(id: string): boolean {
 
 export function grupperAf(s: GrupperbarSession): SessionGruppe {
   if (erBaggrund(s.id)) return 'baggrund'
-  return s.workspace_kind ? 'kode' : 'chat'
+  return erKodeSamtale(s) ? 'kode' : 'chat'
 }
 
 export const GRUPPE_NAVN: Record<SessionGruppe, string> = {

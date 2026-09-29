@@ -13,7 +13,7 @@ import { useStream } from '../../hooks/useStream'
 import { getActiveRuns } from '../../lib/api'
 import { maaPolle } from '../../lib/ro'
 import { COWORK_ZONES, emitZone, getCurrentZone, onZone, normalizeZone, type Zone } from '../../lib/coworkZone'
-import { grupperSessioner, GRUPPER_I_MODE, grupperEfterProjekt, type SessionGruppe } from '../../lib/sessionGroups'
+import { grupperSessioner, GRUPPER_I_MODE, grupperEfterProjekt, erKodeSamtale, type SessionGruppe } from '../../lib/sessionGroups'
 import { SidebarGreb } from './SidebarGreb'
 import { ModeDropdown, type Mode } from './ModeDropdown'
 import { ModeBladrer } from './ModeBladrer'
@@ -310,7 +310,7 @@ export function Sidebar({
                                 active={s.id === activeId}
                                 working={isWorking(s.id)}
                                 workspaceKind={s.workspace_kind}
-                                onSelect={() => { select(s.id); onSurface(s.workspace_kind ? 'code' : 'chat') }}
+                                onSelect={() => { select(s.id); onSurface(erKodeSamtale(s) ? 'code' : 'chat') }}
                               />
                             ))}
                           </Fragment>
@@ -323,7 +323,7 @@ export function Sidebar({
                             active={s.id === activeId}
                             working={isWorking(s.id)}
                             workspaceKind={s.workspace_kind}
-                            onSelect={() => { select(s.id); onSurface(s.workspace_kind ? 'code' : 'chat') }}
+                            onSelect={() => { select(s.id); onSurface(erKodeSamtale(s) ? 'code' : 'chat') }}
                           />
                         ))
                     )}

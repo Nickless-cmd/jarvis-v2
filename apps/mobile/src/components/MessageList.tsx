@@ -25,6 +25,7 @@ import { threadBlocks } from '../lib/persistedBlocks'
 import { ThinkingSummary } from './ThinkingSummary'
 import { MessageAttachments } from './MessageAttachments'
 import { ToolResultCard } from './ToolResultCard'
+import { Arbejdslinje } from './Arbejdslinje'
 import { ImageGenerationCard } from './ImageGenerationCard'
 import { VideoGenerationCard } from './VideoGenerationCard'
 import { ImageAnalysisCard } from './ImageAnalysisCard'
@@ -69,6 +70,13 @@ interface MessageListProps {
    * tråden ser ud som før.
    */
   rundeEtiketter?: Record<string, string>
+  /**
+   * Arbejdslinjens sætning i Jarvis' stemme — eller null.
+   *
+   * Bygget af `arbejdslinjeTekst(state.workingStep, state.workingAction)`.
+   * Udeladt eller null = ingen linje; tråden ser ud som før.
+   */
+  arbejdslinje?: string | null
   /** Den levende turs `skill_surface` (streamReducerens `skillFlade`). */
   skillFlade?: { matches: SkillFladeMatch[] }
   /** Id på den første besked man ikke har set — tegnes med en skillelinje over. */
@@ -127,6 +135,9 @@ type Row = (
   | { kind: 'image-analysis'; key: string; kilde: string; sti: string }
   /** Én RUNDE værktøjsarbejde, foldet sammen til én linje. */
   | { kind: 'tool-group'; key: string; items: ToolItem[] }
+  /** Arbejdslinjen — hvad Jarvis laver LIGE NU, nederst i beskeden.
+   *  Findes kun mens der streames; rækken tilføjes ikke efter. */
+  | { kind: 'arbejdslinje'; key: string; tekst: string }
   /** Et skill-kald (skill_gate/skill_invoke) — sin EGEN linje, ikke i runden. */
   | { kind: 'skill'; key: string; kald: SkillKald }
   /** Skills runtimen lagde i prompten (`skill_surface`) — uden et kald. */
@@ -479,7 +490,7 @@ function taenketid(start?: number, slut?: number): number | undefined {
 }
 
 export const MessageList = forwardRef<MessageListHandle, MessageListProps>(function MessageList(
-  { messages, blocks, working = false, onResend, onScrollOffset, bottomInset = 0, topInset = 0, pins, onTogglePin, onSaveMemory, rundeEtiketter, skillFlade, nyeFra, visning = 'normal', tankeResumeer, onRewind },
+  { messages, blocks, working = false, arbejdslinje, onResend, onScrollOffset, bottomInset = 0, topInset = 0, pins, onTogglePin, onSaveMemory, rundeEtiketter, skillFlade, nyeFra, visning = 'normal', tankeResumeer, onRewind },
   ref
 ) {
   const tokens = useTheme()
@@ -757,6 +768,13 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
   // En besked kan blive til flere rækker (afsnit, runder, tanker), og en
   // runde-række bærer nøglen `group-<første kalds nøgle>`.
   const rows: Row[] = medNyeLinje(medHoveder, nyeFra)
+  // Arbejdslinjen lægges SIDST — den inverterede liste tegner index 0 i
+  // bunden, så den havner under alt andet i beskeden og forsvinder med
+  // streamen. Bjørn 29/9-2026: «fra streaming starter til den slutter og
+  // så forsvinder igen i bunden af din besked».
+  if (working && arbejdslinje) {
+    rows.push({ kind: 'arbejdslinje', key: 'arbejdslinje', tekst: arbejdslinje })
+  }
 
   // Inverteret liste: nyeste række sidder altid i bunden og er synlig fra start.
   const ordered = [...rows].reverse()
@@ -885,6 +903,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(funct
         if (item.kind === 'nye-beskeder') return <NyeBeskederRow />
         if (item.kind === 'skill') return <SkillLinje kald={item.kald} />
         if (item.kind === 'skill-flade') return <SkillFladeLinje matches={item.matches} />
+        if (item.kind === 'arbejdslinje') return <Arbejdslinje tekst={item.tekst} />
         if (item.kind === 'attachments') {
           return <MessageAttachments items={item.items} side={item.side} />
         }

@@ -21,6 +21,7 @@ import { ApprovalCard } from '../components/ApprovalCard'
 import { Composer } from '../components/Composer'
 import { KantFade } from '../components/KantFade'
 import { ResearchStatus } from '../components/ResearchStatus'
+import { arbejdslinjeTekst } from '../lib/arbejdslinje'
 import { useVoiceConversation } from '../lib/useVoiceConversation'
 import { useComposerDictation } from '../lib/useComposerDictation'
 import { VoiceOverlay } from '../components/VoiceOverlay'
@@ -1203,6 +1204,7 @@ export function ChatScreen({
               messages={sessions.messages}
               blocks={stream.state.blocks}
               working={stream.state.status === 'working' || serverBusy}
+              arbejdslinje={arbejdslinjeTekst(stream.state.workingStep, stream.state.workingAction)}
               // Rundens overskrift — «Rettede fejl i login». Uden den her linje
               // ville etiketten blive regnet, sendt og gemt i tilstanden uden
               // nogensinde at naa skaermen: husets hyppigste fejl.

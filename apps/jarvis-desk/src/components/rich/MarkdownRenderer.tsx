@@ -45,13 +45,16 @@ const KOMPONENTER: Components = {
 
 /** Én blok markdown. Memoiseret på strengen: en færdig blok parses én gang. */
 export const MarkdownBlok = memo(function MarkdownBlok({ md }: { md: string }) {
-  return <ReactMarkdown remarkPlugins={PLUGINS} components={KOMPONENTER}>{md}</ReactMarkdown>
+  // 29/9-2026: en frossen blok har stabil tekst, så strukturarbejdet skal
+  // følge blokkens levetid i stedet for at genkøre på hele streamets historie.
+  const struktureret = useMemo(() => enforceStructure(md), [md])
+  return <ReactMarkdown remarkPlugins={PLUGINS} components={KOMPONENTER}>{struktureret}</ReactMarkdown>
 })
 
 export function MarkdownRenderer({ text, streaming }: { text: string; streaming: boolean }) {
   const md = useMemo(() => {
     const stabilized = streaming ? stabilizeStreamingMarkdown(text) : text
-    return enforceStructure(stripToolEchoes(stabilized))
+    return stripToolEchoes(stabilized)
   }, [text, streaming])
   // Under streaming: blokke, så kun den sidste (levende) parses ved hver
   // delta (lib/markdownBlokke). Færdig tekst: ét samlet parse — det er den
